@@ -8882,7 +8882,7 @@ snapshots:
     dependencies:
       react: 18.3.1
 
-  maath@0.10.8(@types/three@0.184.1)(three@0.170.0):
+  maath@0.10.8(@types/three@0.184.1)(three@0.184.0):
     dependencies:
       '@types/three': 0.184.1
       three: 0.184.0
