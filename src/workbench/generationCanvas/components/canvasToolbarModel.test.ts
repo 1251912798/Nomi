@@ -23,11 +23,10 @@ describe('canvas add-intent model（第三档：5 常驻 + 更多）', () => {
     ])
   })
 
-  it('「更多」里恰好 6 个，分两段带名字：更多 · 空间 · 草图', () => {
+  it('「更多」里恰好 5 个，分两段带名字：更多 · 空间 · 草图', () => {
     const sections = canvasMoreAddSections()
     expect(sections.flatMap((section) => section.intents).map((intent) => intent.id)).toEqual([
       'text',
-      'video_depth_process',
       'scene3d',
       'model3d',
       'panorama',
@@ -52,7 +51,6 @@ describe('canvas add-intent model（第三档：5 常驻 + 更多）', () => {
       'audio',
       'clip',
       'text',
-      'video_depth_process',
       'import-file',
       'scene3d',
       'model3d',
@@ -66,10 +64,10 @@ describe('canvas add-intent model（第三档：5 常驻 + 更多）', () => {
   it('每个意图只出现一次（常驻与更多不重复、两个菜单不分叉）', () => {
     const ids = canvasAddIntents().map((intent) => intent.id)
     expect(new Set(ids).size).toBe(ids.length)
-    expect(ids).toHaveLength(11)
+    expect(ids).toHaveLength(10)
     const kinds = canvasToolbarNodeKinds()
     expect(new Set(kinds).size).toBe(kinds.length)
-    expect(kinds).toHaveLength(10)
+    expect(kinds).toHaveLength(9)
   })
 
   it('表里每一种节点都是 quickAdd 的（剪辑仍在其中）', () => {

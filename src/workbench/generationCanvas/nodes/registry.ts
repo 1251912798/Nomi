@@ -30,7 +30,6 @@ export type GenerationNodeIconKey =
   | 'whiteboard'
   | 'audio'
   | 'clip'
-  | 'videoDepth'
 
 export type GenerationNodePluginDefinition<TKind extends string = string> = {
   kind: TKind
@@ -258,21 +257,6 @@ export const GENERATION_NODE_PLUGINS = defineGenerationNodePlugins([
     quickAdd: true,
     agentCreatable: true,
     promptPlaceholder: 'Describe the 3D model...',
-  },
-  {
-    // 深度视频：**本地处理**节点，不是生成节点。给它一段画布上已有的视频，它在本机跑
-    // Depth Anything V2 出一段深度视频，产物就是一个普通视频资产（能拖进任意模型的参考槽）。
-    // 无 executionKind（不进生成链路、不花额度、不进预算门）；agentCreatable 缺省 false（v1 不进 Agent 工具）。
-    // providesImageReference 不设：它产的是视频，不是图片参考。
-    kind: 'video_depth_process',
-    label: 'Depth Video',
-    menuLabel: 'Depth Video',
-    component: loadBaseGenerationNode,
-    icon: 'videoDepth',
-    defaultTitle: 'Depth Video',
-    defaultSize: { width: 340, height: 420 },
-    catalogKind: 'video',
-    quickAdd: true,
   },
   {
     // 素材：导入图 / 文件树拖入 / 本地切图裁剪旋转衍生物。它就是一张图，不是生成节点：

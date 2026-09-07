@@ -64,6 +64,14 @@ export type VideoDepthRunDeps = {
   /** 取消探针：编排在每批之间问一次。 */
   shouldCancel: () => boolean
   now?: () => number
+  /**
+   * 每批回传**一张**最新的裸帧，给界面画「它现在看到的是什么」。
+   *
+   * 纯观察口：不参与编排、不影响任何一次收场，实现里抛了也不该让这次运行失败
+   * （所以调用点包了 try）。形状与 worker 回传的 rawFrames 逐字对应；
+   * 一批 32 帧才给一张，节奏由批大小决定，不另设节流器（两个节流器 = 两份真相）。
+   */
+  onPreviewFrame?: (frame: { bytes: Uint8Array; width: number; height: number; pixelFormat: 'gray' | 'rgb24' }) => void
 }
 
 function failureFrom(error: unknown): { code: VideoDepthErrorCode; message: string; retryable: boolean } {
@@ -177,6 +185,21 @@ export async function runVideoDepth(input: VideoDepthRunInput, deps: VideoDepthR
           )
           if (response.kind === 'error') throw response
           if (response.kind !== 'batchResult') return
+          const latest = response.rawFrames[response.rawFrames.length - 1]
+          if (deps.onPreviewFrame && latest) {
+            // 拷一份再交出去：下一行的 writeFrames 会把同一批帧包成 Uint8Array 走 IPC，
+            // 观察口拿着的若是同一块内存，两边的生命周期就绑在一起了。
+            try {
+              deps.onPreviewFrame({
+                bytes: new Uint8Array(latest.slice(0)),
+                width: prepared.outWidth,
+                height: prepared.outHeight,
+                pixelFormat: prepared.pixelFormat,
+              })
+            } catch {
+              /* 预览是锦上添花，坏了不该毁掉这次处理 */
+            }
+          }
           await deps.bridge.writeFrames({
             jobId: prepared.jobId,
             frames: response.rawFrames.map((buffer) => new Uint8Array(buffer)),

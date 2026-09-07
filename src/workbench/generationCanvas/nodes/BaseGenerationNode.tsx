@@ -77,7 +77,6 @@ const Scene3DEditor = lazyWithChunkBoundary('3D 场景编辑器', () => import('
 const Model3DViewer = lazyWithChunkBoundary('3D 模型预览', () => import('./model3d/Model3DViewer')) // 生成出的 .glb 卡内可旋转预览（R3F）
 const TextDocumentNode = lazyWithChunkBoundary('文本节点编辑器', () => import('./render/TextDocumentNode'))
 const PanoramaViewer = lazyWithChunkBoundary('全景预览', () => import('./PanoramaViewer'))
-const VideoDepthNodePanel = lazyWithChunkBoundary('深度视频节点', () => import('../videoDepth/VideoDepthNodePanel'))
 const NodeGenerationComposer = lazyWithChunkBoundary('节点生成面板', () => import('./NodeGenerationComposer'))
 
 function NodeBodyLoading(): JSX.Element {
@@ -535,13 +534,7 @@ function BaseGenerationNodeImpl({
         draggable={false}
         {...mediaPreviewDoubleClick}
       >
-        {node.kind === 'video_depth_process' ? (
-          // 本地处理节点：正文自己管选源/参数/进度/产物预览，所以整块预览区交给它，
-          // 不走下面那条「有 result 就播 result」的通路（它的产物要和参数并排看）。
-          <React.Suspense fallback={<NodeBodyLoading />}>
-            <VideoDepthNodePanel node={node} readOnly={readOnly} />
-          </React.Suspense>
-        ) : node.kind === 'scene3d' ? (
+        {node.kind === 'scene3d' ? (
           <React.Suspense fallback={<Scene3DEditorLoading />}>
             <Scene3DEditor node={node} width={visualSize.width} height={previewHeight} readOnly={readOnly} />
           </React.Suspense>
@@ -667,8 +660,6 @@ function BaseGenerationNodeImpl({
       node.kind !== 'panorama' &&
       node.kind !== 'scene3d' &&
       node.kind !== 'whiteboard' &&
-      // 深度视频节点没有 executionKind：它不生成，composer 那套提示词+模型选择对它无意义。
-      node.kind !== 'video_depth_process' &&
       !isAssetKind ? (
         <React.Suspense fallback={null}>
           <NodeGenerationComposer node={node} visualSize={visualSize} />

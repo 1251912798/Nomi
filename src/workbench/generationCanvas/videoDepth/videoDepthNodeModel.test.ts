@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest'
 import type { GenerationCanvasNode } from '../model/generationCanvasTypes'
 import {
   VIDEO_DEPTH_META_KEY,
-  collectVideoDepthSourceCandidates,
   formatVideoDepthEta,
   isVideoDepthBusy,
   readVideoDepthSettings,
@@ -24,44 +23,6 @@ function node(partial: Partial<GenerationCanvasNode>): GenerationCanvasNode {
     ...partial,
   } as GenerationCanvasNode
 }
-
-function videoNode(id: string, url: string, extra: Partial<GenerationCanvasNode> = {}): GenerationCanvasNode {
-  return node({ id, result: { id: `${id}-r`, type: 'video', url, createdAt: 1 }, ...extra })
-}
-
-describe('collectVideoDepthSourceCandidates', () => {
-  it('takes any node whose result is a video, not a fixed list of kinds', () => {
-    const nodes = [
-      videoNode('a', 'nomi-local://asset/a.mp4', { title: '打斗镜头' }),
-      // 另一个深度节点的产物同样能当源——对这条管线来说它就是一段视频。
-      videoNode('b', 'nomi-local://asset/b.mp4', { kind: 'video_depth_process', title: '深度产物' }),
-      node({ id: 'c', kind: 'image', result: { id: 'c-r', type: 'image', url: 'x.png', createdAt: 1 } }),
-      node({ id: 'd', kind: 'video' }),
-    ]
-    expect(collectVideoDepthSourceCandidates(nodes, 'self').map((c) => c.sourceNodeId)).toEqual(['a', 'b'])
-  })
-
-  it('never offers the node its own output, which a second run would overwrite', () => {
-    const nodes = [videoNode('self', 'nomi-local://asset/self.mp4')]
-    expect(collectVideoDepthSourceCandidates(nodes, 'self')).toEqual([])
-  })
-
-  it('marks imported assets apart from generated clips, because the contract distinguishes them', () => {
-    const nodes = [videoNode('a', 'u', { kind: 'asset' }), videoNode('b', 'u')]
-    expect(collectVideoDepthSourceCandidates(nodes, 'self').map((c) => c.sourceKind)).toEqual([
-      'canvas-asset-node',
-      'canvas-video-node',
-    ])
-  })
-
-  it('falls back through title then prompt then result id rather than showing an empty row', () => {
-    const nodes = [
-      videoNode('a', 'u', { title: '   ' , prompt: '一段舞蹈' }),
-      videoNode('b', 'u'),
-    ]
-    expect(collectVideoDepthSourceCandidates(nodes, 'self').map((c) => c.title)).toEqual(['一段舞蹈', 'b-r'])
-  })
-})
 
 describe('readVideoDepthSettings', () => {
   it('returns the defaults for a node that has never been configured', () => {
@@ -115,7 +76,7 @@ describe('videoDepthProgressView', () => {
       nextVideoDepthRunState(initialVideoDepthRunState('j'), { kind: 'enter', phase: 'downloading' }),
       { kind: 'bytes', doneBytes: 25, totalBytes: 100 },
     )
-    expect(videoDepthProgressView(state)).toEqual({ phase: 'downloading', percent: 25, done: 25, total: 100 })
+    expect(videoDepthProgressView(state)).toEqual({ phase: 'downloading', percent: 25 })
   })
 
   it('carries the eta through only when the run actually measured one', () => {

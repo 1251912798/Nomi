@@ -1,6 +1,24 @@
 # 深度视频处理节点（复刻 depth.cards 全功能）实施计划
 
-> 日期：2026-09-06 · 状态：🚧 接手实施 · 实施分支 `feat/video-depth-node-takeover-20260907`（取代 PR #572，范围以 §12 为准） · 仅施工计划，不含生产代码
+> 日期：2026-09-06 · 状态：🚧 接手实施（**形态已变更，见下**） · 实施分支 `feat/video-depth-node-takeover-20260907`（取代 PR #572，范围以 §12 为准） · 仅施工计划，不含生产代码
+
+> ## ⚠️ 2026-09-07 形态变更：不做独立节点，改成视频节点上的一个动作
+>
+> 用户看了独立节点跑起来的界面，原话是「不够简单、丑、不知道怎么用」。本文以下所有
+> 「新增 kind `video_depth_process`」「加号菜单入口」「节点正文里的参数表单」都**已作废**，
+> 同 commit 删除（P1：不留并行版）。**引擎侧全部保留**——契约、权重下载校验、主进程作业、
+> 渲染层 worker 与编排一行未动，本文 §2–§7 仍然成立。
+>
+> 现在的形态（用户拍板）：
+> 1. 选中**任何**产物是视频的节点 → 浮条上多一颗「提取深度」（`NodeDepthActionButton`）；
+> 2. 点开是一个贴着按钮的小面板，只有一个必答选择「输出：深度 / 深度+骨架 / 原片+骨架」+
+>    一颗「开始」；分辨率 / 帧率 / 平滑 / 范围收进「高级」，首次下载权重的进度长在「开始」按钮里；
+> 3. 点开始后**旁边长出一张新的普通视频节点**，与源节点自动连线、标题带出身（「镜头 1 · 深度」），
+>    进度走现役 `NodeGeneratingOverlay`（确定百分比 + 预计剩余 + 取消 + 实时深度帧缩略）；
+> 4. 跑完它就是一段普通视频资产，能拖进任何模型的参考槽。
+>
+> 界面五态（光暗各一，共 10 格）在设计实验室 `depth-action` 屏，**待用户拍板**
+> （`tests/ux/design-lab/calibration.json` 的 `pendingApprovalScreens`）。
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 

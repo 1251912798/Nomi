@@ -13,7 +13,6 @@ import {
   IconWaveSine,
   IconWriting,
   IconScissors,
-  IconShadow,
   type IconProps,
 } from '@tabler/icons-react'
 import {
@@ -61,9 +60,6 @@ const NODE_ICONS: Record<GenerationNodeIconKey, GenerationNodeIcon> = {
   whiteboard: IconBrush,
   audio: IconWaveSine,
   clip: IconScissors,
-  // 深度图就是「把远近画成明暗」，半明半暗的这颗图标读起来正是那件事，
-  // 也让它在菜单里与普通「视频」一眼分得开。
-  videoDepth: IconShadow,
 }
 
 /**
