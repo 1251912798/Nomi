@@ -41,7 +41,7 @@ function heldTool(name: string) {
   let held = new Promise<void>((resolve) => { letGo = resolve; });
   const tool: LaneToolDescriptor = {
     name,
-    capabilityId: 'document.read',
+    contractId: 'document.read',
     description: 'Reads the document, but only returns once the test lets it go.',
     promptSnippet: 'read the document.',
     effects: { mutates: false, billable: false, reversal: 'none' },

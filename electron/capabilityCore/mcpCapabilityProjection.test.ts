@@ -78,7 +78,6 @@ function syntheticAdapter(
       requiredScope: CANVAS_READ_CAPABILITY.requiredScope,
     },
     port: { kind: "canvas", access: "read" },
-    semanticInputJsonSchema: { type: "object", properties: {}, additionalProperties: false },
     transportInputSchema: { type: "object", properties: {}, additionalProperties: false },
     parseCall: (args) => ({ semanticInput: {}, transport: buildTransport(args) }),
     ...overrides,
@@ -142,16 +141,14 @@ const CANVAS_SOURCE = {
 };
 
 describe("canvas.read MCP capability projection", () => {
-  it("derives the semantic empty schema, then overlays only leaseHandle plus an optional project hint", () => {
+  it("broadcasts the shared descriptor's empty argument schema, overlaid with only leaseHandle plus an optional project hint", () => {
     expect(CANVAS_READ_MCP_ADAPTER.contract).toBe(CANVAS_READ_CAPABILITY);
-    expect(CANVAS_READ_MCP_ADAPTER.semanticInputJsonSchema).toEqual({
-      type: "object",
-      properties: {},
-      additionalProperties: false,
-    });
     expect(CANVAS_READ_MCP_ADAPTER.transportInputSchema).toEqual({
       type: "object",
-      properties: { leaseHandle: { type: "string" }, projectId: { type: "string" } },
+      properties: {
+        leaseHandle: { type: "string", minLength: 1, description: "nomi_session_open 返回的项目租约句柄。" },
+        projectId: { type: "string", minLength: 1 },
+      },
       required: ["leaseHandle"],
       additionalProperties: false,
     });
