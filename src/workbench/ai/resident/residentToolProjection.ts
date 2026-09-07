@@ -18,6 +18,15 @@
  */
 
 export type ResidentToolProjection = Readonly<{
+  /**
+   * 这一行收据的标题（「交付手艺产物」/「创建或修改镜头卡」…）。
+   *
+   * 为什么它得跟 effect 一起存：标题是从**这次调用的入参**读出来的（同一个 create_canvas_nodes，
+   * 交产物还是交镜头卡，只有 nodes[].kind 分得清）。而 args 只在调用活着的时候在手上，
+   * 回合结束后收据行只剩这份投影——不存标题，历史行就只能退回按工具名硬猜，
+   * 于是出现「摘要说 1 件产物、标题说创建或修改镜头卡」这种自相矛盾的一行。拿不到就空串。
+   */
+  label: string
   effect: string
   target: string
   technicalDetails: string
@@ -99,6 +108,7 @@ export function redactToolArguments(args: unknown): string {
 
 export function normalizeResidentToolProjection(input: Partial<ResidentToolProjection>): ResidentToolProjection {
   return Object.freeze({
+    label: redactResidentSensitiveText(trimDisplayText(input.label)),
     effect: redactResidentSensitiveText(trimDisplayText(input.effect)),
     target: redactResidentSensitiveText(trimDisplayText(input.target)),
     technicalDetails: redactResidentSensitiveText(trimDisplayText(input.technicalDetails)),

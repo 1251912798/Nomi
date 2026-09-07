@@ -212,7 +212,8 @@ function receiptFor(input: {
     ? t('agentPanelV4.toolStopped')
     : elapsed || undefined
   return Object.freeze({
-    label: readableToolName(t, capabilityId, args),
+    // 手上还有真参数就现算，没有就用调用当时存下的那份（历史行的 args 已经不在了）。
+    label: projection?.label || readableToolName(t, capabilityId, args),
     action: actionFamilyForCapability(capabilityId, args),
     status: input.status,
     ...(summary ? { summary } : {}),
