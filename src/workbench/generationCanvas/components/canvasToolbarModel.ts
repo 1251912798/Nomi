@@ -57,6 +57,10 @@ export const CANVAS_ADD_SECTIONS = [
       { id: 'audio', kind: 'audio', placement: 'resident' },
       { id: 'clip', kind: 'clip', placement: 'resident' },
       { id: 'text', kind: 'text', placement: 'more' },
+      // 深度视频是**本地处理**而不是生成，但用户在加号下问的是同一个问题「往画布上加点什么」，
+      // 给它另开一段只会多出一个入口。放 more 而不是常驻：常驻位有预算（§1.5），
+      // 而这件事是「有一段参考视频时才想起来」的长尾意图。
+      { id: 'video_depth_process', kind: 'video_depth_process', placement: 'more' },
     ],
   },
   {
