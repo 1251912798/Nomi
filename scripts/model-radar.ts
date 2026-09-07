@@ -26,6 +26,8 @@
 //   该家快照不动，其余家照常出差异，退出码 0；**全部**家失败才红着退出（1）。
 //   「没查成」永远不许被读成「没有新模型」。
 import fs from "node:fs";
+import { BUILTIN_VENDOR_SEEDS } from "../electron/catalog/builtinVendorSeeds.ts";
+import { probeWeeklyModels, type LivenessReceipt } from "./model-liveness.ts";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { MODEL_ARCHETYPES } from "../src/config/modelArchetypes/index.ts";
@@ -468,7 +470,7 @@ export function readSnapshot(vendor: string): RadarEntry[] | null {
 function writeSnapshot(vendor: string, entries: RadarEntry[]): void {
   fs.mkdirSync(SNAPSHOT_DIR, { recursive: true });
   const sorted = [...entries].sort((a, b) => `${a.category}${a.slug}`.localeCompare(`${b.category}${b.slug}`));
-  fs.writeFileSync(snapshotPath(vendor), `${JSON.stringify({ vendor, entries: sorted }, null, 2)}\n`);
+  fs.writeFileSync(snapshotPath(vendor), `${JSON.stringify({ generatedAt: new Date().toISOString(), vendor, entries: sorted }, null, 2)}\n`);
 }
 
 /** 离线样本文件名：URL 的 host+path 压平成一个安全文件名（`/`→`_`）。
@@ -513,6 +515,19 @@ async function main(): Promise<void> {
 
   const { entries, failures } = await collectVendors(VENDORS, offlineDir ? offlineFetcher(offlineDir) : fetchIndex);
 
+  // Offline fixtures never spend. Credentials are read only from the process environment here.
+  if (!offlineDir) {
+    const receiptPath = path.join(SNAPSHOT_DIR, "liveness.json");
+    const previous = fs.existsSync(receiptPath) ? JSON.parse(fs.readFileSync(receiptPath, "utf8")) as { receipts?: LivenessReceipt[] } : {};
+    const generatedAt = new Date().toISOString();
+    const receipts = await probeWeeklyModels({ vendors: BUILTIN_VENDOR_SEEDS, modelIds: (vendorKey) => seededModelKeys(vendorKey, "text"),
+      apiKey: (vendorKey) => process.env[`${vendorKey.toUpperCase().replace(/-/g, "_")}_API_KEY`] || "", previous: previous.receipts || [], now: generatedAt });
+    fs.mkdirSync(SNAPSHOT_DIR, { recursive: true });
+    fs.writeFileSync(receiptPath, `${JSON.stringify({ generatedAt, receipts }, null, 2)}\n`);
+    const missing = receipts.filter((row) => row.reason === "credential-missing").length;
+    console.log(`Weekly liveness: ${receipts.filter((row) => row.ok).length}/${receipts.length}; credential missing: ${missing}.`);
+  }
+
   const diffs: RadarDiff[] = [];
   for (const [vendor, current] of Object.entries(entries)) {
     const adapter = VENDORS[vendor];
@@ -553,7 +568,7 @@ async function main(): Promise<void> {
   }
 
   fs.mkdirSync(SNAPSHOT_DIR, { recursive: true });
-  fs.writeFileSync(path.join(SNAPSHOT_DIR, "latest.json"), `${JSON.stringify({ diffs, failures }, null, 2)}\n`);
+  fs.writeFileSync(path.join(SNAPSHOT_DIR, "latest.json"), `${JSON.stringify({ generatedAt: new Date().toISOString(), diffs, failures }, null, 2)}\n`);
   const totalNew = diffs.reduce((n, d) => n + d.added.length, 0);
   const totalUnlisted = diffs.reduce((n, d) => n + d.unlisted.length, 0);
   const failNote =

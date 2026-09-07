@@ -1,4 +1,6 @@
 import React from 'react'
+import { getDesktopBridge } from './desktop/bridge'
+import { notifyModelOptionsRefresh } from './config/modelCatalogCache'
 import { HashRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { NomiLoadingMark } from './design'
 import { buildStudioUrl } from './utils/appRoutes'
@@ -27,6 +29,12 @@ function RouteLoading(): JSX.Element {
 }
 
 export default function NomiRouterApp(): JSX.Element {
+  React.useEffect(() => {
+    const refresh = (): void => notifyModelOptionsRefresh('all')
+    window.addEventListener('nomi-model-catalog-changed', refresh)
+    const unsubscribe = getDesktopBridge()?.modelCatalog.onChanged?.(() => window.dispatchEvent(new Event('nomi-model-catalog-changed')))
+    return () => { unsubscribe?.(); window.removeEventListener('nomi-model-catalog-changed', refresh) }
+  }, [])
   return (
     <HashRouter>
       <Routes>
