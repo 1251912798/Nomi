@@ -11,7 +11,7 @@ import { AgentHarness, type AgentLane, type HookHandler } from '@earendil-works/
 import { BACKGROUND_CONTEXT, type Context } from '@earendil-works/pi-agent-core/harness/context';
 import { createModels, type Provider } from '@earendil-works/pi-ai';
 
-import { createNomiProvider } from '../../electron/harness/runtime/pi/model.mjs';
+import { createNomiProvider } from '../../electron/agentLane/laneModelProvider.mjs';
 import type { LaneModelFacts } from '../../electron/agentLane/laneProjection.mjs';
 import { createLaneTools } from '../../electron/agentLane/laneTools.mjs';
 import { openLaneSession } from '../../electron/agentLane/laneSession.mjs';

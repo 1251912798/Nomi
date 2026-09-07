@@ -1,11 +1,12 @@
 // Agent lane · 主进程侧的接缝（CJS 这一半）
 //
-// 与 `electron/harness/runtime/runtimePort.ts` 同一个形状、同一条理由：pi 的包是
+// 与旧运行核那道端口同一个形状、同一条理由：pi 的包是
 // ESM-only（探针报告 §2.3 实测 `require()` 恒 `ERR_PACKAGE_PATH_NOT_EXPORTED`），
 // 所以主进程只能通过动态 `import()` 摸到它。这道门外面只出现 Nomi 自己的结构。
 //
 // **和旧接缝的区别只有一处，但那一处是重做的全部理由**：旧的 `RuntimeTurnResult`
-// 把一轮回复压成 `text: string` + `toolCalls[]` 两堆（`runtimePort.ts:122-133`），
+// 把一轮回复压成 `text: string` + `toolCalls[]` 两堆（`harness/runtime/runtimePort.ts` 的
+// `RuntimeTurnResult`，随阶段 4 的切换 PR 一起删），
 // 「先说什么后做什么」在数据里就不存在了；这道门送出去的是 `LaneProjection`，
 // 一串**有序的段**，顺序是记下来的不是推出来的。
 import type {
@@ -13,7 +14,7 @@ import type {
 } from '../shared/agentLane/laneContracts'
 import { LaneDomainFailure } from '../shared/agentLane/laneToolContract'
 import type { LaneToolEffects, LaneToolFailureShape, LaneToolSpec } from '../shared/agentLane/laneToolContract'
-import type { NomiModelConfig } from '../harness/runtime/runtimePort'
+import type { NomiModelConfig } from '../shared/agentLane/laneModelConfig'
 import type { ProjectAgentApprovalPolicy, ProjectAgentWorkMode } from '../shared/projectAgentContracts'
 
 export type { LaneHandle, LaneProjection }

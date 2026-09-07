@@ -1,5 +1,15 @@
 {
-  "debtCap": 76,
+  "debtCap": 74,
+  "converged": [
+    {
+      "retiredOwners": [
+        "electron/harness/runtime/pi/observeStream.mts::class:NativeStreamTimeout/parameter:phase/type-union",
+        "electron/harness/runtime/pi/observeStream.mts::function:observeNativeStream/variable:arm/parameter:phase/type-union"
+      ],
+      "survivingOwner": "electron/shared/agentCapabilities/transportContracts.ts::interface:RuntimeErrorFacts/property:timeoutPhase/type-union",
+      "reason": "阶段 4 前置 ③：observeStream.mts 搬成 electron/agentLane/laneStreamObserver.mts 时，把两处手抄的 [first-response | idle] 改成 NonNullable<RuntimeErrorFacts['timeoutPhase']> 派生——正是这两条 debt 自己写的收敛办法。canonical owner 同批从 harness/runtime/runtimePort.ts 搬到 electron/shared/agentCapabilities/transportContracts.ts（它的消费者全都活过阶段 4 的切换），所以 survivingOwner 记的是新住址。"
+    }
+  ],
   "registered": [
     {
       "site": "src/workbench/creation/storyboard/StoryboardPlanStrategyPanel.tsx::function:StatusBar/parameter:0/property:stateKey/type-union",
@@ -238,15 +248,15 @@
       "reason": "Pi runtime 端口/快照协议的结果词表（aborted / deferred / error / length / pending / stop / toolUse），描述 turn、tool 或 stop reason 的协议语义。"
     },
     {
-      "site": "electron/harness/runtime/runtimePort.ts::interface:RuntimeErrorFacts/property:timeoutPhase/type-union",
+      "site": "electron/shared/agentCapabilities/transportContracts.ts::interface:RuntimeErrorFacts/property:timeoutPhase/type-union",
       "members": [
         "first-response",
         "idle"
       ],
-      "reason": "RuntimeErrorFacts.timeoutPhase 区分 native stream 在 first-response 前超时与响应后的 idle 间隙超时，决定错误事实与诊断文案；observeStream 的异常和 arm 参数都只是 runtime port 合同的投影，应从该导出接口 derive。"
+      "reason": "RuntimeErrorFacts.timeoutPhase 区分 native stream 在 first-response 前超时与响应后的 idle 间隙超时，决定错误事实与诊断文案；laneStreamObserver 的异常和 arm 参数都只是 runtime port 合同的投影，应从该导出接口 derive。"
     },
     {
-      "site": "electron/harness/runtime/runtimePort.ts::interface:RuntimeToolCallRecord/property:status/type-union",
+      "site": "electron/shared/agentCapabilities/transportContracts.ts::interface:RuntimeToolCallRecord/property:status/type-union",
       "members": [
         "cancelled",
         "denied",
@@ -265,7 +275,7 @@
       "reason": "RuntimeTurnResult.status 是 runtime port 的 turn 终态合同：finished、cancelled、error 只描述一次 runtime turn 的结算；AgentChatStatus 与失败结果构造器应从它派生，不与消息 pending/streaming view state 混用。"
     },
     {
-      "site": "electron/harness/runtime/runtimePort.ts::type:RuntimeFinishReason/type-union",
+      "site": "electron/shared/agentCapabilities/transportContracts.ts::type:RuntimeFinishReason/type-union",
       "members": [
         "aborted",
         "error",
@@ -1672,22 +1682,6 @@
         "ready"
       ],
       "reason": "AgentContextInfo.state 是 StoredAgentContext.state 的只读服务投影；contextService 已导入 contextStore 并在 describe 中原样返回 record.state，不拥有独立成员。应改为 StoredAgentContext['state'] 后删除本地字面量。"
-    },
-    {
-      "site": "electron/harness/runtime/pi/observeStream.mts::class:NativeStreamTimeout/parameter:phase/type-union",
-      "members": [
-        "first-response",
-        "idle"
-      ],
-      "reason": "Exact duplicate of electron/harness/runtime/runtimePort.ts::interface:RuntimeErrorFacts/property:timeoutPhase/type-union; converge by importing or deriving the canonical members instead of maintaining this local literal set."
-    },
-    {
-      "site": "electron/harness/runtime/pi/observeStream.mts::function:observeNativeStream/variable:arm/parameter:phase/type-union",
-      "members": [
-        "first-response",
-        "idle"
-      ],
-      "reason": "Exact duplicate of electron/harness/runtime/runtimePort.ts::interface:RuntimeErrorFacts/property:timeoutPhase/type-union; converge by importing or deriving the canonical members instead of maintaining this local literal set."
     },
     {
       "site": "electron/harness/runtime/pi/tools.mts::type:HostToolResult/property:status/type-union",

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { RuntimeTurnHooks, RuntimeTurnRequest, RuntimeTurnResult, RuntimeToolCall, RuntimeToolDecision } from '../harness/runtime/runtimePort';
+import type { RuntimeTurnHooks, RuntimeTurnRequest, RuntimeTurnResult } from '../harness/runtime/runtimePort';
+import type { RuntimeToolCall, RuntimeToolDecision } from '../shared/agentCapabilities/transportContracts';
 import { parseVendorErrorFromMessage } from '../../src/workbench/generationCanvas/runner/vendorErrorIpc';
 import type { SkillRecord } from '../skills/skillStore';
 

@@ -5,7 +5,7 @@
 // 的根（docs/plan/2026-06-19-skill-playbook-system.md §0.5.b/0.5.d）。
 // 关键：缺能力 ≠ 报错，而是产出一张「缺什么」清单交给 UI 引导用户去接入（n8n 二分 / Dify 三态）。
 import type { SkillManifest, SkillProviderKind } from "./skillManifestSchema";
-import type { RuntimeToolDescriptor } from "../harness/runtime/runtimePort";
+import type { RuntimeToolDescriptor } from "../shared/agentCapabilities/transportContracts";
 import {
   CAPABILITY_CONTRACTS,
   capabilityAliasesFor,

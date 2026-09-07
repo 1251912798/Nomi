@@ -27,9 +27,8 @@ electron/harness/
         ├── nativeLoader.cts  CJS 主进程到私有 ESM 的延迟加载
         ├── run.mts           一轮运行、活动映射、用量、稳定收尾
         ├── session.mts       受控 AgentSession 与停止/释放
-        ├── model.mts         三协议、字面凭据与请求参数适配
+        ├── model.mts         旧路模型接缝（装配已搬到 agentLane/laneModelProvider.mts）
         ├── tools.mts         参数解析与 Nomi 宿主决定的桥接
-        ├── observeStream.mts 单一事件转发、首响应/闲置超时
         ├── attachments.mts   图片与原生 PDF 的输入桥
         ├── resources.mts     只加载 Nomi 明确提供的资源
         ├── snapshot*.mts     完整 SDK 快照与结构验证

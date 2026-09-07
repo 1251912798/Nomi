@@ -23,7 +23,7 @@
 // 各家官方端点（国内 DeepSeek / GLM / Kimi 官方，国外 Anthropic / OpenAI 官方）。所以：
 //   ① **解锁策略与传输无关**（下面这三条条件，任何传输上都一样）；
 //   ② **放置交给 pi 的 compat 判定**，我们只保证模型档案的 `protocol.api` 声明正确
-//      （`electron/harness/runtime/pi/model.mts:49-53` 的 `protocols` 表）；
+//      （`electron/agentLane/laneModelProvider.mts:58-62` 的 `protocols` 表）；
 //   ③ 代码里**不许出现任何「默认走 chat-completions」的假设**——这个文件里一个传输判断都没有，
 //      这不是疏忽，是上面那条的落地。
 //

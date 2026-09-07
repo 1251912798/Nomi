@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { RuntimeToolCallRecord } from "../harness/runtime/runtimePort";
+import type { RuntimeToolCallRecord } from "../shared/agentCapabilities/transportContracts";
 import type { ProjectAgentTaskItem, ProjectAgentTurn } from "../shared/projectAgentContracts";
 import type { AgentChatRequest } from "../harness/agentChatContracts";
 import { exportJobTaskItems, steeredExecutionPrompt, toolItem } from "./projectAgentExecutionHelpers";
