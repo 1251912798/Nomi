@@ -11,6 +11,7 @@
 
 | 文件 | 一句话 | 状态 |
 |---|---|---|
+| [2026-09-07-model-generation-core-path.md](2026-09-07-model-generation-core-path.md) | **生成主干道**：fake-ip（198.18/15）下「钱扣了、片取不回」的类根因修——出站判据收成唯一 owner + `check:outbound-policy` 棘轮、fake-ip 凭阳性证据放行（探不到就 fail-closed）、删 `LAB_ALLOW_LOCALHOST` 逃生口、错误说人话、已付费落 `recoverable` 走免费重拉不再二次扣费、`deepseek-v3.2-think` 实测下架 + LLM 进模型雷达；文末列了 6 条未做（提交侧未接入 / 退役自动探测 / 零额度夹具 / 轮询活性 / 洗白点盘点） | 🚧 |
 | [2026-09-07-rules-round2-adversary-inventory.md](2026-09-07-rules-round2-adversary-inventory.md) | **规则第二轮：把「先查别人」做成机器强制**——反方 agent 机器强制进 R27 手册 §16 + `check:prior-art`、依赖能力清单自动生成 + 框架边界 advisory 启发式、钩子随 checkout 生效不再靠 install、根因流程三条（症状聚类 / `invariant_owner_layer` / R14.2 审计三条） | 🚧 |
 | [2026-09-06-agent-architecture-master-plan.md](2026-09-06-agent-architecture-master-plan.md) | **Agent 架构总体方案**（配套评审 [`docs/audit/2026-09-06-agent-architecture-review.md`](../audit/2026-09-06-agent-architecture-review.md)）：「我们接了 pi 但没在用 pi」——有序 parts 通道、工具契约不再对模型说谎、pi 关掉的重试/思考/价格三样各给归属；P0–P3 分阶段、三条 R3 岔路（转录真相源 / 工具收敛度 / MCP 对等）、六角色评审与在途分支合流顺序；**⛔ 2026-09-07 被 [2026-09-07-agent-runtime-rebuild.md](2026-09-07-agent-runtime-rebuild.md) 取代（用户改判重做）** | ⛔ |
 | [2026-09-05-gpt-discussion-consolidation.md](2026-09-05-gpt-discussion-consolidation.md) | GPT 讨论梳理：统一 Agent/画布/视频拆解表/Skill 聚合的现状对账、三项被推翻旧结论与待拍板入口 | 📋 |
@@ -29,6 +30,7 @@
 | [2026-09-05-agent-ui-a-composer.md](2026-09-05-agent-ui-a-composer.md) | Agent UI A 段：composer 五按钮调序、模式弹层收敛、运行呼吸光与分镜入口 | 🚧 |
 | [2026-09-06-agent-panel-v4-lab.md](2026-09-06-agent-panel-v4-lab.md) | Agent 面板 v4 设计实验室阶段一：真实组件、44 个夹具状态、逐板截图对账，不接线 | ✅ |
 | [2026-09-06-agent-panel-v4-wiring.md](2026-09-06-agent-panel-v4-wiring.md) | Agent 面板 v4 阶段二·接线：v4 每构件 ← 宿主字段映射表、8 条宿主缺字段、47 文件 4880 行删除清单、20+ 走查迁移面，含**待拍板 5 条** | 📋 |
+| [2026-09-06-agent-panel-v4-real-use-fixes.md](2026-09-06-agent-panel-v4-real-use-fixes.md) | **Agent 面板 v4 打包版真实使用一批修复**（PR #558）：收据两栏落真实入参/真实回执、同名连调折行 + 失败原因说人话、工具参数容忍模型二次序列化的 JSON 文本（唯一 owner，删两份私有拷贝）、上下文窗口一手文档表、模型弹层每类一行、分镜「不吃参考的是模式」；含**三处过渡补丁**（阶段 2 工具契约重做时删）+ 与 #566 pi 一致性核对的工具层逐项对照 | ✅ |
 | [2026-09-06-agent-tool-layer-root-fix.md](2026-09-06-agent-tool-layer-root-fix.md) | **Agent 工具层根修**：回合有序 parts 流（`turnSeq`）、可行动工具错误 + 边界容忍、工具契约收敛（合并同 schema 的 `nomi_canvas_plan`/`edit`、拆 9 分支 union、补描述/示例/枚举）、一次写对率评测；上游证据 `docs/audit/2026-09-06-agent-tool-layer-audit.md`（真机 `canvas.write` 18 次调用 0 次通过）；**⛔ 2026-09-07 被 [2026-09-07-agent-runtime-rebuild.md](2026-09-07-agent-runtime-rebuild.md) 取代（用户改判重做）** | ⛔ |
 | [2026-09-07-agent-runtime-rebuild.md](2026-09-07-agent-runtime-rebuild.md) | **Agent 运行时重做方案**（用户 09-06 拍板「整体错了就重做」）：重做/保留七对七边界、以 pi lane 为运行时与转录真相源的九层目标架构、模型优先工具契约规范、切换同 commit 删旧与旧数据分档迁移、8 条验收门、6 阶段与在途分支处置、**3 条待拍板岔路**、两条重做期门岗草案 | 📋 |
 | [2026-09-05-editing-panel-t1.md](2026-09-05-editing-panel-t1.md) | T1 面板系统、属性面板、transport 与 layout capability | 🚧 |
