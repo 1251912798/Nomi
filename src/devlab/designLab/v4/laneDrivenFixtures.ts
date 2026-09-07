@@ -82,26 +82,21 @@ export function laneSnapshotToolDenied(reason: string): LaneSnapshot {
   ])
 }
 
+/** 两层投影真的跑一遍，取出那一行收据。 */
 /**
- * 这一格量的是**收据那一行**，不是三行。所以模型侧事实给一份最小的固定值：
- * 冻结的基线不能让「今天用的是哪个模型」渗进来，那会让一张收据的截图随目录漂。
- *
- * `pricing: 'free'` 是刻意的：这一格不量花费，而「不适用」是三态里唯一**什么都不渲染**的那个
- * （`unknown` 会印一个占位符 `—`，那是一条我们没打算在这一格上测的断言）。
+ * 三行（阶段 3b）要的模型侧事实。收据格只看工具那一行，花费/上下文/推理都不进画面，
+ * 所以价目给 `'unpriced'`（花费=「不可知」）、不给 contextWindow——和真实「没登记价目的模型」一个形状。
  */
-export const FIXTURE_FACTS: LaneModelFacts = {
+export const LAB_MODEL_FACTS: LaneModelFacts = {
   model: {
-    provider: 'nomi-lane', id: 'chosen-model', name: 'chosen-model',
-    api: 'openai-completions', baseUrl: 'http://127.0.0.1/v1', reasoning: false,
-    input: ['text'], cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
-    contextWindow: 128_000, maxTokens: 4096,
+    provider: 'nomi-lane', id: 'lab-model', name: 'lab-model', api: 'openai-completions', baseUrl: 'http://127.0.0.1/v1',
+    reasoning: false, input: ['text'], cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, contextWindow: 0, maxTokens: 0,
   },
-  pricing: 'free',
+  pricing: 'unpriced',
 }
 
-/** 两层投影真的跑一遍，取出那一行收据。 */
 export function laneDrivenReceipt(lane: LaneSnapshot, labels: LaneViewModelLabels): ToolReceipt {
-  const model = laneViewModel(projectLaneSnapshot(lane, FIXTURE_FACTS), labels)
+  const model = laneViewModel(projectLaneSnapshot(lane, LAB_MODEL_FACTS), labels)
   const tool = model.items.find((item) => item.kind === 'tool')
   if (!tool || tool.kind !== 'tool') throw new Error('the lane snapshot projected no tool receipt')
   return tool.receipt
