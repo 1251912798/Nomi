@@ -21,6 +21,19 @@
 - 「HTML 讲故事、画流程图，放画布上。」→ 已实现（沙箱 srcdoc + 产物自带策略；CSS 动效可跑，内联 JS 见 §6.5 已知缺口）。
 - 「**一个节点通吃**，Agent 自己判断什么时候用哪种手艺。」→ 单 kind `agent-artifact` 已是这个形状（决策 1）；"何时用哪种手艺"目前只写在工具描述里（一句话选路），完整决策树 = 阶段 2，见 §11。
 
+## 先查别人（R27 · 报告全文见 [`docs/research/2026-09-07-agent-artifact-node/prior-art.md`](../research/2026-09-07-agent-artifact-node/prior-art.md)）
+
+> 诚实前提：本方案在门岗上线日之前就已拍板实施，这份检索是**回溯补的**。它没改本轮任何决定，
+> 但改了**下一刀**的写法（下面标 ⚠️ 的两条）——这也正说明「先查」值得做在动手之前。
+
+- **依赖里已有**：Markdown 用在册的 `react-markdown@10.1.0`，且已包成全仓唯一渲染器（[`NomiMarkdown.tsx:3`](../../src/workbench/common/NomiMarkdown.tsx:3)）；3D 用在册的 R3F，已包成 [`Model3DViewer.tsx:69`](../../src/workbench/generationCanvas/nodes/model3d/Model3DViewer.tsx:69)。两处**零新增渲染代码**。
+- **依赖里刻意不装的**：`dompurify`/`sanitize-html`（我们不消毒、我们隔离，装了反而诱导「洗过就能内联进宿主 DOM」）、`canvg`/`html2canvas`（原生 `drawImage`+`toBlob` 十来行够用）、`tldraw`/`excalidraw`（产物只读，装编辑器内核是过剩能力 R20）。逐个 `ls node_modules` 确认为空，见报告 ①。
+- **仓库里已有，本轮全接**：浮条与按钮原子（[`NodeFloatingToolbar.tsx:17`](../../src/workbench/generationCanvas/nodes/NodeFloatingToolbar.tsx:17)、[`:63`](../../src/workbench/generationCanvas/nodes/NodeFloatingToolbar.tsx:63)）、落盘（[`assetUploadApi.ts:68`](../../src/workbench/api/assetUploadApi.ts:68)）、URL 建解配对（[`nomiLocalAssetUrl.ts:16`](../../src/media/nomiLocalAssetUrl.ts:16) / [`:32`](../../src/media/nomiLocalAssetUrl.ts:32)）。#564 的中文文件名乱码，根因就是在最后这处自己写了第三种解法。
+- **⚠️ 仓库里已有、本轮没接（改了下一刀写法）**：3D 视口截图→参考图的**整条通道已经在跑**（[`StagingCaptureHost.tsx:29-70`](../../src/workbench/generationCanvas/nodes/scene3d/StagingCaptureHost.tsx:29) + [`scene3dScreenshot.ts:15`](../../src/workbench/generationCanvas/nodes/scene3d/scene3dScreenshot.ts:15)）。§11 阶段 1 因此改成「把 glb 接进这条」，**不是**照 SVG 那条再写一个 3D 版栅格化器（那是并行版）。
+- **生态/规范**：srcdoc 文档继承嵌入方策略、local scheme 响应可自带更严策略，两条都由规范明写（[CSP3](https://www.w3.org/TR/CSP3/)、[CSPEE](https://w3c.github.io/webappsec-cspee/)）——所以 §6.5 的「内联 JS 不执行」是**规范决定的**，不是实现没写好；`allow-scripts` 不给 `allow-same-origin` 是 [MDN](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/iframe) 的强制建议。
+- **⚠️ TikHub 自媒体（48 条实抓，改了下一刀写法）**：「什么时候用哪种手艺」别人已做成 skill 且踩过坑——[Diagram Design](https://www.douyin.com/video/7678032781678611748)（按内容选图种、出 HTML/SVG）、[tldraw-skill](https://www.bilibili.com/video/BV1ahoSBeEN9)（「让大模型直接画图，schema 错乱、形状重叠、箭头乱连」，解法是给模型受约束的骨架格式）。§11 阶段 2 因此加了「先读这两家再写决策树」。用户侧的痛点则一致指向「[生成完改不了](https://www.douyin.com/video/7638162085399161747)」，佐证 SVG 的价值是**可改的骨架**而非成片。
+- **结论**：渲染/浮条/落盘/参考语义**全用已有**；SVG 栅格化与「产物回流进生成链路」**自研**——后者生态里没有，正是 Nomi 的差异点。
+
 ## 2. 手艺选择框架（落成 Agent skill，不是 UI 开关）
 
 **决策闸门：诉求是"要媒体本身"还是"要一个表达/参考物"？** 前者调模型，后者是手艺。
@@ -193,6 +206,7 @@
 ### 阶段 2：手艺选择——从"一句话"升成"决策树"
 - **现状**：`generationCanvasAgentClient.ts` 的工具描述里已有一句选路（"要真实画面走生成模型，要表达物走 agent-artifact"）——够挡住最粗的误用，**不够**回答"这件事该用 SVG 还是 HTML 还是表格"。
 - **下一刀做什么**：把 §2 那张表（含正例/反例）落成 Agent 能读的决策依据。**先核对现有 skills 体系再定形态**（挂技能库 / 进工具描述 / 两者），别再造一套注册表（R20/D2）。
+- **⚠️ 动笔前先读这两家**（「先查别人」查出来的，见报告 ④）：[Diagram Design](https://www.douyin.com/video/7678032781678611748)（面向 Claude Code/Codex 的开源制图 skill，按内容选图种、出 HTML/SVG）、[tldraw-skill](https://www.bilibili.com/video/BV1ahoSBeEN9)（踩过「让大模型裸画会 schema 错乱／形状重叠／箭头乱连」，解法是**给模型一个受约束的骨架格式**而不是自由发挥）。这两条正是决策树最容易踩空的地方，别从零编。
 - **怎么算做完**：正反例判对——"给我一张能直接用的画面"→ 调生图（不该手绘 SVG）；"构图怎么摆"→ 手艺（不该抽卡）。
 
 ### 其余 P1（无人点名，按需再排）
