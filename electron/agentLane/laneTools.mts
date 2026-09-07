@@ -91,6 +91,18 @@ export function createLaneTools(descriptors: readonly LaneToolDescriptor[]): Age
     if (!descriptor.description.trim()) {
       throw new Error(`Nomi lane tool ${descriptor.name} needs a model-visible description`);
     }
+    // 自声明的副作用与它自己必须自洽（阶段 2 评审第 ⑨ 维）。装配期抛，不是运行期发现：
+    // 一个「不改状态却说自己可撤销」的声明，唯一的症状会是崩溃恢复时替用户多跑一次。
+    const effects = descriptor.effects;
+    if (effects.mutates !== (effects.reversal !== 'none')) {
+      throw new Error(
+        `Nomi lane tool ${descriptor.name} declares mutates=${effects.mutates} with reversal="${effects.reversal}". `
+        + 'A read-only tool has nothing to reverse; a writing tool must say how its change is taken back.',
+      );
+    }
+    if (effects.billable && !effects.mutates) {
+      throw new Error(`Nomi lane tool ${descriptor.name} claims to spend the user's money without changing anything.`);
+    }
     names.add(descriptor.name);
     const tool: AgentHarnessTool<undefined> = {
       name: descriptor.name,
@@ -100,9 +112,11 @@ export function createLaneTools(descriptors: readonly LaneToolDescriptor[]): Age
       description: laneToolModelDescription(descriptor),
       parameters: toModelVisibleSchema(descriptor.schema, { toolName: descriptor.name }),
       executionMode: 'sequential',
-      // 效果不可安全重放：一次文稿写入重放两遍就是写了两遍。pi 拿这个字段决定
-      // 崩溃恢复时敢不敢替我们再跑一次，默认值不该由我们含糊过去。
-      replay: 'never',
+      // 崩溃恢复时敢不敢替我们再跑一次。**从工具自己声明的副作用派生，唯一的派生点**：
+      // 一次文稿写入重放两遍就是写了两遍（`'never'`），而重放一次 `nomi_canvas_read`
+      // 只是多读一次画布（`'safe'`）。上一版对**每一个**工具硬写 `'never'`，包括纯读的
+      // 那五个——那不会报错，只会让冷恢复白白丢掉本来能自动补上的那次读。
+      replay: effects.mutates ? 'never' : 'safe',
       ...(descriptor.prepareArguments
         ? { prepareArguments: descriptor.prepareArguments as (args: unknown) => never }
         : {}),

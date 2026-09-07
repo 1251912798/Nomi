@@ -147,6 +147,7 @@ test('G-02 · a tool failure throws, so pi records an errored result instead of 
     name: 'always_fails',
     description: 'A tool that always reports a failure, used to prove failures are not recorded as successes.',
     promptSnippet: 'always report a failure.',
+    effects: { mutates: false, billable: false, reversal: 'none' },
     schema: z.object({}).strict(),
     examples: [{ when: 'Call it with no arguments:', arguments: {} }],
     // 阶段 2 起失败带的是结构（code / message / nextAction），不是一句 `message`——

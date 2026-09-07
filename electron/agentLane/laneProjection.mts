@@ -93,6 +93,9 @@ export function projectLaneSnapshot(snapshot: LaneSnapshot): LaneProjection {
     usage: {
       inputTokens: usage.input,
       outputTokens: usage.output,
+      // 缓存两列原样带出来，不并进 `inputTokens`（理由在 `LaneUsage` 的注释里）。
+      cacheReadTokens: usage.cacheRead,
+      cacheWriteTokens: usage.cacheWrite,
       totalTokens: usage.totalTokens,
       // 0 不是「免费」，是「运行时对这个模型没有价目」。把它当数字印出去就是一个
       // 我们没资格下的断言（同 `run.mts:20-30` 的判断，一字不差地保持一致）。

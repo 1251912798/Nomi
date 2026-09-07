@@ -42,6 +42,7 @@ function echoTool(name: string, text: string): LaneToolDescriptor {
     name,
     description: `Returns a fixed body of text, used to prove the transport truncates what the model sees.`,
     promptSnippet: 'return a fixed body of text.',
+    effects: { mutates: false, billable: false, reversal: 'none' },
     schema: z.object({}).strict(),
     examples: [{ when: 'Call it with no arguments:', arguments: {} }],
     execute: async () => ({ ok: true, text, details: { source: name } }),

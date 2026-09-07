@@ -10,11 +10,11 @@
 // 一串**有序的段**，顺序是记下来的不是推出来的。
 import type { LaneHandle, LaneProjection } from '../shared/agentLane/laneContracts'
 import { LaneDomainFailure } from '../shared/agentLane/laneToolContract'
-import type { LaneToolFailureShape, LaneToolSpec } from '../shared/agentLane/laneToolContract'
+import type { LaneToolEffects, LaneToolFailureShape, LaneToolSpec } from '../shared/agentLane/laneToolContract'
 import type { NomiModelConfig } from '../harness/runtime/runtimePort'
 
 export type { LaneHandle, LaneProjection }
-export type { LaneToolFailureShape, LaneToolSpec }
+export type { LaneToolEffects, LaneToolFailureShape, LaneToolSpec }
 export { LaneDomainFailure }
 
 /**

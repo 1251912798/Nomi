@@ -44,6 +44,8 @@ const TIMELINE_GUIDELINES = Object.freeze([
   "Always plan against a fresh revision: read the timeline, build the plan from what you just read, and pass that same revision back. If a plan is rejected for a stale revision, read again before retrying — resending the old number cannot succeed.",
 ]);
 
+const TIMELINE_READ_EFFECTS = Object.freeze({ mutates: false, billable: false, reversal: "none" } as const);
+
 interface TimelineToolShape {
   readonly alias: string;
   readonly description: string;
@@ -87,6 +89,8 @@ export function timelineLaneToolSpecs(): LaneToolSpec[] {
       description: tool.description,
       promptSnippet: tool.promptSnippet,
       promptGuidelines: TIMELINE_GUIDELINES,
+      // 时间轴这一族本阶段**只有读**（写入那两个还带着形状冲突，见方案 §12.2 第 4 行）。
+      effects: TIMELINE_READ_EFFECTS,
       schema,
       examples: tool.examples,
       prepareArguments: tool.arrayFields.length === 0 && isNoArgumentSchema(schema)

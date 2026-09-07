@@ -62,6 +62,16 @@ const CANVAS_GUIDELINES = Object.freeze([
 ]);
 
 /**
+ * 画布这一族的副作用声明（第 ⑨ 维）。
+ *
+ * `reversal: "proposal"` 不是修辞：画布写入落的是一份**提案**，用户还要在面板上点接受——
+ * 这正是 `CANVAS_GUIDELINES` 第三条要模型「别宣称已经改好了」的那件事。同一个事实过去
+ * 只活在那句散文里，现在它是机器可读的，阶段 3 的闸按它决定要不要停下来问用户。
+ */
+const CANVAS_READ_EFFECTS = Object.freeze({ mutates: false, billable: false, reversal: "none" } as const);
+const CANVAS_WRITE_EFFECTS = Object.freeze({ mutates: true, billable: false, reversal: "proposal" } as const);
+
+/**
  * 分镜那一支：把契约里两个 `z.record(z.unknown())` 换成 typed 形状。
  *
  * `.extend()` 只覆盖这两个字段，`operation`/`title` 以及未来新增的字段都还是从契约派生的
@@ -228,6 +238,7 @@ export function canvasLaneToolSpecs(): LaneToolSpec[] {
     description: CANVAS_READ_DESCRIPTION,
     promptSnippet: "read every node, edge and group currently on the generation canvas.",
     promptGuidelines: CANVAS_GUIDELINES,
+    effects: CANVAS_READ_EFFECTS,
     schema: canvasReadSchema,
     examples: [{ when: "Always call it with no arguments:", arguments: {} }],
     prepareArguments: laneNoArgumentTolerance,
@@ -237,6 +248,7 @@ export function canvasLaneToolSpecs(): LaneToolSpec[] {
     description: tool.description,
     promptSnippet: tool.promptSnippet,
     promptGuidelines: CANVAS_GUIDELINES,
+    effects: CANVAS_WRITE_EFFECTS,
     // 派生，不是手写：判别字段降成 `z.enum`、分支专属字段设为 optional、跨字段约束仍由
     // 原 union 裁决。手抄一份扁平版就是第二个真相源（理由见 `flatModelInput.ts` 头部）。
     schema: flattenDiscriminatedUnion(tool.union, { name: tool.name }),

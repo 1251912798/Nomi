@@ -121,6 +121,16 @@ const writeContentSchema = z
   })
   .strict();
 
+/**
+ * 文稿这一族的副作用声明（第 ⑨ 维）。
+ *
+ * 与画布那一族差一档：文稿写入是**直接落进用户的稿子**的，它只是进了撤销栈
+ * （`reversal: "undoable"`），不像画布提案那样还等一次接受。这一档差别过去只存在于
+ * 两个领域适配器的实现里，模型面和恢复策略都看不见它。
+ */
+const DOCUMENT_READ_EFFECTS = Object.freeze({ mutates: false, billable: false, reversal: "none" } as const);
+const DOCUMENT_WRITE_EFFECTS = Object.freeze({ mutates: true, billable: false, reversal: "undoable" } as const);
+
 /** 不收参数的工具。**显式的空对象**说的是「这个工具不收参数」，`{}` 说的是「随便填」。 */
 const noArgumentsSchema = z.object({}).strict();
 
@@ -154,6 +164,7 @@ export function documentLaneToolSpecs(): LaneToolSpec[] {
       description: READ_SPECS[scope].description,
       promptSnippet: READ_SPECS[scope].snippet,
       promptGuidelines: DOCUMENT_GUIDELINES,
+      effects: DOCUMENT_READ_EFFECTS,
       schema: noArgumentsSchema,
       examples: [{ when: "Always call it with no arguments:", arguments: {} }],
       prepareArguments: laneNoArgumentTolerance,
@@ -167,6 +178,7 @@ export function documentLaneToolSpecs(): LaneToolSpec[] {
       description: WRITE_SPECS[operation].description,
       promptSnippet: WRITE_SPECS[operation].snippet,
       promptGuidelines: DOCUMENT_GUIDELINES,
+      effects: DOCUMENT_WRITE_EFFECTS,
       schema: writeContentSchema,
       examples: [{ when: "Write one finished paragraph:", arguments: { content: "The rain had not stopped for three days." } }],
       prepareArguments: prepareWriteArguments,

@@ -2,8 +2,8 @@
 //
 // 一份纯数据的清单，三个用户：
 //   ① `scripts/check-model-schema.ts` —— 存量棘轮，直接 import 就能量「模型看到了什么」；
-//   ② `lanePromptSections.mts` —— 渲染系统提示词的 `Available tools` / `Guidelines` 两段（G-03）；
-//   ③ `tests/agent-runtime/lane-tool-catalog.test.mts` —— 逐条把示例喂回自己的 schema。
+//   ② `lanePromptSections.ts` —— 渲染系统提示词的 `Available tools` / `Guidelines` 两段（G-03）；
+//   ③ `tests/agent-runtime/lane-tool-contract.test.mts` —— 逐条把示例喂回自己的 schema。
 //
 // ③ 不是形式主义：一个**过不了自己 schema 的示例**比没有示例更糟，它主动教模型写错，
 // 而且没有任何别的东西会发现——示例是纯文本，编译器、单测、门岗谁都不看它。
@@ -28,6 +28,13 @@ import { timelineLaneToolSpecs } from "./laneTimelineTools";
  * （`pi-ai/dist/utils/deferred-tools.js:3-34`）。lane 今天 12 个塞得下，所以不需要它；
  * 阶段 3 接生成类工具时会塞不下，那时它是现成的答案。这条写在这里，是为了下一个人
  * 撞到上限时知道有第二条路，而不是先去把 12 改成 20。
+ *
+ * **延迟加载的闸门（方案 §3.7 第 ⑫ 维，别凭感觉开）**：Anthropic 给的判据是
+ * 「≥10 个工具**或**工具定义 >10k token」才上 tool search，而工具选择准确率通常要到
+ * 30–50 个工具之后才开始掉（platform.claude.com/docs/en/agents-and-tools/tool-use/tool-search-tool）。
+ * lane 今天 11 个 / 20 272 字节 ≈ 5k token：工具数刚过 10，token 只到闸门的一半，
+ * 而 #547 的数据说我们的失败模式从来不是选错工具。所以**不开**。
+ * 触发条件写死在这里：**工具数超预算，或 schema 总量 >10k token，先开延迟加载，不许抬预算。**
  */
 export const LANE_TOOL_BUDGET = 12;
 
