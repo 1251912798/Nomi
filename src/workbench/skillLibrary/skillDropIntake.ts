@@ -15,12 +15,19 @@
  * 格式解析仍复用 `parseSkillImport.ts` 的既有导出，真正的安全校验仍在主进程
  * （`electron/skills/skillPackage.ts`）——渲染层的判断一律不可信。
  */
-import { parseSkillImportFile, readFrontmatterName, type SkillImportParse } from './parseSkillImport'
+import {
+  MAX_DEPTH,
+  isImportableTextPath,
+  parseSkillImportFile,
+  readFrontmatterName,
+  type SkillImportParse,
+} from './parseSkillImport'
 
-/** 与 `parseSkillImport.ts` 的 TEXT_EXT 对齐（那边是提前过滤，主进程才是真相源）。 */
-const TEXT_EXT = /\.(md|markdown|json|txt|ya?ml|csv)$/i
-/** 目录遍历深度上限，和主进程 SKILL_PATH_MAX_DEPTH 同口径，防深层炸弹。 */
-const MAX_DEPTH = 4
+/**
+ * 「哪些路径收得进来」（文本扩展名 / 深度上限 / `scripts` `bin` `hooks` 可执行区）
+ * 只有一份判据，住在 `parseSkillImport.ts`——zip 那条路径和这条路径抄两份，就是
+ * 「同一条规则两份定义」，症状是同一个技能包拖进来成功、压成 zip 反而被整包拒掉。
+ */
 /** 单次拖入的文件数上限：技能是知识层，几十个文件已经离谱，防误拖整个下载目录。 */
 const MAX_ENTRIES = 400
 
@@ -76,7 +83,7 @@ export async function collectFolderFiles(root: DirEntryLike): Promise<FolderInta
       for (const child of await readAllEntries(entry)) await walk(child, rel, depth + 1)
       return
     }
-    if (!TEXT_EXT.test(entry.name)) {
+    if (!isImportableTextPath(rel)) {
       skipped.push(rel)
       return
     }

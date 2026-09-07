@@ -36,8 +36,9 @@ describe("Agent Skills 官方样例（R31 夹具对账）", () => {
       files: { "SKILL.md": officialSkillMd },
     });
     expect(result.ok).toBe(true);
-    // manifest = null 是**期望值**：官方格式里根本没有第二个清单文件。
-    if (result.ok) expect(result.manifest).toBeNull();
+    // 收敛后（2026-09-07）校验只回「包合不合法 + 它叫什么」：技能清单没有第二份文件可校验了，
+    // Nomi 扩展块随同一份 frontmatter 一起读——官方样例里根本没有扩展块，见下一条断言。
+    if (result.ok) expect(result.skillName).toBe("my-skill");
   });
 
   it("落盘后被发现，name / description 从 YAML frontmatter 读出来", () => {
@@ -49,6 +50,9 @@ describe("Agent Skills 官方样例（R31 夹具对账）", () => {
     expect(records).toHaveLength(1);
     expect(records[0].name).toBe("my-skill");
     expect(records[0].description).toBe("What this skill does");
+    // manifest = null 是**期望值**：官方格式里没有 Nomi 扩展块，纯知识层技能就该这样进来。
+    expect(records[0].manifest).toBeNull();
+    expect(records[0].manifestError).toBeUndefined();
   });
 
   it("官方文档列出的可选键（allowed-tools / argument-hint）不会让解析失败", () => {

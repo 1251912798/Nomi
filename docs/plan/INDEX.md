@@ -11,6 +11,7 @@
 
 | 文件 | 一句话 | 状态 |
 |---|---|---|
+| [2026-09-07-generation-strategy-resolver.md](2026-09-07-generation-strategy-resolver.md) | **生成策略解析器**：生成前按真实模型档案裁决每一镜的时长/参数上限，给出「必须合并 / 必须拆条」建议并一键采纳，落画布前再过一道闸；纯函数引擎 + GUI 审阅面板 + 行内警示 + 内外同源的 `resolve` 能力契约。附录 G 记 2026-09-07 接手 PR #573 的返工（判断有两份答案那一族根因） | 🚧 |
 | [2026-09-07-model-generation-core-path.md](2026-09-07-model-generation-core-path.md) | **生成主干道**：fake-ip（198.18/15）下「钱扣了、片取不回」的类根因修——出站判据收成唯一 owner + `check:outbound-policy` 棘轮、fake-ip 凭阳性证据放行（探不到就 fail-closed）、删 `LAB_ALLOW_LOCALHOST` 逃生口、错误说人话、已付费落 `recoverable` 走免费重拉不再二次扣费、`deepseek-v3.2-think` 实测下架 + LLM 进模型雷达；文末列了 6 条未做（提交侧未接入 / 退役自动探测 / 零额度夹具 / 轮询活性 / 洗白点盘点） | 🚧 |
 | [2026-09-07-rules-round2-adversary-inventory.md](2026-09-07-rules-round2-adversary-inventory.md) | **规则第二轮：把「先查别人」做成机器强制**——反方 agent 机器强制进 R27 手册 §16 + `check:prior-art`、依赖能力清单自动生成 + 框架边界 advisory 启发式、钩子随 checkout 生效不再靠 install、根因流程三条（症状聚类 / `invariant_owner_layer` / R14.2 审计三条） | 🚧 |
 | [2026-09-06-agent-architecture-master-plan.md](2026-09-06-agent-architecture-master-plan.md) | **Agent 架构总体方案**（配套评审 [`docs/audit/2026-09-06-agent-architecture-review.md`](../audit/2026-09-06-agent-architecture-review.md)）：「我们接了 pi 但没在用 pi」——有序 parts 通道、工具契约不再对模型说谎、pi 关掉的重试/思考/价格三样各给归属；P0–P3 分阶段、三条 R3 岔路（转录真相源 / 工具收敛度 / MCP 对等）、六角色评审与在途分支合流顺序；**⛔ 2026-09-07 被 [2026-09-07-agent-runtime-rebuild.md](2026-09-07-agent-runtime-rebuild.md) 取代（用户改判重做）** | ⛔ |
@@ -179,6 +180,7 @@
 | [2026-06-07-assistant-mockup-implementation.md](2026-06-07-assistant-mockup-implementation.md) | 助手面板对齐样张（R8 实现规范） | ⛔ |
 | [2026-06-09-创作AI附件与对话体验.md](2026-06-09-创作AI附件与对话体验.md) | 创作 AI 助手：多格式附件+对话升级 | 📋 |
 | [2026-08-27-skills-knowledge-distribution.md](2026-08-27-skills-knowledge-distribution.md) | **Skills 知识分发**：导入对齐 Agent Skills 标准（Phase 0 已交付）+ 渐进披露从「只给外部」接给内嵌 agent；实测每轮固定开销 ≈9,000 tokens 且不参与预算 | 🚧 |
+| [2026-09-07-skill-format-convergence.md](2026-09-07-skill-format-convergence.md) | **技能格式收敛**：删掉 `skill.json`，frontmatter 成为唯一 owner（pi / Claude Code / Codex 早已收敛成一份，Nomi 是唯一多一份文件的人）；逐字段对照与死字段清理、用户目录一次性迁移、`check:skills-format` 门岗让 pi 自己的加载器给我们判分 | 🚧 |
 | [2026-08-27-unified-tool-surface.md](2026-08-27-unified-tool-surface.md) | **内外工具面统一**：对外 22 个 `nomi_*` vs 内嵌 17 个，6 处同事两名、确认面两套——违反 master plan「不造第二套」北极星；三方案待拍板 | 📋 |
 | [2026-08-30-agent-canvas-interaction-expansion.md](2026-08-30-agent-canvas-interaction-expansion.md) | #194 补全画布引用、多媒体、双轴模式与结果回画布（方案与样张完成，待生产实现） | ✅ |
 | [2026-09-06-opt-in-frequency-telemetry.md](2026-09-06-opt-in-frequency-telemetry.md) | T-01/T-02 opt-in 频率遥测：默认关闭、事件白名单、本地可见可删，与 autoUpdater 解耦 | 📋 |

@@ -1,6 +1,16 @@
 ---
-name: workbench.creation.skill-author
-description: 技能转写师。把用户给的任意东西（别家的 skill / 流程文档 / 一句需求）转写成一个能用的 Nomi 技能：映射工具、声明能力、换不了的诚实标缺口，落地后给一句话 + 邀请试跑。
+name: skill-author
+description: 把用户给的任意东西（别家的 skill、一段流程文档、或一句需求）转写成一个能用的 Nomi 技能：映射工具、声明能力、换不了的标缺口。用户说「帮我把这个 skill 变成 Nomi 能用的」「照这个做一个技能」时用我。
+metadata:
+  nomi:
+    version: 1.0.0
+    label: AI 写技能
+    author: "@nomi"
+    tools:
+      - read_full_text
+      - author_skill
+    required-providers:
+      - text
 ---
 
 # 技能转写师 (Skill Author)
@@ -44,20 +54,39 @@ Nomi 技能能调用的工具就这些，**只能用这些**：
 - ❌ 唇形同步（OmniHuman 类）
 - ❌ 音频分析（BPM / 歌词时间戳）
 
-处理方式：原 skill 里用到这些的步骤，**在 `requiredProviders` 里照实声明它需要的能力**（比如需要 `video` 但其实是唇形同步），并在 SKILL.md 正文写明「这段需要 X，Nomi 暂无，先跳过/占位」。这样 Nomi 的能力清单会自动亮 ⚠️，用户一眼知道缺口——**比给他一个静默坏掉的技能强一万倍**。
+处理方式：原 skill 里用到这些的步骤，**在 `metadata.nomi.required-providers` 里照实声明它需要的能力**（比如需要 `video` 但其实是唇形同步），并在 SKILL.md 正文写明「这段需要 X，Nomi 暂无，先跳过/占位」。这样 Nomi 的能力清单会自动亮 ⚠️，用户一眼知道缺口——**比给他一个静默坏掉的技能强一万倍**。
 
 ## 第 4 步 · 产出技能，调 author_skill
 
-调一次 `author_skill`，给三样：
+一个技能就是**一个文件**：`SKILL.md`，开头是 YAML frontmatter，后面是正文。Claude Code / pi / Codex 都读这一份，没有第二份清单。调一次 `author_skill`，给两样：
 
 - `dirName`：kebab-case ascii，如 `music-mv` / `ecom-product-shot`。
-- `manifest`（skill.json 对象）：
-  - `name`（稳定 id，如 `music.mv`）、`version`（`1.0.0`）、`label`（人话名，跟用户语言，如「音乐 MV」）、`description`（一句话：做什么 + 何时用）。
-  - `tools`：上面映射出的 Nomi 工具名。
-  - `requiredProviders`：端到端需要的所有模态（含换不了的那些，让缺口浮现）。
-  - `permissions`：通常 `["create"]`。
-  - `stages`（多步流程才给）：每个 `{ id, goal, tools, dependsOn?, pause?, modelPrefs? }`；`modelPrefs` 只 `{kind, family?}`。每个关键阶段 `pause: true`（让用户审）。
-- `skillMarkdown`（SKILL.md 正文，**跟用户语言**）：按这 6 个固定小标题写——`## 流程规划` / `## 素材分析` / `## 故事板设计` / `## 媒体生成` / `## 提示词写法` / `## 视频剪辑`（用不到的段可省）。把原 skill 的方法论/审美/提示词技巧搬进对应段，换不了的能力在这里写明。
+- `skillMarkdown`：完整的 `SKILL.md`，**跟用户语言**写。
+
+`skillMarkdown` 的开头必须是 frontmatter，用 `---` 单独成行包起来：
+
+```yaml
+---
+name: music-mv                  # 只许小写字母/数字/连字符，且与 dirName 一致
+description: 一句话——做什么 + 何时用我
+metadata:
+  nomi:                         # Nomi 独有的声明都住这里；别的宿主原样忽略
+    version: "1.0.0"
+    label: 音乐 MV               # 人话名，跟用户语言
+    tools: [read_full_text, create_canvas_nodes]   # 上面映射出的 Nomi 工具名
+    required-providers: [text, image, video]       # 端到端需要的所有模态（含换不了的，让缺口浮现）
+    stages:                     # 多步流程才给；单段技能整块省略
+      - id: storyboard
+        goal: 先出一版可审阅的分镜
+        tools: [read_full_text]
+        pause: true             # 关键阶段停一下让用户审
+        model-prefs: [{ kind: text }]
+---
+```
+
+`stages` 的每一段是 `{ id, goal, tools, depends-on?, pause?, skill-refs?, model-prefs? }`；`model-prefs` 只写 `{kind, family?}`，**绝不写死某个 vendor 的型号**。
+
+frontmatter 之后是正文（`---` 闭合行后面全都是），按这 6 个固定小标题写——`## 流程规划` / `## 素材分析` / `## 故事板设计` / `## 媒体生成` / `## 提示词写法` / `## 视频剪辑`（用不到的段可省）。把原 skill 的方法论/审美/提示词技巧搬进对应段，换不了的能力在这里写明。输入说明与示例也写正文里（`## 输入` / `## 示例`），不塞进 frontmatter。
 
 ## 第 5 步 · 一句话 + 邀请试跑（审阅靠出效果）
 

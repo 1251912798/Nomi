@@ -63,6 +63,7 @@ export const zhLibraries = {
     importReason: {
       unsupportedType: '导入失败：能导入的是 SKILL.md、zip 包、整个技能文件夹（拖进来即可），或 Nomi 导出的 .nomiskill.json',
       badJson: '导入失败：这个 JSON 不是合法的技能包',
+      legacyManifest: '导入失败：这个 JSON 是一份旧的清单文件，不是技能本身。技能正文在 SKILL.md 里（和 Claude Code、pi 一样的格式），导那个文件。',
       zipBroken: '导入失败：这个 zip 打不开',
       noSkillMd: '导入失败：这个包里没有 SKILL.md。技能正文必须放在 SKILL.md 里（和 Claude Code、pi 一样的格式），把它放在包的顶层再导一次。',
       empty: '导入失败：文件是空的',
@@ -244,6 +245,7 @@ export const enLibraries = {
     importReason: {
       unsupportedType: 'Import failed: you can import a SKILL.md, a zip, a whole skill folder (drop it in), or a Nomi .nomiskill.json',
       badJson: 'Import failed: this JSON is not a valid skill package',
+      legacyManifest: 'Import failed: this JSON is an old manifest file, not the skill itself. The skill lives in SKILL.md (the same format Claude Code and pi use) — import that file instead.',
       zipBroken: 'Import failed: this zip could not be opened',
       noSkillMd: 'Import failed: this package has no SKILL.md. A skill’s body must live in SKILL.md (the same format as Claude Code and pi) — put it at the top level of the package and import again.',
       empty: 'Import failed: the file is empty',
