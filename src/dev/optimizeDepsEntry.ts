@@ -1,3 +1,4 @@
+import '@earendil-works/pi-ai';
 import 'react';
 import 'react/jsx-runtime';
 import 'react/jsx-dev-runtime';
