@@ -10,6 +10,7 @@ import {
   laneSnapshotToolDenied,
   laneSnapshotToolDone,
   laneSnapshotToolRunning,
+  LANE_FIXTURE_FACTS,
 } from './laneDrivenFixtures'
 
 const labels: LaneViewModelLabels = {
@@ -17,16 +18,21 @@ const labels: LaneViewModelLabels = {
   thinkingLabel: '正在想…',
   formatTokens: (value) => String(value),
   formatCost: (usd) => `$${usd.toFixed(2)}`,
+  unknown: '—',
+  free: '免费',
 }
 
 describe('design-lab fixtures driven by a LaneSnapshot (probe P6)', () => {
   it('empty: an empty transcript projects to no items, not running, and no invented ceiling/cost', () => {
     const empty = { ...laneSnapshotToolRunning(), transcript: [], tipId: null, operation: null }
-    const model = laneViewModel(projectLaneSnapshot(empty), labels)
+    const model = laneViewModel(projectLaneSnapshot(empty, LANE_FIXTURE_FACTS), labels)
     expect(model.items).toEqual([])
     expect(model.running).toBe(false)
     expect(model.usage.max).toBeUndefined()
-    expect(model.usage.cost).toBeUndefined()
+    // 花费三态落地之后这一条的含义变了：空转录**不是**「没有花费」，是「还没量到」。
+    // 三态把它渲染成占位符（整行留着、数字位写 `—`），而不是把整行藏起来——
+    // 藏起来会让人以为这一项不存在。原来断言的 `undefined` 是三态之前的形状。
+    expect(model.usage.cost).toBe('—')
     // `AgentPanelV4Panel` renders `V4EmptyState` on `flow.length === 0`; the surface-derived
     // starter chips are the shell's, so the pixel half of this cell waits for a lane-driven shell (stage 4).
   })

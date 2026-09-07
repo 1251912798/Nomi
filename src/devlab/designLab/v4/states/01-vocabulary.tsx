@@ -104,6 +104,10 @@ function LaneReceiptCell({ lane }: { lane: (rejectReason: string) => LaneSnapsho
     thinkingLabel: fx.t('agentPanelV4.thinkingLabel'),
     formatTokens: (value) => String(value),
     formatCost: (usd) => `$${usd.toFixed(2)}`,
+    // 三态的另外两支。这一格只画收据，两支都到不了这里——但它们是必填的：
+    // 「没有的数字」与「不按 token 计费」各自有一句话，缺省不是印 0（见 LaneViewModelLabels）。
+    unknown: fx.t('agentPanelV4.contextUnknown'),
+    free: fx.t('agentPanelV4.contextUnknown'),
   })
   return (
     <Piece>

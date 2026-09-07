@@ -15,7 +15,7 @@
 import type { LaneSnapshot } from '@earendil-works/pi-agent-core'
 import type { AssistantMessage } from '@earendil-works/pi-ai'
 import { LANE_APPROVAL_NOTE_TYPE } from '../../../../electron/shared/agentLane/laneContracts'
-import { projectLaneSnapshot } from '../../../../electron/agentLane/laneProjection.mjs'
+import { projectLaneSnapshot, type LaneModelFacts } from '../../../../electron/agentLane/laneProjection.mjs'
 import { laneViewModel, type LaneViewModelLabels } from '../../../workbench/ai/lane/laneViewModel'
 import type { ToolReceipt } from '../../../workbench/ai/v4/agentPanelV4Types'
 
@@ -82,9 +82,24 @@ export function laneSnapshotToolDenied(reason: string): LaneSnapshot {
   ])
 }
 
+/**
+ * 投影要的模型事实。**这一格量的是收据，不是花费三行**，所以取一个最小模型：有价目
+ * （`priced`），**不声明 contextWindow**——那正是 P6 这格钉住的一条（「不发明一个天花板」）。
+ * 数字是冻结的夹具值，与基线一样不能随钟走。
+ */
+export const LANE_FIXTURE_FACTS: LaneModelFacts = {
+  model: {
+    provider: 'nomi-lane', id: 'fixture-model', name: 'fixture-model',
+    api: 'openai-completions', baseUrl: 'http://127.0.0.1/v1', reasoning: false,
+    input: ['text'], cost: { input: 0.44, output: 1.32, cacheRead: 0.014, cacheWrite: 0.44 },
+    maxTokens: 4096,
+  } as LaneModelFacts['model'],
+  pricing: 'priced',
+}
+
 /** 两层投影真的跑一遍，取出那一行收据。 */
 export function laneDrivenReceipt(lane: LaneSnapshot, labels: LaneViewModelLabels): ToolReceipt {
-  const model = laneViewModel(projectLaneSnapshot(lane), labels)
+  const model = laneViewModel(projectLaneSnapshot(lane, LANE_FIXTURE_FACTS), labels)
   const tool = model.items.find((item) => item.kind === 'tool')
   if (!tool || tool.kind !== 'tool') throw new Error('the lane snapshot projected no tool receipt')
   return tool.receipt
