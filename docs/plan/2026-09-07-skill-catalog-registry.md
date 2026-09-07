@@ -5,6 +5,16 @@
 - 上位方案：`docs/superpowers/plans/2026-08-24-unified-agent-master-plan.md` §2.9「SKILL.md 渐进披露」；衔接 `docs/plan/2026-08-27-skills-knowledge-distribution.md`（Phase 1-3 待执行）
 - 范围拍板记录（2026-09-07 三轮 AskUserQuestion）：Registry 载体 = **Git 仓库索引**；首期 = **先网页聚合站 v1**；内容定位 = **Nomi 官方 + 生态投稿**；随后追加拍板 = **资产三类全做（skill + effect-pack + lora）** + **开放目录收全量（civitai 式分级治理）**，先以 HF Minimax LoRA 扫描数据定收录策略（扫描已完成，结论见 §2.1）
 
+## 先查别人（R27 §16 必交物）
+
+> 完整调研与出处见 [`docs/research/2026-09-07-skill-ecosystem-catalog/`](../research/2026-09-07-skill-ecosystem-catalog/)。逐项回答「要建的东西，生态里已经有什么」。
+
+1. **SKILL.md 是开放标准，字段与校验规则在 agentskills.io**：必填仅 `name`(≤64，kebab，与目录同名) + `description`(≤1024)；官方校验 CLI 是 `skills-ref validate`。一手出处：[agentskills.io/specification](https://agentskills.io/specification)、[Anthropic Agent Skills overview](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview)、[anthropics/skills 仓库](https://github.com/anthropics/skills)。
+2. **没有官方 `skills add` 命令；一键安装是 Vercel 开源 `npx skills`**，`skills-lock.json`(source/skillPath/computedHash=SHA-256 内容哈希)是 Vercel 发明、与 Nomi 已有 `skills-lock.json` 同构。一手出处：[github.com/vercel-labs/skills](https://github.com/vercel-labs/skills)、[npm skills](https://www.npmjs.com/package/skills)、[OpenAI Codex build-skills 文档](https://developers.openai.com/codex/skills)。
+3. **顶尖聚合站怎么做收录/展示**：skills.sh(来源可溯+三榜+安全审计公开)、SkillsMP(职业分类+review-first)、Civitai(详情序+license 沉底+免责)。一手出处：[skills.sh/about](https://www.skills.sh/about)、[skillsmp.com](https://skillsmp.com/)、[civitai.com 模型页](https://civitai.com/models/264290)。
+4. **本仓已收敛到 frontmatter 唯一 owner（#580 skill-format-convergence 已合 main）**：`skill.json` 退场、Nomi 专有字段进 `metadata.nomi.*`——catalog「只认 SKILL.md」正是收敛后世界的直接推论，本方案与它同向无冲突。出处：[`docs/plan/2026-09-07-skill-format-convergence.md`](2026-09-07-skill-format-convergence.md)、[`docs/research/2026-09-07-pi-package-ecosystem.md:168`](../research/2026-09-07-pi-package-ecosystem.md)。
+5. **「收录≠可用≠推荐」与分层披露**：PromptBase 买前看不到提示词本体（演示可见、参数接入后给）；「每 repo 限样防霸榜」「无样张不上架」抄 skills.sh/SkillsMP/CapCut。一手出处：[promptbase.com](https://promptbase.com/)、[capcut.com/templates](https://www.capcut.com/templates)。
+
 ## 0. 一句话
 
 把 Nomi 从「本地单机技能库」升级成「**创作资产 Registry**」：**一个统一外层（来源/license/安全/预览/接入指令）+ 三类载荷分型接入**——`kind: skill`（SKILL.md 方法论，拷目录即用）/ `kind: effect-pack`（素材+提示词+音像参考，一键铺成画布流程）/ `kind: lora`（模型权重，检测本地 ComfyUI + 底座后落位）。差异化卖点是「校验即收录门槛 + 安全/策展分级 + 开放目录治理 + 机器可读」，两区并行：**内置策展区**（红线：只收自有/授权/无真人 likeness 内容）+ **开放目录区**（收全量，civitai 式分级/声明/免责）。
