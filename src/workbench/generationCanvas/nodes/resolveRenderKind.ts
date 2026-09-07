@@ -26,7 +26,9 @@ const RENDER_KIND_BY_NODE_KIND: Record<string, string> = {
 export function resolveNodeRenderKind(
   node: Pick<GenerationCanvasNode, "kind" | "renderKind" | "categoryId">,
 ): string | undefined {
-  if (node.kind === "asset") return undefined;
+  // 素材与 Agent 手艺产物都走「壳内 kind 专属渲染」，永远纯预览/专属 body（renderKind=undefined）——
+  // 否则落进 cast/scene/prop 分类会被误判成角色/场景/道具卡（asset 的历史边界 1，agent-artifact 同款）。
+  if (node.kind === "asset" || node.kind === "agent-artifact") return undefined;
   const kindOwned = RENDER_KIND_BY_NODE_KIND[node.kind as string];
   if (kindOwned) return kindOwned;
   const explicit = node.renderKind as string | undefined;
@@ -44,4 +46,20 @@ export function resolveNodeRenderKind(
 /** renderKind 是否走卡片式 body。 */
 export function isCardRenderKind(renderKind: string | undefined): boolean {
   return CARD_RENDER_KINDS.includes(renderKind as (typeof CARD_RENDER_KINDS)[number]);
+}
+
+/**
+ * 这些 kind **不挂 prompt composer**：它们的正文就是功能本体（画板、3D 编辑器、全景查看器），
+ * 或者它们承载的是已有的文件而不是待生成的东西（素材、Agent 手艺产物）——对着它们弹一个
+ * 「描述你要生成的画面」输入框，是在问一个它答不了的问题。
+ *
+ * 收在这里而不是壳里：这份「谁没有 composer」原本是 BaseGenerationNode 里逐个 kind 排下来的
+ * 五行否定判断，每加一种承载型 kind 就长一行，而它和上面 renderKind 的 asset/agent-artifact
+ * 特例说的是同一件事。一份定义，两处消费。
+ */
+const KINDS_WITHOUT_GENERATION_COMPOSER = new Set(["panorama", "scene3d", "whiteboard", "asset", "agent-artifact"]);
+
+/** 该 kind 是否应该在选中时浮出生成 composer。 */
+export function nodeHasGenerationComposer(kind: string): boolean {
+  return !KINDS_WITHOUT_GENERATION_COMPOSER.has(kind);
 }

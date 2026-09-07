@@ -46,6 +46,10 @@ export const zhAgentResident = {
   toolDocumentWrite: '修改文稿',
   toolCanvasRead: '读取画布',
   toolCanvasWrite: '创建或修改镜头卡',
+  // 同一个工具，交付的东西不同，回执就得说不同的话——手艺产物不是镜头卡，也不排队生成。
+  toolCanvasWriteArtifact: '交付手艺产物',
+  toolCanvasWriteArtifactSummary: '把 Agent 手做的产物放到当前画布',
+  toolArtifactCount: '{{count}} 件产物',
   // 校验回执翻成人话：哪个字段、要什么、给了什么（2026-09-06 真机走查）
   issueRoot: '参数',
   issueType: '{{field}}：期望 {{expected}}，收到 {{received}}',
@@ -205,6 +209,9 @@ export const enAgentResident = {
   toolDocumentWrite: 'Edit draft',
   toolCanvasRead: 'Read canvas',
   toolCanvasWrite: 'Create or edit shot cards',
+  toolCanvasWriteArtifact: 'Deliver craft artifacts',
+  toolCanvasWriteArtifactSummary: 'Place the agent-made artifacts on the current canvas',
+  toolArtifactCount: '{{count}} artifact(s)',
   issueRoot: 'arguments',
   issueType: '{{field}}: expected {{expected}}, received {{received}}',
   issueMessage: '{{field}}: {{message}}',

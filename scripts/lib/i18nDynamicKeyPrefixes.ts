@@ -130,6 +130,8 @@ export const DYNAMIC_KEY_PREFIXES: DynamicPrefix[] = [
   { prefix: 'scene3d.inspector.posePreset', why: '动态: 人偶姿势预设名;枚举来源: scene3dConstants 的 MANNEQUIN_POSE_PRESETS[].id(id 与词条同名,故键由 id 派生,不另存一份 labelKey)' },
   { prefix: 'scene3d.taskFlow.taskLabel', why: '动态: 3D 任务流任务标签;枚举来源: scene3dTaskMode 的 task(taskFlow.taskLabel.* 词条)' },
   { prefix: 'scene3d.taskFlow.taskShortLabel', why: '动态: 3D 任务流任务短标签;枚举来源: scene3dTaskMode 的 task(taskFlow.taskShortLabel.* 词条)' },
+  // ── runtime.nodeRegistry ──
+  { prefix: 'runtime.nodeRegistry.agent-artifact.fileType', why: "动态: 手艺产物类型角标;枚举来源: artifactMeta 的 ARTIFACT_FILE_TYPES(svg/html/markdown/table/text/glb,与 fileType.* 词条同名,故键由 fileType 派生,不另存一份 labelKey)" },
   // ── settings ──
   { prefix: 'settings.general.telemetry', why: '动态: 遥测设置状态标签;枚举来源: TelemetrySettingsView.status 的 configured/unconfigured/disabled 三态映射为 statusConfigured/statusUnconfigured/statusDisabled 词条' },
   { prefix: 'settings.ai.upload.channel.kind', why: '动态: 上传通道类别;枚举来源: AiModelsSection 的 channel.kind(upload.channel.kind.* 词条)' },

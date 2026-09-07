@@ -244,6 +244,40 @@ describe('③ 一行收据 · 展开体读的是这一次调用，不是工具�
     expect(receipt?.summary).not.toContain('toolCanvasWriteSummary')
   })
 
+  // 回合结束后收据行只剩投影，args 已经不在手上。标题必须跟着投影一起存下来——
+  // 否则同一行会自相矛盾：摘要说「1 件产物」，标题说「创建或修改镜头卡」（真机截到过）。
+  it('历史收据没有 args 时，标题读调用当时存下的那份', () => {
+    const flow = projectV4Flow(flowInput({
+      items: [toolItem('canvas.write', 'done')],
+      toolProjections: new Map([['turn-1:call-1', {
+        label: 'agentResident.toolCanvasWriteArtifact',
+        effect: 'agentResident.toolArtifactCount(count=2)',
+        target: 'agentResident.targetCanvas',
+        technicalDetails: '',
+        input: '',
+        output: '',
+      }]]),
+    }))
+    const receipt = flow[0]!.kind === 'tool' ? flow[0]!.receipt : undefined
+    expect(receipt?.label).toBe('agentResident.toolCanvasWriteArtifact')
+    expect(receipt?.summary).toBe('agentResident.toolArtifactCount(count=2)')
+  })
+
+  it('投影里没有标题（旧缓存）时退回按工具名算，不空白', () => {
+    const flow = projectV4Flow(flowInput({
+      items: [toolItem('canvas.write', 'done')],
+      toolProjections: new Map([['turn-1:call-1', {
+        effect: 'agentResident.toolCanvasWriteSummary',
+        target: 'agentResident.targetCanvas',
+        technicalDetails: '',
+        input: '',
+        output: '',
+      }]]),
+    }))
+    const receipt = flow[0]!.kind === 'tool' ? flow[0]!.receipt : undefined
+    expect(receipt?.label).toBe('agentResident.toolCanvasWrite')
+  })
+
   it('凭证不进展开体：按键名抹掉，不看值长什么样', () => {
     const flow = projectV4Flow(flowInput({
       items: [toolItem('generation.run', 'done')],

@@ -69,6 +69,35 @@ describe('resident tool display projection', () => {
     expect(readableToolName(translate, 'delete_canvas_nodes')).toBe('agentResident.toolCanvasDelete')
   })
 
+  // 同一个工具，交付的东西不同 → 回执必须说不同的话。看工具名不看 payload，Agent 交一张
+  // SVG 构图线稿也会被报成「创建或修改镜头卡 · 把镜头卡写入当前画布 · 只建卡不生成」——
+  // 三句没一句是真的（它不是镜头卡，也从来不排队生成）。
+  it('全是手艺产物的批次，回执按产物语义说，不套镜头卡措辞', () => {
+    const deliver = {
+      operation: 'create_canvas_nodes',
+      nodes: [
+        { title: '开场构图线稿', kind: 'agent-artifact', artifact: { fileType: 'svg', content: '<svg/>' } },
+        { title: '开场节奏讲解', kind: 'agent-artifact', artifact: { fileType: 'html', content: '<html/>' } },
+      ],
+    }
+    expect(readableToolName(translate, 'nomi_canvas_edit', deliver)).toBe('agentResident.toolCanvasWriteArtifact')
+    expect(readableToolPreview(translate, 'nomi_canvas_edit', deliver)).toBe('agentResident.toolArtifactCount(count=2)')
+    const summary = readableToolSummary(translate, 'nomi_canvas_edit', deliver)
+    expect(summary).toContain('agentResident.toolCanvasWriteArtifactSummary')
+    expect(summary).not.toContain('agentResident.toolCanvasWriteSummary')
+    // 「不提交生成、不产生费用」对不调模型的手艺产物是废话，不该出现。
+    expect(summary).not.toContain('agentResident.toolNoGeneration')
+  })
+
+  it('混着镜头卡的批次仍按镜头卡说（那批里确实有镜头卡）', () => {
+    const mixed = {
+      operation: 'create_canvas_nodes',
+      nodes: [{ title: '镜头 1', kind: 'shot' }, { title: '线稿', kind: 'agent-artifact' }],
+    }
+    expect(readableToolName(translate, 'nomi_canvas_edit', mixed)).toBe('agentResident.toolCanvasWrite')
+    expect(readableToolPreview(translate, 'nomi_canvas_edit', mixed)).toContain('agentResident.toolShotCount(count=2)')
+  })
+
   it('partitions proposal content into a compact bar and on-demand evidence', () => {
     const proposal = proposalForTool(translate, 'nomi_start_generation', {
       prompt: 'a small cat avatar',
