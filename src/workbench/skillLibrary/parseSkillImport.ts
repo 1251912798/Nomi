@@ -8,7 +8,16 @@
 //
 // 边界：这里只做「形状归一 + 明显不合法早退」，**真正的安全校验（路径穿越/扩展名/可执行区）在主进程**
 // （electron/skills/skillPackage.ts），渲染层的判断一律不可信。版本号也只在主进程盖，这里不复制。
+//
+// 2026-09-07（格式收敛）：这一层与主进程的三处口径差被拉平——它们各自都是「同一条规则两份定义、
+// 而且已经漂开」的形状，症状是同一个包在两端得到相反的结论：
+//   · frontmatter 用真 YAML 解析（与 electron/skills/skillFrontmatter.ts 同一档严格度），
+//     不再用只按行抓 `name:` 的正则——正则会读到嵌套块里的 `name:`，也看不见写坏的 YAML；
+//   · `scripts/` `bin/` `hooks/` 与二进制一样计入 skipped：此前 `scripts/x.md` 能通过这里、
+//     再被主进程整包拒掉，而 `scripts/x.sh` 只是被跳过——同一个目录两种结局；
+//   · 子目录深度上限与主进程 SKILL_PATH_MAX_DEPTH 同口径，超深路径计入 skipped 而不是让整包被拒。
 import { unzipSync } from 'fflate'
+import yaml from 'js-yaml'
 
 /** 交给主进程的裸文件表（主进程会盖版本戳后走 validateSkillPackage）。 */
 export type SkillImportPayload = { dirName: string; files: Record<string, string> }
@@ -21,6 +30,7 @@ export type SkillImportParse =
 export type SkillImportFailure =
   | 'unsupportedType'
   | 'badJson'
+  | 'legacyManifest'
   | 'zipBroken'
   | 'noSkillMd'
   | 'empty'
@@ -30,13 +40,41 @@ export type SkillImportFailure =
 const MAX_BYTES = 10 * 1024 * 1024
 /** 与主进程 SKILL_TEXT_EXT 对齐（那边是真相源，这里是提前过滤，少传无用字节）。 */
 const TEXT_EXT = /\.(md|markdown|json|txt|ya?ml|csv)$/i
+/** 与主进程 SKILL_PATH_MAX_DEPTH 对齐（`references/api/v2/spec.md` = 4 段）。 */
+const MAX_DEPTH = 4
+/** 与主进程 SKILL_EXECUTABLE_DIRS 对齐：v1 只吃知识层，可执行区跳过而不是整包否掉。 */
+const EXECUTABLE_DIRS = new Set(['scripts', 'bin', 'hooks'])
 
-/** 从 SKILL.md 的 YAML frontmatter 取 `name:`（标准规范的必填字段之一）。 */
+/** 这个相对路径主进程会不会拒（可执行区 / 超深 / 非文本）——三条都跳过，别让整包被拒。 */
+function isImportableTextPath(rel: string): boolean {
+  const segments = rel.split('/')
+  if (segments.length > MAX_DEPTH) return false
+  if (segments.length > 1 && EXECUTABLE_DIRS.has(segments[0].toLowerCase())) return false
+  return TEXT_EXT.test(rel)
+}
+
+/**
+ * 从 SKILL.md 的 YAML frontmatter 取 `name:`（标准规范的必填字段之一）。
+ *
+ * 用真 YAML 解析器而不是正则：正则按行抓 `^name:`，会命中 `metadata.nomi.stages[].name`
+ * 这类嵌套键，也读不出写坏的 frontmatter——而主进程用的就是真解析器，两端不同档就是
+ * 「同一条规则两份定义」。frontmatter 坏掉时这里返回空串退回文件名，真正的拒绝理由由
+ * 主进程给（它认得「frontmatter 不是合法 YAML」，人话且唯一）。
+ */
 export function readFrontmatterName(markdown: string): string {
-  const match = markdown.match(/^---\r?\n([\s\S]*?)\r?\n---/)
-  if (!match) return ''
-  const name = match[1].match(/^name:\s*["']?(.+?)["']?\s*$/m)
-  return (name?.[1] ?? '').trim()
+  const normalized = String(markdown).replace(/^\uFEFF/, '').replace(/\r\n/g, '\n')
+  if (!normalized.startsWith('---')) return ''
+  const end = normalized.indexOf('\n---', 3)
+  if (end === -1) return ''
+  let parsed: unknown
+  try {
+    parsed = yaml.load(normalized.slice(4, end), { schema: yaml.JSON_SCHEMA })
+  } catch {
+    return ''
+  }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return ''
+  const name = (parsed as Record<string, unknown>).name
+  return typeof name === 'string' ? name.trim() : ''
 }
 
 /** 目录名建议：frontmatter name > 文件名。清洗/避让由主进程 resolveImportDirName 负责。 */
@@ -63,7 +101,7 @@ export function stripCommonPrefix(paths: string[]): { prefix: string; ok: boolea
   return { prefix: anchor.slice(0, idx), ok: true }
 }
 
-/** ② zip —— 保留子目录（references/ assets/），二进制与超深路径如实计入 skipped，不静默丢。 */
+/** ② zip —— 保留子目录（references/ assets/），二进制、可执行区与超深路径如实计入 skipped，不静默丢。 */
 export function packageFromZipEntries(
   entries: Record<string, Uint8Array>,
   fallbackName: string,
@@ -84,7 +122,7 @@ export function packageFromZipEntries(
     const rel = name.slice(prefix.length)
     // macOS 打包残留 + 隐藏文件：直接忽略，不当作「跳过的内容」惊扰用户
     if (!rel || rel.startsWith('__MACOSX/') || rel.split('/').some((s) => s.startsWith('.'))) continue
-    if (!TEXT_EXT.test(rel)) {
+    if (!isImportableTextPath(rel)) {
       skipped.push(rel)
       continue
     }
@@ -94,10 +132,21 @@ export function packageFromZipEntries(
   return { ok: true, payload: { dirName: suggestDirName(files['SKILL.md'], fallbackName), files }, skipped }
 }
 
+/**
+ * 一份「旧清单」而不是一个技能包：只有清单字段、没有 files/dirName。
+ * 单独认出来是为了给人话回执——把它笼统报成「JSON 不合法」会让用户去修一个本来就合法的 JSON，
+ * 而正解是「技能正文在 SKILL.md 里，导那个文件」。
+ */
+function looksLikeLegacyManifest(obj: Record<string, unknown>): boolean {
+  if (obj.files !== undefined || obj.dirName !== undefined) return false
+  return typeof obj.name === 'string'
+}
+
 /** ③ 我们自己导出的 `.nomiskill.json` 信封 —— 原样透传（主进程按 version 走既有校验）。 */
 export function packageFromEnvelope(json: unknown): SkillImportParse {
   if (!json || typeof json !== 'object' || Array.isArray(json)) return { ok: false, reason: 'badJson' }
   const obj = json as Record<string, unknown>
+  if (looksLikeLegacyManifest(obj)) return { ok: false, reason: 'legacyManifest' }
   if (typeof obj.dirName !== 'string' || !obj.files || typeof obj.files !== 'object') {
     return { ok: false, reason: 'badJson' }
   }

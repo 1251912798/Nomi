@@ -110,7 +110,10 @@ export function migrateLegacySkillManifest(skillDir: string, now: () => number =
     }
     const markdown = fs.readFileSync(markdownPath, "utf8");
     const rewritten = rewriteSkillMarkdown(markdown, path.basename(skillDir), manifest);
-    fs.writeFileSync(markdownPath, rewritten, "utf8");
+    // 先写临时文件再原子改名：中途崩溃只会留下一个 .tmp，用户的 SKILL.md 不会变成半截。
+    const tempPath = path.join(skillDir, `SKILL.md.migrating-${now()}.tmp`);
+    fs.writeFileSync(tempPath, rewritten, "utf8");
+    fs.renameSync(tempPath, markdownPath);
     fs.renameSync(manifestPath, path.join(skillDir, `skill.json.migrated-${now()}.bak`));
     return {
       migrated: true,

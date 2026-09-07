@@ -335,6 +335,18 @@ pi 的 CLI 本身跑一个真实回合需要 API key（`No API key found for the
 5. **用户目录迁移 + 测试**：§6.2 的一次性迁移、备份、提示文案（i18n），A5 单测在临时 HOME 下跑。
 6. **文档同步**：`docs/skill-pack-format.md` 改写、`docs/integrate-with-your-agent{,-en}.md:106-115`、`docs/user-guide.md:131`。
 
+### 6.4 导入解析层：渲染层与主进程拉平口径（2026-09-07 补，源自 #582 的解析层四条）
+
+`src/workbench/skillLibrary/parseSkillImport.ts` 与主进程 `skillPackage.ts` 是同一批规则的两份实现，
+收敛前已经漂开三处——症状都是「同一个包在两端得到相反的结论」，与本方案治的病同类：
+
+| # | 漂在哪 | 收敛前 | 现在 |
+|---|---|---|---|
+| ① | 裸清单文件的回执 | 一份合法的旧 JSON 清单被报成 `badJson`「这个 JSON 不是合法的技能包」——把用户支去修一个没坏的文件 | 新增 `legacyManifest` 回执：说清「技能正文在 `SKILL.md` 里，导那个文件」（文案不提旧文件名，R31） |
+| ② | `scripts/` / `bin/` / `hooks/` | `scripts/x.sh` 因扩展名进 skipped、导入成功；`scripts/x.md` 通过渲染层再被主进程整包拒掉——同一个目录两种结局 | 渲染层与主进程 `SKILL_EXECUTABLE_DIRS` 同口径，一律进 skipped；主进程的硬拒留作纵深 |
+| ③ | 子目录深度 | 渲染层不限深，超深路径要等到主进程才把**整包**否掉 | 与 `SKILL_PATH_MAX_DEPTH` 同口径，超深路径进 skipped |
+| ④ | frontmatter 解析 | 渲染层用正则只抓 `^name:`，会命中 `metadata.nomi.stages[].name` 这类嵌套键，也看不见写坏的 YAML | 换成 `js-yaml`（与 `skillFrontmatter.ts` 同一档严格度）；解析不了就退回文件名，拒绝理由由主进程唯一给出 |
+
 ## 11. 不做项（明说）
 
 - **不删 `playbookOrchestrator.ts` 与 `stages` 的死子字段**：编排器 164 行、零生产调用者（`runPlaybook` 这个名字只活在两条注释里），`dependsOn` / `pause` / `modelPrefs.family` / `tools` 因此也没有运行时。但删它们属于「playbook 这条产品线要不要留」的产品取舍，不该混进格式收敛——本 PR 只搬字段，把这条留成一张单。
