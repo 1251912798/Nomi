@@ -21,6 +21,8 @@ export type ModelParameterControl = {
   /** Media-reference controls retain the declared asset kind; older controls default to image. */
   mediaKind?: "image" | "video";
   options: ModelParameterControlOption[];
+  /** Intersect options when another parameter has the declared value. */
+  optionConstraints?: { when: { key: string; value: string | number | boolean }; values: (string | number | boolean)[] }[];
   defaultValue?: string | number | boolean;
   min?: number;
   max?: number;
@@ -77,6 +79,8 @@ export type ArchetypeMode = {
   vendorTerm: string;
   hint: string;
   slots: ArchetypeReferenceSlot[];
+  /** Combined file count across this mode's reference slots. */
+  maxTotalReferences?: number;
   expressionChannels?: ArchetypeExpressionChannel[];
   params: ModelParameterControl[];
   vendorParams?: Record<string, ModelParameterControl[]>;
