@@ -216,6 +216,7 @@ test('G-12 阳性对照 · a 5xx with no billing wording is still retried', asyn
 function stallingTool(name: string, timeoutMs: number, body: () => Promise<void>): LaneToolDescriptor {
   return bindLaneTool({
     name,
+    capabilityId: 'document.read',
     description: 'Runs a host-controlled body, used to prove the lane bounds how long a tool may run.',
     promptSnippet: 'run a host-controlled body.',
     effects: { mutates: false, billable: false, reversal: 'none' },
@@ -249,24 +250,30 @@ test('a tool that never returns is stopped at its declared budget, with a next s
 
 test('阳性对照 · waiting on an approval does not spend the tool’s budget', async (t) => {
   // 计时器在 `execute` 里才 arm，而闸跑在 `before_tool`——也就是进 execute 之前。
-  // 这条断言守的是那行代码的**位置**：闸等 500ms，工具预算只有 300ms，工具本身瞬时返回。
-  // 计时器如果在闸之前 arm，这一条必红。
+  // 这条断言守的是那行代码的**位置**：用户在卡上想了 500ms 才点头，工具预算只有 300ms，
+  // 而工具本身瞬时返回。计时器如果在闸之前 arm，这一条必红。
   const fixture = await createLaneFixture(t, [
     { type: 'tool', calls: [{ id: 'call-quick', name: 'returns_at_once', arguments: {} }] },
     { type: 'text', text: 'Approved and done.' },
-  ], () => ({ allow: true }));
-  const slowGate = async () => {
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    return { allow: true as const };
-  };
+  ], { hasUserInterface: true, policy: () => ({ mode: 'step', spend: 'confirm' }) });
   const lane = await openLane({
     ...fixture.options,
-    gate: slowGate,
     tools: [stallingTool('returns_at_once', 300, async () => {})],
   });
   t.after(() => lane.close());
 
-  await lane.execute({ kind: 'prompt', text: 'Use the tool.' });
+  const turn = lane.execute({ kind: 'prompt', text: 'Use the tool.' });
+  // 卡从投影里推出来（不用墙钟轮询，R18）；点头**故意慢** 500ms，那才是这条对照的仪器。
+  const stop = lane.subscribe((projection) => {
+    const card = projection.pending;
+    if (!card) return;
+    stop();
+    setTimeout(() => {
+      void lane.execute({ kind: 'approval', toolCallId: card.toolCallId, action: 'allow-once' });
+    }, 500);
+  });
+  t.after(stop);
+  await turn;
 
   const [result] = toolResults(lane.projection());
   assert.equal(result?.kind === 'tool-result' && result.isError, false,
@@ -279,6 +286,7 @@ test('a billable tool may not claim a long budget — it must submit and return 
   const fixture = await createLaneFixture(t, []);
   const billable = bindLaneTool({
     name: 'spends_money_and_waits',
+    capabilityId: 'generation.control',
     description: 'Pretends to run a paid generation to completion inside the call.',
     promptSnippet: 'run a paid generation.',
     effects: { mutates: true, billable: true, reversal: 'proposal' },
@@ -389,6 +397,7 @@ test('阳性对照 · a turn at the same limit that never calls a tool is not in
 test('the same tool failing the same way three times in a row is stopped and told to change route', async (t) => {
   const failing = bindLaneTool({
     name: 'always_fails',
+    capabilityId: 'document.read',
     description: 'Always fails the same way, used to prove the lane stops a model from walking into the same wall.',
     promptSnippet: 'always fail.',
     effects: { mutates: false, billable: false, reversal: 'none' },
@@ -421,6 +430,7 @@ test('阳性对照 · three failures that are not the same failure are not treat
   let attempt = 0;
   const varying = bindLaneTool({
     name: 'fails_differently',
+    capabilityId: 'document.read',
     description: 'Fails with a different reason each time, used to prove the streak rule reads the reason.',
     promptSnippet: 'fail differently each time.',
     effects: { mutates: false, billable: false, reversal: 'none' },
