@@ -1,6 +1,38 @@
 # 生成策略解析器（Generation Strategy Resolver）— 研究与设计
 
-> 日期：2026-09-06 · 状态：**P1 引擎已实现并验证**；**Step 1 `resolve` operation 已接线并全绿**；Step 2 GUI 审阅预览（切片 1–4 已完成并验证；切片 5 契约层绿 + L2 walk 脚本随 PR 真机跑；切片 6 分支/PR）· 范围：研究与方案文档 + 纯函数引擎 + resolve 接线 + GUI 审阅面板 + 落画布闸
+> 状态：🚧 进行中 —— 引擎与 GUI 审阅面板已实现；2026-09-07 接手 PR #573 返工（见附录 G），用户可见改动等样张拍板。
+
+> 日期：2026-09-06（首版） · 2026-09-07 接手返工并改名到当日，让「先查别人」门岗（R27）管得到 · 状态：**P1 引擎已实现并验证**；**Step 1 `resolve` operation 已接线并全绿**；Step 2 GUI 审阅预览（切片 1–4 已完成并验证；切片 5 契约层绿 + L2 walk 脚本随 PR 真机跑；切片 6 分支/PR）· 范围：研究与方案文档 + 纯函数引擎 + resolve 接线 + GUI 审阅面板 + 落画布闸
+
+## 先查别人
+
+> 2026-09-07 补。首版方案没有这一节 —— 而这正是「凭空开写」最容易发生的地方：
+> 「按模型上限拆条」听起来很像只有我们要做的事，实际上是一族做烂了的问题。四问答完再动手。
+
+- **依赖/框架里已有？** `electron/shared/agentCapabilities/capabilityContract.ts:20` 的 `inputSchema: ZodType<Input>`
+  已经提供「一个契约 = 一份 schema + 多面投影」，zod 也已是本仓 62 个能力契约的作者写法。
+  **结论：用已有** —— `resolve` 的输入 schema 登记进 `GENERATION_RESOLVE_CAPABILITY`，
+  不再像首版那样在旧 manifest 里内联第二份 zod（那是阶段 2/5 要删的壳）。
+- **仓库里已有？** `electron/shared/videoCapabilities/recommendation.ts:118` 早有档位/最近档/钳值那套判据，
+  参数合法性还另有一份 `src/workbench/generationCanvas/agent/plannedNodeMeta.ts:52`（按 `String()` 比较）。
+  首版 planResolver 抄了第三份，且与 plannedNodeMeta 行为不一致（严格 `===` vs 字符串形）。
+  **结论：用已有 + 提取单一 owner** → `paramConstraints.ts`，三处 import 它。
+- **生态里已有？（预检）** ClippyMe 的 README（<https://github.com/fralapo/clippyme>，2026-09-07 查）原话：
+  "Preflight — before transcription or Gemini analysis, the source is probed and runtime, peak disk and
+  Gemini tokens/cost are estimated, so a job that would blow a quota is rejected up front rather than
+  halfway through."，并把单条 clip 钳到 ≤60s。形状与我们完全一致：**花钱之前先算一遍、算不过当场说清楚**；
+  差别只在它预检配额与磁盘、我们预检模型的时长与参数上限。**结论：借形状，判据自研**（判据只能来自我们自己的档案）。
+- **生态里已有？（拆条）** 「模型单条上限之上要长视频」的通行解法是分段 + 上一段末帧当下一段首帧
+  （<https://app.cinevva.com/guides/long-reference-video-models>，2026-09-07 查；学术侧同形的是 Gen-L-Video
+  <https://github.com/G-U-N/Gen-L-Video>，把短视频扩散模型扩到数百帧靠的也是分段）。
+  **结论：拆条建议默认带 `suggestFirstLast`，与通行解法对齐**，不发明第二种承接方式。
+- **供应商官方上限（判据的原始出处）** MiniMax 官方 API 文档把 duration 按「模型 × 分辨率」列表：Hailuo-2.3 /
+  2.3-Fast / 02 在 768P 支持 `6` 或 `10`，1080P 只支持 `6`，原话 "Video duration (seconds). Default is `6`."
+  （<https://platform.minimax.io/docs/api-reference/video-generation-i2v>，2026-09-07 查）。
+  **结论：上限是「模型 × 模式 × 分辨率」的函数，不是常数** —— 引擎必须从逐字段对过账的档案
+  （`electron/shared/videoCapabilities/minimaxH3.ts:41`）读，绝不在解析器里写死数字。
+
+---
 
 ## 0.1 实现进度（2026-09-06）
 
@@ -14,7 +46,7 @@
   - **切片 2 已落地（GUI 窄 IPC resolve 通道，2026-09-07）**：详见附录 F——seam 把 resolve 提前为 lease-free advisory（其余 capability 仍强制 lease）；`appIntegration` 暴露已装配 seam；新 `generationResolveIpc.ts`（channel `nomi:generation:resolve-plan`，assertTrustedSender + committed-projectId 比对 + 信封）+ `electron/shared/videoCapabilities/planResolutionContracts.ts`；main.ts/preload/DesktopBridge 接线。新增 10 用例（含 GUI vs MCP 双端逐字段同源断言）→ 受影响套件 71 绿 + electron/pi tsc 零错误。
   - **切片 3+4 已落地（GUI 审阅面板 + 落画布闸，2026-09-07）**：详见附录 F——`storyboardStrategy.ts` 增 `classifyResolveStrategy`/`hasResolveBlockers`/`firstResolveBlockerMessage`/`applyMergeSuggestion`/`applySplitSuggestion`（闸判据与面板分类同一份语义）；新 `strategyGate.ts`（fetch + 执行闸，fail-open 边界注释化）+ `StoryboardPlanStrategyPanel.tsx`（表上方执行计划审阅条：必需合并/拆条/建议合并逐条「采纳/为什么」+ 阻断红条，采纳即 apply 到方案 → 自动重查）；`StoryboardPlanEditor.tsx` 挂载面板 + 单镜生成/整批/多选生成前置 resolve 闸（有阻断 toast 机器理由并中止）。i18n `storyboardEditor.strategy.*` zh/en。新增 10 用例（classify/gate×5 + strategyGate×5）→ storyboard/agent/i18n 55 文件 597 绿。
   - **切片 5 已落地（测试系统，2026-09-07）**：L1/L1' 契约全绿（上方累计）；L2 真机旅程脚本 `tests/ux/storyboard-strategy-resolve.walk.mjs`（seed 4 视频镜 → 打开编辑器 → 面板三态截图 → 采纳重查 → 阻断记录，附录 C 场景 1/2/3/4 人眼对账清单见文件头）——受限 shell 无法拉起 GUI（既有边界），脚本随 PR 上真机跑；L3 用户走查待 PR 后执行。
-- 待办（按依赖排序）：② **Step 2 GUI 审阅预览**（样张已出且 **token 化**：`docs/design/mockups/2026-09-06-generation-strategy-review.html`，色板/圆角/阴影/字体镜像 `nomi-tokens.css`（src/theme/nomi-tokens.css，暗色切 `data-mantine-color-scheme="dark"`），语义色用 color-mix 派生同源做法；真实实现走 token/组件 className + i18n zh/en，守 R10/R15/check:tokens，不在 JSX 直写颜色/px）→ 落画布前 resolve 闸（D3）；③ **Step 3 完整测试系统 + 真实旅程**（附录 C：L2 旅程 E2E + L3 用户走查，R13/R16）；④ **Step 4 独立分支 + PR**（delivery:preflight → 分支/PR，禁直推 main）。P3 音频规则未选，保留可选。
+- 待办（按依赖排序）：② **Step 2 GUI 审阅预览**（真实实现走 token/组件 className + i18n zh/en，守 R10/R15/check:tokens，不在 JSX 直写颜色/px；**探索期那两份手写 HTML 样张已于 2026-09-07 删除** —— 2026-09-06 用户拍板「UI 交付定义 = 实验室截图拍板 + 视觉基线绿」，手写样张与实现是两套代码描述同一个东西，实现落地后留着只会漂移。取证改用真机走查截图，见附录 C）→ 落画布前 resolve 闸（D3）；③ **Step 3 完整测试系统 + 真实旅程**（附录 C：L2 旅程 E2E + L3 用户走查，R13/R16）；④ **Step 4 独立分支 + PR**（delivery:preflight → 分支/PR，禁直推 main）。P3 音频规则未选，保留可选。
 
 ## 0. 要解决的产品问题（用户原话 → 能力需求）
 
@@ -181,7 +213,7 @@ Nomi 接的是 `@earendil-works/pi-coding-agent` 运行时（`electron/harness/r
 > 执行顺序：Step 2 真实 UI 完成后先跑 L2（截图自审）→ 交 L3 用户走查 → 问题修完 → Step 4 分支 + PR。
 
 ## 附录 D：Step 2 呈现形态决策（2026-09-06 用户拍板）
-- 用户「你的推荐」→ 采用**表格为默认**：`docs/design/mockups/2026-09-06-generation-strategy-review-table.html`（token 化）为 Step 2 真实 UI 的呈现基准。原则：表格 = 分镜 + 生成计划一屏；策略作为列与行内 badge（# | 拍/内容 | 时长(原→建议) | 模型·模式 | 机器处置[采纳/为什么]）；<8 镜等需要叙事感的场景可回退卡片版（保留 review.html 作对照）。
+- 用户「你的推荐」→ 采用**表格为默认**为 Step 2 真实 UI 的呈现基准（当时的两份手写 HTML 样张已随实现落地删除，理由同上）。原则：表格 = 分镜 + 生成计划一屏；策略作为列与行内 badge（# | 拍/内容 | 时长(原→建议) | 模型·模式 | 机器处置[采纳/为什么]）；<8 镜等需要叙事感的场景可回退卡片版（保留 review.html 作对照）。
 - 采纳/拆条等仍建议式：用户逐行采纳 → 回写 PlanShot（applyMergeProposal/applySplitProposal 在 renderer 侧用）；落画布前再跑一次 resolve 作闸（fail-closed）。
 
 ## 附录 E：Step 2 GUI 接入设计（2026-09-06 实测，file:line）
@@ -214,3 +246,59 @@ Nomi 接的是 `@earendil-works/pi-coding-agent` 运行时（`electron/harness/r
 - 切片 6：gates（vitest 相关目录 + electron/app tsc + lint + check:i18n 评估）→ delivery:preflight → 独立分支（worktree sibling，只带任务文件，避开工作区混入的 videoDepth/agent-artifact/DOCAUDIT 等他人改动）→ PR。INDEX.md 因含他人 depth 登记行未 commit 无法干净携带，登记随后续 main 收敛由 docs-autosync/人工补。
 
 > 所有改动未 commit（main 本地工作区）——切片 1–5 已完成并本地验证；交付统一走切片 6 独立分支 + PR。
+
+---
+
+## 附录 G：2026-09-07 接手返工（PR #573 → 新 PR）
+
+首版（#573）的价值成立——「生成前按真实模型档案说这镜超限、一键采纳」这件事本身是对的，
+`storyboardStrategy.ts` 的三档判据（必并 / 必拆 / 无模型）也判对了。用户拍板由我们接手返工到能合，
+不退回。下面是每一条的**根因**（不是症状清单），以及它们为什么其实是同一族。
+
+### G.1 一族根因：同一个判断有两份答案，或判断的作用域不是它被用到的地方
+
+- **闸的作用域**：`resolveGeneratableGate` 按整份方案算、却套在单镜生成上 —— 第 7 镜超限拦住了
+  单点第 3 镜。修法：resolve 照旧按整份方案算（合并建议依赖真实相邻关系），但分类结果按
+  `scopeResolveStrategy(view, shotIds)` 收窄到本次 materialize 的镜头集合；单镜 / 多选 / 整批
+  各自把自己那份 id 传进来。方案级问题（无候选模型）不因收窄而消失。
+- **参数合法性两个答案**：`planResolver` 用严格 `===` 判枚举、`plannedNodeMeta` 用 `String()` 比较，
+  同一个 `{"duration": "5"}` 一条路合法一条路非法。修法：合法性判定唯一 owner =
+  `electron/shared/videoCapabilities/paramConstraints.ts`；`recommendation` / `planResolver` /
+  `plannedNodeMeta` 三处 import 它，各自只保留「不合法之后怎么办」的策略（丢弃回默认 vs 钳值报 issue）。
+- **镜头 id 两把尺**：`storyboardStrategy` 自造 `shot.shotId ?? shot-${index}`，落画布/行绑定用的是
+  `stableShotId`（多一道字符白名单）。两者一旦分叉，闸的作用域和行内警示就对不上号。已收成一把。
+- **resolve 输入形状三份**：旧 manifest 的内联 zod、seam 的手写强制转换、GUI 窄 IPC 的浅校验。
+  三份必然分叉，而分叉方向恰好是「外面比里面松」（§3.6 明说这条不许）。修法：登记能力契约
+  `GENERATION_RESOLVE_CAPABILITY`（K1，zod 作者写法，单一生成点），seam 用它解析，GUI 通道只管
+  自己那半（projectId ↔ committed selection）。**内部模型面不再往旧 manifest 加**——那是阶段 2/5
+  要删的壳；阶段 2 会从契约层投影。旧 manifest 现在对 `operation: "resolve"` fail-closed（有测试钉住）。
+
+根因合同：`docs/fixes/2026-09-07-generation-strategy-resolver-duplicate-judgements.root-cause.json`。
+
+### G.2 引擎不产文案（R15）
+
+首版给 `planResolver.ts` 加了一条 `check:check-i18n-visible-text` 豁免，而豁免理由自己写的就是
+「这是 UI 文案」。返工后引擎只产 `code` + 结构化数值，句子由 `src/workbench/creation/storyboard/strategyText.ts`
+用 zh-CN / en 模板渲染；面板、行内警示、闸 toast 三处共用同一份渲染，同一条判据在三个地方是同一句话。
+agent/MCP 面直接消费结构化 code+params（模型读结构比读散文准）。豁免已撤销。
+
+### G.3 用户可见部分：D1 与两个被做坏的态
+
+- **行内警示**（D1）：超上限 / 低于下限在**分镜行上**就看得见，不必点开面板才知道是哪一镜。
+- **「没有可用视频模型」态**：首版把 `generation_core_unavailable` 直接摆给用户。返工后是一句人话
+  + 一枚「去设置」。能力核还没起来那一态改成**什么都不显示**——那是启动竞态，用户无从处置，
+  摆一条灰码只是噪音（R2）。
+- **面板曾经整块看不见**：真机走查实测到 section 高 **2px** —— 它挂在 `overflow-y-auto flex flex-col`
+  的滚动列里，flex 子项默认 `flex-shrink:1`，镜头一多就被压扁，配上 `overflow-hidden` 等于消失，
+  而 Playwright 的 `toBeVisible`（只看 bounding box 非空）照样绿。三处根元素补 `shrink-0`，
+  走查加一条「面板高度 < 40px 即红」。
+
+### G.4 走查从假绿改成有信号
+
+`tests/ux/storyboard-strategy-resolve.walk.mjs` 首版三处假绿：截图缺 `.png` 后缀、点一个从未渲染过的
+「再次编辑 / 打开分镜」按钮、`state=unavailable` 也走绿灯。返工后：走查**自己种**一条绑 minimax-h3
+档案（4–15s）的视频模型，于是「拆几条、并哪几镜」是确定的 → 硬断言 `state=ready` + 两条建议 +
+`15s + 15s + 10s` + 两条行内警示；真点一次整批生成、断言 toast 带机器理由；采纳后断言建议消失；
+五张截图逐张比 md5。另加 `storyboard-strategy-no-model.walk.mjs`：先起一次让内置种子写完 catalog，
+再把 53 条内置视频模型 `enabled` 全部置 false 冷启动（种子不碰 enabled），造出真实的空候选集，
+断言面板进 `no-video-model` 态且**不含**内部错误码。
