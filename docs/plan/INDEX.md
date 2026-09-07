@@ -11,6 +11,7 @@
 
 | 文件 | 一句话 | 状态 |
 |---|---|---|
+| [2026-09-08-mcp-tool-refs-catalog-detection.md](2026-09-08-mcp-tool-refs-catalog-detection.md) | 工具引用按对象结构选择 Agent/MCP 目录；含 R17 红绿证据 | 📎 |
 | [2026-09-07-generation-strategy-resolver.md](2026-09-07-generation-strategy-resolver.md) | **生成策略解析器**：生成前按真实模型档案裁决每一镜的时长/参数上限，给出「必须合并 / 必须拆条」建议并一键采纳，落画布前再过一道闸；纯函数引擎 + GUI 审阅面板 + 行内警示 + 内外同源的 `resolve` 能力契约。附录 G 记 2026-09-07 接手 PR #573 的返工（判断有两份答案那一族根因） | 🚧 |
 | [2026-09-07-model-generation-core-path.md](2026-09-07-model-generation-core-path.md) | **生成主干道**：fake-ip（198.18/15）下「钱扣了、片取不回」的类根因修——出站判据收成唯一 owner + `check:outbound-policy` 棘轮、fake-ip 凭阳性证据放行（探不到就 fail-closed）、删 `LAB_ALLOW_LOCALHOST` 逃生口、错误说人话、已付费落 `recoverable` 走免费重拉不再二次扣费、`deepseek-v3.2-think` 实测下架 + LLM 进模型雷达；文末列了 6 条未做（提交侧未接入 / 退役自动探测 / 零额度夹具 / 轮询活性 / 洗白点盘点） | 🚧 |
 | [2026-09-07-rules-round2-adversary-inventory.md](2026-09-07-rules-round2-adversary-inventory.md) | **规则第二轮：把「先查别人」做成机器强制**——反方 agent 机器强制进 R27 手册 §16 + `check:prior-art`、依赖能力清单自动生成 + 框架边界 advisory 启发式、钩子随 checkout 生效不再靠 install、根因流程三条（症状聚类 / `invariant_owner_layer` / R14.2 审计三条） | 🚧 |
