@@ -1008,3 +1008,31 @@ re-export + 从 gates 链摘掉 `check:model-schema`。用户可见行为零变�
 不做模糊解析**；⑩ 版本与退役并到 G-06（阶段 4 前必补），同时说清了官方的「日期后缀 + 新旧并存」
 我们不能抄的理由；⑫ 延迟加载判定**不开**，闸门数字（>12 个工具或 schema >10k token）
 写死进 `laneToolCatalog.ts`。
+
+### 12.12 合并评审的三处必改（2026-09-07，Fable 评审 PR #589 → fixup PR）
+
+评审按「模型第一次能不能写对」实跑发布版 schema，照出三条本节此前写成「已满足」而代码里
+**没人调用**的东西。判据全是零额度的结构探针，不是推测。
+
+| # | 实核 | 修在哪（唯一 owner） |
+|---|---|---|
+| 1 | **扁平 schema 的 `transform` 在运行期没人跑**。pi 只用 `parameters` 跑 ajv（形状），不认识 zod；`execute` 拿到的是 ajv 放行的扁平对象，跨字段约束与「别的 operation 的字段会被拒」（工具描述里的承诺）一路绿到领域端口。§12.2 第 2 行「接受/拒绝集合一个字没变」只在单测里成立 | `laneTools.mts` 的 `execute`：ajv 之后跑**一次**契约 parse，失败按 §3.3 形状 throw（字段名 + 类型名 + `allowed` + 下一步，不回传值）。不是第二个形状验证器——ajv 刚验过形状，这里只剩组合错误 |
+| 2 | **三个语义分组不继承全量 union 的 `superRefine`**。分组从 `.options` 拼出来是裸 union，§12.2 第 3 行「connect 至少一条边下沉进 superRefine」在 lane 发布的 `nomi_canvas_write` 上不可达；`create_camera_move` 不带 `move`/`customMove` 同样合法 | `canvasWrite.ts`：`canvasWriteCrossFieldRefine` 成为唯一 owner，全量 union 与三个分组（含 lane 侧 `.extend()` 后重建的两个）都挂它 |
+| 3 | **`composeLaneSystemPrompt` 零生产调用者**。`laneHost` 把 `options.systemPrompt` 原样递给 `AgentHarness`，通道②③写满了一个字都到不了模型——正是 G-03 说的「只补一半等于没补」 | `laneHost.mts`：宿主按 `options.tools` 自己拼两段，调用方只给身份提示词（R28：不靠下一个人记得） |
+
+三条各带阳性对照：`lane-tool-contract.test.mts`（发布版 spec 逐条拒收）与 `lane-tool-output.test.mts`
+（经 pi 的 ajv → 契约 parse → 模型看到的失败正文；供应商真的收到两段）。
+
+**顺带的诚实修正**：§12.7 的两臂 A/B 跑在这三条缺口之上。脚本不进仓库，所以 12 条任务有没有踩到
+跨字段约束**无法从仓库复核**；能说的只有：「S2 schema 落地 12/12」证明的是形状，不是组合——组合那一半
+从这里起才有机器判据，且两臂共享同一条缺口（差异不受影响，绝对值不该被引用为「组合也对」）。
+
+**评审登记、未在本 PR 动的**（各带阶段与出处）：
+- 看门狗：新通路零看门狗（`observeNativeStream` 只在 `run.mts:164` 的旧路），与工具契约正交 → 阶段 3，
+  深度方案 §1.6 + §4.3 P3（loopback 首字节永不返回的阳性对照）。
+- pi 校验器的报错会把 `Received arguments` 整包回给模型（`pi-ai/dist/utils/validation.js:306`），
+  §3.3 的隐私边界在**形状**错误上仍未收口（本 PR 只收了组合错误那一半）→ 阶段 3 与看门狗同批：
+  要么 `prepareArguments` 里先按类型名拒、要么接受 pi 的形状报错——需要一条判断，不该悄悄选。
+- `canvasModelShapes.ts`（新 owner）仍依赖过渡补丁 T1 的 `jsonTolerantArray` → 阶段 4 删 T1 时一起改。
+- 旧通路 6 处 `root-union` + 1 处 `identical-input-schema` 冻结在 `model-schema-baseline.json` → 阶段 4 归零。
+

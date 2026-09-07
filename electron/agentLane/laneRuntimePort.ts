@@ -104,6 +104,7 @@ export interface OpenLaneOptions {
   /** 复用已存在的会话（冷重启走这条）。缺省新建一条并把 id 报出来。 */
   sessionId?: string
   model: NomiModelConfig
+  /** 宿主的身份提示词。`Available tools` / `Guidelines` 两段由 `openLane` 按 `tools` 自己拼，别在这里手写。 */
   systemPrompt: string
   tools: readonly LaneToolDescriptor[]
   gate?(request: LaneToolGateRequest): Promise<LaneToolGateDecision> | LaneToolGateDecision

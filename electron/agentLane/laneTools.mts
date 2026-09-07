@@ -8,12 +8,22 @@
 // 既然岔路 1 取了 A（`AgentHarness`），这里就用 `AgentHarnessTool`。`prepareArguments`
 // 两边同名同义，方案要的那个官方容忍钩子一点没丢。
 //
-// 校验只发生一次：pi 在调用 `execute` 之前用 `parameters` 跑一遍 ajv。宿主**不再**用 zod
-// 复验——那正是 #547 §2.2③「8 行报错只有 1 行是真的」的成因。安全性由
-// `toModelVisibleSchema` 的「信息不丢」门岗承担：生成的 schema 不弱于 zod。
+// 形状只验一次：pi 在调用 `execute` 之前用 `parameters` 跑 ajv（带容忍梯，G-08）。
+// `toModelVisibleSchema` 的「信息不丢」门岗保证生成的 schema 不弱于 zod，所以宿主不再为
+// **形状**开第二个验证器——那正是 #547 §2.2③「8 行报错只有 1 行是真的」的成因。
+//
+// 但扁平 schema 声明不了的那一层——**跨字段约束与分支专属字段**（哪个 operation 必须带
+// 哪些字段、哪些字段不属于这个 operation）——住在契约的 `transform` 里，而 pi 不认识 zod：
+// ajv 通过之后没有任何东西会去跑它。2026-09-07 合并评审实核：`{operation:"connect_canvas_edges",
+// edges:[]}` 与带着别的 operation 字段的调用一路绿到领域端口。所以 `execute` 里跑**一次**契约
+// parse，就在这个唯一的出口——不是第二个形状验证器（ajv 刚验过形状，这里只会剩下组合错误），
+// 而是设计里本来就该有、却没人调用的那一次。
 import { formatSize, truncateHead, type AgentHarnessTool, type AgentToolResult } from '@earendil-works/pi-agent-core';
+import type { ZodError, ZodIssue } from 'zod';
 import { LANE_MODEL_OUTPUT_MAX_BYTES, LANE_MODEL_OUTPUT_MAX_LINES } from '../shared/agentLane/laneContracts.js';
-import { laneToolModelDescription, renderLaneToolFailure } from '../shared/agentLane/laneToolContract.js';
+import {
+  laneToolModelDescription, renderLaneToolFailure, type LaneToolFailureShape,
+} from '../shared/agentLane/laneToolContract.js';
 import type { LaneToolDescriptor } from './laneRuntimePort.js';
 import { toModelVisibleSchema } from './laneToolSchema.mjs';
 
@@ -75,6 +85,57 @@ function truncateForModel(text: string): { text: string; truncation?: LaneOutput
   };
 }
 
+/**
+ * 契约 parse 的失败 → 模型看到的失败正文（§3.3 的形状）。
+ *
+ * 只带**类型名与字段名**，绝不回传收到的值：用户文稿正文、素材路径都可能在参数里。
+ * `allowed` 从枚举类 issue 的 `options` 取，那是模型自纠时最有用的一样东西。
+ */
+function argumentFailure(toolName: string, args: unknown, error: ZodError): LaneToolFailureShape {
+  const issues = error.issues.map((issue) => ({
+    path: issue.path.length > 0 ? issue.path.join('.') : '(root)',
+    expected: expectedOf(issue),
+    receivedType: receivedTypeOf(issue, args),
+  }));
+  const enumIssue = error.issues.find(
+    (issue): issue is Extract<ZodIssue, { options: unknown[] }> =>
+      issue.code === 'invalid_enum_value' || issue.code === 'invalid_union_discriminator',
+  );
+  return {
+    code: 'tool_arguments_invalid',
+    message: `${toolName} was called with arguments its contract rejects.`,
+    issues,
+    ...(enumIssue ? { allowed: enumIssue.options.map(String) } : {}),
+    nextAction: 'Fix the listed fields and call again with the same operation. Fields that belong to another operation must be left out.',
+  };
+}
+
+function expectedOf(issue: ZodIssue): string {
+  switch (issue.code) {
+    case 'invalid_type':
+      return issue.expected;
+    case 'invalid_enum_value':
+    case 'invalid_union_discriminator':
+      return `one of ${issue.options.map(String).join(', ')}`;
+    case 'unrecognized_keys':
+      return `no field named ${issue.keys.join(', ')} for this operation`;
+    default:
+      // 剩下的是我们自己写的约束文案（"connect_canvas_edges needs at least one edge"）
+      // 或 zod 的界文案（"Array must contain at least 1 element(s)"）——都不含收到的值。
+      return issue.message;
+  }
+}
+
+function receivedTypeOf(issue: ZodIssue, args: unknown): string {
+  if (issue.code === 'invalid_type') return issue.received;
+  let current: unknown = args;
+  for (const key of issue.path) {
+    if (!current || typeof current !== 'object') return 'undefined';
+    current = (current as Record<string | number, unknown>)[key as string | number];
+  }
+  return Array.isArray(current) ? 'array' : current === null ? 'null' : typeof current;
+}
+
 /** 领域回执原样保留，截断元信息挂在旁边。非对象回执塞进 `value`，不静默丢掉。 */
 function detailsWithTruncation(details: unknown, truncation: LaneOutputTruncation): Record<string, unknown> {
   if (details === undefined) return { truncation };
@@ -123,7 +184,13 @@ export function createLaneTools(descriptors: readonly LaneToolDescriptor[]): Age
       execute: async (toolCallId, params, _onUpdate, _toolContext, _invocation, context) => {
         const signal = context.abortSignal ?? new AbortController().signal;
         signal.throwIfAborted();
-        const outcome = await descriptor.execute(params, { toolCallId, signal });
+        // 契约自己的那一次 parse（文件头部说明了为什么它必须在这里、且只在这里）。
+        // 失败按 §3.3 的形状 throw：字段名 + 类型名 + 合法值 + 下一步，不回传值。
+        const bound = descriptor.schema.safeParse(params);
+        if (!bound.success) {
+          throw new LaneToolFailure(renderLaneToolFailure(argumentFailure(descriptor.name, params, bound.error)));
+        }
+        const outcome = await descriptor.execute(bound.data, { toolCallId, signal });
         // **必须 throw，不能 return**（G-02）。上游文档原话：*"Returning a value never sets
         // the error flag regardless of what properties you include in the return object."*
         // return 一个「失败对象」的后果是 pi 记 `isError: false`——面板画绿收据、模型收到

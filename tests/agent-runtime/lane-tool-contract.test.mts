@@ -148,6 +148,26 @@ test('扁平化保住跨字段约束——不是只把形状铺平', () => {
   assert.match(rejected.error.issues[0].message, /at least one edge/);
 });
 
+test('lane 真正发布的三个画布工具带着跨字段约束，而不只是全量 union 的扁平版', () => {
+  // 上一条测的是 `flattenDiscriminatedUnion(canvasWriteSemanticInputSchema)`——那不是 lane 发布的。
+  // lane 发布的是三个语义分组，而分组是从 `.options` 拼出来的裸 union，**不会继承**外层的
+  // `superRefine`。2026-09-07 合并评审实核：`connect_canvas_edges` 给空数组在发布版上是合法的。
+  const byName = new Map(LANE_MODEL_TOOL_CATALOG.map((spec) => [spec.name, spec] as const));
+  const rejects = (name: string, value: unknown, why: RegExp) => {
+    const parsed = byName.get(name)!.schema.safeParse(value);
+    assert.ok(!parsed.success, `${name} 应当拒绝 ${JSON.stringify(value)}`);
+    assert.ok(parsed.error.issues.some((issue) => why.test(issue.message)), JSON.stringify(parsed.error.issues));
+  };
+  rejects('nomi_canvas_write', { operation: 'connect_canvas_edges', edges: [] }, /at least one edge/);
+  // 别的 operation 的字段，形状合法（否则 ajv 那层就拒了，测不到组合那一层）。
+  rejects('nomi_canvas_write', { operation: 'set_node_prompt', nodeId: 'n1', prompt: 'x', nodes: [{ clientId: 'c', kind: 'keyframe', title: 't', prompt: 'p' }] }, /Unrecognized key/);
+  rejects('nomi_shot_reference_write', { operation: 'create_camera_move', shotClientId: 's1' }, /move or customMove/);
+  rejects('nomi_shot_reference_write', { operation: 'create_staging_reference', shotClientId: 's1' }, /characters or customBlocking/);
+  rejects('nomi_storyboard_write', { operation: 'patch_shots', select: { kind: 'indexes' }, patch: { prompt: 'x' } }, /needs an indexes array/);
+  // 阳性对照：每个示例仍然通过（上面那条「每个示例都能通过」已经钉住），这里再钉一个最小合法值。
+  assert.ok(byName.get('nomi_shot_reference_write')!.schema.safeParse({ operation: 'create_camera_move', shotClientId: 's1', move: 'push_in' }).success);
+});
+
 test('每个字段的说明都标明它属于哪几个 operation', () => {
   const json = published(flattenDiscriminatedUnion(canvasWriteSemanticInputSchema, { name: 'canvas.write' }));
   // 扁平化把 9 张说明书合成一张，模型必须知道「这个字段属于哪个 operation」才填得对。

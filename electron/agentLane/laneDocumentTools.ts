@@ -199,10 +199,8 @@ export function createDocumentLaneTools(port: DocumentLanePort): LaneToolDescrip
     const operation = documentWriteOperationForAlias(spec.name);
     if (!operation) throw new Error(`Unregistered document lane tool: ${spec.name}`);
     return bindLaneTool(spec, async (args) => {
-      // 校验只发生一次，就是 pi 的那次：`prepareArguments` 捏合 → pi 用
-      // `toModelVisibleSchema` 生成的 schema 跑 ajv → 才轮到这里。再 `parse` 一遍
-      // 就又变成两个互不认识的验证器（#547 §2.2③），而「信息不丢」门岗保证了
-      // 生成的 schema 不弱于 zod，所以这个断言不是在赌。
+      // 形状由 pi 的 ajv 验过、契约 parse 由 `laneTools.mts` 在唯一出口跑过，才轮到这里。
+      // 这里**不再** parse——再来一遍就是第二个互不认识的验证器（#547 §2.2③）。
       const { content } = args as z.infer<typeof writeContentSchema>;
       // 领域适配器的**输出**仍然校验：那是能力契约的收据形状（K1），
       // 与「模型输入校验几次」是两件事。

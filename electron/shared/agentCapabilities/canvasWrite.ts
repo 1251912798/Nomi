@@ -306,10 +306,22 @@ const canvasWriteSemanticInputUnion = z.discriminatedUnion("operation", [
   ...shotReferenceWriteInputUnion.options,
 ]);
 
-export const canvasWriteSemanticInputSchema = canvasWriteSemanticInputUnion.superRefine((value, context) => {
+/**
+ * 跨字段约束的**唯一 owner**。它挂在全量 union 上，也挂在三个语义分组上——因为 lane 发布给
+ * 模型的是分组（`laneCanvasTools.ts`），而分组是从 `.options` 拼出来的裸 union，**不会继承**
+ * 外层的 `superRefine`。2026-09-07 合并评审实核：`nomi_canvas_write` 对
+ * `{operation:"connect_canvas_edges", edges:[]}` 一路绿到领域端口，就是这条没跟上去。
+ * 一份函数三处挂，加一条约束只改这里。
+ */
+export function canvasWriteCrossFieldRefine(
+  // 形状故意松：lane 侧重建的分组是 `as OperationBranch` 拼出来的，输出类型只剩
+  // `{ operation?: unknown }`。约束按值判，不按类型判——三处挂点收到的都是已过形状校验的对象。
+  value: { operation?: unknown; edges?: unknown; characters?: unknown; customBlocking?: unknown; move?: unknown; customMove?: unknown },
+  context: z.RefinementCtx,
+): void {
   // 从 `connectCanvasEdgesInputSchema` 下沉到这里，好让 `edges` 在两支上是同一个形状
   // （模型可见 schema 才扁平得起来）。语义一个字没变：connect 仍然至少要一条边。
-  if (value.operation === "connect_canvas_edges" && value.edges.length === 0) {
+  if (value.operation === "connect_canvas_edges" && (!Array.isArray(value.edges) || value.edges.length === 0)) {
     context.addIssue({
       code: z.ZodIssueCode.too_small,
       minimum: 1,
@@ -319,13 +331,24 @@ export const canvasWriteSemanticInputSchema = canvasWriteSemanticInputUnion.supe
       message: "connect_canvas_edges needs at least one edge",
     });
   }
-  if (value.operation === "create_staging_reference" && (value.characters?.length ?? 0) === 0 && !value.customBlocking) {
+  if (
+    value.operation === "create_staging_reference"
+    && (!Array.isArray(value.characters) || value.characters.length === 0)
+    && !value.customBlocking
+  ) {
     context.addIssue({ code: z.ZodIssueCode.custom, message: "characters or customBlocking is required" });
   }
   if (value.operation === "create_camera_move" && !value.move && !value.customMove) {
     context.addIssue({ code: z.ZodIssueCode.custom, message: "move or customMove is required" });
   }
-});
+}
+
+export const canvasWriteSemanticInputSchema = canvasWriteSemanticInputUnion.superRefine(canvasWriteCrossFieldRefine);
+
+/** 三个语义分组，**带**跨字段约束的版本。lane 扁平化的是这三份，不是裸 union。 */
+export const canvasNodeWriteInputSchema = canvasNodeWriteInputUnion.superRefine(canvasWriteCrossFieldRefine);
+export const storyboardWriteInputSchema = storyboardWriteInputUnion.superRefine(canvasWriteCrossFieldRefine);
+export const shotReferenceWriteInputSchema = shotReferenceWriteInputUnion.superRefine(canvasWriteCrossFieldRefine);
 
 /** Pi derives the operation from the Registry alias; callers provide only semantic arguments. */
 export const canvasWritePiInputSchema = z

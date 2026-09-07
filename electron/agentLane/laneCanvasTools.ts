@@ -29,7 +29,8 @@ import {
   storyboardPlanParamsSchema,
 } from "../shared/agentCapabilities/canvasModelShapes";
 import {
-  canvasNodeWriteInputUnion,
+  canvasNodeWriteInputSchema,
+  canvasWriteCrossFieldRefine,
   canvasWriteSemanticInputSchema,
   shotReferenceWriteInputUnion,
   storyboardPlanActionInputSchema,
@@ -83,12 +84,14 @@ const storyboardPlanModelBranch = storyboardPlanActionInputSchema.extend({
   shots: storyboardPlanParamsSchema.shape.shots,
 });
 
+// 分组是从 `.options` 拼出来的裸 union，**不会继承**契约外层的 `superRefine`——所以跨字段
+// 约束在这里再挂一次，用的是同一个函数（`canvasWriteCrossFieldRefine`，唯一 owner）。
 const storyboardModelUnion = z.discriminatedUnion("operation", [
   storyboardPlanModelBranch as unknown as z.ZodDiscriminatedUnionOption<"operation">,
   ...storyboardWriteInputUnion.options.filter(
     (option) => option.shape.operation.value !== "propose_storyboard_plan",
   ) as unknown as z.ZodDiscriminatedUnionOption<"operation">[],
-]);
+]).superRefine(canvasWriteCrossFieldRefine);
 
 /**
  * 站位/运镜那两支：契约上这些字段全是 `z.string()` 或 `z.record(z.unknown())`——
@@ -125,7 +128,7 @@ type OperationBranch = z.ZodDiscriminatedUnionOption<"operation">;
 const shotReferenceModelUnion = z.discriminatedUnion("operation", [
   stagingModelBranch as unknown as OperationBranch,
   cameraMoveModelBranch as unknown as OperationBranch,
-]);
+]).superRefine(canvasWriteCrossFieldRefine);
 
 interface CanvasWriteToolShape {
   readonly name: string;
@@ -141,7 +144,7 @@ interface CanvasWriteToolShape {
 const CANVAS_WRITE_TOOLS: readonly CanvasWriteToolShape[] = [
   {
     name: "nomi_canvas_write",
-    union: canvasNodeWriteInputUnion,
+    union: canvasNodeWriteInputSchema,
     description: [
       "Create, connect, retitle or tidy the nodes on the generation canvas.",
       "Every call is one reversible proposal the user still has to accept, so send the whole batch in a single call instead of one node at a time.",
@@ -202,7 +205,7 @@ const CANVAS_WRITE_TOOLS: readonly CanvasWriteToolShape[] = [
     description: [
       "Attach a staging reference (where people stand and how the camera sees them) or a camera-move reference to one shot.",
       "Both render a grey 3D reference that hangs on the shot as a composition or motion reference; they do not generate the shot itself.",
-      "Prefer the vocabulary fields — they render a precise reference; fall back to `customBlocking` / `customMove` free text only when the intent is genuinely outside the vocabulary.",
+      "A staging reference needs `characters` (or `customBlocking`); a camera move needs `move` (or `customMove`). Prefer the vocabulary fields — they render a precise reference; fall back to the free-text field only when the intent is genuinely outside the vocabulary.",
     ].join(" "),
     promptSnippet: "hang a staging or camera-move reference on one shot.",
     examples: [
@@ -270,9 +273,9 @@ export function createCanvasLaneTools(port: CanvasLanePort): LaneToolDescriptor[
       });
     }
     return bindLaneTool(spec, async (args) => {
-      // 扁平 schema 的 `transform` 已经把参数还原成契约的判别式形状并做过跨字段校验，
-      // 所以这里拿到的就是一个已经收窄的 `CanvasWriteInput`。**不再 parse 第二遍**
-      // （G-08：唯一校验点必须是带容忍的那一次）。
+      // `laneTools.mts` 在 pi 的 ajv 之后跑过契约自己的那一次 parse（扁平 schema 的
+      // `transform` → union + 跨字段约束），所以这里拿到的已经是收窄的 `CanvasWriteInput`。
+      // 这里**不再** parse——校验点只有那一个（G-08）。
       const input = args as CanvasWriteInput;
       const receipt = await port.write(input);
       return {
