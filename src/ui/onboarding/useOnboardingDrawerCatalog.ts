@@ -1,6 +1,5 @@
 import React from 'react'
 import type { Mapping } from '../../../electron/catalog/types'
-import { notifyModelOptionsRefresh } from '../../config/useModelOptions'
 import { getDesktopBridge } from '../../desktop/bridge'
 import type { DreaminaStatus } from './DreaminaMemberCard'
 import type { ChipModel } from './ModelChipGroups'
@@ -99,6 +98,12 @@ export function useOnboardingDrawerCatalog(): {
     return () => { alive = false }
   }, [version])
 
+  React.useEffect(() => {
+    const changed = (): void => setVersion((value) => value + 1)
+    window.addEventListener('nomi-model-catalog-changed', changed)
+    return () => window.removeEventListener('nomi-model-catalog-changed', changed)
+  }, [])
+
   const reloadFromError = React.useCallback(() => {
     bridgeRetries.current = 0
     setBridgeMissing(false)
@@ -107,8 +112,6 @@ export function useOnboardingDrawerCatalog(): {
   }, [])
 
   const refresh = React.useCallback(() => {
-    notifyModelOptionsRefresh('all')
-    setVersion((value) => value + 1)
     window.dispatchEvent(new CustomEvent('nomi-model-catalog-changed'))
   }, [])
 

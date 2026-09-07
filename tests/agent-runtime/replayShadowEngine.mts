@@ -83,7 +83,8 @@ export type ComparableStep =
   | { readonly kind: 'tool-call'; readonly toolCallId: string; readonly toolName: string; readonly args: string }
   | { readonly kind: 'tool-result'; readonly toolCallId: string; readonly toolName: string;
       readonly text: string; readonly isError: boolean }
-  | { readonly kind: 'host-note'; readonly noteType: string };
+  | { readonly kind: 'host-note'; readonly noteType: string }
+  | { readonly kind: 'task'; readonly productionRunId: string; readonly operationId?: string };
 
 /** 空文字段两边都不要：pi 不会为一个空 text delta 造出一段，录里那种段也没有内容可比。 */
 function usableParts(parts: readonly RecordedPart[]): RecordedPart[] {
@@ -137,6 +138,9 @@ export function stepsOfProjection(projection: LaneProjection): ComparableStep[] 
         return { kind: 'tool-result', toolCallId: part.toolCallId, toolName: part.toolName,
           text: part.text, isError: part.isError };
       case 'host-note': return { kind: 'host-note', noteType: part.noteType };
+      case 'task':
+        return { kind: 'task', productionRunId: part.productionRunId,
+          ...(part.operationId === undefined ? {} : { operationId: part.operationId }) };
     }
   });
 }
@@ -192,7 +196,9 @@ function describe(step: ComparableStep | undefined): string {
   if (!step) return '<missing>';
   const body = step.kind === 'tool-call' ? `${step.toolName} ${step.args}`
     : step.kind === 'tool-result' ? `${step.toolName}${step.isError ? '!' : ''} ${step.text}`
-      : step.kind === 'host-note' ? step.noteType : step.text;
+      : step.kind === 'host-note' ? step.noteType
+        : step.kind === 'task' ? `${step.productionRunId}${step.operationId === undefined ? '' : ` ${step.operationId}`}`
+          : step.text;
   return `${step.kind}: ${body.slice(0, 80)}`;
 }
 

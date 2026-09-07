@@ -1,3 +1,4 @@
+import { isLegacyCatalogMeta } from './modelIdentity'
 import { describe, expect, it } from 'vitest'
 import {
   dedupeModelOptions,
@@ -169,4 +170,11 @@ describe('modelIdentity · vendor preference ordering', () => {
     const ordered = sortModelProviders(models[0].providers, ['relay-a', 'kie'])
     expect(ordered.map((provider) => provider.vendor)).toEqual(['relay-a', 'kie', 'relay-z'])
   })
+})
+
+it('folds only explicit legacy metadata without guessing from names', () => {
+  expect(isLegacyCatalogMeta({ catalogLifecycle: 'legacy' })).toBe(true)
+  expect(isLegacyCatalogMeta({ catalogLifecycle: 'value' })).toBe(false)
+  expect(isLegacyCatalogMeta({ label: 'Old model v1' })).toBe(false)
+  expect(isLegacyCatalogMeta(null)).toBe(false)
 })

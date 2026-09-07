@@ -540,15 +540,14 @@ function applyModelUpsert(state: CatalogState, payload: unknown): Model {
     modelKey,
     vendorKey,
     modelAlias: typeof raw.modelAlias === "string" ? raw.modelAlias.trim() || null : (existing?.modelAlias ?? null),
-    // 显示名兜底不落裸 id（审计 A13）：没给 labelZh 时人话化 modelKey 排版。
     labelZh: String(raw.labelZh || existing?.labelZh || "").trim() || humanizeModelKey(modelKey),
     kind: (raw.kind as BillingModelKind) || existing?.kind || "text",
     enabled: normalizeEnabled(raw.enabled, existing?.enabled ?? true),
+    unlisted: typeof raw.unlisted === "boolean" ? raw.unlisted : existing?.unlisted,
+    tokenPricing: existing?.tokenPricing, free: existing?.free,
     meta: raw.meta ?? existing?.meta,
     pricing: (raw.pricing as Model["pricing"]) || existing?.pricing,
     onboarding: (raw.onboarding as Model["onboarding"]) ?? existing?.onboarding,
-    // 自定义调用脚本三态：undefined=保留既有（拉取/重接入流程不 clobber 用户脚本）；
-    // null=显式删除（编辑器「删除脚本恢复默认」）；对象=覆写。
     ...(customCall ? { customCall } : {}),
     createdAt: existing?.createdAt || t,
     updatedAt: t,
@@ -566,12 +565,7 @@ export function upsertModelCatalogModel(payload: unknown): Model {
   return model;
 }
 export function deleteModelCatalogModel(vendorKey: string, modelKey: string): void {
-  const state = readCatalog();
-  state.models = state.models.filter((model) => !(model.vendorKey === vendorKey && model.modelKey === modelKey));
-  state.mappings = state.mappings.filter(
-    (mapping) => !(mapping.vendorKey === vendorKey && mapping.modelKey === modelKey),
-  );
-  writeCatalog(state);
+  deleteModelCatalogModels([{ vendorKey, modelKey }]);
 }
 /**
  * 批量删除：一次 read/write 删掉多行（用户群反馈 462 个自定义模型只能逐个删=鸡肋）。
@@ -582,6 +576,14 @@ export function deleteModelCatalogModels(targets: Array<{ vendorKey: string; mod
   if (list.length === 0) return;
   const keySet = new Set(list.map((t) => `${String(t?.vendorKey ?? "")}\0${String(t?.modelKey ?? "")}`));
   const state = readCatalog();
+  const suppressed = [...(state.suppressedBuiltinModels || [])];
+  for (const model of state.models) {
+    if (keySet.has(`${model.vendorKey}\0${model.modelKey}`) && isJsonRecord(model.meta) && typeof model.meta.catalogLifecycle === "string"
+      && !suppressed.some((row) => row.vendorKey === model.vendorKey && row.modelKey === model.modelKey)) {
+      suppressed.push({ vendorKey: model.vendorKey, modelKey: model.modelKey });
+    }
+  }
+  state.suppressedBuiltinModels = suppressed;
   state.models = state.models.filter((model) => !keySet.has(`${model.vendorKey}\0${model.modelKey}`));
   state.mappings = state.mappings.filter(
     (mapping) => !mapping.modelKey || !keySet.has(`${mapping.vendorKey}\0${mapping.modelKey}`),
@@ -744,7 +746,7 @@ export type CatalogMutation = {
  * importModelCatalogPackage 共用同一套「全有或全无」边界——单条手动接入（commitOnboardedModelToCatalog
  * 的 vendor+key+model+mapping 四步）复用它，不再四次独立落盘、不再留「vendor 写了 model 没写成」的半接入空壳。
  */
-export function mutateCatalog<T>(fn: (tx: CatalogMutation) => T): T {
+export function mutateCatalog<T>(fn: (tx: CatalogMutation, state: Readonly<CatalogState>) => T): T {
   const state = readCatalog();
   const invalidatedVendors = new Set<string>();
   const tx: CatalogMutation = {
@@ -772,7 +774,7 @@ export function mutateCatalog<T>(fn: (tx: CatalogMutation) => T): T {
       );
     },
   };
-  const result = fn(tx);
+  const result = fn(tx, state);
   writeCatalog(state);
   invalidateProviderAdapterRunsForVendors(invalidatedVendors);
   return result;

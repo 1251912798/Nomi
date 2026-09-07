@@ -644,6 +644,7 @@ export type DesktopBridge = DesktopMediaBridge &
     describeChannels: () => AssetTransportChannelView[]
   }
   modelCatalog: CustomCallBridge & {
+    onChanged?: (cb: () => void) => () => void
     listVendors: () => unknown[]
     listModels: (params?: unknown) => unknown[]
     listMappings: (params?: unknown) => unknown[]

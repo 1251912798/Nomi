@@ -398,9 +398,10 @@ function seedVendor(vendors: Vendor[], seed: VendorSeed, now: string): boolean {
  * 某供应商的 curated 模型 insert + 启动对账（供应商无关）。代码所有：kind + meta.archetypeId（漂移强制对账，
  * 否则模型套错能力）；用户所有：enabled/labelZh/createdAt 保留。返回是否变更。
  */
-function reconcileModels(models: Model[], vendorKey: string, curated: CuratedModel[], now: string): boolean {
+function reconcileModels(models: Model[], vendorKey: string, curated: CuratedModel[], now: string, suppressed: CatalogState["suppressedBuiltinModels"]): boolean {
   let changed = false;
   for (const c of curated) {
+    if (suppressed?.some((row) => row.vendorKey === vendorKey && row.modelKey === c.modelKey)) continue;
     const canonicalId = CANONICAL_MODEL_IDS[c.modelKey];
     // 代码所有的 meta = archetypeId（能力档案指针）+ canonicalModelId（跨家去重键）+ c.meta 合并。
     const curatedMeta: Record<string, unknown> = {
@@ -508,28 +509,35 @@ export function applyBuiltinSeeds(state: CatalogState, now: string): { state: Ca
   // 只有走 prune 才摘得掉已经落在用户 catalog 里的那条。
   if (pruneRetiredModels(models, APIMART_VENDOR_SEED.key, RETIRED_APIMART_IMAGE_MODEL_KEYS)) changed = true;
   if (pruneRetiredMappings(mappings, RETIRED_APIMART_IMAGE_MAPPING_IDS)) changed = true;
-  if (pruneRetiredModels(models, APIMART_VENDOR_SEED.key, RETIRED_APIMART_TEXT_MODEL_KEYS)) changed = true;
+  // Explicit one-time migration: keep user configuration, including manual re-enabling afterwards.
+  for (let index = 0; index < models.length; index += 1) {
+    const model = models[index];
+    if (model.vendorKey === APIMART_VENDOR_SEED.key && RETIRED_APIMART_TEXT_MODEL_KEYS.includes(model.modelKey) && model.unlisted === undefined) {
+      models[index] = { ...model, enabled: false, unlisted: true, meta: { ...(model.meta as Record<string, unknown> || {}), catalogLifecycle: "legacy" }, updatedAt: now };
+      changed = true;
+    }
+  }
   if (pruneRetiredModels(models, KIE_VENDOR_SEED.key, RETIRED_KIE_VIDEO_MODEL_KEYS)) changed = true;
 
   // 模型 insert + 对账（两家各跑同一套逻辑）。
-  if (reconcileModels(models, KIE_VENDOR_SEED.key, KIE_CURATED_MODELS, now)) changed = true;
-  if (reconcileModels(models, APIMART_VENDOR_SEED.key, APIMART_CURATED_MODELS, now)) changed = true;
-  if (reconcileModels(models, AGNES_VENDOR_SEED.key, AGNES_CURATED_MODELS, now)) changed = true;
-  if (reconcileModels(models, MODELSCOPE_VENDOR_SEED.key, MODELSCOPE_CURATED_MODELS, now)) changed = true;
-  if (reconcileModels(models, VOLCENGINE_VENDOR_SEED.key, VOLCENGINE_CURATED_MODELS, now)) changed = true;
-  if (reconcileModels(models, VOLCENGINE_SPEECH_VENDOR_SEED.key, VOLCENGINE_SPEECH_CURATED_MODELS, now)) changed = true;
-  if (reconcileModels(models, DREAMINA_VENDOR_SEED.key, DREAMINA_CURATED_MODELS, now)) changed = true;
-  if (reconcileModels(models, DREAMINA_VENDOR_SEED.key, DREAMINA_IMAGE_CURATED_MODELS, now)) changed = true;
-  if (reconcileModels(models, RUNNINGHUB_VENDOR_SEED.key, RUNNINGHUB_3D_CURATED_MODELS, now)) changed = true;
-  if (reconcileModels(models, RUNNINGHUB_VENDOR_SEED.key, RUNNINGHUB_VIDEO_CURATED_MODELS, now)) changed = true;
-  if (reconcileModels(models, RUNNINGHUB_VENDOR_SEED.key, RUNNINGHUB_IMAGE_CURATED_MODELS, now)) changed = true;
-  if (reconcileModels(models, COMFYUI_VENDOR_SEED.key, COMFYUI_CURATED_MODELS, now)) changed = true;
-  if (reconcileModels(models, CODEX_LOCAL_VENDOR_SEED.key, CODEX_IMAGE_CURATED_MODELS, now)) changed = true;
-  if (reconcileModels(models, MINIMAX_VENDOR_SEED.key, MINIMAX_OFFICIAL_CURATED_MODELS, now)) changed = true;
-  if (reconcileModels(models, ELEVENLABS_VENDOR_SEED.key, ELEVENLABS_CURATED_MODELS, now)) changed = true;
-  if (reconcileModels(models, MESHY_VENDOR_SEED.key, MESHY_CURATED_MODELS, now)) changed = true;
-  if (reconcileModels(models, FAL_VENDOR_SEED.key, FAL_CURATED_MODELS, now)) changed = true;
-  if (reconcileModels(models, RUNWAY_VENDOR_SEED.key, RUNWAY_CURATED_MODELS, now)) changed = true;
+  if (reconcileModels(models, KIE_VENDOR_SEED.key, KIE_CURATED_MODELS, now, state.suppressedBuiltinModels)) changed = true;
+  if (reconcileModels(models, APIMART_VENDOR_SEED.key, APIMART_CURATED_MODELS, now, state.suppressedBuiltinModels)) changed = true;
+  if (reconcileModels(models, AGNES_VENDOR_SEED.key, AGNES_CURATED_MODELS, now, state.suppressedBuiltinModels)) changed = true;
+  if (reconcileModels(models, MODELSCOPE_VENDOR_SEED.key, MODELSCOPE_CURATED_MODELS, now, state.suppressedBuiltinModels)) changed = true;
+  if (reconcileModels(models, VOLCENGINE_VENDOR_SEED.key, VOLCENGINE_CURATED_MODELS, now, state.suppressedBuiltinModels)) changed = true;
+  if (reconcileModels(models, VOLCENGINE_SPEECH_VENDOR_SEED.key, VOLCENGINE_SPEECH_CURATED_MODELS, now, state.suppressedBuiltinModels)) changed = true;
+  if (reconcileModels(models, DREAMINA_VENDOR_SEED.key, DREAMINA_CURATED_MODELS, now, state.suppressedBuiltinModels)) changed = true;
+  if (reconcileModels(models, DREAMINA_VENDOR_SEED.key, DREAMINA_IMAGE_CURATED_MODELS, now, state.suppressedBuiltinModels)) changed = true;
+  if (reconcileModels(models, RUNNINGHUB_VENDOR_SEED.key, RUNNINGHUB_3D_CURATED_MODELS, now, state.suppressedBuiltinModels)) changed = true;
+  if (reconcileModels(models, RUNNINGHUB_VENDOR_SEED.key, RUNNINGHUB_VIDEO_CURATED_MODELS, now, state.suppressedBuiltinModels)) changed = true;
+  if (reconcileModels(models, RUNNINGHUB_VENDOR_SEED.key, RUNNINGHUB_IMAGE_CURATED_MODELS, now, state.suppressedBuiltinModels)) changed = true;
+  if (reconcileModels(models, COMFYUI_VENDOR_SEED.key, COMFYUI_CURATED_MODELS, now, state.suppressedBuiltinModels)) changed = true;
+  if (reconcileModels(models, CODEX_LOCAL_VENDOR_SEED.key, CODEX_IMAGE_CURATED_MODELS, now, state.suppressedBuiltinModels)) changed = true;
+  if (reconcileModels(models, MINIMAX_VENDOR_SEED.key, MINIMAX_OFFICIAL_CURATED_MODELS, now, state.suppressedBuiltinModels)) changed = true;
+  if (reconcileModels(models, ELEVENLABS_VENDOR_SEED.key, ELEVENLABS_CURATED_MODELS, now, state.suppressedBuiltinModels)) changed = true;
+  if (reconcileModels(models, MESHY_VENDOR_SEED.key, MESHY_CURATED_MODELS, now, state.suppressedBuiltinModels)) changed = true;
+  if (reconcileModels(models, FAL_VENDOR_SEED.key, FAL_CURATED_MODELS, now, state.suppressedBuiltinModels)) changed = true;
+  if (reconcileModels(models, RUNWAY_VENDOR_SEED.key, RUNWAY_CURATED_MODELS, now, state.suppressedBuiltinModels)) changed = true;
 
   // kie 历史包袱 repair：把视频形状的坏 (kie, text_to_image) 替换成正确的 GPT Image 2 文生图契约
   // （旧 onboarding 抽错留下的；契约见 kieGptImage2.ts 直连实测确认）。apimart 无此历史，不需要。

@@ -70,6 +70,12 @@
         "threshold": 0.2,
         "maxDiffPixels": 40
       }
+    },
+    "catalog-liveness": {
+      "tolerance": {
+        "threshold": 0.2,
+        "maxDiffPixels": 40
+      }
     }
   },
   "why": {
