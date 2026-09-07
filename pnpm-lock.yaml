@@ -64,6 +64,9 @@ importers:
       '@mantine/notifications':
         specifier: ^7.13.1
         version: 7.17.8(@mantine/core@7.17.8(@mantine/hooks@7.17.8(react@18.3.1))(@types/react@18.3.29)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@mantine/hooks@7.17.8(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@mediapipe/tasks-vision':
+        specifier: ^1.0.1
+        version: 1.0.1
       '@photo-sphere-viewer/core':
         specifier: 5.14.3
         version: 5.14.3
@@ -145,6 +148,9 @@ importers:
       mammoth:
         specifier: ^1.12.0
         version: 1.12.0
+      onnxruntime-web:
+        specifier: 1.21.0
+        version: 1.21.0
       perfect-freehand:
         specifier: ^1.2.2
         version: 1.2.3
@@ -269,6 +275,9 @@ importers:
       js-yaml:
         specifier: 4.1.1
         version: 4.1.1
+      onnxruntime-common:
+        specifier: 1.21.0
+        version: 1.21.0
       playwright:
         specifier: ^1.60.0
         version: 1.60.0
@@ -1671,6 +1680,9 @@ packages:
 
   '@mediapipe/tasks-vision@0.10.17':
     resolution: {integrity: sha512-CZWV/q6TTe8ta61cZXjfnnHsfWIdFhms03M9T7Cnd5y2mdpylJM0rF1qRq+wsQVRMLz1OYPVEBU9ph2Bx8cxrg==}
+
+  '@mediapipe/tasks-vision@1.0.1':
+    resolution: {integrity: sha512-rvRE2FmAZ6ZxKSw7wq+e+jQDpN3t1B/tD2mJz9SmAzb1msoDkd4dMoE4wAh8Z30Um0PQwLiHr9QtomhmXk3aUQ==}
 
   '@modelcontextprotocol/sdk@1.29.0':
     resolution: {integrity: sha512-zo37mZA9hJWpULgkRpowewez1y6ML5GsXJPY8FI0tBBCd77HEvza4jDqRKOXgHNn867PVGCyTdzqpz0izu5ZjQ==}
@@ -7995,6 +8007,8 @@ snapshots:
       zod-to-json-schema: 3.25.1(zod@3.25.76)
 
   '@mediapipe/tasks-vision@0.10.17': {}
+
+  '@mediapipe/tasks-vision@1.0.1': {}
 
   '@modelcontextprotocol/sdk@1.29.0(zod@3.25.76)':
     dependencies:
