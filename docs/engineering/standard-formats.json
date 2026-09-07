@@ -65,8 +65,8 @@
       "writers": ["electron/skills/skillPackage.ts"],
       "debt": {
         "what": "skill.json 是一个标准之外的平行文件，字段应当收进 SKILL.md 的 frontmatter 自定义键",
-        "why": "收敛正在 refactor/skill-format-frontmatter-20260907 分支上做（把 archetypeId 等字段迁进 frontmatter，删掉 skill.json 的读写与文案引导）。本 PR 只立规则与门岗，不动解析器——两件事挤在一个 PR 里，评审谁也看不清。",
-        "plan": "refactor/skill-format-frontmatter-20260907",
+        "why": "收敛已经在 PR #580（refactor/skill-format-frontmatter-20260907）上做完了：archetypeId 等字段迁进 SKILL.md 的 frontmatter，skill.json 的读写与文案引导一并删掉。本 PR 只立规则与门岗，不动解析器——两件事挤在一个 PR 里，评审谁也看不清，而且会和 #580 改同一批文件直接撞车。",
+        "plan": "PR #580（refactor/skill-format-frontmatter-20260907）合入后，把本条 nomi-skill-manifest 整格从登记表里删掉——skill.json 届时在仓库里已经不存在，留着这一格就是在给一个不存在的格式发通行证",
         "due": "2026-10-07"
       }
     },
