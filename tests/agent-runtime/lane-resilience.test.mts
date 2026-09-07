@@ -11,7 +11,7 @@ import { openLane } from '../../electron/agentLane/laneHost.mjs';
 import { LANE_RETRY_POLICY } from '../../electron/agentLane/laneHost.mjs';
 import type { LaneToolDescriptor } from '../../electron/agentLane/laneRuntimePort.js';
 import { bindLaneTool } from '../../electron/agentLane/laneRuntimePort.js';
-import { projectLaneSnapshot } from '../../electron/agentLane/laneProjection.mjs';
+import { projectLaneSnapshot, type LaneModelFacts } from '../../electron/agentLane/laneProjection.mjs';
 import { normalizeProviderErrorText } from '../../electron/harness/runtime/pi/providerGuard.mjs';
 import type { LaneProjection, LaneRetry } from '../../electron/shared/agentLane/laneContracts.js';
 import { LANE_READ_TOOL_TIMEOUT_MS } from '../../electron/shared/agentLane/laneToolContract.js';
@@ -311,7 +311,12 @@ test('a suspended (deferred) operation projects as still running, and claims not
     queues: [], faulted: false,
   } as unknown as Parameters<typeof projectLaneSnapshot>[0];
 
-  const projection = projectLaneSnapshot(snapshot);
+  // 三行（3b）要模型侧事实才能投影；这条测试只看 running/retry/parts，价目给 'unpriced' 让花费走「不可知」。
+  const facts: LaneModelFacts = { model: {
+    provider: 'nomi-lane', id: 'chosen-model', name: 'chosen-model', api: 'openai-completions', baseUrl: 'http://127.0.0.1/v1',
+    reasoning: false, input: ['text'], cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, contextWindow: 128_000, maxTokens: 4096,
+  }, pricing: 'unpriced' };
+  const projection = projectLaneSnapshot(snapshot, facts);
   assert.equal(projection.running, true, 'a suspended run has not finished');
   assert.equal(projection.retry, undefined, 'suspended is not retrying — two different things, two different lines on screen');
   assert.deepEqual(projection.parts, []);
