@@ -20,6 +20,10 @@ const labels: LaneViewModelLabels = {
   formatCost: (usd) => `$${usd.toFixed(4)}`,
   unknown: '[unknown]',
   free: '[free]',
+  taskTitle: '[task]',
+  formatStages: (done, total) => `${done}/${total} stages`,
+  formatMoney: (currency, amount) => `${currency} ${amount.toFixed(2)}`,
+  taskUnknown: '[task-unknown]',
 }
 
 describe('laneViewModel against a projection a real pi lane produced', () => {

@@ -112,9 +112,16 @@ test('one session has exactly one owner: a second open in this process is refuse
 
   // 阳性对照 ①：拦的是**这一条会话**，不是「这个项目」。同一个项目里另起一条 lane 照常打开——
   // 否则这道防线会把「两个窗口看两条不同对话」也一起拦掉，那是产品功能不是事故。
-  const sibling = await openLane(fixture.options);
+  //
+  // ⚠️ 阶段 3d 起「另起一条 lane」必须给一个**不同的名字**：不带 sessionId 打开同名 lane
+  // 现在是「接着那条对话」（`openLaneSession` 按 lane 复用），不再是「每次新建一条」。
+  // 每次新建的旧行为会让对话列表里同一个名字长出一串空壳，而用户以为点开的是昨天那条。
+  const sibling = await openLane({ ...fixture.options, laneName: 'research' });
   t.after(() => sibling.close());
   assert.notEqual(sibling.sessionId, first.sessionId);
+
+  // 阳性对照 ②：**同名**再开一次，拿到的是同一条会话的持有权冲突——不是一条新的空对话。
+  await assert.rejects(() => openLane(fixture.options), /already has an owner/);
 });
 
 test('the owner is released on close — a reopened history is not permanently locked out', async (t) => {

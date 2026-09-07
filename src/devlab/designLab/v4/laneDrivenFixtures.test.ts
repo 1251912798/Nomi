@@ -20,6 +20,10 @@ const labels: LaneViewModelLabels = {
   formatCost: (usd) => `$${usd.toFixed(2)}`,
   unknown: '—',
   free: '免费',
+  taskTitle: '生成任务',
+  formatStages: (done, total) => `${done} / ${total} 阶段`,
+  formatMoney: (currency, amount) => `${currency} ${amount.toFixed(2)}`,
+  taskUnknown: '任务详情在任务中心',
 }
 
 describe('design-lab fixtures driven by a LaneSnapshot (probe P6)', () => {

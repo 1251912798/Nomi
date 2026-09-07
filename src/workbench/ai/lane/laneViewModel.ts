@@ -21,6 +21,7 @@ import type {
   LanePart,
   LanePendingApproval,
   LaneProjection,
+  LaneQueuedMessage,
 } from '../../../../electron/shared/agentLane/laneContracts'
 import {
   LANE_APPROVAL_NOTE_TYPE,
@@ -32,6 +33,7 @@ import { resolveCapabilityAlias } from '../../../../electron/shared/agentCapabil
 import { actionFamilyForCapability } from '../v4/agentPanelV4ActionFamily'
 import type {
   ContextUsage,
+  TaskCardData,
   ToolReceipt,
   V4ActionFamily,
   V4FlowItem,
@@ -68,6 +70,17 @@ export interface LaneViewModelLabels {
    * 与旁边的 `unknown`（今天已经是活的 `agentPanelV4.contextUnknown`）走同一条路。
    */
   free: string
+  /** 任务卡的标题（「生成任务」）。卡上其余文字全是数字，所以只需要这一句。 */
+  taskTitle: string
+  /** 「{done} / {total} 阶段」。两个数分开传，是因为不同语言的量词位置不同。 */
+  formatStages(done: number, total: number): string
+  /**
+   * 金额。**币种由领域给**（`ProductionRun.budget.currency`），不是这一层猜的——
+   * 同一个项目里用 APIMart 和用 kie 结算的币种可以不同，印错的那个数看起来完全正常。
+   */
+  formatMoney(currency: string, amount: number): string
+  /** join 不到领域事实时卡上那句脚注（「任务详情在任务中心」）。 */
+  taskUnknown: string
 }
 
 /**
@@ -87,6 +100,16 @@ export interface LaneViewModel {
   items: readonly V4FlowItem[]
   usage: ContextUsage
   running: boolean
+  /**
+   * 排着队还没被送出去的插话（v4 的积木⑥「队列行」）。
+   *
+   * **它不进 `items`**：`items` 是已经发生的事，队列是**还没发生**的事。混进去的话，
+   * 用户会在时间线里看到一句他刚打的话排在模型的回答后面，像是模型已经读过它了——
+   * 而 `one-at-a-time` 下它要等到下一次请求才被吃进去。
+   *
+   * 原样带出 `entryId`：撤回那一条要靠它，而「队里最后一条」是猜（队列随时会被消费）。
+   */
+  queues: readonly LaneQueuedMessage[]
   /**
    * 有一张审批卡在等用户。**它不是流里的一行**——它住在 composer 上方那个介入槽里
    * （v4 定稿的积木 ⑤），所以它不进 `items`；进了就会在滚上去之后消失，而用户正等着答它。
@@ -146,6 +169,34 @@ function receiptFor(part: Extract<LanePart, { kind: 'tool-call' }>, labels: Lane
   }
 }
 
+/**
+ * 一张任务卡（方案 §2.2 G13）。
+ *
+ * **`facts` 缺席 = 只画标题 + 一句「详情在任务中心」**，与今天 `taskCardFor` 的裁决逐字相同：
+ * join 不到就不给状态，而不是给一个「排队中」——那会让用户以为有东西在跑，
+ * 而实际上我们只是没读到那条 run。
+ */
+function taskCardFor(part: Extract<LanePart, { kind: 'task' }>, labels: LaneViewModelLabels): TaskCardData {
+  const { facts } = part
+  if (!facts) return { title: labels.taskTitle, action: 'video', status: 'queued', footnote: labels.taskUnknown }
+  const money = (amount: number | undefined): string | undefined =>
+    amount !== undefined && facts.currency !== undefined ? labels.formatMoney(facts.currency, amount) : undefined
+  const spent = money(facts.spent)
+  const estimated = money(facts.estimated)
+  return {
+    title: labels.taskTitle,
+    action: 'video',
+    status: facts.status,
+    ...(facts.stagesTotal ? { trailing: labels.formatStages(facts.stagesDone ?? 0, facts.stagesTotal) } : {}),
+    ...(facts.progress === undefined ? {} : { progress: facts.progress }),
+    // 候选只带 id 过桥（K4），这一层把它们编成卡上那排序号。缩略图由卡自己按 id 去取。
+    ...(facts.candidateIds?.length
+      ? { candidates: facts.candidateIds.map((_, index) => ({ tag: String(index + 1) })) } : {}),
+    ...(estimated === undefined ? {} : { cost: estimated }),
+    ...(spent === undefined ? {} : { footnoteTrailing: spent }),
+  }
+}
+
 /** 收据七态里，「结果回来了」只有三种可能：成了 / 被闸拒了 / 坏了。 */
 function settledStatus(isError: boolean, denied: boolean): V4ToolStatus {
   if (!isError) return 'output-available'
@@ -178,6 +229,10 @@ export function laneViewModel(projection: LaneProjection, labels: LaneViewModelL
       if (part.noteType === LANE_APPROVAL_NOTE_TYPE && isLaneApprovalNote(part.data) && laneApprovalWasRefused(part.data)) {
         denials.set(part.data.toolCallId, part.data)
       }
+      continue
+    }
+    if (part.kind === 'task') {
+      items.push({ kind: 'task', task: taskCardFor(part, labels) })
       continue
     }
     if (part.kind === 'user') {
@@ -223,6 +278,8 @@ export function laneViewModel(projection: LaneProjection, labels: LaneViewModelL
   return {
     items,
     running: projection.running,
+    // 队列原样带出去：这一层不合并、不去重、不改顺序——pi 的 FIFO 就是用户打字的顺序。
+    queues: projection.queues,
     ...(projection.pending ? { pending: projection.pending } : {}),
     usage: {
       // 环的分子是「现在上下文里装了多少」，不是累计用量——累计会画出一个 300% 的环。

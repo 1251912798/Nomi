@@ -9,6 +9,7 @@
 // 早先那版把三档做成中文字面量 union（'每步问' | '自动改' | '全自动'），
 // 既违反 R15（可见文字必须走 i18n），又凭空多了一份要和合同对齐的词表。
 import type { ProjectAgentApprovalPolicy } from '../../../../electron/shared/projectAgentContracts'
+import type { LaneTaskStatus } from '../../../../electron/shared/agentLane/laneContracts'
 
 /** AI Elements Tool 的七态协议（vendor/aiElementsContract.ts 是它的外部参照）。 */
 export type V4ToolStatus =
@@ -23,8 +24,16 @@ export type V4ToolStatus =
 /** 助手文本三态（定稿 Vocabulary 板 ②）：流式光标 · 完成（hover 出动作）· 已中断。 */
 export type V4AssistantStatus = 'streaming' | 'complete' | 'interrupted'
 
-/** 任务卡五态（定稿 Vocabulary 板 ④）。 */
-export type V4TaskStatus = 'queued' | 'running' | 'complete' | 'failed' | 'stopped'
+/**
+ * 任务卡五态（定稿 Vocabulary 板 ④）。**owner 在中立契约层**，这里只是它在 v4 词表里的名字。
+ *
+ * 为什么 owner 在那边而不是这边：这五个词现在是**跨进程**的——主进程从 ProductionRun 领域
+ * join 出来的事实里就带着它（`LaneTaskFacts.status`），渲染层照着画。两侧各写一份字面量
+ * union，就得再写一张两份之间的映射表，而那张表正是 R14.1 要横扫的「同一语义两份定义」；
+ * 而且 `electron/` 不许 import `src/`（`check:boundaries`），所以能容下这个 owner 的只有
+ * `electron/shared/`。名字留在这里，是因为 v4 的组件按 `V4*` 这套词表读。
+ */
+export type V4TaskStatus = LaneTaskStatus
 
 /** 介入槽的内容体（定稿 Vocabulary 板 ⑤）：一个组件，kind 不同。 */
 export type V4InterventionKind =

@@ -16,9 +16,9 @@ import { BACKGROUND_CONTEXT, type Context } from '@earendil-works/pi-agent-core/
 import { createModels } from '@earendil-works/pi-ai';
 import { createNomiProvider } from '../harness/runtime/pi/model.mjs';
 import {
-  LANE_APPROVAL_NOTE_TYPE, LANE_UI_NOTE_PREFIX, laneNoteEntersModelContext,
-  type LaneApprovalNote, type LaneCommand, type LaneCommandOutcome, type LaneHandle,
-  type LanePendingApproval, type LaneProjection,
+  LANE_APPROVAL_NOTE_TYPE, LANE_TASK_NOTE_TYPE, LANE_UI_NOTE_PREFIX, laneNoteEntersModelContext,
+  type LaneApprovalNote, type LaneCancelQueuedResult, type LaneCommand, type LaneCommandOutcome,
+  type LaneHandle, type LanePendingApproval, type LaneProjection,
 } from '../shared/agentLane/laneContracts.js';
 import { createLaneApprovalGate } from './laneApprovalGate.js';
 import type { OpenLane, OpenLaneOptions } from './laneRuntimePort.js';
@@ -107,7 +107,7 @@ const PART_TYPE_BY_EVENT: Readonly<Record<string, string>> = {
 export const openLane: OpenLane = async (options: OpenLaneOptions): Promise<LaneHandleWithObservations> => {
   const context: Context = BACKGROUND_CONTEXT;
   const laneName = options.laneName ?? 'main';
-  const { session, sessionId, release } = await openLaneSession(options, context);
+  const { session, sessionId, release } = await openLaneSession({ ...options, laneName }, context);
   // 会话一旦打开，这个进程就是它**唯一**的持有者。装配到一半失败（模型配置写错、
   // 工具名重复、schema 门岗报红）而不交还持有权，用户下一次打开同一条历史会撞上
   // 「已经有人开着」——而那个人是一个早就失败退出的调用。
@@ -136,7 +136,14 @@ export const openLane: OpenLane = async (options: OpenLaneOptions): Promise<Lane
     session, models, model, systemPrompt, tools,
     activeToolNames: tools.map((tool) => tool.name),
     toolExecution: 'sequential',
-    entryProjectors: uiOnlyProjectors(LANE_APPROVAL_NOTE_TYPE),
+    // **一次只吃一句**（G-24）。pi 的默认是 `"all"`（`harness/runtime/harness.js:44-45`）：
+    // 用户连打三句，下一次模型请求会把三句**一起**注入同一轮。在写码场景那是效率；
+    // 在创作场景那是灾难——三条指令的效果搅在同一批改动里，用户看不出哪一句造成了哪一处，
+    // 也没法单独撤销其中一句。`one-at-a-time` 让「一句话 → 一轮 → 一次可撤销的结果」
+    // 成为结构事实。这是领域约束（可撤销的创作），不是排队口味。
+    steeringMode: 'one-at-a-time',
+    followUpMode: 'one-at-a-time',
+    entryProjectors: uiOnlyProjectors(LANE_APPROVAL_NOTE_TYPE, LANE_TASK_NOTE_TYPE),
   }, context);
   const lane: AgentLane = await harness.lane(laneName, context);
 
@@ -146,10 +153,10 @@ export const openLane: OpenLane = async (options: OpenLaneOptions): Promise<Lane
   const watch = await lane.watch(context);
   let snapshot: LaneSnapshot = watch.snapshot;
   let pending: LanePendingApproval | undefined;
-  let projection: LaneProjection = projectLaneSnapshot(snapshot, modelFacts, pending);
+  let projection: LaneProjection = projectLaneSnapshot(snapshot, modelFacts, pending, options.tasks);
   const listeners = new Set<(next: LaneProjection) => void>();
   const publish = () => {
-    projection = projectLaneSnapshot(snapshot, modelFacts, pending);
+    projection = projectLaneSnapshot(snapshot, modelFacts, pending, options.tasks);
     for (const listener of listeners) listener(projection);
   };
   watch.start((event, eventContext) => {
@@ -254,10 +261,41 @@ export const openLane: OpenLane = async (options: OpenLaneOptions): Promise<Lane
       return () => { listeners.delete(listener); };
     },
     orderObservations: () => observations,
+    // 领域侧记一张任务卡。**只写引用**（`LaneTaskNote` 就两个 id），会动的数字每次投影时
+    // 现去领域读——写进转录的那一刻它就冻住了，而任务还在跑。
+    appendTaskNote: async (note) => {
+      await lane.appendCustomEntry(LANE_TASK_NOTE_TYPE, { ...note }, context);
+    },
+    // 领域说它那边的任务变了。转录一个字没动，卡却该换个样子——这正是「引用而不复制」
+    // 想要的效果，代价就是需要有人来说这一句。
+    refreshTasks: () => publish(),
     execute: async (command: LaneCommand): Promise<LaneCommandOutcome> => {
       if (command.kind === 'prompt') {
         await lane.prompt(command.text, undefined, context);
         return {};
+      }
+      // 插话两条。**回值带 pi 铸的 `entryId`**：没有它，用户点「撤回」时面板只能靠
+      // 「队里最后那条」去猜，而队列随时会被消费——猜出来的那条可能是别人的话。
+      if (command.kind === 'steer' || command.kind === 'follow-up') {
+        const queued = command.kind === 'steer'
+          ? await lane.steer(command.text, undefined, context)
+          : await lane.followUp(command.text, undefined, context);
+        // 错误只报 `_tag`（`Closed` / `InvalidMessage`），不报 `message`：那句话是 pi 写给
+        // 开发者的，直接弹给用户等于把内部词表当文案用。人话在调用方按 `_tag` 选。
+        if (!queued.ok) throw new Error(`This agent lane refused the message: ${queued.error._tag}`);
+        return { queuedEntryId: queued.value.entryId };
+      }
+      // 撤回一条排队的话。**三态原样交出去**，不折成一个布尔：`already_consumed`
+      // （刚被吃进去了）和 `cancelled`（没送出去）在用户那里是两件相反的事。
+      if (command.kind === 'cancel-queued') {
+        const cancelled = await lane.cancelQueued(command.entryId, context);
+        if (!cancelled.ok) throw new Error(`This agent lane could not cancel that message: ${cancelled.error._tag}`);
+        return { cancelQueued: cancelled.value.kind as LaneCancelQueuedResult };
+      }
+      // lane 的增删切在 `laneWorkspace` 那一层：它才知道这个项目里还有哪些对话。
+      // 一条 lane 的宿主对隔壁一无所知，**这是它该有的样子**——知道了就会长出第二个所有者。
+      if (command.kind === 'lane-select' || command.kind === 'lane-create' || command.kind === 'lane-delete') {
+        throw new Error(`A single agent lane cannot handle ${command.kind}; that command belongs to the workspace`);
       }
       if (command.kind === 'approval') {
         if (!gate) throw new Error('This agent lane has no approval gate');

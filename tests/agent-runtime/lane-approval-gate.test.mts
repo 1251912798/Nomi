@@ -200,6 +200,11 @@ test('G3b ③ · 崩溃重启：不复活确认卡，那次调用被取消，模
     fileURLToPath(new URL('./stage3-probe-crash-child.mjs', import.meta.url)),
     fixture.projectDir, fixture.http.baseURL,
   ], { stdio: ['ignore', 'pipe', 'inherit'] });
+  // 子进程是**故意永不退出**的（它在等着被杀）。下面任何一条断言先红，`child.kill` 就走不到，
+  // 于是 runner 永远等不到这个文件结束——一次红会变成一次挂死，而挂死连失败原因都印不出来
+  // （2026-09-08 实测：整套跑时这条红了，日志停在这一行，11 分钟没有下文）。
+  // 兜底放在 `t.after` 里：杀两次是幂等的，杀不掉才是问题。
+  t.after(() => { child.kill('SIGKILL'); });
   let stdout = '';
   const parked = new Promise<string>((resolve) => {
     child.stdout.setEncoding('utf8');
