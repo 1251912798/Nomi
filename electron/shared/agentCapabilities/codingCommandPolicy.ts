@@ -233,11 +233,11 @@ function extractAbsolutePaths(command: string, projectDir: string): string[] {
   );
   const masked = roots.reduce((text, root) => {
     const escaped = root.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    return text.replace(new RegExp(`${escaped}(?=[/\\s"\';|&)]|$)`, "g"), "PROJECTROOT");
+    return text.replace(new RegExp(`${escaped}(?=[/\\s"';|&)]|$)`, "g"), "PROJECTROOT");
   }, command);
   const found: string[] = [];
   // `~/x`、`/x`。前面必须是行首、空白、引号或 `=`，避免把 `a/b` 里的斜杠误当路径。
-  for (const match of masked.matchAll(/(^|[\s"\'=(:])(~\/[^\s"\';|&)]*|\/[^\s"\';|&)]*)/g)) {
+  for (const match of masked.matchAll(/(^|[\s"'=(:])(~\/[^\s"';|&)]*|\/[^\s"';|&)]*)/g)) {
     const candidate = match[2];
     if (candidate) found.push(candidate);
   }
@@ -302,7 +302,7 @@ export function suggestCommandPattern(command: string): string | null {
   // 二级子命令值得进模式的那几个包管理器/VCS：`npm run *` 比 `npm *` 精确得多，
   // 而 `npm *` 会把 `npm publish` 也盖进去（那条在硬清单里，但模式不该比硬清单还宽）。
   const TWO_TOKEN_HEADS = new Set(["npm", "pnpm", "yarn", "git", "cargo", "go", "docker", "gh", "uv", "poetry"]);
-  if (second && TWO_TOKEN_HEADS.has(head) && /^[\w.\-]+$/.test(second)) {
+  if (second && TWO_TOKEN_HEADS.has(head) && /^[\w.-]+$/.test(second)) {
     return `${head} ${second} *`;
   }
   return `${head} *`;

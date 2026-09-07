@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest'
 import { projectLaneSnapshot } from '../../../../electron/agentLane/laneProjection.mjs'
 import { laneViewModel, type LaneViewModelLabels } from '../../../workbench/ai/lane/laneViewModel'
 import {
+  LANE_FIXTURE_FACTS,
   laneDrivenReceipt,
   laneSnapshotToolDenied,
   laneSnapshotToolDone,
@@ -17,12 +18,16 @@ const labels: LaneViewModelLabels = {
   thinkingLabel: '正在想…',
   formatTokens: (value) => String(value),
   formatCost: (usd) => `$${usd.toFixed(2)}`,
+  // PR #605 起三态各有各的文案：`unknown` 是「这一项存在但拿不到」的占位，
+  // `free` 是「这个模型不按 token 计费」。两者都不是 0，也不是让整行消失。
+  unknown: '—',
+  free: '免费',
 }
 
 describe('design-lab fixtures driven by a LaneSnapshot (probe P6)', () => {
   it('empty: an empty transcript projects to no items, not running, and no invented ceiling/cost', () => {
     const empty = { ...laneSnapshotToolRunning(), transcript: [], tipId: null, operation: null }
-    const model = laneViewModel(projectLaneSnapshot(empty), labels)
+    const model = laneViewModel(projectLaneSnapshot(empty, LANE_FIXTURE_FACTS), labels)
     expect(model.items).toEqual([])
     expect(model.running).toBe(false)
     expect(model.usage.max).toBeUndefined()
