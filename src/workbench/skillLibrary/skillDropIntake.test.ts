@@ -46,6 +46,19 @@ describe('collectFolderFiles', () => {
     expect(skipped).toEqual(['logo.png'])
   })
 
+  // 与 zip 那条路径同一份判据（parseSkillImport.isImportableTextPath）：`scripts/x.md`
+  // 此前能穿过渲染层、再被主进程整包拒掉，而 `scripts/x.sh` 只是被跳过——同一个目录两种结局。
+  it('可执行区与 zip 路径同口径：跳过而不是让整包被拒', async () => {
+    const root = dir('audit-code', [
+      file('SKILL.md', SKILL_MD),
+      dir('scripts', [file('run.md', '#!/bin/sh')]),
+      dir('bin', [file('tool.txt', 'x')]),
+    ])
+    const { files, skipped } = await collectFolderFiles(root)
+    expect(Object.keys(files)).toEqual(['SKILL.md'])
+    expect(skipped.sort()).toEqual(['bin/tool.txt', 'scripts/run.md'])
+  })
+
   it('忽略隐藏文件与 macOS 打包残留（不当作「跳过的内容」惊扰用户）', async () => {
     const root = dir('s', [file('SKILL.md', SKILL_MD), file('.DS_Store', 'x'), dir('__MACOSX', [file('a.md', 'x')])])
     const { files, skipped } = await collectFolderFiles(root)
