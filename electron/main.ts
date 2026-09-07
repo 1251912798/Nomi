@@ -825,4 +825,12 @@ app.on("before-quit", () => {
   } catch (error) {
     logError("export", "abort-on-quit-failed", error);
   }
+  // 同理：深度视频节点的 ffmpeg 编码器也是子进程，且它的临时目录里躺着整批抽出来的帧。
+  // require 而不是 import：这条模块本来就靠动态 import 留在启动路径之外，退出时才第一次碰它。
+  try {
+    const { disposeAllVideoDepthJobs } = require("./video/depthVideoJob") as typeof import("./video/depthVideoJob");
+    disposeAllVideoDepthJobs();
+  } catch (error) {
+    logError("video-depth", "dispose-on-quit-failed", error);
+  }
 });
