@@ -260,6 +260,18 @@ export default defineConfig(async ({ command, mode }: ConfigEnv): Promise<UserCo
         sourcemap: false,
       },
       include: [
+        // 设计实验室的 v4 收据格由**真投影**驱动（`laneDrivenFixtures.ts` → `laneProjection.mts`），
+        // 而三行落地之后那份投影运行时 import 了 `@earendil-works/pi-ai` 的
+        // `getSupportedThinkingLevels`。pi-ai 转手引的 `partial-json@0.1.7` 是一个没有
+        // `type` 字段、`exports` 也没分 require/import 的 CJS 包——浏览器按 ESM 解它，
+        // `parse` 这个具名导出静态分析不出来，整页在 `__designLabReady` 之前就 SyntaxError
+        // 挂掉（症状长得像「预览服务器不可达」，而服务器其实好好的）。
+        // 让 esbuild 预打包它，CJS 就被转成真 ESM 了。两条都要：pi-ai 自己不预打包的话，
+        // 它那句裸 `import { parse } from "partial-json"` 仍然会被原样服务出去；
+        // `a > b` 是 vite 给「不在根 node_modules 里的间接依赖」的写法（pnpm 严格布局下
+        // 单写 'partial-json' 会 Failed to resolve dependency）。
+        '@earendil-works/pi-ai',
+        '@earendil-works/pi-ai > partial-json',
         'react',
         'react/jsx-runtime',
         'react/jsx-dev-runtime',
