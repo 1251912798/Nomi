@@ -357,3 +357,26 @@ export interface LaneHandle {
   execute(command: LaneCommand): Promise<LaneCommandOutcome>
   close(): Promise<void>
 }
+
+/**
+ * 一条技能在 lane 眼里的样子（方案 §3.4）。
+ *
+ * **它住在中立层，不住在 ESM 岛上**，理由和这个文件顶上那句话一样：`laneRuntimePort.ts`
+ * 是 CJS 那一半，它要在 `OpenLaneOptions` 上写出这个字段；而把类型定义留在
+ * `laneSkillIndex.mts` 上会把整个岛地拖进 CJS 工程——`agent-runtime-wiring.test.mjs:84`
+ * 那条断言正是为此存在的，2026-09-07 它当场红了一次（type-only import 也算「看见」）。
+ *
+ * 正文**不在这里**：索引只带 name/description/location，模型按 description 自己决定
+ * 去 `read` 哪一条（自动触发就是 description，没有宿主侧分类器）。
+ */
+export interface LaneSkillIndexEntry {
+  /** frontmatter 的 `name`。模型看见的标识，也是 `/skill` chip 引用的那个。 */
+  readonly name: string
+  readonly description: string
+  /** SKILL.md 的**绝对**路径——coding 工具的 operations 插槽只收绝对路径。 */
+  readonly filePath: string
+  /** `disable-model-invocation: true` 的技能不进索引，只能由 `/skill` chip 显式送。 */
+  readonly disableModelInvocation: boolean
+  /** 这个技能要跑脚本吗（自带 `scripts/`/`bin/`/`hooks/`，或 frontmatter 写了 `tools: coding`）。 */
+  readonly requiresCodingTools: boolean
+}

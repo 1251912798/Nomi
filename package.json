@@ -206,6 +206,7 @@
     "@ai-sdk/anthropic": "^1.2.12",
     "@ai-sdk/openai": "^1",
     "@ai-sdk/openai-compatible": "^0.2.16",
+    "@anthropic-ai/sandbox-runtime": "0.0.75",
     "@earendil-works/pi-agent-core": "0.85.1",
     "@earendil-works/pi-ai": "0.85.1",
     "@earendil-works/pi-coding-agent": "0.85.1",
