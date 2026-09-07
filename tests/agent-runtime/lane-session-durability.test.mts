@@ -146,8 +146,12 @@ test('G-02 · a tool failure throws, so pi records an errored result instead of 
   const failing: LaneToolDescriptor = {
     name: 'always_fails',
     description: 'A tool that always reports a failure, used to prove failures are not recorded as successes.',
+    promptSnippet: 'always report a failure.',
     schema: z.object({}).strict(),
-    execute: async () => ({ ok: false, message }),
+    examples: [{ when: 'Call it with no arguments:', arguments: {} }],
+    // 阶段 2 起失败带的是结构（code / message / nextAction），不是一句 `message`——
+    // 这里只取 `message` 那一段做断言，其余字段由 `lane-tool-contract.test.mts` 覆盖。
+    execute: async () => ({ ok: false, failure: { code: 'document_locked', message, nextAction: 'Ask the user to close the other window.' } }),
   };
   const succeeding: LaneToolDescriptor = { ...failing, name: 'always_succeeds', execute: async () => ({ ok: true, text: message }) };
 

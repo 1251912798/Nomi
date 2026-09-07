@@ -13,6 +13,7 @@
 // `toModelVisibleSchema` 的「信息不丢」门岗承担：生成的 schema 不弱于 zod。
 import { formatSize, truncateHead, type AgentHarnessTool, type AgentToolResult } from '@earendil-works/pi-agent-core';
 import { LANE_MODEL_OUTPUT_MAX_BYTES, LANE_MODEL_OUTPUT_MAX_LINES } from '../shared/agentLane/laneContracts.js';
+import { laneToolModelDescription, renderLaneToolFailure } from '../shared/agentLane/laneToolContract.js';
 import type { LaneToolDescriptor } from './laneRuntimePort.js';
 import { toModelVisibleSchema } from './laneToolSchema.mjs';
 
@@ -94,7 +95,9 @@ export function createLaneTools(descriptors: readonly LaneToolDescriptor[]): Age
     const tool: AgentHarnessTool<undefined> = {
       name: descriptor.name,
       label: descriptor.name,
-      description: descriptor.description,
+      // 模型读到的是「说明 + 示例块」。示例的 token 成本远低于一次失败重试——
+      // #547 的数据说零示例的工具在复杂参数上就是填不对（35/35 零示例）。
+      description: laneToolModelDescription(descriptor),
       parameters: toModelVisibleSchema(descriptor.schema, { toolName: descriptor.name }),
       executionMode: 'sequential',
       // 效果不可安全重放：一次文稿写入重放两遍就是写了两遍。pi 拿这个字段决定
@@ -107,7 +110,12 @@ export function createLaneTools(descriptors: readonly LaneToolDescriptor[]): Age
         const signal = context.abortSignal ?? new AbortController().signal;
         signal.throwIfAborted();
         const outcome = await descriptor.execute(params, { toolCallId, signal });
-        if (!outcome.ok) throw new LaneToolFailure(outcome.message);
+        // **必须 throw，不能 return**（G-02）。上游文档原话：*"Returning a value never sets
+        // the error flag regardless of what properties you include in the return object."*
+        // return 一个「失败对象」的后果是 pi 记 `isError: false`——面板画绿收据、模型收到
+        // 一条「成功」的工具结果里面装着错误。那正是「文字说的和下面那堆红字对不上」的
+        // 机器成因之一。正文由**唯一**的渲染点生成，内外两个投影同源。
+        if (!outcome.ok) throw new LaneToolFailure(renderLaneToolFailure(outcome.failure));
         const shown = truncateForModel(outcome.text);
         const result: AgentToolResult<unknown> = {
           content: [{ type: 'text', text: shown.text }],

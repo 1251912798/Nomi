@@ -8,36 +8,77 @@
 // 把一轮回复压成 `text: string` + `toolCalls[]` 两堆（`runtimePort.ts:122-133`），
 // 「先说什么后做什么」在数据里就不存在了；这道门送出去的是 `LaneProjection`，
 // 一串**有序的段**，顺序是记下来的不是推出来的。
-import type { ZodTypeAny } from 'zod'
 import type { LaneHandle, LaneProjection } from '../shared/agentLane/laneContracts'
+import { LaneDomainFailure } from '../shared/agentLane/laneToolContract'
+import type { LaneToolFailureShape, LaneToolSpec } from '../shared/agentLane/laneToolContract'
 import type { NomiModelConfig } from '../harness/runtime/runtimePort'
 
 export type { LaneHandle, LaneProjection }
+export type { LaneToolFailureShape, LaneToolSpec }
+export { LaneDomainFailure }
 
-/** 工具执行的结果。宿主域执行完把人话结果交回来，pi 负责把它变成模型看到的 tool result。 */
+/**
+ * 工具执行的结果。宿主域执行完把人话结果交回来，pi 负责把它变成模型看到的 tool result。
+ *
+ * **失败那一支带的是结构，不是一句 `message`**（方案 §3.3）。理由是真机抓到的那段：
+ * 模型收到的干脆就是错误码字符串本身（`canvasWriteTransportAdapters.ts:69-75`：
+ * `message: code`）——`[error] E_DENIED` 对一个要自纠的模型等于什么都没说。
+ * 同一个仓库里，**外部 MCP 客户端**拿到的却是带 `nextAction` 的可行动错误
+ * （`capabilityCore/dispatcher.ts:557-565`）。内外同源就是把这条不对等消掉：
+ * 一个 `LaneToolFailureShape`，两个投影。
+ */
 export type LaneToolOutcome =
   | { ok: true; text: string; details?: unknown }
-  | { ok: false; message: string }
+  | { ok: false; failure: LaneToolFailureShape }
 
-export interface LaneToolDescriptor {
-  name: string
-  /** 模型看到的说明。工具契约自己写，不是这里编的。 */
-  description: string
-  /**
-   * 模型真正要填的那一部分语义输入。**由别名决定的字段已经剥掉**——
-   * `read_full_text` 的 `scope` 不在这里，因为别名已经把它定死了；
-   * 让模型在参数里再选一次是 #547 里 0% 那一族的形状（一个工具塞多个分支）。
-   */
-  schema: ZodTypeAny
-  /**
-   * pi 官方的容忍钩子（`pi-agent-core/dist/types.d.ts:347`）。
-   *
-   * 为什么容忍必须落在这里、而不是闸层：探针报告 §4.2 臂 A 实测——**schema 不合法的参数
-   * 根本走不到 `before_tool`**，pi 的校验器先把它拦下并自己生成了错误回给模型。
-   * 所以「模型把数组写成了 JSON 字符串」这类畸形，只能在校验**之前**捏合。
-   */
-  prepareArguments?(args: unknown): unknown
+/**
+ * 一个可执行的模型可见工具 = **说明书那一半**（`LaneToolSpec`：名字、三条描述通道、
+ * schema、示例、`prepareArguments`）+ **执行那一半**。
+ *
+ * 两半分开的理由写在 `../shared/agentLane/laneToolContract.ts` 的头部：门岗、系统提示词
+ * 渲染、以及「模型第一次就填对了吗」的评测，三者只需要说明书那一半，而执行那一半要一个
+ * 活着的领域 port。焊在一起的结果就是想扫一眼「模型看到了什么」都得先起半个 App——
+ * 于是没人扫，于是 `z.record(z.unknown())` 活了半年。
+ */
+export type LaneToolDescriptor = LaneToolSpec & {
   execute(args: unknown, context: { toolCallId: string; signal: AbortSignal }): Promise<LaneToolOutcome>
+}
+
+/**
+ * 说明书 + 执行 → 一个可执行工具。**绑定是唯一的组装点**，别在别处手拼对象字面量——
+ * 因为这里还顺手做了一件每个工具都必须有、而每个工具都会忘的事：
+ *
+ * **把任何漏网的领域异常兜成一个带 `nextAction` 的失败。** 不兜的后果不是崩溃，
+ * 是领域异常的 `message`（往往是 `[error] E_DENIED` 这种给日志看的东西）原样变成模型
+ * 看到的 tool result，而模型据此没法自纠，只会把同一个调用再发一遍——用户撞到的
+ * 「连续 6 次被自己拒收」就是这么来的。放在每个 `execute` 里靠人记得写，漏掉的那个
+ * **不会报错**（R28：防线建在最早能拦住的那层）。
+ */
+export function bindLaneTool(
+  spec: LaneToolSpec,
+  execute: LaneToolDescriptor['execute'],
+): LaneToolDescriptor {
+  return {
+    ...spec,
+    execute: async (args, context) => {
+      try {
+        return await execute(args, context)
+      } catch (cause) {
+        if (cause instanceof LaneDomainFailure) return { ok: false, failure: cause.failure }
+        // 中断不是失败：它是用户按了停，兜成一条「下一步怎么做」反而会让模型接着试。
+        if (context.signal.aborted) throw cause
+        return {
+          ok: false,
+          failure: {
+            code: 'tool_execution_failed',
+            message: `${spec.name} could not complete: ${cause instanceof Error ? cause.message : String(cause)}`,
+            nextAction: 'Re-read the current state with the matching read tool, then retry with values taken from what you just read. '
+              + 'Do not resend the identical call — it will fail the same way.',
+          },
+        }
+      }
+    },
+  }
 }
 
 export interface LaneToolGateRequest {
