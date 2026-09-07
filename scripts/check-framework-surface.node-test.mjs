@@ -116,6 +116,14 @@ test('红⑥：登记 unused / upstream-default，代码里其实在赋值', () 
   assert.match(upstream.errors.join('\n'), /代码里却在赋值/)
 })
 
+test('红⑦之二：debt 其实已经还了 —— 债还了要销账（棘轮只减不增）', () => {
+  const { errors } = run(
+    { a: { verdict: 'debt', due: '2026-12-01', owner: '阶段 3a', why: '还没裁' } },
+    { sites: { a: dynamic('config.a ?? false') } },
+  )
+  assert.match(errors.join('\n'), /这条债已经还了/)
+})
+
 test('红⑦：constant 其实是随输入变的 —— 裁决落后于代码', () => {
   const { errors } = run(
     { a: { verdict: 'constant', value: 'true', reason: '领域约束：必须恒真' } },

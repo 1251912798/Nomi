@@ -358,16 +358,12 @@
                     "at": "electron/harness/runtime/pi/model.mts:77"
                   },
                   "reasoning": {
-                    "verdict": "debt",
-                    "due": "2026-09-21",
-                    "owner": "阶段 3b · 模型档案接线",
-                    "why": "对所有模型硬写 false（model.mts:77），和 executionMode 同一族：pi 逐模型可选，我们一刀切。Nomi 的模型档案本来就知道哪些模型带思考档位，这一格该由档案派生。本 PR 不动 model.mts，先记债。"
+                    "verdict": "derived",
+                    "at": "electron/harness/runtime/pi/model.mts:122"
                   },
                   "thinkingLevelMap": {
-                    "verdict": "debt",
-                    "due": "2026-09-21",
-                    "owner": "阶段 3b · 模型档案接线",
-                    "why": "reasoning 恒 false 的直接后果：思考档位到不了 provider。两格同一个根因，必须一起裁。"
+                    "verdict": "derived",
+                    "at": "electron/harness/runtime/pi/model.mts:127"
                   },
                   "input": {
                     "verdict": "constant",
@@ -375,9 +371,8 @@
                     "reason": "这条通道只接文本与图片：音频/视频产物在 Nomi 走生成画布的产物链，不进模型对话的输入位（进了就等于把大文件塞进转录，冷恢复时要重放整段）。"
                   },
                   "cost": {
-                    "verdict": "constant",
-                    "value": "{ input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }",
-                    "reason": "记账的真相源在 Nomi 侧（花费收据要和供应商账单对得上，且要按 vendor+modelKey 分家记）。给 pi 一份非零价格会让同一笔花费出现两个数字，而用户看到的那个必须是收据那份。填 0 是明确的「这一路不记账」，不是没填。"
+                    "verdict": "derived",
+                    "at": "electron/harness/runtime/pi/model.mts:128"
                   },
                   "contextWindow": {
                     "verdict": "derived",

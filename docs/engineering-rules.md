@@ -739,9 +739,15 @@ pnpm run delivery:verify-merged -- --expected-sha <merge-commit-sha>
 - **框架无关是硬要求**（2026-09-07 用户原话：「我希望这个事要成为通用的流程和规则，我们之后可能不是 pi，那之后是其他怎么办？」）。判据与抽取器里没有一个 pi 的符号；首批登记两条正是为了证明这一点：pi（`AgentHarnessTool` / `AgentHarnessOptions` / `HookMap` / `Model`，55 格）与 `@xyflow/react`（`ReactFlowProps`，122 格）。**接任何新框架没有这张表 = 直接红。**
 - **随版本升级自动复核**：`.d.ts` 变了字段就变了，门岗每次都在比，不靠谁记得重跑（和 R29 上游对齐检查同一个 owner，不另起雷达）。
 
-**R17 红证**（`scripts/check-framework-surface.node-test.mjs`，18 条）：升级加字段红、`derived` 却是字面量红、`derived` 却没人赋值红、陈旧登记红、`debt` 过期红、`constant` 值漂移红、`unused` 其实在用红、`constant` 其实随输入变红、抽不出字段红；外加必须证明**不会**红的一条——未到期的 `debt` 只出 warning。
+- **裁决只减不增**：一格登记成 `debt`、后来代码里真的接上了，门岗会红并要求把它改成 `derived`——债还了不销账就是登记漂移，而「待裁」的黄字读起来和真欠着一模一样。同理，`constant` 变成派生、`unused` 其实在用，都红。
 
-**第一批扫出来的东西**（除起因那条之外，都是门岗自己找到的）：`Model.reasoning` 对所有模型硬写 `false`（和 `executionMode` 同一族的一刀切）；`ReactFlowProps.minZoom/maxZoom` 没设，而 `GenerationCanvasReactFlow.tsx:353` 手写 `Math.max(0.2, …)` 钳缩放——按钮缩放到 0.2、滚轮缩放只到 0.5，**同一条上下限两个值**（R14.1）；`ariaLabelConfig` 是 React Flow 自带的英文 a11y 文案，`check:i18n` 扫不到它（它只扫我们的源码）。
+**R17 红证**（`scripts/check-framework-surface.node-test.mjs`，19 条）：升级加字段红、`derived` 却是字面量红、`derived` 却没人赋值红、陈旧登记红、`debt` 过期红、`debt` 已还却没销账红、`constant` 值漂移红、`unused` 其实在用红、`constant` 其实随输入变红、抽不出字段红；外加必须证明**不会**红的一条——未到期的 `debt` 只出 warning。
+
+**第一批扫出来的东西**（除起因那条之外，都是门岗自己找到的）：
+
+- `ReactFlowProps.minZoom/maxZoom` 没设，而 `GenerationCanvasReactFlow.tsx:353` 手写 `Math.min(3, Math.max(0.2, …))` 钳缩放——按钮缩放能到 0.2、滚轮缩放只到 0.5（内核默认 0.5/2），**同一条上下限两个值**（R14.1）；
+- `ariaLabelConfig` 是 React Flow 自带的英文 a11y 文案，`check:i18n` 扫不到它（它只扫我们的源码）；`colorMode` 恒 `'light'` 而 Nomi 是光/暗双模式；`onError` 的内核报错一条都没进日志体系；
+- **装门岗当天就抓到一次真漂移**：本分支整合最新 `main` 之后，`Model.cost` 从 `{0,0,0,0}` 变成了 `modelCost(config)`、`reasoning` 变成了 `config.reasoning ?? false`、`thinkingLevelMap` 接上了——三格全部当场报红逼着改裁决。这三格的接线不在本 PR 里，是别的分支合进来的：**门岗替我们看见了另一个人的改动把哪些结论作废了**，而这正是文档级交付物永远做不到的事。
 
 **与 R20 / R5 / R6 的分工**（三条常被搞混）：
 

@@ -282,6 +282,13 @@ function checkAgainstCode({ label, verdict, sites }) {
       }
     }
   }
+  if (verdict.verdict === 'debt' && dynamic.length > 0) {
+    // 债还了要从账上销掉（棘轮只减不增，和 framework-boundary 的债基线同一条规矩）。
+    // 不加这条的话，一格早已接好的字段会顶着「待裁」的黄一直挂到到期日，
+    // 而黄字读起来和真欠着一模一样——那正是「登记漂移」最容易活下来的地方。
+    errors.push(`${label}: 登记为 debt，代码里其实已经派生了：${renderSites(dynamic)}`
+      + ' —— 这条债已经还了，把裁决改成 derived（债还了不销账 = 登记漂移）')
+  }
   if ((verdict.verdict === 'unused' || verdict.verdict === 'upstream-default') && sites.length > 0) {
     errors.push(`${label}: 登记为 ${verdict.verdict}（不接这颗开关），代码里却在赋值：${renderSites(sites)}`
       + ' —— 陈旧裁决，改判 derived / constant')
