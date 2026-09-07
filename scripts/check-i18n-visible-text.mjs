@@ -219,7 +219,6 @@ const ELECTRON_EXCLUDED_PREFIXES = [
 ]
 const ELECTRON_EXCLUDED_FILES = new Set([
   'electron/ai/composeAgentSystemPrompt.ts', // agent system prompt 拼装,喂模型
-  'electron/skills/playbookOrchestrator.ts', // playbook 阶段定义校验(阶段 id 重复/循环依赖),开发者写档时命中,非终端用户
   // 逐条排除、不整目录排——`electron/agentLane/` 到阶段 4 会变成用户可达的通路,
   // 那时目录级豁免会把真的漏译一起放过去。下面三条各自的理由:
   // 见上面 EXCLUDED_FILES 里同一条的理由(模型可见工具的示例参数,不是界面文案)。

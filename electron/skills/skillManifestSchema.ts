@@ -50,9 +50,9 @@ export const skillRequestedCapabilitySchema = z.string().refine(
  */
 export const skillStageModelPrefSchema = z
   .object({
-    /** 能力类别：text / image / video（机读，决定路由到哪类模型）。 */
+    /** 能力类别：text / image / video，驱动供应商模态 chip。 */
     kind: skillProviderKindSchema,
-    /** 软提示：模型家族，如 "seedance"（跨 vendor 通用；缺省=该 kind 任意可用模型）。 */
+    /** @deprecated 兼容已有技能包；无运行时模型家族选择作用。 */
     family: z.string().min(1).optional(),
   })
   .strict();
@@ -64,9 +64,13 @@ export type SkillStageModelPref = z.infer<typeof skillStageModelPrefSchema>;
  */
 export type SkillStage = {
   id: string;
+  /** @deprecated 兼容 UI 标签及备用说明元数据；无运行时规划作用。 */
   goal: string;
+  /** @deprecated 兼容已有技能包；无运行时工具授权作用。 */
   tools: string[];
+  /** @deprecated 兼容已有技能包；无运行时依赖排序作用。 */
   dependsOn?: string[];
+  /** @deprecated 兼容已有技能包；无运行时暂停作用。 */
   pause?: boolean;
   skillRefs?: string[];
   modelPrefs?: SkillStageModelPref[];
@@ -76,13 +80,13 @@ export const skillStageSchema = z
   .object({
     /** 阶段稳定 id，如 'storyboard' | 'media' | 'assemble'。 */
     id: z.string().min(1),
-    /** 这阶段要达成什么（人话，进 agent 规划上下文）。 */
+    /** @deprecated 兼容标签元数据；无运行时规划作用。 */
     goal: z.string().min(1),
-    /** 本阶段允许的工具白名单（空=不调工具，纯规划/对话）。 */
+    /** @deprecated 兼容已有技能包；无运行时工具授权作用。 */
     tools: z.array(z.string().min(1)),
-    /** 依赖哪些阶段（DAG）。 */
+    /** @deprecated 兼容已有技能包；无运行时依赖排序作用。 */
     "depends-on": z.array(z.string().min(1)).optional(),
-    /** 完成后是否暂停让用户确认。 */
+    /** @deprecated 兼容已有技能包；无运行时暂停作用。 */
     pause: z.boolean().optional(),
     /** 本阶段按需加载的创作方法论 skill 引用；只注入这些 skill，不把整包 craft skills 全量塞进上下文。 */
     "skill-refs": z.array(z.string().min(1)).optional(),

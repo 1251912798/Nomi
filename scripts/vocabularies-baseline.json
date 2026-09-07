@@ -803,15 +803,6 @@
       "reason": "ArchetypeExpressionChannel.status 描述视频能力证据的覆盖度：documented 有来源证据，unsupported 明确不支持，unknown 尚无结论；它驱动规划时是否采用表达通道，不是任务执行状态。"
     },
     {
-      "site": "electron/skills/playbookOrchestrator.ts::type:PlaybookStatus/type-union",
-      "members": [
-        "awaiting-confirm",
-        "done",
-        "running"
-      ],
-      "reason": "Skill playbook 编排状态（awaiting-confirm / done / running），包含等待确认这一工作流专属阶段。"
-    },
-    {
       "site": "electron/tasks/responseParsing.ts::variable:NON_FAILURE_TEXTS/set",
       "members": [
         "done",
