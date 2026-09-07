@@ -302,7 +302,7 @@
     </div>
     <div class="empty">
       <div class="empty-h">还没有素材</div>
-      <div class="empty-p">拖文件进来，或看看同类目正在跑量的片子长什么样</div>
+      <div class="empty-p">拖文件进来，或看看 <b>TikTok 同类目正在跑量</b>的片子长什么样</div>
       <div class="empty-field">
         <input class="field" placeholder="输产品词，或贴一条分享链接" />
       </div>
@@ -340,16 +340,29 @@
   </div>
 </div>
 
-<h2>实测：中文关键词基本不可用（会毁掉第一次使用）</h2>
-<p class="verdict">目标用户是中国出海团队，他一定会输中文。实测 <code>country_code=US / period=180 / limit=20</code>：</p>
+<h2>实测修正：不是「中文不可用」，是<b>平台没选</b>（用户指出）</h2>
+<p class="verdict">
+  初稿写「中文关键词基本不可用」。<b>这个结论是错的，错在我自己的方法</b>——我拿中文去查了 <b>TikTok 广告库</b>，那是英文市场的库。
+  补测同一个词 <code>护肤精华</code>：
+</p>
 <table>
-  <tr><th>关键词</th><th>标题含护肤词</th><th>首条结果</th></tr>
-  <tr><td>英文 <code>skincare</code></td><td><b>17/20（85%）</b></td><td>Microneedling at Home: Start Skincare Journey Now</td></tr>
-  <tr><td>中文 <code>护肤精华</code></td><td><b>6/19（32%）</b></td><td>Unlock your best skin! Buy 1 <b>Blackhead Remover</b>…（第 2、3 条是<b>泰语、印尼语</b>）</td></tr>
+  <tr><th>平台 / 端点</th><th>条数</th><th>相关性</th></tr>
+  <tr><td><b>抖音</b> <code>douyin/search/fetch_video_search_v1</code></td><td>7</td><td><b>6/7（86%）</b> —— 中文在中文平台完全可用</td></tr>
+  <tr><td>TikTok <b>广告库</b> <code>tiktok/ads/search_ads</code></td><td>19</td><td>6/19（32%），混入泰语 / 印尼语</td></tr>
+  <tr><td>TikTok <b>自然流量</b> <code>tiktok/app/v3/fetch_video_search_result</code></td><td><b>0</b></td><td>—</td></tr>
 </table>
-<p class="verdict" style="margin-top:8px">
-  旁证（关键词确实在筛，不是被忽略）：<code>asdfghjkl</code> → 只回 7 条；空关键词 → 400 条（上限）。
-  但 <code>汽车轮胎</code> → 298 条、首条是<b>阿拉伯语打折广告</b> —— <b>中文查询的语义相关性不可靠</b>。
+<p class="verdict" style="margin-top:10px">
+  <b>真正的结论：平台不是一个筛选器，是任务卡的一部分</b> —— 它由「用户在做哪件事」决定，不该让用户选。
+</p>
+<table>
+  <tr><th>用户在做什么</th><th>该查哪</th><th>关键词语言</th><th>有没有「跑量证据」</th></tr>
+  <tr><td><b>TikTok 出海投放</b>（= 本设计的任务卡）</td><td>TikTok 广告库</td><td><b>英文</b>（所以自动转译<b>更该做</b>）</td><td>✅ CTR / 花费档 / 表现分位</td></tr>
+  <tr><td>国内做抖音内容</td><td>抖音</td><td>中文原生可用</td><td>❌ <b>只有点赞/播放，没有广告表现面</b></td></tr>
+</table>
+<p class="verdict" style="margin-top:10px">
+  <b>这条修正带出一个结构性事实</b>：这条产品线的核心价值（「按曝光排序的跑量素材」）<b>是 TikTok 特有的</b>——它来自 TikTok Creative Center，抖音侧没有对偶数据。
+  → v2.5 <b>保持 TikTok-only，但不假装自己是通用的「找参考」</b>：任务卡写死「TikTok 出海投放」，界面上说明白查的是什么库。
+  「做抖音内容」是<b>另一张任务卡</b>，要做得单独立项。
 </p>
 
 <h2>必答题：这条路能不能少一步？</h2>
