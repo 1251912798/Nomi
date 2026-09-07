@@ -7,8 +7,8 @@ import {
 } from "./skeletonRenderUtils";
 
 class FakeCtx implements PoseCanvas2D {
-  strokeStyle: unknown = "";
-  fillStyle: unknown = "";
+  strokeStyle: PoseCanvas2D["strokeStyle"] = "";
+  fillStyle: PoseCanvas2D["fillStyle"] = "";
   lineWidth = 0;
   calls: string[] = [];
 

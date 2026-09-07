@@ -62,13 +62,20 @@ export const videoDepthSourceReferenceSchema = z
  * 取值与 depth.cards 默认一致，也是 docs/research/2026-09-07-motion-ref-raw-vs-depth.md
  * 那次真实 A/B 用的那一组，改动会让那份实测失去可比性。
  */
-export const VIDEO_DEPTH_FIXED_SKELETON = {
+export type VideoDepthSkeletonStyle = Readonly<{
+  lineWidth: number;
+  jointRadius: number;
+  confidence: number;
+}>;
+
+// 类型写成 number 而不是 `typeof …` 推出来的字面量 3/5/0.35：字面量类型会让
+// 「画一个别的粗细」在类型上就不可能，连测试都没法喂一组对照值去证明线宽真的被用上了。
+// v1 固定的是**这个常量**，不是这个类型。
+export const VIDEO_DEPTH_FIXED_SKELETON: VideoDepthSkeletonStyle = {
   lineWidth: 3,
   jointRadius: 5,
   confidence: 0.35,
-} as const;
-
-export type VideoDepthSkeletonStyle = typeof VIDEO_DEPTH_FIXED_SKELETON;
+};
 
 export const videoDepthSettingsSchema = z
   .object({

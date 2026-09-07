@@ -19,7 +19,7 @@ describe("video depth model manifest", () => {
   });
 
   it("downloads only from official first-party endpoints, never a mirror", () => {
-    expect(videoDepthModelOrigins().sort()).toEqual([
+    expect([...videoDepthModelOrigins()].sort()).toEqual([
       "https://huggingface.co",
       "https://storage.googleapis.com",
     ]);

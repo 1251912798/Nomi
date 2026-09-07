@@ -4,6 +4,7 @@ import {
   initialVideoDepthRunState,
   isTerminalVideoDepthPhase,
   nextVideoDepthRunState,
+  type VideoDepthPhase,
   type VideoDepthRunEvent,
   type VideoDepthRunState,
 } from "./videoDepthRun";
@@ -70,8 +71,10 @@ describe("video depth run reducer", () => {
   });
 
   it("knows which phases are terminal", () => {
-    expect(["done", "failed", "cancelled"].every(isTerminalVideoDepthPhase)).toBe(true);
-    expect(["idle", "downloading", "extracting", "warming", "processing", "encoding"].some(isTerminalVideoDepthPhase)).toBe(false);
+    const terminal: VideoDepthPhase[] = ["done", "failed", "cancelled"];
+    const running: VideoDepthPhase[] = ["idle", "downloading", "extracting", "warming", "processing", "encoding"];
+    expect(terminal.every(isTerminalVideoDepthPhase)).toBe(true);
+    expect(running.some(isTerminalVideoDepthPhase)).toBe(false);
   });
 });
 
