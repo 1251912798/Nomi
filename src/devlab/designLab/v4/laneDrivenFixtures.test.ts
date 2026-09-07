@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest'
 import { projectLaneSnapshot } from '../../../../electron/agentLane/laneProjection.mjs'
 import { laneViewModel, type LaneViewModelLabels } from '../../../workbench/ai/lane/laneViewModel'
 import {
+  FIXTURE_FACTS,
   laneDrivenReceipt,
   laneSnapshotToolDenied,
   laneSnapshotToolDone,
@@ -17,16 +18,21 @@ const labels: LaneViewModelLabels = {
   thinkingLabel: '正在想…',
   formatTokens: (value) => String(value),
   formatCost: (usd) => `$${usd.toFixed(2)}`,
+  unknown: '—',
+  free: '不按 token 计费',
 }
 
 describe('design-lab fixtures driven by a LaneSnapshot (probe P6)', () => {
   it('empty: an empty transcript projects to no items, not running, and no invented ceiling/cost', () => {
     const empty = { ...laneSnapshotToolRunning(), transcript: [], tipId: null, operation: null }
-    const model = laneViewModel(projectLaneSnapshot(empty), labels)
+    const model = laneViewModel(projectLaneSnapshot(empty, FIXTURE_FACTS), labels)
     expect(model.items).toEqual([])
     expect(model.running).toBe(false)
     expect(model.usage.max).toBeUndefined()
-    expect(model.usage.cost).toBeUndefined()
+    // 阶段 3b 之后花费是**三态**，不是「有值 / 缺席」：一个不按 token 计费的模型说的是
+    // 「不适用」这句话，而不是把那一行拿掉（拿掉会让人以为这一项不存在）。这一格要钉的
+    // 仍然是同一件事——**不编一个我们没量过的金额**：所以断言它不是钱，而不是断言它不存在。
+    expect(model.usage.cost).toBe(labels.free)
     // `AgentPanelV4Panel` renders `V4EmptyState` on `flow.length === 0`; the surface-derived
     // starter chips are the shell's, so the pixel half of this cell waits for a lane-driven shell (stage 4).
   })

@@ -104,6 +104,10 @@ function LaneReceiptCell({ lane }: { lane: (rejectReason: string) => LaneSnapsho
     thinkingLabel: fx.t('agentPanelV4.thinkingLabel'),
     formatTokens: (value) => String(value),
     formatCost: (usd) => `$${usd.toFixed(2)}`,
+    // 三行的两个占位词。这一格量的是收据那一行，用不到它们——但 `laneViewModel`
+    // 不给默认值是**故意的**（词表的 owner 是调用方，不是投影层），所以这里照样传。
+    unknown: fx.t('agentPanelV4.contextUnknown'),
+    free: fx.t('agentPanelV4.contextUnknown'),
   })
   return (
     <Piece>

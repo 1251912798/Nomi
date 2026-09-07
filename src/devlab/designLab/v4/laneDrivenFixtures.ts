@@ -15,7 +15,7 @@
 import type { LaneSnapshot } from '@earendil-works/pi-agent-core'
 import type { AssistantMessage } from '@earendil-works/pi-ai'
 import { LANE_APPROVAL_NOTE_TYPE } from '../../../../electron/shared/agentLane/laneContracts'
-import { projectLaneSnapshot } from '../../../../electron/agentLane/laneProjection.mjs'
+import { projectLaneSnapshot, type LaneModelFacts } from '../../../../electron/agentLane/laneProjection.mjs'
 import { laneViewModel, type LaneViewModelLabels } from '../../../workbench/ai/lane/laneViewModel'
 import type { ToolReceipt } from '../../../workbench/ai/v4/agentPanelV4Types'
 
@@ -82,9 +82,26 @@ export function laneSnapshotToolDenied(reason: string): LaneSnapshot {
   ])
 }
 
+/**
+ * 这一格量的是**收据那一行**，不是三行。所以模型侧事实给一份最小的固定值：
+ * 冻结的基线不能让「今天用的是哪个模型」渗进来，那会让一张收据的截图随目录漂。
+ *
+ * `pricing: 'free'` 是刻意的：这一格不量花费，而「不适用」是三态里唯一**什么都不渲染**的那个
+ * （`unknown` 会印一个占位符 `—`，那是一条我们没打算在这一格上测的断言）。
+ */
+export const FIXTURE_FACTS: LaneModelFacts = {
+  model: {
+    provider: 'nomi-lane', id: 'chosen-model', name: 'chosen-model',
+    api: 'openai-completions', baseUrl: 'http://127.0.0.1/v1', reasoning: false,
+    input: ['text'], cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+    contextWindow: 128_000, maxTokens: 4096,
+  },
+  pricing: 'free',
+}
+
 /** 两层投影真的跑一遍，取出那一行收据。 */
 export function laneDrivenReceipt(lane: LaneSnapshot, labels: LaneViewModelLabels): ToolReceipt {
-  const model = laneViewModel(projectLaneSnapshot(lane), labels)
+  const model = laneViewModel(projectLaneSnapshot(lane, FIXTURE_FACTS), labels)
   const tool = model.items.find((item) => item.kind === 'tool')
   if (!tool || tool.kind !== 'tool') throw new Error('the lane snapshot projected no tool receipt')
   return tool.receipt

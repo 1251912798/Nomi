@@ -192,10 +192,12 @@ test('G3b ② · 按停止：pi 自己合成 cancelled 结果，宿主在 abort 
 
 test('G3b ③ · 崩溃重启：不复活确认卡，那次调用被取消，模型读到「再发一次」', async (t: TestContext) => {
   const fixture = await createLaneFixture(t, [APPEND, CLOSING], STEP);
-  // 子进程走**生产路径** `openLane` 打开会话、停在卡上，然后被 SIGKILL。
+  // 子进程走**生产路径** `openLane` 打开会话、停在卡上，然后被 SIGKILL。用的就是探针
+  // P1③ 那个子进程（`stage3-probe-crash-child.mts`）——两边要的是同一件事，抄第二份出来
+  // 的代价不是重复，是两份会慢慢长得不一样。
   // 同一进程里假装崩溃会撞 `laneSession.mts` 的单持有者名单，等于测一条生产走不到的路。
   const child = spawn(process.execPath, [
-    fileURLToPath(new URL('./lane-approval-crash-child.mjs', import.meta.url)),
+    fileURLToPath(new URL('./stage3-probe-crash-child.mjs', import.meta.url)),
     fixture.projectDir, fixture.http.baseURL,
   ], { stdio: ['ignore', 'pipe', 'inherit'] });
   let stdout = '';
