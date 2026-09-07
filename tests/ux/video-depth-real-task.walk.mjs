@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// R13 / R16 走查 —— 深度视频节点的真实用户任务（计划 §12.8 的六张对账图）。
+// R13 / R16 走查 —— 「提取深度」的真实用户任务。
 //
 // 用法: pnpm run build && node tests/ux/video-depth-real-task.walk.mjs
 // 产出: tests/ux/shots/video-depth-real-task/*.png
@@ -7,6 +7,11 @@
 // 一句话的任务：
 //   用户手上有一段 4 秒的真人动作素材（黄雨衣、举着手电、推门走进来）。他要把它变成一段
 //   深度视频，拿去当动作参考喂给一个视频模型——只换人物、保住动作。做完发现连错了，⌘Z 撤销。
+//
+// 2026-09-07 改形态后这条走查跟着改了动线（用户看过独立节点那一版后拍板）：
+//   旧：加号 →「更多」→ 新建一个深度节点 → 在它的表单里挑源、填七个参数 → 开始 → 产物落在同一张卡里。
+//   新：选中那段视频 → 浮条「提取深度」→ 小面板只问「输出」→ 开始 → **旁边长出一张连好线的新卡**。
+//   所以这里的断言也换了重点：动作找不找得到、第一屏问了几个问题、产物有没有带着出身落回画布。
 //
 // 这条走查**跑的是真东西**，没有一处 mock：
 //   · 真的下载 Depth Anything V2 Small 的 fp16 权重（约 50MB，隔离 profile 每次都从零下）；
@@ -27,7 +32,7 @@ import { createRequire } from 'node:module'
 import { execFileSync } from 'node:child_process'
 import { launchNomiApp, repoRoot } from './_launchApp.mjs'
 import { addCanvasNodeFromRail } from './_canvasRail.mjs'
-import { clickOrFail, expectVisible, proveProbe, screenshotSettled } from './_assert.mjs'
+import { clickOrFail, expectAbsent, expectVisible, proveProbe, screenshotSettled } from './_assert.mjs'
 
 const require = createRequire(import.meta.url)
 const ffmpegPath = require('@ffmpeg-installer/ffmpeg').path
@@ -141,8 +146,17 @@ async function snapLive(win, name) {
   return file
 }
 
-const DEPTH_PANEL = '[data-node-video-depth]'
-const PROGRESS = '[data-video-depth-progress]'
+const PANEL = '[data-video-depth-panel="true"]'
+const PANEL_ADVANCED = '[data-video-depth-advanced="true"]'
+const PANEL_START = '[data-video-depth-start="true"]'
+/** 派生节点上的进度遮罩就是现役那一个（GeneratingOverlay），不是深度专用的第二套。 */
+const NODE_OVERLAY = '.generation-canvas-v2-node__generating-overlay'
+
+/** 从磁盘读回这个项目的画布。落盘是防抖的，所以调用点一律用 waitForFunction 轮到为止。 */
+const readCanvasWhen = (predicateSource, arg, timeout) =>
+  win
+    .waitForFunction(predicateSource, arg, { timeout })
+    .then((handle) => handle.jsonValue())
 
 const { app, win } = await launchNomiApp({
   name: 'video-depth-real-task',
@@ -179,99 +193,130 @@ try {
   await win.locator('.generation-canvas-v2-toolbar').first().waitFor({ timeout: 60_000 })
   await win.waitForTimeout(800)
 
-  // ── ① 加节点：它必须真的在加号的「更多」里，不是只写在计划里 ────────────────
-  const placement = await addCanvasNodeFromRail(win, 'video_depth_process')
-  check(placement === 'more', '深度视频节点挂在加号的「更多」组里（§12.5）', `实际：${placement}`)
-  await win.waitForTimeout(1200)
-
-  const panel = win.locator(DEPTH_PANEL).first()
-  await expectVisible(panel, '深度节点的正文没渲染出来', 30_000)
-  const depthNodeId = await panel.getAttribute('data-node-video-depth')
-  check(Boolean(depthNodeId), '深度节点建出来了', String(depthNodeId))
-
-  // 未跑之前就该看见两件事：这次要下多少 MB，以及这东西做不到什么。
-  const downloadHint = panel.locator('text=/模型权重/').first()
-  await proveProbe(downloadHint, '首次下载体积提示')
-  const limitsProbe = panel.locator('text=/手指细节/').first()
-  await proveProbe(limitsProbe, '诚实边界（§12.4）常驻在卡片上')
-  check(true, '① 未下载态：体积提示与失效边界同屏可见')
-  await snap(win, 'idle-not-downloaded')
-  note('第一次打开这张卡', '一眼看到「要下 47MB」和「不承载手指细节」，没有被藏进折叠里——不用点开就知道自己在换什么')
-
-  // ── 选源 + 调参数 ────────────────────────────────────────────────────────────
-  await panel.getByRole('button', { name: '源视频' }).first().click({ timeout: 10_000 })
-  await win.getByText('推门走进来', { exact: false }).last().click({ timeout: 10_000 })
+  // ── ① 动作挂在素材上：选中那段视频，浮条上就有「提取深度」 ──────────────────
+  //
+  // 2026-09-07 改形态前这里是「去加号菜单的『更多』里找一个深度节点」。用户看完那一版的原话是
+  // 「不够简单、丑、不知道怎么用」——根子就在这一步：他手上明明就有那段片子，却要先去别处
+  // 新建一个空节点，再回头把片子挑给它。现在动作长在片子上。
+  const sourceCard = win.locator('.react-flow__node[data-id="source-shot"]')
+  await expectVisible(sourceCard, '源视频节点没出现在画布上', 60_000)
+  await sourceCard.click({ position: { x: 40, y: 16 } })
   await win.waitForTimeout(600)
+  const depthAction = win.getByRole('button', { name: '提取深度' }).first()
+  await proveProbe(depthAction, '选中视频 → 浮条上就有「提取深度」')
+  check(true, '① 动作就地挂在源素材上，不用先去加号菜单里新建一个空节点')
+  await snap(win, 'action-on-source')
+  note('看到这个动作', '选中片子它就在那儿，和抽首帧/拆解排在一起——不用先猜这功能叫什么、住在哪')
 
+  // ── ② 小面板：只问一个问题 ──────────────────────────────────────────────────
+  await clickOrFail(depthAction, '提取深度')
+  const panel = win.locator(PANEL).first()
+  await expectVisible(panel, '小面板没浮出来', 20_000)
+  await proveProbe(panel.locator(PANEL_START).first(), '开始按钮')
+  await snap(win, 'panel')
+  note('点开面板', '就一个选择加一颗按钮，不用先读四行说明再填七个框')
+
+  // ── ③ 高级：需要的人点得开，不需要的人看不见 ────────────────────────────────
+  //
+  // 「默认收起」这条断言的证法：先展开、证明这个选择器**测得到东西**，再收回去、
+  // 证明它真的不在（expectAbsent 强制先有基线）。直接写 `count() === 0` 是空话——
+  // 选择器写错时它同样恒真（docs/lessons/expect-absent-passes-too-early）。
+  const advancedToggle = panel.getByRole('button', { name: '高级' }).first()
+  await clickOrFail(advancedToggle, '展开高级')
+  const advancedProof = await proveProbe(panel.locator(PANEL_ADVANCED).first(), '展开后「高级」里那几行参数在')
+  await clickOrFail(advancedToggle, '收起高级')
+  await expectAbsent(panel.locator(PANEL_ADVANCED), {
+    provenBy: advancedProof,
+    message: '② 第一屏只有「输出」三选一 + 一颗开始，「高级」默认收起',
+  })
+  check(true, '② 第一屏只问一个问题：分辨率/帧率/平滑/范围全在「高级」后面')
+  await clickOrFail(advancedToggle, '再次展开高级')
+  await expectVisible(panel.locator(PANEL_ADVANCED).first(), '「高级」没展开', 10_000)
   // 12fps：4 秒 = 48 帧。走查要的是「这条链活着」，不是最高画质；30fps 会把这一趟拖成三倍。
   await panel.getByRole('button', { name: '帧率' }).first().click({ timeout: 10_000 })
   await win.getByText('12', { exact: true }).last().click({ timeout: 10_000 })
   await win.waitForTimeout(600)
+  const limitsLine = panel.locator('text=/手指/').first()
+  await proveProbe(limitsLine, '诚实边界（§12.4）没被删，只是收进了「高级」')
+  await snap(win, 'panel-advanced')
 
-  const persistedSettings = async () => {
-    const record = await win.evaluate((id) => window.nomiDesktop.projects.readAsync(id), projectId)
-    const nodes = record?.payload?.generationCanvas?.nodes ?? []
-    return nodes.find((node) => node.kind === 'video_depth_process')?.meta?.videoDepth ?? null
-  }
-  const beforeRun = await persistedSettings()
-  check(beforeRun?.processingFps === 12, '参数落进 meta 并持久化（可撤销、重启还在）', JSON.stringify(beforeRun))
-  check(Boolean(beforeRun?.sourceVideoRef?.sourceNodeId), '源视频引用存进 meta', beforeRun?.sourceVideoRef?.title ?? '')
-
-  // ── ② / ③ 真跑：下载 → 抽帧 → 预热 → 推理 → 合成 ────────────────────────────
-  await clickOrFail(panel.getByRole('button', { name: /开始处理/ }).first(), '开始处理')
-
-  await win.locator(`${PROGRESS}[data-video-depth-progress="downloading"]`).first().waitFor({ timeout: 60_000 })
-  check(true, '② 下载阶段真的出现了（隔离 profile，权重从零下）')
-  await snapLive(win, 'downloading')
-  note('等下载', '进度条上有真的字节数，不是一个转圈——知道它在动、也知道还要多久')
-
-  const processing = win.locator(`${PROGRESS}[data-video-depth-progress="processing"]`).first()
-  await processing.waitFor({ timeout: 600_000 })
-  const cancelButton = panel.locator('[data-video-depth-cancel="true"]').first()
-  await proveProbe(cancelButton, '处理中可取消')
-  const processingText = (await processing.textContent()) ?? ''
-  check(/\d+\s*\/\s*\d+/.test(processingText), '③ 处理中报的是真帧数，不是一个空转圈', processingText.trim())
-  check(/预计|测速/.test(processingText), '③ 预估时间在场（测出来之前明说「正在测速」，不编数字）', processingText.trim())
-  await snapLive(win, 'processing')
-  note('推理中', '帧数在走、还剩多久看得见、取消就在旁边——不用猜它是不是卡死了')
-
-  // ── ④ 产物落画布 ────────────────────────────────────────────────────────────
-  const resultVideo = panel.locator('[data-video-depth-result="true"]').first()
-  await resultVideo.waitFor({ timeout: 900_000 })
-  await expectVisible(resultVideo, '深度产物没落到卡片上', 30_000)
-  const persistedResult = await win.evaluate((id) => {
-    const record = window.nomiDesktop.projects.readAsync(id)
-    return Promise.resolve(record).then((value) => {
-      const nodes = value?.payload?.generationCanvas?.nodes ?? []
-      const node = nodes.find((candidate) => candidate.kind === 'video_depth_process')
-      return node?.result ?? null
-    })
-  }, projectId)
-  check(persistedResult?.type === 'video', '④ 产物是画布上的普通视频资产', JSON.stringify(persistedResult))
+  // ── ④ 按下开始：旁边立刻长出一张连好线的新卡 ────────────────────────────────
+  await clickOrFail(panel.locator(PANEL_START).first(), '开始')
+  const canvasAfterStart = await readCanvasWhen(
+    async (id) => {
+      const value = await window.nomiDesktop.projects.readAsync(id)
+      const canvas = value?.payload?.generationCanvas
+      return canvas && canvas.nodes.length >= 2 ? canvas : null
+    },
+    projectId,
+    60_000,
+  )
+  const derived = canvasAfterStart.nodes.find((node) => node.id !== 'source-shot')
+  const derivedNodeId = derived?.id
+  check(Boolean(derivedNodeId), '④ 按下开始，画布上立刻多了一张卡（占位先到、内容后填）', String(derivedNodeId))
+  check(derived?.kind === 'video', '④ 它是一个**普通视频节点**，不是第三种节点类型', String(derived?.kind))
+  check(/·\s*深度$/.test(derived?.title ?? ''), '④ 标题里带着出身（源名 · 输出）', String(derived?.title))
   check(
-    typeof persistedResult?.url === 'string' && persistedResult.url.startsWith('nomi-local://'),
-    '④ 产物落进项目素材（本地 URL，不是外链）',
-    String(persistedResult?.url),
+    canvasAfterStart.edges.some((edge) => edge.source === 'source-shot' && edge.target === derivedNodeId),
+    '④ 产物与源之间自动连好线，用户不用自己记它是从哪来的',
+    JSON.stringify(canvasAfterStart.edges),
+  )
+  note('按下开始', '一张新卡立刻出现在旁边、线已经连好——不用盯着一个「处理中」的全局提示猜是哪一条在跑')
+
+  const derivedCard = win.locator(`.react-flow__node[data-id="${derivedNodeId}"]`)
+  const overlay = derivedCard.locator(NODE_OVERLAY).first()
+  await expectVisible(overlay, '派生节点上没有进度遮罩', 60_000)
+  await derivedCard.locator('text=/正在下载模型权重/').first().waitFor({ timeout: 120_000 })
+  check(true, '⑤ 下载阶段真的出现了（隔离 profile，权重从零下），而且是报在那张卡上')
+  await snapLive(win, 'downloading')
+  note('等下载', '进度就在这张卡上，按钮里也同步说了要下多少 MB——不用去别处找它在干嘛')
+
+  await derivedCard.locator('text=/正在逐帧推理/').first().waitFor({ timeout: 900_000 })
+  const overlayText = (await overlay.textContent()) ?? ''
+  check(/预计还要\s*\d+:\d\d/.test(overlayText), '⑥ 处理中报的是预计剩余时间，不是一个空转圈', overlayText.trim())
+  await proveProbe(derivedCard.getByRole('button', { name: /取消/ }).first(), '处理中可取消（就在遮罩里）')
+  await snapLive(win, 'processing')
+  note('推理中', '还剩多久看得见、取消就在旁边，遮罩里还滚着刚算出来的那一帧——不用猜它是不是卡死了')
+
+  // ── ⑦ 产物：一个能播、能连、能再加工的普通视频 ──────────────────────────────
+  const finished = await readCanvasWhen(
+    async (input) => {
+      const value = await window.nomiDesktop.projects.readAsync(input.projectId)
+      const node = (value?.payload?.generationCanvas?.nodes ?? []).find((item) => item.id === input.derivedNodeId)
+      return node?.result?.url ? node : null
+    },
+    { projectId, derivedNodeId },
+    900_000,
+  )
+  check(finished.result.type === 'video', '⑦ 产物是画布上的普通视频资产', JSON.stringify(finished.result))
+  check(
+    typeof finished.result.url === 'string' && finished.result.url.startsWith('nomi-local://'),
+    '⑦ 产物落进项目素材（本地 URL，不是外链）',
+    String(finished.result.url),
+  )
+  check(
+    finished.meta?.videoDepth?.processingFps === 12,
+    '⑦ 这次用的参数写在产物身上——出身不只是标题里那半句',
+    JSON.stringify(finished.meta?.videoDepth ?? null),
   )
   await snap(win, 'result-on-canvas')
-  note('出片那一刻', '产物直接在卡片里能播，不用先去素材库找它')
+  note('出片那一刻', '它就在源片旁边播着，标题写着从哪来——不用先去素材库里认哪个是哪个')
 
-  // ── ⑤ 拖进任意视频模型的参考槽（连线，不生成）────────────────────────────────
+  // ── ⑧ 拖进任意视频模型的参考槽（连线，不生成）────────────────────────────────
   await addCanvasNodeFromRail(win, 'video')
   await win.waitForTimeout(1200)
   const videoNodeId = await win.evaluate(
-    (depthId) =>
+    (known) =>
       Array.from(document.querySelectorAll('.react-flow__node[data-id]'))
         .map((node) => node.getAttribute('data-id'))
-        .find((id) => id && id !== depthId && !document.querySelector(`[data-node-video-depth="${id}"]`)) ?? null,
-    depthNodeId,
+        .find((id) => id && !known.includes(id)) ?? null,
+    ['source-shot', derivedNodeId],
   )
   check(Boolean(videoNodeId), '下游视频模型节点建出来了', String(videoNodeId))
 
-  const depthCard = win.locator(`.react-flow__node[data-id="${depthNodeId}"]`)
-  await depthCard.click({ position: { x: 36, y: 16 } })
+  await derivedCard.click({ position: { x: 36, y: 16 } })
   await win.waitForTimeout(500)
-  const handleBox = await depthCard.locator('.generation-canvas-react-flow__handle[data-side="right"]').last().boundingBox()
+  const handleBox = await derivedCard.locator('.generation-canvas-react-flow__handle[data-side="right"]').last().boundingBox()
   const targetBox = await win.locator(`.react-flow__node[data-id="${videoNodeId}"]`).boundingBox()
   if (!handleBox || !targetBox) throw new Error('连接握把或目标节点量不到（fail-closed）')
   await win.mouse.move(handleBox.x + handleBox.width / 2, handleBox.y + handleBox.height / 2)
@@ -286,29 +331,40 @@ try {
     return Promise.resolve(record).then((value) => value?.payload?.generationCanvas?.edges ?? [])
   }, projectId)
   check(
-    edgesAfterConnect.some((edge) => edge.source === depthNodeId && edge.target === videoNodeId),
-    '⑤ 深度产物真的被连成了下游模型的参考（不做任何供应商特供接线）',
+    edgesAfterConnect.some((edge) => edge.source === derivedNodeId && edge.target === videoNodeId),
+    '⑧ 深度产物真的被连成了下游模型的参考（不做任何供应商特供接线）',
     JSON.stringify(edgesAfterConnect),
   )
   await snap(win, 'result-into-reference-slot')
   note('连线那一下', '深度产物和别的视频节点没有任何区别——不用先导出再导入，直接拉一条线')
 
-  // ── ⑥ ⌘Z：连错了，撤销 ──────────────────────────────────────────────────────
+  // ── ⑨ ⌘Z：连错了，撤销 ──────────────────────────────────────────────────────
   await win.keyboard.press('Meta+z')
   await win.waitForTimeout(1500)
   const edgesAfterUndo = await win.evaluate((id) => {
     const record = window.nomiDesktop.projects.readAsync(id)
     return Promise.resolve(record).then((value) => value?.payload?.generationCanvas?.edges ?? [])
   }, projectId)
-  check(edgesAfterUndo.length === 0, '⑥ ⌘Z 撤掉了那条参考边', JSON.stringify(edgesAfterUndo))
-  const resultSurvivedUndo = await win.evaluate((id) => {
-    const record = window.nomiDesktop.projects.readAsync(id)
+  // 撤销只该撤掉刚连的那一条。**源 → 产物**那条派生边必须还在——它不是用户刚做的动作，
+  // 是这次处理的出身记录，被一起撤掉等于把「它从哪来的」也撤没了。
+  check(
+    !edgesAfterUndo.some((edge) => edge.source === derivedNodeId && edge.target === videoNodeId),
+    '⑨ ⌘Z 撤掉了刚连的那条参考边',
+    JSON.stringify(edgesAfterUndo),
+  )
+  check(
+    edgesAfterUndo.some((edge) => edge.source === 'source-shot' && edge.target === derivedNodeId),
+    '⑨ 派生边没被一起撤掉（它是出身记录，不是刚做的那一步）',
+    JSON.stringify(edgesAfterUndo),
+  )
+  const resultSurvivedUndo = await win.evaluate((input) => {
+    const record = window.nomiDesktop.projects.readAsync(input.projectId)
     return Promise.resolve(record).then((value) => {
       const nodes = value?.payload?.generationCanvas?.nodes ?? []
-      return Boolean(nodes.find((node) => node.kind === 'video_depth_process')?.result?.url)
+      return Boolean(nodes.find((node) => node.id === input.derivedNodeId)?.result?.url)
     })
-  }, projectId)
-  check(resultSurvivedUndo, '⑥ 撤销只退回连线那一步，跑了几分钟的产物没被一起撤掉')
+  }, { projectId, derivedNodeId })
+  check(resultSurvivedUndo, '⑨ 撤销只退回连线那一步，跑了几分钟的产物没被一起撤掉')
   await snap(win, 'after-undo')
   note('撤销', '撤的是刚做错的那一下，不是把整趟处理一起吞掉——这条要是反了会很痛')
 } finally {
