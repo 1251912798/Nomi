@@ -22,7 +22,8 @@
       "@earendil-works/pi-ai",
       "@xyflow/react",
       "ai",
-      "@mantine/core"
+      "@mantine/core",
+      "@anthropic-ai/sandbox-runtime"
     ]
   },
   "advisory": {
@@ -217,8 +218,9 @@
                     "why": "流式参数（温度、最大 token、headers）在 Nomi 这条路上由 provider 装配决定：createNomiProvider 的 requestOptions/onPayload 是唯一改写出站报文的地方（model.mts:89-110）。在 lane 这层再给一份会造出第二个改写点，而两处只有一处会被 payload 探针看见。"
                   },
                   "retry": {
-                    "verdict": "unused",
-                    "why": "不传 = 用 pi 的 RetryPolicy 默认策略，这正是 framework-boundaries 里 retry-policy 那条规则要守的东西（自研重试是 2026-09-06 评审判定的「更差的那一份」）。要改重试必须先证明 provider 级退避不够，而不是在装配处顺手关掉。"
+                    "verdict": "derived",
+                    "at": "electron/agentLane/laneHost.mts:183",
+                    "why": "阶段 3c（方案 §1.6 第三行）：显式传 LANE_RETRY_POLICY = {enabled:true, maxRetries:3, baseDelayMs:1000}——仍是 pi 自己的 RetryPolicy，不是自研重试；写死的原因是 harness 默认无 jitter、无上限（上游 #8826 open），3 次上限下最长 4s 让 #8826 对我们无感。改数字要先改 laneHost 里那一个常量。"
                   },
                   "compaction": {
                     "verdict": "debt",
@@ -303,11 +305,11 @@
                   },
                   "before_tool.event": {
                     "verdict": "derived",
-                    "at": "electron/agentLane/laneHost.mts:182"
+                    "at": "electron/agentLane/laneHost.mts:241"
                   },
                   "before_tool.result": {
                     "verdict": "derived",
-                    "at": "electron/agentLane/laneHost.mts:199"
+                    "at": "electron/agentLane/laneHost.mts:245"
                   },
                   "before_tool.result.args": {
                     "verdict": "unused",
@@ -315,7 +317,7 @@
                   },
                   "before_tool.result.block": {
                     "verdict": "derived",
-                    "at": "electron/agentLane/laneHost.mts:209"
+                    "at": "electron/agentLane/laneHost.mts:245"
                   }
                 }
               }
@@ -481,6 +483,41 @@
               "id": "flatten-text-deltas-into-one-string",
               "pattern": "assistantMessageEvent\\.type === 'text_delta'",
               "why": "把 text_delta 拼成一条扁平字符串，就丢掉了 pi 已经保序的分段结构；UI 想还原「思考→工具→文本」的顺序时只能再猜一次。"
+            }
+          ]
+        },
+        {
+          "id": "coding-tools",
+          "provides": "pi 自带 7 个 coding 工具（read/grep/find/ls/edit/write/bash）与它们的 operations 插槽、BashSpawnHook、输出截断、system-prompt 贡献。工具的执行、schema、渲染全部由 pi 提供；宿主只出范围、沙箱、审批三样策略。",
+          "evidence": "@earendil-works/pi-coding-agent@0.85.1 dist/core/sdk.d.ts:71 `export { …createBashTool, createCodingTools, createEditTool, createFindTool, createGrepTool, createLsTool, createReadTool, createWriteTool… }`；dist/core/tools/bash.d.ts:56-68 `BashToolOptions.operations` / `spawnHook`；dist/core/tools/bash.d.ts:10-13 `bashToolSystemPromptContribution`",
+          "scope": [
+            "electron/agentLane/"
+          ],
+          "forbidden": [
+            {
+              "id": "own-shell-executor",
+              "pattern": "execSync\\(|spawnSync\\(",
+              "why": "自己写一份命令执行器就绕开了 pi 的截断、超时、中止与 operations 插槽——而沙箱正是挂在那个插槽上的。绕开它等于命令跑在沙箱外面，且没有任何东西会报错。"
+            },
+            {
+              "id": "own-file-tool-schema",
+              "pattern": "name:\\s*.(read|write|edit|grep|find|ls|bash).\\s*,[\\s\\S]{0,300}?schema:\\s*z\\.",
+              "why": "把 pi 的工具翻译成 zod 的 LaneToolSpec 再翻回 JSON Schema，就是把它重写了一遍：上游改了描述或参数，我们这份静默漂移，而漂移的症状是模型少知道一件事、没人会发现。"
+            }
+          ]
+        },
+        {
+          "id": "skill-prompt-format",
+          "provides": "pi 出 formatSkillsForPrompt：把技能列表渲染成 Agent Skills 标准的 <available_skills> 段（XML 转义、disable-model-invocation 过滤、「相对路径按技能目录解析」那句话、以及 read/bash 二选一的取正文指令）。宿主只做两件 pi 不知道的事：Nomi 的 SkillRecord → pi 的 Skill 形状，和「这条技能要不要 coding 工具」。",
+          "evidence": "@earendil-works/pi-coding-agent@0.85.1 dist/index.d.ts:21 `export { formatSkillsForPrompt, … }`；dist/core/skills.d.ts:44 `formatSkillsForPrompt(skills, fileReadTool?: \"read\" | \"bash\")`；dist/core/skills.js:275-298 渲染体",
+          "scope": [
+            "electron/agentLane/"
+          ],
+          "forbidden": [
+            {
+              "id": "own-available-skills-xml",
+              "pattern": "<available_skills>",
+              "why": "手拼这段 XML 就是把 pi 的渲染重写一遍：转义漏一个 & 会让整段提示词在模型眼里断掉，而漏掉 disable-model-invocation 过滤会把用户明确藏起来的技能送进模型。两样都不报错。渲染只能来自 formatSkillsForPrompt；映射与解锁判断才是我们的活。"
             }
           ]
         }
@@ -1123,6 +1160,49 @@
               "id": "write-internal-node-lookup",
               "pattern": "setState\\(\\{[^}]*nodeLookup",
               "why": "拖动热路径直接改内核的 nodeLookup（并把 hasDefaultNodes 置 false），是画布性能战役压帧时间时留下的私有面写入：React Flow 升版改这两处内部形状不会有任何编译错误，只会在拖动时静默错位。"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "anthropic-sandbox-runtime",
+      "packages": [
+        "@anthropic-ai/sandbox-runtime"
+      ],
+      "version": "0.0.75",
+      "fourColumnTable": "docs/research/2026-09-07-pi-coding-tools-layer.md",
+      "why": "2026-09-07 用户拍板：「沙箱机制它肯定有设计，权限设计里肯定有，直接把它抄过来应该就够了」。pi 自带的 sandbox 示例用的就是这个包（examples/extensions/sandbox/index.ts），所以 OS 级沙箱不自研——我们只出策略（allowWrite / denyRead / allowedDomains），一行 seatbelt/bwrap 参数都不写。",
+      "referenceConformance": {
+        "doc": "docs/research/2026-09-07-pi-coding-tools-layer.md",
+        "upstreamVersion": "0.0.75",
+        "verifiedAt": "2026-09-07",
+        "layers": [
+          "工具",
+          "控制流",
+          "观测与测试",
+          "安全"
+        ],
+        "note": "参考实现 = pi 自带的 sandbox 示例（examples/extensions/sandbox/index.ts，它 pin 的是 0.0.26）与 sandbox-runtime 0.0.75 的公共面。九层里裁掉转录渲染/会话/上下文/模型与花费/扩展 API 五层：那个包不碰它们（裁剪写死在 layers，不是省略）。逐层对照见文档 §3。"
+      },
+      "capabilities": [
+        {
+          "id": "os-level-sandbox",
+          "provides": "OS 级文件系统与网络围栏：macOS sandbox-exec、Linux bubblewrap、Windows（alpha）srt-win + WFP。SandboxManager.initialize / wrapWithSandbox / reset 是全部公共面。",
+          "evidence": "@anthropic-ai/sandbox-runtime@0.0.75 dist/index.d.ts:1 `export { SandboxManager }`；dist/sandbox/sandbox-manager.d.ts:36-80 `ISandboxManager`；README §Platform Support（macOS sandbox-exec / Linux bubblewrap / Windows alpha）",
+          "scope": [
+            "electron/agentLane/"
+          ],
+          "forbidden": [
+            {
+              "id": "hand-rolled-os-sandbox-profile",
+              "pattern": "sandbox-exec|\\bbwrap\\b|seatbelt",
+              "why": "手写 SBPL / bwrap 参数就是把这个包重做一遍，而它的难点全在我们看不见的地方（代理端口、violation 归因、嵌套沙箱、Linux 的 userns 限制）。自研版本第一次失效的样子是「沙箱起来了但什么都没挡住」。"
+            },
+            {
+              "id": "own-egress-proxy",
+              "pattern": "socks5|mitm[-_]?ca",
+              "why": "出网过滤是这个包用 SOCKS/HTTP 代理 + MITM CA 实现的；另起一个代理不但重复，两个代理还会互相打架，症状是网络时通时不通。"
             }
           ]
         }

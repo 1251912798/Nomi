@@ -8,7 +8,8 @@
 // 把一轮回复压成 `text: string` + `toolCalls[]` 两堆（`runtimePort.ts:122-133`），
 // 「先说什么后做什么」在数据里就不存在了；这道门送出去的是 `LaneProjection`，
 // 一串**有序的段**，顺序是记下来的不是推出来的。
-import type { LaneHandle, LanePendingApproval, LaneProjection } from '../shared/agentLane/laneContracts'
+import type { LaneHandle, LanePendingApproval, LaneProjection, LaneSkillIndexEntry }
+  from '../shared/agentLane/laneContracts'
 import { LaneDomainFailure } from '../shared/agentLane/laneToolContract'
 import type { LaneToolEffects, LaneToolFailureShape, LaneToolSpec } from '../shared/agentLane/laneToolContract'
 import type { NomiModelConfig } from '../harness/runtime/runtimePort'
@@ -112,8 +113,25 @@ export interface OpenLaneOptions {
   /** 宿主的身份提示词。`Available tools` / `Guidelines` 两段由 `openLane` 按 `tools` 自己拼，别在这里手写。 */
   systemPrompt: string
   tools: readonly LaneToolDescriptor[]
+  /**
+   * 这条 lane 看得见的技能索引（name + description + SKILL.md 绝对路径）。
+   * 正文**不在这里**——模型按 description 自己决定去 `read` 哪一条（方案 §3.4 的「自动触发就是 description」）。
+   * 缺省 = 这个项目没有技能，那一段整个不出现（`formatSkillsForPrompt` 对空数组返回空串）。
+   */
+  skills?: readonly LaneSkillIndexEntry[]
   /** 审批闸。**不传 = 不装闸**（阶段 1 的影子夹具就是这样跑的）；装了就是 fail-closed 的那一套。 */
   approval?: LaneApprovalOptions
+  /**
+   * 传输层看门狗的两个预算（毫秒）。缺省是 `laneHost` 的 `LANE_FIRST_RESPONSE_MS` /
+   * `LANE_IDLE_MS`。
+   *
+   * **为什么是宿主可配而不是写死**：同一条 lane 可能指向一台本机 ComfyUI 旁边的
+   * 小模型（首字节几百毫秒），也可能指向一个跨洋网关（几十秒）。用同一个数去卡两者，
+   * 要么把慢的那条误杀，要么让快的那条卡满 90 秒。
+   */
+  watchdog?: { firstResponseMs?: number; idleMs?: number }
+  /** 一个回合最多几次模型请求。缺省 `LANE_MAX_MODEL_REQUESTS`。 */
+  limits?: { maxModelRequests?: number }
 }
 
 export type OpenLane = (options: OpenLaneOptions) => Promise<LaneHandle>

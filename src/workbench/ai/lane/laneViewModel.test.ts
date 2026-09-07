@@ -15,6 +15,7 @@ const labels: LaneViewModelLabels = {
   thinkingLabel: '[thinking]',
   formatTokens: (value) => `${value}t`,
   formatCost: (usd) => `$${usd.toFixed(4)}`,
+  retryLabel: (attempt, maxAttempts) => `[retry ${attempt}/${maxAttempts}]`,
   // 这两句在生产里是 i18n 的 `contextUnknown` / `contextCostFree`。测试里写成醒目的假串，
   // 是为了让「本层自己编了一个字」当场露馅——占位符长什么样是调用方的事，不是这一层的。
   unknown: '[unknown]',
@@ -227,6 +228,23 @@ describe('laneViewModel', () => {
     ]), labels)
     expect(model.items[0].kind === 'thinking' && model.items[0].label).toBe('[thinking]')
     expect(model.items[1].kind === 'tool' && model.items[1].receipt.label).toBe('[read_full_text]')
+  })
+
+  it('says “retrying 2/4” while pi is backing off, and says nothing at all when it is not', () => {
+    // 这条守的是用户那边最贵的一个体感：一次 429 或网络抖动今天长成「它卡住了」——
+    // 面板既不动也不报错，而底下 pi 正在 1s / 2s / 4s 地退避。三个数字上屏之后，
+    // 同一件事变成一句「正在重试 2/4」，用户知道该等还是该按停。
+    next = 0
+    const retrying = laneViewModel(projection([
+      part({ kind: 'user', text: 'Say something.' }),
+    ], { running: true, retry: { attempt: 2, maxAttempts: 4, nextAttemptAt: 1_757_000_000_000 } }), labels)
+    expect(retrying.retry).toBe('[retry 2/4]')
+
+    // 阳性对照：**缺失 = 没在重试**，不是重试了 0 次。一个恒存在的「重试 0/4」
+    // 会把「一切正常」说成「它在挣扎」，那比不显示更糟。
+    next = 0
+    const calm = laneViewModel(projection([part({ kind: 'user', text: 'Say something.' })], { running: true }), labels)
+    expect(calm.retry).toBeUndefined()
   })
 
   it('reports a streaming assistant part as streaming, so the cursor is real and not a timer', () => {

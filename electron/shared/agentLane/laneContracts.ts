@@ -160,6 +160,22 @@ export interface LaneThinking {
   readonly canTurnOff: boolean
 }
 
+/**
+ * 这一轮正在重试中（`LaneSnapshot.operation.retry`，pi 自己记的）。
+ *
+ * **为什么必须上屏**：一次 429 或网络抖动今天在用户那边长成「它卡住了」——面板既不动也不报错，
+ * 而底下 pi 正在 1s / 2s / 4s 地退避。三个数字上屏之后，同一件事变成「正在重试 2/4」，
+ * 用户知道该等还是该按停。字段缺失 = **没有在重试**，不是重试了 0 次。
+ */
+export interface LaneRetry {
+  /** 第几次重试（1 起）。 */
+  readonly attempt: number
+  /** 最多几次（pi 的 `maxRetries + 1`）。 */
+  readonly maxAttempts: number
+  /** 下一次不早于这个时刻（epoch ms）。倒计时由渲染层自己算，本层不算第二遍。 */
+  readonly nextAttemptAt: number
+}
+
 /** 一次推送 = lane 当前的全部有序段。阶段 1 走全量快照；增量是阶段 3 的事。 */
 export interface LaneProjection {
   readonly lane: string
@@ -170,6 +186,8 @@ export interface LaneProjection {
   /** 有一张卡在等用户。**这一段不在 pi 的快照里**，见 `LanePendingApproval`。 */
   readonly pending?: LanePendingApproval
   readonly thinking: LaneThinking
+  /** 只在真的在退避时存在。见 `LaneRetry`。 */
+  readonly retry?: LaneRetry
 }
 
 /**
@@ -338,4 +356,27 @@ export interface LaneHandle {
   subscribe(listener: (projection: LaneProjection) => void): () => void
   execute(command: LaneCommand): Promise<LaneCommandOutcome>
   close(): Promise<void>
+}
+
+/**
+ * 一条技能在 lane 眼里的样子（方案 §3.4）。
+ *
+ * **它住在中立层，不住在 ESM 岛上**，理由和这个文件顶上那句话一样：`laneRuntimePort.ts`
+ * 是 CJS 那一半，它要在 `OpenLaneOptions` 上写出这个字段；而把类型定义留在
+ * `laneSkillIndex.mts` 上会把整个岛地拖进 CJS 工程——`agent-runtime-wiring.test.mjs:84`
+ * 那条断言正是为此存在的，2026-09-07 它当场红了一次（type-only import 也算「看见」）。
+ *
+ * 正文**不在这里**：索引只带 name/description/location，模型按 description 自己决定
+ * 去 `read` 哪一条（自动触发就是 description，没有宿主侧分类器）。
+ */
+export interface LaneSkillIndexEntry {
+  /** frontmatter 的 `name`。模型看见的标识，也是 `/skill` chip 引用的那个。 */
+  readonly name: string
+  readonly description: string
+  /** SKILL.md 的**绝对**路径——coding 工具的 operations 插槽只收绝对路径。 */
+  readonly filePath: string
+  /** `disable-model-invocation: true` 的技能不进索引，只能由 `/skill` chip 显式送。 */
+  readonly disableModelInvocation: boolean
+  /** 这个技能要跑脚本吗（自带 `scripts/`/`bin/`/`hooks/`，或 frontmatter 写了 `tools: coding`）。 */
+  readonly requiresCodingTools: boolean
 }

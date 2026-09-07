@@ -12,9 +12,7 @@
 // 定成 prompt/KV-cache 合同（上游 `splitDeferredTools` 靠稳定前缀保住缓存）。这里同一条纪律：
 // 目录按固定顺序拼，别按 `Object.keys` 之类会随实现漂的东西。
 import type { LaneToolSpec } from "../shared/agentLane/laneToolContract";
-import { canvasLaneToolSpecs } from "./laneCanvasTools";
-import { documentLaneToolSpecs } from "./laneDocumentTools";
-import { timelineLaneToolSpecs } from "./laneTimelineTools";
+import { modelFacingToolSpecs } from "../shared/agentCapabilities/modelFacingToolRegistry";
 
 /**
  * 一个 profile 最多几个工具（方案 §3.2 S7）。
@@ -39,7 +37,9 @@ import { timelineLaneToolSpecs } from "./laneTimelineTools";
 export const LANE_TOOL_BUDGET = 12;
 
 function buildCatalog(): readonly LaneToolSpec[] {
-  const specs = [...documentLaneToolSpecs(), ...canvasLaneToolSpecs(), ...timelineLaneToolSpecs()];
+  // 内部 profile = 共享注册表的一次投影（方案 §3.1）。付费能力与「外部才有」的工具在那里
+  // 就已经被声明挡住了，这里不再自己判断一次——判断散出去就是第二个真相源。
+  const specs = [...modelFacingToolSpecs("internal")];
   const names = new Set<string>();
   for (const spec of specs) {
     if (names.has(spec.name)) throw new Error(`Duplicate lane tool name: ${spec.name}`);

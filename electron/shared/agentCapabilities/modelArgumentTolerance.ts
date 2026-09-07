@@ -1,4 +1,4 @@
-// Agent lane · 容忍是**一族**，不是一个字段（方案 §3.4）。
+// 模型可见工具面 · 容忍是**一族**，不是一个字段（方案 §3.4）。
 //
 // **它在解决哪个真实摩擦**：2026-09-06 打包版实测，用户让 Agent「从原稿重拆 10 镜」，
 // 「创建或修改镜头卡」连着失败 6 次。模型自己在正文里说对了病因——「我看到参数需要是
@@ -49,13 +49,13 @@ function parseJsonText(value: unknown): unknown {
 }
 
 /** A · 整包参数被序列化成 JSON 字符串。 */
-function unwrapWholeArguments(args: unknown): Record<string, unknown> {
+export function unwrapWholeArguments(args: unknown): Record<string, unknown> {
   const parsed = parseJsonText(args);
   if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) return parsed as Record<string, unknown>;
   return {};
 }
 
-export interface LaneToleranceShape {
+export interface ModelToleranceShape {
   /** 声明成数组的字段名。B 族（JSON 文本）与 C 族（单对象→一元数组）都只对它们生效。 */
   readonly arrayFields?: readonly string[];
   /** 声明成嵌套对象的字段名。只做 B 族。 */
@@ -75,7 +75,7 @@ export interface LaneToleranceShape {
  * 解不出、或解出来形状不对，仍然 fail-closed —— 由 pi 的校验器报错，
  * 而它报的错会带上路径和期望（探针 §4.2 臂 A 实测）。
  */
-export function laneArgumentTolerance(shape: LaneToleranceShape): (args: unknown) => Record<string, unknown> {
+export function modelArgumentTolerance(shape: ModelToleranceShape): (args: unknown) => Record<string, unknown> {
   const arrayFields = new Set(shape.arrayFields ?? []);
   const objectFields = new Set(shape.objectFields ?? []);
   const aliases = Object.entries(shape.fieldAliases ?? {});
@@ -115,8 +115,8 @@ export function laneArgumentTolerance(shape: LaneToleranceShape): (args: unknown
  * 那不是错误，是它在复述我们已经用工具名说过的事——把它安静地丢掉，别让一次正确意图
  * 死在 `additionalProperties: false` 上。
  */
-export function laneNoArgumentTolerance(): Record<string, never> {
+export function noArgumentTolerance(): Record<string, never> {
   return {};
 }
 
-export { parseJsonText as parseLaneArgumentJsonText };
+export { parseJsonText as parseModelArgumentJsonText };

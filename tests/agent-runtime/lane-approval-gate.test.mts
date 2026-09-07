@@ -18,6 +18,7 @@ import { z } from 'zod';
 
 import { LANE_APPROVAL_NOTE_TYPE, isLaneApprovalNote, type LaneProjection }
   from '../../electron/shared/agentLane/laneContracts.js';
+import { LANE_WRITE_TOOL_TIMEOUT_MS } from '../../electron/shared/agentLane/laneToolContract.js';
 import type { LaneApprovalOptions } from '../../electron/agentLane/laneRuntimePort.js';
 import { openLane } from '../../electron/agentLane/laneHost.mjs';
 import { createDocumentLaneTools } from '../../electron/agentLane/laneDocumentTools.js';
@@ -135,10 +136,11 @@ test('G3b ① · 「本会话允许这类」按能力记：同一个能力的下
     ...fixture.options,
     tools: [{
       name: 'plan_timeline',
-      capabilityId: 'timeline.write',
+      contractId: 'timeline.write',
       description: 'Apply a timeline edit plan, used here to exercise the plan-review approval path.',
       promptSnippet: 'apply a timeline edit plan.',
       effects: { mutates: true, billable: false, reversal: 'undoable' },
+      execution: { timeoutMs: LANE_WRITE_TOOL_TIMEOUT_MS },
       schema: z.object({}).strict(),
       examples: [{ when: 'Call it with no arguments:', arguments: {} }],
       execute: async () => { applied += 1; return { ok: true as const, text: 'Applied.' }; },
