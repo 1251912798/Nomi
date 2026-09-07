@@ -5,9 +5,12 @@ import { describe, expect, it } from "vitest";
 import { LaneCommandError, parseLaneCommand } from "./laneCommandCodec";
 
 describe("lane command codec", () => {
-  it("accepts the three things the renderer is allowed to say", () => {
+  it("accepts the intents the renderer is allowed to say", () => {
     expect(parseLaneCommand({ kind: "prompt", text: "Append a line." })).toEqual({ kind: "prompt", text: "Append a line." });
     expect(parseLaneCommand({ kind: "abort" })).toEqual({ kind: "abort" });
+    expect(parseLaneCommand({ kind: "steer", text: "横屏" })).toEqual({ kind: "steer", text: "横屏" });
+    expect(parseLaneCommand({ kind: "follow-up", text: "然后导出" })).toEqual({ kind: "follow-up", text: "然后导出" });
+    expect(parseLaneCommand({ kind: "cancel-queued", entryId: "e-9" })).toEqual({ kind: "cancel-queued", entryId: "e-9" });
   });
 
   it("drops everything else the renderer tries to mint", () => {
@@ -23,13 +26,15 @@ describe("lane command codec", () => {
 
   it("throws rather than guessing a default", () => {
     // 猜一个默认值的代价是：一条解不出来的命令继续往下走，最后变成一次没人预期的模型调用。
-    for (const wire of [undefined, null, "prompt", [], { kind: "steer" }, { kind: "prompt" }, { kind: "prompt", text: "   " }]) {
+    for (const wire of [undefined, null, "prompt", [], { kind: "nudge" }, { kind: "prompt" }, { kind: "prompt", text: "   " },
+      { kind: "steer" }, { kind: "steer", text: "  " }, { kind: "follow-up" }, { kind: "cancel-queued" },
+      { kind: "cancel-queued", entryId: "" }]) {
       expect(() => parseLaneCommand(wire)).toThrow(LaneCommandError);
     }
   });
 
   it("names the unknown kind in the error, because a codec that says only 'invalid' is useless", () => {
-    expect(() => parseLaneCommand({ kind: "steer" })).toThrow(/steer/);
+    expect(() => parseLaneCommand({ kind: "nudge" })).toThrow(/nudge/);
   });
 
   it("caps prompt size, so one message cannot become a free memory amplifier", () => {
@@ -77,6 +82,27 @@ describe("lane command codec", () => {
     it("空白理由等于没给：默认文案由主进程决定，不由一串空格决定", () => {
       expect(parseLaneCommand({ kind: "approval", toolCallId: "c1", action: "deny", reason: "   " }))
         .toEqual({ kind: "approval", toolCallId: "c1", action: "deny" });
+    });
+  });
+
+  describe("对话名（阶段 3d 的多 lane）", () => {
+    it("三条命令各自解得出来", () => {
+      for (const kind of ["lane-select", "lane-create", "lane-delete"] as const) {
+        expect(parseLaneCommand({ kind, laneName: "调研 2" })).toEqual({ kind, laneName: "调研 2" });
+      }
+    });
+
+    it("**对话名同时是盘上的目录名**，所以路径字符一个都不许过", () => {
+      // 漏过去一个 `/` 或 `..`，一条「新建对话」就能让会话文件落到项目目录外面——
+      // 而删那条对话时同一个名字会跟着走。这不是排版口味，是路径安全。
+      for (const laneName of ["../escape", "a/b", "a\\b", "a:b", ".", "..", "", " leading", "x".repeat(65), 7, null]) {
+        expect(() => parseLaneCommand({ kind: "lane-create", laneName })).toThrow(LaneCommandError);
+      }
+    });
+
+    it("中文名字照收：默认语言是中文，把它挡在门外等于让这个功能只对英文用户存在", () => {
+      expect(parseLaneCommand({ kind: "lane-create", laneName: "第三场戏" }))
+        .toEqual({ kind: "lane-create", laneName: "第三场戏" });
     });
   });
 });

@@ -11,6 +11,7 @@
 
 import type { ModelParameterControl } from "../modelCatalogMeta";
 import type {
+  ArchetypeMode as SharedArchetypeMode,
   ArchetypeExpressionChannel as SharedArchetypeExpressionChannel,
   ArchetypeReferenceSlotKind as SharedArchetypeReferenceSlotKind,
   ArchetypeSource as SharedArchetypeSource,
@@ -83,73 +84,8 @@ export type ArchetypeIntent = "text" | "single" | "firstlast" | "character" | "e
  */
 export type ArchetypeTransportTaskKind = "text_to_video" | "image_to_video" | "text_to_image" | "image_edit" | "text_to_audio" | "transcribe" | "text_to_3d" | "image_to_3d";
 
-export type ArchetypeMode = {
-  id: string;
-  intent: ArchetypeIntent;
-  /** 该模型自己的叫法（副标签，如 Seedance 的「全能参考」）。 */
-  vendorTerm: string;
-  hint: string;
-  slots: ArchetypeReferenceSlot[];
-  /**
-   * How this mode can express documented user signals. This is model-contract
-   * data, not a universal assumption: different models expose different
-   * channels and scopes.
-   */
-  expressionChannels?: ArchetypeExpressionChannel[];
-  /** 标量参数：复用现有控件类型（规则 1，不另造）。供应商无关的**缺省**集；某供应商字段枚举不同时用 vendorParams 覆盖。 */
-  params: ModelParameterControl[];
-  /**
-   * B 档案分层（用户拍板 2026-06-07）：同一模型身份在不同供应商下**标量参数枚举不同**时，
-   * 按 vendorKey 覆盖 `params`。例：Seedream 文生图在 kie 是 quality(basic/high)，在 apimart 是
-   * resolution(2K/4K) —— 字段名+取值都不同，模板引擎只透传不翻译，故 UI 控件本身要按供应商不同。
-   * 缺省（绝大多数模式两家一致或只一家有）不写；解析时 resolveArchetypeForModel 按模型 vendorKey 特化。
-   * **身份与能力形状（id/family/label/modes/slots/intent）仍供应商无关**——只 params 这一层分供应商（P4）。
-   */
-  vendorParams?: Record<string, ModelParameterControl[]>;
-  promptRequired: boolean;
-  /**
-   * 该模式发请求时用的 model enum，覆盖 catalog 行的 modelKey（评审 M3）。HappyHorse 把 4 个端点
-   * （text/image/reference/video-to-video）合成 1 个 catalog 条目，靠 per-mode enum 区分。
-   * 缺省（如 Seedance 三模式同 model）→ 用 catalog 的 modelKey。
-   */
-  modelEnum?: string;
-  /**
-   * 覆盖档案级 transportTaskKind（图像档案专用）：文生图模式=`text_to_image`、改图模式=`image_edit`，
-   * 两者打不同 mapping 桶。视频档案各模式同 taskKind → 缺省即可，用档案级值。
-   */
-  transportTaskKind?: ArchetypeTransportTaskKind;
-  /**
-   * **供应商特化的传输桶**（第二条供应商特化轴，与 `vendorParams` 平行；2026-09-02 加）。
-   *
-   * 同一模型身份在不同供应商下可能被路由到**不同的 mapping 桶**：kie 把 minimax-h3 / happyhorse 的
-   * 全部场景收在一个 createTask 端点（故档案级/模式级都是 `text_to_video`），而 Runway 把同样两个模型的
-   * 图模式发到 `/v1/image_to_video`（`image_to_video` 桶）。这不是能力差异、不该分裂成两个档案（P4），
-   * 也不该让 catalog 侧另立第二份真相 —— 由本字段按 vendorKey 覆盖。
-   *
-   * 优先级：`vendorTransportTaskKind[vendor]` > `transportTaskKind`（模式级）> 档案级 `transportTaskKind`。
-   * **唯一读取入口是 `modeTransportFor()`**（同目录 index.ts / electron 侧 modeTransport.ts）——
-   * 禁止在别处手写 `mode.transportTaskKind ?? archetype.transportTaskKind`，那正是本字段要消灭的双真相源。
-   */
-  vendorTransportTaskKind?: Record<string, ArchetypeTransportTaskKind>;
-  /**
-   * **角色数组合并（通用原语）**：把本模式有值的若干槽合并成一个带 `role` 的对象数组，落在 `key` 上，
-   * 并删掉被合并的扁平键（M2 互斥：避免 image_urls/first_frame_url 与合并键并存触发 vendor 报错）。
-   * 用途：apimart Seedance 首尾帧 = `image_with_roles:[{url,role:'first_frame'},{url,role:'last_frame'}]`。
-   * **通用**：任何用 role-数组的模型只声明这一项即可，构造层零改动（不 if-vendor、不写死键名，键来自这里）。
-   * role 取自各槽的 roleName ?? 由 kind 派生。合并必须在构造层做（模板引擎丢不掉 {url:undefined} 对象）。
-   *
-   * `flat`：产出**有序扁平 `string[]`**（按槽声明顺序）而非 `[{url,role}]`。用于位置数组语义的模型——
-   * 如 Veo 首尾帧 `image_urls:[首url, 尾url]`（[0]=首 [1]=尾），区别于 Seedance 的 role-对象数组。
-   */
-  combineSlotsInto?: { key: string; flat?: boolean };
-  /**
-   * **模式级固定 body 参数**（通用）：本模式恒定要发、但**不需用户选**的请求字段。构造层直接并进 out
-   * （键 = API 字段名，值 = 常量字符串）→ catalog body 用 `{{request.params.<key>}}` 读它。
-   * 用途：Veo/Omni 的 `generation_type`（frame 首尾帧 / reference 参考图，由模式决定，不该是个 1 选下拉）。
-   * 与 params 的区别：params 是用户可调的控件，fixedParams 是模式内嵌的常量，不渲染 UI（保持极简 R2）。
-   */
-  fixedParams?: Record<string, string>;
-};
+/** Mode facts are owned by the shared capability layer, including combination limits. */
+export type ArchetypeMode = SharedArchetypeMode;
 
 /**
  * **变体（variant）正交轴**（与 modes 平行的新轴，用户拍板方案 A：通用分段选择器）。

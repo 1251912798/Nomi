@@ -1,3 +1,4 @@
+import { CATALOG_LIVENESS_STATES } from './catalogLiveness/states/01-listing'
 import { CANVAS_ADD_MENU_STATES } from './canvasAddMenu/canvasAddMenuStates'
 import { CANVAS_FRAME_STATES } from './canvasFrame/canvasFrameStates'
 import { CANVAS_FRAME_CELL_HEIGHT, CANVAS_FRAME_CELL_WIDTH } from './canvasFrame/canvasFrameLabKit'
@@ -22,6 +23,7 @@ import type { LabScreen, LabState } from './labScreen'
  * 只改一处 = 那一屏要么截不出图、要么孤儿基线）。
  */
 export const LAB_SCREENS: readonly LabScreen[] = [
+  { id: 'catalog-liveness', label: '模型目录活性', states: CATALOG_LIVENESS_STATES, cell: { width: 960, height: 760 } },
   {
     id: 'agent-panel-v4',
     label: 'Agent 面板 v4',

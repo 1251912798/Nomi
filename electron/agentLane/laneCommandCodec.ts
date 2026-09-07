@@ -36,17 +36,52 @@ export function parseLaneCommand(wire: unknown): LaneCommand {
   const record = wire as Record<string, unknown>;
   if (record.kind === "abort") return { kind: "abort" };
   if (record.kind === "approval") return parseApproval(record);
+  if (record.kind === "cancel-queued") return { kind: "cancel-queued", entryId: parseEntryId(record.entryId) };
+  if (record.kind === "lane-select") return { kind: "lane-select", laneName: parseLaneName(record.laneName) };
+  if (record.kind === "lane-create") return { kind: "lane-create", laneName: parseLaneName(record.laneName) };
+  if (record.kind === "lane-delete") return { kind: "lane-delete", laneName: parseLaneName(record.laneName) };
+  if (record.kind === "steer") return { kind: "steer", text: parseText(record.text, "A steer command") };
+  if (record.kind === "follow-up") return { kind: "follow-up", text: parseText(record.text, "A follow-up command") };
   if (record.kind !== "prompt") {
     throw new LaneCommandError(`Unknown lane command kind: ${String(record.kind)}`);
   }
-  const text = record.text;
-  if (typeof text !== "string" || !text.trim()) {
-    throw new LaneCommandError("A prompt command needs non-empty text");
+  return { kind: "prompt", text: parseText(record.text, "A prompt command") };
+}
+
+/** 三条「一句用户的话」命令（prompt / steer / follow-up）共用同一把尺子——上限不该按命令名不同。 */
+function parseText(value: unknown, label: string): string {
+  if (typeof value !== "string" || !value.trim()) {
+    throw new LaneCommandError(`${label} needs non-empty text`);
   }
-  if (Buffer.byteLength(text, "utf8") > MAX_PROMPT_BYTES) {
-    throw new LaneCommandError(`A prompt command must stay under ${MAX_PROMPT_BYTES} bytes`);
+  if (Buffer.byteLength(value, "utf8") > MAX_PROMPT_BYTES) {
+    throw new LaneCommandError(`${label} must stay under ${MAX_PROMPT_BYTES} bytes`);
   }
-  return { kind: "prompt", text };
+  return value;
+}
+
+/** 队列项的 id 是 pi 铸的，渲染层只是转交。空串会在 `cancelQueued` 那侧变成一次 `not_found`。 */
+function parseEntryId(value: unknown): string {
+  if (typeof value !== "string" || !value.trim()) {
+    throw new LaneCommandError("A cancel-queued command needs the entryId it cancels");
+  }
+  return value;
+}
+
+/**
+ * 对话名。**它同时是这条对话在盘上的目录名**（`laneSession.mts` 按 lane 建 slug 目录），
+ * 所以这里的字符集不是排版口味，是路径安全：`/`、`\`、`:`、`..` 任何一个漏过去，
+ * 一条「新建对话」就能让会话文件落到项目目录外面，而删除那条对话时同一个名字会跟着走。
+ * 长度上限同理——目录名有文件系统上限，超了不是报错而是创建失败。
+ */
+const LANE_NAME_SHAPE = /^[A-Za-z0-9一-龥][A-Za-z0-9一-龥 _-]{0,63}$/u;
+
+function parseLaneName(value: unknown): string {
+  if (typeof value !== "string" || !LANE_NAME_SHAPE.test(value)) {
+    throw new LaneCommandError(
+      `A lane name must be 1-64 characters of letters, digits, Chinese, space, "_" or "-" (got ${JSON.stringify(value)})`,
+    );
+  }
+  return value;
 }
 
 /**

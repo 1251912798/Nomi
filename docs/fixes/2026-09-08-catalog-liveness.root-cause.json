@@ -1,0 +1,126 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-08-catalog-liveness",
+  "problem_type": "Seeded catalog listing drift",
+  "symptom": "Retired text models stay enabled or are silently pruned with their user configuration.",
+  "direct_cause": "The existing list probe only classifies vendor reachability; seed retirement deletes rows.",
+  "class_root": "Catalog persistence lacks a reversible listing reconciliation boundary.",
+  "affected_population": [
+    "Existing installations with seeded text models across vendors"
+  ],
+  "scope_paths": [
+    "electron/catalog/modelListReconcile.ts",
+    "electron/catalog/catalogStore.ts",
+    "electron/catalog/types.ts",
+    "electron/catalog/seedBuiltins.ts",
+    "electron/ai/onboarding/vendorHealth.ts",
+    "electron/ai/onboarding/modelListProbe.ts",
+    "electron/catalog/apimartVendor.ts",
+    "electron/catalog/builtinVendorSeeds.ts",
+    "electron/ai/onboarding/modelListResponse.ts",
+    "electron/main.ts",
+    "scripts/model-radar.ts",
+    "scripts/model-liveness.ts",
+    "electron/preload.ts",
+    "src/desktop/bridge.ts",
+    "src/NomiRouterApp.tsx"
+  ],
+  "entry_points": [
+    "Vendor health on model settings open",
+    "Periodic text vendor health refresh",
+    "Builtin seed migration"
+  ],
+  "external_sources": [
+    {
+      "kind": "official-doc",
+      "url": "https://docs.apimart.ai/en/api-reference/texts/general/chat-completions-nostream.md",
+      "checked_at": "2026-09-08",
+      "purpose": "Minimum non-streaming request and choices response shape."
+    }
+  ],
+  "internal_only_reason": "Product listing policy is specified by the approved stage 5b brief; the existing list parser owns HTTP protocol validation.",
+  "invariants": [
+    "Only complete successful lists can mark seeded text models unlisted.",
+    "A restored listing never automatically enables a model.",
+    "Deleting a seeded model does not reseed it on refresh."
+  ],
+  "generality_proof": "Vendor-scoped catalog mutations apply one policy to all seeded text models; failed/partial/stale results cannot mutate.",
+  "shared_boundaries": [
+    {
+      "path": "electron/catalog/modelListReconcile.ts",
+      "symbol": "modelListReconciliation",
+      "responsibility": "Derive reversible catalog changes from complete provider evidence."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "electron/ai/onboarding/vendorHealth.ts",
+      "entry_point": "probe",
+      "disposition": "enforced",
+      "evidence": "All credentialed health requests use the shared list primitive and catalog reconciliation."
+    },
+    {
+      "path": "electron/catalog/seedBuiltins.ts",
+      "entry_point": "applyBuiltinSeeds",
+      "disposition": "enforced",
+      "evidence": "Explicit retired-text migration retains rows, while suppression prevents deleted seeds returning."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Every provider can change its model list after installation.",
+    "same_class_scan": [
+      "rg fetchModelList electron: onboarding discovery and vendor health independently checked.",
+      "rg RETIRED electron/catalog/seedBuiltins.ts: text pruning and seed insertion independently checked."
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "electron/catalog/modelListReconcile.ts",
+    "invariant": "Full listing evidence changes availability reversibly within vendor scope.",
+    "failure_mode": "No changes on incomplete, failed, unchanged or stale results.",
+    "exception_policy": "none",
+    "strategy": "Derive patches once and apply them atomically to the latest catalog state.",
+    "artifacts": [
+      "electron/catalog/modelListReconcile.ts",
+      "electron/catalog/catalogStore.ts",
+      "electron/catalog/seedBuiltins.ts"
+    ]
+  },
+  "regression_tests": [
+    "electron/catalog/modelListReconcile.test.ts",
+    "electron/catalog/apimartTextMigration.test.ts",
+    "electron/catalog/catalogLivenessPersistence.test.ts",
+    "electron/ai/onboarding/modelListProbe.test.ts",
+    "scripts/model-liveness.test.ts"
+  ],
+  "class_regression_tests": [
+    "electron/catalog/modelListReconcile.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "electron/catalog/seedBuiltins.ts"
+    ],
+    "rationale": "Replace automatic retired-text pruning with reversible migration; no file removal."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "No dependency change: reuse the existing HTTP list primitive and catalog mutation owner.",
+    "exit_criteria": []
+  },
+  "migration": "Retired text ids on existing installs are disabled and retained; restored listings only clear unlisted.",
+  "residual_risks": [
+    "Provider listing absence is not proof of paid generation failure; users may explicitly enable."
+  ],
+  "invariant_owner_layer": {
+    "layer": "electron/catalog",
+    "owner_paths": [
+      "electron/catalog/modelListReconcile.ts"
+    ],
+    "tests": [
+      "electron/catalog/modelListReconcile.test.ts",
+      "electron/catalog/catalogLivenessPersistence.test.ts"
+    ]
+  }
+}

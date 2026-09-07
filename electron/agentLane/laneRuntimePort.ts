@@ -8,8 +8,9 @@
 // 把一轮回复压成 `text: string` + `toolCalls[]` 两堆（`runtimePort.ts:122-133`），
 // 「先说什么后做什么」在数据里就不存在了；这道门送出去的是 `LaneProjection`，
 // 一串**有序的段**，顺序是记下来的不是推出来的。
-import type { LaneHandle, LanePendingApproval, LaneProjection, LaneSkillIndexEntry }
-  from '../shared/agentLane/laneContracts'
+import type {
+  LaneHandle, LanePendingApproval, LaneProjection, LaneSkillIndexEntry, LaneTaskFacts,
+} from '../shared/agentLane/laneContracts'
 import { LaneDomainFailure } from '../shared/agentLane/laneToolContract'
 import type { LaneToolEffects, LaneToolFailureShape, LaneToolSpec } from '../shared/agentLane/laneToolContract'
 import type { NomiModelConfig } from '../harness/runtime/runtimePort'
@@ -122,6 +123,14 @@ export interface OpenLaneOptions {
   /** 审批闸。**不传 = 不装闸**（阶段 1 的影子夹具就是这样跑的）；装了就是 fail-closed 的那一套。 */
   approval?: LaneApprovalOptions
   /**
+   * 任务卡的领域读口（方案 §2.2 G13）。**给函数，不给快照**：任务卡上的进度和金额每秒都在变，
+   * 传一份快照进来就等于把「这张卡现在什么样」冻在开 lane 那一刻。
+   *
+   * 不传 = 任务卡只画标题（`LanePart.facts` 缺席）。这是诚实的降级：join 不到就说 join 不到，
+   * 不给一个「排队中」——那会让用户以为有东西在跑。
+   */
+  tasks?: LaneTaskFactsResolver
+  /**
    * 传输层看门狗的两个预算（毫秒）。缺省是 `laneHost` 的 `LANE_FIRST_RESPONSE_MS` /
    * `LANE_IDLE_MS`。
    *
@@ -133,5 +142,8 @@ export interface OpenLaneOptions {
   /** 一个回合最多几次模型请求。缺省 `LANE_MAX_MODEL_REQUESTS`。 */
   limits?: { maxModelRequests?: number }
 }
+
+/** `productionRunId` → 领域投影出的那一份事实。解不出来返回 `undefined`，**不返回空对象**。 */
+export type LaneTaskFactsResolver = (productionRunId: string) => LaneTaskFacts | undefined
 
 export type OpenLane = (options: OpenLaneOptions) => Promise<LaneHandle>
