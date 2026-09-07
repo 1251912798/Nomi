@@ -14,6 +14,10 @@
  *  - 图片镜头（shotKind === 'image'）不参与视频生成策略：不投影、不被合并/拆条吞掉。
  */
 import type { PlanShot, StoryboardPlan } from "./storyboardPlan";
+// 运行时 import（不是 type-only）：镜头 id 只能有**一把尺**。这里曾自带一份
+// `shot.shotId ?? shot-${index}`，而落画布/行绑定用的是 `stableShotId`（多一道字符白名单）——
+// 同一个镜头在「引擎输入 id」与「行绑定 id」上会得出两个值，闸的作用域和行内警示就对不上号（R14.1）。
+import { stableShotId } from "./storyboardPlan";
 import type {
   MergeProposal,
   PlanIssue,
@@ -25,7 +29,9 @@ import type { GenerationResolvePlanValue } from "../../../../electron/shared/vid
 const effectiveVideoShots = (plan: StoryboardPlan): PlanShot[] =>
   plan.shots.filter((shot) => shot.shotKind !== "image");
 
-const shotIdOf = (shot: PlanShot): string => shot.shotId ?? `shot-${shot.index}`;
+/** 镜头稳定 id（引擎输入、闸作用域、行内警示三处必须用同一把尺 = `stableShotId`）。 */
+export const storyboardShotId = stableShotId;
+const shotIdOf = storyboardShotId;
 
 /** 投影成引擎输入：只带引擎能裁决的字段；id 稳定（shotId ?? shot-<index>）。 */
 export function storyboardPlanToPlanShotInputs(plan: StoryboardPlan): PlanShotInput[] {
@@ -149,16 +155,64 @@ export function classifyResolveStrategy(value: GenerationResolvePlanValue): Reso
   return { mergeSuggestions, requiredMerges, splits: value.splitProposals, blockers };
 }
 
-/** 执行闸判据：是否存在「原样生成即截断/无模型」的阻断（效率合并不算）。 */
-export function hasResolveBlockers(value: GenerationResolvePlanValue): boolean {
-  const view = classifyResolveStrategy(value);
-  return view.requiredMerges.length > 0 || view.splits.length > 0 || view.blockers.length > 0;
+/**
+ * 把审阅视图收窄到**本次真正要 materialize 的那批镜头**。
+ *
+ * 为什么必须有它（返工 1）：resolve 永远按整份方案算——合并建议依赖真实相邻关系，只把选中的几镜
+ * 喂进引擎会算出错误的分组。但**闸**问的是另一个问题：「我这一次点的这些镜头，原样生成会不会
+ * 截断/出不来」。第 7 镜超限不该拦住单点第 3 镜的生成。所以：整份方案照算，闸按本次镜头集合过滤。
+ * 传 undefined = 不收窄（整批/面板视图）。
+ */
+export function scopeResolveStrategy(view: ResolveStrategyView, shotIds?: readonly string[]): ResolveStrategyView {
+  if (!shotIds) return view;
+  const scope = new Set(shotIds);
+  const touches = (ids: readonly string[]): boolean => ids.some((id) => scope.has(id));
+  return {
+    mergeSuggestions: view.mergeSuggestions.filter((proposal) => touches(proposal.shotIds)),
+    requiredMerges: view.requiredMerges.filter((proposal) => touches(proposal.shotIds)),
+    splits: view.splits.filter((proposal) => scope.has(proposal.shotId)),
+    // shotId 缺失的是方案级问题（如无候选模型）——任何一次生成都撞得上，不因收窄而消失。
+    blockers: view.blockers.filter((issue) => !issue.shotId || scope.has(issue.shotId)),
+  };
 }
 
-/** 闸 toast 的第一条人话阻断理由（给用户先处理哪条）；无阻断返回 null。 */
-export function firstResolveBlockerMessage(value: GenerationResolvePlanValue): string | null {
-  const view = classifyResolveStrategy(value);
-  return view.splits[0]?.reason ?? view.requiredMerges[0]?.reason ?? view.blockers[0]?.message ?? null;
+/** 一条阻断的结构化身份（人话由显示边界 `strategyText` 渲染 —— 引擎不产文案，R15）。 */
+export type ResolveBlocker =
+  | { kind: "split"; proposal: SplitProposal }
+  | { kind: "merge"; proposal: MergeProposal }
+  | { kind: "issue"; issue: PlanIssue };
+
+/** 执行闸判据：本次镜头集合里是否存在「原样生成即截断/无模型」的阻断（效率合并不算）。 */
+export function hasResolveBlockers(value: GenerationResolvePlanValue, shotIds?: readonly string[]): boolean {
+  return firstResolveBlocker(value, shotIds) !== null;
+}
+
+/** 闸 toast 的第一条阻断（给用户先处理哪条）；无阻断返回 null。 */
+export function firstResolveBlocker(value: GenerationResolvePlanValue, shotIds?: readonly string[]): ResolveBlocker | null {
+  const view = scopeResolveStrategy(classifyResolveStrategy(value), shotIds);
+  if (view.splits[0]) return { kind: "split", proposal: view.splits[0] };
+  if (view.requiredMerges[0]) return { kind: "merge", proposal: view.requiredMerges[0] };
+  if (view.blockers[0]) return { kind: "issue", issue: view.blockers[0] };
+  return null;
+}
+
+/**
+ * 分镜行的行内警示（返工 7 / D1）：超限或低于下限**在表格行上就看得见**，不用点开面板才知道。
+ * 只认 duration.overflow / duration.underflow 两条——它们是「原样生成必然出问题」的那两种。
+ */
+export type ShotDurationWarning = { shotId: string; kind: "overflow" | "underflow"; issue: PlanIssue };
+
+export function shotDurationWarnings(value: GenerationResolvePlanValue): Map<string, ShotDurationWarning> {
+  const warnings = new Map<string, ShotDurationWarning>();
+  for (const shot of value.resolvedShots) {
+    for (const issue of shot.issues) {
+      if (issue.code === "duration.overflow") warnings.set(shot.id, { shotId: shot.id, kind: "overflow", issue });
+      else if (issue.code === "duration.underflow" && !warnings.has(shot.id)) {
+        warnings.set(shot.id, { shotId: shot.id, kind: "underflow", issue });
+      }
+    }
+  }
+  return warnings;
 }
 
 /** 采纳一条合并建议（advisory 或 required 通用）：时长=建议值、prompt 顺序拼接、锚并集，其余镜头原样。 */

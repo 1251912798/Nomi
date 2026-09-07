@@ -38,7 +38,7 @@ const okValue = {
   ],
   mergeProposals: [],
   splitProposals: [
-    { shotId: "s1", durationSec: 40, pieces: [{ durationSec: 15 }, { durationSec: 15 }, { durationSec: 10 }], suggestFirstLast: true, reason: "s1 超上限拆 15+15+10" },
+    { shotId: "s1", durationSec: 40, pieces: [{ durationSec: 15 }, { durationSec: 15 }, { durationSec: 10 }], suggestFirstLast: true, modelLabel: "Seedance 2.5", modeLabel: "文生视频", durationMax: 15 },
   ],
   planIssues: [],
 } as const;
@@ -69,9 +69,10 @@ describe("strategyGate · fetch / gate", () => {
     await expect(fetchStoryboardResolve(videoPlan, "p-1", client(new Error("boom")))).resolves.toBeNull();
   });
 
-  it("gate：有阻断（拆条/必须合并/blocker）→ 返回第一条机器理由；纯建议式合并 → null", async () => {
+  it("gate：有阻断（拆条/必须合并/blocker）→ 返回第一条结构化阻断；纯建议式合并 → null", async () => {
     const blocked: GenerationResolvePlanEnvelope = { ok: true, value: okValue as never };
-    await expect(resolveGeneratableGate(videoPlan, "p-1", client(blocked))).resolves.toBe("s1 超上限拆 15+15+10");
+    await expect(resolveGeneratableGate(videoPlan, "p-1", client(blocked)))
+      .resolves.toMatchObject({ kind: "split", proposal: { shotId: "s1" } });
 
     const advisoryOnly: GenerationResolvePlanEnvelope = {
       ok: true,
@@ -79,12 +80,23 @@ describe("strategyGate · fetch / gate", () => {
         ...okValue,
         splitProposals: [],
         mergeProposals: [{
-          id: "m1", shotIds: ["s1", "s2"], durationSec: 10, modelKey: "m", modeId: "text", modeLabel: "文生视频",
-          advisory: true, reason: "效率合并",
+          id: "m1", shotIds: ["s1", "s2"], shotDurations: [6, 4], durationSec: 10, totalSec: 10,
+          modelKey: "m", modelLabel: "Seedance 2.5", modeId: "text", modeLabel: "文生视频",
+          durationMin: 5, durationMax: 15, advisory: true,
         }],
       } as never,
     };
     await expect(resolveGeneratableGate(videoPlan, "p-1", client(advisoryOnly))).resolves.toBeNull();
+  });
+
+  it("gate 作用域 = 本次要生成的镜头：s1 超限拦不住只生成 s2（返工 1）", async () => {
+    const blocked: GenerationResolvePlanEnvelope = { ok: true, value: okValue as never };
+    await expect(resolveGeneratableGate(videoPlan, "p-1", client(blocked), ["s2"])).resolves.toBeNull();
+    await expect(resolveGeneratableGate(videoPlan, "p-1", client(blocked), ["s1"]))
+      .resolves.toMatchObject({ kind: "split" });
+    // 整批（含 s1）仍然拦
+    await expect(resolveGeneratableGate(videoPlan, "p-1", client(blocked), ["s1", "s2"]))
+      .resolves.toMatchObject({ kind: "split" });
   });
 
   it("gate：envelope 错误（能力核未起/其它）→ fail-open 放行", async () => {

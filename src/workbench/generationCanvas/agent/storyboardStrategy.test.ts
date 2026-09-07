@@ -5,12 +5,17 @@ import {
   applyMergeSuggestion,
   applySplitSuggestion,
   classifyResolveStrategy,
-  firstResolveBlockerMessage,
+  firstResolveBlocker,
+  shotDurationWarnings,
   hasResolveBlockers,
   mergeStoryboardShots,
   splitStoryboardShot,
   storyboardPlanToPlanShotInputs,
 } from "./storyboardStrategy";
+
+/** 引擎理由所需的结构化数值（句子在显示边界成形，夹具只交数据）。 */
+const MERGE_FACTS = { shotDurations: [6, 4], totalSec: 10, modelLabel: "Seedance 2.5", durationMin: 5, durationMax: 15 };
+const SPLIT_FACTS = { modelLabel: "Seedance 2.5", modeLabel: "文生视频", durationMax: 15 };
 
 const shot = (partial: Partial<PlanShot> & { index: number; durationSec: number; prompt: string; anchorIds?: string[] }): PlanShot => ({
   shotKind: "video",
@@ -130,7 +135,7 @@ describe("storyboardStrategy · resolve 审阅分类与执行闸（classify / ga
     const advisoryOnly = resolveValue({
       mergeProposals: [{
         id: "merge-s1+s2", shotIds: ["s1", "s2"], durationSec: 10, modelKey: "doubao-seedance-2.5",
-        modeId: "text", modeLabel: "文生视频", advisory: true, reason: "效率合并",
+        modeId: "text", modeLabel: "文生视频", advisory: true, ...MERGE_FACTS,
       }],
     });
     expect(classifyResolveStrategy(advisoryOnly).mergeSuggestions).toHaveLength(1);
@@ -139,16 +144,16 @@ describe("storyboardStrategy · resolve 审阅分类与执行闸（classify / ga
     const required = resolveValue({
       mergeProposals: [{
         id: "merge-s1+s2", shotIds: ["s1", "s2"], durationSec: 10, modelKey: "doubao-seedance-2.5",
-        modeId: "text", modeLabel: "文生视频", advisory: false, reason: "低于下限需并入邻镜",
+        modeId: "text", modeLabel: "文生视频", advisory: false, ...MERGE_FACTS,
       }],
     });
     expect(hasResolveBlockers(required)).toBe(true);
-    expect(classifyResolveStrategy(required).requiredMerges[0]!.reason).toBe("低于下限需并入邻镜");
+    expect(classifyResolveStrategy(required).requiredMerges[0]!.advisory).toBe(false);
 
     const split = resolveValue({
       splitProposals: [{
         shotId: "s3", durationSec: 40, pieces: [{ durationSec: 15 }, { durationSec: 15 }, { durationSec: 10 }],
-        suggestFirstLast: true, reason: "超上限拆 15+15+10",
+        suggestFirstLast: true, ...SPLIT_FACTS,
       }],
     });
     expect(hasResolveBlockers(split)).toBe(true);
@@ -161,12 +166,12 @@ describe("storyboardStrategy · resolve 审阅分类与执行闸（classify / ga
         {
           id: "s1", modelKey: null, modeId: "text", modeLabel: "文生视频", durationMin: 5, durationMax: 15,
           params: {},
-          issues: [{ code: "duration.underflow", shotId: "s1", message: "低于下限" }],
+          issues: [{ code: "duration.underflow", shotId: "s1", params: {} }],
         },
       ],
       mergeProposals: [{
         id: "merge-s1+s2", shotIds: ["s1", "s2"], durationSec: 10, modelKey: "x", modeId: "text",
-        modeLabel: "文生视频", advisory: false, reason: "must",
+        modeLabel: "文生视频", advisory: false, ...MERGE_FACTS,
       }],
     });
     expect(classifyResolveStrategy(underflowCovered).blockers).toHaveLength(0);
@@ -176,7 +181,7 @@ describe("storyboardStrategy · resolve 审阅分类与执行闸（classify / ga
         {
           id: "s1", modelKey: "m", modeId: "text", modeLabel: "文生视频", durationMin: 5, durationMax: 15,
           params: {},
-          issues: [{ code: "duration.underflow", shotId: "s1", message: "低于下限且无相邻可并" }],
+          issues: [{ code: "duration.underflow", shotId: "s1", params: {} }],
         },
       ],
     });
@@ -187,22 +192,74 @@ describe("storyboardStrategy · resolve 审阅分类与执行闸（classify / ga
         {
           id: "s1", modelKey: "ghost", modeId: "text", modeLabel: "文生视频", durationMin: null, durationMax: null,
           params: {},
-          issues: [{ code: "model.missing", shotId: "s1", message: "模型不存在" }],
+          issues: [{ code: "model.missing", shotId: "s1", params: {} }],
         },
       ],
     });
     expect(classifyResolveStrategy(missingModel).blockers[0]!.code).toBe("model.missing");
   });
 
-  it("firstResolveBlockerMessage 取拆分/必须合并/blocker 中的第一条人话理由", () => {
+  it("firstResolveBlocker 交结构化身份（拆分/必须合并/blocker），不再交一句现成中文", () => {
     const value = resolveValue({
       splitProposals: [{
         shotId: "s3", durationSec: 40, pieces: [{ durationSec: 15 }, { durationSec: 15 }, { durationSec: 10 }],
-        suggestFirstLast: true, reason: "s3 超上限拆 15+15+10",
+        suggestFirstLast: true, ...SPLIT_FACTS,
       }],
     });
-    expect(firstResolveBlockerMessage(value)).toBe("s3 超上限拆 15+15+10");
-    expect(firstResolveBlockerMessage(resolveValue())).toBeNull();
+    expect(firstResolveBlocker(value)).toMatchObject({ kind: "split", proposal: { shotId: "s3" } });
+    expect(firstResolveBlocker(resolveValue())).toBeNull();
+  });
+
+  it("闸作用域收窄到本次镜头集合：别的镜头超限拦不住这一镜（返工 1）", () => {
+    const value = resolveValue({
+      splitProposals: [{
+        shotId: "s3", durationSec: 40, pieces: [{ durationSec: 15 }, { durationSec: 15 }, { durationSec: 10 }],
+        suggestFirstLast: true, ...SPLIT_FACTS,
+      }],
+      resolvedShots: [{
+        id: "s1", modelKey: "m", modeId: "text", modeLabel: "文生视频", durationMin: 5, durationMax: 15,
+        params: {}, issues: [],
+      }],
+    });
+    // 整批：拦
+    expect(hasResolveBlockers(value)).toBe(true);
+    // 只生成 s1：s3 的拆条与它无关 → 放行
+    expect(hasResolveBlockers(value, ["s1"])).toBe(false);
+    // 只生成 s3：拦
+    expect(hasResolveBlockers(value, ["s3"])).toBe(true);
+  });
+
+  it("方案级问题（无 shotId，如没有可用模型）任何作用域都拦得住", () => {
+    const value = resolveValue({
+      resolvedShots: [{
+        id: "s1", modelKey: null, modeId: "", modeLabel: "", durationMin: null, durationMax: null,
+        params: {}, issues: [{ code: "no.candidates", params: {} }],
+      }],
+    });
+    expect(hasResolveBlockers(value, ["s9"])).toBe(true);
+  });
+
+  it("行内警示按镜索引 overflow/underflow（返工 7 的数据源）", () => {
+    const value = resolveValue({
+      resolvedShots: [
+        {
+          id: "s1", modelKey: "m", modeId: "text", modeLabel: "文生视频", durationMin: 5, durationMax: 15,
+          params: {}, issues: [{ code: "duration.overflow", shotId: "s1", params: { max: 15 } }],
+        },
+        {
+          id: "s2", modelKey: "m", modeId: "text", modeLabel: "文生视频", durationMin: 5, durationMax: 15,
+          params: {}, issues: [{ code: "duration.underflow", shotId: "s2", params: { min: 5 } }],
+        },
+        {
+          id: "s3", modelKey: "m", modeId: "text", modeLabel: "文生视频", durationMin: 5, durationMax: 15,
+          params: {}, issues: [],
+        },
+      ],
+    });
+    const warnings = shotDurationWarnings(value);
+    expect(warnings.get("s1")!.kind).toBe("overflow");
+    expect(warnings.get("s2")!.kind).toBe("underflow");
+    expect(warnings.has("s3")).toBe(false);
   });
 });
 
@@ -213,7 +270,7 @@ describe("storyboardStrategy · 建议采纳包装（applyMerge/applySplit → �
       shot({ index: 2, shotId: "s2", durationSec: 4, prompt: "B" }),
     ]);
     const next = applyMergeSuggestion(original, {
-      id: "m", shotIds: ["s1", "s2"], durationSec: 10, modelKey: "k", modeId: "t", modeLabel: "L", advisory: true, reason: "r",
+      id: "m", shotIds: ["s1", "s2"], durationSec: 10, modelKey: "k", modeId: "t", modeLabel: "L", advisory: true, ...MERGE_FACTS,
     });
     expect(next.shots).toHaveLength(1);
     expect(next.shots[0]!.durationSec).toBe(10);
@@ -224,7 +281,7 @@ describe("storyboardStrategy · 建议采纳包装（applyMerge/applySplit → �
     const original = plan([shot({ index: 1, shotId: "s1", durationSec: 40, prompt: "长镜" })]);
     const next = applySplitSuggestion(original, {
       shotId: "s1", durationSec: 40, pieces: [{ durationSec: 15 }, { durationSec: 15 }, { durationSec: 10 }],
-      suggestFirstLast: true, reason: "r",
+      suggestFirstLast: true, ...SPLIT_FACTS,
     });
     expect(next.shots.map((item) => item.durationSec)).toEqual([15, 15, 10]);
   });
