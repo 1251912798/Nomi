@@ -136,7 +136,7 @@ test('G3b ① · 「本会话允许这类」按能力记：同一个能力的下
     ...fixture.options,
     tools: [{
       name: 'plan_timeline',
-      capabilityId: 'timeline.write',
+      contractId: 'timeline.write',
       description: 'Apply a timeline edit plan, used here to exercise the plan-review approval path.',
       promptSnippet: 'apply a timeline edit plan.',
       effects: { mutates: true, billable: false, reversal: 'undoable' },

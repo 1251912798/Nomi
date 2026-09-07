@@ -16,7 +16,9 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { HookHandler, LaneSnapshot } from '@earendil-works/pi-agent-core';
 
-import { canvasLaneToolSpecs, createCanvasLaneTools, type CanvasLanePort } from '../../electron/agentLane/laneCanvasTools.js';
+import { createCanvasLaneTools, type CanvasLanePort } from '../../electron/agentLane/laneCanvasTools.js';
+// 阶段 5a：说明书那一半搬到能力契约旁边（两个 profile 共用），执行那一半留在 lane。
+import { canvasModelToolSpecs } from '../../electron/shared/agentCapabilities/canvasModelTools.js';
 import { composeLaneSystemPrompt } from '../../electron/agentLane/lanePromptSections.js';
 import type { LaneToolDescriptor } from '../../electron/agentLane/laneRuntimePort.js';
 import type { ApiKeyRecord } from '../../electron/catalog/secrets.js';
@@ -131,7 +133,7 @@ async function runTask(config: NomiModelConfig, task: TaskSpec, tools: LaneToolD
   try {
     const probe = await openProbeLane(scope, {
       projectDir: join(app.getPath('temp'), `nomi-p5-${task.id}-${Date.now()}`),
-      systemPrompt: composeLaneSystemPrompt(IDENTITY_PROMPT, canvasLaneToolSpecs()),
+      systemPrompt: composeLaneSystemPrompt(IDENTITY_PROMPT, canvasModelToolSpecs()),
       model: config, tools,
     }, { beforeTool });
     probe.harness.hooks.on('before_request', async () => { requests += 1; return undefined; });
