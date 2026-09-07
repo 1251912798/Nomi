@@ -31,7 +31,12 @@ import {
   LANE_MODEL_OUTPUT_MAX_LINES,
 } from "../agentLane/laneContracts";
 import { modelArgumentTolerance, noArgumentTolerance } from "./modelArgumentTolerance";
-import { NO_ARGUMENTS_SCHEMA, type ModelFacingToolSpec } from "./modelFacingTools";
+import {
+  MODEL_TOOL_READ_TIMEOUT_MS,
+  MODEL_TOOL_WRITE_TIMEOUT_MS,
+  NO_ARGUMENTS_SCHEMA,
+  type ModelFacingToolSpec,
+} from "./modelFacingTools";
 
 /**
  * 说明书和执行必须是同一个数（G-04）。这句话里的两个上限**不是抄的**，是从
@@ -120,6 +125,10 @@ const writeContentSchema = z
 const DOCUMENT_READ_EFFECTS = Object.freeze({ mutates: false, billable: false, reversal: "none" } as const);
 const DOCUMENT_WRITE_EFFECTS = Object.freeze({ mutates: true, billable: false, reversal: "undoable" } as const);
 
+/** 文稿读是内存里的一份字符串；写要走编辑器的撤销栈与持久化，所以走写类预算。 */
+const DOCUMENT_READ_EXECUTION = Object.freeze({ timeoutMs: MODEL_TOOL_READ_TIMEOUT_MS } as const);
+const DOCUMENT_WRITE_EXECUTION = Object.freeze({ timeoutMs: MODEL_TOOL_WRITE_TIMEOUT_MS } as const);
+
 /**
  * 写入工具的容忍：`content` 是这一族里唯一会被写错的字段，实机见过三种写法——
  * 整包参数被序列化成 JSON 字符串、字段名写成 `text`/`body`、正文拆成字符串数组。
@@ -167,6 +176,7 @@ export function documentModelToolSpecs(): ModelFacingToolSpec[] {
       promptSnippet: READ_SPECS[scope].snippet,
       promptGuidelines: DOCUMENT_GUIDELINES,
       effects: DOCUMENT_READ_EFFECTS,
+      execution: DOCUMENT_READ_EXECUTION,
       schema: NO_ARGUMENTS_SCHEMA,
       examples: [{ when: "Always call it with no arguments:", arguments: {} }],
       // 别名定死的语义输入。MCP 的 `scope` 枚举就是这几个值的并集——没有第二套词表。
@@ -185,6 +195,7 @@ export function documentModelToolSpecs(): ModelFacingToolSpec[] {
       promptSnippet: WRITE_SPECS[operation].snippet,
       promptGuidelines: DOCUMENT_GUIDELINES,
       effects: DOCUMENT_WRITE_EFFECTS,
+      execution: DOCUMENT_WRITE_EXECUTION,
       schema: writeContentSchema,
       examples: [{ when: "Write one finished paragraph:", arguments: { content: "The rain had not stopped for three days." } }],
       aliasBoundInput: Object.freeze({ operation }),

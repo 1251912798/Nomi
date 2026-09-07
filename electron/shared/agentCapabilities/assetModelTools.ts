@@ -14,9 +14,12 @@ import {
   assetReadPiInputSchemaForAlias,
 } from "./assetRead";
 import { modelArgumentTolerance } from "./modelArgumentTolerance";
-import type { ModelFacingToolSpec } from "./modelFacingTools";
+import { MODEL_TOOL_READ_TIMEOUT_MS, type ModelFacingToolSpec } from "./modelFacingTools";
 
 const ASSET_READ_EFFECTS = Object.freeze({ mutates: false, billable: false, reversal: "none" } as const);
+
+/** 素材这一族全是读：一次探针读到 30 秒就是文件/解码坏了，不是慢。 */
+const ASSET_READ_EXECUTION = Object.freeze({ timeoutMs: MODEL_TOOL_READ_TIMEOUT_MS } as const);
 
 const ASSET_GUIDELINES = Object.freeze([
   "Media is addressed by stable asset id, never by a file path: the id is what search_media returns and what every other media tool takes.",
@@ -56,6 +59,7 @@ export function assetModelToolSpecs(): ModelFacingToolSpec[] {
       promptSnippet: SNIPPETS[alias],
       promptGuidelines: ASSET_GUIDELINES,
       effects: ASSET_READ_EFFECTS,
+      execution: ASSET_READ_EXECUTION,
       schema,
       examples: [],
       aliasBoundInput: Object.freeze({ operation: alias }),

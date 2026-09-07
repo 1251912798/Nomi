@@ -217,8 +217,9 @@
                     "why": "流式参数（温度、最大 token、headers）在 Nomi 这条路上由 provider 装配决定：createNomiProvider 的 requestOptions/onPayload 是唯一改写出站报文的地方（model.mts:89-110）。在 lane 这层再给一份会造出第二个改写点，而两处只有一处会被 payload 探针看见。"
                   },
                   "retry": {
-                    "verdict": "unused",
-                    "why": "不传 = 用 pi 的 RetryPolicy 默认策略，这正是 framework-boundaries 里 retry-policy 那条规则要守的东西（自研重试是 2026-09-06 评审判定的「更差的那一份」）。要改重试必须先证明 provider 级退避不够，而不是在装配处顺手关掉。"
+                    "verdict": "derived",
+                    "at": "electron/agentLane/laneHost.mts:183",
+                    "why": "阶段 3c（方案 §1.6 第三行）：显式传 LANE_RETRY_POLICY = {enabled:true, maxRetries:3, baseDelayMs:1000}——仍是 pi 自己的 RetryPolicy，不是自研重试；写死的原因是 harness 默认无 jitter、无上限（上游 #8826 open），3 次上限下最长 4s 让 #8826 对我们无感。改数字要先改 laneHost 里那一个常量。"
                   },
                   "compaction": {
                     "verdict": "debt",
@@ -303,11 +304,11 @@
                   },
                   "before_tool.event": {
                     "verdict": "derived",
-                    "at": "electron/agentLane/laneHost.mts:182"
+                    "at": "electron/agentLane/laneHost.mts:241"
                   },
                   "before_tool.result": {
                     "verdict": "derived",
-                    "at": "electron/agentLane/laneHost.mts:199"
+                    "at": "electron/agentLane/laneHost.mts:245"
                   },
                   "before_tool.result.args": {
                     "verdict": "unused",
@@ -315,7 +316,7 @@
                   },
                   "before_tool.result.block": {
                     "verdict": "derived",
-                    "at": "electron/agentLane/laneHost.mts:209"
+                    "at": "electron/agentLane/laneHost.mts:245"
                   }
                 }
               }

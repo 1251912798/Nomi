@@ -40,7 +40,12 @@ import {
 } from "./canvasWrite";
 import { flattenDiscriminatedUnion } from "./flatModelInput";
 import { modelArgumentTolerance, noArgumentTolerance } from "./modelArgumentTolerance";
-import { NO_ARGUMENTS_SCHEMA, type ModelFacingToolSpec } from "./modelFacingTools";
+import {
+  MODEL_TOOL_READ_TIMEOUT_MS,
+  MODEL_TOOL_WRITE_TIMEOUT_MS,
+  NO_ARGUMENTS_SCHEMA,
+  type ModelFacingToolSpec,
+} from "./modelFacingTools";
 /**
  * 通道③ · 画布这一族共享的纪律，**只写一次**。
  *
@@ -63,6 +68,10 @@ const CANVAS_GUIDELINES = Object.freeze([
  */
 const CANVAS_READ_EFFECTS = Object.freeze({ mutates: false, billable: false, reversal: "none" } as const);
 const CANVAS_WRITE_EFFECTS = Object.freeze({ mutates: true, billable: false, reversal: "proposal" } as const);
+
+/** 画布读走一次内存投影；画布写要落到项目文件，所以走写类预算。 */
+const CANVAS_READ_EXECUTION = Object.freeze({ timeoutMs: MODEL_TOOL_READ_TIMEOUT_MS } as const);
+const CANVAS_WRITE_EXECUTION = Object.freeze({ timeoutMs: MODEL_TOOL_WRITE_TIMEOUT_MS } as const);
 
 /**
  * 分镜那一支：把契约里两个 `z.record(z.unknown())` 换成 typed 形状。
@@ -233,6 +242,7 @@ export function canvasModelToolSpecs(): ModelFacingToolSpec[] {
     promptSnippet: "read every node, edge and group currently on the generation canvas.",
     promptGuidelines: CANVAS_GUIDELINES,
     effects: CANVAS_READ_EFFECTS,
+    execution: CANVAS_READ_EXECUTION,
     schema: NO_ARGUMENTS_SCHEMA,
     examples: [{ when: "Always call it with no arguments:", arguments: {} }],
     prepareArguments: noArgumentTolerance,
@@ -244,6 +254,7 @@ export function canvasModelToolSpecs(): ModelFacingToolSpec[] {
     promptSnippet: tool.promptSnippet,
     promptGuidelines: CANVAS_GUIDELINES,
     effects: CANVAS_WRITE_EFFECTS,
+    execution: CANVAS_WRITE_EXECUTION,
     // 派生，不是手写：判别字段降成 `z.enum`、分支专属字段设为 optional、跨字段约束仍由
     // 原 union 裁决。手抄一份扁平版就是第二个真相源（理由见 `flatModelInput.ts` 头部）。
     schema: flattenDiscriminatedUnion(tool.union, { name: tool.name }),

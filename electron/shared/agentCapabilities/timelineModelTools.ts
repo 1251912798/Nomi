@@ -23,7 +23,7 @@ import {
   timelineReadPiInputSchemaForAlias,
 } from "./timelineRead";
 import { modelArgumentTolerance, noArgumentTolerance } from "./modelArgumentTolerance";
-import type { ModelFacingToolSpec } from "./modelFacingTools";
+import { MODEL_TOOL_READ_TIMEOUT_MS, type ModelFacingToolSpec } from "./modelFacingTools";
 
 /**
  * 通道③ · 时间轴这一族共享的纪律。
@@ -37,6 +37,9 @@ const TIMELINE_GUIDELINES = Object.freeze([
 ]);
 
 const TIMELINE_READ_EFFECTS = Object.freeze({ mutates: false, billable: false, reversal: "none" } as const);
+
+/** 时间轴这一族目前全是读。 */
+const TIMELINE_READ_EXECUTION = Object.freeze({ timeoutMs: MODEL_TOOL_READ_TIMEOUT_MS } as const);
 
 interface TimelineToolShape {
   readonly alias: string;
@@ -82,6 +85,7 @@ export function timelineModelToolSpecs(): ModelFacingToolSpec[] {
       promptSnippet: tool.promptSnippet,
       promptGuidelines: TIMELINE_GUIDELINES,
       effects: TIMELINE_READ_EFFECTS,
+      execution: TIMELINE_READ_EXECUTION,
       schema,
       examples: tool.examples,
       // 别名 = 语义 operation。对外 MCP 的 `operation` 枚举就是这几个值的并集，
