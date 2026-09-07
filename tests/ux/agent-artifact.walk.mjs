@@ -15,7 +15,7 @@
 // 并在收尾报出。不碰真实生成 API。渲染层/IPC/宿主/deliver 落盘全走生产路径。
 //
 // Run: pnpm run build && node tests/ux/agent-artifact.walk.mjs
-import { assertMockupContract, clickOrFail, expect, expectVisible, proveProbe } from './_assert.mjs'
+import { assertMockupContract, clickOrFail, expect, expectAbsent, expectVisible, proveProbe } from './_assert.mjs'
 import artifactIntentContract from '../../docs/design/mockups/contracts/2026-09-06-agent-artifact-node.intent.mjs'
 import { findCanvasBlankPoint } from './_canvasHit.mjs'
 import { FIXTURE_TEXT_MODEL_LABEL, flattenRequestText } from './agent-runtime-fixture.mjs'
@@ -139,10 +139,14 @@ try {
   // 形态契约（R8）：样张的 n-head 关系逐条对账。
   // 先清掉选中——刚交付的节点会被聚焦选中，而契约里「浮条默认不可见」断的是**没选中**那一刻
   // （§1.5：动作是 L2 情境层）。不清就等于拿选中态去断默认态，量的不是同一件事。
+  // 先证明「浮条」这个探针测得到东西——刚交付的节点是选中态，浮条此刻就在。
+  // 没有这一步，下面那句「浮条不见了」和「选择器写错了、根本没测到」在观测上一模一样。
+  const toolbar = win.locator('[data-node-floating-toolbar="true"]')
+  const toolbarProof = await proveProbe(toolbar, '选中态下产物浮条确实浮出来')
   // 点一下 React Flow 的空白 pane（生产代码里真正派发「取消选中」的那一层；Escape 不管这件事）。
   const blank = await findCanvasBlankPoint(win)
   await win.mouse.click(blank.x, blank.y)
-  await expect(win.locator('[data-node-floating-toolbar="true"]'), '清空选中后浮条应全部收起').toHaveCount(0)
+  await expectAbsent(toolbar, { provenBy: toolbarProof, message: '清空选中后浮条应全部收起' })
   await assertMockupContract(win, artifactIntentContract)
   await walk.snap('01-delivered-svg-artifact-node')
 

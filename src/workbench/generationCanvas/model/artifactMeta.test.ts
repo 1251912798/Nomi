@@ -42,7 +42,9 @@ describe('agent-artifact meta（meta.artifact 读写与校验）', () => {
 
 describe('agent-artifact kind 注册', () => {
   it('registry 含 agent-artifact 且语义正确', () => {
-    const plugin = GENERATION_NODE_PLUGIN_BY_KIND['agent-artifact']
+    // 插件表是每个 kind 一个字面量对象的联合，可选字段只出现在声明了它的那几支上——
+    // 按联合类型直接点 `.agentCreatable` 编译不过。取成一份宽记录再读，读的仍是同一个对象。
+    const plugin = GENERATION_NODE_PLUGIN_BY_KIND['agent-artifact'] as unknown as Record<string, unknown>
     expect(plugin).toBeDefined()
     expect(plugin.agentCreatable).toBe(true)
     expect(plugin.executionKind).toBeUndefined() // 非生成节点：无 composer、无重新生成

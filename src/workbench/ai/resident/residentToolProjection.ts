@@ -24,9 +24,12 @@ export type ResidentToolProjection = Readonly<{
    * 为什么它得跟 effect 一起存：标题是从**这次调用的入参**读出来的（同一个 create_canvas_nodes，
    * 交产物还是交镜头卡，只有 nodes[].kind 分得清）。而 args 只在调用活着的时候在手上，
    * 回合结束后收据行只剩这份投影——不存标题，历史行就只能退回按工具名硬猜，
-   * 于是出现「摘要说 1 件产物、标题说创建或修改镜头卡」这种自相矛盾的一行。拿不到就空串。
+   * 于是出现「摘要说 1 件产物、标题说创建或修改镜头卡」这种自相矛盾的一行。
+   *
+   * 可选：v1 存储键在这个字段之前就落过盘，旧条目里没有它。读到旧条目时退回按工具名现算
+   * （agentPanelV4Projection 的 `projection?.label || readableToolName(...)`），不会空白。
    */
-  label: string
+  label?: string
   effect: string
   target: string
   technicalDetails: string

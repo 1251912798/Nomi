@@ -65,7 +65,9 @@ describe('deliverAgentArtifactToAsset（落盘契约）', () => {
 
   it('落盘器抛错 → 转 ok:false + reason（调用方中止整批）', async () => {
     const failing = async () => { throw new Error('disk full') }
-    const result = await deliverAgentArtifactToAsset({ fileType: 'md', content: '# hi', title: 't' }, failing)
+    // 'md' 是**扩展名**，不是 fileType（词表 ARTIFACT_FILE_TYPES 里叫 'markdown'）。
+    // 两者长得像，写混了 vitest 不管，只有 check:test-types 看得见。
+    const result = await deliverAgentArtifactToAsset({ fileType: 'markdown', content: '# hi', title: 't' }, failing)
     expect(result.ok).toBe(false)
     if (!result.ok) expect(result.reason).toBe('disk full')
   })
