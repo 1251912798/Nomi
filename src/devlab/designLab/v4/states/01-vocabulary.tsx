@@ -104,13 +104,10 @@ function LaneReceiptCell({ lane }: { lane: (rejectReason: string) => LaneSnapsho
     thinkingLabel: fx.t('agentPanelV4.thinkingLabel'),
     formatTokens: (value) => String(value),
     formatCost: (usd) => `$${usd.toFixed(2)}`,
-    // 三态的两句占位（PR #605 起必填）。`unknown` 用的是面板真正在用的那条词条；
-    // `free` 这一格**读不到**——这个 cell 只渲染一行工具收据，花费行不在里面，
-    // 而生产侧的 `contextCostFree` 至今没有调用方（`laneViewModel.ts` 头部说明了
-    // 为什么此刻不预先摆一条死键）。所以这里放一个实验室字面量，`src/devlab/`
-    // 本就在 check:i18n 的豁免前缀里。
+    // 三行的两个占位词。这一格只画工具收据，花费/上下文行不进画面；占位词走已有的 contextUnknown，
+    // 「免费」那句不预放死键（3b 的裁决），这里同样借占位符——它在这一格永远不会被渲染。
     unknown: fx.t('agentPanelV4.contextUnknown'),
-    free: '(free — not read by this cell)',
+    free: fx.t('agentPanelV4.contextUnknown'),
   })
   return (
     <Piece>

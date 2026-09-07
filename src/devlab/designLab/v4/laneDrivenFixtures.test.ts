@@ -6,11 +6,11 @@ import { describe, expect, it } from 'vitest'
 import { projectLaneSnapshot } from '../../../../electron/agentLane/laneProjection.mjs'
 import { laneViewModel, type LaneViewModelLabels } from '../../../workbench/ai/lane/laneViewModel'
 import {
-  LANE_FIXTURE_FACTS,
   laneDrivenReceipt,
   laneSnapshotToolDenied,
   laneSnapshotToolDone,
   laneSnapshotToolRunning,
+  LAB_MODEL_FACTS,
 } from './laneDrivenFixtures'
 
 const labels: LaneViewModelLabels = {
@@ -18,8 +18,6 @@ const labels: LaneViewModelLabels = {
   thinkingLabel: '正在想…',
   formatTokens: (value) => String(value),
   formatCost: (usd) => `$${usd.toFixed(2)}`,
-  // PR #605 起三态各有各的文案：`unknown` 是「这一项存在但拿不到」的占位，
-  // `free` 是「这个模型不按 token 计费」。两者都不是 0，也不是让整行消失。
   unknown: '—',
   free: '免费',
 }
@@ -27,11 +25,12 @@ const labels: LaneViewModelLabels = {
 describe('design-lab fixtures driven by a LaneSnapshot (probe P6)', () => {
   it('empty: an empty transcript projects to no items, not running, and no invented ceiling/cost', () => {
     const empty = { ...laneSnapshotToolRunning(), transcript: [], tipId: null, operation: null }
-    const model = laneViewModel(projectLaneSnapshot(empty, LANE_FIXTURE_FACTS), labels)
+    const model = laneViewModel(projectLaneSnapshot(empty, LAB_MODEL_FACTS), labels)
     expect(model.items).toEqual([])
     expect(model.running).toBe(false)
     expect(model.usage.max).toBeUndefined()
-    expect(model.usage.cost).toBeUndefined()
+    // 3b 三态：没登记价目的模型 → 花费「不可知」→ 渲染占位符，不是 0、也不是整行消失（那会像「这项不存在」）。
+    expect(model.usage.cost).toBe(labels.unknown)
     // `AgentPanelV4Panel` renders `V4EmptyState` on `flow.length === 0`; the surface-derived
     // starter chips are the shell's, so the pixel half of this cell waits for a lane-driven shell (stage 4).
   })

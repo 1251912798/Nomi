@@ -13,7 +13,7 @@
 // 不可见（`runningTools` 为空，探针 P1 ① 实核），那一态只能由宿主内存投影，等阶段 3 的
 // `LaneProjection.pending` 落地才有数据源可驱动。
 import type { LaneSnapshot } from '@earendil-works/pi-agent-core'
-import type { Api, AssistantMessage, Model } from '@earendil-works/pi-ai'
+import type { AssistantMessage } from '@earendil-works/pi-ai'
 import { LANE_APPROVAL_NOTE_TYPE } from '../../../../electron/shared/agentLane/laneContracts'
 import { projectLaneSnapshot, type LaneModelFacts } from '../../../../electron/agentLane/laneProjection.mjs'
 import { laneViewModel, type LaneViewModelLabels } from '../../../workbench/ai/lane/laneViewModel'
@@ -82,27 +82,21 @@ export function laneSnapshotToolDenied(reason: string): LaneSnapshot {
   ])
 }
 
+/** 两层投影真的跑一遍，取出那一行收据。 */
 /**
- * 投影要的**模型侧事实**（`projectLaneSnapshot` 的第二个参数，PR #605 起必填）。
- *
- * 夹具取 `pricing: 'unpriced'` 且**不给 `contextWindow`**：这不是图省事，是让这三格
- * 继续钉住 #605 定的那条——「没有价目就印『不可知』，绝不印 0；没有分母就不画百分比」。
- * 给一个编出来的价目会让基线在一个我们从没量过的数字上变绿。
+ * 三行（阶段 3b）要的模型侧事实。收据格只看工具那一行，花费/上下文/推理都不进画面，
+ * 所以价目给 `'unpriced'`（花费=「不可知」）、不给 contextWindow——和真实「没登记价目的模型」一个形状。
  */
-export const LANE_FIXTURE_FACTS: LaneModelFacts = {
+export const LAB_MODEL_FACTS: LaneModelFacts = {
   model: {
-    provider: 'nomi-lane', id: 'chosen-model', name: 'chosen-model',
-    api: 'openai-completions', baseUrl: 'http://fixture.invalid/v1',
-    reasoning: false, input: ['text'],
-    cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
-    contextWindow: 128_000, maxTokens: 16_384,
-  } as Model<Api>,
+    provider: 'nomi-lane', id: 'lab-model', name: 'lab-model', api: 'openai-completions', baseUrl: 'http://127.0.0.1/v1',
+    reasoning: false, input: ['text'], cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, contextWindow: 0, maxTokens: 0,
+  },
   pricing: 'unpriced',
 }
 
-/** 两层投影真的跑一遍，取出那一行收据。 */
 export function laneDrivenReceipt(lane: LaneSnapshot, labels: LaneViewModelLabels): ToolReceipt {
-  const model = laneViewModel(projectLaneSnapshot(lane, LANE_FIXTURE_FACTS), labels)
+  const model = laneViewModel(projectLaneSnapshot(lane, LAB_MODEL_FACTS), labels)
   const tool = model.items.find((item) => item.kind === 'tool')
   if (!tool || tool.kind !== 'tool') throw new Error('the lane snapshot projected no tool receipt')
   return tool.receipt
