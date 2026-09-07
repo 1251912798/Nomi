@@ -852,6 +852,7 @@ showUndoToast({
 | 付费 / 消耗额度（用户直发或 agent 受理）| `IconCoin` | `SpendConfirmDialog`（§3.5）|
 | 外部 AI 助手 / MCP 驱动（agent 身份）| `IconRobot` | `SpendConfirmDialog` 的 `source: 'agent'` 头部（§3.5）|
 | 主角形象确认（锚定妆照检查点·免费质量门）| `IconUser` | `SpendConfirmDialog` 的 `kind: 'anchorCheckpoint'` 头部（§3.5，与 cast 分类同图标）|
+| 正在放量（广告花费档高，仅 TikTok 广告库有此数据）| `IconTrendingUp` | `FindReferencePanel` 参考卡的「放量」角标。**选趋势上升不选火苗**：隐喻要诚实——它表达的是「投放在加码」，不是「热门」|
 
 ### 选图规则
 

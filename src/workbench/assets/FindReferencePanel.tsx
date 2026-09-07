@@ -12,7 +12,7 @@
  */
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { IconPhoto, IconFlame, IconExternalLink, IconPlus } from '@tabler/icons-react'
+import { IconPhoto, IconTrendingUp, IconExternalLink, IconPlus } from '@tabler/icons-react'
 import { cn } from '../../utils/cn'
 import { DesignSearchInput } from '../../design'
 import { getDesktopBridge } from '../../desktop/bridge'
@@ -273,7 +273,7 @@ function ReferenceCard({
         ) : null}
         {hot ? (
           <span className="absolute left-1.5 top-[26px] inline-flex items-center gap-1 rounded-full bg-[var(--nomi-warning)] px-1.5 py-0.5 text-micro leading-none text-white">
-            <IconFlame size={10} stroke={1.8} aria-hidden="true" />
+            <IconTrendingUp size={10} stroke={1.8} aria-hidden="true" />
             {t('assetLibrary.findReference.metricHot')}
           </span>
         ) : null}
