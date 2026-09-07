@@ -59,6 +59,15 @@
         "maxDiffPixels": 40
       }
     },
+    "primitives-actions": {
+      "tolerance": { "threshold": 0.2, "maxDiffPixels": 40 }
+    },
+    "primitives-forms": {
+      "tolerance": { "threshold": 0.2, "maxDiffPixels": 40 }
+    },
+    "primitives-surfaces": {
+      "tolerance": { "threshold": 0.2, "maxDiffPixels": 40 }
+    },
     "vendor-order": {
       "tolerance": {
         "threshold": 0.2,

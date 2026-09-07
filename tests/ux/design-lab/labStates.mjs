@@ -52,6 +52,18 @@ export const LAB_SCREENS = {
     registryDir: path.join(REPO_ROOT, 'src/devlab/designLab/settings/states'),
     baselineDir: path.join(BASELINE_ROOT, 'settings'),
   },
+  'primitives-actions': {
+    registryDir: path.join(REPO_ROOT, 'src/devlab/designLab/primitivesActions/states'),
+    baselineDir: path.join(BASELINE_ROOT, 'primitives-actions'),
+  },
+  'primitives-forms': {
+    registryDir: path.join(REPO_ROOT, 'src/devlab/designLab/primitivesForms/states'),
+    baselineDir: path.join(BASELINE_ROOT, 'primitives-forms'),
+  },
+  'primitives-surfaces': {
+    registryDir: path.join(REPO_ROOT, 'src/devlab/designLab/primitivesSurfaces/states'),
+    baselineDir: path.join(BASELINE_ROOT, 'primitives-surfaces'),
+  },
   'depth-action': {
     registryDir: path.join(REPO_ROOT, 'src/devlab/designLab/videoDepth/states'),
     baselineDir: path.join(BASELINE_ROOT, 'depth-action'),
