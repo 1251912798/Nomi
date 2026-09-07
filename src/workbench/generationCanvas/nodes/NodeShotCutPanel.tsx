@@ -143,7 +143,7 @@ export default function NodeShotCutPanel({ node, onClose }: Props): JSX.Element 
 
   return createPortal(
     <div
-      className="absolute inset-0 z-[9999] flex h-full w-full items-center justify-center overflow-hidden p-6 bg-black/40"
+      className="absolute inset-0 z-application-modal flex h-full w-full items-center justify-center overflow-hidden p-6 bg-black/40"
       role="dialog"
       aria-modal="true"
       aria-label={t('generationCommon.node.shotCuts.title')}

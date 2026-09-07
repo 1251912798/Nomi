@@ -257,6 +257,28 @@ DaVinci Resolve 确实有「选中跟随播放头」，但它是 **opt-in 且默
 | 工作区映射 | `tailwind.config.ts` addBase `:root`（光/暗两块）| `--workbench-*`（基于 nomi 但提供工作区语义命名）| `workbench-*` 颜色类 |
 | 几何/排版（TS）| `src/theme/nomiTheme.ts` 中的 `nomiDesignTokens` | `radius` / `spacing` / `fontSize` / `lineHeight` / `shadow` | Tailwind config 引用 |
 
+### 2.0 浮层层级（z-index）—— 只有这一份刻度，禁止硬写数字
+
+真相源 `src/design/overlayLayers.ts` 的 `NOMI_OVERLAY_Z_INDEX`，六档（低→高）：
+`floatingPanel 4000` < `applicationModal 9000` < `dialog 9100` < `popover 9200` < `confirmation 9300` < `feedback`。
+
+| 写在哪 | 怎么写 |
+|---|---|
+| TS / style 对象 | `style={{ zIndex: NOMI_OVERLAY_Z_INDEX.dialog }}` |
+| className | `z-floating-panel` / `z-application-modal` / `z-dialog` / `z-popover` / `z-confirmation` / `z-feedback` |
+
+className 那一列是 2026-09-07 补的**合法出口**：Tailwind 默认 `zIndex` 刻度只到 50，
+在此之前 className 侧根本写不出 4000–9300，于是画布/素材库五处浮层只能硬写 `z-[9999]`/`z-[10000]`，
+**全部压过花钱确认卡（`dialog` 9100）**——浮层开着时弹付费确认，钱要花出去了那张卡却看不见
+（`AssetPreviewDialog` / `PanoramaViewer` 这两处 portal 到 `document.body`，已真机实测复现；
+另三处 portal 到 `.workbench-generation__canvas`，被祖先的 `isolation: isolate` 圈住，属契约违反但当时未可达）。
+CSS 变量（`--nomi-z-dialog` …）与 Tailwind 刻度都由那份 TS 常量在 `tailwind.config.ts` 里派生，
+**数字只有一份**，不许两处各写一遍。走查：`tests/ux/overlay-z-order.walk.mjs`（带阳性对照）。
+
+**判档口径**：接管整个工作区/整屏的查看器与任务层 → `applicationModal`；
+承载一次决策的对话框（含花钱确认）→ `dialog`；菜单/下拉/气泡 → `popover`；
+破坏性二次确认 → `confirmation`；toast 一类通知 → `feedback`。
+
 ### 2.1 颜色 token 全表
 
 > **透明度修饰符（2026-07-08 起可用）**：token 色类支持 Tailwind `/` 透明度修饰符——`bg-nomi-ink/85`、`text-nomi-paper/80`、`ring-nomi-accent/[0.5]` 都会正确生成（映射层 `tokenColor()` 用 `color-mix` 注入 alpha，见 `tailwind.config.ts` 顶部）。**此前这些类会被 JIT 静默丢弃**（元素无背景/描边裸奔，Issue #32「图上文字看不清」根因，全仓 60+ 处中招）。新增 token 色映射必须走 `tokenColor()`，别写裸 `var()`。图上小标/遮罩仍优先用语义 token（`--nomi-overlay-chip` / `--nomi-scrim` / `--nomi-media-veil`），`/alpha` 用于语义 token 覆盖不到的一次性透明度。

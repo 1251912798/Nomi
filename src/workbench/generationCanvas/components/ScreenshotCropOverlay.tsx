@@ -94,7 +94,7 @@ export function ScreenshotCropOverlay({ capture, basePosition, categoryId, onClo
 
   return createPortal(
     <div
-      className="absolute inset-0 z-[9999] flex h-full w-full flex-col items-center justify-center gap-3 overflow-hidden bg-black/55 p-6"
+      className="absolute inset-0 z-application-modal flex h-full w-full flex-col items-center justify-center gap-3 overflow-hidden bg-black/55 p-6"
       role="dialog"
       aria-modal="true"
       aria-label={t('generationCommon.screenshot.title')}

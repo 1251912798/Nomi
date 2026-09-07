@@ -1,5 +1,9 @@
 import type { Config } from 'tailwindcss'
 import plugin from 'tailwindcss/plugin'
+import {
+  NOMI_OVERLAY_Z_INDEX_CSS_VARS,
+  NOMI_OVERLAY_Z_INDEX_TAILWIND_SCALE,
+} from './src/design/overlayLayers'
 
 /**
  * token 色接入 Tailwind 透明度修饰符（`/85`、`/[0.78]`…）的唯一通道。
@@ -41,6 +45,13 @@ const workbenchBasePlugin = plugin(({ addBase, addUtilities }) => {
     '.app-drag [role="navigation"]': { 'app-region': 'no-drag', '-webkit-app-region': 'no-drag' },
     '.app-drag [contenteditable="true"]': { 'app-region': 'no-drag', '-webkit-app-region': 'no-drag' },
   })
+
+  /**
+   * 全局浮层层级契约（`src/design/overlayLayers.ts`）镜像成 CSS 变量。
+   * 有了它，className 侧才有合法出口（`z-dialog` / `z-confirmation` …），
+   * 不必再硬写 `z-[9999]` 去压过花钱确认卡。数字只有 TS 常量那一份，这里纯派生。
+   */
+  addBase({ ':root': NOMI_OVERLAY_Z_INDEX_CSS_VARS })
 
   addBase({
     ':root': {
@@ -822,6 +833,8 @@ export default {
         'remove-bg-pulse': 'remove-bg-pulse 1.2s ease-in-out infinite',
         'remove-bg-pulse-slow': 'remove-bg-pulse 1.5s ease-in-out infinite',
       },
+      // 层级刻度由 NOMI_OVERLAY_Z_INDEX 派生（见 src/design/overlayLayers.ts）。
+      zIndex: NOMI_OVERLAY_Z_INDEX_TAILWIND_SCALE,
       transitionDuration: {
         'nomi-fast': 'var(--nomi-duration-fast)',
       },
