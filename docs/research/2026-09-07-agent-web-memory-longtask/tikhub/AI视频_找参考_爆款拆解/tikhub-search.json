@@ -1,0 +1,612 @@
+{
+  "source": "tikhub",
+  "baseUrl": "https://api.tikhub.io",
+  "keyword": "AI视频 找参考 爆款拆解",
+  "since": null,
+  "limitPerPlatform": 8,
+  "generatedAt": "2026-09-07T07:39:47.766Z",
+  "failures": [],
+  "summary": {
+    "totalRecords": 32,
+    "platformsOk": 4,
+    "platformsEmpty": 0,
+    "platformsFailed": 0,
+    "platforms": [
+      {
+        "platform": "douyin",
+        "platformLabel": "抖音",
+        "status": "ok",
+        "items": 8,
+        "pagesFetched": 2,
+        "missingFields": {},
+        "fieldConfidence": "verified-against-live-response",
+        "fieldsVerifiedOn": "2026-09-06",
+        "error": null
+      },
+      {
+        "platform": "xhs",
+        "platformLabel": "小红书",
+        "status": "ok",
+        "items": 8,
+        "pagesFetched": 1,
+        "missingFields": {},
+        "fieldConfidence": "verified-against-live-response",
+        "fieldsVerifiedOn": "2026-09-06",
+        "error": null
+      },
+      {
+        "platform": "bilibili",
+        "platformLabel": "B站",
+        "status": "ok",
+        "items": 8,
+        "pagesFetched": 1,
+        "missingFields": {},
+        "fieldConfidence": "verified-against-live-response",
+        "fieldsVerifiedOn": "2026-09-06",
+        "error": null
+      },
+      {
+        "platform": "x",
+        "platformLabel": "X（Twitter）",
+        "status": "ok",
+        "items": 8,
+        "pagesFetched": 1,
+        "missingFields": {},
+        "fieldConfidence": "verified-against-live-response",
+        "fieldsVerifiedOn": "2026-09-06",
+        "error": null
+      }
+    ]
+  },
+  "results": [
+    {
+      "platform": "douyin",
+      "platformLabel": "抖音",
+      "records": [
+        {
+          "platform": "douyin",
+          "platformLabel": "抖音",
+          "id": "7677485120043864691",
+          "url": "https://www.douyin.com/video/7677485120043864691",
+          "author": "贝塔 AI",
+          "authorId": "2598889731929966",
+          "publishedAt": "2026-08-24T06:43:23.000Z",
+          "title": "🔥让Ai帮你拆解爆款视频的核心内容！ #ai #AIGC #自媒体创作 #AI视频 #AI自媒体",
+          "excerpt": "🔥让Ai帮你拆解爆款视频的核心内容！ #ai #AIGC #自媒体创作 #AI视频 #AI自媒体",
+          "mentions": [
+            "AIGC"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "douyin",
+          "platformLabel": "抖音",
+          "id": "7646721488590450299",
+          "url": "https://www.douyin.com/video/7646721488590450299",
+          "author": "实拍带货教学",
+          "authorId": "1964159552462275",
+          "publishedAt": "2026-06-03T04:04:00.000Z",
+          "title": "想用豆包反推出爆款视频的所有分镜，一条指令就能搞定！ #Ai教程 #ai短视频 #提示词 #干货分享",
+          "excerpt": "想用豆包反推出爆款视频的所有分镜，一条指令就能搞定！ #Ai教程 #ai短视频 #提示词 #干货分享",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "douyin",
+          "platformLabel": "抖音",
+          "id": "7642285395317235179",
+          "url": "https://www.douyin.com/video/7642285395317235179",
+          "author": "飞雪~",
+          "authorId": "66105202294",
+          "publishedAt": "2026-05-21T10:10:27.000Z",
+          "title": "反推提示词 提示词：分析链接视频，提取出可直接用于AI生成完整视频的提示词。\n内容要包含：视频风格，场景描述，环境描述，光影色调，人物角色形象与动作描述，镜头运镜方式，镜头剪切位置精确到秒，文字简洁，，可以直接复制生成高度相似的视频#提示词#AI#豆包教程#自媒体创业",
+          "excerpt": "反推提示词 提示词：分析链接视频，提取出可直接用于AI生成完整视频的提示词。 内容要包含：视频风格，场景描述，环境描述，光影色调，人物角色形象与动作描述，镜头运镜方式，镜头剪切位置精确到秒，文字简洁，，可以直接复制生成高度相似的视频#提示词#AI#豆包教程#自媒体创业",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "douyin",
+          "platformLabel": "抖音",
+          "id": "7650763123314907569",
+          "url": "https://www.douyin.com/video/7650763123314907569",
+          "author": "火火AI",
+          "authorId": "2769003709737524",
+          "publishedAt": "2026-06-13T06:28:23.000Z",
+          "title": "一键快速反推出爆款视频的提示词，直接丢给豆包的seedance2.0三分钟就出片了，基本上不需要修改提示词，大大节约了ai做视频的时间，可以修改场景，替换人物形象，台词等等。#短视频教程 #ai视频制作 #新手ai教学视频  #实用ai软件 #ai拆解教程",
+          "excerpt": "一键快速反推出爆款视频的提示词，直接丢给豆包的seedance2.0三分钟就出片了，基本上不需要修改提示词，大大节约了ai做视频的时间，可以修改场景，替换人物形象，台词等等。#短视频教程 #ai视频制作 #新手ai教学视频 #实用ai软件 #ai拆解教程",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "douyin",
+          "platformLabel": "抖音",
+          "id": "7648259680468225318",
+          "url": "https://www.douyin.com/video/7648259680468225318",
+          "author": "Dou Bao Agent博士",
+          "authorId": "81247585572",
+          "publishedAt": "2026-06-06T15:35:00.000Z",
+          "title": "豆包AI如何拆解分析热门短视频 做自媒体一定要会拆解分析热门短视频#豆包#豆包指令#抖音精选#豆包提示词",
+          "excerpt": "豆包AI如何拆解分析热门短视频 做自媒体一定要会拆解分析热门短视频#豆包#豆包指令#抖音精选#豆包提示词",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "douyin",
+          "platformLabel": "抖音",
+          "id": "7661177153362332928",
+          "url": "https://www.douyin.com/video/7661177153362332928",
+          "author": "思创AI",
+          "authorId": "485299515568569",
+          "publishedAt": "2026-07-12T10:00:00.000Z",
+          "title": "拆解爆款短视频，一条指令掌握技巧#豆包  #ai提示词  #AI技巧  #豆包知道 #ai短片",
+          "excerpt": "拆解爆款短视频，一条指令掌握技巧#豆包 #ai提示词 #AI技巧 #豆包知道 #ai短片",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "douyin",
+          "platformLabel": "抖音",
+          "id": "7669435129030364442",
+          "url": "https://www.douyin.com/video/7669435129030364442",
+          "author": "AI桃子",
+          "authorId": "281896246076735",
+          "publishedAt": "2026-08-03T09:02:00.000Z",
+          "title": "别再只会说“帮我生成同款”了！ 这句“反推指令”直接扒光它的底层逻辑，无门槛复刻镜头语言！#AI #AI提示词 #自媒体干货 #短视频运营 #爆款复刻",
+          "excerpt": "别再只会说“帮我生成同款”了！ 这句“反推指令”直接扒光它的底层逻辑，无门槛复刻镜头语言！#AI #AI提示词 #自媒体干货 #短视频运营 #爆款复刻",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "douyin",
+          "platformLabel": "抖音",
+          "id": "7661177153362332928",
+          "url": "https://www.douyin.com/video/7661177153362332928",
+          "author": "思创AI",
+          "authorId": "485299515568569",
+          "publishedAt": "2026-07-12T10:00:00.000Z",
+          "title": "拆解爆款短视频，一条指令掌握技巧#豆包  #ai提示词  #AI技巧  #豆包知道 #ai短片",
+          "excerpt": "拆解爆款短视频，一条指令掌握技巧#豆包 #ai提示词 #AI技巧 #豆包知道 #ai短片",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        }
+      ],
+      "pages": [
+        {
+          "page": 1,
+          "received": 7
+        },
+        {
+          "page": 2,
+          "received": 7
+        }
+      ]
+    },
+    {
+      "platform": "xhs",
+      "platformLabel": "小红书",
+      "records": [
+        {
+          "platform": "xhs",
+          "platformLabel": "小红书",
+          "id": "6a7ef1650000000022031398",
+          "url": "https://www.xiaohongshu.com/explore/6a7ef1650000000022031398?xsec_token=YBkO0Nq5mcG_k4vXiaO9uSKv7P8qbqvhpBTjByOZvkOlg%3D&xsec_source=pc_search",
+          "author": "蛋挞只是经过",
+          "authorId": "6a3fc7bb000000000f038c01",
+          "publishedAt": "2026-08-14T10:43:49.000Z",
+          "title": "发现一个免费拆解爆款视频的网站...",
+          "excerpt": "可以读取社媒链接和视频内容，帮忙分析并复刻爆款。 不充值就可以用诶[哇 #有趣的网站 #自媒体工具 #AI拆解爆款视",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "xhs",
+          "platformLabel": "小红书",
+          "id": "6a5247ff000000001503d288",
+          "url": "https://www.xiaohongshu.com/explore/6a5247ff000000001503d288?xsec_token=YBlYLGnBRxmjaaTYH6eHkGXBTNsr1OmR1LEnnLsjhco-0%3D&xsec_source=pc_search",
+          "author": "禾翱AI（教学）",
+          "authorId": "6616b32f000000000303054d",
+          "publishedAt": "2026-07-13T09:30:26.000Z",
+          "title": "反推视频指令，轻松复刻爆款视频",
+          "excerpt": "口令在这哦~ { 请根据上传视频，反向解析并生成一套可直接用于AI视频生成的复刻提示词。目标：最大程度还原原视频，包括人",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "xhs",
+          "platformLabel": "小红书",
+          "id": "696613860000000021033a4a",
+          "url": "https://www.xiaohongshu.com/explore/696613860000000021033a4a?xsec_token=YBSR0FMLuYI_nGCpaS63RizMpgJnudGLEFwrlgZTkv9JY%3D&xsec_source=pc_search",
+          "author": "跨境Max",
+          "authorId": "607e4c380000000001004e2d",
+          "publishedAt": "2026-01-13T09:42:30.000Z",
+          "title": "TK爆款短视频复刻，4步走实操干货教程",
+          "excerpt": "做tiktok跨境电商，尤其是新手，好上手且实测能落地的方法，就是抄已经跑通的爆款。不用瞎琢磨视频创意，按这4步走，新手",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "xhs",
+          "platformLabel": "小红书",
+          "id": "6a9c1c20000000002802dfaa",
+          "url": "https://www.xiaohongshu.com/explore/6a9c1c20000000002802dfaa?xsec_token=YBTv5S7CyJKwSl4gfSdnKep0EoaMjRGxARi9VlgyhDbC0%3D&xsec_source=pc_search",
+          "author": "不焦吕女士",
+          "authorId": "61efb356000000001000508c",
+          "publishedAt": "2026-09-06T10:00:25.000Z",
+          "title": "3分钟带你拆解一条20w浏览的爆款视频",
+          "excerpt": "抓住这几个细节就不可能做不出爆款 #百度搭子 #真干活用搭子 #AI工具 #效率工具 #内容创作工具 #AI提效",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "xhs",
+          "platformLabel": "小红书",
+          "id": "6a851c150000000028003ff6",
+          "url": "https://www.xiaohongshu.com/explore/6a851c150000000028003ff6?xsec_token=YBwG_UukOZzsh5kNQzefgqi4aEy3d9EM_fQKTSQQlmEx8%3D&xsec_source=pc_search",
+          "author": "运营攻城狮",
+          "authorId": "68e29d370000000032028684",
+          "publishedAt": "2026-08-19T02:59:33.000Z",
+          "title": "如何用豆包拆解爆款视频？",
+          "excerpt": "#创作者运营 #短视频运营 #干货分享 #运营学习 #新媒体运营工具 #豆包",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "xhs",
+          "platformLabel": "小红书",
+          "id": "6a5dd6380000000001033f91",
+          "url": "https://www.xiaohongshu.com/explore/6a5dd6380000000001033f91?xsec_token=YBO0FW1JOGMpvdDXaQmF5LPZqgjcy2DMQTubOxoSzxolU%3D&xsec_source=pc_search",
+          "author": "跨境西西",
+          "authorId": "5eed55aa0000000001000d46",
+          "publishedAt": "2026-07-28T13:00:23.000Z",
+          "title": "TikTok 家居 AI 爆款拆解｜不用真人出镜",
+          "excerpt": "不用真人、不用实景拍摄，依靠 AI 生成也能做出高转化家居带货短片！ 第 20 期爆款底层框架拆解，家居小工具 AI 视",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "xhs",
+          "platformLabel": "小红书",
+          "id": "69cda163000000001f0014bb",
+          "url": "https://www.xiaohongshu.com/explore/69cda163000000001f0014bb?xsec_token=YB_0a1BtNDkDjComyaEiy68WW01bcOLHjj6MrL88UCznQ%3D&xsec_source=pc_search",
+          "author": "瓜子吃汤圆",
+          "authorId": "5e1c3c7400000000010023fa",
+          "publishedAt": "2026-04-01T22:51:16.000Z",
+          "title": "入行ai漫剧2年，劝新手别内耗了",
+          "excerpt": "大学专业和影视毫不沾边，毕业找工作屡屡碰壁，被朋友拉着试水AI漫剧，没想到一做就是3年。 从连AI工具都搞不懂的纯小白",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "xhs",
+          "platformLabel": "小红书",
+          "id": "68481cd3000000002300ce97",
+          "url": "https://www.xiaohongshu.com/explore/68481cd3000000002300ce97?xsec_token=YBaEyCHkPm67a2x0QmRGFe63fRhXTHnUpCtBiyCimVuM0%3D&xsec_source=pc_search",
+          "author": "鲸鱼AI营销",
+          "authorId": "601cfe020000000001002f4e",
+          "publishedAt": "2025-06-10T11:53:55.000Z",
+          "title": "爆款视频素材AI拆解与生成的路子探索成功！",
+          "excerpt": "目前可以做到深度拆解爆款视频的底层逻辑，生成Stable Diffusion/Pika等文生视频模型都能用的超精准提示词",
+          "mentions": [
+            "Pika",
+            "Stable Diffusion"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        }
+      ],
+      "pages": [
+        {
+          "page": 1,
+          "received": 16
+        }
+      ]
+    },
+    {
+      "platform": "bilibili",
+      "platformLabel": "B站",
+      "records": [
+        {
+          "platform": "bilibili",
+          "platformLabel": "B站",
+          "id": "BV1HXbP6sEBq",
+          "url": "https://www.bilibili.com/video/BV1HXbP6sEBq",
+          "author": "立志成为恶兽",
+          "authorId": "3707028432226554",
+          "publishedAt": "2026-09-07T05:38:05.000Z",
+          "title": "立志成为恶兽第三集【AI全民制作人】",
+          "excerpt": "立志成为恶兽第三集【AI全民制作人】",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "bilibili",
+          "platformLabel": "B站",
+          "id": "BV1Tebw6fELf",
+          "url": "https://www.bilibili.com/video/BV1Tebw6fELf",
+          "author": "叶光宝何",
+          "authorId": "474455238",
+          "publishedAt": "2026-09-07T03:14:17.000Z",
+          "title": "Ai成功弥补了每次这种视频都戛然而止的遗憾😯",
+          "excerpt": "Ai成功弥补了每次这种视频都戛然而止的遗憾😯",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "bilibili",
+          "platformLabel": "B站",
+          "id": "BV1fm31zTEnq",
+          "url": "https://www.bilibili.com/video/BV1fm31zTEnq",
+          "author": "小别姑苏",
+          "authorId": "86974084",
+          "publishedAt": "2025-07-07T23:10:00.000Z",
+          "title": "豆包AI去除水印只需一步 做AI短剧超简单",
+          "excerpt": "豆包AI去除水印只需一步 做AI短剧超简单 目前所有公开的AI生图、生视频软件平台都会自动添加水印。如果制作的精美图片和视频带着这样的AI标记，确实很影响作品的感官，所以去除水印成了刚需。去除水印的方法有很多，今天我教的方法只需要一个步骤，全程豆包内操作。",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "bilibili",
+          "platformLabel": "B站",
+          "id": "BV1zoT16jEiU",
+          "url": "https://www.bilibili.com/video/BV1zoT16jEiU",
+          "author": "鱼亦乐",
+          "authorId": "5122352",
+          "publishedAt": "2026-07-05T11:33:37.000Z",
+          "title": "全自动拆解爆款视频的Skill (我做的)",
+          "excerpt": "全自动拆解爆款视频的Skill (我做的) 我把“爆款视频拆解”这套流程做成了一个 AI Skill。 丢一个视频链接，它会自动完成下载、转写、逐帧分析、结构拆解，最后输出完整拆解报告。 适合做内容复盘、爆款视频分析、AI 辅助创作和持续学习。",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "bilibili",
+          "platformLabel": "B站",
+          "id": "BV13U3tzCEkZ",
+          "url": "https://www.bilibili.com/video/BV13U3tzCEkZ",
+          "author": "ChoosAI",
+          "authorId": "1842381777",
+          "publishedAt": "2025-07-02T09:51:18.000Z",
+          "title": "一键逆推！任何爆款AI视频，都能扒出提示词！",
+          "excerpt": "一键逆推！任何爆款AI视频，都能扒出提示词！ 现在的AI视频越来越火，生成的效果也让人难辨真假，那么如何找到那些爆火视频的提示词呢？ 今天，小C带你用Gemini的视频分析功能来逆向推导提示词，复刻爆款视频非常简单。 一个AI视频的提示词通常包括6个部分：机位、运镜、角色、场景、动作、对白，我们经过多次调试后认真分析出了一套逆推提示词（评论区置顶），用Gemini的视频分析功能加上这套提示词，就可以得到各个分镜比较还原的提示词了。 欢迎大家关注、点赞、收藏，我会持续更新有趣、实用的AI工具技巧。",
+          "mentions": [
+            "Gemini"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "bilibili",
+          "platformLabel": "B站",
+          "id": "BV1NDhozeEbm",
+          "url": "https://www.bilibili.com/video/BV1NDhozeEbm",
+          "author": "奥力小可爱",
+          "authorId": "398057406",
+          "publishedAt": "2025-08-31T02:10:00.000Z",
+          "title": "把这张图片喂给ai500次会发生什么(86)",
+          "excerpt": "把这张图片喂给ai500次会发生什么(86) 把这张图片喂给ai500次会发生什么(86)",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "bilibili",
+          "platformLabel": "B站",
+          "id": "BV1gTbW6oESt",
+          "url": "https://www.bilibili.com/video/BV1gTbW6oESt",
+          "author": "阿凯的脑洞世界",
+          "authorId": "84977878",
+          "publishedAt": "2026-09-06T14:24:33.000Z",
+          "title": "假如一种针对穷人的丧尸病毒在全球爆发……【AI全民制作人】",
+          "excerpt": "假如一种针对穷人的丧尸病毒在全球爆发……【AI全民制作人】 越做越离谱哈哈哈哈",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "bilibili",
+          "platformLabel": "B站",
+          "id": "BV1Uu3v6VEnh",
+          "url": "https://www.bilibili.com/video/BV1Uu3v6VEnh",
+          "author": "六六AI研究所",
+          "authorId": "3546666583984236",
+          "publishedAt": "2026-07-28T10:30:00.000Z",
+          "title": "如何用5分钟拆解爆款对标视频",
+          "excerpt": "如何用5分钟拆解爆款对标视频 去年发了一期用 AI 拆爆款视频的教程，评论区有 400 多条评论，大家问得最多的就是：求提示词？ 但我在实测过程中发现最麻烦的不是没有提示词，而是每次都要下载视频、提取逐字稿、重新组织分析结果这一整个流程。 所以我把这套流程做成了一个skill，已经免费开源：https://github.com/liuliu-66-create/ll-video-decomposer",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        }
+      ],
+      "pages": [
+        {
+          "page": 1,
+          "received": 17
+        }
+      ]
+    },
+    {
+      "platform": "x",
+      "platformLabel": "X（Twitter）",
+      "records": [
+        {
+          "platform": "x",
+          "platformLabel": "X（Twitter）",
+          "id": "2095772519672504379",
+          "url": "https://x.com/AYi_AInotes/status/2095772519672504379",
+          "author": "AYi",
+          "authorId": "AYi_AInotes",
+          "publishedAt": "2026-09-04T07:14:40.000Z",
+          "title": "这绝逼是目前我用过最能打的 AI 视频工具，没有之一！！！ 纯纯的解放生产力，简直就是抖音、微信视频号起号的神器！！ 兄",
+          "excerpt": "这绝逼是目前我用过最能打的 AI 视频工具，没有之一！！！ 纯纯的解放生产力，简直就是抖音、微信视频号起号的神器！！ 兄弟们，你们敢相信视频里这个 1 分钟的水循环科普动画，是我几句提示词直接跑出来的吗？ 没给任何素材，没有抽卡碰运气，喵个咪，真的是把短视频的制作门槛彻底砸穿了。 以前这种信息型 MG动画视频，基本只能交给会 AE 的人一帧一帧做，贵、慢、学习成本还高。 这样一条外包通常要 3000 到 8000 块、制作周期一两周的 60 秒科普动画，我用 Fotor Video Agent 实测跑出来，大概只花了 10 分钟，全程只点了一次方案确认，剩下的它全部搞定，真的牛逼！！ 脚本、中…",
+          "mentions": [
+            "fotorai",
+            "fotorvideoagent",
+            "剪映"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "x",
+          "platformLabel": "X（Twitter）",
+          "id": "2095744374097494510",
+          "url": "https://x.com/QiuseOfLove/status/2095744374097494510",
+          "author": "叶知秋🎒",
+          "authorId": "QiuseOfLove",
+          "publishedAt": "2026-09-04T05:22:50.000Z",
+          "title": "如果你会翻墙，你又用AI 那么恭喜你，你已经有基本的赚钱能力了 方法： 1、有人把国内抖音、小红书上爆火的短视频，翻译剪",
+          "excerpt": "如果你会翻墙，你又用AI 那么恭喜你，你已经有基本的赚钱能力了 方法： 1、有人把国内抖音、小红书上爆火的短视频，翻译剪辑后发到TikTok，播放量百万，赚创作者基金。 2、国内很多AI绘画教程账号，其实就是把国外的Midjourney提示词案例库翻译搬运过来，配上中文操作截图。 3、短剧火的那阵子，有人批量从国内平台下载热播短剧，加上AI配音和字幕，上传到Youtube Shorts，靠广告分成月入数万。 4、小红书上的”AI写作技巧”博主，很多是从国外AI工具社区 (如ChatGPTPrompt Engineering)扒来的提示词，包装成自己的课程。 5、国内的”数字人直播”教程，本质上…",
+          "mentions": [
+            "Midjourney"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "x",
+          "platformLabel": "X（Twitter）",
+          "id": "2094274092757385382",
+          "url": "https://x.com/7998l201/status/2094274092757385382",
+          "author": "Ryan",
+          "authorId": "7998l201",
+          "publishedAt": "2026-08-31T04:00:28.000Z",
+          "title": "一条40秒AI美食广告怎么做？ Omni提示词＋视频生成＋豆包配音完整教程 这次用「客家三杯鸭」做了一个40秒美食广告。",
+          "excerpt": "一条40秒AI美食广告怎么做？ Omni提示词＋视频生成＋豆包配音完整教程 这次用「客家三杯鸭」做了一个40秒美食广告。 重点不是介绍菜，而是把从提示词到最终成片的完整流程拆开：如何规划镜头、保持画面连续、生成分段视频，再完成配音、合成和检查。 整条工作流是： 菜品与制作过程 → 四段式分镜 → Omni视频提示词 → 分段生成 → 素材检查 → 豆包连续口播 → 剪辑混音 → 成片验证。 说明：本案例的后期使用4段已生成的视频。下面的提示词是按成片结构整理的复现示例，并非当时的原始生成记录。 01｜先写清楚过程，再写镜头 给AI的输入不能只有“帮我做一个三杯鸭广告”。 至少要交代： 主体：客…",
+          "mentions": [
+            "Omni"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "x",
+          "platformLabel": "X（Twitter）",
+          "id": "2096801631387935187",
+          "url": "https://x.com/huoshan007/status/2096801631387935187",
+          "author": "火山哥🕊️",
+          "authorId": "huoshan007",
+          "publishedAt": "2026-09-07T03:24:00.000Z",
+          "title": "兄弟们，我这两天刷X刷到怀疑人生。 之前觉得AI搞图、搞文案已经够离谱了，结果今天挖到个搞视频的，直接给我整不会了。 它",
+          "excerpt": "兄弟们，我这两天刷X刷到怀疑人生。 之前觉得AI搞图、搞文案已经够离谱了，结果今天挖到个搞视频的，直接给我整不会了。 它跟你以前用的AI视频工具完全不一样。不是帮你补帧、抠像、写点提示词那种。是你丢给它一个模糊的想法，说“我要个30秒露营装备测评”，它直接把分镜脚本、画面素材、AI配音、字幕、甚至背景音乐全给你编排完了，导出就是个能直接发的成片。 最夸张的是它能扒爆款。给它一条点赞百万的视频，它能把人家的镜头怎么切、文案怎么断句、情绪爆发点在哪，全给你拆成数据，然后照这个骨架给你生成好几版不一样的。 我看完第一反应不是兴奋，是有点后背发凉。我上个月刚买的那堆视频课程，感觉瞬间变成了废纸，白花了…",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "x",
+          "platformLabel": "X（Twitter）",
+          "id": "2096838098462429209",
+          "url": "https://x.com/bydaoTina/status/2096838098462429209",
+          "author": "婷婷Tina",
+          "authorId": "bydaoTina",
+          "publishedAt": "2026-09-07T05:48:54.000Z",
+          "title": "用Ai做视频这一系列最后一幕，接下来会有长视频，每一集就是一个完整的故事，长视频比较费时间，估计得好几天一集 手机销量暴",
+          "excerpt": "用Ai做视频这一系列最后一幕，接下来会有长视频，每一集就是一个完整的故事，长视频比较费时间，估计得好几天一集 手机销量暴涨，AI生成的房产短视频推荐页全是同一句文案：“市中心低价公宅，仅此一套，手慢无。”每条视频的封面都是那扇铁门，门缝里黑洞洞的，但点击进去，短暂的十秒黑屏后，所有人都会在评论区打出同一句话：“我家正好缺一套。”",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "x",
+          "platformLabel": "X（Twitter）",
+          "id": "2094697793193742408",
+          "url": "https://x.com/derek_wall90176/status/2094697793193742408",
+          "author": "Derek Wen｜德里克文",
+          "authorId": "derek_wall90176",
+          "publishedAt": "2026-09-01T08:04:06.000Z",
+          "title": "过去，让一个人进入不同的场景画面奇观，需要分别拍摄，再依靠剪辑拼接。 现在的AI新玩法，是让同一个人物保持脚步、速度与表",
+          "excerpt": "过去，让一个人进入不同的场景画面奇观，需要分别拍摄，再依靠剪辑拼接。 现在的AI新玩法，是让同一个人物保持脚步、速度与表演连续，一镜走过多个完全不同的影像世界。 你要试试吗？ 🎯 核心提示词 上传图1作为人物唯一身份参考；图2至图6分别作为五个独立场景参考。 生成一段30秒、16:9、写实电影质感的连续跟拍视频。 人物严格保持图1的脸型、五官、发型、年龄、体型与服装，从画面纵深处向镜头方向自然行走。摄影机使用35毫米镜头稳定后退，与人物保持约两米距离，全程不切镜头。 人物依次穿过以下五个世界： 0—6秒：【现实起点】 6—12秒：【场景一】 12—18秒：【场景二】 18—24秒：【场景三】…",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "x",
+          "platformLabel": "X（Twitter）",
+          "id": "2095487205129220332",
+          "url": "https://x.com/7998l201/status/2095487205129220332",
+          "author": "Ryan",
+          "authorId": "7998l201",
+          "publishedAt": "2026-09-03T12:20:56.000Z",
+          "title": "今天尝试Omni生成炒菜：子姜炒牛肉；按以下提示词一次生成视频，无需任何改动；我觉得Omni又行了，针对菜品制作不复杂，",
+          "excerpt": "今天尝试Omni生成炒菜：子姜炒牛肉；按以下提示词一次生成视频，无需任何改动；我觉得Omni又行了，针对菜品制作不复杂，文生视频还是毫无压力，可以直接商用； 子姜炒牛肉｜40秒 Omni 美食广告提示词 一、广告短片主体 菜品名称：子姜炒牛肉 视频比例：9:16竖屏 总时长：40秒 生成方式：分成4段，每段10秒单独生成 参考风格：真实中式厨房、高端粤式美食广告、电影级食物摄影 核心食材：吊龙牛肉薄片、鲜嫩子姜薄片、红色小米椒、翠绿芹菜段 成品标准：牛肉薄嫩湿润、肉纹清晰；子姜淡黄透亮；芹菜翠绿；小米椒鲜红；只有轻薄油光，不出现浓稠酱汁 全片禁止字幕、文字、标志、水印、包装、人物正脸和旁白 二…",
+          "mentions": [
+            "Omni 1.1"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "x",
+          "platformLabel": "X（Twitter）",
+          "id": "2095158235082969306",
+          "url": "https://x.com/cnyzgkc/status/2095158235082969306",
+          "author": "木马人",
+          "authorId": "cnyzgkc",
+          "publishedAt": "2026-09-02T14:33:44.000Z",
+          "title": "卧槽！我一个视频小白，只用一句话，就生成这种效果的视频！ 我只说了句： “我想做一个很有张力的古风视频。画里的女生想逃出",
+          "excerpt": "卧槽！我一个视频小白，只用一句话，就生成这种效果的视频！ 我只说了句： “我想做一个很有张力的古风视频。画里的女生想逃出来，最后又被重新困回画里，你帮我看看怎么做。” 它脑洞大开，直接给我整了一个被巨型画笔追杀的画中人。 我没写分镜，也没拆镜头，故意装成纯小白： 当用户只有一个模糊想法，甚至不知道该怎么专业表达时，它到底能不能听懂？ 做过 AIGC 视频的应该都知道，痛点其实不只在生成视频。 只要你前面需求拆偏一点，后面的人物、画风和剧情就可能一起跑偏。 好不容易生成出来，想改一个镜头，很多工具给你的又只是一条写死的内容，只能回去重新抽，时间和积分继续往里烧。 而且我平时得在 不同工具之间来回…",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        }
+      ],
+      "pages": [
+        {
+          "page": 1,
+          "received": 18
+        }
+      ]
+    }
+  ]
+}
