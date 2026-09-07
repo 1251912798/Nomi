@@ -198,6 +198,7 @@
     "design-lab:walk:canvas-add-menu": "node ./tests/ux/design-lab-canvas-add-menu.walk.mjs",
     "design-lab:walk:settings": "node ./tests/ux/design-lab-settings.walk.mjs",
     "design-lab:walk:canvas-frame": "node ./tests/ux/design-lab-canvas-frame.walk.mjs",
+    "design-lab:walk:depth-action": "node ./tests/ux/design-lab-depth-action.walk.mjs",
     "check:skills-format": "node --test ./scripts/check-skills-format.node-test.mjs && node ./scripts/check-skills-format.mjs"
   },
   "dependencies": {
@@ -245,6 +246,7 @@
     "js-yaml": "4.1.1",
     "leafer-ui": "^2.1.0",
     "mammoth": "^1.12.0",
+    "onnxruntime-web": "1.21.0",
     "perfect-freehand": "^1.2.2",
     "quickjs-emscripten": "0.32.0",
     "react": "^18.3.1",
@@ -288,6 +290,7 @@
     "eslint-plugin-react-refresh": "^0.5.2",
     "fast-check": "^4.8.0",
     "globals": "^17.6.0",
+    "onnxruntime-common": "1.21.0",
     "playwright": "^1.60.0",
     "postcss": "^8.5.15",
     "prettier": "^3.8.3",
