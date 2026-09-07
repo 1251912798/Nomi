@@ -76,6 +76,30 @@ function jsonTextBranch<T extends ZodTypeAny>(inner: T) {
 }
 
 /**
+ * 结构化那一支的登记处。
+ *
+ * 为什么要它：`jsonTolerantArray` 造出来的是 `z.union([array, jsonText])`——一个 `anyOf`。
+ * 传输层今天已经按 `JSON_TEXT_BRANCH_MARKER` 把文本那支整条丢掉（`mcpTransportSchemaFromZod.ts:42-48`），
+ * 但那是在 **JSON Schema** 上做的字符串识别；模型可见 schema 的派生器（`flatModelInput.ts`）
+ * 要在 **zod** 这一层就拿到结构化那支，否则它会把「同一个字段在两个分支上」误判成形状冲突
+ * （两支的文本分支描述不同）。
+ *
+ * 两处识别同一件事、各写一份判据，就是下一次漂移的种子。所以这里给出**唯一的**登记：
+ * 造出来的那一刻就记下「结构化的是哪一支」，谁要谁来查，不再靠猜描述前缀。
+ */
+const STRUCTURED_BRANCH = new WeakMap<object, ZodTypeAny>();
+
+/** 拿到某个容错入参的结构化那一支；不是容错入参就返回 `undefined`。 */
+export function structuredBranchOf(schema: ZodTypeAny): ZodTypeAny | undefined {
+  return STRUCTURED_BRANCH.get(schema as unknown as object);
+}
+
+/** 模型可见的那一版：容错入参只发结构化那一支，其余原样。 */
+export function modelFacingBranch(schema: ZodTypeAny): ZodTypeAny {
+  return structuredBranchOf(schema) ?? schema;
+}
+
+/**
  * 一个数组参数，另加「同一个数组的 JSON 文本」这条运输分支。
  *
  * **写法说明挂在字符串那一支上，不挂在数组那一支上。** 两个理由：
@@ -93,11 +117,10 @@ export function jsonTolerantArray<T extends ZodTypeAny>(
   // 声明出去的**输入**类型仍然只有结构化那一种。字符串分支是给模型的运输容错，
   // 不是给 TypeScript 调用方的第二种写法——把 `| string` 写进类型，仓库里每一个
   // 读 `nodes` 的地方都要先排除 string，那才是把一次容错扩散成一场类型污染。
-  return z.union([description ? array.describe(description) : array, jsonTextBranch(array)]) as unknown as z.ZodType<
-    z.output<T>,
-    z.ZodTypeDef,
-    z.input<T>
-  >;
+  const structured = description ? array.describe(description) : array;
+  const union = z.union([structured, jsonTextBranch(array)]);
+  STRUCTURED_BRANCH.set(union, structured);
+  return union as unknown as z.ZodType<z.output<T>, z.ZodTypeDef, z.input<T>>;
 }
 
 /** 同上，用于对象参数（`camera` / `crowd` 这类嵌套记录）。 */
@@ -105,11 +128,10 @@ export function jsonTolerantObject<T extends ZodTypeAny>(
   object: T,
   description?: string,
 ): z.ZodType<z.output<T>, z.ZodTypeDef, z.input<T>> {
-  return z.union([description ? object.describe(description) : object, jsonTextBranch(object)]) as unknown as z.ZodType<
-    z.output<T>,
-    z.ZodTypeDef,
-    z.input<T>
-  >;
+  const structured = description ? object.describe(description) : object;
+  const union = z.union([structured, jsonTextBranch(object)]);
+  STRUCTURED_BRANCH.set(union, structured);
+  return union as unknown as z.ZodType<z.output<T>, z.ZodTypeDef, z.input<T>>;
 }
 
 export { parseJsonText as parseJsonArgumentText };

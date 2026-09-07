@@ -4,6 +4,8 @@
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
+import type { ZodTypeAny } from 'zod'
+import { stagingReferenceParamsSchema } from '../../../../../electron/shared/agentCapabilities/canvasModelShapes'
 import { MANNEQUIN_POSE_PRESETS, MANNEQUIN_POSE_SECTIONS, MANNEQUIN_DEFAULT_POSE } from './scene3dConstants'
 import { STAGING_POSE_IDS } from './stagingVocab'
 
@@ -50,18 +52,24 @@ describe('staging pose presets', () => {
     }
   })
 
-  it('工具 schema 的 pose 枚举与预设 id 不漂移（canvasDescriptors 手抄镜像必须同步）', () => {
-    // canvasDescriptors.ts 在主进程、刻意手抄 pose 枚举避免拉 THREE 进主进程（见该文件注释）。
-    // 手抄就会漂移——这里读源码文本对账，新增/改名预设而忘了同步工具枚举即红。
-    const canvasDescriptorsPath = fileURLToPath(new URL('../../../../../electron/harness/tools/canvasDescriptors.ts', import.meta.url))
-    const source = readFileSync(canvasDescriptorsPath, 'utf8')
-    // 抓 pose 字段的 enum 数组（schema 里形如 pose: { type: 'string', enum: ['standing', ...] } 或 z.enum([...])）
-    const match = source.match(/pose[\s\S]{0,120}?enum[\s(]*\[([\s\S]*?)\]/)
-    expect(match, 'canvasDescriptors.ts 里没找到 pose 枚举,schema 结构变了请更新本测试').not.toBeNull()
-    const enumIds = (match?.[1] ?? '')
-      .split(',')
-      .map((token) => token.trim().replace(/^['"]|['"]$/g, ''))
-      .filter(Boolean)
+  it('工具 schema 的 pose 枚举与预设 id 不漂移', () => {
+    // 2026-09-07（阶段 2）起这条不再读源码文本：站位/运镜的模型可见形状搬进了能力契约层
+    // （`electron/shared/agentCapabilities/canvasModelShapes.ts`）成为**唯一** owner，
+    // `canvasDescriptors.ts` 只 re-export。原来那份「主进程手抄一遍避免拉 THREE 进主进程」的
+    // 镜像没有了，所以「镜像同步」这条断言的前提也没有了——正则扫源码于是恒 null 报红，
+    // 而它报的是**测试自己过期**，不是姿势漂移。
+    //
+    // 换成直接读 schema 的枚举值：判据从「源码文本里有这几个字」升级成「契约里真的是这几个值」，
+    // 而且再搬一次家也不会假红。
+    // characters 是 `z.array(...).max(6).optional()`：剥 optional → 数组 → 元素对象 → pose 的 optional → enum。
+    const unwrap = (schema: ZodTypeAny): ZodTypeAny => {
+      const def = schema._def as { innerType?: ZodTypeAny; type?: ZodTypeAny }
+      return def.innerType ?? def.type ?? schema
+    }
+    const characterItem = unwrap(unwrap(stagingReferenceParamsSchema.shape.characters))
+    const shape = (characterItem as { shape?: Record<string, ZodTypeAny> }).shape
+    expect(shape?.pose, '契约里没找到 characters[].pose，schema 结构变了请更新本测试').toBeTruthy()
+    const enumIds = (unwrap(shape!.pose)._def as { values?: readonly string[] }).values ?? []
     expect(new Set(enumIds)).toEqual(new Set(STAGING_POSE_IDS))
   })
 

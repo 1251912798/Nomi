@@ -106,8 +106,8 @@ test('a nested description deep inside an array of objects still crosses the bri
   // 报出来的既有「声明的东西丢了」（后三条），也有「产物本身在结构上什么都没说」（前两条）。
   // 两类都要在，因为它们各自能单独发生：字段名还在但说明没了，和整棵子树被抹成 `{}`。
   assert.deepEqual(lossFrom(contract, z.object({ shots: z.array(z.record(z.unknown())) }).strict()), [
-    'probe.properties.shots.items 是一个没有 properties 的 object（字段名一个都没告诉模型）',
-    'probe.properties.shots.items.additionalProperties 是一个空 schema {}（模型看到的等于「随便填」）',
+    'probe/properties/shots/items 是一个既没有 properties、值也没有类型的 object（字段名和值一个都没告诉模型）',
+    'probe/properties/shots/items/additionalProperties 是一个空 schema {}（模型看到的等于「随便填」）',
     'probe.shots 的 minItems=1',
     'probe.shots[].anchor 的 .describe() 文案「The shot anchor id, kebab-case.」',
     'probe.shots[].anchor 这个字段名',
@@ -194,4 +194,18 @@ test('the two shipped lane schemas satisfy the vendor floor — this is the regr
   // 那时 22 个能力搬进来，其中 11 个今天写的是 `z.discriminatedUnion`。
   assert.doesNotThrow(() => build(z.object({}).strict()));
   assert.doesNotThrow(() => build(z.object({ content: z.string().min(1).describe('Text.') }).strict()));
+});
+
+test('数值界：产物更紧算过桥，产物更松必须红', () => {
+  // 生成器会合并同向的界（`.safe().nonnegative()` 只留 `minimum: 0`），所以判据是
+  // 「产物不比契约松」而不是「逐字相等」。但这条放宽一旦过头，门岗就再也拦不住
+  // **真正的**放松——所以两个方向各钉一条。
+  const contract = z.object({ frame: z.number().int().min(0).max(100) }).strict();
+  // 更紧：契约说 ≥0，产物说 ≥10。模型能填的比契约允许的少，不是信息丢失。
+  const tightened = zodToJsonSchema(z.object({ frame: z.number().int().min(10).max(90) }).strict(), { $refStrategy: 'none' }) as Record<string, unknown>;
+  assert.doesNotThrow(() => assertModelVisibleSchemaLossless(contract, tightened, { toolName: 'probe' }));
+  // 更松：契约说 ≥0，产物说 ≥-100。模型会以为 -50 能填，然后在执行边界被拒——
+  // 而拒绝的理由来自一个它从没被告知过的约束。这正是门岗要拦的那一族。
+  const loosened = lossFrom(contract, z.object({ frame: z.number().int().min(-100).max(1000) }).strict());
+  assert.equal(loosened.length, 2, `更松的界必须两条都报：${JSON.stringify(loosened)}`);
 });
