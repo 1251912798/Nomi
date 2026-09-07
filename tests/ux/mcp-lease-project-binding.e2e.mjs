@@ -114,7 +114,7 @@ try {
   const imported = json(await mcp.callTool('nomi_asset_import', { projectId: leaseProjectId, path: fixturePng }))
   check(!imported.isError, '素材导入进 P（不是 Q）')
 
-  const media = await mcp.callTool('nomi_media_query', { leaseHandle, operation: 'list', limit: 10 })
+  const media = await mcp.callTool('nomi_media_query', { leaseHandle, operation: 'search_media', limit: 10 })
   const mediaText = errorTextOf(media)
   check(!media.isError, `nomi_media_query 不再报 project_scope_required（GUI 开着 Q）：${mediaText.slice(0, 120)}`)
   const mediaData = json(media).data
@@ -130,7 +130,7 @@ try {
 
   // ── 5 · 实时面：拒，但错误得可行动 ──────────────────────────────────────────────────
   for (const [label, args] of [
-    ['nomi_timeline_read', { leaseHandle, operation: 'read' }],
+    ['nomi_timeline_read', { leaseHandle, operation: 'read_timeline' }],
     ['nomi_timeline_edit', { leaseHandle, operation: 'preview', plan: editPlan('unknown-revision') }],
   ]) {
     const result = await mcp.callTool(label, args)
@@ -146,7 +146,7 @@ try {
   await win.waitForFunction((id) => window.location.hash.includes(`projectId=${id}`), leaseProjectId, { timeout: 15_000 })
   await win.waitForTimeout(1_500)
 
-  const read = await mcp.callTool('nomi_timeline_read', { leaseHandle, operation: 'read' })
+  const read = await mcp.callTool('nomi_timeline_read', { leaseHandle, operation: 'read_timeline' })
   check(!read.isError, '按错误里的下一步打开 P 之后，同一条 lease 读得到时间轴')
   const baseRevision = json(read).data.revision || json(read).data.timelineRevision
   check(typeof baseRevision === 'string' && baseRevision.length > 0, `拿到时间轴 revision（${baseRevision}）`)

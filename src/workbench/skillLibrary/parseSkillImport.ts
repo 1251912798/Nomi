@@ -42,17 +42,22 @@ const MAX_BYTES = 10 * 1024 * 1024
 const TEXT_EXT = /\.(md|markdown|json|txt|ya?ml|csv)$/i
 /** 与主进程 SKILL_PATH_MAX_DEPTH 对齐（`references/api/v2/spec.md` = 4 段）。 */
 export const MAX_DEPTH = 4
-/** 与主进程 SKILL_EXECUTABLE_DIRS 对齐：v1 只吃知识层，可执行区跳过而不是整包否掉。 */
+/** 与主进程 SKILL_EXECUTABLE_DIRS 对齐。2026-09-07 起可执行区**收**（沙箱与审批都有了）。 */
 const EXECUTABLE_DIRS = new Set(['scripts', 'bin', 'hooks'])
+/** 与主进程 SKILL_SCRIPT_EXT 对齐：可执行区只收脚本源码，不收二进制。 */
+const SCRIPT_EXT = /\.(mjs|cjs|js|ts|mts|py|sh|bash|zsh|rb)$/i
 
 /**
- * 这个相对路径主进程会不会拒（可执行区 / 超深 / 非文本）——三条都跳过，别让整包被拒。
+ * 这个相对路径主进程会不会收。两类各有自己的扩展名白名单：
+ * 知识区收文本，可执行区收脚本源码——**两边都不收二进制**（审阅不了的东西，
+ * 用户点「允许运行」时等于在批一件他看不见的事）。超深的仍然跳过。
+ *
  * zip 与「拖一个文件夹进来」两条收件路径共用它：同一条规则只此一份，别再抄第三遍。
  */
 export function isImportableTextPath(rel: string): boolean {
   const segments = rel.split('/')
   if (segments.length > MAX_DEPTH) return false
-  if (segments.length > 1 && EXECUTABLE_DIRS.has(segments[0].toLowerCase())) return false
+  if (segments.length > 1 && EXECUTABLE_DIRS.has(segments[0].toLowerCase())) return SCRIPT_EXT.test(rel)
   return TEXT_EXT.test(rel)
 }
 

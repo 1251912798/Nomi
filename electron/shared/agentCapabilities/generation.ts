@@ -93,7 +93,11 @@ export const GENERATION_GATE_CAPABILITY = {
   id: "generation.gate",
   version: 1,
   aliases: { pi: "nomi_request_generation_gate" },
-  additionalAliases: { pi: Object.freeze(["nomi_start_generation"]) },
+  // 付费门的三个相位是**同一个能力**的三个别名，不是三个能力：request 发确认挑战、
+  // decide 提交客户端已完成的凭据、start 在收据结清后真正提交。阶段 5a 之前 decide
+  // 只以字符串字面量活在 `generationDispatcher.ts` 的路由表和 `modelToolSurfaceManifest.ts`
+  // 那张手写的三行名单里——契约上查不到它，于是「付费边界上有哪些名字」只能靠手抄。
+  additionalAliases: { pi: Object.freeze(["nomi_start_generation", "nomi_decide_generation_gate"]) },
   inputSchema: input,
   outputSchema: output,
   effect: "paid",

@@ -43,19 +43,23 @@ describe('MCP lease project binding at the renderer capability boundary', () => 
     ['a different project open', 'project-Q'],
   ])('addresses asset.read and export.read by the lease project with %s', async (_label, open) => {
     openProject(open as string | null)
-    await expect(handleCapabilityApply('asset.read', { projectId: 'project-P', operation: 'list' }))
+    await expect(handleCapabilityApply('asset.read', { projectId: 'project-P', operation: 'search_media' }))
       .resolves.toMatchObject({ forwardedProjectId: 'project-P' })
     await expect(handleCapabilityApply('export.read', { projectId: 'project-P', jobId: 'job-1' }))
       .resolves.toEqual({ forwardedProjectId: 'project-P' })
   })
 
-  // 载荷是传输形状（leaseHandle/projectId/operation:'list'），语义 schema 是 strict 的。
-  // 整包 spread 会把 operation 覆盖回 'list' 并带进 leaseHandle/projectId → capability_input_invalid，
-  // 也就是 nomi_media_query 在真宿主上从来没成功过的那条（真机旅程当场撞出来的）。
+  // 载荷是传输形状（leaseHandle/projectId 仍在里面），语义 schema 是 strict 的：整包 spread 会把
+  // leaseHandle/projectId 一起带进语义输入 → capability_input_invalid，也就是 nomi_media_query
+  // 在真宿主上从来没成功过的那条（真机旅程当场撞出来的）。所以按面逐字段搭。
+  //
+  // 阶段 5a：`operation` 的值**就是**语义动作名。以前这里是 `list → search_media` 那条反向映射
+  // 的断言，映射随「两个 profile 同源」一起删掉了；这条断言现在证的是另一件事——
+  // 传输字段被正确剥掉、缺省值（`query: ''`）仍由渲染层补齐。
   it.each([
-    [{ operation: 'list', limit: 5 }, { operation: 'search_media', query: '', limit: 5 }],
-    [{ operation: 'get', assetId: 'asset-1' }, { operation: 'get_media', assetId: 'asset-1' }],
-    [{ operation: 'waveform', assetId: 'asset-1', buckets: 8 }, { operation: 'read_waveform', assetId: 'asset-1', buckets: 8 }],
+    [{ operation: 'search_media', limit: 5 }, { operation: 'search_media', query: '', limit: 5 }],
+    [{ operation: 'get_media', assetId: 'asset-1' }, { operation: 'get_media', assetId: 'asset-1' }],
+    [{ operation: 'read_waveform', assetId: 'asset-1', buckets: 8 }, { operation: 'read_waveform', assetId: 'asset-1', buckets: 8 }],
   ])('builds a strict semantic asset.read input from the transport payload (%o)', async (payload, expected) => {
     openProject('project-P')
     const result = await handleCapabilityApply('asset.read', {

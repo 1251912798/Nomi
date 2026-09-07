@@ -10,6 +10,10 @@
  * 会挪走词表 site，那是另一件事，不该混进一次结构搬迁。
  */
 import { GENERATION_RECONCILE_OUTCOMES } from "./mcpGenerationTools";
+import {
+  assertPaidBoundaryExternalSurface,
+  paidBoundaryAnnotations,
+} from "../shared/agentCapabilities/paidBoundary";
 
 const gstr = (value: unknown): string => (typeof value === "string" ? value : "");
 
@@ -135,6 +139,9 @@ export const MCP_GENERATION_TOOL_CATALOG = [
       required: ["leaseHandle", "operationId", "phase"],
       additionalProperties: false,
     },
+    // 注解**派生**自付费契约的 `effectClass:"spend"`，不在这里手写（阶段 5a：以前一个注解都没带，
+    // 而漏标不会报错——宿主因此把一次花钱的调用当成和一次读一样普通）。
+    annotations: paidBoundaryAnnotations(),
     method: "nomi_request_generation_gate",
     resolveMethod: (args: Record<string, unknown>): string => (gstr(args.phase) === "decide" ? "nomi_decide_generation_gate" : "nomi_request_generation_gate"),
     build: (args: Record<string, unknown>) =>
@@ -153,6 +160,7 @@ export const MCP_GENERATION_TOOL_CATALOG = [
       required: ["leaseHandle", "operationId"],
       additionalProperties: false,
     },
+    annotations: paidBoundaryAnnotations(),
     method: "nomi_start_generation",
     build: (args: Record<string, unknown>) => ({ projectId: args.projectId, leaseHandle: args.leaseHandle, operationId: args.operationId, receiptId: args.receiptId, receiptToken: args.receiptToken }),
   },
@@ -182,3 +190,24 @@ export const MCP_GENERATION_TOOL_CATALOG = [
         : { projectId: args.projectId, leaseHandle: args.leaseHandle, operationId: args.operationId },
   },
 ] as const;
+
+// 装配期闸（R28）：付费边界上的每个别名都必须被一个带 `destructiveHint` 的对外工具认领，
+// 反过来任何路由到付费别名的工具都必须带上它。判据住 `paidBoundary.ts`（唯一那处），
+// 这里只是把目录交给它核。加第二个 `effect:"paid"` 契约而忘了对外接线 → App 起不来，
+// 而不是像阶段 5a 之前那样安静地少一条防线。
+assertPaidBoundaryExternalSurface(
+  MCP_GENERATION_TOOL_CATALOG.map((tool) => ({
+    name: tool.name,
+    routedMethods: [
+      tool.method,
+      // 多态工具按 phase/action 分支路由（`resolveMethod`）。分支目标同样在付费边界上时，
+      // 它一样要被核到——所以这里把两个可能的分支都实喂一次，而不是只报静态的 `method`。
+      ...("resolveMethod" in tool
+        ? (["request", "decide", "cancel", "reconcile"] as const).map((branch) =>
+          (tool as { resolveMethod: (args: Record<string, unknown>) => string })
+            .resolveMethod({ phase: branch, action: branch }))
+        : []),
+    ],
+    ...("annotations" in tool ? { annotations: tool.annotations } : {}),
+  })),
+);

@@ -5,6 +5,7 @@ import type { CapabilityContract } from "./capabilityContract";
 const canonicalIdSchema = z.string().trim().min(1);
 const revisionSchema = canonicalIdSchema.max(64);
 const nonNegativeFrameSchema = z.number().int().safe().nonnegative();
+const positiveFrameSchema = z.number().int().safe().positive();
 const integerFrameSchema = z.number().int().safe();
 
 const moveOperationSchema = z
@@ -142,7 +143,12 @@ export const timelineEditPlanSchema = z
 
 const timelineRangeFields = {
   startFrame: nonNegativeFrameSchema,
-  endFrame: nonNegativeFrameSchema,
+  // `endFrame > startFrame ≥ 0` ⇒ endFrame 至少是 1。把它写进**类型**而不是只写进下面的
+  // refine，是因为 refine 到不了模型可见 schema：模型读到的只有 `minimum: 0`，于是
+  // `{startFrame:0, endFrame:0}` 在它看来完全合法，要撞一次执行边界才知道不行。
+  // 阶段 5a 之前对外那份手抄的传输 schema 恰恰写对了这条（`endFrame: {minimum: 1}`），
+  // 而内部那份没有——同源要求两边一致，那就取更准的那一版，两边一起变准。
+  endFrame: positiveFrameSchema,
 } as const;
 const timelineRangeSchema = z
   .object(timelineRangeFields)
