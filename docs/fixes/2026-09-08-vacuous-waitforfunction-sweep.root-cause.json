@@ -1,0 +1,128 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-08-vacuous-waitforfunction-sweep",
+  "problem_type": "Async test predicates falsely satisfy synchronous truthiness polling",
+  "symptom": "Walk/e2e waits return before persisted state is ready, allowing false green or downstream races",
+  "direct_cause": "Playwright 1.60 waitForFunction checks the returned Promise for truthiness before its resolved boolean",
+  "class_root": "Test-source validation lacked an async predicate invariant and excluded walk/e2e scripts",
+  "affected_population": [
+    "All async waitForFunction callers in test scripts"
+  ],
+  "scope_paths": [
+    "scripts/check-test-waits.mjs"
+  ],
+  "entry_points": [
+    "allowCursor",
+    "readPersistedDismissal",
+    "runPhase M0",
+    "openProject",
+    "policy recovery"
+  ],
+  "external_sources": [
+    {
+      "kind": "official-doc",
+      "url": "https://github.com/microsoft/playwright/blob/main/docs/src/test-assertions-js.md",
+      "checked_at": "2026-09-08",
+      "purpose": "expect.poll awaits asynchronous callbacks and accepts an explicit timeout"
+    }
+  ],
+  "invariants": [
+    "Inline async predicates in test waitForFunction calls are rejected before execution"
+  ],
+  "generality_proof": "The shared AST gate scans test scripts, unit tests and named test files, recognizing async arrows and function expressions across whitespace/comments and parenthesized forms without matching text examples.",
+  "shared_boundaries": [
+    {
+      "path": "scripts/check-test-waits.mjs",
+      "symbol": "asyncWaitForFunctionLines",
+      "responsibility": "Reject inline async callbacks independent of page receiver and layout"
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "tests/ux/mcp-client-activation.walk.mjs",
+      "entry_point": "allowCursor",
+      "disposition": "enforced",
+      "evidence": "trustedHosts includes cursor before connection management; migrated to expect.poll and included by collectTestFiles"
+    },
+    {
+      "path": "tests/ux/narrowed-mode-guidance.walk.mjs",
+      "entry_point": "readPersistedDismissal",
+      "disposition": "enforced",
+      "evidence": "node dismissal is saved before snapshot assertion; migrated to expect.poll and included by collectTestFiles"
+    },
+    {
+      "path": "tests/ux/agent-vertical-spine-m0-m5.red.e2e.mjs",
+      "entry_point": "runPhase M0",
+      "disposition": "enforced",
+      "evidence": "new project is readable before locating isolated disk project; migrated to expect.poll and included by collectTestFiles"
+    },
+    {
+      "path": "tests/ux/storyboard-agent-canonical-patch.e2e.mjs",
+      "entry_point": "openProject",
+      "disposition": "enforced",
+      "evidence": "three canonical shots readable before MCP edit and restart; migrated to expect.poll and included by collectTestFiles"
+    },
+    {
+      "path": "tests/ux/production-budget-recovery.walk.mjs",
+      "entry_point": "policy recovery",
+      "disposition": "enforced",
+      "evidence": "budget=25, kie allowed and model allowed before next edit/approval; migrated to expect.poll and included by collectTestFiles"
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Seven existing callbacks across five independently authored tests share this reusable failure mechanism",
+    "same_class_scan": [
+      "rg -n -U waitForFunction\\s*\\(\\s*async across the repository excluding docs: seven hits",
+      "AST gate on original sources: seven hits, exit 1; after sweep: zero hits"
+    ]
+  },
+  "prevention": {
+    "kind": "static-gate",
+    "enforcement_path": "scripts/check-test-waits.mjs",
+    "invariant": "No inline async waitForFunction predicate in scanned test sources",
+    "failure_mode": "check:test-waits exits 1 and reports file/line and expect.poll replacement",
+    "exception_policy": "none",
+    "strategy": "Use the existing RULES gate and extend discovery for the new rule; existing wallclock rules retain their established unit-test scope",
+    "artifacts": [
+      "scripts/check-test-waits.mjs"
+    ]
+  },
+  "regression_tests": [
+    "scripts/check-test-waits.node-test.mjs"
+  ],
+  "class_regression_tests": [
+    "scripts/check-test-waits.node-test.mjs"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "tests/ux/mcp-client-activation.walk.mjs",
+      "tests/ux/narrowed-mode-guidance.walk.mjs",
+      "tests/ux/agent-vertical-spine-m0-m5.red.e2e.mjs",
+      "tests/ux/storyboard-agent-canonical-patch.e2e.mjs",
+      "tests/ux/production-budget-recovery.walk.mjs"
+    ],
+    "rationale": "Removed all seven async waits and duplicated dismissal reader; no parallel wait implementation"
+  },
+  "dependency_lifecycle": {
+    "decision": "retain-with-exit",
+    "current": "Playwright 1.60.0",
+    "target": "Upstream release with verified awaited predicate semantics if policy is reconsidered",
+    "rationale": "Official expect.poll already supplies correct awaited sampling; no dependency upgrade needed",
+    "exit_criteria": [
+      "Only reconsider async waitForFunction after an upstream implementation awaits predicates and an always-false async regression times out"
+    ]
+  },
+  "migration": "No persisted data or product API changes; callers switch directly to awaited polling.",
+  "residual_risks": [
+    "This syntax gate targets inline async predicates; indirect Promise-returning callbacks require semantic analysis outside this sweep.",
+    "Gate and isolated sampling checks do not prove entire existing Electron/model journeys."
+  ],
+  "invariant_owner_layer": {
+    "layer": "scripts/check-test-waits.mjs",
+    "tests": [
+      "scripts/check-test-waits.node-test.mjs"
+    ]
+  }
+}
