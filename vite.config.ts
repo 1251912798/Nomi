@@ -316,13 +316,6 @@ export default defineConfig(async ({ command, mode }: ConfigEnv): Promise<UserCo
         // @xmldom/xmldom is CommonJS, so Vite must prebundle it before the browser
         // requests the module; otherwise the raw CJS file has no DOMParser export.
         '@xmldom/xmldom',
-        // 设计实验室是第一个把 pi 的投影层拉进**浏览器**的入口（`laneDrivenFixtures` 走
-        // `projectLaneSnapshot` → pi-ai 的 `getSupportedThinkingLevels`）。pi-ai 自己会 import
-        // `partial-json`，而那是个 CJS 包；`noDiscovery: true` 意味着没列在这里的传递依赖
-        // 不会被预打包，浏览器于是直接请求那个 CJS 文件、拿不到具名的 `parse` 导出，
-        // 整页在 import 阶段就炸（实验室因此 `__designLabReady` 永远为 false，门岗报
-        // warmup-unreachable——看起来像基础设施慢，其实是页面根本没起来）。
-        '@earendil-works/pi-ai',
         'zod',
         'zustand',
         'zustand/middleware',
