@@ -51,6 +51,7 @@ const MODES: ModelArchetype["modes"] = [
   },
   {
     id: "ref",
+    maxTotalReferences: 12,
     intent: "character",
     vendorTerm: "多模态参考",
     hint: "参考图 / 视频 / 音频；音频不能单独输入",
@@ -71,6 +72,7 @@ export const MINIMAX_H3_APIMART_ARCHETYPE: ModelArchetype = {
   label: "MiniMax H3",
   kind: "video",
   sources: [
+    { url: "https://platform.minimax.io/docs/guides/video-generation", checkedAt: "2026-09-08", covers: "Mixed input is capped at 12 files in total" },
     {
       url: "https://docs.apimart.ai/cn/api-reference/videos/minimax-h3/generation",
       checkedAt: "2026-08-11",

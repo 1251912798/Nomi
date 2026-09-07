@@ -18,6 +18,7 @@ import type { HttpOperation, ProfileKind } from "./types";
 import type { ParamMap } from "./paramTranslate";
 import { APIMART_CREATE_TASK_ID_PATH, APIMART_STATUS_MAPPING, APIMART_VIDEO_QUERY_OP } from "./apimartVendor";
 import "./apimartMinimaxH3";
+import "./apimartHailuo23";
 import "./apimartModelIds";
 
 const CREATE_HEADERS = { Authorization: "Bearer {{user_api_key}}", "Content-Type": "application/json" };
@@ -215,6 +216,7 @@ export const APIMART_VIDEO_MODELS: ApimartVideoModel[] = [
   }),
   // Hailuo 2.3：无 aspect_ratio；图生视频用 first_frame_image（字符串，非数组）。变体（标准 / Fast）→ {{request.params.model}}。
   videoModel({
+    requestTransform: "apimart-hailuo-23",
     modelKey: "MiniMax-Hailuo-2.3", labelZh: "Hailuo 2.3", archetypeId: "hailuo-2.3", modelRef: VARIANT_MODEL_REF,
     t2vBody: { resolution: RESOLUTION, duration: DURATION },
     i2vBody: { resolution: RESOLUTION, duration: DURATION, first_frame_image: FIRST_FRAME_IMAGE },
