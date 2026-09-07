@@ -1,0 +1,626 @@
+{
+  "source": "tikhub",
+  "baseUrl": "https://api.tikhub.io",
+  "keyword": "AI视频 角色一致 参考图",
+  "since": "2026-03-01",
+  "limitPerPlatform": 8,
+  "generatedAt": "2026-09-07T07:32:21.200Z",
+  "failures": [],
+  "summary": {
+    "totalRecords": 32,
+    "platformsOk": 4,
+    "platformsEmpty": 0,
+    "platformsFailed": 0,
+    "platforms": [
+      {
+        "platform": "douyin",
+        "platformLabel": "抖音",
+        "status": "ok",
+        "items": 8,
+        "pagesFetched": 2,
+        "missingFields": {},
+        "fieldConfidence": "verified-against-live-response",
+        "fieldsVerifiedOn": "2026-09-06",
+        "error": null
+      },
+      {
+        "platform": "xhs",
+        "platformLabel": "小红书",
+        "status": "ok",
+        "items": 8,
+        "pagesFetched": 1,
+        "missingFields": {},
+        "fieldConfidence": "verified-against-live-response",
+        "fieldsVerifiedOn": "2026-09-06",
+        "error": null
+      },
+      {
+        "platform": "bilibili",
+        "platformLabel": "B站",
+        "status": "ok",
+        "items": 8,
+        "pagesFetched": 1,
+        "missingFields": {},
+        "fieldConfidence": "verified-against-live-response",
+        "fieldsVerifiedOn": "2026-09-06",
+        "error": null
+      },
+      {
+        "platform": "x",
+        "platformLabel": "X（Twitter）",
+        "status": "ok",
+        "items": 8,
+        "pagesFetched": 1,
+        "missingFields": {},
+        "fieldConfidence": "verified-against-live-response",
+        "fieldsVerifiedOn": "2026-09-06",
+        "error": null
+      }
+    ]
+  },
+  "results": [
+    {
+      "platform": "douyin",
+      "platformLabel": "抖音",
+      "records": [
+        {
+          "platform": "douyin",
+          "platformLabel": "抖音",
+          "id": "7623742058423130875",
+          "url": "https://www.douyin.com/video/7623742058423130875",
+          "author": "鸿悟AI",
+          "authorId": "200542426768163",
+          "publishedAt": "2026-04-02T12:00:00.000Z",
+          "title": "🔥别再无效绘图了！1分钟搞定AI角色一致性！ 救命🆘 原来真的还有人不知道AI角色一致性怎么做？\n每次画出来的脸都不一样，这还怎么做AI漫剧博主？😭\n\n其实只要一张【标准四视图】，所有问题都解决了！\n今天就把这个压箱底的教程教给你，建议收藏，防丢！\n\n👇 三步搞定角色底图：\n1️⃣ 定人设： 用5.0模型，输入“全身+正面+白底+面无表情”，比例选9:16。\n2️⃣ 定视图： 拿满意的图当参考，比例换成16:9。\n3️⃣ 加咒语： 输入专属“面部特写+全身三视图”指令，角色建模瞬间完成！\n\n这样生成的角色，不管换什么背景、换什么衣服，脸部都能1:1还原！简直是AI漫剧博主的救星！✨\n\n#AI漫剧 #AI短剧 #漫剧制作 #AI教程 #即梦ai",
+          "excerpt": "🔥别再无效绘图了！1分钟搞定AI角色一致性！ 救命🆘 原来真的还有人不知道AI角色一致性怎么做？ 每次画出来的脸都不一样，这还怎么做AI漫剧博主？😭 其实只要一张【标准四视图】，所有问题都解决了！ 今天就把这个压箱底的教程教给你，建议收藏，防丢！ 👇 三步搞定角色底图： 1️⃣ 定人设： 用5.0模型，输入“全身+正面+白底+面无表情”，比例选9:16。 2️⃣ 定视图： 拿满意的图当参考，比例换成16:9。 3️⃣ 加咒语： 输入专属“面部特写+全身三视图”指令，角色建模瞬间完成！ 这样生成的角色，不管换什么背景、换什么衣服，脸部都能1:1还原！简直是AI漫剧博主的救星！✨ #AI漫…",
+          "mentions": [
+            "即梦"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "douyin",
+          "platformLabel": "抖音",
+          "id": "7645241071076674879",
+          "url": "https://www.douyin.com/video/7645241071076674879",
+          "author": "借东风",
+          "authorId": "4281961424357563",
+          "publishedAt": "2026-05-31T11:30:00.000Z",
+          "title": "AI 锁人物一致性神操作！3 段提示词，正脸到侧脸绝不崩脸 #AI视频 #AI教程 #人物一致性 #提示词",
+          "excerpt": "AI 锁人物一致性神操作！3 段提示词，正脸到侧脸绝不崩脸 #AI视频 #AI教程 #人物一致性 #提示词",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "douyin",
+          "platformLabel": "抖音",
+          "id": "7652607378675813670",
+          "url": "https://www.douyin.com/video/7652607378675813670",
+          "author": "吃不吃折耳根",
+          "authorId": "3352867978099595",
+          "publishedAt": "2026-06-18T11:00:00.000Z",
+          "title": "用这个方法控制人物一致性，再也不怕角色跑偏！#AI #人物一致性 #AI漫剧 #ai视频制作 #AIGC",
+          "excerpt": "用这个方法控制人物一致性，再也不怕角色跑偏！#AI #人物一致性 #AI漫剧 #ai视频制作 #AIGC",
+          "mentions": [
+            "AIGC"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "douyin",
+          "platformLabel": "抖音",
+          "id": "7634917173810472377",
+          "url": "https://www.douyin.com/video/7634917173810472377",
+          "author": "Jac.key",
+          "authorId": "1092240220368778",
+          "publishedAt": "2026-05-01T13:38:00.000Z",
+          "title": "一张图表锁定人物一致性 提示词直接领\n•#人物一致性\n•#角色一致性\n·#image2\n•#AI技巧\n•#AI人物一致性",
+          "excerpt": "一张图表锁定人物一致性 提示词直接领 •#人物一致性 •#角色一致性 ·#image2 •#AI技巧 •#AI人物一致性",
+          "mentions": [
+            "image2"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "douyin",
+          "platformLabel": "抖音",
+          "id": "7621907073378307380",
+          "url": "https://www.douyin.com/video/7621907073378307380",
+          "author": "Chili奇莉",
+          "authorId": "7592546385712170043",
+          "publishedAt": "2026-03-27T12:12:21.000Z",
+          "title": "3步锁定人物一致性 提示词直接抄 #人物一致性 #角色一致性 #AI提示词 #AI技巧 #AI人物一致性",
+          "excerpt": "3步锁定人物一致性 提示词直接抄 #人物一致性 #角色一致性 #AI提示词 #AI技巧 #AI人物一致性",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "douyin",
+          "platformLabel": "抖音",
+          "id": "7681173253586504960",
+          "url": "https://www.douyin.com/video/7681173253586504960",
+          "author": "转生成为AI小白",
+          "authorId": "4497474722726916",
+          "publishedAt": "2026-09-03T05:15:19.000Z",
+          "title": "大佬都在用的人物三视图 #AI教程 #seedance #人物三视图 #提示词模板",
+          "excerpt": "大佬都在用的人物三视图 #AI教程 #seedance #人物三视图 #提示词模板",
+          "mentions": [
+            "seedance",
+            "Seedance"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "douyin",
+          "platformLabel": "抖音",
+          "id": "7665707815775767848",
+          "url": "https://www.douyin.com/video/7665707815775767848",
+          "author": "刘导Show",
+          "authorId": "7661949289702556729",
+          "publishedAt": "2026-07-23T13:01:34.000Z",
+          "title": "AI漫剧全流程第三期：快速制作漫剧角色资产图 这期用一个角色做案例，讲清人物基础图、四视图、角色一致性和文件整理的完整流程\n#ai漫剧制作教程 #ai视频学习 #ai创作 #AIGC #干货教程",
+          "excerpt": "AI漫剧全流程第三期：快速制作漫剧角色资产图 这期用一个角色做案例，讲清人物基础图、四视图、角色一致性和文件整理的完整流程 #ai漫剧制作教程 #ai视频学习 #ai创作 #AIGC #干货教程",
+          "mentions": [
+            "AIGC"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "douyin",
+          "platformLabel": "抖音",
+          "id": "7681173253586504960",
+          "url": "https://www.douyin.com/video/7681173253586504960",
+          "author": "转生成为AI小白",
+          "authorId": "4497474722726916",
+          "publishedAt": "2026-09-03T05:15:19.000Z",
+          "title": "大佬都在用的人物三视图 #AI教程 #seedance #人物三视图 #提示词模板",
+          "excerpt": "大佬都在用的人物三视图 #AI教程 #seedance #人物三视图 #提示词模板",
+          "mentions": [
+            "seedance",
+            "Seedance"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        }
+      ],
+      "pages": [
+        {
+          "page": 1,
+          "received": 7
+        },
+        {
+          "page": 2,
+          "received": 7
+        }
+      ]
+    },
+    {
+      "platform": "xhs",
+      "platformLabel": "小红书",
+      "records": [
+        {
+          "platform": "xhs",
+          "platformLabel": "小红书",
+          "id": "6a0d50e2000000000803fde9",
+          "url": "https://www.xiaohongshu.com/explore/6a0d50e2000000000803fde9?xsec_token=YBzOzflSsCZrNUV7NLfqYInUaouvohfXdMBuErXA1-5Lo%3D&xsec_source=pc_search",
+          "author": "贪吃的小白熊",
+          "authorId": "5ede4e960000000001002001",
+          "publishedAt": "2026-05-20T06:12:50.000Z",
+          "title": "人物一致性攻略｜AI角色稳定出图全流程",
+          "excerpt": "做AI人物图最崩溃的不是不会出图， 而是：第一张很好看，第二张就像换了个人。 人物一致性的核心，不是“反复抽卡”，而是先",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "xhs",
+          "platformLabel": "小红书",
+          "id": "69e877810000000022027e40",
+          "url": "https://www.xiaohongshu.com/explore/69e877810000000022027e40?xsec_token=YBEy6C-OorRDFI0T-jJRiaHGRMIZMYzEhp8Z_-ie4-uKM%3D&xsec_source=pc_search",
+          "author": "Kiki尤鲤",
+          "authorId": "69ba513d0000000033026ca4",
+          "publishedAt": "2026-04-22T07:23:45.000Z",
+          "title": "解决 AI 视频的最大痛点：100% 角色一致性",
+          "excerpt": "#人物一致性 #AI画图 #ai 在开始视频生成之前，我在 Lovart 上使用 GPT Image 2 来构建一",
+          "mentions": [
+            "GPT",
+            "Image 2"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "xhs",
+          "platformLabel": "小红书",
+          "id": "6a4a2b630000000007027ee0",
+          "url": "https://www.xiaohongshu.com/explore/6a4a2b630000000007027ee0?xsec_token=YBnNIgsk9zWEGkop_2MDn_HPeIlYk9z0RuAo8d3mFI_Qo%3D&xsec_source=pc_search",
+          "author": "禾翱AI（教学）",
+          "authorId": "6616b32f000000000303054d",
+          "publishedAt": "2026-07-05T10:01:07.000Z",
+          "title": "角色一致性老翻车？用五视图锁住人物",
+          "excerpt": "AI女装数字人资产，用于AI换装、角色一致性与视频生成参考，人物一致性轻松锁住。 礼貌拿口令📦： 参考上传的模特肖像作",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "xhs",
+          "platformLabel": "小红书",
+          "id": "6a2a98b700000000160279cd",
+          "url": "https://www.xiaohongshu.com/explore/6a2a98b700000000160279cd?xsec_token=YBBWZEJIUJROovB895GXnwVzULSZ5aoh-3ioPw3EghCE8%3D&xsec_source=pc_search",
+          "author": "月知一Serene",
+          "authorId": "6a016dc20000000002001800",
+          "publishedAt": "2026-06-11T11:15:03.000Z",
+          "title": "100%成功！人物一致性的终极解决方法！",
+          "excerpt": "别再用三视图去稳定人物了 这是我见过最笨的方法 那今天就教你一个终极技巧 让你轻松保持人物一致性 首先你要知道 三视图的",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "xhs",
+          "platformLabel": "小红书",
+          "id": "6a6cdc65000000003301900d",
+          "url": "https://www.xiaohongshu.com/explore/6a6cdc65000000003301900d?xsec_token=YBeaGaJTxELFdDAaTLabPDscHumx7aPkRhpKQkXdULErA%3D&xsec_source=pc_search",
+          "author": "Ryan_Roaming_Node",
+          "authorId": "699db39f0000000021024952",
+          "publishedAt": "2026-07-31T17:33:25.000Z",
+          "title": "角色Master图怎么做",
+          "excerpt": "做AI图片或AI视频时，经常会遇到这种情况： 明明提示词里写的是同一个角色，到了下一个镜头，却出现了变脸、换发型、换衣服",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "xhs",
+          "platformLabel": "小红书",
+          "id": "6a4e4669000000002103d507",
+          "url": "https://www.xiaohongshu.com/explore/6a4e4669000000002103d507?xsec_token=YBgS6ku-s2SOydE37UVe4Dj41uKwYrp63HsOQBhMDzeTE%3D&xsec_source=pc_search",
+          "author": "AIgwcf",
+          "authorId": "613dc19d000000000202592c",
+          "publishedAt": "2026-07-08T12:45:29.000Z",
+          "title": "图生视频：保持人物一致性的方法",
+          "excerpt": "良心干货，建议收藏#ai关键词 #ai提示词技巧 #ai提示词分享 #ai提示词教学 #人物一致性技巧 #AI",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "xhs",
+          "platformLabel": "小红书",
+          "id": "6a7c0a56000000002402fc6e",
+          "url": "https://www.xiaohongshu.com/explore/6a7c0a56000000002402fc6e?xsec_token=YBa4O11VamB3g8NPnaAZGQrvFBKOx1mc2-PoUlMnBaJak%3D&xsec_source=pc_search",
+          "author": "一只Panda",
+          "authorId": "5e525f1f00000000010039cf",
+          "publishedAt": "2026-08-12T05:53:26.000Z",
+          "title": "角色参考图升级：只留一个脸，反而更稳定",
+          "excerpt": "角色参考图真的该换版了。 最近我开始用一种新的角色资产图结构： 不再把同一张脸塞进正面、侧面、背面三处，而是只留一个清晰",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "xhs",
+          "platformLabel": "小红书",
+          "id": "6a9196c2000000002003cdbf",
+          "url": "https://www.xiaohongshu.com/explore/6a9196c2000000002003cdbf?xsec_token=YB0RVlCf-etEXDTXOHZTqEXu58misUQeviCnA4s4SzZGQ%3D&xsec_source=pc_search",
+          "author": "AICG小范老师",
+          "authorId": "5ebc13b2000000000101c193",
+          "publishedAt": "2026-08-28T14:10:10.000Z",
+          "title": "AI角色资产怎么做的？",
+          "excerpt": "最近看了 Higgsfield Studio 的 AI 短剧《ZEPHYR》，第一件让我感兴趣的不是成片，而是他们资产项",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        }
+      ],
+      "pages": [
+        {
+          "page": 1,
+          "received": 20
+        }
+      ]
+    },
+    {
+      "platform": "bilibili",
+      "platformLabel": "B站",
+      "records": [
+        {
+          "platform": "bilibili",
+          "platformLabel": "B站",
+          "id": "BV1My8269ENN",
+          "url": "https://www.bilibili.com/video/BV1My8269ENN",
+          "author": "幸运AIGC",
+          "authorId": "3707073739098563",
+          "publishedAt": "2026-08-22T13:16:56.000Z",
+          "title": "AI视频人物总换脸？两种参考图用法，角色多镜头更稳定!",
+          "excerpt": "AI视频人物总换脸？两种参考图用法，角色多镜头更稳定! AI视频一换镜头，人物就像换了一位？本期用同一位古风角色，实操演示两种参考图组合： 1.单张面部参考图，优先锁定脸部特征 2.角色三视图搭配多角度面部特写，补足发型、服装、身形与表情信息 从参考图到视频生成，看看怎样让角色在不同镜头和场景中保持更稳定的视觉识别。适合做连续剧情、角色短片和分镜练习。",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "bilibili",
+          "platformLabel": "B站",
+          "id": "BV1cDbP6dEc3",
+          "url": "https://www.bilibili.com/video/BV1cDbP6dEc3",
+          "author": "舒星缘喝抗火",
+          "authorId": "3706959226210805",
+          "publishedAt": "2026-09-07T04:49:06.000Z",
+          "title": "我猜你喜欢的角色！",
+          "excerpt": "我猜你喜欢的角色！ -",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "bilibili",
+          "platformLabel": "B站",
+          "id": "BV1RhE96xE1o",
+          "url": "https://www.bilibili.com/video/BV1RhE96xE1o",
+          "author": "太帅而被肘击",
+          "authorId": "1537130399",
+          "publishedAt": "2026-06-10T09:03:20.000Z",
+          "title": "一招教你搞定角色概念分解图（综合）",
+          "excerpt": "一招教你搞定角色概念分解图（综合）",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "bilibili",
+          "platformLabel": "B站",
+          "id": "BV1hStb6zERm",
+          "url": "https://www.bilibili.com/video/BV1hStb6zERm",
+          "author": "幸运AIGC",
+          "authorId": "3707073739098563",
+          "publishedAt": "2026-08-31T12:21:39.000Z",
+          "title": "AI短剧人物总换脸？用角色卡锁定多镜头一致性【实操】",
+          "excerpt": "AI短剧人物总换脸？用角色卡锁定多镜头一致性【实操】 同一个角色，一换场景就像换了演员？问题往往不是提示词不够长，而是人物设定没有提前固定。 这期分享一套AI角色一致性方法： 准备2—3张有授权的参考图 生成人物三视图、全身图和常用表情 做成统一角色卡，固定五官、发型、服装与人设 后续只调整场景、动作和镜头，减少随机换脸 这套方法不能保证每一帧完全相同，但可以提高多镜头的一致性，减少返工。 你在制作AI视频时，最容易变化的是脸、发型还是服装？",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "bilibili",
+          "platformLabel": "B站",
+          "id": "BV1TK4r6eEBs",
+          "url": "https://www.bilibili.com/video/BV1TK4r6eEBs",
+          "author": "LeMonyMouSiE",
+          "authorId": "187666117",
+          "publishedAt": "2026-08-28T23:09:38.000Z",
+          "title": "AI人物 / 道具锁站位方法",
+          "excerpt": "AI人物 / 道具锁站位方法 AI 人物总乱跑？3 张参考图锁死站位 AI 视频里，人物和道具一换镜头就乱跑？这次用自制短片实测一套站位锁定方法：先生成 720° 全景与垂直俯视图，再用平视图、道具图和彩色标注明确人物、插座板的方向、左右关系和距离，最后把参考图一起导入视频节点。",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "bilibili",
+          "platformLabel": "B站",
+          "id": "BV1ZFbN6UE8c",
+          "url": "https://www.bilibili.com/video/BV1ZFbN6UE8c",
+          "author": "方块十AI",
+          "authorId": "11323581",
+          "publishedAt": "2026-09-07T05:16:46.000Z",
+          "title": "如何用AI模仿星铁官方画风 全员",
+          "excerpt": "如何用AI模仿星铁官方画风 全员 用novelai v5full版本模型，就可以用图表中的角色标签提示词，还原官方的画风质感~",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "bilibili",
+          "platformLabel": "B站",
+          "id": "BV1A4bx6QE7x",
+          "url": "https://www.bilibili.com/video/BV1A4bx6QE7x",
+          "author": "JETCONVOY",
+          "authorId": "388722739",
+          "publishedAt": "2026-09-06T17:52:18.000Z",
+          "title": "请说出图里10个角色的共同点【8.0】",
+          "excerpt": "请说出图里10个角色的共同点【8.0】 -",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "bilibili",
+          "platformLabel": "B站",
+          "id": "BV1YNKK6RE7i",
+          "url": "https://www.bilibili.com/video/BV1YNKK6RE7i",
+          "author": "学姐圆",
+          "authorId": "30502823",
+          "publishedAt": "2026-07-19T04:00:00.000Z",
+          "title": "bilbili moe 2026 动画角色人气大赏 宣传PV",
+          "excerpt": "bilbili moe 2026 动画角色人气大赏 宣传PV 时间不能倒流，但我可以回头，感谢一直热爱着ACG的你！！ 一生中必不可少的就是与他们的相处，永远把爱留在二次元！！ B萌（bilibili Moe）2026 动画角色人气大赏，再启动！ 大家一起来为喜爱的角色，投出自己炽热、真诚、宝贵的一票吧！ 活动主会场：https://www.bilibili.com/blackboard/era/DlHMVdW6zibHXrrl.html BGM【音乐名】： ①：ずっとずっとずっと ②：AIZO 后期渲染：月灵の自由",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        }
+      ],
+      "pages": [
+        {
+          "page": 1,
+          "received": 20
+        }
+      ]
+    },
+    {
+      "platform": "x",
+      "platformLabel": "X（Twitter）",
+      "records": [
+        {
+          "platform": "x",
+          "platformLabel": "X（Twitter）",
+          "id": "2096530480548172245",
+          "url": "https://x.com/Magncsans/status/2096530480548172245",
+          "author": "Foyege",
+          "authorId": "Magncsans",
+          "publishedAt": "2026-09-06T09:26:32.000Z",
+          "title": "随着GPT 6 Astra的发布，建模能力和速度更上一层楼，我非常建议aigc创作在有复杂运镜、特定动作、长镜头的情况下",
+          "excerpt": "随着GPT 6 Astra的发布，建模能力和速度更上一层楼，我非常建议aigc创作在有复杂运镜、特定动作、长镜头的情况下使用白模辅助来生成 但是，值得注意的是，白模的精细度最好不要太精致，否则会大大约束了模型的发挥空间，那就会导致两种结果 1.模型会1:1完全复刻你的白模视频，但是你的白模又是一个“粗模”的预演参考，最后生成出来就会四不像 2.要么你就非常细致的完成这个白模的细节，只留下材质让ai模型完成，这就有点悖论了，你建模都弄得这么完美还要ai生成干啥？ 所以除了你必须要求的一些特定动作或者运镜，其他一律生成粗模，连丧尸或者某个物体都可以用圆柱代替，然后提示词补强，这才是最佳用法",
+          "mentions": [
+            "GPT",
+            "GPT 6"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "x",
+          "platformLabel": "X（Twitter）",
+          "id": "2094334471755755823",
+          "url": "https://x.com/Magncsans/status/2094334471755755823",
+          "author": "Foyege",
+          "authorId": "Magncsans",
+          "publishedAt": "2026-08-31T08:00:23.000Z",
+          "title": "AI视频不需要白模就能控制二维场景图的运镜！ 不过这张《拿破仑加冕》图生成效果最好的目前还是 抖音：Myelc老师 ht",
+          "excerpt": "AI视频不需要白模就能控制二维场景图的运镜！ 不过这张《拿破仑加冕》图生成效果最好的目前还是 抖音：Myelc老师 https://t.co/UIGYAPQIRU",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "x",
+          "platformLabel": "X（Twitter）",
+          "id": "2095068964367847608",
+          "url": "https://x.com/goan999999/status/2095068964367847608",
+          "author": "govin.eth | G哥",
+          "authorId": "goan999999",
+          "publishedAt": "2026-09-02T08:39:00.000Z",
+          "title": "Codex + ComfyUI，你也能在 AI 短剧领域分一杯羹 现在还有很多团队做 AI 短剧，在手动写剧本、做分镜、",
+          "excerpt": "Codex + ComfyUI，你也能在 AI 短剧领域分一杯羹 现在还有很多团队做 AI 短剧，在手动写剧本、做分镜、生成角色、反复抽卡、剪视频，一条片子折腾几个小时。 真正高效的做法，是让 Codex 负责“脑子”，ComfyUI 负责“画面”： Codex：批量写剧本、拆分镜、生成提示词、管理角色设定、自动调用工作流 ComfyUI：固定人物一致性、批量出图、图生视频、换脸换装、风格统一 把两者串起来之后，打通完整条短剧制作流程： 选题 → 剧本 → 分镜 → 角色 → 场景 → 视频 → 配音 → 批量成片 (记下来，面试官要问的，哈！) 以前做短剧拼的是团队和预算，现在拼的是谁先把工…",
+          "mentions": [
+            "ComfyUI"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "x",
+          "platformLabel": "X（Twitter）",
+          "id": "2095104458275369112",
+          "url": "https://x.com/ai_muzi/status/2095104458275369112",
+          "author": "木子不写代码",
+          "authorId": "ai_muzi",
+          "publishedAt": "2026-09-02T11:00:02.000Z",
+          "title": "今天我们用Codex全自动做出商业广告大片！ 不需要我们生角色场景图、生视频、不需要拼接剪辑， 全都让AI来干！ 1⃣C",
+          "excerpt": "今天我们用Codex全自动做出商业广告大片！ 不需要我们生角色场景图、生视频、不需要拼接剪辑， 全都让AI来干！ 1⃣Codex接入视频能力：一句话接入 VidMuse CLI 2⃣锁定产品与视觉风格 3⃣生成 10 个创意+ 深化为导演方案 4⃣启动全自动视频制作： 参考资产 → 故事板 → 逐镜生成 → 动态质检 → 音乐卡点 → 时间线剪辑 → 导出 MP4 5⃣过程可视化： VidMuse 画布里监督创意、资产、故事板、动作分镜、时间线 6⃣成片：完整商业广告 时间戳： 00:36 Codex接入视频能力 01:09 固定视觉风格 01:25 确定创意方案 01:52 全自动视频短片制…",
+          "mentions": [
+            "CLI\n2"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "x",
+          "platformLabel": "X（Twitter）",
+          "id": "2095158235082969306",
+          "url": "https://x.com/cnyzgkc/status/2095158235082969306",
+          "author": "木马人",
+          "authorId": "cnyzgkc",
+          "publishedAt": "2026-09-02T14:33:44.000Z",
+          "title": "卧槽！我一个视频小白，只用一句话，就生成这种效果的视频！ 我只说了句： “我想做一个很有张力的古风视频。画里的女生想逃出",
+          "excerpt": "卧槽！我一个视频小白，只用一句话，就生成这种效果的视频！ 我只说了句： “我想做一个很有张力的古风视频。画里的女生想逃出来，最后又被重新困回画里，你帮我看看怎么做。” 它脑洞大开，直接给我整了一个被巨型画笔追杀的画中人。 我没写分镜，也没拆镜头，故意装成纯小白： 当用户只有一个模糊想法，甚至不知道该怎么专业表达时，它到底能不能听懂？ 做过 AIGC 视频的应该都知道，痛点其实不只在生成视频。 只要你前面需求拆偏一点，后面的人物、画风和剧情就可能一起跑偏。 好不容易生成出来，想改一个镜头，很多工具给你的又只是一条写死的内容，只能回去重新抽，时间和积分继续往里烧。 而且我平时得在 不同工具之间来回…",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "x",
+          "platformLabel": "X（Twitter）",
+          "id": "2094590425319510428",
+          "url": "https://x.com/mnmn94253156337/status/2094590425319510428",
+          "author": "撸毛吃猪脚饭| 美股合约首选Gate",
+          "authorId": "mnmn94253156337",
+          "publishedAt": "2026-09-01T00:57:27.000Z",
+          "title": "京东开源了一个实时AI视频编辑器 视频一边播放，AI一边修改： • 一句话更换视频背景 • 给人物换衣服、换造型 • 删",
+          "excerpt": "京东开源了一个实时AI视频编辑器 视频一边播放，AI一边修改： • 一句话更换视频背景 • 给人物换衣服、换造型 • 删除或替换指定物体 • 真人视频变成水彩、动画风格 • 参考一张图片完成视频换装 • 长视频也能持续处理，不必等待全部生成 项目叫 JoyAI-Video-Edit，已经开源模型和部署代码。 目前对硬件要求较高，RTX 5090 需要32GB显存，官方测试为840×480下24FPS，更适合开发者和专业团队尝鲜。 开源地址： https://t.co/uHLRWFVeiD",
+          "mentions": [
+            "RTX 5090"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "x",
+          "platformLabel": "X（Twitter）",
+          "id": "2095738969103483348",
+          "url": "https://x.com/Adam38363368936/status/2095738969103483348",
+          "author": "Adam也叫吉米",
+          "authorId": "Adam38363368936",
+          "publishedAt": "2026-09-04T05:01:21.000Z",
+          "title": "如果《甄嬛传》放到 2026 年，居然一点都不违和！ 以前看《甄嬛传》，觉得她们是在宫斗。 今天刷到这个 AI 视频，把",
+          "excerpt": "如果《甄嬛传》放到 2026 年，居然一点都不违和！ 以前看《甄嬛传》，觉得她们是在宫斗。 今天刷到这个 AI 视频，把这些熟悉了十几年的角色，全塞进线上会议以后，我突然悟了。 有人主持、有人汇报、有人临场救火、有人一句话决定生死…… 原来宫斗和上班，好像真没差太多。 我现在越来越觉得，AI 最好玩的地方之一，就是能把我们熟悉的角色，重新丢进一个完全陌生的世界里。 而且最离谱的是，人设居然还能接得上。 所以华妃放到今天，最像哪个岗位？🤣",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "x",
+          "platformLabel": "X（Twitter）",
+          "id": "2096513305930297353",
+          "url": "https://x.com/GeekCatX/status/2096513305930297353",
+          "author": "知识猫AI实验室",
+          "authorId": "GeekCatX",
+          "publishedAt": "2026-09-06T08:18:18.000Z",
+          "title": "兄弟们最近这类AI地铁换装视频非常的火爆，随随便便大几十w的浏览。但在猫哥这里轻松复刻，用GPT 6 Astra加持优化",
+          "excerpt": "兄弟们最近这类AI地铁换装视频非常的火爆，随随便便大几十w的浏览。但在猫哥这里轻松复刻，用GPT 6 Astra加持优化后的反推skill，一次性直接出，用的还是MinMax H3 图生视频模式，效果也相当能打 。没办法猫哥穷鬼一个，用不起Seedance2.5。 详细提示词👇 https://t.co/UwhmBcWWD4",
+          "mentions": [
+            "GPT",
+            "GPT 6",
+            "Seedance2.5",
+            "UwhmBcWWD4"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        }
+      ],
+      "pages": [
+        {
+          "page": 1,
+          "received": 20
+        }
+      ]
+    }
+  ]
+}

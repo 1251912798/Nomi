@@ -1,0 +1,238 @@
+# AI 手艺产物节点（agent-artifact）：设计文档 v4（已拍板 · 实施中）
+
+> 状态：✅ 2026-09-06 用户拍板「设计完就去做，全部做完走独立分支 + PR」。本文 = 实施唯一依据；样张 `docs/design/mockups/2026-09-06-agent-artifact-node.html` 为拍板证据。UI 交付最终以设计实验室截图 + 视觉基线绿为准（2026-09-06 拍板口径）。
+> v2 定位：**agent-artifact 不是"所有 Agent 产物都塞进去"的媒体筐**——调模型的生成照旧走现有生成节点与素材化通道；它只承载 **AI 不调模型、用代码/标记语言直接做出的"手艺产物"**。
+> v3 补充（2026-09-06 用户追问）：**手艺产物必须能被"下游使用"**——不只是给人看，还要能固化成下游可消费的形态（参考图 / 文件）。SVG 的典型用途是**参考图**（生图画复杂人物贵且不可控，画构图线稿反而精确）；3D 的典型用途是**摆位**（桌子、两人对坐等场景/站位），截图后挂进镜头当参考。
+> v4 数据模型收敛（实现前勘察实证，见 §4.1）：**不扩展 `GenerationResultType` 闭集**——`type` 是 zod 5 值 enum（`generationCanvasSchema.ts:43`）且被媒体白名单/下载扩展名链/生命周期密集消费，硬塞 svg/html/markdown/glb 会炸快照校验与媒体判定。改为：**agent-artifact 走 kind 专属渲染分支（BaseGenerationNode 内 scene3d/panorama 同级），产物元数据挂 `meta.artifact`**，渲染按 `meta.artifact.fileType` 分发子视图。
+> 配套样张：`docs/design/mockups/2026-09-06-agent-artifact-node.html`（自包含单文件）。
+
+## 1. 用户价值
+
+三个痛点：
+1. **AI 的表达类产物无处安放**。SVG 示意、动态 HTML 讲解、表格梳理、手作 3D 摆位……目前只能留在对话里"看完就走"，摆不到创作现场。
+2. 不知道"什么时候该用什么"。哪些诉求**不该调模型**：画个 SVG / 摆个 3D 站位 / 拉个表就解决，省钱省时间还更清楚可控。
+3. **产物要能喂给下游**（v3 核心）。参考图不是"最终画面"而是"创作的骨架"：SVG 构图线稿、3D 场景摆位，固化下来后要能被生成节点参考、被镜头使用——**产物能回流，画布才从流水线变成创作台**。
+
+一句话：*调模型的走模型，动脑子的走手艺；手艺产物既能看，也能变成下游能吃的东西。*
+
+**用户 2026-09-07 原话补充（口径校准，不改范围）**：
+- 「Agent 用 three.js 摆个 3D 场景——一张桌子、两个人对坐——**截图当参考图**，我拿它去修人物位置。」→ 摆位的价值不在"看 3D"，在**那一张截图**。3D 视口截图固化 = 这条价值的收口动作，本 PR 未做，见 §11 下一刀。
+- 「SVG 当图片参考。」→ 已实现（浮条「固化为参考图」→ PNG asset 节点，可连线喂下游）。
+- 「HTML 讲故事、画流程图，放画布上。」→ 已实现（沙箱 srcdoc + 产物自带策略；CSS 动效可跑，内联 JS 见 §6.5 已知缺口）。
+- 「**一个节点通吃**，Agent 自己判断什么时候用哪种手艺。」→ 单 kind `agent-artifact` 已是这个形状（决策 1）；"何时用哪种手艺"目前只写在工具描述里（一句话选路），完整决策树 = 阶段 2，见 §11。
+
+## 先查别人（R27 · 报告全文见 [`docs/research/2026-09-07-agent-artifact-node/prior-art.md`](../research/2026-09-07-agent-artifact-node/prior-art.md)）
+
+> 诚实前提：本方案在门岗上线日之前就已拍板实施，这份检索是**回溯补的**。它没改本轮任何决定，
+> 但改了**下一刀**的写法（下面标 ⚠️ 的两条）——这也正说明「先查」值得做在动手之前。
+
+- **依赖里已有**：Markdown 用在册的 `react-markdown@10.1.0`，且已包成全仓唯一渲染器（[`NomiMarkdown.tsx:3`](../../src/workbench/common/NomiMarkdown.tsx:3)）；3D 用在册的 R3F，已包成 [`Model3DViewer.tsx:69`](../../src/workbench/generationCanvas/nodes/model3d/Model3DViewer.tsx:69)。两处**零新增渲染代码**。
+- **依赖里刻意不装的**：`dompurify`/`sanitize-html`（我们不消毒、我们隔离，装了反而诱导「洗过就能内联进宿主 DOM」）、`canvg`/`html2canvas`（原生 `drawImage`+`toBlob` 十来行够用）、`tldraw`/`excalidraw`（产物只读，装编辑器内核是过剩能力 R20）。逐个 `ls node_modules` 确认为空，见报告 ①。
+- **仓库里已有，本轮全接**：浮条与按钮原子（[`NodeFloatingToolbar.tsx:17`](../../src/workbench/generationCanvas/nodes/NodeFloatingToolbar.tsx:17)、[`:63`](../../src/workbench/generationCanvas/nodes/NodeFloatingToolbar.tsx:63)）、落盘（[`assetUploadApi.ts:68`](../../src/workbench/api/assetUploadApi.ts:68)）、URL 建解配对（[`nomiLocalAssetUrl.ts:16`](../../src/media/nomiLocalAssetUrl.ts:16) / [`:32`](../../src/media/nomiLocalAssetUrl.ts:32)）。#564 的中文文件名乱码，根因就是在最后这处自己写了第三种解法。
+- **⚠️ 仓库里已有、本轮没接（改了下一刀写法）**：3D 视口截图→参考图的**整条通道已经在跑**（[`StagingCaptureHost.tsx:29-70`](../../src/workbench/generationCanvas/nodes/scene3d/StagingCaptureHost.tsx:29) + [`scene3dScreenshot.ts:15`](../../src/workbench/generationCanvas/nodes/scene3d/scene3dScreenshot.ts:15)）。§11 阶段 1 因此改成「把 glb 接进这条」，**不是**照 SVG 那条再写一个 3D 版栅格化器（那是并行版）。
+- **生态/规范**：srcdoc 文档继承嵌入方策略、local scheme 响应可自带更严策略，两条都由规范明写（[CSP3](https://www.w3.org/TR/CSP3/)、[CSPEE](https://w3c.github.io/webappsec-cspee/)）——所以 §6.5 的「内联 JS 不执行」是**规范决定的**，不是实现没写好；`allow-scripts` 不给 `allow-same-origin` 是 [MDN](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/iframe) 的强制建议。
+- **⚠️ TikHub 自媒体（48 条实抓，改了下一刀写法）**：「什么时候用哪种手艺」别人已做成 skill 且踩过坑——[Diagram Design](https://www.douyin.com/video/7678032781678611748)（按内容选图种、出 HTML/SVG）、[tldraw-skill](https://www.bilibili.com/video/BV1ahoSBeEN9)（「让大模型直接画图，schema 错乱、形状重叠、箭头乱连」，解法是给模型受约束的骨架格式）。§11 阶段 2 因此加了「先读这两家再写决策树」。用户侧的痛点则一致指向「[生成完改不了](https://www.douyin.com/video/7638162085399161747)」，佐证 SVG 的价值是**可改的骨架**而非成片。
+- **结论**：渲染/浮条/落盘/参考语义**全用已有**；SVG 栅格化与「产物回流进生成链路」**自研**——后者生态里没有，正是 Nomi 的差异点。
+
+## 2. 手艺选择框架（落成 Agent skill，不是 UI 开关）
+
+**决策闸门：诉求是"要媒体本身"还是"要一个表达/参考物"？** 前者调模型，后者是手艺。
+
+| 用户意图 | 用什么 | 典型例子（含下游用法） |
+|---|---|---|
+| 构图线稿 / 机位 / 结构示意 | **SVG** | 人物复杂不想生图 → 画**构图参考图**（角色占位/景别框/机位线），导出成参考图喂下游 |
+| 场景 / 站位 / 空间摆位 | **3D 摆位（.glb）** | 一张桌子、两人对坐 → 摆好**截图成参考图**挂进镜头，不调生图 |
+| 讲解 / 叙事 / 演示（会动会交互）| **动态 HTML** | 开场节奏讲解卡，放画布旁当"看得懂"的上下文 |
+| 梳理 / 对比 / 分镜草表 | **表格** | 分镜草表梳理，不必开正式分镜表 UI |
+| 要点 / 脚本 / 备注 | **Markdown** | 导演备注、旁白 v3 |
+| 照片级画面 / 真实动作 / 声音 / 成品 3D | **（不走手艺）调模型** | 生图 / Motion·Hyperframe / 音频 / model3d（HiTem/Meshy）→ 现有节点 + 素材化 |
+
+**「参考」在什么时候该走手艺、什么时候该调模型？**
+- 要**精确可控的骨架**（构图、机位、站位、空间关系）→ 手艺（SVG / 3D 摆位），因为生图不可控、且它本来就是"参考而非成片"；
+- 要**动态动作参考**（一段真实动作驱动生成）→ 那是媒体，走 Motion reference / 深度视频一类（调模型通道），不进手艺。
+
+> **类型列表开放**：分发内核按"一行类型 + 一个渲染器分支"生长，不预做不欠债。同一语义只有一份定义：生成出来的成品媒体留在自己的生成节点。
+
+## 3. 架构事实（已查证，file:line）
+
+- 节点 kind 闭集合 15 种：`nodes/registry.ts:61-276`。无富内容承载 kind。
+- React Flow 外壳唯一：`nodeTypes={generation: GenerationFlowNodeView}`（`GenerationCanvasReactFlowNodes.tsx:403`）；body 按 `resolveNodeRenderKind`（`nodes/resolveRenderKind.ts:26`）分发。
+- Agent 已能把结果变画布节点：`agent/generationCanvasTools.ts:29-33`（tools:65-74 `store.addNode`）；`canvasRunActions.ts:140` `addNodeResult`。
+- 文件只存门牌号：`result.url` = `nomi-local://`，落盘 `<workspace>/<project>/assets/generated/<日期>/`（`persistNodeImage.ts:14-45`；electron `writeAsset`）。
+- **参考图语义已存在**：`asset`/`image` 可作参考被连线（`providesImageReference`，registry asset 插件注释）；下游生成消费参考图的链路已通。
+- **3D 栈现成**：`Model3DViewer`（`nodes/model3d/Model3DViewer.tsx`，R3F `useGLTF`）已做画布内交互预览；three/fiber/drei 在依赖。src/assets/ 已有 .glb。
+- **Markdown 渲染现成**：`NomiMarkdown`（`src/workbench/common/NomiMarkdown.tsx`）。
+
+## 4. 设计决策（请拍板）
+
+### 决策 1｜单 kind `agent-artifact`
+一个壳承载全部手艺产物（SVG/HTML/表格/MD/3D/代码），动作一致；不为每类产物造并行 kind（P1）。新 kind 只能 Agent 创建（agentCreatable:true），用户不手动加空节点。
+
+### 决策 2｜内容显示：壳统一 + 内层薄分发
+| result.type | v1 渲染 |
+|---|---|
+| `svg` | 内联 `<img src=nomi-local://>`（图片管线，可缩放）|
+| `html` | **动态沙箱预览**（决策 3）|
+| `markdown` | `NomiMarkdown` |
+| `table` | 轻量 HTML 表格渲染 |
+| `code`/`text` | 展示 + 复制（执行 P1）|
+| `glb` | 复用 `Model3DViewer`（零新渲染器）|
+
+不引大而全文件预览框架（@open-file-viewer 等）：对手艺产物是过剩能力（R20）。SVG/HTML 落盘再引用，不塞内联源码。
+
+### 决策 3｜HTML = 沙箱内允许脚本，但隔离执行
+用户明确 HTML 要"动"。`<iframe sandbox="allow-scripts">`，**不给 allow-same-origin**：动画/交互能跑，但无 nodeIntegration / 无 preload·IPC / 禁导航弹窗 top 跳转（Electron 安全清单 + main 侧 will-navigate/new-window 拦截）。代码/MD/文本只展示不执行。信任不赌——一律按不受信隔离；要更强宿主能力走独立 WebContentsView（P1）。
+
+### 决策 4｜下游消费（v3）：每个手艺产物都能"固化"成下游可吃的形态
+这是 v3 的关键升级——**动作分两类：给人看 + 给下游用**：
+
+| 产物 | 给人看 | 给下游用（固化/物化）|
+|---|---|---|
+| **SVG** | 预览 | **导为参考图**：栅格化为 PNG（`nomi-local://`），节点即可作为 image 参考被连线 / 拖进镜头 / 另存素材库 |
+| **3D 摆位（.glb）** | 转盘查看 | **截当前视角为参考图**：从 `Model3DViewer` 视口出 PNG → 同样可被参考/挂镜头 |
+| HTML / 表格 / MD | 放大 / 细看（复用 Portal 预览）| 下载 / 复制；HTML 如需"当画面素材"按需截图（P1）|
+
+**实现方式（避免并行节点）**：产物节点内部维护一个"参考图导出"——`derivedRef.url`（栅格化/截图出的 PNG，也落盘）。节点 `providesImageReference: true` 时，**对外提供的参考 = derivedRef**；用户也可"另存为素材"把它落成普通 asset/image。这样"一个节点，参考图是它的一种导出形态"，不产生一堆并行卡。
+
+- 参考化能力范围：SVG（栅格化）、3D（视口截图）v1 就要；HTML/MD/表格要不要截图参考，按真实诉求 P1 再看。
+- 转换机制：SVG→PNG 走渲染层 canvas/图像管线；3D 截图走 R3F `gl.domElement.toDataURL`（或 preserveDrawingBuffer 读取），主进程落盘。
+
+### 决策 5｜"什么时候用手艺"= 一个 Agent skill（含决策树 + 产物模板）
+不是 UI 开关，是给 Agent 的**决策 skill**（可挂技能库 + 工具描述）：
+- **输入**：用户诉求 + 上下文（要参考还是成片？要精确骨架还是真实画面？）；
+- **决策**：落到 §2 表的哪一行（SVG / 3D 摆位 / 动态 HTML / 表格 / MD / 调模型）；
+- **产出约定**：手艺产物交 `agent-artifact` 节点 + 关键场景自动"固化参考图"；
+- **反例**：请求"给我一张能直接用的画面"却手绘 SVG = 错误（应调生图）；请求"构图怎么摆"却调生图反复抽卡 = 错误（应画 SVG/摆 3D）。
+该 skill 与现有生图/生视频工具**并列不冲突**：skill 负责"选路"，工具负责"执行"。**是否落 skill、名字与仓库位置，先与现有 skills 体系（`skills/`、agent 技能注册）核对再定**，避免再造一套。
+
+## 5. 交互（对齐现有节点动作系统，不新造形态）
+
+**动作形态直接复用画布节点现成的动作系统**（2026-08-04 §1.5 已收口，"一份定义多处复用"，见 `NodeFloatingToolbar.tsx` 头注）：
+- **浮条 = `FloatingToolbarShell`**（`nodes/NodeFloatingToolbar.tsx:17-40`）：浮在节点**正上方**（`bottom-[calc(100%+16px)]`），`bg-nomi-paper` + `border-nomi-line` + `rounded-nomi` + `shadow-nomi-md`，反向缩放抵消画布 zoom；**选中才出**（`selected && !isMultiSelectActive && !readOnly`，不是 hover），画布拖动时隐身。按钮原子 = `ToolbarButton` / `ToolbarIconButton` / `ToolbarDivider` / `ToolbarMenu`（Tabler 16/1.6，hover 底色，**无实心 accent 填充**）。
+- **"放大/全屏" = 复用 `NodeMediaPreviewDialog`**（画布内 Portal 预览，图/视频共用、带视频自愈；2026-08-04 已删掉重复的放大实现，只留这套）——HTML/表格/SVG 的"放大"同款画布 Portal 预览；落盘文件是静态资源，安全。**不新造全屏浮层。**
+- **"下载/导出" = 复用下载通道**（`useResultDownload` + 浮条"下载"按钮，`NodeResultDownloadButton.tsx`，i18n `resultDownload.download`）——SVG/HTML/MD/GLB 落盘文件都可直接下载。系统词汇是**"下载"**，不是"导出"。
+- **"固化为参考图"**（决策 4，SVG/3D 专属）= 同一条浮条里的 `ToolbarButton`（icon + label，accent 变体 `text-nomi-accent hover:bg-nomi-accent-soft`），是这条工具栏的**主位动作**。
+- 常驻（header）：类型 chip + 标题/来源 + 收起，密度 ≤ 现有节点；内容只读预览，HTML 沙箱内可交互但**不进编辑态**（改源码 P1 / 编辑器打开）。
+- 新 kind 只能 Agent 创建（agentCreatable:true）；用户不手动加空节点。
+
+## 6. 改动面（实现阶段）
+
+1. `registry.ts` 增 `agent-artifact` 插件（agentCreatable:true、无 executionKind、`providesImageReference`——由 derivedRef 提供参考源）。
+2. `generationCanvasTypes.ts` 扩展 result type 增 `svg/html/markdown/table/glb/code/text`（v1 落 svg/html/markdown/table/glb）。
+3. `ArtifactBody` + 子视图（SvgView / HtmlSandboxView / MarkdownView / TableView / reuse Model3DViewer for glb）；`resolveNodeRenderKind` 映射。
+4. **参考化管线**（决策 4）：SVG→PNG 栅格化、3D→视口截图；derivedRef 落盘 + 节点对外参考语义；"另存为素材"走 assetImportAdapter。
+5. HTML 沙箱子组件 + main 侧 will-navigate/new-window 拦截（决策 3）。
+6. Agent 侧：`deliver_craft` 工具（落盘→addNode→定位）+ **手艺选择 skill**（决策 5，先核对现有 skills 体系）。
+7. 浮条动作复用：`FloatingToolbarShell` 挂 agent-artifact 专属动作组（下载 = useResultDownload / 放大 = NodeMediaPreviewDialog / 固化为参考图 = ToolbarButton）——**组合现成原子，不新写样式**。
+
+## 6.5 已知缺口：HTML 产物里的 JavaScript 不执行（2026-09-07 实测 · **已拍板：方案 A + 界面明标**）
+
+**现状**：HTML 产物的 **CSS 全部生效**——`@keyframes` 动画、transition、`:hover` 都真的在跑（走查逐项量过：
+背景色、元素色、`animation-name`、排版宽高）。但产物里的**内联 `<script>` 在打包版一律不执行**。
+
+**为什么**（三条约束互相咬死，不是实现没写好）：
+1. 主窗开着**跨源隔离**（COOP: same-origin + COEP: require-corp）。它不是可有可无的：画板抠图
+   （BG Removal，`4d972c9d`）要 SharedArrayBuffer 才能开多线程 WASM。Windows 已经因为无边框窗口
+   关掉了它，macOS/Linux 开着。
+2. 跨源隔离开着时，**任何跨源文档都不能当 frame 加载**——`<iframe src="nomi-local://…">` 一律
+   `ERR_BLOCKED_BY_RESPONSE`，给产物响应补 COEP 也救不回来（最小 Electron 探针逐个开关验过）。
+3. 于是产物只能走 **srcdoc**（继承上下文、不发网络请求，所以不受第 2 条约束）。代价是 srcdoc
+   **继承宿主的 CSP** 并与自己的 meta **取交集**，而宿主的 `script-src 'self' 'wasm-unsafe-eval' blob:`
+   没有 `'unsafe-inline'` → 产物的内联脚本被拦。
+
+**顺带一个好消息**：因为走 srcdoc，宿主的 `frame-src` 一格都不用动（阳性对照实测：改回 `'none'`
+产物走查照样全绿）。显示手艺产物**没有**让 app 多开任何一道口子。
+
+**三条路，都要动架构，交用户拍板（不自己挑）**：
+
+| 方案 | 用户看到 | 代价 |
+|---|---|---|
+| **A. 维持现状（本 PR）** | HTML 产物会动（CSS），但不能交互；Agent 工具描述已写死「要动用 CSS，别依赖 JS」 | 产物做不了真交互；且**开发版能跑、打包版跑不了**（dev CSP 有 `unsafe-inline`），容易误判 |
+| **B. 关掉跨源隔离** | 产物 JS 能跑 | 画板抠图退回单线程（慢），全 app 失去 SharedArrayBuffer |
+| **C. 产物走独立 WebContentsView / 独立 session** | 产物 JS 能跑，隔离更强（独立进程） | 原生视图恒盖在 DOM 之上，要跟画布的平移缩放逐帧对齐；工作量大（方案 §决策 3 里写的就是这条 P1）|
+
+**2026-09-07 用户拍板：选 A（按现状合并），但界面上必须明标「暂不支持交互」；独立 WebContentsView（方案 C）记为下一刀。**
+
+底层逻辑（为什么是这个组合，不是干等 C）：产物的 CSS 是真的在跑，卡面**看起来是活的**——
+用户的下一个动作就是伸手去点，然后什么都不发生。这不是"少个功能"，是**界面在骗人**。
+在 C 落地之前，唯一诚实的做法是把限制标在他眼前（D4：缺口明着标，不藏不糊弄），
+而不是让他自己撞一次才知道。
+
+落地形态（本轮实现）：
+- HTML 产物卡底部一条静态说明带：`可动，暂不支持点击交互` / `Animates, but clicks are not supported yet`
+  （i18n `runtime.nodeRegistry.agent-artifact.htmlInteractionNote`，token-only，
+  `ArtifactBody.tsx` 的 `ArtifactInteractionNote`，挂点 `data-artifact-interaction-note`）。
+- **只在 `fileType === 'html'` 出现**：svg / markdown / table / text / glb 本来就不是活内容，
+  给它们标同一句是平白说了条不成立的限制。
+- 形态上是说明带**不是控件**——不新增 §1.5 的控件层级，动作仍然只在选中浮条里。
+- 断言：单测 `ArtifactBody.test.ts`（HTML 卡有标注 / 其余四类没有）+ 走查
+  `agent-artifact.walk.mjs`（HTML 卡真机可见该文案；SVG 卡用同一探针 `expectAbsent`，
+  基线由 HTML 卡的 `proveProbe` 提供——没有基线的"没看到"是空洞的通过）。
+
+**别把「HTML 产物能跑 JS」写进任何文案或工具描述**——它现在不能；代码注释里原先那两处
+「会动会交互」也已改掉（`ArtifactBody.tsx` 文件头注与 `HtmlSandbox` 头注）。
+
+## 7. 不动什么
+
+- 现有 15 kind 生成行为、composer、卡片渲染、image/video/audio 素材化通道、参考图消费链路（连线/喂生成）**全不动**——agent-artifact 只是新增一个"参考源"。
+- `BaseGenerationNode` 壳、React Flow 层、`nomi-local://`/`writeAsset` 不动。
+- 正式分镜表 UI/故事板不动——手艺表格是轻量补充。
+- HTML 只读沙箱预览；编辑态、宿主能力、文档类（docx/pptx）、HTML/表格截图参考 = P1。
+
+## 8. 回滚
+
+纯新增 kind + 组件 + Agent 工具/skill，不触碰现有路径；`git revert` 单 PR 即回。存量项目打开不受影响。
+
+## 9. 验收门（实现阶段）
+
+1. Agent 经手艺 skill 能产出并上画布：SVG / 会动的 HTML / Markdown / 表格 / 3D 摆位，各按 §4 渲染。
+2. **下游消费闭环**：SVG 图"固化为参考图"→ 生成的 PNG 可被连线/拖镜头/另存素材；3D 摆位截当前视角成 PNG 同链路。（真实用户旅程，R16）
+3. 动态 HTML：动画/交互正常；恶意脚本碰不到 Electron API、读不了文件、弹不了窗。
+4. 现有生成节点与素材化/参考链路零回归（tsc/build/test + 真机走查）。
+5. header 密度 ≤ 现有节点；动作只在浮条；内容不压按钮。
+6. 手艺选择 skill：正例/反例判对（要画面→调模型；要骨架→手艺）。
+
+## 10. 实施决议（v1 范围 · 拍板后）
+
+**v1 本轮实现状态（2026-09-06 落地核对）：**
+- [x] kind 注册 + 镜像表三处：`registry.ts` 插件（agentCreatable:true / 无 executionKind / quickAdd:false）；`canvasRead.ts` `CANVAS_NODE_KINDS`；`nodeKindDomain.ts` 尺寸/标题镜像（equivalence 测试绿）。icon 复用 image（P1 换专属）。
+- [x] `meta.artifact`（`model/artifactMeta.ts`：fileType 词表 + reader + copy/参考谓词）+ `resolveNodeRenderKind` 强制 undefined（防 cast/scene 误判卡）+ BaseGenerationNode **kind 专属分支** → ArtifactBody。
+- [x] ArtifactBody 子视图：svg（img）/ html（沙箱 iframe allow-scripts，无 same-origin）/ markdown / table / text / glb（Model3DViewer）。
+- [x] HTML 沙箱纵深核对：窗口 `nodeIntegration:false + contextIsolation:true` + 无 nodeIntegrationInSubFrames + `setWindowOpenHandler` deny + `will-navigate` 只放行本地入口 → 无需新增 main 代码。
+- [x] 浮条动作 `ArtifactNodeToolbar`：下载（bridge.assets.download）+ 复制（text/markdown/html）+ **固化为参考图**（SVG→PNG→asset 节点，下游消费入口）。放大 / 3D 截图 = P1。
+- [x] i18n zh+en（`runtime.nodeRegistry.'agent-artifact'.*`）；check:i18n 全绿（5039 keys parity）。
+- [x] **Agent 交付落盘（deliver）**：electron `canvasWrite` kind 白名单 + `artifact:{fileType,content}` 字段（superRefine 条件校验）；渲染层 `applyCanvasToolCall` create 分支先落盘内容为 nomi-local 资产、再建 `meta.artifact.url` 节点（整批失败即中止）；prompt 对 agent-artifact 免除（其它 kind 仍必填）；agent client 提示文案加入艺产物指引。
+- [x] vitest：artifactMeta 6 + **deliver 契约 10 + 栅格化参考 5 + ArtifactBody 契约 6** + applyCanvasToolCall 39 + canvasWrite 7；generationCanvas 全量零回归；electron equivalence 6 用例。
+- [x] **GUI 真机走查转绿**（commit 615f7516）：改 resident Agent 对话驱动——UI 新建项目（解决 record 注册卡点）+ loopback 供应商 fixture 回放 `nomi_canvas_plan(operation=create_canvas_nodes, kind=agent-artifact, artifact.content=SVG 源码）→ 宿主 proposalTxn → applyCanvasToolCall deliver 分支**真实执行落盘**（磁盘已验证：SVG 写到 `<project>/assets/imported/<date>/开场构图线稿.svg`）→ 节点上屏、SVG 渲染、浮条「下载/固化为参考图」出现。2 张截图证据 + report.json（textRequests=2 fixture 声明，paidCalls=0）。
+- [x] **走查抓到并修掉的落点 bug（2026-09-07 接手返工）**：「固化为参考图」原先不传落点，addNode 退到全局缺省 (120,360)，参考图落到画布最左侧、压在左侧工具簇下——功能全对，但用户点完按钮东西不在他眼前。同类的派生建卡入口（切图/抽帧/联系表/3D 站位出图）**全都**已按"源卡位置 + 源卡分类"建卡，只有它漏了，属 one_off。已改成跟源卡走并补三条断言（两条单测 + 走查量真实屏幕坐标）。
+- [x] 交付纪律：sibling worktree `Nomi-artifact-node` + 五门全绿 + 真机走查 6 图 + 分支 PR。
+
+## 11. 下一刀（本 PR 明确不做，已登记）
+
+按"一刀一件事"排，**不在本 PR 硬塞**——本 PR 的边界是"手艺产物能上画布、能看清、SVG 能固化"。
+
+### 阶段 1（下一刀 · 补完用户 09-07 点名的那条价值）：3D 摆位截图固化成参考图
+- **为什么单独一刀**：它不是"再加一个 fileType"，而是**换一条固化通道**——SVG 走的是"读文件 → canvas 栅格化"（纯 DOM，`rasterizeArtifactToReferenceAsset.ts`），3D 走的是"从 WebGL 上下文读回像素"，两件事只有落盘那一小截共用。
+- **⚠️ 先复用，别新造（P1/R20）**：这条通道**已经存在**——`scene3d` 的站位参考出图就是它：
+  `Scene3DAutoCapture` 离屏渲染 → `persistScene3DScreenshot` 落盘 → `store.addNode` 建 image 节点 +
+  连参考边（`nodes/scene3d/StagingCaptureHost.tsx:29-70`）。下一刀的正解是把 `agent-artifact` 的 glb
+  **接进这条现成通道**，不是照着 SVG 那条再写一个 3D 版栅格化器（那就是并行版）。
+- **要实测的那一点**：`Model3DViewer` 与 `Scene3DAutoCapture` 用的不是同一个 R3F 画布，读回像素要么
+  `gl.preserveDrawingBuffer`、要么 `gl.render()` 后同帧 `toDataURL`（默认帧后即清，直接读是黑图）。
+- **验收**：Agent 摆一张桌子两人对坐 → 用户转到想要的角度 → 浮条「固化当前视角为参考图」→ PNG 上画布 → 连线喂生成节点。（用户原话的完整闭环，R16 真实任务）
+- **前置**：Agent 侧要先能交付 `.glb`——现在 `canvasWrite` 的 `artifact.fileType` 只收文本类五种（glb 是二进制，走不了文本通道），得先定二进制交付形式。
+
+### 阶段 2：手艺选择——从"一句话"升成"决策树"
+- **现状**：`generationCanvasAgentClient.ts` 的工具描述里已有一句选路（"要真实画面走生成模型，要表达物走 agent-artifact"）——够挡住最粗的误用，**不够**回答"这件事该用 SVG 还是 HTML 还是表格"。
+- **下一刀做什么**：把 §2 那张表（含正例/反例）落成 Agent 能读的决策依据。**先核对现有 skills 体系再定形态**（挂技能库 / 进工具描述 / 两者），别再造一套注册表（R20/D2）。
+- **⚠️ 动笔前先读这两家**（「先查别人」查出来的，见报告 ④）：[Diagram Design](https://www.douyin.com/video/7678032781678611748)（面向 Claude Code/Codex 的开源制图 skill，按内容选图种、出 HTML/SVG）、[tldraw-skill](https://www.bilibili.com/video/BV1ahoSBeEN9)（踩过「让大模型裸画会 schema 错乱／形状重叠／箭头乱连」，解法是**给模型一个受约束的骨架格式**而不是自由发挥）。这两条正是决策树最容易踩空的地方，别从零编。
+- **怎么算做完**：正反例判对——"给我一张能直接用的画面"→ 调生图（不该手绘 SVG）；"构图怎么摆"→ 手艺（不该抽卡）。
+
+### 其余 P1（无人点名，按需再排）
+HTML 放大/截图当画面素材、表格参考化、设计实验室接入、node 专属 icon。
+
+### 阶段 1b：HTML 产物的 JS 执行 —— 独立 WebContentsView（§6.5 方案 C，2026-09-07 已拍板为下一刀）
+本轮按方案 A 合并并在卡面明标「暂不支持点击交互」。下一刀落 C：产物走独立 WebContentsView /
+独立 session，脱开宿主 CSP 与跨源隔离的交集。**要实测的那一点**：原生视图恒盖在 DOM 之上，
+要跟 React Flow 的平移缩放逐帧对齐（这是这条路的全部工作量所在）。做完随手删掉那条标注——
+标注是缺口的影子，缺口没了它就该跟着走（P1）。

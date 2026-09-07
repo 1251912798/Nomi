@@ -49,6 +49,7 @@
 | 拆镜头 · 分镜 · storyboard · 镜头表 | **分镜 / storyboard**；产物是 **StoryboardPlan** | `src/workbench/generationCanvas/agent/storyboardPlan.ts` |
 | 锚 · 参考图 · 角色圣经 · 定妆 | **视觉锚 anchor**（character/scene/prop/style），**冻结**=frozen | `canvasDescriptors.ts` storyboardAnchorSchema |
 | 镜号 · shot number · 顺序 | **`shotIndex`**（存储身份，拖动不变，排片唯一排序信号） | `src/workbench/generationCanvas/model/shotNumbering.ts` |
+| 手艺产物 · Agent 画的图 · Agent 做的表 | **agent-artifact 节点**（Agent 不调模型、用代码/标记语言直接做出来的表达物：SVG/HTML/Markdown/表格/3D） | `src/workbench/generationCanvas/nodes/artifact/`，方案 `docs/plan/2026-09-06-agent-artifact-node.md` |
 
 ## 生产 / 门禁
 
@@ -80,3 +81,4 @@
 | **metadata / meta** | planned node 上叫 `metadata` | 真实 canvas node 上叫 **`meta`**（`applyCanvasToolCall.ts:308` 做的转换） |
 | **transition** | `TimelineTransition` **数据**（已实现） | 转场**渲染效果**（**未实现**，见 `docs/ARCHITECTURE-NOW.md`） |
 | **plans 目录** | `docs/plan/`（397 篇，功能级方案） | `docs/superpowers/plans/`（35 篇，**跨阶段总纲住这**） |
+| **表格 / table** | **产物表格** = `agent-artifact` 的一个 `fileType`（`ARTIFACT_FILE_TYPES` 里的 `'table'`）：Agent 手写的一段**静态只读 HTML 片段**，落盘成文件、只用来看，没有行模型、不可编辑、不投影任何东西 | **分镜表**（storyboard shot table）= 创作面的**可编辑行编辑器**，行是 StoryboardPlan 的镜头、每行绑模型与参考槽、双向投影回画布节点 |

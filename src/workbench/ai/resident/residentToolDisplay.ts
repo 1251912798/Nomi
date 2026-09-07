@@ -192,10 +192,29 @@ function readableParameterSummary(t: Translate, record: Record<string, unknown>,
     .join(' · ')
 }
 
+
+/**
+ * 这一次 canvas 写入交付的**全是手艺产物**吗？
+ *
+ * 为什么要问：回执的措辞原先只看工具名，看不见这次到底写了什么。于是 Agent 交付一张 SVG 构图
+ * 线稿，面板也照样报「创建或修改镜头卡 · 把镜头卡写入当前画布 · 只建卡不生成」——三句里没有
+ * 一句是真的。工具是同一个（create_canvas_nodes），交付物不是同一种东西，人话就不能是同一句。
+ *
+ * 判据落在 payload 的 kind 上：nodes 非空且每一个都是 agent-artifact 才算，混着镜头卡的批次
+ * 仍按镜头卡说（那批里确实有镜头卡）。
+ */
+function isAllArtifactDelivery(args: unknown): boolean {
+  const record = args && typeof args === 'object' ? (args as Record<string, unknown>) : {}
+  const nodes = Array.isArray(record.nodes) ? record.nodes : []
+  if (nodes.length === 0) return false
+  return nodes.every((node) => !!node && typeof node === 'object' && (node as Record<string, unknown>).kind === 'agent-artifact')
+}
+
 export function readableToolName(t: Translate, name: string, args?: unknown): string {
   const normalized = toolIdentity(name, args)
   if (isCanvasDeleteToolName(name, args)) return t('agentResident.toolCanvasDelete')
   if (normalized.includes('append_to_end') || normalized.includes('document_append')) return t('agentResident.toolDocumentWrite')
+  if (isCanvasWriteToolName(name, args) && isAllArtifactDelivery(args)) return t('agentResident.toolCanvasWriteArtifact')
   if (normalized.includes('create_canvas_nodes') || normalized.includes('canvas_nodes')) return t('agentResident.toolCanvasWrite')
   if (normalized.includes('document.read') || normalized.includes('document_read')) return t('agentResident.toolDocumentRead')
   if (normalized.includes('document.write') || normalized.includes('document_edit')) return t('agentResident.toolDocumentWrite')
@@ -241,6 +260,10 @@ export function readableToolSummary(t: Translate, name: string, args?: unknown):
   const relations = Array.isArray(record.edges) && record.edges.length ? t('agentResident.toolReferences', { count: record.edges.length }) : ''
   if (isCanvasDeleteToolName(name, args)) return t('agentResident.toolCanvasDeleteSummary')
   if (normalized.includes('append_to_end') || normalized.includes('document.write') || normalized.includes('document_edit') || normalized.includes('document_append')) return details ? `${t('agentResident.toolDocumentWriteSummary')} · ${details}` : t('agentResident.toolDocumentWriteSummary')
+  if (isCanvasWriteToolName(name, args) && isAllArtifactDelivery(args)) {
+    // 产物没有模型/参数/prompt，把标题列出来就够了；「不生成不花钱」对手艺产物是废话（它本来就不调模型）。
+    return [t('agentResident.toolCanvasWriteArtifactSummary'), shotCards ? t('agentResident.toolShotConfig', { details: shotCards }) : ''].filter(Boolean).join(' · ')
+  }
   if (isCanvasWriteToolName(name, args)) return [t('agentResident.toolCanvasWriteSummary'), shotCards ? t('agentResident.toolShotConfig', { details: shotCards }) : '', relations, t('agentResident.toolNoGeneration'), details].filter(Boolean).join(' · ')
   if (normalized.includes('timeline.write') || normalized.includes('timeline_edit')) return details ? `${t('agentResident.toolTimelineWriteSummary')} · ${details}` : t('agentResident.toolTimelineWriteSummary')
   if (isGenerationToolName(name)) return details ? `${t('agentResident.toolGenerationSummary')} · ${details}` : t('agentResident.toolGenerationSummary')
@@ -265,6 +288,7 @@ export function readableToolPreview(t: Translate, name: string, args?: unknown):
   if (isCanvasWriteToolName(name, args)) {
     const nodes = Array.isArray(record.nodes) ? record.nodes.length : 0
     const edges = Array.isArray(record.edges) ? record.edges.length : 0
+    if (isAllArtifactDelivery(args)) return t('agentResident.toolArtifactCount', { count: nodes })
     return [nodes ? t('agentResident.toolShotCount', { count: nodes }) : '', edges ? t('agentResident.toolRelationCount', { count: edges }) : '', t('agentResident.toolNoGenerationShort')].filter(Boolean).join(' · ') || t('agentResident.toolCanvasWriteSummary')
   }
   if (normalized.includes('timeline.write') || normalized.includes('timeline_edit')) return t('agentResident.toolTimelineWriteSummary')
@@ -583,6 +607,7 @@ export function residentToolProjectionForCall(
   outcome?: ResidentToolOutcome,
 ): ResidentToolProjection {
   return normalizeResidentToolProjection({
+    label: readableToolName(t, name, args),
     effect: readableToolPreview(t, name, args) || readableToolResult(t, status),
     target: readableToolTarget(t, name, args),
     technicalDetails: readableToolSummary(t, name, args) || readableToolResult(t, status),

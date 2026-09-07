@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { IconCopy, IconDownload, IconMaximize, IconUpload } from '@tabler/icons-react'
 import ProvenancePanel from './ProvenancePanel'
 import { ShotPreviewOverlays } from './ConvertShotToVideoButton'
-import { resolveNodeRenderKind, isCardRenderKind } from './resolveRenderKind'
+import { resolveNodeRenderKind, isCardRenderKind, nodeHasGenerationComposer } from './resolveRenderKind'
 import ShotMountBadges from './render/ShotMountBadges'
 import NodeDeconstructionBadge from './NodeDeconstructionBadge'
 import { getBuiltinCategoryById } from '../../project/projectCategories'
@@ -53,6 +53,7 @@ import { anchorFreezeToolbarProps } from '../fixation/freezeAnchor'
 import { TechnicalReviewBadge } from './TechnicalReviewBadge'
 import { canDragGenerationNodeToTimeline } from '../model/timelineDragAffordance'
 import { useResultDownload } from './useResultDownload'
+import { useArtifactNodeSlots } from './artifact/artifactNodeSlots'
 import {
   STATUS_LABEL,
   RESIZE_DIRECTIONS,
@@ -252,6 +253,7 @@ function BaseGenerationNodeImpl({
   const hasFrameSourceEdge = useHasFrameSourceEdge(node.id, nodeExecutionKind === 'video') // A15：已连上游边时占位不再喊「拖图」
   const needsFirstFrame = nodeExecutionKind === 'video' && !canGenerate && !isGenerating
   const { handlePanoramaFileChange, handlePanoramaScreenshot } = useNodePanoramaHandlers(node, visualSize)
+  const artifactSlots = useArtifactNodeSlots(node, { selected, isMultiSelectActive, readOnly }) // 手艺产物的正文/浮条归 artifact 目录
 
   // 图片本地编辑（切图 / 裁剪 / 旋转翻转）—— A1.5 抽进 useNodeImageEditing。
   // 图片类与素材类共用；编辑产物进入当前节点历史堆叠，并切换为主图。
@@ -534,7 +536,7 @@ function BaseGenerationNodeImpl({
         draggable={false}
         {...mediaPreviewDoubleClick}
       >
-        {node.kind === 'scene3d' ? (
+        {artifactSlots.body ? artifactSlots.body : node.kind === 'scene3d' ? (
           <React.Suspense fallback={<Scene3DEditorLoading />}>
             <Scene3DEditor node={node} width={visualSize.width} height={previewHeight} readOnly={readOnly} />
           </React.Suspense>
@@ -638,6 +640,8 @@ function BaseGenerationNodeImpl({
         />
       ) : null}
 
+      {artifactSlots.toolbar}
+
       {showTimelineNotch ? (
         <TimelineNotchDragHandle
           onAddAtPlayhead={handleAddToTimelineAtPlayhead}
@@ -653,14 +657,7 @@ function BaseGenerationNodeImpl({
       ) : null}
       {/* composer：生成类节点 + **单选**时浮出。多选(框选)一律不挂——否则每个选中节点都弹自己的
           大 composer 层叠糊成一片(用户反馈 bug，根因收口此唯一挂载入口)。批量生成走选中浮条。 */}
-      {selected &&
-      !isMultiSelectActive &&
-      !readOnly &&
-      !resultStackOpen &&
-      node.kind !== 'panorama' &&
-      node.kind !== 'scene3d' &&
-      node.kind !== 'whiteboard' &&
-      !isAssetKind ? (
+      {selected && !isMultiSelectActive && !readOnly && !resultStackOpen && nodeHasGenerationComposer(node.kind) ? (
         <React.Suspense fallback={null}>
           <NodeGenerationComposer node={node} visualSize={visualSize} />
         </React.Suspense>
