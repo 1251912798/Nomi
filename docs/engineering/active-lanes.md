@@ -15,6 +15,7 @@
 | **Agent 界面实施（交互 epic）** | **未开工**。设计已拍板：裁决包在分支 `docs/agent-ui-redesign-20260901`（`docs/design/2026-09-01-agent-ui-final-redesign.md` + `…-redesign-decisions.md`） | `src/workbench/ai/`（驻留壳）+ 画布右槽 | 验收合同 = 同分支**双层 conformance spec**：`2026-09-02-agent-ui-conformance-testspec.md`（界面层）+ `…-functional-conformance-testspec.md`（行为层）。开工前动这些面的改动都要能被该合同兼容 |
 | **架构二期（archetype 归一）** | `arch/phase2-archetype-consolidation`（PR #310） | `src/config/modelArchetypes/`、`electron/shared/videoCapabilities/` | 收口中。**模型接入线避让**：新模型档案 / 能力面改动等它合入再动这两个面 |
 | **旅程债返工** | `journeys/debt-rework-20260902` | 旅程走查（`tests/ux/`） | 在途 |
+| **L2 回放影子夜跑（阶段 4 判据）** | `test/agent-lane-l2-replay-shadow-20260908` | `tests/agent-runtime/httpFixture.mts`（回复归一成 parts）+ `stage3ProbeHarness.mts`（`ProbeLane` 多带 `modelFacts`）| 在途。两处都是**加法**（既有 `text`/`tool` 回复字节不变）；阶段 3 的探针战线要改这两个文件先看一眼本行 |
 | **画布拖动性能战役（S3/S4）** | S3 `fix/canvas-drag-s3-offcanvas-20260901`；S4 Codex，`perf/canvas-drag-s4-kernel-20260902`（clone `nomi-codex-s4`） | `src/workbench/generationCanvas/reactFlow/` + 画布 store 拖动几何 | 在途。别的战线勿动拖动路径；perf 验收锚 = baseline md 固定复现命令，**不许移靶**（playbook §7） |
 
 ## 冻结接口（勿依赖 · 勿清理）
