@@ -1,5 +1,5 @@
 {
-  "debtCap": 77,
+  "debtCap": 76,
   "registered": [
     {
       "site": "src/workbench/creation/storyboard/StoryboardPlanStrategyPanel.tsx::function:StatusBar/parameter:0/property:stateKey/type-union",
@@ -1497,14 +1497,6 @@
     }
   ],
   "debt": [
-    {
-      "site": "electron/ai/agentChatV2Ipc.ts::function:emptyResult/parameter:status/type-union",
-      "members": [
-        "cancelled",
-        "error"
-      ],
-      "reason": "emptyResult.status 只是 RuntimeTurnResult['status'] 中 error、cancelled 的失败子集；应改为 Extract<AgentChatStatus, 'error' | 'cancelled'>，而 AgentChatStatus 本身从 RuntimeTurnResult['status'] 派生，删除该参数的本地字面量。"
-    },
     {
       "site": "electron/ai/antigravityProtocol.ts::class:AntigravityProtocol/method:acceptTool/property:state/type-union",
       "members": [
