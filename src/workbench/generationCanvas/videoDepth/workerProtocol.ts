@@ -1,15 +1,15 @@
 /**
- * 深度视频节点 —— 推理 worker 协议（纯类型/常量，无 DOM、无 worker 全局）。
+ * 「提取深度」—— 推理 worker 协议（纯类型/常量，无 DOM、无 worker 全局）。
  *
  * 渲染层主线程 ↔ web worker 的消息形状。单独成模块是为了让批处理编排
  * （videoDepthBatchRunner）与 worker 本体都能引用同一份契约，且两边都能被单测覆盖。
  */
-import type { VideoDepthDepthDirection, VideoDepthMode } from "../../../../electron/shared/canvas/videoDepth";
+import type { VideoDepthDepthDirection } from "../../../../electron/shared/canvas/videoDepth";
 
 /**
  * 每批传输的帧数（R17：IPC 载荷有界、用 transferable 零拷贝）。
- * 32 帧 × 518px JPEG（≈60KB）≈ 2MB/批；回传的裸帧 32 × 518×290×3 ≈ 14MB，仍在一次
- * structured-clone transfer 的合理区间内，且批间会释放。
+ * 32 帧 × 518px JPEG（≈60KB）≈ 2MB/批；回传的裸帧 32 × 518×290 ≈ 4.8MB（单通道灰度），
+ * 仍在一次 structured-clone transfer 的合理区间内，且批间会释放。
  */
 export const VIDEO_DEPTH_BATCH_FRAMES = 32;
 
@@ -31,23 +31,12 @@ export type VideoDepthWorkerRequest =
   | {
       kind: "warm";
       requestId: string;
-      mode: VideoDepthMode;
-      /** 深度权重的可 fetch 地址（nomi-local://model/<fileName>）；纯骨架模式为 undefined。 */
-      depthModelUrl?: string;
+      /** 深度权重的可 fetch 地址（nomi-local://model/<fileName>）。 */
+      depthModelUrl: string;
       /** onnxruntime-web 自带 wasm 的目录（结尾带 /）。由构建产出，不是 CDN。 */
       ortWasmBaseUrl: string;
-      /** MediaPipe tasks-vision wasm 目录（结尾带 /）；纯深度模式为 undefined。 */
-      poseWasmBaseUrl?: string;
-      /** MediaPipe .task 权重地址；纯深度模式为 undefined。 */
-      poseModelUrl?: string;
-      maxPeople: number;
+      /** 时序平滑系数（配方里那一个 0.35）。 */
       smoothingAlpha: number;
-      /**
-       * 相邻两帧的时间间隔（毫秒），由 `processingFps` 派生。
-       * MediaPipe 的 VIDEO 模式要求时间戳单调递增且**与真实节奏一致**——写死 33ms
-       * 会让 8fps 与 60fps 的素材共用一条假时间轴，跨帧平滑因此按错误的速度衰减。
-       */
-      frameIntervalMs: number;
     }
   | {
       kind: "processBatch";
@@ -56,7 +45,6 @@ export type VideoDepthWorkerRequest =
       firstFrameIndex: number;
       /** 每帧一份 JPEG 字节（transferable）。 */
       frames: ArrayBuffer[];
-      mode: VideoDepthMode;
       depthDirection: VideoDepthDepthDirection;
       outWidth: number;
       outHeight: number;
@@ -71,7 +59,7 @@ export type VideoDepthWorkerResponse =
       kind: "batchResult";
       requestId: string;
       batchId: string;
-      /** 打包好的裸帧：depth 模式 gray（w*h 字节），其余 rgb24（w*h*3 字节）。 */
+      /** 打包好的裸帧：单通道灰度，w*h 字节。 */
       rawFrames: ArrayBuffer[];
     }
   | { kind: "cancelled"; requestId: string }

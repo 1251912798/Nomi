@@ -29,6 +29,11 @@ export function NodeGeneratingOverlay({ node }: { node: GenerationCanvasNode }):
       message={live.message}
       previewUrl={previewUrl}
       onCancel={handleCancel}
+      // 深度处理这一族跑分钟级，而它回传的活预览帧**就是这张卡此刻的内容**——
+      // 进度压在画面中央，用户就看不见「它在看的是我那段片子」（2026-09-07 用户看图后原话：
+      // 「把那个放到上面 别遮挡视频」）。ComfyUI 那一族的中间图是采样噪点、看的是转圈本身，
+      // 形态没被拍过板，不跟着改（P1：不为一个场景另造第二套遮罩）。
+      placement={isVideoDepthProgressPhase(node.progress?.phase) ? 'top' : 'center'}
     />
   )
 }

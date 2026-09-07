@@ -18,8 +18,8 @@ function videoNode(partial: Partial<GenerationCanvasNode> = {}): GenerationCanva
 describe('videoDepthSourceFromNode', () => {
   it('accepts any node whose result is a video, not a fixed list of kinds', () => {
     // 一个「素材」节点、一个生成视频节点、一个上一次深度处理的产物，对这条管线是同一件东西。
-    expect(videoDepthSourceFromNode(videoNode({ kind: 'asset' }))?.sourceKind).toBe('canvas-asset-node')
-    expect(videoDepthSourceFromNode(videoNode())?.sourceKind).toBe('canvas-video-node')
+    expect(videoDepthSourceFromNode(videoNode({ kind: 'asset' }))?.sourceUrl).toBe('nomi-local://asset/a.mp4')
+    expect(videoDepthSourceFromNode(videoNode())?.sourceUrl).toBe('nomi-local://asset/a.mp4')
   })
 
   it('refuses a node with no video result, so the action can be disabled honestly', () => {

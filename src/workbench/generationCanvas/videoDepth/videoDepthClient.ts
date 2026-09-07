@@ -1,5 +1,5 @@
 /**
- * 深度视频节点 —— 渲染层编排（这次运行的主循环住在这里）。
+ * 「提取深度」—— 渲染层编排（这次运行的主循环住在这里）。
  *
  * 为什么编排在渲染层：推理必须跑在有 WebGPU 的渲染进程里，主进程只提供它做不到的那几段
  * （抽帧 / 权重下载 / 合成落盘）。所以这里拿着循环，主进程那五个原语是被调的一方，
@@ -15,7 +15,7 @@ import {
   type VideoDepthErrorCode,
   type VideoDepthRunState,
 } from '../../../../electron/shared/canvas/videoDepthRun'
-import { modeNeedsPose, type VideoDepthSettings } from '../../../../electron/shared/canvas/videoDepth'
+import { VIDEO_DEPTH_RECIPE } from '../../../../electron/shared/canvas/videoDepth'
 import { runVideoDepthBatches } from './videoDepthBatchRunner'
 import {
   VIDEO_DEPTH_BATCH_FRAMES,
@@ -32,17 +32,13 @@ export type VideoDepthWorkerChannel = {
 }
 
 export type VideoDepthBridge = {
-  prepare: (payload: { projectId: string; nodeId: string; sourceUrl: string; settings: unknown }) => Promise<{
+  prepare: (payload: { projectId: string; nodeId: string; sourceUrl: string }) => Promise<{
     jobId: string
     totalFrames: number
     outWidth: number
     outHeight: number
-    pixelFormat: 'gray' | 'rgb24'
-    processingFps: number
-    depthModelUrl: string | null
-    poseModelUrl: string | null
+    depthModelUrl: string
     ortWasmBaseUrl: string
-    poseWasmBaseUrl: string
   }>
   readFrames: (payload: { jobId: string; firstIndex: number; count: number }) => Promise<{ frames: Uint8Array[] }>
   writeFrames: (payload: { jobId: string; frames: Uint8Array[] }) => Promise<{ ok: true }>
@@ -54,7 +50,6 @@ export type VideoDepthRunInput = {
   projectId: string
   nodeId: string
   sourceUrl: string
-  settings: VideoDepthSettings
 }
 
 export type VideoDepthRunDeps = {
@@ -71,7 +66,7 @@ export type VideoDepthRunDeps = {
    * （所以调用点包了 try）。形状与 worker 回传的 rawFrames 逐字对应；
    * 一批 32 帧才给一张，节奏由批大小决定，不另设节流器（两个节流器 = 两份真相）。
    */
-  onPreviewFrame?: (frame: { bytes: Uint8Array; width: number; height: number; pixelFormat: 'gray' | 'rgb24' }) => void
+  onPreviewFrame?: (frame: { bytes: Uint8Array; width: number; height: number }) => void
 }
 
 function failureFrom(error: unknown): { code: VideoDepthErrorCode; message: string; retryable: boolean } {
@@ -118,7 +113,6 @@ export async function runVideoDepth(input: VideoDepthRunInput, deps: VideoDepthR
       projectId: input.projectId,
       nodeId: input.nodeId,
       sourceUrl: input.sourceUrl,
-      settings: input.settings,
     })
   } catch (error) {
     advance({ kind: 'fail', ...failureFrom(error) })
@@ -146,15 +140,9 @@ export async function runVideoDepth(input: VideoDepthRunInput, deps: VideoDepthR
           const response = await worker.send({
             kind: 'warm',
             requestId: newVideoDepthRequestId(),
-            mode: input.settings.mode,
-            depthModelUrl: prepared.depthModelUrl ?? undefined,
+            depthModelUrl: prepared.depthModelUrl,
             ortWasmBaseUrl: prepared.ortWasmBaseUrl,
-            poseWasmBaseUrl: modeNeedsPose(input.settings.mode) ? prepared.poseWasmBaseUrl : undefined,
-            poseModelUrl: prepared.poseModelUrl ?? undefined,
-            maxPeople: input.settings.maxPeople,
-            smoothingAlpha: input.settings.temporalSmoothing,
-            // 帧间隔由 fps 派生，不写死——见 workerProtocol.frameIntervalMs 的注释。
-            frameIntervalMs: 1000 / prepared.processingFps,
+            smoothingAlpha: VIDEO_DEPTH_RECIPE.temporalSmoothing,
           })
           if (response.kind === 'error') throw response
           advance({ kind: 'enter', phase: 'processing' })
@@ -176,8 +164,7 @@ export async function runVideoDepth(input: VideoDepthRunInput, deps: VideoDepthR
               batchId,
               firstFrameIndex,
               frames: buffers,
-              mode: input.settings.mode,
-              depthDirection: input.settings.depthDirection,
+              depthDirection: VIDEO_DEPTH_RECIPE.depthDirection,
               outWidth: prepared.outWidth,
               outHeight: prepared.outHeight,
             },
@@ -194,7 +181,6 @@ export async function runVideoDepth(input: VideoDepthRunInput, deps: VideoDepthR
                 bytes: new Uint8Array(latest.slice(0)),
                 width: prepared.outWidth,
                 height: prepared.outHeight,
-                pixelFormat: prepared.pixelFormat,
               })
             } catch {
               /* 预览是锦上添花，坏了不该毁掉这次处理 */

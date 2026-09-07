@@ -1,7 +1,7 @@
 // 设计实验室 · 屏「画布 · 提取深度」的取景台与夹具。
 //
-// 这一屏渲染的是**现役组件本身**——浮条外壳与按钮（`NodeFloatingToolbar`）、小面板
-// （`VideoDepthActionPanel`）、生成中遮罩（`GeneratingOverlay`）——不是照着它们画的样张。
+// 这一屏渲染的是**现役组件本身**——浮条外壳与按钮（`NodeFloatingToolbar`）、
+// 生成中遮罩（`GeneratingOverlay`）——不是照着它们画的样张。
 // 2026-09-06 用户拍板的「UI 交付定义」就是这一条：样张与实现是两套代码描述同一个东西，
 // 中间靠人脑翻译，漂移是结构性的。
 //
@@ -20,8 +20,8 @@ export const DEPTH_ACTION_CELL_HEIGHT = 460
 
 /**
  * 卡的渲染尺寸：340 是视频节点的注册默认宽（registry 的 defaultSize），高按 16:9 取整。
- * 不能随手定小：处理中那一格遮罩里要竖着摞进度环 + 一句人话 + 取消按钮，
- * 卡矮一点就会把取消挤到贴边——而那是「这一格看着挤不挤」这个问题的假答案。
+ * 处理中那一格要判的是「顶部那条占了画面的几分之几」，所以高必须是真实比例——
+ * 把卡画矮一点，同一条 28px 的进度条看着就厚一倍，那是这个问题的假答案。
  */
 export const DEPTH_CARD = { width: 340, height: 191 } as const
 
@@ -61,7 +61,10 @@ export const DEPTH_FRAME =
   )
 
 /**
- * 一张节点卡（骨架）。`children` 盖在预览区上——遮罩就是这么进去的。
+ * 一张节点卡（骨架）。`children`（遮罩）是**预览区的兄弟**、不是它的孩子——现役
+ * `BaseGenerationNode` 就是这么挂的（遮罩与 `__preview` 平级），而这条层级关系正是
+ * 「进度条压不压得住画面/角标」的全部答案。挂成孩子的话遮罩会被困在预览区的层叠上下文里，
+ * 实验室会画出一张真机上不存在的图。
  * 标题条沿用现役卡的位置（左上角，半透明胶囊），因为「产物标题带出身」正是这一屏要看的东西之一。
  */
 export function DepthNodeCard({
@@ -91,18 +94,43 @@ export function DepthNodeCard({
         )}
       >
         {frame ? <img src={frame} alt="" className="h-full w-full object-cover" /> : null}
-        {children}
       </div>
       <span className="absolute left-[10px] top-[10px] z-[3] rounded-nomi-sm bg-nomi-paper/[0.82] px-2 py-[3px] text-micro font-medium text-nomi-ink-80 backdrop-blur-[8px]">
         {title}
       </span>
+      {children}
     </div>
   )
 }
 
-/** 处理中那一格里遮罩的样子。真组件，参数就是真运行会喂给它的那几样。 */
-export function DepthProcessingOverlay({ percent, message }: { percent: number; message: string }): JSX.Element {
-  return <GeneratingOverlay percent={percent} message={message} previewUrl={DEPTH_FRAME} onCancel={() => {}} />
+/**
+ * 派生卡上那条进度。真组件（`GeneratingOverlay`），参数就是真运行会喂给它的那几样。
+ *
+ * `placement='top'` 是 2026-09-07 用户看图后拍的那一下——「把那个放到上面 别遮挡视频」：
+ * 进度环 + 人话 + 取消收成贴着卡顶的一条，画面区整幅留给实时深度帧。
+ *
+ * `frame` 不给 = 下载权重那一段（还没有任何一帧算出来，画面区就是空的占位底纹）；
+ * 给了 = 推理中。同一条进度、同一个组件、两个时刻——这正是砍掉面板之后
+ * 「下载进度去哪了」的答案：它没去别处，就在这张卡顶上。
+ */
+export function DepthProcessingOverlay({
+  percent,
+  message,
+  frame,
+}: {
+  percent: number
+  message: string
+  frame?: string
+}): JSX.Element {
+  return (
+    <GeneratingOverlay
+      percent={percent}
+      message={message}
+      {...(frame ? { previewUrl: frame } : {})}
+      onCancel={() => {}}
+      placement="top"
+    />
+  )
 }
 
 /**

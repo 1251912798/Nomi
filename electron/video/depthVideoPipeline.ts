@@ -1,17 +1,17 @@
 /**
- * 深度视频节点 —— ffmpeg 命令行构造（纯函数）。
+ * 「提取深度」—— ffmpeg 命令行构造（纯函数）。
  *
  * 只造 argv，不 spawn。所有分支因此都能单测；真正 spawn 的地方只有 depthVideoJob.ts
  * （与 framesToVideo.ts 的分工一致）。
  *
  * ── 为什么合成端读 stdin 而不是读一个 .raw 文件 ────────────────────────────────
- * 逐帧裸像素展开会很大（1080p rgb24 = 6.2MB/帧）。先落 `.raw` 再喂 ffmpeg 意味着
- * 一次处理要在磁盘上摊开整段视频的裸像素——`original` 档跑 60 秒就是十几 GB，
- * 而这些字节的唯一去处就是紧接着的那次编码。把帧**直接 pipe 进 ffmpeg stdin**
- * 让中间态恒等于「一批帧」，磁盘占用与片长无关：这不是给上限打补丁，是让上限不存在。
+ * 逐帧裸像素展开会很大（518px 灰度 ≈ 150KB/帧，一小时素材就是十几 GB）。先落 `.raw`
+ * 再喂 ffmpeg 意味着一次处理要在磁盘上摊开整段视频的裸像素，而这些字节的唯一去处
+ * 就是紧接着的那次编码。把帧**直接 pipe 进 ffmpeg stdin** 让中间态恒等于「一批帧」，
+ * 磁盘占用与片长无关：这不是给上限打补丁，是让上限不存在。
  * （剩下的仍然是**时间**上限，由 electron/shared/canvas/videoDepth.ts 的预算门在开跑前判。）
  */
-import type { VideoDepthRawPixelFormat } from "../shared/canvas/videoDepth";
+import { VIDEO_DEPTH_RECIPE } from "../shared/canvas/videoDepth";
 
 /** 抽帧文件名模板：4 位序号 + .jpg，与 `buildExtractFramesArgs` 的 pattern 对称。 */
 export const VIDEO_DEPTH_FRAME_PATTERN = "f_%04d.jpg";
@@ -21,50 +21,46 @@ export function videoDepthFrameFileName(oneBasedIndex: number): string {
 }
 
 /**
- * 按裁剪窗口 + 目标尺寸 + 目标帧率抽帧成 JPEG 序列。
+ * 整段按目标尺寸抽帧成 JPEG 序列。
  *
- * `-ss` 放在 `-i` **之前**（输入端 seek，关键帧跳转，长片上快一个数量级）；
- * `-t` 用窗口时长而不是 `-to`，因为输入端 seek 之后时间轴已经归零，`-to` 会指向错的位置。
+ * `-t` 用探到的时长兜一道底（ffprobe 与容器不一致时不至于抽出个没完），帧率取配方里那一个。
+ * 没有 `-ss`：这一版处理整段，用户拍板砍掉了「处理范围」——见 videoDepth.ts 文件头。
  */
 export function buildExtractFramesArgs(opts: {
   sourcePath: string;
-  startSeconds: number;
   durationSeconds: number;
-  fps: number;
   outWidth: number;
   outHeight: number;
   outDir: string;
 }): string[] {
   return [
     "-y",
-    "-ss",
-    String(opts.startSeconds),
     "-t",
     String(opts.durationSeconds),
     "-i",
     opts.sourcePath,
     "-vf",
-    `fps=${opts.fps},scale=${opts.outWidth}:${opts.outHeight}:flags=bicubic`,
+    `fps=${VIDEO_DEPTH_RECIPE.processingFps},scale=${opts.outWidth}:${opts.outHeight}:flags=bicubic`,
     "-q:v",
     "2",
     `${opts.outDir}/${VIDEO_DEPTH_FRAME_PATTERN}`,
   ];
 }
 
-/** 从 stdin 读裸帧流，编成 H.264 mp4。 */
+/** 从 stdin 读裸帧流（单通道灰度），编成 H.264 mp4。 */
 export function buildRawStdinToMp4Args(opts: {
   outWidth: number;
   outHeight: number;
   fps: number;
-  pixelFormat: VideoDepthRawPixelFormat;
   outMp4: string;
 }): string[] {
   return [
     "-y",
     "-f",
     "rawvideo",
+    // 输入侧永远是 gray：这条链只有一种输出（见 videoDepth.ts 的 RAW_BYTES_PER_PIXEL）。
     "-pix_fmt",
-    opts.pixelFormat,
+    "gray",
     "-s",
     `${opts.outWidth}x${opts.outHeight}`,
     "-r",

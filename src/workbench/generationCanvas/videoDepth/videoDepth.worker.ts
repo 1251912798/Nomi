@@ -1,12 +1,11 @@
 /**
- * 深度视频节点 —— 推理 worker（渲染层 web worker 入口）。
+ * 「提取深度」—— 推理 worker（渲染层 web worker 入口）。
  *
- * 深度：onnxruntime-web 的 **WebGPU** 执行器 + Depth Anything V2 Small fp16 ONNX
- * （动态输入 [1,3,H,W]，输出边长按 14 取整——spike 实测）。
- * 姿态：MediaPipe Tasks Vision 的 PoseLandmarker（full 档），只在骨架模式加载。
+ * onnxruntime-web 的 **WebGPU** 执行器 + Depth Anything V2 Small fp16 ONNX
+ * （动态输入 [1,3,H,W]，输出边长按 14 取整——spike 实测）。输出只有一种：单通道灰度深度帧。
  *
- * 后处理（灰度映射 / EMA 平滑 / 骨架拓扑与绘制）都在 depthRenderUtils / skeletonRenderUtils，
- * 已被单测覆盖；这里只负责「把它们串起来」和一切与 GPU/解码有关的、单测覆盖不到的部分。
+ * 后处理（灰度映射 / EMA 平滑）都在 depthRenderUtils，已被单测覆盖；这里只负责
+ * 「把它们串起来」和一切与 GPU/解码有关的、单测覆盖不到的部分。
  *
  * ── 为什么没有 wasm 回退 ────────────────────────────────────────────────────────
  * 「WebGPU 建不起来就退 CPU wasm」听上去很稳，实际是把一次 4 秒的处理悄悄变成十几分钟：
@@ -28,26 +27,11 @@
  */
 import * as ort from "onnxruntime-web";
 import { DepthTemporalSmoother, depthToGray } from "./depthRenderUtils";
-import { renderPoseOverlay, type VideoDepthPosePerson } from "./skeletonRenderUtils";
-import { VIDEO_DEPTH_FIXED_SKELETON } from "../../../../electron/shared/canvas/videoDepth";
 import type { VideoDepthWorkerRequest, VideoDepthWorkerResponse } from "./workerProtocol";
-
-type PoseLandmarkerInstance = {
-  detectForVideo(
-    image: ImageBitmap,
-    timestampMs: number,
-  ): { landmarks?: Array<Array<{ x: number; y: number; visibility?: number }>> };
-  close(): void;
-};
 
 let session: ort.InferenceSession | null = null;
 let sessionModelUrl = "";
-let poseLandmarker: PoseLandmarkerInstance | null = null;
-let poseSignature = "";
 let smoother: DepthTemporalSmoother | null = null;
-/** MediaPipe VIDEO 模式要求单调递增的时间戳；步长由 processingFps 派生，见 workerProtocol。 */
-let frameIntervalMs = 1000 / 30;
-let frameClockMs = 0;
 let cancelRequested = false;
 
 const canvasPool = new Map<string, OffscreenCanvas>();
@@ -122,36 +106,6 @@ function upscaleDepth(depth: Float32Array, srcW: number, srcH: number, dstW: num
   return out;
 }
 
-function grayToRgbContext(gray: Uint8Array, width: number, height: number): OffscreenCanvasRenderingContext2D {
-  const ctx = ctx2d(canvasFor("gray-rgb", width, height));
-  const image = ctx.createImageData(width, height);
-  for (let i = 0; i < gray.length; i += 1) {
-    image.data[i * 4] = gray[i];
-    image.data[i * 4 + 1] = gray[i];
-    image.data[i * 4 + 2] = gray[i];
-    image.data[i * 4 + 3] = 255;
-  }
-  ctx.putImageData(image, 0, 0);
-  return ctx;
-}
-
-function originalContext(bitmap: ImageBitmap, width: number, height: number): OffscreenCanvasRenderingContext2D {
-  const ctx = ctx2d(canvasFor("original", width, height));
-  ctx.drawImage(bitmap, 0, 0, width, height);
-  return ctx;
-}
-
-function contextToRgb24(ctx: OffscreenCanvasRenderingContext2D, width: number, height: number): Uint8Array {
-  const pixels = ctx.getImageData(0, 0, width, height).data;
-  const out = new Uint8Array(width * height * 3);
-  for (let i = 0; i < width * height; i += 1) {
-    out[i * 3] = pixels[i * 4];
-    out[i * 3 + 1] = pixels[i * 4 + 1];
-    out[i * 3 + 2] = pixels[i * 4 + 2];
-  }
-  return out;
-}
-
 async function ensureDepthSession(modelUrl: string, ortWasmBaseUrl: string): Promise<ort.InferenceSession> {
   if (session && sessionModelUrl === modelUrl) return session;
   if (!("gpu" in navigator)) {
@@ -175,23 +129,6 @@ async function ensureDepthSession(modelUrl: string, ortWasmBaseUrl: string): Pro
   return session;
 }
 
-async function ensurePoseLandmarker(wasmBaseUrl: string, taskUrl: string, maxPeople: number): Promise<PoseLandmarkerInstance> {
-  const signature = `${wasmBaseUrl}|${taskUrl}|${maxPeople}`;
-  if (poseLandmarker && poseSignature === signature) return poseLandmarker;
-  poseLandmarker?.close();
-  poseLandmarker = null;
-  const mediapipe = await import("@mediapipe/tasks-vision");
-  const fileset = await mediapipe.FilesetResolver.forVisionTasks(wasmBaseUrl.replace(/\/$/, ""));
-  poseLandmarker = (await mediapipe.PoseLandmarker.createFromOptions(fileset, {
-    baseOptions: { modelAssetPath: taskUrl, delegate: "GPU" },
-    runningMode: "VIDEO",
-    numPoses: maxPeople,
-    minPoseDetectionConfidence: VIDEO_DEPTH_FIXED_SKELETON.confidence,
-  })) as unknown as PoseLandmarkerInstance;
-  poseSignature = signature;
-  return poseLandmarker;
-}
-
 class WorkerFailure extends Error {
   readonly code: "webgpu-unavailable" | "model-unavailable" | "inference-failed" | "not-warmed";
   readonly retryable: boolean;
@@ -205,33 +142,14 @@ class WorkerFailure extends Error {
 
 async function handleWarm(request: Extract<VideoDepthWorkerRequest, { kind: "warm" }>): Promise<void> {
   cancelRequested = false;
-  frameIntervalMs = request.frameIntervalMs;
-  frameClockMs = 0;
   smoother = new DepthTemporalSmoother(request.smoothingAlpha);
-  if (request.depthModelUrl) {
-    await ensureDepthSession(request.depthModelUrl, request.ortWasmBaseUrl);
-  }
-  if (request.poseModelUrl && request.poseWasmBaseUrl) {
-    await ensurePoseLandmarker(request.poseWasmBaseUrl, request.poseModelUrl, request.maxPeople);
-  }
+  await ensureDepthSession(request.depthModelUrl, request.ortWasmBaseUrl);
   post({ kind: "ready", requestId: request.requestId });
 }
 
-function detectPeople(bitmap: ImageBitmap): VideoDepthPosePerson[] {
-  if (!poseLandmarker) return [];
-  frameClockMs += frameIntervalMs;
-  const detection = poseLandmarker.detectForVideo(bitmap, Math.round(frameClockMs));
-  return (detection.landmarks ?? []).map((person) =>
-    person.map((point) => ({ x: point.x, y: point.y, visibility: point.visibility })),
-  );
-}
-
 async function handleProcessBatch(request: Extract<VideoDepthWorkerRequest, { kind: "processBatch" }>): Promise<void> {
-  const { mode, depthDirection, outWidth, outHeight, frames } = request;
-  const needDepth = mode === "depth" || mode === "depth_skeleton";
-  const needPose = mode === "depth_skeleton" || mode === "original_skeleton";
-  if (needDepth && !session) throw new WorkerFailure("not-warmed", "depth session was never warmed", false);
-  if (needPose && !poseLandmarker) throw new WorkerFailure("not-warmed", "pose landmarker was never warmed", false);
+  const { depthDirection, outWidth, outHeight, frames } = request;
+  if (!session) throw new WorkerFailure("not-warmed", "depth session was never warmed", false);
 
   const rawFrames: ArrayBuffer[] = [];
   for (const frameBytes of frames) {
@@ -241,45 +159,23 @@ async function handleProcessBatch(request: Extract<VideoDepthWorkerRequest, { ki
     }
     const bitmap = await createImageBitmap(new Blob([frameBytes], { type: "image/jpeg" }));
     try {
-      let depth: Float32Array | null = null;
-      if (needDepth && session) {
-        const inputName = session.inputNames[0];
-        const outputName = session.outputNames[0];
-        const tensor = bitmapToTensor(bitmap, outWidth, outHeight);
-        const outputs = await session.run({
-          [inputName]: new ort.Tensor("float32", tensor, [1, 3, outHeight, outWidth]),
-        });
-        const raw = outputs[outputName];
-        const dims = raw.dims;
-        const scaled = upscaleDepth(
-          raw.data as Float32Array,
-          dims[dims.length - 1],
-          dims[dims.length - 2],
-          outWidth,
-          outHeight,
-        );
-        depth = smoother ? smoother.push(scaled) : scaled;
-      }
-
-      const people = needPose ? detectPeople(bitmap) : [];
-
-      if (mode === "depth") {
-        const gray = depthToGray(depth as Float32Array, depthDirection);
-        rawFrames.push(gray.buffer as ArrayBuffer);
-      } else {
-        const ctx =
-          mode === "original_skeleton"
-            ? originalContext(bitmap, outWidth, outHeight)
-            : grayToRgbContext(depthToGray(depth as Float32Array, depthDirection), outWidth, outHeight);
-        if (people.length > 0) {
-          renderPoseOverlay(ctx, people, {
-            widthPx: outWidth,
-            heightPx: outHeight,
-            style: { ...VIDEO_DEPTH_FIXED_SKELETON },
-          });
-        }
-        rawFrames.push(contextToRgb24(ctx, outWidth, outHeight).buffer as ArrayBuffer);
-      }
+      const inputName = session.inputNames[0];
+      const outputName = session.outputNames[0];
+      const tensor = bitmapToTensor(bitmap, outWidth, outHeight);
+      const outputs = await session.run({
+        [inputName]: new ort.Tensor("float32", tensor, [1, 3, outHeight, outWidth]),
+      });
+      const raw = outputs[outputName];
+      const dims = raw.dims;
+      const scaled = upscaleDepth(
+        raw.data as Float32Array,
+        dims[dims.length - 1],
+        dims[dims.length - 2],
+        outWidth,
+        outHeight,
+      );
+      const depth = smoother ? smoother.push(scaled) : scaled;
+      rawFrames.push(depthToGray(depth, depthDirection).buffer as ArrayBuffer);
     } finally {
       bitmap.close();
     }
@@ -302,7 +198,6 @@ self.onmessage = (event: MessageEvent<VideoDepthWorkerRequest>) => {
   }
   if (request.kind === "reset") {
     cancelRequested = false;
-    frameClockMs = 0;
     smoother?.reset();
     post({ kind: "reset", requestId: request.requestId });
     return;

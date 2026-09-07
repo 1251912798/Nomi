@@ -1,5 +1,5 @@
 /**
- * 深度视频 —— 「从画布上一段视频派生出一段深度视频」的**纯模型层**（无 React、无 store、无 IPC）。
+ * 「提取深度」——「从画布上一段视频派生出一段深度视频」的**纯模型层**（无 React、无 store、无 IPC）。
  *
  * 2026-09-07 用户看过独立节点的界面后拍板改形态：深度视频**不是一种节点**，而是视频节点上的
  * 一个动作。所以这一层要回答的三个问题也跟着换了——不再是「画布上有哪些视频能当源」
@@ -34,7 +34,6 @@ export function videoDepthSourceFromNode(node: GenerationCanvasNode): VideoDepth
     sourceUrl: result.url,
     title: node.title?.trim() || node.prompt?.trim().slice(0, 40) || result.id,
     ...(typeof result.durationSeconds === 'number' ? { durationSeconds: result.durationSeconds } : {}),
-    sourceKind: node.kind === 'asset' ? 'canvas-asset-node' : 'canvas-video-node',
   }
 }
 
@@ -54,9 +53,9 @@ export function videoDepthDerivedPosition(
  *
  * 为什么不叫「深度-镜头 1」（能力名在前）：画布上一列节点标题是竖着读的，前缀相同的一批标题
  * 前几个字全一样，得读到后半截才分得出是哪一段。源名在前 = 一眼知道它是从谁来的，
- * 后缀说明它是什么。`modeLabel` 由调用方给（i18n 在界面层，这里保持纯）。
+ * 后缀说明它是什么。`suffix` 由调用方给（i18n 在界面层，这里保持纯）。
  */
-export function videoDepthDerivedTitle(sourceTitle: string, modeLabel: string): string {
+export function videoDepthDerivedTitle(sourceTitle: string, suffix: string): string {
   const source = sourceTitle.trim()
-  return source ? `${source} · ${modeLabel}` : modeLabel
+  return source ? `${source} · ${suffix}` : suffix
 }

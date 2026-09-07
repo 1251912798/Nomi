@@ -1,169 +1,94 @@
 /**
- * 深度视频处理节点 —— 跨进程契约（唯一 owner）。
+ * 「提取深度」—— 跨进程契约（唯一 owner）。
  *
- * 纯数据 + zod 解析，渲染层（节点设置 UI / 编排客户端）与主进程（job 执行）共用。
+ * 纯数据，渲染层（动作 / 编排客户端）与主进程（job 执行）共用。
  * 不 import Electron / React / fs / i18n / provider，遵循 electron/shared/canvas/ 的既有约定。
  *
  * ── 用户价值（2026-09-07 用户原话）────────────────────────────────────────────────
  * 「给一段参考视频（如 30 秒打斗镜头）→ 出深度视频 → 当动作参考喂视频模型、只换人物。」
  * 产物是**画布上一个普通视频资产**：能拖进任意模型的参考槽，也能直接导出。
- * 本节点不认识任何供应商、不做特殊接线（P4）。
+ * 本动作不认识任何供应商、不做特殊接线（P4）。
  *
- * ── 范围（2026-09-07 用户拍板的三个取舍）──────────────────────────────────────────
- * ① 权重不进安装包，首次用节点时下载（约 50MB），带进度；
- * ② 只做 Depth Anything V2 **Small**（Apache-2.0）——Base 是 CC-BY-NC，商用不干净，不带；
- * ③ 默认按 **518px** 推理（DA2 的原生训练分辨率，比全分辨率快约 3 倍；产物是给模型看的，
- *    不是给人看的），另给「全分辨率」选项。
+ * ── 为什么这里没有一个「设置」对象（2026-09-07 用户拍板）──────────────────────────
+ * 拍板原话：「其实如果这么砍了之后 也没啥设计的 只要保持一致 能挂入参考被模型使用就行」。
+ * 于是输出只剩**一种**：DA2 Small、518px、整段、灰度深度视频。没有面板、没有三选一、
+ * 没有「高级」——用户在那一刻**没有判断依据**去选 12 还是 30fps、0.35 还是 0.5 平滑，
+ * 问他等于把我们的功课推给他（D1）。
  *
- * ── 相对 PR #572 主动砍掉的字段（P1：不留没有消费方的半成品）────────────────────
- * `depthModel`（只剩 small，单值枚举等于噪声）、`poseModel`（只剩 full）、
- * `depthStyle`（只剩 grayscale）、`exportPoseJson`（Nomi 侧无任何消费方，
- * 见 docs/research/2026-09-07-motion-ref-raw-vs-depth.md §5）。
- * 砍掉 = 从 schema 里删掉，不是留着不解析——留着就是给「顺手做了」发返场票。
+ * 所以这一版删掉的不是「界面上那几个控件」，是**整个可变参数的概念**：
+ * 没有 settings schema、没有跨进程传参、没有节点上的参数 meta。留一份「界面不暴露但仍然
+ * 传来传去」的设置对象，等于给「顺手把面板加回来」发返场票（P1）。这次跑用什么档，
+ * 答案只有一个地方——下面这个 `VIDEO_DEPTH_RECIPE`。
+ *
+ * ── 相对 PR #572 / 上一版主动砍掉的东西（P1：不留没有消费方的半成品）──────────────
+ * `depthModel` / `poseModel` / `depthStyle` / `exportPoseJson`（#572 那一版）；
+ * 本次再砍：`mode`（深度 / 深度+骨架 / 原片+骨架三选一）连同**整条骨架推理链**、
+ * `maxPeople`、`maxResolution`（只剩 518）、`processingFps` / `temporalSmoothing` /
+ * `trimStart|EndSeconds`（收进配方）、以及 rgb24 这一半像素格式（只剩灰度）。
+ * 砍掉 = 从契约里删掉，不是留着不解析。
  */
-import { z } from "zod";
-
-/** 三种输出模式（用户拍板）：纯深度 / 深度+骨架 / 原片+骨架。 */
-export const VIDEO_DEPTH_MODES = ["depth", "depth_skeleton", "original_skeleton"] as const;
 
 /**
- * 分辨率档。518 = DA2 ViT-S 的原生训练输入（14×37），跑得最快、结构最准；
- * `original` 保留给「我要拿它当成片素材看」的场景，界面上必须标清楚会慢很多。
+ * 深度图的灰度方向。**不是设置**，是渲染事实的两半：`depthToGray` 两条分支各有单测。
+ * v1 固定用 `nearWhite`（近处更亮，与 depth.cards 一致，也是那次真实 A/B 用的那一组）。
  */
-export const VIDEO_DEPTH_RESOLUTIONS = [518, "original"] as const;
-export const VIDEO_DEPTH_FPS = [8, 12, 15, 24, 30, 60] as const;
 export const VIDEO_DEPTH_DEPTH_DIRECTIONS = ["nearWhite", "nearBlack"] as const;
-export const VIDEO_DEPTH_SOURCE_KINDS = ["canvas-video-node", "canvas-asset-node"] as const;
-
-const videoDepthFpsSchema = z.union([
-  z.literal(8),
-  z.literal(12),
-  z.literal(15),
-  z.literal(24),
-  z.literal(30),
-  z.literal(60),
-]);
-
-export const videoDepthSourceReferenceSchema = z
-  .object({
-    /** 画布上那个素材节点的 id——产物落回来时用它连线，也是「源没了」的判据。 */
-    sourceNodeId: z.string().min(1),
-    sourceUrl: z.string().min(1),
-    title: z.string().min(1),
-    durationSeconds: z.number().nonnegative().optional(),
-    widthPx: z.number().int().positive().optional(),
-    heightPx: z.number().int().positive().optional(),
-    sourceKind: z.enum(VIDEO_DEPTH_SOURCE_KINDS),
-  })
-  .strict();
+export type VideoDepthDepthDirection = (typeof VIDEO_DEPTH_DEPTH_DIRECTIONS)[number];
 
 /**
- * 骨架样式在 v1 是**内部固定值**，界面不暴露（§1.5：控件预算给真正会调的东西）。
- * 取值与 depth.cards 默认一致，也是 docs/research/2026-09-07-motion-ref-raw-vs-depth.md
- * 那次真实 A/B 用的那一组，改动会让那份实测失去可比性。
+ * 这次处理用的**唯一一份配方**。三个数各自有出处，都不是随手定的：
+ * · `maxResolutionPx: 518` —— DA2 ViT-S 的原生训练输入（14×37）。比全分辨率快约 3 倍，
+ *   而产物是给下游模型看的结构信号、不是给人看的成片。
+ * · `processingFps: 30` —— 常见素材的原生帧率；再高只是把同一段动作切得更碎。
+ * · `temporalSmoothing: 0.35` —— docs/research/2026-09-07-motion-ref-raw-vs-depth.md
+ *   那次真实 A/B 用的那一组，改动会让那份实测失去可比性。
  */
-export type VideoDepthSkeletonStyle = Readonly<{
-  lineWidth: number;
-  jointRadius: number;
-  confidence: number;
-}>;
+export const VIDEO_DEPTH_RECIPE = {
+  maxResolutionPx: 518,
+  processingFps: 30,
+  temporalSmoothing: 0.35,
+  depthDirection: "nearWhite" as VideoDepthDepthDirection,
+} as const;
 
-// 类型写成 number 而不是 `typeof …` 推出来的字面量 3/5/0.35：字面量类型会让
-// 「画一个别的粗细」在类型上就不可能，连测试都没法喂一组对照值去证明线宽真的被用上了。
-// v1 固定的是**这个常量**，不是这个类型。
-export const VIDEO_DEPTH_FIXED_SKELETON: VideoDepthSkeletonStyle = {
-  lineWidth: 3,
-  jointRadius: 5,
-  confidence: 0.35,
+/**
+ * 画布上那段源视频的身份。产物落回来时用它连线，也是「源没了」的判据。
+ * 这是一个**渲染层内部**的形状（不跨进程——跨进程只传 sourceUrl），所以是普通类型不是 schema。
+ */
+export type VideoDepthSourceReference = {
+  sourceNodeId: string;
+  sourceUrl: string;
+  title: string;
+  durationSeconds?: number;
 };
 
-export const videoDepthSettingsSchema = z
-  .object({
-    schemaVersion: z.literal(1).default(1),
-    sourceVideoRef: videoDepthSourceReferenceSchema.optional(),
-    trimStartSeconds: z.number().nonnegative().default(0),
-    /** 0 = 源末尾。 */
-    trimEndSeconds: z.number().nonnegative().default(0),
-    mode: z.enum(VIDEO_DEPTH_MODES).default("depth"),
-    /** 骨架模式下最多识别几个人；纯深度模式无意义（界面据此隐藏）。 */
-    maxPeople: z.number().int().min(1).max(4).default(1),
-    maxResolution: z.union([z.literal(518), z.literal("original")]).default(518),
-    processingFps: videoDepthFpsSchema.default(30),
-    depthDirection: z.enum(VIDEO_DEPTH_DEPTH_DIRECTIONS).default("nearWhite"),
-    temporalSmoothing: z.number().min(0).max(1).default(0.35),
-    updatedAt: z.string().optional(),
-  })
-  .strict()
-  .superRefine((s, ctx) => {
-    if (s.trimEndSeconds !== 0 && s.trimEndSeconds <= s.trimStartSeconds) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "trimEndSeconds must be 0 (source end) or greater than trimStartSeconds",
-        path: ["trimEndSeconds"],
-      });
-    }
-  });
-
-export type VideoDepthMode = (typeof VIDEO_DEPTH_MODES)[number];
-export type VideoDepthResolution = (typeof VIDEO_DEPTH_RESOLUTIONS)[number];
-export type VideoDepthFps = (typeof VIDEO_DEPTH_FPS)[number];
-export type VideoDepthDepthDirection = (typeof VIDEO_DEPTH_DEPTH_DIRECTIONS)[number];
-export type VideoDepthSourceReference = z.infer<typeof videoDepthSourceReferenceSchema>;
-export type VideoDepthSettings = z.infer<typeof videoDepthSettingsSchema>;
-
-/** 解析 + 回填默认值。范围外取值一律**拒绝**（返回 undefined），不静默降级。 */
-export function parseVideoDepthSettings(input: unknown): VideoDepthSettings | undefined {
-  const parsed = videoDepthSettingsSchema.safeParse(input);
-  return parsed.success ? parsed.data : undefined;
-}
-
-/** 规划时已知的源事实（来自 ffprobe，或画布素材节点自带的元数据）。 */
+/** 规划时已知的源事实（来自 ffprobe）。 */
 export type VideoDepthSourceFacts = {
   width?: number;
   height?: number;
   durationSeconds?: number;
 };
 
-/** 输出像素格式：纯深度是单通道灰度，带骨架的要彩色。 */
-export type VideoDepthRawPixelFormat = "gray" | "rgb24";
-
 export type VideoDepthProcessingPlan = {
   outWidth: number;
   outHeight: number;
-  startSeconds: number;
-  /** 源时长未知时保持 0（= 到末尾），job 在 ffprobe 之后再算一次。 */
-  endSeconds: number;
+  /** 源时长未知时为 null；job 在 ffprobe 之后必然有值。 */
   durationSeconds: number | null;
   totalFramesEstimate: number | null;
-  pixelFormat: VideoDepthRawPixelFormat;
   /** 全部帧展开成裸像素的字节数——预算门岗与「预计耗时」共用同一个数。 */
   expectedRawBytes: number | null;
 };
 
-/** 纯深度不需要骨架，反之亦然；模式与模型需求的**唯一**判据。 */
-export function modeNeedsDepth(mode: VideoDepthMode): boolean {
-  return mode === "depth" || mode === "depth_skeleton";
-}
+/**
+ * 裸帧是**单通道灰度**，一个像素一个字节。
+ *
+ * 这曾经是个 `"gray" | "rgb24"` 的联合：rgb24 那一半只为骨架模式存在（要画彩色骨架线）。
+ * 骨架模式随这一版一起删了，所以联合的另一半没有任何取值路径能到达——留着就是让下一个人
+ * 以为「换个模式就能出彩色」（P1）。
+ */
+export const VIDEO_DEPTH_RAW_BYTES_PER_PIXEL = 1;
 
-export function modeNeedsPose(mode: VideoDepthMode): boolean {
-  return mode === "depth_skeleton" || mode === "original_skeleton";
-}
-
-export function pixelFormatForMode(mode: VideoDepthMode): VideoDepthRawPixelFormat {
-  return mode === "depth" ? "gray" : "rgb24";
-}
-
-export function rawBytesPerPixel(pixelFormat: VideoDepthRawPixelFormat): number {
-  return pixelFormat === "gray" ? 1 : 3;
-}
-
-export function computeExpectedRawBytes(
-  frameCount: number,
-  outWidth: number,
-  outHeight: number,
-  pixelFormat: VideoDepthRawPixelFormat,
-): number {
-  return frameCount * outWidth * outHeight * rawBytesPerPixel(pixelFormat);
+export function computeExpectedRawBytes(frameCount: number, outWidth: number, outHeight: number): number {
+  return frameCount * outWidth * outHeight * VIDEO_DEPTH_RAW_BYTES_PER_PIXEL;
 }
 
 /** yuv420p 要求偶数边长。 */
@@ -179,76 +104,56 @@ function scaleToLongestEdge(width: number, height: number, limit: number): { w: 
 }
 
 /**
- * 裁剪窗口 + 输出尺寸 + 帧数/字节数估算。
+ * 输出尺寸 + 帧数/字节数估算。整段处理，不裁剪。
  * 源尺寸/时长未知时**不编数字**：`totalFramesEstimate` / `expectedRawBytes` 为 null，
- * 界面据此显示「待测量」而不是一个假的预估（D4：缺口明着标）。
+ * 上游据此 fail-closed 而不是拿一个假的预估去开跑（D4：缺口明着标）。
  */
-export function deriveProcessingPlan(
-  settings: VideoDepthSettings,
-  source: VideoDepthSourceFacts,
-): VideoDepthProcessingPlan {
-  const startSeconds = settings.trimStartSeconds;
-  const sourceDuration = source.durationSeconds ?? null;
-  const endSeconds = settings.trimEndSeconds !== 0 ? settings.trimEndSeconds : (sourceDuration ?? 0);
-  const clampedEnd = sourceDuration !== null ? Math.min(endSeconds, sourceDuration) : endSeconds;
-  const durationSeconds = clampedEnd > startSeconds ? clampedEnd - startSeconds : null;
-
-  const pixelFormat = pixelFormatForMode(settings.mode);
+export function deriveProcessingPlan(source: VideoDepthSourceFacts): VideoDepthProcessingPlan {
+  const durationSeconds = source.durationSeconds !== undefined && source.durationSeconds > 0 ? source.durationSeconds : null;
   const knownSize = source.width !== undefined && source.height !== undefined;
   let outWidth = 0;
   let outHeight = 0;
   if (knownSize) {
-    if (settings.maxResolution === "original") {
-      outWidth = even(source.width as number);
-      outHeight = even(source.height as number);
-    } else {
-      ({ w: outWidth, h: outHeight } = scaleToLongestEdge(
-        source.width as number,
-        source.height as number,
-        settings.maxResolution,
-      ));
-    }
+    ({ w: outWidth, h: outHeight } = scaleToLongestEdge(
+      source.width as number,
+      source.height as number,
+      VIDEO_DEPTH_RECIPE.maxResolutionPx,
+    ));
   }
 
-  const totalFramesEstimate = durationSeconds !== null ? Math.max(1, Math.round(durationSeconds * settings.processingFps)) : null;
+  const totalFramesEstimate =
+    durationSeconds !== null ? Math.max(1, Math.round(durationSeconds * VIDEO_DEPTH_RECIPE.processingFps)) : null;
   const expectedRawBytes =
-    totalFramesEstimate !== null && knownSize
-      ? computeExpectedRawBytes(totalFramesEstimate, outWidth, outHeight, pixelFormat)
-      : null;
+    totalFramesEstimate !== null && knownSize ? computeExpectedRawBytes(totalFramesEstimate, outWidth, outHeight) : null;
 
-  return {
-    outWidth,
-    outHeight,
-    startSeconds,
-    endSeconds: clampedEnd,
-    durationSeconds,
-    totalFramesEstimate,
-    pixelFormat,
-    expectedRawBytes,
-  };
+  return { outWidth, outHeight, durationSeconds, totalFramesEstimate, expectedRawBytes };
 }
 
 /**
  * 裸像素预算上限。
  *
- * 为什么需要它：`original` + 长片会把中间流量推到 GB 级（1080p rgb24 = 6.2MB/帧，
- * 60s@30fps ≈ 11GB）。我们**不落中间 .raw 文件**（帧直接 pipe 进 ffmpeg stdin，
- * 见 depthVideoPipeline.ts），所以这不是磁盘风险；但它是**时间**风险的诚实度量：
- * 到这个量级时按 518 档也要跑上小时级，用户等不起，必须在开跑**之前**拦下来并告诉他
- * 拧哪个旋钮，而不是让他等半小时再发现。
+ * 为什么在只有一档分辨率之后**仍然需要它**：518px 封住的是每帧多大，封不住片子多长。
+ * 一段一小时的素材按 30fps 就是 10.8 万帧，跑上小时级——用户等不起，必须在开跑**之前**
+ * 拦下来，而不是让他等半小时再发现。我们不落中间 `.raw` 文件（帧直接 pipe 进 ffmpeg
+ * stdin，见 depthVideoPipeline.ts），所以这不是磁盘风险，是**时间**风险的诚实度量。
  */
 export const VIDEO_DEPTH_MAX_RAW_BYTES = 4 * 1024 * 1024 * 1024;
 
 export type VideoDepthBudgetVerdict =
   | { ok: true }
-  | { ok: false; reason: "unknown-source"; }
+  | { ok: false; reason: "unknown-source" }
   | { ok: false; reason: "over-budget"; expectedRawBytes: number; limitBytes: number };
 
 /** 开跑前的预算判定。源事实不全 = 不放行（fail-closed，不猜）。 */
 export function checkVideoDepthBudget(plan: VideoDepthProcessingPlan): VideoDepthBudgetVerdict {
   if (plan.expectedRawBytes === null) return { ok: false, reason: "unknown-source" };
   if (plan.expectedRawBytes > VIDEO_DEPTH_MAX_RAW_BYTES) {
-    return { ok: false, reason: "over-budget", expectedRawBytes: plan.expectedRawBytes, limitBytes: VIDEO_DEPTH_MAX_RAW_BYTES };
+    return {
+      ok: false,
+      reason: "over-budget",
+      expectedRawBytes: plan.expectedRawBytes,
+      limitBytes: VIDEO_DEPTH_MAX_RAW_BYTES,
+    };
   }
   return { ok: true };
 }

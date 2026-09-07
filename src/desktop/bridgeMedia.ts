@@ -98,7 +98,7 @@ export type DesktopMediaBridge = {
 }
 
 /**
- * 深度视频处理节点的主进程原语。
+ * 「提取深度」的主进程原语。
  *
  * 编排在渲染层（推理必须在 WebGPU 所在的渲染进程里跑），所以这五个方法都是渲染层
  * 主动调的单向 invoke；主进程只在 prepare 期间往回推「下载/抽帧」两段进度——那两段
@@ -110,18 +110,13 @@ export type DesktopVideoDepthBridge = {
       projectId: string
       nodeId: string
       sourceUrl: string
-      settings: unknown
     }) => Promise<{
       jobId: string
       totalFrames: number
       outWidth: number
       outHeight: number
-      pixelFormat: 'gray' | 'rgb24'
-      processingFps: number
-      depthModelUrl: string | null
-      poseModelUrl: string | null
+      depthModelUrl: string
       ortWasmBaseUrl: string
-      poseWasmBaseUrl: string
     }>
     readFrames: (payload: { jobId: string; firstIndex: number; count: number }) => Promise<{ frames: Uint8Array[] }>
     writeFrames: (payload: { jobId: string; frames: Uint8Array[] }) => Promise<{ ok: true }>

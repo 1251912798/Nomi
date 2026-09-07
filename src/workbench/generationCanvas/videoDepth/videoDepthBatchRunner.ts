@@ -1,7 +1,7 @@
 /**
- * Depth video node — batch run orchestration (pure, dependency-injected).
+ * "Extract depth" — batch run orchestration (pure, dependency-injected).
  *
- * The GPU-heavy bits (onnxruntime-web + MediaPipe inference) are injected as
+ * The GPU-heavy bit (onnxruntime-web inference) is injected as
  * warm/processBatch functions so the orchestration itself — warm-once, serial
  * batch iteration, bounded batches, honest progress, cancellation checkpoints
  * between batches — is fully unit-testable without a GPU or a real worker.

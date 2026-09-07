@@ -12,25 +12,14 @@ describe('packVideoDepthPreviewRgba', () => {
       bytes: new Uint8Array([0, 128, 255, 64]),
       width: 2,
       height: 2,
-      pixelFormat: 'gray',
     })
     expect(Array.from(rgba ?? [])).toEqual([0, 0, 0, 255, 128, 128, 128, 255, 255, 255, 255, 255, 64, 64, 64, 255])
   })
 
-  it('keeps rgb24 channel order and does not drift by a byte', () => {
-    const rgba = packVideoDepthPreviewRgba({
-      bytes: new Uint8Array([10, 20, 30, 40, 50, 60]),
-      width: 2,
-      height: 1,
-      pixelFormat: 'rgb24',
-    })
-    expect(Array.from(rgba ?? [])).toEqual([10, 20, 30, 255, 40, 50, 60, 255])
-  })
-
   it('refuses a short buffer instead of padding it with zeros', () => {
     // 补零画出来的是「下半截全黑」，而深度图远处本来就是黑的——假证据混在真图里最难发现。
-    expect(packVideoDepthPreviewRgba({ bytes: new Uint8Array([1, 2]), width: 2, height: 2, pixelFormat: 'gray' })).toBeNull()
-    expect(packVideoDepthPreviewRgba({ bytes: new Uint8Array([1]), width: 0, height: 1, pixelFormat: 'gray' })).toBeNull()
+    expect(packVideoDepthPreviewRgba({ bytes: new Uint8Array([1, 2]), width: 2, height: 2 })).toBeNull()
+    expect(packVideoDepthPreviewRgba({ bytes: new Uint8Array([1]), width: 0, height: 1 })).toBeNull()
   })
 })
 

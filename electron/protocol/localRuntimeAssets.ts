@@ -3,13 +3,13 @@
  *
  * ── 为什么必须走这条协议、不能用 file:// ────────────────────────────────────────
  * 打包态渲染层是 `file:///…/dist/index.html`。Chromium 对 `file:` 的 `fetch()` 一律按
- * 跨源拒绝，而 onnxruntime-web 与 MediaPipe **都是用 fetch 取自己的 .wasm 和权重的**。
+ * 跨源拒绝，而 onnxruntime-web **就是用 fetch 取自己的 .wasm 和权重的**。
  * 所以随包资产也必须经由一个 `supportFetchAPI + corsEnabled` 的协议出去——`nomi-local`
  * 已经是这个应用唯一的本地伺服边界（main.ts 的 registerSchemesAsPrivileged），
  * 这里给它加两个 host，而不是再起一个 http 服务器或第二个协议。
  *
  * ── 两个 host 的边界 ─────────────────────────────────────────────────────────────
- * · `runtime/<bundleId>/<fileName>`：**随包**的第三方运行时资产（ort / mediapipe 的 wasm）。
+ * · `runtime/<bundleId>/<fileName>`：**随包**的第三方运行时资产（现在只有 ort 的 wasm）。
  *   目录由 `require.resolve` 定位，dev 读 node_modules、打包态读 asar 内同一份，两态同源。
  * · `model/<fileName>`：**下载到 userData** 的权重。`fileName` 必须逐字命中清单
  *   （`videoDepthModelByFileName`），所以这里根本没有「路径」可拼——不是靠 `..` 过滤，
@@ -30,11 +30,6 @@ const RUNTIME_BUNDLES: Record<string, { resolveDir: () => string; allowedExtensi
     // `require.resolve('onnxruntime-web')` 命中 exports 的 require 条件 → dist/ort.min.js。
     resolveDir: () => path.dirname(requireFromHere.resolve("onnxruntime-web")),
     allowedExtensions: [".wasm", ".mjs", ".js"],
-  },
-  /** MediaPipe Tasks Vision 的 wasm fileset。 */
-  mediapipe: {
-    resolveDir: () => path.join(path.dirname(requireFromHere.resolve("@mediapipe/tasks-vision")), "wasm"),
-    allowedExtensions: [".wasm", ".js", ".data"],
   },
 };
 

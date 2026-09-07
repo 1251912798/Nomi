@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { VIDEO_DEPTH_RECIPE } from "../shared/canvas/videoDepth";
 import {
   buildExtractFramesArgs,
   buildProbeArgs,
@@ -10,24 +11,21 @@ import {
 describe("buildExtractFramesArgs", () => {
   const args = buildExtractFramesArgs({
     sourcePath: "/tmp/src.mp4",
-    startSeconds: 2,
     durationSeconds: 4,
-    fps: 24,
     outWidth: 518,
     outHeight: 290,
     outDir: "/tmp/job/frames",
   });
 
-  it("seeks on the input side and uses -t, not -to", () => {
-    // -ss 在 -i 之前 = 输入端 seek（关键帧跳转，长片快一个数量级）；此后时间轴归零，
-    // -to 会指向错的位置，所以窗口只能用 -t 表达。
-    expect(args.indexOf("-ss")).toBeLessThan(args.indexOf("-i"));
+  it("processes the whole clip — no -ss, because the trim window went away with the panel", () => {
+    expect(args).not.toContain("-ss");
+    // -t 仍在：ffprobe 与容器对不上时兜一道底，别抽出个没完。
     expect(args).toContain("-t");
     expect(args).not.toContain("-to");
   });
 
-  it("pins fps and output size in one filter chain", () => {
-    expect(args).toContain("fps=24,scale=518:290:flags=bicubic");
+  it("pins fps and output size in one filter chain, and the fps comes from the recipe", () => {
+    expect(args).toContain(`fps=${VIDEO_DEPTH_RECIPE.processingFps},scale=518:290:flags=bicubic`);
   });
 
   it("writes a zero-padded sequence the reader can address by index", () => {
@@ -43,7 +41,6 @@ describe("buildRawStdinToMp4Args", () => {
       outWidth: 518,
       outHeight: 290,
       fps: 30,
-      pixelFormat: "gray",
       outMp4: "/tmp/job/depth.mp4",
     });
     expect(args).toContain("pipe:0");
@@ -55,15 +52,11 @@ describe("buildRawStdinToMp4Args", () => {
     expect(args[args.length - 1]).toBe("/tmp/job/depth.mp4");
   });
 
-  it("declares rgb24 for the skeleton modes", () => {
-    const args = buildRawStdinToMp4Args({
-      outWidth: 640,
-      outHeight: 360,
-      fps: 24,
-      pixelFormat: "rgb24",
-      outMp4: "/tmp/o.mp4",
-    });
-    expect(args[args.indexOf("-pix_fmt") + 1]).toBe("rgb24");
+  it("has no rgb24 path left at all — the only output is single-channel gray", () => {
+    // 骨架模式砍掉之后，rgb24 那一半没有任何取值路径能到达。这条断言是它的墓碑：
+    // 谁把它加回来，得先在这里解释为什么。
+    const args = buildRawStdinToMp4Args({ outWidth: 640, outHeight: 360, fps: 24, outMp4: "/tmp/o.mp4" });
+    expect(args).not.toContain("rgb24");
   });
 });
 

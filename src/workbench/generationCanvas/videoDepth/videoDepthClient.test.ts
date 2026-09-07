@@ -1,14 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
 import { runVideoDepth, type VideoDepthBridge, type VideoDepthWorkerChannel } from './videoDepthClient'
-import { parseVideoDepthSettings, type VideoDepthSettings } from '../../../../electron/shared/canvas/videoDepth'
+import { VIDEO_DEPTH_RECIPE } from '../../../../electron/shared/canvas/videoDepth'
 import type { VideoDepthRunState } from '../../../../electron/shared/canvas/videoDepthRun'
 import type { VideoDepthWorkerResponse } from './workerProtocol'
-
-function settings(overrides: Record<string, unknown> = {}): VideoDepthSettings {
-  const parsed = parseVideoDepthSettings(overrides)
-  if (!parsed) throw new Error('fixture settings must parse')
-  return parsed
-}
 
 function fakeBridge(overrides: Partial<VideoDepthBridge> = {}, totalFrames = 70): {
   bridge: VideoDepthBridge
@@ -23,12 +17,8 @@ function fakeBridge(overrides: Partial<VideoDepthBridge> = {}, totalFrames = 70)
       totalFrames,
       outWidth: 518,
       outHeight: 290,
-      pixelFormat: 'gray',
-      processingFps: 24,
       depthModelUrl: 'nomi-local://model/depth.onnx',
-      poseModelUrl: null,
       ortWasmBaseUrl: 'nomi-local://runtime/ort/',
-      poseWasmBaseUrl: 'nomi-local://runtime/mediapipe/',
     }),
     readFrames: async ({ count }) => ({ frames: Array.from({ length: count }, () => new Uint8Array([1, 2, 3])) }),
     writeFrames: async ({ frames }) => {
@@ -82,7 +72,6 @@ const input = {
   projectId: 'p1',
   nodeId: 'n1',
   sourceUrl: 'nomi-local://asset/p1/clip.mp4',
-  settings: settings(),
 }
 
 describe('runVideoDepth', () => {
@@ -115,34 +104,23 @@ describe('runVideoDepth', () => {
     expect(requests[0].kind).toBe('warm')
   })
 
-  it('derives the pose frame clock from processingFps instead of hardcoding 33ms', async () => {
+  it('warms with the one recipe and nothing else — no mode, no pose runtime, no frame clock', async () => {
+    // 这条断言是骨架链的墓碑。它曾经带着 mode / poseWasmBaseUrl / poseModelUrl /
+    // maxPeople / frameIntervalMs 五个字段过去，全部只为骨架而存在。
     const { bridge } = fakeBridge()
     const { channel, requests } = fakeWorker()
-    await runVideoDepth(
-      { ...input, settings: settings({ mode: 'depth_skeleton' }) },
-      { bridge, createWorker: () => channel, onState: () => {}, shouldCancel: () => false },
-    )
-    // prepare 的假数据回的是 24fps → 帧间隔 1000/24，不是 33。
-    expect(requests[0].frameIntervalMs).toBeCloseTo(1000 / 24, 6)
-  })
+    await runVideoDepth(input, { bridge, createWorker: () => channel, onState: () => {}, shouldCancel: () => false })
 
-  it('only asks for the pose runtime when the mode needs a skeleton', async () => {
-    const { bridge } = fakeBridge()
-    const depthOnly = fakeWorker()
-    await runVideoDepth(input, {
-      bridge,
-      createWorker: () => depthOnly.channel,
-      onState: () => {},
-      shouldCancel: () => false,
-    })
-    expect(depthOnly.requests[0].poseWasmBaseUrl).toBeUndefined()
-
-    const skeleton = fakeWorker()
-    await runVideoDepth(
-      { ...input, settings: settings({ mode: 'original_skeleton' }) },
-      { bridge, createWorker: () => skeleton.channel, onState: () => {}, shouldCancel: () => false },
-    )
-    expect(skeleton.requests[0].poseWasmBaseUrl).toBe('nomi-local://runtime/mediapipe/')
+    const warm = requests[0]
+    expect(warm.kind).toBe('warm')
+    expect(warm.depthModelUrl).toBe('nomi-local://model/depth.onnx')
+    expect(warm.smoothingAlpha).toBe(VIDEO_DEPTH_RECIPE.temporalSmoothing)
+    for (const gone of ['mode', 'poseWasmBaseUrl', 'poseModelUrl', 'maxPeople', 'frameIntervalMs']) {
+      expect(warm).not.toHaveProperty(gone)
+    }
+    // 每一批也只带灰度方向，不再带 mode。
+    expect(requests[1].depthDirection).toBe(VIDEO_DEPTH_RECIPE.depthDirection)
+    expect(requests[1]).not.toHaveProperty('mode')
   })
 
   it('reports an ETA only after enough frames were measured, and derives it from the clock', async () => {

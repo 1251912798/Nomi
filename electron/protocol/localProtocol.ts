@@ -119,7 +119,7 @@ function rangeNotSatisfiable(size: number): Response {
 }
 
 /**
- * 随包运行时资产（ort / mediapipe 的 wasm）与已下载权重的伺服。
+ * 随包运行时资产（ort 的 wasm）与已下载权重的伺服。
  *
  * 与 `asset` host 分开处理是因为它们**不属于任何项目**：没有 projectId，也就不该进
  * 项目事件日志、不该走项目路径解析。命中白名单才有响应，其余一律 404。

@@ -1,5 +1,5 @@
 /**
- * 深度视频节点 —— 主进程侧的一次运行（会话生命周期 + ffmpeg + 权重）。
+ * 「提取深度」—— 主进程侧的一次运行（会话生命周期 + ffmpeg + 权重）。
  *
  * ── 谁在编排 ────────────────────────────────────────────────────────────────────
  * **渲染层编排，主进程做它做不到的那几段。** 推理必须在渲染层跑（WebGPU 只在渲染进程里），
@@ -27,15 +27,12 @@ import { ensureExecutable } from "../export/ensureExecutable";
 import { writeAsset } from "../runtime";
 import { logInfo, logWarn } from "../logging/logger";
 import {
+  VIDEO_DEPTH_RECIPE,
   checkVideoDepthBudget,
   deriveProcessingPlan,
-  modeNeedsDepth,
-  modeNeedsPose,
-  parseVideoDepthSettings,
   type VideoDepthProcessingPlan,
-  type VideoDepthSettings,
 } from "../shared/canvas/videoDepth";
-import { videoDepthModelForRole, videoDepthRequiredAssets } from "../shared/canvas/videoDepthModels";
+import { VIDEO_DEPTH_MODEL_MANIFEST, videoDepthRequiredAssets } from "../shared/canvas/videoDepthModels";
 import type { VideoDepthErrorCode, VideoDepthMainOwnedPhase } from "../shared/canvas/videoDepthRun";
 import { ensureVideoDepthModels, pendingVideoDepthDownloadBytes } from "./depthVideoModelCache";
 import {
@@ -64,7 +61,6 @@ type Session = {
   jobId: string;
   projectId: string;
   nodeId: string;
-  settings: VideoDepthSettings;
   plan: VideoDepthProcessingPlan;
   workDir: string;
   framesDir: string;
@@ -91,7 +87,6 @@ export type VideoDepthPreparePayload = {
   projectId: string;
   nodeId: string;
   sourceUrl: string;
-  settings: unknown;
 };
 
 export type VideoDepthPrepareResult = {
@@ -99,13 +94,9 @@ export type VideoDepthPrepareResult = {
   totalFrames: number;
   outWidth: number;
   outHeight: number;
-  pixelFormat: "gray" | "rgb24";
-  processingFps: number;
   /** 渲染层 worker 直接 fetch 的地址（nomi-local，打包态可用）。 */
-  depthModelUrl: string | null;
-  poseModelUrl: string | null;
+  depthModelUrl: string;
   ortWasmBaseUrl: string;
-  poseWasmBaseUrl: string;
 };
 
 function runProcess(binary: string, args: string[]): Promise<{ stdout: string; stderr: string }> {
@@ -158,8 +149,6 @@ export async function prepareVideoDepthJob(
   payload: VideoDepthPreparePayload,
   emit: VideoDepthPrepareEmitter,
 ): Promise<VideoDepthPrepareResult> {
-  const settings = parseVideoDepthSettings(payload.settings);
-  if (!settings) throw new VideoDepthJobError("media-failed", "invalid video depth settings", false);
   for (const existing of sessions.values()) {
     if (existing.projectId === payload.projectId) {
       throw new VideoDepthJobError("already-running", `project ${payload.projectId} already has job ${existing.jobId}`, false);
@@ -187,7 +176,7 @@ export async function prepareVideoDepthJob(
     if (!probe) {
       throw new VideoDepthJobError("source-unmeasurable", "ffprobe could not measure the source video", false);
     }
-    const plan = deriveProcessingPlan(settings, probe);
+    const plan = deriveProcessingPlan(probe);
     const budget = checkVideoDepthBudget(plan);
     if (!budget.ok) {
       const detail =
@@ -197,9 +186,7 @@ export async function prepareVideoDepthJob(
       throw new VideoDepthJobError(budget.reason === "over-budget" ? "over-budget" : "source-unmeasurable", detail, false);
     }
 
-    const needDepth = modeNeedsDepth(settings.mode);
-    const needPose = modeNeedsPose(settings.mode);
-    const required = videoDepthRequiredAssets(needDepth, needPose);
+    const required = videoDepthRequiredAssets();
     const pendingBytes = pendingVideoDepthDownloadBytes(required);
     if (pendingBytes > 0) {
       emit({ jobId, nodeId: payload.nodeId, phase: "downloading", doneBytes: 0, totalBytes: pendingBytes });
@@ -233,9 +220,7 @@ export async function prepareVideoDepthJob(
         ffmpegPath,
         buildExtractFramesArgs({
           sourcePath: source.filePath,
-          startSeconds: plan.startSeconds,
           durationSeconds,
-          fps: settings.processingFps,
           outWidth: plan.outWidth,
           outHeight: plan.outHeight,
           outDir: framesDir,
@@ -255,7 +240,6 @@ export async function prepareVideoDepthJob(
       jobId,
       projectId: payload.projectId,
       nodeId: payload.nodeId,
-      settings,
       plan,
       workDir,
       framesDir,
@@ -267,25 +251,15 @@ export async function prepareVideoDepthJob(
       cancelled: false,
     };
     sessions.set(jobId, session);
-    logInfo("video-depth", "prepared", {
-      jobId,
-      totalFrames,
-      width: plan.outWidth,
-      height: plan.outHeight,
-      mode: settings.mode,
-    });
+    logInfo("video-depth", "prepared", { jobId, totalFrames, width: plan.outWidth, height: plan.outHeight });
 
     return {
       jobId,
       totalFrames,
       outWidth: plan.outWidth,
       outHeight: plan.outHeight,
-      pixelFormat: plan.pixelFormat,
-      processingFps: settings.processingFps,
-      depthModelUrl: needDepth ? localModelUrl(videoDepthModelForRole("depth").fileName) : null,
-      poseModelUrl: needPose ? localModelUrl(videoDepthModelForRole("pose").fileName) : null,
+      depthModelUrl: localModelUrl(VIDEO_DEPTH_MODEL_MANIFEST[0].fileName),
       ortWasmBaseUrl: localRuntimeBundleUrl("ort"),
-      poseWasmBaseUrl: localRuntimeBundleUrl("mediapipe"),
     };
   } catch (error) {
     try {
@@ -322,8 +296,7 @@ function startEncoder(session: Session): ChildProcessWithoutNullStreams {
     buildRawStdinToMp4Args({
       outWidth: session.plan.outWidth,
       outHeight: session.plan.outHeight,
-      fps: session.settings.processingFps,
-      pixelFormat: session.plan.pixelFormat,
+      fps: VIDEO_DEPTH_RECIPE.processingFps,
       outMp4: session.outMp4,
     }),
     { windowsHide: true },
@@ -375,7 +348,7 @@ export async function finishVideoDepthJob(payload: { jobId: string }): Promise<V
     session.encoder.stdin.end();
     await session.encoderExit;
     const bytes = fs.readFileSync(session.outMp4);
-    const record = writeAsset(session.projectId, bytes, `depth-${session.settings.mode}.mp4`, "video/mp4", {
+    const record = writeAsset(session.projectId, bytes, "depth.mp4", "video/mp4", {
       kind: "generated",
       source: "video-depth",
       ownerNodeId: session.nodeId,

@@ -1,5 +1,5 @@
 /**
- * 深度视频 —— 把一张处理中的裸帧变成节点上能看的缩略图。
+ * 「提取深度」—— 把一张处理中的裸帧变成节点上能看的缩略图。
  *
  * 为什么要它：这条管线一跑就是分钟级，而「转圈 + 百分比」证明不了**它在看的是不是你那段片子**。
  * 一张实时的深度帧能同时回答两件事：还活着、而且认出了人。ComfyUI 那条链早就这么做了
@@ -14,43 +14,35 @@
 
 /** 一张待预览的裸帧。形状与 worker 回传的 `rawFrames` 逐字对应（见 workerProtocol）。 */
 export type VideoDepthPreviewSource = {
+  /** 单通道灰度，一像素一字节（这条链只有这一种输出，见 videoDepth.ts 的 RAW_BYTES_PER_PIXEL）。 */
   bytes: Uint8Array
   width: number
   height: number
-  pixelFormat: 'gray' | 'rgb24'
 }
 
 /** 缩略图的长边上限。节点预览区最宽也就三百多，再大只是白烧内存与编码时间。 */
 export const VIDEO_DEPTH_PREVIEW_MAX_WIDTH = 192
 
 /**
- * 裸帧 → RGBA。纯函数，因此「gray 是不是真的铺成了三通道灰、rgb24 有没有错位」可以被单测钉住——
- * 这一族错在图上长得像「模型没跑对」（花屏 / 偏色），而不是像「代码写错了」。
+ * 裸帧 → RGBA（灰度铺成三通道）。纯函数，所以「有没有按行错位」能被单测钉住——
+ * 这一族错在图上长得像「模型没跑对」（花屏 / 斜纹），而不是像「代码写错了」。
  *
  * 字节不够就**返回 null**，不补零：补零会画出一张下半截全黑的图，看起来正好像「深度图远处是黑的」。
  */
 export function packVideoDepthPreviewRgba(source: VideoDepthPreviewSource): Uint8ClampedArray<ArrayBuffer> | null {
-  const { bytes, width, height, pixelFormat } = source
+  const { bytes, width, height } = source
   if (width <= 0 || height <= 0) return null
   const pixels = width * height
-  const stride = pixelFormat === 'gray' ? 1 : 3
-  if (bytes.length < pixels * stride) return null
+  if (bytes.length < pixels) return null
   // 显式从一块 ArrayBuffer 起：`new Uint8ClampedArray(n)` 推出来的是 ArrayBufferLike，
   // 而 ImageData 只吃 ArrayBuffer 支撑的那一种（SharedArrayBuffer 不行）。
   const rgba = new Uint8ClampedArray(new ArrayBuffer(pixels * 4))
   for (let i = 0; i < pixels; i += 1) {
-    const at = i * stride
     const out = i * 4
-    if (pixelFormat === 'gray') {
-      const value = bytes[at] as number
-      rgba[out] = value
-      rgba[out + 1] = value
-      rgba[out + 2] = value
-    } else {
-      rgba[out] = bytes[at] as number
-      rgba[out + 1] = bytes[at + 1] as number
-      rgba[out + 2] = bytes[at + 2] as number
-    }
+    const value = bytes[i] as number
+    rgba[out] = value
+    rgba[out + 1] = value
+    rgba[out + 2] = value
     rgba[out + 3] = 255
   }
   return rgba

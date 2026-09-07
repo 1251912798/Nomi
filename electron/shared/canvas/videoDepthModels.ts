@@ -1,26 +1,27 @@
 /**
- * 深度视频节点 —— 本地模型权重清单（白名单，唯一 owner）。
+ * 「提取深度」—— 本地模型权重清单（白名单，唯一 owner）。
  *
- * 用户拍板①：权重**不进安装包**，第一次用这个节点时才下载（约 50MB，带进度）。
+ * 用户拍板①：权重**不进安装包**，第一次用这个动作时才下载（约 50MB，带进度）。
  * 用户拍板②：深度只做 Depth Anything V2 **Small**（Apache-2.0）。Base 是 CC-BY-NC，
  * 商用授权不干净，一条都不列——不是「先不做」，是不进清单，避免有人顺手把它加回来。
  *
+ * 2026-09-07 用户砍掉骨架输出之后，这份清单**只剩一条**。MediaPipe 那条
+ * （pose_landmarker_full）随骨架链一起删了：没有任何模式会请求它，留着就等于把
+ * 「顺手把骨架加回来」写进白名单（P1）。同 commit 拆掉的还有 `@mediapipe/tasks-vision`
+ * 依赖与它的随包 wasm 伺服（electron/protocol/localRuntimeAssets.ts）。
+ *
  * ── 每条为什么长这样 ────────────────────────────────────────────────────────────
- * · URL 钉在**不可变的版本**上：HuggingFace 用 commit sha（不是 `resolve/main`，
- *   分支会前进，会把 sha256 钉死变成「哪天突然全员下载失败」）；MediaPipe 用
- *   `float16/1/`（不是 `latest/`，同理）。两处都用**官方端点**，不用 hf-mirror
- *   之类第三方镜像——镜像换一个字节我们看不见。
+ * · URL 钉在**不可变的版本**上：HuggingFace 用 commit sha，不用 `resolve/main`——
+ *   分支会前进，会把下面钉死的 sha256 变成「哪天突然全员下载失败」。
+ *   用**官方端点**，不用 hf-mirror 之类第三方镜像——镜像换一个字节我们看不见。
  * · `sha256` 是**实下载一次算出来的**（2026-09-07，见下方每条注释），不是抄的。
  *   下载完不匹配 = 删文件 + 报错，**没有** "首下即信任" 的自举分支（R28：
  *   安全关键依赖不许用「登记」代替防线）。
  * · `sizeBytes` 是精确值不是约数：它同时是进度条分母和「响应体是不是被中间人换了」的第一道判据。
  */
 
-export type VideoDepthModelRole = "depth" | "pose";
-
 export type VideoDepthModelAsset = Readonly<{
   id: string;
-  role: VideoDepthModelRole;
   /** 落在 userData/models/ 下的文件名（同时是 nomi-local://model/<fileName> 的白名单键）。 */
   fileName: string;
   downloadUrl: string;
@@ -34,7 +35,6 @@ export type VideoDepthModelAsset = Readonly<{
 export const VIDEO_DEPTH_MODEL_MANIFEST: readonly VideoDepthModelAsset[] = [
   {
     id: "depth_anything_v2_small_fp16",
-    role: "depth",
     fileName: "depth-anything-v2-small-fp16.onnx",
     // commit 4472b7362082ad9968fee890ca0f1e5aca36b93d（2026-09-07 实查）——钉 commit 不钉 main。
     downloadUrl:
@@ -46,45 +46,19 @@ export const VIDEO_DEPTH_MODEL_MANIFEST: readonly VideoDepthModelAsset[] = [
     license: "Apache-2.0",
     sourcePage: "https://huggingface.co/onnx-community/depth-anything-v2-small",
   },
-  {
-    id: "mediapipe_pose_landmarker_full",
-    role: "pose",
-    fileName: "pose-landmarker-full-float16.task",
-    // `/1/` 是不可变版本目录（`latest/` 会跟着上游走）。
-    downloadUrl:
-      "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task",
-    sizeBytes: 9_398_198,
-    // 2026-09-07 实下载后 `shasum -a 256`。
-    sha256: "5134a3aad27a58b93da0088d431f366da362b44e3ccfbe3462b3827a839011b1",
-    license: "Apache-2.0",
-    sourcePage: "https://ai.google.dev/edge/mediapipe/solutions/vision/pose_landmarker",
-  },
 ];
-
-export function videoDepthModelById(id: string): VideoDepthModelAsset | undefined {
-  return VIDEO_DEPTH_MODEL_MANIFEST.find((asset) => asset.id === id);
-}
 
 export function videoDepthModelByFileName(fileName: string): VideoDepthModelAsset | undefined {
   return VIDEO_DEPTH_MODEL_MANIFEST.find((asset) => asset.fileName === fileName);
 }
 
-export function videoDepthModelForRole(role: VideoDepthModelRole): VideoDepthModelAsset {
-  const asset = VIDEO_DEPTH_MODEL_MANIFEST.find((entry) => entry.role === role);
-  // 清单是编译期常量，两个角色都必然存在；缺了是构建被改坏，早崩比静默降级好。
-  if (!asset) throw new Error(`video depth model manifest is missing role: ${role}`);
-  return asset;
-}
-
 /**
- * 某次运行真正需要下载哪些权重。
- * 纯深度模式**不碰** pose——不下载、不加载、不提示，用户为骨架付的钱是零。
+ * 这个动作需要的权重。**只有一条**，所以这里不是「按需挑选」而是把那一条取出来——
+ * 函数仍然存在是因为下载/校验那一侧吃的是一个清单（一条也是清单），
+ * 而不是因为将来会有第二条。真要加第二条，得先有一个用户能看见的理由。
  */
-export function videoDepthRequiredAssets(needDepth: boolean, needPose: boolean): readonly VideoDepthModelAsset[] {
-  const assets: VideoDepthModelAsset[] = [];
-  if (needDepth) assets.push(videoDepthModelForRole("depth"));
-  if (needPose) assets.push(videoDepthModelForRole("pose"));
-  return assets;
+export function videoDepthRequiredAssets(): readonly VideoDepthModelAsset[] {
+  return VIDEO_DEPTH_MODEL_MANIFEST;
 }
 
 /** 清单里所有下载源的 origin——`check:outbound-policy` 与出站分类共用的白名单。 */

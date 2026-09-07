@@ -217,7 +217,6 @@
     "@mantine/core": "^7.13.1",
     "@mantine/modals": "^7.13.1",
     "@mantine/notifications": "^7.13.1",
-    "@mediapipe/tasks-vision": "^1.0.1",
     "@photo-sphere-viewer/core": "5.14.3",
     "@radix-ui/react-switch": "^1.2.6",
     "@radix-ui/react-tooltip": "^1.2.11",

@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   VIDEO_DEPTH_MODEL_MANIFEST,
   videoDepthModelByFileName,
-  videoDepthModelForRole,
   videoDepthModelOrigins,
   videoDepthRequiredAssets,
 } from "./videoDepthModels";
@@ -19,10 +18,9 @@ describe("video depth model manifest", () => {
   });
 
   it("downloads only from official first-party endpoints, never a mirror", () => {
-    expect([...videoDepthModelOrigins()].sort()).toEqual([
-      "https://huggingface.co",
-      "https://storage.googleapis.com",
-    ]);
+    // 骨架输出砍掉之后 MediaPipe 那条也没了，所以出站白名单**只剩一个 origin**。
+    // 这条断言同时是「谁又偷偷加了一个下载源」的门。
+    expect([...videoDepthModelOrigins()].sort()).toEqual(["https://huggingface.co"]);
     for (const asset of VIDEO_DEPTH_MODEL_MANIFEST) {
       expect(asset.downloadUrl).not.toContain("hf-mirror");
     }
@@ -36,21 +34,21 @@ describe("video depth model manifest", () => {
     }
   });
 
-  it("carries exactly one depth model — Small, no CC-BY-NC Base", () => {
-    const depth = VIDEO_DEPTH_MODEL_MANIFEST.filter((a) => a.role === "depth");
-    expect(depth).toHaveLength(1);
-    expect(depth[0].downloadUrl).toContain("depth-anything-v2-small");
+  it("carries exactly one model — DA2 Small, no CC-BY-NC Base and no pose model", () => {
+    // 输出只有一种（深度视频），所以权重也只该有一份。骨架那条（MediaPipe pose_landmarker）
+    // 随骨架链一起删了：留在清单里就等于把「顺手把骨架加回来」写进白名单。
+    expect(VIDEO_DEPTH_MODEL_MANIFEST).toHaveLength(1);
+    expect(VIDEO_DEPTH_MODEL_MANIFEST[0].downloadUrl).toContain("depth-anything-v2-small");
     expect(VIDEO_DEPTH_MODEL_MANIFEST.some((a) => a.downloadUrl.includes("depth-anything-v2-base"))).toBe(false);
+    expect(VIDEO_DEPTH_MODEL_MANIFEST.some((a) => a.downloadUrl.includes("pose_landmarker"))).toBe(false);
   });
 
-  it("downloads nothing for pose when the mode is depth-only", () => {
-    expect(videoDepthRequiredAssets(true, false).map((a) => a.role)).toEqual(["depth"]);
-    expect(videoDepthRequiredAssets(false, true).map((a) => a.role)).toEqual(["pose"]);
-    expect(videoDepthRequiredAssets(true, true).map((a) => a.role)).toEqual(["depth", "pose"]);
+  it("asks for exactly that one asset on every run", () => {
+    expect(videoDepthRequiredAssets()).toEqual(VIDEO_DEPTH_MODEL_MANIFEST);
   });
 
-  it("resolves assets by role and by the file name used as the serving allowlist key", () => {
-    const depth = videoDepthModelForRole("depth");
+  it("resolves assets by the file name used as the serving allowlist key", () => {
+    const depth = VIDEO_DEPTH_MODEL_MANIFEST[0];
     expect(videoDepthModelByFileName(depth.fileName)).toBe(depth);
     expect(videoDepthModelByFileName("../../etc/passwd")).toBeUndefined();
   });
