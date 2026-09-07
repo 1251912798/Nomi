@@ -428,11 +428,32 @@ export function profileFingerprint(entries: Readonly<Record<string, JsonSchemaOb
   return stableStringify(entries);
 }
 
+/**
+ * 指纹用的**规范形**。两个 profile 都过这一道，否则比到的是构造路径的差别，不是漂移：
+ *   · `$schema` 摘掉——它是 zod→JSON Schema 转换器加的方言标记，与模型看到什么无关；
+ *   · `required` 排序并在为空时省略——`[]` 与「没有这个键」说的是同一件事。
+ */
+function canonicalFingerprintEntry(
+  properties: Readonly<Record<string, JsonSchemaObject>>,
+  required: readonly string[],
+): JsonSchemaObject {
+  const sorted = [...new Set(required)].sort();
+  return {
+    type: "object",
+    properties: { ...properties },
+    ...(sorted.length > 0 ? { required: sorted } : {}),
+    additionalProperties: false,
+  } as JsonSchemaObject;
+}
+
 /** internal profile 的 `别名 → schema` 表。 */
 export function internalFingerprintEntries(
   specs: readonly ModelFacingToolSpec[],
 ): Record<string, JsonSchemaObject> {
-  return Object.fromEntries(specs.map((spec) => [spec.name, toPublishedJsonSchema(spec.schema)]));
+  return Object.fromEntries(specs.map((spec) => {
+    const published = toPublishedJsonSchema(spec.schema);
+    return [spec.name, canonicalFingerprintEntry(propertiesOf(published), requiredOf(published))];
+  }));
 }
 
 /**
@@ -449,23 +470,27 @@ export function internalFingerprintEntries(
  */
 export function mcpFingerprintEntries(tool: McpProfileTool): Record<string, JsonSchemaObject> {
   const published = propertiesOf(tool.inputSchema);
-  const required = new Set(requiredOf(tool.inputSchema));
   const declaredDifference = new Set([...MCP_LEASE_FIELD_NAMES, ...Object.keys(tool.discriminators), ...tool.transportOnlyFields]);
   return Object.fromEntries(tool.specs.map((spec) => {
-    const ownProperties = propertiesOf(toPublishedJsonSchema(spec.schema));
+    const own = toPublishedJsonSchema(spec.schema);
+    const ownProperties = propertiesOf(own);
     const properties: Record<string, JsonSchemaObject> = {};
     for (const [field, schema] of Object.entries(published)) {
       if (declaredDifference.has(field)) continue;
-      const own = ownProperties[field];
-      if (!own) continue;
-      properties[field] = narrowEnum(schema, own);
+      if (!ownProperties[field]) continue;
+      properties[field] = narrowEnum(schema, ownProperties[field]);
     }
-    return [spec.name, {
-      type: "object",
+    // 必填按**这个别名自己**的清单还原，只保留广播里真的还在的字段。
+    //
+    // 为什么不直接读广播的 `required`：一契约一工具的合并是把 N 个别名摊平成一张属性表，
+    // 全局必填只能取「所有别名都必填」的交集——`inspect_timeline_range` 的 startFrame
+    // 因此在广播里不是必填（`read_timeline` 不要它）。那是合并的机械后果，不是漂移，
+    // 判别字段的 description 已经把这件事对宿主说清了。手改广播里的 `required` 由
+    // `mcpProjectionDrift` 那条（广播必须字节等于重算结果）抓，不由这条抓。
+    return [spec.name, canonicalFingerprintEntry(
       properties,
-      required: Object.keys(ownProperties).filter((field) => required.has(field)).sort(),
-      additionalProperties: false,
-    } as JsonSchemaObject];
+      requiredOf(own).filter((field) => field in published),
+    )];
   }));
 }
 
@@ -494,3 +519,40 @@ export function mcpProjectionDrift(
 
 /** 显式的空对象 schema。`{}` 说的是「随便填」，这个说的是「这个工具不收参数」。 */
 export const NO_ARGUMENTS_SCHEMA = z.object({}).strict();
+
+/**
+ * 两个 profile 对同一个能力还在说同一句话吗？
+ *
+ * 逐别名比「模型可见 JSON Schema」的稳定串，返回人话差异（空数组 = 没有漂移）。
+ * **报的是哪个别名、差在哪一边**——"schema 漂移了" 这句话救不了任何人。
+ *
+ * 判据故意粗暴（整串相等）：少一个字段、松一条约束、改一个描述，全都算。同源之后
+ * 两边结构上不可能不同，所以任何不同都只可能来自「有人绕过投影手写了一份」。
+ */
+export function profileDriftBetween(
+  internalEntries: Readonly<Record<string, JsonSchemaObject>>,
+  mcpEntries: Readonly<Record<string, JsonSchemaObject>>,
+): string[] {
+  const drift: string[] = [];
+  for (const alias of [...new Set([...Object.keys(internalEntries), ...Object.keys(mcpEntries)])].sort()) {
+    const internal = internalEntries[alias];
+    const mcp = mcpEntries[alias];
+    if (!internal) {
+      drift.push(`${alias}：只在对外 MCP 上存在，内部 profile 没有它`);
+      continue;
+    }
+    if (!mcp) {
+      drift.push(`${alias}：只在内部 profile 上存在，对外 MCP 广播里没有它`);
+      continue;
+    }
+    const left = stableStringify(internal);
+    const right = stableStringify(mcp);
+    if (left === right) continue;
+    drift.push(
+      `${alias}：内部与对外的模型可见 schema 不同\n`
+      + `       internal = ${left}\n`
+      + `       mcp      = ${right}`,
+    );
+  }
+  return drift;
+}

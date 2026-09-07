@@ -24,6 +24,7 @@
 // 两句话的判据是同一个函数（`isPaidBoundaryAlias`）。一个新的付费能力只要在契约上写
 // `effect:"paid"`，两个面立刻同时生效——不需要任何人记得去改第二个地方。
 import { CAPABILITY_CONTRACTS, capabilityAliasesFor, capabilityOperationAliasesFor } from "./registry";
+import { mcpAnnotationsFor } from "./modelFacingTools";
 import type { CapabilityContract, CapabilityProjectionSurface } from "./capabilityContract";
 
 type AnyCapabilityContract = CapabilityContract<unknown, unknown>;
@@ -92,4 +93,63 @@ export function hostOnlyTransitions(): readonly HostOnlyTransition[] {
       capabilityRefs: Object.freeze([contract.id]),
       reason: paidBoundaryReason(name) ?? "",
     }))));
+}
+
+// ── 对外面：够得着，但永远批不动 ─────────────────────────────────────────────
+
+/**
+ * 付费工具在对外 `tools/list` 上的注解。**派生**自契约的 `effectClass:"spend"`
+ * （`mcpAnnotationsFor`），与内部面用的是同一个判据。
+ *
+ * 阶段 5a 之前这两个工具**一个注解都没带**——不是标错，是漏标，而漏标没有任何东西会报错。
+ * 后果具体：Codex 一类宿主用 `destructiveHint` 决定要不要停下来问用户，缺了它，一次
+ * 花用户钱的调用在宿主眼里和一次读一样普通。
+ */
+export function paidBoundaryAnnotations(): { readonly destructiveHint: true } {
+  const annotations = mcpAnnotationsFor(PAID_CAPABILITY_CONTRACTS[0]!);
+  if (!annotations?.destructiveHint) {
+    throw new Error("A paid capability must derive destructiveHint; check effectClass on the contract.");
+  }
+  return Object.freeze({ destructiveHint: true as const });
+}
+
+/** 一个对外工具声明它把哪些内部方法名路由出去。 */
+export interface PaidBoundaryExternalTool {
+  readonly name: string;
+  /** 这个工具能路由到的全部内部方法名（含按 phase/action 分支的那些）。 */
+  readonly routedMethods: readonly string[];
+  readonly annotations?: { readonly readOnlyHint?: true; readonly destructiveHint?: true };
+}
+
+/**
+ * 装配期不变量：**付费边界上的每个别名都必须被某个声明了 `destructiveHint` 的对外工具认领。**
+ *
+ * 这是本文件那句「漏掉任何一处都不会报错」的正面答案。今天加第二个 `effect:"paid"` 契约时：
+ *   · 内部面自动挡住（`projectsToInternalProfile`，无需任何人记得）；
+ *   · 对外面**没有**工具认领它的别名 → 这里当场抛 → App 起不来（R28：防线建在最早能拦住的那层）。
+ *
+ * 反过来也拦：一个路由到付费别名的对外工具如果没带 `destructiveHint`，同样当场抛——
+ * 那正是阶段 5a 之前 `nomi_operation_gate` / `nomi_operation_execute` 的状态。
+ */
+export function assertPaidBoundaryExternalSurface(tools: readonly PaidBoundaryExternalTool[]): void {
+  const claimed = new Set<string>();
+  for (const tool of tools) {
+    const paidMethods = tool.routedMethods.filter((method) => isPaidBoundaryAlias(method));
+    if (paidMethods.length === 0) continue;
+    if (!tool.annotations?.destructiveHint) {
+      throw new Error(
+        `MCP tool "${tool.name}" routes to the paid boundary (${paidMethods.join(", ")}) without destructiveHint. `
+        + "Derive its annotations from paidBoundaryAnnotations() instead of writing them by hand.",
+      );
+    }
+    for (const method of paidMethods) claimed.add(method);
+  }
+  const unclaimed = paidBoundaryAliases("pi").filter((alias) => !claimed.has(alias));
+  if (unclaimed.length > 0) {
+    throw new Error(
+      `The paid boundary has aliases no external tool claims: ${unclaimed.join(", ")}. `
+      + "A capability declared effect:\"paid\" must either be claimed by an MCP tool that carries destructiveHint, "
+      + "or lose its mcp aliases — silently unreachable spend is how a second paid capability ships half-wired.",
+    );
+  }
 }
