@@ -15,6 +15,7 @@ import { openLane } from '../../electron/agentLane/laneHost.mjs';
 import { createCanvasLaneTools, type CanvasLanePort } from '../../electron/agentLane/laneCanvasTools.js';
 import { createDocumentLaneTools } from '../../electron/agentLane/laneDocumentTools.js';
 import type { LaneToolDescriptor } from '../../electron/agentLane/laneRuntimePort.js';
+import { LANE_READ_TOOL_TIMEOUT_MS } from '../../electron/shared/agentLane/laneToolContract.js';
 import {
   LANE_MODEL_OUTPUT_MAX_BYTES, LANE_MODEL_OUTPUT_MAX_LINES,
 } from '../../electron/shared/agentLane/laneContracts.js';
@@ -40,10 +41,12 @@ test('a document tool’s description names the same cap the transport actually 
 /** 一个只负责吐出 `text` 的工具。截断是**传输层**的活，与哪个能力无关。 */
 function echoTool(name: string, text: string): LaneToolDescriptor {
   return {
+    contractId: 'document.read',
     name,
     description: `Returns a fixed body of text, used to prove the transport truncates what the model sees.`,
     promptSnippet: 'return a fixed body of text.',
     effects: { mutates: false, billable: false, reversal: 'none' },
+    execution: { timeoutMs: LANE_READ_TOOL_TIMEOUT_MS },
     schema: z.object({}).strict(),
     examples: [{ when: 'Call it with no arguments:', arguments: {} }],
     execute: async () => ({ ok: true, text, details: { source: name } }),

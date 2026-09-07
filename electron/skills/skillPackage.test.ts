@@ -7,6 +7,7 @@ import {
   SKILL_PACKAGE_VERSION,
   buildSkillPackage,
   isExecutableSkillPath,
+  skillPackageCarriesExecutables,
   normalizeSkillImportInput,
   isSafeSkillFilePath,
   readSkillDirFiles,
@@ -121,11 +122,23 @@ describe("validateSkillPackage", () => {
     expect(result.ok).toBe(true);
   });
 
-  it("rejects scripts/ with a reason a human can act on, not a generic 'unsafe path'", () => {
-    const result = validateSkillPackage(pkg({ "SKILL.md": "b", "scripts/build.sh": "x" }));
+  // 2026-09-07（阶段 5c）：v1 拒收 `scripts/` 的理由是「进来就要配安全扫描 + 沙箱」。
+  // 两样都有了（`laneCodingSandbox.mts` + `codingCommandPolicy.ts`），所以限制同 commit 删掉。
+  it("accepts scripts/ now that the sandbox and the approval tiers exist", () => {
+    const result = validateSkillPackage(pkg({ "SKILL.md": "b", "scripts/selftest.mjs": "console.log(1)" }));
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(skillPackageCarriesExecutables(result.pkg)).toBe(true);
+  });
+
+  it("still refuses binaries in scripts/ — a file nobody can review is not a file to approve", () => {
+    const result = validateSkillPackage(pkg({ "SKILL.md": "b", "scripts/tool.bin": "\u0001\u0002" }));
     expect(result.ok).toBe(false);
-    // v1 只吃知识层：错误必须说清「为什么不收」，否则用户只会以为文件坏了
-    if (!result.ok) expect(result.error).toContain("知识层");
+  });
+
+  it("a knowledge-only package is not flagged as carrying executables", () => {
+    const result = validateSkillPackage(pkg({ "SKILL.md": "b", "references/x.md": "y" }));
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(skillPackageCarriesExecutables(result.pkg)).toBe(false);
   });
 
   it("rejects a SKILL.md whose frontmatter a real YAML parser cannot read", () => {

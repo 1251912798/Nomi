@@ -88,7 +88,10 @@ export interface RuntimeUsage {
 export type RuntimeFinishReason = 'stop' | 'length' | 'toolUse' | 'error' | 'aborted'
 
 export interface RuntimeErrorFacts {
-  kind: 'http' | 'network' | 'timeout' | 'abort' | 'step-limit' | 'runtime'
+  // `'step-limit'` 曾经在这里。它唯一的产地（`run.mts` 的第三层）已随本次改动删掉，
+  // 留着一个没人再铸造的成员，只会让下一个人以为「到上限」是一类失败——而它不是失败，
+  // 是一次停在预算边界上的正常收尾。
+  kind: 'http' | 'network' | 'timeout' | 'abort' | 'runtime'
   message: string
   code?: string
   status?: number

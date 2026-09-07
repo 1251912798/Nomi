@@ -9,7 +9,7 @@ function tool(index: number): FixtureReply {
 }
 
 for (const maxSteps of [8, 24] as const) {
-  test(`whole Nomi call stops at exactly ${maxSteps} requests and reports an unfinished tool boundary`, async (t) => {
+  test(`whole Nomi call stops at exactly ${maxSteps} requests and stops on the tool boundary without inventing a failure`, async (t) => {
     const { request, http } = await createRuntimeFixture(t,
       [...Array.from({ length: maxSteps + 1 }, (_, index) => tool(index)), { type: 'text', text: 'Must not request this.' }]);
     request.capability = { maxSteps };
@@ -18,12 +18,17 @@ for (const maxSteps of [8, 24] as const) {
     const result = await runAgentTurn(request, { emit: () => {}, awaitToolConfirmation: async () => {
       hosts += 1; return { ok: true, result: 'Read.' };
     } });
+    // 真正的防线仍然是这三行：请求数、工具执行次数、以及转录里那个工具边界。
     assert.equal(http.requests.length, maxSteps);
     assert.equal(hosts, maxSteps);
-    assert.equal(result.status, 'error');
-    assert.equal(result.error?.kind, 'step-limit');
     assert.equal(result.context?.normalRequests, maxSteps);
     assert.match(result.snapshot ?? '', /toolResult/);
+    // 而**这一条是本次改动买到的东西**：预算停住了循环，不代表这一轮失败了——工具全跑完、
+    // 结果全在转录里。此前这里是 `status:'error'` + `kind:'step-limit'`，把一次停在预算
+    // 边界上的正常收尾报成失败给用户看（`docs/audit/2026-09-06-agent-architecture-review.md:319`）。
+    assert.equal(result.status, 'finished');
+    assert.equal(result.finishReason, 'toolUse', 'the turn is reported as what it is: stopped on a tool boundary');
+    assert.equal(result.error, undefined, 'a budget boundary is not a failure, so no error is fabricated');
   });
 
   test(`a normal stop on the last admitted request ${maxSteps} succeeds`, async (t) => {
@@ -51,8 +56,10 @@ test('singleShot ignores supplied history and tools and makes exactly one reques
   assert.equal(http.requests.length, 1);
   assert.equal(hosts, 0);
   assert.ok(!http.requests[0].body.tools || (http.requests[0].body.tools as unknown[]).length === 0);
-  assert.equal(result.status, 'error');
-  assert.equal(result.error?.kind, 'step-limit');
+  // single-shot 的价值在上面三行：一次请求、零工具执行、不带工具表。它「以 toolUse 收尾」
+  // 是模型硬发了一个没被授予的调用，而我们一个都没执行——那不是一次失败的回合。
+  assert.equal(result.status, 'finished');
+  assert.equal(result.finishReason, 'toolUse');
   assert.equal(result.snapshot, undefined, 'single-shot never publishes working history');
 });
 

@@ -88,3 +88,67 @@ test('运输分支（T1 的 JSON 文本那一支）不进模型可见 schema', a
   )
   assert.equal(plain.properties.v.anyOf.length, 2, '只摘运输分支，不是见 anyOf 就拆')
 })
+
+// ── profile-schema-drift（阶段 5a 新增规则的阳性对照） ────────────────────────
+//
+// 这条规则量的不是「一个工具写得好不好」，是**两份说明书之间**的关系——所以它的假绿方式
+// 也不一样：一个永远返回空数组的比较函数，和一个真在比的比较函数，在 CI 里长得一模一样。
+// 下面每条都先证明它会红，再证明合法的近邻不被误伤。
+
+const facing = await import(
+  pathToFileURL(path.join(repoRoot, 'electron/shared/agentCapabilities/modelFacingTools.ts')).href
+)
+
+const objectSchema = (properties, required) => ({
+  type: 'object', properties, ...(required ? { required } : {}), additionalProperties: false,
+})
+
+test('两个 profile 的同名别名 schema 不同 → 抓到；相同 → 不误伤', () => {
+  const internal = { read_full_text: objectSchema({ content: { type: 'string', minLength: 1 } }, ['content']) }
+  // 阳性对照 ①：MCP 侧手改一个字段名（`content` → `text`）——这正是「外部宿主拿到的说明书
+  // 比内部的旧一点」在字节上的样子，而阶段 5a 之前没有任何东西会因此报错。
+  const renamed = { read_full_text: objectSchema({ text: { type: 'string', minLength: 1 } }, ['text']) }
+  const drift = facing.profileDriftBetween(internal, renamed)
+  assert.equal(drift.length, 1)
+  assert.match(drift[0], /read_full_text/, '报错要说清是哪个别名漂了，"schema 漂移了" 救不了任何人')
+  assert.match(drift[0], /internal =/)
+  assert.match(drift[0], /mcp {6}=/)
+
+  // 阳性对照 ②：把一条约束**放松**（minLength 去掉）——比改名更隐蔽，一样要红。
+  assert.equal(
+    facing.profileDriftBetween(internal, { read_full_text: objectSchema({ content: { type: 'string' } }, ['content']) }).length,
+    1,
+  )
+  // 对照的对偶：逐字相同（键序不同也算相同）不被误伤，否则规则等于禁掉了同源本身。
+  assert.deepEqual(
+    facing.profileDriftBetween(internal, {
+      read_full_text: { additionalProperties: false, required: ['content'], properties: { content: { minLength: 1, type: 'string' } }, type: 'object' },
+    }),
+    [],
+  )
+})
+
+test('一个别名只在一边存在 → 抓到，且说清少在哪一边', () => {
+  const both = { a: objectSchema({}), b: objectSchema({}) }
+  assert.match(facing.profileDriftBetween(both, { a: objectSchema({}) })[0], /b：只在内部 profile 上存在/)
+  assert.match(facing.profileDriftBetween({ a: objectSchema({}) }, both)[0], /b：只在对外 MCP 上存在/)
+})
+
+test('广播出去的 inputSchema 必须是共享描述符算出来的那份（手写一份即红）', async () => {
+  const registry = await import(
+    pathToFileURL(path.join(repoRoot, 'electron/shared/agentCapabilities/modelFacingToolRegistry.ts')).href
+  )
+  const contracts = await import(
+    pathToFileURL(path.join(repoRoot, 'electron/shared/agentCapabilities/registry.ts')).href
+  )
+  const tool = registry.mcpProfileTools().find((candidate) => candidate.contractId === 'document.read')
+  const contract = contracts.CAPABILITY_CONTRACTS.find((candidate) => candidate.id === 'document.read')
+  assert.ok(tool && contract)
+
+  // 对照的对偶：真正广播出去的那份是算出来的 → 不红。
+  assert.equal(facing.mcpProjectionDrift(contract, tool.specs, tool.inputSchema), undefined)
+  // 阳性对照：在枚举里悄悄多塞一个值（对外多认一个动作，内部没有）。
+  const tampered = JSON.parse(JSON.stringify(tool.inputSchema))
+  tampered.properties.scope.enum = [...tampered.properties.scope.enum, 'outline']
+  assert.match(facing.mcpProjectionDrift(contract, tool.specs, tampered) ?? '', /共享描述符重算的结果不同/)
+})

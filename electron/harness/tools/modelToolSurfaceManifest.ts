@@ -7,6 +7,7 @@ import { canvasWriteSemanticInputSchema, canvasWriteResultSchema } from "../../s
 import { canvasDeleteSemanticInputSchema, canvasDeleteResultSchema } from "../../shared/agentCapabilities/canvasDelete";
 import { documentReadSemanticInputSchema, documentReadResultSchema } from "../../shared/agentCapabilities/documentRead";
 import { documentWriteSemanticInputSchema, documentWriteResultSchema } from "../../shared/agentCapabilities/documentWrite";
+import { hostOnlyTransitions, type HostOnlyTransition } from "../../shared/agentCapabilities/paidBoundary";
 
 export type SemanticToolDescriptor = Readonly<{
   name: `nomi_${string}`;
@@ -22,11 +23,6 @@ export type SemanticToolDescriptor = Readonly<{
   availability: Readonly<{ phases: readonly string[]; requiredScopes: readonly string[] }>;
 }>;
 
-type HostOnlyTransition = Readonly<{
-  name: string;
-  capabilityRefs: readonly string[];
-  reason: string;
-}>;
 
 const reference = z.object({
   assetId: z.string().trim().min(1),
@@ -238,12 +234,15 @@ const documentDescriptors = [
   },
 ] as const satisfies readonly SemanticToolDescriptor[];
 
-/** Host/UI transitions are wire contracts, never model-authored tools. */
-export const GENERATION_HOST_ONLY_TRANSITIONS: readonly HostOnlyTransition[] = Object.freeze([
-  { name: "nomi_request_generation_gate", capabilityRefs: ["generation.gate"], reason: "Host policy creates the user confirmation card." },
-  { name: "nomi_start_generation", capabilityRefs: ["generation.gate"], reason: "Host starts the approved effect after receipt settlement." },
-  { name: "nomi_decide_generation_gate", capabilityRefs: ["generation.gate"], reason: "Only a verified Host/UI receipt can decide the gate." },
-]);
+/**
+ * Host/UI transitions are wire contracts, never model-authored tools.
+ *
+ * 阶段 5a：名单**派生**自付费边界（`paidBoundary.ts`），不再手写。语义逐字保留——
+ * 这三行原来说的是同一件事：花用户在供应商那里的钱这件事永远不由模型发起，宿主搭确认卡，
+ * 只有经核验的 Host/UI 收据能结清它。变的只是来源：以前加第二个付费能力时要有人**记得**
+ * 来这里补一行，漏掉不会报错；现在契约上写下 `effect:"paid"` 的那一刻这里就多一行。
+ */
+export const GENERATION_HOST_ONLY_TRANSITIONS: readonly HostOnlyTransition[] = hostOnlyTransitions();
 
 export const modelToolSurfaceManifest = Object.freeze({
   version: "m2-canvas-document-v1",
