@@ -19,22 +19,6 @@ import { projectLaneSnapshot, type LaneModelFacts } from '../../../../electron/a
 import { laneViewModel, type LaneViewModelLabels } from '../../../workbench/ai/lane/laneViewModel'
 import type { ToolReceipt } from '../../../workbench/ai/v4/agentPanelV4Types'
 
-/**
- * 投影要的模型事实。夹具里固定成「目录有价目」这一档：收据本身不读 `facts`，
- * 但 `projectLaneSnapshot` 会拿它算花费三态，所以必须给一份确定的值，
- * 不能让基线随「今天选了哪个模型」漂。三态里的另外两档（free / unpriced）
- * 由 `tests/agent-runtime/lane-cost.test.mts` 覆盖，不在这一屏画。
- */
-export const LANE_FIXTURE_FACTS: LaneModelFacts = {
-  model: {
-    provider: 'nomi-lane', id: 'chosen-model', name: 'chosen-model',
-    api: 'openai-completions', baseUrl: 'http://127.0.0.1/v1', reasoning: false,
-    input: ['text'], cost: { input: 0.44, output: 1.32, cacheRead: 0.014, cacheWrite: 0.44 },
-    contextWindow: 128_000, maxTokens: 4096,
-  },
-  pricing: 'priced',
-}
-
 /** 冻结时间戳（基线不能随钟走）。 */
 const AT = 1_757_154_000_000
 const TOOL = 'nomi_timeline_read'
@@ -99,8 +83,20 @@ export function laneSnapshotToolDenied(reason: string): LaneSnapshot {
 }
 
 /** 两层投影真的跑一遍，取出那一行收据。 */
+/**
+ * 三行（阶段 3b）要的模型侧事实。收据格只看工具那一行，花费/上下文/推理都不进画面，
+ * 所以价目给 `'unpriced'`（花费=「不可知」）、不给 contextWindow——和真实「没登记价目的模型」一个形状。
+ */
+export const LAB_MODEL_FACTS: LaneModelFacts = {
+  model: {
+    provider: 'nomi-lane', id: 'lab-model', name: 'lab-model', api: 'openai-completions', baseUrl: 'http://127.0.0.1/v1',
+    reasoning: false, input: ['text'], cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, contextWindow: 0, maxTokens: 0,
+  },
+  pricing: 'unpriced',
+}
+
 export function laneDrivenReceipt(lane: LaneSnapshot, labels: LaneViewModelLabels): ToolReceipt {
-  const model = laneViewModel(projectLaneSnapshot(lane, LANE_FIXTURE_FACTS), labels)
+  const model = laneViewModel(projectLaneSnapshot(lane, LAB_MODEL_FACTS), labels)
   const tool = model.items.find((item) => item.kind === 'tool')
   if (!tool || tool.kind !== 'tool') throw new Error('the lane snapshot projected no tool receipt')
   return tool.receipt
