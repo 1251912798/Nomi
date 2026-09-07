@@ -225,7 +225,12 @@ export function AssetLibraryToolbar({
         onClick={onToggleFilter}
       >
         <IconFilter size={15} stroke={1.8} aria-hidden="true" />
-        {!compact ? <span>{activeFilterLabel}</span> : null}
+        {/*
+          窄栏平时只放图标（密度优先），但**一旦真的在筛**就必须把筛的是什么写出来：
+          2026-09-08 真机走查——从「找参考」回来落在「只看参考」上，左侧栏是 compact，
+          屏幕上只剩 1 条素材而没有任何一个字说明原因，看起来就像素材丢了（卡点④）。
+        */}
+        {!compact || filterActive ? <span className="truncate">{activeFilterLabel}</span> : null}
       </button>
       {filterOpen ? (
         <AssetFilterMenu

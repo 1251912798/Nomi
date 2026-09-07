@@ -198,13 +198,13 @@ try {
         return m ? window.nomiDesktop.assets.list({ projectId: decodeURIComponent(m[1]) }) : { items: [] }
       })
       const ref = (assets.items || []).find((i) => i.data?.sourceEvidence?.connectorId === 'tikhub')
-      note(`落库素材：${ref ? JSON.stringify({ name: ref.name, usage: ref.data?.sourceEvidence?.usageStatus, platform: ref.data?.sourceEvidence?.platform, path: ref.data?.projectRelativePath }) : '（没找到）'}`)
+      note(`落库素材：${ref ? JSON.stringify({ name: ref.name, usage: ref.data?.sourceEvidence?.usageStatus, platform: ref.data?.sourceEvidence?.platform, path: ref.data?.relativePath }) : '（没找到）'}`)
       note(`素材总数 = ${(assets.items || []).length}`)
       if (!ref) {
         failures.push('点了「加入素材库」但项目里找不到 connectorId=tikhub 的素材——导入没落库')
-      } else if (!String(ref.data?.projectRelativePath || '').startsWith('assets/reference/')) {
+      } else if (!String(ref.data?.relativePath || '').startsWith('assets/reference/')) {
         // 本次的结构主张：来源由目录承载。落错桶 = 界面上的来源筛选全部失效。
-        failures.push(`参考素材没落进 assets/reference/：${ref.data?.projectRelativePath}`)
+        failures.push(`参考素材没落进 assets/reference/：${ref.data?.relativePath}`)
       }
     } else {
       note('⚠️ 结果卡上没有「加入素材库」按钮')
@@ -229,12 +229,16 @@ try {
     await back.click()
     await win.waitForTimeout(800)
     await shot(win, 'back-to-library', '点返回条——应该回到我的素材，且看得见刚加的那条')
-    const gridAssets = await win.locator('section[aria-label="素材库"] [role="list"] > *, section[aria-label="素材库"] img').count()
-    note(`回到素材库后可见元素 = ${gridAssets} · 面板还在 = ${await win.locator('[data-find-reference-panel]').count() > 0}`)
+    // 闭环的真正判据：刚拿的那条**看得见**（按素材名找瓦片，不是数容器里有几个 div）。
+    const importedTile = win.getByRole('button', { name: /^douyin-ref-/ }).first()
+    await expectVisible(importedTile, '回到素材库后，刚拿的那条参考必须在网格里看得见')
+    note(`面板还在 = ${await win.locator('[data-find-reference-panel]').count() > 0}`)
 
     // 验 B：拿完东西回来应该落在「只看参考」上——漏斗按钮的字要说出这件事，
     // 而不是让刚拿的几条淹进一整片旧素材里（2026-09-08 用户当场提的那条）。
-    const filterButton = win.locator('button[aria-label="素材分类筛选"]')
+    // aria-label 以 i18n 实际值为准（categoryFilter = 「筛选素材分类」）——
+    // 2026-09-08 这里先写反成「素材分类筛选」，走查当场红：死选择器同时会造假红和假绿。
+    const filterButton = win.locator('button[aria-label="筛选素材分类"]')
     const filterLabel = (await filterButton.textContent().catch(() => null))?.trim() || null
     note(`漏斗按钮文案 = ${JSON.stringify(filterLabel)}（拿过东西时应含「找来的参考」）`)
     if (!/找来的参考/.test(filterLabel || '')) {
