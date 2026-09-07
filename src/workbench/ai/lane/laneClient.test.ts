@@ -17,7 +17,7 @@ function fakeBridge() {
 const projection = (text: string): LaneProjection => ({
   lane: 'main', running: false,
   parts: [{ sequence: 0, entrySeq: 0, contentIndex: 0, kind: 'user', text }],
-  usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+  usage: { inputTokens: 1, outputTokens: 1, cacheReadTokens: 0, cacheWriteTokens: 0, totalTokens: 2 },
 })
 
 describe('laneClient', () => {

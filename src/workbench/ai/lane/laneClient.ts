@@ -42,7 +42,7 @@ export const EMPTY_LANE_PROJECTION: LaneProjection = Object.freeze({
   lane: 'main',
   parts: Object.freeze([]),
   running: false,
-  usage: Object.freeze({ inputTokens: 0, outputTokens: 0, totalTokens: 0 }),
+  usage: Object.freeze({ inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0, totalTokens: 0 }),
 })
 
 export interface LaneClient {

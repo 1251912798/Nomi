@@ -18,6 +18,7 @@ import { createNomiProvider } from '../harness/runtime/pi/model.mjs';
 import { LANE_APPROVAL_NOTE_TYPE, type LaneApprovalNote, type LaneCommand, type LaneHandle, type LaneProjection }
   from '../shared/agentLane/laneContracts.js';
 import type { OpenLane, OpenLaneOptions } from './laneRuntimePort.js';
+import { composeLaneSystemPrompt } from './lanePromptSections.js';
 import { openLaneSession } from './laneSession.mjs';
 import { createLaneTools } from './laneTools.mjs';
 import { projectLaneSnapshot } from './laneProjection.mjs';
@@ -66,8 +67,12 @@ export const openLane: OpenLane = async (options: OpenLaneOptions): Promise<Lane
   const models = createModels({ credentials });
   models.setProvider(provider);
   const tools = createLaneTools(options.tools);
+  // `Available tools` / `Guidelines` 两段由宿主拼，不靠调用方记得（G-03 的后一半）。
+  // 2026-09-07 合并评审实核：`composeLaneSystemPrompt` 此前零生产调用者——通道②③写满了，
+  // 一个字都到不了模型。拼接点放在这里，是因为这里是唯一知道「这条 lane 装了哪些工具」的地方。
+  const systemPrompt = composeLaneSystemPrompt(options.systemPrompt, options.tools);
   const { harness } = await AgentHarness.create<undefined>({
-    session, models, model, systemPrompt: options.systemPrompt, tools,
+    session, models, model, systemPrompt, tools,
     activeToolNames: tools.map((tool) => tool.name),
     toolExecution: 'sequential',
     entryProjectors: {

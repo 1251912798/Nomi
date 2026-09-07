@@ -63,6 +63,8 @@
   "usage": {
     "inputTokens": 30,
     "outputTokens": 12,
+    "cacheReadTokens": 0,
+    "cacheWriteTokens": 0,
     "totalTokens": 42
   }
 }
