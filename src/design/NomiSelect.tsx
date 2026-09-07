@@ -38,6 +38,7 @@ export type NomiSelectOption = {
   disabled?: boolean
   /** 整行减淡（仍可点）——「能选但眼下不建议」，如近期连败的模型沉底后。 */
   dimmed?: boolean
+  more?: boolean
 }
 
 export type NomiSelectProps = {
@@ -101,11 +102,13 @@ export function NomiSelect({
   portalTarget,
 }: NomiSelectProps): JSX.Element {
   const { t } = useTranslation()
+  const [more, setMore] = React.useState(false)
   const [search, setSearch] = React.useState('')
   const combobox = useCombobox({
     onDropdownClose: () => {
       combobox.resetSelectedOption()
       setSearch('')
+      setMore(false)
     },
   })
   const wasOpen = React.useRef(false)
@@ -121,7 +124,7 @@ export function NomiSelect({
   const triggerText = selected?.label ?? (value || placeholder || t('common.select'))
   const heightClass = size === 'xs' ? 'h-6' : 'h-7'
   const query = search.trim().toLocaleLowerCase()
-  const visibleOptions = searchable && query ? options.filter((option) => option.label.toLocaleLowerCase().includes(query)) : options
+  const visibleOptions = searchable && query ? options.filter((option) => option.label.toLocaleLowerCase().includes(query)) : options.filter((option) => more || !option.more || option.value === value)
   const hasChips = options.some((option) => (option.chips?.length ?? 0) > 0)
 
   return (
@@ -281,6 +284,9 @@ export function NomiSelect({
               </Combobox.Option>
             )
           })}
+          {!more && !query && options.some((option) => option.more && option.value !== value) ? (
+            <button type="button" onClick={() => { setMore(true); combobox.resetSelectedOption() }} className="w-full px-2 py-1.5 text-left text-caption text-nomi-ink-60">{t('onboardingProviders.modelControls.more')}</button>
+          ) : null}
         </Combobox.Options>
       </Combobox.Dropdown>
     </Combobox>
