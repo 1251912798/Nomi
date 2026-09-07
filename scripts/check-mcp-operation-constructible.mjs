@@ -51,8 +51,15 @@ function sampleFor(schema) {
     }
     case 'integer':
     case 'number': {
-      const minimum = typeof schema.minimum === 'number' ? schema.minimum : 1
-      return Math.max(minimum, typeof schema.maximum === 'number' ? Math.min(minimum, schema.maximum) : minimum)
+      // `exclusiveMinimum` 必须一起看：`.positive()` 生成的是 exclusive 边界，而 `.safe()`
+      // 同时留下一个 `minimum: -9007199254740991`。只读 `minimum` 会造出一个**负数**样本，
+      // 然后被传输 schema 自己拒掉——那是仪器坏了，不是被测对象坏了。
+      const inclusive = typeof schema.minimum === 'number' ? schema.minimum : 1
+      const exclusive = typeof schema.exclusiveMinimum === 'number'
+        ? schema.exclusiveMinimum + (schema.type === 'integer' ? 1 : Number.EPSILON)
+        : Number.NEGATIVE_INFINITY
+      const minimum = Math.max(inclusive, exclusive)
+      return typeof schema.maximum === 'number' ? Math.min(minimum, schema.maximum) : minimum
     }
     case 'boolean':
       return true

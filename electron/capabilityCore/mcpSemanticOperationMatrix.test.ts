@@ -395,7 +395,7 @@ describe('MCP semantic operation production-path matrix', () => {
     await client.initialize()
     const leaseHandle = await openLease(client)
     const blockedCalls = [
-      ['nomi_timeline_read', { leaseHandle, projectId: PROJECT_ID, operation: 'read' }],
+      ['nomi_timeline_read', { leaseHandle, projectId: PROJECT_ID, operation: 'read_timeline' }],
       ['nomi_timeline_edit', {
         leaseHandle,
         projectId: PROJECT_ID,
@@ -407,7 +407,8 @@ describe('MCP semantic operation production-path matrix', () => {
           operations: [{ kind: 'remove', clipId: 'clip-not-present' }],
         },
       }],
-      ['nomi_media_query', { leaseHandle, projectId: PROJECT_ID, operation: 'list', query: '', limit: 1 }],
+      // 阶段 5a：对外动作名 = 内部语义别名（`list` → `search_media`），两个 profile 同源之后没有第二套词表。
+      ['nomi_media_query', { leaseHandle, projectId: PROJECT_ID, operation: 'search_media', query: '', limit: 1 }],
       ['nomi_export_job', { leaseHandle, projectId: PROJECT_ID, operation: 'status', jobId: 'job-not-started' }],
     ] as const
     for (const [index, [name, args]] of blockedCalls.entries()) {

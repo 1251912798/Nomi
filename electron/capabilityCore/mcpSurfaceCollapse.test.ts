@@ -83,7 +83,10 @@ describe('MCP surface collapse 42→15 · P1 retirement', () => {
   it('marks read-only via annotations (not a name set): nomi_read + nomi_operation_preview + M2 read tools', () => {
     const readOnly = MCP_TOOL_RESOLVER.list().filter((t) => (t as { annotations?: { readOnlyHint?: boolean } }).annotations?.readOnlyHint).map((t) => t.name)
     // timeline_edit 是写（reversible_write），不在只读集；timeline_read/export_job/media_query 是读。
-    expect(readOnly).toEqual(['nomi_read', 'nomi_operation_preview', 'nomi_timeline_read', 'nomi_export_job', 'nomi_media_query'])
+    // 阶段 5a：注解**全量派生**自契约的 effect/effectClass（`mcpAnnotationsFor`），不再是一张
+    // 手写的 4 个适配器名单。名单漏掉的两个（document_read / layout_read）因此第一次带上
+    // readOnlyHint —— 它们的契约本来就是 `effect:"read"`，漏标的后果是宿主对一次读也去问用户。
+    expect(readOnly).toEqual(['nomi_read', 'nomi_operation_preview', 'nomi_document_read', 'nomi_timeline_read', 'nomi_export_job', 'nomi_media_query', 'nomi_layout_read'])
   })
 })
 

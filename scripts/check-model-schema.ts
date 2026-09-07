@@ -32,6 +32,14 @@ import {
 } from "../electron/shared/agentCapabilities/modelVisibleJsonSchema";
 import { LANE_MODEL_TOOL_CATALOG } from "../electron/agentLane/laneToolCatalog";
 import { modelToolSurfaceManifest } from "../electron/harness/tools/modelToolSurfaceManifest";
+import {
+  internalFingerprintEntries, mcpFingerprintEntries, mcpProjectionDrift, profileDriftBetween,
+  type JsonSchemaObject, type McpProfileTool,
+} from "../electron/shared/agentCapabilities/modelFacingTools";
+import {
+  mcpProfileTools, modelFacingToolSpecs,
+} from "../electron/shared/agentCapabilities/modelFacingToolRegistry";
+import { CAPABILITY_CONTRACTS } from "../electron/shared/agentCapabilities/registry";
 
 const repoRoot = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..");
 const baselinePath = path.join(repoRoot, "scripts", "model-schema-baseline.json");
@@ -59,7 +67,8 @@ type RuleId =
   | "const-instead-of-enum"
   | "identical-input-schema"
   | "thin-description"
-  | "missing-example";
+  | "missing-example"
+  | "profile-schema-drift";
 
 const RULE_ORDER: readonly RuleId[] = [
   "empty-schema",
@@ -68,6 +77,7 @@ const RULE_ORDER: readonly RuleId[] = [
   "identical-input-schema",
   "thin-description",
   "missing-example",
+  "profile-schema-drift",
 ];
 
 interface Finding {
@@ -263,7 +273,72 @@ function analyse(tools: readonly ModelVisibleTool[]): Finding[] {
     }
   }
 
+  findings.push(...analyseProfileDrift());
+
   return findings;
+}
+
+/**
+ * S-drift · **同一个能力在两个 profile 上必须说同一句话**（方案 §3.1，阶段 5a）。
+ *
+ * 前面五条规则量的是「一个工具自己写得好不好」；这一条量的是**两份说明书之间**的关系，
+ * 而那正是阶段 5a 之前唯一没有任何东西在看的地方：内部 lane 与对外 MCP 各写各的 schema，
+ * 外部宿主拿到的说明书永远比内部的旧一点、松一点，**而没有任何东西会因此报错**。
+ *
+ * 两条判据，缺一不可：
+ *   ① **广播即派生**——`tools/list` 上真正发出去的 `inputSchema`，必须字节等于从共享描述符
+ *      重算的那份。有人绕过投影函数手写一份、或在枚举里悄悄多塞一个值，只有这条会红。
+ *   ② **逐别名指纹相等**——把广播出去的那份反投影回「别名 → 模型可见 schema」，与内部
+ *      profile 的同一张表比。租约、别名定死的判别字段、声明出来的「外部才有」传输字段
+ *      三类被摘掉：它们是 profile **声明**的差异，不是漂移。
+ *
+ * 身份取到能力粒度（`capability/<contract id>`），因为漂移是「这个能力的两份说明书」之间的事。
+ */
+function analyseProfileDrift(): Finding[] {
+  const findings: Finding[] = [];
+  const internal = modelFacingToolSpecs("internal");
+  const broadcast = new Map(
+    (MCP_TOOL_RESOLVER.list() as readonly { name: string; inputSchema?: Record<string, unknown> }[])
+      .map((tool) => [tool.name, (tool.inputSchema ?? {}) as JsonSchemaObject]),
+  );
+
+  for (const tool of mcpProfileTools()) {
+    const contract = tool.specs[0] ? contractOf(tool.contractId) : undefined;
+    const published = broadcast.get(tool.name);
+    if (!published) continue; // 这个能力还没接上对外传输层；那是覆盖率的事，不是漂移。
+
+    if (contract) {
+      const projectionDrift = mcpProjectionDrift(contract, tool.specs, published);
+      if (projectionDrift) {
+        findings.push({
+          rule: "profile-schema-drift",
+          identity: `capability/${tool.contractId}#broadcast`,
+          detail: `${tool.contractId}：${projectionDrift}——共享描述符是唯一真相源，`
+            + "对外那份必须是它算出来的，不是手写的",
+        });
+      }
+    }
+
+    const internalHere = internal.filter((spec) => spec.contractId === tool.contractId);
+    if (internalHere.length === 0) continue; // 声明为「外部才有」（`spec.profiles`）或付费不投影。
+
+    const asBroadcast: McpProfileTool = { ...tool, inputSchema: published };
+    for (const line of profileDriftBetween(
+      internalFingerprintEntries(internalHere),
+      mcpFingerprintEntries(asBroadcast),
+    )) {
+      findings.push({
+        rule: "profile-schema-drift",
+        identity: `capability/${tool.contractId}#${line.split("：")[0]}`,
+        detail: `${tool.contractId} · ${line}`,
+      });
+    }
+  }
+  return findings;
+}
+
+function contractOf(contractId: string) {
+  return CAPABILITY_CONTRACTS.find((candidate) => candidate.id === contractId);
 }
 
 // ── 棘轮 ───────────────────────────────────────────────────────────────────

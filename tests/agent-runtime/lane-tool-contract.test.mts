@@ -19,7 +19,7 @@ import { renderLanePromptSections } from '../../electron/agentLane/lanePromptSec
 import {
   laneToolModelDescription, renderLaneToolFailure, laneToolFailureToRpc,
 } from '../../electron/shared/agentLane/laneToolContract.js';
-import { laneArgumentTolerance } from '../../electron/agentLane/laneArgumentTolerance.js';
+import { modelArgumentTolerance } from '../../electron/shared/agentCapabilities/modelArgumentTolerance.js';
 
 /** 产物按 JSON Schema 的形状读——`any` 会让门岗的字段名写错时静默通过。 */
 interface PublishedSchema {
@@ -203,7 +203,7 @@ test('没有判别字段的 union 拒绝扁平化，而不是把语义放宽', (
 // ── 容忍是一族（§3.4 / G-06）─────────────────────────────────────────────────
 
 test('容忍收下四种「意思对、形状错」，且不放宽任何语义', () => {
-  const prepare = laneArgumentTolerance({
+  const prepare = modelArgumentTolerance({
     arrayFields: ['nodes'],
     objectFields: ['camera'],
     fieldAliases: { content: ['text', 'body'] },
@@ -234,7 +234,7 @@ test('容忍不做 pi 已经做的两件事', () => {
   // 是 pi 校验器内部的两道（`pi-ai/dist/utils/validation.js:280-296`）。我们再做一遍
   // 就是第二个容忍器——而两个互不认识的验证器正是 #547 §2.2③「8 行报错只有 1 行是真的」
   // 的成因。所以这里断言我们**没有**碰它们。
-  const prepare = laneArgumentTolerance({ arrayFields: ['nodes'] });
+  const prepare = modelArgumentTolerance({ arrayFields: ['nodes'] });
   assert.deepEqual(prepare({ count: '5', maybe: null }), { count: '5', maybe: null });
 });
 

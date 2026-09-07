@@ -19,12 +19,15 @@ import type {
   LaneApprovalNote,
   LaneMetric,
   LanePart,
+  LanePendingApproval,
   LaneProjection,
 } from '../../../../electron/shared/agentLane/laneContracts'
 import {
   LANE_APPROVAL_NOTE_TYPE,
   isLaneApprovalNote,
+  laneApprovalWasRefused,
 } from '../../../../electron/shared/agentLane/laneContracts'
+import type { V4InterventionSource } from '../v4/agentPanelV4Intervention'
 import { resolveCapabilityAlias } from '../../../../electron/shared/agentCapabilities/registry'
 import { actionFamilyForCapability } from '../v4/agentPanelV4ActionFamily'
 import type {
@@ -48,6 +51,16 @@ export interface LaneViewModelLabels {
   /** 数字格式化：token 数、金额。缺省不印，不是印 0。 */
   formatTokens(value: number): string
   formatCost(usd: number): string
+  /**
+   * 「正在重试 2/4」。**两个数都由调用方填**（R15）——它是这一族里唯一带变量的可见文字，
+   * 而 zh-CN 与 en 的语序不同，在这一层拼字符串就等于把语序钉死成中文的。
+   *
+   * 词条**故意还没进 `src/i18n/locales/agentPanelV4.ts`**：影子期这一族标签一个生产调用方
+   * 都还没有（`useAgentPanelV4Data.ts` 喂的是旧那份投影），先落一个 `agentPanelV4.retrying`
+   * 就是一个到不了的死键，`check:i18n-dead-keys` 会当场红——它红得对。词条和它的消费者
+   * 同一个 commit 出现，就在把面板接到 lane 的那次切换 PR 里。
+   */
+  retryLabel(attempt: number, maxAttempts: number): string
   /**
    * 「这个数我们没有」的占位（面板上那个 `—`）。三态里的 `unknown` 走它——
    * **整行留着、数字位写占位符**，让用户看见「这一项存在但拿不到」，而不是看见一个 0，
@@ -84,6 +97,32 @@ export interface LaneViewModel {
   items: readonly V4FlowItem[]
   usage: ContextUsage
   running: boolean
+  /**
+   * 只在真的在退避时存在。**缺失 = 没在重试**，不是重试了 0 次——面板据此决定画不画那一行，
+   * 而一个恒存在的「重试 0/4」会把「一切正常」说成「它在挣扎」。
+   */
+  retry?: string
+  /**
+   * 有一张审批卡在等用户。**它不是流里的一行**——它住在 composer 上方那个介入槽里
+   * （v4 定稿的积木 ⑤），所以它不进 `items`；进了就会在滚上去之后消失，而用户正等着答它。
+   */
+  pending?: LanePendingApproval
+}
+
+/**
+ * 待决的卡 → 现役介入槽要的那份数据源。
+ *
+ * 槽的**投影**（kind / 徽标 / 摘要 / 范围那一行）已经有唯一 owner
+ * （`agentPanelV4Intervention.ts`），这里只做「把 lane 的词表换成它的词表」这一步——
+ * 再写一份 kind 判定就是 R14.1 要横扫的「同一语义两份定义」。
+ */
+export function laneInterventionSource(pending: LanePendingApproval): V4InterventionSource {
+  return {
+    toolName: pending.toolName,
+    args: pending.args,
+    ...(pending.effectClass ? { effectClass: pending.effectClass } : { effectClass: undefined }),
+    pendingCount: pending.pendingCount,
+  }
 }
 
 /** 一次工具调用在流里的落点，用来把结果并回它的那一行（按 id join，不复制正文）。 */
@@ -151,7 +190,7 @@ export function laneViewModel(projection: LaneProjection, labels: LaneViewModelL
       // 宿主记录不占流里的一行。审批拒收的那句话 pi 已经一字不改地做成了那次调用的
       // tool result（探针 §4.2 臂 B），所以这里只用它把那一行的状态从「坏了」改成
       // 「被拒了」——同一句话说两遍是在骗用户，让他以为发生了两件事。
-      if (part.noteType === LANE_APPROVAL_NOTE_TYPE && isLaneApprovalNote(part.data) && part.data.decision === 'denied') {
+      if (part.noteType === LANE_APPROVAL_NOTE_TYPE && isLaneApprovalNote(part.data) && laneApprovalWasRefused(part.data)) {
         denials.set(part.data.toolCallId, part.data)
       }
       continue
@@ -199,6 +238,10 @@ export function laneViewModel(projection: LaneProjection, labels: LaneViewModelL
   return {
     items,
     running: projection.running,
+    ...(projection.retry
+      ? { retry: labels.retryLabel(projection.retry.attempt, projection.retry.maxAttempts) }
+      : {}),
+    ...(projection.pending ? { pending: projection.pending } : {}),
     usage: {
       // 环的分子是「现在上下文里装了多少」，不是累计用量——累计会画出一个 300% 的环。
       // 三态里只有 `known` 能当分子；`unknown` 时**连 `used` 都不给**，钮上退回 `—`。
