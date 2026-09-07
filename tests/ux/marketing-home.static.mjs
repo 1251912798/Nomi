@@ -22,7 +22,7 @@ const expectMobileSafeConversion = (document, heading, boundary, language) => {
   expect(!conversion.includes('|:---'), `${language} conversion avoids a shrinking Markdown table`)
   expectBefore(
     conversion,
-    'docs/media/nomi-canvas-group-wechat-2026-09-01.jpg',
+    'docs/media/nomi-canvas-group-wechat-2026-09-08.jpg',
     'docs/media/qingyang-wechat.jpg',
     `${language} puts the user-group QR before maintainer contact`,
   )
@@ -51,7 +51,7 @@ const files = [
   'marketing/assets/screen-timeline-2026-08-17.png',
   'marketing/assets/screen-3d-2026-08-17.png',
   'marketing/assets/screen-agentic-2026-08-17.png',
-  'docs/media/nomi-canvas-group-wechat-2026-09-01.jpg',
+  'docs/media/nomi-canvas-group-wechat-2026-09-08.jpg',
   'docs/media/qingyang-wechat.jpg',
   '.github/ISSUE_TEMPLATE/business_inquiry.yml',
   'marketing/quickstart.html',
@@ -186,7 +186,7 @@ for (const relativePath of files) expect(fs.existsSync(path.join(root, relativeP
 expect(
   fs
     .readFileSync(path.join(root, 'marketing/assets/group-wechat-2026-09-01.jpg'))
-    .equals(fs.readFileSync(path.join(root, 'docs/media/nomi-canvas-group-wechat-2026-09-01.jpg'))),
+    .equals(fs.readFileSync(path.join(root, 'docs/media/nomi-canvas-group-wechat-2026-09-08.jpg'))),
   'website and README publish the identical current group QR',
 )
 expect(
@@ -215,7 +215,7 @@ for (const label of ['加入用户群', '团队合作', '夸克网盘镜像', 'T
   expect(readmeZh.includes(label), `Chinese README conversion survives: ${label}`)
 }
 expect(
-  readmeZh.includes('docs/media/nomi-canvas-group-wechat-2026-09-01.jpg'),
+  readmeZh.includes('docs/media/nomi-canvas-group-wechat-2026-09-08.jpg'),
   'Chinese README uses the current group QR',
 )
 expect(readmeZh.includes('docs/media/qingyang-wechat.jpg'), 'Chinese README keeps maintainer QR')
@@ -231,7 +231,7 @@ for (const label of [
   expect(readmeEn.includes(label), `English README conversion survives: ${label}`)
 }
 expect(
-  readmeEn.includes('docs/media/nomi-canvas-group-wechat-2026-09-01.jpg'),
+  readmeEn.includes('docs/media/nomi-canvas-group-wechat-2026-09-08.jpg'),
   'English README uses the current group QR',
 )
 expect(readmeEn.includes('github.com/aqm857886159/Nomi/discussions'), 'English README keeps GitHub Discussions')
@@ -261,7 +261,7 @@ expect(quickstart.includes('macOS 12+'), 'quickstart states the macOS minimum ve
 const readmeHero = '[![Nomi director workflow]'
 const readmeZhHero = '[![Nomi 导演工作流]'
 for (const [token, label] of [
-  ['<img src="docs/media/nomi-canvas-group-wechat-2026-09-01.jpg"', 'group QR'],
+  ['<img src="docs/media/nomi-canvas-group-wechat-2026-09-08.jpg"', 'group QR'],
   ['<img src="docs/media/qingyang-wechat.jpg"', 'maintainer QR'],
   ['TZ857886159', 'textual WeChat fallback'],
 ]) {
