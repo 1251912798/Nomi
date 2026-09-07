@@ -47,6 +47,9 @@ import { buildStoryboardPlaybackQueue, hiddenGeneratingCount, positionsForAnchor
 import { buildStoryboardReference } from '../../ai/resident/residentReferences'
 import StoryboardPlanStrategyPanel from './StoryboardPlanStrategyPanel'
 import { resolveGeneratableGate, type StoryboardResolveClient } from './strategyGate'
+import { useStoryboardStrategy } from './useStoryboardStrategy'
+import { describeBlocker, describeIssue } from './strategyText'
+import { storyboardShotId } from '../../generationCanvas/agent/storyboardStrategy'
 import { getDesktopBridge } from '../../../desktop/bridge'
 
 /**
@@ -55,6 +58,9 @@ import { getDesktopBridge } from '../../../desktop/bridge'
  * 没有单向门，行状态/计数全部从「plan × 画布节点」实时 derive（exec/storyboardRowStatus）。
  * 执行只有 canvas runner 一条通路（exec/storyboardRowActions），spendConfirm/波次/undo 全沿用。
  */
+
+/** 还没有方案时喂给执行计划 hook 的空方案（hook 顺序不能因方案有无而变；空方案 → idle，不发 IPC）。 */
+const EMPTY_STRATEGY_PLAN: StoryboardPlan = { title: '', anchors: [], shots: [] }
 
 export default function StoryboardPlanEditor({ projectId }: { projectId?: string | null }): JSX.Element | null {
   const { t } = useTranslation()
@@ -189,6 +195,28 @@ export default function StoryboardPlanEditor({ projectId }: { projectId?: string
     [playbackQueue, t],
   )
 
+  // 执行计划（Generation Strategy Resolver）：**查一次**，面板、行内警示、闸各取所需。
+  // hook 必须在 `if (!plan) return null` 之前（React hook 顺序），所以没方案时喂空方案 → idle。
+  const strategyClient = React.useMemo<StoryboardResolveClient | null>(
+    () => getDesktopBridge()?.generationStrategy ?? null,
+    [],
+  )
+  const strategyState = useStoryboardStrategy(plan ?? EMPTY_STRATEGY_PLAN, projectId, strategyClient)
+  // 行内警示（D1，返工 7）：超上限 / 低于下限在**表格行上**就看得见，不用点开面板才知道。
+  // 句子与面板同源（strategyText），行上只放最短的一句 + 完整理由挂 title。
+  const durationWarnings = React.useMemo(() => {
+    if (strategyState.status !== 'ready') return undefined
+    const rendered = new Map<string, { kind: 'overflow' | 'underflow'; text: string; detail: string }>()
+    for (const [shotId, warning] of strategyState.warnings) {
+      rendered.set(shotId, {
+        kind: warning.kind,
+        text: warning.kind === 'overflow' ? t('storyboardEditor.strategy.rowOverflow') : t('storyboardEditor.strategy.rowUnderflow'),
+        detail: describeIssue(t, warning.issue),
+      })
+    }
+    return rendered
+  }, [strategyState, t])
+
   if (!plan) return null
 
   const issues = validatePlan(plan)
@@ -222,16 +250,26 @@ export default function StoryboardPlanEditor({ projectId }: { projectId?: string
   }
 
   /**
-   * 落画布/生成前的执行计划闸（D3 B 段，切片 4）：真正会 materialize 新节点的动作（单镜生成 / 整批）
+   * 落画布/生成前的执行计划闸（D3 B 段，切片 4）：真正会 materialize 新节点的动作（单镜 / 多选 / 整批）
    * 先过 resolve——存在「原样生成即截断/无模型」的阻断（超上限未拆、低于下限未并、模型缺失）就拦下，
-   * 给出第一条机器理由；效率合并（建议式）不拦。resolve 通道不可用（无 bridge/能力核未起）→ fail-open 放行
-   * （生成合法性另有 main 侧契约钳值兜底；本闸是建议级拦截，不是安全边界）。
+   * 给出第一条机器理由；效率合并（建议式）不拦。
+   *
+   * **作用域 = 本次真的要 materialize 的那些镜头**（返工 1）：resolve 照旧按整份方案算（合并建议
+   * 依赖真实相邻关系），但判断只看 `shotIds`。第 7 镜超限拦不住单点第 3 镜——上一版把整份方案的
+   * 任意一条阻断套在单镜生成上，用户会被一条与他无关的镜头挡住。
+   *
+   * resolve 通道不可用（无 bridge/能力核未起）→ fail-open 放行（生成合法性另有 main 侧契约钳值兜底；
+   * 本闸是建议级拦截，不是安全边界）。
    */
   const resolveClient = (): StoryboardResolveClient | null => getDesktopBridge()?.generationStrategy ?? null
-  const guardMaterialize = async (action: () => Promise<void>): Promise<void> => {
-    const blocker = await resolveGeneratableGate(plan, projectId, resolveClient())
+  const guardMaterialize = async (
+    scope: readonly StoryboardRowRuntime[],
+    action: () => Promise<void>,
+  ): Promise<void> => {
+    const shotIds = scope.map((runtime) => storyboardShotId(runtime.shot))
+    const blocker = await resolveGeneratableGate(plan, projectId, resolveClient(), shotIds)
     if (blocker) {
-      toast(blocker, 'error')
+      toast(describeBlocker(t, blocker), 'error')
       return
     }
     await runAction(action)
@@ -246,18 +284,18 @@ export default function StoryboardPlanEditor({ projectId }: { projectId?: string
     ])
   }
   const onGenerateRow = (runtime: StoryboardRowRuntime): void => {
-    void guardMaterialize(() => generateShotRow(execCtx, runtime.shot, runtime.mode))
+    void guardMaterialize([runtime], () => generateShotRow(execCtx, runtime.shot, runtime.mode))
   }
   const onRunBatch = (): void => {
     const running = batch.runnable
     // 「本次跳过」的作用域就是这一批：批次一发出去，标记立刻清空（§2.10）。
     setSkippedShotIds(new Set())
-    void guardMaterialize(() => runStoryboardBatch(execCtx, running))
+    void guardMaterialize(running, () => runStoryboardBatch(execCtx, running))
   }
   const onRunSelected = (selected: StoryboardRowRuntime[]): void => {
     if (selected.length === 0) return
     setSkippedShotIds(new Set())
-    void guardMaterialize(() => runStoryboardBatch(execCtx, selected))
+    void guardMaterialize(selected, () => runStoryboardBatch(execCtx, selected))
   }
   const onToggleSkip = (shotId: string): void => {
     setSkippedShotIds((previous) => {
@@ -444,8 +482,9 @@ export default function StoryboardPlanEditor({ projectId }: { projectId?: string
       />
 
       <div className="overflow-y-auto px-4 py-4 flex flex-col gap-4">
-        {/* 执行计划审阅条（切片 3）：主进程同源 resolve 的合并/拆条建议 + 阻断问题，逐条采纳即改方案。 */}
-        <StoryboardPlanStrategyPanel projectId={projectId} plan={plan} onChange={setStoryboardPlan} />
+        {/* 执行计划审阅条（切片 3）：主进程同源 resolve 的合并/拆条建议 + 阻断问题，逐条采纳即改方案。
+            同一份 resolve 结果还喂给表格行的行内警示（D1：摩擦在行上，提示就在行上）。 */}
+        <StoryboardPlanStrategyPanel plan={plan} state={strategyState} onChange={setStoryboardPlan} />
         <StoryboardAnchorZone
           cards={anchorCards}
           aspect={planDefaultAspect(plan)}
@@ -504,6 +543,7 @@ export default function StoryboardPlanEditor({ projectId }: { projectId?: string
               imageModelOptions={imageModelOptions}
               videoModelOptions={videoModelOptions}
               emptyPromptShots={emptyPromptShots}
+              durationWarnings={durationWarnings}
               onChange={setStoryboardPlan}
               onStoryboardShotSelect={onStoryboardShotSelect}
               onSelectionChange={setSelectedRuntimes}
