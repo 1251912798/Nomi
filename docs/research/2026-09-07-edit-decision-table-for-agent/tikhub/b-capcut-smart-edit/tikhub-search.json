@@ -1,0 +1,1135 @@
+{
+  "source": "tikhub",
+  "baseUrl": "https://api.tikhub.io",
+  "keyword": "剪映 智能剪辑 AI",
+  "since": null,
+  "limitPerPlatform": 15,
+  "generatedAt": "2026-09-07T07:34:13.460Z",
+  "failures": [],
+  "summary": {
+    "totalRecords": 60,
+    "platformsOk": 4,
+    "platformsEmpty": 0,
+    "platformsFailed": 0,
+    "platforms": [
+      {
+        "platform": "douyin",
+        "platformLabel": "抖音",
+        "status": "ok",
+        "items": 15,
+        "pagesFetched": 3,
+        "missingFields": {},
+        "fieldConfidence": "verified-against-live-response",
+        "fieldsVerifiedOn": "2026-09-06",
+        "error": null
+      },
+      {
+        "platform": "xhs",
+        "platformLabel": "小红书",
+        "status": "ok",
+        "items": 15,
+        "pagesFetched": 1,
+        "missingFields": {},
+        "fieldConfidence": "verified-against-live-response",
+        "fieldsVerifiedOn": "2026-09-06",
+        "error": null
+      },
+      {
+        "platform": "bilibili",
+        "platformLabel": "B站",
+        "status": "ok",
+        "items": 15,
+        "pagesFetched": 1,
+        "missingFields": {},
+        "fieldConfidence": "verified-against-live-response",
+        "fieldsVerifiedOn": "2026-09-06",
+        "error": null
+      },
+      {
+        "platform": "x",
+        "platformLabel": "X（Twitter）",
+        "status": "ok",
+        "items": 15,
+        "pagesFetched": 1,
+        "missingFields": {},
+        "fieldConfidence": "verified-against-live-response",
+        "fieldsVerifiedOn": "2026-09-06",
+        "error": null
+      }
+    ]
+  },
+  "results": [
+    {
+      "platform": "douyin",
+      "platformLabel": "抖音",
+      "records": [
+        {
+          "platform": "douyin",
+          "platformLabel": "抖音",
+          "id": "7674950087893651123",
+          "url": "https://www.douyin.com/video/7674950087893651123",
+          "author": "外酥李诺",
+          "authorId": "56554096759",
+          "publishedAt": "2026-08-17T10:46:09.000Z",
+          "title": "以前粗剪2小时，现在5分钟！三步手把手教你 先码住！！免费的赶紧去试试！！#剪映教程 #ai工具 #自媒体干货",
+          "excerpt": "以前粗剪2小时，现在5分钟！三步手把手教你 先码住！！免费的赶紧去试试！！#剪映教程 #ai工具 #自媒体干货",
+          "mentions": [
+            "剪映"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "douyin",
+          "platformLabel": "抖音",
+          "id": "7652676966662917418",
+          "url": "https://www.douyin.com/video/7652676966662917418",
+          "author": "剪辑师阿豪i",
+          "authorId": "2382005663967824",
+          "publishedAt": "2026-06-18T10:15:11.000Z",
+          "title": "你还在手动剪？新功能赶快用上！！！ #剪辑教程 #剪辑接单 #新手小白学剪辑 #剪映技巧 #剪映教学",
+          "excerpt": "你还在手动剪？新功能赶快用上！！！ #剪辑教程 #剪辑接单 #新手小白学剪辑 #剪映技巧 #剪映教学",
+          "mentions": [
+            "剪映"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "douyin",
+          "platformLabel": "抖音",
+          "id": "7608121162820048966",
+          "url": "https://www.douyin.com/video/7608121162820048966",
+          "author": "美业·老徐",
+          "authorId": "1414399876923668",
+          "publishedAt": "2026-02-18T08:35:52.000Z",
+          "title": "五分钟剪辑一条视频，真的吗？#美业 #短视频 #自媒体",
+          "excerpt": "五分钟剪辑一条视频，真的吗？#美业 #短视频 #自媒体",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "douyin",
+          "platformLabel": "抖音",
+          "id": "7640091654565737958",
+          "url": "https://www.douyin.com/video/7640091654565737958",
+          "author": "剪两刀kcelj",
+          "authorId": "4179702516288828",
+          "publishedAt": "2026-05-15T12:17:37.000Z",
+          "title": "智能粗剪能不能帮我干活？ #自动剪辑 #剪映 #口播剪辑 #剪辑教程 #剪辑技巧",
+          "excerpt": "智能粗剪能不能帮我干活？ #自动剪辑 #剪映 #口播剪辑 #剪辑教程 #剪辑技巧",
+          "mentions": [
+            "剪映"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "douyin",
+          "platformLabel": "抖音",
+          "id": "7620754617135178661",
+          "url": "https://www.douyin.com/video/7620754617135178661",
+          "author": "易毅尔-阿哲",
+          "authorId": "2209337334041392",
+          "publishedAt": "2026-03-24T09:40:03.000Z",
+          "title": "剪映新功能ai一镜到底让视频无缝衔接#手机剪辑 #每天跟我涨知识 #剪辑教程 #零基础学剪辑 #ai",
+          "excerpt": "剪映新功能ai一镜到底让视频无缝衔接#手机剪辑 #每天跟我涨知识 #剪辑教程 #零基础学剪辑 #ai",
+          "mentions": [
+            "剪映"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "douyin",
+          "platformLabel": "抖音",
+          "id": "7631940182882761957",
+          "url": "https://www.douyin.com/video/7631940182882761957",
+          "author": "剪映",
+          "authorId": "3320130362686103",
+          "publishedAt": "2026-04-24T01:30:00.000Z",
+          "title": "剪辑，和说话一样简单！\n剪映「AI助手」重磅上线！\n你的每一次开口，都是剪辑指令。\n你说指令，它来剪辑。\n批量操作修改、AI生成画面、找素材/功能…\n所有琐事，一句搞定。\n视频创作的下一种方式，从聊天开始。\n（本片由剪映AI生成）\n#剪映可以聊天剪辑了 #剪映AI助手 #剪辑可以全靠一张嘴了",
+          "excerpt": "剪辑，和说话一样简单！ 剪映「AI助手」重磅上线！ 你的每一次开口，都是剪辑指令。 你说指令，它来剪辑。 批量操作修改、AI生成画面、找素材/功能… 所有琐事，一句搞定。 视频创作的下一种方式，从聊天开始。 （本片由剪映AI生成） #剪映可以聊天剪辑了 #剪映AI助手 #剪辑可以全靠一张嘴了",
+          "mentions": [
+            "剪映"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "douyin",
+          "platformLabel": "抖音",
+          "id": "7632140069431790884",
+          "url": "https://www.douyin.com/video/7632140069431790884",
+          "author": "秋芝2046",
+          "authorId": "2931726622135948",
+          "publishedAt": "2026-04-24T02:01:33.000Z",
+          "title": "剪映Agent终于来了！AI自动剪辑～【小白必备】 #秋芝2046 #剪辑可以全靠一张嘴了 #剪映可以聊天剪辑了 #剪映AI助手 #前沿科技趋势发布月",
+          "excerpt": "剪映Agent终于来了！AI自动剪辑～【小白必备】 #秋芝2046 #剪辑可以全靠一张嘴了 #剪映可以聊天剪辑了 #剪映AI助手 #前沿科技趋势发布月",
+          "mentions": [
+            "剪映"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "douyin",
+          "platformLabel": "抖音",
+          "id": "7626736137713003877",
+          "url": "https://www.douyin.com/video/7626736137713003877",
+          "author": "跟着丹丹学剪辑",
+          "authorId": "1549653403773546",
+          "publishedAt": "2026-04-09T12:31:24.000Z",
+          "title": "用Ai高产视频，简直太方便了#视频剪辑教程 #剪辑#剪辑教程#手机剪辑#干货分享",
+          "excerpt": "用Ai高产视频，简直太方便了#视频剪辑教程 #剪辑#剪辑教程#手机剪辑#干货分享",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "douyin",
+          "platformLabel": "抖音",
+          "id": "7634101009417080099",
+          "url": "https://www.douyin.com/video/7634101009417080099",
+          "author": "啤酒的种草AI",
+          "authorId": "93761991166",
+          "publishedAt": "2026-04-29T08:50:56.000Z",
+          "title": "纯干货|分享一个剪映新出的夯到爆的功能！ 看完能帮你节省50%的剪辑时间！！#效率 #剪辑 \n#剪映AI助手 #用嘴剪视频 #AI工具",
+          "excerpt": "纯干货|分享一个剪映新出的夯到爆的功能！ 看完能帮你节省50%的剪辑时间！！#效率 #剪辑 #剪映AI助手 #用嘴剪视频 #AI工具",
+          "mentions": [
+            "剪映"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "douyin",
+          "platformLabel": "抖音",
+          "id": "7665344524269231483",
+          "url": "https://www.douyin.com/video/7665344524269231483",
+          "author": "榴莲嘟嘟品牌创始人.福哥",
+          "authorId": "1226683852002695",
+          "publishedAt": "2026-07-22T13:31:40.000Z",
+          "title": "剪映，AI智能剪辑功能！超级好用的懒人神器！ 大家快学起来吧！一起为自己的门店加油曝光！！\n#榴莲嘟嘟 #餐饮人 #餐饮创业 #剪映 #剪映视频制作",
+          "excerpt": "剪映，AI智能剪辑功能！超级好用的懒人神器！ 大家快学起来吧！一起为自己的门店加油曝光！！ #榴莲嘟嘟 #餐饮人 #餐饮创业 #剪映 #剪映视频制作",
+          "mentions": [
+            "剪映"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "douyin",
+          "platformLabel": "抖音",
+          "id": "7626203813594090803",
+          "url": "https://www.douyin.com/video/7626203813594090803",
+          "author": "俗人六哥_Ai商业洞察",
+          "authorId": "2533744107334375",
+          "publishedAt": "2026-04-08T02:05:48.000Z",
+          "title": "AI+剪映=自动剪辑，这个skills一句话剪视频，而且还开源免费，#Ai剪辑 #剪映 #skills #自动剪辑",
+          "excerpt": "AI+剪映=自动剪辑，这个skills一句话剪视频，而且还开源免费，#Ai剪辑 #剪映 #skills #自动剪辑",
+          "mentions": [
+            "skills",
+            "剪映"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "douyin",
+          "platformLabel": "抖音",
+          "id": "7634465971373182248",
+          "url": "https://www.douyin.com/video/7634465971373182248",
+          "author": "AI绘影研习社",
+          "authorId": "46648859304843",
+          "publishedAt": "2026-04-30T08:27:10.000Z",
+          "title": "AI已经癫到可以用“嘴”剪视频了？ #剪映AI助手  #用嘴剪视频  #AI工具 #AI视频 #AI人工智能",
+          "excerpt": "AI已经癫到可以用“嘴”剪视频了？ #剪映AI助手 #用嘴剪视频 #AI工具 #AI视频 #AI人工智能",
+          "mentions": [
+            "剪映"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "douyin",
+          "platformLabel": "抖音",
+          "id": "7661478861070191907",
+          "url": "https://www.douyin.com/video/7661478861070191907",
+          "author": "猫叔",
+          "authorId": "1003187492095467",
+          "publishedAt": "2026-07-12T03:31:04.000Z",
+          "title": "2小时影片5分剪完？剪映智能解说剪辑教程！ #剪映 #智能解说粗剪 #剪辑教程剪映 #剪辑干货",
+          "excerpt": "2小时影片5分剪完？剪映智能解说剪辑教程！ #剪映 #智能解说粗剪 #剪辑教程剪映 #剪辑干货",
+          "mentions": [
+            "剪映"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "douyin",
+          "platformLabel": "抖音",
+          "id": "7668617329873308980",
+          "url": "https://www.douyin.com/video/7668617329873308980",
+          "author": "成也2077",
+          "authorId": "2386396465074235",
+          "publishedAt": "2026-07-31T09:11:53.000Z",
+          "title": "AI自动剪辑！这次是真的！ 不用插件、不用skil、不用Codex，剪映Agent来了！ #ai  #剪映  #干货分享 #vibecoding大赏   #ai新星计划",
+          "excerpt": "AI自动剪辑！这次是真的！ 不用插件、不用skil、不用Codex，剪映Agent来了！ #ai #剪映 #干货分享 #vibecoding大赏 #ai新星计划",
+          "mentions": [
+            "vibecoding",
+            "剪映"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "douyin",
+          "platformLabel": "抖音",
+          "id": "7634465971373182248",
+          "url": "https://www.douyin.com/video/7634465971373182248",
+          "author": "AI绘影研习社",
+          "authorId": "46648859304843",
+          "publishedAt": "2026-04-30T08:27:10.000Z",
+          "title": "AI已经癫到可以用“嘴”剪视频了？ #剪映AI助手  #用嘴剪视频  #AI工具 #AI视频 #AI人工智能",
+          "excerpt": "AI已经癫到可以用“嘴”剪视频了？ #剪映AI助手 #用嘴剪视频 #AI工具 #AI视频 #AI人工智能",
+          "mentions": [
+            "剪映"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        }
+      ],
+      "pages": [
+        {
+          "page": 1,
+          "received": 7
+        },
+        {
+          "page": 2,
+          "received": 7
+        },
+        {
+          "page": 3,
+          "received": 7
+        }
+      ]
+    },
+    {
+      "platform": "xhs",
+      "platformLabel": "小红书",
+      "records": [
+        {
+          "platform": "xhs",
+          "platformLabel": "小红书",
+          "id": "697f18ea000000001a01e812",
+          "url": "https://www.xiaohongshu.com/explore/697f18ea000000001a01e812?xsec_token=YB5I3GGXzU1qV19JaLtNvlWymITZqZ3Bm0nNMGMhcRZxA%3D&xsec_source=pc_search",
+          "author": "元气小瑶AI手记",
+          "authorId": "694dfb95000000003201b15f",
+          "publishedAt": "2026-02-01T09:12:10.000Z",
+          "title": "动动嘴就能剪视频，剪映的Agent它终于来了！",
+          "excerpt": "#剪映 #AI工具 #agent #我的剪辑搭子",
+          "mentions": [
+            "agent",
+            "剪映"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "xhs",
+          "platformLabel": "小红书",
+          "id": "6a1bf50e0000000008025f17",
+          "url": "https://www.xiaohongshu.com/explore/6a1bf50e0000000008025f17?xsec_token=YBJcC0piZXHBVLQqzFnfFb6TB8E-bvtbafW-q49ZtxKhI%3D&xsec_source=pc_search",
+          "author": "王松傲寒",
+          "authorId": "566ab2e2e00dd877af601e54",
+          "publishedAt": "2026-05-31T09:59:00.000Z",
+          "title": "现在剪辑不需要自己动手了！",
+          "excerpt": "AI智能剪辑功能系统讲解，帮你快速剪辑口播，vlog，制作片头特效等技能！0基础同学可以从《三天学会剪辑》系列的第一集开",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "xhs",
+          "platformLabel": "小红书",
+          "id": "6a8c249b000000003300b870",
+          "url": "https://www.xiaohongshu.com/explore/6a8c249b000000003300b870?xsec_token=YB9A0jyNHvwt4hJiow5d2-yW-YvPwXTzfXCue5gxK5kjo%3D&xsec_source=pc_search",
+          "author": "阿汪🍡✨",
+          "authorId": "568a2f564775a735e62d2217",
+          "publishedAt": "2026-08-24T11:01:47.000Z",
+          "title": "跑通了codex-剪映自动剪辑！",
+          "excerpt": "输入原视频，codex操作剪映导入剪辑好的素材、音效、字幕，微调一下即可发布。爽啊太爽了！效率一把提升 这条也是code",
+          "mentions": [
+            "剪映"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "xhs",
+          "platformLabel": "小红书",
+          "id": "69eb52ff000000003700e188",
+          "url": "https://www.xiaohongshu.com/explore/69eb52ff000000003700e188?xsec_token=YBadi81VsBVkuUsXDngWjyicZxRYGNyaRW7MNKd2Xa7c0%3D&xsec_source=pc_search",
+          "author": "江江爱剪辑",
+          "authorId": "6561b9dc00000000020379b3",
+          "publishedAt": "2026-04-24T11:24:47.000Z",
+          "title": "教程｜✂️映新功能AI助手的运用",
+          "excerpt": "持续探索中[派对R]#剪辑教程 #新手小白学剪辑 #AI助手 #用嘴剪视频 #邪修 #教程 #AI工具",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "xhs",
+          "platformLabel": "小红书",
+          "id": "6a73edb5000000002c0012b3",
+          "url": "https://www.xiaohongshu.com/explore/6a73edb5000000002c0012b3?xsec_token=YBw4bmqpoNUfnRZD2dy3-JYUNq-IqpkVWQAs7E6ojTnUA%3D&xsec_source=pc_search",
+          "author": "万里挑一个镜头📷",
+          "authorId": "5c973596000000001203be55",
+          "publishedAt": "2026-08-20T02:13:00.000Z",
+          "title": "剪映AI到底是不是智商税？实测告诉你",
+          "excerpt": "剪映这两年疯狂加AI功能 广告吹得挺猛，但到底好不好用？ 今天我实测了5个常用功能👇 ✅ AI字幕：清晰普通话",
+          "mentions": [
+            "剪映"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "xhs",
+          "platformLabel": "小红书",
+          "id": "6912d218000000000700ff4b",
+          "url": "https://www.xiaohongshu.com/explore/6912d218000000000700ff4b?xsec_token=YBPOsFLmJJdI-5cRcTyl91NafEuF1rdcba_1xo2jt2Dgg%3D&xsec_source=pc_search",
+          "author": "化汨咨询工作室",
+          "authorId": "670a10ac000000001d0216ec",
+          "publishedAt": "2025-11-11T06:05:12.000Z",
+          "title": "这个Ai功能都不会，千万别说你会玩剪映",
+          "excerpt": "#新手小白学剪辑 #视频剪辑 #自学剪辑 #剪辑工具 #视频制作 #手机剪辑 #剪辑 ##剪辑教程 #原",
+          "mentions": [
+            "剪映"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "xhs",
+          "platformLabel": "小红书",
+          "id": "67a21c21000000002902be46",
+          "url": "https://www.xiaohongshu.com/explore/67a21c21000000002902be46?xsec_token=YBDVohLI6cl8PkcXNYx4Q8jeydjoyifBYLxxgFtX263f4%3D&xsec_source=pc_search",
+          "author": "辣笔大王",
+          "authorId": "6420220300000000120134fd",
+          "publishedAt": "2025-02-04T13:54:41.000Z",
+          "title": "ds+剪映=一天30条视频",
+          "excerpt": "#deepseek #剪映 #自媒体 #ai",
+          "mentions": [
+            "deepseek",
+            "剪映"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "xhs",
+          "platformLabel": "小红书",
+          "id": "69ca6f2300000000230261bf",
+          "url": "https://www.xiaohongshu.com/explore/69ca6f2300000000230261bf?xsec_token=YBP2vLVjyFVFRkgiskxw0frHLJfyB6pXvR3jfsPpAbQgE%3D&xsec_source=pc_search",
+          "author": "虹月剪辑教程",
+          "authorId": "6559b1a80000000004039ad1",
+          "publishedAt": "2026-03-30T12:40:03.000Z",
+          "title": "剪映新功能→剪辑助手",
+          "excerpt": "#剪辑教程 #手机剪辑 #剪辑助手",
+          "mentions": [
+            "剪映"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "xhs",
+          "platformLabel": "小红书",
+          "id": "693be12b000000001b030507",
+          "url": "https://www.xiaohongshu.com/explore/693be12b000000001b030507?xsec_token=YBV-hE9urVws3N7nc8sXjuzyWrBkLxt6_adoAflAq6qvw%3D&xsec_source=pc_search",
+          "author": "保一条的Mose",
+          "authorId": "5f56562b000000000101f459",
+          "publishedAt": "2025-12-12T09:32:27.000Z",
+          "title": "这么帅的创意Vlog效果你确定不学？",
+          "excerpt": "来咯来咯 纯干货无废话教学！ #我的摄影日记 #创意Vlog #拍摄教程 #剪辑教程 #摄影 #拍摄 #剪辑",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "xhs",
+          "platformLabel": "小红书",
+          "id": "6a1aaf71000000003502f70c",
+          "url": "https://www.xiaohongshu.com/explore/6a1aaf71000000003502f70c?xsec_token=YBG4zG74enmyk12UaZ_shh_ZAHRJm4JqWo6gnKOoPk7DQ%3D&xsec_source=pc_search",
+          "author": "Real- Ai科技馨",
+          "authorId": "67e757c70000000008017d3f",
+          "publishedAt": "2026-05-30T09:35:45.000Z",
+          "title": "4个步骤就能搞定超炫酷的Ai图钉转场！",
+          "excerpt": "#AI视频 #AI工具 #AI #AI动画 #剪辑教程 #我和AI有话说 #AI视频创作 #AI教学",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "xhs",
+          "platformLabel": "小红书",
+          "id": "6a9161d3000000001803ed86",
+          "url": "https://www.xiaohongshu.com/explore/6a9161d3000000001803ed86?xsec_token=YBa8JGpV1YCpk902de7s5-AKC7xHrJq7SoCS3YoSBjwSw%3D&xsec_source=pc_search",
+          "author": "啤酒的种草AI",
+          "authorId": "5e05e86800000000010090bd",
+          "publishedAt": "2026-08-28T10:24:19.000Z",
+          "title": "如何用codex控制剪映自动剪辑丨纯干货无广",
+          "excerpt": "分享一个全新的剪辑思路 ，用codex直接粗剪，不在意花里胡哨特效的甚至可以支持出片#剪辑 #好视频扶持计划 #自学",
+          "mentions": [
+            "剪映"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "xhs",
+          "platformLabel": "小红书",
+          "id": "683cfac1000000000303d32d",
+          "url": "https://www.xiaohongshu.com/explore/683cfac1000000000303d32d?xsec_token=YB4wMuqtdYQ4elM2PPQR7IXe2V3qF9ki77vnomjVQtoTs%3D&xsec_source=pc_search",
+          "author": "清影何似在人间",
+          "authorId": "64e5c271000000000100cb77",
+          "publishedAt": "2025-06-02T01:13:37.000Z",
+          "title": "剪映升级后的Ai一键成片稀烂啊",
+          "excerpt": "对于我这种剪辑小白，发现了剪映有一键成片的后，如获至宝。随随便便一点素材都能成为大片。 最近剪映升级了app，一键成片变",
+          "mentions": [
+            "剪映"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "xhs",
+          "platformLabel": "小红书",
+          "id": "69fabcec0000000035038fc4",
+          "url": "https://www.xiaohongshu.com/explore/69fabcec0000000035038fc4?xsec_token=YBj6VFu46uJ9qphi32l9JW8WpWxM7A4t55wFVXBemWlNw%3D&xsec_source=pc_search",
+          "author": "AIGC-洋咩咩",
+          "authorId": "604d701e000000000101c216",
+          "publishedAt": "2026-05-06T04:00:44.000Z",
+          "title": "让AI帮你剪视频（教程）",
+          "excerpt": "个人觉得这个ai助手真的很方便啦，我是跟着@喜公子拍点啥！ 这个大佬做的，他教，我就用嘴吧对着ai助手说～ ✅视频由ai",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "xhs",
+          "platformLabel": "小红书",
+          "id": "6a681dd2000000001c00f5d8",
+          "url": "https://www.xiaohongshu.com/explore/6a681dd2000000001c00f5d8?xsec_token=YBEE0RRaRb46KNdsLSnn-YRS3DFKis02V_OflpBoePels%3D&xsec_source=pc_search",
+          "author": "张小夏爱折腾",
+          "authorId": "5a5ee19011be1078b3499510",
+          "publishedAt": "2026-07-28T13:08:25.000Z",
+          "title": "原来博主都这样简单快速给视频加配音和字幕",
+          "excerpt": "分享三种新手必学的剪辑技巧。 #00:11 1.系统配音 #00:23 2.常用Ai配音 #00:31 3.自己录",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "xhs",
+          "platformLabel": "小红书",
+          "id": "6a9010920000000006010520",
+          "url": "https://www.xiaohongshu.com/explore/6a9010920000000006010520?xsec_token=YB5JSO3wJ0EL4cZ8DfXGtmMw1ZeiKHDfN7opkXMEGB25o%3D&xsec_source=pc_search",
+          "author": "大奇Ai获客架构师",
+          "authorId": "5cf380640000000005028fec",
+          "publishedAt": "2026-08-27T10:25:22.000Z",
+          "title": "还在熬夜手动剪视频？用AI工具，2分钟搞定1分钟高级感口播！自动音画匹配、一键生成草稿、批量自动化剪辑，从半天缩短到2分",
+          "excerpt": "还在熬夜手动剪视频？用AI工具，2分钟搞定1分钟高级感口播！自动音画匹配、一键生成草稿、批量自动化剪辑，从半天缩短到2分",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        }
+      ],
+      "pages": [
+        {
+          "page": 1,
+          "received": 20
+        }
+      ]
+    },
+    {
+      "platform": "bilibili",
+      "platformLabel": "B站",
+      "records": [
+        {
+          "platform": "bilibili",
+          "platformLabel": "B站",
+          "id": "BV1zjLvzpEBC",
+          "url": "https://www.bilibili.com/video/BV1zjLvzpEBC",
+          "author": "ls六六柒柒",
+          "authorId": "2026098545",
+          "publishedAt": "2025-04-24T01:29:08.000Z",
+          "title": "剪映AI配音",
+          "excerpt": "剪映AI配音 -",
+          "mentions": [
+            "剪映"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "bilibili",
+          "platformLabel": "B站",
+          "id": "BV1wk4y1J7Ra",
+          "url": "https://www.bilibili.com/video/BV1wk4y1J7Ra",
+          "author": "后期杨帆",
+          "authorId": "511711832",
+          "publishedAt": "2023-04-25T09:00:00.000Z",
+          "title": "【剪映专业版进阶课程】AI智能剪口播",
+          "excerpt": "【剪映专业版进阶课程】AI智能剪口播",
+          "mentions": [
+            "剪映"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "bilibili",
+          "platformLabel": "B站",
+          "id": "BV12T421a7Cj",
+          "url": "https://www.bilibili.com/video/BV12T421a7Cj",
+          "author": "三郎会声会影",
+          "authorId": "496411421",
+          "publishedAt": "2024-06-17T02:29:14.000Z",
+          "title": "剪映专业版AI消除功能识别清除画面水印并自动填充",
+          "excerpt": "剪映专业版AI消除功能识别清除画面水印并自动填充",
+          "mentions": [
+            "剪映"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "bilibili",
+          "platformLabel": "B站",
+          "id": "BV1Nb411Q7Qq",
+          "url": "https://www.bilibili.com/video/BV1Nb411Q7Qq",
+          "author": "迷失在星辰的迷宫",
+          "authorId": "275986405",
+          "publishedAt": "2023-03-04T05:24:01.000Z",
+          "title": "剪映AI智能剪辑重复、停顿识别",
+          "excerpt": "剪映AI智能剪辑重复、停顿识别 剪映AI智能剪辑重复、停顿识别",
+          "mentions": [
+            "剪映"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "bilibili",
+          "platformLabel": "B站",
+          "id": "BV1rhe4z1Eu1",
+          "url": "https://www.bilibili.com/video/BV1rhe4z1Eu1",
+          "author": "渔夫子啊",
+          "authorId": "398665195",
+          "publishedAt": "2025-08-22T09:27:15.000Z",
+          "title": "jianying mcp：用自然语言让AI帮你自动剪辑视频",
+          "excerpt": "jianying mcp：用自然语言让AI帮你自动剪辑视频 项目地址：https://github.com/hey-jian-wei/jianying-mcp 通过jianying mcp可以实现以下功能： • 自动创建剪映草稿项目 • 智能添加音频、视频和文本素材 • 一键应用各种特效、滤镜和动画 • 全自动化视频编辑流程 • 导出完整剪映可编辑项目文件 只需用自然语言描述你的需求，AI就能帮你完成整个视频制作流程 欢迎体验，如果您觉得有用，请给三连支持！",
+          "mentions": [
+            "MCP",
+            "剪映"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "bilibili",
+          "platformLabel": "B站",
+          "id": "BV1eHj26aEF1",
+          "url": "https://www.bilibili.com/video/BV1eHj26aEF1",
+          "author": "AI先生李豪",
+          "authorId": "517937049",
+          "publishedAt": "2026-06-23T12:42:38.000Z",
+          "title": "AI自动剪辑？全网最全的剪映高级用法合集！",
+          "excerpt": "AI自动剪辑？全网最全的剪映高级用法合集！ 剪映可不只是剪辑工具，它更是一个 AI 工具的大合集。我们熟知的 AI 生成剧本、AI 生图、生视频，甚至还有数字人、智能配音等基本上都在剪映里。如果你还不知道这些高级用法，那一定要看看这条视频。",
+          "mentions": [
+            "剪映"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "bilibili",
+          "platformLabel": "B站",
+          "id": "BV1hHntzeE7x",
+          "url": "https://www.bilibili.com/video/BV1hHntzeE7x",
+          "author": "王宇辰-我和AI的一天",
+          "authorId": "2104221322",
+          "publishedAt": "2025-09-25T09:30:00.000Z",
+          "title": "剪映居然偷偷升级了全套的AI…？！",
+          "excerpt": "剪映居然偷偷升级了全套的AI…？！",
+          "mentions": [
+            "剪映"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "bilibili",
+          "platformLabel": "B站",
+          "id": "BV1hLzCBzEDS",
+          "url": "https://www.bilibili.com/video/BV1hLzCBzEDS",
+          "author": "我老萝卜",
+          "authorId": "324272433",
+          "publishedAt": "2026-01-24T09:29:55.000Z",
+          "title": "我封装了剪映剪辑skill，AI全自动接管剪映完成剪辑！",
+          "excerpt": "我封装了剪映剪辑skill，AI全自动接管剪映完成剪辑！ 剪映5.9下载（仅支持win）：https://pan.quark.cn/s/81566e9c6e08 项目地址：https://github.com/luoluoluo22/jianying-editor-skill 别再手动拉时间轴了！这才是 2026 年该有的视频生产方式手动剪辑 2 小时，AI 脚本 2 秒钟。 这是一期关于“如何通过 AI 代理彻底解放双手”的实测教程。基于pyJianYingDraft封装的 jianying-editor skill正式发布，支持全自动多轨剪辑 + 剪映直接",
+          "mentions": [
+            "剪映"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "bilibili",
+          "platformLabel": "B站",
+          "id": "BV13it16WEi4",
+          "url": "https://www.bilibili.com/video/BV13it16WEi4",
+          "author": "卫哥回来了",
+          "authorId": "1205005301",
+          "publishedAt": "2026-09-05T04:21:43.000Z",
+          "title": "再也不用剪映AI做视频了",
+          "excerpt": "再也不用剪映AI做视频了 -",
+          "mentions": [
+            "剪映"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "bilibili",
+          "platformLabel": "B站",
+          "id": "BV1EH4y127xH",
+          "url": "https://www.bilibili.com/video/BV1EH4y127xH",
+          "author": "导演摄影惊蛰S",
+          "authorId": "283677017",
+          "publishedAt": "2023-11-22T11:52:08.000Z",
+          "title": "怎么去除剪映”AI生成“水印",
+          "excerpt": "怎么去除剪映”AI生成“水印 怎么去除剪映”AI生成“水印",
+          "mentions": [
+            "剪映"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "bilibili",
+          "platformLabel": "B站",
+          "id": "BV1cYdGByEUo",
+          "url": "https://www.bilibili.com/video/BV1cYdGByEUo",
+          "author": "第一人副业",
+          "authorId": "2146627500",
+          "publishedAt": "2026-05-08T12:41:33.000Z",
+          "title": "AI漫剧剪映剪辑课，详细剪映运用讲解，干货满满",
+          "excerpt": "AI漫剧剪映剪辑课，详细剪映运用讲解，干货满满 第一人副业 AI漫剧剪映剪辑课，详细剪映运用讲解，干货满满",
+          "mentions": [
+            "剪映"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "bilibili",
+          "platformLabel": "B站",
+          "id": "BV1YhoQBGEqC",
+          "url": "https://www.bilibili.com/video/BV1YhoQBGEqC",
+          "author": "苏音呦",
+          "authorId": "352904479",
+          "publishedAt": "2026-04-25T11:21:59.000Z",
+          "title": "剪映的AI剪辑来了，动动嘴就能剪视频",
+          "excerpt": "剪映的AI剪辑来了，动动嘴就能剪视频 目前测试简单的粗剪还是可以的，但是指令不能给的太多，不太智能，容易崩掉。且提示词需要写的合理，否则可能不按照你说的去做",
+          "mentions": [
+            "剪映"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "bilibili",
+          "platformLabel": "B站",
+          "id": "BV1UEnHzGEXM",
+          "url": "https://www.bilibili.com/video/BV1UEnHzGEXM",
+          "author": "无情狗明",
+          "authorId": "347862118",
+          "publishedAt": "2025-09-27T11:29:09.000Z",
+          "title": "剪映AI转场终于来啦！！！",
+          "excerpt": "剪映AI转场终于来啦！！！ 分享一下剪映AI转场的玩法和注意事项～",
+          "mentions": [
+            "剪映"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "bilibili",
+          "platformLabel": "B站",
+          "id": "BV1AK4y1w7zC",
+          "url": "https://www.bilibili.com/video/BV1AK4y1w7zC",
+          "author": "加拿大JasmineStudio",
+          "authorId": "2100955195",
+          "publishedAt": "2023-09-17T14:01:42.000Z",
+          "title": "【AI】剪映数字人 | 剪映生成虚拟主播 | 效果非常自然而且免费",
+          "excerpt": "【AI】剪映数字人 | 剪映生成虚拟主播 | 效果非常自然而且免费 详细介绍剪映数字人功能和如何使用。这是我用过的说汉语效果最自然的数字人了。",
+          "mentions": [
+            "剪映"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "bilibili",
+          "platformLabel": "B站",
+          "id": "BV1KGMx6zE3X",
+          "url": "https://www.bilibili.com/video/BV1KGMx6zE3X",
+          "author": "jeffzhengye",
+          "authorId": "544519526",
+          "publishedAt": "2026-07-07T04:11:55.000Z",
+          "title": "剪映AI剪辑Skill：一句话让AI接管剪映，自动成片",
+          "excerpt": "剪映AI剪辑Skill：一句话让AI接管剪映，自动成片",
+          "mentions": [
+            "剪映"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        }
+      ],
+      "pages": [
+        {
+          "page": 1,
+          "received": 17
+        }
+      ]
+    },
+    {
+      "platform": "x",
+      "platformLabel": "X（Twitter）",
+      "records": [
+        {
+          "platform": "x",
+          "platformLabel": "X（Twitter）",
+          "id": "2096811315490930707",
+          "url": "https://x.com/ponyodong/status/2096811315490930707",
+          "author": "波妞PONYO",
+          "authorId": "ponyodong",
+          "publishedAt": "2026-09-07T04:02:29.000Z",
+          "title": "做 AI 短片，最磨我的经常不是生成画面，是画面终于满意以后，还有几十份素材等着我拼。 这次想把“故人西辞黄鹤楼”拍成一",
+          "excerpt": "做 AI 短片，最磨我的经常不是生成画面，是画面终于满意以后，还有几十份素材等着我拼。 这次想把“故人西辞黄鹤楼”拍成一个完整故事：李白、孟浩然在江上相遇，聊起画里的楼，再转进木构建筑的复原。人物要有情绪，楼要讲得明白，后面还有旁白、字幕、音乐和 MG。单独看每个片段都不错，放到一起，才是真的开始干活。 所以我把剪好的正片和旁白导进了 @fotor_com 的 Fotor Video Agent，试它怎么接住后面的制作。它返回了一份 Motion Package Plan，随后把 22 个 MG 元素放进独立叠加轨。视频、声音、图形都留在多轨时间轴上，后续还可以继续改。 这也是我觉得 Agen…",
+          "mentions": [
+            "AdliMahkumaE",
+            "fotorai",
+            "fotorvideoagent"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "x",
+          "platformLabel": "X（Twitter）",
+          "id": "2095772519672504379",
+          "url": "https://x.com/AYi_AInotes/status/2095772519672504379",
+          "author": "AYi",
+          "authorId": "AYi_AInotes",
+          "publishedAt": "2026-09-04T07:14:40.000Z",
+          "title": "这绝逼是目前我用过最能打的 AI 视频工具，没有之一！！！ 纯纯的解放生产力，简直就是抖音、微信视频号起号的神器！！ 兄",
+          "excerpt": "这绝逼是目前我用过最能打的 AI 视频工具，没有之一！！！ 纯纯的解放生产力，简直就是抖音、微信视频号起号的神器！！ 兄弟们，你们敢相信视频里这个 1 分钟的水循环科普动画，是我几句提示词直接跑出来的吗？ 没给任何素材，没有抽卡碰运气，喵个咪，真的是把短视频的制作门槛彻底砸穿了。 以前这种信息型 MG动画视频，基本只能交给会 AE 的人一帧一帧做，贵、慢、学习成本还高。 这样一条外包通常要 3000 到 8000 块、制作周期一两周的 60 秒科普动画，我用 Fotor Video Agent 实测跑出来，大概只花了 10 分钟，全程只点了一次方案确认，剩下的它全部搞定，真的牛逼！！ 脚本、中…",
+          "mentions": [
+            "fotorai",
+            "fotorvideoagent",
+            "剪映"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "x",
+          "platformLabel": "X（Twitter）",
+          "id": "2095021968412266965",
+          "url": "https://x.com/Thuweni1/status/2095021968412266965",
+          "author": "海外BabyChang",
+          "authorId": "Thuweni1",
+          "publishedAt": "2026-09-02T05:32:15.000Z",
+          "title": "AI一句话生成短剧已经卷成这样了：竖屏成片、口型对上、还会运镜，蔡根花和曹操同框飙戏。 九秒看明白现在的AI视频到什么程",
+          "excerpt": "AI一句话生成短剧已经卷成这样了：竖屏成片、口型对上、还会运镜，蔡根花和曹操同框飙戏。 九秒看明白现在的AI视频到什么程度了。原片来着👇 https://t.co/deXaxpwafW",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "x",
+          "platformLabel": "X（Twitter）",
+          "id": "2096244113071124814",
+          "url": "https://x.com/GeekCatX/status/2096244113071124814",
+          "author": "知识猫AI实验室",
+          "authorId": "GeekCatX",
+          "publishedAt": "2026-09-05T14:28:37.000Z",
+          "title": "GPT 6 + computer-use + capcut 粗剪视频，GPT6 剪辑目前来看还是有点慢这个视频演示加速了",
+          "excerpt": "GPT 6 + computer-use + capcut 粗剪视频，GPT6 剪辑目前来看还是有点慢这个视频演示加速了，实际上这个视频大概粗剪了10分钟。就是简单粗剪、加配音、字幕，没有做复杂特效转场什么的。 测了一圈整体感觉GPT6的最大优势是：可以用computer-use 代替你操作各类软件实现本地自动化任务。 比如做PPT、剪辑、创建一些其他软件的任务，非常的丝滑。当然3D游戏建模本身也是基于操作Blender来进行的，目前非常给力。说明模型本身的前端审美能力、建模能力加强很多。",
+          "mentions": [
+            "Blender",
+            "CapCut",
+            "GPT",
+            "GPT 6",
+            "GPT6"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "x",
+          "platformLabel": "X（Twitter）",
+          "id": "2096065066986782791",
+          "url": "https://x.com/yaohui12138/status/2096065066986782791",
+          "author": "超级个体｜柿子",
+          "authorId": "yaohui12138",
+          "publishedAt": "2026-09-05T02:37:09.000Z",
+          "title": "我宣布：所有说AI剪辑不行的全都是自己不build的人！！ 最近在抖音上刷到一堆AI博主说“AI剪辑不行，效果差，AI味",
+          "excerpt": "我宣布：所有说AI剪辑不行的全都是自己不build的人！！ 最近在抖音上刷到一堆AI博主说“AI剪辑不行，效果差，AI味道重，像是PPT” 不是，大哥，你花多少时间在AI剪辑上了，你就说AI剪辑不行😓 我爆肝了100亿左右的token，从有这个idea到目前接近完成的进度，打磨了整整1个多月！！ 预热介绍我即将发布的AI剪辑工作台！ 1.80+ broll模版，涵盖转场切换，人物变换，模版样式 2.完整的工作台，涵盖高度的用户自定义每一段分镜的特效，样式，音效等等，支持AI一键智能预填所有的分镜内容 3.超详细的审核检测门，让所有的问题在到你手中的时候已经被解决 4.支持1080-4k分辨率…",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "x",
+          "platformLabel": "X（Twitter）",
+          "id": "2059206658975498615",
+          "url": "https://x.com/1YES_yes1/status/2059206658975498615",
+          "author": "空投龙 | 美股合约首选Gate",
+          "authorId": "1YES_yes1",
+          "publishedAt": "2026-05-26T09:35:00.000Z",
+          "title": "你是不是也刷到过那种田园民宿的延时视频？ 看着荒地变家园、种子发芽、烟囱冒烟，心里莫名就静下来了。 没有KPI，没有99",
+          "excerpt": "你是不是也刷到过那种田园民宿的延时视频？ 看着荒地变家园、种子发芽、烟囱冒烟，心里莫名就静下来了。 没有KPI，没有996，只有湖边的炊烟和菜畦里的黄瓜苗。 这类视频去年火过一轮，现在依然条条爆 因为人人都想要一个“精神养老院”。 今天龙哥直接送你一套AI制作治愈系田园视频的完整方法， 附带提示词智能体，豆包+海螺+剪映，10秒出片，新手也能做。 一、为什么这类视频能火？ 击中当代人三个核心情感需求： 年轻人想：我爸妈以后能不能在这儿养老 中老年想：我以后能不能有这样一个院子 所有人都在找：对生活的掌控感 从无到有的建造过程，本身就是最确定的治愈。 二、制作工具清单 工具用途 豆包 / 海螺文…",
+          "mentions": [
+            "Seedance",
+            "剪映",
+            "海螺"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "x",
+          "platformLabel": "X（Twitter）",
+          "id": "2095894889565454439",
+          "url": "https://x.com/NFT_Chen/status/2095894889565454439",
+          "author": "SuSu_酥酥👅",
+          "authorId": "NFT_Chen",
+          "publishedAt": "2026-09-04T15:20:56.000Z",
+          "title": "这老哥的Astra实践让我感到惊奇： GPT-6 Astra 自己打开 Final Cut，从零建工程、导素材、调色、同",
+          "excerpt": "这老哥的Astra实践让我感到惊奇： GPT-6 Astra 自己打开 Final Cut，从零建工程、导素材、调色、同步多机位、对齐音频。 剪辑师盯着屏幕说：操，它比我们聪明。 更离谱的是，连这段反应视频的剪辑和字幕，也是它自己做的。 视频后期的脏活，可能真要开始消失了。 #GPT6Astra #AI剪辑 #FinalCutPro #AGI #OpenAI",
+          "mentions": [
+            "AGI",
+            "FinalCutPro",
+            "GPT",
+            "GPT6Astra",
+            "OpenAI"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "x",
+          "platformLabel": "X（Twitter）",
+          "id": "2095158235082969306",
+          "url": "https://x.com/cnyzgkc/status/2095158235082969306",
+          "author": "木马人",
+          "authorId": "cnyzgkc",
+          "publishedAt": "2026-09-02T14:33:44.000Z",
+          "title": "卧槽！我一个视频小白，只用一句话，就生成这种效果的视频！ 我只说了句： “我想做一个很有张力的古风视频。画里的女生想逃出",
+          "excerpt": "卧槽！我一个视频小白，只用一句话，就生成这种效果的视频！ 我只说了句： “我想做一个很有张力的古风视频。画里的女生想逃出来，最后又被重新困回画里，你帮我看看怎么做。” 它脑洞大开，直接给我整了一个被巨型画笔追杀的画中人。 我没写分镜，也没拆镜头，故意装成纯小白： 当用户只有一个模糊想法，甚至不知道该怎么专业表达时，它到底能不能听懂？ 做过 AIGC 视频的应该都知道，痛点其实不只在生成视频。 只要你前面需求拆偏一点，后面的人物、画风和剧情就可能一起跑偏。 好不容易生成出来，想改一个镜头，很多工具给你的又只是一条写死的内容，只能回去重新抽，时间和积分继续往里烧。 而且我平时得在 不同工具之间来回…",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "x",
+          "platformLabel": "X（Twitter）",
+          "id": "2095107439545004329",
+          "url": "https://x.com/gengdaJ/status/2095107439545004329",
+          "author": "逸尘",
+          "authorId": "gengdaJ",
+          "publishedAt": "2026-09-02T11:11:53.000Z",
+          "title": "做数字人口播视频的朋友，就知道用Agent（Remotion/Hyperframes）生成B-roll素材、MG动效有多",
+          "excerpt": "做数字人口播视频的朋友，就知道用Agent（Remotion/Hyperframes）生成B-roll素材、MG动效有多痛！如果稍微错一点，就要重新生成一整个片段，一等就是几十分钟。。。 而且到最后，因为还要剪掉气口、调节BGM、精调音效，还得屁颠屁颠滚回剪映😅 终于，我的梦中视频制作Agent——@fotor_com Fotor Video Agent出现了，集ChatGPT、剪映和AE效果于一体。 之前最痛的就是反复生成素材的时间和Token成本过高，每次都要反复自然语言对话修改，恨不得自己自己上手。而Fotor内置Parameter面板，手动就能直接调节素材的位置、字体、布局、透明度等…",
+          "mentions": [
+            "剪映"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "x",
+          "platformLabel": "X（Twitter）",
+          "id": "2096860322120503784",
+          "url": "https://x.com/zhangjun027/status/2096860322120503784",
+          "author": "买家张俊",
+          "authorId": "zhangjun027",
+          "publishedAt": "2026-09-07T07:17:13.000Z",
+          "title": "#AI手机哪些功能最实用# 2025-2026年AI手机全面爆发，各家厂商都在卷AI，但到底哪些功能是真刚需、哪些是花架",
+          "excerpt": "#AI手机哪些功能最实用# 2025-2026年AI手机全面爆发，各家厂商都在卷AI，但到底哪些功能是真刚需、哪些是花架子？帮大家梳理了一下，目前公认最实用的几个方向👇 📌 AI识图+文字提取 长按图片、双指识屏，纸质文件、截图、快递单一秒变可编辑文字，准确率95%以上，本地处理不上传隐私，比第三方工具好用太多。 📌 AI录音转写+会议纪要 开会再也不用疯狂记笔记了。实时语音转文字，自动区分发言人、加标点、提炼待办事项，30分钟的会5秒出纪要，打工人刚需。 📌 AI消除+影像修复 旅游照一键去掉路人、老照片修复上色、模糊图片增强——以前要下好几个修图APP，现在相册自带就能搞定。 📌…",
+          "mentions": [
+            "Gemini"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "x",
+          "platformLabel": "X（Twitter）",
+          "id": "2052022534292574448",
+          "url": "https://x.com/gengdaJ/status/2052022534292574448",
+          "author": "逸尘",
+          "authorId": "gengdaJ",
+          "publishedAt": "2026-05-06T13:47:51.000Z",
+          "title": "分享一个Codex+AI自媒体视频创作的超级方法！直接能帮做自媒体的朋友，平均一个视频节省至少两小时！ 下面的视频制作出",
+          "excerpt": "分享一个Codex+AI自媒体视频创作的超级方法！直接能帮做自媒体的朋友，平均一个视频节省至少两小时！ 下面的视频制作出来我研究花了不少时间，但是如果复用，下一次我只需要五分钟，原理如下👇： 1.录制好口播视频（人和音频），win用focusee，mac用screen studio 2.调用火山ASR，把音频转为毫秒级带时间戳的逐字稿 3.用ffmpeg粗剪视频，调用相关的剪辑skill，把气口、重复片段剪掉 4.如果实在有没有自动剪辑好的，手动在剪映里面剪一下，最多一分钟 5.把最终的音视频导出，再把音频转一遍ASR，用remotion+hyperframes配合毫秒级时间戳来进行画面匹配…",
+          "mentions": [
+            "剪映"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "x",
+          "platformLabel": "X（Twitter）",
+          "id": "2095463857342828684",
+          "url": "https://x.com/369Serena/status/2095463857342828684",
+          "author": "Serena 木瓜",
+          "authorId": "369Serena",
+          "publishedAt": "2026-09-03T10:48:10.000Z",
+          "title": "哇去，朋友们！看看我发现了什么？ 我只写了一段提示词，Fotor 就把一条有分镜、固定人物、旁白和 B-roll 的完整",
+          "excerpt": "哇去，朋友们！看看我发现了什么？ 我只写了一段提示词，Fotor 就把一条有分镜、固定人物、旁白和 B-roll 的完整视频做出来了！！！ 我这次用 @fotor_com 的 Video Agent，做了一条“为什么睡眠健康很重要”的视频。 输入需求后，它自动完成了： 生成分镜 → 创建人物设定 → 锁定角色一致性 → 选择旁白 → 生成画面 → 编排时间轴 整个过程不用再切换其他工具！！！ 🧩 最牛逼的是：成片还能继续修改 Fotor 最后生成的不是一条封死的视频，而是一份可以继续修改的工程文件。 文字、图片、图表、数字、Logo、旁白和音乐，全都是独立轨道。 哪里有问题就改哪里，不用因为…",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "x",
+          "platformLabel": "X（Twitter）",
+          "id": "2040232860167389667",
+          "url": "https://x.com/Vincent_AINotes/status/2040232860167389667",
+          "author": "Vincent",
+          "authorId": "Vincent_AINotes",
+          "publishedAt": "2026-04-04T00:59:54.000Z",
+          "title": "【AI内容工厂第4期】 一条视频40万赞，9个作品涨粉18万？别再去漫展COS了！ 教你用AI复刻“橘猫道长”，0成本手",
+          "excerpt": "【AI内容工厂第4期】 一条视频40万赞，9个作品涨粉18万？别再去漫展COS了！ 教你用AI复刻“橘猫道长”，0成本手搓80年代港产僵尸片，这才是把怀旧流量吃到嘴里的野路子！ 1⃣ 找“编剧”（大模型）： 输入“80年代邵氏僵尸片专家”提示词，让AI写出包含“茅山道术、红白喜事、幽默台词”的分镜脚本，直接把剧本喂到嘴里。 2⃣ 找“演员”（即梦2.0）： 重点！选2.0模型（别选1.0，效果差），它自带音效和台词口型。把分镜提示词扔进去，直接生成带剧情的视频片段。 3⃣ 找“剪辑”（剪映）： 把所有片段导入，用“智能字幕”一键识别台词，调整下顺序，加个复古滤镜，齐活。 核心逻辑就一个：经典I…",
+          "mentions": [
+            "剪映",
+            "即梦"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "x",
+          "platformLabel": "X（Twitter）",
+          "id": "2095138832106819613",
+          "url": "https://x.com/gengdaJ/status/2095138832106819613",
+          "author": "逸尘",
+          "authorId": "gengdaJ",
+          "publishedAt": "2026-09-02T13:16:38.000Z",
+          "title": "这个确实是我用过最丝滑的原生Agent剪辑工具了，妥妥的“AI版剪映”。 https://t.co/GGTdqD62lE",
+          "excerpt": "这个确实是我用过最丝滑的原生Agent剪辑工具了，妥妥的“AI版剪映”。 https://t.co/GGTdqD62lE",
+          "mentions": [
+            "剪映"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "x",
+          "platformLabel": "X（Twitter）",
+          "id": "2095753860723753452",
+          "url": "https://x.com/ekcheungAI/status/2095753860723753452",
+          "author": "EK",
+          "authorId": "ekcheungAI",
+          "publishedAt": "2026-09-04T06:00:32.000Z",
+          "title": "一段视频里连穿七个房间、零切镜。GPT-6 Astra 先把空间和走位映射清楚，镜头调度没离开过同一个 viewport",
+          "excerpt": "一段视频里连穿七个房间、零切镜。GPT-6 Astra 先把空间和走位映射清楚，镜头调度没离开过同一个 viewport，最后 Higgsfield Seedance 2.5 把整段一次渲染出来。😱 这不是逐帧抠图，是把“场景理解 + 运镜规则”打包进同一条 model 链路。以前这种连续调度要分镜、预演、合成三步走，现在一条管线直接出结果。做 AI 工具的人该盯的不是单一跑分，是哪天这个流程能被稳定复现并接进自己的 agent。",
+          "mentions": [
+            "GPT",
+            "Seedance",
+            "Seedance 2.5"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        }
+      ],
+      "pages": [
+        {
+          "page": 1,
+          "received": 20
+        }
+      ]
+    }
+  ]
+}
