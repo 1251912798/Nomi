@@ -41,12 +41,15 @@ const MAX_BYTES = 10 * 1024 * 1024
 /** 与主进程 SKILL_TEXT_EXT 对齐（那边是真相源，这里是提前过滤，少传无用字节）。 */
 const TEXT_EXT = /\.(md|markdown|json|txt|ya?ml|csv)$/i
 /** 与主进程 SKILL_PATH_MAX_DEPTH 对齐（`references/api/v2/spec.md` = 4 段）。 */
-const MAX_DEPTH = 4
+export const MAX_DEPTH = 4
 /** 与主进程 SKILL_EXECUTABLE_DIRS 对齐：v1 只吃知识层，可执行区跳过而不是整包否掉。 */
 const EXECUTABLE_DIRS = new Set(['scripts', 'bin', 'hooks'])
 
-/** 这个相对路径主进程会不会拒（可执行区 / 超深 / 非文本）——三条都跳过，别让整包被拒。 */
-function isImportableTextPath(rel: string): boolean {
+/**
+ * 这个相对路径主进程会不会拒（可执行区 / 超深 / 非文本）——三条都跳过，别让整包被拒。
+ * zip 与「拖一个文件夹进来」两条收件路径共用它：同一条规则只此一份，别再抄第三遍。
+ */
+export function isImportableTextPath(rel: string): boolean {
   const segments = rel.split('/')
   if (segments.length > MAX_DEPTH) return false
   if (segments.length > 1 && EXECUTABLE_DIRS.has(segments[0].toLowerCase())) return false
