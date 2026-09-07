@@ -180,14 +180,14 @@ export function laneViewModel(projection: LaneProjection, labels: LaneViewModelL
     const denial = denials.get(part.toolCallId)
     const existing = items[slot.index]
     if (existing.kind !== 'tool') continue
+    // 被拒的那一行只说「已拒绝」（拍板过的 Vocabulary 板 `v4-tool-output-denied`：行尾是状态词，
+    // 没有摘要、没有展开体）。理由住在用户自己填它的那张介入槽里；再把它印到行尾、又塞进
+    // 展开体，同一句话就在面板上出现三次——设计实验室 P6 探针把这一格接上真投影时当场红了。
     items[slot.index] = {
       kind: 'tool',
-      receipt: {
-        ...existing.receipt,
-        status: settledStatus(part.isError, denial !== undefined),
-        output: part.text || undefined,
-        ...(denial?.reason ? { trailing: denial.reason } : {}),
-      },
+      receipt: denial !== undefined
+        ? { ...existing.receipt, status: 'output-denied' }
+        : { ...existing.receipt, status: settledStatus(part.isError, false), output: part.text || undefined },
     }
   }
 
