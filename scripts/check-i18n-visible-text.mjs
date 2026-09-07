@@ -67,6 +67,7 @@ const EXCLUDED_FILES = new Set([
   'src/ui/onboarding/customCallTestFixture.ts', // connectivity-test prompts sent to the model, not UI copy
   'src/workbench/creation/creationAiModes.ts', // UI uses creationAi.mode keys; source labels feed AI prompts
   'src/workbench/generationCanvas/agent/shotVerify.ts', // stable source strings; ReconcileDeviationCard translates them at the display boundary
+  'electron/agentLane/laneCanvasTools.ts', // 模型可见工具的示例参数(「林夏」「天台开场」是喂模型的示范数据,契约本身要求中文用户配中文提示词),不是界面文案
   'src/workbench/generationCanvas/agent/applyCanvasToolCall.ts', // agent tool protocol/result prose
   'src/workbench/generationCanvas/agent/generationCanvasTools.ts', // agent tool result prose
   'src/workbench/generationCanvas/agent/runStoryboardPlanner.ts', // agent-only instruction
@@ -215,6 +216,17 @@ const ELECTRON_EXCLUDED_PREFIXES = [
 const ELECTRON_EXCLUDED_FILES = new Set([
   'electron/ai/composeAgentSystemPrompt.ts', // agent system prompt 拼装,喂模型
   'electron/skills/playbookOrchestrator.ts', // playbook 阶段定义校验(阶段 id 重复/循环依赖),开发者写档时命中,非终端用户
+  // 逐条排除、不整目录排——`electron/agentLane/` 到阶段 4 会变成用户可达的通路,
+  // 那时目录级豁免会把真的漏译一起放过去。下面三条各自的理由:
+  // 模型可见工具的**示例参数**。「林夏」「天台开场」是喂给模型看的示范数据(契约本身就写着
+  // 「Chinese user → Chinese prompt」),不是界面文案;翻译它等于教模型给英文用户写中文提示词。
+  'electron/agentLane/laneCanvasTools.ts',
+  // 工具预算超限时的**装配期**报错。它在模块加载时抛,受众是往目录里加第 12 个工具的开发者;
+  // 用户会话里到不了这一句——真到了,那是 lane 压根没起来,界面显示的是别的东西。
+  'electron/agentLane/laneToolCatalog.ts',
+  // 扁平化派生器对**契约作者**的报错(「这个 union 没有判别字段」这一族)。同样是装配期,
+  // 且它的读者按定义是正在写 zod 契约的人。
+  'electron/shared/agentCapabilities/flatModelInput.ts',
 ])
 
 function isElectronVisibleScope(relative) {
