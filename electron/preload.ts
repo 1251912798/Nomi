@@ -578,6 +578,11 @@ contextBridge.exposeInMainWorld("nomiDesktop", {
     describeChannels: () => invokeSync("nomi:asset-transport:channels:describe"),
   },
   modelCatalog: {
+    onChanged: (cb: () => void) => {
+      const listener = () => cb();
+      ipcRenderer.on("nomi:model-catalog:changed", listener);
+      return () => ipcRenderer.removeListener("nomi:model-catalog:changed", listener);
+    },
     listVendors: () => invokeSync("nomi:model-catalog:vendors:list"),
     listModels: (params?: unknown) => invokeSync("nomi:model-catalog:models:list", params),
     listMappings: (params?: unknown) => invokeSync("nomi:model-catalog:mappings:list", params),

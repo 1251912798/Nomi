@@ -29,6 +29,11 @@ export interface DedupedModel {
   providers: ModelProviderRef[]
 }
 
+/** Shared folding policy for raw catalog rows and canonical model selectors. */
+export function isLegacyCatalogMeta(meta: unknown): boolean {
+  return Boolean(meta && typeof meta === 'object' && (meta as Record<string, unknown>).catalogLifecycle === 'legacy')
+}
+
 export type CatalogLifecycle = 'flagship' | 'value' | 'legacy' | 'companion'
 
 const CATALOG_LIFECYCLE_RANK: Record<CatalogLifecycle, number> = {

@@ -6,6 +6,7 @@
  * 配合搜索可精准删某一类（搜 flux → 全选 → 删除选中）。数据结构零改动——enabled 字段与生成侧过滤都现成。
  */
 import React from 'react'
+import { isLegacyCatalogMeta } from '../../config/modelIdentity'
 import { useTranslation } from 'react-i18next'
 import { IconSearch, IconTrash, IconCheck, IconCode } from '@tabler/icons-react'
 import { cn } from '../../utils/cn'
@@ -39,10 +40,11 @@ const PILL = 'h-6 px-2.5 rounded-full border text-micro inline-flex items-center
 
 export function ModelEnableEditor({ models, onToggle, onDelete, onCustomCall, onRetype, onOpenModel }: ModelEnableEditorProps): JSX.Element {
   const { t } = useTranslation()
+  const [more, setMore] = React.useState(false)
   const [query, setQuery] = React.useState('')
   const [selectMode, setSelectMode] = React.useState(false)
   const [selected, setSelected] = React.useState<Set<string>>(() => new Set())
-  const visible = React.useMemo(() => filterModelsByQuery(models, query), [models, query])
+  const visible = React.useMemo(() => filterModelsByQuery(models, query).filter((model) => more || query.trim() || model.unlisted || !isLegacyCatalogMeta(model.meta)), [models, query, more])
   const groups = React.useMemo(() => groupModelsByKind(visible), [visible])
   const enabledTotal = enabledCount(models)
   const selectedRows = React.useMemo(() => selectedModelRows(models, selected), [models, selected])
@@ -151,6 +153,7 @@ export function ModelEnableEditor({ models, onToggle, onDelete, onCustomCall, on
         )}
       </div>
 
+      {!more && !query.trim() && models.some((model) => !model.unlisted && isLegacyCatalogMeta(model.meta)) ? <button type="button" onClick={() => setMore(true)} className="self-start text-caption text-nomi-ink-60">{t('onboardingProviders.modelControls.more')}</button> : null}
       {/* 分组列表 */}
       {groups.length === 0 ? (
         <div className="text-caption text-nomi-ink-40 text-center py-5">{t('onboardingProviders.modelControls.noMatchQuery', { query })}</div>
@@ -236,6 +239,7 @@ export function ModelEnableEditor({ models, onToggle, onDelete, onCustomCall, on
                     >
                       {translateModelDisplayText(m.labelZh)}
                     </button>
+                    {m.unlisted ? <span className="text-micro text-nomi-ink-60">{t('onboardingProviders.modelControls.unlisted')}</span> : null}
                     {m.customCallDraft ? (
                       <span className="shrink-0 rounded-nomi-sm bg-nomi-accent-soft px-1.5 py-0.5 text-micro text-nomi-accent">
                         {t('onboardingProviders.customCall.directDraft.badge')}
@@ -290,7 +294,7 @@ export function ModelEnableEditor({ models, onToggle, onDelete, onCustomCall, on
                       onClick={() => onDelete([m])}
                       className="shrink-0 p-1 text-nomi-ink-30 hover:text-workbench-danger"
                     >
-                      <IconTrash size={13} stroke={1.7} />
+                      {m.unlisted ? t('common.delete') : <IconTrash size={13} stroke={1.7} />}
                     </button>
                   </div>
                 )

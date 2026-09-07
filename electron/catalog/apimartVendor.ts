@@ -26,6 +26,11 @@ export const APIMART_VENDOR_SEED = {
   // 注释）——凭据经内置 Settings 卡直接生效，不走认证晋升。缺此字段则 isBuiltinDirectKeyVendor 恒 false、
   // assertDirectKeyContract 早退，认证占用守卫（cert-owned 连接必须走其认证传输）就哑火。
   credentialMode: "direct-key" as const,
+  livenessProbe: {
+    request: { method: "POST", path: "/api/v1/chat/completions", body: { model: "{{model}}", messages: [{ role: "user", content: "Hi" }], max_tokens: 1, stream: false } },
+    successPath: "choices.0",
+    source: { url: "https://docs.apimart.ai/en/api-reference/texts/general/chat-completions-nostream.md", checkedAt: "2026-09-08" },
+  },
 } as const;
 
 /** apimart 的 status 动词 → 我们的归一态（与 kie 不同：apimart 用 pending/processing/completed/...）。 */

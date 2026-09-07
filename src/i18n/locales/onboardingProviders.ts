@@ -645,6 +645,8 @@ export const zhOnboardingProviders = {
     editAddress: '修改',
   },
   modelControls: {
+    unlisted: '供应商已不再列出',
+    more: '更多',
     kind: {
       text: '文本',
       image: '图片',
@@ -1801,6 +1803,8 @@ export const enOnboardingProviders = {
     editAddress: 'Edit',
   },
   modelControls: {
+    unlisted: 'No longer listed by provider',
+    more: 'More',
     kind: {
       text: 'Text',
       image: 'Image',
