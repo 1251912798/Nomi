@@ -196,6 +196,10 @@ export const openLane: OpenLane = async (options: OpenLaneOptions): Promise<Lane
         };
         await lane.appendCustomEntry(LANE_APPROVAL_NOTE_TYPE, { ...note }, hookContext);
       }
+      // 钩子的返回值（`before_tool` 的 result）只有两种形状：`undefined` = 放行，
+      // `{ block: { reason } }` = 拦下，并把这句话变成模型看到的 tool result。
+      // **永远不返回 `{ args }`**：改了参数，面板收据上写的和实际执行的就不是一回事，
+      // 而用户是照着收据点的头。
       if (outcome.allow) return undefined;
       // **被 abort 打断的那一支返回 `undefined`**，让 pi 自己合成 `abortedOutcome`：
       // 返回一个 block 会把我们的理由印成模型看到的结果，而 pi 已经有一句更准确的
