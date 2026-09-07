@@ -52,7 +52,7 @@ export type LaneApprovalOutcome = Readonly<{
 }>;
 
 export interface LaneApprovalGateOptions {
-  /** 这条 lane 装了哪些工具的说明书。用来把工具名换成 `capabilityId`。 */
+  /** 这条 lane 装了哪些工具的说明书。用来把工具名换成它投影的那个能力契约 id（`contractId`）。 */
   readonly specs: readonly LaneToolSpec[];
   /** 用户当前的档位。给函数不给快照——用户在等待期改档位是允许的。 */
   policy?(): ProjectAgentApprovalPolicy | undefined;
@@ -109,7 +109,7 @@ interface WaitingCard {
 }
 
 export function createLaneApprovalGate(options: LaneApprovalGateOptions): LaneApprovalGate {
-  const capabilityByTool = new Map(options.specs.map((spec) => [spec.name, spec.capabilityId]));
+  const capabilityByTool = new Map(options.specs.map((spec) => [spec.name, spec.contractId]));
   /** 本会话的「这类不用再问」。**内存表，不落盘**——关 app 即忘，「本会话」是字面意思。 */
   const sessionGrants = new Set<string>();
   const restored = new Set<string>(options.restoredToolCallIds ?? []);

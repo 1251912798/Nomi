@@ -389,8 +389,8 @@ export function createMcpProtocol(transport: McpTransport) {
         replyError(id, -32602, `未知工具: ${name}`)
         return
       }
-      const rawArgs = params?.arguments
-      // tools/list 广播的 JSON Schema 同时是运行时唯一校验边界；失败回 Tool Execution Error。
+      // 容忍钩子在校验**之前**跑（modelFacingTools.ts 的 prepareMcpArguments）；tools/list 广播的 JSON Schema 同时是运行时唯一校验边界，失败回 Tool Execution Error。
+      const rawArgs = tool.prepareArguments ? tool.prepareArguments(params?.arguments) : params?.arguments
       const invalid = validateToolArguments(tool.name, tool.inputSchema, rawArgs === undefined ? {} : rawArgs)
       if (invalid) {
         const err = buildToolErrorOutcome(tool.name, invalid, locale())

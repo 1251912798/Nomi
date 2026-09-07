@@ -24,6 +24,11 @@ export const SUPPORTED_SCHEMA_KEYWORDS = new Set([
   'type', 'properties', 'required', 'items', 'enum',
   'additionalProperties', 'minimum', 'maximum', 'minItems', 'maxItems',
   'minLength', 'maxLength',
+  // `.positive()` / `.negative()` 生成的是 exclusive 边界，不是 `minimum`。阶段 5a 之前它们
+  // 不在白名单里，于是每个用了 `.positive()` 的契约都进不了对外传输层——传输 schema 因此只能
+  // 手抄一份「差不多」的，那正是内外两份说明书分家的机械成因之一。补上校验行为（下面）后
+  // 收进白名单：**能校验的才许出现**，白名单不是豁免表。
+  'exclusiveMinimum', 'exclusiveMaximum',
   // 以下两个是纯描述性的（不产生校验行为），列入白名单以免结构门误报。
   'default', 'description',
 ])
@@ -151,6 +156,12 @@ function validateValue(value: unknown, schema: SchemaLike, path: string, issues:
     }
     if (typeof schema.maximum === 'number' && value > schema.maximum) {
       issues.push({ path, message: `不能大于 ${schema.maximum}（收到 ${value}）` })
+    }
+    if (typeof schema.exclusiveMinimum === 'number' && value <= schema.exclusiveMinimum) {
+      issues.push({ path, message: `必须大于 ${schema.exclusiveMinimum}（收到 ${value}）` })
+    }
+    if (typeof schema.exclusiveMaximum === 'number' && value >= schema.exclusiveMaximum) {
+      issues.push({ path, message: `必须小于 ${schema.exclusiveMaximum}（收到 ${value}）` })
     }
     return
   }
