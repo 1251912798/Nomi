@@ -91,6 +91,10 @@ describe('deliver 产物节点跨层契约', () => {
         clientId: 'a1',
         kind: 'agent-artifact',
         title: '构图线稿',
+        // 传输 schema 对所有 kind 都要 prompt（这条要求写在**形状**里，外部宿主才看得见——
+        // 藏进 superRefine 的话 tools/list 会说它可选，check:mcp-operation-constructible 会红）。
+        // 手艺产物不调模型，给空串。
+        prompt: '',
         artifact: { fileType: 'svg', content: svgBody },
       }],
     })
@@ -99,7 +103,7 @@ describe('deliver 产物节点跨层契约', () => {
     const missing = canvasWriteSemanticInputSchema.safeParse({
       operation: 'create_canvas_nodes',
       summary: '缺内容',
-      nodes: [{ clientId: 'a1', kind: 'agent-artifact', title: '构图线稿' }],
+      nodes: [{ clientId: 'a1', kind: 'agent-artifact', title: '构图线稿', prompt: '' }],
     })
     expect(missing.success).toBe(false)
 

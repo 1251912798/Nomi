@@ -33,13 +33,12 @@ export const plannedNodeSchema = z
     prompt: z
       .string()
       .max(CANVAS_WRITE_MAX_PROMPT_CHARS)
-      .optional()
       .describe(
         "High-quality generation prompt, in the SAME language as the user (Chinese user → Chinese prompt). Write it as a STRUCTURED skeleton, not a run-on sentence:\n" +
           "- character/scene reference card: stable appearance/environment description + unified style keywords (neutral full-body pose for a character, empty wide establishing shot for a scene; no plot action).\n" +
           "- image / keyframe shot: scene·time·light → subject·action·expression → shot language (wide / close-up / low-angle…) → style keywords.\n" +
           "- video shot: camera move (push / pull / pan / track…) → on-screen action progression → rhythm & duration feel; do NOT restate the static keyframe description.\n" +
-          "Keep the same subject's appearance description consistent across shots. Required for every node kind except agent-artifact (which hand-writes files, not prompts).",
+          "Keep the same subject's appearance description consistent across shots. agent-artifact nodes carry no prompt: send an empty string.",
       ),
     position: z.object({ x: z.number().finite(), y: z.number().finite() }).optional(),
     categoryId: z.string().trim().min(1).optional(),
@@ -104,13 +103,6 @@ export const plannedNodeSchema = z
         code: z.ZodIssueCode.custom,
         path: ["artifact"],
         message: "artifact content is only valid for agent-artifact nodes",
-      });
-    }
-    if (node.kind !== "agent-artifact" && !node.prompt?.trim()) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["prompt"],
-        message: "prompt is required for generated node kinds (everything except agent-artifact)",
       });
     }
   });
