@@ -17,7 +17,10 @@ export type AssetLibraryToolbarProps = {
   compact: boolean
   uploadInputRef: React.RefObject<HTMLInputElement | null>
   /** 贴分享链接导入（TikHub 解析无水印直链 → 落项目视频素材）。 */
+  /** 开合「找参考」面板。语义 = 拿外部素材进来（贴链接 = 已知道要哪条；搜关键词 = 还不知道）。 */
   onPasteLink: () => void
+  /** 面板是否展开（按钮据此点亮）。 */
+  findOpen?: boolean
   sourceOptions: readonly SourceOption[]
   sourceFilter: AssetLibrarySourceFilter
   onSourceFilterChange: (value: AssetLibrarySourceFilter) => void
@@ -60,6 +63,7 @@ export function AssetLibraryToolbar({
   compact,
   uploadInputRef,
   onPasteLink,
+  findOpen = false,
   sourceOptions,
   sourceFilter,
   onSourceFilterChange,
@@ -119,9 +123,12 @@ export function AssetLibraryToolbar({
         'cursor-pointer text-nomi-ink-60 transition-[background,color,border-color] duration-[var(--nomi-transition-fast)]',
         'hover:border-nomi-ink-20 hover:bg-nomi-ink-05 hover:text-nomi-ink',
         compact ? 'h-[30px] w-[30px]' : 'h-7 w-7',
+        findOpen && 'border-nomi-accent bg-nomi-accent-soft text-nomi-accent',
       )}
-      aria-label={t('assetLibrary.pasteLink.button')}
-      title={t('assetLibrary.pasteLink.button')}
+      aria-label={t('assetLibrary.findReference.entry')}
+      title={t('assetLibrary.findReference.entry')}
+      aria-expanded={findOpen}
+      data-find-open={findOpen}
       onClick={onPasteLink}
     >
       <IconLink size={compact ? 14 : 15} stroke={1.8} aria-hidden="true" />

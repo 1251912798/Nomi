@@ -24,6 +24,8 @@ import type { GenerationAssetImportResult } from '../generationCanvas/adapters/a
 import { useGenerationCanvasStore } from '../generationCanvas/store/generationCanvasStore'
 import { useWorkbenchStore } from '../workbenchStore'
 import { confirmDialog, DesignEmptyState, NomiLoadingMark, promptDialog, TooltipProvider } from '../../design'
+import { FindReferencePanel } from './FindReferencePanel'
+import type { ReferencePlatform } from '../../../electron/shared/contracts/referenceSearch'
 import { acceptAttrForKinds, mediaKindFromExtension } from '../../../electron/assets/mediaTypes'
 import { toast } from '../../ui/toast'
 import {
@@ -307,11 +309,18 @@ export function AssetLibraryContent({
     }
   }, [projectId, refreshAllProjectAssets, refreshProjectAssets, t])
 
+  /** 工具栏那颗 🔗 = 「找参考」的家（一功能一个家）：开合内嵌面板，不弹层。 */
+  const handleToggleFind = React.useCallback(() => setFindOpen((open) => !open), [])
+
   // 贴链接导入（TikHub）：分享链接 → 无水印直链 → 落成项目视频素材。落库后回流刷新，
   // 素材即出现在库里供用户用现有节点拆解。失败态三段式在 pasteShareLinkImport 里。
-  const handlePasteLink = React.useCallback(() => {
+  /**
+   * 贴链接导入。`presetText` 有值时**跳过弹框**（用户已经在找参考面板里把链接输进来了）——
+   * 这是卡点表「能不能少一步」砍掉的那一步：看到即可用，不再多开一层弹层。
+   */
+  const handlePasteLink = React.useCallback((presetText?: string) => {
     void runPasteShareLinkImport(projectId, {
-      prompt: promptDialog,
+      prompt: presetText ? async () => presetText : promptDialog,
       toast,
       t,
       onImported: () => {
@@ -326,6 +335,10 @@ export function AssetLibraryContent({
   }, [projectId, refreshAllProjectAssets, refreshProjectAssets, t])
 
   const isEmpty = scopedAssets.length === 0 && visibleFolders.length === 0
+  // 「找参考」面板：由工具栏那颗 🔗 开合。平台是**项目级设定**（设计拍板），
+  // 当前先用会话态承载，接进项目设置是随后一步——UI 契约已经按「项目设定」画好。
+  const [findOpen, setFindOpen] = React.useState(false)
+  const [referencePlatform, setReferencePlatform] = React.useState<ReferencePlatform>('douyin')
   const sourceEmpty = sourceFilteredAssets.length === 0
   const filterLabelByValue = React.useMemo(
     () => new Map<FilterValue, string>(FILTER_OPTIONS.map((option) => [option.value, t(option.labelKey)])),
@@ -583,7 +596,8 @@ export function AssetLibraryContent({
         <AssetLibraryToolbar
           compact={compact}
           uploadInputRef={uploadInputRef}
-          onPasteLink={handlePasteLink}
+          onPasteLink={handleToggleFind}
+          findOpen={findOpen}
           sourceOptions={sourceOptions}
           sourceFilter={sourceFilter}
           onSourceFilterChange={setSourceFilter}
@@ -622,6 +636,22 @@ export function AssetLibraryContent({
           onBackToAllAssets={() => setActiveFolderId(null)}
           onDropToFolder={handleFolderDropAssets}
         />
+
+        {findOpen ? (
+          <FindReferencePanel
+            projectId={projectId}
+            platform={referencePlatform}
+            onPlatformChange={setReferencePlatform}
+            onShareLink={handlePasteLink}
+            onImported={() => {
+              refreshProjectAssets()
+              refreshAllProjectAssets()
+            }}
+            onNeedKey={() => {
+              window.dispatchEvent(new CustomEvent('nomi-open-settings', { detail: { tab: 'models', section: 'tikhub-connector' } }))
+            }}
+          />
+        ) : null}
 
         <div ref={setScrollEl} className={cn('flex-1 overflow-y-auto', compact ? 'px-3 pb-3' : 'px-3.5 pb-4')}>
           {sourceFilter === 'all' && allProjectAssetsPartial ? (
@@ -662,8 +692,24 @@ export function AssetLibraryContent({
               title={sourceEmpty ? (sourceFilter === 'project' ? t('assetLibrary.noProjectAssets') : t('assetLibrary.noAssets')) : t('assetLibrary.noMatches')}
               description={
                 sourceEmpty
-                  ? t('assetLibrary.emptyDescription')
+                  ? t('assetLibrary.findReference.emptyDesc', {
+                      platform: t(`assetLibrary.findReference.platform.${referencePlatform}`),
+                    })
                   : t('assetLibrary.noMatchesDescription')
+              }
+              action={
+                sourceEmpty && !findOpen ? (
+                  // 卡点① 的修法：空态是天然教学位，且素材库空时正是最需要「找参考」的时刻。
+                  // 用「就近」手法（代价 0），不新增常驻控件——工具栏仍是 7 个。
+                  <button
+                    type="button"
+                    data-find-reference-cta
+                    className="h-8 rounded-full bg-nomi-ink px-4 text-body-sm font-medium text-nomi-paper hover:bg-nomi-accent"
+                    onClick={handleToggleFind}
+                  >
+                    {t('assetLibrary.findReference.entry')}
+                  </button>
+                ) : undefined
               }
             />
           ) : compact ? (
