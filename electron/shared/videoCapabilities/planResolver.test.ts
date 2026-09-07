@@ -129,7 +129,13 @@ describe("planResolver · 合并建议", () => {
     expect(mergeProposals[0]!.shotIds).toEqual(["shot1", "shot2"]);
     expect(mergeProposals[0]!.durationSec).toBe(10);
     expect(mergeProposals[0]!.advisory).toBe(true);
-    expect(mergeProposals[0]!.reason).toContain("合计 10s");
+    // 引擎不产句子（R15）：理由所需的每个数字都以结构化字段交出，句子在显示边界成形。
+    expect(mergeProposals[0]!.totalSec).toBe(10);
+    expect(mergeProposals[0]!.shotDurations).toEqual([5, 5]);
+    expect(mergeProposals[0]!.modelLabel).toBe(ENUM_CAP_ARCHETYPE.label);
+    expect(mergeProposals[0]!.durationMin).toBe(5);
+    expect(mergeProposals[0]!.durationMax).toBe(10);
+    expect("reason" in mergeProposals[0]!).toBe(false);
   });
 
   it("合计超单条上限不合并（H3：8+8 > 15）", () => {
@@ -197,6 +203,9 @@ describe("planResolver · 拆条建议", () => {
     expect(pieces).toEqual([15, 15, 10]);
     expect(pieces.reduce((sum, value) => sum + value, 0)).toBe(40);
     expect(splitProposals[0]!.suggestFirstLast).toBe(true);
+    expect(splitProposals[0]!.durationMax).toBe(15);
+    expect(splitProposals[0]!.modelLabel).toBe(MINIMAX_H3_ARCHETYPE.label);
+    expect("reason" in splitProposals[0]!).toBe(false);
   });
 
   it("枚举 10s 上限模型：24s 拆成 10+9+5，均落在 [5,10]", () => {
@@ -235,5 +244,36 @@ describe("planResolver · 采纳建议（应用函数）", () => {
     expect(pieces[1]!.id).toBe("long-2");
     expect(pieces[2]!.durationSec).toBe(10);
     expect(pieces[0]!.anchorIds).toEqual(["anchor-1"]);
+  });
+});
+
+describe("planResolver · 引擎不产文案（R15）", () => {
+  it("每条 issue 只有 code + 结构化 params，没有任何 message 字面量", () => {
+    const { issues } = resolveGenerationPlan({
+      shots: [
+        { id: "a", durationSec: 999, modelKey: "no-such-model", modeId: "no-such-mode", params: { made_up: 1 }, sceneAnchorId: "s1" },
+      ],
+      candidates: [H3],
+    });
+    expect(issues.length).toBeGreaterThan(0);
+    for (const issue of issues) {
+      expect("message" in issue).toBe(false);
+      expect(typeof issue.code).toBe("string");
+      expect(issue.params).toBeTypeOf("object");
+    }
+    // overflow 的模板需要这四个数值，缺一句子就拼不出来
+    const overflow = issues.find((issue) => issue.code === "duration.overflow")!;
+    expect(Object.keys(overflow.params).sort()).toEqual(["max", "modeLabel", "modelLabel", "pieces", "wanted"]);
+  });
+
+  it("参数合法性只有一份判据：字符串形的合法枚举值不再被误判成非法", () => {
+    // 上一版 planResolver 用严格 ===，plannedNodeMeta 用 String() 比较 —— 同一个 "16:9"
+    // 在两条路径上一个合法一个非法。现在两边都问 paramConstraints.isParamValueAllowed。
+    const { shots, issues } = resolveGenerationPlan({
+      shots: [{ id: "a", durationSec: 6, sceneAnchorId: "s1", params: { aspect_ratio: "16:9" } }],
+      candidates: [H3],
+    });
+    expect(shots[0]!.params.aspect_ratio).toBe("16:9");
+    expect(issues.some((issue) => issue.code === "param.value")).toBe(false);
   });
 });

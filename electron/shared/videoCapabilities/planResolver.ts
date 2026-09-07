@@ -5,9 +5,12 @@
  * 让 LLM 只负责叙事（拆镜、prompt、演时估算），模型/模式/参数上限与合并/拆条/时长分配
  * 由这里基于真实档案数值裁决——LLM 不再需要背诵参数，也就不存在编造参数键。
  *
- * 设计约定（2026-09-06 docs/plan/2026-09-06-generation-strategy-resolver.md）：
+ * 设计约定（2026-09-06 docs/plan/2026-09-07-generation-strategy-resolver.md）：
  *  - 纯函数：不 import Electron/React/文件系统，与 recommendation.ts 同层，renderer/headless 共用。
- *  - 不新建第二份事实：时长上下限、参数枚举全部读自 ModelArchetype.modes[].params。
+ *  - **不产任何人类文案**（R15）：引擎只产 `code` + 结构化数值参数，句子由显示边界用 i18n 模板渲染
+ *    （renderer: `strategyText.ts`；agent/MCP 面直接消费结构化 code+params，模型读结构比读散文准）。
+ *  - 不新建第二份事实：时长上下限、参数枚举、合法性判定全部来自 `paramConstraints.ts`
+ *    （唯一 owner）读 `ModelArchetype.modes[].params` 的档案数值。
  *  - 本模块产出「建议」（mergeProposals/splitProposals/校验 issues），是否采纳由上层（GUI 审阅/
  *    Agent）决定 —— 对齐「方案免费可改、执行才花钱」的产品哲学。
  *  - 语义拍段的真实性（两镜是否同场连续、切点在哪）属于叙事判断，由调用方通过 sceneAnchorId /
@@ -16,9 +19,10 @@
  * 不产出（v1 明确不做，见设计文档 §5 P3）：原生音频三态、比例/分辨率档位映射之外的参数风格化、
  * 成本/总时长预算约束。不做的事不假装做了。
  */
-import type { ArchetypeMode, ModelParameterControl } from "./types";
+import type { ArchetypeMode } from "./types";
 import type { VideoModelCandidate } from "./recommendation";
 import { effectiveVideoModes } from "./recommendation";
+import { clampToRange, isParamValueAllowed, modeDurationRange, numericRangeOf } from "./paramConstraints";
 
 /** 逻辑镜头输入（调用方 = storyboard planner / GUI；durationSec 建议用演时换算的真实表演秒）。 */
 export type PlanShotInput = {
@@ -50,40 +54,57 @@ export type PlanShotOutput = PlanShotInput & {
   issues: PlanIssue[];
 };
 
+export type PlanIssueCode =
+  | "no.candidates"
+  | "model.missing"
+  | "mode.fallback"
+  | "mode.missing"
+  | "param.unknown"
+  | "param.clamped"
+  | "param.value"
+  | "duration.unsupported"
+  | "duration.clamped"
+  | "duration.underflow"
+  | "duration.overflow";
+
+/**
+ * 一条机器判据。**没有 message 字段是刻意的**：显示语言归显示边界，引擎只交代
+ * 「哪条判据 + 用到的真实数值」。`params` 的键随 code 固定（见 strategyText 的模板）。
+ */
 export type PlanIssue = {
-  code:
-    | "no.candidates"
-    | "model.missing"
-    | "mode.fallback"
-    | "param.unknown"
-    | "param.clamped"
-    | "param.value"
-    | "duration.clamped"
-    | "duration.underflow"
-    | "duration.overflow";
+  code: PlanIssueCode;
   shotId?: string;
-  message: string;
+  params: Record<string, string | number>;
 };
 
 export type MergeProposal = {
   id: string;
   shotIds: string[];
+  /** 每条被并镜头的原时长，与 shotIds 同序（显示边界据此渲染「a(3s) + b(4s)」）。 */
+  shotDurations: number[];
+  /** 采纳后合并镜的时长（已按单条上限钳过）。 */
   durationSec: number;
+  /** 各镜时长之和（未钳；与 durationSec 不同即说明被上限截了）。 */
+  totalSec: number;
   modelKey: string;
+  modelLabel: string;
   modeId: string;
   modeLabel: string;
+  durationMin: number;
+  durationMax: number;
   /** true = 短拍效率合并（产品规则）；false = 镜头低于模式下限的必须合并。 */
   advisory: boolean;
-  reason: string;
 };
 
 export type SplitProposal = {
   shotId: string;
   durationSec: number;
   pieces: { durationSec: number }[];
+  modelLabel: string;
+  modeLabel: string;
+  durationMax: number;
   /** 拆条承接是否建议同锚复用 + 首尾帧衔接（叙事侧确认）。 */
   suggestFirstLast: boolean;
-  reason: string;
 };
 
 export type GenerationResolutionInput = {
@@ -107,34 +128,6 @@ export type GenerationResolutionResult = {
 /** 短拍效率合并的比例阈值：单镜 ≤ 单条上限一半视为「短拍」，同场相邻可并入一条。 */
 const MERGE_SHORT_FRACTION = 0.5;
 
-const numericOptionValues = (control: ModelParameterControl): number[] =>
-  control.options.map((option) => option.value).filter((value): value is number => typeof value === "number" && Number.isFinite(value));
-
-/** 从模式参数里读出 duration 的合法范围（档案数值是唯一真相源；读不到 = 该模式无时长参数）。 */
-function modeDurationRange(mode: ArchetypeMode): { min: number; max: number; enum?: number[] } | null {
-  const control = mode.params.find((item) => item.key === "duration");
-  if (!control) return null;
-  const options = numericOptionValues(control);
-  if (options.length > 0) {
-    return { min: Math.min(...options), max: Math.max(...options), enum: options };
-  }
-  if (typeof control.min === "number" && typeof control.max === "number") {
-    return { min: control.min, max: control.max };
-  }
-  return null;
-}
-
-const nearestEnumValue = (wanted: number, values: number[]): number =>
-  values.reduce((nearest, value) => (Math.abs(value - wanted) < Math.abs(nearest - wanted) ? value : nearest), values[0]!);
-
-/** 把想要的时长钳进模式的合法集合：枚举取最近合法值，区间取 clamp。返回钳后的整数值与是否被改动。 */
-function clampToDurationRange(wanted: number, range: NonNullable<ReturnType<typeof modeDurationRange>>): { value: number; changed: boolean } {
-  const raw = Number.isFinite(wanted) ? wanted : range.min;
-  const rounded = Math.round(raw);
-  const value = range.enum ? nearestEnumValue(raw, range.enum) : Math.min(range.max, Math.max(range.min, rounded));
-  return { value, changed: Math.abs(value - raw) > 1e-9 };
-}
-
 function findCandidate(candidates: readonly VideoModelCandidate[], modelKey?: string): VideoModelCandidate | undefined {
   if (!modelKey) return undefined;
   return candidates.find((candidate) => candidate.modelKey === modelKey.trim() || candidate.modelKey.endsWith(`/${modelKey.trim()}`));
@@ -156,26 +149,30 @@ function resolveShot(shot: PlanShotInput, candidates: readonly VideoModelCandida
   };
 
   if (candidates.length === 0) {
-    issues.push({ code: "no.candidates", shotId: shot.id, message: "没有可用视频模型候选，无法为镜头定模式与参数" });
+    issues.push({ code: "no.candidates", shotId: shot.id, params: {} });
     return output;
   }
   const firstCandidate = candidates[0]!;
 
   const candidate = findCandidate(candidates, shot.modelKey) ?? findCandidate(candidates, defaultModelKey) ?? firstCandidate;
   if (shot.modelKey && candidate.modelKey !== shot.modelKey && !candidate.modelKey.endsWith(`/${shot.modelKey.trim()}`)) {
-    issues.push({ code: "model.missing", shotId: shot.id, message: `清单里没有模型「${shot.modelKey}」，已用默认模型 ${candidate.label} 兜底` });
+    issues.push({ code: "model.missing", shotId: shot.id, params: { requested: shot.modelKey, modelLabel: candidate.label } });
   }
   output.candidate = { provider: candidate.provider, modelKey: candidate.modelKey, label: candidate.label };
 
   const modes = effectiveVideoModes(candidate);
   const fallbackMode = modes.find((mode) => mode.id === candidate.archetype.defaultModeId) ?? modes[0];
   const requestedMode = shot.modeId ? modes.find((mode) => mode.id === shot.modeId) : undefined;
-  const mode = requestedMode ?? fallbackMode;
+  const mode: ArchetypeMode | undefined = requestedMode ?? fallbackMode;
   if (shot.modeId && !requestedMode) {
-    issues.push({ code: "mode.fallback", shotId: shot.id, message: `模型 ${candidate.label} 没有模式「${shot.modeId}」，已回退到默认模式「${mode?.vendorTerm ?? mode?.id}」` });
+    issues.push({
+      code: "mode.fallback",
+      shotId: shot.id,
+      params: { modelLabel: candidate.label, requested: shot.modeId, modeLabel: mode?.vendorTerm || mode?.id || "" },
+    });
   }
   if (!mode) {
-    issues.push({ code: "mode.fallback", shotId: shot.id, message: `模型 ${candidate.label} 没有可用模式` });
+    issues.push({ code: "mode.missing", shotId: shot.id, params: { modelLabel: candidate.label } });
     return output;
   }
   output.modeId = mode.id;
@@ -185,62 +182,76 @@ function resolveShot(shot: PlanShotInput, candidates: readonly VideoModelCandida
   output.durationMin = range?.min ?? null;
   output.durationMax = range?.max ?? null;
 
-  // 参数：只保留档案真实键；未知键丢弃；select 越界回默认；number 越界钳值。
+  // 参数：只保留档案真实键；未知键丢弃；越界的 select/number 分别回默认或钳值。
+  // 合法性判定全部走 paramConstraints.isParamValueAllowed（唯一 owner）；这里只决定「不合法之后怎么办」。
   const params: Record<string, string | number | boolean> = {};
   for (const [key, rawValue] of Object.entries(shot.params ?? {})) {
     const control = mode.params.find((item) => item.key === key);
     if (!control) {
-      issues.push({ code: "param.unknown", shotId: shot.id, message: `模式「${output.modeLabel}」没有参数「${key}」，已丢弃（取值必须来自模型清单）` });
+      issues.push({ code: "param.unknown", shotId: shot.id, params: { modeLabel: output.modeLabel, key } });
       continue;
     }
-    if (control.type === "select" && control.options.length > 0 && !control.options.some((option) => option.value === rawValue)) {
+    if (typeof rawValue !== "string" && typeof rawValue !== "number" && typeof rawValue !== "boolean") continue;
+    if (key === "duration") continue; // duration 由下面的模式范围统一裁决，不走通用参数分支
+    if (isParamValueAllowed(control, rawValue)) {
+      params[key] = rawValue;
+      continue;
+    }
+    if (control.options.length > 0) {
       issues.push({
         code: "param.value",
         shotId: shot.id,
-        message: `参数「${key}」的值 ${String(rawValue)} 不在 ${control.options.map((option) => String(option.value)).join(" / ")} 内，已回默认`,
+        params: { key, value: String(rawValue), allowed: control.options.map((option) => String(option.value)).join(" / ") },
       });
       if (control.defaultValue !== undefined) params[key] = control.defaultValue;
       continue;
     }
-    if ((control.type === "number" || control.type === "select") && typeof rawValue === "number") {
-      let value = rawValue;
-      if (control.type === "number" && key !== "duration") {
-        const min = typeof control.min === "number" ? control.min : Number.NEGATIVE_INFINITY;
-        const max = typeof control.max === "number" ? control.max : Number.POSITIVE_INFINITY;
-        const clamped = Math.min(max, Math.max(min, rawValue));
-        if (clamped !== rawValue) issues.push({ code: "param.clamped", shotId: shot.id, message: `参数「${key}」${rawValue} 超出 ${min}–${max}，已钳到 ${clamped}` });
-        value = clamped;
-      }
-      params[key] = value;
+    if (control.type === "number" && typeof rawValue === "number") {
+      const numberRange = numericRangeOf(control);
+      const min = typeof control.min === "number" ? control.min : Number.NEGATIVE_INFINITY;
+      const max = typeof control.max === "number" ? control.max : Number.POSITIVE_INFINITY;
+      const clamped = numberRange ? clampToRange(rawValue, numberRange).value : Math.min(max, Math.max(min, rawValue));
+      issues.push({ code: "param.clamped", shotId: shot.id, params: { key, value: rawValue, min, max, clamped } });
+      params[key] = clamped;
       continue;
     }
-    if (typeof rawValue === "boolean" || typeof rawValue === "string") {
-      params[key] = rawValue;
-    }
+    // boolean/text 控件的非法值（类型不符）：丢弃并回默认，不猜。
+    issues.push({ code: "param.value", shotId: shot.id, params: { key, value: String(rawValue), allowed: control.type } });
+    if (control.defaultValue !== undefined) params[key] = control.defaultValue;
   }
 
   // duration：由模式的合法集合裁决（覆盖用户填的任意值）。
   if (!range) {
-    issues.push({ code: "param.unknown", shotId: shot.id, message: `模式「${output.modeLabel}」没有 duration 参数，时长不写入请求` });
+    issues.push({ code: "duration.unsupported", shotId: shot.id, params: { modeLabel: output.modeLabel } });
   } else {
-    const clamped = clampToDurationRange(shot.durationSec, range);
+    const clamped = clampToRange(shot.durationSec, range);
     params.duration = clamped.value;
     const roundedDesired = Math.round(shot.durationSec);
     if (clamped.changed) {
-      issues.push({ code: "duration.clamped", shotId: shot.id, message: `目标时长 ${shot.durationSec}s 已按模式范围 ${range.min}–${range.max}s 调整为 ${clamped.value}s` });
+      issues.push({
+        code: "duration.clamped",
+        shotId: shot.id,
+        params: { wanted: shot.durationSec, min: range.min, max: range.max, clamped: clamped.value },
+      });
     }
     if (roundedDesired < range.min) {
       issues.push({
         code: "duration.underflow",
         shotId: shot.id,
-        message: `镜头 ${shot.id} 只有 ${shot.durationSec}s，低于 ${candidate.label}「${output.modeLabel}」下限 ${range.min}s——建议并入同场邻镜或补足（≥${range.min}s）再生成`,
+        params: { wanted: shot.durationSec, modelLabel: candidate.label, modeLabel: output.modeLabel, min: range.min },
       });
     }
     if (roundedDesired > range.max) {
       issues.push({
         code: "duration.overflow",
         shotId: shot.id,
-        message: `镜头 ${shot.id} 需要 ${shot.durationSec}s，超过 ${candidate.label}「${output.modeLabel}」单条上限 ${range.max}s——单条参数已钳到 ${range.max}s；完整覆盖请采纳拆条建议（${Math.ceil(shot.durationSec / range.max)} 条 + 段间首尾帧承接）`,
+        params: {
+          wanted: shot.durationSec,
+          modelLabel: candidate.label,
+          modeLabel: output.modeLabel,
+          max: range.max,
+          pieces: Math.ceil(shot.durationSec / range.max),
+        },
       });
     }
   }
@@ -287,8 +298,10 @@ export function resolveGenerationPlan(input: GenerationResolutionInput): Generat
       shotId: shot.id,
       durationSec: shot.durationSec,
       pieces: pieces.map((durationSec) => ({ durationSec })),
+      modelLabel: shot.candidate.label,
+      modeLabel: shot.modeLabel,
+      durationMax: shot.durationMax,
       suggestFirstLast: true,
-      reason: `${shot.id} 的 ${shot.durationSec}s 超出 ${shot.candidate.label}「${shot.modeLabel}」单条上限 ${shot.durationMax}s，拆成 ${pieces.length} 条（${pieces.join("+")}s）；同锚复用 + 段间首尾帧承接，避免截断`,
     });
   }
 
@@ -320,23 +333,19 @@ export function resolveGenerationPlan(input: GenerationResolutionInput): Generat
     }
     if (group.length >= 2) {
       const hasUnderflow = group.some((shot) => shot.durationSec < (shot.durationMin ?? Number.POSITIVE_INFINITY));
-      const advisory = !hasUnderflow;
-      const modelLabel = first.candidate.label;
-      const cappedSum = first.durationMax !== null ? Math.min(sum, first.durationMax) : sum;
-      const modeRange = first.durationMax !== null && first.durationMin !== null
-        ? `${first.durationMin}–${first.durationMax}s`
-        : "?";
       mergeProposals.push({
         id: `merge-${group.map((shot) => shot.id).join("+")}`,
         shotIds: group.map((shot) => shot.id),
-        durationSec: cappedSum,
+        shotDurations: group.map((shot) => shot.durationSec),
+        durationSec: Math.min(sum, first.durationMax),
+        totalSec: sum,
         modelKey: first.candidate.modelKey,
+        modelLabel: first.candidate.label,
         modeId: first.modeId,
         modeLabel: first.modeLabel,
-        advisory,
-        reason: advisory
-          ? `${group.map((shot) => `${shot.id}(${shot.durationSec}s)`).join(" + ")} 合计 ${sum}s ≤ ${modelLabel}「${first.modeLabel}」单条上限，同场同模型——并入一次生成（${modeRange}），减少抽卡次数、动作与光线更连续`
-          : `${group.map((shot) => `${shot.id}(${shot.durationSec}s)`).join(" + ")} 合计 ${cappedSum}s：组内有镜头低于 ${modelLabel}「${first.modeLabel}」下限，需并入邻镜补足（${modeRange}）后才能生成`,
+        durationMin: first.durationMin,
+        durationMax: first.durationMax,
+        advisory: !hasUnderflow,
       });
     }
     index = group.length >= 2 ? nextIndex : index + 1;
@@ -384,6 +393,6 @@ export function applySplitProposal(shot: PlanShotInput, proposal: SplitProposal)
     ...shot,
     id: pieceIndex === 0 ? shot.id : `${shot.id}-${pieceIndex + 1}`,
     durationSec: piece.durationSec,
-    beatNote: pieceIndex === 0 ? shot.beatNote : `${shot.id} 承接段 ${pieceIndex + 1}${shot.beatNote ? `（${shot.beatNote}）` : ""}`,
+    ...(pieceIndex === 0 ? {} : { beatNote: `${shot.id}#${pieceIndex + 1}${shot.beatNote ? ` ${shot.beatNote}` : ""}` }),
   }));
 }
