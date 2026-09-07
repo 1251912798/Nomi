@@ -154,7 +154,7 @@
 | 词表 | 值 | 位置 | 处置 |
 |---|---|---|---|
 | 工作区阶段（用户在哪个 tab） | `creation \| generation \| preview` | `src/design/identity.tsx:30` | 保留（它是 UI 位置，不是工序） |
-| **Playbook 阶段（干到哪一步）** | `script \| storyboard \| build \| generate \| assemble` | `skills/brand-promo/skill.json` | ✅ **单一真相源** |
+| **Playbook 阶段（干到哪一步）** | `script \| storyboard \| build \| generate \| assemble` | `skills/brand-promo/SKILL.md` 的 `metadata.nomi.stages` | ✅ **单一真相源** |
 | ~~工序图示自造词表~~ | ~~读本/拆镜/出图/出视频/上轨~~ | 本节旧版 | ⛔ 已删，对齐上一行 |
 
 对应关系几乎一一对应，所以对齐是自然的、不是硬凑。**这条修正本身就是本文 §2「同一语义只能有一份定义」的应用**——我自己先犯了一次。

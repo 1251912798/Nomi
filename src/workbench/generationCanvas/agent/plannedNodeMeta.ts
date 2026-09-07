@@ -4,7 +4,7 @@
 // modelKey 空时跑）就不会再自动补 vendor/label/默认参数——所以这里必须**自铺全**：
 // modelVendor / modelLabel / archetype.{id,modeId} / 该 mode 的默认参数，再用 agent 的合法参数覆盖。
 import type { AgentModelEntry } from "./availableModels";
-import type { ModelParameterControl } from "../../../config/modelCatalogMeta";
+import { isParamValueAllowed } from "../../../../electron/shared/videoCapabilities/paramConstraints";
 import {
   resolveArchetypeForModel,
   specializeArchetypeForVariant,
@@ -48,23 +48,11 @@ function canonicalVariantId(archetype: ModelArchetype, value: unknown): string {
   return alias && archetype.variants.some((variant) => variant.id === alias) ? alias : "";
 }
 
-// 单字段校验（跨字段互斥/依赖留二期）：select 取值必须在 options；number 在 min-max；boolean 是布尔。
-function isValidParamValue(
-  control: ModelParameterControl,
-  value: string | number | boolean,
-): boolean {
-  if (control.options.length > 0) {
-    return control.options.some((option) => String(option.value) === String(value));
-  }
-  if (control.type === "number") {
-    if (typeof value !== "number" || !Number.isFinite(value)) return false;
-    if (control.min !== undefined && value < control.min) return false;
-    if (control.max !== undefined && value > control.max) return false;
-    return true;
-  }
-  if (control.type === "boolean") return typeof value === "boolean";
-  return true;
-}
+// 单字段校验（跨字段互斥/依赖留二期）。**判据不在这里**：合法性的唯一 owner 是
+// `electron/shared/videoCapabilities/paramConstraints.isParamValueAllowed`（R14.1）。
+// 这里只保留本路径的**策略**：非法值丢弃、回落档案默认——落节点 meta 不能写进非法值。
+// （审阅面 planResolver 对同一判据的策略是「钳值 + 出结构化 issue」，故意不同，各自注释。）
+const isValidParamValue = isParamValueAllowed;
 
 /**
  * 模型清单索引：**同时**含 `vendor::modelKey` 与裸 `modelKey` 两种键。

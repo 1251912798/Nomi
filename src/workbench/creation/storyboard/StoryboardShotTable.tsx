@@ -53,6 +53,11 @@ type Props = {
   videoModelOptions: ModelOption[]
   /** 提示词为空的镜号（validatePlan 的 empty-shot-prompt 投影，行红边用）。 */
   emptyPromptShots: Set<number>
+  /**
+   * 执行计划的行内警示（返工 7 / D1）：键 = `stableShotId`，值 = 已渲染好的短句 + 完整理由。
+   * 表与行都不认识引擎（不 import planResolver）——句子在编辑器用 `strategyText` 渲染好再传下来。
+   */
+  durationWarnings?: ReadonlyMap<string, { kind: 'overflow' | 'underflow'; text: string; detail: string }> | undefined
   onChange: (plan: StoryboardPlan) => void
   /** The resident Agent receives the same stable storyboard reference as the row selection UI. */
   onStoryboardShotSelect?: (shot: StoryboardPlan['shots'][number]) => void
@@ -143,7 +148,7 @@ function ShotRowWithMention({
   )
 }
 
-export default function StoryboardShotTable({ plan, projectId, rows, anchorCards, imageModelOptions, videoModelOptions, emptyPromptShots, onChange, onStoryboardShotSelect, onSelectionChange, onGenerateRow, onRegenerateRow, onRecoverRow, onVariantsRow, onToggleLockRow, onOpenPreviewRow, onRerunFreshRefsRow, onJumpToAnchor, onSaveResultAsReference, onSetResultAsFirstFrame, onGenerateSelected, onDeleteSelected, filterAnchorId, skippedShotIds, onToggleSkip, variantsByShotId, adoptedVariantByShotId, outputTagByShotId, onAgentHandoff, onLockSelected, onPlayGroup, onAdoptVariant: props_onAdoptVariant, onDeleteVariant: props_onDeleteVariant }: Props): JSX.Element {
+export default function StoryboardShotTable({ plan, projectId, rows, anchorCards, imageModelOptions, videoModelOptions, emptyPromptShots, durationWarnings, onChange, onStoryboardShotSelect, onSelectionChange, onGenerateRow, onRegenerateRow, onRecoverRow, onVariantsRow, onToggleLockRow, onOpenPreviewRow, onRerunFreshRefsRow, onJumpToAnchor, onSaveResultAsReference, onSetResultAsFirstFrame, onGenerateSelected, onDeleteSelected, filterAnchorId, skippedShotIds, onToggleSkip, variantsByShotId, adoptedVariantByShotId, outputTagByShotId, onAgentHandoff, onLockSelected, onPlayGroup, onAdoptVariant: props_onAdoptVariant, onDeleteVariant: props_onDeleteVariant }: Props): JSX.Element {
   const { t } = useTranslation()
   const [dragIndex, setDragIndex] = React.useState<number | null>(null)
   const [overIndex, setOverIndex] = React.useState<number | null>(null)
@@ -303,6 +308,7 @@ export default function StoryboardShotTable({ plan, projectId, rows, anchorCards
                     modelOptions: shot.shotKind === 'image' ? imageModelOptions : videoModelOptions,
                     danglingIds: danglingAnchorIdsForShot(plan, shot),
                     promptInvalid: emptyPromptShots.has(shot.index),
+                    durationWarning: durationWarnings?.get(shotKey),
                     exec: runtime?.exec,
                     onGenerate: runtime ? () => onGenerateRow(runtime) : undefined,
                     onRegenerate: runtime ? () => onRegenerateRow(runtime) : undefined,
