@@ -2,6 +2,11 @@
   "debtCap": 77,
   "registered": [
     {
+      "site": "src/workbench/creation/storyboard/StoryboardPlanStrategyPanel.tsx::function:StatusBar/parameter:0/property:stateKey/type-union",
+      "members": ["clear", "error", "loading", "stale"],
+      "reason": "执行计划审阅条（Generation Strategy Resolver GUI 面）对 resolve 结果的**呈现**状态机：loading 检查中 / stale 项目已切换 / error 检查失败 / clear 合规无需调整。它描述「主进程 resolve 对当前方案给出的呈现结论」，不是任务/审批/素材生命周期；无现有词表可复用（browserAssetData.status 是素材数据状态，语义不同）。注意「没有可用视频模型」与「能力核未就绪」不在这个词表里：前者是面板自己的一整块呈现（data-storyboard-strategy-state=\"no-video-model\"），后者按 R2 什么都不显示——状态机只登记真正会渲染成一行状态条的那几个。"
+    },
+    {
         "site": "src/media/videoPlaybackTelemetry.ts::type:VideoPlaybackTelemetryInput/property:phase/type-union",
         "members": [
             "canplay",
