@@ -34,6 +34,7 @@
 | [2026-09-06-agent-panel-v4-real-use-fixes.md](2026-09-06-agent-panel-v4-real-use-fixes.md) | **Agent 面板 v4 打包版真实使用一批修复**（PR #558）：收据两栏落真实入参/真实回执、同名连调折行 + 失败原因说人话、工具参数容忍模型二次序列化的 JSON 文本（唯一 owner，删两份私有拷贝）、上下文窗口一手文档表、模型弹层每类一行、分镜「不吃参考的是模式」；含**三处过渡补丁**（阶段 2 工具契约重做时删）+ 与 #566 pi 一致性核对的工具层逐项对照 | ✅ |
 | [2026-09-06-agent-tool-layer-root-fix.md](2026-09-06-agent-tool-layer-root-fix.md) | **Agent 工具层根修**：回合有序 parts 流（`turnSeq`）、可行动工具错误 + 边界容忍、工具契约收敛（合并同 schema 的 `nomi_canvas_plan`/`edit`、拆 9 分支 union、补描述/示例/枚举）、一次写对率评测；上游证据 `docs/audit/2026-09-06-agent-tool-layer-audit.md`（真机 `canvas.write` 18 次调用 0 次通过）；**⛔ 2026-09-07 被 [2026-09-07-agent-runtime-rebuild.md](2026-09-07-agent-runtime-rebuild.md) 取代（用户改判重做）** | ⛔ |
 | [2026-09-07-agent-runtime-rebuild.md](2026-09-07-agent-runtime-rebuild.md) | **Agent 运行时重做方案**（用户 09-06 拍板「整体错了就重做」）：重做/保留七对七边界、以 pi lane 为运行时与转录真相源的九层目标架构、模型优先工具契约规范、切换同 commit 删旧与旧数据分档迁移、8 条验收门、6 阶段与在途分支处置、**3 条待拍板岔路**、两条重做期门岗草案 | 📋 |
+| [2026-09-07-agent-rebuild-stage3-5-deep-plan.md](2026-09-07-agent-rebuild-stage3-5-deep-plan.md) | **Agent 重做 · 阶段 3/4/5 深度方案**：审批停在 `before_tool` 里等的状态机（三家参考实现逐层对照、插话/追问/下一轮与审批并存、崩溃恢复按 0.85.1 `resume()` 实核）、三份落盘迁移三档 + 待删 58 文件按行为域分组（3 个无承接点：排队暂停 / 撤销收据 / 任务卡）、影子比对六行判据、切换原子性裁决（原子 PR + 四个零行为前置 PR）、一个描述符两个 profile 的同源投影 + S12 schema 子集、目录活性探针与退役禁用、技能注入；Anthropic 文档逐条对照、五处返工风险各配零额度探针、harness A/B 更新判断（继续 A + 三条翻 B 触发）、**3 条待拍板岔路** | 📋 |
 | [2026-09-05-editing-panel-t1.md](2026-09-05-editing-panel-t1.md) | T1 面板系统、属性面板、transport 与 layout capability | 🚧 |
 | [2026-09-05-resident-composer-receipt-fix.md](2026-09-05-resident-composer-receipt-fix.md) | 常驻 Agent 收据旅程修复：删掉旅程对模式弹层审批入口的依赖，改用真实审批卡/拒绝/收据断言 | ✅ |
 | [2026-09-05-proposal-transition-table.md](2026-09-05-proposal-transition-table.md) | **Agent Host proposal 转换表**：(来源域×目标域×状态×动作) 做成显式数据表，reducer 只查表，拒绝带格子坐标；`document→canvas` 是显式关闭格 | ✅ |
@@ -177,6 +178,7 @@
 | [2026-06-07-assistant-mockup-implementation.md](2026-06-07-assistant-mockup-implementation.md) | 助手面板对齐样张（R8 实现规范） | ⛔ |
 | [2026-06-09-创作AI附件与对话体验.md](2026-06-09-创作AI附件与对话体验.md) | 创作 AI 助手：多格式附件+对话升级 | 📋 |
 | [2026-08-27-skills-knowledge-distribution.md](2026-08-27-skills-knowledge-distribution.md) | **Skills 知识分发**：导入对齐 Agent Skills 标准（Phase 0 已交付）+ 渐进披露从「只给外部」接给内嵌 agent；实测每轮固定开销 ≈9,000 tokens 且不参与预算 | 🚧 |
+| [2026-09-07-skill-format-convergence.md](2026-09-07-skill-format-convergence.md) | **技能格式收敛**：删掉 `skill.json`，frontmatter 成为唯一 owner（pi / Claude Code / Codex 早已收敛成一份，Nomi 是唯一多一份文件的人）；逐字段对照与死字段清理、用户目录一次性迁移、`check:skills-format` 门岗让 pi 自己的加载器给我们判分 | 🚧 |
 | [2026-08-27-unified-tool-surface.md](2026-08-27-unified-tool-surface.md) | **内外工具面统一**：对外 22 个 `nomi_*` vs 内嵌 17 个，6 处同事两名、确认面两套——违反 master plan「不造第二套」北极星；三方案待拍板 | 📋 |
 | [2026-08-30-agent-canvas-interaction-expansion.md](2026-08-30-agent-canvas-interaction-expansion.md) | #194 补全画布引用、多媒体、双轴模式与结果回画布（方案与样张完成，待生产实现） | ✅ |
 | [2026-09-06-opt-in-frequency-telemetry.md](2026-09-06-opt-in-frequency-telemetry.md) | T-01/T-02 opt-in 频率遥测：默认关闭、事件白名单、本地可见可删，与 autoUpdater 解耦 | 📋 |

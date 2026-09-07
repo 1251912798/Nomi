@@ -29,18 +29,25 @@
       "fixtures": ["tests/fixtures/standard-formats/agent-skill/SKILL.md"],
       "readers": [
         "electron/skills/skillStore.ts",
+        "electron/skills/skillFrontmatter.ts",
         "electron/skills/skillPackage.ts",
-        "src/workbench/skillLibrary/parseSkillImport.ts"
+        "electron/skills/skillManifestMigration.ts",
+        "src/workbench/skillLibrary/parseSkillImport.ts",
+        "src/workbench/skillLibrary/skillDropIntake.ts"
       ],
-      "writers": ["electron/skills/skillPackage.ts"],
+      "writers": [
+        "electron/skills/skillPackage.ts",
+        "electron/skills/skillManifestMigration.ts",
+        "electron/capabilityCore/skillWriteTransportAdapters.ts"
+      ],
       "deviations": [
         {
-          "what": "frontmatter 只解析 name / description / audience / disable-model-invocation 四个键，官方还定义了 allowed-tools、argument-hint 等键",
-          "reason": "领域约束：Nomi 不是终端里的编码 agent，没有 allowed-tools 所指的那套工具名空间，也没有斜杠命令的参数补全位。未知键按官方语义**原样保留在文件里、不报错**（frontmatter 的扩展点就是自定义键），只是我们不消费它——这样带这些键的外部技能仍然导得进来。"
+          "what": "frontmatter 只消费 name / description / disable-model-invocation 三个规范键，官方还定义了 allowed-tools、license、compatibility 等",
+          "reason": "领域约束：Nomi 不是终端里的编码 agent，没有 allowed-tools 所指的那套工具名空间。未知键按官方语义**原样保留在文件里、不报错**（frontmatter 的扩展点就是自定义键），只是我们不消费它——这样带这些键的外部技能仍然导得进来。"
         },
         {
-          "what": "多出一个自定义键 `audience: mcp|internal`",
-          "reason": "领域约束：Nomi 同时是 MCP server，一个技能要不要对外部宿主可见是本地优先桌面应用特有的信任边界。它落在标准允许的扩展点（frontmatter 自定义键）里，不另起平行文件——这正是 R31 第三条要求的扩展方式。"
+          "what": "Nomi 独有的声明（audience / requested-capabilities / stages / required-providers 等）住在 frontmatter 的 `metadata.nomi.*` 下，而且 `metadata` 里放的是嵌套结构，不是规范正文写的「string→string 映射」",
+          "reason": "顶层键在规范里是闭集——官方参考校验器 skills-ref 的 validator.py:104-115 多一个顶层键就报 error，所以扩展只能走 `metadata`：pi 忽略它、Claude Code 明说忽略其内容、参考校验器对 metadata 内部不做任何校验（validator.py:118-147）。嵌套是「规范正文比参考实现更严」的一处，我们选参考实现的行为，并让 check:skills-format 的 F6 把 33 个内置技能交给 pi 自己的加载器判分（33/33、零 diagnostics）守住这一格。2026-09-07 起 frontmatter 用真 YAML 解析（js-yaml），与三家同一档严格度。"
         }
       ]
     },
@@ -50,7 +57,7 @@
       "files": ["skill.json"],
       "spec": "https://code.claude.com/docs/en/skills",
       "upstreamVersion": "Claude Code Agent Skills 文档，2026-09-07 抓取",
-      "why": "技能包里我们自己另加的一份 JSON 清单（name / description / archetypeId 等）。**它是 R31 这条规则的起因**：标准把这些字段放在 SKILL.md 的 frontmatter 里，我们却在旁边另起了一个平行文件。",
+      "why": "技能包里我们自己另加的一份 JSON 清单（name / description / archetypeId 等）。**它是 R31 这条规则的起因**：标准把这些字段放在 SKILL.md 的 frontmatter 里，我们却在旁边另起了一个平行文件。PR #580 已经把它从仓库、从加载路径、从写入路径、从模型可见的 author_skill 参数里全部删掉——今天它只剩**一个读者**：用户自己技能目录里的存量文件，由加载时的一次性迁移折进 frontmatter，原文件改名成 .bak 留在原地。",
       "searched": [
         {
           "what": "Claude Code / pi / Codex 的 Agent Skills 格式（事后补查，2026-09-07）",
@@ -61,13 +68,13 @@
           "verdict": "同一份元数据已经能从 frontmatter 读出来，两份定义必然漂移——skill.json 缺失时卡片显示「暂无说明」的 bug（2026-08-27 真机走查）就是漂移的一次显形。"
         }
       ],
-      "readers": ["electron/skills/skillStore.ts", "electron/skills/skillPackage.ts"],
-      "writers": ["electron/skills/skillPackage.ts"],
+      "readers": ["electron/skills/skillManifestMigration.ts"],
+      "writers": [],
       "debt": {
-        "what": "skill.json 是一个标准之外的平行文件，字段应当收进 SKILL.md 的 frontmatter 自定义键",
-        "why": "收敛已经在 PR #580（refactor/skill-format-frontmatter-20260907）上做完了：archetypeId 等字段迁进 SKILL.md 的 frontmatter，skill.json 的读写与文案引导一并删掉。本 PR 只立规则与门岗，不动解析器——两件事挤在一个 PR 里，评审谁也看不清，而且会和 #580 改同一批文件直接撞车。",
-        "plan": "PR #580（refactor/skill-format-frontmatter-20260907）合入后，把本条 nomi-skill-manifest 整格从登记表里删掉——skill.json 届时在仓库里已经不存在，留着这一格就是在给一个不存在的格式发通行证",
-        "due": "2026-10-07"
+        "what": "格式本身已经退场（仓库里不存在、不再有人写出），只剩一次性迁移器 electron/skills/skillManifestMigration.ts 还认得它",
+        "why": "删读取路径而不迁移数据，等于把用户导入过的技能悄悄降级成纯知识层（不收窄能力、不显示阶段），而且他不会收到任何提示。存量只可能在用户自己的技能目录里——那是我们碰不到的盘，所以迁移器必须先在真实机器上跑过一轮。",
+        "plan": "迁移器随一个正式发布周期跑过之后，删掉 electron/skills/skillManifestMigration.ts 与本格；判据是「不再有用户目录带这个文件」，不是「代码里没人 import 它」",
+        "due": "2026-12-07"
       }
     },
     {
