@@ -277,7 +277,7 @@ function ReferenceCard({
             {t('assetLibrary.findReference.metricHot')}
           </span>
         ) : null}
-        <span className="absolute bottom-1 right-1 rounded-[4px] bg-[var(--nomi-media-veil)] px-1.5 py-px text-micro text-white">
+        <span className="absolute bottom-1 right-1 rounded-nomi-sm bg-[var(--nomi-media-veil)] px-1.5 py-px text-micro text-white">
           {item.mediaKind === 'image' ? t('assetLibrary.findReference.imagePost') : item.durationLabel}
         </span>
       </div>
