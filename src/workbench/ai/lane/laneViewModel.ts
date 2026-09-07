@@ -167,6 +167,10 @@ export function laneViewModel(projection: LaneProjection, labels: LaneViewModelL
       used: projection.usage.totalTokens,
       input: labels.formatTokens(projection.usage.inputTokens),
       output: labels.formatTokens(projection.usage.outputTokens),
+      // 缓存命中那一列。它不是装饰：前缀合同（工具定义顺序 + 系统提示词）一旦被自己抖坏，
+      // 症状就是这个数塌到 0 而 `input` 猛涨——不单独印出来就只能等账单来告诉我们。
+      // 写入那一列留在契约里不上屏：一条 lane 的第一轮几乎全是写入，印出来只会误导。
+      cache: labels.formatTokens(projection.usage.cacheReadTokens),
       // `max` / `cost` 缺就是缺。`?? 0` 会在环上画一个我们没量过的百分比，
       // 在花费那一行印一个我们没资格下的 ¥0.00（`agentPanelV4Types.ContextUsage` 的注释
       // 已经把这条钉死，这里只是遵守它）。

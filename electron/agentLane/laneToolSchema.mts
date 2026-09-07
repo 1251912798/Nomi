@@ -18,7 +18,10 @@
 // 这正是②保证的东西。两者是一件事的两半，拆开任何一半这个设计就不成立。
 import type { TSchema } from 'typebox';
 import { z, type ZodTypeAny } from 'zod';
-import { zodToJsonSchema } from 'zod-to-json-schema';
+import { modelFacingBranch } from '../shared/agentCapabilities/jsonArgTolerance.js';
+import {
+  collectStructuralFailures, collectVendorCompatibilityFailures, toPublishedJsonSchema,
+} from '../shared/agentCapabilities/modelVisibleJsonSchema.js';
 
 const KIND = z.ZodFirstPartyTypeKind;
 
@@ -60,7 +63,13 @@ function unwrap(schema: ZodTypeAny): ZodTypeAny {
   }
 }
 
-function collectExpectations(schema: ZodTypeAny, path: string, out: Expectation[], seen: Set<ZodTypeAny>): void {
+function collectExpectations(rawSchema: ZodTypeAny, path: string, out: Expectation[], seen: Set<ZodTypeAny>): void {
+  // 过渡补丁 T1 的「同一个值的 JSON 文本」那一支**不进模型可见 schema**
+  // （`modelVisibleJsonSchema.ts` 会把它摘掉，理由是字段级 `anyOf` 在 Google legacy
+  // 路径上同样不被支持）。所以也不能拿它当「必须过桥的信息」——不然门岗会要求产物里
+  // 出现一段我们刚刚**故意**拿掉的文字，然后每个用了容错入参的工具都装配失败。
+  // 容忍没有消失，它搬到了 `prepareArguments`（校验之前）。
+  const schema = modelFacingBranch(rawSchema);
   if (seen.has(schema)) return;
   seen.add(schema);
   const description = schema.description;
@@ -115,9 +124,16 @@ function collectExpectations(schema: ZodTypeAny, path: string, out: Expectation[
       return;
     }
     case KIND.ZodNumber: {
-      for (const check of (def.checks ?? []) as Array<{ kind: string; value?: number }>) {
-        if (check.kind === 'min') expectNumber(out, path, 'minimum', check.value);
-        if (check.kind === 'max') expectNumber(out, path, 'maximum', check.value);
+      // `.positive()` 是 `min(0, inclusive:false)`，产物是 `exclusiveMinimum` 而不是
+      // `minimum`。忽略这个标志会让门岗去找一个永远不存在的关键字，于是每个用了
+      // `.positive()` 的契约都装配失败——一条把正确写法判红的规则，比没有规则更糟。
+      for (const check of (def.checks ?? []) as Array<{ kind: string; value?: number; inclusive?: boolean }>) {
+        if (check.kind === 'min') {
+          expectNumber(out, path, check.inclusive === false ? 'exclusiveMinimum' : 'minimum', check.value);
+        }
+        if (check.kind === 'max') {
+          expectNumber(out, path, check.inclusive === false ? 'exclusiveMaximum' : 'maximum', check.value);
+        }
       }
       return;
     }
@@ -144,11 +160,32 @@ function collectExpectations(schema: ZodTypeAny, path: string, out: Expectation[
   }
 }
 
+/** 下界关键字：产物给的界只要**不比**契约松就算过桥。 */
+const LOWER_BOUND_KEYWORDS = new Set(['minimum', 'exclusiveMinimum', 'minLength', 'minItems']);
+
+/**
+ * 一条数值界的「没丢」判据。
+ *
+ * **不是逐字相等**，是「产物不比契约松」。理由是生成器会合并同向的界：
+ * `z.number().int().safe().nonnegative()` 声明了 `min(-2^53)` 和 `min(0)` 两条，
+ * 产物只留更紧的 `minimum: 0`。逐字相等会把这个**正确**的合并判成信息丢失，
+ * 于是每个用了 `.safe()` 的契约都装配失败——一条把正确写法判红的规则比没有规则更糟。
+ *
+ * 方向反过来同样安全：门岗要防的是「产物比契约松」（模型以为能填的比实际多，
+ * 于是它填了，然后在执行边界被拒），产物更紧只会让模型少犯错。
+ */
 function expectNumber(out: Expectation[], path: string, keyword: string, value: number | undefined): void {
   if (typeof value !== 'number') return;
+  const tighter = LOWER_BOUND_KEYWORDS.has(keyword)
+    ? (published: number) => published >= value
+    : (published: number) => published <= value;
   out.push({
     label: `${path} 的 ${keyword}=${value}`,
-    satisfied: (facts) => facts.numbers.get(keyword)?.has(value) === true,
+    satisfied: (facts) => {
+      const published = facts.numbers.get(keyword);
+      if (!published) return false;
+      return [...published].some(tighter);
+    },
   });
 }
 
@@ -164,7 +201,9 @@ function collectFacts(node: unknown, facts: JsonFacts): void {
     for (const value of record.enum) if (typeof value === 'string') facts.enumValues.add(value);
   }
   if (typeof record.const === 'string') facts.enumValues.add(record.const);
-  for (const keyword of ['minLength', 'maxLength', 'minimum', 'maximum', 'minItems', 'maxItems']) {
+  for (const keyword of [
+    'minLength', 'maxLength', 'minimum', 'maximum', 'exclusiveMinimum', 'exclusiveMaximum', 'minItems', 'maxItems',
+  ]) {
     const value = record[keyword];
     if (typeof value !== 'number') continue;
     const bucket = facts.numbers.get(keyword) ?? new Set<number>();
@@ -181,92 +220,13 @@ function collectFacts(node: unknown, facts: JsonFacts): void {
 }
 
 /**
- * 供应商底线（G-01 / G-05，来自 `docs/research/2026-09-07-pi-reference-implementation-conformance.md` §1.3-1.4）。
+ * 判据不住在这个文件里——生成点与 `scripts/check-model-schema.ts` 的存量棘轮用的是
+ * **同一份** `../shared/agentCapabilities/modelVisibleJsonSchema.ts`。
  *
- * 它在解决哪个真实摩擦：**「信息没丢」和「模型看得见」是两件事**，而门岗到这里为止只证了前一件。
- *   ① **根级 `anyOf`**：Anthropic 的适配器会把自定义工具 schema 的根级 `anyOf` **静默丢掉**
- *      （上游 pi #9134），Google 的 legacy `parameters` 路径是 OpenAPI 3.03、压根不支持
- *      `anyOf`/`oneOf`/`const`（`pi-ai/dist/api/google-shared.js:278-281`）。在那两条路上，
- *      一个根级 union 的工具**等于没有 schema**——也就是 0/18 的第三个成因。
- *      pi 自己 8 个内建工具没有一个是根级 union，全是扁平 `Type.Object`。
- *   ② **`const`**：`z.literal()` 直译成 `{"const":"x"}`。信息一个字没丢，但 Google 系不认。
- *      上游的处方是 `StringEnum()`（`pi-ai/dist/utils/typebox-helpers.js:2-20` 注释原文：
- *      *"compatible with Google's API and other providers that don't support anyOf/const patterns"*），
- *      落到 JSON Schema 就是 `{"type":"string","enum":[…]}`。
- *
- * 判别式 union 的正确写法不是「分支少一点」，是**根必须扁平**：`operation` 降成一个
- * `z.enum` 判别字段，分支专属字段设为 optional，跨字段约束在 `execute` / `before_tool` 里做。
- *
- * 为什么这条规则长在生成点里而不是做成一条扫源码的 CI 规则：`z.discriminatedUnion` 在源码里
- * 看得见，但「它最后生成成了什么」只有运行时知道——而后者才是模型真正看到的东西（R28：
- * 防线建在最早能拦住的那一层）。
+ * 上一版这里各写了一份，注释写着「两边必须逐字相同」。那句话本身就是漂移预警：
+ * 靠人记得的相同，是还没发生的不同。生成点拦新的、门岗拦存量，**判据只有一条**。
+ * 三类判据（结构 / 供应商 / 运输分支）与它们各自对应的真实失败，都写在那个文件的头部。
  */
-function collectVendorCompatibilityFailures(json: Record<string, unknown>, path: string, out: string[]): void {
-  for (const keyword of ['anyOf', 'oneOf', 'allOf']) {
-    if (json[keyword] === undefined) continue;
-    out.push(`${path} 的根是一个 ${keyword}（Anthropic 适配器会静默丢弃它，Google legacy 路径不支持它——`
-      + '模型会看到一个没有 schema 的工具。把判别字段降成 z.enum，分支专属字段设为 optional）');
-  }
-  collectConstFailures(json, path, out);
-}
-
-function collectConstFailures(node: unknown, path: string, out: string[]): void {
-  if (Array.isArray(node)) {
-    node.forEach((item, index) => collectConstFailures(item, `${path}[${index}]`, out));
-    return;
-  }
-  if (!node || typeof node !== 'object') return;
-  const record = node as Record<string, unknown>;
-  if ('const' in record) {
-    out.push(`${path} 用了 const（Google 的 OpenAPI 3.03 路径不认它）——改成 z.enum([…])，`
-      + '生成 {"type":"string","enum":[…]}，那是上游 StringEnum() 的等价物');
-  }
-  for (const [key, value] of Object.entries(record)) {
-    if (key === 'enum' || key === 'required') continue;
-    collectConstFailures(value, `${path}.${key}`, out);
-  }
-}
-
-/**
- * 结构底线：模型可见 schema 里不许出现「什么都没说」的节点。
- * 一个**显式的空对象**（`{type:'object', properties:{}, additionalProperties:false}`）是合法的——
- * 它说的是「这个工具不收参数」，那是一句真话；`{}` 说的是「随便你」，那是 0/18 的来历。
- */
-function collectStructuralFailures(node: unknown, path: string, out: string[]): void {
-  if (Array.isArray(node)) {
-    node.forEach((item, index) => collectStructuralFailures(item, `${path}[${index}]`, out));
-    return;
-  }
-  if (!node || typeof node !== 'object') return;
-  const record = node as Record<string, unknown>;
-  const keys = Object.keys(record);
-  if (keys.length === 0) {
-    out.push(`${path} 是一个空 schema {}（模型看到的等于「随便填」）`);
-    return;
-  }
-  if (record.type === 'object' && record.properties === undefined && record.additionalProperties !== false
-    && !record.anyOf && !record.oneOf && !record.allOf && !record.$ref) {
-    out.push(`${path} 是一个没有 properties 的 object（字段名一个都没告诉模型）`);
-  }
-  if (record.type === 'array' && record.items === undefined && !record.prefixItems) {
-    out.push(`${path} 是一个没有 items 的 array（元素长什么样一个字没说）`);
-  }
-  for (const [key, value] of Object.entries(record)) {
-    if (key === 'enum' || key === 'required' || key === 'const') continue;
-    // `properties` / `patternProperties` / `$defs` 是**容器**，不是 schema。空容器说的是
-    // 「这个对象没有字段」——对一个不收参数的工具而言那是一句真话；把容器本身当 schema 检查，
-    // 会把 `z.object({}).strict()` 判成「随便填」，而它恰恰是最严的那个。
-    if (key === 'properties' || key === 'patternProperties' || key === '$defs' || key === 'definitions') {
-      if (value && typeof value === 'object' && !Array.isArray(value)) {
-        for (const [name, child] of Object.entries(value as Record<string, unknown>)) {
-          collectStructuralFailures(child, `${path}.${key}.${name}`, out);
-        }
-      }
-      continue;
-    }
-    collectStructuralFailures(value, `${path}.${key}`, out);
-  }
-}
 
 export interface ModelVisibleSchemaOptions {
   /** 进报错用。它是这条信息里唯一能让人「知道去哪儿看」的东西。 */
@@ -282,11 +242,7 @@ export interface ModelVisibleSchemaOptions {
  * 而 `prepareArguments` 只捏合这一次。
  */
 export function toModelVisibleSchema(schema: ZodTypeAny, options: ModelVisibleSchemaOptions): TSchema {
-  const json = zodToJsonSchema(schema, {
-    $refStrategy: 'none',
-    effectStrategy: 'input',
-    removeAdditionalStrategy: 'strict',
-  }) as Record<string, unknown>;
+  const json = toPublishedJsonSchema(schema);
   assertModelVisibleSchemaLossless(schema, json, options);
   return json as unknown as TSchema;
 }

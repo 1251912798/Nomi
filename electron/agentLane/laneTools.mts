@@ -8,11 +8,22 @@
 // 既然岔路 1 取了 A（`AgentHarness`），这里就用 `AgentHarnessTool`。`prepareArguments`
 // 两边同名同义，方案要的那个官方容忍钩子一点没丢。
 //
-// 校验只发生一次：pi 在调用 `execute` 之前用 `parameters` 跑一遍 ajv。宿主**不再**用 zod
-// 复验——那正是 #547 §2.2③「8 行报错只有 1 行是真的」的成因。安全性由
-// `toModelVisibleSchema` 的「信息不丢」门岗承担：生成的 schema 不弱于 zod。
+// 形状只验一次：pi 在调用 `execute` 之前用 `parameters` 跑 ajv（带容忍梯，G-08）。
+// `toModelVisibleSchema` 的「信息不丢」门岗保证生成的 schema 不弱于 zod，所以宿主不再为
+// **形状**开第二个验证器——那正是 #547 §2.2③「8 行报错只有 1 行是真的」的成因。
+//
+// 但扁平 schema 声明不了的那一层——**跨字段约束与分支专属字段**（哪个 operation 必须带
+// 哪些字段、哪些字段不属于这个 operation）——住在契约的 `transform` 里，而 pi 不认识 zod：
+// ajv 通过之后没有任何东西会去跑它。2026-09-07 合并评审实核：`{operation:"connect_canvas_edges",
+// edges:[]}` 与带着别的 operation 字段的调用一路绿到领域端口。所以 `execute` 里跑**一次**契约
+// parse，就在这个唯一的出口——不是第二个形状验证器（ajv 刚验过形状，这里只会剩下组合错误），
+// 而是设计里本来就该有、却没人调用的那一次。
 import { formatSize, truncateHead, type AgentHarnessTool, type AgentToolResult } from '@earendil-works/pi-agent-core';
+import type { ZodError, ZodIssue } from 'zod';
 import { LANE_MODEL_OUTPUT_MAX_BYTES, LANE_MODEL_OUTPUT_MAX_LINES } from '../shared/agentLane/laneContracts.js';
+import {
+  laneToolModelDescription, renderLaneToolFailure, type LaneToolFailureShape,
+} from '../shared/agentLane/laneToolContract.js';
 import type { LaneToolDescriptor } from './laneRuntimePort.js';
 import { toModelVisibleSchema } from './laneToolSchema.mjs';
 
@@ -74,6 +85,57 @@ function truncateForModel(text: string): { text: string; truncation?: LaneOutput
   };
 }
 
+/**
+ * 契约 parse 的失败 → 模型看到的失败正文（§3.3 的形状）。
+ *
+ * 只带**类型名与字段名**，绝不回传收到的值：用户文稿正文、素材路径都可能在参数里。
+ * `allowed` 从枚举类 issue 的 `options` 取，那是模型自纠时最有用的一样东西。
+ */
+function argumentFailure(toolName: string, args: unknown, error: ZodError): LaneToolFailureShape {
+  const issues = error.issues.map((issue) => ({
+    path: issue.path.length > 0 ? issue.path.join('.') : '(root)',
+    expected: expectedOf(issue),
+    receivedType: receivedTypeOf(issue, args),
+  }));
+  const enumIssue = error.issues.find(
+    (issue): issue is Extract<ZodIssue, { options: unknown[] }> =>
+      issue.code === 'invalid_enum_value' || issue.code === 'invalid_union_discriminator',
+  );
+  return {
+    code: 'tool_arguments_invalid',
+    message: `${toolName} was called with arguments its contract rejects.`,
+    issues,
+    ...(enumIssue ? { allowed: enumIssue.options.map(String) } : {}),
+    nextAction: 'Fix the listed fields and call again with the same operation. Fields that belong to another operation must be left out.',
+  };
+}
+
+function expectedOf(issue: ZodIssue): string {
+  switch (issue.code) {
+    case 'invalid_type':
+      return issue.expected;
+    case 'invalid_enum_value':
+    case 'invalid_union_discriminator':
+      return `one of ${issue.options.map(String).join(', ')}`;
+    case 'unrecognized_keys':
+      return `no field named ${issue.keys.join(', ')} for this operation`;
+    default:
+      // 剩下的是我们自己写的约束文案（"connect_canvas_edges needs at least one edge"）
+      // 或 zod 的界文案（"Array must contain at least 1 element(s)"）——都不含收到的值。
+      return issue.message;
+  }
+}
+
+function receivedTypeOf(issue: ZodIssue, args: unknown): string {
+  if (issue.code === 'invalid_type') return issue.received;
+  let current: unknown = args;
+  for (const key of issue.path) {
+    if (!current || typeof current !== 'object') return 'undefined';
+    current = (current as Record<string | number, unknown>)[key as string | number];
+  }
+  return Array.isArray(current) ? 'array' : current === null ? 'null' : typeof current;
+}
+
 /** 领域回执原样保留，截断元信息挂在旁边。非对象回执塞进 `value`，不静默丢掉。 */
 function detailsWithTruncation(details: unknown, truncation: LaneOutputTruncation): Record<string, unknown> {
   if (details === undefined) return { truncation };
@@ -90,24 +152,51 @@ export function createLaneTools(descriptors: readonly LaneToolDescriptor[]): Age
     if (!descriptor.description.trim()) {
       throw new Error(`Nomi lane tool ${descriptor.name} needs a model-visible description`);
     }
+    // 自声明的副作用与它自己必须自洽（阶段 2 评审第 ⑨ 维）。装配期抛，不是运行期发现：
+    // 一个「不改状态却说自己可撤销」的声明，唯一的症状会是崩溃恢复时替用户多跑一次。
+    const effects = descriptor.effects;
+    if (effects.mutates !== (effects.reversal !== 'none')) {
+      throw new Error(
+        `Nomi lane tool ${descriptor.name} declares mutates=${effects.mutates} with reversal="${effects.reversal}". `
+        + 'A read-only tool has nothing to reverse; a writing tool must say how its change is taken back.',
+      );
+    }
+    if (effects.billable && !effects.mutates) {
+      throw new Error(`Nomi lane tool ${descriptor.name} claims to spend the user's money without changing anything.`);
+    }
     names.add(descriptor.name);
     const tool: AgentHarnessTool<undefined> = {
       name: descriptor.name,
       label: descriptor.name,
-      description: descriptor.description,
+      // 模型读到的是「说明 + 示例块」。示例的 token 成本远低于一次失败重试——
+      // #547 的数据说零示例的工具在复杂参数上就是填不对（35/35 零示例）。
+      description: laneToolModelDescription(descriptor),
       parameters: toModelVisibleSchema(descriptor.schema, { toolName: descriptor.name }),
       executionMode: 'sequential',
-      // 效果不可安全重放：一次文稿写入重放两遍就是写了两遍。pi 拿这个字段决定
-      // 崩溃恢复时敢不敢替我们再跑一次，默认值不该由我们含糊过去。
-      replay: 'never',
+      // 崩溃恢复时敢不敢替我们再跑一次。**从工具自己声明的副作用派生，唯一的派生点**：
+      // 一次文稿写入重放两遍就是写了两遍（`'never'`），而重放一次 `nomi_canvas_read`
+      // 只是多读一次画布（`'safe'`）。上一版对**每一个**工具硬写 `'never'`，包括纯读的
+      // 那五个——那不会报错，只会让冷恢复白白丢掉本来能自动补上的那次读。
+      replay: effects.mutates ? 'never' : 'safe',
       ...(descriptor.prepareArguments
         ? { prepareArguments: descriptor.prepareArguments as (args: unknown) => never }
         : {}),
       execute: async (toolCallId, params, _onUpdate, _toolContext, _invocation, context) => {
         const signal = context.abortSignal ?? new AbortController().signal;
         signal.throwIfAborted();
-        const outcome = await descriptor.execute(params, { toolCallId, signal });
-        if (!outcome.ok) throw new LaneToolFailure(outcome.message);
+        // 契约自己的那一次 parse（文件头部说明了为什么它必须在这里、且只在这里）。
+        // 失败按 §3.3 的形状 throw：字段名 + 类型名 + 合法值 + 下一步，不回传值。
+        const bound = descriptor.schema.safeParse(params);
+        if (!bound.success) {
+          throw new LaneToolFailure(renderLaneToolFailure(argumentFailure(descriptor.name, params, bound.error)));
+        }
+        const outcome = await descriptor.execute(bound.data, { toolCallId, signal });
+        // **必须 throw，不能 return**（G-02）。上游文档原话：*"Returning a value never sets
+        // the error flag regardless of what properties you include in the return object."*
+        // return 一个「失败对象」的后果是 pi 记 `isError: false`——面板画绿收据、模型收到
+        // 一条「成功」的工具结果里面装着错误。那正是「文字说的和下面那堆红字对不上」的
+        // 机器成因之一。正文由**唯一**的渲染点生成，内外两个投影同源。
+        if (!outcome.ok) throw new LaneToolFailure(renderLaneToolFailure(outcome.failure));
         const shown = truncateForModel(outcome.text);
         const result: AgentToolResult<unknown> = {
           content: [{ type: 'text', text: shown.text }],

@@ -62,6 +62,19 @@ export type LanePartKind = LanePart['kind']
 export interface LaneUsage {
   readonly inputTokens: number
   readonly outputTokens: number
+  /**
+   * 从缓存前缀读回来的 token（pi 的 `Usage.cacheRead`）。
+   *
+   * **为什么它必须单独一列，而不是并进 `inputTokens`**：缓存命中的那部分便宜一个数量级，
+   * 把两者加成一个「输入」数字，等于把「这一轮真正贵在哪」这条信息抹掉。而它正是唯一能
+   * 告诉我们**前缀合同有没有被自己破坏**的信号——工具定义或系统提示词只要抖一个字节，
+   * 整段前缀作废（tools → system → messages 是逐级失效的，见
+   * <https://platform.claude.com/docs/en/agents-and-tools/tool-use/tool-use-with-prompt-caching>），
+   * 症状就是这一列突然塌到 0 而 `inputTokens` 猛涨。合成一个数就看不出来了。
+   */
+  readonly cacheReadTokens: number
+  /** 写进缓存前缀的 token（`Usage.cacheWrite`）。一条新 lane 的第一轮几乎全在这一列。 */
+  readonly cacheWriteTokens: number
   readonly totalTokens: number
   /** 运行时对这个模型没有价目时**整个字段不存在**——不是 0。0 会印成一个我们没资格下的断言。 */
   readonly costUsd?: number

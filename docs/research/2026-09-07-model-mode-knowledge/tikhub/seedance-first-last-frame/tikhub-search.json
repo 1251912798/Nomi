@@ -1,0 +1,661 @@
+{
+  "source": "tikhub",
+  "baseUrl": "https://api.tikhub.io",
+  "keyword": "Seedance 首尾帧",
+  "since": "2026-03-01",
+  "limitPerPlatform": 8,
+  "generatedAt": "2026-09-07T07:32:34.156Z",
+  "failures": [],
+  "summary": {
+    "totalRecords": 32,
+    "platformsOk": 4,
+    "platformsEmpty": 0,
+    "platformsFailed": 0,
+    "platforms": [
+      {
+        "platform": "douyin",
+        "platformLabel": "抖音",
+        "status": "ok",
+        "items": 8,
+        "pagesFetched": 2,
+        "missingFields": {},
+        "fieldConfidence": "verified-against-live-response",
+        "fieldsVerifiedOn": "2026-09-06",
+        "error": null
+      },
+      {
+        "platform": "xhs",
+        "platformLabel": "小红书",
+        "status": "ok",
+        "items": 8,
+        "pagesFetched": 1,
+        "missingFields": {},
+        "fieldConfidence": "verified-against-live-response",
+        "fieldsVerifiedOn": "2026-09-06",
+        "error": null
+      },
+      {
+        "platform": "bilibili",
+        "platformLabel": "B站",
+        "status": "ok",
+        "items": 8,
+        "pagesFetched": 1,
+        "missingFields": {},
+        "fieldConfidence": "verified-against-live-response",
+        "fieldsVerifiedOn": "2026-09-06",
+        "error": null
+      },
+      {
+        "platform": "x",
+        "platformLabel": "X（Twitter）",
+        "status": "ok",
+        "items": 8,
+        "pagesFetched": 1,
+        "missingFields": {},
+        "fieldConfidence": "verified-against-live-response",
+        "fieldsVerifiedOn": "2026-09-06",
+        "error": null
+      }
+    ]
+  },
+  "results": [
+    {
+      "platform": "douyin",
+      "platformLabel": "抖音",
+      "records": [
+        {
+          "platform": "douyin",
+          "platformLabel": "抖音",
+          "id": "7623753085441422321",
+          "url": "https://www.douyin.com/video/7623753085441422321",
+          "author": "Neo小海",
+          "authorId": "1913565314551559",
+          "publishedAt": "2026-04-01T11:35:38.000Z",
+          "title": "AI首尾帧的创意玩法 #即梦ai #seedance2 #首尾帧 #ai变身 #ai教程",
+          "excerpt": "AI首尾帧的创意玩法 #即梦ai #seedance2 #首尾帧 #ai变身 #ai教程",
+          "mentions": [
+            "seedance2",
+            "即梦"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "douyin",
+          "platformLabel": "抖音",
+          "id": "7675691840787483930",
+          "url": "https://www.douyin.com/video/7675691840787483930",
+          "author": "AIGC蓝白",
+          "authorId": "2627171818669904",
+          "publishedAt": "2026-08-19T10:44:39.000Z",
+          "title": "画面不连贯？衔接不顺畅？三十秒教会你！ 如何使用首尾帧功能，原来只要这么做就可以解决。#AI教程 #AI漫剧 #AI绘画 #即梦 #AI",
+          "excerpt": "画面不连贯？衔接不顺畅？三十秒教会你！ 如何使用首尾帧功能，原来只要这么做就可以解决。#AI教程 #AI漫剧 #AI绘画 #即梦 #AI",
+          "mentions": [
+            "即梦"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "douyin",
+          "platformLabel": "抖音",
+          "id": "7674809377999670534",
+          "url": "https://www.douyin.com/video/7674809377999670534",
+          "author": "C.C的AI学习之旅",
+          "authorId": "80680203330794",
+          "publishedAt": "2026-08-17T01:40:12.000Z",
+          "title": "Seedance2.5连续动作视频：首尾帧+提示词三步实操 ",
+          "excerpt": "Seedance2.5连续动作视频：首尾帧+提示词三步实操",
+          "mentions": [
+            "Seedance2.5"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "douyin",
+          "platformLabel": "抖音",
+          "id": "7661078784103340465",
+          "url": "https://www.douyin.com/video/7661078784103340465",
+          "author": "广方音乐",
+          "authorId": "2792387420888284",
+          "publishedAt": "2026-07-11T01:38:25.000Z",
+          "title": "豆包首尾帧视频免费生成教学 干货分享#保姆级教程#豆包Seedance2.0#首尾帧视频教学\n\n教大家使用豆包手机APP\n免费快速生成建筑物成长过程的视频\n\n最快入口：打开豆包对话\n 1. 在聊天框上传首帧图、尾帧图两张图片\n2. 发送指令： Seedance2.0，图1为首帧，图2为尾帧，写清楚画面运动描述 \n例如：\nSeedance2.0，图1作为视频首帧，图2作为尾帧，建筑物建造过程，镜头缓慢轻微推进，画面柔和过渡，9比16竖屏，10秒电影质感视频\n\n3. 发送后自动跳转Seedance视频创作面板，两张图自动绑定首尾帧\n \n第二个入口：底部创作按钮标准入口\n \n1. 豆包底部导航栏点 创作 → 视频生成\n2. 模型选择 Seedance 2.0，切换到「图生视频/全能参考模式」\n3. 点输入框上方+号，依次选中首图、尾图；\n提示文本标注： 填写动作、运镜提示词即可生成\n\n整个过程非常简单，您学会了吗。\n有问题可以在评论留言哦",
+          "excerpt": "豆包首尾帧视频免费生成教学 干货分享#保姆级教程#豆包Seedance2.0#首尾帧视频教学 教大家使用豆包手机APP 免费快速生成建筑物成长过程的视频 最快入口：打开豆包对话 1. 在聊天框上传首帧图、尾帧图两张图片 2. 发送指令： Seedance2.0，图1为首帧，图2为尾帧，写清楚画面运动描述 例如： Seedance2.0，图1作为视频首帧，图2作为尾帧，建筑物建造过程，镜头缓慢轻微推进，画面柔和过渡，9比16竖屏，10秒电影质感视频 3. 发送后自动跳转Seedance视频创作面板，两张图自动绑定首尾帧 第二个入口：底部创作按钮标准入口 1. 豆包底部导航栏点 创作 → 视频生成…",
+          "mentions": [
+            "Seedance",
+            "Seedance 2.0",
+            "Seedance2.0"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "douyin",
+          "platformLabel": "抖音",
+          "id": "7628517920812829992",
+          "url": "https://www.douyin.com/video/7628517920812829992",
+          "author": "何老师创意开场",
+          "authorId": "95031879213",
+          "publishedAt": "2026-04-14T07:45:41.000Z",
+          "title": "6种AI首尾帧玩法? 瞬间移动 无人机进场 秒变风格 秒建大楼 摇臂效果 趣味爆炸 #AI教程 #剪辑教程 #特效 #seedance2",
+          "excerpt": "6种AI首尾帧玩法? 瞬间移动 无人机进场 秒变风格 秒建大楼 摇臂效果 趣味爆炸 #AI教程 #剪辑教程 #特效 #seedance2",
+          "mentions": [
+            "seedance2"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "douyin",
+          "platformLabel": "抖音",
+          "id": "7624522997621823931",
+          "url": "https://www.douyin.com/video/7624522997621823931",
+          "author": "Neo小海",
+          "authorId": "1913565314551559",
+          "publishedAt": "2026-04-03T13:23:17.000Z",
+          "title": "AI视频首尾帧运镜拆解 #ai视频  #seedance2 #AI首尾帧 #AI提示词",
+          "excerpt": "AI视频首尾帧运镜拆解 #ai视频 #seedance2 #AI首尾帧 #AI提示词",
+          "mentions": [
+            "seedance2"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "douyin",
+          "platformLabel": "抖音",
+          "id": "7614847463224102171",
+          "url": "https://www.douyin.com/video/7614847463224102171",
+          "author": "特效小吴",
+          "authorId": "60450362929",
+          "publishedAt": "2026-03-08T11:37:32.000Z",
+          "title": "🔥AI超酷建筑生长动画（附提示词） 最近发现了AI一种简单又炫酷的玩法，那就是用Seedance 2.0一句话制作这种超酷建筑生长动画，在这里把提示词分享给大家。\n一站式AI创作工作台，一句话创作你的爆款视频，无需学习AI，只需专注创意。\n✅本期视频由JIMENG辅助生成，仅供学习交流\n#AI六边形战士  #一句话P视频  #建筑生长动画  #建筑生长  #地标建筑",
+          "excerpt": "🔥AI超酷建筑生长动画（附提示词） 最近发现了AI一种简单又炫酷的玩法，那就是用Seedance 2.0一句话制作这种超酷建筑生长动画，在这里把提示词分享给大家。 一站式AI创作工作台，一句话创作你的爆款视频，无需学习AI，只需专注创意。 ✅本期视频由JIMENG辅助生成，仅供学习交流 #AI六边形战士 #一句话P视频 #建筑生长动画 #建筑生长 #地标建筑",
+          "mentions": [
+            "Seedance",
+            "Seedance 2.0"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "douyin",
+          "platformLabel": "抖音",
+          "id": "7644096469682687238",
+          "url": "https://www.douyin.com/video/7644096469682687238",
+          "author": "AIGC大马",
+          "authorId": "2416040396470208",
+          "publishedAt": "2026-05-26T10:45:00.000Z",
+          "title": "画面断层、跳转突兀？AI 长视频通病这样解！ 生成AI片段前面视频的尾帧和后面视频的首帧衔接不上，原来这么简单就可以解决\n#AI教程 #AI漫剧 #AI绘画",
+          "excerpt": "画面断层、跳转突兀？AI 长视频通病这样解！ 生成AI片段前面视频的尾帧和后面视频的首帧衔接不上，原来这么简单就可以解决 #AI教程 #AI漫剧 #AI绘画",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        }
+      ],
+      "pages": [
+        {
+          "page": 1,
+          "received": 7
+        },
+        {
+          "page": 2,
+          "received": 7
+        }
+      ]
+    },
+    {
+      "platform": "xhs",
+      "platformLabel": "小红书",
+      "records": [
+        {
+          "platform": "xhs",
+          "platformLabel": "小红书",
+          "id": "69bcf5af0000000021038a0a",
+          "url": "https://www.xiaohongshu.com/explore/69bcf5af0000000021038a0a?xsec_token=YBhYkaSNAw5mD88KKMRlx0wvJbUk_4syGoBDbvvYUeu0g%3D&xsec_source=pc_search",
+          "author": "AI视频制作教程",
+          "authorId": "679340d4000000000e0111f9",
+          "publishedAt": "2026-03-20T07:22:23.000Z",
+          "title": "一口气带你学会即梦AI最新Seedance2.0",
+          "excerpt": "【09】即梦Seedance 2.0教程-首尾帧#AI视频生成 #AIGC #即梦AI #Seedance",
+          "mentions": [
+            "AIGC",
+            "Seedance",
+            "Seedance 2.0",
+            "Seedance2.0",
+            "即梦"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "xhs",
+          "platformLabel": "小红书",
+          "id": "69d39a62000000001a0271ce",
+          "url": "https://www.xiaohongshu.com/explore/69d39a62000000001a0271ce?xsec_token=YBIo01OwEy0CePmtMwyUZOUcd6SXNOa_vj3CY5JK4u0I4%3D&xsec_source=pc_search",
+          "author": "李子的摄影笔记",
+          "authorId": "5f031bd50000000001003829",
+          "publishedAt": "2026-04-06T11:34:58.000Z",
+          "title": "新手必学8️⃣种AI首尾帧玩法合集☄️玩上瘾啦",
+          "excerpt": "盆友们[暗中观察R]上次分享AI玩法合集 [喝奶茶R]收到很多网友催更， 说好3月27号发布[笑哭R]但是实在太忙， 今",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "xhs",
+          "platformLabel": "小红书",
+          "id": "6a3a89c90000000008025763",
+          "url": "https://www.xiaohongshu.com/explore/6a3a89c90000000008025763?xsec_token=YB7a3QhRuTscBIBYRMhkzBWuencfyjS7KfI_Utjhr926M%3D&xsec_source=pc_search",
+          "author": "栋栋幺AI",
+          "authorId": "6475d54f0000000010037fbc",
+          "publishedAt": "2026-07-02T09:00:36.000Z",
+          "title": "全能参考和首尾帧到底用哪一个？",
+          "excerpt": "#AI #AIGC #教学 #教程 #AI教程 #AI教学 #howto用好AI @HOWTO薯",
+          "mentions": [
+            "AIGC",
+            "howto"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "xhs",
+          "platformLabel": "小红书",
+          "id": "6a84230600000000050315a7",
+          "url": "https://www.xiaohongshu.com/explore/6a84230600000000050315a7?xsec_token=YBvPjY7cQO0MK_Fza6iv4LWsKtArCZSF0OdwyB2h5gNP0%3D&xsec_source=pc_search",
+          "author": "喵同学AIGC",
+          "authorId": "61de5e5f000000001000e11a",
+          "publishedAt": "2026-08-18T09:16:54.000Z",
+          "title": "图片还能这么玩? 两张图片实现无缝转场",
+          "excerpt": "#ai视频 #AI转场 #首尾帧 #无缝衔接转场",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "xhs",
+          "platformLabel": "小红书",
+          "id": "6a8410430000000028033dd7",
+          "url": "https://www.xiaohongshu.com/explore/6a8410430000000028033dd7?xsec_token=YBvPjY7cQO0MK_Fza6iv4LWpSUHf2F-VSQVSUN0AYx89Y%3D&xsec_source=pc_search",
+          "author": "CapCut",
+          "authorId": "6786802b000000000801a35c",
+          "publishedAt": "2026-08-18T07:56:51.000Z",
+          "title": "告别卡顿！Seedance 2.5 解锁完美动态海报",
+          "excerpt": "动态海报首尾帧衔接不上？ 现在，只需简单串联首尾帧， 就能自动生成衔接流畅的无缝循环动态海报， 丝滑不卡顿，流畅不跳帧",
+          "mentions": [
+            "Seedance",
+            "Seedance 2.5"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "xhs",
+          "platformLabel": "小红书",
+          "id": "6a0c3e19000000000701396f",
+          "url": "https://www.xiaohongshu.com/explore/6a0c3e19000000000701396f?xsec_token=YBoGG4vHygqCHp_1UoRAB6YhNtaVF1IhLRH6FU8a5sbag%3D&xsec_source=pc_search",
+          "author": "AI智慧屯",
+          "authorId": "635a1e04000000001901e0a1",
+          "publishedAt": "2026-05-19T10:40:25.000Z",
+          "title": "首尾帧AI转场，真的超简单的#ai #首尾帧",
+          "excerpt": "首尾帧AI转场，真的超简单的#ai #首尾帧",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "xhs",
+          "platformLabel": "小红书",
+          "id": "6a8c179c0000000033018da2",
+          "url": "https://www.xiaohongshu.com/explore/6a8c179c0000000033018da2?xsec_token=YB9n99yUuHJIQO81Bv0puua6OpNc5JMIFoGOpYhNk6WT4%3D&xsec_source=pc_search",
+          "author": "Jacky杰克彭老师",
+          "authorId": "56683862447608127f72c9fc",
+          "publishedAt": "2026-08-24T10:06:20.000Z",
+          "title": "别只会文生视频！4种玩法让画面不跑偏！",
+          "excerpt": "AI新手村 AI生成生视频入门第二课：图生视频。提供参考图来生成图片和视频是非常实用和重要的一种ai生成方式#AI视频",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "xhs",
+          "platformLabel": "小红书",
+          "id": "6a7d89870000000035016dbd",
+          "url": "https://www.xiaohongshu.com/explore/6a7d89870000000035016dbd?xsec_token=YBK6KiCnYLOu3P2usrRAC04GqRpx8gyO_T0R7P0P4Ik4Q%3D&xsec_source=pc_search",
+          "author": "404",
+          "authorId": "5b85063959b0320001e5b83b",
+          "publishedAt": "2026-08-13T09:08:23.000Z",
+          "title": "SD2.5提示词｜基础篇",
+          "excerpt": "做 SD2.5视频，提示词写得长，不一定更稳。 很多画面跑偏，是因为三件事没说清：谁在做什么、每份素材负责什么、这一段最",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        }
+      ],
+      "pages": [
+        {
+          "page": 1,
+          "received": 20
+        }
+      ]
+    },
+    {
+      "platform": "bilibili",
+      "platformLabel": "B站",
+      "records": [
+        {
+          "platform": "bilibili",
+          "platformLabel": "B站",
+          "id": "BV1cs8z6sECG",
+          "url": "https://www.bilibili.com/video/BV1cs8z6sECG",
+          "author": "绘世玩家",
+          "authorId": "269451197",
+          "publishedAt": "2026-08-21T12:12:50.000Z",
+          "title": "Minimax H3 批量首尾帧-喂饭级别教程~",
+          "excerpt": "Minimax H3 批量首尾帧-喂饭级别教程~ 工作流：https://www.runninghub.cn/post/2089249903888392193?inviteCode=5c856875 模型链接：https://pan.quark.cn/s/052a83b8c108 Comfyui批量管理系统：https://www.bilibili.com/video/BV1j78J6tEtU?t=4.2",
+          "mentions": [
+            "ComfyUI"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "bilibili",
+          "platformLabel": "B站",
+          "id": "BV1pXjE6qELT",
+          "url": "https://www.bilibili.com/video/BV1pXjE6qELT",
+          "author": "龙神传媒ai视频",
+          "authorId": "630783521",
+          "publishedAt": "2026-06-20T03:36:59.000Z",
+          "title": "豆包的首尾帧",
+          "excerpt": "豆包的首尾帧 -",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "bilibili",
+          "platformLabel": "B站",
+          "id": "BV1qDR9BJERx",
+          "url": "https://www.bilibili.com/video/BV1qDR9BJERx",
+          "author": "AI视频创作营",
+          "authorId": "3632318172367164",
+          "publishedAt": "2026-05-10T11:00:00.000Z",
+          "title": "首尾帧到底是什么？",
+          "excerpt": "首尾帧到底是什么？ 首尾帧到底是什么？",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "bilibili",
+          "platformLabel": "B站",
+          "id": "BV1njb66REGS",
+          "url": "https://www.bilibili.com/video/BV1njb66REGS",
+          "author": "瞎大笨",
+          "authorId": "412404316",
+          "publishedAt": "2026-08-17T22:46:28.000Z",
+          "title": "MinimaxH3多参模式下首尾帧控图，长视频无缝衔接且无画质变异",
+          "excerpt": "MinimaxH3多参模式下首尾帧控图，长视频无缝衔接且无画质变异 用Comfyui最新的原生节点Add Guide for MiniMax H3，可在多参模式下实现首尾帧控图。由此实现无缝衔接的长视频，且无上下文参考带来的画质异化。",
+          "mentions": [
+            "ComfyUI",
+            "MinimaxH3"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "bilibili",
+          "platformLabel": "B站",
+          "id": "BV1d1bt6jEMM",
+          "url": "https://www.bilibili.com/video/BV1d1bt6jEMM",
+          "author": "菜啊焕",
+          "authorId": "386622019",
+          "publishedAt": "2026-09-06T19:57:03.000Z",
+          "title": "Minimax h3 （AddGuide）首尾帧、多镜头、音频参考及长视频",
+          "excerpt": "Minimax h3 （AddGuide）首尾帧、多镜头、音频参考及长视频 #本期主题：利用Minimax H3强大的参考能力，加上最近新出的“AddGuide for minimax h3”官方插件，有效地处理了首尾帧多镜头、音频参考及长视频！ # 1、本期新用到的： 辅助插件WorkflowHelper： https://github.com/Ccm-Tim/ComfyUI-H3-WorkflowHelper.git 多视频合一插件ComfyUI-Apt_Preset：https://github.com/cardenluo/ComfyUI-Apt_Preset",
+          "mentions": [
+            "ComfyUI"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "bilibili",
+          "platformLabel": "B站",
+          "id": "BV1NdAMzZEU7",
+          "url": "https://www.bilibili.com/video/BV1NdAMzZEU7",
+          "author": "吃猪侠233",
+          "authorId": "111985620",
+          "publishedAt": "2026-03-22T03:18:53.000Z",
+          "title": "seedance2.0 首尾帧",
+          "excerpt": "seedance2.0 首尾帧 -",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "bilibili",
+          "platformLabel": "B站",
+          "id": "BV1zabW66ETx",
+          "url": "https://www.bilibili.com/video/BV1zabW66ETx",
+          "author": "区区大名不提也罢",
+          "authorId": "3546704301263170",
+          "publishedAt": "2026-09-06T13:14:44.000Z",
+          "title": "seedance2.5生成4-30秒视频最稳用法，无需会员，无需激活，不绑定机器",
+          "excerpt": "seedance2.5生成4-30秒视频最稳用法，无需会员，无需激活，不绑定机器",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "bilibili",
+          "platformLabel": "B站",
+          "id": "BV1aEKG6gEUb",
+          "url": "https://www.bilibili.com/video/BV1aEKG6gEUb",
+          "author": "讲课的开阳",
+          "authorId": "532992441",
+          "publishedAt": "2026-07-16T10:14:50.000Z",
+          "title": "AI长视频如何用首尾帧生成",
+          "excerpt": "AI长视频如何用首尾帧生成",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        }
+      ],
+      "pages": [
+        {
+          "page": 1,
+          "received": 20
+        }
+      ]
+    },
+    {
+      "platform": "x",
+      "platformLabel": "X（Twitter）",
+      "records": [
+        {
+          "platform": "x",
+          "platformLabel": "X（Twitter）",
+          "id": "2096487926217560519",
+          "url": "https://x.com/johnAGI168/status/2096487926217560519",
+          "author": "John",
+          "authorId": "johnAGI168",
+          "publishedAt": "2026-09-06T06:37:27.000Z",
+          "title": "魔法，Amazing！纯粹是魔法🧙‍♀️ SEEDANCE 2.5 DIRECTOR PROMPT Duration:",
+          "excerpt": "魔法，Amazing！纯粹是魔法🧙‍♀️ SEEDANCE 2.5 DIRECTOR PROMPT Duration: 18秒 Aspect ratio: 9:16 Reference: 魔术师＝ @ ，穿纯黑塔士多西装白衬衫黑领结；女演员＝一名二十岁上下棕色大波浪卷发年轻漂亮女性，穿修身鲜红色全身亮片吊带高开叉长裙金高跟鞋；全片两人造型固定一致，不更换穿着 以下正文一律使用中文名字指代，不再出现 图片/ 视频编号。 Audio: 华丽剧场混响环境声；红绸高速抽动与缠绕的连续破风声；绸缎垂直拉升的魔幻呼啸声；女演员现身瞬间全场观众爆发的雷鸣般惊呼、热烈鼓掌与喝彩声；无对白；无旁白、无音乐、无…",
+          "mentions": [
+            "Seedance",
+            "SEEDANCE 2.5"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "x",
+          "platformLabel": "X（Twitter）",
+          "id": "2095308291945775312",
+          "url": "https://x.com/liyue_ai/status/2095308291945775312",
+          "author": "李岳",
+          "authorId": "liyue_ai",
+          "publishedAt": "2026-09-03T00:30:00.000Z",
+          "title": "体验一把中式美学的极致运镜：月下剑影预告片。 短短6秒钟集合了点刺-&gt;水平斩-&gt;腾空回旋斩-&gt;极速俯冲",
+          "excerpt": "体验一把中式美学的极致运镜：月下剑影预告片。 短短6秒钟集合了点刺-&gt;水平斩-&gt;腾空回旋斩-&gt;极速俯冲刺-&gt;落地横扫。 Seedance 2.5还是太权威了。 制作方法如下： https://t.co/GjkOD5lDzQ",
+          "mentions": [
+            "Seedance",
+            "Seedance 2.5"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "x",
+          "platformLabel": "X（Twitter）",
+          "id": "2096248357060551126",
+          "url": "https://x.com/john87445528/status/2096248357060551126",
+          "author": "John",
+          "authorId": "john87445528",
+          "publishedAt": "2026-09-05T14:45:29.000Z",
+          "title": "墙上那一排，我都要了 多余的男3号在提示词里已经修改掉了 seedance prompt: ｜15秒（完整单段＋海妖风＋",
+          "excerpt": "墙上那一排，我都要了 多余的男3号在提示词里已经修改掉了 seedance prompt: ｜15秒（完整单段＋海妖风＋唯一#3锁定） 【参考锁定】 参考图1只锁定成年老板娘#1的腿脚比例、薄袜质感、黑色高跟鞋及修长身体线条。彻底忽略参考图中的宾馆走廊、豪华沙发、暖色装潢和原始背景。 参考视频锁定男#2、顾客#3的脸、身形、发型、服装气质和真实反应节奏。不得换脸、融合或复制。 三名角色均为成年人： - 老板娘#1：唯一一名成年女性； - 男#2：唯一一名左侧成年男性； - 顾客#3：唯一一名右侧成年男性。 【人物数量最高优先级】 全片画面内严格只有#1、#2、#3三名可见角色。 顾客#3从0秒…",
+          "mentions": [
+            "Seedance"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "x",
+          "platformLabel": "X（Twitter）",
+          "id": "2095413989966491714",
+          "url": "https://x.com/Chengzilhy/status/2095413989966491714",
+          "author": "小宇Chengzi",
+          "authorId": "Chengzilhy",
+          "publishedAt": "2026-09-03T07:30:00.000Z",
+          "title": "第一次当特工，请多关照。🥺👉👈 业务还不太熟…… 应该不算任务失败吧？ Seedance 2.5 Prompt \ud83d",
+          "excerpt": "第一次当特工，请多关照。🥺👉👈 业务还不太熟…… 应该不算任务失败吧？ Seedance 2.5 Prompt 🔽 Image1＝后方持枪女人；Image2＝前景接饮料女人。严格保持两人的脸、发型、服装和身份一致，不得互换。 生成 20秒、16:9、真人电影实拍、一镜到底、无BGM 的犯罪悬疑冷幽默短片。 现代冷灰色室内饮料区，银色饮料机、冷白顶灯。摄影机固定在饮料机侧前方近距离偏低机位，约腰胸高度，35–50mm，中近景，轻浅景深，基本不移动。 0–4s Image2角色B小心靠近饮料机，动作克制自然，只短暂警觉观察一次，表情中性，不微笑。 4–7s 她拿透明塑料杯放到饮料出口下，只…",
+          "mentions": [
+            "Image1",
+            "Image2",
+            "Seedance",
+            "Seedance 2.5"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "x",
+          "platformLabel": "X（Twitter）",
+          "id": "2096800771321081920",
+          "url": "https://x.com/Soranlan/status/2096800771321081920",
+          "author": "Soran",
+          "authorId": "Soranlan",
+          "publishedAt": "2026-09-07T03:20:35.000Z",
+          "title": "每次出剑，都怕你没跟上 prompt： Seedance 2.0 Fast｜15秒仙侠短片｜《莫回头》 一、核心定位 生",
+          "excerpt": "每次出剑，都怕你没跟上 prompt： Seedance 2.0 Fast｜15秒仙侠短片｜《莫回头》 一、核心定位 生成一段完整连续的 15 秒中国仙侠电影短片。 整体风格： 电影级写实质感 纯古风中国仙侠美学 成熟的心理张力 克制但锋利的情绪力量 依靠潜台词推进，而不是解释性台词 资深编剧式短对白 优雅武侠人物调度 Arri Alexa 电影机质感 稳定锐利的面部微细节 细腻胶片颗粒 自然体积光 这次反转围绕： 被误解成嫌弃的情感依赖。 第一层观感必须成立： 敌人拿出三年前旧调令 调令证明师姐确实亲笔要求把小师妹调离自己身边 所有人包括小师妹，都先自然理解为 师姐当年嫌她碍事，嫌她拖累自己…",
+          "mentions": [
+            "Seedance",
+            "Seedance 2.0",
+            "Shot 1",
+            "Shot 2",
+            "Shot 3"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "x",
+          "platformLabel": "X（Twitter）",
+          "id": "2095481897187164259",
+          "url": "https://x.com/liyue_ai/status/2095481897187164259",
+          "author": "李岳",
+          "authorId": "liyue_ai",
+          "publishedAt": "2026-09-03T11:59:51.000Z",
+          "title": "卧槽，这动作真的是帅炸了🥳 Seedance 2.5生成东方仙侠视频：月下剑影。 贴地疾掠、踏空旋身、剑气撕开月幕，长",
+          "excerpt": "卧槽，这动作真的是帅炸了🥳 Seedance 2.5生成东方仙侠视频：月下剑影。 贴地疾掠、踏空旋身、剑气撕开月幕，长发和墨色裙摆被甩成巨大的水墨浪，冷白月光里又突然窜出几缕暖金火焰。 最绝的是画面里没有对手，只有她、剑和月亮，却硬是拍出了一个人挑战整片天地的气势。每一剑像在夜空落墨，每一次转身都带着月光往前冲。 这种又冷、又狠、又浪漫的东方美学，真的会让人欲罢不能。 创意来源抖音 @wuy0uer ，提示词进行了二次优化。",
+          "mentions": [
+            "Seedance",
+            "Seedance 2.5"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "x",
+          "platformLabel": "X（Twitter）",
+          "id": "2095722721263169545",
+          "url": "https://x.com/crbpite8/status/2095722721263169545",
+          "author": "春日部彼得",
+          "authorId": "crbpite8",
+          "publishedAt": "2026-09-04T03:56:48.000Z",
+          "title": "一位20岁的日本女孩子，找男朋友拿了49美元。 一开始她完全没说这笔钱打算用来做什么。 半天时间过去，她产出一条13秒的",
+          "excerpt": "一位20岁的日本女孩子，找男朋友拿了49美元。 一开始她完全没说这笔钱打算用来做什么。 半天时间过去，她产出一条13秒的短视频。等到第二天清晨，视频播放量直接冲到200万。 她的构思十分直白，拍摄缩小成手机大小的自己，在宽大的床上往前爬行。卧室、枕头、羽绒被都还是原本的样子，只有人物尺寸发生改变。 这种内容形式并不是她原创，抖音上微型人题材早就火过，她只是做出属于自己的版本。摒弃餐盘人偶、餐厅玩偶这类常见套路，主角就是现实的她，在自家床上呈现出渺小的状态。 49美元全部花销在Seedance订阅上面。 >Kimi K3生成角色资料，拆解各项比例，校准枕头、被子褶皱和缩小人物之间的尺度：耗时5分…",
+          "mentions": [
+            "Seedance",
+            "Seedance 2.5",
+            "Seedream"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "x",
+          "platformLabel": "X（Twitter）",
+          "id": "2083178644130640005",
+          "url": "https://x.com/johnAGI168/status/2083178644130640005",
+          "author": "John",
+          "authorId": "johnAGI168",
+          "publishedAt": "2026-07-31T13:11:07.000Z",
+          "title": "高速FPV一镜到底穿越（Hyperspeed FPV One-Take Portal Travel）📺 Seedanc",
+          "excerpt": "高速FPV一镜到底穿越（Hyperspeed FPV One-Take Portal Travel）📺 Seedance 2.5 是贵了一点，如果 480p 的价格换成 720p 的还差不多😮‍💨 只能采用升级分辨率，这个直接从 480 p 升级到 4k 分辨率，可还行 ❓ prompt 👇 【风格】高速FPV一镜到底穿越（Hyperspeed FPV One-Take Portal Travel），虚幻引擎5写实渲染，8K，运动模糊拉满，每次穿越用\"冲进物体/被吸入\"做无缝转场，禁止黑屏硬切，竖屏9:16 【时长】30秒 【角色】同一位亚洲女性（每个世界换形态换装，但脸100%锁定，…",
+          "mentions": [
+            "Seedance",
+            "Seedance 2.5"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        }
+      ],
+      "pages": [
+        {
+          "page": 1,
+          "received": 20
+        }
+      ]
+    }
+  ]
+}

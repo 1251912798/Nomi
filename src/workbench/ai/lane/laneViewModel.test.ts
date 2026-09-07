@@ -22,7 +22,7 @@ const part = (input: Omit<LanePart, 'sequence' | 'entrySeq' | 'contentIndex'> & 
 function projection(parts: LanePart[], overrides: Partial<LaneProjection> = {}): LaneProjection {
   return {
     lane: 'main', parts, running: false,
-    usage: { inputTokens: 120, outputTokens: 40, totalTokens: 160 },
+    usage: { inputTokens: 120, outputTokens: 40, cacheReadTokens: 900, cacheWriteTokens: 0, totalTokens: 160 },
     ...overrides,
   }
 }
@@ -114,10 +114,12 @@ describe('laneViewModel', () => {
     expect(withoutCost.usage.cost).toBeUndefined()
     expect(withoutCost.usage.max).toBeUndefined()
     expect(withoutCost.usage.input).toBe('120t')
+    // 缓存命中单独一列：并进 input 就看不出前缀合同有没有被自己抖坏。
+    expect(withoutCost.usage.cache).toBe('900t')
 
     next = 0
     const withCost = laneViewModel(projection([], {
-      usage: { inputTokens: 120, outputTokens: 40, totalTokens: 160, costUsd: 0.0123 },
+      usage: { inputTokens: 120, outputTokens: 40, cacheReadTokens: 900, cacheWriteTokens: 0, totalTokens: 160, costUsd: 0.0123 },
     }), labels)
     expect(withCost.usage.cost).toBe('$0.0123')
   })

@@ -1,0 +1,609 @@
+{
+  "source": "tikhub",
+  "baseUrl": "https://api.tikhub.io",
+  "keyword": "AI 记住我的风格",
+  "since": null,
+  "limitPerPlatform": 8,
+  "generatedAt": "2026-09-07T07:40:36.691Z",
+  "failures": [],
+  "summary": {
+    "totalRecords": 32,
+    "platformsOk": 4,
+    "platformsEmpty": 0,
+    "platformsFailed": 0,
+    "platforms": [
+      {
+        "platform": "douyin",
+        "platformLabel": "抖音",
+        "status": "ok",
+        "items": 8,
+        "pagesFetched": 2,
+        "missingFields": {},
+        "fieldConfidence": "verified-against-live-response",
+        "fieldsVerifiedOn": "2026-09-06",
+        "error": null
+      },
+      {
+        "platform": "xhs",
+        "platformLabel": "小红书",
+        "status": "ok",
+        "items": 8,
+        "pagesFetched": 1,
+        "missingFields": {},
+        "fieldConfidence": "verified-against-live-response",
+        "fieldsVerifiedOn": "2026-09-06",
+        "error": null
+      },
+      {
+        "platform": "bilibili",
+        "platformLabel": "B站",
+        "status": "ok",
+        "items": 8,
+        "pagesFetched": 1,
+        "missingFields": {},
+        "fieldConfidence": "verified-against-live-response",
+        "fieldsVerifiedOn": "2026-09-06",
+        "error": null
+      },
+      {
+        "platform": "x",
+        "platformLabel": "X（Twitter）",
+        "status": "ok",
+        "items": 8,
+        "pagesFetched": 1,
+        "missingFields": {},
+        "fieldConfidence": "verified-against-live-response",
+        "fieldsVerifiedOn": "2026-09-06",
+        "error": null
+      }
+    ]
+  },
+  "results": [
+    {
+      "platform": "douyin",
+      "platformLabel": "抖音",
+      "records": [
+        {
+          "platform": "douyin",
+          "platformLabel": "抖音",
+          "id": "7657403878287117606",
+          "url": "https://www.douyin.com/video/7657403878287117606",
+          "author": "李行舟-材料星创始人",
+          "authorId": "2837153534452295",
+          "publishedAt": "2026-07-01T10:10:01.000Z",
+          "title": "ai全局记忆使用技巧,让工具慢慢熟悉你的写作习惯#材料星#全局记忆 #工具实用技巧 #效率神器 #职场干货",
+          "excerpt": "ai全局记忆使用技巧,让工具慢慢熟悉你的写作习惯#材料星#全局记忆 #工具实用技巧 #效率神器 #职场干货",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "douyin",
+          "platformLabel": "抖音",
+          "id": "7618247262795786239",
+          "url": "https://www.douyin.com/video/7618247262795786239",
+          "author": "H船长",
+          "authorId": "844061203511694",
+          "publishedAt": "2026-03-17T15:30:15.000Z",
+          "title": "学会本地AI知识库，帮你分析百万级文字资料 #ai #ai本地部署  #cursor #干货分享 #AI工具",
+          "excerpt": "学会本地AI知识库，帮你分析百万级文字资料 #ai #ai本地部署 #cursor #干货分享 #AI工具",
+          "mentions": [
+            "cursor"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "douyin",
+          "platformLabel": "抖音",
+          "id": "7622966188225629491",
+          "url": "https://www.douyin.com/video/7622966188225629491",
+          "author": "一一是只黑猫",
+          "authorId": "3326468111248444",
+          "publishedAt": "2026-03-30T08:42:08.000Z",
+          "title": "发明Ai看脸找风格的简直是天才。。。 #变美 #逆袭 #风格测试 #醒图 #AI造型室",
+          "excerpt": "发明Ai看脸找风格的简直是天才。。。 #变美 #逆袭 #风格测试 #醒图 #AI造型室",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "douyin",
+          "platformLabel": "抖音",
+          "id": "7623348154139037411",
+          "url": "https://www.douyin.com/video/7623348154139037411",
+          "author": "元也琪",
+          "authorId": "3131841874770567",
+          "publishedAt": "2026-03-31T09:24:18.000Z",
+          "title": "当我跟着ai学化妆…画出了完美的春日蜜瓜妆 #醒图 #AI造型室 #新手化妆 #分享妆容",
+          "excerpt": "当我跟着ai学化妆…画出了完美的春日蜜瓜妆 #醒图 #AI造型室 #新手化妆 #分享妆容",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "douyin",
+          "platformLabel": "抖音",
+          "id": "7663586179471789375",
+          "url": "https://www.douyin.com/video/7663586179471789375",
+          "author": "凯哥AI情报局",
+          "authorId": "3951021068665593",
+          "publishedAt": "2026-07-18T16:00:00.000Z",
+          "title": "AI 开始\"记住你\"了，这个功能会改变你和机器的关系 解读大模型记忆能力的落地(跨对话记忆、个人偏好学习),讲清\"有记忆的 AI\"为什么是从工具到伙伴的质变,以及随之而来的隐私争议。#AI记忆 #大模型 #个性化AI #AI隐私 #人机关系",
+          "excerpt": "AI 开始\"记住你\"了，这个功能会改变你和机器的关系 解读大模型记忆能力的落地(跨对话记忆、个人偏好学习),讲清\"有记忆的 AI\"为什么是从工具到伙伴的质变,以及随之而来的隐私争议。#AI记忆 #大模型 #个性化AI #AI隐私 #人机关系",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "douyin",
+          "platformLabel": "抖音",
+          "id": "7671972900862548209",
+          "url": "https://www.douyin.com/video/7671972900862548209",
+          "author": "幕间 Alphai",
+          "authorId": "4088447224261356",
+          "publishedAt": "2026-08-09T10:13:09.000Z",
+          "title": "男生会做展示面，真的能收获很多红利 #展示面 #男生脱单 #恋爱思维提升 #恋爱认知提升 #普通男生逆袭计划",
+          "excerpt": "男生会做展示面，真的能收获很多红利 #展示面 #男生脱单 #恋爱思维提升 #恋爱认知提升 #普通男生逆袭计划",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "douyin",
+          "platformLabel": "抖音",
+          "id": "7593673319090556175",
+          "url": "https://www.douyin.com/video/7593673319090556175",
+          "author": "飞飞是大王",
+          "authorId": "95693651855",
+          "publishedAt": "2026-01-10T10:11:22.000Z",
+          "title": "豆包只是一味的让我解开衬衫扣子 #豆包 #豆包穿搭分享 #ai",
+          "excerpt": "豆包只是一味的让我解开衬衫扣子 #豆包 #豆包穿搭分享 #ai",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "douyin",
+          "platformLabel": "抖音",
+          "id": "7663586179471789375",
+          "url": "https://www.douyin.com/video/7663586179471789375",
+          "author": "凯哥AI情报局",
+          "authorId": "3951021068665593",
+          "publishedAt": "2026-07-18T16:00:00.000Z",
+          "title": "AI 开始\"记住你\"了，这个功能会改变你和机器的关系 解读大模型记忆能力的落地(跨对话记忆、个人偏好学习),讲清\"有记忆的 AI\"为什么是从工具到伙伴的质变,以及随之而来的隐私争议。#AI记忆 #大模型 #个性化AI #AI隐私 #人机关系",
+          "excerpt": "AI 开始\"记住你\"了，这个功能会改变你和机器的关系 解读大模型记忆能力的落地(跨对话记忆、个人偏好学习),讲清\"有记忆的 AI\"为什么是从工具到伙伴的质变,以及随之而来的隐私争议。#AI记忆 #大模型 #个性化AI #AI隐私 #人机关系",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        }
+      ],
+      "pages": [
+        {
+          "page": 1,
+          "received": 7
+        },
+        {
+          "page": 2,
+          "received": 7
+        }
+      ]
+    },
+    {
+      "platform": "xhs",
+      "platformLabel": "小红书",
+      "records": [
+        {
+          "platform": "xhs",
+          "platformLabel": "小红书",
+          "id": "6a9bab6d00000000280281af",
+          "url": "https://www.xiaohongshu.com/explore/6a9bab6d00000000280281af?xsec_token=YB-YqQlZQxS1BvsXQLuQqAnC2byabsL5q1GbW_s3wsx6k%3D&xsec_source=pc_search",
+          "author": "AI 热力图",
+          "authorId": "69ae6dbc000000003201c0bf",
+          "publishedAt": "2026-09-05T05:41:01.000Z",
+          "title": "Skill 分享｜让 AI 记住你的写法",
+          "excerpt": "攒过的文章，也能成为下一次动笔的起点。这个写作蒸馏器值得试试。 #Skill分享 . #写作蒸馏器 . #AI写作",
+          "mentions": [
+            "Skill"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "xhs",
+          "platformLabel": "小红书",
+          "id": "6a97c8b4000000002802cf41",
+          "url": "https://www.xiaohongshu.com/explore/6a97c8b4000000002802cf41?xsec_token=YB82hnXkp0dhkPfwuZe7-msYiKx47ZcSYBXJwCuqq45rI%3D&xsec_source=pc_search",
+          "author": "墨菲的AI探索",
+          "authorId": "62693fe40000000021025a85",
+          "publishedAt": "2026-09-02T06:56:53.000Z",
+          "title": "让AI摘取你的味道，你的风格",
+          "excerpt": "一晚上，让AI写出来的东西终于像我了 你有没有过这种时候——想让 AI 帮你写点东西，但它写出来就是一股 AI 味，一眼",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "xhs",
+          "platformLabel": "小红书",
+          "id": "693b769d000000001e01744f",
+          "url": "https://www.xiaohongshu.com/explore/693b769d000000001e01744f?xsec_token=YBDDf_zIinDOAaWWCtJzMk-eAMDvYC5ujYVI59DboKeRE%3D&xsec_source=pc_search",
+          "author": "来杯凉白开",
+          "authorId": "64f82add0000000006030f1a",
+          "publishedAt": "2025-12-12T01:57:49.000Z",
+          "title": "当你学会用AI记忆功找到自己的风格｜附教程",
+          "excerpt": "作为一直聚焦 “宏观议题通俗化” 的深度思考博主，用下来最直观的感受是：它的记忆功能不是 “记流水账”，而是真的在跟着我",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "xhs",
+          "platformLabel": "小红书",
+          "id": "69ce1bed000000002103898c",
+          "url": "https://www.xiaohongshu.com/explore/69ce1bed000000002103898c?xsec_token=YBqjhnPn6rlI3LLZSLXuzIsBsv-RAuDTioLtinZ-2uWA8%3D&xsec_source=pc_search",
+          "author": "蔡不菜（AI版）",
+          "authorId": "601ed3b2000000000100a438",
+          "publishedAt": "2026-04-02T11:30:57.000Z",
+          "title": "文科生无痛vibe出自己风格的网页和工作流",
+          "excerpt": "我以前觉得AI有灵魂只是一句slogan，但这几天和Cola共处完，我突然觉得当一个Agent记住了你说过的话，在你累的",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "xhs",
+          "platformLabel": "小红书",
+          "id": "6981a723000000001a02d3a7",
+          "url": "https://www.xiaohongshu.com/explore/6981a723000000001a02d3a7?xsec_token=YBRFqp0gm6ga6h5dn_XJjrJ3Uuo5GVGvPvU3vwzTEdyck%3D&xsec_source=pc_search",
+          "author": "像素章鱼Pixocto",
+          "authorId": "5fb3e7580000000001002f94",
+          "publishedAt": "2026-02-03T09:30:26.000Z",
+          "title": "拒绝抽卡！三招让AI精准还原图片风格",
+          "excerpt": "为什么很多人用AI生成图片，像是在抽卡？ 同一套提示词， 有时候像大师，有时候像塑料玩具。 这不是运气问题， 而是你根本",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "xhs",
+          "platformLabel": "小红书",
+          "id": "6a9821a40000000026015b65",
+          "url": "https://www.xiaohongshu.com/explore/6a9821a40000000026015b65?xsec_token=YBWQISpOyZjSEIy9D7rZYrnTdW_YO0LtppeUfVznsYcVI%3D&xsec_source=pc_search",
+          "author": "陈十一的AI学习流水账",
+          "authorId": "5b386a6b6b58b77f0274dd6c",
+          "publishedAt": "2026-09-02T13:16:20.000Z",
+          "title": "学用AI第9天｜多AI写作写稿法",
+          "excerpt": "学AI第9天，今天有两个比较大的收获想分享～ 第一个是关于【写笔记】的笨办法 之前我的笔记基本都是一个AI直接写，然后呢",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "xhs",
+          "platformLabel": "小红书",
+          "id": "6a9651c2000000002600b7fc",
+          "url": "https://www.xiaohongshu.com/explore/6a9651c2000000002600b7fc?xsec_token=YBODoUCsDDJPYcm3n9m9r-xZ_JPwwkKjjIq7UhI66NoHY%3D&xsec_source=pc_search",
+          "author": "小朱不是小猪",
+          "authorId": "6a8fd5910000000013002800",
+          "publishedAt": "2026-09-01T04:17:06.000Z",
+          "title": "AI Plog 博主｜更新Day 2",
+          "excerpt": "做自媒体的第二天，心态跟第一天完全不一样。 第一天更多是一腔热血，满心都是期待，真正开始持续输出才发现，看起来简单的AI",
+          "mentions": [
+            "Day 2"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "xhs",
+          "platformLabel": "小红书",
+          "id": "6a957efd0000000028006108",
+          "url": "https://www.xiaohongshu.com/explore/6a957efd0000000028006108?xsec_token=YBd8AO7jgA1A_6HrWgh6GTQaautBkdabHHBTJEvmermdo%3D&xsec_source=pc_search",
+          "author": "AI实践者",
+          "authorId": "59e3a120153c3c5f08765035",
+          "publishedAt": "2026-08-31T13:17:49.000Z",
+          "title": "AI图越精致，为什么越没记忆点？",
+          "excerpt": "现在很多AI图的问题，不是不好看。 而是——太像了。 电影光、浅景深、高级灰、杂志感、8K…… 这些词大家都在用，最后出",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        }
+      ],
+      "pages": [
+        {
+          "page": 1,
+          "received": 20
+        }
+      ]
+    },
+    {
+      "platform": "bilibili",
+      "platformLabel": "B站",
+      "records": [
+        {
+          "platform": "bilibili",
+          "platformLabel": "B站",
+          "id": "BV1DKJazTEw5",
+          "url": "https://www.bilibili.com/video/BV1DKJazTEw5",
+          "author": "黑暗威震天EX",
+          "authorId": "392757157",
+          "publishedAt": "2025-05-20T16:18:13.000Z",
+          "title": "“记住我现在的样子吧。”",
+          "excerpt": "“记住我现在的样子吧。” 那些被改造的变形金刚",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "bilibili",
+          "platformLabel": "B站",
+          "id": "BV1nhVS6GE7y",
+          "url": "https://www.bilibili.com/video/BV1nhVS6GE7y",
+          "author": "映川阁",
+          "authorId": "412919158",
+          "publishedAt": "2026-05-31T11:25:13.000Z",
+          "title": "我宣布AI可以拥有永久记忆了",
+          "excerpt": "我宣布AI可以拥有永久记忆了",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "bilibili",
+          "platformLabel": "B站",
+          "id": "BV1AN896eEby",
+          "url": "https://www.bilibili.com/video/BV1AN896eEby",
+          "author": "电商Ai阿辉",
+          "authorId": "484883657",
+          "publishedAt": "2026-08-26T12:14:41.000Z",
+          "title": "Ai提问焚诀，我开发过程一直在用的方法。建议码住！#一人公司 #提效 #Ai提示词 #Ai团队 #人机协作",
+          "excerpt": "Ai提问焚诀，我开发过程一直在用的方法。建议码住！#一人公司 #提效 #Ai提示词 #Ai团队 #人机协作 -",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "bilibili",
+          "platformLabel": "B站",
+          "id": "BV1Qy4X6TEau",
+          "url": "https://www.bilibili.com/video/BV1Qy4X6TEau",
+          "author": "梦姐2",
+          "authorId": "3707003851508078",
+          "publishedAt": "2026-08-30T06:50:27.000Z",
+          "title": "Ai翻唱《最近我很迷茫》",
+          "excerpt": "Ai翻唱《最近我很迷茫》 -",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "bilibili",
+          "platformLabel": "B站",
+          "id": "BV1grtm6ZECf",
+          "url": "https://www.bilibili.com/video/BV1grtm6ZECf",
+          "author": "王康福1314",
+          "authorId": "3493124395502320",
+          "publishedAt": "2026-09-05T07:54:58.000Z",
+          "title": "AI生成的歌",
+          "excerpt": "AI生成的歌 -",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "bilibili",
+          "platformLabel": "B站",
+          "id": "BV1aqto6HEvj",
+          "url": "https://www.bilibili.com/video/BV1aqto6HEvj",
+          "author": "寻星zx",
+          "authorId": "1988163055",
+          "publishedAt": "2026-09-03T12:36:01.000Z",
+          "title": "我可以靠在你身后的ai指令制作教程来了！",
+          "excerpt": "我可以靠在你身后的ai指令制作教程来了！",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "bilibili",
+          "platformLabel": "B站",
+          "id": "BV1RZ4GzLEft",
+          "url": "https://www.bilibili.com/video/BV1RZ4GzLEft",
+          "author": "NinaElle",
+          "authorId": "1134726090",
+          "publishedAt": "2025-10-12T16:05:35.000Z",
+          "title": "AI绘画展示",
+          "excerpt": "AI绘画展示 度：s/14qxHdNqfEBuiRjAEpwPNXw?pwd=fprv 雷：s/VObO8GN1F61qICSLkOUFywduA1?pwd=pjyr#",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "bilibili",
+          "platformLabel": "B站",
+          "id": "BV16rqaYREqH",
+          "url": "https://www.bilibili.com/video/BV16rqaYREqH",
+          "author": "估某影",
+          "authorId": "293093850",
+          "publishedAt": "2024-12-12T13:51:08.000Z",
+          "title": "改：以后人们怎么记住我？",
+          "excerpt": "改：以后人们怎么记住我？",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        }
+      ],
+      "pages": [
+        {
+          "page": 1,
+          "received": 20
+        }
+      ]
+    },
+    {
+      "platform": "x",
+      "platformLabel": "X（Twitter）",
+      "records": [
+        {
+          "platform": "x",
+          "platformLabel": "X（Twitter）",
+          "id": "2095081200927080818",
+          "url": "https://x.com/jackzhang123vip/status/2095081200927080818",
+          "author": "梦老湿 Dream AI",
+          "authorId": "jackzhang123vip",
+          "publishedAt": "2026-09-02T09:27:37.000Z",
+          "title": "给兄弟们换个风格，日本水上闯关综艺了 依然火爆，看看人家日本妹子怎么玩的 这真人感、水花、运镜……我看到一半都忘了这是 ",
+          "excerpt": "给兄弟们换个风格，日本水上闯关综艺了 依然火爆，看看人家日本妹子怎么玩的 这真人感、水花、运镜……我看到一半都忘了这是 AI 生成的。我用的是https://t.co/h7BZpilBX8*wan3.0制作，具体地址在这里 https://t.co/U5XQ4GqY1i 提示词我放评论区了 https://t.co/o645Ips8Qb",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "x",
+          "platformLabel": "X（Twitter）",
+          "id": "2093510026019447219",
+          "url": "https://x.com/gaoren7716/status/2093510026019447219",
+          "author": "小海豚笔记 (AI & 副业探索)",
+          "authorId": "gaoren7716",
+          "publishedAt": "2026-08-29T01:24:20.000Z",
+          "title": "https://t.co/ZDhmcEIu7K",
+          "excerpt": "https://t.co/ZDhmcEIu7K",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "x",
+          "platformLabel": "X（Twitter）",
+          "id": "2095663381139132684",
+          "url": "https://x.com/imnotgod/status/2095663381139132684",
+          "author": "IMnotGOD 我 不 是 神",
+          "authorId": "imnotgod",
+          "publishedAt": "2026-09-04T00:01:00.000Z",
+          "title": "Grok生成的日式风格小姐姐。 本来是在研究AI技术。 结果研究着研究着，开始对日本文化产生兴趣了。 看来还有很多知识值",
+          "excerpt": "Grok生成的日式风格小姐姐。 本来是在研究AI技术。 结果研究着研究着，开始对日本文化产生兴趣了。 看来还有很多知识值得深入学习。 😂🎌 https://t.co/NSPDpXAZsw",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "x",
+          "platformLabel": "X（Twitter）",
+          "id": "2096860299395784984",
+          "url": "https://x.com/didicvj7/status/2096860299395784984",
+          "author": "迪迪Didi",
+          "authorId": "didicvj7",
+          "publishedAt": "2026-09-07T07:17:07.000Z",
+          "title": "一直都很想拍欧式油画神女风格的照片 这不就实现小小愿望了么 看来我还蛮适合走清冷风 https://t.co/v3td7",
+          "excerpt": "一直都很想拍欧式油画神女风格的照片 这不就实现小小愿望了么 看来我还蛮适合走清冷风 https://t.co/v3td7ECy6v",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "x",
+          "platformLabel": "X（Twitter）",
+          "id": "2094786122530341341",
+          "url": "https://x.com/joshesye/status/2094786122530341341",
+          "author": "行者AI视频",
+          "authorId": "joshesye",
+          "publishedAt": "2026-09-01T13:55:05.000Z",
+          "title": "采莲南塘秋,莲花过人头,低头弄莲子,莲子清如水 我的田园风，Midjourney个性化风格调试得还可以吧 https:/",
+          "excerpt": "采莲南塘秋,莲花过人头,低头弄莲子,莲子清如水 我的田园风，Midjourney个性化风格调试得还可以吧 https://t.co/TZAOMtBaRY",
+          "mentions": [
+            "Midjourney"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "x",
+          "platformLabel": "X（Twitter）",
+          "id": "2095738630040138213",
+          "url": "https://x.com/derek_wall90176/status/2095738630040138213",
+          "author": "Derek Wen｜德里克文",
+          "authorId": "derek_wall90176",
+          "publishedAt": "2026-09-04T05:00:00.000Z",
+          "title": "【AI视频X绘画每日一词】一镜十姿 过去做AI时装视频，最常见的问题不是人物不够漂亮，而是每换一个姿势，脸、衣服和身体比",
+          "excerpt": "【AI视频X绘画每日一词】一镜十姿 过去做AI时装视频，最常见的问题不是人物不够漂亮，而是每换一个姿势，脸、衣服和身体比例也跟着变了。 「一镜十姿」要做的，是让同一个人物在同一空间里连续完成十个不同姿态：身份不变、服装不变、影棚不变，只让身体语言与画面节奏不断升级。 🎯 核心提示词 上传图1作为人物身份与服装的唯一参考。 生成一段15秒、9:16竖版、时尚杂志大片质感的连续表演视频。 人物严格保持图1的脸型、五官、发型、肤色、年龄、体型及服装结构。场景为极简专业摄影棚，背景、地面、灯位和人物站位保持稳定。 人物依次完成十个具有明显轮廓差异的时装姿态： 正面站立、肩部前倾、单手叉腰、身体侧转、…",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "x",
+          "platformLabel": "X（Twitter）",
+          "id": "2096456212246364322",
+          "url": "https://x.com/Chengzilhy/status/2096456212246364322",
+          "author": "小宇Chengzi",
+          "authorId": "Chengzilhy",
+          "publishedAt": "2026-09-06T04:31:25.000Z",
+          "title": "早上看到可可在求助， 顺手给她做了一个 X 地盘新版本 😂 那就安排上。 Prompt：GPT-6 Astra Vid",
+          "excerpt": "早上看到可可在求助， 顺手给她做了一个 X 地盘新版本 😂 那就安排上。 Prompt：GPT-6 Astra Video：MiniMax H3 感谢津轻老师分享这个超级好玩的玩法。 Prompt 🔽 【参考图定义】 Image1＝红衣民族风卡通女孩｜唯一角色参考 Image1 是整段视频中唯一且最高优先级的人物身份、脸部、发型、服装与画风参考。 全程严格保持 Image1 中女孩的： 可辨识脸部特征 五官比例 黑色双麻花辫 红蓝编发装饰 民族风头饰 耳饰 红色民族风长裙 衣服花纹与毛边装饰 棕色短靴 柔和细腻的二次元插画质感 可爱、灵动、带一点俏皮恶作剧感的气质 禁止： 真人化 3D化 …",
+          "mentions": [
+            "GPT",
+            "Image1",
+            "Image2"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "x",
+          "platformLabel": "X（Twitter）",
+          "id": "2094274092757385382",
+          "url": "https://x.com/7998l201/status/2094274092757385382",
+          "author": "Ryan",
+          "authorId": "7998l201",
+          "publishedAt": "2026-08-31T04:00:28.000Z",
+          "title": "一条40秒AI美食广告怎么做？ Omni提示词＋视频生成＋豆包配音完整教程 这次用「客家三杯鸭」做了一个40秒美食广告。",
+          "excerpt": "一条40秒AI美食广告怎么做？ Omni提示词＋视频生成＋豆包配音完整教程 这次用「客家三杯鸭」做了一个40秒美食广告。 重点不是介绍菜，而是把从提示词到最终成片的完整流程拆开：如何规划镜头、保持画面连续、生成分段视频，再完成配音、合成和检查。 整条工作流是： 菜品与制作过程 → 四段式分镜 → Omni视频提示词 → 分段生成 → 素材检查 → 豆包连续口播 → 剪辑混音 → 成片验证。 说明：本案例的后期使用4段已生成的视频。下面的提示词是按成片结构整理的复现示例，并非当时的原始生成记录。 01｜先写清楚过程，再写镜头 给AI的输入不能只有“帮我做一个三杯鸭广告”。 至少要交代： 主体：客…",
+          "mentions": [
+            "Omni"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        }
+      ],
+      "pages": [
+        {
+          "page": 1,
+          "received": 20
+        }
+      ]
+    }
+  ]
+}

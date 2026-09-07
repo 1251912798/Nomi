@@ -1,0 +1,177 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-07-untrusted-local-subdocument-has-no-policy-of-its-own",
+  "problem_type": "Untrusted local content is embedded by a mechanism whose policy comes from somewhere else, so it either cannot load at all or loads under a policy that was written for the host",
+  "symptom": "An agent-artifact node whose file type is html renders as a blank white box on the canvas. The real walkthrough delivered the artifact, wrote the .html to disk and mounted the sandbox iframe, but nothing painted inside it -- no error, no console output, and after the first stop was cleared, not even a network request reaching our own protocol handler. The user sees a delivered artifact that shows nothing.",
+  "direct_cause": "ArtifactBody embedded the artifact as <iframe src=\"nomi-local://…\">, which cannot work in this app for two independent reasons. The app-wide policy carried frame-src 'none', so the frame was refused before any request (the review's probe caught violatedDirective=frame-src, blockedURI=nomi-local). And even with frame-src permitting nomi-local, the navigation still died: the main window is cross-origin isolated (COOP: same-origin + COEP: require-corp, needed by whiteboard background removal for SharedArrayBuffer), and under that a cross-origin document cannot be framed -- Chromium answers ERR_BLOCKED_BY_RESPONSE whether or not the artifact response declares its own COEP.",
+  "class_root": "The embedding mechanism and the confining policy are one decision, and they were being made in two places that never met: an iframe attribute in a React component, and a global response header in the main process. Nobody owned the pair, so the pair was incoherent -- a mechanism that needs a response-header policy, in a host where that mechanism cannot load at all. The invariant that was missing: whoever chooses how untrusted content is embedded must also ship the policy that governs it, through the same channel that mechanism actually uses. A src-navigated document is governed by response headers; an inherited-context document (srcdoc/blob/data) is governed by its own inline meta plus the host's policy, and no response header will ever reach it.",
+  "affected_population": [
+    "Every user who asks the resident Agent for an HTML craft artifact: the node mounted and showed nothing, on every platform and every project",
+    "macOS and Linux most sharply: Windows already runs without cross-origin isolation (SKIP_CROSS_ORIGIN_ISOLATION_FOR_WINDOWS_FRAMELESS), so a src-navigated frame would have worked there and failed everywhere else -- a platform split no existing test would have caught",
+    "Any future consumer that shows a locally stored document rather than an <img>/<video> subresource, which would have met the same two stops in the same order"
+  ],
+  "scope_paths": [
+    "electron/contentSecurityPolicy.ts",
+    "electron/protocol/localProtocol.ts",
+    "electron/shared/localArtifactPolicy.ts",
+    "src/workbench/generationCanvas/nodes/artifact/artifactSandboxDocument.ts",
+    "src/workbench/generationCanvas/nodes/artifact/ArtifactBody.tsx"
+  ],
+  "entry_points": [
+    "agent-artifact HTML preview on the generation canvas",
+    "every response served by the nomi-local protocol handler (assets and production previews, full and ranged)",
+    "the session-wide onHeadersReceived hook that stamps a policy on responses"
+  ],
+  "external_sources": [
+    {
+      "kind": "official-doc",
+      "url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CSP",
+      "checked_at": "2026-09-07",
+      "purpose": "Confirmed that frame-src gates loading a nested browsing context by URL; that a framed document's own response CSP governs it; that srcdoc/blob/data documents instead INHERIT the creator's policy and enforce the intersection; and that default-src 'none' covers connect-src/script-src/style-src/img-src for anything not separately listed."
+    },
+    {
+      "kind": "official-doc",
+      "url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Cross-Origin-Embedder-Policy",
+      "checked_at": "2026-09-07",
+      "purpose": "Checked what require-corp demands of nested documents, and whether credentialless would admit a cross-origin frame. The local Electron probe then falsified credentialless for this case: with the host isolated, the custom-scheme frame is refused under both require-corp and credentialless, and only turning isolation off lets it through."
+    },
+    {
+      "kind": "official-doc",
+      "url": "https://www.electronjs.org/docs/latest/tutorial/security",
+      "checked_at": "2026-09-07",
+      "purpose": "Checked Electron's checklist for displaying untrusted content: contextIsolation on, nodeIntegration off, no preload for the untrusted context, deny window.open, restrict navigation. All five already hold in electron/main.ts:309-340, which is why an opaque-origin sandbox plus a network-denying policy is sufficient here."
+    }
+  ],
+  "invariants": [
+    "There is exactly one definition of what untrusted local content may do (electron/shared/localArtifactPolicy.ts), spent by the main process as a response header and by the renderer as the document's own meta.",
+    "That policy denies all network reach: default-src 'none' with connect-src 'none', no http: or https: source anywhere in it, no external script or style source, form-action 'none' and base-uri 'none'.",
+    "The artifact document is embedded as an inherited-context srcdoc, never as a cross-origin src navigation, so it does not depend on the host's cross-origin isolation mode.",
+    "The policy meta is inserted before any other content the parser will read, so it governs the whole document rather than whatever follows it.",
+    "Showing untrusted content never costs the host a permission: frame-src stays 'none' and the isolation headers are unchanged."
+  ],
+  "generality_proof": "Confinement is attached in two places that both spend the same exported constant, so they cannot drift: withLocalAssetHeaders stamps it on every successful nomi-local response (200 and 206, assets and production previews, every file type including ones that do not exist yet), and withArtifactSandboxPolicy writes it into every document the canvas embeds. Neither is keyed on node kind or file extension -- one is keyed on the scheme, the other on the act of sandboxing -- so a future consumer inherits the confinement rather than opting into it. The embedding mechanism is decided once, in the component that owns the sandbox, on a ground that holds on every platform: srcdoc needs no network response, so it is unaffected by the isolation mode, which is on for macOS and Linux and off for Windows. That is what stops the failure from reappearing as a platform split. Insertion is proven across the shapes agent-written HTML actually takes -- full document, html without head, bare fragment, doctype-only -- rather than on the one sample that was reported. And because the mechanism needs no host permission, the host policy is left exactly as strict as it was, so nothing about this feature widens the app's own attack surface.",
+  "shared_boundaries": [
+    {
+      "path": "electron/shared/localArtifactPolicy.ts",
+      "symbol": "LOCAL_ARTIFACT_CONTENT_SECURITY_POLICY",
+      "responsibility": "The single definition of what untrusted local content may do: run its own inline script and style so hand-written animation works, and reach nothing over the network. Both enforcement points spend this constant; nothing restates it."
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/artifact/artifactSandboxDocument.ts",
+      "symbol": "withArtifactSandboxPolicy",
+      "responsibility": "Writes that policy into the document itself, ahead of any content the parser reads. This is the enforcement that actually governs the canvas artifact, because a srcdoc document has no response and therefore no response header."
+    },
+    {
+      "path": "electron/protocol/localProtocol.ts",
+      "symbol": "withLocalAssetHeaders",
+      "responsibility": "Stamps the same policy at the point where bytes leave disk, so any future path that does load a nomi-local file as a document is confined by default rather than by remembering to be."
+    },
+    {
+      "path": "electron/contentSecurityPolicy.ts",
+      "symbol": "installContentSecurityPolicy",
+      "responsibility": "Picks the policy by response scheme -- host policy for the renderer shell, artifact policy for nomi-local -- and keeps the host's own grants (frame-src 'none', COOP/COEP) untouched by this feature."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/workbench/generationCanvas/nodes/artifact/ArtifactBody.tsx",
+      "entry_point": "HtmlSandbox",
+      "disposition": "enforced",
+      "evidence": "The reported case. It fetches the artifact text, runs it through withArtifactSandboxPolicy, and hands it to an iframe with sandbox=\"allow-scripts\" and no allow-same-origin. The real walkthrough measures inside the frame that the delivered DOM is there, the artifact's own CSS is computed (body and element colours), the animation is attached, layout happened, and window.origin is still opaque. The prior src= form failed that same assertion on three consecutive real runs, which is the positive control for it."
+    },
+    {
+      "path": "electron/protocol/localProtocol.ts",
+      "entry_point": "handleNomiLocalRequest ranged response (streamRange)",
+      "disposition": "enforced",
+      "evidence": "Byte-range responses build their headers through the same withLocalAssetHeaders call as full responses. localProtocol.test.ts asserts the header on both a 200 and a 206 so a future divergence between the two paths fails."
+    },
+    {
+      "path": "electron/protocol/localProtocol.ts",
+      "entry_point": "nomi-local://production-preview handle-verified responses",
+      "disposition": "enforced",
+      "evidence": "Production preview shares parseLocalAssetUrl and the same response builder, so a file served through a signed preview handle is confined by the identical policy without a second rule being written for it."
+    },
+    {
+      "path": "src/devlab/designLab.tsx",
+      "entry_point": "design lab contact-sheet iframes",
+      "disposition": "not-affected",
+      "evidence": "These frame the renderer's own design-lab route on the app origin -- first-party code, not user or agent content. They are same-origin, so neither the frame-src allowlist nor the artifact policy applies. Found by grepping every iframe/webview/WebContentsView occurrence in src and electron."
+    },
+    {
+      "path": "electron/ipcSenderGuard.ts",
+      "entry_point": "browser WebContentsView remote page loading",
+      "disposition": "not-affected",
+      "evidence": "The in-app browser deliberately loads remote pages in a separate WebContentsView with no preload, on its own session, and is governed by the IPC sender guard rather than by this window's CSP. A different confinement mechanism for a different population, left untouched."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "The mechanism is structural, not incidental: any future feature that shows a locally stored document meets the same two stops, in the same order, and the second one is invisible until it runs on a cross-origin-isolated platform. The population of untrusted local files is open-ended and growing (agent-written files, user imports, generated media), and before this change the app had no place where per-scheme trust was expressed, so each new consumer would have relitigated it -- and would have been free to reach for a src navigation that happens to work on Windows.",
+    "same_class_scan": [
+      "grep for iframe|webview|WebContentsView across src and electron: three real populations -- the artifact sandbox (this fix), the design-lab contact sheet on the app origin, the in-app browser's separate WebContentsView. Each dispositioned above.",
+      "grep for dangerouslySetInnerHTML|srcdoc across src: the only hit was a comment in ArtifactBody.tsx explaining why table artifacts are parsed into React elements instead. No other HTML-injection path exists.",
+      "Read every response construction in electron/protocol/localProtocol.ts: full 200, ranged 206, 416 and 404. All success paths converge on withLocalAssetHeaders; the 404 path returns a plain text error body with no document semantics.",
+      "Purpose-built minimal Electron probe (registerSchemesAsPrivileged + protocol.handle + the same headers) run across the matrix: isolation on/off, child COEP on/off, host COEP require-corp vs credentialless, sandbox attribute present/absent, src vs srcdoc. Only 'isolation off' or 'srcdoc' load; that matrix is what ruled out the header-only fixes instead of guessing at them.",
+      "Read the project event log written by the protocol handler during the failing walkthrough to establish that the .html was never requested at all, which separated 'blocked before the request' from 'blocked on the response'.",
+      "git log -S'Cross-Origin-Embedder-Policy' to find why isolation exists (whiteboard background removal, 4d972c9d) before considering turning it off, and electron/main.ts:745-746 for the platforms that already skip it.",
+      "Positive control on the host policy itself: reverted frame-src to 'none', rebuilt and re-ran the full walkthrough -- still green, proving frame-src does not govern a srcdoc frame and that the relaxation this fix originally carried was unnecessary. It was removed rather than shipped unjustified.",
+      "Positive control on the artifact policy: in the minimal probe, an artifact carrying <img src=https://…> and fetch(https://…) reports img-src and connect-src violations with the meta present and none without it -- so the meta is what closes the network, not the opaque origin (which only stops fetch, never a no-cors <img>)."
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "electron/shared/localArtifactPolicy.ts",
+    "invariant": "Untrusted local content carries the artifact policy through whatever channel its embedding mechanism actually reads -- an inline meta for srcdoc, a response header when served -- and can reach no network. Showing it costs the host no permission.",
+    "failure_mode": "Fails closed in both directions. Loosening the shared constant to include an http/https source fails contentSecurityPolicy.test.ts, localProtocol.test.ts and ArtifactBody.test.ts on explicit no-https assertions. Dropping the meta injection fails the insertion tests and the walkthrough's computed-style assertions. Reverting to a src= navigation fails the walkthrough at the in-frame measurement, which is exactly how the two stops were found. A future consumer that frames something by URL is still refused by frame-src 'none'.",
+    "exception_policy": "none",
+    "strategy": "Move the decision from per-consumer sandbox attributes -- advisory, easy to forget, invisible when missing -- to one constant that every path spends, and pick an embedding mechanism whose correctness does not depend on the host's isolation mode. Permission and confinement are written as one pair in one place, so granting the first without the second is not expressible.",
+    "artifacts": [
+      "electron/shared/localArtifactPolicy.ts",
+      "electron/contentSecurityPolicy.ts",
+      "electron/protocol/localProtocol.ts",
+      "src/workbench/generationCanvas/nodes/artifact/artifactSandboxDocument.ts",
+      "src/workbench/generationCanvas/nodes/artifact/ArtifactBody.tsx"
+    ]
+  },
+  "invariant_owner_layer": {
+    "layer": "electron/shared/localArtifactPolicy.ts",
+    "tests": [
+      "electron/contentSecurityPolicy.test.ts",
+      "electron/protocol/localProtocol.test.ts",
+      "src/workbench/generationCanvas/nodes/artifact/ArtifactBody.test.ts"
+    ],
+    "note": "One constant owns 'what untrusted local content may do', and each consumer has a test that it actually spends that constant rather than a lookalike. contentSecurityPolicy.test.ts pins the host pairing (frame-src names nomi-local and only nomi-local; the policy nomi-local responses receive carries no http/https source and no eval). localProtocol.test.ts pins the same constant arriving on real handler output for a 200 and a 206. ArtifactBody.test.ts pins the meta injection across the document shapes agent HTML actually takes, and that the default policy is the shared constant rather than a renderer-local copy."
+  },
+  "regression_tests": [
+    "electron/contentSecurityPolicy.test.ts",
+    "electron/protocol/localProtocol.test.ts",
+    "src/workbench/generationCanvas/nodes/artifact/ArtifactBody.test.ts",
+    "tests/ux/agent-artifact.walk.mjs"
+  ],
+  "class_regression_tests": [
+    "electron/contentSecurityPolicy.test.ts",
+    "electron/protocol/localProtocol.test.ts",
+    "src/workbench/generationCanvas/nodes/artifact/ArtifactBody.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "src/workbench/generationCanvas/nodes/artifact/ArtifactBody.tsx",
+      "electron/contentSecurityPolicy.ts"
+    ],
+    "rationale": "The iframe's src navigation to nomi-local (and its loading=\"lazy\") is deleted rather than kept as a fallback, so there is no second embedding path. The branchless single-policy stamp in installContentSecurityPolicy is replaced by the per-scheme choice. The frame-src relaxation this fix carried mid-investigation was itself removed once a real positive control showed it was not needed -- no unused permission is left behind."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "The invariant is expressed entirely in headers this app emits. Electron and Chromium enforce CSP but no third-party package owns or can weaken the rule, and no version change is involved.",
+    "exit_criteria": []
+  },
+  "migration": "No migration. Artifacts already written to disk are unchanged; only how they are served and embedded changes, so previously blank HTML artifact nodes render the next time the canvas mounts them. No stored data, project file or user setting is rewritten.",
+  "residual_risks": [
+    "JavaScript inside an HTML artifact does not execute in packaged builds, and this fix does not change that. A srcdoc document enforces the intersection of its own policy and the host's, and the production host policy is script-src 'self' 'wasm-unsafe-eval' blob: -- no 'unsafe-inline'. CSS animation, transitions and :hover all work and are asserted in the walkthrough; inline <script> is blocked. Closing it needs an architecture decision above this change (drop cross-origin isolation, which whiteboard background removal needs for SharedArrayBuffer; or move artifacts to a separate WebContentsView). The three options and their costs are written up in docs/plan/2026-09-06-agent-artifact-node.md section 6.5 for the user to choose, and the agent tool description now tells the model to animate with CSS and not depend on JS.",
+    "That gap is dev/prod asymmetric: the dev host policy does carry 'unsafe-inline', so an artifact with scripted behavior will appear to work in dev and be inert in the packaged app. Nothing currently warns at authoring time; the tool-description wording is the only guard.",
+    "The artifact policy denies images and media from nomi-local, so a future multi-file artifact that references a sibling asset on disk will silently fail to load it. Deliberate for the single-file v1, and it should be widened by extending the shared constant rather than by exempting a consumer.",
+    "The 404 branch of handleNomiLocalRequest returns its plain-text body without going through withLocalAssetHeaders, so that one response carries no policy. It has no script, style or subresource and cannot be a useful execution surface.",
+    "The walkthrough proves the frame renders on macOS only. Windows and Linux run the same renderer code, and srcdoc was chosen precisely because it does not depend on the isolation mode that differs between them, but neither platform has been observed."
+  ]
+}
