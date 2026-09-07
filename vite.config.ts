@@ -251,10 +251,7 @@ export default defineConfig(async ({ command, mode }: ConfigEnv): Promise<UserCo
       },
     },
     optimizeDeps: {
-      // design-lab.html 必须在册：它是独立入口，而 noDiscovery:true 关掉了自动发现——
-      // 只有从设计实验室这条入口才够得着的依赖（lane 夹具 → laneProjection.mjs → @earendil-works/pi-ai）
-      // 否则永远不会被预打包，浏览器拿到的是原始 CJS，具名导入当场炸（partial-json 的 `parse`）。
-      entries: ['index.html', 'design-lab.html', 'src/dev/optimizeDepsEntry.ts'],
+      entries: ['index.html', 'src/dev/optimizeDepsEntry.ts'],
       force: command === 'serve' && process.env.NOMI_FORCE_VITE_OPTIMIZE_DEPS === '1',
       noDiscovery: true,
       holdUntilCrawlEnd: false,
@@ -274,9 +271,6 @@ export default defineConfig(async ({ command, mode }: ConfigEnv): Promise<UserCo
         '@mantine/modals',
         '@mantine/notifications',
         '@xmldom/xmldom',
-        // 设计实验室的 lane 夹具经 laneProjection.mjs 用到 pi-ai 的运行时导出
-        // （getSupportedThinkingLevels），它内部依赖 CJS 的 partial-json；不显式预打包就没有具名导出。
-        '@earendil-works/pi-ai',
         '@react-three/drei',
         '@react-three/fiber',
         '@react-three/fiber > react-reconciler',
