@@ -22,7 +22,7 @@ import { formatSize, truncateHead, type AgentHarnessTool, type AgentToolResult }
 import type { ZodError, ZodIssue } from 'zod';
 import { LANE_MODEL_OUTPUT_MAX_BYTES, LANE_MODEL_OUTPUT_MAX_LINES } from '../shared/agentLane/laneContracts.js';
 import {
-  laneToolModelDescription, renderLaneToolFailure, type LaneToolFailureShape,
+  LANE_READ_TOOL_TIMEOUT_MS, laneToolModelDescription, renderLaneToolFailure, type LaneToolFailureShape,
 } from '../shared/agentLane/laneToolContract.js';
 import type { LaneToolDescriptor } from './laneRuntimePort.js';
 import { toModelVisibleSchema } from './laneToolSchema.mjs';
@@ -136,6 +136,20 @@ function receivedTypeOf(issue: ZodIssue, args: unknown): string {
   return Array.isArray(current) ? 'array' : current === null ? 'null' : typeof current;
 }
 
+/**
+ * 超时那一条失败。**它必须带「下一步」**，理由和别的失败一样：模型看到的只有这段正文。
+ * 「timed out」四个字对一个要自纠的模型等于什么都没说，它只会把同一个调用再发一遍。
+ */
+function timeoutFailure(toolName: string, timeoutMs: number): LaneToolFailureShape {
+  return {
+    code: 'tool_timed_out',
+    message: `${toolName} did not finish within ${Math.round(timeoutMs / 1000)}s and was stopped.`,
+    nextAction: 'Do not resend the identical call — it will hit the same budget. '
+      + 'Read the current state with the matching read tool, then either narrow the request '
+      + '(fewer items, a smaller scope) or tell the user this step needs their attention.',
+  };
+}
+
 /** 领域回执原样保留，截断元信息挂在旁边。非对象回执塞进 `value`，不静默丢掉。 */
 function detailsWithTruncation(details: unknown, truncation: LaneOutputTruncation): Record<string, unknown> {
   if (details === undefined) return { truncation };
@@ -164,6 +178,22 @@ export function createLaneTools(descriptors: readonly LaneToolDescriptor[]): Age
     if (effects.billable && !effects.mutates) {
       throw new Error(`Nomi lane tool ${descriptor.name} claims to spend the user's money without changing anything.`);
     }
+    const timeoutMs = descriptor.execution.timeoutMs;
+    if (!Number.isSafeInteger(timeoutMs) || timeoutMs <= 0) {
+      throw new Error(`Nomi lane tool ${descriptor.name} needs a positive execution.timeoutMs budget.`);
+    }
+    // **花钱的工具必须提交即返回**（调研 #599 §长任务 L1）。一次生成要跑几十秒到几分钟，
+    // 而模型的回合不是等待室：等在工具里，用户看到的是一条不动的收据，回合的预算被一次
+    // 生成吃光，进程一崩这次提交就再也找不回来。所以它只能「拿到 id 就回」，进度另走
+    // 状态查询工具。把这条写成装配期不变量，是因为违反它的工具**不会报错**——它只会很慢，
+    // 而「很慢」在真机上和「模型在想事情」长得一模一样。
+    if (effects.billable && timeoutMs > LANE_READ_TOOL_TIMEOUT_MS) {
+      throw new Error(
+        `Nomi lane tool ${descriptor.name} spends money and claims a ${timeoutMs}ms budget. `
+        + `A billable tool must submit and return an id within ${LANE_READ_TOOL_TIMEOUT_MS}ms; `
+        + 'progress belongs to a separate status tool, not to this call.',
+      );
+    }
     names.add(descriptor.name);
     const tool: AgentHarnessTool<undefined> = {
       name: descriptor.name,
@@ -182,15 +212,30 @@ export function createLaneTools(descriptors: readonly LaneToolDescriptor[]): Age
         ? { prepareArguments: descriptor.prepareArguments as (args: unknown) => never }
         : {}),
       execute: async (toolCallId, params, _onUpdate, _toolContext, _invocation, context) => {
-        const signal = context.abortSignal ?? new AbortController().signal;
-        signal.throwIfAborted();
+        const outer = context.abortSignal ?? new AbortController().signal;
+        outer.throwIfAborted();
         // 契约自己的那一次 parse（文件头部说明了为什么它必须在这里、且只在这里）。
         // 失败按 §3.3 的形状 throw：字段名 + 类型名 + 合法值 + 下一步，不回传值。
         const bound = descriptor.schema.safeParse(params);
         if (!bound.success) {
           throw new LaneToolFailure(renderLaneToolFailure(argumentFailure(descriptor.name, params, bound.error)));
         }
-        const outcome = await descriptor.execute(bound.data, { toolCallId, signal });
+        // 计时器在**这里**才 arm。闸（`before_tool`）跑在进 execute 之前，所以用户盯着
+        // 审批卡想五分钟，这条预算一秒不走——「审批等待期不计时」不是一段约定，是这行代码
+        // 的位置（方案 §1.6 第五行）。
+        const budget = AbortSignal.timeout(timeoutMs);
+        const signal = AbortSignal.any([outer, budget]);
+        const outcome = await Promise.race([
+          descriptor.execute(bound.data, { toolCallId, signal }),
+          // 领域端口**可能根本不看 signal**（第三方 SDK、同步阻塞、忘了接）。只把信号传下去
+          // 等于把预算交给被超时的那一方自己执行。这条 race 是唯一真正会到期的东西。
+          new Promise<never>((_resolve, reject) => {
+            budget.addEventListener('abort', () => {
+              reject(outer.aborted ? outer.reason
+                : new LaneToolFailure(renderLaneToolFailure(timeoutFailure(descriptor.name, timeoutMs))));
+            }, { once: true });
+          }),
+        ]);
         // **必须 throw，不能 return**（G-02）。上游文档原话：*"Returning a value never sets
         // the error flag regardless of what properties you include in the return object."*
         // return 一个「失败对象」的后果是 pi 记 `isError: false`——面板画绿收据、模型收到

@@ -108,6 +108,17 @@ export interface OpenLaneOptions {
   systemPrompt: string
   tools: readonly LaneToolDescriptor[]
   gate?(request: LaneToolGateRequest): Promise<LaneToolGateDecision> | LaneToolGateDecision
+  /**
+   * 传输层看门狗的两个预算（毫秒）。缺省是 `laneHost` 的 `LANE_FIRST_RESPONSE_MS` /
+   * `LANE_IDLE_MS`。
+   *
+   * **为什么是宿主可配而不是写死**：同一条 lane 可能指向一台本机 ComfyUI 旁边的
+   * 小模型（首字节几百毫秒），也可能指向一个跨洋网关（几十秒）。用同一个数去卡两者，
+   * 要么把慢的那条误杀，要么让快的那条卡满 90 秒。
+   */
+  watchdog?: { firstResponseMs?: number; idleMs?: number }
+  /** 一个回合最多几次模型请求。缺省 `LANE_MAX_MODEL_REQUESTS`。 */
+  limits?: { maxModelRequests?: number }
 }
 
 export type OpenLane = (options: OpenLaneOptions) => Promise<LaneHandle>

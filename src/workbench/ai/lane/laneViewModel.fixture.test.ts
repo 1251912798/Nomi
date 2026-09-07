@@ -18,6 +18,7 @@ const labels: LaneViewModelLabels = {
   thinkingLabel: '[thinking]',
   formatTokens: (value) => `${value}t`,
   formatCost: (usd) => `$${usd.toFixed(4)}`,
+  retryLabel: (attempt, maxAttempts) => `[retry ${attempt}/${maxAttempts}]`,
 }
 
 describe('laneViewModel against a projection a real pi lane produced', () => {

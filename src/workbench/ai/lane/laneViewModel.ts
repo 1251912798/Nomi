@@ -47,12 +47,27 @@ export interface LaneViewModelLabels {
   /** 数字格式化：token 数、金额。缺省不印，不是印 0。 */
   formatTokens(value: number): string
   formatCost(usd: number): string
+  /**
+   * 「正在重试 2/4」。**两个数都由调用方填**（R15）——它是这一族里唯一带变量的可见文字，
+   * 而 zh-CN 与 en 的语序不同，在这一层拼字符串就等于把语序钉死成中文的。
+   *
+   * 词条**故意还没进 `src/i18n/locales/agentPanelV4.ts`**：影子期这一族标签一个生产调用方
+   * 都还没有（`useAgentPanelV4Data.ts` 喂的是旧那份投影），先落一个 `agentPanelV4.retrying`
+   * 就是一个到不了的死键，`check:i18n-dead-keys` 会当场红——它红得对。词条和它的消费者
+   * 同一个 commit 出现，就在把面板接到 lane 的那次切换 PR 里。
+   */
+  retryLabel(attempt: number, maxAttempts: number): string
 }
 
 export interface LaneViewModel {
   items: readonly V4FlowItem[]
   usage: ContextUsage
   running: boolean
+  /**
+   * 只在真的在退避时存在。**缺失 = 没在重试**，不是重试了 0 次——面板据此决定画不画那一行，
+   * 而一个恒存在的「重试 0/4」会把「一切正常」说成「它在挣扎」。
+   */
+  retry?: string
 }
 
 /** 一次工具调用在流里的落点，用来把结果并回它的那一行（按 id join，不复制正文）。 */
@@ -163,6 +178,9 @@ export function laneViewModel(projection: LaneProjection, labels: LaneViewModelL
   return {
     items,
     running: projection.running,
+    ...(projection.retry
+      ? { retry: labels.retryLabel(projection.retry.attempt, projection.retry.maxAttempts) }
+      : {}),
     usage: {
       used: projection.usage.totalTokens,
       input: labels.formatTokens(projection.usage.inputTokens),

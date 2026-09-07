@@ -66,6 +66,35 @@ export interface LaneToolEffects {
   readonly reversal: "none" | "proposal" | "undoable";
 }
 
+/**
+ * 一个工具**最多允许跑多久**（方案 §1.6 第五行）。
+ *
+ * 上游一点都不给（[pi #8857](https://github.com/earendil-works/pi/issues/8857)：工具级超时
+ * 明说不做），所以没有这条的后果是：领域端口挂住 = 整条 lane 挂住，而症状是「它不动了」——
+ * 既没有报错也没有收据，和模型在想事情长得一模一样。
+ *
+ * **为什么是契约上的必填字段而不是一个默认值**：默认值会让「这个工具到底该跑多久」变成
+ * 一件没人想过的事，而第一个真的会跑很久的工具（生成类）会以和 `read_timeline` 完全相同的
+ * 形状进来。写成必填，编译器就是最早那道防线（R28）。
+ *
+ * **审批等待不计时**：计时器在 `laneTools.mts` 的 `execute` 里才 arm，而闸跑在
+ * `before_tool`——也就是**进 execute 之前**。用户想看五分钟再点「允许」，这条预算一秒不走。
+ */
+export interface LaneToolExecution {
+  /**
+   * 预算毫秒。读类 30s；写类按领域最慢的那条路给。
+   * 花钱的工具必须**提交即返回**（拿到 id 就回，别等结果），所以它的预算也在读类量级——
+   * 见 `laneTools.mts` 的装配期不变量。
+   */
+  readonly timeoutMs: number;
+}
+
+/** 读类工具的预算。一次领域读跑到 30 秒就是领域坏了，不是慢。 */
+export const LANE_READ_TOOL_TIMEOUT_MS = 30_000;
+
+/** 写类工具的预算。画布/文稿一次写入含持久化，给到一分钟。 */
+export const LANE_WRITE_TOOL_TIMEOUT_MS = 60_000;
+
 /** 模型可见工具的说明书那一半。纯数据，不需要任何领域 port。 */
 export interface LaneToolSpec {
   readonly name: string;
@@ -83,6 +112,8 @@ export interface LaneToolSpec {
   readonly promptGuidelines?: readonly string[];
   /** 这个工具会造成什么后果。**必填**——见 `LaneToolEffects` 头部。 */
   readonly effects: LaneToolEffects;
+  /** 这个工具最多跑多久。**必填**——见 `LaneToolExecution` 头部。 */
+  readonly execution: LaneToolExecution;
   /**
    * 模型真正要填的那一部分语义输入。**由别名决定的字段已经剥掉**——
    * `read_full_text` 的 `scope` 不在这里，因为名字已经把它定死了；

@@ -86,10 +86,15 @@ export function projectLaneSnapshot(snapshot: LaneSnapshot): LaneProjection {
   }
   const usage = snapshot.stats.usage;
   const cost = usage.cost?.total;
+  // 重试三元组原样带出来。**不换算成百分比、不算倒计时**：那两件事各有一个更靠近用户的
+  // 归宿（渲染层每帧自己算），在这里先算一遍就是第二个真相，而它会和屏幕差半秒。
+  const retry = snapshot.operation?.retry;
   return {
     lane: snapshot.lane,
     parts,
     running: snapshot.operation !== null,
+    ...(retry ? { retry: { attempt: retry.attempt, maxAttempts: retry.maxAttempts,
+      nextAttemptAt: retry.nextAttemptAt } } : {}),
     usage: {
       inputTokens: usage.input,
       outputTokens: usage.output,
