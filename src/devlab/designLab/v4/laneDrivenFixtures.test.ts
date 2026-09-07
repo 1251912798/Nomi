@@ -18,6 +18,7 @@ const labels: LaneViewModelLabels = {
   thinkingLabel: '正在想…',
   formatTokens: (value) => String(value),
   formatCost: (usd) => `$${usd.toFixed(2)}`,
+  retryLabel: (attempt, maxAttempts) => `[retry ${attempt}/${maxAttempts}]`,
   unknown: '—',
   free: '免费',
 }

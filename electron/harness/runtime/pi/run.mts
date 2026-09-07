@@ -256,10 +256,14 @@ export const runAgentTurn: RunAgentTurn = async (request, hooks) => {
     return { status: 'cancelled', text, finishReason: 'aborted', usage, toolCalls: [...records.values()], snapshot, context,
       error: { kind: 'abort', message: 'Nomi turn cancelled' } };
   }
+  // 这里**曾经**还有第三层步数防线：`reason === 'toolUse' && normalRequests >= maxSteps`
+  // → 报一个 `step-limit` 错误。删掉的理由写在 `docs/audit/2026-09-06-agent-architecture-review.md:319`：
+  // 停在上限的活是 `shouldStopAfterTurn`（:138，pi 原生、优雅停在回合边界）和那条硬抛（:151）
+  // 干的，这一层什么都没拦住，只是把**一次已经干完的、刚好停在上限上的收尾**翻译成
+  // 「失败」给用户看——工具全跑完了、结果全在转录里，而用户读到的是一句「没能给出最终答案」。
+  // 防线可以有三层，**只有一层有权改变用户看到的结论**。新通路那一层在 `laneHost.mts` 的
+  // `before_tool`：到上限时模型收到一句人话，还有机会把结论说出来（方案 §1.6 第六行，P1 同 commit 删旧）。
   const reason = lastAssistant ? finishReason(lastAssistant.stopReason) : 'error';
-  if (reason === 'toolUse' && normalRequests >= request.capability.maxSteps) {
-    failure = { kind: 'step-limit', message: `Nomi turn reached its ${request.capability.maxSteps}-request limit before a final answer` };
-  }
   if (failure || reason === 'error' || reason === 'aborted') {
     return { status: 'error', text, finishReason: reason, usage, toolCalls: [...records.values()], snapshot, context,
       error: lastNormalFailure ?? failure ?? facts.describe(lastAssistant?.errorMessage ?? 'Nomi runtime did not produce a response') };

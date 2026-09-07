@@ -17,6 +17,7 @@ import { BACKGROUND_CONTEXT } from '@earendil-works/pi-agent-core/harness/contex
 import { getOrThrow } from '@earendil-works/pi-agent-core';
 
 import { openLane } from '../../electron/agentLane/laneHost.mjs';
+import { LANE_READ_TOOL_TIMEOUT_MS } from '../../electron/shared/agentLane/laneToolContract.js';
 import { createLaneFileSystem, LANE_DIR_MODE, LANE_FILE_MODE } from '../../electron/agentLane/laneFileSystem.mjs';
 import { laneSessionsRoot } from '../../electron/agentLane/laneSession.mjs';
 import { createDocumentLaneTools } from '../../electron/agentLane/laneDocumentTools.js';
@@ -149,6 +150,7 @@ test('G-02 · a tool failure throws, so pi records an errored result instead of 
     description: 'A tool that always reports a failure, used to prove failures are not recorded as successes.',
     promptSnippet: 'always report a failure.',
     effects: { mutates: false, billable: false, reversal: 'none' },
+    execution: { timeoutMs: LANE_READ_TOOL_TIMEOUT_MS },
     schema: z.object({}).strict(),
     examples: [{ when: 'Call it with no arguments:', arguments: {} }],
     // 阶段 2 起失败带的是结构（code / message / nextAction），不是一句 `message`——
