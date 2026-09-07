@@ -1,273 +1,374 @@
 {
+ "_comment": [
+  "框架边界登记表（R29）。每个框架回答一句话：「它已经提供了什么，仓库里出现什么就说明我们又自己写了一份」。",
+  "门岗 = pnpm run check:framework-boundary（scripts/check-framework-boundary.mjs），债基线 = scripts/framework-boundary-baseline.json。",
+  "登记一个新框架的顺序：先出四列表（它提供 / 我们用了 / 我们另写了 / 我们拆散了，每格 file:line 或文档 URL）→",
+  "把「我们另写了」那一列翻译成这里的 forbidden 规则 → 跑 --update-baseline 把存量登记成债 → 给每条债绑方案和到期日。",
+  "provides/evidence 不是注释，是门岗校验的必填项：没有可复核出处的规则，等于没做过研究。",
+  "2026-09-07：五条 scope 都加了 electron/agentLane/（阶段 1 垂直切片的新目录）。加在写第一行代码之前，",
+  "不是写完再补——否则门岗只能证明「今天的存量」，证明不了「新目录里再长一份自研版本会当场红」（R28）。"
+ ],
+ "capabilityInventory": {
   "_comment": [
-    "框架边界登记表（R29）。每个框架回答一句话：「它已经提供了什么，仓库里出现什么就说明我们又自己写了一份」。",
-    "门岗 = pnpm run check:framework-boundary（scripts/check-framework-boundary.mjs），债基线 = scripts/framework-boundary-baseline.json。",
-    "登记一个新框架的顺序：先出四列表（它提供 / 我们用了 / 我们另写了 / 我们拆散了，每格 file:line 或文档 URL）→",
-    "把「我们另写了」那一列翻译成这里的 forbidden 规则 → 跑 --update-baseline 把存量登记成债 → 给每条债绑方案和到期日。",
-    "provides/evidence 不是注释，是门岗校验的必填项：没有可复核出处的规则，等于没做过研究。",
-    "2026-09-07：五条 scope 都加了 electron/agentLane/（阶段 1 垂直切片的新目录）。加在写第一行代码之前，",
-    "不是写完再补——否则门岗只能证明「今天的存量」，证明不了「新目录里再长一份自研版本会当场红」（R28）。"
+   "机器抽取的能力词表要覆盖哪些依赖（2026-09-07 加）。上面的 frameworks 是**人手写**的，",
+   "只覆盖已经出过四列表的那几项能力——它天生只包含已知的东西。这里换一条腿：",
+   "scripts/gen-dependency-capabilities.mjs 从 node_modules 的 .d.ts 导出符号与 README 标题",
+   "机器抽出词表，落到 docs/engineering/dependency-capabilities.generated.json，",
+   "给「还不知道自己不知道」的人当原料。加一个包 = 往这个数组里加一行，然后重跑生成器。"
   ],
-  "capabilityInventory": {
-    "_comment": [
-      "机器抽取的能力词表要覆盖哪些依赖（2026-09-07 加）。上面的 frameworks 是**人手写**的，",
-      "只覆盖已经出过四列表的那几项能力——它天生只包含已知的东西。这里换一条腿：",
-      "scripts/gen-dependency-capabilities.mjs 从 node_modules 的 .d.ts 导出符号与 README 标题",
-      "机器抽出词表，落到 docs/engineering/dependency-capabilities.generated.json，",
-      "给「还不知道自己不知道」的人当原料。加一个包 = 往这个数组里加一行，然后重跑生成器。"
-    ],
-    "packages": [
-      "@earendil-works/pi-coding-agent",
-      "@earendil-works/pi-agent-core",
-      "@earendil-works/pi-ai",
-      "@xyflow/react",
-      "ai",
-      "@mantine/core"
-    ]
-  },
-  "advisory": {
-    "_comment": [
-      "启发式一条（2026-09-07 加，**先 advisory 不阻断**）：新增/改动文件的文件名或导出符号命中",
-      "下面的能力词，且该文件不在豁免登记里 → 出 warning。它抓的是 forbidden 正则抓不到的那半边：",
-      "换个符号名重写一份框架已有的能力。正则认的是具体写法，词表认的是**这件事本身**。",
-      "为什么先不阻断：这类启发式的死因是误报——一道天天红的门岗等于不存在（R17）。",
-      "先跑一周量误报率，按 promotion 里写死的条件再决定升不升红。"
-    ],
-    "watchWords": ["session", "retry", "steer", "steering", "parent", "compaction", "harness", "transcript", "persistence", "resume"],
-    "exemptions": "scripts/framework-boundary-advisory-exemptions.json",
-    "promotion": {
-      "reviewDue": "2026-09-14",
-      "criteria": [
-        "一周内累计 warning 中，真阳性（确实是重造了框架能力）占比 ≥ 50%",
-        "豁免登记条目 ≤ 8 条，且每条都写得出「为什么这个词在这里不是重造」",
-        "两条都满足 → 把 advisory 改成 exit 1，并把当时的存量写进 scripts/framework-boundary-baseline.json 同款棘轮基线；",
-        "任一条不满足 → 先收窄 watchWords（删掉误报最多的那个词），再观察一周，不许直接放弃这条"
-      ]
-    }
-  },
-  "referenceConformanceAdvisory": {
-    "_comment": [
-      "上游对齐（2026-09-07 加，**advisory 不阻断**）：登记的 upstreamVersion 落后于 node_modules 里",
-      "实装的版本 → warning。为什么不直接红：上游发一个补丁版不等于参考实现变了，一道天天红的",
-      "门岗等于不存在（R17）。为什么也不能不管：参考实现对照是有时效的——框架自己重构了一层，",
-      "我们那张表就还停在旧的分层上，而它读起来和新的一模一样。",
-      "升红条件写在 promotion 里，到期由 R14 周期审计接手复核，不靠谁记得。"
-    ],
-    "promotion": {
-      "reviewDue": "2026-11-07",
-      "criteria": [
-        "两条同时满足才升红：① 所有登记框架都已交出参考实现对照（referenceConformanceDebt 清空）；② 复核期内出现过至少一次「上游发版确实改了分层」的真阳性",
-        "满足 → 把 minor 及以上的版本落后改成 exit 1，patch 版落后仍只出 warning",
-        "不满足 → 保持 advisory，并在下一次周期审计重定 reviewDue，不许静默取消这条"
-      ]
-    }
-  },
-  "referenceConformanceDebt": [
-    {
-      "_comment": "参考实现逐层对照的**债**（R29 第二份必交物）。登记的是欠账不是豁免：每条绑一个到期日，到期不交门岗就红。清掉一条 = 从这里删一行并在框架条目上写 referenceConformance。id = 框架 id 或 capabilityInventory 里的包名。",
-      "id": "pi",
-      "doc": "docs/research/2026-09-07-pi-reference-implementation-conformance.md",
-      "due": "2026-09-14",
-      "why": "九层对照已交（doc 字段那份，2026-09-07 合入 main），它照出 24 条「压根没想到」。债剩下的是**把它们清掉**，不是再写一份对照。到 2026-09-07 阶段 2 为止：阶段 2 前必补的 9 条已销 7 条（G-01 根级 anyOf / G-02 失败必须 throw / G-03 描述三通道+重建系统提示词两段 / G-05 枚举用 enum 形态 / G-09 addedToolNames 已判并写结论，本阶段销；G-04 工具输出截断 / G-08 唯一校验点带容忍梯，阶段 1 已销），剩 2 条各自带票：G-06（改名后旧会话的旧形状 tool call 折旧，阶段 4 迁移旧转录前必补）、G-07（路径参数 containPath()，阶段 3 接生成/导出类工具时才有落点）。阶段 3 前必补的 8 条（G-10～G-17）与 G-18 跨进程会话锁尚未开工。销账明细见 docs/plan/2026-09-07-agent-runtime-rebuild.md §12.10。"
-    },
-    {
-      "id": "xyflow-react",
-      "doc": "docs/research/2026-10-07-xyflow-reference-implementation-conformance.md",
-      "due": "2026-10-07",
-      "why": "生成画布的交互内核（R23 单内核）。React Flow 官方 examples 是同一套 API 的参考实现，我们的画布已经在 sub-flows、受控视口、节点类型注册这些层上各走了自己的路（2026-09-07 已就 sub-flows 单独查过一轮，见 docs/research/2026-09-07-react-flow-subflows-vs-frame.md），但九层从没并排摆过。id 从包名 @xyflow/react 改成框架 id xyflow-react：PR #550 把它从「只在 capabilityInventory 里的包」升成了登记框架，债要挂在框架 id 上才认得出（同一笔债，没有新增）。"
-    },
-    {
-      "id": "ai",
-      "doc": "docs/research/2026-10-07-vercel-ai-sdk-reference-implementation-conformance.md",
-      "due": "2026-10-07",
-      "why": "Vercel AI SDK 是模型调用与流式转录那条线的底座，AI Elements demo 是它的参考实现。工具、转录渲染、控制流三层我们各写了一份宿主侧的版本，没有对照过它的分层。"
-    },
-    {
-      "id": "@mantine/core",
-      "doc": "docs/research/2026-10-31-mantine-reference-implementation-conformance.md",
-      "due": "2026-10-31",
-      "why": "组件层。排在最后是因为它离「重造框架能力」最远（我们的设计系统是 token-only 自持的，D2 意义上的护城河在别处），但扩展 API 与安全两层仍值得并排看一次，尤其是 Mantine 官方 demo 怎么处理受控/非受控与可访问性。"
-    }
-  ],
-  "frameworks": [
-    {
-      "id": "pi",
-      "packages": [
-        "@earendil-works/pi-coding-agent",
-        "@earendil-works/pi-agent-core",
-        "@earendil-works/pi-ai"
-      ],
-      "version": "0.85.1",
-      "fourColumnTable": "docs/plan/2026-09-07-agent-runtime-rebuild.md",
-      "why": "2026-09-06 #546 架构评审：接入时只接了最底层的 agent loop，pi 已提供的会话持久化、有序转录、重试、价格与 steer/followUp 各被我们重写了一份，而且更差。这张表把那次评审的结论钉成机器判据。",
-      "capabilities": [
-        {
-          "id": "session-persistence",
-          "provides": "SessionManager 负责会话的落盘、追加与恢复（含 CURRENT_SESSION_VERSION 迁移）",
-          "evidence": "@earendil-works/pi-coding-agent@0.85.1 dist/core/session-manager.d.ts:184 `export declare class SessionManager`；dist/core/session-manager.d.ts:334 `static inMemory`",
-          "scope": ["electron/harness/runtime/pi/", "electron/agentLane/"],
-          "forbidden": [
-            {
-              "id": "opt-out-of-session-store",
-              "pattern": "SessionManager\\.inMemory\\(",
-              "why": "选 inMemory 就等于放弃 pi 的落盘与恢复语义，宿主必须自己补一套持久化——那套是 2026-09-06 评审里「更差的自研版本」的源头。"
-            },
-            {
-              "id": "private-session-snapshot-envelope",
-              "pattern": "nomi\\.pi-work-context",
-              "why": "自研快照信封（版本锁 + sha256）在复刻 SessionManager 已有的会话序列化与版本迁移，pi 升版时要我们自己跟。"
-            }
-          ]
-        },
-        {
-          "id": "retry-policy",
-          "provides": "RetryPolicy：模型请求的重试与退避策略，由 settings.retry 与 provider.maxRetries 驱动",
-          "evidence": "@earendil-works/pi-ai@0.85.1 `RetryPolicy`（经 pi-coding-agent dist/core/compaction/compaction.d.ts:8 import、:105 `completeSummarization(..., retry?: RetryPolicy, ...)` 透出）；pi-coding-agent dist/core/settings-manager.d.ts:81 `retry?: RetrySettings`",
-          "scope": ["electron/harness/runtime/pi/", "electron/agentLane/"],
-          "forbidden": [
-            {
-              "id": "retry-disabled-wholesale",
-              "pattern": "retry:\\s*\\{\\s*enabled:\\s*false",
-              "why": "整条关掉 pi 的重试后，瞬时 5xx/超时的韧性只能由宿主自己补，而宿主那层没有 provider 级退避与错误分类。"
-            },
-            {
-              "id": "max-retries-zero",
-              "pattern": "maxRetries:\\s*0",
-              "why": "把 provider 重试压到 0 是同一件事的第二处开关；两处都在，说明宿主整条重试路径都自持，pi 的策略被架空。"
-            }
-          ]
-        },
-        {
-          "id": "steering",
-          "provides": "AgentSession.steer() / followUp()：把用户的新指令按流式状态排进当前回合或下一回合",
-          "evidence": "@earendil-works/pi-coding-agent@0.85.1 dist/core/agent-session.d.ts:375 `steer(text, images?)`、:383 `followUp(text, images?)`；pi-agent-core dist/agent.d.ts:84/86",
-          "scope": ["electron/projectAgentHost/", "electron/agentLane/"],
-          "forbidden": [
-            {
-              "id": "host-owned-steering-queue",
-              "pattern": "steering:\\s*new Map\\(",
-              "why": "宿主自建一张 turnId→指令 的表，等于把 pi 的排队语义搬到外面重写；pi 的「流式中 steer、非流式 followUp」区分在这里丢失。"
-            },
-            {
-              "id": "host-owned-steering-prompt-fold",
-              "pattern": "steeredExecutionPrompt",
-              "why": "把修正指令拼进下一次 prompt 文本，是 steer 的字符串化仿制品：模型看到的是一段追加文字，不是一条被正确插队的用户消息。"
-            }
-          ]
-        },
-        {
-          "id": "resource-loading",
-          "provides": "DefaultResourceLoader：扩展 / skills / prompts / themes / AGENTS 文件的发现、加载与系统提示词装配",
-          "evidence": "@earendil-works/pi-coding-agent@0.85.1 dist/core/resource-loader.d.ts:120 `export declare class DefaultResourceLoader implements ResourceLoader`",
-          "scope": ["electron/harness/runtime/pi/", "electron/agentLane/"],
-          "forbidden": [
-            {
-              "id": "hand-rolled-resource-loader",
-              "pattern": "createNomiResourceLoader",
-              "why": "手写一个全空的 ResourceLoader 是刻意的隔离决定（沙箱不许从磁盘拿指令），但它同时让我们失去 pi 后续在这一层加的一切；边界要被看见，不能默默漂。"
-            },
-            {
-              "id": "private-skill-resource-catalog",
-              "pattern": "createNomiSkillResourceCatalog|getNomiSkillRoots",
-              "why": "自研 skill 发现与目录装配，与 DefaultResourceLoader.getSkills() 同职责；两份发现逻辑迟早对同一目录给出不同答案。"
-            }
-          ]
-        },
-        {
-          "id": "ordered-transcript",
-          "provides": "AgentSession 的有序事件流与会话条目：按段（文本 / 思考 / 工具调用 / 结果）保序，宿主订阅即可拿到结构",
-          "evidence": "@earendil-works/pi-coding-agent@0.85.1 dist/core/agent-session.d.ts:40 `AgentSessionEvent`、:103 `AgentSessionEventListener`",
-          "scope": ["electron/harness/runtime/pi/", "electron/agentLane/"],
-          "forbidden": [
-            {
-              "id": "flatten-text-deltas-into-one-string",
-              "pattern": "assistantMessageEvent\\.type === 'text_delta'",
-              "why": "把 text_delta 拼成一条扁平字符串，就丢掉了 pi 已经保序的分段结构；UI 想还原「思考→工具→文本」的顺序时只能再猜一次。"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "id": "xyflow-react",
-      "packages": ["@xyflow/react"],
-      "version": "12.11.5",
-      "fourColumnTable": "docs/research/2026-09-07-react-flow-subflows-vs-frame.md",
-      "why": "2026-09-07 R29 边界检查：React Flow 12 的 sub-flows 我们一层都没接。两件核心语义（extent:'parent' 禁止成员出框、expandParent 父追着子长大）与 Nomi 的框语义正面相反，故不是重造而是刻意不用；相交计算与手势归属两处原本绕开了内核公共 API（真·自研债），已在 PR #550 返工改回公共 API。",
-      "capabilities": [
-        {
-          "id": "subflow-parenting",
-          "provides": "parentId + extent:'parent' + expandParent + ParentLookup：节点父子、拖父动子、边界约束、父自动扩张",
-          "evidence": "@xyflow/system@0.0.81 dist/esm/types/nodes.d.ts:49-61（parentId/extent/expandParent）、:156（ParentLookup）；https://reactflow.dev/learn/layouting/sub-flows",
-          "scope": ["src/workbench/generationCanvas/reactFlow/", "src/workbench/generationCanvas/components/"],
-          "justifiedOwnImplementation": {
-            "reason": "extent:'parent' 与「拖出框=退组」正面冲突（它 clamp 位置，成员根本拖不出去）；expandParent 逐字就是 2026-09-06 实拍里那条 bug——框追着跑掉的成员长大。原生三件里两件必须关掉，第三件「拖父动子」我们的 moveGroupNodes 还额外带 categoryId 过滤，原生父子不认识 Nomi 的分类。所以这不是重造轮子，是这个轮子朝相反方向转。",
-            "ours": [
-              "src/workbench/generationCanvas/model/generationCanvasTypes.ts:188 NodeGroup.nodeIds（成员名单）",
-              "src/workbench/generationCanvas/store/canvasGraphActions.ts:392 moveGroupNodes（拖父动子 + 分类过滤）",
-              "src/workbench/generationCanvas/model/canvasFrameBounds.ts:68 unionFrameBounds（只长不缩，替 expandParent）"
-            ],
-            "reviewBy": "2026-12-07",
-            "reevaluateWhen": "出现「嵌套框」需求时重新评估 A 方案（改造成原生父子）——那是原生父子唯一能白拿收益的场景。"
-          },
-          "forbidden": [
-            {
-              "id": "half-migrated-native-parenting",
-              "pattern": "\\bparentId\\b",
-              "why": "投影层一旦写 parentId，成员 position 就从绝对坐标变成相对坐标，会穿透到主进程 canvasNodeLayout / canvasNodeFactory 的绝对坐标契约（R29 §4.3），而主进程根本看不见 React Flow。要迁必须整条迁（含 applyExternalGraph 边界的双向转换与契约测试）并改本登记，半迁比不迁危险得多。"
-            },
-            {
-              "id": "extent-parent-cages-members",
-              "pattern": "extent:\\s*['\"]parent['\"]",
-              "why": "extent:'parent' 会把成员 clamp 在框内——用户拖不出去，而「拖出框 = 退组」正是这一档要修的那条 bug 的修法。开了它，框就从「空间」退化成「牢笼」。"
-            }
-          ]
-        },
-        {
-          "id": "node-intersection",
-          "provides": "getIntersectingNodes / isNodeIntersecting / getInternalNode：基于内核 nodeLookup 的绝对坐标（拖动中逐帧更新）+ measured 真实渲染尺寸做命中计算",
-          "evidence": "@xyflow/react@12.11.5 dist/esm/types/instance.d.ts:113-115（getIntersectingNodes）、:126-128（isNodeIntersecting）、:50-55（getInternalNode）；@xyflow/system@0.0.81 dist/esm/types/nodes.d.ts:83-99（InternalNodeBase.measured / internals.positionAbsolute）",
-          "scope": ["src/workbench/generationCanvas/components/"],
-          "forbidden": [
-            {
-              "id": "hand-rolled-node-rect-for-hit-testing",
-              "pattern": "getCanvasNodeVisualSize\\([^)]*\\)[\\s\\S]{0,200}?(contains|intersect|Overlap)",
-              "why": "从 Zustand 重算节点矩形做命中判定，用的是**声明**尺寸而非内核 measured 尺寸——判定线与用户看到的边会分叉（R14.1 同一语义两份定义），表现为「明明拖进去了却没入组」，是最难跟用户解释的一类 bug。中心点判据是我们的产品判据（Figma/Miro 同款），可以保留；矩形必须来自内核。"
-            }
-          ]
-        },
-        {
-          "id": "gesture-ownership",
-          "provides": "panOnDrag / selectionOnDrag / nodesDraggable / nodeDragThreshold：声明式地把一次拖动判给谁",
-          "evidence": "@xyflow/react@12.11.5 dist/esm/types/component-props.d.ts:399（panOnDrag）、:289（selectionOnDrag）、:338（nodesDraggable）、:620（nodeDragThreshold）",
-          "scope": ["src/workbench/generationCanvas/"],
-          "forbidden": [
-            {
-              "id": "capture-phase-gesture-theft",
-              "pattern": "onPointerDownCapture[\\s\\S]{0,400}?stopPropagation",
-              "why": "在 capture 阶段抢 React Flow 的 pointerdown，内核不知道自己被停用，onMoveStart/onMove/onMoveEnd 与新手势各活各的；框架改事件绑定阶段时会**静默**失效（画不出框，没有任何报错）。用 panOnDrag={false} / nodesDraggable={false} 明说（R28：能让框架自己拦的，别留给偷袭）。"
-            }
-          ]
-        },
-        {
-          "id": "internal-store-lookups",
-          "provides": "nodeLookup / parentLookup 由 adoptUserNodes + updateAbsolutePositions 维护，是内核私有面",
-          "evidence": "@xyflow/system@0.0.81 dist/esm/utils/store.d.ts:4（updateAbsolutePositions）、:18（adoptUserNodes）；@xyflow/system dist/esm/types/nodes.d.ts:155-156（NodeLookup / ParentLookup）",
-          "scope": ["src/workbench/generationCanvas/reactFlow/"],
-          "forbidden": [
-            {
-              "id": "write-internal-parent-lookup",
-              "pattern": "setState\\(\\{[^}]*parentLookup",
-              "why": "手改内核的 parentLookup 走的是私有面，升版无兼容承诺；而且我们并不使用它的父子语义，只是在写它的索引。2026-09-07 已证其为死路径（投影从不产 parentId）并删除，这条规则防的是它长回来。"
-            },
-            {
-              "id": "write-internal-node-lookup",
-              "pattern": "setState\\(\\{[^}]*nodeLookup",
-              "why": "拖动热路径直接改内核的 nodeLookup（并把 hasDefaultNodes 置 false），是画布性能战役压帧时间时留下的私有面写入：React Flow 升版改这两处内部形状不会有任何编译错误，只会在拖动时静默错位。"
-            }
-          ]
-        }
-      ]
-    }
+  "packages": [
+   "@earendil-works/pi-coding-agent",
+   "@earendil-works/pi-agent-core",
+   "@earendil-works/pi-ai",
+   "@xyflow/react",
+   "ai",
+   "@mantine/core",
+   "@anthropic-ai/sandbox-runtime"
   ]
+ },
+ "advisory": {
+  "_comment": [
+   "启发式一条（2026-09-07 加，**先 advisory 不阻断**）：新增/改动文件的文件名或导出符号命中",
+   "下面的能力词，且该文件不在豁免登记里 → 出 warning。它抓的是 forbidden 正则抓不到的那半边：",
+   "换个符号名重写一份框架已有的能力。正则认的是具体写法，词表认的是**这件事本身**。",
+   "为什么先不阻断：这类启发式的死因是误报——一道天天红的门岗等于不存在（R17）。",
+   "先跑一周量误报率，按 promotion 里写死的条件再决定升不升红。"
+  ],
+  "watchWords": [
+   "session",
+   "retry",
+   "steer",
+   "steering",
+   "parent",
+   "compaction",
+   "harness",
+   "transcript",
+   "persistence",
+   "resume"
+  ],
+  "exemptions": "scripts/framework-boundary-advisory-exemptions.json",
+  "promotion": {
+   "reviewDue": "2026-09-14",
+   "criteria": [
+    "一周内累计 warning 中，真阳性（确实是重造了框架能力）占比 ≥ 50%",
+    "豁免登记条目 ≤ 8 条，且每条都写得出「为什么这个词在这里不是重造」",
+    "两条都满足 → 把 advisory 改成 exit 1，并把当时的存量写进 scripts/framework-boundary-baseline.json 同款棘轮基线；",
+    "任一条不满足 → 先收窄 watchWords（删掉误报最多的那个词），再观察一周，不许直接放弃这条"
+   ]
+  }
+ },
+ "referenceConformanceAdvisory": {
+  "_comment": [
+   "上游对齐（2026-09-07 加，**advisory 不阻断**）：登记的 upstreamVersion 落后于 node_modules 里",
+   "实装的版本 → warning。为什么不直接红：上游发一个补丁版不等于参考实现变了，一道天天红的",
+   "门岗等于不存在（R17）。为什么也不能不管：参考实现对照是有时效的——框架自己重构了一层，",
+   "我们那张表就还停在旧的分层上，而它读起来和新的一模一样。",
+   "升红条件写在 promotion 里，到期由 R14 周期审计接手复核，不靠谁记得。"
+  ],
+  "promotion": {
+   "reviewDue": "2026-11-07",
+   "criteria": [
+    "两条同时满足才升红：① 所有登记框架都已交出参考实现对照（referenceConformanceDebt 清空）；② 复核期内出现过至少一次「上游发版确实改了分层」的真阳性",
+    "满足 → 把 minor 及以上的版本落后改成 exit 1，patch 版落后仍只出 warning",
+    "不满足 → 保持 advisory，并在下一次周期审计重定 reviewDue，不许静默取消这条"
+   ]
+  }
+ },
+ "referenceConformanceDebt": [
+  {
+   "_comment": "参考实现逐层对照的**债**（R29 第二份必交物）。登记的是欠账不是豁免：每条绑一个到期日，到期不交门岗就红。清掉一条 = 从这里删一行并在框架条目上写 referenceConformance。id = 框架 id 或 capabilityInventory 里的包名。",
+   "id": "pi",
+   "doc": "docs/research/2026-09-07-pi-reference-implementation-conformance.md",
+   "due": "2026-09-14",
+   "why": "九层对照已交（doc 字段那份，2026-09-07 合入 main），它照出 24 条「压根没想到」。债剩下的是**把它们清掉**，不是再写一份对照。到 2026-09-07 阶段 2 为止：阶段 2 前必补的 9 条已销 7 条（G-01 根级 anyOf / G-02 失败必须 throw / G-03 描述三通道+重建系统提示词两段 / G-05 枚举用 enum 形态 / G-09 addedToolNames 已判并写结论，本阶段销；G-04 工具输出截断 / G-08 唯一校验点带容忍梯，阶段 1 已销），剩 2 条各自带票：G-06（改名后旧会话的旧形状 tool call 折旧，阶段 4 迁移旧转录前必补）、G-07（路径参数 containPath()，阶段 3 接生成/导出类工具时才有落点）。阶段 3 前必补的 8 条（G-10～G-17）与 G-18 跨进程会话锁尚未开工。销账明细见 docs/plan/2026-09-07-agent-runtime-rebuild.md §12.10。"
+  },
+  {
+   "id": "xyflow-react",
+   "doc": "docs/research/2026-10-07-xyflow-reference-implementation-conformance.md",
+   "due": "2026-10-07",
+   "why": "生成画布的交互内核（R23 单内核）。React Flow 官方 examples 是同一套 API 的参考实现，我们的画布已经在 sub-flows、受控视口、节点类型注册这些层上各走了自己的路（2026-09-07 已就 sub-flows 单独查过一轮，见 docs/research/2026-09-07-react-flow-subflows-vs-frame.md），但九层从没并排摆过。id 从包名 @xyflow/react 改成框架 id xyflow-react：PR #550 把它从「只在 capabilityInventory 里的包」升成了登记框架，债要挂在框架 id 上才认得出（同一笔债，没有新增）。"
+  },
+  {
+   "id": "ai",
+   "doc": "docs/research/2026-10-07-vercel-ai-sdk-reference-implementation-conformance.md",
+   "due": "2026-10-07",
+   "why": "Vercel AI SDK 是模型调用与流式转录那条线的底座，AI Elements demo 是它的参考实现。工具、转录渲染、控制流三层我们各写了一份宿主侧的版本，没有对照过它的分层。"
+  },
+  {
+   "id": "@mantine/core",
+   "doc": "docs/research/2026-10-31-mantine-reference-implementation-conformance.md",
+   "due": "2026-10-31",
+   "why": "组件层。排在最后是因为它离「重造框架能力」最远（我们的设计系统是 token-only 自持的，D2 意义上的护城河在别处），但扩展 API 与安全两层仍值得并排看一次，尤其是 Mantine 官方 demo 怎么处理受控/非受控与可访问性。"
+  }
+ ],
+ "frameworks": [
+  {
+   "id": "pi",
+   "packages": [
+    "@earendil-works/pi-coding-agent",
+    "@earendil-works/pi-agent-core",
+    "@earendil-works/pi-ai"
+   ],
+   "version": "0.85.1",
+   "fourColumnTable": "docs/plan/2026-09-07-agent-runtime-rebuild.md",
+   "why": "2026-09-06 #546 架构评审：接入时只接了最底层的 agent loop，pi 已提供的会话持久化、有序转录、重试、价格与 steer/followUp 各被我们重写了一份，而且更差。这张表把那次评审的结论钉成机器判据。",
+   "capabilities": [
+    {
+     "id": "session-persistence",
+     "provides": "SessionManager 负责会话的落盘、追加与恢复（含 CURRENT_SESSION_VERSION 迁移）",
+     "evidence": "@earendil-works/pi-coding-agent@0.85.1 dist/core/session-manager.d.ts:184 `export declare class SessionManager`；dist/core/session-manager.d.ts:334 `static inMemory`",
+     "scope": [
+      "electron/harness/runtime/pi/",
+      "electron/agentLane/"
+     ],
+     "forbidden": [
+      {
+       "id": "opt-out-of-session-store",
+       "pattern": "SessionManager\\.inMemory\\(",
+       "why": "选 inMemory 就等于放弃 pi 的落盘与恢复语义，宿主必须自己补一套持久化——那套是 2026-09-06 评审里「更差的自研版本」的源头。"
+      },
+      {
+       "id": "private-session-snapshot-envelope",
+       "pattern": "nomi\\.pi-work-context",
+       "why": "自研快照信封（版本锁 + sha256）在复刻 SessionManager 已有的会话序列化与版本迁移，pi 升版时要我们自己跟。"
+      }
+     ]
+    },
+    {
+     "id": "retry-policy",
+     "provides": "RetryPolicy：模型请求的重试与退避策略，由 settings.retry 与 provider.maxRetries 驱动",
+     "evidence": "@earendil-works/pi-ai@0.85.1 `RetryPolicy`（经 pi-coding-agent dist/core/compaction/compaction.d.ts:8 import、:105 `completeSummarization(..., retry?: RetryPolicy, ...)` 透出）；pi-coding-agent dist/core/settings-manager.d.ts:81 `retry?: RetrySettings`",
+     "scope": [
+      "electron/harness/runtime/pi/",
+      "electron/agentLane/"
+     ],
+     "forbidden": [
+      {
+       "id": "retry-disabled-wholesale",
+       "pattern": "retry:\\s*\\{\\s*enabled:\\s*false",
+       "why": "整条关掉 pi 的重试后，瞬时 5xx/超时的韧性只能由宿主自己补，而宿主那层没有 provider 级退避与错误分类。"
+      },
+      {
+       "id": "max-retries-zero",
+       "pattern": "maxRetries:\\s*0",
+       "why": "把 provider 重试压到 0 是同一件事的第二处开关；两处都在，说明宿主整条重试路径都自持，pi 的策略被架空。"
+      }
+     ]
+    },
+    {
+     "id": "steering",
+     "provides": "AgentSession.steer() / followUp()：把用户的新指令按流式状态排进当前回合或下一回合",
+     "evidence": "@earendil-works/pi-coding-agent@0.85.1 dist/core/agent-session.d.ts:375 `steer(text, images?)`、:383 `followUp(text, images?)`；pi-agent-core dist/agent.d.ts:84/86",
+     "scope": [
+      "electron/projectAgentHost/",
+      "electron/agentLane/"
+     ],
+     "forbidden": [
+      {
+       "id": "host-owned-steering-queue",
+       "pattern": "steering:\\s*new Map\\(",
+       "why": "宿主自建一张 turnId→指令 的表，等于把 pi 的排队语义搬到外面重写；pi 的「流式中 steer、非流式 followUp」区分在这里丢失。"
+      },
+      {
+       "id": "host-owned-steering-prompt-fold",
+       "pattern": "steeredExecutionPrompt",
+       "why": "把修正指令拼进下一次 prompt 文本，是 steer 的字符串化仿制品：模型看到的是一段追加文字，不是一条被正确插队的用户消息。"
+      }
+     ]
+    },
+    {
+     "id": "resource-loading",
+     "provides": "DefaultResourceLoader：扩展 / skills / prompts / themes / AGENTS 文件的发现、加载与系统提示词装配",
+     "evidence": "@earendil-works/pi-coding-agent@0.85.1 dist/core/resource-loader.d.ts:120 `export declare class DefaultResourceLoader implements ResourceLoader`",
+     "scope": [
+      "electron/harness/runtime/pi/",
+      "electron/agentLane/"
+     ],
+     "forbidden": [
+      {
+       "id": "hand-rolled-resource-loader",
+       "pattern": "createNomiResourceLoader",
+       "why": "手写一个全空的 ResourceLoader 是刻意的隔离决定（沙箱不许从磁盘拿指令），但它同时让我们失去 pi 后续在这一层加的一切；边界要被看见，不能默默漂。"
+      },
+      {
+       "id": "private-skill-resource-catalog",
+       "pattern": "createNomiSkillResourceCatalog|getNomiSkillRoots",
+       "why": "自研 skill 发现与目录装配，与 DefaultResourceLoader.getSkills() 同职责；两份发现逻辑迟早对同一目录给出不同答案。"
+      }
+     ]
+    },
+    {
+     "id": "ordered-transcript",
+     "provides": "AgentSession 的有序事件流与会话条目：按段（文本 / 思考 / 工具调用 / 结果）保序，宿主订阅即可拿到结构",
+     "evidence": "@earendil-works/pi-coding-agent@0.85.1 dist/core/agent-session.d.ts:40 `AgentSessionEvent`、:103 `AgentSessionEventListener`",
+     "scope": [
+      "electron/harness/runtime/pi/",
+      "electron/agentLane/"
+     ],
+     "forbidden": [
+      {
+       "id": "flatten-text-deltas-into-one-string",
+       "pattern": "assistantMessageEvent\\.type === 'text_delta'",
+       "why": "把 text_delta 拼成一条扁平字符串，就丢掉了 pi 已经保序的分段结构；UI 想还原「思考→工具→文本」的顺序时只能再猜一次。"
+      }
+     ]
+    },
+    {
+     "id": "coding-tools",
+     "provides": "pi 自带 7 个 coding 工具（read/grep/find/ls/edit/write/bash）与它们的 operations 插槽、BashSpawnHook、截断、system-prompt 贡献。工具的执行、schema、渲染全部由 pi 提供；宿主只出范围、沙箱、审批三样策略。",
+     "evidence": "@earendil-works/pi-coding-agent@0.85.1 dist/core/sdk.d.ts:71 `export { …createBashTool, createCodingTools, createEditTool, createFindTool, createGrepTool, createLsTool, createReadTool, createWriteTool… }`；dist/core/tools/bash.d.ts:56-68 `BashToolOptions.operations` / `spawnHook`；dist/core/tools/bash.d.ts:10-13 `bashToolSystemPromptContribution`",
+     "scope": [
+      "electron/agentLane/"
+     ],
+     "forbidden": [
+      {
+       "id": "own-shell-executor",
+       "pattern": "(exec|spawn)Sync\\(|child_process['\\\"]\\)\\s*\\.\\s*exec\\(",
+       "why": "自己写一份命令执行器就绕开了 pi 的截断、超时、中止与 operations 插槽——而沙箱正是挂在那个插槽上的，绕开它等于命令跑在沙箱外面，且没有任何东西会报错。"
+      },
+      {
+       "id": "own-file-tool-schema",
+       "pattern": "name:\\s*['\\\"](read|write|edit|grep|find|ls|bash)['\\\"]\\s*,[\\s\\S]{0,200}?parameters:\\s*z\\.",
+       "why": "把 pi 的工具翻译成 zod 再翻回 JSON Schema 就是把它重写了一遍：上游改了描述或参数，我们这份静默漂移，而漂移的症状是模型少知道一件事、没人会发现。"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "xyflow-react",
+   "packages": [
+    "@xyflow/react"
+   ],
+   "version": "12.11.5",
+   "fourColumnTable": "docs/research/2026-09-07-react-flow-subflows-vs-frame.md",
+   "why": "2026-09-07 R29 边界检查：React Flow 12 的 sub-flows 我们一层都没接。两件核心语义（extent:'parent' 禁止成员出框、expandParent 父追着子长大）与 Nomi 的框语义正面相反，故不是重造而是刻意不用；相交计算与手势归属两处原本绕开了内核公共 API（真·自研债），已在 PR #550 返工改回公共 API。",
+   "capabilities": [
+    {
+     "id": "subflow-parenting",
+     "provides": "parentId + extent:'parent' + expandParent + ParentLookup：节点父子、拖父动子、边界约束、父自动扩张",
+     "evidence": "@xyflow/system@0.0.81 dist/esm/types/nodes.d.ts:49-61（parentId/extent/expandParent）、:156（ParentLookup）；https://reactflow.dev/learn/layouting/sub-flows",
+     "scope": [
+      "src/workbench/generationCanvas/reactFlow/",
+      "src/workbench/generationCanvas/components/"
+     ],
+     "justifiedOwnImplementation": {
+      "reason": "extent:'parent' 与「拖出框=退组」正面冲突（它 clamp 位置，成员根本拖不出去）；expandParent 逐字就是 2026-09-06 实拍里那条 bug——框追着跑掉的成员长大。原生三件里两件必须关掉，第三件「拖父动子」我们的 moveGroupNodes 还额外带 categoryId 过滤，原生父子不认识 Nomi 的分类。所以这不是重造轮子，是这个轮子朝相反方向转。",
+      "ours": [
+       "src/workbench/generationCanvas/model/generationCanvasTypes.ts:188 NodeGroup.nodeIds（成员名单）",
+       "src/workbench/generationCanvas/store/canvasGraphActions.ts:392 moveGroupNodes（拖父动子 + 分类过滤）",
+       "src/workbench/generationCanvas/model/canvasFrameBounds.ts:68 unionFrameBounds（只长不缩，替 expandParent）"
+      ],
+      "reviewBy": "2026-12-07",
+      "reevaluateWhen": "出现「嵌套框」需求时重新评估 A 方案（改造成原生父子）——那是原生父子唯一能白拿收益的场景。"
+     },
+     "forbidden": [
+      {
+       "id": "half-migrated-native-parenting",
+       "pattern": "\\bparentId\\b",
+       "why": "投影层一旦写 parentId，成员 position 就从绝对坐标变成相对坐标，会穿透到主进程 canvasNodeLayout / canvasNodeFactory 的绝对坐标契约（R29 §4.3），而主进程根本看不见 React Flow。要迁必须整条迁（含 applyExternalGraph 边界的双向转换与契约测试）并改本登记，半迁比不迁危险得多。"
+      },
+      {
+       "id": "extent-parent-cages-members",
+       "pattern": "extent:\\s*['\"]parent['\"]",
+       "why": "extent:'parent' 会把成员 clamp 在框内——用户拖不出去，而「拖出框 = 退组」正是这一档要修的那条 bug 的修法。开了它，框就从「空间」退化成「牢笼」。"
+      }
+     ]
+    },
+    {
+     "id": "node-intersection",
+     "provides": "getIntersectingNodes / isNodeIntersecting / getInternalNode：基于内核 nodeLookup 的绝对坐标（拖动中逐帧更新）+ measured 真实渲染尺寸做命中计算",
+     "evidence": "@xyflow/react@12.11.5 dist/esm/types/instance.d.ts:113-115（getIntersectingNodes）、:126-128（isNodeIntersecting）、:50-55（getInternalNode）；@xyflow/system@0.0.81 dist/esm/types/nodes.d.ts:83-99（InternalNodeBase.measured / internals.positionAbsolute）",
+     "scope": [
+      "src/workbench/generationCanvas/components/"
+     ],
+     "forbidden": [
+      {
+       "id": "hand-rolled-node-rect-for-hit-testing",
+       "pattern": "getCanvasNodeVisualSize\\([^)]*\\)[\\s\\S]{0,200}?(contains|intersect|Overlap)",
+       "why": "从 Zustand 重算节点矩形做命中判定，用的是**声明**尺寸而非内核 measured 尺寸——判定线与用户看到的边会分叉（R14.1 同一语义两份定义），表现为「明明拖进去了却没入组」，是最难跟用户解释的一类 bug。中心点判据是我们的产品判据（Figma/Miro 同款），可以保留；矩形必须来自内核。"
+      }
+     ]
+    },
+    {
+     "id": "gesture-ownership",
+     "provides": "panOnDrag / selectionOnDrag / nodesDraggable / nodeDragThreshold：声明式地把一次拖动判给谁",
+     "evidence": "@xyflow/react@12.11.5 dist/esm/types/component-props.d.ts:399（panOnDrag）、:289（selectionOnDrag）、:338（nodesDraggable）、:620（nodeDragThreshold）",
+     "scope": [
+      "src/workbench/generationCanvas/"
+     ],
+     "forbidden": [
+      {
+       "id": "capture-phase-gesture-theft",
+       "pattern": "onPointerDownCapture[\\s\\S]{0,400}?stopPropagation",
+       "why": "在 capture 阶段抢 React Flow 的 pointerdown，内核不知道自己被停用，onMoveStart/onMove/onMoveEnd 与新手势各活各的；框架改事件绑定阶段时会**静默**失效（画不出框，没有任何报错）。用 panOnDrag={false} / nodesDraggable={false} 明说（R28：能让框架自己拦的，别留给偷袭）。"
+      }
+     ]
+    },
+    {
+     "id": "internal-store-lookups",
+     "provides": "nodeLookup / parentLookup 由 adoptUserNodes + updateAbsolutePositions 维护，是内核私有面",
+     "evidence": "@xyflow/system@0.0.81 dist/esm/utils/store.d.ts:4（updateAbsolutePositions）、:18（adoptUserNodes）；@xyflow/system dist/esm/types/nodes.d.ts:155-156（NodeLookup / ParentLookup）",
+     "scope": [
+      "src/workbench/generationCanvas/reactFlow/"
+     ],
+     "forbidden": [
+      {
+       "id": "write-internal-parent-lookup",
+       "pattern": "setState\\(\\{[^}]*parentLookup",
+       "why": "手改内核的 parentLookup 走的是私有面，升版无兼容承诺；而且我们并不使用它的父子语义，只是在写它的索引。2026-09-07 已证其为死路径（投影从不产 parentId）并删除，这条规则防的是它长回来。"
+      },
+      {
+       "id": "write-internal-node-lookup",
+       "pattern": "setState\\(\\{[^}]*nodeLookup",
+       "why": "拖动热路径直接改内核的 nodeLookup（并把 hasDefaultNodes 置 false），是画布性能战役压帧时间时留下的私有面写入：React Flow 升版改这两处内部形状不会有任何编译错误，只会在拖动时静默错位。"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "anthropic-sandbox-runtime",
+   "packages": [
+    "@anthropic-ai/sandbox-runtime"
+   ],
+   "version": "0.0.75",
+   "fourColumnTable": "docs/research/2026-09-07-pi-coding-tools-layer.md",
+   "why": "2026-09-07 用户拍板：「沙箱机制它肯定有设计，权限设计里肯定有，直接把它抄过来应该就够了」。pi 自带的 sandbox 示例用的就是这个包（examples/extensions/sandbox/index.ts），所以 OS 级沙箱不自研——我们只出策略（allowWrite / denyRead / allowedDomains），一行 seatbelt/bwrap 都不写。",
+   "capabilities": [
+    {
+     "id": "os-level-sandbox",
+     "provides": "OS 级文件系统与网络围栏：macOS sandbox-exec、Linux bubblewrap、Windows（alpha）srt-win + WFP。SandboxManager.initialize/wrapWithSandbox/reset 是全部公共面。",
+     "evidence": "@anthropic-ai/sandbox-runtime@0.0.75 dist/index.d.ts:1 `export { SandboxManager }`；dist/sandbox/sandbox-manager.d.ts:36-80 `ISandboxManager`；README「Platform Support」：macOS sandbox-exec / Linux bubblewrap / Windows alpha",
+     "scope": [
+      "electron/agentLane/"
+     ],
+     "forbidden": [
+      {
+       "id": "hand-rolled-seatbelt-profile",
+       "pattern": "sandbox-exec|\\bbwrap\\b|seatbelt|\\(version\\s+1\\)\\s*\\(deny\\s+default\\)",
+       "why": "手写 SBPL/bwrap 参数就是把这个包重做一遍，而它的难点全在我们看不见的地方（proxy 端口、violation 归因、嵌套沙箱、Linux 的 userns 限制）。自研版本第一次失效的样子是「沙箱起来了但什么都没挡住」。"
+      },
+      {
+       "id": "own-egress-proxy",
+       "pattern": "createServer\\([\\s\\S]{0,120}CONNECT|socks5|mitm[-_]?ca",
+       "why": "出网过滤是这个包用 SOCKS/HTTP 代理 + MITM CA 实现的；另起一个代理不但重复，而且两个代理会互相打架，症状是网络时通时不通。"
+      }
+     ]
+    }
+   ],
+   "referenceConformance": {
+    "doc": "docs/research/2026-09-07-pi-coding-tools-layer.md",
+    "upstreamVersion": "0.0.75",
+    "note": "参考实现 = pi 自带的 sandbox 示例（examples/extensions/sandbox/index.ts，它 pin 的是 0.0.26）与 sandbox-runtime 0.0.75 的公共面。九层里裁掉转录渲染/会话/上下文/模型与花费/扩展 API 五层：那个包不碰它们（裁剪写死在 layers，不是省略）。逐层对照见文档 §3。",
+    "verifiedAt": "2026-09-07",
+    "layers": [
+     "工具",
+     "控制流",
+     "观测与测试",
+     "安全"
+    ]
+   }
+  }
+ ]
 }

@@ -32,6 +32,12 @@ import {
 } from "../electron/shared/agentCapabilities/modelVisibleJsonSchema";
 import { LANE_MODEL_TOOL_CATALOG } from "../electron/agentLane/laneToolCatalog";
 import { modelToolSurfaceManifest } from "../electron/harness/tools/modelToolSurfaceManifest";
+import {
+  evaluateLaneToolBudget, LANE_TOOL_REQUEST_TOOL_NAME, LANE_TOOL_SCHEMA_TOKEN_CEILING,
+  type LaneToolCombination,
+} from "../electron/agentLane/laneToolGroups.mjs";
+import { LANE_CODING_TOOL_NAMES } from "../electron/agentLane/laneCodingTools.mjs";
+import { laneToolModelDescription } from "../electron/shared/agentLane/laneToolContract";
 
 const repoRoot = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..");
 const baselinePath = path.join(repoRoot, "scripts", "model-schema-baseline.json");
@@ -301,7 +307,78 @@ function baselineIdentities(baseline: Baseline, rule: RuleId): Set<string> {
   return new Set(Array.isArray(entry) ? entry : Object.keys(entry));
 }
 
-function main(): void {
+
+// ── 预算与按需装载（阶段 5c）────────────────────────────────────────────────
+//
+// 两条判据住在 `electron/agentLane/laneToolGroups.mts`（生产代码那一份），这里只负责
+// **量出真实的三个组合**再喂给它。为什么量在门岗里而不是在生产代码里：coding 组的
+// schema 来自 pi 的工厂，只有真的把 7 个工具建出来才知道它们有多大——生产代码在
+// 装配时已经建过一次，门岗要的是**不起 App 就能量**（`laneToolCatalog.ts` 头部那条纪律）。
+
+/** pi 自己的 token 估法（`estimateTokens`，chars/4，偏保守）。**不另写一个估算器**（R29）。 */
+async function estimateSchemaTokens(chunks: readonly string[]): Promise<number> {
+  const { estimateTokens } = await import("@earendil-works/pi-coding-agent");
+  const asMessage = (text: string) => ({ role: "user" as const, content: [{ type: "text" as const, text }] });
+  return chunks.reduce((sum, chunk) => sum + estimateTokens(asMessage(chunk) as never), 0);
+}
+
+async function laneToolCombinations(): Promise<LaneToolCombination[]> {
+  const alwaysOnChunks = LANE_MODEL_TOOL_CATALOG.map(
+    (tool) => laneToolModelDescription(tool) + JSON.stringify(toPublishedJsonSchema(tool.schema)));
+  const pi = await import("@earendil-works/pi-coding-agent");
+  const codingByName = new Map<string, { description: string; parameters: unknown }>();
+  for (const tool of [...pi.createCodingTools("/nomi-schema-probe"), ...pi.createReadOnlyTools("/nomi-schema-probe")]) {
+    codingByName.set(tool.name, { description: tool.description ?? "", parameters: tool.parameters });
+  }
+  const missing = LANE_CODING_TOOL_NAMES.filter((name) => !codingByName.has(name));
+  if (missing.length > 0) {
+    throw new Error(
+      `pi 不再提供这些 coding 工具：${missing.join(", ")}。`
+      + "上游改了工具面——先读 CHANGELOG 决定跟不跟，别在这里补一个自研版本（R29）。",
+    );
+  }
+  const codingChunks = LANE_CODING_TOOL_NAMES.map((name) => {
+    const tool = codingByName.get(name)!;
+    return tool.description + JSON.stringify(tool.parameters);
+  });
+  // `nomi_request_tools` 的 schema 极小，但它**常驻**，所以每个组合都算上它。
+  const requestToolChunk = JSON.stringify({
+    name: LANE_TOOL_REQUEST_TOOL_NAME,
+    parameters: { type: "object", properties: { query: { type: "string" } }, required: ["query"] },
+  });
+
+  const alwaysOn = await estimateSchemaTokens([...alwaysOnChunks, requestToolChunk]);
+  const coding = await estimateSchemaTokens(codingChunks);
+  return [
+    { label: "always-on（锁着）", toolNames: LANE_MODEL_TOOL_CATALOG.map((t) => t.name), estimatedTokens: alwaysOn },
+    {
+      label: "always-on + coding（解锁后）",
+      toolNames: [...LANE_MODEL_TOOL_CATALOG.map((t) => t.name), ...LANE_CODING_TOOL_NAMES],
+      estimatedTokens: alwaysOn + coding,
+    },
+  ];
+}
+
+async function checkLaneToolBudget(): Promise<boolean> {
+  const combinations = await laneToolCombinations();
+  for (const combination of combinations) {
+    console.log(`  · ${combination.label}：${combination.toolNames.length} 个工具，约 ${combination.estimatedTokens} token`);
+  }
+  const failures = evaluateLaneToolBudget({
+    alwaysOnCount: LANE_MODEL_TOOL_CATALOG.length,
+    combinations,
+  });
+  if (failures.length === 0) {
+    console.log(
+      `✅ lane 工具预算通过（always-on ≤ ${LANE_MODEL_TOOL_CATALOG.length <= 12 ? 12 : "?"} 且任一组合 ≤ ${LANE_TOOL_SCHEMA_TOKEN_CEILING} token）。`);
+    return true;
+  }
+  console.error("\n✖ lane 工具预算超了：");
+  for (const failure of failures) console.error(`   · ${failure}`);
+  return false;
+}
+
+async function main(): Promise<void> {
   const tools = collectTools();
   const findings = analyse(tools);
   const byRule = new Map<RuleId, Map<string, string>>();
@@ -367,6 +444,8 @@ function main(): void {
   }
 
   console.log("✅ 模型可见 schema 棘轮通过（无新增空 schema / 根级 union / const / 重复工具；基线只减不增）。");
+
+  if (!(await checkLaneToolBudget())) process.exitCode = 1;
 }
 
-main();
+void main();
