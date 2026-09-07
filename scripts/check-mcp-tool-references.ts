@@ -3,7 +3,8 @@
  * MCP 工具名引用门岗：可执行测试与文档示例中的每个工具名必须在真实目录里存在。
  *
  * 目录从 MCP_TOOL_RESOLVER 派生，扫描覆盖位置参数 callTool(...)、tools/call
- * payload 的 name 属性和无插值模板字面量。故意的未知工具探针仍须显式标记。
+ * payload 的 name 属性和无插值模板字面量。宿主回复/manifest 按对象结构选 Agent 目录，
+ * 与字段顺序、长度无关；调用始终按 MCP 目录。故意的未知工具探针仍须显式标记。
  */
 import fs from 'node:fs'
 import path from 'node:path'

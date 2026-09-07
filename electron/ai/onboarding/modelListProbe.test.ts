@@ -299,3 +299,30 @@ describe("model-list pagination follows the proven response protocol", () => {
     expect(new URL(fetchSpy.mock.calls[1][0]).searchParams.get("after_id")).toBe("claude-a");
   });
 });
+
+describe('conditional listing evidence', () => {
+  it('sends validators only to their exact URL and handles a bound 304', async () => {
+    const fetcher = vi.fn().mockResolvedValueOnce(response(200, { data: [{ id: 'one' }] }, { etag: '"one"' }))
+      .mockResolvedValueOnce(new Response(null, { status: 304 }))
+    vi.stubGlobal('fetch', fetcher)
+    const first = await fetchModelList('openai-compatible', 'https://gateway.test/v1', {}, new AbortController().signal)
+    expect(first.ok).toBe(true)
+    if (!first.ok) throw new Error('expected successful list')
+    const second = await fetchModelList('openai-compatible', 'https://gateway.test/v1', {}, new AbortController().signal, { validator: first.validator })
+    expect(second).toMatchObject({ ok: true, notModified: true, statuses: [304] })
+    expect(new Headers(fetcher.mock.calls[1][1].headers).get('if-none-match')).toBe('"one"')
+    fetcher.mockResolvedValueOnce(response(200, { data: [{ id: 'two' }] }))
+    await fetchModelList('openai-compatible', 'https://other.test/v1', {}, new AbortController().signal, { validator: first.validator })
+    expect(new Headers(fetcher.mock.calls[2][1].headers).has('if-none-match')).toBe(false)
+    vi.unstubAllGlobals()
+  })
+  it('does not cache a first-page validator as evidence for an entire paginated collection', async () => {
+    const fetcher = vi.fn().mockResolvedValueOnce(response(200, { data: [{ id: 'one' }], has_more: true, last_id: 'one' }, { etag: '"page-one"' }))
+      .mockResolvedValueOnce(response(200, { data: [{ id: 'two' }], has_more: false }, { etag: '"page-two"' }))
+    vi.stubGlobal('fetch', fetcher)
+    const result = await fetchModelList('anthropic', 'https://gateway.test/v1', {}, new AbortController().signal)
+    expect(result).toMatchObject({ ok: true, models: ['one', 'two'] })
+    expect(result.ok && result.validator).toBeUndefined()
+    vi.unstubAllGlobals()
+  })
+})

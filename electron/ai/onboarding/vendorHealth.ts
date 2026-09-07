@@ -15,13 +15,16 @@
  * 代价是对「本就没有 /models」的家每轮多发一个必然 404 的请求：零额度（就是 GET /models）、
  * 有缓存、无害。换来的是新增供应商零维护（P4 通用第一）。
  */
+import { logWarn } from "../../logging/logger";
+import { BrowserWindow } from "electron";
 import { createHash } from "node:crypto";
 import type { AiSdkProviderKind } from "../../catalog/types";
-import { readCatalog, normalizeProviderKind } from "../../catalog/catalogStore";
+import { readCatalog, normalizeProviderKind, mutateCatalog } from "../../catalog/catalogStore";
 import { decryptApiKeyRecord } from "../../catalog/secrets";
 import { isJsonRecord, mergeHeadersCaseInsensitive } from "../../jsonUtils";
 import { authHeaders, authQueryParams } from "../requestPipeline";
 import { fetchModelList, readExtraHeaders, type ModelListFailureKind } from "./modelListProbe";
+import { modelListReconciliation } from "../../catalog/modelListReconcile";
 import { modelListErrorRedactor } from "./modelListSafety";
 
 export type VendorHealthState = "reachable" | "unreachable" | "unsupported";
@@ -43,6 +46,7 @@ const TTL_MS = 10 * 60_000;
 type Entry = {
   /** 凭证/地址/协议的指纹——任一变化即缓存失效（不碰明文 key，用 key 记录的 updatedAt 代表）。 */
   fingerprint: string;
+  validator?: { url: string; etag: string };
   result?: VendorHealth;
   inflight?: Promise<VendorHealth>;
 };
@@ -117,7 +121,23 @@ async function probe(vendorKey: string, target: Target): Promise<VendorHealth> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), PROBE_TIMEOUT_MS);
   try {
-    const res = await fetchModelList(target.providerKind, target.baseUrl, target.headers, controller.signal, { query: target.query });
+    const entry = cache.get(vendorKey);
+    const res = await fetchModelList(target.providerKind, target.baseUrl, target.headers, controller.signal, {
+      query: target.query,
+      validator: entry?.fingerprint === target.fingerprint ? entry.validator : undefined,
+    });
+    // Re-read before writing: edits/removal during the request invalidate its evidence.
+    if (resolveTarget(vendorKey)?.fingerprint === target.fingerprint && res.ok && !res.partial) {
+      const current = cache.get(vendorKey);
+      if (current?.fingerprint === target.fingerprint) current.validator = res.validator;
+      const patches = modelListReconciliation(readCatalog().models, vendorKey, res);
+      if (patches.length) {
+        mutateCatalog((tx, state) => {
+          for (const patch of modelListReconciliation(state.models, vendorKey, res)) tx.upsertModel(patch);
+        });
+        for (const window of BrowserWindow.getAllWindows()) if (!window.isDestroyed()) window.webContents.send("nomi:model-catalog:changed");
+      }
+    }
     return classifyProbe(
       vendorKey,
       { ok: res.ok, error: res.ok ? undefined : res.error, statuses: res.statuses, failureKind: res.ok ? undefined : res.failureKind },
@@ -155,10 +175,25 @@ export async function checkVendorHealth(vendorKey: string, force = false): Promi
       const current = cache.get(vendorKey);
       // 探测期间用户又改了 key/地址 → 这次结果已过时，丢弃不写缓存（避免旧结论盖住新配置）。
       if (current?.fingerprint === target.fingerprint) {
-        cache.set(vendorKey, { fingerprint: target.fingerprint, result });
+        cache.set(vendorKey, { fingerprint: target.fingerprint, result, validator: current.validator });
       }
       return result;
     });
-  cache.set(vendorKey, { fingerprint: target.fingerprint, result: entry?.result, inflight });
+  cache.set(vendorKey, { fingerprint: target.fingerprint, result: entry?.fingerprint === target.fingerprint ? entry.result : undefined, validator: entry?.fingerprint === target.fingerprint ? entry.validator : undefined, inflight });
   return inflight;
+}
+
+/** Daily sweep reuses the same credential, timeout and in-flight owner as model settings. */
+export async function reconcileTextVendorCatalogs(): Promise<void> {
+  const state = readCatalog();
+  const vendors = state.vendors.filter((vendor) => vendor.hasApiKey && state.models.some((model) => model.vendorKey === vendor.key && model.kind === "text"));
+  for (const vendor of vendors) await checkVendorHealth(vendor.key);
+}
+
+export function startCatalogReconciliation(): () => void {
+  const run = (): void => { void reconcileTextVendorCatalogs().catch(() => logWarn("catalog", "reconcile-failed", { reason: "catalog unavailable" })) }
+  run()
+  const timer = setInterval(run, 24 * 60 * 60_000)
+  timer.unref()
+  return () => clearInterval(timer)
 }
