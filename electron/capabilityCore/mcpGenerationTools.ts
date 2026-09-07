@@ -45,6 +45,8 @@ import type {
   VideoModelCandidate,
 } from "../shared/videoCapabilities/recommendation";
 import { effectiveVideoModes } from "../shared/videoCapabilities/recommendation";
+import { resolveGenerationPlan, type PlanShotInput } from "../shared/videoCapabilities/planResolver";
+import { generationResolveInputSchema } from "../shared/agentCapabilities/generation";
 import type { GenerationDefaultTaskKind } from "../settings/generationModelDefaultsContract";
 import { semanticCandidateFromParams } from "./semanticGenerationCandidate";
 import { projectGenerationOperationPreview } from "./mcpGenerationPreview";
@@ -412,9 +414,52 @@ export function createGenerationPlanningHandler(deps: GenerationPlanningHandlerD
     });
   };
 
+  const resolvePlanAdvisory = (params: Record<string, unknown>): unknown => {
+    // Generation Strategy Resolver — stateless advisory pass (no durable
+    // operation, no seal, no gate): validate/clamp every shot's model/mode/
+    // params against real capability facts and propose merge/split/duration
+    // structure before any plan is formed (2026-09-06 planResolver).
+    //
+    // Input parsing is the capability contract's zod schema, not a hand-rolled
+    // coercion loop: GUI narrow IPC and the agent/MCP face must accept exactly
+    // the same inputs, and there is one place that says what those are
+    // (GENERATION_RESOLVE_CAPABILITY.inputSchema — rebuild plan §1.2 K1).
+    const parsed = generationResolveInputSchema.safeParse(params);
+    if (!parsed.success) {
+      const first = parsed.error.issues[0];
+      const where = first?.path?.length ? ` at ${first.path.join(".")}` : "";
+      throw Object.assign(new Error(`resolve input is invalid${where}: ${first?.message ?? "unknown"}`), { code: "generation_input_invalid" });
+    }
+    const planResolution = resolveGenerationPlan({
+      shots: parsed.data.shots as PlanShotInput[],
+      candidates: deps.videoModelCandidates ?? [],
+      ...(parsed.data.goals ? { goals: parsed.data.goals } : {}),
+    });
+    return {
+      resolvedShots: planResolution.shots.map((shot) => ({
+        id: shot.id,
+        modelKey: shot.candidate?.modelKey ?? null,
+        modeId: shot.modeId,
+        modeLabel: shot.modeLabel,
+        durationMin: shot.durationMin,
+        durationMax: shot.durationMax,
+        params: shot.params,
+        issues: shot.issues,
+      })),
+      mergeProposals: planResolution.mergeProposals,
+      splitProposals: planResolution.splitProposals,
+      planIssues: planResolution.issues,
+      nextAction: "create",
+    };
+  };
+
   return async (input: { capability: string; params: Record<string, unknown>; lease?: ProjectLeaseV2; origin?: { host: string; actorId?: string } }): Promise<unknown> => {
-    if (!input.lease) throw new Error("A verified project lease is required");
     const params = input.params;
+    // resolve = stateless advisory pass（generation strategy resolver）：纯计算、不落 durable
+    // operation、不触生成，本就不需要项目租赁凭证（GUI 窄 IPC 也是无 lease 进来）→ 提前返回。
+    // 其余 capability（context/create/preview/gate_*/start…）一律要求已核验 lease。
+    if (input.capability === "resolve") return resolvePlanAdvisory(params);
+    if (!input.lease) throw new Error("A verified project lease is required");
     if (input.capability === "context") {
       if (deps.context) return deps.context({ projectId: input.lease.projectId, lease: input.lease });
       const providerProfiles = (deps.registry.snapshot?.() ?? []).flatMap((manifest) => manifest.providers.map((provider) => ({
@@ -661,3 +706,12 @@ export function createGenerationPlanningHandler(deps: GenerationPlanningHandlerD
     throw new Error(`Unsupported semantic generation capability: ${input.capability}`);
   };
 }
+
+/** 已装配的 planning seam 可调用面（agent/MCP 与 GUI 窄 IPC 共用同一实例 → 候选集/决策天然同源）。
+ *  返回类型取松散版（unknown | Promise）以兼容 authorities 注入的 DispatchContext 版 seam。 */
+export type GenerationPlanningHandler = (input: {
+  capability: string;
+  params: Record<string, unknown>;
+  lease?: ProjectLeaseV2;
+  origin?: { host: string; actorId?: string };
+}) => unknown | Promise<unknown>;
