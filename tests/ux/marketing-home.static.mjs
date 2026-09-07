@@ -17,7 +17,7 @@ const expectMobileSafeConversion = (document, heading, boundary, language) => {
   const boundaryIndex = document.indexOf(boundary)
   expect(startIndex >= 0 && boundaryIndex > startIndex, `${language} conversion block is bounded`)
   const conversion = document.slice(startIndex, boundaryIndex)
-  const groupImage = conversion.match(/<img src="docs\/media\/nomi-canvas-group-wechat-2026-09-01\.jpg"[^>]*>/)?.[0]
+  const groupImage = conversion.match(/<img src="docs\/media\/nomi-canvas-group-wechat-[0-9]{4}-[0-9]{2}-[0-9]{2}\.jpg"[^>]*>/)?.[0]
   expect(groupImage && /width="2\d{2}"/.test(groupImage), `${language} group QR remains prominent on mobile`)
   expect(!conversion.includes('|:---'), `${language} conversion avoids a shrinking Markdown table`)
   expectBefore(
