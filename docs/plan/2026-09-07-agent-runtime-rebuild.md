@@ -25,6 +25,22 @@
 
 **结论**：用已有（换用 pi 0.85.1 的 `AgentHarness` 与它已提供的五项能力），自研只保留 Nomi 独有的那部分（工具契约、画布语义、投影层）。理由：14 处自研版本每一处都比上游的差，且升级 pi 时要我们自己跟——这笔成本是结构性的，不是一次性的。
 
+**2026-09-07 补充行（阶段 2 · 工具契约那一层的「别人怎么做」）**。上面四问查的是**运行时**——
+换谁的框架、哪一层自研。阶段 2 动的是**模型看到什么**，那一层的现役标准写在 Anthropic 官方
+工具文档里，而我们此前一次都没系统读过它。这一轮逐页读完，四条与本仓形状直接咬合的事实：
+
+| 读的是哪一页 | 拿到的是什么 | 它改了我们的什么 |
+|---|---|---|
+| [Tool reference](https://platform.claude.com/docs/en/agents-and-tools/tool-use/tool-reference) | 工具定义上的可选属性各管什么：`cache_control`（前缀断点）、`defer_loading`（不进初始系统提示词）、`input_examples`（示例）、`strict`、`allowed_callers`；以及**工具版本用日期后缀、新旧长期并存** | 版本那条**明确不抄**（并存 = 两份真相源，P1 禁止），我们的等价物是名字稳定 + `prepareArguments` 折旧（§3.7 ⑩）。`input_examples` 仍不用——它只有一家认，我们要跨供应商，示例继续写进 description |
+| [Tool search tool](https://platform.claude.com/docs/en/agents-and-tools/tool-use/tool-search-tool) | 开延迟加载的**数字判据**：≥10 个工具或工具定义 >10k token；工具选择准确率通常在 30–50 个工具后才开始掉；「保留 3–5 个最常用的不延迟」 | §3.7 ⑫ 的闸门数字直接取自这里，并写死进 `laneToolCatalog.ts`。结论是**今天不开**（11 个 / ≈5k token），但下一个人撞到上限时看到的是一个有出处的数，不是一句「感觉够了」 |
+| [Tool use with prompt caching](https://platform.claude.com/docs/en/agents-and-tools/tool-use/tool-use-with-prompt-caching) | 缓存前缀是 `tools → system → messages` 的层级：**改工具定义作废整段缓存**；`defer_loading` 的工具在算缓存键之前就被摘出前缀，所以延迟加载不破缓存 | 这条把「工具目录顺序是合同」从一句纪律变成一笔可算的账，也是 §3.7 ⑥「按轮切菜单不是省钱」的依据。收据侧因此新增 `cacheReadTokens` / `cacheWriteTokens` 两列——前缀被自己抖坏时，唯一的症状就是这一列塌到 0 |
+| [Context editing](https://platform.claude.com/docs/en/build-with-claude/context-editing) · [Skill authoring best practices](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices) | 前者：`clear_tool_uses_20250919` 按 `trigger` / `keep` / `clear_at_least` 清旧工具结果，**清理会作废缓存前缀**，所以 `clear_at_least` 存在的意义是「这次清理值不值回一次缓存重建」。后者：渐进披露（元数据常驻、正文按需读）、「不要给多个选项，给一个默认 + 一条逃生口」、以及**先建评测再写文档** | 前者印证了 §3.7 ⑪ 的判断——压缩/清理的阈值是一笔要算的账，不是越激进越好；本阶段不动阈值正是因为没有可算的样本。后者两条直接照进工具描述的写法：`description` 说自己的事、「用它还是用隔壁那个」进 `Guidelines` 只写一次（渐进披露的同一条道理），以及 R30 的两臂评测**先于**这一轮的描述改写而存在 |
+
+**这四页此前没读，是一个真实的疏漏，不是「本来就知道」。** §3.2 的 S1–S7 是对着 #547 的
+实测数据写的，方向没错；但「什么时候该上延迟加载」「改工具定义要花多少钱」这两个问题，
+它一个都没问——而两个答案都是现成的、带数字的。R29 的「先查别人」如果只查框架不查**协议方
+的工具文档**，漏掉的正是这一类。
+
 ---
 
 ## 0. 先说清楚：这份方案在解决哪个真实摩擦，以及为什么是「重做」而不是「修」
@@ -294,6 +310,27 @@ toolProjection(registry, profile: "internal" | "mcp") → ModelFacingTool[]
 - 内部侧永不投影 `nomi_operation_gate` / `nomi_operation_execute`（信任边界，§1.3）。
 
 **不允许的差异（今天存在，要消掉）**：广播 schema 弱于执行 schema。今天 `references` 在 MCP 侧无 `items`、在内部侧严格 typed——**外部宿主比内部 agent 拥有更宽松的输入面**，信任方向反了。门岗断言：MCP 广播 schema 必须能拒绝所有 zod 会拒绝的输入。
+
+### 3.7 阶段 2 评审检查表（七维，逐条标已满足 / 登记）
+
+> 这七条不是新规则，是**§3.1–3.6 写完之后才发现还没问的问题**。判据全部对着 Anthropic
+> 官方工具文档与 pi 的 `dist/*.d.ts` 实核过一遍，出处见「先查别人」的 2026-09-07 补充行。
+> 一条只有两种合法状态：**已满足**（有机器判据 + 有阳性对照）或**登记**（写清是谁的票、
+> 到哪个阶段前必须销）。「以后注意」不是状态。
+
+| # | 问的是什么 | 阶段 2 状态 | 依据 / 票 |
+|---|---|---|---|
+| ⑥ | 工具预算，以及**按场景给菜单** | 预算 ✅ · 切菜单 📌 阶段 3 | `LANE_TOOL_BUDGET = 12`，超了直接抛（今天 11 个）。切菜单的机制实核存在：`AgentLane.setActiveTools(names, ctx)` / `getActiveTools`（`pi-agent-core/dist/harness/agent-harness.d.ts:673`）。**但它有代价**——改工具集会让整段前缀作废（`tools → system → messages` 逐级失效），所以「每轮按意图换一批工具」不是省 token，是**每轮买一次缓存重建**。正确用法是按会话/场景切一次。这条写下来，是为了阶段 3 有人想按轮切时先看见账单 |
+| ⑦ | 长任务的形态（提交拿 id / 查询 / 取消） | 📌 阶段 3 | lane 今天 11 个工具全是本地状态的读写，最长的一次也同步返回；真正的长任务（生成一张图、一段视频）阶段 3 才进来。**形态不需要新造**：旧通路的 `nomi_get_run` 已经是「提交拿 id → 轮询 → 取消」那一套。阶段 3 的硬约束是**不许让工具在 `execute` 里干等**——lane 工具是 `executionMode: 'sequential'`，一个干等的工具会把整条 lane 的工具锁占住，症状是「Agent 卡住了」而不是「在等生成」 |
+| ⑧ | 模型怎么指代画布上的对象 | ✅ 已满足 | **id-only + 读后写**。`nodeId` / `sourceClientId` / `shotClientId` 全是 id；`CANVAS_GUIDELINES` 前两条把「先读再写、绝不编 id」写成整族只花一次 token 的纪律；`nomi_canvas_read` 的描述第三句明说「这里返回的 node id 就是要填进 `nodeId` / `sourceClientId` / `targetClientId` 的那个字符串」。**一处刻意的例外**：分镜的 `anchorIds` 是语义绑定（角色/场景/道具/风格），不是画布节点 id，它由同一次调用里的 `anchors[]` 定义——这条写在 `nomi_storyboard_write` 的描述里。**明着标不做的**：不提供按名字的模糊解析（`resolveByName` 之类）。重名时它只能猜，而猜错的代价是改错了用户的稿子，且回执长得和成功一模一样 |
+| ⑨ | 每个工具**自己声明**副作用（花钱 / 可逆 / 审批档） | ✅ 本 PR 落地 | `LaneToolSpec.effects` 成为**必填**字段（`mutates` / `billable` / `reversal`）。这不是登记表，是编译器闸：加一个工具而不说清它花不花钱、可不可逆，**代码编译不过**（R28）。派生点唯一——pi 的 `replay` 从 `mutates` 派生；上一版对**每一个**工具硬写 `'never'`，包括 5 个纯读的，那不会报错，只会让冷恢复白丢掉本来能自动补上的那次读。装配期两条不变量（改状态 ⟺ 说得出怎么收回；花钱必然改状态）各带一个阳性对照。⏸ **审批档不在本阶段**：闸今天由宿主经 `OpenLaneOptions.gate` 传入、面板还没接，阶段 3 闸落地时由 `effects` 供档，**不新增第二处声明** |
+| ⑩ | 工具的版本与退役 | 📌 = G-06，阶段 4 前必补 | 这里要说清一条**我们和官方走法不同**的地方：Anthropic 的做法是给工具 `type` 挂日期后缀、新旧版本长期并存（tool-reference「Tool versioning」）。那条路**我们不能抄**——两个版本并存就是两份真相源（P1 禁止），而且我们的 schema 是从一个生成点派生的，压根派生不出「旧版本」。我们的等价物是**名字稳定 + `prepareArguments` 折旧旧形状**（pi 给这个钩子的官方首要用途正是它）。今天 lane 没有历史会话，所以没有落点；阶段 4 迁旧转录之前必须补，否则迁进来的旧 tool call 一律校验失败 |
+| ⑪ | 缓存友好（前缀合同 / 收据 / 压缩阈值） | 前缀 ✅ · 收据 ✅ 本 PR · 阈值 📌 阶段 3 | **前缀是合同**：目录按固定顺序拼，系统提示词只有 `composeLaneSystemPrompt` 一个拼接点。官方把代价写死了——改工具定义作废整段缓存（tools + system + messages）。**收据**：`LaneUsage` 新增 `cacheReadTokens` / `cacheWriteTokens`（pi 的 `Usage.cacheRead` / `cacheWrite` 原样带出），面板多一列 `cache`。为什么必须单独一列而不是并进 `input`：缓存命中的 token 便宜一个数量级，合成一个数就把「这一轮贵在哪」抹掉了；更要紧的是，它是**唯一能告诉我们前缀被自己抖坏的信号**——症状是这一列塌到 0、`input` 猛涨。**压缩阈值**：pi 的 `shouldCompact` 判的是 `contextTokens > contextWindow - reserveTokens`，而 `calculateContextTokens` 把 `cacheRead` 也算进去（`compaction.js:82`）——**缓存命中的前缀同样把你推向压缩**。在我们的形状下这偏保守：工具定义与系统提示词是恒定前缀，压缩它们一个 token 都省不下来，该按「前缀之后的正文」定阈值。本阶段**不改**：lane 还没有长到会触发压缩的会话，此刻改就是在没量过的地方调一个数（voodoo constant）。阶段 3 有真实长会话时带数据改 |
+| ⑫ | 延迟加载的闸门（什么时候才开） | ✅ 已判：不开，且闸门写死 | 官方判据：**≥10 个工具，或工具定义 >10k token**，或工具选择准确率随规模下降时才上 tool search；同一页也说准确率通常要到 **30–50 个工具**之后才开始掉（tool-search-tool「When to use tool search」）。lane 今天 **11 个工具 / 20 272 字节 ≈ 5k token**——工具数刚过 10，token 只到闸门的一半，而 #547 的数据说我们的失败模式**从来不是选错工具**。所以不开。pi 的等价物是 `addedToolNames` + `splitDeferredTools`（把新解锁的排到请求靠后以保住前缀缓存，`pi-ai/dist/utils/deferred-tools.js:3-34`）；官方那边是 `defer_loading`，它在算缓存键**之前**就被从前缀里摘掉，所以加延迟工具不破缓存。触发条件写死在 `laneToolCatalog.ts`：**工具数超预算或 schema 总量 >10k token，先开延迟加载，不许抬预算** |
+
+**七维的净产出**：两条从「登记」变成了「编译器/机器判据」（⑨ 的必填 `effects`、⑪ 的缓存两列），
+三条判完是**明确不做**并写下了触发条件（⑥ 的按轮切菜单、⑧ 的模糊解析、⑫ 的延迟加载），
+两条挂到既有的票上（⑦ → 阶段 3 生成类工具，⑩ → G-06 阶段 4）。**没有一条落进「以后注意」。**
 
 ---
 
@@ -669,3 +706,305 @@ pi lane（AgentHarness + JsonlSessionRepo，落 <project>/.nomi/agent-sessions/�
 | **G-04 · 工具输出零截断，而上游把它写成 MUST** | **本 PR 修** | 切片确实触到了：`read_full_text` 返回的是**用户的整份原稿**。截断落在**唯一出口**（`laneTools.mts` 的传输层），用的是 pi 自己的 `truncateHead` 和它自己的两个数（`DEFAULT_MAX_LINES` / `DEFAULT_MAX_BYTES`），不是我们发明的截断器；上限镜像在 `laneContracts.ts` 是因为写说明书的 `laneDocumentTools.ts` 在 CJS 侧 `require()` 不到 pi 的 ESM 包，而**说明书和执行必须同一个数**——`lane-tool-output.test.mts` 把镜像钉在上游常量上。原来 `read_full_text` 的描述写着 "with no truncation"，那句话在截断落地的一刻就成了谎，同 PR 改成从同一对常量插值。**不抄上游示例的那句 `Full output saved to: …`**：我们这一族的全文是用户自己的原稿，再往临时目录抄一份，等于刚把转录收紧到 `0o600` 又在旁边留一份世界可读的副本；所以正文里给的是**下一步怎么做**。阳性对照：没超限的结果一个字节不动（把截断摘掉，该测试当场红，已验） |
 
 **没在本 PR 动、且明确留给后面的**（不是遗漏，是排期）：G-03（描述三通道 + 系统提示词里重建 `Available tools`）、G-06（`prepareArguments` 折旧形状）、G-07（路径包容 `containPath()`）、G-08（唯一校验点复用 pi 的 `validateToolArguments`）、G-09（`addedToolNames` 动态装载）——五条都要等阶段 2 的 22 个能力搬进来才有落点；G-10 至 G-17 归阶段 3。
+
+---
+
+## 12. 阶段 2 实施记录（模型优先的工具契约）
+
+> 本节由阶段 2 的实施分支 `feat/agent-lane-stage2-tool-contracts-20260907` 写入。
+> 状态：**仍在影子期**——`laneIpc` 依旧不注册进 `main.ts`，用户走不到新通路。本阶段动的是
+> 「模型看到什么」，不是「用户看到什么」。
+
+### 12.1 这一阶段到底在解决哪个摩擦（一句话）
+
+模型第一次就把参数写对的概率，直接决定用户等多久、烧多少钱。今天最贵的那扇门（分镜）
+拿到的 schema 是「一个由任意对象组成的数组」，真实成功率 **0/18**（#547 §3.2）。
+阶段 2 把「写对」从运气改成**结构事实**：模型可见 schema 只有一个生成点，生成点自带门岗，
+存量由 `check:model-schema` 棘轮盯着，到阶段 4 归零。
+
+### 12.2 G-01 改写清单（根级 `anyOf` = 0）
+
+处方不是「分支少一点」，是**根必须扁平**——拆成 3 个工具后每个仍是根级 `anyOf`，而
+Anthropic 适配器会把它静默丢掉（[#9134](https://github.com/earendil-works/pi/issues/9134)）、
+Google 的 legacy `parameters` 路径是 OpenAPI 3.03 不支持它（`pi-ai/dist/api/google-shared.js:278-281`）。
+
+**派生，不是重写**（`electron/shared/agentCapabilities/flatModelInput.ts`）：作者继续写
+`z.discriminatedUnion`，`flattenDiscriminatedUnion` 机械派生出扁平版；校验仍由原契约做
+（`transform` 里跑一次 `contract.safeParse`）。所以「接受/拒绝哪些输入」在**构造上**与原
+union 逐字相同——没有第二份判断逻辑可以漂移。
+
+| # | 位置（改前 file:line） | 它是什么 | 改法 | 状态 |
+|---|---|---|---|---|
+| 1 | `canvasWrite.ts:220` `canvasWriteSemanticInputUnion` | 模型面 9 分支根级 union，真实 0/18 | 按语义拆成三组 sub-union（`canvasNodeWriteInputUnion` / `storyboardWriteInputUnion` / `shotReferenceWriteInputUnion`），全量 union 由三组**拼**出来不另抄名单；lane 侧每组各自 `flattenDiscriminatedUnion` 成一个扁平工具 | ✅ 本 PR |
+| 2 | `canvasWrite.ts:152-160` `patch_shots` 的 `select` | 嵌套 `z.union` + 两个 `z.literal`（G-01 的字段级变种 + G-05） | 手改成扁平对象 + `z.enum(['all','indexes'])` 判别字段，组合约束下沉进 `superRefine`；接受/拒绝集合一个字没变 | ✅ 本 PR |
+| 3 | `canvasWrite.ts:106/116` `edges` 两支形状不同 | `create` 可省 / `connect` 至少一条——扁平化时是**真冲突**（同一字段名只能发布一种形状） | 两支共用更松的声明，「connect 至少一条边」下沉进 `superRefine`。拒绝理由从此说得清是哪个 operation 要求的 | ✅ 本 PR |
+| 4 | `timelineRead.ts:122` `timelineOperationSchema` | 9 分支 `z.union`（不是 `discriminatedUnion`，因为有一支带 `superRefine`） | 派生器已支持普通 union（自动推判别字段），但 `transition` 与 `text` 两支各有一个叫 `action` 的字段、词表完全不同 → 派生器**拒收**。正解是把两个 `action` 改成同一形状、差额下沉，那是时间轴写入契约的改动 | ⏸ 阶段 3；`propose_edit_plan` 本阶段**不进 lane**（明着标，见 §12.7） |
+| 5-6 | `modelToolSurfaceManifest.ts:83/90` `generationPlan` / `generationStatus` | 旧通路发给 pi 的根级 union | 旧通路，本阶段范围外 | 📌 `check:model-schema` 登记为债，阶段 4 归零 |
+| 7-8 | `modelToolSurfaceManifest.ts:131/147` `nomi_timeline_read` / `nomi_timeline_edit` | 同上 | 同上 | 📌 同上 |
+| 9-10 | `mcpCapabilityProjection.ts:128/136` timeline 的两个 MCP 入参 | **实核推翻了一条预设**：MCP 传输层的 `transportSchemaFromZod` 本来就把 union 拍平成超集对象（因为它的校验器不实现 `anyOf`），所以对外 `tools/list` 上**没有**根级 union | ✅ 已经是扁平的（门岗实扫 `mcp/*` 的 `root-union` 命中为 0） | ✅ 无需改 |
+| 11 | `canvasDelete.ts:27` / `assetRead.ts:112` / `timelineWrite.ts:35` / `exportCapabilities.ts:43` 等 | **结果**（收据）schema，不是模型入参 | 不在 G-01 射程内：模型不填收据 | — 不适用 |
+
+> 结论：**模型入参侧的根级 union 共 8 处**（1–8），本 PR 消掉 3 处（1/2/3，覆盖 `canvas.write`
+> 全部 9 个 operation），1 处明确排期（4），4 处（5–8）是旧通路、登记为债。
+> 原方案说的「11 处 `z.discriminatedUnion`」里有一半是收据 schema —— 这份清单是逐个打开看过的结果。
+
+### 12.3 `check:model-schema` 门岗（R17：先验它会红）
+
+身份式棘轮（与 `check:boundaries` 同款，不是 `check:heavy-path` 那种计数式）——因为这一族
+可以「修掉一条、偷加一条」，纯计数拦不住。规则本体与生成点门岗**是同一份代码**
+（`electron/shared/agentCapabilities/modelVisibleJsonSchema.ts`）：上一版这两处各写了一份、
+注释里写着「两边必须逐字相同」，而那句话本身就是漂移预警。
+
+**红证明（R17）**：在 `origin/main@d230da0a6` 上跑同一份规则（lane profile 为空桩），
+**158 处命中**：
+
+| 规则 | main | 本 PR | 说明 |
+|---|---|---|---|
+| `empty-schema` | 55 | 51 | `z.record(z.unknown())` 这一族。本 PR 把 `plannedNodeSchema.metadata`/`params` 与分镜的 `params` 收成标量 record |
+| `root-union` | 6 | 6 | 全部在旧通路的 `modelToolSurfaceManifest`（lane 侧 **0**） |
+| `const-instead-of-enum` | 53 | 49 | `z.literal` 直译成 `const`，Google legacy 路径不认 |
+| `identical-input-schema` | 1 | 1 | `nomi_canvas_plan` + `nomi_canvas_edit` 字节级相同（旧通路） |
+| `thin-description` | 37 | 37 | 描述 < 120 字符 |
+| `missing-example` | 6 | 6 | ≥10 字段却零示例 |
+| **合计** | **158** | **150** | lane profile：**0** |
+
+**lane profile 零违规**是本阶段最值钱的那条性质：新通路是干净的，棘轮从这里开始只减不增。
+`identical-input-schema` 的判据刻意做了两半——**schema 相同 + schema 里仍留着一个多值判别枚举**：
+前者说「两个工具长得一样」，后者说「名字没承担区分的责任」。少了后者，
+`insert_at_cursor` / `append_to_end` 这种**故意**共享 `{content}` 的别名族会被误判（它们在
+#547 里的真实成功率就是 100%）。
+
+自测在 `scripts/check-model-schema.node-test.mjs`：每条规则一个阳性对照 + 一个合法近邻，
+7/7。少了近邻那一半，一个「什么都判红」的规则也能通过。
+
+### 12.4 错误契约（§3.3 / G-02）
+
+- **失败一律 `throw`**：`ToolFailure` 是**抛出去的那个 Error 的正文格式**，不是 return 的形状。
+  上游原话：*"Returning a value never sets the error flag regardless of what properties you
+  include in the return object."* return 的后果是 pi 记 `isError: false`——面板画绿收据、
+  模型收到一条「成功」的工具结果里面装着错误。
+- **正文 = 人话 + 可行动下一步**（`LaneToolFailureShape`：`code` / `message` / `nextAction` /
+  `allowed` / `issues`）。`code` 是给 UI 分档的，**不是给模型读的**——`[error] E_DENIED`
+  在真机上等于什么都没说。
+- **内外同源**：`renderLaneToolFailure`（模型看渲染好的正文）与 `laneToolFailureToRpc`
+  （MCP 宿主看结构化字段）是同一个描述符的两个投影，形状对齐 `dispatcher.ts:557-565`
+  今天已经做对的那一份。
+- **兜底在绑定点**：`bindLaneTool` 把任何漏网的领域异常兜成一个带 `nextAction` 的失败。
+  放在每个 `execute` 里靠人记得写，漏掉的那个**不会报错**（R28）。
+- **隐私边界**：`issues` 只带类型名，绝不回传收到的**值**——用户文稿正文、素材路径都可能在参数里。
+
+### 12.5 描述三通道（G-03）
+
+上游把「模型怎么知道该用哪个工具」拆成三条通道，各花各的钱：`description` 进 schema（每次
+请求都花 token）、`promptSnippet` 进系统提示词的 `Available tools` 菜单（**全表一次**）、
+`promptGuidelines` 进 `Guidelines`（**去重且条件化**）。方案原本的 S4（三件事全塞进
+description）与 S7（≤4000 token）在数学上互斥——把「不要用隔壁那个」写进 N 个工具的
+description，等于把同一段话买 N 遍。
+
+**复合缺陷的另一半也补了**：`AgentHarness` 收到我们自己的 `systemPrompt` 之后，pi 自己那份
+连带渲染那两段的代码一起不用了——光给工具填上字段**一个字都到不了模型**。
+`electron/agentLane/lanePromptSections.ts` 逐字镜像上游的格式（`system-prompt.js:41-88`）
+重建这两段；`composeLaneSystemPrompt` 是唯一的拼接点。
+
+**每工具至少一个示例**（#547：35/35 零示例），写进 description 而不是 Anthropic 专有的
+`input_examples`（我们要跨供应商）。测试逐条把示例喂回它自己的 schema——**一个过不了自己
+schema 的示例比没有示例更糟，它主动教模型写错**，而编译器、单测、门岗谁都不看它。
+
+### 12.6 容忍是一族（§3.4）与工具数量收敛（§3.5）
+
+**分工先说清楚**（G-06 / G-08 实核）：pi 的校验器内部已经有四道容忍
+（`structuredClone` → `normalizeOptionalNulls`（可选字段收到 `null` **删键**）→
+`Value.Convert`（`"5"`→`5`）→ `coerceWithJsonSchema`）。所以「可选字段填了 null」和
+「数字写成字符串」**我们一行都不用写**——写了就是第二个容忍器，而两个互不认识的验证器
+正是 #547 §2.2③「8 行报错只有 1 行是真的」的成因。
+
+`electron/agentLane/laneArgumentTolerance.ts` 只做 pi 不管、而真机 100% 撞到的那几族：
+整包参数被序列化成 JSON 字符串 / 某个数组字段被序列化 / 该给一元数组给了单对象
+（上游为它单开过 [#7835](https://github.com/earendil-works/pi/issues/7835)）/ 字段名近义写错。
+**一处 owner**，挂在每个工具的 `prepareArguments` 上。
+
+**过渡补丁的处置**（`docs/plan/2026-09-06-agent-panel-v4-real-use-fixes.md` 的 T1/T2/T3）：
+
+| 补丁 | 新通路上的处置 | 旧通路 |
+|---|---|---|
+| **T1** `jsonArgTolerance` 的 `jsonTextBranch`（把「同一个值的 JSON 文本」做成契约里的一条运输分支） | **不进模型可见 schema**：`toPublishedJsonSchema` 按 `JSON_TEXT_BRANCH_MARKER` 把它摘掉（传输层今天已经在做同一件事），容忍改由 `prepareArguments` 承担。顺带解决 G-01 的字段级变种——留着它，根扁平了字段上还挂着 `anyOf` | 保留（旧通路仍靠它），阶段 4 一起删 |
+| **T2** 渲染层的 `humanizeToolFailure` + 折叠层 | 新通路不需要：失败正文由 `renderLaneToolFailure` 在**工具那一侧**生成，渲染层不再翻译机器回执 | 不碰（旧面板本轮不动） |
+| **T3** `tools.mts:100` 的 `beforeToolCall` 再跑一次 Zod（pi 之后的第二道、且更严的校验） | 新通路**没有这一道**：校验只发生一次，就是 pi 带容忍梯的那次（G-08）。安全性由「信息不丢」门岗承担——生成的 schema 不弱于 zod | 保留，阶段 4 随旧通路一起删 |
+
+**数量收敛**：`canvas.write` 的 9 个 operation → **3 个语义工具**（节点/边 · 分镜 · 站位运镜），
+每个都是扁平根。`nomi_canvas_plan` / `nomi_canvas_edit` 这两个字节级相同的名字在 lane 上
+**根本不存在**。lane profile 共 **11 个工具**，预算 12（`LANE_TOOL_BUDGET`，超了直接抛而不是
+留一句注释）。⚠️ 但 schema 总量 **20 272 字节 ≈ 5k token**，仍超 S7 的 4 000 token；
+上游给的第二条路是 `addedToolNames` 动态装载（G-09），阶段 3 接生成类工具时会需要它——
+这条写在 `laneToolCatalog.ts` 里，是为了下一个人撞到上限时知道有第二条路，而不是先去抬高上限。
+
+**合并/替换掉的重复**：`storyboardPlanParamsSchema` / `stagingReferenceParamsSchema` /
+`cameraMoveParamsObjectSchema`（typed，带 `.describe()`）原来住在旧通路的工具表
+`canvasDescriptors.ts` 里，而能力契约 `canvasWrite.ts` 那一份是 `z.record(z.unknown())`——
+**同一件事两份说法，且对外 MCP 广播的是弱的那份**（S9：信任方向反了）。本 PR 把它们搬进
+`electron/shared/agentCapabilities/canvasModelShapes.ts` 成为唯一 owner，
+`canvasDescriptors.ts` 从 463 行降到 107 行、只 re-export。
+
+### 12.7 R30 · ToolRobustBench 五段归因（真实模型）
+
+**做法**：APIMart · `deepseek-v4-flash`，12 条真实用户指令（文稿 3 / 画布 5 / 分镜 2 / 时间轴 2），
+两臂**逐字相同的指令、相同的领域端口、同一个 `openLane`**，每条起一条全新 lane。
+key 走主进程自己的读取路径（`readCatalog` → `decryptApiKeyRecord` → `vendorModelConnection`），
+全程只在进程内存里。脚本不进仓库（仓库里不该有任何一条「顺手就能花钱」的路径）。
+
+**两臂的差别只有工具面**：
+- 臂 B（基线）＝ **一个** 9-operation 的 `nomi_canvas_plan`、一行薄描述、零示例、
+  系统提示词没有 `Available tools`/`Guidelines` 两段、零 `prepareArguments`。
+- 臂 A（本 PR）＝ 上面 §12.2–12.6 的全部。
+
+**⚠️ 两刀这个端点量不出来，明着标（这比给一个好看的数字重要）**：
+1. **根级 `anyOf`**（G-01）：DeepSeek 走 OpenAI 兼容协议，`anyOf` 它认。这一刀的依据来自
+   上游（pi #9134 / `google-shared.js:278-281`），不是这里的 A/B。在这个端点上做 A/B
+   只会得到「没差别」，而那个结论对 Anthropic / Google 用户是**假的**。
+2. **「`shots` 是一个由任意对象组成的数组」**：#547 已经用真实模型量过它是 **0/18**，
+   再买一次同样的答案没有信息量。而且更硬的一条——**模型可见 schema 的生成点直接拒绝发布
+   那种形状**：第一版臂 B 用未收紧的形状跑，整条 lane 装配失败，12 条任务**一次工具调用都
+   没发出去**（0/12）。那不是模型的成绩，是门岗的成绩。
+
+   所以臂 B 也用 typed 形状 + 扁平根。**这次 A/B 隔离出来的是剩下三刀**：
+   一个工具装 9 件事 vs 三个语义工具 · 薄描述零示例零 Guidelines vs 三条描述通道 ·
+   零容忍 vs `prepareArguments`。
+
+**结果**：
+
+| 五段（ToolRobustBench 归因维度） | 臂 B 基线 | 臂 A 本 PR |
+|---|---|---|
+| S1 工具选择 | 12/12 | 12/12 |
+| **S2 schema 落地（= 一次写对率）** | **12/12** | **12/12** |
+| S3 参数绑定 | 12/12 | 12/12 |
+| S4 输出与运行时反馈处理 | 12/12 | 12/12 |
+| **S5 端到端（= 回合成功率，看领域状态不看它说了什么）** | **12/12** | **12/12** |
+| 工具调用总数（12 条任务合计） | 25 | **23** |
+| 最长那条任务的调用数 | 6（三镜分镜） | **3**（两镜分镜） |
+
+**怎么读这张表（诚实版）**：**在这个模型、这批任务上，剩下三刀买到的不是更高的成功率，
+是更少的往返。** 两臂都 12/12，因为真正决定成败的那两刀（typed 形状、扁平根）**按构造被
+两臂共享**——门岗不让旧形状发布出去。最差那条任务从 6 次调用降到 3 次是唯一稳定的差异，
+方向对但样本小（12 条），**不足以支撑「快了一倍」这种说法**。
+
+**归因最差的那一段**：五段里没有一段掉下来，所以「最差」只能从**往返次数**看——
+臂 B 的 `storyboard-three-shots-with-anchor` 用了 6 次调用（一个 9-op 工具上反复试），
+臂 A 同一条 3 次。这与 #547 的判断同向：出问题的不是「工具多」，是「一个工具里塞多个分支」。
+
+**一条实测得到的观察**（不是推测）：第一次跑时夹具的画布端口收下了指向不存在节点的边，
+下一次 `nomi_canvas_read` 于是校验失败，模型**连着重试了 18 次**同一族调用。那正是用户
+撞到的「连续 6 次被自己拒收」的机制复现——而它的成因是**回执没有告诉它下一步该怎么做**。
+夹具修好后同一条任务降到 6 次。这三条被夹具 bug 污染的行（`doc-insert-title` /
+`canvas-create-with-edge` / `storyboard-three-shots-with-anchor`）在修好夹具后**用同一个脚本
+重跑**，上表用的是重跑值。
+
+**花费**：合计 753 689 输入 / 15 950 输出 token（含两轮全量 + 三条重跑 + 冒烟）。
+按 **$0.30/M 输入、$1.20/M 输出**（flash 档的偏高假价，APIMart 实际远低于此）估
+**≈ $0.25 ≈ ¥1.8**，在 ¥3 上限内。脚本里硬编码了 $0.42（≈¥3）的闸：估出来的钱过线就停。
+
+### 12.8 不动项 / 回滚 / 验收门
+
+**不动项**：`laneIpc` 仍不注册进 `main.ts`（用户走不到）；v4 的 9 个组件与 57 张设计实验室
+基线一张没动；旧面板、旧通路的运行时语义、能力 id / 别名 / 权限链、transport adapter、
+MCP 执行边界、`tools/list` 的确定性顺序合同。
+
+**回滚**：删掉 5 个新文件（`flatModelInput` / `modelVisibleJsonSchema` / `canvasModelShapes` /
+`laneToolContract` / lane 的 4 个工具文件）+ revert `canvasWrite.ts` 的三处形状改动
+（`edges` 共用声明、`select` 扁平化、三个 sub-union 分组）+ revert `canvasDescriptors.ts` 的
+re-export + 从 gates 链摘掉 `check:model-schema`。用户可见行为零变化。
+
+| 门 | 判据 | 证据 | 结果 |
+|---|---|---|---|
+| **G2**（本阶段主门） | 一次写对率 + 回合成功率，按五段归因拆开 | §12.7 | ✅ 两臂 12/12；差异在往返次数 |
+| `check:model-schema` | 从红到绿 | 先在 `origin/main` 上验红（158 处），再落地棘轮 | ✅ 158 → 150，lane profile **0** |
+| 信息不丢 | zod → 模型可见 schema 的转换器不吃掉 `.describe()` / 枚举 / 界 / 必填 | `lane-tool-schema.test.mts`（本 PR 新增「产物更紧算过桥、更松必须红」的双向对照） | ✅ |
+| 结构断言 | 扁平化与原 union 接受/拒绝完全相同、跨字段约束不丢、示例过得了自己的 schema、Guidelines 去重 | `lane-tool-contract.test.mts` | ✅ |
+| 全套件 | `test:agent-runtime` | 201 条 | ✅ 201/201 |
+| 副作用自声明（⑨） | 每个工具必须说清改不改状态 / 花不花钱 / 怎么收回，且 `replay` 从中派生 | `lane-tool-contract.test.mts` 的「每个工具自己说清…」（含两个阳性对照：不自洽的声明在装配期被拒） | ✅ |
+| 缓存收据（⑪） | `cacheRead` / `cacheWrite` 两列一路带到面板收据，不并进 `input` | `laneViewModel.test.ts` 断 `usage.cache === '900t'`；`__fixtures__/lane-projection.json` 线形已含两列 | ✅ |
+| **G8** | 57 张 v4 基线一张不动 | `check:design-lab` | ✅ |
+| MCP 载荷 | shrink-only 棘轮（main 恰好卡在上限 28047/28047，零余量） | `check:mcp-payload` | ✅ 28047，未增一字节 |
+
+### 12.9 本阶段自己定的岔路（方案没写到的，按 D1–D6 选）
+
+1. **扁平化是「派生」不是「重写」**。手抄一份扁平版就是第二个真相源：以后加一个 operation
+   两处都要改，漏掉的那处**不会报错**，只会让模型看不见那个字段。派生器的 API 因此只收
+   **最外层契约**、自己往里剥——递「union + refined」两个参数的写法有一种必然会犯的错
+   （只递 union），症状是跨字段约束静默消失。这条不是推演：第一版实现就是那么写的，
+   `connect_canvas_edges` 给空数组当场变成合法。
+2. **同名字段形状冲突 → 拒收，不替作者挑**。`edges` 在两支上一松一紧、`props` 在两支上
+   一个 typed 一个不是——扁平化只能发布一种，替作者挑一个就等于悄悄放宽或收紧了另一支。
+   派生器抛 `ConflictingBranchField` 并把处方写进报错。**这个检测顺带成了「同一个概念在
+   两个分支上被声明成两种东西」的探测器**——`sceneTemplate`/`props` 两支共用一份 typed
+   形状就是它逼出来的。
+3. **`propose_edit_plan` 本阶段不进 lane**。它的 `operations[]` 里 `transition` 与 `text`
+   两支各有一个叫 `action`、词表完全不同的字段，正确修法是时间轴写入契约的改动（阶段 3）。
+   硬塞进来的代价是新通路第一天就带 9 条 `const` 债；不塞的代价是时间轴少一个只读工具，
+   而它不在本阶段的评测面上。**选后者：新通路是干净的，这条性质比多一个工具值钱。**
+4. **typed 分镜形状只进 lane 与旧 pi 面，不进对外 MCP 契约**。`check:mcp-payload` 是
+   shrink-only 棘轮而 main **恰好卡在上限**（实测 28047 / max 28047，零余量），把 typed 形状
+   接进共享契约会让 `tools/list` 当场顶穿。所以 `canvasWrite.ts` 对外那一份仍是
+   `z.record(z.unknown())`，由 `check:model-schema` 登记成身份式债、阶段 4（工具数量收敛
+   腾出字节）归零。**登记不是防线**，但它至少让这条债不会被忘掉。
+   同理，`select.kind`/`select.indexes` 刻意不带 `.describe()`——散文写在 lane 的工具描述与
+   示例里，那两处只进内部模型面，对 MCP 载荷是 0 字节。
+5. **规则只有一份代码**。第一版把结构/供应商判据在生成点与门岗各写了一份，注释写着
+   「两边必须逐字相同」。那句话本身就是漂移预警，所以合并成
+   `shared/agentCapabilities/modelVisibleJsonSchema.ts`：生成点拦新写的、门岗拦存量，判据一条。
+6. **`identical-input-schema` 的判据做成两半**。理由见 §12.3——单看「schema 相同」会把
+   #547 里成功率 100% 的别名族误判成 bug。
+7. **数值界的「没丢」判据是「产物不比契约松」，不是逐字相等**。生成器会合并同向的界
+   （`.safe().nonnegative()` 只留 `minimum: 0`），逐字相等会把这个**正确**的合并判成信息丢失。
+   放宽的同时补了反方向的阳性对照：产物更松必须红。
+
+### 12.10 参考实现一致性核对：阶段 2 逐条销账
+
+| 核对项 | 阶段 1 时的状态 | 现在 |
+|---|---|---|
+| **G-01** 根级 `anyOf` 被静默丢弃 | 生成点已拒收（规则在，但没有契约走这条路） | ✅ **销账（新通路）**：三个 canvas 写入工具全部扁平；旧通路 6 处登记为债 |
+| **G-02** 失败必须 `throw` | 已满足（`laneTools.mts` 抛） | ✅ 覆盖全部 lane 工具，正文升级成 `code`/`message`/`nextAction`/`allowed`，内外两个投影同源 |
+| **G-03** 描述三通道 + 重建系统提示词两段 | ❌ 阶段 2 前必补 | ✅ **销账**：`promptSnippet` / `promptGuidelines` 各就各位，`lanePromptSections.ts` 逐字镜像上游格式重建两段；每工具 ≥1 示例并逐条验过 schema |
+| **G-04** 工具输出零截断 | 已满足（`laneTools.mts` 用 pi 的 `truncateHead`） | ✅ 保持 |
+| **G-05** 枚举直译成 `const` | 生成点已拒收 | ✅ **销账（新通路）**：`select` 的两个 `z.literal` 改成 `z.enum`；lane profile `const` 命中为 0 |
+| **G-06** 改名/改形状后旧会话的旧形状 tool call | ❌ 未做 | ⏸ **仍是债**：`prepareArguments` 的官方首要用途（折旧形状）本阶段没用上——lane 还没有历史会话要迁。**阶段 4 迁移旧转录之前必须补**，否则迁进来的旧 tool call 一律校验失败 |
+| **G-07** 路径参数零包容 `containPath()` | ❌ 未做 | ⏸ 仍是债：本阶段搬进来的 4 个能力**没有任何路径参数**，所以没有落点。阶段 3 接生成/导出类工具时补 |
+| **G-08** 唯一校验点必须是会强转的那一次 | 阶段 1 已定 | ✅ 保持并写进契约注释：pi 的容忍梯四道全在，宿主不接第二个严格 zod（T3 在新通路上没有对应物） |
+| **G-09** `addedToolNames` 动态装载 | ❌ 未评估 | ✅ **已判**：lane 11 个工具塞得下静态目录，本阶段不需要；但 schema 总量 5k token 已超 S7 的 4k，阶段 3 接生成类工具时会需要它。结论写在 `laneToolCatalog.ts` |
+| **G-18** 跨进程会话锁 | 进程内已满足，跨进程登记为阶段 2 债 | ⏸ **仍是债**：本阶段没有把 lane 接到 MCP 对外面（`laneIpc` 仍不注册），所以那条路今天依然不可达；阶段 4 接之前必须先有跨进程锁 |
+
+**「没想到」清零情况**：核对表 §4.1 列的阶段 2 前必补 9 条，本 PR 销账 **5 条**
+（G-01 / G-02 / G-03 / G-05 / G-09），G-04 与 G-08 在阶段 1 已销，**剩 2 条明确带票**
+（G-06 阶段 4 前、G-07 阶段 3 前）。框架边界登记表 `referenceConformance` 那条债因此从
+「9 条未处理」降到「2 条带到期时点」。
+
+### 12.11 阶段 2 评审七维：判完之后落地的两条
+
+七维的表在 **§3.7**（那里是规范，这里只记本 PR 实际动了什么）。七条里有两条判完不是「登记」
+而是**当场能建成防线**，所以本 PR 一并落地——理由是 R28：能让编译器拦的别留给门岗，
+能让门岗拦的别留给人，而「登记」是备忘录不是防线。
+
+1. **⑨ 副作用自声明**（`LaneToolSpec.effects`，必填）。落地前这三件事散在三个地方：`replay`
+   在 `laneTools.mts` 里对**每一个**工具硬写 `'never'`、「可逆」写在 `CANVAS_GUIDELINES` 的
+   散文里、「花不花钱」压根没人写。散着的后果不是难看：阶段 3 第一个真正**花用户钱**的工具，
+   会以和一次 `read_timeline` 完全相同的形状进来，没有任何一层会因此报错。
+   改法是把它做成契约上的必填字段，于是**编译器成了最早那道防线**。
+   顺带修掉一个真实的小缺陷：5 个纯读工具此前也被标成 `replay: 'never'`，冷恢复因此白白
+   丢掉本来能自动补上的那次读——它不会报错，所以此前没人发现。
+   两条装配期不变量（改状态 ⟺ 说得出怎么收回；花钱必然改状态）各带一个阳性对照。
+   **审批档刻意不在本阶段声明**：闸今天由宿主经 `OpenLaneOptions.gate` 传入、面板还没接，
+   现在写就是写一个没有消费者的字段；阶段 3 闸落地时由 `effects` 供档，不新增第二处声明。
+
+2. **⑪ 的收据那一半**（`LaneUsage` 新增 `cacheReadTokens` / `cacheWriteTokens`）。
+   pi 的 `Usage` 本来就分开报这两列，是我们的中立契约层把它们合掉了。合掉的代价不是少一行
+   数字：缓存命中的 token 便宜一个数量级，合成一个「输入」就把「这一轮贵在哪」抹掉了；
+   更要紧的是，**它是唯一能告诉我们前缀合同被自己抖坏的信号**——工具定义或系统提示词抖一个
+   字节，整段前缀作废（`tools → system → messages` 逐级失效），症状就是这一列塌到 0 而
+   `input` 猛涨。面板收据因此多一列 `cache`（`ContextUsage.cache` 本来就在，一直空着）。
+   写入那一列留在契约里**不上屏**：一条新 lane 的第一轮几乎全是写入，印出来只会误导。
+
+**另外五条的处置**（判据与出处见 §3.7）：⑥ 预算已满足、按场景切菜单登记到阶段 3 并写下了
+它的代价（切一次 = 买一次缓存重建）；⑦ 长任务形态登记到阶段 3，形态复用旧通路的
+`nomi_get_run`，硬约束是不许在 `execute` 里干等；⑧ id-only + 读后写已满足，并**明着标出
+不做模糊解析**；⑩ 版本与退役并到 G-06（阶段 4 前必补），同时说清了官方的「日期后缀 + 新旧并存」
+我们不能抄的理由；⑫ 延迟加载判定**不开**，闸门数字（>12 个工具或 schema >10k token）
+写死进 `laneToolCatalog.ts`。
