@@ -54,6 +54,10 @@ export const zhRuntime = {
       untitled: '未命名产物',
       // 类型角标：说清「这是什么做的」。SVG/HTML 是通用技术名词不翻译，其余用中文。
       fileType: { svg: 'SVG', html: 'HTML', markdown: 'Markdown', table: '表格', text: '文本', glb: '3D' },
+      // HTML 产物的诚实标注：CSS 动效真的在跑，但内联 JS 在打包版被宿主 CSP 拦下
+      // （srcdoc 继承宿主策略，见 docs/plan/2026-09-06-agent-artifact-node.md §6.5）。
+      // 卡看起来"活着"，用户会顺手去点——不标出来，他只能自己撞一次才知道。
+      htmlInteractionNote: '可动，暂不支持点击交互',
       // Agent 落盘失败时给人话，不是把英文 reason 甩到脸上。
       missingContent: '产物「{{name}}」没有带内容，无法放到画布上（类型：{{fileType}}）',
       deliverFailed: '产物「{{name}}」保存失败：{{reason}}',
@@ -227,6 +231,7 @@ export const enRuntime = {
       emptyState: 'Artifact content is missing',
       untitled: 'Untitled artifact',
       fileType: { svg: 'SVG', html: 'HTML', markdown: 'Markdown', table: 'Table', text: 'Text', glb: '3D' },
+      htmlInteractionNote: 'Animates, but clicks are not supported yet',
       missingContent: 'Artifact "{{name}}" carries no content, so it cannot go on the canvas (type: {{fileType}})',
       deliverFailed: 'Could not save artifact "{{name}}": {{reason}}',
       indexedTitle: 'Artifact {{index}}',

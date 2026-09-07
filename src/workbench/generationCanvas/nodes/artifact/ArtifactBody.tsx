@@ -1,7 +1,7 @@
 // agent-artifact 节点的内容分发内核（v1）。壳统一（BaseGenerationNode 的 kind 专属分支），
 // 内层按 meta.artifact.fileType 挑子视图——浏览器按 MIME 挑应用的同款逻辑：
 //   svg        → <img> 图片管线（DeferredNodeImage 同源，可缩放、棋盘格、加载态）
-//   html       → 动态沙箱 iframe（allow-scripts、无 same-origin；会动会交互但不碰宿主）
+//   html       → 动态沙箱 iframe（无 same-origin；CSS 动效会跑，内联 JS 被宿主 CSP 拦，见 §6.5）
 //   markdown   → 轻量 Markdown 渲染（行内样式自包含，不引新依赖；P1 换 NomiMarkdown 或复用）
 //   table      → HTML 表格渲染（产物是 Markdown 表格先由 Agent 转 HTML；此处直渲 table HTML）
 //   text       → 等宽文本展示（可复制）
@@ -11,7 +11,7 @@
 // 产物文件一律 nomi-local:// 落盘引用（meta.artifact.url 带真实扩展名），节点不塞内联源码。
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { IconCode, IconCube, IconFileText, IconMarkdown, IconTable, IconVector } from '@tabler/icons-react'
+import { IconCode, IconCube, IconFileText, IconInfoCircle, IconMarkdown, IconTable, IconVector } from '@tabler/icons-react'
 import { lazyWithChunkBoundary } from '../../../../ui/chunkBoundary'
 import { cn } from '../../../../utils/cn'
 import type { AgentArtifactMeta, ArtifactFileType } from '../../model/artifactMeta'
@@ -197,6 +197,31 @@ function ArtifactHeader({ fileType, title }: { fileType: ArtifactFileType; title
   )
 }
 
+/** HTML 产物的诚实标注（2026-09-07 用户拍板：按现状合并，界面上明标「暂不支持交互」）。
+ *
+ *  为什么必须写在卡面上：HTML 产物的 CSS 是真的在跑（@keyframes / transition / :hover 全生效），
+ *  所以这张卡**看起来是活的**——用户的下一个动作就是伸手去点它，然后什么都不发生。
+ *  缺口是规范决定的、不是实现没写好：产物走 srcdoc（跨源隔离下 iframe src 一律被拦），
+ *  srcdoc 继承宿主 CSP，而宿主 `script-src` 没有 'unsafe-inline' → 产物内联脚本不执行
+ *  （方案 §6.5 三条约束互相咬死）。在「产物走独立 WebContentsView」那一刀落地之前，
+ *  唯一诚实的做法是把限制标在用户眼前（D4：缺口明着标，不藏不糊弄）。
+ *
+ *  只对 html 出现：svg/markdown/table/text/glb 本来就不是"活内容"，给它们标同一句是噪音。
+ *  形态上是一条静态说明带，不是控件——不新增 §1.5 的控件层级，动作仍然只在选中浮条里。
+ */
+function ArtifactInteractionNote(): JSX.Element {
+  const { t } = useTranslation()
+  return (
+    <div
+      className="flex shrink-0 items-center gap-1 border-t border-nomi-line-soft bg-nomi-paper px-2 py-0.5 text-caption text-nomi-ink-40"
+      data-artifact-interaction-note="true"
+    >
+      <IconInfoCircle size={11} stroke={1.8} className="shrink-0" />
+      <span className="min-w-0 truncate">{t('runtime.nodeRegistry.agent-artifact.htmlInteractionNote')}</span>
+    </div>
+  )
+}
+
 /** 按 fileType 挑子视图。壳（头部/边框/尺寸）统一在 ArtifactBody，这里只管内容。 */
 function ArtifactContent({ node, artifact }: { node: GenerationCanvasNode; artifact: AgentArtifactMeta }): JSX.Element {
   const { url, fileType } = artifact
@@ -241,11 +266,13 @@ export default function ArtifactBody({ node, artifact, width, height }: Artifact
       <div className="min-h-0 flex-1 overflow-hidden" data-artifact-content="true">
         <ArtifactContent node={node} artifact={artifact} />
       </div>
+      {artifact.fileType === 'html' ? <ArtifactInteractionNote /> : null}
     </div>
   )
 }
 
-/** HTML 产物沙箱（决策 3：会动会交互，但关进笼子）。
+/** HTML 产物沙箱（决策 3：把活内容关进笼子）。当前只有 CSS 会动，内联 JS 不执行——
+ *  卡面上由 ArtifactInteractionNote 明标，别在别处写成「能交互」。
  *
  *  产物文本先取回来，再以 `srcdoc` 交给沙箱 iframe，策略随文档注入（artifactSandboxDocument）。
  *  **不能**直接 `src="nomi-local://…"`：主窗跨源隔离下，跨源文档一律不能当 frame 加载

@@ -70,6 +70,32 @@ describe('ArtifactBody · 真实产物渲染契约', () => {
     expect(html, '类型角标（没有它，手绘线稿和生图在画布上长得一样）').toContain(chip)
     expect(html, '标题（没有它，一批产物落下来只能靠内容认）').toContain('开场构图线稿')
   })
+
+  // ── 诚实标注（2026-09-07 用户拍板：按现状合并，界面上明标「暂不支持交互」）。
+  // HTML 产物的 CSS 真的在跑，卡面看起来是活的，用户会伸手去点——但内联 JS 被宿主 CSP 拦
+  // （srcdoc 继承宿主策略，方案 §6.5）。标注是这个缺口在界面上的唯一说话方式，所以它
+  // **必须只在 html 出现**：漏了 html = 用户自己撞；串到别的类型 = 平白说了句不成立的限制。
+  it('HTML 产物卡带「暂不支持点击交互」标注（缺口明着标，不让用户自己撞）', () => {
+    const html = renderToStaticMarkup(
+      React.createElement(ArtifactBody, baseProps({
+        fileType: 'html',
+        url: 'nomi-local://asset/p/assets/generated/opening-beats.html',
+      })),
+    )
+    expect(html).toContain('data-artifact-interaction-note="true"')
+    expect(html, '标注读的是 i18n 词条，不是硬编码文案').toContain('可动，暂不支持点击交互')
+  })
+
+  it.each(['svg', 'markdown', 'table', 'text'] as const)(
+    '%s 产物卡没有交互标注（它们本来就不是活内容，标了是噪音）',
+    (fileType) => {
+      const html = renderToStaticMarkup(
+        React.createElement(ArtifactBody, baseProps({ fileType, url: `nomi-local://asset/p/assets/generated/x.${fileType}` })),
+      )
+      expect(html).not.toContain('data-artifact-interaction-note')
+      expect(html).not.toContain('暂不支持点击交互')
+    },
+  )
 })
 
 describe('canArtifactCopyText · 浮条「复制」按钮可见性谓词', () => {

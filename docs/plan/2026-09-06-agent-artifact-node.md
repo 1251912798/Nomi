@@ -125,7 +125,7 @@
 6. Agent 侧：`deliver_craft` 工具（落盘→addNode→定位）+ **手艺选择 skill**（决策 5，先核对现有 skills 体系）。
 7. 浮条动作复用：`FloatingToolbarShell` 挂 agent-artifact 专属动作组（下载 = useResultDownload / 放大 = NodeMediaPreviewDialog / 固化为参考图 = ToolbarButton）——**组合现成原子，不新写样式**。
 
-## 6.5 已知缺口：HTML 产物里的 JavaScript 不执行（2026-09-07 实测，待用户拍板）
+## 6.5 已知缺口：HTML 产物里的 JavaScript 不执行（2026-09-07 实测 · **已拍板：方案 A + 界面明标**）
 
 **现状**：HTML 产物的 **CSS 全部生效**——`@keyframes` 动画、transition、`:hover` 都真的在跑（走查逐项量过：
 背景色、元素色、`animation-name`、排版宽高）。但产物里的**内联 `<script>` 在打包版一律不执行**。
@@ -151,7 +151,26 @@
 | **B. 关掉跨源隔离** | 产物 JS 能跑 | 画板抠图退回单线程（慢），全 app 失去 SharedArrayBuffer |
 | **C. 产物走独立 WebContentsView / 独立 session** | 产物 JS 能跑，隔离更强（独立进程） | 原生视图恒盖在 DOM 之上，要跟画布的平移缩放逐帧对齐；工作量大（方案 §决策 3 里写的就是这条 P1）|
 
-在拍板之前，**别把「HTML 产物能跑 JS」写进任何文案或工具描述**——它现在不能。
+**2026-09-07 用户拍板：选 A（按现状合并），但界面上必须明标「暂不支持交互」；独立 WebContentsView（方案 C）记为下一刀。**
+
+底层逻辑（为什么是这个组合，不是干等 C）：产物的 CSS 是真的在跑，卡面**看起来是活的**——
+用户的下一个动作就是伸手去点，然后什么都不发生。这不是"少个功能"，是**界面在骗人**。
+在 C 落地之前，唯一诚实的做法是把限制标在他眼前（D4：缺口明着标，不藏不糊弄），
+而不是让他自己撞一次才知道。
+
+落地形态（本轮实现）：
+- HTML 产物卡底部一条静态说明带：`可动，暂不支持点击交互` / `Animates, but clicks are not supported yet`
+  （i18n `runtime.nodeRegistry.agent-artifact.htmlInteractionNote`，token-only，
+  `ArtifactBody.tsx` 的 `ArtifactInteractionNote`，挂点 `data-artifact-interaction-note`）。
+- **只在 `fileType === 'html'` 出现**：svg / markdown / table / text / glb 本来就不是活内容，
+  给它们标同一句是平白说了条不成立的限制。
+- 形态上是说明带**不是控件**——不新增 §1.5 的控件层级，动作仍然只在选中浮条里。
+- 断言：单测 `ArtifactBody.test.ts`（HTML 卡有标注 / 其余四类没有）+ 走查
+  `agent-artifact.walk.mjs`（HTML 卡真机可见该文案；SVG 卡用同一探针 `expectAbsent`，
+  基线由 HTML 卡的 `proveProbe` 提供——没有基线的"没看到"是空洞的通过）。
+
+**别把「HTML 产物能跑 JS」写进任何文案或工具描述**——它现在不能；代码注释里原先那两处
+「会动会交互」也已改掉（`ArtifactBody.tsx` 文件头注与 `HtmlSandbox` 头注）。
 
 ## 7. 不动什么
 
@@ -210,4 +229,10 @@
 - **怎么算做完**：正反例判对——"给我一张能直接用的画面"→ 调生图（不该手绘 SVG）；"构图怎么摆"→ 手艺（不该抽卡）。
 
 ### 其余 P1（无人点名，按需再排）
-HTML 放大/截图当画面素材、表格参考化、设计实验室接入、node 专属 icon、HTML 产物的 JS 执行（§6.5 三选一，**等用户拍板**）。
+HTML 放大/截图当画面素材、表格参考化、设计实验室接入、node 专属 icon。
+
+### 阶段 1b：HTML 产物的 JS 执行 —— 独立 WebContentsView（§6.5 方案 C，2026-09-07 已拍板为下一刀）
+本轮按方案 A 合并并在卡面明标「暂不支持点击交互」。下一刀落 C：产物走独立 WebContentsView /
+独立 session，脱开宿主 CSP 与跨源隔离的交集。**要实测的那一点**：原生视图恒盖在 DOM 之上，
+要跟 React Flow 的平移缩放逐帧对齐（这是这条路的全部工作量所在）。做完随手删掉那条标注——
+标注是缺口的影子，缺口没了它就该跟着走（P1）。

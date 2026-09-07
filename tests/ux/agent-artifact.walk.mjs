@@ -234,6 +234,22 @@ try {
   expect(facts.barWidth > 0 && facts.barHeight > 0, `产物内部完成排版（进度条量到 ${facts.barWidth}x${facts.barHeight}）`).toBe(true)
   // 隔离仍成立：产物文档是 opaque origin，读不到宿主 DOM/storage/cookie。
   expect(facts.origin, '沙箱隔离：产物文档 origin 是 opaque(null)').toBe('null')
+
+  // ── 诚实标注（2026-09-07 用户拍板：按现状合并，界面上明标「暂不支持交互」）──────
+  // 上面刚证完「它真的在动」——而这正是问题所在：会动的卡面等于在邀请用户去点，
+  // 可内联 JS 被宿主 CSP 拦着（方案 §6.5，srcdoc 继承宿主策略，规范决定的）。
+  // 所以 HTML 卡必须自己说出这条限制，且**只有** HTML 卡说——别的类型本来就不是活内容。
+  const htmlNode = win.locator('.generation-canvas-v2-node[data-kind="agent-artifact"]:has([data-artifact-file-type="html"])').first()
+  const noteProbe = htmlNode.locator('[data-artifact-interaction-note]')
+  const noteProof = await proveProbe(noteProbe, 'HTML 产物卡上确实带交互限制标注')
+  await expect(htmlNode, 'HTML 卡把限制说在用户眼前（不是让他点一下才发现）').toContainText('暂不支持点击交互')
+  // 反面：SVG 卡不该带这句。用同一个探针（已被上面证明测得到东西）换个作用域量，
+  // 「没看到」才不是空洞的通过。
+  const svgNoteNode = win.locator('.generation-canvas-v2-node[data-kind="agent-artifact"]:has([data-artifact-file-type="svg"])').first()
+  await expectAbsent(svgNoteNode.locator('[data-artifact-interaction-note]'), {
+    provenBy: noteProof,
+    message: 'SVG 产物卡不该带交互限制标注（它不是活内容，标了是噪音）',
+  })
   await walk.snap('03-delivered-html-sandbox')
 
   // ── 幕三 · Markdown 与表格产物（一次 create_canvas_nodes 交付两件）────────────
