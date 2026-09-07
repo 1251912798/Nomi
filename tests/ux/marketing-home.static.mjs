@@ -44,7 +44,7 @@ const files = [
   'marketing/assets/demo.mp4',
   'marketing/assets/social-preview-zh.jpg',
   'marketing/assets/social-preview-en.jpg',
-  'marketing/assets/group-wechat-2026-09-01.jpg',
+  'marketing/assets/group-wechat-2026-09-08.jpg',
   'marketing/assets/qingyang-wechat.jpg',
   'marketing/assets/screen-script-2026-08-17.png',
   'marketing/assets/screen-canvas-2026-08-17.png',
@@ -121,7 +121,7 @@ for (const html of [zh, en]) {
     expect(html.includes(`/releases/latest/download/${installer}`), `${installer} direct link exists`)
   }
   expect(html.includes('business_inquiry.yml'), 'business CTA destination exists')
-  expect(html.includes('/assets/group-wechat-2026-09-01.jpg'), 'new group QR is used')
+  expect(html.includes('/assets/group-wechat-2026-09-08.jpg'), 'new group QR is used')
   expect(
     html.includes('<figure class="community-qr" id="community-qr"><img'),
     'group QR is directly rendered in the page',
@@ -185,7 +185,7 @@ for (const html of [zh, en]) {
 for (const relativePath of files) expect(fs.existsSync(path.join(root, relativePath)), `${relativePath} exists`)
 expect(
   fs
-    .readFileSync(path.join(root, 'marketing/assets/group-wechat-2026-09-01.jpg'))
+    .readFileSync(path.join(root, 'marketing/assets/group-wechat-2026-09-08.jpg'))
     .equals(fs.readFileSync(path.join(root, 'docs/media/nomi-canvas-group-wechat-2026-09-08.jpg'))),
   'website and README publish the identical current group QR',
 )
