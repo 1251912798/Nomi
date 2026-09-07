@@ -22,13 +22,14 @@
 // 覆盖掉契约上那两个 `z.record(z.unknown())` 字段。**不是重写，是替换掉弱的那一份。**
 import { z } from "zod";
 
-import { canvasReadResultSchema, type CanvasReadResult } from "../shared/agentCapabilities/canvasRead";
+import { CANVAS_READ_CAPABILITY, canvasReadResultSchema, type CanvasReadResult } from "../shared/agentCapabilities/canvasRead";
 import {
   cameraMoveParamsObjectSchema,
   stagingReferenceParamsSchema,
   storyboardPlanParamsSchema,
 } from "../shared/agentCapabilities/canvasModelShapes";
 import {
+  CANVAS_WRITE_CAPABILITY,
   canvasNodeWriteInputSchema,
   canvasWriteCrossFieldRefine,
   canvasWriteSemanticInputSchema,
@@ -39,6 +40,7 @@ import {
   type CanvasWriteResult,
 } from "../shared/agentCapabilities/canvasWrite";
 import { flattenDiscriminatedUnion } from "../shared/agentCapabilities/flatModelInput";
+import { LANE_READ_TOOL_TIMEOUT_MS, LANE_WRITE_TOOL_TIMEOUT_MS } from "../shared/agentLane/laneToolContract";
 import type { LaneToolSpec } from "../shared/agentLane/laneToolContract";
 import { laneArgumentTolerance, laneNoArgumentTolerance } from "./laneArgumentTolerance";
 import { bindLaneTool, type LaneToolDescriptor } from "./laneRuntimePort";
@@ -71,6 +73,10 @@ const CANVAS_GUIDELINES = Object.freeze([
  */
 const CANVAS_READ_EFFECTS = Object.freeze({ mutates: false, billable: false, reversal: "none" } as const);
 const CANVAS_WRITE_EFFECTS = Object.freeze({ mutates: true, billable: false, reversal: "proposal" } as const);
+
+/** 画布读走一次内存投影；画布写要落到项目文件，所以走写类预算。 */
+const CANVAS_READ_EXECUTION = Object.freeze({ timeoutMs: LANE_READ_TOOL_TIMEOUT_MS } as const);
+const CANVAS_WRITE_EXECUTION = Object.freeze({ timeoutMs: LANE_WRITE_TOOL_TIMEOUT_MS } as const);
 
 /**
  * 分镜那一支：把契约里两个 `z.record(z.unknown())` 换成 typed 形状。
@@ -238,20 +244,24 @@ const CANVAS_READ_DESCRIPTION = [
 export function canvasLaneToolSpecs(): LaneToolSpec[] {
   const read: LaneToolSpec = {
     name: "nomi_canvas_read",
+    capabilityId: CANVAS_READ_CAPABILITY.id,
     description: CANVAS_READ_DESCRIPTION,
     promptSnippet: "read every node, edge and group currently on the generation canvas.",
     promptGuidelines: CANVAS_GUIDELINES,
     effects: CANVAS_READ_EFFECTS,
+    execution: CANVAS_READ_EXECUTION,
     schema: canvasReadSchema,
     examples: [{ when: "Always call it with no arguments:", arguments: {} }],
     prepareArguments: laneNoArgumentTolerance,
   };
   const writes = CANVAS_WRITE_TOOLS.map((tool): LaneToolSpec => ({
     name: tool.name,
+    capabilityId: CANVAS_WRITE_CAPABILITY.id,
     description: tool.description,
     promptSnippet: tool.promptSnippet,
     promptGuidelines: CANVAS_GUIDELINES,
     effects: CANVAS_WRITE_EFFECTS,
+    execution: CANVAS_WRITE_EXECUTION,
     // 派生，不是手写：判别字段降成 `z.enum`、分支专属字段设为 optional、跨字段约束仍由
     // 原 union 裁决。手抄一份扁平版就是第二个真相源（理由见 `flatModelInput.ts` 头部）。
     schema: flattenDiscriminatedUnion(tool.union, { name: tool.name }),
