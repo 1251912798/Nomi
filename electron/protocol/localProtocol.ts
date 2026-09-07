@@ -6,6 +6,7 @@ import { resolveContentType } from "../assets/mediaTypes";
 import { resolveProjectRelativePath } from "../projects/repository";
 import { getArtifactPreviewSecret, verifyArtifactPreviewHandle } from "../productionRun/artifactProjection";
 import { appendEvents } from "../events/eventLogRepository";
+import { LOCAL_ARTIFACT_CONTENT_SECURITY_POLICY } from "../shared/localArtifactPolicy";
 
 function withLocalAssetHeaders(headers?: HeadersInit): Headers {
   const next = new Headers(headers);
@@ -14,6 +15,10 @@ function withLocalAssetHeaders(headers?: HeadersInit): Headers {
   next.set("Access-Control-Allow-Origin", "*");
   next.set("Cross-Origin-Resource-Policy", "cross-origin");
   next.set("Accept-Ranges", "bytes");
+  // 每一条 nomi-local 响应都自带产物策略：这里是**内容离开磁盘的唯一出口**，
+  // 把「不受信内容不许出网/不许导航/不许套娃」钉在源头，而不是指望每个消费方各自加 sandbox。
+  // 定义只有一份（contentSecurityPolicy.ts），session 的 onHeadersReceived 同源套用。
+  next.set("Content-Security-Policy", LOCAL_ARTIFACT_CONTENT_SECURITY_POLICY);
   return next;
 }
 

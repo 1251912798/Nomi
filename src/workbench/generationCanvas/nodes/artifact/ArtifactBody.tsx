@@ -10,9 +10,13 @@
 // 安全：code/text/markdown 只展示不执行；html 是唯一"活内容"，在沙箱内跑。
 // 产物文件一律 nomi-local:// 落盘引用（meta.artifact.url 带真实扩展名），节点不塞内联源码。
 import React from 'react'
+import { useTranslation } from 'react-i18next'
+import { IconCode, IconCube, IconFileText, IconMarkdown, IconTable, IconVector } from '@tabler/icons-react'
 import { lazyWithChunkBoundary } from '../../../../ui/chunkBoundary'
 import { cn } from '../../../../utils/cn'
-import type { AgentArtifactMeta } from '../../model/artifactMeta'
+import type { AgentArtifactMeta, ArtifactFileType } from '../../model/artifactMeta'
+import { withArtifactSandboxPolicy } from './artifactSandboxDocument'
+import { NomiMarkdown } from '../../../common/NomiMarkdown'
 import type { GenerationCanvasNode } from '../../model/generationCanvasTypes'
 
 const Model3DViewer = lazyWithChunkBoundary('3D 模型预览', () => import('../model3d/Model3DViewer'))
@@ -45,9 +49,12 @@ function MarkdownPreview({ url }: { url: string }): JSX.Element {
   if (markdown === null) {
     return <div className="h-full w-full bg-nomi-ink-05 animate-pulse" />
   }
+  // 渲染，不是把源码贴出来。Markdown 产物是给人读的备注/脚本——留着 `# ` `- ` 一堆记号
+  // 等于把「已经排好版的东西」退回原材料。NomiMarkdown 是全仓唯一的 Markdown 渲染器
+  // （token 化、带 GFM 表格），compact 档正是给这种窄容器用的。
   return (
-    <div className="h-full w-full overflow-auto bg-nomi-paper px-3 py-2.5 text-body-sm text-nomi-ink-80 whitespace-pre-wrap break-words font-sans select-text cursor-text">
-      {markdown}
+    <div className="h-full w-full overflow-auto bg-nomi-paper px-3 py-2.5 select-text cursor-text">
+      <NomiMarkdown compact>{markdown}</NomiMarkdown>
     </div>
   )
 }
@@ -154,76 +161,126 @@ function TextPreview({ url }: { url: string }): JSX.Element {
   )
 }
 
-/** 内容分发内核：一个壳，按 fileType 挑子视图。 */
-export default function ArtifactBody({ node, artifact, width, height }: ArtifactBodyProps): JSX.Element {
-  const { url, fileType } = artifact
-  const common = cn('h-full w-full overflow-hidden rounded-nomi ring-1 ring-inset ring-nomi-line-soft bg-nomi-paper')
-  const style = { width, height }
+/** 产物类型 → 角标图标。图标说的是「这是什么做的」，和 chip 文本一起给出类型身份。 */
+const ARTIFACT_TYPE_ICON: Record<ArtifactFileType, typeof IconCode> = {
+  svg: IconVector,
+  html: IconCode,
+  markdown: IconMarkdown,
+  table: IconTable,
+  text: IconFileText,
+  glb: IconCube,
+}
 
+/** 常驻头部：类型角标 + 标题（样张 §「画布上的手艺产物」的 n-head）。
+ *  为什么必须常驻：一张 SVG 线稿和一张生图在画布上长得一样大、一样是图——
+ *  没有角标，用户分不出「这是 Agent 手画的、可以固化成参考图」还是「这是模型生成的画面」；
+ *  没有标题，一批产物落下来只能靠内容认。两者都不是装饰，是身份。 */
+function ArtifactHeader({ fileType, title }: { fileType: ArtifactFileType; title: string }): JSX.Element {
+  const { t } = useTranslation()
+  const Icon = ARTIFACT_TYPE_ICON[fileType]
+  return (
+    <div
+      className="flex shrink-0 items-center gap-1.5 border-b border-nomi-line-soft bg-nomi-paper px-2 py-1"
+      data-artifact-head="true"
+    >
+      <span
+        className="inline-flex shrink-0 items-center gap-1 rounded-full bg-nomi-accent-soft px-1.5 py-0.5 text-caption font-medium text-nomi-accent"
+        data-artifact-kindchip="true"
+      >
+        <Icon size={11} stroke={1.8} />
+        {t(`runtime.nodeRegistry.agent-artifact.fileType.${fileType}`)}
+      </span>
+      <span className="min-w-0 flex-1 truncate text-caption font-medium text-nomi-ink-80" data-artifact-title="true">
+        {title || t('runtime.nodeRegistry.agent-artifact.untitled')}
+      </span>
+    </div>
+  )
+}
+
+/** 按 fileType 挑子视图。壳（头部/边框/尺寸）统一在 ArtifactBody，这里只管内容。 */
+function ArtifactContent({ node, artifact }: { node: GenerationCanvasNode; artifact: AgentArtifactMeta }): JSX.Element {
+  const { url, fileType } = artifact
   switch (fileType) {
     case 'svg':
       return (
-        <div className={common} style={style}>
-          <img
-            src={url}
-            alt={node.title || ''}
-            className="h-full w-full object-contain select-none bg-nomi-ink-05"
-            draggable={false}
-          />
-        </div>
+        <img
+          src={url}
+          alt={node.title || ''}
+          className="h-full w-full object-contain select-none bg-nomi-ink-05"
+          draggable={false}
+        />
       )
     case 'html':
-      return (
-        <div className={common} style={style}>
-          <HtmlSandbox url={url} title={node.title || ''} />
-        </div>
-      )
+      return <HtmlSandbox url={url} title={node.title || ''} />
     case 'markdown':
-      return (
-        <div className={common} style={style}>
-          <MarkdownPreview url={url} />
-        </div>
-      )
+      return <MarkdownPreview url={url} />
     case 'table':
-      return (
-        <div className={common} style={style}>
-          <TablePreview url={url} />
-        </div>
-      )
+      return <TablePreview url={url} />
     case 'text':
-      return (
-        <div className={common} style={style}>
-          <TextPreview url={url} />
-        </div>
-      )
+      return <TextPreview url={url} />
     case 'glb':
       return (
-        <div className={common} style={style}>
-          <React.Suspense fallback={<div className="h-full w-full bg-nomi-ink-05 animate-pulse" />}>
-            <Model3DViewer url={url} />
-          </React.Suspense>
-        </div>
+        <React.Suspense fallback={<div className="h-full w-full bg-nomi-ink-05 animate-pulse" />}>
+          <Model3DViewer url={url} />
+        </React.Suspense>
       )
     default:
       return <div className="h-full w-full flex items-center justify-center text-nomi-ink-40 text-body-sm">—</div>
   }
 }
 
+/** 内容分发内核：一个壳（头部 + 内容），按 fileType 挑子视图。 */
+export default function ArtifactBody({ node, artifact, width, height }: ArtifactBodyProps): JSX.Element {
+  return (
+    <div
+      className={cn('flex h-full w-full flex-col overflow-hidden rounded-nomi ring-1 ring-inset ring-nomi-line-soft bg-nomi-paper')}
+      style={{ width, height }}
+      data-artifact-file-type={artifact.fileType}
+    >
+      <ArtifactHeader fileType={artifact.fileType} title={node.title || ''} />
+      <div className="min-h-0 flex-1 overflow-hidden" data-artifact-content="true">
+        <ArtifactContent node={node} artifact={artifact} />
+      </div>
+    </div>
+  )
+}
+
 /** HTML 产物沙箱（决策 3：会动会交互，但关进笼子）。
- *  - sandbox="allow-scripts"（无 allow-same-origin）：脚本能跑动画/交互，但拿不到宿主 origin/存储/顶层 DOM；
- *  - Electron 侧本窗口无 nodeIntegration + contextIsolation，iframe 继承该隔离且被 sandbox 再压一层；
- *  - 产物经 nomi-local:// 只读自己的资源；宿主不向其暴露任何 preload/IPC。
- *  - 兜底注释：真正需要宿主能力的 HTML（P1）改走独立 WebContentsView/session，不放开本沙箱。
+ *
+ *  产物文本先取回来，再以 `srcdoc` 交给沙箱 iframe，策略随文档注入（artifactSandboxDocument）。
+ *  **不能**直接 `src="nomi-local://…"`：主窗跨源隔离下，跨源文档一律不能当 frame 加载
+ *  （真机 ERR_BLOCKED_BY_RESPONSE，补 COEP 也救不回来），表现就是一块白板。详见该模块头注。
+ *
+ *  `sandbox="allow-scripts"`（**无** allow-same-origin）：origin 仍是 opaque(null)，
+ *  产物脚本读不到宿主 DOM/storage，也没有 top-navigation / popups / forms。
  */
 function HtmlSandbox({ url, title }: { url: string; title: string }): JSX.Element {
+  const [sandboxDoc, setSandboxDoc] = React.useState<string | null>(null)
+  React.useEffect(() => {
+    let cancelled = false
+    setSandboxDoc(null)
+    fetch(url)
+      .then((response) => (response.ok ? response.text() : Promise.reject(new Error(String(response.status)))))
+      .then((text) => {
+        if (!cancelled) setSandboxDoc(withArtifactSandboxPolicy(text))
+      })
+      .catch(() => {
+        if (!cancelled) setSandboxDoc('')
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [url])
+
+  if (sandboxDoc === null) return <div className="h-full w-full bg-nomi-ink-05 animate-pulse" />
   return (
     <iframe
       key={url}
-      src={url}
+      srcDoc={sandboxDoc}
       title={title}
       sandbox="allow-scripts"
+      referrerPolicy="no-referrer"
       className="h-full w-full border-0 bg-nomi-paper"
-      loading="lazy"
     />
   )
 }
