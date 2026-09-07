@@ -192,6 +192,7 @@ export { default as IconRotateClockwise } from '@tabler/icons-react/dist/esm/ico
 export { default as IconRotateClockwise2 } from '@tabler/icons-react/dist/esm/icons/IconRotateClockwise2.mjs'
 export { default as IconRun } from '@tabler/icons-react/dist/esm/icons/IconRun.mjs'
 export { default as IconScissors } from '@tabler/icons-react/dist/esm/icons/IconScissors.mjs'
+export { default as IconShadow } from '@tabler/icons-react/dist/esm/icons/IconShadow.mjs'
 export { default as IconSearch } from '@tabler/icons-react/dist/esm/icons/IconSearch.mjs'
 export { default as IconSend2 } from '@tabler/icons-react/dist/esm/icons/IconSend2.mjs'
 export { default as IconSeparatorHorizontal } from '@tabler/icons-react/dist/esm/icons/IconSeparatorHorizontal.mjs'
