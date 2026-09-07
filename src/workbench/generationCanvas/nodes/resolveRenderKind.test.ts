@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolveNodeRenderKind, isCardRenderKind } from "./resolveRenderKind";
+import { resolveNodeRenderKind, isCardRenderKind, nodeHasGenerationComposer } from "./resolveRenderKind";
 
 const node = (over: { kind: string; renderKind?: string; categoryId?: string }) =>
   over as Parameters<typeof resolveNodeRenderKind>[0];
@@ -36,5 +36,23 @@ describe("resolveNodeRenderKind — 渲染分发优先级（kind > categoryId）
   it("普通镜头（image/video 在 shots）不走卡片", () => {
     expect(resolveNodeRenderKind(node({ kind: "image", categoryId: "shots" }))).toBeUndefined();
     expect(isCardRenderKind(resolveNodeRenderKind(node({ kind: "video", categoryId: "shots" })))).toBe(false);
+  });
+});
+
+describe("nodeHasGenerationComposer", () => {
+  // 「承载型」节点拿的是已有的文件、或者正文本身就是功能（画板/3D/全景）——
+  // 对它们弹「描述你要生成的画面」是在问一个它答不了的问题。
+  it.each(["panorama", "scene3d", "whiteboard", "asset", "agent-artifact"])("%s 不挂生成 composer", (kind) => {
+    expect(nodeHasGenerationComposer(kind)).toBe(false);
+  });
+
+  it.each(["image", "video", "audio", "shot", "character", "scene", "model3d"])("%s 仍挂生成 composer", (kind) => {
+    expect(nodeHasGenerationComposer(kind)).toBe(true);
+  });
+
+  // 承载型判定和 renderKind 的「不推断卡片」判定说的是同一件事，两边不许各写一份而各自漂移。
+  it("承载型 kind 同时也不被推断成角色/场景/道具卡", () => {
+    expect(resolveNodeRenderKind(node({ kind: "agent-artifact", categoryId: "cast" }))).toBeUndefined();
+    expect(resolveNodeRenderKind(node({ kind: "asset", categoryId: "scene" }))).toBeUndefined();
   });
 });
