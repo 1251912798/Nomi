@@ -87,3 +87,48 @@ servers: ['nomi']   nomi: tools=33
 ## 6. 清理
 
 `/private/tmp/pi-verify-*` 与临时 worktree 已删；用户真实 `~/.config/mcp/mcp.json` 全程不存在（已核）。
+
+## 7. 阶段 5a 复跑（2026-09-07 · 零额度部分）
+
+分支 `feat/agent-lane-stage5a-same-source-20260907`（一个描述符两个 profile 同源）。复跑的是
+**外部宿主用例里不花钱的那一半**：直连 stdio 握手 + `tools/list`，一个 `nomi_*` 工具都没调。
+隔离：`HOME=/private/tmp/nomi-5a-acceptance-home`，没碰用户真实 `~/.config` / `~/.pi` / 真实项目库。
+
+```
+initialize: {"name":"nomi-capability-core","version":"0.1.0"}  caps=[tools, resources, prompts]
+TOOL COUNT = 25      nomi_ 前缀 = 25
+```
+
+**⚠️ 25 ≠ §4 的 33，但这不是回归。** §4 量的是**装机版**（走查在这台机器上命中
+`installedMacLauncher()`，条目指向 `/Applications/Nomi.app` 里的 0.21.0，见 §3 的 ⚠️）；
+这次量的是**本分支的 `dist-electron/`**。`origin/main` 上同样是 25（`MCP_TOOL_CATALOG` =
+16 个显式 + 9 个语义编辑），本 PR 一个工具都没加也没删——只改了它们的 schema 来源与注解。
+**这条本身是 §3 那个 ⚠️ 的第二次现身**：不写清「量的是哪个二进制」，同一个数字下次还会被读成回归。
+
+**注解从 6 → 10**（`tools/list` 实测），全部由契约 `effect`/`effectClass` 派生，不再是手写名单：
+
+| 工具 | 注解 | 来源 | 阶段 5a 之前 |
+|---|---|---|---|
+| `nomi_read` / `nomi_operation_preview` / `nomi_timeline_read` / `nomi_export_job` / `nomi_media_query` | `readOnlyHint` | `effect === "read"` | 已有（手写名单里） |
+| `nomi_document_read` / `nomi_layout_read` | `readOnlyHint` | 同上 | **漏标**——宿主对一次读也去问用户 |
+| `nomi_canvas_maintenance` | `destructiveHint` | `effect === "destructive"` | 已有 |
+| `nomi_operation_gate` / `nomi_operation_execute` | `destructiveHint` | `effectClass === "spend"` | **一个注解都没带**——一次花用户钱的调用在宿主眼里和一次读一样普通 |
+
+派生后广播出去的 schema（`tools/list` 实测，含租约首字段）：
+
+```
+nomi_document_read   props= leaseHandle,projectId,documentId,scope        required= leaseHandle,scope
+nomi_document_edit   props= leaseHandle,projectId,documentId,operation,content  required= leaseHandle,operation,content
+nomi_timeline_read   props= leaseHandle,projectId,operation,startFrame,endFrame required= leaseHandle,operation
+nomi_media_query     props= leaseHandle,projectId,operation,assetId,query,kinds,limit,startFrame,endFrame,startSeconds,endSeconds,buckets
+nomi_canvas_edit     props= …30 个字段（分镜/站位/运镜第一次带 typed 形状对外可见）
+```
+
+**对外动作词表变了，这是同源的必然结果**（PR 正文里也标了，属于对外契约变更）：
+`nomi_timeline_read` 的 `operation` 从 `read|range` 变成 `read_timeline|inspect_timeline_range`，
+`nomi_media_query` 的从 `list|get|inspect|source_range|waveform` 变成
+`search_media|get_media|inspect_media|inspect_source_range|read_waveform`——外部宿主读到的动作名
+从今天起在 Nomi 自己的日志、收据、错误里搜得到。
+
+**仍未覆盖**（与 §5 相同，本次没有推进）：development 落点那支、真 Windows/Linux 整条链、
+任何付费生成。

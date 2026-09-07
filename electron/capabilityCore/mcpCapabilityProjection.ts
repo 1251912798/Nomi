@@ -1,12 +1,11 @@
 import { z, type ZodTypeAny } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
 import type { CapabilityContract } from "../shared/agentCapabilities/capabilityContract";
 import { CANVAS_READ_CAPABILITY } from "../shared/agentCapabilities/canvasRead";
-import { CANVAS_WRITE_CAPABILITY, canvasWriteSemanticInputSchema, canvasWriteResultSchema } from "../shared/agentCapabilities/canvasWrite";
+import { CANVAS_WRITE_CAPABILITY, canvasWriteResultSchema } from "../shared/agentCapabilities/canvasWrite";
 import { CANVAS_DELETE_CAPABILITY, canvasDeleteSemanticInputSchema, canvasDeleteResultSchema } from "../shared/agentCapabilities/canvasDelete";
-import { DOCUMENT_READ_CAPABILITY, documentReadSemanticInputSchema, documentReadResultSchema } from "../shared/agentCapabilities/documentRead";
-import { DOCUMENT_WRITE_CAPABILITY, documentWriteSemanticInputSchema, documentWriteResultSchema } from "../shared/agentCapabilities/documentWrite";
+import { DOCUMENT_READ_CAPABILITY, documentReadResultSchema } from "../shared/agentCapabilities/documentRead";
+import { DOCUMENT_WRITE_CAPABILITY, documentWriteResultSchema } from "../shared/agentCapabilities/documentWrite";
 import { ASSET_READ_CAPABILITY } from "../shared/agentCapabilities/assetRead";
 import { EXPORT_READ_CAPABILITY } from "../shared/agentCapabilities/exportCapabilities";
 import { TIMELINE_READ_CAPABILITY, timelineEditPlanSchema } from "../shared/agentCapabilities/timelineRead";
@@ -27,16 +26,6 @@ import { buildCanonicalMcpToolResult, type CanonicalMcpToolResult } from "./mcpC
 import { emitMcpToolCatalogChanged } from "./mcpToolCatalogChanges";
 
 type AnyCapabilityContract = CapabilityContract<unknown, unknown>;
-const convertZodToJsonSchema = zodToJsonSchema as unknown as (
-  schema: unknown,
-  options: {
-    $refStrategy: "none";
-    target: "openApi3";
-    effectStrategy: "input";
-    removeAdditionalStrategy: "strict";
-  },
-) => unknown;
-
 export type McpCapabilityAuthority = {
   readonly kind: "project_session";
   readonly requiredScope: string;
@@ -99,24 +88,6 @@ export type McpCapabilityResolver = {
   readonly list: () => readonly McpCapabilityTool[];
   readonly resolve: (alias: string) => McpCapabilityTool | undefined;
 };
-
-function jsonSchemaFromCanonicalInput(contract: AnyCapabilityContract): SchemaLike {
-  const schema = JSON.parse(
-    JSON.stringify(
-      convertZodToJsonSchema(contract.inputSchema, {
-        $refStrategy: "none",
-        target: "openApi3",
-        effectStrategy: "input",
-        removeAdditionalStrategy: "strict",
-      }),
-    ),
-  ) as SchemaLike;
-  const unsupported = findUnsupportedSchemaFeatures(schema);
-  if (unsupported.length) {
-    throw new Error(`Unsupported canonical MCP input schema for ${contract.id}: ${unsupported.join("; ")}`);
-  }
-  return schema;
-}
 
 function deepFreeze<T>(value: T): T {
   if (!value || typeof value !== "object" || Object.isFrozen(value)) return value;

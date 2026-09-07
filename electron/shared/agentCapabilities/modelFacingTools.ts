@@ -402,12 +402,20 @@ export function resolveMcpSpec(
   });
 }
 
-/** 一份说明书自己的根级枚举字段。它是「这个工具认领哪几个动作」的机器判据。 */
+/**
+ * 一份说明书自己的**必填**根级枚举字段。它是「这个工具认领哪几个动作」的机器判据。
+ *
+ * 「必填」这一条不是修饰：`nomi_shot_reference_write` 的根上还有 `environment` / `layout` /
+ * `move` / `speed` 等七八个**可选**枚举，把它们一并当判据就要求模型把它们全填上，
+ * 于是 `create_staging_reference` 永远认领不到自己那次调用（`check:mcp-operation-constructible`
+ * 当场抓到了这一条）。模型**必须**送的那个字段，才是能识别动作的那个字段。
+ */
 function rootEnumSelectors(spec: ModelFacingToolSpec): Record<string, readonly string[]> {
-  const properties = propertiesOf(toPublishedJsonSchema(spec.schema));
+  const published = toPublishedJsonSchema(spec.schema);
+  const required = new Set(requiredOf(published));
   return Object.fromEntries(
-    Object.entries(properties)
-      .filter(([, schema]) => Array.isArray(schema.enum))
+    Object.entries(propertiesOf(published))
+      .filter(([field, schema]) => required.has(field) && Array.isArray(schema.enum))
       .map(([field, schema]) => [field, (schema.enum as unknown[]).filter((v): v is string => typeof v === "string")]),
   );
 }
