@@ -114,7 +114,14 @@ describe('laneViewModel', () => {
       part({ kind: 'tool-result', toolCallId: 'c1', toolName: 'append_to_end', text: 'Locked.', isError: true }),
     ]), labels)
     expect(model.items).toHaveLength(1)
-    expect(JSON.stringify(model.items).split('Locked.').length - 1).toBe(2) // trailing + output，不是三处
+    // 拍板过的那一格（`v4-tool-output-denied`）行尾只有「已拒绝」：理由既不进行尾也不进展开体，
+    // 它住在用户填它的介入槽里。设计实验室 P6 把这一格接上真投影时，"trailing = 理由 + 展开体 = 理由"
+    // 那版当场和基线红了——修投影，不动基线。
+    expect(JSON.stringify(model.items).split('Locked.').length - 1).toBe(0)
+    const denied = model.items[0]
+    expect(denied.kind === 'tool' && denied.receipt.status).toBe('output-denied')
+    expect(denied.kind === 'tool' && denied.receipt.trailing).toBeUndefined()
+    expect(denied.kind === 'tool' && denied.receipt.output).toBeUndefined()
   })
 
   it('never invents a bubble for a result whose call it cannot see', () => {
