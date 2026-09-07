@@ -21,85 +21,21 @@
 // 「该用它还是用隔壁那个」住在 ③，只写一次。方案原本的 S4（三件事全塞进 description）
 // 与 S7（≤4 000 token）在数学上互斥——把「不要用隔壁那个」写进 N 个工具的 description，
 // 等于把同一段话买 N 遍。仓库现状实核：`promptSnippet`/`promptGuidelines` 全仓 0 次使用。
-import type { ZodTypeAny } from "zod";
-
 /**
- * 一个 schema-valid 的调用示例（#547：35/35 工具零示例）。
+ * 说明书那一半的类型**不住在这里**：它是能力契约层的东西（一个能力的模型可见描述符），
+ * 两个 profile 共用一份（`../agentCapabilities/modelFacingTools.ts`，方案 §3.1）。
  *
- * **写进 description，不用 Anthropic 专有的 `input_examples`**——我们要跨供应商，
- * 而那个字段只有一家认。示例的 `arguments` 会被测试拿去真的过一遍 schema：
- * 一个过不了自己 schema 的示例比没有示例更糟，它教模型写错。
+ * 这里只保留 lane profile 自己的叫法。**不是第二份定义**——是同一份的别名：
+ * 阶段 5a 之前 lane 与对外 MCP 各写各的描述符，那才是并行版（P1），现在两边 import 同一个类型。
  */
-export interface LaneToolExample {
-  /** 一句话说清这个示例在做什么，进 description 的示例块。 */
-  readonly when: string;
-  /** 真正的参数对象。必须能通过本工具的 schema——`lane-tool-contract.test.mts` 逐条验。 */
-  readonly arguments: Readonly<Record<string, unknown>>;
-}
+export type {
+  ModelFacingToolEffects as LaneToolEffects,
+  ModelFacingToolExample as LaneToolExample,
+  ModelFacingToolSpec as LaneToolSpec,
+} from "../agentCapabilities/modelFacingTools";
 
-/**
- * 一个工具**自己声明**它会造成什么后果（阶段 2 评审第 ⑨ 维）。
- *
- * **为什么是声明而不是登记**：今天这三件事散在四个地方——`replay` 在 `laneTools.mts` 里
- * 对**每一个**工具硬写成 `'never'`（连纯读也是，而重放一次读是安全的）、「可逆」写在
- * `CANVAS_GUIDELINES` 的散文里、「花不花钱」压根没人写。散着的后果不是难看：阶段 3 接生成类
- * 工具时，第一个真正**花用户钱**的工具会以和一次 `read_timeline` 完全相同的形状进来，
- * 而没有任何一层会因此报错。做成契约上的**必填字段**，编译器就成了最早那道防线——
- * 加一个工具而不说清它花不花钱、可不可逆，代码编译不过（R28）。
- *
- * 每个字段都有真正的消费者，不是装饰：
- * - `mutates` → pi 的 `replay` 恢复策略（`laneTools.mts` 的唯一派生点）；
- * - `billable` → 装配期不变量（花钱必然改状态），阶段 3 面板的花费收据按它分档；
- * - `reversal` → 装配期不变量（只读必然 `none`），阶段 3 的闸按它决定要不要停下来问用户。
- */
-export interface LaneToolEffects {
-  /** 会不会改领域状态。只读工具重放一次是安全的，写入工具不是。 */
-  readonly mutates: boolean;
-  /** 会不会花用户在供应商那里的钱。阶段 2 的 11 个工具全是 `false`。 */
-  readonly billable: boolean;
-  /**
-   * 改动怎么收回：
-   * - `none` —— 只读，没有要收回的东西；
-   * - `proposal` —— 只是一份提案，用户还要点接受（画布这一族全是）；
-   * - `undoable` —— 已经落进领域状态，但进了撤销栈（文稿写入这一族）。
-   */
-  readonly reversal: "none" | "proposal" | "undoable";
-}
+import type { ModelFacingToolExample as LaneToolExample, ModelFacingToolSpec as LaneToolSpec } from "../agentCapabilities/modelFacingTools";
 
-/** 模型可见工具的说明书那一半。纯数据，不需要任何领域 port。 */
-export interface LaneToolSpec {
-  readonly name: string;
-  /**
-   * 通道①。**只说这个工具自己的事**：干什么、有什么限制、输出会不会被截断。
-   * 「该用它还是用隔壁那个」不写在这里——那是通道③ 的活，写在这里就是买 N 遍。
-   */
-  readonly description: string;
-  /** 通道②。一行，进系统提示词的 `Available tools` 菜单。全表只出现一次。 */
-  readonly promptSnippet: string;
-  /**
-   * 通道③。进系统提示词的 `Guidelines`，**跨工具去重**——同一族工具给同一条纪律时，
-   * 用户只花一次 token。渲染见 `lanePromptSections.ts`。
-   */
-  readonly promptGuidelines?: readonly string[];
-  /** 这个工具会造成什么后果。**必填**——见 `LaneToolEffects` 头部。 */
-  readonly effects: LaneToolEffects;
-  /**
-   * 模型真正要填的那一部分语义输入。**由别名决定的字段已经剥掉**——
-   * `read_full_text` 的 `scope` 不在这里，因为名字已经把它定死了；
-   * 让模型在参数里再选一次是 #547 里 0% 那一族的形状。
-   */
-  readonly schema: ZodTypeAny;
-  /** 至少一个，当工具字段数 ≥10 或语义上有分支时（门岗 `missing-example`）。 */
-  readonly examples: readonly LaneToolExample[];
-  /**
-   * pi 官方的容忍钩子（`pi-agent-core/dist/types.d.ts:347`），在 ajv 校验**之前**跑。
-   *
-   * 为什么容忍只能落在这里：阶段 0 探针 §4.2 臂 A 实测——**schema 不合法的参数根本走不到**
-   * `before_tool`，pi 的校验器先把它拦下并自己生成了错误回给模型。放松 schema 则是对
-   * **所有**调用放松，那是 0/18 的来历。所以：schema 保持严格，捏合发生在校验之前。
-   */
-  prepareArguments?(args: unknown): unknown;
-}
 
 /**
  * 一次工具失败。**它是 throw 出去的那个 Error 的正文格式，不是 return 的形状**（G-02）。

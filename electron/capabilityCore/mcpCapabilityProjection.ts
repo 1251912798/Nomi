@@ -12,6 +12,14 @@ import { EXPORT_READ_CAPABILITY } from "../shared/agentCapabilities/exportCapabi
 import { TIMELINE_READ_CAPABILITY, timelineEditPlanSchema } from "../shared/agentCapabilities/timelineRead";
 import { TIMELINE_WRITE_CAPABILITY } from "../shared/agentCapabilities/timelineWrite";
 import { LAYOUT_READ_CAPABILITY, LAYOUT_WRITE_CAPABILITY, layoutReadInputSchema, layoutWriteInputSchema, layoutWriteTransportInputSchema, layoutResultSchema } from "../shared/agentCapabilities/layout";
+import {
+  MCP_LEASE_FIELD_NAMES,
+  mcpAnnotationsFor,
+  resolveMcpSpec,
+  toSemanticInput,
+  type McpProfileTool,
+} from "../shared/agentCapabilities/modelFacingTools";
+import { mcpProfileToolFor } from "../shared/agentCapabilities/modelFacingToolRegistry";
 import { findUnsupportedSchemaFeatures, type SchemaLike } from "./mcpArgValidation";
 import { transportSchemaFromZod } from "./mcpTransportSchemaFromZod";
 import { buildCanonicalMcpToolResult, type CanonicalMcpToolResult } from "./mcpCanonicalToolResult";
@@ -53,7 +61,13 @@ export type McpCapabilityAdapter = {
   readonly contract: AnyCapabilityContract;
   readonly authority: McpCapabilityAuthority;
   readonly port: McpCapabilityPortBinding;
-  readonly semanticInputJsonSchema: SchemaLike;
+  /**
+   * `tools/list` 上真正广播出去的那份 JSON Schema。
+   *
+   * 阶段 5a 删掉了并列的 `semanticInputJsonSchema`：每个适配器都把它设成和这份**一模一样**的
+   * 对象，除了两处测试没有任何消费者——它是一份不会被任何东西证伪的第二真相源（P1）。
+   * 语义输入的形状由契约的 `inputSchema` 说了算，模型可见的那一半由共享描述符说了算。
+   */
   readonly transportInputSchema: SchemaLike;
   readonly parseCall: (args: Record<string, unknown>) => McpCapabilityCall;
   /** Composite semantic tools can return a read/approval projection rather than one legacy output union. */
@@ -114,21 +128,98 @@ function isMcpExposable(adapter: McpCapabilityAdapter): boolean {
   return Object.isFrozen(adapter) && MCP_SAFE_ADAPTERS.has(adapter);
 }
 
+/**
+ * 注解**全量派生**（方案 §3.1 第三行）。判据住 `mcpAnnotationsFor`，与内部 profile 同一处。
+ *
+ * 上一版是一张手写的 `MCP_READ_ONLY_ADAPTERS` 名单，只覆盖 4 个工具。手写名单的失败方向
+ * 只有一个：**漏**——而漏掉 `readOnlyHint` 的后果是宿主把一次读当成可能改状态的调用，
+ * 每次都去问用户；漏掉 `destructiveHint` 的后果严重得多（Codex 的硬闸靠它）。
+ * MCP 规范说 hint 不可信除非来自受信服务器，所以我们只用它**抬高**摩擦，从不降低。
+ */
 function readOnlyAnnotations(adapter: McpCapabilityAdapter): McpCapabilityTool["annotations"] {
-  if (adapter.contract.effect === "destructive") return Object.freeze({ destructiveHint: true as const });
-  return MCP_READ_ONLY_ADAPTERS.has(adapter) &&
-    adapter.contract.effect === "read" &&
-    adapter.port.access === "read" &&
-    adapter.port.kind === adapter.contract.execution.port
-    ? Object.freeze({ readOnlyHint: true as const })
-    : undefined;
+  return mcpAnnotationsFor(adapter.contract);
 }
 
 const leaseField = { leaseHandle: z.string().trim().min(1), projectId: z.string().trim().min(1).optional() };
-const timelineReadMcpInput = z.discriminatedUnion("operation", [
-  z.object({ ...leaseField, operation: z.literal("read") }).strict(),
-  z.object({ ...leaseField, operation: z.literal("range"), startFrame: z.number().int().safe().nonnegative(), endFrame: z.number().int().safe().positive() }).strict(),
-]).refine((v) => v.operation !== "range" || v.endFrame > v.startFrame, "endFrame must be greater than startFrame");
+
+// ── 从共享描述符派生一个对外适配器（方案 §3.1，阶段 5a） ──────────────────────
+//
+// 上一版这里的每个适配器都自己带三样东西：一份手抄的 JSON Schema、一份 zod 入参、
+// 一段 `parseCall` 里的动作名映射（`"read"` → `read_timeline`）。三样都是第二份真相源，
+// 而第三样是**最贵的那一份**：外部宿主读到的动作名，Nomi 自己的日志、收据、错误里
+// 一个都搜不到；渲染层还得再写一遍反向映射才能把调用接回领域端口
+// （`capabilityApplyHandler.ts` 曾有三处，同 commit 一起删）。
+//
+// 派生之后这三样都没有了：schema 由 `projectMcpTool` 从同一批说明书机械合并，
+// 动作名**就是**内部别名，`parseCall` 只剩「剥租约 → 认领别名 → 契约 parse」三步。
+function derivedAdapter(
+  contract: AnyCapabilityContract,
+  binding: Readonly<{
+    authority: McpCapabilityAuthority;
+    port: McpCapabilityPortBinding;
+    outputSchema?: ZodTypeAny;
+  }>,
+): McpCapabilityAdapter {
+  const tool = mcpProfileToolFor(contract.id);
+  if (!tool) throw new Error(`No model-facing descriptor projects ${contract.id} to MCP`);
+  const schema = immutableSchemaSnapshot(tool.inputSchema as SchemaLike);
+  const unsupported = findUnsupportedSchemaFeatures(schema);
+  if (unsupported.length) {
+    throw new Error(`Unsupported derived MCP transport schema for ${contract.id}: ${unsupported.join("; ")}`);
+  }
+  return Object.freeze({
+    contract,
+    authority: Object.freeze(binding.authority),
+    port: Object.freeze(binding.port),
+    transportInputSchema: schema,
+    ...(binding.outputSchema ? { outputSchema: binding.outputSchema } : {}),
+    parseCall(args: Record<string, unknown>) {
+      return parseDerivedCall(contract, tool, args);
+    },
+  });
+}
+
+const derivedLeaseEnvelope = z.object({ ...leaseField }).passthrough();
+
+function parseDerivedCall(
+  contract: AnyCapabilityContract,
+  tool: McpProfileTool,
+  args: Record<string, unknown>,
+): McpCapabilityCall {
+  const { leaseHandle, projectId } = derivedLeaseEnvelope.parse(args);
+  const spec = resolveMcpSpec(tool, args);
+  if (!spec) {
+    const allowed = Object.entries(tool.discriminators)
+      .map(([field, values]) => `${field}: ${values.join(", ")}`)
+      .join("; ");
+    throw new Error(
+      `${tool.name} received no recognised action${allowed ? ` (allowed — ${allowed})` : ""}. `
+      + "Send one of the listed values; every other field is required by, or only meaningful to, one of them.",
+    );
+  }
+  // 模型填的那一部分 = 入参剥掉三类**声明出来的**差异：租约、别名已经定死的判别字段、
+  // 以及「外部才有」的传输寻址字段（`documentId`）。剩下的必须原样通过说明书自己的
+  // strict schema——多一个字段就是模型编的，当场拒收，不静默丢掉。
+  const declaredDifference = new Set([
+    ...MCP_LEASE_FIELD_NAMES,
+    ...Object.keys(tool.discriminators),
+    ...tool.transportOnlyFields,
+  ]);
+  const modelArgs: Record<string, unknown> = {};
+  const transportRest: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(args)) {
+    if (MCP_LEASE_FIELD_NAMES.includes(key)) continue;
+    transportRest[key] = value;
+    if (declaredDifference.has(key)) continue;
+    modelArgs[key] = value;
+  }
+  const semanticInput = contract.inputSchema.parse(toSemanticInput(spec, spec.schema.parse(modelArgs) as Record<string, unknown>));
+  return {
+    semanticInput,
+    transport: { leaseHandle, ...(projectId ? { projectId } : {}), ...transportRest },
+  };
+}
+
 // plan 直接用 timelineEditPlanSchema（不是 `z.object({}).passthrough()` 再在 parseCall 里二次 parse）：
 // 二次 parse 让 Zod 的错误路径相对于 plan（报 `planId` 而不是 `plan.planId`），宿主看不出该往哪儿填；
 // 而传输层把 plan 广播成一个不透明对象，planId/baseRevision/summary/operations 四个必填在 tools/list 上
@@ -139,22 +230,7 @@ const timelineEditMcpInput = z.discriminatedUnion("operation", [
   z.object({ ...leaseField, operation: z.literal("undo"), undoToken: z.string().trim().min(1), expectedRevision: z.string().trim().min(1), reason: z.string().trim().max(300).optional() }).strict(),
 ]);
 const exportJobMcpInput = z.object({ ...leaseField, operation: z.enum(["status", "verify"]), jobId: z.string().trim().min(1) }).strict();
-const mediaQueryMcpInput = z.object({
-  ...leaseField,
-  operation: z.enum(["list", "get", "inspect", "search", "source_range", "waveform"]),
-  assetId: z.string().trim().min(1).optional(), query: z.string().trim().max(200).optional(),
-  kinds: z.array(z.enum(["image", "video", "audio"])).max(3).optional(), limit: z.number().int().min(1).max(100).optional(),
-  startFrame: z.number().int().safe().nonnegative().optional(), endFrame: z.number().int().safe().positive().optional(),
-  startSeconds: z.number().finite().nonnegative().optional(), endSeconds: z.number().finite().positive().optional(), buckets: z.number().int().min(1).max(256).optional(),
-}).strict();
 
-// Keep the broadcast schema in the small validator subset. The Zod schemas
-// above remain the execution boundary; this projection intentionally avoids
-// anyOf/exclusiveMinimum, which the shared MCP validator does not implement.
-const timelineReadTransportSchema = immutableSchemaSnapshot({
-  type: "object", properties: { leaseHandle: { type: "string", minLength: 1 }, projectId: { type: "string", minLength: 1 }, operation: { type: "string", enum: ["read", "range"] }, startFrame: { type: "integer", minimum: 0 }, endFrame: { type: "integer", minimum: 1 } },
-  required: ["leaseHandle", "operation"], additionalProperties: false,
-});
 // Keep the broadcast schema compact while the Zod schema above remains the
 // strict execution boundary. This makes all valid operation kinds discoverable
 // without repeating every branch's conditional requirements in tools/list.
@@ -193,29 +269,17 @@ const exportJobTransportSchema = immutableSchemaSnapshot({
   type: "object", properties: { leaseHandle: { type: "string", minLength: 1 }, projectId: { type: "string", minLength: 1 }, operation: { type: "string", enum: ["status", "verify"] }, jobId: { type: "string", minLength: 1 } },
   required: ["leaseHandle", "operation", "jobId"], additionalProperties: false,
 });
-const mediaQueryTransportSchema = immutableSchemaSnapshot({
-  type: "object", properties: { leaseHandle: { type: "string", minLength: 1 }, projectId: { type: "string", minLength: 1 }, operation: { type: "string", enum: ["list", "get", "inspect", "search", "source_range", "waveform"] }, assetId: { type: "string", minLength: 1 }, query: { type: "string", maxLength: 200 }, kinds: { type: "array", maxItems: 3, items: { type: "string", enum: ["image", "video", "audio"] } }, limit: { type: "integer", minimum: 1, maximum: 100 }, startFrame: { type: "integer", minimum: 0 }, endFrame: { type: "integer", minimum: 1 }, startSeconds: { type: "number", minimum: 0 }, endSeconds: { type: "number", minimum: 0 }, buckets: { type: "integer", minimum: 1, maximum: 256 } },
-  required: ["leaseHandle", "operation"], additionalProperties: false,
-});
 
-export const TIMELINE_READ_MCP_ADAPTER: McpCapabilityAdapter = Object.freeze({
-  contract: TIMELINE_READ_CAPABILITY,
-  authority: Object.freeze({ kind: "project_session", requiredScope: "timeline:read" }),
-  port: Object.freeze({ kind: "timeline", access: "read" }),
-  semanticInputJsonSchema: timelineReadTransportSchema,
-  transportInputSchema: timelineReadTransportSchema,
+export const TIMELINE_READ_MCP_ADAPTER: McpCapabilityAdapter = derivedAdapter(TIMELINE_READ_CAPABILITY, {
+  authority: { kind: "project_session", requiredScope: "timeline:read" },
+  port: { kind: "timeline", access: "read" },
   outputSchema: z.unknown(),
-  parseCall(args) {
-    const input = timelineReadMcpInput.parse(args);
-    return { semanticInput: input.operation === "read" ? { operation: "read_timeline" } : { operation: "inspect_timeline_range", startFrame: input.startFrame, endFrame: input.endFrame }, transport: input };
-  },
 });
 
 export const TIMELINE_EDIT_MCP_ADAPTER: McpCapabilityAdapter = Object.freeze({
   contract: TIMELINE_WRITE_CAPABILITY,
   authority: Object.freeze({ kind: "project_session", requiredScope: "timeline:write" }),
   port: Object.freeze({ kind: "timeline", access: "write" }),
-  semanticInputJsonSchema: timelineEditTransportSchema,
   transportInputSchema: timelineEditTransportSchema,
   outputSchema: z.unknown(),
   parseCall(args) {
@@ -239,7 +303,6 @@ export const EXPORT_JOB_MCP_ADAPTER: McpCapabilityAdapter = Object.freeze({
   contract: EXPORT_READ_CAPABILITY,
   authority: Object.freeze({ kind: "project_session", requiredScope: "export:read" }),
   port: Object.freeze({ kind: "export", access: "read" }),
-  semanticInputJsonSchema: exportJobTransportSchema,
   transportInputSchema: exportJobTransportSchema,
   outputSchema: z.unknown(),
   parseCall(args) {
@@ -248,20 +311,10 @@ export const EXPORT_JOB_MCP_ADAPTER: McpCapabilityAdapter = Object.freeze({
   },
 });
 
-export const MEDIA_QUERY_MCP_ADAPTER: McpCapabilityAdapter = Object.freeze({
-  contract: ASSET_READ_CAPABILITY,
-  authority: Object.freeze({ kind: "project_session", requiredScope: "asset:read" }),
-  port: Object.freeze({ kind: "asset", access: "read" }),
-  semanticInputJsonSchema: mediaQueryTransportSchema,
-  transportInputSchema: mediaQueryTransportSchema,
+export const MEDIA_QUERY_MCP_ADAPTER: McpCapabilityAdapter = derivedAdapter(ASSET_READ_CAPABILITY, {
+  authority: { kind: "project_session", requiredScope: "asset:read" },
+  port: { kind: "asset", access: "read" },
   outputSchema: z.unknown(),
-  parseCall(args) {
-    const input = mediaQueryMcpInput.parse(args);
-    const { leaseHandle, projectId, operation, ...rest } = input;
-    const semanticOperation = operation === "list" ? "search_media" : operation === "get" ? "get_media" : operation === "inspect" ? "inspect_media" : operation === "source_range" ? "inspect_source_range" : operation === "waveform" ? "read_waveform" : "search_media";
-    const semanticInput = { operation: semanticOperation, ...rest, ...(operation === "list" && !rest.query ? { query: "" } : {}) };
-    return { semanticInput, transport: { leaseHandle, ...(projectId ? { projectId } : {}), operation, ...rest } };
-  },
 });
 
 const layoutReadTransportSchema = immutableSchemaSnapshot({ type: "object", properties: { leaseHandle: { type: "string", minLength: 1 }, projectId: { type: "string", minLength: 1 }, operation: { type: "string", enum: ["read"] } }, required: ["leaseHandle", "operation"], additionalProperties: false });
@@ -274,11 +327,11 @@ const layoutWriteTransportSchema = immutableSchemaSnapshot(transportSchemaFromZo
   required: ["leaseHandle", "operation", "layout"],
 }));
 export const LAYOUT_READ_MCP_ADAPTER: McpCapabilityAdapter = Object.freeze({
-  contract: LAYOUT_READ_CAPABILITY, authority: Object.freeze({ kind: "project_session", requiredScope: "layout:read" }), port: Object.freeze({ kind: "document", access: "read" }), semanticInputJsonSchema: layoutReadTransportSchema, transportInputSchema: layoutReadTransportSchema, outputSchema: layoutResultSchema,
+  contract: LAYOUT_READ_CAPABILITY, authority: Object.freeze({ kind: "project_session", requiredScope: "layout:read" }), port: Object.freeze({ kind: "document", access: "read" }), transportInputSchema: layoutReadTransportSchema, outputSchema: layoutResultSchema,
   parseCall(args) { const input = z.object({ ...leaseField, operation: z.literal("read") }).strict().parse(args); return { semanticInput: layoutReadInputSchema.parse({ operation: "read_layout" }), transport: input }; },
 });
 export const LAYOUT_WRITE_MCP_ADAPTER: McpCapabilityAdapter = Object.freeze({
-  contract: LAYOUT_WRITE_CAPABILITY, authority: Object.freeze({ kind: "project_session", requiredScope: "layout:write" }), port: Object.freeze({ kind: "document", access: "write" }), semanticInputJsonSchema: layoutWriteTransportSchema, transportInputSchema: layoutWriteTransportSchema, outputSchema: layoutResultSchema,
+  contract: LAYOUT_WRITE_CAPABILITY, authority: Object.freeze({ kind: "project_session", requiredScope: "layout:write" }), port: Object.freeze({ kind: "document", access: "write" }), transportInputSchema: layoutWriteTransportSchema, outputSchema: layoutResultSchema,
   parseCall(args) { const input = z.object({ ...leaseField, ...layoutWriteTransportInputSchema.shape }).strict().parse(args); const semantic = layoutWriteInputSchema.parse({ operation: "write_layout", layout: input.layout }); return { semanticInput: semantic, transport: input }; },
 });
 
@@ -331,67 +384,25 @@ export function createMcpCapabilityResolver(registrations: readonly McpCapabilit
   return resolver;
 }
 
-const canvasReadSemanticInputJsonSchema = immutableSchemaSnapshot(jsonSchemaFromCanonicalInput(CANVAS_READ_CAPABILITY));
-const canvasReadTransportInputSchema = z
-  .object({
-    leaseHandle: z.string(),
-    projectId: z.string().optional(),
-  })
-  .strict();
-const canvasReadTransportJsonSchema = immutableSchemaSnapshot({
-  ...canvasReadSemanticInputJsonSchema,
-  properties: {
-    ...((canvasReadSemanticInputJsonSchema.properties as Record<string, unknown> | undefined) ?? {}),
-    leaseHandle: { type: "string" },
-    projectId: { type: "string" },
-  },
-  required: [
-    ...(Array.isArray(canvasReadSemanticInputJsonSchema.required)
-      ? canvasReadSemanticInputJsonSchema.required.filter((value): value is string => typeof value === "string")
-      : []),
-    "leaseHandle",
-  ],
-  additionalProperties: false,
+export const CANVAS_READ_MCP_ADAPTER: McpCapabilityAdapter = derivedAdapter(CANVAS_READ_CAPABILITY, {
+  authority: { kind: "project_session", requiredScope: CANVAS_READ_CAPABILITY.requiredScope },
+  port: { kind: "canvas", access: "read" },
 });
 
-const unsupportedCanvasReadTransportSchema = findUnsupportedSchemaFeatures(canvasReadTransportJsonSchema);
-if (unsupportedCanvasReadTransportSchema.length) {
-  throw new Error(`Unsupported canvas.read MCP transport schema: ${unsupportedCanvasReadTransportSchema.join("; ")}`);
-}
-
-export const CANVAS_READ_MCP_ADAPTER: McpCapabilityAdapter = Object.freeze({
-  contract: CANVAS_READ_CAPABILITY,
-  authority: Object.freeze({
-    kind: "project_session",
-    requiredScope: CANVAS_READ_CAPABILITY.requiredScope,
-  }),
-  port: Object.freeze({ kind: "canvas", access: "read" }),
-  semanticInputJsonSchema: canvasReadSemanticInputJsonSchema,
-  transportInputSchema: canvasReadTransportJsonSchema,
-  parseCall(args) {
-    const transport = canvasReadTransportInputSchema.parse(args);
-    return {
-      semanticInput: CANVAS_READ_CAPABILITY.inputSchema.parse({}),
-      transport,
-    };
-  },
+// 画布语义写在 MCP 上**只有一个名字**：CANVAS_WRITE_CAPABILITY.aliases.mcp。
+// 曾经并列的 nomi_canvas_plan 与 nomi_canvas_edit 在 tools/list 里 description / inputSchema /
+// method 字节级完全相同，只有名字不同 —— 宿主没有任何依据选哪个，正是 P1 说的并行版发生在公开面上。
+// 合成一个之后，operation 枚举就是全部合法动作。
+//
+// 阶段 5a：schema 不再从 `canvasWriteSemanticInputSchema` 单独生成，而是与 Agent lane 的三个写工具
+// **同源**——外部宿主因此第一次也拿到了 typed 的分镜 / 站位 / 运镜形状（以前它读到的是契约上
+// 那两个 `z.record(z.unknown())`，25 个字段名一个都没有，那正是 #547 的 0/18）。
+export const CANVAS_EDIT_MCP_ADAPTER: McpCapabilityAdapter = derivedAdapter(CANVAS_WRITE_CAPABILITY, {
+  authority: { kind: "project_session", requiredScope: CANVAS_WRITE_CAPABILITY.requiredScope },
+  port: { kind: "canvas", access: "write" },
+  outputSchema: canvasWriteResultSchema,
 });
 
-// canvas.write 的传输 schema **派生自** canvasWrite.ts 的 Zod union（单一真相源，见
-// mcpTransportSchemaFromZod.ts 的根因说明）。此前这里是一份手抄的扁平超集，属性表缺了
-// propose_storyboard_plan / create_camera_move / create_staging_reference 的必填字段，
-// `additionalProperties:false` 把它们在到达 Zod 前就打掉 —— 9 个 operation 里 7 个构造不出来。
-// 派生之后，Zod 里的 prompt 撰写指南与参考槽语义也一并到了 tools/list 上。
-const canvasMutationTransportSchema = immutableSchemaSnapshot(
-  transportSchemaFromZod(canvasWriteSemanticInputSchema, {
-    label: "canvas.write",
-    extraProperties: {
-      leaseHandle: { type: "string", minLength: 1, description: "nomi_session_open 返回的项目租约句柄。" },
-      projectId: { type: "string", minLength: 1 },
-    },
-    required: ["leaseHandle", "operation"],
-  }),
-);
 const canvasMaintenanceTransportSchema = immutableSchemaSnapshot({
   type: "object",
   properties: {
@@ -402,52 +413,10 @@ const canvasMaintenanceTransportSchema = immutableSchemaSnapshot({
   },
   required: ["leaseHandle", "operation"], additionalProperties: false,
 });
-const documentReadTransportSchema = immutableSchemaSnapshot({
-  type: "object", properties: {
-    leaseHandle: { type: "string", minLength: 1 }, projectId: { type: "string", minLength: 1 },
-    documentId: { type: "string", minLength: 1 }, scope: { type: "string", enum: ["full", "selection"] },
-  }, required: ["leaseHandle", "scope"], additionalProperties: false,
-});
-const documentWriteTransportSchema = immutableSchemaSnapshot({
-  type: "object", properties: {
-    leaseHandle: { type: "string", minLength: 1 }, projectId: { type: "string", minLength: 1 },
-    documentId: { type: "string", minLength: 1 }, operation: { type: "string", enum: ["insert", "replace", "append"] },
-    content: { type: "string", minLength: 1 },
-  }, required: ["leaseHandle", "operation", "content"], additionalProperties: false,
-});
-
-// 传输层只负责剥掉租约字段；operation 分支的必填/互斥判定**只有一个边界**，就是下面的
-// canvasWriteSemanticInputSchema（`.strict()` discriminated union）。此前这里还有一份手写的
-// 扁平 z.object().strict()，属性表与传输 schema 各抄一遍，正是第三份真相源。
-const canvasLeaseEnvelope = z.object({ ...leaseField }).passthrough();
-function canvasAdapter(name: string): McpCapabilityAdapter {
-  return Object.freeze({
-    contract: CANVAS_WRITE_CAPABILITY,
-    mcpName: name,
-    authority: Object.freeze({ kind: "project_session", requiredScope: CANVAS_WRITE_CAPABILITY.requiredScope }),
-    port: Object.freeze({ kind: "canvas", access: "write" }),
-    semanticInputJsonSchema: canvasMutationTransportSchema,
-    transportInputSchema: canvasMutationTransportSchema,
-    outputSchema: canvasWriteResultSchema,
-    parseCall(args) {
-      const { leaseHandle, projectId, ...semantic } = canvasLeaseEnvelope.parse(args);
-      const parsed = canvasWriteSemanticInputSchema.parse(semantic);
-      return { semanticInput: parsed, transport: { leaseHandle, ...(projectId ? { projectId } : {}), ...semantic } };
-    },
-  });
-}
-
-// 画布语义写在 MCP 上**只有一个名字**：CANVAS_WRITE_CAPABILITY.aliases.mcp。
-// 曾经并列的 nomi_canvas_plan 与 nomi_canvas_edit 在 tools/list 里 description / inputSchema /
-// method 字节级完全相同，只有名字不同 —— 宿主没有任何依据选哪个，正是 P1 说的并行版发生在公开面上。
-// 两者真正的差别（各自 allowed 一半 operation）从不对外可见，只在调用失败时以一句
-// "operation is not valid for this semantic tool" 现身。合成一个之后，operation 枚举就是全部合法动作。
-export const CANVAS_EDIT_MCP_ADAPTER = canvasAdapter(CANVAS_WRITE_CAPABILITY.aliases.mcp);
 export const CANVAS_MAINTENANCE_MCP_ADAPTER: McpCapabilityAdapter = Object.freeze({
   contract: CANVAS_DELETE_CAPABILITY,
   authority: Object.freeze({ kind: "project_session", requiredScope: CANVAS_DELETE_CAPABILITY.requiredScope }),
   port: Object.freeze({ kind: "canvas", access: "write" }),
-  semanticInputJsonSchema: canvasMaintenanceTransportSchema,
   transportInputSchema: canvasMaintenanceTransportSchema,
   outputSchema: canvasDeleteResultSchema,
   parseCall(args) {
@@ -459,40 +428,21 @@ export const CANVAS_MAINTENANCE_MCP_ADAPTER: McpCapabilityAdapter = Object.freez
     return { semanticInput: semantic, transport: { leaseHandle, ...(projectId ? { projectId } : {}), ...transport } };
   },
 });
-export const DOCUMENT_READ_MCP_ADAPTER: McpCapabilityAdapter = Object.freeze({
-  contract: DOCUMENT_READ_CAPABILITY,
-  authority: Object.freeze({ kind: "project_session", requiredScope: DOCUMENT_READ_CAPABILITY.requiredScope }),
-  port: Object.freeze({ kind: "document", access: "read" }),
-  semanticInputJsonSchema: immutableSchemaSnapshot({ type: "object", properties: { scope: { type: "string", enum: ["full", "selection"] } }, required: ["scope"], additionalProperties: false }),
-  transportInputSchema: documentReadTransportSchema,
+export const DOCUMENT_READ_MCP_ADAPTER: McpCapabilityAdapter = derivedAdapter(DOCUMENT_READ_CAPABILITY, {
+  authority: { kind: "project_session", requiredScope: DOCUMENT_READ_CAPABILITY.requiredScope },
+  port: { kind: "document", access: "read" },
   outputSchema: documentReadResultSchema,
-  parseCall(args) {
-    const input = z.object({ ...leaseField, documentId: z.string().trim().min(1).optional(), scope: z.enum(["full", "selection"]) }).strict().parse(args);
-    const { leaseHandle, projectId, documentId, scope } = input;
-    return { semanticInput: documentReadSemanticInputSchema.parse({ scope }), transport: { leaseHandle, ...(projectId ? { projectId } : {}), ...(documentId ? { documentId } : {}), scope } };
-  },
 });
-export const DOCUMENT_EDIT_MCP_ADAPTER: McpCapabilityAdapter = Object.freeze({
-  contract: DOCUMENT_WRITE_CAPABILITY,
-  authority: Object.freeze({ kind: "project_session", requiredScope: DOCUMENT_WRITE_CAPABILITY.requiredScope }),
-  port: Object.freeze({ kind: "document", access: "write" }),
-  semanticInputJsonSchema: immutableSchemaSnapshot({ type: "object", properties: { operation: { type: "string", enum: ["insert", "replace", "append"] }, content: { type: "string", minLength: 1 } }, required: ["operation", "content"], additionalProperties: false }),
-  transportInputSchema: documentWriteTransportSchema,
+export const DOCUMENT_EDIT_MCP_ADAPTER: McpCapabilityAdapter = derivedAdapter(DOCUMENT_WRITE_CAPABILITY, {
+  authority: { kind: "project_session", requiredScope: DOCUMENT_WRITE_CAPABILITY.requiredScope },
+  port: { kind: "document", access: "write" },
   outputSchema: documentWriteResultSchema,
-  parseCall(args) {
-    const input = z.object({ ...leaseField, documentId: z.string().trim().min(1).optional(), operation: z.enum(["insert", "replace", "append"]), content: z.string().min(1) }).strict().parse(args);
-    const { leaseHandle, projectId, documentId, operation, content } = input;
-    return { semanticInput: documentWriteSemanticInputSchema.parse({ operation, content }), transport: { leaseHandle, ...(projectId ? { projectId } : {}), ...(documentId ? { documentId } : {}), operation, content } };
-  },
 });
 
 const MCP_SAFE_ADAPTERS = new Set<McpCapabilityAdapter>([
   CANVAS_READ_MCP_ADAPTER, CANVAS_EDIT_MCP_ADAPTER, CANVAS_MAINTENANCE_MCP_ADAPTER,
   DOCUMENT_READ_MCP_ADAPTER, DOCUMENT_EDIT_MCP_ADAPTER, TIMELINE_READ_MCP_ADAPTER, TIMELINE_EDIT_MCP_ADAPTER, EXPORT_JOB_MCP_ADAPTER, MEDIA_QUERY_MCP_ADAPTER,
   LAYOUT_READ_MCP_ADAPTER, LAYOUT_WRITE_MCP_ADAPTER,
-]);
-const MCP_READ_ONLY_ADAPTERS = new Set<McpCapabilityAdapter>([
-  CANVAS_READ_MCP_ADAPTER, TIMELINE_READ_MCP_ADAPTER, EXPORT_JOB_MCP_ADAPTER, MEDIA_QUERY_MCP_ADAPTER,
 ]);
 
 // Deliberately explicit: do not map CAPABILITY_CONTRACTS, Skills, manifests, or plugin metadata.
