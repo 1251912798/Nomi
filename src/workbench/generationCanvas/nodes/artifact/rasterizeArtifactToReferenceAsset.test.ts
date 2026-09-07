@@ -7,10 +7,11 @@ import type { WorkbenchAssetDto } from '../../../api/assetUploadApi'
 //（importWorkbenchLocalAssetFile），node 单测用 stub deps 锁「数据流与分支语义」；
 // canvas 栅格化 + 落盘 + 连线走 GUI 走查（tests/ux/agent-artifact.walk.mjs）。
 
-const store: { calls: unknown[] } = { calls: [] }
+const store: { calls: unknown[]; nodes: unknown[] } = { calls: [], nodes: [] }
 vi.mock('../../store/generationCanvasStore', () => ({
   useGenerationCanvasStore: {
     getState: () => ({
+      nodes: store.nodes,
       addNode: (input: unknown) => {
         store.calls.push({ op: 'addNode', input })
         return { id: 'asset-1' }
@@ -44,7 +45,7 @@ function makeDeps(overrides: Partial<ReferenceAssetDeps> = {}): ReferenceAssetDe
 }
 
 describe('rasterizeArtifactToReferenceAsset', () => {
-  beforeEach(() => { store.calls = [] })
+  beforeEach(() => { store.calls = []; store.nodes = [] })
 
   it('SVG 产物 → 栅格化 → 上传 PNG → 新建 asset 节点 + result.url（可被连线当参考）', async () => {
     const deps = makeDeps()
@@ -118,5 +119,26 @@ describe('rasterizeArtifactToReferenceAsset', () => {
     await rasterizeArtifactToReferenceAsset({ fileType: 'svg', url: encoded }, deps)
 
     expect(vi.mocked(deps.uploadFile).mock.calls[0][0].name).toBe('shot 01 (draft).png')
+  })
+
+  // 真机走查（2026-09-07）抓到的落点 bug：不传源节点时 addNode 退到缺省落点 (120,360)，
+  // 参考图落在画布最左侧、压在左侧工具簇底下——用户点完「固化为参考图」，东西不在他刚看的地方。
+  // 更狠的一条是分类：画布按 activeCategoryId 分屏，参考图落错分类等于落在另一块屏上（看起来「点了没反应」）。
+  it('给了源节点就生在它右边、并跟它同一个分类（落点与分类都跟源卡走）', async () => {
+    store.nodes = [{ id: 'artifact-1', categoryId: 'references', position: { x: 900, y: 200 }, size: { width: 420, height: 260 } }]
+    const result = await rasterizeArtifactToReferenceAsset(svgArtifact, makeDeps(), 'artifact-1')
+    expect(result.ok).toBe(true)
+    const add = store.calls.find((call) => (call as { op: string }).op === 'addNode') as { input: Record<string, unknown> }
+    expect(add.input.categoryId).toBe('references')
+    expect(add.input.position).toEqual({ x: 900 + 420 + 48, y: 200 })
+  })
+
+  it('源节点 id 认不出来时不炸，退回缺省落点与 shots 分类', async () => {
+    store.nodes = []
+    const result = await rasterizeArtifactToReferenceAsset(svgArtifact, makeDeps(), 'missing-node')
+    expect(result.ok).toBe(true)
+    const add = store.calls.find((call) => (call as { op: string }).op === 'addNode') as { input: Record<string, unknown> }
+    expect(add.input.categoryId).toBe('shots')
+    expect(add.input.position).toBeUndefined()
   })
 })

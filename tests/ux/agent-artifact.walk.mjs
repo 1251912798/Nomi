@@ -319,6 +319,27 @@ try {
   const assetTitle = await assetRefNode.innerText()
   expect(assetTitle.includes('%E'), `固化参考图标题不带百分号转义（实际："${assetTitle.replace(/\n/g, ' ').slice(0, 80)}"）`).toBe(false)
   expect(assetTitle, '固化参考图沿用产物标题').toContain(NODE_TITLE)
+  // 落点：固化出的参考图必须生在**源产物卡右边**，而不是退回画布缺省落点。
+  // 上一版就是退回缺省的 (120,360)：参考图落到画布最左侧、压在左侧工具簇底下——
+  // 功能全对（文件在、节点在、能连线），但用户点完按钮，东西不在他刚才看的地方。
+  // 这条断言量的正是"在不在他眼前"：两个盒子的真实屏幕坐标。
+  const svgBox = await svgRefNode.boundingBox()
+  const assetBox = await assetRefNode.boundingBox()
+  expect(Boolean(svgBox && assetBox), '两张卡都量得到屏幕位置').toBe(true)
+  expect(
+    assetBox.x > svgBox.x,
+    `参考图生在源产物卡右边（源 x=${Math.round(svgBox.x)}，参考图 x=${Math.round(assetBox.x)}）`,
+  ).toBe(true)
+  // 并且没被左侧工具簇吃掉——工具簇是画布左沿的常驻层，落到它下面就等于看不见。
+  // 量法：拿工具簇里的「更多」钮（`data-canvas-add-more`，簇内现成的稳定锚点）的右沿当簇右沿。
+  // 它是簇内最宽的元素之一，误差是几 px 的内边距——而上一版的偏差是**整整一个画布宽**，
+  // 这点误差不影响判定。
+  const railRight = await win.evaluate(() => {
+    const anchor = document.querySelector('[data-canvas-add-more]')
+    return anchor ? anchor.getBoundingClientRect().right : 0
+  })
+  expect(railRight > 0, '量到了左侧工具簇的位置（探针没写死）').toBe(true)
+  expect(assetBox.x >= railRight, `参考图没有落在左侧工具簇底下（簇右沿=${Math.round(railRight)}，参考图 x=${Math.round(assetBox.x)}）`).toBe(true)
   await walk.snap('06-rasterized-reference-asset')
   // 磁盘证据：栅格化出的 PNG 文件真实落在项目 assets/imported 下（存在 = canvas 真的画了并落盘）。
   const fs = await import('node:fs')

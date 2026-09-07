@@ -67,10 +67,21 @@ export type RasterizeArtifactResult =
   | { ok: true; nodeId: string; url: string }
   | { ok: false; reason: string }
 
-/** 把 agent-artifact 的 SVG 产物固化成画布参考图（asset 节点）。依赖注入便于单测。 */
+/** 固化出的参考图相对源产物卡的落点：右边一个身位。
+ *  真机走查（2026-09-07）实测：不给落点时 addNode 退到缺省的 (120,360) 再避让，参考图落到了
+ *  画布最左侧、压在左侧工具簇下面——用户点完「固化为参考图」，东西不在他刚才看的地方。
+ *  给一个「源卡右边」的起点，剩下的仍交给 addNode 的 AABB 避让（挤到了就自己往下找空位）。 */
+const REFERENCE_GAP_PX = 48
+
+/** 把 agent-artifact 的 SVG 产物固化成画布参考图（asset 节点）。依赖注入便于单测。
+ *
+ *  @param sourceNodeId 源产物节点 id。给了就把参考图生在它旁边、并**跟它同一个分类**——
+ *    分类不是装饰：画布按 activeCategoryId 分屏渲染，参考图落错分类就等于落在另一块屏上，
+ *    用户看到的是「点了没反应」。 */
 export async function rasterizeArtifactToReferenceAsset(
   artifact: AgentArtifactMeta,
   deps: ReferenceAssetDeps = realDeps,
+  sourceNodeId?: string,
 ): Promise<RasterizeArtifactResult> {
   if (artifact.fileType !== 'svg') {
     return { ok: false, reason: `unsupported-file-type:${artifact.fileType}` }
@@ -101,11 +112,15 @@ export async function rasterizeArtifactToReferenceAsset(
   if (!hostedUrl) return { ok: false, reason: 'no-hosted-url' }
 
   const store = useGenerationCanvasStore.getState()
+  const source = sourceNodeId ? store.nodes.find((candidate) => candidate.id === sourceNodeId) : undefined
   const node = store.addNode({
     kind: 'asset',
     title: pngFile.name,
     prompt: '',
-    categoryId: 'shots',
+    categoryId: source?.categoryId || 'shots',
+    ...(source
+      ? { position: { x: source.position.x + (source.size?.width || 360) + REFERENCE_GAP_PX, y: source.position.y } }
+      : {}),
   })
   const hostedResult = {
     id: `ref-${node.id}`,

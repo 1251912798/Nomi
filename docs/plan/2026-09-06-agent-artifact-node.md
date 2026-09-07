@@ -15,6 +15,12 @@
 
 一句话：*调模型的走模型，动脑子的走手艺；手艺产物既能看，也能变成下游能吃的东西。*
 
+**用户 2026-09-07 原话补充（口径校准，不改范围）**：
+- 「Agent 用 three.js 摆个 3D 场景——一张桌子、两个人对坐——**截图当参考图**，我拿它去修人物位置。」→ 摆位的价值不在"看 3D"，在**那一张截图**。3D 视口截图固化 = 这条价值的收口动作，本 PR 未做，见 §11 下一刀。
+- 「SVG 当图片参考。」→ 已实现（浮条「固化为参考图」→ PNG asset 节点，可连线喂下游）。
+- 「HTML 讲故事、画流程图，放画布上。」→ 已实现（沙箱 srcdoc + 产物自带策略；CSS 动效可跑，内联 JS 见 §6.5 已知缺口）。
+- 「**一个节点通吃**，Agent 自己判断什么时候用哪种手艺。」→ 单 kind `agent-artifact` 已是这个形状（决策 1）；"何时用哪种手艺"目前只写在工具描述里（一句话选路），完整决策树 = 阶段 2，见 §11。
+
 ## 2. 手艺选择框架（落成 Agent skill，不是 UI 开关）
 
 **决策闸门：诉求是"要媒体本身"还是"要一个表达/参考物"？** 前者调模型，后者是手艺。
@@ -166,6 +172,28 @@
 - [x] **Agent 交付落盘（deliver）**：electron `canvasWrite` kind 白名单 + `artifact:{fileType,content}` 字段（superRefine 条件校验）；渲染层 `applyCanvasToolCall` create 分支先落盘内容为 nomi-local 资产、再建 `meta.artifact.url` 节点（整批失败即中止）；prompt 对 agent-artifact 免除（其它 kind 仍必填）；agent client 提示文案加入艺产物指引。
 - [x] vitest：artifactMeta 6 + **deliver 契约 10 + 栅格化参考 5 + ArtifactBody 契约 6** + applyCanvasToolCall 39 + canvasWrite 7；generationCanvas 全量零回归；electron equivalence 6 用例。
 - [x] **GUI 真机走查转绿**（commit 615f7516）：改 resident Agent 对话驱动——UI 新建项目（解决 record 注册卡点）+ loopback 供应商 fixture 回放 `nomi_canvas_plan(operation=create_canvas_nodes, kind=agent-artifact, artifact.content=SVG 源码）→ 宿主 proposalTxn → applyCanvasToolCall deliver 分支**真实执行落盘**（磁盘已验证：SVG 写到 `<project>/assets/imported/<date>/开场构图线稿.svg`）→ 节点上屏、SVG 渲染、浮条「下载/固化为参考图」出现。2 张截图证据 + report.json（textRequests=2 fixture 声明，paidCalls=0）。
-- [ ] 交付纪律：sibling worktree `Nomi-agent-artifact-node` + preflight ✅ + 分支 PR（进行中）。
+- [x] **走查抓到并修掉的落点 bug（2026-09-07 接手返工）**：「固化为参考图」原先不传落点，addNode 退到全局缺省 (120,360)，参考图落到画布最左侧、压在左侧工具簇下——功能全对，但用户点完按钮东西不在他眼前。同类的派生建卡入口（切图/抽帧/联系表/3D 站位出图）**全都**已按"源卡位置 + 源卡分类"建卡，只有它漏了，属 one_off。已改成跟源卡走并补三条断言（两条单测 + 走查量真实屏幕坐标）。
+- [x] 交付纪律：sibling worktree `Nomi-artifact-node` + 五门全绿 + 真机走查 6 图 + 分支 PR。
 
-**P1（不在本轮，文档待办）：** 3D 视口截图参考化、HTML 放大/截图当画面素材、表格参考化、手艺选择 skill 落库（先核对 skills 体系）、设计实验室接入、node 专属 icon。
+## 11. 下一刀（本 PR 明确不做，已登记）
+
+按"一刀一件事"排，**不在本 PR 硬塞**——本 PR 的边界是"手艺产物能上画布、能看清、SVG 能固化"。
+
+### 阶段 1（下一刀 · 补完用户 09-07 点名的那条价值）：3D 摆位截图固化成参考图
+- **为什么单独一刀**：它不是"再加一个 fileType"，而是**换一条固化通道**——SVG 走的是"读文件 → canvas 栅格化"（纯 DOM，`rasterizeArtifactToReferenceAsset.ts`），3D 走的是"从 WebGL 上下文读回像素"，两件事只有落盘那一小截共用。
+- **⚠️ 先复用，别新造（P1/R20）**：这条通道**已经存在**——`scene3d` 的站位参考出图就是它：
+  `Scene3DAutoCapture` 离屏渲染 → `persistScene3DScreenshot` 落盘 → `store.addNode` 建 image 节点 +
+  连参考边（`nodes/scene3d/StagingCaptureHost.tsx:29-70`）。下一刀的正解是把 `agent-artifact` 的 glb
+  **接进这条现成通道**，不是照着 SVG 那条再写一个 3D 版栅格化器（那就是并行版）。
+- **要实测的那一点**：`Model3DViewer` 与 `Scene3DAutoCapture` 用的不是同一个 R3F 画布，读回像素要么
+  `gl.preserveDrawingBuffer`、要么 `gl.render()` 后同帧 `toDataURL`（默认帧后即清，直接读是黑图）。
+- **验收**：Agent 摆一张桌子两人对坐 → 用户转到想要的角度 → 浮条「固化当前视角为参考图」→ PNG 上画布 → 连线喂生成节点。（用户原话的完整闭环，R16 真实任务）
+- **前置**：Agent 侧要先能交付 `.glb`——现在 `canvasWrite` 的 `artifact.fileType` 只收文本类五种（glb 是二进制，走不了文本通道），得先定二进制交付形式。
+
+### 阶段 2：手艺选择——从"一句话"升成"决策树"
+- **现状**：`generationCanvasAgentClient.ts` 的工具描述里已有一句选路（"要真实画面走生成模型，要表达物走 agent-artifact"）——够挡住最粗的误用，**不够**回答"这件事该用 SVG 还是 HTML 还是表格"。
+- **下一刀做什么**：把 §2 那张表（含正例/反例）落成 Agent 能读的决策依据。**先核对现有 skills 体系再定形态**（挂技能库 / 进工具描述 / 两者），别再造一套注册表（R20/D2）。
+- **怎么算做完**：正反例判对——"给我一张能直接用的画面"→ 调生图（不该手绘 SVG）；"构图怎么摆"→ 手艺（不该抽卡）。
+
+### 其余 P1（无人点名，按需再排）
+HTML 放大/截图当画面素材、表格参考化、设计实验室接入、node 专属 icon、HTML 产物的 JS 执行（§6.5 三选一，**等用户拍板**）。

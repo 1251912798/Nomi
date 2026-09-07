@@ -13,6 +13,8 @@ import { FloatingToolbarShell, TOOLBAR_ICON as I, ToolbarButton } from '../NodeF
 import { rasterizeArtifactToReferenceAsset } from './rasterizeArtifactToReferenceAsset'
 
 type Props = {
+  /** 源产物节点 id：固化出的参考图生在它旁边、跟它同一分类（真机走查修正的落点）。 */
+  nodeId: string
   title: string
   artifact: AgentArtifactMeta
   /** 复制文本的来源（text/markdown/html 才传；取文件文本进剪贴板）。 */
@@ -20,7 +22,7 @@ type Props = {
   canCopyText: boolean
 }
 
-export default function ArtifactNodeToolbar({ title, artifact, onCopyText, canCopyText }: Props): JSX.Element | null {
+export default function ArtifactNodeToolbar({ nodeId, title, artifact, onCopyText, canCopyText }: Props): JSX.Element | null {
   const { t } = useTranslation()
   const [downloading, setDownloading] = React.useState(false)
   const [copying, setCopying] = React.useState(false)
@@ -52,14 +54,14 @@ export default function ArtifactNodeToolbar({ title, artifact, onCopyText, canCo
 
   const rasterizeReference = React.useCallback(() => {
     setRasterizing(true)
-    void rasterizeArtifactToReferenceAsset(artifact)
+    void rasterizeArtifactToReferenceAsset(artifact, undefined, nodeId)
       .then((result) => {
         if (result.ok) toast(t('runtime.nodeRegistry.agent-artifact.referenceCreated'), 'success')
         else toast(t('runtime.nodeRegistry.agent-artifact.referenceFailed'), 'error')
       })
       .catch(() => toast(t('runtime.nodeRegistry.agent-artifact.referenceFailed'), 'error'))
       .finally(() => setRasterizing(false))
-  }, [artifact, t])
+  }, [artifact, nodeId, t])
 
   return (
     <FloatingToolbarShell ariaLabel={t('runtime.nodeRegistry.agent-artifact.actions')}>
