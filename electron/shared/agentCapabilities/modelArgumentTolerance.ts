@@ -49,7 +49,7 @@ function parseJsonText(value: unknown): unknown {
 }
 
 /** A · 整包参数被序列化成 JSON 字符串。 */
-function unwrapWholeArguments(args: unknown): Record<string, unknown> {
+export function unwrapWholeArguments(args: unknown): Record<string, unknown> {
   const parsed = parseJsonText(args);
   if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) return parsed as Record<string, unknown>;
   return {};

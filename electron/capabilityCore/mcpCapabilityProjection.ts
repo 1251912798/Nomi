@@ -15,6 +15,7 @@ import { LAYOUT_READ_CAPABILITY, LAYOUT_WRITE_CAPABILITY, layoutReadInputSchema,
 import {
   MCP_LEASE_FIELD_NAMES,
   mcpAnnotationsFor,
+  prepareMcpArguments,
   resolveMcpSpec,
   toSemanticInput,
   type McpProfileTool,
@@ -70,6 +71,12 @@ export type McpCapabilityAdapter = {
    */
   readonly transportInputSchema: SchemaLike;
   readonly parseCall: (args: Record<string, unknown>) => McpCapabilityCall;
+  /**
+   * 描述符声明的容忍钩子，**在传输层校验之前**跑（`mcpProtocol.ts`）。
+   *
+   * 只有从共享描述符派生的适配器有它——手写适配器没有描述符可读，那正是它们还剩多少的度量。
+   */
+  readonly prepareArguments?: (args: unknown) => Record<string, unknown>;
   /** Composite semantic tools can return a read/approval projection rather than one legacy output union. */
   readonly outputSchema?: ZodTypeAny;
   /** A capability may have one semantic MCP intent per safe operation. */
@@ -82,6 +89,8 @@ export type McpCapabilityTool = {
   readonly inputSchema: SchemaLike;
   readonly method: string;
   readonly build: (args: Record<string, unknown>) => Record<string, unknown>;
+  /** 见 `McpCapabilityAdapter.prepareArguments`。协议层在校验参数之前调用它。 */
+  readonly prepareArguments?: (args: unknown) => Record<string, unknown>;
   readonly presentResult: (result: unknown) => CanonicalMcpToolResult;
   readonly annotations?: { readonly readOnlyHint?: true; readonly destructiveHint?: true };
 };
@@ -175,6 +184,9 @@ function derivedAdapter(
     ...(binding.outputSchema ? { outputSchema: binding.outputSchema } : {}),
     parseCall(args: Record<string, unknown>) {
       return parseDerivedCall(contract, tool, args);
+    },
+    prepareArguments(args: unknown) {
+      return prepareMcpArguments(tool, args);
     },
   });
 }
@@ -366,6 +378,7 @@ export function createMcpCapabilityResolver(registrations: readonly McpCapabilit
         inputSchema,
         method,
         build: (args) => parseCall(args).transport,
+        ...(adapter.prepareArguments ? { prepareArguments: adapter.prepareArguments } : {}),
         presentResult: (result) => buildCanonicalMcpToolResult(outputSchema, result),
         ...(annotations ? { annotations } : {}),
       });

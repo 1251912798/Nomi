@@ -32,6 +32,7 @@
 import { z, type ZodTypeAny } from "zod";
 
 import type { CapabilityContract } from "./capabilityContract";
+import { unwrapWholeArguments } from "./modelArgumentTolerance";
 import { toPublishedJsonSchema, type JsonSchemaObject } from "./modelVisibleJsonSchema";
 
 type AnyCapabilityContract = CapabilityContract<unknown, unknown>;
@@ -555,4 +556,50 @@ export function profileDriftBetween(
     );
   }
   return drift;
+}
+
+/**
+ * 对外 MCP 侧的容忍：**同一个钩子，同一族畸形**（方案 §3.1）。
+ *
+ * 为什么它必须存在，而不是「内部才需要容忍」：容忍钩子是**描述符上的声明**，不是 lane
+ * 的私产。#547 抓到的那 8 种畸形（整包序列化成 JSON 字符串、字段叫 `text`/`body`、
+ * 正文被拆成字符串数组、给不收参数的工具塞一个兄弟工具的参数……）是**跨模型的通用行为**，
+ * 外部宿主背后跑的也是同一批模型。阶段 5a 之前对外那条路一次也没跑过这个钩子，于是
+ * 同一个模型、同一句话，从 Claude Code 打进来就失败，从 Nomi 自己的 Agent 打进来就成功——
+ * 而两边读的说明书还宣称是同一份。
+ *
+ * 两条纪律：
+ *   ① **只捏合模型填的那一半**。租约、别名定死的判别字段、声明出来的「外部才有」传输字段
+ *      原样留下——`noArgumentTolerance` 会把整个对象清空，直接喂它会连 `leaseHandle` 一起吃掉。
+ *   ② **在校验之前跑**（`mcpProtocol.ts` 的 `validateToolArguments` 之前），与 pi 把
+ *      `prepareArguments` 放在 ajv 之前是同一条理由：schema 不合法的参数根本走不到执行边界。
+ */
+export function prepareMcpArguments(
+  tool: McpProfileTool,
+  args: unknown,
+): Record<string, unknown> {
+  const record = args && typeof args === "object" && !Array.isArray(args)
+    ? { ...(args as Record<string, unknown>) }
+    : unwrapWholeArguments(args);
+  const spec = resolveMcpSpec(tool, record);
+  if (!spec?.prepareArguments) return record;
+
+  const declaredDifference = new Set([
+    ...MCP_LEASE_FIELD_NAMES,
+    ...Object.keys(tool.discriminators),
+    ...tool.transportOnlyFields,
+  ]);
+  const kept: Record<string, unknown> = {};
+  const modelArgs: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(record)) {
+    if (declaredDifference.has(key)) kept[key] = value;
+    else modelArgs[key] = value;
+  }
+  const prepared = spec.prepareArguments(modelArgs);
+  return {
+    ...kept,
+    ...(prepared && typeof prepared === "object" && !Array.isArray(prepared)
+      ? prepared as Record<string, unknown>
+      : {}),
+  };
 }

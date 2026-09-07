@@ -323,6 +323,8 @@ export type McpToolDefinition = (typeof MCP_TOOL_CATALOG)[number] & {
   title?: string
   titleByLocale?: { readonly 'zh-CN': string; readonly en: string }
   resolveMethod?: (args: Record<string, unknown>) => string
+  /** 共享描述符声明的容忍钩子（`mcpCapabilityProjection.ts` 派生）。协议层在校验之前调用。 */
+  prepareArguments?: (args: unknown) => Record<string, unknown>
   annotations?: { readonly readOnlyHint: true }
   presentResult?: (result: unknown) => unknown
 }

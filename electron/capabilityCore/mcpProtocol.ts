@@ -389,7 +389,11 @@ export function createMcpProtocol(transport: McpTransport) {
         replyError(id, -32602, `未知工具: ${name}`)
         return
       }
-      const rawArgs = params?.arguments
+      // 容忍钩子在校验**之前**跑（与 pi 把 prepareArguments 放在 ajv 之前同一条理由：
+      // schema 不合法的参数根本走不到执行边界，校验器会先把它拦下并自己生成错误回给模型）。
+      // 钩子是共享描述符上的声明，两个 profile 同一份——#547 那 8 种畸形是跨模型的通用行为，
+      // 外部宿主背后跑的是同一批模型，阶段 5a 之前这条路一次也没跑过它。
+      const rawArgs = tool.prepareArguments ? tool.prepareArguments(params?.arguments) : params?.arguments
       // tools/list 广播的 JSON Schema 同时是运行时唯一校验边界；失败回 Tool Execution Error。
       const invalid = validateToolArguments(tool.name, tool.inputSchema, rawArgs === undefined ? {} : rawArgs)
       if (invalid) {
