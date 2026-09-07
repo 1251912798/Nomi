@@ -1,0 +1,181 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-07-standard-format-not-aligned",
+  "problem_type": "A format that other programs also read or write gets invented in-house while an official or de-facto standard for it already exists",
+  "symptom": "Agent Skills has exactly one official shape across Claude Code, pi and Codex: a directory with SKILL.md carrying YAML frontmatter. Nomi shipped a parallel file, skill.json, alongside it. On 2026-08-26 a user in the feedback group reported that skills obtained elsewhere could not be imported at all -- his words were that with hermes or workbuddy you just import a zip that contains skill.md. On 2026-08-27 an import-side compatibility path was added so a bare SKILL.md would be accepted, and the visible complaint went away. As of 2026-09-07 the parallel file was still being written on export and the product copy was still instructing users to create it.",
+  "direct_cause": "electron/skills/skillPackage.ts and electron/skills/skillStore.ts read and write skill.json as a second manifest holding name, description and archetypeId -- fields the standard already places in the SKILL.md frontmatter that the same two files parse a few lines away.",
+  "class_root": "Nothing in the repository asked the question 'does a standard for this already exist' before a shape that outsiders also read or write was designed. R5 requires reading official docs when touching a third-party library, but a file format we author does not present itself as a third-party library -- it looks like our own internal structure, which is the self-justification this class always uses. The judgement that actually matters is different and machine-checkable: besides our own code, is there a second program, or a human hand-writing the file, that reads or writes this thing. Two further mechanisms kept it alive after it was noticed. First, the delivery scoring function rewards producing an artifact and does not penalise skipping the search: inventing skill.json is visible output, whereas finding that the shape was already fixed and therefore writing nothing looks like an empty round -- the same mechanism R29 and check:prior-art were built for. Second, the 2026-08-27 fix addressed the half the user could see (imports now succeed) and thereby removed the only signal pointing at the parallel file, so the export side and the copy went on producing it for another eleven days.",
+  "affected_population": [
+    "Every user who tries to bring in a skill authored anywhere else -- the ecosystem produces SKILL.md folders and zips, never a Nomi manifest",
+    "Every user who follows Nomi's own copy and hand-writes skill.json, producing a package no other host can read",
+    "Every future external format touched without this question being asked: MCP client config files written into the user's other tools, the tool inputSchema broadcast over tools/list, import/export formats, provider API contracts, and any transcript format meant to interoperate"
+  ],
+  "scope_paths": [
+    "docs/engineering/standard-formats.json",
+    "scripts/check-standard-formats.mjs",
+    "scripts/standard-formats-lib.mjs",
+    "scripts/standard-formats-baseline.json",
+    "docs/engineering-rules.md",
+    "CLAUDE.md",
+    "scripts/claude-hooks/self-check.sh",
+    "docs/engineering/agent-orchestration-playbook.md",
+    "tests/fixtures/standard-formats/"
+  ],
+  "entry_points": [
+    "Designing or changing a skill / prompt package file format",
+    "Writing MCP client configuration into another tool's config file",
+    "Emitting the model-visible tool schema over tools/list",
+    "Adding an import or export file format",
+    "Modelling a provider API contract",
+    "Choosing an on-disk shape for sessions or transcripts intended to interoperate"
+  ],
+  "external_sources": [
+    {
+      "kind": "official-doc",
+      "url": "https://code.claude.com/docs/en/skills",
+      "checked_at": "2026-09-07",
+      "purpose": "The Agent Skills format: a directory with SKILL.md whose YAML frontmatter carries name and description, plus optional keys such as allowed-tools and argument-hint. There is no second manifest file in the specification. Its minimal example is copied verbatim into tests/fixtures/standard-formats/agent-skill/SKILL.md as the official fixture."
+    },
+    {
+      "kind": "official-doc",
+      "url": "https://modelcontextprotocol.io/docs/develop/connect-local-servers",
+      "checked_at": "2026-09-07",
+      "purpose": "The mcpServers config object shared by Claude Code's ~/.claude.json, project-level .mcp.json, Cursor's ~/.cursor/mcp.json and the generic ~/.config/mcp/mcp.json. Its filesystem-server example is copied verbatim into tests/fixtures/standard-formats/mcp/.mcp.json and used to prove that a stranger's entry survives our merge and our uninstall byte-for-byte."
+    },
+    {
+      "kind": "official-doc",
+      "url": "https://json-schema.org/draft-07/schema",
+      "checked_at": "2026-09-07",
+      "purpose": "The schema dialect our MCP tools/list inputSchema payload claims to speak. Registered with its deviation recorded: the runtime validator implements an eleven-keyword subset and the transport flattens discriminated unions into a property-union superset, with the authoritative boundary staying in Zod."
+    }
+  ],
+  "invariants": [
+    "Every source file under electron/ or src/ that parses a file whose name is one an outsider would also write is claimed by an entry in docs/engineering/standard-formats.json, or carries a dated debt in scripts/standard-formats-baseline.json.",
+    "An entry claiming alignment with a standard (kind external-standard or de-facto-standard) points at a spec URL, records the upstream version it aligned against, and ships an official fixture that a real test reads.",
+    "Every deviation from the standard carries a reason. An empty reason fails the gate, because the reasons this class produces -- 'simpler for us', 'that is how it was written' -- are preferences, and a preference is not a reason.",
+    "A format that has a standard we have not aligned to is registered as kind non-aligned, which requires both the spec it should align to and a convergence debt with a due date. It cannot be a permanent state.",
+    "A format registered as internal must say what makes it internal, so the claim is falsifiable the day it starts crossing a boundary.",
+    "Every debt, in the registry or the baseline, carries a plan and a due date, and the gate goes red once the due date passes."
+  ],
+  "generality_proof": "The invariant is enforced at the only place every case of this class must pass through: the code that parses or emits the format. scripts/check-standard-formats.mjs scans all of electron/ and src/ for a parse call co-located with a file name an outsider would recognise, and every hit must be claimed by the registry or by a dated baseline debt. That is why the fix is not 'delete skill.json': the reported instance is one row in the registry (nomi-skill-manifest, kind non-aligned, converging on refactor/skill-format-frontmatter-20260907), while the mechanism covers the MCP client configs, the Codex TOML block, the tools/list schema and every format added after today. Verified by construction rather than by inspection: with the skill.json row removed the gate names both of its parse sites; with a new probe file added under electron/ that parses settings.json and plugin.json the gate names both of those too, including the templated path form. The heuristic is deliberately narrowed to names an outsider would write, because the alternative -- flagging every JSON.parse -- produces a baseline of over a hundred entries, and a gate with a hundred exemptions is not enforcing anything (R17).",
+  "shared_boundaries": [
+    {
+      "path": "scripts/check-standard-formats.mjs",
+      "symbol": "check:standard-formats",
+      "responsibility": "The one place an unregistered external format has to get past. It reads the registry, scans electron/ and src/ for parse calls sitting next to an outsider-recognisable filename, and fails naming the file, the line and the format unless the touchpoint is claimed by the registry or carries a dated debt. Every route into this class -- a new skill format, another host's config file, an import/export shape -- passes through this single check rather than through a per-format reminder."
+    },
+    {
+      "path": "docs/engineering/standard-formats.json",
+      "symbol": "formats[]",
+      "responsibility": "The one place that answers, for each externally-visible format, which standard it aligns to, where the official sample lives, how we differ and why. The kind field carries the distinction the whole rule turns on: non-aligned means the standard exists and we have not matched it (in-flight, dated), nomi-defined means we looked and found nothing (permanent, requires the search record)."
+    },
+    {
+      "path": "scripts/standard-formats-lib.mjs",
+      "symbol": "scanSources / validateRegistry / evaluateFixtures / evaluateTouchpoints",
+      "responsibility": "The judgement, isolated from the filesystem so the gate's own tests feed it a fake repository. A gate whose tests can only run against the real registry can only observe today's inventory; it cannot observe whether tomorrow's new invented format goes red."
+    },
+    {
+      "path": "tests/fixtures/standard-formats/",
+      "symbol": "official fixtures plus SOURCES.md",
+      "responsibility": "Samples copied verbatim from the specifications, with their URLs and capture dates. They are the only artefact that can fail when our parser cannot read what an outsider wrote; every other test in the repository feeds inputs we authored ourselves."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "electron/capabilityCore/mcpConfig.ts",
+      "entry_point": "~/.claude.json, ~/.cursor/mcp.json, ~/.config/mcp/mcp.json and .mcp.json",
+      "disposition": "enforced",
+      "evidence": "Registered as mcp-servers-config against the MCP quickstart, with the merge-not-overwrite, backup and atomic-write deviations recorded as domain constraints. electron/capabilityCore/mcpConfigOfficialFixture.test.ts installs into the official sample and asserts the filesystem entry survives field-for-field, then uninstalls and asserts the file returns to the sample exactly."
+    },
+    {
+      "path": "electron/capabilityCore/mcpConfig.ts",
+      "entry_point": "~/.codex/config.toml block-level merge",
+      "disposition": "enforced",
+      "evidence": "Registered as codex-mcp-config-toml with the block-level text merge recorded as a domain constraint (a full TOML round-trip would reorder another program's comments and keys). Carries a dated debt because no official Codex sample has been captured as a fixture yet."
+    },
+    {
+      "path": "electron/capabilityCore/mcpTransportSchemaFromZod.ts",
+      "entry_point": "tools/list inputSchema broadcast to external hosts",
+      "disposition": "enforced",
+      "evidence": "Registered as mcp-tool-json-schema (a wire contract, not an on-disk file) against JSON Schema draft-07, with the eleven-keyword subset and union flattening recorded and justified. This entry point had already produced the same class of damage independently: a hand-copied flat superset left seven of nine published operations unconstructible by any external host."
+    },
+    {
+      "path": "electron/ai/antigravityMedia.ts",
+      "entry_point": "plugin.json and hooks.json written into Antigravity's plugin directory",
+      "disposition": "enforced",
+      "evidence": "Registered in scripts/standard-formats-baseline.json as a dated debt rather than in the registry, because the fields were written to match observed behaviour and were never reconciled against Antigravity's plugin specification. It is enforced in the sense that matters: the gate names it on every run until it is either aligned or the debt expires on 2026-11-07. Claiming it as aligned would have required inventing a spec URL."
+    },
+    {
+      "path": "electron/jsonFile.ts",
+      "entry_point": "project.json inside a .nomi project directory",
+      "disposition": "not-affected",
+      "evidence": "Registered as internal with the reason stated: it is read and written only by the local main process, and external consumers take the exported MP4 or the MCP projection instead. The registry entry says explicitly that the day it starts crossing a boundary this classification must change."
+    },
+    {
+      "path": "scripts/",
+      "entry_point": "gate baselines and walkthrough artefacts parsed with JSON.parse",
+      "disposition": "not-affected",
+      "evidence": "Deliberately outside the scan roots. These read our own gate baselines, not formats shared with anyone; including them measured at over a hundred baseline entries, which would have made the gate an exemption list rather than a boundary."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "This is the second instance of the same mechanism inside two days: on 2026-09-06 the pi SDK review found session persistence, ordered transcript, retry, pricing and steering each rewritten in-house while the framework already provided them (R29). Both times the research either was never done or was done and never reached the person writing the code. Every future external format -- another agent host's config, a subtitle or timeline interchange format, a provider contract -- passes through the identical decision point, and the incentive that produced this outcome (producing an artifact scores, searching does not) is structural rather than personal.",
+    "same_class_scan": [
+      "Heuristic scan of electron/ and src/ for parse calls co-located with an outsider-recognisable file name: 12 touchpoints across 8 files. All twelve are now claimed by a registry entry or the baseline.",
+      "Manual review of writer-only contracts the heuristic cannot see, because they emit rather than parse: the tools/list inputSchema producer (electron/capabilityCore/mcpTransportSchemaFromZod.ts) and its validator (mcpArgValidation.ts) were registered by hand.",
+      "Broader probe over electron/, src/ and scripts/ combined, matching any parse call near any format-shaped filename: 125 files, dominated by our own on-disk stores. This measurement is why the scan roots exclude scripts/ and why the name shapes are narrow -- a hundred-plus baseline would have made the gate ceremonial.",
+      "Cross-check against the two skill branches in flight (refactor/skill-format-frontmatter-20260907 and fix/skill-import-real-use-20260907): the parser and copy files they are changing were left untouched here, and the convergence is registered as a debt pointing at the refactor branch rather than attempted twice."
+    ]
+  },
+  "prevention": {
+    "kind": "static-gate",
+    "enforcement_path": "scripts/check-standard-formats.mjs",
+    "invariant": "No source file under electron/ or src/ parses an externally-recognisable format file without an entry in docs/engineering/standard-formats.json or a dated debt in scripts/standard-formats-baseline.json; entries claiming alignment must point at a spec, ship an official fixture that a test reads, and justify every deviation.",
+    "failure_mode": "Fails loudly and specifically. The error names the file, the line and the format file, then states the three ways out (align it, register why nothing exists to align with, or declare it internal with a justification). All four criteria were proven to go red before the gate was accepted, and one case was proven not to go red: a fully registered format with an unexpired debt passes. Debts are not exemptions: each carries a plan and a due date and the gate goes red once the date passes, so the escape hatch closes by itself rather than by someone remembering.",
+    "exception_policy": "none",
+    "strategy": "Move the check from a reminder to the earliest layer that can actually stop it (R28). The reminder already existed -- R5 says read the official docs -- and it missed, because a format we author does not read as third-party. The gate replaces the fallible judgement 'is this third-party' with a mechanical one: does a parse call sit next to a name an outsider would also write. Prose alone was insufficient in exactly the way R29 documents: a conclusion that lives only in a document does not exist to the next agent, who does not know the document exists.",
+    "artifacts": [
+      "scripts/check-standard-formats.mjs",
+      "scripts/standard-formats-lib.mjs",
+      "docs/engineering/standard-formats.json",
+      "scripts/standard-formats-baseline.json",
+      "tests/fixtures/standard-formats/SOURCES.md"
+    ]
+  },
+  "invariant_owner_layer": {
+    "layer": "scripts/check-standard-formats.mjs",
+    "tests": [
+      "scripts/check-standard-formats.node-test.mjs",
+      "electron/skills/officialAgentSkillFixture.test.ts",
+      "electron/capabilityCore/mcpConfigOfficialFixture.test.ts"
+    ],
+    "note": "scripts/check-standard-formats.mjs is the enforcing layer; docs/engineering/standard-formats.json is the data it enforces against -- the single place that answers \"what does the outside world look like here and how do we differ\". The gate is what makes an unanswered question fail rather than pass silently. The node test feeds the judgement a fake repository so it covers tomorrow's new invented format rather than only today's inventory; the two fixture tests are what make the official samples load-bearing, since a fixture nobody reads can never go red. One half is only partly owned and is stated rather than implied: the heuristic keys on a filename literal appearing near a parse call, so a parser written as a pure function taking the shape from its caller is invisible to it. The registry therefore remains a human-authored deliverable, with the scan acting as a tripwire for newly added parse sites rather than as a complete inventory."
+  },
+  "regression_tests": [
+    "scripts/check-standard-formats.node-test.mjs",
+    "electron/skills/officialAgentSkillFixture.test.ts",
+    "electron/capabilityCore/mcpConfigOfficialFixture.test.ts"
+  ],
+  "class_regression_tests": [
+    "scripts/check-standard-formats.node-test.mjs",
+    "electron/capabilityCore/mcpConfigOfficialFixture.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "not-applicable",
+    "removed_paths": [],
+    "rationale": "This change adds a rule, a registry, a gate and its fixtures; it replaces no existing implementation, so there is no parallel version to delete. The legacy artefact this rule exists to retire -- skill.json itself -- is deliberately left in place and registered as kind non-aligned with a convergence debt due 2026-10-07 pointing at refactor/skill-format-frontmatter-20260907, which is already changing those parser and copy files. Deleting it here would collide with that branch and would mix establishing the mechanism with exercising it."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "No third-party package is involved. The gate is plain Node with no dependencies, and the moving parts are external specifications, which the registry tracks by URL and upstreamVersion rather than by depending on them as libraries.",
+    "exit_criteria": []
+  },
+  "migration": "None. No stored data, user file or runtime behaviour changes: the parsers, the exported packages and the MCP config writer are all untouched. Existing skill.json files keep working exactly as before until the convergence branch lands, at which point that branch owns its own migration.",
+  "residual_risks": [
+    "The heuristic sees a parse call next to a filename literal. A parser written as a pure function whose shape arrives from the caller, or one that composes the filename from constants, will not be flagged. The registry stays a human-authored deliverable and the scan is a tripwire, not an inventory.",
+    "Three registered formats carry fixture debts rather than fixtures: the Codex config.toml block merge, the Antigravity plugin manifest, and the tools/list inputSchema wire contract. Until those are captured, alignment for them rests on reading rather than on a sample that can fail. All three are dated.",
+    "A deviation's reason is checked for presence, not for quality. 'Domain constraint, not preference' is a human judgement the gate cannot make; it is listed as a review item in the adversary checklist in the orchestration playbook instead.",
+    "The registry records the upstream version an alignment was made against but does not yet compare it against anything, so a specification that changes shape produces no signal. R29's equivalent problem is handled by comparing against node_modules; there is no equivalent local artefact for a specification reachable only by URL, and adding a fetcher would introduce a network dependency into a contracts gate."
+  ]
+}
