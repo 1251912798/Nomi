@@ -15,7 +15,7 @@
 import type { LaneSnapshot } from '@earendil-works/pi-agent-core'
 import type { AssistantMessage } from '@earendil-works/pi-ai'
 import { LANE_APPROVAL_NOTE_TYPE } from '../../../../electron/shared/agentLane/laneContracts'
-import { projectLaneSnapshot } from '../../../../electron/agentLane/laneProjection.mjs'
+import { projectLaneSnapshot, type LaneModelFacts } from '../../../../electron/agentLane/laneProjection.mjs'
 import { laneViewModel, type LaneViewModelLabels } from '../../../workbench/ai/lane/laneViewModel'
 import type { ToolReceipt } from '../../../workbench/ai/v4/agentPanelV4Types'
 
@@ -83,8 +83,20 @@ export function laneSnapshotToolDenied(reason: string): LaneSnapshot {
 }
 
 /** 两层投影真的跑一遍，取出那一行收据。 */
+/**
+ * 三行（阶段 3b）要的模型侧事实。收据格只看工具那一行，花费/上下文/推理都不进画面，
+ * 所以价目给 `'unpriced'`（花费=「不可知」）、不给 contextWindow——和真实「没登记价目的模型」一个形状。
+ */
+export const LAB_MODEL_FACTS: LaneModelFacts = {
+  model: {
+    provider: 'nomi-lane', id: 'lab-model', name: 'lab-model', api: 'openai-completions', baseUrl: 'http://127.0.0.1/v1',
+    reasoning: false, input: ['text'], cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, contextWindow: 0, maxTokens: 0,
+  },
+  pricing: 'unpriced',
+}
+
 export function laneDrivenReceipt(lane: LaneSnapshot, labels: LaneViewModelLabels): ToolReceipt {
-  const model = laneViewModel(projectLaneSnapshot(lane), labels)
+  const model = laneViewModel(projectLaneSnapshot(lane, LAB_MODEL_FACTS), labels)
   const tool = model.items.find((item) => item.kind === 'tool')
   if (!tool || tool.kind !== 'tool') throw new Error('the lane snapshot projected no tool receipt')
   return tool.receipt
