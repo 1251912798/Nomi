@@ -9,7 +9,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { launchNomiApp, repoRoot } from './_launchApp.mjs'
-import { screenshotSettled } from './_assert.mjs'
+import { clickOrFail, expectVisible, screenshotSettled } from './_assert.mjs'
 
 const KEY = (process.env.TIKHUB_API_KEY || '').trim()
 if (!KEY) {
@@ -23,6 +23,8 @@ fs.mkdirSync(SHOTS, { recursive: true })
 
 const TEMP = fs.mkdtempSync(path.join(os.tmpdir(), 'nomi-find-reference-'))
 const trail = []
+// 这一趟必须成立的事；收尾按 length 决定退出码。截图给人眼看，这些给 CI 看。
+const failures = []
 let step = 0
 
 async function shot(win, name, note) {
@@ -55,11 +57,10 @@ win.on('pageerror', (e) => consoleErrors.push(`pageerror: ${String(e).slice(0, 3
 
 try {
   // ── 用户第一次打开，先建个项目 ─────────────────────────────────────────────
-  await win.waitForTimeout(1500)
-  await shot(win, 'app-open', '刚打开的样子')
-
+  // 等的是「入口出现了」，不是「过了 1.5 秒」——机器慢一点就读到空白的那种假绿。
   const newProject = win.getByText('新建空白项目', { exact: true }).first()
   await newProject.waitFor({ state: 'visible', timeout: 20_000 })
+  await shot(win, 'app-open', '刚打开的样子')
   await newProject.click()
   await win.waitForFunction(() => /projectId=/.test(location.href), undefined, { timeout: 20_000 })
   await win.waitForTimeout(1200)
@@ -85,16 +86,16 @@ try {
   const ctaCount = await cta.count()
   note(`空态「找参考素材」CTA 数量 = ${ctaCount}`)
   if (ctaCount > 0) {
-    await cta.first().click()
+    await clickOrFail(cta.first(), '空态「找参考素材」CTA')
   } else {
-    note('⚠️ 空态没有 CTA，退回工具栏那颗 🔗')
-    await win.locator('button[aria-label="找参考素材"]').first().click()
+    failures.push('空态没有「找参考素材」CTA——卡点①「他怎么知道有这功能」在空态失守')
+    await clickOrFail(win.locator('button[aria-label="找参考素材"]').first(), '工具栏「找参考素材」')
   }
   await win.waitForTimeout(800)
   await shot(win, 'find-panel-open', '找参考面板展开——平台 chip / 输入框 / 计费提示')
 
   const panel = win.locator('[data-find-reference-panel]')
-  note(`面板存在 = ${await panel.count() > 0}`)
+  await expectVisible(panel, '点了入口，找参考面板必须出现')
   const platforms = await win.locator('[data-find-reference-panel] [data-platform]').allTextContents().catch(() => [])
   note(`平台 chip = ${JSON.stringify(platforms)}`)
   const active = await win.locator('[data-find-reference-panel] [data-platform][data-active="true"]').textContent().catch(() => null)
@@ -114,22 +115,23 @@ try {
     undefined,
     { timeout: 60_000 },
   ).catch(() => note('⚠️ 60 秒还在「正在搜索」'))
-  await win.waitForTimeout(1500)
+  // 等第一张结果卡真的挂上来（搜不到时超时走空路径），而不是数秒。
+  const cards = win.locator('[data-find-reference-panel] .grid > div')
+  await cards.first().waitFor({ state: 'visible', timeout: 20_000 }).catch(() => note('⚠️ 20 秒没等到结果卡'))
   await shot(win, 'results', '结果回来了——卡点④：角标看不看得懂')
 
-  const cards = win.locator('[data-find-reference-panel] .grid > div')
   const cardCount = await cards.count()
   note(`结果卡片数 = ${cardCount}`)
 
-  // 封面探针：naturalWidth>0 = 真的画出来了；complete && naturalWidth===0 = 加载失败；
-  // !complete = 还在加载。肉眼分不出这三者，DOM 分得出。
+  // 封面探针：complete 且有 naturalWidth = 真的画出来了；complete 但没有宽度 = 加载失败；
+  // 还没 complete = 仍在加载。肉眼分不出这三者，DOM 分得出。
   const coverProbe = async (label) => {
     const p = await win.evaluate(() => {
       const imgs = [...document.querySelectorAll('[data-find-reference-panel] img')]
       return {
         total: imgs.length,
         drawn: imgs.filter((i) => i.complete && i.naturalWidth > 0).length,
-        failed: imgs.filter((i) => i.complete && i.naturalWidth === 0).length,
+        failed: imgs.filter((i) => i.complete && !i.naturalWidth).length,
         pending: imgs.filter((i) => !i.complete).length,
         sample: imgs[0]?.currentSrc?.slice(0, 80) || null,
       }
@@ -138,8 +140,13 @@ try {
     return p
   }
   await coverProbe('结果刚出来')
-  await win.waitForTimeout(6000)
-  await coverProbe('再等 6 秒')
+  // 等的是「没有一张还在加载」，不是数 6 秒——封面本来就慢，数秒只会把慢误判成挂。
+  await win.waitForFunction(
+    () => [...document.querySelectorAll('[data-find-reference-panel] img')].every((i) => i.complete),
+    undefined,
+    { timeout: 20_000 },
+  ).catch(() => note('⚠️ 20 秒后仍有封面没加载完'))
+  await coverProbe('等到全部 complete 之后')
   await shot(win, 'results-covers-settled', '等封面加载完之后——对比上一张，看是「慢」还是「挂」')
   const panelText = await panel.textContent().catch(() => '')
   note(`面板文案片段 = ${JSON.stringify((panelText || '').slice(0, 240))}`)
@@ -163,8 +170,12 @@ try {
       const toast = await win.locator('.mantine-Notification-root').allTextContents().catch(() => [])
       note(`点击后 toast = ${JSON.stringify(toast.filter(Boolean).map((t) => t.slice(0, 120)))}`)
       await shot(win, 'added-toast', '点完 1.2 秒——toast 还在的话就在这张')
-      await win.waitForTimeout(6000)
-      await shot(win, 'added', '点了「加入素材库」6 秒之后')
+      // 等按钮自己改口成「已加入」（data-added），那才是这一步真的完了的信号。
+      // 数秒会把「下载慢」误判成「导入坏了」——2026-09-08 走查已经栽过一次。
+      await win.locator('[data-find-reference-panel] button[data-added="true"]')
+        .first().waitFor({ state: 'visible', timeout: 30_000 })
+        .catch(() => note('⚠️ 30 秒内没有任何卡片变成「已加入」'))
+      await shot(win, 'added', '点了「加入素材库」等它改口之后')
       const btnText = await addBtn.textContent().catch(() => null)
       note(`按钮文案 = ${JSON.stringify(btnText)}`)
 
@@ -187,8 +198,14 @@ try {
         return m ? window.nomiDesktop.assets.list({ projectId: decodeURIComponent(m[1]) }) : { items: [] }
       })
       const ref = (assets.items || []).find((i) => i.data?.sourceEvidence?.connectorId === 'tikhub')
-      note(`落库素材：${ref ? JSON.stringify({ name: ref.name, usage: ref.data?.sourceEvidence?.usageStatus, platform: ref.data?.sourceEvidence?.platform }) : '（没找到）'}`)
+      note(`落库素材：${ref ? JSON.stringify({ name: ref.name, usage: ref.data?.sourceEvidence?.usageStatus, platform: ref.data?.sourceEvidence?.platform, path: ref.data?.projectRelativePath }) : '（没找到）'}`)
       note(`素材总数 = ${(assets.items || []).length}`)
+      if (!ref) {
+        failures.push('点了「加入素材库」但项目里找不到 connectorId=tikhub 的素材——导入没落库')
+      } else if (!String(ref.data?.projectRelativePath || '').startsWith('assets/reference/')) {
+        // 本次的结构主张：来源由目录承载。落错桶 = 界面上的来源筛选全部失效。
+        failures.push(`参考素材没落进 assets/reference/：${ref.data?.projectRelativePath}`)
+      }
     } else {
       note('⚠️ 结果卡上没有「加入素材库」按钮')
     }
@@ -214,9 +231,32 @@ try {
     await shot(win, 'back-to-library', '点返回条——应该回到我的素材，且看得见刚加的那条')
     const gridAssets = await win.locator('section[aria-label="素材库"] [role="list"] > *, section[aria-label="素材库"] img').count()
     note(`回到素材库后可见元素 = ${gridAssets} · 面板还在 = ${await win.locator('[data-find-reference-panel]').count() > 0}`)
+
+    // 验 B：拿完东西回来应该落在「只看参考」上——漏斗按钮的字要说出这件事，
+    // 而不是让刚拿的几条淹进一整片旧素材里（2026-09-08 用户当场提的那条）。
+    const filterButton = win.locator('button[aria-label="素材分类筛选"]')
+    const filterLabel = (await filterButton.textContent().catch(() => null))?.trim() || null
+    note(`漏斗按钮文案 = ${JSON.stringify(filterLabel)}（拿过东西时应含「找来的参考」）`)
+    if (!/找来的参考/.test(filterLabel || '')) {
+      failures.push(`拿完东西回素材库，漏斗没落在「只看参考」上（按钮写的是 ${JSON.stringify(filterLabel)}）——刚拿的那几条又淹回旧素材里了`)
+    }
+    await clickOrFail(filterButton, '素材漏斗')
+    await win.waitForTimeout(300)
+    await shot(win, 'provenance-filter', '来源轴：我的素材 / 找来的参考，最后一项取消不掉')
+    const provenanceRows = await win.locator('[role="listbox"][aria-label="来源"] [role="option"]').allTextContents().catch(() => [])
+    note(`来源轴选项 = ${JSON.stringify(provenanceRows.map((x) => x.trim()))}`)
+    if (provenanceRows.length !== 2) failures.push(`来源轴应该是 2 项（我的素材 / 找来的参考），实际 ${provenanceRows.length} 项`)
+    await win.keyboard.press('Escape').catch(() => {})
   }
 
   await shot(win, 'final', '最终状态')
+  if (failures.length) {
+    console.error(`\n❌ ${failures.length} 条没成立：`)
+    for (const f of failures) console.error(`  · ${f}`)
+    process.exitCode = 1
+  } else {
+    console.log('\n✅ 这一趟该成立的都成立了')
+  }
   if (consoleErrors.length) note(`控制台错误 ${consoleErrors.length} 条：${JSON.stringify(consoleErrors.slice(0, 4))}`)
   else note('控制台无错误')
 } catch (error) {

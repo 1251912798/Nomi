@@ -3,10 +3,11 @@ import { useTranslation } from 'react-i18next'
 import { IconChevronLeft, IconFilter, IconFolderPlus, IconLink, IconPlus, IconTrash } from '@tabler/icons-react'
 import { cn } from '../../utils/cn'
 import { DesignSearchInput } from '../../design'
-import { AssetKindFilterMenu, NewFolderInput } from './AssetLibraryPanelParts'
+import { AssetFilterMenu, NewFolderInput } from './AssetLibraryPanelParts'
 import type { FilterValue } from './assetLibraryPanelFilters'
 import type { AssetKind } from './assetTypes'
 import type { AssetLibrarySourceFilter } from './assetLibraryUsage'
+import type { AssetProvenance } from './assetProvenance'
 
 type SourceOption = {
   value: AssetLibrarySourceFilter
@@ -41,12 +42,15 @@ export type AssetLibraryToolbarProps = {
   filterMenuRef: React.MutableRefObject<HTMLDivElement | null>
   visibleKinds: ReadonlySet<AssetKind>
   filterCounts: ReadonlyMap<FilterValue, number>
+  visibleProvenances: ReadonlySet<AssetProvenance>
+  provenanceCounts: ReadonlyMap<AssetProvenance, number>
   filterOpen: boolean
   filterActive: boolean
   activeFilterLabel: string
   onToggleFilter: () => void
   onToggleKind: (kind: AssetKind) => void
   onShowAllKinds: () => void
+  onToggleProvenance: (provenance: AssetProvenance) => void
   folderViewActive: boolean
   activeFolder: { label: string } | null
   folderManagementEnabled: boolean
@@ -84,12 +88,15 @@ export function AssetLibraryToolbar({
   filterMenuRef,
   visibleKinds,
   filterCounts,
+  visibleProvenances,
+  provenanceCounts,
   filterOpen,
   filterActive,
   activeFilterLabel,
   onToggleFilter,
   onToggleKind,
   onShowAllKinds,
+  onToggleProvenance,
   folderViewActive,
   activeFolder,
   folderManagementEnabled,
@@ -221,14 +228,17 @@ export function AssetLibraryToolbar({
         {!compact ? <span>{activeFilterLabel}</span> : null}
       </button>
       {filterOpen ? (
-        <AssetKindFilterMenu
+        <AssetFilterMenu
           selectedKinds={visibleKinds}
           counts={filterCounts}
+          selectedProvenances={visibleProvenances}
+          provenanceCounts={provenanceCounts}
           setNodeRef={(node) => {
             filterMenuRef.current = node
           }}
           onToggleKind={onToggleKind}
           onShowAll={onShowAllKinds}
+          onToggleProvenance={onToggleProvenance}
         />
       ) : null}
     </div>

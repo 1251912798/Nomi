@@ -111,7 +111,29 @@ DOM 探针（不是肉眼猜的）：
 | 平台 chip 的 `if (id === platform) return` 也是同一类静默守卫 | 当前平台那颗直接 `disabled` + title「已经在看这个平台了」——点当前平台若走进清空逻辑还会白白清掉用户的结果 | `check:controls` 通过 |
 | 拆分后 `AssetLibraryPanel.tsx` 801 行超限 | 抽出 `FindReferenceSection.tsx` → 787 行 | `check:filesize` 通过 |
 
-### ⚠️ B「按来源筛选」本轮**没做**，理由要记下来
+### ✅ B「按来源筛选」已在同日补做（下面这一节保留当时的判断，作为自纠记录）
+
+**当时的判断**：需要新拉一条 provenance 管线（sidecar → `WorkspaceFileNode` → `AssetRef`），是独立改动。
+**被什么推翻**：这条管线根本不必存在。来源在**落盘那一刻**就已经是结构事实——
+`assetBucketFromMeta`（`electron/assets/assetPaths.ts:80`）按 `meta.kind` 决定素材进 `assets/<bucket>/`，
+目录遍历天然带着它。只要给「找参考」的两条外部导入路径（搜索导入 + 贴分享链接）一个自己的桶 `reference`，
+`AssetRef.origin.relativePath` 的前缀就是答案，渲染层一个纯函数就能判（`src/workbench/assets/assetProvenance.ts`）。
+**来源**：自查——为了给用户讲实现方案而重读 `projectAssetStore.ts:681`，
+发现 `assets.list` 早就在读 sidecar，说明「事实缺失」是假的，缺的只是**让事实自己说话的结构**（R28）。
+**后果**：从「一条新管线 + 每个节点多读一次 sidecar」缩成「一个新桶 + 一个纯函数」。
+历史资产不迁移、id 不变、默认全选，老用户看到的集合逐条不变。
+
+落地形状：
+- **落盘**：`kind: "reference"` → `assets/reference/<日期>/`（`AssetBucket` 三值，`assetPaths.test.ts` 新增 2 条断言）
+- **筛选**：来源轴并进**既有漏斗**，不新增常驻控件（§1.5 硬规则 2）；最后一项取消不掉（否则空列表+看不见原因）
+- **闭环**：拿过东西再点返回条，直接落在「只看参考」上，返回条也改口成「看看刚拿的 N 条」——
+  否则刚拿的三条会淹进一整片旧素材里，等于让用户自己再找一遍
+- **兜底**：筛空了的空态给一颗「显示全部素材」（卡点③）
+- 结构合同：`docs/fixes/2026-09-08-asset-provenance-bucket.root-cause.json`
+
+---
+
+### ⚠️（历史判断，已被上面推翻）B「按来源筛选」本轮**没做**，理由要记下来
 
 原计划在漏斗里加一组「来源：我上传的 / 生成的 / 参考素材」。动手后发现**做不了**，而且是两个硬事实：
 

@@ -19,6 +19,7 @@ export function FindReferenceSection({
   projectId,
   platform,
   assetCount,
+  importedCount,
   onPlatformChange,
   onShareLink,
   onImported,
@@ -29,6 +30,8 @@ export function FindReferenceSection({
   platform: ReferencePlatform
   /** 返回条上的计数——让用户知道「回去」会回到多少东西那儿。 */
   assetCount: number
+  /** 这一趟拿了几条。>0 时返回条改口，因为回去落的是「只看参考」而不是整片素材库。 */
+  importedCount: number
   onPlatformChange: (platform: ReferencePlatform) => void
   onShareLink: (text: string) => void
   onImported: () => void
@@ -48,7 +51,9 @@ export function FindReferenceSection({
         onClick={onBack}
       >
         <IconChevronLeft size={14} stroke={1.8} aria-hidden="true" />
-        {t('assetLibrary.findReference.backToLibrary', { count: assetCount })}
+        {importedCount > 0
+          ? t('assetLibrary.findReference.backToImported', { count: importedCount })
+          : t('assetLibrary.findReference.backToLibrary', { count: assetCount })}
       </button>
       <div className="min-h-0 flex-1 overflow-y-auto">
         <FindReferencePanel

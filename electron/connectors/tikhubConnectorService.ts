@@ -109,7 +109,7 @@ export async function importTikhubShareUrl(payload: unknown): Promise<TikhubImpo
   const asset = await importRemoteAsset({
     projectId,
     url: resolved.playUrl,
-    kind: "imported",
+    kind: "reference",
     fileName: resolved.videoId ? `${resolved.platform}-${resolved.videoId}.mp4` : `${resolved.platform}-video.mp4`,
     sourceEvidence: evidence,
   }, (() => {
@@ -198,7 +198,7 @@ export async function importTikhubReference(payload: unknown): Promise<Reference
   const asset = await importRemoteAsset({
     projectId,
     url: mediaUrl,
-    kind: "imported",
+    kind: "reference",
     fileName: `${platform}-ref-${itemId}.mp4`,
     sourceEvidence: evidence,
   }, (() => {
