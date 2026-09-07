@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { rasterizeArtifactToReferenceAsset, type ReferenceAssetDeps } from './rasterizeArtifactToReferenceAsset'
 import type { AgentArtifactMeta } from '../../model/artifactMeta'
+import type { WorkbenchAssetDto } from '../../../api/assetUploadApi'
 
 // 固化为参考图（SVG → PNG → asset 节点）契约。真实路径依赖 canvas + 主进程资产导入
 //（importWorkbenchLocalAssetFile），node 单测用 stub deps 锁「数据流与分支语义」；
@@ -28,7 +29,16 @@ function makeDeps(overrides: Partial<ReferenceAssetDeps> = {}): ReferenceAssetDe
   return {
     readText: vi.fn(async () => svg),
     rasterizeSvgToPngBlob: vi.fn(async () => new Blob(['fake-png'], { type: 'image/png' })),
-    uploadFile: vi.fn(async (file) => ({ id: 'asset-uuid', name: file.name, data: { url: `nomi-local://asset/p/assets/generated/${file.name}` } })),
+    // 注意类型：deps.uploadFile 的契约是 Promise<WorkbenchAssetDto>，不是「长得差不多的对象」。
+    // 测试文件不进 pnpm typecheck，只有 check:test-types 看得见这里的类型错。
+    uploadFile: vi.fn(async (file: File): Promise<WorkbenchAssetDto> => ({
+      id: 'asset-uuid',
+      name: file.name,
+      data: { url: `nomi-local://asset/p/assets/generated/${file.name}` },
+      createdAt: '2026-09-07T00:00:00.000Z',
+      updatedAt: '2026-09-07T00:00:00.000Z',
+      userId: 'local',
+    })),
     ...overrides,
   }
 }
@@ -83,5 +93,30 @@ describe('rasterizeArtifactToReferenceAsset', () => {
     expect(result.ok).toBe(false)
     if (!result.ok) expect(result.reason).toBe('disk full')
     expect(store.calls.length).toBe(0)
+  })
+
+  // nomi-local URL 是逐段 encodeURIComponent 建出来的，取名就必须逐段 decode。
+  // 少这一步，中文标题会以 %E5%BC%80… 的样子变成参考图文件名和节点标题（用户看到的乱码）。
+  it('中文标题的产物：参考图文件名解码回中文，不留百分号转义', async () => {
+    const deps = makeDeps()
+    const encoded = `nomi-local://asset/p/assets/imported/2026-09-07/${encodeURIComponent('开场构图线稿')}.svg`
+    const result = await rasterizeArtifactToReferenceAsset({ fileType: 'svg', url: encoded }, deps)
+
+    expect(result.ok).toBe(true)
+    const uploaded = vi.mocked(deps.uploadFile).mock.calls[0][0]
+    expect(uploaded.name).toBe('开场构图线稿.png')
+    expect(uploaded.name).not.toContain('%')
+    // 节点标题就是这个文件名——乱码会一路显到画布上。
+    const added = store.calls.find((call) => (call as { op: string }).op === 'addNode') as { input: { title: string } }
+    expect(added.input.title).toBe('开场构图线稿.png')
+  })
+
+  // 类级：不是「中文」特殊，是**任何**被转义的段都要还原（空格/括号同族）。
+  it('空格与括号一样解码（同一类：URL 段编码，不是某种语言）', async () => {
+    const deps = makeDeps()
+    const encoded = `nomi-local://asset/p/assets/imported/d/${encodeURIComponent('shot 01 (draft)')}.svg`
+    await rasterizeArtifactToReferenceAsset({ fileType: 'svg', url: encoded }, deps)
+
+    expect(vi.mocked(deps.uploadFile).mock.calls[0][0].name).toBe('shot 01 (draft).png')
   })
 })

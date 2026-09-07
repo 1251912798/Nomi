@@ -30,6 +30,7 @@ import { canvasWriteSemanticInputSchema } from '../../../../electron/shared/agen
 import { registerCanvasToolClientId, resolveCanvasToolNodeId } from './clientIdRegistry'
 import { previewStoryboardPatchShots } from './storyboardPatchShots'
 import { deliverAgentArtifactToAsset, isTextDeliverableFileType } from './deliverAgentArtifact'
+import i18n from '../../../i18n'
 export { resetClientIdRegistry, resolveCanvasToolNodeId } from './clientIdRegistry'
 
 // 批量创建节点的布局由渲染层 derive，而不是信任 LLM 发来的像素坐标。
@@ -358,12 +359,13 @@ export async function applyCanvasToolCall(
       const content = typeof artifact.content === 'string' ? artifact.content : ''
       const clientId = typeof node.clientId === 'string' ? node.clientId : ''
       const title = typeof node.title === 'string' ? node.title : ''
+      const name = title || clientId || i18n.t('runtime.nodeRegistry.agent-artifact.untitled')
       if (!isTextDeliverableFileType(fileType) || !content.trim()) {
-        throw new Error(`agent-artifact 节点「${title || clientId || '未命名'}」需要带文本内容（artifact.content），不支持的类型: ${fileType || '(空)'}`)
+        throw new Error(i18n.t('runtime.nodeRegistry.agent-artifact.missingContent', { name, fileType: fileType || '—' }))
       }
       const delivered = await deliverAgentArtifactToAsset({ fileType, content, title })
       if (!delivered.ok) {
-        throw new Error(`agent-artifact 落盘失败（${title || clientId}）: ${delivered.reason}`)
+        throw new Error(i18n.t('runtime.nodeRegistry.agent-artifact.deliverFailed', { name, reason: delivered.reason }))
       }
       artifactUrlByClientId.set(clientId, { fileType, url: delivered.url })
     }
@@ -413,12 +415,17 @@ export async function applyCanvasToolCall(
         const clientId = typeof node.clientId === 'string' ? node.clientId : ''
         const artifact = artifactUrlByClientId.get(clientId)
         if (!artifact) {
-          throw new Error(`agent-artifact 节点缺少已落盘产物（clientId=${clientId || '(空)'}）`)
+          throw new Error(i18n.t('runtime.nodeRegistry.agent-artifact.deliverFailed', {
+            name: clientId || i18n.t('runtime.nodeRegistry.agent-artifact.untitled'),
+            reason: 'no-delivered-asset',
+          }))
         }
         return {
           kind,
           categoryId: groupCategoryId ?? getDefaultCategoryForNodeKind(kind),
-          title: typeof node.title === 'string' && node.title.trim() ? node.title.trim() : `产物 ${index + 1}`,
+          title: typeof node.title === 'string' && node.title.trim()
+            ? node.title.trim()
+            : i18n.t('runtime.nodeRegistry.agent-artifact.indexedTitle', { index: index + 1 }),
           position,
           meta: { artifact: { fileType: artifact.fileType, url: artifact.url } },
         }

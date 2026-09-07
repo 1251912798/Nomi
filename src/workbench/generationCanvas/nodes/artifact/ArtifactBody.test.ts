@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import React from 'react'
+import '../../../../i18n'
 import ArtifactBody from './ArtifactBody'
+import { withArtifactSandboxPolicy } from './artifactSandboxDocument'
+import { LOCAL_ARTIFACT_CONTENT_SECURITY_POLICY } from '../../../../../electron/shared/localArtifactPolicy'
 import { canArtifactCopyText } from '../../model/artifactMeta'
 import type { AgentArtifactMeta } from '../../model/artifactMeta'
 import type { GenerationCanvasNode } from '../../model/generationCanvasTypes'
@@ -15,7 +18,7 @@ import type { GenerationCanvasNode } from '../../model/generationCanvasTypes'
 const makeNode = (id: string): GenerationCanvasNode => ({
   id,
   kind: 'agent-artifact',
-  title: 'Test',
+  title: '开场构图线稿',
   categoryId: 'shots',
   position: { x: 0, y: 0 },
   meta: {},
@@ -40,48 +43,32 @@ describe('ArtifactBody · 真实产物渲染契约', () => {
     expect(html).toContain('<img')
   })
 
-  it('HTML：渲染沙箱 iframe，sandbox="allow-scripts"，不跨 same-origin（不可被宿主读）', () => {
+  // HTML 产物走 srcdoc（不是 src 导航——跨源隔离下那条路一律被挡，见 artifactSandboxDocument 头注），
+  // 所以 server-render 阶段只出加载态；iframe 属性与「真的跑起来了」由走查在真机上证。
+  it('HTML：server-render 先出加载态（产物文本在 effect 里取）', () => {
     const html = renderToStaticMarkup(
       React.createElement(ArtifactBody, baseProps({
         fileType: 'html',
         url: 'nomi-local://asset/p/assets/generated/opening-beats.html',
       })),
     )
-    expect(html).toContain('<iframe')
-    expect(html).toContain('sandbox="allow-scripts"')
-    // 关键：未给 allow-same-origin 是隔离的关键证据。脚本断言：字符串必须仅含 allow-scripts、不含 allow-same-origin。
-    expect(html).not.toMatch(/sandbox="allow-scripts[^"]*allow-same-origin/)
+    expect(html).toContain('data-artifact-file-type="html"')
     expect(html).not.toContain('allow-same-origin')
   })
 
-  it('Markdown：server-render 阶段渲染 wrapper（fetch 在 effect；浏览器层校验文本容器由 GUI 走查覆盖）', () => {
-    const html = renderToStaticMarkup(
-      React.createElement(ArtifactBody, baseProps({
-        fileType: 'markdown',
-        url: 'nomi-local://asset/p/assets/generated/notes.md',
-      })),
-    )
-    expect(html.length).toBeGreaterThan(0)
-  })
-
-  it('Table：产物 wrapper 渲染（fetch 在 effect；表格结构浏览器层校验）', () => {
-    const html = renderToStaticMarkup(
-      React.createElement(ArtifactBody, baseProps({
-        fileType: 'table',
-        url: 'nomi-local://asset/p/assets/generated/storyboard.md',
-      })),
-    )
-    expect(html.length).toBeGreaterThan(0)
-  })
-
-  it('Text：等宽容器 wrapper 渲染', () => {
-    const html = renderToStaticMarkup(
-      React.createElement(ArtifactBody, baseProps({
-        fileType: 'text',
-        url: 'nomi-local://asset/p/assets/generated/script.txt',
-      })),
-    )
-    expect(html.length).toBeGreaterThan(0)
+  // ⚠️ 这三条原先只断 `html.length > 0`——那对任何非空输出都成立，等于没断。
+  // 真正该锁的是「壳认得出这是哪种产物」：类型标记 + 类型角标 + 标题（样张的 n-head）。
+  it.each([
+    ['markdown', 'Markdown', 'nomi-local://asset/p/assets/generated/notes.md'],
+    ['table', '表格', 'nomi-local://asset/p/assets/generated/storyboard.html'],
+    ['text', '文本', 'nomi-local://asset/p/assets/generated/script.txt'],
+    ['svg', 'SVG', 'nomi-local://asset/p/assets/generated/composition-guide.svg'],
+    ['html', 'HTML', 'nomi-local://asset/p/assets/generated/opening-beats.html'],
+  ] as const)('%s：壳标出类型 + 角标文本 + 标题', (fileType, chip, url) => {
+    const html = renderToStaticMarkup(React.createElement(ArtifactBody, baseProps({ fileType, url })))
+    expect(html).toContain(`data-artifact-file-type="${fileType}"`)
+    expect(html, '类型角标（没有它，手绘线稿和生图在画布上长得一样）').toContain(chip)
+    expect(html, '标题（没有它，一批产物落下来只能靠内容认）').toContain('开场构图线稿')
   })
 })
 
@@ -93,5 +80,43 @@ describe('canArtifactCopyText · 浮条「复制」按钮可见性谓词', () =>
     expect(canArtifactCopyText('svg')).toBe(false)
     expect(canArtifactCopyText('table')).toBe(false)
     expect(canArtifactCopyText('glb')).toBe(false)
+  })
+})
+
+describe('withArtifactSandboxPolicy · 策略必须写进文档、且写在最前面', () => {
+  const policy = "default-src 'none'; connect-src 'none'"
+
+  it('有 <head>：紧跟其后插入（meta CSP 只管住它后面的内容，插晚了等于没插）', () => {
+    const out = withArtifactSandboxPolicy('<!doctype html><html><head><title>x</title></head><body>hi</body></html>', policy)
+    expect(out).toContain(`<head><meta http-equiv="Content-Security-Policy" content="${policy}">`)
+    expect(out.indexOf('Content-Security-Policy')).toBeLessThan(out.indexOf('<title>'))
+  })
+
+  it('只有 <html> 没有 <head>：补一个 head 放进去', () => {
+    const out = withArtifactSandboxPolicy('<html><body>hi</body></html>', policy)
+    expect(out).toContain('<html><head><meta http-equiv="Content-Security-Policy"')
+    expect(out.indexOf('Content-Security-Policy')).toBeLessThan(out.indexOf('<body>'))
+  })
+
+  it('裸片段：放最前面', () => {
+    const out = withArtifactSandboxPolicy('<div class="bar"></div>', policy)
+    expect(out.startsWith('<meta http-equiv="Content-Security-Policy"')).toBe(true)
+  })
+
+  it('有 doctype 但没有 html/head：让过 doctype（插它前面会掉进怪异模式）', () => {
+    const out = withArtifactSandboxPolicy('<!doctype html><div>hi</div>', policy)
+    expect(out.startsWith('<!doctype html><meta http-equiv=')).toBe(true)
+  })
+
+  it('策略里的引号被转义，产物无法用一个引号提前闭合 content 属性逃出笼子', () => {
+    const out = withArtifactSandboxPolicy('<html><head></head><body></body></html>', `default-src 'none'; report-to "x"`)
+    expect(out).toContain('&quot;x&quot;')
+    expect(out).not.toContain('content="default-src \'none\'; report-to "x""')
+  })
+
+  // 默认参数就是那份唯一定义——不许在渲染层另写一份"差不多"的策略。
+  it('默认用 electron/shared 的那份定义，不另起一份', () => {
+    const out = withArtifactSandboxPolicy('<html><head></head></html>')
+    expect(out).toContain(LOCAL_ARTIFACT_CONTENT_SECURITY_POLICY.replace(/"/g, '&quot;'))
   })
 })

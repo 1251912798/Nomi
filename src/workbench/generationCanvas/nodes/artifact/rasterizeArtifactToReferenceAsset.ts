@@ -12,6 +12,8 @@ import { useGenerationCanvasStore } from '../../store/generationCanvasStore'
 import type { AgentArtifactMeta } from '../../model/artifactMeta'
 import type { WorkbenchAssetDto } from '../../../api/assetUploadApi'
 import { hostedAssetUrl } from '../../../api/assetUploadApi'
+import { parseNomiLocalAssetUrl } from '../../../../media/nomiLocalAssetUrl'
+import i18n from '../../../../i18n'
 
 export type ReferenceAssetDeps = {
   /** 从产物 URL 取文件文本（nomi-local:// 可 fetch）。 */
@@ -87,7 +89,7 @@ export async function rasterizeArtifactToReferenceAsset(
   }
   if (!pngBlob) return { ok: false, reason: 'rasterize-failed' }
 
-  const baseName = artifactFileNameFallback(artifact.url) || '参考图'
+  const baseName = artifactFileNameFallback(artifact.url) || i18n.t('runtime.nodeRegistry.agent-artifact.referenceName')
   const pngFile = new File([pngBlob], `${baseName}.png`, { type: 'image/png' })
   let asset: WorkbenchAssetDto
   try {
@@ -122,8 +124,16 @@ export async function rasterizeArtifactToReferenceAsset(
   return { ok: true, nodeId: node.id, url: hostedUrl }
 }
 
-/** 从产物 URL 取文件名（去目录去扩展名；空则空串）。 */
+/** 从产物 URL 取文件名（去目录去扩展名；空则空串）。
+ *
+ *  必须走 parseNomiLocalAssetUrl：nomi-local URL 是**逐段 encodeURIComponent** 建出来的
+ *  （buildNomiLocalAssetUrl），所以取名也必须逐段 decode。原先在这里自己写正则切最后一段，
+ *  中文标题就原封不动带着 %E5%BC%80… 变成参考图的文件名和节点标题——用户看到一串乱码。
+ *  建与解已经是同一个模块里配对的两个函数，这里只该消费它，不该再写第三种解法。 */
 function artifactFileNameFallback(url: string): string {
-  const cleaned = url.replace(/^.*\/(?=[^/]*$)/, '').replace(/\.svg$/i, '')
+  const target = parseNomiLocalAssetUrl(url)
+  if (!target) return ''
+  const fileName = target.relativePath.split('/').pop() || ''
+  const cleaned = fileName.replace(/\.[^.]+$/, '')
   return cleaned && cleaned !== 'asset' ? cleaned : ''
 }

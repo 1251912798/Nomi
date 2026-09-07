@@ -8,6 +8,11 @@
 //   栅格化 PNG 走 assetImportAdapter 另存 asset 节点（参考语义归 asset，不双源）。
 //
 // v1 只落高频手艺类型；类型列表开放，按"一行 fileType + 一个子视图"逐个长（图表/思维导图/PDF = P1）。
+//
+// ⚠️ 命名分家（docs/GLOSSARY.md「同名不同物」）：这里的 'table' 是**产物表格**——Agent 手写的
+// 一段静态只读 HTML 片段，落盘成文件、只用来看，没有行模型、不可编辑、不向任何地方投影。
+// 创作面的**分镜表**（storyboard shot table）是另一样东西：可编辑行编辑器，行是 StoryboardPlan
+// 的镜头、每行绑模型与参考槽、双向投影回画布节点。两者别互相当并行版删掉或合并。
 import type { GenerationCanvasNode } from './generationCanvasTypes'
 
 export const ARTIFACT_FILE_TYPES = ['svg', 'html', 'markdown', 'table', 'text', 'glb'] as const
@@ -30,16 +35,6 @@ export const ARTIFACT_FILE_EXTENSION: Record<ArtifactFileType, string> = {
   table: 'html',
   text: 'txt',
   glb: 'glb',
-}
-
-/** 产物类型 → 展示 chip 文本（短标签；完整走 i18n 的归 i18n，此处为 fallback + 单元测试用）。 */
-export const ARTIFACT_FILE_TYPE_LABEL: Record<ArtifactFileType, string> = {
-  svg: 'SVG',
-  html: 'HTML',
-  markdown: 'Markdown',
-  table: 'Table',
-  text: 'Text',
-  glb: '3D',
 }
 
 export function isArtifactFileType(value: unknown): value is ArtifactFileType {
