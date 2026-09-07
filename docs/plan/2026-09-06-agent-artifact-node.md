@@ -106,6 +106,34 @@
 6. Agent 侧：`deliver_craft` 工具（落盘→addNode→定位）+ **手艺选择 skill**（决策 5，先核对现有 skills 体系）。
 7. 浮条动作复用：`FloatingToolbarShell` 挂 agent-artifact 专属动作组（下载 = useResultDownload / 放大 = NodeMediaPreviewDialog / 固化为参考图 = ToolbarButton）——**组合现成原子，不新写样式**。
 
+## 6.5 已知缺口：HTML 产物里的 JavaScript 不执行（2026-09-07 实测，待用户拍板）
+
+**现状**：HTML 产物的 **CSS 全部生效**——`@keyframes` 动画、transition、`:hover` 都真的在跑（走查逐项量过：
+背景色、元素色、`animation-name`、排版宽高）。但产物里的**内联 `<script>` 在打包版一律不执行**。
+
+**为什么**（三条约束互相咬死，不是实现没写好）：
+1. 主窗开着**跨源隔离**（COOP: same-origin + COEP: require-corp）。它不是可有可无的：画板抠图
+   （BG Removal，`4d972c9d`）要 SharedArrayBuffer 才能开多线程 WASM。Windows 已经因为无边框窗口
+   关掉了它，macOS/Linux 开着。
+2. 跨源隔离开着时，**任何跨源文档都不能当 frame 加载**——`<iframe src="nomi-local://…">` 一律
+   `ERR_BLOCKED_BY_RESPONSE`，给产物响应补 COEP 也救不回来（最小 Electron 探针逐个开关验过）。
+3. 于是产物只能走 **srcdoc**（继承上下文、不发网络请求，所以不受第 2 条约束）。代价是 srcdoc
+   **继承宿主的 CSP** 并与自己的 meta **取交集**，而宿主的 `script-src 'self' 'wasm-unsafe-eval' blob:`
+   没有 `'unsafe-inline'` → 产物的内联脚本被拦。
+
+**顺带一个好消息**：因为走 srcdoc，宿主的 `frame-src` 一格都不用动（阳性对照实测：改回 `'none'`
+产物走查照样全绿）。显示手艺产物**没有**让 app 多开任何一道口子。
+
+**三条路，都要动架构，交用户拍板（不自己挑）**：
+
+| 方案 | 用户看到 | 代价 |
+|---|---|---|
+| **A. 维持现状（本 PR）** | HTML 产物会动（CSS），但不能交互；Agent 工具描述已写死「要动用 CSS，别依赖 JS」 | 产物做不了真交互；且**开发版能跑、打包版跑不了**（dev CSP 有 `unsafe-inline`），容易误判 |
+| **B. 关掉跨源隔离** | 产物 JS 能跑 | 画板抠图退回单线程（慢），全 app 失去 SharedArrayBuffer |
+| **C. 产物走独立 WebContentsView / 独立 session** | 产物 JS 能跑，隔离更强（独立进程） | 原生视图恒盖在 DOM 之上，要跟画布的平移缩放逐帧对齐；工作量大（方案 §决策 3 里写的就是这条 P1）|
+
+在拍板之前，**别把「HTML 产物能跑 JS」写进任何文案或工具描述**——它现在不能。
+
 ## 7. 不动什么
 
 - 现有 15 kind 生成行为、composer、卡片渲染、image/video/audio 素材化通道、参考图消费链路（连线/喂生成）**全不动**——agent-artifact 只是新增一个"参考源"。

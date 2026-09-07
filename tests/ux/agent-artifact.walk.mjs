@@ -15,7 +15,9 @@
 // 并在收尾报出。不碰真实生成 API。渲染层/IPC/宿主/deliver 落盘全走生产路径。
 //
 // Run: pnpm run build && node tests/ux/agent-artifact.walk.mjs
-import { clickOrFail, expect, expectVisible, proveProbe } from './_assert.mjs'
+import { assertMockupContract, clickOrFail, expect, expectVisible, proveProbe } from './_assert.mjs'
+import artifactIntentContract from '../../docs/design/mockups/contracts/2026-09-06-agent-artifact-node.intent.mjs'
+import { findCanvasBlankPoint } from './_canvasHit.mjs'
 import { FIXTURE_TEXT_MODEL_LABEL, flattenRequestText } from './agent-runtime-fixture.mjs'
 import {
   CANVAS_PANEL,
@@ -67,6 +69,26 @@ try {
   const canvas = win.locator(CANVAS_PANEL)
   await expect(canvas, '生成面常驻 Agent 面板必须挂载').toBeVisible()
 
+  // 诊断探针：产物帧被拦住时，浏览器只会安静地画一块白板——不抛错、不进 console.error。
+  // 唯一会说话的是 securitypolicyviolation 事件，所以提前挂上，失败时把它原样报出来，
+  // 免得下一个人又要重新猜「到底是哪条策略拦的」。
+  const consoleLines = []
+  win.on('request', (request) => {
+    if (request.url().startsWith('nomi-local:')) consoleLines.push(`REQ ${request.resourceType()} ${request.url().slice(-40)}`)
+  })
+  win.on('requestfailed', (request) => {
+    if (request.url().startsWith('nomi-local:')) consoleLines.push(`FAIL ${request.url().slice(-40)} → ${request.failure()?.errorText}`)
+  })
+  win.on('framenavigated', (frame) => consoleLines.push(`FRAME ${frame.url().slice(0, 60)}`))
+  win.on('console', (message) => consoleLines.push(`${message.type()}: ${message.text()}`.slice(0, 200)))
+  win.on('pageerror', (error) => consoleLines.push(`pageerror: ${error.message}`.slice(0, 200)))
+  await win.evaluate(() => {
+    window.__nomiCspViolations = []
+    document.addEventListener('securitypolicyviolation', (event) => {
+      window.__nomiCspViolations.push(`${event.violatedDirective} ← ${event.blockedURI}`)
+    })
+  })
+
   // ── 幕一 · Agent 对话交付 SVG 线稿 ──────────────────────────────────────
   // 第一轮：Agent 决定调 create_canvas_nodes，交付出产物内容（带 artifact.content）。
   const deliverRequest = walk.fixture.expectText({
@@ -82,6 +104,7 @@ try {
           clientId: 'art-1',
           kind: 'agent-artifact',
           title: NODE_TITLE,
+          prompt: '', // 手艺产物不调模型，prompt 是传输层形式要求（见 canvasWrite schema）
           artifact: { fileType: 'svg', content: SVG_BODY },
         }],
         edges: [],
@@ -108,6 +131,19 @@ try {
   await svgImage.waitFor({ timeout: 15_000 })
   const complete = await svgImage.evaluate((el) => el.complete)
   expect(complete, 'SVG <img> 渲染且加载完成').toBe(true)
+  // 身份必须在卡面上：没有类型角标，手绘线稿和生图在画布上长得一模一样；没有标题，一批产物
+  // 落下来只能靠内容认。样张 §「画布上的手艺产物」的 n-head 就是这两样。
+  await expectVisible(artifactNode.locator('[data-artifact-file-type="svg"]').first(), 'SVG 产物壳（带类型标记）')
+  await expect(artifactNode, '产物卡显示类型角标 SVG').toContainText('SVG')
+  await expect(artifactNode, '产物卡显示 Agent 给的标题').toContainText(NODE_TITLE)
+  // 形态契约（R8）：样张的 n-head 关系逐条对账。
+  // 先清掉选中——刚交付的节点会被聚焦选中，而契约里「浮条默认不可见」断的是**没选中**那一刻
+  // （§1.5：动作是 L2 情境层）。不清就等于拿选中态去断默认态，量的不是同一件事。
+  // 点一下 React Flow 的空白 pane（生产代码里真正派发「取消选中」的那一层；Escape 不管这件事）。
+  const blank = await findCanvasBlankPoint(win)
+  await win.mouse.click(blank.x, blank.y)
+  await expect(win.locator('[data-node-floating-toolbar="true"]'), '清空选中后浮条应全部收起').toHaveCount(0)
+  await assertMockupContract(win, artifactIntentContract)
   await walk.snap('01-delivered-svg-artifact-node')
 
   // ── 断言 · 点选 → 浮条（下载 / 固化为参考图，SVG 专属）──────────────────
@@ -120,16 +156,21 @@ try {
   const HTML_ASK = '再做一张开场节奏讲解卡放到画布上，HTML 的：三段情绪爬升条会动。'
   const HTML_CALL = 'artifact-deliver-html'
   const HTML_TITLE = '开场节奏讲解'
+  // 纯 CSS 的动效卡——这正是手艺产物的真实形态（Agent 手写的讲解卡靠 @keyframes 动，不靠 JS）。
+  // ⚠️ 刻意不放 <script>：产物文档走 srcdoc 继承宿主 CSP，而宿主的 script-src 不含 'unsafe-inline'，
+  // 产物里的内联 JS 在打包版一律被拦（详见 artifactSandboxDocument.ts 头注与方案文档的「已知缺口」）。
+  // 断言因此不靠帧内脚本，而靠**从帧里量到的排版事实**（Playwright 经 CDP 求值，不受 CSP 约束）。
   const HTML_BODY = [
     '<!doctype html><html><head><meta charset="utf-8"><style>',
     'body{font-family:system-ui;margin:24px;background:#fdf8f0;color:#2b2b2b}',
-    '.bar{height:14px;border-radius:7px;background:#185fa5;',
+    '.bar{height:14px;border-radius:7px;background:rgb(24,95,165);',
     'animation:grow 1.2s ease-in-out infinite alternate;transform-origin:left}',
     '@keyframes grow{from{transform:scaleX(.35)}to{transform:scaleX(1)}}',
     '</style></head><body><h3>第一幕 · 情绪爬升</h3>',
     '<div class="bar" style="width:96%"></div>',
-    '<div class="bar" style="width:78%;background:#d85a30"></div>',
-    '<p>旁白先入 · 第三拍给特写 · 转场用声音扛</p></body></html>',
+    '<div class="bar" style="width:78%;background:rgb(216,90,48)"></div>',
+    '<p>旁白先入 · 第三拍给特写 · 转场用声音扛</p>',
+    '</body></html>',
   ].join('')
   const htmlRequest = walk.fixture.expectText({
     label: 'agent delivers the HTML artifact through create_canvas_nodes',
@@ -138,7 +179,7 @@ try {
       type: 'tool', id: HTML_CALL, name: 'nomi_canvas_plan',
       args: {
         operation: 'create_canvas_nodes', summary: '交付开场节奏讲解卡（HTML）',
-        nodes: [{ clientId: 'art-2', kind: 'agent-artifact', title: HTML_TITLE, artifact: { fileType: 'html', content: HTML_BODY } }],
+        nodes: [{ clientId: 'art-2', kind: 'agent-artifact', title: HTML_TITLE, prompt: '', artifact: { fileType: 'html', content: HTML_BODY } }],
         edges: [],
       },
     },
@@ -153,22 +194,101 @@ try {
   await recorded(htmlFollowup.received, 'html deliver receipt')
   await waitForV4TurnIdle(win, { panel: CANVAS_PANEL, settledBy: canvas.locator(TOOL_RECEIPT).last() })
 
-  // HTML 产物渲染在沙箱 iframe 中：sandbox=allow-scripts，且不含 allow-same-origin。
-  // 隔离的铁证 = iframe 的 origin 是 opaque（'null'）：无 allow-same-origin 的 sandbox iframe
-  // 拿不到宿主 origin/存储/顶层 DOM，脚本只能在自己的笼子里跑动画。跨源 contentDocument
-  // 读取行为随 Chromium 对 standard custom scheme 的处理有差异（实测 READABLE），但那不构成
-  // 提权——「产物碰不到宿主」由 opaque origin + Electron 无 nodeIntegration/contextIsolation 保证。
+  // ⚠️ 这里原先断的是 sandbox 属性字符串 + contentWindow.origin === 'null'。
+  // 那两条**对一个被 CSP 拦成空框的 iframe 一样成立**（属性是我们自己写的、opaque origin 是
+  // 拦截后的默认值），所以 HTML 产物白板了三条断言全绿。真正要证的是「里面真的画出来了」，
+  // 而那只能从**帧内量到的排版事实**看——被拦住的帧压根不存在，量都没得量。
   const htmlIframe = win.locator('.generation-canvas-v2-node[data-kind="agent-artifact"] iframe').first()
   await htmlIframe.waitFor({ timeout: 15_000 })
   const sandbox = await htmlIframe.evaluate((el) => el.getAttribute('sandbox'))
-  expect(sandbox, 'HTML iframe sandbox 属性存在').toBe('allow-scripts')
-  const frameOrigin = await htmlIframe.evaluate((el) => {
-    try { return el.contentWindow ? el.contentWindow.origin : 'NO-WINDOW' } catch { return 'BLOCKED' }
+  expect(sandbox, 'HTML iframe sandbox=allow-scripts（无 allow-same-origin → opaque origin）').toBe('allow-scripts')
+
+  // 帧内取证。产物是 srcdoc 文档，opaque origin，宿主脚本读不到它；Playwright 的 frameLocator
+  // 直接在帧上下文里求值（走 CDP，不受同源与 CSP 约束），所以能拿到真实排版。
+  const artifactFrame = win.frameLocator('.generation-canvas-v2-node[data-kind="agent-artifact"] iframe')
+  const bar = artifactFrame.locator('.bar').first()
+  await bar.waitFor({ timeout: 15_000 })
+  const facts = await bar.evaluate((el) => {
+    const box = el.getBoundingClientRect()
+    const style = getComputedStyle(el)
+    return {
+      heading: (el.ownerDocument.querySelector('h3') || {}).textContent || '',
+      bodyBg: getComputedStyle(el.ownerDocument.body).backgroundColor,
+      barBg: style.backgroundColor,
+      animation: style.animationName,
+      barWidth: Math.round(box.width),
+      barHeight: Math.round(box.height),
+      origin: String(el.ownerDocument.defaultView.origin),
+    }
   })
-  expect(frameOrigin, '沙箱隔离：iframe origin 是 opaque(null)——产物脚本拿不到宿主 origin/存储/顶层 DOM').toBe('null')
+  // ① 交付的 DOM 在里面；② 产物自己的 CSS 生效（背景/颜色都不是浏览器默认）；
+  // ③ 动画真的挂上了；④ 排版真的发生了（宽高不为 0）。少任何一条，卡面就还是白板。
+  expect(facts.heading, '产物 DOM 是我们交付的那份').toContain('情绪爬升')
+  expect(facts.bodyBg, '产物自己的 body 背景生效（不是默认透明）').toBe('rgb(253, 248, 240)')
+  expect(facts.barBg, '产物自己的元素样式生效').toBe('rgb(24, 95, 165)')
+  expect(facts.animation, 'CSS 动画真的挂在元素上（会动）').toBe('grow')
+  expect(facts.barWidth > 0 && facts.barHeight > 0, `产物内部完成排版（进度条量到 ${facts.barWidth}x${facts.barHeight}）`).toBe(true)
+  // 隔离仍成立：产物文档是 opaque origin，读不到宿主 DOM/storage/cookie。
+  expect(facts.origin, '沙箱隔离：产物文档 origin 是 opaque(null)').toBe('null')
   await walk.snap('03-delivered-html-sandbox')
 
-  // ── 幕三 · SVG 固化为参考图：真实点击浮条按钮 → canvas 栅格化 → PNG 落盘 → asset 节点 ──
+  // ── 幕三 · Markdown 与表格产物（一次 create_canvas_nodes 交付两件）────────────
+  const DOC_ASK = '再给我两件：一份导演备注的 Markdown，和一张第一幕的分镜草表。'
+  const DOC_CALL = 'artifact-deliver-docs'
+  const MD_TITLE = '导演备注 · 开场'
+  const TABLE_TITLE = '分镜草表 · 第一幕'
+  const MD_BODY = ['# 导演备注 · 开场', '', '- 旁白先入，画面留白两拍', '- 第三拍给特写', '- 转场用声音扛'].join('\n')
+  const TABLE_BODY = [
+    '<tr><th>镜号</th><th>景别</th><th>时长</th><th>要点</th></tr>',
+    '<tr><td>1</td><td>大远景</td><td>3s</td><td>空镜留白，旁白先入</td></tr>',
+    '<tr><td>2</td><td>中景</td><td>2s</td><td>人物入画，情绪起</td></tr>',
+    '<tr><td>3</td><td>特写</td><td>2s</td><td>眼神落点，切转场</td></tr>',
+  ].join('')
+  const docsRequest = walk.fixture.expectText({
+    label: 'agent delivers markdown + table artifacts in one call',
+    match: (body) => flattenRequestText(body).includes('分镜草表') && !hasToolResult(body, DOC_CALL),
+    reply: {
+      type: 'tool', id: DOC_CALL, name: 'nomi_canvas_plan',
+      args: {
+        operation: 'create_canvas_nodes', summary: '交付导演备注与分镜草表',
+        nodes: [
+          { clientId: 'art-3', kind: 'agent-artifact', title: MD_TITLE, prompt: '', artifact: { fileType: 'markdown', content: MD_BODY } },
+          { clientId: 'art-4', kind: 'agent-artifact', title: TABLE_TITLE, prompt: '', artifact: { fileType: 'table', content: TABLE_BODY } },
+        ],
+        edges: [],
+      },
+    },
+  })
+  const docsFollowup = walk.fixture.expectText({
+    label: 'host returns the docs deliver receipt',
+    match: (body) => hasToolResult(body, DOC_CALL),
+    reply: { type: 'text', text: '备注和草表都放上去了。' },
+  })
+  await sendCanvas(win, DOC_ASK)
+  await recorded(docsRequest.received, 'docs deliver request')
+  await recorded(docsFollowup.received, 'docs deliver receipt')
+  await waitForV4TurnIdle(win, { panel: CANVAS_PANEL, settledBy: canvas.locator(TOOL_RECEIPT).last() })
+
+  // Markdown 产物：正文真的读到了文件内容（不是空壳）。
+  const mdNode = win.locator('.generation-canvas-v2-node[data-kind="agent-artifact"]:has([data-artifact-file-type="markdown"])').first()
+  await mdNode.waitFor({ timeout: 15_000 })
+  await expect(mdNode, 'Markdown 产物渲染出交付的正文').toContainText('旁白先入')
+  // 渲染，不是贴源码：标题变成真的 <h1>，列表变成真的 <li>，记号不该还留在屏幕上。
+  await expectVisible(mdNode.locator('h1').first(), 'Markdown 标题被渲染成标题（不是 "# " 开头的一行字）')
+  expect((await mdNode.locator('li').count()) >= 3, 'Markdown 列表被渲染成列表项').toBe(true)
+  expect(await mdNode.innerText(), 'Markdown 源码记号不出现在屏幕上').not.toContain('# 导演备注')
+  await expectVisible(mdNode.getByText(MD_TITLE, { exact: false }).first(), 'Markdown 产物标题')
+  await walk.snap('04-delivered-markdown')
+
+  // 表格产物：表头与单元格都在（走的是安全的结构化渲染，不是 innerHTML）。
+  const tableNode = win.locator('.generation-canvas-v2-node[data-kind="agent-artifact"]:has([data-artifact-file-type="table"])').first()
+  await tableNode.waitFor({ timeout: 15_000 })
+  await expect(tableNode, '表格产物渲染出表头').toContainText('景别')
+  await expect(tableNode, '表格产物渲染出行内容').toContainText('眼神落点')
+  await expectVisible(tableNode.getByText(TABLE_TITLE, { exact: false }).first(), '表格产物标题')
+  await walk.snap('05-delivered-table')
+
+  // ── 幕四 · SVG 固化为参考图：真实点击浮条按钮 → canvas 栅格化 → PNG 落盘 → asset 节点 ──
   const svgRefNode = win.locator('.generation-canvas-v2-node[data-kind="agent-artifact"]').filter({
     has: win.locator('img[src*=".svg"]'),
   }).first()
@@ -190,7 +310,12 @@ try {
   // asset 节点 img 的 src = result.url 的渲染：nomi-local + PNG（referenceUrl 链路可读、可被连线）。
   const assetImgSrc = await assetImg.getAttribute('src')
   expect(String(assetImgSrc || '').startsWith('nomi-local://asset/'), '固化资产以 nomi-local 渲染（可被下游连线）').toBe(true)
-  await walk.snap('04-rasterized-reference-asset')
+  // 文件名要解码回中文：nomi-local URL 逐段 encodeURIComponent，取名不 decode 就会把
+  // %E5%BC%80%E5%9C%BA… 当成参考图的名字显在画布上（用户看到一串乱码）。
+  const assetTitle = await assetRefNode.innerText()
+  expect(assetTitle.includes('%E'), `固化参考图标题不带百分号转义（实际："${assetTitle.replace(/\n/g, ' ').slice(0, 80)}"）`).toBe(false)
+  expect(assetTitle, '固化参考图沿用产物标题').toContain(NODE_TITLE)
+  await walk.snap('06-rasterized-reference-asset')
   // 磁盘证据：栅格化出的 PNG 文件真实落在项目 assets/imported 下（存在 = canvas 真的画了并落盘）。
   const fs = await import('node:fs')
   const pathMod = await import('node:path')
@@ -199,7 +324,7 @@ try {
   expect(diskPngs.length >= 1, '栅格化 PNG 真实落盘到项目 assets/imported').toBe(true)
 
   // 面板有对话流痕迹（用户真的在对话里交付，不是旁路注入）。
-  await expect(canvas.locator(USER_BUBBLE).last(), '交付指令出现在对话流').toContainText('讲解卡')
+  await expect(canvas.locator(USER_BUBBLE).last(), '交付指令出现在对话流').toContainText('分镜草表')
   console.log(`\nagent-artifact 走查通过（project=${projectId}）✓✓✓`)
 } catch (error) {
   failure = error
