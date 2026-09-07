@@ -200,3 +200,133 @@ test('读戳方推荐了不存在的补盖脚本 → 门岗报红（报告到的
     '应指出 hook 让人运行一个不存在的脚本',
   )
 })
+
+// —— 轴 C：登记表里的命令在「脚本被挪走」时的行为（2026-09-07）——
+//
+// 报告到的那一例是「落后的 worktree 上 commit-bypass-check.sh 不存在」，但真正的类是
+// **防线依赖一个可能不存在的文件，缺失时默认放行**。缺失的成因换了好几茬（没跑 pnpm install、
+// 分支停在旧提交、文件被删），「缺失 = 127 = 放行」这一条一次都没被拦过。
+
+/** 造一棵只有 hook 契约面的假项目根：脚本齐、settings 可按需改写。 */
+function makeSettingsFixture(t, rewriteCommand) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nomi-hook-settings-'))
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }))
+  fs.mkdirSync(path.join(dir, 'scripts', 'claude-hooks'), { recursive: true })
+  fs.mkdirSync(path.join(dir, '.claude'), { recursive: true })
+  for (const name of fs.readdirSync(path.join(repoRoot, 'scripts/claude-hooks'))) {
+    if (!name.endsWith('.sh')) continue
+    fs.copyFileSync(path.join(repoRoot, 'scripts/claude-hooks', name), path.join(dir, 'scripts/claude-hooks', name))
+  }
+  const settings = JSON.parse(fs.readFileSync(path.join(repoRoot, '.claude/settings.json'), 'utf8'))
+  if (rewriteCommand) {
+    for (const groups of Object.values(settings.hooks)) {
+      for (const group of groups) for (const hook of group.hooks) hook.command = rewriteCommand(hook.command)
+    }
+  }
+  fs.writeFileSync(path.join(dir, '.claude/settings.json'), JSON.stringify(settings, null, 2))
+  return dir
+}
+
+test('登记表退回裸 `bash <脚本>` → 三个拦截型闸门全部报「缺失时 127 不是 2」（今天实测的那一例）', (t) => {
+  const dir = makeSettingsFixture(t, (command) => {
+    const script = /CLAUDE_PROJECT_DIR\/([\w./-]+\.sh)/.exec(command)[1]
+    return `bash "$CLAUDE_PROJECT_DIR/${script}"`
+  })
+  const problems = checkHookBehavior(dir, { only: ['settings-guard'] })
+  for (const script of ['pre-push-check.sh', 'commit-bypass-check.sh', 'secret-guard.sh']) {
+    assert.ok(
+      problems.some((p) => p.includes(script) && p.includes('退出码是 127')),
+      `${script} 的缺失行为必须被拦下——裸 bash 缺文件退 127，Claude Code 当「继续」`,
+    )
+  }
+})
+
+test('把拦截型守卫的退出码从 2 改成 1 → 报红（1 是非阻断错误，不拦人）', (t) => {
+  const dir = makeSettingsFixture(t, (command) => command.replace('exit 2;', 'exit 1;'))
+  const problems = checkHookBehavior(dir, { only: ['settings-guard'] })
+  assert.ok(
+    problems.some((p) => p.includes('commit-bypass-check.sh') && p.includes('退出码是 1')),
+    '退出码不是 2 就不是阻断，必须报红',
+  )
+})
+
+test('提示型守卫被写成 exit 2 → 报红（Stop 上会锁成想修都停不下来的死循环）', (t) => {
+  const dir = makeSettingsFixture(t, (command) =>
+    command.includes('completion-check.sh') ? command.replace('exit 1;', 'exit 2;') : command,
+  )
+  const problems = checkHookBehavior(dir, { only: ['settings-guard'] })
+  assert.ok(
+    problems.some((p) => p.includes('completion-check.sh') && p.includes('不该把人锁死')),
+    '提示型 hook 缺失时不该阻断',
+  )
+})
+
+test('提示型守卫一声不吭地放行 → 报红（可以 fail-open，不可以 fail-silent）', (t) => {
+  const dir = makeSettingsFixture(t, (command) =>
+    command.includes('handoff-read.sh') ? `sh -c 'h="$CLAUDE_PROJECT_DIR/scripts/claude-hooks/handoff-read.sh"; [ -f "$h" ] || exit 0; exec bash "$h"'` : command,
+  )
+  const problems = checkHookBehavior(dir, { only: ['settings-guard'] })
+  assert.ok(
+    problems.some((p) => p.includes('handoff-read.sh') && p.includes('fail-silent')),
+    '缺失却既不报错也不出声 = 和正常放行长得一模一样，必须报红',
+  )
+})
+
+test('仓库当前的登记表：脚本挪走必拦、脚本在场必放行（不许假红）', (t) => {
+  const dir = makeSettingsFixture(t)
+  assert.deepEqual(
+    checkHookBehavior(dir, { only: ['settings-guard'] }),
+    [],
+    '守卫不许退化成「拦一切」——会误报的闸门用不了几次就会被人绕过',
+  )
+})
+
+// —— 轴 D：doc-only 判据 vs 非 ASCII 路径（2026-09-07 论文雷达工人报到的那一例）——
+//
+// 报告到的形状：`docs/中文附件说明.md` 这类纯文档改动被 pre-push 闸判成「有代码改动」，
+// 于是 docs-only 的推送白等一遍五门。根因是按行读了 `git diff --name-only`——
+// git 默认 `core.quotePath=true`，非 ASCII 路径会被输出成 `"docs/\344\270\255…"`：
+// 首尾各一个引号、中间八进制转义，闸门那把尺（`^docs/` / `\.md$`）两头都被引号挡掉。
+//
+// 下面两条是这一轴的阳性对照：把 hook 退回按行读 → 门岗必须报红（否则轴 D 是摆设），
+// 等价改写（`-z` → `-c core.quotePath=false`）→ 必须照样绿（不许假红）。
+
+test('doc-only 判据退回按行读 --name-only → 非 ASCII 路径被误判，门岗报红', (t) => {
+  const dir = makeContractFixture(t, {
+    mutateHook: (hook) => {
+      // 精确还原修复前那一版：函数体按行 grep，调用点不带 -z。
+      const next = hook
+        .replace(
+          /is_docs_only\(\) \{[\s\S]*?\n\}/,
+          `is_docs_only() {\n  ARGV_LIST="$(cat)"\n  [ -n "$ARGV_LIST" ] || return 1\n  printf '%s\\n' "$ARGV_LIST" | grep -Ev '(\\.md$|\\.txt$|^docs/|^\\.claude/)' | grep -q . && return 1\n  return 0\n}`,
+        )
+        .replaceAll('git diff -z --name-only', 'git diff --name-only')
+      assert.ok(next.includes("grep -Ev '(\\.md$"), '替换必须真的命中，否则这条测试是空转')
+      assert.ok(!next.includes('git diff -z --name-only'), '调用点必须真的退回不带 -z，否则这条测试是空转')
+      return next
+    },
+  })
+  const problems = checkHookBehavior(dir, { only: ['docs-only'] })
+  assert.ok(
+    problems.some((p) => p.includes('doc-only 误判') && p.includes('非 ASCII')),
+    `退回按行读之后，非 ASCII 文档名必须被门岗抓到误判；实际报出：${JSON.stringify(problems)}`,
+  )
+  // 反面对照同时必须还在：混了 .ts 的那条不许因为「放宽」而漏判。
+  assert.ok(!problems.some((p) => p.includes('doc-only 漏判')), '按行读只会误判，不该同时出现漏判')
+})
+
+test('doc-only 判据换成 -c core.quotePath=false（等价写法）→ 必须照样绿', (t) => {
+  const dir = makeContractFixture(t, {
+    mutateHook: (hook) => {
+      const next = hook.replaceAll('git diff -z --name-only', 'git -c core.quotePath=false diff --name-only')
+      assert.notEqual(next, hook, '替换必须真的命中，否则这条测试是空转')
+      // 函数体还是按 NUL 读，所以这里得把分隔符补回去——等价性验的是「路径不再被转义」这件事。
+      return next.replaceAll('git -c core.quotePath=false diff --name-only', 'git -c core.quotePath=false diff --name-only -z')
+    },
+  })
+  assert.deepEqual(
+    checkHookBehavior(dir, { only: ['docs-only'] }),
+    [],
+    '关掉 quotePath 的等价写法必须被接受——会误报的门岗三次之后就会被人绕过',
+  )
+})

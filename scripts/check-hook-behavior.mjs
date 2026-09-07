@@ -38,13 +38,16 @@
 //   ③ 无戳、老格式戳、别棵树的戳，一律拦；
 //   ④ 读戳方拦人时推荐的补盖命令，指向的文件必须真的存在；
 //   ⑤ 命令识别矩阵逐条对：该拦的拦、该放的放（含引号内词组不算推送）。
-import { execFileSync } from 'node:child_process'
+import { execFileSync, spawnSync } from 'node:child_process'
 import fs from 'node:fs'
+import { createRequire } from 'node:module'
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { MARKER_BASENAME, STAMP_KEYED_FIELDS, resolveMarkerPath, writeStamp } from './stamp-gates-ok.mjs'
+
+const { BLOCKING, hookCommands, hookKind, referencedScript } = createRequire(import.meta.url)('./claude-hooks-registry.cjs')
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 
@@ -88,6 +91,29 @@ function makeProbeRepo() {
   fs.writeFileSync(path.join(dir, 'code.mjs'), 'export const a = 2\n')
   git(['add', '-A'], dir)
   git(['commit', '-q', '--no-verify', '-m', 'outgoing code change'], dir)
+  return dir
+}
+
+/**
+ * 造一棵 outgoing 只有**文档**的临时仓库，文件名由调用方给（含非 ASCII 的那一路是重点）。
+ * `extraPaths` 里塞一个代码文件，就成了「文档 + 代码」的反面用例。
+ */
+function makeDocsProbeRepo({ docPath, extraPaths = [] }) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nomi-docs-probe-'))
+  git(['init', '-q', '-b', 'main'], dir)
+  git(['config', 'user.email', 'probe@example.com'], dir)
+  git(['config', 'user.name', 'probe'], dir)
+  fs.writeFileSync(path.join(dir, 'seed.txt'), 'seed\n')
+  git(['add', '-A'], dir)
+  git(['commit', '-q', '--no-verify', '-m', 'base'], dir)
+  git(['update-ref', 'refs/remotes/origin/main', 'HEAD'], dir)
+  for (const rel of [docPath, ...extraPaths]) {
+    const full = path.join(dir, rel)
+    fs.mkdirSync(path.dirname(full), { recursive: true })
+    fs.writeFileSync(full, 'x\n')
+  }
+  git(['add', '-A'], dir)
+  git(['commit', '-q', '--no-verify', '-m', 'outgoing docs change'], dir)
   return dir
 }
 
@@ -175,6 +201,48 @@ function checkReaderBehaviour(root, problems) {
     }
   } finally {
     fs.rmSync(dir, { recursive: true, force: true })
+  }
+}
+
+/**
+ * 轴 D：doc-only 放行的判据必须**认得非 ASCII 路径**（2026-09-07 实测栽过）。
+ *
+ * git 默认 `core.quotePath=true`：`--name-only` 把 `docs/中文附件.md` 输出成
+ * `"docs/\\344\\270\\255\\346\\226\\207\\351\\231\\204\\344\\273\\266.md"`——首尾各一个引号，中间八进制转义。
+ * 闸门那把尺（`^docs/` / `\\.md$`）两头都被引号挡掉，于是纯中文文档改动被判成「有代码改动」，
+ * docs-only 的推送白等一遍五门。方向上是多跑门岗不是绕过，所以本地一路绿、只有人在等。
+ *
+ * 两条都必须在：只验「中文 → 放行」会被一个「永远放行」的实现骗过（假绿），
+ * 所以配一条「中文文档 + 一个 .ts → 必须拦」的反面对照钉住尺子还在量。
+ */
+const DOCS_ONLY_MATRIX = [
+  { label: 'ASCII 文档：基线', docPath: 'docs/plain-note.md', extraPaths: [], expect: 'allow' },
+  { label: '非 ASCII 文档名（quotePath 转义那一族）', docPath: 'docs/中文附件说明.md', extraPaths: [], expect: 'allow' },
+  { label: '路径含空格', docPath: 'docs/note with space.md', extraPaths: [], expect: 'allow' },
+  { label: '非 ASCII 文档 + 一个 .ts —— 反面对照，必须拦', docPath: 'docs/中文附件说明.md', extraPaths: ['src/a.ts'], expect: 'block' },
+]
+
+function checkDocsOnlyDetection(root, problems) {
+  const hookPath = path.join(root, HOOK_REL)
+  if (!fs.existsSync(hookPath)) return
+  for (const { label, docPath, extraPaths, expect } of DOCS_ONLY_MATRIX) {
+    const dir = makeDocsProbeRepo({ docPath, extraPaths })
+    try {
+      // 一枚戳都不盖：doc-only 判真才会放行，判假就一定撞「没有戳」而被拦。
+      const blocked = runHook(hookPath, dir) !== 0
+      if (expect === 'allow' && blocked) {
+        problems.push(
+          `doc-only 误判：${label} —— outgoing 全是文档却被要求过五门。` +
+            `多半是按行读了 \`git diff --name-only\`（默认 quotePath 会把非 ASCII 路径转义并加引号），` +
+            `应当用 \`-z\` 按 NUL 读。`,
+        )
+      }
+      if (expect === 'block' && !blocked) {
+        problems.push(`doc-only 漏判：${label} —— 混着代码改动却按 doc-only 放行了，闸门等于不存在。`)
+      }
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true })
+    }
   }
 }
 
@@ -276,8 +344,117 @@ function checkSecretGuard(root, problems) {
   }
 }
 
+/**
+ * 轴 C｜登记表里的每条命令，在**脚本文件不存在**时到底怎么退出（2026-09-07）。
+ *
+ * 起因：一棵落后 main 的 worktree，`.claude/settings.json` 里登记着
+ * `bash "$CLAUDE_PROJECT_DIR/scripts/claude-hooks/commit-bypass-check.sh"`，
+ * 而那棵树上没有这个文件 → bash 退 **127** → Claude Code 只认 exit 2 是阻断，
+ * 127 归为「hook 出错，继续」→ 子 agent 的 `git -c core.hooksPath=… commit` 畅通无阻。
+ * 闸门在登记表里活着、在现实里不存在，全程零句红。
+ *
+ * 结构面（命令串长不长成规范守卫）由 `check:claude-hooks` 逐字比对；这里做的是**行为**面的
+ * 阳性对照：真的把脚本挪走（拿一个没有 `scripts/claude-hooks/` 的空目录当 `CLAUDE_PROJECT_DIR`），
+ * 真的喂一条 PreToolUse 载荷跑那条命令，看退出码。
+ * 结构对了行为不对，是这仓栽过很多次的假绿——所以两道都要。
+ */
+const GUARD_PROBE_COMMAND = 'git -c core.hooksPath=/dev/null commit -m x'
+
+/** 一条无害载荷：九个 hook 拿到它都该原样放行（没有推送、没有绕口、不是 package.json、没有转录）。 */
+function benignPayload(cwd) {
+  return JSON.stringify({ tool_input: { command: 'git status', file_path: '/tmp/nomi-guard-probe.txt' }, cwd })
+}
+
+/** 用真实的 shell 跑 settings 里那条命令串（harness 就是这么跑的），返回退出码与 stderr。 */
+function runSettingsCommand(command, { projectDir, cwd, payload }) {
+  const result = spawnSync('bash', ['-c', command], {
+    input: payload,
+    cwd,
+    encoding: 'utf8',
+    env: { ...process.env, CLAUDE_PROJECT_DIR: projectDir },
+  })
+  return { status: typeof result.status === 'number' ? result.status : 1, stderr: result.stderr ?? '' }
+}
+
+function checkSettingsGuards(root, problems) {
+  const settingsPath = path.join(root, '.claude', 'settings.json')
+  if (!fs.existsSync(settingsPath)) {
+    problems.push('.claude/settings.json 不存在——hook 登记表没有版本化的真相源，什么都验不了。')
+    return
+  }
+  let settings
+  try {
+    settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'))
+  } catch (error) {
+    problems.push(`.claude/settings.json 解析失败：${error.message}`)
+    return
+  }
+  const commands = hookCommands(settings.hooks)
+  if (commands.length === 0) {
+    problems.push('.claude/settings.json 里一条 hook 都没登记——闸门全下线。')
+    return
+  }
+
+  // 「脚本被挪走」的现场：一个存在、但里面没有 scripts/claude-hooks/ 的项目根。
+  const stripped = fs.mkdtempSync(path.join(os.tmpdir(), 'nomi-hook-missing-'))
+  try {
+    for (const command of commands) {
+      const script = referencedScript(command)
+      if (!script) {
+        problems.push(`hook 命令认不出它调的脚本，缺失行为无从验证：${command}`)
+        continue
+      }
+      const scriptPath = path.join(root, script)
+      if (!fs.existsSync(scriptPath)) {
+        problems.push(`hook 指向的脚本不存在：${script}`)
+        continue
+      }
+      const kind = hookKind(fs.readFileSync(scriptPath, 'utf8'))
+      const label = `${script}（${kind === BLOCKING ? '拦截型' : '提示型'}）`
+
+      // 阳性对照：脚本不在场。
+      const missing = runSettingsCommand(command, {
+        projectDir: stripped,
+        cwd: stripped,
+        payload: JSON.stringify({ tool_input: { command: GUARD_PROBE_COMMAND }, cwd: stripped }),
+      })
+      if (kind === BLOCKING) {
+        if (missing.status !== 2) {
+          problems.push(
+            `${label} 的脚本不在场时退出码是 ${missing.status}，不是 2——Claude Code 只把 2 当阻断，` +
+              `其余（含裸 bash 的 127）一律「hook 出错，继续」，等于闸门静默放行。` +
+              `这正是 2026-09-07 那棵落后 worktree 上发生的事。`,
+          )
+        }
+      } else if (missing.status === 2) {
+        problems.push(
+          `${label} 的脚本不在场时 exit 2 阻断了——提示型不该把人锁死（Stop 上尤其会变成想修都停不下来的死循环）。`,
+        )
+      } else if (missing.status === 0 || missing.stderr.trim() === '') {
+        problems.push(
+          `${label} 的脚本不在场时既不报错也没有一句 stderr——可以 fail-open，不可以 fail-silent：` +
+            `少了一层提醒必须让人看得见。`,
+        )
+      }
+
+      // 负向对照：脚本在场 + 无害载荷 → 必须原样放行。守卫不许退化成「拦一切」，
+      // 会误报的闸门用不了几次就会被人绕过（见 docs/design/page-design-process.md）。
+      const present = runSettingsCommand(command, {
+        projectDir: root,
+        cwd: root,
+        payload: benignPayload(root),
+      })
+      if (present.status !== 0) {
+        problems.push(`${label} 在脚本正常在场、载荷无害时退出码是 ${present.status}，本该 0——守卫误伤了正常调用。`)
+      }
+    }
+  } finally {
+    fs.rmSync(stripped, { recursive: true, force: true })
+  }
+}
+
 /** 全部轴。门岗跑全套；单元测试按 `only` 只跑它要验的那一轴（每轴都要实跑 hook，很贵）。 */
-export const AXES = ['writer', 'stamp', 'push-commands', 'secret-guard', 'suggestion']
+export const AXES = ['writer', 'stamp', 'push-commands', 'docs-only', 'secret-guard', 'suggestion', 'settings-guard']
 
 export function checkHookBehavior(root = repoRoot, { only = AXES } = {}) {
   const problems = []
@@ -300,7 +477,9 @@ export function checkHookBehavior(root = repoRoot, { only = AXES } = {}) {
 
   if (run('stamp')) checkReaderBehaviour(root, problems)
   if (run('push-commands')) checkCommandDetection(root, problems)
+  if (run('docs-only')) checkDocsOnlyDetection(root, problems)
   if (run('secret-guard')) checkSecretGuard(root, problems)
+  if (run('settings-guard')) checkSettingsGuards(root, problems)
 
   // ④ 拦人时给的补盖命令必须指向真实存在的文件（历史上它指了个不存在的脚本）。
   if (run('suggestion')) {
@@ -324,7 +503,8 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   if (problems.length === 0) {
     console.log(
       `✓ Bash 闸门行为契约通过：戳契约（gates 写、hook 读，同一个 ${MARKER_BASENAME}）` +
-        ` + pre-push 与 secret-guard 的命令识别矩阵，均已实跑 hook 验证。`,
+        ` + pre-push 与 secret-guard 的命令识别矩阵 + doc-only 判据（含非 ASCII 路径）` +
+        ` + 登记表每条命令在脚本被挪走时的退出码（拦截型必 2，提示型必有 stderr），均已实跑验证。`,
     )
     process.exit(0)
   }
