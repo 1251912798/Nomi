@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest'
 import { projectLaneSnapshot } from '../../../../electron/agentLane/laneProjection.mjs'
 import { laneViewModel, type LaneViewModelLabels } from '../../../workbench/ai/lane/laneViewModel'
 import {
+  LANE_FIXTURE_FACTS,
   laneDrivenReceipt,
   laneSnapshotToolDenied,
   laneSnapshotToolDone,
@@ -17,16 +18,23 @@ const labels: LaneViewModelLabels = {
   thinkingLabel: '正在想…',
   formatTokens: (value) => String(value),
   formatCost: (usd) => `$${usd.toFixed(2)}`,
+  // 醒目的假串：这两条一旦真的印到断言里的字段上，看一眼就知道走错了分支。
+  unknown: '<unknown>',
+  free: '<free>',
 }
 
 describe('design-lab fixtures driven by a LaneSnapshot (probe P6)', () => {
   it('empty: an empty transcript projects to no items, not running, and no invented ceiling/cost', () => {
     const empty = { ...laneSnapshotToolRunning(), transcript: [], tipId: null, operation: null }
-    const model = laneViewModel(projectLaneSnapshot(empty), labels)
+    const model = laneViewModel(projectLaneSnapshot(empty, LANE_FIXTURE_FACTS), labels)
     expect(model.items).toEqual([])
     expect(model.running).toBe(false)
     expect(model.usage.max).toBeUndefined()
-    expect(model.usage.cost).toBeUndefined()
+    // 这条原本写的是 `toBeUndefined()`——那是 #605「花费三行改三态」之前的形状。三态之后
+    // 「我们没这个数」不再是让整行消失，而是整行留着、数字位写占位符（`laneViewModel.ts`
+    // 那段注释讲了为什么：消失会让人以为这一项不存在）。探针要钉的意图没变——**不许凭空
+    // 造一个数**——所以断言跟着契约翻译成「拿到的是占位符，不是某个金额」。
+    expect(model.usage.cost).toBe('<unknown>')
     // `AgentPanelV4Panel` renders `V4EmptyState` on `flow.length === 0`; the surface-derived
     // starter chips are the shell's, so the pixel half of this cell waits for a lane-driven shell (stage 4).
   })

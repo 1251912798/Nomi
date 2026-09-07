@@ -104,6 +104,11 @@ function LaneReceiptCell({ lane }: { lane: (rejectReason: string) => LaneSnapsho
     thinkingLabel: fx.t('agentPanelV4.thinkingLabel'),
     formatTokens: (value) => String(value),
     formatCost: (usd) => `$${usd.toFixed(2)}`,
+    // 花费/上下文三态的两个占位串。这一格只画收据，两者都到不了画面上，
+    // 但它们是 `LaneViewModelLabels` 的必填项——`unknown` 复用面板真用的那条词条，
+    // `free` 在生产侧刻意还没有词条（见 laneViewModel.ts 上那段注释），实验室先写字面量。
+    unknown: labels.context.unknown,
+    free: 'free',
   })
   return (
     <Piece>
