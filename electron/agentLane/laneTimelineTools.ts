@@ -25,6 +25,7 @@ import {
   type TimelineReadInput,
   type TimelineReadResult,
 } from "../shared/agentCapabilities/timelineRead";
+import { LANE_READ_TOOL_TIMEOUT_MS } from "../shared/agentLane/laneToolContract";
 import type { LaneToolSpec } from "../shared/agentLane/laneToolContract";
 import { laneArgumentTolerance, laneNoArgumentTolerance } from "./laneArgumentTolerance";
 import { bindLaneTool, type LaneToolDescriptor } from "./laneRuntimePort";
@@ -46,6 +47,9 @@ const TIMELINE_GUIDELINES = Object.freeze([
 ]);
 
 const TIMELINE_READ_EFFECTS = Object.freeze({ mutates: false, billable: false, reversal: "none" } as const);
+
+/** 时间轴这一族目前全是读。 */
+const TIMELINE_READ_EXECUTION = Object.freeze({ timeoutMs: LANE_READ_TOOL_TIMEOUT_MS } as const);
 
 interface TimelineToolShape {
   readonly alias: string;
@@ -93,6 +97,7 @@ export function timelineLaneToolSpecs(): LaneToolSpec[] {
       promptGuidelines: TIMELINE_GUIDELINES,
       // 时间轴这一族本阶段**只有读**（写入那两个还带着形状冲突，见方案 §12.2 第 4 行）。
       effects: TIMELINE_READ_EFFECTS,
+      execution: TIMELINE_READ_EXECUTION,
       schema,
       examples: tool.examples,
       prepareArguments: tool.arrayFields.length === 0 && isNoArgumentSchema(schema)

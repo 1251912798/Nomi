@@ -6,6 +6,9 @@ import { anthropicMessagesApi } from '@earendil-works/pi-ai/api/anthropic-messag
 import { ModelRuntime } from '@earendil-works/pi-coding-agent';
 import { z } from 'zod';
 import type { NomiModelConfig } from '../runtimePort.js';
+import { guardProviderStreams, type NomiStreamGuard } from './providerGuard.mjs';
+
+export type { NomiStreamGuard } from './providerGuard.mjs';
 
 export type { NomiModelConfig } from '../runtimePort.js';
 
@@ -108,8 +111,12 @@ function modelCost(config: NomiModelConfig): Model<Api>['cost'] {
  * copy that drifts is always the one nobody is looking at.
  *
  * Literal configuration only; never use registerProvider's command/env-valued config surface.
+ *
+ * `guard` 装上传输层看门狗与厂商报文归一（`providerGuard.mts`）。**旧路不传**——它在
+ * `run.mts:164` 有自己那处接线（同一个 `observeNativeStream`，不同的预算与失败出口：
+ * 旧路要 rejection，harness 要一条可重试的助手消息）。传了就会包两层看门狗。
  */
-export async function createNomiProvider(input: NomiModelConfig) {
+export async function createNomiProvider(input: NomiModelConfig, guard?: NomiStreamGuard) {
   const config = configCompatibility.parse(input);
   const credentials = new InMemoryCredentialStore();
   if (config.authType === 'api-key') {
@@ -161,10 +168,11 @@ export async function createNomiProvider(input: NomiModelConfig) {
       return (await options?.onPayload?.(body, selected)) ?? body;
     },
   });
-  const streams: ProviderStreams = {
+  const base: ProviderStreams = {
     stream: (chosen, context, options) => native.stream(chosen, context, requestOptions(options)),
     streamSimple: (chosen, context, options) => native.streamSimple(chosen, context, requestOptions(options)),
   };
+  const streams = guard ? guardProviderStreams(base, guard) : base;
   const provider = createProvider({
     id: config.providerId, baseUrl, models: [model], api: streams,
     auth: { apiKey: {

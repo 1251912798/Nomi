@@ -52,6 +52,16 @@ export interface LaneViewModelLabels {
   formatTokens(value: number): string
   formatCost(usd: number): string
   /**
+   * 「正在重试 2/4」。**两个数都由调用方填**（R15）——它是这一族里唯一带变量的可见文字，
+   * 而 zh-CN 与 en 的语序不同，在这一层拼字符串就等于把语序钉死成中文的。
+   *
+   * 词条**故意还没进 `src/i18n/locales/agentPanelV4.ts`**：影子期这一族标签一个生产调用方
+   * 都还没有（`useAgentPanelV4Data.ts` 喂的是旧那份投影），先落一个 `agentPanelV4.retrying`
+   * 就是一个到不了的死键，`check:i18n-dead-keys` 会当场红——它红得对。词条和它的消费者
+   * 同一个 commit 出现，就在把面板接到 lane 的那次切换 PR 里。
+   */
+  retryLabel(attempt: number, maxAttempts: number): string
+  /**
    * 「这个数我们没有」的占位（面板上那个 `—`）。三态里的 `unknown` 走它——
    * **整行留着、数字位写占位符**，让用户看见「这一项存在但拿不到」，而不是看见一个 0，
    * 也不是让整行凭空消失（消失会让人以为这一项不存在）。
@@ -87,6 +97,11 @@ export interface LaneViewModel {
   items: readonly V4FlowItem[]
   usage: ContextUsage
   running: boolean
+  /**
+   * 只在真的在退避时存在。**缺失 = 没在重试**，不是重试了 0 次——面板据此决定画不画那一行，
+   * 而一个恒存在的「重试 0/4」会把「一切正常」说成「它在挣扎」。
+   */
+  retry?: string
   /**
    * 有一张审批卡在等用户。**它不是流里的一行**——它住在 composer 上方那个介入槽里
    * （v4 定稿的积木 ⑤），所以它不进 `items`；进了就会在滚上去之后消失，而用户正等着答它。
@@ -223,6 +238,9 @@ export function laneViewModel(projection: LaneProjection, labels: LaneViewModelL
   return {
     items,
     running: projection.running,
+    ...(projection.retry
+      ? { retry: labels.retryLabel(projection.retry.attempt, projection.retry.maxAttempts) }
+      : {}),
     ...(projection.pending ? { pending: projection.pending } : {}),
     usage: {
       // 环的分子是「现在上下文里装了多少」，不是累计用量——累计会画出一个 300% 的环。
