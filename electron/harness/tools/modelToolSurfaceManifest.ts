@@ -85,6 +85,12 @@ export const generationPlanInputSchema = z.discriminatedUnion("operation", [
   z.object({ operation: z.literal("create"), ...createFields }).strict(),
   z.object({ operation: z.literal("patch"), operationId, patch: candidatePatch }).strict(),
   z.object({ operation: z.literal("preview"), operationId }).strict(),
+  // NOTE: `resolve` deliberately does NOT live here. Its schema is the capability
+  // contract `GENERATION_RESOLVE_CAPABILITY.inputSchema`
+  // (electron/shared/agentCapabilities/generation.ts) — the single generation point
+  // required by the runtime rebuild (docs/plan/2026-09-07-agent-runtime-rebuild.md
+  // §1.1 B5 / §1.2 K1). The internal model-facing face is projected from the contract
+  // layer in stage 2; nothing new gets hand-written into this legacy manifest.
 ]);
 
 export const generationStatusInputSchema = z.discriminatedUnion("operation", [

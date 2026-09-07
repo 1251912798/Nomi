@@ -4,6 +4,8 @@ import type { RuntimeToolCall } from "../harness/runtime/runtimePort";
 import type { ProjectBinding } from "../shared/projectBinding";
 import type { ProjectLeaseV2 } from "./projectLease";
 import { createPiGenerationTransportAdapter } from "./generationTransportAdapters";
+import { generationPlanInputSchema } from "../harness/tools/modelToolSurfaceManifest";
+import { GENERATION_RESOLVE_CAPABILITY } from "../shared/agentCapabilities/generation";
 import type { ApprovalReceiptAuthority } from "./approvalReceipt";
 
 const binding: ProjectBinding = {
@@ -132,5 +134,30 @@ describe("resident semantic generation transport", () => {
     expect(result).toMatchObject({ ok: false, code: "generation_declined", denied: true });
     expect(rejectGeneration).toHaveBeenCalledTimes(1);
     expect(planning).not.toHaveBeenCalled();
+  });
+
+  // 内部模型面的 resolve **不在这条旧 manifest 通路上**（P1：不往要删的壳里加新东西）。
+  // 它的 schema 只有一个生成点 = GENERATION_RESOLVE_CAPABILITY.inputSchema，内部面由阶段 2 的
+  // toolProjection 从契约层投影。这里钉住「旧通路 fail-closed，而不是悄悄当成 preview 放行」。
+  it("legacy generation_plan manifest fails closed on resolve instead of silently routing it as preview", async () => {
+    const planning = vi.fn(async () => ({}));
+    const adapter = createPiGenerationTransportAdapter(binding, { planning, leaseFor: () => lease });
+
+    const result = await adapter.tryExecute(
+      call("nomi_generation_plan", { operation: "resolve", shots: [{ id: "s1", durationSec: 6, sceneAnchorId: "hall" }] }),
+      new AbortController().signal,
+    );
+
+    expect(result).toMatchObject({ ok: false, code: "generation_input_invalid" });
+    expect(planning).not.toHaveBeenCalled();
+  });
+
+  it("the resolve capability contract is the single generation point for its input schema", () => {
+    // 反向断言：契约在（能解析同一份输入），旧 manifest 不在（上一条已证）——避免两处都有的并行版。
+    expect(GENERATION_RESOLVE_CAPABILITY.inputSchema.safeParse({
+      shots: [{ id: "s1", durationSec: 6, sceneAnchorId: "hall" }],
+    }).success).toBe(true);
+    expect(GENERATION_RESOLVE_CAPABILITY.inputSchema.safeParse({ shots: [] }).success).toBe(false);
+    expect(generationPlanInputSchema.safeParse({ operation: "resolve", shots: [{ id: "s1", durationSec: 6 }] }).success).toBe(false);
   });
 });

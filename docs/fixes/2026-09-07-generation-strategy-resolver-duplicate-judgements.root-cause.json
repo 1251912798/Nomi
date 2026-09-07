@@ -1,0 +1,176 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-07-generation-strategy-resolver-duplicate-judgements",
+  "problem_type": "One semantic question answered in more than one place, so the answers drift and the judgement stops matching what it is applied to",
+  "symptom": "In the storyboard editor, clicking generate on a single shot is refused with a reason about a different shot (the whole plan's first blocker), and the same parameter value is accepted on one path while reported invalid on another: `{\"aspect_ratio\": \"16:9\"}` passes `plannedNodeMeta.isValidParamValue` (string-form compare) but is reported as `param.value` by `planResolver` (strict ===). The same resolve payload is also accepted by three different shapes depending on which face receives it (GUI narrow IPC, planning seam, legacy tool manifest).",
+  "direct_cause": "`resolveGeneratableGate` fetched a resolve result for the entire plan and returned its first blocker regardless of which shots the click was about; `planResolver` re-implemented the duration/enum/clamp helpers that already existed in `recommendation.ts` and the validity predicate that already existed in `plannedNodeMeta.ts`; the resolve input schema existed as inline zod in the legacy tool manifest, as a hand-rolled coercion loop in the planning seam, and as a shallow shape check in the GUI IPC module.",
+  "class_root": "Every one of these is the same missing invariant: a judgement must have exactly one owner, and its scope must be the thing it is applied to. Without a declared owner, a second implementation is cheaper to write than to find, and once two exist nothing forces them to agree; without an explicit scope parameter, a plan-wide computation silently becomes a per-click verdict.",
+  "affected_population": [
+    "Every storyboard user who generates one shot or a selection while another shot in the same plan is over or under its model's duration limit",
+    "Every agent or MCP caller sending generation parameters as JSON strings (\"5\") rather than numbers, which one path accepts and another rejects",
+    "Every external MCP host, whose accepted input set was looser than the internal agent's for the same capability"
+  ],
+  "scope_paths": [
+    "electron/capabilityCore/generationResolveIpc.ts",
+    "electron/capabilityCore/mcpGenerationTools.ts",
+    "electron/shared/agentCapabilities/generation.ts",
+    "electron/shared/videoCapabilities/paramConstraints.ts",
+    "electron/shared/videoCapabilities/planResolver.ts",
+    "electron/shared/videoCapabilities/recommendation.ts",
+    "electron/harness/tools/modelToolSurfaceManifest.ts",
+    "src/workbench/generationCanvas/agent/plannedNodeMeta.ts",
+    "src/workbench/generationCanvas/agent/storyboardStrategy.ts",
+    "src/workbench/creation/storyboard/strategyGate.ts",
+    "src/workbench/creation/storyboard/StoryboardPlanEditor.tsx"
+  ],
+  "entry_points": [
+    "Storyboard row generate, multi-select generate and batch generate in StoryboardPlanEditor",
+    "GUI narrow IPC channel nomi:generation:resolve-plan",
+    "Agent/MCP planning seam capability \"resolve\"",
+    "Canvas tool call and storyboard row action writing planned node model meta"
+  ],
+  "external_sources": [
+    {
+      "kind": "official-doc",
+      "url": "https://platform.minimax.io/docs/api-reference/video-generation-i2v",
+      "checked_at": "2026-09-07",
+      "purpose": "Confirm that a video model's duration limit is a function of model and resolution (6 or 10 at 768P, 6 only at 1080P), so no layer may hardcode a single number and every layer must read the same archetype facts."
+    },
+    {
+      "kind": "source-code",
+      "url": "https://github.com/fralapo/clippyme",
+      "checked_at": "2026-09-07",
+      "purpose": "Prior art for preflighting an expensive job (probe first, reject up front with the reason) before implementing our own preflight; confirms the shape rather than the judgement."
+    }
+  ],
+  "invariants": [
+    "Parameter legality has exactly one implementation; callers may differ only in what they do after an illegal value, never in whether it is illegal",
+    "A shot's stable id is derived by exactly one function, shared by the engine projection, the gate scope and the row binding",
+    "The generation gate's verdict is computed over the shots this action will materialize, never over the whole plan",
+    "The resolve input schema has exactly one authoring point, and every face (GUI IPC, agent, MCP) accepts exactly the same set of inputs"
+  ],
+  "generality_proof": "Each judgement now has a single declared owner that every entry point imports rather than re-implements: legality and duration ranges in paramConstraints, shot identity in stableShotId, resolve input shape in the capability contract, and gate scope as an explicit shotIds parameter that every caller must pass. A new caller cannot get a different answer without importing a different module, which is visible in review; and it cannot silently apply a plan-wide verdict to a narrower action, because the scope is a required argument of the classification rather than an implicit default.",
+  "shared_boundaries": [
+    {
+      "path": "electron/shared/videoCapabilities/paramConstraints.ts",
+      "symbol": "isParamValueAllowed",
+      "responsibility": "Sole answer to whether a parameter value is legal for a model archetype control, plus the duration range and clamping helpers derived from the same archetype facts."
+    },
+    {
+      "path": "electron/shared/agentCapabilities/generation.ts",
+      "symbol": "generationResolveInputSchema",
+      "responsibility": "Sole authoring point for the resolve input shape; the planning seam parses with it, so the GUI narrow IPC and the agent/MCP face accept the same inputs."
+    },
+    {
+      "path": "src/workbench/generationCanvas/agent/storyboardStrategy.ts",
+      "symbol": "scopeResolveStrategy",
+      "responsibility": "Narrows a plan-wide resolve result to the shots an action will materialize, so a verdict is only ever applied to what it was computed about."
+    },
+    {
+      "path": "src/workbench/generationCanvas/agent/storyboardStrategy.ts",
+      "symbol": "storyboardShotId",
+      "responsibility": "Single shot-identity ruler (re-exported stableShotId) shared by engine projection, gate scope and row-level warnings."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/workbench/generationCanvas/agent/plannedNodeMeta.ts",
+      "entry_point": "buildPlannedNodeMeta",
+      "disposition": "enforced",
+      "evidence": "Its local isValidParamValue was deleted and now aliases paramConstraints.isParamValueAllowed; the file keeps only its own policy (drop the value and fall back to the archetype default), which is documented as deliberately different from planResolver's clamp-and-report."
+    },
+    {
+      "path": "electron/shared/videoCapabilities/recommendation.ts",
+      "entry_point": "chooseParamValue",
+      "disposition": "enforced",
+      "evidence": "Its private numericOptions/nearestNumber were deleted and it now imports numericOptionValues/nearestNumber from paramConstraints, so the recommender and the resolver read duration options through the same code."
+    },
+    {
+      "path": "electron/harness/tools/modelToolSurfaceManifest.ts",
+      "entry_point": "generationPlanInputSchema",
+      "disposition": "enforced",
+      "evidence": "The inline resolve branch was removed; the legacy manifest now fails closed on operation \"resolve\" instead of silently routing it as preview, proven by a test in generationTransportAdapters.test.ts. Removing the matching hand-written name-to-capability chain restored generationTransportAdapters.ts byte-for-byte to origin/main."
+    },
+    {
+      "path": "electron/capabilityCore/mcpGenerationMultiShot.ts",
+      "entry_point": "multi-shot plan drafting",
+      "disposition": "not-affected",
+      "evidence": "It reads deps.videoModelCandidates[0] to pick a default candidate but never re-implements parameter legality or duration ranges; a repository search for numericOptions/nearestNumber/isValidParamValue/String(option.value) returns no hit in this file."
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/controls/parameterControlModel.ts",
+      "entry_point": "canvas node parameter controls",
+      "disposition": "not-affected",
+      "evidence": "It renders controls from the archetype and does not decide legality; the value it writes goes through buildPlannedNodeMeta, which is now behind the shared predicate."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "The duplicate-answer mechanism already produced four independent instances in one feature (duration helpers, legality predicate, shot id, resolve schema), and the repository keeps adding faces for the same capability (GUI IPC, internal agent, external MCP). Any new face is one copy-paste away from a fifth answer, and the scope mismatch recurs whenever a plan-wide computation is reused by a narrower action.",
+    "same_class_scan": [
+      "git grep -n 'numericOptions\\|nearestNumber\\|numericOptionValues' electron src — hits only in paramConstraints (owner) and recommendation.ts (importer) after the fix",
+      "git grep -n 'isValidParamValue\\|String(option.value)' electron src — hits only in paramConstraints and the alias line in plannedNodeMeta.ts",
+      "git grep -n \"shot-\\\\${\" src/workbench — the ad-hoc shot-id fallback in storyboardStrategy.ts was the only second ruler and is gone; stableShotId is now the single definition",
+      "git grep -n 'resolve' electron/harness/tools/modelToolSurfaceManifest.ts electron/capabilityCore/generationTransportAdapters.ts — no resolve branch remains on the legacy internal face"
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "electron/shared/videoCapabilities/paramConstraints.ts",
+    "invariant": "Parameter legality, duration ranges and clamping have exactly one implementation; the resolve input shape has exactly one zod authoring point; the gate classification takes the scope it is applied to as an explicit argument.",
+    "failure_mode": "An input outside the contract schema is rejected with generation_input_invalid on every face; an illegal parameter value is either dropped to the archetype default or clamped with a structured issue, never silently passed through.",
+    "exception_policy": "none",
+    "strategy": "Move each duplicated judgement to the earliest shared boundary that all callers already depend on (the video capability facts layer, the capability contract registry, the shot-id derivation), delete the copies in the same change, and make the gate scope a required parameter so a caller cannot inherit a plan-wide verdict by omission.",
+    "artifacts": [
+      "electron/shared/videoCapabilities/paramConstraints.ts",
+      "electron/shared/agentCapabilities/generation.ts",
+      "src/workbench/generationCanvas/agent/storyboardStrategy.ts",
+      "src/workbench/creation/storyboard/strategyGate.ts"
+    ]
+  },
+  "regression_tests": [
+    "electron/shared/videoCapabilities/paramConstraints.test.ts",
+    "electron/shared/videoCapabilities/planResolver.test.ts",
+    "electron/capabilityCore/generationResolveIpc.test.ts",
+    "electron/capabilityCore/generationTransportAdapters.test.ts",
+    "electron/capabilityCore/mcpGenerationTools.test.ts",
+    "src/workbench/generationCanvas/agent/storyboardStrategy.test.ts",
+    "src/workbench/creation/storyboard/strategyGate.test.ts"
+  ],
+  "class_regression_tests": [
+    "electron/shared/videoCapabilities/paramConstraints.test.ts",
+    "electron/capabilityCore/generationResolveIpc.test.ts",
+    "src/workbench/generationCanvas/agent/storyboardStrategy.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "electron/harness/tools/modelToolSurfaceManifest.ts",
+      "electron/shared/videoCapabilities/planResolver.ts",
+      "electron/shared/videoCapabilities/recommendation.ts",
+      "src/workbench/generationCanvas/agent/plannedNodeMeta.ts",
+      "electron/capabilityCore/generationResolveIpc.ts"
+    ],
+    "rationale": "Every duplicate is deleted in this change rather than left callable: the inline resolve zod is gone from the legacy manifest, planResolver and recommendation no longer carry private copies of the duration helpers, plannedNodeMeta no longer carries its own legality predicate, and generationResolveIpc no longer re-validates the shots/goals shape. electron/capabilityCore/generationTransportAdapters.ts is not listed because removing the hand-written tool-name to capability chain restored it byte-for-byte to origin/main, so it does not appear in this diff at all."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "The invariant is owned entirely by application code. zod is already the repository's contract authoring language and its version does not decide whether a judgement has one owner.",
+    "exit_criteria": []
+  },
+  "migration": "No stored data changes. Plans persisted before this change are read through the same projection; shot ids were already written with stableShotId at the canvas binding boundary, so unifying the engine projection onto it makes previously mismatched ids agree rather than renaming anything on disk.",
+  "residual_risks": [
+    "The gate stays fail-open when the resolve channel is unavailable, so a plan can still reach materialization unchecked when the capability core has not started; the real safety boundary remains the main-process contract clamping, and this gate is advisory by design.",
+    "The internal model-facing projection of the resolve capability is not wired in this change (stage 2 of the agent runtime rebuild projects it from the contract layer); until then the capability contract has a pi alias with no tool projected from it."
+  ],
+  "invariant_owner_layer": {
+    "layer": "electron/shared/videoCapabilities/paramConstraints.ts",
+    "tests": [
+      "electron/shared/videoCapabilities/paramConstraints.test.ts",
+      "electron/shared/videoCapabilities/planResolver.test.ts",
+      "electron/capabilityCore/generationResolveIpc.test.ts",
+      "src/workbench/generationCanvas/agent/storyboardStrategy.test.ts"
+    ],
+    "note": "The video capability facts layer owns parameter legality and duration ranges for every caller. Its sibling owners for the other three instances of the same class are electron/shared/agentCapabilities/generation.ts (resolve input shape) and src/workbench/generationCanvas/agent/storyboardStrategy.ts (shot identity and gate scope); each is covered by the tests listed here. No machine gate counts these owners yet — check:vocabularies only covers state/phase word lists — so the enforcement today is the single-owner tests plus review, which is why this contract records the class rather than claiming a gate exists."
+  }
+}
