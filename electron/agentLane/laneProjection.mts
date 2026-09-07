@@ -9,7 +9,7 @@
 // 是因为宿主那边的记录本来就没有可信顺序。那个 `sort` 在阶段 4 会被整个删掉。
 import type { LaneSnapshot } from '@earendil-works/pi-agent-core';
 import type { AssistantMessage } from '@earendil-works/pi-ai';
-import type { LanePart, LaneProjection } from '../shared/agentLane/laneContracts.js';
+import type { LanePart, LanePendingApproval, LaneProjection } from '../shared/agentLane/laneContracts.js';
 
 function textOf(content: unknown): string {
   if (typeof content === 'string') return content;
@@ -50,7 +50,15 @@ function pushAssistantParts(
  * `residentToolProjection` 把工具正文写进 localStorage 的那条路（清浏览器存储 =
  * 历史收据静默清空）。
  */
-export function projectLaneSnapshot(snapshot: LaneSnapshot): LaneProjection {
+export function projectLaneSnapshot(
+  snapshot: LaneSnapshot,
+  /**
+   * 「它在等你」。**它不在快照里，所以它只能当参数进来**：停在预检里的调用 `execute`
+   * 还没开始，pi 眼里它不存在（`runningTools` 空、`operation.status` 恒 `open`——
+   * 探针 §2.1）。想从快照里把它推出来，只能靠猜。
+   */
+  pending?: LanePendingApproval,
+): LaneProjection {
   const parts: LanePart[] = [];
   const running = snapshot.operation?.runningTools ?? [];
   const runningToolCallIds = new Set(running.filter((tool) => tool.status === 'running').map((tool) => tool.toolCallId));
@@ -90,6 +98,7 @@ export function projectLaneSnapshot(snapshot: LaneSnapshot): LaneProjection {
     lane: snapshot.lane,
     parts,
     running: snapshot.operation !== null,
+    ...(pending ? { pending } : {}),
     usage: {
       inputTokens: usage.input,
       outputTokens: usage.output,
