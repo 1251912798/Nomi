@@ -53,9 +53,25 @@ export function renderLanePromptSections(tools: readonly LaneToolSpec[]): string
 }
 
 /**
- * 把两段接到宿主自己的身份提示词后面。**只有这一个拼接点**——散在各处拼字符串，
+ * 把三段接到宿主自己的身份提示词后面。**只有这一个拼接点**——散在各处拼字符串，
  * 结果就是某条路径上少了 `Guidelines`，而少了不会报错，只会让模型忘记「别编 nodeId」。
+ *
+ * `skillSection` 是 `<available_skills>` 那一段（`laneSkillIndex.mts` 用 pi 的
+ * `formatSkillsForPrompt` 渲染的原文），没有技能时是空串。**它是必填参数不是可选的**：
+ * 可选意味着某条装配路径可以「忘了传」，而忘了传的症状是模型看不见任何技能——
+ * 一件不报错、只会让它每次从零编一遍的事（R28：能让编译器拦的别留给门岗）。
+ *
+ * 顺序是 身份 → 工具 → 技能：技能索引里那句「用 read 工具去读」要在模型已经读过
+ * `Available tools` 之后才成立。
  */
-export function composeLaneSystemPrompt(identityPrompt: string, tools: readonly LaneToolSpec[]): string {
-  return `${identityPrompt.trimEnd()}\n\n${renderLanePromptSections(tools)}\n`;
+export function composeLaneSystemPrompt(
+  identityPrompt: string,
+  tools: readonly LaneToolSpec[],
+  skillSection: string,
+): string {
+  const skills = skillSection.trim();
+  const body = skills.length > 0
+    ? `${renderLanePromptSections(tools)}\n\n${skills}`
+    : renderLanePromptSections(tools);
+  return `${identityPrompt.trimEnd()}\n\n${body}\n`;
 }

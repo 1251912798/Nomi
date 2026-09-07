@@ -506,6 +506,21 @@
               "why": "把 pi 的工具翻译成 zod 的 LaneToolSpec 再翻回 JSON Schema，就是把它重写了一遍：上游改了描述或参数，我们这份静默漂移，而漂移的症状是模型少知道一件事、没人会发现。"
             }
           ]
+        },
+        {
+          "id": "skill-prompt-format",
+          "provides": "pi 出 formatSkillsForPrompt：把技能列表渲染成 Agent Skills 标准的 <available_skills> 段（XML 转义、disable-model-invocation 过滤、「相对路径按技能目录解析」那句话、以及 read/bash 二选一的取正文指令）。宿主只做两件 pi 不知道的事：Nomi 的 SkillRecord → pi 的 Skill 形状，和「这条技能要不要 coding 工具」。",
+          "evidence": "@earendil-works/pi-coding-agent@0.85.1 dist/index.d.ts:21 `export { formatSkillsForPrompt, … }`；dist/core/skills.d.ts:44 `formatSkillsForPrompt(skills, fileReadTool?: \"read\" | \"bash\")`；dist/core/skills.js:275-298 渲染体",
+          "scope": [
+            "electron/agentLane/"
+          ],
+          "forbidden": [
+            {
+              "id": "own-available-skills-xml",
+              "pattern": "<available_skills>",
+              "why": "手拼这段 XML 就是把 pi 的渲染重写一遍：转义漏一个 & 会让整段提示词在模型眼里断掉，而漏掉 disable-model-invocation 过滤会把用户明确藏起来的技能送进模型。两样都不报错。渲染只能来自 formatSkillsForPrompt；映射与解锁判断才是我们的活。"
+            }
+          ]
         }
       ]
     },

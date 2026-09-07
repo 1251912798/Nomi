@@ -8,7 +8,7 @@
 // 把一轮回复压成 `text: string` + `toolCalls[]` 两堆（`runtimePort.ts:122-133`），
 // 「先说什么后做什么」在数据里就不存在了；这道门送出去的是 `LaneProjection`，
 // 一串**有序的段**，顺序是记下来的不是推出来的。
-import type { LaneHandle, LaneProjection } from '../shared/agentLane/laneContracts'
+import type { LaneHandle, LaneProjection, LaneSkillIndexEntry } from '../shared/agentLane/laneContracts'
 import { LaneDomainFailure } from '../shared/agentLane/laneToolContract'
 import type { LaneToolEffects, LaneToolFailureShape, LaneToolSpec } from '../shared/agentLane/laneToolContract'
 import type { NomiModelConfig } from '../harness/runtime/runtimePort'
@@ -107,6 +107,12 @@ export interface OpenLaneOptions {
   /** 宿主的身份提示词。`Available tools` / `Guidelines` 两段由 `openLane` 按 `tools` 自己拼，别在这里手写。 */
   systemPrompt: string
   tools: readonly LaneToolDescriptor[]
+  /**
+   * 这条 lane 看得见的技能索引（name + description + SKILL.md 绝对路径）。
+   * 正文**不在这里**——模型按 description 自己决定去 `read` 哪一条（方案 §3.4 的「自动触发就是 description」）。
+   * 缺省 = 这个项目没有技能，那一段整个不出现（`formatSkillsForPrompt` 对空数组返回空串）。
+   */
+  skills?: readonly LaneSkillIndexEntry[]
   gate?(request: LaneToolGateRequest): Promise<LaneToolGateDecision> | LaneToolGateDecision
 }
 

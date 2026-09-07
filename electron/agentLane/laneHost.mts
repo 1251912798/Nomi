@@ -19,6 +19,7 @@ import { LANE_APPROVAL_NOTE_TYPE, type LaneApprovalNote, type LaneCommand, type 
   from '../shared/agentLane/laneContracts.js';
 import type { OpenLane, OpenLaneOptions } from './laneRuntimePort.js';
 import { composeLaneSystemPrompt } from './lanePromptSections.js';
+import { loadPiSkillFormatter, renderLaneSkillSection } from './laneSkillIndex.mjs';
 import { openLaneSession } from './laneSession.mjs';
 import { createLaneTools } from './laneTools.mjs';
 import { projectLaneSnapshot, type LaneModelFacts } from './laneProjection.mjs';
@@ -74,7 +75,12 @@ export const openLane: OpenLane = async (options: OpenLaneOptions): Promise<Lane
   // `Available tools` / `Guidelines` 两段由宿主拼，不靠调用方记得（G-03 的后一半）。
   // 2026-09-07 合并评审实核：`composeLaneSystemPrompt` 此前零生产调用者——通道②③写满了，
   // 一个字都到不了模型。拼接点放在这里，是因为这里是唯一知道「这条 lane 装了哪些工具」的地方。
-  const systemPrompt = composeLaneSystemPrompt(options.systemPrompt, options.tools);
+  // 技能索引那一段用 pi 的 `formatSkillsForPrompt` 渲染（`laneSkillIndex.mts` 里一行渲染代码都没有）。
+  // 没有技能时不去 import 那个包：一条 lane 不该为了拿一个空串付一次 ESM 解析。
+  const skillSection = (options.skills?.length ?? 0) > 0
+    ? renderLaneSkillSection(await loadPiSkillFormatter(), options.skills ?? [])
+    : '';
+  const systemPrompt = composeLaneSystemPrompt(options.systemPrompt, options.tools, skillSection);
   const { harness } = await AgentHarness.create<undefined>({
     session, models, model, systemPrompt, tools,
     activeToolNames: tools.map((tool) => tool.name),

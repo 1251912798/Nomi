@@ -30,6 +30,7 @@
 | **`bashToolSystemPromptContribution`**：`{ snippet, guidelines }`（`dist/core/tools/bash.d.ts:10-13`） | 原样进我们的 `Available tools` / `Guidelines` 两段（`laneCodingTools.mts:296-311` 只做去重与前缀，不改措辞） | **空** | **空** |
 | **工具结果截断**：`truncateHead` / `formatSize` / `DEFAULT_MAX_BYTES`（`dist/core/tools/index.ts`） | lane 早已在用（`electron/agentLane/laneTools.mts:70-92`），coding 工具走 pi 自己那一份 | **空** | **空** |
 | **`splitDeferredTools` + `addedToolNames`**：按传输决定新解锁的工具定义放前缀还是转录（`pi-ai/dist/utils/deferred-tools.js`） | 解锁时带 `addedToolNames`（`laneToolGroups.mts:98-100`）；**放置完全交给 pi 的 compat 判定**，我们代码里一个传输判断都没有 | **空** | **空** |
+| **`formatSkillsForPrompt(skills, fileReadTool)`**：Agent Skills 标准的 `<available_skills>` 段——XML 转义、`disable-model-invocation` 过滤、「相对路径按技能目录解析」那句话、以及「用 read 还是 bash 去取正文」二选一（`dist/index.d.ts:21`；`dist/core/skills.d.ts:44`；渲染体 `dist/core/skills.js:275-298`） | 原样调用，传 `'read'`（`laneSkillIndex.mts:131-140`）。**渲染那一段我们一行都没写**：`laneSkillIndex.mts` 里只有「Nomi 的 `SkillRecord` → pi 的 `Skill`」和「这条技能要不要 coding 工具」两件 pi 不知道的事 | **空** | **空** |
 | **`estimateTokens`**（chars/4，偏保守；`dist/core/compaction/compaction.d.ts:62`） | 门岗量「组合有多大」用它（`scripts/check-model-schema.ts`）。**没有另写一个估算器** | **空** | **空** |
 | **`AgentTool` 的调用签名** `execute(id, params, signal?, onUpdate?)` | — | **空** | **⚠️ 一处签名转接**：`AgentHarness` 要的是 `AgentHarnessTool.execute(id, params, onUpdate, toolContext, invocation, context)`（`pi-agent-core/dist/harness/types.d.ts:78-81`，它自己就写成 `Omit<AgentTool,"execute"> & {…}`）。`adaptPiTool()`（`laneCodingTools.mts:275-291`）展开原对象、只换调用形状，**行为零改动**。<br>**领域理由**：岔路 1 已拍板取 `AgentHarness`（母方案 §7），而 pi 自己就把这两层定义成 `Omit &`——两层签名不同是**上游的分层**，不是我们拆的。 |
 
@@ -90,6 +91,7 @@
 | **安全**（配置面） | `sandbox/index.ts:74-100` 读用户可编辑的 `.pi/sandbox.json` | **不采纳**。策略从项目根 derive，无任何用户可编辑的沙箱配置 | **有意不同**（领域：一个能被编辑的 `allowWrite` 等于给「越界要问」留一个纯文本后门；D1：让用户多配一样东西，默认砍） | — |
 | **安全**（平台缺失） | `sandbox/index.ts:225-236`：平台不支持时 `ui.notify` 一声，**继续跑没有沙箱的 bash** | `active:false` 交给策略层 → 自动放行整档消失，UI 明标「此平台无系统级沙箱」 | **有意不同**（领域：无人盯屏，那条 notify 用户看不见） | — |
 | **安全**（替换 vs 包装） | `sandbox/index.ts:203-217` 整个替换内建 `bash` 工具 | **只换 `operations`**——示例自己写了这是可选的：*"Alternatively, you could sandbox `bash` via `tool_call` input mutation without replacing the tool."* | **一致**（走的是示例自陈的更轻那条） | — |
+| **技能** | `formatSkillsForPrompt` 出 `<available_skills>` 索引；正文靠模型自己去 `read` `<location>`（**自动触发就是 description**，无宿主侧分类器） | 同一条机制、同一个渲染函数（`laneSkillIndex.mts`）。**不新造 `load_skill` 工具**——多一个常驻工具就多占一格 `LANE_TOOL_BUDGET`，而 lane 从阶段 5c 起有了 `read` | **一致** | — |
 | **安全**（回滚） | `git-checkpoint.ts` / `dirty-repo-guard.ts`：跑之前存 checkpoint，出事能回滚 | **没想到**。`edit`/`write` 标了 `reversal:'undoable'`，但收回的手段今天不存在——文稿撤销栈管不到项目目录里的文件 | **⚠️ 没想到** | **技能脚本默认开启之前**（债 D-3） |
 
 **「没想到」两条**，都进了 §7 的债并绑了到期日：沙箱违规归因（D-6）、写操作的回滚手段（D-3）。
@@ -202,6 +204,7 @@ pnpm exec tsx scripts/probe-lane-deferred-tools.mts
 | **D-3** | `edit` / `write` 的 `reversal:'undoable'` 今天**没有对应的收回手段**（文稿撤销栈管不到项目目录里的文件）。pi 的 `git-checkpoint.ts` / `dirty-repo-guard.ts` 给的正是那个手段 | §3 第 13 行的「**没想到**」。它是一整条设计（项目目录要不要 git、快照放哪、怎么呈现给用户），不该塞进本 PR | 2026-09-21 |
 | **D-4** | macOS 上 `checkDependencies()` **不查 `ripgrep` 的 PATH**（本机 `which rg` = MISSING 仍返回零错误）。`grep` 工具与沙箱的 deny-path 检测都依赖它 | 需要决定「随包带一份 rg 还是引导用户装」，那是打包侧的事 | 2026-09-21 |
 | **D-6** | 沙箱违规归因：把 `SandboxViolationStore` / `annotateStderrWithSandboxFailures` 接起来，让「被沙箱拒了」这件事以人话回到模型（今天它只看到 `Operation not permitted`，只会换个写法再试） | §3「观测与测试」那条「没想到」。它要和 3a 的闸卡文案一起设计（同一句话既要给模型也要给用户），不该单独落地 | 2026-09-21 |
+| **D-7** | R30 的**两条新真实任务**（① 技能自动触发 → 跑它的 selftest 脚本 → 出分镜进画布；② 写 three.js HTML → bash 跑截图脚本 → 产物进参考槽）只做到了「零件各自可跑」，没做成端到端剧本 | 两条任务的终点都在 lane **之外**：①要 canvas 工具与 storyboard 投影，②要参考槽写入。而 coding 工具与技能索引这一层今天**还没接进 `laneIpc`**——`openLane` 是唯一入口，生产 IPC 走的仍是旧宿主（阶段 4 才切）。在没有宿主的地方写端到端剧本，量到的是夹具自己 | 随阶段 4 切换（阶段 4 的验收门里） |
 | **D-5** | `@anthropic-ai/sandbox-runtime` 自陈 **Beta Research Preview**，「APIs and configuration formats may evolve」。0.0.75 已是第 71 个版本 | 上游节奏不由我们定。处置：版本 pin 死（不用 `^`），进 `radar:upstream` 的跟踪表 | 2026-11-07（随 R29 复核期） |
 
 **Windows 不是债，是明标的缺口**：那台机器上没有系统级沙箱（除非用户自己跑提权安装），所以第 ① 档不存在、每条命令都要点头，UI 明说原因。这是 D4「缺口明着标，不藏不糊弄」，不是待办。
@@ -214,6 +217,7 @@ pnpm exec tsx scripts/probe-lane-deferred-tools.mts
 |---|---|---|
 | 不许自研执行器 / 沙箱 | `check:framework-boundary` 新增 `anthropic-sandbox-runtime` 框架 + `pi/coding-tools` 能力，4 条 forbidden | 是（登记表校验先红过两次：缺 `verifiedAt`、doc 指不到） |
 | 工具数与 schema 总量 | `check:model-schema` 新增两条：always-on ≤ `LANE_TOOL_BUDGET`；**任一实际组合** ≤ 10 000 token（用 pi 自己的 `estimateTokens`） | **是**。臂 A：把上限压到 6 000 → `exit=1` 并印出处置；臂 B：把 `LANE_TOOL_BUDGET` 压到 10 → `laneToolCatalog.ts` 在 **import 期**就抛（比门岗更早一层，R28）。复原后 `exit=0` |
+| 技能索引只能由 pi 渲染 | `check:framework-boundary` 新增 `pi/skill-prompt-format` 能力，1 条 forbidden（手拼 `<available_skills>`） | **是**。红臂：在 `laneSkillIndex.mts` 写一行拼这段 XML 的代码 → `exit=1` 并指名 `pi/skill-prompt-format/own-available-skills-xml`；删掉复原 → `exit=0`。（注释里出现这个词**不**算——门岗先 `stripComments`） |
 | 三档权限判定 | `codingCommandPolicy.test.ts`：20 条样本 + 阳性对照（摘掉沙箱，自动放行组整组翻 ask） | 是（开发中真红过两次：带空格的项目路径被判越界；`<project>-evil` 被前缀匹配误吞） |
 | 五条安全断言 | `tests/agent-runtime/lane-coding-tools.test.mts`，含一条**真跑 macOS 沙箱**的（带阳性对照：项目内读写必须成功，否则「被拒」可能只是沙箱把一切都拒了） | 是 |
 
