@@ -16,6 +16,7 @@
 | **「设计一个页面」的完整流程（可搬到别的产品复用）** | [`design/page-design-process.md`](design/page-design-process.md) → 七道闸 + 每道闸防的真实事故 + 可复制的模板/门岗/断言 |
 | **说一句话触发的设计流程技能（七闸）** | `.claude/skills/nomi-design-flow/SKILL.md`（技能）；[`design/nomi-design-flow-howto.md`](design/nomi-design-flow-howto.md)（使用指南）|
 | **找参考的设计画布源（4 块画板 + 布局）** | [`design/2026-09-07-find-reference-canvas/README.md`](design/2026-09-07-find-reference-canvas/README.md) → 改画布从这里重新生成，别手改发布产物 |
+| **借结构：把一条跑量片子变成我自己的分镜（第二张任务卡·设计中）** | [`design/2026-09-08-borrow-structure-design.md`](design/2026-09-08-borrow-structure-design.md) → 闸①摸出的三个断点、四件产物、10 步砍到 7 步；接的是既有拆解链路的空参考槽 |
 | **找参考：跨平台素材检索 connector（TikHub 抖音/小红书/TikTok 广告库）** | [`plan/2026-09-07-find-reference-connector.md`](plan/2026-09-07-find-reference-connector.md) → 四列表、每平台归一、媒体直链处理、402/429 错误分类修正、诚实边界；设计见 [`design/2026-09-07-find-reference-design.md`](design/2026-09-07-find-reference-design.md) |
 | **界面为什么越长越杂 · 减法设计（新面必出的三件产物 + 图标语义门岗）** | [`plan/2026-09-07-subtractive-design-process.md`](plan/2026-09-07-subtractive-design-process.md) → 诊断出的两个洞、四件落地、`check:icon-semantics` 判据与三条刻意排除 |
 | **UI 样张（HTML mockup）** | [`mockups/`](mockups/) ｜ 旧版 [`ui-designs/`](ui-designs/) |
