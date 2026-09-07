@@ -3,7 +3,7 @@
 > **怎么读这份文件（3 层）**：
 > - **L0 每轮** = `scripts/claude-hooks/self-check.sh`（hook，每条消息自动注入「三闸 + 核心原则 + 近期坑」）——salience 层，本文件**不再复述它**。
 > - **L1 always 加载** = 本文件：项目事实 + 命令 + **P1–P5** + **D1–D6** + 规则索引。**每次 session 读完再动手。** 保持精简（一屏左右）。
-> - **L2 触发才查** = `docs/engineering-rules.md`（R1–R30 详解）；`docs/coding-standards.md`（编码规范）；`docs/lessons/INDEX.md`（踩过的坑，按 A/B/C/D/E/F 场景分，走查/CI/分支/平台/产品/编排前各查一眼）；`docs/ARCHITECTURE-NOW.md`（各子系统现在真正跑的是什么，带 file:line，读方案前先过）；`docs/GLOSSARY.md`（同一东西的多个叫法）。
+> - **L2 触发才查** = `docs/engineering-rules.md`（R1–R31 详解）；`docs/coding-standards.md`（编码规范）；`docs/lessons/INDEX.md`（踩过的坑，按 A/B/C/D/E/F 场景分，走查/CI/分支/平台/产品/编排前各查一眼）；`docs/ARCHITECTURE-NOW.md`（各子系统现在真正跑的是什么，带 file:line，读方案前先过）；`docs/GLOSSARY.md`（同一东西的多个叫法）。
 >
 > **维护纪律**：本文件是**策展的，不是 append 的**。新踩的坑进 `docs/lessons/`（一条一个文件，挂 `INDEX.md`）或 hook 的 `violations.log`，**不塞这里**；只有「反复出现 + 永远相关」的原则才提升进 L1。Hook 真相源是 `scripts/claude-hooks/`，`pnpm install` postinstall 自动装进 `.claude/`；`check:claude-hooks` 验同步。**禁止手改 `AGENTS.md`**：改纪律只改本文件，再跑 `pnpm run gen:agents`；`check:agents-sync` 拦漂移。本文件已做过可机器化分诊，删减依据见 `docs/engineering/rule-enforcement-audit.md`。
 
@@ -99,6 +99,7 @@ Nomi：本地优先 AI 视频创作工作台。
 | R28 | 防线建在最早能拦住的那层 | 能让编译器拦的别留给门岗，能让门岗拦的别留给人；安全关键依赖不许「optional + 欠账登记」——登记是备忘录不是防线 |
 | R29 | 接框架先出四列表 + 参考实现逐层对照 | 引入/接入任何框架、SDK、运行时**或其新层**前，先在 `docs/research`/`docs/plan` 出「它提供 / 我们用了 / 我们另写了 / 我们拆散了」四列表（每格 file:line 或文档 URL），派工 brief 附表当硬约束；**另出一张「参考实现逐层对照」**：把框架自带的 coding agent/官方 example 按九层拆开摆在我们旁边，逐层判 `一致`/`有意不同(理由须是领域约束)`/`没想到`，「没想到」清单是实施阶段的前置门。两份结论都进 `check:framework-boundary` 登记表才算研究完成。R20 管「通用能力该不该自研」，R29 管「已选框架的边界画在哪」|
 | R30 | Agent 行为验收靠真实模型数字 | 任何 Agent/工具/契约改动，验收门必须含**工具写对率 + 回合成功率**：零额度 loopback 夹具进 CI，小额真实模型定期跑、数字写进 PR；设计实验室基线只证外观、走查截图只证界面，两者都不得单独判「接好了」|
+| R31 | 外部格式/协议/契约必须对齐官方或事实标准 | 碰任何**外部也读写**的东西（技能/提示词包格式、MCP 配置与协议、模型可见工具 schema、导入导出格式、供应商 API 契约、要互通的转录落盘格式）：**先调研再写**——`docs/plan` 的「先查别人」里给出「规范链接 / 我们的偏差 / 偏差理由」，理由只许是领域约束不许是偏好；没有标准才准自定义且要写清查过哪些；自定义扩展只能放标准的扩展点（如 frontmatter 自定义键），**不许另起平行文件**。登记进 `check:standard-formats`，官方样例当夹具、读取器测试必须读得过它。R29 拦能力重造（代价在我们），R31 拦格式分叉（代价在用户）|
 
 ## 决策自治
 

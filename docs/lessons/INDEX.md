@@ -125,6 +125,7 @@
 - [样张交付 = 逐屏逐件走读，不是统计表汇总](mockup-delivery-is-a-per-screen-walkthrough.md) — 每件「这是什么 / 为什么 / 什么时候碰」三段式；走读文档还是验收合同的上游
 - [界面重设计走四步流水线：整件复用优先](ui-redesign-four-step-pipeline.md) — 分类 → 找证据（库解剖 / 竞品还原，禁脑补）→ 还原解剖 → 套 token + 认知负荷审计
 - [本地旧构建的 `-h` ≠ 官方现役能力面](stale-local-build-is-not-the-current-capability.md) — 判「工具支不支持 X」先刷新到现役版本；update log 才是事实源
+- [自造 `skill.json`：标准就摆在那儿，只是没人在动手前去看一眼](self-invented-skill-json-while-the-standard-existed.md) — 碰「外部也读写」的格式前先找规范；扩展只放标准的扩展点、不许另起平行文件；症状修复（加兼容导入）会让根因活得更久
 
 ## F. 多智能体编排
 
