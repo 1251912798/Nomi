@@ -1,6 +1,7 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import {
+  IconAlertTriangle,
   IconArrowRight,
   IconAspectRatio,
   IconCopy,
@@ -106,6 +107,11 @@ type Props = {
   onToggleAnchor: (anchorId: string) => void
   onRemove: () => void
   promptInvalid?: boolean
+  /**
+   * 执行计划的行内警示（返工 7 / D1）：这一镜按所选模型的真实档案「超上限 / 低于下限」。
+   * 句子由编辑器用 `strategyText` 渲染好传进来——行不认识引擎，也不重复一份判据。
+   */
+  durationWarning?: { kind: 'overflow' | 'underflow'; text: string; detail: string } | undefined
   draggable?: boolean
   isDragOver?: boolean
   onDragStart?: () => void
@@ -148,7 +154,7 @@ export default function StoryboardShotRow(props: Props): JSX.Element {
     skipped, onToggleSkip, variants = [], adoptedVariantId, onAdoptVariant, onDeleteVariant, onGenerateVariants, outputTag,
     onGenerate, onJumpToAnchor, onOpenPreview, onRegenerate, onRecover, onToggleLock, onAgentHandoff,
     onInsertAbove, onInsertBelow, targetShots, allShots, sourcePosition, onSaveAsReference, onSetAsFirstFrame,
-    onRerunFreshRefs, onUpdate, onRemove, promptInvalid,
+    onRerunFreshRefs, onUpdate, onRemove, promptInvalid, durationWarning,
     mentionSearch, onMentionSelect, currentRefUrls, mentionUpload, storyboardProfile, sourceSegment,
   } = props
   const [actionsOpen, setActionsOpen] = React.useState(false)
@@ -313,6 +319,20 @@ export default function StoryboardShotRow(props: Props): JSX.Element {
       {skipped ? (
         <span className="self-start rounded-pill bg-nomi-ink-10 px-2 py-0.5 text-micro text-nomi-ink-60">
           {t('storyboardEditor.skip.tag')}
+        </span>
+      ) : null}
+
+      {/* 时长警示（返工 7）：这一镜原样生成会被截断 / 生成不出来——摩擦发生在行上，提示就在行上，
+          不必点开上方的执行计划面板才知道是哪一镜。完整机器理由挂 title（和面板「为什么」同一句）。 */}
+      {durationWarning ? (
+        <span
+          className="self-start inline-flex items-center gap-1 rounded-pill bg-nomi-warning/15 px-2 py-0.5 text-micro font-medium text-nomi-warning"
+          title={durationWarning.detail}
+          data-storyboard-row-duration-warning={durationWarning.kind}
+          aria-label={t('storyboardEditor.strategy.rowWarningAria', { index: shot.index, reason: durationWarning.detail })}
+        >
+          <IconAlertTriangle size={11} stroke={2} aria-hidden />
+          {durationWarning.text}
         </span>
       ) : null}
 
