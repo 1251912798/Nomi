@@ -24,7 +24,7 @@ import type { GenerationAssetImportResult } from '../generationCanvas/adapters/a
 import { useGenerationCanvasStore } from '../generationCanvas/store/generationCanvasStore'
 import { useWorkbenchStore } from '../workbenchStore'
 import { confirmDialog, DesignEmptyState, NomiLoadingMark, promptDialog, TooltipProvider } from '../../design'
-import { FindReferencePanel } from './FindReferencePanel'
+import { FindReferenceSection } from './FindReferenceSection'
 import type { ReferencePlatform } from '../../../electron/shared/contracts/referenceSearch'
 import { acceptAttrForKinds, mediaKindFromExtension } from '../../../electron/assets/mediaTypes'
 import { toast } from '../../ui/toast'
@@ -637,10 +637,17 @@ export function AssetLibraryContent({
           onDropToFolder={handleFolderDropAssets}
         />
 
+        {/*
+          「找参考」**接管**素材区，不是插在它上面把它往下推。
+          2026-09-08 真机走查 + 用户当场指出：素材库的常态是「一整片已有素材」，
+          用推开的方式一展开就把上下文全挤没了，加完也看不到刚加的那条去哪了。
+          接管 + 顶上一条「← 回到我的素材（N）」：切换成本仍是一次点击，上下文不丢。
+        */}
         {findOpen ? (
-          <FindReferencePanel
+          <FindReferenceSection
             projectId={projectId}
             platform={referencePlatform}
+            assetCount={scopedAssets.length}
             onPlatformChange={setReferencePlatform}
             onShareLink={handlePasteLink}
             onImported={() => {
@@ -650,9 +657,9 @@ export function AssetLibraryContent({
             onNeedKey={() => {
               window.dispatchEvent(new CustomEvent('nomi-open-settings', { detail: { tab: 'models', section: 'tikhub-connector' } }))
             }}
+            onBack={() => setFindOpen(false)}
           />
-        ) : null}
-
+        ) : (
         <div ref={setScrollEl} className={cn('flex-1 overflow-y-auto', compact ? 'px-3 pb-3' : 'px-3.5 pb-4')}>
           {sourceFilter === 'all' && allProjectAssetsPartial ? (
             <div className="mb-2 rounded-nomi-sm border border-nomi-warning/25 bg-nomi-warning-soft px-2.5 py-2 text-micro text-nomi-warning" role="status">
@@ -770,6 +777,7 @@ export function AssetLibraryContent({
             </div>
           )}
         </div>
+        )}
       </div>
       {previewAsset ? (
         <AssetPreviewDialog asset={previewAsset} onClose={() => setPreviewAsset(null)} />

@@ -112,13 +112,27 @@ export function FindReferencePanel({
     }
   }, [keyword, onNeedKey, onShareLink, platform, running, t])
 
+  /**
+   * 「加入素材库」不可用的原因（null = 可用）。
+   *
+   * §1.6 C1：**有目标守卫的控件必须 disabled + 说清为什么**。
+   * 2026-09-08 真机走查抓到：这里原本是 `if (!projectId) return` 静默早退——
+   * 点了按钮什么都不发生、没有 toast、没有控制台错误、按钮文案不变。
+   * 用户唯一能得到的结论是「这软件坏了」。
+   */
+  const blockedReason = React.useMemo((): string | null => {
+    if (!projectId) return t('assetLibrary.findReference.needProject')
+    if (!getDesktopBridge()?.connector?.tikhub) return t('assetLibrary.findReference.desktopOnly')
+    return null
+  }, [projectId, t])
+
   const addToLibrary = React.useCallback(async (item: ReferenceItem) => {
-    if (!projectId || addingId) return
+    if (blockedReason || addingId) return
     const bridge = getDesktopBridge()
     if (!bridge?.connector?.tikhub) return
     setAddingId(item.id)
     try {
-      await bridge.connector.tikhub.importReference({ projectId, platform: item.platform, itemId: item.id })
+      await bridge.connector.tikhub.importReference({ projectId: projectId as string, platform: item.platform, itemId: item.id })
       setAddedIds((prev) => new Set(prev).add(item.id))
       toast(t('assetLibrary.findReference.added'), 'success')
       onImported()
@@ -128,7 +142,7 @@ export function FindReferencePanel({
     } finally {
       setAddingId(null)
     }
-  }, [addingId, onImported, projectId, t])
+  }, [addingId, blockedReason, onImported, projectId, t])
 
   const isEmptyResult = result !== null && result.items.length === 0
 
@@ -149,8 +163,23 @@ export function FindReferencePanel({
               id === platform
                 ? 'border-nomi-accent bg-nomi-accent-soft font-semibold text-nomi-accent'
                 : 'border-nomi-line bg-nomi-paper text-nomi-ink-60 hover:text-nomi-ink',
+              id === platform && 'cursor-default',
             )}
-            onClick={() => onPlatformChange(id)}
+            // 当前平台那颗**本来就点不动**（你没法「切到」你已经在的平台）。
+            // 写成 disabled 而不是 handler 里 `if (id === platform) return`：
+            // 后者是 §1.6 C1 明令禁止的静默守卫（check:controls 会红），而且点当前平台
+            // 若走进 setResult(null) 还会把用户的结果白白清掉。
+            disabled={id === platform}
+            title={id === platform ? t('assetLibrary.findReference.currentPlatform') : undefined}
+            onClick={() => {
+              // 换平台必须清结果：证据格 / 筛选维度 / 要不要转译**都随平台 derive**，
+              // 留着上一个平台的列表 = 用户以为「这就是新平台上的片子」。
+              // 2026-09-08 走查实拍：切到 TikTok 后列表还是抖音的，副行仍写着「收藏」——
+              // 而收藏是抖音/小红书的指标，TikTok 广告库根本没有这个数。
+              setResult(null)
+              setAddedIds(new Set())
+              onPlatformChange(id)
+            }}
           >
             {t(`assetLibrary.findReference.platform.${id}`)}
           </button>
@@ -221,6 +250,7 @@ export function FindReferencePanel({
               item={item}
               added={addedIds.has(item.id)}
               adding={addingId === item.id}
+              blockedReason={blockedReason}
               onAdd={() => void addToLibrary(item)}
             />
           ))}
@@ -242,11 +272,14 @@ function ReferenceCard({
   item,
   added,
   adding,
+  blockedReason,
   onAdd,
 }: {
   item: ReferenceItem
   added: boolean
   adding: boolean
+  /** 非 null = 现在加不了，这句话就是原因（§1.6 C1：点不了必须说清为什么）。 */
+  blockedReason: string | null
   onAdd: () => void
 }): JSX.Element {
   const { t } = useTranslation()
@@ -259,7 +292,7 @@ function ReferenceCard({
   }
 
   return (
-    <div className="relative overflow-hidden rounded-nomi border border-nomi-line bg-nomi-paper">
+    <div className="relative overflow-hidden rounded-nomi border border-nomi-line bg-nomi-paper" data-ref-id={item.id}>
       <div className="relative grid aspect-[9/16] place-items-center bg-nomi-ink-10">
         {item.coverUrl ? (
           <img src={item.coverUrl} alt="" className="h-full w-full object-cover" loading="lazy" />
@@ -284,10 +317,12 @@ function ReferenceCard({
       <div className="line-clamp-2 px-1.5 pb-1 pt-1.5 text-micro leading-snug text-nomi-ink-60">{item.caption}</div>
       {second ? <div className="px-1.5 pb-1 text-micro text-nomi-ink-40">{label(second)}</div> : null}
       <div className="flex items-center gap-1 px-1.5 pb-1.5">
+        <span title={blockedReason ?? undefined} style={{ display: 'contents' }}>
         <button
           type="button"
-          disabled={added || adding}
+          disabled={added || adding || Boolean(blockedReason)}
           data-added={added}
+          data-blocked={blockedReason ? 'true' : 'false'}
           className={cn(
             'inline-flex h-6 flex-1 items-center justify-center gap-1 rounded-nomi-sm text-micro font-medium',
             added
@@ -303,6 +338,7 @@ function ReferenceCard({
             </>
           )}
         </button>
+        </span>
         {item.pageUrl ? (
           <a
             href={item.pageUrl}
