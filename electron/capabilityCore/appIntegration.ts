@@ -611,10 +611,10 @@ export async function startCapabilityCore(
           } catch (error) {
             const code = (error as { code?: unknown })?.code
             if (code === 'provider_materialization_unsupported' || code === 'materialization_failed') return { operationId: operation.operationId, outcome, nextAction: 'manual_review', recoveryNotice: '供应商任务已完成，但结果还没有安全落到 Nomi 项目；请到供应商核对或稍后重试。' }
-          throw error
-        }
-      },
-    })
+            throw error
+          }
+        },
+      })
     // Generation strategy resolver GUI 窄 IPC：seam 一就绪就装配注册（幂等，重启重注册）。装配点住
     // generationResolveIpc 模块（避免 main.ts 巨壳增长 / 本文件破 800 上限）；候选集与 agent/MCP 同源。
     installGuiResolveNarrowIpc(generationPlanning, () => canvasReadSurfaceRuntime.getCommittedProjectSelection()?.projectId ?? null)

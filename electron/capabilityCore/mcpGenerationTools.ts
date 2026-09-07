@@ -46,6 +46,7 @@ import type {
 } from "../shared/videoCapabilities/recommendation";
 import { effectiveVideoModes } from "../shared/videoCapabilities/recommendation";
 import { resolveGenerationPlan, type PlanShotInput } from "../shared/videoCapabilities/planResolver";
+import { generationResolveInputSchema } from "../shared/agentCapabilities/generation";
 import type { GenerationDefaultTaskKind } from "../settings/generationModelDefaultsContract";
 import { semanticCandidateFromParams } from "./semanticGenerationCandidate";
 import { projectGenerationOperationPreview } from "./mcpGenerationPreview";
@@ -418,43 +419,21 @@ export function createGenerationPlanningHandler(deps: GenerationPlanningHandlerD
     // operation, no seal, no gate): validate/clamp every shot's model/mode/
     // params against real capability facts and propose merge/split/duration
     // structure before any plan is formed (2026-09-06 planResolver).
-    const rawShots = params.shots;
-    if (!Array.isArray(rawShots) || rawShots.length === 0) {
-      throw Object.assign(new Error("resolve requires a non-empty shots array"), { code: "generation_input_invalid" });
+    //
+    // Input parsing is the capability contract's zod schema, not a hand-rolled
+    // coercion loop: GUI narrow IPC and the agent/MCP face must accept exactly
+    // the same inputs, and there is one place that says what those are
+    // (GENERATION_RESOLVE_CAPABILITY.inputSchema — rebuild plan §1.2 K1).
+    const parsed = generationResolveInputSchema.safeParse(params);
+    if (!parsed.success) {
+      const first = parsed.error.issues[0];
+      const where = first?.path?.length ? ` at ${first.path.join(".")}` : "";
+      throw Object.assign(new Error(`resolve input is invalid${where}: ${first?.message ?? "unknown"}`), { code: "generation_input_invalid" });
     }
-    const candidates = deps.videoModelCandidates ?? [];
-    const shots: PlanShotInput[] = rawShots.map((rawShot, index) => {
-      const shot = record(rawShot, `resolve shot ${index}`);
-      const durationSec = typeof shot.durationSec === "number" && Number.isFinite(shot.durationSec)
-        ? shot.durationSec
-        : Number.NaN;
-      if (!Number.isFinite(durationSec)) {
-        throw Object.assign(new Error(`resolve shot ${index} requires a finite durationSec`), { code: "generation_input_invalid" });
-      }
-      return {
-        id: typeof shot.id === "string" && shot.id.trim() ? shot.id.trim() : `shot-${index + 1}`,
-        durationSec,
-        ...(typeof shot.sceneAnchorId === "string" && shot.sceneAnchorId.trim() ? { sceneAnchorId: shot.sceneAnchorId.trim() } : {}),
-        ...(Array.isArray(shot.anchorIds)
-          ? { anchorIds: shot.anchorIds.filter((value): value is string => typeof value === "string" && value.trim().length > 0).map((value) => value.trim()) }
-          : {}),
-        ...(typeof shot.modelKey === "string" && shot.modelKey.trim() ? { modelKey: shot.modelKey.trim() } : {}),
-        ...(typeof shot.modeId === "string" && shot.modeId.trim() ? { modeId: shot.modeId.trim() } : {}),
-        ...(shot.params && typeof shot.params === "object" && !Array.isArray(shot.params)
-          ? { params: shot.params as Record<string, unknown> }
-          : {}),
-        ...(typeof shot.beatNote === "string" ? { beatNote: shot.beatNote } : {}),
-      };
-    });
-    const rawGoals = params.goals && typeof params.goals === "object" && !Array.isArray(params.goals)
-      ? params.goals as Record<string, unknown>
-      : undefined;
     const planResolution = resolveGenerationPlan({
-      shots,
-      candidates,
-      ...(rawGoals && typeof rawGoals.allowAdvisoryMerge === "boolean"
-        ? { goals: { allowAdvisoryMerge: rawGoals.allowAdvisoryMerge } }
-        : {}),
+      shots: parsed.data.shots as PlanShotInput[],
+      candidates: deps.videoModelCandidates ?? [],
+      ...(parsed.data.goals ? { goals: parsed.data.goals } : {}),
     });
     return {
       resolvedShots: planResolution.shots.map((shot) => ({

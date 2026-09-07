@@ -44,23 +44,21 @@ function errorMessage(error: unknown): string {
   return String(error);
 }
 
-/** 解析顶层请求形状（shot 级深校验交给 seam resolve 分支——与 agent/MCP 同一解析代码，单一真相）。 */
-function parseResolveRequest(raw: unknown): { projectId: string; shots: unknown[]; goals?: { allowAdvisoryMerge?: boolean } } {
+/**
+ * 只解析**这条通道自己的那一半**：projectId（下面要与 committed selection 比对）。
+ *
+ * `shots` / `goals` 的形状**不在这里判**（§3.6 内外同源）：那是能力契约
+ * `GENERATION_RESOLVE_CAPABILITY.inputSchema` 的事，seam 的 resolve 分支会用它解析。
+ * 这里曾经自带一份浅校验（「非空数组」「allowAdvisoryMerge 必须是布尔」），
+ * 与 seam 的手写强制转换、与旧 manifest 的内联 zod 一共三份形状——**同一个输入在 GUI 面和
+ * agent 面会得到不同的接受集合**，而信任方向恰好是反的（外面比里面松）。一份就够。
+ */
+function parseResolveRequest(raw: unknown): { projectId: string; rest: Record<string, unknown> } {
   if (!isRecord(raw)) throw new GenerationResolveError(GenerationResolveErrorCode.InputInvalid, "resolve 请求必须是对象。");
   const projectId = typeof raw.projectId === "string" ? raw.projectId.trim() : "";
   if (!projectId) throw new GenerationResolveError(GenerationResolveErrorCode.InputInvalid, "resolve 请求缺少 projectId。");
-  if (!Array.isArray(raw.shots) || raw.shots.length === 0) {
-    throw new GenerationResolveError(GenerationResolveErrorCode.InputInvalid, "resolve 请求需要非空 shots 数组。");
-  }
-  let goals: { allowAdvisoryMerge?: boolean } | undefined;
-  if (raw.goals !== undefined) {
-    if (!isRecord(raw.goals)) throw new GenerationResolveError(GenerationResolveErrorCode.InputInvalid, "resolve 请求的 goals 必须是对象。");
-    if (typeof raw.goals.allowAdvisoryMerge === "boolean") goals = { allowAdvisoryMerge: raw.goals.allowAdvisoryMerge };
-    else if (raw.goals.allowAdvisoryMerge !== undefined) {
-      throw new GenerationResolveError(GenerationResolveErrorCode.InputInvalid, "resolve 请求的 allowAdvisoryMerge 必须是布尔值。");
-    }
-  }
-  return { projectId, shots: raw.shots, goals };
+  const { projectId: _projectId, ...rest } = raw;
+  return { projectId, rest };
 }
 
 /** 结构 sanity：resolve 结果必须是四个数组（形状由 seam 单测背书，这里只防线上退化）。 */
@@ -80,7 +78,7 @@ function coerceResolveValue(value: unknown): GenerationResolvePlanValue {
 
 /**
  * 纯计算核心（可单测，不依赖 Electron）：
- * 1. 顶层请求形状校验（fail-closed，code 稳定）；
+ * 1. projectId 形状校验（fail-closed，code 稳定）；shots/goals 的形状归能力契约（内外同源）；
  * 2. projectId 必须等于主进程 committed selection（当前打开项目）——防串项目/旧标签页把别的项目镜头喂进来；
  * 3. planning seam 未装配 → unavailable；
  * 4. 调 seam resolve（无 lease：stateless advisory；候选/解析与 agent/MCP 完全同源）。
@@ -101,13 +99,8 @@ export async function resolveGenerationPlanForProject(
   if (!planning) {
     throw new GenerationResolveError(GenerationResolveErrorCode.CoreUnavailable, "生成能力核未就绪，请稍后重试。");
   }
-  const value = await planning({
-    capability: "resolve",
-    params: {
-      shots: request.shots,
-      ...(request.goals ? { goals: request.goals } : {}),
-    },
-  });
+  // params 原样交给 seam：接受集合由能力契约的 zod 定义，GUI 面与 agent/MCP 面逐字段同源。
+  const value = await planning({ capability: "resolve", params: request.rest });
   return coerceResolveValue(value);
 }
 

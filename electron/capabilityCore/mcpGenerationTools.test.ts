@@ -401,6 +401,20 @@ describe("semantic MCP generation tools", () => {
     await expect(handler({ capability: "create", params: { prompt: "x" } })).rejects.toThrow("A verified project lease is required");
   });
 
+  it("resolve 的输入解析走能力契约的 zod（单一生成点）：未知字段/空数组 fail-closed", async () => {
+    const handler = createGenerationPlanningHandler({
+      registry: videoRegistry,
+      operations: createInMemoryGenerationOperationStore(),
+      videoModelCandidates: [{ provider: "apimart", modelKey: "doubao-seedance-2.5", label: "Seedance 2.5", archetype: SEEDANCE_2_5_APIMART_ARCHETYPE }],
+      now: () => "2026-08-23T00:00:00.000Z",
+    });
+    // .strict()：模型编出来的字段不会被默默吞掉
+    await expect(handler({ capability: "resolve", params: { shots: [{ id: "s1", durationSec: 5, madeUpKey: 1 }] } }))
+      .rejects.toThrow(/resolve input is invalid/);
+    await expect(handler({ capability: "resolve", params: { shots: [] } })).rejects.toThrow(/resolve input is invalid/);
+    await expect(handler({ capability: "resolve", params: { shots: [{ id: "s1" }] } })).rejects.toThrow(/resolve input is invalid/);
+  });
+
   it("uses the shared source-backed registry for a real preview path without starting a provider", async () => {
     const operations = createInMemoryGenerationOperationStore();
     const start = vi.fn(async () => { throw new Error("shared preview must not start a provider"); });

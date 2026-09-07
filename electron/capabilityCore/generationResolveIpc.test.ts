@@ -49,7 +49,7 @@ const lease: ProjectLeaseV2 = {
   canonicalRootDigest: "root-digest-1",
   manifestDigest: "manifest-digest-1",
   audience: PROJECT_LEASE_AUDIENCE,
-  leasePrincipal: "fixture",
+  leasePrincipal: "mcp:fixture",
   sessionId: "session-1",
   connectionNonce: "conn-1",
   issuedAt: "2026-08-23T00:00:00.000Z",
@@ -117,6 +117,24 @@ describe("resolveGenerationPlanForProject (GUI 窄 IPC 纯核心)", () => {
     expect(gui.mergeProposals).toEqual(mcp.mergeProposals);
     expect(gui.splitProposals).toEqual(mcp.splitProposals);
     expect(gui.planIssues).toEqual(mcp.planIssues);
+  });
+
+  it("内外同源：GUI 面与 agent/MCP 面对同一份非法输入的接受集合完全一致（§3.6 信任方向不许反）", async () => {
+    // 上一版有三份形状：本通道的浅校验、seam 的手写强制转换、旧 manifest 的内联 zod。
+    // 三份必然分叉——而分叉的方向恰好是「外面比里面松」。现在只有能力契约那一份。
+    const handler = planningHandler();
+    const deps = { getGenerationPlanning: () => handler, getCommittedProjectId: () => "project-1" };
+    for (const shots of [
+      [{ id: "s1", durationSec: 5, madeUpKey: 1 }],
+      [{ id: "", durationSec: 5 }],
+      [{ id: "s1", durationSec: -1 }],
+      [],
+    ]) {
+      const guiRejected = await resolveGenerationPlanForProject(deps, { projectId: "project-1", shots }).then(() => false, () => true);
+      const mcpRejected = await Promise.resolve(handler({ capability: "resolve", params: { shots } })).then(() => false, () => true);
+      expect(guiRejected, `GUI 面对 ${JSON.stringify(shots)} 的判定`).toBe(true);
+      expect(mcpRejected, `agent 面对 ${JSON.stringify(shots)} 的判定`).toBe(guiRejected);
+    }
   });
 
   it("请求形状非法 → fail-closed（code=generation_input_invalid）", async () => {

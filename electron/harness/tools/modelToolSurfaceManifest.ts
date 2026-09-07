@@ -85,24 +85,12 @@ export const generationPlanInputSchema = z.discriminatedUnion("operation", [
   z.object({ operation: z.literal("create"), ...createFields }).strict(),
   z.object({ operation: z.literal("patch"), operationId, patch: candidatePatch }).strict(),
   z.object({ operation: z.literal("preview"), operationId }).strict(),
-  z.object({
-    operation: z.literal("resolve"),
-    // Generation Strategy Resolver input: logical shots (narrative durations +
-    // optional per-shot model/mode/params) whose structure the machine validates,
-    // clamps and optimizes (merge/split) before any plan is formed. Field names
-    // mirror planResolver.PlanShotInput; unknown keys fail closed via .strict().
-    shots: z.array(z.object({
-      id: z.string().trim().min(1),
-      durationSec: z.number().finite().nonnegative(),
-      sceneAnchorId: z.string().trim().min(1).optional(),
-      anchorIds: z.array(z.string().trim().min(1)).optional(),
-      modelKey: z.string().trim().min(1).optional(),
-      modeId: z.string().trim().min(1).optional(),
-      params: z.record(z.unknown()).optional(),
-      beatNote: z.string().max(300).optional(),
-    }).strict()).min(1).max(40),
-    goals: z.object({ allowAdvisoryMerge: z.boolean().optional() }).strict().optional(),
-  }).strict(),
+  // NOTE: `resolve` deliberately does NOT live here. Its schema is the capability
+  // contract `GENERATION_RESOLVE_CAPABILITY.inputSchema`
+  // (electron/shared/agentCapabilities/generation.ts) — the single generation point
+  // required by the runtime rebuild (docs/plan/2026-09-07-agent-runtime-rebuild.md
+  // §1.1 B5 / §1.2 K1). The internal model-facing face is projected from the contract
+  // layer in stage 2; nothing new gets hand-written into this legacy manifest.
 ]);
 
 export const generationStatusInputSchema = z.discriminatedUnion("operation", [
