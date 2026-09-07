@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { useGenerationCanvasStore } from './generationCanvasStore'
 import { setCanvasEventSinkForTests, type CanvasShadowEvent } from '../events/canvasEventEmitter'
 import type { GenerationCanvasNode, GenerationNodeResult, NodeGroup } from '../model/generationCanvasTypes'
+import { withCanvasGestureContext } from '../events/canvasGestureContext'
 import { MEDIA_DIMENSION_UPDATE_OPTIONS } from '../nodes/nodeSizing'
 
 function node(id: string, categoryId: GenerationCanvasNode['categoryId'], groupId?: string): GenerationCanvasNode {
@@ -30,6 +31,91 @@ function group(id: string, categoryId: NodeGroup['categoryId'], nodeIds: string[
 function imageResult(id: string, url: string): GenerationNodeResult {
   return { id, type: 'image', url, createdAt: 1 }
 }
+
+describe('standalone canvas gesture undo barriers', () => {
+  beforeEach(() => {
+    useGenerationCanvasStore.getState().restoreSnapshot({
+      nodes: [node('src', 'shots'), node('dst', 'shots')],
+      edges: [{ id: 'edge', source: 'src', target: 'dst', mode: 'reference' }],
+      groups: [], selectedNodeIds: [],
+    })
+  })
+
+  it.each(['mode', 'disconnect', 'lock'] as const)('%s is one undo step without undoing the preceding gesture', (gesture) => {
+    const store = useGenerationCanvasStore.getState()
+    store.addNode({ kind: 'text', title: 'earlier gesture', position: { x: 700, y: 20 } })
+    const before = useGenerationCanvasStore.getState().readDocumentSnapshot()
+    if (gesture === 'mode') store.updateEdgeMode('edge', 'composition_ref')
+    if (gesture === 'disconnect') store.disconnectEdge('edge')
+    if (gesture === 'lock') store.setNodeLocked('src', true)
+    const after = useGenerationCanvasStore.getState().readDocumentSnapshot()
+    expect(after).not.toEqual(before)
+    store.undo()
+    const undone = useGenerationCanvasStore.getState()
+    expect({ nodes: undone.nodes, edges: undone.edges, groups: undone.groups }).toEqual({ nodes: before.nodes, edges: before.edges, groups: before.groups })
+    store.redo()
+    const redone = useGenerationCanvasStore.getState()
+    expect({ nodes: redone.nodes, edges: redone.edges, groups: redone.groups }).toEqual({ nodes: after.nodes, edges: after.edges, groups: after.groups })
+    store.undo()
+    store.undo()
+    expect(useGenerationCanvasStore.getState().nodes.map((n) => n.id)).toEqual(['src', 'dst'])
+    expect(useGenerationCanvasStore.getState().canUndo).toBe(false)
+  })
+
+  it.each([false, true])('group disconnection (parameter=%s) restores the entire declaration in one undo', (parameter) => {
+    const members = [node('dst', 'shots', 'g'), node('other', 'shots', 'g')]
+    const g = { ...group('g', 'shots', ['dst', 'other']), inputLinks: [{ sourceNodeId: 'src', mode: 'reference' as const }] }
+    const edges = members.map((member) => ({ id: member.id, source: 'src', target: member.id, mode: 'reference' as const, viaGroupId: 'g' }))
+    const store = useGenerationCanvasStore.getState()
+    store.restoreSnapshot({ nodes: [node('src', 'shots'), ...members], edges, groups: [g], selectedNodeIds: [] })
+    store.addNode({ kind: 'text', title: 'earlier gesture' })
+    const before = useGenerationCanvasStore.getState().readDocumentSnapshot()
+    store.disconnectEdge('dst', parameter ? { scope: 'parameter' } : undefined)
+    expect(useGenerationCanvasStore.getState().edges).toHaveLength(parameter ? 1 : 0)
+    store.undo()
+    expect(useGenerationCanvasStore.getState().edges).toEqual(before.edges)
+    expect(useGenerationCanvasStore.getState().groups).toEqual(before.groups)
+    expect(useGenerationCanvasStore.getState().nodes).toEqual(before.nodes)
+    store.undo()
+    expect(useGenerationCanvasStore.getState().nodes).toHaveLength(3)
+  })
+
+  it('lock then unlock are two independent reversible gestures', () => {
+    const store = useGenerationCanvasStore.getState()
+    store.setNodeLocked('src', true)
+    expect(useGenerationCanvasStore.getState().canUndo).toBe(true)
+    store.setNodeLocked('src', false)
+    store.undo()
+    expect(useGenerationCanvasStore.getState().nodes.find((n) => n.id === 'src')?.locked).toBe(true)
+    store.undo()
+    expect(useGenerationCanvasStore.getState().nodes.find((n) => n.id === 'src')?.locked).toBeFalsy()
+    expect(useGenerationCanvasStore.getState().canUndo).toBe(false)
+  })
+
+  it('proposal-owned edge and lock writes remain one undo step', () => {
+    const store = useGenerationCanvasStore.getState()
+    store.captureHistory()
+    withCanvasGestureContext({ source: 'agent', txnId: 'test-composite', suppressUndoBarriers: true }, () => {
+      store.updateEdgeMode('edge', 'composition_ref')
+      store.setNodeLocked('src', true)
+      store.disconnectEdge('edge')
+    })
+    store.undo()
+    expect(useGenerationCanvasStore.getState().edges).toMatchObject([{ id: 'edge', mode: 'reference' }])
+    expect(useGenerationCanvasStore.getState().nodes.find((n) => n.id === 'src')?.locked).toBeFalsy()
+    expect(useGenerationCanvasStore.getState().canUndo).toBe(false)
+  })
+
+  it.each(['mode', 'disconnect', 'lock'] as const)('%s no-op does not consume the preceding undo step', (gesture) => {
+    const store = useGenerationCanvasStore.getState()
+    store.addNode({ kind: 'text', title: 'earlier gesture', position: { x: 700, y: 20 } })
+    if (gesture === 'mode') store.updateEdgeMode('edge', 'reference')
+    if (gesture === 'disconnect') store.disconnectEdge('missing')
+    if (gesture === 'lock') store.setNodeLocked('src', false)
+    store.undo()
+    expect(useGenerationCanvasStore.getState().nodes.map((n) => n.id)).toEqual(['src', 'dst'])
+  })
+})
 
 describe('connectToNode — 连一张图进图片节点自动切到「参考图/改图」模式(根因回归 2026-06-29)', () => {
   function archImageNode(id: string, modeId: string): GenerationCanvasNode {

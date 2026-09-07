@@ -1,0 +1,121 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-08-canvas-undo-barrier-sweep",
+  "problem_type": "Standalone document gestures omit an undo journal boundary",
+  "symptom": "Changing edge mode, disconnecting an edge, or toggling a node lock makes Cmd+Z remove the preceding unrelated edit.",
+  "direct_cause": "These store actions append replayable events without a preceding pushUndoSnapshot; disconnectEdge previously only opened a barrier for parameter scope.",
+  "class_root": "Standalone document actions must establish their own journal boundary; event emission by itself does not establish history ownership.",
+  "affected_population": [
+    "Canvas users editing edge modes, disconnecting manual/group connections, or locking/unlocking nodes"
+  ],
+  "scope_paths": [
+    "src/workbench/generationCanvas/store/canvasGraphActions.ts",
+    "src/workbench/generationCanvas/store/canvasNodeActions.ts"
+  ],
+  "entry_points": [
+    "Edge mode menu updateEdgeMode",
+    "Edge menu/key disconnectEdge",
+    "NodeLockBadge setNodeLocked"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "This is the internal store/journal gesture contract, not third-party React Flow behavior; no library API changes.",
+  "invariants": [
+    "Every confirmed standalone mutation opens one barrier before its first event, after no-op guards.",
+    "Nested proposal writes continue to use the outer transaction barrier."
+  ],
+  "generality_proof": "All callers of the three actions converge in the store; default/parameter/group disconnection share the same guarded boundary, and both lock directions share setNodeLocked. Existing pushUndoSnapshot honors proposal suppression.",
+  "shared_boundaries": [
+    {
+      "path": "src/workbench/generationCanvas/store/canvasGraphActions.ts",
+      "symbol": "createCanvasGraphActions",
+      "responsibility": "Guard and establish history for edge-mode and disconnection mutations."
+    },
+    {
+      "path": "src/workbench/generationCanvas/store/canvasNodeActions.ts",
+      "symbol": "createCanvasNodeActions",
+      "responsibility": "Guard and establish history for lock/unlock mutations."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/workbench/generationCanvas/store/canvasGraphActions.ts",
+      "entry_point": "updateEdgeMode",
+      "disposition": "enforced",
+      "evidence": "Real edge menu invokes it directly; newly added failing test verifies previous node survives undo."
+    },
+    {
+      "path": "src/workbench/generationCanvas/store/canvasGraphActions.ts",
+      "entry_point": "disconnectEdge",
+      "disposition": "enforced",
+      "evidence": "Default edge menu omitted the parameter-only boundary; shared default/group/parameter path now owns one."
+    },
+    {
+      "path": "src/workbench/generationCanvas/store/canvasNodeActions.ts",
+      "entry_point": "setNodeLocked",
+      "disposition": "enforced",
+      "evidence": "NodeLockBadge invokes it directly; newly added failing test verifies lock undo without removing previous node."
+    },
+    {
+      "path": "src/workbench/generationCanvas/store/canvasGroupMoveActions.ts",
+      "entry_point": "moveGroupNodes",
+      "disposition": "not-affected",
+      "evidence": "Continuous movement uses captureHistory at useCanvasSelectionDrag gesture start; adding a per-frame barrier would split one drag."
+    },
+    {
+      "path": "src/workbench/generationCanvas/store/canvasFrameStoreActions.ts",
+      "entry_point": "createFrame / setGroupDescription",
+      "disposition": "not-affected",
+      "evidence": "createFrame delegates createGroup; setGroupDescription already guards and opens one barrier."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Three independent user actions reproduce the same skipped-boundary failure for every subsequent use.",
+    "same_class_scan": [
+      "Read all action implementations in canvasGraphActions.ts, canvasNodeActions.ts, canvasFrameStoreActions.ts, canvasGroupMoveActions.ts; inventory in companion Markdown.",
+      "rg connectNodes/disconnectEdge/setNodeLocked/reassignNodeCategory/captureHistory across src; read edge menu, NodeLockBadge, drag start, proposalTxn and category deletion callers."
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "src/workbench/generationCanvas/store/canvasGraphActions.ts",
+    "invariant": "Standalone guarded store mutations establish history before journal events.",
+    "failure_mode": "Missing IDs and unchanged values return without creating an empty undo step.",
+    "exception_policy": "none",
+    "strategy": "Repair existing store action ownership, keeping proposal grouping in the existing journal suppression mechanism; no caller-side history patch.",
+    "artifacts": [
+      "src/workbench/generationCanvas/store/canvasGraphActions.ts",
+      "src/workbench/generationCanvas/store/canvasNodeActions.ts"
+    ]
+  },
+  "regression_tests": [
+    "src/workbench/generationCanvas/store/generationCanvasStore.test.ts"
+  ],
+  "class_regression_tests": [
+    "src/workbench/generationCanvas/store/generationCanvasStore.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "src/workbench/generationCanvas/store/canvasGraphActions.ts"
+    ],
+    "rationale": "Remove the parameter-only history conditional in disconnectEdge; retain one shared boundary and no fallback implementation."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "Internal journal semantics; React Flow and Zustand remain unchanged.",
+    "exit_criteria": []
+  },
+  "migration": "No persisted schema changes. Existing documents use the repaired action boundaries for subsequent edits; history remains session-local.",
+  "residual_risks": [
+    "Composite connectNodes mention insertion and cross-store category deletion need separate ownership work; see companion scan.",
+    "React Flow multi-edge callback loops over disconnectEdge; multi-selection gesture grouping is outside the explicit no-reactFlow-change scope."
+  ],
+  "invariant_owner_layer": {
+    "layer": "src/workbench/generationCanvas/store",
+    "tests": [
+      "src/workbench/generationCanvas/store/generationCanvasStore.test.ts"
+    ],
+    "why": "Standalone action semantics live in the store, where UI and agent callers converge; journal supplies the existing suppression mechanism."
+  }
+}
