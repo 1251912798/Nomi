@@ -240,6 +240,22 @@ export interface LaneQueuedMessage {
 export const LANE_QUEUE_KINDS = ['steer', 'follow-up', 'next-run'] as const
 export type LaneQueueKind = (typeof LANE_QUEUE_KINDS)[number]
 
+/**
+ * 这一轮正在重试中（`LaneSnapshot.operation.retry`，pi 自己记的）。
+ *
+ * **为什么必须上屏**：一次 429 或网络抖动今天在用户那边长成「它卡住了」——面板既不动也不报错，
+ * 而底下 pi 正在 1s / 2s / 4s 地退避。三个数字上屏之后，同一件事变成「正在重试 2/4」，
+ * 用户知道该等还是该按停。字段缺失 = **没有在重试**，不是重试了 0 次。
+ */
+export interface LaneRetry {
+  /** 第几次重试（1 起）。 */
+  readonly attempt: number
+  /** 最多几次（pi 的 `maxRetries + 1`）。 */
+  readonly maxAttempts: number
+  /** 下一次不早于这个时刻（epoch ms）。倒计时由渲染层自己算，本层不算第二遍。 */
+  readonly nextAttemptAt: number
+}
+
 /** 一次推送 = lane 当前的全部有序段。阶段 1 走全量快照；增量是阶段 3 的事。 */
 export interface LaneProjection {
   readonly lane: string
@@ -252,6 +268,8 @@ export interface LaneProjection {
   readonly thinking: LaneThinking
   /** 排着队还没被吃进去的插话，按 pi 的队列顺序。空数组 = 队列是空的。 */
   readonly queues: readonly LaneQueuedMessage[]
+  /** 只在真的在退避时存在。见 `LaneRetry`。 */
+  readonly retry?: LaneRetry
 }
 
 /** 一个项目里的一条对话，在列表上的样子。正文不过桥——列表只需要认出它是哪一条。 */

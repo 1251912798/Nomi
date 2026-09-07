@@ -36,6 +36,7 @@ import {
   LANE_MODEL_OUTPUT_MAX_BYTES,
   LANE_MODEL_OUTPUT_MAX_LINES,
 } from "../shared/agentLane/laneContracts";
+import { LANE_READ_TOOL_TIMEOUT_MS, LANE_WRITE_TOOL_TIMEOUT_MS } from "../shared/agentLane/laneToolContract";
 import type { LaneToolSpec } from "../shared/agentLane/laneToolContract";
 import { laneArgumentTolerance, laneNoArgumentTolerance } from "./laneArgumentTolerance";
 import { bindLaneTool, type LaneToolDescriptor } from "./laneRuntimePort";
@@ -133,6 +134,10 @@ const writeContentSchema = z
 const DOCUMENT_READ_EFFECTS = Object.freeze({ mutates: false, billable: false, reversal: "none" } as const);
 const DOCUMENT_WRITE_EFFECTS = Object.freeze({ mutates: true, billable: false, reversal: "undoable" } as const);
 
+/** 文稿读是内存里的一份字符串；写要走编辑器的撤销栈与持久化，所以走写类预算。 */
+const DOCUMENT_READ_EXECUTION = Object.freeze({ timeoutMs: LANE_READ_TOOL_TIMEOUT_MS } as const);
+const DOCUMENT_WRITE_EXECUTION = Object.freeze({ timeoutMs: LANE_WRITE_TOOL_TIMEOUT_MS } as const);
+
 /** 不收参数的工具。**显式的空对象**说的是「这个工具不收参数」，`{}` 说的是「随便填」。 */
 const noArgumentsSchema = z.object({}).strict();
 
@@ -168,6 +173,7 @@ export function documentLaneToolSpecs(): LaneToolSpec[] {
       promptSnippet: READ_SPECS[scope].snippet,
       promptGuidelines: DOCUMENT_GUIDELINES,
       effects: DOCUMENT_READ_EFFECTS,
+      execution: DOCUMENT_READ_EXECUTION,
       schema: noArgumentsSchema,
       examples: [{ when: "Always call it with no arguments:", arguments: {} }],
       prepareArguments: laneNoArgumentTolerance,
@@ -183,6 +189,7 @@ export function documentLaneToolSpecs(): LaneToolSpec[] {
       promptSnippet: WRITE_SPECS[operation].snippet,
       promptGuidelines: DOCUMENT_GUIDELINES,
       effects: DOCUMENT_WRITE_EFFECTS,
+      execution: DOCUMENT_WRITE_EXECUTION,
       schema: writeContentSchema,
       examples: [{ when: "Write one finished paragraph:", arguments: { content: "The rain had not stopped for three days." } }],
       prepareArguments: prepareWriteArguments,

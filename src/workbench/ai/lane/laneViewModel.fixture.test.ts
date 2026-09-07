@@ -18,6 +18,7 @@ const labels: LaneViewModelLabels = {
   thinkingLabel: '[thinking]',
   formatTokens: (value) => `${value}t`,
   formatCost: (usd) => `$${usd.toFixed(4)}`,
+  retryLabel: (attempt, maxAttempts) => `[retry ${attempt}/${maxAttempts}]`,
   unknown: '[unknown]',
   free: '[free]',
   taskTitle: '[task]',
