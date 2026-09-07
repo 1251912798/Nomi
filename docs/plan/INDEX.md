@@ -1,4 +1,5 @@
 # docs/plan 索引地图
+- [模型契约跨字段约束](2026-09-08-model-contract-cross-field-limits.md) — Hailuo 1080p/时长与 H3 混合参考总量。
 - [阶段 5b：目录活性 reconcile](2026-09-08-catalog-liveness-reconcile.md) — 自动禁用、保留配置、周探针与明暗样张。
 
 > 方案/执行文档按**主题**分组的查找表。文件本身保持平铺（彼此有大量路径互链，移动会断链），本表负责「按主题/状态秒定位」。
