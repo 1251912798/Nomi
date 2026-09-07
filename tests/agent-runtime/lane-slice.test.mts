@@ -23,6 +23,7 @@ function shape(part: LanePart): string {
     case 'thinking': return `thinking:${part.text}`;
     case 'tool-call': return `call:${part.toolName}:${part.toolCallId}`;
     case 'tool-result': return `result:${part.toolName}:${part.toolCallId}:${part.isError}`;
+    case 'task': return `task:${part.productionRunId}`;
     case 'host-note': return `note:${part.noteType}`;
   }
 }
