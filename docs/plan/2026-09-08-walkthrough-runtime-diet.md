@@ -31,9 +31,9 @@
 
 | 改动 | 改前 ms | 改后 ms（三遍） | 节省 | 结论 |
 |---|---:|---:|---:|---|
-| baseline full 13 | 待测 | — | — | 尚未完成 |
+| baseline full 13 | 305231 / 300439 | — | — | 两遍 13/13 PASS |
 
-目标 full 总墙钟下降至少 40%；不足须按实测解释，不降低门槛。尚无提速或全绿结论。
+目标 full 总墙钟下降至少 40%；不足须按实测解释，不降低门槛。C1 已三遍验证，A/D 与最终 gates 尚待完成。
 
 ## 首启状态事实（代码证据，非实测时间）
 
@@ -117,3 +117,21 @@ C 首刀按排序处理 group-baseline 与 group-ports。前者单选探针不�
 五张前后截图已 Read 目视并排核对：group-baseline 的 01–05，布局、节点数量、工具条与配色一致；项目名称内的时分随真实运行变化。新增 07-composer-real.png 已目视确认包含真正 composer；原探针吞错时未产这张图，不把缺失证据称为正确基线。证据留 /tmp/nomi-walk-speed-evidence/c1-five-pairs.jpg 与 baseline-shots。
 
 截图另观察到 composer 左侧与 rail 重叠（第一节点位于左边界）；属于产品视觉问题线索，仅记录，不在本任务改 src。group-label 的旧截图裁剪落在视口外，只截到 AppBar，是原走查取证缺口，后续收敛截图边界时处理。
+
+## C2 候选：不额外打开 DevTools
+
+启动观测里 read-only 和 group-reference 各有第二个页面。electron/main.ts:149 的 isDev 由 VITE_DEV_SERVER_URL / NOMI_DESKTOP_DEV 判定；同文件 :365 在 isDev 时 openDevTools(detach)。getRendererUrl 同时已支持 NOMI_RENDERER_URL（:232），可指同一 Vite 页面而不启用开发模式。准备实测这两个 fixture 改用既有 URL 入口；不改 Electron 生产源码，不设置新的产品后门，也不改变被测页面。结论以相同两文件三遍与截图对账为准，尚未实施/计收益。
+
+
+C2 实测拒绝：react-flow-read-only 在 17067ms 失败，真实节点未出现，HTML 只有空 root。已撤回两文件的 NOMI_RENDERER_URL 切换，不为少窗口修改生产渲染策略、不降低节点断言。开发模式必须保留，因此两个 DevTools 不纳入已节省窗口数。
+
+A 原型：Electron default_app.asar/main.js:39 的解析只认分开的 -r/--require，且遇应用路径就停止解析；所以放在 `.` 后面或写 --require=… 不会生效。前置 `-r <module>` 实测首帧前 localStorage 已为 seen、splash=0，真实项目入口 trial-click 2145.0ms。相对独立手动 skip 的 2138.0ms 尚无冷启提升证据；A 的目标改为消掉现有调用方“写状态→reload→额外 sleep”的重复准备，采用之前必须由这几份文件三遍实测证明收益。
+
+## B 裁决（不合并）
+
+以实际运行的 full 13 文件为边界，均只有一次 Electron launch；没有同文件可复用的第二次启动。
+跨文件合并收益上限约 8s（2.7%），还会把剪贴板/窗口焦点/项目生命周期耦合。维持独立文件、独立隔离目录与独立结果，合并 0 组，启动次数不虚报减少。持久化重启语义保留。本刀不改代码、节省 0ms。
+
+## 自然首启补测
+
+未预置、未点跳过的独立冷启：DOM 1199ms；跳过按钮出现 1440ms；宣传层消失 15321ms；新建项目可点击 15349ms。与手动跳过 2138ms 分开报告，不把自然播放成本冒算成已有走查收益。
