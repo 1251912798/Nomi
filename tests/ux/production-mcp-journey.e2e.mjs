@@ -202,7 +202,7 @@ try {
   const leaseHandle = session.leaseHandle
   check(typeof leaseHandle === 'string' && leaseHandle.length > 0, 'semantic MCP session opens a verified project lease')
   const missingDocument = await mcp.callTool('nomi_document_read', { leaseHandle, projectId: semanticProjectId, scope: 'full' })
-  check(missingDocument.isError === true && missingDocument.structuredContent?.nomiOutcome?.errorCode === 'document_not_found', 'document MCP gap is explicit for a newly created project without a creation document')
+  check(missingDocument.isError === true && missingDocument.structuredContent?.nomiOutcome?.errorCode === 'document_not_found', `document MCP gap is explicit for a newly created project without a creation document; actual=${JSON.stringify(missingDocument)}`)
 
   const createdSemanticNode = await callTool('nomi_canvas_edit', {
     leaseHandle,

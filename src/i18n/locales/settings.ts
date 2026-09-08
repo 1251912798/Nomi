@@ -1,4 +1,15 @@
 export const zhSettings = {
+  sound: {
+    title: '提醒与声音', brand: 'Nomi 提醒音', description: '需要你决定的时候，轻轻响一声',
+    preview: '试听', stop: '停止', enabled: '需要我时响一声', events: '响哪些',
+    decision: '需要你决定（审批、要花钱、失败要处理）', completed: '生成完成', slow: '比平时久',
+    custom: '用自己的声音', replace: '换一个…', reset: '恢复默认', duration: '{{seconds}} 秒',
+    formats: 'WAV / MP3 / AIFF / M4A · 最长 10 秒 · 最大 2 MB',
+    enableFirst: '开启提醒音后可选择', unavailable: '正在连接桌面声音设置',
+    invalid: '请选择不超过 10 秒、2 MB 的有效音频文件', saveError: '未能保存，请重试',
+    previewError: '未能播放，请检查本机音频设备',
+  },
+
   title: '设置',
   close: '关闭',
   unsaved: {
@@ -185,8 +196,6 @@ export const zhSettings = {
       title: '任务通知',
       system: '需要确认、失败和完成时系统通知',
       systemHint: '通知只显示状态与安全深链，不显示本地绝对路径。',
-      sound: '任务完成提示音',
-      soundHint: '系统通知开启时使用系统提示音；关闭时仅播放一声本地提示。',
     },
   },
   general: {
@@ -264,6 +273,17 @@ export const zhSettings = {
 }
 
 export const enSettings = {
+  sound: {
+    title: 'Alerts & sound', brand: 'Nomi attention sound', description: 'A gentle note when a decision needs you',
+    preview: 'Preview', stop: 'Stop', enabled: 'Play a sound when I’m needed', events: 'Play for',
+    decision: 'Your decision (approval, spending, or a failure)', completed: 'Generation complete', slow: 'Taking longer than usual',
+    custom: 'Use your own sound', replace: 'Choose…', reset: 'Restore default', duration: '{{seconds}} sec',
+    formats: 'WAV / MP3 / AIFF / M4A · Up to 10 seconds · Up to 2 MB',
+    enableFirst: 'Enable sound to choose events', unavailable: 'Connecting to desktop sound settings',
+    invalid: 'Choose a valid audio file up to 10 seconds and 2 MB', saveError: 'Could not save. Please retry.',
+    previewError: 'Could not play. Check your audio device.',
+  },
+
   title: 'Settings',
   close: 'Close',
   unsaved: {
@@ -449,8 +469,6 @@ export const enSettings = {
       title: 'Task notifications',
       system: 'System notifications for approval, failure, and completion',
       systemHint: 'Notifications show status and safe deep links, never absolute local paths.',
-      sound: 'Completion sound',
-      soundHint: 'Use the OS sound with system notifications; otherwise play one local chime.',
     },
   },
   general: {

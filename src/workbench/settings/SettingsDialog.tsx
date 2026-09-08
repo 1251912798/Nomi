@@ -25,6 +25,7 @@ import { defaultAutomationPolicySettings } from './settingsAutomationView'
 import type { AutomationPolicySettings } from '../../../electron/settings/automationPolicyContract'
 import type { ProductionPolicyRequirement } from '../production/productionPolicyRecovery'
 import { hasSettingsUnsavedChanges } from './settingsUnsavedChanges'
+import { AttentionSoundSection } from './AttentionSoundSection'
 import { TelemetrySection } from './TelemetrySection'
 import { DiagnosticsBundleSection } from './DiagnosticsBundleSection'
 
@@ -398,6 +399,7 @@ export function SettingsDialog({
                 </div>
                 {/* 「隐私与诊断」是一格两半：TelemetrySection 管「发不发匿名计数」，
                     DiagnosticsBundleSection 管「出事时怎么把本机证据交出来」。同块相邻，不另起 tab。 */}
+                <AttentionSoundSection />
                 <TelemetrySection />
                 <DiagnosticsBundleSection />
               </div>

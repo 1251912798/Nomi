@@ -7,6 +7,7 @@ import { projectGenerationRecovery, type GenerationRecoveryProjection } from '..
 
 export type ProductionNotice = {
   /** 去重键：同 run 同类事件在窗口期内只打扰一次。 */
+  soundEvent: import("../shared/contracts/attentionSound").AttentionSoundEvent
   key: string
   title: string
   body: string
@@ -39,6 +40,7 @@ function notice(kind: keyof typeof COPY, run: ProductionRun, locale: NoticeLocal
   const [title, fallbackBody] = locale === 'en' ? COPY[kind].en : COPY[kind].zh
   return {
     key: `${kind}:${run.runId}`,
+    soundEvent: kind === 'completed' ? 'completed' : 'decision',
     title,
     body: detail?.trim() || fallbackBody,
     target: { projectId: run.projectId, runId: run.runId },

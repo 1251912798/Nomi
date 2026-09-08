@@ -137,3 +137,6 @@ test('分型只看可执行行：注释里的 exit 2 不算，脚本自己 exit 
   // python 堆里的 sys.exit(2) 不是 shell 的拒绝通道，不该被误认
   assert.equal(hookKind('#!/usr/bin/env bash\npython3 -c "import sys; sys.exit(2)"\nexit 0\n'), 'advisory')
 })
+
+// Keep the optional attention path inside check:claude-hooks, including native-player absence.
+import './attention-cue/attention-cue.node-test.mjs'

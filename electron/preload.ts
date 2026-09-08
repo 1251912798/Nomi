@@ -100,6 +100,14 @@ contextBridge.exposeInMainWorld("nomiDesktop", {
       get: () => ipcRenderer.invoke("nomi:settings:generation-model-defaults-get"),
       set: (payload: unknown) => ipcRenderer.invoke("nomi:settings:generation-model-defaults-set", payload),
     },
+    attentionSound: {
+      get: () => ipcRenderer.invoke("nomi:settings:attention-sound-get"),
+      set: (value: unknown) => ipcRenderer.invoke("nomi:settings:attention-sound-set", value),
+      pick: () => ipcRenderer.invoke("nomi:settings:attention-sound-pick"),
+      reset: () => ipcRenderer.invoke("nomi:settings:attention-sound-reset"),
+      preview: () => ipcRenderer.invoke("nomi:settings:attention-sound-preview"),
+      stop: () => ipcRenderer.invoke("nomi:settings:attention-sound-stop"),
+    },
     vendorPreference: {
       get: () => ipcRenderer.invoke("nomi:settings:vendor-preference-get"),
       set: (payload: unknown) => ipcRenderer.invoke("nomi:settings:vendor-preference-set", payload),
