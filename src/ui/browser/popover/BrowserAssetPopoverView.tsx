@@ -254,7 +254,7 @@ export function BrowserAssetPopoverView(props: BrowserAssetPopoverViewProps): JS
                   </span>
                 )}
                 <DesignButton
-                  variant="primary"
+                  variant="filled"
                   disabled={!canImportSelectedAssetsToCanvas}
                   onClick={importSelectedAssetsToCanvas}
                   leftSection={<IconArrowForwardUp size={15} stroke={1.8} aria-hidden="true" />}

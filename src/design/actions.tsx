@@ -42,7 +42,34 @@ export const IconActionButton = forwardRef<HTMLButtonElement, IconActionButtonPr
   )
 })
 
-export type DesignButtonProps = ButtonProps & ComponentPropsWithoutRef<'button'>
+// DesignButton 的尺寸真相源。原先包装层把 `h-8 px-3 text-body-sm` 写死，而生成的 CSS 里
+// Tailwind 整段排在 `@mantine/core/styles.css` 之后（scripts/build-tailwind.mjs:42-51），
+// 同特异度下后来者胜 —— Mantine 按 `size` 生成的 `--button-height/-padding-x/-fz` 全被盖掉，
+// `size` prop 是死的。改成本地映射后 `size` 真正生效；`md`(h-9 px-3) 就是各处
+// `className="h-9"` 绕行写法的正主。默认档 `sm` 与历史渲染逐像素一致。
+const DESIGN_BUTTON_SIZE = {
+  xs: 'h-7 px-3 text-caption', // 与 WorkbenchButton 的紧凑档同一根尺寸轴
+  sm: 'h-8 px-3 text-body-sm',
+  md: 'h-9 px-3 text-body-sm',
+} as const
+
+/**
+ * Mantine `Button` 的合法 variant 八值。收窄它的理由是实测：写一个**不存在**的值
+ * （`BrowserAssetPopoverView` 曾写 `variant="primary"`——那是 `WorkbenchButton` 的词表，
+ * 两个组件容易混）不会报错、也不会裸奔，Mantine 对未知 variant 不设 `--button-bg`，
+ * CSS 回落到主题 `primaryColor`；而本仓 `primaryColor: 'dark'`（nomiTheme.ts:122）
+ * 恰好与 `filled` 同一块深底，于是**碰巧渲染正确**。
+ * 下一个人写 `variant="ghost"` 就不一定有这个运气——所以让编译器拦，别赌回落。
+ */
+const DESIGN_BUTTON_VARIANTS = ['filled', 'light', 'outline', 'subtle', 'default', 'gradient', 'transparent', 'white'] as const
+
+export type DesignButtonProps =
+  Omit<ButtonProps, 'size' | 'variant'>
+  & Omit<ComponentPropsWithoutRef<'button'>, 'size'>
+  & {
+    size?: keyof typeof DESIGN_BUTTON_SIZE
+    variant?: (typeof DESIGN_BUTTON_VARIANTS)[number]
+  }
 
 export const DesignButton = forwardRef<HTMLButtonElement, DesignButtonProps>(function DesignButton({
   children,
@@ -51,13 +78,14 @@ export const DesignButton = forwardRef<HTMLButtonElement, DesignButtonProps>(fun
   leftSection,
   loading = false,
   radius = 'sm',
+  size = 'sm',
   variant = 'light',
   ...props
 }, ref): JSX.Element {
   const rootClassName = cn(
     'inline-flex items-center justify-center gap-1.5',
-    'h-8 px-3 rounded-nomi-sm',
-    'text-body-sm font-medium',
+    'rounded-nomi-sm font-medium',
+    DESIGN_BUTTON_SIZE[size],
     'transition-[background,color,border-color] duration-150 ease-out',
     'disabled:opacity-50 disabled:cursor-not-allowed',
     className,

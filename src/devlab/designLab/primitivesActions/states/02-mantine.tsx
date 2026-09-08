@@ -149,5 +149,37 @@ export const MANTINE_ACTION_STATES: readonly LabState[] = [
         </Specimen>
       </PrimitiveStage>
     ),
+  },  {
+    id: 'pa-08-design-button-sizes',
+    name: 'DesignButton · size 三档（2026-09-08 修复前 size 是死的，三档全渲染成 sm）',
+    source: SOURCE_MANTINE,
+    mirrors: [
+      'src/ui/onboarding/AdapterVerificationScreen.tsx:234',
+      'src/ui/onboarding/CapabilityModeEditor.tsx:202',
+      'src/ui/onboarding/ModelAdapterStatusSection.tsx:130',
+    ],
+    coverage: 'shell',
+    // 为什么这格必须存在：`size` 此前**完全不生效**——包装层把 `h-8 px-3 text-body-sm`
+    // 硬编码进 className，而生成的 CSS 里 Tailwind 整段排在 `@mantine/core/styles.css`
+    // 之后（scripts/build-tailwind.mjs:42-51），同特异度后来者胜，Mantine 按 size 生成的
+    // `--button-height / --button-padding-x / --button-fz` 全被盖掉。7 处 `size="xs"`
+    // 因此静默无效，而想要 36px 的三处只能写 `className="h-9"` 绕过去。
+    // 修法 = 尺寸走本地映射表（`DESIGN_BUTTON_SIZE`）；这一格是它还活着的视觉证据。
+    render: () => (
+      <PrimitiveStage>
+        <Specimen label="xs 28px（失败恢复行内动作 / 编辑器「添加一项」· 7 处）">
+          <DesignButton size="xs" variant="light">重试这一个</DesignButton>
+          <DesignButton size="xs" variant="subtle">手动接入</DesignButton>
+        </Specimen>
+        <Specimen label="sm 32px · 默认档（不传 size 时就是它）">
+          <DesignButton variant="light">返回</DesignButton>
+          <DesignButton variant="filled">确认接入</DesignButton>
+        </Specimen>
+        <Specimen label="md 36px（页头/状态条主动作 · 原先写作 className=&quot;h-9&quot;）">
+          <DesignButton size="md" variant="light">重新检测</DesignButton>
+          <DesignButton size="md" variant="filled">开始接入</DesignButton>
+        </Specimen>
+      </PrimitiveStage>
+    ),
   },
 ]
