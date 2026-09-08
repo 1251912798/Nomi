@@ -4,7 +4,7 @@ import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 import { chromium } from 'playwright'
-import { createCollector } from './collect.mjs'
+import { createCollector, readJson, rubricFile } from './collect.mjs'
 import { installFeelObserver } from '../_feel-observer.mjs'
 
 test('collector consumes the existing observer screenshot record without another scan', async () => {
@@ -16,6 +16,7 @@ test('collector consumes the existing observer screenshot record without another
     const observer = installFeelObserver(page, { name: 'experience-shared', outputDir: path.join(outputDir, 'feel') })
     const collector = await createCollector({ journey: { id: 'shared', steps: ['continue'] }, outputDir, identity: {} })
     await collector.attach(page)
+    assert.deepEqual(await page.evaluate(() => ({ width: innerWidth, height: innerHeight })), (await readJson(rubricFile)).viewport)
     const target = page.getByRole('button', { name: 'Continue' })
     await collector.step('continue', () => target.click(), { target })
     const shots = observer.records.filter((record) => /01-continue-(before|after)\.png$/.test(record.screenshot))

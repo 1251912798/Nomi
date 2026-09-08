@@ -188,5 +188,10 @@
       },
       "reason": "PR #662 final scanner and shared screenshot observation replace the pre-merge scanner and later duplicate scan. Incompatible measurement migration; not a same-source regression pass."
     }
-  ]
+  ],
+  "viewportCorrection": {
+    "reason": "Electron contentSize did not pin renderer viewport (842 -> 840); collector uses rubric viewport via Playwright setViewportSize.",
+    "sourceHash": "879a73b032bb5d4cf430865d9fceed40dd6deee3082468c8c5da0b4a2896bb7d",
+    "metricsChanged": false
+  }
 }

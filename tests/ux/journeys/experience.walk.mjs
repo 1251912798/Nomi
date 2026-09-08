@@ -48,9 +48,7 @@ export async function runJourney(journey, collector) {
         NOMI_DISABLE_AUTO_UPDATE: '1',
       },
     })
-    const { win, app } = launched
-    const windowHandle = await app.browserWindow(win)
-    await windowHandle.evaluate((w) => w.setContentSize(1440, 900))
+    const { win } = launched
     win.setDefaultTimeout(20000)
     await applyColorSchemeForShot(win, 'light')
     // Setup preferences only, then use the visible splash action; never reload an active app.

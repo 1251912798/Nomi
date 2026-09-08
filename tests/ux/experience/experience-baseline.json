@@ -4,7 +4,7 @@
     "agent-panel": {
       "compatibility": {
         "rubricVersion": 1,
-        "sourceHash": "bfd9e08a1cb8d2b7b5c9b0350c1d9ec83b97af551a7b81047265d31bbbd8dee8",
+        "sourceHash": "879a73b032bb5d4cf430865d9fceed40dd6deee3082468c8c5da0b4a2896bb7d",
         "platform": "darwin",
         "architecture": "arm64",
         "playwright": "1.60.0",
@@ -33,7 +33,7 @@
     "canvas-image": {
       "compatibility": {
         "rubricVersion": 1,
-        "sourceHash": "bfd9e08a1cb8d2b7b5c9b0350c1d9ec83b97af551a7b81047265d31bbbd8dee8",
+        "sourceHash": "879a73b032bb5d4cf430865d9fceed40dd6deee3082468c8c5da0b4a2896bb7d",
         "platform": "darwin",
         "architecture": "arm64",
         "playwright": "1.60.0",
@@ -62,7 +62,7 @@
     "settings-model": {
       "compatibility": {
         "rubricVersion": 1,
-        "sourceHash": "bfd9e08a1cb8d2b7b5c9b0350c1d9ec83b97af551a7b81047265d31bbbd8dee8",
+        "sourceHash": "879a73b032bb5d4cf430865d9fceed40dd6deee3082468c8c5da0b4a2896bb7d",
         "platform": "darwin",
         "architecture": "arm64",
         "playwright": "1.60.0",

@@ -78,3 +78,5 @@ v1 不开放可执行豁免：rubric.exemptions 必须为空，非空直接拒�
 冲突范围：`tests/ux/_feel.mjs`、`tests/ux/journeys/catalog.json`、`scripts/feel-nightly.mjs`。扫描器完全采用 origin/main；保留 main 的状态夹具、record/ratchet 观察器、journey/screenshotName/rule 基线与账本。第二层仅补目录元数据和同入口 `--experience` 分道，采集直接消费共享观察器截图记录，删除旧扫描异常兼容路径。生产代码不改。验收：第二层单测、三条真实 loopback 旅程/报告、一层 nightly drift=0、完整 gates、正常 hook 提交推送；回滚用 revert 合并提交，不改 main。口径因最终扫描器与目录合并变化，先对照旧/新指标；操作/路径指标禁止放宽。扫描器及采样时机已换为 #662 最终口径，机械 finding 单独显式迁移并保留旧值，不称为同口径基线通过。
 
 合并复验：三旅程 25 阶段/50 PNG，30 个操作/路径指标逐项完全相同；finding 峰值 12/61/78 → 16/63/27（新版扫描可见区及共享截图时机）。完整迁移对照见 `docs/audit/2026-09-09-ux-experience-merge-baseline.json`。新口径已复算通过，原判官的 incompatible/regressed 拒绝逻辑不改。浏览器共享观察器回归已接入 `test:feel:browser`；新目录允许有真实 runner/steps 的第二层任务无 DOM 夹具，旧一层任务仍要求完整状态。
+
+复跑暴露的同类环境入口：三旅程内页高度一起从 842 漂到 840，源 hash 相同仍被判官正确拒绝。根因是设置 Electron 外窗 content size 不能保证内页 viewport；共享采集 attach 从量表读取固定 viewport，删除旅程外窗尺寸控制。Context7 已核对 Playwright `Page.setViewportSize`，官方实现 `packages/playwright-core/src/server/page.ts` 会等待 viewport 更新；本仓近邻 `tests/ux/production-mcp-journey.e2e.mjs:58` 已采用该接口。浏览器回归直接验证 attach 后实际 innerWidth/innerHeight。只迁移新增固定 viewport 代码的 sourceHash，保持 33 项指标阈值不变。

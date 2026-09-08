@@ -32,6 +32,7 @@ export async function createCollector({ journey, outputDir, identity }) {
   async function attach(win) {
     if (page) throw new Error('Collector already attached')
     page = win
+    await page.setViewportSize(rubric.viewport)
     feelObserver = installFeelObserver(page, { name: `experience-${journey.id}` })
     await page.addInitScript(installProbe)
     await page.evaluate(installProbe)
