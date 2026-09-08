@@ -41,6 +41,7 @@ const EXPECTED = {
   'pa-05-design-button-variants': { busy: 0, minButtons: 6 },
   'pa-06-design-button-busy': { busy: 2, minButtons: 4 },
   'pa-07-icon-action-button': { busy: 0, minButtons: 5 },
+  'pa-08-design-button-sizes': { busy: 0, minButtons: 6, heights: [28, 28, 32, 32, 36, 36] },
 }
 
 await walkDesignLabScreen({
@@ -66,6 +67,7 @@ await walkDesignLabScreen({
       const busy = buttons.filter((node) => node.getAttribute('aria-busy') === 'true')
       return {
         buttons: buttons.length,
+        heights: buttons.map((node) => node.getBoundingClientRect().height),
         marks: stage.querySelectorAll('.nomi-loading-mark').length,
         busy: busy.length,
         // 忙态没自动禁用 = 用户能在生成中再点一次；这条承诺住在组件里，只有这里看得见。
@@ -78,6 +80,12 @@ await walkDesignLabScreen({
     }
     if (seen.buttons < expected.minButtons) {
       record(`${state.id} 只有 ${seen.buttons} 颗按钮（许诺 ≥ ${expected.minButtons}）——样本没画全`)
+    }
+    if (expected.heights && (
+      seen.heights.length !== expected.heights.length
+      || seen.heights.some((height, index) => Math.abs(height - expected.heights[index]) > 0.5)
+    )) {
+      record(`${state.id} 按钮高度 ${seen.heights.join('/')}，许诺 ${expected.heights.join('/')}——size 三档必须真实生效`)
     }
     if (seen.busy !== expected.busy) {
       record(`${state.id} 许诺 ${expected.busy} 颗忙态按钮，实际 ${seen.busy} 颗——loading 没生效，截的是默认态`)
