@@ -16,7 +16,7 @@ export interface LegacyConversationPlan {
   sourceItems: number;
   facts: { arrayOrder: boolean; summaries: boolean; archivedItems: boolean; missingToolArguments: boolean };
 }
-export interface LegacyImportLabels { summaryPrefix: string; unverifiedToolResult: string }
+import type { LegacyImportLabels } from '../shared/agentLane/laneLegacyMigrationContract.js';
 
 function note(item: LegacyItem, reason: string): LegacyAppendOperation {
   return { sourceIndex: item.sourceIndex, type: 'custom', customType: 'nomi.ui.legacy',

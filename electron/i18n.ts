@@ -15,6 +15,8 @@ export { normalizeDesktopLocale, getDesktopLocale, setDesktopLocale, type Deskto
 
 const translations = {
   "zh-CN": {
+    "agent.legacySummary": "旧版摘要：",
+    "agent.legacyUnverifiedTool": "旧版工具结果未验证。",
     "workspace.selectTitle": "选择 Nomi 项目文件夹",
     "workspace.openButton": "打开文件夹",
     "workspace.invalidFolder": "未选择有效的文件夹",
@@ -188,6 +190,8 @@ const translations = {
     "customCall.emptyScript": "脚本为空——先写点内容或让 AI 生成",
   },
   en: {
+    "agent.legacySummary": "Legacy summary: ",
+    "agent.legacyUnverifiedTool": "Legacy tool outcome is unverified.",
     "workspace.selectTitle": "Choose a Nomi project folder",
     "workspace.openButton": "Open folder",
     "workspace.invalidFolder": "No valid folder was selected",
@@ -361,8 +365,8 @@ const translations = {
 
 type DesktopTranslationKey = keyof (typeof translations)["zh-CN"];
 
-export function desktopT(key: DesktopTranslationKey, values: Record<string, string | number> = {}): string {
-  let text: string = translations[getDesktopLocale()][key];
+export function desktopT(key: DesktopTranslationKey, values: Record<string, string | number> = {}, locale: DesktopLocale = getDesktopLocale()): string {
+  let text: string = translations[locale][key];
   for (const [name, value] of Object.entries(values)) {
     text = text.replace(new RegExp(`\\{\\{${name}\\}\\}`, 'g'), String(value));
   }

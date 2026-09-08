@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import { createHash } from 'node:crypto';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -134,5 +135,67 @@ test('new source, linked archive and foreign target prefixes fail closed', async
     await assert.rejects(() => migrateLaneLegacy(options));
     assert.deepEqual(fs.readFileSync(options.source), options.bytes);
     assert.equal(fs.readFileSync(options.receipt, 'utf8'), 'G5 sentinel');
+  });
+});
+
+const digest = (bytes: Buffer | string) => createHash('sha256').update(bytes).digest('hex');
+
+async function archiveOldSession(options: Awaited<ReturnType<typeof fixture>>) {
+  const nomi = join(options.projectDir, '.nomi');
+  const startedAt = '2026-09-01T12:34:56.000Z';
+  const stamp = startedAt.replace(/[^0-9A-Za-z]/g, '_');
+  const archiveDir = join(nomi, 'project-agent-legacy-archive-v1'); fs.mkdirSync(archiveDir);
+  const archive = join(archiveDir, `${stamp}-agent-session.json`); fs.renameSync(options.source, archive);
+  const evidence = { schemaVersion: 1, mode: 'archive-only', binding, sources: {
+    conversationsHash: digest(''), contextHash: digest(options.bytes), proposalReceiptHash: digest('never-read-receipt'),
+  } };
+  fs.writeFileSync(join(nomi, 'project-agent-cutover-preparation.json'), JSON.stringify({ ...evidence, startedAt }));
+  fs.writeFileSync(join(nomi, 'project-agent-cutover.json'), JSON.stringify({ ...evidence, completedAt: startedAt }));
+  return { archive, nomi, stamp, evidence };
+}
+
+test('old archive recovery keeps provenance, resumes, and retains old rollback evidence', async t => {
+  const options = await fixture(t); const prior = await archiveOldSession(options);
+  await assert.rejects(() => migrateLaneLegacy({ ...options, checkpoint: async stage => {
+    if (stage === 'append') throw new Error('injected-stop');
+  } }));
+  assert.equal((await migrateLaneLegacy(options)).parts, 2);
+  const manifest = JSON.parse(fs.readFileSync(join(prior.nomi, 'lane-legacy-migration.json'), 'utf8'));
+  assert.equal(manifest.sources[1].archiveStamp, prior.stamp);
+  assert.deepEqual(fs.readFileSync(prior.archive), options.bytes);
+  assert.deepEqual(fs.readFileSync(join(prior.nomi, 'legacy-archive', manifest.transactionId, 'agent-chat-v2.json')), options.bytes);
+  assert.equal(fs.readFileSync(options.receipt, 'utf8'), 'G5 sentinel');
+});
+
+test('old archives require exact bound preparation, completion and hash, never directory guesses', async t => {
+  for (const change of ['missing-preparation', 'binding', 'hash', 'timestamp', 'empty', 'symlink']) await t.test(change, async st => {
+    const options = await fixture(st); const prior = await archiveOldSession(options);
+    const file = join(prior.nomi, 'project-agent-cutover-preparation.json');
+    const raw = JSON.parse(fs.readFileSync(file, 'utf8'));
+    if (change === 'missing-preparation') fs.unlinkSync(file);
+    if (change === 'binding') { raw.binding.projectGeneration = 2; fs.writeFileSync(file, JSON.stringify(raw)); }
+    if (change === 'hash') fs.writeFileSync(prior.archive, 'changed');
+    if (change === 'timestamp') { raw.startedAt = '2026-09-02T12:34:56.000Z'; fs.writeFileSync(file, JSON.stringify(raw)); }
+    if (change === 'empty') fs.writeFileSync(prior.archive, '');
+    if (change === 'symlink') { fs.unlinkSync(prior.archive); fs.symlinkSync(options.receipt, prior.archive); }
+    await assert.rejects(() => migrateLaneLegacy(options), /legacy-prior-archive-evidence-mismatch/);
+    assert.equal(fs.existsSync(join(prior.nomi, 'lane-legacy-migration.json')), false);
+    assert.equal(fs.readFileSync(options.receipt, 'utf8'), 'G5 sentinel');
+  });
+});
+
+test('first import selects the first source conversation, preserving an existing workspace choice', async t => {
+  for (const existing of [false, true]) await t.test(String(existing), async st => {
+    const options = await fixture(st);
+    fs.writeFileSync(options.source, JSON.stringify({ sessions: {
+      first: [{ role: 'user', content: 'one' }], last: [{ role: 'user', content: 'two' }],
+    } }));
+    const selection = join(options.projectDir, '.nomi', 'agent-workspace.json');
+    const saved = { laneName: 'existing', sessionId: '22345678-1234-4234-8234-123456789abc' };
+    if (existing) fs.writeFileSync(selection, JSON.stringify(saved));
+    await migrateLaneLegacy(options);
+    const manifest = JSON.parse(fs.readFileSync(join(options.projectDir, '.nomi', 'lane-legacy-migration.json'), 'utf8'));
+    assert.deepEqual(JSON.parse(fs.readFileSync(selection, 'utf8')), existing ? saved
+      : { laneName: manifest.targets[0].laneName, sessionId: manifest.targets[0].sessionId });
   });
 });

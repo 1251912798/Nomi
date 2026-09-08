@@ -1,3 +1,4 @@
+import { LANE_LEGACY_NOTE, LANE_LEGACY_TOOLS_NOTE, laneLegacyFacts } from '../shared/agentLane/laneLegacyNote.js';
 import { findLaneReceiptAuthority } from './laneReceiptAuthority.mjs';
 // Agent lane · 主进程宿主（**薄**）
 //
@@ -226,6 +227,14 @@ export const openLane: OpenLane = async (options: OpenLaneOptions): Promise<Lane
   const currentModel = await lane.getModel(context);
   if (currentModel?.provider !== model.provider || currentModel?.id !== model.id) {
     await lane.setModel({ provider: model.provider, modelId: model.id }, context);
+  }
+  const legacySource = (await lane.findEntries({ type: 'custom', customType: LANE_LEGACY_NOTE, limit: 1 }, context))[0];
+  if (legacySource?.type === 'custom' && laneLegacyFacts(legacySource.data)
+    && !(await lane.findEntries({ type: 'custom', customType: LANE_LEGACY_TOOLS_NOTE, limit: 1 }, context)).length) {
+    // Import seeds no tools. Initialize only once through the public API; later
+    // opens must retain the user's selected group and pi's addedToolNames.
+    await lane.setActiveTools([...activeToolNames], context);
+    await lane.appendCustomEntry(LANE_LEGACY_TOOLS_NOTE, { version: 1 }, context);
   }
   // 换组那支笔只有这里递得出去：装配层先于 harness 存在，而 lane 后于 harness 才有。
   // `nomi_request_tools` 拿到它才能真的把上一组撤回去（`addedToolNames` 只增不减）。

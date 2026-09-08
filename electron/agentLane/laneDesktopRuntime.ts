@@ -1,6 +1,8 @@
 import { resolveProjectAgentAttachmentClaims } from '../assets/projectAssetStore'
 import type { IpcMainInvokeEvent } from 'electron'
 import { createRequire } from 'node:module'
+import type { MigrateLaneLegacy } from '../shared/agentLane/laneLegacyMigrationContract'
+import { desktopT, getDesktopLocale } from '../i18n'
 import type { DesktopCanvasReadRuntime } from '../capabilityCore/canvasReadMainRuntime'
 import type { LaneIpcDependencies } from './laneIpc'
 import type { LaneComposerContext } from '../shared/agentLane/laneDesktopContracts'
@@ -101,6 +103,11 @@ export function createDesktopLaneDependencies(surface: DesktopCanvasReadRuntime,
       const identity = await ensureWorkspaceProjectIdentity(projectDir)
       if (identity.projectId !== binding.projectId || identity.immutableProjectUuid !== binding.immutableProjectUuid
         || identity.projectGeneration !== binding.projectGeneration) throw new Error('project_binding_stale')
+      const { migrateLaneLegacy } = createRequire(__filename)('./laneNativeLoader.cjs') as { migrateLaneLegacy: MigrateLaneLegacy }
+      await migrateLaneLegacy({ projectDir, userDataDir: getSettingsRoot(), binding, locale: getDesktopLocale(),
+        labels: (locale) => ({ summaryPrefix: desktopT('agent.legacySummary', {}, locale),
+          unverifiedToolResult: desktopT('agent.legacyUnverifiedTool', {}, locale) }),
+      })
       let composer: LaneComposerContext = parseLaneComposerContext({
         ...(request.model ? { model: request.model } : {}), approvalPolicy: DEFAULT_PROJECT_AGENT_APPROVAL_POLICY,
       })

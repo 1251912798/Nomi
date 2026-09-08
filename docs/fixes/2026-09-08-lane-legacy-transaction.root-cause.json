@@ -17,7 +17,14 @@
     "electron/agentLane/laneModelProvider.mts",
     "electron/shared/agentLane/laneLegacyNote.ts",
     "electron/shared/agentLane/laneContracts.ts",
-    "electron/shared/agentLane/laneProjection.ts"
+    "electron/shared/agentLane/laneProjection.ts",
+    "electron/agentLane/laneLegacyPriorArchive.mts",
+    "electron/agentLane/laneNativeLoader.cts",
+    "electron/agentLane/laneDesktopRuntime.ts",
+    "electron/agentLane/laneHost.mts",
+    "electron/i18n.ts",
+    "electron/shared/agentLane/laneLegacyMigrationContract.ts",
+    "electron/agentLane/laneLegacyImportPlan.mts"
   ],
   "entry_points": [
     "migrateLaneLegacy"
@@ -50,6 +57,12 @@
       "entry_point": "openLaneSession",
       "disposition": "enforced",
       "evidence": "Fixed import session IDs use the existing shared pi repository, never direct JSONL."
+    },
+    {
+      "path": "electron/agentLane/laneLegacyPriorArchive.mts",
+      "entry_point": "readLegacyPriorArchive",
+      "disposition": "enforced",
+      "evidence": "Only exact matching old preparation/completion bindings and contextHash identify recoverable agent-session bytes; provenance is fixed in the new transaction."
     }
   ],
   "recurrence": {
@@ -57,7 +70,8 @@
     "reason": "Any interruption between append operations or cleanup files can recur.",
     "same_class_scan": [
       "Read pi AgentLane appendMessage/appendCustomEntry and public SessionCreateOptions.id.",
-      "Read openLaneSession shared repo and legacy cutover preparation/archive cleanup order."
+      "Read openLaneSession shared repo and legacy cutover preparation/archive cleanup order.",
+      "Old projectAgentMigration archive path derives from preparation.startedAt; completion uses the same timestamp. G5 is never read."
     ]
   },
   "prevention": {
@@ -72,14 +86,18 @@
       "electron/agentLane/laneLegacyImportLane.mts",
       "electron/agentLane/laneSession.mts",
       "electron/agentLane/laneModelProvider.mts",
-      "electron/shared/agentLane/laneLegacyNote.ts"
+      "electron/shared/agentLane/laneLegacyNote.ts",
+      "electron/agentLane/laneLegacyPriorArchive.mts",
+      "electron/shared/agentLane/laneLegacyMigrationContract.ts"
     ]
   },
   "regression_tests": [
-    "tests/agent-runtime/lane-legacy-migration.test.mts"
+    "tests/agent-runtime/lane-legacy-migration.test.mts",
+    "tests/agent-runtime/lane-legacy-transaction-sources.test.mts"
   ],
   "class_regression_tests": [
-    "tests/agent-runtime/lane-legacy-migration.test.mts"
+    "tests/agent-runtime/lane-legacy-migration.test.mts",
+    "tests/agent-runtime/lane-legacy-transaction-sources.test.mts"
   ],
   "legacy_paths": {
     "status": "not-applicable",
@@ -97,7 +115,7 @@
   },
   "migration": "Fixed project context/agentChatV2 and exact host partition source paths; preserve original bytes in .nomi/legacy-archive; no G5 receipt path included.",
   "residual_risks": [
-    "Desktop workspace/UI connection follows this transaction subtask."
+    "Migrated conversation banner and real Electron walkthrough follow this transaction connection subtask."
   ],
   "invariant_owner_layer": {
     "layer": "electron/agentLane/laneLegacyMigration.mts",

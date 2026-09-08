@@ -3,39 +3,37 @@ import { join, resolve } from 'node:path';
 import { z } from 'zod';
 import type { Entry } from '@earendil-works/pi-agent-core';
 import { assertProjectAgentBinding, type ProjectBinding } from '../shared/projectBinding.js';
+import { legacyMigrationCountsSchema, type LegacyMigrationOptions, type LegacyMigrationCounts } from '../shared/agentLane/laneLegacyMigrationContract.js';
 import type { DesktopLocale } from '../desktopLocale.js';
 import { stableProjectAgentJson } from '../shared/legacyAgentJson.js';
 import { LANE_LEGACY_NOTE, LANE_LEGACY_COMPLETE_NOTE } from '../shared/agentLane/laneLegacyNote.js';
 import { projectLaneSnapshot } from '../shared/agentLane/laneProjection.js';
 import { createLegacyFileAccess, withLegacyMigrationLock } from './laneLegacyFiles.js';
 import { parseLegacySource, type LegacySourceKind } from './laneLegacySources.js';
-import { planLegacyImport, type LegacyImportLabels, type LegacyAppendOperation, type LegacyConversationPlan } from './laneLegacyImportPlan.mjs';
+import { planLegacyImport, type LegacyAppendOperation, type LegacyConversationPlan } from './laneLegacyImportPlan.mjs';
+import { BACKGROUND_CONTEXT } from '@earendil-works/pi-agent-core/harness/context';
+import { listLaneSessions } from './laneSession.mjs';
+import { readLaneWorkspaceSelection, writeLaneWorkspaceSelection } from './laneWorkspaceSelection.js';
+import { readLegacyPriorArchive } from './laneLegacyPriorArchive.mjs';
 import { openLegacyImportLane } from './laneLegacyImportLane.mjs';
 
-export interface LegacyMigrationOptions {
-  projectDir: string; userDataDir: string; binding: ProjectBinding;
-  locale: DesktopLocale; labels: (locale: DesktopLocale) => LegacyImportLabels;
-  /** Fault-injection/observation seam; never carries user content. */
-  checkpoint?: (stage: string) => Promise<void>;
-}
-const countsSchema = z.object({ projects: z.number().int().nonnegative(), sourceFiles: z.number().int().nonnegative(),
-  conversations: z.number().int().nonnegative(), sourceItems: z.number().int().nonnegative(),
-  parts: z.number().int().nonnegative(), archivedOnlyConversations: z.number().int().nonnegative() }).strict();
 const manifestSchema = z.object({ version: z.literal(1), parserVersion: z.literal(1),
   transactionId: z.string().uuid(), phase: z.enum(['prepared', 'verified', 'completed']),
   locale: z.custom<DesktopLocale>(value => value === 'en' || value === 'zh-CN'), binding: z.unknown(),
-  sources: z.array(z.object({ id: z.string(), hash: z.string().regex(/^[a-f0-9]{64}$/).nullable() }).strict()),
+  sources: z.array(z.object({ id: z.string(), hash: z.string().regex(/^[a-f0-9]{64}$/).nullable(),
+    archiveStamp: z.string().regex(/^[0-9A-Za-z_]+$/).optional() }).strict()),
   targets: z.array(z.object({ sourceId: z.string(), key: z.string(), laneName: z.string().regex(/^legacy-[a-f0-9]{32}$/),
     sessionId: z.string().uuid(), parts: z.number().int().nonnegative(), sourceItems: z.number().int().nonnegative() }).strict()),
-  counts: countsSchema,
+  counts: legacyMigrationCountsSchema,
 }).strict();
 type Manifest = z.infer<typeof manifestSchema>;
-export type LegacyMigrationCounts = z.infer<typeof countsSchema>;
+
 const hash = (bytes: Buffer | string) => createHash('sha256').update(bytes).digest('hex');
 function fail(): never { throw new Error('legacy-migration-evidence-mismatch'); }
 function same(left: unknown, right: unknown): boolean { return stableProjectAgentJson(left) === stableProjectAgentJson(right); }
 
-function sourcePaths(options: LegacyMigrationOptions) {
+interface SourcePath { id: string; kind?: LegacySourceKind; file: string; archive: string; archiveStamp?: string }
+function sourcePaths(options: LegacyMigrationOptions): SourcePath[] {
   const nomi = join(resolve(options.projectDir), '.nomi');
   const partition = `project-agent.${encodeURIComponent(options.binding.immutableProjectUuid)}.g${options.binding.projectGeneration}`;
   const host = join(resolve(options.userDataDir), 'project-agent-host', partition);
@@ -52,14 +50,10 @@ function targetShape(plan: LegacyConversationPlan, sourceHash: string) {
     laneName: `legacy-${hash(JSON.stringify([plan.sourceKind, plan.key, sourceHash])).slice(0, 32)}`,
     parts: plan.expectedParts, sourceItems: plan.sourceItems };
 }
-function entryShape(entry: Entry): unknown {
+function entryShape(entry: Entry | LegacyAppendOperation): unknown {
   if (entry.type === 'message') return { type: 'message', message: entry.message };
   if (entry.type === 'custom') return { type: 'custom', customType: entry.customType, data: entry.data };
   return { type: entry.type };
-}
-function operationShape(operation: LegacyAppendOperation): unknown {
-  if (operation.type === 'message') return { type: 'message', message: operation.message };
-  return { type: 'custom', customType: operation.customType, data: operation.data };
 }
 function importOperations(manifest: Manifest, target: Manifest['targets'][number], plan: LegacyConversationPlan): LegacyAppendOperation[] {
   const sourceHash = manifest.sources.find(source => source.id === target.sourceId)!.hash!;
@@ -72,7 +66,7 @@ function importOperations(manifest: Manifest, target: Manifest['targets'][number
 function assertPrefix(entries: Entry[], operations: LegacyAppendOperation[]): void {
   if (entries.length > operations.length) fail();
   for (let index = 0; index < entries.length; index++) {
-    if (!same(entryShape(entries[index]), operationShape(operations[index]))) fail();
+    if (!same(entryShape(entries[index]), entryShape(operations[index]))) fail();
   }
 }
 
@@ -101,6 +95,15 @@ async function migrate(options: LegacyMigrationOptions): Promise<LegacyMigration
         || manifest.sources.some((source, index) => source.id !== specs[index].id)) fail();
       if (manifest.phase === 'completed') return manifest.counts;
     }
+    const sessionSource = specs[1];
+    const activeSessionFile = sessionSource.file;
+    const savedStamp = manifest?.sources[1].archiveStamp;
+    if ((!manifest && !access.read(activeSessionFile)) || savedStamp !== undefined) {
+      const prior = readLegacyPriorArchive(access, nomi, options.binding);
+      if (savedStamp !== undefined && (prior?.stamp !== savedStamp || access.read(activeSessionFile))) fail();
+      if (prior) { sessionSource.file = prior.file; sessionSource.archiveStamp = prior.stamp; }
+    }
+    if (manifest?.sources.some((source, index) => index !== 1 && source.archiveStamp !== undefined)) fail();
     const transactionId = manifest?.transactionId ?? randomUUID();
     const directory = join(nomi, 'legacy-archive', transactionId);
     const loaded = specs.map((spec, index) => {
@@ -116,7 +119,8 @@ async function migrate(options: LegacyMigrationOptions): Promise<LegacyMigration
     });
     const parsed = loaded.flatMap(({ spec, bytes }) => spec.kind && bytes !== undefined ? [parseLegacySource(spec.kind, bytes)] : []);
     const plan = planLegacyImport(parsed, options.binding, options.labels(manifest?.locale ?? options.locale));
-    const sources = loaded.map(({ spec, bytes }) => ({ id: spec.id, hash: bytes === undefined ? null : hash(bytes) }));
+    const sources = loaded.map(({ spec, bytes }) => ({ id: spec.id, hash: bytes === undefined ? null : hash(bytes),
+      ...(spec.archiveStamp ? { archiveStamp: spec.archiveStamp } : {}) }));
     const counts: LegacyMigrationCounts = { projects: sources.some(source => source.hash !== null) ? 1 : 0,
       sourceFiles: sources.filter(source => source.hash !== null).length,
       conversations: plan.conversations.length, sourceItems: parsed.reduce((sum, source) => sum
@@ -166,8 +170,18 @@ async function migrate(options: LegacyMigrationOptions): Promise<LegacyMigration
       manifest.phase = 'verified'; manifestBytes = access.writeManifest(file, manifest, manifestBytes);
     }
     await options.checkpoint?.('verified'); access.check();
+    const first = manifest.targets[0];
+    if (first && !readLaneWorkspaceSelection(projectDir)) {
+      const sessions = await listLaneSessions(projectDir, BACKGROUND_CONTEXT);
+      if (sessions.every(session => manifest.targets.some(target => target.sessionId === session.sessionId))) {
+        writeLaneWorkspaceSelection(projectDir, { laneName: first.laneName, sessionId: first.sessionId });
+      }
+    }
+    access.check();
     for (const { spec, bytes } of loaded) {
-      if (bytes !== undefined) access.remove(spec.file, join(directory, spec.archive), bytes);
+      if (spec.archiveStamp) {
+        if (!access.read(spec.file)?.bytes.equals(bytes!) || access.read(activeSessionFile)) fail();
+      } else if (bytes !== undefined) access.remove(spec.file, join(directory, spec.archive), bytes);
       else if (access.read(spec.file)) fail();
       await options.checkpoint?.('cleanup'); access.check();
     }
