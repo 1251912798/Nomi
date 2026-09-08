@@ -438,7 +438,8 @@ export const openLane: OpenLane = async (options: OpenLaneOptions): Promise<Lane
           // 一次多余的提交会改动列表顺序，白打一次前缀缓存。
           const next = [...native.menuForUnlock(unlock)];
           const active = await lane.getActiveTools(context);
-          if ([...active].join(' ') !== next.join(' ')) await lane.setActiveTools(next, context);
+          const same = active.length === next.length && next.every((name, index) => active[index] === name);
+          if (!same) await lane.setActiveTools(next, context);
         }
         // pi's public admission boundary persists the input before acknowledging the composer.
         // The same accepted operation then drives to settlement for every caller, including tests.
