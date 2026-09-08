@@ -417,8 +417,20 @@ export function evaluateHistoricalRatchet(vocabularies, baseline, referenceBasel
       continue
     }
     const surviving = currentRegistered.find((candidate) => candidate.site === record.survivingOwner)
-    // A retired site must be present in the old ledger; otherwise the record
-    // could invent history for an owner that was never part of the ratchet.
+    // A record none of whose retired owners this reference ever knew is **inert**
+    // against it, not invented history. The exemption below is only ever granted
+    // while walking that reference's own debt list, so a record naming nothing in
+    // it grants nothing — and what grants nothing cannot invent anything.
+    //
+    // This is the state every record reaches one commit after it lands: the
+    // reduction it explains is by then already inside the reference (HEAD^1 after
+    // any follow-up commit, and `main` itself after the merge). Failing here made
+    // a convergence a single-commit-lived object that turned `main` red the commit
+    // after it merged — the record was still true, just no longer needed.
+    if (record.retiredOwners.every((site) => !referenceEntriesBySite.has(site))) continue
+    // Partial presence stays a failure: a record that retires owners this
+    // reference never carried, alongside ones it did, borrows the credibility of
+    // the real ones to cover the invented ones.
     const missingReferenceOwner = record.retiredOwners.find((site) => !referenceEntriesBySite.has(site))
     if (missingReferenceOwner) {
       failures.push({
