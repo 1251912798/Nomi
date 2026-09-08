@@ -173,10 +173,10 @@ describe("Antigravity process ownership", () => {
 
 describe("Antigravity bounded media process", () => {
   const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a5foAAAAASUVORK5CYII=", "base64");
-  it.each([undefined, "1.2.0"])("fails closed before spawn for unverified CLI media version: %s", async (cliVersion) => {
+  it.each([undefined, "1.1.20"])("fails closed before spawn for missing or old CLI media version: %s", async (cliVersion) => {
     const f = await fixture("media-image");
     await expect(runAntigravityProcess({ prompt: "draw", capability: "image", cliVersion }, { invocation: f.invocation }))
-      .rejects.toThrow("MEDIA_VERSION");
+      .rejects.toThrow("VERSION");
     await expect(readFile(path.join(f.dir, "cwd"))).rejects.toMatchObject({ code: "ENOENT" });
   });
   it.each(["image", "edit", "vision"] as const)("runs %s with its exact input/tool scope", async (capability) => {
@@ -187,7 +187,7 @@ describe("Antigravity bounded media process", () => {
     const profile = await readFile(path.join(f.dir, "profile"), "utf8");
     expect(JSON.parse(await readFile(path.join(f.dir, "preflight-files"), "utf8"))).not.toContain(true);
     expect(profile).toContain(capability === "vision" ? "view_file" : "generate_image");
-    expect(profile).toContain("plugins:");
+    expect(profile).not.toContain("plugins:");
     if (capability === "vision") expect(result.artifacts).toBeUndefined();
     else expect(result.artifacts).toMatchObject([{ mimeType: "image/png", width: 1, height: 1 }]);
     await expect(stat(await readFile(path.join(f.dir, "cwd"), "utf8"))).rejects.toMatchObject({ code: "ENOENT" });

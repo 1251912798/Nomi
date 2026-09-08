@@ -15,9 +15,9 @@ async function fixture(capability: "image" | "edit" | "vision" = "image") {
   const context = await prepareAntigravityMedia(cwd, capability, images);
   const hook = async (kind: "init" | "tool", event: unknown) => {
     // Shell command remains app-owned; stdin carries untrusted tool arguments.
-    const hooks = JSON.parse(await readFile(path.join(context.plugin, "hooks.json"), "utf8"))["nomi-task-gate"];
+    const hooks = JSON.parse(await readFile(path.join(cwd, ".agents", "hooks.json"), "utf8"))["nomi-task-gate"];
     const command = kind === "init" ? hooks.PreInvocation[0].command : hooks.PreToolUse[0].hooks[0].command;
-    const child = exec(command, { timeout: 5_000, windowsHide: true });
+    const child = exec(command, { cwd: path.join(cwd, ".agents"), timeout: 5_000, windowsHide: true });
     const completion = new Promise<string>((resolve, reject) => {
       let out = "";
       let err = "";

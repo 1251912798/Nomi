@@ -20,6 +20,24 @@
   },
   "formats": [
     {
+      "name": "antigravity-hooks",
+      "kind": "external-standard",
+      "files": [
+        "hooks.json"
+      ],
+      "spec": "https://antigravity.google/docs/hooks/",
+      "upstreamVersion": "Official Hooks schema example, retrieved 2026-09-08; local CLI embedded docs 1.1.22",
+      "why": "Nomi writes the CLI-owned named-hook format; authorization nonce files remain private task-gate state.",
+      "fixtures": [
+        "tests/fixtures/standard-formats/antigravity-hooks/hooks.json"
+      ],
+      "readers": [],
+      "writers": [
+        "electron/ai/antigravityMedia.ts"
+      ],
+      "deviations": []
+    },
+    {
       "name": "agent-skill",
       "kind": "external-standard",
       "files": ["SKILL.md"],
