@@ -1,6 +1,6 @@
 # 走查运行时减重：先量再砍
 
-> 日期：2026-09-08 · 状态：桌面三轮验收通过；最终 gates / PR 收据见 WS-LAST.md 与 PR
+> 日期：2026-09-08 · 🚧 进行中 · 桌面三轮验收通过；最终 gates / PR 收据见 WS-LAST.md 与 PR
 
 ## 范围与验收
 
@@ -49,7 +49,7 @@
 
 - Playwright Electron 官方启动 API：https://github.com/microsoft/playwright/blob/main/docs/src/electron-api/class-electron.md；已通过 Context7 核对。安装版本 1.60.0 的 Electron.launch 类型没有 storageState，不能照搬浏览器 newContext 的选项；launch 后 addInitScript 无法保证赶在首屏脚本之前，不采用竞态预置或 goto/reload 补救。
 - Electron session 官方 API：https://github.com/electron/electron/blob/main/docs/api/session.md#sesregisterpreloadscriptscript；registerPreloadScript(frame) 在 WebContents 的原 preload 之前运行，只实验写现有 localStorage 字段，不替换产品 preload、不改变 React 状态、不注入生产逃生口。安装 Electron 43.4.1 类型确认支持该 API；是否采用取决于启动实测，不改依赖。
-- 近邻优先采用本仓既有 _launchApp、_assert、canvas-real-suite 与四目录隔离；不引入额外 runner 框架。
+- 近邻优先采用本仓既有 tests/ux/_launchApp.mjs:201（四目录隔离启动）、tests/ux/_canvasHit.mjs:56（真实 pane 命中）、tests/ux/_assert.mjs:529（截图安定）、tests/ux/canvas-real-suite.mjs:133（每场景执行与日志）；不引入额外 runner 框架。
 
 ## 产品/边界缺陷记录
 
@@ -195,3 +195,5 @@ D 的五对 Read：批量模型设置、节点右键菜单、快捷键最终结�
 ## 最终交付命令与边界
 
 任务分支 test/walkthrough-runtime-diet-20260908；正常整合 origin/main 后执行 pnpm run gates，再用其新构建跑 full。最终命令状态、gates 墙钟与 PR URL 记录在不提交的 WS-LAST.md / PR，避免为了回填文档改变已验收 SHA。三个指定静态门岗已在最终测试代码上再次全绿。只推任务分支，不合并 PR；生产源码零改动，零额度生成，原始截图/测量日志留 /tmp/nomi-walk-speed-evidence。
+
+首轮最终 gates 跑完 75 个 contracts：71 通过、1 个 prior-art 引用位置缺失阻断、3 个既有 advisory；补齐上述实际源码位置后重跑完整 gates，不把这轮记成通过。
