@@ -417,8 +417,8 @@
             },
             {
               "id": "private-session-snapshot-envelope",
-              "pattern": "nomi\\.pi-work-context",
-              "why": "自研快照信封（版本锁 + sha256）在复刻 SessionManager 已有的会话序列化与版本迁移，pi 升版时要我们自己跟。"
+              "pattern": "(?<![!=]==\\s*[\"'])nomi\\.pi-work-context",
+              "why": "自研快照信封（版本锁 + sha256）在复刻 SessionManager 已有的会话序列化与版本迁移，pi 升版时要我们自己跟。阶段 4 的只读格式比较不定义新信封，允许 ===/!== 检查旧格式；信封声明、常量与 writer 仍阻断。"
             }
           ]
         },

@@ -12,7 +12,8 @@
   ],
   "scope_paths": [
     "electron/agentLane/laneLegacySources.ts",
-    "tests/agent-runtime/replayShadowSources.mts"
+    "tests/agent-runtime/replayShadowSources.mts",
+    "docs/engineering/framework-boundaries.json"
   ],
   "entry_points": [
     "readPiSnapshots",
@@ -58,6 +59,12 @@
       "entry_point": "readHostSnapshots",
       "disposition": "enforced",
       "evidence": "Uses readSource / parseLegacySource before deriving replayMessages."
+    },
+    {
+      "path": "docs/engineering/framework-boundaries.json",
+      "entry_point": "pi/session-persistence/private-session-snapshot-envelope",
+      "disposition": "enforced",
+      "evidence": "Read-only equality comparison is allowed; envelope declarations and constants still trigger. Red/green scanner fixtures prove both."
     }
   ],
   "recurrence": {
@@ -77,14 +84,17 @@
     "strategy": "Move all container unpacking into one pure decoder and derive narrow replay messages only afterward.",
     "artifacts": [
       "electron/agentLane/laneLegacySources.ts",
-      "tests/agent-runtime/replayShadowSources.mts"
+      "tests/agent-runtime/replayShadowSources.mts",
+      "docs/engineering/framework-boundaries.json"
     ]
   },
   "regression_tests": [
-    "tests/agent-runtime/lane-legacy-sources.test.mts"
+    "tests/agent-runtime/lane-legacy-sources.test.mts",
+    "scripts/check-framework-boundary.node-test.mjs"
   ],
   "class_regression_tests": [
-    "tests/agent-runtime/lane-legacy-sources.test.mts"
+    "tests/agent-runtime/lane-legacy-sources.test.mts",
+    "scripts/check-framework-boundary.node-test.mjs"
   ],
   "legacy_paths": {
     "status": "not-applicable",

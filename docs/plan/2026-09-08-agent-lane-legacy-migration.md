@@ -19,3 +19,5 @@
 ## 验收与回滚
 
 每个原数组成员有唯一 sourceIndex/raw；不按时间重排，不跨 thread 混合，不吞未知项；空/损坏/不支持区分。三来源用 os.tmpdir 夹具，不读真实项目。转换、前缀恢复、锁跨 await、崩溃断点、冷重启均须测试。每个子任务 commit/push 更新 SWITCH-LAST.md。回滚 revert 对应提交；落盘阶段原件永久保留于本次 archive，不用恢复开关。
+
+边界实测补充：原 private-session-snapshot-envelope 规则仅匹配字符串，误把旧格式的只读比较当 writer。保留信封声明/常量命中，排除严格相等/不等的格式检查；真实登记表正反夹具先红后绿。不新增框架债。
