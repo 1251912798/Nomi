@@ -1,11 +1,4 @@
-// 生成画布性能基准：真实 Electron + 本地图片/视频夹具 + 高频微操作。
-//
-// 用法：
-//   pnpm run build
-//   node tests/ux/canvas-performance-benchmark.e2e.mjs baseline --scale L --runs 5
-//
-// 可选环境变量：NOMI_CANVAS_PERF_RUNS、NOMI_CANVAS_PERF_SCALES、NOMI_CANVAS_PERF_SCENARIOS。
-// 结果写入 tests/ux/perf-results/canvas-<label>.json。零额度、零网络媒体依赖。
+import { prepareWaitingFx, sampleWaitingFx, cleanupWaitingFx } from './canvas-perf/waitingFxScenario.mjs'
 import { launchNomiApp } from './_launchApp.mjs'
 import { findCanvasBlankPoint } from './_canvasHit.mjs'
 import fs from 'node:fs'
@@ -41,7 +34,6 @@ import {
   sweptRect,
 } from './canvas-perf/gestureGeometry.mjs'
 import { startDevRendererServer } from './canvas-perf/devRendererServer.mjs'
-
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const outputDir = path.join(repoRoot, 'tests/ux/perf-results')
 const args = process.argv.slice(2)
@@ -78,7 +70,6 @@ if (hasArg('--help') || hasArg('-h')) {
   console.log('eval v2 腿：--dev-server（dev bundle+StrictMode 腿）/ --throttle 4（CPU 节流腿，模拟慢机器）')
   process.exit(0)
 }
-
 const requestedScales = (argValue('--scale') || process.env.NOMI_CANVAS_PERF_SCALES || 'M')
   .split(',')
   .map((value) => value.trim())
@@ -96,6 +87,7 @@ const launchTimeoutMs = Math.max(
   Number(argValue('--launch-timeout') || process.env.NOMI_CANVAS_PERF_LAUNCH_TIMEOUT_MS || (useDevServer ? 90_000 : 45_000)),
 )
 const allScenarios = [
+  'waiting-effects',
   'cold-open',
   'blank-pan',
   'node-drag-image',
@@ -116,7 +108,6 @@ const allScenarios = [
   'reload-heavy',
 ]
 const scenarios = requestedScenarios.includes('all') ? allScenarios : requestedScenarios
-
 // eval v2 (U2 打分策略): the newly added drag scenarios are advisory-only THIS
 // round. Their budget/hard-failure detail is still computed and recorded for
 // visibility, but they do NOT contribute to the run's pass/fail — same posture
@@ -619,6 +610,7 @@ async function openProject(app, page, fixture) {
 }
 
 async function prepareScenario(page, scenario) {
+  if (scenario === 'waiting-effects') return prepareWaitingFx(page)
   if (scenario !== 'marquee-select' && scenario !== 'low-zoom-preview') return
   const stage = await page.locator('.generation-canvas-v2__stage').boundingBox()
   if (!stage) throw new Error('画布 stage 不存在')
@@ -902,6 +894,7 @@ async function runAction(page, scenario, fixture) {
     await dragPath(page, { x: box.x + box.width / 2, y: box.y + box.height / 2 }, { x: box.x + 100, y: box.y + 60 })
     return { nodeId: await node.locator.getAttribute('data-node-id') }
   }
+  if (scenario === 'waiting-effects') return sampleWaitingFx(page)
   if (scenario === 'media-reveal') {
     const snapshots = []
     for (let index = 0; index < 5; index += 1) {
@@ -1112,6 +1105,7 @@ async function runScenario({ scale, scenario, runIndex, rootDir }) {
       target.center()
     })
     await sleep(page, 350)
+    if (scenario === 'waiting-effects') await page.evaluate(() => localStorage.setItem('__nomiE2E', '1'))
     const opened = await openProject(app, page, fixture)
     page = opened.page
     const cold =
@@ -1167,6 +1161,7 @@ async function runScenario({ scale, scenario, runIndex, rootDir }) {
     const probe = probeSurvivesAction
       ? await page.evaluate(() => window.__canvasPerformanceProbe.stop())
       : combineProbeSummaries(actionDetails?.reloadProbes || [])
+    if (scenario === 'waiting-effects') await cleanupWaitingFx(page)
     const cdpAfter = await getCdpMetrics(cdp)
     const afterPage = await pageSnapshot(page)
     if (captureScreenshots) {
@@ -1256,6 +1251,10 @@ const PERFORMANCE_BUDGETS = [
 
 function sampleHardFailures(sample) {
   const failures = []
+  if (sample.scenario === 'waiting-effects' && sample.probe) {
+    if (sample.probe.longTasks !== 0) failures.push(`waiting effects: ${sample.probe.longTasks} long tasks`)
+    if (sample.probe.fps < 1000 / timingBudget(33)) failures.push(`waiting effects: ${sample.probe.fps} FPS below frame budget`)
+  }
   if (sample.error) failures.push(`scenario error: ${sample.error.split('\n')[0]}`)
   for (const error of sample.pageErrors || []) failures.push(`page error: ${error}`)
   for (const error of sample.consoleErrors || []) failures.push(`console error: ${error}`)
