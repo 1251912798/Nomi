@@ -1,6 +1,6 @@
 # Nomi 库封面插画规则
 
-状态：2026-09-09 锚图 3 已批准，两轮试产后隐喻验收仍失败，已停止付费，未全量。
+状态：2026-09-09 第三轮已授权；GPT Image 2，原隐喻表，风格硬门，累计预算 ¥60。
 
 ## 目的与媒体顺序
 卡片先让用户看懂会做什么。真实产物 > 统一规则插画；插画只解释用途，绝不当作模型生成效果样例。标题由 UI 叠字，图内不写字。和 v4 技能 chip hover 视频共用同一媒体。
@@ -39,26 +39,17 @@
 
 三张都亲眼检查；模型未精确满足全部规则，以上偏差明确保留供选择。2026-09-09 用户已选锚图 3。15 个收录技能保留原仓真实配图；仅 40 个效果生成插画。
 
-## 脚本与官方契约
-使用现有编译产物和已安装依赖，不装包：
+## 第三轮脚本、契约与验收
 
-```sh
-node scripts/covers/generate-covers.mjs --dry-run
-pnpm exec electron scripts/covers/generate-covers.mjs --limit 5
-# 接触表目检通过后，默认跳过已有 preview，只补齐剩余条目
-pnpm exec electron scripts/covers/generate-covers.mjs
-```
+`node scripts/covers/generate-covers.mjs --dry-run` 检查缺图提示词；`pnpm exec electron scripts/covers/generate-covers.mjs` 生成候选。完成下载后仍须逐张目检通过才能登记 preview。已有三张保持。
 
-读取共享 SKILL.md 解析器，只处理缺 preview 的条目。参考图走官方 `image_urls` 的 base64 data URL 槽，禁止只在文字里说“参考”。生产读取应用 `readCatalog → decryptApiKeyRecord`；应用名沿 package.json（`nomi`），对应现有 keychain 身份。只调用 APIMart 固定域名和模型。供应商响应不打印，密钥不落收据。
+官方规范：https://docs.apimart.ai/en/api-reference/images/gpt-image-2/generation.md ；模型 `gpt-image-2`，POST `/v1/images/generations`，`size:16:9`、`resolution:1k`、`n:1`，锚图 3 通过 `image_urls` 的 base64 data URI 发送，触发图生图。仓库档案 `input_urls` → APIMart `image_urls` 的映射见 `electron/catalog/apimartImages.ts:132`，不是直接把档案键当报文字段。
 
-官方生成规范：https://docs.apimart.ai/en/api-reference/images/gemini-2.5-flash/generation.md ，支持 n=1、16:9、image_urls；官方市场价格：https://apimart.ai/api/marketplace/models?keyword=nano%20banana&page_size=10 ，本次每次 $0.0125。查询：https://docs.apimart.ai/en/api-reference/account/token-balance.md 。图片链接有效期24小时，下载到本地并编码为真实PNG。
+官方市场价格：https://apimart.ai/api/marketplace/models?keyword=gpt-image-2&page_size=10 ，本次查询起价 $0.0085/次，按分辨率计费。逐张收据记报价、provider cost、余额差、时间与任务 ID；实付以账户扣减证据为准，共享账户活动可能污染差值。预算换算按保守 8 CNY/USD，不声称银行卡结算汇率。
 
-## 成本收据与停止条件
-[机器收据](covers/generation-receipt.json)：三张分别余额扣减 0.0125，共 **$0.0375**。按预算保守系数 8 CNY/USD 计 **¥0.30**；这是预算换算，不声称是银行卡结算汇率。共享账号其他活动可能污染余额差值，收据保留逐任务起止时间与 taskId；本次三段差值均与官方报价一致。
+用户 09-09 02:15 最新裁决优先：原表保留，不先简化；每条最多两次，均不达标才简化该条再一次。风格硬门是浅暖纸底、墨线、仅蓝色强调 1–2 块、无字无人脸；隐喻只需读得出与取景/镜头/画面相关，不逐字对答案。未通过保持灰格。累计上限 ¥60，未决请求阻断后续提交；每次至少预留 $0.15，保留全部返工支出。
 
-本次总付费上限 ¥25（保守累计计算包括前轮锚图）；每次提交前保留两倍报价预算，失败/不确定请求不释放额度、不自动重新提交。报价缺失/涨价、超预算、已有未决请求、已有锚图重复生成均拒绝。参考图固定为本轮已批准且收据内已完成的锚图 3；进程锁防并行重复花费。
-
-TikHub 搜索是 M1 的独立接口，返回未提供扣费字段，实付未知，不混进 APIMart 生图实付。
+应用密钥只在 Electron 进程内通过现有 readCatalog/decryptApiKeyRecord 读取，不落收据或输出；沿用依赖、不装包。
 
 ## 锚图 3 定稿 + 每条效果的隐喻词
 
@@ -109,6 +100,6 @@ TikHub 搜索是 M1 的独立接口，返回未提供扣费字段，实付未知
 
 ## 试产迭代
 
-第一轮 5 张实付 $0.0625，保守折算 ¥0.50。纸底、线条与蓝色色相接近锚图，但 01/04/05 出现 3 块以上蓝形，04/05 带入锚图主体，隐喻不符。第一轮接触表保留到 `covers/rejected-trial-1/`；最终回选其中合格的 02/03，其他图标记不选用。第二轮模板只借用纸底、线条与色彩，明确禁止复制锚图构图；每条几何隐喻作为唯一主体，优先一块蓝形、最多两块。最多两轮试产，第二轮仍不合格则停止全量。
+第一轮 5 张实付 $0.0625，保守折算 ¥0.50。纸底、线条与蓝色色相接近锚图，但 01/04/05 出现 3 块以上蓝形，04/05 带入锚图主体，隐喻不符。第一轮接触表保留到 `covers/rejected-trial-1/`；最终回选其中合格的 02/03，其他图标记不选用。第二轮模板只借用纸底、线条与色彩，明确禁止复制锚图构图；每条几何隐喻作为唯一主体，优先一块蓝形、最多两块。前轮曾采用最多两轮试产，第二轮不合格停止全量；第三轮由用户新裁决明确取代。
 
 第二轮结论：配色线宽一致，04/05 隐喻仍未表达，按最多两轮停止全量。最终回选 3 张（第二轮 01，第一轮 02/03），37 张待生成；实付本次 $0.125 / 保守 ¥1.00。详细逐图路径、收据和未完成边界见 [试产报告](covers/covers-v1-report.md)。
