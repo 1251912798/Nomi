@@ -87,7 +87,7 @@ it("never exports a text envelope with dangling media declarations", () => {
   const roots = vi.spyOn(runtimePaths, "getSkillsRoots").mockReturnValue([path.join(root, "skills")]);
   try {
     expect(exportSkillPackageByName("curated-multi-view", 0)).toBeNull();
-    expect(exportSkillPackageByName("effect-character-three-view", 0)).not.toBeNull();
+    expect(exportSkillPackageByName("effect-character-three-view", 0)).toBeNull();
   } finally { roots.mockRestore(); }
 });
 it("refuses user media and symlinks outside a skill, including packaged directory layouts", () => {
