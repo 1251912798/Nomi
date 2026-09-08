@@ -244,8 +244,9 @@
                     "reason": "花钱与写盘的工具串行执行是审批闸的前提：before_tool 钩子逐次问用户「这一步允不允许」，并行执行会让两条待批的调用同时挂在同一个人面前，而其中一条可能已经改了另一条要读的文稿。这是领域约束（本地创作 + 花钱要审批），不是实现偏好。"
                   },
                   "toProviderMessages": {
-                    "verdict": "unused",
-                    "why": "出站报文的最后一次改写只允许有一个地方（laneModelProvider.mts 的 onPayload）。这一格是第二个入口，用了就会出现「payload 探针抓到的和实际发出去的不一致」——那正是 2026-08 那批「断言前先证明你在你以为的现场」的成因。"
+                    "verdict": "derived",
+                    "at": "electron/agentLane/laneHost.mts:199",
+                    "reason": "公开的消息适配钩子负责将 nomi.input 的已验证附件声明转成 provider 内容，再交 pi convertToLlm。转录仍存用户输入与声明，不存附件字节；onPayload 保留协议观测职责，不承担附件解析。"
                   },
                   "entryProjectors": {
                     "verdict": "derived",

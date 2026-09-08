@@ -1,0 +1,108 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-08-agent-lane-input-context",
+  "problem_type": "input-context",
+  "symptom": "Queued instructions cannot carry the document selection captured when the user sent them.",
+  "direct_cause": "The lane accepts plain text only and its domain ports have no per-message input context.",
+  "class_root": "Each instruction uses the context stored with that message after pi consumes it, independently of later composer edits.",
+  "affected_population": [
+    "Live prompts",
+    "Queued instructions",
+    "Reopened conversation display"
+  ],
+  "scope_paths": [
+    "electron/agentLane/laneHost.mts",
+    "electron/agentLane/laneRuntimePort.ts",
+    "electron/shared/agentLane/laneDesktopContracts.ts",
+    "electron/shared/agentLane/laneInputMessage.ts",
+    "electron/assets/projectAssetStore.ts",
+    "electron/projectAgentHost/projectAgentIpc.ts",
+    "electron/shared/workbenchInput.ts",
+    "electron/agentLane/laneDesktopInput.ts"
+  ],
+  "entry_points": [
+    "Lane transcript projection",
+    "Lane execution"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "The mapping of Nomi user input and failure visibility is a domain invariant; installed pi 0.85.1 public APIs are inspected in the stage 4 plan.",
+  "invariants": [
+    "Each instruction uses the context stored with that message after pi consumes it, independently of later composer edits."
+  ],
+  "generality_proof": "Every live or replayed entry crosses electron/agentLane/laneHost.mts; the same rule is applied independent of provider.",
+  "shared_boundaries": [
+    {
+      "path": "electron/agentLane/laneHost.mts",
+      "symbol": "openLane",
+      "responsibility": "Each instruction uses the context stored with that message after pi consumes it, independently of later composer edits."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "electron/agentLane/laneHost.mts",
+      "entry_point": "openLane",
+      "disposition": "enforced",
+      "evidence": "The regression fixture observes real lane or projection output, without a parallel production runner."
+    },
+    {
+      "path": "src/workbench/ai/v4/useAgentPanelV4Actions.ts",
+      "entry_point": "captureSendContext and send",
+      "disposition": "enforced",
+      "evidence": "The composer captures document and selection once before sending, independently of later render state."
+    },
+    {
+      "path": "electron/assets/projectAssetStore.ts",
+      "entry_point": "resolveProjectAgentAttachmentClaims",
+      "disposition": "enforced",
+      "evidence": "Attachment identities now have a shared workbenchInput owner; both current lane and the pending legacy deletion use that same type with no re-export or alternate resolver."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "The same omission affects every provider and subsequent user turn.",
+    "same_class_scan": [
+      "Inspected laneHost message/queue admission and projection traversal",
+      "Inspected v4 data/action hooks and native pi message conversion"
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "electron/agentLane/laneHost.mts",
+    "invariant": "Each instruction uses the context stored with that message after pi consumes it, independently of later composer edits.",
+    "failure_mode": "Preserve the source fact; do not substitute current composer state or an empty successful display.",
+    "exception_policy": "none",
+    "strategy": "Each instruction uses the context stored with that message after pi consumes it, independently of later composer edits.",
+    "artifacts": [
+      "electron/agentLane/laneHost.mts"
+    ]
+  },
+  "regression_tests": [
+    "tests/agent-runtime/lane-desktop-input.test.mts"
+  ],
+  "class_regression_tests": [
+    "tests/agent-runtime/lane-desktop-input.test.mts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "electron/agentLane/laneHost.mts"
+    ],
+    "rationale": "Replace the omission in the existing owner; no second projection or input store."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "No dependency change is needed to bind Nomi workspace ownership.",
+    "exit_criteria": []
+  },
+  "migration": "Existing ordinary user messages remain supported; new desktop input uses the documented custom message extension, in the same pi session.",
+  "residual_risks": [
+    "Desktop main/preload assembly and real Electron journey are not yet verified."
+  ],
+  "invariant_owner_layer": {
+    "layer": "electron/agentLane/laneHost.mts",
+    "tests": [
+      "tests/agent-runtime/lane-desktop-input.test.mts"
+    ],
+    "why": "Each instruction uses the context stored with that message after pi consumes it, independently of later composer edits."
+  }
+}

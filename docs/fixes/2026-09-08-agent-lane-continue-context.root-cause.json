@@ -1,0 +1,131 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-08-agent-lane-continue-context",
+  "problem_type": "Explicit continuation loses interrupted prose at provider context conversion",
+  "symptom": "The real Continue button sends a new request with user input 继续 but the model cannot see the stopped partial that remains visible and durable.",
+  "direct_cause": "pi intentionally excludes aborted assistant messages from buildSessionContext and provider transformMessages; resume only drives an active operation.",
+  "class_root": "Nomi did not represent its explicit Continue intent as a reference to authoritative stopped prose at its custom input boundary.",
+  "affected_population": [
+    "Live and cold Continue actions across all provider protocols",
+    "Interrupted cards earlier in the current branch",
+    "Invalid, foreign and non-aborted continuation references"
+  ],
+  "scope_paths": [
+    "electron/agentLane/laneContinuation.mts",
+    "electron/agentLane/laneHost.mts",
+    "electron/agentLane/laneDesktopInput.ts",
+    "electron/shared/agentLane/laneDesktopContracts.ts",
+    "electron/shared/agentLane/laneContracts.ts",
+    "electron/shared/agentLane/laneProjection.ts",
+    "src/workbench/ai/lane/laneViewModel.ts",
+    "src/workbench/ai/v4/agentPanelV4Types.ts",
+    "src/workbench/ai/v4/useAgentPanelV4Actions.ts",
+    "src/workbench/ai/ProjectAgentResidentShell.tsx"
+  ],
+  "entry_points": [
+    "Host prompt and queued input admission",
+    "Nomi custom input toProviderMessages",
+    "Live and cold interrupted card Continue"
+  ],
+  "external_sources": [
+    {
+      "kind": "source-code",
+      "url": "https://github.com/earendil-works/pi/blob/v0.85.1/packages/agent/src/harness/session/context.ts",
+      "checked_at": "2026-09-08",
+      "purpose": "Installed source filters aborted messages before the official toProviderMessages extension; no partial continuation option."
+    },
+    {
+      "kind": "source-code",
+      "url": "https://github.com/earendil-works/pi/blob/v0.85.1/packages/ai/src/api/transform-messages.ts",
+      "checked_at": "2026-09-08",
+      "purpose": "Installed source intentionally rejects incomplete assistant reasoning/tool calls on replay."
+    }
+  ],
+  "invariants": [
+    "Continue retains the exact user input and original aborted assistant entry; only its SDK entry reference is added to nomi.input context.",
+    "Admission validates a current-branch aborted text entry; request conversion resolves the same Session entry and includes text only as quoted user context.",
+    "Ordinary input does not implicitly continue; reasoning and unexecuted tool calls never enter the continuation context."
+  ],
+  "generality_proof": "All desktop input converges on Host admission and the provider-neutral custom input conversion. Explicit entry identity selects the actual card across cold reload and older interrupted cards, independently of locale or protocol.",
+  "shared_boundaries": [
+    {
+      "path": "electron/agentLane/laneContinuation.mts",
+      "symbol": "laneContinuationText",
+      "responsibility": "Validate a reference target and derive only stopped prose from the official Session entry."
+    },
+    {
+      "path": "electron/agentLane/laneHost.mts",
+      "symbol": "inputMessage",
+      "responsibility": "Reject references outside the current branch before durable input admission."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "electron/agentLane/laneHost.mts",
+      "entry_point": "prompt, steer and follow-up input capture",
+      "disposition": "enforced",
+      "evidence": "Every custom input validates its reference against the current SDK branch snapshot before admission."
+    },
+    {
+      "path": "electron/agentLane/laneHost.mts",
+      "entry_point": "toProviderMessages on live and restored custom inputs",
+      "disposition": "enforced",
+      "evidence": "Same Session.getEntry resolves durable prose and excludes tools/thinking for every configured protocol."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Every stopped assistant is deliberately omitted by the SDK, independent of caller, user wording or provider.",
+    "same_class_scan": [
+      "Inspected installed pi session/context and pi-ai transformMessages filtering plus public resume active-operation contract.",
+      "Traced Shell Continue, actions.send, strict context parser, custom input capture and provider conversion.",
+      "Compared ordinary prompt, queued inputs and cold history reuse."
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "electron/agentLane/laneContinuation.mts",
+    "invariant": "Continuation references only current-branch aborted prose and never reclassifies incomplete assistant history.",
+    "failure_mode": "Invalid or non-aborted references fail before admission; request conversion refuses missing/invalid durable targets.",
+    "exception_policy": "none",
+    "strategy": "Carry an explicit SDK entry ID through the existing input context and resolve it using the public Session API; quote text only in provider user context.",
+    "artifacts": [
+      "electron/agentLane/laneContinuation.mts",
+      "electron/agentLane/laneHost.mts",
+      "electron/agentLane/laneDesktopInput.ts",
+      "electron/shared/agentLane/laneProjection.ts"
+    ]
+  },
+  "regression_tests": [
+    "tests/agent-runtime/lane-continue-context.test.mts",
+    "src/workbench/ai/lane/laneViewModel.test.ts"
+  ],
+  "class_regression_tests": [
+    "tests/agent-runtime/lane-continue-context.test.mts"
+  ],
+  "legacy_paths": {
+    "status": "not-applicable",
+    "removed_paths": [],
+    "rationale": "No old runtime or transcript path is introduced or retained; the current custom-message extension gains a reference."
+  },
+  "dependency_lifecycle": {
+    "decision": "retain-with-exit",
+    "current": "pi-agent-core and pi-ai 0.85.1",
+    "target": "Supported pi version with public session context and aborted continuation contracts",
+    "rationale": "Filtering incomplete native messages is correct. Nomi explicit Continue adds quoted prose through the supported input extension.",
+    "exit_criteria": [
+      "Reverify official aborted filtering and current public continuation API when upgrading pi; retain the text-only, original-entry and raw-input assertions."
+    ]
+  },
+  "migration": "No history rewrite or migration. Older inputs have no continuation intent and remain unchanged.",
+  "residual_risks": [
+    "Runner owns real Electron Stop/Continue/cold proof after the parent rebuild."
+  ],
+  "invariant_owner_layer": {
+    "layer": "electron/agentLane/laneContinuation.mts",
+    "tests": [
+      "tests/agent-runtime/lane-continue-context.test.mts"
+    ],
+    "why": "The Nomi custom input boundary can resolve authoritative stopped prose without changing the SDK transcript."
+  }
+}
