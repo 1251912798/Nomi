@@ -274,13 +274,6 @@ export function AutomationPermissionsSection({ settings, onChange }: Props): JSX
             aria-label={t('settings.automation.notifications.system')}
           />
         </SettingRow>
-        <SettingRow title={t('settings.automation.notifications.sound')} hint={t('settings.automation.notifications.soundHint')}>
-          <DesignSwitch
-            checked={settings.notificationSound}
-            onChange={(event) => onChange({ notificationSound: event.currentTarget.checked })}
-            aria-label={t('settings.automation.notifications.sound')}
-          />
-        </SettingRow>
       </section>
     </div>
   )

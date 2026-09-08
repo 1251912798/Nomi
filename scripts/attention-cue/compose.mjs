@@ -62,7 +62,9 @@ if (process.argv[1] && import.meta.url === new URL(process.argv[1], 'file:').hre
   mkdirSync(output, { recursive: true })
   for (const [name, score] of Object.entries(scores)) {
     const wav = compose(score)
-    writeFileSync(new URL(`${name}.wav`, output), wav)
+    const destination = name === "b" ? new URL("../../assets/sound/nomi-attention.wav", import.meta.url) : new URL(`${name}.wav`, output)
+    mkdirSync(new URL(".", destination), { recursive: true })
+    writeFileSync(destination, wav)
     console.log(`${name}: ${score.duration}s, ${wav.length} bytes`)
   }
 }

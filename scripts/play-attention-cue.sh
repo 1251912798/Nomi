@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Best-effort local cue: missing audio devices/players must never block the assistant.
-cue_dir="$(cd -- "${BASH_SOURCE[0]%/*}" && pwd)" || exit 0
-candidate=a # User selection: change this one line after auditioning a/b/c.
+cue_dir="$(cd -- "${BASH_SOURCE[0]%/*}/attention-cue" && pwd)" || exit 0
+candidate=b # Selected four-note, falling wooden cue.
 reason='请看一下，有个决定需要你。'
 while [ "$#" -gt 0 ]; do
   case "$1" in
@@ -12,6 +12,7 @@ while [ "$#" -gt 0 ]; do
 done
 case "$candidate" in a|b|c) ;; *) exit 0 ;; esac
 cue_file="$cue_dir/candidates/$candidate.wav"
+[ "$candidate" != b ] || cue_file="$cue_dir/../../assets/sound/nomi-attention.wav"
 [ -f "$cue_file" ] || exit 0
 case "$(uname -s 2>/dev/null)" in
   Darwin)

@@ -31,7 +31,7 @@ function fixture(t, platform = 'Darwin', players = ['afplay', 'osascript']) {
 
 test('three committed WAVs are deterministic PCM16, bounded, audible and unclipped', () => {
   for (const [name, score] of Object.entries(scores)) {
-    const wav = readFileSync(path.join(root, `scripts/attention-cue/candidates/${name}.wav`))
+    const wav = readFileSync(path.join(root, (name === "b" ? "assets/sound/nomi-attention.wav" : `scripts/attention-cue/candidates/${name}.wav`)))
     assert.deepEqual(wav, compose(score))
     assert.equal(wav.toString('ascii', 0, 4), 'RIFF')
     assert.equal(wav.readUInt32LE(4), wav.length - 8)
@@ -57,7 +57,7 @@ test('official Notification input reaches play.sh via actual registered command,
   const run = spawnSync('/bin/sh', ['-c', registration.hooks[0].command], { env: f.env, input: JSON.stringify({ ...official, message: reason }), encoding: 'utf8' })
   assert.equal(run.status, 0, run.stderr)
   assert.equal(run.stdout, '')
-  assert.match(f.calls(), /afplay\n.*\/scripts\/attention-cue\/candidates\/a.wav/)
+  assert.match(f.calls(), /afplay\n.*\/assets\/sound\/nomi-attention.wav/)
   assert.ok(f.calls().includes(reason))
   assert.ok(f.calls().includes('Nomi 需要你'))
 })
@@ -79,7 +79,7 @@ test('only human-attention types match; malformed/other events remain silent', (
 
 test('missing afplay is silent, successful, and still sends the native notification', (t) => {
   const f = fixture(t, 'Darwin', ['osascript'])
-  const run = spawnSync('/bin/bash', [path.join(root, 'scripts/attention-cue/play.sh'), '--reason', '需要决定'], { env: f.env, encoding: 'utf8' })
+  const run = spawnSync('/bin/bash', [path.join(root, 'scripts/play-attention-cue.sh'), '--reason', '需要决定'], { env: f.env, encoding: 'utf8' })
   assert.equal(run.status, 0)
   assert.equal(run.stderr, '')
   assert.equal(run.stdout, '')
@@ -94,7 +94,7 @@ for (const [platform, players, expected] of [
 ]) {
   test(`${platform} native player selection: ${expected || 'silent without players'}`, (t) => {
     const f = fixture(t, platform, players)
-    const run = spawnSync('/bin/bash', [path.join(root, 'scripts/attention-cue/play.sh'), '--candidate', 'b'], { env: f.env, encoding: 'utf8' })
+    const run = spawnSync('/bin/bash', [path.join(root, 'scripts/play-attention-cue.sh'), '--candidate', 'b'], { env: f.env, encoding: 'utf8' })
     assert.equal(run.status, 0)
     assert.equal(run.stderr, '')
     if (expected) assert.ok(f.calls().startsWith(expected + '\n'))

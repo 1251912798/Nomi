@@ -1,33 +1,52 @@
 # Nomi · 叫你一下
 
-原创合成，无歌词、无人声、无鼓、无外部音频样本。轻敲木条般的正弦基音和两个快速衰减泛音。
+选定 **b：do–mi–re–do / C4–E4–D4–C4**，2.25 秒，48 kHz 单声道 PCM16，216,044 B。
+木质四音先抬起再回落：短时间内可辨认，尾音落稳，像叫你一下而非警报。五声音阶不含半音，
+但不宣称文化中立或保证与任何既有作品绝无相似。原创合成、无外部样本。
 
-| 候选 | 唱名 / 音高 | 时长 / 大小 | 气质 |
-| --- | --- | --- | --- |
-| [a](candidates/a.wav)（暂定） | mi–sol–高 do / E4–G4–C5 | 1.90s / 182,444 B | 上行三音，轻轻叫一下，落在主音。 |
-| [b](candidates/b.wav) | do–mi–re–do / C4–E4–D4–C4 | 2.25s / 216,044 B | 四音先抬起再回落，温和、不催促。 |
-| [c](candidates/c.wav) | do–sol–高 do / C4–G4–C5 | 1.70s / 163,244 B | 两音再落八度主音，简短确定。 |
-
-五声材料为 do/re/mi/sol/la：不含半音，减少短促提示的紧张感。许多文化都使用五声，但它不保证文化中立，也不保证每个人偏好相同。品牌签名最终由试听决定。
+唯一默认资产：[assets/sound/nomi-attention.wav](../../assets/sound/nomi-attention.wav)。
+产品和助手钩子都读取它；打包复制到 resources/assets/sound/nomi-attention.wav。
+另两个候选保留：[a](candidates/a.wav)（mi–sol–高 do，1.90s）、[c](candidates/c.wav)（do–sol–高 do，1.70s）。
 
 ```sh
 node scripts/attention-cue/compose.mjs
-bash scripts/attention-cue/play.sh --candidate a --reason '试听 a'
-bash scripts/attention-cue/play.sh --candidate b --reason '试听 b'
-bash scripts/attention-cue/play.sh --candidate c --reason '试听 c'
-~/bin/nomi-attention '要花钱 ¥33'
+bash scripts/play-attention-cue.sh --reason '请决定下一步'
+bash scripts/play-attention-cue.sh --candidate a --reason '试听候选 a'
+~/bin/nomi-attention '需要确认支出'
 ```
 
-选定后只改 `play.sh` 的 `candidate=a` 一行；手动入口和自动 hook 共用它。
-`compose.mjs` 的 sound / scores 可改音阶、音序、时值、包络、泛音和采样率。
-产物为标准 RIFF/WAVE、48 kHz、单声道 PCM16；重新生成逐字节相同，无随机数。
+生成器只使用内置 Node Buffer，重跑逐字节一致；b 直接生成到正式资产路径，不保留副本。
+钩子的播放脚本在 `scripts/play-attention-cue.sh`，本目录仅生成/验证脚本、README 和候选。
 
-macOS 使用 afplay + 标题「Nomi 需要你」的系统通知；Linux 使用 paplay/aplay；Windows 从 Git Bash/MSYS/Cygwin 运行并调用 PowerShell SoundPlayer。没有播放器、设备不可用或通知权限关闭时不阻断助手。系统音量/勿扰模式会影响实际可听和通知显示。
+## 产品
 
-## 自动触发边界
+设置 → 通用 → 提醒与声音（Telemetry 上方）。总开关默认开；仅「需要你决定」默认开，
+完成与比平时久默认关。试听独立于总开关，播放两秒后停止；自动提醒完整播放一次。
+「比平时久」以同一节点最近成功记录的中位耗时两倍为界；没有历史样本不报慢。
 
-官方 [Notification 文档](https://code.claude.com/docs/en/hooks#notification)（原入口 https://docs.claude.com/en/docs/claude-code/hooks）。注册在版本化 `.claude/settings.json`，调用 `scripts/claude-hooks/attention-cue.sh`；校验命令 `node scripts/install-claude-hooks.cjs --check`。当前仓库无需复制安装，不编辑旧 `.claude/hooks/` 产物。
+自定义支持 wav/mp3/aiff/m4a，≤10 秒且≤2 MiB；已有 ffprobe 验证、ffmpeg 转成 PCM WAV，
+存入应用设置目录 `sounds/attention.wav`。设置写入 `attention-sound.json`（schemaVersion 1）。
+失败或取消保留之前的声音；恢复默认清除自定义选择。此产品设置不控制开发助手钩子。
 
-仅 permission_prompt / idle_prompt / elicitation_dialog / elicitation_url_dialog / agent_needs_input 响。不接工具调用、完成或认证成功事件。permission_prompt 通常等待约 6 秒；idle_prompt 通常在回复结束约 60 秒未输入后触发，它不只代表关键决策。计时和版本差异以官方文档为准。已有 Claude Code 会话可能需要重新打开才能加载新增注册。
+两条现役入口 `notificationIpc.ts` / `productionNotificationsDesktop.ts` 汇入
+`electron/desktopNotification.ts`：窗口可见且聚焦时不打扰，原生通知固定 `silent: true`，
+声音由主进程 `attentionSoundPlayer.ts` 播放，最多一个声音，禁 shell 插值。
+macOS afplay；Windows PowerShell System.Media.SoundPlayer；Linux paplay/aplay。
+缺播放器/音频设备不会阻断生成；试听失败会显示提示。
 
-Codex 不读取 Claude Code 的 Notification 配置；主会话在花钱、不可撤销动作或样张冲突时主动调用个人入口。通知正文会出现在本机通知中心，原因不要包含密钥。个人入口不进 Git；当前指向本 worktree，清理 worktree 前须重装到长期保留的仓库位置。
+## 助手钩子
+
+官方 [Notification 文档](https://code.claude.com/docs/en/hooks#notification)。
+版本化 `.claude/settings.json` → `scripts/claude-hooks/attention-cue.sh` → 共用 WAV。
+仅 permission_prompt / idle_prompt / elicitation_dialog / elicitation_url_dialog / agent_needs_input 响。
+permission_prompt 通常约 6 秒，idle_prompt 通常约 60 秒无输入；idle 不只代表关键决策。
+已有 Claude Code 会话可能需重新打开才加载注册。Codex 不读取 Claude Notification 配置，使用手动入口。
+通知正文出现在本机通知中心，不放密钥；个人入口不进 Git，清理 worktree 前需改到长期仓库位置。
+
+## 验证
+
+- `node --test scripts/attention-cue/attention-cue.node-test.mjs`：资产重现、官方 hook 输入、各平台播放器及缺失降级。
+- `electron/desktopNotification.test.ts`：两入口、焦点/开关/事件矩阵、无双音。
+- `electron/settings/attentionSound.integration.test.ts`：四格式真解码、拒绝损坏/超限、保留旧声音。
+- `node tests/ux/attention-sound.walk.mjs`：真实设置 + IPC + 原生选择器，替换 OS 播放器计数，不真放声。
+- `node tests/ux/design-lab-settings-sound.walk.mjs`：四态截图。

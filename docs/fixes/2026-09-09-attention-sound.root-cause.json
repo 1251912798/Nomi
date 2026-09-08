@@ -1,0 +1,70 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-09-attention-sound",
+  "change_kind": "structural",
+  "problem_type": "Introduce one product sound preference and playback owner while retaining the existing two notification producers.",
+  "symptom": "This is the user-authorized addition of brand sound and settings, not a claim that the old system was defective. IPC and production notification paths require explicit structural coverage.",
+  "scope_paths": [
+    "electron/notificationIpc.ts",
+    "electron/productionRun/productionNotifications.ts",
+    "electron/productionRun/productionNotificationsDesktop.ts",
+    "electron/settings/registerSettingsIpc.ts",
+    "electron/settings/attentionSoundIpc.ts",
+    "electron/settings/attentionSoundSettings.ts",
+    "electron/desktopNotification.ts",
+    "electron/attentionSoundPlayer.ts",
+    "electron/shared/contracts/attentionSound.ts"
+  ],
+  "structural_evidence": {
+    "affected_paths": [
+      "electron/notificationIpc.ts",
+      "electron/productionRun/productionNotifications.ts",
+      "electron/productionRun/productionNotificationsDesktop.ts",
+      "electron/settings/registerSettingsIpc.ts",
+      "electron/settings/attentionSoundIpc.ts",
+      "electron/settings/attentionSoundSettings.ts",
+      "electron/desktopNotification.ts",
+      "electron/attentionSoundPlayer.ts",
+      "electron/shared/contracts/attentionSound.ts"
+    ],
+    "behavior_preservation": "The existing renderer notification IPC and production notice decision/dedupe remain the producers; click focus and production deep links remain. Both now call showDesktopNotification, which centrally checks foreground focus, persisted event choices, and OS notification preferences. OS notifications are always silent and the bounded player handles the chosen WAV. The old renderer WebAudio implementation and duplicate sound control are removed. Completion now obeys an opt-in sound default; single-node batches also honor the preference. Native picker selection is validated by actual ffprobe and normalized with existing ffmpeg before replacing a custom sound.",
+    "verification_limits": "Real macOS Electron walkthrough uses actual settings UI, IPC, file picker replacement and actual decode/persistence, but replaces only OS player spawn with a counting child. No audible output is claimed. Windows/Linux command selection is tested with local stubs in the hook suite; no native Windows/Linux audio hardware is available. Lab fixtures prove four rendered states, separately from the real Electron journey.",
+    "preserved_exports": [
+      {
+        "path": "electron/notificationIpc.ts",
+        "name": "registerNotificationIpc"
+      },
+      {
+        "path": "electron/productionRun/productionNotificationsDesktop.ts",
+        "name": "createProductionNotificationsListener"
+      },
+      {
+        "path": "electron/productionRun/productionNotifications.ts",
+        "name": "decideProductionNotice"
+      },
+      {
+        "path": "electron/settings/registerSettingsIpc.ts",
+        "name": "registerSettingsIpc"
+      }
+    ]
+  },
+  "regression_tests": [
+    "electron/desktopNotification.test.ts",
+    "electron/attentionSoundPlayer.test.ts",
+    "electron/settings/attentionSound.integration.test.ts",
+    "src/workbench/taskCenter/taskCenterSettings.test.ts",
+    "src/workbench/taskCenter/slowGenerationNotice.test.ts"
+  ],
+  "invariant_owner_layer": {
+    "layer": "electron/desktopNotification.ts",
+    "tests": [
+      "electron/desktopNotification.test.ts"
+    ]
+  },
+  "migration": "Startup migrates the retired automation notificationSound opt-out once into attention-sound.json. New installs derive their defaults from the shared schemaVersion 1 contract. The old preference and WebAudio consumer are removed; the hook launcher points to the canonical WAV.",
+  "residual_risks": [
+    "OS audio device audibility and notification permission behavior depend on user hardware and OS settings; failures never block production. Native Windows/Linux playback hardware was not exercised.",
+    "Slow notices need successful history for the same node and use twice its recent median; a first generation has no baseline and is not labeled slow."
+  ],
+  "internal_only_reason": "The ownership and producer convergence are repository invariants. The change reuses Electron Notification silent/BrowserWindow focus and the existing bounded media tools rather than adding a framework; relevant installed-source and specification references are in docs/plan/2026-09-09-attention-cue.md."
+}

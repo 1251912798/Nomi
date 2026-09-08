@@ -13,5 +13,5 @@ node -e '
     if (typeof input.message === "string" && input.message.trim()) args.push("--reason", input.message)
     spawnSync("bash", args, { stdio: "ignore", timeout: 8000 })
   } catch { /* An optional cue never blocks the session. */ }
-' "$hook_dir/../attention-cue/play.sh" 2>/dev/null
+' "$hook_dir/../play-attention-cue.sh" 2>/dev/null
 exit 0
