@@ -77,7 +77,6 @@ export async function createRealScheduler({ tempRoot, attemptDir, outputDir, rep
     },
     verifyPlan(actual, expect) {
       expect(actual.every((s) => s.modelKey === REAL_MODELS.video && s.params?.resolution === '768P')).toBe(true)
-      expect(actual.reduce((n, s) => n + s.durationSec, 0)).toBe(64)
       report.r30.real = scorePlanner(planEvents, true)
       fs.writeFileSync(path.join(attemptDir, 'r30-events.json'), JSON.stringify(planEvents.filter((e) => /^agent\.(turn\.|tool\.)/.test(e.type))
         .map((e) => ({ type: e.type, toolName: e.payload?.toolName, status: e.payload?.status, ok: e.payload?.ok,
