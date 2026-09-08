@@ -2,7 +2,7 @@ import type { ExportJobEvent, ExportJobSnapshot, ExportJobVerification } from '.
 import type { WorkspaceFileListResult } from '../../electron/workspace/workspaceFileIndex'
 import type { WorkspaceSyncInspection } from '../../electron/shared/workspaceSyncContracts'
 import type { ProviderKind } from './providerKind'
-import type { DesktopMediaBridge, DesktopVideoDepthBridge } from './bridgeMedia'
+import type { DesktopMediaBridge, DesktopVideoDepthBridge, DesktopAssetDto, DesktopAssetFoldersState } from './bridgeMedia'
 import type { DesktopConnectorBridge } from './bridgeConnector'
 import type { McpClientProfile, McpInfo, McpVerifyResult } from './mcpBridgeTypes'
 import type { DesktopSettingsBridge } from './settingsBridge'
@@ -16,7 +16,7 @@ import type { GenerationResolvePlanEnvelope, GenerationResolvePlanRequest } from
 export type { ProjectAgentBridge, ProjectAgentCommandWire } from './projectAgentBridgeTypes'
 export type { ProviderKind }
 export type { DesktopAdapterModeResult, DesktopProviderAdapterRun, DesktopProviderRegistration } from './onboardingBridgeTypes'
-export type { ScreenshotHotkeyStatus } from './bridgeMedia'
+export type { ScreenshotHotkeyStatus, DesktopAssetDto, DesktopAssetFolder, DesktopAssetFoldersState } from './bridgeMedia'
 
 /** 落盘的对话消息(conversation 域;draft/附件是 session 域不落盘)。 */
 export type PersistedAiMessage = {
@@ -82,29 +82,6 @@ export type DesktopProxyProbe = {
   target: string
   error: string
   tried: DesktopProxyProbeAttempt[]
-}
-
-export type DesktopAssetDto = {
-  id: string
-  name: string
-  userId: string
-  projectId?: string | null
-  createdAt: string
-  updatedAt: string
-  data: Record<string, unknown>
-}
-
-export type DesktopAssetFolder = {
-  id: string
-  label: string
-  order: number
-}
-
-export type DesktopAssetFoldersState = {
-  version: 1
-  folders: DesktopAssetFolder[]
-  /** 素材 renderUrl → folderId。 */
-  assignments: Record<string, string>
 }
 
 export type DesktopMp4ExportResult = {
@@ -401,6 +378,7 @@ export type DesktopBridge = DesktopMediaBridge &
     foldersSave?: (payload: { projectId: string; state: DesktopAssetFoldersState }) => Promise<{ ok: boolean; state: DesktopAssetFoldersState; error?: string }>
     /** 写入层落盘广播（nomi:assets:updated）——素材库面板/素材盒徽章的统一回流信号。 */
     onUpdated?: (cb: (payload: { projectId: string }) => void) => () => void
+    onLocalizationStarted?: (cb: (payload: { projectId: string; nodeId: string }) => void) => () => void
     importRemoteUrl: (payload: {
       projectId: string
       url: string

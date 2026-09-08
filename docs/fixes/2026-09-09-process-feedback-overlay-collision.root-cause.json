@@ -1,0 +1,92 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-09-process-feedback-overlay-collision",
+  "problem_type": "Shot number does not account for transient feedback.",
+  "symptom": "Saved status overlaps the shot number.",
+  "direct_cause": "Shot number does not account for transient feedback.",
+  "class_root": "Shot number yields its corner while actual generation feedback is mounted.",
+  "affected_population": [
+    "Image and video generation, including persisted errors"
+  ],
+  "scope_paths": [
+    "src/workbench/generationCanvas/nodes/ConvertShotToVideoButton.tsx"
+  ],
+  "entry_points": [
+    "ShotPreviewOverlays"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "Internal presentation and error contracts; no external protocol.",
+  "invariants": [
+    "Shot number yields its corner while actual generation feedback is mounted."
+  ],
+  "generality_proof": "Enforced in shared production boundaries for every image/video caller.",
+  "shared_boundaries": [
+    {
+      "path": "src/workbench/generationCanvas/nodes/ConvertShotToVideoButton.tsx",
+      "symbol": "ShotPreviewOverlays",
+      "responsibility": "Shot number yields its corner while actual generation feedback is mounted."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/workbench/generationCanvas/nodes/ConvertShotToVideoButton.tsx",
+      "entry_point": "ShotPreviewOverlays",
+      "disposition": "enforced",
+      "evidence": "Production boundary covered by changed real App test and regression."
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/BaseGenerationNode.tsx",
+      "entry_point": "BaseGenerationNode",
+      "disposition": "enforced",
+      "evidence": "Shared image/video shell mounts the overlay."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Any image/video generation can encounter this state.",
+    "same_class_scan": [
+      "Read actual image and video node rendering and catalog resolution.",
+      "Read task history projection and real screenshot/DOM results."
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "src/workbench/generationCanvas/nodes/ConvertShotToVideoButton.tsx",
+    "invariant": "Shot number yields its corner while actual generation feedback is mounted.",
+    "failure_mode": "Uses existing shared narration and state ownership.",
+    "exception_policy": "none",
+    "strategy": "Shot number yields its corner while actual generation feedback is mounted.",
+    "artifacts": [
+      "src/workbench/generationCanvas/nodes/ConvertShotToVideoButton.tsx"
+    ]
+  },
+  "regression_tests": [
+    "tests/ux/process-feedback-electron.e2e.mjs"
+  ],
+  "class_regression_tests": [
+    "tests/ux/process-feedback-electron.e2e.mjs"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "src/workbench/generationCanvas/nodes/ConvertShotToVideoButton.tsx"
+    ],
+    "rationale": "Removed ambiguous behavior at the original shared boundary."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "Internal component/error ownership; no dependency changes.",
+    "exit_criteria": []
+  },
+  "migration": "Existing stored error strings remain recognized.",
+  "residual_risks": [
+    "Real App evidence covers the isolated loopback path; other providers use the same shared boundary."
+  ],
+  "invariant_owner_layer": {
+    "layer": "src/workbench/generationCanvas/nodes/ConvertShotToVideoButton.tsx",
+    "tests": [
+      "tests/ux/process-feedback-electron.e2e.mjs"
+    ],
+    "note": "Shot number yields its corner while actual generation feedback is mounted."
+  }
+}

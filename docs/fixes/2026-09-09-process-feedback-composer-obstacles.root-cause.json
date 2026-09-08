@@ -1,0 +1,93 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-09-process-feedback-composer-obstacles",
+  "problem_type": "Composer placement ignores shared bottom docks",
+  "symptom": "After adding an image to the real timeline the mini preview covers the regenerate button.",
+  "direct_cause": "Composer placement and observation query only the collapsed timeline handle, ignoring data-canvas-bottom-dock overlays.",
+  "class_root": "Overlay avoidance enumerates one old caller rather than the existing shared obstacle contract.",
+  "affected_population": [
+    "Selected generated nodes with timeline preview or other bottom docks"
+  ],
+  "scope_paths": [
+    "src/workbench/generationCanvas/nodes/useComposerViewportPlacement.ts"
+  ],
+  "entry_points": [
+    "Timeline mini preview expanded/collapsed",
+    "Batch generation bottom dock"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "Internal Electron event and generation lifecycle; no third-party contract or new dependency.",
+  "invariants": [
+    "Composer measures and observes all bottom docks in its workspace."
+  ],
+  "generality_proof": "The existing data-canvas-bottom-dock marker identifies both current and future fixed obstacles; no preview-specific branch.",
+  "shared_boundaries": [
+    {
+      "path": "src/workbench/generationCanvas/nodes/useComposerViewportPlacement.ts",
+      "symbol": "useComposerViewportPlacement",
+      "responsibility": "Measure all workspace bottom docks and recompute on membership/size changes."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/workbench/timeline/TimelineMiniPreview.tsx",
+      "entry_point": "TimelineMiniPreview",
+      "disposition": "enforced",
+      "evidence": "Both expanded and collapsed preview expose data-canvas-bottom-dock."
+    },
+    {
+      "path": "src/workbench/generationCanvas/components/CanvasBatchGenerateDock.tsx",
+      "entry_point": "CanvasBatchGenerateDock",
+      "disposition": "enforced",
+      "evidence": "Batch dock exposes the same marker."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Any additional fixed bottom dock could obscure the composer.",
+    "same_class_scan": [
+      "Read TimelineMiniPreview.tsx and CanvasBatchGenerateDock.tsx; both use data-canvas-bottom-dock.",
+      "Read useComposerViewportPlacement; only timeline handle was measured and observed."
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "src/workbench/generationCanvas/nodes/useComposerViewportPlacement.ts",
+    "invariant": "All tagged bottom docks participate in geometry and observer lifecycle.",
+    "failure_mode": "The existing viewport pan/flip/height algorithm resolves constrained space instead of hiding controls.",
+    "exception_policy": "none",
+    "strategy": "Replace single-handle observer with shared-marker obstacle membership and size observation.",
+    "artifacts": [
+      "src/workbench/generationCanvas/nodes/useComposerViewportPlacement.ts"
+    ]
+  },
+  "regression_tests": [
+    "tests/ux/process-feedback-electron.e2e.mjs"
+  ],
+  "class_regression_tests": [
+    "tests/ux/process-feedback-electron.e2e.mjs"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "src/workbench/generationCanvas/nodes/useComposerViewportPlacement.ts"
+    ],
+    "rationale": "Single timeline handle discovery/observer replaced; no parallel placement system."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "Existing Electron IPC and runtime; no package change.",
+    "exit_criteria": []
+  },
+  "migration": "No persisted changes.",
+  "residual_risks": [
+    "Future fixed bottom overlays must use the existing data-canvas-bottom-dock contract to participate in avoidance."
+  ],
+  "invariant_owner_layer": {
+    "layer": "src/workbench/generationCanvas/nodes/useComposerViewportPlacement.ts",
+    "tests": [
+      "tests/ux/process-feedback-electron.e2e.mjs"
+    ],
+    "note": "Real App regeneration click after mini preview opens, plus queue and scaled viewport interaction."
+  }
+}

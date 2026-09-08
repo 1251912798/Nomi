@@ -190,6 +190,11 @@ contextBridge.exposeInMainWorld("nomiDesktop", {
       ipcRenderer.on("nomi:assets:updated", listener);
       return () => ipcRenderer.removeListener("nomi:assets:updated", listener);
     },
+    onLocalizationStarted: (cb: (payload: { projectId: string; nodeId: string }) => void) => {
+      const listener = (_: unknown, value: { projectId: string; nodeId: string }) => cb(value);
+      ipcRenderer.on("nomi:assets:localization-started", listener);
+      return () => ipcRenderer.removeListener("nomi:assets:localization-started", listener);
+    },
     importRemoteUrl: (payload: unknown) => ipcRenderer.invoke("nomi:assets:import-remote-url", payload),
     importFile: (payload: unknown) => ipcRenderer.invoke("nomi:assets:import-file", payload),
     // 原生文件选择器返回的 File 由 preload 就地解析路径；路径不暴露给页面，且大视频不再整份穿过 renderer IPC。

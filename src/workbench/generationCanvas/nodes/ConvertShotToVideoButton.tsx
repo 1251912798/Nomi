@@ -22,7 +22,7 @@ export function ShotPreviewOverlays({
   return (
     <>
       {hasResult || selected ? (
-        <span className="absolute top-1.5 left-1.5 z-[3] inline-flex items-center h-[18px] px-2 rounded-full bg-nomi-ink/85 text-nomi-paper text-micro font-bold tabular-nums pointer-events-none shadow-nomi-sm backdrop-blur-[2px]">
+        <span data-shot-number className="absolute top-10 left-1.5 z-[3] inline-flex items-center h-[18px] px-2 rounded-full bg-nomi-ink/85 text-nomi-paper text-micro font-bold tabular-nums pointer-events-none shadow-nomi-sm backdrop-blur-[2px]">
           {t('generationCommon.shotConversion.shot', { index: shotIndex })}
         </span>
       ) : null}

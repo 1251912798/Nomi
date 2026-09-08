@@ -16,6 +16,9 @@ vi.mock("./review/reviewTrace", () => ({
   scheduleTechnicalReview: vi.fn(),
 }));
 
+const localizationStarted = vi.hoisted(() => vi.fn());
+vi.mock("./assets/assetEvents", () => ({ broadcastAssetsUpdated: vi.fn(), broadcastAssetLocalizationStarted: localizationStarted }));
+
 const hardenedFetchMock = vi.hoisted(() => vi.fn());
 vi.mock("./hardenedFetch", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./hardenedFetch")>()),
@@ -320,4 +323,25 @@ describe("runtime workspace asset storage", () => {
     expect(second.data.relativePath).toBe("assets/generated/2026-05-31/render-2.png");
     expect(fs.readFileSync(second.data.absolutePath)).toEqual(PNG_BYTES);
   });
+});
+
+ it.each([["image", "image/jpeg", JPEG_BYTES], ["video", "video/mp4", MP4_BYTES]] as const)("signals %s localization before download resolves", async (kind, contentType, bytes) => {
+  const workspace = createWorkspace();
+  let release!: () => void;
+  let begin!: () => void;
+  const begun = new Promise<void>(resolve => { begin = resolve; });
+  hardenedFetchMock.mockImplementationOnce(() => new Promise(resolve => {
+    release = () => resolve({ bytes, contentType, status: 200, finalUrl: "https://cdn.example.com/result", truncated: false });
+    begin();
+  }));
+  localizationStarted.mockClear();
+  const pending = localizeTaskAsset(workspace.id, "https://cdn.example.com/result", kind, "node-progress");
+  try {
+    expect(localizationStarted).toHaveBeenCalledWith({ projectId: workspace.id, nodeId: "node-progress" });
+  } finally {
+    // Let the real importer finish before test-directory teardown, even in the red run.
+    await begun;
+    release();
+    await pending;
+  }
 });

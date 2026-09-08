@@ -150,6 +150,8 @@ function reportForMissingImageReference(
 /** legacy 字符串 → 类别(老项目持久化的 node.error / 非 vendor 错误的兜底识别;文案不在这里)。 */
 function detectLegacyErrorKind(raw: string): GenerationErrorKind | null {
   const lower = raw.toLowerCase()
+  // Persisted catalog errors written before the stable model-config signature.
+  if (raw.includes('当前没有已连接的供应商提供「') || raw.includes('已断开，且该节点未记录模型。')) return 'model-config'
   // 输出截断（agentError.describeEmptyAgentReply 的 length 签名）最先判——它是确定性失败，
   // 落进 unknown 会给出「稍等重试」的误导（重试必再撞）。短语来自我们自己的文案，单一来源。
   if (raw.includes('输出长度上限') || raw.includes('内容被截断')) return 'output-truncated'

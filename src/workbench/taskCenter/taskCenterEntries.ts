@@ -1,3 +1,4 @@
+import { classifyGenerationError } from '../observability/classifyError'
 import { generationFeedback } from '../observability/generationFeedback'
 import { narrateTaskOutcome } from '../observability/narrate'
 // 任务中心的展示派生（纯函数，逻辑全在这，组件只负责画）。
@@ -60,6 +61,7 @@ export function buildTaskCenterView(input: {
 }): TaskCenterView {
   const { entries, batches, nodes, fallbackTitle, now } = input
   const nodeById = new Map(nodes.map((node) => [node.id, node]))
+  const latestEntryByNode = new Map(entries.map((entry) => [entry.nodeId, entry]))
 
   const rows: TaskCenterRow[] = entries.map((entry) => {
     const node = nodeById.get(entry.nodeId)
@@ -67,7 +69,7 @@ export function buildTaskCenterView(input: {
     const group: TaskCenterGroup = entry.state === 'running' ? 'running' : entry.state === 'queued' ? 'queued' : 'done'
     // 「可找回」在队列里记为 error（调度确实结束了），但对用户不是同一件事 —— 上游可能仍在跑/已出片，
     // 有「重新拉取」这条路，不该跟真失败混在一起用同样的红字。
-    const recoverable = entry.state === 'error' && nodeStatus === 'recoverable'
+    const recoverable = entry.state === 'error' && latestEntryByNode.get(entry.nodeId) === entry && nodeStatus === 'recoverable'
     return {
       id: entry.id,
       kind: 'generation' as const,
@@ -79,9 +81,11 @@ export function buildTaskCenterView(input: {
       recoverable,
       waveIndex: entry.waveIndex,
       ...(typeof node?.progress?.percent === 'number' && group === 'running' ? { percent: node.progress.percent } : {}),
-      phaseText: node && entry.state !== 'cancelled'
+      phaseText: node && group !== 'done'
         ? generationFeedback(node, now, group === 'queued')?.message ?? narrateTaskOutcome(entry.state, recoverable)
-        : narrateTaskOutcome(entry.state, recoverable),
+        : entry.state === 'error' && entry.error && !recoverable
+          ? classifyGenerationError(entry.error).reason
+          : narrateTaskOutcome(entry.state, recoverable),
       ...(elapsedFor(entry, now) !== undefined ? { elapsedMs: elapsedFor(entry, now) } : {}),
       cancel: group === 'queued' ? 'free' : group === 'running' ? resolveRunningCancelKind(node) : 'none',
       target: { kind: 'canvas_node' as const, nodeId: entry.nodeId },

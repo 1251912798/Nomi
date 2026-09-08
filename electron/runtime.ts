@@ -1,8 +1,8 @@
 import crypto from "node:crypto";
-import { assertLocalAssetTransportReady, localizeAssetsForVendor, trustedLocalOutputOrigin } from "./catalog/assetLocalization";
+import { assertLocalAssetTransportReady, localizeAssetsForVendor } from "./catalog/assetLocalization";
 import { assetIngestionResolver, assetLocalizationOptions } from "./catalog/assetTransportRuntime";
 import { readNomiLocalAsset, postJsonForAssetUpload, postMultipartForAssetUpload, putBinaryForAssetUpload } from "./assets/localAssetFile";
-import { importRemoteAsset, writeAsset, writeDeterministicAsset } from "./assets/projectAssetStore";
+import { writeAsset, writeDeterministicAsset } from "./assets/projectAssetStore";
 import { endpoint } from "./vendorEndpoint";
 import { requestJson, requestMultipart, vendorResponseLimitForKind } from "./vendor/vendorHttp";
 import { runMultipartProfileOperation } from "./catalog/multipartOperation";
@@ -11,8 +11,9 @@ import { chatImageFallbackOperation } from "./catalog/imageRouteFallback";
 import { buildNormalizedRecipe, buildTaskProvenance } from "./vendor/provenance";
 import { extractProviderCostActual, type ProviderCostActual } from "./vendor/cost";
 import { traceVendorCompleted, traceVendorRequested } from "./events/vendorCallTrace";
-import { scheduleTechnicalReview } from "./review/reviewTrace";
-import { localizedTaskAssetFileName, probeLocalizedDurationSeconds } from "./assets/localizedAsset";
+import { localizeTaskAsset } from "./assets/localizeTaskAsset";
+export { localizeTaskAsset };
+import { localizedTaskAssetFileName } from "./assets/localizedAsset";
 import { type AuthType, authHeaders as buildAuthHeaders, extractTaskId as extractTaskIdShared } from "./ai/requestPipeline";
 import { assertCanonicalAntigravityOperation, executeProcessOperation, prepareAntigravityCreateOperation } from "./catalog/processOperation"; import type { AntigravityProcessStage } from "./catalog/antigravityCatalog";
 import { executeTextTask } from "./textTaskRunner";
@@ -183,44 +184,6 @@ function authHeaders(vendor: Vendor, apiKey: string): Record<string, string> {
 // billingKindForTaskKind 下沉到 catalog/types（R12 净减）；re-export 保住既有消费方 import 面。
 export { billingKindForTaskKind } from "./catalog/types";
 export { extractAssetUrl } from "./tasks/assetUrlExtract";
-
-export async function localizeTaskAsset(
-  projectId: string,
-  assetUrl: string,
-  type: "image" | "video" | "audio" | "model3d",
-  nodeId?: string, vendor?: Pick<Vendor, "key" | "baseUrlHint" | "network">,
-  certificationEvidence?: import("./providerAdapter/certificationMedia").CertificationMediaEvidence,
-): Promise<TaskResult["assets"][number]> {
-  const imported = (await importRemoteAsset({
-    projectId,
-    url: assetUrl,
-    kind: "generated",
-    ownerNodeId: nodeId || null,
-    fileName: localizedTaskAssetFileName(type, assetUrl),
-  }, {
-    trustedPrivateOrigin: trustedLocalOutputOrigin(vendor) || undefined,
-    ...(certificationEvidence ? { certificationEvidence } : {}), ...(vendor?.network ? { providerNetwork: vendor.network } : {}),
-  })) as { id?: string; name?: string; data?: { url?: string; absolutePath?: string } };
-  const durationSeconds = await probeLocalizedDurationSeconds(type, imported.data?.absolutePath);
-  if (type === "image" || type === "video")
-    scheduleTechnicalReview({
-      projectId,
-      nodeId,
-      absolutePath: String(imported.data?.absolutePath || ""),
-      assetUrl: String(imported.data?.url || assetUrl),
-      type,
-    }); // S4-2b:落地技术自检,仅图像/视频（3D 模型不送 VLM）
-  return {
-    type,
-    url: String(imported.data?.url || assetUrl),
-    thumbnailUrl: type === "image" ? String(imported.data?.url || assetUrl) : null,
-    assetId: imported.id || null,
-    assetName: imported.name || null,
-    ...(durationSeconds !== undefined ? { durationSeconds } : {}),
-    // 原始 CDN URL 留存：任何 vendor 都能直接使用，不需要再上传或转 base64。
-    providerUrl: /^https?:\/\//i.test(assetUrl) ? assetUrl : null,
-  };
-}
 
 export function findTaskMapping(vendorKey: string, taskKind: ProfileKind, modelKey?: string, modeId?: string): Mapping | null {
   // 按 (vendor, taskKind, modelKey) 选——同 vendor 下两模型共用一个 taskKind 但请求形状不同时（如 HappyHorse 与 Kling 都 text_to_video），靠 modelKey 精确路由，不再「第一个赢、另一个套错模板」。

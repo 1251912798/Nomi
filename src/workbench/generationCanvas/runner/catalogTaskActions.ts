@@ -1,3 +1,4 @@
+import { withAssetLocalizationFeedback } from './assetLocalizationFeedback'
 import { getDesktopBridge } from '../../../desktop/bridge'
 import {
   type TaskKind,
@@ -449,7 +450,18 @@ async function waitForCatalogTaskResult(
   return current
 }
 
-export async function runCatalogGenerationTask(
+export function runCatalogGenerationTask(
+  node: GenerationCanvasNode,
+  options: CatalogTaskActionOptions = {},
+): Promise<GenerationNodeResult> {
+  return withAssetLocalizationFeedback({
+    projectId: getActiveWorkbenchProjectId(), nodeId: node.id,
+    subscribe: getDesktopBridge()?.assets?.onLocalizationStarted,
+    report: () => options.onProgress?.({ phase: 'finalizing', message: narrateProgress('finalizing') }),
+  }, () => runCatalogGenerationTaskWithFeedback(node, options))
+}
+
+async function runCatalogGenerationTaskWithFeedback(
   node: GenerationCanvasNode,
   options: CatalogTaskActionOptions = {},
 ): Promise<GenerationNodeResult> {

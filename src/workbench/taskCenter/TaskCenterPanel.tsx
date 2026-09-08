@@ -385,6 +385,9 @@ export function TaskRow({
   const revealable = row.kind !== 'export_job' && Boolean(onReveal)
   return (
     <div
+      data-task-id={row.id}
+      data-task-node-id={row.kind === 'generation' ? row.nodeId : undefined}
+      data-task-group={row.group}
       role={revealable ? 'button' : undefined}
       tabIndex={revealable ? 0 : undefined}
       onClick={() => { if (revealable) onReveal?.(row) }}
