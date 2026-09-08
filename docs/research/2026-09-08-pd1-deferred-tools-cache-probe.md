@@ -1,16 +1,16 @@
 # P-D1：deferred tools 的报文顺序、缓存边界与成本
 
-日期：2026-09-08。状态：**PARTIAL_PROOF；真实缓存成本未查成**。
+日期：2026-09-08。状态：**第二段真实三传输 × 三回合 usage 已测；原生 deferred 扩展收益仍为 PARTIAL_PROOF**。
 
-本轮只新增测试与文档，未改生产代码。底座 `906ef9ab0a45d22b4cc8d016755e1c374b85373c`；pi 锁定 `0.85.1`（`pnpm-lock.yaml:8-12`）。实际付费请求 **0 次，实际花费 ¥0.00**，预算上限 ¥0.30。
+本轮只新增测试与文档，未改生产代码。底座 `906ef9ab0a45d22b4cc8d016755e1c374b85373c`；pi 锁定 `0.85.1`（`pnpm-lock.yaml:8-12`）。第二段实际付费请求 **11 次**（9 次完整序列 + 2 次 Haiku 校准），消费 **0.33288 Credits = $0.033288**，按预算汇率 7 保守折算 **¥0.233016 ≤ ¥0.30**。原始白名单收据见 [usage.json](2026-09-08-pd1-deferred-tools-cache-probe/usage.json)。
 
 ## 结论与证据边界
 
-建议对确认支持 deferred 的模型使用 pi 原生放置；其他端点默认**会话粘性解锁**：开始只提供常驻工具，首次需要 coding 时加入，之后不收回。这个默认是基于机制和使用成本的**推断**，尚无本轮付费 usage 支撑，不能称为实测最省。
+建议对确认支持 deferred 的模型使用 pi 原生放置；其他端点默认**会话粘性解锁**：开始只提供常驻工具，首次需要 coding 时加入，之后不收回。第二段实测支持这个保守默认：普通 Messages 解锁时重建缓存、第三回合恢复；Responses/Chat 扩菜单仍保留部分缓存。原生 deferred 开关没有在 APIMart 付费认证，不能称为实测最省。
 
 旧报告 §6 把“HTTP tools 数组增加约 5 KB”写成“缓存失效 20%”及“零缓存代价”，应停止引用这些百分比作为计费或缓存证据。字节变化只能证明报文变化。特别是 Anthropic 官方明确说明：`defer_loading` 的定义依然随请求发送，但服务端将其排除在模型前缀之外，在 `tool_reference` 的位置展开。因此**顶层 tools 变长并不能推出 Anthropic 缓存失效**。[官方工具缓存说明](https://platform.claude.com/docs/en/agents-and-tools/tool-use/tool-use-with-prompt-caching)、[官方工具搜索说明](https://platform.claude.com/docs/en/agents-and-tools/tool-use/tool-search-tool)。
 
-本轮没有本地 `node_modules`；`tsc`、`tsx`、Electron 开发运行器均不可解析。遵守任务“不装包、不碰其他 worktree”的限制，未安装依赖或借用其他工作树。已请求只读复用授权，执行时尚未收到答复。下列 pi 行号核自锁定版本的公开发布文件，**不是声称读过本目录不存在的 node_modules**；文件保存在未提交的 `.tmp/pd1-upstream/` 供本轮对账。
+**第一段历史**：当时没有本地 `node_modules`；`tsc`、`tsx`、Electron 开发运行器均不可解析。遵守任务“不装包、不碰其他 worktree”的限制，未安装依赖或借用其他工作树。已请求只读复用授权，执行时尚未收到答复。第一段 pi 行号核自锁定版本的公开发布文件，存于未提交的 `.tmp/pd1-upstream/`。**第二段**已按用户要求锁文件安装，并读本地 pi 0.85.1 源码；构建、Electron 安装身份检查和 placement 12/12 已通过。
 
 ## 1. 传输 × deferred × 顺序
 
@@ -53,11 +53,11 @@ pnpm exec tsc -p tests/agent-runtime/tsconfig.json
 node --test --test-concurrency=1 --test-timeout=60000 .tmp/agent-runtime-tests/tests/agent-runtime/lane-deferred-tools-placement.test.mjs
 ```
 
-**本地执行状态：未运行成功**。`pnpm exec tsc ...` 返回 `Command "tsc" not found`。`node --check tests/agent-runtime/lane-deferred-tools-placement.test.mts` 通过，**只证明语法，不证明类型或断言通过**。不能把预期数组长度、fixture 回传的假 usage 或旧探针数字当成本轮实测。
+**第一段本地历史：未运行成功**。`pnpm exec tsc ...` 返回 `Command "tsc" not found`。`node --check tests/agent-runtime/lane-deferred-tools-placement.test.mts` 通过，**只证明语法，不证明类型或断言通过**。不能把预期数组长度、fixture 回传的假 usage 或旧探针数字当成本轮实测。
 
 ### 远端零额度实测：12/12 通过
 
-本地保持“不装包”；PR 的既有 CI 在完整安装锁定依赖后执行了夹具。[Unit 收据](https://github.com/aqm857886159/Nomi/actions/runs/34186472836/job/101935763351)，测试 commit `17f8ee7d2d3f6528f731658d6da5f36ccb3b8024`，UTC 2026-09-08 04:22:33。以下均为真实 pi → loopback HTTP 出站数据，**不是供应商缓存实测**。源码确认的 menu 实际为 **catalog 11 + 解锁入口 1 → 加 coding 7，即 12 → 19**；旧 11 → 18 是漏计解锁入口的口径。
+第一段本地保持“不装包”；PR 的既有 CI 在完整安装锁定依赖后执行了夹具。[Unit 收据](https://github.com/aqm857886159/Nomi/actions/runs/34186472836/job/101935763351)，测试 commit `17f8ee7d2d3f6528f731658d6da5f36ccb3b8024`，UTC 2026-09-08 04:22:33。以下均为真实 pi → loopback HTTP 出站数据，**不是供应商缓存实测**。源码确认的 menu 实际为 **catalog 11 + 解锁入口 1 → 加 coding 7，即 12 → 19**；旧 11 → 18 是漏计解锁入口的口径。
 
 | 传输 | 臂 | 顶层工具数：1 / 2 / 3 | tools JSON UTF-8 字节：1 / 2 / 3 | 断言 |
 |---|---|---|---|---|
@@ -79,37 +79,56 @@ APIMart 官方列出 [Messages `/v1/messages`](https://docs.apimart.ai/en/api-re
 
 [APIMart Codex CLI 接入](https://docs.apimart.ai/en/integrations/dev-tool/codex-cli) 明确是 API key + `wire_api=responses` + `/v1`。pi 的 `openai-codex-responses` 会先从 JWT 解析 `chatgpt_account_id`，再请求 `/codex/responses`（`PI/api/openai-codex-responses.js:167,455-462,1247-1259`）。不能把 APIMart 的普通 API key 装成 OAuth token，也不能用普通 Responses 的成功替它填表。此原生 Codex 传输在 APIMart 上**未查成**。
 
-凭据路径已读源码核实：`readCatalog`（`electron/catalog/catalogStore.ts:72`）→ `decryptApiKeyRecord`（`electron/catalog/secrets.ts:142`），后者只接受 safeStorage 记录。参考隔离读法在 `tests/ux/agent-runtime-provider.walk.mjs:24-42,72-81`；不能转去读 shell 环境、其他工具的 auth 文件或直接解码密文。本轮缺本地运行依赖，**没有执行应用凭据读取，也没有执行任何认证请求**。旧报告的 safeStorage 失败只算旧记录，不能替代本轮尝试。
+凭据路径为隔离 Electron 主进程 `readCatalog → decryptApiKeyRecord → safeStorage`。第二段通过 `isoApp.prepareIsolation` 拷贝加密 catalog，四路目录隔离（包括 `NOMI_CAPABILITY_DIR`），再用 `launchNomiApp` 启动真实开发 Electron。认证余额和模型列表 HTTP 200；用户源 catalog 哈希未变，每次结束删除临时凭据目录。key 未打印、写报告或截图。
 
-### 三回合 usage 表
+当前 `agent-runtime-production.walk.mjs` 是 loopback，真实付费参考是 `agent-runtime-provider.walk.mjs`。本探针复用 `stage3ProbeHarness.openProbeLane`：真实应用内的 pi lane、生产 provider/session/schema，同 lane 连发三条用户输入。第二条附 `probe.js` 短代码，探针调用公开 `lane.setActiveTools` 解锁并保持。副作用工具全部阻断。**这是隔离探针接线，不能证明产品 UI/宿主已接通动态解锁。**
 
-“—”是没有测量值，绝不是 0。预算日志：发送前 0 次，发送后 0 次，¥0.00；没有账单可核对，也没有未计入的付费重试。
+### 三回合 usage 表（第二段实测）
 
-| 传输 | 回合 | usage.cacheRead | usage.cacheWrite | usage.input | 状态 / 原因 |
-|---|---:|---:|---:|---:|---|
-| anthropic-messages | 1 | — | — | — | 未查成：缺运行依赖，未读取应用 key |
-| anthropic-messages | 2（解锁） | — | — | — | 未查成：未发请求 |
-| anthropic-messages | 3 | — | — | — | 未查成：未发请求 |
-| openai-responses | 1 | — | — | — | 未查成：缺运行依赖，未读取应用 key |
-| openai-responses | 2（解锁） | — | — | — | 未查成：未发请求 |
-| openai-responses | 3 | — | — | — | 未查成：未发请求 |
-| openai-codex-responses | 1 | — | — | — | 未查成：仅有 APIMart API-key 接入，原生 Codex OAuth 路径未证实 |
-| openai-codex-responses | 2（解锁） | — | — | — | 未查成：未发请求 |
-| openai-codex-responses | 3 | — | — | — | 未查成：未发请求 |
-| openai-completions（对照） | 1 | — | — | — | 未查成：缺运行依赖，未读取应用 key |
-| openai-completions（对照） | 2（解锁） | — | — | — | 未查成：未发请求 |
-| openai-completions（对照） | 3 | — | — | — | 未查成：未发请求 |
+`input` 为 pi 归一后的非缓存输入；Messages 三种输入互不重叠，OpenAI 非缓存输入为总输入减 cached_tokens。`—` 表示供应商未返回字段。每种传输自己的三回合保持同一个 sessionId，完整 ID、每次 HTTP 200、菜单与 raw usage 均在 [收据](2026-09-08-pd1-deferred-tools-cache-probe/usage.json)。
 
-### 补测时的计量约束
+| 传输 | 回合 | cacheRead | cacheWrite | input | output | 状态 |
+|---|---:|---:|---:|---:|---:|---|
+| 第一段历史（三种普通传输） | — | — | — | — | — | 未查成：缺运行依赖，未读取应用 key；0 次生成、¥0.00 |
+| anthropic-messages / Haiku 4.5 | 1 | 0 | 7626 | 3 | 4 | 第二段实测；首次写缓存 |
+| anthropic-messages / Haiku 4.5 | 2（附代码解锁） | 0 | 8977 | 3 | 4 | 第二段实测；扩菜单后重写 |
+| anthropic-messages / Haiku 4.5 | 3 | 8977 | 12 | 3 | 4 | 第二段实测；命中扩展后的缓存 |
+| openai-responses / GPT-5 nano | 1 | 0 | 0 | 4733 | 19 | 第二段实测；原始总输入 4733 |
+| openai-responses / GPT-5 nano | 2（附代码解锁） | 4480 | 0 | 1111 | 19 | 第二段实测；总输入 5591 |
+| openai-responses / GPT-5 nano | 3 | 5504 | 0 | 103 | 19 | 第二段实测；总输入 5607 |
+| openai-completions / GPT-5 nano | 1 | 0 | — | 4814 | 10 | 第二段实测；总输入 4814 |
+| openai-completions / GPT-5 nano | 2（附代码解锁） | 4480 | — | 1192 | 10 | 第二段实测；总输入 5672 |
+| openai-completions / GPT-5 nano | 3 | 5504 | — | 184 | 10 | 第二段实测；总输入 5688 |
+| openai-codex-responses | 1 / 2 / 3 | — | — | — | — | 未查成：APIMart 不提供该原生 Codex OAuth 传输，未发送请求 |
 
-1. APIMart 官方缓存文档中 Messages 的普通输入、缓存写、缓存读是互不重叠的三个量；总输入为三者相加。Chat Completions 的 `prompt_tokens` 与 details 是不同口径，必须保留原始 usage 字段并注明归一规则。[APIMart 缓存字段](https://docs.apimart.ai/en/api-reference/texts/general/claude-context-cache)。
-2. 使用同一个模型、稳定系统提示词和缓存会话标识；每次只改变必需的历史追加与工具解锁。先确认模型缓存最小长度和 cache marker 生效。第一回合没有缓存写/读证据时，第二回合零命中不能证明“解锁打掉缓存”。
-3. 记录 usage 字段缺失为缺失，不能把 pi 的默认零当服务器明确回传的零。实际费用以该 APIMart 模型及账户组价核算；不能把 pi 占位 `cost=0`、官方直连价或旧估算当账单。
-4. 生成前预留后续三回合**全部冷输入 + 最大输出 + 缓存写入**的保守预算；无法把最坏累计支出压到 ¥0.30 以内就停止，不先花超再报。关闭重试，限制输出，禁止执行模型建议的工具。只输出白名单里的 usage、状态和费用，不输出凭据、header、完整异常对象或截图。
+三种实测出站顶层菜单均为 **12 → 19 → 19**（11 常驻 + 解锁入口 1 + coding 7），第三回合工具 JSON 哈希与第二回合一致；Messages 三个请求均有 3 个 cache marker。本次为默认 compat 的**粘性解锁对照**，`defer_loading`/`additional_tools` 计数均为 0。不能把它说成原生 deferred 开关认证。
+
+计量修正：首次采集发现 `lane.findEntries()` 默认倒序，直接 `.at(-1)` 会重复首回合 usage。交付脚本已按 `seq` 排序后取最后一条，并核对 raw usage。早先 Responses/Chat 数字从主进程保存的 **LaneSnapshot.stats.usage 累计量相减**恢复，逐字段与原始供应商 usage 相符；无须再次付费。收据注明这一来源，没有拿旧助手消息重复填表。
+
+### 预算与实际花费
+
+- 官方 [Messages URL](https://docs.apimart.ai/en/api-reference/texts/general/claude-messages) 为 `https://api.apimart.ai/v1/messages`；Responses 为 `/v1/responses`，Chat 为 `/v1/chat/completions`。`wire_api=responses` 对应普通 Responses，不对应 pi Codex OAuth。
+- [APIMart 公开价目](https://apimart.ai/pricing) 数据包含 Haiku 4.5 默认组美元/百万 token：输入 0.8、5 分钟缓存写 1、缓存读 0.08、输出 4；GPT-5 nano 默认组为 0.04/0.004/0.32（输入/缓存读/输出），预算对 OpenAI 使用未折扣的 0.05/0.4。价格快照随收据保留，公开价格不能替代逐请求账单。
+- [余额接口](https://docs.apimart.ai/en/api-reference/account/token-balance) 起止 `used_balance` 为 **185.691884 → 185.725172**；同时 `used_credits = used_balance × 10`。按官网 **10 Credits = $1** 面值，实际消费 **0.33288 Credits / $0.033288**。参考当天 [USD/CNY 6.7108](https://www.investing.com/currencies/usd-cny-historical-data) 约 **¥0.22339**；预算采用更保守的 **7**，合计 **¥0.233016**。这是额度面值换算，不是用户充值汇率。
+- 11 次生成含两次 Haiku 首回合预算校准：两次均写 7626 缓存 token，分别输出 4/5 token，后续请求在发送前被预算守卫拒绝；最终 Haiku 完整三回合另起同一条新 lane。没有隐去这些调用或把它们计成免费。免费 token-count 路由 HTTP 404，没有假定它可用。
+- 脚本跨启动保存 `.tmp/pd1-cache-budget.json`，累计费用不自动归零。发送前预留冷输入/缓存写中较高价与 64 输出 token；初始完整 JSON 字节上界，校准后为实测输入 token + 仅追加内容的字节差 + 包装余量。已消费取余额差与 usage 估价的较高值。先前保守的全冷历史估价经多次稳定余额读取结清；最后完整序列费用仍全部计入。
+- 余额不是逐请求账单：Chat 的同步余额查询未立即反映扣费，不能把那些行称免费；不据零差额或 pi 的占位 `cost=0` 推导每回合真实金额。最终累计余额是本轮付费收据。
+
+手动复跑（**会继续使用同一预算台账，不在 CI 执行**）：
+
+```sh
+pnpm install --frozen-lockfile
+pnpm run check:electron-install
+pnpm build
+pnpm exec tsc -p tests/agent-runtime/tsconfig.json
+NOMI_AGENT_LIVE=1 node tests/ux/pd1-deferred-tools-cache.probe.mjs
+```
 
 ## 4. Chat Completions 每回合多花多少
 
-**本轮实测人民币增量：未查成。** 旧报告记录 catalog 的估算 5,748 → 6,854 token，差 1,106，但它使用字节/字符近似且不含解锁入口，不能直接写成某模型的计费 token。[旧口径](2026-09-07-pi-coding-tools-layer.md#6-p-d1--解锁一次打掉多少缓存分传输的数字)。
+**本轮已有真实 token 增量，独立工具费用仍未查成。** Chat 总输入 4814 → 5672 → 5688：首次扩展增加 858 token（含 coding 定义、短代码和历史，不是纯工具差值），第三回合再增 16 token。解锁回合仍读缓存 4480，不能说“全量前缀失效”；第三回合命中 5504/5688 ≈ 96.8%。没有全量常驻的同模型付费对照，也没有逐请求账单，不能把这些数字直接换成策略净节省。
+
+ 旧报告记录 catalog 的估算 5,748 → 6,854 token，差 1,106，但它使用字节/字符近似且不含解锁入口，不能直接写成某模型的计费 token。[旧口径](2026-09-07-pi-coding-tools-layer.md#6-p-d1--解锁一次打掉多少缓存分传输的数字)。
 
 可复核的计算式（价单位为人民币/百万 token）：
 
@@ -123,10 +142,10 @@ APIMart 官方列出 [Messages `/v1/messages`](https://docs.apimart.ai/en/api-re
 
 | 传输 / 条件 | 默认建议 | 为什么 / 证据级别 |
 |---|---|---|
-| Anthropic，端点明确支持 tool references | 原生 deferred + 单向解锁；常驻顺序不变 | 官方说明 deferred 定义不进入缓存前缀；pi 保留常驻缓存标记。**文档/源码事实，APIMart 命中未实测**。不因 HTTP 数组变长就改成全量常驻。 |
-| OpenAI Responses，端点明确支持 additional tools / tool search | 原生 deferred + 单向解锁 | 新定义进历史，顶层常驻工具不变。**源码事实，缓存收益推断**；扩展未认证时不盲开 compat。 |
+| Anthropic，端点明确支持 tool references | 原生 deferred + 单向解锁；常驻顺序不变 | 官方说明 deferred 定义不进入缓存前缀；pi 保留常驻缓存标记。**文档/源码事实；第二段只实测 APIMart 默认 compat，原生 deferred 未认证**。不因 HTTP 数组变长就改成全量常驻。 |
+| OpenAI Responses，端点明确支持 additional tools / tool search | 原生 deferred + 单向解锁 | 新定义进历史，顶层常驻工具不变。**源码事实，扩展未认证时不盲开 compat；APIMart 默认走粘性解锁，本次仍保留 4480 缓存 token。** |
 | 原生 Codex Responses，具备正确账户鉴权和扩展支持 | 同上 | 共用 Responses 装载转换器；**源码事实，APIMart 路径未查成**。 |
-| Chat Completions，或上述传输 compat 未认证 | 会话粘性解锁 | 不需要 coding 的会话省下整个 coding schema；解锁后不再反复改菜单。**默认策略推断**；不承诺冷输入/缓存失效的具体金额。 |
+| Chat Completions，或上述传输 compat 未认证 | 会话粘性解锁 | 不需要 coding 的会话省下整个 coding schema；解锁后不再反复改菜单。**第二段支持缓存可保留/恢复；节费净额仍为推断**。APIMart Messages 为 0 → 0 → 8977 读缓存；Responses/Chat 为 0 → 4480 → 5504。 |
 
 非 deferred 的核心取舍：**为每个不开 coding 的会话持续携带说明书，还是只在真正需要 coding 时承受一次菜单变化。**
 
@@ -135,15 +154,14 @@ APIMart 官方列出 [Messages `/v1/messages`](https://docs.apimart.ai/en/api-re
 | 全量常驻 | 开始就有全部 coding 能力 | 从第一回合起菜单稳定；所有无 coding 会话也携带全部 schema，工具注意力影响未测。适合已明确是 coding 的任务，但不能据本轮宣布普遍更便宜。 |
 | 会话粘性解锁（推荐） | 需要时解锁，之后一直可用 | 解锁前省 schema，首次扩展可能少命中一部分缓存；依赖解锁入口真正接入宿主。当前宿主尚未接通的缺口需由切换 PR 验收。 |
 
-若解锁前有 K 次请求、每次常驻 coding 增量成本为 d、首次解锁额外缓存损失为 B，则粘性相对常驻的净收益约为 `K × d − B`。K 可由任务分布观察；d、B 仍缺本轮真实数字。**阶段 4 可以沿用粘性默认，但不能声称 P-D1 已完成缓存成本认证。**
+若解锁前有 K 次请求、每次常驻 coding 增量成本为 d、首次解锁额外缓存损失为 B，则粘性相对常驻的净收益约为 `K × d − B`。K 可由任务分布观察；d、B 仍缺本轮真实数字。**阶段 4 可以沿用粘性默认；P-D1 已取得普通传输真实缓存收据，仍不能声称原生 deferred 或所有供应商已认证。**
 
 ## 6. 验证与交付状态
 
-- `delivery:preflight`：通过，干净独立分支与 `origin/main` 同 commit。
-- `node --check`、`git diff --check`、`check:prior-art`：通过；仅对应各自静态边界。
-- 本地 `gates:contracts`：完整尝试 73 项；首轮 25 项阻断，其中新增 plan 的 prior-art 格式已修并复跑通过，其余依赖环境失败仍在。日志在未提交 `.tmp/pd1-contracts.log`。
-- 远端 [Contracts 收据](https://github.com/aqm857886159/Nomi/actions/runs/34186472836/job/101935708976)：同一测试 commit 的 73 项中 70 通过、0 阻断失败、3 advisory 失败；严格 agent-runtime 类型检查 0 错误。远端 Unit 通过，P-D1 **12/12** 实跑通过，详见 §2。本地缺依赖与远端验证结果分别记录。
-- 今日模型雷达：`radar:models` 因缺 `tsx` 没查成，不表示没有新模型。本任务未扩展为其他研究或修改雷达快照。
-- 实际付费 **¥0.00**；不含仓库提交/推送闸门使用的 Codex 会话，后者不是 APIMart 付费探针。
-
-交付为 [Draft PR #639](https://github.com/aqm857886159/Nomi/pull/639)，未合并。零额度放置已取得运行收据；后续仍须补齐应用凭据路径与付费 usage，才可结束“真实缓存成本未查成”的状态。
+- 第二段：`git pull --ff-only`、锁文件安装、Electron 身份检查 **13/13**、`pnpm build` 通过；没有新增依赖或复用别的 worktree。
+- `delivery:preflight` 初次因用户要求保留的未跟踪 `PD1-LAST.md` 报 dirty，未删除交接文件。push 前已将最新 `origin/main` `28654f269` 正常整合进现有任务分支。
+- agent-runtime 严格编译通过；P-D1 placement **12/12** 本地实跑通过；三种真实协议 **9/9** 目标请求均 HTTP 200，菜单 12/19/19，usage 收据可与原始字段、lane 累计量逐项核对。
+- `gates:contracts` 完整 73 项：**71 通过、0 阻断失败、2 advisory**（文档索引/其他研究文档来源）；lint 0 error、81 warnings 在棘轮内，类型检查 0 error。最终文件另过静态检查和收据对账。
+- 今日模型雷达已执行；APIMart 文本车道纯 Node 无法读 safeStorage，没查成，不等于没有新模型。未更新基线或把雷达扩展为接入任务。
+- 实际额度 **0.33288 Credits = $0.033288，按预算率折算 ¥0.233016**；0 次媒体生成。此数不含 commit/push hook 的 Codex 评审（不是 APIMart 探针费用）。
+- 交付仍为现有 [PR #639](https://github.com/aqm857886159/Nomi/pull/639)，不另开分支/PR；完成 commit/push 后转 Ready，**不合并**。原生 deferred 与 Codex OAuth 的限制不随 Ready 状态消失。
