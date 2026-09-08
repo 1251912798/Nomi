@@ -18,7 +18,7 @@ metadata:
         en: Frame-within-frame
       summary:
         zh-CN: 用明确的画面结构组织视觉重点。
-        en: 用明确的画面结构组织视觉重点。
+        en: 'Frame-within-frame: Add a precise camera or composition instruction to the scene.'
       appliesTo:
         - image
       group:

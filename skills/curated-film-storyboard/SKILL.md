@@ -14,10 +14,10 @@ metadata:
       kind: skill
       title:
         zh-CN: 电影分镜
-        en: 电影分镜制作
+        en: Film storyboard
       summary:
         zh-CN: 把用户提供的剧本文字整理成宽屏分镜。
-        en: Adapt 电影分镜制作 to the supplied references and check continuity.
+        en: Turn the supplied script into a coherent sequence of film storyboard panels.
       appliesTo:
         - image
       group:

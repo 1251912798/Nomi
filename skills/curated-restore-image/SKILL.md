@@ -14,10 +14,10 @@ metadata:
       kind: skill
       title:
         zh-CN: 旧图重新绘制
-        en: 图像高清修复
+        en: Restore an illustrated image
       summary:
         zh-CN: 重新诠释旧图细节；结果可能改变原纹理。
-        en: Adapt 图像高清修复 to the supplied references and check continuity.
+        en: Increase resolution and reinterpret an old image using modern anime rendering.
       appliesTo:
         - image
       group:

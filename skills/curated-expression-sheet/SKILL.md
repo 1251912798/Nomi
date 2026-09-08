@@ -14,10 +14,10 @@ metadata:
       kind: skill
       title:
         zh-CN: 表情设定表
-        en: 自定义人物的表情包生成
+        en: Character expression sheet
       summary:
         zh-CN: 按姿势参考生成同一角色的多种表情。
-        en: Adapt 自定义人物的表情包生成 to the supplied references and check continuity.
+        en: Create a set of distinct expressions for the same character.
       appliesTo:
         - image
       group:

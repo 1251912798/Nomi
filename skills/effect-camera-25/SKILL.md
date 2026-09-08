@@ -18,7 +18,7 @@ metadata:
         en: Cut-to-black
       summary:
         zh-CN: 用具体的机位与运动描述控制镜头节奏。
-        en: 用具体的机位与运动描述控制镜头节奏。
+        en: 'Cut-to-black: Add a precise camera or composition instruction to the scene.'
       appliesTo:
         - video
       group:

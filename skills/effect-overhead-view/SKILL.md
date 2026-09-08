@@ -18,7 +18,7 @@ metadata:
         en: Overhead composition
       summary:
         zh-CN: 俯视构图：使用连接的参考，保留主体一致性。
-        en: 俯视构图：使用连接的参考，保留主体一致性。
+        en: 'Overhead composition: Apply the effect to connected references while preserving the subject.'
       appliesTo:
         - image
       group:
@@ -32,8 +32,9 @@ metadata:
         revision: 2558bf0bb825be150c5d1aeab918cd90004882d3
         author: https://x.com/op7418/status/1960896630586310656
         changes: >-
-          Nomi adds Chinese task labels, reference slots and review criteria; fixed subjects are parameterized where
-          noted.
+          Nomi-authored adaptation of the cited reference-editing pattern, with subject, composition and continuity
+          constraints; the exact adapted formula has not been tested in Nomi. Upstream media demonstrates the original
+          case only.
         evidence:
           - https://x.com/op7418/status/1960896630586310656
           - https://x.com/op7418

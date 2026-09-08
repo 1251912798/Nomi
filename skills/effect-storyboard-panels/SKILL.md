@@ -18,7 +18,7 @@ metadata:
         en: Widescreen storyboard
       summary:
         zh-CN: 宽屏分镜：使用连接的参考，保留主体一致性。
-        en: 宽屏分镜：使用连接的参考，保留主体一致性。
+        en: 'Widescreen storyboard: Apply the effect to connected references while preserving the subject.'
       appliesTo:
         - image
       group:
@@ -32,8 +32,9 @@ metadata:
         revision: 2558bf0bb825be150c5d1aeab918cd90004882d3
         author: https://x.com/jamesyeung18/status/1992597408128045462?s=20
         changes: >-
-          Nomi adds Chinese task labels, reference slots and review criteria; fixed subjects are parameterized where
-          noted.
+          Nomi-authored adaptation of the cited reference-editing pattern, with subject, composition and continuity
+          constraints; the exact adapted formula has not been tested in Nomi. Upstream media demonstrates the original
+          case only.
         evidence:
           - https://x.com/jamesyeung18/status/1992597408128045462?s=20
           - https://x.com/jamesyeung18

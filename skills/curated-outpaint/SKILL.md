@@ -14,10 +14,10 @@ metadata:
       kind: skill
       title:
         zh-CN: 自然扩图
-        en: 图像外扩修复
+        en: Extend an image
       summary:
         zh-CN: 补齐边缘空白，核对纹理与透视衔接。
-        en: Adapt 图像外扩修复 to the supplied references and check continuity.
+        en: Extend the frame while preserving the original subject and visual continuity.
       appliesTo:
         - image
       group:

@@ -14,10 +14,10 @@ metadata:
       kind: skill
       title:
         zh-CN: 跨视角构图
-        en: 跨视角图像生成
+        en: Change viewpoint
       summary:
         zh-CN: 把参考画面转成另一机位，核对空间关系。
-        en: Adapt 跨视角图像生成 to the supplied references and check continuity.
+        en: Show the reference scene from another camera viewpoint.
       appliesTo:
         - image
       group:

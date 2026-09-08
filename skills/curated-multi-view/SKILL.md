@@ -14,10 +14,10 @@ metadata:
       kind: skill
       title:
         zh-CN: 多视图设定
-        en: 多视图结果生成
+        en: Multiple views
       summary:
         zh-CN: 把同一主体整理成一致的多面设定。
-        en: Adapt 多视图结果生成 to the supplied references and check continuity.
+        en: Generate consistent views of the same subject from a reference image.
       appliesTo:
         - image
       group:

@@ -14,10 +14,10 @@ metadata:
       kind: skill
       title:
         zh-CN: 参考表情迁移
-        en: 参考图控制人物表情
+        en: Match a reference expression
       summary:
         zh-CN: 参考第二张图的表情，保留第一张图的人物。
-        en: Adapt 参考图控制人物表情 to the supplied references and check continuity.
+        en: Transfer the expression reference while retaining the target character identity.
       appliesTo:
         - image
       group:
