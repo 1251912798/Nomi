@@ -211,7 +211,7 @@ for (const screen of LAB_SCREEN_IDS) {
 // 把字段硬填满 180 格只会逼出一堆编造的行号，那正是这个字段要消灭的东西。
 //
 // 任何屏只要**填了**，就照验存在性——写下的指路牌必须是真的。
-const MIRROR_REQUIRED_SCREENS = ['primitives-actions', 'primitives-forms', 'primitives-surfaces']
+const MIRROR_REQUIRED_SCREENS = ['primitives-actions', 'primitives-forms', 'primitives-menu', 'primitives-surfaces']
 // `'none'` = 零采纳件（设计系统提供了这个能力、生产还没有调用点）。写出来而不是省略，
 // 是为了把「想过、确实没有」和「忘了写」分开——后者才是要红的那个。
 const MIRROR_NONE = /^none\b/

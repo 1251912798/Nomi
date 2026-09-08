@@ -11,6 +11,7 @@ import { HOST_CONFIG_STATES } from './hostConfig/hostConfigStates'
 import { PRIMITIVE_CELL_HEIGHT, PRIMITIVE_STAGE_WIDTH } from './primitives/primitivesLabKit'
 import { PRIMITIVES_ACTIONS_STATES } from './primitivesActions/primitivesActionsStates'
 import { PRIMITIVES_FORMS_STATES } from './primitivesForms/primitivesFormsStates'
+import { PRIMITIVES_MENU_STATES } from './primitivesMenu/primitivesMenuStates'
 import { PRIMITIVES_SURFACES_STATES } from './primitivesSurfaces/primitivesSurfacesStates'
 import { SETTINGS_STATES } from './settings/settingsStates'
 import { SETTINGS_CELL_HEIGHT, SETTINGS_CELL_WIDTH } from './settings/settingsLabKit'
@@ -100,6 +101,14 @@ export const LAB_SCREENS: readonly LabScreen[] = [
     states: PRIMITIVES_FORMS_STATES,
     // 表单格比动作格高一档（四态竖排 + 展开的下拉都在这一屏）。
     cell: { width: PRIMITIVE_STAGE_WIDTH, height: PRIMITIVE_CELL_HEIGHT + 120 },
+  },
+  {
+    id: 'primitives-menu',
+    label: '积木 · 菜单',
+    states: PRIMITIVES_MENU_STATES,
+    // 这一屏每一格都是整屏取景：菜单走 Radix Portal 到 body + fixed 贴视口点位，
+    // 按元素截只会截出「菜单没打开」。取景框按走查用的那个视口开列。
+    cell: { width: 520, height: 420 },
   },
   {
     id: 'primitives-surfaces',

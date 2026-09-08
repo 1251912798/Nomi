@@ -360,6 +360,7 @@ function GenerationCanvasReactFlowInner({ readOnly = false }: GenerationCanvasRe
   }, [flow])
   const {
     contextNodeMenu,
+    closeContextNodeMenu,
     connectionCreateMenu,
     handleStageContextMenu,
     handleFlowContextMenu,
@@ -711,6 +712,7 @@ function GenerationCanvasReactFlowInner({ readOnly = false }: GenerationCanvasRe
           })
         }
         onNodeContextAction={handleNodeContextAction}
+        onCloseContextNodeMenu={closeContextNodeMenu}
         onAddContextNode={handleAddContextNode}
         onImportContextFiles={handleImportContextFiles}
         onAddConnectedNode={handleAddConnectedNode}

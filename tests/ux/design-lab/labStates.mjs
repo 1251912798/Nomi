@@ -60,6 +60,10 @@ export const LAB_SCREENS = {
     registryDir: path.join(REPO_ROOT, 'src/devlab/designLab/primitivesForms/states'),
     baselineDir: path.join(BASELINE_ROOT, 'primitives-forms'),
   },
+  'primitives-menu': {
+    registryDir: path.join(REPO_ROOT, 'src/devlab/designLab/primitivesMenu/states'),
+    baselineDir: path.join(BASELINE_ROOT, 'primitives-menu'),
+  },
   'primitives-surfaces': {
     registryDir: path.join(REPO_ROOT, 'src/devlab/designLab/primitivesSurfaces/states'),
     baselineDir: path.join(BASELINE_ROOT, 'primitives-surfaces'),

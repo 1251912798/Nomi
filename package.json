@@ -203,6 +203,7 @@
     "design-lab:walk:depth-action": "node ./tests/ux/design-lab-depth-action.walk.mjs",
     "design-lab:walk:primitives-actions": "node ./tests/ux/design-lab-primitives-actions.walk.mjs",
     "design-lab:walk:primitives-forms": "node ./tests/ux/design-lab-primitives-forms.walk.mjs",
+    "design-lab:walk:primitives-menu": "node ./tests/ux/design-lab-primitives-menu.walk.mjs",
     "design-lab:walk:primitives-surfaces": "node ./tests/ux/design-lab-primitives-surfaces.walk.mjs",
     "check:skills-format": "node --test ./scripts/check-skills-format.node-test.mjs && node ./scripts/check-skills-format.mjs"
   },
@@ -225,6 +226,7 @@
     "@mantine/modals": "^8.3.18",
     "@mantine/notifications": "^8.3.18",
     "@photo-sphere-viewer/core": "5.14.3",
+    "@radix-ui/react-dropdown-menu": "^2.1.24",
     "@radix-ui/react-switch": "^1.2.6",
     "@radix-ui/react-tooltip": "^1.2.11",
     "@react-three/drei": "^9",

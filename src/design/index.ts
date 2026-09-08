@@ -28,6 +28,17 @@ export type { DesignModalProps } from './overlays'
 export { ConfirmDialogHost } from './confirmDialog'
 export { alertDialog, confirmDialog, promptDialog } from './confirmDialogStore'
 export { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './tooltip'
+export { WorkbenchMenu } from './menu'
+export type {
+  WorkbenchMenuAction,
+  WorkbenchMenuCheckbox,
+  WorkbenchMenuGroup,
+  WorkbenchMenuIcon,
+  WorkbenchMenuNode,
+  WorkbenchMenuProps,
+  WorkbenchMenuRadioGroup,
+  WorkbenchMenuSeparator,
+} from './menu'
 export { NomiBrand, NomiWordmark, NomiAILabel, NomiLoadingMark, NomiLogoMark, NomiStepper } from './identity'
 export { NomiSelect } from './NomiSelect'
 export type { NomiSelectProps, NomiSelectOption, NomiSelectTone } from './NomiSelect'
