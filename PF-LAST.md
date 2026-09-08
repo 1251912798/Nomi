@@ -1,4 +1,20 @@
 # PF-LAST
+- 2026-09-09 PR #658 round3：证实软件渲染是 img-fx 走查超时根因；共享 `useReducedProcessMotion` 通过 WebGL `WEBGL_debug_renderer_info` 将 SwiftShader/llvmpipe/无 WebGL 降级到既有静态壳。
+- 红证据原文：`docs/plan/process-feedback-evidence/ci-round3/canvas-ci.log`（CI run 34290154494 当时仍 in_progress，GitHub 未开放失败日志）；定向节点 Vitest 887 通过/1 跳过。
+- commit/push 后 HEAD：`1045714ed`，已推送既有 PR #658；完整 gates 在其他 worktree 排队，尚未取得本轮 exit 收据。
+- 2026-09-09 CI round2 调查已推送既有 PR #658；HEAD `2420f16dde70692d236701f258eeb60b857479c6`，正常 Ponytail commit/push；未新建 PR。
+- 旅程根因：RPC 序列化丢领域 errorCode；#661 已在 mcpRpcError.ts 共享传输层修复，本轮单变量旧逻辑红→恢复现实现 7/7 绿。
+- 画布根因尚未证实：原时间轴断言本地 full 2/2=7/7、入口=1；CPU/视口/旧反馈组件/软件渲染旧组件均绿，禁止称已解决；已推 Linux DOM/点击/失败截图诊断。
+- 红绿证据：`docs/plan/process-feedback-evidence/ci-round2/journey-{red,green}.log`；画布 `canvas-ci-failure.log` 与 `canvas-current-diagnostic.log`，无伪造 canvas-red.log。
+- gates `/tmp/pr658-ci-round2-gates-merged.log` exit 0：76 contracts 0 阻断、153 visual、12098 Vitest/2 skipped、build 绿；smoke 17/17。
+- 最新旧 HEAD CI 另见软件 GPU img-fx 卡顿；本地 SwiftShader 同样红于视觉安定（canvas-software-current.log），与原时间轴失败分开追踪。reactFlow/** 无改动。
+- 先前 PF-LAST 收据保留在下方；liveness.json 原样保留；main #662 已正常合入 e05a5e9c2，新 run 34290154494 仍在生成确认后超时，未到时间轴诊断；另有版本切换瞬时读取竞态。
+
+- 2026-09-09 收尾复核：commit `f84bcf9d94778064675810b741ed3d86b441eb96`；既有 PR #658，本轮无新增提交。
+- gates：指定加锁命令退出 0；75 contracts：72 通过 / 0 阻断 / 3 advisory；Vitest 12092 通过 / 2 跳过；构建通过。
+- gates 日志：`/tmp/pf-imgfx-closeout-gates-20260909.log`；基线差异仅 process-feedback，其他屏与 main 一致。
+- push：正常 Ponytail 通过，Everything up-to-date；push 后远端 HEAD `f84bcf9d94778064675810b741ed3d86b441eb96`。
+- 本轮未 add 交接/裁决文件；保留既有未跟踪 liveness.json（preflight 因该文件报 dirty_worktree）。
 
 ## 2026-09-09 C-1b img-fx 已实现，主会话已批准样张，完整 gates 绿，已推送 #658
 
