@@ -1,3 +1,4 @@
+import { resolveSkillPreview } from "../skills/skillPreview";
 import { protocol } from "electron";
 import fs from "node:fs";
 import { createOwnedFileStream } from "./fileResponseStream";
@@ -135,9 +136,16 @@ function handleNonProjectHost(request: Request, hostname: string, segments: read
       ? resolveLocalRuntimeAsset(segments)
       : hostname === "model"
         ? resolveLocalModelAsset(segments)
-        : null;
-  if (!target) return hostname === "runtime" || hostname === "model" ? new Response("Not found", { status: 404 }) : null;
+        : hostname === "skill-preview"
+          ? resolveSkillPreview(segments)
+          : null;
+  if (!target) return hostname === "runtime" || hostname === "model" || hostname === "skill-preview" ? new Response("Not found", { status: 404 }) : null;
   const stat = fs.statSync(target.filePath);
+  const rangeHeader = request.headers.get("range");
+  if (rangeHeader) {
+    const range = parseRangeHeader(rangeHeader, stat.size);
+    return range ? streamRange(target.filePath, range, stat.size, request.method) : rangeNotSatisfiable(stat.size);
+  }
   const headers = withLocalAssetHeaders({
     "Content-Type": target.contentType,
     "Content-Length": String(stat.size),
@@ -170,7 +178,7 @@ function nonProjectHostSegments(rawUrl: string): { hostname: string; segments: s
 
 export async function handleNomiLocalRequest(request: Request): Promise<Response> {
   const nonProject = nonProjectHostSegments(request.url);
-  if (nonProject && (nonProject.hostname === "runtime" || nonProject.hostname === "model")) {
+  if (nonProject && (nonProject.hostname === "runtime" || nonProject.hostname === "model" || nonProject.hostname === "skill-preview")) {
     try {
       const response = handleNonProjectHost(request, nonProject.hostname, nonProject.segments);
       if (response) return response;
