@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import { chromium } from 'playwright'
-import { expect, expectVisible } from './_assert.mjs'
+import { expect, expectVisible, expectAbsent, proveProbe } from './_assert.mjs'
 import { assertLabPortOwnership, labOriginFor } from './design-lab/labServer.mjs'
 import { readLabStates } from './design-lab/labStates.mjs'
 
@@ -116,8 +116,9 @@ try {
     await expectVisible(page.locator('[data-node-id] [data-generation-status]'), '落盘完成后标签仍在')
     await page.clock.runFor(1700)
     await expectVisible(page.locator('[data-node-id] [data-generation-status]'), '完成标签至少停留两秒')
+    const savedProof = await proveProbe(page.locator('[data-node-id] [data-generation-status]'), '完成标签确实存在')
     await page.clock.runFor(700)
-    await expect(page.locator('[data-node-id] [data-generation-status]')).toHaveCount(0)
+    await expectAbsent(page.locator('[data-node-id] [data-generation-status]'), { provenBy: savedProof })
     receipt.push({ criterion: 4, result: 'green', geometry: initial })
     await context.close()
   }
@@ -135,8 +136,9 @@ try {
     await expect(page.locator(messageSelectors[0])).toHaveText('已保存到项目')
     await page.clock.runFor(3900)
     await expectVisible(page.locator('[data-node-id] [data-generation-status]'), '减弱动态下完成标签保留四秒')
+    const savedProof = await proveProbe(page.locator('[data-node-id] [data-generation-status]'), '减弱动态完成标签确实存在')
     await page.clock.runFor(200)
-    await expect(page.locator('[data-node-id] [data-generation-status]')).toHaveCount(0)
+    await expectAbsent(page.locator('[data-node-id] [data-generation-status]'), { provenBy: savedProof })
     receipt.push({ criterion: 5, result: 'green' })
     await context.close()
   }

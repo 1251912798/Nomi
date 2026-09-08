@@ -291,3 +291,10 @@ undefined
 
 
 ```
+
+## 合入 main #653 后的最终走查门岗
+
+- 首轮 contracts：75 项跑完，70 通过、2 阻断（新增测试直接 electron.launch、两处无探针消失断言）、3 advisory。
+- 改用 `_launchApp.mjs` 的隔离真实 Nomi 进程及 `_assert.mjs` 的 proveProbe → expectAbsent；两条门岗均转绿，无基线放宽。
+- Electron 导航会重置媒体仿真，测试在导航后设置 reducedMotion；matchMedia 实测 false → true，未修改生产动效。
+- 两份 process-feedback E2E 再跑通过；真实 Nomi 窗口截图已由主会话查看。
