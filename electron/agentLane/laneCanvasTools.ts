@@ -13,28 +13,29 @@ import {
   type CanvasWriteResult,
 } from "../shared/agentCapabilities/canvasWrite";
 import { canvasModelToolSpecs } from "../shared/agentCapabilities/canvasModelTools";
-import { bindLaneTool, type LaneToolDescriptor } from "./laneRuntimePort";
+import { formatCanvasForAgent } from "../shared/agentCapabilities/canvasReadCompact";
+import { bindLaneTool, type LaneToolDescriptor, type LaneToolExecutionContext } from "./laneRuntimePort";
 
 /** 领域侧。lane 不认识 React Flow，只认识「读一次画布」和「提一次可撤销的改动」。 */
 export interface CanvasLanePort {
-  read(): Promise<unknown>;
-  write(input: CanvasWriteInput): Promise<CanvasWriteResult>;
+  read(context: LaneToolExecutionContext): Promise<unknown>;
+  write(input: CanvasWriteInput, context: LaneToolExecutionContext): Promise<CanvasWriteResult>;
 }
 
 export function createCanvasLaneTools(port: CanvasLanePort): LaneToolDescriptor[] {
   return canvasModelToolSpecs().map((spec) => {
     if (spec.name === "nomi_canvas_read") {
-      return bindLaneTool(spec, async () => {
-        const result: CanvasReadResult = canvasReadResultSchema.parse(await port.read());
-        return { ok: true, text: JSON.stringify(result), details: { nodeCount: result.nodes.length } };
+      return bindLaneTool(spec, async (_args, context) => {
+        const result: CanvasReadResult = canvasReadResultSchema.parse(await port.read(context));
+        return { ok: true, text: formatCanvasForAgent(result), details: { nodeCount: result.nodes.length } };
       });
     }
-    return bindLaneTool(spec, async (args) => {
+    return bindLaneTool(spec, async (args, context) => {
       // `laneTools.mts` 在 pi 的 ajv 之后跑过契约自己的那一次 parse（扁平 schema 的
       // `transform` → union + 跨字段约束），所以这里拿到的已经是收窄的 `CanvasWriteInput`。
       // 这里**不再** parse——校验点只有那一个（G-08）。
       const input = args as CanvasWriteInput;
-      const receipt = await port.write(input);
+      const receipt = await port.write(input, context);
       return {
         ok: true,
         text: canvasWriteReceiptText(input, receipt),

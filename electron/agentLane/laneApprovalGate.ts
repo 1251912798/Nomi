@@ -18,10 +18,12 @@ import {
   laneApprovalGrantable,
   preflightLaneApproval,
   type LaneApprovalSubject,
+  type LaneApprovalSubjectResolver,
 } from "../shared/agentLane/laneApproval";
 import {
   capabilityContractById,
   capabilityEffectClassOf,
+  capabilityPlanReviewOf,
 } from "../shared/agentCapabilities/registry";
 import type {
   LaneApprovalAction,
@@ -30,6 +32,7 @@ import type {
   LaneApprovalNote,
   LanePendingApproval,
 } from "../shared/agentLane/laneContracts";
+import { modelToolCapabilityId } from "../shared/agentCapabilities/modelFacingTools";
 import type { LaneToolSpec } from "../shared/agentLane/laneToolContract";
 import type {
   ProjectAgentApprovalPolicy,
@@ -54,6 +57,8 @@ export type LaneApprovalOutcome = Readonly<{
 export interface LaneApprovalGateOptions {
   /** 这条 lane 装了哪些工具的说明书。用来把工具名换成它投影的那个能力契约 id（`contractId`）。 */
   readonly specs: readonly LaneToolSpec[];
+  /** Trusted native effects may require more confirmation, never originate in renderer input. */
+  readonly resolveSubject?: LaneApprovalSubjectResolver;
   /** 用户当前的档位。给函数不给快照——用户在等待期改档位是允许的。 */
   policy?(): ProjectAgentApprovalPolicy | undefined;
   workMode?(): ProjectAgentWorkMode | undefined;
@@ -109,7 +114,7 @@ interface WaitingCard {
 }
 
 export function createLaneApprovalGate(options: LaneApprovalGateOptions): LaneApprovalGate {
-  const capabilityByTool = new Map(options.specs.map((spec) => [spec.name, spec.contractId]));
+  const specByTool = new Map(options.specs.map((spec) => [spec.name, spec]));
   /** 本会话的「这类不用再问」。**内存表，不落盘**——关 app 即忘，「本会话」是字面意思。 */
   const sessionGrants = new Set<string>();
   const restored = new Set<string>(options.restoredToolCallIds ?? []);
@@ -140,7 +145,8 @@ export function createLaneApprovalGate(options: LaneApprovalGateOptions): LaneAp
   }
 
   function subjectOf(request: LaneApprovalRequest): LaneApprovalSubject {
-    const capabilityId = capabilityByTool.get(request.toolName);
+    const spec = specByTool.get(request.toolName);
+    const capabilityId = spec ? modelToolCapabilityId(spec, request.args) : undefined;
     const contract = capabilityId === undefined ? undefined : capabilityContractById(capabilityId);
     return {
       toolName: request.toolName,
@@ -149,7 +155,7 @@ export function createLaneApprovalGate(options: LaneApprovalGateOptions): LaneAp
       capabilityId: capabilityId ?? `unknown:${request.toolName}`,
       effect: contract?.effect,
       effectClass: capabilityEffectClassOf(contract, request.args),
-      requiresPlanReview: contract?.requiresPlanReview === true,
+      ...capabilityPlanReviewOf(contract, request.args),
       // 原生 lane 工具没有外部服务器的 hint。MCP 工具进 lane 是阶段 5 的事，
       // 那时它从工具声明上读，且**只能抬高摩擦**（`CapabilityApprovalSubject` 的注释）。
       destructiveHint: false,
@@ -214,10 +220,17 @@ export function createLaneApprovalGate(options: LaneApprovalGateOptions): LaneAp
         // （文件头 ③ 只管被 abort 打断的那两支）。
         return { allow: false, decision: "cancelled", cause: "restart", reason: RESTART_REASON };
       }
-      const subject = subjectOf(request);
+      const resolved = options.resolveSubject?.(request);
+      const subject = resolved?.subject ?? subjectOf(request);
+      if (resolved?.denialReason) {
+        return { allow: false, decision: "denied-by-policy", reason: resolved.denialReason };
+      }
       const policy = options.policy?.();
+      const reusableNativeGrant = resolved?.grantable === true && sessionGrants.has(subject.capabilityId);
+      // Use the same shared preflight for mode restrictions and no-UI denial. A forced confirmation
+      // adopts step-mode friction for this invocation only; it does not change the user's preference.
       const decided = preflightLaneApproval(subject, {
-        policy,
+        policy: resolved?.forceConfirmation && !reusableNativeGrant ? { mode: "step", spend: "confirm" } : policy,
         workMode: options.workMode?.(),
         hasUserInterface: options.hasUserInterface,
         sessionGrants,
@@ -237,7 +250,7 @@ export function createLaneApprovalGate(options: LaneApprovalGateOptions): LaneAp
           toolName: request.toolName,
           args: request.args,
           ...(subject.effectClass ? { effectClass: subject.effectClass } : {}),
-          grantable: laneApprovalGrantable(subject, policy),
+          grantable: laneApprovalGrantable(subject, policy) && resolved?.grantable !== false,
           pendingCount: waiting.size + 1,
         }),
       });
