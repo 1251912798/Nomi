@@ -1,3 +1,4 @@
+import { resolveNodeVisualSize } from '../nodes/nodeSizing'
 import { rollbackNodeHistory } from '../model/graphOps'
 import type { GenerationNodeResult, GenerationNodeRunRecord } from '../model/generationCanvasTypes'
 import { createRunId } from './canvasIds'
@@ -144,6 +145,13 @@ export const createCanvasRunActions: CanvasSliceCreator<CanvasRunActions> = (set
       if (!node) return
       const previousResult = node.result
       const latestRun = node.runs?.[0]
+      // Freeze the existing visual footprint before switching from placeholder to result.
+      // Intrinsic media dimensions still update metadata; they cannot move the canvas on completion.
+      if (latestRun && (latestRun.status === 'queued' || latestRun.status === 'running')) {
+        const footprint = resolveNodeVisualSize(node)
+        node.size = footprint
+        node.meta = { ...node.meta, previewHeight: footprint.height }
+      }
       const completedAt = result.createdAt || Date.now()
       const runs = latestRun
         ? [

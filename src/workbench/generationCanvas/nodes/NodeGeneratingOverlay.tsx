@@ -1,4 +1,5 @@
 import React from 'react'
+import { GenerationTimingHint } from './GenerationTimingHint'
 import { GeneratingOverlay, GeneratingCancelButton } from './render/CardCommon'
 import { GenerationWaitingSurface } from './GenerationWaitingSurface'
 import { useGenerationFeedback } from '../../observability/useGenerationFeedback'
@@ -16,8 +17,9 @@ export function NodeGeneratingOverlay({ node }: { node: GenerationCanvasNode }):
   if (isVideoDepthProgressPhase(node.progress?.phase)) return <GeneratingOverlay
     percent={node.progress?.percent} message={node.progress?.message} previewUrl={previewUrl} onCancel={handleCancel} placement="top" />
   if (!feedback?.active) return null
-  return <div className="absolute inset-0 z-[1] pointer-events-none" data-generating-placement="surface">
+  return <div className="absolute inset-0 z-[3] pointer-events-none" data-generating-placement="surface">
     <GenerationWaitingSurface audio={node.kind === 'audio'} previewUrl={previewUrl} previewLabel={feedback.previewLabel} percent={feedback.percent} />
+    {node.kind === 'video' && !previewUrl ? <GenerationTimingHint node={node} /> : null}
     {canInterruptGenerationTask(node) ? <div className="absolute right-3 bottom-3"><GeneratingCancelButton onCancel={handleCancel} /></div> : null}
   </div>
 }

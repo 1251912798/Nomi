@@ -35,10 +35,21 @@ for (const screen of LAB_SCREEN_IDS) {
       test(`状态 ${state.id} · ${state.name}`, async ({ page }) => {
         const errors = []
         page.on('pageerror', (error) => errors.push(String(error)))
+        if (screen === 'process-feedback') await page.clock.install({ time: new Date('2026-09-08T12:00:00Z') })
         await page.goto(`/design-lab.html?screen=${screen}&frame=1&state=${state.id}`)
         await page.waitForFunction(() => window.__designLabReady === true)
         const shot = page.locator(`[data-design-lab-shot="${state.id}"]`)
         await expect(shot).toBeVisible()
+        if (screen === 'process-feedback') {
+          await page.clock.runFor(1000)
+          const messages = await Promise.all(['[data-node-id]', '[data-process-task]', '[data-process-timeline]'].map((surface) => page.locator(`${surface} [data-generation-message]`).innerText()))
+          expect(messages[1]).toBe(messages[0])
+          expect(messages[2]).toBe(messages[0])
+          if (!state.id.includes('preview')) {
+            await expect(page.locator('[data-node-id] [data-generation-status]')).not.toContainText('%')
+            expect(messages.join(' ')).not.toMatch(/前面\s*\d+\s*个/)
+          }
+        }
         // 浮层类形态走 BodyPortal + fixed 定位，根本不在舞台的子树里——按元素截会截出
         // 「浮层没打开」的假证据，所以这一族改截整屏（注册项里显式声明 capture: 'viewport'）。
         if (state.capture === 'viewport') await expect(page).toHaveScreenshot([screen, `${state.id}.png`], tolerance)
