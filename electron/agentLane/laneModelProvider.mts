@@ -106,12 +106,7 @@ function modelCost(config: NomiModelConfig): Model<Api>['cost'] {
  * `run.mts:164` 有自己那处接线（同一个 `observeNativeStream`，不同的预算与失败出口：
  * 旧路要 rejection，harness 要一条可重试的助手消息）。传了就会包两层看门狗。
  */
-export async function createNomiProvider(input: NomiModelConfig, guard?: NomiStreamGuard) {
-  const config = configCompatibility.parse(input);
-  const credentials = new InMemoryCredentialStore();
-  if (config.authType === 'api-key') {
-    await credentials.modify(config.providerId, async () => ({ type: 'api_key', key: config.apiKey }));
-  }
+export function createNomiModelDescriptor(config: NomiModelConfig): Model<Api> {
   const protocol = protocols[config.kind];
   const baseUrl = config.baseURL.replace(/\/+$/, '');
   const model: Model<Api> = {
@@ -127,6 +122,18 @@ export async function createNomiProvider(input: NomiModelConfig, guard?: NomiStr
     // configured output cap, or absence of one, instead of sending this bound.
     contextWindow: config.contextWindow ?? 128_000, maxTokens: config.maxOutputTokens ?? 16_384,
   };
+  return model;
+}
+
+export async function createNomiProvider(input: NomiModelConfig, guard?: NomiStreamGuard) {
+  const config = configCompatibility.parse(input);
+  const credentials = new InMemoryCredentialStore();
+  if (config.authType === 'api-key') {
+    await credentials.modify(config.providerId, async () => ({ type: 'api_key', key: config.apiKey }));
+  }
+  const protocol = protocols[config.kind];
+  const baseUrl = config.baseURL.replace(/\/+$/, '');
+  const model = createNomiModelDescriptor(config);
   const headers: ProviderHeaders = { ...config.headers };
   if (config.authType === 'none') {
     for (const name of Object.keys(headers)) {

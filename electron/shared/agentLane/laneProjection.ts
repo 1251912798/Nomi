@@ -24,6 +24,7 @@ import type { LaneSnapshot } from '@earendil-works/pi-agent-core';
 import type { AssistantMessage, Usage } from '@earendil-works/pi-ai';
 import { draftInputFromMessage, isLaneInputMessage } from './laneInputMessage.js';
 import type { NomiPricingBasis } from './laneModelConfig.js';
+import { LANE_LEGACY_NOTE, LANE_LEGACY_COMPLETE_NOTE, LANE_LEGACY_TOOLS_NOTE, laneLegacyFacts } from './laneLegacyNote.js';
 import {
   LANE_TASK_NOTE_TYPE, isLaneTaskNote,
   type LaneMetric, type LanePart, type LanePendingApproval, type LaneProjection,
@@ -201,10 +202,16 @@ export function projectLaneSnapshot(
   tasks?: (productionRunId: string) => LaneTaskFacts | undefined,
 ): LaneProjection {
   const parts: LanePart[] = [];
+  let legacy: ReturnType<typeof laneLegacyFacts>;
   const running = snapshot.operation?.runningTools ?? [];
   const runningToolCallIds = new Set(running.filter((tool) => tool.status === 'running').map((tool) => tool.toolCallId));
   for (const entry of snapshot.transcript) {
     if (entry.type === 'custom') {
+      if (entry.customType === LANE_LEGACY_NOTE) {
+        const facts = laneLegacyFacts(entry.data);
+        if (facts) { legacy = facts; continue; }
+      }
+      if (entry.customType === LANE_LEGACY_COMPLETE_NOTE || entry.customType === LANE_LEGACY_TOOLS_NOTE) continue;
       // 任务卡是**一种**宿主记录，但它在流里占一行（用户看得见的一张卡），所以它有自己的段。
       // 其余宿主记录仍是 `host-note`：它们不占行，只用来修正别的行的状态（审批那条）。
       if (entry.customType === LANE_TASK_NOTE_TYPE && isLaneTaskNote(entry.data)) {
@@ -253,6 +260,7 @@ export function projectLaneSnapshot(
   // 归宿（渲染层每帧自己算），在这里先算一遍就是第二个真相，而它会和屏幕差半秒。
   const retry = snapshot.operation?.retry;
   return {
+    ...(legacy ? { legacy } : {}),
     lane: snapshot.lane,
     ...(snapshot.configuration.model.provider && snapshot.configuration.model.modelId
       ? { model: { ...snapshot.configuration.model } } : {}),

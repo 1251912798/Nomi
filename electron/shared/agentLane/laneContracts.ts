@@ -12,6 +12,7 @@ import type { CanvasWriteApprovalAuthority } from '../agentCapabilities/transpor
 // 就有序，主进程按走序赋 `sequence`，下游任何一层都不许再排一次（方案 §2.2 不变量 I1）。
 
 import type { NomiModelConfig } from './laneModelConfig'
+import type { LaneLegacyFacts } from './laneLegacyNote'
 import type { ProjectAgentAttachmentClaim } from '../workbenchInput'
 
 /** 一段 = 模型一轮回复里的一个小块，或转录里的一条记录。顺序由 `sequence` 唯一决定。 */
@@ -277,6 +278,7 @@ export interface LaneRetry {
 
 /** 一次推送 = lane 当前的全部有序段。阶段 1 走全量快照；增量是阶段 3 的事。 */
 export interface LaneProjection {
+  readonly legacy?: LaneLegacyFacts
   readonly lane: string
   /** Current runtime identity only; credentials never enter the projection. */
   readonly model?: { readonly provider: string; readonly modelId: string }

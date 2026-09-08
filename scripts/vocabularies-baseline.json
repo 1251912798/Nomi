@@ -12,6 +12,15 @@
   ],
   "registered": [
     {
+      "site": "electron/agentLane/laneLegacyMigration.mts::variable:manifestSchema/property:phase/z.enum",
+      "members": [
+        "completed",
+        "prepared",
+        "verified"
+      ],
+      "reason": "旧对话迁移事务的唯一阶段 owner：prepared 允许续接已提交前缀，verified 只允许冷验后清理已有归档保护的源，completed 不再打开或复活用户删除的 lane；与模型执行和旧 cutover 生命周期不同。"
+    },
+    {
       "site": "electron/agentLane/laneLegacySources.ts::interface:LegacyConversation/property:state/type-union",
       "members": [
         "cleared",

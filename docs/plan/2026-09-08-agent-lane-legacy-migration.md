@@ -43,3 +43,9 @@
 ## 首个子任务验证
 
 共享 decoder 与 L2 适配已实现；6 条 tmp 夹具覆盖 direct pi、context v2/v3/v4、AI SDK null/混合内容、host 跨线程与未知项、非法 UTF-8/空文件，以及三个文件入口。把旧 reader 放回做对照，同一夹具只读到 2 条会话而应为 4 条；新 reader 6/6 通过。解包不验证 checksum、不授予项目绑定信任，未接 workspace 导入、未写 lane、未搬旧文件。完整性转换、归档/前缀恢复、顶部提示仍待后续子任务。
+
+## 公共 API 事务子任务
+
+`laneLegacyMigration.mts` 对固定来源持有跨 await 锁与进程内 admission；先归档原字节，再经既有 SessionRepo 预留 UUID、公开 appendMessage/appendCustomEntry 回填。manifest 只保存来源 hash、目标身份与计数；重试只接续精确前缀。每次进入 verified 清理阶段前都冷开核验完整转录，completed 则不重开目标，用户后来删掉的旧对话不会复活。无凭据 import lane 只创建模型描述，不装 provider、不暴露执行方法。
+
+23 条事务测试覆盖 append 四断点、归档/冷验/verified/五次清理断点、并发打开、源变化、新来源、归档硬链接和外来前缀。verified 恢复缺陷用原实现先红（`/tmp/nomi-switch-verified-red.log`），统一冷验后绿。现有会话/模型/收据/停止/看门狗回归 39/39。旧 cutover 已归档来源恢复与生产入口接线仍为后续子任务，不能把本事务子任务当作迁移器完整交付。
