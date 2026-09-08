@@ -201,3 +201,7 @@ D 的五对 Read：批量模型设置、节点右键菜单、快捷键最终结�
 ## 最终裁决更新：D 撤回
 
 整合 main 后前两轮并发 109067 / 107919ms 均 13/13，第三轮 card-stack-persistence 在 video 版本按钮点击时 timeout（outside viewport），12/13。不能把一次失败归因成已证明的 compositor 根因；曾提交的串行例外缺乏依据，已连同双实例 runner 接入整体撤回，恢复原串行 runner 和测试。按用户“不行就不做”执行，不通过重复跑绿或场景特判保住并发数字。上文 63.94% 仅为已撤回候选，不是最终交付收益。最终仅交付 C1/A/C3，预计约 30% 串行收益；准确值以最终三遍完整串行为准。40% 目标未达原因：两并发稳定性不满足；原来每文件已一次 launch，没有足够重复启动可砍；保留真实场景动作与断言，不用减少覆盖凑目标。
+
+## 最终串行复测发现的服务就绪缺口
+
+串行第一轮 212157ms、13/13；第二轮 group-reference-direction 既有 reload 遇 ERR_CONNECTION_REFUSED、12/13。固定端口 5287 + 任意 HTTP 响应即 ready + 静默子进程无法证明自身服务存活，类根因在 fixture 服务生命周期。采用已安装 Vite 的 createServer/listen/close 和 port:0，由真实 httpServer.address 获取地址，删除 spawn + 私有墙钟 HTTP 轮询；不改生产、不新增 reload、不放宽断言。官方 API https://vite.dev/guide/api-javascript.html#createserver ，安装类型 node_modules/vite/dist/node/index.d.ts；保留当前依赖。并发仍撤回，避免把两个不同失败归成同一原因。
