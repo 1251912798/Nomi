@@ -17,7 +17,6 @@ import { z } from 'zod';
 import type { LaneSnapshot } from '@earendil-works/pi-agent-core';
 import type { AssistantMessage } from '@earendil-works/pi-ai';
 
-import { openLane } from '../../electron/agentLane/laneHost.mjs';
 import { projectLaneSnapshot, type LaneModelFacts } from '../../electron/shared/agentLane/laneProjection.js';
 import type { LaneToolDescriptor, LaneApprovalOptions } from '../../electron/agentLane/laneRuntimePort.js';
 import { LANE_APPROVAL_NOTE_TYPE, type LaneProjection } from '../../electron/shared/agentLane/laneContracts.js';
@@ -88,8 +87,7 @@ const CLOSING = { type: 'text' as const, text: 'Done.' };
 test('G3e · one-at-a-time：连打三句，三轮各吃一句（默认的 "all" 会一次全灌进去）', async (t: TestContext) => {
   const held = heldTool('held_read');
   const fixture = await createLaneFixture(t, [HOLD('c1'), HOLD('c2'), HOLD('c3'), CLOSING]);
-  const lane = await openLane({ ...fixture.options, tools: [held.tool] });
-  t.after(() => lane.close());
+  const lane = await fixture.openLane({ ...fixture.options, tools: [held.tool] });
 
   const run = lane.execute({ kind: 'prompt', text: 'Read it.' });
   // 模型已经卡在工具里 = 第一次请求已经发过了，而第二次还没发。三句话打在这个窗口里。
@@ -125,8 +123,7 @@ test('G3e · one-at-a-time：连打三句，三轮各吃一句（默认的 "all"
 test('G3e · 撤回排队插话的三态：撤回成功 / 晚了一步 / 根本不在队里', async (t: TestContext) => {
   const held = heldTool('held_read');
   const fixture = await createLaneFixture(t, [HOLD('c1'), HOLD('c2'), CLOSING]);
-  const lane = await openLane({ ...fixture.options, tools: [held.tool] });
-  t.after(() => lane.close());
+  const lane = await fixture.openLane({ ...fixture.options, tools: [held.tool] });
 
   const run = lane.execute({ kind: 'prompt', text: 'Read it.' });
   await held.entered();
@@ -159,8 +156,7 @@ test('G3b② 非空侧 · 按停止：没送出去的那句话回到输入框，
     { type: 'tool', calls: [{ id: 'call-append', name: 'append_to_end', arguments: { content: ' and then she left.' } }] },
     CLOSING,
   ], STEP);
-  const lane = await openLane(fixture.options);
-  t.after(() => lane.close());
+  const lane = await fixture.openLane(fixture.options);
 
   const run = lane.execute({ kind: 'prompt', text: 'Append a closing line.' });
   await new Promise<void>((resolve) => {

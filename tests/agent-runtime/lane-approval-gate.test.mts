@@ -10,9 +10,7 @@
 //   G3b② 按停止 → pi 自己的 cancelled 结果 + 一条 `cancelled` 记录落进同一条转录；
 //   G3b③ 崩溃重启 → 卡不复活，那次调用被取消，模型读到「再发一次」。
 import assert from 'node:assert/strict';
-import { spawn } from 'node:child_process';
-import { once } from 'node:events';
-import { fileURLToPath } from 'node:url';
+import { spawnLaneCrashChild } from './laneCrashFixture.mjs';
 import test, { type TestContext } from 'node:test';
 import { z } from 'zod';
 
@@ -20,7 +18,6 @@ import { LANE_APPROVAL_NOTE_TYPE, isLaneApprovalNote, type LaneProjection }
   from '../../electron/shared/agentLane/laneContracts.js';
 import { LANE_WRITE_TOOL_TIMEOUT_MS } from '../../electron/shared/agentLane/laneToolContract.js';
 import type { LaneApprovalOptions } from '../../electron/agentLane/laneRuntimePort.js';
-import { openLane } from '../../electron/agentLane/laneHost.mjs';
 import { createDocumentLaneTools } from '../../electron/agentLane/laneDocumentTools.js';
 import { createDocumentPort, createLaneFixture } from './laneFixture.mjs';
 
@@ -61,8 +58,7 @@ test('G3a · fail-closed：审批模块自己抛异常 = 拒收，工具没跑�
     // 而不是「闸坏了就放行」——后者不会报错，只会在某一天替用户点了头。
     policy: () => { throw new Error(boom); },
   });
-  const lane = await openLane(fixture.options);
-  t.after(() => lane.close());
+  const lane = await fixture.openLane(fixture.options);
   const before = fixture.document.text();
   await lane.execute({ kind: 'prompt', text: 'Append a closing line.' });
 
@@ -78,8 +74,7 @@ test('G3a · 没有窗口可问的调用（MCP stdio / 走查 / 后台批）被�
   const fixture = await createLaneFixture(t, [APPEND, CLOSING], {
     ...STEP, hasUserInterface: false,
   });
-  const lane = await openLane(fixture.options);
-  t.after(() => lane.close());
+  const lane = await fixture.openLane(fixture.options);
   const seenPending: boolean[] = [];
   lane.subscribe((projection) => seenPending.push(projection.pending !== undefined));
   const before = fixture.document.text();
@@ -96,8 +91,7 @@ test('G3a · 没有窗口可问的调用（MCP stdio / 走查 / 后台批）被�
 
 test('G3b ① · 等待期：零模型请求在飞，工具没进过领域端口，「在等你」由宿主投影出来', async (t: TestContext) => {
   const fixture = await createLaneFixture(t, [APPEND, CLOSING], STEP);
-  const lane = await openLane(fixture.options);
-  t.after(() => lane.close());
+  const lane = await fixture.openLane(fixture.options);
   const before = fixture.document.text();
   const turn = lane.execute({ kind: 'prompt', text: 'Append a closing line.' });
   const pending = await firstPending(lane);
@@ -132,7 +126,7 @@ test('G3b ① · 「本会话允许这类」按能力记：同一个能力的下
     hasUserInterface: true, policy: () => ({ mode: 'safe-auto', spend: 'confirm' }),
   });
   let applied = 0;
-  const lane = await openLane({
+  const lane = await fixture.openLane({
     ...fixture.options,
     tools: [{
       name: 'plan_timeline',
@@ -146,7 +140,6 @@ test('G3b ① · 「本会话允许这类」按能力记：同一个能力的下
       execute: async () => { applied += 1; return { ok: true as const, text: 'Applied.' }; },
     }],
   });
-  t.after(() => lane.close());
 
   const cards: string[] = [];
   const turn = lane.execute({ kind: 'prompt', text: 'Lay the shots onto the timeline, twice.' });
@@ -167,8 +160,7 @@ test('G3b ① · 「本会话允许这类」按能力记：同一个能力的下
 
 test('G3b ② · 按停止：pi 自己合成 cancelled 结果，宿主在 abort 之后补一条取消记录', async (t: TestContext) => {
   const fixture = await createLaneFixture(t, [APPEND, CLOSING], STEP);
-  const lane = await openLane(fixture.options);
-  t.after(() => lane.close());
+  const lane = await fixture.openLane(fixture.options);
   const before = fixture.document.text();
   const turn = lane.execute({ kind: 'prompt', text: 'Append a closing line.' });
   await firstPending(lane);
@@ -198,35 +190,15 @@ test('G3b ③ · 崩溃重启：不复活确认卡，那次调用被取消，模
   // P1③ 那个子进程（`stage3-probe-crash-child.mts`）——两边要的是同一件事，抄第二份出来
   // 的代价不是重复，是两份会慢慢长得不一样。
   // 同一进程里假装崩溃会撞 `laneSession.mts` 的单持有者名单，等于测一条生产走不到的路。
-  const child = spawn(process.execPath, [
-    fileURLToPath(new URL('./stage3-probe-crash-child.mjs', import.meta.url)),
-    fixture.projectDir, fixture.http.baseURL,
-  ], { stdio: ['ignore', 'pipe', 'inherit'] });
-  // 子进程是**故意永不退出**的（它在等着被杀）。下面任何一条断言先红，`child.kill` 就走不到，
-  // 于是 runner 永远等不到这个文件结束——一次红会变成一次挂死，而挂死连失败原因都印不出来
-  // （2026-09-08 实测：整套跑时这条红了，日志停在这一行，11 分钟没有下文）。
-  // 兜底放在 `t.after` 里：杀两次是幂等的，杀不掉才是问题。
-  t.after(() => { child.kill('SIGKILL'); });
-  let stdout = '';
-  const parked = new Promise<string>((resolve) => {
-    child.stdout.setEncoding('utf8');
-    child.stdout.on('data', (chunk: string) => {
-      stdout += chunk;
-      const match = /PARKED session=(\S+)/.exec(stdout);
-      if (match) resolve(match[1]);
-    });
-  });
-  const exited = once(child, 'exit');
-  const sessionId = await Promise.race([parked, exited.then(() => { throw new Error(`child exited early:\n${stdout}`); })]);
+  const crash = spawnLaneCrashChild(fixture);
+  const sessionId = await crash.sessionId;
   assert.equal(fixture.http.requests.length, 1, 'the child parked on the card after exactly one model reply');
-  child.kill('SIGKILL');
-  await exited;
+  await crash.close();
 
   // 重开：新的领域端口（这个进程从没写过那份文稿），同一条会话。
   const document = createDocumentPort();
   const seenPending: boolean[] = [];
-  const lane = await openLane({ ...fixture.options, sessionId, tools: reopenTools(document) });
-  t.after(() => lane.close());
+  const lane = await fixture.openLane({ ...fixture.options, sessionId, tools: reopenTools(document) });
   lane.subscribe((projection) => seenPending.push(projection.pending !== undefined));
 
   // `resume()` 会对停在预检里的调用**再问一次** `before_tool`（探针 ③）——闸把它挡在那里。

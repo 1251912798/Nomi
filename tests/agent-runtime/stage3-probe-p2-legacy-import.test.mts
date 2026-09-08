@@ -87,7 +87,7 @@ test('P2 ① · a real v1 file replays entry by entry into a lane and survives c
   assert.ok(source.some((line) => line.startsWith('message:toolResult:legacy-read')), 'the source really contains a tool pair');
 
   const laneFixture = await createLaneFixture(t, [{ type: 'text', text: 'Continuing from the old conversation.' }]);
-  const first = await openProbeLane(t, laneFixture.options);
+  const first = await openProbeLane(laneFixture, laneFixture.options);
   for (const entry of legacy.entries) {
     if (entry.type === 'message' && entry.message) {
       await first.lane.appendMessage(entry.message as AgentMessage, PROBE_CONTEXT);
@@ -100,7 +100,7 @@ test('P2 ① · a real v1 file replays entry by entry into a lane and survives c
   const { sessionId } = first;
   await first.close();
 
-  const reopened = await openProbeLane(t, laneFixture.options, { sessionId });
+  const reopened = await openProbeLane(laneFixture, laneFixture.options, { sessionId });
   const watch = await reopened.lane.watch(PROBE_CONTEXT);
   t.after(() => watch.unsubscribe());
   const replayed = watch.snapshot.transcript.map(shapeOfLane);
@@ -124,7 +124,7 @@ test('P2 ② positive control · pi does NOT validate tool pairing on append: a 
   // toolCall 前面：pi 若拒收，`appendMessage` 会抛/返错；实跑它**照单全收**——顺序校验
   // 不存在，成对与否是迁移脚本自己的责任。
   const laneFixture = await createLaneFixture(t, [{ type: 'text', text: 'Unreachable.' }]);
-  const probe = await openProbeLane(t, laneFixture.options);
+  const probe = await openProbeLane(laneFixture, laneFixture.options);
   const timestamp = 1_700_000_000_000;
   const result: AgentMessage = { role: 'toolResult', toolCallId: 'orphan', toolName: 'read_shot', content: [{ type: 'text', text: 'early' }], isError: false, timestamp };
   const call: AgentMessage = {

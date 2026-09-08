@@ -7,7 +7,6 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { z } from 'zod';
 
-import { openLane } from '../../electron/agentLane/laneHost.mjs';
 import { LANE_RETRY_POLICY } from '../../electron/agentLane/laneHost.mjs';
 import type { LaneToolDescriptor } from '../../electron/agentLane/laneRuntimePort.js';
 import { bindLaneTool } from '../../electron/agentLane/laneRuntimePort.js';
@@ -39,8 +38,7 @@ function toolResults(projection: LaneProjection) {
 
 test('G3c · a provider that never sends a first byte ends the lane instead of hanging forever', async (t) => {
   const fixture = await createLaneFixture(t, [NEVER_REPLIES, NEVER_REPLIES, NEVER_REPLIES, NEVER_REPLIES]);
-  const lane = await openLane({ ...fixture.options, watchdog: FAST_WATCHDOG });
-  t.after(() => lane.close());
+  const lane = await fixture.openLane({ ...fixture.options, watchdog: FAST_WATCHDOG });
 
   const started = Date.now();
   // **阳性对照就是这一行会不会返回。** main 上（provider 没有看门狗）它永远不返回，
@@ -60,8 +58,7 @@ test('G3c · the watchdog also covers the summarizer stream, not only the assist
   // 所以这两条同样有预算——装在 harness 的某个钩子上就会漏掉它们，而它们卡住的
   // 样子和主请求卡住一模一样。这条断言的对象是**接线位置**，不是行为分支。
   const fixture = await createLaneFixture(t, [NEVER_REPLIES, NEVER_REPLIES, NEVER_REPLIES, NEVER_REPLIES]);
-  const lane = await openLane({ ...fixture.options, watchdog: FAST_WATCHDOG });
-  t.after(() => lane.close());
+  const lane = await fixture.openLane({ ...fixture.options, watchdog: FAST_WATCHDOG });
   await lane.execute({ kind: 'prompt', text: 'Say something.' });
   assert.ok(fixture.http.requests.length >= 1, 'the provider was actually reached before the watchdog fired');
 });
@@ -70,8 +67,7 @@ test('G3c · the watchdog also covers the summarizer stream, not only the assist
 
 test('G-11 · a watchdog timeout surfaces as a retryable error, not as an abort', async (t) => {
   const fixture = await createLaneFixture(t, [NEVER_REPLIES, NEVER_REPLIES, NEVER_REPLIES, NEVER_REPLIES]);
-  const lane = await openLane({ ...fixture.options, watchdog: FAST_WATCHDOG });
-  t.after(() => lane.close());
+  const lane = await fixture.openLane({ ...fixture.options, watchdog: FAST_WATCHDOG });
   const retries = collectRetries(lane);
 
   await lane.execute({ kind: 'prompt', text: 'Say something.' });
@@ -92,8 +88,7 @@ test('G-11 · a watchdog timeout surfaces as a retryable error, not as an abort'
 test('G-11 阳性对照 · the user pressing stop is an abort, and an abort is never retried', async (t) => {
   const fixture = await createLaneFixture(t, [NEVER_REPLIES, NEVER_REPLIES, NEVER_REPLIES, NEVER_REPLIES]);
   // 预算给到远大于本测试的时长：这一轮**只可能**因为 abort 而结束，不可能因为看门狗。
-  const lane = await openLane({ ...fixture.options, watchdog: { firstResponseMs: 30_000, idleMs: 30_000 } });
-  t.after(() => lane.close());
+  const lane = await fixture.openLane({ ...fixture.options, watchdog: { firstResponseMs: 30_000, idleMs: 30_000 } });
   const retries = collectRetries(lane);
 
   const running = lane.execute({ kind: 'prompt', text: 'Say something.' });
@@ -112,8 +107,7 @@ test('G4 · a 429 is retried, the projection carries attempt/maxAttempts, and th
     { type: 'error', status: 429, message: 'Too Many Requests' },
     { type: 'text', text: 'Recovered after one throttle.' },
   ]);
-  const lane = await openLane(fixture.options);
-  t.after(() => lane.close());
+  const lane = await fixture.openLane(fixture.options);
   const retries = collectRetries(lane);
 
   await lane.execute({ kind: 'prompt', text: 'Say something.' });
@@ -186,8 +180,7 @@ test('G-12 · a 5xx that actually says “balance exhausted” is not retried th
     { type: 'error', status: 500, message: '账户余额不足，请充值后重试' },
     { type: 'text', text: 'Must not be reached.' },
   ]);
-  const lane = await openLane(fixture.options);
-  t.after(() => lane.close());
+  const lane = await fixture.openLane(fixture.options);
   const retries = collectRetries(lane);
 
   await lane.execute({ kind: 'prompt', text: 'Say something.' });
@@ -201,8 +194,7 @@ test('G-12 阳性对照 · a 5xx with no billing wording is still retried', asyn
     { type: 'error', status: 500, message: 'internal error' },
     { type: 'text', text: 'Recovered.' },
   ]);
-  const lane = await openLane(fixture.options);
-  t.after(() => lane.close());
+  const lane = await fixture.openLane(fixture.options);
   const retries = collectRetries(lane);
 
   await lane.execute({ kind: 'prompt', text: 'Say something.' });
@@ -231,11 +223,10 @@ test('a tool that never returns is stopped at its declared budget, with a next s
     { type: 'tool', calls: [{ id: 'call-stall', name: 'stalls_forever', arguments: {} }] },
     { type: 'text', text: 'That tool did not come back, so I stopped.' },
   ]);
-  const lane = await openLane({
+  const lane = await fixture.openLane({
     ...fixture.options,
     tools: [stallingTool('stalls_forever', 150, () => new Promise<void>(() => {}))],
   });
-  t.after(() => lane.close());
 
   await lane.execute({ kind: 'prompt', text: 'Use the tool.' });
 
@@ -256,11 +247,10 @@ test('阳性对照 · waiting on an approval does not spend the tool’s budget'
     { type: 'tool', calls: [{ id: 'call-quick', name: 'returns_at_once', arguments: {} }] },
     { type: 'text', text: 'Approved and done.' },
   ], { hasUserInterface: true, policy: () => ({ mode: 'step', spend: 'confirm' }) });
-  const lane = await openLane({
+  const lane = await fixture.openLane({
     ...fixture.options,
     tools: [stallingTool('returns_at_once', 300, async () => {})],
   });
-  t.after(() => lane.close());
 
   const turn = lane.execute({ kind: 'prompt', text: 'Use the tool.' });
   // 卡从投影里推出来（不用墙钟轮询，R18）；点头**故意慢** 500ms，那才是这条对照的仪器。
@@ -296,7 +286,7 @@ test('a billable tool may not claim a long budget — it must submit and return 
   }, async () => ({ ok: true, text: 'done' }));
 
   await assert.rejects(
-    () => openLane({ ...fixture.options, tools: [billable] }),
+    () => fixture.openLane({ ...fixture.options, tools: [billable] }),
     /must submit and return an id/,
   );
 });
@@ -334,8 +324,7 @@ test('a turn that reaches its model-request limit stops with a sentence, not wit
     { type: 'tool', calls: [{ id: 'call-read', name: 'read_full_text', arguments: {} }] },
     { type: 'text', text: 'Must not be reached.' },
   ]);
-  const lane = await openLane({ ...fixture.options, limits: { maxModelRequests: 1 } });
-  t.after(() => lane.close());
+  const lane = await fixture.openLane({ ...fixture.options, limits: { maxModelRequests: 1 } });
 
   await lane.execute({ kind: 'prompt', text: 'Read the document.' });
 
@@ -357,8 +346,7 @@ test('the budget is per turn, not per lane — a second turn starts with a full 
     call('turn1'), { type: 'text', text: 'First turn done.' },
     call('turn2'), { type: 'text', text: 'Second turn done.' },
   ]);
-  const lane = await openLane({ ...fixture.options, limits: { maxModelRequests: 2 } });
-  t.after(() => lane.close());
+  const lane = await fixture.openLane({ ...fixture.options, limits: { maxModelRequests: 2 } });
 
   await lane.execute({ kind: 'prompt', text: 'Read it once.' });
   await lane.execute({ kind: 'prompt', text: 'Read it again.' });
@@ -377,8 +365,7 @@ test('the budget is per turn, not per lane — a second turn starts with a full 
 
 test('阳性对照 · a turn at the same limit that never calls a tool is not intercepted at all', async (t) => {
   const fixture = await createLaneFixture(t, [{ type: 'text', text: 'No tool needed here.' }]);
-  const lane = await openLane({ ...fixture.options, limits: { maxModelRequests: 1 } });
-  t.after(() => lane.close());
+  const lane = await fixture.openLane({ ...fixture.options, limits: { maxModelRequests: 1 } });
 
   await lane.execute({ kind: 'prompt', text: 'Just answer.' });
 
@@ -410,8 +397,7 @@ test('the same tool failing the same way three times in a row is stopped and tol
     call('one'), call('two'), call('three'), call('four'),
     { type: 'text', text: 'I stopped repeating myself.' },
   ]);
-  const lane = await openLane({ ...fixture.options, tools: [failing] });
-  t.after(() => lane.close());
+  const lane = await fixture.openLane({ ...fixture.options, tools: [failing] });
 
   await lane.execute({ kind: 'prompt', text: 'Use the tool.' });
 
@@ -444,8 +430,7 @@ test('阳性对照 · three failures that are not the same failure are not treat
     call('one'), call('two'), call('three'), call('four'),
     { type: 'text', text: 'Four different walls.' },
   ]);
-  const lane = await openLane({ ...fixture.options, tools: [varying] });
-  t.after(() => lane.close());
+  const lane = await fixture.openLane({ ...fixture.options, tools: [varying] });
 
   await lane.execute({ kind: 'prompt', text: 'Use the tool.' });
 

@@ -32,7 +32,7 @@ const userTexts = (parts: readonly LanePart[]) =>
 test('G2 · 两条对话各有各的转录；切过去看到的是那一条，不是当前这条', async (t: TestContext) => {
   const fixture = await createLaneFixture(t, [SAY('Shot three, noted.'), SAY('Anthology, usually.')]);
   const workspace = await openLaneWorkspace(fixture.options);
-  t.after(() => workspace.close());
+  fixture.after(() => workspace.close());
 
   await workspace.execute({ kind: 'prompt', text: '把第三场戏改成夜戏。' });
   await workspace.execute({ kind: 'lane-create', laneName: 'research' });
@@ -56,6 +56,7 @@ test('G2 · 两条对话各有各的转录；切过去看到的是那一条，�
 test('G2 · 冷重启：列表与每条投影逐字相等（历史真的在盘上，不在内存里）', async (t: TestContext) => {
   const fixture = await createLaneFixture(t, [SAY('Noted.'), SAY('Anthology.')]);
   const first = await openLaneWorkspace(fixture.options);
+  fixture.after(() => first.close());
   await first.execute({ kind: 'prompt', text: '第一条说的话' });
   await first.execute({ kind: 'lane-create', laneName: 'research' });
   await first.execute({ kind: 'prompt', text: '第二条说的话' });
@@ -67,7 +68,7 @@ test('G2 · 冷重启：列表与每条投影逐字相等（历史真的在盘�
 
   // 冷重启 = 同一个项目目录、全新的宿主。除了目录，什么都没带过来。
   const second = await openLaneWorkspace(fixture.options);
-  t.after(() => second.close());
+  fixture.after(() => second.close());
 
   assert.deepEqual(identity(second.projection().lanes), before.lanes, '对话列表逐条相等');
   assert.deepEqual(second.projection().active.parts, beforeMain, 'main 那条的投影逐字相等');
@@ -78,7 +79,7 @@ test('G2 · 冷重启：列表与每条投影逐字相等（历史真的在盘�
 test('G2 · 删一条对话：它从列表和盘上一起消失；当前这条删不得', async (t: TestContext) => {
   const fixture = await createLaneFixture(t, [SAY('Noted.')]);
   const workspace = await openLaneWorkspace(fixture.options);
-  t.after(() => workspace.close());
+  fixture.after(() => workspace.close());
 
   await workspace.execute({ kind: 'lane-create', laneName: 'research' });
   await workspace.execute({ kind: 'lane-select', laneName: 'main' });
@@ -101,7 +102,7 @@ test('G2 · 删一条对话：它从列表和盘上一起消失；当前这条�
 test('G2 · 四条命令的拒绝面：重名新建 / 切到不存在 / 删不存在，都抛，不静默', async (t: TestContext) => {
   const fixture = await createLaneFixture(t, []);
   const workspace = await openLaneWorkspace(fixture.options);
-  t.after(() => workspace.close());
+  fixture.after(() => workspace.close());
 
   // 重名新建静默变成「打开」是最坏的默认值：用户以为自己在白纸上开始，
   // 而模型看得见上一件事的全部上下文。
@@ -115,9 +116,7 @@ test('G2 · 四条命令的拒绝面：重名新建 / 切到不存在 / 删不�
 
 test('G2 · lane 命令不属于单条 lane：宿主自己收到它必须抛，而不是猜一个语义', async (t: TestContext) => {
   const fixture = await createLaneFixture(t, []);
-  const { openLane } = await import('../../electron/agentLane/laneHost.mjs');
-  const lane = await openLane(fixture.options);
-  t.after(() => lane.close());
+  const lane = await fixture.openLane(fixture.options);
   // 一条 lane 的宿主对隔壁一无所知，**这是它该有的样子**——知道了就会长出第二个所有者。
   await assert.rejects(() => lane.execute({ kind: 'lane-select', laneName: 'research' }),
     /belongs to the workspace/);
