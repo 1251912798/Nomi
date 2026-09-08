@@ -22,8 +22,8 @@ import { withCanvasGestureContext } from '../events/canvasGestureContext'
 import { pushUndoSnapshot } from '../events/canvasUndoJournal'
 import { ownPendingCanvasWrite } from '../events/canvasWriteBoundary'
 import type { GenerationCanvasEdge, GenerationCanvasNode } from '../model/generationCanvasTypes'
-import { projectAgentClient } from '../../ai/projectAgentClient'
-import { projectAgentProjectionStore } from '../../ai/projectAgentProjectionStore'
+import { laneReceiptClient } from '../../ai/lane/laneReceiptClient'
+import { laneClient } from '../../ai/lane/laneClient'
 
 export type CommittedProposalRecord = ProjectAgentCommittedProposalRecord
 
@@ -121,21 +121,21 @@ function activeReceiptContext(): Readonly<{
   subscriptionId: string
   binding: ProjectBinding
 }> {
-  const projection = projectAgentProjectionStore.getState()
-  if (!projection.subscriptionId || !projection.binding) throw new Error('project_agent_unavailable')
+  const projection = laneClient.context()
+  if (!projection?.subscriptionId || !projection.binding) throw new Error('project_agent_unavailable')
   return Object.freeze({ subscriptionId: projection.subscriptionId, binding: projection.binding })
 }
 
 function contextIsCurrent(context: Readonly<{ subscriptionId: string; binding: ProjectBinding }>): boolean {
-  const latest = projectAgentProjectionStore.getState()
-  return latest.subscriptionId === context.subscriptionId && sameBinding(latest.binding, context.binding)
+  const latest = laneClient.context()
+  return latest?.subscriptionId === context.subscriptionId && sameBinding(latest.binding, context.binding)
 }
 
 async function readReceipt(
   context: Readonly<{ subscriptionId: string; binding: ProjectBinding }>,
 ): Promise<ProjectAgentProposalReceiptView | null> {
   const receipt = receiptForBinding(
-    await projectAgentClient.readProposalReceipt(context.subscriptionId),
+    await laneReceiptClient.readProposalReceipt(context.subscriptionId),
     context.binding,
   )
   return contextIsCurrent(context) ? receipt : null
@@ -143,7 +143,7 @@ async function readReceipt(
 
 /** Seeds only a validated receipt for the currently installed Host projection. */
 export function hydrateCommittedProposalReceipt(receipt: ProjectAgentProposalReceiptView | null): boolean {
-  const binding = projectAgentProjectionStore.getState().binding
+  const binding = laneClient.context()?.binding
   if (!binding) return false
   const parsed = receiptForBinding(receipt, binding)
   if (!parsed) return false
@@ -179,7 +179,7 @@ export async function prepareProposalReceipt(record: CommittedProposalRecord): P
   const operationId = `proposal-prepare:${proposal.proposalId}`
   let written: ProjectAgentProposalReceiptView
   try {
-    written = await projectAgentClient.writeProposalReceipt(context.subscriptionId, {
+    written = await laneReceiptClient.writeProposalReceipt(context.subscriptionId, {
       expectedRevision: existing?.revision ?? 0,
       proposalId: proposal.proposalId,
       operationId,
@@ -215,7 +215,7 @@ export async function commitProposalReceipt(record: CommittedProposalRecord): Pr
   const operationId = `proposal-commit:${proposal.proposalId}`
   let written: ProjectAgentProposalReceiptView
   try {
-    written = await projectAgentClient.writeProposalReceipt(context.subscriptionId, {
+    written = await laneReceiptClient.writeProposalReceipt(context.subscriptionId, {
       expectedRevision: prepared.revision,
       proposalId: proposal.proposalId,
       operationId,
@@ -249,7 +249,7 @@ export async function abortPreparedProposalReceipt(proposalId: string): Promise<
   const operationId = `proposal-abort:${proposalId}`
   let completed: ProjectAgentProposalReceiptView
   try {
-    completed = await projectAgentClient.transitionProposalReceipt(context.subscriptionId, {
+    completed = await laneReceiptClient.transitionProposalReceipt(context.subscriptionId, {
       expectedRevision: prepared.revision,
       proposalId,
       operationId,
@@ -400,7 +400,7 @@ async function transitionReceipt(
 ): Promise<ProjectAgentProposalReceiptView> {
   let transitioned: ProjectAgentProposalReceiptView
   try {
-    transitioned = await projectAgentClient.transitionProposalReceipt(context.subscriptionId, {
+    transitioned = await laneReceiptClient.transitionProposalReceipt(context.subscriptionId, {
       expectedRevision: receipt.revision,
       proposalId: receipt.proposalId,
       operationId,
