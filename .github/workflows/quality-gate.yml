@@ -98,6 +98,8 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Static contracts, lint, and types
         run: pnpm run test:system:contracts
+      - name: Autosync publication regression
+        run: node --test docs/fixes/docs-autosync.node-test.mjs
 
   unit:
     name: Unit

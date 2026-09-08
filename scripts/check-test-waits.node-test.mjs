@@ -3,7 +3,54 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
-import { asyncWaitForFunctionLines, collectTestFiles } from './check-test-waits.mjs'
+import { asyncWaitForFunctionLines, collectTestFiles, unownedLaneCleanupLines } from './check-test-waits.mjs'
+
+test('lane cleanup rejects rm-first hooks and separate or unawaited close hooks', () => {
+  const source = [
+    't.after(() => rm(projectDir, { recursive: true, force: true }));',
+    't.after(() => lane.close());',
+    'afterEach(async () => { lane.close(); await rm(fixture.projectDir, { recursive: true }); });',
+    't.after(async () => { await lane.close(); await rm(projectDir, { recursive: true }); });',
+  ].join('\n')
+  assert.deepEqual([...unownedLaneCleanupLines(source, 'tests/agent-runtime/laneFixture.mts')], [0, 2, 3])
+})
+
+test('lane cleanup recognizes aliases, multiline callbacks and bracket access', () => {
+  const source = [
+    "import { rm as remove } from 'node:fs/promises';",
+    "import { afterEach as teardown } from 'node:test';",
+    'const directory = fixture["projectDir"];',
+    'const cleanup = () => remove(directory, { recursive: true });',
+    'teardown(cleanup);',
+    'function setup(ctx: TestContext) {',
+    '  ctx["after"](',
+    '    async () => { await fs.rm(projectDir, { recursive: true }); });',
+    '}',
+    'const projectDir = await mkdtemp("nomi-lane-");',
+    'const alias = projectDir;',
+    'afterEach(() => rm(alias));',
+  ].join('\n')
+  assert.deepEqual([...unownedLaneCleanupLines(source, 'tests/agent-runtime/helper.mts')], [3, 7, 11])
+})
+
+test('lane cleanup leaves owner-managed teardown, completed evidence and ordinary directories alone', () => {
+  const source = [
+    '// t.after(() => rm(projectDir));',
+    'const example = "t.after(() => rm(projectDir))";',
+    'fixture.after(() => lane.close());',
+    'registerFixtureCleanup(t, async () => { await close(); await rm(projectDir); });',
+    'cleanup.after(() => rm(projectDir));',
+    'await rm(fixture.projectDir);',
+    't.after(() => rm(snapshotDir));',
+  ].join('\n')
+  assert.equal(unownedLaneCleanupLines(source, 'tests/agent-runtime/helper.mts').size, 0)
+  assert.equal(unownedLaneCleanupLines('t.after(() => rm(projectDir))', 'tests/ux/example.test.mjs').size, 0)
+})
+
+test('lane cleanup recognizes inferred test contexts instead of depending on the name t', () => {
+  const source = 'test("example", async (context) => { context.after(() => rm(projectDir)); });'
+  assert.deepEqual([...unownedLaneCleanupLines(source, 'tests/agent-runtime/example.test.mts')], [0])
+})
 
 test('rejects inline, multiline, commented and parenthesized async callbacks', () => {
   const source = [

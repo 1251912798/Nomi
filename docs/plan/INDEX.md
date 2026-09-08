@@ -288,3 +288,4 @@
 
 - [2026-09-07-skill-import-real-use](2026-09-07-skill-import-real-use.md)
 - [2026-09-08-g1-use-case-suite](2026-09-08-g1-use-case-suite.md)
+- [2026-09-08-docs-autosync-ci](2026-09-08-docs-autosync-ci.md) — 固定 action PR、默认 token 防循环与 CI 合同修复

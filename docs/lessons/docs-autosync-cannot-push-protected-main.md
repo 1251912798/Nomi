@@ -1,12 +1,11 @@
-# 「文档门岗自动修复」往受保护的 main 直接 push 必败：这类红不是内容问题
+# Docs autosync 固定 PR 与 CI 合同必须一起迁移
 
-> 📎 教训 · 首次记录 2026-09-05 · 状态：现行（工作流修法已派工：改开 PR）
-> **触发场景**：main 上 `Docs Gate Autosync` 工作流红，日志里是 `GH006: Protected branch update failed` 三连。
+> 📎 教训 · 首次记录 2026-09-05 · 更新 2026-09-08 · 修复在 PR #640，待合入
 
-**结论**：这个工作流的最后一步是把索引/状态修复 commit 直接 push 回 main，而 main 受保护，所以它一旦有东西要修就必红。红的信号只说明「有新文档没进 `docs/plan/INDEX.md` 或开头 12 行没状态标记」，修法是在任意分支补上（`pnpm run check:docs-index` / `check:doc-status` 本地就能验），不要去动工作流的 push。
+最初直接推受保护 main 遇到 GH006；改走 PR 时又沿用 CI 跳过标记和 SHA 后缀分支，导致每次 merge 新开一条缺少 required checks 的 PR。随后手写 gh 发布器替代 action，却没有迁移旧合同，Contracts 在第 186 行失败。
 
-**为什么会踩**：#507 带进 `docs/plan/2026-09-05-resident-composer-receipt-fix.md` 没收录、没状态，触发自动修复 → push 被拒 → 红；本地 `pnpm run gates` 里这两项是 advisory，真正阻断的是 `check:claude-hooks`（`.claude/hooks` 与 `scripts/claude-hooks` 漂移，`node scripts/install-claude-hooks.cjs` 重装即好）。
+当前裁决：`peter-evans/create-pull-request@v7` + 固定 `docs/autosync` + 默认 GITHUB_TOKEN。保留 action 断言，分支断言改为精确固定名，原来的跳过 CI 正向断言改为禁止所有跳过标记。两处 workflow 测试同时迁移，删除手写 Git/gh 和额外 token 配置要求。三个 docs 门仍须在发布前逐个验绿。
 
-**怎么用**：
-1. 新增 `docs/plan/*.md` 时顺手在 `INDEX.md` 对应主题下加一行，并在文件前 12 行写 `> 状态：…`。
-2. 看到 Autosync 红，先 `gh run view --log-failed | grep GH006`，命中就按上面补文档，不要重跑工作流。
+[GitHub 官方触发规则](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/trigger-a-workflow#triggering-a-workflow-from-a-workflow)说明默认 token 的 push 不递归启动工作流；当前自动 PR 的 opened/synchronize/reopened 工作流可能需要维护者批准。防循环可以依赖这项 token 语义，但不能把它描述成无人值守 CI。修复 PR 全绿只证明修复分支的检查通过。
+
+验证分别确认：三门失败是否拦发布、固定分支是否唯一、提交是否无跳过标记、准确 head 的 required checks 与 mergeStateStatus 是否通过。具体范围与证据见 [执行方案](../plan/2026-09-08-docs-autosync-ci.md)。

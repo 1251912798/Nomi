@@ -11,7 +11,6 @@ import { z } from 'zod';
 
 import { DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES } from '@earendil-works/pi-agent-core';
 
-import { openLane } from '../../electron/agentLane/laneHost.mjs';
 import { createCanvasLaneTools, type CanvasLanePort } from '../../electron/agentLane/laneCanvasTools.js';
 import { createDocumentLaneTools } from '../../electron/agentLane/laneDocumentTools.js';
 import type { LaneToolDescriptor } from '../../electron/agentLane/laneRuntimePort.js';
@@ -70,8 +69,7 @@ test('the contract parse runs once, after pi\'s ajv, and a cross-field failure r
     ] },
     { type: 'text', text: 'Done.' },
   ]);
-  const lane = await openLane({ ...fixture.options, tools: createCanvasLaneTools(port) });
-  t.after(() => lane.close());
+  const lane = await fixture.openLane({ ...fixture.options, tools: createCanvasLaneTools(port) });
   await lane.execute({ kind: 'prompt', text: 'Connect them.' });
 
   const results = lane.projection().parts.filter((part) => part.kind === 'tool-result');
@@ -108,11 +106,10 @@ test('G-04 · an oversized tool result reaches the model truncated, with a next 
     ] },
     { type: 'text', text: 'Read both.' },
   ]);
-  const lane = await openLane({
+  const lane = await fixture.openLane({
     ...fixture.options,
     tools: [echoTool('returns_a_manuscript', huge), echoTool('returns_two_lines', small)],
   });
-  t.after(() => lane.close());
   await lane.execute({ kind: 'prompt', text: 'Read them.' });
 
   const results = lane.projection().parts.filter((part) => part.kind === 'tool-result');

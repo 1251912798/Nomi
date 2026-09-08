@@ -177,14 +177,16 @@ test('package.json 的 gates:contracts 就是这个 runner，且 advisory 只限
   }
 })
 
-test('Docs Gate Autosync never writes protected main directly and opens a SHA-scoped PR', async () => {
+test('Docs Gate Autosync never writes protected main directly and updates one fixed-branch PR without skipping CI', async () => {
   const { default: fs } = await import('node:fs')
   const { default: path } = await import('node:path')
   const { fileURLToPath } = await import('node:url')
   const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
   const autosync = fs.readFileSync(path.join(repoRoot, '.github/workflows/docs-autosync.yml'), 'utf8')
   assert.match(autosync, /peter-evans\/create-pull-request@v7/)
-  assert.match(autosync, /branch:\s*docs\/autosync-\$\{\{ github\.sha \}\}/)
-  assert.match(autosync, /commit-message:.*\[skip ci\]/)
+  assert.match(autosync, /^\s+branch:\s*docs\/autosync\s*$/m)
+  assert.doesNotMatch(autosync, /branch-suffix:|\[(?:skip ci|ci skip|no ci|skip actions|actions skip)\]|skip-checks:\s*true/i)
   assert.doesNotMatch(autosync, /git push[^\n]*HEAD:main/)
+  assert.doesNotMatch(autosync, /gh pr create|DOCS_AUTOSYNC_TOKEN|gh workflow run/)
+  assert.match(autosync, /token:\s*\$\{\{ secrets\.GITHUB_TOKEN \}\}/)
 })

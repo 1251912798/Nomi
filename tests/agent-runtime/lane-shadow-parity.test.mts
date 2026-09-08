@@ -15,13 +15,12 @@ import { join } from 'node:path';
 import { test, type TestContext } from 'node:test';
 import { z } from 'zod';
 
-import { openLane } from '../../electron/agentLane/laneHost.mjs';
 import { createDocumentLaneTools } from '../../electron/agentLane/laneDocumentTools.js';
 import { runAgentTurn } from '../../electron/harness/runtime/pi/nativeLoader.cjs';
 import type { RuntimeTurnRequest } from '../../electron/harness/runtime/runtimePort.js';
 import type { RuntimeActivityEvent } from '../../electron/shared/agentCapabilities/transportContracts.js';
 import { createHttpFixture, type FixtureReply } from './httpFixture.mjs';
-import { createDocumentPort, LANE_SYSTEM_PROMPT } from './laneFixture.mjs';
+import { createDocumentPort, createLaneFixture, LANE_SYSTEM_PROMPT } from './laneFixture.mjs';
 import type { LaneProjection } from '../../electron/shared/agentLane/laneContracts.js';
 import { compareSteps, stepsOfProjection, stepsOfRecorded } from './replayShadowEngine.mjs';
 
@@ -121,17 +120,15 @@ async function documentText(port: ReturnType<typeof createDocumentPort>): Promis
 
 /** 新通路：从有序段里读出同一串节拍。 */
 async function runNewPath(t: TestContext): Promise<{ beats: Beat[]; promptTokens: number; completionTokens: number; costUsd?: number; text: string }> {
-  const http = await createHttpFixture(script());
-  t.after(http.close);
-  const dir = await projectDir(t);
+  const fixture = await createLaneFixture(t, script());
+  const { http, projectDir: dir } = fixture;
   const document = createDocumentPort();
-  const lane = await openLane({
+  const lane = await fixture.openLane({
     projectDir: dir, systemPrompt: LANE_SYSTEM_PROMPT,
     model: { kind: 'openai-compatible', providerId: 'nomi-shadow', modelId: 'chosen-model',
       baseURL: http.baseURL, authType: 'api-key', apiKey: 'fixture-key' },
     tools: createDocumentLaneTools(document),
   });
-  t.after(() => lane.close());
   await lane.execute({ kind: 'prompt', text: PROMPT });
   const projection = lane.projection();
   const beats: Beat[] = [];
@@ -217,15 +214,13 @@ async function runBoth(
     },
   });
 
-  const newHttp = await createHttpFixture(script());
-  t.after(newHttp.close);
-  const newDir = await projectDir(t);
-  const lane = await openLane({
+  const fixture = await createLaneFixture(t, script());
+  const { http: newHttp, projectDir: newDir } = fixture;
+  const lane = await fixture.openLane({
     projectDir: newDir, systemPrompt: LANE_SYSTEM_PROMPT,
     model: { kind: 'openai-compatible', providerId: 'nomi-shadow', modelId: 'chosen-model',
       baseURL: newHttp.baseURL, authType: 'api-key', apiKey: 'fixture-key' },
     tools: createDocumentLaneTools(newDocument),
   });
-  t.after(() => lane.close());
   await lane.execute({ kind: 'prompt', text: PROMPT });
 }

@@ -69,7 +69,90 @@ export function asyncWaitForFunctionLines(source, file = 'test.ts') {
   return lines
 }
 
+// Node after hooks are independent, registration-ordered callbacks. Directory deletion
+// belongs to createLaneFixture's resource owner, never to a separate test hook: even
+// awaiting one lane.close() there does not close sibling lanes, probes or crash children.
+export function unownedLaneCleanupLines(source, file) {
+  const lines = new Set()
+  if (!file.replaceAll('\\', '/').startsWith('tests/agent-runtime/')) return lines
+  const parsed = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true)
+  const definitions = new Map()
+  const removers = new Set(['rm', 'rmSync'])
+  const hooks = new Set(['after', 'afterEach'])
+  const contexts = new Set(['t'])
+  const nameOf = (node) => {
+    if (ts.isIdentifier(node)) return node.text
+    if (ts.isPropertyAccessExpression(node)) return node.name.text
+    if (ts.isElementAccessExpression(node) && ts.isStringLiteral(node.argumentExpression)) return node.argumentExpression.text
+    return null
+  }
+  const collect = (node) => {
+    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer) definitions.set(node.name.text, node.initializer)
+    if (ts.isFunctionDeclaration(node) && node.name) definitions.set(node.name.text, node)
+    if (ts.isParameter(node) && ts.isIdentifier(node.name) && node.type?.getText(parsed) === 'TestContext') contexts.add(node.name.text)
+    if (ts.isCallExpression(node) && ['test', 'it'].includes(nameOf(node.expression))) {
+      const callback = node.arguments.find((argument) => ts.isArrowFunction(argument) || ts.isFunctionExpression(argument))
+      const context = callback?.parameters[0]?.name
+      if (context && ts.isIdentifier(context)) contexts.add(context.text)
+    }
+    if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier)) {
+      const module = node.moduleSpecifier.text
+      const bindings = node.importClause?.namedBindings
+      if (bindings && ts.isNamedImports(bindings)) {
+        for (const item of bindings.elements) {
+          const original = (item.propertyName ?? item.name).text
+          if (/^(?:node:)?fs(?:\/promises)?$/.test(module) && ['rm', 'rmSync'].includes(original)) removers.add(item.name.text)
+          if (module === 'node:test' && ['after', 'afterEach'].includes(original)) hooks.add(item.name.text)
+        }
+      }
+    }
+    ts.forEachChild(node, collect)
+  }
+  collect(parsed)
+  const unwrap = (node, seen = new Set()) => {
+    if (ts.isParenthesizedExpression(node)) return unwrap(node.expression, seen)
+    if (ts.isIdentifier(node) && definitions.has(node.text) && !seen.has(node.text)) {
+      seen.add(node.text)
+      return unwrap(definitions.get(node.text), seen)
+    }
+    return node
+  }
+  const isLaneDirectory = (node, seen = new Set()) => {
+    if (!node) return false
+    if (/^(?:project|lane)Dir$/.test(nameOf(node) ?? '')) return true
+    if (ts.isParenthesizedExpression(node)) return isLaneDirectory(node.expression, seen)
+    if (ts.isIdentifier(node) && definitions.has(node.text) && !seen.has(node.text)) {
+      seen.add(node.text)
+      return isLaneDirectory(definitions.get(node.text), seen)
+    }
+    return false
+  }
+  const inspectCleanup = (node) => {
+    if (ts.isCallExpression(node) && removers.has(nameOf(node.expression)) && isLaneDirectory(node.arguments[0])) {
+      lines.add(parsed.getLineAndCharacterOfPosition(node.getStart(parsed)).line)
+    }
+    ts.forEachChild(node, inspectCleanup)
+  }
+  const visit = (node) => {
+    if (ts.isCallExpression(node)) {
+      const callee = node.expression
+      const name = nameOf(callee)
+      const isHook = ts.isIdentifier(callee) ? hooks.has(name)
+        : name === 'afterEach' || (name === 'after' && contexts.has(nameOf(callee.expression)))
+      if (isHook && node.arguments[0]) inspectCleanup(unwrap(node.arguments[0]))
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(parsed)
+  return lines
+}
+
 const RULES = [
+  {
+    id: 'unowned-lane-directory-cleanup',
+    label: 'lane 目录清理必须由共享 fixture owner 等待全部资源 close 后执行，禁止独立 after/afterEach 删除',
+    test: (_line, context) => context.unownedLaneCleanupLines.has(context.lineIndex),
+  },
   {
     id: 'async-waitforfunction-predicate',
     label: 'waitForFunction 的 async 判据会把 Promise 当 truthy，形成空等待；改用 expect.poll + evaluate',
@@ -165,12 +248,13 @@ export function main() {
   for (const file of collectTestFiles()) {
     const raw = fs.readFileSync(file, 'utf8')
     const source = stripComments(raw)
-    const context = { clockDeltaNames: collectClockDeltaNames(source), spiesOnFsRead: FS_READ_SPY.test(source), asyncWaitLines: asyncWaitForFunctionLines(raw, file) }
+    const context = { clockDeltaNames: collectClockDeltaNames(source), spiesOnFsRead: FS_READ_SPY.test(source), asyncWaitLines: asyncWaitForFunctionLines(raw, file),
+      unownedLaneCleanupLines: unownedLaneCleanupLines(raw, path.relative(repoRoot, file)) }
     const unitTest = /\.test\.(tsx?|mts|cts|mjs)$/.test(file)
     source.split('\n').forEach((line, i) => {
       context.lineIndex = i
       for (const rule of RULES) {
-        if (!unitTest && rule.id !== 'async-waitforfunction-predicate') continue
+        if (!unitTest && !['async-waitforfunction-predicate', 'unowned-lane-directory-cleanup'].includes(rule.id)) continue
         if (rule.test(line, context)) hits.push({ rule, file, line: i + 1, text: line.trim().slice(0, 120) })
       }
     })
@@ -194,7 +278,7 @@ export function main() {
   )
 
   if (hardHits.length > 0 || budgetViolations.length > 0 || staleBaseline.length > 0) {
-    console.log('✖ 测试等待门岗未通过：测试不许空等待、私有墙钟等待或墙钟判分')
+    console.log('✖ 测试等待门岗未通过：测试不许空等待、私有墙钟等待、墙钟判分或无 owner 的 lane 清理')
     for (const hit of hardHits.slice(0, 20)) {
       console.log(`    ${path.relative(repoRoot, hit.file)}:${hit.line}  [${hit.rule.id}]  ${hit.text}`)
     }
@@ -207,7 +291,7 @@ export function main() {
       console.log(`    ${relative}  [wallclock-budget-assertion]  基线陈旧：登记 ${allowed} 处、实际 ${actual} 处`)
       console.log('        → 好事，把 WALLCLOCK_BUDGET_BASELINE 里的数字降到实际值（棘轮只减不增）')
     }
-    if (hardHits.some((hit) => !['fs-read-spy-path-filter', 'async-waitforfunction-predicate'].includes(hit.rule.id))) {
+    if (hardHits.some((hit) => !['fs-read-spy-path-filter', 'async-waitforfunction-predicate', 'unowned-lane-directory-cleanup'].includes(hit.rule.id))) {
       console.log('  → 等后台编排链请 import electron/productionRun/productionRunTestHelpers 的 waitForProduction')
       console.log('    （60s 安全网只拦真死锁/真回归，不给磁盘排队计时；来龙去脉见 docs/plan/2026-08-25-fix-flaky-production-run-tests.md）')
     }
@@ -219,6 +303,9 @@ export function main() {
     if (hardHits.some((hit) => hit.rule.id === 'async-waitforfunction-predicate')) {
       console.log('  → async waitForFunction：改用 expect.poll(async () => page.evaluate(...), { timeout }).toBe(true)，真正等待异步读数。')
     }
+    if (hardHits.some((hit) => hit.rule.id === 'unowned-lane-directory-cleanup')) {
+      console.log('  → lane 目录交给 createLaneFixture；用 fixture.openLane / fixture.after 注册资源，等待全部 close 完成后再统一删除。')
+    }
     if (budgetViolations.length > 0) {
       console.log('  → 新增的耗时断言：若它量的是「这段计算够不够快」，删掉换与机器速度无关的判据')
       console.log('    （计数器 / 两个等长窗口的工作量相等 / 直接观测被测机制），真要守常数因子性能请拆去 performance 风险面；')
@@ -227,7 +314,7 @@ export function main() {
     process.exit(1)
   }
   console.log(
-    `✅ 测试等待门岗通过：0 处空等待/私有墙钟等待（硬零），${budgetHits.length} 处墙钟预算断言（棘轮基线，只减不增）`,
+    `✅ 测试等待门岗通过：0 处空等待/私有墙钟等待/无 owner 的 lane 清理（硬零），${budgetHits.length} 处墙钟预算断言（棘轮基线，只减不增）`,
   )
 
 }
