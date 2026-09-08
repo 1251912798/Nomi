@@ -1,7 +1,7 @@
+import type { ProjectAgentAttachmentClaim } from '../../../electron/shared/workbenchInput'
 import type { AgentChatToolDecision, ProjectAgentExecutionRequest } from '../../../electron/shared/contracts/agentChatContracts'
 import type {
   ProjectAgentExecutionEvent,
-  ProjectAgentAttachmentClaim,
   ProjectAgentHostState,
   ProjectAgentQueueItem,
   ProjectAgentThread,

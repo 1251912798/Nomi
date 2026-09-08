@@ -1,3 +1,4 @@
+import { redactToolArguments, redactResidentSensitiveText } from '../resident/residentToolText'
 // Agent lane · 视图投影（纯函数，唯一 owner）
 //
 // **这一层最重要的一句话是「它不排序」。**
@@ -29,7 +30,7 @@ import {
   laneApprovalWasRefused,
 } from '../../../../electron/shared/agentLane/laneContracts'
 import type { V4InterventionSource } from '../v4/agentPanelV4Intervention'
-import { resolveCapabilityAlias } from '../../../../electron/shared/agentCapabilities/registry'
+import { resolveModelToolCapabilityId } from '../../../../electron/shared/agentCapabilities/modelFacingToolRegistry'
 import { actionFamilyForCapability } from '../v4/agentPanelV4ActionFamily'
 import type {
   ContextUsage,
@@ -47,7 +48,9 @@ import type {
  */
 export interface LaneViewModelLabels {
   /** 工具别名 → 人话动词 + 对象（「读取文稿」）。 */
-  toolLabel(toolName: string): string
+  toolLabel(toolName: string, args: unknown): string
+  toolSummary(toolName: string, args: unknown): string | undefined
+  toolFailure(text: string): string | undefined
   /** 思考行左侧那个词。 */
   thinkingLabel: string
   /** 数字格式化：token 数、金额。缺省不印，不是印 0。 */
@@ -156,31 +159,25 @@ interface ToolSlot {
 }
 
 function familyFor(toolName: string, args: unknown): V4ActionFamily {
-  const resolved = resolveCapabilityAlias(toolName)
+  const resolved = resolveModelToolCapabilityId(toolName, args)
   // 认不出来的别名走 `write`：它是「动了什么东西」里最不宣称具体对象的那个。
   // 猜一个具体 icon（比如看名字里有没有 "image"）会在收据上印一个我们没量过的断言。
-  return resolved ? actionFamilyForCapability(resolved.contract.id, args) : 'write'
+  return resolved ? actionFamilyForCapability(resolved, args) : 'write'
 }
 
-function stringifyArgs(args: unknown): string | undefined {
-  if (args === undefined || args === null) return undefined
-  if (typeof args === 'string') return args || undefined
-  try {
-    const text = JSON.stringify(args)
-    return text && text !== '{}' ? text : undefined
-  } catch {
-    return undefined
-  }
-}
 
 function receiptFor(part: Extract<LanePart, { kind: 'tool-call' }>, labels: LaneViewModelLabels): ToolReceipt {
+  const summary = labels.toolSummary(part.toolName, part.args)
   return {
-    label: labels.toolLabel(part.toolName),
+    toolCallId: part.toolCallId,
+    label: labels.toolLabel(part.toolName, part.args),
+    ...(summary ? { summary: redactResidentSensitiveText(summary) } : {}),
     action: familyFor(part.toolName, part.args),
     // 「跑着呢」和「填参数呢」是两件事：`input-available` 说的是参数已经齐了。
     // 结果落定之前不许写 `output-available`——那是在替一件还没发生的事下结论。
     status: part.running ? 'input-available' : 'input-streaming',
-    input: stringifyArgs(part.args),
+    input: part.args && typeof part.args === 'object' && Object.keys(part.args).length === 0
+      ? undefined : redactToolArguments(part.args) || undefined,
   }
 }
 
@@ -204,9 +201,9 @@ function taskCardFor(part: Extract<LanePart, { kind: 'task' }>, labels: LaneView
     status: facts.status,
     ...(facts.stagesTotal ? { trailing: labels.formatStages(facts.stagesDone ?? 0, facts.stagesTotal) } : {}),
     ...(facts.progress === undefined ? {} : { progress: facts.progress }),
-    // 候选只带 id 过桥（K4），这一层把它们编成卡上那排序号。缩略图由卡自己按 id 去取。
-    ...(facts.candidateIds?.length
-      ? { candidates: facts.candidateIds.map((_, index) => ({ tag: String(index + 1) })) } : {}),
+    // Keep the verified artifact identity and image; numbering is display-only.
+    ...(facts.candidates?.length
+      ? { candidates: facts.candidates.map((candidate, index) => ({ ...candidate, tag: String(index + 1) })) } : {}),
     ...(estimated === undefined ? {} : { cost: estimated }),
     ...(spent === undefined ? {} : { footnoteTrailing: spent }),
   }
@@ -225,7 +222,7 @@ function settledStatus(isError: boolean, denied: boolean): V4ToolStatus {
  * 这里**断言**这件事而不是相信它：顺序一旦在某一层被悄悄打乱，面板上看到的就是
  * 「它先做了、后说要做」，而那种错在截图里非常像「模型自己顺序乱」。
  */
-export function laneViewModel(projection: LaneProjection, labels: LaneViewModelLabels): LaneViewModel {
+export function laneViewModel(projection: LaneProjection, labels: LaneViewModelLabels, undoableToolCallId?: string): LaneViewModel {
   const items: V4FlowItem[] = []
   const slots = new Map<string, ToolSlot>()
   const denials = new Map<string, LaneApprovalNote>()
@@ -246,6 +243,10 @@ export function laneViewModel(projection: LaneProjection, labels: LaneViewModelL
       }
       continue
     }
+    if (part.kind === 'error') {
+      items.push({ kind: 'error', reason: part.text })
+      continue
+    }
     if (part.kind === 'task') {
       items.push({ kind: 'task', task: taskCardFor(part, labels) })
       continue
@@ -255,7 +256,8 @@ export function laneViewModel(projection: LaneProjection, labels: LaneViewModelL
       continue
     }
     if (part.kind === 'assistant-text') {
-      items.push({ kind: 'assistant', text: part.text, status: part.streaming ? 'streaming' : 'complete' })
+      items.push({ kind: 'assistant', text: part.text, status: part.interrupted ? 'interrupted' : part.streaming ? 'streaming' : 'complete',
+        ...(part.continuationEntryId ? { continuationEntryId: part.continuationEntryId } : {}) })
       continue
     }
     if (part.kind === 'thinking') {
@@ -277,11 +279,16 @@ export function laneViewModel(projection: LaneProjection, labels: LaneViewModelL
     // 被拒的那一行只说「已拒绝」（拍板过的 Vocabulary 板 `v4-tool-output-denied`：行尾是状态词，
     // 没有摘要、没有展开体）。理由住在用户自己填它的那张介入槽里；再把它印到行尾、又塞进
     // 展开体，同一句话就在面板上出现三次——设计实验室 P6 探针把这一格接上真投影时当场红了。
+    const { summary: _summary, ...withoutSummary } = existing.receipt
+    const failure = part.isError ? labels.toolFailure(part.text) : undefined
     items[slot.index] = {
       kind: 'tool',
       receipt: denial !== undefined
-        ? { ...existing.receipt, status: 'output-denied' }
-        : { ...existing.receipt, status: settledStatus(part.isError, false), output: part.text || undefined },
+        ? { ...withoutSummary, status: 'output-denied' }
+        : { ...(part.isError ? withoutSummary : existing.receipt), status: settledStatus(part.isError, false),
+          ...(failure ? { summary: redactResidentSensitiveText(failure) } : {}),
+          ...(!part.isError && part.toolCallId === undoableToolCallId ? { undoable: true } : {}),
+          output: redactResidentSensitiveText(part.text) || undefined },
     }
   }
 

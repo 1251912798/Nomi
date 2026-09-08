@@ -1,7 +1,5 @@
-import type {
-  ProjectAgentAttachmentClaim,
-  ProjectAgentAttachmentRef,
-} from '../../../electron/shared/projectAgentContracts'
+import type { ProjectAgentAttachmentClaim, ProjectAgentAttachmentRef } from '../../../electron/shared/workbenchInput'
+
 import type { ComposerAttachment } from './composer/composerAttachmentTypes'
 
 export function projectAgentAttachmentClaims(
@@ -26,7 +24,7 @@ export function projectAgentAttachmentClaims(
 }
 
 export function composerAttachmentsFromProjectAgentRefs(
-  refs: readonly ProjectAgentAttachmentRef[],
+  refs: readonly (Pick<ProjectAgentAttachmentRef, 'assetId'> & Partial<ProjectAgentAttachmentRef>)[],
 ): ComposerAttachment[] {
   return refs.flatMap((ref) =>
     ref.display

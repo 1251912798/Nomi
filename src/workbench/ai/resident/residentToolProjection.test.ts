@@ -1,8 +1,8 @@
+import { redactResidentSensitiveText } from './residentToolText'
 import { describe, expect, it } from 'vitest'
 import {
   normalizeResidentToolProjection,
   readResidentToolProjections,
-  redactResidentSensitiveText,
   residentToolProjectionKey,
   residentToolProjectionScope,
   writeResidentToolProjections,

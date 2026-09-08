@@ -15,6 +15,8 @@ import { laneViewModel, type LaneViewModelLabels } from './laneViewModel'
 
 const labels: LaneViewModelLabels = {
   toolLabel: (name) => `[${name}]`,
+  toolSummary: () => undefined,
+  toolFailure: () => undefined,
   thinkingLabel: '[thinking]',
   formatTokens: (value) => `${value}t`,
   formatCost: (usd) => `$${usd.toFixed(4)}`,

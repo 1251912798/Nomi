@@ -100,12 +100,14 @@ export function V4TaskCard({
           ) : null}
           {task.candidates?.length ? (
             <div className="flex gap-1.5">
-              {task.candidates.map((candidate, index) => (
-                <button
-                  type="button"
-                  key={candidate.tag}
-                  aria-label={`${labels.adopt} ${candidate.tag}`}
-                  onClick={() => onAdopt?.(candidate.tag, index)}
+              {task.candidates.map((candidate, index) => {
+                const canAdopt = Boolean(onAdopt && candidate.canAdopt && !candidate.adopted && !candidate.pending)
+                const Tile = canAdopt ? 'button' : 'div'
+                return <Tile
+                  {...(canAdopt ? { type: 'button' as const, 'aria-label': `${labels.adopt} ${candidate.tag}`,
+                    onClick: () => onAdopt?.(candidate.tag, index) } : {})}
+                  key={candidate.artifactId ?? candidate.tag}
+                  data-artifact-id={candidate.artifactId}
                   data-adopted={candidate.adopted ? 'true' : undefined}
                   className={cn(
                     'relative h-10 w-16 shrink-0 overflow-hidden rounded-nomi-sm border border-nomi-line',
@@ -114,13 +116,14 @@ export function V4TaskCard({
                     candidate.adopted && 'outline outline-2 outline-offset-1 outline-nomi-accent',
                   )}
                 >
+                  {candidate.thumbnailUrl ? <img src={candidate.thumbnailUrl} alt="" className="size-full object-cover" /> : null}
                   {/* 角标写的是**这一张是谁**（画布 Vocabulary 板是「采用」、FlowGeneration 板是「2 ✓」），
                       由数据给；`adopted` 只管那圈 accent 描边，不改写文字。 */}
                   <span className="absolute left-1 top-1 rounded-sm bg-nomi-overlay-chip px-1 text-micro leading-[15px] text-nomi-paper">
                     {candidate.tag}
                   </span>
-                </button>
-              ))}
+                </Tile>
+              })}
             </div>
           ) : null}
           {task.progress !== undefined ? (

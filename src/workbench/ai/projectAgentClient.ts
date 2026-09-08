@@ -1,4 +1,4 @@
-import type { ProjectAgentBridge } from '../../desktop/bridge'
+import type { ProjectAgentBridge } from '../../desktop/projectAgentBridgeTypes'
 import type {
   ProjectAgentExecutionEvent,
   ProjectAgentHostState,

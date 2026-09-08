@@ -1,7 +1,8 @@
-import { resolveCapabilityAlias } from '../../../../electron/shared/agentCapabilities/registry'
+import { resolveModelToolCapabilityId } from '../../../../electron/shared/agentCapabilities/modelFacingToolRegistry'
 import type { TranslationKey } from '../../../i18n/translationKey'
 import type { ProjectAgentStatus } from '../../../../electron/shared/projectAgentContracts'
-import { normalizeResidentToolProjection, redactToolArguments, type ResidentToolProjection } from './residentToolProjection'
+import { normalizeResidentToolProjection, type ResidentToolProjection } from './residentToolProjection'
+import { redactToolArguments } from './residentToolText'
 import type { ResidentApprovalDetail, ResidentProposalData } from './residentProposalDisplay'
 
 type Translate = (key: string, options?: Record<string, unknown>) => string
@@ -47,17 +48,21 @@ function toolIdentity(name: string, args?: unknown): string {
   // MCP says `nomi_timeline_edit` / `nomi_document_edit` — and matching those by hand is how the
   // recognisers drifted in the first place. The canonical contract id (`timeline.write`,
   // `document.write`, …) is the one name that does not move.
-  return `${canonicalCapabilityId(name)} ${name} ${operation}`.toLowerCase()
+  return `${canonicalCapabilityId(name, args)} ${name} ${operation}`.toLowerCase()
 }
 
-function canonicalCapabilityId(name: string): string {
-  return resolveCapabilityAlias(name)?.contract.id ?? ''
+function canonicalCapabilityId(name: string, args?: unknown): string {
+  return resolveModelToolCapabilityId(name, args) ?? ''
+}
+
+function isStoryboardPlanWrite(name: string, args?: unknown): boolean {
+  return /(?:^|\s)(?:propose_storyboard_plan|patch_shots)(?:$|\s)/.test(toolIdentity(name, args))
 }
 
 /** True for canvas *creation* only. A delete is not a write here — it has its own, louder treatment. */
 export function isCanvasWriteToolName(name: string, args?: unknown): boolean {
   const normalized = toolIdentity(name, args)
-  if (isCanvasDeleteToolName(name, args)) return false
+  if (isCanvasDeleteToolName(name, args) || isStoryboardPlanWrite(name, args)) return false
   return normalized.includes('create_canvas_nodes') || normalized.includes('canvas.write') || normalized.includes('canvas_nodes')
 }
 
@@ -67,9 +72,10 @@ export function isCanvasWriteToolName(name: string, args?: unknown): boolean {
  * the row for a tool nobody could identify. A read's honest effect line is that nothing changes.
  */
 export function isReadOnlyToolName(name: string, args?: unknown): boolean {
+  if (name === 'read' || name === 'ls' || name === 'grep' || name === 'find') return true
   // When the registry owns this name its contract id is authoritative: `propose_edit_plan` is a
   // `timeline.read` despite the word "edit" in the alias, and no word-matching gets that right.
-  const canonical = canonicalCapabilityId(name)
+  const canonical = canonicalCapabilityId(name, args)
   if (canonical) return canonical.endsWith('.read')
   const normalized = toolIdentity(name, args)
   if (/write|edit|delete|create|apply|maintenance/.test(normalized)) return false
@@ -211,7 +217,13 @@ function isAllArtifactDelivery(args: unknown): boolean {
 }
 
 export function readableToolName(t: Translate, name: string, args?: unknown): string {
+  if (name === 'nomi_request_tools') return t('agentResident.toolPrepareTools')
+  if (name === 'read' || name === 'ls') return t('agentResident.toolFileRead')
+  if (name === 'grep' || name === 'find') return t('agentResident.toolFileSearch')
+  if (name === 'edit' || name === 'write') return t('agentResident.toolFileWrite')
+  if (name === 'bash') return t('agentResident.toolShell')
   const normalized = toolIdentity(name, args)
+  if (isStoryboardPlanWrite(name, args)) return t('agentResident.toolStoryboardWrite')
   if (isCanvasDeleteToolName(name, args)) return t('agentResident.toolCanvasDelete')
   if (normalized.includes('append_to_end') || normalized.includes('document_append')) return t('agentResident.toolDocumentWrite')
   if (isCanvasWriteToolName(name, args) && isAllArtifactDelivery(args)) return t('agentResident.toolCanvasWriteArtifact')
@@ -238,6 +250,8 @@ export function readableToolName(t: Translate, name: string, args?: unknown): st
 }
 
 export function readableToolSummary(t: Translate, name: string, args?: unknown): string {
+  if (isStoryboardPlanWrite(name, args)) return t('agentResident.toolStoryboardWriteSummary')
+  if (isReadOnlyToolName(name, args)) return t('agentResident.toolReadNoChange')
   const normalized = toolIdentity(name, args)
   const record = args && typeof args === 'object' ? args as Record<string, unknown> : {}
   const patch = asRecord(record.patch) ?? {}
@@ -280,6 +294,8 @@ export function readableToolSummary(t: Translate, name: string, args?: unknown):
 export function readableToolPreview(t: Translate, name: string, args?: unknown): string {
   const normalized = toolIdentity(name, args)
   const record = args && typeof args === 'object' ? args as Record<string, unknown> : {}
+  if (isStoryboardPlanWrite(name, args)) return Array.isArray(record.shots) && record.shots.length
+    ? t('agentResident.toolShotCount', { count: record.shots.length }) : t('agentResident.toolStoryboardWriteSummary')
   if (normalized.includes('append_to_end') || normalized.includes('document.write') || normalized.includes('document_edit') || normalized.includes('document_append')) return typeof record.content === 'string' && record.content.trim() ? t('agentResident.toolContentCount', { count: 1 }) : t('agentResident.toolDocumentWriteSummary')
   if (isCanvasDeleteToolName(name, args)) {
     const count = Array.isArray(record.nodeIds) ? record.nodeIds.length : 0
@@ -348,7 +364,8 @@ function readableProposalParameters(t: Translate, record: Record<string, unknown
 
 export function proposalForTool(t: Translate, name: string, args?: unknown): ResidentProposalData | undefined {
   const record = args && typeof args === 'object' && !Array.isArray(args) ? args as Record<string, unknown> : {}
-  const generationLike = isGenerationToolName(name) || isCanvasWriteToolName(name, record)
+  const storyboardPlan = isStoryboardPlanWrite(name, record)
+  const generationLike = isGenerationToolName(name) || isCanvasWriteToolName(name, record) || storyboardPlan
   if (!generationLike) return undefined
   const nodes = Array.isArray(record.nodes) ? record.nodes.filter((node): node is Record<string, unknown> => Boolean(node && typeof node === 'object' && !Array.isArray(node))) : []
   const shots = Array.isArray(record.shots) ? record.shots.map(asRecord).filter((shot): shot is Record<string, unknown> => Boolean(shot)) : []
@@ -401,7 +418,7 @@ export function proposalForTool(t: Translate, name: string, args?: unknown): Res
   fields.push({ label: t('agentResident.proposalEstimate'), value: readableEstimate(t, record), kind: 'estimate' })
   fields.push({ label: t('agentResident.proposalTarget'), value: readableToolTarget(t, name, record), kind: 'target' })
   if (referenceCount) fields.push({ label: t('agentResident.referencesLabel'), value: t('agentResident.proposalReferences', { count: referenceCount }), kind: 'references' })
-  fields.push({ label: t('agentResident.proposalBoundary'), value: isCanvasWriteToolName(name, record) ? t('agentResident.boundaryCanvasOnly') : t('agentResident.boundaryGeneration'), kind: 'boundary' })
+  fields.push({ label: t('agentResident.proposalBoundary'), value: storyboardPlan ? t('agentResident.toolStoryboardWriteSummary') : isCanvasWriteToolName(name, record) ? t('agentResident.boundaryCanvasOnly') : t('agentResident.boundaryGeneration'), kind: 'boundary' })
   return { fields }
 }
 

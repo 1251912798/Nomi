@@ -11,6 +11,7 @@ import {
 } from './residentToolDisplay'
 import { partitionResidentProposalFields } from './residentProposalDisplay'
 import { CAPABILITY_ALIAS_ENTRIES, CAPABILITY_CONTRACTS } from '../../../../electron/shared/agentCapabilities/registry'
+import { modelFacingToolSpecs } from '../../../../electron/shared/agentCapabilities/modelFacingToolRegistry'
 
 const translate = (key: string, options?: Record<string, unknown>): string => {
   if (!options) return key
@@ -18,11 +19,34 @@ const translate = (key: string, options?: Record<string, unknown>): string => {
 }
 
 describe('resident tool display projection', () => {
+  it('names every current lane tool and preserves operation-specific effects', () => {
+    expect(modelFacingToolSpecs('internal').filter(spec => readableToolName(translate, spec.name) === 'agentResident.toolGeneric')
+      .map(spec => spec.name)).toEqual([])
+    expect(readableToolName(translate, 'nomi_canvas_write', { operation: 'create_canvas_nodes' })).toBe('agentResident.toolCanvasWrite')
+    expect(readableToolName(translate, 'nomi_storyboard_write', { operation: 'patch_shots' })).toBe('agentResident.toolStoryboardWrite')
+    expect(readableToolSummary(translate, 'nomi_canvas_write', { operation: 'create_canvas_nodes' })).toContain('agentResident.toolNoGeneration')
+    expect(isReadOnlyToolName('read_full_text')).toBe(true)
+    expect(readableToolName(translate, 'nomi_request_tools')).toBe('agentResident.toolPrepareTools')
+  })
+
   it('keeps the first layer compact while retaining generation intent', () => {
     const args = { prompt: 'a small cat avatar', modelId: 'provider/image-fast', parameters: { aspectRatio: '1:1', quality: 'standard' } }
     expect(readableToolPreview(translate, 'nomi_start_generation', args)).toBe('agentResident.toolGenerationSummary')
     expect(readableToolSummary(translate, 'nomi_start_generation', args)).toContain('a small cat avatar')
     expect(readableToolSummary(translate, 'nomi_start_generation', args)).toContain('provider/image-fast')
+  })
+
+  it('describes read-only calls and storyboard proposals without claiming canvas changes', () => {
+    expect(readableToolSummary(translate, 'read_full_text', {})).toBe('agentResident.toolReadNoChange')
+    for (const operation of ['propose_storyboard_plan', 'patch_shots']) {
+      const args = { operation, shots: [{ index: 1, prompt: 'Opening' }] }
+      expect(readableToolName(translate, 'nomi_storyboard_write', args)).toBe('agentResident.toolStoryboardWrite')
+      expect(readableToolSummary(translate, 'nomi_storyboard_write', args)).toBe('agentResident.toolStoryboardWriteSummary')
+      expect(readableToolPreview(translate, 'nomi_storyboard_write', args)).toBe('agentResident.toolShotCount(count=1)')
+      const proposal = proposalForTool(translate, 'nomi_storyboard_write', args)
+      expect(proposal?.fields.find(field => field.kind === 'boundary')?.value).toBe('agentResident.toolStoryboardWriteSummary')
+      expect(proposal?.fields.find(field => field.kind === 'prompt')?.value).toBe('Opening')
+    }
   })
 
   it('names every registered capability and every surface alias of it, derived from the registry', () => {

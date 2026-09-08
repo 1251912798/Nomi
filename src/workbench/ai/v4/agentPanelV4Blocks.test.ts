@@ -11,6 +11,8 @@ import { V4Intervention, V4Queue, V4TaskCard } from './AgentPanelV4Cards'
 import { V4ContextRing } from './AgentPanelV4Context'
 import { V4AssistantMessage, V4Thinking, V4UserBubble } from './AgentPanelV4Message'
 import { V4ToolReceipt } from './AgentPanelV4Receipt'
+import { AgentPanelV4Panel, V4FlowRow } from './AgentPanelV4Panel'
+import ReconcileDeviationCard from '../../generationCanvas/components/ReconcileDeviationCard'
 import { AgentPanelV4Composer } from './AgentPanelV4Composer'
 import type { InterventionData, ToolReceipt, V4InterventionKind, V4TaskStatus, V4ToolStatus } from './agentPanelV4Types'
 
@@ -113,12 +115,31 @@ describe('③ 一行收据 · 七态', () => {
     expect(withBody).toContain('<details')
   })
 
+  it('the collapsed tool group preserves the existing undo button on its exact receipt', () => {
+    const markup = html(el(V4FlowRow, { darkMode: false, item: {
+      kind: 'tool-group', label: 'Canvas', action: 'canvas', status: 'output-available', count: 2,
+      trailing: 'Done', receipts: [base, { ...base, toolCallId: 'c2', undoable: true }],
+    }, handlers: { onUndoTool: () => undefined } }))
+    expect(markup).toContain('撤销')
+    expect(markup.match(/<button/g)).toHaveLength(1)
+  })
+
   it('可撤销的行在行尾多一个撤销', () => {
     expect(html(el(V4ToolReceipt, { receipt: { ...base, undoable: true }, statusLabel: 'x', undoLabel: '撤销' }))).toContain('撤销')
   })
 })
 
 describe('④ 任务卡 · 五态', () => {
+  it('renders the real candidate thumbnail and cannot adopt an unreviewed candidate', () => {
+    const markup = html(el(V4TaskCard, {
+      task: { title: 'x', action: 'image', status: 'complete', candidates: [
+        { tag: '1', artifactId: 'image-1', thumbnailUrl: 'nomi-local://asset/project-a/image.png', canAdopt: false },
+      ] }, labels: taskLabels, onAdopt: () => undefined,
+    }))
+    expect(markup).toContain('<img')
+    expect(markup).toContain('src="nomi-local://asset/project-a/image.png"')
+    expect(markup).not.toContain('<button')
+  })
   it.each(TASK_STATUSES)('%s 渲得出且带状态词', (status) => {
     const markup = html(el(V4TaskCard, { task: { title: '生成 3 张图片', action: 'image', status }, labels: taskLabels }))
     expect(markup).toContain(`data-status="${status}"`)
@@ -127,8 +148,8 @@ describe('④ 任务卡 · 五态', () => {
 
   it('采用的候选是 accent 描边 + 角标，不是把整格填成 accent 底', () => {
     const markup = html(el(V4TaskCard, {
-      task: { title: 'x', action: 'image', status: 'complete', candidates: [{ tag: '1', adopted: true }, { tag: '2' }] },
-      labels: taskLabels,
+      task: { title: 'x', action: 'image', status: 'complete', candidates: [{ tag: '1', adopted: true }, { tag: '2', canAdopt: true }] },
+      labels: taskLabels, onAdopt: () => undefined,
     }))
     expect(markup).toContain('outline-nomi-accent')
     expect(markup).toContain('data-adopted="true"')
@@ -316,4 +337,18 @@ describe('⑧ composer 底栏逐件', () => {
     expect(html(el(AgentPanelV4Composer, { value: '只读' }))).toContain('readonly')
     expect(html(el(AgentPanelV4Composer, { value: '可编辑', onValueChange: () => undefined }))).not.toContain('readonly')
   })
+})
+
+
+it('the real panel mounts the approved domain deviation card at the end of its flow', () => {
+  const markup = html(el(AgentPanelV4Panel, {
+    flow: [{ kind: 'assistant', text: 'Completed image', status: 'complete' }], context: usage,
+    flowTail: el(ReconcileDeviationCard, {
+      deviations: [{ kind: 'content', where: '镜头 1', field: '构图', expected: '杯子居中', actual: '偏左', reason: 'F_VERIFY_LOW' }],
+      onDismiss: () => undefined, onAiFix: () => undefined,
+    }),
+  }))
+  expect(markup).toContain('data-reconcile-deviation-card="true"')
+  expect(markup.indexOf('F_VERIFY_LOW')).toBeGreaterThan(markup.indexOf('Completed image'))
+  expect(markup.indexOf('F_VERIFY_LOW')).toBeLessThan(markup.indexOf('data-v4-block="composer"'))
 })

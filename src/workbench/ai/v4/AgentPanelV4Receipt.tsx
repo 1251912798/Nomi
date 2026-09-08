@@ -124,9 +124,13 @@ function ReceiptBlock({ labelKey, value }: { labelKey: string; value: string }):
 export function V4ToolGroup({
   group,
   statusLabel,
+  undoLabel,
+  onUndo,
 }: {
   group: Extract<V4FlowItem, { kind: 'tool-group' }>
   statusLabel: string
+  undoLabel?: string
+  onUndo?: (toolCallId: string) => void
 }): JSX.Element {
   const { t } = useTranslation()
   const tone = STATUS_TONE[group.status] ?? 'text-nomi-accent'
@@ -154,7 +158,8 @@ export function V4ToolGroup({
       </summary>
       <div className="mt-1 flex flex-col gap-0.5 border-l border-nomi-line-soft pl-1.5">
         {group.receipts.map((receipt, index) => (
-          <V4ToolReceipt key={`${receipt.label}-${index}`} receipt={receipt} statusLabel={statusLabel} />
+          <V4ToolReceipt key={`${receipt.label}-${index}`} receipt={receipt} statusLabel={statusLabel}
+            undoLabel={undoLabel} onUndo={() => { if (receipt.toolCallId) onUndo?.(receipt.toolCallId) }} />
         ))}
       </div>
     </details>

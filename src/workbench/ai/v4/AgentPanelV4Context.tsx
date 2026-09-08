@@ -12,7 +12,11 @@ import React from 'react'
 import { cn } from '../../../utils/cn'
 import { IconChevronDown } from './AgentPanelV4Icons'
 import type { ContextUsage } from './agentPanelV4Types'
-import { contextPercent } from './agentPanelV4Projection'
+
+function contextPercent(usage: ContextUsage): number | undefined {
+  if (usage.used === undefined || usage.max === undefined || usage.max <= 0) return undefined
+  return Math.min(100, Math.round((usage.used / usage.max) * 100))
+}
 
 export function V4ContextRing({
   usage,

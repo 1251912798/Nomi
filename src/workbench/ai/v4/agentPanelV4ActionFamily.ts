@@ -10,7 +10,7 @@
 // 「这一行画哪个 icon」。两件事共用一个 `switch` 时，加一个新 icon 家族就得动文案分支，
 // 而文案分支有 452 行。分开之后 icon 家族的唯一 owner 是 `AgentPanelV4Icons.ACTION_ICONS`
 // 的键集，TypeScript 会在这里替我们对齐。
-import { resolveCapabilityAlias } from '../../../../electron/shared/agentCapabilities/registry'
+import { resolveModelToolCapabilityId } from '../../../../electron/shared/agentCapabilities/modelFacingToolRegistry'
 import type { V4ActionFamily } from './agentPanelV4Types'
 
 /** 契约 id → 家族。缺省项走 `refineByOperation` / `FALLBACK`。 */
@@ -74,7 +74,7 @@ const FALLBACK: V4ActionFamily = 'think'
  * `capabilityId` 传契约 id（终态 tool item 上就是它）；传工具别名也行，会先过 registry。
  */
 export function actionFamilyForCapability(capabilityId: string, args?: unknown): V4ActionFamily {
-  const canonical = resolveCapabilityAlias(capabilityId)?.contract.id ?? capabilityId
+  const canonical = resolveModelToolCapabilityId(capabilityId, args) ?? capabilityId
   const record = asRecord(args)
   const operation = typeof record.operation === 'string' ? record.operation.toLowerCase() : ''
   if (canonical === 'timeline.write') {

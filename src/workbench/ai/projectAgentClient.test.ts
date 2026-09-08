@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import type { ProjectAgentBridge } from '../../desktop/bridge'
+import type { ProjectAgentBridge } from '../../desktop/projectAgentBridgeTypes'
 import { createInitialProjectAgentState } from '../../../electron/projectAgentHost/projectAgentState'
 import { createProjectAgentClient } from './projectAgentClient'
 
