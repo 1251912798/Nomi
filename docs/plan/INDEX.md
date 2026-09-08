@@ -287,5 +287,5 @@
 > 不代表已归好类。顺手把某一行挪进上面对应主题的表里即可——挪走后本区自然变短。
 
 - [2026-09-07-skill-import-real-use](2026-09-07-skill-import-real-use.md)
-
-| [2026-09-08-docs-autosync-ci.md](2026-09-08-docs-autosync-ci.md) | Docs autosync 固定 PR、独立 CI token 与旧 PR 清理 | 📋 |
+- [2026-09-08-g1-use-case-suite](2026-09-08-g1-use-case-suite.md)
+- [2026-09-08-docs-autosync-ci](2026-09-08-docs-autosync-ci.md) — 固定 action PR、默认 token 防循环与 CI 合同修复

@@ -2,7 +2,7 @@ name: Docs Gate Autosync
 
 # 三个文档/生成物门（check:docs-index / check:doc-status / check:ledger）在 PR 上只出 warning
 # 注解、不阻断（判据没放松，见 scripts/run-gates-contracts.mjs 的文件头）；**补齐的活在这里**：
-# main 每前进一次就跑一遍确定性补齐，有 diff 就更新同一条 bot PR，由正常 pull_request 事件启动正式 CI。
+# main 每前进一次就跑一遍确定性补齐，有 diff 就更新同一条 bot PR；默认 token 的事件语义阻止递归启动。
 #
 # 依据（2026-08-22 → 09-05 Quality Gate 全量失败审计）：226 次红里 63 次是这三个门，占 28%。
 # 它们结构上拦不住任何生产 bug——只查 Markdown 链接、开头有没有状态 emoji、生成物新不新鲜；
@@ -22,7 +22,8 @@ on:
   workflow_dispatch: {}
 
 permissions:
-  contents: read
+  contents: write
+  pull-requests: write
 
 # 固定分支只允许一个写者；每班读取当前 main，补齐幂等，不取消在途。
 concurrency:
@@ -33,24 +34,12 @@ jobs:
   autosync:
     name: Docs Gate Autosync
     runs-on: ubuntu-latest
-    env:
-      GH_TOKEN: ${{ secrets.DOCS_AUTOSYNC_TOKEN }}
     steps:
-      # GITHUB_TOKEN 创建的 PR 要人工批准；缺凭据时在任何写入之前失败。
-      # https://docs.github.com/en/actions/concepts/security/github_token#when-github_token-triggers-workflow-runs
-      - name: Require a token that triggers PR workflows
-        id: credentials
-        run: |
-          if [ -z "$GH_TOKEN" ]; then
-            echo "::error::Configure DOCS_AUTOSYNC_TOKEN with repository Contents and Pull requests write permissions; the default GITHUB_TOKEN cannot start unapproved PR checks."
-            exit 1
-          fi
-      # 读取执行时最新 main；完整历史用于保留旧生成分支的祖先关系。
+      # 从执行时最新 main 重生成；生成分支的更新由 action 负责。
       - uses: actions/checkout@v7
         with:
           ref: main
           fetch-depth: 0
-          token: ${{ env.GH_TOKEN }}
       - uses: pnpm/action-setup@v6
         with:
           version: 10.8.1
@@ -69,45 +58,25 @@ jobs:
           pnpm run check:doc-status
           pnpm run check:ledger
 
-      # PAT/App token 正常触发 PR CI。防循环靠只监听 main、只推 docs/autosync，
-      # 合并回 main 后重生成无 diff 即退出；不按 actor 忽略合法修改，不跳过 required checks。
+      # GITHUB_TOKEN 的 push 不递归启动 workflow；不靠提交标记跳过 CI。
+      # 固定分支的创建、更新和无差异收敛全部交给 action。
       - name: Update the single docs repair PR
         id: publish
-        run: |
-          pr=$(gh pr list --state open --base main --head docs/autosync --json number --jq '.[0].number // empty')
-          git add -- docs
-          if git diff --cached --quiet; then
-            if [ -n "$pr" ]; then
-              gh pr close "$pr" --comment "The current main tree already contains all generated docs repairs."
-            fi
-            exit 0
-          fi
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          base: main
+          branch: docs/autosync
+          delete-branch: false
+          commit-message: "chore(docs-gates): auto-sync 索引/状态/账本"
+          title: "chore(docs-gates): auto-sync 索引/状态/账本"
+          body: |
+            Automated repair of the docs index, document status, and ledger from current main.
 
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          previous=refs/remotes/origin/docs/autosync
-          # 对比完整生成 tree：相同内容不长新 commit，也不触发重复 CI。
-          if ! git show-ref --verify --quiet "$previous" || ! git diff --quiet "$previous"; then
-            git commit -m "chore(docs-gates): auto-sync 索引/状态/账本"
-            if git show-ref --verify --quiet "$previous"; then
-              # 只合并旧生成分支的祖先关系；保留已验绿的 current-main + repair tree。
-              # 这样普通 push 是 fast-forward，无需 create-pull-request 内部的强推。
-              git merge --no-ff --strategy=ours --no-edit "$previous"
-            fi
-            git push origin HEAD:refs/heads/docs/autosync
-          fi
+            This fixed docs/autosync branch updates one PR. Source document edits belong in separate PRs to main; the action closes this PR when no repair diff remains.
 
-          if [ -z "$pr" ]; then
-            cat > "$RUNNER_TEMP/docs-autosync-pr.md" <<'BODY'
-          Automated repair of the docs index, document status, and ledger from current main.
+            Publishing uses GITHUB_TOKEN. Token-generated push events do not start new workflow runs, preventing recursion without CI skip markers. Autosync also listens only to main. Current GitHub semantics may create approval-required PR workflows; a maintainer must approve those runs before required checks can complete. This PR does not claim unattended CI.
 
-          This generated branch is updated in place. Edit source documents on main through a separate PR; the next repair regenerates this branch from main.
-
-          The publishing token triggers the normal pull_request Quality Gate. Autosync listens only to main and writes only this generated branch; a merged repair is a no-op on the next run. CI checks are never disabled.
-
-          Source: https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/trigger-a-workflow#triggering-a-workflow-from-a-workflow
-          BODY
-            gh pr create --base main --head docs/autosync \
-              --title "chore(docs-gates): auto-sync 索引/状态/账本" \
-              --body-file "$RUNNER_TEMP/docs-autosync-pr.md"
-          fi
+            Official behavior and exceptions: https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/trigger-a-workflow#triggering-a-workflow-from-a-workflow
+          add-paths: |
+            docs

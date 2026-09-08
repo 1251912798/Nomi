@@ -1,10 +1,10 @@
 {
   "schema_version": 3,
   "id": "2026-09-08-docs-autosync-ci",
-  "problem_type": "Automated repair PRs lack executable required checks and a stable review identity",
-  "symptom": "Repeated bot docs PRs #604/#631/#632/#634/#635/#637/#638 remain BLOCKED without Quality Gate runs.",
-  "direct_cause": "The PR migration retained CI skip markers and SHA-scoped branches. Hosted recovery also proved GITHUB_TOKEN PR runs require approval; successful separate dispatch did not unblock the PR check summary.",
-  "class_root": "The publication boundary does not ensure a stable PR identity and a credential whose native PR event can satisfy required checks without manual approval.",
+  "problem_type": "Docs autosync publication and CI contracts drift during fixed-PR migration",
+  "symptom": "PR #640 Contracts fails at scripts/run-gates-contracts.node-test.mjs:186 because the workflow replaced create-pull-request with a handwritten gh publisher.",
+  "direct_cause": "The implementation removed the v7 action while the existing contract still requires it, SHA-scoped branches and a CI skip marker.",
+  "class_root": "The single publication boundary and both workflow contracts did not migrate together to the approved fixed-branch/default-token behavior.",
   "affected_population": [
     "Every main push requiring index/status/ledger repair",
     "Manual repair reruns and updates to already-open repair PRs"
@@ -31,30 +31,30 @@
       "purpose": "Skipped required checks remain pending"
     },
     {
-      "kind": "source-code",
-      "url": "https://github.com/peter-evans/create-pull-request/blob/5f6978faf089d4d20b00c7766989d076bb2fc7f1/src/create-pull-request.ts#L239-L243",
-      "checked_at": "2026-09-08",
-      "purpose": "Action uses force-with-lease, incompatible with this task restriction"
-    },
-    {
       "kind": "official-doc",
       "url": "https://docs.github.com/en/actions/concepts/security/github_token#when-github_token-triggers-workflow-runs",
       "checked_at": "2026-09-08",
       "purpose": "Official independent App/PAT requirement for unapproved automated PR CI"
+    },
+    {
+      "kind": "source-code",
+      "url": "https://github.com/peter-evans/create-pull-request/tree/v7",
+      "checked_at": "2026-09-08",
+      "purpose": "Restore official v7 fixed-branch creation/update/no-diff lifecycle per user decision."
     }
   ],
   "invariants": [
-    "One fixed docs/autosync head has at most one open PR.",
-    "A dedicated PR-triggering token is required before checkout or publication and shared by Git push and gh.",
-    "Normal pull_request CI owns required checks; no default-token fallback, separate dispatch substitute, CI skip markers, protected-main writes or forced pushes.",
-    "The regenerated current-main tree is authoritative; previous generated heads remain ancestors of ordinary pushes."
+    "One create-pull-request@v7 publisher targets fixed docs/autosync against main without branch-suffix.",
+    "Both automatic pushes and manual reruns regenerate docs and pass the three docs gates before publication.",
+    "GITHUB_TOKEN owns publication with contents and pull-requests write; no dedicated secret, extra dispatch, CI skip markers or protected-main push.",
+    "Only docs changes are committed; action owns generated-branch lifecycle."
   ],
-  "generality_proof": "Both main pushes and manual retries converge on the credential guard and fixed-branch publication. Missing credentials fail before side effects. Checkout and gh share the dedicated token; branch filtering and no-diff convergence stop recursion. Tests exercise repeated publication against a bare Git remote.",
+  "generality_proof": "Both triggers converge on one serialized action publisher. The gates-chain test checks the approved action, fixed branch and no skip markers; the workflow tests check parsed permissions, scope, trigger and fail-before-publication boundaries. No parallel shell publisher remains.",
   "shared_boundaries": [
     {
       "path": ".github/workflows/docs-autosync.yml",
-      "symbol": "jobs.autosync (credentials and publish steps)",
-      "responsibility": "Require a credential that triggers native PR checks, then publish one generated branch after three docs gates."
+      "symbol": "jobs.autosync.steps publish",
+      "responsibility": "Publish only verified docs repairs using the upstream fixed-branch action and default token."
     }
   ],
   "same_class_entry_points": [
@@ -68,38 +68,40 @@
       "path": ".github/workflows/docs-autosync.yml",
       "entry_point": "on.workflow_dispatch",
       "disposition": "enforced",
-      "evidence": "Manual retry uses exactly the same publication and dispatch step."
+      "evidence": "Manual retry uses the same repair, fail-closed gates and action publication as main pushes."
     }
   ],
   "recurrence": {
     "classification": "recurring",
-    "reason": "Each successive main SHA produced another blocked PR; seven observed instances.",
+    "reason": "Every future main push or manual rerun can exercise a drifting publication contract; SHA-scoped publication previously produced seven blocked PRs.",
     "same_class_scan": [
-      "rg autosync and skip ci across .github/workflows, scripts and docs/lessons; inspected initial creation and PR migration commits.",
-      "Inspected SEO Radar (fixed branch without skip marker but same token caveat) and download-stats (non-PR data branch); this change is scoped to docs repair publication."
+      "Inspected .github/workflows/docs-autosync.yml automatic push and manual dispatch entries, scripts/run-gates-contracts.node-test.mjs and docs/fixes/docs-autosync.node-test.mjs consumers.",
+      "Searched .github/workflows for create-pull-request, DOCS_AUTOSYNC_TOKEN, gh pr create and CI skip markers; SEO Radar already uses v7 fixed branch; download-stats writes a non-PR data branch."
     ]
   },
   "prevention": {
     "kind": "centralized-boundary",
     "enforcement_path": ".github/workflows/docs-autosync.yml",
-    "invariant": "Every repair uses an explicit PR-triggering credential and one stable non-protected branch.",
-    "failure_mode": "Missing dedicated token fails before checkout; repair gates, normal push or PR API failure exits nonzero.",
+    "invariant": "Every docs repair uses one upstream fixed-branch action after successful docs gates, without suppressing CI.",
+    "failure_mode": "Repair gate or action failure fails the job; workflow-contract regression fails Contracts.",
     "exception_policy": "none",
-    "strategy": "Enforce the credential contract at the first step; use main-only triggers, fixed-branch writes and deterministic no-diff convergence instead of CI suppression.",
+    "strategy": "Remove hand-written Git/gh publishing and credential branching; restore one upstream lifecycle for both entry points with default-token recursion protection.",
     "artifacts": [
-      ".github/workflows/docs-autosync.yml",
-      ".github/workflows/quality-gate.yml"
+      ".github/workflows/docs-autosync.yml"
     ]
   },
   "regression_tests": [
+    "scripts/run-gates-contracts.node-test.mjs",
     "docs/fixes/docs-autosync.node-test.mjs"
   ],
   "class_regression_tests": [
+    "scripts/run-gates-contracts.node-test.mjs",
     "docs/fixes/docs-autosync.node-test.mjs"
   ],
   "invariant_owner_layer": {
     "layer": ".github/workflows/docs-autosync.yml",
     "tests": [
+      "scripts/run-gates-contracts.node-test.mjs",
       "docs/fixes/docs-autosync.node-test.mjs"
     ]
   },
@@ -108,20 +110,21 @@
     "removed_paths": [
       ".github/workflows/docs-autosync.yml"
     ],
-    "rationale": "Remove SHA-suffixed PR producer, CI skip markers, and force-pushing create-pull-request action from docs autosync."
+    "rationale": "Remove the hand-written gh/Git publisher and dedicated-token guard; SHA-suffixed branches and CI skip markers remain forbidden."
   },
   "dependency_lifecycle": {
-    "decision": "not-applicable",
-    "rationale": "Remove create-pull-request from this workflow because its current implementation force-pushes. No replacement dependency; Git and gh shipped on the hosted runner execute documented native operations.",
-    "exit_criteria": []
+    "decision": "retain-with-exit",
+    "rationale": "User explicitly selects v7 and the repository already uses it for SEO Radar. Retain the official fixed-branch lifecycle instead of implementing another publisher.",
+    "current": "peter-evans/create-pull-request@v7",
+    "target": "Official supported action version preserving the fixed-branch interface and GITHUB_TOKEN contract",
+    "exit_criteria": [
+      "Upgrade when v7 is unsupported or a relevant security/compatibility fix requires a newer supported release; update the action assertion and rerun workflow contracts together."
+    ]
   },
-  "migration": "Closed #604/#631/#632/#634/#635/#637; initially retained #638 and ran nine CI jobs successfully but its PR summary stayed blocked. Hosted intermediate run 34186588015 created the no-skip fixed replacement #642; closed #638. Approved #642 native CI as maintainer after observing action_required. Final dedicated-token path requires user configuration before rollout. No PR reviews, rewritten legacy heads or merges.",
+  "migration": "Reuse docs/autosync and its existing PR #642; remove the DOCS_AUTOSYNC_TOKEN requirement. Preserve historical cleanup receipts without changing other PRs. Update both current contracts to the approved shape in the same change.",
   "residual_risks": [
-    "DOCS_AUTOSYNC_TOKEN is not configured; final credential path is documented and locally tested, not live-certified. Missing-token guard prevents further blocked bot PR creation.",
-    "The existing scripts/run-gates-contracts.node-test.mjs requires the obsolete skip behavior and lies outside authorized scope; the draft repair PR remains blocked until permission to update that test.",
-    "An externally supplied short-lived GitHub App token needs an owner-managed renewal lifecycle; use a dedicated PAT if no issuer exists.",
-    "Until merge, main still runs the old producer and may create more legacy PRs.",
-    "SEO Radar is outside this repair and retains the default-token PR approval caveat.",
-    "Hosted intermediate runs prove fixed branch creation and default-token limitations; final token-path CI results must be verified independently."
+    "GITHUB_TOKEN-created PR workflows may require maintainer approval under current official semantics; repairing #640 CI does not certify unattended generated-PR CI.",
+    "Action publication still depends on repository settings allowing GitHub Actions to create pull requests.",
+    "The v7 remote lifecycle is provided by upstream; local workflow contracts do not execute hosted PR API writes."
   ]
 }
