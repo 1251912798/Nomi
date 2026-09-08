@@ -12,6 +12,25 @@
   ],
   "registered": [
     {
+      "site": "electron/agentLane/laneLegacySources.ts::interface:LegacyConversation/property:state/type-union",
+      "members": [
+        "cleared",
+        "empty",
+        "ready",
+        "unsupported"
+      ],
+      "reason": "旧文件解包后的会话分类：cleared 保留旧 v4 明确清空事实，empty 表示合法但没有数组内容，ready 表示有原项，unsupported 表示只能保留原记录的旧 v3 无绑定形状。这不是 contextService 对现役上下文的 ready/cleared 生命周期；迁移不得复用它而把未知格式或空历史冒充可续聊上下文。唯一 owner 是三来源共享 decoder，后续 importer 只消费这个结果。"
+    },
+    {
+      "site": "electron/agentLane/laneLegacySources.ts::interface:LegacySource/property:status/type-union",
+      "members": [
+        "decoded",
+        "invalid",
+        "unsupported"
+      ],
+      "reason": "三来源文件的纯解包结果：decoded 表示容器能拆出原项，invalid 表示 JSON/编码不合法，unsupported 表示容器形状不支持。它不是任务执行状态或完整性授权结论，decoded 仍必须经过 checksum 与项目绑定校验才能导入。三种来源及 L2 reader 共用这一份结果契约。"
+    },
+    {
       "site": "src/workbench/creation/storyboard/StoryboardPlanStrategyPanel.tsx::function:StatusBar/parameter:0/property:stateKey/type-union",
       "members": ["clear", "error", "loading", "stale"],
       "reason": "执行计划审阅条（Generation Strategy Resolver GUI 面）对 resolve 结果的**呈现**状态机：loading 检查中 / stale 项目已切换 / error 检查失败 / clear 合规无需调整。它描述「主进程 resolve 对当前方案给出的呈现结论」，不是任务/审批/素材生命周期；无现有词表可复用（browserAssetData.status 是素材数据状态，语义不同）。注意「没有可用视频模型」与「能力核未就绪」不在这个词表里：前者是面板自己的一整块呈现（data-storyboard-strategy-state=\"no-video-model\"），后者按 R2 什么都不显示——状态机只登记真正会渲染成一行状态条的那几个。"
