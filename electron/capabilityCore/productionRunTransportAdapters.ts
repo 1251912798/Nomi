@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import type { RuntimeToolCall, RuntimeToolDecision } from "../harness/runtime/runtimePort";
+import type { RuntimeToolCall, RuntimeToolDecision } from "../shared/agentCapabilities/transportContracts";
 import {
   productionRunToolDescriptors,
   productionRunReadToolNames,

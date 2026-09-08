@@ -2,7 +2,7 @@
 //
 // 这一层是渲染进程与主进程**唯一**共同认识的东西。它刻意不认识 pi：pi 的类型只在
 // `electron/agentLane/*.mts` 那个 ESM 岛里出现，越过这道门就只剩下面这几个结构。
-// 分层理由与 `electron/harness/runtime/runtimePort.ts` 同源（`electron/` → `src/` 的
+// 分层理由与同层的 `electron/shared/agentCapabilities/transportContracts.ts` 同源（`electron/` → `src/` 的
 // 依赖方向铁律，`check:boundaries` 只放行 `electron/shared/`）。
 //
 // **本层最重要的一个字段是 `sequence`。** 今天面板的顺序是渲染层用 `createdAt` + 数组
@@ -55,8 +55,58 @@ export type LanePart =
       readonly noteType: string
       readonly data: unknown
     })
+  | (LanePartIdentity & {
+      /**
+       * 一张生成任务卡在转录里的位置（方案 §2.2 G13）。
+       *
+       * **它只带引用，不带状态。** 卡上那些会动的数字（进度、已花、候选）住在
+       * ProductionRun 领域存储里，投影时按 `productionRunId` join 一次
+       * （K4「永不复制状态」）。把它们写进转录的代价不是多占几个字节，是**第二份真相**：
+       * 转录是追加式的，写进去的那一刻就冻住了——用户重开这条对话会看到一个
+       * 早就跑完的任务永远停在 37%，而领域那边一切正常。
+       */
+      readonly kind: 'task'
+      /** 领域侧的 id。join 不到就只画标题（`facts` 缺席），不编一个「排队中」。 */
+      readonly productionRunId: string
+      /** 建这张卡的那次工具调用。用来把卡挂回它的起因，join 不到不影响卡本身。 */
+      readonly operationId?: string
+      /** 领域投影 join 出来的那一份。**缺席 = 这一刻没 join 到**，不是「全是 0」。 */
+      readonly facts?: LaneTaskFacts
+    })
 
 export type LanePartKind = LanePart['kind']
+
+/**
+ * 任务卡五态。**与 `V4TaskStatus` 逐字相同是刻意的**：这一层是主进程与渲染层唯一的共同词表，
+ * 而任务卡的状态词在 v4 定稿（Vocabulary 板 ④）里已经拍过板。在这里另起一套名字，
+ * 就得再写一张映射表，而那张表是 R14.1 要横扫的「同一语义两份定义」。
+ */
+export const LANE_TASK_STATUSES = ['queued', 'running', 'complete', 'failed', 'stopped'] as const
+export type LaneTaskStatus = (typeof LANE_TASK_STATUSES)[number]
+
+/**
+ * 一张任务卡 join 出来的领域事实。
+ *
+ * **金额是数字 + 币种，不是格式化好的串。** 渲染层才有 i18n（R15），主进程给一个
+ * 「¥0.24」就等于在主进程里钉了一种语言和一种小数写法，而那两件事都随用户设置变。
+ * 今天 `V4TaskFacts.spent` 是串，是因为它的产地本来就在渲染层；跨进程这一段不能照抄。
+ */
+export interface LaneTaskFacts {
+  readonly status: LaneTaskStatus
+  /** 0–100 的整数。阶段数为 0 时**缺席**，不写 0——0% 和「没有阶段可数」不是一回事。 */
+  readonly progress?: number
+  /** 已完成 / 总阶段数。两个数一起给，文案由渲染层拼。 */
+  readonly stagesDone?: number
+  readonly stagesTotal?: number
+  /** 预算账本的币种（`ProductionRun.budget.currency`）。有金额就必有它。 */
+  readonly currency?: string
+  /** 已结算金额（账本的 `actual`）。 */
+  readonly spent?: number
+  /** 已预留金额（账本的 `reserved`）。 */
+  readonly estimated?: number
+  /** 候选产物的 id。缩略图由渲染层按 id 去取，正文不过桥。 */
+  readonly candidateIds?: readonly string[]
+}
 
 /**
  * 一个数字的**三态**。三行（花费 / 上下文 / 推理）共用它，因为三行踩的是同一个坑：
@@ -117,7 +167,7 @@ export interface LaneUsage {
    * **不是 `costUsd?: number`。** pi 的 `Usage.cost` 不可选：没有价目的模型照样产出一份全零
    * （`pi-ai/dist/models.js:543-547` 拿 `Model.cost` 直接乘），所以 `cost.total === 0` 同时长得像
    * 「免费」「还没花钱」和「我们没有价目」。用 `> 0` 去分辨它们是猜——那条判断 2026-09-07 删掉了，
-   * 判据改为目录声明的 `NomiPricingBasis`（`electron/harness/runtime/pi/model.mts`）。
+   * 判据改为目录声明的 `NomiPricingBasis`（`electron/shared/agentLane/laneModelConfig.ts`）。
    */
   readonly cost: LaneMetric
   /**
@@ -161,6 +211,36 @@ export interface LaneThinking {
 }
 
 /**
+ * 一条**还没被吃进去**的插话。
+ *
+ * 它不是转录里的一段（用户话还没进上下文），也不是「正在跑的东西」——它是用户已经打了、
+ * 系统答应了、但还轮不到的一句话。做成独立字段而不是塞进 `parts`，是因为它随时会消失：
+ * 下一次模型请求前它会变成一条真的用户消息，那时它在 `parts` 里；混在一起的话，
+ * 面板要么把同一句话画两遍，要么得自己判「这条是不是已经落定了」。
+ */
+export interface LaneQueuedMessage {
+  /** pi 铸的 id。取消它要原样送回来（`cancelQueued`）。 */
+  readonly entryId: string
+  readonly kind: LaneQueueKind
+  readonly text: string
+}
+
+/**
+ * 插话的三种时机（pi 的 `LaneQueuedItem.kind` 去掉 `write` 之后剩下的那些）。
+ *
+ * · `steer`     —— 下一次模型请求之前注入：「等这一步做完就听我的」。
+ * · `follow-up` —— 这一轮整个跑干之后再送：「等它做完再说」。
+ * · `next-run`  —— 下一轮。Nomi 今天不发这种（没有命令产它），但它**照样投影**：
+ *                  一条排在队里却在面板上不存在的话，比多画一行危险得多。
+ *
+ * **`write` 不在这张表里**（方案 §1.4 规则三）：`kind:"write"` 是宿主自己排队等着落盘的
+ * 记录（`appendCustomEntry` 在操作进行中被 pi 排进同一个 inbox），把它画成「排队的用户消息」
+ * 会让用户看到一条他从没打过的指令。
+ */
+export const LANE_QUEUE_KINDS = ['steer', 'follow-up', 'next-run'] as const
+export type LaneQueueKind = (typeof LANE_QUEUE_KINDS)[number]
+
+/**
  * 这一轮正在重试中（`LaneSnapshot.operation.retry`，pi 自己记的）。
  *
  * **为什么必须上屏**：一次 429 或网络抖动今天在用户那边长成「它卡住了」——面板既不动也不报错，
@@ -186,8 +266,35 @@ export interface LaneProjection {
   /** 有一张卡在等用户。**这一段不在 pi 的快照里**，见 `LanePendingApproval`。 */
   readonly pending?: LanePendingApproval
   readonly thinking: LaneThinking
+  /** 排着队还没被吃进去的插话，按 pi 的队列顺序。空数组 = 队列是空的。 */
+  readonly queues: readonly LaneQueuedMessage[]
   /** 只在真的在退避时存在。见 `LaneRetry`。 */
   readonly retry?: LaneRetry
+}
+
+/** 一个项目里的一条对话，在列表上的样子。正文不过桥——列表只需要认出它是哪一条。 */
+export interface LaneSummary {
+  /** 对话身份。它同时是这条对话在盘上的目录名，所以字符集受限（见 `laneCommandCodec`）。 */
+  readonly laneName: string
+  /** pi 铸的会话 id。排错与 join 用，面板不显示。 */
+  readonly sessionId: string
+  readonly createdAt: number
+  /** 会话文件的 mtime。列表按它排「最近聊过的在上面」。 */
+  readonly updatedAt: number
+}
+
+/**
+ * 一次推送的完整形状：**这个项目有哪些对话** + **当前这条长什么样**。
+ *
+ * 为什么 `lanes` 不塞进 `LaneProjection`：那一份是**一条 lane 的宿主**产的，它按定义
+ * 不知道隔壁还有几条对话。塞进去就得让每个 lane 宿主都能看到全局，而那正是
+ * 「一个窗口一条」这条限制解除时最容易长出来的第二个所有者。
+ */
+export interface LaneWorkspaceProjection {
+  /** 这个项目盘上的全部对话，最近更新的在前。 */
+  readonly lanes: readonly LaneSummary[]
+  /** 用户正看着的那一条。 */
+  readonly active: LaneProjection
 }
 
 /**
@@ -213,6 +320,32 @@ export function laneNoteEntersModelContext(noteType: string): boolean {
 
 /** 宿主审批记录的 custom entry 类型名。渲染层按它认出「这是策略拒收，不是工具坏了」。 */
 export const LANE_APPROVAL_NOTE_TYPE = `${LANE_UI_NOTE_PREFIX}approval` as const
+
+/**
+ * 生成任务卡的 custom entry 类型名（方案 §1.4 规则二第二行）。
+ *
+ * 它在 `nomi.ui.*` 这一族里，所以 **projector 恒 `undefined`**：模型要任务状态得调
+ * `nomi_generation_status` 工具去问领域，而不是从一条早就冻住的转录记录里读。
+ */
+export const LANE_TASK_NOTE_TYPE = `${LANE_UI_NOTE_PREFIX}task` as const
+
+/**
+ * 写进转录的那一条任务记录。**两个 id，零份状态。**
+ *
+ * 这里每多一个字段，就多一个「转录里的数」和「领域里的数」不一致的机会。
+ * 唯一允许的例外是 id 本身——它不会变。
+ */
+export interface LaneTaskNote {
+  readonly productionRunId: string
+  /** 建这张卡的那次工具调用（`toolCallId`）。缺席不影响卡。 */
+  readonly operationId?: string
+}
+
+export function isLaneTaskNote(value: unknown): value is LaneTaskNote {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false
+  const note = value as Record<string, unknown>
+  return typeof note.productionRunId === 'string' && note.productionRunId.length > 0
+}
 
 /**
  * 一次工具调用的审批**结局**。等待本身不在这张表里——它不是「发生了的事」，
@@ -325,6 +458,21 @@ export type LaneCommand =
       /** 「不要」时用户那句话。空 = 用默认文案；它会一字不改成为模型看到的拒收理由。 */
       readonly reason?: string
     }
+  /** 「等这一步做完就听我的」——下一次模型请求前注入（pi 的 `lane.steer`）。 */
+  | { readonly kind: 'steer'; readonly text: string }
+  /** 「等它整个做完再说」——这一轮跑干之后才送（pi 的 `lane.followUp`）。 */
+  | { readonly kind: 'follow-up'; readonly text: string }
+  /**
+   * 撤回一条还排在队里的插话。`entryId` 是 pi 铸的，渲染层从 `queues` 里原样取。
+   * 结果**三态**（见 `LaneCancelQueuedResult`）——「刚被吃进去了」不是「已取消」。
+   */
+  | { readonly kind: 'cancel-queued'; readonly entryId: string }
+  /** 切到这个项目的另一条对话。不存在就抛，不静默新建。 */
+  | { readonly kind: 'lane-select'; readonly laneName: string }
+  /** 新建一条对话并切过去。同名已存在就抛——「新建」不该悄悄变成「打开」。 */
+  | { readonly kind: 'lane-create'; readonly laneName: string }
+  /** 删掉一条对话（连同它的落盘转录）。当前这条不许删——删了就没有活着的对话了。 */
+  | { readonly kind: 'lane-delete'; readonly laneName: string }
 
 /**
  * 一条命令执行完之后，主进程有没有东西要交还给用户。
@@ -335,7 +483,25 @@ export type LaneCommand =
  */
 export interface LaneCommandOutcome {
   readonly restoredInput?: readonly string[]
+  /** `cancel-queued` 的三态结局。见 `LANE_CANCEL_QUEUED_RESULTS`。 */
+  readonly cancelQueued?: LaneCancelQueuedResult
+  /** 排队成功时 pi 铸的 id（`steer` / `follow-up`）。取消那一条要用它。 */
+  readonly queuedEntryId?: string
 }
+
+/**
+ * 撤回一条排队插话的三种结局（pi 的 `CancelQueuedResult.kind`，`agent-harness.d.ts:32-34`）。
+ *
+ * **三态必须各画各的**，尤其中间那个：
+ * · `cancelled`        —— 撤回成功，那句话不会被送出去。
+ * · `already_consumed` —— **晚了一步**：模型上一次请求前刚把它吃进去了。用户要知道
+ *                          「它已经听见了」，因为下一段回复会带着那句话的影响；
+ *                          把它画成「已取消」是在告诉用户一件没发生的事。
+ * · `not_found`        —— 这条 id 队列里没有（面板拿着一份过期的队列）。这是刷新的信号，
+ *                          不是一次成功的取消。
+ */
+export const LANE_CANCEL_QUEUED_RESULTS = ['cancelled', 'already_consumed', 'not_found'] as const
+export type LaneCancelQueuedResult = (typeof LANE_CANCEL_QUEUED_RESULTS)[number]
 
 /**
  * 阶段 1 的两条通道名。**它们此刻没有注册进 `main.ts`**——影子期用户走不到新通路，
@@ -355,6 +521,42 @@ export interface LaneHandle {
   projection(): LaneProjection
   subscribe(listener: (projection: LaneProjection) => void): () => void
   execute(command: LaneCommand): Promise<LaneCommandOutcome>
+  /**
+   * 领域侧在这条对话里记下「这儿有一张生成任务卡」（G13 的承接点）。
+   *
+   * **只有主进程够得到它**——它铸造一条宿主记录，而渲染层不铸造宿主记录（B6）。
+   * 桥上没有对应的命令，这是刻意的：面板能看见卡、能点卡，但造卡的是发起那次生成的领域，
+   * 不是那个正在看它的窗口。
+   */
+  appendTaskNote(note: LaneTaskNote): Promise<void>
+  /**
+   * 「领域那边的任务变了，重投一次」。
+   *
+   * **为什么需要一个显式的通知，而不是让 `projection()` 每次现算**：投影是**推**给面板的，
+   * 推送那一刻的那个对象就是面板此后看到的东西（渲染层零状态机）。让 getter 每次现算，
+   * 面板拿到的和推过去的就会是两份不同的数据，而两份都「对」——排错时没人分得清看到的是哪一份。
+   * 所以真相仍然是「每次 publish 时 join 一次」，而这个方法就是**多一个 publish 的理由**：
+   * 领域说它变了。不通知就不变，是诚实的——我们确实还不知道。
+   */
+  refreshTasks(): void
+  close(): Promise<void>
+}
+
+/**
+ * 一个项目的全部对话，加上「现在开着哪一条」。
+ *
+ * **一次只有一条 lane 是打开的**（它持有那条会话的写权）。切换 = 关掉上一条、打开下一条，
+ * 不是同时开着好几条：pi 的单打开者名单（#8852）是按会话算的，同时开两条同名会话会写坏文件；
+ * 而同时开两条**不同**会话虽然安全，却意味着两条对话同时在跑、同时在花钱，而用户只看得见一条。
+ */
+export interface LaneWorkspaceHandle {
+  projection(): LaneWorkspaceProjection
+  subscribe(listener: (projection: LaneWorkspaceProjection) => void): () => void
+  execute(command: LaneCommand): Promise<LaneCommandOutcome>
+  /** 把任务卡记进**当前打开的那条**对话。领域侧只认识工作区，不该自己去挑 lane。 */
+  appendTaskNote(note: LaneTaskNote): Promise<void>
+  /** 见 `LaneHandle.refreshTasks`。 */
+  refreshTasks(): void
   close(): Promise<void>
 }
 

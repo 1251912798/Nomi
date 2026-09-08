@@ -28,7 +28,7 @@ import { createServer } from 'node:http';
 import { once } from 'node:events';
 import { AddressInfo } from 'node:net';
 
-import { createNomiProvider } from '../electron/harness/runtime/pi/model.mjs';
+import { createNomiProvider } from '../electron/agentLane/laneModelProvider.mjs';
 import { LANE_CODING_TOOL_NAMES } from '../electron/agentLane/laneCodingTools.mjs';
 import { LANE_MODEL_TOOL_CATALOG } from '../electron/agentLane/laneToolCatalog.js';
 import { toPublishedJsonSchema } from '../electron/shared/agentCapabilities/modelVisibleJsonSchema.js';

@@ -1,4 +1,4 @@
-import type { RuntimeToolCall, RuntimeToolDecision } from "../harness/runtime/runtimePort";
+import type { RuntimeToolCall, RuntimeToolDecision } from "../shared/agentCapabilities/transportContracts";
 import { documentReadScopeForAlias } from "../shared/agentCapabilities/documentRead";
 import type { CapabilityExecutorRegistry } from "./capabilityExecutorRegistry";
 import type { CanvasReadSurfaceRegistry, CapturedCanvasReadPort } from "./canvasReadSurfaceRegistry";

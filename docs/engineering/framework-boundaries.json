@@ -215,7 +215,7 @@
                   },
                   "streamOptions": {
                     "verdict": "unused",
-                    "why": "流式参数（温度、最大 token、headers）在 Nomi 这条路上由 provider 装配决定：createNomiProvider 的 requestOptions/onPayload 是唯一改写出站报文的地方（model.mts:89-110）。在 lane 这层再给一份会造出第二个改写点，而两处只有一处会被 payload 探针看见。"
+                    "why": "流式参数（温度、最大 token、headers）在 Nomi 这条路上由 provider 装配决定：createNomiProvider 的 requestOptions/onPayload 是唯一改写出站报文的地方（laneModelProvider.mts:132-160）。在 lane 这层再给一份会造出第二个改写点，而两处只有一处会被 payload 探针看见。"
                   },
                   "retry": {
                     "verdict": "derived",
@@ -229,12 +229,14 @@
                     "why": "压缩阈值直接决定长会话的成本与「模型忘了前面」的体感，而 Nomi 现在一个数字都没给、也没量过默认阈值在我们的转录形状（画布产物 + 分镜表）下会在第几轮触发。没量过就写常量是把偏好当判据，所以记债。"
                   },
                   "steeringMode": {
-                    "verdict": "unused",
-                    "why": "steer/followUp 的排队模式属于宿主的介入语义，Nomi 的面板介入槽还在设计（docs/design 里 2026-09-05 拍板的五形态 + 介入槽）。不传 = 用 pi 的默认排队，等介入槽定稿再一起裁——在此之前给一个值等于替还没定的设计先做决定。"
+                    "verdict": "constant",
+                    "value": "'one-at-a-time'",
+                    "reason": "创作是可撤销的：一条指令要对应一轮、一次可单独看见也可单独撤销的改动。pi 的默认 'all' 会把用户连打的三句一次性注入同一轮（harness/runtime/harness.js:44-45），三条指令的效果搅进同一批改动里，用户既看不出哪一句造成了哪一处，也没法只撤其中一句。这条约束来自领域（本地创作 + 每步可回退），不是排队策略的取舍。介入槽 2026-09-05 已拍板五形态，方案 §1.3 的三态映射就建在这颗上。"
                   },
                   "followUpMode": {
-                    "verdict": "unused",
-                    "why": "同 steeringMode：这两颗是同一件事的两半（流式中插队 vs 排到下一回合），必须一起裁，不许一半用默认一半写死。"
+                    "verdict": "constant",
+                    "value": "'one-at-a-time'",
+                    "reason": "同 steeringMode：这两颗是同一件事的两半（这一步之前插队 vs 整轮跑干之后再说），一半写死一半用默认会让「等它做完再说」批量灌进同一轮，用户仍旧撤不动其中一句。"
                   },
                   "toolExecution": {
                     "verdict": "constant",
@@ -243,7 +245,7 @@
                   },
                   "toProviderMessages": {
                     "verdict": "unused",
-                    "why": "出站报文的最后一次改写只允许有一个地方（model.mts 的 onPayload）。这一格是第二个入口，用了就会出现「payload 探针抓到的和实际发出去的不一致」——那正是 2026-08 那批「断言前先证明你在你以为的现场」的成因。"
+                    "why": "出站报文的最后一次改写只允许有一个地方（laneModelProvider.mts 的 onPayload）。这一格是第二个入口，用了就会出现「payload 探针抓到的和实际发出去的不一致」——那正是 2026-08 那批「断言前先证明你在你以为的现场」的成因。"
                   },
                   "entryProjectors": {
                     "verdict": "derived",
@@ -279,7 +281,7 @@
                   },
                   "before_payload": {
                     "verdict": "unused",
-                    "why": "报文改写点已经在 createNomiProvider 的 onPayload（model.mts:98），那里是唯一知道供应商协议差异的地方；在钩子里再改一次就是第二个真相源。"
+                    "why": "报文改写点已经在 createNomiProvider 的 onPayload（laneModelProvider.mts:145），那里是唯一知道供应商协议差异的地方；在钩子里再改一次就是第二个真相源。"
                   },
                   "after_response": {
                     "verdict": "unused",
@@ -329,7 +331,7 @@
             "types": [
               {
                 "name": "Model",
-                "why": "createNomiProvider 每次都要造一个 Model<Api>（electron/harness/runtime/pi/model.mts:75）。cost / contextWindow / reasoning 这三格直接决定 pi 的记账、压缩阈值与思考档位——写死一个值就等于把这三件事从 Nomi 的模型档案里摘下来。",
+                "why": "createNomiProvider 每次都要造一个 Model<Api>（electron/agentLane/laneModelProvider.mts:117）。cost / contextWindow / reasoning 这三格直接决定 pi 的记账、压缩阈值与思考档位——写死一个值就等于把这三件事从 Nomi 的模型档案里摘下来。",
                 "anchors": [
                   {
                     "kind": "typeAnnotation",
@@ -339,31 +341,31 @@
                 "fields": {
                   "id": {
                     "verdict": "derived",
-                    "at": "electron/harness/runtime/pi/model.mts:76"
+                    "at": "electron/agentLane/laneModelProvider.mts:118"
                   },
                   "name": {
                     "verdict": "derived",
-                    "at": "electron/harness/runtime/pi/model.mts:76"
+                    "at": "electron/agentLane/laneModelProvider.mts:118"
                   },
                   "api": {
                     "verdict": "derived",
-                    "at": "electron/harness/runtime/pi/model.mts:77"
+                    "at": "electron/agentLane/laneModelProvider.mts:119"
                   },
                   "provider": {
                     "verdict": "derived",
-                    "at": "electron/harness/runtime/pi/model.mts:76"
+                    "at": "electron/agentLane/laneModelProvider.mts:118"
                   },
                   "baseUrl": {
                     "verdict": "derived",
-                    "at": "electron/harness/runtime/pi/model.mts:77"
+                    "at": "electron/agentLane/laneModelProvider.mts:119"
                   },
                   "reasoning": {
                     "verdict": "derived",
-                    "at": "electron/harness/runtime/pi/model.mts:122"
+                    "at": "electron/agentLane/laneModelProvider.mts:119"
                   },
                   "thinkingLevelMap": {
                     "verdict": "derived",
-                    "at": "electron/harness/runtime/pi/model.mts:127"
+                    "at": "electron/agentLane/laneModelProvider.mts:124"
                   },
                   "input": {
                     "verdict": "constant",
@@ -372,23 +374,23 @@
                   },
                   "cost": {
                     "verdict": "derived",
-                    "at": "electron/harness/runtime/pi/model.mts:128"
+                    "at": "electron/agentLane/laneModelProvider.mts:125"
                   },
                   "contextWindow": {
                     "verdict": "derived",
-                    "at": "electron/harness/runtime/pi/model.mts:81"
+                    "at": "electron/agentLane/laneModelProvider.mts:128"
                   },
                   "maxTokens": {
                     "verdict": "derived",
-                    "at": "electron/harness/runtime/pi/model.mts:81"
+                    "at": "electron/agentLane/laneModelProvider.mts:128"
                   },
                   "samplingParams": {
                     "verdict": "unused",
-                    "why": "采样参数由 Nomi 的任务参数决定并在 onPayload 写进报文（model.mts:110 起的 temperature 等），那里是唯一知道「这次任务要多稳」的地方；在模型档案上再挂一份会让同一个参数有两个来源。"
+                    "why": "采样参数由 Nomi 的任务参数决定并在 onPayload 写进报文（laneModelProvider.mts:157 起的 temperature 等），那里是唯一知道「这次任务要多稳」的地方；在模型档案上再挂一份会让同一个参数有两个来源。"
                   },
                   "headers": {
                     "verdict": "unused",
-                    "why": "请求头在 createNomiProvider 里按 authType 组装并做了 null 抑制（model.mts:82-89）——那是安全边界（keyless 服务器不许带 Authorization）。模型档案上再开一个 headers 口子会绕过那段抑制。"
+                    "why": "请求头在 createNomiProvider 里按 authType 组装并做了 null 抑制（laneModelProvider.mts:130-136）——那是安全边界（keyless 服务器不许带 Authorization）。模型档案上再开一个 headers 口子会绕过那段抑制。"
                   },
                   "compat": {
                     "verdict": "unused",

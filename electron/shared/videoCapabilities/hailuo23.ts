@@ -11,12 +11,13 @@ const numOpt = (values: number[]): ModelParameterControl["options"] => values.ma
 
 const PARAMS: ModelParameterControl[] = [
   { key: "resolution", label: "清晰度", type: "select", options: opt(["768p", "1080p"]), defaultValue: "768p" },
-  { key: "duration", label: "时长(秒)", type: "select", options: numOpt([6, 10]), defaultValue: 6 },
+  { key: "duration", label: "时长(秒)", type: "select", options: numOpt([6, 10]), defaultValue: 6, optionConstraints: [{ when: { key: "resolution", value: "1080p" }, values: [6] }] },
 ];
 
 export const HAILUO_2_3_ARCHETYPE: ModelArchetype = {
   id: "hailuo-2.3",
   family: "hailuo",
+  sources: [{ url: "https://docs.apimart.ai/en/api-reference/videos/minimax-hailuo-2.3/generation.md", checkedAt: "2026-09-08", vendorKey: "apimart", covers: "1080p supports only 6 seconds for standard and Fast" }],
   label: "Hailuo 2.3",
   kind: "video",
   defaultModeId: "t2v",

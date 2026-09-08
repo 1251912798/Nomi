@@ -6,7 +6,8 @@ import { NOMI_AGENT_IDENTITY, buildLanguageRule, readRequestedSkill, resolveRequ
 import { compilePromptPipe, deriveSkillLoadEvents, measurePromptCacheUsage, type CompiledPrompt, type SkillLedgerItem, type SkillLoadEvent } from '../harness/context/promptPipe';
 import { projectProvenance } from '../harness/context/provenance';
 import { classifyToolAction, evaluateProvenanceAction } from '../harness/context/provenanceActionGuard';
-import type { RuntimeTurnHooks, NomiModelConfig } from '../harness/runtime/runtimePort';
+import type { RuntimeTurnHooks } from '../harness/runtime/runtimePort';
+import type { NomiModelConfig } from '../shared/agentLane/laneModelConfig';
 import { getProjectMemory, formatMemoryForPrompt } from '../memory/projectMemory';
 import { chooseTextModel } from './textBrainResolver';
 import { vendorModelConnection } from './vendorModelConnection';

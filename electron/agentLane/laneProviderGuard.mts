@@ -26,7 +26,7 @@
 //     的语料表把两边的真实样本一条条喂进来，漂了当场红（R28：防线放在最早能拦住的那层）。
 import { createAssistantMessageEventStream, type Api, type AssistantMessage,
   type AssistantMessageEventStream, type Model, type ProviderStreams } from '@earendil-works/pi-ai';
-import { observeNativeStream, type NativeClock } from './observeStream.mjs';
+import { observeNativeStream, type NativeClock } from './laneStreamObserver.mjs';
 
 /** 一条流的两个预算。**没有默认值**：忘了配就是没有看门狗，而那正是今天的 bug。 */
 export interface NomiStreamGuard {

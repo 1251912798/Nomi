@@ -10,9 +10,11 @@
 import type { LaneSnapshot } from '@earendil-works/pi-agent-core';
 import { getSupportedThinkingLevels } from '@earendil-works/pi-ai';
 import type { Api, AssistantMessage, Model, Usage } from '@earendil-works/pi-ai';
-import type { NomiPricingBasis } from '../harness/runtime/pi/model.mjs';
-import type {
-  LaneMetric, LanePart, LanePendingApproval, LaneProjection, LaneThinking, LaneThinkingLevel,
+import type { NomiPricingBasis } from '../shared/agentLane/laneModelConfig.js';
+import {
+  LANE_TASK_NOTE_TYPE, isLaneTaskNote,
+  type LaneMetric, type LanePart, type LanePendingApproval, type LaneProjection,
+  type LaneQueueKind, type LaneQueuedMessage, type LaneTaskFacts, type LaneThinking, type LaneThinkingLevel,
 } from '../shared/agentLane/laneContracts.js';
 
 function textOf(content: unknown): string {
@@ -122,6 +124,35 @@ function reasoningMetric(model: Model<Api>, walk: ReturnType<typeof walkUsage>):
     ? { state: 'unknown', reason: 'provider-omits-reasoning' } : KNOWN(walk.reasoning);
 }
 
+/**
+ * pi 的队列 → 面板要画的那几条。
+ *
+ * **`kind:"write"` 一条都不画**（方案 §1.4 规则三）。pi 把「操作进行中的 `appendCustomEntry`」
+ * 也排进同一个 inbox（`runtime/lane.js:1490-1545`），所以等待期的 `queues` 里躺着的
+ * 可能是我们自己那条审批记录——把它画成「排队的用户消息」，用户会在队列里读到一句
+ * 他从没打过的话。判据是 `kind`，不是「看内容像不像用户说的」。
+ *
+ * 反过来，**除 write 之外的每一条都画**（含我们今天不发的 `nextRun`）：一条排在队里
+ * 却在面板上不存在的话，比多画一行危险得多——用户没法取消一个他看不见的东西。
+ */
+function projectQueues(snapshot: LaneSnapshot): LaneQueuedMessage[] {
+  const queued: LaneQueuedMessage[] = [];
+  for (const item of snapshot.queues) {
+    if (item.kind === 'write') continue;
+    // `AgentMessage` 是个联合体，其中 `BranchSummaryMessage` 没有 `content`。
+    // 队里放的永远是用户那句话，但判据不能靠「永远」——按属性存在与否取，取不到就是空串。
+    const text = 'content' in item.message ? textOf(item.message.content) : '';
+    // 拿不出文本的（纯图片插话）不编一个占位串：面板画一行空白，比画一句我们编的话诚实。
+    queued.push({ entryId: item.entryId, kind: QUEUE_KIND[item.kind], text });
+  }
+  return queued;
+}
+
+/** pi 的 camelCase 队列词 → 中立层的词表。两侧各自的拼写习惯，一张表管死。 */
+const QUEUE_KIND: Readonly<Record<'steer' | 'followUp' | 'nextRun', LaneQueueKind>> = {
+  steer: 'steer', followUp: 'follow-up', nextRun: 'next-run',
+};
+
 function contextMetric(walk: ReturnType<typeof walkUsage>): LaneMetric {
   if (!walk.sawSettledTurn) return { state: 'unknown', reason: 'no-settled-turn' };
   if (walk.compactedAfterLastTurn) return { state: 'unknown', reason: 'just-compacted' };
@@ -146,12 +177,28 @@ export function projectLaneSnapshot(
    * 探针 §2.1）。想从快照里把它推出来，只能靠猜。
    */
   pending?: LanePendingApproval,
+  /**
+   * 任务卡的领域读口。**每次投影都重问一遍**：任务卡上的进度和金额是领域侧的活数字，
+   * 缓存一份就会出现「转录说 37%、任务中心说完成」这种两份真相（K4）。
+   * 不传 = 卡上只有标题，那是诚实的「这一刻没 join 到」。
+   */
+  tasks?: (productionRunId: string) => LaneTaskFacts | undefined,
 ): LaneProjection {
   const parts: LanePart[] = [];
   const running = snapshot.operation?.runningTools ?? [];
   const runningToolCallIds = new Set(running.filter((tool) => tool.status === 'running').map((tool) => tool.toolCallId));
   for (const entry of snapshot.transcript) {
     if (entry.type === 'custom') {
+      // 任务卡是**一种**宿主记录，但它在流里占一行（用户看得见的一张卡），所以它有自己的段。
+      // 其余宿主记录仍是 `host-note`：它们不占行，只用来修正别的行的状态（审批那条）。
+      if (entry.customType === LANE_TASK_NOTE_TYPE && isLaneTaskNote(entry.data)) {
+        const facts = tasks?.(entry.data.productionRunId);
+        parts.push({ sequence: parts.length, entrySeq: entry.seq, contentIndex: 0, kind: 'task',
+          productionRunId: entry.data.productionRunId,
+          ...(entry.data.operationId === undefined ? {} : { operationId: entry.data.operationId }),
+          ...(facts === undefined ? {} : { facts }) });
+        continue;
+      }
       parts.push({ sequence: parts.length, entrySeq: entry.seq, contentIndex: 0,
         kind: 'host-note', noteType: entry.customType, data: entry.data });
       continue;
@@ -192,6 +239,7 @@ export function projectLaneSnapshot(
     ...(retry ? { retry: { attempt: retry.attempt, maxAttempts: retry.maxAttempts,
       nextAttemptAt: retry.nextAttemptAt } } : {}),
     ...(pending ? { pending } : {}),
+    queues: projectQueues(snapshot),
     usage: {
       inputTokens: usage.input,
       outputTokens: usage.output,

@@ -20,6 +20,10 @@ const labels: LaneViewModelLabels = {
   // 是为了让「本层自己编了一个字」当场露馅——占位符长什么样是调用方的事，不是这一层的。
   unknown: '[unknown]',
   free: '[free]',
+  taskTitle: '[task]',
+  formatStages: (done, total) => `${done}/${total} stages`,
+  formatMoney: (currency, amount) => `${currency} ${amount.toFixed(2)}`,
+  taskUnknown: '[task-unknown]',
 }
 
 /** 三态的常用取值。写成构件是因为下面几乎每条都要摆一次。 */
@@ -42,10 +46,70 @@ const part = (input: Omit<LanePart, 'sequence' | 'entrySeq' | 'contentIndex'> & 
   ({ sequence: next++, entrySeq: next, contentIndex: 0, ...input }) as LanePart
 
 function projection(parts: LanePart[], overrides: Partial<LaneProjection> = {}): LaneProjection {
-  return { lane: 'main', parts, running: false, usage: usageOf(), thinking: THINKING, ...overrides }
+  return { lane: 'main', parts, running: false, usage: usageOf(), thinking: THINKING, queues: [], ...overrides }
 }
 
 describe('laneViewModel', () => {
+  it('任务卡：状态 / 进度 / 金额全部来自 join 出来的领域事实，卡本身只有两个 id', () => {
+    next = 0
+    const model = laneViewModel(projection([
+      part({
+        kind: 'task', productionRunId: 'run-7', operationId: 'call-1',
+        facts: {
+          status: 'running', progress: 33, stagesDone: 1, stagesTotal: 3,
+          currency: 'CNY', spent: 0.24, estimated: 0.48, candidateIds: ['a1', 'a2'],
+        },
+      }),
+    ]), labels)
+
+    expect(model.items).toEqual([{
+      kind: 'task',
+      task: {
+        title: '[task]', action: 'video', status: 'running',
+        trailing: '1/3 stages', progress: 33,
+        candidates: [{ tag: '1' }, { tag: '2' }],
+        // 「预估」上卡头，「已花」上卡尾——与画布 FlowGeneration 板拍板过的位置一致。
+        cost: 'CNY 0.48', footnoteTrailing: 'CNY 0.24',
+      },
+    }])
+  })
+
+  it('任务卡 join 不到领域事实：只画标题 + 一句「详情在别处」，不给一个假的「排队中」', () => {
+    next = 0
+    const model = laneViewModel(projection([
+      part({ kind: 'task', productionRunId: 'run-7' }),
+    ]), labels)
+    const [item] = model.items
+    expect(item.kind === 'task' && item.task).toEqual({
+      title: '[task]', action: 'video', status: 'queued', footnote: '[task-unknown]',
+    })
+    // 阳性对照：上一条同样是 `status: queued` 的卡**带着进度和金额**。两张卡状态字面相同、
+    // 意思相反（「排着队」vs「不知道」），区别只在有没有 footnote —— 所以这条断言查的是整张卡。
+    expect(item.kind === 'task' && item.task.progress).toBeUndefined()
+  })
+
+  it('没有币种就不印金额：一个没有币种的数字看起来完全正常，而它可能是另一种钱', () => {
+    next = 0
+    const model = laneViewModel(projection([
+      part({ kind: 'task', productionRunId: 'run-7', facts: { status: 'complete', spent: 0.24 } }),
+    ]), labels)
+    const [item] = model.items
+    expect(item.kind === 'task' && item.task.footnoteTrailing).toBeUndefined()
+  })
+
+  it('队列原样带出去：不合并、不去重、不改顺序——pi 的 FIFO 就是用户打字的顺序', () => {
+    next = 0
+    const queues = [
+      { entryId: 'q1', kind: 'steer' as const, text: '一句' },
+      { entryId: 'q2', kind: 'follow-up' as const, text: '两句' },
+    ]
+    const model = laneViewModel(projection([], { queues }), labels)
+    expect(model.queues).toBe(queues)
+    // 队列**不进流**：它是还没发生的事。混进去用户会看到自己刚打的话排在模型的回答后面，
+    // 像是模型已经读过它了。
+    expect(model.items).toEqual([])
+  })
+
   it('emits one flow item per part, in the order the transcript recorded', () => {
     next = 0
     const model = laneViewModel(projection([

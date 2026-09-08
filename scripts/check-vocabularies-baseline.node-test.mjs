@@ -235,7 +235,7 @@ test('repository-specific runtime and view-model vocabularies are not mislabeled
       /MCP widget.*view model/i,
     ],
     [
-      'electron/harness/runtime/runtimePort.ts::interface:RuntimeToolCallRecord/property:status/type-union',
+      'electron/shared/agentCapabilities/transportContracts.ts::interface:RuntimeToolCallRecord/property:status/type-union',
       /runtime port.*tool/i,
     ],
     [

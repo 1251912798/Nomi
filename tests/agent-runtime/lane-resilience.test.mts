@@ -12,7 +12,7 @@ import { LANE_RETRY_POLICY } from '../../electron/agentLane/laneHost.mjs';
 import type { LaneToolDescriptor } from '../../electron/agentLane/laneRuntimePort.js';
 import { bindLaneTool } from '../../electron/agentLane/laneRuntimePort.js';
 import { projectLaneSnapshot, type LaneModelFacts } from '../../electron/agentLane/laneProjection.mjs';
-import { normalizeProviderErrorText } from '../../electron/harness/runtime/pi/providerGuard.mjs';
+import { normalizeProviderErrorText } from '../../electron/agentLane/laneProviderGuard.mjs';
 import type { LaneProjection, LaneRetry } from '../../electron/shared/agentLane/laneContracts.js';
 import { LANE_READ_TOOL_TIMEOUT_MS } from '../../electron/shared/agentLane/laneToolContract.js';
 import { createLaneFixture } from './laneFixture.mjs';

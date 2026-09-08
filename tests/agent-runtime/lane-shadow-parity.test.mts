@@ -18,9 +18,37 @@ import { z } from 'zod';
 import { openLane } from '../../electron/agentLane/laneHost.mjs';
 import { createDocumentLaneTools } from '../../electron/agentLane/laneDocumentTools.js';
 import { runAgentTurn } from '../../electron/harness/runtime/pi/nativeLoader.cjs';
-import type { RuntimeActivityEvent, RuntimeTurnRequest } from '../../electron/harness/runtime/runtimePort.js';
+import type { RuntimeTurnRequest } from '../../electron/harness/runtime/runtimePort.js';
+import type { RuntimeActivityEvent } from '../../electron/shared/agentCapabilities/transportContracts.js';
 import { createHttpFixture, type FixtureReply } from './httpFixture.mjs';
 import { createDocumentPort, LANE_SYSTEM_PROMPT } from './laneFixture.mjs';
+import type { LaneProjection } from '../../electron/shared/agentLane/laneContracts.js';
+import { compareSteps, stepsOfProjection, stepsOfRecorded } from './replayShadowEngine.mjs';
+
+test('replay shadow · task identity survives projection comparison and exposes unexpected domain facts', () => {
+  const projection: LaneProjection = {
+    lane: 'replay-task', running: false, queues: [],
+    thinking: { supportedLevels: ['off'], level: 'off', canTurnOff: true },
+    usage: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0, totalTokens: 0,
+      cost: { state: 'known', value: 0 }, contextTokens: { state: 'known', value: 0 },
+      reasoningTokens: { state: 'known', value: 0 } },
+    parts: [],
+  };
+  for (const operationId of [undefined, 'operation-1']) {
+    const identity = { productionRunId: 'run-1', ...(operationId === undefined ? {} : { operationId }) };
+    const expected = [{ kind: 'task', ...identity }];
+    for (const facts of [undefined, { status: 'running' as const, progress: 37 }]) {
+      const actual = stepsOfProjection({ ...projection, parts: [
+        { kind: 'task', sequence: 0, entrySeq: 1, contentIndex: 0, ...identity,
+          ...(facts === undefined ? {} : { facts }) },
+      ] });
+      assert.deepEqual(actual, expected, 'compare stable task identity, never changing domain facts');
+      assert.deepEqual(compareSteps(stepsOfRecorded([]), actual), {
+        index: 0, expected: '<missing>', actual: `task: run-1${operationId ? ` ${operationId}` : ''}`,
+      }, 'an unexpected task must be a mismatch, not dropped or reported as a host note');
+    }
+  }
+});
 
 /** 两条路都能说出口的那几件事，写成一串可逐项比对的字符串。 */
 type Beat = string;
