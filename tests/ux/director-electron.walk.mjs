@@ -18,6 +18,7 @@ import { fileURLToPath } from 'node:url'
 import { launchNomiApp } from './_launchApp.mjs'
 import { applyColorSchemeForShot, clickOrFail, expect, expectAbsent, expectHidden, expectVisible, proveProbe, screenshotSettled } from './_assert.mjs'
 import { addCameraPreset, addTrack, placeCharacter } from './_directorLab.mjs'
+import { addCanvasNodeFromRail } from './_canvasRail.mjs'
 import { createBlankProject, prepareIsolation, readProjectPayload } from '../../evals/lib/isoApp.mjs'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
@@ -98,14 +99,13 @@ await expectVisible(generateTab, '新建项目后工作台没打开（没有「�
 await clickOrFail(generateTab, '顶栏·生成页签')
 const boardCta = win.locator('button[aria-label^="新建一个"][aria-label$="节点"]').first()
 if (await boardCta.count()) await boardCta.click({ timeout: 5000 }).catch(() => {})
-const addDirector = win.locator('[data-node-kind="director"]').first()
-await expectVisible(addDirector, '生成区工具栏没有「添加导演台节点」按钮（C4 上架失败）', 60_000)
-check('① 导演台节点在工具栏上架', true)
 await win.keyboard.press('Escape').catch(() => {})
 await win.mouse.click(60, 520).catch(() => {}) // 收起「上手 4 步」浮层
-await clickOrFail(win.locator('[data-node-kind="image"]').first(), '工具栏·添加图片节点')
-await clickOrFail(win.locator('[data-node-kind="video"]').first(), '工具栏·添加视频节点')
-await clickOrFail(addDirector, '工具栏·添加导演台节点')
+// 点法收口在 _canvasRail：加号自 2026-09-06「第三档」起 5 常驻 + 「更多」，导演台住「更多」里；找不到当场抛（不再按 aria-label 直点）
+await addCanvasNodeFromRail(win, 'image')
+await addCanvasNodeFromRail(win, 'video')
+const directorPlacement = await addCanvasNodeFromRail(win, 'director')
+check('① 导演台节点在左缘「更多」里上架', directorPlacement === 'more', directorPlacement)
 const directorCard = win.locator('[data-testid="director-node"]').first()
 await expectVisible(directorCard, '点了添加，画布上没出 director 节点卡')
 // 三个节点是连点三下加出来的，落盘节奏不定：轮询磁盘直到三种节点都在（不拿 revision 静默当完成）

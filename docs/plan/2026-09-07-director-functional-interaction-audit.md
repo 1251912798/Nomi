@@ -70,3 +70,10 @@
 17:48 最终生产冻结：独立固定四例 4/4 通过（`resume-save-owner-final-review.log`，exit 0），正式保存与退出相关 5 文件 27 项通过（`resume-save-owner-final-unit.log`，exit 0）。相对 17:15 首轮冻结仅修改 `workbenchProjectSession.ts`、`useProjectWindowLifecycle.ts` 与 `NomiStudioApp.tsx` 三份生产文件，修改前第二份快照在 `resume-save-ownership-before/`；最终 16 文件 SHA 收据见 `resume-save-production-freeze.json`。最终全相关单测、门禁与同构建桌面旅程由独立代理执行，本节不预记通过。
 
 17:56:59 门禁收尾再冻结：仅删除 `workbenchProjectSession.ts` 一处无用的 `record = null` 初值，并给正式测试 mock 标注既有保存函数类型；生产语义不变，SHA 收据已刷新，主代理使用此版本重新 build。生产 noEmit、Lint、四结构、根因合同已通过；测试类型修正的定点复验由独立代理记录。
+
+## 先查别人
+
+- 依赖里已有？交互底座是 drei 的 TransformControls / OrbitControls（https://github.com/pmndrs/drei#transformcontrols），审计不重写 gizmo，只核对写回边界 `src/workbench/generationCanvas/nodes/director/scene/TransformGizmo.tsx:1`。
+- 仓库里已有？走查启动器与 E2E 取证桥已存在，审计复用不新造：`tests/ux/_directorLab.mjs:47`、`src/workbench/generationCanvas/nodes/director/scene/E2EBridge.tsx:3`；上一轮全应用地基审计的方法与格式：`docs/audit/2026-08-25-app-wide-foundation-audit.md`。
+- 生态里已有？Playwright 的 actionability 判据（https://playwright.dev/docs/actionability）作为「点了没反应」的判定标准。
+- 结论：没有现成的功能交互审计工具可引；按既有走查体系逐控件核对到共享状态 / 求值 / 持久化边界，不引新框架。

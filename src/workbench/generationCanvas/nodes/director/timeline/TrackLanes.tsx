@@ -361,7 +361,7 @@ export function TrackLanes({ rows, viewport, totalDuration, onContextMenu, onRej
                   return (
                     <button
                       type="button"
-                      className="absolute top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-nomi-sm border border-nomi-line bg-nomi-ink-05 text-nomi-ink-40 hover:border-nomi-line-strong hover:bg-nomi-ink-10 hover:text-nomi-ink"
+                      className="absolute top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-nomi-sm border border-nomi-line bg-nomi-ink-05 text-nomi-ink-40 hover:border-nomi-ink-20 hover:bg-nomi-ink-10 hover:text-nomi-ink"
                       style={{ left: timeToPx(clips.length ? lastEnd + APPEND_GAP_SECONDS : 0) }}
                       title={t('director.timeline.menu.appendTrajectory')}
                       aria-label={t('director.timeline.menu.appendTrajectory')}

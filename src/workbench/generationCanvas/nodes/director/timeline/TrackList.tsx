@@ -107,11 +107,11 @@ function SubTrackRow({
       data-testid="director-timeline-subtrack"
       onContextMenu={onContextMenu}
     >
-      <span className="pointer-events-none absolute left-5 top-0 w-px bg-nomi-line-strong" style={{ height: isLast ? '50%' : '100%' }} aria-hidden />
+      <span className="pointer-events-none absolute left-5 top-0 w-px bg-nomi-ink-20" style={{ height: isLast ? '50%' : '100%' }} aria-hidden />
       {sub.family === 'bone' ? (
-        <span className="pointer-events-none absolute left-[30px] top-[-14px] h-7 w-2.5 border-b border-l border-nomi-line-strong" aria-hidden />
+        <span className="pointer-events-none absolute left-[30px] top-[-14px] h-7 w-2.5 border-b border-l border-nomi-ink-20" aria-hidden />
       ) : (
-        <span className="pointer-events-none absolute left-5 top-1/2 h-px w-2.5 bg-nomi-line-strong" aria-hidden />
+        <span className="pointer-events-none absolute left-5 top-1/2 h-px w-2.5 bg-nomi-ink-20" aria-hidden />
       )}
       <span className={cn('min-w-0 flex-1 truncate font-nomi-mono', sub.enabled ? '' : 'text-nomi-ink-40')}>{t(`director.timeline.family.${sub.family}`)}</span>
       <div className="flex items-center opacity-60 transition-opacity group-hover:opacity-100 focus-within:opacity-100">

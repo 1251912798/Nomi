@@ -148,8 +148,8 @@ export function PuppetFigure({
               onMouseLeave={() => setHoverBone(null)}
             >
               <polygon points={bone.leftPoly} className={cn(active ? 'fill-workbench-success/60 stroke-workbench-success' : hover ? 'fill-nomi-ink-30 stroke-nomi-ink-60' : 'fill-nomi-ink-20 stroke-nomi-ink-40')} strokeWidth={0.75} strokeLinejoin="round" />
-              <polygon points={bone.rightPoly} className={cn(active ? 'fill-workbench-success/35 stroke-workbench-success' : hover ? 'fill-nomi-ink-20 stroke-nomi-ink-50' : 'fill-nomi-ink-10 stroke-nomi-ink-30')} strokeWidth={0.75} strokeLinejoin="round" />
-              <line x1={bone.root.x} y1={bone.root.y} x2={bone.tip.x} y2={bone.tip.y} className={cn(active ? 'stroke-nomi-paper' : hover ? 'stroke-nomi-ink-70' : 'stroke-nomi-ink-50')} strokeWidth={active ? 1.2 : 0.7} strokeLinecap="round" strokeOpacity={0.8} />
+              <polygon points={bone.rightPoly} className={cn(active ? 'fill-workbench-success/35 stroke-workbench-success' : hover ? 'fill-nomi-ink-20 stroke-nomi-ink-40' : 'fill-nomi-ink-10 stroke-nomi-ink-30')} strokeWidth={0.75} strokeLinejoin="round" />
+              <line x1={bone.root.x} y1={bone.root.y} x2={bone.tip.x} y2={bone.tip.y} className={cn(active ? 'stroke-nomi-paper' : hover ? 'stroke-nomi-ink-80' : 'stroke-nomi-ink-40')} strokeWidth={active ? 1.2 : 0.7} strokeLinecap="round" strokeOpacity={0.8} />
               {fk ? <polygon points={bone.fullPoly} fill="transparent" stroke="transparent" strokeWidth={12} /> : null}
             </g>
           )

@@ -19,3 +19,10 @@
 收据：`.tmp/director-full-audit-20260907/assets-findings.md`。协议增加坏 JSON 对象形状校验，真实 WS 的 null 红例与后续正常控制绿例均保留。机位监视器按导出画幅，自由视角按窗口画幅；手机控制区的提示在横屏可见。
 
 最终截图补修：停止服务后空 img 仍占据显示层，出现破图图标/边框。只在现有手机页修复：初始隐藏，当前连接的有效解码帧才显示，断线/坏帧/页面释放统一隐藏并释放 URL，拒绝旧连接迟到回调。先执行真实页面脚本的 5 项红例，再补同构建手机走查的「已见帧→持续不可见」断言；不改变布局和控制。回滚只恢复这次 page/test/合同块。
+
+## 先查别人
+
+- 依赖里已有？`ws` 8.21.3 已是主进程依赖（`package.json:280`），局域网桥继续用它，不加 WebRTC 栈。
+- 仓库里已有？手机桥服务端与截帧接口已存在：`electron/director/mobileBridgeServer.ts:91`（WebSocketServer）、`src/workbench/generationCanvas/nodes/director/useMobilePreview.ts:38`（复用 captureFrame）。
+- 生态里已有？WebRTC（https://developer.mozilla.org/en-US/docs/Web/API/WebRTC_API）需要信令与 ICE，局域网单向监视帧用 WS 传 JPEG 更简单，OBS 一类监视方案同理。
+- 结论：复用现有 WS 桥推最长 480px 的 JPEG 帧，限制在途数与大小，录制状态只回桌面真相；不引 WebRTC。
