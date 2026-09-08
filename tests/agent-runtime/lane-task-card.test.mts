@@ -13,7 +13,6 @@
 import assert from 'node:assert/strict';
 import test, { type TestContext } from 'node:test';
 
-import { openLane } from '../../electron/agentLane/laneHost.mjs';
 import type { LaneTaskFactsResolver } from '../../electron/agentLane/laneRuntimePort.js';
 import {
   LANE_TASK_NOTE_TYPE, type LaneProjection, type LaneTaskFacts,
@@ -44,8 +43,7 @@ function taskParts(projection: LaneProjection) {
  */
 async function laneWithTaskNote(t: TestContext, tasks?: LaneTaskFactsResolver) {
   const fixture = await createLaneFixture(t, [CLOSING, CLOSING]);
-  const lane = await openLane({ ...fixture.options, ...(tasks ? { tasks } : {}) });
-  t.after(() => lane.close());
+  const lane = await fixture.openLane({ ...fixture.options, ...(tasks ? { tasks } : {}) });
   await lane.execute({ kind: 'prompt', text: '把第三场戏生成出来。' });
   await lane.appendTaskNote({ productionRunId: RUN_ID, operationId: 'call-generate' });
   return { lane, http: fixture.http };
