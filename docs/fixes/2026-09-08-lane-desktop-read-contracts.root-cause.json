@@ -1,0 +1,130 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-08-lane-desktop-read-contracts",
+  "problem_type": "Raw alias, semantic capability and model presentation boundaries must preserve their respective shapes",
+  "symptom": "Timeline read returns capability_input_invalid without revision; queued canvas reads fail with Expected object received string.",
+  "direct_cause": "Desktop timeline glue passes bound operation back into strict alias args; Pi canvas transport formats canonical result before lane validates it.",
+  "class_root": "Read transport assembly did not preserve raw/semantic/presentation contracts at adjacent boundaries.",
+  "affected_population": [
+    "All desktop timeline read/range calls",
+    "All live or captured Pi canvas reads"
+  ],
+  "scope_paths": [
+    "electron/agentLane/laneDesktopTools.ts",
+    "electron/agentLane/laneCanvasTools.ts",
+    "electron/capabilityCore/canvasReadTransportAdapters.ts"
+  ],
+  "entry_points": [
+    "read_timeline and inspect_timeline_range",
+    "Live and captured canvas read",
+    "Document read aliases and deferred surface reads"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "No external protocol, dependency or schema changes; the shape mismatch is entirely between existing internal adapters.",
+  "invariants": [
+    "Only the alias parser binds operation into semantic input.",
+    "Verified read adapters return canonical domain data; the model outlet owns compact presentation.",
+    "Surface and strict input validation remain fail-closed."
+  ],
+  "generality_proof": "Shared timeline family glue handles both read aliases; both Pi canvas adapters preserve the executor canonical object and lane uses the existing compact formatter. Document and deferred adapters already follow these contracts.",
+  "shared_boundaries": [
+    {
+      "path": "electron/agentLane/laneDesktopTools.ts",
+      "symbol": "createDesktopLaneTools",
+      "responsibility": "Translate domain timeline input back to the raw alias contract once."
+    },
+    {
+      "path": "electron/capabilityCore/canvasReadTransportAdapters.ts",
+      "symbol": "createPiCanvasReadTransportAdapter / createCapturedPiCanvasReadTransportAdapter",
+      "responsibility": "Preserve canonical executor result through live and captured transports."
+    },
+    {
+      "path": "electron/agentLane/laneCanvasTools.ts",
+      "symbol": "createCanvasLaneTools",
+      "responsibility": "Validate domain output and format its model-facing presentation."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "electron/agentLane/laneDesktopTools.ts",
+      "entry_point": "read_timeline / inspect_timeline_range",
+      "disposition": "enforced",
+      "evidence": "Both aliases share one domain-to-raw adapter; real loopback asserts success and exact verified target."
+    },
+    {
+      "path": "electron/capabilityCore/canvasReadTransportAdapters.ts",
+      "entry_point": "Live and captured Pi canvas reads",
+      "disposition": "enforced",
+      "evidence": "Both adapters preserve canonical data; existing Surface/captured/B6 tests retain isolation and safe projection."
+    },
+    {
+      "path": "electron/capabilityCore/documentReadTransportAdapters.ts",
+      "entry_point": "read_full_text / read_selection",
+      "disposition": "not-affected",
+      "evidence": "The document adapter accepts the explicit semantic scope envelope and returns canonical text object; real desktop loopback covers both."
+    },
+    {
+      "path": "electron/agentLane/laneExtendedDesktopPorts.ts",
+      "entry_point": "Deferred timeline preview and asset/export read calls",
+      "disposition": "not-affected",
+      "evidence": "Forwards original RuntimeToolCall args to the alias-owning adapter, without prebinding or formatting."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Every legal read request repeats these mismatches across surfaces and callers.",
+    "same_class_scan": [
+      "Read laneDesktopTools and all lane document/canvas/timeline tool factories.",
+      "Searched aliasBoundInput in shared model descriptors and raw-call forwarding in laneExtendedDesktopPorts.",
+      "Searched all live/captured Pi canvas adapter consumers and the shared formatter."
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "electron/agentLane/laneDesktopTools.ts",
+    "invariant": "Read assembly preserves raw alias and canonical result contracts before model presentation.",
+    "failure_mode": "Unknown alias keys, invalid results and stale Surface authority remain rejected.",
+    "exception_policy": "none",
+    "strategy": "Correct existing family glue and both shared canvas transport siblings; no string recovery or alternate executor.",
+    "artifacts": [
+      "electron/agentLane/laneDesktopTools.ts",
+      "electron/agentLane/laneCanvasTools.ts",
+      "electron/capabilityCore/canvasReadTransportAdapters.ts"
+    ]
+  },
+  "regression_tests": [
+    "electron/agentLane/laneDesktopReads.test.ts",
+    "electron/capabilityCore/canvasReadTransportAdapters.test.ts",
+    "electron/capabilityCore/canvasReadB6TransportAcceptance.test.ts",
+    "electron/capabilityCore/canvasReadCapturedSnapshotFlow.test.ts",
+    "electron/capabilityCore/timelineTransportAdapters.test.ts"
+  ],
+  "class_regression_tests": [
+    "electron/agentLane/laneDesktopReads.test.ts",
+    "electron/capabilityCore/canvasReadTransportAdapters.test.ts",
+    "electron/capabilityCore/canvasReadB6TransportAcceptance.test.ts",
+    "electron/capabilityCore/canvasReadCapturedSnapshotFlow.test.ts",
+    "electron/capabilityCore/timelineTransportAdapters.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "not-applicable",
+    "removed_paths": [],
+    "rationale": "Replaces early formatting and double-binding in place without a fallback or persisted format change."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "Existing pi execution and Zod strict schemas are correct; internal adapters violated their input/output contracts.",
+    "exit_criteria": []
+  },
+  "migration": "No persisted format changes or migration; subsequent read requests use the corrected assembly.",
+  "residual_risks": [
+    "Actual Electron revision-to-approved-caption persistence and queued read success await independent runner verification."
+  ],
+  "invariant_owner_layer": {
+    "layer": "electron/agentLane/laneDesktopTools.ts",
+    "tests": [
+      "electron/agentLane/laneDesktopReads.test.ts"
+    ],
+    "why": "The production desktop assembly connects model ports to verified capabilities and must exercise both sides, not fake either adapter."
+  }
+}

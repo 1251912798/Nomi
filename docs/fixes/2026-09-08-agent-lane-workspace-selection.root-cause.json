@@ -1,0 +1,114 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-08-agent-lane-workspace-selection",
+  "problem_type": "Workspace selection is not restored before lane creation",
+  "symptom": "A cold app restart opens empty main instead of the last selected conversation; deleting main and reopening resurrects a new main session.",
+  "direct_cause": "openLaneWorkspace opens options.laneName or main before reading the real SDK session list and has no persisted project selection.",
+  "class_root": "The workspace owner treats its first-run seed as a durable current selection and fails to bind a selection to an existing session identity before opening.",
+  "affected_population": [
+    "Projects with multiple conversations",
+    "Projects whose main conversation was deleted",
+    "History-only opens without model credentials",
+    "Stale or malformed project selection metadata"
+  ],
+  "scope_paths": [
+    "electron/agentLane/laneWorkspace.mts",
+    "electron/agentLane/laneWorkspaceSelection.ts"
+  ],
+  "entry_points": [
+    "openLaneWorkspace cold open",
+    "Successful lane-create and lane-select",
+    "Model attachment to the current conversation"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "Installed pi 0.85.1 harness/session/types.d.ts:399-407 and jsonl/types.d.ts:22-27 expose only per-session metadata, not a project current selection. Session value storage is per transcript; using it would require reading all sessions or creating a fake workspace session. This project-level UI choice is owned by Nomi and uses its existing atomic JSON writer.",
+  "invariants": [
+    "Read the SDK list before choosing or creating a lane; only a genuinely empty list may seed main.",
+    "Persist only the selected laneName and sessionId; the SDK remains the sole list/transcript authority.",
+    "A stale or malformed pointer can only select an existing SDK session, never create its missing target or replace another identity.",
+    "Publish and persist a replacement only after its host opens; same-identity model attachment and cold reads do not rewrite selection or transcript."
+  ],
+  "generality_proof": "Executing and history-only opens both converge on laneWorkspace selection. The saved identity is verified against repo.list before opening, so no renderer persistence or provider-specific branch can resurrect deleted sessions.",
+  "shared_boundaries": [
+    {
+      "path": "electron/agentLane/laneWorkspace.mts",
+      "symbol": "openLaneWorkspace",
+      "responsibility": "Resolve, persist and publish one active existing session while keeping resource lifetime serialized."
+    },
+    {
+      "path": "electron/agentLane/laneWorkspaceSelection.ts",
+      "symbol": "readLaneWorkspaceSelection",
+      "responsibility": "Read only a validated project-local selection pointer; unknown or corrupt choices confer no session authority."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "electron/agentLane/laneWorkspace.mts",
+      "entry_point": "Cold active conversation restore",
+      "disposition": "enforced",
+      "evidence": "Real two-process UX stage4-switch walk and child-process SDK fixture previously reopen empty main instead of selected research."
+    },
+    {
+      "path": "electron/agentLane/laneWorkspace.mts",
+      "entry_point": "Deleted-main cold restore",
+      "disposition": "enforced",
+      "evidence": "Real two-process agent-lane-deletion walk and SDK fixture show main recreated despite a surviving replacement lane."
+    },
+    {
+      "path": "electron/agentLane/laneSession.mts",
+      "entry_point": "Direct explicit lane opening",
+      "disposition": "not-affected",
+      "evidence": "The low-level session API deliberately permits explicit create/open; workspace selection must resolve existing identity before using it."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Any workspace restart with a non-main current selection or deleted main can repeat this seed/restore conflation.",
+    "same_class_scan": [
+      "Checked pi SessionMetadata, JsonlSessionMetadata, Repo.list and Session values; none exposes a project current selection.",
+      "Searched current workspace, main desktop runtime and renderer workbench persistence; there is no existing selected-lane field.",
+      "Checked lifecycle structural queue, close-during-open and no-op model attachment against the new persistence boundary."
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "electron/agentLane/laneWorkspace.mts",
+    "invariant": "Resolve a verified existing selection before allowing the session opener to create anything.",
+    "failure_mode": "Malformed/stale selection is ignored in favor of an existing SDK session; IO or persistence failures close any newly opened host and reject admission.",
+    "exception_policy": "none",
+    "strategy": "Store a single identity pointer through existing atomic JSON persistence, resolve it against SDK list, and update it only for a successful changed selection.",
+    "artifacts": [
+      "electron/agentLane/laneWorkspace.mts",
+      "electron/agentLane/laneWorkspaceSelection.ts"
+    ]
+  },
+  "regression_tests": [
+    "tests/agent-runtime/lane-workspace-selection.test.mts"
+  ],
+  "class_regression_tests": [
+    "tests/agent-runtime/lane-workspace-selection.test.mts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "electron/agentLane/laneWorkspace.mts"
+    ],
+    "rationale": "Remove unconditional default-main opening before list resolution; no compatibility fallback or second conversation index remains."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "No dependency change. This project-level selection does not exist in pi per-session metadata; no framework serialization is duplicated.",
+    "exit_criteria": []
+  },
+  "migration": "Existing projects without a selection pointer choose an existing SDK-listed conversation. An actually empty project alone creates a default conversation. No conversation content is rewritten.",
+  "residual_risks": [
+    "Root and runner rerun the real Electron two-process walks after incorporating the production change."
+  ],
+  "invariant_owner_layer": {
+    "layer": "electron/agentLane/laneWorkspace.mts",
+    "tests": [
+      "tests/agent-runtime/lane-workspace-selection.test.mts"
+    ],
+    "why": "The workspace owns the project-wide active choice and all structural transitions; a lane owns only its own transcript."
+  }
+}

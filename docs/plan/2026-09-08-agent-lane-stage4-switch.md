@@ -327,3 +327,48 @@ src/devlab/designLab/v4/states/01-vocabulary.tsx:9:import type { LaneSnapshot } 
 ## 合并门（不等于 PR ready）
 
 **L2 连续 7 天绿（最早 2026-09-14）+ 打包版 C0 真实短片跑通，二者缺一不合。** §2.3 还要求至少 200 个真实回合；既有首跑为 green-short-of-corpus，不能把 126 回合那天算成第 1 天。当前计数亦不等同已跑 L2。达到语料门后才按真实报告计天，最早日期不是自动放行时间。本 PR 不调用付费模型，R30 只报 loopback 数字；真实模型数字和打包闭环不能被模拟证据替代。
+
+### 实施补充：排队输入与收据权威
+
+- 排队期间用户可以更换选区。每条消息必须携带发送时的文稿/选区/附件引用，执行时从已消费的消息取；不能让工具读取 composer 最新的选区。采用 pi 公开的 `CustomAgentMessages` 扩展点与 `toProviderMessages` 转换，不另起上下文文件。规范证据：安装版 `pi-agent-core/dist/types.d.ts:263`、`harness/agent-harness.d.ts:630`；领域约束是可撤销创作必须命中用户发送时指向的对象。
+- canvas 写入先通过现有 Surface adapter prepare；用户批准后，经 lane 的 `appendCustomEntry` 记收据关联，再把那一份 actionHash 交执行器。G5 的持久化文件、CAS 和补偿语义不变。执行器拿不到准备态及已记录的批准则拒绝，不能由渲染层自铸授权。
+- 空正文的供应商错误原本被投影丢失；新增 error 段保留运行时错误。红测：`laneProjection.test.ts` 预期一个错误段、原实现返回空数组。错误仍在原对话位置，不另建错误日志真相源。
+
+### G13 真机补记：候选缩略图与采用（09-08）
+
+真实 Electron `.tmp/pi-stage4-switch-development-1788845538767/FAIL.png` 显示，刚建立制作任务就出现两个灰候选。根因是 `laneDesktopTasks` 把 brief/direction 等所有产物当候选，而 `laneViewModel` 丢掉产物身份、只生成序号；卡片无缩略图数据，Shell 无采用动作。
+
+沿用 09-06 定稿第 10 项的任务卡缩略图形态；候选只能来自真实媒体产物且有领域 owner 给出的有效预览。`ProductionRunService.readArtifactProjection` → `artifactProjection` 负责项目归属/文件/签名 URL；`canAdoptArtifact` 负责审定资格；点击已审定媒体走既有 `productionRunApi.command('artifact.adopt')` 与 `executeProductionRunCommand`，主进程 reducer 再校验。未审定产物只预览，不冒充可采用；文字产物的审定仍在领域原 UI。候选身份、缩略图和资格只作为领域 join 事实，不写进转录（K4）。保留 v4 外形和 62 张基线。
+
+验收：文本/媒体混合、缺图/失效/越界/不同项目、已采用/未审定状态、签名过期重读、真实领域采用命令与拒绝、不重复点击；现有 v4/L1/任务重启测试不退化。回滚随阶段 4 commit 一并 revert。最终 Electron 像素/点击证据由本 PR 真机 runner 复跑，不把纯渲染单测当作真机完成。
+
+### 第 2 步集成证据与剩余项
+
+当前仅第 1 步 `fb2fd22f7` 已提交并推送；下述第 2 步证据仍属于本地工作树，不能称远端交付。
+
+- 注册：main → `registerAgentLaneIpc/createDesktopLaneDependencies`，preload 仅发布 lane command/projection；项目 hydrate/release/delete 共用同一 lane 客户端。释放失败必须拒绝项目生命周期后续步骤，不能把 `{ok:false}` 当 ACK；`laneClient.test.ts` 先红后绿（13/13）。
+- 输入：`accept` 完成 durable admission 才清 composer；`drive` 执行不占 IPC 的输入准备队列。排队输入与选区/附件同一条 `nomi.input` 保存，领域执行只读取消费中的那一条。
+- 审阅：`propose_storyboard_plan` 与 `patch_shots` 的逐次计划审阅由共享 capability 事实决定；safe-auto、project 及已有 canvas.write grant 均不能绕过。真实 HTTP + SDK 测试 8/8；共享策略和真实 G5 桥接 31/31。
+- L1：五领域及审批/排队组合共 19 个剧本，每条 4 项判据，76/76；19 次 session reopen 全过。现有 shadow parity、L1 和零额度 R30 合并测试 27/27；R30 工具写对/回合/审批分别 8/8，与 3a 基线相同。不是 19 次旧新宿主双跑，也不是 19 次进程崩溃。
+- 真实 Electron stage4 走查：新对话隔离、确认前文稿零写、确认后落盘、真实 ProductionRun 任务、队列消费顺序；完整进程重启后 JSONL 字节不变、无新模型请求、任务进度和花费显示一致。9 次本地 HTTP 文本请求，0 图片请求，0 付费。运行报告 `.tmp/pi-stage4-switch-development-1788848387466/report.json`；主代理已亲看以下四图。
+
+![新对话](2026-09-08-agent-lane-stage4-switch-assets/01-new-conversation.png)
+![审批卡](2026-09-08-agent-lane-stage4-switch-assets/02-approval-card.png)
+![任务卡](2026-09-08-agent-lane-stage4-switch-assets/03-task-card.png)
+![队列与插话](2026-09-08-agent-lane-stage4-switch-assets/04-queue-and-steer.png)
+
+这批截图保持获批 v4 的头部、流、介入槽、队列和 composer 布局。长对话压缩任务卡的问题已在共享 flow 直接子项修正：此前实测内容 116px、可见 39px；新走查检查几何和完整内容，避免 DOM 文本存在却被裁切的假绿。73 个设计实验室状态走查完成；62 张冻结基线零 diff，未声明逐像素比较通过。迁移横幅第五图在第 3 步补。
+
+生产长旅程已走到本地生成与真实审片请求。审片/方向/脚本三处旧 task 标签不能当 Skill 标识，已修调用者；真缺失 Skill 的拒绝对照仍绿。原偏差卡和原两轮纠偏预算已接回，生产旅程随后完整通过（6 次文本 + 1 次图片，均本地 loopback，0 付费；`.tmp/pi-production-development-1788847559976`）。同模型重开不再写转录/改变会话顺序，切换模型仍走公开 `setModel`。编辑、对话的后续真机发现收据撤销与冷选择/删除缺口，正按原断言修复。
+
+完整预算门岗已改用真实 request 定义、上游 coding Definition 工厂和全部领域描述符。初始 12 个工具约 4,622 token，coding 后 19 个约 5,731，累积全解锁 44 个约 11,915，超过现役 10,000 上限。门岗规则测试 15/15；新增领域超量夹具会红，生产全量检查也明确报红。旧的两组合检查漏掉了 25 个延迟工具。安全 metadata 压缩后仍超；schema 引用实验最多省 166，但真实 pi 参数归一化 497 样本出现 3 处差异，且部分上游传输丢 definitions，未采用。领域组切换与永久解锁提高上限的架构选择已询问用户，未收到答复，未擅自改变策略。完整 schema 预算验收仍未过。
+
+### 14:47 检查点核验补记
+
+- 远端基线已刷新并合入 `28654f269a72ac873ac04dd5f55ab1fdea5f0ef5`，本次仅带入两项 docs-autosync；合并提交 `02f3af6cf`。
+- 全量 `pnpm run test`：Vitest 11953 passed / 2 skipped（1289 files passed / 1 skipped），agent-runtime 413/413，janitor 13/13，stats 8/8。此结果在最新 Continue 上下文及读取修复之前；这些补丁另有定向检查，仍需最后集中验证。
+- 真 Electron editing 7 次本地文本请求通过：文稿写入/撤销、画布两节点一连线及精确 G5 撤销、中断文字保存、项目与 lane 隔离、冷重启原消息与 tool 记录保持。主代理已打开检查画布收据、中断气泡、正式分镜保存标签截图。
+- 冷启动选中与删除走查通过：创建/删除均由 SDK 列表承接，重启不复活 main 或已删 lane，原 JSONL 字节不变。
+- 实际 canvas/timeline/range read 三处错误已在共享契约边界修复；32 条定向回归通过。真实长对话的队列读取/字幕落盘仍需 runner 重跑。
+- `SWITCH-RULINGS.md` 已确定工具预算处理：10000 不抬、单次常驻加一个领域组，全部 44 个只作为报告。公开 SDK `setActiveTools` 承接切换；此项运行时改动与对应门岗尚未落地，当前门岗仍红。
+- 步骤 3–6 未完成，迁移横幅第五图尚无；本节不是最终通过或 PR ready 的声明。
