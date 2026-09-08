@@ -313,3 +313,19 @@ test('取消式并发组不得按共用 ref 分组：push 触发的 workflow 必
       + offenders.join('\n  '),
   )
 })
+
+test('browser feel fixtures run in the Chromium-equipped desktop lane, never Unit', () => {
+  const commands = runCommands(workflow.jobs['desktop-linux'])
+  const install = commands.indexOf('pnpm exec playwright install --with-deps chromium')
+  const run = commands.indexOf('pnpm run test:feel:browser')
+  assert.ok(install >= 0 && run > install)
+  for (const [name, job] of Object.entries(workflow.jobs)) {
+    if (/unit/i.test(name)) assert.doesNotMatch(runCommands(job).join('\n'), /playwright install|test:feel:browser/)
+  }
+  for (const name of ['_feel', '_feel-observer']) {
+    assert.ok(!fs.existsSync(path.join(repoRoot, `tests/ux/${name}.test.mjs`)))
+    assert.match(packageJson.scripts['test:feel:browser'], new RegExp(`${name}\\.browser\\.mjs`))
+  }
+  const evidence = workflow.jobs['desktop-linux'].steps.find((step) => step.uses === 'actions/upload-artifact@v7')
+  assert.match(evidence.with.path, /artifacts\/feel\/\*\*/)
+})

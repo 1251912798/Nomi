@@ -676,3 +676,5 @@ export async function expectHittable(locator, label) {
 // 意图层（拍板方手写的结构关系）与自动层（从样张导出的挂点/几何/token）**共用这一个入口**，
 // 实现在 `_contract.mjs`。走查里 `import { assertMockupContract } from './_assert.mjs'` 即可。
 export { assertMockupContract, TOKEN_STEP_PX, MAGNITUDE_RATIO } from './_contract.mjs'
+
+export { scanFeel, formatFeelFindings } from './_feel.mjs'
