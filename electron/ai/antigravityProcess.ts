@@ -167,7 +167,13 @@ export async function runAntigravityProcess(input: AntigravityRunOptions, option
     await writeFile(path.join(agentDir, "agent.md"), [
       "---", "name: " + agentName, "description: Nomi bounded generation", "tools: " + JSON.stringify(media?.tools ?? []),
       "mainAgent: true", "subagent: false", 'commandExecutionPolicy: "off"',
-      "inheritCustomizations: false", "---", "# System Prompt",
+      // agy ≥1.1.27 把 hooks 也归进 inheritCustomizations 这一个开关（二进制 changelog：「single inheritCustomizations
+      // switch … skills, rules, plugins, subagents and MCP servers」，且 hooks_manager 走 hooksInheritUser）。
+      // 本机实测 2026-09-08：false 时 .agents/hooks.json 被「loaded」但从不执行，PreInvocation/PreToolUse 标记文件不落地，
+      // 图像/改图验证在 macOS 与 Windows 上一律 ANTIGRAVITY_HOOK_UNVERIFIED；true 时 initialized.json 立刻出现。
+      // 因此必须 true 才能让我们自己的 task-gate 钩子生效；MCP 单独关掉（inheritMcp 是唯一的按类开关），
+      // 工具面仍由上面的 tools 白名单 + --sandbox + task-gate 授权账本约束。
+      "inheritCustomizations: true", "inheritMcp: false", "---", "# System Prompt",
       media?.system ?? "Return only the requested text. Do not use tools or access files.",
     ].join("\n"), { mode: 0o600 });
     if (input.signal?.aborted) throw abortError();
