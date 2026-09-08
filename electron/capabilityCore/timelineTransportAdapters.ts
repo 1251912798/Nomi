@@ -1,4 +1,4 @@
-import type { RuntimeToolCall, RuntimeToolDecision } from "../harness/runtime/runtimePort";
+import type { RuntimeToolCall, RuntimeToolDecision } from "../shared/agentCapabilities/transportContracts";
 import {
   timelineReadInputForAlias,
   type TimelineReadInput,

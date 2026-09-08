@@ -125,3 +125,7 @@ export function parseModelListResponse(bodyText: string): string[] | null {
   const page = parseModelListPage(bodyText);
   return page.ok ? page.models : null;
 }
+
+export type ModelListResult =
+  | { ok: true; models: string[]; descriptors?: ModelListDescriptor[]; statuses: number[]; partial?: boolean; notModified?: boolean; validator?: { url: string; etag: string } }
+  | { ok: false; status?: number; error: string; statuses: number[]; failureKind?: ModelListFailureKind };

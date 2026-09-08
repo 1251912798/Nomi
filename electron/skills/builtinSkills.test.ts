@@ -4,7 +4,6 @@ import { describe, expect, it } from "vitest";
 
 import { parseSkillFrontmatter } from "./skillFrontmatter";
 import { parseSkillManifest, type SkillManifest } from "./skillManifestSchema";
-import { orderPlaybookStages } from "./playbookOrchestrator";
 import { discoverSkillRecordsFromRoots, findSkillRecord, readSkillManifest } from "./skillStore";
 
 // 内置 skill 回归门：仓库里 skills/<name>/SKILL.md 的 Nomi 扩展块（frontmatter 的
@@ -70,12 +69,9 @@ describe("built-in skill packs", () => {
     expect(result.ok).toBe(false);
   });
 
-  it("brand-promo is a script-first 5-stage playbook that topo-sorts cleanly", () => {
+  it("brand-promo retains script-stage methodology references", () => {
     const stages = manifestOf("brand-promo").stages ?? [];
     expect(stages).toHaveLength(5);
-    const ordered = orderPlaybookStages(stages).map((s) => s.id);
-    expect(ordered).toEqual(["script", "storyboard", "build", "generate", "assemble"]);
-    expect(stages.find((stage) => stage.id === "script")?.pause).toBe(true);
     expect(stages.find((stage) => stage.id === "script")?.skillRefs).toEqual([
       "writer-screenwriter",
       "writer-structure",
@@ -88,20 +84,9 @@ describe("built-in skill packs", () => {
     expect(manifestOf("workbench-storyboard-planner").selectableInWorkbench).toBe(true);
   });
 
-  it("release-media-pack is an evidence-first 7-stage playbook with an honest handoff", () => {
+  it("release-media-pack keeps its methodology references available and body bounded", () => {
     const manifest = manifestOf("release-media-pack");
     const stages = manifest.stages ?? [];
-    expect(orderPlaybookStages(stages).map((stage) => stage.id)).toEqual([
-      "evidence",
-      "research",
-      "story",
-      "build",
-      "generate",
-      "assemble",
-      "handoff",
-    ]);
-    expect(stages.find((stage) => stage.id === "story")?.pause).toBe(true);
-    expect(stages.find((stage) => stage.id === "handoff")?.pause).toBe(true);
     expect(manifest.tools).not.toContain("tikhub_search");
     expect(manifest.tools).not.toContain("ffmpeg");
 

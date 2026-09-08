@@ -1,4 +1,6 @@
 # docs/plan 索引地图
+- [模型契约跨字段约束](2026-09-08-model-contract-cross-field-limits.md) — Hailuo 1080p/时长与 H3 混合参考总量。
+- [阶段 5b：目录活性 reconcile](2026-09-08-catalog-liveness-reconcile.md) — 自动禁用、保留配置、周探针与明暗样张。
 
 > 方案/执行文档按**主题**分组的查找表。文件本身保持平铺（彼此有大量路径互链，移动会断链），本表负责「按主题/状态秒定位」。
 > 本索引仍有历史存量缺口；查不到时必须继续全量搜索。`check:docs-index` 保证缺口只减不增。
@@ -12,6 +14,7 @@
 | 文件 | 一句话 | 状态 |
 |---|---|---|
 | [2026-09-08-vacuous-waitforfunction-sweep.md](2026-09-08-vacuous-waitforfunction-sweep.md) | 清扫七处 async 空等待，测试等待门岗覆盖 walk/e2e 并提供 R17 红证 | ✅ |
+| [2026-09-08-mcp-tool-refs-catalog-detection.md](2026-09-08-mcp-tool-refs-catalog-detection.md) | 工具引用按对象结构选择 Agent/MCP 目录；含 R17 红绿证据 | 📎 |
 | [2026-09-07-generation-strategy-resolver.md](2026-09-07-generation-strategy-resolver.md) | **生成策略解析器**：生成前按真实模型档案裁决每一镜的时长/参数上限，给出「必须合并 / 必须拆条」建议并一键采纳，落画布前再过一道闸；纯函数引擎 + GUI 审阅面板 + 行内警示 + 内外同源的 `resolve` 能力契约。附录 G 记 2026-09-07 接手 PR #573 的返工（判断有两份答案那一族根因） | 🚧 |
 | [2026-09-07-model-generation-core-path.md](2026-09-07-model-generation-core-path.md) | **生成主干道**：fake-ip（198.18/15）下「钱扣了、片取不回」的类根因修——出站判据收成唯一 owner + `check:outbound-policy` 棘轮、fake-ip 凭阳性证据放行（探不到就 fail-closed）、删 `LAB_ALLOW_LOCALHOST` 逃生口、错误说人话、已付费落 `recoverable` 走免费重拉不再二次扣费、`deepseek-v3.2-think` 实测下架 + LLM 进模型雷达；文末列了 6 条未做（提交侧未接入 / 退役自动探测 / 零额度夹具 / 轮询活性 / 洗白点盘点） | 🚧 |
 | [2026-09-07-rules-round2-adversary-inventory.md](2026-09-07-rules-round2-adversary-inventory.md) | **规则第二轮：把「先查别人」做成机器强制**——反方 agent 机器强制进 R27 手册 §16 + `check:prior-art`、依赖能力清单自动生成 + 框架边界 advisory 启发式、钩子随 checkout 生效不再靠 install、根因流程三条（症状聚类 / `invariant_owner_layer` / R14.2 审计三条） | 🚧 |
@@ -102,6 +105,7 @@
 
 | 文件 | 一句话 | 状态 |
 |---|---|---|
+| [2026-09-08-canvas-undo-barrier-sweep.md](2026-09-08-canvas-undo-barrier-sweep.md) | 独立边模式、断线、节点锁手势的撤销边界与同族扫描 | 📎 |
 | [2026-09-06-agent-artifact-node.md](2026-09-06-agent-artifact-node.md) | **AI 手艺产物节点（agent-artifact）**：承载 SVG / 动态 HTML / 表格 / Markdown / 3D 摆位等不调模型的产物；meta.artifact 不扩 result 闭集、HTML 沙箱 allow-scripts、动作复用 FloatingToolbarShell；v1 已落地（Agent 交付落盘/渲染/下载/复制/SVG 固化为参考图），3D 视口截图与手艺选择决策树 = 下一刀 | 🚧 |
 | [2026-09-06-depth-video-canvas-node.md](2026-09-06-depth-video-canvas-node.md) | **本机跑深度视频当动作参考**（Depth Anything V2 Small，WebGPU 渲染层推理、ffmpeg 抽帧合成、权重按需下载校验）；2026-09-07 用户两次拍板后收成「选中视频 → 浮条『提取深度』→ 点了直接跑 → 旁边长出一张带出身的普通视频卡」，无面板无参数，骨架链已随 mode 一起删 | ✅ |
 | [2026-09-06-canvas-frame-tool.md](2026-09-06-canvas-frame-tool.md) | **框工具（Frame）第一档**：现役 Group 进化成 Frame——`frameBounds` 从没人读变成真相之一（框只长不缩）、左下工具簇加「框」钮 + F 画框、拖进=入组拖出=退组（拖动中就给计数预览）、头部带说明与 ⋯ 菜单（生成整框 / 整框进时间轴 / 折叠 / 解散）；旧组按包围盒回填一次 | 🚧 |

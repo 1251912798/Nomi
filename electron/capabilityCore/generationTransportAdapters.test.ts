@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import type { RuntimeToolCall } from "../harness/runtime/runtimePort";
+import type { RuntimeToolCall } from "../shared/agentCapabilities/transportContracts";
 import type { ProjectBinding } from "../shared/projectBinding";
 import type { ProjectLeaseV2 } from "./projectLease";
 import { createPiGenerationTransportAdapter } from "./generationTransportAdapters";

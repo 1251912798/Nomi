@@ -15,7 +15,7 @@ import { ELEVENLABS_VENDOR_SEED } from "./elevenlabs";
 import { MESHY_VENDOR_SEED } from "./meshyOfficial";
 import { FAL_VENDOR_SEED } from "./falOfficial";
 import { RUNWAY_VENDOR_SEED } from "./runwayOfficial";
-import type { Vendor } from "./types";
+import type { HttpOperation, Vendor } from "./types";
 
 // ---------------------------------------------------------------------------
 // 内置供应商种子的**单一清单**。此前这份名单只以「seedBuiltins 里 11 行 seedVendor 调用」
@@ -44,6 +44,12 @@ export type VendorSeed = {
    * promotion.
    */
   credentialMode?: CredentialMode;
+  /** Paid only by the weekly radar, never by application reconciliation. */
+  livenessProbe?: {
+    request: Pick<HttpOperation, "method" | "path" | "body">;
+    successPath: string;
+    source: { url: string; checkedAt: string };
+  };
 };
 
 /** 顺序 = 原 seedBuiltins 的播种顺序（保持既有装机行为一致）。 */

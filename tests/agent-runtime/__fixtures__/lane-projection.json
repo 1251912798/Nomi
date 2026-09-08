@@ -79,6 +79,7 @@
       "reason": "model-has-no-reasoning"
     }
   },
+  "queues": [],
   "thinking": {
     "supportedLevels": [
       "off"

@@ -166,11 +166,13 @@ export const createCanvasNodeActions: CanvasSliceCreator<CanvasNodeActions> = (s
   setNodeLocked: (nodeId, locked) => {
     const existing = get().nodes.find((candidate) => candidate.id === nodeId)
     if (!existing || Boolean(existing.locked) === locked) return
+    pushUndoSnapshot(get())
     set((state) => {
       const node = state.nodes.find((candidate) => candidate.id === nodeId)
       if (!node) return
       node.locked = locked
       bumpPersistRevision(state)
+      Object.assign(state, getHistoryFlags())
     })
     // 专用事件(非 node.updated):锁是审计要点(谁锁的/何时锁的),日志里必须一眼可查。
     // title 随事件携带:S9 记忆提炼器增量扫描拿不到旧事件里的标题,事件自含可读。

@@ -11,7 +11,8 @@ import { AgentHarness, type AgentLane, type HookHandler } from '@earendil-works/
 import { BACKGROUND_CONTEXT, type Context } from '@earendil-works/pi-agent-core/harness/context';
 import { createModels, type Provider } from '@earendil-works/pi-ai';
 
-import { createNomiProvider } from '../../electron/harness/runtime/pi/model.mjs';
+import { createNomiProvider } from '../../electron/agentLane/laneModelProvider.mjs';
+import type { LaneModelFacts } from '../../electron/agentLane/laneProjection.mjs';
 import { createLaneTools } from '../../electron/agentLane/laneTools.mjs';
 import { openLaneSession } from '../../electron/agentLane/laneSession.mjs';
 import type { OpenLaneOptions } from '../../electron/agentLane/laneRuntimePort.js';
@@ -32,6 +33,12 @@ export interface ProbeLane {
   harness: AgentHarness<undefined>
   lane: AgentLane
   sessionId: string
+  /**
+   * 三行需要的模型侧事实，和 `laneHost.mts` 在同一处装配里定死的那一份是同一份。
+   * L2 回放影子要拿它调**生产的** `projectLaneSnapshot`——探针自己再拼一份 facts
+   * 就等于在测试里放了第二个投影入口。
+   */
+  modelFacts: LaneModelFacts
   /** 正常关闭：关 harness、交还 repo 持有权。P1③ 的「崩溃」臂**故意不调它**。 */
   close(): Promise<void>
 }
@@ -50,7 +57,9 @@ export async function openProbeLane(
   const { session, sessionId, release } = await openLaneSession(
     { projectDir: options.projectDir, ...(probe.sessionId ? { sessionId: probe.sessionId } : {}) }, PROBE_CONTEXT,
   );
-  const { provider, model, credentials } = await createNomiProvider(options.model);
+  const { provider, model, credentials, pricingBasis } = await createNomiProvider(options.model);
+  const modelFacts: LaneModelFacts = { model, pricing: pricingBasis,
+    ...(options.model.contextWindow === undefined ? {} : { contextWindow: options.model.contextWindow }) };
   const models = createModels({ credentials });
   models.setProvider(probe.wrapProvider ? probe.wrapProvider(provider) : provider);
   const tools = createLaneTools(options.tools);
@@ -67,7 +76,7 @@ export async function openProbeLane(
     await release(PROBE_CONTEXT);
   })();
   t.after(() => close());
-  return { harness, lane, sessionId, close };
+  return { harness, lane, sessionId, modelFacts, close };
 }
 
 /** 一个外部可 resolve 的 promise：探针用它把「钩子进来了」这件事交给测试主体，不用墙钟等。 */

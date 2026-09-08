@@ -5,7 +5,7 @@ import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { agentToolsForRequest } from "../harness/agentChatPolicy";
-import type { RuntimeToolCall } from "../harness/runtime/runtimePort";
+import type { RuntimeToolCall } from "../shared/agentCapabilities/transportContracts";
 import { createCanvasReadSurfaceRegistry, createSurfaceOwnerAuthority } from "./canvasReadSurfaceRegistry";
 import { createMainCapabilityExecutorRegistry } from "./capabilityExecutorRegistry";
 import { compileExecutionContract, type PlanCandidate } from "./executionContract";

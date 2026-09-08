@@ -1,5 +1,5 @@
 import type { AgentChatToolDecision } from "../harness/agentChatContracts";
-import type { RuntimeToolCall } from "../harness/runtime/runtimePort";
+import type { RuntimeToolCall } from "../shared/agentCapabilities/transportContracts";
 
 export type PreparedApproval = Readonly<{ invocation: unknown }>;
 

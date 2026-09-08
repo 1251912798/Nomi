@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
 
-import type { RuntimeToolCall } from "../harness/runtime/runtimePort";
+import type { RuntimeToolCall } from "../shared/agentCapabilities/transportContracts";
 import { SKILL_WRITE_CAPABILITY } from "../shared/agentCapabilities/skillWrite";
 import type { SkillRecord } from "../skills/skillStore";
 import type { SkillManifest } from "../skills/skillManifestSchema";

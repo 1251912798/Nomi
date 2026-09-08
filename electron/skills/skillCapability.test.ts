@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { deriveSkillNeeds, reportSkillCapability } from "./skillCapability";
+import { deriveSkillNeeds } from "./skillCapability";
 import type { SkillManifest } from "./skillManifestSchema";
 
 function manifest(partial: Partial<SkillManifest>): SkillManifest {
@@ -16,7 +16,7 @@ function manifest(partial: Partial<SkillManifest>): SkillManifest {
 }
 
 describe("deriveSkillNeeds", () => {
-  it("unions requiredProviders with stage modelPref kinds, and tools with stage tools", () => {
+  it("derives provider kinds without treating deprecated tools or families as requirements", () => {
     const needs = deriveSkillNeeds(
       manifest({
         requiredProviders: ["text"],
@@ -32,16 +32,10 @@ describe("deriveSkillNeeds", () => {
         ],
       }),
     );
-    expect(needs.providers.sort()).toEqual(["image", "text", "video"]);
-    expect(needs.tools.sort()).toEqual([
-      "create_canvas_nodes",
-      "propose_storyboard_plan",
-      "run_generation_batch",
-    ]);
-    expect(needs.families).toEqual(["seedance"]);
+    expect(needs).toEqual({ providers: ["text", "image", "video"] });
   });
 
-  it("dedupes providers and tools across stages", () => {
+  it("dedupes providers across stages", () => {
     const needs = deriveSkillNeeds(
       manifest({
         requiredProviders: ["image"],
@@ -52,35 +46,5 @@ describe("deriveSkillNeeds", () => {
       }),
     );
     expect(needs.providers).toEqual(["image"]);
-    expect(needs.tools).toEqual(["create_canvas_nodes"]);
-  });
-});
-
-describe("reportSkillCapability", () => {
-  const skill = manifest({
-    requiredProviders: ["text", "image", "video"],
-    tools: ["propose_storyboard_plan", "run_generation_batch"],
-  });
-
-  it("flags missing providers and tools when the instance lacks them", () => {
-    const report = reportSkillCapability(
-      skill,
-      new Set(["text", "image"]), // 缺 video（没接视频模型）
-      new Set(["propose_storyboard_plan"]), // 缺 run_generation_batch
-    );
-    expect(report.missingProviders).toEqual(["video"]);
-    expect(report.missingTools).toEqual(["run_generation_batch"]);
-    expect(report.satisfied).toBe(false);
-  });
-
-  it("reports satisfied when every need is available", () => {
-    const report = reportSkillCapability(
-      skill,
-      new Set(["text", "image", "video"]),
-      new Set(["propose_storyboard_plan", "run_generation_batch"]),
-    );
-    expect(report.missingProviders).toEqual([]);
-    expect(report.missingTools).toEqual([]);
-    expect(report.satisfied).toBe(true);
   });
 });
