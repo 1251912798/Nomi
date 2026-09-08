@@ -1,7 +1,7 @@
 // Test-only reservation boundary. Prices are fetched from APIMart, never inferred from labels.
 export const REAL_MODELS = Object.freeze({ text: 'gpt-5-nano', image: 'gpt-image-2', video: 'MiniMax-H3' })
 export const CNY_PER_USD = 7 // Conservative budget conversion; report USD billing separately.
-export const BUDGET_CNY = 8
+export const BUDGET_CNY = 50
 export function publicPrices(html) {
   const chunks = [...html.matchAll(/self\.__next_f\.push\((\[.*?\])\)<\/script>/g)]
     .map((m) => JSON.parse(m[1])).filter((a) => typeof a[1] === 'string').map((a) => a[1]).join('')
