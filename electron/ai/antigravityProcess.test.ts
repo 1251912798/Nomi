@@ -47,7 +47,11 @@ describe("Antigravity process ownership", () => {
     const cwd = await readFile(path.join(f.dir, "cwd"), "utf8");
     const profile = await readFile(path.join(f.dir, "profile"), "utf8");
     expect(profile).toContain("tools: []");
-    expect(profile).toContain("inheritCustomizations: false");
+    // agy ≥1.1.27 把 hooks 归进 inheritCustomizations 开关：false 时 task-gate 钩子永不执行（本机 2026-09-08 实测），
+    // 图像/改图验证在两个平台都 HOOK_UNVERIFIED。必须 true；MCP 单独关掉。
+    expect(profile).toContain("inheritCustomizations: true");
+    expect(profile).toContain("inheritMcp: false");
+    expect(profile).not.toContain("inheritCustomizations: false");
     expect(profile).toContain("# System Prompt");
     expect(await readFile(path.join(f.dir, "mounted-cwd"), "utf8")).toBe(cwd);
     await expect(stat(cwd)).rejects.toMatchObject({ code: "ENOENT" });
