@@ -1,0 +1,74 @@
+{
+  "version": 1,
+  "provider": "loopback",
+  "journeys": [
+    {
+      "id": "agent-panel",
+      "entry": "agent",
+      "states": ["idle", "thinking", "tool-receipt"],
+      "title": "Agent 对话完成一次工具调用",
+      "runner": "experience.walk.mjs",
+      "steps": [
+        "new-project",
+        "open-models",
+        "open-chat-model",
+        "choose-model",
+        "close-models",
+        "write-instruction",
+        "send-instruction"
+      ],
+      "owner": "src/workbench/ai",
+      "experience": true
+    },
+    {
+      "id": "artifact-products",
+      "entry": "canvas",
+      "states": ["html", "svg", "markdown", "3d"]
+    },
+    {
+      "id": "storyboard-timeline-export",
+      "entry": "timeline",
+      "states": ["storyboard", "timeline", "export"]
+    },
+    {
+      "id": "canvas-image",
+      "entry": "canvas",
+      "states": [],
+      "title": "画布生成一张图",
+      "runner": "experience.walk.mjs",
+      "steps": [
+        "new-project",
+        "open-canvas",
+        "add-image",
+        "select-model",
+        "choose-model",
+        "write-prompt",
+        "generate",
+        "confirm-generation"
+      ],
+      "owner": "src/workbench/generationCanvas",
+      "experience": true
+    },
+    {
+      "id": "settings-model",
+      "entry": "settings",
+      "states": [],
+      "title": "设置页接入模型",
+      "runner": "experience.walk.mjs",
+      "steps": [
+        "open-settings",
+        "open-models",
+        "custom-api",
+        "connection-name",
+        "connection-url",
+        "connection-key",
+        "save-connection",
+        "fetch-models",
+        "choose-model",
+        "verify-model"
+      ],
+      "owner": "src/ui/onboarding/ModelSettingsHome.tsx",
+      "experience": true
+    }
+  ]
+}

@@ -1,0 +1,92 @@
+{
+  "version": 1,
+  "journeys": {
+    "agent-panel": {
+      "compatibility": {
+        "rubricVersion": 1,
+        "sourceHash": "2858c9ed7b5f6530f65bf25b39fc98cd3a1cac5888752e2bc67243df46631c60",
+        "platform": "darwin",
+        "architecture": "arm64",
+        "playwright": "1.60.0",
+        "electron": "43.4.1",
+        "viewport": {
+          "width": 1440,
+          "height": 842,
+          "dpr": 2
+        },
+        "theme": "light"
+      },
+      "metrics": {
+        "clicks": 5,
+        "inputs": 1,
+        "keys": 1,
+        "scrolls": 0,
+        "panelSwitches": 1,
+        "confirmations": 0,
+        "unnamedIconCount": 0,
+        "longCopyCount": 0,
+        "pointerDistancePx": 1620.476028836415,
+        "fittsSum": 12.003117042731054,
+        "feelFindings": 12
+      }
+    },
+    "canvas-image": {
+      "compatibility": {
+        "rubricVersion": 1,
+        "sourceHash": "2858c9ed7b5f6530f65bf25b39fc98cd3a1cac5888752e2bc67243df46631c60",
+        "platform": "darwin",
+        "architecture": "arm64",
+        "playwright": "1.60.0",
+        "electron": "43.4.1",
+        "viewport": {
+          "width": 1440,
+          "height": 842,
+          "dpr": 2
+        },
+        "theme": "light"
+      },
+      "metrics": {
+        "clicks": 7,
+        "inputs": 1,
+        "keys": 0,
+        "scrolls": 0,
+        "panelSwitches": 4,
+        "confirmations": 1,
+        "unnamedIconCount": 0,
+        "longCopyCount": 0,
+        "pointerDistancePx": 2495.1232625670273,
+        "fittsSum": 20.88866344722061,
+        "feelFindings": 61
+      }
+    },
+    "settings-model": {
+      "compatibility": {
+        "rubricVersion": 1,
+        "sourceHash": "2858c9ed7b5f6530f65bf25b39fc98cd3a1cac5888752e2bc67243df46631c60",
+        "platform": "darwin",
+        "architecture": "arm64",
+        "playwright": "1.60.0",
+        "electron": "43.4.1",
+        "viewport": {
+          "width": 1440,
+          "height": 842,
+          "dpr": 2
+        },
+        "theme": "light"
+      },
+      "metrics": {
+        "clicks": 7,
+        "inputs": 3,
+        "keys": 0,
+        "scrolls": 0,
+        "panelSwitches": 3,
+        "confirmations": 0,
+        "unnamedIconCount": 0,
+        "longCopyCount": 9,
+        "pointerDistancePx": 2559.013476007323,
+        "fittsSum": 16.747871908765934,
+        "feelFindings": 78
+      }
+    }
+  }
+}

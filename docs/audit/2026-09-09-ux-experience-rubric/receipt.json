@@ -1,0 +1,8 @@
+{
+  "runId": "040be8da-460f-4cb2-a2e6-01ef98855062",
+  "applicationSha": "d566c99c3d87a5a0264955c161575a13b2e5d692",
+  "archiveSha256": "fd9d853e5640343adadc57bdac3df4321d50adb1dce43054653678657de9c8b6",
+  "archiveBytes": 9680539,
+  "cost": 0,
+  "notes": "Archive contains full before/after screenshots, steps, judgments, report, manifest, and synthetic VLM example. Playwright trace remains local artifacts/experience/runs."
+}

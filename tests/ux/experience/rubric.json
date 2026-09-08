@@ -1,0 +1,174 @@
+{
+  "version": 1,
+  "scale": {
+    "min": 0,
+    "max": 3,
+    "anchors": ["阻断任务", "需要猜测或反复尝试", "可理解，仅有轻微摩擦", "明确、顺畅"],
+    "subjectiveTarget": 2
+  },
+  "dom": {
+    "controls": "button,a[href],input:not([type=hidden]),textarea,select,[role=button],[role=menuitem],[contenteditable=true]",
+    "primary": "[data-variant=primary],[data-nomi-variant=primary],[data-v4-control=send],button[type=submit]",
+    "empty": "[data-v4-block=empty],[data-empty-state],[data-testid*=empty]",
+    "panel": "[role=dialog],[data-settings-section],[data-workspace-mode],[data-agent-surface]",
+    "terms": ["payload", "schema", "fallback", "endpoint"],
+    "gapTokenPattern": "^--.*(?:space|spacing|gap)(?:-|$)"
+  },
+  "dimensions": [
+    {
+      "id": "path",
+      "label": "链路长度",
+      "question": "做完这件事要几步？",
+      "source": "https://research.google/pubs/measuring-the-user-experience-on-a-large-scale-user-centered-metrics-for-web-applications/",
+      "metrics": ["clicks", "inputs", "keys", "scrolls", "panelSwitches", "confirmations"],
+      "judge": "与同任务对标比较；无对标则不判断最短路径",
+      "thresholdKind": "ratchet",
+      "exemption": "必须保留安全确认；比较相同起点与成功终点",
+      "ratchet": {
+        "clicks": "sum",
+        "inputs": "sum",
+        "keys": "sum",
+        "scrolls": "sum",
+        "panelSwitches": "sum",
+        "confirmations": "sum"
+      }
+    },
+    {
+      "id": "step-clarity",
+      "label": "每步可理解",
+      "question": "这一步知道该干嘛吗？",
+      "source": "https://www.nngroup.com/articles/cognitive-walkthroughs/",
+      "metrics": ["primaryCandidates", "emptyHints"],
+      "judge": "逐步回答：会形成正确目标吗？会注意到操作吗？能把操作关联到目标吗？反馈能说明进展吗？",
+      "thresholdKind": "human",
+      "exemption": "多个独立工作区域不要求全屏唯一主行动"
+    },
+    {
+      "id": "icons",
+      "label": "图标可懂",
+      "question": "这个图标是什么？",
+      "source": "https://developer.apple.com/design/human-interface-guidelines/accessibility",
+      "metrics": ["iconOnlyCount", "unnamedIconCount", "tooltipHintCount", "iconOnlyRatio"],
+      "rules": [
+        {
+          "metric": "unnamedIconCount",
+          "max": 0
+        }
+      ],
+      "judge": "先看去掉名称与tooltip的图标裁图盲猜，再对照功能；未做盲猜不报正确率",
+      "thresholdKind": "project-proxy",
+      "exemption": "有可访问名不等于有可见标签，tooltip属性线索不等于验证已显示",
+      "ratchet": {
+        "unnamedIconCount": "max"
+      }
+    },
+    {
+      "id": "copy",
+      "label": "文案简洁",
+      "question": "提示语简短好懂吗？",
+      "source": "https://www.nngroup.com/articles/ten-usability-heuristics/",
+      "metrics": ["longCopyCount", "termHits"],
+      "controlLimits": {
+        "button": 24,
+        "input": 40,
+        "textarea": 80,
+        "default": 40
+      },
+      "rules": [
+        {
+          "metric": "longCopyCount",
+          "max": 0
+        }
+      ],
+      "judge": "能否用一句话复述意图？术语是否符合用户词汇？",
+      "thresholdKind": "project-heuristic",
+      "exemption": "字符数按Unicode码点；用户输入值不参与，模型名和任务内容不是默认缺陷",
+      "ratchet": {
+        "longCopyCount": "max"
+      }
+    },
+    {
+      "id": "goal",
+      "label": "目标可理解",
+      "question": "打开就知道这里做什么吗？",
+      "source": "https://www.nngroup.com/articles/cognitive-walkthroughs/",
+      "metrics": ["primaryCandidates", "emptyHints"],
+      "judge": "只看首屏，概括本页用途与下一步；三秒任务需要独立限时人测，不冒充已测",
+      "thresholdKind": "human",
+      "exemption": "离线看不到理解，不以按钮数量推导理解分"
+    },
+    {
+      "id": "alignment",
+      "label": "整齐",
+      "question": "应该对齐的地方齐吗？",
+      "source": "https://m2.material.io/design/usability/accessibility.html",
+      "metrics": ["alignmentCandidates", "offTokenGaps"],
+      "alignmentTolerancePx": 1,
+      "judge": "查看候选同排/同列边缘与间距，排除baseline/wrap/分散对齐的合理差异",
+      "thresholdKind": "project-heuristic",
+      "exemption": "只有单行flex且align-items为start/end才比较相应边；token不可解析则未知"
+    },
+    {
+      "id": "space",
+      "label": "空间舒适",
+      "question": "挤不挤，点起来舒服吗？",
+      "source": "https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum.html",
+      "metrics": ["smallTargets", "controlCoverage"],
+      "targetSizeCssPx": 24,
+      "judge": "结合截图判断密度与任务关系；小目标审查间距例外，不直接判不合规",
+      "thresholdKind": "review-only",
+      "exemption": "内容占用率是控件采样覆盖率，不等于留白或舒适度；macOS pt不等于CSS px"
+    },
+    {
+      "id": "reach",
+      "label": "伸手",
+      "question": "下一步要跑多远？",
+      "source": "https://www.yorku.ca/mack/hci1992.html",
+      "metrics": ["pointerDistancePx", "fittsSum", "panelSwitches"],
+      "judge": "结合实际操作次序看是否频繁跨区；无起点的首击不计算",
+      "thresholdKind": "ratchet",
+      "exemption": "Fitts指数是难度代理，不是耗时预测；键盘和滚动单列",
+      "ratchet": {
+        "pointerDistancePx": "sum",
+        "fittsSum": "sum",
+        "panelSwitches": "sum"
+      }
+    },
+    {
+      "id": "speed",
+      "label": "速度",
+      "question": "等多久，有进展反馈吗？",
+      "source": "https://web.dev/articles/inp",
+      "metrics": ["actionMs", "completionMs", "feedbackMs", "longTaskBlockingMs"],
+      "rules": [
+        {
+          "metric": "actionMs",
+          "max": 1000
+        }
+      ],
+      "judge": "可见反馈是否及时且准确？loopback不代表真实供应商等待",
+      "thresholdKind": "project-heuristic",
+      "exemption": "1000ms是项目操作提醒线，不是INP标准；feedback未知不当零；观测窗口长任务不叫TBT"
+    },
+    {
+      "id": "feel",
+      "label": "机械体感缺陷",
+      "question": "叠、裁、拦、出视口、字号？",
+      "source": "tests/ux/_feel.mjs",
+      "metrics": ["feelFindings"],
+      "rules": [
+        {
+          "metric": "feelFindings",
+          "max": 0
+        }
+      ],
+      "judge": null,
+      "thresholdKind": "first-layer",
+      "exemption": "原样保留第一层候选，未经人工确认不能称产品bug",
+      "ratchet": {
+        "feelFindings": "max"
+      }
+    }
+  ],
+  "exemptions": []
+}
