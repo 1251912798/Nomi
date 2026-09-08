@@ -14,6 +14,7 @@ export type DesktopProjectLocationResult =
   | { ok: false; error: DesktopProjectLocationError }
 
 export type DesktopSettingsBridge = {
+  attentionSound: import("../../electron/shared/contracts/attentionSound").AttentionSoundBridge
   projectLocation: {
     get: () => Promise<DesktopProjectLocationResult>
     check: () => Promise<DesktopProjectLocationResult>

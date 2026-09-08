@@ -17,7 +17,6 @@ export type AutomationPolicySettings = {
   autoContinueWithinBudget: boolean;
   confirmIrreversible: true;
   systemNotifications: boolean;
-  notificationSound: boolean;
   notifyOnGate: boolean;
   notifyOnFailure: boolean;
   notifyOnCompletion: boolean;
@@ -38,7 +37,6 @@ export const DEFAULT_AUTOMATION_POLICY_SETTINGS: AutomationPolicySettings = {
   autoContinueWithinBudget: true,
   confirmIrreversible: true,
   systemNotifications: true,
-  notificationSound: true,
   notifyOnGate: true,
   notifyOnFailure: true,
   notifyOnCompletion: true,
@@ -93,7 +91,6 @@ export function normalizeAutomationPolicySettings(value: unknown): AutomationPol
     autoContinueWithinBudget: boolean(raw.autoContinueWithinBudget, true),
     confirmIrreversible: true,
     systemNotifications: boolean(raw.systemNotifications, true),
-    notificationSound: boolean(raw.notificationSound, true),
     notifyOnGate: boolean(raw.notifyOnGate, true),
     notifyOnFailure: boolean(raw.notifyOnFailure, true),
     notifyOnCompletion: boolean(raw.notifyOnCompletion, true),
