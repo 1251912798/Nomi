@@ -11,7 +11,7 @@
 
 2. **别手拷设置文件自拼隔离环境**：真实设置根下除 `model-catalog.json` 还有 `provider-adapters.json`、`generation-model-defaults.json`（文本大脑选择）、`system-prompts.json` 等，**漏一个就出「No local text model is configured」这类像 key 坏了的假象**。用 `evals/lib/isoApp.mjs` 的 `prepareIsolation`（付费验收已验证它 + dev electron 能解真 catalog 的 safeStorage key）。
 
-3. **隔离必须四路全设**：`NOMI_ELECTRON_USER_DATA_DIR` / `NOMI_SETTINGS_DIR` / `NOMI_PROJECTS_DIR` / **`NOMI_CAPABILITY_DIR`**。最后这个 `_launchApp` / `ui-driver` 都不管，**漏了会和真实 Nomi 抢 `~/.nomi/capability-core` 的 advert/token，串库**。
+3. **隔离必须四路全设**：`NOMI_ELECTRON_USER_DATA_DIR` / `NOMI_SETTINGS_DIR` / `NOMI_PROJECTS_DIR` / **`NOMI_CAPABILITY_DIR`**。共享 `_launchApp` 已为隔离实例派生 capability 目录；若另起 MCP helper，仍须给双方同一个目录，不能各自派生。2026-09-09 起启动器按显式参数 > env > 派生解析（此前 env 会被派生值覆盖，见 [启动器默认值不能覆盖调用配置](launcher-defaults-must-not-override-env.md)）。绕开共享启动器且漏设会与真实 Nomi 抢 `~/.nomi/capability-core` 的 advert/token，串库。
 
 ## 另外两条
 

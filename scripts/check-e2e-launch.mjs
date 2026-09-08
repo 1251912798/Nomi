@@ -5,6 +5,7 @@
 // 干等到超时、零截图、零提示，排查时像脚本自己写错了（两条死法见 tests/ux/_launchApp.mjs 文件头）。
 // 而 eslint.config.mjs 把 tests/ux/** 整个 ignore 了，现有五门**没有任何一道**能看见这片地。
 // 没有这道门，改完照样会有人再抄一份坏的进来。
+import { spawnSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -53,3 +54,8 @@ if (offenders.length) {
 }
 
 console.log('✅ check:e2e-launch —— 无直接 electron.launch 调用（全部走 _launchApp.mjs）')
+
+// Exercise launchNomiApp assembly as well as banning alternate launch paths.
+const regression = spawnSync(process.execPath, ['--test', path.join(repoRoot, 'scripts/e2e-launch-capability.node-test.mjs')], { stdio: 'inherit' })
+if (regression.error) throw regression.error
+if (regression.status !== 0) process.exit(regression.status ?? 1)
