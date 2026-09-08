@@ -145,6 +145,8 @@
 
 ## Agent / Harness / 助手
 
+- [2026-09-08-lane-tool-parallelism-and-approval-default.md](2026-09-08-lane-tool-parallelism-and-approval-default.md) — 读并行、lane 写 FIFO 与审批默认 project+confirm；真实撤销清单、pi 预检顺序、验收门及未发布 issue 草稿（方案）。
+
 | 文件 | 一句话 | 状态 |
 |---|---|---|
 | [2026-09-04-mcp-semantic-operation-matrix.md](2026-09-04-mcp-semantic-operation-matrix.md) | MCP 语义操作矩阵：document/canvas 真实生产链路 H/B/E/T/N、scoped V8 收据与 timeline/media/export blocked evidence | ✅ |
@@ -288,3 +290,4 @@
 
 - [2026-09-07-skill-import-real-use](2026-09-07-skill-import-real-use.md)
 - [2026-09-08-g1-use-case-suite](2026-09-08-g1-use-case-suite.md)
+- [2026-09-08-docs-autosync-ci](2026-09-08-docs-autosync-ci.md) — 固定 action PR、默认 token 防循环与 CI 合同修复
