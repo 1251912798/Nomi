@@ -1,3 +1,4 @@
+import type { ExportProgressStatus } from '../export/exportApi'
 import React from 'react'
 
 /**
@@ -15,7 +16,11 @@ import React from 'react'
  */
 export const PREVIEW_EXPORT_EVENT = 'nomi-preview-export'
 
-export type PreviewExportStatus = 'idle' | 'preparing' | 'recording' | 'converting' | 'done' | 'error'
+/**
+ * 从导出契约 derive，只并上 UI 局部的 idle/error 两个标志——
+ * 不再维护第二份四态联合（语义词表：canonical owner 是 exportApi 的 ExportProgressStatus）。
+ */
+export type PreviewExportStatus = ExportProgressStatus | 'idle' | 'error'
 
 export type PreviewExportState = {
   readonly status: PreviewExportStatus

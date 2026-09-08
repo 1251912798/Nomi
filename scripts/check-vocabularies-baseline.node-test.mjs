@@ -14,7 +14,7 @@ test('known projection vocabularies stay in debt with explicit canonical owners'
   const debtBySite = new Map(baseline.debt.map((entry) => [entry.site, entry]))
   const panoramaSite =
     'src/workbench/generationCanvas/nodes/PanoramaViewer.tsx::type:PanoramaCaptureFeedback/property:tone/type-union'
-  const previewSite = 'src/workbench/preview/TimelinePreview.tsx::type:PreviewExportStatus/type-union'
+  const previewSite = 'src/workbench/preview/previewExportRequest.ts::type:PreviewExportStatus/type-union'
 
   assert.equal(registeredSites.has(panoramaSite), false)
   assert.equal(registeredSites.has(previewSite), false)
