@@ -6,6 +6,19 @@
 > 本文只做**可对账的现状清单**与三个判断题的答案，**一行生产代码都没改，也没装包**（`@radix-ui/react-dropdown-menu` / `react-context-menu` 目前**不在** `package.json`，已装的只有 `react-switch` / `react-tooltip`，见 `package.json:228-229`）。
 > 铁律（用户 2026-09-07 原话精神）：**只换实现、不动形态**。所以本文第 §4「形态差异清单」里的每一条都**只列不改**，等用户拍板。
 
+## 先查别人
+
+> 本文是刀 1 的**现状清单**，不新增能力；「买还是自研」的完整论证在
+> [component-authority 方案](2026-09-07-design-system-component-authority.md) §2 四列表与 §3 三问，
+> 这里把判据与出处收在一处备核。
+
+- **依赖里已有？** `src/theme/nomiTheme.ts:221` 已给 Mantine `Menu` 配好 defaultProps，而全仓 import 它的地方是 0 个——我们既配置了它、又手写了 24 个菜单。不选它是实测：`node_modules/@mantine/core/lib/components/Menu/index.d.ts:1` 六行导出里没有 `MenuSub`（四个 `MenuSub*` 目录在包里但未导出），而我们已有多层菜单。
+- **仓库里已有？** 本文 §1 全表 17 文件 / 24 实例逐条带 file:line；三个数字是方向键 0/24、点外关闭缺 2、定位 5 套，其中 `src/workbench/timeline/TimelineContextMenu.tsx:121` 用 `items*34` 估算菜单高度，`src/workbench/generationCanvas/nodes/useCanvasContextNodeMenu.ts:76` 另写一份尺寸。
+- **仓库里已有？（既有原语）** `src/design/AnchoredPopover.tsx:7` 自称唯一定位机制但只有 4 个消费者，且它贴锚点、右键菜单贴指针，不是同一件事。
+- **生态里已有？** Radix 的 dropdown-menu / context-menu 提供 roving tabindex、typeahead、边缘避让（<https://www.radix-ui.com/primitives/docs/components/dropdown-menu>），正是 0/24 没人写的那部分；我们已在用它的 switch 与 tooltip，`node_modules/@radix-ui/react-tooltip/package.json:17` 已带 popper 与 dismissable-layer，加菜单等于零新内核。
+- **TikHub 自媒体里怎么说？** component-authority 方案已实抓 96 条，结论是这一族没有可借的公开经验（零条讨论 Mantine vs Radix 或多菜单迁移，命中率约 4%）；最接近的是抖音「用了 10 年 AntD 之后」把选型拆成快交付派与自有代码派（<https://www.douyin.com/video/7640088811422141748>）。本文不重复抓。
+- **结论：用已有（Radix）+ 自写换肤壳。** 行为全买、外观全自写；理由是领域约束——菜单的难点（ARIA/键盘/避让）没有一条和 AI 视频有关，不在护城河上，而视觉必须是 Nomi 的，否则等于引进第二套设计语言。详见 [component-authority 方案](2026-09-07-design-system-component-authority.md)。
+
 ## 0. 一句话结论
 
 `grep -rln 'role="menu"' src --include='*.tsx'` 命中 **18 个文件**，其中 `WorkflowGraphCanvas.tsx:104,138` 是**误报**（`closest('[role="menu"] …')` 的守卫选择器字符串，不是菜单本体）。
