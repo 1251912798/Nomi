@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // C0: one UI journey, with either synthetic or budgeted real provider dispatch.
 import fs from 'node:fs'
+import { BUDGET_CNY } from './c0-real-budget.mjs'
 import ffmpeg from '@ffmpeg-installer/ffmpeg'
 import ffprobe from '@ffprobe-installer/ffprobe'
 import path from 'node:path'
@@ -17,7 +18,7 @@ const { values } = parseArgs({ options: {
 }, allowPositionals: false })
 if (values.help) {
   console.log('node tests/ux/g1/c0-short-film.walk.mjs (--dry-run | --real) [--packaged /absolute/Nomi.app]')
-  console.log('--real uses APIMart application settings; all-in budget CNY 8, current prices checked before dispatch.')
+  console.log(`--real uses APIMart application settings; all-in budget CNY ${BUDGET_CNY}, current prices checked before dispatch.`)
   process.exit(0)
 }
 if (Boolean(values['dry-run']) === Boolean(values.real)) throw new Error('Select exactly one of --dry-run / --real')
@@ -32,7 +33,7 @@ const script = fs.readFileSync(scriptFile, 'utf8')
 const report = {
   mode: values.real ? 'real' : 'dry-run', sourceSha: sha, sourceTree: execFileSync('git', ['rev-parse', 'HEAD^{tree}'], { cwd: root, encoding: 'utf8' }).trim(), platform: `${os.platform()} ${os.arch()}`,
   executor: 'Codex', reviewer: 'pending', attemptDir, inputSha256: hash(scriptFile),
-  paidCalls: 0, costCny: 0, budgetCny: values.real ? 8 : 0, c0Accepted: false,
+  paidCalls: 0, costCny: 0, budgetCny: values.real ? BUDGET_CNY : 0, c0Accepted: false,
   r30: { real: { firstTool: 'N/A (0/0)', turns: 'N/A (0/0)' }, simulated: { firstTool: 'N/A (0/0)', turns: 'N/A (0/0)' } },
   steps: [],
 }
