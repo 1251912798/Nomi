@@ -13,9 +13,7 @@
   "scope_paths": [
     "electron/agentLane/laneLegacyIntegrity.mts",
     "electron/shared/agentLane/legacyPiSnapshot.mts",
-    "electron/shared/legacyAgentJson.ts",
-    "electron/harness/runtime/pi/snapshot.mts",
-    "electron/projectAgentHost/projectAgentSnapshot.ts"
+    "electron/shared/legacyAgentJson.ts"
   ],
   "entry_points": [
     "validateLegacySource"

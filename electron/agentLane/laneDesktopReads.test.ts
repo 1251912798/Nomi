@@ -59,7 +59,7 @@ async function fixture(toolName: string, args: Record<string, unknown>, stale = 
   const http = await createHttpFixture([{ type: 'tool', calls: [{ id: 'read-call', name: toolName, arguments: args }] },
     { type: 'text', text: 'Read complete.' }])
   cleanups.push(http.close)
-  const lane = await openLane({ projectDir: root, model: { kind: 'openai-compatible', providerId: 'fixture', modelId: 'fixture',
+  const lane = await openLane({ fetch: globalThis.fetch, projectDir: root, model: { kind: 'openai-compatible', providerId: 'fixture', modelId: 'fixture',
     baseURL: http.baseURL, authType: 'api-key', apiKey: 'fixture' }, tools: assembly.tools, toolLifecycle: assembly.toolLifecycle,
     systemPrompt: 'Use the current verified surface.', approval: { hasUserInterface: true,
       policy: () => ({ mode: 'safe-auto', spend: 'confirm' }) } })

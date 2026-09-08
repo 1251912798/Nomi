@@ -39,10 +39,10 @@
       "evidence": "All decoded source kinds pass integrity validation then this plan before import."
     },
     {
-      "path": "tests/agent-runtime/stage3-probe-p2-legacy-import.test.mts",
-      "entry_point": "P2 public append probe",
+      "path": "tests/agent-runtime/lane-legacy-import-plan.test.mts",
+      "entry_point": "three-source public append tests",
       "disposition": "not-affected",
-      "evidence": "Probe established append does not validate pairs; it is not a production converter."
+      "evidence": "The retained synthetic regression exercises public append and cold projection including orphan pairs; obsolete P2 runtime probe was removed in step 4."
     }
   ],
   "recurrence": {

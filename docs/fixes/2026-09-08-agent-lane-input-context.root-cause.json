@@ -16,7 +16,6 @@
     "electron/shared/agentLane/laneDesktopContracts.ts",
     "electron/shared/agentLane/laneInputMessage.ts",
     "electron/assets/projectAssetStore.ts",
-    "electron/projectAgentHost/projectAgentIpc.ts",
     "electron/shared/workbenchInput.ts",
     "electron/agentLane/laneDesktopInput.ts"
   ],

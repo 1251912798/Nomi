@@ -40,10 +40,10 @@
   ],
   "same_class_entry_points": [
     {
-      "path": "electron/projectAgentHost/projectAgentCutoverManifest.ts",
-      "entry_point": "withProjectAgentCutoverLock",
-      "disposition": "not-affected",
-      "evidence": "Old synchronous archive-only caller remains synchronous until step 4 removes it; it is never reused for new async migration."
+      "path": "electron/agentLane/laneLegacyMigration.mts",
+      "entry_point": "migrate",
+      "disposition": "enforced",
+      "evidence": "Production migration awaits withLegacyMigrationLock across archive, append, cold verification and source cleanup; old synchronous cutover caller was removed in step 4."
     },
     {
       "path": "electron/agentLane/laneLegacyFiles.ts",

@@ -1,3 +1,4 @@
+import { appFetch } from '../appFetch'
 import { resolveProjectAgentAttachmentClaims } from '../assets/projectAssetStore'
 import type { IpcMainInvokeEvent } from 'electron'
 import { createRequire } from 'node:module'
@@ -9,7 +10,7 @@ import type { LaneComposerContext } from '../shared/agentLane/laneDesktopContrac
 import type { NomiModelConfig } from '../shared/agentLane/laneModelConfig'
 import type { LaneWorkspaceHandle } from '../shared/agentLane/laneContracts'
 import { assertProjectAgentBinding, type ProjectBinding } from '../shared/projectBinding'
-import { DEFAULT_PROJECT_AGENT_APPROVAL_POLICY } from '../shared/projectAgentContracts'
+import { DEFAULT_PROJECT_AGENT_APPROVAL_POLICY } from '../shared/agentCapabilities/capabilityApprovalPolicy';
 import { getSettingsRoot, getWorkspaceRepositoryDeps } from '../runtimePaths'
 import { resolveWorkspaceProjectDir } from '../workspace/workspaceRepository'
 import { ensureWorkspaceProjectIdentity } from '../workspace/workspaceProjectIdentity'
@@ -87,7 +88,7 @@ export function createDesktopLaneDependencies(surface: DesktopCanvasReadRuntime,
       const input = createDesktopLaneInput({ projectId: binding.projectId,
         capture: () => context, activate: () => undefined, model: () => model })
       const { runLaneSingleShot } = createRequire(__filename)('./laneNativeLoader.cjs') as { runLaneSingleShot: RunLaneSingleShot }
-      const result = await runLaneSingleShot({ model: model.config, prompt: command.text, input, signal,
+      const result = await runLaneSingleShot({ fetch: appFetch, model: model.config, prompt: command.text, input, signal,
         systemPrompt: [buildLanguageRule(), NOMI_AGENT_IDENTITY, context.systemPrompt, skill?.body].filter(Boolean).join('\n\n') })
       signal.throwIfAborted()
       surface.surfaceCapture.captureCommittedCanvasReadPort(event, binding)
@@ -133,7 +134,7 @@ export function createDesktopLaneDependencies(surface: DesktopCanvasReadRuntime,
         capture: () => composer, activate: (context) => { activeInput = context }, model: () => selected })
       try {
         const { openDesktopLaneWorkspace } = createRequire(__filename)('./laneNativeLoader.cjs') as { openDesktopLaneWorkspace: OpenDesktopLaneWorkspace }
-        workspace = await openDesktopLaneWorkspace({ projectDir,
+        workspace = await openDesktopLaneWorkspace({ projectDir, fetch: appFetch,
           native: { settingsRoot: getSettingsRoot(), skills: readSkillRecords().filter(isSkillSelectableInWorkbench) },
           systemPrompt: [buildLanguageRule(), NOMI_AGENT_IDENTITY, memory].filter(Boolean).join('\n\n'),
           tools: ports.tools, toolLifecycle: ports.toolLifecycle, input,

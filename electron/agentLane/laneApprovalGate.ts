@@ -34,10 +34,7 @@ import type {
 } from "../shared/agentLane/laneContracts";
 import { modelToolCapabilityId } from "../shared/agentCapabilities/modelFacingTools";
 import type { LaneToolSpec } from "../shared/agentLane/laneToolContract";
-import type {
-  ProjectAgentApprovalPolicy,
-  ProjectAgentWorkMode,
-} from "../shared/projectAgentContracts";
+import type { ProjectAgentApprovalPolicy, ProjectAgentWorkMode } from '../shared/agentCapabilities/capabilityApprovalPolicy';
 
 export type LaneApprovalRequest = Readonly<{
   toolCallId: string;

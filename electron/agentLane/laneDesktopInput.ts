@@ -3,7 +3,7 @@ import { z } from 'zod'
 import type { Model } from '../catalog/types'
 import type { LaneComposerContext } from '../shared/agentLane/laneDesktopContracts'
 import type { OpenLaneOptions } from './laneRuntimePort'
-import { PROJECT_AGENT_APPROVAL_MODES, PROJECT_AGENT_SPEND_POLICIES } from '../shared/projectAgentContracts'
+import { PROJECT_AGENT_APPROVAL_MODES, PROJECT_AGENT_SPEND_POLICIES } from '../shared/agentCapabilities/capabilityApprovalPolicy';
 import { AGENT_CONTEXT_SNAPSHOT_VERSION, formatAgentContextSnapshot } from '../shared/agentContextSnapshot'
 import { resolveProjectAgentAttachmentClaims } from '../assets/projectAssetStore'
 import { readNomiLocalAsset } from '../assets/localAssetFile'

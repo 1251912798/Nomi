@@ -85,3 +85,6 @@ export type CanvasWriteApprovalAuthority = Readonly<{
   approvalId: string;
   actionHash: string;
 }>;
+
+export const AGENT_TOOL_PROFILES = ["creation", "generation", "storyboard", "timeline", "production"] as const;
+export type AgentToolProfile = (typeof AGENT_TOOL_PROFILES)[number];

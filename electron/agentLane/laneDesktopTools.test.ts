@@ -122,7 +122,7 @@ async function fixture(kind: 'document' | 'canvas' | 'delete', receiptMode: 'com
       calls: [{ id: 'second-delete', name: toolName, arguments: { nodeIds: ['delete-two'], reason: 'Unused fixture shot' } }] }] : []),
     { type: 'text', text: 'Fixture complete.' }])
   cleanups.push(http.close)
-  const lane: LaneHandle = await openLane({ projectDir: root, model: { kind: 'openai-compatible', providerId: 'fixture', modelId: 'fixture',
+  const lane: LaneHandle = await openLane({ fetch: globalThis.fetch, projectDir: root, model: { kind: 'openai-compatible', providerId: 'fixture', modelId: 'fixture',
     baseURL: http.baseURL, authType: 'api-key', apiKey: 'fixture' }, systemPrompt: 'Receipt fixture.',
     tools: assembly.tools, toolLifecycle: assembly.toolLifecycle,
     approval: { hasUserInterface: true, policy: () => policy } })
