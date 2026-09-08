@@ -24,3 +24,11 @@ describe('C1 feedback atom', () => {
     expect(html(value)).not.toContain('%')
   })
 })
+
+it('waiting audio has equal-height bars and no invented preview', async () => {
+  const { GenerationWaitingSurface } = await import('../generationCanvas/nodes/GenerationWaitingSurface')
+  const markup = renderToStaticMarkup(React.createElement(GenerationWaitingSurface, { audio: true, previewLabel: 'preview' }))
+  expect(markup).not.toContain('<img')
+  expect(markup).not.toContain('data-process-progress')
+  expect(markup.match(/class="h-3 flex-1 rounded-full bg-nomi-ink-30"/g)).toHaveLength(24)
+})

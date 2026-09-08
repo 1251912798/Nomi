@@ -18,7 +18,10 @@
     "src/workbench/generationCanvas/nodes/BaseGenerationNode.tsx",
     "src/workbench/generationCanvas/nodes/GenerationStatusBar.tsx",
     "src/workbench/generationCanvas/nodes/NodeGenerationStatus.tsx",
-    "src/workbench/generationCanvas/nodes/nodeSizing.ts"
+    "src/workbench/generationCanvas/nodes/nodeSizing.ts",
+    "src/workbench/generationCanvas/nodes/NodeGeneratingOverlay.tsx",
+    "src/workbench/generationCanvas/nodes/GenerationWaitingSurface.tsx",
+    "src/workbench/generationCanvas/nodes/render/AudioStripNode.tsx"
   ],
   "entry_points": [
     "Generation runner",

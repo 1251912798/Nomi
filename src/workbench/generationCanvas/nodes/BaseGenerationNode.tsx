@@ -35,6 +35,7 @@ import type { GenerationCanvasNode } from '../model/generationCanvasTypes'
 import type { ConnectionAnchorSide } from '../store/canvasStoreTypes'
 import { useGenerationCanvasStore } from '../store/generationCanvasStore'
 import { NodeGeneratingOverlay } from './NodeGeneratingOverlay'
+import { selectIsNodeQueued, useGenerationQueueStore } from '../runner/generationQueueStore'
 import { NodeGenerationStatus } from './NodeGenerationStatus'
 import { ProductionShotOverlays } from './ProductionShotOverlays'
 import { useProductionNodeRetry } from './useProductionNodeRetry'
@@ -213,6 +214,7 @@ function BaseGenerationNodeImpl({
     commitPersistedChange,
   })
   const isGenerating = status === 'queued' || status === 'running'
+  const isQueued = useGenerationQueueStore((state) => selectIsNodeQueued(state, node.id))
   // 「已排队但还没轮到」的真相在队列 store（与 node.status 零重叠，见 generationQueueStore 头注释）：在此之前
   // 后续波次的节点 status 还是 idle，画布上看着像压根没被选中——用户以为漏点了。
   const canGenerate =
@@ -630,7 +632,7 @@ function BaseGenerationNodeImpl({
         />
       ) : null}
 
-      {isGenerating && !localImageOpPending ? <NodeGeneratingOverlay node={node} /> : null}
+      {(isGenerating || isQueued) && !localImageOpPending ? <NodeGeneratingOverlay node={node} /> : null}
       
       <ProductionShotOverlays node={node} selected={selected && !isMultiSelectActive} />{/* P4 S5+S6 多镜叠加：占位三态 + 版本条（非多镜早退零开销） */}
       {showSideTimelineDrag ? (

@@ -281,7 +281,7 @@ export function LocalImageOpPendingStatus({
 }
 
 /** 遮罩里那颗取消按钮。两档摆法共用一颗，别各写一份（两份总有一份会先漂）。 */
-function GeneratingCancelButton({ onCancel, compact }: { onCancel: () => void; compact?: boolean }): JSX.Element {
+export function GeneratingCancelButton({ onCancel, compact }: { onCancel: () => void; compact?: boolean }): JSX.Element {
   const { t } = useTranslation()
   return (
     <button

@@ -66,7 +66,7 @@ function buildSrt(node: GenerationCanvasNode): string {
 function PlayBar({ progress, onSeek }: { progress: number; onSeek: (fraction: number) => void }): JSX.Element {
   const { t } = useTranslation()
   const bars = React.useMemo(
-    () => [0.4, 0.7, 0.5, 0.9, 0.3, 0.8, 0.6, 0.7, 0.4, 0.8, 0.5, 0.6, 0.7, 0.4, 0.9, 0.5, 0.65, 0.45, 0.8, 0.55],
+    () => Array.from({ length: 20 }, () => 0.4),
     [],
   )
   const seekFromEvent = React.useCallback(
