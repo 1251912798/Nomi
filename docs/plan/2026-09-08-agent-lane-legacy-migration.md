@@ -20,6 +20,12 @@
 
 每个原数组成员有唯一 sourceIndex/raw；不按时间重排，不跨 thread 混合，不吞未知项；空/损坏/不支持区分。三来源用 os.tmpdir 夹具，不读真实项目。转换、前缀恢复、锁跨 await、崩溃断点、冷重启均须测试。每个子任务 commit/push 更新 SWITCH-LAST.md。回滚 revert 对应提交；落盘阶段原件永久保留于本次 archive，不用恢复开关。
 
+## 来源准入子任务
+
+`laneLegacyIntegrity.mts` 核验来源状态、pi checksum/分支图/leaf/compaction、v4 完整项目绑定/sessionKey/record key，以及 host checksum/双 binding/revision/ledger pointer。只有有证明的 v4/host 会话得到 boundThreadId；直接 pi 与 AI SDK 不猜线程关联。leaf:null 的 activeEntryIds 为空，供下一步优先级转换避免复活。host 只验证迁移需要的容器完整性和线程引用，不恢复或执行 reducer 状态，旧授权/任务条目仍是原始历史数据。
+
+旧 pi schema/纯校验搬到 shared/agentLane/legacyPiSnapshot.mts，旧 IO 与新准入共用；旧 stable JSON 算法搬到 shared/legacyAgentJson.ts，避免归档 hash 的对象顺序语义漂移。词表 owner 随文件迁移、成员不变。4 组准入测试在 decoder-only 阳性对照下全部先红（/tmp/nomi-switch-integrity-red.log），新增保密错误断言；下一步仍为纯转换和来源优先级，尚未写迁移事务。
+
 边界实测补充：原 private-session-snapshot-envelope 规则仅匹配字符串，误把旧格式的只读比较当 writer。保留信封声明/常量命中，排除严格相等/不等的格式检查；真实登记表正反夹具先红后绿。不新增框架债。
 
 ## 首个子任务验证

@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+import { CURRENT_SESSION_VERSION } from '@earendil-works/pi-coding-agent';
 import { z } from 'zod';
 
 // Version-locked to pi's public SessionEntry / Message contracts. Validate
@@ -51,3 +53,55 @@ export const snapshotEntrySchema = z.discriminatedUnion('type', [
   base.extend({ type: z.literal('label'), targetId: z.string(), label: z.string().optional() }),
   base.extend({ type: z.literal('session_info'), name: z.string().optional() }),
 ]);
+
+const dataSchema = z.object({
+  header: z.object({
+    type: z.literal('session'), version: z.literal(CURRENT_SESSION_VERSION),
+    id: z.string().min(1), timestamp: z.string().datetime(), cwd: z.string(),
+  }).passthrough(),
+  entries: z.array(snapshotEntrySchema),
+  leafId: z.string().min(1).nullable(),
+}).strict();
+export function legacyPiDigest(data: unknown): string {
+  return createHash('sha256').update(JSON.stringify(data)).digest('hex');
+}
+
+// This is a private, version-locked working cache, never a project/approval ledger.
+// The checksum detects truncation/corruption; it is not an authenticity signature.
+export function validateLegacyPiData(raw: unknown) {
+  const data = dataSchema.parse(raw);
+  const ids = new Set<string>();
+  const parents = new Map<string, string | null>();
+  for (const entry of data.entries) {
+    if (ids.has(entry.id)) throw new Error(`Duplicate snapshot entry: ${entry.id}`);
+    if (entry.parentId !== null && !ids.has(entry.parentId)) {
+      throw new Error(`Broken snapshot parent: ${entry.id}`);
+    }
+    if (entry.type === 'compaction') {
+      let ancestor = entry.parentId;
+      while (ancestor !== null && ancestor !== entry.firstKeptEntryId) {
+        ancestor = parents.get(ancestor) ?? null;
+      }
+      if (ancestor === null) {
+        throw new Error('Broken snapshot compaction boundary');
+      }
+    }
+    ids.add(entry.id);
+    parents.set(entry.id, entry.parentId);
+  }
+  if (data.leafId !== null && !ids.has(data.leafId)) throw new Error('Broken snapshot leaf');
+  return data;
+}
+
+
+/** Read-only legacy cache validation. Never creates a snapshot envelope. */
+export function validateLegacyPiEnvelope(value: unknown) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('invalid-legacy-pi-envelope');
+  const raw = value as Record<string, unknown>;
+  if (Object.keys(raw).sort().join('|') !== 'data|format|piVersion|sha256|version'
+    || raw.format !== 'nomi.pi-work-context' || raw.version !== 1
+    || (raw.piVersion !== '0.84.3' && raw.piVersion !== '0.85.1')
+    || typeof raw.sha256 !== 'string' || !/^[a-f0-9]{64}$/.test(raw.sha256)
+    || legacyPiDigest(raw.data) !== raw.sha256) throw new Error('invalid-legacy-pi-envelope');
+  return validateLegacyPiData(raw.data);
+}

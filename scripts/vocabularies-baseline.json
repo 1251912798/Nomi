@@ -254,7 +254,7 @@
       "reason": "StoredAgentContext.state 是 AgentContextStore 持久化记录的上游状态：ready 表示 context 可继续使用，cleared 表示用户已显式清空。contextService 单向导入 contextStore 并原样发布 record.state，因此服务 DTO 必须从 store owner derive。"
     },
     {
-      "site": "electron/harness/runtime/pi/snapshotSchema.mts::variable:message/property:stopReason/z.enum",
+      "site": "electron/shared/agentLane/legacyPiSnapshot.mts::variable:message/property:stopReason/z.enum",
       "members": [
         "aborted",
         "deferred",

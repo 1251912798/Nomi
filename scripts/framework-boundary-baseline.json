@@ -71,7 +71,7 @@
     },
     {
       "identity": "pi/session-persistence/private-session-snapshot-envelope::electron/harness/runtime/pi/snapshot.mts",
-      "hits": 2,
+      "hits": 1,
       "note": "electron/harness/runtime/pi/snapshot.mts:11 — 自研快照信封（版本锁 + sha256）在复刻 SessionManager 已有的会话序列化与版本迁移，pi 升版时要我们自己跟。",
       "plan": "docs/plan/2026-09-07-agent-runtime-rebuild.md",
       "due": "2026-11-07"

@@ -1,0 +1,107 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-08-lane-legacy-integrity",
+  "problem_type": "legacy_source_integrity_and_binding",
+  "symptom": "Decoded legacy containers alone can attribute foreign or corrupted history to the current project.",
+  "direct_cause": "Lossless decoding intentionally does not verify checksums, branch topology or immutable project binding.",
+  "class_root": "Migration needs a single fail-closed admission boundary before converting decoded source items.",
+  "affected_population": [
+    "v4 context records and direct pi envelopes",
+    "host snapshots",
+    "unbound AI SDK histories"
+  ],
+  "scope_paths": [
+    "electron/agentLane/laneLegacyIntegrity.mts",
+    "electron/shared/agentLane/legacyPiSnapshot.mts",
+    "electron/shared/legacyAgentJson.ts",
+    "electron/harness/runtime/pi/snapshot.mts",
+    "electron/harness/runtime/pi/snapshotSchema.mts",
+    "electron/projectAgentHost/projectAgentSnapshot.ts"
+  ],
+  "entry_points": [
+    "validateLegacySource"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "Checksums and bindings are private legacy Nomi writer contracts; installed pi SessionEntry definitions were checked via Context7 and source.",
+  "invariants": [
+    "Only matching immutable project binding authorizes thread deduplication.",
+    "Checksums and branch topology validate before import.",
+    "Cleared v4 records remain authoritative without reviving host history."
+  ],
+  "generality_proof": "Every decoded source passes the same validator; each source kind has explicit integrity checks and unbound sources never acquire thread ownership.",
+  "shared_boundaries": [
+    {
+      "path": "electron/agentLane/laneLegacyIntegrity.mts",
+      "symbol": "validateLegacySource",
+      "responsibility": "Admit source integrity and proven conversation bindings before conversion."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "electron/agentLane/laneLegacySources.ts",
+      "entry_point": "parseLegacySource",
+      "disposition": "enforced",
+      "evidence": "Validator consumes the lossless decoder directly and retains original items."
+    },
+    {
+      "path": "tests/agent-runtime/replayShadowSources.mts",
+      "entry_point": "readRecordedConversations",
+      "disposition": "not-affected",
+      "evidence": "Read-only replay does not import or bind conversations; its narrow view remains separate."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Foreign generations and corrupt snapshots can recur for every project or source.",
+    "same_class_scan": [
+      "Read contextStore.readTarget and projectAgentContextBinding key derivation.",
+      "Read projectAgentRepository.readValidEnvelope and runtime/pi/snapshot.validateData."
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "electron/agentLane/laneLegacyIntegrity.mts",
+    "invariant": "No invalid or foreign source is admitted to the import plan.",
+    "failure_mode": "Throw a content-free classification; caller must keep source bytes.",
+    "exception_policy": "none",
+    "strategy": "Validate all sources before any public append or archive mutation.",
+    "artifacts": [
+      "electron/agentLane/laneLegacyIntegrity.mts",
+      "electron/shared/agentLane/legacyPiSnapshot.mts",
+      "electron/shared/legacyAgentJson.ts"
+    ]
+  },
+  "regression_tests": [
+    "tests/agent-runtime/lane-legacy-integrity.test.mts"
+  ],
+  "class_regression_tests": [
+    "tests/agent-runtime/lane-legacy-integrity.test.mts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "electron/harness/runtime/pi/snapshotSchema.mts"
+    ],
+    "rationale": "Move the old snapshot schema and pure validation to shared legacy reader ownership; old snapshot IO consumes it until step 4 removes the runtime."
+  },
+  "dependency_lifecycle": {
+    "decision": "retain-with-exit",
+    "rationale": "Read only old pi 0.84.3/0.85.1 snapshots using the installed 0.85.1 public session contract; no dependency change.",
+    "current": "pi 0.85.1",
+    "target": "pi 0.85.1 public append API",
+    "exit_criteria": [
+      "Step 4 deletes the old runtime writer/loader; shared legacy reader remains for existing source files."
+    ]
+  },
+  "migration": "This subtask only validates in-memory bytes. Transaction, source priority and append conversion follow; no real project is read or changed.",
+  "residual_risks": [
+    "Not yet connected to workspace admission or durable migration transaction."
+  ],
+  "invariant_owner_layer": {
+    "layer": "electron/agentLane/laneLegacyIntegrity.mts",
+    "tests": [
+      "tests/agent-runtime/lane-legacy-integrity.test.mts"
+    ],
+    "why": "Owns source admission before trusted binding or writes."
+  }
+}
