@@ -1,0 +1,93 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-08-docs-deletion-scope",
+  "problem_type": "Documentation deletions over-select runtime validation",
+  "symptom": "README QR image replacement selects every validation surface.",
+  "direct_cause": "Any non-infrastructure deletion returns FULL_POLICY before path risk is considered.",
+  "class_root": "Structural uncertainty was inferred from Git status without first proving the complete diff contains only documentation paths.",
+  "affected_population": [
+    "All worktrees and CI events deleting documentation or marketing assets"
+  ],
+  "scope_paths": [
+    "scripts/validation-policy.mjs"
+  ],
+  "entry_points": [
+    "CI profile selection",
+    "Main push and merge_group profile selection"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "This changes the internal Nomi risk policy; the existing Git name-status parser and protocol are unchanged.",
+  "invariants": [
+    "Only a wholly documentation-safe A/M/D diff may bypass deletion fail-closed; mixed production, tests, CI and unknown paths retain existing policy.",
+    "Renames, empty diffs and release requests retain fail-closed semantics."
+  ],
+  "generality_proof": "The sole classifier checks every normalized entry before applying a docs-only exemption, so mixed changes cannot inherit the safe path result from one entry.",
+  "shared_boundaries": [
+    {
+      "path": "scripts/validation-policy.mjs",
+      "symbol": "classifyValidationPolicy",
+      "responsibility": "Own risk classification for all caller and event types."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "scripts/select-quality-gate-profile.mjs",
+      "entry_point": "resolveProfileFromEnvironment",
+      "disposition": "enforced",
+      "evidence": "Passes parsed Git entries and event name into classifyValidationPolicy."
+    },
+    {
+      "path": ".github/workflows/quality-gate.yml",
+      "entry_point": "scope job",
+      "disposition": "enforced",
+      "evidence": "PR, push and merge_group provide their base/head to the same profile script; lane conditions consume its outputs."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Every future documentation deletion reaches the same status-first rule.",
+    "same_class_scan": [
+      "rg classifyValidationPolicy scripts: one production owner and select-quality-gate-profile consumer.",
+      "Inspected quality-gate.yml scope base SHA selection and all lane conditions including required-check aggregate."
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "scripts/validation-policy.mjs",
+    "invariant": "The entire diff must be documentation-safe before deletion is exempted.",
+    "failure_mode": "Mixed or unrecognized paths retain the existing fail-closed or risk-specific behavior.",
+    "exception_policy": "none",
+    "strategy": "Classify the complete normalized path/status set in the existing shared owner, before applying structural uncertainty.",
+    "artifacts": [
+      "scripts/validation-policy.mjs"
+    ]
+  },
+  "regression_tests": [
+    "scripts/validation-policy.node-test.mjs"
+  ],
+  "class_regression_tests": [
+    "scripts/validation-policy.node-test.mjs"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "scripts/validation-policy.mjs"
+    ],
+    "rationale": "Removed unconditional deletion escalation for proven docs-only diffs in place; no parallel classifier."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "Pure internal path/status classification uses no third-party runtime.",
+    "exit_criteria": []
+  },
+  "migration": "No stored state or public output fields change. docs_only is an explanatory reason on existing focused policy.",
+  "residual_risks": [
+    "Historical QR commit fb79d8ac94dddb350fef69ed5627868d2140e726 also changed tests/ux/marketing-home.static.mjs; its full diff intentionally remains full. Only its documented four-entry documentation subset demonstrates docs-only."
+  ],
+  "invariant_owner_layer": {
+    "layer": "scripts/validation-policy.mjs",
+    "tests": [
+      "scripts/validation-policy.node-test.mjs"
+    ]
+  }
+}
