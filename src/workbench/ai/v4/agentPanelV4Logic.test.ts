@@ -12,7 +12,7 @@ import {
   shouldSubmitComposer,
 } from './agentPanelV4Logic'
 import { DEFAULT_PERMISSION_TIER, PERMISSION_TIERS } from './agentPanelV4Types'
-import { DEFAULT_PROJECT_AGENT_APPROVAL_POLICY } from '../../../../electron/shared/projectAgentContracts'
+import { DEFAULT_PROJECT_AGENT_APPROVAL_POLICY } from '../../../../electron/shared/agentCapabilities/capabilityApprovalPolicy';
 
 describe('composer 高度随面板高度 derive', () => {
   it('上限按定稿的三档走，不写死行数', () => {

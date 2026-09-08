@@ -11,7 +11,7 @@ import {
   hydrateCommittedProposalReceipt,
 } from '../generationCanvas/agent/proposalUndo'
 import { laneClient } from '../ai/lane/laneClient'
-import { DEFAULT_PROJECT_AGENT_APPROVAL_POLICY } from '../../../electron/shared/projectAgentContracts'
+import { DEFAULT_PROJECT_AGENT_APPROVAL_POLICY } from '../../../electron/shared/agentCapabilities/capabilityApprovalPolicy';
 
 function node(id: string): GenerationCanvasNode {
   return {

@@ -8,7 +8,7 @@
 // `ProjectAgentApprovalPolicy.mode` 的三个值，spend 由 mode derive（定稿表 §2）。
 // 早先那版把三档做成中文字面量 union（'每步问' | '自动改' | '全自动'），
 // 既违反 R15（可见文字必须走 i18n），又凭空多了一份要和合同对齐的词表。
-import type { ProjectAgentApprovalPolicy } from '../../../../electron/shared/projectAgentContracts'
+import type { ProjectAgentApprovalPolicy } from '../../../../electron/shared/agentCapabilities/capabilityApprovalPolicy';
 import type { LaneTaskCandidate, LaneTaskStatus } from '../../../../electron/shared/agentLane/laneContracts'
 
 /** AI Elements Tool 的七态协议（vendor/aiElementsContract.ts 是它的外部参照）。 */

@@ -47,10 +47,7 @@ import {
 } from './project/projectCategories'
 import { useGenerationCanvasStore } from './generationCanvas/store/generationCanvasStore'
 import type { AgentContextHandle } from '../../electron/shared/agentContextSnapshot'
-import {
-  DEFAULT_PROJECT_AGENT_APPROVAL_POLICY,
-  type ProjectAgentApprovalPolicy,
-} from '../../electron/shared/projectAgentContracts'
+import { DEFAULT_PROJECT_AGENT_APPROVAL_POLICY, type ProjectAgentApprovalPolicy } from '../../electron/shared/agentCapabilities/capabilityApprovalPolicy';
 import { createEditingPanelLayoutSlice, type EditingPanelLayoutSlice } from './preview/editingPanelLayoutSlice'
 import { createTimelineClipWritesSlice, type TimelineClipWritesSlice } from './timeline/timelineClipWritesSlice'
 import type { ExportQuality } from './export/exportTypes'

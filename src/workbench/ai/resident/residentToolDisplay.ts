@@ -1,8 +1,5 @@
 import { resolveModelToolCapabilityId } from '../../../../electron/shared/agentCapabilities/modelFacingToolRegistry'
 import type { TranslationKey } from '../../../i18n/translationKey'
-import type { ProjectAgentStatus } from '../../../../electron/shared/projectAgentContracts'
-import { normalizeResidentToolProjection, type ResidentToolProjection } from './residentToolProjection'
-import { redactToolArguments } from './residentToolText'
 import type { ResidentApprovalDetail, ResidentProposalData } from './residentProposalDisplay'
 
 type Translate = (key: string, options?: Record<string, unknown>) => string
@@ -474,25 +471,6 @@ export function readableToolDetailRows(t: Translate, name: string, args?: unknow
   return rows
 }
 
-export function readableToolResult(t: Translate, status: ProjectAgentStatus): string {
-  if (status === 'done') return t('agentResident.toolCompleted')
-  if (status === 'failed') return t('agentResident.toolFailed')
-  if (status === 'declined') return t('agentResident.toolDeclined')
-  if (status === 'stopped') return t('agentResident.toolStopped')
-  if (status === 'proposed') return t('agentResident.waitingApproval')
-  if (status === 'running') return t('agentResident.toolRunning')
-  return t('agentResident.toolPendingSummary')
-}
-
-/**
- * 一次调用的**结果**，由运行时终态回执给出（`AgentsChatResponseDto.toolCalls[]`）。
- *
- * 这两个字段此前在 `useAgentPanelV4Actions` 里被整包丢掉：缓存投影只按「工具名 + 入参」
- * 重算一遍描述串，于是收据的「输出」栏印的是**这次调用打算做什么**，而不是它做成了没有。
- * 失败那一路后果更重——用户连着看到六条「⚠ <1s」，一个字的原因都没有。
- */
-export type ResidentToolOutcome = Readonly<{ result?: unknown; error?: string }>
-
 /**
  * 校验回执（一串 zod issue 的 JSON）→ 人话。
  *
@@ -595,41 +573,4 @@ export function humanizeToolFailure(t: Translate, text: string | undefined): str
   const trimmed = (text ?? '').trim()
   if (!trimmed) return undefined
   return humanizeSchemaIssues(t, trimmed) ?? humanizeValidationProse(t, trimmed)
-}
-
-/**
- * 结果 → 一行人话。对象/数组走 JSON（同一套脱敏），字符串原样，空的退回状态词。
- *
- * 失败正文在这里**一字不改**：这一段是收据展开区的「输出」，也就是「详情」。
- * 英文原文只住在这里；行内那句由 `humanizeToolFailure` 翻（见 `agentPanelV4Projection`）。
- * 两边分工反过来的后果 2026-09-06 见过：行内是英文机器话，详情里反而是被压过的摘要，
- * 想照着改的人两处都拿不到原文。
- */
-function readableToolOutcome(t: Translate, status: ProjectAgentStatus, outcome?: ResidentToolOutcome): string {
-  if (outcome?.error?.trim()) return outcome.error.trim()
-  const value = outcome?.result
-  if (typeof value === 'string' && value.trim()) return value.trim()
-  if (value !== undefined && value !== null) {
-    const text = redactToolArguments(value)
-    if (text) return text
-  }
-  return readableToolResult(t, status)
-}
-
-export function residentToolProjectionForCall(
-  t: Translate,
-  name: string,
-  args: unknown,
-  status: ProjectAgentStatus,
-  outcome?: ResidentToolOutcome,
-): ResidentToolProjection {
-  return normalizeResidentToolProjection({
-    label: readableToolName(t, name, args),
-    effect: readableToolPreview(t, name, args) || readableToolResult(t, status),
-    target: readableToolTarget(t, name, args),
-    technicalDetails: readableToolSummary(t, name, args) || readableToolResult(t, status),
-    // 收据展开后的两段读的是**这一次调用**的入参与结果，不是工具描述（拍板基线 v4-tool-expanded）。
-    input: redactToolArguments(args),
-    output: readableToolOutcome(t, status, outcome),
-  })
 }
