@@ -16,6 +16,11 @@ export const PF_NODE_ID = 'process-feedback-node'
 const FRAME = '/fixtures/process-feedback-frame.svg'
 export type ProcessFixture = { kind: 'image' | 'video' | 'audio'; stage: GenerationProgressPhase | 'failed' | 'saved'; preview?: boolean; percent?: number; zoom?: number }
 
+/** Laboratory automation drives the same mounted host without creating a second store instance. */
+export function advanceProcessFeedback(stage: ProcessFixture['stage']): void {
+  window.dispatchEvent(new CustomEvent('nomi-pf-stage', { detail: stage }))
+}
+
 function fixtureNode(fixture: ProcessFixture): GenerationCanvasNode {
   const startedAt = Date.now() - (fixture.stage === 'still-generating' ? 360000 : 18000)
   return {

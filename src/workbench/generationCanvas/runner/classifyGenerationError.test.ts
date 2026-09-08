@@ -225,7 +225,7 @@ describe('classifyGenerationError — 已知分类', () => {
       "Error invoking remote method 'nomi:tasks:run': Error: 所有免配置上传 host 都失败：litterbox.catbox.moe: 素材上传失败(HTTP 500): (无详情)；tmpfiles.org: fetch failed",
     )
     expect(r.kind).toBe('asset-upload-failed')
-    expect(r.reason).toBe('参考图没能送到服务商')
+    expect(r.reason).toBe('参考图没能送到服务商 · 未计费')
     expect(r.hint).not.toMatch(/额度问题/)
     // 2026-08-01 实测：tmpfiles.org 在国内直连是 000（连不上），走代理才 405。所以
     // 「fetch failed」压倒性地是网络/代理没覆盖到这两个境外 host，而不是它们真挂了。

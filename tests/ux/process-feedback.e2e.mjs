@@ -5,6 +5,13 @@ import { expect, expectVisible, expectAbsent, proveProbe } from './_assert.mjs'
 import { assertLabPortOwnership, labOriginFor } from './design-lab/labServer.mjs'
 import { readLabStates } from './design-lab/labStates.mjs'
 
+async function advance(page, stage) {
+  await page.evaluate(async (next) => {
+    const { advanceProcessFeedback } = await import('/src/devlab/designLab/processFeedback/processFeedbackLabKit.tsx')
+    advanceProcessFeedback(next)
+  }, stage)
+}
+
 const evidence = path.resolve('docs/plan/process-feedback-evidence')
 await fs.mkdir(evidence, { recursive: true })
 assertLabPortOwnership('visual')
@@ -106,7 +113,7 @@ try {
     await mutation('stable-geometry', async () => expect(await geometry(page)).toEqual(initial))
     await page.locator('[data-node-id]').evaluate((element) => element.style.height = '240px')
     for (const stage of ['queued', 'requesting', 'generating', 'finalizing', 'saved']) {
-      await page.evaluate((stage) => window.dispatchEvent(new CustomEvent('nomi-pf-stage', { detail: stage })), stage)
+      await advance(page, stage)
       await page.clock.runFor(200)
       const expectedPhase = { queued: '排队中', requesting: '提交中', generating: '生成中', finalizing: '正在存到你电脑上', saved: '已保存到项目' }[stage]
       await expect(page.locator(messageSelectors[0])).toContainText(expectedPhase)
@@ -132,7 +139,7 @@ try {
     await page.locator('[data-process-lab-ready]').screenshot({ path: path.join(evidence, 'reduced-motion.png') })
     await page.goto(`${origin}/design-lab.html?screen=process-feedback&frame=1&state=pf-image-generating`)
     await expectVisible(page.locator('[data-process-lab-ready]'), '减弱动态完成旅程')
-    await page.evaluate(() => window.dispatchEvent(new CustomEvent('nomi-pf-stage', { detail: 'saved' })))
+    await advance(page, 'saved')
     await expect(page.locator(messageSelectors[0])).toHaveText('已保存到项目')
     await page.clock.runFor(3900)
     await expectVisible(page.locator('[data-node-id] [data-generation-status]'), '减弱动态下完成标签保留四秒')
