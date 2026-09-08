@@ -1,0 +1,111 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-08-lane-legacy-source-decoding",
+  "problem_type": "legacy_container_information_loss",
+  "symptom": "Replay silently reads v4 context containers as zero conversations, mixes host threads, and replaces explicit null tool results.",
+  "direct_cause": "Each reader unwraps one assumed shape and immediately projects to text; result uses nullish coalescing.",
+  "class_root": "No shared lossless decoding boundary before purpose-specific replay or migration views.",
+  "affected_population": [
+    "pi context v2/v3/v4 and direct envelopes",
+    "agentChatV2 sessions",
+    "host snapshot threads and unknown items"
+  ],
+  "scope_paths": [
+    "electron/agentLane/laneLegacySources.ts",
+    "tests/agent-runtime/replayShadowSources.mts"
+  ],
+  "entry_points": [
+    "readPiSnapshots",
+    "readAgentChatV2",
+    "readHostSnapshots"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "These are legacy private formats defined by checked-in Nomi writers. This subtask decodes only; checksum and trusted binding validation belong to the subsequent migration boundary.",
+  "invariants": [
+    "Every original member retains raw and sourceIndex without sorting.",
+    "Host conversations never mix thread identities.",
+    "Malformed or unsupported containers are explicit, not successful empty history.",
+    "Explicit null tool result is never replaced by output."
+  ],
+  "generality_proof": "All three L2 readers consume the shared result; the future importer can consume original items instead of lossy replay messages.",
+  "shared_boundaries": [
+    {
+      "path": "electron/agentLane/laneLegacySources.ts",
+      "symbol": "parseLegacySource",
+      "responsibility": "Decode containers without dropping fields or array members."
+    },
+    {
+      "path": "tests/agent-runtime/replayShadowSources.mts",
+      "symbol": "replayMessages",
+      "responsibility": "Derive only the narrow replay view from decoded conversations."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "tests/agent-runtime/replayShadowSources.mts",
+      "entry_point": "readPiSnapshots",
+      "disposition": "enforced",
+      "evidence": "Uses readSource / parseLegacySource before deriving replayMessages."
+    },
+    {
+      "path": "tests/agent-runtime/replayShadowSources.mts",
+      "entry_point": "readAgentChatV2",
+      "disposition": "enforced",
+      "evidence": "Uses readSource / parseLegacySource before deriving replayMessages."
+    },
+    {
+      "path": "tests/agent-runtime/replayShadowSources.mts",
+      "entry_point": "readHostSnapshots",
+      "disposition": "enforced",
+      "evidence": "Uses readSource / parseLegacySource before deriving replayMessages."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Every v4 file or interleaved host thread can lose or misattribute history in the old reader.",
+    "same_class_scan": [
+      "Read replayShadowSources three readers and their real writers contextStore/snapshot/projectAgentRepository.",
+      "Read agentChatV2 tool result projection and inspect explicit null/output case."
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "electron/agentLane/laneLegacySources.ts",
+    "invariant": "Decode original entries once with raw and positional identity before projecting.",
+    "failure_mode": "Invalid/unsupported source returns an explicit status; replay reports unreadable.",
+    "exception_policy": "none",
+    "strategy": "Move all container unpacking into one pure decoder and derive narrow replay messages only afterward.",
+    "artifacts": [
+      "electron/agentLane/laneLegacySources.ts",
+      "tests/agent-runtime/replayShadowSources.mts"
+    ]
+  },
+  "regression_tests": [
+    "tests/agent-runtime/lane-legacy-sources.test.mts"
+  ],
+  "class_regression_tests": [
+    "tests/agent-runtime/lane-legacy-sources.test.mts"
+  ],
+  "legacy_paths": {
+    "status": "not-applicable",
+    "removed_paths": [],
+    "rationale": "Old inline container decoding is replaced within replayShadowSources; no removed files or fallback reader."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "Plain JSON decoding with existing Node APIs; no framework integration added.",
+    "exit_criteria": []
+  },
+  "migration": "This is the first migration subtask, not the writer. No source files are changed. Imported byte safety, checksums, bindings and append transactions remain the next explicit gate.",
+  "residual_risks": [
+    "Decoder output is untrusted and MUST NOT authorize import without subsequent integrity/ownership validation.",
+    "Importer, durable archive/prefix recovery and banner are not yet implemented."
+  ],
+  "invariant_owner_layer": {
+    "layer": "electron/agentLane/laneLegacySources.ts",
+    "tests": [
+      "tests/agent-runtime/lane-legacy-sources.test.mts"
+    ],
+    "why": "Owns three-source decoding and raw/array-order conservation."
+  }
+}
