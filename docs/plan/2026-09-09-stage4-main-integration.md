@@ -25,3 +25,7 @@
 ## 验收门
 
 四项专项：reference-contract、vocabularies、filesize、boundaries；然后完整 gates。零引用临时文件原为空，改从 origin/main 到任务树的已删除代码路径生成清单，扫描跟踪源码中的静态/动态 import、require 与模块路径，另核查旧宿主/运行时入口。commit/push 均走 Ponytail hooks，只推原任务分支，不合并 PR。
+
+## 推送前 main 再次前进（#657）
+
+首次完整 gates 已在 8a98eb03d 通过。推送前 fetch 发现 main 新增 dba414bfa（C0 测试），因此再合入：c0-short-film.walk.mjs 采用 main 抽出的 scheduler 接口；本分支唯一工具改名 nomi_canvas_plan → nomi_storyboard_write 随代码搬到 c0-fixture.mjs，不复活旧工具。运行新增预算/R30 的零额度单测，再复跑完整 gates；不执行 --real 或读取用户配置/真实项目。
