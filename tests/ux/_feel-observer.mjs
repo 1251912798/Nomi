@@ -42,12 +42,36 @@ export function installFeelObserver(page, {
     if (drift.length && !exemption) throw new Error(`Feel baseline drift at ${label}: ${JSON.stringify(drift)}; evidence: ${outputDir}`)
     return result
   }
-  page.screenshot = async (options = {}) => {
-    const result = await screenshot(options)
-    const label = `${name}:screenshot:${options.path ? path.basename(String(options.path)) : 'page'}`
-    await checkpoint(label, options.path)
-    return result
+  const instrumented = new WeakSet()
+  const locatorFactories = [
+    'locator', 'getByRole', 'getByText', 'getByLabel', 'getByPlaceholder',
+    'getByTitle', 'getByAltText', 'getByTestId', 'frameLocator', 'contentFrame',
+    'filter', 'first', 'last', 'nth', 'and', 'or',
+  ]
+  function instrumentScreenshots(target) {
+    if (instrumented.has(target)) return target
+    instrumented.add(target)
+    if (typeof target.screenshot === 'function') {
+      const original = target === page ? screenshot : target.screenshot.bind(target)
+      target.screenshot = async (options = {}) => {
+        const value = await original(options)
+        const label = `${name}:screenshot:${options.path ? path.basename(String(options.path)) : 'page'}`
+        await checkpoint(label, options.path)
+        return value
+      }
+    }
+    for (const method of locatorFactories) {
+      if (typeof target[method] !== 'function') continue
+      const original = target[method].bind(target)
+      target[method] = (...args) => instrumentScreenshots(original(...args))
+    }
+    if (typeof target.all === 'function') {
+      const original = target.all.bind(target)
+      target.all = async () => (await original()).map(instrumentScreenshots)
+    }
+    return target
   }
+  instrumentScreenshots(page)
   // Public state-wait APIs used by walkthroughs; no Playwright private instrumentation.
   for (const method of ['waitForFunction', 'waitForSelector', 'waitForLoadState']) {
     const original = page[method].bind(page)

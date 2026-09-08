@@ -1,5 +1,5 @@
-import test from 'node:test'
-import assert from 'node:assert/strict'
+import { test } from 'vitest'
+import { expect } from '@playwright/test'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -8,9 +8,9 @@ import { compareFeelBaseline, installFeelObserver } from './_feel-observer.mjs'
 
 test('baseline accepts known counts, rejects increases and requires reductions to be recorded', () => {
   const baseline = { entries: [{ label: 'state', rule: 'text-overlap', count: 1, owner: 'test' }] }
-  assert.deepEqual(compareFeelBaseline({ label: 'state', findings: [{ rule: 'text-overlap' }] }, baseline), [])
-  assert.equal(compareFeelBaseline({ label: 'state', findings: [] }, baseline)[0].kind, 'reduced-update-baseline')
-  assert.equal(compareFeelBaseline({ label: 'other', findings: [{ rule: 'font-size' }] }, baseline)[0].kind, 'new')
+  expect(compareFeelBaseline({ label: 'state', findings: [{ rule: 'text-overlap' }] }, baseline)).toEqual([])
+  expect(compareFeelBaseline({ label: 'state', findings: [] }, baseline)[0].kind).toBe('reduced-update-baseline')
+  expect(compareFeelBaseline({ label: 'other', findings: [{ rule: 'font-size' }] }, baseline)[0].kind).toBe('new')
 })
 
 test('shared observer scans screenshots and completed state waits without author calls', async () => {
@@ -24,13 +24,15 @@ test('shared observer scans screenshots and completed state waits without author
     await page.setContent('<p>Readable</p>')
     await page.screenshot({ path: path.join(dir, 'clean.png') })
     await page.waitForFunction(() => document.readyState === 'complete')
-    assert.equal(observer.records.length, 2)
-    await page.setContent('<p style="font-size:8px">Tiny</p>')
-    await assert.rejects(() => page.screenshot({ path: path.join(dir, 'bad.png') }), /Feel baseline drift/)
+    expect(observer.records.length).toBe(2)
+    await page.setContent('<p style="font-size:8px">Tiny</p><button>Continue</button>')
+    await expect(page.screenshot({ path: path.join(dir, 'bad.png') })).rejects.toThrow(/Feel baseline drift/)
+    await expect(page.getByRole('button').first().screenshot({ path: path.join(dir, 'locator.png') })).rejects.toThrow(/Feel baseline drift/)
+    await expect(page.waitForFunction(() => document.readyState === 'complete')).rejects.toThrow(/Feel baseline drift/)
     const records = JSON.parse(fs.readFileSync(path.join(dir, 'contact-sheet.json'), 'utf8'))
-    assert.equal(records.length, 3)
-    assert.equal(records[2].findings[0].rule, 'font-size')
-    assert.ok(fs.existsSync(records[2].screenshot))
+    expect(records.length).toBe(5)
+    expect(records[2].findings[0].rule).toBe('font-size')
+    expect(fs.existsSync(records[2].screenshot)).toBe(true)
   } finally {
     await browser.close()
     fs.rmSync(dir, { recursive: true, force: true })

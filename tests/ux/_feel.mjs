@@ -22,6 +22,20 @@ export async function scanFeel(root, { rules = {}, label = 'page' } = {}) {
       right: Math.min(a.right, b.right), bottom: Math.min(a.bottom, b.bottom),
     })
     const area = (r) => Math.max(0, r.right - r.left) * Math.max(0, r.bottom - r.top)
+    const documentStyle = view.getComputedStyle(doc.documentElement)
+    const bodyStyle = doc.body ? view.getComputedStyle(doc.body) : documentStyle
+    const scrollRoot = doc.scrollingElement || doc.documentElement
+    const documentClip = {
+      left: -Infinity, top: -Infinity, right: Infinity, bottom: Infinity,
+    }
+    if (scrollRoot.scrollHeight > view.innerHeight && !/hidden|clip/.test(documentStyle.overflowY + bodyStyle.overflowY)) {
+      documentClip.top = 0
+      documentClip.bottom = view.innerHeight
+    }
+    if (scrollRoot.scrollWidth > view.innerWidth && !/hidden|clip/.test(documentStyle.overflowX + bodyStyle.overflowX)) {
+      documentClip.left = 0
+      documentClip.right = view.innerWidth
+    }
     const findings = []
     const report = (rule, elements) => findings.push({
       rule,
@@ -30,9 +44,9 @@ export async function scanFeel(root, { rules = {}, label = 'page' } = {}) {
       rects: elements.map((el) => el.getBoundingClientRect().toJSON()),
     })
 
-    function visibleRect(el, rect = el.getBoundingClientRect()) {
-      let visible = rect
-      for (let parent = el.parentElement; parent; parent = parent.parentElement) {
+    function visibleRect(el, rect = el.getBoundingClientRect(), clipSelf = false) {
+      let visible = intersect(rect, documentClip)
+      for (let parent = clipSelf ? el : el.parentElement; parent; parent = parent.parentElement) {
         const style = view.getComputedStyle(parent)
         if (style.visibility === 'hidden' || Number(style.opacity) === 0) return null
         const box = parent.getBoundingClientRect()
@@ -52,7 +66,7 @@ export async function scanFeel(root, { rules = {}, label = 'page' } = {}) {
     const elements = [boundary, ...boundary.querySelectorAll('*')].filter((el) => {
       const style = view.getComputedStyle(el)
       return style.display !== 'none' && style.visibility !== 'hidden'
-        && Number(style.opacity) !== 0 && visibleRect(el)
+        && Number(style.opacity) > 0 && visibleRect(el)
     })
     // Text ranges avoid treating a full-width block's empty space as painted text.
     const texts = elements.flatMap((el) => [...el.childNodes]
@@ -60,7 +74,7 @@ export async function scanFeel(root, { rules = {}, label = 'page' } = {}) {
       .flatMap((node) => {
         const range = doc.createRange()
         range.selectNodeContents(node)
-        return [...range.getClientRects()].map((rect) => ({ el, rect: visibleRect(el, rect) }))
+        return [...range.getClientRects()].map((rect) => ({ el, rect: visibleRect(el, rect, true) }))
           .filter(({ rect }) => rect && area(intersect(rect, viewport)) > 0)
       }))
 

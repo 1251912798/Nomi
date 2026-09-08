@@ -277,7 +277,8 @@ export async function launchNomiApp(options = {}) {
     await win.waitForLoadState('domcontentloaded')
     if (settleMs > 0) await win.waitForTimeout(settleMs)
     installFeelObserver(win, { name })
-    app.on('window', (page) => installFeelObserver(page, { name }))
+    let nextWindow = 1
+    app.on('window', (page) => installFeelObserver(page, { name: `${name}-window-${++nextWindow}` }))
   }
 
   try {

@@ -6,7 +6,7 @@ const base = execFileSync('git', ['merge-base', 'HEAD', 'origin/main'], { encodi
 for (const file of ['tests/ux/feel-baseline.json', 'tests/ux/feel-exemptions.json']) {
   const current = read(file)
   let previous
-  const exists = execFileSync('git', ['ls-tree', '--name-only', base, '--', file], { encoding: 'utf8' }).trim()
+  const exists = execFileSync('git', ['ls-tree', '-z', '--name-only', base, '--', file], { encoding: 'utf8' }).trim()
   if (exists) previous = JSON.parse(execFileSync('git', ['show', `${base}:${file}`], { encoding: 'utf8' }))
   const keys = new Set()
   for (const entry of current.entries) {

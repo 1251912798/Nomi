@@ -31,13 +31,6 @@
     },
     {
       "label": "artifact-products:html:light",
-      "rule": "text-overlap",
-      "count": 1,
-      "owner": "artifact-preview",
-      "reason": "HTML 截断/不可滚动/不可交互"
-    },
-    {
-      "label": "artifact-products:html:light",
       "rule": "clipped-content",
       "count": 1,
       "owner": "artifact-preview",
@@ -46,13 +39,6 @@
     {
       "label": "artifact-products:html:light",
       "rule": "unreachable-interaction",
-      "count": 1,
-      "owner": "artifact-preview",
-      "reason": "HTML 截断/不可滚动/不可交互"
-    },
-    {
-      "label": "artifact-products:html:dark",
-      "rule": "text-overlap",
       "count": 1,
       "owner": "artifact-preview",
       "reason": "HTML 截断/不可滚动/不可交互"
