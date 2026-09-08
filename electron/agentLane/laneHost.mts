@@ -15,7 +15,7 @@
 import { AgentHarness, reduceLaneSnapshot, type AgentLane, type LaneSnapshot } from '@earendil-works/pi-agent-core';
 import { BACKGROUND_CONTEXT, type Context } from '@earendil-works/pi-agent-core/harness/context';
 import { createModels } from '@earendil-works/pi-ai';
-import { createNomiProvider } from '../harness/runtime/pi/model.mjs';
+import { createNomiProvider } from './laneModelProvider.mjs';
 import {
   LANE_APPROVAL_NOTE_TYPE, LANE_TASK_NOTE_TYPE, LANE_UI_NOTE_PREFIX, laneNoteEntersModelContext,
   type LaneApprovalNote, type LaneCancelQueuedResult, type LaneCommand, type LaneCommandOutcome,

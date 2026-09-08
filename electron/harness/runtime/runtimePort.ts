@@ -1,112 +1,28 @@
-import type { ZodTypeAny } from 'zod'
+// 旧运行核的端口。**阶段 4 的切换 PR 会连着 `electron/harness/runtime/` 整个目录删掉它。**
+//
+// 所以这里只剩两批东西：
+//   ① 上面的 re-export——`NomiModelConfig` 与那八个传输契约已经搬到
+//      `electron/shared/agentLane/laneModelConfig.ts` 与
+//      `electron/shared/agentCapabilities/transportContracts.ts`，因为它们的消费者
+//      （capabilityCore / projectAgentHost / skills / agentLane）全都活过切换。
+//      本文件对它们**只 re-export、不再定义**，好让本目录里的旧代码一行都不用改（P1）。
+//   ② 下面的 `RuntimeTurn*` / `RuntimeSnapshot*`——这批是「旧运行核一轮怎么跑」的形状，
+//      依赖 `harness/context/promptPipe`，且**没有一个消费者活过切换 PR**
+//      （全在 `harness/`、`ai/agentChatV2*` 与旧的 `tests/agent-runtime/` 里）。
+//      把它们硬搬进 `electron/shared/` 只会造一条 shared → harness 的新反向边，
+//      比留在这里随目录一起死更糟。
 import type { CompiledPrompt, PromptCacheTelemetry } from '../context/promptPipe'
+import type {
+  RuntimeActivityEvent, RuntimeErrorFacts, RuntimeFinishReason, RuntimeToolCall,
+  RuntimeToolCallRecord, RuntimeToolDecision, RuntimeToolDescriptor, RuntimeUsage,
+} from '../../shared/agentCapabilities/transportContracts'
+import type { NomiModelConfig } from '../../shared/agentLane/laneModelConfig'
 
-/** Nomi's boundary. SDK objects and types stay in the private pi directory. */
-export interface NomiModelConfig {
-  kind: 'openai-compatible' | 'openai-responses' | 'anthropic'
-  providerId: string
-  modelId: string
-  baseURL: string
-  authType: 'api-key' | 'none'
-  apiKey?: string
-  headers?: Record<string, string>
-  contextWindow?: number
-  maxOutputTokens?: number
-  temperature?: number
-  /**
-   * 按 token 计费的价目，**单位一律「美元 / 每百万 token」**（与 `Model.tokenPricing` 同一个单位）。
-   * 缺席 = 我们没有这个模型的价目 → 运行时把花费那一行渲染成「不可知」，**不是 0**。
-   * 出处（url/checkedAt）留在目录里，不过这道门：wire 配置只需要数字。
-   */
-  tokenPricing?: {
-    inputPerMTokUsd: number
-    outputPerMTokUsd: number
-    /** 缺省 = 与 `inputPerMTokUsd` 同价。 */
-    cacheReadPerMTokUsd?: number
-    /** 缺省 = 与 `inputPerMTokUsd` 同价。 */
-    cacheWritePerMTokUsd?: number
-  }
-  /** 显式「这个模型不按 token 计费」。与 `tokenPricing` 互斥；面板据此印「免费」而不是「不可知」。 */
-  free?: true
-  /**
-   * 这个模型会不会思考。pi 的 `getSupportedThinkingLevels(model)` 直接读它：`false` → 只有 `off`
-   * 一档（推理那一行「不适用」）。今天目录还没有一处声明它，所以生产路径恒为 `false`——
-   * 这是**已知遗留**，不是设计：填它需要逐个模型抓官方文档（R5），不在阶段 3b 的范围里。
-   */
-  reasoning?: boolean
-  /**
-   * 各思考档到供应商原生取值的映射。`null` = 这一档这个模型不支持，pi 会把它从
-   * `getSupportedThinkingLevels` 里剔掉；`off: null` 就是「关不掉思考」。
-   */
-  thinkingLevelMap?: Record<string, string | null>
-}
-
-export interface RuntimeToolDescriptor {
-  name: string
-  description: string
-  schema: ZodTypeAny
-}
-
-export interface RuntimeToolCall {
-  toolCallId: string
-  toolName: string
-  args: unknown
-}
-
-export type RuntimeToolDecision =
-  | { ok: true; result?: unknown; effectiveArgs?: Record<string, unknown>; overridesDelta?: Record<string, unknown>; silent?: boolean; proposalId?: string; approvalScope?: 'once' | 'session' | 'always' }
-  | { ok: false; message?: string; code?: string; denied?: boolean }
-
-export interface RuntimeToolCallRecord extends RuntimeToolCall {
-  status: 'ok' | 'denied' | 'cancelled' | 'error'
-  decision?: RuntimeToolDecision
-  result?: unknown
-  error?: string
-}
-
-export interface RuntimeUsage {
-  promptTokens: number
-  completionTokens: number
-  cachedPromptTokens: number
-  totalTokens: number
-  /**
-   * Reasoning/thinking tokens, and only when the provider actually reports a
-   * breakdown. A subset of `completionTokens`, never added on top of it.
-   * Absent means "this provider did not say" — never coerce it to 0, or the
-   * panel prints a confident zero for a number nobody measured.
-   */
-  reasoningTokens?: number
-  /**
-   * Provider-priced cost of this one turn, in USD, straight from the runtime's
-   * own price table. Absent when the runtime has no price for the model.
-   * This is the only cost source; nothing downstream multiplies tokens by a
-   * rate of its own.
-   */
-  costUsd?: number
-}
-
-export type RuntimeFinishReason = 'stop' | 'length' | 'toolUse' | 'error' | 'aborted'
-
-export interface RuntimeErrorFacts {
-  // `'step-limit'` 曾经在这里。它唯一的产地（`run.mts` 的第三层）已随本次改动删掉，
-  // 留着一个没人再铸造的成员，只会让下一个人以为「到上限」是一类失败——而它不是失败，
-  // 是一次停在预算边界上的正常收尾。
-  kind: 'http' | 'network' | 'timeout' | 'abort' | 'runtime'
-  message: string
-  code?: string
-  status?: number
-  body?: string
-  url?: string
-  timeoutPhase?: 'first-response' | 'idle'
-}
-
-export type RuntimeActivityEvent =
-  | { type: 'content-delta'; delta: string }
-  | ({ type: 'tool-call' } & RuntimeToolCall)
-  | { type: 'tool-result'; toolCallId: string; toolName: string; result?: unknown; decision?: RuntimeToolDecision }
-  | { type: 'tool-error'; toolCallId: string; toolName: string; message: string; denied?: boolean; cancelled?: boolean }
-  | { type: 'step-finish'; step: number; finishReason: RuntimeFinishReason; usage: RuntimeUsage }
-  | { type: 'warning'; error: RuntimeErrorFacts }
+export type { NomiModelConfig } from '../../shared/agentLane/laneModelConfig'
+export type {
+  RuntimeActivityEvent, RuntimeErrorFacts, RuntimeFinishReason, RuntimeToolCall,
+  RuntimeToolCallRecord, RuntimeToolDecision, RuntimeToolDescriptor, RuntimeUsage,
+} from '../../shared/agentCapabilities/transportContracts'
 
 export interface RuntimeTurnRequest {
   cwd: string

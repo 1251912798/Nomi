@@ -25,7 +25,7 @@ import { composeLaneSystemPrompt } from '../../electron/agentLane/lanePromptSect
 const NO_SKILL_SECTION = '';
 import type { LaneToolDescriptor } from '../../electron/agentLane/laneRuntimePort.js';
 import type { ApiKeyRecord } from '../../electron/catalog/secrets.js';
-import type { NomiModelConfig } from '../../electron/harness/runtime/runtimePort.js';
+import type { NomiModelConfig } from '../../electron/shared/agentLane/laneModelConfig.js';
 import { PROBE_CONTEXT, openProbeLane, type ProbeCleanup } from './stage3ProbeHarness.mjs';
 
 const VENDOR = process.env.NOMI_PROBE_VENDOR || 'apimart';

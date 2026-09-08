@@ -7,7 +7,7 @@ import { test, type TestContext } from 'node:test';
 import type { AgentSession } from '@earendil-works/pi-coding-agent';
 import { z } from 'zod';
 import { createControlledSession, type ControlledSessionOptions } from '../../electron/harness/runtime/pi/session.mjs';
-import type { NomiModelConfig } from '../../electron/harness/runtime/pi/model.mjs';
+import type { NomiModelConfig } from '../../electron/shared/agentLane/laneModelConfig.js';
 import type { HostToolResult } from '../../electron/harness/runtime/pi/tools.mjs';
 import { createHttpFixture, type FixtureReply } from './httpFixture.mjs';
 

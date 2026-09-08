@@ -1,4 +1,4 @@
-import type { RuntimeErrorFacts } from '../harness/runtime/runtimePort';
+import type { RuntimeErrorFacts } from '../shared/agentCapabilities/transportContracts';
 import { VendorRequestError, categorizeVendorFailure, encodeVendorErrorMessage } from '../vendor/vendorHttp';
 import { upstreamMessageFromBody } from './aiSdkVendorError';
 

@@ -16,7 +16,7 @@ import type {
   AgentChatResponse,
   AgentChatToolDecision,
 } from "../harness/agentChatContracts";
-import type { RuntimeToolCall } from "../harness/runtime/runtimePort";
+import type { RuntimeToolCall } from "../shared/agentCapabilities/transportContracts";
 import { createProjectAgentContextBinding } from "./projectAgentContextBinding";
 import type { ProjectAgentExecutionRequest } from "../shared/contracts/agentChatContracts";
 import {

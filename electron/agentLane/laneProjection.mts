@@ -10,7 +10,7 @@
 import type { LaneSnapshot } from '@earendil-works/pi-agent-core';
 import { getSupportedThinkingLevels } from '@earendil-works/pi-ai';
 import type { Api, AssistantMessage, Model, Usage } from '@earendil-works/pi-ai';
-import type { NomiPricingBasis } from '../harness/runtime/pi/model.mjs';
+import type { NomiPricingBasis } from '../shared/agentLane/laneModelConfig.js';
 import {
   LANE_TASK_NOTE_TYPE, isLaneTaskNote,
   type LaneMetric, type LanePart, type LanePendingApproval, type LaneProjection,

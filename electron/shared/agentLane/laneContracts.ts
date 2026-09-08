@@ -2,7 +2,7 @@
 //
 // 这一层是渲染进程与主进程**唯一**共同认识的东西。它刻意不认识 pi：pi 的类型只在
 // `electron/agentLane/*.mts` 那个 ESM 岛里出现，越过这道门就只剩下面这几个结构。
-// 分层理由与 `electron/harness/runtime/runtimePort.ts` 同源（`electron/` → `src/` 的
+// 分层理由与同层的 `electron/shared/agentCapabilities/transportContracts.ts` 同源（`electron/` → `src/` 的
 // 依赖方向铁律，`check:boundaries` 只放行 `electron/shared/`）。
 //
 // **本层最重要的一个字段是 `sequence`。** 今天面板的顺序是渲染层用 `createdAt` + 数组
@@ -167,7 +167,7 @@ export interface LaneUsage {
    * **不是 `costUsd?: number`。** pi 的 `Usage.cost` 不可选：没有价目的模型照样产出一份全零
    * （`pi-ai/dist/models.js:543-547` 拿 `Model.cost` 直接乘），所以 `cost.total === 0` 同时长得像
    * 「免费」「还没花钱」和「我们没有价目」。用 `> 0` 去分辨它们是猜——那条判断 2026-09-07 删掉了，
-   * 判据改为目录声明的 `NomiPricingBasis`（`electron/harness/runtime/pi/model.mts`）。
+   * 判据改为目录声明的 `NomiPricingBasis`（`electron/shared/agentLane/laneModelConfig.ts`）。
    */
   readonly cost: LaneMetric
   /**
