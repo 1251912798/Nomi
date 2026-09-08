@@ -19,8 +19,8 @@
 | 传输与来源 | 是否 deferred / 条件与来源 | 出站工具放置顺序与来源 |
 |---|---|---|
 | `anthropic-messages`，`PI/api/anthropic-messages.js:781` | `supportsToolReferences`；默认取模型身份判断，`PI/api/anthropic-messages.js:125-146` | `tools = immediate → deferred`；尾部新工具标 `defer_loading:true`，`PI/api/anthropic-messages.js:835-839,1108-1133`。常驻末项保留 `cache_control`，deferred 项不带缓存标记；转录的 tool result 放 `tool_reference`，`PI/api/anthropic-messages.js:900-925`。 |
-| `openai-responses`，`PI/api/openai-responses.js:210` | `supportsAdditionalTools` 默认 false；其次 `supportsToolSearch`，`PI/api/openai-responses.js:58,210-215` | 顶层 `tools` 只含 immediate；新增定义以 `additional_tools` 紧跟 `function_call_output`，`PI/api/openai-responses.js:215-219`、`PI/api/openai-responses-shared.js:209-240`。 |
-| `openai-codex-responses`，`PI/api/openai-codex-responses.js:374` | 同样需要显式支持标志，`PI/api/openai-codex-responses.js:374-384` | immediate 在顶层，新定义在转录；共用同一个转换器，`PI/api/openai-codex-responses.js:379-384`、`PI/api/openai-responses-shared.js:227-240`。 |
+| `openai-responses`，`PI/api/openai-responses.js:210` | `supportsAdditionalTools` 默认 false；其次 `supportsToolSearch`，`PI/api/openai-responses.js:58,210-215` | 顶层 `tools` 只含 immediate；新增定义以 `additional_tools` 紧跟 `function_call_output`，`PI/api/openai-responses.js:215-219,244-249`、`PI/api/openai-responses-shared.js:209-240`。 |
+| `openai-codex-responses`，`PI/api/openai-codex-responses.js:374` | 同样需要显式支持标志，`PI/api/openai-codex-responses.js:374-384` | immediate 在顶层，新定义在转录；共用同一个转换器，`PI/api/openai-codex-responses.js:379-384,409-414`、`PI/api/openai-responses-shared.js:227-240`。 |
 | `openai-completions`（Chat Completions），`PI/api/openai-completions.js:611` | 通用路径不开；仅显式 `deferredToolsMode:'kimi'` 有特殊扩展，自动检测不设它，`PI/api/openai-completions.js:1088-1090,1310,1351` | 通用路径完整 `context.tools` 按输入/catalog 顺序进入顶层 `tools`，`PI/api/openai-completions.js:611-612`。Kimi 扩展在 tool result 后增加 system 定义段，`PI/api/openai-completions.js:1129-1139`；本轮不把这个扩展当通用 Chat Completions 支持。 |
 
 共同规则：`splitDeferredTools` 用 Map 按输入顺序去重；从历史 tool result 的 `addedToolNames` 找装载点，最后按原始工具顺序分组（`PI/utils/deferred-tools.js:3-34`）。Responses 转录内定义的顺序则跟随 `addedToolNames`，且同名只装一次（`PI/api/openai-responses-shared.js:227-240`）。因此既要稳定 catalog 顺序，也要稳定新增名字顺序。
@@ -54,6 +54,22 @@ node --test --test-concurrency=1 --test-timeout=60000 .tmp/agent-runtime-tests/t
 ```
 
 **本地执行状态：未运行成功**。`pnpm exec tsc ...` 返回 `Command "tsc" not found`。`node --check tests/agent-runtime/lane-deferred-tools-placement.test.mts` 通过，**只证明语法，不证明类型或断言通过**。不能把预期数组长度、fixture 回传的假 usage 或旧探针数字当成本轮实测。
+
+### 远端零额度实测：12/12 通过
+
+本地保持“不装包”；PR 的既有 CI 在完整安装锁定依赖后执行了夹具。[Unit 收据](https://github.com/aqm857886159/Nomi/actions/runs/34186472836/job/101935763351)，测试 commit `17f8ee7d2d3f6528f731658d6da5f36ccb3b8024`，UTC 2026-09-08 04:22:33。以下均为真实 pi → loopback HTTP 出站数据，**不是供应商缓存实测**。源码确认的 menu 实际为 **catalog 11 + 解锁入口 1 → 加 coding 7，即 12 → 19**；旧 11 → 18 是漏计解锁入口的口径。
+
+| 传输 | 臂 | 顶层工具数：1 / 2 / 3 | tools JSON UTF-8 字节：1 / 2 / 3 | 断言 |
+|---|---|---|---|---|
+| anthropic-messages | enabled | 12 / 19 / 19 | 23678 / 28809 / 28809 | 通过；原常驻前缀和缓存标记保留，新 7 个尾部 deferred |
+| anthropic-messages | default / 去掉 addedToolNames（各跑一组） | 12 / 19 / 19 | 23678 / 28662 / 28662 | 两组通过；定义顺序不变，缓存标记移动到新末项 |
+| openai-responses | enabled | 12 / 12 / 12 | 24335 / 24335 / 24335 | 通过；新 7 个在转录，第三请求转录前缀稳定 |
+| openai-responses | default / 去掉 addedToolNames（各跑一组） | 12 / 19 / 19 | 24335 / 29214 / 29214 | 两组通过；coding 按固定顺序在顶层尾部 |
+| openai-codex-responses | enabled | 12 / 12 / 12 | 24503 / 24503 / 24503 | 通过；新 7 个在转录，第三请求转录前缀稳定 |
+| openai-codex-responses | default / 去掉 addedToolNames（各跑一组） | 12 / 19 / 19 | 24503 / 29480 / 29480 | 两组通过；完整菜单留在顶层 |
+| openai-completions | 三臂各跑一组 | 12 / 19 / 19 | 24671 / 29746 / 29746 | 三组通过；catalog 固定序，第三回合稳定 |
+
+Chat Completions 本次解锁增加 **5,075 字节 tools JSON**；这是网络载荷增量，不是 5,075 token，更不是缓存失效金额。测试代码在补录本节时未改变。上面的 12 条均通过；整个 agent-runtime suite 为 302 条、301 通过、1 skipped、0 失败。
 
 ## 3. APIMart 真实探针与费用
 
@@ -125,9 +141,9 @@ APIMart 官方列出 [Messages `/v1/messages`](https://docs.apimart.ai/en/api-re
 
 - `delivery:preflight`：通过，干净独立分支与 `origin/main` 同 commit。
 - `node --check`、`git diff --check`、`check:prior-art`：通过；仅对应各自静态边界。
-- `gates:contracts`：完整尝试 73 项；首轮 25 项阻断，其中新增 plan 的 prior-art 格式已修并复跑通过，其余依赖环境失败仍在。日志在未提交 `.tmp/pd1-contracts.log`；不能称 contracts 全绿。
-- agent-runtime 编译/执行：缺 `tsc`，未查成；12 条测试尚未取得运行通过证据。
+- 本地 `gates:contracts`：完整尝试 73 项；首轮 25 项阻断，其中新增 plan 的 prior-art 格式已修并复跑通过，其余依赖环境失败仍在。日志在未提交 `.tmp/pd1-contracts.log`。
+- 远端 [Contracts 收据](https://github.com/aqm857886159/Nomi/actions/runs/34186472836/job/101935708976)：同一测试 commit 的 73 项中 70 通过、0 阻断失败、3 advisory 失败；严格 agent-runtime 类型检查 0 错误。远端 Unit 通过，P-D1 **12/12** 实跑通过，详见 §2。本地缺依赖与远端验证结果分别记录。
 - 今日模型雷达：`radar:models` 因缺 `tsx` 没查成，不表示没有新模型。本任务未扩展为其他研究或修改雷达快照。
 - 实际付费 **¥0.00**；不含仓库提交/推送闸门使用的 Codex 会话，后者不是 APIMart 付费探针。
 
-后续同分支验证如成功，应替换本节状态及 usage 空表，并保留本轮失败原因，不能把计划中的断言和三回合当成已执行收据。
+交付为 [Draft PR #639](https://github.com/aqm857886159/Nomi/pull/639)，未合并。零额度放置已取得运行收据；后续仍须补齐应用凭据路径与付费 usage，才可结束“真实缓存成本未查成”的状态。
