@@ -97,6 +97,7 @@ const workbenchBasePlugin = plugin(({ addBase, addUtilities }) => {
       // 图上徽章/标题遮罩承载白字，压在任意亮度媒体上（暗色卡底常是白衬衫等亮区）——opacity 提到稳定托住白字。
       // 2026-09-01 用户反馈「徽标黑底黑字 / 标题融背景」；镜像见 src/theme/nomi-tokens.css。
       '--nomi-overlay-chip': 'oklch(0.18 0.01 80 / 0.64)',
+      '--nomi-media-ink': 'oklch(1 0 0)',
       '--nomi-overlay-chip-strong': 'oklch(0.16 0.01 80 / 0.82)',
       '--nomi-media-veil': 'oklch(0.12 0.01 80 / 0.74)',
       '--nomi-shadow-sm': '0 1px 2px oklch(0 0 0 / 0.04), 0 1px 1px oklch(0 0 0 / 0.03)',
@@ -620,6 +621,7 @@ export default {
         nomi: {
           bg: tokenColor('--nomi-bg'),
           paper: tokenColor('--nomi-paper'),
+          'media-ink': tokenColor('--nomi-media-ink'),
           ink: tokenColor('--nomi-ink'),
           'ink-80': tokenColor('--nomi-ink-80'),
           'ink-60': tokenColor('--nomi-ink-60'),

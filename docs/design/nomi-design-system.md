@@ -1044,3 +1044,7 @@ import IconX from '@/assets/some-svg.svg'
 - 重大重构（如颜色系统重设、清理 §14.1 暗色层）bump 主版本（v3）
 - 文档过时时优先更新本文档，不依赖代码注释作为 source of truth
 - §14 是活清单：每修掉一条，从表里删一条
+
+### 过程反馈状态条（C1，2026-09-08）
+
+`src/workbench/generationCanvas/nodes/GenerationStatusBar.tsx`：图、视频、音频共用纸白胶囊，6px 状态点、正文 token 人话、等宽真实数字。压媒体时使用 overlay-chip 底与固定白字 token。排队 ink-30、进行 accent、完成 success、软超时 warning、失败 danger。状态不参与节点几何布局；点 1.6s 呼吸，reduced-motion 常亮；完成停 2s 后 240ms 淡出，减弱动态时停 4s 直接消失。失败动作沿用节点现役错误卡，不复制操作入口。

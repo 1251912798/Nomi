@@ -4,12 +4,6 @@ import type { GenerationCanvasNode } from "../model/generationCanvasTypes";
 import { readNodeAspectRatio } from "./aspectRatio";
 import { isCardRenderKind, resolveNodeRenderKind } from "./resolveRenderKind";
 
-export const STATUS_LABEL: Record<string, string> = {
-    queued: "排队中",
-    running: "生成中",
-    error: "生成失败",
-};
-
 export type ResizeDirection = "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw";
 
 export const RESIZE_DIRECTIONS: ResizeDirection[] = [

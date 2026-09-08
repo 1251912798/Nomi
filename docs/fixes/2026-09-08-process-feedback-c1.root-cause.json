@@ -9,7 +9,16 @@
     "Image, video and audio generation consumers"
   ],
   "scope_paths": [
-    "src/workbench/observability/narrate.ts"
+    "src/workbench/observability/narrate.ts",
+    "src/workbench/generationCanvas/model/generationCanvasTypes.ts",
+    "src/workbench/generationCanvas/runner/generationRunController.ts",
+    "src/workbench/generationCanvas/comfyuiProgressBridge.ts",
+    "src/workbench/observability/generationFeedback.ts",
+    "src/workbench/observability/useGenerationFeedback.ts",
+    "src/workbench/generationCanvas/nodes/BaseGenerationNode.tsx",
+    "src/workbench/generationCanvas/nodes/GenerationStatusBar.tsx",
+    "src/workbench/generationCanvas/nodes/NodeGenerationStatus.tsx",
+    "src/workbench/generationCanvas/nodes/nodeSizing.ts"
   ],
   "entry_points": [
     "Generation runner",
@@ -65,15 +74,20 @@
     ]
   },
   "regression_tests": [
-    "src/workbench/observability/processFeedback.test.ts"
+    "src/workbench/observability/processFeedback.test.ts",
+    "src/workbench/observability/generationFeedback.test.ts"
   ],
   "class_regression_tests": [
-    "src/workbench/observability/processFeedback.test.ts"
+    "src/workbench/observability/processFeedback.test.ts",
+    "src/workbench/observability/generationFeedback.test.ts"
   ],
   "legacy_paths": {
     "status": "removed",
     "removed_paths": [
-      "src/workbench/observability/narrate.ts"
+      "src/workbench/observability/narrate.ts",
+      "src/workbench/generationCanvas/nodes/NodeQueuedBadge.tsx",
+      "src/workbench/generationCanvas/nodes/nodeSizing.ts",
+      "src/workbench/generationCanvas/nodes/BaseGenerationNode.tsx"
     ],
     "rationale": "Replace the ten independent human-stage texts with the approved five-phase vocabulary."
   },

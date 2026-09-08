@@ -46,7 +46,7 @@ export function initComfyuiProgressBridge(): void {
     if (event.kind === 'queue') {
       store.setNodeProgress(nodeId, {
         phase: 'comfyui-queued',
-        percent: 0,
+        narrationContext: { queueAhead: event.queueAhead },
         ...(taskId ? { taskId } : {}),
         message: narrateProgress('comfyui-queued', { queueAhead: event.queueAhead }),
       })
@@ -55,6 +55,7 @@ export function initComfyuiProgressBridge(): void {
     if (event.kind === 'progress') {
       store.setNodeProgress(nodeId, {
         phase: 'comfyui-node',
+        narrationContext: { currentClass: event.currentClass, startedNodes: event.startedNodes, totalNodes: event.totalNodes },
         ...(typeof event.percent === 'number' ? { percent: event.percent } : {}),
         ...(taskId ? { taskId } : {}),
         message: narrateProgress('comfyui-node', {
