@@ -102,6 +102,7 @@ describe('laneViewModel', () => {
     expect(receipt(false).summary).toContain('agentResident.toolNoGeneration')
     expect(receipt(true).summary).not.toContain('agentResident.toolNoGeneration')
     expect(receipt(true).summary).toContain('agentResident.issueExpected')
+    expect(receipt(true).output).toBe('Validation failed for tool "nomi_canvas_write":\n  - nodes: Expected array\n\nReceived arguments:\n{}')
     expect(receipt(true, true)).toMatchObject({ status: 'output-denied' })
     expect(receipt(true, true).summary).toBeUndefined()
   })

@@ -7,8 +7,8 @@ import {
   readableToolName,
   readableToolPreview,
   readableToolSummary,
-  residentToolProjectionForCall,
 } from './residentToolDisplay'
+import { redactToolArguments } from './residentToolText'
 import { partitionResidentProposalFields } from './residentProposalDisplay'
 import { CAPABILITY_ALIAS_ENTRIES, CAPABILITY_CONTRACTS } from '../../../../electron/shared/agentCapabilities/registry'
 import { modelFacingToolSpecs } from '../../../../electron/shared/agentCapabilities/modelFacingToolRegistry'
@@ -163,16 +163,13 @@ describe('resident tool display projection', () => {
     ]))
   })
 
-  it('projects safe display strings for persisted completed tool receipts', () => {
-    const projection = residentToolProjectionForCall(translate, 'nomi_start_generation', {
-      prompt: 'cat avatar',
-      modelId: 'provider/image-fast',
-      apiKey: 'sk-secret-value',
-    }, 'done')
-    expect(projection.effect).toBe('agentResident.toolGenerationSummary')
-    expect(projection.target).toBe('agentResident.targetCanvas')
-    expect(projection.technicalDetails).not.toContain('sk-secret-value')
+  it('keeps secret arguments out of visible summaries and technical details', () => {
+    const args = { prompt: 'cat avatar', modelId: 'provider/image-fast', apiKey: 'sk-secret-value' }
+    expect(readableToolSummary(translate, 'nomi_start_generation', args)).toContain('cat avatar')
+    expect(readableToolSummary(translate, 'nomi_start_generation', args)).not.toContain('sk-secret-value')
+    expect(redactToolArguments(args)).not.toContain('sk-secret-value')
   })
+
 })
 
 describe('失败正文 → 人话：只有这一条门', () => {
@@ -215,8 +212,5 @@ describe('失败正文 → 人话：只有这一条门', () => {
     expect(humanizeToolFailure(translate, '')).toBeUndefined()
   })
 
-  it('展开区的「输出」留原文：行内说人话，详情给英文', () => {
-    const projection = residentToolProjectionForCall(translate, 'nomi_canvas_edit', { operation: 'create_canvas_nodes' }, 'failed', { error: PI_PROSE })
-    expect(projection.output).toBe(PI_PROSE)
-  })
+
 })
