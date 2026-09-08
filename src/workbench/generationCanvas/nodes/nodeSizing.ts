@@ -134,7 +134,6 @@ export function getNodeSizeBounds(kind: GenerationCanvasNode["kind"]): NodeSizeB
 export const TIMELINE_TRACK_CLIPS_SELECTOR = ".workbench-timeline-track__clips";
 
 export const FOCUS_GENERATION_NODE_EVENT = "nomi-focus-generation-node";
-export const ENSURE_COMPOSER_VISIBLE_EVENT = "nomi-ensure-composer-visible";
 
 /**
  * composer 的「最小可用高度」：提示词 3 行(72) + 底栏 + 内边距/间距。
