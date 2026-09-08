@@ -15,9 +15,10 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import type { LaneSnapshot } from '@earendil-works/pi-agent-core';
+import { getSupportedThinkingLevels } from '@earendil-works/pi-ai';
 import { openLane } from '../../electron/agentLane/laneHost.mjs';
-import { projectLaneSnapshot, type LaneModelFacts } from '../../electron/agentLane/laneProjection.mjs';
-import type { LaneMetric, LaneUsage } from '../../electron/shared/agentLane/laneContracts.js';
+import { projectLaneSnapshot, type LaneModelFacts } from '../../electron/shared/agentLane/laneProjection.js';
+import type { LaneMetric, LaneThinkingLevel, LaneUsage } from '../../electron/shared/agentLane/laneContracts.js';
 import { createLaneFixture } from './laneFixture.mjs';
 import type { FixtureReply } from './httpFixture.mjs';
 
@@ -157,7 +158,11 @@ test('G3d · 刚压缩完：上下文「不可知」，因为旧数字描述的�
   t.after(() => lane.close());
   await lane.execute({ kind: 'prompt', text: 'Say done.' });
 
-  const facts: LaneModelFacts = { model: laneModel(), pricing: 'priced' };
+  // 档位仍由 pi 那一把尺子算（`getSupportedThinkingLevels`）——纯化搬走的是「谁去问它」，
+  // 不是判据本身，所以这里照旧问一次真的，而不是手抄一个档位数组。
+  const facts: LaneModelFacts = {
+    supportedThinkingLevels: getSupportedThinkingLevels(laneModel()) as readonly LaneThinkingLevel[],
+    pricing: 'priced' };
   const settled = snapshotWith([
     { id: 'e1', parentId: null, seq: 1, timestamp: 1, type: 'message',
       message: assistant({ input: 900, output: 100, cacheRead: 0, cacheWrite: 0 }) },

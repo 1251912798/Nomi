@@ -14,12 +14,12 @@
 // 对照今天的宿主：`electron/projectAgentHost/` 是 52 个生产文件、9 688 行。
 import { AgentHarness, reduceLaneSnapshot, type AgentLane, type LaneSnapshot } from '@earendil-works/pi-agent-core';
 import { BACKGROUND_CONTEXT, type Context } from '@earendil-works/pi-agent-core/harness/context';
-import { createModels } from '@earendil-works/pi-ai';
+import { createModels, getSupportedThinkingLevels } from '@earendil-works/pi-ai';
 import { createNomiProvider } from './laneModelProvider.mjs';
 import {
   LANE_APPROVAL_NOTE_TYPE, LANE_TASK_NOTE_TYPE, LANE_UI_NOTE_PREFIX, laneNoteEntersModelContext,
   type LaneApprovalNote, type LaneCancelQueuedResult, type LaneCommand, type LaneCommandOutcome,
-  type LaneHandle, type LanePendingApproval, type LaneProjection,
+  type LaneHandle, type LanePendingApproval, type LaneProjection, type LaneThinkingLevel,
 } from '../shared/agentLane/laneContracts.js';
 import { createLaneApprovalGate } from './laneApprovalGate.js';
 import type { OpenLane, OpenLaneOptions } from './laneRuntimePort.js';
@@ -27,7 +27,7 @@ import { composeLaneSystemPrompt } from './lanePromptSections.js';
 import { loadPiSkillFormatter, renderLaneSkillSection } from './laneSkillIndex.mjs';
 import { openLaneSession } from './laneSession.mjs';
 import { createLaneTools } from './laneTools.mjs';
-import { projectLaneSnapshot, type LaneModelFacts } from './laneProjection.mjs';
+import { projectLaneSnapshot, type LaneModelFacts } from '../shared/agentLane/laneProjection.js';
 
 /** 阶段 1 的观测：pi 每个 delta 自报的 `contentIndex`，与我们从 content 数组下标推出来的那个。 */
 export interface LaneOrderObservation {
@@ -168,7 +168,12 @@ export const openLane: OpenLane = async (options: OpenLaneOptions): Promise<Lane
   });
   // 三行（花费/上下文/推理）需要的**模型侧事实**，在这里定死一次，投影层不再回头问任何人。
   // `contextWindow` 只收显式声明的那个：provider 内部的 128k 兜底是给 pi 的类型用的，不是分母。
-  const modelFacts: LaneModelFacts = { model, pricing: pricingBasis,
+  //
+  // 推理档在**这一层**问 pi（`getSupportedThinkingLevels`），而不是在投影里问：判据还是 pi 那一把
+  // 尺子，但这里是最后一个天然认识 pi 运行时的地方。再往下（`shared/agentLane/laneProjection`）
+  // 是浏览器也 import 的中立层，在那里 import 一个 pi 的函数就等于把整个 SDK 拖进渲染 bundle。
+  const modelFacts: LaneModelFacts = { pricing: pricingBasis,
+    supportedThinkingLevels: getSupportedThinkingLevels(model) as readonly LaneThinkingLevel[],
     ...(options.model.contextWindow === undefined ? {} : { contextWindow: options.model.contextWindow }) };
   const models = createModels({ credentials });
   models.setProvider(provider);

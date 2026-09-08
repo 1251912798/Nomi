@@ -18,7 +18,7 @@ import type { LaneSnapshot } from '@earendil-works/pi-agent-core';
 import type { AssistantMessage } from '@earendil-works/pi-ai';
 
 import { openLane } from '../../electron/agentLane/laneHost.mjs';
-import { projectLaneSnapshot, type LaneModelFacts } from '../../electron/agentLane/laneProjection.mjs';
+import { projectLaneSnapshot, type LaneModelFacts } from '../../electron/shared/agentLane/laneProjection.js';
 import type { LaneToolDescriptor, LaneApprovalOptions } from '../../electron/agentLane/laneRuntimePort.js';
 import { LANE_APPROVAL_NOTE_TYPE, type LaneProjection } from '../../electron/shared/agentLane/laneContracts.js';
 import { LANE_READ_TOOL_TIMEOUT_MS } from '../../electron/shared/agentLane/laneToolContract.js';
@@ -185,11 +185,8 @@ test('G3b② 非空侧 · 按停止：没送出去的那句话回到输入框，
 
 const AT = 1_757_154_000_000;
 const FACTS: LaneModelFacts = {
-  model: {
-    provider: 'nomi-lane', id: 'fixture-model', name: 'fixture-model', api: 'openai-completions',
-    baseUrl: 'http://127.0.0.1/v1', reasoning: false, input: ['text'],
-    cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, contextWindow: 0, maxTokens: 0,
-  },
+  // 只有 `off` 一档 = 不会思考的模型（pi 对 `reasoning: false` 算出来的就是这一个）。
+  supportedThinkingLevels: ['off'],
   pricing: 'unpriced',
 };
 const USAGE = { input: 10, output: 4, cacheRead: 0, cacheWrite: 0, totalTokens: 14,
