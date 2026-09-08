@@ -1,0 +1,1 @@
+{"version":1,"provider":"loopback","journeys":[{"id":"agent-panel","entry":"agent","states":["idle","thinking","tool-receipt"]},{"id":"artifact-products","entry":"canvas","states":["html","svg","markdown","3d"]},{"id":"storyboard-timeline-export","entry":"timeline","states":["storyboard","timeline","export"]}]}
