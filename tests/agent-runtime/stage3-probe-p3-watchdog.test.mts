@@ -15,7 +15,6 @@ import { test } from 'node:test';
 import type { Provider } from '@earendil-works/pi-ai';
 import type { HarnessEvent } from '@earendil-works/pi-agent-core';
 
-import { openLane } from '../../electron/agentLane/laneHost.mjs';
 import { observeNativeStream } from '../../electron/agentLane/laneStreamObserver.mjs';
 import { createLaneFixture } from './laneFixture.mjs';
 import { PROBE_CONTEXT, openProbeLane } from './stage3ProbeHarness.mjs';
@@ -38,8 +37,7 @@ function withWatchdog(provider: Provider, firstResponseMs: number): Provider {
 
 test('P3 ① · today the lane has no watchdog: a stream that never sends its first byte hangs the turn', async (t) => {
   const fixture = await createLaneFixture(t, [NEVER_FIRST_BYTE]);
-  const lane = await openLane(fixture.options);
-  t.after(() => lane.close());
+  const lane = await fixture.openLane(fixture.options);
   const turn = lane.execute({ kind: 'prompt', text: 'Hello?' }).then(() => 'settled' as const);
   const verdict = await Promise.race([turn, sleep(HANG_PROOF_MS).then(() => 'still-hanging' as const)]);
   assert.equal(verdict, 'still-hanging', `no watchdog: the turn is still pending after ${HANG_PROOF_MS}ms with the request in flight`);
@@ -53,7 +51,7 @@ test('P3 ① · today the lane has no watchdog: a stream that never sends its fi
 test('P3 ① positive control · the same stalled stream ends within the budget once observeNativeStream is on the provider', async (t) => {
   const fixture = await createLaneFixture(t, [NEVER_FIRST_BYTE, { type: 'text', text: 'Recovered.' }]);
   const events: HarnessEvent[] = [];
-  const probe = await openProbeLane(t, fixture.options, { wrapProvider: (provider) => withWatchdog(provider, 300) });
+  const probe = await openProbeLane(fixture, fixture.options, { wrapProvider: (provider) => withWatchdog(provider, 300) });
   probe.harness.events.on('retry_scheduled', (event) => { events.push(event); });
   probe.harness.events.on('retry_end', (event) => { events.push(event); });
   probe.harness.events.on('fault', (event) => { events.push(event); });

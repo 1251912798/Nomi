@@ -14,7 +14,6 @@ import { estimateTokens } from '@earendil-works/pi-agent-core';
 import { createCanvasLaneTools, type CanvasLanePort } from '../../electron/agentLane/laneCanvasTools.js';
 import type { LaneToolDescriptor } from '../../electron/agentLane/laneRuntimePort.js';
 import { createLaneTools } from '../../electron/agentLane/laneTools.mjs';
-import { openLane } from '../../electron/agentLane/laneHost.mjs';
 import { createLaneFixture } from './laneFixture.mjs';
 
 const TOOL = 'nomi_storyboard_write';
@@ -79,8 +78,7 @@ async function firstCallSucceeds(t: TestContext, arm: 'with-tolerance' | 'withou
     { type: 'tool', calls: [{ id: 'first', name: TOOL, arguments: args }] },
     { type: 'text', text: 'Done.' },
   ]);
-  const lane = await openLane({ ...fixture.options, tools: arm === 'with-tolerance' ? tools : withoutTolerance(tools) });
-  t.after(() => lane.close());
+  const lane = await fixture.openLane({ ...fixture.options, tools: arm === 'with-tolerance' ? tools : withoutTolerance(tools) });
   await lane.execute({ kind: 'prompt', text: 'Save the storyboard.' });
   const result = lane.projection().parts.find((part) => part.kind === 'tool-result' && part.toolCallId === 'first');
   assert.ok(result?.kind === 'tool-result');

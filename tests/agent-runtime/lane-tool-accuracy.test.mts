@@ -13,7 +13,6 @@
 import assert from 'node:assert/strict';
 import { test, type TestContext } from 'node:test';
 
-import { openLane } from '../../electron/agentLane/laneHost.mjs';
 import { createDocumentLaneTools } from '../../electron/agentLane/laneDocumentTools.js';
 import type { LaneToolDescriptor } from '../../electron/agentLane/laneRuntimePort.js';
 import { createDocumentPort, createLaneFixture } from './laneFixture.mjs';
@@ -68,7 +67,7 @@ async function measure(t: TestContext, arm: MeasurementArm): Promise<Measurement
     const document = createDocumentPort();
     const fixture = await createLaneFixture(t, replies);
     const tools = createDocumentLaneTools(document);
-    const lane = await openLane({
+    const lane = await fixture.openLane({
       ...fixture.options, tools: arm === 'without-tolerance' ? withoutTolerance(tools) : tools,
       ...(arm === 'with-approval'
         ? { approval: { hasUserInterface: true, policy: () => ({ mode: 'step' as const, spend: 'confirm' as const }) } }
@@ -148,8 +147,7 @@ test('R30 · tolerance is a hug, not a loosened schema', async (t) => {
     { type: 'tool', calls: [{ id: 'empty', name: 'append_to_end', arguments: { unrelated: 1 } }] },
     { type: 'text', text: 'I could not append.' },
   ]);
-  const lane = await openLane(fixture.options);
-  t.after(() => lane.close());
+  const lane = await fixture.openLane(fixture.options);
   await lane.execute({ kind: 'prompt', text: 'Append something.' });
   const result = lane.projection().parts.find((part) => part.kind === 'tool-result');
   assert.ok(result?.kind === 'tool-result' && result.isError,

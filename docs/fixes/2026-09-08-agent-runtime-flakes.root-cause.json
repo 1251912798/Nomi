@@ -1,0 +1,137 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-08-agent-runtime-flakes",
+  "problem_type": "Test fixture resource ownership and asynchronous teardown ordering",
+  "symptom": "G3b ③ fails with ENOTEMPTY in its after hook and node --test remains alive; P1 ③ can leak a parked child on assertion failure.",
+  "direct_cause": "createLaneFixture registers rm before HTTP and caller close hooks. Removing the directory races resume/close writes; a failed early hook skips later owners, leaving HTTP open. G3b only signals kill; P1 has no child fallback.",
+  "class_root": "The fixture has no shared owner that waits for all dependent resources to finish before deleting their project directory and continues closing independent owners on failure.",
+  "affected_population": [
+    "All createLaneFixture callers under parallel load or failed assertions",
+    "Both stage3 crash-child callers"
+  ],
+  "scope_paths": [
+    "tests/agent-runtime/**"
+  ],
+  "entry_points": [
+    "G3b ③ crash restart",
+    "P1 ③ crash probe",
+    "Lane, workspace and raw probe teardown"
+  ],
+  "external_sources": [
+    {
+      "kind": "official-doc",
+      "url": "https://nodejs.org/api/child_process.html",
+      "checked_at": "2026-09-08",
+      "purpose": "kill sends a signal; close waits for child and stdio completion."
+    },
+    {
+      "kind": "official-doc",
+      "url": "https://nodejs.org/docs/latest-v24.x/api/test.html#contextafterfn-options",
+      "checked_at": "2026-09-08",
+      "purpose": "Async after hooks are the test lifecycle completion mechanism."
+    }
+  ],
+  "invariants": [
+    "A project directory is removed only after every resource close promise resolves.",
+    "Every crash child is registered for cleanup at spawn and cleanup awaits its close event.",
+    "A failing owner cannot prevent independent owners and HTTP from closing."
+  ],
+  "generality_proof": "Every direct in-process openLane in agent-runtime tests now goes through fixture.openLane, which automatically owns close. Workspace and raw probe owners use fixture.after. The one after hook per TestContext awaits all sibling fixtures even if one fails. Both crash tests share spawnLaneCrashChild; raw replay already uses an explicit reverse-order cleanup scope.",
+  "shared_boundaries": [
+    {
+      "path": "tests/agent-runtime/laneFixture.mts",
+      "symbol": "createLaneFixture",
+      "responsibility": "Own all dependent close completions, then close HTTP and remove the directory."
+    },
+    {
+      "path": "tests/agent-runtime/laneCrashFixture.mts",
+      "symbol": "spawnLaneCrashChild",
+      "responsibility": "Own the crash process at spawn; normal and failing paths await its close event."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "tests/agent-runtime/lane-approval-gate.test.mts",
+      "entry_point": "G3b ③",
+      "disposition": "enforced",
+      "evidence": "Uses project-owned lane and child cleanup."
+    },
+    {
+      "path": "tests/agent-runtime/stage3-probe-p1-approval-wait.test.mts",
+      "entry_point": "P1 ③",
+      "disposition": "enforced",
+      "evidence": "Uses the same project-owned crash child and probe cleanup."
+    },
+    {
+      "path": "tests/agent-runtime/lane-multi.test.mts",
+      "entry_point": "workspace close",
+      "disposition": "enforced",
+      "evidence": "Workspace close completes before project cleanup."
+    },
+    {
+      "path": "tests/agent-runtime/lane-shadow-parity.test.mts",
+      "entry_point": "runNewPath and runBoth",
+      "disposition": "enforced",
+      "evidence": "Independent projectDir rm hooks were also registered before lane close; both new-lane arms now use createLaneFixture."
+    },
+    {
+      "path": "tests/agent-runtime/replayShadowEngine.mts",
+      "entry_point": "replayOne",
+      "disposition": "not-affected",
+      "evidence": "Its explicit cleanup scope closes callbacks in reverse order, after the awaited replay; no node:test rm-first hooks."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Reported independently in four sessions and reproduced on baseline under 16 concurrent crash suites.",
+    "same_class_scan": [
+      "rg createLaneFixture tests/agent-runtime/*.mts: lane tests, workspace tests and stage3 probes",
+      "rg spawn tests/agent-runtime/*.mts: G3b and P1 share the parked child; coding-tools bash subprocess already waits for exit",
+      "rg openProbeLane tests/agent-runtime/*.mts: fixture-backed probes migrated; real probe and replay scopes already own separate cleanup"
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "tests/agent-runtime/laneFixture.mts",
+    "invariant": "Dependent resources finish closing before directory removal, on success and failure paths.",
+    "failure_mode": "Close independent owners and HTTP even if one fails; preserve directory and rethrow cleanup failure.",
+    "exception_policy": "none",
+    "strategy": "A single asynchronous fixture teardown owns reverse-order closers and directory disposal.",
+    "artifacts": [
+      "tests/agent-runtime/laneFixture.mts",
+      "tests/agent-runtime/laneCrashFixture.mts"
+    ]
+  },
+  "regression_tests": [
+    "tests/agent-runtime/lane-fixture-lifecycle.test.mts",
+    "tests/agent-runtime/lane-approval-gate.test.mts",
+    "tests/agent-runtime/stage3-probe-p1-approval-wait.test.mts"
+  ],
+  "class_regression_tests": [
+    "tests/agent-runtime/lane-fixture-lifecycle.test.mts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "tests/agent-runtime/laneFixture.mts",
+      "tests/agent-runtime/lane-approval-gate.test.mts",
+      "tests/agent-runtime/stage3-probe-p1-approval-wait.test.mts"
+    ],
+    "rationale": "Remove independent rm-first hooks and duplicate crash-child ownership."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "The defect is Nomi test-resource ordering, not an SDK or Node defect. Node close events and async hooks supply the existing completion contract; no package change.",
+    "exit_criteria": []
+  },
+  "migration": "No product or persisted user data migration. All fixture callers migrate in this change.",
+  "residual_risks": [
+    "Tests-only repair; no production Agent behavior or real-model success rate claim."
+  ],
+  "invariant_owner_layer": {
+    "layer": "tests/agent-runtime",
+    "tests": [
+      "tests/agent-runtime/lane-fixture-lifecycle.test.mts"
+    ]
+  }
+}
