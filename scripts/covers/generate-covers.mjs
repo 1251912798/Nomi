@@ -7,9 +7,10 @@ import { fileURLToPath } from 'node:url'
 
 const require = createRequire(import.meta.url)
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
-const MODEL = 'gemini-2.5-flash-image-preview'
-const PRICE_URL = 'https://apimart.ai/api/marketplace/models?keyword=nano%20banana&page_size=10'
-const MAX_CNY = 25
+const MODEL = 'gpt-image-2'
+const CONTRACT_URL = 'https://docs.apimart.ai/en/api-reference/images/gpt-image-2/generation.md'
+const PRICE_URL = 'https://apimart.ai/api/marketplace/models?keyword=gpt-image-2&page_size=10'
+const MAX_CNY = 60
 // Conservative accounting ceiling, not a claimed live exchange rate.
 const CNY_PER_USD_CEILING = 8
 const args = process.argv.slice(2)
@@ -71,14 +72,14 @@ async function main() {
   if (args.some((arg) => !['--dry-run', '--limit', value('--limit')].includes(arg))) throw new Error('Unknown argument')
   const entries = getEntries()
   const concepts = metaphors()
-  const jobs = entries.slice(0, limit).map((item) => {
+  const jobs = entries.filter((item) => !fs.existsSync(path.join(root, 'skills', item.name, 'assets/cover.png'))).slice(0, limit).map((item) => {
     const metaphor = concepts.get(item.name)
     if (!metaphor) throw new Error(`Missing approved metaphor: ${item.name}`)
     return { name: item.name, item, output: path.join(root, 'skills', item.name, 'assets/cover.png'), prompt: promptFor(metaphor) }
   })
   if (jobs.some((job) => job.prompt.length > 1000)) throw new Error('Prompt exceeds the documented 1000-character limit')
   if (dryRun) {
-    const evidence = JSON.parse(fs.readFileSync(ledgerPath, 'utf8')).priceEvidence
+    const evidence = JSON.parse(fs.readFileSync(ledgerPath, 'utf8')).round3.priceEvidence
     const estimatedUsd = evidence.pricing.starting_price * jobs.length
     console.log(JSON.stringify({ mode: 'covers-v1', missingMedia: entries.length, model: MODEL, limit, budgetCny: MAX_CNY,
       estimatedUsd, estimatedCny: estimatedUsd * CNY_PER_USD_CEILING, priceEvidence: evidence,
@@ -98,27 +99,30 @@ async function main() {
     const ledger = fs.existsSync(ledgerPath) ? JSON.parse(fs.readFileSync(ledgerPath, 'utf8')) : {
       model: MODEL, budgetCny: MAX_CNY, cnyPerUsdCeiling: CNY_PER_USD_CEILING, jobs: [],
     }
-    if (ledger.trialReview?.status === 'failed') {
-      throw new Error('Two trial rounds did not pass visual review; no further paid generation')
+    if (ledger.round3?.authorization !== '2026-09-09-user-gpt-image-2') throw new Error('Round 3 authorization missing')
+    for (const job of jobs) {
+      const attempts = ledger.jobs.filter((prior) => prior.model === MODEL && prior.name === job.name)
+      if (attempts.length >= 2) throw new Error('Two attempts exhausted; simplify and record explicit third-attempt review first')
     }
     ledger.budgetCny = MAX_CNY
-    if (ledger.jobs.some((job) => job.state === 'reserved' || job.state === 'submitted')) {
-      throw new Error('Unfinished paid request in receipt; reconcile its task before any new submission')
+    const pending = ledger.jobs.filter((job) => job.state === 'reserved' || job.state === 'submitted')
+    if (pending.length && (pending.length !== 1 || pending[0].state !== 'submitted' || !pending[0].taskId || pending[0].model !== MODEL)) {
+      throw new Error('Uncertain paid request; reconcile before any new submission')
     }
     if (!ledger.jobs.some((job) => job.state === 'completed' && path.resolve(root, job.output) === path.resolve(anchor))) {
       throw new Error('Approved anchor must be a completed candidate from this receipt')
     }
-    if (jobs.some((job) => fs.existsSync(job.output))) throw new Error('Refusing to overwrite existing media')
+
     const pricingResponse = await fetch(PRICE_URL, { signal: AbortSignal.timeout(30000) })
     const pricing = (await pricingResponse.json()).data?.models?.find((model) => model.model_name === MODEL)?.pricing
     if (!pricingResponse.ok || pricing?.billing_type !== 'per_generation' || !(pricing.starting_price > 0) || pricing.starting_price > 0.02) {
       throw new Error('Current official per-image price missing or above verified ceiling')
     }
     // Two times the published price is reserved before each submit, including failed attempts.
-    const reserveCny = pricing.starting_price * 2 * CNY_PER_USD_CEILING
+    const reserveCny = Math.max(pricing.starting_price * 2, 0.15) * CNY_PER_USD_CEILING
     const reserved = ledger.jobs.reduce((sum, job) => sum + job.reservedCny, 0)
     if (reserved + reserveCny * jobs.length > MAX_CNY) throw new Error('Session budget exhausted')
-    ledger.priceEvidence = { url: PRICE_URL, retrievedAt: new Date().toISOString(), pricing }
+    ledger.round3.priceEvidence = { url: PRICE_URL, retrievedAt: new Date().toISOString(), pricing }
     const { readCatalog } = require(path.join(root, 'dist-electron/catalog/catalogStore.js'))
     const { decryptApiKeyRecord } = require(path.join(root, 'dist-electron/catalog/secrets.js'))
     const catalog = readCatalog()
@@ -142,22 +146,33 @@ async function main() {
     }
     const reference = `data:image/png;base64,${fs.readFileSync(anchor).toString('base64')}`
     for (const job of jobs) {
-      const before = await usedBalance()
-      const receipt = { name: job.name, selected: true, promptVersion: 2, model: MODEL, anchor: path.relative(root, anchor), anchorHash, prompt: job.prompt, output: path.relative(root, job.output), reservedCny: reserveCny, state: 'reserved', before, startedAt: new Date().toISOString() }
-      ledger.jobs.push(receipt)
-      saveLedger(ledger)
-      const submitted = await apiJson('images/generations', { model: MODEL, prompt: job.prompt, size: '16:9', n: 1, image_urls: [reference] })
-      const taskId = submitted.data?.[0]?.task_id
-      if (!taskId) throw new Error('Submission has no task id; reconcile receipt, do not resubmit')
-      receipt.taskId = taskId
-      receipt.state = 'submitted'
-      saveLedger(ledger)
+      const resuming = pending.find((prior) => prior.name === job.name)
+      const before = resuming ? resuming.before : await usedBalance()
+      const receipt = resuming ?? { name: job.name, selected: false, review: { status: 'pending' }, promptVersion: 3, contractUrl: CONTRACT_URL, resolution: '1k', model: MODEL, anchor: path.relative(root, anchor), anchorHash, prompt: job.prompt, output: path.relative(root, job.output), reservedCny: reserveCny, state: 'reserved', before, startedAt: new Date().toISOString() }
+      if (!resuming) {
+        receipt.priceEvidence = ledger.round3.priceEvidence
+        ledger.jobs.push(receipt)
+        saveLedger(ledger)
+        const submitted = await apiJson('images/generations', { model: MODEL, prompt: job.prompt, size: '16:9', resolution: '1k', n: 1, image_urls: [reference] })
+        const taskId = submitted.data?.[0]?.task_id
+        if (!taskId) throw new Error('Submission has no task id; reconcile receipt, do not resubmit')
+        receipt.taskId = taskId
+        receipt.state = 'submitted'
+        saveLedger(ledger)
+      } else {
+        receipt.resumedAt = new Date().toISOString()
+        saveLedger(ledger)
+        console.log(`${job.name}: resuming existing task, no new submission`)
+      }
+      const taskId = receipt.taskId
       let url
       for (let attempt = 0; attempt < 90; attempt += 1) {
         await new Promise((resolve) => setTimeout(resolve, 4000))
         const result = (await apiJson(`tasks/${encodeURIComponent(taskId)}`)).data
         if (result?.status === 'failed') throw new Error(`Image task failed: ${job.name}; no automatic retry`)
         if (result?.status === 'completed') {
+          receipt.providerCost = result.cost ?? null
+          receipt.providerCreditsCost = result.credits_cost ?? null
           const urls = result.result?.images?.[0]?.url
           url = Array.isArray(urls) ? urls[0] : urls
           break
@@ -179,10 +194,6 @@ async function main() {
       receipt.state = 'completed'
       receipt.completedAt = new Date().toISOString()
       saveLedger(ledger)
-      const yaml = require('js-yaml')
-      job.item.front.values.metadata.nomi.library.preview = { path: 'assets/cover.png', type: 'image', provenance: 'illustration' }
-      const source = fs.readFileSync(job.item.filename, 'utf8')
-      fs.writeFileSync(job.item.filename, `---\n${yaml.dump(job.item.front.values, { lineWidth: 120 })}---\n${source.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/, '')}`)
       console.log(`${job.name}: ${receipt.output}; balance delta ${receipt.balanceDelta.toFixed(6)}`)
       if (receipt.balanceDelta * CNY_PER_USD_CEILING > reserveCny) throw new Error('Unexpected charge; stopped before next submission')
     }

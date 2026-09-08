@@ -54,6 +54,6 @@ for index, (label, name, filename, provenance) in enumerate(entries):
         draw.text((x + 90, y + 86), '未生成 · 非封面', font=font, fill='#555963')
     draw.text((x, y + 207), label, font=font, fill='#252931')
     draw.text((x, y + 232), name, font=small, fill='#555963')
-output = ROOT / 'docs/design/covers/contact-sheet-v2.png'
+output = ROOT / 'docs/design/covers/contact-sheet-v3.png'
 sheet.save(output)
 print(f'{output.relative_to(ROOT)}: {len(entries)} images, {sheet.width}×{sheet.height}')

@@ -18,6 +18,10 @@ v3 逐字检查：1x/2x 无折叠控件、正文至许可证末句完整、无 M
 v2 截图：docs/design/mockups/2026-09-08-skill-library-cards/{library-cards,node-effects}{,@2x}.png
 断言结果：46 条正文 + Markdown 结构夹具通过；旧 pre 原文路径断言失败，展开/收起与引用/追加/撤销通过。
 逐字检查：详情无 Markdown 标记与重复标题简介，meta 单行清楚；卡片与 chip 字阶、间距一致，折尾渐隐。
+# SL-LAST · 封面 v1 第三轮（2026-09-09）
+过关张数：37（含原先 3 张，共 40 条效果封面） / 灰格张数：0 / 实付：APIMart $0.321708，按 8 CNY/USD 保守折算约 ¥2.573664 / 接触表：`docs/design/covers/contact-sheet-v3.png`
+模型：GPT Image 2（APIMart）；官方契约：`https://docs.apimart.ai/en/api-reference/images/gpt-image-2/generation.md`；价格证据：`https://apimart.ai/api/marketplace/models?keyword=gpt-image-2&page_size=10`。原隐喻表保留，风格硬门逐张目检通过。
+
 # SL-LAST · 技能与提示词即时价值一期
 分支：feat/skill-library-curation-20260908
 最终提交：05fcda5066380aa44b6987f9fb8358e044f3772c；PR：https://github.com/aqm857886159/Nomi/pull/655（未合并）

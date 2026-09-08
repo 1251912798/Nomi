@@ -1,3 +1,18 @@
+# 第三轮执行裁决（2026-09-09 02:15）
+
+用户授权 GPT Image 2 / APIMart，累计预算 ¥60；保留原隐喻，逐张风格验收。每条 GPT 最多两次，均失败才简化该条再试一次；最终不合格保持灰格。沿用现有脚本与依赖，不改 src/UI、不装包，单笔提交更新 #655。
+
+官方规范：https://docs.apimart.ai/en/api-reference/images/gpt-image-2/generation.md （2026-09-09 实抓）。POST /v1/images/generations，model=gpt-image-2、size=16:9、resolution=1k、n=1、image_urls=[锚图 base64 URI]；有 image_urls 即图生图。档案 input_urls 在 electron/catalog/apimartImages.ts:132 映射到 image_urls；#650 修的是 fal 的同类 join。
+
+价格：https://apimart.ai/api/marketplace/models?keyword=gpt-image-2&page_size=10 ，当前起价 $0.0085/次（1k 默认档）；逐任务保留 provider cost 和余额差，不把起价当实付。每次保守预留至少 $0.15，按 8 折算，含历史费用累计不超过 ¥60。未知请求阻断下一次提交。
+
+验收：37 条 dry-run；锚图对照逐张检查纸底、墨线、蓝色 1–2 块、无字无人脸；只把通过图片登记 preview，保留逐张裁决；55 格 contact-sheet-v3；PNG 解码/metadata/15 原媒体不变验证；contracts 与提交推送钩子。回滚本次提交，已发生费用保留。
+
+前轮失败是构图精确度要求与模型能力不匹配；此次按用户更新素材生产方案，不改生产应用。原始两轮证据与规则表保留，停止裁决由本轮明确授权取代。
+
+---
+以下为前轮历史：
+
 # 技能库封面 v1
 
 状态：📎 交接/日志；两轮试产未通过，已停止付费，未全量；用户已选择锚图 3，09-09 01:05 已明确允许 1–2 块同色蓝形，无需确认。
