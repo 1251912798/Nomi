@@ -284,7 +284,7 @@ describe("production captured canvas read through real main interception", () =>
       try {
         readDecision = await adapter.tryExecute({ toolCallId: 'read-captured-a', toolName: 'read_canvas_state', args: {} }, signal);
       } finally { adapter.dispose(); }
-      return runLaneSingleShot({ model: { kind: 'openai-compatible', providerId: 'fixture', modelId: 'fixture',
+      return runLaneSingleShot({ fetch: globalThis.fetch, model: { kind: 'openai-compatible', providerId: 'fixture', modelId: 'fixture',
         baseURL: http.baseURL, authType: 'api-key', apiKey: 'fixture' }, prompt: request.prompt, signal });
     });
 

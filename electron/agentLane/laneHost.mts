@@ -166,7 +166,7 @@ export const openLane: OpenLane = async (options: OpenLaneOptions): Promise<Lane
   // 看门狗装在 provider 的流上，所以**每一次**模型请求都带着它——包括压缩与分支摘要那两次
   // （它们走 `streamSimple`，只用 `result()`）。装在别处就会漏掉那两条路，而它们卡住的样子
   // 和主请求卡住一模一样。
-  const { provider, model, credentials, pricingBasis } = await createNomiProvider(options.model, {
+  const { provider, model, credentials, pricingBasis } = await createNomiProvider(options.model, options.fetch, {
     firstResponseMs: options.watchdog?.firstResponseMs ?? LANE_FIRST_RESPONSE_MS,
     idleMs: options.watchdog?.idleMs ?? LANE_IDLE_MS,
   });

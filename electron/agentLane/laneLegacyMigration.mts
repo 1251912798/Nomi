@@ -2,7 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { join, resolve } from 'node:path';
 import { z } from 'zod';
 import type { Entry } from '@earendil-works/pi-agent-core';
-import { assertProjectAgentBinding, type ProjectBinding } from '../shared/projectBinding.js';
+import { assertProjectAgentBinding, projectAgentPartitionKey } from '../shared/projectBinding.js';
 import { legacyMigrationCountsSchema, type LegacyMigrationOptions, type LegacyMigrationCounts } from '../shared/agentLane/laneLegacyMigrationContract.js';
 import type { DesktopLocale } from '../desktopLocale.js';
 import { stableProjectAgentJson } from '../shared/legacyAgentJson.js';
@@ -35,7 +35,7 @@ function same(left: unknown, right: unknown): boolean { return stableProjectAgen
 interface SourcePath { id: string; kind?: LegacySourceKind; file: string; archive: string; archiveStamp?: string }
 function sourcePaths(options: LegacyMigrationOptions): SourcePath[] {
   const nomi = join(resolve(options.projectDir), '.nomi');
-  const partition = `project-agent.${encodeURIComponent(options.binding.immutableProjectUuid)}.g${options.binding.projectGeneration}`;
+  const partition = projectAgentPartitionKey(options.binding);
   const host = join(resolve(options.userDataDir), 'project-agent-host', partition);
   return [
     { id: 'pi-snapshot', kind: 'pi-snapshot', file: join(nomi, 'agent-thread-context-v1.json'), archive: 'pi-snapshot.json' },

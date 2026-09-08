@@ -125,7 +125,8 @@ export function createNomiModelDescriptor(config: NomiModelConfig): Model<Api> {
   return model;
 }
 
-export async function createNomiProvider(input: NomiModelConfig, guard?: NomiStreamGuard) {
+export async function createNomiProvider(input: NomiModelConfig, fetchRequest: typeof globalThis.fetch, guard?: NomiStreamGuard) {
+  if (typeof fetchRequest !== 'function') throw new Error('agent_lane_transport_required');
   const config = configCompatibility.parse(input);
   const credentials = new InMemoryCredentialStore();
   if (config.authType === 'api-key') {
@@ -148,7 +149,7 @@ export async function createNomiProvider(input: NomiModelConfig, guard?: NomiStr
     // NOT a credential: the public null header suppression removes it on wire.
     ...(config.authType === 'none' ? { apiKey: 'nomi-keyless-constructor-only' } : {}),
     headers: { ...options?.headers, ...headers },
-    ...(config.kind === 'anthropic' ? { fetch: anthropicFetch(baseUrl, options?.fetch ?? globalThis.fetch) } : {}),
+    fetch: config.kind === 'anthropic' ? anthropicFetch(baseUrl, fetchRequest) : fetchRequest,
     onPayload: async (payload: unknown, selected: Model<Api>) => {
       if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
         throw new Error('Expected a provider request object');

@@ -8,13 +8,14 @@ import { projectSingleShotResponse } from '../shared/agentLane/laneProjection.js
 /** One provider call, without an Agent loop or session. No tool can trigger a continuation. */
 export async function runLaneSingleShot(options: {
   model: NomiModelConfig;
+  fetch: typeof globalThis.fetch;
   systemPrompt?: string;
   prompt: string;
   input?: OpenLaneOptions['input'];
   signal?: AbortSignal;
 }): Promise<LaneProjection> {
   options.signal?.throwIfAborted();
-  const { provider, model, credentials, pricingBasis } = await createNomiProvider(options.model, {
+  const { provider, model, credentials, pricingBasis } = await createNomiProvider(options.model, options.fetch, {
     firstResponseMs: 90_000, idleMs: 120_000,
   });
   const models = createModels({ credentials });

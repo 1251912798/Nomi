@@ -17,7 +17,7 @@ import type { LaneToolEffects, LaneToolFailureShape, LaneToolSpec } from '../sha
 import type { RuntimeToolCall } from '../shared/agentCapabilities/transportContracts'
 import type { LaneComposerContext, LaneInputMessage } from '../shared/agentLane/laneDesktopContracts'
 import type { NomiModelConfig } from '../shared/agentLane/laneModelConfig'
-import type { ProjectAgentApprovalPolicy, ProjectAgentWorkMode } from '../shared/projectAgentContracts'
+import type { ProjectAgentApprovalPolicy, ProjectAgentWorkMode } from '../shared/agentCapabilities/capabilityApprovalPolicy';
 import type { LaneApprovalSubjectResolver } from '../shared/agentLane/laneApproval'
 import type { SkillRecord } from '../skills/skillStore'
 
@@ -112,6 +112,7 @@ export interface LaneApprovalOptions {
 }
 
 export interface OpenLaneOptions {
+  fetch: typeof globalThis.fetch
   native?: { settingsRoot: string; skills: readonly SkillRecord[] }
   /** 项目目录。会话落在 `<project>/.nomi/agent-sessions/` 下。 */
   projectDir: string
@@ -177,6 +178,7 @@ export type OpenDesktopLaneWorkspace = (options: Omit<OpenLaneOptions, 'model'> 
 }) => Promise<LaneWorkspaceHandle>
 
 export type RunLaneSingleShot = (options: {
+  fetch: typeof globalThis.fetch
   model: NomiModelConfig
   systemPrompt?: string
   prompt: string
