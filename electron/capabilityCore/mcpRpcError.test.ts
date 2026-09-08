@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { RpcError } from './dispatcher'
+import { ReceiptScopeError } from './approvalReceipt'
 import { buildToolErrorOutcome } from './mcpToolErrorResults'
 import { rpcErrorFromPayload, rpcErrorWirePayload, RpcTransportError } from './mcpRpcError'
 
@@ -55,6 +56,14 @@ describe('structured local RPC errors', () => {
   it('does not publish arbitrary native error codes or properties', () => {
     const failure = Object.assign(new Error('ordinary failure'), { code: 'ENOENT', path: '/private/file' })
     expect(rpcErrorWirePayload(failure)).toBe('ordinary failure')
+  })
+
+  it.each(['zh-CN', 'en'] as const)('keeps invalid receipt recovery machine-readable in %s', (locale) => {
+    const failure = new ReceiptScopeError('Signed receipt is invalid')
+    const transported = rpcErrorFromPayload({ error: rpcErrorWirePayload(failure) }, 500)
+    const projected = buildToolErrorOutcome('nomi_integration', transported, locale)
+    expect(projected).toEqual(buildToolErrorOutcome('nomi_integration', failure, locale))
+    expect(projected.outcome).toMatchObject({ errorCode: 'receipt_invalid', nextActions: ['in_nomi'] })
   })
 
 })

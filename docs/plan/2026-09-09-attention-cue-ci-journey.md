@@ -36,3 +36,14 @@ Full loopback after fresh build: `2026-09-08T20-01-01.292Z-real-user-journeys/re
 Conclusion: use the existing projection at the existing serializer; no new dependency, protocol, or UI design.
 
 Final local gates passed after integrating origin/main d566c99c3: 72 passing blocking contracts, zero blocking failures, three documentation advisories; Vitest 12075 passed / 2 skipped; agent runtime, stats and build passed. Gates stamp emitted.
+
+
+## Linux follow-up: locale-independent safety assertion
+
+Run 34276122424 at c1f1ac000e8521045c8cba956243d0ca2b582f1c passes Contracts/Unit/Mac Package but fails the preceding MCP L2 C7 T14 assertion before the loopback gate. The assertion searches natural-language text for receipt/approval/invalid or Chinese words. The repaired transport correctly projects receipt_invalid to the existing English user message, “This confirmation is no longer valid; confirm again in Nomi.” None of the old English alternatives match; Chinese still contains 确认.
+
+Deterministic built-code reproduction with ReceiptScopeError → rpcErrorWirePayload → rpcErrorFromPayload → buildToolErrorOutcome: code is receipt_invalid in both locales; old assertion true for zh-CN, false for en. This is an outdated test contract, not a spend authorization failure. Keep provider-hit count zero and replace the text regex with exact structured code; add both-locale RPC parity tests. Repository scan: C9 staleGate in mcp-l2-journeys already asserts nomiOutcome.errorCode === receipt_invalid; generation elicitation journeys inspect typed operation outcomes. No production change required for this follow-up.
+
+Real English Electron L2 passed all 67 assertions with temporary --lang=en in the shared test launcher (removed after verification). Actual C7 response: isError=true, nomiOutcome.errorCode=receipt_invalid, English recovery message; provider task submissions remained zero. Both-locale RPC regression passed (10/10 tests).
+
+Final follow-up validation: loopback report `2026-09-08T21-16-57.602Z-real-user-journeys/report.md` passed 7/7; pnpm run gates passed with 72 blocking gates green, three advisories, Vitest 12077 passed / 2 skipped, runtime/stats/build green. Temporary language override is removed; only locale-independent assertion and bilingual tests remain.
