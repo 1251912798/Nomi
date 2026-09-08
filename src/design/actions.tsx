@@ -61,14 +61,14 @@ const DESIGN_BUTTON_SIZE = {
  * 恰好与 `filled` 同一块深底，于是**碰巧渲染正确**。
  * 下一个人写 `variant="ghost"` 就不一定有这个运气——所以让编译器拦，别赌回落。
  */
-const DESIGN_BUTTON_VARIANTS = ['filled', 'light', 'outline', 'subtle', 'default', 'gradient', 'transparent', 'white'] as const
+type DesignButtonVariant = 'filled' | 'light' | 'outline' | 'subtle' | 'default' | 'gradient' | 'transparent' | 'white'
 
 export type DesignButtonProps =
   Omit<ButtonProps, 'size' | 'variant'>
   & Omit<ComponentPropsWithoutRef<'button'>, 'size'>
   & {
     size?: keyof typeof DESIGN_BUTTON_SIZE
-    variant?: (typeof DESIGN_BUTTON_VARIANTS)[number]
+    variant?: DesignButtonVariant
   }
 
 export const DesignButton = forwardRef<HTMLButtonElement, DesignButtonProps>(function DesignButton({
