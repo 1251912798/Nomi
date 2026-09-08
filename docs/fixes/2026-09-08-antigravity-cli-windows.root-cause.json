@@ -133,7 +133,7 @@
   "dependency_lifecycle": {
     "decision": "retain-with-exit",
     "rationale": "agy is user installed, not a pinned application dependency. Native Windows Job Object ownership is unavailable through Node built-ins; do not install a wrapper that cannot supply the guarantee.",
-    "current": "Observed local agy 1.1.22; reported Windows 1.1.27; media evidence 1.1.21.",
+    "current": "Observed local agy 1.1.22; reported Windows 1.1.27; media evidence advanced to 1.1.22 by this live image run.",
     "target": "Minimum 1.1.21 with actual per-version capability verification; Windows support after lifecycle RC proof.",
     "exit_criteria": [
       "Prove cancellation and early-parent-exit descendant cleanup on Windows RC using Node built-ins or a separately approved owned runtime.",

@@ -36,7 +36,7 @@ export function parseAntigravityTestRequest(value: unknown): AntigravityTestRequ
 /** Nomi compatibility policy, not an upstream guarantee. Evidence never grants execution. */
 export const ANTIGRAVITY_MEDIA_PROTOCOL = {
   minimumVersion: "1.1.21",
-  verifiedThrough: "1.1.21",
+  verifiedThrough: "1.1.22",
 } as const;
 
 export function assertAntigravityMediaVersion(version?: string): void {

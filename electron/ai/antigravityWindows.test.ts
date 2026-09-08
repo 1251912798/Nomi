@@ -34,6 +34,12 @@ describe("Antigravity platform and protocol contract regressions", () => {
     const media = await prepareAntigravityMedia(f.dir, "image", []);
     const hooks = JSON.parse(await readFile(path.join(f.dir, ".agents", "hooks.json"), "utf8"));
     expect(hooks["nomi-task-gate"].PreInvocation[0].command).toContain("task-gate");
+    const official = JSON.parse(await readFile("tests/fixtures/standard-formats/antigravity-hooks/hooks.json", "utf8"));
+    // The writer follows upstream's flat invocation handlers and grouped tool handlers.
+    const generated = hooks["nomi-task-gate"];
+    expect(Object.keys(generated.PreInvocation[0])).toEqual(expect.arrayContaining(Object.keys(official.reminder.PreInvocation[0])));
+    expect(Object.keys(generated.PreToolUse[0]).sort()).toEqual(Object.keys(official["safety-gate"].PreToolUse[0]).sort());
+    expect(Object.keys(generated.PreToolUse[0].hooks[0]).sort()).toEqual(Object.keys(official["my-linter-hook"].PostToolUse[0].hooks[0]).sort());
     expect(media.plugin).toBe(path.join(f.dir, "task-gate"));
     await expect(readFile(path.join(media.plugin, "hooks.json"))).rejects.toMatchObject({ code: "ENOENT" });
   });

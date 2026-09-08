@@ -27,7 +27,7 @@
 
 本次平台策略按用户允许的最低交付路径：若 Node 内置能力不能证明与现有 Unix 进程组同等的早退后所有权，则统一返回 WINDOWS_UNSUPPORTED，前台说清取消清理保证未完成。Windows 实现留在本计划：需取得 Job Object 或有同等保证的受控宿主，验证取消、父进程先退出、继承管道、静默后代、拒绝退出、应用退出。不能把 taskkill 的成功退出当没有孤儿进程的证明。
 
-版本契约：最低 1.1.21；已验证媒体上限 1.1.21 仅作为协议档案旁注，>= 最低版本仍需通过既有逐模型能力试跑与授权标记。未知/低版本在共享边界拒绝；未来版本不由精确白名单拒绝。
+版本契约：最低 1.1.21；已验证媒体上限 1.1.22（本次真实试跑）仅作为协议档案旁注，>= 最低版本仍需通过既有逐模型能力试跑与授权标记。未知/低版本在共享边界拒绝；未来版本不由精确白名单拒绝。
 
 生命周期：drain 由能力导出（text 2 秒、媒体 30 秒），总运行上限包含工作与 drain 预算，仍须退出并完成清理后才能交付产物。
 
@@ -63,3 +63,5 @@ Electron 界面走查：隔离 profile，新建空白项目 → 模型设置 →
 
 
 最终验证：`pnpm run gates` 退出 0，73 项阻断门岗通过，Vitest 1285 文件通过 / 1 文件跳过，11966 tests passed / 2 skipped；agent-worktree-janitor、agent-runtime、test:stats 与 renderer/Electron 构建通过。文档索引/状态/研究来源仅保留现有 advisory，未绕过任何阻断门岗；Ponytail 提交与推送评审由版本化钩子运行。
+
+R31 收尾：登记 antigravity-hooks 格式，保留官方 Hooks 页第一份完整 JSON 示例于 tests/fixtures/standard-formats/antigravity-hooks/hooks.json；writer 测试读取官方样例，核对 flat PreInvocation 和 grouped PreToolUse 的结构。Ponytail 单独复核：无可执行精简项。
