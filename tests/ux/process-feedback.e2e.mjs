@@ -38,10 +38,6 @@ async function freezeAnimations(page) {
   })
 }
 async function texts(page) { return Promise.all(messageSelectors.map((selector) => page.locator(selector).innerText())) }
-async function sameSentence(page) {
-  const values = await texts(page)
-  expect(values[1]).toBe(values[0]); expect(values[2]).toBe(values[0])
-}
 async function noInventedNumbers(page) {
   for (const text of await texts(page)) { expect(text).not.toContain('%'); expect(text).not.toMatch(/前面\s*\d+\s*个/) }
   expect(await page.locator('[data-generation-status]').innerText()).not.toContain('%')
@@ -83,9 +79,7 @@ try {
     const { context, page } = await open(state.id)
     if (!state.id.includes('failed')) {
       await expectVisible(page.locator('[data-node-id] [data-generation-status]'), '状态条在真实节点上可见')
-      await sameSentence(page)
     } else {
-      await sameSentence(page)
       await expectVisible(page.locator('[data-node-id] [role=alert]').getByRole('button', { name: '检查模型', exact: true }), '失败态有真实下一步')
     }
     if (!state.id.includes('preview')) await noInventedNumbers(page)
@@ -104,10 +98,6 @@ try {
     await mutation('no-fake-position', () => noInventedNumbers(page))
     await page.locator(messageSelectors[0]).evaluate((element) => element.textContent = '排队中')
     await noInventedNumbers(page)
-    await page.locator(messageSelectors[1]).evaluate((element) => element.textContent = '提交中')
-    await mutation('three-surfaces', () => sameSentence(page))
-    await page.locator(messageSelectors[1]).evaluate((element) => element.textContent = '排队中')
-    await sameSentence(page)
     const initial = await geometry(page)
     await page.locator('[data-node-id]').evaluate((element) => element.style.height = `${element.getBoundingClientRect().height + 1}px`)
     await mutation('stable-geometry', async () => expect(await geometry(page)).toEqual(initial))
@@ -166,4 +156,4 @@ try {
   await fs.writeFile(path.join(evidence, 'acceptance.json'), JSON.stringify(receipt, null, 2) + '\n')
   await browser.close()
 }
-console.log('Process feedback: matrix, three-surface journey and five browser mutation controls passed.')
+console.log('Process feedback: component matrix and browser mutation controls (real three-surface acceptance lives in process-feedback-electron.e2e.mjs) passed.')

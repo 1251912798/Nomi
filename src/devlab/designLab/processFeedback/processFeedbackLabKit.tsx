@@ -66,7 +66,10 @@ export function ProcessFeedbackStage(fixture: ProcessFixture): JSX.Element {
         store.addNodeResult(PF_NODE_ID, { id: 'pf-completed', type: 'image', url: '/fixtures/process-feedback-result.svg', createdAt: Date.now() })
         useGenerationQueueStore.getState().markSettled(batchId.current, PF_NODE_ID, 'success')
       }
-      else if (stage === 'failed') store.setNodeStatus(PF_NODE_ID, 'error', 'model not enabled')
+      else if (stage === 'failed') {
+        store.setNodeStatus(PF_NODE_ID, 'error', 'model not enabled')
+        useGenerationQueueStore.getState().markSettled(batchId.current, PF_NODE_ID, 'error', { error: 'model not enabled' })
+      }
       else {
         if (stage !== 'queued') useGenerationQueueStore.getState().markRunning(batchId.current, PF_NODE_ID)
         store.setNodeProgress(PF_NODE_ID, { phase: stage })
@@ -76,13 +79,15 @@ export function ProcessFeedbackStage(fixture: ProcessFixture): JSX.Element {
     return () => window.removeEventListener('nomi-pf-stage', update)
   }, [])
   React.useLayoutEffect(() => {
+    const workbench = useWorkbenchStore.getState()
+    workbench.rememberCategoryViewport(workbench.activeCategoryId, { zoom: fixture.zoom ?? 1, offset: { x: 0, y: 0 } })
     const node = fixtureNode(fixture)
-    useGenerationCanvasStore.setState({ nodes: [node], edges: [], selectedNodeIds: [], canvasZoom: fixture.zoom ?? 1 })
+    useGenerationCanvasStore.setState({ nodes: [node], edges: [], selectedNodeIds: [] })
     useGenerationQueueStore.setState({ entries: [], batches: {} })
     const queue = useGenerationQueueStore.getState()
     batchId.current = queue.enqueueBatch([[PF_NODE_ID]])
     if (fixture.stage !== 'queued') queue.markRunning(batchId.current, PF_NODE_ID)
-    if (fixture.stage === 'failed' || fixture.stage === 'saved') queue.markSettled(batchId.current, PF_NODE_ID, fixture.stage === 'saved' ? 'success' : 'error')
+    if (fixture.stage === 'failed' || fixture.stage === 'saved') queue.markSettled(batchId.current, PF_NODE_ID, fixture.stage === 'saved' ? 'success' : 'error', { error: node.error })
     useWorkbenchStore.getState().setTimeline({ version: 1, fps: 30, scale: 4, playheadFrame: 0, tracks: [{ id: 'pf-track', type: 'image', label: '', clips: [clip] }], textClips: [] })
     if (fixture.preview) useNodeLivePreviewStore.getState().setPreview(PF_NODE_ID, FRAME)
     else useNodeLivePreviewStore.getState().clearPreview(PF_NODE_ID)

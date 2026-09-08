@@ -1,7 +1,7 @@
 import React from 'react'
 import type { EnsureComposerVisibleEventDetail } from '../components/useComposerVisibilityPan'
 import type { GenerationCanvasNode } from '../model/generationCanvasTypes'
-import { useGenerationCanvasStore } from '../store/generationCanvasStore'
+import { useWorkbenchStore } from '../../workbenchStore'
 import {
   didComposerAvailableSpaceChange,
   ENSURE_COMPOSER_VISIBLE_EVENT,
@@ -10,6 +10,12 @@ import {
   shouldPreserveComposerAttachmentOnRatioChange,
 } from './nodeSizing'
 import { createComposerPanRequestLatch } from './composerPanRequestLifecycle'
+
+function readComposerObstacles(root: Element | null): HTMLElement[] {
+  return root ? Array.from(root.querySelectorAll<HTMLElement>(
+    '.workbench-generation__timeline-handle, [data-canvas-bottom-dock="true"]',
+  )) : []
+}
 
 const FLIP_HYSTERESIS = 48
 const TOOLBAR_CLEARANCE_GAP = 18
@@ -158,8 +164,8 @@ export function useComposerViewportPlacement(input: {
   minUsableHeight: number
 }): Placement {
   const { node, visualSize, gap, preferredMaxHeight, minUsableHeight } = input
-  const canvasZoom = useGenerationCanvasStore((state) => state.canvasZoom)
-  const canvasOffset = useGenerationCanvasStore((state) => state.canvasOffset)
+  const canvasZoom = useWorkbenchStore((state) => state.categoryViewports[state.activeCategoryId]?.zoom ?? 1)
+  const canvasOffset = useWorkbenchStore((state) => state.categoryViewports[state.activeCategoryId]?.offset)
   const anchorRef = React.useRef<HTMLDivElement>(null)
   const [flipUp, setFlipUp] = React.useState(false)
   const [aboveClearance, setAboveClearance] = React.useState(0)
@@ -210,13 +216,13 @@ export function useComposerViewportPlacement(input: {
       if (wouldLeft + nextShiftX < minLeft) nextShiftX = minLeft - wouldLeft
       setShiftX(Math.round(nextShiftX))
 
-      const timelineHandle = workspaceCanvas?.querySelector<HTMLElement>('.workbench-generation__timeline-handle')
+      const obstacles = readComposerObstacles(workspaceCanvas)
       const viewportSpaceBelow = Math.max(0, stageRect.bottom - nodeRect.bottom)
       const spaceBelow = getUnobstructedComposerSpaceBelow({
         stage: stageRect,
         node: nodeRect,
         composer: { left: wouldLeft + nextShiftX, right: wouldRight + nextShiftX },
-        obstacles: timelineHandle ? [timelineHandle.getBoundingClientRect()] : [],
+        obstacles: obstacles.map(element => element.getBoundingClientRect()),
       })
       const spaceAbove = nodeRect.top - stageRect.top
       const toolbar = nodeEl.querySelector<HTMLElement>(NODE_FLOATING_TOOLBAR_SELECTOR)
@@ -280,8 +286,7 @@ export function useComposerViewportPlacement(input: {
       )
     }
 
-    let observedTimelineHandle: HTMLElement | null = null
-    let observedTimelineHandleSize: { width: number; height: number } | null = null
+    const observedObstacles = new Map<HTMLElement, { width: number; height: number }>()
     const resizeObserver = new ResizeObserver((entries) => {
       const stageRect = stage.getBoundingClientRect()
       const nextAvailableSpace = {
@@ -291,38 +296,42 @@ export function useComposerViewportPlacement(input: {
       const availableSpaceChanged = didComposerAvailableSpaceChange(observedAvailableSpace, nextAvailableSpace)
       observedAvailableSpace = nextAvailableSpace
       let obstacleChanged = false
-      if (observedTimelineHandle && entries.some((entry) => entry.target === observedTimelineHandle)) {
-        const nextSize = {
-          width: observedTimelineHandle.offsetWidth,
-          height: observedTimelineHandle.offsetHeight,
-        }
-        obstacleChanged = observedTimelineHandleSize !== null && (
-          observedTimelineHandleSize.width !== nextSize.width || observedTimelineHandleSize.height !== nextSize.height
-        )
-        observedTimelineHandleSize = nextSize
+      for (const entry of entries) {
+        const element = entry.target as HTMLElement
+        const previous = observedObstacles.get(element)
+        if (!previous) continue
+        const next = { width: element.offsetWidth, height: element.offsetHeight }
+        if (previous.width !== next.width || previous.height !== next.height) obstacleChanged = true
+        observedObstacles.set(element, next)
       }
       recompute({ availableSpaceChanged, obstacleChanged })
     })
 
-    const syncTimelineHandleObservation = (): boolean => {
-      const nextHandle = workspaceCanvas?.querySelector<HTMLElement>('.workbench-generation__timeline-handle') ?? null
-      if (nextHandle === observedTimelineHandle) return false
-      if (observedTimelineHandle) resizeObserver.unobserve(observedTimelineHandle)
-      observedTimelineHandle = nextHandle
-      observedTimelineHandleSize = nextHandle
-        ? { width: nextHandle.offsetWidth, height: nextHandle.offsetHeight }
-        : null
-      if (nextHandle) resizeObserver.observe(nextHandle)
-      return true
+    const syncObstacleObservation = (): boolean => {
+      const next = new Set(readComposerObstacles(workspaceCanvas))
+      let changed = false
+      for (const element of observedObstacles.keys()) {
+        if (next.has(element)) continue
+        resizeObserver.unobserve(element)
+        observedObstacles.delete(element)
+        changed = true
+      }
+      for (const element of next) {
+        if (observedObstacles.has(element)) continue
+        observedObstacles.set(element, { width: element.offsetWidth, height: element.offsetHeight })
+        resizeObserver.observe(element)
+        changed = true
+      }
+      return changed
     }
 
     resizeObserver.observe(anchor)
     resizeObserver.observe(stage)
-    syncTimelineHandleObservation()
+    syncObstacleObservation()
     recompute()
 
     const mutationObserver = new MutationObserver(() => {
-      if (syncTimelineHandleObservation()) recompute({ obstacleChanged: true })
+      if (syncObstacleObservation()) recompute({ obstacleChanged: true })
     })
     if (workspaceCanvas) mutationObserver.observe(workspaceCanvas, { childList: true, subtree: true })
     return () => {

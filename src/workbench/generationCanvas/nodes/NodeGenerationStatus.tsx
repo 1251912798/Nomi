@@ -1,14 +1,14 @@
 import React from 'react'
 import { useNodeLivePreviewStore } from '../store/nodeLivePreviewStore'
 import { isVideoDepthProgressPhase } from '../videoDepth/videoDepthProgressPhase'
-import { useGenerationCanvasStore } from '../store/generationCanvasStore'
+import { useWorkbenchStore } from '../../workbenchStore'
 import type { GenerationCanvasNode } from '../model/generationCanvasTypes'
 import { useGenerationFeedback } from '../../observability/useGenerationFeedback'
 import { GenerationStatusBar } from './GenerationStatusBar'
 import { useReducedProcessMotion } from './useReducedProcessMotion'
 
 export function NodeGenerationStatus({ node }: { node: GenerationCanvasNode }): JSX.Element | null {
-  const zoom = useGenerationCanvasStore((state) => state.canvasZoom)
+  const zoom = useWorkbenchStore((state) => state.categoryViewports[state.activeCategoryId]?.zoom ?? 1)
   const readableScale = 1 / Math.min(1, Math.max(0.6, zoom))
   const preview = useNodeLivePreviewStore((state) => state.byNode[node.id])
   const feedback = useGenerationFeedback(node)

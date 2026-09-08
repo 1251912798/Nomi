@@ -42,12 +42,10 @@ for (const screen of LAB_SCREEN_IDS) {
         await expect(shot).toBeVisible()
         if (screen === 'process-feedback') {
           await page.clock.runFor(1000)
-          const messages = await Promise.all(['[data-node-id]', '[data-process-task]', '[data-process-timeline]'].map((surface) => page.locator(`${surface} [data-generation-message]`).innerText()))
-          expect(messages[1]).toBe(messages[0])
-          expect(messages[2]).toBe(messages[0])
+          // Cross-surface acceptance runs in the real App: process-feedback-electron.e2e.mjs.
           if (!state.id.includes('preview')) {
             await expect(page.locator('[data-node-id] [data-generation-status]')).not.toContainText('%')
-            expect(messages.join(' ')).not.toMatch(/前面\s*\d+\s*个/)
+            await expect(page.locator('[data-process-lab-ready]')).not.toContainText(/前面\s*\d+\s*个/)
           }
         }
         // 浮层类形态走 BodyPortal + fixed 定位，根本不在舞台的子树里——按元素截会截出
