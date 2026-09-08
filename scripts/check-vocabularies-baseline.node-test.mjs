@@ -125,8 +125,8 @@ test('repository exact-set owners are upstream and every local projection stays 
   const generationStatusCanonical =
     'electron/shared/canvas/generationNodeStatus.ts::variable:GENERATION_NODE_STATUSES/as-const'
 
-  assert.match(registeredBySite.get(contextStore)?.reason ?? '', /contextService.*(?:导入|import).*contextStore/i)
-  assert.match(debtBySite.get(contextService)?.reason ?? '', /StoredAgentContext.*(?:投影|projection)/i)
+  assert.equal(registeredBySite.has(contextStore), false, 'retired context store has no live owner')
+  assert.equal(debtBySite.has(contextService), false, 'retired context service debt is removed')
   assert.match(registeredBySite.get(cardCanonical)?.reason ?? '', /Assistant.*ComfyUI.*Dreamina/i)
   for (const site of cardProjections) {
     assert.equal(registeredBySite.has(site), false, site)
@@ -237,10 +237,6 @@ test('repository-specific runtime and view-model vocabularies are not mislabeled
     [
       'electron/shared/agentCapabilities/transportContracts.ts::interface:RuntimeToolCallRecord/property:status/type-union',
       /runtime port.*tool/i,
-    ],
-    [
-      'electron/harness/runtime/runtimePort.ts::interface:RuntimeTurnResult/property:status/type-union',
-      /runtime port.*turn/i,
     ],
     // src/api/desktopAgentsChatStream.ts was deleted by the Host cutover (see
     // projectAgentCutoverStructure.test.ts asserting the file no longer exists);

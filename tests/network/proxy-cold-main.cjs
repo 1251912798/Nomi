@@ -6,7 +6,7 @@ const { createServer } = require('node:http');
 const { connect, createServer: createTcpServer } = require('node:net');
 const { createHash } = require('node:crypto');
 const { once } = require('node:events');
-const { mkdtempSync, mkdirSync } = require('node:fs');
+const { mkdtempSync } = require('node:fs');
 const { tmpdir } = require('node:os');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
@@ -42,7 +42,7 @@ app.whenReady().then(async () => {
       res.writeHead(200, { 'content-type': 'text/plain' });
       res.write('before-');
       heldResponses.set(req.url, res);
-    } else if (/\/(chat\/completions|responses|messages)$/.test(req.url)) {
+    } else if (/\/(chat\/completions|responses|messages)$/.test(new URL(req.url, 'http://fixture.invalid').pathname)) {
       res.writeHead(401, { 'content-type': 'application/json' });
       res.end(JSON.stringify({ error: { message: 'Synthetic local unauthorized response' } }));
     } else {
@@ -123,7 +123,7 @@ app.whenReady().then(async () => {
     // No global fetch has executed yet. Loading pi here reproduces the real
     // undici8 global-dispatcher initialization, not a simulated SDK mutation.
     await system.applySystemProxy(session.defaultSession, { mode: 'custom', customUrl: proxyA.url });
-    await import(pathToFileURL(path.join(buildRoot, 'harness/runtime/pi/session.mjs')).href);
+    await import(pathToFileURL(path.join(buildRoot, 'agentLane/laneHost.mjs')).href);
     const response = await vendor.fetchVendorWithBaseFallback(`${target}/vendor`, {
       method: 'POST', body: '{"literal":"first request"}', signal: AbortSignal.timeout(5000),
       headers: { Authorization: 'Bearer synthetic-literal-key' },
@@ -178,20 +178,30 @@ app.whenReady().then(async () => {
     }
     console.log('PASS existing-ai4-protocols-share-app-route');
 
-    const { runAgentTurn } = require(path.join(buildRoot, 'harness/runtime/pi/nativeLoader.cjs'));
-    const cwd = path.join(scratch, 'work');
-    const agentDir = path.join(scratch, 'agent');
-    mkdirSync(cwd); mkdirSync(agentDir);
-    const result = await runAgentTurn({ cwd, agentDir, tempRoot: scratch, systemPrompt: 'Local transport test.',
-      model: { kind: 'openai-compatible', providerId: 'network-fixture', modelId: 'fixture-model',
-        baseURL: `${target}/v1`, authType: 'api-key', apiKey: 'synthetic-literal-key' },
-      user: { durableText: 'No paid calls.' }, tools: [], capability: { singleShot: true, maxSteps: 1 },
-      compaction: { enabled: false } },
-    { fetch: appFetch, emit() {}, awaitToolConfirmation: async () => ({ ok: true }) });
-    assert.equal(result.error?.status, 401);
-    assert.equal(observed.at(-1).route, 'proxy-b');
-    assert.equal(observed.at(-1).headers.authorization, 'Bearer synthetic-literal-key');
-    console.log('PASS real-native-pi-fetch-injection');
+    const { runLaneSingleShot } = require(path.join(buildRoot, 'agentLane/laneNativeLoader.cjs'));
+    const { openLane } = await import(pathToFileURL(path.join(buildRoot, 'agentLane/laneHost.mjs')).href);
+    for (const kind of ['openai-compatible', 'openai-responses', 'anthropic']) {
+      const model = { kind, providerId: 'network-fixture', modelId: 'fixture-model',
+        baseURL: `${target}/v1`, authType: 'api-key', apiKey: 'synthetic-literal-key' };
+      for (const entry of ['single', 'persistent']) {
+        const observedBeforeLane = observed.length;
+        let result;
+        if (entry === 'single') result = await runLaneSingleShot({ fetch: appFetch, model,
+          systemPrompt: 'Local transport test.', prompt: 'No paid calls.' });
+        else {
+          const lane = await openLane({ fetch: appFetch, model, projectDir: scratch,
+            laneName: kind, systemPrompt: 'Local transport test.', tools: [] });
+          try { await lane.execute({ kind: 'prompt', text: 'No paid calls.' }); result = lane.projection(); }
+          finally { await lane.close(); }
+        }
+        assert.ok(result.parts.some(part => part.kind === 'error'), '401 must surface as a lane failure');
+        assert.equal(observed.length, observedBeforeLane + 1, `${kind}/${entry}: ${JSON.stringify(result.parts.filter(part => part.kind === "error"))}`);
+        assert.equal(observed.at(-1).route, 'proxy-b');
+        const authHeader = kind === 'anthropic' ? 'x-api-key' : 'authorization';
+        assert.equal(observed.at(-1).headers[authHeader], kind === 'anthropic' ? 'synthetic-literal-key' : 'Bearer synthetic-literal-key');
+      }
+    }
+    console.log('PASS real-native-lane-current-route');
 
     await system.applySystemProxy(session.defaultSession, { mode: 'custom', customUrl: `socks5://127.0.0.1:${socksPort}` });
     await (await appFetch(`${target}/socks`)).arrayBuffer();
