@@ -1,0 +1,14 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Intentional focus and UA leaks</title>
+<style>
+#mouse-text:focus { outline: 2px solid -webkit-focus-ring-color; }
+#keyboard-button:focus-visible { outline: none; box-shadow: none; }
+#scrollbar { overflow: scroll; width: 100px; height: 40px; }
+#scrollbar > div { height: 200px; }
+</style>
+<textarea id="mouse-text" aria-label="Leaking text"></textarea>
+<button id="keyboard-button">Invisible keyboard focus</button>
+<div id="scrollbar"><div>Unowned scrollbar</div></div>
+<select id="select" aria-label="Native select"><option>Native</option></select>
+<input id="checkbox" aria-label="Native checkbox" type="checkbox">
+<input id="range" aria-label="Native slider" type="range">
+</html>

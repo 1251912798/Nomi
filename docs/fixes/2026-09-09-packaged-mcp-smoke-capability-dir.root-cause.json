@@ -1,0 +1,103 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-09-packaged-mcp-smoke-capability-dir",
+  "problem_type": "Derived launcher defaults overwrite caller environment configuration",
+  "symptom": "Packaged MCP claude resources/list times out after 15 seconds before the lane is reached.",
+  "direct_cause": "launchNomiApp derives a separate capability directory despite env.NOMI_CAPABILITY_DIR; buildNomiLaunchEnv overwrites the supplied env, separating GUI advert/token from helper discovery.",
+  "class_root": "Explicit capability configuration and derived isolation defaults lack a single precedence boundary shared by directory creation, launch env and returned handle.",
+  "affected_population": [
+    "Packaged MCP smoke and any walkthrough coordinating GUI and helper through env.NOMI_CAPABILITY_DIR"
+  ],
+  "scope_paths": [
+    "tests/ux/_launchApp.mjs",
+    "tests/ux/packaged-mcp-smoke.e2e.mjs",
+    "scripts/check-e2e-launch.mjs"
+  ],
+  "entry_points": [
+    "launchNomiApp(options) for smoke, walkthroughs and evals"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "Internal test harness precedence; no external format, SDK or production protocol changes.",
+  "invariants": [
+    "Explicit capabilityDir > caller env > inherited env > isolated derived directory; mkdir, GUI env and returned capabilityDir agree.",
+    "With no configuration and isolate:false, no capability directory is derived."
+  ],
+  "generality_proof": "All scanned launchNomiApp callers converge before mkdir and buildNomiLaunchEnv. Defaults are selected only after supplied configuration, so helper-sharing callers need no local workaround.",
+  "shared_boundaries": [
+    {
+      "path": "tests/ux/_launchApp.mjs",
+      "symbol": "launchNomiApp",
+      "responsibility": "Resolve capability directory once before creating directories and composing Electron launch options."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "tests/ux/packaged-mcp-smoke.e2e.mjs",
+      "entry_point": "launchNomiApp env plus smokeClient helper env",
+      "disposition": "enforced",
+      "evidence": "Both pass the same intended capabilityDir; red run printed different GUI/helper directories."
+    },
+    {
+      "path": "tests/ux/plan-gate.walk.mjs",
+      "entry_point": "launchNomiApp env.NOMI_CAPABILITY_DIR",
+      "disposition": "enforced",
+      "evidence": "capDir is shared by GUI and stdio MCP client; same launcher previously overwrote it."
+    },
+    {
+      "path": "tests/ux/mcp-lease-project-binding.e2e.mjs",
+      "entry_point": "launchNomiApp options.capabilityDir",
+      "disposition": "enforced",
+      "evidence": "Explicit option already bypassed the bug; precedence test preserves that supported input."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Every future env-based caller or inherited configuration can reproduce the override, independently of app version or client identity.",
+    "same_class_scan": [
+      "rg -n NOMI_CAPABILITY_DIR tests/ux evals: independently checked packaged smoke, plan-gate, mcp-client-activation and _mcpJourney.",
+      "Read buildNomiLaunchEnv and launchNomiApp: override occurs after extraEnv and after independent tempRoot derivation."
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "tests/ux/_launchApp.mjs",
+    "invariant": "Resolve supplied capability configuration before deriving isolation defaults.",
+    "failure_mode": "Configured paths propagate unchanged; invalid filesystem paths fail at directory creation rather than silently selecting a different isolated directory.",
+    "exception_policy": "none",
+    "strategy": "Replace unconditional isolated derivation at the shared launch boundary; check:e2e-launch runs node assembly regression on every contracts run.",
+    "artifacts": [
+      "tests/ux/_launchApp.mjs",
+      "scripts/check-e2e-launch.mjs"
+    ]
+  },
+  "regression_tests": [
+    "scripts/e2e-launch-capability.node-test.mjs",
+    "tests/ux/packaged-mcp-smoke.e2e.mjs"
+  ],
+  "class_regression_tests": [
+    "scripts/e2e-launch-capability.node-test.mjs"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "tests/ux/_launchApp.mjs"
+    ],
+    "rationale": "Removed the env-blind capability directory derivation; no parallel launch path or caller workaround added."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "This is repository-owned test assembly, not Electron or Playwright behavior; same existing app used before and after.",
+    "exit_criteria": []
+  },
+  "migration": "No user data or package migration. Existing env and explicit-option callers use the shared resolution automatically.",
+  "residual_risks": [
+    "No production helper defect was observed after correcting assembly. This test does not certify paid provider generation or lane performance."
+  ],
+  "invariant_owner_layer": {
+    "layer": "tests/ux/_launchApp.mjs",
+    "tests": [
+      "scripts/e2e-launch-capability.node-test.mjs"
+    ],
+    "why": "The launcher assembles configuration for all callers and owns precedence before mkdir/spawn. The regression mocks only Electron launch and checks the actual composed env and returned directory."
+  }
+}

@@ -1,0 +1,94 @@
+{
+  "version": 2,
+  "entries": [
+    {
+      "rule": "text-overlap",
+      "count": 1,
+      "owner": "agent-panel",
+      "reason": "Agent 面板文字层叠",
+      "journey": "agent-panel",
+      "screenshotName": "agent-panel-thinking-light.png"
+    },
+    {
+      "rule": "text-overlap",
+      "count": 1,
+      "owner": "agent-panel",
+      "reason": "Agent 面板文字层叠",
+      "journey": "agent-panel",
+      "screenshotName": "agent-panel-thinking-dark.png"
+    },
+    {
+      "rule": "font-size",
+      "count": 1,
+      "owner": "ux-feel-mechanism",
+      "reason": "机制夹具新增发现：工具回执字号小于 12px",
+      "journey": "agent-panel",
+      "screenshotName": "agent-panel-tool-receipt-light.png"
+    },
+    {
+      "rule": "font-size",
+      "count": 1,
+      "owner": "ux-feel-mechanism",
+      "reason": "机制夹具新增发现：工具回执字号小于 12px",
+      "journey": "agent-panel",
+      "screenshotName": "agent-panel-tool-receipt-dark.png"
+    },
+    {
+      "rule": "clipped-content",
+      "count": 1,
+      "owner": "artifact-preview",
+      "reason": "HTML 截断/不可滚动/不可交互",
+      "journey": "artifact-products",
+      "screenshotName": "artifact-products-html-light.png"
+    },
+    {
+      "rule": "unreachable-interaction",
+      "count": 1,
+      "owner": "artifact-preview",
+      "reason": "HTML 截断/不可滚动/不可交互",
+      "journey": "artifact-products",
+      "screenshotName": "artifact-products-html-light.png"
+    },
+    {
+      "rule": "clipped-content",
+      "count": 1,
+      "owner": "artifact-preview",
+      "reason": "HTML 截断/不可滚动/不可交互",
+      "journey": "artifact-products",
+      "screenshotName": "artifact-products-html-dark.png"
+    },
+    {
+      "rule": "unreachable-interaction",
+      "count": 1,
+      "owner": "artifact-preview",
+      "reason": "HTML 截断/不可滚动/不可交互",
+      "journey": "artifact-products",
+      "screenshotName": "artifact-products-html-dark.png"
+    },
+    {
+      "rule": "unreachable-interaction",
+      "count": 1,
+      "owner": "artifact-preview",
+      "reason": "3D 产物不可交互",
+      "journey": "artifact-products",
+      "screenshotName": "artifact-products-3d-light.png"
+    },
+    {
+      "rule": "unreachable-interaction",
+      "count": 1,
+      "owner": "artifact-preview",
+      "reason": "3D 产物不可交互",
+      "journey": "artifact-products",
+      "screenshotName": "artifact-products-3d-dark.png"
+    },
+    {
+      "rule": "font-size",
+      "count": 0,
+      "owner": "design-system",
+      "reason": "首轮基线，待清账",
+      "evidence": "artifacts/feel/smoke/contact-sheet.json；13 条精确豁免后实际剩余 0",
+      "journey": "smoke",
+      "screenshotName": "waitForFunction.png"
+    }
+  ]
+}

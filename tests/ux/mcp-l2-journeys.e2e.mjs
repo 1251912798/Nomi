@@ -186,7 +186,8 @@ try {
     action: 'start', sessionId: integrationSessionId, expectedRevision: afterConfirmData.revision,
     idempotencyKey: 'c7-t14-paid-phase', receipt: 'not-a-trusted-receipt',
   })
-  check(bypassStart.isError && /receipt|approval|收据|确认|invalid/i.test(parseToolResult(bypassStart).text), 'C7 T14 start 无可信收据不可绕过 confirm')
+  // Authorization is a machine contract; translated recovery prose is not an error code.
+  check(bypassStart.isError === true && resultData(bypassStart).errorCode === 'receipt_invalid', `C7 T14 start 无可信收据不可绕过 confirm; actual=${JSON.stringify(bypassStart)}`)
   check(provider.hits.filter((hit) => /^\/v1\/(images|videos)\/generations$/.test(hit.url || '')).length === 0, 'C7 T14 付费绕过失败且未提交供应商任务')
   const proxyOff = await call(mcp, 'nomi_integration_manage', { action: 'set_proxy', vendorKey: 'apimart', enabled: false })
   check(resultTextJson(proxyOff).enabled === false, 'C7 管理动词可关闭单连接代理')

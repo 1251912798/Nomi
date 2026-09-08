@@ -1,0 +1,40 @@
+# 封面 v1 · 两轮试产未通过，未全量（2026-09-09）
+
+40 条目标路径与逐条状态：`docs/design/covers/covers-v1-report.md`；实际仅 3 张可用：
+- `skills/effect-camera-01/assets/cover.png`
+- `skills/effect-camera-02/assets/cover.png`
+- `skills/effect-camera-03/assets/cover.png`
+
+接触表：`docs/design/covers/contact-sheet-v2.png`（15 真实 + 3 插画 + 37 明示待生成）；两轮原始目检见 `rejected-trial-1/contact-sheet.png` 与 `rejected-trial-2/contact-sheet.png`。
+实付：本次 $0.1250，保守折算 ¥1.00；含旧锚图累计 $0.1625 / ¥1.30。返工 1 轮，共 2 轮试产。04/05 仍带入锚图主体，未满足隐喻；已按两轮上限停止付费，全量 40 张没有完成。
+
+验证：contracts 全部阻断项通过（75 项全跑，prior-art 修正后复验）；3 项 advisory 保留。6/6 相关单测、10 张 PNG 解码、15 份原媒体一致性、停止付费守卫通过。
+
+---
+以下为此前交接历史：
+
+v3 截图：docs/design/mockups/2026-09-08-skill-library-cards/library-cards{,@2x}.png
+v3 逐字检查：1x/2x 无折叠控件、正文至许可证末句完整、无 Markdown 标记；左图顶对齐，图下说明清楚；46 条正文及 80 段长文滚动到底验收通过。
+v2 截图：docs/design/mockups/2026-09-08-skill-library-cards/{library-cards,node-effects}{,@2x}.png
+断言结果：46 条正文 + Markdown 结构夹具通过；旧 pre 原文路径断言失败，展开/收起与引用/追加/撤销通过。
+逐字检查：详情无 Markdown 标记与重复标题简介，meta 单行清楚；卡片与 chip 字阶、间距一致，折尾渐隐。
+# SL-LAST · 封面 v1 第三轮（2026-09-09）
+过关张数：37（含原先 3 张，共 40 条效果封面） / 灰格张数：0 / 实付：APIMart $0.321708，按 8 CNY/USD 保守折算约 ¥2.573664 / 接触表：`docs/design/covers/contact-sheet-v3.png`
+模型：GPT Image 2（APIMart）；官方契约：`https://docs.apimart.ai/en/api-reference/images/gpt-image-2/generation.md`；价格证据：`https://apimart.ai/api/marketplace/models?keyword=gpt-image-2&page_size=10`。原隐喻表保留，风格硬门逐张目检通过。
+
+# SL-LAST · 技能与提示词即时价值一期
+分支：feat/skill-library-curation-20260908
+最终提交：05fcda5066380aa44b6987f9fb8358e044f3772c；PR：https://github.com/aqm857886159/Nomi/pull/655（未合并）
+候选：34 条 / 11 仓库；收录：15 技能 + 40 效果；15 技能已有原仓真实配图。
+许可证拒收/暂缓：4 条；另因范围排除：1 条。
+锚图1：docs/design/covers/anchors/anchor-1.png
+锚图2：docs/design/covers/anchors/anchor-2.png
+锚图3：docs/design/covers/anchors/anchor-3.png（推荐，未批准）
+实付：APIMart $0.0375，预算按 8 折算约 ¥0.30；TikHub 一次查询实付未知；未试产/批量。
+样张1：docs/design/mockups/2026-09-08-skill-library-cards/library-cards.html（同名 PNG）
+样张2：docs/design/mockups/2026-09-08-skill-library-cards/node-effects.html（同名 PNG）
+验证：pnpm run gates 退出0；Vitest 12056通过/2跳过；附加测试、构建、样张交互/解码通过；9批push钩子通过。
+边界：UI未实现；40效果封面待选锚图；文本分享包拒绝二进制媒体；真实ASAR安装包/Agent生成闭环未测。
+接触表：docs/design/covers/contact-sheet.png；完整来源/许可/成本与验证限度见 PR。
+# PR #655 CI 红修复（2026-09-09）
+复现并修复 `electron/skills/skillCuration.test.ts`：两个带二进制 preview 的 Skill 都不能导出为纯文本包，第二个断言误写为 `not.toBeNull()`。已改为 `toBeNull()`；定向 Vitest 13/13 通过，提交 `903dfd6a2` 已推送。

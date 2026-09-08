@@ -965,11 +965,12 @@ showUndoToast({
 
 ### 焦点环（全局，别再 per-component 加）
 
-所有交互控件的键盘焦点环由**一条全局规则**统一供给（`tailwind.config.ts` 的 `addBase`）：
-- `:focus-visible { outline: none }` 先全局杀掉浏览器默认 `outline:auto`——它在 macOS 上**跟系统强调色**，用户设了橙/黄就冒橙环。
-- `button / [role=button] / a / input / select / textarea / summary` 的 `:focus-visible` 统一给 `2px solid var(--nomi-focus)` + `outline-offset:2px`。`--nomi-focus` = accent 42%（`:root` 全局 token）。
+焦点指示由 **`tailwind.config.ts` 的 `addBase` 单一基础边界**统一供给：
+- `:root :focus { outline: none }` 接管浏览器默认 outline；不能把 `:focus-visible` 误解成“只有 Tab”——Chromium 鼠标点击文本编辑控件也会匹配它。
+- **文本编辑类**：文本/数字 input、textarea、contenteditable（空值/true/plaintext-only）鼠标与键盘聚焦一致，不出外圈 outline。已有边框改为 `var(--nomi-accent)`，不加宽、不改布局；组合输入的直接容器、以及富文本编辑器最近的 `.border` 容器通过 `:has(文本控件:focus)` 同步高亮已有边框（嵌套编辑器只高亮最近一层），保留整体形状。无边框编辑器保留插入光标，不强行添加卡片外框。错误态（aria-invalid/data-error）保留错误边框；只读字段仍可聚焦复制。
+- **非文本类**：button/link/select/summary、非文本 input 及自定义可聚焦元素的 `:focus-visible` 用 `2px solid var(--nomi-focus)` + `outline-offset:2px`；鼠标点击不画环。`--nomi-focus` 为 accent 派生 token（浅色 42%、深色 50%）。
 
-**纪律**：新按钮**不要**再手写 `focus-visible:outline-*` className——全局规则已覆盖，手写=回到「漏一个就冒橙环」的症状层（2026-06-23 已根治，删了散在 6 文件的 13 处旧写法）。需要无焦点环的特例（如 contenteditable 编辑器）才显式 `outline:none` 覆盖。
+**纪律**：不要在组件单独加 `focus:outline-none` 或另一份焦点环/外扩阴影；新增控件由基础边界接管。组合输入复用现有边框，不给内部 textarea 再造矩形。回归运行 `node tests/ux/focus-indication.e2e.mjs`；真实 Electron 另查鼠标/Tab 与四个主要页面截图。
 
 ---
 
