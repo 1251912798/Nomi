@@ -1,81 +1,154 @@
-/** Product-agnostic feel regression scanner. Input: Playwright Page/Locator root + rule config; output JSON findings. */
+/** DOM geometry only: no product imports, selectors, baseline or throwing policy. */
 export const DEFAULT_RULES = {
   overlapArea: 4,
   minFontSize: 12,
   viewport: true,
   clipping: true,
   hittable: true,
-  contrast: false,
-  ignore: [],
+  interactiveTags: ['BUTTON', 'A', 'CANVAS', 'INPUT', 'SELECT', 'TEXTAREA'],
 }
-const visible = (e) => {
-  const s = getComputedStyle(e),
-    r = e.getBoundingClientRect()
-  return s.visibility !== 'hidden' && s.display !== 'none' && r.width > 0 && r.height > 0
-}
-export async function scanFeel(root, { rules = DEFAULT_RULES, label = 'page' } = {}) {
-  const findings = await root.evaluate(
-    ({ rules, label }) => {
-      const out = [],
-        els = [...document.querySelectorAll('*')].filter((e) => {
-          const s = getComputedStyle(e),
-            r = e.getBoundingClientRect()
-          return (
-            s.visibility !== 'hidden' &&
-            s.display !== 'none' &&
-            r.width > 0 &&
-            r.height > 0 &&
-            !rules.ignore.includes(e.tagName.toLowerCase())
-          )
-        })
-      const text = els.filter((e) => e.children.length === 0 && e.textContent.trim())
-      const overlap = (a, b) => {
-        const A = a.getBoundingClientRect(),
-          B = b.getBoundingClientRect()
-        const x = Math.max(0, Math.min(A.right, B.right) - Math.max(A.left, B.left)),
-          y = Math.max(0, Math.min(A.bottom, B.bottom) - Math.max(A.top, B.top))
-        return x * y
-      }
-      for (let i = 0; i < text.length; i++)
-        for (let j = i + 1; j < text.length; j++)
-          if (text[i].parentElement === text[j].parentElement && overlap(text[i], text[j]) > rules.overlapArea)
-            out.push({
-              rule: 'text-overlap',
-              message: 'visible text elements overlap',
-              target: [text[i].tagName, text[j].tagName],
-            })
-      for (const e of els) {
-        const r = e.getBoundingClientRect(),
-          s = getComputedStyle(e)
-        if (rules.viewport && (r.left < 0 || r.top < 0 || r.right > innerWidth || r.bottom > innerHeight))
-          out.push({ rule: 'out-of-viewport', message: 'element exceeds viewport', target: e.tagName })
-        if (rules.clipping && e.scrollHeight > e.clientHeight && s.overflowY === 'hidden')
-          out.push({ rule: 'clipped-content', message: 'content is clipped without scrolling', target: e.tagName })
-        if (rules.minFontSize && e.textContent.trim() && parseFloat(s.fontSize) < rules.minFontSize)
-          out.push({ rule: 'font-size', message: `font below ${rules.minFontSize}px`, target: e.tagName })
-        if (rules.hittable && ['BUTTON', 'A', 'CANVAS'].includes(e.tagName)) {
-          const x = r.left + r.width / 2,
-            y = r.top + r.height / 2,
-            hit = document.elementFromPoint(x, y)
-          if (!hit || !(hit === e || e.contains(hit)))
-            out.push({
-              rule: 'blocked-interaction',
-              message: 'declared interactive element is blocked',
-              target: e.tagName,
-            })
+
+export async function scanFeel(root, { rules = {}, label = 'page' } = {}) {
+  // Page.evaluate and Locator.evaluate have different argument contracts.
+  const scope = typeof root.locator === 'function' && typeof root.goto === 'function'
+    ? root.locator('html')
+    : root
+  return scope.evaluate((boundary, { config, label }) => {
+    const doc = boundary.ownerDocument
+    const view = doc.defaultView
+    const viewport = { left: 0, top: 0, right: view.innerWidth, bottom: view.innerHeight }
+    const intersect = (a, b) => ({
+      left: Math.max(a.left, b.left), top: Math.max(a.top, b.top),
+      right: Math.min(a.right, b.right), bottom: Math.min(a.bottom, b.bottom),
+    })
+    const area = (r) => Math.max(0, r.right - r.left) * Math.max(0, r.bottom - r.top)
+    const documentStyle = view.getComputedStyle(doc.documentElement)
+    const bodyStyle = doc.body ? view.getComputedStyle(doc.body) : documentStyle
+    const scrollRoot = doc.scrollingElement || doc.documentElement
+    const documentClip = {
+      left: -Infinity, top: -Infinity, right: Infinity, bottom: Infinity,
+    }
+    if (scrollRoot.scrollHeight > view.innerHeight && !/hidden|clip/.test(documentStyle.overflowY + bodyStyle.overflowY)) {
+      documentClip.top = 0
+      documentClip.bottom = view.innerHeight
+    }
+    if (scrollRoot.scrollWidth > view.innerWidth && !/hidden|clip/.test(documentStyle.overflowX + bodyStyle.overflowX)) {
+      documentClip.left = 0
+      documentClip.right = view.innerWidth
+    }
+    const findings = []
+    const report = (rule, elements) => findings.push({
+      rule,
+      target: elements.map((el) => el.tagName.toLowerCase()),
+      text: elements.map((el) => el.textContent.trim().slice(0, 80)),
+      rects: elements.map((el) => el.getBoundingClientRect().toJSON()),
+      fontSizes: elements.map((el) => parseFloat(view.getComputedStyle(el).fontSize)),
+    })
+
+    function visibleRect(el, rect = el.getBoundingClientRect(), clipSelf = false) {
+      let visible = intersect(rect, documentClip)
+      for (let parent = clipSelf ? el : el.parentElement; parent; parent = parent.parentElement) {
+        const style = view.getComputedStyle(parent)
+        if (style.visibility === 'hidden' || Number(style.opacity) === 0) return null
+        const box = parent.getBoundingClientRect()
+        // Clip each axis independently: ordinary offscreen scroll content is not a defect.
+        const clip = {
+          left: /auto|scroll|hidden|clip/.test(style.overflowX) ? box.left + parent.clientLeft : -Infinity,
+          right: /auto|scroll|hidden|clip/.test(style.overflowX) ? box.left + parent.clientLeft + parent.clientWidth : Infinity,
+          top: /auto|scroll|hidden|clip/.test(style.overflowY) ? box.top + parent.clientTop : -Infinity,
+          bottom: /auto|scroll|hidden|clip/.test(style.overflowY) ? box.top + parent.clientTop + parent.clientHeight : Infinity,
         }
+        // The document scroller is the viewport owner, not a nested scroller.
+        if (parent !== doc.documentElement && parent !== doc.body) visible = intersect(visible, clip)
       }
-      return { label, findings: out }
-    },
-    { rules, label },
-  )
-  if (findings.findings.length) {
-    const err = new Error(`Feel regression: ${findings.findings.length} finding(s)`)
-    err.findings = findings.findings
-    throw err
-  }
-  return findings
+      return area(visible) > 0 ? visible : null
+    }
+
+    const elements = [boundary, ...boundary.querySelectorAll('*')].filter((el) => {
+      const style = view.getComputedStyle(el)
+      return style.display !== 'none' && style.visibility !== 'hidden'
+        && Number(style.opacity) > 0 && visibleRect(el)
+    })
+    // Text ranges avoid treating a full-width block's empty space as painted text.
+    const texts = elements.flatMap((el) => [...el.childNodes]
+      .filter((node) => node.nodeType === 3 && node.textContent.trim())
+      .flatMap((node) => {
+        const range = doc.createRange()
+        range.selectNodeContents(node)
+        return [...range.getClientRects()].map((rect) => ({ el, rect: visibleRect(el, rect, true) }))
+          .filter(({ rect }) => rect && area(intersect(rect, viewport)) > 0)
+      }))
+
+    function textOverlap() {
+      const buckets = new Map()
+      const seen = new Set()
+      const cellSize = 128
+      texts.forEach((item, index) => {
+        const r = intersect(item.rect, viewport)
+        for (let x = Math.floor(r.left / cellSize); x <= Math.floor(r.right / cellSize); x++) {
+          for (let y = Math.floor(r.top / cellSize); y <= Math.floor(r.bottom / cellSize); y++) {
+            const key = `${x}:${y}`
+            const neighbors = buckets.get(key) || []
+            for (const otherIndex of neighbors) {
+              const pair = `${otherIndex}:${index}`
+              if (seen.has(pair)) continue
+              seen.add(pair)
+              const other = texts[otherIndex]
+              if (other.el.contains(item.el) || item.el.contains(other.el)) continue
+              if (area(intersect(item.rect, other.rect)) > config.overlapArea) {
+                report('text-overlap', [other.el, item.el])
+              }
+            }
+            neighbors.push(index)
+            buckets.set(key, neighbors)
+          }
+        }
+      })
+    }
+
+    function outOfViewport(el) {
+      const r = visibleRect(el)
+      if (r && area(intersect(r, viewport)) < area(r)) report('out-of-viewport', [el])
+    }
+
+    function clippedContent(el) {
+      const style = view.getComputedStyle(el)
+      if ((el.scrollHeight > el.clientHeight + 1 && /hidden|clip/.test(style.overflowY))
+        || (el.scrollWidth > el.clientWidth + 1 && /hidden|clip/.test(style.overflowX))) {
+        report('clipped-content', [el])
+      }
+    }
+
+    function fontSize(el) {
+      const hasOwnText = [...el.childNodes].some((node) => node.nodeType === 3 && node.textContent.trim())
+      if (hasOwnText && parseFloat(view.getComputedStyle(el).fontSize) < config.minFontSize) report('font-size', [el])
+    }
+
+    function unreachableInteraction(el) {
+      if (!config.interactiveTags.includes(el.tagName) || el.disabled) return
+      if (view.getComputedStyle(el).pointerEvents === 'none') report('unreachable-interaction', [el])
+    }
+
+    function blockedInteraction(el) {
+      if (!config.interactiveTags.includes(el.tagName) || el.disabled) return
+      if (view.getComputedStyle(el).pointerEvents === 'none') return
+      const r = intersect(visibleRect(el), viewport)
+      if (area(r) <= 0) return
+      const hit = doc.elementFromPoint((r.left + r.right) / 2, (r.top + r.bottom) / 2)
+      if (!hit || !(hit === el || el.contains(hit))) report('blocked-interaction', [el])
+    }
+
+    const rules = [
+      { enabled: config.viewport, run: outOfViewport },
+      { enabled: config.clipping, run: clippedContent },
+      { enabled: config.minFontSize > 0, run: fontSize },
+      { enabled: config.hittable, run: unreachableInteraction },
+      { enabled: config.hittable, run: blockedInteraction },
+    ]
+    if (config.overlapArea !== false) textOverlap()
+    for (const el of elements) for (const rule of rules) if (rule.enabled) rule.run(el)
+    return { label, findings }
+  }, { config: { ...DEFAULT_RULES, ...rules }, label })
 }
-export function formatFeelFindings(findings) {
-  return JSON.stringify(findings, null, 2)
-}
+
+export const formatFeelFindings = (result) => JSON.stringify(result, null, 2)

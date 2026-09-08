@@ -5,12 +5,13 @@
 ```sh
 pnpm run build
 pnpm run feel:nightly
+pnpm run feel:nightly -- --experience
 pnpm run experience:report
 pnpm run experience:test
 node tests/ux/experience/manual-example.mjs
 ```
 
-默认执行 catalog 中标记 `experience` 的三条真实任务，供应商替换成仓库现有 loopback；启动器隔离项目/设置/userData。选中任务失败时命令非零退出，目录中没选中的任务不能称通过。可用 `--journey=agent-panel` 选择单条，其他同理。
+`--experience` 执行 catalog 中标记 `experience` 的三条真实任务，供应商替换成仓库现有 loopback；启动器隔离项目/设置/userData。选中任务失败时命令非零退出，目录中没选中的任务不能称通过。可用 `--journey=agent-panel` 选择单条，其他同理。
 
 产物在 `artifacts/experience/`：`manifest.json` 记录这一次的身份；`runs/<journey>/steps.json` 为每一步 before/after PNG（带哈希）、DOM、实际事件、目标 rect、动作/完成/反馈耗时、第一层 findings；`trace.zip` 可用 `pnpm exec playwright show-trace` 查看；`report.md` / `report.json` 为维度表与分诊。截图不需要上传。输入值不进入控件文案检查，密码框截图遮盖。
 

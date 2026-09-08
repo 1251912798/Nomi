@@ -23,6 +23,7 @@ import path from 'node:path'
 import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import { ensureElectronSignature } from '../../scripts/ensure-electron-signature.mjs'
+import { installFeelObserver } from './_feel-observer.mjs'
 import { assertElectronBuildArtifacts } from '../../scripts/electron-build-artifacts.mjs'
 
 const require = createRequire(import.meta.url)
@@ -319,6 +320,9 @@ export async function launchNomiApp(options = {}) {
       }
     }
     if (settleMs > 0) await win.waitForTimeout(settleMs)
+    installFeelObserver(win, { name })
+    let nextWindow = 1
+    app.on('window', (page) => installFeelObserver(page, { name: `${name}-window-${++nextWindow}` }))
   }
 
   try {

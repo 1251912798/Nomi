@@ -1,0 +1,110 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-09-mcp-rpc-public-error-parity",
+  "problem_type": "Typed public domain errors lose their code at a transport boundary",
+  "symptom": "PR #661 production-mcp journey fails: document_not_found becomes errorCode null while isError remains true.",
+  "direct_cause": "rpcErrorWirePayload preserves fields only for RpcError instances; documentSurface throws an Error with code, so GUI RPC serializes only its message.",
+  "class_root": "Public error projection is applied after a lossy transport serialization; direct dispatch and GUI RPC do not preserve the same public outcome.",
+  "affected_population": [
+    "GUI-connected MCP stdio and packaged MCP clients receiving typed domain failures",
+    "Document and canvas errors constructed outside RpcError"
+  ],
+  "scope_paths": [
+    "electron/capabilityCore/mcpRpcError.ts"
+  ],
+  "entry_points": [
+    "rpcServer HTTP failure serializer",
+    "host local RPC failure serializer",
+    "mcpStdioServer and mcpNodeLauncher RPC decoders"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "This is the existing internal authenticated RPC envelope and existing public MCP error projection; no external protocol or dependency behavior changes.",
+  "invariants": [
+    "Every recognized public domain error retains its code across the shared RPC wire boundary.",
+    "Unknown native codes and arbitrary exception fields are not added to the wire."
+  ],
+  "generality_proof": "The shared serializer uses the existing MCP public error projection for non-RpcError exceptions, so all registered public domain errors receive the same outcome on direct and GUI-connected routes without per-tool fixes.",
+  "shared_boundaries": [
+    {
+      "path": "electron/capabilityCore/mcpRpcError.ts",
+      "symbol": "rpcErrorWirePayload",
+      "responsibility": "Preserve public error identity before transport discards exception properties."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "electron/capabilityCore/rpcServer.ts",
+      "entry_point": "startCapabilityServer HTTP catch",
+      "disposition": "enforced",
+      "evidence": "RPC response catch calls rpcErrorWirePayload; stdio and packaged launcher use rpcErrorFromPayload."
+    },
+    {
+      "path": "electron/capabilityCore/host.ts",
+      "entry_point": "local RPC emit failure catches",
+      "disposition": "enforced",
+      "evidence": "All three host error emission paths call rpcErrorWirePayload."
+    },
+    {
+      "path": "electron/capabilityCore/documentSurface.ts",
+      "entry_point": "projectDocument",
+      "disposition": "enforced",
+      "evidence": "Both missing project and missing creation document use Error plus code."
+    },
+    {
+      "path": "electron/capabilityCore/mcpStdioServer.ts",
+      "entry_point": "createMcpStdioDirectInvoker",
+      "disposition": "not-affected",
+      "evidence": "Direct dispatch retains exception properties in process; used as parity reference."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Any typed domain Error routed through the GUI RPC path loses its code on every run; direct route unit coverage hides this.",
+    "same_class_scan": [
+      "rg rpcErrorWirePayload electron/capabilityCore: rpcServer and host serializers inspected",
+      "rg document_not_found electron: documentSurface producer and semantic matrix consumer inspected",
+      "mcpRpcErrorFromPayload callers: mcpStdioServer and mcpNodeLauncher inspected"
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "electron/capabilityCore/mcpRpcError.ts",
+    "invariant": "Recognized public error identity survives serialization for every caller.",
+    "failure_mode": "Only existing public projection fields are emitted; unrecognized errors remain strings and never gain arbitrary exception properties.",
+    "exception_policy": "none",
+    "strategy": "Reuse buildToolErrorOutcome at the existing serializer, retaining the current RpcError recovery contract.",
+    "artifacts": [
+      "electron/capabilityCore/mcpRpcError.ts"
+    ]
+  },
+  "regression_tests": [
+    "electron/capabilityCore/mcpRpcError.test.ts",
+    "tests/ux/production-mcp-journey.e2e.mjs"
+  ],
+  "class_regression_tests": [
+    "electron/capabilityCore/mcpRpcError.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "electron/capabilityCore/mcpRpcError.ts"
+    ],
+    "rationale": "Replace the unconditional string downgrade for non-RpcError public domain errors within the single serializer."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "The defect is internal exception serialization, independent of Electron or MCP SDK versions.",
+    "exit_criteria": []
+  },
+  "migration": "No stored data changes. Existing string and structured RPC consumers remain supported.",
+  "residual_risks": [
+    "Linux CI verification pending; macOS full loopback now passes 7/7 including 58 production-mcp assertions."
+  ],
+  "invariant_owner_layer": {
+    "layer": "electron/capabilityCore/mcpRpcError.ts",
+    "reason": "The shared RPC serializer is the first point that discards typed exception fields.",
+    "tests": [
+      "electron/capabilityCore/mcpRpcError.test.ts"
+    ]
+  }
+}

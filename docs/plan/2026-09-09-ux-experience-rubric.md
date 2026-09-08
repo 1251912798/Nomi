@@ -72,3 +72,9 @@ v1 不开放可执行豁免：rubric.exemptions 必须为空，非空直接拒�
 - 常规模型雷达独立运行：apimart 索引新增 gemini-omni-1.1-flash；apimart-llm 凭据路径未查成，未更新快照，不属于本 PR 接入范围。论文雷达技能当前目录未发现，未冒称已运行；本任务的体验量表一手调研已完成。
 
 上游排队更新审查：c89bf70bb→d566c99c3 仅新增启动器可选 initialLocalStorage，本旅程未传；独立复核默认语义不变。三旅程重新采集后 33 个棘轮值逐项完全相同，只迁移未交付基线的 sourceHash metadata，未放宽任何指标。
+
+## #662 最终形态合并（2026-09-09）
+
+冲突范围：`tests/ux/_feel.mjs`、`tests/ux/journeys/catalog.json`、`scripts/feel-nightly.mjs`。扫描器完全采用 origin/main；保留 main 的状态夹具、record/ratchet 观察器、journey/screenshotName/rule 基线与账本。第二层仅补目录元数据和同入口 `--experience` 分道，采集直接消费共享观察器截图记录，删除旧扫描异常兼容路径。生产代码不改。验收：第二层单测、三条真实 loopback 旅程/报告、一层 nightly drift=0、完整 gates、正常 hook 提交推送；回滚用 revert 合并提交，不改 main。口径因最终扫描器与目录合并变化，先对照旧/新指标；操作/路径指标禁止放宽。扫描器及采样时机已换为 #662 最终口径，机械 finding 单独显式迁移并保留旧值，不称为同口径基线通过。
+
+合并复验：三旅程 25 阶段/50 PNG，30 个操作/路径指标逐项完全相同；finding 峰值 12/61/78 → 16/63/27（新版扫描可见区及共享截图时机）。完整迁移对照见 `docs/audit/2026-09-09-ux-experience-merge-baseline.json`。新口径已复算通过，原判官的 incompatible/regressed 拒绝逻辑不改。浏览器共享观察器回归已接入 `test:feel:browser`；新目录允许有真实 runner/steps 的第二层任务无 DOM 夹具，旧一层任务仍要求完整状态。

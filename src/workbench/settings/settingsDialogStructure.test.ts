@@ -54,7 +54,8 @@ const MAIN_NON_MODEL_SECTION_SHA256 = {
   'AiModelsSection.tsx': '991aed2910a81b3cedd005c230f5585efa7cbdc5cd4cb1e309c818b183d42504',
   // 2026-09-03：toggleHost 参数类型从 SettingsHostKey（四值联合）泛化为 string（支持自定义 profile key）；
   // 新增 CustomMcpClientCard UI TODO 注释（底层能力已就绪，UI 面另排样张拍板）。
-  'AutomationPermissionsSection.tsx': '07b3790752d0a64fffdf814e4febcfc5eadebf469332d797c1754a5bce1851ff',
+  // 2026-09-09：声音归通用设置的单一入口，移除这里的旧开关；下方断言保留系统通知策略。
+  'AutomationPermissionsSection.tsx': '632e010df63500fb9df8f4c624a629c47ec3d43a8e0f47c379edba67f36bdda0',
   'CanvasGestureSection.tsx': '9968732470ea89e6b0f123cf7442cb969385361dbaafea29189e5ceb62cd18bd',
   'AboutSection.tsx': 'b38e0e2265f29ca56da53595e4bb5886bd14799ea3a7f7f36797b33d46eda57f',
 } as const
@@ -85,6 +86,14 @@ describe('settings dialog structure', () => {
     expect(taskCenterSource).not.toContain('PrefToggle')
     expect(taskCenterSource).not.toContain('writeTaskCenterPrefs')
     expect(settingsSource).toContain('automationPolicy')
+  })
+
+  it('places sound preferences next to telemetry without a second sound control in automation', () => {
+    const automation = readCode(path.join(settingsDirectory, 'AutomationPermissionsSection.tsx'))
+    expect(automation).not.toContain('notificationSound')
+    expect(automation).toContain('settings.systemNotifications')
+    expect(settingsSource).toContain('<AttentionSoundSection />')
+    expect(settingsSource.indexOf('<AttentionSoundSection />')).toBeLessThan(settingsSource.indexOf('<TelemetrySection />'))
   })
 
   it('keeps cross-device folder setup inside File & saving', () => {

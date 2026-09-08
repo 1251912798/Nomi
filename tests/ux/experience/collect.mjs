@@ -3,7 +3,7 @@ import path from 'node:path'
 import { createHash } from 'node:crypto'
 import { performance } from 'node:perf_hooks'
 import { screenshotSettled } from '../_assert.mjs'
-import { scanFeel } from '../_feel.mjs'
+import { installFeelObserver } from '../_feel-observer.mjs'
 import { installProbe, summarizeDom } from './dom.mjs'
 
 export const hash = (value) => createHash('sha256').update(value).digest('hex')
@@ -25,12 +25,14 @@ export async function createCollector({ journey, outputDir, identity }) {
     steps: [],
     startedAt: new Date().toISOString(),
   }
+  let feelObserver
   let page,
     previousPointer = null
   const save = () => fs.writeFile(path.join(outputDir, 'steps.json'), JSON.stringify(run, null, 2) + '\n')
   async function attach(win) {
     if (page) throw new Error('Collector already attached')
     page = win
+    feelObserver = installFeelObserver(page, { name: `experience-${journey.id}` })
     await page.addInitScript(installProbe)
     await page.evaluate(installProbe)
     run.startup = await page.evaluate(() => ({
@@ -114,13 +116,8 @@ export async function createCollector({ journey, outputDir, identity }) {
     })
     // Capture/scanning overhead is deliberately outside action and completion durations.
     const after = await snapshot(`${prefix}-after.png`)
-    let feel
-    try {
-      feel = await scanFeel(page, { label: `${journey.id}/${id}` })
-    } catch (caught) {
-      if (!Array.isArray(caught.findings)) throw caught
-      feel = { findings: caught.findings }
-    }
+    const feel = feelObserver.records.findLast((record) => record.screenshot === path.join(outputDir, after.screenshot))
+    if (!feel) throw new Error('Shared feel observer did not record the step screenshot')
     let pointerDistancePx = 0,
       fittsSum = 0,
       pointerPairs = 0

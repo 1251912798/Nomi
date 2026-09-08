@@ -4,7 +4,7 @@
     "agent-panel": {
       "compatibility": {
         "rubricVersion": 1,
-        "sourceHash": "2858c9ed7b5f6530f65bf25b39fc98cd3a1cac5888752e2bc67243df46631c60",
+        "sourceHash": "bfd9e08a1cb8d2b7b5c9b0350c1d9ec83b97af551a7b81047265d31bbbd8dee8",
         "platform": "darwin",
         "architecture": "arm64",
         "playwright": "1.60.0",
@@ -27,13 +27,13 @@
         "longCopyCount": 0,
         "pointerDistancePx": 1620.476028836415,
         "fittsSum": 12.003117042731054,
-        "feelFindings": 12
+        "feelFindings": 16
       }
     },
     "canvas-image": {
       "compatibility": {
         "rubricVersion": 1,
-        "sourceHash": "2858c9ed7b5f6530f65bf25b39fc98cd3a1cac5888752e2bc67243df46631c60",
+        "sourceHash": "bfd9e08a1cb8d2b7b5c9b0350c1d9ec83b97af551a7b81047265d31bbbd8dee8",
         "platform": "darwin",
         "architecture": "arm64",
         "playwright": "1.60.0",
@@ -56,13 +56,13 @@
         "longCopyCount": 0,
         "pointerDistancePx": 2495.1232625670273,
         "fittsSum": 20.88866344722061,
-        "feelFindings": 61
+        "feelFindings": 63
       }
     },
     "settings-model": {
       "compatibility": {
         "rubricVersion": 1,
-        "sourceHash": "2858c9ed7b5f6530f65bf25b39fc98cd3a1cac5888752e2bc67243df46631c60",
+        "sourceHash": "bfd9e08a1cb8d2b7b5c9b0350c1d9ec83b97af551a7b81047265d31bbbd8dee8",
         "platform": "darwin",
         "architecture": "arm64",
         "playwright": "1.60.0",
@@ -85,7 +85,7 @@
         "longCopyCount": 9,
         "pointerDistancePx": 2559.013476007323,
         "fittsSum": 16.747871908765934,
-        "feelFindings": 78
+        "feelFindings": 27
       }
     }
   }
