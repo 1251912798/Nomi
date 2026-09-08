@@ -1,6 +1,6 @@
 # PR #658 点击超时：根因调查
 
-状态：已确认直接原因；未修改生产代码，布局修复待需求冲突裁决。调查分支 `feat/process-feedback-phases-20260908`，HEAD `d2ea66f8cc5a56e48f09ef430b16c806ff1009f7`。
+状态：历史调查记录。用户已于 2026-09-09 裁决，实施与验收见 `2026-09-09-pr658-neighbor-placement.md`；以下保留当时证据。调查分支 `feat/process-feedback-phases-20260908`，HEAD `d2ea66f8cc5a56e48f09ef430b16c806ff1009f7`。
 
 ## 已证实的事实
 
@@ -46,3 +46,12 @@ CI run 34252289801 测试 SHA 是 `614de8cbe28769690b86f662e5747d295ed39722`，�
 原始未加诊断、未改等待/点击的 full shard 2/2：6/7；batch-production 通过。随后 critical：3/4。两组均卡在 `canvas-card-stack.walk.mjs:223` 的“2 版”按钮，日志是 `element is outside of the viewport`，非不稳定。收据为 `full-2of2-summary.json` 和 `critical-summary.json`。本地平台 macOS，不把本地通过称为 Linux 验证。
 
 本轮没有修改生产代码，故没有运行交付 gates、提交或推送；未声称修复完成。
+
+## 先查别人
+
+本节补齐已有调查的来源索引。用户明确裁决为现有避让规则延伸、不需外部调研；没有新增框架或另造内核。
+
+- 现有共享放置 owner：`src/workbench/generationCanvas/nodes/useComposerViewportPlacement.ts:34`；原调查已确认它只避让视口和 dock，本轮在此补入邻居矩形。
+- 真实触发入口：`tests/ux/canvas-batch-production.walk.mjs:410`；重试后点击已成功的邻近节点，故不是生成中尺寸抖动。
+- 同类入口与版本托盘：`tests/ux/canvas-card-stack.walk.mjs:170`；同一参数卡的矩形断言与原版本切换全链验收。
+- 结论：沿用现有 composer；无需新增依赖、替换 React Flow 或另建浮层体系。依据 `src/workbench/generationCanvas/nodes/NodeGenerationComposer.tsx:535` 的真实宿主。

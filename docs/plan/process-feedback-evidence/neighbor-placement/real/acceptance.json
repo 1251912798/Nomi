@@ -1,0 +1,177 @@
+{
+  "paidCalls": 0,
+  "screenshots": [
+    "00-image-idle",
+    "selected-generating",
+    "unselected-generating",
+    "01-image-generating",
+    "02-task-center-generating",
+    "03-image-finalizing",
+    "selected-complete",
+    "unselected-complete",
+    "04-image-saved",
+    "10-three-real-surfaces-generating",
+    "11-preview-timeline-regenerating",
+    "05-image-queued",
+    "06-task-center-queued",
+    "07-video-generating-no-history",
+    "08-video-generating-reduced-motion",
+    "09-video-generating-zoom-60",
+    "12-image-failed-vendor-disabled",
+    "13-task-center-failed-vendor-disabled"
+  ],
+  "checks": [
+    {
+      "criterion": "selected-generating",
+      "geometry": {
+        "node": {
+          "left": 705,
+          "top": 245,
+          "right": 1045,
+          "bottom": 525,
+          "width": 340,
+          "height": 280
+        },
+        "number": {
+          "left": 711,
+          "top": 494.5,
+          "right": 759.21875,
+          "bottom": 519,
+          "width": 48.21875,
+          "height": 24.5
+        },
+        "status": {
+          "left": 715,
+          "top": 255,
+          "right": 849.34375,
+          "bottom": 279.5,
+          "width": 134.34375,
+          "height": 24.5
+        },
+        "toolbar": {
+          "left": 852,
+          "top": 187,
+          "right": 898,
+          "bottom": 229,
+          "width": 46,
+          "height": 42
+        }
+      },
+      "result": "green"
+    },
+    {
+      "criterion": "unselected-generating",
+      "geometry": {
+        "node": {
+          "left": 705,
+          "top": 245,
+          "right": 1045,
+          "bottom": 525,
+          "width": 340,
+          "height": 280
+        },
+        "number": {
+          "left": 711,
+          "top": 494.5,
+          "right": 759.21875,
+          "bottom": 519,
+          "width": 48.21875,
+          "height": 24.5
+        },
+        "status": {
+          "left": 715,
+          "top": 255,
+          "right": 849.34375,
+          "bottom": 279.5,
+          "width": 134.34375,
+          "height": 24.5
+        },
+        "toolbar": null
+      },
+      "result": "green"
+    },
+    {
+      "criterion": "selected-complete",
+      "geometry": {
+        "node": {
+          "left": 705,
+          "top": 245,
+          "right": 1045,
+          "bottom": 525,
+          "width": 340,
+          "height": 280
+        },
+        "number": {
+          "left": 711,
+          "top": 494.5,
+          "right": 759.21875,
+          "bottom": 519,
+          "width": 48.21875,
+          "height": 24.5
+        },
+        "status": null,
+        "toolbar": {
+          "left": 461.1640625,
+          "top": 187,
+          "right": 1288.8359375,
+          "bottom": 229,
+          "width": 827.671875,
+          "height": 42
+        }
+      },
+      "result": "green"
+    },
+    {
+      "criterion": "unselected-complete",
+      "geometry": {
+        "node": {
+          "left": 705,
+          "top": 245,
+          "right": 1045,
+          "bottom": 525,
+          "width": 340,
+          "height": 280
+        },
+        "number": {
+          "left": 711,
+          "top": 494.5,
+          "right": 759.21875,
+          "bottom": 519,
+          "width": 48.21875,
+          "height": 24.5
+        },
+        "status": null,
+        "toolbar": null
+      },
+      "result": "green"
+    },
+    {
+      "criterion": "three-real-surfaces-same-instant",
+      "nodeId": "gen-v2-image-mtt1ov85-0fks",
+      "messages": [
+        "生成中 · 已等 20 秒",
+        "生成中 · 已等 20 秒",
+        "生成中 · 已等 20 秒"
+      ],
+      "result": "green"
+    },
+    {
+      "criterion": "real-zoom-60",
+      "renderedFont": 12.000024,
+      "composerFont": 13.000026,
+      "result": "green"
+    },
+    {
+      "criterion": "real-vendor-disabled-recovery",
+      "result": "green"
+    },
+    {
+      "criterion": "real-reduced-motion",
+      "result": "green"
+    },
+    {
+      "criterion": "video-no-history-no-estimate",
+      "result": "green"
+    }
+  ]
+}

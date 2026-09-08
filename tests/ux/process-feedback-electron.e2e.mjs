@@ -2,12 +2,12 @@ import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 import { launchNomiApp } from './_launchApp.mjs'
-import { expect, screenshotSettled } from './_assert.mjs'
+import { expect, expectAbsent, proveProbe, screenshotSettled } from './_assert.mjs'
 import { findCanvasBlankPoint } from './_canvasHit.mjs'
 import { createProcessFixture } from './process-feedback-real-fixture.mjs'
 
 const root = path.resolve('.')
-const evidence = path.join(root, 'docs/plan/process-feedback-evidence/real')
+const evidence = path.join(root, 'docs/plan/process-feedback-evidence/neighbor-placement/real')
 await fs.mkdir(evidence, { recursive: true })
 const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'nomi-process-real-'))
 const settingsDir = path.join(tempRoot, 'settings')
@@ -17,6 +17,22 @@ const application = await launchNomiApp({ name: 'process-real', tempRoot, settin
 let page = application.win
 const receipt = { paidCalls: 0, screenshots: [], checks: [] }
 async function shot(name) {
+  if (/^(selected|unselected)-(generating|complete)$/.test(name)) {
+    const media = page.locator('article[data-node-id]').first()
+    await expect(media.locator('[data-shot-number]')).toBeVisible()
+    const geometry = await media.evaluate(el => {
+      const rect = element => { const r = element.getBoundingClientRect(); return { left: r.left, top: r.top, right: r.right, bottom: r.bottom, width: r.width, height: r.height } }
+      return { node: rect(el), number: rect(el.querySelector('[data-shot-number]')), status: el.querySelector('[data-generation-status]') ? rect(el.querySelector('[data-generation-status]')) : null, toolbar: el.querySelector('[data-node-floating-toolbar]') ? rect(el.querySelector('[data-node-floating-toolbar]')) : null }
+    })
+    expect(geometry.number.bottom).toBeLessThanOrEqual(geometry.node.bottom)
+    expect(geometry.number.top).toBeGreaterThan(geometry.node.top + geometry.node.height / 2)
+    if (name.endsWith('generating')) {
+      expect(geometry.status.top).toBeGreaterThanOrEqual(geometry.node.top)
+      expect(geometry.status.bottom).toBeLessThan(geometry.number.top)
+    } else expect(geometry.status).toBeNull()
+    if (geometry.toolbar) expect(geometry.toolbar.bottom).toBeLessThanOrEqual(geometry.node.top)
+    receipt.checks.push({ criterion: name, geometry, result: 'green' })
+  }
   if (name === 'FAIL') await page.screenshot({ path: path.join(evidence, `${name}.png`) })
   else await screenshotSettled(page, { path: path.join(evidence, `${name}.png`) })
   receipt.screenshots.push(name)
@@ -85,7 +101,14 @@ try {
   console.log('confirmed generation')
   await expect.poll(() => fixture.jobs.length, { timeout: 30000 }).toBe(1)
   await expect(node.locator('[data-generation-message]')).toContainText('生成中', { timeout: 30000 })
+  const generationStatusProof = await proveProbe(node.locator('[data-generation-status]'), '真实生成状态条已出现')
   await expect(node.locator('[data-generation-message]')).toContainText(/已等 (2[0-9]|[3-9][0-9]) 秒/, { timeout: 45000 })
+  await shot('selected-generating')
+  const emptyDuringGeneration = await findCanvasBlankPoint(page)
+  await page.mouse.click(emptyDuringGeneration.x, emptyDuringGeneration.y)
+  await expect(node).toHaveAttribute('data-selected', 'false')
+  await shot('unselected-generating')
+  await node.click({ position: { x: 40, y: 15 } })
   await shot('01-image-generating')
   await page.locator('[data-task-center-trigger]').click()
   await expect(page.locator('[data-nomi-right-panel=tasks] [data-generation-message]')).toBeVisible()
@@ -96,7 +119,15 @@ try {
   await expect(node.locator('[data-generation-message]')).toHaveText('正在存到你电脑上')
   await shot('03-image-finalizing')
   await application.app.evaluate(() => globalThis.__pfImportGate.release())
-  await expect(node.locator('[data-generation-message]')).toHaveText('已保存到项目', { timeout: 30000 })
+  await expect(node.locator('[data-node-media-state=ready]')).toBeAttached({ timeout: 30000 })
+  await expectAbsent(node.locator('[data-generation-status]'), { provenBy: generationStatusProof, message: '完成态状态条消失' })
+  await page.getByRole('button', { name: '关闭任务面板' }).click()
+  await shot('selected-complete')
+  const emptyAfterCompletion = await findCanvasBlankPoint(page)
+  await page.mouse.click(emptyAfterCompletion.x, emptyAfterCompletion.y)
+  await expect(node).toHaveAttribute('data-selected', 'false')
+  await shot('unselected-complete')
+  await page.locator('[data-task-center-trigger]').click()
   await shot('04-image-saved')
   await page.getByRole('button', { name: '关闭任务面板' }).click()
   await node.click({ position: { x: 40, y: 15 } })
@@ -131,7 +162,8 @@ try {
   await shot('11-preview-timeline-regenerating')
   await page.getByRole('button', { name: '生成', exact: true }).first().click()
   fixture.jobs[1].done = true
-  await expect(node.locator('[data-generation-message]')).toHaveText('已保存到项目', { timeout: 30000 })
+  await expect(node.locator('[data-node-media-state=ready]')).toBeAttached({ timeout: 30000 })
+  await expectAbsent(node.locator('[data-generation-status]'), { provenBy: generationStatusProof, message: '完成态状态条消失' })
   // Reduced motion and 60% are checked against the live node, not a lab transform.
   await page.getByRole('button', { name: '添加视频节点', exact: true }).click()
   const videoId = await page.locator('article[data-node-id]').last().getAttribute('data-node-id')

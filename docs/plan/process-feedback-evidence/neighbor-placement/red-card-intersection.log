@@ -1,0 +1,47 @@
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+ExpectError: 参数卡矩形不得与任何非选中节点矩形相交
+
+参数卡矩形不得与任何非选中节点矩形相交
+
+expect(received).toEqual(expected) // deep equality
+
+- Expected  - 1
++ Received  + 4
+
+- Array []
++ Array [
++   "group-character",
++   "group-scene",
++ ]
+
+Call Log:
+- Timeout 5000ms exceeded while waiting on the predicate
+    at captureRawStack (/Users/aoqimin/Desktop/Nomi-process-feedback/node_modules/.pnpm/playwright-core@1.60.0/node_modules/playwright-core/lib/coreBundle.js:3130:17)
+    at callMatcherAsStep (/Users/aoqimin/Desktop/Nomi-process-feedback/node_modules/.pnpm/playwright@1.60.0/node_modules/playwright/lib/matchers/expect.js:12873:57)
+    at Object.toEqual (/Users/aoqimin/Desktop/Nomi-process-feedback/node_modules/.pnpm/playwright@1.60.0/node_modules/playwright/lib/matchers/expect.js:12863:23)
+    at /Users/aoqimin/Desktop/Nomi-process-feedback/tests/ux/canvas-card-stack.walk.mjs:177:43 {
+  matcherResult: {
+    pass: false,
+    message: '参数卡矩形不得与任何非选中节点矩形相交\n' +
+      '\n' +
+      'expect(received).toEqual(expected) // deep equality\n' +
+      '\n' +
+      '- Expected  - 1\n' +
+      '+ Received  + 4\n' +
+      '\n' +
+      '- Array []\n' +
+      '+ Array [\n' +
+      '+   "group-character",\n' +
+      '+   "group-scene",\n' +
+      '+ ]\n' +
+      '\n' +
+      'Call Log:\n' +
+      '- Timeout 5000ms exceeded while waiting on the predicate',
+    name: 'toEqual'
+  }
+}
+
+Node.js v24.13.1
