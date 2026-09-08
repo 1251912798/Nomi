@@ -130,7 +130,7 @@ describe('releaseWorkbenchProjectRuntimeState', () => {
       projectId,
       projectName: projectId,
       canPersist: () => false,
-      saveProject: async () => { throw new Error('not used') },
+      persist: async () => { throw new Error('not used') },
       onSaved: () => undefined,
     })
     setActiveWorkbenchProjectSaveTarget(target('project-A'))
@@ -157,7 +157,7 @@ describe('releaseWorkbenchProjectRuntimeState', () => {
       projectId: 'project-A',
       projectName: 'project-A',
       canPersist: () => false,
-      saveProject: async () => { throw new Error('not used') },
+      persist: async () => { throw new Error('not used') },
       onSaved: () => undefined,
     }
     setActiveWorkbenchProjectSaveTarget(target)

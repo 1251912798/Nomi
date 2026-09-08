@@ -89,23 +89,14 @@ export type WorkbenchProjectSaveFn = (
   projectName: string,
 ) => Promise<WorkbenchProjectRecordV1>
 
-export async function saveCurrentWorkbenchProject(
-  projectId: string,
-  projectName: string,
-  saveProject: WorkbenchProjectSaveFn,
-): Promise<WorkbenchProjectRecordV1> {
-  return saveProject(projectId, readCurrentWorkbenchProjectPayload(), projectName)
-}
-
 type ActiveWorkbenchProjectSaveTarget = {
   projectId: string
-  projectName: string
   canPersist: () => boolean
-  saveProject: WorkbenchProjectSaveFn
-  onSaved: (record: WorkbenchProjectRecordV1) => void
+  persist: () => Promise<WorkbenchProjectRecordV1 | null>
 }
 
 let activeWorkbenchProjectSaveTarget: ActiveWorkbenchProjectSaveTarget | null = null
+const projectSaveOwners = new Map<ActiveWorkbenchProjectSaveTarget, () => Promise<WorkbenchProjectRecordV1 | null>>()
 
 export function setActiveWorkbenchProjectSaveTarget(target: ActiveWorkbenchProjectSaveTarget | null): void {
   activeWorkbenchProjectSaveTarget = target
@@ -126,11 +117,15 @@ export function getActiveWorkbenchProjectId(): string | null {
 }
 
 export async function persistActiveWorkbenchProjectNow(): Promise<WorkbenchProjectRecordV1 | null> {
-  const target = activeWorkbenchProjectSaveTarget
-  if (!target || !target.canPersist()) return null
-  const saved = await saveCurrentWorkbenchProject(target.projectId, target.projectName, target.saveProject)
-  target.onSaved(saved)
-  return saved
+  const current = activeWorkbenchProjectSaveTarget
+  const target = current?.canPersist() ? current : null
+  // UI hydration may clear activeProject before the outgoing subscription is
+  // disposed. Its captured writes still own a receipt and must finish on exit.
+  const previous = [...projectSaveOwners].filter(([owner]) => owner !== target)
+  if (previous.length) await Promise.all(previous.map(([, flush]) => flush()))
+  if (!target) return null
+  if (activeWorkbenchProjectSaveTarget === target && target.canPersist()) return target.persist()
+  return projectSaveOwners.get(target)?.() ?? null
 }
 
 export type WorkbenchProjectPersistenceOptions = {
@@ -159,56 +154,82 @@ function createProjectSaveQueue(input: {
 }) {
   let running = false
   let pending: QueuedWorkbenchProjectSave | null = null
+  let completion = Promise.resolve()
+  let savedRecord: WorkbenchProjectRecordV1 | null = null
+  let failed = false
+  let failure: unknown
 
   const drain = async (): Promise<void> => {
     if (running) return
     running = true
     try {
-      while (pending && input.isActive()) {
+      while (pending) {
         const next = pending
         pending = null
         try {
           const saved = await input.saveProject(next.projectId, next.payload, next.projectName)
+          savedRecord = saved
+          failed = false
           if (input.isActive()) input.onSaved(saved)
         } catch (error: unknown) {
+          failed = true
+          failure = error
           if (input.isActive()) input.onSaveError?.(error)
         }
       }
     } finally {
       running = false
-      if (pending && input.isActive()) void drain()
     }
   }
 
   return {
+    hasPending(): boolean { return running || pending !== null },
+    hasFailed(): boolean { return failed },
     enqueue(save: QueuedWorkbenchProjectSave): void {
       pending = save
-      void drain()
+      if (!running) completion = drain()
+    },
+    async flush(): Promise<WorkbenchProjectRecordV1 | null> {
+      await completion
+      if (failed) throw failure
+      return savedRecord
     },
   }
 }
 
-export function subscribeWorkbenchProjectPersistence(options: WorkbenchProjectPersistenceOptions): () => void {
+export function subscribeWorkbenchProjectPersistence(options: WorkbenchProjectPersistenceOptions): () => Promise<void> {
   let disposed = false
   let saveScheduled = false
   let saveTimer: ReturnType<typeof setTimeout> | null = null
+  let ownedPayload: WorkbenchProjectPayload | null = null
+  const ownsRuntime = () => !options.isHydrating() && options.canPersist()
   const saveQueue = createProjectSaveQueue({
     saveProject: options.saveProject,
     onSaved: options.onSaved,
     onSaveError: options.onSaveError,
-    isActive: () => !disposed,
+    isActive: () => !disposed && ownsRuntime(),
   })
+  const flushOwned = async (): Promise<WorkbenchProjectRecordV1 | null> => {
+    if (saveTimer) { clearTimeout(saveTimer); saveTimer = null }
+    if ((saveScheduled || saveQueue.hasFailed()) && ownedPayload) {
+      saveQueue.enqueue({ projectId: options.projectId, projectName: options.projectName, payload: ownedPayload })
+    }
+    saveScheduled = false
+    const record = await saveQueue.flush()
+    if (disposed) projectSaveOwners.delete(target)
+    return record
+  }
   const flushSave = async () => {
     if (saveTimer) {
       clearTimeout(saveTimer)
       saveTimer = null
     }
     saveScheduled = false
-    if (disposed || options.isHydrating() || !options.canPersist()) return
+    if (disposed || !ownedPayload) return
     saveQueue.enqueue({
       projectId: options.projectId,
       projectName: options.projectName,
-      payload: readCurrentWorkbenchProjectPayload(),
+      payload: ownedPayload,
     })
   }
   const flushPendingSave = () => {
@@ -216,7 +237,8 @@ export function subscribeWorkbenchProjectPersistence(options: WorkbenchProjectPe
     void flushSave()
   }
   const saveIfReady = () => {
-    if (options.isHydrating() || !options.canPersist()) return
+    if (disposed || !ownsRuntime()) return
+    ownedPayload = readCurrentWorkbenchProjectPayload()
     saveScheduled = true
     if (saveTimer) clearTimeout(saveTimer)
     saveTimer = setTimeout(() => { void flushSave() }, PROJECT_SAVE_DEBOUNCE_MS)
@@ -225,14 +247,24 @@ export function subscribeWorkbenchProjectPersistence(options: WorkbenchProjectPe
   const unsubscribeGeneration = useGenerationCanvasStore.subscribe((state) => state.persistRevision, saveIfReady)
   window.addEventListener('pagehide', flushPendingSave)
   window.addEventListener('beforeunload', flushPendingSave)
-  setActiveWorkbenchProjectSaveTarget({
+  const target: ActiveWorkbenchProjectSaveTarget = {
     projectId: options.projectId,
-    projectName: options.projectName,
-    canPersist: () => !options.isHydrating() && options.canPersist(),
-    saveProject: options.saveProject,
-    onSaved: options.onSaved,
-  })
-  return () => {
+    canPersist: () => !disposed && ownsRuntime(),
+    persist: async () => {
+      if (!ownsRuntime()) return null
+      ownedPayload = readCurrentWorkbenchProjectPayload()
+      saveScheduled = true
+      let record: WorkbenchProjectRecordV1 | null
+      do {
+        record = await flushOwned()
+      } while (saveScheduled)
+      if (disposed && record && activeWorkbenchProjectSaveTarget === target && ownsRuntime()) options.onSaved(record)
+      return record
+    },
+  }
+  projectSaveOwners.set(target, flushOwned)
+  setActiveWorkbenchProjectSaveTarget(target)
+  const dispose = async () => {
     // Cancel the debounce timer so it doesn't fire after disposal
     if (saveTimer) {
       clearTimeout(saveTimer)
@@ -242,22 +274,23 @@ export function subscribeWorkbenchProjectPersistence(options: WorkbenchProjectPe
     window.removeEventListener('beforeunload', flushPendingSave)
     unsubscribeWorkbench()
     unsubscribeGeneration()
-    clearActiveWorkbenchProjectSaveTarget(options.projectId)
-    // CRITICAL: Flush any pending save BEFORE marking disposed.
-    // We bypass the async save queue (whose drain loop short-circuits on
-    // `!isActive` i.e. `disposed`) and call saveProject directly. This is
-    // essential to prevent data loss when the subscription is torn down by
-    // a Vite hot-reload, a project rename, or a component unmount while
-    // there are debounced changes still pending.
-    if (saveScheduled || saveTimer !== null) {
-      saveScheduled = false
-      const payload = readCurrentWorkbenchProjectPayload()
-      const finalProjectId = options.projectId
-      const finalProjectName = options.projectName
-      void options.saveProject(finalProjectId, payload, finalProjectName)
-        .then((record) => { options.onSaved(record) })
-        .catch((error: unknown) => { options.onSaveError?.(error) })
-    }
+    // Global stores may already belong to the next project. Only drain snapshots
+    // captured while this subscription owned the runtime; never sample on cleanup.
+    const needsReceipt = saveScheduled || saveQueue.hasPending() || saveQueue.hasFailed()
     disposed = true
+    try {
+      const record = await flushOwned()
+      if (needsReceipt && record && ownsRuntime()) options.onSaved(record)
+      if (activeWorkbenchProjectSaveTarget === target) clearActiveWorkbenchProjectSaveTarget(options.projectId)
+    } catch (error: unknown) {
+      options.onSaveError?.(error)
+      throw error
+    }
+  }
+  let disposal: Promise<void> | null = null
+  return () => {
+    if (disposal) return disposal
+    disposal = dispose()
+    return disposal
   }
 }
