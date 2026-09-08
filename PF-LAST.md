@@ -1,16 +1,16 @@
 # PF-LAST
 
-## 2026-09-09 C-1b img-fx 已实现，待主会话视觉裁决后完成 gates/push
+## 2026-09-09 C-1b img-fx 已实现，主会话已批准样张，完整 gates 绿，准备 push
 
 - 版本：唯一新增依赖 `img-fx@0.5.1`（精确版本，lockfile 已提交）；四列表、26 个公开字段裁决已登记。分支 `feat/process-feedback-phases-20260908`，既有 PR #658，本轮未 push、未合并 PR。
-- 实验室四态：`docs/plan/process-feedback-evidence/imgfx/lab/pf-fx-generating.png`、`pf-fx-preview-reveal.png`、`pf-fx-final-reveal.png`、`pf-fx-done-clean.png`；另有 `pf-fx-reduced.png`、`pf-fx-organic.png`。真实页面同名四态在 `docs/plan/process-feedback-evidence/imgfx/real/`。全部逐张 Read；已有状态变化的 12 张实际图在 `baseline-review/`，未录入基线。
+- 实验室四态：`docs/plan/process-feedback-evidence/imgfx/lab/pf-fx-generating.png`、`pf-fx-preview-reveal.png`、`pf-fx-final-reveal.png`、`pf-fx-done-clean.png`；另有 `pf-fx-reduced.png`、`pf-fx-organic.png`。真实页面同名四态在 `docs/plan/process-feedback-evidence/imgfx/real/`。全部逐张 Read；已有状态变化的 12 张实际图在 `baseline-review/`，已获 PF-RULINGS.md 批准，仅录 process-feedback 相关基线。
 - 同机 8 节点性能：改前 119.8 FPS / P95 9.4ms / long task 0；末次改后 119.9 FPS / P95 10.2ms / long task 0（中间复测 120.2 FPS / P95 9.5ms）。4 fx + 4 静态回退、槽位交接、离屏 fx=0、最终 canvas=0 均通过。交付数字以 `imgfx/performance-{before,after,final}.json` 为准；截图 before/after 指场景开始/清空，不是版本前后。
 - 真机：隔离 Electron → 生产确认 → loopback 供应商 → 真实 ComfyUI IPC 预览 → 本地化落盘，费用 0；末次完成后 1175.8ms 卸载全部等待壳，1200ms 硬期限通过，无 pageerror。库内部 reveal 约 3s、无公开调速字段，因此 1100ms 应用期限会提前卸载，露出下面真实媒体；未 fork 或改 shader。
 - 变异证据：`imgfx/red-missing-fx.log`（旧 CSS 无 img-fx 红）、`red-overstay-1s.log`（故意多留 1s，1200ms 即时断言红）、`red-fabricated-image.log`（无真帧塞假图红）；均已恢复。`red-motion-resume.log` 是软件 GPU/实验室 store 调查记录，不作为生产缺陷证据。
-- 全量测试初跑 12071 通过 / 2 失败 / 2 跳过；两处失败已修：浏览器 visibility 在 effect 读取，保留无 DOM 音频渲染；实验室 zoom 使用真实宿主 dispatcher。红证据 `imgfx/red-render-and-lab-wiring.log`，全量复跑日志 `/tmp/pf-imgfx-all-tests-final.log`。根因合同、walkthroughs、定向 lint、typecheck、浏览器门控与真实页面验收已通过。
-- contracts 全量已执行 75 项：69 通过、3 阻断、3 advisory；prior-art 与 walkthroughs 两项随后修正并通过，剩余 design-lab 基线待主会话批准。完整 `gates` 尚未绿，严格未 push；不能称已交付。日志 `/tmp/pf-imgfx-contracts-all.log`、`/tmp/pf-imgfx-visual-review.log`。
-- 里程碑：`c336ba149` 依赖+登记；`5bbbc9049` 映射壳；`d277025c1` 门控+性能；本节随第 4 笔实验室/真实页证据提交。期间正常 merge `origin/main` 得到 `90b514a40`，无内核改动、无绕钩子。
-- 待裁决：任务 §5 明确“基线只在主会话看过截图后录”；此外“媒体上零元素”与此前明确常驻镜头编号/图片标题冲突。现实现只移除等待壳、scrim、进度和 canvas，保留既有常驻标签，未擅自撤销前裁决。
+- 全量测试初跑 12071 通过 / 2 失败 / 2 跳过；两处失败已修：浏览器 visibility 在 effect 读取，保留无 DOM 音频渲染；实验室 zoom 使用真实宿主 dispatcher。红证据 `imgfx/red-render-and-lab-wiring.log`，全量复跑已绿：12073 Vitest / 13 janitor / 306 runtime / 8 stats 全通过，2 Vitest 跳过；日志 `/tmp/pf-imgfx-all-tests-final.log`。根因合同、walkthroughs、定向 lint、typecheck、浏览器门控与真实页面验收已通过。
+- 最终 contracts 75 项：72 通过、0 阻断、3 advisory；全屏视觉 148/148，未更新其他屏。完整 `pnpm run gates` 退出 0（运行时、构建通过），日志 `/tmp/pf-imgfx-gates-final.log`；先前红门岗保留在 `/tmp/pf-imgfx-contracts-all.log`。
+- 里程碑：`c336ba149` 依赖+登记；`5bbbc9049` 映射壳；`d277025c1` 门控+性能；`9dca691b2` 实验室/真实页证据。期间正常 merge `origin/main` 得到 `90b514a40`，无内核改动、无绕钩子。
+- 裁决已到：`PF-RULINGS.md`（主会话 06:05）批准真实四态、只录 process-feedback/img-fx 相关基线，并明确完成态保留镜头号与右下图片标题。等待壳/scrim/进度/canvas 全部卸载符合最终裁决。
 
 ## 2026-09-09 PR #658 收尾完成：4 笔正常提交，分批 push 成功
 - `a5899912e06a2a9e65a2c716aee3dd114c1e510e`：画布参数卡避让与生成反馈。

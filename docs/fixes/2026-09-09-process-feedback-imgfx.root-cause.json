@@ -108,8 +108,7 @@
   },
   "migration": "No stored data changes; transient effects only.",
   "residual_risks": [
-    "img-fx 0.5.1 fixes reveal duration internally; the 1.2s application deadline can end a reveal before visible.",
-    "Baseline screenshots await main-session review; prior permanent shot/title overlays require clarification against the new zero-elements wording."
+    "img-fx 0.5.1 fixes reveal duration internally; the 1.2s application deadline can end a reveal before visible."
   ],
   "invariant_owner_layer": {
     "layer": "src/workbench/generationCanvas/nodes/GenerationWaitingSurface.tsx",
