@@ -275,6 +275,9 @@ try {
     projectsDir: path.join(tempRoot, 'projects'),
     env: { NOMI_CAPABILITY_DIR: capabilityDir },
   })
+  const guiCapabilityDir = await gui.app.evaluate(() => process.env.NOMI_CAPABILITY_DIR)
+  console.log(`PACKAGED MCP capabilityDir: GUI=${guiCapabilityDir}; helper=${capabilityDir}`)
+  assert(guiCapabilityDir === capabilityDir && gui.capabilityDir === capabilityDir, 'GUI and helper capability directories agree')
   const evidence = []
   for (const client of clients) evidence.push(await smokeClient(client))
   evidence.push(await smokeClient('generic', { signed: false }))
