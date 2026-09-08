@@ -53,3 +53,12 @@
 |---|---|---|---|---|
 | 控制流 | img-fx README 手动 ref / autoReveal；index.d.ts:183 | 真实预览/最终产物触发 ref，禁止演示池自动 reveal | 有意不同：生成结果必须真实 | 不适用 |
 | 观测与测试 | index.d.ts:372 onCycle 回调；index.es.js:2186 dispose | 使用 phase+src 认最终图，1.2s 上限和卸载 canvas 验证 | 一致；补业务期限约束 | 不适用 |
+
+### 实施证据（2026-09-09）
+- 先红：`process-feedback-evidence/imgfx/red-missing-fx.log`；故意把终态等待延长 1s：`red-overstay-1s.log` 在 1200ms 读到 1 层而非 0；无真图池塞假图：`red-fabricated-image.log` 读到 image-count=1 而非 0。变异已恢复。
+- 浏览器实验室四态与 reduced 截图：`process-feedback-evidence/imgfx/lab/`；真实 Electron 四态：`process-feedback-evidence/imgfx/real/`。均逐张查看，未录入基线（待主会话查看）。
+- 真机完整生成闭环：隔离配置、生产确认漏斗、loopback 供应商、真实 ComfyUI IPC 预览桥、真实本地化落盘；费用 0。最终覆盖层卸载实测 1177ms。
+- 性能同场景（Apple M5 / macOS arm64 / Electron，8 个真实生成节点）：旧实现 119.8 FPS / P95 9.4ms / long task 0；img-fx 119.9 FPS / P95 10.1ms / long task 0，4 个 fx + 4 个静态回退；卸载 canvas=0。原始收据 `tests/ux/perf-results/canvas-pf-imgfx-{before,after}.json`。
+- 实际 deadline 1100ms，预留 React 提交余量，使可见 DOM 在 1200ms 内卸载；与 1200ms 上限裁决一致。
+- 真实预览说明与旧镜头编号重叠：说明归位到顶部状态条下面；不改镜头编号的既有裁决。
+- 实验室 categoryId 最初为空，rememberCategoryViewport 对空分类直接 return；补齐真实 shots/audio 分类后再验证缩放门控，避免把未生效的输入称为覆盖。

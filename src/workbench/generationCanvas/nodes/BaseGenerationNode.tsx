@@ -1,4 +1,5 @@
 import React from 'react'
+import type { ImageGenerationPreset } from 'img-fx'
 import { useTranslation } from 'react-i18next'
 import { IconCopy, IconDownload, IconMaximize, IconUpload } from '@tabler/icons-react'
 import ProvenancePanel from './ProvenancePanel'
@@ -35,7 +36,6 @@ import type { GenerationCanvasNode } from '../model/generationCanvasTypes'
 import type { ConnectionAnchorSide } from '../store/canvasStoreTypes'
 import { useGenerationCanvasStore } from '../store/generationCanvasStore'
 import { NodeGeneratingOverlay } from './NodeGeneratingOverlay'
-import { selectIsNodeQueued, useGenerationQueueStore } from '../runner/generationQueueStore'
 import { NodeGenerationStatus } from './NodeGenerationStatus'
 import { ProductionShotOverlays } from './ProductionShotOverlays'
 import { useProductionNodeRetry } from './useProductionNodeRetry'
@@ -72,6 +72,8 @@ export type BaseGenerationNodeProps = {
   readOnly?: boolean
   focusFlash?: boolean
   appear?: boolean
+  waitingMotion?: 'reduced'
+  waitingPreset?: ImageGenerationPreset
 }
 const Scene3DEditor = lazyWithChunkBoundary('3D 场景编辑器', () => import('./Scene3DEditor')) // A5：chunk 失败只降级本卡
 const Model3DViewer = lazyWithChunkBoundary('3D 模型预览', () => import('./model3d/Model3DViewer')) // 生成出的 .glb 卡内可旋转预览（R3F）
@@ -89,6 +91,8 @@ function BaseGenerationNodeImpl({
   readOnly = false,
   focusFlash = false,
   appear = false,
+  waitingMotion,
+  waitingPreset,
 }: BaseGenerationNodeProps): JSX.Element {
   const { t } = useTranslation()
   const productionRetry = useProductionNodeRetry(node) // P4 S6：多镜节点失败→返工链；非多镜/项目没开→null 退回本地重跑（回归门）
@@ -215,9 +219,6 @@ function BaseGenerationNodeImpl({
     commitPersistedChange,
   })
   const isGenerating = status === 'queued' || status === 'running'
-  const isQueued = useGenerationQueueStore((state) => selectIsNodeQueued(state, node.id))
-  // 「已排队但还没轮到」的真相在队列 store（与 node.status 零重叠，见 generationQueueStore 头注释）：在此之前
-  // 后续波次的节点 status 还是 idle，画布上看着像压根没被选中——用户以为漏点了。
   const canGenerate =
     useGenerationCanvasStore((state) =>
       canRunGenerationNode(node, {
@@ -632,7 +633,7 @@ function BaseGenerationNodeImpl({
         />
       ) : null}
 
-      {(isGenerating || isQueued) && !localImageOpPending ? <NodeGeneratingOverlay node={node} /> : null}
+      {!localImageOpPending ? <NodeGeneratingOverlay node={node} motion={waitingMotion} preset={waitingPreset} /> : null}
       <ShotPreviewOverlays shotIndex={shotIndex} />
 
       <ProductionShotOverlays node={node} selected={selected && !isMultiSelectActive} />{/* P4 S5+S6 多镜叠加：占位三态 + 版本条（非多镜早退零开销） */}

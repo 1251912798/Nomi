@@ -1,0 +1,119 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-09-process-feedback-imgfx",
+  "problem_type": "Generation waiting effect ownership and terminal cleanup",
+  "symptom": "Waiting has no img-fx reveal; extending it past success risks leaving media covered.",
+  "direct_cause": "Old waiting component is removed at running status boundary, with no terminal reveal lifecycle.",
+  "class_root": "Shared visual boundary must bind image provenance, animation admission and terminal teardown to real task state.",
+  "affected_population": [
+    "Image and video nodes including regeneration, preview frames and terminal success/error"
+  ],
+  "scope_paths": [
+    "src/workbench/generationCanvas/nodes/GenerationWaitingSurface.tsx",
+    "src/workbench/generationCanvas/nodes/NodeGeneratingOverlay.tsx",
+    "src/workbench/generationCanvas/nodes/BaseGenerationNode.tsx"
+  ],
+  "entry_points": [
+    "Image generation",
+    "Video generation",
+    "Design lab real host"
+  ],
+  "external_sources": [
+    {
+      "kind": "official-doc",
+      "url": "https://www.npmjs.com/package/img-fx/v/0.5.1",
+      "checked_at": "2026-09-09",
+      "purpose": "Published props/ref and cycle phase contract"
+    }
+  ],
+  "invariants": [
+    "No real image means empty reveal pool.",
+    "At most four visible effects; reduced motion and zoom below 0.4 do not mount effects.",
+    "Successful result tears down waiting within 1200ms; failure tears down immediately."
+  ],
+  "generality_proof": "Both image and video use NodeGeneratingOverlay and GenerationWaitingSurface, independent of model or supplier.",
+  "shared_boundaries": [
+    {
+      "path": "src/workbench/generationCanvas/nodes/GenerationWaitingSurface.tsx",
+      "symbol": "GenerationWaitingSurface",
+      "responsibility": "Own admission and 1200ms terminal deadline."
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/NodeGeneratingOverlay.tsx",
+      "symbol": "NodeGeneratingOverlay",
+      "responsibility": "Only a real success transition reveals the actual result; errors remove overlay."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/workbench/generationCanvas/nodes/BaseGenerationNode.tsx",
+      "entry_point": "BaseGenerationNode image/video body",
+      "disposition": "enforced",
+      "evidence": "Both media kinds share the same overlay call."
+    },
+    {
+      "path": "src/devlab/designLab/processFeedback/processFeedbackLabKit.tsx",
+      "entry_point": "ProcessFeedbackStage",
+      "disposition": "enforced",
+      "evidence": "Laboratory seeds real node and preview stores, rendering BaseGenerationNode."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Every generation and regeneration re-enters this lifecycle.",
+    "same_class_scan": [
+      "rg GenerationWaitingSurface src: production NodeGeneratingOverlay is the sole importer.",
+      "Read BaseGenerationNode and ProcessFeedbackStage image/video/preview result producers.",
+      "ReactFlowViewport onlyRenderVisibleElements and ReactFlowNodes shouldRenderFullNodeContent already own viewport/full-node admission."
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "src/workbench/generationCanvas/nodes/GenerationWaitingSurface.tsx",
+    "invariant": "Only real image sources and bounded terminal lifetime enter admitted visual effects.",
+    "failure_mode": "No source leaves empty image pool; completion without an eligible effect removes waiting immediately.",
+    "exception_policy": "none",
+    "strategy": "Single image/video mapping boundary and module-level admission; replace old CSS sheen.",
+    "artifacts": [
+      "src/workbench/generationCanvas/nodes/GenerationWaitingSurface.tsx",
+      "src/workbench/generationCanvas/nodes/NodeGeneratingOverlay.tsx",
+      "src/workbench/generationCanvas/nodes/BaseGenerationNode.tsx"
+    ]
+  },
+  "regression_tests": [
+    "tests/ux/process-feedback-imgfx.e2e.mjs",
+    "tests/ux/process-feedback-imgfx-real.e2e.mjs"
+  ],
+  "class_regression_tests": [
+    "tests/ux/process-feedback-imgfx.e2e.mjs",
+    "tests/ux/process-feedback-imgfx-real.e2e.mjs"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "src/workbench/generationCanvas/nodes/GenerationWaitingSurface.tsx"
+    ],
+    "rationale": "Old CSS sheen and separate preview fade are replaced by library reveal; static reduced-motion surface remains the authorized no-animation case."
+  },
+  "dependency_lifecycle": {
+    "decision": "retain-with-exit",
+    "current": "img-fx@0.5.1",
+    "target": "A supported img-fx release with configurable reveal duration if 0.5.1 cannot satisfy measured budgets",
+    "rationale": "Only authorized dependency; official React ref lifecycle retained and bounded by application teardown.",
+    "exit_criteria": [
+      "Upgrade or replace only after user authorization if measured real-node budgets cannot pass, or upstream resource teardown is defective."
+    ]
+  },
+  "migration": "No stored data changes; transient effects only.",
+  "residual_risks": [
+    "img-fx 0.5.1 fixes reveal duration internally; the 1.2s application deadline can end a reveal before visible.",
+    "Baseline screenshots await main-session review; prior permanent shot/title overlays require clarification against the new zero-elements wording."
+  ],
+  "invariant_owner_layer": {
+    "layer": "src/workbench/generationCanvas/nodes/GenerationWaitingSurface.tsx",
+    "tests": [
+      "tests/ux/process-feedback-imgfx.e2e.mjs"
+    ],
+    "note": "Shared transient media waiting layer, not provider or task orchestration."
+  }
+}
