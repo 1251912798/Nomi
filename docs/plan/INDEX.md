@@ -287,3 +287,5 @@
 > 不代表已归好类。顺手把某一行挪进上面对应主题的表里即可——挪走后本区自然变短。
 
 - [2026-09-07-skill-import-real-use](2026-09-07-skill-import-real-use.md)
+
+| [2026-09-08-docs-autosync-ci.md](2026-09-08-docs-autosync-ci.md) | Docs autosync 固定 PR、显式正式 CI 与旧 PR 清理 | 📋 |

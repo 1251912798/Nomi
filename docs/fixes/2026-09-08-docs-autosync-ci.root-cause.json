@@ -1,0 +1,119 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-08-docs-autosync-ci",
+  "problem_type": "Automated repair PRs lack executable required checks and a stable review identity",
+  "symptom": "Repeated bot docs PRs #604/#631/#632/#634/#635/#637/#638 remain BLOCKED without Quality Gate runs.",
+  "direct_cause": "The workflow carries the old direct-push skip marker into PR commits, uses GITHUB_TOKEN without explicit CI dispatch, and names branches by main SHA.",
+  "class_root": "The automated publication boundary does not own both stable PR identity and required-check scheduling.",
+  "affected_population": [
+    "Every main push requiring index/status/ledger repair",
+    "Manual repair reruns and updates to already-open repair PRs"
+  ],
+  "scope_paths": [
+    ".github/workflows/docs-autosync.yml",
+    ".github/workflows/quality-gate.yml"
+  ],
+  "entry_points": [
+    "on.push.branches main",
+    "on.workflow_dispatch"
+  ],
+  "external_sources": [
+    {
+      "kind": "official-doc",
+      "url": "https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/trigger-a-workflow#triggering-a-workflow-from-a-workflow",
+      "checked_at": "2026-09-08",
+      "purpose": "Default token recursion protection and explicit dispatch exception"
+    },
+    {
+      "kind": "official-doc",
+      "url": "https://docs.github.com/en/actions/how-tos/manage-workflow-runs/skip-workflow-runs",
+      "checked_at": "2026-09-08",
+      "purpose": "Skipped required checks remain pending"
+    },
+    {
+      "kind": "source-code",
+      "url": "https://github.com/peter-evans/create-pull-request/blob/5f6978faf089d4d20b00c7766989d076bb2fc7f1/src/create-pull-request.ts#L239-L243",
+      "checked_at": "2026-09-08",
+      "purpose": "Action uses force-with-lease, incompatible with this task restriction"
+    }
+  ],
+  "invariants": [
+    "One fixed docs/autosync head has at most one open PR.",
+    "Every published repair schedules the existing full Quality Gate using workflow_dispatch.",
+    "No CI skip markers, direct main writes, forced pushes, or duplicated validation workflow.",
+    "The regenerated current-main tree is authoritative; previous generated heads remain ancestors of ordinary pushes."
+  ],
+  "generality_proof": "Both automatic and manual entries converge on the same publish step. Tests execute that shell against a local bare Git remote for initial creation, repeated equal output, main advancement, no-diff closure, and failed dispatch recovery.",
+  "shared_boundaries": [
+    {
+      "path": ".github/workflows/docs-autosync.yml",
+      "symbol": "jobs.autosync.steps[id=publish]",
+      "responsibility": "Own fixed-branch publication and explicit CI scheduling after the three repair gates."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": ".github/workflows/docs-autosync.yml",
+      "entry_point": "on.push.branches main",
+      "disposition": "enforced",
+      "evidence": "Every main push uses the common serialized autosync job."
+    },
+    {
+      "path": ".github/workflows/docs-autosync.yml",
+      "entry_point": "on.workflow_dispatch",
+      "disposition": "enforced",
+      "evidence": "Manual retry uses exactly the same publication and dispatch step."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Each successive main SHA produced another blocked PR; seven observed instances.",
+    "same_class_scan": [
+      "rg autosync and skip ci across .github/workflows, scripts and docs/lessons; inspected initial creation and PR migration commits.",
+      "Inspected SEO Radar (fixed branch without skip marker but same token caveat) and download-stats (non-PR data branch); this change is scoped to docs repair publication."
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": ".github/workflows/docs-autosync.yml",
+    "invariant": "Every repair goes through fixed PR publication followed by explicit official CI dispatch.",
+    "failure_mode": "Repair gate, normal push, gh API or dispatch failure exits the job nonzero.",
+    "exception_policy": "none",
+    "strategy": "Use token recursion protection and explicit dispatch rather than disabling checks; retain branch ancestry for ordinary pushes.",
+    "artifacts": [
+      ".github/workflows/docs-autosync.yml",
+      ".github/workflows/quality-gate.yml"
+    ]
+  },
+  "regression_tests": [
+    "docs/fixes/docs-autosync.node-test.mjs"
+  ],
+  "class_regression_tests": [
+    "docs/fixes/docs-autosync.node-test.mjs"
+  ],
+  "invariant_owner_layer": {
+    "layer": ".github/workflows/docs-autosync.yml",
+    "tests": [
+      "docs/fixes/docs-autosync.node-test.mjs"
+    ]
+  },
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      ".github/workflows/docs-autosync.yml"
+    ],
+    "rationale": "Remove SHA-suffixed PR producer, CI skip markers, and force-pushing create-pull-request action from docs autosync."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "Remove create-pull-request from this workflow because its current implementation force-pushes. No replacement dependency; Git and gh shipped on the hosted runner execute documented native operations.",
+    "exit_criteria": []
+  },
+  "migration": "Close superseded legacy automatic PRs with comments, retain and explicitly dispatch CI on newest #638. After this fix merges, subsequent new repairs use docs/autosync. No rewriting legacy heads or merging PRs.",
+  "residual_risks": [
+    "Full workflow_dispatch retains the existing expensive all-surfaces policy; failures on unrelated surfaces remain real failures.",
+    "Until this PR merges, main still has the old producer and can create additional legacy PRs.",
+    "SEO Radar is outside this docs-autosync repair; its default-token PR trigger still has the official approval caveat.",
+    "Git fixtures prove publication behavior; GitHub execution and final checks are reported separately."
+  ]
+}
