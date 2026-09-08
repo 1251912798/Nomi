@@ -1,0 +1,106 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-09-feel-unregistered-surfaces",
+  "problem_type": "真实旅程观测被误纳入阻断",
+  "symptom": "PR #662 第四次 CI 红：真实旅程不同截图、不同平台数字超过登记值",
+  "direct_cause": "所有已登记组合均比较预算，没有机制旅程所有权边界",
+  "class_root": "共享策略未区分机制 ratchet 与真实用户旅程 record",
+  "affected_population": [
+    "所有新旅程、截图和规则组合"
+  ],
+  "scope_paths": [
+    "tests/ux/_feel-observer.mjs",
+    "scripts/feel-nightly.mjs",
+    "scripts/check-feel.mjs"
+  ],
+  "entry_points": [
+    "截图",
+    "状态等待",
+    "nightly"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "仓库内部策略裁决，无第三方协议变化。",
+  "invariants": [
+    "仅 catalog 与 smoke 可 ratchet，按 journey/screenshotName/rule 精确匹配；其他旅程全部记录，即使有旧登记也不得阻断"
+  ],
+  "generality_proof": "compareFeelBaseline 从 catalog 派生阻断资格；observer 用真实 name 而非传入 label 决定旅程；nightly 共用三字段比较器。",
+  "shared_boundaries": [
+    {
+      "path": "tests/ux/_feel-observer.mjs",
+      "symbol": "compareFeelBaseline",
+      "responsibility": "按旅程所有权与截图身份裁决阻断"
+    },
+    {
+      "path": "tests/ux/_feel-observer.mjs",
+      "symbol": "recordNewFeelSurfaces",
+      "responsibility": "保留真实旅程全部发现和机制未登记发现供夜跑总账"
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "tests/ux/_feel-observer.mjs",
+      "entry_point": "checkpoint screenshot and wait APIs",
+      "disposition": "enforced",
+      "evidence": "截图与 wait 都调用 checkpoint"
+    },
+    {
+      "path": "scripts/feel-nightly.mjs",
+      "entry_point": "runFeelNightly",
+      "disposition": "enforced",
+      "evidence": "nightly 复用共享比较器并递归汇总首次记录"
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "所有未来新旅程/规则均可复发",
+    "same_class_scan": [
+      "rg compareFeelBaseline tests scripts：observer、nightly、策略/browser 测试",
+      "核查 screenshot 与 waitForFunction/Selector/LoadState 均汇入 checkpoint"
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "tests/ux/_feel-observer.mjs",
+    "invariant": "仅 catalog 与 smoke 可 ratchet，按 journey/screenshotName/rule 精确匹配；其他旅程全部记录，即使有旧登记也不得阻断",
+    "failure_mode": "机制已登记增长失败；真实旅程观测写盘及日志汇总；非法真实旅程基线被 check-feel 拒绝",
+    "exception_policy": "none",
+    "strategy": "共享 feelMode 限定旅程所有权；三字段键隔离截图；record 保留所有规则，不受旧预算影响",
+    "artifacts": [
+      "tests/ux/_feel-observer.mjs",
+      "scripts/feel-nightly.mjs",
+      "scripts/check-feel.mjs"
+    ]
+  },
+  "regression_tests": [
+    "tests/ux/feel-policy.test.mjs",
+    "tests/ux/_feel-observer.browser.mjs"
+  ],
+  "class_regression_tests": [
+    "tests/ux/feel-policy.test.mjs",
+    "tests/ux/_feel-observer.browser.mjs"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "tests/ux/_feel-observer.mjs"
+    ],
+    "rationale": "删除所有已登记旅程一律阻断的策略及隐式 label 基线键"
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "内部策略语义不由第三方控制",
+    "exit_criteria": []
+  },
+  "migration": "22 条真实旅程基线移入首轮总账 seeds，保留原始来源与平台；10 条 catalog 数字与 smoke 零原样迁移；以后只从 Linux nightly 同平台登记。",
+  "residual_risks": [
+    "本地 macOS 复跑与 Linux 的字体渲染可能不同，CI 需验证。"
+  ],
+  "invariant_owner_layer": {
+    "layer": "tests/ux/_feel-observer.mjs",
+    "tests": [
+      "tests/ux/feel-policy.test.mjs",
+      "tests/ux/_feel-observer.browser.mjs"
+    ],
+    "why": "所有 checkpoint 与 nightly 汇入共享策略层。"
+  }
+}

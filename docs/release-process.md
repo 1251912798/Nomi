@@ -132,3 +132,5 @@ https://nomiaqm.com/?download=1&source=app-update&platform=darwin&arch=arm64
 ```
 
 `arch` 来自桌面主进程真实的 `process.arch`，Intel Mac 会传 `x64`。官网删除一次性参数后立即下载对应 DMG；如果参数无效，则停留在官网并保留普通下载按钮，不把用户丢到 GitHub Release 资产列表。
+
+- RC 前必须运行 `pnpm run feel:nightly`，并确认接触表无未分诊体感发现。
