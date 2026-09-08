@@ -1,0 +1,130 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-09-focus-indication-class",
+  "problem_type": "Focus indication ignores text-editing versus command interaction",
+  "symptom": "Clicking Agent composer shows a thick outer focus outline.",
+  "direct_cause": "Global addBase selector applies the same 2px token outline to textarea:focus-visible as to buttons; Chromium matches text editing focus-visible after pointer input.",
+  "class_root": "Design-system base does not distinguish text editing focus from keyboard command focus, leaving future callers to inherit the wrong visual contract.",
+  "affected_population": [
+    "All mouse and keyboard users of text fields and contenteditable surfaces",
+    "Custom focusable controls omitted by the previous element whitelist"
+  ],
+  "scope_paths": [
+    "tailwind.config.ts",
+    "src/design/searchInput.tsx"
+  ],
+  "entry_points": [
+    "Agent composer textarea",
+    "Project library SearchInput",
+    "Storyboard shot inputs",
+    "Settings Mantine text fields"
+  ],
+  "external_sources": [
+    {
+      "kind": "official-doc",
+      "url": "https://developer.apple.com/design/human-interface-guidelines/text-fields",
+      "checked_at": "2026-09-09",
+      "purpose": "Text field and Tab interaction guidance; does not mandate no outer ring."
+    },
+    {
+      "kind": "source-code",
+      "url": "https://github.com/material-components/material-web/blob/main/tokens/_md-comp-outlined-text-field.scss",
+      "checked_at": "2026-09-09",
+      "purpose": "Field-container focus tokens."
+    },
+    {
+      "kind": "official-doc",
+      "url": "https://design-system.service.gov.uk/components/text-input/",
+      "checked_at": "2026-09-09",
+      "purpose": "Counterexample: strong accessible outer focus indication is intentional."
+    }
+  ],
+  "invariants": [
+    "Text editing focus never draws an outer outline; existing field/container borders indicate focus without layout shift.",
+    "Non-text keyboard focus retains the shared token outline, including tabindex elements."
+  ],
+  "generality_proof": "Semantic CSS selectors at addBase cover existing and future native text controls and contenteditable; direct-parent and nearest-bordered-container :has propagate focus to composite field borders without composer-specific CSS.",
+  "shared_boundaries": [
+    {
+      "path": "tailwind.config.ts",
+      "symbol": "workbenchBasePlugin/addBase",
+      "responsibility": "Own text versus non-text focus indication across renderer and portals."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/workbench/ai/v4/AgentPanelV4Composer.tsx",
+      "entry_point": "AgentPanelV4Composer textarea",
+      "disposition": "enforced",
+      "evidence": "Bare textarea nested directly in bordered form inherits global textarea:focus-visible despite outline-none utility."
+    },
+    {
+      "path": "src/design/searchInput.tsx",
+      "entry_point": "DesignSearchInput",
+      "disposition": "enforced",
+      "evidence": "Borderless search input inside bordered div; existing focus-within shadow duplicates global outline."
+    },
+    {
+      "path": "src/workbench/creation/storyboard/shotRow/StoryboardShotRow.tsx",
+      "entry_point": "Shot row numeric input and keyframe textarea",
+      "disposition": "enforced",
+      "evidence": "Independent storyboard fields inherit global input/textarea rules."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Any new text input reaches the same global focus-visible rule on each click.",
+    "same_class_scan": [
+      "rg focus|outline tailwind.config.ts src/design src/styles",
+      "rg <input|<textarea|contentEditable src/workbench/creation/storyboard",
+      "Read AgentPanelV4Composer, DesignSearchInput, DesignTextInput and StoryboardShotRow; inspect global scrollbar and Mantine appearance owners."
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "tailwind.config.ts",
+    "invariant": "Text focus uses border color; non-text focus-visible uses one token outline.",
+    "failure_mode": "Text selectors exclude the generic ring; generic focus reset prevents UA outline leakage.",
+    "exception_policy": "none",
+    "strategy": "Replace the old whitelist at its owner and remove duplicate search focus decoration.",
+    "artifacts": [
+      "tailwind.config.ts",
+      "src/design/searchInput.tsx"
+    ]
+  },
+  "regression_tests": [
+    "tests/ux/focus-indication.e2e.mjs",
+    "tests/ux/focus-indication.walk.mjs"
+  ],
+  "class_regression_tests": [
+    "tests/ux/focus-indication.e2e.mjs"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "tailwind.config.ts",
+      "src/design/searchInput.tsx"
+    ],
+    "rationale": "Replace old text-inclusive global outline and remove parallel SearchInput focus shadow."
+  },
+  "dependency_lifecycle": {
+    "decision": "retain-with-exit",
+    "rationale": "Chromium focus-visible heuristics are intentional platform behavior, not a runtime defect. Keep installed Electron and Tailwind; own the presentation at the application boundary.",
+    "current": "Electron 43.4.1 / Tailwind 3",
+    "target": "Current supported Electron Chromium with identical semantic selectors",
+    "exit_criteria": [
+      "On Electron upgrade run shared focus matrix and Electron pointer/Tab journey; revisit only if selector support or focus heuristics change."
+    ]
+  },
+  "migration": "No stored data changes. Rebuilding CSS replaces the global rule for every existing renderer.",
+  "residual_risks": [
+    "#662 scanner integration deferred by explicit user instruction; standalone fixtures and regression remain executable."
+  ],
+  "invariant_owner_layer": {
+    "layer": "tailwind.config.ts",
+    "tests": [
+      "tests/ux/focus-indication.e2e.mjs",
+      "tests/ux/focus-indication.walk.mjs"
+    ]
+  }
+}
