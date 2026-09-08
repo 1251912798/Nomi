@@ -1,15 +1,20 @@
 {
   "schema_version": 3,
   "id": "2026-09-09-process-feedback-overlay-collision",
-  "problem_type": "Shot number does not account for transient feedback.",
+  "problem_type": "Media feedback and shot numbering compete for the same visual region.",
   "symptom": "Saved status overlaps the shot number.",
   "direct_cause": "Shot number does not account for transient feedback.",
-  "class_root": "Shot number yields its corner while actual generation feedback is mounted.",
+  "class_root": "Status and shot number have no distinct permanent spatial owners.",
   "affected_population": [
     "Image and video generation, including persisted errors"
   ],
   "scope_paths": [
-    "src/workbench/generationCanvas/nodes/ConvertShotToVideoButton.tsx"
+    "src/workbench/generationCanvas/nodes/ConvertShotToVideoButton.tsx",
+    "src/workbench/generationCanvas/nodes/GenerationStatusBar.tsx",
+    "src/workbench/generationCanvas/nodes/NodeGenerationStatus.tsx",
+    "src/workbench/generationCanvas/nodes/BaseGenerationNode.tsx",
+    "src/workbench/generationCanvas/nodes/NodeImagePreviewActions.tsx",
+    "src/workbench/generationCanvas/nodes/render/CardCommon.tsx"
   ],
   "entry_points": [
     "ShotPreviewOverlays"
@@ -17,14 +22,14 @@
   "external_sources": [],
   "internal_only_reason": "Internal presentation and error contracts; no external protocol.",
   "invariants": [
-    "Shot number yields its corner while actual generation feedback is mounted."
+    "Status occupies media top-left only while active or failed; shot number always occupies media bottom-left; actions remain outside above."
   ],
   "generality_proof": "Enforced in shared production boundaries for every image/video caller.",
   "shared_boundaries": [
     {
       "path": "src/workbench/generationCanvas/nodes/ConvertShotToVideoButton.tsx",
       "symbol": "ShotPreviewOverlays",
-      "responsibility": "Shot number yields its corner while actual generation feedback is mounted."
+      "responsibility": "Status occupies media top-left only while active or failed; shot number always occupies media bottom-left; actions remain outside above."
     }
   ],
   "same_class_entry_points": [
@@ -52,10 +57,10 @@
   "prevention": {
     "kind": "centralized-boundary",
     "enforcement_path": "src/workbench/generationCanvas/nodes/ConvertShotToVideoButton.tsx",
-    "invariant": "Shot number yields its corner while actual generation feedback is mounted.",
+    "invariant": "Status occupies media top-left only while active or failed; shot number always occupies media bottom-left; actions remain outside above.",
     "failure_mode": "Uses existing shared narration and state ownership.",
     "exception_policy": "none",
-    "strategy": "Shot number yields its corner while actual generation feedback is mounted.",
+    "strategy": "Remove completed-state timer; always anchor shot number bottom-left and use quiet shared status styling.",
     "artifacts": [
       "src/workbench/generationCanvas/nodes/ConvertShotToVideoButton.tsx"
     ]
@@ -78,7 +83,7 @@
     "rationale": "Internal component/error ownership; no dependency changes.",
     "exit_criteria": []
   },
-  "migration": "Existing stored error strings remain recognized.",
+  "migration": "No persisted state or schema change; existing media nodes use the same fixed corner ownership.",
   "residual_risks": [
     "Real App evidence covers the isolated loopback path; other providers use the same shared boundary."
   ],
@@ -87,6 +92,6 @@
     "tests": [
       "tests/ux/process-feedback-electron.e2e.mjs"
     ],
-    "note": "Shot number yields its corner while actual generation feedback is mounted."
+    "note": "Status occupies media top-left only while active or failed; shot number always occupies media bottom-left; actions remain outside above."
   }
 }

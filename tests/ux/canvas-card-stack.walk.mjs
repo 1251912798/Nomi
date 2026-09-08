@@ -166,6 +166,23 @@ try {
   check('视频两版只有一层后卡', await videoNode.locator('[data-card-stack-rear]').count() === 1)
   await screenshotSettled(win, { path: path.join(outputDir, '01-real-version-stacks-light.png') })
 
+  await imageNode.click({ position: { x: 120, y: 120 } })
+  await expect(imageNode.locator('.generation-canvas-v2-node__composer-card')).toBeVisible()
+  await expect.poll(() => imageNode.evaluate((selected) => {
+    const card = selected.querySelector('.generation-canvas-v2-node__composer-card').getBoundingClientRect()
+    return [...document.querySelectorAll('article[data-node-id]')].filter(node => node !== selected).filter(node => {
+      const rect = node.getBoundingClientRect()
+      return card.left < rect.right && card.right > rect.left && card.top < rect.bottom && card.bottom > rect.top
+    }).map(node => node.getAttribute('data-node-id'))
+  }), { message: '参数卡矩形不得与任何非选中节点矩形相交' }).toEqual([])
+  const regenerate = imageNode.locator('.generation-canvas-v2-node__composer-card').getByRole('button', { name: '重新生成', exact: true })
+  await regenerate.scrollIntoViewIfNeeded()
+  await expect.poll(() => regenerate.evaluate(button => {
+    const bounds = button.getBoundingClientRect()
+    const card = button.closest('.generation-canvas-v2-node__composer-card').getBoundingClientRect()
+    return bounds.left >= card.left && bounds.right <= card.right && bounds.top >= card.top && bounds.bottom <= card.bottom
+  }), { message: '受限参数卡能滚到完整的生成按钮' }).toBe(true)
+
   await imageNode.getByRole('button', { name: '3 版' }).click()
   const tray = imageNode.locator('[data-node-result-stack="image-versions"]')
   await tray.waitFor({ state: 'visible' })
@@ -175,7 +192,8 @@ try {
   await tray.locator('[data-result-stack-item="image-v1"] button').first().click()
   const afterOrder = await tray.locator('[data-result-stack-item]').evaluateAll((items) => items.map((item) => item.getAttribute('data-result-stack-item')))
   check('切换当前版不重排历史', afterOrder.join(',') === beforeOrder.join(','), afterOrder.join(','))
-  check('第一版成为当前', await tray.locator('[data-result-stack-item="image-v1"]').getAttribute('data-current') === 'true')
+  const firstVersionIsCurrent = await tray.locator('[data-result-stack-item="image-v1"]').getAttribute('data-current') === 'true'
+  check('第一版成为当前', firstVersionIsCurrent, firstVersionIsCurrent ? '' : JSON.stringify(await tray.locator('[data-result-stack-item]').evaluateAll(rows => rows.map(row => ({ id: row.dataset.resultStackItem, current: row.dataset.current })))) )
 
   const imagePreviewButton = tray.locator('[data-result-stack-item="image-v2"] button[aria-label="预览"]')
   await clickOrFail(imagePreviewButton, '打开历史图片预览')

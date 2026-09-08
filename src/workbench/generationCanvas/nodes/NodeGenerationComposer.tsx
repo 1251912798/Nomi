@@ -511,7 +511,7 @@ export default function NodeGenerationComposer({ node, visualSize }: Props): JSX
 
   // 吃提示词的节点才有「最小可用高度」——不吃的（如某些 ComfyUI 工作流）本来就该按内容自然矮。
   const minUsableHeight = acceptsPrompt ? COMPOSER_MIN_USABLE_HEIGHT : 0
-  const { anchorRef, canvasZoom, flipUp, aboveClearance, shiftX, maxHeight } = useComposerViewportPlacement({
+  const { anchorRef, canvasZoom, flipUp, left, top, maxWidth, maxHeight } = useComposerViewportPlacement({
     node,
     visualSize,
     gap: composerLayout.gap,
@@ -519,21 +519,15 @@ export default function NodeGenerationComposer({ node, visualSize }: Props): JSX
     minUsableHeight,
   })
 
-  // 卡宽 = **内容驱动**（用户拍板 2026-06-16，推翻 06-13 的「按最宽模型恒定宽」）：
-  // 卡片 **w-max**（max-content）跟着当前模型的「底栏一行」(锁+参数+生成钮)自然撑开。参数已主次分层
-  // （最常调内联、其余收进 InlineParameterBar 的「更多」弹层，方案 B 2026-06-25），底栏恒单行，生成钮 ml-auto 贴右。
-  // **为什么不能用 w-fit**：composer 是 absolute + left-1/2 锚在节点上，fit-content 的可用宽被节点框
-  // (~300px) 卡死 → 塌回 min-content(min-w-360)、参数多就被挤截断（实测 2026-06-16 真机：card 卡 360）。
-  // max-content 不吃可用宽约束，按内容真实宽长开。提示词/参考区用 w-0 min-w-full **只填不撑**(贡献 0 到
-  // max-content，长 prompt 在卡宽内换行，不把卡撑爆)。max-w 兜底防极端。（离屏测量器已删，纯 CSS。）
+  // 卡宽由当前模型底栏驱动；放置层按屏幕空间限制可用宽高，拥挤时滚动。
 
   return (
-    // 外层只做定位锚（不裁剪），宽度跟随内层卡（w-max 包住按内容长开的卡，便于 -translate-x-1/2 居中）。
+    // 外层只做屏幕空间定位锚，反向缩放保持参数卡可读。
     <div
       ref={anchorRef}
       className={cn(
         'generation-canvas-v2-node__composer',
-        'absolute left-1/2 z-[8] w-max',
+        'absolute z-[8] w-max',
         // 画布拖动期间隐身（拖节点、拖选区/组框、拖画布平移都算；状态源=stage 的 data-dragging，见 canvasDraggingFlag）。
         // 刻意用 visibility 而非条件卸载：里面是 TipTap 编辑器实例，卸载 = 丢未提交的输入 +
         // 每次拖动重建编辑器（拖动是最高频动作）。
@@ -541,44 +535,35 @@ export default function NodeGenerationComposer({ node, visualSize }: Props): JSX
       )}
       data-flipped={flipUp ? 'true' : 'false'}
       style={{
-        // 用户反馈③：反向缩放抵消画布 scale(zoom) → 面板恒定屏幕尺寸（缩小画布只缩上面的卡片框，
-        // 不缩这个参数框）。横向居中的 -translate-x-1/2 改写进 transform（否则被 scale 覆盖）。
-        // transform-origin 贴住与节点相连的那条边（默认朝下=顶边、翻上=底边），缩放时锚点不漂移。
-        // 最左的 translateX(shiftX px) 在屏幕空间生效（不被 scale 缩）→ 横向夹取把溢出视口的宽卡拉回。
-        transform: `translateX(${shiftX}px) translateX(-50%) scale(${1 / (canvasZoom || 1)})`,
-        transformOrigin: flipUp ? 'bottom center' : 'top center',
-        ...(flipUp
-          ? { bottom: `calc(100% + ${composerLayout.gap + aboveClearance}px)` }
-          : { top: `calc(100% + ${composerLayout.gap}px)` }),
+        left,
+        top,
+        transform: `scale(${1 / (canvasZoom || 1)})`,
+        transformOrigin: 'top left',
+        maxWidth,
+        visibility: maxHeight > 0 && maxWidth > 0 ? undefined : 'hidden',
         cursor: 'default',
         userSelect: 'auto',
         touchAction: 'auto',
       }}
       onPointerDown={(event) => event.stopPropagation()}
+      onWheel={(event) => event.stopPropagation()}
       {...(acceptsDrop ? dropHandlers : {})}
     >
       <div
         className={cn(
           'generation-canvas-v2-node__composer-card',
-          'relative flex flex-col gap-2.5 p-3 min-w-[360px] max-w-[880px] w-max',
-          // 高度下限只由 style.minHeight 一处给（COMPOSER_MIN_USABLE_HEIGHT）：
-          // 旧的 min-h-[150px] 与下面的 Math.min(150, maxHeight) 是两套魔数、且后者允许塌到不可用，已删（P1）。
-          // 宽度内容驱动（w-max）：按底栏一行(锁+参数+生成钮)的真实宽长开，参数少则窄、多则宽，不塌不爆、不换行。
-          // max-w-[880px] 兜底：现有最宽是 apimart Seedance 7 控件(model+变体+比例+清晰度+时长+seed+生成音频)
-          // ≈810px，880 留头不触发截断；纯防极端（防 omni 模式参考槽行等异常撑爆）。实测 2026-06-16 校准。
-          // 卡片本身 overflow-hidden（非 overflow-y-auto）：底栏靠 shrink-0 mt-auto 恒贴卡底可见、
-          // 提示词只在内层 flex-1 滚动壳里滚（见下）。cutover 曾把这里改成 overflow-y-auto 想让「视口窄时
-          // body 滚、底栏可达」，但那会解除对内层 flex 列「必须塞进卡片固定高」的压力 → flex-1 min-h-0 滚动壳
-          // 塌成 0、72px 编辑器溢出到底栏上方与「生成参数」重叠、提示词区一个点都点不到（2026-09-01 smoke
-          // click 恒被拦、本机 elementFromPoint 复现命中「生成参数」）。origin/main 的 overflow-hidden 本就
-          // 让底栏恒可见 + 提示词内层滚，无此病，故恢复。
+          'relative flex flex-col gap-2.5 p-3 min-w-0 max-w-[880px] w-max',
+          // 常规空间保留底栏、内层滚动；拥挤时整个卡在无碰撞矩形内滚动。
           'border border-nomi-line rounded-nomi bg-nomi-paper overflow-hidden shadow-nomi-md',
           'transition-[outline-color] duration-150',
           isDragOver && 'outline-2 outline-dashed outline-nomi-accent outline-offset-[-2px]',
         )}
         style={{
           maxHeight,
-          minHeight: minUsableHeight,
+          maxWidth,
+          minWidth: Math.min(360, maxWidth),
+          minHeight: Math.min(minUsableHeight, maxHeight),
+          overflow: maxHeight < minUsableHeight || maxWidth < 360 ? 'auto' : undefined,
           cursor: 'default',
           userSelect: 'auto',
           touchAction: 'auto',
@@ -675,7 +660,7 @@ export default function NodeGenerationComposer({ node, visualSize }: Props): JSX
         // 用 overflow-y-auto 而非 overflow-auto：卡宽已被 w-0 min-w-full 锁死、prompt 在卡宽内换行，横向永不溢出，明确关掉横向滚动条。
         <div
           className={cn('relative flex-1 min-h-0 w-0 min-w-full overflow-y-auto overscroll-contain')}
-          style={{ cursor: node.locked ? 'default' : 'text', userSelect: node.locked ? 'auto' : 'text' }}
+          style={{ flex: maxHeight < minUsableHeight ? '0 0 auto' : undefined, cursor: node.locked ? 'default' : 'text', userSelect: node.locked ? 'auto' : 'text' }}
         >
           <PromptEditor
             className={cn('min-h-[72px]')}

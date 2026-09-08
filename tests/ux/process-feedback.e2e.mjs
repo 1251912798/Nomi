@@ -12,7 +12,7 @@ async function advance(page, stage) {
   }, stage)
 }
 
-const evidence = path.resolve('docs/plan/process-feedback-evidence')
+const evidence = path.resolve('docs/plan/process-feedback-evidence/neighbor-placement/lab')
 await fs.mkdir(evidence, { recursive: true })
 assertLabPortOwnership('visual')
 const origin = labOriginFor('visual')
@@ -102,20 +102,17 @@ try {
     await page.locator('[data-node-id]').evaluate((element) => element.style.height = `${element.getBoundingClientRect().height + 1}px`)
     await mutation('stable-geometry', async () => expect(await geometry(page)).toEqual(initial))
     await page.locator('[data-node-id]').evaluate((element) => element.style.height = '240px')
+    const generationStatusProof = await proveProbe(page.locator('[data-node-id] [data-generation-status]'), '生成前状态条存在')
     for (const stage of ['queued', 'requesting', 'generating', 'finalizing', 'saved']) {
       await advance(page, stage)
       await page.clock.runFor(200)
       const expectedPhase = { queued: '排队中', requesting: '提交中', generating: '生成中', finalizing: '正在存到你电脑上', saved: '已保存到项目' }[stage]
-      await expect(page.locator(messageSelectors[0])).toContainText(expectedPhase)
+      if (stage === 'saved') await expectAbsent(page.locator('[data-node-id] [data-generation-status]'), { provenBy: generationStatusProof })
+      else await expect(page.locator(messageSelectors[0])).toContainText(expectedPhase)
       expect(await geometry(page)).toEqual(initial)
       await page.locator('[data-process-lab-ready]').screenshot({ path: path.join(evidence, `journey-${stage}.png`) })
     }
-    await expectVisible(page.locator('[data-node-id] [data-generation-status]'), '落盘完成后标签仍在')
-    await page.clock.runFor(1700)
-    await expectVisible(page.locator('[data-node-id] [data-generation-status]'), '完成标签至少停留两秒')
-    const savedProof = await proveProbe(page.locator('[data-node-id] [data-generation-status]'), '完成标签确实存在')
-    await page.clock.runFor(700)
-    await expectAbsent(page.locator('[data-node-id] [data-generation-status]'), { provenBy: savedProof })
+    await expectAbsent(page.locator('[data-node-id] [data-generation-status]'), { provenBy: generationStatusProof })
     receipt.push({ criterion: 4, result: 'green', geometry: initial })
     await context.close()
   }
@@ -129,13 +126,9 @@ try {
     await page.locator('[data-process-lab-ready]').screenshot({ path: path.join(evidence, 'reduced-motion.png') })
     await page.goto(`${origin}/design-lab.html?screen=process-feedback&frame=1&state=pf-image-generating`)
     await expectVisible(page.locator('[data-process-lab-ready]'), '减弱动态完成旅程')
+    const generationStatusProof = await proveProbe(page.locator('[data-node-id] [data-generation-status]'), '减弱动态生成态状态条存在')
     await advance(page, 'saved')
-    await expect(page.locator(messageSelectors[0])).toHaveText('已保存到项目')
-    await page.clock.runFor(3900)
-    await expectVisible(page.locator('[data-node-id] [data-generation-status]'), '减弱动态下完成标签保留四秒')
-    const savedProof = await proveProbe(page.locator('[data-node-id] [data-generation-status]'), '减弱动态完成标签确实存在')
-    await page.clock.runFor(200)
-    await expectAbsent(page.locator('[data-node-id] [data-generation-status]'), { provenBy: savedProof })
+    await expectAbsent(page.locator('[data-node-id] [data-generation-status]'), { provenBy: generationStatusProof })
     receipt.push({ criterion: 5, result: 'green' })
     await context.close()
   }

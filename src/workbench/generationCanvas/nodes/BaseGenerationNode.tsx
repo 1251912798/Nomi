@@ -594,7 +594,6 @@ function BaseGenerationNodeImpl({
             prompt={displayPrompt}
           />
         )}
-        <ShotPreviewOverlays selected={selected} shotIndex={shotIndex} hasResult={hasResult} />
         {canOpenImagePreview && !isCardKind && !readOnly && !resultStackOpen && imageEditing.editGrid === null ? (
           <NodeInlineImageTitle nodeId={node.id} value={node.title || ''} selected={selected} />
         ) : null}
@@ -634,6 +633,7 @@ function BaseGenerationNodeImpl({
       ) : null}
 
       {(isGenerating || isQueued) && !localImageOpPending ? <NodeGeneratingOverlay node={node} /> : null}
+      <ShotPreviewOverlays shotIndex={shotIndex} />
 
       <ProductionShotOverlays node={node} selected={selected && !isMultiSelectActive} />{/* P4 S5+S6 多镜叠加：占位三态 + 版本条（非多镜早退零开销） */}
       {showSideTimelineDrag ? (

@@ -134,7 +134,6 @@ export function PendingGenerationPlaceholder({
   selected,
   needsFirstFrame,
   waitingUpstream = false,
-  shotIndex,
   title,
   prompt,
   kind,
@@ -169,7 +168,7 @@ export function PendingGenerationPlaceholder({
     <div data-selected-placeholder={selected ? 'true' : 'false'} className="h-full w-full">
       <NodeEmptyState
         icon={isVideo ? <IconVideo size={20} stroke={1.6} /> : isModel3d ? <Icon3dCubeSphere size={20} stroke={1.6} /> : <IconPhoto size={20} stroke={1.6} />}
-        title={shotIndex != null ? `${t('generationCommon.card.shot', { index: shotIndex })} · ${titleText}` : titleText}
+        title={titleText}
         description={prompt ? `${description} ${prompt}` : description}
       />
     </div>
