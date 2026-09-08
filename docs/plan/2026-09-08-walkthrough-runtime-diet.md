@@ -205,3 +205,5 @@ D 的五对 Read：批量模型设置、节点右键菜单、快捷键最终结�
 ## 最终串行复测发现的服务就绪缺口
 
 串行第一轮 212157ms、13/13；第二轮 group-reference-direction 既有 reload 遇 ERR_CONNECTION_REFUSED、12/13。固定端口 5287 + 任意 HTTP 响应即 ready + 静默子进程无法证明自身服务存活，类根因在 fixture 服务生命周期。采用已安装 Vite 的 createServer/listen/close 和 port:0，由真实 httpServer.address 获取地址，删除 spawn + 私有墙钟 HTTP 轮询；不改生产、不新增 reload、不放宽断言。官方 API https://vite.dev/guide/api-javascript.html#createserver ，安装类型 node_modules/vite/dist/node/index.d.ts；保留当前依赖。并发仍撤回，避免把两个不同失败归成同一原因。
+
+进一步串行证据：card-stack 同一 video 版本按钮 outside viewport 再次复现，明确并发不是必要条件。测试先“复制变体”（自动平移）再 undo，只证明节点删除，却错误假设视口也回到原位；既有 undo 不承诺恢复视口。增加真实用户“适应视图”操作后再打开另一个视频节点历史，不 force-click、不改生产、不删断言。这是测试前提修复，不能将已撤回并发数字恢复为交付收益。
