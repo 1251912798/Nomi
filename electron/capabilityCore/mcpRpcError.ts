@@ -1,5 +1,6 @@
 /** Structured error boundary shared by the local RPC client and MCP transport. */
 import { RpcError } from './rpcError'
+import { buildToolErrorOutcome } from './mcpToolErrorResults'
 
 export type RpcErrorWireDetails = Readonly<{
   message?: string
@@ -33,7 +34,14 @@ export class RpcTransportError extends Error {
 /** Serialize local RPC failures without dropping the typed policy recovery contract. */
 export function rpcErrorWirePayload(error: unknown): RpcErrorWirePayload {
   const message = error instanceof Error ? error.message : String(error)
-  if (!(error instanceof RpcError) || !error.code) return message
+  if (!(error instanceof RpcError) || !error.code) {
+    // Domain errors need the same public identity on direct and GUI RPC routes.
+    // Reuse the MCP projection: never serialize arbitrary exception properties.
+    const { outcome } = buildToolErrorOutcome('rpc', error)
+    return typeof outcome.errorCode === 'string'
+      ? { message: String(outcome.message), code: outcome.errorCode }
+      : message
+  }
   return {
     message,
     code: error.code,

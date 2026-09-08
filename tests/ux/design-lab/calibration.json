@@ -12,6 +12,7 @@
   },
   "colorScheme": "light",
   "screens": {
+    "settings-sound": { "tolerance": { "threshold": 0.2, "maxDiffPixels": 40 } },
     "agent-panel": {
       "tolerance": {
         "threshold": 0.2,

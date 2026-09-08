@@ -322,6 +322,7 @@
       "output": "release"
     },
     "afterPack": "scripts/after-pack-mac.cjs",
+    "extraResources": [{ "from": "assets/sound", "to": "assets/sound" }],
     "asarUnpack": [
       "node_modules/@ffmpeg-installer/**",
       "node_modules/.pnpm/@ffmpeg-installer+*/**",
