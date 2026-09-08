@@ -1,4 +1,156 @@
 {
-  "version": 1,
-  "entries": []
+  "version": 2,
+  "entries": [
+    {
+      "label": "smoke:waitForFunction",
+      "rule": "font-size",
+      "owner": "design-system (docs/design/nomi-design-system.md §字号, micro=11px)",
+      "reason": "PR #662 B：macOS smoke 实测既有 micro=11px 元素；12px 通用检测阈值的已核验例外，禁止扩大到新元素或更小字号。",
+      "findings": [
+        {
+          "target": [
+            "span"
+          ],
+          "text": [
+            "1/4"
+          ],
+          "fontSizes": [
+            11
+          ]
+        },
+        {
+          "target": [
+            "span"
+          ],
+          "text": [
+            "素材库"
+          ],
+          "fontSizes": [
+            11
+          ]
+        },
+        {
+          "target": [
+            "span"
+          ],
+          "text": [
+            "分组"
+          ],
+          "fontSizes": [
+            11
+          ]
+        },
+        {
+          "target": [
+            "span"
+          ],
+          "text": [
+            "提示词"
+          ],
+          "fontSizes": [
+            11
+          ]
+        },
+        {
+          "target": [
+            "span"
+          ],
+          "text": [
+            "技能"
+          ],
+          "fontSizes": [
+            11
+          ]
+        },
+        {
+          "target": [
+            "span"
+          ],
+          "text": [
+            "流程"
+          ],
+          "fontSizes": [
+            11
+          ]
+        },
+        {
+          "target": [
+            "span"
+          ],
+          "text": [
+            "镜头 1"
+          ],
+          "fontSizes": [
+            11
+          ]
+        },
+        {
+          "target": [
+            "span"
+          ],
+          "text": [
+            "生成方式"
+          ],
+          "fontSizes": [
+            11
+          ]
+        },
+        {
+          "target": [
+            "div"
+          ],
+          "text": [
+            "用即梦会员积分，纯文字生成图像"
+          ],
+          "fontSizes": [
+            11
+          ]
+        },
+        {
+          "target": [
+            "span"
+          ],
+          "text": [
+            "D"
+          ],
+          "fontSizes": [
+            11
+          ]
+        },
+        {
+          "target": [
+            "span"
+          ],
+          "text": [
+            "变体"
+          ],
+          "fontSizes": [
+            11
+          ]
+        },
+        {
+          "target": [
+            "span"
+          ],
+          "text": [
+            "N"
+          ],
+          "fontSizes": [
+            11
+          ]
+        },
+        {
+          "target": [
+            "summary"
+          ],
+          "text": [
+            "—"
+          ],
+          "fontSizes": [
+            11
+          ]
+        }
+      ]
+    }
+  ]
 }

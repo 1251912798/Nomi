@@ -1,4 +1,4 @@
-import { test } from 'vitest'
+import { test } from 'node:test'
 import { expect } from '@playwright/test'
 import fs from 'node:fs'
 import os from 'node:os'

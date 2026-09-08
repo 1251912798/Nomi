@@ -72,3 +72,18 @@
 - `pnpm run gates` exit 0：76 contracts，73 pass / 0 blocking / 3 advisory；1292 个 Vitest 文件、12069 tests pass（1 文件、2 tests skipped）；agent runtime / janitor / stats 与 Vite、Electron 构建均通过。
 - 最终窄测 11/11；夜跑 20 张截图 / 10 条发现 / drift=0。人工查看 Agent 重叠、HTML 裁切、3D 禁用交互夹具截图，与记录一致。
 - 收据日志：`/tmp/ux-feel-gates-delivery.log`；后续文档收据不改变上述被验证代码。
+
+## PR #662 CI 根因修复（2026-09-09）
+- 分类 recurring：测试运行环境的能力没有在收集边界声明；同类入口实扫 `_feel.test.mjs`、`_feel-observer.test.mjs` 与 design-lab `*.visual.spec.mjs`。前两份为唯一启动 Chromium 的 `tests/**/*.test.mjs`，后者已有独立 Playwright 车道。
+- 为什么本地绿 CI 红：本机有缓存的浏览器；Unit CI 不安装浏览器。沿用专用后缀分道：两份迁为 `*.browser.mjs`、node:test runner，`test:feel:browser` 显式执行；Linux desktop 安装 Chromium 并执行，Unit 不加安装步骤。
+- smoke 待核实：run 34275108604 的 linux-walkthrough-evidence 已下载，但旧上传清单漏掉 artifacts/feel，无法取到 13 条 DOM 发现。补上传证据；本地 smoke 正排队复现，不能把 macOS 参数模拟当成 Linux 执行。
+- 先查同类：`docs/lessons/canvas-perf-budget-calibrated-on-macos-fails-on-linux.md` 只允许延迟预算按平台校准，计数/正确性不能据此放宽；design-lab 视觉道明确校准平台。需看实测元素再决定 A/B。
+- 范围仅测试、CI 接线与本计划；不改生产代码、依赖、.gitignore。回滚本次提交恢复旧机制；验收 browser 11/11、Unit 不收浏览器测试、本地 smoke、完整 gates、正常 hooks 推送原 PR。
+- **选择 B，排除 A**：macOS `pnpm run test:e2e` 同样在 `smoke:waitForFunction` 检出 font-size 13/0，故不是平台差异。13 个元素依次为 span「1/4」「素材库」「分组」「提示词」「技能」「流程」「镜头 1」「生成方式」、div「用即梦会员积分，纯文字生成图像」、span「D」「变体」「N」、summary「—」。CI 没上传 DOM JSON，不能声称逐元素验证了 Linux；本地同计数同阶段、CI 截图与日志是目前证据。
+- B 的登记边界：扫描器补 `fontSizes` 证据；豁免只匹配指定 checkpoint 下的 rule + tag/text/fontSizes，逐条消费（重复增加仍红）。记录全部原始发现，只有已登记发现免计；删除原有“整个 checkpoint 有豁免就不判红”的宽豁免。owner/reason 必填，merge-base 已有登记只减不增；首次登记允许本次用户明确授权的 B 校准。不改 baseline allowed，不关观察器。
+- 设计依据：`docs/design/nomi-design-system.md` §字号允许 micro=11px，`tailwind.config.ts` fontSize.micro=11px；此为既有小字号被新机制检出，产品整改/设计判定留给对应 owner，本 PR 只建立精确机制登记。
+
+- 第二次实测补录：上述 13 个元素 `fontSizes` **全部为 [11]**；精确登记在 `feel-exemptions.json`，owner=design-system，baseline 仍为原值。纯策略回归证明同文案额外节点、变成 10px、换文本/标签/规则/状态都会继续红。
+- 修复后本地 `pnpm run test:e2e`：**SMOKE PASS: 17 assertions**。`artifacts/feel/smoke/contact-sheet.json` 保留 findings=13 / exempted=13 / drift=[]；截图人工核对侧栏、镜头标签和生成方式区域，扫描没有停用。原始红记录 `/tmp/ux-feel-smoke-details.log`；绿记录 `/tmp/ux-feel-smoke-green.log`。
+- `vitest list --filesOnly` 实际收集清单不含两份 browser 文件，仅收纯策略 `feel-policy.test.mjs`。浏览器原 11 个用例与纯策略 2 个用例均通过；CI 接线检查 13/13。
+- 本轮完整 `python3 scripts/with-gates-lock.py -- pnpm run gates` **exit 0**：76 contracts / 73 pass / 0 blocking / 3 advisory；Vitest 1291 files pass + 1 skipped，12060 tests pass + 2 skipped；agent runtime / janitor / stats 及 Vite/Electron build 通过。日志 `/tmp/ux-feel-ci-fix-gates.log`。未提交其他运行报告，UF-LAST.md 仅取消跟踪（.gitignore 不变）。

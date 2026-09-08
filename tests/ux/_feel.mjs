@@ -42,6 +42,7 @@ export async function scanFeel(root, { rules = {}, label = 'page' } = {}) {
       target: elements.map((el) => el.tagName.toLowerCase()),
       text: elements.map((el) => el.textContent.trim().slice(0, 80)),
       rects: elements.map((el) => el.getBoundingClientRect().toJSON()),
+      fontSizes: elements.map((el) => parseFloat(view.getComputedStyle(el).fontSize)),
     })
 
     function visibleRect(el, rect = el.getBoundingClientRect(), clipSelf = false) {

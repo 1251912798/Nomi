@@ -1,4 +1,4 @@
-import { test } from 'vitest'
+import { test } from 'node:test'
 import { expect } from '@playwright/test'
 import { chromium } from 'playwright'
 import { scanFeel } from './_feel.mjs'

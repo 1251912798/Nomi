@@ -209,7 +209,8 @@
     "check:gates-lock": "node --test scripts/with-gates-lock.node-test.mjs",
     "check:reference-contract": "pnpm exec tsx scripts/check-reference-outbound-contract.ts",
     "feel:nightly": "node scripts/feel-nightly.mjs",
-    "check:feel": "node scripts/check-feel.mjs"
+    "check:feel": "node scripts/check-feel.mjs",
+    "test:feel:browser": "python3 scripts/with-gates-lock.py -- node --test tests/ux/_feel.browser.mjs tests/ux/_feel-observer.browser.mjs"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^1.2.12",

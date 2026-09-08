@@ -18,6 +18,22 @@ export function compareFeelBaseline(result, baseline) {
   })
 }
 
+/** Consume reviewed findings once; new text, smaller type or duplicate nodes still fail. */
+export function applyFeelExemptions(result, exemptions) {
+  const entries = exemptions.entries.filter((entry) => entry.label === result.label)
+  const remaining = entries.flatMap((entry) => entry.findings.map((finding) => ({ ...finding, rule: entry.rule })))
+  const identity = ({ rule, target, text, fontSizes }) => JSON.stringify({ rule, target, text, fontSizes })
+  const exempted = []
+  const findings = result.findings.filter((finding) => {
+    const index = remaining.findIndex((known) => identity(known) === identity(finding))
+    if (index < 0) return true
+    remaining.splice(index, 1)
+    exempted.push(finding)
+    return false
+  })
+  return { result: { ...result, findings }, exempted, entries }
+}
+
 /** Every launched page records first, then rejects only baseline drift. */
 export function installFeelObserver(page, {
   name,
@@ -32,14 +48,14 @@ export function installFeelObserver(page, {
   const records = []
   async function checkpoint(label, existingScreenshot) {
     const result = await scanFeel(page, { label })
-    const exemption = exemptions.entries.find((entry) => entry.label === label)
-    const drift = compareFeelBaseline(result, baseline)
+    const reviewed = applyFeelExemptions(result, exemptions)
+    const drift = compareFeelBaseline(reviewed.result, baseline)
     const file = existingScreenshot || path.join(outputDir, `${++sequence}.png`)
     if (!existingScreenshot) await screenshot({ path: file })
-    const record = { ...result, screenshot: file, drift, exemption: exemption || null }
+    const record = { ...result, screenshot: file, drift, exempted: reviewed.exempted, exemptions: reviewed.entries }
     records.push(record)
     fs.writeFileSync(path.join(outputDir, 'contact-sheet.json'), JSON.stringify(records, null, 2) + '\n')
-    if (drift.length && !exemption) throw new Error(`Feel baseline drift at ${label}: ${JSON.stringify(drift)}; evidence: ${outputDir}`)
+    if (drift.length) throw new Error(`Feel baseline drift at ${label}: ${JSON.stringify(drift)}; evidence: ${outputDir}`)
     return result
   }
   const instrumented = new WeakSet()

@@ -14,14 +14,34 @@ for (const file of ['tests/ux/feel-baseline.json', 'tests/ux/feel-exemptions.jso
     if (keys.has(key)) throw new Error(`Duplicate feel entry: ${key}`)
     keys.add(key)
     if (!entry.owner || !entry.label) throw new Error(`Missing feel owner/label: ${key}`)
-    if (file.includes('exemptions') && !entry.reason) throw new Error(`Missing exemption reason: ${key}`)
+    if (file.includes('exemptions')) {
+      if (!entry.reason || !entry.rule || !Array.isArray(entry.findings) || !entry.findings.length) {
+        throw new Error(`Exemptions require a rule, reason and exact findings: ${key}`)
+      }
+      for (const finding of entry.findings) {
+        if (!Array.isArray(finding.target) || !finding.target.length
+          || !Array.isArray(finding.text) || finding.text.length !== finding.target.length
+          || !Array.isArray(finding.fontSizes) || finding.fontSizes.length !== finding.target.length
+          || !finding.fontSizes.every((size) => Number.isFinite(size) && size > 0)) {
+          throw new Error(`Invalid exemption evidence: ${key}`)
+        }
+      }
+    }
     if (file.includes('baseline') && (!Number.isInteger(entry.count) || entry.count < 1)) throw new Error(`Invalid count: ${key}`)
     if (previous) {
       const old = previous.entries.find((item) => item.label === entry.label && item.rule === entry.rule)
       if (!old || (entry.count || 1) > (old.count || 1)) throw new Error(`Feel ratchet may only decrease: ${key}`)
+      if (file.includes('exemptions')) {
+        const remaining = [...old.findings]
+        for (const finding of entry.findings) {
+          const index = remaining.findIndex((known) => JSON.stringify(known) === JSON.stringify(finding))
+          if (index < 0) throw new Error(`Feel exemption evidence may only decrease: ${key}`)
+          remaining.splice(index, 1)
+        }
+      }
     }
   }
-  if (file.includes('exemptions') && !previous && current.entries.length) throw new Error('Initial exemptions must be empty')
+  // Initial reviewed evidence is permitted; subsequent merge-base entries can only shrink.
 }
 const scanner = fs.readFileSync('tests/ux/_feel.mjs', 'utf8')
 if (/^import\s/m.test(scanner) || /data-testid|react-flow|nomi|agent-panel/i.test(scanner)) {
