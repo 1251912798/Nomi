@@ -20,6 +20,24 @@
   },
   "formats": [
     {
+      "name": "claude-notification",
+      "kind": "external-standard",
+      "files": [
+        "Notification stdin JSON"
+      ],
+      "spec": "https://code.claude.com/docs/en/hooks#notification",
+      "upstreamVersion": "Official Notification input example, retrieved 2026-09-09",
+      "why": "Forward only notifications requesting human attention to the native local cue.",
+      "fixtures": [
+        "tests/fixtures/standard-formats/claude-notification/input.json"
+      ],
+      "readers": [
+        "scripts/claude-hooks/attention-cue.sh"
+      ],
+      "writers": [],
+      "deviations": []
+    },
+    {
       "name": "antigravity-hooks",
       "kind": "external-standard",
       "files": [
