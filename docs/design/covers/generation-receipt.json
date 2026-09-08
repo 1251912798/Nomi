@@ -1,0 +1,58 @@
+{
+  "model": "gemini-2.5-flash-image-preview",
+  "budgetCny": 6,
+  "cnyPerUsdCeiling": 8,
+  "jobs": [
+    {
+      "name": "anchor-1",
+      "output": "docs/design/covers/anchors/anchor-1.png",
+      "reservedCny": 0.2,
+      "state": "completed",
+      "before": 185.725172,
+      "startedAt": "2026-09-08T15:12:38.305Z",
+      "taskId": "task_01M20S83C6YEMZKNJM5JQJXJN4",
+      "after": 185.737672,
+      "balanceDelta": 0.012500000000017053,
+      "completedAt": "2026-09-08T15:12:55.936Z",
+      "prompt": "Editorial flat geometric illustration for Nomi. Concept: one subject, multiple views. Palette from design tokens: paper oklch(1 0 0), ink oklch(0.22 0.01 80), accent oklch(0.55 0.13 250). Use only paper, ink and one blue accent. One visual metaphor, at most five simple shapes, generous paper space, no gradients, no 3D rendering, no faces, no letters, no text, no numbers, no watermarks. 16:9 landscape. Three flat paper panels fan from a single blue rectangle, like one idea becoming three views. Crisp straight edges. Title is added later by the UI, never inside the image."
+    },
+    {
+      "name": "anchor-2",
+      "output": "docs/design/covers/anchors/anchor-2.png",
+      "reservedCny": 0.2,
+      "state": "completed",
+      "before": 185.737672,
+      "startedAt": "2026-09-08T15:12:56.325Z",
+      "taskId": "task_01M20S8MZ1ZJDXYKGB9YDA37W3",
+      "after": 185.750172,
+      "balanceDelta": 0.012499999999988631,
+      "completedAt": "2026-09-08T15:13:18.928Z",
+      "prompt": "Editorial flat geometric illustration for Nomi. Concept: one subject, multiple views. Palette from design tokens: paper oklch(1 0 0), ink oklch(0.22 0.01 80), accent oklch(0.55 0.13 250). Use only paper, ink and one blue accent. One visual metaphor, at most five simple shapes, generous paper space, no gradients, no 3D rendering, no faces, no letters, no text, no numbers, no watermarks. 16:9 landscape. Three paper panels orbit one blue disk, like different views of the same object. Gentle curves, balanced spacing. Title is added later by the UI, never inside the image."
+    },
+    {
+      "name": "anchor-3",
+      "output": "docs/design/covers/anchors/anchor-3.png",
+      "reservedCny": 0.2,
+      "state": "completed",
+      "before": 185.750172,
+      "startedAt": "2026-09-08T15:13:19.326Z",
+      "taskId": "task_01M20S9BDSPFCJF8WPQ2SJ8TDE",
+      "after": 185.762672,
+      "balanceDelta": 0.012500000000017053,
+      "completedAt": "2026-09-08T15:13:42.027Z",
+      "prompt": "Editorial flat geometric illustration for Nomi. Concept: one subject, multiple views. Palette from design tokens: paper oklch(1 0 0), ink oklch(0.22 0.01 80), accent oklch(0.55 0.13 250). Use only paper, ink and one blue accent. One visual metaphor, at most five simple shapes, generous paper space, no gradients, no 3D rendering, no faces, no letters, no text, no numbers, no watermarks. 16:9 landscape. A single blue rectangle passes through three offset ink outline frames. Cut-paper geometry, asymmetric placement. Title is added later by the UI, never inside the image."
+    }
+  ],
+  "priceEvidence": {
+    "url": "https://apimart.ai/api/marketplace/models?keyword=nano%20banana&page_size=10",
+    "retrievedAt": "2026-09-08T15:12:37.220Z",
+    "pricing": {
+      "starting_price": 0.0125,
+      "discount_rate": 1,
+      "credits_per_generation": 6250,
+      "billing_type": "per_generation",
+      "price_unit": "/次",
+      "has_price": true
+    }
+  }
+}
