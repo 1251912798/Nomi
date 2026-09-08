@@ -28,6 +28,11 @@ export const FULL_CANVAS_SCENARIOS = [
   { id: 'canvas-reconcile', script: 'tests/ux/p4-s5-canvas-reconcile.e2e.mjs' },
 ]
 
+// This persistence walk uses a viewport-bound drag target; keep it isolated
+// from another Electron window's compositor scheduling while other walks run
+// in two bounded workers.
+export const SERIAL_CANVAS_SCENARIO_IDS = new Set(['card-stack-persistence'])
+
 export const PERFORMANCE_CANVAS_SCENARIOS = [
   {
     id: 'medium-canvas-performance',
@@ -187,6 +192,12 @@ export async function runCanvasScenario(scenario, {
 export async function runCanvasScenarios(scenarios, { concurrency = 1, runScenario = runCanvasScenario, ...options } = {}) {
   if (![1, 2].includes(concurrency)) throw new Error('canvas concurrency must be 1 or 2')
   const results = new Array(scenarios.length)
+  const serial = scenarios.filter((scenario) => SERIAL_CANVAS_SCENARIO_IDS.has(scenario.id))
+  const parallel = scenarios.filter((scenario) => !SERIAL_CANVAS_SCENARIO_IDS.has(scenario.id))
+  if (serial.length) {
+    for (const scenario of serial) results[scenarios.indexOf(scenario)] = await runScenario(scenario, options)
+  }
+  scenarios = parallel
   let next = 0
   await Promise.all(Array.from({ length: Math.min(concurrency, scenarios.length) }, async () => {
     while (next < scenarios.length) {
