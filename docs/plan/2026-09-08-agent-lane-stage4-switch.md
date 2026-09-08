@@ -372,3 +372,7 @@ src/devlab/designLab/v4/states/01-vocabulary.tsx:9:import type { LaneSnapshot } 
 - 实际 canvas/timeline/range read 三处错误已在共享契约边界修复；32 条定向回归通过。真实长对话的队列读取/字幕落盘仍需 runner 重跑。
 - `SWITCH-RULINGS.md` 已确定工具预算处理：10000 不抬、单次常驻加一个领域组，全部 44 个只作为报告。公开 SDK `setActiveTools` 承接切换；此项运行时改动与对应门岗尚未落地，当前门岗仍红。
 - 步骤 3–6 未完成，迁移横幅第五图尚无；本节不是最终通过或 PR ready 的声明。
+
+### 19:05 裁决收口执行计划
+
+按 SWITCH-RULINGS 的明确裁决：先压缩 schema 重复散文并按中英文实测最大值一次重置 MCP 棘轮（已归零于 #646）；随后计划卡不显示不存在的抬档动作说明，逐条复用现有时间轴人话，技术 JSON 放默认折叠详情。审批策略、schema 字段和枚举均不改。根因是卡片把 technical 当不可收缩同行内容，挤掉可读正文；时间轴与分镜同用 PlanRow，均须覆盖。回滚通过 revert 对应提交恢复。验收：schema/payload 门岗、卡片回归、真实对话 loopback 走查与截图人眼检查、全 gates；第 2 步全部通过才进入迁移器。

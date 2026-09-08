@@ -149,7 +149,7 @@ const CANVAS_WRITE_TOOLS: readonly CanvasWriteToolShape[] = [
     name: "nomi_canvas_write", union: canvasNodeWriteInputSchema,
     description: "Create, connect, retitle or tidy generation-canvas nodes in one reversible batch. The operation selects which fields apply; unrelated fields are rejected.",
     promptSnippet: "create, connect, retitle or tidy canvas nodes.",
-    promptGuidelines: ["Every call is one reversible proposal the user still has to accept; send a whole batch in one call rather than one node at a time.", ...CANVAS_NODE_PROMPT_GUIDELINES],
+    promptGuidelines: ["Send a whole batch in one call rather than one node at a time.", ...CANVAS_NODE_PROMPT_GUIDELINES],
     examples: [{ when: "Create a shot:", arguments: { operation: "create_canvas_nodes", summary: "Opening shot", nodes: [{ clientId: "s1", kind: "keyframe", title: "Opening", prompt: "Sunrise" }] } }],
     arrayFields: ["nodes", "edges"], objectFields: [],
   },
