@@ -165,23 +165,6 @@ function check(condition, message, details = '') {
   console.log(`  ok: ${message}`)
 }
 
-async function dismissFirstRun(win) {
-  await win.evaluate(() => {
-    window.localStorage.setItem('__nomiE2E', '1')
-    for (const key of ['nomi:splash:v1', 'nomi:journey-tour:v1', 'nomi:canvas-gesture-hint:v1', 'nomi-onboarding-checklist:v1']) {
-      window.localStorage.setItem(key, 'seen')
-    }
-  })
-  await win.reload()
-  await win.waitForTimeout(1200)
-  for (let index = 0; index < 5; index += 1) {
-    const skip = win.locator('button,[role="button"],a', { hasText: /跳过|开始创作|进入|完成|先逛逛/ }).first()
-    if (await skip.count()) await skip.click({ timeout: 800 }).catch(() => {})
-    await win.keyboard.press('Escape').catch(() => {})
-    await win.waitForTimeout(200)
-  }
-}
-
 async function addNodeWithPrompt(win, kind, prompt) {
   await win.locator(`[aria-label="添加${kind}节点"]`).first().click({ timeout: 5000 })
   await win.waitForTimeout(900)
@@ -242,7 +225,8 @@ const { app, win } = await launchNomiApp({
   userDataDir,
   settingsDir,
   projectsDir,
-  settleMs: 1200,
+  settleMs: 0,
+  initialLocalStorage: { 'nomi:splash:v1': 'seen', 'nomi:journey-tour:v1': 'seen' },
   env: {
     NOMI_RENDERER_URL: `file://${path.join(repoRoot, 'dist/index.html')}`,
   },
@@ -253,7 +237,6 @@ try {
   await browserWindow.evaluate((window) => window.setBounds({ x: 0, y: 0, width: 1680, height: 1020 }))
   win.on('pageerror', (error) => pageErrors.push(String(error)))
   win.on('console', (message) => { if (message.type() === 'error') consoleErrors.push(message.text()) })
-  await dismissFirstRun(win)
 
   await win.getByText('新建空白项目', { exact: false }).first().click({ timeout: 5000 })
   await win.waitForTimeout(2200)
