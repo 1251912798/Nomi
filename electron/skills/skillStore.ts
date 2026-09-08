@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { readSkillCuration, type SkillCuration } from "./skillCuration";
 
 import { getSkillsRoots, getUserSkillsRoot } from "../runtimePaths";
 import { frontmatterString, parseSkillFrontmatter, type SkillFrontmatter } from "./skillFrontmatter";
@@ -12,6 +13,7 @@ import {
 } from "./skillManifestSchema";
 
 export type SkillRecord = {
+  curation?: SkillCuration;
   name: string;
   directoryName: string;
   filePath: string;
@@ -193,6 +195,7 @@ export function discoverSkillRecordsFromRoots(
       const front = parseSkillFrontmatter(body);
       const { manifest, error } = readSkillManifest(front);
       records.push({
+        curation: front.error ? undefined : readSkillCuration(front.values),
         // `name` and `description` have exactly one owner now: the two required
         // frontmatter fields the Agent Skills spec defines.  The extension block
         // may not restate them, so the two-manifest drift cannot come back.

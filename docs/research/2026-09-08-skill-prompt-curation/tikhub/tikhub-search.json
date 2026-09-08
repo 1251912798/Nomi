@@ -1,0 +1,89 @@
+{
+  "source": "tikhub",
+  "baseUrl": "https://api.tikhub.io",
+  "keyword": "AI 生图提示词 三视图 去 AI 感 运镜 提示词",
+  "since": null,
+  "limitPerPlatform": 3,
+  "generatedAt": "2026-09-08T14:52:09.246Z",
+  "failures": [],
+  "summary": {
+    "totalRecords": 3,
+    "platformsOk": 1,
+    "platformsEmpty": 0,
+    "platformsFailed": 0,
+    "platforms": [
+      {
+        "platform": "xhs",
+        "platformLabel": "小红书",
+        "status": "ok",
+        "items": 3,
+        "pagesFetched": 1,
+        "missingFields": {},
+        "fieldConfidence": "verified-against-live-response",
+        "fieldsVerifiedOn": "2026-09-06",
+        "error": null
+      }
+    ]
+  },
+  "results": [
+    {
+      "platform": "xhs",
+      "platformLabel": "小红书",
+      "records": [
+        {
+          "platform": "xhs",
+          "platformLabel": "小红书",
+          "id": "6a202fca000000000803fd47",
+          "url": "https://www.xiaohongshu.com/explore/6a202fca000000000803fd47?xsec_token=YBBmOUCsM4-zQbpsAsbjoBLC_YO_CguuYLJSWr01toJ04%3D&xsec_source=pc_search",
+          "author": "AIgwcf",
+          "authorId": "613dc19d000000000202592c",
+          "publishedAt": "2026-06-03T13:44:42.000Z",
+          "title": "AI提示词【图生视频】篇",
+          "excerpt": "良心干货，建议收藏#ai提示词分享 #ai提示词技巧 #ai提示词教学 #ai生图提示词 #AI提示词大全",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "xhs",
+          "platformLabel": "小红书",
+          "id": "6a8d563f00000000290249b0",
+          "url": "https://www.xiaohongshu.com/explore/6a8d563f00000000290249b0?xsec_token=YBu46K15apWmqI7x8Nx_3IDPTd15cSq-4Cnu228Ep6BcA%3D&xsec_source=pc_search",
+          "author": "樊梵又设计",
+          "authorId": "5a9135784eacab4ab53ff5c3",
+          "publishedAt": "2026-08-25T10:08:06.000Z",
+          "title": "天！国内直用image2+PSD，IP设计轻松搞定",
+          "excerpt": "整理了提示词：把 IP角色从生成到延展 这套流程跑顺了✨ 这次用同一个IP，做了： 角色生成 → 九宫格发型 → 换装",
+          "mentions": [],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        },
+        {
+          "platform": "xhs",
+          "platformLabel": "小红书",
+          "id": "682355240000000023013bce",
+          "url": "https://www.xiaohongshu.com/explore/682355240000000023013bce?xsec_token=YB6t2aWt4gJChwq-VomkN0C7sx6gIVxsLXYXx08DLzkyM%3D&xsec_source=pc_search",
+          "author": "阿威聊AI",
+          "authorId": "5b08bdddf7e8b94f27cbd1df",
+          "publishedAt": "2025-05-13T14:20:20.000Z",
+          "title": "可灵2.0 | AI视频镜头提示词合集",
+          "excerpt": "这次可灵2.0的升级，让它对用户的提示词更加敏感，且动态效果拉满！ 但如果不知道如何提供运镜，不如看看这些整理好的镜头提",
+          "mentions": [
+            "可灵"
+          ],
+          "fieldConfidence": "verified-against-live-response",
+          "fieldsVerifiedOn": "2026-09-06",
+          "missingFields": []
+        }
+      ],
+      "pages": [
+        {
+          "page": 1,
+          "received": 20
+        }
+      ]
+    }
+  ]
+}
