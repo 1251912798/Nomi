@@ -197,3 +197,7 @@ D 的五对 Read：批量模型设置、节点右键菜单、快捷键最终结�
 任务分支 test/walkthrough-runtime-diet-20260908；正常整合 origin/main 后执行 pnpm run gates，再用其新构建跑 full。最终命令状态、gates 墙钟与 PR URL 记录在不提交的 WS-LAST.md / PR，避免为了回填文档改变已验收 SHA。三个指定静态门岗已在最终测试代码上再次全绿。只推任务分支，不合并 PR；生产源码零改动，零额度生成，原始截图/测量日志留 /tmp/nomi-walk-speed-evidence。
 
 首轮最终 gates 跑完 75 个 contracts：71 通过、1 个 prior-art 引用位置缺失阻断、3 个既有 advisory；补齐上述实际源码位置后重跑完整 gates，不把这轮记成通过。
+
+## 最终裁决更新：D 撤回
+
+整合 main 后前两轮并发 109067 / 107919ms 均 13/13，第三轮 card-stack-persistence 在 video 版本按钮点击时 timeout（outside viewport），12/13。不能把一次失败归因成已证明的 compositor 根因；曾提交的串行例外缺乏依据，已连同双实例 runner 接入整体撤回，恢复原串行 runner 和测试。按用户“不行就不做”执行，不通过重复跑绿或场景特判保住并发数字。上文 63.94% 仅为已撤回候选，不是最终交付收益。最终仅交付 C1/A/C3，预计约 30% 串行收益；准确值以最终三遍完整串行为准。40% 目标未达原因：两并发稳定性不满足；原来每文件已一次 launch，没有足够重复启动可砍；保留真实场景动作与断言，不用减少覆盖凑目标。

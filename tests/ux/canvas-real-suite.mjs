@@ -1,4 +1,4 @@
-import { execFile } from 'node:child_process'
+import { spawnSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -27,11 +27,6 @@ export const FULL_CANVAS_SCENARIOS = [
   { id: 'canvas-landing', script: 'tests/ux/p4-s5-canvas-landing.e2e.mjs' },
   { id: 'canvas-reconcile', script: 'tests/ux/p4-s5-canvas-reconcile.e2e.mjs' },
 ]
-
-// This persistence walk uses a viewport-bound drag target; keep it isolated
-// from another Electron window's compositor scheduling while other walks run
-// in two bounded workers.
-export const SERIAL_CANVAS_SCENARIO_IDS = new Set(['card-stack-persistence'])
 
 export const PERFORMANCE_CANVAS_SCENARIOS = [
   {
@@ -120,25 +115,10 @@ function scenarioLogPath(outputDir, scenarioId) {
   return path.join(outputDir, `${safeId}.log`)
 }
 
-function spawnScenario(executable, args, options) {
-  return new Promise((resolve) => {
-    execFile(executable, args, options, (error, stdout, stderr) => {
-      // execFile distinguishes maxBuffer failures by code; only a killed child
-      // without an exit code represents our configured timeout.
-      if (error?.killed && error.code === null && error.signal === options.killSignal) error.code = 'ETIMEDOUT'
-      resolve({
-        status: error ? (Number.isInteger(error.code) ? error.code : 1) : 0,
-        signal: error?.signal ?? null,
-        error, stdout, stderr,
-      })
-    })
-  })
-}
-
-export async function runCanvasScenario(scenario, {
+export function runCanvasScenario(scenario, {
   cwd = repoRoot,
   env = process.env,
-  spawnProcess = spawnScenario,
+  spawnProcess = spawnSync,
   timeoutMs,
   outputDir,
   stdoutWriter = process.stdout,
@@ -146,10 +126,11 @@ export async function runCanvasScenario(scenario, {
 } = {}) {
   const resolvedTimeoutMs = timeoutMs ?? scenario.timeoutMs ?? DEFAULT_CANVAS_SCENARIO_TIMEOUT_MS
   const startedAt = Date.now()
-  const child = await spawnProcess(process.execPath, [scenario.script, ...(scenario.args || [])], {
+  const child = spawnProcess(process.execPath, [scenario.script, ...(scenario.args || [])], {
     cwd,
     env,
     encoding: 'utf8',
+    stdio: 'pipe',
     maxBuffer: MAX_CANVAS_SCENARIO_LOG_BYTES,
     timeout: resolvedTimeoutMs,
     killSignal: 'SIGKILL',
@@ -189,41 +170,21 @@ export async function runCanvasScenario(scenario, {
   }
 }
 
-export async function runCanvasScenarios(scenarios, { concurrency = 1, runScenario = runCanvasScenario, ...options } = {}) {
-  if (![1, 2].includes(concurrency)) throw new Error('canvas concurrency must be 1 or 2')
-  const results = new Array(scenarios.length)
-  const serial = scenarios.filter((scenario) => SERIAL_CANVAS_SCENARIO_IDS.has(scenario.id))
-  const parallel = scenarios.filter((scenario) => !SERIAL_CANVAS_SCENARIO_IDS.has(scenario.id))
-  if (serial.length) {
-    for (const scenario of serial) results[scenarios.indexOf(scenario)] = await runScenario(scenario, options)
-  }
-  scenarios = parallel
-  let next = 0
-  await Promise.all(Array.from({ length: Math.min(concurrency, scenarios.length) }, async () => {
-    while (next < scenarios.length) {
-      const index = next++
-      console.log(`[canvas] ${scenarios[index].id}`)
-      results[index] = await runScenario(scenarios[index], options)
-    }
-  }))
-  return results
-}
-
-export async function runCanvasSuite(profile, { cwd = repoRoot, env = process.env, shard = null, concurrency = profile === 'full' && !shard ? 2 : 1 } = {}) {
-  if ((profile !== 'full' || shard) && concurrency !== 1) throw new Error('two workers require unsharded full canvas')
-  if (![1, 2].includes(concurrency)) throw new Error('canvas concurrency must be 1 or 2')
-  const startedAt = Date.now()
+export function runCanvasSuite(profile, { cwd = repoRoot, env = process.env, shard = null } = {}) {
   const suiteLabel = shard ? `${profile} ${shard.index}/${shard.total}` : profile
   const outputName = shard ? `${profile}-${shard.index}of${shard.total}` : profile
   const outputDir = path.join(cwd, 'outputs', 'canvas-acceptance', outputName)
   fs.rmSync(outputDir, { recursive: true, force: true })
   fs.mkdirSync(outputDir, { recursive: true })
-  const results = await runCanvasScenarios(scenariosForProfile(profile, { shard }), { cwd, env, outputDir, concurrency })
+  const results = []
+
+  for (const scenario of scenariosForProfile(profile, { shard })) {
+    console.log(`\n[canvas:${suiteLabel}] ${scenario.id}`)
+    results.push(runCanvasScenario(scenario, { cwd, env, outputDir }))
+  }
 
   const summary = {
     profile,
-    concurrency,
-    wallMs: Date.now() - startedAt,
     shard: shard ? `${shard.index}/${shard.total}` : null,
     passed: results.filter((result) => result.exitCode === 0).length,
     failed: results.filter((result) => result.exitCode !== 0).length,
@@ -236,18 +197,11 @@ export async function runCanvasSuite(profile, { cwd = repoRoot, env = process.en
 export function parseCanvasSuiteArgv(argv) {
   const [profile = 'critical', ...rest] = argv
   let shard = null
-  let concurrency
   for (let index = 0; index < rest.length; index += 1) {
     // npm 吃掉 `--` 分隔符，pnpm 会原样转发（CI 实测：`pnpm run … -- --shard 1/2`
     // 到达脚本时是 `full -- --shard 1/2`）。按 CLI 惯例把独立的 `--` 当作
     // 选项结束符跳过；其余未知参数照旧 fail-closed。
     if (rest[index] === '--') continue
-    if (rest[index] === '--concurrency') {
-      const value = rest[++index]
-      if (!['1', '2'].includes(value)) throw new Error('canvas concurrency must be 1 or 2')
-      concurrency = Number(value)
-      continue
-    }
     if (rest[index] === '--shard') {
       shard = parseCanvasShard(rest[index + 1])
       index += 1
@@ -255,13 +209,13 @@ export function parseCanvasSuiteArgv(argv) {
     }
     throw new Error(`unknown canvas suite argument: ${rest[index]}`)
   }
-  return { profile, shard, ...(concurrency === undefined ? {} : { concurrency }) }
+  return { profile, shard }
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   try {
-    const { profile, shard, concurrency } = parseCanvasSuiteArgv(process.argv.slice(2))
-    const summary = await runCanvasSuite(profile, { shard, concurrency })
+    const { profile, shard } = parseCanvasSuiteArgv(process.argv.slice(2))
+    const summary = runCanvasSuite(profile, { shard })
     console.log(`\ncanvas-${summary.suiteLabel}: ${summary.failed === 0 ? 'PASS' : 'FAIL'} (${summary.passed}/${summary.results.length})`)
     process.exit(summary.failed === 0 ? 0 : 1)
   } catch (error) {
