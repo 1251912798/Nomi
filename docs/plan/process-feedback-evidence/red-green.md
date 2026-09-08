@@ -298,3 +298,7 @@ undefined
 - 改用 `_launchApp.mjs` 的隔离真实 Nomi 进程及 `_assert.mjs` 的 proveProbe → expectAbsent；两条门岗均转绿，无基线放宽。
 - Electron 导航会重置媒体仿真，测试在导航后设置 reducedMotion；matchMedia 实测 false → true，未修改生产动效。
 - 两份 process-feedback E2E 再跑通过；真实 Nomi 窗口截图已由主会话查看。
+
+## 设计系统 #654 合并核对
+
+重新生成 Tailwind 后设计系统 31 用例通过；过程反馈仅两张真帧的取消按钮受 main 已批准 danger-soft 语义色影响。主会话查看明暗实际图、旧图与差异图后，仅重录 pf-preview / pf-preview-dark，2 用例通过，其余基线不变。
