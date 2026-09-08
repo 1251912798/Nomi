@@ -36,3 +36,5 @@ v2 截图：docs/design/mockups/2026-09-08-skill-library-cards/{library-cards,no
 验证：pnpm run gates 退出0；Vitest 12056通过/2跳过；附加测试、构建、样张交互/解码通过；9批push钩子通过。
 边界：UI未实现；40效果封面待选锚图；文本分享包拒绝二进制媒体；真实ASAR安装包/Agent生成闭环未测。
 接触表：docs/design/covers/contact-sheet.png；完整来源/许可/成本与验证限度见 PR。
+# PR #655 CI 红修复（2026-09-09）
+复现并修复 `electron/skills/skillCuration.test.ts`：两个带二进制 preview 的 Skill 都不能导出为纯文本包，第二个断言误写为 `not.toBeNull()`。已改为 `toBeNull()`；定向 Vitest 13/13 通过，提交 `903dfd6a2` 已推送。
