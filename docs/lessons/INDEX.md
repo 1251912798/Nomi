@@ -120,6 +120,7 @@
 - [多会话同开 MCP 会串库](nomi-mcp-multi-instance-library-swap.md) — 报「项目不存在」别重试、别改用当前 id
 - [`nomi_get_run` 结果要读 `structuredContent.nomiRunData`](nomi-get-run-mcp-projection-shape.md) — text 块是人话不是 JSON
 - [MCP elicitation 的支持面（结论已反转）](claude-code-lacks-elicitation-capability.md) — CLI ≥2.1.76 已支持；旧结论别再当前提
+- [「参考图连了没用上」断在档案键 ↔ body 字段名的 join](reference-slot-to-body-key-join.md) — 先跑 `check:reference-contract` 别读码猜；含「reach=none 不等于 bug」「一次只种一个槽」两个假红坑
 
 ## E. 产品判断与对外表达
 

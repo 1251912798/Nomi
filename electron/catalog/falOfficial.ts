@@ -91,7 +91,10 @@ export const FAL_OFFICIAL_MODELS: FalModel[] = [
       // modeId 必须是**接收档案自己的 mode.id**：gpt-image-2 档案声明 t2i / i2i（"edit" 是
       // nano-banana-2 / seedream 档案的写法，不是这个档案的）。曾写 "edit" → selectTaskMapping
       // 在 i2i 上永远取不到本条，模式栏把「改图」静默藏掉（2026-09-03 check:orphan-cables 实测）。
-      withCreateOptions(mapping("openai/gpt-image-2", "image_edit", "i2i", "GPT Image 2 · 改图", "openai/gpt-image-2/edit", { prompt: "{{request.prompt}}", image_urls: p("image_urls"), image_size: p("image_size"), background: p("background"), quality: p("quality"), num_images: p("num_images"), output_format: p("output_format"), mask_url: p("mask_url") }, "images[*]"), { paramMap: { rules: [{ wire: "image_size", fromMany: ["aspect_ratio", "resolution"], transform: "ratioResToFalImageSize" }] } }),
+      // wire 字段名是 fal 自己的 `image_urls`，读的 param 必须是**档案声明的契约键** `input_urls`
+      // （gptImage2.ts 的 image_ref 槽 inputKey，KIE/APIMart 同名）。读成 `image_urls` = 档案投影
+      // 到不了报文 → 一张参考图都发不出、第三闸拒发（2026-09-08 根因；check:reference-contract 守）。
+      withCreateOptions(mapping("openai/gpt-image-2", "image_edit", "i2i", "GPT Image 2 · 改图", "openai/gpt-image-2/edit", { prompt: "{{request.prompt}}", image_urls: p("input_urls"), image_size: p("image_size"), background: p("background"), quality: p("quality"), num_images: p("num_images"), output_format: p("output_format"), mask_url: p("mask_url") }, "images[*]"), { paramMap: { rules: [{ wire: "image_size", fromMany: ["aspect_ratio", "resolution"], transform: "ratioResToFalImageSize" }] } }),
     ],
   },
   {

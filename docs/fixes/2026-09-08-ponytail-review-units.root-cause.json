@@ -28,11 +28,18 @@
       "url": "https://git-scm.com/docs/git-show",
       "checked_at": "2026-09-08",
       "purpose": "Dense combined diff merge semantics"
+    },
+    {
+      "kind": "official-doc",
+      "url": "https://git-scm.com/docs/git-diff",
+      "checked_at": "2026-09-08",
+      "purpose": "AUTO_MERGE tree stores automatic ort result; index comparison isolates staged conflict decisions."
     }
   ],
   "invariants": [
     "All push creation and update reviews share authored commit selection; Git failure blocks review.",
-    "New-ref binary summaries begin at the first authored commit parent, never an unrelated remote tip."
+    "New-ref binary summaries begin at the first authored commit parent, never an unrelated remote tip.",
+    "Staged conflict merges compare to AUTO_MERGE when present; absent optional ref alone may fall back to conservative MERGE_HEAD baseline."
   ],
   "generality_proof": "All origin refs are enumerated independently of symbolic HEAD, and advertised tip stays excluded when tracking is stale.",
   "shared_boundaries": [
@@ -54,6 +61,12 @@
       "entry_point": "collectReviewDiff push new ref",
       "disposition": "enforced",
       "evidence": "Now routes to the same authored selection"
+    },
+    {
+      "path": "scripts/ponytail-review-hook.mjs",
+      "entry_point": "collectReviewDiff staged merge",
+      "disposition": "enforced",
+      "evidence": "AUTO_MERGE indexes only new staged decisions, including manually staged non-conflict files; 270593 byte branch regression."
     }
   ],
   "recurrence": {
@@ -94,7 +107,8 @@
   },
   "migration": "No persisted data changes; existing refs work without symbolic remote HEAD.",
   "residual_risks": [
-    "Dense combined diff does not report resolutions choosing one parent unchanged."
+    "Dense combined diff does not report resolutions choosing one parent unchanged.",
+    "Clean merges and older merge strategies without AUTO_MERGE retain conservative MERGE_HEAD review, which can include previously reviewed task commits."
   ],
   "invariant_owner_layer": {
     "layer": "scripts/ponytail-review-hook.mjs",

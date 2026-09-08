@@ -93,13 +93,10 @@ def execute(command, shell, file, token, owner=None):
             except ProcessLookupError:
                 pass
 
-    previous = {sig: signal.signal(sig, cancel) for sig in (signal.SIGTERM, signal.SIGINT)}
-    try:
-        code = child.wait()
-        return code if code >= 0 else 128 - code
-    finally:
-        for sig, handler in previous.items():
-            signal.signal(sig, handler)
+    for sig in (signal.SIGTERM, signal.SIGINT):
+        signal.signal(sig, cancel)
+    code = child.wait()
+    return code if code >= 0 else 128 - code
 
 
 def main():
@@ -116,7 +113,6 @@ def main():
     # O_NOFOLLOW prevents accidentally opening a symlink in the shared tmp dir.
     fd = os.open(lock_path, os.O_RDWR | os.O_CREAT | getattr(os, 'O_NOFOLLOW', 0), 0o600)
     with os.fdopen(fd, 'r+', encoding='utf-8') as file:
-        owner = metadata(file)
         token = os.environ.get('NOMI_GATES_LOCK_TOKEN', '')
         next_report = 0
         while not try_lock(file):
@@ -124,7 +120,6 @@ def main():
             if inherited_owner(owner, token):
                 return execute(command, shell, file, token)
             if time.monotonic() >= next_report:
-                owner = metadata(file)
                 minutes = max(0, (time.time() - owner.get('started', time.time())) / 60)
                 print(f"另一棵 worktree 在跑 gates（pid={owner.get('pid', '?')} cwd={owner.get('cwd', '?')} 已跑 {minutes:.1f} 分钟）；排队等待", file=sys.stderr, flush=True)
                 next_report = time.monotonic() + 30

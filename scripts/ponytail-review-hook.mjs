@@ -96,8 +96,9 @@ export function parsePushInput(input) {
 function tryRunGit(git, repoRoot, args) {
   try {
     return String(git(repoRoot, args) || '').trim()
-  } catch (_error) {
-    return ''
+  } catch (error) {
+    if (error.status === 1) return '' // Optional ref is absent.
+    throw error
   }
 }
 
@@ -204,19 +205,22 @@ function withBinarySummary(diff, binarySummary) {
  */
 export function collectReviewDiff({ repoRoot, scope, pushInput = '', remoteName = '', runGit: git = runGit }) {
   if (scope === 'staged') {
-    // Committing a merge: `git diff --cached` compares the index against HEAD
-    // (our side), so everything the merged-in branch brings lands in the review
-    // even though nobody here wrote it and this gate already saw it upstream.
-    // Diff against MERGE_HEAD instead — what remains is our own commits plus the
-    // conflict resolutions, which are the only decisions a human made here.
+    // ort records its automatic merge result before conflict resolution.
+    // Comparing the index to that tree reviews only new staged decisions,
+    // including edits outside conflict files, without re-reviewing either side.
     const mergeHead = tryRunGit(git, repoRoot, ['rev-parse', '--verify', '--quiet', 'MERGE_HEAD'])
-    const selector = SHA.test(mergeHead) ? ['--cached', mergeHead] : ['--cached']
+    const autoMerge = SHA.test(mergeHead)
+      ? tryRunGit(git, repoRoot, ['rev-parse', '--verify', '--quiet', 'AUTO_MERGE^{tree}']) : ''
+    // Older strategies and clean merges may not create AUTO_MERGE. Keep the
+    // conservative incoming-parent baseline there; it cannot omit manual edits.
+    const baseline = SHA.test(autoMerge) ? autoMerge : mergeHead
+    const selector = SHA.test(baseline) ? ['--cached', baseline] : ['--cached']
     const textDiff = git(repoRoot, ['diff', ...selector, '--no-ext-diff', '--unified=80', '--'])
     const binarySummary = summarizeBinaryChanges({ repoRoot, git, selector })
     const diff = withBinarySummary(textDiff, binarySummary)
     assertReviewDiffSize(diff)
     const description = SHA.test(mergeHead)
-      ? `merge resolution (\`git diff --cached ${mergeHead}\`, excludes what MERGE_HEAD already carries)`
+      ? `merge staged decisions (\`git diff --cached ${baseline}\`, baseline ${SHA.test(autoMerge) ? 'AUTO_MERGE' : 'MERGE_HEAD'})`
       : 'staged changes (`git diff --cached`)'
     return { diff, ranges: [], description }
   }
