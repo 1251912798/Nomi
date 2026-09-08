@@ -28,3 +28,10 @@
 - 已查看最终绿图：`.tmp/pi-thinking-overlap-development-1788895519907/01-reasoning-before-tools.png`、`02-generating.png`、`03-complete.png`（另有 `04-cold-restored.png`）。生成中只有正文光标，完成后光标消失；思考正文默认不可见，收据与正文顺序正确。
 
 - 后续完整类型验证发现 i18next 泛型返回推导为 never，直接 `.repeat(30)` 无法编译；在夹具边界先用模板字符串明确文本类型，再重复。仅这一处调用直接访问返回值方法，同目录其他调用都是字符串参数；无运行时或截图变化。2026-09-09 `pnpm run typecheck` 通过。
+
+## 先查别人
+
+- 仓库已有披露控件：`src/workbench/ai/v4/AgentPanelV4Message.tsx:205` 的 V4Thinking 使用原生 details；同文件工具收据也采用自然文档流，不引入折叠库。
+- 已有展示合同：`src/workbench/ai/v4/agentPanelV4Types.ts:1` 与 `src/workbench/ai/lane/laneViewModel.ts:264` 分别拥有展示字段和 native part 投影，正文不应借 meta 的固定高行布局。
+- 已有验证宿主：`src/devlab/designLab/v4/states/04-wired.tsx:116` 把真实 LanePart 喂进 ShellStage；`tests/ux/agent-thinking-overlap.walk.mjs:1` 已有真实 Electron 长思考与相交探针。
+- 结论：复用已有投影、披露控件与真实宿主，不引入新框架；后续类型修正仅把 i18next 返回显式转成字符串，运行时值不变。
