@@ -86,6 +86,7 @@ export async function createLaneFixture(
   after(http.close);
   const document = createDocumentPort();
   const options: OpenLaneOptions = {
+    fetch: globalThis.fetch,
     projectDir,
     systemPrompt: LANE_SYSTEM_PROMPT,
     model: {

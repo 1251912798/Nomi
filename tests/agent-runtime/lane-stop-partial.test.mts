@@ -19,7 +19,7 @@ for (const kind of ['openai-compatible', 'openai-responses', 'anthropic'] as con
       const held = heldReply()
       t.after(held.release)
       const fixture = await createLaneFixture(t, [{ type: 'text', text: 'ACTUAL_PARTIAL', beforeFinish: held.beforeFinish }])
-      const { provider, model, credentials } = await createNomiProvider({ ...fixture.options.model, kind },
+      const { provider, model, credentials } = await createNomiProvider({ ...fixture.options.model, kind }, globalThis.fetch,
         guarded ? { firstResponseMs: 30_000, idleMs: 30_000 } : undefined)
       const models = createModels({ credentials })
       models.setProvider(provider)
@@ -78,7 +78,7 @@ test('Stop commits the actual partial once, never runs pending tools, and cold h
 for (const cause of ['abort', 'timeout'] as const) {
   test(`${cause}: current official content is snapshotted before uncooperative cleanup and excludes parser scratch`, async t => {
     const fixture = await createLaneFixture(t, [])
-    const { model } = await createNomiProvider(fixture.options.model)
+    const { model } = await createNomiProvider(fixture.options.model, globalThis.fetch)
     const message: AssistantMessage = { role: 'assistant', api: model.api, provider: model.provider, model: model.id,
       timestamp: 1, stopReason: 'pending', usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0,
         cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } },

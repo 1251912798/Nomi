@@ -330,6 +330,7 @@ export async function replayTurn(ref: ReplayTurnRef, options: ReplayOptions = {}
     const http = await createHttpFixture([fixtureReplyOf(replayParts), { type: 'text', text: SETTLE_TEXT }]);
     cleanup.after(http.close);
     const laneOptions: OpenLaneOptions = {
+      fetch: globalThis.fetch,
       projectDir, systemPrompt: LANE_SYSTEM_PROMPT,
       model: { kind: 'openai-compatible', providerId: 'nomi-lane', modelId: 'chosen-model',
         baseURL: http.baseURL, authType: 'api-key', apiKey: 'fixture-key' },

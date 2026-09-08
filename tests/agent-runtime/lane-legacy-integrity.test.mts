@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import { test } from 'node:test';
 import { parseLegacySource } from '../../electron/agentLane/laneLegacySources.js';
 import { validateLegacySource } from '../../electron/agentLane/laneLegacyIntegrity.mjs';
-import { stableProjectAgentJson } from '../../electron/projectAgentHost/projectAgentSnapshot.js';
+import { stableProjectAgentJson } from '../../electron/shared/legacyAgentJson.js';
 
 const binding = { projectId: 'fixture', immutableProjectUuid: '12345678-1234-4234-8234-123456789abc', projectGeneration: 1 };
 const hash = (text: string) => createHash('sha256').update(text).digest('hex');

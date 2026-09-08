@@ -27,7 +27,7 @@ test('the real harness activates deferred native tools on a tool result and pres
   const native = await createLaneNativeAssembly({ projectDir: fixture.projectDir, sandbox, bashTimeoutMs: 5_000 });
   assert.ok(native.promptSections.snippets.some((line) => line.startsWith('read:')));
   assert.ok(native.promptSections.snippets.some((line) => line.startsWith('bash:')));
-  const configured = await createNomiProvider(fixture.options.model);
+  const configured = await createNomiProvider(fixture.options.model, globalThis.fetch);
   const models = createModels({ credentials: configured.credentials });
   models.setProvider(configured.provider);
   const domain = createLaneTools(LANE_MODEL_TOOL_CATALOG.map((spec) => bindLaneTool(spec, async () => {

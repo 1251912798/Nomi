@@ -8,8 +8,8 @@ for (const kind of ['openai-compatible', 'openai-responses', 'anthropic'] as con
   test(`single-shot ${kind}: isolated request, no tools or disk transcript`, async (t) => {
     const fixture = await createLaneFixture(t, [{ type: 'text', text: 'first' }, { type: 'text', text: 'second' }]);
     const model = { ...fixture.options.model, kind };
-    const first = await runLaneSingleShot({ model, prompt: 'independent first' });
-    const second = await runLaneSingleShot({ model, prompt: 'independent second' });
+    const first = await runLaneSingleShot({ fetch: globalThis.fetch, model, prompt: 'independent first' });
+    const second = await runLaneSingleShot({ fetch: globalThis.fetch, model, prompt: 'independent second' });
     assert.equal(fixture.http.requests.length, 2);
     for (const request of fixture.http.requests) assert.ok(!request.body.tools || (request.body.tools as unknown[]).length === 0);
     assert.ok(!JSON.stringify(fixture.http.requests[1].body).includes('independent first'));
@@ -22,14 +22,14 @@ for (const kind of ['openai-compatible', 'openai-responses', 'anthropic'] as con
 for (const kind of ['openai-compatible', 'openai-responses', 'anthropic'] as const) {
   test(`single-shot ${kind} disables retries on provider failure`, async (t) => {
     const fixture = await createLaneFixture(t, [{ type: 'error', status: 503, message: 'one failure' }]);
-    const result = await runLaneSingleShot({ model: { ...fixture.options.model, kind }, prompt: 'once only' });
+    const result = await runLaneSingleShot({ fetch: globalThis.fetch, model: { ...fixture.options.model, kind }, prompt: 'once only' });
     assert.equal(fixture.http.requests.length, 1);
     assert.ok(result.parts.some((part) => part.kind === 'error' && part.text.includes('one failure')));
   });
 
   test(`${kind}: a hallucinated tool cannot execute or obtain a second request`, async (t) => {
     const fixture = await createLaneFixture(t, [{ type: 'tool', calls: [{ id: 'unexpected', name: 'write_document', arguments: { content: 'overwrite' } }] }]);
-    const result = await runLaneSingleShot({ model: { ...fixture.options.model, kind }, prompt: 'only answer' });
+    const result = await runLaneSingleShot({ fetch: globalThis.fetch, model: { ...fixture.options.model, kind }, prompt: 'only answer' });
     assert.equal(fixture.http.requests.length, 1);
     assert.equal(fixture.document.text(), 'The opening scene.');
     assert.ok(result.parts.some((part) => part.kind === 'tool-call'));
@@ -41,7 +41,7 @@ test('multimodal input uses the shared main-side input resolver', async (t) => {
   const fixture = await createLaneFixture(t, [{ type: 'text', text: 'image seen' }]);
   let activated = false;
   const captured = { approvalPolicy: { mode: 'step', spend: 'confirm' }, attachments: [{ assetId: 'frame', version: 1 }] } as const;
-  await runLaneSingleShot({ model: fixture.options.model, prompt: 'inspect frame', input: {
+  await runLaneSingleShot({ fetch: globalThis.fetch, model: fixture.options.model, prompt: 'inspect frame', input: {
     capture: () => captured,
     activate: (value) => { assert.equal(value, captured); activated = true; },
     providerContent: async (message) => {
@@ -59,6 +59,6 @@ test('multimodal input uses the shared main-side input resolver', async (t) => {
 test('abort terminates only this isolated request', async (t) => {
   const controller = new AbortController();
   const fixture = await createLaneFixture(t, [{ type: 'text', text: 'partial', beforeFinish: async () => { controller.abort(); } }]);
-  await assert.rejects(runLaneSingleShot({ model: fixture.options.model, prompt: 'cancel me', signal: controller.signal }), { name: 'AbortError' });
+  await assert.rejects(runLaneSingleShot({ fetch: globalThis.fetch, model: fixture.options.model, prompt: 'cancel me', signal: controller.signal }), { name: 'AbortError' });
   assert.equal(fixture.http.requests.length, 1);
 });

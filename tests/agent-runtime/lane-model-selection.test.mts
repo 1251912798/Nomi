@@ -82,7 +82,7 @@ test('model rebinding retains the SDK active tools added by a real tool result w
   ]);
   const context = BACKGROUND_CONTEXT;
   const opened = await openLaneSession({ projectDir: fixture.projectDir, laneName: 'main' }, context);
-  const configured = await createNomiProvider(fixture.options.model);
+  const configured = await createNomiProvider(fixture.options.model, globalThis.fetch);
   const models = createModels({ credentials: configured.credentials });
   models.setProvider(configured.provider);
   const tools = createLaneTools(fixture.options.tools).map((tool) => tool.name === 'read_full_text'

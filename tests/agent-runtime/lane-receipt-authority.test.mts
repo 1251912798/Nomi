@@ -37,7 +37,7 @@ test('a real before_tool durable authority is queryable inside execute and after
   let executionAuthority: ReturnType<typeof findLaneReceiptAuthority>;
   let queuedWhileExecuting = false;
   const configured = await createNomiProvider({ kind: 'openai-compatible', providerId: 'fixture', modelId: 'fixture',
-    baseURL: http.baseURL, authType: 'api-key', apiKey: 'fixture' });
+    baseURL: http.baseURL, authType: 'api-key', apiKey: 'fixture' }, globalThis.fetch);
   const models = createModels({ credentials: configured.credentials });
   models.setProvider(configured.provider);
   async function open(sessionId?: string) {
