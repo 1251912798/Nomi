@@ -352,11 +352,13 @@ export const createCanvasGraphActions: CanvasSliceCreator<CanvasGraphActions> = 
   updateEdgeMode: (edgeId, mode) => {
     const existing = get().edges.find((candidate) => candidate.id === edgeId)
     if (!existing || existing.mode === mode) return
+    pushUndoSnapshot(get())
     set((state) => {
       const edge = state.edges.find((candidate) => candidate.id === edgeId)
       if (!edge || edge.mode === mode) return
       edge.mode = mode
       bumpPersistRevision(state)
+      Object.assign(state, getHistoryFlags())
     })
     emitCanvasGesture([{ type: 'canvas.edge.mode-changed', payload: { edgeId, mode } }])
   },
@@ -376,7 +378,8 @@ export const createCanvasGraphActions: CanvasSliceCreator<CanvasGraphActions> = 
           return retained
         })
       : []
-    if (options?.scope === 'parameter') pushUndoSnapshot(pre)
+    // Menu, keyboard and parameter deletion share one user gesture boundary.
+    pushUndoSnapshot(pre)
     set((state) => {
       const nextEdges = groupScope
         ? [...state.edges.filter((edge) => !isEdgeInDisconnectScope(edge, groupScope)), ...retainedEdges]
@@ -402,7 +405,7 @@ export const createCanvasGraphActions: CanvasSliceCreator<CanvasGraphActions> = 
         }
       }
       bumpPersistRevision(state)
-      if (options?.scope === 'parameter') Object.assign(state, getHistoryFlags())
+      Object.assign(state, getHistoryFlags())
     })
     const post = get()
     if (post.edges.length === pre.edges.length) return

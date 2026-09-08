@@ -14,7 +14,7 @@ import { mkdirSync, mkdtempSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { screenshotSettled } from './_assert.mjs'
+import { expect, screenshotSettled } from './_assert.mjs'
 import { CANVAS_PANE_SELECTOR, findCanvasBlankPoint, findNodeHitPoint } from './_canvasHit.mjs'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
@@ -735,6 +735,46 @@ try {
     '连线标签恢复 12px accent 文字与下拉图标',
     JSON.stringify(selectedEdgeState),
   )
+
+  // 同一条真实任务继续：改边模式 / 断开 / 锁定，各按一次 Cmd+Z，不能撤掉前一笔。
+  const mod = process.platform === 'darwin' ? 'Meta' : 'Control'
+  const edgeLabel = getWin().locator('.generation-canvas-v2__edge-tag-pill').first()
+  const historyEdge = getWin().locator('.generation-canvas-v2__edge').first()
+  const originalMode = await historyEdge.getAttribute('data-mode')
+  const originalModeLabel = await edgeLabel.innerText()
+  await edgeLabel.click()
+  const alternativeMode = getWin().getByRole('menuitemradio', { checked: false }).first()
+  await expect(alternativeMode).toBeVisible()
+  await alternativeMode.click()
+  // 通用 reference 边按现行设计不显示标签；检查真实边语义，不能要求它强行露出。
+  await expect(historyEdge).not.toHaveAttribute('data-mode', originalMode)
+  await expect(historyEdge).toBeVisible()
+  await snap('04a-edge-mode-changed.png')
+  await getWin().keyboard.press(`${mod}+z`)
+  await expect(historyEdge).toHaveAttribute('data-mode', originalMode)
+  await expect(edgeLabel).toHaveText(originalModeLabel)
+  await expect(getWin().locator('.generation-canvas-v2__edge')).toHaveCount(edgeCount)
+  await expect(getWin().locator('.generation-canvas-v2-node')).toHaveCount(nodeIds.length)
+  await snap('04b-edge-mode-undone.png')
+
+  await edgeLabel.click()
+  await getWin().locator('.generation-canvas-react-flow__edge-menu-delete').click()
+  await expect(getWin().locator('.generation-canvas-v2__edge')).toHaveCount(edgeCount - 1)
+  await snap('04c-edge-disconnected.png')
+  await getWin().keyboard.press(`${mod}+z`)
+  await expect(getWin().locator('.generation-canvas-v2__edge')).toHaveCount(edgeCount)
+  await expect(getWin().locator('.generation-canvas-v2-node')).toHaveCount(nodeIds.length)
+  await snap('04d-edge-disconnect-undone.png')
+
+  const lockBadge = videoNode.locator('[data-node-lock]')
+  await expect(lockBadge).toHaveAttribute('data-node-lock', 'unlocked')
+  await lockBadge.click()
+  await expect(lockBadge).toHaveAttribute('data-node-lock', 'locked')
+  await getWin().keyboard.press(`${mod}+z`)
+  await expect(lockBadge).toHaveAttribute('data-node-lock', 'unlocked')
+  await expect(getWin().locator('.generation-canvas-v2__edge')).toHaveCount(edgeCount)
+  await snap('04e-node-lock-undone.png')
+  console.log('  ✓ 改边模式、断线、锁定各按一次 Cmd+Z 还原，前一笔节点/连线保留')
 
   // ── ④ 拖动节点：浮条 / 提示词面板隐身，松手回来 ─────────────────────────
   const composerBefore = await getWin().evaluate(() => {
