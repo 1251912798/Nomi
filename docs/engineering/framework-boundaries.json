@@ -23,7 +23,8 @@
       "@xyflow/react",
       "ai",
       "@mantine/core",
-      "@anthropic-ai/sandbox-runtime"
+      "@anthropic-ai/sandbox-runtime",
+      "img-fx"
     ]
   },
   "advisory": {
@@ -1206,6 +1207,42 @@
               "id": "own-egress-proxy",
               "pattern": "socks5|mitm[-_]?ca",
               "why": "出网过滤是这个包用 SOCKS/HTTP 代理 + MITM CA 实现的；另起一个代理不但重复，两个代理还会互相打架，症状是网络时通时不通。"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "img-fx",
+      "packages": [
+        "img-fx"
+      ],
+      "version": "0.5.1",
+      "fourColumnTable": "docs/plan/2026-09-09-process-feedback-imgfx.md",
+      "why": "用户批准的等待视觉：购买 shader 与揭示生命周期，只映射真实生成信号。",
+      "referenceConformance": {
+        "doc": "docs/plan/2026-09-09-process-feedback-imgfx.md",
+        "upstreamVersion": "0.5.1",
+        "verifiedAt": "2026-09-09",
+        "layers": [
+          "控制流",
+          "观测与测试"
+        ],
+        "note": "官方 React ImageGeneration props/ref 示例与发布源码对照；agent 专属层不适用视觉组件。"
+      },
+      "capabilities": [
+        {
+          "id": "generation-shader-reveal",
+          "provides": "ImageGeneration 的 shader、揭示与资源释放；业务只给真实图片与挂载门控。",
+          "evidence": "node_modules/img-fx/dist/index.d.ts:157 ImageGeneration; https://github.com/Jakubantalik/img-fx",
+          "scope": [
+            "src/workbench/generationCanvas/nodes/"
+          ],
+          "forbidden": [
+            {
+              "id": "custom-generation-shader",
+              "pattern": "(?:waiting|generation)(?:Shader|Renderer)|(?:Shader|Renderer)(?:Waiting|Generation)",
+              "why": "等待效果由 img-fx 提供，不能另造 shader 或 GPU renderer。"
             }
           ]
         }
