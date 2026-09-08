@@ -5,11 +5,9 @@
  * 「对外暴露什么工具」而变，不随 handler 的实现而变，所以单独成文件。handler、operation
  * store 与派发逻辑仍住 mcpGenerationTools.ts。
  *
- * GENERATION_RECONCILE_OUTCOMES 刻意留在 mcpGenerationTools.ts：它是被登记的语义词表 owner，
- * 还有两个外部使用者（modelToolSurfaceManifest.ts、generationTransportAdapters.ts）。搬动它
- * 会挪走词表 site，那是另一件事，不该混进一次结构搬迁。
+ * Reconciliation vocabulary is owned by shared/agentCapabilities/generationPlanSchemas.
  */
-import { GENERATION_RECONCILE_OUTCOMES } from "./mcpGenerationTools";
+import { GENERATION_RECONCILE_OUTCOMES } from "../shared/agentCapabilities/generationPlanSchemas";
 import {
   assertPaidBoundaryExternalSurface,
   paidBoundaryAnnotations,

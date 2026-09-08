@@ -50,7 +50,7 @@ import { generationResolveInputSchema } from "../shared/agentCapabilities/genera
 import type { GenerationDefaultTaskKind } from "../settings/generationModelDefaultsContract";
 import { semanticCandidateFromParams } from "./semanticGenerationCandidate";
 import { projectGenerationOperationPreview } from "./mcpGenerationPreview";
-export const GENERATION_RECONCILE_OUTCOMES = ["found", "not_found"] as const;
+import { GENERATION_RECONCILE_OUTCOMES, generationCandidateSchema } from "../shared/agentCapabilities/generationPlanSchemas";
 
 // J06 — 诚实 ETA：冷启动给区间（low/high），不再硬编 40/180s 点值。
 // 历史 P50/P90 落盘后可切 etaBasis='historical'；当前全部为 coldstart。
@@ -278,33 +278,7 @@ function record(value: unknown, label: string): Record<string, unknown> {
 }
 
 function candidateFrom(value: unknown): PlanCandidate {
-  const raw = record(value, "generation candidate");
-  const references = Array.isArray(raw.references) ? raw.references : [];
-  if (typeof raw.candidateId !== "string" || !raw.candidateId.trim()) throw new Error("Candidate id is required");
-  if (typeof raw.moduleId !== "string" || typeof raw.providerId !== "string" || typeof raw.modelId !== "string" || typeof raw.mode !== "string") throw new Error("Candidate module, provider, model and mode are required");
-  if (typeof raw.prompt !== "string") throw new Error("Candidate prompt is required");
-  if (!Number.isInteger(raw.revision) || Number(raw.revision) < 1) throw new Error("Candidate revision must be a positive integer");
-  if (raw.variantId !== undefined && (typeof raw.variantId !== "string" || !raw.variantId.trim())) throw new Error("Candidate variant id must be a non-empty string");
-  if (raw.modeId !== undefined && (typeof raw.modeId !== "string" || !raw.modeId.trim())) throw new Error("Candidate mode id must be a non-empty string");
-  return {
-    candidateId: raw.candidateId.trim(), revision: Number(raw.revision), moduleId: raw.moduleId.trim(), providerId: raw.providerId.trim(), modelId: raw.modelId.trim(), ...(typeof raw.variantId === "string" ? { variantId: raw.variantId.trim() } : {}), ...(typeof raw.modeId === "string" ? { modeId: raw.modeId.trim() } : {}), mode: raw.mode.trim(), prompt: raw.prompt,
-    parameters: record(raw.parameters ?? {}, "candidate parameters"),
-    references: references.map((reference, index) => {
-      const item = record(reference, `candidate reference ${index}`);
-      if (typeof item.assetId !== "string" || typeof item.contentHash !== "string" || !Number.isInteger(item.version)) throw new Error(`Invalid candidate reference ${index}`);
-      const kind = item.kind;
-      const role = item.role;
-      if (kind !== undefined && kind !== "image" && kind !== "video" && kind !== "audio") throw new Error(`Invalid candidate reference kind ${index}`);
-      if (role !== undefined && role !== "character" && role !== "first_frame" && role !== "last_frame" && role !== "reference" && role !== "audio") throw new Error(`Invalid candidate reference role ${index}`);
-      return {
-        assetId: item.assetId,
-        contentHash: item.contentHash,
-        version: Number(item.version),
-        ...(kind === undefined ? {} : { kind }),
-        ...(role === undefined ? {} : { role }),
-      };
-    }),
-  };
+  return generationCandidateSchema.parse(value);
 }
 
 const RECOVERY_CAPABILITIES = ["submitIdempotency", "query", "reconcile", "cancel"] as const;

@@ -169,10 +169,10 @@ export function createLaneTools(descriptors: readonly LaneToolDescriptor[]): Age
     // 自声明的副作用与它自己必须自洽（阶段 2 评审第 ⑨ 维）。装配期抛，不是运行期发现：
     // 一个「不改状态却说自己可撤销」的声明，唯一的症状会是崩溃恢复时替用户多跑一次。
     const effects = descriptor.effects;
-    if (effects.mutates !== (effects.reversal !== 'none')) {
+    if (!effects.mutates && effects.reversal !== 'none') {
       throw new Error(
         `Nomi lane tool ${descriptor.name} declares mutates=${effects.mutates} with reversal="${effects.reversal}". `
-        + 'A read-only tool has nothing to reverse; a writing tool must say how its change is taken back.',
+        + 'A read-only tool has nothing to reverse; irreversible writes must not promise an undo.',
       );
     }
     if (effects.billable && !effects.mutates) {

@@ -93,7 +93,9 @@ export const READ_RUN_DATA_TARGETS = Object.freeze(['run', 'run_events', 'artifa
 const READ_TOOL = {
   name: 'nomi_read',
   title: '读 Nomi 的任意只读投影（画布/项目/模型/生成上下文/Run/产物/接入会话）。',
-  description: '按 target 读取只读投影；不改状态、不花钱。',
+  description: '按 target 读取只读投影；不改状态、不花钱。\n'
+    + 'For target=canvas only (canvas reads use this tool with target=canvas):\n'
+    + CANVAS_READ_ADAPTER_TOOL.description,
   inputSchema: {
     type: 'object',
     properties: {

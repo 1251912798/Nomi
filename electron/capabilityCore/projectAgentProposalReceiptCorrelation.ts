@@ -1,4 +1,5 @@
-import type { ProposalApprovalRef } from "../shared/projectAgentContracts";
+import type { CanvasWriteApprovalAuthority } from '../shared/agentCapabilities/transportContracts'
+
 import type {
   ProjectAgentCommittedProposalRecord,
   ProjectAgentProposalReceiptView,
@@ -9,7 +10,7 @@ import { sameProjectAgentBinding } from "../projectAgentHost/projectAgentIdentit
 export function projectAgentProposalMatchesApproval(
   proposalId: string,
   proposal: ProjectAgentCommittedProposalRecord,
-  approval: ProposalApprovalRef,
+  approval: CanvasWriteApprovalAuthority,
 ): boolean {
   return proposalId === approval.receiptProposalId
     && proposal.proposalId === approval.receiptProposalId
@@ -20,7 +21,7 @@ export function projectAgentProposalMatchesApproval(
 export function committedProjectAgentReceiptMatchesApproval(
   binding: ProjectBinding,
   receipt: ProjectAgentProposalReceiptView | null,
-  approval: ProposalApprovalRef,
+  approval: CanvasWriteApprovalAuthority,
 ): boolean {
   return Boolean(
     receipt

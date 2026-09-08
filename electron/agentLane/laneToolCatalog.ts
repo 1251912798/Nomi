@@ -39,7 +39,7 @@ export const LANE_TOOL_BUDGET = 12;
 function buildCatalog(): readonly LaneToolSpec[] {
   // 内部 profile = 共享注册表的一次投影（方案 §3.1）。付费能力与「外部才有」的工具在那里
   // 就已经被声明挡住了，这里不再自己判断一次——判断散出去就是第二个真相源。
-  const specs = [...modelFacingToolSpecs("internal")];
+  const specs = modelFacingToolSpecs("internal").filter(spec => !spec.internalGroup);
   const names = new Set<string>();
   for (const spec of specs) {
     if (names.has(spec.name)) throw new Error(`Duplicate lane tool name: ${spec.name}`);
@@ -55,3 +55,11 @@ function buildCatalog(): readonly LaneToolSpec[] {
 }
 
 export const LANE_MODEL_TOOL_CATALOG: readonly LaneToolSpec[] = buildCatalog();
+
+/** All retained domains are installed, but only explicitly requested groups become model-visible. */
+export const LANE_DEFERRED_TOOL_CATALOG = Object.freeze(modelFacingToolSpecs("internal").filter(spec => spec.internalGroup));
+export const LANE_DEFERRED_TOOL_GROUPS = Object.freeze(
+  [...new Set(LANE_DEFERRED_TOOL_CATALOG.map(spec => spec.internalGroup!))].map(name => Object.freeze({
+    name, toolNames: Object.freeze(LANE_DEFERRED_TOOL_CATALOG.filter(spec => spec.internalGroup === name).map(spec => spec.name)),
+  })),
+);
