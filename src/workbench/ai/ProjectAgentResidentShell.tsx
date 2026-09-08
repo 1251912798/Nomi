@@ -456,6 +456,7 @@ export default function ProjectAgentResidentShell({ surface }: { surface: Reside
         scrollMemory={flowScroll}
         width={size.width}
         height={actions.error ? size.height - 20 : size.height}
+        legacy={data.snapshot.active.legacy}
         flow={data.flow}
         flowTail={shotVerifyFeedback}
         surface={surface}

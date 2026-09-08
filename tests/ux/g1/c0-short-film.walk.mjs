@@ -150,7 +150,7 @@ try {
     report.r30.simulated.turns = '0/1 (0%; attempted, not yet successful)'
     plan = fixture.text.expectText({ label: 'C0 full script -> plan',
       match: (body) => flattenRequestText(body).includes('小禾') && !hasToolResult(body, planId),
-      reply: { type: 'tool', id: planId, name: 'nomi_canvas_plan', args: {
+      reply: { type: 'tool', id: planId, name: 'nomi_storyboard_write', args: {
         operation: 'propose_storyboard_plan', title: '日落前的一分钟', anchors: [], shots,
       } },
     })

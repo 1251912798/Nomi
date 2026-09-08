@@ -49,3 +49,19 @@
 `laneLegacyMigration.mts` 对固定来源持有跨 await 锁与进程内 admission；先归档原字节，再经既有 SessionRepo 预留 UUID、公开 appendMessage/appendCustomEntry 回填。manifest 只保存来源 hash、目标身份与计数；重试只接续精确前缀。每次进入 verified 清理阶段前都冷开核验完整转录，completed 则不重开目标，用户后来删掉的旧对话不会复活。无凭据 import lane 只创建模型描述，不装 provider、不暴露执行方法。
 
 23 条事务测试覆盖 append 四断点、归档/冷验/verified/五次清理断点、并发打开、源变化、新来源、归档硬链接和外来前缀。verified 恢复缺陷用原实现先红（`/tmp/nomi-switch-verified-red.log`），统一冷验后绿。现有会话/模型/收据/停止/看门狗回归 39/39。旧 cutover 已归档来源恢复与生产入口接线仍为后续子任务，不能把本事务子任务当作迁移器完整交付。
+
+## 旧归档与桌面准入
+
+旧 active agent-session 缺失时，只核验旧 preparation/completion 的完整绑定、hash 和同一时间戳，按确定路径读取原归档；本事务固定 archiveStamp，保留旧归档不删除。桌面 workspace 在创建工具/对用户开放前等待迁移完成，无模型凭据也可读旧对话。模型与计数契约在中立模块跨 CJS/ESM；首次续聊经公开 setActiveTools 初始化工具并写一次 metadata，以后保留已选工具组。初次无选择且无其他 lane 时选择第一条导入记录。
+
+三来源均覆盖原字节→归档→append→冷开→零请求→本地 HTTP 续聊；host 在半个合成工具对处中断后恢复。旧归档错误证据先红，去掉首次工具初始化的编译产物阳性对照也先红；无真实内容读取和付费请求。
+
+## 顶部提示与真实 Electron 证据
+
+现役 v4 外壳只增加头部下方一行，legacy facts 随活动 lane 派生，未迁移的新对话不显示。中英渲染测试 2/2；真实 Electron `agent-lane-legacy-migration.walk.mjs` 通过：临时项目从旧 AI SDK 字节迁移后首开/冷开零请求，随后 1 次本地 HTTP 续聊保留旧上下文，新对话无提示。截图已逐项对账并人眼检查；原 62 张实验室基线未改。
+
+![迁移后的旧对话顶部提示](2026-09-08-agent-lane-stage4-switch-assets/05-legacy-conversation.png)
+
+只读聚合计数（2026-09-08）：真实项目目录 370；pi 文件 0；agent-session 文件 40 / 会话 50 / 回合 111；host 文件 17 / 会话 9 / 回合 27；三源 unreadable 均 0。没有执行真实项目迁移，没有输出真实正文；host 分区与项目目录不可按不同 source label 直接去重计项目。
+
+整合 main 的 C0 走查后，工具引用门岗发现其仍使用旧宿主 `nomi_canvas_plan`。现役应用内分镜 owner 为 `canvasModelTools.ts` 的 `nomi_storyboard_write`，同一 propose_storyboard_plan 操作参数由共享 schema 派生；只修该测试调用者，MCP 引用门岗先红后绿，C0 夹具测试通过。不据此宣称打包 C0 已完成。

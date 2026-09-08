@@ -3,6 +3,12 @@
 // 夹具文案（分镜名、提示词摘录、花费）也走这里：设计实验室渲的是**现役组件**，
 // 组件里不许留硬编码中文，哪怕它只在实验室出现——否则 `check:i18n` 的基线只会越欠越多。
 export const zhAgentPanelV4 = {
+  legacyNotice: '这段对话来自旧版本',
+  legacyArrayOrder: '保留原记录顺序',
+  legacySummaries: '含旧版摘要',
+  legacyArchived: '部分内容仅归档',
+  legacyMissingArguments: '旧工具参数未保存',
+  legacySeparator: '；',
   queueHint: '排队的指令可以取消后重发',
   newConversation: '新对话 {{number}}',
   // 壳
@@ -346,6 +352,12 @@ export const zhAgentPanelV4 = {
 } as const
 
 export const enAgentPanelV4 = {
+  legacyNotice: 'This conversation came from an earlier version',
+  legacyArrayOrder: 'original record order preserved',
+  legacySummaries: 'includes earlier summaries',
+  legacyArchived: 'some content is archived only',
+  legacyMissingArguments: 'earlier tool arguments were not saved',
+  legacySeparator: '; ',
   queueHint: 'Cancel a queued instruction to edit and resend it.',
   newConversation: 'New conversation {{number}}',
   brand: 'Nomi',

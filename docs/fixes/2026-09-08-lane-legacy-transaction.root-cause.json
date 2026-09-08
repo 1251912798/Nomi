@@ -24,7 +24,10 @@
     "electron/agentLane/laneHost.mts",
     "electron/i18n.ts",
     "electron/shared/agentLane/laneLegacyMigrationContract.ts",
-    "electron/agentLane/laneLegacyImportPlan.mts"
+    "electron/agentLane/laneLegacyImportPlan.mts",
+    "src/workbench/ai/ProjectAgentResidentShell.tsx",
+    "src/workbench/ai/v4/AgentPanelV4Panel.tsx",
+    "src/i18n/locales/agentPanelV4.ts"
   ],
   "entry_points": [
     "migrateLaneLegacy"
@@ -93,7 +96,9 @@
   },
   "regression_tests": [
     "tests/agent-runtime/lane-legacy-migration.test.mts",
-    "tests/agent-runtime/lane-legacy-transaction-sources.test.mts"
+    "tests/agent-runtime/lane-legacy-transaction-sources.test.mts",
+    "src/workbench/ai/v4/agentPanelV4Legacy.test.ts",
+    "tests/ux/agent-lane-legacy-migration.walk.mjs"
   ],
   "class_regression_tests": [
     "tests/agent-runtime/lane-legacy-migration.test.mts",
@@ -115,7 +120,7 @@
   },
   "migration": "Fixed project context/agentChatV2 and exact host partition source paths; preserve original bytes in .nomi/legacy-archive; no G5 receipt path included.",
   "residual_risks": [
-    "Migrated conversation banner and real Electron walkthrough follow this transaction connection subtask."
+    "Packaged C0 and seven-day L2 merge gates remain mandatory."
   ],
   "invariant_owner_layer": {
     "layer": "electron/agentLane/laneLegacyMigration.mts",
