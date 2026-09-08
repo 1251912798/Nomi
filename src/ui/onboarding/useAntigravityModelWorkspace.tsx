@@ -1,6 +1,7 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { ANTIGRAVITY_IMAGE_MODEL_KEY, ANTIGRAVITY_VENDOR_KEY, type AntigravityCapability, type AntigravityTestRequest } from '../../../electron/shared/antigravity'
+import { antigravityErrorKey } from '../../../electron/shared/antigravityErrors'
 import { getAntigravityModelVariant } from '../../../electron/shared/antigravityModelVariants'
 import { DesignButton, NomiSelect } from '../../design'
 import { antigravityDisplayCheckState, groupAntigravityCatalogModels } from './antigravityCardModel'
@@ -37,6 +38,7 @@ export function useAntigravityModelWorkspace(model: ChipModel | undefined, model
   const variants = groupAntigravityCatalogModels(models.filter((entry) => entry.vendorKey === model.vendorKey && discovered.has(entry.modelKey)))
     .find((group) => group.variants.some((entry) => entry.modelKey === model.modelKey))?.variants ?? [model]
   const checkLabel = t(`antigravity.check.${antigravityDisplayCheckState(proof)}`)
+  const errorCode = proof?.code ?? view.status?.code
   const issue = view.issue ? t(`antigravity.issues.${view.issue}`) : null
   const fields = family ? (
     <div className="grid min-h-14 grid-cols-[minmax(0,1fr)_auto] items-center gap-4 border-b border-nomi-line py-2.5" data-agy-variant>
@@ -63,7 +65,7 @@ export function useAntigravityModelWorkspace(model: ChipModel | undefined, model
       </div>
       <p className="mt-2 text-caption text-nomi-ink-60">{t('antigravity.accountUsage')}</p>
       <div className="mt-1 text-micro text-nomi-ink-40">{capabilities.map((value) => `${t(`antigravity.capability.${value}`)} ${t(`antigravity.check.${antigravityDisplayCheckState(antigravityCheckFor(view.status, { ...request, capability: value }))}`)}`).join(' · ')}</div>
-      {proof?.code ? <p className="mt-2 break-all text-micro text-workbench-danger">{proof.code}</p> : null}
+      {errorCode ? <p className="mt-2 break-all text-micro text-workbench-danger">{t(antigravityErrorKey(errorCode))}</p> : null}
       {issue ? <p role="status" className="mt-2 text-caption text-nomi-ink-60">{issue}</p> : null}
     </section>
   )

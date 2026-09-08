@@ -19,6 +19,24 @@ const models: ChipModel[] = [...ids, 'auto', 'generate_image'].map((modelKey) =>
 const render = (element: React.ReactElement) => renderToStaticMarkup(React.createElement(MantineProvider, { children: element }))
 
 describe('Antigravity common model settings presentation', () => {
+  it('shows Windows unsupported directly without suggesting CLI detection or reinstall', () => {
+    const session = { view: { status: { state: 'error', code: 'ANTIGRAVITY_WINDOWS_UNSUPPORTED', models: [], checkedAt: 1, loginCommand: 'agy' }, busy: null }, controller: {}, perform: vi.fn() } as unknown as AntigravitySettingsSession
+    const html = render(React.createElement(AntigravityConnectionCard, { enabled: true, models, selectedVariants: {}, session, onOpenModel: vi.fn(), onChanged: vi.fn() }))
+    expect(html).toContain('Windows 暂不支持 Antigravity CLI')
+    expect(html.indexOf('Windows 暂不支持 Antigravity CLI')).toBeLessThan(html.indexOf('<details'))
+    expect(html).not.toContain('尚未检测')
+    expect(html).not.toContain('尚未获取模型清单')
+    expect(html).not.toContain('已启用')
+  })
+  it('translates handshake failures in the model workspace', () => {
+    function Workspace() {
+      const session = { view: { status: { state: 'error', code: 'ANTIGRAVITY_HANDSHAKE_MISMATCH', models: [], checkedAt: 1, loginCommand: 'agy' }, busy: null }, controller: {}, perform: vi.fn() } as unknown as AntigravitySettingsSession
+      return useAntigravityModelWorkspace(models[0], models, session, vi.fn())!.status
+    }
+    const html = render(React.createElement(Workspace))
+    expect(html).toContain(zhAntigravity.errors.handshakeMismatch)
+    expect(html).not.toContain('ANTIGRAVITY_HANDSHAKE_MISMATCH')
+  })
   it('keeps the last discovered model list visible during refresh without showing verification success', () => {
     const session = { view: { status: null, busy: 'checking' }, controller: null, perform: vi.fn() } as AntigravitySettingsSession
     const html = render(React.createElement(AntigravityConnectionCard, { enabled: false, models, selectedVariants: {}, session, onOpenModel: vi.fn(), onChanged: vi.fn() }))
