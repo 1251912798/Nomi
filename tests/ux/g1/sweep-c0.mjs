@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { createWalkSession } from '../_assert.mjs'
-import { startEvidence, saveCase, copyTranscripts, writeJson } from './sweep-evidence.mjs'
+import { startEvidence, saveCase, copyTranscripts, writeJson, scoreCollectedAgent } from './sweep-evidence.mjs'
 import { repairStoryboard } from './sweep-repair.mjs'
 import { shots } from './c0-fixture.mjs'
 
@@ -35,8 +35,12 @@ export function createC0Collection(directory, report) {
     finish(profile, requests) {
       if (!fs.existsSync(new URL('../_feel.mjs', import.meta.url))) walk.record(Error('main 尚无 _feel.mjs（#662）；体感扫描未执行'), { id: 'feel', surface: 'storyboard', reachedViaRepair: false })
       writeJson(path.join(directory, 'model-requests.json'), requests.map(r => ({ path: r.path, body: r.body })))
-      writeJson(path.join(directory, 'r30.json'), report.r30)
       const files = copyTranscripts(profile, directory)
+      writeJson(path.join(directory, 'r30.json'), scoreCollectedAgent({
+        tools: JSON.parse(fs.readFileSync(path.join(directory, 'tools.json'), 'utf8')),
+        stations: walk.stations, deviations: walk.deviations, stationId: '02',
+        population: report.mode === 'real' ? 'real-text' : 'loopback', attempted: walk.stations.some(s => s.id === '02'),
+      }))
       if (!files.length) walk.record(Error('当前运行时未落盘 pi 原生 JSONL；禁止用 Host 快照冒充'), { id: 'native-transcript', surface: 'agent-panel', reachedViaRepair: false })
       saveCase(directory, walk)
     },

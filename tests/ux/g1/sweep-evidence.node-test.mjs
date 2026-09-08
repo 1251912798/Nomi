@@ -4,7 +4,8 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { createHash } from 'node:crypto'
-import { copyTranscripts, saveReport } from './sweep-evidence.mjs'
+import { copyTranscripts, saveReport, scoreCollectedAgent } from './sweep-evidence.mjs'
+import { createResponseCapture, providerFailure } from './sweep-response.mjs'
 test('legacy native entries export without reconstructing messages; checksum and provenance retained', () => {
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'sweep-native-'))
   try {
@@ -42,4 +43,50 @@ test('ledger lists every deviation and repaired failures separately', () => {
     assert.match(report, /\| export \| 1 \| 0 \| 0 \| 1 \| 0 \|/)
     assert.match(report, /needs-stage-4/)
   } finally { fs.rmSync(temp, { recursive: true, force: true }) }
+})
+test('collected Agent failures cannot become perfect R30 even after repair or scheduler finish', () => {
+  const input = { tools: [{ ok: true }], stations: [{ id: '02', status: 'failed' }], deviations: [{ station: '02', repaired: true }], stationId: '02', population: 'loopback', attempted: true }
+  assert.deepEqual(scoreCollectedAgent(input).turns, { numerator: 0, denominator: 1 })
+  assert.equal(scoreCollectedAgent(input).firstTool.numerator, 0)
+  assert.equal(scoreCollectedAgent({ ...input, deviations: [], stations: [{ id: '02', status: 'passed' }] }).turns.numerator, 1)
+})
+test('response capture drains pending bodies and preserves capture failures; prose error is not failure', async () => {
+  let resolve, written
+  const body = new Promise(r => { resolve = r })
+  const recorder = createResponseCapture({ write(_file, text) { written = text } })
+  const record = {}
+  recorder.capture({ status: 200, text: () => body }, 'response.txt', record)
+  const drained = recorder.drain()
+  assert.equal(written, undefined)
+  resolve(JSON.stringify({ choices: [{ message: { content: 'An error is a useful teaching example.' } }] }))
+  assert.deepEqual(await drained, [])
+  assert.ok(written.includes('error'))
+  assert.equal(providerFailure([record]), null)
+  assert.match(providerFailure([{ httpStatus: 400, providerError: { message: 'bad schema' } }]), /bad schema/)
+  const failing = createResponseCapture({ write() { throw Error('disk unavailable') } })
+  failing.capture(new Response('body'), 'failed.txt', {})
+  assert.deepEqual(await failing.drain(), [{ file: 'failed.txt', message: 'disk unavailable' }])
+})
+test('drain waits for in-flight headers and bodies registered after drain starts', async () => {
+  let headers, body, registered, written, done = false
+  const waitHeaders = new Promise(resolve => { headers = resolve })
+  const waitBody = new Promise(resolve => { body = resolve })
+  const bodyRegistered = new Promise(resolve => { registered = resolve })
+  const recorder = createResponseCapture({ write(_file, text) { written = text } })
+  const request = recorder.track(async () => {
+    await waitHeaders
+    recorder.capture({ status: 200, text: () => waitBody }, 'late-response.txt', {})
+    registered()
+  })
+  const drained = recorder.drain().then(errors => { done = true; return errors })
+  headers()
+  await bodyRegistered
+  assert.equal(done, false)
+  body('late body')
+  await request
+  assert.deepEqual(await drained, [])
+  assert.equal(written, 'late body')
+  let dispatched = false
+  await assert.rejects(recorder.track(() => { dispatched = true }), /DRAINING/)
+  assert.equal(dispatched, false)
 })

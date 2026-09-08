@@ -81,58 +81,64 @@
         "reason": "当前 GUI 子任务可达；具体输入运行结果由 deviation 记录"
       },
       {
-        "id": "timeline-model-tier",
+        "id": "timeline-empty",
         "status": "runnable-now",
         "surface": "timeline",
-        "text": "使用 MiniMax H3 / 768P，黄昏河边，小禾整理相机。",
-        "boundary": "model-tier",
-        "coverage": "预览时间轴入口与空态",
-        "reason": "当前 GUI 子任务可达；具体输入运行结果由 deviation 记录"
+        "text": "",
+        "boundary": "empty",
+        "coverage": "空时间轴预览",
+        "reason": "当前 GUI 子任务可达；具体输入运行结果由 deviation 记录",
+        "scenario": "empty"
       },
       {
-        "id": "timeline-aspect",
+        "id": "timeline-single-image",
         "status": "runnable-now",
         "surface": "timeline",
-        "text": "画幅 9:16，黄昏河边，小禾整理相机。",
-        "boundary": "aspect",
-        "coverage": "预览时间轴入口与空态",
-        "reason": "当前 GUI 子任务可达；具体输入运行结果由 deviation 记录"
-      },
-      {
-        "id": "timeline-attachment",
-        "status": "runnable-now",
-        "surface": "timeline",
-        "text": "参考附带自有测试素材，黄昏 Sunset 🌇。",
+        "text": "将本地参考图加入时间轴一次",
         "boundary": "attachment",
-        "coverage": "预览时间轴入口与空态",
-        "reason": "当前 GUI 子任务可达；具体输入运行结果由 deviation 记录"
+        "coverage": "单段真实图片入轴、长度连续性与预览",
+        "reason": "当前 GUI 子任务可达；具体输入运行结果由 deviation 记录",
+        "scenario": "single-image"
       },
       {
-        "id": "export-model-tier",
+        "id": "timeline-two-images",
         "status": "runnable-now",
-        "surface": "export",
-        "text": "使用 MiniMax H3 / 768P，黄昏河边，小禾整理相机。",
-        "boundary": "model-tier",
-        "coverage": "导出入口与无素材行为",
-        "reason": "当前 GUI 子任务可达；具体输入运行结果由 deviation 记录"
-      },
-      {
-        "id": "export-aspect",
-        "status": "runnable-now",
-        "surface": "export",
-        "text": "画幅 9:16，黄昏河边，小禾整理相机。",
-        "boundary": "aspect",
-        "coverage": "导出入口与无素材行为",
-        "reason": "当前 GUI 子任务可达；具体输入运行结果由 deviation 记录"
-      },
-      {
-        "id": "export-attachment",
-        "status": "runnable-now",
-        "surface": "export",
-        "text": "参考附带自有测试素材，黄昏 Sunset 🌇。",
+        "surface": "timeline",
+        "text": "将本地参考图加入时间轴两次",
         "boundary": "attachment",
-        "coverage": "导出入口与无素材行为",
-        "reason": "当前 GUI 子任务可达；具体输入运行结果由 deviation 记录"
+        "coverage": "两段真实图片入轴、长度连续性与预览",
+        "reason": "当前 GUI 子任务可达；具体输入运行结果由 deviation 记录",
+        "scenario": "two-images"
+      },
+      {
+        "id": "export-empty",
+        "status": "runnable-now",
+        "surface": "export",
+        "text": "",
+        "boundary": "empty",
+        "coverage": "空时间轴拒绝导出",
+        "reason": "当前 GUI 子任务可达；具体输入运行结果由 deviation 记录",
+        "scenario": "empty"
+      },
+      {
+        "id": "export-single-image",
+        "status": "runnable-now",
+        "surface": "export",
+        "text": "将本地参考图加入时间轴一次",
+        "boundary": "attachment",
+        "coverage": "单段真实图片入轴、长度连续性和 MP4 导出解码",
+        "reason": "当前 GUI 子任务可达；具体输入运行结果由 deviation 记录",
+        "scenario": "single-image"
+      },
+      {
+        "id": "export-two-images",
+        "status": "runnable-now",
+        "surface": "export",
+        "text": "将本地参考图加入时间轴两次",
+        "boundary": "attachment",
+        "coverage": "两段真实图片入轴、长度连续性和 MP4 导出解码",
+        "reason": "当前 GUI 子任务可达；具体输入运行结果由 deviation 记录",
+        "scenario": "two-images"
       }
     ]
   },
@@ -232,11 +238,12 @@
         "id": "focused-subtask",
         "status": "runnable-now",
         "surface": "timeline",
-        "text": "把第二段开头多余的一秒剪掉，后面顺着接上，先给我预览。",
-        "boundary": "focused-subtask",
-        "coverage": "时间轴预览入口和媒体状态",
+        "text": "将本地参考图加入时间轴两次",
+        "boundary": "attachment",
+        "coverage": "两段真实图片入轴、长度连续性与预览",
         "reason": "当前可达子任务；完整原始用户任务仍需 G1 独立验收",
-        "executor": "surface"
+        "executor": "surface",
+        "scenario": "two-images"
       }
     ]
   },
@@ -315,31 +322,34 @@
     "surfaces": ["settings", "mcp"],
     "inputs": [
       {
-        "id": "settings-empty",
+        "id": "settings-locale",
         "status": "runnable-now",
         "surface": "settings",
         "text": "",
-        "boundary": "empty",
-        "coverage": "通用设置可达与语言切换",
-        "reason": "当前 GUI 子任务可达；具体输入运行结果由 deviation 记录"
+        "boundary": "settings-state",
+        "coverage": "中英语言往返切换",
+        "reason": "当前 GUI 子任务可达；具体输入运行结果由 deviation 记录",
+        "scenario": "locale"
       },
       {
-        "id": "settings-mixed-emoji",
+        "id": "settings-canvas-pan",
         "status": "runnable-now",
         "surface": "settings",
-        "text": "黄昏 Sunset 🌇，小禾整理相机。",
-        "boundary": "mixed-emoji",
-        "coverage": "通用设置可达与语言切换",
-        "reason": "当前 GUI 子任务可达；具体输入运行结果由 deviation 记录"
+        "text": "",
+        "boundary": "settings-state",
+        "coverage": "滚轮从缩放切换到平移",
+        "reason": "当前 GUI 子任务可达；具体输入运行结果由 deviation 记录",
+        "scenario": "canvas-pan"
       },
       {
-        "id": "settings-long",
+        "id": "settings-theme",
         "status": "runnable-now",
         "surface": "settings",
-        "text": "长文本边界：小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。小禾在河边等待日落。",
-        "boundary": "long",
-        "coverage": "通用设置可达与语言切换",
-        "reason": "当前 GUI 子任务可达；具体输入运行结果由 deviation 记录"
+        "text": "",
+        "boundary": "settings-state",
+        "coverage": "浅深外观切换并核对实际根属性",
+        "reason": "当前 GUI 子任务可达；具体输入运行结果由 deviation 记录",
+        "scenario": "theme"
       },
       {
         "id": "mcp-empty",

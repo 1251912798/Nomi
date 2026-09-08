@@ -7,6 +7,15 @@ export function writeJson(file, value) {
   fs.mkdirSync(path.dirname(file), { recursive: true })
   fs.writeFileSync(file, JSON.stringify(value, null, 2), { mode: 0o600 })
 }
+export function scoreCollectedAgent({ tools, stations, deviations, stationId, population, attempted }) {
+  const station = stations.find(row => row.id === stationId)
+  const failed = deviations.some(row => row.station === stationId)
+  const correct = Boolean(tools[0]?.ok) && !failed
+  return { population,
+    firstTool: { numerator: correct ? 1 : 0, denominator: tools.length ? 1 : 0 },
+    turns: { numerator: attempted && correct && station?.status === 'passed' ? 1 : 0, denominator: attempted ? 1 : 0 },
+    note: `Measured Agent station ${stationId}; repaired failures remain failures. ${population === 'loopback' ? 'Synthetic provider; not real-model acceptance.' : 'Text-only real provider.'}` }
+}
 export async function startEvidence({ app, win, directory, payload }) {
   await app.context().tracing.start({ screenshots: true, snapshots: true, sources: true })
   const consoleRows = []

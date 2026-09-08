@@ -1,6 +1,6 @@
 # 一次扫全：记录并继续与完整证据
 
-状态：已实现，完整 gates 通过，待 PR 评审。范围 tests/ux、scripts、本文；package.json 仅注册 sweep 命令及其验证入口。生产代码、C0 原断言与预算不变。回滚撤回任务提交；不迁移用户数据。
+状态：已实现，复核修正后完整 gates 通过，待 PR 评审。范围 tests/ux、scripts、本文；package.json 仅注册 sweep 命令及其验证入口。生产代码、C0 原断言与预算不变。回滚撤回任务提交；不迁移用户数据。
 
 ## 先查别人
 
@@ -58,3 +58,12 @@
 - 本会话真实文本站累计 10 次请求、全部 HTTP 400；预留总上界 ¥0.476672，所核对余额增量 ¥0。媒体请求均 loopback。最终不再追加真模型请求。
 - 完整 contracts 首轮唯一阻断为 lint 扫到 artifacts 中的临时 CJS 桥接与撤回草稿；所有其他门岗通过。修在临时桥接 owner：attach 的 finally 清理一次性 loader，成功/失败路径单测覆盖；旧证据与撤回草稿只追加 .txt 后缀、字节保留，没有放松 lint。独立 lint 复核已绿；重新跑完整 gates。
 - 最终 gates：`artifacts/sweep/gates-delivery.log` exit 0；75 项 contracts 全部阻断项通过，Vitest 1294 文件 / 12077 测试通过（另 1 文件、2 测试跳过），Agent/runtime 检查与构建通过。新机制及 cases 校验共 16 项 Node 测试；远端基线 `bbc2d037efba` 已整合。首次正式排锁约 22 分钟，未绕锁或跳钩子。
+
+### 提交后只读复核的收敛范围
+
+Ponytail 独立明细发现四项机制问题，推送前一并修正：timeline/export/settings 输入要驱动不同宿主状态；C0 collect 的 R30 从实际工具结果与 Agent 站断言派生；原始响应写入必须在关闭 Electron 前 drain 且失败入账；供应商错误按 HTTP status/结构化 error 判断，不能匹配正文单词。沿用现有输入登记表，不增加平行真源；原 C0 断言仍不动。验证：失败场景 Node 测试 + 新 case 全量零费用复扫 + 完整 gates，真模型不追加请求。
+
+- 四项已修正，18 项 Node 测试通过。时间轴/导出驱动空、单图、双图三种真实状态；设置分别切语言、滚轮语义、主题。正向 MP4 核对时长并完整解码。
+- 修正后全量：`artifacts/sweep/2026-09-08T22-43-05.905Z/report.md`，33 输入 / 221 站 / 33 case trace / 6 pi 转录；截图与 store 全部存在，C0 冷重启路径及八站情绪日志保留。¥0，33 条全部为尚未合入的体感扫描器缺失。以前 C0 超时/缩略图红收据仍链接保留，本轮未复现不等于修复。
+- 二次复核确认输入状态、R30、错误分类已修正；另发现尚未收到响应头的请求也必须等待。已把登记前移到 transport 调用前，drain 关闭新请求入口并动态等待后来登记的 body；可控延迟响应头/body 的测试覆盖此竞态。相关 Node 测试总计 19 项，walkthroughs 门岗通过；未追加真实请求。
+- 最终树完整验证：`artifacts/sweep/gates-final-tree.log` exit 0；75 项 contracts 无阻断、1294 个 Vitest 文件 / 12077 测试通过，Agent/runtime 与构建通过。最终使用这份收据交付；Ponytail 150KB diff 上限要求按机制/登记/复核修正拆提交并分批推送，同一个 PR 交付全部内容。

@@ -104,4 +104,8 @@ test('every capability gap is in section 4 with its owner and affected case, and
     nonempty(input.coverage, 'coverage')
     nonempty(input.reason, 'reason')
   }
+  for (const surface of ['timeline', 'export', 'settings']) {
+    const scenarios = new Set(cases.flatMap(c => c.inputs).filter(i => i.surface === surface && i.status === 'runnable-now').map(i => i.scenario))
+    assert.ok(scenarios.size >= 3 && !scenarios.has(undefined), `${surface}: inputs must drive three distinct host states`)
+  }
 })

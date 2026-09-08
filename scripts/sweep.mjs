@@ -9,7 +9,7 @@ import { createWalkSession } from '../tests/ux/_assert.mjs'
 import { launchNomiApp } from '../tests/ux/_launchApp.mjs'
 import { createAgentRuntimeFixture } from '../tests/ux/agent-runtime-fixture.mjs'
 import { DOCUMENT } from '../tests/ux/agent-runtime-walk-support.mjs'
-import { startEvidence, copyTranscripts, writeJson, saveCase, saveReport } from '../tests/ux/g1/sweep-evidence.mjs'
+import { startEvidence, copyTranscripts, writeJson, saveCase, saveReport, scoreCollectedAgent } from '../tests/ux/g1/sweep-evidence.mjs'
 import { prepareRealText, attachRealText } from '../tests/ux/g1/sweep-real.mjs'
 import { inspectMcp } from '../tests/ux/g1/sweep-mcp.mjs'
 import { runSurface } from '../tests/ux/g1/sweep-surfaces.mjs'
@@ -93,10 +93,8 @@ for (const entry of cases) for (const input of entry.inputs) {
       const files = copyTranscripts(profile, target)
       const agentAttempt = ['agent-panel','storyboard'].includes(input.surface) && Boolean(input.text)
       const tools = JSON.parse(fs.readFileSync(path.join(target, 'tools.json'), 'utf8'))
-      writeJson(path.join(target, 'r30.json'), { population: realText ? 'real-text' : 'loopback',
-        firstTool: { numerator: tools[0]?.ok ? 1 : 0, denominator: tools.length ? 1 : 0 },
-        turns: { numerator: agentAttempt && tools[0]?.ok && !walk.deviations.length ? 1 : 0, denominator: agentAttempt ? 1 : 0 },
-        note: realText ? 'Text-only real provider; media prohibited' : 'Synthetic provider; not real-model acceptance' })
+      writeJson(path.join(target, 'r30.json'), scoreCollectedAgent({ tools, stations: walk.stations, deviations: walk.deviations,
+        stationId: 'agent', population: realText ? 'real-text' : 'loopback', attempted: agentAttempt }))
       if (agentAttempt && !files.length) throw Error('当前旧运行时没有 pi 原生 JSONL；请求已存，原生转录缺失')
     })
     await station('feel', '复用 main 的体感扫描', async () => {
@@ -108,6 +106,11 @@ for (const entry of cases) for (const input of entry.inputs) {
 
   } catch (error) { walk.record(error, { id: 'assembly', surface: input.surface, reachedViaRepair: false }) }
   finally {
+    try {
+      if (real && launched) for (const error of await launched.app.evaluate(async () => globalThis.__sweepDispatch?.drainResponses() ?? [])) {
+        walk.record(Error(`Response evidence failed: ${error.file}: ${error.message}`), { id: 'response-evidence', surface: input.surface })
+      }
+    } catch (error) { walk.record(error, { id: 'response-evidence', surface: input.surface }) }
     try { if (real && launched) { await launched.app.evaluate(async () => globalThis.__sweepDispatch.snapshot()); billingVerified = true } }
     catch (e) { walk.record(Error('SWEEP_BILLING_UNAVAILABLE'), { id: 'billing', surface: input.surface }) }
     try { if (evidence) await evidence.stop() } catch (e) { walk.record(e, { id: 'trace-stop', surface: input.surface }) }

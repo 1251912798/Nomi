@@ -7,6 +7,8 @@ import { FIXTURE_IMAGE_MODEL } from '../agent-runtime-fixture.mjs'
 import { shots } from './c0-fixture.mjs'
 import { repairStoryboard } from './sweep-repair.mjs'
 import { writeJson } from './sweep-evidence.mjs'
+import { providerFailure } from './sweep-response.mjs'
+import { sweepTimeline } from './sweep-timeline.mjs'
 
 export async function runSurface({ walk, win, input, fixture, realText, directory, payload, projectId }) {
   const surface = input.surface
@@ -39,11 +41,8 @@ export async function runSurface({ walk, win, input, fixture, realText, director
       await sendCreation(win, `把文稿拆为分镜：${input.text}`)
       if (realText) {
         await win.waitForFunction(() => document.querySelector('[data-v4-control="confirm"], [data-agent-error="true"], [data-v4-block="errorbar"]'))
-        const responses = fs.readdirSync(directory).filter(f => f.endsWith('.response.txt'))
-        for (const file of responses) {
-          const text = fs.readFileSync(path.join(directory, file), 'utf8')
-          if (text.includes('error')) throw Error(`Provider response: ${text.slice(0, 1200)}`)
-        }
+        const failed = providerFailure(JSON.parse(fs.readFileSync(path.join(directory, 'model-requests.json'), 'utf8')))
+        if (failed) throw Error(failed)
       }
       await clickOrFail(win.locator(`${CREATION_PANEL} ${APPROVAL_CARD} ${INTERVENTION_CONFIRM}`), '批准测试分镜', { timeout: 8000 })
       if (!realText) await expect(win.locator(CREATION_PANEL)).toContainText('SWEEP_DONE', { timeout: 8000 })
@@ -75,6 +74,17 @@ export async function runSurface({ walk, win, input, fixture, realText, director
       const settings = win.locator('[data-settings-overlay]')
       if (surface === 'settings') {
         await clickOrFail(settings.locator('aside button').filter({ hasText: '通用' }).first(), '通用')
+        if (input.scenario === 'canvas-pan') {
+          await clickOrFail(settings.locator('[data-canvas-gesture-scheme="modifier-zoom"]'), '切换滚轮平移')
+          await expect(settings.locator('[data-canvas-gesture-scheme="modifier-zoom"]')).toHaveAttribute('aria-checked', 'true')
+          return
+        }
+        if (input.scenario === 'theme') {
+          const before = await win.locator('html').getAttribute('data-mantine-color-scheme')
+          await clickOrFail(settings.getByRole('button', { name: /切换到.*色模式/ }), '切换外观')
+          await expect(win.locator('html')).toHaveAttribute('data-mantine-color-scheme', before === 'dark' ? 'light' : 'dark')
+          return
+        }
         await expect(settings.locator('[data-settings-locale="zh-CN"]')).toBeVisible()
         await clickOrFail(settings.locator('[data-settings-locale="en"]'), 'English')
         await expect(settings.locator('[data-settings-locale="en"]')).toHaveAttribute('aria-pressed', 'true')
@@ -108,6 +118,7 @@ export async function runSurface({ walk, win, input, fixture, realText, director
     return
   }
   await station('canvas-open', '生成画布可达', () => openCanvas(win))
+  if (surface === 'timeline' || surface === 'export') return sweepTimeline({ station, win, input, directory, payload })
   await station('surface-task', input.coverage, async () => {
     if (surface === 'canvas-node') {
       await clickOrFail(win.getByRole('button', { name: '添加视频节点', exact: true }), '添加视频节点', { timeout: 5000 })
@@ -124,14 +135,6 @@ export async function runSurface({ walk, win, input, fixture, realText, director
         await win.locator('.generation-canvas-v2__stage input[type="file"][accept="image/*,video/*"]').first().setInputFiles(file)
         await expect.poll(async () => (await payload()).generationCanvas.nodes.some(n => n.result?.url?.startsWith('nomi-local://')), { timeout: 10000 }).toBe(true)
       }
-    } else if (surface === 'timeline') {
-      await clickOrFail(win.locator('[aria-label="工作区切换"]').getByText('预览', { exact: true }), '预览')
-      await expect(win.locator('[data-workspace-mode="preview"]')).toBeVisible()
-    } else if (surface === 'export') {
-      await clickOrFail(win.locator('[aria-label="工作区切换"]').getByText('预览', { exact: true }), '预览后导出')
-      await expect(win.locator('[aria-label="导出 MP4"]').first()).toBeVisible()
-      await clickOrFail(win.locator('[aria-label="导出 MP4"]').first(), '尝试空时间轴导出')
-      await expect(win.getByText('时间轴为空，无法导出', { exact: true })).toBeVisible()
     }
   })
 }
