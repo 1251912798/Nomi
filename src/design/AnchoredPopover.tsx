@@ -4,7 +4,22 @@ import { NOMI_OVERLAY_Z_INDEX } from './overlayLayers'
 import { resolveAnchoredPopoverPlacement, type AnchoredPopoverAlign } from './anchoredPopoverPlacement'
 
 /**
- * 锚点浮层：Portal 到 body + fixed 贴锚点，**逃出祖先 overflow 的裁切**。全站唯一一套浮层定位机制。
+ * 锚点浮层：Portal 到 body + fixed 贴锚点，**逃出祖先 overflow 的裁切**。
+ *
+ * ⚠️ **它不是「全站唯一」的浮层定位机制**（这句话在 2026-09-07 之前一直写在这里，
+ * 而它从来不是真的；照它写的人会以为已经收口了）。全仓浮层定位**实际有四套**：
+ *   ① 本组件 —— 生产侧只有 2 个消费者（`workbench/timeline/TimelineTransitionPicker.tsx`、
+ *      `workbench/assets/AssetPickerPopover.tsx`），外加设计实验室的 3 处陈列；
+ *   ② Radix —— `src/design/tooltip.tsx`（tooltip 一族全走它）；
+ *   ③ Mantine —— `src/design/overlays.tsx` 的 `DesignModal`（Modal 自带定位与遮罩）；
+ *   ④ 手写 `getBoundingClientRect()` + `createPortal` —— **8 个文件**：
+ *      `generationCanvas/nodes/{NodeGenerationComposer,InlineParameterBar,ClipNode,PanoramaViewer}.tsx`、
+ *      `generationCanvas/components/{SelectionPromptSaveController,ScreenshotCropOverlay}.tsx`、
+ *      `creation/DocumentListSidebar.tsx`、`assets/AssetTile.tsx`。
+ *
+ * **要收口的话该往哪收**：④ 那 8 处是真正的债（每处各写一遍贴边/避让/关闭），收到本组件；
+ * ② 不收（Radix tooltip 的 a11y 与 hover 延迟是它自带的，重写一遍不划算）；
+ * ③ 不收（Modal 是居中模态不是锚点浮层，不同形态）。收口归属：D 档刀 1/刀 3。
  *
  * 为什么必须 Portal 而不是在原地写 absolute：只要浮层与它的定位祖先之间夹着一个
  * `overflow: hidden`（时间轴的轨道格、composer 卡、属性面板的分组…），浮层就会被裁成一条边。
@@ -17,7 +32,8 @@ import { resolveAnchoredPopoverPlacement, type AnchoredPopoverAlign } from './an
  *
  * 判据别再用 rect，用 `tests/ux/_assert.mjs` 的 measureOverlayReach / expectOverlayReachable。
  *
- * P1：新增浮层一律用它，不要再各写各的 absolute，也不要引第三套定位库。
+ * 新增**锚点式**浮层用它，不要再各写各的 absolute，也不要引第五套定位库。
+ * （这条以前写成「P1：一律用它」——一句管不住 8 个反例的 P1 不如不写。）
  */
 
 export type AnchoredPopoverProps = {

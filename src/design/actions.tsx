@@ -16,7 +16,6 @@ export const IconActionButton = forwardRef<HTMLButtonElement, IconActionButtonPr
   ...props
 }, ref): JSX.Element {
   const rootClassName = cn(
-    'tc-icon-action-button',
     'inline-flex items-center justify-center',
     'size-8 rounded-workbench-control',
     'text-workbench-muted',
@@ -56,7 +55,6 @@ export const DesignButton = forwardRef<HTMLButtonElement, DesignButtonProps>(fun
   ...props
 }, ref): JSX.Element {
   const rootClassName = cn(
-    'tc-design-button',
     'inline-flex items-center justify-center gap-1.5',
     'h-8 px-3 rounded-nomi-sm',
     'text-body-sm font-medium',
@@ -104,7 +102,6 @@ export const WorkbenchIconButton = forwardRef<HTMLButtonElement, WorkbenchIconBu
   ...props
 }, ref): JSX.Element {
   const rootClassName = cn(
-    'tc-workbench-icon-button',
     'inline-grid place-items-center',
     WORKBENCH_ICON_BUTTON_SIZE[size],
     'rounded-workbench-control border-0',
@@ -160,6 +157,9 @@ export const ActionCard = forwardRef<HTMLButtonElement, ActionCardProps>(functio
       type={type}
       data-variant={variant}
       className={cn(
+        // 唯一还活着的 `tc-` 钩子：它不是样式钩子，是走查锚点——
+        // tests/ux/design-fidelity.e2e.mjs:57 与 tests/ux/cold-start.e2e.mjs:63 靠它定位动作卡。
+        // 同族另外 20 个 `tc-*` 已于 2026-09-07 删除（全仓零 CSS 定义、零选择器）。
         'tc-action-card',
         'flex items-center gap-3 w-[280px] h-[88px] px-5 text-left cursor-pointer font-inherit',
         'rounded-nomi border shadow-nomi-sm',
@@ -247,7 +247,6 @@ export const WorkbenchButton = forwardRef<HTMLButtonElement, WorkbenchButtonProp
   ...props
 }, ref): JSX.Element {
   const rootClassName = cn(
-    'tc-workbench-button',
     // whitespace-nowrap:按钮文字永不逐字折行(根因治本)——窄容器里被挤压时宁可溢出/由
     // 调用处给 shrink-0,也绝不把「整笔撤销」这种 4 字标签折成竖排(2026-06-23 用户截图根因)。
     'inline-flex items-center justify-center gap-1.5 rounded-workbench-control font-medium whitespace-nowrap',

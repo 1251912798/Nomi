@@ -503,10 +503,10 @@ className="transition-[background,color] duration-nomi-fast ease-nomi-fast"
 
 ### 3.1 表面 surfaces
 
-| 组件 | 用途 | 文件 |
-|---|---|---|
-| `PanelCard` | 有边框、带 padding 的卡片表面 | surfaces.tsx |
-| `InlinePanel` | 行内薄面板，无重边框 | surfaces.tsx |
+**这一族现在是空的。** 2026-09-07 复核：`PanelCard` / `InlinePanel` / `surfaces.tsx` 全仓零命中——
+这两行推销了两个**从来不存在**的组件（照着写 `import { PanelCard }` 直接编译失败）。
+面板/卡片表面目前由各面自己用 token 类拼（`rounded-nomi border-nomi-line bg-nomi-paper`）。
+要不要长一个真的表面原语，属于 D 档刀 1 之后的判断，不在这里假装已有。
 
 ### 3.2 操作 actions
 
@@ -543,25 +543,33 @@ className="transition-[background,color] duration-nomi-fast ease-nomi-fast"
 
 ### 3.3 状态 status
 
-| 组件 | 用途 |
-|---|---|
-| `DesignBadge` | 通用语义徽章（success / warning / error / info）|
-| `StatusBadge` | 工作区状态徽章（生成中 / 完成 / 错误），含 data-status 切换样式 |
-| `DesignAlert` | 横条提示 |
-| `DesignProgress` | 进度条 |
-| `DesignEmptyState` | **全仓统一空态**（居中 icon + 标题 + 说明 + 可选行动）。`density='panel'`(py-20 独立面板) / `'inline'`(py-12 过滤空态)。收口项目库/提示词库/素材库各手写的重复空态 + 「还没有/暂无/没有匹配」措辞不一。⚠️ 仅用于**面板级居中空态**；列表行/popover 里的 `text-micro` 一行内联提示不归它（那是更小的内联 hint，别硬套）。|
+| 组件 | 用途 | 采纳现状（2026-09-07 实测）|
+|---|---|---|
+| `DesignBadge` | 通用语义徽章，收**封闭 tone 词表**（neutral/info/success/warning/danger），不透传裸 `color` | ⚠️ **生产 0 调用**。保留待推广——画布侧另有 5 份手写徽章（`NodeQueuedBadge` / `NodeLockBadge` / `NodeDeconstructionBadge` / `TechnicalReviewBadge` / `ShotMountBadges`）|
+| `StatusBadge` | 同一套 tone 词表，`radius='md'` + 字距，形态偏「状态胶囊」 | ⚠️ **生产 0 调用**（旧文写的「含 data-status 切换样式」不存在，它只有 `tone`）。与 `DesignBadge` 是近重复，合并归属刀 4 |
+| `DesignProgress` | 进度条 | 4 个文件 |
+| `DesignEmptyState` | 面板级空态（居中 icon + 标题 + 说明 + 可选行动）。`density='panel'`(py-20) / `'inline'`(py-12) | 9 个文件（库页/面板族）。⚠️ **画布节点族没收口**：`nodes/render/NodeEmptyState.tsx`（+ `CardCommon.tsx:55` 的 `EmptyStateLauncher`）、`NodeDeconstructionPanel.tsx:326`、`components/CanvasEmptyState.tsx` 三份并行——它们在 ~180px 卡片里排版且本身可点，是另一个形态，要合并得先定形态。仅用于面板级居中空态；列表行/popover 的 `text-micro` 一行内联提示不归它 |
+
+> 2026-09-07 删除：`DesignAlert`（生产 0 调用，且透传裸 Mantine `color` 绕过 tone 词表）。
 
 ### 3.4 表单 forms
 
-`DesignCheckbox` / `DesignTextInput` / `DesignTextarea` / `DesignSelect` / `DesignNumberInput` / `DesignSegmentedControl` / `DesignSwitch` / `DesignFileInput`。Mantine-backed 一致风格。
+`DesignCheckbox` / `DesignTextInput` / `DesignTextarea` / `DesignNumberInput` / `DesignSegmentedControl` / `DesignSwitch`。Mantine-backed 一致风格。
+**没有 `DesignSelect`**（旧文列过，它从不存在）——选择器用 `NomiSelect`（27 个文件在用）。
+2026-09-07 删除 `DesignFileInput`：生产 0 调用，而全仓 13 处文件选择走的是「隐藏 `<input type="file">` + 自己的按钮」，与 Mantine 的可见文本框不是同一形态。
 
-**`DesignSearchInput`**（`design/searchInput.tsx`）：**全仓统一搜索框**（搜索图标 + pill 描边 + accent 聚焦光环）。收口项目库/提示词库/素材库各手写的搜索框（高度/圆角/占位曾不一）。`size='sm'`(h-[30px] 紧凑面板)/`'md'`(h-9 宽松页)；宽度经 className 给。（注：Mantine 的 `DesignTextInput` 带 `tc-` 残留命名且无图标，不适合做搜索框——用这个。）
+**`DesignSearchInput`**（`design/searchInput.tsx`）：搜索框（搜索图标 + pill 描边 + accent 聚焦光环），**7 个文件已收口**；另有 3 处更小的内嵌过滤框（`ModelEnableEditor.tsx:92` / `ComfyuiTemplateLibrary.tsx:144` / `AssetPicker.tsx:79`）尚未收口——它们比 `size='sm'` 还矮，要收得先加一档更紧凑的 size。`size='sm'`(h-[30px] 紧凑面板)/`'md'`(h-9 宽松页)；宽度经 className 给。（注：Mantine 的 `DesignTextInput` 没有搜索图标，不适合做搜索框——用这个。`tc-*` 残留钩子已于 2026-09-07 全数删除，只留走查锚点 `tc-action-card`。）
 
 **画布上的紧凑表单**：直接用 `<textarea>` + `<input>` + Tailwind token 类，不用 Mantine——节点 composer 就是这么做的。
 
 ### 3.5 弹窗 overlays
 
-`DesignModal` / `DesignDrawer`。
+`DesignModal`（8 个文件）。2026-09-07 删除 `DesignDrawer`：生产 0 调用，且全仓没有抽屉形态
+（`OnboardingDrawer` 名字里带 Drawer，实际是设置对话框里的一页，不走 Mantine `Drawer`）。
+
+**锚点浮层**：`AnchoredPopover`（2 个文件）。⚠️ 它**不是**「全站唯一的浮层定位机制」——
+全仓实有四套（本组件 / Radix tooltip / Mantine Modal / **8 处手写 `getBoundingClientRect()+createPortal`**），
+详见 `src/design/AnchoredPopover.tsx` 顶部注释里的逐处清单与收口方向。
 
 **破坏性操作确认**：一律用 `confirmDialog / alertDialog / promptDialog`（promise 风格，`src/design/confirmDialog.tsx`，宿主 `ConfirmDialogHost` 已挂 App 根部）。**禁用原生 `window.confirm/alert/prompt`**——脱设计系统、E2E 驱动自动 dismiss 测不到、Electron/macOS 有焦点丢失史（2026-06-13 审计 A7）。危险动作传 `danger: true`。
 
@@ -578,17 +586,13 @@ className="transition-[background,color] duration-nomi-fast ease-nomi-fast"
 - 视觉：`w-[380px] rounded-nomi-lg border-nomi-line bg-nomi-paper shadow-nomi-md`；图标位 `w-8 h-8 rounded-nomi`（agent=`bg-nomi-ink text-nomi-paper`，user=`bg-nomi-accent-soft text-nomi-accent`）；明细行 `border-nomi-line-soft divide-y`；倒计时条 `bg-nomi-ink-05`，剩 ≤10s 转 `bg-nomi-accent`。
 - 两个宿主**共用同一个 `SpendConfirmRequest` 与同一份明细内容组件**（一语义两投影，不是两套逻辑）。新增确认来源/字段只改 `spendConfirm.ts`，不在别处复制确认 UI。
 
-### 3.6 导航 navigation
+### 3.6–3.8 导航 / 表格 / 布局 —— 2026-09-07 整族删除
 
-`DesignPagination`。
-
-### 3.7 表格 tables
-
-`DesignTable`。
-
-### 3.8 布局 layout
-
-`DesignPageShell`。
+`DesignPagination` / `DesignTable` / `DesignPageShell` 三件全部生产 0 调用，且都没有等待中的用户：
+全仓没有任何分页界面；分镜表用自己的 `TableStage`（`devlab/designLab/storyboard/storyboardLabKit.tsx`）；
+`DesignPageShell` 只是 4 个 Tailwind 类的一层 div。要分页/表格时按当时的真实需求重新包一层，
+那时才有真实调用点来验它（`DesignPagination` 此前就是因为没人用，坏了整整一轮都没人发现——
+实验室基线 `ps-13` 里 `value=1` 和 `value=4` 渲染完全一样）。
 
 ### 3.9 Logo & 品牌身份 identity（全部出自 `src/design/identity.tsx`）
 
@@ -1104,23 +1108,23 @@ CSS 不会报错、不会回退到默认值，而是**静默作废整条声明**
 ### 14.2 组件级（用户可见面 vs 文档不一致 · 2026-06-21 建表，**2026-09-07 逐条重跑**）
 
 > 重跑口径：按**内容**去代码里找（行号会漂，别按行号找），三类处置——已修的从表里删、还在的更新到当前 `file:line`、变形/搬家的改描述。
-> 2026-06-21 那批 17 条里 **13 条已修**（多数是承载它们的组件被重写或删除时顺带收口的），剩 1 条仍在；本次新增 3 条**「文档主张与代码现实背离」**——它比「没有主张」更伤：新人照文档写，会写出第五套。
+> 2026-06-21 那批 17 条里 **13 条已修**；2026-09-07 新增的 3 条「文档主张与代码现实背离」（D1 浮层 / D2 空态 / D3 README）**已于同日 D 档刀 0 修完，按 §13 维护纪律从表里删除**——修法不是把主张变成现实，而是**把注释改成真话 + 写清该往哪收**（`src/design/AnchoredPopover.tsx` / `emptyState.tsx` / `README.md`）。同批还改真了另外两条同类的（`NomiSelect.tsx` 的「全仓统一…别散落原生 select」实有 6 处原生 `<select>`；`searchInput.tsx` 的「全仓统一搜索框」实有 3 处手写没收口）。
 
-**当前最该收口的 1 件事：** 三套并行浮层定位机制（D1），它是「新人照文档写」这条路上第一个撞的坑。
+**当前最该收口的 1 件事：** 那 8 处手写 `getBoundingClientRect()+createPortal` 的浮层（清单在 `AnchoredPopover.tsx` 注释里），归属 D 档刀 1/刀 3。
 
-**完整漂移清单**（2026-09-07 复核）：
+**完整漂移清单**（2026-09-07 复核，刀 0 后）：
 
 | # | 面 | 位置（已复核）| 现状 → 对齐 |
 |---|---|---|---|
-| D1 | design | `src/design/AnchoredPopover.tsx:7`（「全站唯一一套浮层定位机制」）/ `:20`（「P1：新增浮层一律用它」）| **文档主张 ≠ 现实**：全仓只有 4 个文件用它（`src/workbench/timeline/TimelineTransitionPicker.tsx`、`src/workbench/assets/AssetPickerPopover.tsx`、`src/devlab/designLab/editing/states/01-transition-picker.tsx`、`.../editingLabKit.tsx`），另有 Radix（`src/design/tooltip.tsx:2`）、Mantine（`src/design/overlays.tsx:1`）、以及 **8 处手写 `getBoundingClientRect()` + `createPortal`**（`generationCanvas/nodes/NodeGenerationComposer.tsx`、`.../InlineParameterBar.tsx`、`.../ClipNode.tsx`、`.../PanoramaViewer.tsx`、`generationCanvas/components/SelectionPromptSaveController.tsx`、`.../ScreenshotCropOverlay.tsx`、`creation/DocumentListSidebar.tsx:156`、`assets/AssetTile.tsx`）→ **四套并行**。修法：要么把注释改成诚实的现状（「timeline/assets 两族用它，其余待迁」），要么真把 8 处手写迁过来；**不要留着一句管不住的 P1** |
-| D2 | design | `src/design/emptyState.tsx:5-6`（称已收口「项目库/提示词库/素材库/拾取器…各手写一份」）| **文档主张 ≠ 现实**：`DesignEmptyState` 确有 23 处采纳，但画布侧另有 3 份并行结构——`generationCanvas/nodes/render/NodeEmptyState.tsx:14`（节点族自成一套，`render/CardCommon.tsx:55` 的 `EmptyStateLauncher` 再包一层）、`generationCanvas/nodes/NodeDeconstructionPanel.tsx:326` `DeconstructionEmptyState`、`generationCanvas/components/CanvasEmptyState.tsx:13`。→ 注释改成「已收口库页族，画布节点族另有 `NodeEmptyState`」，或合并 |
-| D3 | design | `src/design/README.md:12`（`PanelCard` / `InlinePanel`）、`:17`（`DesignSelect`）| **推销了三个不存在的组件**：全仓 0 命中（`src/design/index.ts` 只导出 `NomiSelect`，无 `DesignSelect`）。新人照 README `import { PanelCard }` 会直接编译失败。→ **2026-09-07 已修 README** |
 | C1 | canvas | 11 文件 21 处：`nodes/NodeDeconstructionBadge.tsx:52,70`、`nodes/DeconstructionShotRow.tsx`(`stroke={2.2}`)、`nodes/Scene3DEditor.tsx:376`、`nodes/whiteboard/{WhiteboardToolbarControls,WhiteboardDrawingTool,WhiteboardLibraryPanel}.tsx`、`components/{CollapsedGroupCard,SelectionPromptSaveController}.tsx`、`reactFlow/GenerationCanvasReactFlowNodes.tsx:372`、`spend/{ProductionContractSummary,SpendConfirmDialog}.tsx` | 图标 `stroke` 2 / 2.2 / 1.7 三个档外值 → 收敛到 §6 规定档（1.5 / 1.6 / 1.8）。白板工具栏那一族（`stroke={1.7}` ×9）是最集中的一块，可整片改 |
 
-**2026-09-07 判定已修、从表里删除的 13 条**（凭据同步留档，免得下次重新怀疑）：
+**2026-09-07 判定已修、从表里删除的 16 条**（凭据同步留档，免得下次重新怀疑）：
 
 | 原条目 | 凭什么判定已修 |
 |---|---|
+| D1 `AnchoredPopover.tsx:7,20`「全站唯一」+「P1 一律用它」| 刀 0 改成诚实描述：列出实有的四套定位机制、逐处点名那 8 个手写文件、写明「② Radix 不收、③ Modal 不收、④ 收」的收口方向；那句管不住 8 个反例的 P1 已删 |
+| D2 `emptyState.tsx:5-6`「已收口各面板手写空态」| 刀 0 改成「已收口库页/面板族 9 个消费者；画布节点族 3 份并行结构没收口」，并写清为什么（节点空态在 ~180px 卡片里、本身是可点投放区，形态不同）|
+| D3 `README.md` 推销 `PanelCard`/`InlinePanel`/`DesignSelect` | 刀 0 整篇重写为「按 `index.ts` 真实导出 + 逐件采纳现状」；§3.1 也已注明这一族现在是空的 |
 | `AboutNomiPopover.tsx:15-26` 自造 `PRIMARY_BTN`/`GHOST_BTN` | 该文件已不存在；继任者 `src/workbench/settings/AboutSection.tsx:4` 直接 `import { WorkbenchButton }`，5 处按钮全走它；全仓 grep `PRIMARY_BTN|GHOST_BTN` 零命中 |
 | `AboutNomiPopover.tsx:151` 手拼进度条 | 同上文件已删；`AboutSection.tsx:187` 用 `<DesignProgress value={...} size="sm" />` |
 | `OnboardingChecklist.tsx:226` 手拼进度条 | `src/workbench/onboarding/OnboardingChecklist.tsx:25` import、`:256` `<DesignProgress … size="xs" />` |
@@ -1142,8 +1146,9 @@ CSS 不会报错、不会回退到默认值，而是**静默作废整条声明**
 
 ## 13. 维护
 
-- 本文档版本 **v2.2**（真实色值 + Logo 解剖/调用点地图 + §0.5 真相源全景 + §14 漂移诚实标注），对应代码 **v0.21.0**
+- 本文档版本 **v2.3**（真实色值 + Logo 解剖/调用点地图 + §0.5 真相源全景 + §14 漂移诚实标注 + §3 逐件采纳现状），对应代码 **v0.21.0**
 - **v2.2（2026-09-07）状态色收口**：四语义（danger/warning/success/info）× 四档（base/-ink/-soft/-edge）落地候选 C，见 §2.1.2b；`--workbench-success/danger/warning` 三族从 iOS hex 改为 ① 层别名（§14.1 S5 因此清掉）；新增 Mantine 色板重映射 + `DesignBadge` 封闭 tone 词表（§2.1.2c）。同日修两处规格错误：`-soft`/`-edge` 从「base 的 alpha」改为色阶上独立的一档（alpha 版浅底 L≈0.92 发灰），`info` 从近重复的独立蓝收成 `accent` 的别名
+- **v2.3（2026-09-07）D 档刀 0「说真话」**：删 6 件生产零调用组件（`DesignPagination` / `DesignTable` / `DesignPageShell` / `DesignDrawer` / `DesignAlert` / `DesignFileInput`）及其实验室格与基线；删 20 个全仓零 CSS 定义的 `tc-*` 钩子类（只留走查锚点 `tc-action-card`）；§3.1/3.3/3.4/3.5 的组件索引改成真实清单 + 逐件采纳现状，§3.6–3.8 整族删除；§14.2 的 D1/D2/D3 三条随修完删表。`DesignBadge` / `StatusBadge` 零调用但**保留**（画布侧 5 份手写徽章待迁），保留理由写进源码
 - **重审记录**：v0.10.x（2026-06-21 建表）→ **v0.21.0（2026-09-07 重审）**：统一 §0.5 真相源（删掉 §14.1 里那段与它相反的「更正」）、§14.2 漂移清单逐条重跑（17 条中 13 条判已修删除、1 条更新、新增 3 条文档主张与现实背离）、§2.7 动效拆成 duration + ease 两个 token。中间 11 个 minor 未重跑，是这次删掉 13 条的原因
 - **下次重审的触发条件**：跨 ≥5 个 minor，或任一次 §14.2 条目数反向增长
 - 每次新增 §4 / §5 entry 时 bump 一次小版本
