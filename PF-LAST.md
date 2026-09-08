@@ -1,8 +1,10 @@
 # PF-LAST
 
-## 2026-09-09 C-1b img-fx 已实现，主会话已批准样张，完整 gates 绿，准备 push
+## 2026-09-09 C-1b img-fx 已实现，主会话已批准样张，完整 gates 绿，已推送 #658
 
-- 版本：唯一新增依赖 `img-fx@0.5.1`（精确版本，lockfile 已提交）；四列表、26 个公开字段裁决已登记。分支 `feat/process-feedback-phases-20260908`，既有 PR #658，本轮未 push、未合并 PR。
+- 最终交付：代码提交 `6490f6c4f` 已推到既有 PR https://github.com/aqm857886159/Nomi/pull/658 。它整合了最新提示音 main（`bbc2d037e`）；三处注册表冲突保留双方新增项。整合后完整 `pnpm run gates` 再次退出 0：75 contracts=72 通过/0 阻断/3 advisory，视觉 **153/153**，Vitest **12092 通过/2 跳过**，runtime/构建通过；日志 `/tmp/pf-imgfx-gates-merged.log`。
+- 推送：首次累计 396307-byte diff 被 Ponytail 的 150000-byte 上限阻止；按钩子明示的方式分 5 批推既有提交，全部正常完成。没有 no-verify、force-push 或改写历史。最后一批到 `6490f6c4f`；本次仅补交接收据，不改实现或基线。
+- 版本：唯一新增依赖 `img-fx@0.5.1`（精确版本，lockfile 已提交）；四列表、26 个公开字段裁决已登记。分支 `feat/process-feedback-phases-20260908`，既有 PR #658，本轮已分批正常 push、未合并 PR。
 - 实验室四态：`docs/plan/process-feedback-evidence/imgfx/lab/pf-fx-generating.png`、`pf-fx-preview-reveal.png`、`pf-fx-final-reveal.png`、`pf-fx-done-clean.png`；另有 `pf-fx-reduced.png`、`pf-fx-organic.png`。真实页面同名四态在 `docs/plan/process-feedback-evidence/imgfx/real/`。全部逐张 Read；已有状态变化的 12 张实际图在 `baseline-review/`，已获 PF-RULINGS.md 批准，仅录 process-feedback 相关基线。
 - 同机 8 节点性能：改前 119.8 FPS / P95 9.4ms / long task 0；末次改后 119.9 FPS / P95 10.2ms / long task 0（中间复测 120.2 FPS / P95 9.5ms）。4 fx + 4 静态回退、槽位交接、离屏 fx=0、最终 canvas=0 均通过。交付数字以 `imgfx/performance-{before,after,final}.json` 为准；截图 before/after 指场景开始/清空，不是版本前后。
 - 真机：隔离 Electron → 生产确认 → loopback 供应商 → 真实 ComfyUI IPC 预览 → 本地化落盘，费用 0；末次完成后 1175.8ms 卸载全部等待壳，1200ms 硬期限通过，无 pageerror。库内部 reveal 约 3s、无公开调速字段，因此 1100ms 应用期限会提前卸载，露出下面真实媒体；未 fork 或改 shader。
