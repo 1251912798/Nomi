@@ -58,7 +58,7 @@ export async function openProbeLane(
   const { session, sessionId, release } = await openLaneSession(
     { projectDir: options.projectDir, ...(probe.sessionId ? { sessionId: probe.sessionId } : {}) }, PROBE_CONTEXT,
   );
-  const { provider, model, credentials, pricingBasis } = await createNomiProvider(options.model);
+  const { provider, model, credentials, pricingBasis } = await createNomiProvider(options.model, options.fetch);
   const modelFacts: LaneModelFacts = { pricing: pricingBasis,
     supportedThinkingLevels: getSupportedThinkingLevels(model) as readonly LaneThinkingLevel[],
     ...(options.model.contextWindow === undefined ? {} : { contextWindow: options.model.contextWindow }) };
