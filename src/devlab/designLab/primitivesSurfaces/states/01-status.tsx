@@ -1,14 +1,21 @@
 // 设计实验室 · primitive 陈列 · 状态与空态族。
 //
-// 这一族里有一半是**全仓零调用**件（`DesignBadge` / `StatusBadge` / `DesignAlert` / `NomiSkeleton`）。
-// 零调用不等于该删：`NomiSkeleton` 零采纳的同时，全仓有 9 处手写 `animate-pulse`——
-// 也就是说这件事一直在做，只是没走这个组件。把它们摆出来是判断「删还是推广」的前提，
-// 而不是判断的结论（那属于 D 档方案）。
+// 「零调用不等于该删」在这一族上分出了两个结果（2026-09-07 逐件重数后处置）：
+//   · `NomiSkeleton` 已被项目库 loading 态接走 —— 推广成功，不再是零调用；
+//   · `DesignBadge` / `StatusBadge` 仍是零调用，但画布侧有 5 份手写徽章等着迁 —— 保留待推广；
+//   · `DesignAlert` 零调用、且透传裸 Mantine `color` 绕过 tone 词表 —— **已删**（原 ps-03 格随之删除）。
+// 状态 id 里的空号（ps-03）是删除留下的，不补位：改 id 就得改基线文件名，
+// 而基线是拿来比「同一格前后有没有变」的，重编号会把这条线索洗掉。
+//
+// ⚠️ 2026-09-07（用户抓到的系统性缺陷）：陈列格「渲染的是现役组件本体」只管住了**组件**，
+// 管不住 **props**。这一族里 `ps-04` 两件都中了：`DesignProgress` 没传 `size`（4/4 真实
+// 调用点都传）、还传了 `color="green"` 这个**生产零实例的裸 Mantine 色名**（真实的那处传的是
+// `var(--nomi-accent)`）；`NomiSkeleton` 画的是 `lines` 文本骨架，而唯一的真实消费者用的是
+// `className="h-32"` 的卡片占位。现在按真实调用点重画，`mirrors` 写明镜像哪一行。
 import React from 'react'
-import { IconAlertTriangle, IconPhoto } from '@tabler/icons-react'
+import { IconPhoto } from '@tabler/icons-react'
 
 import {
-  DesignAlert,
   DesignBadge,
   DesignEmptyState,
   DesignProgress,
@@ -24,8 +31,11 @@ const SOURCE_STATUS = 'src/design/status.tsx · docs/design/nomi-design-system.m
 export const STATUS_STATES: readonly LabState[] = [
   {
     id: 'ps-01-status-badge-tones',
-    name: 'StatusBadge · 五 tone × 三 variant（全仓零调用）',
+    name: 'StatusBadge · 五 tone × 三 variant（生产零调用 · 待推广）',
     source: SOURCE_STATUS,
+    // 零采纳件：设计系统提供了这个能力，生产一处都还没用（画布侧有 5 份手写徽章等着迁）。
+    // 本格是**能力展示**，不是现役形态——别把它当「界面上就长这样」。
+    mirrors: 'none — 零采纳件（全仓 0 个调用点，待画布手写徽章迁过来）',
     coverage: 'component-only',
     render: () => (
       <PrimitiveStage>
@@ -53,8 +63,9 @@ export const STATUS_STATES: readonly LabState[] = [
   },
   {
     id: 'ps-02-design-badge',
-    name: 'DesignBadge · 封闭 tone 词表（全仓零调用）',
+    name: 'DesignBadge · 封闭 tone 词表（生产零调用 · 待推广）',
     source: SOURCE_STATUS,
+    mirrors: 'none — 零采纳件（全仓 0 个调用点）',
     coverage: 'component-only',
     // 2026-09-07 前这一格是色泄漏的活标本：`DesignBadge` 没有 tone 词表、直接透传 Mantine
     // 的 `color`，于是这里的 PRO 徽章（color="grape"）在四套候选配色下都岿然不动地保持紫色。
@@ -75,40 +86,37 @@ export const STATUS_STATES: readonly LabState[] = [
     ),
   },
   {
-    id: 'ps-03-design-alert',
-    name: 'DesignAlert · 提示 / 警告 / 错误（全仓零调用）',
-    source: SOURCE_STATUS,
-    coverage: 'component-only',
-    render: () => (
-      <PrimitiveStage>
-        <Specimen label="variant=light · 三色" align="stretch">
-          <DesignAlert color="blue" title="生成会花钱">这一批 6 镜预计 ¥3.60，确认后才会真的发出去。</DesignAlert>
-          <DesignAlert color="yellow" title="唇形同步暂不支持" icon={<IconAlertTriangle size={16} />}>
-            这段会按普通口播生成，嘴型不对齐。
-          </DesignAlert>
-          <DesignAlert color="red" title="导出失败">磁盘剩余空间不足 2GB。</DesignAlert>
-        </Specimen>
-        <Specimen label="variant=filled / outline" align="stretch">
-          <DesignAlert variant="filled" color="blue" title="已保存">画布改动已写入项目。</DesignAlert>
-          <DesignAlert variant="outline" color="gray" title="只读项目">这个项目来自示例库，改动不会写回。</DesignAlert>
-        </Specimen>
-      </PrimitiveStage>
-    ),
-  },
-  {
     id: 'ps-04-progress-skeleton',
-    name: 'DesignProgress / NomiSkeleton · 加载态两件（Skeleton 全仓零调用）',
+    name: 'DesignProgress / NomiSkeleton · 加载态两件（按真实调用点）',
     source: SOURCE_STATUS,
-    coverage: 'component-only',
-    // NomiSkeleton 零采纳、而全仓 9 处手写 animate-pulse——这一格是那句话的对照物。
+    mirrors: [
+      'src/ui/app-shell/UpdaterDialog.tsx:69',
+      'src/ui/onboarding/AdapterVerificationScreen.tsx:141',
+      'src/workbench/library/ProjectLibraryPage.tsx:454',
+    ],
+    coverage: 'shell',
+    // 2026-09-07 两处修正：
+    //   · `DesignProgress` 补 `size`（4/4 真实调用点都传：sm ×2、xs ×2），并把
+    //     `color="green"` 换成真实的 `var(--nomi-accent)`——裸 Mantine 色名在本仓
+    //     **零实例**，摆着等于示范一条绕过 token 的路（而这正是 DesignBadge 刚被收敛掉的那种洞）。
+    //   · `NomiSkeleton` 换成唯一真实消费者的形状：项目库 loading 的 `className="h-32"`
+    //     卡片占位，不是 `lines` 文本骨架（`lines` 生产零使用）。
     render: () => (
       <PrimitiveStage>
-        <Specimen label="DesignProgress · 0 / 38 / 100" align="stretch">
-          <DesignProgress value={0} />
-          <DesignProgress value={38} />
-          <DesignProgress value={100} color="green" />
+        <Specimen label="DesignProgress · size=sm（更新下载）/ size=xs + var(--nomi-accent)（接入校验）" align="stretch">
+          <DesignProgress value={0} size="sm" />
+          <DesignProgress value={38} size="sm" />
+          <DesignProgress value={62} size="xs" color="var(--nomi-accent)" />
+          <DesignProgress value={100} size="xs" color="var(--nomi-accent)" />
         </Specimen>
-        <Specimen label="NomiSkeleton · lines=1 / 3（motion-reduce 不闪）" align="stretch">
+        <Specimen label="NomiSkeleton · 项目库 loading 的卡片占位（className=h-32 · 唯一真实用法）" align="stretch">
+          <div className="grid grid-cols-2 gap-2">
+            {[0, 1, 2, 3].map((slot) => (
+              <NomiSkeleton key={slot} className="h-32" />
+            ))}
+          </div>
+        </Specimen>
+        <Specimen label="⚠️ NomiSkeleton lines=1 / 3：组件支持，生产零使用（motion-reduce 不闪）" align="stretch">
           <NomiSkeleton />
           <NomiSkeleton lines={3} />
         </Specimen>
@@ -117,9 +125,12 @@ export const STATUS_STATES: readonly LabState[] = [
   },
   {
     id: 'ps-05-empty-state-panel',
-    name: 'DesignEmptyState · density=panel（独立面板空态）',
+    name: 'DesignEmptyState · density=panel（独立面板空态 · 带行动）',
     source: 'src/design/emptyState.tsx · docs/design/nomi-design-system.md §3.3',
+    mirrors: ['src/workbench/creation/storyboard/StoryboardWorkspace.tsx:59'],
     coverage: 'shell',
+    // 这是**唯一**一处「panel 密度 + 图标 + WorkbenchButton 行动」俱全的真实调用点；
+    // 另外 4 处 panel 密度都不给图标、且行动是手写 <button>（生产侧的债，见报告，本刀不动）。
     render: () => (
       <PrimitiveStage>
         <DesignEmptyState
@@ -133,14 +144,17 @@ export const STATUS_STATES: readonly LabState[] = [
   },
   {
     id: 'ps-06-empty-state-inline',
-    name: 'DesignEmptyState · density=inline（过滤/内嵌空态，无行动）',
+    name: 'DesignEmptyState · density=inline（内嵌空态 · 9/14 是它，是主形态）',
     source: 'src/design/emptyState.tsx · docs/design/nomi-design-system.md §3.3',
+    mirrors: ['src/workbench/preview/PreviewSourcePanel.tsx:66'],
     coverage: 'shell',
+    // 名字里去掉「无行动」：inline 密度有 2 处真实调用点是**带**行动的，
+    // 原来的名字把少数情形说成了这一档的定义。图标补 `stroke={1.4}`——真实 inline 图标都描细一档。
     render: () => (
       <PrimitiveStage>
         <DesignEmptyState
           density="inline"
-          icon={<IconPhoto size={28} className="text-nomi-ink-30" />}
+          icon={<IconPhoto size={30} stroke={1.4} className="text-nomi-ink-30" />}
           title="没有匹配的素材"
           description="换个关键词试试。"
         />

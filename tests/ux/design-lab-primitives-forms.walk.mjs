@@ -29,17 +29,33 @@ import { walkDesignLabScreen } from './design-lab/walkScreen.mjs'
  * `search`: 展开态里有没有那个能打字的搜索框。
  * `invalid` / `disabled`: 这一格里处于报错态 / 禁用态的表单件个数。
  */
+//
+// 2026-09-07 全表重算：这一屏的夹具按**真实调用点**重写了（见
+// `src/devlab/designLab/primitivesForms/states/01-inputs.tsx` 头注）。下面每个数字都跟着变，
+// 而每一处变化都对应一条「生产里本来就没有那种形态」的结论——不是把断言改松以迁就实现：
+//   · `disabled` 普遍降到 0：真实调用点里禁用的输入框极少，而**禁用的开关仍绑着活数据**
+//     （禁的是操作不是数据），旧夹具那种 `checked readOnly disabled` 组合生产零实例。
+//   · `invalid` 普遍升到 2：本仓有**两套并存**的报错约定（error 传字符串 / 传 boolean），
+//     两套各摆一格才叫把现状摆出来——这是生产侧的债，不是夹具的错。
+//   · `pf-02` 的禁用数从 3 变 0：那 3 个里有 2 个是 NumberInput 的加减步进钮，
+//     而 **5/5** 真实调用点都 `hideControls`——那两颗钮在生产里根本不存在。
+//   · `pf-06` 从 2 变 0：旧夹具给比例选项编了个 `disabled: 4:3`，生产从不禁用比例档。
+//   · `pf-08` 的 minOptions 从 5 变 4：候选换成 `buildModelSelectOptions` 真吐的四行
+//     （含带供应商 chip 的行），旧那 5 行里有一行是编出来的「未接入（灰行）」。
+// `pf-04` 那条登记随组件删除一并删掉：它认领的是一个已经不存在的格。
 const EXPECTED = {
-  'pf-01-text-input-four-states': { dropdown: 'closed', invalid: 1, disabled: 1 },
-  // NumberInput 禁用时连带它的加减两颗步进钮，所以这一格是 1 个输入框 + 2 颗钮 = 3。
-  'pf-02-textarea-number': { dropdown: 'closed', invalid: 1, disabled: 3 },
-  'pf-03-switch-checkbox': { dropdown: 'closed', invalid: 0, disabled: 3 },
-  'pf-04-file-input': { dropdown: 'closed', invalid: 1, disabled: 1 },
+  // ② error=字符串 与 ③ error=boolean 各一个 → 2 个报错态；禁用输入框在真实调用点里没有。
+  'pf-01-text-input-four-states': { dropdown: 'closed', invalid: 2, disabled: 0 },
+  // Textarea（autosize 关那格）+ NumberInput（最大值那格）各带一个 boolean 报错。
+  // 步进钮已被 `hideControls` 去掉，所以禁用数是 0 而不是旧表的 3。
+  'pf-02-textarea-number': { dropdown: 'closed', invalid: 2, disabled: 0 },
+  // 只有「截图快捷键」那颗开关是禁用的；两个 Checkbox 是 readOnly 的装饰对勾，不算禁用。
+  'pf-03-switch-checkbox': { dropdown: 'closed', invalid: 0, disabled: 1 },
   'pf-05-search-input': { dropdown: 'closed', invalid: 0, disabled: 0 },
-  // 两条 NomiSegmented 各有一个禁用选项（4:3）；DesignSegmentedControl 那条把禁用项滤掉了。
-  'pf-06-segmented-controls': { dropdown: 'closed', invalid: 0, disabled: 2 },
+  // 三条分段控件都没有禁用档：比例组、设置页三档、接入向导三档，生产里都不禁用选项。
+  'pf-06-segmented-controls': { dropdown: 'closed', invalid: 0, disabled: 0 },
   'pf-07-nomi-select-triggers': { dropdown: 'closed', invalid: 0, disabled: 1 },
-  'pf-08-nomi-select-open': { dropdown: 'open', search: false, minOptions: 5, invalid: 0, disabled: 0 },
+  'pf-08-nomi-select-open': { dropdown: 'open', search: false, minOptions: 4, invalid: 0, disabled: 0 },
   'pf-09-nomi-select-searchable': { dropdown: 'open', search: true, minOptions: 5, invalid: 0, disabled: 0 },
 }
 

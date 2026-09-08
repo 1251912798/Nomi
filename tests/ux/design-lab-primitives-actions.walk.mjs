@@ -23,14 +23,24 @@ import { walkDesignLabScreen } from './design-lab/walkScreen.mjs'
  * `busy` = 这一格里处在忙态的按钮数（转圈标数 === 它，且每一颗都必须 disabled + aria-busy）。
  * `minButtons` = 这一格至少要有几颗按钮——防「整格塌成半排」这种一眼看不出的缺样本。
  */
+//
+// 2026-09-07 全表重算：这一屏的夹具按**真实调用点**重写了（见两份 states 文件的头注）。
+// 每个数字变小的地方，都对应一条「生产里本来就没有那种组合」的结论，不是把断言改松：
+//   · `pa-01` 8→7：`accent` 全仓只有一个调用点（sm + shrink-0），md 那颗是编出来的；
+//   · `pa-03` 9→8：md 裸态那排删了——42 个真实调用点里 40 个用 className 改尺寸，
+//     组件的默认尺寸在生产里几乎没活过，摆一颗当对照就够；
+//   · `pa-05` 7→6：`outline` 全仓零调用，删掉；
+//   · `pa-06` 5→4：真实 loading 恒配 disabled，两对足够，不再摆裸 loading；
+//   · `pa-07` busy 1→0：`IconActionButton` 的 13 个真实调用点里**没有一个**传 `loading`。
+//     忙态那一格是编出来的，删了它——于是这一屏的 NomiLoadingMark 也应当是 0 个。
 const EXPECTED = {
-  'pa-01-workbench-button-matrix': { busy: 0, minButtons: 8 },
+  'pa-01-workbench-button-matrix': { busy: 0, minButtons: 7 },
   'pa-02-workbench-button-busy': { busy: 3, minButtons: 7 },
-  'pa-03-workbench-icon-button': { busy: 0, minButtons: 9 },
+  'pa-03-workbench-icon-button': { busy: 0, minButtons: 8 },
   'pa-04-action-card': { busy: 0, minButtons: 3 },
-  'pa-05-design-button-variants': { busy: 0, minButtons: 7 },
-  'pa-06-design-button-busy': { busy: 2, minButtons: 5 },
-  'pa-07-icon-action-button': { busy: 1, minButtons: 5 },
+  'pa-05-design-button-variants': { busy: 0, minButtons: 6 },
+  'pa-06-design-button-busy': { busy: 2, minButtons: 4 },
+  'pa-07-icon-action-button': { busy: 0, minButtons: 5 },
 }
 
 await walkDesignLabScreen({

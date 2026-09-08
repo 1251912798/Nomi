@@ -62,10 +62,18 @@ export function Specimen({
   return (
     <div className="flex flex-col gap-1.5">
       <div className="text-micro uppercase tracking-[0.08em] text-nomi-ink-40">{label}</div>
+      {/*
+        `flex-wrap` 只属于**横排**那一档。竖排档此前也带着它，而 `flex-wrap: wrap` 配
+        `flex-direction: column` 会让唯一那个子项**撑满整条弹性行**——于是一个 32px 高的
+        分段选择器被吹成 234px 的空框（2026-09-07 实测 234 → 去掉 wrap 后 50）。
+        这就是用户在 `pf-06` 上看到的「大空框配文字」里的**空框**部分：它不是夹具传错 props，
+        是取景台自己的布局 bug，而且**每一个 `align="stretch"` 的格子都中招**。
+        竖排档不需要 wrap（一列本来就没有「排不下」这回事），直接不给。
+      */}
       <div
         className={cn(
-          'flex flex-wrap gap-2',
-          align === 'center' ? 'items-center' : 'flex-col items-stretch',
+          'gap-2',
+          align === 'center' ? 'flex flex-wrap items-center' : 'flex flex-col items-stretch',
           className,
         )}
       >

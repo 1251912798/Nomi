@@ -31,7 +31,8 @@ const EXPECTED = {
   'ps-04-progress-skeleton': null,
   'ps-05-empty-state-panel': null,
   'ps-06-empty-state-inline': null,
-  'ps-07-modal': { selector: '[role="dialog"]', text: '重命名项目', min: { w: 300, h: 160 } },
+  // 文案随夹具改成镜像 WorkflowLibraryContent:192 的那一个（2026-09-07）。
+  'ps-07-modal': { selector: '[role="dialog"]', text: '编辑工作流', min: { w: 300, h: 160 } },
   'ps-08-drawer': { selector: '[role="dialog"]', text: '镜头属性', min: { w: 300, h: 300 } },
   // AnchoredPopover 不贴任何 data 标记（src/design/AnchoredPopover.tsx），它的身份就是
   // 「body 下一个 position:fixed 的层」+ 里面那段文案。定位没算出来时它是 visibility:hidden
