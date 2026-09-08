@@ -88,9 +88,9 @@ function RunningCell(): JSX.Element {
       surface="generation"
       draft={fx.t('agentPanelV4.queueTwo')}
       snapshot={labHostState({
-        turnStatus: 'running',
+        running: true,
         items: [labUserItem('u1', fx.t('agentPanelV4.queueOne'))],
-        queue: [labQueueItem('q1', 'turn-lab', 'running')],
+        queue: [labQueueItem('q1', fx.t('agentPanelV4.queueTwo'))],
       })}
     />
   )
@@ -103,10 +103,9 @@ function FailureCell(): JSX.Element {
     <ShellStage
       surface="generation"
       snapshot={labHostState({
-        turnStatus: 'failed',
         items: [
           labUserItem('u1', fx.t('agentPanelV4.fixtureUserToVideo')),
-          labToolItem('t1', 'generation.control', 'failed'),
+          labToolItem('t1', 'generation.control', true),
           labFailureItem('f1', fx.t('agentPanelV4.fixtureVendorFailure'), fx.t('agentPanelV4.fixtureRetryOtherModel')),
         ],
       })}

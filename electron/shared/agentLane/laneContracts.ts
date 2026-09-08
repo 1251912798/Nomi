@@ -1,3 +1,4 @@
+import type { CanvasWriteApprovalAuthority } from '../agentCapabilities/transportContracts'
 // Agent lane · 中立契约层（阶段 1 影子期）
 //
 // 这一层是渲染进程与主进程**唯一**共同认识的东西。它刻意不认识 pi：pi 的类型只在
@@ -9,6 +10,9 @@
 // 下标排出来的（`agentPanelV4Projection.sortedItems()`），也就是说「先说什么后做什么」
 // 这件事在系统里是**推断出来的**。新通路里它是**记下来的**：pi 的 lane transcript 本身
 // 就有序，主进程按走序赋 `sequence`，下游任何一层都不许再排一次（方案 §2.2 不变量 I1）。
+
+import type { NomiModelConfig } from './laneModelConfig'
+import type { ProjectAgentAttachmentClaim } from '../workbenchInput'
 
 /** 一段 = 模型一轮回复里的一个小块，或转录里的一条记录。顺序由 `sequence` 唯一决定。 */
 export interface LanePartIdentity {
@@ -27,8 +31,9 @@ export interface LanePartIdentity {
 }
 
 export type LanePart =
+  | (LanePartIdentity & { readonly kind: 'error'; readonly text: string })
   | (LanePartIdentity & { readonly kind: 'user'; readonly text: string })
-  | (LanePartIdentity & { readonly kind: 'assistant-text'; readonly text: string; readonly streaming: boolean })
+  | (LanePartIdentity & { readonly kind: 'assistant-text'; readonly text: string; readonly streaming: boolean; readonly interrupted?: true; readonly continuationEntryId?: string })
   | (LanePartIdentity & { readonly kind: 'thinking'; readonly text: string; readonly streaming: boolean })
   | (LanePartIdentity & {
       readonly kind: 'tool-call'
@@ -91,6 +96,16 @@ export type LaneTaskStatus = (typeof LANE_TASK_STATUSES)[number]
  * 「¥0.24」就等于在主进程里钉了一种语言和一种小数写法，而那两件事都随用户设置变。
  * 今天 `V4TaskFacts.spent` 是串，是因为它的产地本来就在渲染层；跨进程这一段不能照抄。
  */
+/** Ephemeral, domain-verified media facts; no preview URL or adoption state enters the transcript. */
+export interface LaneTaskCandidate {
+  readonly projectId: string
+  readonly productionRunId: string
+  readonly artifactId: string
+  readonly thumbnailUrl: string
+  readonly adopted: boolean
+  readonly canAdopt: boolean
+}
+
 export interface LaneTaskFacts {
   readonly status: LaneTaskStatus
   /** 0–100 的整数。阶段数为 0 时**缺席**，不写 0——0% 和「没有阶段可数」不是一回事。 */
@@ -104,8 +119,8 @@ export interface LaneTaskFacts {
   readonly spent?: number
   /** 已预留金额（账本的 `reserved`）。 */
   readonly estimated?: number
-  /** 候选产物的 id。缩略图由渲染层按 id 去取，正文不过桥。 */
-  readonly candidateIds?: readonly string[]
+  /** Media previews and adoption eligibility come from the ProductionRun owner. */
+  readonly candidates?: readonly LaneTaskCandidate[]
 }
 
 /**
@@ -218,11 +233,15 @@ export interface LaneThinking {
  * 下一次模型请求前它会变成一条真的用户消息，那时它在 `parts` 里；混在一起的话，
  * 面板要么把同一句话画两遍，要么得自己判「这条是不是已经落定了」。
  */
-export interface LaneQueuedMessage {
+export interface LaneDraftInput {
+  readonly text: string
+  readonly attachments?: readonly ProjectAgentAttachmentClaim[]
+}
+
+export interface LaneQueuedMessage extends LaneDraftInput {
   /** pi 铸的 id。取消它要原样送回来（`cancelQueued`）。 */
   readonly entryId: string
   readonly kind: LaneQueueKind
-  readonly text: string
 }
 
 /**
@@ -259,6 +278,8 @@ export interface LaneRetry {
 /** 一次推送 = lane 当前的全部有序段。阶段 1 走全量快照；增量是阶段 3 的事。 */
 export interface LaneProjection {
   readonly lane: string
+  /** Current runtime identity only; credentials never enter the projection. */
+  readonly model?: { readonly provider: string; readonly modelId: string }
   readonly parts: readonly LanePart[]
   /** 这条 lane 现在有没有在跑（`LaneSnapshot.operation !== null`）。 */
   readonly running: boolean
@@ -482,7 +503,7 @@ export type LaneCommand =
  * `restoreQueuedMessagesToEditor` 就是这么做的，我们抄它。
  */
 export interface LaneCommandOutcome {
-  readonly restoredInput?: readonly string[]
+  readonly restoredInput?: readonly LaneDraftInput[]
   /** `cancel-queued` 的三态结局。见 `LANE_CANCEL_QUEUED_RESULTS`。 */
   readonly cancelQueued?: LaneCancelQueuedResult
   /** 排队成功时 pi 铸的 id（`steer` / `follow-up`）。取消那一条要用它。 */
@@ -505,7 +526,7 @@ export type LaneCancelQueuedResult = (typeof LANE_CANCEL_QUEUED_RESULTS)[number]
 
 /**
  * 阶段 1 的两条通道名。**它们此刻没有注册进 `main.ts`**——影子期用户走不到新通路，
- * 回滚面积因此为零（方案 §8.1 规则 O6「开发期不可达」）。切换 PR 才注册。
+ * 阶段 4 在主进程注册；渲染层只经 preload 发送意图并接收完整投影。
  */
 export const LANE_IPC_CHANNELS = Object.freeze({
   /** 主 → 渲染：推一份完整的有序投影。 */
@@ -518,9 +539,10 @@ export const LANE_IPC_CHANNELS = Object.freeze({
 export interface LaneHandle {
   readonly laneName: string
   readonly sessionId: string
+  receiptAuthority(proposalId: string): CanvasWriteApprovalAuthority | undefined
   projection(): LaneProjection
   subscribe(listener: (projection: LaneProjection) => void): () => void
-  execute(command: LaneCommand): Promise<LaneCommandOutcome>
+  execute(command: LaneCommand, options?: { onAccepted?(): void }): Promise<LaneCommandOutcome>
   /**
    * 领域侧在这条对话里记下「这儿有一张生成任务卡」（G13 的承接点）。
    *
@@ -550,9 +572,12 @@ export interface LaneHandle {
  * 而同时开两条**不同**会话虽然安全，却意味着两条对话同时在跑、同时在花钱，而用户只看得见一条。
  */
 export interface LaneWorkspaceHandle {
+  /** Main-only configuration; credentials never enter the IPC projection. */
+  configureModel(model: NomiModelConfig): Promise<void>
+  receiptAuthority(proposalId: string): CanvasWriteApprovalAuthority | undefined
   projection(): LaneWorkspaceProjection
   subscribe(listener: (projection: LaneWorkspaceProjection) => void): () => void
-  execute(command: LaneCommand): Promise<LaneCommandOutcome>
+  execute(command: LaneCommand, options?: { onAccepted?(): void }): Promise<LaneCommandOutcome>
   /** 把任务卡记进**当前打开的那条**对话。领域侧只认识工作区，不该自己去挑 lane。 */
   appendTaskNote(note: LaneTaskNote): Promise<void>
   /** 见 `LaneHandle.refreshTasks`。 */

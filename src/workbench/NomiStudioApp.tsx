@@ -40,8 +40,8 @@ import {
 } from './timeline/agent/phase4CapabilityTargets'
 import { FOCUS_GENERATION_NODE_EVENT } from './generationCanvas/nodes/nodeSizing'
 import { focusCanvasNodeWhenReady } from './deepLinkFocus'
-import { projectAgentClient } from './ai/projectAgentClient'
-import { projectAgentProjectionStore } from './ai/projectAgentProjectionStore'
+import { laneClient } from './ai/lane/laneClient'
+import { laneReceiptClient } from './ai/lane/laneReceiptClient'
 import { initReviewEventBridge } from './generationCanvas/reviewEventBridge'
 import { initComfyuiProgressBridge } from './generationCanvas/comfyuiProgressBridge'
 import { initResultUrlRelocalizeBridge } from './generationCanvas/resultUrlRelocalizeBridge'
@@ -157,8 +157,6 @@ export default function NomiStudioApp(): JSX.Element {
   const hardReloadingRef = React.useRef(false)
   const browserOpenedRef = React.useRef(false)
   const pendingCloseRequestRef = React.useRef<string | null>(null)
-  const projectAgentSubscriptionRef = React.useRef<string | null>(null)
-  const projectAgentPatchUnbindRef = React.useRef<(() => void) | null>(null)
   const routeProjectId = React.useMemo(() => readProjectIdFromSearch(location.search), [location.search])
   const activeProjectPersistenceKey = activeProject ? `${activeProject.id}\u0000${activeProject.name}` : ''
   const [projectSurface] = React.useState(() =>
@@ -245,28 +243,6 @@ export default function NomiStudioApp(): JSX.Element {
     setDesktopActiveProjectId(activeProject?.id)
   }, [activeProject?.id])
 
-  React.useEffect(() => {
-    try {
-      const unbind = projectAgentClient.onPatch((patch) => {
-        if (projectAgentProjectionStore.applyPatch(patch)) return
-        const subscriptionId = projectAgentSubscriptionRef.current
-        if (!subscriptionId) return
-        void projectAgentClient
-          .snapshot(subscriptionId)
-          .then((snapshot) => {
-            projectAgentProjectionStore.applySnapshot(snapshot)
-          })
-          .catch(() => undefined)
-      })
-      projectAgentPatchUnbindRef.current = unbind
-      return () => {
-        unbind()
-        if (projectAgentPatchUnbindRef.current === unbind) projectAgentPatchUnbindRef.current = null
-      }
-    } catch {
-      return undefined
-    }
-  }, [])
   React.useEffect(() => initReviewEventBridge(), [])
   React.useEffect(() => initComfyuiProgressBridge(), [])
   React.useEffect(() => initResultUrlRelocalizeBridge(), [])
@@ -401,17 +377,12 @@ export default function NomiStudioApp(): JSX.Element {
       hydratingProjectRef.current = true
       // The old/new Canvas must not accept user writes between disk hydration
       // and receipt recovery. React unmounts the studio before the first await;
-      // it is exposed again only after Host open + pending compensation finish.
+      // it is exposed again only after lane open + pending compensation finish.
       setView('library')
       try {
         await surfaceEpoch.waitUntilSuspended()
         surfaceEpoch.assertCurrent()
-        const previousSubscription = projectAgentSubscriptionRef.current
-        if (previousSubscription) {
-          await projectAgentClient.release(previousSubscription).catch(() => undefined)
-          projectAgentSubscriptionRef.current = null
-          projectAgentProjectionStore.clear()
-        }
+        if (laneClient.context()) await laneClient.close()
         abandonPendingCanvasWrite()
         clearCommittedProposal()
         const { module, service } = await ensureProjectPersistenceService()
@@ -435,14 +406,14 @@ export default function NomiStudioApp(): JSX.Element {
         const committedBinding = await surfaceEpoch.commitCanvasRead(hydrated.id)
         surfaceEpoch.assertCurrent()
         if (committedBinding) {
-          const opened = await projectAgentClient.open(committedBinding.binding)
+          const opened = await laneClient.open(committedBinding.binding)
           surfaceEpoch.assertCurrent()
-          projectAgentSubscriptionRef.current = opened.subscriptionId
-          projectAgentProjectionStore.install(opened.subscriptionId, opened.subscriptionEpoch, opened.snapshot)
-          hydrateCommittedProposalReceipt(opened.proposalReceipt)
+          if (!opened.ok) throw new Error(opened.message)
+          if (!opened.workspaceId) throw new Error('agent_lane_closed')
+          hydrateCommittedProposalReceipt(await laneReceiptClient.readProposalReceipt(opened.workspaceId))
           await recoverPendingProposalReceipt()
           surfaceEpoch.assertCurrent()
-          // The Host snapshot is the sole display source after cutover.
+          // The lane projection is the sole conversation display source.
         }
         surfaceEpoch.assertCurrent()
         setView('studio')
@@ -627,12 +598,7 @@ export default function NomiStudioApp(): JSX.Element {
           // Deleting the open project must first receive main's release ACK;
           // otherwise its old canvas-read route could outlive the project.
           await projectSurface.releaseCurrent()
-          const subscriptionId = projectAgentSubscriptionRef.current
-          if (subscriptionId) {
-            await projectAgentClient.release(subscriptionId).catch(() => undefined)
-            projectAgentSubscriptionRef.current = null
-            projectAgentProjectionStore.clear()
-          }
+          if (laneClient.context()) await laneClient.close()
         }
         deleteLocalProject(project.id)
         if (activeProjectIdRef.current === project.id) {
@@ -749,15 +715,10 @@ export default function NomiStudioApp(): JSX.Element {
   const backToLibrary = React.useCallback(async () => {
     try {
       await projectSurface.releaseCurrent()
+      if (laneClient.context()) await laneClient.close()
     } catch (error: unknown) {
       console.error('project Surface release failed', error)
       return
-    }
-    const previousSubscription = projectAgentSubscriptionRef.current
-    if (previousSubscription) {
-      await projectAgentClient.release(previousSubscription).catch(() => undefined)
-      projectAgentSubscriptionRef.current = null
-      projectAgentProjectionStore.clear()
     }
     const unbindPersistence = projectPersistenceUnbindRef.current
     projectPersistenceUnbindRef.current = null

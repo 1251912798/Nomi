@@ -16,6 +16,6 @@
     "noEmitOnError": true,
     "sourceMap": true
   },
-  "include": ["harness/runtime/pi/**/*.mts", "harness/runtime/pi/**/*.cts", "agentLane/**/*.mts"],
+  "include": ["harness/runtime/pi/**/*.mts", "harness/runtime/pi/**/*.cts", "agentLane/**/*.mts", "agentLane/**/*.cts"],
   "exclude": ["**/*.test.mts", "**/*.test.cts"]
 }

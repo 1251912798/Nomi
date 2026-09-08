@@ -154,7 +154,7 @@
       "reason": "GenerationOperationState 是语义生成计划从 draft、sealed 到 submitted 或 cancelled 的导出状态合同；GenerationOperationStore 以它为接口，ProductionGenerationPlan.state 只是持久化适配投影，必须复用该 named owner。"
     },
     {
-      "site": "electron/capabilityCore/mcpGenerationTools.ts::variable:GENERATION_RECONCILE_OUTCOMES/as-const",
+      "site": "electron/shared/agentCapabilities/generationPlanSchemas.ts::variable:GENERATION_RECONCILE_OUTCOMES/as-const",
       "members": [
         "found",
         "not_found"
@@ -477,7 +477,7 @@
       "reason": "ProductionRunIntentStatus 是 append-only intent log 的耐久提交状态：prepared 先落意图，committed 记录事实已提交，aborted 允许受控终止；MAC、序号和重放逻辑依赖它，与 Run/Job 业务状态分离。"
     },
     {
-      "site": "electron/productionRun/productionRunReducer.ts::variable:ARTIFACT_REVIEW_DECISIONS/as-const",
+      "site": "electron/shared/agentCapabilities/productionRun.ts::variable:ARTIFACT_REVIEW_DECISIONS/as-const",
       "members": [
         "approved",
         "changes_requested",
@@ -1063,15 +1063,6 @@
         "uploading"
       ],
       "reason": "**附件上传**三态，生命周期归 composer 管，不进任务账本。"
-    },
-    {
-      "site": "src/workbench/ai/v4/agentPanelV4Projection.ts::type:V4PendingTool/property:state/type-union",
-      "members": [
-        "approved",
-        "denied",
-        "pending"
-      ],
-      "reason": "「活的工具调用」在渲染层的三态（pending 待用户裁决 / approved 已批 / denied 已拒）。它之所以必须存在于渲染层：宿主状态里根本没有「正在跑的工具调用」这条记录——ProjectAgentToolItem 只在回合结束时从 response.toolCalls 一次性生成，跑的过程中唯一的活记录是执行协调器内存里的 PendingToolDecision，而它从不进 ProjectAgentHostState（见 electron/projectAgentHost/projectAgentExecutionCoordinatorTypes.ts）。所以这是「宿主还没有话说」的那段时间里的本地视图词表，不是第二份真相：终态一到，agentPanelV4Projection.toolStatusOf 就以宿主快照为准（单测「宿主快照永远赢」钉死）。2026-09-06 v4 接线前它住在 ResidentUiPrimitives.tsx::ResidentApprovalState，随旧面板整件删除后原样迁到这里，成员与语义都没变。"
     },
     {
       "site": "src/workbench/ai/workbenchAiTypes.ts::type:WorkbenchAiMessage/property:status/type-union",

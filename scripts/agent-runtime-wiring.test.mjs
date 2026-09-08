@@ -73,7 +73,7 @@ describe('private pi build and test wiring', () => {
     // agent lane（agentLane/，方案 2026-09-07 §6）。两块共用同一个 NodeNext 工程，
     // 而不是各起一个——两个 ESM 工程写同一个 outDir 迟早给同一个文件写出两份不同的产物。
     expect(config.include).toEqual(['harness/runtime/pi/**/*.mts', 'harness/runtime/pi/**/*.cts',
-      'agentLane/**/*.mts'])
+      'agentLane/**/*.mts', 'agentLane/**/*.cts'])
     const parsed = ts.getParsedCommandLineOfConfigFile(path.join(repoRoot, 'electron/tsconfig.json'), {}, {
       ...ts.sys, onUnRecoverableConfigFileDiagnostic: (diagnostic) => { throw new Error(String(diagnostic.messageText)) },
     })
@@ -114,7 +114,7 @@ describe('private pi build and test wiring', () => {
       expect(vitestIncludes.some((pattern) => path.matchesGlob(relative, pattern))).toBe(false)
       const source = read(relative)
       expect(source).toContain("from 'node:test'")
-      expect(source).toContain('../../electron/harness/runtime/pi/')
+      expect(source).toMatch(/\.\.\/\.\.\/electron\/(?:harness\/runtime\/pi\/|ai\/nativePdfPayload)/)
       expect(source).not.toMatch(/from ['"]vitest['"]|experiments\/pi-agent-runtime/)
     }
   })

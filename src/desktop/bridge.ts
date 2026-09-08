@@ -11,9 +11,8 @@ import type { DesktopProductionRunBridge } from './productionRunBridgeTypes'
 import type { CustomCallBridge } from './modelCatalogBridgeTypes'
 import type { ComfyCandidateTestPayload, ComfyCandidateTestResult, ComfyWorkflowMutationResult } from './comfyCandidateContracts'
 import type { CanvasReadSurfaceBridge } from '../../electron/shared/surfacePortBinding'
-import type { ProjectAgentBridge } from './projectAgentBridgeTypes'
+import type { LaneBridge } from '../workbench/ai/lane/laneClient'
 import type { GenerationResolvePlanEnvelope, GenerationResolvePlanRequest } from '../../electron/shared/videoCapabilities/planResolutionContracts'
-export type { ProjectAgentBridge, ProjectAgentCommandWire } from './projectAgentBridgeTypes'
 export type { ProviderKind }
 export type { DesktopAdapterModeResult, DesktopProviderAdapterRun, DesktopProviderRegistration } from './onboardingBridgeTypes'
 export type { ScreenshotHotkeyStatus } from './bridgeMedia'
@@ -780,8 +779,9 @@ export type DesktopBridge = DesktopMediaBridge &
   }
   /** Main-issued read-only project Surface lifecycle; independent from capability.onApply. */
   surface?: CanvasReadSurfaceBridge
-  /** The sole renderer transport for the app-process ProjectAgentHost. */
-  projectAgent?: ProjectAgentBridge
+  /** The desktop conversation transport. */
+  agentLane?: LaneBridge
+  projectAgent?: import('./projectAgentBridgeTypes').ProjectAgentBridge
 }
 
 declare global {
