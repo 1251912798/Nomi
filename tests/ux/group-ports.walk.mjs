@@ -64,12 +64,8 @@ for (const label of ['新建空白项目', '开始一个项目']) {
   const el = win.locator('button', { hasText: label }).first()
   if (await el.count()) { await el.click({ timeout: 4000 }).catch(() => {}); break }
 }
-await win
-  .locator('div.fixed.inset-0')
-  .filter({ hasText: /开始生成/ })
-  .last()
-  .waitFor({ state: 'visible', timeout: 15_000 })
-  .catch(() => {})
+// 项目工作区是实际就绪信号；旧首启弹层不会出现，不能等超时再吞掉。
+await win.getByRole('button', { name: '生成', exact: true }).waitFor({ state: 'visible' })
 const genTab = win.locator('button', { hasText: /^生成$/ }).first()
 if (await genTab.count()) await genTab.click({ timeout: 5000 }).catch(() => {})
 await win.waitForTimeout(2500)

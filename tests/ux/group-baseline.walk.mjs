@@ -5,7 +5,7 @@ import { launchNomiApp } from './_launchApp.mjs'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { screenshotSettled } from './_assert.mjs'
+import { expect, expectVisible, screenshotSettled } from './_assert.mjs'
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const shotsDir = path.join(repoRoot, 'tests/ux/shots/group-baseline')
 fs.rmSync(shotsDir, { recursive: true, force: true })
@@ -21,8 +21,9 @@ async function snap(win, name, clip) {
   console.log(`  · shot ${tag}`)
 }
 async function snapNear(win, name, locator, pad = 40) {
-  const box = await locator.boundingBox().catch(() => null)
-  if (!box) { console.error(`  ⚠️ 找不到 ${name} 的盒子`); return null }
+  await expectVisible(locator, `${name} 的真实控件已出现`)
+  const box = await locator.boundingBox()
+  if (!box) throw new Error(`${name} 没有可截图的盒子`)
   await snap(win, name, {
     x: Math.max(0, box.x - pad), y: Math.max(0, box.y - pad),
     width: Math.min(1400, box.width + pad * 2), height: Math.min(900, box.height + pad * 2),
@@ -80,23 +81,14 @@ await snapNear(win, 'group-frame-real', groupBox, 30)
 const groupLabel = win.locator('.generation-canvas-v2__group-box-label').first()
 await snapNear(win, 'group-label-real', groupLabel, 16)
 
-// 单选一个节点 → composer 的真实样子
-await win.keyboard.press('Escape')
-await win.waitForTimeout(300)
-const firstNode = win.locator('[data-node-id]').first()
-await firstNode.click({ timeout: 4000 }).catch(() => {})
-await win.waitForTimeout(900)
+// 先证单选，再取 composer；旧尺寸 class 已退役，等待它只会吞掉 60s 超时。
+await win.getByRole('button', { name: '清除选择', exact: true }).click()
+const firstNode = win.locator('.generation-canvas-v2-node[data-node-id]').first()
+await firstNode.click({ timeout: 4000 })
+await expect(win.locator('.generation-canvas-v2-node[data-selected="true"]')).toHaveCount(1)
 await snap(win, 'canvas-node-selected')
-const composer = win.locator('.generation-canvas-v2 [class*="min-h-\\[150px\\]"]').first()
-const cbox = await composer.boundingBox().catch(() => null)
-if (cbox) {
-  await snap(win, 'composer-real', {
-    x: Math.max(0, cbox.x - 20), y: Math.max(0, cbox.y - 20),
-    width: cbox.width + 40, height: cbox.height + 40,
-  })
-} else {
-  console.error('  ⚠️ composer 盒子没读到，改拍整窗下半')
-}
+const composer = firstNode.locator('.generation-canvas-v2-node__composer-card')
+await snapNear(win, 'composer-real', composer, 20)
 
 // 节点浮动工具栏（图片节点的那条，@ 与抽帧共用同一 shell）
 const nodeToolbar = win.locator('[role="toolbar"]').first()

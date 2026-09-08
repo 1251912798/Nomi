@@ -76,3 +76,44 @@
 | tests/ux/p4-s5-canvas-reconcile.e2e.mjs | 2181 | PASS |
 
 最慢 group-baseline 的 composer 选择器 `.generation-canvas-v2 [class*=min-h-150px]` 已失效；当前真源为 NodeGenerationComposer.tsx 的 `.generation-canvas-v2-node__composer-card`。boundingBox 默认长超时后 catch(null) 吞错，需修探针而非缩超时。
+
+## 改前第二轮（带启动观测）
+
+13/13 PASS；文件墙钟合计 300439ms。计时从 Playwright electron.launch 调用开始。首次点击耗时是实跑脚本成功点控件的时点（含脚本 sleep），DOM ready 不等于交互 ready。
+
+| 文件 | 启动次数 | Electron launch ms | DOM ready ms | 首次成功控件点击 ms | 文件墙钟 ms |
+|---|---:|---:|---:|---:|---:|
+| tests/ux/group-baseline.walk.mjs | 1 | 688 | 713 | 3112 | 79534 |
+| tests/ux/canvas-batch-production.walk.mjs | 1 | 592 | 613 | 4197 | 43430 |
+| tests/ux/group-ports.walk.mjs | 1 | 572 | 592 | 2978 | 34478 |
+| tests/ux/canvas-drag-pan-gestures.walk.mjs | 1 | 493 | 516 | 8127 | 27826 |
+| tests/ux/canvas-shortcuts.walk.mjs | 1 | 919 | 956 | 2594 | 25406 |
+| tests/ux/canvas-card-stack.walk.mjs | 1 | 552 | 574 | 2656 | 20629 |
+| tests/ux/group-reference-direction.walk.mjs | 1 | 688 | 1208 | 4628 | 15186 |
+| tests/ux/selection-toolbar-vendor.walk.mjs | 1 | 617 | 638 | 3626 | 13624 |
+| tests/ux/canvas-node-context-menu.walk.mjs | 1 | 673 | 714 | 2249 | 13395 |
+| tests/ux/canvas-context-menu-click.walk.mjs | 1 | 572 | 592 | 2134 | 11200 |
+| tests/ux/react-flow-read-only.walk.mjs | 1 | 647 | 1293 | 4867 | 9296 |
+| tests/ux/p4-s5-canvas-landing.e2e.mjs | 1 | 555 | 576 | 851 | 4206 |
+| tests/ux/p4-s5-canvas-reconcile.e2e.mjs | 1 | 465 | 484 | 790 | 2229 |
+
+## 启动与实例数量裁决
+
+独立空白四目录冷启探针实测：DOMContentLoaded 1041.1ms；skip trial-click 成功 1296.5ms；点击 skip 后遮罩 detached 2121.2ms；新建空白项目 trial-click 成功 2138.0ms。以上属于真实可操作检查，和表内实跑首次点击口径分开。
+
+13 个文件均为一次启动；Electron launch 合计约 8 秒，不足总时长 3%。B 暂不改：当前选择集没有同文件反复 launch 的场景可删；跨文件复用最多省启动的一小部分，却会共享 OS 剪贴板、选择态与项目状态。原有持久化/多机器测试的重启有测试意义，不能拿掉。保留 13 个独立入口，不用一大坨组绑定成败；合并组数目前 0。
+
+C 首刀按排序处理 group-baseline 与 group-ports。前者单选探针不证明已单选、composer 仍查退役的 min-h class，boundingBox 超时被吞；改用真实 clear-selection、单选数量断言、当前 composer 控件、截图定位缺失直接失败。后者仅删除开项目后、尚未触发生成时那一次无意义“开始生成”弹层等待；用户点批量生成之后的确认卡等待和断言原样保留。
+
+## C1 验收
+
+同组连续三遍均绿（6/6），不重跑修到绿、不放宽断言。
+
+| 每刀 | 改前 ms | 改后三遍 ms | 中位节省 ms |
+|---|---:|---|---:|
+| C1 group-baseline | 79534 | 48246 / 48357 / 48288 | 31246 |
+| C1 group-ports | 34478 | 20373 / 19761 / 20016 | 14462 |
+
+五张前后截图已 Read 目视并排核对：group-baseline 的 01–05，布局、节点数量、工具条与配色一致；项目名称内的时分随真实运行变化。新增 07-composer-real.png 已目视确认包含真正 composer；原探针吞错时未产这张图，不把缺失证据称为正确基线。证据留 /tmp/nomi-walk-speed-evidence/c1-five-pairs.jpg 与 baseline-shots。
+
+截图另观察到 composer 左侧与 rail 重叠（第一节点位于左边界）；属于产品视觉问题线索，仅记录，不在本任务改 src。group-label 的旧截图裁剪落在视口外，只截到 AppBar，是原走查取证缺口，后续收敛截图边界时处理。
