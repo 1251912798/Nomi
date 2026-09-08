@@ -10,7 +10,7 @@ metadata:
     selectable-in-workbench: false
     tools: []
     required-providers:
-      - image
+    - image
     library:
       kind: effect
       title:
@@ -20,24 +20,25 @@ metadata:
         zh-CN: 用明确的画面结构组织视觉重点。
         en: 'Absolute symmetry: Add a precise camera or composition instruction to the scene.'
       appliesTo:
-        - image
+      - image
       group:
         zh-CN: 构图
         en: Composition
       slots:
-        - token: '{主体}'
-          reference: subject
+      - token: '{主体}'
+        reference: subject
       source:
-        url: >-
-          https://github.com/jnMetaCode/ai-shortfilm-prompts/blob/f21500e5946973949c6bbf02e67e0c21b2e63a35/templates/camera-move-library.md
+        url: https://github.com/jnMetaCode/ai-shortfilm-prompts/blob/f21500e5946973949c6bbf02e67e0c21b2e63a35/templates/camera-move-library.md
         revision: f21500e5946973949c6bbf02e67e0c21b2e63a35
         author: jnMetaCode
-        changes: >-
-          Nomi adds Chinese task labels, reference slots and review criteria; fixed subjects are parameterized where
+        changes: Nomi adds Chinese task labels, reference slots and review criteria; fixed subjects are parameterized where
           noted.
         evidence:
-          - >-
-            https://github.com/jnMetaCode/ai-shortfilm-prompts/blob/f21500e5946973949c6bbf02e67e0c21b2e63a35/templates/camera-move-library.md
+        - https://github.com/jnMetaCode/ai-shortfilm-prompts/blob/f21500e5946973949c6bbf02e67e0c21b2e63a35/templates/camera-move-library.md
+      preview:
+        path: assets/cover.png
+        type: image
+        provenance: illustration
 ---
 
 Dead-center symmetrical composition, {主体} on the central axis, sides mirrored

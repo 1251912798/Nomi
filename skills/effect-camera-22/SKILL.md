@@ -10,7 +10,7 @@ metadata:
     selectable-in-workbench: false
     tools: []
     required-providers:
-      - video
+    - video
     library:
       kind: effect
       title:
@@ -20,22 +20,23 @@ metadata:
         zh-CN: 用具体的机位与运动描述控制镜头节奏。
         en: 'Montage intercut: Add a precise camera or composition instruction to the scene.'
       appliesTo:
-        - video
+      - video
       group:
         zh-CN: 运镜
         en: Camera
       slots: []
       source:
-        url: >-
-          https://github.com/jnMetaCode/ai-shortfilm-prompts/blob/f21500e5946973949c6bbf02e67e0c21b2e63a35/templates/camera-move-library.md
+        url: https://github.com/jnMetaCode/ai-shortfilm-prompts/blob/f21500e5946973949c6bbf02e67e0c21b2e63a35/templates/camera-move-library.md
         revision: f21500e5946973949c6bbf02e67e0c21b2e63a35
         author: jnMetaCode
-        changes: >-
-          Nomi adds Chinese task labels, reference slots and review criteria; fixed subjects are parameterized where
+        changes: Nomi adds Chinese task labels, reference slots and review criteria; fixed subjects are parameterized where
           noted.
         evidence:
-          - >-
-            https://github.com/jnMetaCode/ai-shortfilm-prompts/blob/f21500e5946973949c6bbf02e67e0c21b2e63a35/templates/camera-move-library.md
+        - https://github.com/jnMetaCode/ai-shortfilm-prompts/blob/f21500e5946973949c6bbf02e67e0c21b2e63a35/templates/camera-move-library.md
+      preview:
+        path: assets/cover.png
+        type: image
+        provenance: illustration
 ---
 
 Rapid 0.5s intercut of charged details — sparks, eyes, blade, a held breath
