@@ -36,6 +36,37 @@ test('documentation and isolated renderer changes pay only focused-unit cost', (
   assert.deepEqual(surfaces(classifyValidationPolicy(['src/workbench/timeline/TimelinePanel.tsx'])), focusedOnly)
 })
 
+test('docs-only deletions, including the historical README QR replacement, stay focused', () => {
+  // Documentation portion of fb79d8ac94dddb350fef69ed5627868d2140e726.
+  const qrFiles = [
+    { status: 'M', path: 'README.md' },
+    { status: 'M', path: 'README.zh-CN.md' },
+    { status: 'D', path: 'docs/media/nomi-canvas-group-wechat-2026-09-01.jpg' },
+    { status: 'A', path: 'docs/media/nomi-canvas-group-wechat-2026-09-08.jpg' },
+  ]
+  for (const files of [qrFiles, [{ status: 'D', path: 'docs/中文.md' }],
+    [{ status: 'D', path: 'marketing/old.png' }], [{ status: 'D', path: 'README.old.md' }]]) {
+    const result = classifyValidationPolicy(files)
+    assert.deepEqual(surfaces(result), focusedOnly)
+    assert.equal(result.reason, 'docs_only')
+  }
+  // The historical commit also edited a test: its complete diff must stay full.
+  assert.equal(classifyValidationPolicy([...qrFiles,
+    { status: 'M', path: 'tests/ux/marketing-home.static.mjs' }]).unit, 'full')
+})
+
+test('production deletions and mixed unsafe paths cannot use the docs-only exemption', () => {
+  for (const file of ['src/foo.png', 'electron/icon.svg', 'tests/fixtures/qr.png',
+    '.github/workflows/check.yml', 'scripts/validation-policy.mjs', 'public/icon.png']) {
+    const result = classifyValidationPolicy([
+      { status: 'D', path: 'docs/old.md' }, { status: 'D', path: file },
+    ])
+    assert.equal(result.unit, 'full', file)
+    assert.equal(result.failClosed, true, file)
+  }
+  assert.equal(classifyValidationPolicy([{ status: 'R100', path: 'docs/new.md' }]).failClosed, true)
+})
+
 test('Electron changes require full unit and desktop without unrelated canvas, performance, or package work', () => {
   assert.deepEqual(surfaces(classifyValidationPolicy(['electron/tasks/taskAdmission.ts'])), {
     ...focusedOnly,

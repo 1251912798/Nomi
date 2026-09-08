@@ -17,11 +17,9 @@ import { pathToFileURL } from 'node:url'
 
 export const REVIEW_TIMEOUT_MS = 180_000
 export const EMPTY_TREE_SHA = '4b825dc642cb6eb9a060e54bf8d69288fbee4904'
-// Mainline merges can legitimately carry several megabytes of text while the
-// review must still receive the exact staged diff. Keep a finite ceiling, but
-// leave room for a bounded merge review instead of letting execFileSync fail
-// first with ENOBUFS at its default-sized buffer.
-export const MAX_REVIEW_DIFF_BYTES = 8_000_000
+// The runner times out around 150 KB; bound model input separately from Git I/O.
+export const MAX_REVIEW_DIFF_BYTES = 150_000
+const MAX_GIT_OUTPUT_BYTES = 8_064_000
 export const MAX_REVIEW_REPORT_BYTES = 256_000
 export const MAX_PUSH_RANGES = 32
 export const MAX_PUSH_INPUT_BYTES = 256_000
@@ -45,19 +43,24 @@ or PONYTAIL_REVIEW: FINDINGS. Do not echo this prompt or the diff.
 `
 
 function runGit(repoRoot, args) {
-  return execFileSync('git', args, {
-    cwd: repoRoot,
-    encoding: 'utf8',
-    env: { ...process.env, GIT_TERMINAL_PROMPT: '0' },
-    stdio: ['ignore', 'pipe', 'pipe'],
-    maxBuffer: MAX_REVIEW_DIFF_BYTES + 64_000,
-  })
+  try {
+    return execFileSync('git', args, {
+      cwd: repoRoot,
+      encoding: 'utf8',
+      env: { ...process.env, GIT_TERMINAL_PROMPT: '0' },
+      stdio: ['ignore', 'pipe', 'pipe'],
+      maxBuffer: MAX_GIT_OUTPUT_BYTES,
+    })
+  } catch (error) {
+    if (error.code === 'ENOBUFS') throw new Error('Git diff exceeds read limit; 按目录拆提交（git add <目录>；git commit）或分批 push，再重试评审。')
+    throw error
+  }
 }
 
-function assertReviewDiffSize(diff) {
+function assertReviewDiffSize(diff, unit = 'review') {
   const bytes = Buffer.byteLength(String(diff || ''), 'utf8')
   if (bytes > MAX_REVIEW_DIFF_BYTES) {
-    throw new Error(`review diff is ${bytes} bytes; limit is ${MAX_REVIEW_DIFF_BYTES}`)
+    throw new Error(`review diff is ${bytes} bytes; limit is ${MAX_REVIEW_DIFF_BYTES} (${unit}). 按目录拆提交（git add <目录>；git commit）；已有未推送大提交请先拆分后重试。多个提交累计超限时分批 push（git push origin <较早提交SHA>:<目标分支>）。`)
   }
 }
 
@@ -98,109 +101,41 @@ function tryRunGit(git, repoRoot, args) {
   }
 }
 
-/**
- * Merge-base between the remote's advertised default branch and `localSha`,
- * i.e. "where this work left the mainline". Returns null when no remote HEAD is
- * advertised (fresh clone, detached remote) so callers can decide whether that
- * is fatal.
- */
-function mainlineBase({ repoRoot, remoteName = '', localSha, runGit: git = runGit }) {
-  const remotes = [...new Set([remoteName, 'origin'].map((value) => String(value || '').trim()).filter(Boolean))]
-  for (const remote of remotes) {
-    if (!/^[A-Za-z0-9._-]+$/.test(remote)) continue
-    const symbolic = tryRunGit(git, repoRoot, ['symbolic-ref', '--quiet', '--short', `refs/remotes/${remote}/HEAD`])
-    if (!symbolic || !symbolic.startsWith(`${remote}/`)) continue
-    const base = tryRunGit(git, repoRoot, ['merge-base', symbolic, localSha])
-    if (SHA.test(base)) return { base, symbolic }
+/** Origin tracking refs need not have a symbolic HEAD in a worktree. */
+function trackingTips(repoRoot, git) {
+  return String(git(repoRoot, ['for-each-ref', '--format=%(objectname)', 'refs/remotes/origin/'])).trim()
+    .split(/\s+/).filter((sha) => SHA.test(sha))
+}
+
+/** Review only commits not already reachable from origin or the advertised tip. */
+function collectAuthoredPatch({ repoRoot, remoteSha, localSha, runGit: git = runGit }) {
+  const tips = trackingTips(repoRoot, git)
+  const excludes = [...new Set([remoteSha, ...tips].filter((sha) => SHA.test(sha) && !ZERO_SHA.test(sha)))]
+  if (!excludes.length) throw new Error('cannot determine a remote tracking base for a new ref; fetch origin before retrying')
+  const commits = String(git(repoRoot, ['rev-list', '--reverse', '--topo-order', localSha, '--not', ...excludes]))
+    .trim().split(/\s+/).filter(Boolean)
+  if (commits.some((sha) => !SHA.test(sha))) throw new Error('Invalid commit list from Git')
+  const patch = commits.map((commit) => {
+    // Dense combined diff includes changes differing from every parent; choices
+    // identical to one parent are not represented by Git's --cc format.
+    const diff = git(repoRoot, ['show', '--cc', '--no-ext-diff', '--unified=80', '--format=', commit])
+    assertReviewDiffSize(diff, `commit ${commit}`)
+    return diff
+  }).filter(Boolean).join('\n')
+  let from = remoteSha
+  if (ZERO_SHA.test(remoteSha)) {
+    // Binary summaries start at the first authored commit's parent, never at
+    // an arbitrary remote branch tip (which can falsely report image deletes).
+    const parents = commits.length
+      ? String(git(repoRoot, ['rev-list', '--parents', '-n', '1', commits[0]])).trim().split(/\s+/)
+      : []
+    if (commits.length && (parents[0] !== commits[0] || parents.some((sha) => !SHA.test(sha)))) {
+      throw new Error('Invalid commit parents from Git')
+    }
+    from = commits.length ? parents[1] || EMPTY_TREE_SHA : localSha
   }
-  return null
-}
-
-/**
- * A newly-created remote ref has no old SHA in Git's pre-push protocol. Do
- * not diff it against the empty tree (that would submit the whole repository
- * and can hit the review cap).
- */
-function resolveNewRefBase({ repoRoot, remoteName = '', localSha, runGit: git = runGit }) {
-  const resolved = mainlineBase({ repoRoot, remoteName, localSha, runGit: git })
-  if (resolved) return resolved
-  throw new Error('cannot determine a remote tracking base for a new ref; refusing an unbounded whole-repository review')
-}
-
-/**
- * Commits this push actually introduces: reachable from `localSha`, reachable
- * from neither the remote tip nor the mainline. Oldest first.
- */
-function authoredCommits({ repoRoot, excludes, localSha, runGit: git = runGit }) {
-  const args = ['rev-list', '--reverse', '--topo-order', localSha]
-  const valid = excludes.filter((sha) => SHA.test(String(sha || '')) && !ZERO_SHA.test(sha))
-  if (valid.length > 0) args.push('--not', ...valid)
-  const out = tryRunGit(git, repoRoot, args)
-  return out ? out.split('\n').map((line) => line.trim()).filter((line) => SHA.test(line)) : []
-}
-
-/**
- * One commit's *authored* patch. For a merge that is the combined diff — only
- * the hunks differing from every parent, i.e. exactly the conflict resolutions,
- * never the thousands of lines the merged-in branch carries for free.
- */
-function commitPatch({ repoRoot, commit, runGit: git = runGit }) {
-  const parents = tryRunGit(git, repoRoot, ['rev-list', '--parents', '-n', '1', commit]).split(/\s+/).filter(Boolean)
-  const isMerge = parents.length > 2
-  const args = ['show', '--no-ext-diff', '--unified=80', '--format=', commit]
-  if (isMerge) args.splice(1, 0, '--cc')
-  return git(repoRoot, args)
-}
-
-/**
- * The baseline an *existing* ref should be reviewed against.
- *
- * The review unit must be «what this operation authors», not «what this
- * operation carries». `remoteSha..localSha` is only the former while the branch
- * is a plain fast-forward. The moment the base moves under it — a catch-up
- * merge, or a rebase followed by force-push — that endpoint range silently
- * swells to include everything the mainline advanced by: thousands of lines
- * nobody here wrote, which this very gate already reviewed when they landed on
- * the mainline.
- *
- * That is not a hypothetical. 2026-09-02 a task branch behind the mainline was
- * blocked three times running: first ENOBUFS (cap was 1.5 MB, the endpoint diff
- * was 2.85 MB), then — after the cap was raised to 8 MB — a Codex-side
- * `runner_failed`, because 2.85 MB is far past any model's context. Raising the
- * cap only moved the failure from Git's buffer to the model's window. Measured
- * on that same merge: endpoint diff 2.85 MB, actually-authored content 0.37 MB.
- * Worse, the mis-scoping hid the only human decisions in the merge (the
- * conflict resolutions) — two of which were wrong: one silently dropped a gate
- * from the `gates:contracts` chain, the other swallowed two closing braces and
- * left a whole test file executing zero tests.
- *
- * A single baseline cannot express this. Two were tried and both leak:
- *   · `remoteSha` drags mainline content whenever the push carries a catch-up
- *     merge — that merge is a *descendant* of the remote tip, so no
- *     fast-forward or ancestry test catches it;
- *   · the mainline merge-base drags our own already-pushed commits after a
- *     rebase, and measured on the real incident it was the *larger* of the two.
- * Picking whichever is smaller keeps the size bounded but still ships the wrong
- * content — in the real merge it would have re-sent mainline and still hidden
- * the conflict resolutions, which is the failure this fix exists to remove.
- *
- * So express the set directly instead of approximating it with a baseline:
- * the commits reachable from `localSha` but from neither exclusion, each
- * rendered as its own patch — and a merge rendered as its *combined* diff, so
- * only the conflict resolutions survive. Push nothing new and the review is
- * legitimately empty.
- */
-function collectAuthoredPatch({ repoRoot, remoteName = '', remoteSha, localSha, runGit: git = runGit }) {
-  const resolved = mainlineBase({ repoRoot, remoteName, localSha, runGit: git })
-  const excludes = [remoteSha, resolved?.base].filter(Boolean)
-  const commits = authoredCommits({ repoRoot, excludes, localSha, runGit: git })
-  const patch = commits.map((commit) => commitPatch({ repoRoot, commit, runGit: git })).filter(Boolean).join('\n')
-  const mainlineNote = resolved ? ` and ${resolved.symbolic} (${resolved.base})` : ''
-  return {
-    patch,
-    description: `; ${commits.length} commit(s) not already on the remote tip${mainlineNote}`
-      + '; merges contribute only their combined diff (conflict resolutions)',
-  }
+  return { patch, from,
+    description: `; ${commits.length} commit(s) not already reachable from origin tracking refs or remote tip; merges use dense combined diff` }
 }
 
 function formatBinaryBytes(bytes) {
@@ -294,12 +229,9 @@ export function collectReviewDiff({ repoRoot, scope, pushInput = '', remoteName 
     let from = remoteSha
     let baselineDescription = ''
     let authoredPatch = null
-    if (ZERO_SHA.test(remoteSha) && !ZERO_SHA.test(localSha)) {
-      const resolved = resolveNewRefBase({ repoRoot, remoteName, localSha, runGit: git })
-      from = resolved.base
-      baselineDescription = `; new ref baseline ${resolved.symbolic} (${resolved.base})`
-    } else if (!ZERO_SHA.test(remoteSha) && !ZERO_SHA.test(localSha)) {
-      const collected = collectAuthoredPatch({ repoRoot, remoteName, remoteSha, localSha, runGit: git })
+    if (!ZERO_SHA.test(localSha)) {
+      const collected = collectAuthoredPatch({ repoRoot, remoteSha, localSha, runGit: git })
+      from = collected.from
       authoredPatch = collected.patch
       baselineDescription = collected.description
     }
@@ -519,7 +451,6 @@ function main() {
     return 0
   } catch (error) {
     console.error(`[ponytail-review] BLOCKED: ${error instanceof Error ? error.message : String(error)}`)
-    console.error('Install/enable the Ponytail Codex plugin and retry the Git operation.')
     return 1
   }
 }
