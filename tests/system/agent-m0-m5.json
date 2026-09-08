@@ -6,7 +6,7 @@
     "m0-contract": {
       "kind": "vitest-production-contract",
       "command": "pnpm",
-      "args": ["exec", "vitest", "run", "electron/productionRun/productionGenerationAuthorizationFlow.test.ts", "electron/productionRun/productionShotGate.test.ts", "electron/productionRun/productionRunE2eFixture.test.ts", "electron/capabilityCore/canvasReadCapturedSnapshotFlow.test.ts", "electron/projectAgentHost/projectAgentHost.test.ts", "--reporter=verbose"],
+      "args": ["exec", "vitest", "run", "electron/productionRun/productionGenerationAuthorizationFlow.test.ts", "electron/productionRun/productionShotGate.test.ts", "electron/productionRun/productionRunE2eFixture.test.ts", "electron/capabilityCore/canvasReadCapturedSnapshotFlow.test.ts", "electron/agentLane/laneIpc.test.ts", "--reporter=verbose"],
       "boundaryMock": "none"
     },
     "m0-mcp": {
@@ -51,7 +51,7 @@
     "m3-context": {
       "kind": "vitest-context-contract",
       "command": "pnpm",
-      "args": ["exec", "vitest", "run", "electron/harness/context/promptPipe.test.ts", "electron/ai/agentChatV2.facade.test.ts", "electron/projectAgentHost/projectAgentExecutionCoordinator.test.ts", "--reporter=verbose"],
+      "args": ["exec", "vitest", "run", "electron/harness/context/promptPipe.test.ts", "electron/agentLane/laneDesktopReads.test.ts", "electron/agentLane/laneDesktopTools.test.ts", "--reporter=verbose"],
       "boundaryMock": "transport-http"
     },
     "m3-editor": {
@@ -70,7 +70,7 @@
     "m4-trust": {
       "kind": "vitest-trust-boundary",
       "command": "pnpm",
-      "args": ["exec", "vitest", "run", "electron/harness/context/provenanceActionGuard.test.ts", "electron/projectAgentHost/projectAgentExecutionHelpers.test.ts", "--reporter=verbose"],
+      "args": ["exec", "vitest", "run", "electron/harness/context/provenanceActionGuard.test.ts", "electron/shared/agentLane/laneApproval.test.ts", "--reporter=verbose"],
       "boundaryMock": "none"
     },
     "m4-exception": {
