@@ -1,0 +1,89 @@
+{
+  "version": 1,
+  "entries": [
+    {
+      "label": "agent-panel:thinking:light",
+      "rule": "text-overlap",
+      "count": 1,
+      "owner": "agent-panel",
+      "reason": "Agent 面板文字层叠"
+    },
+    {
+      "label": "agent-panel:thinking:dark",
+      "rule": "text-overlap",
+      "count": 1,
+      "owner": "agent-panel",
+      "reason": "Agent 面板文字层叠"
+    },
+    {
+      "label": "agent-panel:tool-receipt:light",
+      "rule": "font-size",
+      "count": 1,
+      "owner": "ux-feel-mechanism",
+      "reason": "机制夹具新增发现：工具回执字号小于 12px"
+    },
+    {
+      "label": "agent-panel:tool-receipt:dark",
+      "rule": "font-size",
+      "count": 1,
+      "owner": "ux-feel-mechanism",
+      "reason": "机制夹具新增发现：工具回执字号小于 12px"
+    },
+    {
+      "label": "artifact-products:html:light",
+      "rule": "text-overlap",
+      "count": 1,
+      "owner": "artifact-preview",
+      "reason": "HTML 截断/不可滚动/不可交互"
+    },
+    {
+      "label": "artifact-products:html:light",
+      "rule": "clipped-content",
+      "count": 1,
+      "owner": "artifact-preview",
+      "reason": "HTML 截断/不可滚动/不可交互"
+    },
+    {
+      "label": "artifact-products:html:light",
+      "rule": "unreachable-interaction",
+      "count": 1,
+      "owner": "artifact-preview",
+      "reason": "HTML 截断/不可滚动/不可交互"
+    },
+    {
+      "label": "artifact-products:html:dark",
+      "rule": "text-overlap",
+      "count": 1,
+      "owner": "artifact-preview",
+      "reason": "HTML 截断/不可滚动/不可交互"
+    },
+    {
+      "label": "artifact-products:html:dark",
+      "rule": "clipped-content",
+      "count": 1,
+      "owner": "artifact-preview",
+      "reason": "HTML 截断/不可滚动/不可交互"
+    },
+    {
+      "label": "artifact-products:html:dark",
+      "rule": "unreachable-interaction",
+      "count": 1,
+      "owner": "artifact-preview",
+      "reason": "HTML 截断/不可滚动/不可交互"
+    },
+    {
+      "label": "artifact-products:3d:light",
+      "rule": "unreachable-interaction",
+      "count": 1,
+      "owner": "artifact-preview",
+      "reason": "3D 产物不可交互"
+    },
+    {
+      "label": "artifact-products:3d:dark",
+      "rule": "unreachable-interaction",
+      "count": 1,
+      "owner": "artifact-preview",
+      "reason": "3D 产物不可交互"
+    }
+  ]
+}

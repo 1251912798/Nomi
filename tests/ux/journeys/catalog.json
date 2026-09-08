@@ -1,1 +1,116 @@
-{"version":1,"provider":"loopback","journeys":[{"id":"agent-panel","entry":"agent","states":["idle","thinking","tool-receipt"]},{"id":"artifact-products","entry":"canvas","states":["html","svg","markdown","3d"]},{"id":"storyboard-timeline-export","entry":"timeline","states":["storyboard","timeline","export"]}]}
+{
+  "version": 1,
+  "provider": "loopback",
+  "journeys": [
+    {
+      "id": "agent-panel",
+      "entry": "agent",
+      "states": [
+        {
+          "id": "idle",
+          "owner": "ux-feel-mechanism",
+          "html": "<main><h1>idle</h1><button>Continue</button></main>"
+        },
+        {
+          "id": "thinking",
+          "owner": "agent-panel",
+          "html": "<div><span style=\"position:absolute;left:24px;top:24px\">Thinking metadata</span></div><section><span style=\"position:absolute;left:24px;top:24px\">Message content</span></section>",
+          "knownSymptom": "Agent 面板文字层叠"
+        },
+        {
+          "id": "tool-receipt",
+          "owner": "ux-feel-mechanism",
+          "html": "<p style=\"font-size:9px\">Tool receipt text</p>"
+        }
+      ]
+    },
+    {
+      "id": "artifact-products",
+      "entry": "canvas",
+      "states": [
+        {
+          "id": "html",
+          "owner": "artifact-preview",
+          "html": "<main><div style=\"height:8px;overflow:hidden\">HTML content cannot be fully read</div><button style=\"pointer-events:none\">Interact</button></main>",
+          "knownSymptom": "HTML 截断/不可滚动/不可交互"
+        },
+        {
+          "id": "svg",
+          "owner": "ux-feel-mechanism",
+          "html": "<main><h1>svg</h1><button>Continue</button></main>"
+        },
+        {
+          "id": "markdown",
+          "owner": "ux-feel-mechanism",
+          "html": "<main><h1>markdown</h1><button>Continue</button></main>"
+        },
+        {
+          "id": "3d",
+          "owner": "artifact-preview",
+          "html": "<canvas width=\"300\" height=\"200\" style=\"pointer-events:none;background:gray\"></canvas>",
+          "knownSymptom": "3D 产物不可交互"
+        }
+      ]
+    },
+    {
+      "id": "storyboard-timeline-export",
+      "entry": "timeline",
+      "states": [
+        {
+          "id": "storyboard",
+          "owner": "ux-feel-mechanism",
+          "html": "<main><h1>storyboard</h1><button>Continue</button></main>"
+        },
+        {
+          "id": "timeline",
+          "owner": "ux-feel-mechanism",
+          "html": "<main><h1>timeline</h1><button>Continue</button></main>"
+        },
+        {
+          "id": "export",
+          "owner": "ux-feel-mechanism",
+          "html": "<main><h1>export</h1><button>Continue</button></main>"
+        }
+      ]
+    }
+  ],
+  "evidence": "DOM reproduction fixtures; not current product screenshots",
+  "rubric": [
+    {
+      "question": "舒服吗",
+      "scale": {
+        "0": "阻断任务",
+        "1": "明显摩擦",
+        "2": "轻微摩擦",
+        "3": "顺畅"
+      }
+    },
+    {
+      "question": "能点吗",
+      "scale": {
+        "0": "阻断任务",
+        "1": "明显摩擦",
+        "2": "轻微摩擦",
+        "3": "顺畅"
+      }
+    },
+    {
+      "question": "看得全吗",
+      "scale": {
+        "0": "阻断任务",
+        "1": "明显摩擦",
+        "2": "轻微摩擦",
+        "3": "顺畅"
+      }
+    },
+    {
+      "question": "读得清吗",
+      "scale": {
+        "0": "阻断任务",
+        "1": "明显摩擦",
+        "2": "轻微摩擦",
+        "3": "顺畅"
+      }
+    }
+  ]
+}
