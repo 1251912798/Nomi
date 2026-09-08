@@ -35,9 +35,7 @@ export function DesignSearchInput({
     <div
       className={cn(
         'inline-flex items-center gap-1.5 rounded-full border border-nomi-line bg-nomi-paper text-nomi-ink-40',
-        'transition-[border-color,box-shadow] duration-150',
-        'focus-within:border-[color-mix(in_oklch,var(--nomi-accent)_55%,transparent)]',
-        'focus-within:shadow-[0_0_0_3px_color-mix(in_oklch,var(--nomi-accent)_10%,transparent)]',
+        'transition-colors duration-150',
         size === 'md' ? 'h-9 px-3' : 'h-[30px] px-2.5',
         className,
       )}
