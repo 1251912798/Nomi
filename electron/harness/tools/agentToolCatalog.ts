@@ -1,5 +1,5 @@
 import type { ZodTypeAny } from "zod";
-import type { RuntimeToolDescriptor } from "../runtime/runtimePort";
+import type { RuntimeToolDescriptor } from "../../shared/agentCapabilities/transportContracts";
 import {
   PRODUCTION_ARTIFACT_WRITE_CAPABILITY,
   PRODUCTION_RUN_READ_CAPABILITY,
