@@ -634,7 +634,7 @@ function BaseGenerationNodeImpl({
       ) : null}
 
       {(isGenerating || isQueued) && !localImageOpPending ? <NodeGeneratingOverlay node={node} /> : null}
-      
+
       <ProductionShotOverlays node={node} selected={selected && !isMultiSelectActive} />{/* P4 S5+S6 多镜叠加：占位三态 + 版本条（非多镜早退零开销） */}
       {showSideTimelineDrag ? (
         <SideTimelineDragHandle onAddAtPlayhead={handleAddToTimelineAtPlayhead} onDragStart={handleTimelineDragStart} />
