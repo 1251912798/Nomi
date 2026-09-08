@@ -133,12 +133,19 @@ export function classifyValidationPolicy(changedFiles, options = {}) {
     return failClosed(files, 'workflow_dispatch_release_boundary', { release: true })
   }
   if (files.length === 0) return failClosed(files, 'empty_diff_fail_closed')
+  // Prove the whole diff is documentation before exempting deletion uncertainty.
+  // Image extensions alone cannot distinguish docs from shipped/test assets;
+  // renames retain fail-closed because an entry may omit the source path.
+  const docsOnly = files.every(({ path, status }) =>
+    /^(?:A|M|D)$/.test(status) && /^(?:docs\/|marketing\/|README[^/]*$)/.test(path),
+  )
   const validationInfrastructure = files.filter((entry) =>
     matchesAny(entry.path, VALIDATION_INFRASTRUCTURE_PATTERNS),
   )
   const ambiguousStructuralChange = files.find(
     (entry) =>
       (entry.status.startsWith('D') || entry.status.startsWith('R')) &&
+      !docsOnly &&
       !matchesAny(entry.path, VALIDATION_INFRASTRUCTURE_PATTERNS),
   )
   if (ambiguousStructuralChange) {
@@ -162,7 +169,7 @@ export function classifyValidationPolicy(changedFiles, options = {}) {
         package: false,
         release: false,
         failClosed: false,
-        reason: 'isolated_change',
+        reason: docsOnly ? 'docs_only' : 'isolated_change',
         reasons: [],
         files,
       }
