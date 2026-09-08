@@ -11,12 +11,14 @@ import yaml from 'js-yaml'
 const workflow = yaml.load(fs.readFileSync(new URL('../../.github/workflows/docs-autosync.yml', import.meta.url), 'utf8'))
 const publish = workflow.jobs.autosync.steps.find((step) => step.id === 'publish')
 
-test('autosync explicitly starts official CI without disabling PR checks or recursive push protection', () => {
-  assert.equal(workflow.permissions.actions, 'write')
+test('autosync uses a PR-triggering token and separates its trigger branch from its write branch', () => {
+  assert.equal(workflow.jobs.autosync.env.GH_TOKEN, '${{ secrets.DOCS_AUTOSYNC_TOKEN }}')
+  const checkout = workflow.jobs.autosync.steps.find((step) => step.uses?.startsWith('actions/checkout@'))
+  assert.equal(checkout.with.token, '${{ env.GH_TOKEN }}')
   assert.deepEqual(workflow.on.push.branches, ['main'])
   assert.equal(workflow.concurrency['cancel-in-progress'], false)
-  assert.equal(publish.env.GH_TOKEN, '${{ github.token }}')
-  assert.match(publish.run, /gh workflow run quality-gate.yml --ref docs\/autosync/)
+  assert.match(publish.run, /git push origin HEAD:refs\/heads\/docs\/autosync/)
+  assert.doesNotMatch(publish.run, /gh workflow run|github\.token|secrets\.GITHUB_TOKEN/)
   assert.doesNotMatch(JSON.stringify(workflow), /\[(?:skip ci|ci skip|no ci|skip actions|actions skip)\]|--force|--no-verify|core\.hooksPath/)
 })
 
@@ -47,16 +49,15 @@ const pr = root + '/pr'
 if (args[0] === 'pr' && args[1] === 'list') process.stdout.write(fs.existsSync(pr) ? '1' : '')
 else if (args[0] === 'pr' && args[1] === 'create') fs.writeFileSync(pr, '1')
 else if (args[0] === 'pr' && args[1] === 'close') fs.unlinkSync(pr)
-else if (args[0] === 'workflow' && args[1] === 'run') process.exit(process.env.FAIL_DISPATCH === '1' ? 1 : 0)
 else process.exit(2)
 `, { mode: 0o755 })
-  const run = (extraEnv = {}) => {
+  const run = () => {
     git('fetch', 'origin')
     git('switch', '--detach', 'origin/main')
     fs.writeFileSync(path.join(repo, 'docs/index.md'), 'repaired\n')
     return spawnSync('bash', ['-euo', 'pipefail', '-c', publish.run], {
       cwd: repo, encoding: 'utf8',
-      env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, AUTOSYNC_FIXTURE: root, RUNNER_TEMP: root, ...extraEnv },
+      env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, AUTOSYNC_FIXTURE: root, RUNNER_TEMP: root },
     })
   }
   const calls = () => fs.readFileSync(path.join(root, 'calls.jsonl'), 'utf8').trim().split('\n').map(JSON.parse)
@@ -64,7 +65,7 @@ else process.exit(2)
 }
 
 test('first run, identical rerun and main advancement keep one PR with fast-forward history', (t) => {
-  assert.ok(publish, 'workflow must publish and dispatch at one boundary')
+  assert.ok(publish, 'workflow must publish at one boundary')
   const f = fixture(t)
   let result = f.run()
   assert.equal(result.status, 0, result.stderr)
@@ -88,12 +89,10 @@ test('first run, identical rerun and main advancement keep one PR with fast-forw
   f.git('merge-base', '--is-ancestor', 'origin/main', second)
   assert.equal(f.git('diff', '--name-only', 'origin/main', second), 'docs/index.md')
   assert.equal(f.calls().filter(([a, b]) => a === 'pr' && b === 'create').length, 1)
-  const dispatches = f.calls().filter(([a, b]) => a === 'workflow' && b === 'run')
-  assert.equal(dispatches.length, 3)
-  for (const args of dispatches) assert.deepEqual(args, ['workflow', 'run', 'quality-gate.yml', '--ref', 'docs/autosync', '-f', 'base_ref=origin/main', '-f', 'validation_mode=full'])
+  assert.equal(f.calls().filter(([a]) => a === 'workflow').length, 0, 'normal PR events own CI')
 })
 
-test('no remaining repair closes the obsolete fixed PR without another push or CI', (t) => {
+test('no remaining repair closes the obsolete fixed PR without another push', (t) => {
   assert.ok(publish)
   const f = fixture(t)
   assert.equal(f.run().status, 0)
@@ -107,16 +106,16 @@ test('no remaining repair closes the obsolete fixed PR without another push or C
   assert.equal(result.status, 0, result.stderr)
   assert.equal(f.git('rev-parse', 'origin/docs/autosync'), first)
   assert.equal(fs.existsSync(path.join(f.root, 'pr')), false)
-  assert.equal(f.calls().filter(([a]) => a === 'workflow').length, 1)
 })
 
-test('failed CI dispatch fails the workflow and the same-tree rerun retries it', (t) => {
-  assert.ok(publish)
-  const f = fixture(t)
-  assert.equal(f.run({ FAIL_DISPATCH: '1' }).status, 1)
-  const first = f.git('rev-parse', 'origin/docs/autosync')
-  const result = f.run()
-  assert.equal(result.status, 0, result.stderr)
-  assert.equal(f.git('rev-parse', 'origin/docs/autosync'), first)
-  assert.equal(f.calls().filter(([a, b]) => a === 'pr' && b === 'create').length, 1)
+test('missing CI credentials fail before checkout or publication', () => {
+  const steps = workflow.jobs.autosync.steps
+  const guard = steps.find((step) => step.id === 'credentials')
+  assert.ok(guard)
+  assert.ok(steps.indexOf(guard) < steps.findIndex((step) => step.uses?.startsWith('actions/checkout@')))
+  const missing = spawnSync('bash', ['-eu', '-c', guard.run], { encoding: 'utf8', env: { ...process.env, GH_TOKEN: '' } })
+  assert.equal(missing.status, 1)
+  assert.match(missing.stdout, /::error::Configure DOCS_AUTOSYNC_TOKEN/)
+  const configured = spawnSync('bash', ['-eu', '-c', guard.run], { encoding: 'utf8', env: { ...process.env, GH_TOKEN: 'test-only-placeholder' } })
+  assert.equal(configured.status, 0)
 })

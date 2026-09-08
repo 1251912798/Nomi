@@ -3,8 +3,8 @@
   "id": "2026-09-08-docs-autosync-ci",
   "problem_type": "Automated repair PRs lack executable required checks and a stable review identity",
   "symptom": "Repeated bot docs PRs #604/#631/#632/#634/#635/#637/#638 remain BLOCKED without Quality Gate runs.",
-  "direct_cause": "The workflow carries the old direct-push skip marker into PR commits, uses GITHUB_TOKEN without explicit CI dispatch, and names branches by main SHA.",
-  "class_root": "The automated publication boundary does not own both stable PR identity and required-check scheduling.",
+  "direct_cause": "The PR migration retained CI skip markers and SHA-scoped branches. Hosted recovery also proved GITHUB_TOKEN PR runs require approval; successful separate dispatch did not unblock the PR check summary.",
+  "class_root": "The publication boundary does not ensure a stable PR identity and a credential whose native PR event can satisfy required checks without manual approval.",
   "affected_population": [
     "Every main push requiring index/status/ledger repair",
     "Manual repair reruns and updates to already-open repair PRs"
@@ -35,20 +35,26 @@
       "url": "https://github.com/peter-evans/create-pull-request/blob/5f6978faf089d4d20b00c7766989d076bb2fc7f1/src/create-pull-request.ts#L239-L243",
       "checked_at": "2026-09-08",
       "purpose": "Action uses force-with-lease, incompatible with this task restriction"
+    },
+    {
+      "kind": "official-doc",
+      "url": "https://docs.github.com/en/actions/concepts/security/github_token#when-github_token-triggers-workflow-runs",
+      "checked_at": "2026-09-08",
+      "purpose": "Official independent App/PAT requirement for unapproved automated PR CI"
     }
   ],
   "invariants": [
     "One fixed docs/autosync head has at most one open PR.",
-    "Every published repair schedules the existing full Quality Gate using workflow_dispatch.",
-    "No CI skip markers, direct main writes, forced pushes, or duplicated validation workflow.",
+    "A dedicated PR-triggering token is required before checkout or publication and shared by Git push and gh.",
+    "Normal pull_request CI owns required checks; no default-token fallback, separate dispatch substitute, CI skip markers, protected-main writes or forced pushes.",
     "The regenerated current-main tree is authoritative; previous generated heads remain ancestors of ordinary pushes."
   ],
-  "generality_proof": "Both automatic and manual entries converge on the same publish step. Tests execute that shell against a local bare Git remote for initial creation, repeated equal output, main advancement, no-diff closure, and failed dispatch recovery.",
+  "generality_proof": "Both main pushes and manual retries converge on the credential guard and fixed-branch publication. Missing credentials fail before side effects. Checkout and gh share the dedicated token; branch filtering and no-diff convergence stop recursion. Tests exercise repeated publication against a bare Git remote.",
   "shared_boundaries": [
     {
       "path": ".github/workflows/docs-autosync.yml",
-      "symbol": "jobs.autosync.steps[id=publish]",
-      "responsibility": "Own fixed-branch publication and explicit CI scheduling after the three repair gates."
+      "symbol": "jobs.autosync (credentials and publish steps)",
+      "responsibility": "Require a credential that triggers native PR checks, then publish one generated branch after three docs gates."
     }
   ],
   "same_class_entry_points": [
@@ -76,10 +82,10 @@
   "prevention": {
     "kind": "centralized-boundary",
     "enforcement_path": ".github/workflows/docs-autosync.yml",
-    "invariant": "Every repair goes through fixed PR publication followed by explicit official CI dispatch.",
-    "failure_mode": "Repair gate, normal push, gh API or dispatch failure exits the job nonzero.",
+    "invariant": "Every repair uses an explicit PR-triggering credential and one stable non-protected branch.",
+    "failure_mode": "Missing dedicated token fails before checkout; repair gates, normal push or PR API failure exits nonzero.",
     "exception_policy": "none",
-    "strategy": "Use token recursion protection and explicit dispatch rather than disabling checks; retain branch ancestry for ordinary pushes.",
+    "strategy": "Enforce the credential contract at the first step; use main-only triggers, fixed-branch writes and deterministic no-diff convergence instead of CI suppression.",
     "artifacts": [
       ".github/workflows/docs-autosync.yml",
       ".github/workflows/quality-gate.yml"
@@ -109,11 +115,13 @@
     "rationale": "Remove create-pull-request from this workflow because its current implementation force-pushes. No replacement dependency; Git and gh shipped on the hosted runner execute documented native operations.",
     "exit_criteria": []
   },
-  "migration": "Close superseded legacy automatic PRs with comments, retain and explicitly dispatch CI on newest #638. After this fix merges, subsequent new repairs use docs/autosync. No rewriting legacy heads or merging PRs.",
+  "migration": "Closed #604/#631/#632/#634/#635/#637; initially retained #638 and ran nine CI jobs successfully but its PR summary stayed blocked. Hosted intermediate run 34186588015 created the no-skip fixed replacement #642; closed #638. Approved #642 native CI as maintainer after observing action_required. Final dedicated-token path requires user configuration before rollout. No PR reviews, rewritten legacy heads or merges.",
   "residual_risks": [
-    "Full workflow_dispatch retains the existing expensive all-surfaces policy; failures on unrelated surfaces remain real failures.",
-    "Until this PR merges, main still has the old producer and can create additional legacy PRs.",
-    "SEO Radar is outside this docs-autosync repair; its default-token PR trigger still has the official approval caveat.",
-    "Git fixtures prove publication behavior; GitHub execution and final checks are reported separately."
+    "DOCS_AUTOSYNC_TOKEN is not configured; final credential path is documented and locally tested, not live-certified. Missing-token guard prevents further blocked bot PR creation.",
+    "The existing scripts/run-gates-contracts.node-test.mjs requires the obsolete skip behavior and lies outside authorized scope; the draft repair PR remains blocked until permission to update that test.",
+    "An externally supplied short-lived GitHub App token needs an owner-managed renewal lifecycle; use a dedicated PAT if no issuer exists.",
+    "Until merge, main still runs the old producer and may create more legacy PRs.",
+    "SEO Radar is outside this repair and retains the default-token PR approval caveat.",
+    "Hosted intermediate runs prove fixed branch creation and default-token limitations; final token-path CI results must be verified independently."
   ]
 }

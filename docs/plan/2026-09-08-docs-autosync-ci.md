@@ -1,47 +1,48 @@
-# Docs autosync: one reviewable PR with real CI
+# Docs autosync: one reviewable PR with normal CI
 
-> 📋 实施中 · 2026-09-08 · 本任务只提交 PR，不合并
+> 📋 草稿 PR #640 · 2026-09-08 · 待测试范围授权与专用 token 配置，不合并
 
-## 问题与根因
+## 根因与最终行为
 
-`250bb3db43e37b82bc4d28e45ed4d3a00660173c` 把直推 main 改为开 PR 时，沿用了原直推实现的 `[skip ci]`。同时用 main SHA 作为分支后缀，每个 main push 都另开 PR。2026-09-08 实查 #604/#631/#632/#634/#635/#637/#638 缺失 Quality Gate；#633 实际是已合并的业务 PR，不属于清理对象。
+`250bb3db43e37b82bc4d28e45ed4d3a00660173c` 把直推 main 改为开 PR 时沿用了 `[skip ci]`；按 main SHA 命名分支，每次 merge 又开一条。实查 #604/#631/#632/#634/#635/#637/#638 均缺少 PR required checks。第三个原因由 GitHub 实跑确认：默认 GITHUB_TOKEN 创建的 PR 会产生 action_required 的 PR workflow，单独 workflow_dispatch 全绿仍未解除本仓 PR 汇总的阻塞。
 
-缺失的不变量：自动写回必须有唯一待审分支，且该 head 必须有明确可启动的正式 CI；防递归不能关闭 required checks。
+最终采用独立 `DOCS_AUTOSYNC_TOKEN`（专用 PAT，或由外部系统维护的 GitHub App installation token），让普通 pull_request 事件启动现有 Quality Gate。没有 default-token fallback，也不复制/伪造 check status。缺少 secret 时在 checkout、commit、push、开 PR 之前明确失败。该 secret 必须具备本仓 Contents 和 Pull requests 写权限；短期 App token 必须由其所有者负责续期，不可把一次性安装 token 当永久凭据。
 
 ## 先查别人
 
-| 一手来源 | 查到的机制 | 本次裁决 |
+| 一手来源 | 已核实事实 | 裁决 |
 | --- | --- | --- |
-| [GitHub: Triggering a workflow from a workflow](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/trigger-a-workflow#triggering-a-workflow-from-a-workflow) | GITHUB_TOKEN 写入不会递归触发 push；当前 PR opened/synchronize/reopened 可进入需批准状态；workflow_dispatch/repository_dispatch 明确例外 | 保留默认 token，赋予 actions:write，显式调用现有 Quality Gate 的 workflow_dispatch，不新增凭证 |
-| [GitHub: Skipping workflow runs](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/skip-workflow-runs) | 跳过 push/PR workflow 会让 required checks 保持 Pending | commit 与 PR body 均删除跳过标记 |
-| [create-pull-request v8.1.1](https://github.com/peter-evans/create-pull-request/releases/tag/v8.1.1) / [实现](https://github.com/peter-evans/create-pull-request/blob/5f6978faf089d4d20b00c7766989d076bb2fc7f1/src/create-pull-request.ts#L239-L243) | 默认固定分支可更新一个 PR，但实现用 force-with-lease 推送 | 本次用户明确禁 force-push，所以移除该 action；用 Git 原生 ancestry merge + 普通 push，既不加依赖也不绕过禁令 |
-| [Git merge ours strategy](https://git-scm.com/docs/merge-strategies#Documentation/merge-strategies.txt-ours) | 保留当前 tree，同时记录被合并分支为祖先 | 从最新 main 重生成 docs 后，将旧的专用生成分支记入祖先，保留重生成结果；普通 push 必须 fast-forward，否则失败 |
-| [GitHub CLI workflow run](https://cli.github.com/manual/gh_workflow_run) | --ref 选择被执行分支；输入传给原有工作流 | 在 docs/autosync head 运行正式 Quality Gate；保留现有 full 手动验证策略 |
+| [GitHub: Triggering a workflow from a workflow](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/trigger-a-workflow#triggering-a-workflow-from-a-workflow) | 默认 token 不递归触发 push；当前 PR opened/synchronize/reopened 会需要批准；dispatch 是例外 | 不把 dispatch 的作业成功当作 PR 解锁证明 |
+| [GitHub: GITHUB_TOKEN](https://docs.github.com/en/actions/concepts/security/github_token#when-github_token-triggers-workflow-runs) | 无需人工批准的自动 PR CI 应改用独立 App/PAT token | 发布凭据改为必须显式配置的专用 token |
+| [GitHub: Skipping workflow runs](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/skip-workflow-runs) | 跳过的 required checks 会 Pending | commit/body 均删掉跳过标记 |
+| [create-pull-request v8.1.1](https://github.com/peter-evans/create-pull-request/releases/tag/v8.1.1) / [固定 SHA 源码](https://github.com/peter-evans/create-pull-request/blob/5f6978faf089d4d20b00c7766989d076bb2fc7f1/src/create-pull-request.ts#L239-L243) | 固定分支支持单 PR，但内部使用 force-with-lease | 因本任务禁 force-push，移除该 action；不新增依赖或 marketplace action |
+| [Git merge ours strategy](https://git-scm.com/docs/merge-strategies) | 保留当前 tree，记录被合分支为祖先 | 从最新 main 重生成 docs 后保留旧生成 head 的祖先关系，普通 push 必须 fast-forward |
+| [GitHub: Troubleshooting required checks](https://docs.github.com/en/pull-requests/how-tos/merge-and-close-pull-requests/troubleshooting-required-status-checks) | head、merge commit、check source 和 PR 汇总必须分别核实 | 同时检查 run、head check-runs、PR mergeable_state，不能只看运行绿 |
 
-格式遵循 GitHub Actions workflow / Git / gh CLI 标准，无自定义协议。没有新增 marketplace action；现有 checkout/setup action 不变。
+遵循 GitHub Actions、Git、gh 的标准格式，无自定义外部协议。
 
-## 范围与行为
+## 防循环与唯一 PR
 
-预计 8 个文件、约 350 行：autosync 与 Quality Gate workflow、方案、根因合同、文档内回归测试、教训与索引。旧测试文件 `scripts/run-gates-contracts.node-test.mjs` 明确要求错误旧行为，已向用户请求仅该文件的范围扩展。
+入口只监听 main；出口只向 docs/autosync 普通 push。专用 token 发出的 push 位于另一个分支，不会再次启动 autosync。将补账 PR 合入 main 后，确定性补齐无 diff 即退出。串行 concurrency 保证单写者；不使用 actor 过滤而遗漏合法 merge，不忽略所有 docs。
 
-1. main push / 手动补账均串行运行，固定 `docs/autosync` 分支。每次从当前 main 重生成，验证三个 docs 门，再普通 push。旧生成分支只是祖先，不参与生成内容合并。
-2. 无 main 差异时不提交，若固定 PR 已被 main 的其它修复覆盖则关闭。相同生成 tree 不产生新 commit。一个固定 head 只开一个 PR。
-3. 删除 commit/body 跳过标记；显式 dispatch 正式 Quality Gate（full），不复制测试实现、不改 required checks。dispatch 失败直接让 autosync 红。
-4. 默认 token 的 push 不递归。Quality Gate 没有写回动作；main 合并再运行补齐是幂等追账，无 diff 即停止。无需忽略整个 docs 路径，也不按 actor 跳过合法 merge。
-5. 旧 PR 按作者、标题、docs/autosync-* 分支及 docs-only diff 核验，只保留最新自动 PR，其余 `gh pr close --comment`。用 gh pr update-branch 或显式 dispatch 恢复最新 PR CI；不合并。
+每次从当前 main 重生成，再让三个 docs 门本人验绿。旧生成分支只保留祖先关系，内容不参与生成结果合并。相同 tree 不长 commit；固定 head 只开一条 PR；如果 main 已补齐，则关闭过时固定 PR。生成分支上的手改不作为真源，源文档经正常 PR 进入 main。
 
-## 验证与回滚
+## 范围、验证与回滚
 
-回归测试直接读取 workflow 的 publish shell，在临时 Git 裸远端与可记录调用的 gh fixture 执行：首建、同树重跑、main 前进、无差异收敛、dispatch 失败；验证普通推送祖先关系、单 PR、生成 tree 与正式 CI 调用。另检查默认 token、actions 权限、无跳过标记及主线范围。
+8 个文件、约 350 行：2 个 workflow、方案及索引、教训及索引、schema-v3 根因合同、文档内测试。原有 `scripts/run-gates-contracts.node-test.mjs:180` 硬性要求旧 action、SHA 分支与 skip 标记；它在用户白名单之外，已请求仅此文件的范围扩展，尚未获答，不修改、不跳过、不伪造注释过测试。
 
-本分支运行 `pnpm run gates:contracts`、`actionlint`；远端对保留自动 PR 启动正式 CI，并报告实际状态。机器 fixture 仅证明 Git/CLI 编排，不冒充 GitHub 已执行。
+4 条回归读取真正的 workflow shell，在临时 Git 裸远端实跑首次创建、同树重跑、main 前进、无 diff 收敛；另验证缺 token 在发布前失败、checkout 和 gh 使用同一凭据、正常 PR 事件负责 CI。gh 是记录调用的 fixture，不能证明远端 token 权限。首版旧 workflow 红，最终版 4/4 绿；两份 workflow 通过官方 actionlint v1.7.12（发布包 SHA256 已验，npx 无 executable 后下载二进制，未改依赖文件）。根因检查、47 条 Quality Gate 合同检查、lint、TypeScript 与测试类型检查通过。
 
-回滚 workflow 与对应测试可撤销新编排；旧关闭 PR 保留历史，可单独 reopen。任务不修改主 checkout，不 force-push，不合并。修复 PR 未合入前，main 仍运行旧版本，可能继续产生旧式 PR，交付时再次核对。
+`pnpm run gates:contracts` 已跑完 73 项。首次阻断是旧断言和新测试的 Node 全局名 lint；后者已改为显式 import，完整 lint 复验为 0 errors / 81 既有 warnings。最终实现再次跑完整套 73 门：只余旧断言一项阻断，另有 3 项文档/研究 advisory 提示。最终专用 token 路径尚不能进行 GitHub 实跑，因为仓库未配置 secret，不能称本修复已完成。
 
-## 当前验证与清理收据
+回滚 workflow 与对应测试可撤销新编排。关闭的 PR 和旧分支均保留历史；不改主 checkout、不强推、不合并。token 缺失是显式配置门，不能用旧默认凭据静默降级。
 
-- 清理前逐个计算 merge-base，所有候选 diff 都仅含 docs。已关闭 #604/#631/#632/#634/#635/#637，保留 #638；#633 已核实为 MERGED 的业务 PR，未动。
-- #638 head `94060aa00ca4491cf0f40ffa2c4e48791d45628e` 已启动正式 [Quality Gate 34185315866](https://github.com/aqm857886159/Nomi/actions/runs/34185315866)，事件为 workflow_dispatch。完整结果以该 run 为准。
-- workflow 行为回归：旧版 4/4 红，新版 4/4 绿；首次创建、同树重跑、main 前进、无修复关闭、dispatch 失败/重试均由真实本地 Git 裸远端验证。gh 是记录调用的 fixture，不冒充远端执行。
-- actionlint v1.7.12 通过。一次性 `npx actionlint` 报 could not determine executable；改从 rhysd/actionlint 官方 release 下载 darwin_arm64 二进制并校验官方 SHA256，无依赖文件改动。
-- 根因合同检查通过。`gates:contracts` 已跑完 73 项：首次阻断为旧测试断言和本次新增测试的 Node 全局名 lint（后者已改成显式 import，定向 lint/回归通过，完整 lint 复验中）；旧的 `scripts/run-gates-contracts.node-test.mjs` 要求旧 action、SHA 分支与跳过标记，属于明确的阻断断言。该文件超出用户白名单，尚未得到修改授权，绝不通过伪造注释、跳过测试或放宽门岗规避。
+## GitHub 实跑与清理收据
+
+逐个算 merge-base 并验证 docs-only diff 后，关闭 #604/#631/#632/#634/#635/#637，最初保留 #638；#633 是已合并业务 PR，始终未动。
+
+#638 head `94060aa00ca4491cf0f40ffa2c4e48791d45628e` 的 [Quality Gate 34185315866](https://github.com/aqm857886159/Nomi/actions/runs/34185315866) 9 项作业全部通过，但 PR 汇总仍只显示旧 Cloudflare，mergeable_state=blocked；去掉旧正文跳过标记、关闭并重开也未修复。这证明默认 token + 单独 dispatch 不是本仓 PR 解锁的充分条件。
+
+中间版本 `f2547b36a042df19a389c076406abaed4452b97c` 的 [Docs Autosync 34186588015](https://github.com/aqm857886159/Nomi/actions/runs/34186588015) 在 GitHub 成功普通 push 固定分支并创建 [#642](https://github.com/aqm857886159/Nomi/pull/642)，head `a9c23a8e50c3c7dcadbeb7896f12acb7f0f9ac65` 无跳过标记。其 dispatch run 为 [34186619330](https://github.com/aqm857886159/Nomi/actions/runs/34186619330)，但原生 PR run [34186621088](https://github.com/aqm857886159/Nomi/actions/runs/34186621088) 是 action_required。已经使用维护者身份批准该 CI 运行（不是 PR review/merge），恢复本次补账；最终实现因此改为官方的独立 token 发布路径。
+
+最终关闭 #604/#631/#632/#634/#635/#637/#638，只保留固定分支自动 PR #642。最终 #642 原生 PR Quality Gate 已通过，mergeStateStatus=CLEAN；明细写入 #640 正文和未提交的 AUTOSYNC-LAST.md。最终代码的 token 路径待配置后实证；中间版本的默认 token 实跑不能替它背书。

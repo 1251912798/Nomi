@@ -288,4 +288,4 @@
 
 - [2026-09-07-skill-import-real-use](2026-09-07-skill-import-real-use.md)
 
-| [2026-09-08-docs-autosync-ci.md](2026-09-08-docs-autosync-ci.md) | Docs autosync 固定 PR、显式正式 CI 与旧 PR 清理 | 📋 |
+| [2026-09-08-docs-autosync-ci.md](2026-09-08-docs-autosync-ci.md) | Docs autosync 固定 PR、独立 CI token 与旧 PR 清理 | 📋 |

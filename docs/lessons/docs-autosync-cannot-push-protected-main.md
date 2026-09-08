@@ -6,7 +6,7 @@
 
 [GitHub 官方触发规则](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/trigger-a-workflow#triggering-a-workflow-from-a-workflow)说明：默认 GITHUB_TOKEN 写入不递归触发 push；当前自动创建/更新 PR 的工作流可能需要人工批准；workflow_dispatch 是可直接触发的例外。[跳过 CI 的后果](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/skip-workflow-runs)是 required checks 留在 Pending，不能作为防循环手段。
 
-本次修法：默认 token + 固定 docs/autosync 分支 + 普通 push + 显式 dispatch 现有正式 Quality Gate。每次从 main 重生成，保留旧生成分支祖先关系，不强推、不复制 CI、不直写 main。无 diff 就停止；生成分支只放派生内容，源文档修改通过独立 PR 进入 main。
+本次修法：必须配置能触发原生 PR CI 的独立 DOCS_AUTOSYNC_TOKEN + 固定 docs/autosync 分支 + 普通 push；默认 token + 单独 dispatch 在本仓实跑仍未解除 PR 汇总阻塞，不能作为完成方案。每次从 main 重生成，保留旧生成分支祖先关系，不强推、不复制 CI、不直写 main。无 diff 就停止；生成分支只放派生内容，源文档修改通过独立 PR 进入 main。
 
 验证时分别看：补齐三个门是否绿、是否只留一条自动 PR、该 head 是否真的有 Quality Gate/Mac Package。`gh workflow run` 返回 run URL 只说明已启动，完成状态要读 run/checks。
 
