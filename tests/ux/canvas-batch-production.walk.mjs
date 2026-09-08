@@ -236,7 +236,19 @@ try {
   const browserWindow = await app.browserWindow(win)
   await browserWindow.evaluate((window) => window.setBounds({ x: 0, y: 0, width: 1680, height: 1020 }))
   win.on('pageerror', (error) => pageErrors.push(String(error)))
-  win.on('console', (message) => { if (message.type() === 'error') consoleErrors.push(message.text()) })
+  win.on('console', (message) => {
+    if (message.type() === 'error') consoleErrors.push(message.text())
+    if (message.text().startsWith('CANVAS_CLICK_DIAGNOSTIC')) console.log(message.text())
+  })
+  await win.evaluate(() => document.addEventListener('click', (event) => {
+    const target = event.target instanceof Element ? event.target : null
+    if (target?.closest('.react-flow__node, .workbench-generation__timeline-handle')) {
+      console.log('CANVAS_CLICK_DIAGNOSTIC', JSON.stringify({
+        tag: target.tagName, label: target.closest('[aria-label]')?.getAttribute('aria-label'),
+        nodeId: target.closest('.react-flow__node')?.getAttribute('data-id'), x: event.clientX, y: event.clientY,
+      }))
+    }
+  }, true))
 
   await win.getByText('新建空白项目', { exact: false }).first().click({ timeout: 5000 })
   await win.waitForTimeout(2200)
@@ -432,6 +444,19 @@ try {
   const finalBatchDock = win.locator('[data-batch-dock="true"]')
   await finalBatchDock.waitFor({ timeout: 5000 })
   const timelineHandle = win.getByRole('button', { name: '展开生成时间轴' })
+  console.log('TIMELINE_HANDLE_DIAGNOSTIC', JSON.stringify({
+    count: await timelineHandle.count(),
+    elements: await timelineHandle.evaluateAll((elements) => elements.map((element) => element.outerHTML)),
+    document: await win.evaluate(() => ({
+      viewport: { width: innerWidth, height: innerHeight, dpr: devicePixelRatio },
+      handles: [...document.querySelectorAll('.workbench-generation__timeline-handle')].map((element) => ({
+        html: element.outerHTML,
+        hiddenAncestor: element.closest('[aria-hidden="true"]')?.outerHTML.slice(0, 300),
+      })),
+      timelines: document.querySelectorAll('section[aria-label="生成时间轴"]').length,
+      dialogs: [...document.querySelectorAll('[role="dialog"]')].map((element) => element.textContent.slice(0, 200)),
+    })),
+  }))
   check(await timelineHandle.count() === 1, '批量底栏没有盖住时间轴展开入口')
   const dismissBatchDock = win.getByRole('button', { name: '隐藏批量生成栏' })
   check(await dismissBatchDock.count() === 1, '批量底栏提供可识别的隐藏入口')
@@ -450,6 +475,11 @@ try {
   console.log(`  expected console errors from fail-once path: ${consoleErrors.length - unexpectedConsoleErrors.length}`)
   console.log(`  screenshots: ${shotsDir}`)
   console.log('CANVAS BATCH PRODUCTION WALK: PASS')
+} catch (error) {
+  const failureDir = path.join(repoRoot, 'outputs/canvas-batch-production')
+  fs.mkdirSync(failureDir, { recursive: true })
+  await win.screenshot({ path: path.join(failureDir, 'failure.png') }).catch(() => {})
+  throw error
 } finally {
   await app.close().catch(() => {})
   await new Promise((resolve) => vendorServer.close(resolve))

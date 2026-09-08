@@ -1,0 +1,65 @@
+real-user-test-gates PASSED: 7 passed, 0 failed, 0 blocked
+report: tests/system/runs/2026-09-08T22-48-54.434Z-real-user-journeys/report.md
+  ✓ isolated local project opens in built Nomi
+  ✓ real MCP stdio initialize handshake succeeds
+  ✓ real MCP stdio exposes the exact 25-tool catalog (missing: none; extra: none)
+  ✓ nomi_run_start is registered over real stdio
+  ✓ nomi_read is registered over real stdio
+  ✓ nomi_artifact_review is registered over real stdio
+  ✓ nomi_run_gate is registered over real stdio
+  ✓ semantic MCP session opens a verified project lease
+  ✓ document MCP gap is explicit for a newly created project without a creation document; actual={"content":[{"type":"text","text":"✗ 找不到目标剧本文档\n诊断 document_not_found\n1. 先重新读取项目文档列表后重试"}],"isError":true,"structuredContent":{"nomiOutcome":{"kind":"error","tool":"nomi_document_read","errorCode":"document_not_found","message":"document_not_found","recoveryActions":["先重新读取项目文档列表后重试"]}}}
+  ✓ canvas edit creates a real node before maintenance
+  ✓ canvas maintenance deletes through the real renderer gateway and returns undo
+  ✓ canvas maintenance undo restores the real node
+  ✓ director cinematography skill is discoverable through MCP resources
+  ✓ director skill body can be loaded progressively over MCP
+  ✓ MCP creates a durable Production Run without approving spend
+  ✓ draft has zero authorized spend
+  ✓ Task Center hosts the run card itself (no hop to the assistant panel)
+  ✓ the production card lives inside the Task Center panel
+  ✓ the canvas assistant panel no longer hosts production controls
+  ✓ direction gate projects three LLM-planned candidates over MCP
+  ✓ candidate keys survive the safe projection
+  ✓ direction dialog renders all three candidates
+  ✓ clicking a candidate selects it
+  ✓ selection survives re-renders (no reset to first candidate)
+  ✓ approval records the chosen direction as decidedChoiceKey
+  ✓ direction approval produces a durable script candidate before any storyboard
+  ✓ script approval produces the durable storyboard candidate
+  ✓ MCP event stream exposes durable skill evidence
+  ✓ approved storyboard materializes through the external MCP seam with eight planned jobs
+  ✓ external materialize preserves storyboard subtitle metadata on the first job
+  ✓ external materialize preserves authored transition metadata
+  ✓ first shot gate stops before every provider submission
+  ✓ canvas semantic undo survives real Nomi restart
+  ✓ restart recovers the waiting shot gate without submitting or spending
+  ✓ one approved shot submits exactly once before the sample gate
+  ✓ second shot receives its own durable one-job gate
+  ✓ second shot is still unsubmitted before approval
+  ✓ shot 3 receives one explicit approval gate
+  ✓ shot 4 receives one explicit approval gate
+  ✓ shot 5 receives one explicit approval gate
+  ✓ shot 6 receives one explicit approval gate
+  ✓ shot 7 receives one explicit approval gate
+  ✓ shot 8 receives one explicit approval gate
+  ✓ each approved fixture shot reaches adopted exactly once
+  ✓ generation and assembly produce local video and timeline artifacts
+  ✓ rough-cut preview starts as a cover, not a raw player
+  ✓ clicking the cover reveals exactly one playable video in Nomi
+  ✓ fixture completes with truthful zero actual and unsettled spend
+  ✓ completed Run reports all 9 production stages complete
+  ✓ completed Run exposes a scoped export artifact identity
+  ✓ MCP returns a scoped nomiUri for the final export
+  ✓ MCP artifact result leaks no local path, prompt, or provider internals
+  ✓ expiring loopback preview token authorizes the final MP4 bytes
+  ✓ final MP4 has a positive playable duration
+  ✓ final MP4 contains H.264 video
+  ✓ final MP4 contains AAC audio
+  ✓ completed task center does not retain a running summary
+  ✓ completed task card shows 9 / 9 stages
+
+PRODUCTION MCP JOURNEY PASS: 58 assertions
+  Run: run-ec704336-2d64-4bdd-aa57-eaa08610e6c9
+  MP4: /var/folders/f4/vz86j5nd0_sf56qdhzrmbbvw0000gn/T/nomi-production-mcp-e2e-u9X4sR/projects/未命名项目 09_09 06_49-mtt9ibsh-7d066a0d/exports/nomi-run-ec704336-2d64-4bdd-aa57-eaa08610e6c9.mp4
+  Screenshots: /Users/aoqimin/Desktop/Nomi-process-feedback/tests/ux/shots/production-mcp
