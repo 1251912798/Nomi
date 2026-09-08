@@ -150,8 +150,6 @@ function reportForMissingImageReference(
 /** legacy 字符串 → 类别(老项目持久化的 node.error / 非 vendor 错误的兜底识别;文案不在这里)。 */
 function detectLegacyErrorKind(raw: string): GenerationErrorKind | null {
   const lower = raw.toLowerCase()
-  // Persisted catalog errors written before the stable model-config signature.
-  if (raw.includes('当前没有已连接的供应商提供「') || raw.includes('已断开，且该节点未记录模型。')) return 'model-config'
   // 输出截断（agentError.describeEmptyAgentReply 的 length 签名）最先判——它是确定性失败，
   // 落进 unknown 会给出「稍等重试」的误导（重试必再撞）。短语来自我们自己的文案，单一来源。
   if (raw.includes('输出长度上限') || raw.includes('内容被截断')) return 'output-truncated'
@@ -455,6 +453,7 @@ export function classifyGenerationError(message: string): GenerationErrorReport 
   // 参与（请求从未发出），把它归成 network 会配上「稍等重试」，而重试是确定性再撞同一堵墙，
   // 且在生成语境下重试 = 再付一次钱。upstream 显式给 ''：抑制「服务商说：」框，别栽赃上游。
   const outboundCode = matchNomiErrorCode(cleanRaw)
+  if (outboundCode === 'model-config') return reportFor('model-config', cleanRaw, '')
   if (outboundCode === 'outbound-blocked') return reportFor('outbound-blocked', cleanRaw, '')
   // 提交侧的同族码：请求从未发出、没有计费。必须与上面一条分开，否则用户读到的是「钱已经付过、
   // 用重新拉取结果免费取回」——一句完全相反的假话，还会把他推向一颗根本不存在的按钮。
