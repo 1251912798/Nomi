@@ -29,6 +29,10 @@ function collect() {
       if (name.endsWith('.mjs') || name.endsWith('.cjs')) files.push(path.join(uxDir, name))
     }
   }
+  // G1 entries live beside their case cards; apply the same rules and ratchet.
+  for (const name of fs.readdirSync(path.join(uxDir, 'g1'))) {
+    if (name.endsWith('.mjs')) files.push(path.join(uxDir, 'g1', name))
+  }
   const walkSrc = (dir) => {
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
       const full = path.join(dir, entry.name)
