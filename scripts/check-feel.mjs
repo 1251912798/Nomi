@@ -1,4 +1,5 @@
 import fs from 'node:fs'
+import { feelMode, feelSurfaceKey } from '../tests/ux/_feel-observer.mjs'
 import { execFileSync } from 'node:child_process'
 
 const read = (file) => JSON.parse(fs.readFileSync(file, 'utf8'))
@@ -10,10 +11,12 @@ for (const file of ['tests/ux/feel-baseline.json', 'tests/ux/feel-exemptions.jso
   if (exists) previous = JSON.parse(execFileSync('git', ['show', `${base}:${file}`], { encoding: 'utf8' }))
   const keys = new Set()
   for (const entry of current.entries) {
-    const key = `${entry.label}:${entry.rule || 'exemption'}`
+    const isBaseline = file.includes('baseline')
+    const key = isBaseline ? feelSurfaceKey(entry) : `${entry.label}:${entry.rule || 'exemption'}`
+    if (isBaseline && (!entry.journey || !entry.screenshotName || !entry.rule || feelMode(entry.journey) !== 'ratchet')) throw new Error(`Invalid ratchet surface: ${key}`)
     if (keys.has(key)) throw new Error(`Duplicate feel entry: ${key}`)
     keys.add(key)
-    if (!entry.owner || !entry.label) throw new Error(`Missing feel owner/label: ${key}`)
+    if (!entry.owner || (!isBaseline && !entry.label)) throw new Error(`Missing feel owner/label: ${key}`)
     if (file.includes('exemptions')) {
       if (!entry.reason || !entry.rule || !Array.isArray(entry.findings) || !entry.findings.length) {
         throw new Error(`Exemptions require a rule, reason and exact findings: ${key}`)
@@ -29,7 +32,7 @@ for (const file of ['tests/ux/feel-baseline.json', 'tests/ux/feel-exemptions.jso
     }
     if (file.includes('baseline') && (!Number.isInteger(entry.count) || entry.count < 0)) throw new Error(`Invalid count: ${key}`)
     if (previous) {
-      const old = previous.entries.find((item) => item.label === entry.label && item.rule === entry.rule)
+      const old = previous.entries.find((item) => isBaseline ? feelSurfaceKey(item) === key : item.label === entry.label && item.rule === entry.rule)
       if (!old || (entry.count ?? 1) > (old.count ?? 1)) throw new Error(`Feel ratchet may only decrease: ${key}`)
       if (file.includes('exemptions')) {
         const remaining = [...old.findings]
@@ -43,7 +46,7 @@ for (const file of ['tests/ux/feel-baseline.json', 'tests/ux/feel-exemptions.jso
   }
   if (previous && file.includes('baseline')) {
     for (const old of previous.entries) {
-      if (!current.entries.some((entry) => entry.label === old.label && entry.rule === old.rule)) {
+      if (!current.entries.some((entry) => feelSurfaceKey(entry) === feelSurfaceKey(old))) {
         throw new Error(`Keep the registered feel surface at count 0 instead of deleting it: ${old.label}:${old.rule}`)
       }
     }

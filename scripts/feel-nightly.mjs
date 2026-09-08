@@ -24,6 +24,13 @@ export async function collectNewFeelSurfaces(outputDir) {
   return surfaces
 }
 
+export async function updateFeelLedger(outputDir, records) {
+  const ledgerPath = path.join(outputDir, 'first-sweep-ledger.json')
+  const ledger = JSON.parse(await fs.readFile(ledgerPath, 'utf8'))
+  const combined = [...new Map([...ledger.records, ...records].map((record) => [JSON.stringify(record), record])).values()]
+  await fs.writeFile(ledgerPath, JSON.stringify({ ...ledger, records: combined }, null, 2) + '\n')
+}
+
 export async function runFeelNightly({ journeyId } = {}) {
   const catalog = await readJson('tests/ux/journeys/catalog.json')
   const baseline = await readJson('tests/ux/feel-baseline.json')
@@ -39,8 +46,8 @@ export async function runFeelNightly({ journeyId } = {}) {
           try {
             await page.setContent(`<html style="color-scheme:${theme}"><body style="font:16px sans-serif">${state.html}</body></html>`)
             const label = `${journey.id}:${state.id}:${theme}`
-            const result = await scanFeel(page, { label })
             const screenshot = `${journey.id}-${state.id}-${theme}.png`
+            const result = { ...await scanFeel(page, { label }), journey: journey.id, screenshotName: screenshot, platform: process.platform }
             await page.screenshot({ path: path.join(outputDir, screenshot) })
             records.push({
               ...result, screenshot, owner: state.owner, knownSymptom: state.knownSymptom || null,
@@ -65,6 +72,7 @@ export async function runFeelNightly({ journeyId } = {}) {
     records,
     newSurfaces: [...await collectNewFeelSurfaces(outputDir), ...records.flatMap((record) => record.newSurfaces.map((surface) => ({ ...surface, screenshot: record.screenshot })))],
   }
+  await updateFeelLedger(outputDir, report.newSurfaces)
   const reportName = journeyId ? `nightly-${journeyId}` : 'nightly'
   await fs.writeFile(path.join(outputDir, `${reportName}.json`), JSON.stringify(report, null, 2) + '\n')
   const escape = (value) => String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('"', '&quot;')

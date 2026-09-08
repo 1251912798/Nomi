@@ -6,11 +6,17 @@ import { scanFeel } from './_feel.mjs'
 const baselinePath = new URL('./feel-baseline.json', import.meta.url)
 const exemptionsPath = new URL('./feel-exemptions.json', import.meta.url)
 const installed = new WeakMap()
+const catalog = JSON.parse(fs.readFileSync(new URL('./journeys/catalog.json', import.meta.url), 'utf8'))
+const ratchetJourneys = new Set([...catalog.journeys.map((journey) => journey.id), 'smoke'])
+export const feelMode = (journey) => ratchetJourneys.has(journey) ? 'ratchet' : 'record'
+export const feelSurfaceKey = ({ journey, screenshotName, rule }) => JSON.stringify([journey, screenshotName, rule])
+const sameScreenshot = (entry, result) => entry.journey === result.journey && entry.screenshotName === result.screenshotName
 
 export function compareFeelBaseline(result, baseline) {
+  if (feelMode(result.journey) === 'record') return []
   const counts = new Map()
   for (const finding of result.findings) counts.set(finding.rule, (counts.get(finding.rule) || 0) + 1)
-  const expected = baseline.entries.filter((entry) => entry.label === result.label)
+  const expected = baseline.entries.filter((entry) => sameScreenshot(entry, result))
   const rules = new Set([...counts.keys(), ...expected.map((entry) => entry.rule)])
   return [...rules].flatMap((rule) => {
     const actual = counts.get(rule) || 0
@@ -24,9 +30,9 @@ export function compareFeelBaseline(result, baseline) {
 /** Missing registration is evidence to triage, never an implicit zero budget. */
 export function recordNewFeelSurfaces(result, baseline) {
   const rules = [...new Set(result.findings.map((finding) => finding.rule))]
-  return rules.filter((rule) => !baseline.entries.some((entry) => entry.label === result.label && entry.rule === rule))
+  return rules.filter((rule) => feelMode(result.journey) === 'record' || !baseline.entries.some((entry) => sameScreenshot(entry, result) && entry.rule === rule))
     .map((rule) => ({
-      label: result.label, rule, mode: 'record',
+      label: result.label, journey: result.journey, screenshotName: result.screenshotName, platform: process.platform, rule, mode: 'record',
       findings: result.findings.filter((finding) => finding.rule === rule),
     }))
 }
@@ -47,7 +53,7 @@ export function applyFeelExemptions(result, exemptions) {
   return { result: { ...result, findings }, exempted, entries }
 }
 
-/** Every launched page records first, then rejects only baseline drift. */
+/** Every page records; only mechanism-owned journeys can reject baseline drift. */
 export function installFeelObserver(page, {
   name,
   outputDir = path.resolve('artifacts/feel', `${name.replace(/[^a-z0-9_-]/gi, '_')}-${randomUUID()}`),
@@ -61,21 +67,21 @@ export function installFeelObserver(page, {
   const records = []
   const newSurfaces = []
   const recordedSurfaces = new Set()
-  async function checkpoint(label, existingScreenshot) {
-    const result = await scanFeel(page, { label })
+  async function checkpoint(label, existingScreenshot, screenshotName = existingScreenshot ? path.basename(String(existingScreenshot)) : `${label}.png`) {
+    const result = { ...await scanFeel(page, { label }), journey: name, screenshotName, platform: process.platform, mode: feelMode(name) }
     const reviewed = applyFeelExemptions(result, exemptions)
     const drift = compareFeelBaseline(reviewed.result, baseline)
     const file = existingScreenshot || path.join(outputDir, `${++sequence}.png`)
     if (!existingScreenshot) await screenshot({ path: file })
-    const surfaces = recordNewFeelSurfaces(reviewed.result, baseline).map((surface) => ({ ...surface, screenshot: file }))
-    const fresh = surfaces.filter((surface) => !recordedSurfaces.has(JSON.stringify([surface.label, surface.rule])))
-    for (const surface of surfaces) recordedSurfaces.add(JSON.stringify([surface.label, surface.rule]))
+    const surfaces = recordNewFeelSurfaces(result.mode === 'record' ? result : reviewed.result, baseline).map((surface) => ({ ...surface, screenshot: file }))
+    const fresh = surfaces.filter((surface) => !recordedSurfaces.has(feelSurfaceKey(surface)))
+    for (const surface of surfaces) recordedSurfaces.add(feelSurfaceKey(surface))
     newSurfaces.push(...surfaces)
     const record = { ...result, screenshot: file, drift, newSurfaces: surfaces, exempted: reviewed.exempted, exemptions: reviewed.entries }
     records.push(record)
     fs.writeFileSync(path.join(outputDir, 'contact-sheet.json'), JSON.stringify(records, null, 2) + '\n')
     fs.writeFileSync(path.join(outputDir, 'new-surfaces.json'), JSON.stringify(newSurfaces, null, 2) + '\n')
-    if (fresh.length) console.log(`${fresh.length} 个新面首次记录，未纳入棘轮；evidence: ${outputDir}`)
+    console.log(`feel ${result.mode}: ${name}/${screenshotName}; findings=${result.findings.length}; new-surfaces=${fresh.length}; evidence: ${outputDir}`)
     if (drift.some((change) => change.actual > change.allowed)) throw new Error(`Feel baseline drift at ${label}: ${JSON.stringify(drift)}; evidence: ${outputDir}`)
     return result
   }
@@ -114,7 +120,7 @@ export function installFeelObserver(page, {
     const original = page[method].bind(page)
     page[method] = async (...args) => {
       const value = await original(...args)
-      await checkpoint(`${name}:${method}`)
+      await checkpoint(`${name}:${method}`, undefined, `${method}.png`)
       return value
     }
   }

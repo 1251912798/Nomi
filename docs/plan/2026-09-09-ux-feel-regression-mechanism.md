@@ -117,3 +117,17 @@
 ### 本轮交付验证
 
 完整 `python3 scripts/with-gates-lock.py -- pnpm run gates` 已 exit 0；76 contracts 的阻断项全部通过（3 项 advisory），Vitest 1291 files / 12063 tests pass、2 tests skipped，运行时测试与 Vite/Electron 构建通过。日志 `/tmp/uf-third-gates.log`。推送前再次读取远端：main 仍为 `4886cdde3b4f49e9279de62476c56971edf5f1e0`，已合入本分支。此结果不覆盖上文仍失败的真实 loopback 旅程与 j1/j2/j4 基线覆盖缺口，不能声称全部验收完成。
+
+## 第四次 CI 红：阻断范围按旅程所有权收窄
+
+裁决已获授权：仅 catalog.json 声明的机制旅程与 smoke 可 ratchet；eval-iso、real-user-test-gates 及其他真实旅程统一 record，即使存在旧登记也不能阻断。共享策略从实际 observer name 判定所有权，基线显式使用 journey / screenshotName / rule 三字段；等待检查点使用稳定的 `<wait API>.png` 截图名，不能按随机序号录数。现有 catalog 数字原样迁移，22 条非 catalog 真实旅程登记移入 artifacts/feel/first-sweep-ledger.json 种子，smoke 零预算保留。
+
+record 每次保存完整发现、平台、截图、接触表与 new-surfaces.json，并打印一行汇总；nightly 将所有运行的 record 证据合并入首轮总账，保留种子原始 owner/count/evidence，重复运行不得叠加同一来源。以后扩基线只能取 Linux feel:nightly 产物，在同平台 Linux 数字上登记；macOS 本地扫描仅是观察证据，不可转为 Linux 门岗。真实旅程发现仍是总账，不因录数自动升级成 ratchet。j3 两条疑似真缺陷保持上文独立记录、不改生产代码。
+
+分类 recurring：缺失的不是更多数字，而是机制所有权与观察证据之间的策略边界。已检查 observer screenshot/wait、nightly、eval-iso 共用启动器与 real-user-test-gates 子进程入口。范围只限 tests/scripts/证据/文档，不改 UI、生产代码、依赖、阈值；回滚本次策略与数据迁移。验收先红后绿覆盖 catalog 增长、跨截图隔离、真实旅程已登记超出仍落盘不红；再 browser、nightly、loopback 7/7、smoke、完整带锁 gates、正常 hooks push 原分支。
+
+第四轮窄验证：旧比较器复现 j3 text-overlap actual=6 / allowed=3 的错误阻断（`/tmp/uf-fourth-real-red.log`）；三字段策略红测 4 fail / 2 pass（`/tmp/uf-fourth-red.log`）→ 6/6 绿，浏览器 12/12 绿。nightly 20 张截图、10 条发现、drift=0，收集 66 条已有 record；总账 seeds=22 保留原始来源与平台（本机 darwin 的历史取数不冒充 Linux）。总账聚合回归证明重跑不重复、后续部分输入不丢既有记录。迁移逐项比对原 33 条登记：22 条转 seeds、11 条保留且计数不变。当前旧 label 实际已带截图名，本轮仍显式拆字段并加截图隔离测试；第四次误阻断的核心是错误的阻断范围，不能再靠录基线处理。
+
+第四轮完整 gates：`python3 scripts/with-gates-lock.py -- pnpm run gates` exit 0；76 contracts = 73 pass / 0 blocking / 3 advisory；Vitest 1295 files pass、12083 tests pass、2 tests skipped；运行时测试、Vite/Electron 构建全部通过。日志 `/tmp/uf-fourth-gates.log`。本次完整验证基于合入 main 后的工作树；新增代码仅在测试与脚本层。
+
+第四轮最终旅程验收：`node scripts/real-user-test-gates.mjs --provider loopback` **7 passed / 0 failed / 0 blocked**；production-mcp 58 assertions 通过并导出 MP4，#661 已消除跨 RPC 错误码丢失的上轮阻碍。报告 `tests/system/runs/2026-09-08T22-40-57.173Z-real-user-journeys/report.md`，日志 `/tmp/uf-fourth-loopback.log`；smoke **17 assertions PASS**，日志 `/tmp/uf-fourth-smoke.log`。随后的 nightly 再次通过，完整总账快照留在 `/tmp/uf-fourth-nightly-final-ledger.json`，提交只保留 22 条原始种子。推送前 fetch 确认 origin/main behind=0。j3 两条疑似真缺陷继续单列，未改生产代码；本地验收不冒充尚未执行的新 Linux CI。
