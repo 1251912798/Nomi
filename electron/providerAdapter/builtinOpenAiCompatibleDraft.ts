@@ -90,6 +90,7 @@ function modesForKind(
   authType: AdapterAuthType,
   providerKind?: AiSdkProviderKind,
   modelKey?: string,
+  modelAlias?: string | null,
 ): AdapterModeDraft[] {
   // 没有文档出处就诚实留空——这张卡来自内置标准契约，不是从某个页面读出来的（D4 缺口明着标）。
   const noSources = { sourceUrls: [] as string[] };
@@ -123,7 +124,12 @@ function modesForKind(
   // 键各随各自的 wire：改图三种协议都读聚合的 reference_images（数组）；图生视频 body 读的是首帧单值
   // image_url（newapiTransport.ts:211，那里注释写明不是裸 image 键）。写错键 = 探针注了参考却进不了报文。
   if (transport.edit) {
-    const edit = kind === "image" ? newapiImageEditProfileForModel(modelKey || "").operation : transport.edit;
+    // **两个身份都要传**：smartDefaultImageEditProtocol 明确按 [modelKey, modelAlias] 选协议
+    // （newapiTransport.ts）。中转常把模型登记成不透明 id（`custom-1`）而 alias 才是 `gpt-image-2`——
+    // 只传 modelKey 时它被判成 chat 协议，中转如实回 400「not supported on the Chat Completions
+    // endpoint」→ 改图通道验证失败 → 连了参考图的节点被直接拒发，而这家中转其实完全支持改图。
+    // 2026-09-08 根因：alias 在这条内置卡路径上被丢了两次（此处 + builtinDraftForUndocumentedEndpoint）。
+    const edit = kind === "image" ? newapiImageEditProfileForModel(modelKey || "", modelAlias ?? null).operation : transport.edit;
     modes.push({ taskKind: "image_edit", create: auth(edit), referenceParam: "reference_images", referenceShape: "array", ...noSources });
   }
   if (transport.imageToVideo) {
@@ -148,7 +154,7 @@ export function builtinDraftForUndocumentedEndpoint(
     baseUrl,
     authType: (connection.vendor.authType || "bearer") as AdapterAuthType,
     ...(connection.vendor.providerKind ? { providerKind: connection.vendor.providerKind } : {}),
-    models: connection.models.map((model) => ({ modelKey: model.modelKey, labelZh: model.labelZh, kind: model.kind })),
+    models: connection.models.map((model) => ({ modelKey: model.modelKey, labelZh: model.labelZh, kind: model.kind, modelAlias: model.modelAlias ?? null })),
   });
 }
 
@@ -156,7 +162,7 @@ export function buildOpenAiCompatibleDraft(input: {
   baseUrl: string;
   authType: AdapterAuthType;
   providerKind?: AiSdkProviderKind;
-  models: ReadonlyArray<{ modelKey: string; labelZh: string; kind: BillingModelKind }>;
+  models: ReadonlyArray<{ modelKey: string; labelZh: string; kind: BillingModelKind; modelAlias?: string | null }>;
 }): ProviderAdapterDraft {
   return {
     provider: {
@@ -175,7 +181,7 @@ export function buildOpenAiCompatibleDraft(input: {
         labelZh: model.labelZh,
         kind: model.kind,
         ...(parameters.length > 0 ? { parameters } : {}),
-        modes: modesForKind(model.kind, input.authType, input.providerKind, model.modelKey),
+        modes: modesForKind(model.kind, input.authType, input.providerKind, model.modelKey, model.modelAlias ?? null),
       };
       // 与 AI 编译路走**同一份**语义校验（P1 不留第二套判断）。此前这条路一次都没被校验过，
       // 「参考类模式必须声明 referenceParam/referenceShape」对它结构性失效 —— image_edit 漏声明

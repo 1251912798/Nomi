@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { isTextPromptEdge, referenceAssetKindForNode, validateReferenceEdge, partitionConnectableEdges, resolveTargetModeForEdge } from './referenceEdgeCapability'
+import { archetypeForNode, isTextPromptEdge, referenceAssetKindForNode, validateReferenceEdge, partitionConnectableEdges, resolveTargetModeForEdge } from './referenceEdgeCapability'
+import { resolveArchetypeForModel } from '../../../config/modelArchetypes'
 import type { GenerationCanvasNode } from '../model/generationCanvasTypes'
 
 // archetypeId 显式命中内置档案(resolveArchetypeForModel/getArchetypeById 优先看它):
@@ -243,5 +244,40 @@ describe('findVideoRefMode — 档案有没有 video_ref 槽', () => {
 
   it('null 档案 → null(降级 prompt 地板)', () => {
     expect(findVideoRefMode(null)).toBeNull()
+  })
+})
+
+describe('archetypeForNode 与发送路径同源（2026-09-08 Agnes 2.1 根因）', () => {
+  // 档案一分为二时（Agnes Image 2.0 / 2.1，后者声明 legacyIds: ['agnes-image']），存量节点的
+  // meta 里还钉着旧的共享 id。旧实现在这里走 getArchetypeById 捷径 → 拿到 2.0；发送路径按
+  // legacyIds + 模型身份迁移 → 2.1。同一个节点两条路径认到两个不同档案，「按活边自动纠正模式」
+  // 的守卫于是按 2.0 算模式、写回 2.0 的 id、把 2.1 的档位参数夹回 2.0 的像素表。
+  const legacyNode = {
+    id: 'n1',
+    kind: 'image',
+    title: 'n1',
+    prompt: '',
+    position: { x: 0, y: 0 },
+    size: { width: 100, height: 100 },
+    meta: { archetype: { id: 'agnes-image', modeId: 't2i' }, modelKey: 'agnes-image-2.1-flash', modelVendor: 'agnes' },
+  } as unknown as GenerationCanvasNode
+
+  it('存量 meta 钉着旧共享 id 时，仍解析到迁移后的 2.1 档案', () => {
+    expect(archetypeForNode(legacyNode)).not.toBeNull()
+    expect(archetypeForNode(legacyNode)?.id).toBe('agnes-image-2.1')
+  })
+
+  it('与发送路径 resolveArchetypeForModel 逐字一致（不是各写一份判断）', () => {
+    const viaSend = resolveArchetypeForModel({
+      modelKey: 'agnes-image-2.1-flash',
+      vendorKey: 'agnes',
+      meta: legacyNode.meta as Record<string, unknown>,
+    })
+    expect(archetypeForNode(legacyNode)?.id).toBe(viaSend?.id)
+  })
+
+  it('没有 modelKey 时退化成「只认 meta 里的显式 id」（旧行为不变）', () => {
+    const bare = { ...legacyNode, meta: { archetype: { id: 'seedream', modeId: '' } } } as unknown as GenerationCanvasNode
+    expect(archetypeForNode(bare)?.id).toBe('seedream')
   })
 })
