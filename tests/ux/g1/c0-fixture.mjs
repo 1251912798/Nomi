@@ -1,4 +1,5 @@
 import fs from 'node:fs'
+import ffmpeg from '@ffmpeg-installer/ffmpeg'
 import path from 'node:path'
 import http from 'node:http'
 import { execFileSync } from 'node:child_process'
@@ -29,7 +30,7 @@ export async function createC0Fixture(rootDir, settingsDir, mediaDir) {
     fs.mkdirSync(mediaDir, { recursive: true })
     const results = shots.map((shot) => {
       const file = path.join(mediaDir, `shot-${shot.index}.mp4`)
-      execFileSync('ffmpeg', ['-v', 'error', '-y', '-f', 'lavfi', '-i',
+      execFileSync(ffmpeg.path, ['-v', 'error', '-y', '-f', 'lavfi', '-i',
         `testsrc2=size=640x360:rate=24,hue=h=${shot.index * 35}`,
         '-f', 'lavfi', '-i', `sine=frequency=${220 + shot.index * 55}:sample_rate=44100`,
         '-t', String(shot.durationSec), '-c:v', 'libx264', '-preset', 'ultrafast',

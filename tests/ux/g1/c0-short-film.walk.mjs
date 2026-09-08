@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 // C0: only provider responses are synthetic; all project writes use the real UI.
 import fs from 'node:fs'
+import ffmpeg from '@ffmpeg-installer/ffmpeg'
+import ffprobe from '@ffprobe-installer/ffprobe'
 import path from 'node:path'
 import os from 'node:os'
 import { fileURLToPath } from 'node:url'
@@ -255,19 +257,19 @@ try {
     await expect.poll(() => {
       const file = findExport()
       if (!file) return false
-      try { execFileSync('ffprobe', ['-v', 'error', '-show_format', file], { stdio: 'pipe' }); return true } catch { return false }
+      try { execFileSync(ffprobe.path, ['-v', 'error', '-show_format', file], { stdio: 'pipe' }); return true } catch { return false }
     }, { timeout: 180_000 }).toBe(true)
     exportPath = findExport()
-    const probe = JSON.parse(execFileSync('ffprobe', ['-v', 'error', '-show_streams', '-show_format', '-of', 'json', exportPath], { encoding: 'utf8' }))
+    const probe = JSON.parse(execFileSync(ffprobe.path, ['-v', 'error', '-show_streams', '-show_format', '-of', 'json', exportPath], { encoding: 'utf8' }))
     const video = probe.streams.find((s) => s.codec_type === 'video')
     expect(video.width / video.height).toBeCloseTo(16 / 9, 2)
     expect(probe.streams.some((s) => s.codec_type === 'audio')).toBe(true)
     expect(Number(probe.format.duration)).toBeGreaterThanOrEqual(60)
     expect(Number(probe.format.duration)).toBeLessThanOrEqual(120)
-    execFileSync('ffmpeg', ['-v', 'error', '-xerror', '-i', exportPath, '-f', 'null', '-'], { stdio: 'pipe' })
+    execFileSync(ffmpeg.path, ['-v', 'error', '-xerror', '-i', exportPath, '-f', 'null', '-'], { stdio: 'pipe' })
     report.export = { path: exportPath, sha256: hash(exportPath), bytes: fs.statSync(exportPath).size, probe }
     for (const [name, at] of [['first', 0], ['middle', 32], ['last', 63]]) {
-      execFileSync('ffmpeg', ['-v', 'error', '-ss', String(at), '-i', exportPath, '-frames:v', '1', path.join(attemptDir, `${name}.png`)], { stdio: 'pipe' })
+      execFileSync(ffmpeg.path, ['-v', 'error', '-ss', String(at), '-i', exportPath, '-frames:v', '1', path.join(attemptDir, `${name}.png`)], { stdio: 'pipe' })
     }
   })
   await step('07', '冷重启检查资产和时间轴', '同一项目八个资产和八段剪辑均保留；完整看片仍须人眼签收', async () => {

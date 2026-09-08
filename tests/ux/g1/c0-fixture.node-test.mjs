@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
+import ffprobe from '@ffprobe-installer/ffprobe'
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -9,8 +10,10 @@ import { test } from 'node:test'
 import { createC0Fixture, MODEL, shots } from './c0-fixture.mjs'
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..')
-test('C0 loopback returns eight independently decodable 8s clips and rejects duplicate/unknown shots', async () => {
+test('C0 loopback works without system media tools, returns eight decodable clips and rejects duplicate/unknown shots', async () => {
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'c0-fixture-test-'))
+  const originalPath = process.env.PATH
+  process.env.PATH = temp // No system ffmpeg/ffprobe: use the declared platform binaries.
   let fixture
   try {
     fixture = await createC0Fixture(rootDir, path.join(temp, 'settings'), path.join(temp, 'media'))
@@ -30,7 +33,7 @@ test('C0 loopback returns eight independently decodable 8s clips and rejects dup
       hashes.push(createHash('sha256').update(bytes).digest('hex'))
       const downloaded = path.join(temp, `response-${shot.index}.mp4`)
       fs.writeFileSync(downloaded, bytes)
-      const probe = JSON.parse(execFileSync('ffprobe', ['-v', 'error', '-show_streams', '-show_format', '-of', 'json', downloaded], { encoding: 'utf8' }))
+      const probe = JSON.parse(execFileSync(ffprobe.path, ['-v', 'error', '-show_streams', '-show_format', '-of', 'json', downloaded], { encoding: 'utf8' }))
       assert.equal(Number(probe.format.duration), 8)
       assert.equal(probe.streams.find((s) => s.codec_type === 'video').width, 640)
       assert.ok(probe.streams.some((s) => s.codec_type === 'audio'))
@@ -41,6 +44,8 @@ test('C0 loopback returns eight independently decodable 8s clips and rejects dup
     assert.equal((await post('unknown')).status, 400)
     fixture.text.assertClean()
   } finally {
+    if (originalPath === undefined) delete process.env.PATH
+    else process.env.PATH = originalPath
     if (fixture) await fixture.close()
     fs.rmSync(temp, { recursive: true, force: true })
   }
