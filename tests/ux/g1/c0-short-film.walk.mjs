@@ -153,7 +153,8 @@ try {
     await scheduler.planRequested()
     report.r30[values.real ? 'real' : 'simulated'].firstTool = '0/1 (0%; result not yet verified)'
     const approval = win.locator(`${CREATION_PANEL} ${APPROVAL_CARD}`)
-    const proof = await proveProbe(approval, '真实分镜审批已出现')
+    // A remote planner may spend minutes before its first tool; use the inference budget.
+    const proof = await proveProbe(approval, '真实分镜审批已出现', values.real ? 180_000 : undefined)
     await screenshotSettled(win, { path: path.join(attemptDir, `C0-${sha.slice(0, 8)}-02-approval.png`) })
     await clickOrFail(approval.locator(INTERVENTION_CONFIRM), '批准分镜')
     await expectAbsent(approval.locator(INTERVENTION_CONFIRM), { provenBy: proof, message: '分镜审批已消费' })
