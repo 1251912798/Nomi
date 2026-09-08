@@ -29,7 +29,8 @@
   "invariants": [
     "No real image means empty reveal pool.",
     "At most four visible effects; reduced motion and zoom below 0.4 do not mount effects.",
-    "Successful result tears down waiting within 1200ms; failure tears down immediately."
+    "Successful result tears down waiting within 1200ms; failure tears down immediately.",
+    "Browser visibility is read after mount; DOM-free audio rendering remains valid."
   ],
   "generality_proof": "Both image and video use NodeGeneratingOverlay and GenerationWaitingSurface, independent of model or supplier.",
   "shared_boundaries": [
@@ -64,7 +65,8 @@
     "same_class_scan": [
       "rg GenerationWaitingSurface src: production NodeGeneratingOverlay is the sole importer.",
       "Read BaseGenerationNode and ProcessFeedbackStage image/video/preview result producers.",
-      "ReactFlowViewport onlyRenderVisibleElements and ReactFlowNodes shouldRenderFullNodeContent already own viewport/full-node admission."
+      "ReactFlowViewport onlyRenderVisibleElements and ReactFlowNodes shouldRenderFullNodeContent already own viewport/full-node admission.",
+      "Full suite covers DOM-free audio rendering in generationFeedback.test.ts and laboratory custom event producers in customEventWiring.test.ts; visibility now begins in effect and zoom exposes a real host dispatcher."
     ]
   },
   "prevention": {

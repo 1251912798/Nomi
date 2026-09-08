@@ -2,7 +2,7 @@ import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 import { launchNomiApp } from './_launchApp.mjs'
-import { expect, expectVisible } from './_assert.mjs'
+import { expect, expectVisible, expectAbsent, proveProbe } from './_assert.mjs'
 import { findCanvasBlankPoint } from './_canvasHit.mjs'
 import { createProcessFixture } from './process-feedback-real-fixture.mjs'
 
@@ -45,7 +45,7 @@ try {
   await page.getByRole('button', { name: '生成', exact: true }).last().click()
   await expect.poll(() => fixture.jobs.length, { timeout: 30000 }).toBe(1)
   await expect(node.locator('[data-generation-message]')).toContainText('生成中', { timeout: 30000 })
-  await expectVisible(node.locator('[data-process-fx]'), '生成中真实动效')
+  const waitingProof = await proveProbe(node.locator('[data-process-fx]'), '生成中真实动效')
   await expect(node.locator('[data-process-fx]')).toHaveAttribute('data-image-count', '0')
   await shot('pf-fx-generating')
   const nodeId = await node.getAttribute('data-node-id')
@@ -81,7 +81,7 @@ try {
   await shot('pf-fx-final-reveal')
   await expect(node.locator('[data-generation-waiting]')).toHaveCount(0, { timeout: 2000 })
   await expect(node.locator('[data-generating-placement]')).toHaveCount(0)
-  await expect(node.locator('canvas')).toHaveCount(0)
+  await expectAbsent(node.locator('canvas'), { provenBy: waitingProof, message: '真机终态释放全部 canvas' })
   const timing = await page.evaluate(() => window.__pfFxReceipt)
   expect(timing.removedAt).not.toBeNull()
   expect(timing.removedAt - timing.terminalAt).toBeLessThanOrEqual(1200)

@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import { chromium } from 'playwright'
-import { expect, expectVisible } from './_assert.mjs'
+import { expect, expectVisible, expectAbsent, proveProbe } from './_assert.mjs'
 import { assertLabPortOwnership, labOriginFor } from './design-lab/labServer.mjs'
 
 const evidence = path.resolve('docs/plan/process-feedback-evidence/imgfx/lab')
@@ -46,7 +46,7 @@ try {
   }
   if (!only || only === 'final') {
     const page = await open('pf-image-generating')
-    await expectVisible(page.locator('[data-process-fx]'), '先证明等待层存在')
+    const waitingProof = await proveProbe(page.locator('[data-process-fx]'), '先证明等待层存在')
     await page.clock.pauseAt(new Date('2026-09-09T12:01:00Z'))
     await page.evaluate(async () => {
       const { advanceProcessFeedback } = await import('/src/devlab/designLab/processFeedback/processFeedbackLabKit.tsx')
@@ -61,9 +61,17 @@ try {
     expect(await page.locator('[data-generation-waiting]').count(), '1200ms 后等待层必须已卸载').toBe(0)
     expect(await page.locator('[data-generating-placement]').count(), '等待层父壳也必须卸载').toBe(0)
     expect(await page.locator('[data-node-id] canvas').count(), '卸载后所有 fx canvas 归零').toBe(0)
+    await expectAbsent(page.locator('[data-generation-waiting]'), { provenBy: waitingProof, message: '等待层持续卸载' })
     await page.clock.runFor(2000)
     await shot(page, 'pf-fx-done-clean')
     receipt.push({ criterion: 'terminal-zero-waiting-overlay', deadlineMs: 1200, result: 'green' })
+    await page.close()
+  }
+  if (!only || only === 'organic') {
+    const page = await open('pf-fx-organic')
+    await expectVisible(page.locator('[data-process-fx]'), 'organic 对比态挂载')
+    await page.clock.runFor(1000)
+    await shot(page, 'pf-fx-organic')
     await page.close()
   }
   if (!only || only === 'reduced') {
@@ -82,7 +90,10 @@ try {
     await page.emulateMedia({ reducedMotion: 'no-preference' })
     await expectVisible(page.locator('[data-process-fx]'), '恢复动态重新获取槽位')
     async function zoom(value) {
-      await page.evaluate(z => window.dispatchEvent(new CustomEvent('nomi-pf-zoom', { detail: z })), value)
+      await page.evaluate(async z => {
+        const { setProcessFeedbackZoom } = await import('/src/devlab/designLab/processFeedback/processFeedbackLabKit.tsx')
+        setProcessFeedbackZoom(z)
+      }, value)
     }
     await zoom(0.39)
     await expectVisible(page.locator('[data-process-static-band]'), '39% 卸载')

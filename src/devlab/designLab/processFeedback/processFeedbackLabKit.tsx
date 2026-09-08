@@ -1,4 +1,5 @@
 import React from 'react'
+import type { ImageGenerationPreset } from 'img-fx'
 import BaseGenerationNode from '../../../workbench/generationCanvas/nodes/BaseGenerationNode'
 import { useGenerationCanvasStore } from '../../../workbench/generationCanvas/store/generationCanvasStore'
 import { useGenerationQueueStore } from '../../../workbench/generationCanvas/runner/generationQueueStore'
@@ -14,11 +15,15 @@ import type { TimelineClip as Clip } from '../../../workbench/timeline/timelineT
 
 export const PF_NODE_ID = 'process-feedback-node'
 const FRAME = '/fixtures/process-feedback-frame.svg'
-export type ProcessFixture = { kind: 'image' | 'video' | 'audio'; stage: GenerationProgressPhase | 'failed' | 'saved'; preview?: boolean; percent?: number; zoom?: number }
+export type ProcessFixture = { kind: 'image' | 'video' | 'audio'; stage: GenerationProgressPhase | 'failed' | 'saved'; preview?: boolean; reduced?: boolean; preset?: ImageGenerationPreset; percent?: number; zoom?: number }
 
 /** Laboratory automation drives the same mounted host without creating a second store instance. */
 export function advanceProcessFeedback(stage: ProcessFixture['stage']): void {
   window.dispatchEvent(new CustomEvent('nomi-pf-stage', { detail: stage }))
+}
+
+export function setProcessFeedbackZoom(zoom: number): void {
+  window.dispatchEvent(new CustomEvent('nomi-pf-zoom', { detail: zoom }))
 }
 
 function fixtureNode(fixture: ProcessFixture): GenerationCanvasNode {
@@ -39,7 +44,7 @@ function fixtureNode(fixture: ProcessFixture): GenerationCanvasNode {
 }
 const clip: Clip = { id: 'pf-clip', type: 'image', sourceNodeId: PF_NODE_ID, label: '镜 1', startFrame: 0, endFrame: 150, frameCount: 150, offsetStartFrame: 0, offsetEndFrame: 0 }
 
-function Surfaces({ zoom }: { zoom: number }): JSX.Element | null {
+function Surfaces({ zoom, reduced, preset }: { zoom: number; reduced?: boolean; preset?: ImageGenerationPreset }): JSX.Element | null {
   const node = useGenerationCanvasStore((state) => state.nodes.find((item) => item.id === PF_NODE_ID))
   const entries = useGenerationQueueStore((state) => state.entries)
   const now = useGenerationFeedbackClock()
@@ -47,7 +52,7 @@ function Surfaces({ zoom }: { zoom: number }): JSX.Element | null {
   const row = buildTaskCenterView({ nodes: [node], entries, batches: {}, now, fallbackTitle: '镜 1' }).rows[0]
   return <div data-process-lab-ready className="grid gap-6 p-6" style={{ width: 800, height: 560, gridTemplateRows: '240px 104px 64px' }}>
     <div className="relative" style={{ width: 340, height: 240, transform: `scale(${zoom})`, transformOrigin: 'top left' }}>
-      <BaseGenerationNode node={node} selected={false} readOnly />
+      <BaseGenerationNode node={node} selected={false} readOnly waitingMotion={reduced ? 'reduced' : undefined} waitingPreset={preset} />
     </div>
     <div data-process-task className="w-full rounded-nomi border border-nomi-line bg-nomi-paper">{row ? <TaskRow row={row} /> : null}</div>
     <div data-process-timeline className="relative h-16"><TimelineClip clip={clip} /></div>
@@ -75,10 +80,16 @@ export function ProcessFeedbackStage(fixture: ProcessFixture): JSX.Element {
         store.setNodeProgress(PF_NODE_ID, { phase: stage })
       }
     }
+    const zoom = (event: Event) => {
+      const s = useWorkbenchStore.getState()
+      s.rememberCategoryViewport(s.activeCategoryId, { zoom: (event as CustomEvent<number>).detail, offset: { x: 0, y: 0 } })
+    }
     window.addEventListener('nomi-pf-stage', update)
-    return () => window.removeEventListener('nomi-pf-stage', update)
+    window.addEventListener('nomi-pf-zoom', zoom)
+    return () => { window.removeEventListener('nomi-pf-stage', update); window.removeEventListener('nomi-pf-zoom', zoom) }
   }, [])
   React.useLayoutEffect(() => {
+    useWorkbenchStore.setState({ activeCategoryId: fixture.kind === 'audio' ? 'audio' : 'shots' })
     const workbench = useWorkbenchStore.getState()
     workbench.rememberCategoryViewport(workbench.activeCategoryId, { zoom: fixture.zoom ?? 1, offset: { x: 0, y: 0 } })
     const node = fixtureNode(fixture)
@@ -93,5 +104,24 @@ export function ProcessFeedbackStage(fixture: ProcessFixture): JSX.Element {
     else useNodeLivePreviewStore.getState().clearPreview(PF_NODE_ID)
     setReady(true)
   }, [fixture.kind, fixture.stage, fixture.percent, fixture.preview, fixture.zoom])
-  return ready ? <Surfaces zoom={fixture.zoom ?? 1} /> : <div />
+  return ready ? <Surfaces zoom={fixture.zoom ?? 1} reduced={fixture.reduced} preset={fixture.preset} /> : <div />
+}
+
+/** Transition screenshots use the mounted production host and real preview/result stores. */
+export function ProcessFeedbackFxStage({ transition, reduced = false, preset }: { preset?: ImageGenerationPreset; transition?: 'preview' | 'saved'; reduced?: boolean }): JSX.Element {
+  React.useEffect(() => {
+    if (!transition) return
+    let advanced = false
+    const advance = () => {
+      if (advanced || !document.querySelector('[data-process-fx]')) return
+      advanced = true
+      if (transition === 'preview') useNodeLivePreviewStore.getState().setPreview(PF_NODE_ID, FRAME)
+      else advanceProcessFeedback('saved')
+    }
+    const observer = new MutationObserver(advance)
+    observer.observe(document.body, { childList: true, subtree: true })
+    advance()
+    return () => observer.disconnect()
+  }, [transition])
+  return <div data-pf-fx-state data-pf-reduced={reduced || undefined}><ProcessFeedbackStage kind="image" stage="generating" reduced={reduced} preset={preset} /></div>
 }

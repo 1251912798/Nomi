@@ -1,9 +1,52 @@
 import React from 'react'
 import type { LabState } from '../../labScreen'
-import { ProcessFeedbackStage } from '../processFeedbackLabKit'
+import { ProcessFeedbackStage, ProcessFeedbackFxStage } from '../processFeedbackLabKit'
 
 const SOURCE = 'docs/plan/2026-09-08-process-feedback-c1.md · C0/C1/C2'
+const FX_SOURCE = 'docs/plan/2026-09-09-process-feedback-imgfx.md · §5'
 export const PROCESS_FEEDBACK_STATES: readonly LabState[] = [
+  {
+    id: 'pf-fx-organic',
+    name: '生成动效 · 有机像素对照',
+    source: FX_SOURCE,
+    coverage: 'shell',
+    render: () => <ProcessFeedbackFxStage preset="pixels-organic" />,
+  },
+  {
+    id: 'pf-fx-generating',
+    name: '生成动效 · 等待',
+    source: FX_SOURCE,
+    coverage: 'shell',
+    render: () => <ProcessFeedbackFxStage />,
+  },
+  {
+    id: 'pf-fx-preview-reveal',
+    name: '生成动效 · 真帧揭示',
+    source: FX_SOURCE,
+    coverage: 'shell',
+    render: () => <ProcessFeedbackFxStage transition="preview" />,
+  },
+  {
+    id: 'pf-fx-final-reveal',
+    name: '生成动效 · 最终揭示',
+    source: FX_SOURCE,
+    coverage: 'shell',
+    render: () => <ProcessFeedbackFxStage transition="saved" />,
+  },
+  {
+    id: 'pf-fx-done-clean',
+    name: '生成动效 · 完成零遮挡',
+    source: FX_SOURCE,
+    coverage: 'shell',
+    render: () => <ProcessFeedbackFxStage transition="saved" />,
+  },
+  {
+    id: 'pf-fx-reduced',
+    name: '生成动效 · 减弱动态',
+    source: FX_SOURCE,
+    coverage: 'shell',
+    render: () => <ProcessFeedbackFxStage reduced />,
+  },
   {
     id: 'pf-image-queued',
     name: '图片 · 排队',

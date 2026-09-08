@@ -89,9 +89,10 @@ export function GenerationWaitingSurface({ audio = false, previewUrl, finalUrl, 
 }): JSX.Element {
   const reduced = useReducedProcessMotion() || motion === 'reduced'
   const admitted = useEffectSlot(!audio && !reduced && inViewport && zoom >= 0.4)
-  const [documentHidden, setDocumentHidden] = React.useState(() => document.hidden)
+  const [documentHidden, setDocumentHidden] = React.useState(false)
   React.useEffect(() => {
     const update = () => setDocumentHidden(document.hidden)
+    update()
     document.addEventListener('visibilitychange', update)
     return () => document.removeEventListener('visibilitychange', update)
   }, [])

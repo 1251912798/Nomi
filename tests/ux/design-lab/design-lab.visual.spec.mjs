@@ -9,6 +9,8 @@
 import { expect, test } from '@playwright/test'
 import { LAB_SCREEN_IDS, pendingApprovalScreens, readCalibration, readLabStates } from './labStates.mjs'
 
+// Match the real macOS GPU backend for WebGL states; software shader compilation can block the page.
+if (process.platform === 'darwin') test.use({ launchOptions: { args: ['--use-angle=metal'] } })
 const calibration = readCalibration()
 // 「基线待用户拍板」的屏（calibration.json 的 pendingApprovalScreens）整屏跳过比对：
 // 没人看过的图没有可回归的对象，比它等于把「今天碰巧长这样」钉成「应该长这样」。
@@ -26,7 +28,7 @@ for (const screen of LAB_SCREEN_IDS) {
   test.describe(`design lab · ${screen}`, () => {
     test('注册表与活页面一致（这把源码正则还活着的唯一证据）', async ({ page }) => {
       await page.goto(`/design-lab.html?screen=${screen}&frame=1&state=${states[0].id}`)
-      await page.waitForFunction(() => window.__designLabReady === true)
+      await expect.poll(() => page.evaluate(() => window.__designLabReady === true)).toBe(true)
       const live = await page.evaluate(() => window.__designLabStates)
       expect(live).toEqual(states.map((state) => state.id))
     })
@@ -35,15 +37,25 @@ for (const screen of LAB_SCREEN_IDS) {
       test(`状态 ${state.id} · ${state.name}`, async ({ page }) => {
         const errors = []
         page.on('pageerror', (error) => errors.push(String(error)))
-        if (screen === 'process-feedback') await page.clock.install({ time: new Date('2026-09-08T12:00:00Z') })
+        if (screen === 'process-feedback') {
+          await page.clock.install({ time: new Date('2026-09-08T11:59:59Z') })
+          await page.clock.pauseAt(new Date('2026-09-08T12:00:00Z'))
+          await page.addInitScript(() => {
+            let seed = 658
+            Math.random = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296 }
+          })
+        }
         await page.goto(`/design-lab.html?screen=${screen}&frame=1&state=${state.id}`)
-        await page.waitForFunction(() => window.__designLabReady === true)
+        await expect.poll(async () => {
+          if (screen === 'process-feedback') await page.clock.runFor(32)
+          return page.evaluate(() => window.__designLabReady === true)
+        }, { intervals: [32] }).toBe(true)
         const shot = page.locator(`[data-design-lab-shot="${state.id}"]`)
         await expect(shot).toBeVisible()
         if (screen === 'process-feedback') {
-          await page.clock.runFor(1000)
+          await page.clock.runFor(state.id === 'pf-fx-final-reveal' ? 400 : state.id === 'pf-fx-done-clean' ? 3201 : 1000)
           // Cross-surface acceptance runs in the real App: process-feedback-electron.e2e.mjs.
-          if (!state.id.includes('preview')) {
+          if (!state.id.includes('preview') && !['pf-fx-final-reveal', 'pf-fx-done-clean'].includes(state.id)) {
             await expect(page.locator('[data-node-id] [data-generation-status]')).not.toContainText('%')
             await expect(page.locator('[data-process-lab-ready]')).not.toContainText(/前面\s*\d+\s*个/)
           }

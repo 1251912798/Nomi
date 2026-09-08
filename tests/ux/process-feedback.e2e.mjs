@@ -56,7 +56,7 @@ async function geometry(page) {
 async function reducedMotion(page) {
   const motion = await page.evaluate(() => {
     const dot = document.querySelector('[data-process-dot]')
-    const sheen = document.querySelector('[data-process-sheen]')
+    const sheen = document.querySelector('[data-process-static-band]')
     return { opacity: getComputedStyle(dot).opacity, transform: getComputedStyle(sheen).transform,
       active: [...dot.getAnimations(), ...sheen.getAnimations()].filter((item) => item.playState === 'running').length }
   })
@@ -75,7 +75,7 @@ async function readable(page) {
 }
 try {
   // Actual production markup across all three media, five phases and factual special states.
-  for (const state of readLabStates('process-feedback')) {
+  for (const state of readLabStates('process-feedback').filter(state => !state.id.startsWith('pf-fx-'))) {
     const { context, page } = await open(state.id)
     if (!state.id.includes('failed')) {
       await expectVisible(page.locator('[data-node-id] [data-generation-status]'), '状态条在真实节点上可见')
