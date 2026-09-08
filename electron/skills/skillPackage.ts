@@ -16,7 +16,8 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { getSkillsRoots, getUserSkillsRoot } from "../runtimePaths";
-import { readSkillFrontmatterIdentity } from "./skillFrontmatter";
+import { readSkillCuration } from "./skillCuration";
+import { parseSkillFrontmatter, readSkillFrontmatterIdentity } from "./skillFrontmatter";
 
 export const SKILL_PACKAGE_VERSION = "nomi-skill-v1";
 
@@ -153,6 +154,9 @@ export function validateSkillPackage(raw: unknown): ValidatedSkillPackage {
   }
   const identity = readSkillFrontmatterIdentity(fileMap["SKILL.md"]);
   if (identity.error) return { ok: false, error: identity.error };
+  if (readSkillCuration(parseSkillFrontmatter(fileMap["SKILL.md"]).values)?.preview) {
+    return { ok: false, error: "Skill preview media cannot be preserved by this text-only package" };
+  }
   const exportedAt = typeof obj.exportedAt === "number" ? obj.exportedAt : 0;
   return {
     ok: true,
@@ -245,7 +249,8 @@ export function exportSkillPackageByName(directoryName: string, exportedAt: numb
   for (const root of getSkillsRoots()) {
     const dir = path.join(root, directoryName);
     if (fs.existsSync(path.join(dir, "SKILL.md"))) {
-      return buildSkillPackage(directoryName, readSkillDirFiles(dir), exportedAt);
+      const pkg = buildSkillPackage(directoryName, readSkillDirFiles(dir), exportedAt);
+      return validateSkillPackage(pkg).ok ? pkg : null;
     }
   }
   return null;

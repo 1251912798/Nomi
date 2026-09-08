@@ -1,11 +1,14 @@
+import * as runtimePaths from "../runtimePaths";
+import { resolveSkillPreview } from "./skillPreview";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import yaml from "js-yaml";
 import { parseSkillFrontmatter, readSkillFrontmatterIdentity } from "./skillFrontmatter";
 import { readSkillCuration } from "./skillCuration";
 import { discoverSkillRecordsFromRoots } from "./skillStore";
-import { buildSkillPackage, validateSkillPackage } from "./skillPackage";
+import { buildSkillPackage, validateSkillPackage, readSkillDirFiles, exportSkillPackageByName } from "./skillPackage";
 import { getCuratedPrompts } from "../promptLibrary/curatedPrompts";
 
 const root = path.resolve(__dirname, "../..");
@@ -62,4 +65,47 @@ describe("curated Skill and effect intake", () => {
     expect(getCuratedPrompts([changed])[0].prompt).toContain("中性背景");
     expect(getCuratedPrompts([{ ...changed, origin: "user" }])).toEqual([]);
   });
+});
+
+it("rejects a declared binary preview omitted by the text transport", () => {
+  const dir = "curated-multi-view";
+  const files = readSkillDirFiles(path.join(root, "skills", dir));
+  expect(files["assets/preview.jpg"]).toBeUndefined();
+  expect(validateSkillPackage(buildSkillPackage(dir, files, 0)).ok).toBe(false);
+});
+it("projects a preview address independent of dev or packaged renderer location", () => {
+  const { records } = discoverSkillRecordsFromRoots([{ path: path.join(root, "skills"), origin: "builtin" }]);
+  const record = records.find((item) => item.directoryName === "curated-multi-view")!;
+  const effect = { ...record, curation: { ...record.curation!, kind: "effect" as const } };
+  const address = getCuratedPrompts([effect])[0].mediaUrl;
+  for (const renderer of ["http://localhost:5198/", "file:///Applications/Nomi.app/Contents/Resources/app.asar/dist/index.html"]) {
+    expect(new URL(address, renderer).href).toBe("nomi-local://skill-preview/curated-multi-view");
+  }
+});
+
+it("never exports a text envelope with dangling media declarations", () => {
+  const roots = vi.spyOn(runtimePaths, "getSkillsRoots").mockReturnValue([path.join(root, "skills")]);
+  try {
+    expect(exportSkillPackageByName("curated-multi-view", 0)).toBeNull();
+    expect(exportSkillPackageByName("effect-character-three-view", 0)).not.toBeNull();
+  } finally { roots.mockRestore(); }
+});
+it("refuses user media and symlinks outside a skill, including packaged directory layouts", () => {
+  const { records } = discoverSkillRecordsFromRoots([{ path: path.join(root, "skills"), origin: "builtin" }]);
+  const record = records.find((item) => item.directoryName === "curated-multi-view")!;
+  expect(resolveSkillPreview([record.directoryName], [{ ...record, origin: "user" }])).toBeNull();
+  const temp = fs.mkdtempSync(path.join(os.tmpdir(), "curated-preview-"));
+  try {
+    const dir = path.join(temp, "app.asar", "skills", record.directoryName);
+    fs.mkdirSync(path.join(dir, "assets"), { recursive: true });
+    const outside = path.join(temp, "secret.jpg");
+    fs.writeFileSync(outside, "not allowed");
+    const media = path.join(dir, record.curation!.preview!.path);
+    fs.symlinkSync(outside, media);
+    const fixture = { ...record, filePath: path.join(dir, "SKILL.md") };
+    expect(resolveSkillPreview([record.directoryName], [fixture])).toBeNull();
+    fs.unlinkSync(media);
+    fs.writeFileSync(media, "declared output");
+    expect(resolveSkillPreview([record.directoryName], [fixture])?.filePath).toBe(fs.realpathSync(media));
+  } finally { fs.rmSync(temp, { recursive: true, force: true }); }
 });

@@ -92,6 +92,9 @@ async function main() {
     const ledger = fs.existsSync(ledgerPath) ? JSON.parse(fs.readFileSync(ledgerPath, 'utf8')) : {
       model: MODEL, budgetCny: MAX_CNY, cnyPerUsdCeiling: CNY_PER_USD_CEILING, jobs: [],
     }
+    if (anchor && ledger.jobs.filter((job) => !job.name.startsWith('anchor-')).length + jobs.length > 10) {
+      throw new Error('This phase allows at most ten trial images across all invocations')
+    }
     if (ledger.jobs.some((job) => job.state === 'reserved' || job.state === 'submitted')) {
       throw new Error('Unfinished paid request in receipt; reconcile its task before any new submission')
     }

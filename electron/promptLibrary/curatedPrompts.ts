@@ -1,3 +1,4 @@
+import { skillPreviewUrl } from "../skills/skillPreview";
 import { readSkillRecords, type SkillRecord } from "../skills/skillStore";
 import type { LibraryPrompt } from "./promptLibraryTypes";
 
@@ -16,7 +17,7 @@ export function getCuratedPrompts(records: SkillRecord[] = readSkillRecords()): 
       prompt,
       promptType,
       mediaType: item.preview?.type ?? "image",
-      mediaUrl: item.preview ? `skills/${record.directoryName}/${item.preview.path}` : "",
+      mediaUrl: skillPreviewUrl(record),
       origin: "public" as const,
       source: item.group["zh-CN"],
       sourceId: "builtin-curated-effects",
