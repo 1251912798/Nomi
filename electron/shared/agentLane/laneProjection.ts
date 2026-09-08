@@ -1,4 +1,17 @@
-// Agent lane · `LaneSnapshot` → `LaneProjection`（纯函数，主进程侧）
+// Agent lane · `LaneSnapshot` → `LaneProjection`（纯函数，中立契约层）
+//
+// **它住在 `electron/shared/` 而不是 `electron/agentLane/`，因为它一个运行时依赖都没有。**
+// 输入是 pi 的快照形状（`import type`，编译后一行不剩）、输出是本目录里那份中立契约，
+// 中间只有算术和分支——没有 pi 的函数、没有 Electron、没有 Node。谁需要「这份快照画出来
+// 长什么样」谁就能调它：主进程的 `laneHost`、设计实验室、以及阶段 4 之后的渲染层。
+//
+// 这不是搬家图省事，是把一条今天真的炸过的路堵死：投影早先 `import { getSupportedThinkingLevels }
+// from '@earendil-works/pi-ai'`——一个**运行时**导入。设计实验室 import 它的那一刻，
+// 整个 pi-ai（以及它内部那条 CJS 的 `partial-json`）就被拖进了浏览器 bundle，实验室页面
+// 当场白屏，只能靠 `vite.config.ts` 的 `optimizeDeps` 兜一层（#614 的止血贴）。
+// 档位表现在由**调用方**（认识 pi 的那一层）算好装进 `LaneModelFacts` 传进来，
+// 于是这一层对 pi 只剩类型；止血贴随之删掉，`check:boundaries` 的 `src/devlab` 规则
+// 负责保证没人再把主进程实现文件拉回浏览器（R28：能让门岗拦的别留给人）。
 //
 // **这一层唯一的职责是「走一遍，不重排」。** pi 的 transcript 已经有序（探针报告 §5.1：
 // 一条助手消息里 thinking / text / toolCall 各占一个 `contentIndex`，顺序是落盘的），
@@ -8,14 +21,13 @@
 // 对照今天：`agentPanelV4Projection.sortedItems()` 拿 `createdAt` 加数组下标排一遍，
 // 是因为宿主那边的记录本来就没有可信顺序。那个 `sort` 在阶段 4 会被整个删掉。
 import type { LaneSnapshot } from '@earendil-works/pi-agent-core';
-import { getSupportedThinkingLevels } from '@earendil-works/pi-ai';
-import type { Api, AssistantMessage, Model, Usage } from '@earendil-works/pi-ai';
-import type { NomiPricingBasis } from '../shared/agentLane/laneModelConfig.js';
+import type { AssistantMessage, Usage } from '@earendil-works/pi-ai';
+import type { NomiPricingBasis } from './laneModelConfig.js';
 import {
   LANE_TASK_NOTE_TYPE, isLaneTaskNote,
   type LaneMetric, type LanePart, type LanePendingApproval, type LaneProjection,
   type LaneQueueKind, type LaneQueuedMessage, type LaneTaskFacts, type LaneThinking, type LaneThinkingLevel,
-} from '../shared/agentLane/laneContracts.js';
+} from './laneContracts.js';
 
 function textOf(content: unknown): string {
   if (typeof content === 'string') return content;
@@ -57,8 +69,13 @@ function pushAssistantParts(
  * 历史收据静默清空）。
  */
 export interface LaneModelFacts {
-  /** pi 的模型定义（`createNomiProvider` 造的那一份）。推理档从它 derive，不另列表。 */
-  readonly model: Model<Api>;
+  /**
+   * 这个模型真正可选的推理档，**由调用方喂 `getSupportedThinkingLevels(model)` 算好**
+   * （`laneHost.mts` 那一行）。判据仍然只有 pi 那一把尺子——搬的是「谁去问它」，不是尺子本身：
+   * 在这里调那个函数会把整个 pi-ai 运行时拖进每一个 import 本模块的地方（含浏览器）。
+   * 长度 ≤ 1 就是「这个模型没有推理这回事」，与 pi 的 `thinkingLevelMap` 语义一致。
+   */
+  readonly supportedThinkingLevels: readonly LaneThinkingLevel[];
   /** 目录声明的计费三态。**不从 `model.cost` 反推**——那份全零同时长得像三件事。 */
   readonly pricing: NomiPricingBasis;
   /**
@@ -114,9 +131,9 @@ function costMetric(snapshot: LaneSnapshot, pricing: NomiPricingBasis, sawSettle
     ? KNOWN(total) : { state: 'unknown', reason: 'no-settled-turn' };
 }
 
-function reasoningMetric(model: Model<Api>, walk: ReturnType<typeof walkUsage>): LaneMetric {
-  // 「这个模型有没有推理这回事」由 pi 判，我们不看名字也不看档位表。
-  const levels = getSupportedThinkingLevels(model);
+function reasoningMetric(levels: readonly LaneThinkingLevel[], walk: ReturnType<typeof walkUsage>): LaneMetric {
+  // 「这个模型有没有推理这回事」仍由 pi 判（`getSupportedThinkingLevels`），只是那一问
+  // 发生在调用方那一层；我们不看名字也不另列一张档位表。
   if (levels.length <= 1) return { state: 'not-applicable', reason: 'model-has-no-reasoning' };
   if (!walk.sawSettledTurn) return { state: 'unknown', reason: 'no-settled-turn' };
   // 会思考，但供应商这一轮一个 reasoning 字段都没报——那是「没告诉我们」，不是「思考了 0 个 token」。
@@ -159,8 +176,7 @@ function contextMetric(walk: ReturnType<typeof walkUsage>): LaneMetric {
   return walk.lastPrompt === undefined ? { state: 'unknown', reason: 'no-settled-turn' } : KNOWN(walk.lastPrompt);
 }
 
-function projectThinking(snapshot: LaneSnapshot, model: Model<Api>): LaneThinking {
-  const supportedLevels = getSupportedThinkingLevels(model) as readonly LaneThinkingLevel[];
+function projectThinking(snapshot: LaneSnapshot, supportedLevels: readonly LaneThinkingLevel[]): LaneThinking {
   return {
     supportedLevels,
     level: snapshot.configuration.thinkingLevel as LaneThinkingLevel,
@@ -249,9 +265,9 @@ export function projectLaneSnapshot(
       totalTokens: usage.totalTokens,
       cost: costMetric(snapshot, facts.pricing, walk.sawSettledTurn),
       contextTokens: contextMetric(walk),
-      reasoningTokens: reasoningMetric(facts.model, walk),
+      reasoningTokens: reasoningMetric(facts.supportedThinkingLevels, walk),
       ...(facts.contextWindow === undefined ? {} : { contextWindow: facts.contextWindow }),
     },
-    thinking: projectThinking(snapshot, facts.model),
+    thinking: projectThinking(snapshot, facts.supportedThinkingLevels),
   };
 }
