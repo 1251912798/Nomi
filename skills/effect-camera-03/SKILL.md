@@ -38,6 +38,10 @@ metadata:
         evidence:
           - >-
             https://github.com/jnMetaCode/ai-shortfilm-prompts/blob/f21500e5946973949c6bbf02e67e0c21b2e63a35/templates/camera-move-library.md
+      preview:
+        path: assets/cover.png
+        type: image
+        provenance: illustration
 ---
 
 Extreme close-up on {hands/eyes}, micro-movement only, a tremor / a tightening grip

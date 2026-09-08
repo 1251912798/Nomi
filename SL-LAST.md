@@ -1,3 +1,18 @@
+# 封面 v1 · 两轮试产未通过，未全量（2026-09-09）
+
+40 条目标路径与逐条状态：`docs/design/covers/covers-v1-report.md`；实际仅 3 张可用：
+- `skills/effect-camera-01/assets/cover.png`
+- `skills/effect-camera-02/assets/cover.png`
+- `skills/effect-camera-03/assets/cover.png`
+
+接触表：`docs/design/covers/contact-sheet-v2.png`（15 真实 + 3 插画 + 37 明示待生成）；两轮原始目检见 `rejected-trial-1/contact-sheet.png` 与 `rejected-trial-2/contact-sheet.png`。
+实付：本次 $0.1250，保守折算 ¥1.00；含旧锚图累计 $0.1625 / ¥1.30。返工 1 轮，共 2 轮试产。04/05 仍带入锚图主体，未满足隐喻；已按两轮上限停止付费，全量 40 张没有完成。
+
+验证：contracts 全部阻断项通过（75 项全跑，prior-art 修正后复验）；3 项 advisory 保留。6/6 相关单测、10 张 PNG 解码、15 份原媒体一致性、停止付费守卫通过。
+
+---
+以下为此前交接历史：
+
 v3 截图：docs/design/mockups/2026-09-08-skill-library-cards/library-cards{,@2x}.png
 v3 逐字检查：1x/2x 无折叠控件、正文至许可证末句完整、无 Markdown 标记；左图顶对齐，图下说明清楚；46 条正文及 80 段长文滚动到底验收通过。
 v2 截图：docs/design/mockups/2026-09-08-skill-library-cards/{library-cards,node-effects}{,@2x}.png

@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import fs from 'node:fs'
+import { createHash } from 'node:crypto'
 import path from 'node:path'
 import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
@@ -8,14 +9,15 @@ const require = createRequire(import.meta.url)
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const MODEL = 'gemini-2.5-flash-image-preview'
 const PRICE_URL = 'https://apimart.ai/api/marketplace/models?keyword=nano%20banana&page_size=10'
-const MAX_CNY = 6
+const MAX_CNY = 25
 // Conservative accounting ceiling, not a claimed live exchange rate.
 const CNY_PER_USD_CEILING = 8
 const args = process.argv.slice(2)
 const value = (flag) => args.includes(flag) ? args[args.indexOf(flag) + 1] : undefined
 const dryRun = args.includes('--dry-run')
-const anchor = value('--anchor')
-const limit = Number(value('--limit') ?? (anchor ? 10 : 3))
+const anchor = path.join(root, 'docs/design/covers/anchors/anchor-3.png')
+const anchorHash = createHash('sha256').update(fs.readFileSync(anchor)).digest('hex')
+const limit = Number(value('--limit') ?? 40)
 const outputRoot = path.join(root, 'docs/design/covers')
 const ledgerPath = path.join(outputRoot, 'generation-receipt.json')
 
@@ -34,7 +36,7 @@ function getEntries() {
     const front = parseSkillFrontmatter(source)
     if (front.error) throw new Error(`Invalid Skill: ${name}`)
     const entry = readSkillCuration(front.values)
-    if (!entry || entry.preview) return []
+    if (!entry || entry.kind !== 'effect' || entry.preview) return []
     return [{ name, filename, entry, front }]
   })
 }
@@ -46,41 +48,45 @@ function palette() {
     return `${name} ${match[1]}`
   }).join(', ')
 }
-function promptFor(concept, variation) {
-  return `Editorial flat geometric illustration for Nomi. Concept: ${concept}. ` +
-    `Palette from design tokens: ${palette()}. Use only paper, ink and one blue accent. ` +
-    `One visual metaphor, at most five simple shapes, generous paper space, no gradients, no 3D rendering, ` +
-    `no faces, no letters, no text, no numbers, no watermarks. 16:9 landscape. ` +
-    `${variation} Title is added later by the UI, never inside the image.`
+function metaphors() {
+  const rules = fs.readFileSync(path.join(root, 'docs/design/2026-09-08-cover-illustration-rules.md'), 'utf8')
+  const rows = [...rules.matchAll(/^\| (effect-[a-z0-9-]+) \| ([^|]+) \| ([^|]+) \|$/gm)]
+  const result = new Map(rows.map((row) => [row[1], row[3].trim()]))
+  if (result.size !== 40 || rows.length !== 40) throw new Error('Rules must define exactly 40 unique effect metaphors')
+  return result
 }
-const variations = [
-  'Three flat paper panels fan from a single blue rectangle, like one idea becoming three views. Crisp straight edges.',
-  'Three paper panels orbit one blue disk, like different views of the same object. Gentle curves, balanced spacing.',
-  'A single blue rectangle passes through three offset ink outline frames. Cut-paper geometry, asymmetric placement.',
-]
+function promptFor(metaphor) {
+  return `参考图仅是画风色卡，不是构图草稿。请从空白纸重新设计一张16:9横向几何插画。` +
+    `必须画的全部主体，仅为：${metaphor}。除此以外不要加任何形状。` +
+    `不要复制参考图的三组套框、左右蓝条或穿框排列。主体严格按上句重画。` +
+    `保留参考图的浅暖纸底与轻微纸纹、深墨色线条粗细和克制的平面剪纸感。` +
+    `主体中的一个小形状填参考图同款蓝色，其余形状全部纸色填充配墨线；全图恰好一块蓝色，最多两块，禁止三块或更多。` +
+    `Keep only the reference palette and line weight; do NOT copy its objects or layout. ` +
+    `Design tokens: ${palette()}; match their appearance in the reference. ` +
+    `大幅留白。无文字、标题、字母、数字、水印、人脸、五官、写实物体、渐变、3D、投影、装饰星星。标题由UI叠加，不在图内。`
+}
 
 async function main() {
-  if (!Number.isInteger(limit) || limit < 1 || limit > (anchor ? 10 : 3)) {
-    throw new Error('--limit must be 1–3 for anchors, 1–10 after an explicit --anchor choice')
-  }
+  if (!Number.isInteger(limit) || limit < 1 || limit > 40) throw new Error('--limit must be 1–40')
+  if (args.some((arg) => !['--dry-run', '--limit', value('--limit')].includes(arg))) throw new Error('Unknown argument')
   const entries = getEntries()
-  const jobs = anchor
-    ? entries.slice(0, limit).map((item) => ({
-      name: item.name, item,
-      output: path.join(root, 'skills', item.name, 'assets/cover.png'),
-      prompt: promptFor(`${item.entry.title.en}. ${item.entry.summary.en}`, 'Match the reference image style, line weight, shapes and palette.'),
-    }))
-    : variations.slice(0, limit).map((variation, index) => ({
-      name: `anchor-${index + 1}`,
-      output: path.join(outputRoot, 'anchors', `anchor-${index + 1}.png`),
-      prompt: promptFor('one subject, multiple views', variation),
-    }))
+  const concepts = metaphors()
+  const jobs = entries.slice(0, limit).map((item) => {
+    const metaphor = concepts.get(item.name)
+    if (!metaphor) throw new Error(`Missing approved metaphor: ${item.name}`)
+    return { name: item.name, item, output: path.join(root, 'skills', item.name, 'assets/cover.png'), prompt: promptFor(metaphor) }
+  })
   if (jobs.some((job) => job.prompt.length > 1000)) throw new Error('Prompt exceeds the documented 1000-character limit')
   if (dryRun) {
-    console.log(JSON.stringify({ mode: anchor ? 'trial' : 'anchors', missingMedia: entries.length, model: MODEL, limit, budgetCny: MAX_CNY, jobs: jobs.map(({ item: _item, ...job }) => job) }, null, 2))
+    const evidence = JSON.parse(fs.readFileSync(ledgerPath, 'utf8')).priceEvidence
+    const estimatedUsd = evidence.pricing.starting_price * jobs.length
+    console.log(JSON.stringify({ mode: 'covers-v1', missingMedia: entries.length, model: MODEL, limit, budgetCny: MAX_CNY,
+      estimatedUsd, estimatedCny: estimatedUsd * CNY_PER_USD_CEILING, priceEvidence: evidence,
+      anchor: path.relative(root, anchor), anchorHash, jobs: jobs.map(({ item: _item, ...job }) => job) }, null, 2))
     return
   }
-  if (!process.versions.electron) throw new Error('Paid run requires Electron: pnpm exec electron scripts/covers/generate-covers.mjs --limit 3')
+  if (!jobs.length) { console.log('All effect covers already have media.'); return }
+  if (!process.versions.electron) throw new Error('Paid run requires Electron: pnpm exec electron scripts/covers/generate-covers.mjs --limit 5')
   const { app, nativeImage } = require('electron')
   app.setName(JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')).name)
   app.setPath('userData', path.join(app.getPath('appData'), app.getName()))
@@ -92,15 +98,15 @@ async function main() {
     const ledger = fs.existsSync(ledgerPath) ? JSON.parse(fs.readFileSync(ledgerPath, 'utf8')) : {
       model: MODEL, budgetCny: MAX_CNY, cnyPerUsdCeiling: CNY_PER_USD_CEILING, jobs: [],
     }
-    if (anchor && ledger.jobs.filter((job) => !job.name.startsWith('anchor-')).length + jobs.length > 10) {
-      throw new Error('This phase allows at most ten trial images across all invocations')
+    if (ledger.trialReview?.status === 'failed') {
+      throw new Error('Two trial rounds did not pass visual review; no further paid generation')
     }
+    ledger.budgetCny = MAX_CNY
     if (ledger.jobs.some((job) => job.state === 'reserved' || job.state === 'submitted')) {
       throw new Error('Unfinished paid request in receipt; reconcile its task before any new submission')
     }
-    if (!anchor && ledger.jobs.some((job) => job.name.startsWith('anchor-'))) throw new Error('Anchors already attempted; choose one before further generation')
-    if (anchor && !ledger.jobs.some((job) => job.state === 'completed' && path.resolve(root, job.output) === path.resolve(anchor))) {
-      throw new Error('--anchor must point to a completed candidate from this receipt')
+    if (!ledger.jobs.some((job) => job.state === 'completed' && path.resolve(root, job.output) === path.resolve(anchor))) {
+      throw new Error('Approved anchor must be a completed candidate from this receipt')
     }
     if (jobs.some((job) => fs.existsSync(job.output))) throw new Error('Refusing to overwrite existing media')
     const pricingResponse = await fetch(PRICE_URL, { signal: AbortSignal.timeout(30000) })
@@ -134,13 +140,13 @@ async function main() {
       if (!Number.isFinite(data.used_balance)) throw new Error('Balance evidence unavailable')
       return data.used_balance
     }
-    const reference = anchor ? `data:image/png;base64,${fs.readFileSync(path.resolve(anchor)).toString('base64')}` : undefined
+    const reference = `data:image/png;base64,${fs.readFileSync(anchor).toString('base64')}`
     for (const job of jobs) {
       const before = await usedBalance()
-      const receipt = { name: job.name, prompt: job.prompt, output: path.relative(root, job.output), reservedCny: reserveCny, state: 'reserved', before, startedAt: new Date().toISOString() }
+      const receipt = { name: job.name, selected: true, promptVersion: 2, model: MODEL, anchor: path.relative(root, anchor), anchorHash, prompt: job.prompt, output: path.relative(root, job.output), reservedCny: reserveCny, state: 'reserved', before, startedAt: new Date().toISOString() }
       ledger.jobs.push(receipt)
       saveLedger(ledger)
-      const submitted = await apiJson('images/generations', { model: MODEL, prompt: job.prompt, size: '16:9', n: 1, ...(reference ? { image_urls: [reference] } : {}) })
+      const submitted = await apiJson('images/generations', { model: MODEL, prompt: job.prompt, size: '16:9', n: 1, image_urls: [reference] })
       const taskId = submitted.data?.[0]?.task_id
       if (!taskId) throw new Error('Submission has no task id; reconcile receipt, do not resubmit')
       receipt.taskId = taskId
@@ -168,19 +174,19 @@ async function main() {
       fs.writeFileSync(job.output, decoded.toPNG())
       receipt.after = await usedBalance()
       receipt.balanceDelta = Math.max(0, receipt.after - before)
+      receipt.actualUsd = receipt.balanceDelta
+      receipt.actualCnyCeiling = receipt.actualUsd * CNY_PER_USD_CEILING
       receipt.state = 'completed'
       receipt.completedAt = new Date().toISOString()
       saveLedger(ledger)
-      if (job.item) {
-        const yaml = require('js-yaml')
-        job.item.front.values.metadata.nomi.library.preview = { path: 'assets/cover.png', type: 'image', provenance: 'illustration' }
-        const source = fs.readFileSync(job.item.filename, 'utf8')
-        fs.writeFileSync(job.item.filename, `---\n${yaml.dump(job.item.front.values, { lineWidth: 120 })}---\n${source.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/, '')}`)
-      }
+      const yaml = require('js-yaml')
+      job.item.front.values.metadata.nomi.library.preview = { path: 'assets/cover.png', type: 'image', provenance: 'illustration' }
+      const source = fs.readFileSync(job.item.filename, 'utf8')
+      fs.writeFileSync(job.item.filename, `---\n${yaml.dump(job.item.front.values, { lineWidth: 120 })}---\n${source.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/, '')}`)
       console.log(`${job.name}: ${receipt.output}; balance delta ${receipt.balanceDelta.toFixed(6)}`)
       if (receipt.balanceDelta * CNY_PER_USD_CEILING > reserveCny) throw new Error('Unexpected charge; stopped before next submission')
     }
-    console.log(anchor ? 'Trial complete.' : 'Three-anchor stage complete. Stop here for user selection; no batch generation.')
+    console.log(`Completed ${jobs.length} covers; receipt saved.`)
   } finally {
     fs.closeSync(lockFd)
     fs.unlinkSync(lock)
