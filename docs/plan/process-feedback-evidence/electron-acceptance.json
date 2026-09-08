@@ -1,0 +1,17 @@
+[
+  {
+    "surface": "electron",
+    "check": "zoom-60",
+    "result": "green"
+  },
+  {
+    "surface": "electron",
+    "check": "reduced-motion",
+    "result": "green",
+    "messages": [
+      "生成中 · 已等 17 秒",
+      "生成中 · 已等 17 秒",
+      "生成中 · 已等 17 秒"
+    ]
+  }
+]
