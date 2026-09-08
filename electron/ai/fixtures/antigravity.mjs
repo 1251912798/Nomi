@@ -36,10 +36,10 @@ if (mode === 'discovery') {
   if (media) {
     const plugin = path.join(process.cwd(), 'task-gate');
     policy = JSON.parse(/^const policy = (.+);$/m.exec(fs.readFileSync(path.join(plugin, 'gate.cjs'), 'utf8'))[1]);
-    const hooks = JSON.parse(fs.readFileSync(path.join(plugin, 'hooks.json'), 'utf8'))['nomi-task-gate'];
+    const hooks = JSON.parse(fs.readFileSync(path.join(process.cwd(), '.agents', 'hooks.json'), 'utf8'))['nomi-task-gate'];
     hook = (phase, event) => JSON.parse(runShell(phase === 'init'
       ? hooks.PreInvocation[0].command : hooks.PreToolUse[0].hooks[0].command,
-      { input: JSON.stringify(event), encoding: 'utf8', timeout: 3000 }));
+      { cwd: path.join(process.cwd(), '.agents'), input: JSON.stringify(event), encoding: 'utf8', timeout: 3000 }));
 
   }
   const send = (event) => process.stdout.write(JSON.stringify(event) + '\n');
@@ -60,7 +60,7 @@ if (mode === 'discovery') {
         if (mode !== 'media-missing-hook') hook('init', {});
         const prompt = JSON.parse(input.trim()).message.content;
         fs.writeFileSync(path.join(output, 'preflight-files'), JSON.stringify(policy.images.map(image => fs.existsSync(image.path))));
-        send({event:'result',result:{status:'SUCCESS',conversation_id:conversationId,response:prompt,
+        send({event:'result',result:{status:'SUCCESS',conversation_id:conversationId,response:mode === 'media-handshake-mismatch' ? 'different answer' : prompt,
           num_turns:1,duration_seconds:0.1,usage:{input_tokens:1,output_tokens:1,thinking_tokens:0,cache_read_tokens:0,total_tokens:2}}});
       }
     });
@@ -129,7 +129,7 @@ if (mode === 'discovery') {
       send({ event: 'step_update', step_update: { conversation_id: conversationId, step_index: 1, state: 'ACTIVE', step_type: 'agent_response', text_delta: '你' } });
       const result = { event: 'result', result: { status: 'SUCCESS', conversation_id: conversationId, response: '你好',
         duration_seconds: 0.1, num_turns: media ? 2 : 1, usage: { input_tokens: 2, output_tokens: 2, thinking_tokens: 0, cache_read_tokens: 0, total_tokens: 4 } } };
-      send(result); if (mode === 'duplicate') send(result);
+      send(result); if (mode === 'media-slow-drain') setTimeout(() => {}, 2500); if (mode === 'duplicate') send(result);
       if (mode === 'trailing-garbage') process.stdout.write('bad JSON');
       if (mode === 'nonzero') process.exitCode = 1;
     });

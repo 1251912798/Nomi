@@ -1,0 +1,156 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-08-antigravity-cli-windows",
+  "problem_type": "External CLI lifecycle and compatibility assumptions",
+  "symptom": "Windows discovery is limited with an unknown version; newer media versions are rejected; handshake and drain failures mislead users.",
+  "direct_cause": "Discovery gates Windows while prepared execution bypasses the gate; media uses exact version equality; hook command and discovery rely on shell/layout assumptions; handshake shares hook error; drain is fixed to text budget.",
+  "class_root": "The CLI adapter lacks a single explicit platform, protocol-version and lifecycle policy plus exhaustive user-action diagnostics.",
+  "affected_population": [
+    "Windows CLI users",
+    "New CLI releases",
+    "All media capability callers"
+  ],
+  "scope_paths": [
+    "electron/ai/antigravityProcess.ts",
+    "electron/ai/antigravityConnection.ts",
+    "electron/ai/antigravityMedia.ts",
+    "electron/ai/antigravityMediaHook.ts",
+    "electron/shared/antigravity.ts",
+    "src/ui/onboarding/AntigravityConnectionCard.tsx",
+    "src/ui/onboarding/useAntigravityModelWorkspace.tsx",
+    "electron/shared/antigravityErrors.ts"
+  ],
+  "entry_points": [
+    "Discovery and test from settings",
+    "Text/media generation through prepared invocations"
+  ],
+  "external_sources": [
+    {
+      "kind": "official-doc",
+      "url": "https://antigravity.google/docs/hooks/",
+      "checked_at": "2026-09-08",
+      "purpose": "Customization-root hooks configuration"
+    },
+    {
+      "kind": "official-doc",
+      "url": "https://antigravity.google/docs/cli/plugins/",
+      "checked_at": "2026-09-08",
+      "purpose": "Plugin-root hooks are also supported; user report only partially correct"
+    },
+    {
+      "kind": "official-doc",
+      "url": "https://nodejs.org/api/child_process.html",
+      "checked_at": "2026-09-08",
+      "purpose": "Windows detached and child.kill semantics"
+    },
+    {
+      "kind": "official-doc",
+      "url": "https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/taskkill",
+      "checked_at": "2026-09-08",
+      "purpose": "Recursive taskkill scope"
+    }
+  ],
+  "invariants": [
+    "Windows must not spawn until descendant ownership is proven, including prepared invocations.",
+    "Media compatibility is minimum-version based; actual capability and hook evidence remain required.",
+    "Hook discovery follows upstream customization layout; authorization markers remain in task-gate.",
+    "Drain and total runtime budgets derive from capability; no artifact returns before cleanup.",
+    "Each adapter error has an actionable translated diagnostic."
+  ],
+  "generality_proof": "All discovery and execution paths share the platform guard; prepared and raw media validate the same version policy; all media stages share hook and drain ownership. The connection and model workspaces consume the same error mapping.",
+  "shared_boundaries": [
+    {
+      "path": "electron/ai/antigravityProcess.ts",
+      "symbol": "runAntigravityProcess",
+      "responsibility": "Reject unsupported platform before any input, identity or spawn; own process cleanup and capability drain."
+    },
+    {
+      "path": "electron/ai/antigravityMedia.ts",
+      "symbol": "assertAntigravityMediaInput",
+      "responsibility": "Enforce minimum version for both raw and prepared media inputs."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "electron/ai/antigravityConnection.ts",
+      "entry_point": "prepareAntigravity",
+      "disposition": "enforced",
+      "evidence": "Discovery calls platform guard before resolving environment or executable."
+    },
+    {
+      "path": "electron/ai/antigravityProcess.ts",
+      "entry_point": "runAntigravityProcess",
+      "disposition": "enforced",
+      "evidence": "Direct and prepared execution both call guard before filesystem or spawn."
+    },
+    {
+      "path": "electron/ai/antigravityMedia.ts",
+      "entry_point": "assertPreparedAntigravityMediaInput",
+      "disposition": "enforced",
+      "evidence": "Prepared media records converge on assertAntigravityMediaInput."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Every Windows machine and future CLI media release can reach these shared assumptions.",
+    "same_class_scan": [
+      "rg ANTIGRAVITY_ electron/ai/antigravity*.ts electron/shared/antigravity*.ts",
+      "Inspected prepareAntigravity, runAntigravityProcess, assertPreparedAntigravityMediaInput, antigravityTask and both settings UI consumers."
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "electron/ai/antigravityProcess.ts",
+    "invariant": "Platform support is decided once and cannot be bypassed by executable preparation.",
+    "failure_mode": "WINDOWS_UNSUPPORTED before spawn; protocol/hook failures withhold input and artifacts.",
+    "exception_policy": "none",
+    "strategy": "Use one platform guard in discovery and execution; preserve nonce authorization and minimum-version checks at shared media boundary.",
+    "artifacts": [
+      "electron/ai/antigravityProcess.ts",
+      "electron/ai/antigravityMedia.ts",
+      "electron/ai/antigravityMediaHook.ts"
+    ]
+  },
+  "regression_tests": [
+    "electron/ai/antigravityWindows.test.ts",
+    "electron/ai/antigravityProcess.test.ts",
+    "electron/ai/antigravityMedia.test.ts",
+    "src/ui/onboarding/AntigravityConnectionCard.test.ts"
+  ],
+  "class_regression_tests": [
+    "electron/ai/antigravityWindows.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "electron/ai/antigravityProcess.ts",
+      "electron/ai/antigravityConnection.ts",
+      "electron/ai/antigravityMedia.ts",
+      "electron/ai/antigravityMediaHook.ts"
+    ],
+    "rationale": "Remove prepared invocation platform bypass, exact media version gate, inline Windows shell assignment and plugin-root hooks copy."
+  },
+  "dependency_lifecycle": {
+    "decision": "retain-with-exit",
+    "rationale": "agy is user installed, not a pinned application dependency. Native Windows Job Object ownership is unavailable through Node built-ins; do not install a wrapper that cannot supply the guarantee.",
+    "current": "Observed local agy 1.1.22; reported Windows 1.1.27; media evidence 1.1.21.",
+    "target": "Minimum 1.1.21 with actual per-version capability verification; Windows support after lifecycle RC proof.",
+    "exit_criteria": [
+      "Prove cancellation and early-parent-exit descendant cleanup on Windows RC using Node built-ins or a separately approved owned runtime.",
+      "Retire unsupported guard only once Windows lifecycle regression coverage and real RC evidence pass."
+    ]
+  },
+  "migration": "No stored data migration. Temporary customization workspace is rebuilt per run; cached capability success remains exact-version bound.",
+  "residual_risks": [
+    "Windows is explicitly unsupported; Windows 真机待群里那位用户用 RC 验。",
+    "CLI stream-json hook invocation on reported 1.1.27 remains unverified; loading a named hook does not prove execution."
+  ],
+  "invariant_owner_layer": {
+    "layer": "electron/ai",
+    "tests": [
+      "electron/ai/antigravityWindows.test.ts",
+      "electron/ai/antigravityProcess.test.ts",
+      "electron/ai/antigravityMedia.test.ts"
+    ]
+  }
+}
