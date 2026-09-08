@@ -1,0 +1,106 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-09-feel-unregistered-surfaces",
+  "problem_type": "未登记基线误作零预算",
+  "symptom": "PR #662 CI j3/j5 第一次扫描即 Feel baseline drift",
+  "direct_cause": "compareFeelBaseline 用缺省 0 合并未登记与显式 0",
+  "class_root": "共享策略未区分登记存在性与计数",
+  "affected_population": [
+    "所有新旅程、截图和规则组合"
+  ],
+  "scope_paths": [
+    "tests/ux/_feel-observer.mjs",
+    "scripts/feel-nightly.mjs",
+    "scripts/check-feel.mjs"
+  ],
+  "entry_points": [
+    "截图",
+    "状态等待",
+    "nightly"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "仓库内部策略裁决，无第三方协议变化。",
+  "invariants": [
+    "未登记组合只记录，已登记组合超预算阻断；显式零仍阻断增长"
+  ],
+  "generality_proof": "所有三个入口使用 compareFeelBaseline 与 recordNewFeelSurfaces，无按旅程特殊分支。",
+  "shared_boundaries": [
+    {
+      "path": "tests/ux/_feel-observer.mjs",
+      "symbol": "compareFeelBaseline",
+      "responsibility": "基于登记存在性裁决阻断"
+    },
+    {
+      "path": "tests/ux/_feel-observer.mjs",
+      "symbol": "recordNewFeelSurfaces",
+      "responsibility": "保留未登记发现供总账"
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "tests/ux/_feel-observer.mjs",
+      "entry_point": "checkpoint screenshot and wait APIs",
+      "disposition": "enforced",
+      "evidence": "截图与 wait 都调用 checkpoint"
+    },
+    {
+      "path": "scripts/feel-nightly.mjs",
+      "entry_point": "runFeelNightly",
+      "disposition": "enforced",
+      "evidence": "nightly 复用共享比较器并递归汇总首次记录"
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "所有未来新旅程/规则均可复发",
+    "same_class_scan": [
+      "rg compareFeelBaseline tests scripts：observer、nightly、策略/browser 测试",
+      "核查 screenshot 与 waitForFunction/Selector/LoadState 均汇入 checkpoint"
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "tests/ux/_feel-observer.mjs",
+    "invariant": "登记存在性决定 record/ratchet",
+    "failure_mode": "已登记增长失败；减少记录供更新基线；未登记保留证据",
+    "exception_policy": "none",
+    "strategy": "移除缺省 0；所有调用共用存在性判断与发现记录",
+    "artifacts": [
+      "tests/ux/_feel-observer.mjs",
+      "scripts/feel-nightly.mjs",
+      "scripts/check-feel.mjs"
+    ]
+  },
+  "regression_tests": [
+    "tests/ux/feel-policy.test.mjs",
+    "tests/ux/_feel-observer.browser.mjs"
+  ],
+  "class_regression_tests": [
+    "tests/ux/feel-policy.test.mjs",
+    "tests/ux/_feel-observer.browser.mjs"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "tests/ux/_feel-observer.mjs"
+    ],
+    "rationale": "删除未登记默认零的旧路径"
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "内部策略语义不由第三方控制",
+    "exit_criteria": []
+  },
+  "migration": "首轮真实旅程证据登记 owner；既有计数不增加。新运行目录隔离，避免不同旅程实例覆盖发现。",
+  "residual_risks": [
+    "本地 macOS 复跑与 Linux 的字体渲染可能不同，CI 需验证。"
+  ],
+  "invariant_owner_layer": {
+    "layer": "tests/ux/_feel-observer.mjs",
+    "tests": [
+      "tests/ux/feel-policy.test.mjs",
+      "tests/ux/_feel-observer.browser.mjs"
+    ],
+    "why": "所有 checkpoint 与 nightly 汇入共享策略层。"
+  }
+}

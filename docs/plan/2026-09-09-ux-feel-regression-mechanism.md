@@ -87,3 +87,33 @@
 - 修复后本地 `pnpm run test:e2e`：**SMOKE PASS: 17 assertions**。`artifacts/feel/smoke/contact-sheet.json` 保留 findings=13 / exempted=13 / drift=[]；截图人工核对侧栏、镜头标签和生成方式区域，扫描没有停用。原始红记录 `/tmp/ux-feel-smoke-details.log`；绿记录 `/tmp/ux-feel-smoke-green.log`。
 - `vitest list --filesOnly` 实际收集清单不含两份 browser 文件，仅收纯策略 `feel-policy.test.mjs`。浏览器原 11 个用例与纯策略 2 个用例均通过；CI 接线检查 13/13。
 - 本轮完整 `python3 scripts/with-gates-lock.py -- pnpm run gates` **exit 0**：76 contracts / 73 pass / 0 blocking / 3 advisory；Vitest 1291 files pass + 1 skipped，12060 tests pass + 2 skipped；agent runtime / janitor / stats 及 Vite/Electron build 通过。日志 `/tmp/ux-feel-ci-fix-gates.log`。未提交其他运行报告，UF-LAST.md 仅取消跟踪（.gitignore 不变）。
+
+## 第三次 CI 红：未登记面与零基线分离（2026-09-09）
+
+已获裁决：只在已登记的旅程/截图/规则组合阻断增长；未登记组合 record，保存完整发现和截图到 new-surfaces.json 与接触表，夜跑汇总。已登记减少写入 drift 提醒同步基线但不阻断（仅 actual > allowed 阻断），显式 0 与未登记必须不同。不修改生产代码、扫描阈值或已有发现。回滚边界仅 observer/nightly 策略与本次登记；验收为策略先红后绿、browser、7/7 loopback、smoke、完整 gates、原分支 push。
+
+根因分类 recurring：截图、wait checkpoint 与 nightly 都调用 compareFeelBaseline；缺少“登记存在性”不变量，所有新旅程和新规则均可复发。策略由共享比较器拥有，第三方依赖不控制此语义，无需升级。首轮录数以同套真实旅程的原始 contact-sheet 为证，不使用最大值或人为上调。
+
+### 首轮扫到的疑似真缺陷
+
+- j3 text-overlap 1：`j3-first-success-t1-guided-canvas.png`，CI run 34279293883；元素待本轮 DOM 证据补齐，交总账。
+- j3 blocked-interaction 3：同截图；元素待本轮 DOM 证据补齐，交总账。此任务不改生产代码。
+
+
+### 本轮取证与边界
+
+- 原 Linux run 34279293883：j3 guided-canvas 1/45/3/4（text-overlap/font-size/blocked-interaction/clipped-content），j5 modify-project 14/1（font-size/clipped-content）。采用原数，不混用 macOS 最大值。日志 `/tmp/uf-ci-failed.log`，下载目录 `/tmp/uf-ci-34279293883/`。
+- j3 两项疑似缺陷共同截图：`/tmp/uf-ci-34279293883/evals/runs/2026-09-08-21-15-journeys-ci/screenshots/j3-first-success-t1-guided-canvas.png`。旧 observer 把 j3 接触表覆盖成 j5，因此 Linux 元素身份无法从 JSON 恢复，不能编造三个命中元素。macOS 同流程 DOM 佐证：text-overlap 命中 `span 风格` 与 `button ×`，另命中 `span 小孩` 与时间轴 `span 0 段 · 0:00`；blocked-interaction 命中工具栏 `button 图片` 与 `button ×`。本地 raw：`artifacts/feel/eval-iso-b62e1cf7-8481-4878-9192-40084c0db7aa/contact-sheet.json`。Linux 1/3 与本地 2/2 不等价，待 Linux 下一轮独立目录证据补齐元素归属。
+- 首轮新增 22 条规则基线：j1=2、j2=2、j3=7、j4=2、j5=9；每条记录来源，owner 为 design-system/canvas，理由统一“首轮基线，待清账”。原 10 条基线计数未改。新面归零后保留 count=0，不允许删登记后重新掉回 record。
+- **覆盖缺口**：j1/j2/j4 当前旧驱动仍寻找 `给生成助手发送消息`，真实面板已是 Resident Composer，三条在 setup 阶段报 infra；登记的是实际错误现场而非成功里程碑，不能称 j1–j5 全流程录全。j3 两里程碑通过；j5 前三里程碑通过，export 阶段 Electron 关闭，完整链路未获证。报告 `evals/runs/2026-09-08-21-25-journeys/report.md`。未为补数伪造页面或修改生产代码。
+- 独立验收阻碍：loopback 6/7；production-mcp 的 document_not_found 结构化错误码实际为 null（message=Creation document not found），重建后重跑仍红。原断言未放宽；证据 `/tmp/uf-production-mcp.log`。本次生产代码禁令内不能修这个生产协议缺陷。
+- 策略先红后绿 `/tmp/uf-record-red.log` → `/tmp/uf-policy-final.log`（5/5）；browser `/tmp/uf-browser-final.log`（11/11）；smoke `/tmp/uf-smoke.log`（17 assertions）。完整 gates 在 `/tmp/uf-third-gates.log` 排锁。
+
+- 补 smoke 的显式零登记 1 条：13 条精确豁免后实际剩余 0；防止本轮缺省语义变更使额外重复元素逃回 record。真实登记文件的回归测试证明原 13 条通过、追加第 14 条仍阻断。总新增为 23 条（j1–j5 22 条 + smoke 1 条）。
+- 7/7 阻碍已定位到最早传输边界：`electron/capabilityCore/documentSurface.ts:34` 抛的是 `Object.assign(new Error(...), { code: 'document_not_found' })`；`electron/capabilityCore/mcpRpcError.ts:36` 只为 `instanceof RpcError` 保留结构，普通带 code 的 Error 被降成纯 message。跨进程后 errorCode 丢失，单进程 operation-matrix 测试不能覆盖这条路径。生产文件未修改。
+
+- Linux 接触表仍保留 j5 modify 与 error 两张截图；error 的 font-size=14/clipped-content=1 也逐条录入，未丢弃错误现场发现。
+
+### 本轮交付验证
+
+完整 `python3 scripts/with-gates-lock.py -- pnpm run gates` 已 exit 0；76 contracts 的阻断项全部通过（3 项 advisory），Vitest 1291 files / 12063 tests pass、2 tests skipped，运行时测试与 Vite/Electron 构建通过。日志 `/tmp/uf-third-gates.log`。推送前再次读取远端：main 仍为 `4886cdde3b4f49e9279de62476c56971edf5f1e0`，已合入本分支。此结果不覆盖上文仍失败的真实 loopback 旅程与 j1/j2/j4 基线覆盖缺口，不能声称全部验收完成。

@@ -1,5 +1,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
+import { randomUUID } from 'node:crypto'
 import { scanFeel } from './_feel.mjs'
 
 const baselinePath = new URL('./feel-baseline.json', import.meta.url)
@@ -13,9 +14,21 @@ export function compareFeelBaseline(result, baseline) {
   const rules = new Set([...counts.keys(), ...expected.map((entry) => entry.rule)])
   return [...rules].flatMap((rule) => {
     const actual = counts.get(rule) || 0
-    const allowed = expected.find((entry) => entry.rule === rule)?.count || 0
+    const entry = expected.find((entry) => entry.rule === rule)
+    if (!entry) return []
+    const allowed = entry.count
     return actual === allowed ? [] : [{ rule, actual, allowed, kind: actual > allowed ? 'new' : 'reduced-update-baseline' }]
   })
+}
+
+/** Missing registration is evidence to triage, never an implicit zero budget. */
+export function recordNewFeelSurfaces(result, baseline) {
+  const rules = [...new Set(result.findings.map((finding) => finding.rule))]
+  return rules.filter((rule) => !baseline.entries.some((entry) => entry.label === result.label && entry.rule === rule))
+    .map((rule) => ({
+      label: result.label, rule, mode: 'record',
+      findings: result.findings.filter((finding) => finding.rule === rule),
+    }))
 }
 
 /** Consume reviewed findings once; new text, smaller type or duplicate nodes still fail. */
@@ -37,7 +50,7 @@ export function applyFeelExemptions(result, exemptions) {
 /** Every launched page records first, then rejects only baseline drift. */
 export function installFeelObserver(page, {
   name,
-  outputDir = path.resolve('artifacts/feel', name.replace(/[^a-z0-9_-]/gi, '_')),
+  outputDir = path.resolve('artifacts/feel', `${name.replace(/[^a-z0-9_-]/gi, '_')}-${randomUUID()}`),
   baseline = JSON.parse(fs.readFileSync(baselinePath, 'utf8')),
   exemptions = JSON.parse(fs.readFileSync(exemptionsPath, 'utf8')),
 } = {}) {
@@ -46,16 +59,24 @@ export function installFeelObserver(page, {
   let sequence = 0
   const screenshot = page.screenshot.bind(page)
   const records = []
+  const newSurfaces = []
+  const recordedSurfaces = new Set()
   async function checkpoint(label, existingScreenshot) {
     const result = await scanFeel(page, { label })
     const reviewed = applyFeelExemptions(result, exemptions)
     const drift = compareFeelBaseline(reviewed.result, baseline)
     const file = existingScreenshot || path.join(outputDir, `${++sequence}.png`)
     if (!existingScreenshot) await screenshot({ path: file })
-    const record = { ...result, screenshot: file, drift, exempted: reviewed.exempted, exemptions: reviewed.entries }
+    const surfaces = recordNewFeelSurfaces(reviewed.result, baseline).map((surface) => ({ ...surface, screenshot: file }))
+    const fresh = surfaces.filter((surface) => !recordedSurfaces.has(JSON.stringify([surface.label, surface.rule])))
+    for (const surface of surfaces) recordedSurfaces.add(JSON.stringify([surface.label, surface.rule]))
+    newSurfaces.push(...surfaces)
+    const record = { ...result, screenshot: file, drift, newSurfaces: surfaces, exempted: reviewed.exempted, exemptions: reviewed.entries }
     records.push(record)
     fs.writeFileSync(path.join(outputDir, 'contact-sheet.json'), JSON.stringify(records, null, 2) + '\n')
-    if (drift.length) throw new Error(`Feel baseline drift at ${label}: ${JSON.stringify(drift)}; evidence: ${outputDir}`)
+    fs.writeFileSync(path.join(outputDir, 'new-surfaces.json'), JSON.stringify(newSurfaces, null, 2) + '\n')
+    if (fresh.length) console.log(`${fresh.length} 个新面首次记录，未纳入棘轮；evidence: ${outputDir}`)
+    if (drift.some((change) => change.actual > change.allowed)) throw new Error(`Feel baseline drift at ${label}: ${JSON.stringify(drift)}; evidence: ${outputDir}`)
     return result
   }
   const instrumented = new WeakSet()

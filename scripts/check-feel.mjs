@@ -27,10 +27,10 @@ for (const file of ['tests/ux/feel-baseline.json', 'tests/ux/feel-exemptions.jso
         }
       }
     }
-    if (file.includes('baseline') && (!Number.isInteger(entry.count) || entry.count < 1)) throw new Error(`Invalid count: ${key}`)
+    if (file.includes('baseline') && (!Number.isInteger(entry.count) || entry.count < 0)) throw new Error(`Invalid count: ${key}`)
     if (previous) {
       const old = previous.entries.find((item) => item.label === entry.label && item.rule === entry.rule)
-      if (!old || (entry.count || 1) > (old.count || 1)) throw new Error(`Feel ratchet may only decrease: ${key}`)
+      if (!old || (entry.count ?? 1) > (old.count ?? 1)) throw new Error(`Feel ratchet may only decrease: ${key}`)
       if (file.includes('exemptions')) {
         const remaining = [...old.findings]
         for (const finding of entry.findings) {
@@ -38,6 +38,13 @@ for (const file of ['tests/ux/feel-baseline.json', 'tests/ux/feel-exemptions.jso
           if (index < 0) throw new Error(`Feel exemption evidence may only decrease: ${key}`)
           remaining.splice(index, 1)
         }
+      }
+    }
+  }
+  if (previous && file.includes('baseline')) {
+    for (const old of previous.entries) {
+      if (!current.entries.some((entry) => entry.label === old.label && entry.rule === old.rule)) {
+        throw new Error(`Keep the registered feel surface at count 0 instead of deleting it: ${old.label}:${old.rule}`)
       }
     }
   }
