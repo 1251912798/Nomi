@@ -27,8 +27,8 @@ export function GenerationWaitingSurface({ audio = false, previewUrl, previewLab
     <div data-generation-waiting data-process-motion={reduced ? 'reduced' : 'full'}
       className="absolute inset-0 overflow-hidden rounded-nomi bg-nomi-ink-05 pointer-events-none">
       {!frame ? <div ref={sheen} data-process-sheen className="absolute inset-0 bg-[linear-gradient(105deg,transparent_30%,var(--nomi-accent-soft)_50%,transparent_70%)]" /> : null}
-      {audio ? <div data-process-audio-waiting className="absolute inset-x-4 top-1/2 flex h-8 -translate-y-1/2 items-center gap-1" aria-hidden>
-        {Array.from({ length: 24 }, (_, index) => <span key={index} className="h-3 flex-1 rounded-full bg-nomi-ink-30" />)}
+      {audio ? <div data-process-audio-waiting className="absolute inset-x-4 top-1/2 flex h-8 -translate-y-1/2 items-center justify-center gap-1" aria-hidden>
+        {Array.from({ length: 24 }, (_, index) => <span key={index} className="h-6 w-1 shrink-0 rounded-full bg-nomi-ink-30" />)}
       </div> : null}
       {frame ? <img src={frame} alt="" className="absolute inset-0 size-full object-contain" draggable={false} /> : null}
       {previewUrl && previewUrl !== frame ? <img key={previewUrl} src={previewUrl} alt="" onLoad={acceptFrame}

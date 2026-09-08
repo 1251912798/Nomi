@@ -1,4 +1,6 @@
 import React from 'react'
+import { useNodeLivePreviewStore } from '../store/nodeLivePreviewStore'
+import { isVideoDepthProgressPhase } from '../videoDepth/videoDepthProgressPhase'
 import { useGenerationCanvasStore } from '../store/generationCanvasStore'
 import type { GenerationCanvasNode } from '../model/generationCanvasTypes'
 import { useGenerationFeedback } from '../../observability/useGenerationFeedback'
@@ -8,6 +10,7 @@ import { useReducedProcessMotion } from './useReducedProcessMotion'
 export function NodeGenerationStatus({ node }: { node: GenerationCanvasNode }): JSX.Element | null {
   const zoom = useGenerationCanvasStore((state) => state.canvasZoom)
   const readableScale = 1 / Math.min(1, Math.max(0.6, zoom))
+  const preview = useNodeLivePreviewStore((state) => state.byNode[node.id])
   const feedback = useGenerationFeedback(node)
   const reduced = useReducedProcessMotion()
   const [visible, setVisible] = React.useState(false)
@@ -23,11 +26,11 @@ export function NodeGenerationStatus({ node }: { node: GenerationCanvasNode }): 
     const timeout = setTimeout(() => {
       if (reduced) { setVisible(false); return }
       fade = element.current?.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 240, fill: 'forwards' })
-      if (fade) fade.onfinish = () => setVisible(false)
-      else setVisible(false)
+
     }, reduced ? 4000 : 2000)
-    return () => { clearTimeout(timeout); fade?.cancel() }
+    const hide = setTimeout(() => setVisible(false), reduced ? 4000 : 2240)
+    return () => { clearTimeout(timeout); clearTimeout(hide); fade?.cancel() }
   }, [feedback?.active, feedback?.saved, reduced])
-  if (!feedback || feedback.phase === 'failed' || (!feedback.active && !visible)) return null
-  return <span ref={element} className="inline-flex origin-top-left" style={{ transform: `scale(${readableScale})`, maxWidth: `${100 / readableScale}%` }}><GenerationStatusBar feedback={feedback} overlay={Boolean(node.result?.url)} /></span>
+  if (isVideoDepthProgressPhase(node.progress?.phase) || !feedback || feedback.phase === 'failed' || (!feedback.active && !visible)) return null
+  return <span ref={element} className="inline-flex origin-top-left" style={{ transform: `scale(${readableScale})`, maxWidth: `${100 / readableScale}%` }}><GenerationStatusBar feedback={feedback} overlay={Boolean(node.result?.url || preview)} /></span>
 }

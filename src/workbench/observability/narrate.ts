@@ -156,8 +156,11 @@ export function narrateGenerationError(
   params?: Record<string, string>,
 ): { reason: string; hint: string } {
   const key = ERROR_KEY_BY_KIND[kind]
+  const reason = i18n.t(`generationCommon.observability.error.${key}.reason`, params)
+  // These two failures occur before the provider is called; never infer billing from a generic failure.
+  const uncharged = kind === 'outbound-blocked-submit' || kind === 'asset-upload-failed'
   return {
-    reason: i18n.t(`generationCommon.observability.error.${key}.reason`, params),
+    reason: uncharged ? `${reason} · ${i18n.t('generationCommon.observability.progress.notCharged')}` : reason,
     hint: i18n.t(`generationCommon.observability.error.${key}.hint`, params),
   }
 }
@@ -260,4 +263,13 @@ export function narrateErrorActionLabel(
     `generationCommon.observability.action.${ACTION_KEY[action]}.${variant === 'secondary' ? 'alt' : 'main'}`,
     params,
   )
+}
+
+/** Queue history outcomes stay in the narration owner too; cancellation is not failure. */
+export function narrateTaskOutcome(state: string, recoverable = false): string {
+  if (recoverable) return i18n.t('taskCenter.row.recoverable')
+  if (state === 'cancelled') return i18n.t('taskCenter.row.cancelled')
+  if (state === 'error') return i18n.t('taskCenter.row.failed')
+  if (state === 'success') return i18n.t('generationCommon.observability.progress.saved')
+  return narrateProgress(state === 'queued' ? 'queued' : 'generating')
 }

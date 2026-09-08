@@ -266,6 +266,7 @@ export const MEDIA_DIMENSION_UPDATE_OPTIONS = {
  * 保持壳瘦身（R9）+ 可裸测。视频回填 meta.videoDuration 是「拖入视频一律 5 秒」的 catch-all 修复键。
  */
 export function computeMediaMetaPatch(params: {
+  preserveSize?: boolean;
   resultType: string | undefined;
   meta: Record<string, unknown>;
   currentSize: { width?: number; height?: number } | undefined;
@@ -294,7 +295,7 @@ export function computeMediaMetaPatch(params: {
       }
     : { imageWidth: width, imageHeight: height, imageAspectRatio: width / height };
   const shouldPatchSize =
-    !userResized &&
+    !params.preserveSize && !userResized &&
     (currentSize?.width !== nextSize.width || currentSize?.height !== nextSize.height);
   if (
     previousWidth === width &&
@@ -305,7 +306,7 @@ export function computeMediaMetaPatch(params: {
     return null;
   return {
     ...(shouldPatchSize ? { size: { width: nextSize.width, height: nextSize.height } } : {}),
-    meta: { ...meta, ...mediaPatch, previewHeight: nextSize.previewHeight },
+    meta: { ...meta, ...mediaPatch, previewHeight: params.preserveSize ? currentSize?.height ?? nextSize.previewHeight : nextSize.previewHeight },
   };
 }
 

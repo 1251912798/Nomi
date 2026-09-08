@@ -22,10 +22,14 @@ function subscribe(listener: () => void): () => void {
 }
 const inactiveSubscribe = () => () => {}
 
+export function useGenerationFeedbackClock(active = true): number {
+  return useSyncExternalStore(active ? subscribe : inactiveSubscribe, snapshot, snapshot)
+}
+
 export function useGenerationFeedback(node: GenerationCanvasNode) {
   useTranslation()
   const queued = useGenerationQueueStore((state) => selectIsNodeQueued(state, node.id))
   const active = queued || node.status === 'queued' || node.status === 'running'
-  const timestamp = useSyncExternalStore(active ? subscribe : inactiveSubscribe, snapshot, snapshot)
+  const timestamp = useGenerationFeedbackClock(active)
   return generationFeedback(node, timestamp, queued)
 }

@@ -14,14 +14,15 @@ export type GenerationFeedback = {
 }
 
 /** Cache the exact narration result, so all three surfaces consume one call per node/tick/locale. */
-const cache = new WeakMap<GenerationCanvasNode, { key: string; feedback: GenerationFeedback | null }>()
+const cache = new WeakMap<object, { key: string; feedback: GenerationFeedback | null }>()
 
 export function generationFeedback(node: GenerationCanvasNode, now: number, queued = false): GenerationFeedback | null {
   const key = `${Math.floor(now / 1000)}:${queued}:${i18n.resolvedLanguage}`
-  const cached = cache.get(node)
+  const identity = node.progress ?? node.runs?.[0] ?? node
+  const cached = cache.get(identity)
   if (cached?.key === key) return cached.feedback
   const feedback = deriveFeedback(node, now, queued)
-  cache.set(node, { key, feedback })
+  cache.set(identity, { key, feedback })
   return feedback
 }
 

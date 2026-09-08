@@ -1,3 +1,5 @@
+import { generationFeedback } from '../observability/generationFeedback'
+import { narrateTaskOutcome } from '../observability/narrate'
 // 任务中心的展示派生（纯函数，逻辑全在这，组件只负责画）。
 // 方案：docs/plan/2026-08-02-task-center-queue.md
 //
@@ -77,7 +79,9 @@ export function buildTaskCenterView(input: {
       recoverable,
       waveIndex: entry.waveIndex,
       ...(typeof node?.progress?.percent === 'number' && group === 'running' ? { percent: node.progress.percent } : {}),
-      ...(group === 'running' && node?.progress?.message ? { phaseText: node.progress.message } : {}),
+      phaseText: node && entry.state !== 'cancelled'
+        ? generationFeedback(node, now, group === 'queued')?.message ?? narrateTaskOutcome(entry.state, recoverable)
+        : narrateTaskOutcome(entry.state, recoverable),
       ...(elapsedFor(entry, now) !== undefined ? { elapsedMs: elapsedFor(entry, now) } : {}),
       cancel: group === 'queued' ? 'free' : group === 'running' ? resolveRunningCancelKind(node) : 'none',
       target: { kind: 'canvas_node' as const, nodeId: entry.nodeId },

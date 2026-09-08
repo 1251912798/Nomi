@@ -154,6 +154,7 @@ function BaseGenerationNodeImpl({
   const updateMediaDimensions = (width: number, height: number, durationSeconds?: number) => {
     const patch = computeMediaMetaPatch({
       resultType: node.result?.type,
+      preserveSize: Boolean(node.runs?.some((run) => run.resultId === node.result?.id)),
       meta: node.meta || {},
       currentSize: node.size,
       width,
@@ -424,7 +425,7 @@ function BaseGenerationNodeImpl({
       <header
         className={cn(
           'generation-canvas-v2-node__header',
-          'absolute top-[10px] left-[10px] right-[10px] z-[2]',
+          'absolute top-[10px] left-[10px] right-[10px] z-[4]',
           'flex items-center justify-start gap-2 min-h-0 p-0',
           'pointer-events-auto cursor-grab',
         )}

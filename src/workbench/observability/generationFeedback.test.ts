@@ -1,3 +1,4 @@
+import { createProgress } from '../generationCanvas/store/runRecordHelpers'
 import React from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
@@ -30,5 +31,10 @@ it('waiting audio has equal-height bars and no invented preview', async () => {
   const markup = renderToStaticMarkup(React.createElement(GenerationWaitingSurface, { audio: true, previewLabel: 'preview' }))
   expect(markup).not.toContain('<img')
   expect(markup).not.toContain('data-process-progress')
-  expect(markup.match(/class="h-3 flex-1 rounded-full bg-nomi-ink-30"/g)).toHaveLength(24)
+  expect(markup.match(/class="h-6 w-1 shrink-0 rounded-full bg-nomi-ink-30"/g)).toHaveLength(24)
+})
+
+it('rejects invalid percentages before they can become seemingly real zero or one hundred', () => {
+  for (const percent of [-1, 101, NaN, Infinity]) expect(createProgress({ percent }).percent).toBeUndefined()
+  expect(createProgress({ percent: 60 }).percent).toBe(60)
 })
