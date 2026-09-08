@@ -69,12 +69,17 @@ export function legacyPiDigest(data: unknown): string {
 // This is a private, version-locked working cache, never a project/approval ledger.
 // The checksum detects truncation/corruption; it is not an authenticity signature.
 export function validateLegacyPiData(raw: unknown) {
-  const data = dataSchema.parse(raw);
-  const ids = new Set<string>();
+  return validateGraph(dataSchema.parse(raw));
+}
+
+function validateGraph<T extends {
+  entries: Array<{ id: string; parentId: string | null; type: string; firstKeptEntryId?: unknown }>;
+  leafId: string | null;
+}>(data: T): T {
   const parents = new Map<string, string | null>();
   for (const entry of data.entries) {
-    if (ids.has(entry.id)) throw new Error(`Duplicate snapshot entry: ${entry.id}`);
-    if (entry.parentId !== null && !ids.has(entry.parentId)) {
+    if (parents.has(entry.id)) throw new Error(`Duplicate snapshot entry: ${entry.id}`);
+    if (entry.parentId !== null && !parents.has(entry.parentId)) {
       throw new Error(`Broken snapshot parent: ${entry.id}`);
     }
     if (entry.type === 'compaction') {
@@ -86,10 +91,9 @@ export function validateLegacyPiData(raw: unknown) {
         throw new Error('Broken snapshot compaction boundary');
       }
     }
-    ids.add(entry.id);
     parents.set(entry.id, entry.parentId);
   }
-  if (data.leafId !== null && !ids.has(data.leafId)) throw new Error('Broken snapshot leaf');
+  if (data.leafId !== null && !parents.has(data.leafId)) throw new Error('Broken snapshot leaf');
   return data;
 }
 
@@ -103,5 +107,7 @@ export function validateLegacyPiEnvelope(value: unknown) {
     || (raw.piVersion !== '0.84.3' && raw.piVersion !== '0.85.1')
     || typeof raw.sha256 !== 'string' || !/^[a-f0-9]{64}$/.test(raw.sha256)
     || legacyPiDigest(raw.data) !== raw.sha256) throw new Error('invalid-legacy-pi-envelope');
-  return validateLegacyPiData(raw.data);
+  // Migration preserves unknown payloads as inert raw notes. The old executable
+  // snapshot loader separately requires validateLegacyPiData's closed schema.
+  return validateGraph(dataSchema.extend({ entries: z.array(base.extend({ type: z.string() })) }).parse(raw.data));
 }

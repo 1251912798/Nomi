@@ -27,7 +27,7 @@ export async function importSnapshot(
   serialized: string,
   options: { cwd: string; tempRoot: string },
 ): Promise<SessionManager> {
-  const data = validateLegacyPiEnvelope(JSON.parse(serialized));
+  const data = validateData(validateLegacyPiEnvelope(JSON.parse(serialized)));
   const materializationDir = await mkdtemp(join(options.tempRoot, 'nomi-pi-snapshot-'));
   try {
     const file = join(materializationDir, 'context.jsonl');

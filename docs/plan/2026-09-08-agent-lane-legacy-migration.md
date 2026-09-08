@@ -26,6 +26,12 @@
 
 旧 pi schema/纯校验搬到 shared/agentLane/legacyPiSnapshot.mts，旧 IO 与新准入共用；旧 stable JSON 算法搬到 shared/legacyAgentJson.ts，避免归档 hash 的对象顺序语义漂移。词表 owner 随文件迁移、成员不变。4 组准入测试在 decoder-only 阳性对照下全部先红（/tmp/nomi-switch-integrity-red.log），新增保密错误断言；下一步仍为纯转换和来源优先级，尚未写迁移事务。
 
+## 纯转换子任务
+
+`laneLegacyImportPlan.mts` 对全部来源先准入，再按有证明的 v4 thread 身份压住同线程 host（含 cleared），无绑定的 AI SDK 保持独立。host 按原数组序输出 N+T；缺失工具参数与历史结果未验证事实显式保存。pi 的完整性/图结构与可执行 payload 分开：未知 payload 保留为 inert custom，旧 snapshot loader 仍要求原来的严格 payload schema。原生摘要在原 sourceIndex 追加一条旧摘要 user message；不采用 buildContextEntries 的重排结果。
+
+工具配对按原项关联传播无效性，避免多调用消息局部降级后留下新孤儿；不排序、不补造成功、不重放权限。合成字段的零 usage 仅满足 API 形状，不是历史账单测量。三来源真实公开 append→close/reopen 测试断言 parts 与预计贡献数、顺序一致，并断言 HTTP 请求为 0；这仍不是 archive/manifest 事务或生产入口已接通的证据。
+
 边界实测补充：原 private-session-snapshot-envelope 规则仅匹配字符串，误把旧格式的只读比较当 writer。保留信封声明/常量命中，排除严格相等/不等的格式检查；真实登记表正反夹具先红后绿。不新增框架债。
 
 ## 首个子任务验证

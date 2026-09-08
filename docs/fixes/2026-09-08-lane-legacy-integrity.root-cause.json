@@ -15,7 +15,6 @@
     "electron/shared/agentLane/legacyPiSnapshot.mts",
     "electron/shared/legacyAgentJson.ts",
     "electron/harness/runtime/pi/snapshot.mts",
-    "electron/harness/runtime/pi/snapshotSchema.mts",
     "electron/projectAgentHost/projectAgentSnapshot.ts"
   ],
   "entry_points": [

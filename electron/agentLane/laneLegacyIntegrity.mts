@@ -1,13 +1,14 @@
 import { createHash } from 'node:crypto';
 import { assertProjectAgentBinding, type ProjectBinding } from '../shared/projectBinding.js';
 import { stableProjectAgentJson } from '../shared/legacyAgentJson.js';
-import { validateLegacyPiEnvelope } from '../shared/agentLane/legacyPiSnapshot.mjs';
+import { snapshotEntrySchema, validateLegacyPiEnvelope } from '../shared/agentLane/legacyPiSnapshot.mjs';
 import { legacyRecord, type LegacySource, type LegacyConversation } from './laneLegacySources.js';
 
 export interface ValidatedLegacyConversation extends LegacyConversation {
   /** Only v4 records and checksum-validated host threads acquire this identity. */
   readonly boundThreadId?: string;
   readonly activeEntryIds?: ReadonlySet<string>;
+  readonly supportedEntryIds?: ReadonlySet<string>;
 }
 export interface ValidatedLegacySource extends LegacySource {
   readonly conversations: readonly ValidatedLegacyConversation[];
@@ -53,13 +54,14 @@ function validateHost(raw: Record<string, unknown>, binding: ProjectBinding): vo
   }
 }
 
-function activePiIds(value: unknown): ReadonlySet<string> {
+function piFacts(value: unknown): Pick<ValidatedLegacyConversation, 'activeEntryIds' | 'supportedEntryIds'> {
   const data = validateLegacyPiEnvelope(value);
   const parents = new Map(data.entries.map(entry => [entry.id, entry.parentId]));
   const active = new Set<string>();
   let id = data.leafId;
   while (id !== null) { active.add(id); id = parents.get(id) ?? null; }
-  return active;
+  return { activeEntryIds: active,
+    supportedEntryIds: new Set(data.entries.filter(entry => snapshotEntrySchema.safeParse(entry).success).map(entry => entry.id)) };
 }
 
 /** All source admission is pure: failures expose no content and never mutate a source. */
@@ -78,14 +80,15 @@ function validateSource(source: LegacySource, binding: ProjectBinding): Validate
     if (conversation.format !== 'pi') return conversation;
     const record = legacyRecord(conversation.raw);
     if (!record) fail();
-    if (raw.version !== 4) return { ...conversation, activeEntryIds: activePiIds(record) };
+    if (raw.version !== 4) return { ...conversation, ...piFacts(record) };
     requireBinding(record.project, binding);
     if (typeof record.threadId !== 'string' || !record.threadId.trim() || record.threadId.trim() !== record.threadId
       || record.sessionKey !== `nomi:project-agent:${binding.immutableProjectUuid}:g${binding.projectGeneration}`
       || conversation.key !== hash(JSON.stringify([record.sessionKey, record.threadId]))
       || (record.source !== 'native' && record.source !== 'legacy-limited')) fail();
     return { ...conversation, boundThreadId: record.threadId,
-      activeEntryIds: record.snapshot === undefined ? new Set<string>() : activePiIds(JSON.parse(String(record.snapshot))),
+      ...(record.snapshot === undefined ? { activeEntryIds: new Set<string>(), supportedEntryIds: new Set<string>() }
+        : piFacts(JSON.parse(String(record.snapshot)))),
     };
   }) };
 }
