@@ -33,7 +33,6 @@ export function createC0Collection(directory, report) {
       return row
     },
     finish(profile, requests) {
-      if (!fs.existsSync(new URL('../_feel.mjs', import.meta.url))) walk.record(Error('main 尚无 _feel.mjs（#662）；体感扫描未执行'), { id: 'feel', surface: 'storyboard', reachedViaRepair: false })
       writeJson(path.join(directory, 'model-requests.json'), requests.map(r => ({ path: r.path, body: r.body })))
       const files = copyTranscripts(profile, directory)
       writeJson(path.join(directory, 'r30.json'), scoreCollectedAgent({

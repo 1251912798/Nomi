@@ -49,6 +49,7 @@ test('collected Agent failures cannot become perfect R30 even after repair or sc
   assert.deepEqual(scoreCollectedAgent(input).turns, { numerator: 0, denominator: 1 })
   assert.equal(scoreCollectedAgent(input).firstTool.numerator, 0)
   assert.equal(scoreCollectedAgent({ ...input, deviations: [], stations: [{ id: '02', status: 'passed' }] }).turns.numerator, 1)
+  assert.equal(scoreCollectedAgent({ ...input, deviations: [{ station: '02', assertion: 'feel:font-size' }] }).turns.numerator, 1, 'UI findings do not misrepresent a successful Agent turn')
 })
 test('response capture drains pending bodies and preserves capture failures; prose error is not failure', async () => {
   let resolve, written

@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { createHash } from 'node:crypto'
-import { screenshotSettled } from '../_assert.mjs'
+import { screenshotSettled, scanFeel } from '../_assert.mjs'
 
 export function writeJson(file, value) {
   fs.mkdirSync(path.dirname(file), { recursive: true })
@@ -9,11 +9,13 @@ export function writeJson(file, value) {
 }
 export function scoreCollectedAgent({ tools, stations, deviations, stationId, population, attempted }) {
   const station = stations.find(row => row.id === stationId)
-  const failed = deviations.some(row => row.station === stationId)
+  const failed = deviations.some(row => row.station === stationId
+    && !['station-evidence', 'visual-quiescence'].includes(row.assertion)
+    && !row.assertion?.startsWith('feel:'))
   const correct = Boolean(tools[0]?.ok) && !failed
   return { population,
     firstTool: { numerator: correct ? 1 : 0, denominator: tools.length ? 1 : 0 },
-    turns: { numerator: attempted && correct && station?.status === 'passed' ? 1 : 0, denominator: attempted ? 1 : 0 },
+    turns: { numerator: attempted && correct && station && !['running', 'unreachable'].includes(station.status) ? 1 : 0, denominator: attempted ? 1 : 0 },
     note: `Measured Agent station ${stationId}; repaired failures remain failures. ${population === 'loopback' ? 'Synthetic provider; not real-model acceptance.' : 'Text-only real provider.'}` }
 }
 export async function startEvidence({ app, win, directory, payload }) {
@@ -35,9 +37,7 @@ export async function startEvidence({ app, win, directory, payload }) {
       entry.screenshot = screenshot
       entry.store = store
       writeJson(path.join(directory, store), await payload())
-      const scanner = new URL('../_feel.mjs', import.meta.url)
-      const feel = fs.existsSync(scanner) ? await (await import(scanner.href)).scanFeel(win, { label: entry.id })
-        : { available: false, reason: 'main has no _feel.mjs; PR #662 still open at implementation time' }
+      const feel = await scanFeel(win, { label: entry.id })
       writeJson(path.join(directory, `${entry.id}.feel.json`), feel)
       return { screenshot, store, captureIssues: (feel.findings ?? []).map(finding => ({
         assertion: `feel:${finding.rule}`, layer: 'UI', actual: finding, expected: '无体感扫描违规',

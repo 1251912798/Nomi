@@ -5,7 +5,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parseArgs, promisify } from 'node:util'
 import { execFileSync, execFile } from 'node:child_process'
-import { createWalkSession } from '../tests/ux/_assert.mjs'
+import { createWalkSession, scanFeel } from '../tests/ux/_assert.mjs'
 import { launchNomiApp } from '../tests/ux/_launchApp.mjs'
 import { createAgentRuntimeFixture } from '../tests/ux/agent-runtime-fixture.mjs'
 import { DOCUMENT } from '../tests/ux/agent-runtime-walk-support.mjs'
@@ -98,9 +98,6 @@ for (const entry of cases) for (const input of entry.inputs) {
       if (agentAttempt && !files.length) throw Error('当前旧运行时没有 pi 原生 JSONL；请求已存，原生转录缺失')
     })
     await station('feel', '复用 main 的体感扫描', async () => {
-      const file = path.join(root, 'tests/ux/_feel.mjs')
-      if (!fs.existsSync(file)) throw Error('main 尚无 _feel.mjs（#662）；体感扫描未执行')
-      const { scanFeel } = await import(new URL('../tests/ux/_feel.mjs', import.meta.url))
       writeJson(path.join(target, 'feel.json'), await scanFeel(launched.win, { label: id }))
     })
 

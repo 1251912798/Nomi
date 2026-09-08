@@ -34,7 +34,7 @@
 
 - C0 保留原始断言和默认 fail-fast；collect 在原 step 外加站点 session。首轮零费用完整 00–07 通过，含模拟 MP4 与冷重启。原脚本当前 main 是 8 站、预算常量 ¥8，与任务书描述的候选分支 13 站/¥50 不同；本任务不改其预算或断言。
 - 旧运行时原生转录实际住在 `.nomi/agent-thread-context-v1.json` 的 native 快照内（`electron/harness/runtime/pi/snapshot.mts:64` 原样导出 SessionManager）；校验 SHA256 后将原始 header/entries 原样写为 JSONL，并保留完整原容器、leafId、来源说明。新 lane 的 `.nomi/agent-sessions/**/*.jsonl` 直接拷贝。两者均不从 UI 气泡重建。
-- #662 当前 OPEN（核对 head `7294a6c5f03206b82daf909df99f6bf7d5908db4`），`scanFeel(page,{label})` 是只读公开入口；当前 main 缺失则每站写不可用原因，case 记 deviation。未复制扫描器，也未改 installFeelObserver 接线。
+- 实施阶段 #662 尚未合入，缺失时每站写原因、case 记 deviation。交付前 #662 已合入 main `ac9f5cf22` 并整合进任务分支；`scanFeel(page,{label})` 公开 API 未变，直接复用实际扫描结果。未复制扫描器，也未改 installFeelObserver 接线。
 - 9 surfaces 各 ≥3 runnable 输入。现有 G1 的未来整链状态不变，S1 当前输入只测已可用的技能导入，不声称新 lane 自动触发通过。T1/T3/M1/M3/D1 输入明确为当前 surface 子任务，完整原始任务仍按 G1 卡独立验收。
 - 真实 APIMart 文本 gpt-5-nano：已捕获 HTTP 400 `nomi_generation_plan` schema 错误；先截图、存原始请求/响应与原生转录，再测试侧写固定分镜并重开创作。两条样本的 Agent 站仍 failed/repaired，下游 storyboard passed/reachedViaRepair。没有生产修复，没有媒体付费请求。
 - 文本预留沿用 c0-real-budget.requestQuote/reserve，外层共享 sweep ceiling ≤¥3；只允许 APIMart 文本端点，报价未知/非文本/预算超限在发送前拒绝。站点费用记预留增量，case 最终费用取 APIMart token balance 增量（共享 token 并发可能计入别人使用，保留归因限制）。
@@ -67,3 +67,5 @@ Ponytail 独立明细发现四项机制问题，推送前一并修正：timeline
 - 修正后全量：`artifacts/sweep/2026-09-08T22-43-05.905Z/report.md`，33 输入 / 221 站 / 33 case trace / 6 pi 转录；截图与 store 全部存在，C0 冷重启路径及八站情绪日志保留。¥0，33 条全部为尚未合入的体感扫描器缺失。以前 C0 超时/缩略图红收据仍链接保留，本轮未复现不等于修复。
 - 二次复核确认输入状态、R30、错误分类已修正；另发现尚未收到响应头的请求也必须等待。已把登记前移到 transport 调用前，drain 关闭新请求入口并动态等待后来登记的 body；可控延迟响应头/body 的测试覆盖此竞态。相关 Node 测试总计 19 项，walkthroughs 门岗通过；未追加真实请求。
 - 最终树完整验证：`artifacts/sweep/gates-final-tree.log` exit 0；75 项 contracts 无阻断、1294 个 Vitest 文件 / 12077 测试通过，Agent/runtime 与构建通过。最终使用这份收据交付；Ponytail 150KB diff 上限要求按机制/登记/复核修正拆提交并分批推送，同一个 PR 交付全部内容。
+- 推送前 #662 合入，已整合 `ac9f5cf22`（合并提交 `53e964aa2`，只处理 package.json 命令并列注册冲突）。重新全量 sweep/gates 验证实际扫描器；R30 将体感/证据失败与 Agent 领域失败区分，防止字体或截屏问题误计成工具写错，单测覆盖。
+- 带 #662 的最终 sweep：`artifacts/sweep/2026-09-08T23-10-36.886Z/report.md`，33 输入 / 221 站 / 33 trace / 6 pi 转录，¥0；体感实际运行并记录 5,897 条逐站原始命中（字号 2,669、遮挡 2,420、重叠 725、截断 83），功能断言无新增失败。原始命中不等于已确认问题，人工去重归因见 human-review.md。
