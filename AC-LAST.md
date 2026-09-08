@@ -1,3 +1,15 @@
+# PR #661 CI 根因修复 · 2026-09-09
+
+- 失败旅程：`production-mcp`，第 205 行期望 `document_not_found`，实际 `errorCode: null`。
+- 根因：共享 RPC serializer 只保留 `RpcError` 的码，普通 `Error + code` 经 GUI RPC 丢码；不是通知静音/焦点契约错误。
+- 修复：`rpcErrorWirePayload` 复用已有公开错误投影，保留合法码并避免携带私有异常字段；原旅程断言不放宽。
+- main 对照：run `34269855450` E2E 成功，但 loopback step 是 **skipped**，不能当成该旅程通过。
+- 先红：本地 `2026-09-08T19-54-08.159Z-real-user-journeys` 为 6/7；新增四类错误往返测试 4 红。
+- 后绿：本地 `2026-09-08T20-01-01.292Z-real-user-journeys` 为 **7/7**；生产旅程 **58 assertions**、重启恢复、H.264/AAC MP4 导出通过；九张截图已查看。相关单测 **43/43**，根因合同与 fresh build 通过。
+- 完整 `pnpm run gates`：通过；75 门岗中 72 通过、0 阻断失败、3 文档 advisory；Vitest 12075 passed / 2 skipped，运行时测试与构建通过。
+- 已整合 main `d566c99c3`；推送后补 exact-head Quality Gate 收据。
+- 付费：0；未更改通知 UX、未绕过 hook、未合并 PR。
+
 # 产品接入交接 · 2026-09-09
 
 - 选 b：do–mi–re–do / C4–E4–D4–C4，2.25 秒；四音木质音色先抬起后回落，辨识清楚且克制。
