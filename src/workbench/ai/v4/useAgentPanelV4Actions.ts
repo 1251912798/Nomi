@@ -1,3 +1,4 @@
+import { listAvailableModelsForAgent } from "../../generationCanvas/agent/availableModels"
 // Composer intent and input remain local; the lane owns execution and approvals.
 import React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -131,6 +132,8 @@ export function useAgentPanelV4Actions(surface: ResidentSurface, data: AgentPane
     }
     try {
       const captured = captureSendContext(surface, state.creationDocumentTools)
+      const availableModels = await listAvailableModelsForAgent()
+      if (laneClient.context() !== owner) return false
       let target: TargetRef
       let preconditions: PreconditionSet | undefined
       if (isDocumentSurface(surface)) {
@@ -150,6 +153,7 @@ export function useAgentPanelV4Actions(surface: ResidentSurface, data: AgentPane
         documentId: captured.activeDocumentId,
         target, preconditions,
         contextSnapshot: captured.snapshot,
+        availableModels,
         attachments: projectAgentAttachmentClaims(state.projectAgentAttachments),
         systemPrompt: composeResidentSystemPrompt(surfacePrompt, state.creationActiveSkill ? null : selectedLibraryPrompt),
         skillKey: options?.skillKey ?? state.creationActiveSkill?.key,

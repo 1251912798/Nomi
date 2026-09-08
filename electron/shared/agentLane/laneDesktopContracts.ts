@@ -1,3 +1,4 @@
+import type { AgentModelEntry } from "../agentCapabilities/availableModels"
 import type { ProjectAgentAttachmentRef } from '../workbenchInput'
 import type { ProjectAgentAttachmentClaim } from '../workbenchInput'
 import type { ProjectBinding } from '../projectBinding'
@@ -15,6 +16,7 @@ export interface LaneComposerContext {
   target?: TargetRef
   preconditions?: PreconditionSet
   contextSnapshot?: AgentContextSnapshot
+  availableModels?: readonly AgentModelEntry[]
   attachments?: readonly ProjectAgentAttachmentClaim[]
   systemPrompt?: string
   displayText?: string

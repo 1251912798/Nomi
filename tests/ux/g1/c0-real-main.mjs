@@ -3,6 +3,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { createRequire } from 'node:module'
+import { planSampleFetch } from './c0-plan-sample-budget.mjs'
 import { budgetedFetch, CNY_PER_USD } from './c0-real-budget.mjs'
 export async function attachRealDispatch({ quote, ledgerPath }) {
   const require = createRequire(import.meta.url)
@@ -34,8 +35,9 @@ export async function attachRealDispatch({ quote, ledgerPath }) {
   }
   ledger.initialUsedUsd ??= await balance()
   persist()
-  transport.appFetch = budgetedFetch({ send: originalAppFetch, quote, ledger, persist })
-  globalThis.fetch = budgetedFetch({ send: originalGlobalFetch, quote, ledger, persist })
+  const wrapFetch = quote.planOnly ? planSampleFetch : budgetedFetch
+  transport.appFetch = wrapFetch({ send: originalAppFetch, quote, ledger, persist })
+  globalThis.fetch = wrapFetch({ send: originalGlobalFetch, quote, ledger, persist })
   return {
     async snapshot() {
       ledger.billedUsd = Math.max(ledger.billedUsd ?? 0, (await balance()) - ledger.initialUsedUsd)

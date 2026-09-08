@@ -3,7 +3,8 @@ import { captureCanvasReadResult } from './canvasReadResultSeal'
 
 const deps = vi.hoisted(() => ({ send: vi.fn(), models: vi.fn() }))
 vi.mock('../../ai/agentLoopMode', () => ({ runSingleShotAgent: deps.send }))
-vi.mock('./availableModels', () => ({ listAvailableModelsForAgent: deps.models, formatAvailableModelsForPrompt: () => 'available-models' }))
+vi.mock('./availableModels', () => ({ listAvailableModelsForAgent: deps.models }))
+vi.mock('../../../../electron/shared/agentCapabilities/availableModels', () => ({ formatAvailableModelsForPrompt: () => 'available-models' }))
 import { runStoryboardPlanner } from './runStoryboardPlanner'
 
 const plan = { title: 'this operation', anchors: [], shots: [{ index: 1, durationSec: 3, anchorIds: [], prompt: 'rain' }] }

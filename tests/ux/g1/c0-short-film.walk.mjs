@@ -13,6 +13,7 @@ import { parseArgs } from 'node:util'
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..')
 const { values } = parseArgs({ options: {
   'dry-run': { type: 'boolean' }, real: { type: 'boolean' },
+  'plan-only': { type: 'boolean' }, 'planner-model': { type: 'string' }, 'output-dir': { type: 'string' },
   packaged: { type: 'string' }, help: { type: 'boolean' },
 }, allowPositionals: false })
 if (values.help) {
@@ -22,7 +23,7 @@ if (values.help) {
 }
 if (Boolean(values['dry-run']) === Boolean(values.real)) throw new Error('Select exactly one of --dry-run / --real')
 if (values.packaged) values.packaged = path.resolve(root, values.packaged)
-const outputDir = path.join(root, 'tests/ux/shots/g1-c0')
+const outputDir = values['output-dir'] ? path.resolve(root, values['output-dir']) : path.join(root, 'tests/ux/shots/g1-c0')
 fs.mkdirSync(outputDir, { recursive: true })
 const attemptDir = fs.mkdtempSync(path.join(outputDir, 'attempt-'))
 const sha = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim()
@@ -97,7 +98,7 @@ try {
   }
   if (executablePath) report.executableSha256 = hash(executablePath)
   scheduler = values.real
-    ? await (await import('./c0-real-scheduler.mjs')).createRealScheduler({ tempRoot, attemptDir, outputDir, report })
+    ? await (await import('./c0-real-scheduler.mjs')).createRealScheduler({ tempRoot, attemptDir, outputDir, report, planOnly: values['plan-only'], plannerModel: values['planner-model'] })
     : await createDryScheduler(root, settingsDir, path.join(attemptDir, 'fixture-media'), report)
   const MODEL = scheduler.model
   const launch = async () => {
@@ -152,6 +153,7 @@ try {
     await scheduler.planRequested()
     report.r30[values.real ? 'real' : 'simulated'].firstTool = '0/1 (0%; result not yet verified)'
     const approval = win.locator(`${CREATION_PANEL} ${APPROVAL_CARD}`)
+    if (values['plan-only'] && values.real) await expect(approval).toBeVisible({ timeout: 180_000 })
     const proof = await proveProbe(approval, '真实分镜审批已出现')
     await screenshotSettled(win, { path: path.join(attemptDir, `C0-${sha.slice(0, 8)}-02-approval.png`) })
     await clickOrFail(approval.locator(INTERVENTION_CONFIRM), '批准分镜')
@@ -169,6 +171,10 @@ try {
     await clickOrFail(win.locator('[data-storyboard-id]').first(), '进入可编辑分镜表')
     await expect(win.getByRole('textbox', { name: '方案标题', exact: true })).toHaveValue('日落前的一分钟')
   }, '分镜审批 1 次')
+  if (values['plan-only']) {
+    await scheduler.finish({ projectRoot })
+    report.result = `${report.mode}-plan-only-passed`
+  } else {
   let spendDialog, spendProof
   await step('03', '分镜物化到画布', '八个节点顺序、参数对应；生成前仍零媒体请求', async () => {
     await clickOrFail(win.locator('[data-storyboard-batch="true"]'), '生成未生成的八镜')
@@ -268,6 +274,7 @@ try {
     report.review = 'Pending human inspection: inspect story, identity, continuity, audio and all screenshots.'
   })
   report.result = `${report.mode}-assertions-passed-review-pending`
+  }
 } catch (error) {
   report.result = error.message === 'C0_BLOCKED_BUDGET' ? 'blocked-budget' : 'failed'
   report.blocker = values.real ? (String(error.message).match(/C0_[A-Z_]+/)?.[0] ?? 'C0_WALK_FAILED_RAW_ERROR_SUPPRESSED') : error.message

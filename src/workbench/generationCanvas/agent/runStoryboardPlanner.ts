@@ -1,3 +1,4 @@
+import { formatAvailableModelsForPrompt } from "../../../../electron/shared/agentCapabilities/availableModels";
 import type { CapturedCanvasReadSnapshotHandleWire } from '../../../../electron/shared/surfacePortBinding'
 import type { CanvasReadResult } from '../../../../electron/shared/agentCapabilities/canvasRead'
 import { toPublishedJsonSchema } from '../../../../electron/shared/agentCapabilities/modelVisibleJsonSchema'
@@ -8,7 +9,7 @@ import type { StoryboardPlan } from './storyboardPlan'
 import { parseStoryboardPlan, storyboardPlanSchema } from './storyboardPlanSchema'
 import { assertIssuedCanvasReadResult } from './canvasReadResultSeal'
 import { formatCanvasForAgent } from './canvasPromptContext'
-import { listAvailableModelsForAgent, formatAvailableModelsForPrompt } from './availableModels'
+import { listAvailableModelsForAgent } from './availableModels'
 
 type StoryboardPlannerInput = {
   target: 'production'

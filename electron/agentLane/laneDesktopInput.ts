@@ -1,3 +1,5 @@
+import { formatAvailableModelsForPrompt } from "../shared/agentCapabilities/availableModels"
+import { agentModelEntrySchema } from "../shared/agentCapabilities/availableModelsSchema"
 import { createHash } from 'node:crypto'
 import { z } from 'zod'
 import type { Model } from '../catalog/types'
@@ -21,6 +23,7 @@ const composerSchema = z.object({
   target: z.record(z.unknown()).optional(),
   preconditions: z.record(z.unknown()).optional(),
   contextSnapshot: z.object({ version: z.literal(AGENT_CONTEXT_SNAPSHOT_VERSION), handles: z.array(z.record(z.unknown())).max(256) }).strict().optional(),
+  availableModels: z.array(agentModelEntrySchema).max(2048).optional(),
   attachments: z.array(z.object({ assetId: z.string().min(1).max(256), version: z.number().int().positive() }).strict()).max(64).optional(),
   systemPrompt: text.optional(),
   displayText: text.optional(),
@@ -54,7 +57,7 @@ export function createDesktopLaneInput(input: {
       }] : [])
       const { model } = selected
       const content = await buildAgentUserContent({
-        prompt: [message.content, formatAgentContextSnapshot(message.context.contextSnapshot)].filter(Boolean).join('\n\n'),
+        prompt: [message.content, formatAgentContextSnapshot(message.context.contextSnapshot), formatAvailableModelsForPrompt(message.context.availableModels ?? [])].filter(Boolean).join('\n\n'),
         attachments,
         supportsImageInput: modelSupportsImageInput(model.modelKey, model.modelAlias, model.meta),
         supportsPdfInput: selected.kind !== 'openai-compatible' && modelSupportsPdfInput(model.modelKey, model.modelAlias, model.meta),

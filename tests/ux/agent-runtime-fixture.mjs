@@ -278,3 +278,14 @@ export async function createAgentRuntimeFixture({ rootDir, settingsDir }) {
     throw error
   }
 }
+
+/** Real renderer projection; callers provide catalog DTOs, never a hand-authored prompt block. */
+export async function projectAgentRuntimeModels(rootDir, models) {
+  const { createServer } = await import('vite')
+  const server = await createServer({ root: rootDir, server: { middlewareMode: true }, appType: 'custom' })
+  try {
+    const { toCatalogModelOptions } = await server.ssrLoadModule('/src/config/modelOptionMappers.ts')
+    const { buildAgentModelEntries } = await server.ssrLoadModule('/src/workbench/generationCanvas/agent/availableModels.ts')
+    return buildAgentModelEntries(toCatalogModelOptions(models))
+  } finally { await server.close() }
+}

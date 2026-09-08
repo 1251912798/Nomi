@@ -1,0 +1,52 @@
+✖ C0 real desktop callsite sends catalog-projected available models in the user prompt on every turn (503.050709ms)
+✖ composer boundary accepts the real projection and rejects malformed model entries (341.600292ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 0
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1374.034042
+
+✖ failing tests:
+
+test at .tmp/agent-runtime-tests/tests/agent-runtime/lane-models-block.test.mjs:26:1
+✖ C0 real desktop callsite sends catalog-projected available models in the user prompt on every turn (503.050709ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /可用模型/. Input:
+  
+  '"八镜用 MiniMax H3，768P。"'
+  
+      at TestContext.<anonymous> (file:///Users/aoqimin/Desktop/Nomi-stage4-switch/.tmp/agent-runtime-tests/tests/agent-runtime/lane-models-block.test.mjs:50:12)
+      at async Test.run (node:internal/test_runner/test:1110:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:358:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '"八镜用 MiniMax H3，768P。"',
+    expected: /可用模型/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at .tmp/agent-runtime-tests/tests/agent-runtime/lane-models-block.test.mjs:57:1
+✖ composer boundary accepts the real projection and rejects malformed model entries (341.600292ms)
+  Error [ZodError]: [
+    {
+      "code": "unrecognized_keys",
+      "keys": [
+        "availableModels"
+      ],
+      "path": [],
+      "message": "Unrecognized key(s) in object: 'availableModels'"
+    }
+  ]
+      at get error (/Users/aoqimin/Desktop/Nomi-stage4-switch/node_modules/.pnpm/zod@3.25.76/node_modules/zod/v3/types.cjs:45:31)
+      at ZodObject.parse (/Users/aoqimin/Desktop/Nomi-stage4-switch/node_modules/.pnpm/zod@3.25.76/node_modules/zod/v3/types.cjs:120:22)
+      at parseLaneComposerContext (/Users/aoqimin/Desktop/Nomi-stage4-switch/.tmp/lane-models-input-26196.cjs:3076:25)
+      at TestContext.<anonymous> (file:///Users/aoqimin/Desktop/Nomi-stage4-switch/.tmp/agent-runtime-tests/tests/agent-runtime/lane-models-block.test.mjs:60:22)
+      at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+      at async Test.run (node:internal/test_runner/test:1110:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:785:7) {
+    issues: [ { code: 'unrecognized_keys', keys: [Array], path: [], message: "Unrecognized key(s) in object: 'availableModels'" } ],
+    [errors]: [ { code: 'unrecognized_keys', keys: [Array], path: [], message: "Unrecognized key(s) in object: 'availableModels'" } ]
+  }

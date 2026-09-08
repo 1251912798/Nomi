@@ -6,6 +6,7 @@ import type { AgentPanelV4Data } from './useAgentPanelV4Data'
 import type { ProjectAgentCommittedProposalRecord } from '../../../../electron/shared/projectAgentProposalReceipt'
 import type { LanePart } from '../../../../electron/shared/agentLane/laneContracts'
 import { LANE_RECEIPT_AUTHORITY_NOTE } from '../../../../electron/shared/agentLane/laneReceiptAuthority'
+import { buildAgentModelEntries } from '../../generationCanvas/agent/availableModels'
 import type { ComposerAttachment } from '../composer/composerAttachmentTypes'
 
 const fixture = vi.hoisted(() => {
@@ -20,9 +21,12 @@ const fixture = vi.hoisted(() => {
     },
     setProjectAgentApprovalPolicy: vi.fn(),
   }
-  return { state, owner: { subscriptionId: 'workspace-a' } as object | null, say: vi.fn(),
+  return { state, owner: { subscriptionId: 'workspace-a' } as object | null, say: vi.fn(), models: vi.fn(),
     record: null as ProjectAgentCommittedProposalRecord | null, undo: vi.fn(), projection: { lane: 'main', parts: [] as LanePart[] } }
 })
+vi.mock('../../generationCanvas/agent/availableModels', async importOriginal => ({
+  ...await importOriginal<typeof import('../../generationCanvas/agent/availableModels')>(), listAvailableModelsForAgent: fixture.models,
+}))
 vi.mock('react-i18next', async importOriginal => ({
   ...await importOriginal<typeof import('react-i18next')>(), useTranslation: () => ({ t: (key: string) => key }),
 }))
@@ -55,12 +59,33 @@ beforeEach(() => {
   fixture.state.projectAgentDraft = 'keep this draft'
   fixture.state.projectAgentAttachments = []
   fixture.say.mockReset()
+  fixture.models.mockReset().mockResolvedValue([])
   fixture.record = null
   fixture.projection = { lane: 'main', parts: [] }
   fixture.undo.mockReset().mockResolvedValue(undefined)
 })
 
 describe('composer sends commit local cleanup only after current admission', () => {
+  it('captures the current catalog projection on every send', async () => {
+    const entries = buildAgentModelEntries([{ value: 'MiniMax-H3', label: 'MiniMax H3', kind: 'video', vendor: 'apimart' }])
+    expect(entries).toHaveLength(1)
+    fixture.models.mockResolvedValueOnce(entries).mockResolvedValueOnce([])
+    fixture.say.mockResolvedValue({ ok: true })
+    const actions = mountActions()
+    expect(await actions.send('first')).toBe(true)
+    expect(fixture.say.mock.calls[0][2].availableModels).toEqual(entries)
+    expect(await actions.send('second')).toBe(true)
+    expect(fixture.say.mock.calls[1][2].availableModels).toEqual([])
+    expect(fixture.models).toHaveBeenCalledTimes(2)
+  })
+
+  it('preserves the draft and sends nothing when catalog capture fails', async () => {
+    fixture.models.mockRejectedValue(new Error('catalog unavailable'))
+    expect(await mountActions().send('keep this draft')).toBe(false)
+    expect(fixture.say).not.toHaveBeenCalled()
+    expect(fixture.state.projectAgentDraft).toBe('keep this draft')
+  })
+
   it.each(['negative-ack', 'exception'])('returns false and keeps the draft on %s', async kind => {
     if (kind === 'exception') fixture.say.mockRejectedValue(new Error('missing skill'))
     else fixture.say.mockResolvedValue({ ok: false, message: 'missing skill' })
