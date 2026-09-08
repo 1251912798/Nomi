@@ -189,7 +189,7 @@ export function withPackagedPlaywrightOrigin(args, isPackaged) {
  * @param {string} [options.userDataDir]    单独指定（默认 <tempRoot>/user-data）
  * @param {string} [options.settingsDir]    单独指定（默认 <tempRoot>/settings）
  * @param {string} [options.projectsDir]    单独指定（默认 <tempRoot>/projects）
- * @param {string} [options.capabilityDir]  单独指定（默认 <tempRoot>/capability）
+ * @param {string} [options.capabilityDir]  优先于 env.NOMI_CAPABILITY_DIR；均未设时隔离实例派生 <tempRoot>/capability
  * @param {number} [options.testedCatalogVersion]  被测构建的 catalog 版本；默认读取仓库 canonical manifest
  * @param {number} [options.timeout]        等窗口上限（ms）
  * @param {number} [options.settleMs=1500]  domcontentloaded 后再等一会儿（渲染层挂载）
@@ -239,7 +239,11 @@ export async function launchNomiApp(options = {}) {
   const userDataDir = isolate ? (options.userDataDir ?? path.join(tempRoot, 'user-data')) : null
   const settingsDir = isolate ? (options.settingsDir ?? path.join(tempRoot, 'settings')) : null
   const projectsDir = isolate ? (options.projectsDir ?? path.join(tempRoot, 'projects')) : null
-  const capabilityDir = isolate ? (options.capabilityDir ?? path.join(tempRoot, 'capability')) : null
+  // GUI advert/token 与 helper 发现目录必须同源；显式配置优先，最后才派生隔离默认值。
+  const capabilityDir = options.capabilityDir
+    ?? extraEnv.NOMI_CAPABILITY_DIR
+    ?? process.env.NOMI_CAPABILITY_DIR
+    ?? (isolate ? path.join(tempRoot, 'capability') : null)
 
   // 只建目录，**绝不清空**：不少走查会在起飞前往 projectsDir/settingsDir 里预埋工程或 catalog
   //（如 toolbar-order.walk.mjs 先写好 project.json 再启动）。启动器擅自 rm 会把它们的前置条件擦掉。
