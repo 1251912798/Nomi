@@ -1,0 +1,26 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Focus indication contract</title>
+<body class="bg-nomi-paper text-nomi-ink p-6">
+<main class="flex flex-col gap-3">
+<div id="outer-panel" class="border border-nomi-line"><section><input id="independent-field" class="border border-nomi-line" aria-label="Independent field"></section></div>
+<label>Text <input id="text" class="border border-nomi-line rounded-nomi-sm" value="Draft"></label>
+<label>Search <input id="search" type="search" class="border border-nomi-line"></label>
+<label>Password <input id="password" type="password" class="border border-nomi-line"></label>
+<label>Number <input id="number" type="number" class="border border-nomi-line"></label>
+<label>Email <input id="email" type="email" class="border border-nomi-line"></label>
+<label>Telephone <input id="tel" type="tel" class="border border-nomi-line"></label>
+<label>URL <input id="url" type="url" class="border border-nomi-line"></label>
+<textarea id="textarea" aria-label="Draft" class="border border-nomi-line">Storyboard draft</textarea>
+<div id="composer" class="border border-nomi-line rounded-nomi"><textarea id="nested" aria-label="Composer" class="border-0 outline-none">A quiet scene</textarea><button id="add">Add</button></div>
+<div id="nested-editor-border" class="border border-nomi-line"><div><div><div id="nested-editor" contenteditable="true">Nested storyboard cell</div></div></div></div>
+<div id="editable" contenteditable="true" tabindex="0" class="border border-nomi-line">Editable scene</div>
+<div id="plaintext" contenteditable="plaintext-only" tabindex="0" class="border border-nomi-line">Plain text</div>
+<input id="readonly" readonly aria-label="Read only" value="Read only" class="border border-nomi-line">
+<input id="invalid" aria-invalid="true" aria-label="Invalid" class="border border-nomi-danger">
+<input id="disabled" disabled aria-label="Disabled" class="border border-nomi-line">
+<button id="button">Continue</button><a id="link" href="#text">Draft link</a>
+<select id="select" aria-label="Format"><option>Video</option></select>
+<input id="checkbox" type="checkbox" aria-label="Include audio"><input id="range" type="range" aria-label="Volume">
+<div id="custom" role="button" tabindex="0">Custom action</div>
+<div id="tabindex" tabindex="0">Keyboard target</div>
+<details><summary id="summary">Details</summary>Content</details>
+</main></body></html>
