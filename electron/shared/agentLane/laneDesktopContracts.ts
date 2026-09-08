@@ -1,7 +1,7 @@
 import type { ProjectAgentAttachmentRef } from '../workbenchInput'
 import type { ProjectAgentAttachmentClaim } from '../workbenchInput'
 import type { ProjectBinding } from '../projectBinding'
-import type { ProjectAgentApprovalPolicy, } from '../projectAgentContracts'
+import type { ProjectAgentApprovalPolicy } from '../agentCapabilities/capabilityApprovalPolicy';
 import type { AgentContextSnapshot } from '../agentContextSnapshot'
 import type { PreconditionSet, TargetRef } from '../capabilityTargeting'
 import type { LaneCommand, LaneCommandOutcome, LaneProjection } from './laneContracts'

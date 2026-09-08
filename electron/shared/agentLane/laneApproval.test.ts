@@ -6,7 +6,7 @@
 import { describe, expect, it } from "vitest";
 
 import { laneApprovalGrantable, preflightLaneApproval, type LaneApprovalSubject } from "./laneApproval";
-import type { ProjectAgentApprovalPolicy } from "../projectAgentContracts";
+import type { ProjectAgentApprovalPolicy } from '../agentCapabilities/capabilityApprovalPolicy';
 
 const READ: LaneApprovalSubject = {
   toolName: "nomi_canvas_read", capabilityId: "canvas.read",

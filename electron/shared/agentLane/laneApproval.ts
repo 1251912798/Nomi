@@ -24,8 +24,8 @@ import {
   capabilityWorkModeDecision,
   type CapabilityApprovalSubject,
 } from "../agentCapabilities/capabilityApprovalPolicy";
-import type { ProjectAgentApprovalPolicy, ProjectAgentWorkMode } from "../projectAgentContracts";
-import { projectAgentApprovalPolicyOf } from "../projectAgentContracts";
+import type { ProjectAgentApprovalPolicy, ProjectAgentWorkMode } from '../agentCapabilities/capabilityApprovalPolicy';
+import { projectAgentApprovalPolicyOf } from '../agentCapabilities/capabilityApprovalPolicy';
 
 /** 一次 lane 上的调用，在审批眼里的全部事实。前两个是身份，后四个来自能力契约。 */
 export type LaneApprovalSubject = CapabilityApprovalSubject & Readonly<{

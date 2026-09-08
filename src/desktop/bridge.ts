@@ -781,7 +781,6 @@ export type DesktopBridge = DesktopMediaBridge &
   surface?: CanvasReadSurfaceBridge
   /** The desktop conversation transport. */
   agentLane?: LaneBridge
-  projectAgent?: import('./projectAgentBridgeTypes').ProjectAgentBridge
 }
 
 declare global {
