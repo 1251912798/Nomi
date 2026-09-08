@@ -1,0 +1,72 @@
+{
+  "generatedAt": "2026-09-08T19:28:53.246Z",
+  "provider": "loopback",
+  "findings": [
+    {
+      "journey": "agent-panel",
+      "state": "idle",
+      "screenshot": "screenshots/feel/agent-panel-idle-1440-{light,dark}.png",
+      "symptoms": []
+    },
+    {
+      "journey": "agent-panel",
+      "state": "thinking",
+      "screenshot": "screenshots/feel/agent-panel-thinking-1440-{light,dark}.png",
+      "symptoms": [
+        "Agent 面板文字层叠"
+      ]
+    },
+    {
+      "journey": "agent-panel",
+      "state": "tool-receipt",
+      "screenshot": "screenshots/feel/agent-panel-tool-receipt-1440-{light,dark}.png",
+      "symptoms": []
+    },
+    {
+      "journey": "artifact-products",
+      "state": "html",
+      "screenshot": "screenshots/feel/artifact-products-html-1440-{light,dark}.png",
+      "symptoms": [
+        "产物节点 HTML 截断/不可滚动/不可交互"
+      ]
+    },
+    {
+      "journey": "artifact-products",
+      "state": "svg",
+      "screenshot": "screenshots/feel/artifact-products-svg-1440-{light,dark}.png",
+      "symptoms": []
+    },
+    {
+      "journey": "artifact-products",
+      "state": "markdown",
+      "screenshot": "screenshots/feel/artifact-products-markdown-1440-{light,dark}.png",
+      "symptoms": []
+    },
+    {
+      "journey": "artifact-products",
+      "state": "3d",
+      "screenshot": "screenshots/feel/artifact-products-3d-1440-{light,dark}.png",
+      "symptoms": [
+        "3D 产物不可交互"
+      ]
+    },
+    {
+      "journey": "storyboard-timeline-export",
+      "state": "storyboard",
+      "screenshot": "screenshots/feel/storyboard-timeline-export-storyboard-1440-{light,dark}.png",
+      "symptoms": []
+    },
+    {
+      "journey": "storyboard-timeline-export",
+      "state": "timeline",
+      "screenshot": "screenshots/feel/storyboard-timeline-export-timeline-1440-{light,dark}.png",
+      "symptoms": []
+    },
+    {
+      "journey": "storyboard-timeline-export",
+      "state": "export",
+      "screenshot": "screenshots/feel/storyboard-timeline-export-export-1440-{light,dark}.png",
+      "symptoms": []
+    }
+  ]
+}

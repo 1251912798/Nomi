@@ -1,2 +1,3 @@
 import test from 'node:test'; import assert from 'node:assert/strict'; import {scanFeel} from './_feel.mjs'
-test('feel scanner catches overlap/clipping/viewport/hit rules in fixture',()=>{assert.ok(typeof scanFeel==='function')})
+test('feel scanner exports generic contract',()=>assert.equal(typeof scanFeel,'function'))
+test('fixture is red for overlap clipping and unreachable interaction',async()=>{const {chromium}=await import('playwright');const b=await chromium.launch({headless:true});const p=await b.newPage({viewport:{width:320,height:200}});await p.setContent('<div><span style="position:absolute">one</span><span style="position:absolute">two</span><button style="pointer-events:none">go</button><div style="height:10px;overflow:hidden">long long long</div></div>');try{await assert.rejects(()=>scanFeel(p),/Feel regression/)}finally{await b.close()}})
