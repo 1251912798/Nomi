@@ -192,6 +192,11 @@
   "viewportCorrection": {
     "reason": "Electron contentSize did not pin renderer viewport (842 -> 840); collector uses rubric viewport via Playwright setViewportSize.",
     "sourceHash": "879a73b032bb5d4cf430865d9fceed40dd6deee3082468c8c5da0b4a2896bb7d",
-    "metricsChanged": false
+    "metricsChanged": false,
+    "deviceScaleFactor": {
+      "before": 2,
+      "after": 1,
+      "reason": "Playwright fixed viewport uses emulated DPR 1 instead of host display DPR; all 33 CSS-pixel metrics exactly unchanged on full rerun."
+    }
   }
 }
