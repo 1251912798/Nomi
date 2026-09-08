@@ -69,8 +69,7 @@ try {
     userDataDir: dirs.userDataDir,
     settingsDir: dirs.settingsDir,
     projectsDir: dirs.projectsDir,
-    // capabilityDir 必须走**选项**：buildNomiLaunchEnv 把 NOMI_CAPABILITY_DIR 放在 extraEnv 之后，
-    // 从 env 传会被启动器自己那份覆盖掉，MCP 客户端和 app 于是各读各的 token（ENOENT）。
+    // 显式 capabilityDir 与 env 均由共享启动器解析；GUI 与 MCP 客户端使用同一目录。
     capabilityDir: dirs.capabilityDir,
     args: ['--disable-gpu', '--disable-software-rasterizer'],
     settleMs: 0,
