@@ -35,6 +35,17 @@ export type LaneApprovalSubject = CapabilityApprovalSubject & Readonly<{
   capabilityId: string;
 }>;
 
+/** Native tools keep upstream schemas; the trusted host supplies approval facts separately. */
+export type LaneApprovalSubjectResolver = (request: Readonly<{
+  toolName: string;
+  args: unknown;
+}>) => Readonly<{
+  subject: LaneApprovalSubject;
+  forceConfirmation?: boolean;
+  denialReason?: string;
+  grantable?: boolean;
+}> | undefined;
+
 export type LaneApprovalContext = Readonly<{
   policy: ProjectAgentApprovalPolicy | undefined;
   workMode: ProjectAgentWorkMode | undefined;

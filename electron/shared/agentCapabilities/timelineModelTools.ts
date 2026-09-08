@@ -5,13 +5,8 @@
 // 与 `canvas.write` 那一族形成对比，评测里两族一起跑，才分得清「变好了」是形状的功劳
 // 还是模型今天心情好。
 //
-// ⚠️ **`propose_edit_plan` 不进这份描述符**，明着标出来而不是悄悄漏掉：
-// 它的 `operations[]` 是一个 `z.union`，`transition` 与 `text` 两支各有一个叫 `action`
-// 的字段、词表完全不同；发布出去带 **9 个 `const`**（实测，Google 的 OpenAPI 3.03 路径不认）。
-// 正确的修法是把两个 `action` 改成同一个形状、差额下沉进 refine，那是**时间轴写入契约**
-// 的改动。在那之前，`propose_edit_plan` / `apply_edit_plan` / `undo_timeline_edit` 三个动作
-// 只从对外 MCP 的 `nomi_timeline_edit` 上手写发布（`mcpCapabilityProjection.ts`），
-// 是本仓**最后一份**手写的模型可见 schema——退出条件写在那里。
+// Timeline preview/write descriptors live in extendedModelTools and share the same plan schema.
+// Their nested operations are mechanically flattened after aligning the shared action field.
 //
 // 阶段 5a：说明书从 `electron/agentLane/laneTimelineTools.ts` 搬到能力契约旁边。搬家同时
 // 消掉的是对外 MCP 那张 `"read"` → `read_timeline` 的手写映射表——两个 profile 从今天起

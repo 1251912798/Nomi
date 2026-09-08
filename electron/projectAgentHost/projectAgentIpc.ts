@@ -1,3 +1,4 @@
+import type { ProjectAgentAttachmentRef } from '../shared/workbenchInput'
 import { ipcMain } from "electron";
 import type { IpcMainInvokeEvent, WebContents, WebFrameMain } from "electron";
 
@@ -6,7 +7,6 @@ import type { AgentChatToolDecision } from "../harness/agentChatContracts";
 import type { ProjectAgentExecutionRequest } from "./projectAgentExecutionCoordinatorTypes";
 import type {
   ProjectAgentHostState,
-  ProjectAgentAttachmentRef,
   ProjectAgentExecutionEvent,
   ProjectAgentMutation,
   ProjectBinding,

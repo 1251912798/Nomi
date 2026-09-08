@@ -38,6 +38,8 @@ export type CapabilityContract<Input, Output> = {
    * commits it before the highlight is drawn.
    */
   readonly requiresPlanReview?: boolean;
+  /** Operation-specific review. Its presence requires review; false forbids reusing any prior approval. */
+  readonly operationPlanReview?: Readonly<Record<string, Readonly<{ allowReuse: boolean }>>>;
   readonly execution: {
     readonly port: CapabilityPortKind;
     readonly availability: CapabilityAvailability;

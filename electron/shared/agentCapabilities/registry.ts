@@ -100,8 +100,21 @@ export function capabilityContractById(contractId: string): AnyCapabilityContrac
 }
 
 /** True when the descriptor says its payload is a plan the user must read first. */
-export function capabilityRequiresPlanReview(toolName: string): boolean {
-  return (resolveCapabilityAlias(toolName)?.contract as AnyCapabilityContract | undefined)?.requiresPlanReview === true;
+export function capabilityRequiresPlanReview(toolName: string, args?: unknown): boolean {
+  const contract = resolveCapabilityAlias(toolName)?.contract as AnyCapabilityContract | undefined;
+  const operation = args && typeof args === "object" && !Array.isArray(args) ? (args as Record<string, unknown>).operation : undefined;
+  return capabilityPlanReviewOf(contract, { operation: typeof operation === "string" ? operation : toolName }).requiresPlanReview;
+}
+
+/** Review facts belong to the capability and operation, independently of a model-facing tool name. */
+export function capabilityPlanReviewOf(contract: AnyCapabilityContract | undefined, args?: unknown): Readonly<{
+  requiresPlanReview: boolean;
+  planReviewAllowsReuse: boolean;
+}> {
+  const operation = args && typeof args === "object" && !Array.isArray(args) ? (args as Record<string, unknown>).operation : undefined;
+  const review = typeof operation === "string" ? contract?.operationPlanReview?.[operation] : undefined;
+  return { requiresPlanReview: review !== undefined || contract?.requiresPlanReview === true,
+    planReviewAllowsReuse: review?.allowReuse ?? true };
 }
 
 /** The single place that reads a contract's effect class, honouring its per-operation map. */

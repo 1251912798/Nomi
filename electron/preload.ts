@@ -1,7 +1,8 @@
 import { contextBridge, ipcRenderer, webUtils } from "electron";
 import { importNativeFileFromPreload } from "./assets/nativeFileBridge";
 import { createCanvasReadSurfacePreloadBridge } from './surfacePortPreloadBridge';
-import type { ProjectAgentExecutionEvent, ProjectAgentPatch } from './shared/projectAgentContracts';
+import { LANE_IPC_CHANNELS, type LaneWorkspaceProjection } from './shared/agentLane/laneContracts';
+import type { LaneDesktopCommand } from './shared/agentLane/laneDesktopContracts';
 
 type SyncResult<T> = { ok: true; value: T } | { ok: false; error: string };
 type ProductionDeepLinkPayload = { projectId: string; runId?: string; nodeId?: string; artifactId?: string };
@@ -697,45 +698,12 @@ contextBridge.exposeInMainWorld("nomiDesktop", {
       send: (channel, payload) => ipcRenderer.send(channel, payload),
     },
   ),
-  projectAgent: {
-    open: (binding: unknown) => ipcRenderer.invoke('nomi:projectAgent:open', { binding }),
-    snapshot: (subscriptionId: string) => ipcRenderer.invoke('nomi:projectAgent:snapshot', { subscriptionId }),
-    command: (command: unknown) => ipcRenderer.invoke('nomi:projectAgent:command', command),
-    release: (subscriptionId: string) => ipcRenderer.invoke('nomi:projectAgent:release', { subscriptionId }),
-    readProposalReceipt: (subscriptionId: string) =>
-      ipcRenderer.invoke('nomi:projectAgent:proposalReceipt:read', { subscriptionId }),
-    writeProposalReceipt: (subscriptionId: string, input: { expectedRevision: number; proposalId: string; operationId: string; lifecycle: string; proposal: unknown }) =>
-      ipcRenderer.invoke('nomi:projectAgent:proposalReceipt:write', {
-        subscriptionId,
-        expectedRevision: input.expectedRevision,
-        proposalId: input.proposalId,
-        operationId: input.operationId,
-        lifecycle: input.lifecycle,
-        proposal: input.proposal,
-      }),
-    transitionProposalReceipt: (subscriptionId: string, input: { expectedRevision: number; proposalId: string; operationId: string; lifecycle: string }) =>
-      ipcRenderer.invoke('nomi:projectAgent:proposalReceipt:transition', {
-        subscriptionId,
-        expectedRevision: input.expectedRevision,
-        proposalId: input.proposalId,
-        operationId: input.operationId,
-        lifecycle: input.lifecycle,
-      }),
-    clearProposalReceipt: (subscriptionId: string, input: { expectedRevision: number; proposalId: string; operationId: string }) =>
-      ipcRenderer.invoke('nomi:projectAgent:proposalReceipt:clear', { subscriptionId, ...input }),
-    onPatch: (handler: (patch: ProjectAgentPatch) => void) => {
-      const listener = (_event: unknown, payload: unknown) => {
-        if (payload && typeof payload === 'object' && !Array.isArray(payload)) handler(payload as ProjectAgentPatch);
-      };
-      ipcRenderer.on('nomi:projectAgent:patch', listener as never);
-      return () => ipcRenderer.removeListener('nomi:projectAgent:patch', listener as never);
-    },
-    onEvent: (handler: (event: ProjectAgentExecutionEvent) => void) => {
-      const listener = (_event: unknown, payload: unknown) => {
-        if (payload && typeof payload === 'object' && !Array.isArray(payload)) handler(payload as ProjectAgentExecutionEvent);
-      };
-      ipcRenderer.on('nomi:projectAgent:event', listener as never);
-      return () => ipcRenderer.removeListener('nomi:projectAgent:event', listener as never);
+  agentLane: {
+    send: (command: LaneDesktopCommand) => ipcRenderer.invoke(LANE_IPC_CHANNELS.command, command),
+    onProjection: (handler: (projection: LaneWorkspaceProjection) => void) => {
+      const listener = (_event: unknown, projection: LaneWorkspaceProjection) => handler(projection);
+      ipcRenderer.on(LANE_IPC_CHANNELS.projection, listener);
+      return () => ipcRenderer.removeListener(LANE_IPC_CHANNELS.projection, listener);
     },
   },
 });

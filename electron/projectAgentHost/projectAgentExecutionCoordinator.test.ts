@@ -1,3 +1,4 @@
+import type { CanvasWriteApprovalAuthority } from '../shared/agentCapabilities/transportContracts'
 import { createHash } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
@@ -29,7 +30,6 @@ import type {
   PreparedDocumentWrite,
 } from "../capabilityCore/documentWriteTransportAdapters";
 import type {
-  CanvasWriteApprovalAuthority,
   PiCanvasWriteTransportAdapter,
   PreparedCanvasWrite,
 } from "../capabilityCore/canvasWriteTransportAdapters";

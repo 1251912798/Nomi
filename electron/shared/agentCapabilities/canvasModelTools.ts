@@ -28,11 +28,12 @@ import { z } from "zod";
 
 import {
   cameraMoveParamsObjectSchema,
+  STORYBOARD_MODEL_GUIDELINES, STAGING_MODEL_GUIDELINES, CAMERA_MOVE_MODEL_GUIDELINES,
   stagingReferenceParamsSchema,
   storyboardPlanParamsSchema,
 } from "./canvasModelShapes";
 import {
-  canvasNodeWriteInputSchema,
+  canvasNodeWriteInputSchema, CANVAS_NODE_PROMPT_GUIDELINES,
   canvasWriteCrossFieldRefine,
   shotReferenceWriteInputUnion,
   storyboardPlanActionInputSchema,
@@ -136,6 +137,7 @@ interface CanvasWriteToolShape {
   readonly union: z.ZodTypeAny;
   readonly description: string;
   readonly promptSnippet: string;
+  readonly promptGuidelines: readonly string[];
   readonly examples: ModelFacingToolSpec["examples"];
   /** 声明成数组/对象的字段名，交给共享容忍器（B/C 族）。 */
   readonly arrayFields: readonly string[];
@@ -144,86 +146,28 @@ interface CanvasWriteToolShape {
 
 const CANVAS_WRITE_TOOLS: readonly CanvasWriteToolShape[] = [
   {
-    name: "nomi_canvas_write",
-    union: canvasNodeWriteInputSchema,
-    description: [
-      "Create, connect, retitle or tidy the nodes on the generation canvas.",
-      "Every call is one reversible proposal the user still has to accept, so send the whole batch in a single call instead of one node at a time.",
-      "`operation` picks the action and decides which other fields apply; fields belonging to another operation are rejected.",
-    ].join(" "),
-    promptSnippet: "add, connect, retitle or tidy generation-canvas nodes (one reversible proposal per call).",
-    examples: [
-      {
-        when: "Add one character reference card and one shot that uses it:",
-        arguments: {
-          operation: "create_canvas_nodes",
-          summary: "Add the lead character card and her first shot.",
-          nodes: [
-            { clientId: "c1", kind: "character", title: "林夏", prompt: "Full-body neutral reference of a 17-year-old girl, short black hair, school uniform, plain grey backdrop." },
-            { clientId: "s1", kind: "keyframe", title: "天台开场", prompt: "Rooftop at dusk; she leans on the railing looking down; wide shot, warm rim light." },
-          ],
-          edges: [{ sourceClientId: "c1", targetClientId: "s1", mode: "character_ref" }],
-        },
-      },
-      { when: "Rewrite one existing node's prompt:", arguments: { operation: "set_node_prompt", nodeId: "node-42", prompt: "Close-up on her hands gripping the railing." } },
-    ],
-    arrayFields: ["nodes", "edges"],
-    objectFields: [],
+    name: "nomi_canvas_write", union: canvasNodeWriteInputSchema,
+    description: "Create, connect, retitle or tidy generation-canvas nodes in one reversible batch. The operation selects which fields apply; unrelated fields are rejected.",
+    promptSnippet: "create, connect, retitle or tidy canvas nodes.",
+    promptGuidelines: ["Every call is one reversible proposal the user still has to accept; send a whole batch in one call rather than one node at a time.", ...CANVAS_NODE_PROMPT_GUIDELINES],
+    examples: [{ when: "Create a shot:", arguments: { operation: "create_canvas_nodes", summary: "Opening shot", nodes: [{ clientId: "s1", kind: "keyframe", title: "Opening", prompt: "Sunrise" }] } }],
+    arrayFields: ["nodes", "edges"], objectFields: [],
   },
   {
-    name: "nomi_storyboard_write",
-    union: storyboardModelUnion,
-    description: [
-      "Save, patch, or lay out a storyboard: the ordered table of shots the whole film is generated from.",
-      "`propose_storyboard_plan` replaces the whole plan, `patch_shots` changes named rows only, `arrange_storyboard_to_timeline` puts existing shot nodes onto the timeline in story order.",
-      "Anchors are the recurring characters, scenes, props and style; every shot references them by anchor id instead of restating their appearance.",
-    ].join(" "),
-    promptSnippet: "save a whole storyboard, patch named shot rows, or lay shots onto the timeline.",
-    examples: [
-      {
-        when: "Save a two-shot storyboard with one character anchor:",
-        arguments: {
-          operation: "propose_storyboard_plan",
-          title: "天台的三分钟",
-          anchors: [{ id: "anchor-1", kind: "character", name: "林夏", description: "17-year-old girl, short black hair, school uniform.", carrier: "visual" }],
-          shots: [
-            { index: 1, shotKind: "image", durationSec: 0, anchorIds: ["anchor-1"], prompt: "Wide: she steps onto the rooftop, dusk light behind her." },
-            { index: 2, shotKind: "video", durationSec: 4, anchorIds: ["anchor-1"], prompt: "Slow push-in as she leans on the railing and exhales." },
-          ],
-        },
-      },
-      {
-        when: "Change only shots 2 and 3 to four-second video shots:",
-        arguments: { operation: "patch_shots", select: { kind: "indexes", indexes: [2, 3] }, patch: { shotKind: "video", durationSec: 4 } },
-      },
-    ],
-    arrayFields: ["anchors", "shots", "nodeIds"],
-    objectFields: ["select", "patch"],
+    name: "nomi_storyboard_write", union: storyboardModelUnion,
+    description: "Save a whole storyboard, patch selected shot rows, or arrange existing shots on the timeline. Shots reference recurring character, scene, prop and style anchors by id.",
+    promptSnippet: "save a storyboard, patch rows or arrange shots on the timeline.",
+    promptGuidelines: ["propose_storyboard_plan replaces the whole plan; patch_shots changes named rows only; arrange_storyboard_to_timeline lays existing shot nodes in story order.", ...STORYBOARD_MODEL_GUIDELINES],
+    examples: [{ when: "Save one shot:", arguments: { operation: "propose_storyboard_plan", title: "Opening", anchors: [], shots: [{ index: 1, shotKind: "image", durationSec: 0, anchorIds: [], prompt: "Sunrise" }] } }],
+    arrayFields: ["anchors", "shots", "nodeIds"], objectFields: ["select", "patch"],
   },
   {
-    name: "nomi_shot_reference_write",
-    union: shotReferenceModelUnion,
-    description: [
-      "Attach a staging reference (where people stand and how the camera sees them) or a camera-move reference to one shot.",
-      "Both render a grey 3D reference that hangs on the shot as a composition or motion reference; they do not generate the shot itself.",
-      "A staging reference needs `characters` (or `customBlocking`); a camera move needs `move` (or `customMove`). Prefer the vocabulary fields — they render a precise reference; fall back to the free-text field only when the intent is genuinely outside the vocabulary.",
-    ].join(" "),
-    promptSnippet: "hang a staging or camera-move reference on one shot.",
-    examples: [
-      {
-        when: "Two characters facing each other, camera low and close:",
-        arguments: {
-          operation: "create_staging_reference",
-          shotClientId: "s1",
-          characters: [{ name: "林夏", pose: "standing", facing: "toward" }, { name: "陈默", pose: "standing", facing: "toward" }],
-          layout: "facing",
-          camera: { angle: "three-quarter", height: "low", shot: "close" },
-        },
-      },
-      { when: "A slow push-in on an existing video shot:", arguments: { operation: "create_camera_move", shotClientId: "s1", move: "push_in", speed: "slow" } },
-    ],
-    arrayFields: ["characters", "props"],
-    objectFields: ["camera", "crowd"],
+    name: "nomi_shot_reference_write", union: shotReferenceModelUnion,
+    description: "Attach a staging or camera-motion reference to one shot. Vocabulary inputs render a gray 3D reference; free-text composition or motion inputs update its prompt.",
+    promptSnippet: "attach staging or camera-motion references to a shot.",
+    promptGuidelines: ["Reference tools do not generate the shot itself. Staging requires characters or customBlocking; motion requires move or customMove. Use the vocabulary only when it matches the intent.", ...STAGING_MODEL_GUIDELINES, ...CAMERA_MOVE_MODEL_GUIDELINES],
+    examples: [{ when: "Push in:", arguments: { operation: "create_camera_move", shotClientId: "s1", move: "push_in" } }],
+    arrayFields: ["characters", "props"], objectFields: ["camera", "crowd"],
   },
 ];
 
@@ -252,7 +196,7 @@ export function canvasModelToolSpecs(): ModelFacingToolSpec[] {
     name: tool.name,
     description: tool.description,
     promptSnippet: tool.promptSnippet,
-    promptGuidelines: CANVAS_GUIDELINES,
+    promptGuidelines: [...CANVAS_GUIDELINES, ...tool.promptGuidelines],
     effects: CANVAS_WRITE_EFFECTS,
     execution: CANVAS_WRITE_EXECUTION,
     // 派生，不是手写：判别字段降成 `z.enum`、分支专属字段设为 optional、跨字段约束仍由

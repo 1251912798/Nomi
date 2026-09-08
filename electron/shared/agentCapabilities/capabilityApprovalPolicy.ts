@@ -32,6 +32,8 @@ export type CapabilityApprovalSubject = Readonly<{
   effectClass: CapabilityEffectClass | undefined;
   /** 契约自己说「这份载荷是一份用户必须先读的计划」。 */
   requiresPlanReview: boolean;
+  /** False means this specific plan must be reviewed each time, even with a session grant. */
+  planReviewAllowsReuse?: boolean;
   /**
    * 外部 MCP 服务器在工具声明上打的 `destructiveHint`。
    *
@@ -53,9 +55,11 @@ export type CapabilityWorkModeDecision = Readonly<{ allowed: boolean; reason?: s
  *   ② 不可逆（`irreversible`）：`canvas.delete` / `export.write` 这一族；
  *   ③ 外部工具的 `destructiveHint`（只抬不降，见上）。
  * 外加 ④ **解不出效果类**：未登记的别名，我们证明不了它安全。
+ * 以及 ⑤ 契约声明的逐次计划审阅：这一次的载荷必须当次确认，不能借用别的计划的授权。
  */
 export function capabilityIsHardGated(subject: CapabilityApprovalSubject): boolean {
   if (subject.destructiveHint) return true;
+  if (subject.requiresPlanReview && subject.planReviewAllowsReuse === false) return true;
   return subject.effectClass !== "reversible_local";
 }
 

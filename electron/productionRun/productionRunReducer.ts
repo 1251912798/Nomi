@@ -1,3 +1,4 @@
+import type { ArtifactReviewDecision } from "../shared/agentCapabilities/productionRun";
 import { transitionJob, transitionRun } from "./productionRunState";
 import { bindShotNodes, detachShotNodes } from "./productionRunCanvasLandingReducer";
 import type {
@@ -106,8 +107,6 @@ const ARTIFACT_STATUSES = new Set<ProductionArtifact["status"]>([
 ]);
 const GATE_STATUSES = new Set<ProductionGate["status"]>(["waiting", "approved", "rejected", "expired", "revoked"]);
 
-export const ARTIFACT_REVIEW_DECISIONS = ["approved", "changes_requested", "rejected"] as const;
-export type ArtifactReviewDecision = (typeof ARTIFACT_REVIEW_DECISIONS)[number];
 
 function artifactVersion(value: ProductionArtifact): number {
   return Number.isInteger(value.version) && (value.version as number) > 0 ? value.version as number : 1;
