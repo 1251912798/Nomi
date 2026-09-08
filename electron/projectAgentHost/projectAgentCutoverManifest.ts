@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { isDurable } from "../durability";
+import { fsyncDirectoryIfDurable } from "../durability";
 import { writeJsonFileAtomic } from "../jsonFile";
 import type { ProjectBinding } from "../shared/projectBinding";
 import { assertProjectAgentBinding } from "./projectAgentIdentity";
@@ -129,16 +129,6 @@ function parsePreparation(value: unknown): ProjectAgentCutoverPreparation | null
   });
 }
 
-function fsyncNomiDirectory(projectRoot: string): void {
-  if (!isDurable()) return;
-  let fd: number | undefined;
-  try {
-    fd = fs.openSync(nomiDir(projectRoot), fs.constants.O_RDONLY);
-    fs.fsyncSync(fd);
-  } finally {
-    if (fd !== undefined) fs.closeSync(fd);
-  }
-}
 
 function assertSourcesMatch(left: ProjectAgentCutoverSources, right: ProjectAgentCutoverSources): void {
   if (
@@ -212,7 +202,7 @@ export function readOrCreateProjectAgentCutoverPreparation(
   });
   if (!preparation) throw new ProjectAgentCutoverError("Project Agent cutover preparation is invalid");
   writeJsonFileAtomic(filePath, preparation, { mode: 0o600 });
-  fsyncNomiDirectory(projectRoot);
+  fsyncDirectoryIfDurable(nomiDir(projectRoot));
   return preparation;
 }
 
@@ -277,5 +267,5 @@ export function writeProjectAgentCutoverManifest(projectRoot: string, manifest: 
   const canonical = parseManifest(manifest);
   if (!canonical) throw new ProjectAgentCutoverError("Project Agent cutover manifest is invalid");
   writeJsonFileAtomic(projectAgentCutoverManifestPath(projectRoot), canonical, { mode: 0o600 });
-  fsyncNomiDirectory(projectRoot);
+  fsyncDirectoryIfDurable(nomiDir(projectRoot));
 }

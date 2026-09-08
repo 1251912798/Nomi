@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 
-import { fsyncIfDurable, isDurable } from "../durability";
+import { fsyncDirectoryIfDurable, fsyncIfDurable } from "../durability";
 import { renameSyncWithRetry } from "../jsonFile";
 import type { ProjectBinding } from "../shared/projectBinding";
 import {
@@ -95,16 +95,6 @@ function archivePath(projectRoot: string, startedAt: string, fileName: string): 
   return path.join(archiveDirectory(projectRoot), `${stamp}-${fileName}`);
 }
 
-function fsyncDirectory(directoryPath: string): void {
-  if (!isDurable()) return;
-  const fd = fs.openSync(directoryPath, fs.constants.O_RDONLY);
-  try {
-    fsyncIfDurable(fd);
-  } finally {
-    fs.closeSync(fd);
-  }
-}
-
 function writeArchiveFile(target: string, bytes: Buffer): void {
   const temporary = path.join(path.dirname(target), `.${path.basename(target)}.${crypto.randomUUID()}.tmp`);
   let fd: number | undefined;
@@ -140,7 +130,7 @@ function archiveLegacySources(projectRoot: string, startedAt: string, sources: r
     if (!fs.existsSync(target) && source.exists) writeArchiveFile(target, source.bytes);
     assertArchiveFile(target, source.hash);
   }
-  fsyncDirectory(directory);
+  fsyncDirectoryIfDurable(directory);
 }
 
 function assertArchivedCutover(projectRoot: string, manifest: ProjectAgentCutoverManifest): void {
@@ -188,7 +178,7 @@ function removeArchivedLegacyAgentSources(
       sources.contextHash,
     ),
   ].some(Boolean);
-  if (removed) fsyncDirectory(nomiDir);
+  if (removed) fsyncDirectoryIfDurable(nomiDir);
 }
 
 export function migrateProjectAgentLegacy(

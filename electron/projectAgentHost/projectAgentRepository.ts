@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 
-import { isDurable } from "../durability";
+import { fsyncDirectoryIfDurable } from "../durability";
 import { writeJsonFileAtomic } from "../jsonFile";
 import type {
   ProjectAgentCompactCommandReceipt,
@@ -257,24 +257,6 @@ function assertState(binding: ProjectBinding, expectedRevision: number, state: P
   }
 }
 
-function fsyncDirectory(directoryPath: string): void {
-  if (!isDurable()) return;
-  let fd: number;
-  try {
-    fd = fs.openSync(directoryPath, "r");
-  } catch (error) {
-    const code = (error as NodeJS.ErrnoException).code;
-    if (process.platform === "win32" && ["EPERM", "EACCES", "EINVAL", "ENOTSUP", "EISDIR"].includes(String(code))) {
-      return;
-    }
-    throw error;
-  }
-  try {
-    fs.fsyncSync(fd);
-  } finally {
-    fs.closeSync(fd);
-  }
-}
 
 function fsyncPublishedMain(
   paths: ProjectAgentRepositoryPaths,
@@ -282,7 +264,7 @@ function fsyncPublishedMain(
   committedRevision: number,
 ): void {
   try {
-    fsyncDirectory(paths.dir);
+    fsyncDirectoryIfDurable(paths.dir);
   } catch (cause) {
     const published = readValidEnvelope(paths.snapshot, binding);
     if (published?.hostRevision === committedRevision) {
@@ -295,14 +277,14 @@ function fsyncPublishedMain(
 function mirrorCommittedEnvelope(paths: ProjectAgentRepositoryPaths, envelope: ProjectAgentSnapshotEnvelope): void {
   try {
     writeJsonFileAtomic(paths.backup, envelope, PROJECT_AGENT_PRIVATE_FILE_OPTIONS);
-    fsyncDirectory(paths.dir);
+    fsyncDirectoryIfDurable(paths.dir);
   } catch {
     // Main is already the sole commit point. A failed or undeletable mirror is
     // either invalid or the same committed revision, so neither can expose an
     // unacknowledged mutation. Cleanup and its metadata barrier are best effort.
     try {
       fs.rmSync(paths.backup, { force: true });
-      fsyncDirectory(paths.dir);
+      fsyncDirectoryIfDurable(paths.dir);
     } catch {
       // Preserve the successful main commit instead of surfacing a retryable
       // error after its bytes were published and barriered.
@@ -320,7 +302,7 @@ export function createProjectAgentRepository(deps: ProjectAgentRepositoryDeps) {
     throw new Error("Project Agent repository rootDir must be absolute");
   }
   const commandLedger = createProjectAgentCommandLedger({
-    fsyncDirectory,
+    fsyncDirectory: fsyncDirectoryIfDurable,
     integrityError: (message) => new ProjectAgentRepositoryIntegrityError(message),
   });
 
@@ -329,7 +311,7 @@ export function createProjectAgentRepository(deps: ProjectAgentRepositoryDeps) {
     if (ensurePrivateExistingPath(directoryPath, "directory", 0o700)) {
       // An earlier mkdir may have succeeded while its parent barrier failed.
       // Reasserting the low-frequency parent barrier makes retry converge.
-      fsyncDirectory(parent);
+      fsyncDirectoryIfDurable(parent);
       return;
     }
     if (!fs.existsSync(parent) || !fs.statSync(parent).isDirectory()) {
@@ -338,7 +320,7 @@ export function createProjectAgentRepository(deps: ProjectAgentRepositoryDeps) {
       );
     }
     fs.mkdirSync(directoryPath, { mode: 0o700 });
-    fsyncDirectory(parent);
+    fsyncDirectoryIfDurable(parent);
   }
 
   function ensurePartitionDirectory(paths: ProjectAgentRepositoryPaths): void {
@@ -498,7 +480,7 @@ export function createProjectAgentRepository(deps: ProjectAgentRepositoryDeps) {
       assertCommitDirectories();
       // This repairs revision N so it is safe to attempt N+1; it does not
       // commit the caller's N+1 mutation. Barrier failure remains pre-commit.
-      fsyncDirectory(paths.dir);
+      fsyncDirectoryIfDurable(paths.dir);
     }
     assertCommitDirectories();
     commandLedger.reconcilePreparedTail(paths.ledger, binding, resolution.ledger);
@@ -524,7 +506,7 @@ export function createProjectAgentRepository(deps: ProjectAgentRepositoryDeps) {
     // let the following atomic writer resolve paths through an attacker-owned
     // replacement.
     assertCommitDirectories();
-    fsyncDirectory(paths.dir);
+    fsyncDirectoryIfDurable(paths.dir);
     assertCommitDirectories();
     writeJsonFileAtomic(paths.snapshot, nextEnvelope, PROJECT_AGENT_PRIVATE_FILE_OPTIONS);
     assertCommitDirectories();
