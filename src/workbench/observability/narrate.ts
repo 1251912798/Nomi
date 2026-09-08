@@ -29,48 +29,55 @@ export type ProgressNarrationContext = {
   queueAhead?: number
 }
 
-const NARRATE_PROGRESS: Record<GenerationProgressPhase, (ctx: ProgressNarrationContext) => string> = {
-  queued: () => i18n.t('generationCommon.observability.progress.queued'),
-  resolving: () => i18n.t('generationCommon.observability.progress.resolving'),
-  requesting: () => i18n.t('generationCommon.observability.progress.requesting'),
-  waiting: () => i18n.t('generationCommon.observability.progress.waiting'),
-  generating: (ctx) =>
-    typeof ctx.elapsedMs === 'number' && ctx.elapsedMs >= 5000
-      ? i18n.t('generationCommon.observability.progress.generatingElapsed', {
-          seconds: Math.round(ctx.elapsedMs / 1000),
-        })
-      : i18n.t('generationCommon.observability.progress.generating'),
-  // 软超时后:视频较慢仍在跑,后台继续等。说真话(已等 N 分钟),不假装快完成。
-  'still-generating': (ctx) =>
-    typeof ctx.elapsedMs === 'number'
-      ? i18n.t('generationCommon.observability.progress.stillGeneratingElapsed', {
-          minutes: Math.round(ctx.elapsedMs / 60000),
-        })
-      : i18n.t('generationCommon.observability.progress.stillGenerating'),
-  retrying: (ctx) =>
-    ctx.attempt && ctx.maxAttempts
-      ? i18n.t('generationCommon.observability.progress.retryingAttempt', {
-          attempt: ctx.attempt,
-          maxAttempts: ctx.maxAttempts,
-        })
-      : i18n.t('generationCommon.observability.progress.retrying'),
-  finalizing: () => i18n.t('generationCommon.observability.progress.finalizing'),
-  'comfyui-node': (ctx) =>
-    ctx.currentClass && ctx.startedNodes && ctx.totalNodes
-      ? i18n.t('generationCommon.observability.progress.comfyNodeAt', {
-          cls: ctx.currentClass,
-          current: ctx.startedNodes,
-          total: ctx.totalNodes,
-        })
-      : i18n.t('generationCommon.observability.progress.comfyNode'),
-  'comfyui-queued': (ctx) =>
-    typeof ctx.queueAhead === 'number'
-      ? i18n.t('generationCommon.observability.progress.comfyQueuedAhead', { count: ctx.queueAhead })
-      : i18n.t('generationCommon.observability.progress.comfyQueued'),
+/** C1: backend stages stay stable; this is the sole user-facing phase vocabulary. */
+export type GenerationFeedbackPhase = 'queued' | 'submitting' | 'generating' | 'finalizing' | 'failed'
+
+export const GENERATION_PHASE: Record<GenerationProgressPhase, GenerationFeedbackPhase> = {
+  queued: 'queued',
+  'comfyui-queued': 'queued',
+  resolving: 'submitting',
+  requesting: 'submitting',
+  waiting: 'submitting',
+  generating: 'generating',
+  'still-generating': 'generating',
+  retrying: 'generating',
+  'comfyui-node': 'generating',
+  finalizing: 'finalizing',
 }
 
-export function narrateProgress(phase: GenerationProgressPhase, ctx: ProgressNarrationContext = {}): string {
-  return NARRATE_PROGRESS[phase](ctx)
+export function isGenerationProgressStage(value: string | undefined): value is GenerationProgressPhase {
+  return value !== undefined && Object.prototype.hasOwnProperty.call(GENERATION_PHASE, value)
+}
+
+function queuedNarration(ctx: ProgressNarrationContext): string {
+  return Number.isInteger(ctx.queueAhead) && ctx.queueAhead! >= 0
+    ? i18n.t('generationCommon.observability.progress.comfyQueuedAhead', { count: ctx.queueAhead })
+    : i18n.t('generationCommon.observability.progress.queued')
+}
+
+function generatingNarration(ctx: ProgressNarrationContext): string {
+  return typeof ctx.elapsedMs === 'number' && Number.isFinite(ctx.elapsedMs) && ctx.elapsedMs >= 0
+    ? i18n.t('generationCommon.observability.progress.generatingElapsed', { seconds: Math.floor(ctx.elapsedMs / 1000) })
+    : i18n.t('generationCommon.observability.progress.generating')
+}
+
+const NARRATE_PROGRESS: Record<GenerationProgressPhase, (ctx: ProgressNarrationContext) => string> = {
+  queued: queuedNarration,
+  resolving: () => i18n.t('generationCommon.observability.progress.submitting'),
+  requesting: () => i18n.t('generationCommon.observability.progress.submitting'),
+  waiting: () => i18n.t('generationCommon.observability.progress.submitting'),
+  generating: generatingNarration,
+  'still-generating': (ctx) => typeof ctx.elapsedMs === 'number' && Number.isFinite(ctx.elapsedMs)
+    ? i18n.t('generationCommon.observability.progress.stillGeneratingElapsed', { minutes: Math.max(0, Math.floor(ctx.elapsedMs / 60000)) })
+    : i18n.t('generationCommon.observability.progress.stillGenerating'),
+  retrying: generatingNarration,
+  finalizing: () => i18n.t('generationCommon.observability.progress.finalizing'),
+  'comfyui-node': generatingNarration,
+  'comfyui-queued': queuedNarration,
+}
+
+export function narrateProgress(stage: GenerationProgressPhase, ctx: ProgressNarrationContext = {}): string {
+  return NARRATE_PROGRESS[stage](ctx)
 }
 
 // ---------------------------------------------------------------------------

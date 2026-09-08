@@ -1,0 +1,96 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-08-process-feedback-c1",
+  "problem_type": "Generation feedback consumer divergence",
+  "symptom": "Node micro badge, independently narrated queue cards, and missing timeline feedback obscure the same generation.",
+  "direct_cause": "Consumers interpret status independently and queue producers synthesize zero percent.",
+  "class_root": "No shared presentation boundary enforces exhaustive five-phase narration and real numeric evidence.",
+  "affected_population": [
+    "Image, video and audio generation consumers"
+  ],
+  "scope_paths": [
+    "src/workbench/observability/narrate.ts"
+  ],
+  "entry_points": [
+    "Generation runner",
+    "ComfyUI progress bridge",
+    "Task center projection"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "Approved C0/C1/C2 are an internal presentation contract; no external protocol or runtime is being introduced.",
+  "invariants": [
+    "Every backend narration stage maps exhaustively to one display phase.",
+    "Unknown percentage and queue position remain absent."
+  ],
+  "generality_proof": "An exhaustive mapping in the existing narration owner applies independent of provider or media kind.",
+  "shared_boundaries": [
+    {
+      "path": "src/workbench/observability/narrate.ts",
+      "symbol": "narrateProgress",
+      "responsibility": "Own the five-phase wording and truthful numeric narration."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/workbench/generationCanvas/runner/generationRunController.ts",
+      "entry_point": "onProgress",
+      "disposition": "enforced",
+      "evidence": "Progress messages originate in narrateProgress."
+    },
+    {
+      "path": "src/workbench/generationCanvas/comfyuiProgressBridge.ts",
+      "entry_point": "initComfyuiProgressBridge",
+      "disposition": "enforced",
+      "evidence": "Queue and execution events call the same narration owner."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Every consumer can independently reinterpret progress for each future run.",
+    "same_class_scan": [
+      "rg narrateProgress src/workbench",
+      "TaskCenterPanel.tsx:406 waitingWave/waitingSlot and elapsed composition",
+      "TimelineClip.tsx:36 has no generation status text"
+    ]
+  },
+  "prevention": {
+    "kind": "type-system",
+    "enforcement_path": "src/workbench/observability/narrate.ts",
+    "invariant": "Every backend stage has a display phase and human narration.",
+    "failure_mode": "Adding a stage without mapping fails TypeScript.",
+    "exception_policy": "none",
+    "strategy": "Record keyed by the full existing stage union; display wording owned by narrate.",
+    "artifacts": [
+      "src/workbench/observability/narrate.ts"
+    ]
+  },
+  "regression_tests": [
+    "src/workbench/observability/processFeedback.test.ts"
+  ],
+  "class_regression_tests": [
+    "src/workbench/observability/processFeedback.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "src/workbench/observability/narrate.ts"
+    ],
+    "rationale": "Replace the ten independent human-stage texts with the approved five-phase vocabulary."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "Internal narration and existing React content layer; no new dependency.",
+    "exit_criteria": []
+  },
+  "migration": "Existing backend stage identifiers remain valid; presentation derives from them.",
+  "residual_risks": [
+    "Pending implementation and six visual acceptance checks."
+  ],
+  "invariant_owner_layer": {
+    "layer": "src/workbench/observability/narrate.ts",
+    "tests": [
+      "src/workbench/observability/processFeedback.test.ts"
+    ],
+    "note": "User-facing generation narration owns exhaustive phase mapping and unknown numeric omission."
+  }
+}
