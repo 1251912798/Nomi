@@ -1,0 +1,114 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-09-agent-thinking-overlap",
+  "problem_type": "Reasoning body rendered as fixed-height status metadata",
+  "symptom": "Long reasoning overlaps user bubble, two receipts and assistant body in real Electron.",
+  "direct_cause": "laneViewModel assigns part.text to thinking.meta; V4Thinking renders it in an h-7 inline-flex row with items-center and visible overflow.",
+  "class_root": "The shared presentation contract does not separate unbounded reasoning content from one-line status metadata.",
+  "affected_population": [
+    "Live streamed thinking across providers",
+    "Restored reasoning history in creation, generation, storyboard and preview"
+  ],
+  "scope_paths": [
+    "src/workbench/ai/lane/laneViewModel.ts",
+    "src/workbench/ai/v4/agentPanelV4Types.ts",
+    "src/workbench/ai/v4/AgentPanelV4Panel.tsx",
+    "src/workbench/ai/v4/AgentPanelV4Message.tsx",
+    "src/i18n/locales/agentPanelV4.ts"
+  ],
+  "entry_points": [
+    "Native lane live projection",
+    "Native lane restored transcript",
+    "Design-lab shared shell"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "An internal presentation contract violation; native HTML details and existing V4ToolReceipt provide disclosure without a dependency or external format change.",
+  "invariants": [
+    "Reasoning text is never status metadata.",
+    "Reasoning is collapsed by default and expansion grows the row in normal flow.",
+    "Visible text and row bounds from distinct conversation items never overlap."
+  ],
+  "generality_proof": "All four resident surfaces and restored/live native lane parts converge on laneViewModel and V4FlowRow/V4Thinking; no provider or host-specific layout exceptions.",
+  "shared_boundaries": [
+    {
+      "path": "src/workbench/ai/lane/laneViewModel.ts",
+      "symbol": "laneViewModel",
+      "responsibility": "Separate reasoning body and streaming state from metadata."
+    },
+    {
+      "path": "src/workbench/ai/v4/AgentPanelV4Message.tsx",
+      "symbol": "V4Thinking",
+      "responsibility": "Default-closed disclosure with natural block height."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/workbench/ai/v4/useAgentPanelV4Data.ts",
+      "entry_point": "useAgentPanelV4Data",
+      "disposition": "enforced",
+      "evidence": "All resident surfaces project snapshot.active with laneViewModel."
+    },
+    {
+      "path": "src/devlab/designLab/v4/agentPanelV4LabHost.tsx",
+      "entry_point": "ShellStage",
+      "disposition": "enforced",
+      "evidence": "Feeds native LanePart arrays through real laneClient and ProjectAgentResidentShell, including restored non-streaming thinking."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Any sufficiently long thinking paragraph overflows; independent of provider or whether restored.",
+    "same_class_scan": [
+      "rg thinking src/workbench/ai/lane src/workbench/ai/v4: laneViewModel is the sole body-to-meta producer; placeholder uses empty meta.",
+      "Read ShellStage and ProjectAgentResidentShell: all four host surfaces share the renderer.",
+      "Read AgentPanelV4Panel/V4FlowRow and V4ToolReceipt: natural-flow siblings already use shrink-0; thinking h-7 is the unbounded-content mismatch."
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "src/workbench/ai/v4/AgentPanelV4Message.tsx",
+    "invariant": "Unbounded reasoning belongs to a default-closed natural-height body, never the status line.",
+    "failure_mode": "Closed details do not paint body text; expanded details reserve full body height for subsequent rows.",
+    "exception_policy": "none",
+    "strategy": "Separate content from metadata at projection and enforce disclosure at the shared renderer.",
+    "artifacts": [
+      "src/workbench/ai/lane/laneViewModel.ts",
+      "src/workbench/ai/v4/agentPanelV4Types.ts",
+      "src/workbench/ai/v4/AgentPanelV4Panel.tsx",
+      "src/workbench/ai/v4/AgentPanelV4Message.tsx"
+    ]
+  },
+  "regression_tests": [
+    "src/workbench/ai/lane/laneViewModel.test.ts",
+    "src/workbench/ai/v4/agentPanelV4Blocks.test.ts",
+    "tests/ux/agent-thinking-overlap.walk.mjs"
+  ],
+  "class_regression_tests": [
+    "src/workbench/ai/lane/laneViewModel.test.ts",
+    "src/workbench/ai/v4/agentPanelV4Blocks.test.ts",
+    "tests/ux/agent-thinking-overlap.walk.mjs"
+  ],
+  "legacy_paths": {
+    "status": "not-applicable",
+    "removed_paths": [],
+    "rationale": "Replace body-as-meta assignment and fixed-height outer thinking row in place; no parallel renderer."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "No third-party runtime controls the missing application-level distinction. Native details already used by receipts.",
+    "exit_criteria": []
+  },
+  "migration": "No persisted or wire format changes; all historical parts project into the new presentation body automatically.",
+  "residual_risks": [
+    "Persisted history contains no per-thinking duration; do not fabricate a historical timer."
+  ],
+  "invariant_owner_layer": {
+    "layer": "src/workbench/ai/v4/AgentPanelV4Message.tsx",
+    "tests": [
+      "src/workbench/ai/lane/laneViewModel.test.ts",
+      "src/workbench/ai/v4/agentPanelV4Blocks.test.ts",
+      "tests/ux/agent-thinking-overlap.walk.mjs"
+    ],
+    "why": "Shared presentation boundary owns disclosure and row geometry; projection owns separate fields."
+  }
+}

@@ -7,6 +7,7 @@
 // 思考行是 Process 板时刻 2：shimmer 文字 +「4s · esc 打断」。刻意**不用转圈**——
 // 转圈没有时间感，秒数才告诉用户「没死」。它是助手文本的一个状态，不是第九个积木。
 import React from 'react'
+import { useTranslation } from 'react-i18next'
 import { cn } from '../../../utils/cn'
 import { AgentPanelV4Markdown } from './AgentPanelV4Markdown'
 import { ActionIcon, IconChevronRight, IconCopy, IconRefresh } from './AgentPanelV4Icons'
@@ -202,14 +203,51 @@ export function V4Suggestion({
  * 思考行（Process 板时刻 2）。`brain` icon **只在这一行出现**，秒数与 esc 提示在同一行右端。
  * shimmer 走背景渐变裁字，不是骨架屏。
  */
-export function V4Thinking({ label, meta }: { label: string; meta: string }): JSX.Element {
-  return (
-    <div className="inline-flex h-7 items-center gap-2 text-caption text-nomi-ink-60" data-v4-block="thinking">
-      <ActionIcon action="think" />
-      <span className="bg-gradient-to-r from-nomi-ink-40 via-nomi-ink to-nomi-ink-40 bg-clip-text text-transparent">
-        {label}
+export function V4Thinking({ label, meta, text, streaming }: {
+  label: string
+  meta: string
+  text?: string
+  streaming?: boolean
+}): JSX.Element {
+  const { t } = useTranslation()
+  // Only measure the live interval we actually observed. Restored history has no duration.
+  const [seconds, setSeconds] = React.useState<number>()
+  const labelRef = React.useRef<HTMLSpanElement>(null)
+  React.useEffect(() => {
+    if (!streaming) return undefined
+    const started = performance.now()
+    setSeconds(0)
+    const timer = window.setInterval(() => setSeconds(Math.floor((performance.now() - started) / 1000)), 1000)
+    return () => window.clearInterval(timer)
+  }, [streaming])
+  React.useEffect(() => {
+    if (!streaming || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return undefined
+    const animation = labelRef.current?.animate(
+      [{ backgroundPosition: '200% 0' }, { backgroundPosition: '-200% 0' }],
+      { duration: 2000, iterations: Infinity, easing: 'linear' },
+    )
+    return () => animation?.cancel()
+  }, [streaming])
+  const row = (
+    <>
+      <span className="shrink-0"><ActionIcon action="think" /></span>
+      <span ref={labelRef} className={cn('min-w-0 truncate', streaming !== false && 'bg-gradient-to-r from-nomi-ink-40 via-nomi-ink to-nomi-ink-40 bg-clip-text text-transparent', streaming && '[background-size:200%_100%]')}>
+        {streaming === false ? t('agentPanelV4.thinkingDone') : label}
       </span>
-      <span className="ml-auto font-nomi-mono text-micro text-nomi-ink-40">{meta}</span>
+      <span className="ml-auto shrink-0 whitespace-nowrap font-nomi-mono text-micro text-nomi-ink-40">
+        {seconds === undefined ? meta : t('agentPanelV4.thinkingSeconds', { count: seconds })}
+      </span>
+      {text ? <IconChevronRight size={12} className="shrink-0 transition-transform group-open:rotate-90" /> : null}
+    </>
+  )
+  return (
+    <div className="min-w-0 text-caption text-nomi-ink-60" data-v4-block="thinking" data-streaming={streaming}>
+      {text ? (
+        <details className="group">
+          <summary className="flex min-h-7 cursor-pointer list-none items-center gap-2 [&::-webkit-details-marker]:hidden">{row}</summary>
+          <div className="whitespace-pre-wrap break-words py-2 text-body-sm [overflow-wrap:anywhere]" data-v4-thinking-body="true">{text}</div>
+        </details>
+      ) : <div className="flex min-h-7 items-center gap-2">{row}</div>}
     </div>
   )
 }

@@ -157,7 +157,7 @@ export type InterventionData = Readonly<{
 export type V4FlowItem =
   | { kind: 'user'; text: string; chips?: readonly V4Chip[] }
   | { kind: 'assistant'; text: string; status: V4AssistantStatus; continuationEntryId?: string }
-  | { kind: 'thinking'; label: string; meta: string }
+  | { kind: 'thinking'; label: string; meta: string; text?: string; streaming?: boolean }
   | { kind: 'tool'; receipt: ToolReceipt }
   // 同一个工具连着调 N 次时，N 行收据折成的那一行（`agentPanelV4Collapse.ts` 是唯一产地）。
   // 它**不是**第九个积木：展开体里逐条渲染的就是普通的一行收据。

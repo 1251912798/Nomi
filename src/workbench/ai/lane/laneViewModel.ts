@@ -261,7 +261,7 @@ export function laneViewModel(projection: LaneProjection, labels: LaneViewModelL
       continue
     }
     if (part.kind === 'thinking') {
-      items.push({ kind: 'thinking', label: labels.thinkingLabel, meta: part.text })
+      items.push({ kind: 'thinking', label: labels.thinkingLabel, meta: '', text: part.text, streaming: part.streaming })
       continue
     }
     if (part.kind === 'tool-call') {

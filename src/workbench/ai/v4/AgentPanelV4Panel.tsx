@@ -130,7 +130,7 @@ export function V4FlowRow({
       />
     )
   }
-  if (item.kind === 'thinking') return <V4Thinking label={item.label} meta={item.meta} />
+  if (item.kind === 'thinking') return <V4Thinking label={item.label} meta={item.meta} text={item.text} streaming={item.streaming} />
   if (item.kind === 'suggestion') {
     return (
       <V4Suggestion

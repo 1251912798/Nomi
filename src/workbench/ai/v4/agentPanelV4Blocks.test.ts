@@ -363,3 +363,16 @@ it('the real panel mounts the approved domain deviation card at the end of its f
   expect(markup.indexOf('F_VERIFY_LOW')).toBeGreaterThan(markup.indexOf('Completed image'))
   expect(markup.indexOf('F_VERIFY_LOW')).toBeLessThan(markup.indexOf('data-v4-block="composer"'))
 })
+
+
+describe('thinking disclosure boundary', () => {
+  it('keeps the long body outside the summary and closed by default', () => {
+    const text = 'reasoning body '.repeat(80)
+    const markup = html(el(V4Thinking, { label: 'Thinking', meta: '', text, streaming: false }))
+    expect(markup).toContain('<details')
+    expect(markup).not.toMatch(/<details[^>]* open/)
+    expect(markup.split('</summary>')[0]).not.toContain(text)
+    expect(markup.split('</summary>')[1]).toContain(text)
+    expect(markup).not.toContain('inline-flex h-7')
+  })
+})

@@ -149,6 +149,8 @@ export const zhAgentPanelV4 = {
   fixtureProcessTwo: '我把 JSON 字符串化两次了，这次直接传数组。',
 
   thinkingLabel: '正在想…',
+  thinkingDone: '思考过程',
+  thinkingSeconds: '{{count}}s',
   clipStale: '{{label}} · 已变更',
   taskRun: '生成任务',
   taskUnknown: '任务详情在任务中心',
@@ -484,6 +486,8 @@ export const enAgentPanelV4 = {
   fixtureProcessTwo: 'I serialized the JSON twice; sending the array directly this time.',
 
   thinkingLabel: 'Thinking…',
+  thinkingDone: 'Thought process',
+  thinkingSeconds: '{{count}}s',
   clipStale: '{{label}} · changed',
   taskRun: 'Generation run',
   taskUnknown: 'Open the task centre for details',

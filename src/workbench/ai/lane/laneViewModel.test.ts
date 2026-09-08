@@ -430,3 +430,17 @@ describe('审批（阶段 3a）', () => {
     })
   })
 })
+
+
+describe('thinking content is not status metadata', () => {
+  it.each([true, false])('keeps long reasoning in a collapsible body (streaming=%s)', (streaming) => {
+    const text = 'I need to check the canvas before delivering. '.repeat(100)
+    const model = laneViewModel(projection([
+      part({ kind: 'user', text: '查看画布' }),
+      part({ kind: 'thinking', text, streaming }),
+      part({ kind: 'assistant-text', text: '已完成。', streaming: false }),
+    ]), labels)
+    expect(model.items[1]).toEqual({ kind: 'thinking', label: '[thinking]', meta: '', text, streaming })
+    expect(model.items.map((item) => item.kind)).toEqual(['user', 'thinking', 'assistant'])
+  })
+})

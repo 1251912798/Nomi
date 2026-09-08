@@ -365,3 +365,19 @@ test('flattenRequestText reads message text without copying image payloads or to
   ] })).toBe('SYSTEM\nVISION\n{"status":"pending"}')
   expect(flattenRequestText({})).toBe('')
 })
+
+
+test('reasoning-only holds emit native reasoning deltas before the eventual body', async () => {
+  const fixture = await startFixture()
+  const held = fixture.expectText({ label: 'reasoning stream', match: () => true,
+    reply: { type: 'hold', reasoning: 'Inspect the canvas first.' } })
+  const response = await chat(fixture, [{ role: 'user', content: 'check' }])
+  await held.received
+  held.release({ type: 'text', text: 'Finished.' })
+  const chunks = await sse(response)
+  expect(chunks.flatMap((chunk) => chunk.choices).map((choice) => choice.delta.reasoning_content).filter(Boolean))
+    .toEqual(['Inspect the canvas first.'])
+  expect(replyText(chunks)).toBe('Finished.')
+  expectUsage(chunks)
+  fixture.assertClean()
+})
