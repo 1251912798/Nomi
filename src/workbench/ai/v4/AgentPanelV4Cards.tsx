@@ -16,6 +16,7 @@ import {
   ActionIcon,
   IconAlertTriangle,
   IconCheck,
+  IconChevronRight,
   IconX,
   StatusSpinner,
 } from './AgentPanelV4Icons'
@@ -238,18 +239,24 @@ export function V4Intervention({
         {data.plan?.length ? (
           <div className="flex flex-col gap-1">
             {data.plan.map((row) => (
-              <label key={row.label} className="flex items-center gap-2 py-[3px] text-caption text-nomi-ink-80">
+              <div key={row.label} className="flex items-start gap-2 py-[3px] text-caption text-nomi-ink-80">
                 <input
                   type="checkbox"
+                  aria-label={row.label}
                   checked={row.checked}
                   onChange={(event) => onPlanToggle?.(row.label, event.target.checked)}
-                  className="size-3.5 shrink-0 accent-nomi-accent"
+                  className="mt-0.5 size-3.5 shrink-0 accent-nomi-accent"
                 />
-                <span className="min-w-0 flex-1 truncate">{row.label}</span>
                 {row.detail ? (
-                  <span className="shrink-0 font-nomi-mono text-micro text-nomi-ink-40">{row.detail}</span>
-                ) : null}
-              </label>
+                  <details className="group min-w-0 flex-1" data-v4-block="plan-detail">
+                    <summary className="flex cursor-pointer list-none items-start gap-1">
+                      <span className="min-w-0 flex-1 break-words">{row.label}</span>
+                      <IconChevronRight size={12} className="mt-0.5 shrink-0 group-open:rotate-90" aria-hidden="true" />
+                    </summary>
+                    <pre className="m-0 mt-1 whitespace-pre-wrap break-all font-nomi-mono text-micro text-nomi-ink-40">{row.detail}</pre>
+                  </details>
+                ) : <span className="min-w-0 flex-1 break-words">{row.label}</span>}
+              </div>
             ))}
           </div>
         ) : null}

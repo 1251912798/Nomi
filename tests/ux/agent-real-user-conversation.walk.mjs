@@ -7,7 +7,7 @@
 // 最后去剪辑面让 Nomi 加一条片头字幕。
 //
 // 这条走查同时是审批分档、队列/插队/停止、模式弹层单一语义 owner 三件事的运行时证据：
-//   · reversible_local 且需要读计划的（apply_edit_plan）→ 卡片给「确认 / 不再问」且说明操作范围；
+//   · reversible_local 且需要读计划的（apply_edit_plan）→ 计划卡只给本次确认，不承诺抬档；
 //   · irreversible（delete_canvas_nodes）→ 只给「这次」，并且必须画出边界行；
 //   · reversible_local 且不需读计划的（create_canvas_nodes）→ safe-auto 下**不出卡**，
 //     但写入必须真的发生（先证探针会亮，再断言它不亮，避免空洞通过）。
@@ -607,11 +607,16 @@ try {
   await expect(planApproval, '需要读计划的改动必须先浮出审批卡').toBeVisible({ timeout: 30_000 })
   await expect(planApproval, '这是可逆的本地改动').not.toHaveAttribute('data-kind', 'approval-irreversible')
   await expect(planApproval.locator(INTERVENTION_CONFIRM), '必须给「确认」（= 仅这一次）').toBeVisible()
-  await expect(planApproval.locator(INTERVENTION_ESCALATE), '可逆本地改动必须给「不再问 →」').toBeVisible()
-  await expect(planApproval, '「不再问」的作用域必须写在卡面上，别让人以为是全项目放行')
-    .toContainText('只对这一个操作生效')
-  await expect(planApproval, '审批卡要说人话，而不是甩一段 operation JSON').toContainText(CAPTION_TEXT)
-  await walk.snap('12-reversible-confirm-and-stop-asking')
+  await expect(planApproval.locator(INTERVENTION_ESCALATE), '计划卡按定稿不提供抬档').toHaveCount(0)
+  await expect(planApproval, '不描述不存在的动作').not.toContainText('不再问')
+  const planDetail = planApproval.locator('[data-v4-block="plan-detail"]')
+  await expect(planDetail.locator('summary'), '默认显示动作与目标').toContainText(CAPTION_TEXT)
+  await expect(planDetail.locator('summary')).toContainText('字幕')
+  await expect(planDetail.locator('pre'), 'JSON 默认折叠').not.toBeVisible()
+  await walk.snap('12-readable-plan-confirm')
+  await clickOrFail(planDetail.locator('summary'), '展开计划技术详情')
+  await expect(planDetail.locator('pre'), '展开后可查原始操作').toContainText('"kind":"text"')
+  await clickOrFail(planDetail.locator('summary'), '收起计划技术详情')
   await clickOrFail(planApproval.locator(INTERVENTION_CONFIRM), '应用这次', { noWaitAfter: true })
   const planResultWire = await recorded(planResult.received, 'timeline plan tool-result request')
   expect(toolResultText(planResultWire.body, TIMELINE_PLAN_CALL), '批准后的计划必须真的应用')
@@ -642,7 +647,7 @@ try {
 
   // ── 幕七 · 冷重启：把进程真的杀掉再起，做过的事必须还在 ─────────────────────────
   const nodesBeforeRestart = await canvasNodeIds()
-  await waitForV4TurnIdle(win, { panel: PREVIEW_PANEL })
+  await waitForV4TurnIdle(win, { panel: PREVIEW_PANEL, settledBy: win.locator(PREVIEW_PANEL).locator(ASSISTANT_MESSAGE).filter({ hasText: TIMELINE_REPLY }).last() })
   const threadsBeforeRestart = lanes().map((session) => session.sessionId)
   expect(threadsBeforeRestart, '重启前这个项目只有一条对话').toHaveLength(1)
   const requestsBeforeRestart = walk.fixture.requests.length

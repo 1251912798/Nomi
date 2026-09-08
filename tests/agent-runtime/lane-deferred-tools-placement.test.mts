@@ -11,7 +11,7 @@ import { openAICompletionsApi } from '@earendil-works/pi-ai/api/openai-completio
 import { createCodingTools, createReadOnlyTools } from '@earendil-works/pi-coding-agent';
 import { LANE_MODEL_TOOL_CATALOG } from '../../electron/agentLane/laneToolCatalog.js';
 import { LANE_CODING_TOOL_NAMES } from '../../electron/agentLane/laneCodingTools.mjs';
-import { addedToolNamesForUnlock, laneToolMenu, LANE_TOOL_REQUEST_TOOL_NAME }
+import { laneToolMenu, LANE_TOOL_REQUEST_TOOL_NAME }
   from '../../electron/agentLane/laneToolGroups.mjs';
 import { laneToolModelDescription } from '../../electron/shared/agentLane/laneToolContract.js';
 import { toPublishedJsonSchema } from '../../electron/shared/agentCapabilities/modelVisibleJsonSchema.js';
@@ -45,7 +45,7 @@ function toolsForMenu(): { locked: Tool[]; unlocked: Tool[] } {
     ...createCodingTools('/pd1-fixture'), ...createReadOnlyTools('/pd1-fixture')]
     .map((tool) => [tool.name, tool]));
   const select = (unlocked: boolean): Tool[] => laneToolMenu({
-    unlocked: unlocked ? ['model-requested'] : [],
+    activeGroup: unlocked ? 'coding' : null,
   }).activeToolNames.map((name) => {
     const tool = byName.get(name);
     assert.ok(tool, `Missing real catalog/factory tool: ${name}`);
@@ -111,7 +111,7 @@ for (const transport of TRANSPORTS) {
           context.messages.push({
             role: 'toolResult', toolCallId: call.id, toolName: call.name,
             content: [{ type: 'text', text: 'Coding unlocked.' }], isError: false, timestamp: 2,
-            ...(arm === 'without-addedToolNames' ? {} : { addedToolNames: [...addedToolNamesForUnlock()] }),
+            ...(arm === 'without-addedToolNames' ? {} : { addedToolNames: [...LANE_CODING_TOOL_NAMES] }),
           });
         } else if (turn === 2) {
           context.messages.push({ role: 'user', content: 'Keep the same tools.', timestamp: 3 });

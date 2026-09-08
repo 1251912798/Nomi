@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import path from "node:path";
+import fs from "node:fs";
+import os from "node:os";
+import { gitPaths } from "./lib/gitPaths.mjs";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 import {
@@ -644,4 +647,20 @@ test("invariant_owner_layer: 阈值之前 / 没有日期前缀的合同不追溯
     existingFiles: new Set(["docs/fixes/2026-09-06-fixture.root-cause.json", "electron/catalog/assetLocalization.ts", "electron/catalog/assetLocalization.test.ts"]),
   });
   assert.equal(older.ok, true, older.errors.join("\n"));
+});
+
+// A relocation is both removal of the legacy path and addition of the new owner.
+test("rename evidence: the checker inventory includes both endpoints", () => {
+  const cwd = fs.mkdtempSync(path.join(os.tmpdir(), "nomi-contract-rename-"));
+  const git = (...args) => execFileSync("git", args, { cwd, stdio: "pipe" });
+  try {
+    git("init");
+    fs.writeFileSync(path.join(cwd, "legacy.ts"), "export const value = 1;\n");
+    git("add", "legacy.ts");
+    git("-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "-m", "fixture");
+    git("mv", "legacy.ts", "shared.ts");
+    const checker = fs.readFileSync(path.join(repoRoot, "scripts/check-root-cause-contracts.mjs"), "utf8");
+    assert.match(checker, /gitPaths\(\["diff", "--no-renames", "--name-only", baseRef/);
+    assert.deepEqual(gitPaths(["diff", "--no-renames", "--name-only", "HEAD", "--"], { cwd }).sort(), ["legacy.ts", "shared.ts"]);
+  } finally { fs.rmSync(cwd, { recursive: true, force: true }); }
 });

@@ -199,6 +199,17 @@ describe('⑤ 介入槽 · 八种内容体', () => {
     expect(hasEscalate('plan')).toBe(false)
   })
 
+  it.each(['汤先到，人后到', '镜头 2：端起汤碗'])('计划人话与技术详情分开且默认折叠：%s', (label) => {
+    const markup = html(el(V4Intervention, {
+      data: { kind: 'plan', title: '计划', plan: [{ label, detail: '{"kind":"text"}', checked: true }] },
+      labels: slotLabels,
+    }))
+    expect(markup).toContain(label)
+    expect(markup).toMatch(/<details[^>]*>/)
+    expect(markup).not.toMatch(/<details[^>]* open/)
+    expect(markup).not.toMatch(/<label[^>]*>[^]*?&quot;kind&quot;[^]*?<\/label>/)
+  })
+
   it('计划槽底栏是「主动作 · 改一下 …… 收起 ▴」，不带「不要」', () => {
     const markup = html(el(V4Intervention, {
       data: { kind: 'plan', title: '拆出 4 镜', confirmLabel: '生成 3 镜', alternateLabel: '改一下' },
