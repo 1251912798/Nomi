@@ -1,5 +1,7 @@
 # 体感回归机制（2026-09-09）
 
+> 状态：已实现并通过本地完整 gates，PR #662 交付；未合并。
+
 ## 先查别人
 
 - Playwright Page 截图与等待：https://playwright.dev/docs/api/class-page
@@ -64,3 +66,9 @@
 截图观察覆盖 Page 与 locator/getBy*/派生 Locator（含 all）；Locator 截图后仍扫描整页。夹具证明按钮截图也能检出按钮外的字号缺陷。整页正常滚动也有独立不误报用例。
 
 全量测试发现旧 `_feel.test.mjs` 使用 node:test 却被 Vitest 收集，导致 No test suite found；两份 .test.mjs 统一使用 Vitest 注册，保留 Playwright expect 断言。最终窄测命令：`pnpm exec vitest run tests/ux/_feel.test.mjs tests/ux/_feel-observer.test.mjs`。
+
+## 最终交付验证
+- 验证代码 SHA：`d8a770cd5e0c26c54506ef14f4fd8105bcf09569`，已整合当时最新 origin/main，behind=0。
+- `pnpm run gates` exit 0：76 contracts，73 pass / 0 blocking / 3 advisory；1292 个 Vitest 文件、12069 tests pass（1 文件、2 tests skipped）；agent runtime / janitor / stats 与 Vite、Electron 构建均通过。
+- 最终窄测 11/11；夜跑 20 张截图 / 10 条发现 / drift=0。人工查看 Agent 重叠、HTML 裁切、3D 禁用交互夹具截图，与记录一致。
+- 收据日志：`/tmp/ux-feel-gates-delivery.log`；后续文档收据不改变上述被验证代码。
