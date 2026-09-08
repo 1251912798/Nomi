@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer, webUtils } from "electron";
 import { importNativeFileFromPreload } from "./assets/nativeFileBridge";
 import { createCanvasReadSurfacePreloadBridge } from './surfacePortPreloadBridge';
 import type { ProjectAgentExecutionEvent, ProjectAgentPatch } from './shared/projectAgentContracts';
+import type { MobileBridgeFeedback } from './shared/contracts/directorMobileBridge';
 
 type SyncResult<T> = { ok: true; value: T } | { ok: false; error: string };
 type ProductionDeepLinkPayload = { projectId: string; runId?: string; nodeId?: string; artifactId?: string };
@@ -129,8 +130,7 @@ contextBridge.exposeInMainWorld("nomiDesktop", {
     readAsync: (projectId: string) => ipcRenderer.invoke("nomi:projects:read-async", projectId),
     diagnose: (projectId: string) => ipcRenderer.invoke("nomi:projects:diagnose", projectId),
     recover: (projectId: string) => ipcRenderer.invoke("nomi:projects:recover", projectId),
-    save: (projectId: string, record: unknown) => invokeSync("nomi:projects:save", projectId, record),
-    saveAsync: (projectId: string, record: unknown) =>
+    save: (projectId: string, record: unknown) =>
       ipcRenderer.invoke("nomi:projects:save-async", projectId, record),
     delete: (projectId: string) => invokeSync("nomi:projects:delete", projectId),
   },
@@ -334,9 +334,47 @@ contextBridge.exposeInMainWorld("nomiDesktop", {
     logout: () => ipcRenderer.invoke("nomi:dreamina:logout"),
     install: () => ipcRenderer.invoke("nomi:dreamina:install"),
   },
-  scene3d: {
+  director: {
+    // 导演台出片：N 帧 PNG dataURL → ffmpeg 拼 mp4 落项目素材（IPC 通道名沿用，主进程 electron/video/framesToVideo.ts 契约不动）
     framesToVideo: (payload: unknown) =>
       ipcRenderer.invoke("nomi:scene3d:frames-to-video", payload) as Promise<{ url: string; assetId?: string }>,
+    mobile: {
+      feedback: (payload: MobileBridgeFeedback) => ipcRenderer.invoke('nomi:director:mobile:feedback', payload) as Promise<boolean>,
+      start: (payload?: { text?: Record<string, string> }) =>
+        ipcRenderer.invoke("nomi:director:mobile:start", payload) as Promise<{
+          running: boolean
+          secure: boolean
+          port: number | null
+          urls: string[]
+          devices: Array<{ id: string; name: string; latencyMs: number | null; connectedAt: number }>
+          qrByUrl?: Record<string, string>
+        }>,
+      stop: () =>
+        ipcRenderer.invoke("nomi:director:mobile:stop") as Promise<{
+          running: boolean
+          secure: boolean
+          port: number | null
+          urls: string[]
+          devices: Array<{ id: string; name: string; latencyMs: number | null; connectedAt: number }>
+          qrByUrl?: Record<string, string>
+        }>,
+      status: () =>
+        ipcRenderer.invoke("nomi:director:mobile:status") as Promise<{
+          running: boolean
+          secure: boolean
+          port: number | null
+          urls: string[]
+          devices: Array<{ id: string; name: string; latencyMs: number | null; connectedAt: number }>
+          qrByUrl?: Record<string, string>
+        }>,
+      onEvent: (callback: (event: unknown) => void) => {
+        const listener = (_event: unknown, payload: unknown) => callback(payload)
+        ipcRenderer.on("nomi:director:mobile:event", listener as never)
+        return () => {
+          ipcRenderer.removeListener("nomi:director:mobile:event", listener as never)
+        }
+      },
+    },
   },
   exports: {
     startJob: (payload: unknown) => ipcRenderer.invoke("nomi:exports:start-job", payload),

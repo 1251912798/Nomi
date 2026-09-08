@@ -12,14 +12,14 @@ describe('canvas toolbar node model', () => {
       'model3d',
       'whiteboard',
       'panorama',
-      'scene3d',
+      'director',
     ])
   })
 
   it('separates core media from spatial tools without an overflow group', () => {
     expect(CANVAS_TOOLBAR_NODE_GROUPS).toHaveLength(2)
     expect(CANVAS_TOOLBAR_NODE_GROUPS[0]).toEqual(['text', 'image', 'video', 'clip', 'audio'])
-    expect(CANVAS_TOOLBAR_NODE_GROUPS[1]).toEqual(['model3d', 'whiteboard', 'panorama', 'scene3d'])
+    expect(CANVAS_TOOLBAR_NODE_GROUPS[1]).toEqual(['model3d', 'whiteboard', 'panorama', 'director'])
     expect(canvasToolbarNodeKinds()).not.toContain('more')
   })
 })

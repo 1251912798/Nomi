@@ -1,3 +1,4 @@
+import type { MobileBridgeEvent, MobileBridgeStatus, MobileBridgeFeedback } from '../../electron/shared/contracts/directorMobileBridge'
 import type { ExportJobEvent, ExportJobSnapshot, ExportJobVerification } from '../../electron/export/exportJobManager'
 import type { WorkspaceFileListResult } from '../../electron/workspace/workspaceFileIndex'
 import type { ProviderKind } from './providerKind'
@@ -44,6 +45,9 @@ export type PersistedConversationsV2 = {
 }
 
 /** 代理三态：跟随系统探测 / 只对 Nomi 生效的自定义地址 / 强制直连。 */
+export type DesktopDirectorMobileStatus = MobileBridgeStatus
+export type DesktopDirectorMobileEvent = MobileBridgeEvent
+
 export type DesktopProxyMode = 'system' | 'custom' | 'off'
 
 /** 一种媒体类型现在实际走的上传通道（main 侧 describeAssetTransportChannels 的产物）。 */
@@ -372,8 +376,7 @@ export type DesktopBridge = DesktopMediaBridge & DesktopConnectorBridge & {
     readAsync?: (projectId: string) => Promise<unknown | null>
     diagnose?: (projectId: string) => Promise<{ projectId: string; rootPath?: string; status: 'ok' | 'not-registered' | 'missing-folder' | 'missing-manifest' | 'corrupt-manifest' | 'id-mismatch'; recoverable: boolean; backupAvailable: boolean }>
     recover?: (projectId: string) => Promise<unknown>
-    save: (projectId: string, record: unknown) => unknown
-    saveAsync?: (projectId: string, record: unknown) => Promise<unknown>
+    save: (projectId: string, record: unknown) => Promise<unknown>
     delete: (projectId: string) => { id: string; deleted: boolean }
   }
   assets: {
@@ -521,16 +524,23 @@ export type DesktopBridge = DesktopMediaBridge & DesktopConnectorBridge & {
       projectId?: string
     }) => Promise<{ layers: string[] }>
   }
-  scene3d: {
-    /** N 帧 PNG dataURL（沿相机轨迹采样）→ ffmpeg 拼 H.264 mp4 → 项目素材。
-     *  AI 运镜工具的「轨迹→视频文件」桥，见 electron/video/framesToVideo.ts。 */
+  /** 导演台出片 + 手机虚拟相机。开发页 / 老 preload 没有这座桥 → 对话框明说需要桌面运行时。 */
+  director?: {
+    /** 出片：N 帧 PNG dataURL → ffmpeg 拼 mp4 落项目素材（主进程 electron/video/framesToVideo.ts）。 */
     framesToVideo: (payload: {
       projectId: string
-      ownerNodeId?: string | null
-      fileName?: string
+      ownerNodeId: string
+      fileName: string
       fps: number
       frames: string[]
     }) => Promise<{ url: string; assetId?: string }>
+    mobile: {
+      feedback: (payload: MobileBridgeFeedback) => Promise<boolean>
+      start: (payload?: { text?: Record<string, string> }) => Promise<DesktopDirectorMobileStatus>
+      stop: () => Promise<DesktopDirectorMobileStatus>
+      status: () => Promise<DesktopDirectorMobileStatus>
+      onEvent: (callback: (event: DesktopDirectorMobileEvent) => void) => () => void
+    }
   }
   exports: {
     startJob: (payload: DesktopExportJobStartPayload) => Promise<DesktopExportJobStartResult>
