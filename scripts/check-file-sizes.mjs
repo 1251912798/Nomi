@@ -36,7 +36,7 @@ const ALLOWLIST = {
   // projection alongside the legacy model settings pages. Keep this reviewed
   // baseline until the planned settings-surface extraction. (2026-08-29)
   "src/ui/onboarding/OnboardingDrawer.tsx": 811,
-  "src/workbench/generationCanvas/nodes/BaseGenerationNode.tsx": 713, // …→ 731（2026-08-25 P4 S6：多镜叠加合一 ProductionShotOverlays）→ 713（2026-08-29 React Flow 单内核：移除旧布局与缩放分支）
+  "src/workbench/generationCanvas/nodes/BaseGenerationNode.tsx": 705, // …→ 713（2026-08-29 React Flow 单内核：移除旧布局与缩放分支）→ 705（2026-09-03 导演台切换门：删 scene3d 分支）
   // Project Agent Host 迁移巨壳（M1 transplant：electron 切片随 r2 入库、renderer 切片随
   // 本次 cutover 入库；上游 pr223 原型已人工评审同一批 owner，数字按本分支实际行数锁棘轮，
   // 只减不增，下一个分解批次按稳定 ownership seam 拆分后逐个出表）。834→836：并 origin/main 的
@@ -59,7 +59,7 @@ const ALLOWLIST = {
   // canvasNodeActions.ts + canvasGraphActions.ts + canvasRunActions.ts 后壳文件缩到 161 < 800，已出白名单。
   // NodeParameterControls.tsx 曾 1097 行（巨壳）；C2b 抽出 controls/parameterControlModel.ts +
   // archetypeMeta.ts + ModeBar.tsx 后缩到 605 < 800 硬上限，已出白名单（Rule 12：逐步清空白名单）。
-  // Scene3DFullscreen.tsx 曾 3822 行（最大巨壳）；#10b 拆出 scene3dToolbar/inspector/objects/
+  // （历史）V1 Scene3DFullscreen.tsx 曾 3822 行（最大巨壳），切换门后整目录已删；#10b 拆出 scene3dToolbar/inspector/objects/
   // viewControllers/sceneView/sceneContent/cameraPreview 七个子模块后壳缩到 771 < 800，已出白名单。
 };
 

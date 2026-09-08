@@ -21,7 +21,6 @@ import {
   PendingGenerationPlaceholder,
   LocalImageOpPendingStatus,
   RemoveBackgroundPendingPlaceholder,
-  Scene3DEditorLoading,
   STRIPED_BG_CLASS,
 } from './render/CardCommon'
 import PanoramaUploadFallback from './PanoramaUploadFallback'
@@ -73,7 +72,6 @@ export type BaseGenerationNodeProps = {
   focusFlash?: boolean
   appear?: boolean
 }
-const Scene3DEditor = lazyWithChunkBoundary('3D 场景编辑器', () => import('./Scene3DEditor')) // A5：chunk 失败只降级本卡
 const Model3DViewer = lazyWithChunkBoundary('3D 模型预览', () => import('./model3d/Model3DViewer')) // 生成出的 .glb 卡内可旋转预览（R3F）
 const TextDocumentNode = lazyWithChunkBoundary('文本节点编辑器', () => import('./render/TextDocumentNode'))
 const PanoramaViewer = lazyWithChunkBoundary('全景预览', () => import('./PanoramaViewer'))
@@ -227,10 +225,9 @@ function BaseGenerationNodeImpl({
   const canSendToTimeline = canDragGenerationNodeToTimeline(node, { readOnly })
   const showTimelineNotch =
     canSendToTimeline &&
-    node.kind !== 'scene3d' &&
     (node.result?.type === 'image' || node.result?.type === 'video') &&
     !resultStackOpen
-  const showSideTimelineDrag = canSendToTimeline && node.kind !== 'scene3d' && !showTimelineNotch
+  const showSideTimelineDrag = canSendToTimeline && !showTimelineNotch
   // 失败态不显文字徽标——错误已铺满节点正文（NodeErrorReport），顶部再写「生成失败」是重复噪音（2026-06-03 评审）。
   const showStatusBadge = status === 'queued' || status === 'running'
 
@@ -534,11 +531,7 @@ function BaseGenerationNodeImpl({
         draggable={false}
         {...mediaPreviewDoubleClick}
       >
-        {node.kind === 'scene3d' ? (
-          <React.Suspense fallback={<Scene3DEditorLoading />}>
-            <Scene3DEditor node={node} width={visualSize.width} height={previewHeight} readOnly={readOnly} />
-          </React.Suspense>
-        ) : node.kind === 'panorama' ? (
+        {node.kind === 'panorama' ? (
           node.result?.url || node.meta?.imageUrl ? (
             <React.Suspense fallback={<NodeBodyLoading />}>
               <PanoramaViewer
@@ -556,7 +549,7 @@ function BaseGenerationNodeImpl({
           )
         ) : node.result?.url ? (
           node.result.type === 'model3d' ? (
-            <React.Suspense fallback={<Scene3DEditorLoading />}>
+            <React.Suspense fallback={<NodeBodyLoading />}>
               <Model3DViewer url={node.result.url} />
             </React.Suspense>
           ) : node.result.type === 'video' ? (
@@ -658,7 +651,6 @@ function BaseGenerationNodeImpl({
       !readOnly &&
       !resultStackOpen &&
       node.kind !== 'panorama' &&
-      node.kind !== 'scene3d' &&
       node.kind !== 'whiteboard' &&
       !isAssetKind ? (
         <React.Suspense fallback={null}>

@@ -200,7 +200,7 @@ try {
     ['model3d', '3D 模型节点'],
     ['whiteboard', '画板节点'],
     ['panorama', '全景图节点'],
-    ['scene3d', '3D 场景节点'],
+    ['director', '导演台节点'],
   ]
   const toolButtons = toolbar.locator('[data-node-kind]')
   assert((await toolButtons.count()) === expectedTools.length, '左侧 9 个节点入口全部直接可见')

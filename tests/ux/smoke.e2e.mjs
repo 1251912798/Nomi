@@ -154,7 +154,6 @@ try {
   //（回归 2026-08-04：createdId 从 setState updater 里往外带，依赖 React eager-eval 才同步执行；
   // 「新建」handler 先 setTimelineOpen(true) 把 fiber 弄脏 → updater 推迟 → active 从未设置 →
   // 面板永远停在「请选择一条轨迹」，用户被迫再去时间轴点一次「轨迹1」行）。
-  await win.evaluate(() => window.localStorage.setItem("nomi.onboarding.scene3dCoach.v1", "seen"));
   await win.locator('button[aria-label="添加3D 场景节点"]').first().click()
     .catch(() => win.getByRole("button", { name: /添加.*3D.*场景.*节点/ }).first().click());
   await win.waitForTimeout(1200);

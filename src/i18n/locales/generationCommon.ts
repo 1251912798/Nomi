@@ -84,7 +84,6 @@ export const zhGenerationCommon = {
     closeMediaEsc: '关闭预览（Esc）',
   },
   chunk: {
-    scene3dEditor: '3D 场景编辑器',
     model3dViewer: '3D 模型预览',
     textEditor: '文本节点编辑器',
     panoramaViewer: '全景预览',
@@ -981,7 +980,6 @@ export const zhGenerationCommon = {
     comfyPreviewAlt: 'ComfyUI 采样活预览',
     upload: '+ 上传{{label}}',
     node: '节点',
-    scene3dLoading: '3D 编辑器加载中',
     prop: {
       image: '道具图',
       unnamed: '未命名道具',
@@ -1675,7 +1673,6 @@ export const enGenerationCommon = {
     closeMediaEsc: 'Close preview (Esc)',
   },
   chunk: {
-    scene3dEditor: '3D scene editor',
     model3dViewer: '3D model preview',
     textEditor: 'Text node editor',
     panoramaViewer: 'Panorama preview',
@@ -2574,7 +2571,6 @@ export const enGenerationCommon = {
     comfyPreviewAlt: 'ComfyUI sampling live preview',
     upload: '+ Upload {{label}}',
     node: 'Node',
-    scene3dLoading: 'Loading 3D editor',
     prop: {
       image: 'Prop image',
       unnamed: 'Untitled prop',
