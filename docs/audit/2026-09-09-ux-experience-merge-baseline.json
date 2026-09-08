@@ -1,0 +1,202 @@
+{
+  "source": "PR #662 final origin/main ac9f5cf22a9607a5615885ac02955e1812ac6671",
+  "unchangedMetrics": 30,
+  "entries": [
+    {
+      "journey": "agent-panel",
+      "before": {
+        "compatibility": {
+          "rubricVersion": 1,
+          "sourceHash": "2858c9ed7b5f6530f65bf25b39fc98cd3a1cac5888752e2bc67243df46631c60",
+          "platform": "darwin",
+          "architecture": "arm64",
+          "playwright": "1.60.0",
+          "electron": "43.4.1",
+          "viewport": {
+            "width": 1440,
+            "height": 842,
+            "dpr": 2
+          },
+          "theme": "light"
+        },
+        "metrics": {
+          "clicks": 5,
+          "inputs": 1,
+          "keys": 1,
+          "scrolls": 0,
+          "panelSwitches": 1,
+          "confirmations": 0,
+          "unnamedIconCount": 0,
+          "longCopyCount": 0,
+          "pointerDistancePx": 1620.476028836415,
+          "fittsSum": 12.003117042731054,
+          "feelFindings": 12
+        }
+      },
+      "after": {
+        "compatibility": {
+          "rubricVersion": 1,
+          "sourceHash": "bfd9e08a1cb8d2b7b5c9b0350c1d9ec83b97af551a7b81047265d31bbbd8dee8",
+          "platform": "darwin",
+          "architecture": "arm64",
+          "playwright": "1.60.0",
+          "electron": "43.4.1",
+          "viewport": {
+            "width": 1440,
+            "height": 842,
+            "dpr": 2
+          },
+          "theme": "light"
+        },
+        "metrics": {
+          "clicks": 5,
+          "inputs": 1,
+          "keys": 1,
+          "scrolls": 0,
+          "panelSwitches": 1,
+          "confirmations": 0,
+          "unnamedIconCount": 0,
+          "longCopyCount": 0,
+          "pointerDistancePx": 1620.476028836415,
+          "fittsSum": 12.003117042731054,
+          "feelFindings": 16
+        }
+      },
+      "reason": "PR #662 final scanner and shared screenshot observation replace the pre-merge scanner and later duplicate scan. Incompatible measurement migration; not a same-source regression pass."
+    },
+    {
+      "journey": "canvas-image",
+      "before": {
+        "compatibility": {
+          "rubricVersion": 1,
+          "sourceHash": "2858c9ed7b5f6530f65bf25b39fc98cd3a1cac5888752e2bc67243df46631c60",
+          "platform": "darwin",
+          "architecture": "arm64",
+          "playwright": "1.60.0",
+          "electron": "43.4.1",
+          "viewport": {
+            "width": 1440,
+            "height": 842,
+            "dpr": 2
+          },
+          "theme": "light"
+        },
+        "metrics": {
+          "clicks": 7,
+          "inputs": 1,
+          "keys": 0,
+          "scrolls": 0,
+          "panelSwitches": 4,
+          "confirmations": 1,
+          "unnamedIconCount": 0,
+          "longCopyCount": 0,
+          "pointerDistancePx": 2495.1232625670273,
+          "fittsSum": 20.88866344722061,
+          "feelFindings": 61
+        }
+      },
+      "after": {
+        "compatibility": {
+          "rubricVersion": 1,
+          "sourceHash": "bfd9e08a1cb8d2b7b5c9b0350c1d9ec83b97af551a7b81047265d31bbbd8dee8",
+          "platform": "darwin",
+          "architecture": "arm64",
+          "playwright": "1.60.0",
+          "electron": "43.4.1",
+          "viewport": {
+            "width": 1440,
+            "height": 842,
+            "dpr": 2
+          },
+          "theme": "light"
+        },
+        "metrics": {
+          "clicks": 7,
+          "inputs": 1,
+          "keys": 0,
+          "scrolls": 0,
+          "panelSwitches": 4,
+          "confirmations": 1,
+          "unnamedIconCount": 0,
+          "longCopyCount": 0,
+          "pointerDistancePx": 2495.1232625670273,
+          "fittsSum": 20.88866344722061,
+          "feelFindings": 63
+        }
+      },
+      "reason": "PR #662 final scanner and shared screenshot observation replace the pre-merge scanner and later duplicate scan. Incompatible measurement migration; not a same-source regression pass."
+    },
+    {
+      "journey": "settings-model",
+      "before": {
+        "compatibility": {
+          "rubricVersion": 1,
+          "sourceHash": "2858c9ed7b5f6530f65bf25b39fc98cd3a1cac5888752e2bc67243df46631c60",
+          "platform": "darwin",
+          "architecture": "arm64",
+          "playwright": "1.60.0",
+          "electron": "43.4.1",
+          "viewport": {
+            "width": 1440,
+            "height": 842,
+            "dpr": 2
+          },
+          "theme": "light"
+        },
+        "metrics": {
+          "clicks": 7,
+          "inputs": 3,
+          "keys": 0,
+          "scrolls": 0,
+          "panelSwitches": 3,
+          "confirmations": 0,
+          "unnamedIconCount": 0,
+          "longCopyCount": 9,
+          "pointerDistancePx": 2559.013476007323,
+          "fittsSum": 16.747871908765934,
+          "feelFindings": 78
+        }
+      },
+      "after": {
+        "compatibility": {
+          "rubricVersion": 1,
+          "sourceHash": "bfd9e08a1cb8d2b7b5c9b0350c1d9ec83b97af551a7b81047265d31bbbd8dee8",
+          "platform": "darwin",
+          "architecture": "arm64",
+          "playwright": "1.60.0",
+          "electron": "43.4.1",
+          "viewport": {
+            "width": 1440,
+            "height": 842,
+            "dpr": 2
+          },
+          "theme": "light"
+        },
+        "metrics": {
+          "clicks": 7,
+          "inputs": 3,
+          "keys": 0,
+          "scrolls": 0,
+          "panelSwitches": 3,
+          "confirmations": 0,
+          "unnamedIconCount": 0,
+          "longCopyCount": 9,
+          "pointerDistancePx": 2559.013476007323,
+          "fittsSum": 16.747871908765934,
+          "feelFindings": 27
+        }
+      },
+      "reason": "PR #662 final scanner and shared screenshot observation replace the pre-merge scanner and later duplicate scan. Incompatible measurement migration; not a same-source regression pass."
+    }
+  ],
+  "viewportCorrection": {
+    "reason": "Electron contentSize did not pin renderer viewport (842 -> 840); collector uses rubric viewport via Playwright setViewportSize.",
+    "sourceHash": "879a73b032bb5d4cf430865d9fceed40dd6deee3082468c8c5da0b4a2896bb7d",
+    "metricsChanged": false,
+    "deviceScaleFactor": {
+      "before": 2,
+      "after": 1,
+      "reason": "Playwright fixed viewport uses emulated DPR 1 instead of host display DPR; all 33 CSS-pixel metrics exactly unchanged on full rerun."
+    }
+  }
+}
