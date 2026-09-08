@@ -1,6 +1,6 @@
 # 走查运行时减重：先量再砍
 
-> 日期：2026-09-08 · 状态：桌面三轮验收通过，最终 gates / PR 待完成
+> 日期：2026-09-08 · 状态：桌面三轮验收通过；最终 gates / PR 收据见 WS-LAST.md 与 PR
 
 ## 范围与验收
 
@@ -191,3 +191,7 @@ Ponytail 明细复审：建议删生成按钮 click 前的重复 visible 等待�
 D 的五对 Read：批量模型设置、节点右键菜单、快捷键最终结果、批量模型菜单、只读重启结果。结构/内容一致；可见 transient toast 数量随时序变化，时间戳和少量节点坐标不当像素基线。原始结果 final-1..3/summary.json，截图 final-1..3-shots，拼图 d-five-pairs.jpg。既有文件名 dark-model-settings 在夜间默认主题下可能拍到 light（脚本用 toggle 而非明确主题），这是旧截图命名/前提问题，不声称像素级完全一致。
 
 启动次数仍为 13 次，每个场景独立脚本、隔离 profile、日志和失败结果；合并 0 组。未采用禁 GPU 合成以免削弱真实画布渲染覆盖；更新无后台自动检查入口，未加伪关闭参数；减少 DevTools 的候选失败后已撤回。
+
+## 最终交付命令与边界
+
+任务分支 test/walkthrough-runtime-diet-20260908；正常整合 origin/main 后执行 pnpm run gates，再用其新构建跑 full。最终命令状态、gates 墙钟与 PR URL 记录在不提交的 WS-LAST.md / PR，避免为了回填文档改变已验收 SHA。三个指定静态门岗已在最终测试代码上再次全绿。只推任务分支，不合并 PR；生产源码零改动，零额度生成，原始截图/测量日志留 /tmp/nomi-walk-speed-evidence。
