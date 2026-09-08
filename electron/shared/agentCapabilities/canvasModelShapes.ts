@@ -76,7 +76,7 @@ const storyboardShotSchema = z.object({
   modelKey: z
     .string()
     .optional()
-    .describe("Catalog video model key; omit for the saved default."),
+    .describe("已指定填目录键；未指定用默认。"),
   modeId: z
     .string()
     .optional()
@@ -84,7 +84,7 @@ const storyboardShotSchema = z.object({
   params: z
     .record(generationParamValueSchema)
     .optional()
-    .describe("Parameters declared by the selected model; omit unknown keys."),
+    .describe("已指定按档案填；未指定派生，禁编键。"),
   subtitle: z
     .string()
     .optional()

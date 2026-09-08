@@ -69,7 +69,7 @@ export function buildStoryboardPlanningMessage(input: {
   }
   const trimmed = (input.storyText || '').trim()
   return [
-    'Language requirement: produce the entire storyboard plan in English. The title, anchor names, anchor descriptions, shot prompts, and all user-facing explanation must be English. Use another language only if the user explicitly requests it.',
+    '遵守宿主的回复语言规则；用户明确要求的语言优先。用户给定的标题、角色名、字幕和台词保持原文，除非用户要求改写或翻译。',
     '请把下面这段故事规划成一份「分镜方案」（跨镜头要一致的角色/场景/道具/风格 + 每个镜头），只返回符合所附 JSON Schema 的结构化方案 JSON 对象——先给用户在创作区审阅、修改，不要直接写画布。',
     '',
     shotModeDirective(input.shotMode ?? 'image'),

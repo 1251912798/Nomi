@@ -150,15 +150,15 @@ const CANVAS_WRITE_TOOLS: readonly CanvasWriteToolShape[] = [
     description: "Create, connect, retitle or tidy generation-canvas nodes in one reversible batch. The operation selects which fields apply; unrelated fields are rejected.",
     promptSnippet: "create, connect, retitle or tidy canvas nodes.",
     promptGuidelines: ["Send a whole batch in one call rather than one node at a time.", ...CANVAS_NODE_PROMPT_GUIDELINES],
-    examples: [{ when: "Create a shot:", arguments: { operation: "create_canvas_nodes", summary: "Opening shot", nodes: [{ clientId: "s1", kind: "keyframe", title: "Opening", prompt: "Sunrise" }] } }],
+    examples: [{ when: "创建一个镜头：", arguments: { operation: "create_canvas_nodes", summary: "开场镜头", nodes: [{ clientId: "s1", kind: "keyframe", title: "开场", prompt: "清晨日出" }] } }],
     arrayFields: ["nodes", "edges"], objectFields: [],
   },
   {
     name: "nomi_storyboard_write", union: storyboardModelUnion,
-    description: "Save a whole storyboard, patch selected shot rows, or arrange existing shots on the timeline. Shots reference recurring character, scene, prop and style anchors by id.",
+    description: "保存分镜、修改指定镜头或排列时间线。operation 必填：整份方案用 propose_storyboard_plan，局部修改用 patch_shots，排列用 arrange_storyboard_to_timeline。镜头通过 anchorIds 引用跨镜一致的角色、场景、道具和风格。",
     promptSnippet: "save a storyboard, patch rows or arrange shots on the timeline.",
     promptGuidelines: ["propose_storyboard_plan replaces the whole plan; patch_shots changes named rows only; arrange_storyboard_to_timeline lays existing shot nodes in story order.", ...STORYBOARD_MODEL_GUIDELINES],
-    examples: [{ when: "Save one shot:", arguments: { operation: "propose_storyboard_plan", title: "Opening", anchors: [], shots: [{ index: 1, shotKind: "image", durationSec: 0, anchorIds: [], prompt: "Sunrise" }] } }],
+    examples: [{ when: "保存一个镜头（标题未指定时）：", arguments: { operation: "propose_storyboard_plan", title: "开场", anchors: [], shots: [{ index: 1, shotKind: "image", durationSec: 0, anchorIds: [], prompt: "清晨日出" }] } }],
     arrayFields: ["anchors", "shots", "nodeIds"], objectFields: ["select", "patch"],
   },
   {
