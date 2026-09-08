@@ -50,7 +50,6 @@ const { app, win } = await launchNomiApp({
 })
 await win.getByRole('button', { name: '新建空白项目', exact: false }).first().click()
 // 项目工作区是实际就绪信号；旧首启弹层不会出现，不能等超时再吞掉。
-await win.getByRole('button', { name: '生成', exact: true }).waitFor({ state: 'visible' })
 await win.getByRole('button', { name: '生成', exact: true }).click()
 
 const addImage = win.locator('[aria-label="添加图片节点"]').first()

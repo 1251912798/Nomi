@@ -13,10 +13,48 @@ import {
   PERFORMANCE_CANVAS_SCENARIOS,
   PERFORMANCE_CANVAS_SCENARIO_TIMEOUT_MS,
   runCanvasScenario,
+  runCanvasScenarios,
   scenariosForProfile,
 } from './canvas-real-suite.mjs'
 
 describe('real canvas acceptance suite', () => {
+  it('bounds workers, preserves canonical results, and runs later cases after a failure', async () => {
+    const started = []
+    const releases = new Map()
+    const thirdStarted = Promise.withResolvers()
+    const pending = runCanvasScenarios([{ id: 'a' }, { id: 'b' }, { id: 'c' }], {
+      concurrency: 2,
+      runScenario: (scenario) => {
+        started.push(scenario.id)
+        if (scenario.id === 'c') thirdStarted.resolve()
+        return new Promise((resolve) => releases.set(scenario.id, resolve))
+      },
+    })
+    expect(started).toEqual(['a', 'b'])
+    releases.get('b')({ id: 'b', exitCode: 1 })
+    await thirdStarted.promise
+    expect(started).toEqual(['a', 'b', 'c'])
+    releases.get('c')({ id: 'c', exitCode: 0 })
+    releases.get('a')({ id: 'a', exitCode: 0 })
+    expect(await pending).toEqual([
+      { id: 'a', exitCode: 0 }, { id: 'b', exitCode: 1 }, { id: 'c', exitCode: 0 },
+    ])
+    await expect(runCanvasScenarios([], { concurrency: 3 })).rejects.toThrow('1 or 2')
+    expect(parseCanvasSuiteArgv(['full', '--concurrency', '1'])).toEqual({ profile: 'full', shard: null, concurrency: 1 })
+    expect(() => parseCanvasSuiteArgv(['full', '--concurrency', '0'])).toThrow('1 or 2')
+  })
+
+  it('kills a real non-terminating child and records a timeout', async () => {
+    const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'nomi-canvas-timeout-'))
+    try {
+      fs.writeFileSync(path.join(cwd, 'stuck.mjs'), 'setInterval(() => {}, 1000)')
+      const result = await runCanvasScenario({ id: 'stuck', script: 'stuck.mjs' }, { cwd, timeoutMs: 100 })
+      expect(result).toMatchObject({ exitCode: 1, timedOut: true, signal: 'SIGKILL' })
+    } finally {
+      fs.rmSync(cwd, { recursive: true, force: true })
+    }
+  })
+
   it('keeps every critical scenario in the full profile exactly once', () => {
     const criticalIds = CRITICAL_CANVAS_SCENARIOS.map((scenario) => scenario.id)
     const fullIds = FULL_CANVAS_SCENARIOS.map((scenario) => scenario.id)
@@ -88,9 +126,9 @@ describe('real canvas acceptance suite', () => {
     expect(PERFORMANCE_CANVAS_SCENARIO_TIMEOUT_MS).toBeGreaterThan(DEFAULT_CANVAS_SCENARIO_TIMEOUT_MS)
   })
 
-  it('terminates and reports a canvas scenario that exceeds its hard timeout', () => {
+  it('terminates and reports a canvas scenario that exceeds its hard timeout', async () => {
     let launch
-    const result = runCanvasScenario(
+    const result = await runCanvasScenario(
       { id: 'stuck', script: 'tests/ux/stuck.walk.mjs' },
       {
         cwd: '/tmp/nomi-suite',
@@ -122,12 +160,12 @@ describe('real canvas acceptance suite', () => {
     })
   })
 
-  it('persists each child transcript and an actionable failure summary', () => {
+  it('persists each child transcript and an actionable failure summary', async () => {
     const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'nomi-canvas-suite-'))
     const outputDir = path.join(cwd, 'outputs/canvas-acceptance/critical')
     const stdout = { write: () => true }
     const stderr = { write: () => true }
-    const result = runCanvasScenario(
+    const result = await runCanvasScenario(
       { id: 'gestures', script: 'tests/ux/canvas-drag-pan-gestures.walk.mjs' },
       {
         cwd,

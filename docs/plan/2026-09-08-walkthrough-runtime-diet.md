@@ -1,6 +1,6 @@
 # 走查运行时减重：先量再砍
 
-> 日期：2026-09-08 · 状态：调查中，尚未验收
+> 日期：2026-09-08 · 状态：桌面三轮验收通过，最终 gates / PR 待完成
 
 ## 范围与验收
 
@@ -27,13 +27,13 @@
 4. C：固定等待替换为实际控件/状态；保留 expectAbsent 的完整观察窗口及截图安定检查。GPU 参数先 A/B，不能损失 WebGL 覆盖。
 5. D：在现有 gates 锁内量串行与两个 Electron 并发；不改锁，不假定 10 核就安全。
 
-## 数据表（测量后回填）
+## 基线口径
 
 | 改动 | 改前 ms | 改后 ms（三遍） | 节省 | 结论 |
 |---|---:|---:|---:|---|
 | baseline full 13 | 305231 / 300439 | — | — | 两遍 13/13 PASS |
 
-目标 full 总墙钟下降至少 40%；不足须按实测解释，不降低门槛。C1 已三遍验证，A/D 与最终 gates 尚待完成。
+目标 full 总墙钟下降至少 40%；不足须按实测解释，不降低门槛。C1/A/C3 与正式双实例 full 均三遍通过；最终 gates 单列。
 
 ## 首启状态事实（代码证据，非实测时间）
 
@@ -165,3 +165,29 @@ Read 五对截图：group-baseline 01/03、group-ports 01/05、batch-production 
 | C3 group-ports（生成页就绪） | 17866 | 14917 / 15060 / 14868 | 2949 |
 
 三轮 6/6 PASS；增加四节点全选断言，未移除已有断言。Read 五对截图：baseline 01/02/03、ports 01/05；选中数量、操作入口、组与连线保留，时间戳/节点坐标不作像素级一致声明。证据 `c3-summary.json` 与 `c3-five-pairs.jpg`。C1+A+C3 的分阶段中位数合计省 90942ms（不能与并发节省直接相加，最终总收益以 full 墙钟为准）。
+
+Ponytail 明细复审：建议删生成按钮 click 前的重复 visible 等待（采纳，click 自带可见性等待）；另建议连同 addImage 存在性失败分支一起删掉等待（不采纳，用户明确要求不删断言，保留等待使原 count guard 不会抢跑）。正式 commit/push hook 不绕过；该一行精简包含在最终三轮 full 验证中。
+
+## 正式 runner 最终三轮
+
+32/32 启动器/runner 单测通过（含真实子进程超时）；full 三轮 39/39 PASS，墙钟 106686 / 108872 / 108354ms，中位 108354ms。原始串行基线文件墙钟合计 300439ms（runner 开销约几十毫秒），最终节省 192085ms，降幅 63.93%，超过 40% 目标。锁排队不计入此值；gates 本身不执行这些走查，不宣称 gates 墙钟也下降同样比例。
+
+| 文件 | 原基线 ms | 最后三轮文件中位 ms（两并发，不能相加当总墙钟） |
+|---|---:|---:|
+| tests/ux/group-baseline.walk.mjs | 79534 | 11564 |
+| tests/ux/canvas-batch-production.walk.mjs | 43430 | 41549 |
+| tests/ux/group-ports.walk.mjs | 34478 | 15214 |
+| tests/ux/canvas-drag-pan-gestures.walk.mjs | 27826 | 28044 |
+| tests/ux/canvas-shortcuts.walk.mjs | 25406 | 25327 |
+| tests/ux/canvas-card-stack.walk.mjs | 20629 | 20620 |
+| tests/ux/group-reference-direction.walk.mjs | 15186 | 15384 |
+| tests/ux/selection-toolbar-vendor.walk.mjs | 13624 | 13510 |
+| tests/ux/canvas-node-context-menu.walk.mjs | 13395 | 13216 |
+| tests/ux/canvas-context-menu-click.walk.mjs | 11200 | 11276 |
+| tests/ux/react-flow-read-only.walk.mjs | 9296 | 9859 |
+| tests/ux/p4-s5-canvas-landing.e2e.mjs | 4206 | 4960 |
+| tests/ux/p4-s5-canvas-reconcile.e2e.mjs | 2229 | 2632 |
+
+D 的五对 Read：批量模型设置、节点右键菜单、快捷键最终结果、批量模型菜单、只读重启结果。结构/内容一致；可见 transient toast 数量随时序变化，时间戳和少量节点坐标不当像素基线。原始结果 final-1..3/summary.json，截图 final-1..3-shots，拼图 d-five-pairs.jpg。既有文件名 dark-model-settings 在夜间默认主题下可能拍到 light（脚本用 toggle 而非明确主题），这是旧截图命名/前提问题，不声称像素级完全一致。
+
+启动次数仍为 13 次，每个场景独立脚本、隔离 profile、日志和失败结果；合并 0 组。未采用禁 GPU 合成以免削弱真实画布渲染覆盖；更新无后台自动检查入口，未加伪关闭参数；减少 DevTools 的候选失败后已撤回。
