@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useRef, useState } from 'react'
+import React, { useLayoutEffect, useRef } from 'react'
 import { NomiMarkdown } from '/src/workbench/common/NomiMarkdown'
 import { nomiDesignTokens as tokens } from '/src/theme/nomiTheme'
 
@@ -21,9 +21,6 @@ function authorName(author: string) {
 export function Detail({ entry }: { entry: Entry }) {
   const body = bodyFor(entry)
   const ref = useRef<HTMLDivElement>(null)
-  const [expanded, setExpanded] = useState(false)
-  const [rows, setRows] = useState(0)
-  const fold = parseFloat(tokens.lineHeight.body) * 12
   useLayoutEffect(() => {
     const node = ref.current!
     // Decorate text leaves after the real renderer; never interpret Markdown here.
@@ -42,14 +39,7 @@ export function Detail({ entry }: { entry: Entry }) {
         return mark
       }))
     }
-    const measure = () => setRows(Math.max(0, Math.ceil((node.scrollHeight - fold) / parseFloat(tokens.lineHeight.body))))
-    const observer = new ResizeObserver(measure)
-    observer.observe(node)
-    void document.fonts.ready.then(measure)
-    measure()
-    return () => observer.disconnect()
-  }, [body, fold])
-  const folded = rows > 0 && !expanded
+  }, [body])
   return <>
     <header className="detail-intro">
       <h1 className="font-nomi-display text-display" id="detail-title">{entry.title['zh-CN']}</h1>
@@ -59,9 +49,8 @@ export function Detail({ entry }: { entry: Entry }) {
         <span title={entry.source.author}>{authorName(entry.source.author)}</span>
       </div>
     </header>
-    <div id="detail-prompt" data-folded={String(folded)} style={folded ? { maxHeight: fold, overflow: 'hidden', maskImage: `linear-gradient(to bottom, black calc(100% - ${tokens.spacing[4]}), transparent)` } : undefined}>
+    <div id="detail-prompt">
       <div ref={ref} className="skill-prose" style={{ '--body-leading': tokens.lineHeight.body, '--section-leading': tokens.lineHeight.title } as React.CSSProperties}><NomiMarkdown>{body}</NomiMarkdown></div>
     </div>
-    {rows > 0 && <button className="expand-body" aria-expanded={expanded} onClick={() => setExpanded(value => !value)}>{expanded ? '收起全文 ↑' : `展开全文 · 还有 ${rows} 行 ↓`}</button>}
   </>
 }

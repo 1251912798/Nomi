@@ -1,3 +1,5 @@
+v3 截图：docs/design/mockups/2026-09-08-skill-library-cards/library-cards{,@2x}.png
+v3 逐字检查：1x/2x 无折叠控件、正文至许可证末句完整、无 Markdown 标记；左图顶对齐，图下说明清楚；46 条正文及 80 段长文滚动到底验收通过。
 v2 截图：docs/design/mockups/2026-09-08-skill-library-cards/{library-cards,node-effects}{,@2x}.png
 断言结果：46 条正文 + Markdown 结构夹具通过；旧 pre 原文路径断言失败，展开/收起与引用/追加/撤销通过。
 逐字检查：详情无 Markdown 标记与重复标题简介，meta 单行清楚；卡片与 chip 字阶、间距一致，折尾渐隐。

@@ -21,10 +21,9 @@ try {
   await page.evaluate(assertRenderedMarkdown)
   assert.equal(await page.locator('#detail-title').evaluate(el => globalThis.getComputedStyle(el).fontSize), '28px')
   assert.equal(await page.locator('.skill-prose p').first().evaluate(el => globalThis.getComputedStyle(el).lineHeight), '20px')
-  await page.locator('.expand-body').click()
-  assert.equal(await page.locator('#detail-prompt').getAttribute('data-folded'), 'false')
-  await page.locator('.expand-body').click()
-  assert.equal(await page.locator('#detail-prompt').getAttribute('data-folded'), 'true')
+  assert.equal(await page.locator('.expand-body, [data-folded]').count(), 0)
+  assert.equal(await page.locator('.hero').evaluate(el => globalThis.getComputedStyle(el).justifyContent), 'flex-start')
+  assert.equal(await page.locator('.prompt-pane').evaluate(el => globalThis.getComputedStyle(el).overflowY), 'auto')
   // Both consumers and every input population use the same production renderer.
   const all = await page.evaluate(() => [...globalThis.nomiMockupSkills, ...globalThis.nomiMockupEffects])
   for (const entry of all) {
@@ -40,6 +39,19 @@ try {
   assert.equal(await page.locator('.skill-prose code').count(), 1)
   assert.equal(await page.locator('.skill-prose li').count(), 2)
   assert.equal(await page.locator('.slot-chip').innerText(), '{角色名}')
+  // A long body remains fully rendered and its last line is reachable by scrolling.
+  const longEntry = {...fixture, prompt: Array.from({length: 80}, (_, i) => `段落 ${i + 1}：完整正文。`).join('\n\n')}
+  await page.evaluate(e => globalThis.window.dispatchEvent(new globalThis.CustomEvent('nomi-mockup-detail', { detail: e })), longEntry)
+  await page.waitForFunction(() => globalThis.document.querySelector('.skill-prose')?.textContent.includes('段落 80'))
+  assert.equal(await page.locator('.expand-body, [data-folded]').count(), 0)
+  assert.equal(await page.locator('.skill-prose p').count(), 80)
+  assert.ok(await page.locator('.prompt-pane').evaluate(el => {
+    el.scrollTop = el.scrollHeight
+    const last = el.querySelector('.skill-prose p:last-child').getBoundingClientRect()
+    const pane = el.getBoundingClientRect()
+    return el.scrollTop > 0 && last.bottom <= pane.bottom && last.top >= pane.top
+  }))
+  await page.locator('.prompt-pane').evaluate(el => { el.scrollTop = 0 })
   await page.locator('.card').first().click()
   await page.waitForFunction(() => globalThis.document.querySelector('#detail-title')?.textContent === '多视图设定')
   await page.evaluate(() => Promise.all([...globalThis.document.images].map((image) => image.decode())))
@@ -47,7 +59,7 @@ try {
   await page.screenshot({ path: path.join(dir, 'library-cards.png') })
   const retina = await browser.newPage({viewport:{width:1440,height:900},deviceScaleFactor:2})
   await retina.goto(`${base}library-cards.html`)
-  await retina.locator('.expand-body').waitFor()
+  await retina.locator('.skill-prose h2').first().waitFor()
   await retina.evaluate(() => Promise.all([globalThis.document.fonts.ready, ...[...globalThis.document.images].map(image => image.decode())]))
   await retina.evaluate(assertRenderedMarkdown)
   await retina.screenshot({path:path.join(dir,'library-cards@2x.png')})

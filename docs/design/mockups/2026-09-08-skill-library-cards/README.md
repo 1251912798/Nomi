@@ -1,4 +1,4 @@
-# 技能库与节点效果 · 两张待拍板样张
+# 技能库与节点效果 · 已裁决样张
 
 状态：仅 HTML 设计与交互样张，未实现产品 UI。
 
@@ -42,7 +42,8 @@ node docs/design/mockups/2026-09-08-skill-library-cards/verify.mjs
 - 标题 `text-display`（Tailwind 28px）+ `font-nomi-display`；正文 `body` 14/20，小节 `title` 16/22，meta/chip `caption` 12/16，分组 `micro` 11/14。`nomiDesignTokens` 没有 display 键，使用现役 Tailwind 映射；不是自造 TS token。
 - 间距 `1/2/3/4/6`（4/8/12/16/24）；`ink/ink-80/ink-60`，`rounded-full`/pill；中文 `letter-spacing:normal`、`hanging-punctuation:first last`（浏览器按支持程度启用）。封面固定 16:10，标题一行、简介两行省略。
 - `capture-real.tsx` 在详情捕获入口挂载 `capture-detail.tsx`，直接 import 生产 NomiMarkdown 文档档。去 frontmatter、首个同文 H1 与紧接的同文简介；来源显示可点击域名；槽位用与效果 chip 同尺寸和灰阶的胶囊。
-- 复用 v4 的渲染高度测量逻辑：12×body 行高折叠，用 scrollHeight 算剩余行，折尾渐隐避免半截字；展开/收起不影响固定底栏。
+- **v3 版式规则（用户已裁决，无需再拍板）：「空间够就全展示，折叠只在真装不下时用」。详情大窗正文全部渲染，不折叠、不渐隐、不设行数上限；超过可视高度时右栏自然滚动，沿用加载的设计系统全局细滚动条（`--nomi-ink` 混色）。左栏图片顶对齐，图下留 12px 接「原仓配图」说明；标题、简介、meta 行、分节和固定底栏不动。
+- v3 执行范围：仅本目录样张组件、生成器及产物、验收脚本和 `SL-LAST.md`；回滚本次提交即可恢复 v2。验收为 46 条正文渲染、长文滚动到底、无折叠与 Markdown 标记、1x/2x 截图逐字检查。根因是样张把紧凑面板的 12 行折叠套入详情大窗；技能与效果两类入口共用 Detail，统一移除折叠状态和测量逻辑。未改生产路径，不适用生产根因合同及依赖升级。
 - `build.mjs` 导出的 DOM 断言由 `verify.mjs` 在真实组件中执行：46 条技能/效果 + Markdown 结构夹具通过；旧 pre 路径红灯。正文文本禁标题井号、双星号、反引号；验证粗体、代码、列表、表格确实成为语义元素。
 - [详情 2x](library-cards@2x.png) · [节点 2x](node-effects@2x.png)。仅样张，未实现产品 UI。
 
