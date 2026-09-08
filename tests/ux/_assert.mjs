@@ -10,7 +10,10 @@
 // 官方断言能治竞态那一半。治不了的另一半是：**在一个根本不可能出现坏东西的现场，
 // 断言「没看到坏东西」**。这种空洞通过没有任何库能替你挡——只能由本文件的 API 在签名上逼出来，
 // 这就是 expectAbsent 强制要 provenBy 的全部理由。
-import { expect } from '@playwright/test'
+import { expect as nativeExpect } from '@playwright/test'
+import { collectingExpect } from './_collect.mjs'
+export { createWalkSession } from './_collect.mjs'
+const expect = collectingExpect(nativeExpect)
 
 /** 走查里所有等待的统一上限。比 Playwright 默认 5s 宽：Electron 冷启动 + 真模型都慢。 */
 export const DEFAULT_TIMEOUT_MS = 15_000
@@ -78,7 +81,7 @@ export async function proveProbe(locator, label, timeout = DEFAULT_TIMEOUT_MS) {
   if (!label || typeof label !== 'string') {
     throw new Error('proveProbe(locator, label)：label 必填，失败信息要说人话，别让人对着 selector 猜')
   }
-  await expect(
+  await nativeExpect(
     locator,
     `基线不成立：「${label}」应当能被探针找到，但一个都没找到。`
       + '\n如果连它都找不到，说明面板没渲染 / 选择器写错了，'
