@@ -32,6 +32,12 @@
 
 工具配对按原项关联传播无效性，避免多调用消息局部降级后留下新孤儿；不排序、不补造成功、不重放权限。合成字段的零 usage 仅满足 API 形状，不是历史账单测量。三来源真实公开 append→close/reopen 测试断言 parts 与预计贡献数、顺序一致，并断言 HTTP 请求为 0；这仍不是 archive/manifest 事务或生产入口已接通的证据。
 
+## 文件与锁子任务
+
+`laneLegacyFiles.ts` 在捕获的目录身份内读文件：lstat + O_NOFOLLOW + fstat/路径身份、单链接与读前后 size/mtime 校验。归档用私有 partial 文件 + 不覆盖目标的 link 发布；可恢复部分写入和 link/unlink 中间断点，拒绝不同字节。移走源必须先证独立归档与源均等于预期字节；manifest 更新要求旧字节匹配。跨 await 锁采用 O_EXCL、活 PID 不抢、死 owner 回收、finally 核对 inode 再释放。App 单实例 + 主进程 admission 是跨恢复者串行前提，不声称提供任意多进程分布式锁。
+
+4 组不安全阳性对照先红（/tmp/nomi-switch-files-red.log），8 条临时目录测试覆盖来源/目录替换、归档冲突与断点、原件变化、缺归档、异步持锁、锁替换、死 owner 恢复；不读真实项目。该层尚未接入生产迁移入口。
+
 边界实测补充：原 private-session-snapshot-envelope 规则仅匹配字符串，误把旧格式的只读比较当 writer。保留信封声明/常量命中，排除严格相等/不等的格式检查；真实登记表正反夹具先红后绿。不新增框架债。
 
 ## 首个子任务验证
