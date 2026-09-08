@@ -3,7 +3,7 @@
 // `LaneReceiptCell`）；这里钉的是接不上去的那一格**为什么**接不上——缺口清单一变就红。
 import { describe, expect, it } from 'vitest'
 
-import { projectLaneSnapshot } from '../../../../electron/agentLane/laneProjection.mjs'
+import { projectLaneSnapshot } from '../../../../electron/shared/agentLane/laneProjection'
 import { laneViewModel, type LaneViewModelLabels } from '../../../workbench/ai/lane/laneViewModel'
 import {
   laneDrivenReceipt,
@@ -18,8 +18,13 @@ const labels: LaneViewModelLabels = {
   thinkingLabel: '正在想…',
   formatTokens: (value) => String(value),
   formatCost: (usd) => `$${usd.toFixed(2)}`,
+  retryLabel: (attempt, maxAttempts) => `[retry ${attempt}/${maxAttempts}]`,
   unknown: '—',
   free: '免费',
+  taskTitle: '生成任务',
+  formatStages: (done, total) => `${done} / ${total} 阶段`,
+  formatMoney: (currency, amount) => `${currency} ${amount.toFixed(2)}`,
+  taskUnknown: '任务详情在任务中心',
 }
 
 describe('design-lab fixtures driven by a LaneSnapshot (probe P6)', () => {

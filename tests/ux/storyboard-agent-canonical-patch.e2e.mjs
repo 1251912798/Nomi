@@ -4,6 +4,7 @@
 // （2026-09-05：画布语义写在 MCP 上收敛成一个工具名，operation 语义一个字没变）
 // readback. It deliberately uses no provider, UI selector, static projection, or
 // legacy direct patch_shots tool name.
+import { expect } from './_assert.mjs'
 import fs from 'node:fs'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -84,10 +85,10 @@ async function openProject(instance) {
   await instance.win.goto(appUrl, { waitUntil: 'domcontentloaded' })
   await instance.win.waitForFunction((id) => window.location.hash.includes(`projectId=${encodeURIComponent(id)}`), projectId, { timeout: 10_000 })
   // This is a real preload project read after app hydration, not a static DOM probe.
-  await instance.win.waitForFunction(async (id) => {
+  await expect.poll(async () => instance.win.evaluate(async (id) => {
     const record = await window.nomiDesktop.projects.readAsync(id)
     return record?.id === id && record?.payload?.storyboardDesignsByDocumentId?.['storyboard-doc']?.[0]?.plan?.shots?.length === 3
-  }, projectId, { timeout: 15_000 })
+  }, projectId), { timeout: 15_000 }).toBe(true)
 }
 
 try {

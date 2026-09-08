@@ -106,8 +106,17 @@ function LaneReceiptCell({ lane }: { lane: (rejectReason: string) => LaneSnapsho
     formatCost: (usd) => `$${usd.toFixed(2)}`,
     // 三行的两个占位词。这一格只画工具收据，花费/上下文行不进画面；占位词走已有的 contextUnknown，
     // 「免费」那句不预放死键（3b 的裁决），这里同样借占位符——它在这一格永远不会被渲染。
+    // 3c 的重试行：两个数由调用方填（语序问题），这一格永不渲染重试行，给最朴素的形状。
+    retryLabel: (attempt, maxAttempts) => `${attempt}/${maxAttempts}`,
     unknown: fx.t('agentPanelV4.contextUnknown'),
     free: fx.t('agentPanelV4.contextUnknown'),
+    // 任务卡的四个词条。这一格只画工具收据，一条 task 段都没有，所以它们永远不会被渲染——
+    // 但类型要求穷尽，而穷尽正是它的价值：哪天这一格接上任务卡，缺的那句话是编译错误，
+    // 不是画面上的一块空白。
+    taskTitle: fx.t('agentPanelV4.taskRun'),
+    formatStages: (done, total) => fx.t('agentPanelV4.taskStages', { done, total }),
+    formatMoney: (currency, amount) => fx.t('agentPanelV4.money', { currency, amount: amount.toFixed(2) }),
+    taskUnknown: fx.t('agentPanelV4.taskUnknown'),
   })
   return (
     <Piece>

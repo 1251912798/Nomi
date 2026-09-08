@@ -302,7 +302,7 @@ export function OnboardingDrawer({ pageRequest = null }: { pageRequest?: ModelPa
       const bridge = getDesktopBridge()
       if (!bridge || rows.length === 0) return
       const single = rows.length === 1
-      const ok = await confirmDialog({
+      const ok = (single && rows[0].unlisted) || await confirmDialog({
         title: single
           ? t('onboardingProviders.drawer.deleteModel')
           : t('onboardingProviders.drawer.deleteModels', { count: rows.length }),
@@ -398,7 +398,7 @@ export function OnboardingDrawer({ pageRequest = null }: { pageRequest?: ModelPa
       hasApiKey={card.meta.hasApiKey}
       models={card.vendorModels}
       onToggleModel={(model, enabled) => handleSetEnabled([model], enabled)}
-      onChanged={refresh}
+      onDeleteModel={(model) => void handleDelete([model])} onChanged={refresh}
       detailMode={detailMode}
       focus={focus}
       {...(detailMode

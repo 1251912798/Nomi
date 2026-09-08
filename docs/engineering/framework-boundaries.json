@@ -22,7 +22,8 @@
       "@earendil-works/pi-ai",
       "@xyflow/react",
       "ai",
-      "@mantine/core"
+      "@mantine/core",
+      "@anthropic-ai/sandbox-runtime"
     ]
   },
   "advisory": {
@@ -132,10 +133,8 @@
                     "at": "electron/agentLane/laneTools.mts:180"
                   },
                   "executionMode": {
-                    "verdict": "debt",
-                    "due": "2026-09-10",
-                    "owner": "阶段 3a · lane 工具契约",
-                    "why": "pi 逐工具可选（node_modules/@earendil-works/pi-agent-core/dist/types.d.ts:351-359），我们对全部 lane 工具硬写 'sequential'（laneTools.mts:175）；同一个对象字面量里 replay 已经改成从 effects.mutates 派生，这一格漏了。本 PR 只装门岗、不动 laneTools.mts（那个文件另有在途分支），所以先记债——这条债就是本门岗的存在理由。"
+                    "verdict": "derived",
+                    "at": "electron/agentLane/laneTools.mts:186"
                   },
                   "name": {
                     "verdict": "derived",
@@ -216,11 +215,12 @@
                   },
                   "streamOptions": {
                     "verdict": "unused",
-                    "why": "流式参数（温度、最大 token、headers）在 Nomi 这条路上由 provider 装配决定：createNomiProvider 的 requestOptions/onPayload 是唯一改写出站报文的地方（model.mts:89-110）。在 lane 这层再给一份会造出第二个改写点，而两处只有一处会被 payload 探针看见。"
+                    "why": "流式参数（温度、最大 token、headers）在 Nomi 这条路上由 provider 装配决定：createNomiProvider 的 requestOptions/onPayload 是唯一改写出站报文的地方（laneModelProvider.mts:132-160）。在 lane 这层再给一份会造出第二个改写点，而两处只有一处会被 payload 探针看见。"
                   },
                   "retry": {
-                    "verdict": "unused",
-                    "why": "不传 = 用 pi 的 RetryPolicy 默认策略，这正是 framework-boundaries 里 retry-policy 那条规则要守的东西（自研重试是 2026-09-06 评审判定的「更差的那一份」）。要改重试必须先证明 provider 级退避不够，而不是在装配处顺手关掉。"
+                    "verdict": "derived",
+                    "at": "electron/agentLane/laneHost.mts:183",
+                    "why": "阶段 3c（方案 §1.6 第三行）：显式传 LANE_RETRY_POLICY = {enabled:true, maxRetries:3, baseDelayMs:1000}——仍是 pi 自己的 RetryPolicy，不是自研重试；写死的原因是 harness 默认无 jitter、无上限（上游 #8826 open），3 次上限下最长 4s 让 #8826 对我们无感。改数字要先改 laneHost 里那一个常量。"
                   },
                   "compaction": {
                     "verdict": "debt",
@@ -229,12 +229,14 @@
                     "why": "压缩阈值直接决定长会话的成本与「模型忘了前面」的体感，而 Nomi 现在一个数字都没给、也没量过默认阈值在我们的转录形状（画布产物 + 分镜表）下会在第几轮触发。没量过就写常量是把偏好当判据，所以记债。"
                   },
                   "steeringMode": {
-                    "verdict": "unused",
-                    "why": "steer/followUp 的排队模式属于宿主的介入语义，Nomi 的面板介入槽还在设计（docs/design 里 2026-09-05 拍板的五形态 + 介入槽）。不传 = 用 pi 的默认排队，等介入槽定稿再一起裁——在此之前给一个值等于替还没定的设计先做决定。"
+                    "verdict": "constant",
+                    "value": "'one-at-a-time'",
+                    "reason": "创作是可撤销的：一条指令要对应一轮、一次可单独看见也可单独撤销的改动。pi 的默认 'all' 会把用户连打的三句一次性注入同一轮（harness/runtime/harness.js:44-45），三条指令的效果搅进同一批改动里，用户既看不出哪一句造成了哪一处，也没法只撤其中一句。这条约束来自领域（本地创作 + 每步可回退），不是排队策略的取舍。介入槽 2026-09-05 已拍板五形态，方案 §1.3 的三态映射就建在这颗上。"
                   },
                   "followUpMode": {
-                    "verdict": "unused",
-                    "why": "同 steeringMode：这两颗是同一件事的两半（流式中插队 vs 排到下一回合），必须一起裁，不许一半用默认一半写死。"
+                    "verdict": "constant",
+                    "value": "'one-at-a-time'",
+                    "reason": "同 steeringMode：这两颗是同一件事的两半（这一步之前插队 vs 整轮跑干之后再说），一半写死一半用默认会让「等它做完再说」批量灌进同一轮，用户仍旧撤不动其中一句。"
                   },
                   "toolExecution": {
                     "verdict": "constant",
@@ -243,7 +245,7 @@
                   },
                   "toProviderMessages": {
                     "verdict": "unused",
-                    "why": "出站报文的最后一次改写只允许有一个地方（model.mts 的 onPayload）。这一格是第二个入口，用了就会出现「payload 探针抓到的和实际发出去的不一致」——那正是 2026-08 那批「断言前先证明你在你以为的现场」的成因。"
+                    "why": "出站报文的最后一次改写只允许有一个地方（laneModelProvider.mts 的 onPayload）。这一格是第二个入口，用了就会出现「payload 探针抓到的和实际发出去的不一致」——那正是 2026-08 那批「断言前先证明你在你以为的现场」的成因。"
                   },
                   "entryProjectors": {
                     "verdict": "derived",
@@ -279,7 +281,7 @@
                   },
                   "before_payload": {
                     "verdict": "unused",
-                    "why": "报文改写点已经在 createNomiProvider 的 onPayload（model.mts:98），那里是唯一知道供应商协议差异的地方；在钩子里再改一次就是第二个真相源。"
+                    "why": "报文改写点已经在 createNomiProvider 的 onPayload（laneModelProvider.mts:145），那里是唯一知道供应商协议差异的地方；在钩子里再改一次就是第二个真相源。"
                   },
                   "after_response": {
                     "verdict": "unused",
@@ -305,11 +307,11 @@
                   },
                   "before_tool.event": {
                     "verdict": "derived",
-                    "at": "electron/agentLane/laneHost.mts:90"
+                    "at": "electron/agentLane/laneHost.mts:241"
                   },
                   "before_tool.result": {
                     "verdict": "derived",
-                    "at": "electron/agentLane/laneHost.mts:99"
+                    "at": "electron/agentLane/laneHost.mts:245"
                   },
                   "before_tool.result.args": {
                     "verdict": "unused",
@@ -317,7 +319,7 @@
                   },
                   "before_tool.result.block": {
                     "verdict": "derived",
-                    "at": "electron/agentLane/laneHost.mts:99"
+                    "at": "electron/agentLane/laneHost.mts:245"
                   }
                 }
               }
@@ -329,7 +331,7 @@
             "types": [
               {
                 "name": "Model",
-                "why": "createNomiProvider 每次都要造一个 Model<Api>（electron/harness/runtime/pi/model.mts:75）。cost / contextWindow / reasoning 这三格直接决定 pi 的记账、压缩阈值与思考档位——写死一个值就等于把这三件事从 Nomi 的模型档案里摘下来。",
+                "why": "createNomiProvider 每次都要造一个 Model<Api>（electron/agentLane/laneModelProvider.mts:117）。cost / contextWindow / reasoning 这三格直接决定 pi 的记账、压缩阈值与思考档位——写死一个值就等于把这三件事从 Nomi 的模型档案里摘下来。",
                 "anchors": [
                   {
                     "kind": "typeAnnotation",
@@ -339,31 +341,31 @@
                 "fields": {
                   "id": {
                     "verdict": "derived",
-                    "at": "electron/harness/runtime/pi/model.mts:76"
+                    "at": "electron/agentLane/laneModelProvider.mts:118"
                   },
                   "name": {
                     "verdict": "derived",
-                    "at": "electron/harness/runtime/pi/model.mts:76"
+                    "at": "electron/agentLane/laneModelProvider.mts:118"
                   },
                   "api": {
                     "verdict": "derived",
-                    "at": "electron/harness/runtime/pi/model.mts:77"
+                    "at": "electron/agentLane/laneModelProvider.mts:119"
                   },
                   "provider": {
                     "verdict": "derived",
-                    "at": "electron/harness/runtime/pi/model.mts:76"
+                    "at": "electron/agentLane/laneModelProvider.mts:118"
                   },
                   "baseUrl": {
                     "verdict": "derived",
-                    "at": "electron/harness/runtime/pi/model.mts:77"
+                    "at": "electron/agentLane/laneModelProvider.mts:119"
                   },
                   "reasoning": {
                     "verdict": "derived",
-                    "at": "electron/harness/runtime/pi/model.mts:122"
+                    "at": "electron/agentLane/laneModelProvider.mts:119"
                   },
                   "thinkingLevelMap": {
                     "verdict": "derived",
-                    "at": "electron/harness/runtime/pi/model.mts:127"
+                    "at": "electron/agentLane/laneModelProvider.mts:124"
                   },
                   "input": {
                     "verdict": "constant",
@@ -372,23 +374,23 @@
                   },
                   "cost": {
                     "verdict": "derived",
-                    "at": "electron/harness/runtime/pi/model.mts:128"
+                    "at": "electron/agentLane/laneModelProvider.mts:125"
                   },
                   "contextWindow": {
                     "verdict": "derived",
-                    "at": "electron/harness/runtime/pi/model.mts:81"
+                    "at": "electron/agentLane/laneModelProvider.mts:128"
                   },
                   "maxTokens": {
                     "verdict": "derived",
-                    "at": "electron/harness/runtime/pi/model.mts:81"
+                    "at": "electron/agentLane/laneModelProvider.mts:128"
                   },
                   "samplingParams": {
                     "verdict": "unused",
-                    "why": "采样参数由 Nomi 的任务参数决定并在 onPayload 写进报文（model.mts:110 起的 temperature 等），那里是唯一知道「这次任务要多稳」的地方；在模型档案上再挂一份会让同一个参数有两个来源。"
+                    "why": "采样参数由 Nomi 的任务参数决定并在 onPayload 写进报文（laneModelProvider.mts:157 起的 temperature 等），那里是唯一知道「这次任务要多稳」的地方；在模型档案上再挂一份会让同一个参数有两个来源。"
                   },
                   "headers": {
                     "verdict": "unused",
-                    "why": "请求头在 createNomiProvider 里按 authType 组装并做了 null 抑制（model.mts:82-89）——那是安全边界（keyless 服务器不许带 Authorization）。模型档案上再开一个 headers 口子会绕过那段抑制。"
+                    "why": "请求头在 createNomiProvider 里按 authType 组装并做了 null 抑制（laneModelProvider.mts:130-136）——那是安全边界（keyless 服务器不许带 Authorization）。模型档案上再开一个 headers 口子会绕过那段抑制。"
                   },
                   "compat": {
                     "verdict": "unused",
@@ -483,6 +485,41 @@
               "id": "flatten-text-deltas-into-one-string",
               "pattern": "assistantMessageEvent\\.type === 'text_delta'",
               "why": "把 text_delta 拼成一条扁平字符串，就丢掉了 pi 已经保序的分段结构；UI 想还原「思考→工具→文本」的顺序时只能再猜一次。"
+            }
+          ]
+        },
+        {
+          "id": "coding-tools",
+          "provides": "pi 自带 7 个 coding 工具（read/grep/find/ls/edit/write/bash）与它们的 operations 插槽、BashSpawnHook、输出截断、system-prompt 贡献。工具的执行、schema、渲染全部由 pi 提供；宿主只出范围、沙箱、审批三样策略。",
+          "evidence": "@earendil-works/pi-coding-agent@0.85.1 dist/core/sdk.d.ts:71 `export { …createBashTool, createCodingTools, createEditTool, createFindTool, createGrepTool, createLsTool, createReadTool, createWriteTool… }`；dist/core/tools/bash.d.ts:56-68 `BashToolOptions.operations` / `spawnHook`；dist/core/tools/bash.d.ts:10-13 `bashToolSystemPromptContribution`",
+          "scope": [
+            "electron/agentLane/"
+          ],
+          "forbidden": [
+            {
+              "id": "own-shell-executor",
+              "pattern": "execSync\\(|spawnSync\\(",
+              "why": "自己写一份命令执行器就绕开了 pi 的截断、超时、中止与 operations 插槽——而沙箱正是挂在那个插槽上的。绕开它等于命令跑在沙箱外面，且没有任何东西会报错。"
+            },
+            {
+              "id": "own-file-tool-schema",
+              "pattern": "name:\\s*.(read|write|edit|grep|find|ls|bash).\\s*,[\\s\\S]{0,300}?schema:\\s*z\\.",
+              "why": "把 pi 的工具翻译成 zod 的 LaneToolSpec 再翻回 JSON Schema，就是把它重写了一遍：上游改了描述或参数，我们这份静默漂移，而漂移的症状是模型少知道一件事、没人会发现。"
+            }
+          ]
+        },
+        {
+          "id": "skill-prompt-format",
+          "provides": "pi 出 formatSkillsForPrompt：把技能列表渲染成 Agent Skills 标准的 <available_skills> 段（XML 转义、disable-model-invocation 过滤、「相对路径按技能目录解析」那句话、以及 read/bash 二选一的取正文指令）。宿主只做两件 pi 不知道的事：Nomi 的 SkillRecord → pi 的 Skill 形状，和「这条技能要不要 coding 工具」。",
+          "evidence": "@earendil-works/pi-coding-agent@0.85.1 dist/index.d.ts:21 `export { formatSkillsForPrompt, … }`；dist/core/skills.d.ts:44 `formatSkillsForPrompt(skills, fileReadTool?: \"read\" | \"bash\")`；dist/core/skills.js:275-298 渲染体",
+          "scope": [
+            "electron/agentLane/"
+          ],
+          "forbidden": [
+            {
+              "id": "own-available-skills-xml",
+              "pattern": "<available_skills>",
+              "why": "手拼这段 XML 就是把 pi 的渲染重写一遍：转义漏一个 & 会让整段提示词在模型眼里断掉，而漏掉 disable-model-invocation 过滤会把用户明确藏起来的技能送进模型。两样都不报错。渲染只能来自 formatSkillsForPrompt；映射与解锁判断才是我们的活。"
             }
           ]
         }
@@ -1125,6 +1162,49 @@
               "id": "write-internal-node-lookup",
               "pattern": "setState\\(\\{[^}]*nodeLookup",
               "why": "拖动热路径直接改内核的 nodeLookup（并把 hasDefaultNodes 置 false），是画布性能战役压帧时间时留下的私有面写入：React Flow 升版改这两处内部形状不会有任何编译错误，只会在拖动时静默错位。"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "anthropic-sandbox-runtime",
+      "packages": [
+        "@anthropic-ai/sandbox-runtime"
+      ],
+      "version": "0.0.75",
+      "fourColumnTable": "docs/research/2026-09-07-pi-coding-tools-layer.md",
+      "why": "2026-09-07 用户拍板：「沙箱机制它肯定有设计，权限设计里肯定有，直接把它抄过来应该就够了」。pi 自带的 sandbox 示例用的就是这个包（examples/extensions/sandbox/index.ts），所以 OS 级沙箱不自研——我们只出策略（allowWrite / denyRead / allowedDomains），一行 seatbelt/bwrap 参数都不写。",
+      "referenceConformance": {
+        "doc": "docs/research/2026-09-07-pi-coding-tools-layer.md",
+        "upstreamVersion": "0.0.75",
+        "verifiedAt": "2026-09-07",
+        "layers": [
+          "工具",
+          "控制流",
+          "观测与测试",
+          "安全"
+        ],
+        "note": "参考实现 = pi 自带的 sandbox 示例（examples/extensions/sandbox/index.ts，它 pin 的是 0.0.26）与 sandbox-runtime 0.0.75 的公共面。九层里裁掉转录渲染/会话/上下文/模型与花费/扩展 API 五层：那个包不碰它们（裁剪写死在 layers，不是省略）。逐层对照见文档 §3。"
+      },
+      "capabilities": [
+        {
+          "id": "os-level-sandbox",
+          "provides": "OS 级文件系统与网络围栏：macOS sandbox-exec、Linux bubblewrap、Windows（alpha）srt-win + WFP。SandboxManager.initialize / wrapWithSandbox / reset 是全部公共面。",
+          "evidence": "@anthropic-ai/sandbox-runtime@0.0.75 dist/index.d.ts:1 `export { SandboxManager }`；dist/sandbox/sandbox-manager.d.ts:36-80 `ISandboxManager`；README §Platform Support（macOS sandbox-exec / Linux bubblewrap / Windows alpha）",
+          "scope": [
+            "electron/agentLane/"
+          ],
+          "forbidden": [
+            {
+              "id": "hand-rolled-os-sandbox-profile",
+              "pattern": "sandbox-exec|\\bbwrap\\b|seatbelt",
+              "why": "手写 SBPL / bwrap 参数就是把这个包重做一遍，而它的难点全在我们看不见的地方（代理端口、violation 归因、嵌套沙箱、Linux 的 userns 限制）。自研版本第一次失效的样子是「沙箱起来了但什么都没挡住」。"
+            },
+            {
+              "id": "own-egress-proxy",
+              "pattern": "socks5|mitm[-_]?ca",
+              "why": "出网过滤是这个包用 SOCKS/HTTP 代理 + MITM CA 实现的；另起一个代理不但重复，两个代理还会互相打架，症状是网络时通时不通。"
             }
           ]
         }

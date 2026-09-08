@@ -11,10 +11,10 @@ import { z } from 'zod';
 
 import { DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES } from '@earendil-works/pi-agent-core';
 
-import { openLane } from '../../electron/agentLane/laneHost.mjs';
 import { createCanvasLaneTools, type CanvasLanePort } from '../../electron/agentLane/laneCanvasTools.js';
 import { createDocumentLaneTools } from '../../electron/agentLane/laneDocumentTools.js';
 import type { LaneToolDescriptor } from '../../electron/agentLane/laneRuntimePort.js';
+import { LANE_READ_TOOL_TIMEOUT_MS } from '../../electron/shared/agentLane/laneToolContract.js';
 import {
   LANE_MODEL_OUTPUT_MAX_BYTES, LANE_MODEL_OUTPUT_MAX_LINES,
 } from '../../electron/shared/agentLane/laneContracts.js';
@@ -40,10 +40,12 @@ test('a document tool’s description names the same cap the transport actually 
 /** 一个只负责吐出 `text` 的工具。截断是**传输层**的活，与哪个能力无关。 */
 function echoTool(name: string, text: string): LaneToolDescriptor {
   return {
+    contractId: 'document.read',
     name,
     description: `Returns a fixed body of text, used to prove the transport truncates what the model sees.`,
     promptSnippet: 'return a fixed body of text.',
     effects: { mutates: false, billable: false, reversal: 'none' },
+    execution: { timeoutMs: LANE_READ_TOOL_TIMEOUT_MS },
     schema: z.object({}).strict(),
     examples: [{ when: 'Call it with no arguments:', arguments: {} }],
     execute: async () => ({ ok: true, text, details: { source: name } }),
@@ -67,8 +69,7 @@ test('the contract parse runs once, after pi\'s ajv, and a cross-field failure r
     ] },
     { type: 'text', text: 'Done.' },
   ]);
-  const lane = await openLane({ ...fixture.options, tools: createCanvasLaneTools(port) });
-  t.after(() => lane.close());
+  const lane = await fixture.openLane({ ...fixture.options, tools: createCanvasLaneTools(port) });
   await lane.execute({ kind: 'prompt', text: 'Connect them.' });
 
   const results = lane.projection().parts.filter((part) => part.kind === 'tool-result');
@@ -105,11 +106,10 @@ test('G-04 · an oversized tool result reaches the model truncated, with a next 
     ] },
     { type: 'text', text: 'Read both.' },
   ]);
-  const lane = await openLane({
+  const lane = await fixture.openLane({
     ...fixture.options,
     tools: [echoTool('returns_a_manuscript', huge), echoTool('returns_two_lines', small)],
   });
-  t.after(() => lane.close());
   await lane.execute({ kind: 'prompt', text: 'Read them.' });
 
   const results = lane.projection().parts.filter((part) => part.kind === 'tool-result');

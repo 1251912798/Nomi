@@ -8,7 +8,7 @@ import React from 'react'
 import type { ModelOption } from '../../config/models'
 import type { NomiSelectOption } from '../../design'
 import i18n from '../../i18n'
-import { dedupeModelOptions, sortModelProviders, type DedupedModel } from '../../config/modelIdentity'
+import { dedupeModelOptions, sortModelProviders, modelCatalogLifecycle, type DedupedModel } from '../../config/modelIdentity'
 import { useVendorPreferenceOrder } from './useVendorPreference'
 import { isModelRecentlyAiling } from '../generationCanvas/runner/modelHealthMemory'
 import { translateModelDisplayText } from '../../i18n/modelDisplayText'
@@ -101,6 +101,7 @@ export function buildModelSelectOptions(deduped: readonly DedupedModel[], isAili
         }))
       : undefined
     if (!isModelAiling(m, isAiling)) return {
+      more: modelCatalogLifecycle(m) === 'legacy',
       value: m.canonicalId,
       label: m.label,
       icon: modelIdentityIcon(m),
@@ -109,6 +110,7 @@ export function buildModelSelectOptions(deduped: readonly DedupedModel[], isAili
     // 「最近多次失败」是行级判断（每一家都在避让期才成立），压过 chip 的换家提示——
     // 这一行现在没有一家能走，摆一排可点的 chip 是在骗人。
     return {
+      more: modelCatalogLifecycle(m) === 'legacy',
       value: m.canonicalId,
       label: m.label,
       icon: modelIdentityIcon(m),
@@ -169,6 +171,7 @@ export function buildVendorExplicitModelOptions(
         option: sick
           ? {
               value,
+              more: modelCatalogLifecycle(model) === 'legacy',
               label: model.label,
               trailing: i18n.t('generationCommon.parameters.recentlyFailing'),
               trailingTone: 'danger',
@@ -176,6 +179,7 @@ export function buildVendorExplicitModelOptions(
             }
           : {
               value,
+              more: modelCatalogLifecycle(model) === 'legacy',
               label: model.label,
               icon: modelIdentityIcon(model),
               trailing: providerLabel(representative),

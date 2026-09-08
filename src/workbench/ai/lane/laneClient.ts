@@ -8,20 +8,28 @@
 // 一条边界要写清楚：**草稿 / 附件 / 选中 chip 仍住 `workbenchStore`**。那是**用户输入**，
 // 不是转录——用户打了一半的字不该因为一次快照推送就被覆盖掉。两者永不混。
 //
+// 唯一带判断的方法是 `say()`：用户在输入框里打的那句话，在「有卡在等 / 在跑 / 空闲」三种
+// 状态下是三件不同的事（方案 §1.3）。判据本身仍不在这里——它在中立契约层的
+// `laneComposerIntent`，与主进程侧的验收门共用同一份。这一层只是照着它发命令。
+//
 // ⚠️ **影子期这条通路是接不上的，这是刻意的。** `resolveLaneBridge()` 在今天恒返回
 // `undefined`：preload 没有暴露 `agentLane`，`main.ts` 也没注册那两条通道
 // （方案 §8.1 规则 O6「开发期不可达」）。用户走不到 = 回滚面积为零。
 // 桥以参数形式注入而不是在模块里直接摸 `window`，所以这一层今天就能被真正测到。
-import type { LaneCommand, LaneProjection } from '../../../../electron/shared/agentLane/laneContracts'
+import type {
+  LaneApprovalAction, LaneCommand, LaneCommandOutcome, LaneProjection, LaneSummary,
+  LaneWorkspaceProjection,
+} from '../../../../electron/shared/agentLane/laneContracts'
 import { LANE_IPC_CHANNELS } from '../../../../electron/shared/agentLane/laneContracts'
+import { laneComposerIntent, type LaneComposerIntent } from '../../../../electron/shared/agentLane/laneComposerIntent'
 
 export type LaneCommandResult =
-  | { ok: true }
+  | ({ ok: true } & LaneCommandOutcome)
   | { ok: false; code: string; message: string }
 
-/** 桥的形状。渲染层只认识这两个动作——它发不出宿主记录，因为它造不出宿主记录。 */
+/** 桥的形状。渲染层只发得出**意图**——它发不出宿主记录，因为它造不出宿主记录。 */
 export interface LaneBridge {
-  onProjection(listener: (projection: LaneProjection) => void): () => void
+  onProjection(listener: (projection: LaneWorkspaceProjection) => void): () => void
   send(command: LaneCommand): Promise<LaneCommandResult>
 }
 
@@ -55,12 +63,55 @@ export const EMPTY_LANE_PROJECTION: LaneProjection = Object.freeze({
     reasoningTokens: Object.freeze({ state: 'unknown', reason: 'no-settled-turn' }),
   }),
   thinking: Object.freeze({ supportedLevels: Object.freeze(['off' as const]), level: 'off', canTurnOff: true }),
+  // 桥没接上时队列**是空的**，这是量到的：没有桥就没有地方排队。
+  queues: Object.freeze([]),
+})
+
+/** 桥没接上时的工作区：一条对话都列不出来（不是「这个项目没有对话」，是「还没问到」）。 */
+export const EMPTY_LANE_WORKSPACE: LaneWorkspaceProjection = Object.freeze({
+  lanes: Object.freeze([]),
+  active: EMPTY_LANE_PROJECTION,
 })
 
 export interface LaneClient {
+  /** 当前打开的那条对话。等价于 `workspace().active`，留着是因为绝大多数消费者只要这一份。 */
   projection(): LaneProjection
-  subscribe(listener: (projection: LaneProjection) => void): () => void
+  /** 这个项目的对话列表 + 当前那条。 */
+  workspace(): LaneWorkspaceProjection
+  lanes(): readonly LaneSummary[]
+  subscribe(listener: (projection: LaneWorkspaceProjection) => void): () => void
   prompt(text: string): Promise<LaneCommandResult>
+  /**
+   * 「用户在输入框里打了这句话」——**唯一**该被 composer 调用的那个方法。
+   *
+   * 它不自己决定这句话是什么意思：判据在 `laneComposerIntent`（中立契约层，主进程侧的
+   * 验收门用的是同一份）。composer 只负责把用户按的是回车还是那个明确的按钮告诉它。
+   */
+  say(text: string, choice?: 'primary' | 'secondary'): Promise<LaneCommandResult>
+  /** 这句话现在会走哪条路。面板用它渲染次选按钮，不用它做决定。 */
+  intent(text: string): LaneComposerIntent
+  /** 「等这一步做完就听我的」。 */
+  steer(text: string): Promise<LaneCommandResult>
+  /** 「等它整个做完再说」。 */
+  followUp(text: string): Promise<LaneCommandResult>
+  /** 撤回一条排队的插话。结果三态，见 `LaneCancelQueuedResult`。 */
+  cancelQueued(entryId: string): Promise<LaneCommandResult>
+  /** 对话列表的三件事。切换/新建会把当前那条关掉——等待中的卡随之以「关窗」收尾。 */
+  selectLane(laneName: string): Promise<LaneCommandResult>
+  createLane(laneName: string): Promise<LaneCommandResult>
+  deleteLane(laneName: string): Promise<LaneCommandResult>
+  /**
+   * 审批卡上的三个动作。第四个是 `abort()`——「停」停的是整轮，不是这一次，
+   * 所以它不该长成第四个 action（那会让它看起来像「拒绝得更用力一点」）。
+   *
+   * `toolCallId` 必须由调用方从 `projection().pending` 取：它证明用户答的是**那一张卡**。
+   * 「答当前那张」这种写法在用户点得慢、卡已经翻篇时会把答案落到下一张上。
+   */
+  approve(toolCallId: string): Promise<LaneCommandResult>
+  approveForSession(toolCallId: string): Promise<LaneCommandResult>
+  /** 「不要」+ 可选的一句话。那句话会一字不改成为模型看到的 tool result。 */
+  deny(toolCallId: string, reason?: string): Promise<LaneCommandResult>
+  /** 停。回值里可能带着用户没送出去的话——调用方**必须**把它放回输入框。 */
   abort(): Promise<LaneCommandResult>
   dispose(): void
 }
@@ -72,8 +123,8 @@ const NO_BRIDGE: LaneCommandResult = {
 }
 
 export function createLaneClient(bridge: LaneBridge | undefined = resolveLaneBridge()): LaneClient {
-  let latest: LaneProjection = EMPTY_LANE_PROJECTION
-  const listeners = new Set<(projection: LaneProjection) => void>()
+  let latest: LaneWorkspaceProjection = EMPTY_LANE_WORKSPACE
+  const listeners = new Set<(projection: LaneWorkspaceProjection) => void>()
   // `useSyncExternalStore` 的 getter 必须**引用稳定**：只在真收到新投影时换对象。
   // 这条不是风格问题——仓库里 6 个手写 store 之一因为每次 getter 新建对象，
   // 在「有待决工具」时把整页打成「工作台加载失败」（G6 判据②）。
@@ -85,13 +136,35 @@ export function createLaneClient(bridge: LaneBridge | undefined = resolveLaneBri
   const send = async (command: LaneCommand): Promise<LaneCommandResult> =>
     bridge ? bridge.send(command) : NO_BRIDGE
 
+  const approval = (toolCallId: string, action: LaneApprovalAction, reason?: string) =>
+    send({ kind: 'approval', toolCallId, action, ...(reason?.trim() ? { reason } : {}) })
+
   return {
-    projection: () => latest,
+    projection: () => latest.active,
+    workspace: () => latest,
+    lanes: () => latest.lanes,
     subscribe: (listener) => {
       listeners.add(listener)
       return () => { listeners.delete(listener) }
     },
     prompt: (text: string) => send({ kind: 'prompt', text }),
+    intent: (text: string) => laneComposerIntent(latest.active, text),
+    say: (text: string, choice: 'primary' | 'secondary' = 'primary') => {
+      const intent = laneComposerIntent(latest.active, text)
+      // 空闲态没有次选。用户在「新一轮」上按不到第二个按钮，所以这里回落到主动作而不是抛：
+      // 抛会让一次正常的回车在极短的状态竞态里（刚跑完那一瞬）变成一个错误弹窗。
+      const chosen = choice === 'secondary' ? intent.secondary ?? intent.primary : intent.primary
+      return send(chosen.command)
+    },
+    steer: (text: string) => send({ kind: 'steer', text }),
+    followUp: (text: string) => send({ kind: 'follow-up', text }),
+    cancelQueued: (entryId: string) => send({ kind: 'cancel-queued', entryId }),
+    selectLane: (laneName: string) => send({ kind: 'lane-select', laneName }),
+    createLane: (laneName: string) => send({ kind: 'lane-create', laneName }),
+    deleteLane: (laneName: string) => send({ kind: 'lane-delete', laneName }),
+    approve: (toolCallId: string) => approval(toolCallId, 'allow-once'),
+    approveForSession: (toolCallId: string) => approval(toolCallId, 'allow-session'),
+    deny: (toolCallId: string, reason?: string) => approval(toolCallId, 'deny', reason),
     abort: () => send({ kind: 'abort' }),
     dispose: () => {
       unsubscribe?.()

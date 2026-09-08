@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { shouldCompact } from '@earendil-works/pi-coding-agent';
-import type { RuntimeActivityEvent } from '../../electron/harness/runtime/runtimePort.js';
+import type { RuntimeActivityEvent } from '../../electron/shared/agentCapabilities/transportContracts.js';
 import { runAgentTurn } from '../../electron/harness/runtime/pi/nativeLoader.cjs';
 import { createControlledSession } from '../../electron/harness/runtime/pi/session.mjs';
 import { createRuntimeFixture, type FixtureReply } from './httpFixture.mjs';

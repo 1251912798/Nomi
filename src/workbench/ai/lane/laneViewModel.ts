@@ -19,16 +19,21 @@ import type {
   LaneApprovalNote,
   LaneMetric,
   LanePart,
+  LanePendingApproval,
   LaneProjection,
+  LaneQueuedMessage,
 } from '../../../../electron/shared/agentLane/laneContracts'
 import {
   LANE_APPROVAL_NOTE_TYPE,
   isLaneApprovalNote,
+  laneApprovalWasRefused,
 } from '../../../../electron/shared/agentLane/laneContracts'
+import type { V4InterventionSource } from '../v4/agentPanelV4Intervention'
 import { resolveCapabilityAlias } from '../../../../electron/shared/agentCapabilities/registry'
 import { actionFamilyForCapability } from '../v4/agentPanelV4ActionFamily'
 import type {
   ContextUsage,
+  TaskCardData,
   ToolReceipt,
   V4ActionFamily,
   V4FlowItem,
@@ -49,6 +54,16 @@ export interface LaneViewModelLabels {
   formatTokens(value: number): string
   formatCost(usd: number): string
   /**
+   * 「正在重试 2/4」。**两个数都由调用方填**（R15）——它是这一族里唯一带变量的可见文字，
+   * 而 zh-CN 与 en 的语序不同，在这一层拼字符串就等于把语序钉死成中文的。
+   *
+   * 词条**故意还没进 `src/i18n/locales/agentPanelV4.ts`**：影子期这一族标签一个生产调用方
+   * 都还没有（`useAgentPanelV4Data.ts` 喂的是旧那份投影），先落一个 `agentPanelV4.retrying`
+   * 就是一个到不了的死键，`check:i18n-dead-keys` 会当场红——它红得对。词条和它的消费者
+   * 同一个 commit 出现，就在把面板接到 lane 的那次切换 PR 里。
+   */
+  retryLabel(attempt: number, maxAttempts: number): string
+  /**
    * 「这个数我们没有」的占位（面板上那个 `—`）。三态里的 `unknown` 走它——
    * **整行留着、数字位写占位符**，让用户看见「这一项存在但拿不到」，而不是看见一个 0，
    * 也不是让整行凭空消失（消失会让人以为这一项不存在）。
@@ -65,6 +80,17 @@ export interface LaneViewModelLabels {
    * 与旁边的 `unknown`（今天已经是活的 `agentPanelV4.contextUnknown`）走同一条路。
    */
   free: string
+  /** 任务卡的标题（「生成任务」）。卡上其余文字全是数字，所以只需要这一句。 */
+  taskTitle: string
+  /** 「{done} / {total} 阶段」。两个数分开传，是因为不同语言的量词位置不同。 */
+  formatStages(done: number, total: number): string
+  /**
+   * 金额。**币种由领域给**（`ProductionRun.budget.currency`），不是这一层猜的——
+   * 同一个项目里用 APIMart 和用 kie 结算的币种可以不同，印错的那个数看起来完全正常。
+   */
+  formatMoney(currency: string, amount: number): string
+  /** join 不到领域事实时卡上那句脚注（「任务详情在任务中心」）。 */
+  taskUnknown: string
 }
 
 /**
@@ -84,6 +110,42 @@ export interface LaneViewModel {
   items: readonly V4FlowItem[]
   usage: ContextUsage
   running: boolean
+  /**
+   * 排着队还没被送出去的插话（v4 的积木⑥「队列行」）。
+   *
+   * **它不进 `items`**：`items` 是已经发生的事，队列是**还没发生**的事。混进去的话，
+   * 用户会在时间线里看到一句他刚打的话排在模型的回答后面，像是模型已经读过它了——
+   * 而 `one-at-a-time` 下它要等到下一次请求才被吃进去。
+   *
+   * 原样带出 `entryId`：撤回那一条要靠它，而「队里最后一条」是猜（队列随时会被消费）。
+   */
+  queues: readonly LaneQueuedMessage[]
+  /**
+   * 只在真的在退避时存在。**缺失 = 没在重试**，不是重试了 0 次——面板据此决定画不画那一行，
+   * 而一个恒存在的「重试 0/4」会把「一切正常」说成「它在挣扎」。
+   */
+  retry?: string
+  /**
+   * 有一张审批卡在等用户。**它不是流里的一行**——它住在 composer 上方那个介入槽里
+   * （v4 定稿的积木 ⑤），所以它不进 `items`；进了就会在滚上去之后消失，而用户正等着答它。
+   */
+  pending?: LanePendingApproval
+}
+
+/**
+ * 待决的卡 → 现役介入槽要的那份数据源。
+ *
+ * 槽的**投影**（kind / 徽标 / 摘要 / 范围那一行）已经有唯一 owner
+ * （`agentPanelV4Intervention.ts`），这里只做「把 lane 的词表换成它的词表」这一步——
+ * 再写一份 kind 判定就是 R14.1 要横扫的「同一语义两份定义」。
+ */
+export function laneInterventionSource(pending: LanePendingApproval): V4InterventionSource {
+  return {
+    toolName: pending.toolName,
+    args: pending.args,
+    ...(pending.effectClass ? { effectClass: pending.effectClass } : { effectClass: undefined }),
+    pendingCount: pending.pendingCount,
+  }
 }
 
 /** 一次工具调用在流里的落点，用来把结果并回它的那一行（按 id join，不复制正文）。 */
@@ -122,6 +184,34 @@ function receiptFor(part: Extract<LanePart, { kind: 'tool-call' }>, labels: Lane
   }
 }
 
+/**
+ * 一张任务卡（方案 §2.2 G13）。
+ *
+ * **`facts` 缺席 = 只画标题 + 一句「详情在任务中心」**，与今天 `taskCardFor` 的裁决逐字相同：
+ * join 不到就不给状态，而不是给一个「排队中」——那会让用户以为有东西在跑，
+ * 而实际上我们只是没读到那条 run。
+ */
+function taskCardFor(part: Extract<LanePart, { kind: 'task' }>, labels: LaneViewModelLabels): TaskCardData {
+  const { facts } = part
+  if (!facts) return { title: labels.taskTitle, action: 'video', status: 'queued', footnote: labels.taskUnknown }
+  const money = (amount: number | undefined): string | undefined =>
+    amount !== undefined && facts.currency !== undefined ? labels.formatMoney(facts.currency, amount) : undefined
+  const spent = money(facts.spent)
+  const estimated = money(facts.estimated)
+  return {
+    title: labels.taskTitle,
+    action: 'video',
+    status: facts.status,
+    ...(facts.stagesTotal ? { trailing: labels.formatStages(facts.stagesDone ?? 0, facts.stagesTotal) } : {}),
+    ...(facts.progress === undefined ? {} : { progress: facts.progress }),
+    // 候选只带 id 过桥（K4），这一层把它们编成卡上那排序号。缩略图由卡自己按 id 去取。
+    ...(facts.candidateIds?.length
+      ? { candidates: facts.candidateIds.map((_, index) => ({ tag: String(index + 1) })) } : {}),
+    ...(estimated === undefined ? {} : { cost: estimated }),
+    ...(spent === undefined ? {} : { footnoteTrailing: spent }),
+  }
+}
+
 /** 收据七态里，「结果回来了」只有三种可能：成了 / 被闸拒了 / 坏了。 */
 function settledStatus(isError: boolean, denied: boolean): V4ToolStatus {
   if (!isError) return 'output-available'
@@ -151,9 +241,13 @@ export function laneViewModel(projection: LaneProjection, labels: LaneViewModelL
       // 宿主记录不占流里的一行。审批拒收的那句话 pi 已经一字不改地做成了那次调用的
       // tool result（探针 §4.2 臂 B），所以这里只用它把那一行的状态从「坏了」改成
       // 「被拒了」——同一句话说两遍是在骗用户，让他以为发生了两件事。
-      if (part.noteType === LANE_APPROVAL_NOTE_TYPE && isLaneApprovalNote(part.data) && part.data.decision === 'denied') {
+      if (part.noteType === LANE_APPROVAL_NOTE_TYPE && isLaneApprovalNote(part.data) && laneApprovalWasRefused(part.data)) {
         denials.set(part.data.toolCallId, part.data)
       }
+      continue
+    }
+    if (part.kind === 'task') {
+      items.push({ kind: 'task', task: taskCardFor(part, labels) })
       continue
     }
     if (part.kind === 'user') {
@@ -199,6 +293,12 @@ export function laneViewModel(projection: LaneProjection, labels: LaneViewModelL
   return {
     items,
     running: projection.running,
+    // 队列原样带出去：这一层不合并、不去重、不改顺序——pi 的 FIFO 就是用户打字的顺序。
+    queues: projection.queues,
+    ...(projection.retry
+      ? { retry: labels.retryLabel(projection.retry.attempt, projection.retry.maxAttempts) }
+      : {}),
+    ...(projection.pending ? { pending: projection.pending } : {}),
     usage: {
       // 环的分子是「现在上下文里装了多少」，不是累计用量——累计会画出一个 300% 的环。
       // 三态里只有 `known` 能当分子；`unknown` 时**连 `used` 都不给**，钮上退回 `—`。

@@ -10,9 +10,7 @@
 //
 // 结果与裁决写在 `docs/research/2026-09-07-agent-lane-stage3-probes.md`。这里只钉「今天是什么」。
 import assert from 'node:assert/strict';
-import { spawn } from 'node:child_process';
-import { once } from 'node:events';
-import { fileURLToPath } from 'node:url';
+import { spawnLaneCrashChild } from './laneCrashFixture.mjs';
 import { test } from 'node:test';
 import type { Entry } from '@earendil-works/pi-agent-core';
 
@@ -42,7 +40,7 @@ for (const arm of ['resolve-on-abort', 'reject-on-abort'] as const) {
     const fixture = await createLaneFixture(t, [APPEND, CLOSING]);
     const entered = deferred<{ hasSignal: boolean }>();
     let hookSettledBy: 'abort' | 'never' = 'never';
-    const probe = await openProbeLane(t, fixture.options, {
+    const probe = await openProbeLane(fixture, fixture.options, {
       beforeTool: async (_event, hookContext) => {
         const signal = hookContext.abortSignal;
         entered.resolve({ hasSignal: signal !== undefined });
@@ -133,7 +131,7 @@ for (const arm of ['resolve-on-abort', 'reject-on-abort'] as const) {
 test('P1 ⊕ positive control · a hook that throws is a block: the tool never runs and the message reaches the model verbatim', async (t) => {
   const fixture = await createLaneFixture(t, [APPEND, CLOSING]);
   const reason = 'Approval service crashed: ask the user to reopen the panel before appending.';
-  const probe = await openProbeLane(t, fixture.options, {
+  const probe = await openProbeLane(fixture, fixture.options, {
     beforeTool: async () => { throw new Error(reason); },
   });
   const result = await probe.lane.prompt('Append something.', undefined, PROBE_CONTEXT);
@@ -152,28 +150,15 @@ test('P1 ⊕ positive control · a hook that throws is a block: the tool never r
  */
 test('P1 ③ · after a hard crash while parked in before_tool, resume() re-plans the call (before_tool runs again) instead of synthesizing an interrupted result', async (t) => {
   const fixture = await createLaneFixture(t, [APPEND, CLOSING]);
-  const child = spawn(process.execPath, [
-    fileURLToPath(new URL('./stage3-probe-crash-child.mjs', import.meta.url)),
-    fixture.projectDir, fixture.http.baseURL,
-  ], { stdio: ['ignore', 'pipe', 'inherit'] });
-  let stdout = '';
-  const parked = deferred<string>();
-  child.stdout.setEncoding('utf8');
-  child.stdout.on('data', (chunk: string) => {
-    stdout += chunk;
-    const match = /PARKED session=(\S+)/.exec(stdout);
-    if (match) parked.resolve(match[1]);
-  });
-  const exited = once(child, 'exit');
-  const sessionId = await Promise.race([parked.promise, exited.then(() => { throw new Error(`child exited early:\n${stdout}`); })]);
+  const crash = spawnLaneCrashChild(fixture);
+  const sessionId = await crash.sessionId;
   assert.equal(fixture.http.requests.length, 1, 'the child got exactly one model reply (the tool call) before parking');
-  child.kill('SIGKILL');
-  await exited;
+  await crash.close();
 
   // 父进程：一个**新的**端口 + 新的 harness，钩子这次记录它有没有被再次问到。
   const document = createDocumentPort();
   const hookCalls: string[] = [];
-  const reopened = await openProbeLane(t, { ...fixture.options, tools: createDocumentLaneTools(document) }, {
+  const reopened = await openProbeLane(fixture, { ...fixture.options, tools: createDocumentLaneTools(document) }, {
     sessionId,
     beforeTool: async (event) => { hookCalls.push(event.toolCallId); return undefined; },
   });

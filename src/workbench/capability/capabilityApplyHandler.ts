@@ -427,15 +427,18 @@ export async function handleCapabilityApply(op: string, payload: unknown): Promi
     case 'plan.confirm':
       return confirmPlanForAgent(data as PlanConfirmPayload)
     case 'timeline.read': {
-      const operation = data.operation === 'range' ? 'inspect_timeline_range' : 'read_timeline'
+      // 阶段 5a：`operation` **就是**语义动作名（`read_timeline` / `inspect_timeline_range`）。
+      // 这里原本有一条 `'range' → inspect_timeline_range` 的反向映射，它存在的唯一理由是
+      // 对外 MCP 曾经自带一套动作词表（`read` / `range`）。两个 profile 同源之后那套词表
+      // 没有了，反向映射也就没有了——少一处「外部说的名字在 Nomi 日志里搜不到」的地方。
       return executeTimelineReadTarget(
-        operation === 'read_timeline'
-          ? { operation }
-          : {
-              operation,
+        data.operation === 'inspect_timeline_range'
+          ? {
+              operation: 'inspect_timeline_range',
               startFrame: data.startFrame,
               endFrame: data.endFrame,
-            } as Parameters<typeof executeTimelineReadTarget>[0],
+            } as Parameters<typeof executeTimelineReadTarget>[0]
+          : { operation: 'read_timeline' },
       )
     }
     case 'timeline.write': {
@@ -481,12 +484,15 @@ export async function handleCapabilityApply(op: string, payload: unknown): Promi
       // 载荷是**传输形状**（leaseHandle / projectId / operation:'list'…），语义 schema 是 strict 的：
       // 整包 spread 会把 operation 覆盖回 'list'、还带进 leaseHandle/projectId，两条都直接
       // capability_input_invalid（真宿主旅程当场撞出来的）。所以按面逐字段搭语义输入。
+      // 阶段 5a：`operation` **就是**语义动作名。这里原本还有一条
+      // `list/get/inspect/source_range/waveform → search_media/…` 的反向映射链，
+      // 与 MCP 侧 `parseCall` 里那条三元表达式是同一张手写表的两半。两边同源之后两半一起没了。
       const assetId = typeof data.assetId === 'string' ? data.assetId : ''
-      const input = data.operation === 'get' || data.operation === 'inspect'
-        ? { operation: data.operation === 'get' ? 'get_media' : 'inspect_media', assetId }
-        : data.operation === 'source_range'
+      const input = data.operation === 'get_media' || data.operation === 'inspect_media'
+        ? { operation: data.operation, assetId }
+        : data.operation === 'inspect_source_range'
           ? { operation: 'inspect_source_range', assetId, startFrame: data.startFrame, endFrame: data.endFrame }
-          : data.operation === 'waveform'
+          : data.operation === 'read_waveform'
             ? {
                 operation: 'read_waveform',
                 assetId,

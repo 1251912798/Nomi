@@ -1,7 +1,7 @@
 import { CANVAS_READ_CAPABILITY } from "../shared/agentCapabilities/canvasRead";
 import { formatCanvasForAgent } from "../shared/agentCapabilities/canvasReadCompact";
 import type { IpcMainInvokeEvent } from "electron";
-import type { RuntimeToolCall, RuntimeToolDecision } from "../harness/runtime/runtimePort";
+import type { RuntimeToolCall, RuntimeToolDecision } from "../shared/agentCapabilities/transportContracts";
 import type { CapabilityExecutorRegistry } from "./capabilityExecutorRegistry";
 import {
   SurfacePortError,

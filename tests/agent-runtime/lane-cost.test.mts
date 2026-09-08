@@ -15,9 +15,9 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import type { LaneSnapshot } from '@earendil-works/pi-agent-core';
-import { openLane } from '../../electron/agentLane/laneHost.mjs';
-import { projectLaneSnapshot, type LaneModelFacts } from '../../electron/agentLane/laneProjection.mjs';
-import type { LaneMetric, LaneUsage } from '../../electron/shared/agentLane/laneContracts.js';
+import { getSupportedThinkingLevels } from '@earendil-works/pi-ai';
+import { projectLaneSnapshot, type LaneModelFacts } from '../../electron/shared/agentLane/laneProjection.js';
+import type { LaneMetric, LaneThinkingLevel, LaneUsage } from '../../electron/shared/agentLane/laneContracts.js';
 import { createLaneFixture } from './laneFixture.mjs';
 import type { FixtureReply } from './httpFixture.mjs';
 
@@ -48,9 +48,8 @@ test('P4 · a priced model yields a cost that equals the hand-computed per-milli
   // 所以「模型报了多少」和「我们算了多少」是两个独立来源，不是同一个数字自证。
   const usage = { input: 12_000, output: 3_000, cacheRead: 8_000, cacheWrite: 0 };
   const fixture = await createLaneFixture(t, [{ type: 'text', text: 'Done.', usage }]);
-  const lane = await openLane({ ...fixture.options,
+  const lane = await fixture.openLane({ ...fixture.options,
     model: { ...fixture.options.model, tokenPricing: V4_FLASH } });
-  t.after(() => lane.close());
   await lane.execute({ kind: 'prompt', text: 'Say done.' });
 
   const cost = knownValue(metricOf(lane.projection().usage, 'cost'), 'cost');
@@ -77,9 +76,8 @@ test('P4 · cache reads are billed at the cache rate, not the input rate', async
   // 高一截不会像 1000 倍那样显眼，所以需要一条只盯着它的断言。
   const fixture = await createLaneFixture(t, [
     { type: 'text', text: 'Done.', usage: { input: 0, output: 0, cacheRead: CACHE_TOKENS, cacheWrite: 0 } }]);
-  const lane = await openLane({ ...fixture.options,
+  const lane = await fixture.openLane({ ...fixture.options,
     model: { ...fixture.options.model, tokenPricing: V4_FLASH } });
-  t.after(() => lane.close());
   await lane.execute({ kind: 'prompt', text: 'Say done.' });
 
   const cost = knownValue(metricOf(lane.projection().usage, 'cost'), 'cost');
@@ -94,9 +92,8 @@ test('P4 · an omitted cache rate falls back to the input rate, never to free', 
   // 那是一个我们没资格给用户的折扣。
   const fixture = await createLaneFixture(t, [
     { type: 'text', text: 'Done.', usage: { input: 0, output: 0, cacheRead: CACHE_TOKENS, cacheWrite: 0 } }]);
-  const lane = await openLane({ ...fixture.options, model: { ...fixture.options.model,
+  const lane = await fixture.openLane({ ...fixture.options, model: { ...fixture.options.model,
     tokenPricing: { inputPerMTokUsd: V4_FLASH.inputPerMTokUsd, outputPerMTokUsd: V4_FLASH.outputPerMTokUsd } } });
-  t.after(() => lane.close());
   await lane.execute({ kind: 'prompt', text: 'Say done.' });
 
   const cost = knownValue(metricOf(lane.projection().usage, 'cost'), 'cost');
@@ -109,9 +106,8 @@ test('P4 · an omitted cache rate falls back to the input rate, never to free', 
 
 test('G3d · 首轮：一条回合都还没结算时，三行全部「不可知」，一个 0 都不画', async (t) => {
   const fixture = await createLaneFixture(t, SAY_HI);
-  const lane = await openLane({ ...fixture.options,
+  const lane = await fixture.openLane({ ...fixture.options,
     model: { ...fixture.options.model, tokenPricing: V4_FLASH, reasoning: true } });
-  t.after(() => lane.close());
 
   // 刻意**不发**任何提示词：这就是用户打开面板的第一眼。
   const { usage } = lane.projection();
@@ -125,8 +121,7 @@ test('G3d · 首轮：一条回合都还没结算时，三行全部「不可知�
 test('G3d · 无价目模型：花费「不可知」，不是 $0.00；token 那几列照常有数', async (t) => {
   const fixture = await createLaneFixture(t, SAY_HI);
   // 目录里没有这个模型的 per-token 价（DeepSeek V3.2 / V3.1-terminus 就是这种）。
-  const lane = await openLane(fixture.options);
-  t.after(() => lane.close());
+  const lane = await fixture.openLane(fixture.options);
   await lane.execute({ kind: 'prompt', text: 'Say done.' });
 
   const { usage } = lane.projection();
@@ -138,8 +133,7 @@ test('G3d · 无价目模型：花费「不可知」，不是 $0.00；token 那�
 
 test('G3d · 免费模型：花费是「不适用」，和「不可知」不是同一句话', async (t) => {
   const fixture = await createLaneFixture(t, SAY_HI);
-  const lane = await openLane({ ...fixture.options, model: { ...fixture.options.model, free: true } });
-  t.after(() => lane.close());
+  const lane = await fixture.openLane({ ...fixture.options, model: { ...fixture.options.model, free: true } });
   await lane.execute({ kind: 'prompt', text: 'Say done.' });
 
   assert.deepEqual(lane.projection().usage.cost, { state: 'not-applicable', reason: 'model-is-free' },
@@ -152,12 +146,15 @@ test('G3d · 刚压缩完：上下文「不可知」，因为旧数字描述的�
   // 的命令就是留一段死代码）。所以这里先用真 lane 跑出一份**真快照形状**，再往转录尾巴上
   // 放一条真类型的 `CompactionEntry` —— 合成的只有那一条标记，其余全是 pi 自己产的。
   const fixture = await createLaneFixture(t, SAY_HI);
-  const lane = await openLane({ ...fixture.options,
+  const lane = await fixture.openLane({ ...fixture.options,
     model: { ...fixture.options.model, tokenPricing: V4_FLASH } });
-  t.after(() => lane.close());
   await lane.execute({ kind: 'prompt', text: 'Say done.' });
 
-  const facts: LaneModelFacts = { model: laneModel(), pricing: 'priced' };
+  // 档位仍由 pi 那一把尺子算（`getSupportedThinkingLevels`）——纯化搬走的是「谁去问它」，
+  // 不是判据本身，所以这里照旧问一次真的，而不是手抄一个档位数组。
+  const facts: LaneModelFacts = {
+    supportedThinkingLevels: getSupportedThinkingLevels(laneModel()) as readonly LaneThinkingLevel[],
+    pricing: 'priced' };
   const settled = snapshotWith([
     { id: 'e1', parentId: null, seq: 1, timestamp: 1, type: 'message',
       message: assistant({ input: 900, output: 100, cacheRead: 0, cacheWrite: 0 }) },
@@ -191,16 +188,14 @@ test('G3d · 刚压缩完：上下文「不可知」，因为旧数字描述的�
 test('推理：不会思考的模型「不适用」；会思考但供应商没报的「不可知」；报了的才有数', async (t) => {
   const withReasoning = await createLaneFixture(t, [
     { type: 'text', text: 'Done.', usage: { input: 10, output: 40, reasoning: 25 } }]);
-  const thinking = await openLane({ ...withReasoning.options,
+  const thinking = await withReasoning.openLane({ ...withReasoning.options,
     model: { ...withReasoning.options.model, reasoning: true } });
-  t.after(() => thinking.close());
   await thinking.execute({ kind: 'prompt', text: 'Think then answer.' });
   assert.equal(knownValue(thinking.projection().usage.reasoningTokens, 'reasoningTokens'), 25,
     '推理 token 只在逐条助手消息上有 —— pi 的会话总计把它丢掉了，所以必须走转录');
 
   const plain = await createLaneFixture(t, SAY_HI);
-  const noThinking = await openLane(plain.options);
-  t.after(() => noThinking.close());
+  const noThinking = await plain.openLane(plain.options);
   await noThinking.execute({ kind: 'prompt', text: 'Say done.' });
   assert.deepEqual(noThinking.projection().usage.reasoningTokens,
     { state: 'not-applicable', reason: 'model-has-no-reasoning' },
@@ -209,16 +204,14 @@ test('推理：不会思考的模型「不适用」；会思考但供应商没�
 
 test('推理档由 getSupportedThinkingLevels derive；off 被标 null 的模型关不掉思考', async (t) => {
   const plain = await createLaneFixture(t, SAY_HI);
-  const off = await openLane(plain.options);
-  t.after(() => off.close());
+  const off = await plain.openLane(plain.options);
   assert.deepEqual(off.projection().thinking.supportedLevels, ['off'],
     'reasoning:false 的模型只有一档 —— 面板不许给它画一排点不动的档位');
 
   const gated = await createLaneFixture(t, SAY_HI);
-  const lane = await openLane({ ...gated.options, model: { ...gated.options.model,
+  const lane = await gated.openLane({ ...gated.options, model: { ...gated.options.model,
     // `null` = 这一档这个模型不支持。`off: null` 就是「关不掉思考」。
     reasoning: true, thinkingLevelMap: { off: null, minimal: null, low: 'low', medium: 'medium', high: 'high' } } });
-  t.after(() => lane.close());
   const { thinking } = lane.projection();
   assert.deepEqual([...thinking.supportedLevels], ['low', 'medium', 'high'],
     'thinkingLevelMap[level] === null 的档由 pi 自己剔掉，我们不另列一张表');

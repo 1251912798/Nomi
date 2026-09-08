@@ -16,11 +16,16 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { HookHandler, LaneSnapshot } from '@earendil-works/pi-agent-core';
 
-import { canvasLaneToolSpecs, createCanvasLaneTools, type CanvasLanePort } from '../../electron/agentLane/laneCanvasTools.js';
+import { createCanvasLaneTools, type CanvasLanePort } from '../../electron/agentLane/laneCanvasTools.js';
+// 阶段 5a：说明书那一半搬到能力契约旁边（两个 profile 共用），执行那一半留在 lane。
+import { canvasModelToolSpecs } from '../../electron/shared/agentCapabilities/canvasModelTools.js';
 import { composeLaneSystemPrompt } from '../../electron/agentLane/lanePromptSections.js';
+
+/** P5 探针量的是「工具多了模型还听不听话」，不喂技能——空串是一个**说出口的决定**，不是遗漏。 */
+const NO_SKILL_SECTION = '';
 import type { LaneToolDescriptor } from '../../electron/agentLane/laneRuntimePort.js';
 import type { ApiKeyRecord } from '../../electron/catalog/secrets.js';
-import type { NomiModelConfig } from '../../electron/harness/runtime/runtimePort.js';
+import type { NomiModelConfig } from '../../electron/shared/agentLane/laneModelConfig.js';
 import { PROBE_CONTEXT, openProbeLane, type ProbeCleanup } from './stage3ProbeHarness.mjs';
 
 const VENDOR = process.env.NOMI_PROBE_VENDOR || 'apimart';
@@ -131,7 +136,7 @@ async function runTask(config: NomiModelConfig, task: TaskSpec, tools: LaneToolD
   try {
     const probe = await openProbeLane(scope, {
       projectDir: join(app.getPath('temp'), `nomi-p5-${task.id}-${Date.now()}`),
-      systemPrompt: composeLaneSystemPrompt(IDENTITY_PROMPT, canvasLaneToolSpecs()),
+      systemPrompt: composeLaneSystemPrompt(IDENTITY_PROMPT, canvasModelToolSpecs(), NO_SKILL_SECTION),
       model: config, tools,
     }, { beforeTool });
     probe.harness.hooks.on('before_request', async () => { requests += 1; return undefined; });
@@ -161,7 +166,7 @@ async function measurePromptTokens(config: NomiModelConfig, tools: LaneToolDescr
   try {
     const probe = await openProbeLane(scope, {
       projectDir: join(app.getPath('temp'), `nomi-p5-measure-${tools.length}-${Date.now()}`),
-      systemPrompt: composeLaneSystemPrompt(IDENTITY_PROMPT, tools), model: config, tools,
+      systemPrompt: composeLaneSystemPrompt(IDENTITY_PROMPT, tools, NO_SKILL_SECTION), model: config, tools,
     });
     await bounded(probe.lane.prompt('只回复 ok。', undefined, PROBE_CONTEXT), () => probe.lane.abort(PROBE_CONTEXT));
     const snapshot = (await probe.lane.watch(PROBE_CONTEXT)).snapshot;

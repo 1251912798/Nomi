@@ -60,6 +60,8 @@
 - [弹层被祖先 overflow 裁掉时三样证据同时失明](overlay-clipped-by-ancestor-overflow.md) — 浮层走查必查：`toBeVisible` / rect / 「点得动」全绿也可能用户点不到，改用 `expectOverlayReachable`
 
 ## B. 测试与 CI 的红绿判读
+
+- [测试目录必须等资源真正关闭后再删](fixture-teardown-must-await-resource-owners.md) — node:test 红后挂死、临时目录 ENOTEMPTY、kill-only 清理。
 - [停掉一个 agent ≠ 现场清空：子 agent 还在写、哨兵还在跑](stopping-an-agent-leaves-children-and-sentinels.md) — B · TaskStop 只停一个；先 ListAgents 停子 agent，再 pgrep 杀 until 循环，证明无写入后才派接力写手
 
 - [管道跑测试会吞掉退出码](piped-test-runs-mask-exit-codes.md) — `| tail` 的 exit 0 是 tail 的；错的 reporter 名会「全绿」通过
@@ -101,6 +103,9 @@
 - [合并后不立刻录交付收据，窗口就永久关闭](verify-merged-receipt-window-closes-fast.md) — `verify-merged` 要求 HEAD == `origin/main` == 目标 SHA；main 一前进就再也录不成，收据命令要自带重试
 
 ## D. 排查与平台故障
+
+- [平台门控必须在 UI 上说人话](platform-gates-must-explain-user-action.md) — Windows 等平台被拒绝却显示未检测或部分受限时
+- [Antigravity CLI Windows 修复计划](../plan/2026-09-08-antigravity-cli-windows.md) — 六条现场记录核实、回归与 RC 边界
 
 - [`ERR_INVALID_STATE` 其实是 `ReadableStream.from`](err-invalid-state-is-readablestreamfrom.md) — 栈里有 `undici:NNNN` 就别去升 Electron
 - [探测本机解析器要用真实 TLD，`.invalid` 探不到代理](reserved-tlds-cannot-probe-the-resolver.md) — 写「这台机器是不是被本地代理接管」的探针前必读：RFC 保留 TLD 被解析器就地答成 NXDOMAIN，查询根本不出门，真机上恒失效而单测全绿
@@ -145,5 +150,5 @@
 > 另见 playbook [§14 门岗验「没变坏」，不验「做到了」](../engineering/agent-orchestration-playbook.md#14-门岗验没变坏不验做到了把-p3-机器化进派工合同)——派下去的活「36 门全绿」不等于规格达成；派工要绑验收物、收货先验规格再看门岗。
 - [两个各自绿的 PR 合到一起会红](two-green-prs-merge-red.md) — 连合同一区域 PR 前先 update-branch 等 CI；分类器 skip 的门不算绿
 - [合并收据只认 main 的 tip](merge-receipts-need-exact-tip.md) — 合一个等 CI 记一个再合下一个；probe worktree 分离 HEAD 跑 verify-merged
-- [Docs Gate Autosync 往受保护 main 推必败](docs-autosync-cannot-push-protected-main.md) — GH006 三连 = 有文档没进索引/没状态，本地补即可
+- [Docs Gate Autosync 必须有正式 CI](docs-autosync-cannot-push-protected-main.md) — GH006 与跳过 CI 是写回链故障；固定 action PR + 默认 token 防循环，CI 批准边界明确
 - [样张两条硬纪律：真字形、真比例](mockups-need-real-glyphs-and-true-proportions.md) — 图标从 @tabler 包抽真实路径；布局线框按 1680×842 真比例并自己看过

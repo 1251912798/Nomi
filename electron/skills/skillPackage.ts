@@ -1,6 +1,14 @@
 // Skill 分享 = 异步文件交换（无后端）。导出一个 skill 为自描述包 → 发给人 → 对方导入到可写
-// 用户目录。安全：skill 只声明（SKILL.md 文本），不跑外部代码；导入校验 frontmatter、
-// 拒路径穿越、不覆盖内置（docs/plan/2026-06-19-skill-playbook-system.md §6 + §0.5.d）。
+// 用户目录。安全：导入校验 frontmatter、拒路径穿越、不覆盖内置
+// （docs/plan/2026-06-19-skill-playbook-system.md §6 + §0.5.d）。
+//
+// **2026-09-07（阶段 5c）：`scripts/` 不再被跳过。** v1 拒收可执行区的理由原话是
+// 「进来就要配安全扫描 + 沙箱」——那两样现在都有了：沙箱是 pi 自带示例接的
+// `@anthropic-ai/sandbox-runtime`（`electron/agentLane/laneCodingSandbox.mts`），
+// 审批是三档权限策略（`electron/shared/agentCapabilities/codingCommandPolicy.ts`）。
+// 前提没了，限制就该同 commit 删掉，而不是留一句「暂不支持」当永久豁免（P1）。
+// 技能正文引用脚本路径，模型用 bash 工具去跑，跑之前过那三档——**技能本身不获得任何
+// 额外权限**：它带的脚本和用户自己敲的命令走同一条闸。
 // 纯函数（打包/校验/冲突命名）与 FS 函数（显式目录，便于单测，不碰 electron app）分离；
 // runtimePaths 薄包装见末尾。
 import { createHash } from "node:crypto";
@@ -28,11 +36,15 @@ const SKILL_TEXT_EXT = /\.(md|markdown|json|txt|ya?ml|csv)$/i;
 /** 子目录深度上限（`references/api/v2/spec.md` = 3 段目录，够用且防深层炸弹）。 */
 const SKILL_PATH_MAX_DEPTH = 4;
 /**
- * v1 只吃知识层：`scripts/` 是可执行代码，进来就要配安全扫描 + 沙箱（Nomi 是创作工具不是
- * coding agent，技能价值在方法论）。这里显式识别出来，让 UI 能诚实告诉用户「跳过了脚本，原因是…」，
- * 而不是笼统报「不安全的文件名」。
+ * 可执行区。**现在收，但要标出来**——UI 据此告诉用户「这个技能含可执行脚本，运行需确认」。
+ *
+ * 为什么仍然要认得出它：用户在点「导入」那一刻有权知道自己收下的是不是会跑起来的东西。
+ * 把它和普通 markdown 一视同仁不是更简洁，是把一个该说的事实藏起来了（D4）。
  */
 const SKILL_EXECUTABLE_DIRS = new Set(["scripts", "bin", "hooks"]);
+
+/** 可执行脚本的扩展名白名单。**不是所有文件都收**：二进制仍然不进包（它没法审阅）。 */
+const SKILL_SCRIPT_EXT = /\.(mjs|cjs|js|ts|mts|py|sh|bash|zsh|rb)$/i;
 
 /** 把 Windows 反斜杠归一成 `/`，并去掉冗余的 `./`。 */
 function normalizeSkillPath(raw: string): string {
@@ -54,7 +66,6 @@ export function isSafeSkillFilePath(raw: string): boolean {
   const p = normalizeSkillPath(raw);
   if (!p || p.includes("\0")) return false;
   if (p.startsWith("/") || /^[a-z]:/i.test(p)) return false;
-  if (isExecutableSkillPath(p)) return false;
   const segments = p.split("/");
   if (segments.length > SKILL_PATH_MAX_DEPTH) return false;
   for (const segment of segments) {
@@ -62,7 +73,10 @@ export function isSafeSkillFilePath(raw: string): boolean {
     // 段内不许再藏分隔符或空白包裹（zip 里出现过 `a /../b` 这种）
     if (segment.trim() !== segment) return false;
   }
-  return SKILL_TEXT_EXT.test(segments[segments.length - 1]);
+  const leaf = segments[segments.length - 1];
+  // 可执行区收脚本扩展名，知识区收文本扩展名。**两边都不收二进制**：
+  // 一个审阅不了的文件，用户点「允许运行」时等于在批一件他看不见的事。
+  return isExecutableSkillPath(p) ? SKILL_SCRIPT_EXT.test(leaf) : SKILL_TEXT_EXT.test(leaf);
 }
 
 /** 打包（纯）：把文件表组装成 SkillPackage。 */
@@ -130,9 +144,6 @@ export function validateSkillPackage(raw: unknown): ValidatedSkillPackage {
   }
   const fileEntries = Object.entries(files as Record<string, unknown>);
   for (const [name, content] of fileEntries) {
-    if (isExecutableSkillPath(name)) {
-      return { ok: false, error: `暂不支持带可执行脚本的技能（${name}）——Nomi 只吃知识层（SKILL.md / references / assets）` };
-    }
     if (!isSafeSkillFilePath(name)) return { ok: false, error: `不安全或不支持的文件路径：${name}` };
     if (typeof content !== "string") return { ok: false, error: `文件 ${name} 内容必须是字符串` };
   }
@@ -148,6 +159,16 @@ export function validateSkillPackage(raw: unknown): ValidatedSkillPackage {
     pkg: { version: SKILL_PACKAGE_VERSION, exportedAt, dirName, files: fileMap },
     skillName: identity.name || dirName,
   };
+}
+
+/**
+ * 这个包带可执行脚本吗。UI 用它在导入卡上加一行「含可执行脚本，运行需确认」。
+ *
+ * 它是**一句事实，不是一道闸**：闸在 `codingCommandPolicy` 那边，每次真要跑的时候判。
+ * 放在这里是因为导入那一刻是用户唯一会认真看一眼这个技能的时刻。
+ */
+export function skillPackageCarriesExecutables(pkg: SkillPackage): boolean {
+  return Object.keys(pkg.files).some((name) => isExecutableSkillPath(name));
 }
 
 /** 目标目录名清洗 + 冲突避让（纯）：非法字符→-，已存在→加 -2/-3…（不覆盖现有/内置）。 */
@@ -179,7 +200,6 @@ export function readSkillDirFiles(absDir: string): Record<string, string> {
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
       const rel = prefix ? `${prefix}/${entry.name}` : entry.name;
       if (entry.isDirectory()) {
-        if (isExecutableSkillPath(rel)) continue; // 可执行区不导出（与导入对称）
         if (rel.split("/").length >= SKILL_PATH_MAX_DEPTH) continue;
         walk(path.join(dir, entry.name), rel);
         continue;

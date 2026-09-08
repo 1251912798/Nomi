@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import type { RuntimeErrorFacts } from '../../electron/harness/runtime/runtimePort.js';
+import type { RuntimeErrorFacts } from '../../electron/shared/agentCapabilities/transportContracts.js';
 import { createErrorFacts } from '../../electron/harness/runtime/pi/errorFacts.mjs';
 import { runAgentTurn } from '../../electron/harness/runtime/pi/nativeLoader.cjs';
 import { createRuntimeFixture } from './httpFixture.mjs';

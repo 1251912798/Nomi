@@ -1,5 +1,15 @@
 {
-  "debtCap": 76,
+  "debtCap": 74,
+  "converged": [
+    {
+      "retiredOwners": [
+        "electron/harness/runtime/pi/observeStream.mts::class:NativeStreamTimeout/parameter:phase/type-union",
+        "electron/harness/runtime/pi/observeStream.mts::function:observeNativeStream/variable:arm/parameter:phase/type-union"
+      ],
+      "survivingOwner": "electron/shared/agentCapabilities/transportContracts.ts::interface:RuntimeErrorFacts/property:timeoutPhase/type-union",
+      "reason": "阶段 4 前置 ③：observeStream.mts 搬成 electron/agentLane/laneStreamObserver.mts 时，把两处手抄的 [first-response | idle] 改成 NonNullable<RuntimeErrorFacts['timeoutPhase']> 派生——正是这两条 debt 自己写的收敛办法。canonical owner 同批从 harness/runtime/runtimePort.ts 搬到 electron/shared/agentCapabilities/transportContracts.ts（它的消费者全都活过阶段 4 的切换），所以 survivingOwner 记的是新住址。"
+    }
+  ],
   "registered": [
     {
       "site": "src/workbench/creation/storyboard/StoryboardPlanStrategyPanel.tsx::function:StatusBar/parameter:0/property:stateKey/type-union",
@@ -238,15 +248,15 @@
       "reason": "Pi runtime 端口/快照协议的结果词表（aborted / deferred / error / length / pending / stop / toolUse），描述 turn、tool 或 stop reason 的协议语义。"
     },
     {
-      "site": "electron/harness/runtime/runtimePort.ts::interface:RuntimeErrorFacts/property:timeoutPhase/type-union",
+      "site": "electron/shared/agentCapabilities/transportContracts.ts::interface:RuntimeErrorFacts/property:timeoutPhase/type-union",
       "members": [
         "first-response",
         "idle"
       ],
-      "reason": "RuntimeErrorFacts.timeoutPhase 区分 native stream 在 first-response 前超时与响应后的 idle 间隙超时，决定错误事实与诊断文案；observeStream 的异常和 arm 参数都只是 runtime port 合同的投影，应从该导出接口 derive。"
+      "reason": "RuntimeErrorFacts.timeoutPhase 区分 native stream 在 first-response 前超时与响应后的 idle 间隙超时，决定错误事实与诊断文案；laneStreamObserver 的异常和 arm 参数都只是 runtime port 合同的投影，应从该导出接口 derive。"
     },
     {
-      "site": "electron/harness/runtime/runtimePort.ts::interface:RuntimeToolCallRecord/property:status/type-union",
+      "site": "electron/shared/agentCapabilities/transportContracts.ts::interface:RuntimeToolCallRecord/property:status/type-union",
       "members": [
         "cancelled",
         "denied",
@@ -265,7 +275,7 @@
       "reason": "RuntimeTurnResult.status 是 runtime port 的 turn 终态合同：finished、cancelled、error 只描述一次 runtime turn 的结算；AgentChatStatus 与失败结果构造器应从它派生，不与消息 pending/streaming view state 混用。"
     },
     {
-      "site": "electron/harness/runtime/runtimePort.ts::type:RuntimeFinishReason/type-union",
+      "site": "electron/shared/agentCapabilities/transportContracts.ts::type:RuntimeFinishReason/type-union",
       "members": [
         "aborted",
         "error",
@@ -801,15 +811,6 @@
         "unsupported"
       ],
       "reason": "ArchetypeExpressionChannel.status 描述视频能力证据的覆盖度：documented 有来源证据，unsupported 明确不支持，unknown 尚无结论；它驱动规划时是否采用表达通道，不是任务执行状态。"
-    },
-    {
-      "site": "electron/skills/playbookOrchestrator.ts::type:PlaybookStatus/type-union",
-      "members": [
-        "awaiting-confirm",
-        "done",
-        "running"
-      ],
-      "reason": "Skill playbook 编排状态（awaiting-confirm / done / running），包含等待确认这一工作流专属阶段。"
     },
     {
       "site": "electron/tasks/responseParsing.ts::variable:NON_FAILURE_TEXTS/set",
@@ -1423,7 +1424,16 @@
       "reason": "V4DockStatus 是 Agent 面板**收起后**右上角那枚 Nomi logo 上叠的那一格（2026-09-06 用户改：收起态从右侧 32px rail 上的两颗 icon 换回 logo + 状态叠加）。它与 DeconstructionEntry.status 五五重叠是同名不同物：那边是「拆解一条参考片的四段流水线」的进度（idle/running/ready/failed），terminal 成功叫 ready 因为拆出来的东西**还等着被采用**；这边是「Nomi 现在要不要你看一眼」的注意力档，terminal 成功叫 done 且只活 2.4 秒（V4_DOCK_DONE_HOLD_MS）就掉回 idle，还多一档 needs-confirm——那是拆解流水线里根本不存在的语义（介入槽等用户裁决）。复用那份词表会逼收起坞把「等你确认」塞进 running，而这两者在收起态下正是唯一需要被区分的两件事：一个不用管，一个不点就永远停着。派生只有一处（resolveDockStatus），单测钉死优先级。"
     },
     {
-      "site": "src/workbench/ai/v4/agentPanelV4Types.ts::type:V4TaskStatus/type-union",
+      "site": "electron/shared/agentLane/laneComposerIntent.ts::type:LaneComposerState/type-union",
+      "members": [
+        "awaiting-approval",
+        "idle",
+        "running"
+      ],
+      "reason": "「用户此刻在输入框里打的那句话是什么意思」——它决定那句话走 deny-with-reason / steer / prompt 哪一条（方案 §1.3 那张表），是一条**语义分派**的判据，不是 composer 的呈现模式。与 ComposerMode 的 idle/running 同名不同物：ComposerMode 描述 composer 长什么样（第三档 reference = 挂着引用 chip，那是一种外观，与「这句话怎么送出去」正交——挂着 chip 的 composer 照样可能在等一张审批卡）；这一份多出的 awaiting-approval 在 ComposerMode 里根本不存在，而它正是本词表存在的全部理由：等卡时用户打的那句话默认是**对这张卡的回答**，不是排给下一轮的指令。复用 ComposerMode 会逼「有卡在等」塞进 running，而那正是今天用户撞到的「我说了它没听见」。另外它必须住 electron/shared/：主进程侧的验收门（G3e）与渲染层的 composer 用同一份判据，两侧各写一份的话会出现「面板说 steer、宿主做 followUp 而两边测试都绿」。"
+    },
+    {
+      "site": "electron/shared/agentLane/laneContracts.ts::variable:LANE_TASK_STATUSES/as-const",
       "members": [
         "complete",
         "failed",
@@ -1431,7 +1441,7 @@
         "running",
         "stopped"
       ],
-      "reason": "V4TaskStatus 是 AI Elements Task 卡片的面板状态，stopped 与 failed 需要分别表达用户停止和执行失败，不能复用生产任务终态。"
+      "reason": "任务卡的五个面板状态，stopped 与 failed 分别表达「用户停了」和「执行失败」，不复用生产任务终态。2026-09-08（阶段 3d G13）owner 从 src/workbench/ai/v4/agentPanelV4Types.ts::V4TaskStatus 搬到中立契约层，成员一个没变：这五个词现在跨进程——主进程从 ProductionRun 领域 join 出来的 LaneTaskFacts.status 就带着它，渲染层照着画。两侧各留一份字面量 union 就得再写一张映射表（R14.1 的「同一语义两份定义」），而 electron/ 不许 import src/（check:boundaries），能容下唯一 owner 的只有 electron/shared/。V4TaskStatus 现在是它的类型别名，v4 组件的 import 路径一行没改。"
     },
     {
       "site": "src/workbench/ai/v4/agentPanelV4Types.ts::type:V4ToolStatus/type-union",
@@ -1482,6 +1492,18 @@
         "failed"
       ],
       "reason": "上一条阶段表的终态子集，用于让迟到事件被吸收（取消后仍在途的那一批不许把界面拽回处理中）。它是同一张表的投影而不是第二份词表，成员必须逐字取自 VIDEO_DEPTH_PHASES。"
+    },
+    {
+      "site": "electron/shared/agentLane/laneContracts.ts::variable:LANE_APPROVAL_DECISIONS/as-const",
+      "members": [
+        "auto-granted",
+        "cancelled",
+        "denied",
+        "denied-by-policy",
+        "granted-once",
+        "granted-session"
+      ],
+      "reason": "一次工具调用的审批**结局**（方案 2026-09-07-agent-rebuild-stage3-5-deep-plan §1.2）。它不是任务状态、不是工具七态、也不是 ProjectAgentStatus：那三个说的是「这件事做到哪一步了」，这一个说的是「用户对这一次调用给了什么答复，以及没给答复的话是被什么打断的」。不能复用现有 owner 的具体理由：projectAgentContracts 的 approvalScope/approvalPolicy 是**用户选的档位**不是**某一次的结局**；V4ToolStatus 只分得出 approval-requested / approval-responded，把「你说了不要」「你按了停」「你关了窗」「重启前没答完」四件事折成同一个词，而它们的用户文案必须不同（G6-④ 那族的成因）。等待态**故意不在这张表里**：它不是发生了的事，只活在 laneHost 内存与 LaneProjection.pending。"
     }
   ],
   "debt": [
@@ -1651,22 +1673,6 @@
         "ready"
       ],
       "reason": "AgentContextInfo.state 是 StoredAgentContext.state 的只读服务投影；contextService 已导入 contextStore 并在 describe 中原样返回 record.state，不拥有独立成员。应改为 StoredAgentContext['state'] 后删除本地字面量。"
-    },
-    {
-      "site": "electron/harness/runtime/pi/observeStream.mts::class:NativeStreamTimeout/parameter:phase/type-union",
-      "members": [
-        "first-response",
-        "idle"
-      ],
-      "reason": "Exact duplicate of electron/harness/runtime/runtimePort.ts::interface:RuntimeErrorFacts/property:timeoutPhase/type-union; converge by importing or deriving the canonical members instead of maintaining this local literal set."
-    },
-    {
-      "site": "electron/harness/runtime/pi/observeStream.mts::function:observeNativeStream/variable:arm/parameter:phase/type-union",
-      "members": [
-        "first-response",
-        "idle"
-      ],
-      "reason": "Exact duplicate of electron/harness/runtime/runtimePort.ts::interface:RuntimeErrorFacts/property:timeoutPhase/type-union; converge by importing or deriving the canonical members instead of maintaining this local literal set."
     },
     {
       "site": "electron/harness/runtime/pi/tools.mts::type:HostToolResult/property:status/type-union",

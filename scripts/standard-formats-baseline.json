@@ -6,12 +6,5 @@
     "标成 internal 并写清凭什么说它不对外），然后从这里删掉那一行。",
     "身份 = 格式文件名::源码路径；不存行号（行号随无关改动漂移，改多了就没人看了）。"
   ],
-  "debt": [
-    {
-      "identity": "plugin.json::electron/ai/antigravityMedia.ts",
-      "note": "electron/ai/antigravityMedia.ts:69 往 Antigravity 的插件目录里写 plugin.json + hooks.json（读回在 antigravityMediaHook.ts）。这是**别人的插件格式**，但接入时是照着实测能跑的形状写的，没和官方插件规范逐字段对过账，也没抓官方样例当夹具。补齐前不许假装它已经对齐——所以它在这里当债，不在登记表里当已对齐项。",
-      "plan": "docs/engineering-rules.md#r31-外部格式协议契约必须对齐官方或事实标准（收敛动作：抓 Antigravity 官方插件文档逐字段对账 → 抓官方 plugin.json 样例进 tests/fixtures/standard-formats/ → 写读取器测试 → 登记成 de-facto-standard 并从本基线删掉这一行）",
-      "due": "2026-11-07"
-    }
-  ]
+  "debt": []
 }

@@ -2,6 +2,7 @@ import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { IconExternalLink, IconSparkles } from '@tabler/icons-react'
 import { ANTIGRAVITY_VENDOR_KEY, ANTIGRAVITY_IMAGE_MODEL_KEY } from '../../../electron/shared/antigravity'
+import { antigravityErrorKey } from '../../../electron/shared/antigravityErrors'
 import { DesignButton } from '../../design'
 import { getDesktopBridge } from '../../desktop/bridge'
 import type { TranslationKey } from '../../i18n/translationKey'
@@ -36,6 +37,8 @@ export function AntigravityConnectionCard({ enabled, models, selectedVariants, s
   const { view, controller, perform } = session
   const status = view.status
   const state = status?.state ?? 'unverified'
+  const unsupported = status?.code === 'ANTIGRAVITY_WINDOWS_UNSUPPORTED'
+  const stateLabel = unsupported ? t(antigravityErrorKey(status.code!)) : t(`antigravity.state.${state}`)
   const busy = !!view.busy || !controller
   // Cached discovery is useful while checking; it never grants verification or enablement.
   const discovered = new Set(status?.models.map((model) => model.id)
@@ -54,11 +57,11 @@ export function AntigravityConnectionCard({ enabled, models, selectedVariants, s
   return (
     <FoldableModelCard glyph={<IconSparkles size={16} stroke={1.5} />} name={t('antigravity.name')}
       subtitle={t('antigravity.subtitle')} status={state === 'error' || state === 'limited' ? 'error' : enabled ? 'ok' : 'todo'}
-      statusLabel={enabled ? t('antigravity.enabled') : t(`antigravity.state.${state}`)} detailMode>
+      statusLabel={unsupported ? t('antigravity.windowsUnsupportedLabel') : enabled ? t('antigravity.enabled') : stateLabel} detailMode>
       <div className="flex items-center justify-between gap-3 border-b border-nomi-line pb-3">
         <div className="min-w-0">
           <div className="text-caption font-semibold text-nomi-ink">{t('antigravity.nativeAccount')}</div>
-          <div role="status" className="mt-1 text-micro text-nomi-ink-60">{view.busy === 'checking' ? t('antigravity.checking') : t(`antigravity.state.${state}`)}</div>
+          <div role="status" className="mt-1 text-micro text-nomi-ink-60">{view.busy === 'checking' ? t('antigravity.checking') : stateLabel}</div>
         </div>
         {state === 'missing' ? <a href={installUrl} target="_blank" rel="noopener noreferrer" className="text-caption text-nomi-accent">{t('antigravity.install')}</a>
           : state === 'login-required' ? <DesignButton variant="light" onClick={() => void copyLogin()} disabled={busy}>{t('antigravity.copyLogin')}</DesignButton>
@@ -66,7 +69,7 @@ export function AntigravityConnectionCard({ enabled, models, selectedVariants, s
       </div>
       <div data-agy-models className="flex flex-col gap-4">
         <ModelChipGroups models={groups.map((group) => group.model)} connected={enabled} onOpenModel={onOpenModel} />
-        {!groups.length ? <p className="text-caption text-nomi-ink-60">{t('antigravity.emptyModels')}</p> : null}
+        {!groups.length && !unsupported ? <p className="text-caption text-nomi-ink-60">{t('antigravity.emptyModels')}</p> : null}
         <ModelChipGroups models={tools} connected={enabled} onOpenModel={onOpenModel} kindLabels={{ image: t('antigravity.imageTools') }} />
         <ModelChipGroups models={routes} connected={enabled} onOpenModel={onOpenModel} kindLabels={{ text: t('antigravity.routing') }} />
       </div>
@@ -74,8 +77,8 @@ export function AntigravityConnectionCard({ enabled, models, selectedVariants, s
       <details className="border-t border-nomi-line pt-3 text-caption text-nomi-ink-60">
         <summary className="cursor-pointer font-semibold">{t('antigravity.details')}</summary>
         <div className="mt-2 flex flex-col gap-2 text-micro leading-relaxed">
-          <div>{t('antigravity.version')}: {status?.version ?? t('antigravity.unknown')}</div>
-          {status?.code ? <div>{t('antigravity.errorCode')}: <code>{status.code}</code></div> : null}
+          {!unsupported ? <div>{t('antigravity.version')}: {status?.version ?? t('antigravity.unknown')}</div> : null}
+          {status?.code ? <div>{t('antigravity.errorCode')}: {t(antigravityErrorKey(status.code))} <code>{status.code}</code></div> : null}
           <p>{t('antigravity.automaticHint')}</p><p>{t('antigravity.toolHint')}</p>
           <p>{t('antigravity.network')}</p><p>{t('antigravity.noAudioVideo')}</p><p>{t('antigravity.limits')}</p>
           <a href={installUrl} target="_blank" rel="noopener noreferrer" className="inline-flex self-start items-center gap-1 text-nomi-accent">{t('antigravity.docs')}<IconExternalLink size={14} stroke={1.5} /></a>

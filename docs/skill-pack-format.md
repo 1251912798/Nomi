@@ -92,13 +92,17 @@ metadata:
 ```yaml
     stages:
       - id: script                       # 必填，阶段稳定 id
-        goal: 先出一份可审阅的编号剧本      # 必填
-        tools: [read_full_text]          # 必填，本阶段工具白名单（空 = 纯规划）
-        depends-on: []                   # 可选，DAG 依赖
-        pause: true                      # 可选，完成后暂停让用户确认
+        goal: 先出一份可审阅的编号剧本      # 必填，deprecated 兼容元数据
+        tools: [read_full_text]          # 必填，deprecated；不授权工具
+        depends-on: []                   # 可选，deprecated；不调度依赖
+        pause: true                      # 可选，deprecated；不触发暂停
         skill-refs: [writer-screenwriter] # 可选，本阶段按需注入的方法论技能
-        model-prefs: [{ kind: text }]     # 可选，**只声明 kind + family**
+        model-prefs: [{ kind: text }]     # 可选，kind 驱动模态 chip
 ```
+
+**兼容字段（deprecated，无阶段执行作用）**：`goal`、`tools`、`depends-on`、`pause` 和 `model-prefs[].family` 已被内置及存量技能包写入，因此仍按原 schema 解析；不要把它们当作规划、工具授权、依赖排序、暂停或模型家族选择指令。`goal` 仍投影为 DTO 标签：技能卡使用阶段数量，`ProjectAgentResidentShell` 在缺少描述时用标签拼接备用说明。因此 `goal` 仍有 UI 元数据用途，但不参与阶段规划。必填的 `goal` / `tools` 暂时保留原格式要求，避免破坏存量包。
+
+仍生效的是 `id` / `skill-refs`（生产阶段的方法论引用与执行证据）及 `model-prefs[].kind`（供应商模态 chip）。真正执行的阶段顺序与门由 `electron/productionRun/productionPlaybooks.ts` 及生产 driver 管理，不从这些兼容字段生成。
 
 `model-prefs` 用 `.strict()` 从结构上拒绝 `archetypeId` / `params` 等 vendor 专属键——技能分享出去不该绑死某个供应商（P4）。
 

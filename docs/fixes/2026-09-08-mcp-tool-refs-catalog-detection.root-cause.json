@@ -1,0 +1,104 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-08-mcp-tool-refs-catalog-detection",
+  "problem_type": "Catalog selection based on textual proximity instead of object ownership",
+  "symptom": "Executable audit manifest excerpts falsely report existing Agent tools as missing MCP tools.",
+  "direct_cause": "isHostFixture checks only 240 preceding characters and requires type before name.",
+  "class_root": "Tool reference catalog identity is not bound to the owning object structure.",
+  "affected_population": [
+    "Executable docs excerpts",
+    "Host reply fixtures in tests",
+    "MCP call examples"
+  ],
+  "scope_paths": [
+    "scripts/check-mcp-tool-references-lib.mjs",
+    "scripts/check-mcp-tool-references.ts"
+  ],
+  "entry_points": [
+    "scanFile executable Markdown units",
+    "scanSource executable test sources"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "Internal lint classification of existing repository tool shapes; no external API contract or runtime behavior changes.",
+  "invariants": [
+    "Host name properties use Agent catalog only when their own object has the host discriminator or complete manifest field signature.",
+    "All positional MCP calls and other name properties use MCP catalog; unknown names remain invalid."
+  ],
+  "generality_proof": "Shared object-boundary classification ignores field order, distance, comments and nested values, and never inherits sibling or parent discriminators.",
+  "shared_boundaries": [
+    {
+      "path": "scripts/check-mcp-tool-references-lib.mjs",
+      "symbol": "scanSource",
+      "responsibility": "Bind each name property to the catalog selected by its own object."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "docs/audit/2026-09-06-agent-tool-layer-audit.md",
+      "entry_point": "modelToolSurfaceManifest excerpt",
+      "disposition": "enforced",
+      "evidence": "Restored ts fence scanned by scanFile -> scanSource; complete manifest signature selects Agent."
+    },
+    {
+      "path": "tests/ux/agent-runtime-production.walk.mjs",
+      "entry_point": "reply object with type tool",
+      "disposition": "enforced",
+      "evidence": "Repository scan finds reply.type tool and nomi_canvas_plan; scanSource owns all fixture classification."
+    },
+    {
+      "path": "tests/ux/agent-runtime-editing.walk.mjs",
+      "entry_point": "host tool reply fixtures",
+      "disposition": "enforced",
+      "evidence": "Same type tool discriminator; covered by object-local long/reordered/nested-field regression tests."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Any new fixture or documentation excerpt can reorder fields or exceed the window.",
+    "same_class_scan": [
+      "rg isHostFixture|scanSource scripts/check-mcp* identifies one shared boundary.",
+      "rg type: .tool. tests/ux finds production, editing, golden-path and artifact fixtures.",
+      "rg modelToolSurfaceManifest|agentToolCatalog docs/audit finds audit and architecture-review references."
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "scripts/check-mcp-tool-references-lib.mjs",
+    "invariant": "Catalog comes from direct properties of the owning object, never a context window.",
+    "failure_mode": "Names absent from the selected real catalog fail the existing gate.",
+    "exception_policy": "none",
+    "strategy": "Replace proximity regex with TypeScript-token object grouping and direct-field shape recognition.",
+    "artifacts": [
+      "scripts/check-mcp-tool-references-lib.mjs"
+    ]
+  },
+  "regression_tests": [
+    "scripts/check-mcp-tool-references.node-test.mjs"
+  ],
+  "class_regression_tests": [
+    "scripts/check-mcp-tool-references.node-test.mjs"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "scripts/check-mcp-tool-references-lib.mjs",
+      "docs/audit/2026-09-06-agent-tool-layer-audit.md"
+    ],
+    "rationale": "Remove isHostFixture bounded lookbehind and revert the text-fence workaround."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "No dependency defect or new package; reuse installed TypeScript scanner for token boundaries.",
+    "exit_criteria": []
+  },
+  "migration": "No stored data or runtime changes; existing fixtures retain their source format.",
+  "residual_risks": [
+    "Computed/dynamic names remain outside the existing literal-reference gate scope."
+  ],
+  "invariant_owner_layer": {
+    "layer": "scripts/check-mcp-tool-references-lib.mjs",
+    "tests": [
+      "scripts/check-mcp-tool-references.node-test.mjs"
+    ]
+  }
+}

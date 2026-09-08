@@ -3,7 +3,7 @@
 // 两个问题，各一条**只写探针不修**的断言（修在 3c，另一位工人并行在做）：
 //   ① 首字节永不返回时，lane 今天**挂死**——用有界等待证明它超过 N 秒仍无结果（阳性对照：
 //      同一条 loopback 挂上 `observeNativeStream` 就会结束）。这是 G3c 「今天会红」的那半。
-//   ② `observeStream.mts:66` 的 `fail()` 走 `controller.abort(error)`。方案 §1.6 预测它「极可能
+//   ② `laneStreamObserver.mts:66` 的 `fail()` 走 `controller.abort(error)`。方案 §1.6 预测它「极可能
 //      落成 `aborted` → 永不重试」。实跑记录：stopReason 是什么、`retry_scheduled` 有没有触发、
 //      harness 有没有 fault。这决定 3c 的归一策略。
 //
@@ -15,8 +15,7 @@ import { test } from 'node:test';
 import type { Provider } from '@earendil-works/pi-ai';
 import type { HarnessEvent } from '@earendil-works/pi-agent-core';
 
-import { openLane } from '../../electron/agentLane/laneHost.mjs';
-import { observeNativeStream } from '../../electron/harness/runtime/pi/observeStream.mjs';
+import { observeNativeStream } from '../../electron/agentLane/laneStreamObserver.mjs';
 import { createLaneFixture } from './laneFixture.mjs';
 import { PROBE_CONTEXT, openProbeLane } from './stage3ProbeHarness.mjs';
 
@@ -38,8 +37,7 @@ function withWatchdog(provider: Provider, firstResponseMs: number): Provider {
 
 test('P3 ① · today the lane has no watchdog: a stream that never sends its first byte hangs the turn', async (t) => {
   const fixture = await createLaneFixture(t, [NEVER_FIRST_BYTE]);
-  const lane = await openLane(fixture.options);
-  t.after(() => lane.close());
+  const lane = await fixture.openLane(fixture.options);
   const turn = lane.execute({ kind: 'prompt', text: 'Hello?' }).then(() => 'settled' as const);
   const verdict = await Promise.race([turn, sleep(HANG_PROOF_MS).then(() => 'still-hanging' as const)]);
   assert.equal(verdict, 'still-hanging', `no watchdog: the turn is still pending after ${HANG_PROOF_MS}ms with the request in flight`);
@@ -53,7 +51,7 @@ test('P3 ① · today the lane has no watchdog: a stream that never sends its fi
 test('P3 ① positive control · the same stalled stream ends within the budget once observeNativeStream is on the provider', async (t) => {
   const fixture = await createLaneFixture(t, [NEVER_FIRST_BYTE, { type: 'text', text: 'Recovered.' }]);
   const events: HarnessEvent[] = [];
-  const probe = await openProbeLane(t, fixture.options, { wrapProvider: (provider) => withWatchdog(provider, 300) });
+  const probe = await openProbeLane(fixture, fixture.options, { wrapProvider: (provider) => withWatchdog(provider, 300) });
   probe.harness.events.on('retry_scheduled', (event) => { events.push(event); });
   probe.harness.events.on('retry_end', (event) => { events.push(event); });
   probe.harness.events.on('fault', (event) => { events.push(event); });
