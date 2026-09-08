@@ -9,7 +9,6 @@ import { readFile, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { test } from 'node:test';
 
-import { openLane } from '../../electron/agentLane/laneHost.mjs';
 import { laneSessionsRoot } from '../../electron/agentLane/laneSession.mjs';
 import type { LanePart } from '../../electron/shared/agentLane/laneContracts.js';
 import { LANE_APPROVAL_NOTE_TYPE } from '../../electron/shared/agentLane/laneContracts.js';
@@ -36,7 +35,7 @@ const READ_THEN_WRITE = [
 
 test('G3 · a cold restart replays the same ordered parts the live lane produced', async (t) => {
   const fixture = await createLaneFixture(t, [...READ_THEN_WRITE]);
-  const live = await openLane(fixture.options);
+  const live = await fixture.openLane(fixture.options);
   await live.execute({ kind: 'prompt', text: 'Append one paragraph to the document.' });
   const before = live.projection();
   const { sessionId } = live;
@@ -49,8 +48,7 @@ test('G3 · a cold restart replays the same ordered parts the live lane produced
   const files = await readdir(join(laneSessionsRoot(fixture.projectDir), slugs[0]));
   assert.equal(files.length, 1, 'one lane keeps exactly one jsonl session file');
 
-  const reopened = await openLane({ ...fixture.options, sessionId });
-  t.after(() => reopened.close());
+  const reopened = await fixture.openLane({ ...fixture.options, sessionId });
   const after = reopened.projection();
 
   assert.deepEqual(after.parts.map(shape), before.parts.map(shape),
@@ -63,8 +61,7 @@ test('G3 · a cold restart replays the same ordered parts the live lane produced
 
 test('G3 · the projected order is the transcript order, not the wall-clock order', async (t) => {
   const fixture = await createLaneFixture(t, [...READ_THEN_WRITE]);
-  const lane = await openLane(fixture.options);
-  t.after(() => lane.close());
+  const lane = await fixture.openLane(fixture.options);
   await lane.execute({ kind: 'prompt', text: 'Append one paragraph to the document.' });
   const parts = lane.projection().parts;
 
@@ -85,8 +82,7 @@ test('G3 · the projected order is the transcript order, not the wall-clock orde
 
 test('the tool call and its result carry the same id, so the panel joins them without a second truth', async (t) => {
   const fixture = await createLaneFixture(t, [...READ_THEN_WRITE]);
-  const lane = await openLane(fixture.options);
-  t.after(() => lane.close());
+  const lane = await fixture.openLane(fixture.options);
   await lane.execute({ kind: 'prompt', text: 'Append one paragraph to the document.' });
   const parts = lane.projection().parts;
   const calls = parts.filter((part) => part.kind === 'tool-call');
@@ -104,8 +100,7 @@ test('a refused tool never runs, and the user\'s own sentence reaches the model 
     { type: 'tool', calls: [{ id: 'call-blocked', name: 'append_to_end', arguments: { content: 'unapproved' } }] },
     { type: 'text', text: 'Understood, I will not append that.' },
   ], { hasUserInterface: true, policy: () => ({ mode: 'step', spend: 'confirm' }) });
-  const lane = await openLane(fixture.options);
-  t.after(() => lane.close());
+  const lane = await fixture.openLane(fixture.options);
   const documentBefore = fixture.document.text();
 
   // 用户在卡上按「不要」并打了一句话。这是四个动作里的第三个（方案 §1.1）。
@@ -146,8 +141,7 @@ test('the running tool is marked running while it is in flight, and settles when
     { type: 'tool', calls: [{ id: 'call-slow', name: 'read_full_text', arguments: {} }] },
     { type: 'deferred', beforeReply: async () => { await inFlight; return { type: 'text', text: 'Done.' }; } },
   ]);
-  const lane = await openLane(fixture.options);
-  t.after(() => lane.close());
+  const lane = await fixture.openLane(fixture.options);
 
   const seenRunning: boolean[] = [];
   lane.subscribe((projection) => {
@@ -165,7 +159,7 @@ test('the running tool is marked running while it is in flight, and settles when
 
 test('reopening a session id that is not on disk fails loudly instead of silently starting a new one', async (t) => {
   const fixture = await createLaneFixture(t, []);
-  await assert.rejects(() => openLane({ ...fixture.options, sessionId: 'nope-not-a-session' }),
+  await assert.rejects(() => fixture.openLane({ ...fixture.options, sessionId: 'nope-not-a-session' }),
     /not on disk/, 'a missing history is an error, not an empty panel that looks normal');
 });
 
@@ -180,8 +174,7 @@ test('reopening a session id that is not on disk fails loudly instead of silentl
 // 两条测试共用同一个文件，谁先漂谁先红——比一个互相 mock 的端到端强。
 test('the live projection matches the checked-in fixture the renderer layer is tested against', async (t) => {
   const fixture = await createLaneFixture(t, [...READ_THEN_WRITE]);
-  const lane = await openLane(fixture.options);
-  t.after(() => lane.close());
+  const lane = await fixture.openLane(fixture.options);
   await lane.execute({ kind: 'prompt', text: 'Append one paragraph to the document.' });
 
   // 从仓库根解析，不从 `import.meta.url`：编译产物住在 `.tmp/` 下，夹具 JSON 不跟着搬。
@@ -206,8 +199,7 @@ test('every mid-stream frame is a prefix of the final text — deltas are accumu
   const chunks = ['I read ', 'the document', ' and left it alone.'];
   const full = chunks.join('');
   const fixture = await createLaneFixture(t, [{ type: 'text', text: full, chunks }]);
-  const lane = await openLane(fixture.options);
-  t.after(() => lane.close());
+  const lane = await fixture.openLane(fixture.options);
 
   const streamed: string[] = [];
   lane.subscribe((projection) => {

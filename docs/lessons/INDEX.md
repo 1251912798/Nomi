@@ -57,6 +57,8 @@
 - [弹层被祖先 overflow 裁掉时三样证据同时失明](overlay-clipped-by-ancestor-overflow.md) — 浮层走查必查：`toBeVisible` / rect / 「点得动」全绿也可能用户点不到，改用 `expectOverlayReachable`
 
 ## B. 测试与 CI 的红绿判读
+
+- [测试目录必须等资源真正关闭后再删](fixture-teardown-must-await-resource-owners.md) — node:test 红后挂死、临时目录 ENOTEMPTY、kill-only 清理。
 - [停掉一个 agent ≠ 现场清空：子 agent 还在写、哨兵还在跑](stopping-an-agent-leaves-children-and-sentinels.md) — B · TaskStop 只停一个；先 ListAgents 停子 agent，再 pgrep 杀 until 循环，证明无写入后才派接力写手
 
 - [管道跑测试会吞掉退出码](piped-test-runs-mask-exit-codes.md) — `| tail` 的 exit 0 是 tail 的；错的 reporter 名会「全绿」通过
