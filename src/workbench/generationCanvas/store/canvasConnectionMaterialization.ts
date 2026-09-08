@@ -2,12 +2,11 @@ import { connectNodes } from '../model/graphOps'
 import { planGroupLinkEdges } from '../model/groupInputLinks'
 import { resolveCanvasReferenceConnection } from '../model/canvasReferenceConnection'
 import { readParameterReferenceSlots } from '../model/parameterReferenceSlots'
-import type { GenerationCanvasNode, GenerationCanvasEdge, GenerationCanvasEdgeMode, NodeGroup } from '../model/generationCanvasTypes'
+import type { GenerationCanvasNode, GenerationCanvasEdge, GenerationCanvasEdgeMode } from '../model/generationCanvasTypes'
 
 type GroupLinkStore = {
   nodes: GenerationCanvasNode[]
   edges: GenerationCanvasEdge[]
-  groups: NodeGroup[]
 }
 export type GroupMaterializedConnection = {
   sourceNodeId: string

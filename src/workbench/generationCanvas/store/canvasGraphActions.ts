@@ -53,11 +53,6 @@ function autoPromoteTargetModeForEdge(
   )
 }
 
-/**
- * 把一条组入参物化成真边（组内每个成员一根）。**唯一物化点**——`connectToGroup`（新建入参）和
- * `moveNodeToGroup`（新成员进组补边）都走它，杜绝两处各写一遍再慢慢漂。
- * 返回计数供调用方出人话 toast（跳过的必须说，不许静默丢）。
- */
 type GroupEdgeDisconnectScope =
   | { groupId: string; direction: 'input'; sourceNodeId: string; mode?: GenerationCanvasEdgeMode }
   | { groupId: string; direction: 'output'; targetNodeId: string }

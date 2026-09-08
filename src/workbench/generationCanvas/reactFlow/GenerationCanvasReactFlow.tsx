@@ -1,4 +1,3 @@
-import { toGenerationFlowNode } from './generationCanvasReactFlowAdapter'
 import { withCanvasGestureContext } from '../events/canvasGestureContext'
 import { completeNodeConnection } from '../nodes/completeNodeConnection'
 import React from 'react'
@@ -61,6 +60,7 @@ import {
   collectFlowSelectionChanges,
   flowViewportFromCanvas,
   type GenerationFlowEdge,
+  toGenerationFlowNode,
   type GenerationFlowNode,
 } from './generationCanvasReactFlowAdapter'
 import {
