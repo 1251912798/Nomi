@@ -3,7 +3,7 @@
 // `LaneReceiptCell`）；这里钉的是接不上去的那一格**为什么**接不上——缺口清单一变就红。
 import { describe, expect, it } from 'vitest'
 
-import { projectLaneSnapshot } from '../../../../electron/agentLane/laneProjection.mjs'
+import { projectLaneSnapshot } from '../../../../electron/shared/agentLane/laneProjection'
 import { laneViewModel, type LaneViewModelLabels } from '../../../workbench/ai/lane/laneViewModel'
 import {
   laneDrivenReceipt,

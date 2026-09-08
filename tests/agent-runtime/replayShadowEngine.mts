@@ -18,7 +18,7 @@ import { join } from 'node:path';
 import type { AgentMessage } from '@earendil-works/pi-agent-core';
 
 import { createDocumentLaneTools } from '../../electron/agentLane/laneDocumentTools.js';
-import { projectLaneSnapshot } from '../../electron/agentLane/laneProjection.mjs';
+import { projectLaneSnapshot } from '../../electron/shared/agentLane/laneProjection.js';
 import type { OpenLaneOptions } from '../../electron/agentLane/laneRuntimePort.js';
 import type { LaneProjection } from '../../electron/shared/agentLane/laneContracts.js';
 import { createHttpFixture, type FixturePart, type FixtureReply } from './httpFixture.mjs';

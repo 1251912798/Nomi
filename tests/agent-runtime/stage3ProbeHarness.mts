@@ -9,10 +9,11 @@
 // 不投影、不存转录、不做闸——探针自己在 `before_tool` 上挂它要问的东西。
 import { AgentHarness, type AgentLane, type HookHandler } from '@earendil-works/pi-agent-core';
 import { BACKGROUND_CONTEXT, type Context } from '@earendil-works/pi-agent-core/harness/context';
-import { createModels, type Provider } from '@earendil-works/pi-ai';
+import { createModels, getSupportedThinkingLevels, type Provider } from '@earendil-works/pi-ai';
 
 import { createNomiProvider } from '../../electron/agentLane/laneModelProvider.mjs';
-import type { LaneModelFacts } from '../../electron/agentLane/laneProjection.mjs';
+import type { LaneModelFacts } from '../../electron/shared/agentLane/laneProjection.js';
+import type { LaneThinkingLevel } from '../../electron/shared/agentLane/laneContracts.js';
 import { createLaneTools } from '../../electron/agentLane/laneTools.mjs';
 import { openLaneSession } from '../../electron/agentLane/laneSession.mjs';
 import type { OpenLaneOptions } from '../../electron/agentLane/laneRuntimePort.js';
@@ -58,7 +59,8 @@ export async function openProbeLane(
     { projectDir: options.projectDir, ...(probe.sessionId ? { sessionId: probe.sessionId } : {}) }, PROBE_CONTEXT,
   );
   const { provider, model, credentials, pricingBasis } = await createNomiProvider(options.model);
-  const modelFacts: LaneModelFacts = { model, pricing: pricingBasis,
+  const modelFacts: LaneModelFacts = { pricing: pricingBasis,
+    supportedThinkingLevels: getSupportedThinkingLevels(model) as readonly LaneThinkingLevel[],
     ...(options.model.contextWindow === undefined ? {} : { contextWindow: options.model.contextWindow }) };
   const models = createModels({ credentials });
   models.setProvider(probe.wrapProvider ? probe.wrapProvider(provider) : provider);

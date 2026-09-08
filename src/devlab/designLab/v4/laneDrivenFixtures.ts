@@ -15,7 +15,7 @@
 import type { LaneSnapshot } from '@earendil-works/pi-agent-core'
 import type { AssistantMessage } from '@earendil-works/pi-ai'
 import { LANE_APPROVAL_NOTE_TYPE } from '../../../../electron/shared/agentLane/laneContracts'
-import { projectLaneSnapshot, type LaneModelFacts } from '../../../../electron/agentLane/laneProjection.mjs'
+import { projectLaneSnapshot, type LaneModelFacts } from '../../../../electron/shared/agentLane/laneProjection'
 import { laneViewModel, type LaneViewModelLabels } from '../../../workbench/ai/lane/laneViewModel'
 import type { ToolReceipt } from '../../../workbench/ai/v4/agentPanelV4Types'
 
@@ -88,10 +88,11 @@ export function laneSnapshotToolDenied(reason: string): LaneSnapshot {
  * 所以价目给 `'unpriced'`（花费=「不可知」）、不给 contextWindow——和真实「没登记价目的模型」一个形状。
  */
 export const LAB_MODEL_FACTS: LaneModelFacts = {
-  model: {
-    provider: 'nomi-lane', id: 'lab-model', name: 'lab-model', api: 'openai-completions', baseUrl: 'http://127.0.0.1/v1',
-    reasoning: false, input: ['text'], cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, contextWindow: 0, maxTokens: 0,
-  },
+  // 只有 `off` 一档 = 「这个模型没有推理这回事」，与 pi 对 `reasoning: false` 的模型
+  // 算出来的 `getSupportedThinkingLevels` 结果同一个形状（生产侧那一问在 `laneHost.mts`）。
+  // 实验室手写它而不是 import pi 的函数，正是这次纯化要立住的那条边界：
+  // 浏览器里的代码不认识 pi 的运行时。
+  supportedThinkingLevels: ['off'],
   pricing: 'unpriced',
 }
 
