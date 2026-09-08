@@ -2,6 +2,7 @@
 // 样张才能是「真实布局 + 改动」而不是脑补（CLAUDE.md 三闸①）。
 // 用法: node tests/ux/group-baseline.walk.mjs
 import { launchNomiApp } from './_launchApp.mjs'
+import { findCanvasBlankPoint } from './_canvasHit.mjs'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -36,21 +37,21 @@ const { app, win } = await launchNomiApp({
   initialLocalStorage: { 'nomi:splash:v1': 'seen', 'nomi:journey-tour:v1': 'seen' },
 })
 await win.getByRole('button', { name: '新建空白项目', exact: false }).first().click()
-await win.waitForTimeout(2500)
-
-const genTab = win.locator('button', { hasText: /^生成$/ }).first()
-if (await genTab.count()) await genTab.click({ timeout: 5000 }).catch(() => {})
-await win.waitForTimeout(2500)
+await win.getByRole('button', { name: '生成', exact: true }).click()
 
 const addImage = win.locator('[aria-label="添加图片节点"]').first()
+await expectVisible(addImage, '生成画布已可添加节点')
 if (!(await addImage.count())) { console.error('❌ 找不到「添加图片节点」'); await app.close(); process.exit(1) }
 for (let i = 0; i < 4; i += 1) { await addImage.click({ timeout: 4000 }); await win.waitForTimeout(280) }
 await win.waitForTimeout(900)
 await snap(win, 'canvas-4-nodes')
 
 // 全选 → 选择浮条（真实样子：计数 + 生成 N + 编组 + 关闭）
-await win.locator('.generation-canvas-v2, [data-canvas-stage]').first().click({ position: { x: 40, y: 40 } }).catch(() => {})
+const blank = await findCanvasBlankPoint(win)
+if (!blank) throw new Error('画布没有可点击的真实空白点')
+await win.mouse.click(blank.x, blank.y)
 await win.keyboard.press('Control+a')
+await expect(win.locator('.generation-canvas-v2-node[data-selected="true"]')).toHaveCount(4)
 await win.waitForTimeout(600)
 const toolbar = win.locator('.generation-canvas-v2__selection-toolbar').first()
 await snapNear(win, 'selection-toolbar-real', toolbar, 24)
@@ -66,7 +67,7 @@ await snapNear(win, 'group-frame-real', groupBox, 30)
 const groupLabel = win.locator('.generation-canvas-v2__group-box-label').first()
 await snapNear(win, 'group-label-real', groupLabel, 16)
 
-// 先证单选，再取 composer；旧尺寸 class 已退役，等待它只会吞掉 60s 超时。
+// 先证单选，再取 composer；旧尺寸 class 已退役，等待它只会吞掉定位超时。
 await win.getByRole('button', { name: '清除选择', exact: true }).click()
 const firstNode = win.locator('.generation-canvas-v2-node[data-node-id]').first()
 await firstNode.click({ timeout: 4000 })

@@ -152,3 +152,16 @@ A 第一轮的只读逐动作计时另定位到 group-baseline:52：对画布外
 | A 合计 | 111734 | 中位合计 104816 | 6918 |
 
 Read 五对截图：group-baseline 01/03、group-ports 01/05、batch-production 01。控件、节点数量、连线和配色一致；时间戳不同，group-ports 节点位置有少量偏移，未声称像素完全相同。拼图 `/tmp/nomi-walk-speed-evidence/a-five-pairs.jpg`，三轮原始日志 `a-1..3`。三个指定静态门岗全绿；完整 gates 尚待最终整合后执行。
+
+## D 实测与实施边界
+
+同一 gates 锁内，A 后 full 串行 249723ms（文件合计 249688ms），13/13 PASS；相同 13 文件两个 Electron 工作槽 124610ms，13/13 PASS，省 125113ms（50.1%）。每个文件仍用自己的隔离目录，未共享应用实例。采用现有 canvas-real-suite runner 内的有界两并发，不另建 runner；保留每文件 timeout、日志、失败结果与独立入口。unsharded full 默认两并发；已分 shard 的 CI 与 performance/critical 保持串行，避免叠加并发和干扰性能数字；显式 --concurrency 1 用于复测对照。Node 内建 execFile 负责异步子进程，不新增依赖。调度测试证明上限/不漏场景/失败不跳过后续，真实 full 仍须三轮。
+
+## C3 验收
+
+| 每刀 | 改前 ms（A 中位） | 改后三遍 ms | 中位节省 ms |
+|---|---:|---|---:|
+| C3 group-baseline（真实空白命中 + 生成页就绪） | 46849 | 11120 / 11482 / 11694 | 35367 |
+| C3 group-ports（生成页就绪） | 17866 | 14917 / 15060 / 14868 | 2949 |
+
+三轮 6/6 PASS；增加四节点全选断言，未移除已有断言。Read 五对截图：baseline 01/02/03、ports 01/05；选中数量、操作入口、组与连线保留，时间戳/节点坐标不作像素级一致声明。证据 `c3-summary.json` 与 `c3-five-pairs.jpg`。C1+A+C3 的分阶段中位数合计省 90942ms（不能与并发节省直接相加，最终总收益以 full 墙钟为准）。

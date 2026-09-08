@@ -51,11 +51,10 @@ const { app, win } = await launchNomiApp({
 await win.getByRole('button', { name: '新建空白项目', exact: false }).first().click()
 // 项目工作区是实际就绪信号；旧首启弹层不会出现，不能等超时再吞掉。
 await win.getByRole('button', { name: '生成', exact: true }).waitFor({ state: 'visible' })
-const genTab = win.locator('button', { hasText: /^生成$/ }).first()
-if (await genTab.count()) await genTab.click({ timeout: 5000 }).catch(() => {})
-await win.waitForTimeout(2500)
+await win.getByRole('button', { name: '生成', exact: true }).click()
 
 const addImage = win.locator('[aria-label="添加图片节点"]').first()
+await addImage.waitFor({ state: 'visible' })
 if (!(await addImage.count())) { console.error('❌ 找不到「添加图片节点」'); await app.close(); process.exit(1) }
 for (let i = 0; i < 4; i += 1) { await addImage.click({ timeout: 4000 }); await win.waitForTimeout(300) }
 await win.waitForTimeout(900)
