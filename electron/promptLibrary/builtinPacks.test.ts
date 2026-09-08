@@ -29,7 +29,7 @@ function externalPrompt(overrides: Partial<LibraryPrompt> = {}): LibraryPrompt {
 }
 
 describe("builtin expression pack", () => {
-  const prompts = getBuiltinPrompts();
+  const prompts = getBuiltinPrompts().filter((p) => p.sourceId === "builtin-expressions");
 
   it("完整 5 情绪族 × 5 强度 = 25 条，id 唯一", () => {
     expect(prompts).toHaveLength(25);
@@ -69,15 +69,15 @@ describe("builtin expression pack", () => {
   it("withBuiltinPrompts 前置内置包并保持外部顺序", () => {
     const externals = [externalPrompt({ id: "ext-1" }), externalPrompt({ id: "ext-2", sourceId: "sora-official" })];
     const merged = withBuiltinPrompts(externals);
-    expect(merged).toHaveLength(25 + 2);
-    expect(merged.slice(0, 25).every((p) => BUILTIN_SOURCE_IDS.has(p.sourceId))).toBe(true);
-    expect(merged.slice(25).map((p) => p.id)).toEqual(["ext-1", "ext-2"]);
+    expect(merged).toHaveLength(getBuiltinPrompts().length + 2);
+    expect(merged.slice(0, getBuiltinPrompts().length).every((p) => BUILTIN_SOURCE_IDS.has(p.sourceId))).toBe(true);
+    expect(merged.slice(getBuiltinPrompts().length).map((p) => p.id)).toEqual(["ext-1", "ext-2"]);
   });
 
   it("幂等：入参已含内置 sourceId 条目(历史缓存)时不重复", () => {
     const stale = withBuiltinPrompts([externalPrompt()]);
     const again = withBuiltinPrompts(stale);
-    expect(again).toHaveLength(26);
+    expect(again).toHaveLength(getBuiltinPrompts().length + 1);
     expect(again.filter((p) => p.sourceId === "builtin-expressions")).toHaveLength(25);
   });
 

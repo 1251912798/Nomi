@@ -138,3 +138,9 @@ pnpm run test -- electron/skills   # 内置技能的扩展块回归
 | `electron/skills/skillPackage.ts` | 导出 / 导入 / 删除、路径安全 |
 | `electron/skills/skillCapability.ts` | 能力派生与授权收窄 |
 | `scripts/check-skills-format.mjs` | 格式门岗 |
+
+## 9. 精选内容与封面（2026-09-08）
+
+`metadata.nomi.library` 是技能和节点效果共用的策展元数据；`kind` 区分 `skill` / `effect`，`appliesTo` 使用现役 text/image/video 模态。包含双语 title/summary/group、slots（token + reference）、source（原始 URL、40位 commit、作者、更改说明、证据链接），可选 preview（目录内路径、媒体类型、真实来源/本地产物/插画标记）。正文仅在 SKILL.md 保存，提示词库从目录投影，禁止另写一份 JSON 正文。
+
+精选内容再分发必须有标准顶层 license；只拒绝缺许可的精选条目，不拒绝无许可的用户私有技能。官方 SKILL.md 样例仍能导入。媒体路径不得越出本技能目录，允许 assets/ 或 references/ 下 PNG/JPEG/WebP/MP4/WebM。原仓配图与 Nomi 实测、用途插画三种证据不可混称。现役文本分享信封不携带这些二进制媒体；本期提供随内置目录发布的媒体，UI 接线及二进制分享另行交付。
