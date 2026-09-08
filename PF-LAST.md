@@ -1,5 +1,15 @@
 # PF-LAST
 
+## 2026-09-09 PR #658 点击根因调查（未修复 / 未提交）
+
+- **CI 红的直接原因是浮层遮挡，不是 rect 变动。** run 34252289801（SHA 614de8cbe）原日志最后 58 次均为 `element is visible, enabled and stable`，随后另一 selected 节点 `subtree intercepts pointer events`。第 410 行点的是已成功的 sourceId。
+- 机制：`NodeGenerationComposer.tsx:535` 的节点外 absolute 参数卡，加上 `useComposerViewportPlacement.ts:211` 起仅按视口/工具条/dock 避让的规则，允许覆盖邻近节点。本地真实页面图片参数卡遮住生成中视频的点击点，已截图；未擅改交互。
+- **采样：旧代码实际绿，不能冒称先红后绿。** 每 250ms ×20：源图 rect 恒定；真实生成中图片文案 20→25 秒，rect 恒为 `(705,245,340,280)`。需要为真实遮挡建红测；给秒数加等宽字不会解决此次 CI。
+- `node tests/ux/canvas-real-suite.mjs full -- --shard 2/2`：6/7（batch-production 通过）；critical：3/4。两组共同失败 `canvas-card-stack.walk.mjs:223`：2 版按钮 outside of viewport。
+- 标签方案未实施：追加 1/2“媒体上方标签行、媒体零覆盖”与追加 3“状态条在媒体内部左上”互斥，已询问最终裁决，尚未收到答复。推荐媒体上方固定标签行。
+- 新证据：[调查报告](docs/plan/2026-09-09-pr658-click-root-investigation.md)，截图/采样/CI 日志/套件收据在 `docs/plan/process-feedback-evidence/ci-658-investigation/`。生产代码未改，未跑 gates、未 commit/push；未更新设计实验室基线。未安装包；期间出现的 img-fx 依赖变动非本轮操作，保留不纳入。
+
+
 真实页面截图（1440px，隔离回环模型，0 付费调用）：
 - `real/00-image-idle.png`、`01-image-generating.png`、`03-image-finalizing.png`、`04-image-saved.png`
 - `real/05-image-queued.png`、`06-task-center-queued.png`、`07-video-generating-no-history.png`、`08-video-generating-reduced-motion.png`、`09-video-generating-zoom-60.png`
