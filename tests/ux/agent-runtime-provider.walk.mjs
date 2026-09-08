@@ -8,10 +8,11 @@ import { createHash } from 'node:crypto'
 import { launchNomiApp, repoRoot } from './_launchApp.mjs'
 import { clickOrFail, expect, expectAbsent, proveProbe, screenshotSettled } from './_assert.mjs'
 import {
-  APPROVAL_CARD, CANVAS_PANEL, COMPOSER, CREATION_PANEL, DOCUMENT, INTERVENTION_CONFIRM,
-  readNativeContexts, readProject, finalizeRuntimeWalk, openCanvas, sendCanvas, sendCreation,
-  snapshotMessages, stopRuntimeApp,
+  APPROVAL_CARD, CANVAS_PANEL, COMPOSER, COMPOSER_PERMISSION, CREATION_PANEL, DOCUMENT, INTERVENTION_CONFIRM, TOOL_RECEIPT,
+  readProject, finalizeRuntimeWalk, openCanvas, sendCanvas, sendCreation,
+  permissionTier, stopRuntimeApp, waitForV4TurnIdle,
 } from './agent-runtime-walk-support.mjs'
+import { laneMessages, readLaneTranscripts } from './agent-lane-observer.mjs'
 
 if (process.env.NOMI_AGENT_LIVE !== '1') throw new Error('Explicit paid evaluation requires NOMI_AGENT_LIVE=1')
 const [flag, executablePath, ...extra] = process.argv.slice(2)
@@ -55,13 +56,9 @@ let projectRoot
 let failure
 const report = { vendorKey, modelKey, outputDir, tempRoot, paid: true, monetaryCost: 'not supplied by provider response' }
 
-function finishedTurns() {
+function modelResponses() {
   if (!projectRoot) return []
-  const dir = path.join(projectRoot, '.nomi', 'events')
-  if (!fs.existsSync(dir)) return []
-  return fs.readdirSync(dir).filter((file) => /^log-\d+\.jsonl$/.test(file)).flatMap((file) =>
-    fs.readFileSync(path.join(dir, file), 'utf8').split('\n').filter(Boolean).map((line) => JSON.parse(line)))
-    .filter((event) => event.type === 'agent.turn.finished')
+  return readLaneTranscripts(projectRoot).flatMap(laneMessages).filter((message) => message.role === 'assistant')
 }
 
 try {
@@ -104,10 +101,13 @@ try {
   expect(path.relative(launched.projectsDir, projectRoot).startsWith('..')).toBe(false)
   await win.locator(DOCUMENT).fill(ORIGINAL)
   await sendCreation(win, '这是一条连接验收消息。请不要调用任何工具，只回复 NOMI_PI_LIVE_OK。')
-  await expect.poll(() => finishedTurns().length, { timeout: 120_000 }).toBe(1)
+  await waitForV4TurnIdle(win, { panel: CREATION_PANEL, doneTimeout: 120_000,
+    settledBy: win.locator(CREATION_PANEL).getByText('NOMI_PI_LIVE_OK', { exact: false }).last() })
   await expect(win.locator(CREATION_PANEL)).toContainText('NOMI_PI_LIVE_OK', { timeout: 120_000 })
-  expect(finishedTurns()[0].payload.status).toBe('finished')
-  expect(finishedTurns()[0].payload.usage.totalTokens).toBeGreaterThan(0)
+  expect(modelResponses().at(-1).stopReason).toBe('stop')
+  expect(modelResponses()[0].usage.totalTokens).toBeGreaterThan(0)
+  await clickOrFail(win.locator(`${CREATION_PANEL} ${COMPOSER_PERMISSION}`), '开启每步确认验收')
+  await clickOrFail(win.locator(permissionTier('step')), '每步问')
 
   await sendCreation(win, `请只调用一次 append_to_end，把这句原样追加到文末：${APPEND}。不要调用其他工具，不要扩写。`)
   // v4：待批准的操作落在**介入槽**里（composer 正上方那一格），一次一个。
@@ -117,12 +117,12 @@ try {
   expect(JSON.stringify((await readProject(win, projectId)).payload.workbenchDocument)).not.toContain(APPEND)
   await screenshotSettled(win, { path: path.join(outputDir, '01-live-approval.png') })
   await clickOrFail(approval.locator(INTERVENTION_CONFIRM), '批准真模型追加')
-  await expect.poll(() => finishedTurns().length, { timeout: 120_000 }).toBe(2)
-  expect(finishedTurns()[1].payload.status).toBe('finished')
+  await waitForV4TurnIdle(win, { panel: CREATION_PANEL, doneTimeout: 120_000, settledBy: win.locator(DOCUMENT).getByText(APPEND, { exact: false }) })
+  expect(modelResponses().at(-1).stopReason).toBe('stop')
   await expect(win.locator(DOCUMENT)).toContainText(APPEND)
   expect((await win.locator(DOCUMENT).innerText()).split(APPEND)).toHaveLength(2)
   await expectAbsent(approval, { provenBy: proof, message: 'The real approval is consumed exactly once' })
-  const messages = readNativeContexts(projectRoot).filter((record) => record.snapshot).flatMap(snapshotMessages)
+  const messages = readLaneTranscripts(projectRoot).flatMap(laneMessages)
   const assistants = messages.filter((message) => message.role === 'assistant')
   expect(assistants.length).toBeGreaterThanOrEqual(3)
   expect(assistants.every((message) => message.provider === vendorKey && message.model === modelKey)).toBe(true)
@@ -135,14 +135,14 @@ try {
   await screenshotSettled(win, { path: path.join(outputDir, '03-live-undone.png') })
 
   await openCanvas(win)
-  await sendCanvas(win, '创建两个图片节点并连接参考，只建节点，不生成。两个节点分别命名 NOMILIVESOURCE 和 NOMILIVETARGET；请只用一次 create_canvas_nodes 同时创建两个节点及从前者到后者的 reference 连线。请选择支持图片参考的已接入图片模型，不要运行任何媒体生成。')
+  await sendCanvas(win, '创建两个图片节点并连接参考，只建节点，不生成。两个节点分别命名 NOMILIVESOURCE 和 NOMILIVETARGET；请只用一次 nomi_canvas_write（operation=create_canvas_nodes）同时创建两个节点及从前者到后者的 reference 连线。请选择支持图片参考的已接入图片模型，不要运行任何媒体生成。')
   // v4：节点计划也走同一个介入槽，`data-kind="plan"` 时槽体是一排可勾选的计划行。
   const plan = win.locator(`${CANVAS_PANEL} ${APPROVAL_CARD}`)
   // A real provider may spend most of the runtime's first-response budget thinking.
   // Playwright's locator expectation has its own 5s default and ignores page.setDefaultTimeout,
   // so use the same explicit 120s bound as the durable turn checks above.
   await expect(plan).toBeVisible({ timeout: 120_000 })
-  await expect(plan.locator('input[type="checkbox"]')).toHaveCount(2)
+  await expect(plan.locator(INTERVENTION_CONFIRM)).toBeVisible()
   const untouched = (await readProject(win, projectId)).payload.generationCanvas
   expect(untouched.nodes).toHaveLength(0)
   expect(untouched.edges).toHaveLength(0)
@@ -150,8 +150,8 @@ try {
   // Only the node-plan control is approved; generic generation approvals are
   // never clicked, even if a model ignores the explicit no-generation request.
   await clickOrFail(plan.locator(INTERVENTION_CONFIRM), '批准真模型建两个节点及参考连线')
-  await expect.poll(() => finishedTurns().length, { timeout: 120_000 }).toBe(3)
-  expect(finishedTurns()[2].payload.status).toBe('finished')
+  await waitForV4TurnIdle(win, { panel: CANVAS_PANEL, doneTimeout: 120_000, settledBy: win.locator(`${CANVAS_PANEL} ${TOOL_RECEIPT}`).last() })
+  expect(modelResponses().at(-1).stopReason).toBe('stop')
   await expect.poll(async () => {
     const canvas = (await readProject(win, projectId)).payload.generationCanvas
     return { nodes: canvas.nodes.length, edges: canvas.edges.length }
@@ -163,22 +163,24 @@ try {
   expect(to?.kind).toBe('image')
   expect(landed.edges[0]).toMatchObject({ source: from.id, target: to.id })
   expect(landed.edges[0].mode ?? 'reference').toBe('reference')
-  const allMessages = readNativeContexts(projectRoot).filter((record) => record.snapshot).flatMap(snapshotMessages)
+  const allMessages = readLaneTranscripts(projectRoot).flatMap(laneMessages)
   const toolCalls = allMessages.filter((message) => message.role === 'assistant').flatMap((message) => message.content)
     .filter((part) => part.type === 'toolCall')
-  const mediaCalls = toolCalls.filter((part) => part.name === 'run_generation_batch')
-  expect(mediaCalls, 'No media generation may be requested or approved in this smoke').toHaveLength(0)
-  const createCalls = toolCalls.filter((part) => part.name === 'create_canvas_nodes')
-  const createResults = allMessages.filter((message) => message.role === 'toolResult' && message.toolName === 'create_canvas_nodes')
+  const allowedTools = ['read_full_text', 'read_selection', 'append_to_end', 'nomi_canvas_read', 'nomi_canvas_write']
+  const mediaCalls = toolCalls.filter((part) => !allowedTools.includes(part.name))
+  expect(mediaCalls, 'No media generation or unrelated tool may be requested in this smoke').toHaveLength(0)
+  const createCalls = toolCalls.filter((part) => part.name === 'nomi_canvas_write')
+  expect(createCalls[0]?.arguments.operation).toBe('create_canvas_nodes')
+  const createResults = allMessages.filter((message) => message.role === 'toolResult' && message.toolName === 'nomi_canvas_write')
   expect(createCalls).toHaveLength(1)
   expect(createResults).toHaveLength(1)
-  expect(createResults[0]).toMatchObject({ toolCallId: createCalls[0].id, isError: false, details: { ok: true } })
-  const actualResult = JSON.parse(createResults[0].content.filter((part) => part.type === 'text').map((part) => part.text).join(''))
-  expect(actualResult.createdNodeIds.toSorted()).toEqual([from.id, to.id].toSorted())
-  const receipt = win.locator('[data-committed-proposal-card]')
+  expect(createResults[0]).toMatchObject({ toolCallId: createCalls[0].id, isError: false, details: { applied: true, operation: 'create_canvas_nodes' } })
+  const actualResult = createResults[0].details
+  expect(actualResult.affectedNodeIds.toSorted()).toEqual([from.id, to.id].toSorted())
+  const receipt = win.locator(`${CANVAS_PANEL} ${TOOL_RECEIPT}`).last()
   await expect(receipt).toHaveCount(1)
   await screenshotSettled(win, { path: path.join(outputDir, '05-live-canvas-committed.png') })
-  await clickOrFail(receipt.locator('[data-proposal-undo-all="true"]'), '撤销真模型的两节点提案')
+  await clickOrFail(receipt.getByRole('button', { name: '撤销', exact: true }), '撤销真模型的两节点提案')
   await expect.poll(async () => {
     const canvas = (await readProject(win, projectId)).payload.generationCanvas
     return { nodes: canvas.nodes.length, edges: canvas.edges.length }
@@ -189,8 +191,8 @@ try {
   report.modelResponses = allMessages.filter((message) => message.role === 'assistant').length
   report.mediaToolRequests = mediaCalls.length
   report.verified = ['real-text-response', 'document-approval-apply-undo', 'reported-canvas-task-approval-apply-undo']
-  report.turns = finishedTurns().map((event) => ({ status: event.payload.status, usage: event.payload.usage }))
-  report.totalTokens = report.turns.reduce((sum, turn) => sum + turn.usage.totalTokens, 0)
+  report.responses = modelResponses().map(({ stopReason, usage }) => ({ stopReason, usage }))
+  report.totalTokens = report.responses.reduce((sum, response) => sum + response.usage.totalTokens, 0)
 } catch (error) {
   failure = error
   process.exitCode = 1
@@ -210,7 +212,7 @@ try {
       },
     ],
     collect: () => {
-      report.turns ??= finishedTurns().map((event) => ({ status: event.payload.status, usage: event.payload.usage }))
+      report.responses ??= modelResponses().map(({ stopReason, usage }) => ({ stopReason, usage }))
       report.sourceUnchanged = createHash('sha256').update(fs.readFileSync(sourceFile)).digest('hex')
         === createHash('sha256').update(sourceBytes).digest('hex')
       expect(report.sourceUnchanged, 'source catalog changed during live evaluation').toBe(true)

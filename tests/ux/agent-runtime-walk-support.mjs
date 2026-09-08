@@ -197,139 +197,10 @@ export function requireCurrentPersistedWorkbenchDocument(record) {
   return readback.document
 }
 
-function conversationsFromProjectAgentSnapshot(snapshot) {
-  const threads = (snapshot?.threads || []).map((thread) => ({
-    id: thread.threadId,
-    title: thread.title || '',
-    createdAt: thread.createdAt || 0,
-    updatedAt: thread.updatedAt || 0,
-    messages: (snapshot?.items || [])
-      .filter((item) => item.threadId === thread.threadId && (item.kind === 'user' || item.kind === 'assistant'))
-      .map((item) => ({ id: item.itemId, role: item.kind, content: item.text || '' })),
-  }))
-  return { creation: { activeId: snapshot?.activeThreadId || null, threads }, generation: { activeId: null, threads: [] } }
-}
-
-export async function readConversations(win, projectId, durableRoots) {
-  // The old conversations IPC was retired by the Project Agent cutover. When
-  // a walk already owns the isolated profile, read the persisted Host snapshot
-  // directly. Calling projectAgent.open() here would release the resident
-  // renderer subscription on the same WebContents, making the next user turn
-  // fail with project_agent_subscription_invalid.
-  if (durableRoots?.settingsRoot && durableRoots?.projectRoot) {
-    return conversationsFromProjectAgentSnapshot(readCurrentProjectAgentHostSnapshot(durableRoots.settingsRoot, durableRoots.projectRoot))
-  }
-  const snapshot = await win.evaluate(async (id) => {
-    const record = await window.nomiDesktop.projects.readAsync(id)
-    const opened = await window.nomiDesktop.projectAgent.open({
-      projectId: id,
-      immutableProjectUuid: record?.immutableProjectUuid,
-      projectGeneration: record?.projectGeneration,
-    })
-    if (!opened?.ok) throw new Error('projectAgent.open failed')
-    return opened.value.snapshot
-  }, projectId)
-  return conversationsFromProjectAgentSnapshot(snapshot)
-}
-
-export function readNativeContexts(projectRoot, settingsRoot) {
-  if (!settingsRoot) return null
-  const state = readCurrentProjectAgentHostSnapshot(settingsRoot, projectRoot)
-  if (!state) return null
-  const byThread = new Map()
-  for (const item of state.items || []) {
-    const threadId = item.threadId
-    if (typeof threadId !== 'string' || !threadId) continue
-    const entries = byThread.get(threadId) || []
-    if (item.kind === 'tool' && typeof item.toolCallId === 'string') {
-      entries.push({ type: 'message', message: {
-        role: 'toolResult',
-        toolCallId: item.toolCallId,
-        content: item.resultRef || '',
-      } })
-    } else if (item.kind === 'user' || item.kind === 'assistant') {
-      entries.push({ type: 'message', message: { role: item.kind, content: item.text || '' } })
-    }
-    byThread.set(threadId, entries)
-  }
-  const projectId = state.binding?.projectId
-  return [...byThread.entries()].map(([threadId, entries]) => ({
-    sessionKey: typeof projectId === 'string' ? `nomi:workbench:${projectId}:creation` : undefined,
-    threadId,
-    snapshot: JSON.stringify({
-      format: 'nomi.pi-work-context',
-      piVersion: '0.84.3',
-      data: { entries },
-    }),
-  }))
-}
-
-export function snapshotMessages(record) {
-  const envelope = JSON.parse(record.snapshot)
-  expect(envelope.format).toBe('nomi.pi-work-context')
-  expect(envelope.piVersion).toBe('0.84.3')
-  return envelope.data.entries.filter((entry) => entry.type === 'message').map((entry) => entry.message)
-}
-
-/**
- * Current ProjectAgentHost persistence is a settings-owned, binding-partitioned
- * snapshot. Keep the legacy Pi reader above for the old support journeys, but
- * let current-host journeys prove the durable state that production actually
- * writes today.
- */
-export function readCurrentProjectAgentHostSnapshot(settingsRoot, projectRoot) {
-  const projectFile = path.join(projectRoot, '.nomi', 'project.json')
-  if (!fs.existsSync(projectFile)) return null
-  const project = JSON.parse(fs.readFileSync(projectFile, 'utf8'))
-  const { immutableProjectUuid, projectGeneration, id: projectId } = project
-  if (typeof immutableProjectUuid !== 'string' || typeof projectGeneration !== 'number' || typeof projectId !== 'string') {
-    return null
-  }
-  const partition = `project-agent.${encodeURIComponent(immutableProjectUuid)}.g${projectGeneration}`
-  const snapshotFile = path.join(settingsRoot, 'project-agent-host', partition, 'snapshot-v1.json')
-  if (!fs.existsSync(snapshotFile)) return null
-  const envelope = JSON.parse(fs.readFileSync(snapshotFile, 'utf8'))
-  expect(envelope.schemaVersion, 'Current ProjectAgentHost snapshot schema').toBe(1)
-  expect(envelope.binding, 'Current ProjectAgentHost snapshot binding').toEqual({
-    immutableProjectUuid,
-    projectGeneration,
-    projectId,
-  })
-  return envelope.state
-}
-
-/**
- * The durable per-thread conversation context production actually writes today:
- * one project-scoped container keyed by the Host's canonical context binding.
- * Unlike readNativeContexts above, nothing here is reconstructed from Host items.
- */
-export function readDurableThreadContexts(projectRoot) {
-  const file = path.join(projectRoot, '.nomi', 'agent-thread-context-v1.json')
-  if (!fs.existsSync(file)) return null
-  const container = JSON.parse(fs.readFileSync(file, 'utf8'))
-  expect(container.version, 'Durable Agent context container schema').toBe(4)
-  return Object.values(container.records ?? {})
-}
-
 export function readProjectAgentProposalReceipt(projectRoot) {
   const receiptFile = path.join(projectRoot, '.nomi', 'project-agent-proposal-receipt.json')
   if (!fs.existsSync(receiptFile)) return null
   return JSON.parse(fs.readFileSync(receiptFile, 'utf8'))
-}
-
-/**
- * Locate a current tool result by its persisted capability and its matching
- * proposal approval. The test never invents or assumes the provider's call id.
- */
-export function readCurrentProjectAgentToolEvidence(settingsRoot, projectRoot, capabilityId) {
-  const state = readCurrentProjectAgentHostSnapshot(settingsRoot, projectRoot)
-  if (!state) return null
-  const tool = state.items.find((item) => item.kind === 'tool' && item.capability?.id === capabilityId)
-  const proposal = tool
-    ? state.items.find((item) => item.kind === 'proposal' && item.approval?.toolCallId === tool.toolCallId)
-    : undefined
-  const receipt = readProjectAgentProposalReceipt(projectRoot)
-  return { state, tool, proposal, receipt }
 }
 
 /**
@@ -437,7 +308,7 @@ export async function selectConversation(win, panel, title) {
   await clickOrFail(win.locator(THREAD_MENU).getByRole('button', { name: title, exact: true }), `恢复当前 Agent 会话 ${title}`)
 }
 
-/** Current Host threads may intentionally have no title; select by persisted order in that case. */
+/** Select the actual rendered lane row when its title is intentionally empty. */
 export async function selectConversationAt(win, panel, index) {
   await clickOrFail(win.locator(`${panel} ${HISTORY_BUTTON}`), '当前 Agent 会话列表')
   // 菜单第一行是「历史会话 / 新对话」那条头，线程行从第二个 div 起。

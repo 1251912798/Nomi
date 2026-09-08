@@ -1,18 +1,19 @@
 #!/usr/bin/env node
-// Real user task: visible Resident Composer -> real Agent/Host proposal -> user approval or
+// Real user task: visible Resident Composer -> real lane proposal -> user approval or
 // refusal -> durable proposal receipt -> real MCP stdio document write -> cold restart readback.
 // The model is deterministic only at the external provider boundary. This file never injects
-// Host items, reducer state, conversation results, receipt files, or the final project state.
+// lane messages, reducer state, conversation results, receipt files, or the final project state.
 import fs from 'node:fs'
 import path from 'node:path'
 
 import { clickOrFail, expect, expectAbsent, proveProbe } from './_assert.mjs'
 import { parseToolResult, spawnMcpStdioClient } from './_mcpJourney.mjs'
+import { laneMessages, laneMessageText, readLaneTranscripts } from './agent-lane-observer.mjs'
 import { flattenRequestText } from './agent-runtime-fixture.mjs'
 import {
   APPROVAL_CARD, DOCUMENT, INTERVENTION_CONFIRM, INTERVENTION_CONFIRM_REJECT, INTERVENTION_ESCALATE,
   INTERVENTION_REJECT, INTERVENTION_REJECT_REASON, createRuntimeWalk, hasToolResult, openCanvas,
-  readProject, recorded,
+  readProject, recorded, toolNames,
 } from './agent-runtime-walk-support.mjs'
 
 const ORIGINAL = '真实用户任务基线：创作者准备在文末补充收尾。'
@@ -46,7 +47,7 @@ function recordBlocker(code, message) {
 
 try {
   // Use the deterministic loopback provider only at the provider HTTP boundary. The Agent,
-  // Host, approval UI, project repository, and MCP stdio process remain production paths.
+  // lane, approval UI, project repository, and MCP stdio process remain production paths.
   const catalogPath = path.join(walk.report.tempRoot, 'settings', 'model-catalog.json')
   const catalog = JSON.parse(fs.readFileSync(catalogPath, 'utf8'))
   catalog.version = 12
@@ -72,15 +73,15 @@ try {
   await clickOrFail(win.getByRole('button', { name: '创作', exact: true }), '进入创作工作区')
 
   // Matchers key on this turn's own tool_call_id, never on "no tool message at all":
-  // the Host owns one lossless resident thread, so every later request carries the
+  // the lane owns one lossless resident thread, so every later request carries the
   // earlier turns' tool calls and results.
   const proposalRequest = walk.fixture.expectText({
     label: 'Resident Composer plans a real document write',
     match: (body) => flattenRequestText(body).includes(RESIDENT_INTENT)
       && !hasToolResult(body, 'resident-receipt-fix-1'),
     reply: {
-      type: 'tool', id: 'resident-receipt-fix-1', name: 'nomi_document_edit',
-      args: { operation: 'append', content: RESIDENT_APPEND },
+      type: 'tool', id: 'resident-receipt-fix-1', name: 'append_to_end',
+      args: { content: RESIDENT_APPEND },
     },
   })
   const approvedFollowup = walk.fixture.expectText({
@@ -109,14 +110,14 @@ try {
   if (!beforeMcp) {
     walk.report.matrix.H.status = 'blocked'
     walk.report.matrix.H.evidence.push('project persistence succeeded but durable receipt file was absent')
-    recordBlocker('resident-host-document-receipt-missing',
-      'Host approval changed the project but did not persist a durable proposal receipt')
+    recordBlocker('resident-lane-document-receipt-missing',
+      'Lane approval changed the project but did not persist a durable proposal receipt')
   } else {
     expect(beforeMcp.lifecycle).toBe('committed')
     expect(beforeMcp.revision).toBeGreaterThan(0)
     expect(beforeMcp.proposal?.stepLabels?.[0]).toMatch(/^append:/)
     walk.report.matrix.H.status = 'passed'
-    walk.report.persistence = { receiptPath, hostReceipt: beforeMcp }
+    walk.report.persistence = { receiptPath, laneReceipt: beforeMcp }
   }
 
   // B: the real Composer rejects empty input and preserves Unicode through the same UI path.
@@ -136,7 +137,7 @@ try {
     match: (body) => flattenRequestText(body).includes('请创建一个临时图片节点')
       && !hasToolResult(body, 'resident-receipt-fix-canvas-create'),
     reply: {
-      type: 'tool', id: 'resident-receipt-fix-canvas-create', name: 'nomi_canvas_edit',
+      type: 'tool', id: 'resident-receipt-fix-canvas-create', name: 'nomi_canvas_write',
       args: {
         operation: 'create_canvas_nodes', summary: 'resident receipt approval fixture',
         nodes: [{ clientId: 'resident-receipt-fix-node', kind: 'image', title: 'Resident approval fixture', prompt: 'temporary approval fixture', modelKey: 'agent-runtime-image', modeId: 't2i', params: { size: '1024x1024' } }],
@@ -169,13 +170,20 @@ try {
   // policy no longer lives in the work-mode popover; use an irreversible canvas
   // maintenance action so the default safe-auto posture still has to show the
   // intervention card without spending provider credits.
+  const maintenanceRequest = walk.fixture.expectText({
+    label: 'Agent explicitly requests the deferred maintenance tools',
+    match: (body) => flattenRequestText(body).includes('请提出一个需要拒绝的删除动作')
+      && !hasToolResult(body, 'resident-receipt-fix-maintenance'),
+    reply: { type: 'tool', id: 'resident-receipt-fix-maintenance', name: 'nomi_request_tools',
+      args: { group: 'maintenance' } },
+  })
   const rejectedRequest = walk.fixture.expectText({
     label: 'Resident Composer gated-action rejection proposal',
-    match: (body) => flattenRequestText(body).includes('请提出一个需要拒绝的删除动作')
+    match: (body) => hasToolResult(body, 'resident-receipt-fix-maintenance')
       && !hasToolResult(body, 'resident-receipt-fix-rejected'),
     reply: {
-      type: 'tool', id: 'resident-receipt-fix-rejected', name: 'nomi_canvas_maintenance',
-      args: { operation: 'delete_canvas_nodes', nodeIds: [fixtureNodeId], reason: 'journey approval gate' },
+      type: 'tool', id: 'resident-receipt-fix-rejected', name: 'delete_canvas_nodes',
+      args: { nodeIds: [fixtureNodeId], reason: 'journey approval gate' },
     },
   })
   const rejectedFollowup = walk.fixture.expectText({
@@ -184,7 +192,10 @@ try {
     reply: { type: 'text', text: '已记录拒绝，本次没有删除画布内容。' },
   })
   await sendResidentIntent(win, '请提出一个需要拒绝的删除动作，不要自行删除。')
-  await recorded(rejectedRequest.received, 'the real gated-action proposal')
+  const maintenanceWire = await recorded(maintenanceRequest.received, 'the real tool-group request')
+  expect(toolNames(maintenanceWire.body)).not.toContain('delete_canvas_nodes')
+  const deletionWire = await recorded(rejectedRequest.received, 'the real gated-action proposal')
+  expect(toolNames(deletionWire.body), 'maintenance must be activated before the model calls delete').toContain('delete_canvas_nodes')
   const rejectedApprovalCard = win.locator(`${CREATION_PANEL} ${APPROVAL_CARD}`).last()
   // 删节点是不可逆的：v4 把这件事写在槽的 data-kind 上（fail-closed 到 irreversible）。
   await expect(rejectedApprovalCard).toHaveAttribute('data-kind', 'approval-irreversible')
@@ -204,6 +215,15 @@ try {
   await expect(win.locator(`${CREATION_PANEL} ${APPROVAL_CARD}`)).toHaveCount(0)
   await walk.snap('irreversible-rejection-receipt')
   expect((await readProject(win, projectId)).payload.generationCanvas.nodes.map((node) => node.id)).toContain(fixtureNodeId)
+  await expect.poll(() => readLaneTranscripts(projectRoot).flatMap(laneMessages)
+    .some(message => message.role === 'toolResult' && message.toolCallId === 'resident-receipt-fix-rejected'),
+  { message: '拒绝结果必须落在真实 lane JSONL', timeout: 30_000 }).toBe(true)
+  const laneResults = readLaneTranscripts(projectRoot).flatMap(laneMessages)
+    .filter(message => message.role === 'toolResult')
+  expect(laneResults.find(message => message.toolCallId === 'resident-receipt-fix-1')?.isError).toBe(false)
+  const refusedResult = laneResults.find(message => message.toolCallId === 'resident-receipt-fix-rejected')
+  expect(refusedResult?.isError).toBe(true)
+  expect(laneMessageText(refusedResult)).toContain('这次先不删')
   walk.report.matrix.E = { status: 'passed', evidence: ['irreversible action -> real approval card -> refusal -> no project mutation'] }
   await clickOrFail(win.getByRole('button', { name: '创作', exact: true }), '返回创作工作区')
 
@@ -261,7 +281,8 @@ try {
   walk.report.paidCalls = 0
   walk.report.coverage = {
     changedProductionScope: [
-      'electron/projectAgentHost/projectAgentTurnExecution.ts',
+      'electron/agentLane/laneDesktopTools.ts',
+      'electron/capabilityCore/projectAgentDocumentReceipt.ts',
       'electron/capabilityCore/mcpDocumentWriteReceipt.ts',
       'electron/capabilityCore/mcpProtocol.ts',
       'electron/capabilityCore/rpcServer.ts',
