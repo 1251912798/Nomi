@@ -1,15 +1,12 @@
 // R13 走查：从目标节点左输入端拖到两图编组，编组成员应成为目标参考，而不是反向连边。
 // 用法：node tests/ux/group-reference-direction.walk.mjs
 import { launchNomiApp } from './_launchApp.mjs'
-import { spawn } from 'node:child_process'
+import { createServer } from 'vite'
 import fs from 'node:fs'
-import http from 'node:http'
 import path from 'node:path'
 import { screenshotSettled } from './_assert.mjs'
 import { findEdgeHitPoint } from './_canvasHit.mjs'
 const repoRoot = process.cwd()
-const port = 5287
-const baseUrl = `http://127.0.0.1:${port}`
 const tempRoot = path.join(repoRoot, '.tmp', 'nomi-group-reference-direction')
 const settingsDir = path.join(tempRoot, 'settings')
 const shotsDir = path.join(repoRoot, 'tests/ux/shots/group-reference-direction')
@@ -47,24 +44,11 @@ const check = (name, ok, detail = '') => {
   console.log(`  ${ok ? '✓' : '✗'} ${name}${detail ? ` — ${detail}` : ''}`)
   if (!ok) failures.push(`${name}${detail ? ` — ${detail}` : ''}`)
 }
-const waitForUrl = (url, timeoutMs = 60_000) => new Promise((resolve, reject) => {
-  const deadline = Date.now() + timeoutMs
-  const poll = () => {
-    const request = http.get(url, (response) => { response.destroy(); resolve(true) })
-    request.on('error', () => Date.now() > deadline ? reject(new Error('Vite 未就绪')) : setTimeout(poll, 300))
-    request.setTimeout(1200, () => request.destroy())
-  }
-  poll()
-})
-
-const vite = spawn('node', ['node_modules/vite/bin/vite.js', '--host', '127.0.0.1', '--port', String(port)], {
-  cwd: repoRoot,
-  env: { ...process.env },
-  stdio: 'ignore',
-})
+const vite = await createServer({ root: repoRoot, server: { host: '127.0.0.1', port: 0 } })
 let app
 try {
-  await waitForUrl(baseUrl)
+  await vite.listen()
+  const baseUrl = `http://127.0.0.1:${vite.httpServer.address().port}`
   let win
   ;({ app, win } = await launchNomiApp({
     name: 'group-reference-direction',
@@ -265,7 +249,7 @@ try {
   console.error(error)
 } finally {
   await app?.close().catch(() => {})
-  vite.kill('SIGTERM')
+  await vite.close()
 }
 
 console.log(failures.length ? `\n❌ ${failures.length} 条不达标:\n - ${failures.join('\n - ')}` : '\n✅ 编组参考方向走查全部达标')

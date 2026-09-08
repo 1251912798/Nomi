@@ -220,6 +220,10 @@ try {
   await expectAbsent(duplicateFlowNode, { provenBy: duplicateProbe, message: '撤销应同时移除复制节点和继承连线' })
   check('复制变体可一次撤销', true)
 
+  // Creating a variant pans the canvas. Undo removes the variant, but does not
+  // promise to restore the earlier viewport; navigate back to all nodes before
+  // opening a different node's version tray.
+  await clickOrFail(win.getByLabel('适应视图', { exact: true }), '找回视频节点后查看历史版本')
   await videoNode.getByRole('button', { name: '2 版' }).click()
   const videoTray = videoNode.locator('[data-node-result-stack="video-versions"]')
   await videoTray.waitFor({ state: 'visible', timeout: 10_000 })
