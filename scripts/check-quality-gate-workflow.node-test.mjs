@@ -216,20 +216,20 @@ test('system profiles expose separated surfaces and explicit full/release still 
 
 test('package scripts expose canonical separated profiles and classifier contract', () => {
   const scripts = packageJson.scripts
-  assert.equal(scripts['test:system:contracts'], 'node scripts/test-system.mjs ci-contracts')
-  assert.equal(scripts['test:system:unit'], 'node scripts/test-system.mjs ci-unit')
-  assert.equal(scripts['test:system:desktop'], 'node scripts/test-system.mjs ci-desktop')
-  assert.equal(scripts['test:system:journeys'], 'node scripts/test-system.mjs ci-journeys')
-  assert.equal(scripts['test:real-user-journeys:ci'], 'node scripts/real-user-test-gates.mjs --provider loopback')
+  assert.equal(scripts['test:system:contracts'], 'python3 scripts/with-gates-lock.py -- node scripts/test-system.mjs ci-contracts')
+  assert.equal(scripts['test:system:unit'], 'python3 scripts/with-gates-lock.py -- node scripts/test-system.mjs ci-unit')
+  assert.equal(scripts['test:system:desktop'], 'python3 scripts/with-gates-lock.py -- node scripts/test-system.mjs ci-desktop')
+  assert.equal(scripts['test:system:journeys'], 'python3 scripts/with-gates-lock.py -- node scripts/test-system.mjs ci-journeys')
+  assert.equal(scripts['test:real-user-journeys:ci'], 'python3 scripts/with-gates-lock.py -- node scripts/real-user-test-gates.mjs --provider loopback')
   assert.match(scripts['test:real-user-journeys'], /real-user-test-gates\.mjs --provider loopback/)
   assert.equal(
     scripts['test:mcp-elicitation'],
-    'pnpm run check:electron-install && node tests/ux/mcp-generation-elicitation-first.e2e.mjs',
+    'python3 scripts/with-gates-lock.py --command "pnpm run check:electron-install && node tests/ux/mcp-generation-elicitation-first.e2e.mjs"',
   )
-  assert.equal(scripts['test:system:canvas:critical'], 'node scripts/test-system.mjs ci-canvas-critical')
-  assert.equal(scripts['test:system:canvas:full'], 'node scripts/test-system.mjs ci-canvas-full')
-  assert.equal(scripts['test:system:performance'], 'node scripts/test-system.mjs ci-performance')
-  assert.equal(scripts['test:canvas:performance'], 'node tests/ux/canvas-real-suite.mjs performance')
+  assert.equal(scripts['test:system:canvas:critical'], 'python3 scripts/with-gates-lock.py -- node scripts/test-system.mjs ci-canvas-critical')
+  assert.equal(scripts['test:system:canvas:full'], 'python3 scripts/with-gates-lock.py -- node scripts/test-system.mjs ci-canvas-full')
+  assert.equal(scripts['test:system:performance'], 'python3 scripts/with-gates-lock.py -- node scripts/test-system.mjs ci-performance')
+  assert.equal(scripts['test:canvas:performance'], 'python3 scripts/with-gates-lock.py -- node tests/ux/canvas-real-suite.mjs performance')
   // 棘轮只减不增：2026-09-06 v4 接线删掉旧面板后降到 81。调高需要理由，调低直接改这一行。
   assert.equal(scripts['lint:ci'], 'eslint . --max-warnings=81')
   assert.match(scripts['check:quality-gate-workflow'], /validation-policy\.node-test\.mjs/)
