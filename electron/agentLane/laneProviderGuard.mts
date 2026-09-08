@@ -24,7 +24,7 @@
 //     消费者都拿到一个对谁都不精确的中间类别。
 //     **但词表不许各长各的**：上面那张表是 `detectBalance` 的超集，`lane-resilience.test.mts`
 //     的语料表把两边的真实样本一条条喂进来，漂了当场红（R28：防线放在最早能拦住的那层）。
-import { createAssistantMessageEventStream, type Api, type AssistantMessage,
+import { AssistantMessageFrameEncoder, reduceAssistantMessageFrames, createAssistantMessageEventStream, type Api, type AssistantMessage,
   type AssistantMessageEventStream, type Model, type ProviderStreams } from '@earendil-works/pi-ai';
 import { observeNativeStream, type NativeClock } from './laneStreamObserver.mjs';
 
@@ -82,19 +82,39 @@ function normalizeMessage(message: AssistantMessage): AssistantMessage {
 }
 
 /** 看门狗自己开火时，产出一条 pi 认得的失败助手消息——**不是**一个 rejection。 */
-function faultMessage(model: Model<Api>, error: unknown, aborted: boolean): AssistantMessage {
+function faultMessage(model: Model<Api>, error: unknown, aborted: boolean, partial?: AssistantMessage): AssistantMessage {
   const text = error instanceof Error ? error.message : String(error);
-  return {
+  const message: AssistantMessage = partial ?? {
     role: 'assistant', content: [], api: model.api, provider: model.provider, model: model.id,
     usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0,
       cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } },
+    stopReason: 'pending', timestamp: Date.now(),
+  };
+  return {
+    ...message,
     // 用户按了停 = `aborted`，上游**永不重试**（`retry.js:120-125`）。看门狗开火 = `error`，
     // 正文里带着 `timeout` 三个字，于是上游把它当一次可重试的抖动。这两条的区别就是
     // 「按停止之后它还偷偷重试三次」和「网络抖一下整轮白等」这两个 bug 各自的开关。
     stopReason: aborted ? 'aborted' : 'error',
     ...(aborted ? {} : { errorMessage: normalizeProviderErrorText(text) }),
-    timestamp: Date.now(),
   };
+}
+
+/** One fault-time copy through pi's public codec; no token log or per-delta full replay. */
+function snapshotPartial(partial: AssistantMessage): AssistantMessage | undefined {
+  const encoder = new AssistantMessageFrameEncoder();
+  function* frames() {
+    yield encoder.encode({ type: 'start', partial })!;
+    for (let contentIndex = 0; contentIndex < partial.content.length; contentIndex++) {
+      const block = partial.content[contentIndex]!;
+      // Block starts let the SDK copy only its public content fields, excluding
+      // the provider parser's mutable index/partialArgs scratch properties.
+      if (block.type === 'text') yield encoder.encode({ type: 'text_start', contentIndex, partial })!;
+      else if (block.type === 'thinking') yield encoder.encode({ type: 'thinking_start', contentIndex, partial })!;
+      else yield encoder.encode({ type: 'toolcall_start', contentIndex, partial })!;
+    }
+  }
+  return reduceAssistantMessageFrames(frames());
 }
 
 function isAbort(error: unknown, signal: AbortSignal | undefined): boolean {
@@ -109,11 +129,17 @@ function guardedStream(
   delegate: (activeSignal: AbortSignal) => AssistantMessageEventStream,
 ): AssistantMessageEventStream {
   const output = createAssistantMessageEventStream();
+  let currentPartial: AssistantMessage | undefined;
+  let faultPartial: AssistantMessage | undefined;
   const observed = observeNativeStream(delegate, {
     ...(signal ? { signal } : {}),
     firstResponseMs: guard.firstResponseMs,
     idleMs: guard.idleMs,
     ...(guard.clock ? { clock: guard.clock } : {}),
+    onEvent: (event) => { if ('partial' in event) currentPartial = event.partial; },
+    // Capture synchronously at the observer's admission cutoff, before a late
+    // provider completion can mutate its shared accumulator again.
+    onFault: () => { if (currentPartial) faultPartial = snapshotPartial(currentPartial); },
   });
   void (async () => {
     try {
@@ -128,7 +154,7 @@ function guardedStream(
       // （`run.mts` 把它兜成 `kind:'timeout'` 的事实交给用户），但 harness 那条路要的是
       // 一条 `stopReason:'error'` 的助手消息——只有它才走得到上游的重试判据。
       output.push({ type: 'error', reason: isAbort(error, signal) ? 'aborted' : 'error',
-        error: faultMessage(model, error, isAbort(error, signal)) });
+        error: faultMessage(model, error, isAbort(error, signal), faultPartial) });
     }
   })();
   return output;

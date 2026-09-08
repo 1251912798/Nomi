@@ -18,13 +18,14 @@
 // 而格式在这里逐字镜像（`pi-coding-agent/dist/core/system-prompt.js:41-88`）——
 // 它是模型见过无数次的形状，改写它没有收益只有风险。
 import type { LaneToolSpec } from "../shared/agentLane/laneToolContract";
+type PromptTool = Pick<LaneToolSpec, 'name' | 'promptSnippet' | 'promptGuidelines'>;
 
 /**
  * 渲染两段。**顺序即合同**：菜单按目录顺序，纪律按首次出现顺序去重——
  * 与 `agentToolCatalog.ts:31-35` 的「`tools/list` 确定性顺序」同一条理由，
  * 系统提示词是 prompt cache 的前缀，抖一下就整段失效。
  */
-export function renderLanePromptSections(tools: readonly LaneToolSpec[]): string {
+export function renderLanePromptSections(tools: readonly PromptTool[]): string {
   const menu = tools.length > 0
     ? tools.map((tool) => `- ${tool.name}: ${tool.promptSnippet}`).join("\n")
     : "(none)";
@@ -66,7 +67,7 @@ export function renderLanePromptSections(tools: readonly LaneToolSpec[]): string
  */
 export function composeLaneSystemPrompt(
   identityPrompt: string,
-  tools: readonly LaneToolSpec[],
+  tools: readonly PromptTool[],
   skillSection: string,
 ): string {
   const skills = skillSection.trim();
