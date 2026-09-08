@@ -1,3 +1,5 @@
+import console from 'node:console'
+import process from 'node:process'
 import assert from 'node:assert/strict'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -10,7 +12,7 @@ try {
   const errors = []
   page.on('pageerror', (error) => errors.push(error.message))
   await page.goto(`${base}library-cards.html`)
-  await page.evaluate(() => Promise.all([...document.images].map((image) => image.decode())))
+  await page.evaluate(() => Promise.all([...globalThis.document.images].map((image) => image.decode())))
   assert.match(await page.locator('#detail-source').innerText(), /Apache-2.0/)
   await page.screenshot({ path: path.join(dir, 'library-cards.png') })
   await page.getByRole('button', { name: '提示词库', exact: true }).click()
@@ -22,7 +24,7 @@ try {
   await page.waitForURL('**/node-effects.html?apply=1')
   assert.ok((await page.locator('#editor').innerText()).trim())
   await page.goto(`${base}node-effects.html`)
-  await page.evaluate(() => Promise.all([...document.images].map((image) => image.decode())))
+  await page.evaluate(() => Promise.all([...globalThis.document.images].map((image) => image.decode())))
   await page.screenshot({ path: path.join(dir, 'node-effects.png') })
   await page.locator('#favorites [data-effect="effect-character-three-view"]').click()
   assert.equal(await page.locator('#favorites').isHidden(), true)
