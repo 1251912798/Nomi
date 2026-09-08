@@ -152,9 +152,9 @@ test('package.json 的 gates:contracts 就是这个 runner，且 advisory 只限
   const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
   const scripts = JSON.parse(fs.readFileSync(path.join(repoRoot, 'package.json'), 'utf8')).scripts
   const command = scripts['gates:contracts']
-  assert.match(command, /^node scripts\/run-gates-contracts\.mjs /)
+  assert.match(command, /^python3 scripts\/with-gates-lock\.py -- node scripts\/run-gates-contracts\.mjs /)
 
-  const { gates, advisory } = parseGateArgs(command.split(/\s+/).slice(2))
+  const { gates, advisory } = parseGateArgs(command.split(/\s+/).slice(5))
   assertGatesExist(gates, scripts)
   // advisory 名单不许长大。两类各自点名，加一条就得回来改这里并写清它属于哪类——
   // 这就是「不许悄悄降级门岗」那道棘轮本体。

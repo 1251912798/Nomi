@@ -1,0 +1,102 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-08-machine-gates-lock",
+  "problem_type": "Concurrent validation saturates a shared workstation",
+  "symptom": "Worktrees running gates concurrently hang tests and cause false visual failures.",
+  "direct_cause": "Independent npm entrypoints spawn heavyweight suites with no machine-wide admission lock.",
+  "class_root": "Validation execution has no shared resource owner across worktrees and nested entrypoints.",
+  "affected_population": [
+    "All local gates, contracts, test-system and walkthrough npm callers"
+  ],
+  "scope_paths": [
+    "scripts/with-gates-lock.py",
+    "package.json"
+  ],
+  "entry_points": [
+    "gates and gates:contracts",
+    "test-system and direct walkthrough npm scripts"
+  ],
+  "external_sources": [
+    {
+      "kind": "official-doc",
+      "url": "https://docs.python.org/3/library/fcntl.html",
+      "checked_at": "2026-09-08",
+      "purpose": "Native flock acquisition and descriptor lifetime"
+    }
+  ],
+  "invariants": [
+    "At most one independent validation command owns the machine lock; nested commands reuse verified owner identity.",
+    "The kernel releases dead descriptors, and a live inherited child prevents premature takeover."
+  ],
+  "generality_proof": "Every resource-consuming npm entry wraps the same OS lock inode. OS atomic acquisition spans worktrees; nested owner identity avoids self-deadlock.",
+  "shared_boundaries": [
+    {
+      "path": "scripts/with-gates-lock.py",
+      "symbol": "main",
+      "responsibility": "Serialize command admission and preserve exit/cancellation semantics."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "package.json",
+      "entry_point": "gates / gates:contracts",
+      "disposition": "enforced",
+      "evidence": "Both entrypoints execute with-gates-lock.py; nested contracts inherit token."
+    },
+    {
+      "path": "package.json",
+      "entry_point": "test:system:* / design-lab:walk:* / tests/ux scripts",
+      "disposition": "enforced",
+      "evidence": "All declared heavyweight npm entrypoints wrap the same native lock."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Any two worktrees can otherwise concurrently start the same heavyweight suites.",
+    "same_class_scan": [
+      "Inspected package.json gates, contracts, direct UX, test-system and design-lab walk entrypoints.",
+      "Inspected run-gates-contracts.mjs and test-system.mjs nested pnpm execution."
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "scripts/with-gates-lock.py",
+    "invariant": "Independent validation commands serialize on a fixed machine-wide OS lock.",
+    "failure_mode": "Lock contention waits with owner diagnostics; lock API failures exit nonzero before spawning work.",
+    "exception_policy": "none",
+    "strategy": "Use stdlib OS locking rather than PID-file reclamation, retaining the inode and inheriting the descriptor.",
+    "artifacts": [
+      "scripts/with-gates-lock.py",
+      "package.json"
+    ]
+  },
+  "regression_tests": [
+    "scripts/with-gates-lock.node-test.mjs"
+  ],
+  "class_regression_tests": [
+    "scripts/with-gates-lock.node-test.mjs"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "package.json"
+    ],
+    "rationale": "Replaced unguarded npm commands in place; no alternate unlocked npm commands."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "Uses existing Python standard library and native OS locking; installs no package.",
+    "exit_criteria": []
+  },
+  "migration": "No user-data migration. The stable tmp lock inode is retained; stale metadata is overwritten only after the kernel grants ownership.",
+  "residual_risks": [
+    "Direct ad-hoc commands and worktrees without this change do not participate.",
+    "Windows msvcrt behavior is implemented but only POSIX locking was exercised on this host."
+  ],
+  "invariant_owner_layer": {
+    "layer": "scripts/with-gates-lock.py",
+    "tests": [
+      "scripts/with-gates-lock.node-test.mjs"
+    ]
+  }
+}
