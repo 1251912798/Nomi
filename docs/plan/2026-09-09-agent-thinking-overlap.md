@@ -26,3 +26,5 @@
 - 每日雷达附记：模型索引 APIMart 新增 Gemini Omni 1.1 Flash，kie 无新增，apimart-llm 因凭据不可用今天没查成；结果另存 `/tmp/nomi-thinking-model-radar-latest.json`，未更新快照/不夹带到修复。nomi-research-radar 与 nomi-model-radar 技能在本树及已列技能根均未找到，论文雷达未执行，不宣称今天已查全。
 
 - 已查看最终绿图：`.tmp/pi-thinking-overlap-development-1788895519907/01-reasoning-before-tools.png`、`02-generating.png`、`03-complete.png`（另有 `04-cold-restored.png`）。生成中只有正文光标，完成后光标消失；思考正文默认不可见，收据与正文顺序正确。
+
+- 后续完整类型验证发现 i18next 泛型返回推导为 never，直接 `.repeat(30)` 无法编译；在夹具边界先用模板字符串明确文本类型，再重复。仅这一处调用直接访问返回值方法，同目录其他调用都是字符串参数；无运行时或截图变化。2026-09-09 `pnpm run typecheck` 通过。

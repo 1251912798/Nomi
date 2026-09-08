@@ -121,7 +121,7 @@ function ThinkingFlowCell({ complete = false }: { complete?: boolean }): JSX.Ele
     items: [
       labUserItem('u-think', fx.t('agentPanelV4.fixtureUserRead')),
       [{ sequence: 0, entrySeq: 0, contentIndex: 0, kind: 'thinking',
-        text: fx.t('agentPanelV4.fixtureAssistantThinking').repeat(30), streaming: false }],
+        text: `${fx.t('agentPanelV4.fixtureAssistantThinking')}`.repeat(30), streaming: false }],
       labToolItem('t-canvas', 'canvas.read'),
       labToolItem('t-timeline', 'timeline.read'),
       [{ sequence: 0, entrySeq: 0, contentIndex: 0, kind: 'assistant-text',
