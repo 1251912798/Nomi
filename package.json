@@ -156,7 +156,7 @@
     "delivery:preflight": "node scripts/git-delivery.mjs preflight",
     "delivery:verify-merged": "node scripts/git-delivery.mjs verify-merged",
     "check:mockup-contracts": "node ./scripts/check-mockup-contracts.mjs",
-    "check:walkthroughs": "node --test ./scripts/check-walkthroughs.node-test.mjs && node ./scripts/check-walkthroughs.mjs",
+    "check:walkthroughs": "node --test ./scripts/check-walkthroughs.node-test.mjs ./tests/ux/g1/walk-session.node-test.mjs ./tests/ux/g1/sweep-budget.node-test.mjs ./tests/ux/g1/sweep-evidence.node-test.mjs ./tests/ux/g1/cases.node-test.mjs && node ./scripts/check-walkthroughs.mjs",
     "check:main-console": "node --test ./scripts/check-main-console.node-test.mjs && node ./scripts/check-main-console.mjs",
     "check:heavy-path": "node ./scripts/check-heavy-path.mjs",
     "check:asset-evidence": "node ./scripts/check-asset-evidence.mjs",
@@ -207,7 +207,9 @@
     "design-lab:walk:depth-action": "python3 scripts/with-gates-lock.py -- node ./tests/ux/design-lab-depth-action.walk.mjs",
     "check:skills-format": "node --test ./scripts/check-skills-format.node-test.mjs && node ./scripts/check-skills-format.mjs",
     "check:gates-lock": "node --test scripts/with-gates-lock.node-test.mjs",
-    "check:reference-contract": "pnpm exec tsx scripts/check-reference-outbound-contract.ts"
+    "check:reference-contract": "pnpm exec tsx scripts/check-reference-outbound-contract.ts",
+    "sweep": "node scripts/sweep.mjs",
+    "sweep:nightly": "node scripts/sweep.mjs --packaged release/mac-arm64/Nomi.app"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^1.2.12",
