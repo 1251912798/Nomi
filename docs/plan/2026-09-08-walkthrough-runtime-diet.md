@@ -135,3 +135,20 @@ A 原型：Electron default_app.asar/main.js:39 的解析只认分开的 -r/--re
 ## 自然首启补测
 
 未预置、未点跳过的独立冷启：DOM 1199ms；跳过按钮出现 1440ms；宣传层消失 15321ms；新建项目可点击 15349ms。与手动跳过 2138ms 分开报告，不把自然播放成本冒算成已有走查收益。
+
+## C3 待验：恢复真实空白点击
+
+A 第一轮的只读逐动作计时另定位到 group-baseline:52：对画布外壳固定 (40,40) 的 click 等足 30003ms 后 catch 吞掉，随后才全选。使用已有 `_canvasHit.mjs:findCanvasBlankPoint` 查顶层确为 React Flow pane 的位置，可恢复原本“点空白再全选”的用户动作；找不到点必须报错，全选后增加 4 节点已选断言。等待 A/D 当前批次结束再实施，避免混淆单刀收益。另一处 editor 点击被遮挡等待 4001ms 属于 composer/rail 产品布局线索，不用 force-click 掩盖。
+
+## A 验收
+
+统一启动器支持隔离开发 profile 的 initialLocalStorage，在 Electron 应用入口前注册 frame preload，仅补缺失的既有持久字段；真实 profile / packaged executable 拒绝该选项，未 opt-in 的首次使用测试不变。三个文件删除写状态后 reload 的旧路径以及无消费者的旧测试键。单测 20/20 通过，真实三轮 9/9 通过；初次候选漏删 userData 清理语句导致 ReferenceError，该轮失败如实保留，修正后重新完整跑三轮。
+
+| 每刀 | 改前 ms（C1 中位，batch 为原基线） | 改后三遍 ms | 中位节省 ms |
+|---|---:|---|---:|
+| A group-baseline | 48288 | 46190 / 46849 / 47020 | 1439 |
+| A group-ports | 20016 | 17481 / 18937 / 17866 | 2150 |
+| A batch-production | 43430 | 40167 / 40066 / 40101 | 3329 |
+| A 合计 | 111734 | 中位合计 104816 | 6918 |
+
+Read 五对截图：group-baseline 01/03、group-ports 01/05、batch-production 01。控件、节点数量、连线和配色一致；时间戳不同，group-ports 节点位置有少量偏移，未声称像素完全相同。拼图 `/tmp/nomi-walk-speed-evidence/a-five-pairs.jpg`，三轮原始日志 `a-1..3`。三个指定静态门岗全绿；完整 gates 尚待最终整合后执行。

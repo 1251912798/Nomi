@@ -10,8 +10,6 @@ const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../
 const shotsDir = path.join(repoRoot, 'tests/ux/shots/group-baseline')
 fs.rmSync(shotsDir, { recursive: true, force: true })
 fs.mkdirSync(shotsDir, { recursive: true })
-const userData = path.join(repoRoot, '.tmp', 'nomi-groupbase-userdata')
-fs.mkdirSync(userData, { recursive: true })
 
 let n = 0
 async function snap(win, name, clip) {
@@ -33,24 +31,11 @@ async function snapNear(win, name, locator, pad = 40) {
 
 const { app, win } = await launchNomiApp({
   name: 'group-baseline',
-  userDataDir: userData,
   args: ['--no-proxy-server'],
   settleMs: 0,
+  initialLocalStorage: { 'nomi:splash:v1': 'seen', 'nomi:journey-tour:v1': 'seen' },
 })
-await win.evaluate(() => {
-  window.localStorage.setItem('__nomiE2E', '1')
-  for (const k of ['nomi:splash:v1', 'nomi:journey-tour:v1', 'nomi:canvas-gesture-hint:v1']) {
-    window.localStorage.setItem(k, 'seen')
-  }
-})
-await win.reload()
-await win.waitForLoadState('domcontentloaded')
-await win.waitForTimeout(2200)
-
-for (const label of ['新建空白项目', '开始一个项目']) {
-  const el = win.locator('button', { hasText: label }).first()
-  if (await el.count()) { await el.click({ timeout: 4000 }).catch(() => {}); break }
-}
+await win.getByRole('button', { name: '新建空白项目', exact: false }).first().click()
 await win.waitForTimeout(2500)
 
 const genTab = win.locator('button', { hasText: /^生成$/ }).first()
