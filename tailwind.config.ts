@@ -27,6 +27,11 @@ import {
 const tokenColor = (cssVar: string): string =>
   `color-mix(in oklab, var(${cssVar}) calc(<alpha-value> * 100%), transparent)`
 
+// Editing controls match :focus-visible even after a pointer click in Chromium.
+// One semantic selector owns both their reset and the non-text ring exclusion.
+const textFocusControl = ':is(input:not([type="hidden"], [type="button"], [type="submit"], [type="reset"], [type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="file"], [type="image"], [type="date"], [type="time"], [type="datetime-local"], [type="month"], [type="week"]), textarea, [contenteditable=""], [contenteditable="true"], [contenteditable="plaintext-only"])'
+const validTextFocus = `${textFocusControl}:focus:not([aria-invalid="true"], [data-error])`
+
 const workbenchBasePlugin = plugin(({ addBase, addUtilities }) => {
   // 无边框窗口拖拽区（Windows 自绘标题栏）。.app-drag 整块可拖窗，内部交互元素自动 no-drag（否则按钮拖不动窗也点不动）。
   addUtilities({
@@ -398,15 +403,16 @@ const workbenchBasePlugin = plugin(({ addBase, addUtilities }) => {
     '*::-webkit-scrollbar-corner': {
       background: 'transparent',
     },
-    // 全局焦点环根治（P2）：默认杀掉浏览器 :focus-visible 的 outline:auto（macOS 跟系统强调色＝橙环），
-    // 交互控件统一用 accent 环。没人需要再往按钮上记着加 className——漏一个就冒橙环的问题从根上没了。
-    // 编辑器（contenteditable，非 button）不吃 ring；其 workbench.css 的 outline:none 仍是防御性覆盖。
-    ':focus-visible': {
-      outline: 'none',
-    },
-    'button:focus-visible, [role="button"]:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, summary:focus-visible': {
+    // The base owns focus for portals and future controls too; no per-composer patch.
+    ':root :focus': { outline: 'none' },
+    [`:root :focus-visible:not(${textFocusControl})`]: {
       outline: '2px solid var(--nomi-focus)',
       'outline-offset': '2px',
+    },
+    // Preserve border widths/layout and error colors. Borderless inner fields pass
+    // the indication to their direct or nearest bordered container, including editors.
+    [`:root ${validTextFocus}, :root :not([aria-invalid="true"], [data-error]):has(> ${validTextFocus}), :root .border:has(${validTextFocus}[contenteditable]):not(:has(.border ${validTextFocus}[contenteditable])):not([aria-invalid="true"], [data-error], .border-workbench-danger, .border-nomi-danger)`]: {
+      'border-color': 'var(--nomi-accent)',
     },
     'html, body, #root': {
       width: '100%',

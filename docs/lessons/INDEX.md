@@ -36,6 +36,8 @@
 
 ## A. 走查与体验验证（Playwright / Electron 真机）
 
+- [UA 默认样式泄漏是一类问题，但蓝框未必来自 UA](ua-default-style-leaks-are-a-class.md) — 输入框点击厚环；先查计算样式，再按文本/非文本控件在全局边界治理
+
 - [跑批渲染必须一格一个浏览上下文，复用同一个到第 34 次就再也起不来](one-browser-context-per-render-or-the-batch-dies-midway.md) — 前几十格都好、从某一格起 `waitForFunction` 恒超时，而单独 `ONLY=` 跑那一格完全正常
 - [走查断言必须有真信号](walkthrough-assertions-need-a-real-signal.md) — 写/改走查前必读：用 `tests/ux/_assert.mjs`，假绿是框架缺陷不是手滑
 - [走查取点只信真实光标到位后的那一次](walkthrough-geometry-must-reverify-under-the-real-cursor.md) — stage 一变窄「点空白被磁性 + 吃掉 / 框选 autoPan 永不安定 / 连线点中心被卡拦」一起来；判据是白名单（最顶层元素就是 pane），单一 owner `tests/ux/_canvasHit.mjs`
