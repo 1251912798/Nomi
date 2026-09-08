@@ -31,7 +31,7 @@ const RUNNING: LaneTaskFacts = {
 };
 const COMPLETE: LaneTaskFacts = {
   status: 'complete', stagesDone: 3, stagesTotal: 3, progress: 100,
-  currency: 'CNY', spent: 0.46, candidateIds: ['artifact-1', 'artifact-2'],
+  currency: 'CNY', spent: 0.46, candidates: ['artifact-1', 'artifact-2'].map(artifactId => ({ artifactId, projectId: 'fixture', productionRunId: 'run-1', thumbnailUrl: `nomi-local://asset/fixture/${artifactId}.png`, adopted: false, canAdopt: true })),
 };
 
 function taskParts(projection: LaneProjection) {

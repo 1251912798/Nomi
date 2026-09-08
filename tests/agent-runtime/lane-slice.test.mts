@@ -18,6 +18,7 @@ import { createLaneFixture } from './laneFixture.mjs';
 /** 段的身份 = 「这是哪一种段 + 它是谁」。**刻意不含 sequence**——否则断言就是在自证。 */
 function shape(part: LanePart): string {
   switch (part.kind) {
+    case 'error': return `error:${part.text}`;
     case 'user': return `user:${part.text}`;
     case 'assistant-text': return `text:${part.text}`;
     case 'thinking': return `thinking:${part.text}`;
