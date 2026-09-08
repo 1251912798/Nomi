@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { z } from 'zod';
-import type { RuntimeActivityEvent, RuntimeToolDecision } from '../../electron/harness/runtime/runtimePort.js';
+import type { RuntimeActivityEvent, RuntimeToolDecision } from '../../electron/shared/agentCapabilities/transportContracts.js';
 import { runAgentTurn } from '../../electron/harness/runtime/pi/nativeLoader.cjs';
 import { createRuntimeFixture } from './httpFixture.mjs';
 

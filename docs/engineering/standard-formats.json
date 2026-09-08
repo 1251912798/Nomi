@@ -1,0 +1,218 @@
+{
+  "_comment": [
+    "外部格式登记表（R31）。每个格式回答一句话：「外面的世界怎么写这个东西，我们跟它差在哪，凭什么差」。",
+    "门岗 = pnpm run check:standard-formats（scripts/check-standard-formats.mjs），债基线 = scripts/standard-formats-baseline.json。",
+    "登记一个新格式的顺序：先找规范或事实标准（Context7 / 官方仓库 / RFC）→ 抓一份**官方样例**当夹具，",
+    "写一条读取器测试去读它 → 把对不上的每一处写进 deviations，理由必须是领域约束 →",
+    "确实找不到可对齐的，才写 kind=nomi-defined 并在 searched 里交代查过哪些。",
+    "spec/fixtures 不是注释，是门岗校验的必填项：没有可复核出处的对齐，等于没做过研究。",
+    "",
+    "为什么这张表和 framework-boundaries.json 分开：那张问「框架已经提供的能力，我们是不是又写了一份」（R29），",
+    "这张问「外面已经定好的格式，我们是不是又造了一个」（R31）。前者是能力重造，后者是格式分叉——",
+    "格式分叉的代价落在用户身上（别人的文件进不来、我们的文件出不去），能力重造的代价落在我们身上。"
+  ],
+  "scan": {
+    "_comment": [
+      "启发式只扫生产代码。scripts/ 里的 JSON.parse 读的是自家门岗基线与走查产物，不是和外界互通的格式；",
+      "把它们扫进来，基线会有一百多条，而一道有一百多条豁免的门岗等于不存在（R17）。"
+    ],
+    "roots": ["electron", "src"]
+  },
+  "formats": [
+    {
+      "name": "antigravity-hooks",
+      "kind": "external-standard",
+      "files": [
+        "hooks.json"
+      ],
+      "spec": "https://antigravity.google/docs/hooks/",
+      "upstreamVersion": "Official Hooks schema example, retrieved 2026-09-08; local CLI embedded docs 1.1.22",
+      "why": "Nomi writes the CLI-owned named-hook format; authorization nonce files remain private task-gate state.",
+      "fixtures": [
+        "tests/fixtures/standard-formats/antigravity-hooks/hooks.json"
+      ],
+      "readers": [],
+      "writers": [
+        "electron/ai/antigravityMedia.ts"
+      ],
+      "deviations": []
+    },
+    {
+      "name": "agent-skill",
+      "kind": "external-standard",
+      "files": ["SKILL.md"],
+      "spec": "https://code.claude.com/docs/en/skills",
+      "upstreamVersion": "Claude Code Agent Skills 文档，2026-09-07 抓取",
+      "why": "技能是**用户手里流动的东西**：他从别人那儿拿一个技能包，希望它在 Nomi 里也能用。这条路上的格式不是我们的实现细节，是互操作契约。Claude Code / pi / Codex 三家都收敛到「文件夹 + SKILL.md + YAML frontmatter」，没有第二种形态。",
+      "fixtures": ["tests/fixtures/standard-formats/agent-skill/SKILL.md"],
+      "readers": [
+        "electron/skills/skillStore.ts",
+        "electron/skills/skillFrontmatter.ts",
+        "electron/skills/skillPackage.ts",
+        "electron/skills/skillManifestMigration.ts",
+        "src/workbench/skillLibrary/parseSkillImport.ts",
+        "src/workbench/skillLibrary/skillDropIntake.ts"
+      ],
+      "writers": [
+        "electron/skills/skillPackage.ts",
+        "electron/skills/skillManifestMigration.ts",
+        "electron/capabilityCore/skillWriteTransportAdapters.ts"
+      ],
+      "deviations": [
+        {
+          "what": "frontmatter 只消费 name / description / disable-model-invocation 三个规范键，官方还定义了 allowed-tools、license、compatibility 等",
+          "reason": "领域约束：Nomi 不是终端里的编码 agent，没有 allowed-tools 所指的那套工具名空间。未知键按官方语义**原样保留在文件里、不报错**（frontmatter 的扩展点就是自定义键），只是我们不消费它——这样带这些键的外部技能仍然导得进来。"
+        },
+        {
+          "what": "Nomi 独有的声明（audience / requested-capabilities / stages / required-providers 等）住在 frontmatter 的 `metadata.nomi.*` 下，而且 `metadata` 里放的是嵌套结构，不是规范正文写的「string→string 映射」",
+          "reason": "顶层键在规范里是闭集——官方参考校验器 skills-ref 的 validator.py:104-115 多一个顶层键就报 error，所以扩展只能走 `metadata`：pi 忽略它、Claude Code 明说忽略其内容、参考校验器对 metadata 内部不做任何校验（validator.py:118-147）。嵌套是「规范正文比参考实现更严」的一处，我们选参考实现的行为，并让 check:skills-format 的 F6 把 33 个内置技能交给 pi 自己的加载器判分（33/33、零 diagnostics）守住这一格。2026-09-07 起 frontmatter 用真 YAML 解析（js-yaml），与三家同一档严格度。"
+        }
+      ]
+    },
+    {
+      "name": "nomi-skill-manifest",
+      "kind": "non-aligned",
+      "files": ["skill.json"],
+      "spec": "https://code.claude.com/docs/en/skills",
+      "upstreamVersion": "Claude Code Agent Skills 文档，2026-09-07 抓取",
+      "why": "技能包里我们自己另加的一份 JSON 清单（name / description / archetypeId 等）。**它是 R31 这条规则的起因**：标准把这些字段放在 SKILL.md 的 frontmatter 里，我们却在旁边另起了一个平行文件。PR #580 已经把它从仓库、从加载路径、从写入路径、从模型可见的 author_skill 参数里全部删掉——今天它只剩**一个读者**：用户自己技能目录里的存量文件，由加载时的一次性迁移折进 frontmatter，原文件改名成 .bak 留在原地。",
+      "searched": [
+        {
+          "what": "Claude Code / pi / Codex 的 Agent Skills 格式（事后补查，2026-09-07）",
+          "verdict": "三家都只有 SKILL.md + frontmatter，没有任何一家有第二个清单文件。**这里本来就有可对齐的，我们没去看。**"
+        },
+        {
+          "what": "仓库里 SKILL.md frontmatter 的既有解析（electron/skills/skillStore.ts 的 frontmatterValue）",
+          "verdict": "同一份元数据已经能从 frontmatter 读出来，两份定义必然漂移——skill.json 缺失时卡片显示「暂无说明」的 bug（2026-08-27 真机走查）就是漂移的一次显形。"
+        }
+      ],
+      "readers": ["electron/skills/skillManifestMigration.ts"],
+      "writers": [],
+      "debt": {
+        "what": "格式本身已经退场（仓库里不存在、不再有人写出），只剩一次性迁移器 electron/skills/skillManifestMigration.ts 还认得它",
+        "why": "删读取路径而不迁移数据，等于把用户导入过的技能悄悄降级成纯知识层（不收窄能力、不显示阶段），而且他不会收到任何提示。存量只可能在用户自己的技能目录里——那是我们碰不到的盘，所以迁移器必须先在真实机器上跑过一轮。",
+        "plan": "迁移器随一个正式发布周期跑过之后，删掉 electron/skills/skillManifestMigration.ts 与本格；判据是「不再有用户目录带这个文件」，不是「代码里没人 import 它」",
+        "due": "2026-12-07"
+      }
+    },
+    {
+      "name": "nomi-skill-envelope",
+      "kind": "nomi-defined",
+      "files": [".nomiskill.json"],
+      "why": "Nomi 自己导出技能时的单文件信封 `{version, exportedAt, dirName, files}`。它存在的理由是「一个文件就能发给别人」，zip 做不到被聊天软件当文本贴出来。",
+      "searched": [
+        {
+          "what": "生态里的技能分享形态（zip 包里带 SKILL.md，见 src/workbench/skillLibrary/parseSkillImport.ts 的 stripCommonPrefix）",
+          "verdict": "zip 是事实标准，**我们已经支持它**（packageFromZip）。信封是并列的第二条入口，不是替代品；导入侧三种形态（裸 SKILL.md / zip / 信封）都收。"
+        },
+        {
+          "what": "OCI / tar 之类的通用打包格式",
+          "verdict": "对不上：它们仍然是二进制包，解决不了「贴进聊天框」这个真实摩擦，反而多一层依赖。"
+        }
+      ],
+      "readers": ["electron/skills/skillPackage.ts", "src/workbench/skillLibrary/parseSkillImport.ts"],
+      "writers": ["electron/skills/skillPackage.ts"],
+      "deviations": [
+        {
+          "what": "信封里的 files 表是纯文本 map，不带二进制附件",
+          "reason": "领域约束：这条路径的全部意义是「能贴进聊天框」，所以载荷必须是可读文本。要带二进制就走 zip 那条入口，两条入口在导入侧汇合到同一个校验器（validateSkillPackage）。"
+        }
+      ]
+    },
+    {
+      "name": "mcp-servers-config",
+      "kind": "external-standard",
+      "files": [".mcp.json", "mcp.json", ".claude.json"],
+      "spec": "https://modelcontextprotocol.io/docs/develop/connect-local-servers",
+      "upstreamVersion": "MCP 文档 2026-09-07 抓取；协议版本见 electron/capabilityCore/mcpProtocol.ts 的 PROTOCOL_VERSION = 2025-11-25",
+      "why": "「一键接入」写的是**用户的别的工具的配置文件**（Claude Code 的 ~/.claude.json、Cursor 的 ~/.cursor/mcp.json、通用 ~/.config/mcp/mcp.json、项目级 .mcp.json）。写错格式的后果不是我们的功能不好用，是把用户已有的 MCP 配置弄坏。",
+      "fixtures": ["tests/fixtures/standard-formats/mcp/.mcp.json"],
+      "readers": ["electron/capabilityCore/mcpConfig.ts"],
+      "writers": ["electron/capabilityCore/mcpConfig.ts"],
+      "deviations": [
+        {
+          "what": "只写 mcpServers.nomi 这一个键，合并而不是覆盖，写前自动备份、tmp→rename 原子写",
+          "reason": "领域约束：这是**别人家的文件**。整份覆盖会删掉用户其它的 server，写一半断电会留下坏 JSON——两种后果都由用户承担，所以合并语义与原子写是必需的，不是保守。"
+        }
+      ]
+    },
+    {
+      "name": "codex-mcp-config-toml",
+      "kind": "de-facto-standard",
+      "files": ["config.toml"],
+      "spec": "https://github.com/openai/codex/blob/main/docs/config.md",
+      "upstreamVersion": "Codex CLI config 文档（[mcp_servers.<name>] 表布局）",
+      "why": "Codex 用 TOML 而不是 JSON 表达同一件事（一个 MCP server 条目）。同一个「一键接入」按钮要同时写两种格式。",
+      "readers": ["electron/capabilityCore/mcpConfig.ts"],
+      "writers": ["electron/capabilityCore/mcpConfig.ts"],
+      "deviations": [
+        {
+          "what": "块级文本合并（按 [表头] 边界只替换我们自己的 [mcp_servers.nomi] 块），不引 TOML 库做完整读-改-写",
+          "reason": "领域约束：完整往返会把用户 config.toml 里的注释、键序和空行全部重排——我们改的是别人家的文件，改动面必须等于我们声明要改的那一块。这不是「省一个依赖」，是「不许动我们没声明要动的行」。"
+        }
+      ],
+      "debt": {
+        "what": "还没抓一份 Codex 官方 config.toml 样例当夹具",
+        "why": "TOML 那条路是块级文本合并，夹具要覆盖的是「用户文件里已有注释和其它表时，我们只换自己那一块」——这份样例要从 Codex 官方 config 文档里逐字抄，本 PR 只抓了 SKILL.md 与 .mcp.json 两份，先把机制立住。",
+        "plan": "docs/engineering-rules.md#r31-外部格式协议契约必须对齐官方或事实标准",
+        "due": "2026-10-07"
+      }
+    },
+    {
+      "name": "mcp-tool-json-schema",
+      "kind": "external-standard",
+      "wire": true,
+      "files": [],
+      "wireContract": "MCP tools/list 响应里每个工具的 inputSchema（不是盘上文件，是线上载荷）",
+      "spec": "https://json-schema.org/draft-07/schema",
+      "upstreamVersion": "JSON Schema draft-07；MCP 协议版本见 electron/capabilityCore/mcpProtocol.ts 的 PROTOCOL_VERSION = 2025-11-25",
+      "why": "tools/list 广播出去的 inputSchema 是**模型和外部宿主唯一看得见的工具契约**。它不是文件而是线上载荷，但同样是「外部也读写」的东西：schema 写窄一格，外部宿主就永远构造不出那个参数（2026-09 实测：9 个已发布 operation 里 7 个不可达，见 electron/capabilityCore/mcpTransportSchemaFromZod.ts 头部）。",
+      "readers": ["electron/capabilityCore/mcpArgValidation.ts"],
+      "writers": ["electron/capabilityCore/mcpTransportSchemaFromZod.ts"],
+      "deviations": [
+        {
+          "what": "运行时校验器只实现 draft-07 的 11 个关键字子集，不认 anyOf/oneOf；广播前把 discriminated union 确定性地展平成属性并集 + 必填交集的扁平超集",
+          "reason": "领域约束：同一份 schema 同时是传输层的**早拒边界**，而权威校验边界是执行层的 Zod `.strict()` discriminated union。传输层放宽只影响「宿主看不看得见这个字段」，不影响是否放行——真正的互斥必填仍在 Zod 强制，fail-closed 不变。放不宽的后果是外部宿主构造不出合法参数。"
+        }
+      ],
+      "debt": {
+        "what": "还没抓一份 MCP 官方 tools/list 响应样例当夹具，去证明我们广播的 inputSchema 形状能被官方校验器接受",
+        "why": "这条是线上载荷不是盘上文件，夹具要连着一次真实的 initialize + tools/list 往返才有意义；本 PR 只抓了两份盘上格式的官方样例，先把机制立住。",
+        "plan": "docs/engineering-rules.md#r31-外部格式协议契约必须对齐官方或事实标准",
+        "due": "2026-10-07"
+      }
+    },
+    {
+      "name": "nomi-project-file",
+      "kind": "internal",
+      "files": ["project.json"],
+      "why": "项目库里每个 .nomi 项目目录的 project.json。它只被本机的 Nomi 主进程读写，不导出、不给别的程序读、不进任何分享路径——外部要拿数据走的是导出 MP4 与 MCP 投影，不是这个文件。一旦它开始对外（例如做「项目文件互导」），这一格要立刻改成 external-standard 或 nomi-defined 并补 searched。",
+      "readers": ["electron/jsonFile.ts", "electron/runtimePaths.ts"],
+      "writers": ["electron/jsonFile.ts"]
+    },
+    {
+      "name": "nomi-diagnostics-bundle",
+      "kind": "internal",
+      "files": ["manifest.json"],
+      "why": "诊断包的清单，只在本机生成、只被同一份代码读回来做自检。它确实会被用户手动发给我们看，但那是**当证据读**（人眼 + 我们自己的解析），没有第二个程序按契约消费它。",
+      "readers": ["electron/diagnostics/diagnosticsBundle.ts"],
+      "writers": ["electron/diagnostics/diagnosticsBundle.ts"]
+    },
+    {
+      "name": "nomi-export-job-store",
+      "kind": "internal",
+      "files": ["manifest.json"],
+      "why": "导出任务的落盘中间态（manifest / job / result / error）。它是崩溃恢复用的进程内状态的持久化形式，用户拿到的产物是 MP4，从来没有别的程序读这些文件。",
+      "readers": ["electron/export/exportJobStore.ts"],
+      "writers": ["electron/export/exportJobStore.ts"]
+    },
+    {
+      "name": "nomi-certification-cleanup",
+      "kind": "internal",
+      "files": [".cleanup-manifest.json"],
+      "why": "认证流程留下的待清理产物清单，写完当次跑完就被同一份代码删掉。它的生命周期不跨进程边界，也不跨版本。",
+      "readers": ["electron/providerAdapter/certificationCleanup.ts"],
+      "writers": ["electron/providerAdapter/certificationCleanup.ts"]
+    }
+  ]
+}

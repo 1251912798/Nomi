@@ -9,6 +9,7 @@ function stripComments(source: string): string {
 }
 const readCode = (file: string): string => stripComments(fs.readFileSync(file, 'utf8'))
 const settingsSource = readCode(path.join(process.cwd(), 'src/workbench/settings/SettingsDialog.tsx'))
+const projectLocationSource = readCode(path.join(process.cwd(), 'src/workbench/settings/ProjectLocationSection.tsx'))
 const aiModelsSource = readCode(path.join(process.cwd(), 'src/workbench/settings/AiModelsSection.tsx'))
 const taskCenterSource = readCode(path.join(process.cwd(), 'src/workbench/taskCenter/TaskCenterPanel.tsx'))
 const studioSource = readCode(path.join(process.cwd(), 'src/workbench/NomiStudioApp.tsx'))
@@ -29,11 +30,32 @@ const settingsDirectory = path.join(process.cwd(), 'src/workbench/settings')
 // 2026-09-01（二）：反馈与分享改为**内嵌在设置弹窗内**（原 dispatch+关设置 会冒成独立浮层，
 //             用户反馈「点开变成独立框」）。AboutSection 现在切内嵌视图并渲染 FeedbackShareContent，
 //             故再次更新其基线；对应正向断言见下方 embeds feedback and sharing inside the About section。
+// 2026-09-02：这一屏的供应商名与模型名此前直连 provider.name / model.labelZh，英文界面上照原样
+//             显示中文（实测 34 处，连词典里已有译文的「本地 ComfyUI」「可灵 3.0」也是中文——
+//             说明缺的不是词条而是这条路没过翻译边界）。三处渲染点接上 translateModelDisplayText，
+//             故更新 AiModelsSection 基线；对应正向断言见下方 translates vendor and model display
+//             names through the model-display boundary。
+// 2026-09-06：「优先供应商」排序区归位到本 tab（设计系统 §1.7.2：接入决定「有没有」归「模型」，
+//             「已接好的几家里默认走哪家」是策略，和紧邻的「新建卡片默认模型」同族）。原实现挂在
+//             「模型」tab 的 ModelSettingsHome 里，那是第二个「默认用什么」的家。故更新
+//             AiModelsSection 基线；对应正向断言见下方 hosts the vendor preference order。
+// 2026-09-08：动效 token 拆包——`--nomi-transition-fast` 把「140ms + 缓动」打包成一个值，
+//             而 `transition-duration` 只吃时长，整条声明非法被丢弃、计算值是 `0s`（全 App 77 处
+//             写了过渡却完全没有过渡）。拆成 `--nomi-duration-fast` + `--nomi-ease-fast` 后，
+//             本文件那颗手势选项钮的 className 从旧的打包写法（`duration-[…]` 里塞整个
+//             `--nomi-transition-fast`）改成 `duration-nomi-fast ease-nomi-fast`，故更新其基线。
+//             **这次只有这一行变**，
+//             对应正向断言见下方 uses the split motion tokens on the gesture options——锁住它不许
+//             退回打包写法（退回=按钮 hover 又变回硬切，而所有快照仍然全绿）。
 const MAIN_NON_MODEL_SECTION_SHA256 = {
-  'ProjectLocationSection.tsx': 'ad37c2f07c403b60cf42385f4d93fce8e2ff494c934467c670a7ae4b8c8d5523',
-  'AiModelsSection.tsx': '50e253177108dfda44128f7b002d22d5d769fbc4ac12eeeb3e376fc0757e64b7',
-  'AutomationPermissionsSection.tsx': 'a0ea704afb1a31c33ffa3e00821658d8696cc15d5069e6361032b194e638b352',
-  'CanvasGestureSection.tsx': '3cf19ee35f686e76b54497ff668bb91245b00a6593bc5d5d6162a0d30c476c95',
+  // 2026-09-04：检查反馈 tone 改为从公共 toast 函数参数推导，避免重复词表 owner。
+  'ProjectLocationSection.tsx': 'c0b2350bda45c5126b69296a0b526fda521feb210a1f6908c5d8ac187a7a0c3a',
+  // 2026-09-02: AiModelsSection 按渲染边界收口供应商/模型展示名（translateModelDisplayText）。
+  'AiModelsSection.tsx': '991aed2910a81b3cedd005c230f5585efa7cbdc5cd4cb1e309c818b183d42504',
+  // 2026-09-03：toggleHost 参数类型从 SettingsHostKey（四值联合）泛化为 string（支持自定义 profile key）；
+  // 新增 CustomMcpClientCard UI TODO 注释（底层能力已就绪，UI 面另排样张拍板）。
+  'AutomationPermissionsSection.tsx': '07b3790752d0a64fffdf814e4febcfc5eadebf469332d797c1754a5bce1851ff',
+  'CanvasGestureSection.tsx': '9968732470ea89e6b0f123cf7442cb969385361dbaafea29189e5ceb62cd18bd',
   'AboutSection.tsx': 'b38e0e2265f29ca56da53595e4bb5886bd14799ea3a7f7f36797b33d46eda57f',
 } as const
 
@@ -63,6 +85,24 @@ describe('settings dialog structure', () => {
     expect(taskCenterSource).not.toContain('PrefToggle')
     expect(taskCenterSource).not.toContain('writeTaskCenterPrefs')
     expect(settingsSource).toContain('automationPolicy')
+  })
+
+  it('keeps cross-device folder setup inside File & saving', () => {
+    expect(settingsSource).toContain('<ProjectLocationSection />')
+    expect(projectLocationSource).toContain('data-settings-project-sync')
+    expect(projectLocationSource).toContain("settings.file.projectLocationConfigured")
+    expect(projectLocationSource).toContain("settings.file.projectLocationCheck")
+    expect(projectLocationSource).toContain("settings.file.projectLocationSyncTitle")
+    expect(projectLocationSource).toContain("settings.file.projectLocationSyncSteps")
+    expect(projectLocationSource).toContain('aria-expanded={showSyncSteps}')
+    expect(projectLocationSource).toContain('data-project-location-check-feedback')
+    expect(projectLocationSource).toContain('data-feedback-tone')
+    expect(projectLocationSource).toContain('NonNullable<Parameters<typeof toast>[1]>')
+    expect(projectLocationSource).toContain('role="status"')
+    expect(projectLocationSource).toContain('aria-live="polite"')
+    expect(projectLocationSource).toContain('https://www.verysync.com/')
+    expect(projectLocationSource).toContain('https://www.jianguoyun.com/s/downloads')
+    expect(settingsSource).not.toContain('settings.file.autoSave')
   })
 
   it('keeps model management in one settings host', () => {
@@ -142,6 +182,44 @@ describe('settings dialog structure', () => {
     expect(aiModelsSource).not.toContain('settings.ai.upload.kieTitle')
   })
 
+  // 2026-09-02：这一屏两份清单（允许的供应商 / 允许的模型）显示的是 catalog 里的原始展示名，
+  // 那些中文是**刻意稳定的档案键**（老项目和 catalog 行持久化了它们），所以必须在渲染点过
+  // translateModelDisplayText 才能变成英文。锁住这三处，是因为「忘了过边界」不会让任何测试变红——
+  // 词典再全也没用，界面照样是中文（2026-09-02 走查在这屏抓到 34 处）。
+  it('translates vendor and model display names through the model-display boundary', () => {
+    expect(aiModelsSource).toContain("import { translateModelDisplayText } from '../../i18n/modelDisplayText'")
+    // 供应商勾选行的标题。
+    expect(aiModelsSource).toContain('{translateModelDisplayText(provider.name)}')
+    // 模型勾选行的「模型名 · 供应商名」，两段都要过边界。
+    expect(aiModelsSource).toContain('translateModelDisplayText(model.labelZh || model.modelKey)')
+    expect(aiModelsSource).toContain('const providerName = translateModelDisplayText(')
+    // 不许再出现直连原始字段的裸渲染。
+    expect(aiModelsSource).not.toContain('<span className="truncate">{provider.name}</span>')
+  })
+
+  // 2026-09-06：「同一个模型好几家都能跑时默认走哪家」是**策略**（设计系统 §1.7.2 的分界线：
+  // 接入决定「有没有」→「模型」tab，策略决定「怎么用」→ 本 tab），和紧邻的「新建卡片默认模型」
+  // 同族。锁住它住在这里，是因为「搬回模型 tab」不会让任何测试变红，却会重新造出第二个
+  // 「默认用什么」的家（§1.5.2 一功能一个家）。
+  it('hosts the vendor preference order next to the default-model policy', () => {
+    expect(aiModelsSource).toContain("import { VendorPreferenceOrderSection } from './VendorPreferenceOrderSection'")
+    expect(aiModelsSource).toContain('<VendorPreferenceOrderSection entries={configuredVendorEntries} />')
+    // 只列真的调得动的家：排一个 needs-key / disabled 的家，排了也走不了。
+    expect(aiModelsSource).toContain("provider.state !== 'needs-key' && provider.state !== 'disabled'")
+    const modelHome = readCode(path.join(process.cwd(), 'src/ui/onboarding/ModelSettingsHome.tsx'))
+    expect(modelHome, '优先供应商不该在「模型」tab 再有一个家').not.toContain('VendorPreference')
+  })
+
+  // 2026-09-08：哈希只证明「变了/没变」，证不了「变成对的」。这条锁住动效 token 的拆包形态：
+  // 旧的打包写法（把 140ms 与缓动塞进 `--nomi-transition-fast` 一个值再喂给 duration）
+  // 计算值是 0s（非法声明被丢弃），
+  // 退回它不会让任何快照变红，但按钮会重新变成硬切。
+  it('uses the split motion tokens on the gesture options', () => {
+    const gestureSource = fs.readFileSync(path.join(settingsDirectory, 'CanvasGestureSection.tsx'), 'utf8')
+    expect(gestureSource).toContain('duration-nomi-fast ease-nomi-fast')
+    expect(gestureSource, '打包成一个值的旧 token 会让 transition-duration 非法、计算值 0s').not.toContain('--nomi-transition-fast')
+  })
+
   it('keeps all five non-model sections byte-for-byte at the origin/main baseline', () => {
     for (const [fileName, expectedHash] of Object.entries(MAIN_NON_MODEL_SECTION_SHA256)) {
       const source = fs.readFileSync(path.join(settingsDirectory, fileName), 'utf8').replaceAll('\r\n', '\n')
@@ -172,6 +250,17 @@ describe('settings dialog structure', () => {
     expect(settingsSource).toContain('data-settings-close')
     expect(settingsSource).toContain('[&_[data-model-settings-page]>header]:pr-14')
     expect(settingsSource).toContain('[&>div:not([data-model-settings-page])>:first-child]:pr-14')
+  })
+
+  it('only delegates Escape to the model drawer when a page above home is open', () => {
+    // The drill-down guard has to mean "there is a level to pop", not "the models tab is
+    // rendered". Model settings home carries the same data-model-settings-page marker, so a bare
+    // [data-model-settings-page] predicate makes the branch always true on that tab and Escape can
+    // never close an aria-modal dialog. Keep the home exclusion attached to the guard.
+    const guard = settingsSource.match(/if \(tab === 'models' && dialog\.querySelector\((.+?)\)\)/)
+    expect(guard?.[1]).toContain(':not([data-model-settings-page="home"])')
+    const homeSurface = fs.readFileSync(path.join(process.cwd(), 'src/ui/onboarding/ModelSettingsHome.tsx'), 'utf8')
+    expect(homeSurface).toContain('data-model-settings-page="home"')
   })
 
   it('keeps the lazy model workspace mounted after its first visit', () => {

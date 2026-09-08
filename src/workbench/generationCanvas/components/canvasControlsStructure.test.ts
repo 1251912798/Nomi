@@ -42,6 +42,26 @@ describe('generation canvas control structure', () => {
     }
   })
 
+  it('synchronizes business projections into the uncontrolled React Flow kernel', () => {
+    const renderer = source('../reactFlow/GenerationCanvasReactFlowViewport.tsx')
+    const sync = source('../reactFlow/canvasNodeProjectionSync.ts')
+
+    expect(renderer).toContain('defaultNodes={flowNodes}')
+    expect(renderer).toContain('<CanvasNodeProjectionSync')
+    expect(sync).toContain('flow.setNodes((current) =>')
+    expect(sync).toContain('isDragging')
+  })
+
+  it('keeps node drag ticks in React Flow draft geometry until drag stop', () => {
+    const generationCanvas = source('../reactFlow/GenerationCanvasReactFlow.tsx')
+    const dragDraft = source('../reactFlow/canvasDragDraft.ts')
+    const dragHandler = generationCanvas.match(/const handleNodesChange:[\s\S]*?\n\x20\x20}, \[[^\n]+\]\)/)?.[0] || ''
+
+    expect(dragDraft).toContain('applyNodeChanges')
+    expect(dragHandler).toContain('dragDraft')
+    expect(dragHandler).not.toContain('moveNode(')
+  })
+
   it('lets React Flow exclusively own mounted node placement and interaction controls', () => {
     const baseNode = source('../nodes/BaseGenerationNode.tsx')
     const dragResize = source('../nodes/useNodeDragResize.ts')
@@ -142,6 +162,9 @@ describe('generation canvas control structure', () => {
 
   it('defers the blank-canvas menu without swallowing native menus inside controls', () => {
     const generationCanvas = source('../reactFlow/GenerationCanvasReactFlow.tsx')
+    // 菜单层（右键菜单 + 连线创建菜单的开合与 stage 指针链）住在 useGenerationCanvasReactFlowMenus，
+    // 画布壳只保留把它接到 stage/React Flow 上的那几个 prop。
+    const canvasMenus = source('../reactFlow/useGenerationCanvasReactFlowMenus.ts')
     const contextMenu = source('./useCanvasContextNodeMenu.ts')
 
     expect(contextMenu).toContain('isCanvasContextMenuPointer(event.button, event.ctrlKey, navigator.platform)')
@@ -160,12 +183,33 @@ describe('generation canvas control structure', () => {
     expect(contextMenu).toContain('active.suppressContextMenu = true')
     expect(contextMenu).toContain('!active?.suppressContextMenu')
     expect(contextMenu).toContain('event.preventDefault()')
-    expect(generationCanvas).toContain('useCanvasContextNodeMenu({')
-    expect(generationCanvas).toContain('if (prepareContextMenuPointerDown(event))')
-    expect(generationCanvas).toContain('finishContextMenuPointerUp(event, suppressContextMenu)')
+    expect(canvasMenus).toContain('useCanvasContextNodeMenu({')
+    expect(canvasMenus).toContain('if (prepareContextMenuPointerDown(event))')
+    expect(canvasMenus).toContain('finishContextMenuPointerUp(event, suppressContextMenu)')
+    expect(canvasMenus).toContain("if (event.key === 'Escape') closeMenus()")
+    expect(generationCanvas).toContain('useGenerationCanvasReactFlowMenus({')
     expect(generationCanvas).toContain('onContextMenu={handleStageContextMenu}')
     expect(generationCanvas).toContain('onPaneContextMenu={handleFlowContextMenu}')
-    expect(generationCanvas).toContain("if (event.key === 'Escape') closeMenus()")
+  })
+
+  it('routes the right-click landing through one three-way arbiter so a marquee selection survives it', () => {
+    // 2026-09-06 真机 bug：框选后 React Flow 铺的 nodesselection-rect 盖住节点，右键取不到
+    // data-node-id → 被「不是节点 = 空白」吞掉 → 清选择 + 弹添加菜单，「建组」当场不可达。
+    // 判据必须只有一份（模型层），且清选择只准发生在真空白这一支。
+    const contextMenu = source('./useCanvasContextNodeMenu.ts')
+    const overlays = source('../reactFlow/GenerationCanvasReactFlowOverlays.tsx')
+
+    expect(contextMenu).toContain('resolveCanvasContextMenuTarget({')
+    expect(contextMenu).toContain('selectionOverlay: isCanvasSelectionOverlayTarget(target)')
+    expect(contextMenu).toContain('target: menuTarget')
+    expect(contextMenu).toContain("else if (pending.menu.target === 'blank') clearSelection()")
+    // 落点判定不许在 hook 里再长第二份清单（模型层是唯一 owner）。
+    // 先剥注释再扫：不变量管的是代码行为，不该被记录这个 bug 的注释反噬。
+    const contextMenuCode = contextMenu.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
+    expect(contextMenuCode).not.toContain('nodesselection')
+    // 菜单选型跟着落点走，不再拿 nodeId 当「是不是节点菜单」的替身。
+    expect(overlays).toContain("contextNodeMenu && contextNodeMenu.target !== 'blank'")
+    expect(overlays).not.toContain('contextNodeMenu?.nodeId ?')
   })
 
   it('cancels marquee when an explicit pan chord takes ownership after primary down', () => {
@@ -212,6 +256,7 @@ describe('generation canvas control structure', () => {
     const viewport = source('../reactFlow/GenerationCanvasReactFlowViewport.tsx')
     const flowStyles = source('../reactFlow/generationCanvasReactFlow.css')
     const groupFrame = source('./GroupFrame.tsx')
+    const groupFrameHeader = source('./GroupFrameHeader.tsx')
     const groupContract = source('./groupVisualContract.ts')
     const collapsedGroup = source('./CollapsedGroupCard.tsx')
     const stackPeeks = source('./CardStackPeeks.tsx')
@@ -227,12 +272,20 @@ describe('generation canvas control structure', () => {
     expect(marqueeRule).toContain('var(--nomi-ink)')
     expect(marqueeRule).not.toContain('var(--nomi-accent)')
     expect(flowStyles).toContain('.react-flow__nodesselection-rect')
-    expect(flowStyles).toContain('color-mix(in oklch, var(--nomi-ink) 32%, transparent)')
+    expect(flowStyles).toContain('color-mix(in oklab, var(--nomi-ink) 32%, transparent)')
     expect(flowStyles).toContain('--xy-connectionline-stroke: var(--nomi-accent)')
     expect(groupFrame).toContain('GROUP_VISUAL_CLASS.frame')
-    expect(groupFrame).toContain('GROUP_VISUAL_CLASS.label')
+    // 头部胶囊 2026-09-06 抽进 GroupFrameHeader（框工具第一档：它自己带两个字段的编辑态）。
+    // 视觉合同跟着搬，不许在新文件里另配一套皮肤。
+    expect(groupFrameHeader).toContain('GROUP_VISUAL_CLASS.label')
+    expect(groupFrameHeader).toContain('GROUP_VISUAL_CLASS.marker')
     expect(groupFrame).not.toContain('groupColor')
     expect(groupFrame).not.toContain('box.group.color')
+    expect(groupFrameHeader).not.toContain('group.color')
+    // 框的常驻装饰仍然中性：accent 只允许出现在**拖动中的临时反馈**那一条分支上
+    // （groupVisualContract 的注释就是这么写的）。多一处就是把强调色变成了组的身份色。
+    expect(groupFrame.match(/workbench-accent/g) ?? []).toHaveLength(2)
+    expect(groupFrame).toMatch(/preview\.change === 'join'[\s\S]{0,120}workbench-accent/)
     expect(collapsedGroup).toContain('GROUP_VISUAL_CLASS.collapsedCard')
     expect(collapsedGroup).not.toContain('card.color')
     expect(stackPeeks).toContain('GROUP_VISUAL_CLASS.stackRear')
@@ -297,7 +350,9 @@ describe('generation canvas control structure', () => {
     const navigationStack = source('./CanvasNavigationStack.tsx')
     const tooltipButtons = navigationStack.match(/<CanvasNavigationTooltipButton/g) ?? []
 
-    expect(tooltipButtons).toHaveLength(4)
+    // 5 = 适配 / 重置 / 画框 / 整理 / 小地图开关（2026-09-06 加入「画框」——它和缩放适配同族：
+    // 都在回答「你怎么看、怎么摆这块画布」，而不是「往画布上加什么」）。
+    expect(tooltipButtons).toHaveLength(5)
     expect(navigationStack).not.toContain('title=')
   })
 
@@ -317,5 +372,14 @@ describe('generation canvas control structure', () => {
     expect(helpPopover).toContain("'absolute bottom-[calc(100%+8px)] left-1/2 -translate-x-1/2 z-[12] w-[30rem] p-3'")
     expect(helpPopover).toContain('text-caption whitespace-nowrap text-nomi-ink-60')
     expect(helpPopover).toContain('text-caption font-medium leading-none whitespace-nowrap text-nomi-ink')
+  })
+
+  it('keeps the C-02 deconstruction node anchors canonical', () => {
+    const badge = source('../nodes/NodeDeconstructionBadge.tsx')
+
+    expect(badge).toContain('data-decon-node-stub={nodeId}')
+    expect(badge).toContain('data-decon-node-badge={nodeId}')
+    expect(badge).not.toContain('data-deconstruct-stub')
+    expect(badge).not.toContain('data-deconstruct-result-badge')
   })
 })

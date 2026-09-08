@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
+import { providerDispatcher, type ProviderNetworkConfig } from "../providerNetwork";
 import { hardenedFetch } from "../hardenedFetch";
 import { isJsonRecord, nowIso, type JsonRecord } from "../jsonUtils";
 import { projectDirById, sanitizeName } from "../projects/repository";
@@ -29,6 +30,8 @@ import type {
   ProjectAgentAttachmentClaim,
   ProjectAgentAttachmentRef,
 } from "../shared/projectAgentContracts";
+import type { UsageStatus, IntendedRole } from "../connectors/connectorDefinition";
+import { ASSET_PROVENANCE_ALLOWED_USAGES, ASSET_PROVENANCE_ALLOWED_ROLES } from "../connectors/connectorDefinition";
 
 type LocalAssetRecord = {
   id: string;
@@ -490,28 +493,112 @@ type RemoteAssetImportOptions = {
   /** 仅供 main 进程内部已配置的本地生成服务使用；renderer IPC 无法注入第二参数。 */
   trustedPrivateOrigin?: string;
   certificationEvidence?: CertificationMediaEvidence;
+  /**
+   * 产出这条 URL 的那家 vendor 的自有线路配置（`Vendor.network`）。
+   *
+   * 不带它就是 2026-09-06 验收那个不对称的另一半：给某家供应商单独配了代理时，提交走那条代理、
+   * 取回却走应用默认线路——同一次生成的两半在两条路上。谁产的 URL 就用谁的路。
+   * 传配置而不是传 dispatcher，是为了让连接池的生命周期收在本模块内（建了必关，只属于这一次下载），
+   * 不散给每一个调用方各记一遍。
+   */
+  providerNetwork?: ProviderNetworkConfig;
 };
 
+// 运行时白名单：从 connectorDefinition.ts 导入，单一真相源，不在此处重复成员列表。
+const VALID_USAGE_STATUSES = ASSET_PROVENANCE_ALLOWED_USAGES;
+const VALID_INTENDED_ROLES = ASSET_PROVENANCE_ALLOWED_ROLES;
+
 /**
- * Sanitize a caller-supplied source-evidence record into the connector provenance
- * shape (docs/plan/2026-09-01-tikhub-connector-v1.md). Only whitelisted fields
- * survive so an untrusted payload cannot smuggle arbitrary metadata into the
- * sidecar. rightsStatus is pinned to 'unknown': connector-ingested media is never
- * inferred to be commercially usable.
+ * Sanitize a caller-supplied source-evidence record into the provenance shape
+ * (docs/plan/2026-09-03-creative-resource-chain-epic.md P0-1).
+ *
+ * 三类来源：
+ *   · connector  : 经 ConnectorDefinition 摄取；必须有 connectorId；
+ *                  旧 sidecar 的 rightsStatus:"unknown" 自动迁移成 usageStatus:"rights_unknown"。
+ *   · browser    : 用户从浏览器手工导入；usageStatus 强制为 reference_only（诚实默认）。
+ *   · user       : 用户从本地文件导入；usageStatus 强制为 reference_only。
+ *
+ * 只有白名单字段能穿越到 sidecar，防止 untrusted payload 污染。
+ * 新写入路径必须带 usageStatus，缺失时按 source 类型降到最保守的默认值（fail-closed）。
  */
 export function sanitizeSourceEvidence(raw: unknown): JsonRecord | undefined {
-  if (!isJsonRecord(raw) || raw.source !== "connector") return undefined;
-  const connectorId = String(raw.connectorId || "").trim();
-  if (!connectorId) return undefined;
-  return {
-    source: "connector",
-    connectorId,
-    originalUrl: String(raw.originalUrl || "").trim(),
-    resolvedUrl: String(raw.resolvedUrl || "").trim(),
-    platform: String(raw.platform || "").trim(),
-    rightsStatus: "unknown",
-    fetchedAt: String(raw.fetchedAt || "").trim() || nowIso(),
-  };
+  if (!isJsonRecord(raw)) return undefined;
+  const source = String(raw.source || "").trim();
+
+  // ── connector 来源 ───────────────────────────────────────────────────────
+  if (source === "connector") {
+    const connectorId = String(raw.connectorId || "").trim();
+    if (!connectorId) return undefined;
+
+    // 旧 sidecar 迁移：rightsStatus:"unknown" → usageStatus:"rights_unknown"
+    let usageStatus: string = "rights_unknown";
+    if (raw.usageStatus && VALID_USAGE_STATUSES.has(raw.usageStatus as UsageStatus)) {
+      usageStatus = String(raw.usageStatus);
+    } else if (raw.rightsStatus === "unknown") {
+      usageStatus = "rights_unknown";
+    }
+
+    const result: JsonRecord = {
+      source: "connector",
+      connectorId,
+      originalUrl: String(raw.originalUrl || "").trim(),
+      resolvedUrl: String(raw.resolvedUrl || "").trim(),
+      platform: String(raw.platform || "").trim(),
+      usageStatus,
+      fetchedAt: String(raw.fetchedAt || "").trim() || nowIso(),
+    };
+    // 可选扩展字段（白名单）
+    if (raw.creator) result.creator = String(raw.creator).trim();
+    if (raw.licenseId) result.licenseId = String(raw.licenseId).trim();
+    if (raw.licenseUrl) result.licenseUrl = String(raw.licenseUrl).trim();
+    if (raw.attribution) result.attribution = String(raw.attribution).trim();
+    if (isJsonRecord(raw.licenseSnapshot)) {
+      const snap: JsonRecord = { termsUrl: String(raw.licenseSnapshot.termsUrl || "").trim(), checkedAt: String(raw.licenseSnapshot.checkedAt || "").trim() };
+      if (raw.licenseSnapshot.termsHash) snap.termsHash = String(raw.licenseSnapshot.termsHash).trim();
+      result.licenseSnapshot = snap;
+    }
+    if (Array.isArray(raw.intendedRoles)) {
+      result.intendedRoles = raw.intendedRoles.filter((r) => VALID_INTENDED_ROLES.has(r as IntendedRole));
+    }
+    return result;
+  }
+
+  // ── browser 来源 ─────────────────────────────────────────────────────────
+  if (source === "browser") {
+    const pageUrl = String(raw.pageUrl || "").trim();
+    const capturedAt = String(raw.capturedAt || "").trim() || nowIso();
+    // 浏览器导入：usageStatus 强制为 reference_only（诚实默认，没核实过许可不能当作可商用）
+    const result: JsonRecord = {
+      source: "browser",
+      pageUrl,
+      capturedAt,
+      usageStatus: "reference_only",
+    };
+    if (raw.creator) result.creator = String(raw.creator).trim();
+    if (raw.licenseId) result.licenseId = String(raw.licenseId).trim();
+    if (raw.licenseUrl) result.licenseUrl = String(raw.licenseUrl).trim();
+    if (Array.isArray(raw.intendedRoles)) {
+      result.intendedRoles = raw.intendedRoles.filter((r) => VALID_INTENDED_ROLES.has(r as IntendedRole));
+    }
+    return result;
+  }
+
+  // ── user（本地文件）来源 ─────────────────────────────────────────────────
+  if (source === "user") {
+    // 本地文件导入：usageStatus 强制为 reference_only（来源不明，不推断可商用）
+    const result: JsonRecord = {
+      source: "user",
+      capturedAt: String(raw.capturedAt || "").trim() || nowIso(),
+      usageStatus: "reference_only",
+    };
+    if (raw.creator) result.creator = String(raw.creator).trim();
+    if (Array.isArray(raw.intendedRoles)) {
+      result.intendedRoles = raw.intendedRoles.filter((r) => VALID_INTENDED_ROLES.has(r as IntendedRole));
+    }
+    return result;
+  }
+
+  return undefined;
 }
 
 export async function importRemoteAsset(payload: unknown, options: RemoteAssetImportOptions = {}): Promise<unknown> {
@@ -544,12 +631,20 @@ export async function importRemoteAsset(payload: unknown, options: RemoteAssetIm
     );
   }
   if (!/^https?:\/\//i.test(url)) throw new Error("Only http(s), data, and nomi-local assets are supported");
-  const fetched = await hardenedFetch(url, {
-    timeoutMs: 60_000,
-    maxBytes: 200 * 1024 * 1024,
-    allowContentTypes: ["image/", "video/", "audio/", "application/octet-stream"],
-    ...(options.trustedPrivateOrigin ? { allowedPrivateOrigins: [options.trustedPrivateOrigin] } : {}),
-  });
+  const providerRoute = options.providerNetwork ? providerDispatcher({ network: options.providerNetwork }) : undefined;
+  let fetched;
+  try {
+    fetched = await hardenedFetch(url, {
+      timeoutMs: 60_000,
+      maxBytes: 200 * 1024 * 1024,
+      allowContentTypes: ["image/", "video/", "audio/", "application/octet-stream"],
+      ...(options.trustedPrivateOrigin ? { allowedPrivateOrigins: [options.trustedPrivateOrigin] } : {}),
+      ...(providerRoute ? { dispatcher: providerRoute } : {}),
+    });
+  } finally {
+    // per-download 连接池只属于这一次取回（与 vendorHttp 的同一条纪律）。
+    if (providerRoute) void providerRoute.close().catch(() => undefined);
+  }
   const bytes = fetched.bytes;
   const hintedContentType = fetched.contentType || "application/octet-stream";
   const rawFileName = String(raw.fileName || path.basename(new URL(url).pathname) || "").trim();

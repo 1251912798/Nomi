@@ -36,6 +36,37 @@ test('documentation and isolated renderer changes pay only focused-unit cost', (
   assert.deepEqual(surfaces(classifyValidationPolicy(['src/workbench/timeline/TimelinePanel.tsx'])), focusedOnly)
 })
 
+test('docs-only deletions, including the historical README QR replacement, stay focused', () => {
+  // Documentation portion of fb79d8ac94dddb350fef69ed5627868d2140e726.
+  const qrFiles = [
+    { status: 'M', path: 'README.md' },
+    { status: 'M', path: 'README.zh-CN.md' },
+    { status: 'D', path: 'docs/media/nomi-canvas-group-wechat-2026-09-01.jpg' },
+    { status: 'A', path: 'docs/media/nomi-canvas-group-wechat-2026-09-08.jpg' },
+  ]
+  for (const files of [qrFiles, [{ status: 'D', path: 'docs/中文.md' }],
+    [{ status: 'D', path: 'marketing/old.png' }], [{ status: 'D', path: 'README.old.md' }]]) {
+    const result = classifyValidationPolicy(files)
+    assert.deepEqual(surfaces(result), focusedOnly)
+    assert.equal(result.reason, 'docs_only')
+  }
+  // The historical commit also edited a test: its complete diff must stay full.
+  assert.equal(classifyValidationPolicy([...qrFiles,
+    { status: 'M', path: 'tests/ux/marketing-home.static.mjs' }]).unit, 'full')
+})
+
+test('production deletions and mixed unsafe paths cannot use the docs-only exemption', () => {
+  for (const file of ['src/foo.png', 'electron/icon.svg', 'tests/fixtures/qr.png',
+    '.github/workflows/check.yml', 'scripts/validation-policy.mjs', 'public/icon.png']) {
+    const result = classifyValidationPolicy([
+      { status: 'D', path: 'docs/old.md' }, { status: 'D', path: file },
+    ])
+    assert.equal(result.unit, 'full', file)
+    assert.equal(result.failClosed, true, file)
+  }
+  assert.equal(classifyValidationPolicy([{ status: 'R100', path: 'docs/new.md' }]).failClosed, true)
+})
+
 test('Electron changes require full unit and desktop without unrelated canvas, performance, or package work', () => {
   assert.deepEqual(surfaces(classifyValidationPolicy(['electron/tasks/taskAdmission.ts'])), {
     ...focusedOnly,
@@ -50,6 +81,28 @@ test('model execution paths select full unit and real journeys without packaging
     unit: 'full',
     journeys: true,
   })
+})
+
+test('the resident Agent shell selects the real-user journey lane', () => {
+  assert.deepEqual(surfaces(classifyValidationPolicy(['src/workbench/ai/ProjectAgentResidentShell.tsx'])), {
+    ...focusedOnly,
+    unit: 'full',
+    journeys: true,
+  })
+})
+
+test('the registered product journeys cannot fall back to focused-only validation', () => {
+  for (const file of [
+    'tests/ux/resident-composer-receipt-fix.e2e.mjs',
+    'tests/ux/storyboard-agent-canonical-patch.e2e.mjs',
+    'tests/ux/production-mcp-journey.e2e.mjs',
+  ]) {
+    assert.deepEqual(surfaces(classifyValidationPolicy([file])), {
+      ...focusedOnly,
+      unit: 'full',
+      journeys: true,
+    })
+  }
 })
 
 test('renderer-to-Electron bridges retain full unit, desktop, and journey coverage', () => {
@@ -84,6 +137,32 @@ test('ordinary canvas behavior and React Flow performance paths select different
 
 test('packaging and native runtime identity paths select package without forcing canvas performance', () => {
   assert.deepEqual(surfaces(classifyValidationPolicy(['electron/preload.ts'])), {
+    ...focusedOnly,
+    unit: 'full',
+    desktop: true,
+    package: true,
+  })
+})
+
+test('packaged MCP surface truth sources select the package lane on the PR path', () => {
+  // 2026-09-02 escape: surface-16-collapse rewrote the capability-core catalog, the PR round
+  // never selected the package lane, and the packaged smoke only burned on the next main push.
+  // The catalog/collapse/stdio-server/launcher dir, the harness tool-surface manifest, and the
+  // smoke instrument itself must each pull mac-package forward onto the PR path.
+  assert.deepEqual(surfaces(classifyValidationPolicy(['electron/capabilityCore/mcpToolCatalog.ts'])), {
+    ...focusedOnly,
+    unit: 'full',
+    desktop: true,
+    journeys: true,
+    package: true,
+  })
+  assert.deepEqual(surfaces(classifyValidationPolicy(['electron/harness/tools/modelToolSurfaceManifest.ts'])), {
+    ...focusedOnly,
+    unit: 'full',
+    desktop: true,
+    package: true,
+  })
+  assert.deepEqual(surfaces(classifyValidationPolicy(['tests/ux/packaged-mcp-smoke.e2e.mjs'])), {
     ...focusedOnly,
     unit: 'full',
     desktop: true,
@@ -133,6 +212,7 @@ test('validation infrastructure changes exercise functional coverage without unr
     ['.github/workflows/quality-gate.yml'],
     [{ status: 'R100', path: 'eslint.config.mjs' }],
     ['scripts/select-quality-gate-profile.mjs'],
+    ['scripts/real-user-test-gates.mjs'],
   ]) {
     assert.deepEqual(surfaces(classifyValidationPolicy(files)), {
       unit: 'full',

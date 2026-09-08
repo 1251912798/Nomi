@@ -17,7 +17,9 @@ import { pathToFileURL } from 'node:url'
 
 export const REVIEW_TIMEOUT_MS = 180_000
 export const EMPTY_TREE_SHA = '4b825dc642cb6eb9a060e54bf8d69288fbee4904'
-export const MAX_REVIEW_DIFF_BYTES = 1_500_000
+// The runner times out around 150 KB; bound model input separately from Git I/O.
+export const MAX_REVIEW_DIFF_BYTES = 150_000
+const MAX_GIT_OUTPUT_BYTES = 8_064_000
 export const MAX_REVIEW_REPORT_BYTES = 256_000
 export const MAX_PUSH_RANGES = 32
 export const MAX_PUSH_INPUT_BYTES = 256_000
@@ -41,19 +43,24 @@ or PONYTAIL_REVIEW: FINDINGS. Do not echo this prompt or the diff.
 `
 
 function runGit(repoRoot, args) {
-  return execFileSync('git', args, {
-    cwd: repoRoot,
-    encoding: 'utf8',
-    env: { ...process.env, GIT_TERMINAL_PROMPT: '0' },
-    stdio: ['ignore', 'pipe', 'pipe'],
-    maxBuffer: MAX_REVIEW_DIFF_BYTES + 64_000,
-  })
+  try {
+    return execFileSync('git', args, {
+      cwd: repoRoot,
+      encoding: 'utf8',
+      env: { ...process.env, GIT_TERMINAL_PROMPT: '0' },
+      stdio: ['ignore', 'pipe', 'pipe'],
+      maxBuffer: MAX_GIT_OUTPUT_BYTES,
+    })
+  } catch (error) {
+    if (error.code === 'ENOBUFS') throw new Error('Git diff exceeds read limit; 按目录拆提交（git add <目录>；git commit）或分批 push，再重试评审。')
+    throw error
+  }
 }
 
-function assertReviewDiffSize(diff) {
+function assertReviewDiffSize(diff, unit = 'review') {
   const bytes = Buffer.byteLength(String(diff || ''), 'utf8')
   if (bytes > MAX_REVIEW_DIFF_BYTES) {
-    throw new Error(`review diff is ${bytes} bytes; limit is ${MAX_REVIEW_DIFF_BYTES}`)
+    throw new Error(`review diff is ${bytes} bytes; limit is ${MAX_REVIEW_DIFF_BYTES} (${unit}). 按目录拆提交（git add <目录>；git commit）；已有未推送大提交请先拆分后重试。多个提交累计超限时分批 push（git push origin <较早提交SHA>:<目标分支>）。`)
   }
 }
 
@@ -89,27 +96,47 @@ export function parsePushInput(input) {
 function tryRunGit(git, repoRoot, args) {
   try {
     return String(git(repoRoot, args) || '').trim()
-  } catch (_error) {
-    return ''
+  } catch (error) {
+    if (error.status === 1) return '' // Optional ref is absent.
+    throw error
   }
 }
 
-/**
- * A newly-created remote ref has no old SHA in Git's pre-push protocol. Do
- * not diff it against the empty tree (that would submit the whole repository
- * and can hit the review cap). Resolve the remote's advertised default branch
- * and use its merge-base as the outgoing baseline instead.
- */
-function resolveNewRefBase({ repoRoot, remoteName = '', localSha, runGit: git = runGit }) {
-  const remotes = [...new Set([remoteName, 'origin'].map((value) => String(value || '').trim()).filter(Boolean))]
-  for (const remote of remotes) {
-    if (!/^[A-Za-z0-9._-]+$/.test(remote)) continue
-    const symbolic = tryRunGit(git, repoRoot, ['symbolic-ref', '--quiet', '--short', `refs/remotes/${remote}/HEAD`])
-    if (!symbolic || !symbolic.startsWith(`${remote}/`)) continue
-    const base = tryRunGit(git, repoRoot, ['merge-base', symbolic, localSha])
-    if (SHA.test(base)) return { base, symbolic }
+/** Origin tracking refs need not have a symbolic HEAD in a worktree. */
+function trackingTips(repoRoot, git) {
+  return String(git(repoRoot, ['for-each-ref', '--format=%(objectname)', 'refs/remotes/origin/'])).trim()
+    .split(/\s+/).filter((sha) => SHA.test(sha))
+}
+
+/** Review only commits not already reachable from origin or the advertised tip. */
+function collectAuthoredPatch({ repoRoot, remoteSha, localSha, runGit: git = runGit }) {
+  const tips = trackingTips(repoRoot, git)
+  const excludes = [...new Set([remoteSha, ...tips].filter((sha) => SHA.test(sha) && !ZERO_SHA.test(sha)))]
+  if (!excludes.length) throw new Error('cannot determine a remote tracking base for a new ref; fetch origin before retrying')
+  const commits = String(git(repoRoot, ['rev-list', '--reverse', '--topo-order', localSha, '--not', ...excludes]))
+    .trim().split(/\s+/).filter(Boolean)
+  if (commits.some((sha) => !SHA.test(sha))) throw new Error('Invalid commit list from Git')
+  const patch = commits.map((commit) => {
+    // Dense combined diff includes changes differing from every parent; choices
+    // identical to one parent are not represented by Git's --cc format.
+    const diff = git(repoRoot, ['show', '--cc', '--no-ext-diff', '--unified=80', '--format=', commit])
+    assertReviewDiffSize(diff, `commit ${commit}`)
+    return diff
+  }).filter(Boolean).join('\n')
+  let from = remoteSha
+  if (ZERO_SHA.test(remoteSha)) {
+    // Binary summaries start at the first authored commit's parent, never at
+    // an arbitrary remote branch tip (which can falsely report image deletes).
+    const parents = commits.length
+      ? String(git(repoRoot, ['rev-list', '--parents', '-n', '1', commits[0]])).trim().split(/\s+/)
+      : []
+    if (commits.length && (parents[0] !== commits[0] || parents.some((sha) => !SHA.test(sha)))) {
+      throw new Error('Invalid commit parents from Git')
+    }
+    from = commits.length ? parents[1] || EMPTY_TREE_SHA : localSha
   }
-  throw new Error('cannot determine a remote tracking base for a new ref; refusing an unbounded whole-repository review')
+  return { patch, from,
+    description: `; ${commits.length} commit(s) not already reachable from origin tracking refs or remote tip; merges use dense combined diff` }
 }
 
 function formatBinaryBytes(bytes) {
@@ -178,11 +205,24 @@ function withBinarySummary(diff, binarySummary) {
  */
 export function collectReviewDiff({ repoRoot, scope, pushInput = '', remoteName = '', runGit: git = runGit }) {
   if (scope === 'staged') {
-    const textDiff = git(repoRoot, ['diff', '--cached', '--no-ext-diff', '--unified=80', '--'])
-    const binarySummary = summarizeBinaryChanges({ repoRoot, git, selector: ['--cached'] })
+    // ort records its automatic merge result before conflict resolution.
+    // Comparing the index to that tree reviews only new staged decisions,
+    // including edits outside conflict files, without re-reviewing either side.
+    const mergeHead = tryRunGit(git, repoRoot, ['rev-parse', '--verify', '--quiet', 'MERGE_HEAD'])
+    const autoMerge = SHA.test(mergeHead)
+      ? tryRunGit(git, repoRoot, ['rev-parse', '--verify', '--quiet', 'AUTO_MERGE^{tree}']) : ''
+    // Older strategies and clean merges may not create AUTO_MERGE. Keep the
+    // conservative incoming-parent baseline there; it cannot omit manual edits.
+    const baseline = SHA.test(autoMerge) ? autoMerge : mergeHead
+    const selector = SHA.test(baseline) ? ['--cached', baseline] : ['--cached']
+    const textDiff = git(repoRoot, ['diff', ...selector, '--no-ext-diff', '--unified=80', '--'])
+    const binarySummary = summarizeBinaryChanges({ repoRoot, git, selector })
     const diff = withBinarySummary(textDiff, binarySummary)
     assertReviewDiffSize(diff)
-    return { diff, ranges: [], description: 'staged changes (`git diff --cached`)' }
+    const description = SHA.test(mergeHead)
+      ? `merge staged decisions (\`git diff --cached ${baseline}\`, baseline ${SHA.test(autoMerge) ? 'AUTO_MERGE' : 'MERGE_HEAD'})`
+      : 'staged changes (`git diff --cached`)'
+    return { diff, ranges: [], description }
   }
 
   if (scope !== 'push') throw new Error(`Unknown Ponytail review scope: ${scope}`)
@@ -192,14 +232,20 @@ export function collectReviewDiff({ repoRoot, scope, pushInput = '', remoteName 
   const chunks = ranges.map(({ localRef, localSha, remoteRef, remoteSha }) => {
     let from = remoteSha
     let baselineDescription = ''
-    if (ZERO_SHA.test(remoteSha) && !ZERO_SHA.test(localSha)) {
-      const resolved = resolveNewRefBase({ repoRoot, remoteName, localSha, runGit: git })
-      from = resolved.base
-      baselineDescription = `; new ref baseline ${resolved.symbolic} (${resolved.base})`
+    let authoredPatch = null
+    if (!ZERO_SHA.test(localSha)) {
+      const collected = collectAuthoredPatch({ repoRoot, remoteSha, localSha, runGit: git })
+      from = collected.from
+      authoredPatch = collected.patch
+      baselineDescription = collected.description
     }
     const to = ZERO_SHA.test(localSha) ? EMPTY_TREE_SHA : localSha
     const range = `${from}..${to}`
-    const textDiff = git(repoRoot, ['diff', '--no-ext-diff', '--unified=80', range, '--'])
+    // The binary summary stays range-based: it is one bounded line per file, so
+    // slight over-inclusion is harmless and it must still flag repository weight.
+    const textDiff = authoredPatch === null
+      ? git(repoRoot, ['diff', '--no-ext-diff', '--unified=80', range, '--'])
+      : authoredPatch
     const binarySummary = summarizeBinaryChanges({ repoRoot, git, selector: [range] })
     const diff = withBinarySummary(textDiff, binarySummary)
     assertReviewDiffSize(diff)
@@ -409,7 +455,6 @@ function main() {
     return 0
   } catch (error) {
     console.error(`[ponytail-review] BLOCKED: ${error instanceof Error ? error.message : String(error)}`)
-    console.error('Install/enable the Ponytail Codex plugin and retry the Git operation.')
     return 1
   }
 }

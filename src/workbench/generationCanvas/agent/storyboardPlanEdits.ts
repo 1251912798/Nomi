@@ -1,4 +1,5 @@
-import type { PlanAnchor, PlanAnchorCarrier, PlanAnchorKind, PlanShot, StoryboardPlan } from './storyboardPlan'
+import { effectiveShotDurationSec, type PlanAnchor, type PlanAnchorCarrier, type PlanAnchorKind, type PlanShot, type StoryboardPlan } from './storyboardPlan'
+import { hasMentions, mentionUrlsInOrder } from '../../assets/promptMentions'
 
 /**
  * 分镜方案的**纯编辑 + 校验**层（S3 字段编辑器的领域逻辑，与渲染解耦、可单测）。
@@ -19,6 +20,9 @@ export const ANCHOR_KINDS: readonly PlanAnchorKind[] = ['character', 'scene', 'p
 
 /** 时长预设（秒）。落画布时由 S4 钳到所选模型上限——这里只给常用档，不提前解析每模型时长表。 */
 export const DURATION_OPTIONS_SEC: readonly number[] = [4, 5, 6, 8, 10, 12, 15]
+
+/** 切到视频档/空方案首镜的兜底时长（秒）。 */
+const DEFAULT_VIDEO_DURATION_SEC = 5
 
 /** style 默认文本锚（每镜常驻，拼进 prompt）；character/scene/prop 默认视觉锚（生成参考图）。 */
 export function defaultCarrierForKind(kind: PlanAnchorKind): PlanAnchorCarrier {
@@ -58,6 +62,48 @@ export function updateAnchor(plan: StoryboardPlan, id: string, patch: Partial<Pl
   return { ...plan, anchors: plan.anchors.map((anchor) => (anchor.id === id ? { ...anchor, ...patch } : anchor)) }
 }
 
+/** 记录 @ token 对应的 URL，绑定关系仍由镜头的 anchorIds 唯一持有。 */
+export function rememberAnchorReferenceUrl(plan: StoryboardPlan, anchorId: string, url: string): StoryboardPlan {
+  const normalized = url.trim()
+  if (!normalized || !plan.anchors.some((anchor) => anchor.id === anchorId)) return plan
+  return updateAnchor(plan, anchorId, { referenceUrl: normalized })
+}
+
+/** 将画布结果/素材库/上传提升为现有 PlanAnchor，避免新增第二份镜头绑定结构。 */
+export function addExternalReferenceAnchor(
+  plan: StoryboardPlan,
+  input: { id: string; name: string; url: string; kind: 'image' | 'video' | 'audio'; sourceNodeId?: string },
+): { plan: StoryboardPlan; anchorId: string } {
+  const existing = plan.anchors.find((anchor) => anchor.referenceUrl === input.url && anchor.referenceSourceNodeId === input.sourceNodeId)
+  if (existing) return { plan, anchorId: existing.id }
+  const anchorId = makeAnchorId(plan)
+  const anchor: PlanAnchor = {
+    id: anchorId,
+    kind: 'prop',
+    name: input.name.trim() || `参考 ${plan.anchors.length + 1}`,
+    description: '',
+    carrier: 'visual',
+    scope: 'selective',
+    referenceUrl: input.url,
+    referenceKind: input.kind,
+    ...(input.sourceNodeId ? { referenceSourceNodeId: input.sourceNodeId } : {}),
+  }
+  return { plan: { ...plan, anchors: [...plan.anchors, anchor] }, anchorId }
+}
+
+/** 文本中已有 @ 时，镜头绑定按 URL 重建；没有 @ 的旧纯文本仍保留旧绑定。 */
+export function updateShotPrompt(plan: StoryboardPlan, pos: number, prompt: string): StoryboardPlan {
+  const shot = plan.shots[pos]
+  if (!shot) return plan
+  const nextUrls = mentionUrlsInOrder(prompt)
+  const previousHadMentions = hasMentions(shot.prompt)
+  if (!previousHadMentions && nextUrls.length === 0) return updateShotAt(plan, pos, { prompt })
+  const idsByUrl = new Map(plan.anchors.flatMap((anchor) => anchor.referenceUrl ? [[anchor.referenceUrl, anchor.id] as const] : []))
+  const mentioned = new Set(nextUrls.flatMap((url) => idsByUrl.get(url) ? [idsByUrl.get(url)!] : []))
+  const textAnchorIds = shot.anchorIds.filter((id) => plan.anchors.find((anchor) => anchor.id === id)?.carrier === 'text')
+  return updateShotAt(plan, pos, { prompt, anchorIds: [...textAnchorIds, ...mentioned] })
+}
+
 /** 改锚类型：carrier/scope 跟随新类型的默认（风格→仅提示词+常驻）；用户随后仍可手动覆盖 carrier。 */
 export function changeAnchorKind(plan: StoryboardPlan, id: string, kind: PlanAnchorKind): StoryboardPlan {
   return updateAnchor(plan, id, { kind, carrier: defaultCarrierForKind(kind), scope: defaultScopeForKind(kind) })
@@ -74,18 +120,57 @@ function renumber(shots: PlanShot[]): PlanShot[] {
 }
 
 export function addShot(plan: StoryboardPlan): StoryboardPlan {
-  // 新镜头继承上一镜的种类（图片分镜方案里手加的镜头别突然变成视频镜头）；空方案默认视频（旧行为）。
-  const lastKind = plan.shots[plan.shots.length - 1]?.shotKind
-  const lastKeyframeEnabled = plan.shots[plan.shots.length - 1]?.keyframe?.enabled === true
+  // 新镜头继承上一镜的种类/模型/模式/画幅/时长/所属场（v5：手加的镜头别突然换血统）；空方案默认视频 5s（旧行为）。
+  const last = plan.shots[plan.shots.length - 1]
+  const lastKind = last?.shotKind
+  const lastKeyframeEnabled = last?.keyframe?.enabled === true
+  const lastAspect = last?.params?.aspect_ratio
   const shot: PlanShot = {
     index: plan.shots.length + 1,
     ...(lastKind ? { shotKind: lastKind } : {}),
+    ...(last?.sceneId ? { sceneId: last.sceneId } : {}),
     ...(lastKind === 'video' && lastKeyframeEnabled ? { keyframe: { enabled: true, prompt: '' } } : {}),
-    durationSec: lastKind === 'image' ? 0 : 5,
+    ...(last?.modelKey ? { modelKey: last.modelKey } : {}),
+    ...(last?.modeId ? { modeId: last.modeId } : {}),
+    // 画幅继承但不拷整份 params——其余参数（负向词/清晰度…）是那一镜的创作选择，新镜从默认起。
+    ...(lastAspect !== undefined ? { params: { aspect_ratio: lastAspect } } : {}),
+    // 时长继承（图片镜=停留时长语义，经 effectiveShotDurationSec 吃掉旧数据的 0）。
+    durationSec: last ? effectiveShotDurationSec(last) || DEFAULT_VIDEO_DURATION_SEC : DEFAULT_VIDEO_DURATION_SEC,
     anchorIds: [],
     prompt: '',
   }
   return { ...plan, shots: [...plan.shots, shot] }
+}
+
+/** D3 行间插镜：只继承上一镜的生成血统，内容保持空白，避免复制出用户未要求的 prompt/引用。 */
+export function insertShotAt(plan: StoryboardPlan, pos: number): StoryboardPlan {
+  const previous = plan.shots[pos - 1] ?? plan.shots[pos]
+  const next: PlanShot = previous
+    ? {
+        index: pos + 1,
+        ...(previous.shotKind ? { shotKind: previous.shotKind } : {}),
+        ...(previous.sceneId ? { sceneId: previous.sceneId } : {}),
+        ...(previous.modelKey ? { modelKey: previous.modelKey } : {}),
+        ...(previous.modeId ? { modeId: previous.modeId } : {}),
+        ...(previous.params?.aspect_ratio !== undefined ? { params: { aspect_ratio: previous.params.aspect_ratio } } : {}),
+        durationSec: effectiveShotDurationSec(previous) || DEFAULT_VIDEO_DURATION_SEC,
+        anchorIds: [],
+        prompt: '',
+      }
+    : { index: 1, durationSec: DEFAULT_VIDEO_DURATION_SEC, anchorIds: [], prompt: '' }
+  const shots = [...plan.shots]
+  shots.splice(Math.max(0, Math.min(pos, shots.length)), 0, next)
+  return { ...plan, shots: renumber(shots) }
+}
+
+/** D3 复制镜头：复制可见内容但不给新行复用稳定身份。 */
+export function duplicateShotAt(plan: StoryboardPlan, pos: number): StoryboardPlan {
+  const source = plan.shots[pos]
+  if (!source) return plan
+  const copy: PlanShot = { ...source, shotId: undefined, index: source.index + 1, anchorIds: [...source.anchorIds], ...(source.params ? { params: { ...source.params } } : {}), ...(source.keyframe ? { keyframe: { ...source.keyframe, ...(source.keyframe.params ? { params: { ...source.keyframe.params } } : {}) } } : {}) }
+  const shots = [...plan.shots]
+  shots.splice(pos + 1, 0, copy)
+  return { ...plan, shots: renumber(shots) }
 }
 
 export function updateShotAt(plan: StoryboardPlan, pos: number, patch: Partial<PlanShot>): StoryboardPlan {
@@ -96,11 +181,23 @@ export function removeShotAt(plan: StoryboardPlan, pos: number): StoryboardPlan 
   return { ...plan, shots: renumber(plan.shots.filter((_, i) => i !== pos)) }
 }
 
+/**
+ * 场感知移动（v5）：拖到镜 X 的位置 = 加入镜 X 的场——组内移动 sceneId 不变，
+ * 跨过场界则移动镜改挂目标位置原镜的 sceneId（目标无 sceneId → 摘掉，回隐式场）。
+ * 镜号照旧重排成跨场连续 1..N（单人工具走 Boords 档，不锁号）。
+ */
 export function moveShot(plan: StoryboardPlan, from: number, to: number): StoryboardPlan {
   if (from === to || from < 0 || to < 0 || from >= plan.shots.length || to >= plan.shots.length) return plan
+  const targetSceneId = plan.shots[to].sceneId
   const shots = [...plan.shots]
   const [moved] = shots.splice(from, 1)
-  shots.splice(to, 0, moved)
+  const adopted = moved.sceneId === targetSceneId
+    ? moved
+    : (() => {
+        const { sceneId: _dropped, ...rest } = moved
+        return targetSceneId === undefined ? (rest as PlanShot) : { ...rest, sceneId: targetSceneId }
+      })()
+  shots.splice(to, 0, adopted)
   return { ...plan, shots: renumber(shots) }
 }
 
@@ -113,7 +210,86 @@ export function toggleShotAnchor(plan: StoryboardPlan, pos: number, anchorId: st
   return updateShotAt(plan, pos, { anchorIds })
 }
 
-// ── 校验：确认落画布前的拦截项（footer 计数 + 镜卡红标的唯一真相源）──
+// ── 场（v5 场分组）：增删改名 + 表层分组 derive（组头/小结/折叠都吃这份）──
+
+/** 生成不与现有冲突的场 id（与 makeAnchorId 同法）。 */
+export function makeSceneId(plan: StoryboardPlan): string {
+  const existing = new Set((plan.scenes ?? []).map((scene) => scene.id))
+  let n = (plan.scenes ?? []).length + 1
+  while (existing.has(`scene-${n}`)) n += 1
+  return `scene-${n}`
+}
+
+/** 加一个场（追加到场序末尾）。不动镜头——镜头经 updateShotAt/moveShot 改挂 sceneId。 */
+export function addScene(plan: StoryboardPlan, title: string): StoryboardPlan {
+  return { ...plan, scenes: [...(plan.scenes ?? []), { id: makeSceneId(plan), title }] }
+}
+
+export function renameScene(plan: StoryboardPlan, sceneId: string, title: string): StoryboardPlan {
+  if (!plan.scenes?.some((scene) => scene.id === sceneId)) return plan
+  return { ...plan, scenes: plan.scenes.map((scene) => (scene.id === sceneId ? { ...scene, title } : scene)) }
+}
+
+/**
+ * 删场：**不删镜头**——该场镜头并入前一个场（首场删除并入后一个；没有别的场 → 摘 sceneId 回隐式场）。
+ * 与 removeAnchor「删锚不擦镜头」同一条纪律：结构操作不静默吞用户内容。
+ */
+export function removeScene(plan: StoryboardPlan, sceneId: string): StoryboardPlan {
+  const scenes = plan.scenes ?? []
+  const pos = scenes.findIndex((scene) => scene.id === sceneId)
+  if (pos < 0) return plan
+  const fallback = scenes[pos - 1]?.id ?? scenes[pos + 1]?.id
+  const shots = plan.shots.map((shot) => {
+    if (shot.sceneId !== sceneId) return shot
+    if (fallback === undefined) {
+      const { sceneId: _dropped, ...rest } = shot
+      return rest as PlanShot
+    }
+    return { ...shot, sceneId: fallback }
+  })
+  return { ...plan, scenes: scenes.filter((scene) => scene.id !== sceneId), shots }
+}
+
+/** 表层的一个场组：scene=null 是隐式场（无 sceneId 的镜头 / 整个无分场旧 plan，不显组头）。 */
+export type SceneGroup = {
+  /** null = 隐式场；title 为空串的登记场由表层显示兜底名（场 N）。 */
+  scene: { id: string; title: string } | null
+  /** 组内镜头（引用 plan.shots 的原对象）。 */
+  shots: PlanShot[]
+  /** 组首镜在 plan.shots 里的下标（拖拽/更新按位置寻址用）。 */
+  startPos: number
+}
+
+/**
+ * 把 shots[] 按 sceneId 的**连续段**切成场组（数组序=视觉真相，不重排镜头）。
+ * 只有一个组且是隐式场 → 表不渲染组头（行为等同今天）。sceneId 引用不到登记场时
+ * 补 `{id, title:''}` 隐式组头，不丢镜头。
+ */
+export function sceneGroupsOf(plan: StoryboardPlan): SceneGroup[] {
+  const titleById = new Map((plan.scenes ?? []).map((scene) => [scene.id, scene.title]))
+  const groups: SceneGroup[] = []
+  plan.shots.forEach((shot, pos) => {
+    const last = groups[groups.length - 1]
+    const sceneId = shot.sceneId
+    if (last && (last.scene?.id ?? undefined) === (sceneId ?? undefined)) {
+      last.shots.push(shot)
+      return
+    }
+    groups.push({
+      scene: sceneId === undefined ? null : { id: sceneId, title: titleById.get(sceneId) ?? '' },
+      shots: [shot],
+      startPos: pos,
+    })
+  })
+  return groups
+}
+
+/** 一组镜头的合计时长（秒，图片镜按停留时长计入）——场组头小结与方案卡合计共用口径。 */
+export function totalDurationSec(shots: readonly PlanShot[]): number {
+  return Math.round(shots.reduce((sum, shot) => sum + effectiveShotDurationSec(shot), 0))
+}
+
+// ── 校验：生成前的拦截项（footer 计数 + 行红标的唯一真相源；v5 行内/批量生成共用）──
 
 export type PlanIssue =
   | { kind: 'no-shots' }
@@ -121,7 +297,7 @@ export type PlanIssue =
   | { kind: 'empty-shot-prompt'; shotIndex: number }
   | { kind: 'anchor-no-name'; anchorId: string }
 
-/** 一个方案的全部待处理项；空数组 = 可确认落画布。 */
+/** 一个方案的全部待处理项；空数组 = 可生成。 */
 export function validatePlan(plan: StoryboardPlan): PlanIssue[] {
   const issues: PlanIssue[] = []
   const anchorIds = new Set(plan.anchors.map((anchor) => anchor.id))
@@ -164,9 +340,6 @@ export type ShotTypeValue = 'image' | 'video' | 'image-video'
 
 /** 多镜取值不一致时的哨兵值（批量条把它当成一个「混合」临时选项显示，选真值才应用）。 */
 export const MIXED_VALUE = '__mixed__'
-
-/** 切到视频档时的兜底时长（图片镜头的 durationSec 是 0，切回来要有个能用的值）。 */
-const DEFAULT_VIDEO_DURATION_SEC = 5
 
 /** 某镜当前落在哪一档（shotKind 缺省按 video 兜底，与 PlanShot 注释一致）。 */
 export function shotTypeOf(shot: PlanShot): ShotTypeValue {
@@ -215,7 +388,7 @@ export function applyModelToAll(plan: StoryboardPlan, modelKey: string): Storybo
   }
 }
 
-/** 整片改时长（只影响视频档；图片镜头无时长，不动它）。 */
+/** 整片改时长（只影响视频档；图片镜的停留时长是逐镜创作选择，批量档位也是视频秒数，不动它）。 */
 export function applyDurationToAll(plan: StoryboardPlan, sec: number): StoryboardPlan {
   if (!Number.isFinite(sec) || sec <= 0) return plan
   return {
@@ -223,6 +396,10 @@ export function applyDurationToAll(plan: StoryboardPlan, sec: number): Storyboar
     shots: plan.shots.map((shot) => (shotTypeOf(shot) === 'image' ? shot : { ...shot, durationSec: sec })),
   }
 }
+
+// 画幅**不在这一层**（v6 §2.4.1）：它是「整片默认 + 行级覆盖」两段的，读写唯一 owner 是
+// `storyboardAspectScope.ts`。v5 的 applyAspectToAll/deriveBulkAspect/BULK_ASPECT_OPTIONS 三件
+// 已随本次改版删除——它们把"整片改画幅"实现成"把同一个值抄进每一行"，正是那层作用域丢失的成因。
 
 /** 全镜共同值，否则 null（无镜头也是 null）。批量条据此显「混合」。 */
 function commonValue<T>(values: readonly T[]): T | null {

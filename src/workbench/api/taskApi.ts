@@ -1,5 +1,7 @@
 import { getDesktopActiveProjectId } from '../../desktop/activeProject'
 import { getDesktopBridge, type DesktopBridge } from '../../desktop/bridge'
+import type { TelemetryResult } from '../../../electron/shared/contracts/telemetry'
+import { describeOpaqueFailure } from '../observability/opaqueFailure'
 
 export type TaskKind =
   | 'chat'
@@ -114,16 +116,30 @@ export async function runWorkbenchTaskByVendor(vendor: string, request: TaskRequ
   if (!normalizedVendor) throw new Error('vendor is required')
   const desktop = requireDesktopRuntime('task execution')
   const projectId = getDesktopActiveProjectId()
-  return desktop.tasks.run({
-    vendor: normalizedVendor,
-    request: {
-      ...request,
-      extras: {
-        ...(request.extras || {}),
-        ...(projectId ? { projectId } : {}),
+  const startedAt = typeof performance !== 'undefined' ? performance.now() : Date.now()
+  const track = (result: TelemetryResult): void => {
+    const capability = request.kind === 'text_to_image' ? 'image' : request.kind === 'image_edit' ? 'image-edit' : request.kind === 'text_to_video' || request.kind === 'image_to_video' ? 'video' : request.kind === 'text_to_audio' ? 'audio' : request.kind === 'text_to_3d' || request.kind === 'image_to_3d' ? '3d' : null
+    if (!capability) return
+    const endedAt = typeof performance !== 'undefined' ? performance.now() : Date.now()
+    void desktop.telemetry?.track({ eventName: 'generation.completed', props: { capability, durationBucket: endedAt - startedAt < 1000 ? '<1s' : endedAt - startedAt <= 5000 ? '1-5s' : '>5s', result, attemptCountBucket: '1' } })
+  }
+  try {
+    const response = await desktop.tasks.run({
+      vendor: normalizedVendor,
+      request: {
+        ...request,
+        extras: {
+          ...(request.extras || {}),
+          ...(projectId ? { projectId } : {}),
+        },
       },
-    },
-  }) as Promise<TaskResultDto>
+    }) as TaskResultDto
+    track(response.status === 'succeeded' ? 'success' : response.status === 'failed' ? 'failure' : 'cancel')
+    return response
+  } catch (error) {
+    track('failure')
+    throw error
+  }
 }
 
 export async function runComfyCandidateTestByVendor(
@@ -204,7 +220,7 @@ export async function runWorkbenchTextTaskStream(
       } else if (evt?.type === 'done') {
         finish(() => resolve(evt.result as TaskResultDto))
       } else if (evt?.type === 'error') {
-        finish(() => reject(new Error(evt.message || '文本流式生成失败')))
+        finish(() => reject(new Error(evt.message || describeOpaqueFailure(null))))
       }
     })
     // 外部取消：通知主进程真中断流 + 兜底 reject。

@@ -9,6 +9,7 @@
 // 身份从 derive 而来、不再用半截 key 凑合，这类「显示/绑定张冠李戴」才不会换个入口又复发。
 
 import { modelSupportsToolCalls } from '../../../electron/shared/textModelCapabilities'
+import { translateModelDisplayText } from '../../i18n/modelDisplayText';
 export type ModelIdentity = { vendorKey: string; modelKey: string };
 
 export type AssistantCatalogModelLike = {
@@ -91,11 +92,13 @@ export function decodeModelIdentity(value: string): ModelIdentity | null {
  */
 export function labelForModel(
   model: { modelKey: string; labelZh?: string; vendorKey: string },
+  // 这里**故意**只按裸 modelKey 比：它是碰撞探测器，不是身份断言——问的是「这个名字
+  // 出现了不止一次吗」，是就把供应商名缀上去消歧。带上 vendor 反而永远不重复，标签就永远缀不出来。
   allModels: ReadonlyArray<{ modelKey: string }>,
   vendorNameByKey: Readonly<Record<string, string>>,
 ): string {
-  const base = model.labelZh || model.modelKey;
+  const base = translateModelDisplayText(model.labelZh || model.modelKey);
   const duplicated = allModels.filter((item) => item.modelKey === model.modelKey).length > 1;
   if (!duplicated) return base;
-  return `${base} · ${vendorNameByKey[model.vendorKey] || model.vendorKey}`;
+  return `${base} · ${translateModelDisplayText(vendorNameByKey[model.vendorKey] || model.vendorKey)}`;
 }

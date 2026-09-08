@@ -1,68 +1,28 @@
-import type { ZodTypeAny } from 'zod'
+// 旧运行核的端口。**阶段 4 的切换 PR 会连着 `electron/harness/runtime/` 整个目录删掉它。**
+//
+// 所以这里只剩两批东西：
+//   ① 上面的 re-export——`NomiModelConfig` 与那八个传输契约已经搬到
+//      `electron/shared/agentLane/laneModelConfig.ts` 与
+//      `electron/shared/agentCapabilities/transportContracts.ts`，因为它们的消费者
+//      （capabilityCore / projectAgentHost / skills / agentLane）全都活过切换。
+//      本文件对它们**只 re-export、不再定义**，好让本目录里的旧代码一行都不用改（P1）。
+//   ② 下面的 `RuntimeTurn*` / `RuntimeSnapshot*`——这批是「旧运行核一轮怎么跑」的形状，
+//      依赖 `harness/context/promptPipe`，且**没有一个消费者活过切换 PR**
+//      （全在 `harness/`、`ai/agentChatV2*` 与旧的 `tests/agent-runtime/` 里）。
+//      把它们硬搬进 `electron/shared/` 只会造一条 shared → harness 的新反向边，
+//      比留在这里随目录一起死更糟。
+import type { CompiledPrompt, PromptCacheTelemetry } from '../context/promptPipe'
+import type {
+  RuntimeActivityEvent, RuntimeErrorFacts, RuntimeFinishReason, RuntimeToolCall,
+  RuntimeToolCallRecord, RuntimeToolDecision, RuntimeToolDescriptor, RuntimeUsage,
+} from '../../shared/agentCapabilities/transportContracts'
+import type { NomiModelConfig } from '../../shared/agentLane/laneModelConfig'
 
-/** Nomi's boundary. SDK objects and types stay in the private pi directory. */
-export interface NomiModelConfig {
-  kind: 'openai-compatible' | 'openai-responses' | 'anthropic'
-  providerId: string
-  modelId: string
-  baseURL: string
-  authType: 'api-key' | 'none'
-  apiKey?: string
-  headers?: Record<string, string>
-  contextWindow?: number
-  maxOutputTokens?: number
-  temperature?: number
-}
-
-export interface RuntimeToolDescriptor {
-  name: string
-  description: string
-  schema: ZodTypeAny
-}
-
-export interface RuntimeToolCall {
-  toolCallId: string
-  toolName: string
-  args: unknown
-}
-
-export type RuntimeToolDecision =
-  | { ok: true; result?: unknown; effectiveArgs?: Record<string, unknown>; overridesDelta?: Record<string, unknown>; silent?: boolean; proposalId?: string }
-  | { ok: false; message?: string; code?: string; denied?: boolean }
-
-export interface RuntimeToolCallRecord extends RuntimeToolCall {
-  status: 'ok' | 'denied' | 'cancelled' | 'error'
-  decision?: RuntimeToolDecision
-  result?: unknown
-  error?: string
-}
-
-export interface RuntimeUsage {
-  promptTokens: number
-  completionTokens: number
-  cachedPromptTokens: number
-  totalTokens: number
-}
-
-export type RuntimeFinishReason = 'stop' | 'length' | 'toolUse' | 'error' | 'aborted'
-
-export interface RuntimeErrorFacts {
-  kind: 'http' | 'network' | 'timeout' | 'abort' | 'step-limit' | 'runtime'
-  message: string
-  code?: string
-  status?: number
-  body?: string
-  url?: string
-  timeoutPhase?: 'first-response' | 'idle'
-}
-
-export type RuntimeActivityEvent =
-  | { type: 'content-delta'; delta: string }
-  | ({ type: 'tool-call' } & RuntimeToolCall)
-  | { type: 'tool-result'; toolCallId: string; toolName: string; result?: unknown; decision?: RuntimeToolDecision }
-  | { type: 'tool-error'; toolCallId: string; toolName: string; message: string; denied?: boolean; cancelled?: boolean }
-  | { type: 'step-finish'; step: number; finishReason: RuntimeFinishReason; usage: RuntimeUsage }
-  | { type: 'warning'; error: RuntimeErrorFacts }
+export type { NomiModelConfig } from '../../shared/agentLane/laneModelConfig'
+export type {
+  RuntimeActivityEvent, RuntimeErrorFacts, RuntimeFinishReason, RuntimeToolCall,
+  RuntimeToolCallRecord, RuntimeToolDecision, RuntimeToolDescriptor, RuntimeUsage,
+} from '../../shared/agentCapabilities/transportContracts'
 
 export interface RuntimeTurnRequest {
   cwd: string
@@ -81,6 +41,8 @@ export interface RuntimeTurnRequest {
   /** Opaque, versioned working history; the caller owns thread binding/publication. */
   snapshot?: string
   compaction: { enabled: boolean; reserveTokens?: number; keepRecentTokens?: number }
+  /** Hash-only prompt receipt; contents stay in the request's actual prompt slots. */
+  promptReceipt?: Pick<CompiledPrompt, 'compileHash' | 'stablePrefixHash' | 'estimatedTokens' | 'byteLength' | 'warnings' | 'budgetWarning' | 'provenance' | 'taintedSourceRefs'>
 }
 
 export interface RuntimeTurnHooks {
@@ -112,6 +74,7 @@ export interface RuntimeTurnResult {
   snapshot?: string
   context?: RuntimeContextMetadata
   error?: RuntimeErrorFacts
+  promptCache?: PromptCacheTelemetry
 }
 
 export type RunAgentTurn = (request: RuntimeTurnRequest, hooks: RuntimeTurnHooks) => Promise<RuntimeTurnResult>

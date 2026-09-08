@@ -7,7 +7,6 @@
 import { describe, expect, it } from "vitest";
 import { FAL_OFFICIAL_MODELS } from "./falOfficial";
 import { RUNWAY_OFFICIAL_MODELS } from "./runwayOfficial";
-import { KLING_3_CREATE_OP } from "./kieKling";
 import { ratioResToFalImageSize, ratioResToOpenAiSize } from "./paramTranslate";
 import { applyRequestTransform } from "../tasks/requestTransforms";
 
@@ -52,7 +51,10 @@ describe("BUG-1: fal openai/gpt-image-2 image_size must be a fal enum, not a WxH
   // Live fal rejects "1024x1024" with 422 model_attributes_type; it accepts the ImageSize
   // enum. The OpenAI/new-api `size` field DOES take WxH — so the transform must be fal-specific.
   it("gpt-image-2 fal mapping translates aspect_ratio→image_size via ratioResToFalImageSize", () => {
-    for (const modeId of ["t2i", "edit"] as const) {
+    // 改图那条的 modeId 是 "i2i"——gpt-image-2 档案声明的就是 t2i / i2i（"edit" 是 nano-banana-2 /
+    // seedream 档案的写法）。这里只是**查找键**跟着改，被断言的东西（image_size 的 transform 规则）
+    // 一字未动（2026-09-03 孤儿线缆修复：seed 侧曾写 "edit"，档案侧永远选不中它）。
+    for (const modeId of ["t2i", "i2i"] as const) {
       const mapping = findFalMapping("openai/gpt-image-2", modeId);
       const rule = mapping.create.paramMap?.rules?.find((r) => "wire" in r && r.wire === "image_size");
       expect(rule && "transform" in rule ? rule.transform : undefined).toBe("ratioResToFalImageSize");
@@ -132,15 +134,65 @@ describe("BUG-3: runway image ratio must be per-model; shared default 1024:1024 
   });
 });
 
-describe("BUG-4: KIE kling-3.0/video requires an explicit multi_shots boolean", () => {
-  // Live KIE (2026-09-01): omitting multi_shots → 422 `multi_shots cannot be empty`; sending an
-  // array → 500 `must be a boolean`; sending `false` → validates. Official docs
-  // (docs.kie.ai/market/kling) confirm multi_shots is a boolean (true switches to multi_prompt[]).
-  it("kling create op sends multi_shots as a literal boolean false (single-shot)", () => {
-    const input = (KLING_3_CREATE_OP.body as { input: Record<string, unknown> }).input;
-    expect(input).toHaveProperty("multi_shots");
-    expect(input.multi_shots).toBe(false);
-    // still carries the single-shot prompt path
-    expect(input.prompt).toBe("{{request.prompt}}");
+describe("BUG-4: KIE Kling 3 uses the current Omni wire contract", () => {
+  // The 2026-09-02 official pages replaced the earlier multi_shots contract with
+  // customize_multi_shots/prefer_multi_shots and separate text/image model IDs.
+  it("uses the documented model and fields for each mode", async () => {
+    const { KLING_3_I2V_CREATE_OP, KLING_3_T2V_CREATE_OP } = await import("./kieKling");
+    const textBody = KLING_3_T2V_CREATE_OP as { body: { model: string; input: Record<string, unknown> }; paramMap?: { drops?: string[] } };
+    const imageBody = KLING_3_I2V_CREATE_OP as { body: { model: string; input: Record<string, unknown> }; paramMap?: { drops?: string[] } };
+
+    expect(textBody.body.model).toBe("kling-3.0-omni/text-to-video");
+    expect(imageBody.body.model).toBe("kling-3.0-omni/image-to-video");
+    expect(textBody.body.input).toMatchObject({
+      prompt: "{{request.prompt}}",
+      audio: "{{request.params.sound}}",
+      customize_multi_shots: false,
+      prefer_multi_shots: false,
+      resolution: "720p",
+      aspect_ratio: "{{request.params.aspect_ratio}}",
+    });
+    expect(imageBody.body.input).toMatchObject({
+      prompt: "{{request.prompt}}",
+      image_urls: "{{request.params.image_urls}}",
+      audio: "{{request.params.sound}}",
+      customize_multi_shots: false,
+      prefer_multi_shots: false,
+      resolution: "720p",
+      aspect_ratio: "auto",
+    });
+    expect(textBody.paramMap?.drops).toEqual(["mode"]);
+    expect(imageBody.paramMap?.drops).toEqual(["mode", "aspect_ratio"]);
+
+    for (const input of [textBody.body.input, imageBody.body.input]) {
+      expect(input).not.toHaveProperty("mode");
+      expect(input).not.toHaveProperty("sound");
+      expect(input).not.toHaveProperty("multi_shots");
+    }
   });
+});
+
+describe("Runway reference modes use the text-to-video reference union", () => {
+  it("does not construct a promptImage or image_to_video mapping for multi-reference modes", () => {
+    // 选择器按**线缆角色**（mapping id 的 `-refs` 后缀），不按 modeId：一模型一档案之后，
+    // 各档案给同一个多图参考角色起的名字本就不同（seedance=omni / wan=ref / hailuo=ref），
+    // 按 "reference" 这个名字筛会一个都筛不到 —— 那正是本断言 toBeGreaterThan(0) 要挡的假绿。
+    // 角色是 Runway 侧的稳定事实，档案改名它不动。
+    const referenceMappings = RUNWAY_OFFICIAL_MODELS
+      .flatMap((model) => model.mappings.filter((mapping) => mapping.id.endsWith("-refs")));
+    expect(referenceMappings.length).toBeGreaterThan(0);
+    for (const mapping of referenceMappings) {
+      expect(mapping.taskKind).toBe("text_to_video");
+      expect(mapping.create.path).toBe("/v1/text_to_video");
+      expect(mapping.create.body).not.toHaveProperty("promptImage");
+      expect(mapping.create.body).toHaveProperty("reference_image_urls");
+    }
+  });
+
+  it("keeps Seedance 2.5 omni aligned with its text-to-video operation", () => {
+    const mapping = RUNWAY_OFFICIAL_MODELS
+      .find((model) => model.modelKey === "seedance2_5")?.mappings.find((item) => item.modeId === "omni");
+    expect(mapping).toMatchObject({ taskKind: "text_to_video", create: { path: "/v1/text_to_video" } });
+  });
+
 });

@@ -80,6 +80,7 @@ contextBridge.exposeInMainWorld("nomiDesktop", {
   settings: {
     projectLocation: {
       get: () => ipcRenderer.invoke("nomi:settings:project-location-get"),
+      check: () => ipcRenderer.invoke("nomi:settings:project-location-check"),
       pick: () => ipcRenderer.invoke("nomi:settings:project-location-pick"),
       reset: () => ipcRenderer.invoke("nomi:settings:project-location-reset"),
       reveal: () => ipcRenderer.invoke("nomi:settings:project-location-reveal"),
@@ -100,6 +101,26 @@ contextBridge.exposeInMainWorld("nomiDesktop", {
       get: () => ipcRenderer.invoke("nomi:settings:generation-model-defaults-get"),
       set: (payload: unknown) => ipcRenderer.invoke("nomi:settings:generation-model-defaults-set", payload),
     },
+    vendorPreference: {
+      get: () => ipcRenderer.invoke("nomi:settings:vendor-preference-get"),
+      set: (payload: unknown) => ipcRenderer.invoke("nomi:settings:vendor-preference-set", payload),
+    },
+    canvasMenuPreference: {
+      get: () => ipcRenderer.invoke("nomi:settings:canvas-menu-preference-get"),
+      set: (payload: unknown) => ipcRenderer.invoke("nomi:settings:canvas-menu-preference-set", payload),
+    },
+    telemetry: {
+      get: () => ipcRenderer.invoke("nomi:settings:telemetry-get"),
+      set: (payload: unknown) => ipcRenderer.invoke("nomi:settings:telemetry-set", payload),
+      summary: () => ipcRenderer.invoke("nomi:settings:telemetry-summary"),
+      deleteAll: () => ipcRenderer.invoke("nomi:settings:telemetry-delete"),
+    },
+    diagnostics: {
+      exportBundle: () => ipcRenderer.invoke("nomi:diagnostics:export"),
+    },
+  },
+  telemetry: {
+    track: (payload: unknown) => ipcRenderer.invoke("nomi:telemetry:track", payload),
   },
   browserChromeMenu: {
     select: (id: unknown) => ipcRenderer.send("browser:chrome-menu:select", id),
@@ -117,6 +138,9 @@ contextBridge.exposeInMainWorld("nomiDesktop", {
     revealFile: (payload: unknown) => ipcRenderer.invoke("nomi:workspace:reveal-file", payload),
     deleteFiles: (payload: unknown) => ipcRenderer.invoke("nomi:workspace:delete-files", payload),
     revealProjectFolder: (payload: unknown) => ipcRenderer.invoke("nomi:workspace:reveal-project-folder", payload),
+    syncInspect: (payload: string | { projectId: string; adopt?: boolean }) => ipcRenderer.invoke("nomi:workspace:sync-inspect", payload),
+    syncReveal: (projectId: string) => ipcRenderer.invoke("nomi:workspace:sync-reveal", projectId),
+    syncCopyConflict: (payload: unknown) => ipcRenderer.invoke("nomi:workspace:sync-copy-conflict", payload),
   },
   // 系统通知：任务跑完且窗口失焦时才发（判失焦在渲染层，主进程只负责发+点击拉回窗口）。
   notifications: {
@@ -289,6 +313,12 @@ contextBridge.exposeInMainWorld("nomiDesktop", {
     deconstruct: (payload: unknown) =>
       ipcRenderer.invoke("nomi:video:deconstruct", payload) as Promise<unknown>,
   },
+  // Generation strategy resolver：GUI 分镜表审阅的 stateless resolve。主进程 planning seam 计算，
+  // 返回与 agent/MCP 完全同源的执行计划建议（候选只在 main，渲染层不自构）。信封 ok=false 带 code。
+  generationStrategy: {
+    resolvePlan: (payload: unknown) =>
+      ipcRenderer.invoke("nomi:generation:resolve-plan", payload) as Promise<unknown>,
+  },
   connector: {
     tikhub: {
       keyStatus: () => ipcRenderer.invoke("nomi:connector:tikhub:key-status") as Promise<unknown>,
@@ -376,6 +406,22 @@ contextBridge.exposeInMainWorld("nomiDesktop", {
       },
     },
   },
+  videoDepth: {
+    prepare: (payload: unknown) => ipcRenderer.invoke("nomi:video-depth:prepare", payload) as Promise<unknown>,
+    readFrames: (payload: unknown) =>
+      ipcRenderer.invoke("nomi:video-depth:read-frames", payload) as Promise<{ frames: Uint8Array[] }>,
+    writeFrames: (payload: unknown) => ipcRenderer.invoke("nomi:video-depth:write-frames", payload) as Promise<{ ok: true }>,
+    finish: (payload: unknown) =>
+      ipcRenderer.invoke("nomi:video-depth:finish", payload) as Promise<{ url: string; assetId?: string; frames: number }>,
+    cancel: (payload: unknown) => ipcRenderer.invoke("nomi:video-depth:cancel", payload) as Promise<{ ok: true }>,
+    onEvent: (callback: (event: unknown) => void) => {
+      const listener = (_event: unknown, payload: unknown) => callback(payload);
+      ipcRenderer.on("nomi:video-depth:event", listener as never);
+      return () => {
+        ipcRenderer.removeListener("nomi:video-depth:event", listener as never);
+      };
+    },
+  },
   exports: {
     startJob: (payload: unknown) => ipcRenderer.invoke("nomi:exports:start-job", payload),
     list: () => ipcRenderer.invoke("nomi:exports:list"),
@@ -436,6 +482,8 @@ contextBridge.exposeInMainWorld("nomiDesktop", {
       }>,
     read: (projectId: string, fromSeq: number) =>
       ipcRenderer.invoke("nomi:events:read", { projectId, fromSeq }) as Promise<{ ok: boolean; events: unknown[] }>,
+    generationEtaStats: (projectId: string) =>
+      ipcRenderer.sendSync('nomi:events:generation-eta-stats', { projectId }) as { ok: boolean; stats: unknown[] },
   },
   memory: {
     get: (projectId: string) =>
@@ -572,6 +620,11 @@ contextBridge.exposeInMainWorld("nomiDesktop", {
     describeChannels: () => invokeSync("nomi:asset-transport:channels:describe"),
   },
   modelCatalog: {
+    onChanged: (cb: () => void) => {
+      const listener = () => cb();
+      ipcRenderer.on("nomi:model-catalog:changed", listener);
+      return () => ipcRenderer.removeListener("nomi:model-catalog:changed", listener);
+    },
     listVendors: () => invokeSync("nomi:model-catalog:vendors:list"),
     listModels: (params?: unknown) => invokeSync("nomi:model-catalog:models:list", params),
     listMappings: (params?: unknown) => invokeSync("nomi:model-catalog:mappings:list", params),
@@ -634,7 +687,7 @@ contextBridge.exposeInMainWorld("nomiDesktop", {
   skill: {
     list: () => invokeSync("nomi:skill:list"),
     exportPackage: (dirName: string) => invokeSync("nomi:skill:export", dirName),
-    importPackage: (payload: unknown) => ipcRenderer.invoke("nomi:skill:import", payload),
+    importPackage: (payload: unknown) => invokeSync("nomi:skill:import", payload),
     deleteByDir: (dirName: string) => invokeSync("nomi:skill:delete", dirName),
   },
   capability: {
@@ -642,6 +695,16 @@ contextBridge.exposeInMainWorld("nomiDesktop", {
     mcpInfo: () => invokeSync("nomi:capability:mcp-info"),
     installMcp: (client?: string) => invokeSync("nomi:capability:mcp-install", client),
     uninstallMcp: (client?: string) => invokeSync("nomi:capability:mcp-uninstall", client),
+    // 自定义 MCP 客户端 profile（方案 A：任意支持 MCP stdio 的工具接入）。
+    listCustomMcpProfiles: () => ipcRenderer.invoke("nomi:capability:mcp-custom-profiles"),
+    registerCustomMcpProfile: (profile: unknown) => ipcRenderer.invoke("nomi:capability:mcp-custom-profile-register", profile),
+    removeCustomMcpProfile: (key: string) => ipcRenderer.invoke("nomi:capability:mcp-custom-profile-remove", key),
+    // 自定义客户端列表变化的实时回流：外部进程（mcpNodeLauncher）检测写入文件后，主进程 watch 到变化广播到这里。
+    onMcpProfilesChanged: (cb: () => void) => {
+      const listener = () => cb()
+      ipcRenderer.on("nomi:mcp:profiles-changed", listener)
+      return () => ipcRenderer.removeListener("nomi:mcp:profiles-changed", listener)
+    },
     // 实连验证（异步）：真起一次配置里那条命令握手，用来分辨「配置里有这行字」和「还真连得上」。
     verifyMcp: (client?: string) => ipcRenderer.invoke("nomi:capability:mcp-verify", client),
     // A 模式实时桥：主进程把外部 MCP 的画布读/写/付费确认转发到这里，渲染层处理后回结果（按 id 配对）。

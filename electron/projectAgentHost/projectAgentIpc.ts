@@ -2,7 +2,8 @@ import { ipcMain } from "electron";
 import type { IpcMainInvokeEvent, WebContents, WebFrameMain } from "electron";
 
 import { assertTrustedSender } from "../ipcSenderGuard";
-import type { AgentChatRequest, AgentChatToolDecision } from "../harness/agentChatContracts";
+import type { AgentChatToolDecision } from "../harness/agentChatContracts";
+import type { ProjectAgentExecutionRequest } from "./projectAgentExecutionCoordinatorTypes";
 import type {
   ProjectAgentHostState,
   ProjectAgentAttachmentRef,
@@ -18,7 +19,7 @@ import {
 } from "../shared/projectAgentProposalReceipt";
 import { assertProjectAgentBinding, sameProjectAgentBinding } from "./projectAgentIdentity";
 import type { ProjectAgentProductionRuntime } from "./projectAgentProductionRuntime";
-import type { ProjectAgentProposalReceiptService } from "./projectAgentProposalReceiptStore";
+import type { ProjectAgentProposalReceiptService } from "../capabilityCore/projectAgentProposalReceiptStore";
 import type { CanvasReadSurfaceIpcCapture } from "../capabilityCore/canvasReadSurfaceIpc";
 import type { PiCanvasReadTransportAdapter } from "../capabilityCore/canvasReadTransportAdapters";
 import type { PiDocumentReadTransportAdapter } from "../capabilityCore/documentReadTransportAdapters";
@@ -33,7 +34,7 @@ import type { PiSkillWriteTransportAdapter } from "../capabilityCore/skillWriteT
 import type { PiSkillReadTransportAdapter } from "../capabilityCore/skillReadTransportAdapters";
 import type { CapturedCanvasReadSnapshotHandleWire } from "../shared/surfacePortBinding";
 import { ProjectAgentSubscriptionError } from "./projectAgentExecutionCoordinator";
-import { projectAgentProposalMatchesApproval } from "./projectAgentProposalReceiptCorrelation";
+import { projectAgentProposalMatchesApproval } from "../capabilityCore/projectAgentProposalReceiptCorrelation";
 
 export const PROJECT_AGENT_OPEN_CHANNEL = "nomi:projectAgent:open";
 export const PROJECT_AGENT_SNAPSHOT_CHANNEL = "nomi:projectAgent:snapshot";
@@ -91,13 +92,17 @@ export type ProjectAgentPreparedProject = Readonly<{
 
 function executionEnqueueField(value: unknown): Readonly<{
   payload: Extract<ProjectAgentMutation, { type: "turn.enqueue" }>["payload"];
-  request: AgentChatRequest;
+  request: ProjectAgentExecutionRequest;
   attachmentClaims: readonly unknown[];
   capturedCanvasReadSnapshot?: CapturedCanvasReadSnapshotHandleWire;
 }> {
   const record = asRecord(value);
   exactKeys(record, ["thread", "turn", "userItem", "queueItem", "request", "attachmentClaims", "capturedCanvasReadSnapshot"]);
   if (!Array.isArray(record.attachmentClaims)) throw new ProjectAgentIpcInputError("Project Agent attachments are invalid");
+  // A renderer request never carries conversation history. Drop any same-named
+  // field here so it cannot reach the Host as if it were an authority grant.
+  const { history: _rendererHistory, ...requestWithoutHistory } =
+    (asRecord(record.request) ?? {}) as Record<string, unknown>;
   return Object.freeze({
     payload: {
       thread: record.thread,
@@ -105,7 +110,7 @@ function executionEnqueueField(value: unknown): Readonly<{
       userItem: record.userItem,
       queueItem: record.queueItem,
     } as Extract<ProjectAgentMutation, { type: "turn.enqueue" }>["payload"],
-    request: record.request as AgentChatRequest,
+    request: requestWithoutHistory as ProjectAgentExecutionRequest,
     attachmentClaims: record.attachmentClaims,
     ...(record.capturedCanvasReadSnapshot !== undefined
       ? { capturedCanvasReadSnapshot: record.capturedCanvasReadSnapshot as CapturedCanvasReadSnapshotHandleWire }
@@ -421,7 +426,13 @@ export function registerProjectAgentIpc(
               ...(skillRead ? { skillRead } : {}),
               ...(skillWrite ? { skillWrite } : {}),
               ...(proposalReceipts
-                ? { proposalReceipt: () => proposalReceipts.read() }
+                ? {
+                    proposalReceipt: () => proposalReceipts.read(),
+                    // The renderer may read/transition recovery evidence, but
+                    // only this main-owned service is handed to Host execution
+                    // for prepare/commit receipt ownership.
+                    proposalReceiptWriter: proposalReceipts,
+                  }
                 : {}),
             }
           : undefined,
@@ -568,7 +579,6 @@ export function registerProjectAgentIpc(
       const attachmentRefs = resolver ? resolver(execution.attachmentClaims) : Object.freeze([]);
       const request = {
         ...execution.request,
-        history: { kind: "ephemeral" as const },
         attachments: attachmentRefs.flatMap((ref) => ref.display ? [{
           url: ref.display.url,
           contentType: ref.display.contentType,

@@ -3,25 +3,32 @@ import { useTranslation } from 'react-i18next'
 import i18n, { getAppLocale } from '../../i18n'
 import {
   IconBrowser,
+  IconAlertTriangle,
+  IconCircleCheck,
   IconFolderOpen,
   IconFolderShare,
+  IconInfoCircle,
   IconMovie,
   IconPlayerPlay,
   IconPlugConnected,
   IconPlus,
+  IconRefresh,
   IconSettings,
   IconTrash,
 } from '@tabler/icons-react'
 import { cn } from '../../utils/cn'
-import { ActionCard, NomiLogoMark, NomiWordmark, DesignEmptyState } from '../../design'
+import { ActionCard, NomiLogoMark, NomiWordmark, DesignEmptyState, NomiSkeleton } from '../../design'
 import { NomiImage } from '../../design/media'
 import { WindowControls } from '../../ui/app-shell/WindowControls'
 import { handleWindowTitlebarDoubleClick } from '../../ui/app-shell/windowTitlebarDoubleClick'
+import { useLocalProjects } from './localProjectStore'
 import type { LocalProjectSummary } from './localProjectStore'
 import type { ProjectTemplateId } from './projectTemplates'
 import { markLibraryUsed, sortByLibraryUsage, useLibraryUsageVersion } from './libraryDiscovery'
 import { filterProjectLibraryItems } from './libraryAdapters'
 import { LibraryDiscoveryToolbar } from './LibraryDiscoveryToolbar'
+import { getDesktopBridge } from '../../desktop/bridge'
+import type { WorkspaceSyncInspection } from '../../../electron/shared/workspaceSyncContracts'
 
 type Props = {
   onOpenProject: (projectId: string) => void
@@ -41,7 +48,6 @@ type Props = {
   /** 重看开屏动画（首启播完后从这里可主动重播）；缺省则不渲染重看入口 */
   /** null = 查询中（不渲染告警）；false 时弱入口隐藏、状态条升权（单一入口互斥） */
   hasTextModel?: boolean | null
-  projects: LocalProjectSummary[]
 }
 
 function formatUpdatedAt(value: number): string {
@@ -114,9 +120,11 @@ export default function ProjectLibraryPage({
   onPlayJourneyTour,
   journeyTourSeen = false,
   hasTextModel = null,
-  projects,
 }: Props): JSX.Element {
   const { t } = useTranslation()
+  // 项目列表由本页自己读：它是这份数据的唯一消费者，外壳不该当数据管道（R9）。
+  // `useLocalProjects` 是单一 SWR key，外壳侧的 `refreshProjects` 与这里共享同一份缓存，不是第二个真相源。
+  const { projects, projectsError, projectsLoading, refreshProjects: onRetryLoadProjects } = useLocalProjects()
   const [query, setQuery] = React.useState('')
   const [sourceFilter, setSourceFilter] = React.useState<'all' | 'native' | 'folder'>('all')
   const usageVersion = useLibraryUsageVersion()
@@ -124,6 +132,11 @@ export default function ProjectLibraryPage({
   // 双击项目名进入 inline 编辑：editingId 记哪张卡在编辑、editValue 是输入中的名字。
   const [editingId, setEditingId] = React.useState('')
   const [editValue, setEditValue] = React.useState('')
+  const [syncInspectionByProject, setSyncInspectionByProject] = React.useState<Record<string, WorkspaceSyncInspection>>({})
+  const [openSyncProjectId, setOpenSyncProjectId] = React.useState<string | null>(null)
+  // 「重新检查」这一下自己失败了（≠ 检查跑完发现还没就绪）。不记它的话，两种情况在界面上
+  // 长得一模一样：弹层原样不动——用户会以为检查跑过了、文件夹还是坏的。
+  const [syncRecheckFailedId, setSyncRecheckFailedId] = React.useState<string | null>(null)
   const beginRename = (project: LocalProjectSummary): void => {
     if (!onRenameProject || project.missing) return
     setEditingId(project.id)
@@ -160,6 +173,46 @@ export default function ProjectLibraryPage({
       : searchedProjects.filter((project) =>
           sourceFilter === 'folder' ? project.source === 'folder' : project.source !== 'folder',
         )
+  const inspectSyncProjects = React.useCallback(async (): Promise<void> => {
+    const api = getDesktopBridge()?.workspace?.syncInspect
+    if (!api) return
+    const entries = await Promise.all(
+      projects.filter((project) => Boolean(project.rootPath)).map(async (project) => {
+        try {
+          const inspection = await api({ projectId: project.id })
+          return [project.id, inspection] as const
+        } catch {
+          // 有意静默：这是**后台批量探测**（挂在 mount + window focus 上，用户没点任何东西），
+          // 产出的只是卡片上的同步告警徽标——一个可选增强。探不到就退回「不显示徽标」，
+          // 也就是探测能力上线前的行为，界面不会因此显示**错误的**同步状态。
+          // 反例见下面的 recheckSync：那条是用户亲手点的，失败必须出声。
+          return null
+        }
+      }),
+    )
+    setSyncInspectionByProject(Object.fromEntries(entries.filter((entry): entry is readonly [string, WorkspaceSyncInspection] => entry !== null)))
+  }, [projects])
+
+  React.useEffect(() => {
+    void inspectSyncProjects()
+    window.addEventListener('focus', inspectSyncProjects)
+    return () => window.removeEventListener('focus', inspectSyncProjects)
+  }, [inspectSyncProjects])
+
+  const recheckSync = React.useCallback(async (projectId: string): Promise<void> => {
+    const api = getDesktopBridge()?.workspace?.syncInspect
+    if (!api) return
+    setSyncRecheckFailedId(null)
+    try {
+      const inspection = await api({ projectId, adopt: true })
+      setSyncInspectionByProject((current) => ({ ...current, [projectId]: inspection }))
+      if (inspection.status === 'ready') setOpenSyncProjectId(null)
+    } catch {
+      // 用户点的「重新检查」——不能静默：弹层原样不动会被读成「检查跑完了，还是坏的」。
+      setSyncRecheckFailedId(projectId)
+      setOpenSyncProjectId(projectId)
+    }
+  }, [])
   const sourceOptions: Array<{ id: 'all' | 'native' | 'folder'; label: string; count: number }> = [
     { id: 'all', label: t('library.all'), count: sourceCounts.all },
     { id: 'native', label: t('library.local'), count: sourceCounts.native },
@@ -167,9 +220,14 @@ export default function ProjectLibraryPage({
   ]
   const textModelMissing = hasTextModel === false
   const openProject = React.useCallback((projectId: string): void => {
+    const status = syncInspectionByProject[projectId]?.status
+    if (status && status !== 'ready') {
+      setOpenSyncProjectId(projectId)
+      return
+    }
     onOpenProject(projectId)
     markLibraryUsed('project', projectId)
-  }, [onOpenProject])
+  }, [onOpenProject, syncInspectionByProject])
   // 单一入口互斥：缺文本模型时弱入口隐藏，模型入口 = 状态条（有项目）/ 主 CTA 自动带入（空库）
   const showModelEntry = Boolean(onOpenModelCatalog) && !textModelMissing
   // Windows：库窗也 frame:false，需自绘标题栏才能拖动/关窗。mac/Linux：原生 chrome，右上操作留在 header 原位。
@@ -351,7 +409,52 @@ export default function ProjectLibraryPage({
             )}
           />
 
-          {filteredProjects.length === 0 ? (
+          {/* 四态顺序不能变：error → loading → empty。读取失败时 projects 是 fallback []，
+              先判空态就会把「读不到」渲染成首启空库引导屏（用户读作「我的项目全没了」）。 */}
+          {projectsError ? (
+            <div data-testid="library-load-error">
+            <DesignEmptyState
+              density="inline"
+              icon={<IconAlertTriangle size={30} stroke={1.6} className="text-nomi-danger" aria-hidden="true" />}
+              title={t('library.loadFailedTitle')}
+              description={
+                <>
+                  <div>{t('library.loadFailedDescription')}</div>
+                  {projectsError.message ? (
+                    <div className="mt-1 text-micro text-nomi-ink-30 break-words">
+                      {t('library.loadFailedReason', { reason: projectsError.message })}
+                    </div>
+                  ) : null}
+                </>
+              }
+              action={
+                onRetryLoadProjects ? (
+                  <button
+                    type="button"
+                    data-testid="library-load-retry"
+                    className="inline-flex h-8 items-center gap-1.5 px-4 rounded-pill border-0 bg-nomi-ink text-nomi-paper text-body-sm font-medium font-inherit cursor-pointer transition-colors hover:bg-nomi-accent"
+                    onClick={onRetryLoadProjects}
+                  >
+                    <IconRefresh size={14} stroke={1.8} aria-hidden="true" />
+                    {t('library.retryLoad')}
+                  </button>
+                ) : undefined
+              }
+            />
+            </div>
+          ) : projectsLoading ? (
+            // 首屏读取中：骨架屏占位（统一组件 NomiSkeleton），别拿空态文案顶——
+            // 「还没有项目」在数据还没到的时候是一句假话。
+            <div
+              className="shrink-0 grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-3"
+              data-testid="library-loading"
+              aria-label={t('library.loadingProjects')}
+            >
+              {[0, 1, 2, 3].map((slot) => (
+                <NomiSkeleton key={slot} className="h-32" />
+              ))}
+            </div>
+          ) : filteredProjects.length === 0 ? (
             // 审计 A10：库非空但「搜索 × 来源 tab」过滤后为空——给空态与出路（统一空态组件）。
             <DesignEmptyState
               density="inline"
@@ -384,8 +487,12 @@ export default function ProjectLibraryPage({
                 <div
                   key={project.id}
                   data-project-card="true"
+                  // 卡片顺序是「最近用过」派生量（libraryDiscovery.sortByLibraryUsage），同一秒内
+                  // 建的两个项目排序就是掷硬币。走查必须按**身份**点项目，不能按位置（`.first()`），
+                  // 所以身份要在 DOM 上拿得到——这条 data 属性就是那个锚点。
+                  data-project-id={project.id}
                   className={cn(
-                    'group bg-nomi-paper border border-nomi-line rounded-nomi-lg overflow-hidden text-left',
+                    'group relative bg-nomi-paper border border-nomi-line rounded-nomi-lg overflow-visible text-left',
                     'transition-[box-shadow,transform,border-color] duration-150',
                     project.missing
                       ? 'opacity-50 cursor-not-allowed'
@@ -489,7 +596,84 @@ export default function ProjectLibraryPage({
                           {project.name}
                         </div>
                       )}
-                      <div className="text-micro text-nomi-ink-40">{formatUpdatedAt(project.updatedAt)}</div>
+                      <div className="flex items-center gap-2 text-micro text-nomi-ink-40">
+                        <span>{formatUpdatedAt(project.updatedAt)}</span>
+                        {project.rootPath && syncInspectionByProject[project.id] ? (() => {
+                          const inspection = syncInspectionByProject[project.id]
+                          const ready = inspection.status === 'ready'
+                          const missing = inspection.status === 'missing-assets'
+                          const label = ready
+                            ? t('library.syncReady')
+                            : inspection.status === 'external-change'
+                              ? t('library.syncExternalChange')
+                              : missing
+                                ? t('library.syncMissingAssets', { count: inspection.missingAssetCount })
+                                : t('library.syncCorrupt')
+                          const tone = ready ? 'text-workbench-success' : missing ? 'text-nomi-warning' : 'text-workbench-danger'
+                          const Icon = ready ? IconCircleCheck : missing ? IconInfoCircle : IconAlertTriangle
+                          return (
+                            <button
+                              type="button"
+                              data-sync-status={inspection.status}
+                              aria-label={label}
+                              title={label}
+                              className={cn('inline-flex max-w-[12rem] items-center gap-1 border-0 bg-transparent p-0 font-inherit text-micro cursor-pointer truncate', tone)}
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                setOpenSyncProjectId((current) => current === project.id ? null : project.id)
+                              }}
+                            >
+                              <Icon size={12} stroke={1.8} aria-hidden="true" />
+                              <span className="truncate">{label}</span>
+                            </button>
+                          )
+                        })() : null}
+                      </div>
+                      {openSyncProjectId === project.id && project.rootPath && syncInspectionByProject[project.id] ? (() => {
+                        const inspection = syncInspectionByProject[project.id]
+                        const ready = inspection.status === 'ready'
+                        const title = ready ? t('library.syncDetailsReady') : inspection.status === 'external-change' ? t('library.syncDetailsExternal') : inspection.status === 'missing-assets' ? t('library.syncDetailsMissing') : t('library.syncDetailsCorrupt')
+                        const copy = ready ? t('library.syncDetailsReadyHint') : inspection.status === 'external-change' ? t('library.syncDetailsExternalHint') : inspection.status === 'missing-assets' ? t('library.syncDetailsMissingHint', { count: inspection.missingAssetCount }) : t('library.syncDetailsCorruptHint')
+                        return (
+                          <div
+                            role="dialog"
+                            aria-label={title}
+                            data-sync-popover
+                            className="absolute right-2 top-full z-20 mt-1 w-64 rounded-nomi border border-nomi-line bg-nomi-paper p-3 shadow-nomi-lg"
+                            onClick={(event) => event.stopPropagation()}
+                          >
+                            <div className="text-caption font-medium text-nomi-ink">{title}</div>
+                            <div className="mt-1 text-micro leading-relaxed text-nomi-ink-60">{copy}</div>
+                            <div className="mt-2 truncate rounded-nomi-sm bg-nomi-ink-05 px-2 py-1.5 font-mono text-micro text-nomi-ink-60" title={project.rootPath}>{project.rootPath}</div>
+                            <div className="mt-3 flex items-center gap-2">
+                              {!ready ? (
+                                <button
+                                  type="button"
+                                  className="inline-flex h-7 items-center rounded-nomi-sm border-0 bg-nomi-ink px-2.5 text-micro font-medium text-nomi-paper cursor-pointer hover:bg-nomi-accent"
+                                  onClick={() => { void recheckSync(project.id) }}
+                                >
+                                  <IconRefresh size={13} stroke={1.8} className="mr-1" aria-hidden="true" />
+                                  {t('library.syncRecheck')}
+                                </button>
+                              ) : null}
+                              {onRevealProjectFolder ? (
+                                <button
+                                  type="button"
+                                  className="inline-flex h-7 items-center rounded-nomi-sm border border-nomi-line bg-nomi-paper px-2.5 text-micro text-nomi-ink cursor-pointer hover:bg-nomi-ink-05"
+                                  onClick={() => onRevealProjectFolder(project.id)}
+                                >
+                                  {t('library.syncOpenFolder')}
+                                </button>
+                              ) : null}
+                            </div>
+                            {syncRecheckFailedId === project.id ? (
+                              <div role="alert" className="mt-2 text-micro leading-relaxed text-nomi-danger">
+                                {t('library.syncRecheckFailed')}
+                              </div>
+                            ) : null}
+                          </div>
+                        )
+                      })() : null}
                     </div>
                     {onRevealProjectFolder && project.rootPath ? (
                       <button

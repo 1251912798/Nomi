@@ -17,7 +17,7 @@ describe("canvas.write canonical contract", () => {
     expect(CANVAS_WRITE_CAPABILITY).toEqual({
       id: "canvas.write",
       version: 1,
-      aliases: { pi: "set_node_prompt" },
+      aliases: { pi: "set_node_prompt", mcp: "nomi_canvas_edit", ui: "nomi_canvas_plan" },
       additionalAliases: {
         pi: [
           "create_canvas_nodes",
@@ -32,16 +32,28 @@ describe("canvas.write canonical contract", () => {
       inputSchema: canvasWriteSemanticInputSchema,
       outputSchema: canvasWriteResultSchema,
       effect: "reversible_write",
+      effectClass: "reversible_local",
+      operationEffectClasses: {
+        create_canvas_nodes: "reversible_local",
+        connect_canvas_edges: "reversible_local",
+        tidy_canvas: "reversible_local",
+        propose_storyboard_plan: "reversible_local",
+        patch_shots: "reversible_local",
+        arrange_storyboard_to_timeline: "reversible_local",
+        create_staging_reference: "reversible_local",
+        create_camera_move: "reversible_local",
+        set_node_prompt: "reversible_local",
+      },
       execution: { port: "canvas", availability: "renderer_required" },
-      exposure: "internal_only",
+      exposure: "mcp_safe",
       requiredScope: "canvas:write",
       targetKind: "canvas",
-      approval: "proposal",
       projections: {
         pi: { description: "Propose an exact, reversible prompt update to one generation canvas node." },
+        mcp: { description: "Propose a validated, reversible canvas edit from current intent." },
       },
     });
-    expect(CANVAS_WRITE_CAPABILITY.aliases).not.toHaveProperty("mcp");
+    expect(CANVAS_WRITE_CAPABILITY.aliases.mcp).toBe("nomi_canvas_edit");
   });
 
   it("accepts the strict reversible operation union", () => {
@@ -104,6 +116,27 @@ describe("canvas.write canonical contract", () => {
     expect(canvasWriteSemanticInputSchema.safeParse({ operation: "tidy_canvas", categoryId: "shots" }).success).toBe(
       true,
     );
+    expect(
+      canvasWriteSemanticInputSchema.safeParse({
+        operation: "patch_shots",
+        select: { kind: "indexes", indexes: [2, 4] },
+        patch: { promptAppend: "雨天", durationSec: 8 },
+      }).success,
+    ).toBe(true);
+    expect(canvasWriteSemanticInputSchema.safeParse({
+      operation: "patch_shots",
+      select: { kind: "all" },
+      patch: { prompt: "新的镜头提示词" },
+    }).success).toBe(true);
+    for (const rejected of [
+      { operation: "patch_shots", select: { kind: "all" }, patch: {} },
+      { operation: "patch_shots", select: { kind: "all" }, patch: { prompt: "a", promptAppend: "b" } },
+      { operation: "patch_shots", select: { kind: "indexes", indexes: [0] }, patch: { prompt: "a" } },
+      { operation: "patch_shots", select: { kind: "indexes", indexes: [1] }, patch: { modelKey: "model-only" } },
+      { operation: "unknown_operation", select: { kind: "all" }, patch: { prompt: "a" } },
+    ]) {
+      expect(canvasWriteSemanticInputSchema.safeParse(rejected).success).toBe(false);
+    }
   });
 
   it("keeps create/connect bounds and confirmation guidance on canonical Pi projections", () => {
@@ -145,13 +178,20 @@ describe("canvas.write canonical contract", () => {
       }).success,
     ).toBe(false);
 
-    const wire = JSON.parse(JSON.stringify(zodToJsonSchema(createSchema!, { $refStrategy: "none" }))) as {
+    const wire = JSON.parse(JSON.stringify(zodToJsonSchema(createSchema!, { $refStrategy: "none", effectStrategy: "input" }))) as {
       required?: string[];
-      properties?: Record<string, { description?: string }>;
+      properties?: Record<string, { description?: string; anyOf?: Array<{ type?: string; description?: string }> }>;
     };
     expect(wire.required).toEqual(expect.arrayContaining(["summary", "nodes"]));
     expect(wire.properties?.summary?.description).toContain("shown to the user before confirmation");
-    expect(wire.properties?.edges?.description).toContain("same call");
+    // `nodes` / `edges` 现在是「数组 ∪ 同一个数组的 JSON 文本」（`jsonArgTolerance`）。
+    // 结构化那一支必须**排在前面**：模型是按顺序读 anyOf 的，把字符串那支排前面
+    // 等于在教它二次序列化——正是这次要修的那个 bug。原本写给模型的边说明留在数组那支上。
+    const edges = wire.properties?.edges?.anyOf ?? [];
+    expect(edges[0]?.type).toBe("array");
+    expect(edges[0]?.description).toContain("same call");
+    expect(edges[1]?.type).toBe("string");
+    expect(edges[1]?.description).toContain("not a string containing it");
   });
 
   it("projects a strict safe receipt without Canvas store objects", () => {
@@ -181,6 +221,7 @@ describe("canvas.write canonical contract", () => {
     );
     expect(canvasWriteOperationForAlias(CANVAS_WRITE_OPERATION_ALIASES.tidyCanvas)).toBe("tidy_canvas");
     expect(canvasWriteOperationForAlias("nomi_set_node_prompt")).toBeUndefined();
+    expect(canvasWriteOperationForAlias("patch_shots")).toBeUndefined();
   });
 
   it("keeps storyboard-side tools inside the canonical executable capability", () => {
@@ -198,5 +239,19 @@ describe("canvas.write canonical contract", () => {
     expect(canvasWriteOperationForAlias("create_camera_move")).toBe("create_camera_move");
     expect(plan?.safeParse({ title: "猫", anchors: [], shots: [{ index: 1 }], extra: true }).success).toBe(false);
     expect(camera?.safeParse({ shotClientId: "shot-1" }).success).toBe(false);
+  });
+
+  it("validates a canonical storyboard patch receipt without accepting a legacy tool name", () => {
+    const result = {
+      applied: true,
+      proposalId: "prop-patch-a",
+      operation: "patch_shots",
+      changedShotIndexes: [2, 4],
+      changedFields: ["prompt", "durationSec"],
+      result: { status: "applied" },
+      reconciliation: { ok: true, deviationCount: 0 },
+    } as const;
+    expect(canvasWriteResultSchema.parse(result)).toEqual(result);
+    expect(canvasWriteResultSchema.safeParse({ ...result, directTool: "patch_shots" }).success).toBe(false);
   });
 });

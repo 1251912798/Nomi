@@ -2,14 +2,14 @@ import { describe, expect, it, vi } from "vitest";
 
 import { createModuleRegistry } from "./moduleRegistry";
 import {
+  coldstartEtaForGate,
   createGenerationPlanningHandler,
   createInMemoryGenerationOperationStore,
-  MCP_GENERATION_TOOL_CATALOG,
   type GenerationOperation,
 } from "./mcpGenerationTools";
+import { MCP_GENERATION_TOOL_CATALOG } from "./mcpGenerationToolCatalog";
 import { PROJECT_LEASE_ALGORITHM, PROJECT_LEASE_AUDIENCE, PROJECT_LEASE_VERSION, type ProjectLeaseV2 } from "./projectLease";
-import { SEEDANCE_2_5_APIMART_ARCHETYPE } from "../../src/config/modelArchetypes/seedance25Apimart";
-import { buildVideoModelCandidates, recommendVideoGeneration } from "../shared/videoCapabilities";
+import { buildVideoModelCandidates, recommendVideoGeneration, SEEDANCE_2_5_APIMART_ARCHETYPE } from "../shared/videoCapabilities";
 
 const videoModelCandidates = buildVideoModelCandidates([
   { provider: "apimart", modelKey: "doubao-seedance-2.0", label: "Seedance 2.0" },
@@ -117,12 +117,14 @@ describe("semantic MCP generation tools", () => {
   });
 
   it("exposes one vocabulary for MCP and GUI adapters", () => {
-    expect(MCP_GENERATION_TOOL_CATALOG.map((tool) => tool.name)).toEqual(expect.arrayContaining([
-      "nomi_operation_create",
-      "nomi_submit_generation_plan",
-      "nomi_preview_execution",
-      "nomi_start_generation",
-    ]));
+    // 面收敛（surface-16-collapse）：operation 族 8 步塌成 5 个贴生命周期的工具（get_context 进 nomi_read）。
+    expect(MCP_GENERATION_TOOL_CATALOG.map((tool) => tool.name)).toEqual([
+      "nomi_operation_plan",
+      "nomi_operation_preview",
+      "nomi_operation_gate",
+      "nomi_operation_execute",
+      "nomi_operation_control",
+    ]);
   });
 
   it("keeps editing provider-neutral and does not call a provider", async () => {
@@ -336,6 +338,81 @@ describe("semantic MCP generation tools", () => {
     expect(preview).toMatchObject({ recommendation: { recommendations: [{ modeId: "firstlast" }] } });
     expect(recommendVideoGeneration).toHaveBeenCalledTimes(1);
     expect(start).not.toHaveBeenCalled();
+  });
+
+  it("resolve runs a stateless plan pass: clamps out-of-range durations and never touches the operation store", async () => {
+    const operations = createInMemoryGenerationOperationStore();
+    const handler = createGenerationPlanningHandler({
+      registry: videoRegistry,
+      operations,
+      videoModelCandidates: [{ provider: "apimart", modelKey: "doubao-seedance-2.5", label: "Seedance 2.5", archetype: SEEDANCE_2_5_APIMART_ARCHETYPE }],
+      now: () => "2026-08-23T00:00:00.000Z",
+    });
+
+    const resolution = await handler({
+      capability: "resolve",
+      params: {
+        shots: [
+          { id: "s1", durationSec: 999, modelKey: "doubao-seedance-2.5", sceneAnchorId: "hall" },
+          { id: "s2", durationSec: 5, sceneAnchorId: "hall" },
+        ],
+        goals: { allowAdvisoryMerge: true },
+      },
+      lease,
+    }) as {
+      nextAction: string;
+      resolvedShots: Array<{ id: string; modelKey: string | null; issues: Array<{ code: string }> }>;
+      mergeProposals: unknown[];
+      splitProposals: unknown[];
+      planIssues: Array<{ code: string }>;
+    };
+
+    expect(resolution.nextAction).toBe("create");
+    expect(resolution.resolvedShots).toHaveLength(2);
+    expect(resolution.resolvedShots[0]).toMatchObject({ id: "s1", modelKey: "doubao-seedance-2.5" });
+    expect(Array.isArray(resolution.mergeProposals)).toBe(true);
+    expect(Array.isArray(resolution.splitProposals)).toBe(true);
+    // 999s 必然触发钳值/超限（任何真实单条上限都小于它）→ planIssues 至少一条不合法记录
+    expect(resolution.planIssues.length).toBeGreaterThan(0);
+    expect(resolution.planIssues.some((issue) => issue.code === "duration.overflow" || issue.code === "duration.clamped")).toBe(true);
+    // stateless：resolve 不落任何 durable operation
+    expect(await operations.read("project-1", "resolve-op")).toBeNull();
+  });
+
+  it("resolve is lease-free (GUI narrow IPC path): same advisory output with no lease, while other capabilities still fail-closed", async () => {
+    const operations = createInMemoryGenerationOperationStore();
+    const handler = createGenerationPlanningHandler({
+      registry: videoRegistry,
+      operations,
+      videoModelCandidates: [{ provider: "apimart", modelKey: "doubao-seedance-2.5", label: "Seedance 2.5", archetype: SEEDANCE_2_5_APIMART_ARCHETYPE }],
+      now: () => "2026-08-23T00:00:00.000Z",
+    });
+
+    // resolve 不传 lease（stateless advisory，无项目侧写）也走通。
+    const leaseFree = await handler({
+      capability: "resolve",
+      params: { shots: [{ id: "s1", durationSec: 5, sceneAnchorId: "hall" }] },
+    }) as { resolvedShots: unknown[]; mergeProposals: unknown[]; splitProposals: unknown[]; planIssues: unknown[]; nextAction: string };
+    expect(leaseFree.nextAction).toBe("create");
+    expect(leaseFree.resolvedShots).toHaveLength(1);
+
+    // 其它 capability 没有 lease 仍必须 fail-closed（改 resolve 豁免不许放宽整把闸）。
+    await expect(handler({ capability: "context", params: {} })).rejects.toThrow("A verified project lease is required");
+    await expect(handler({ capability: "create", params: { prompt: "x" } })).rejects.toThrow("A verified project lease is required");
+  });
+
+  it("resolve 的输入解析走能力契约的 zod（单一生成点）：未知字段/空数组 fail-closed", async () => {
+    const handler = createGenerationPlanningHandler({
+      registry: videoRegistry,
+      operations: createInMemoryGenerationOperationStore(),
+      videoModelCandidates: [{ provider: "apimart", modelKey: "doubao-seedance-2.5", label: "Seedance 2.5", archetype: SEEDANCE_2_5_APIMART_ARCHETYPE }],
+      now: () => "2026-08-23T00:00:00.000Z",
+    });
+    // .strict()：模型编出来的字段不会被默默吞掉
+    await expect(handler({ capability: "resolve", params: { shots: [{ id: "s1", durationSec: 5, madeUpKey: 1 }] } }))
+      .rejects.toThrow(/resolve input is invalid/);
+    await expect(handler({ capability: "resolve", params: { shots: [] } })).rejects.toThrow(/resolve input is invalid/);
+    await expect(handler({ capability: "resolve", params: { shots: [{ id: "s1" }] } })).rejects.toThrow(/resolve input is invalid/);
   });
 
   it("uses the shared source-backed registry for a real preview path without starting a provider", async () => {
@@ -649,6 +726,97 @@ describe("semantic MCP generation tools", () => {
       };
       expect(defaultModelForTaskKind).toHaveBeenCalledWith("text_to_video");
       expect(created.operation.shots[0]?.candidate).toMatchObject({ providerId: "video-provider", modelId: "video-model", mode: "text-to-video" });
+    });
+  });
+
+  // J05 — plan patch model-change 应返回 changeset（modelChanged+previousModel+nextModel），
+  // 让调用方知道哪些字段被静默重置。今天返回 {operation, nextAction:"preview"} 无 changeset → 红灯。
+  describe("J05 plan patch changeset on model switch", () => {
+    it("returns changeset.modelChanged when the model changes", async () => {
+      const operations = createInMemoryGenerationOperationStore();
+      const registry2 = createModuleRegistry([{
+        moduleId: "generation.single-shot",
+        version: "1.0.0",
+        inputKinds: ["text", "image"],
+        outputKinds: ["image"],
+        modes: ["text-to-image"],
+        parameterSchema: { aspectRatio: { type: "enum", enum: ["1:1", "16:9"] } },
+        assetInputSchema: { references: { kind: "image", max: 4 } },
+        providers: [
+          {
+            providerId: "fixture-provider",
+            models: [{ modelId: "model-a", modes: ["text-to-image"], parameterSchema: { seed: { type: "integer" } }, capabilities: { submitIdempotency: true, query: true, reconcile: true, cancel: true } }],
+          },
+          {
+            providerId: "fixture-provider",
+            models: [{ modelId: "model-b", modes: ["text-to-image"], parameterSchema: {}, capabilities: { submitIdempotency: true, query: true, reconcile: true, cancel: true } }],
+          },
+        ],
+      }]);
+      const handler = createGenerationPlanningHandler({ registry: registry2, operations, now: () => "2026-09-03T00:00:00.000Z" });
+      // Create with model-a (may have variantId later)
+      await handler({ capability: "create", params: { operationId: "op-j05", prompt: "test prompt", providerId: "fixture-provider", modelId: "model-a", mode: "text-to-image", moduleId: "generation.single-shot" }, lease });
+      // Patch to model-b (different model → should emit changeset)
+      const patched = await handler({ capability: "plan", params: { operationId: "op-j05", patch: { providerId: "fixture-provider", modelId: "model-b" } }, lease }) as {
+        operation: object;
+        nextAction: string;
+        changeset?: { modelChanged: boolean; previousModel: string; nextModel: string };
+      };
+      expect(patched.nextAction).toBe("preview");
+      // J05 red light: today this will be undefined; after fix it should be present
+      expect(patched.changeset).toBeDefined();
+      expect(patched.changeset?.modelChanged).toBe(true);
+      expect(patched.changeset?.previousModel).toBe("fixture-provider/model-a");
+      expect(patched.changeset?.nextModel).toBe("fixture-provider/model-b");
+    });
+
+    it("returns no changeset when only the prompt changes (no model switch)", async () => {
+      const operations = createInMemoryGenerationOperationStore();
+      const handler = createGenerationPlanningHandler({ registry, operations, now: () => "2026-09-03T00:00:00.000Z" });
+      await handler({ capability: "create", params: { operationId: "op-j05-noop", prompt: "first", providerId: "fixture-provider", modelId: "fixture-model", mode: "text-to-image", moduleId: "generation.single-shot" }, lease });
+      const patched = await handler({ capability: "plan", params: { operationId: "op-j05-noop", patch: { prompt: "changed prompt" } }, lease }) as {
+        changeset?: unknown;
+      };
+      expect(patched.changeset).toBeUndefined();
+    });
+  });
+
+  // J06 — coldstartEtaForGate 应产出区间（waitSeconds/waitSecondsHigh/etaBasis='coldstart'）
+  // 而不是硬编码 40 秒或 180 秒点值。
+  describe("J06 coldstartEtaForGate — ETA range instead of hardcoded 40/180s", () => {
+    it("video kind returns waitSecondsHigh > waitSeconds, both > 0, etaBasis=coldstart", () => {
+      const eta = coldstartEtaForGate(["video"], 1);
+      expect(eta.etaBasis).toBe("coldstart");
+      expect(eta.waitSeconds).toBeGreaterThan(0);
+      expect(eta.waitSecondsHigh).toBeGreaterThan(eta.waitSeconds);
+      // video must be honest: at least 3 minutes (180s); 40s was the fake value
+      expect(eta.waitSeconds).toBeGreaterThan(40);
+    });
+
+    it("video kind scales linearly with shotCount", () => {
+      const single = coldstartEtaForGate(["video"], 1);
+      const four = coldstartEtaForGate(["video"], 4);
+      expect(four.waitSeconds).toBe(single.waitSeconds * 4);
+      expect(four.waitSecondsHigh).toBe(single.waitSecondsHigh * 4);
+    });
+
+    it("image kind is faster than video", () => {
+      const videoEta = coldstartEtaForGate(["video"], 1);
+      const imageEta = coldstartEtaForGate(["image"], 1);
+      expect(imageEta.waitSeconds).toBeLessThan(videoEta.waitSeconds);
+    });
+
+    it("mixed kinds with video present picks video as primary", () => {
+      const eta = coldstartEtaForGate(["image", "video"], 1);
+      const videoEta = coldstartEtaForGate(["video"], 1);
+      expect(eta.waitSeconds).toBe(videoEta.waitSeconds);
+    });
+
+    it("unknown kind falls back gracefully without throwing", () => {
+      const eta = coldstartEtaForGate(["hologram"], 2);
+      expect(eta.etaBasis).toBe("coldstart");
+      expect(eta.waitSeconds).toBeGreaterThan(0);
+      expect(eta.waitSecondsHigh).toBeGreaterThan(eta.waitSeconds);
     });
   });
 });

@@ -69,7 +69,9 @@ export function toGenerationFlowNode(
       focusFlash: Boolean(visualState.focusFlash),
     },
     selected,
-    draggable: !readOnly,
+    // **不写 `draggable`**：节点上的这颗开关会覆盖 `<ReactFlow nodesDraggable>`，
+    // 于是「能不能拖」有了两份定义，而画布外壳那一份还要额外表达「框工具就绪时不许拖」
+    // （R29 §6.2）。它原本的值恒等于 `!readOnly`，与外壳传的一模一样，删掉即可（P1）。
     selectable: !readOnly,
     connectable: !readOnly,
     focusable: !readOnly,
@@ -230,6 +232,11 @@ export function flowViewportFromCanvas(viewport: { zoom: number; offset: { x: nu
 
 export function canvasViewportFromFlow(viewport: Viewport): { zoom: number; offset: { x: number; y: number } } {
   return { zoom: viewport.zoom, offset: { x: viewport.x, y: viewport.y } }
+}
+
+/** React Flow 的 d3 过渡在 extent 缓存为 0×0 时会吐出 NaN 视口；任何要记住/回写的视口先过这道门。 */
+export function isFiniteFlowViewport(viewport: Viewport): boolean {
+  return Number.isFinite(viewport.x) && Number.isFinite(viewport.y) && Number.isFinite(viewport.zoom) && viewport.zoom > 0
 }
 
 export function getFlowNodeKind(node: GenerationFlowNode): GenerationNodeKind {

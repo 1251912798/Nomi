@@ -19,9 +19,8 @@ export function readCurrentWorkbenchProjectPayload(): WorkbenchProjectPayload {
     categories: workbench.categories,
     // S5-b-1:尾部重放游标(append 回执维护;回执延迟导致略旧也安全——reducer 幂等)
     generationCanvasLastSeq: getCanvasEventLastSeq(),
-    // P4:每篇原稿的分镜方案映射随项目落盘（P0-6 从单字段升级）。
-    storyboardPlans: workbench.storyboardPlans,
     storyboardDesignsByDocumentId: workbench.storyboardDesignsByDocumentId,
+    editingPanelLayout: workbench.editingPanelLayout,
   }
 }
 
@@ -34,10 +33,8 @@ export function restoreWorkbenchProjectPayload(payload: WorkbenchProjectPayload)
   useWorkbenchStore.getState().setCategories(payload.categories)
   // P4：恢复整套分镜方案映射。用 hydrateStoryboardDesigns（非 setStoryboardPlan）载入不标脏。
   const store = useWorkbenchStore.getState()
-  store.hydrateStoryboardDesigns(
-    payload.storyboardDesignsByDocumentId ?? {},
-    payload.storyboardPlans ?? {},
-  )
+  store.hydrateStoryboardDesigns(payload.storyboardDesignsByDocumentId ?? {})
+  if (payload.editingPanelLayout) store.setEditingPanelLayout(payload.editingPanelLayout, false)
   useGenerationCanvasStore.getState().restoreSnapshot(payload.generationCanvas)
 }
 
@@ -97,6 +94,12 @@ type ActiveWorkbenchProjectSaveTarget = {
 
 let activeWorkbenchProjectSaveTarget: ActiveWorkbenchProjectSaveTarget | null = null
 const projectSaveOwners = new Map<ActiveWorkbenchProjectSaveTarget, () => Promise<WorkbenchProjectRecordV1 | null>>()
+const activeWorkbenchProjectSaveTargetListeners = new Set<() => void>()
+const ACTIVE_PROJECT_SAVE_TARGET_WAIT_MS = 5_000
+
+function notifyActiveWorkbenchProjectSaveTarget(): void {
+  activeWorkbenchProjectSaveTargetListeners.forEach((listener) => listener())
+}
 
 export function setActiveWorkbenchProjectSaveTarget(target: ActiveWorkbenchProjectSaveTarget | null): void {
   activeWorkbenchProjectSaveTarget = target
@@ -104,11 +107,49 @@ export function setActiveWorkbenchProjectSaveTarget(target: ActiveWorkbenchProje
   // 当前工作台项目是审片结果的所有权边界。绑定新项目时同步切换 shot verify scope；
   // activateProject 对同 id 幂等，不会因保存订阅重绑而误清本项目预算。
   useShotVerifyStore.getState().activateProject(target?.projectId)
+  notifyActiveWorkbenchProjectSaveTarget()
 }
 
 export function clearActiveWorkbenchProjectSaveTarget(projectId?: string): void {
   if (projectId && activeWorkbenchProjectSaveTarget?.projectId !== projectId) return
   activeWorkbenchProjectSaveTarget = null
+  notifyActiveWorkbenchProjectSaveTarget()
+}
+
+/**
+ * Wait for the single active project save owner to be installed.  Hydration
+ * publishes the project before React's persistence effect binds its target;
+ * canonical MCP writes may therefore reach the renderer in that short window.
+ * Waiting on the owner signal keeps the receipt barrier fail-closed without
+ * creating a second writer or relying on a runner sleep.
+ */
+export function waitForActiveWorkbenchProjectSaveTarget(projectId: string): boolean | Promise<boolean> {
+  const current = activeWorkbenchProjectSaveTarget
+  if (current?.projectId === projectId && current.canPersist()) return true
+  return new Promise((resolve) => {
+    let settled = false
+    const finish = (ready: boolean): void => {
+      if (settled) return
+      settled = true
+      activeWorkbenchProjectSaveTargetListeners.delete(listener)
+      if (timer) clearTimeout(timer)
+      resolve(ready)
+    }
+    const listener = (): void => {
+      const target = activeWorkbenchProjectSaveTarget
+      // A project cutover clears the owner before installing the replacement.
+      // Resolve that waiter as stale instead of leaving a caller pending until
+      // the timeout while another project owns the surface.
+      if (!target || target.projectId !== projectId) {
+        finish(false)
+        return
+      }
+      if (!target.canPersist()) return
+      finish(true)
+    }
+    activeWorkbenchProjectSaveTargetListeners.add(listener)
+    const timer = setTimeout(() => finish(false), ACTIVE_PROJECT_SAVE_TARGET_WAIT_MS)
+  })
 }
 
 /** 当前活动 workbench 项目 id（单一真相源）—— 抽帧落素材需要它，runner 作用域本身拿不到。 */
@@ -158,6 +199,13 @@ function createProjectSaveQueue(input: {
   let savedRecord: WorkbenchProjectRecordV1 | null = null
   let failed = false
   let failure: unknown
+  const idleWaiters: Array<() => void> = []
+
+  const notifyIdle = () => {
+    if (running || pending) return
+    const waiters = idleWaiters.splice(0)
+    waiters.forEach((resolve) => resolve())
+  }
 
   const drain = async (): Promise<void> => {
     if (running) return
@@ -179,6 +227,7 @@ function createProjectSaveQueue(input: {
       }
     } finally {
       running = false
+      notifyIdle()
     }
   }
 
@@ -193,6 +242,14 @@ function createProjectSaveQueue(input: {
       await completion
       if (failed) throw failure
       return savedRecord
+    },
+    cancelPending(): void {
+      pending = null
+      notifyIdle()
+    },
+    whenIdle(): Promise<void> {
+      if (!running && !pending) return Promise.resolve()
+      return new Promise((resolve) => idleWaiters.push(resolve))
     },
   }
 }

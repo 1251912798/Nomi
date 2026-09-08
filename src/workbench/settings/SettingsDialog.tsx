@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Portal } from '@mantine/core'
 import { IconAdjustmentsHorizontal, IconBrain, IconFolder, IconInfoCircle, IconLock, IconPlugConnected, IconX } from '@tabler/icons-react'
 import { cn } from '../../utils/cn'
-import { confirmDialog, DesignSwitch, NOMI_OVERLAY_Z_INDEX } from '../../design'
+import { confirmDialog, NOMI_OVERLAY_Z_INDEX } from '../../design'
 import {
   getSettingsEscapeOwnership,
   settingsEscapeTargetWasRemoved,
@@ -15,7 +15,6 @@ import { getAppLocale, setAppLocale, SUPPORTED_LOCALES, type AppLocale } from '.
 import { ThemeToggleButton } from '../../ui/theme/ThemeToggleButton'
 import { ScreenshotHotkeySection } from './ScreenshotHotkeySection'
 import { CanvasGestureSection } from './CanvasGestureSection'
-import { AgentHostSection } from './AgentHostSection'
 import { AboutSection } from './AboutSection'
 import { ProjectLocationSection } from './ProjectLocationSection'
 import { AiModelsSection } from './AiModelsSection'
@@ -26,6 +25,8 @@ import { defaultAutomationPolicySettings } from './settingsAutomationView'
 import type { AutomationPolicySettings } from '../../../electron/settings/automationPolicyContract'
 import type { ProductionPolicyRequirement } from '../production/productionPolicyRecovery'
 import { hasSettingsUnsavedChanges } from './settingsUnsavedChanges'
+import { TelemetrySection } from './TelemetrySection'
+import { DiagnosticsBundleSection } from './DiagnosticsBundleSection'
 
 // ⚠️ 必须懒加载：SettingsDialog 本身是 NomiStudioApp 里**同步 import** 的，而接入面整棵树
 // （OnboardingWizard / 各家 VendorCard / ComfyUI 那套）是个 160KB+ 的独立 chunk。直接 import
@@ -40,7 +41,7 @@ import type { ModelPageRequest } from '../../ui/onboarding/useModelPageRequest'
 // 语言用「母语名」直读，不随界面语言翻译——换语言时两个名字都稳定可认（沿用 PR#50 的判断）。
 const LOCALE_LABEL_KEY: Record<AppLocale, string> = { 'zh-CN': 'common.chinese', en: 'common.english' }
 
-// 集中设置页（2026-08-01 用户拍板样张）：左 tab 右内容。首批「文件与保存」做实——自动另存开关+目录；
+// 集中设置页（2026-08-01 用户拍板样张）：左 tab 右内容。首批「文件与保存」做实——项目目录与跨设备继续编辑；
 // 其余 tab 占位。外壳交互为 Portal + Esc + 点遮罩关，布局是居中大 modal。
 // 2026-08-12 用户拍板：五 tab 变六 tab，「模型」独立成一档。
 // 为什么原拍板不再成立：定五 tab 那会儿「模型」= 几个 API key，塞进「AI 与模型」够用；
@@ -82,8 +83,6 @@ export function SettingsDialog({
   const [modelPageRequest, setModelPageRequest] = React.useState<ModelPageRequest>(null)
   // t 随语言变化重渲，渲染时读 getAppLocale() 即拿最新值（沿用 LanguageMenuButton 的做法）。
   const locale = getAppLocale()
-  const [enabled, setEnabled] = React.useState(false)
-  const [dir, setDir] = React.useState('')
   const [automationPolicy, setAutomationPolicy] = React.useState<AutomationPolicySettings>(defaultAutomationPolicySettings)
   const [automationPolicyLoaded, setAutomationPolicyLoaded] = React.useState(false)
   const dialogRef = React.useRef<HTMLDivElement>(null)
@@ -144,18 +143,6 @@ export function SettingsDialog({
     return () => window.cancelAnimationFrame(frame)
   }, [automationPolicyLoaded, initialSection, tab])
 
-  // 打开时读当前偏好（主进程 download-prefs.json）。
-  React.useEffect(() => {
-    void getDesktopBridge()
-      ?.assets?.getAutoSavePrefs?.()
-      .then((prefs) => {
-        if (!prefs) return
-        setEnabled(Boolean(prefs.enabled))
-        setDir(String(prefs.dir || ''))
-      })
-      .catch(() => undefined)
-  }, [])
-
   React.useEffect(() => {
     let active = true
     const policy = getDesktopBridge()?.settings?.automationPolicy
@@ -215,7 +202,11 @@ export function SettingsDialog({
       }
 
       event.stopPropagation()
-      if (tab === 'models' && dialog.querySelector('[data-model-settings-page]')) {
+      // 模型抽屉是下钻式的：站在子页上时 Esc 先退一层。判据必须是「上面确实还有一层可退」——
+      // 模型首页后来也带上了同一个 data-model-settings-page 标记，于是这个条件在整个「模型」tab 上
+      // 恒真，Esc 永远只在首页原地发一次 back，设置对话框再也关不掉（aria-modal 对话框的无障碍基本项）。
+      // 所以这里排掉首页，而不是让每个消费方各自去猜栈深。
+      if (tab === 'models' && dialog.querySelector('[data-model-settings-page]:not([data-model-settings-page="home"])')) {
         event.preventDefault()
         window.dispatchEvent(new CustomEvent('nomi-model-settings-back'))
         return
@@ -230,22 +221,6 @@ export function SettingsDialog({
       document.removeEventListener('keydown', onKeyBubble)
     }
   }, [requestClose, tab])
-
-  const persist = React.useCallback((nextEnabled: boolean, nextDir: string): void => {
-    void getDesktopBridge()?.assets?.setAutoSavePrefs?.({ enabled: nextEnabled, dir: nextDir }).catch(() => undefined)
-  }, [])
-
-  const onToggle = (next: boolean): void => {
-    setEnabled(next)
-    persist(next, dir)
-  }
-  const onPickDir = async (): Promise<void> => {
-    const res = await getDesktopBridge()?.assets?.pickSaveDir?.()
-    if (res?.dir) {
-      setDir(res.dir)
-      persist(enabled, res.dir)
-    }
-  }
 
   const updateAutomationPolicy = React.useCallback((patch: Partial<AutomationPolicySettings>): void => {
     if (!automationPolicyLoaded) return
@@ -344,34 +319,6 @@ export function SettingsDialog({
             {tab === 'file' ? (
               <div>
                 <div className="mb-4 text-body font-medium text-nomi-ink">{t('settings.file.title')}</div>
-
-                <div className="mb-1.5 flex items-center justify-between">
-                  <span className="text-body-sm text-nomi-ink">{t('settings.file.autoSave')}</span>
-                  <DesignSwitch
-                    checked={enabled}
-                    onChange={(event) => onToggle(event.currentTarget.checked)}
-                    aria-label={t('settings.file.autoSave')}
-                  />
-                </div>
-                <div className="mb-4 text-caption leading-relaxed text-nomi-ink-40">{t('settings.file.autoSaveHint')}</div>
-
-                <div className={cn('mb-5', !enabled && 'pointer-events-none opacity-45')}>
-                  <div className="mb-1.5 text-caption text-nomi-ink-60">{t('settings.file.saveTo')}</div>
-                  <div className="flex items-center gap-2">
-                    <div className="min-w-0 flex-1 truncate rounded-nomi-sm bg-nomi-ink-05 px-2.5 py-2 font-mono text-caption text-nomi-ink-60">
-                      {dir || t('settings.file.noDir')}
-                    </div>
-                    <button
-                      type="button"
-                      disabled={!enabled}
-                      onClick={() => void onPickDir()}
-                      className="inline-flex flex-none items-center gap-1.5 rounded-nomi-sm border border-nomi-line bg-nomi-paper px-3 py-2 text-caption text-nomi-ink cursor-pointer hover:bg-nomi-ink-05 disabled:cursor-not-allowed"
-                    >
-                      <IconFolder size={14} stroke={1.7} aria-hidden="true" /> {t('settings.file.pick')}
-                    </button>
-                  </div>
-                </div>
-
                 <ProjectLocationSection />
               </div>
             ) : tab === 'ai' ? (
@@ -411,7 +358,6 @@ export function SettingsDialog({
                 <div className="mb-4 text-body font-medium text-nomi-ink">{t('settings.general.title')}</div>
                 <ScreenshotHotkeySection />
                 <CanvasGestureSection />
-                <AgentHostSection />
                 {/* 语言 / 外观归位到这里（§1.5「归位」）：它们过去挤在 studio 顶栏右簇 + 项目库顶栏，
                     外观还另有一份藏在品牌钮弹窗里——纯偏好项本来就该住设置，且这里是唯一一份（P1）。
                     ⚠️ 这一步等于改写 PR#50 的判断（当时把语言从「关于」弹窗第三层提到顶栏常驻图标，
@@ -431,7 +377,7 @@ export function SettingsDialog({
                         onClick={() => setAppLocale(option)}
                         className={cn(
                           'rounded-nomi-sm border px-2.5 py-1.5 text-caption cursor-pointer',
-                          'transition-colors duration-[var(--nomi-transition-fast)]',
+                          'transition-colors duration-nomi-fast ease-nomi-fast',
                           option === locale
                             ? 'border-nomi-accent bg-nomi-accent-soft text-nomi-accent'
                             : 'border-nomi-line bg-nomi-paper text-nomi-ink-60 hover:bg-nomi-ink-05',
@@ -450,6 +396,10 @@ export function SettingsDialog({
                     <ThemeToggleButton className="shrink-0 border-nomi-line bg-nomi-paper" />
                   </div>
                 </div>
+                {/* 「隐私与诊断」是一格两半：TelemetrySection 管「发不发匿名计数」，
+                    DiagnosticsBundleSection 管「出事时怎么把本机证据交出来」。同块相邻，不另起 tab。 */}
+                <TelemetrySection />
+                <DiagnosticsBundleSection />
               </div>
             ) : tab === 'about' ? (
               <AboutSection onClose={() => { void requestClose() }} onReplaySplash={onReplaySplash} />

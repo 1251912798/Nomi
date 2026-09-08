@@ -2,6 +2,8 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { getSkillsRoots, getUserSkillsRoot } from "../runtimePaths";
+import { frontmatterString, parseSkillFrontmatter, type SkillFrontmatter } from "./skillFrontmatter";
+import { migrateLegacySkillManifest } from "./skillManifestMigration";
 import { computeSkillContentHash, readSkillDirFiles, SKILL_PACKAGE_VERSION } from "./skillPackage";
 import {
   parseSkillManifest,
@@ -86,30 +88,6 @@ export function getSkillDiscoveryRoots(): SkillDiscoveryRoot[] {
     : []);
 }
 
-function frontmatterValue(markdown: string, key: string): string {
-  const match = markdown.match(/^---\s*\n([\s\S]*?)\n---/);
-  const value = match?.[1].match(new RegExp(`^${key}:\\s*["']?(.+?)["']?\\s*$`, "m"));
-  return String(value?.[1] || "").trim();
-}
-
-function parseSkillName(markdown: string, directoryName: string): string {
-  return frontmatterValue(markdown, "name") || directoryName;
-}
-
-function parseSkillDescription(markdown: string): string {
-  return frontmatterValue(markdown, "description");
-}
-
-function parseDisableModelInvocation(markdown: string): boolean {
-  return /^---\s*\n([\s\S]*?)\n---/.exec(markdown)?.[1]
-    ?.match(/^disable-model-invocation:\s*(["']?)(true|false)\1\s*$/im)?.[2]
-    ?.toLowerCase() === "true";
-}
-
-function parseSkillAudience(markdown: string): SkillAudience {
-  return frontmatterValue(markdown, "audience") === "mcp" ? "mcp" : "internal";
-}
-
 export function normalizeSkillLookupKey(value: unknown): string {
   return String(value || "")
     .trim()
@@ -120,17 +98,23 @@ export function normalizeSkillLookupKey(value: unknown): string {
     .toLowerCase();
 }
 
-function readSkillManifest(files: Record<string, string>): { manifest: SkillManifest | null; error?: string } {
-  const rawManifest = files["skill.json"];
-  if (!rawManifest) return { manifest: null };
-  let raw: unknown;
-  try {
-    raw = JSON.parse(rawManifest);
-  } catch (error) {
-    return { manifest: null, error: `skill.json 不是合法 JSON：${(error as Error).message}` };
-  }
-  const parsed = parseSkillManifest(raw);
-  return parsed.ok ? { manifest: parsed.manifest } : { manifest: null, error: parsed.error };
+/**
+ * Read the Nomi extension block out of `metadata.nomi`.
+ *
+ * Three outcomes, and the middle one is the security-relevant one: a block that
+ * exists but does not validate returns `manifest: null` **with** an error, and
+ * `electron/ai/agentChatV2.ts` turns that into an empty capability list (zero
+ * tools).  A missing block is not an error — most skills are pure knowledge and
+ * declare nothing beyond the two required frontmatter fields.
+ */
+export function readSkillManifest(front: SkillFrontmatter): { manifest: SkillManifest | null; error?: string } {
+  if (front.error) return { manifest: null, error: front.error };
+  const metadata = front.values.metadata;
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return { manifest: null };
+  const nomi = (metadata as Record<string, unknown>).nomi;
+  if (nomi === undefined) return { manifest: null };
+  const parsed = parseSkillManifest(nomi);
+  return parsed.ok ? { manifest: parsed.manifest } : { manifest: null, error: `metadata.nomi 校验失败：${parsed.error}` };
 }
 
 /**
@@ -171,6 +155,14 @@ export function discoverSkillRecordsFromRoots(
       if (!entry.isDirectory() || seenDirs.has(directoryKey)) continue;
       const skillDir = path.join(root.path, entry.name);
       if (!fs.existsSync(path.join(skillDir, "SKILL.md"))) continue;
+      // 存量 `skill.json` 只可能出现在用户目录（内置的已在 2026-09-07 的收敛里改写完）。
+      // 迁移一次就没有下一次：迁完目录里没有那个文件了。失败不阻断加载。
+      if (root.origin === "user") {
+        const migration = migrateLegacySkillManifest(skillDir);
+        if (migration.message) {
+          diagnostics.push({ type: migration.migrated ? "warning" : "error", message: migration.message, path: skillDir });
+        }
+      }
       let files: Record<string, string>;
       try {
         files = readSkillDirFiles(skillDir);
@@ -186,7 +178,7 @@ export function discoverSkillRecordsFromRoots(
       if (!body) continue;
       // 损坏包（正文含 NUL 等 C0 控制字符 = 二进制/截断/写坏）不许「占坑遮蔽」：若它优先级更高，
       // 加进 seenDirs 就会把同目录名下一个合法包（如 user 覆盖）挡掉。故这里当损坏处理——记一条 warning
-      // 且**不**加 seenDirs，让后续 root 里同名的合法包顶上（nomiSkillResources 的 shadow 优先级测试钉死）。
+      // 且**不**加 seenDirs，让后续 root 里同名的合法包顶上（skillStore.test.ts 的 shadow 优先级测试钉死）。
       // 只拦真正的控制字符（放行 \t\n\r，它们在 markdown 里合法）。字符类里的控制字符是刻意的。
       // eslint-disable-next-line no-control-regex
       if (/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(body)) {
@@ -198,19 +190,23 @@ export function discoverSkillRecordsFromRoots(
         continue;
       }
       seenDirs.add(directoryKey);
-      const { manifest, error } = readSkillManifest(files);
+      const front = parseSkillFrontmatter(body);
+      const { manifest, error } = readSkillManifest(front);
       records.push({
-        name: manifest?.name || parseSkillName(body, entry.name),
+        // `name` and `description` have exactly one owner now: the two required
+        // frontmatter fields the Agent Skills spec defines.  The extension block
+        // may not restate them, so the two-manifest drift cannot come back.
+        name: frontmatterString(front, "name") || entry.name,
         directoryName: entry.name,
         filePath: path.join(skillDir, "SKILL.md"),
-        description: manifest?.description || parseSkillDescription(body),
+        description: frontmatterString(front, "description"),
         body,
         manifest,
         manifestError: error,
-        disableModelInvocation: parseDisableModelInvocation(body),
+        disableModelInvocation: front.values["disable-model-invocation"] === true,
         origin: root.origin,
         // Imported Skills cannot publish themselves through package metadata.
-        audience: root.origin === "user" ? "internal" : (manifest?.audience ?? parseSkillAudience(body)),
+        audience: root.origin === "user" ? "internal" : (manifest?.audience ?? "internal"),
         packageVersion: SKILL_PACKAGE_VERSION,
         contentHash: computeSkillContentHash(files),
       });
@@ -263,13 +259,15 @@ export function isSkillVisibleToMcp(record: SkillRecord, access: SkillMcpAccess 
 }
 
 /**
- * Workbench picker visibility is separate from MCP audience visibility. Creative
- * built-ins and every user skill are selectable; workbench implementation skills
- * remain internal routing resources and must not clutter the picker.
+ * Workbench picker visibility is separate from MCP audience visibility. User
+ * Skills and existing playbooks remain selectable; a built-in single-stage
+ * Skill must opt in explicitly so routing resources do not leak into the UI.
  */
-export function isSkillSelectableInWorkbench(record: Pick<SkillRecord, "name" | "origin">): boolean {
+export function isSkillSelectableInWorkbench(
+  record: Pick<SkillRecord, "name" | "origin" | "manifest">,
+): boolean {
   if (record.origin === "user") return true;
-  return !record.name.startsWith("workbench.") && record.name !== "creation-edit";
+  return record.manifest?.selectableInWorkbench === true || Boolean(record.manifest?.stages?.length);
 }
 
 export type SkillSummary = {

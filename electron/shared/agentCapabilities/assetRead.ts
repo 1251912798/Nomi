@@ -215,7 +215,7 @@ export function assetReadPiDescriptionForAlias(alias: string): string | undefine
 export const ASSET_READ_CAPABILITY = {
   id: "asset.read",
   version: 1,
-  aliases: { pi: ASSET_READ_ALIASES.get },
+  aliases: { pi: ASSET_READ_ALIASES.get, mcp: "nomi_media_query" },
   additionalAliases: {
     pi: Object.freeze([
       ASSET_READ_ALIASES.inspect,
@@ -227,10 +227,13 @@ export const ASSET_READ_CAPABILITY = {
   inputSchema: assetReadSemanticInputSchema,
   outputSchema: assetReadResultSchema,
   effect: "read",
+  effectClass: "reversible_local",
   execution: { port: "asset", availability: "renderer_required" },
-  exposure: "internal_only",
+  exposure: "mcp_safe",
   requiredScope: "asset:read",
   targetKind: "asset",
-  approval: "none",
-  projections: { pi: { description: "Read bounded technical facts about active-project media." } },
+  projections: {
+    pi: { description: "Read bounded technical facts about active-project media." },
+    mcp: { description: "Query project media, metadata, sources, or waveforms." },
+  },
 } as const satisfies CapabilityContract<AssetReadInput, AssetReadResult>;

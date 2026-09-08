@@ -15,6 +15,7 @@ import {
   proveProbe,
   screenshotSettled,
 } from './_assert.mjs'
+import { findEdgeHitPoint } from './_canvasHit.mjs'
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'nomi-card-stack-walk-'))
 const settingsDir = path.join(root, 'settings')
@@ -192,7 +193,7 @@ try {
   const imageDownloadButton = tray.locator('[data-result-stack-item="image-v1"] button[aria-label="下载这一版"]')
   check('历史图片提供下载入口', await imageDownloadButton.isEnabled())
   await clickOrFail(imageDownloadButton, '下载历史图片')
-  await expect.poll(() => fs.existsSync(downloadPath), { message: '下载桥接应写出历史图片文件', timeout: 10_000 }).toBe(true)
+  await expect.poll(() => fs.existsSync(downloadPath) && fs.statSync(downloadPath).size > 0, { message: '下载桥接应写出非空历史图片文件', timeout: 10_000 }).toBe(true)
   check('历史图片下载文件非空', fs.statSync(downloadPath).size > 0)
 
   const deleteRow = tray.locator('[data-result-stack-item="image-v2"]')
@@ -297,8 +298,14 @@ try {
     JSON.stringify(collapsedHandleStates),
   )
   check('三条成员输入聚合为一条编组线', await win.locator('g[data-aggregate-group="reference-group"]').count() === 1)
-  const aggregateHit = win.locator('g[data-aggregate-group="reference-group"] path[role="button"]')
-  await clickOrFail(aggregateHit, '选中聚合后的编组输入线')
+  // 连线是贝塞尔曲线：`locator.click()` 点的是外接盒中心，而曲线的外接盒中心不在曲线上——
+  // 那一点谁盖着就点到谁（面板展开把画布收窄后，那里正好是选中节点的提示词面板，
+  // Playwright 报 "subtree intercepts pointer events"）。用户点的是线本身，走查也点线本身。
+  const aggregatePoint = await findEdgeHitPoint(win, {
+    edgeSelector: 'g[data-aggregate-group="reference-group"] path[role="button"]',
+  })
+  check('聚合编组输入线上存在真的点得到的点', Boolean(aggregatePoint), JSON.stringify(aggregatePoint))
+  await win.mouse.click(aggregatePoint.x, aggregatePoint.y)
   await expectVisible(win.getByText('编组输入', { exact: true }), '聚合线应显示编组关系而不是伪造成员模式')
   await screenshotSettled(win, { path: path.join(outputDir, '04-real-collapsed-group-link-light.png') })
 
@@ -323,8 +330,11 @@ try {
 
   await clickOrFail(collapsed.getByRole('button', { name: '3 节点' }), '展开雨夜参考组')
   await expectVisible(win.locator('[data-node-id="group-character"]'), '点击卡角后应恢复组内节点')
-  check('点击卡角恢复组内节点', await win.locator('[data-node-id="group-character"]').isVisible())
-  check('展开后恢复三条真实成员输入线', await win.locator('g[data-edge-id^="group-input-"]').count() === 3)
+  // expectVisible above is the web-first assertion; do not immediately sample
+  // isVisible(), which can race the React Flow expand animation and re-mount.
+  check('点击卡角恢复组内节点', true)
+  await expect.poll(() => win.locator('g[data-edge-id^="group-input-"]').count(), { message: '展开后真实成员输入线应完成投影' }).toBe(3)
+  check('展开后恢复三条真实成员输入线', true)
 
   await clickOrFail(collapse, '再次收起雨夜参考组')
   await expectVisible(collapsed, '再次收起后应恢复编组卡')

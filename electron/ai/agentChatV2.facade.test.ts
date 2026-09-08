@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { RuntimeTurnHooks, RuntimeTurnRequest, RuntimeTurnResult, RuntimeToolCall, RuntimeToolDecision } from '../harness/runtime/runtimePort';
+import type { RuntimeTurnHooks, RuntimeTurnRequest, RuntimeTurnResult } from '../harness/runtime/runtimePort';
+import type { RuntimeToolCall, RuntimeToolDecision } from '../shared/agentCapabilities/transportContracts';
 import { parseVendorErrorFromMessage } from '../../src/workbench/generationCanvas/runner/vendorErrorIpc';
 import type { SkillRecord } from '../skills/skillStore';
 
@@ -20,14 +21,18 @@ vi.mock('../files/extractText', () => ({ extractTextFromLocalAsset: async () => 
 vi.mock('../harness/context/contextService', () => ({ createAgentContextService: () => ({ run: state.run }) }));
 
 import { runAgentChatV2 as productionRunAgentChatV2 } from './agentChatV2';
+import { createProjectAgentContextBinding } from '../shared/contracts/projectAgentContextBinding';
 
 // Invalid IPC-shaped objects deliberately exercise the main boundary's runtime validation.
 const runAgentChatV2 = (payload: { prompt: string } & Record<string, unknown>, eventHooks: ReturnType<typeof hooks>) =>
   productionRunAgentChatV2(payload as unknown as Parameters<typeof productionRunAgentChatV2>[0], eventHooks);
 
+const THREAD_BINDING = createProjectAgentContextBinding(
+  { projectId: 'project', immutableProjectUuid: '11111111-1111-4111-8111-111111111111', projectGeneration: 1 }, 'thread-a');
+
 function request(capability = 'canvas-chat') {
   return { prompt: 'current complete canvas', displayPrompt: 'short request',
-    capability, history: { kind: 'persistent' as const, binding: { sessionKey: 'nomi:workbench:project:generation', threadId: 'thread-a' } },
+    capability, history: { kind: 'persistent' as const, binding: THREAD_BINDING },
     projectId: 'project', skillKey: 'workbench.creation.editor',
   };
 }
@@ -90,11 +95,11 @@ describe('Agent facade delegates exactly one turn to pi + bound context', () => 
   });
 
   it.each([
-    ['creation-editor', ['read_full_text', 'read_selection', 'insert_at_cursor', 'replace_selection', 'append_to_end', 'author_skill', 'load_skill'], 8],
-    ['creation-chat', ['read_full_text', 'author_skill', 'load_skill'], 8],
+    ['creation-editor', ['nomi_document_read', 'nomi_document_edit', 'load_skill'], 8],
+    ['creation-chat', ['nomi_document_read', 'load_skill'], 8],
     ['canvas-chat', ['load_skill'], 8],
-    ['canvas-refine', ['set_node_prompt', 'load_skill'], 8],
-    ['storyboard', ['read_canvas_state', 'propose_storyboard_plan', 'load_skill'], 24],
+    ['canvas-refine', ['nomi_canvas_edit', 'load_skill'], 8],
+    ['storyboard', ['nomi_canvas_read', 'nomi_canvas_plan', 'load_skill'], 24],
     ['single-shot', [], 1],
   ] as const)('%s is an explicit capability independent of skill naming', async (capability, names, maxSteps) => {
     await runAgentChatV2({ ...request(capability), ...(capability === 'single-shot' ? { history: { kind: 'ephemeral' as const } } : {}), selectedNodeIds: ['selected-a'] }, hooks());
@@ -105,9 +110,9 @@ describe('Agent facade delegates exactly one turn to pi + bound context', () => 
 
   it('canvas-agent receives only the goal profile required for timeline control', async () => {
     await runAgentChatV2({ ...request('canvas-agent'), prompt: '检查时间线并导出当前项目' }, hooks());
-    expect(state.request?.tools).toHaveLength(19);
+    expect(state.request?.tools).toHaveLength(18);
     expect(state.request?.tools.map((tool) => tool.name)).toEqual([
-      'read_canvas_state', 'set_node_prompt', 'create_canvas_nodes', 'connect_canvas_edges',
+      'nomi_canvas_read', 'nomi_canvas_plan', 'nomi_canvas_edit',
       'get_media', 'inspect_media', 'search_media', 'inspect_source_range', 'read_waveform',
       'inspect_export_job', 'verify_render', 'export_timeline', 'cancel_export_job',
       'read_timeline', 'inspect_timeline_range', 'propose_edit_plan', 'apply_edit_plan', 'undo_timeline_edit',
@@ -136,12 +141,9 @@ describe('Agent facade delegates exactly one turn to pi + bound context', () => 
       description: 'Camera craft',
       body: 'Camera body',
       manifest: {
-        name: 'craft.camera',
         version: '1.0.0',
-        description: 'Camera craft',
         tools: [],
         requiredProviders: [],
-        permissions: [],
         requestedCapabilities: ['canvas.read'],
       },
       origin: 'builtin',
@@ -153,7 +155,7 @@ describe('Agent facade delegates exactly one turn to pi + bound context', () => 
       ...request('canvas-agent'),
       chatContext: { skill: { key: 'craft.camera', name: 'Camera' } },
     }, hooks());
-    expect(state.request?.tools.map((tool) => tool.name)).toEqual(['read_canvas_state', 'load_skill']);
+    expect(state.request?.tools.map((tool) => tool.name)).toEqual(['nomi_canvas_read', 'load_skill']);
   });
 
   it('delegates Skill loading to the owning transport without creating a renderer approval', async () => {
@@ -181,6 +183,23 @@ describe('Agent facade delegates exactly one turn to pi + bound context', () => 
     }, runtimeHooks.signal ?? new AbortController().signal)).resolves.toMatchObject({
       ok: false, code: 'skill_not_found',
     });
+  });
+
+  it('re-reads a Host ledger Skill reference by hash before putting its body in the next outbound prompt', async () => {
+    state.skill = {
+      name: 'brand.promo', directoryName: 'brand-promo', filePath: '/skills/brand-promo/SKILL.md',
+      description: 'Brand', body: 'CANONICAL_SKILL_BODY_NEXT_TURN', manifest: null, origin: 'user',
+      audience: 'internal', packageVersion: 'nomi-skill-v1', contentHash: 'a'.repeat(64),
+    };
+    await runAgentChatV2({
+      ...request(),
+      hostPromptLedger: [{
+        kind: 'tool', capability: { id: 'skill.read' },
+        skillLoad: { name: 'brand.promo', packageVersion: 'nomi-skill-v1', contentHash: 'a'.repeat(64) },
+      }],
+    }, hooks());
+    expect(state.request?.systemPrompt).toContain('CANONICAL_SKILL_BODY_NEXT_TURN');
+    expect(state.request?.promptReceipt?.stablePrefixHash).toEqual(expect.any(String));
   });
 
   it('rejects missing capability, missing history and cross-project binding before model selection', async () => {

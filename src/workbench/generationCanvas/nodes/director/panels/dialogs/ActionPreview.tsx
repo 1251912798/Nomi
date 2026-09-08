@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 react、three、@react-three/fiber（Canvas / useFrame）、@react-three/drei（OrbitControls / useGLTF）、three/examples/jsm/utils/SkeletonUtils 的 clone、../../scene/character/mannequinAssets 的 MANNEQUIN_MODEL_URL、
+ * [INPUT]: 依赖 react、three、@react-three/fiber（useFrame）、../../../fencedCanvas 的 FencedCanvas（workbench 内禁裸 Canvas）、@react-three/drei（OrbitControls / useGLTF）、three/examples/jsm/utils/SkeletonUtils 的 clone、../../scene/character/mannequinAssets 的 MANNEQUIN_MODEL_URL、
  *          ../../scene/character/mannequinSkeleton（normalizeMannequinModel / applyMannequinSkeletonPose）、../../scene/character/poseClipLibrary（samplePoseClip / poseClipSourceBind / preloadPoseClips）、
  *          ../../scene/character/poseSnapshot（indexBonesByBaseName / bindWorldQuaternionsByBaseName / applyPoseSnapshot / HIPS_BASE_NAME）、../../scene/character/characterRig 的 measureSkeletonExtent、../../scene/sceneTheme 的 PREVIEW_COLORS
  * [OUTPUT]: 对外提供 ActionPreview：动作库弹窗右侧的实时 3D 预览（X Bot + 网格地面 + 三灯 + OrbitControls，
@@ -9,7 +9,8 @@
  */
 import React from 'react'
 import * as THREE from 'three'
-import { Canvas, useFrame } from '@react-three/fiber'
+import { useFrame } from '@react-three/fiber'
+import { FencedCanvas } from '../../../fencedCanvas'
 import { OrbitControls, useGLTF } from '@react-three/drei'
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js'
 import { measureSkeletonExtent } from '../../scene/character/characterRig'
@@ -73,7 +74,7 @@ function PreviewRig({ resetSignal }: { resetSignal: number }): JSX.Element {
 
 export function ActionPreview({ actionId, resetSignal, onReady }: { actionId: string; resetSignal: number; onReady: () => void }): JSX.Element {
   return (
-    <Canvas camera={{ position: CAMERA_POSITION.toArray(), fov: 42, near: 0.1, far: 50 }} dpr={[1, 2]} shadows gl={{ antialias: true }} style={{ width: '100%', height: '100%' }}>
+    <FencedCanvas camera={{ position: CAMERA_POSITION.toArray(), fov: 42, near: 0.1, far: 50 }} dpr={[1, 2]} shadows gl={{ antialias: true }} style={{ width: '100%', height: '100%' }}>
       <color attach="background" args={[PREVIEW_COLORS.background]} />
       <ambientLight intensity={0.7} />
       <directionalLight position={[3, 5, 4]} intensity={1.2} castShadow />
@@ -83,6 +84,6 @@ export function ActionPreview({ actionId, resetSignal, onReady }: { actionId: st
         <PreviewCharacter actionId={actionId} onReady={onReady} />
       </React.Suspense>
       <PreviewRig resetSignal={resetSignal} />
-    </Canvas>
+    </FencedCanvas>
   )
 }

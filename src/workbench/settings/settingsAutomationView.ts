@@ -3,7 +3,8 @@ import {
   type AutomationPolicySettings,
 } from '../../../electron/settings/automationPolicyContract'
 
-export type SettingsHostKey = 'nomi' | 'claude' | 'codex' | 'cursor'
+/** @deprecated 泛化后 trustedHost key 是任意合法字符串；保留此 alias 供存量引用方向后迁移。 */
+export type SettingsHostKey = string
 /**
  * `no-models`：连上了、但这家一个可用模型都没有。
  *
@@ -38,7 +39,7 @@ export type ProviderHealthRow = {
 /** 能力摘要的展示序（与抽屉能力条同序，两处读起来是一件事）。 */
 const CAPABILITY_KIND_ORDER = ['text', 'image', 'video', 'audio', 'model3d']
 
-const HOSTS: SettingsHostKey[] = ['nomi', 'claude', 'codex', 'cursor']
+const HOSTS: SettingsHostKey[] = ['nomi', 'claude', 'codex', 'cursor', 'pi']
 
 export function defaultAutomationPolicySettings(): AutomationPolicySettings {
   return {

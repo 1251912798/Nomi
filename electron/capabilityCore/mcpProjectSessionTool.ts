@@ -1,7 +1,8 @@
 /** Generic project-session MCP surface. It is deliberately outside generation rollout policy. */
 export const MCP_PROJECT_SESSION_TOOL = Object.freeze({
   name: 'nomi_session_open',
-  description: '打开当前项目的安全会话；只返回一个可短期使用、绑定当前连接的项目句柄。',
+  title: '打开当前项目的安全会话，拿一个短期项目句柄。',
+  description: '打开当前项目安全会话，返回绑定当前连接的短期项目句柄。',
   inputSchema: Object.freeze({
     type: 'object',
     properties: Object.freeze({

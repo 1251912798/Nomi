@@ -11,10 +11,20 @@
  * 本模块只做 main 进程内的"主动出站"加固。renderer / preload 不应直接 fetch。
  */
 import { URL } from "node:url";
-import net from "node:net";
 import { lookup as dnsLookup } from "node:dns/promises";
 import { Agent, type Dispatcher } from "undici";
-import { isPrivateHost } from "./networkHostPolicy";
+import {
+  OutboundDestinationRefusedError,
+  authorizeOutboundDestination,
+  connectionHostname,
+  getLabTrustedPrivateOrigins,
+  matchesDeclaredOrigin,
+  readOutboundEnvironment,
+  type OutboundAuthorization,
+  type OutboundEnvironment,
+  type OutboundRouteKind,
+} from "./networkOutboundPolicy";
+import { describeOutboundRefusal } from "./networkOutboundMessage";
 import { appFetch } from "./appFetch";
 import { getAppDispatcher, isApplicationProxyActive } from "./systemProxy";
 export { isPrivateHost } from "./networkHostPolicy";
@@ -47,9 +57,19 @@ export type HardenedFetchOptions = {
   allowedPrivateOrigins?: readonly string[];
   /** Optional explicit provider route. Destination SSRF checks remain active. */
   dispatcher?: Dispatcher;
+  /**
+   * 流式消费每一块响应体。**给了它就不在内存里攒**（返回的 `bytes` 为空 Buffer）。
+   *
+   * 为什么这条住在这里、而不是让调用方自己开一条下载路：目的地策略只该有一个 owner
+   * （`check:outbound-policy` 规则 2/3 盯着这件事）。模型权重这类「大到不该整段进内存、
+   * 且必须有进度」的下载如果自己 new 一条 fetch，就是第二个判据，也就是下一次不对称。
+   * 回调抛错即中断本次下载（reader 会被 cancel），所以校验失败可以就地叫停。
+   */
+  onChunk?: (chunk: Uint8Array, doneBytes: number, totalBytes: number | null) => void | Promise<void>;
 };
 
-export type ResolvedHostAddress = { address: string; family: 4 | 6 };
+export type { ResolvedHostAddress } from "./networkOutboundPolicy";
+import type { ResolvedHostAddress } from "./networkOutboundPolicy";
 
 export type HardenedFetchDependencies = {
   resolveHost?: (hostname: string) => Promise<ResolvedHostAddress[]>;
@@ -59,24 +79,15 @@ export type HardenedFetchDependencies = {
   isApplicationProxyActive?: () => boolean;
   /** Test seam for waiting until the application route has been committed. */
   waitForApplicationRoute?: (signal: AbortSignal, target: URL) => Promise<void>;
+  /** Test seam for the shared outbound environment (fake-IP resolver detection). */
+  readOutboundEnvironment?: () => Promise<OutboundEnvironment>;
 };
 
 const DEFAULT_TIMEOUT_MS = 20_000;
 const DEFAULT_MAX_BYTES = 50 * 1024 * 1024;
 
-/** A configured private exception must match the complete origin exactly. */
-function isExplicitlyAllowedPrivateOrigin(url: URL, allowedOrigins: readonly string[]): boolean {
-  return allowedOrigins.some((rawOrigin) => {
-    try {
-      const allowed = new URL(rawOrigin);
-      return (allowed.protocol === "http:" || allowed.protocol === "https:") && allowed.origin === url.origin;
-    } catch {
-      return false;
-    }
-  });
-}
-
-function assertSafeUrl(targetUrl: string, allowedPrivateOrigins: readonly string[] = []): URL {
+/** Parse + scheme only. The private/loopback verdict belongs to the policy owner, not here. */
+function assertSafeUrl(targetUrl: string): URL {
   let url: URL;
   try {
     url = new URL(targetUrl);
@@ -86,28 +97,30 @@ function assertSafeUrl(targetUrl: string, allowedPrivateOrigins: readonly string
   if (url.protocol !== "http:" && url.protocol !== "https:") {
     throw new Error(`Only http/https URLs are allowed (got ${url.protocol})`);
   }
-  if (isPrivateHost(url.hostname) && !isExplicitlyAllowedPrivateOrigin(url, allowedPrivateOrigins)) {
-    throw new Error(`Refusing to fetch private/loopback host: ${url.hostname}`);
-  }
   return url;
 }
 
-async function resolvePublicAddresses(
-  hostname: string,
-  resolveHost: NonNullable<HardenedFetchDependencies["resolveHost"]>,
-): Promise<ResolvedHostAddress[]> {
-  const literalFamily = net.isIP(hostname);
-  const addresses = literalFamily
-    ? [{ address: hostname, family: literalFamily as 4 | 6 }]
-    : await resolveHost(hostname);
-  if (!addresses.length || addresses.some((entry) => isPrivateHost(entry.address))) {
-    throw new Error("Refusing to fetch private/loopback DNS address");
-  }
-  return addresses;
-}
-
-function connectionHostname(hostname: string): string {
-  return hostname.startsWith("[") && hostname.endsWith("]") ? hostname.slice(1, -1) : hostname;
+/**
+ * 取回侧的授权。**提交侧（vendorHttp.requestVendor）调的是同一个 `authorizeOutboundDestination`**，
+ * 读同一份进程内环境事实——「愿意为之付钱的目的地」与「愿意读取的目的地」不可能再分家。
+ *
+ * 拒绝时抛结构化错误而不是裸字符串：渲染层要分得清「我们自己的安全策略拒了」与「供应商挂了」，
+ * 只有前者意味着这次的钱还在（取回侧）或根本没花（提交侧）。
+ */
+function refuse(authorization: Extract<OutboundAuthorization, { allowed: false }>): never {
+  throw new OutboundDestinationRefusedError({
+    reason: authorization.reason,
+    hostname: authorization.hostname,
+    observedAddress: authorization.observedAddress,
+    syntheticResolver: authorization.syntheticResolver,
+    message: describeOutboundRefusal({
+      reason: authorization.reason,
+      hostname: authorization.hostname,
+      observedAddress: authorization.observedAddress,
+      syntheticResolver: authorization.syntheticResolver,
+      stage: "retrieval",
+    }),
+  });
 }
 
 export function createPinnedDispatcher(hostname: string, addresses: ResolvedHostAddress[]): Dispatcher {
@@ -162,8 +175,12 @@ export async function hardenedFetch(
   options: HardenedFetchOptions = {},
   dependencies: HardenedFetchDependencies = {},
 ): Promise<HardenedFetchResult> {
-  const allowedPrivateOrigins = options.allowedPrivateOrigins || [];
-  const url = assertSafeUrl(rawUrl, allowedPrivateOrigins);
+  // Lab fixtures name their exact loopback origin; main.ts only seeds them on an unpackaged
+  // build, so a packaged app merges an always-empty list here.
+  // Lab origins stay merged here so the "any configured private exception disables redirects"
+  // rule below keeps its existing meaning; the policy owner merges them again on its side.
+  const allowedPrivateOrigins = [...(options.allowedPrivateOrigins || []), ...getLabTrustedPrivateOrigins()];
+  const url = assertSafeUrl(rawUrl);
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const maxBytes = options.maxBytes ?? DEFAULT_MAX_BYTES;
   // 可信本地服务只允许精确同源的一跳请求。禁止重定向，避免先访问重定向目标、事后才校验。
@@ -179,11 +196,11 @@ export async function hardenedFetch(
   // as the provider's real destination. The proxy performs the DNS resolution
   // on its side. Direct routes retain the original DNS pinning/SSRF checks.
   const applicationProxyActive = dependencies.isApplicationProxyActive ?? isApplicationProxyActive;
-  // The route can still be applying during app start. If we resolve DNS before
-  // that commit, a proxy's synthetic 198.18/15 answer is mistaken for a private
-  // destination and the request is rejected (or a pinned direct dispatcher
-  // bypasses the proxy entirely). Wait for the app-owned route only for the
-  // production fetch path; injected test transports keep their existing seam.
+  // The route can still be applying during app start. If we classify by resolved
+  // address before that commit, a proxy's synthetic 198.18/15 answer is mistaken
+  // for a private destination and the request is rejected (or a pinned direct
+  // dispatcher bypasses the proxy entirely). Wait for the app-owned route only for
+  // the production fetch path; injected test transports keep their existing seam.
   const usesApplicationFetch = !dependencies.fetch && !dependencies.isApplicationProxyActive;
   const waitForApplicationRoute = dependencies.waitForApplicationRoute
     ?? ((signal: AbortSignal, target: URL) => getAppDispatcher(signal, target).then(() => undefined));
@@ -218,25 +235,35 @@ export async function hardenedFetch(
     const fetchImpl = dependencies.fetch ?? ((input, init) => appFetch(input, init));
     let currentUrl = url;
     let response: Response | undefined;
+    const readEnvironment = dependencies.readOutboundEnvironment ?? readOutboundEnvironment;
     for (let hop = 0; hop <= 5; hop += 1) {
-      currentUrl = assertSafeUrl(currentUrl.toString(), allowedPrivateOrigins);
-      const privateAllowed = isPrivateHost(currentUrl.hostname)
-        && isExplicitlyAllowedPrivateOrigin(currentUrl, allowedPrivateOrigins);
+      currentUrl = assertSafeUrl(currentUrl.toString());
+      const declaredPrivate = matchesDeclaredOrigin(currentUrl, allowedPrivateOrigins);
       let dispatcher: Dispatcher | undefined;
       if (options.dispatcher) {
-        // An explicit provider route is already selected by the caller. Keep
-        // the application proxy wait and direct DNS pinning out of this path.
+        // The caller already picked an explicit provider route (a per-connection
+        // HTTP/SOCKS proxy). Keep the application-route wait and DNS pinning out
+        // of this path - but NOT the policy: the owner is asked below with
+        // route "proxy", which classifies the name instead of a local answer the
+        // proxy is not going to use.
         dispatcher = options.dispatcher;
-      } else {
-        if (!privateAllowed && (usesApplicationFetch || dependencies.waitForApplicationRoute)) {
-          await waitForApplicationRoute(controller.signal, currentUrl);
-        }
-        if (!privateAllowed && !applicationProxyActive()) {
-          const hostname = connectionHostname(currentUrl.hostname);
-          const addresses = await resolvePublicAddresses(hostname, resolveHost);
-          dispatcher = makeDispatcher(hostname, addresses);
-          dispatchers.push(dispatcher);
-        }
+      } else if (!declaredPrivate && (usesApplicationFetch || dependencies.waitForApplicationRoute)) {
+        await waitForApplicationRoute(controller.signal, currentUrl);
+      }
+      // 每一跳都问策略 owner——代理生效时也问，只是判据的对象换成名字（见
+      // networkOutboundPolicy.authorizeOutboundDestination 的「为什么代理生效时不能整段跳过分类」）。
+      const route: OutboundRouteKind = options.dispatcher || applicationProxyActive() ? "proxy" : "direct";
+      const authorization = await authorizeOutboundDestination({
+        url: currentUrl,
+        route,
+        readEnvironment,
+        resolve: resolveHost,
+        declaredOrigins: allowedPrivateOrigins,
+      });
+      if (!authorization.allowed) refuse(authorization);
+      if (!dispatcher && authorization.pinnedAddresses) {
+        dispatcher = makeDispatcher(connectionHostname(currentUrl.hostname), [...authorization.pinnedAddresses]);
+        dispatchers.push(dispatcher);
       }
       response = await fetchImpl(currentUrl, {
         method,
@@ -282,6 +309,8 @@ export async function hardenedFetch(
     if (!response.body) {
       throw new Error("Response has no body");
     }
+    const sink = options.onChunk;
+    const declaredTotal = Number.isFinite(declaredLength) && declaredLength > 0 ? declaredLength : null;
     const chunks: Uint8Array[] = [];
     let total = 0;
     const reader = response.body.getReader();
@@ -296,11 +325,20 @@ export async function hardenedFetch(
         try { await reader.cancel(); } catch { /* ignore */ }
         throw new Error(`Response exceeded ${maxBytes} bytes`);
       }
-      chunks.push(value);
+      if (sink) {
+        try {
+          await sink(value, total, declaredTotal);
+        } catch (sinkError) {
+          try { await reader.cancel(); } catch { /* ignore */ }
+          throw sinkError;
+        }
+      } else {
+        chunks.push(value);
+      }
     }
 
     return {
-      bytes: Buffer.concat(chunks.map((c) => Buffer.from(c.buffer, c.byteOffset, c.byteLength)), total),
+      bytes: sink ? Buffer.alloc(0) : Buffer.concat(chunks.map((c) => Buffer.from(c.buffer, c.byteOffset, c.byteLength)), total),
       contentType,
       status: response.status,
       finalUrl: currentUrl.toString(),

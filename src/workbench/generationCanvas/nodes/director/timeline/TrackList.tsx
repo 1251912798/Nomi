@@ -128,7 +128,7 @@ function SubTrackRow({
         </span>
         {sub.family === 'trajectory' || sub.family === 'bone' ? (
           // 空间轨迹 / 骨骼帧行：‹ ◇ ›，菱形在播放头落在关键帧上时点亮（空间轨迹 accent，骨骼帧 warning）
-          <span className={cn('mx-0.5 size-2 rotate-45 rounded-[2px] border', onKey ? (sub.family === 'bone' ? 'border-nomi-key-bone bg-nomi-key-bone' : 'border-nomi-key-path bg-nomi-key-path') : 'border-nomi-ink-40 bg-nomi-bg')} aria-hidden />
+          <span className={cn('mx-0.5 size-2 rotate-45 border', onKey ? (sub.family === 'bone' ? 'border-nomi-key-bone bg-nomi-key-bone' : 'border-nomi-key-path bg-nomi-key-path') : 'border-nomi-ink-40 bg-nomi-bg')} aria-hidden />
         ) : null}
         <span title={next === null ? t('director.timeline.menu.noNextKey') : undefined}>
           <WorkbenchIconButton size="sm" icon={<IconChevronRight size={13} stroke={1.9} />} label={t('director.timeline.menu.nextKey')} disabled={next === null} onClick={() => next !== null && seekTo(store, next)} />

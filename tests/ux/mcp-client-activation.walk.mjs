@@ -10,7 +10,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { chromium } from 'playwright'
 import { fileURLToPath } from 'node:url'
-import { screenshotSettled, expectNoCjkInEnglishDom } from './_assert.mjs'
+import { expect, screenshotSettled, expectNoCjkInEnglishDom } from './_assert.mjs'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const helpRequested = process.argv.includes('--help') || process.argv.includes('-h')
@@ -203,10 +203,10 @@ async function allowCursor(win, dialog, input) {
     assert((await visibleControl.count()) === 1, 'Cursor switch has no visible label control')
     await visibleControl.click()
   }
-  await win.waitForFunction(async () => {
+  await expect.poll(async () => win.evaluate(async () => {
     const value = await window.nomiDesktop?.settings?.automationPolicy?.get?.()
     return value?.trustedHosts?.includes('cursor') === true
-  }, undefined, { timeout: 5_000 })
+  }), { timeout: 5_000 }).toBe(true)
   const manage = dialog.locator('[data-settings-action="manage-mcp-connections"]')
   if (await manage.count()) {
     await manage.click()

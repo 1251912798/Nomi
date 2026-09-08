@@ -4,7 +4,7 @@
 // modelKey 空时跑）就不会再自动补 vendor/label/默认参数——所以这里必须**自铺全**：
 // modelVendor / modelLabel / archetype.{id,modeId} / 该 mode 的默认参数，再用 agent 的合法参数覆盖。
 import type { AgentModelEntry } from "./availableModels";
-import type { ModelParameterControl } from "../../../config/modelCatalogMeta";
+import { isParamValueAllowed } from "../../../../electron/shared/videoCapabilities/paramConstraints";
 import {
   resolveArchetypeForModel,
   specializeArchetypeForVariant,
@@ -48,22 +48,25 @@ function canonicalVariantId(archetype: ModelArchetype, value: unknown): string {
   return alias && archetype.variants.some((variant) => variant.id === alias) ? alias : "";
 }
 
-// 单字段校验（跨字段互斥/依赖留二期）：select 取值必须在 options；number 在 min-max；boolean 是布尔。
-function isValidParamValue(
-  control: ModelParameterControl,
-  value: string | number | boolean,
-): boolean {
-  if (control.options.length > 0) {
-    return control.options.some((option) => String(option.value) === String(value));
+// 单字段校验（跨字段互斥/依赖留二期）。**判据不在这里**：合法性的唯一 owner 是
+// `electron/shared/videoCapabilities/paramConstraints.isParamValueAllowed`（R14.1）。
+// 这里只保留本路径的**策略**：非法值丢弃、回落档案默认——落节点 meta 不能写进非法值。
+// （审阅面 planResolver 对同一判据的策略是「钳值 + 出结构化 issue」，故意不同，各自注释。）
+const isValidParamValue = isParamValueAllowed;
+
+/**
+ * 模型清单索引：**同时**含 `vendor::modelKey` 与裸 `modelKey` 两种键。
+ * 前者是身份唯一键（同名模型来自不同供应商是两个模型）；后者供旧计划/无 vendor 的目录行回落。
+ * 裸键取**第一次出现**的条目（后来者不覆盖），避免「索引里最后写入的那家」这种随机身份。
+ * 两处落地路径（applyCanvasToolCall / storyboardRowActions）共用本构造器，不各写一份（P1）。
+ */
+export function buildModelEntryIndex(entries: readonly AgentModelEntry[]): Map<string, AgentModelEntry> {
+  const index = new Map<string, AgentModelEntry>();
+  for (const entry of entries) {
+    if (entry.vendor) index.set(`${entry.vendor}::${entry.modelKey}`, entry);
+    if (!index.has(entry.modelKey)) index.set(entry.modelKey, entry);
   }
-  if (control.type === "number") {
-    if (typeof value !== "number" || !Number.isFinite(value)) return false;
-    if (control.min !== undefined && value < control.min) return false;
-    if (control.max !== undefined && value > control.max) return false;
-    return true;
-  }
-  if (control.type === "boolean") return typeof value === "boolean";
-  return true;
+  return index;
 }
 
 export function buildPlannedNodeMeta(
@@ -72,7 +75,12 @@ export function buildPlannedNodeMeta(
 ): Record<string, unknown> | undefined {
   const modelKey = typeof planned.modelKey === "string" ? planned.modelKey.trim() : "";
   if (!modelKey) return undefined;
-  const entry = entryByKey.get(modelKey);
+  // 身份唯一键是 (vendor, modelKey)——先按带 vendor 的键查，查不到才回落裸 key（旧计划/无 vendor 目录行）。
+  // 只按裸 key 查会在两家供应商提供同名模型时拿到「索引里最后写入的那家」，
+  // 与用户所选无关（2026-09-03 真实付费走查实测：选 APIMart 却发去 code-newcli-com）。
+  const declaredVendor = nonBlankString(planned.vendor) || nonBlankString(planned.modelVendor);
+  const entry = (declaredVendor ? entryByKey.get(`${declaredVendor}::${modelKey}`) : undefined)
+    ?? entryByKey.get(modelKey);
   // 模型不在可用清单 → 不写模型 meta，回退原自动选（避开 effect3 供应商断开自愈覆盖）。
   if (!entry) return undefined;
 

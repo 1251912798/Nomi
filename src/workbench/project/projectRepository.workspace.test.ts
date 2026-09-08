@@ -18,6 +18,7 @@ function stubBridge(projectsOverride: Partial<DesktopBridge['projects']>): Deskt
     video: {} as DesktopBridge['video'],
     screenshot: {} as DesktopBridge['screenshot'],
     image: {} as DesktopBridge['image'],
+    videoDepth: {} as DesktopBridge['videoDepth'],
     onboarding: {} as DesktopBridge['onboarding'],
     skill: {} as DesktopBridge['skill'],
     workspace: {} as DesktopBridge['workspace'],
@@ -51,6 +52,23 @@ describe('projectRepository workspace project creation', () => {
 
     expect(record).toMatchObject({ name: 'Browser Project', version: 1 })
     expect('rootPath' in record).toBe(false)
+  })
+
+  it('new blank projects expose an empty two-row storyboard starter', () => {
+    mockedGetDesktopBridge.mockReturnValue(null)
+
+    const record = createLocalProject('空白项目')
+    const payload = record.payload
+    const documentId = payload.activeDocumentId
+    expect(payload.workbenchDocuments?.[0]?.id).toBe(documentId)
+    const starter = documentId ? payload.storyboardDesignsByDocumentId?.[documentId]?.[0]?.plan : undefined
+
+    expect(starter).toMatchObject({ title: '', anchors: [] })
+    expect(starter?.shots).toHaveLength(2)
+    expect(starter?.shots.map((shot) => ({ index: shot.index, prompt: shot.prompt, anchorIds: shot.anchorIds }))).toEqual([
+      { index: 1, prompt: '', anchorIds: [] },
+      { index: 2, prompt: '', anchorIds: [] },
+    ])
   })
 
   it('same project title still creates independent project records', () => {

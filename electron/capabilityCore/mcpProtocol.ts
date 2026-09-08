@@ -1,15 +1,6 @@
-// 能力核 · MCP 协议层（纯逻辑，传输注入 → 可裸 node 单测；见 docs/plan/2026-06-24-packaged-mcp-stdio-server.md）。
+// 能力核 · MCP 协议层（传输注入，纯逻辑，可裸 node 单测）。
 //
-// 手搓 stdio JSON-RPC 2.0（newline-delimited，MCP stdio transport 规范；协议形状经 Context7 核对 R5），
-// 不引 @modelcontextprotocol/sdk 依赖（P1 极简）。把能力核暴露成 MCP 工具，供 Claude Code / Codex / Cursor
-// 配置后实时驱动 Nomi。**这是唯一的 MCP server 实现**——打包/dev 都由 app 自身二进制以 NOMI_MCP_STDIO
-// 模式拉起 mcpStdioServer.ts，后者把本模块接到 stdin/stdout + 进程内 invoke（取代旧 scripts/nomi-mcp.mjs，P1）。
-//
-// 传输经 McpTransport 注入：send（服务端→客户端帧）/ invoke（调能力核）/ isAppOpen（Nomi 开着没 = 还有没有
-// 应用内确认卡这条兜底问法；**不用来猜用户注意力在哪**）。本模块不 import electron → 协议握手可纯逻辑单测。
-//
-// MCP Apps（GUI 宿主内嵌活 widget，扩展 id io.modelcontextprotocol/ui，Stable 2026-01-26）。
-// ProductionRun 结果可携带同一个 ui:// 资源；宿主不支持时仍回文本兜底。
+// MCP Apps（GUI 宿主内嵌 widget）；ProductionRun 结果保留文本兜底。
 import {
   NOMI_LIVE_DRAFT_UI_URI,
   MCP_APP_MIME_TYPE,
@@ -17,6 +8,9 @@ import {
   buildNomiRunFromProjection,
 } from './mcpAppWidget'
 import { buildToolErrorOutcome, buildProgressStartMessage, sanitizeArtifactResource, type ResultLocale } from './mcpToolResults'
+import { buildCanonicalMcpToolResult } from './mcpCanonicalToolResult'
+import { canvasReadResultSchema } from '../shared/agentCapabilities/canvasRead'
+import { CANVAS_WRITE_CAPABILITY } from '../shared/agentCapabilities/canvasWrite' // 画布写只此一个 method
 import { assembleToolResultContent } from './mcpResultPayload'
 import { stripInternalEnrichFields } from './mcpResultEnrich'
 import { createProgressReporter } from './mcpProgress'
@@ -25,10 +19,17 @@ import { validateToolArguments } from './mcpArgValidation'
 import { handleSemanticGenerationGate } from './mcpSemanticGenerationFlow'
 import { createPlanTrustStore, planConfirmElicit } from './mcpPlanTrust'
 import { isAnchorCheckpointGate } from '../productionRun/anchorCheckpoint'
-import { buildIntakeMessage, buildIntakeQuestions, buildIntakeSchema, resolveIntake, summarizeIntake } from './mcpBriefIntake'
 import type { AuthenticatedMcpClient } from './security'
+import { subscribeMcpToolCatalogChanges } from './mcpToolCatalogChanges'
+import { handleDocumentEditConfirmation } from './mcpDocumentConfirmation'
+import { handleTimelineEditConfirmation } from './mcpTimelineConfirmation'
 
-export type McpInvokeOptions = { spendConfirmed?: boolean; planConfirmed?: boolean; signal?: AbortSignal }
+export type McpInvokeOptions = {
+  spendConfirmed?: boolean
+  planConfirmed?: boolean
+  documentConfirmed?: boolean
+  signal?: AbortSignal
+}
 export const MCP_REQUEST_SIGNAL = Symbol('nomi.mcp.request-signal')
 
 function withRequestSignal(params: Record<string, unknown>, signal?: AbortSignal): Record<string, unknown> {
@@ -44,15 +45,21 @@ function withRequestSignal(params: Record<string, unknown>, signal?: AbortSignal
 }
 
 import { createGenerationGateConfirmation } from './mcpGateConfirmation'
+import { createElicitationClient, readElicitationCapability } from './mcpElicitation'
+import { runIntegrationCredentialElicitation } from './mcpCredentialElicitation'
 import type { GenerationGateChallengeProjection, GenerationGateVerificationResult } from './mcpGateConfirmation'
 export type { GenerationGateChallengeProjection, GenerationGateConfirmation, GenerationGateVerificationResult } from './mcpGateConfirmation'
 
-const TOOL_UI_RESOURCE: Record<string, string> = {
-  nomi_start_playbook: NOMI_LIVE_DRAFT_UI_URI,
-  nomi_get_run: NOMI_LIVE_DRAFT_UI_URI,
-  nomi_subscribe_run: NOMI_LIVE_DRAFT_UI_URI,
-  nomi_get_artifact: NOMI_LIVE_DRAFT_UI_URI,
+// 挂活 widget（MCP Apps）的工具：面收敛后 = nomi_run_start（建 Run）+ nomi_read 且 target∈{run,run_events,artifact}。
+// nomi_read 的 canvas/projects/models 等 target 不挂 widget，故不能只按 name 判——见 widgetUriFor（按 name + target）。
+// 判据用 mcpToolCatalog 导出的 READ_RUN_DATA_TARGETS（真相单一）；懒读避免 catalog↔protocol 循环 import 的 TDZ。
+function widgetUriFor(toolName: string, args: Record<string, unknown>): string | undefined {
+  if (toolName === 'nomi_run_start') return NOMI_LIVE_DRAFT_UI_URI
+  if (toolName === 'nomi_read' && typeof args.target === 'string' && READ_RUN_DATA_TARGETS.includes(args.target)) return NOMI_LIVE_DRAFT_UI_URI
+  return undefined
 }
+/** tools/list 预声明 _meta.ui 的工具（name 级；nomi_read 整体广告，运行时按 target 决定是否真挂 widget frame）。 */
+const WIDGET_TOOL_NAMES = new Set(['nomi_run_start', 'nomi_read'])
 
 export interface McpTransport {
   send(message: unknown): void
@@ -67,6 +74,11 @@ export interface McpTransport {
   confirmGenerationInNomi?(challenge: GenerationGateChallengeProjection): Promise<boolean | GenerationGateVerificationResult>
   /** 结果/进度文案语言（可选；缺省 zh-CN，跟 App 语言设置走）。 */
   getLocale?(): ResultLocale
+  /**
+   * 未签名的外部客户端（clientHost === 'external'）自报了名字时回调——用于自动检测并登记到 profile 列表。
+   * 只传自报名字（rawName），登记逻辑在 recordDetectedMcpClient（mcpDetectedClients.ts），HMAC 安全模型不受影响。
+   */
+  onClientDetected?(name: string): void
 }
 
 const PROTOCOL_VERSION = '2025-11-25'
@@ -75,25 +87,12 @@ const PROTOCOL_VERSION = '2025-11-25'
 export const SUPPORTED_PROTOCOL_VERSIONS = ['2025-11-25', '2025-06-18', '2025-03-26', '2024-11-05'] as const
 
 // tools/list 与 tools/call 共用同一份过滤后目录 resolver，避免“看不见但能调”。
-import { MCP_TOOL_RESOLVER } from './mcpToolCatalog'
+import { MCP_TOOL_RESOLVER, READ_RUN_DATA_TARGETS } from './mcpToolCatalog'
 
 export const MCP_TOOL_NAMES = MCP_TOOL_RESOLVER.list().map((tool) => tool.name)
-/**
- * 只读工具（annotations.readOnlyHint）——**只查不改不花钱**的那几个。
- * 为什么必须标：宿主按它决定要不要每次弹确认（Codex 的 `default_tools_approval_mode = "writes"`
- * 就是「没标 read-only 的才问」）。不标 → 连「列一下项目」都要用户点一次同意，助手基本没法用；
- * 标错 → 写能力可能被静默放行。只列查询类，其余一律按会改对待。
- */
-const READ_ONLY_TOOLS = new Set([
-  'nomi_list_projects',
-  'nomi_list_models',
-  'nomi_get_generation_context',
-  'nomi_operation_read',
-  'nomi_get_run',
-  'nomi_subscribe_run',
-  'nomi_get_artifact',
-  'nomi_read_artifact',
-])
+// 只读标注（annotations.readOnlyHint）真相已收进 catalog（面收敛：nomi_read / nomi_operation_preview 整体只读，
+// 各自在目录带 annotations.readOnlyHint）——宿主据此决定读工具免确认（Codex `default_tools_approval_mode="writes"`）。
+// 旧的按 name 旁挂集合（READ_ONLY_TOOLS）已退役；tools/list 直接读 tool.annotations（见 method:'tools/list'）。
 
 type RpcMessage = { jsonrpc?: string; id?: unknown; method?: string; params?: Record<string, unknown>; result?: unknown; error?: { code?: number; message?: string } }
 
@@ -114,7 +113,13 @@ type SkillContentFrame = SkillSummaryFrame & { body: string }
 export function createMcpProtocol(transport: McpTransport) {
   // 客户端能力（initialize 时捕获）。elicitation = 客户端能代我们向真人弹确认对话框（MCP 规范 2025-06-18）。
   let clientSupportsElicitation = false
+  // url 模式单独一位：规范禁止向未声明该模式的客户端发 mode:'url'（空 {} = 只支持 form）。
+  let clientSupportsUrlElicitation = false
   let clientHost = 'external'
+  let initialized = false
+  const unsubscribeCatalogChanges = subscribeMcpToolCatalogChanges(() => {
+    if (initialized) send({ jsonrpc: '2.0', method: 'notifications/tools/list_changed' })
+  })
   // 画布方案确认的会话级信任：某项目首次批量方案在聊天里批准过 → 本会话该项目后续批量直接放行。
   // 挂闭包 = 随这条 MCP 连接/会话存活，连接断即亡，不持久化（见 mcpPlanTrust.ts）。
   const planTrust = createPlanTrustStore()
@@ -146,14 +151,21 @@ export function createMcpProtocol(transport: McpTransport) {
   // 跨 Claude/ChatGPT/参考宿主通用（P4）；不 gate on 客户端声明，否则 ChatGPT 不声明该扩展就拿不到 widget。
   function buildToolResultPayload(toolName: string, args: Record<string, unknown>, result: unknown): Record<string, unknown> {
     const resolvedTool = MCP_TOOL_RESOLVER.resolve(toolName)
-    if (resolvedTool && 'presentResult' in resolvedTool) return resolvedTool.presentResult(result)
+    if (resolvedTool && typeof (resolvedTool as { presentResult?: unknown }).presentResult === 'function') {
+      return (resolvedTool as { presentResult: (r: unknown) => Record<string, unknown> }).presentResult(result)
+    }
+    // 面收敛：nomi_read target=canvas 借画布 capability 的 canonical 投影（validated + 结构化透传），
+    // 与旧 nomi_read_canvas 的 presentResult 逐字节等价；其余 target 走下面的 mcpToolResults 转述路。
+    if (toolName === 'nomi_read' && args.target === 'canvas') {
+      return buildCanonicalMcpToolResult(canvasReadResultSchema, result) as Record<string, unknown>
+    }
     // content 块装配（text + 可选缩略图 image）抽到 mcpResultPayload（0c：壳文件不破 800 行）。
     const { content, outcome } = assembleToolResultContent(toolName, args, result, locale())
     const payload: Record<string, unknown> = { content }
     const structured: Record<string, unknown> = {}
     if (outcome) structured.nomiOutcome = outcome
-    const uiUri = TOOL_UI_RESOURCE[toolName]
-    if (uiUri && ['nomi_start_playbook', 'nomi_get_run', 'nomi_subscribe_run', 'nomi_get_artifact'].includes(toolName)) {
+    const uiUri = widgetUriFor(toolName, args)
+    if (uiUri) {
       structured.nomiRun = buildNomiRunFromProjection({
         projectId: typeof args.projectId === 'string' ? args.projectId : undefined,
         runId: typeof args.runId === 'string' ? args.runId : undefined,
@@ -201,37 +213,14 @@ export function createMcpProtocol(transport: McpTransport) {
     })
   }
 
-  async function elicitBooleanConfirm(input: {
-    message: string
-    title: string
-    description: string
-  }, signal?: AbortSignal): Promise<{ supported: boolean; confirmed?: boolean; action?: 'accept' | 'decline' | 'cancel' | 'timeout'; attestation?: unknown }> {
-    if (!clientSupportsElicitation) return { supported: false }
-    try {
-      const res = (await sendServerRequest('elicitation/create', {
-        message: input.message,
-        requestedSchema: {
-          type: 'object',
-          properties: {
-            confirm: { type: 'boolean', title: input.title, description: input.description },
-          },
-          required: ['confirm'],
-        },
-      }, 300000, signal)) as { action?: string; content?: { confirm?: boolean; attestation?: unknown; confirmationAttestation?: unknown } } | null
-      // 三态：accept / decline / cancel。只有明确 accept + confirm=true 才能跨过服务端边界。
-      const confirmed = res?.action === 'accept' && res?.content?.confirm === true
-      return {
-        supported: true,
-        confirmed,
-        action: res?.action === 'accept' || res?.action === 'decline' || res?.action === 'cancel' ? res.action : 'cancel',
-        attestation: res?.content?.attestation ?? res?.content?.confirmationAttestation,
-      }
-    } catch (error) {
-      if (signal?.aborted) throw error
-      // 超时/异常 → 当作未确认（不死等、不偷偷花钱）。
-      return { supported: true, confirmed: false, action: 'timeout' }
-    }
-  }
+  // elicitation 线协议（form + url 两模式）住 mcpElicitation.ts；这里只喂 getter（能力在 initialize 才定）。
+  const elicitation = createElicitationClient({
+    sendServerRequest,
+    send,
+    supportsElicitation: () => clientSupportsElicitation,
+    supportsUrlElicitation: () => clientSupportsUrlElicitation,
+  })
+  const elicitBooleanConfirm = elicitation.booleanConfirm
 
   // 生成门确认（challenge → 恰好一个确认面，同 challengeId 并发去重）：逻辑住 mcpGateConfirmation.ts，
   // 这里只喂依赖。elicitation 能力在 initialize 时才定 → 传 getter 不传快照。
@@ -243,21 +232,6 @@ export function createMcpProtocol(transport: McpTransport) {
 
   async function elicitPlanConfirm(nodeCount: number, signal?: AbortSignal): Promise<{ supported: boolean; confirmed?: boolean }> {
     return elicitBooleanConfirm(planConfirmElicit(nodeCount), signal)
-  }
-
-  async function elicitIntake(questions: ReturnType<typeof buildIntakeQuestions>, signal?: AbortSignal): Promise<{ supported: boolean; values?: Record<string, unknown> }> {
-    if (!clientSupportsElicitation) return { supported: false }
-    try {
-      const res = (await sendServerRequest('elicitation/create', {
-        message: buildIntakeMessage(questions),
-        requestedSchema: buildIntakeSchema(questions),
-      }, 300000, signal)) as { action?: string; content?: Record<string, unknown> } | null
-      // decline/cancel 不是错误——收敛这步「跳过永远安全」，交给 resolveIntake 全落默认。
-      return { supported: true, values: res?.action === 'accept' ? (res.content || {}) : {} }
-    } catch (error) {
-      if (signal?.aborted) throw error
-      return { supported: true, values: {} } // 超时同理：走默认继续，不卡住用户
-    }
   }
 
   async function elicitCreativeGateDecision(
@@ -341,15 +315,13 @@ export function createMcpProtocol(transport: McpTransport) {
     }
 
     if (method === 'initialize') {
-      clientSupportsElicitation = Boolean(params?.capabilities && (params.capabilities as Record<string, unknown>).elicitation)
-      const clientName = String((params?.clientInfo as Record<string, unknown> | undefined)?.name || '').toLowerCase()
-      clientHost = clientName.includes('codex')
-        ? 'codex'
-        : clientName.includes('claude')
-          ? 'claude'
-          : clientName.includes('cursor')
-            ? 'cursor'
-            : 'external'
+      const declaredElicitation = readElicitationCapability(params?.capabilities)
+      clientSupportsElicitation = declaredElicitation.form
+      clientSupportsUrlElicitation = declaredElicitation.url
+      const rawName = String((params?.clientInfo as Record<string, unknown> | undefined)?.name || '').trim()
+      const clientName = rawName.toLowerCase()
+      clientHost = ['codex', 'claude', 'cursor'].find((host) => clientName.includes(host)) ?? 'external'
+      if (clientHost === 'external' && rawName) transport.onClientDetected?.(rawName)
       // 版本交集协商：不支持的版本回 -32602。
       const requested = params?.protocolVersion
       if (requested !== undefined && requested !== null && typeof requested !== 'string') {
@@ -371,29 +343,33 @@ export function createMcpProtocol(transport: McpTransport) {
       }
       reply(id, {
         protocolVersion: negotiatedVersion,
-        capabilities: { tools: {}, resources: {}, prompts: {} },
+        capabilities: { tools: { listChanged: true }, resources: {}, prompts: {} },
         serverInfo: { name: 'nomi-capability-core', version: '0.1.0' },
         instructions:
           '用 nomi_* 工具在本机驱动 Nomi：可安全发起制作草稿、读取 Run/事件/产物并深链回 Nomi；付费生成只走 Run-owned 生成门。' +
           '另经 resources/prompts 暴露 Nomi 的「导演/编剧技能库」（从阿泽导演台整过来的电影方法论：拆镜头/运镜/一致性/摄影/对白/结构等）——' +
           '做视频/剧本前先 resources/list 看有哪些、resources/read 或 prompts/get 载入相关技能，再据其方法论写提示词、组装画布、驱动生成，产出质量更专业。',
       })
+      initialized = true
       return
     }
     if (method === 'tools/list') {
       reply(id, {
         tools: MCP_TOOL_RESOLVER.list().map((tool) => {
           const { name, description, inputSchema } = tool
+          const localizedTitles = (tool as { titleByLocale?: { 'zh-CN': string; en: string } }).titleByLocale
+          const selectedTitle = localizedTitles?.[locale()] ?? ((tool as { title?: unknown }).title as string | undefined)
+          const title = typeof selectedTitle === 'string' && selectedTitle.length > 0 ? { title: selectedTitle } : {}
           // 挂活 widget 的工具：预声明 _meta.ui.resourceUri（MCP Apps 标准）+ openai/outputTemplate（ChatGPT 别名）
           // + 调用状态文案。always 广告（宿主不支持则忽略 _meta，spec 设计）→ 跨 Claude/ChatGPT 通用（P4）。
-          const uiUri = TOOL_UI_RESOURCE[name]
-          // 只读标注对所有宿主 always 广告（不支持的按 spec 忽略未知字段）→ Claude/Codex/Cursor 通用（P4）。
+          // nomi_read 整体预声明（运行时按 target 决定是否真挂 widget frame，见 widgetUriFor）。
+          const uiUri = WIDGET_TOOL_NAMES.has(name) ? NOMI_LIVE_DRAFT_UI_URI : undefined
+          // 只读标注真相收进 catalog（annotations.readOnlyHint）——always 广告（不支持的按 spec 忽略）→ Claude/Codex/Cursor 通用（P4）。
           const projectedAnnotations = 'annotations' in tool ? tool.annotations : undefined
-          const annotations = projectedAnnotations ? { annotations: projectedAnnotations }
-            : READ_ONLY_TOOLS.has(name) ? { annotations: { readOnlyHint: true } } : {}
+          const annotations = projectedAnnotations ? { annotations: projectedAnnotations } : {}
           return uiUri
             ? {
-                name, description, inputSchema, ...annotations,
+                name, ...title, description, inputSchema, ...annotations,
                 _meta: {
                   ui: { resourceUri: uiUri },
                   'openai/outputTemplate': uiUri,
@@ -401,7 +377,7 @@ export function createMcpProtocol(transport: McpTransport) {
                   'openai/toolInvocation/invoked': '已出图',
                 },
               }
-            : { name, description, inputSchema, ...annotations }
+            : { name, ...title, description, inputSchema, ...annotations }
         }),
       })
       return
@@ -413,8 +389,8 @@ export function createMcpProtocol(transport: McpTransport) {
         replyError(id, -32602, `未知工具: ${name}`)
         return
       }
-      const rawArgs = params?.arguments
-      // tools/list 广播的 JSON Schema 同时是运行时唯一校验边界；失败回 Tool Execution Error。
+      // 容忍钩子在校验**之前**跑（modelFacingTools.ts 的 prepareMcpArguments）；tools/list 广播的 JSON Schema 同时是运行时唯一校验边界，失败回 Tool Execution Error。
+      const rawArgs = tool.prepareArguments ? tool.prepareArguments(params?.arguments) : params?.arguments
       const invalid = validateToolArguments(tool.name, tool.inputSchema, rawArgs === undefined ? {} : rawArgs)
       if (invalid) {
         const err = buildToolErrorOutcome(tool.name, invalid, locale())
@@ -432,8 +408,9 @@ export function createMcpProtocol(transport: McpTransport) {
         ? params._meta as Record<string, unknown>
         : {}
       const rawToken = meta.progressToken
-      const isLongTool = tool.name === 'nomi_start_playbook'
-        || tool.name === 'nomi_start_generation'
+      // 面收敛：长任务工具 = nomi_run_start（建 Run）+ nomi_operation_execute（提交单次生成）。
+      const isLongTool = tool.name === 'nomi_run_start'
+        || tool.name === 'nomi_operation_execute'
       const progress = createProgressReporter({
         send,
         progressToken: isLongTool && (typeof rawToken === 'string' || typeof rawToken === 'number') ? rawToken : undefined,
@@ -442,12 +419,18 @@ export function createMcpProtocol(transport: McpTransport) {
       })
       try {
         const built = tool.build(args) as Record<string, unknown>
-        if (tool.name === 'nomi_start_playbook') {
+        // 面收敛：多态工具按 target/action/phase 选内部路由键（默认回退 tool.method）。派发/内部 invoke 一律用它。
+        const routedMethod = typeof (tool as { resolveMethod?: unknown }).resolveMethod === 'function'
+          ? (tool as { resolveMethod: (a: Record<string, unknown>) => string }).resolveMethod(args)
+          : tool.method
+        if (tool.name === 'nomi_run_start') {
           // initialize.clientInfo is self-declared, so it remains an audit label only. The stdio/RPC
           // transport supplies authority from Nomi's signed per-client configuration capability.
           built.actorId = clientHost
         }
-        if (tool.name === 'nomi_decide_gate') {
+        // 面收敛：可逆创意门表态并入 nomi_run_gate（action=decide）——只有 decide 走 elicitation-first 真人确认，
+        // materialize（$ 落地）走下面原样 invoke（其付费边界在 handler，不弹创意门确认）。
+        if (tool.name === 'nomi_run_gate' && args.action === 'decide') {
           const confirm = await elicitCreativeGateDecision(args, requestSignal)
           if (!confirm.supported) {
             reply(id, {
@@ -473,8 +456,68 @@ export function createMcpProtocol(transport: McpTransport) {
             })
             return
           }
-          const result = await invokeForRequest(tool.method, built)
+          const result = await invokeForRequest(routedMethod, built)
           reply(id, buildToolResultPayload(tool.name, args, result))
+          return
+        }
+        if (tool.name === 'nomi_canvas_maintenance') {
+          const nodeIds = Array.isArray(built.nodeIds) ? built.nodeIds.length : 0
+          const confirm = await elicitBooleanConfirm({
+            message: `Delete ${nodeIds} Canvas node(s). This is destructive but undoable; confirm the exact maintenance request.`,
+            title: 'Confirm Canvas deletion',
+            description: 'Nomi will delete only the listed nodes after the verified project lease is checked.',
+          }, requestSignal)
+          if (!confirm.supported || !confirm.confirmed) {
+            throw Object.assign(new Error('Human confirmation is required before deleting Canvas nodes'), { code: 'human_approval_required' })
+          }
+          const result = await invokeForRequest(tool.method, { ...built, confirmation: true })
+          reply(id, buildToolResultPayload(tool.name, args, result))
+          return
+        }
+        // A storyboard patch is a reversible write, but it is still a user task:
+        // when the MCP client can surface elicitation in an open app, make the
+        // approve/deny decision at this protocol boundary before reaching the
+        // verified lease/renderer path. The renderer receipt must not be given
+        // Host correlation unless a Host turn actually claimed that approval.
+        if (
+          tool.method === CANVAS_WRITE_CAPABILITY.id
+          && built.operation === 'patch_shots'
+          && clientSupportsElicitation
+          && transport.isAppOpen()
+        ) {
+          const confirm = await elicitBooleanConfirm({
+            message: 'Apply the selected storyboard shot patch?\nOnly the named rows and fields will change; the operation is reversible.',
+            title: 'Confirm storyboard patch',
+            description: 'Approve to apply the canonical patch_shots task. Decline or timeout leaves the project unchanged.',
+          }, requestSignal)
+          if (!confirm.confirmed) {
+            reply(id, {
+              content: [{
+                type: 'text',
+                text: locale() === 'en'
+                  ? 'Not applied: the storyboard patch was not approved.'
+                  : '未生效：这次分镜修改没有获得批准。',
+              }],
+              isError: true,
+              structuredContent: {
+                nomiOutcome: {
+                  operation: 'patch_shots',
+                  applied: false,
+                  denied: true,
+                  reason: confirm.action === 'timeout' ? 'timeout' : 'declined',
+                },
+              },
+            })
+            return
+          }
+        }
+        // 名字先同步判掉再 await：多一个 microtask 会改变**其它**工具的并发派发次序（无 await 的分支不该被牵连）。
+        if (tool.name === 'nomi_timeline_edit' && await handleTimelineEditConfirmation({ id, toolName: tool.name, args, routedMethod, built, requestSignal }, { elicitBooleanConfirm, invokeForRequest, reply, buildToolResultPayload, locale })) return
+        if (tool.name === 'nomi_document_edit') {
+          await handleDocumentEditConfirmation(
+            { id, args, routedMethod, built, requestSignal },
+            { elicitBooleanConfirm, invokeForRequest, reply, buildToolResultPayload, locale },
+          )
           return
         }
         // 画布方案确认 elicitation-first（免费可撤，见 mcpPlanTrust.ts）：批量加节点（≥2）当声明 elicitation
@@ -486,10 +529,12 @@ export function createMcpProtocol(transport: McpTransport) {
         // Nomi 边上」（错的，已改判据）；这里它问的是「不这么做的话，会不会弹出一张应用内方案卡」——
         // 本分支的价值就是把那张卡搬进聊天。App 关着时 confirmPlan 恒 true（免费可撤、无人值守自动放行，
         // 见 createDiskGateway），没有卡可替代，去掉这个条件只会凭空多问一次 → 与「少让用户点」正相反。
+        // 只有 create_canvas_nodes 走 elicitation-first 方案确认；其余 operation 走下面原样 invoke。
         if (
-          tool.name === 'nomi_add_nodes'
+          tool.method === CANVAS_WRITE_CAPABILITY.id
           && clientSupportsElicitation
           && transport.isAppOpen()
+          && built.operation === 'create_canvas_nodes'
           && Array.isArray(built.nodes)
           && built.nodes.length >= 2 // 单节点不算「方案」→ 落到下面原样 invoke（与 core.ts 的 ≥2 门对齐）
         ) {
@@ -498,39 +543,22 @@ export function createMcpProtocol(transport: McpTransport) {
           if (!planTrust.isTrusted(projectId)) {
             const confirm = await elicitPlanConfirm(nodeCount, requestSignal)
             if (!confirm.confirmed) {
-              // decline / 超时 → 与既有取消同形（{ids:[],cancelled:true}），不落节点；文案走同一 outcome 漏斗。
-              reply(id, buildToolResultPayload(tool.name, args, { ids: [], cancelled: true }))
+              // decline / 超时 → 不落节点，但把可机读的原因留在结果里；旧形状只有
+              // cancelled=true，调用方无法区分用户拒绝与传输/超时取消（J02）。
+              reply(id, buildToolResultPayload(tool.name, args, { operation: 'create_canvas_nodes', ids: [], cancelled: true, reason: 'declined' }))
               return
             }
             planTrust.trust(projectId)
           }
           // 已信任或刚批准 → 带 planConfirmed 放行：下游 confirmPlan 预批准、渲染层弹窗不再出现（免双问）。
-          const result = await invokeForRequest(tool.method, built, { planConfirmed: true })
+          const result = await invokeForRequest(routedMethod, built, { planConfirmed: true })
           reply(id, buildToolResultPayload(tool.name, args, result))
           return
         }
-        // W3 幕 0 · 开场收敛：一屏 ≤3 题弹在调用方（enum 候选，客户端渲染成按钮）。
-        // 客户端不支持表单 → **不假装问过**：把题面与候选原样交给模型，由它在对话里一次问全（同样只问一次）。
-        // 任何一题留空/选「按你判断」/给非法值 → 走系统默认（跳过永远安全，C 路调研铁律）。
-        if (tool.name === 'nomi_intake_brief') {
-          const questions = buildIntakeQuestions({ kind: typeof built.kind === 'string' ? built.kind : '' })
-          const asked = await elicitIntake(questions, requestSignal)
-          if (!asked.supported) {
-            // 退化路径：如实告诉模型「我没法弹表单，题在这儿，你一次问全」——不静默用默认，也不假装问过。
-            reply(id, buildToolResultPayload(tool.name, args, {
-              questions, message: buildIntakeMessage(questions), elicited: false,
-              note: '当前客户端不支持表单：请把上面三题一次性问全用户（只问这一次），或直接用各题默认继续。',
-            }))
-            return
-          }
-          const decision = resolveIntake(questions, asked.values)
-          reply(id, buildToolResultPayload(tool.name, args, {
-            elicited: true, values: decision.values, answered: decision.answered,
-            usedDefaults: decision.usedDefaults, summary: summarizeIntake(questions, decision),
-          }))
-          return
-        }
-        if (tool.name === 'nomi_request_generation_gate') {
+        // 面收敛：单次生成付费门并入 nomi_operation_gate。phase=request 走服务端 challenge→客户端确认→decide→start
+        // 的编排（handleSemanticGenerationGate 内部仍按原 method 字面量 invoke request/decide/start，付费 seam 不变）；
+        // phase=decide 走下面原样 invoke（gate_decide capability 抛错、真正落账经 Run-owned seam）。
+        if (tool.name === 'nomi_operation_gate' && args.phase === 'request') {
           await handleSemanticGenerationGate(id, tool.name, args, built, {
             invoke: (method, params, signal) => invokeForRequest(method, params, { signal }),
             requestConfirmation: (challenge, signal) => requestGenerationConfirmation(challenge, signal),
@@ -540,7 +568,20 @@ export function createMcpProtocol(transport: McpTransport) {
           }, requestSignal)
           return
         }
-        const result = await invokeForRequest(tool.method, built)
+        // 接模型要 key：规范 2025-11-25 要求走 URL 模式 elicitation（密钥不得经 form / 客户端 / 模型上下文）。
+        if (tool.name === 'nomi_integration' && args.action === 'open_credentials') {
+          const outcome = await runIntegrationCredentialElicitation({
+            built,
+            invoke: (method, params) => invokeForRequest(method, params),
+            elicitation,
+            locale: locale(),
+            ...(requestSignal ? { signal: requestSignal } : {}),
+          })
+          if (outcome.kind === 'error') throw new Error(outcome.message)
+          reply(id, buildToolResultPayload(tool.name, args, outcome.result))
+          return
+        }
+        const result = await invokeForRequest(routedMethod, built)
         reply(id, buildToolResultPayload(tool.name, args, result))
       } catch (error) {
         // A6 错误契约：isError 返回（模型看到错误而非协议级 error），带人话原因 + 恢复动作 + 诊断码。
@@ -559,7 +600,6 @@ export function createMcpProtocol(transport: McpTransport) {
     // skills.list 只返元数据（name+描述，不含正文）；skills.read 才载正文——客户端只为用到的技能付上下文。
     const SKILL_URI_PREFIX = 'nomi-skill://'
     const PRODUCTION_ARTIFACT_URI_PREFIX = 'nomi://project/'
-
     function skillResourceUri(skill: SkillSummaryFrame): string | null {
       if (!/^[A-Za-z0-9._-]{1,160}$/.test(skill.directoryName)) return null
       if (!/^[A-Za-z0-9._-]{1,80}$/.test(skill.packageVersion)) return null
@@ -752,6 +792,9 @@ export function createMcpProtocol(transport: McpTransport) {
     /** stdio 断连/进程退出：中止全部在飞工作，别把付费生成留在后台跑。 */
     cancelAllInFlight(reason: string): number {
       return requests.cancelAll(reason)
+    },
+    dispose(): void {
+      unsubscribeCatalogChanges()
     },
   }
 }

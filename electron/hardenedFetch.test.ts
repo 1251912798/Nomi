@@ -2,6 +2,29 @@ import http from "node:http";
 import type { AddressInfo } from "node:net";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { hardenedFetch, type ResolvedHostAddress } from "./hardenedFetch";
+import { OutboundDestinationRefusedError, type OutboundEnvironment } from "./networkOutboundPolicy";
+import { matchNomiErrorCode } from "./shared/nomiErrorCodes";
+
+const NO_LOCAL_PROXY: OutboundEnvironment = { syntheticResolver: false, syntheticSample: "" };
+const FAKE_IP_PROXY: OutboundEnvironment = { syntheticResolver: true, syntheticSample: "198.18.0.7" };
+
+/**
+ * 断言「被我们自己的出站策略拒绝」时**只认结构与稳定码**，不认那句人话。
+ * 旧断言写的是英文子串 `private/loopback` —— 那正是 nomiErrorCodes.ts 开篇批判的反模式：
+ * 两端拿同一句人话当协议，人话一 i18n 化分类就断，而单测多半还绿。
+ */
+async function expectOutboundRefusal(
+  run: Promise<unknown>,
+  reason: OutboundDestinationRefusedError["reason"],
+): Promise<void> {
+  await expect(run).rejects.toBeInstanceOf(OutboundDestinationRefusedError);
+  await run.catch((error: unknown) => {
+    const refusal = error as OutboundDestinationRefusedError;
+    expect(refusal.reason).toBe(reason);
+    // 码必须随 message 穿透 IPC，渲染层才分得出「我们拒的」与「上游挂的」。
+    expect(matchNomiErrorCode(refusal.message)).toBe("outbound-blocked");
+  });
+}
 
 let server: http.Server;
 let baseUrl = "";
@@ -26,7 +49,7 @@ afterAll(() => server?.close());
 
 describe("hardenedFetch 私网边界", () => {
   it("默认继续拒绝 loopback", async () => {
-    await expect(hardenedFetch(`${baseUrl}/view`)).rejects.toThrow("private/loopback");
+    await expectOutboundRefusal(hardenedFetch(`${baseUrl}/view`), "private-host");
   });
 
   it("只允许显式配置的精确 origin", async () => {
@@ -34,9 +57,10 @@ describe("hardenedFetch 私网边界", () => {
       status: 200,
       contentType: "image/png",
     });
-    await expect(
+    await expectOutboundRefusal(
       hardenedFetch(`${baseUrl}/view`, { allowedPrivateOrigins: ["http://127.0.0.1:1"] }),
-    ).rejects.toThrow("private/loopback");
+      "private-host",
+    );
   });
 
   it("私网显式授权仍在第一跳拒绝重定向，不访问跳转目标", async () => {
@@ -47,12 +71,42 @@ describe("hardenedFetch 私网边界", () => {
     expect(redirectedTargetRequests).toBe(0);
   });
 
+  it("fake-ip 代理下取片走得通：解析进 198.18/15 也照常下载（这正是 2026-09-06 取不回成片的那一格）", async () => {
+    const resolveHost = vi.fn(async () => [{ address: "198.18.0.140", family: 4 as const }]);
+    const fetchImpl = vi.fn(async () => new Response(Buffer.from([7, 7, 7]), {
+      status: 200,
+      headers: { "Content-Type": "video/mp4" },
+    }));
+    await expect(hardenedFetch("https://api.apimart.ai/result.mp4", {}, {
+      resolveHost,
+      createPinnedDispatcher: () => ({ close: async () => {} }) as never,
+      fetch: fetchImpl,
+      isApplicationProxyActive: () => false,
+      readOutboundEnvironment: async () => FAKE_IP_PROXY,
+    })).resolves.toMatchObject({ status: 200, contentType: "video/mp4" });
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  it("【阴性对照】没有本地代理证据时，同一次取片仍被拒——放宽必须有阳性证据", async () => {
+    const fetchImpl = vi.fn();
+    await expectOutboundRefusal(hardenedFetch("https://api.apimart.ai/result.mp4", {}, {
+      resolveHost: async () => [{ address: "198.18.0.140", family: 4 }],
+      createPinnedDispatcher: () => ({ close: async () => {} }) as never,
+      fetch: fetchImpl,
+      isApplicationProxyActive: () => false,
+      readOutboundEnvironment: async () => NO_LOCAL_PROXY,
+    }), "private-address");
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
   it("rejects DNS resolutions that include metadata/private addresses", async () => {
     const fetchImpl = vi.fn();
-    await expect(hardenedFetch("https://media.example.test/a.png", {}, {
+    await expectOutboundRefusal(hardenedFetch("https://media.example.test/a.png", {}, {
       resolveHost: async () => [{ address: "169.254.169.254", family: 4 }],
       fetch: fetchImpl,
-    })).rejects.toThrow("private/loopback");
+      readOutboundEnvironment: async () => FAKE_IP_PROXY,
+    }), "private-address");
+    // fake-ip 放宽**没有**顺手放开云元数据段：这一条是那次放宽的安全边界，翻红即回归。
     expect(fetchImpl).not.toHaveBeenCalled();
   });
 
@@ -75,6 +129,34 @@ describe("hardenedFetch 私网边界", () => {
     })).resolves.toMatchObject({ status: 200 });
     expect(resolveHost).not.toHaveBeenCalled();
     expect(dispatcher.close).not.toHaveBeenCalled();
+  });
+
+  // 上面那条证明的是「代理生效时不拿本机解析结果当判据」。下面两条钉住它**不等于「不判」**。
+  // 说准一点：上一轮名字层也是判的，只是判据长在 hardenedFetch 自己身上（第二个 owner），
+  // 而「代理生效」这个条件写在调用点。判据搬进 policy 之后，这两条守的是**搬家没搬丢**——
+  // 谁要是把 `if (route === "proxy") return allowed` 写进 owner，这里就该红。
+  it("应用代理生效时**仍然**问策略：私网字面量照拦（代理不是绕过分类的通行证）", async () => {
+    const resolveHost = vi.fn();
+    const fetchImpl = vi.fn();
+    await expectOutboundRefusal(hardenedFetch("http://169.254.169.254/latest/meta-data/", {}, {
+      resolveHost: resolveHost as never,
+      fetch: fetchImpl,
+      isApplicationProxyActive: () => true,
+    }), "private-host");
+    // 名字层就定案了：既没有解析，也没有发请求。
+    expect(resolveHost).not.toHaveBeenCalled();
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it("单供应商显式 dispatcher 同样不是通行证：私网字面量照拦", async () => {
+    const fetchImpl = vi.fn();
+    await expectOutboundRefusal(hardenedFetch("http://10.0.0.5/result.mp4", {
+      dispatcher: { close: async () => {} } as never,
+    }, {
+      fetch: fetchImpl,
+      isApplicationProxyActive: () => false,
+    }), "private-host");
+    expect(fetchImpl).not.toHaveBeenCalled();
   });
 
   it("等待应用代理提交完成后才决定 DNS 路径，避免启动竞态把代理 fake-IP 当私网", async () => {
@@ -155,11 +237,11 @@ describe("hardenedFetch 私网边界", () => {
       headers: { Location: "https://two.example.test/secret" },
     }));
 
-    await expect(hardenedFetch("https://one.example.test/start", {}, {
+    await expectOutboundRefusal(hardenedFetch("https://one.example.test/start", {}, {
       resolveHost,
       createPinnedDispatcher: () => ({ close: async () => {} }) as never,
       fetch: fetchImpl,
-    })).rejects.toThrow("private/loopback");
+    }), "private-address");
     expect(fetchImpl).toHaveBeenCalledTimes(1);
     expect(resolveHost).toHaveBeenCalledTimes(2);
   });

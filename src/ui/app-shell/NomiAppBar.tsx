@@ -1,6 +1,6 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { IconArrowRight, IconBrowser, IconPlugConnected, IconSettings } from '@tabler/icons-react'
+import { IconArrowRight, IconBrowser, IconDownload, IconPlugConnected, IconSettings } from '@tabler/icons-react'
 import type { WorkspaceMode } from '../../workbench/workbenchStore'
 import {
   NomiBrand,
@@ -17,6 +17,13 @@ import CollapsedAiChip from './CollapsedAiChip'
 import { useGenerationCanvasStore } from '../../workbench/generationCanvas/store/generationCanvasStore'
 import { cn } from '../../utils/cn'
 import { APP_BAR_ACTION_GROUPS } from './appBarActionGroups'
+import EditingLayoutMenu from '../../workbench/preview/EditingLayoutMenu'
+import {
+  isPreviewExportBusy,
+  previewExportStageKey,
+  requestPreviewExport,
+  usePreviewExportState,
+} from '../../workbench/preview/previewExportRequest'
 
 // 平台分流：win32 下品牌/关于 + 上手清单都让位给 WorkbenchShell 的自绘标题栏（windowbar），
 // 本栏不重复渲染；非 win32（mac/Linux）保持原生窗口，品牌与清单仍住这里——两平台都有家、不丢失、不重复。
@@ -57,6 +64,14 @@ export default function NomiAppBar({
   onRenameProject,
 }: NomiAppBarProps): JSX.Element {
   const { t } = useTranslation()
+  // 导出忙态从事件桥上行读（唯一通路，见 previewExportRequest.ts）——按钮据此禁用并说明原因。
+  const previewExport = usePreviewExportState()
+  const exportBusy = isPreviewExportBusy(previewExport.status)
+  const exportStageKey = previewExportStageKey(previewExport.status)
+  const exportPercent = Math.round(previewExport.progress * 100)
+  const exportBusyReason = exportStageKey
+    ? t('timelinePreview.exportBusyReason', { stage: t(exportStageKey), percent: exportPercent })
+    : t('timelinePreview.exportMp4')
   const [editingProjectName, setEditingProjectName] = React.useState(false)
   const [projectTitle, setProjectTitle] = React.useState(projectName || t('appBar.untitledProject'))
 
@@ -131,7 +146,7 @@ export default function NomiAppBar({
                   'border-none bg-transparent font-inherit text-body-sm',
                   'cursor-pointer whitespace-nowrap',
                   'text-[var(--nomi-ink-40)]',
-                  'transition-[background,color] duration-[var(--nomi-transition-fast)]',
+                  'transition-[background,color] duration-nomi-fast ease-nomi-fast',
                   'hover:bg-[var(--nomi-ink-05)] hover:text-[var(--nomi-ink)]',
                   'max-[700px]:hidden',
                 )}
@@ -184,7 +199,7 @@ export default function NomiAppBar({
                 'border-none bg-transparent font-inherit text-body-sm',
                 'cursor-pointer whitespace-nowrap',
                 'text-[var(--nomi-ink-80)] max-w-[200px] overflow-hidden text-ellipsis',
-                'transition-[background,color] duration-[var(--nomi-transition-fast)]',
+                'transition-[background,color] duration-nomi-fast ease-nomi-fast',
                 'hover:bg-[var(--nomi-ink-05)] hover:text-[var(--nomi-ink)]',
               )}
               // 见上:项目名是用户内容(持久化的项目名),不是 UI 文案。文本与 title 都可能非当前界面语言,
@@ -215,6 +230,18 @@ export default function NomiAppBar({
           role="toolbar"
           aria-label={t('appBar.globalActions')}
         >
+        {/* 剪辑面「布局」菜单（合同 §2.1/§2.2：五块开关 + 四预设，固定在顶栏，不塞进 Nomi 面板头）。
+            只在预览页出现——它调的是剪辑面那五块面板，别处没有对象可调。 */}
+        {workspaceMode === 'preview' ? (
+          <span
+            data-actions={APP_BAR_ACTION_GROUPS.layout.join(' ')}
+            className={cn('nomi-appbar__group nomi-appbar__group--layout', 'inline-flex items-center gap-2.5')}
+          >
+            <EditingLayoutMenu />
+            <span className={cn('nomi-appbar__divider', 'w-px h-[18px] bg-workbench-border')} aria-hidden="true" />
+          </span>
+        ) : null}
+
         {/* 任务：入口常驻；空闲时安静显示，有任务时由按钮表达数量和状态。 */}
         <span
           className={cn(
@@ -252,7 +279,7 @@ export default function NomiAppBar({
                     'inline-flex items-center gap-1.5 h-[30px] px-2.5',
                     'border border-transparent rounded-[var(--nomi-radius-sm)]',
                     'bg-transparent text-[var(--nomi-ink-80)] font-inherit text-body-sm',
-                    'transition-[background,color] duration-[var(--nomi-transition-fast)]',
+                    'transition-[background,color] duration-nomi-fast ease-nomi-fast',
                     'hover:bg-[var(--nomi-ink-05)] hover:text-[var(--nomi-ink)]',
                     'max-[1600px]:w-[30px] max-[1600px]:h-[30px] max-[1600px]:justify-center max-[1600px]:p-0',
                   )}
@@ -269,8 +296,10 @@ export default function NomiAppBar({
           <span className={cn('nomi-appbar__divider', 'w-px h-[18px] bg-workbench-border')} aria-hidden="true" />
         </span>
 
-        {/* 右槽互斥（视图 06）：拆解面板占槽时，让位的「生成」AI 栏收成此角标；点它还原右栏。
-            只在生成区 + 拆解占槽 + AI 收起时出现，其余情况自返 null（不常驻）。 */}
+        {/* 收起角标的家（09-01 定稿 §11.2）：右簇「浏览器」与「设置」之间这一格。两个理由共用一格、
+            同格只出一颗——① 常驻 Agent 面板被收起（四个面通用，这是主路）；② 过渡期互斥（视图 06）：
+            拆解面板占住生成区右槽时，让位的「生成」AI 栏收成此角标。两者都不成立时自返 null（不常驻）。
+            判断住在 CollapsedAiChip 的那条 if/else 里，别在这儿再加一层条件。 */}
         <CollapsedAiChip workspaceMode={workspaceMode} />
 
         {/* 配置：系统设置与模型快捷入口归在一起；二者最终落到同一张设置对话框。 */}
@@ -292,7 +321,7 @@ export default function NomiAppBar({
                     'inline-flex items-center gap-1.5 h-[30px] px-2.5',
                     'border border-transparent rounded-[var(--nomi-radius-sm)]',
                     'bg-transparent text-[var(--nomi-ink-80)] font-inherit text-body-sm',
-                    'transition-[background,color] duration-[var(--nomi-transition-fast)]',
+                    'transition-[background,color] duration-nomi-fast ease-nomi-fast',
                     'hover:bg-[var(--nomi-ink-05)] hover:text-[var(--nomi-ink)]',
                     'max-[1600px]:w-[30px] max-[1600px]:h-[30px] max-[1600px]:justify-center max-[1600px]:p-0',
                   )}
@@ -312,7 +341,7 @@ export default function NomiAppBar({
                   'inline-flex items-center gap-1.5 h-[30px] px-2.5',
                   'border border-transparent rounded-[var(--nomi-radius-sm)]',
                   'bg-transparent text-[var(--nomi-ink-80)] font-inherit text-body-sm',
-                  'transition-[background,color] duration-[var(--nomi-transition-fast)]',
+                  'transition-[background,color] duration-nomi-fast ease-nomi-fast',
                   'hover:bg-[var(--nomi-ink-05)] hover:text-[var(--nomi-ink)]',
                   'max-[1600px]:w-[30px] max-[1600px]:h-[30px] max-[1600px]:justify-center max-[1600px]:p-0',
                 )}
@@ -333,9 +362,42 @@ export default function NomiAppBar({
           className="nomi-appbar__group nomi-appbar__group--primary inline-flex items-center"
         >
           {/* 「导出」拆成两个诚实的词（§1.5「去重」+ 一功能一个家）：
-              这颗在非预览页时只是**跳转**（原来却叫「导出」，点了什么也不导），故改叫「去出片」；
-              到了预览页整颗隐藏 —— 那里控制条的「导出 MP4」才是真导出、且是唯一入口。 */}
-          {workspaceMode !== 'preview' ? (
+              这颗在非预览页时只是**跳转**（原来却叫「导出」，点了什么也不导），故改叫「去出片」。
+              到了预览页它换成真导出「导出 MP4」——合同 §2.2 把导出从预览控制条撤到顶栏右上
+              （CapCut / ChatCut / OpenCut 一致），属性面板只放分辨率/质量参数、不放执行按钮。 */}
+          {workspaceMode === 'preview' ? (
+            <AppBarActionTooltip label={exportBusy ? exportBusyReason : t('timelinePreview.exportMp4')}>
+              {/* §1.6 C1：忙的时候这颗必须**禁用并说清原因**——此前它照常可点，
+                  第二下被预览里的 `if (exportBusy) return` 静默吞掉，界面一个字都不解释。
+                  禁用的 <button> 自己不触发 title，故按既有范式（NodeGenerationComposer 主生成钮）
+                  外层包一层 display:contents 的 <span title>。 */}
+              <span title={exportBusy ? exportBusyReason : t('timelinePreview.exportMp4')} style={{ display: 'contents' }}>
+              <WorkbenchButton
+                className={cn(
+                  'nomi-appbar__primary',
+                  'app-no-drag',
+                  'inline-flex items-center gap-1.5 h-[30px] px-2.5',
+                  'border border-transparent rounded-[var(--nomi-radius-sm)]',
+                  'bg-[var(--nomi-ink)] text-[var(--nomi-paper)] font-inherit text-body-sm',
+                  'transition-[background,color] duration-nomi-fast ease-nomi-fast',
+                  'hover:bg-[var(--nomi-ink-80)]',
+                  'disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-[var(--nomi-ink)]',
+                  'max-[1600px]:w-[30px] max-[1600px]:h-[30px] max-[1600px]:justify-center max-[1600px]:p-0',
+                )}
+                aria-label={exportBusy ? exportBusyReason : t('timelinePreview.exportMp4')}
+                data-export-busy={exportBusy ? 'true' : 'false'}
+                // loading 走 WorkbenchButton 既有的 pending 规范（品牌 N 转圈 + 自动禁用 + aria-busy），不另手搓一套（P1）。
+                loading={exportBusy}
+                onClick={requestPreviewExport}
+              >
+                {exportBusy ? null : <IconDownload size={15} stroke={1.8} />}
+                <span className={cn('nomi-appbar__action-text', 'max-[1600px]:hidden')}>
+                  {exportBusy ? t('timelinePreview.exporting', { percent: exportPercent }) : t('timelinePreview.exportMp4')}
+                </span>
+              </WorkbenchButton>
+              </span>
+            </AppBarActionTooltip>
+          ) : (
             <AppBarActionTooltip label={t('appBar.goToProduce')}>
               <WorkbenchButton
                 className={cn(
@@ -344,7 +406,7 @@ export default function NomiAppBar({
                   'inline-flex items-center gap-1.5 h-[30px] px-2.5',
                   'border border-transparent rounded-[var(--nomi-radius-sm)]',
                   'bg-[var(--nomi-ink)] text-[var(--nomi-paper)] font-inherit text-body-sm',
-                  'transition-[background,color] duration-[var(--nomi-transition-fast)]',
+                  'transition-[background,color] duration-nomi-fast ease-nomi-fast',
                   'hover:bg-[var(--nomi-ink-80)]',
                   'max-[1600px]:w-[30px] max-[1600px]:h-[30px] max-[1600px]:justify-center max-[1600px]:p-0',
                 )}
@@ -355,7 +417,7 @@ export default function NomiAppBar({
                 <span className={cn('nomi-appbar__action-text', 'max-[1600px]:hidden')}>{t('appBar.goToProduce')}</span>
               </WorkbenchButton>
             </AppBarActionTooltip>
-          ) : null}
+          )}
         </span>
         </div>
       </TooltipProvider>

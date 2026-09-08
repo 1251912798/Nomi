@@ -145,7 +145,7 @@ export function OnboardingDrawer({ pageRequest = null }: { pageRequest?: ModelPa
     return () => { unsubscribe?.(); window.clearInterval(timer) }
   }, [loaded, reloadIntegrationHandoffs])
   React.useEffect(() => {
-    if (!loaded || currentModelSettingsPage(navigation).type !== 'home') return
+    if (!loaded) return
     const credential = integrationHandoffs.find((item) => item.target === 'credential')
     if (!credential || openedIntegrationHandoff.current === credential.requestId) return
     openedIntegrationHandoff.current = credential.requestId
@@ -302,7 +302,7 @@ export function OnboardingDrawer({ pageRequest = null }: { pageRequest?: ModelPa
       const bridge = getDesktopBridge()
       if (!bridge || rows.length === 0) return
       const single = rows.length === 1
-      const ok = await confirmDialog({
+      const ok = (single && rows[0].unlisted) || await confirmDialog({
         title: single
           ? t('onboardingProviders.drawer.deleteModel')
           : t('onboardingProviders.drawer.deleteModels', { count: rows.length }),
@@ -398,7 +398,7 @@ export function OnboardingDrawer({ pageRequest = null }: { pageRequest?: ModelPa
       hasApiKey={card.meta.hasApiKey}
       models={card.vendorModels}
       onToggleModel={(model, enabled) => handleSetEnabled([model], enabled)}
-      onChanged={refresh}
+      onDeleteModel={(model) => void handleDelete([model])} onChanged={refresh}
       detailMode={detailMode}
       focus={focus}
       {...(detailMode
@@ -464,7 +464,7 @@ export function OnboardingDrawer({ pageRequest = null }: { pageRequest?: ModelPa
       <KnownVendorKeyConnectPage
         directory={card.directory}
         vendorName={translateModelDisplayText(card.meta.name)}
-        modelCount={card.vendorModels.length}
+        modelCount={card.vendorModels.length} hasApiKey={card.meta.hasApiKey}
         onBack={goBack}
         onSaved={refresh}
         onContinueVerification={() => openWizard(undefined, card.directory.vendorKey)}
@@ -561,11 +561,6 @@ export function OnboardingDrawer({ pageRequest = null }: { pageRequest?: ModelPa
         initialScreen={page.initialScreen}
         existingVendorKey={page.existingVendorKey}
         integrationSessionId={page.integrationSessionId}
-        integrationHandoffRequestId={
-          integrationHandoffs.find(
-            (item) => item.sessionId === page.integrationSessionId && item.target === 'credential',
-          )?.requestId
-        }
         existingConnection={existingConnectionSummary(page.existingVendorKey)}
         onDirectScriptDraftCreated={(identity) => {
           setCustomCallTarget({ ...identity, script: '', draft: true })

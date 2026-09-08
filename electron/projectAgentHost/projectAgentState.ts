@@ -29,12 +29,14 @@ import { ProjectAgentSnapshotError, freezeProjectAgentSnapshot, stableProjectAge
 import { assertContextRef, assertPreconditions, assertTarget } from "./projectAgentReferenceValidation";
 import { assertProjectAgentAssistantLifecycle } from "./projectAgentAssistantStateInvariant";
 import { ProjectAgentStateError } from "./projectAgentStateError";
+import { assertProjectAgentRuntimeContext } from "./projectAgentRuntimeContextValidation";
 import {
-  isProjectAgentClaimedProposalItemStatus,
-  isProjectAgentLiveProposalItemStatus,
+  isProjectAgentClaimedProposalItemStatus, isProjectAgentLiveProposalItemStatus,
 } from "./projectAgentStatusSemantics";
 import { assertTrustedProjectAgentDelta } from "./projectAgentTrustedStateValidation";
+import { HISTORICAL_PATCH_REFERENCES, type ProjectAgentPatchReferences } from "./projectAgentPatchReferences";
 import { assertTrustedProjectAgentDeltaCoverage } from "./projectAgentTrustedDeltaCoverage";
+import { assertProjectAgentProvenance } from "./projectAgentProvenanceValidation";
 import {
   hasDuplicateProjectAgentApprovalIdentity,
   hasDuplicateProjectAgentArtifactIdentity,
@@ -44,21 +46,16 @@ import {
 import {
   asRecord,
   assertAllowedKeys,
-  assertCanonicalTimestamp,
-  assertCanonicalId,
-  assertNonEmpty,
-  assertSafeInteger,
-  assertStatusRecord,
+  assertCanonicalTimestamp, assertCanonicalId, assertNonEmpty, assertSafeInteger,
+  assertSkillLoadReference, assertProjectAgentUsage, assertStatusRecord,
   assertTimestampOrder,
   assertVersionRef,
   assertVersionRefs,
 } from "./projectAgentStateValidationPrimitives";
-
 export { assertProjectAgentBinding, projectAgentPartitionKey, sameProjectAgentBinding } from "./projectAgentIdentity";
 export { freezeProjectAgentSnapshot, stableProjectAgentJson } from "./projectAgentSnapshot";
 export { ProjectAgentStateError } from "./projectAgentStateError";
 export { isProjectAgentStatus } from "./projectAgentStateValidationPrimitives";
-
 const ITEM_KIND_SET = new Set<string>(PROJECT_AGENT_ITEM_KINDS);
 const WORK_MODE_SET = new Set<string>(PROJECT_AGENT_WORK_MODES);
 const ORIGIN_SURFACE_KIND_SET = new Set<string>(PROJECT_AGENT_ORIGIN_SURFACE_KINDS);
@@ -69,7 +66,6 @@ type TrustedCommandIndex = Map<string, ProjectAgentAppliedCommand>;
 const trustedStates = new WeakSet<object>();
 const trustedCommandIndexes = new WeakMap<object, TrustedCommandIndex>();
 let fullValidationCount = 0;
-
 function assertApprovalPolicy(value: unknown): asserts value is ProjectAgentApprovalPolicy {
   const policy = asRecord(value);
   assertAllowedKeys(policy, ["mode", "spend"]);
@@ -77,7 +73,6 @@ function assertApprovalPolicy(value: unknown): asserts value is ProjectAgentAppr
     throw new ProjectAgentStateError("invalid_state");
   }
 }
-
 function assertWorkMode(value: unknown): void {
   if (!WORK_MODE_SET.has(String(value))) throw new ProjectAgentStateError("invalid_state");
 }
@@ -108,6 +103,8 @@ function assertTurn(
     "model",
     "workMode",
     "approvalPolicy",
+    "usage",
+    "runtimeContext",
     "skillVersions",
     "capabilityVersions",
     "contextRef",
@@ -122,6 +119,8 @@ function assertTurn(
   assertVersionRef(turn.model);
   if (turn.workMode !== undefined) assertWorkMode(turn.workMode);
   if (turn.approvalPolicy !== undefined) assertApprovalPolicy(turn.approvalPolicy);
+  if (turn.usage !== undefined) assertProjectAgentUsage(turn.usage);
+  if (turn.runtimeContext !== undefined) assertProjectAgentRuntimeContext(turn.runtimeContext);
   assertVersionRefs(turn.skillVersions);
   assertVersionRefs(turn.capabilityVersions);
   assertContextRef(turn.contextRef, binding, turn.threadId);
@@ -218,7 +217,7 @@ function assertItem(
   const extraKeys: Record<string, readonly string[]> = {
     user: ["text"],
     assistant: ["text", "textRevision"],
-    tool: ["toolCallId", "invocationId", "text", "capability", "resultRef"],
+    tool: ["toolCallId", "invocationId", "text", "capability", "resultRef", "provenance", "skillLoad"],
     proposal: ["approval", "humanApproval"],
     task: ["task"],
     artifact: ["artifact"],
@@ -248,9 +247,10 @@ function assertItem(
     case "tool":
       assertNonEmpty(item.toolCallId);
       assertNonEmpty(item.invocationId);
-      if (item.text !== undefined && typeof item.text !== "string") throw new ProjectAgentStateError("invalid_state");
-      assertVersionRef(item.capability);
+      if (item.text !== undefined && typeof item.text !== "string") throw new ProjectAgentStateError("invalid_state"); assertVersionRef(item.capability);
       if (item.resultRef !== undefined) assertNonEmpty(item.resultRef);
+      if (item.provenance !== undefined) assertProjectAgentProvenance(item.provenance);
+      if (item.skillLoad !== undefined) { if ((item.capability as { id?: unknown }).id !== "skill.read") throw new ProjectAgentStateError("invalid_state"); assertSkillLoadReference(item.skillLoad); }
       break;
     case "proposal":
       if ((item.approval === undefined) === (item.humanApproval === undefined)) {
@@ -416,11 +416,9 @@ function assertUniqueIds(values: readonly unknown[], readId: (value: unknown) =>
 function assertPatchChange(
   value: unknown,
   binding: ProjectBinding,
-  threadIds: ReadonlySet<string>,
-  turnIds: ReadonlySet<string>,
-  turnThreadById: ReadonlyMap<string, string>,
-  itemTurnById: ReadonlyMap<string, string>,
+  refs: ProjectAgentPatchReferences,
 ): asserts value is ProjectAgentChange {
+  const { threadIds, turnIds, turnThreadById, itemTurnById } = refs;
   const change = asRecord(value);
   switch (change.kind) {
     case "thread-upserted":
@@ -449,12 +447,11 @@ function assertPatchChange(
     case "item-upserted":
       assertAllowedKeys(change, ["kind", "item"]);
       assertItem(change.item, binding, threadIds, turnIds);
-      assertTurnThreadLink(
-        (change.item as ProjectAgentItem).threadId,
-        (change.item as ProjectAgentItem).turnId,
-        turnThreadById,
-      );
-      assertParentItemLink(change.item as ProjectAgentItem, itemTurnById);
+      if (refs.enforceLinks) {
+        const item = change.item as ProjectAgentItem;
+        assertTurnThreadLink(item.threadId, item.turnId, turnThreadById);
+        assertParentItemLink(item, itemTurnById);
+      }
       break;
     case "item-removed":
       assertAllowedKeys(change, ["kind", "itemId"]);
@@ -463,11 +460,10 @@ function assertPatchChange(
     case "queue-upserted":
       assertAllowedKeys(change, ["kind", "queueItem"]);
       assertQueueItem(change.queueItem, binding, threadIds, turnIds);
-      assertTurnThreadLink(
-        (change.queueItem as ProjectAgentQueueItem).threadId,
-        (change.queueItem as ProjectAgentQueueItem).turnId,
-        turnThreadById,
-      );
+      if (refs.enforceLinks) {
+        const queued = change.queueItem as ProjectAgentQueueItem;
+        assertTurnThreadLink(queued.threadId, queued.turnId, turnThreadById);
+      }
       break;
     case "queue-removed":
       assertAllowedKeys(change, ["kind", "queueItemId"]);
@@ -485,11 +481,10 @@ function assertPatchChange(
     case "proposal-upserted":
       assertAllowedKeys(change, ["kind", "approval"]);
       assertProposalApproval(change.approval, threadIds, turnIds);
-      assertTurnThreadLink(
-        (change.approval as ProjectAgentProposalApproval).ref.threadId,
-        (change.approval as ProjectAgentProposalApproval).ref.turnId,
-        turnThreadById,
-      );
+      if (refs.enforceLinks) {
+        const { ref } = change.approval as ProjectAgentProposalApproval;
+        assertTurnThreadLink(ref.threadId, ref.turnId, turnThreadById);
+      }
       break;
     case "proposal-removed":
       assertAllowedKeys(change, ["kind", "approvalId"]);
@@ -710,9 +705,8 @@ export function assertProjectAgentHostState(value: unknown): asserts value is Pr
       throw new ProjectAgentStateError("invalid_state");
     }
     if (!Array.isArray(patch.changes)) throw new ProjectAgentStateError("invalid_state");
-    patch.changes.forEach((change) =>
-      assertPatchChange(change, state.binding, threadIds, turnIds, turnThreadById, itemTurnById),
-    );
+    // History, not live state: a thread deleted since legitimately leaves patches naming it.
+    patch.changes.forEach((change) => assertPatchChange(change, state.binding, HISTORICAL_PATCH_REFERENCES));
   });
 }
 

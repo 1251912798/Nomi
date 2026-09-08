@@ -16,6 +16,7 @@ export type DesktopProjectLocationResult =
 export type DesktopSettingsBridge = {
   projectLocation: {
     get: () => Promise<DesktopProjectLocationResult>
+    check: () => Promise<DesktopProjectLocationResult>
     pick: () => Promise<DesktopProjectLocationResult>
     reset: () => Promise<DesktopProjectLocationResult>
     reveal: () => Promise<DesktopProjectLocationResult>
@@ -36,5 +37,22 @@ export type DesktopSettingsBridge = {
   generationModelDefaults: {
     get: () => Promise<import('../../electron/settings/generationModelDefaultsContract').GenerationModelDefaults>
     set: (payload: unknown) => Promise<import('../../electron/settings/generationModelDefaultsContract').GenerationModelDefaults>
+  },
+  vendorPreference: {
+    get: () => Promise<import('../../electron/shared/contracts/vendorPreference').VendorPreferenceSettings>
+    set: (payload: unknown) => Promise<import('../../electron/shared/contracts/vendorPreference').VendorPreferenceSettings>
+  }
+  canvasMenuPreference: {
+    get: () => Promise<import('../../electron/shared/contracts/canvasMenuPreference').CanvasMenuPreferenceSettings>
+    set: (payload: unknown) => Promise<import('../../electron/shared/contracts/canvasMenuPreference').CanvasMenuPreferenceSettings>
+  }
+  telemetry?: {
+    get: () => Promise<import('../../electron/shared/contracts/telemetry').TelemetrySettingsView>
+    set: (payload: unknown) => Promise<import('../../electron/shared/contracts/telemetry').TelemetrySettingsView>
+    summary: () => Promise<import('../../electron/shared/contracts/telemetry').TelemetrySummary>
+    deleteAll: () => Promise<{ deletedCount: number }>
+  }
+  diagnostics?: {
+    exportBundle: () => Promise<import('../../electron/shared/contracts/diagnostics').DiagnosticsExportResult>
   }
 }

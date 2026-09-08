@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import {
+  CONNECT_VENDOR_OPTION_VALUE,
   buildModelSelectOptions,
   buildProviderSelectOptions,
   buildVendorExplicitModelOptions,
@@ -22,7 +23,7 @@ import { toCatalogModelOptions } from '../../config/modelOptionMappers'
 function option(modelKey: string, vendor: string, label: string): ModelOption {
   return { value: `${vendor}:${modelKey}`, label, modelKey, vendor, kind: 'image' } as ModelOption
 }
-const ailing = (...keys: string[]) => (modelKey: string) => keys.includes(modelKey)
+const ailing = (...keys: string[]) => ({ modelKey }: { modelKey: unknown; vendor: unknown }) => keys.includes(String(modelKey))
 const healthy = () => false
 
 function variantOptions(tiers = ['low', 'medium', 'high']): ModelOption[] {
@@ -97,7 +98,7 @@ describe('buildModelSelectOptions — 病模型沉底 + 灰化', () => {
     expect(view[0].trailing).toBe('APIMart')
   })
 
-  it('多家里只病一家 → 整条**不算病**（否则「N 家」里一家挂就误伤整个模型）', () => {
+  it('多家里只病一家 → 整条**不算病**（否则多家里一家挂就误伤整个模型）', () => {
     const deduped = dedupeModelOptions([
       option('nano-banana-apimart', 'apimart', 'Nano Banana'),
       option('nano-banana-kie', 'kie', 'Nano Banana'),
@@ -106,7 +107,10 @@ describe('buildModelSelectOptions — 病模型沉底 + 灰化', () => {
 
     expect(view).toHaveLength(1)
     expect(view[0].dimmed).toBeUndefined()
-    expect(view[0].trailing).toBe('2 家')
+    // 多家 → 行尾 chip 说明走哪几家；**不再**同时挂一条「N 家」附注。
+    // 两种表达一起上会把模型名挤没（2026-09-06 真机实测），这条钉住只留一种。
+    expect(view[0].trailing).toBeUndefined()
+    expect(view[0].chips?.map((chip) => chip.label)).toEqual(['APIMart', 'Kie'])
   })
 
   it('全healthy 时顺序与打标一律不动（避让机制不该影响常态）', () => {
@@ -268,5 +272,88 @@ describe('供应商锁定寻址 — 同名 modelKey 跨厂商不撞值（2026-07
     expect(opts.some((o) => o.value === valueB)).toBe(true)
     // vendor 缺省（旧数据）→ 回退首家，不落空。
     expect(resolveProviderSelectValue(model, 'gpt-image-2')).toBe(valueB)
+  })
+})
+
+describe('健康记忆按 (vendor, modelKey) 判定 —— 「换家优先于换模型」才真的能换家', () => {
+  // 2026-09-03 真实付费复验实测：点「Gpt Image 2」反复落到 Kie（余额为负、连连失败），
+  // 要手动切回 APIMart。根因不在 picker，在健康记忆的身份键少了 vendor：
+  // Kie 那家连败被记成「gpt-image-2 这个模型病了」，APIMart 的同名模型跟着背锅，
+  // healthyVendors 于是只能全好或全病 —— 整个换家机制对它本来要解决的多供应商场景完全失效。
+  const twoVendors = () => dedupeModelOptions([
+    option('gpt-image-2', 'kie', 'GPT Image 2'),
+    option('gpt-image-2', 'apimart', 'GPT Image 2'),
+  ])
+  /** 只有 Kie 那家病了；APIMart 的同名模型健康。 */
+  const kieAiling = ({ modelKey, vendor }: { modelKey: unknown; vendor: unknown }) => modelKey === 'gpt-image-2' && vendor === 'kie'
+
+  it('一家病了就换另一家，不是整条模型判病', () => {
+    const model = twoVendors()[0]
+    expect(pickHealthiestProvider(model, kieAiling)?.vendor).toBe('apimart')
+  })
+
+  it('还有健康的家时，模型不该被标成「最近多次失败」', () => {
+    const [entry] = buildModelSelectOptions(twoVendors(), kieAiling)
+    expect(entry.dimmed).toBeFalsy()
+    expect(entry.trailing).toBeUndefined()
+    expect(entry.chips).toHaveLength(2)
+  })
+
+  it('只有一家时给厂商短名附注，不给只能点自己的单个 chip', () => {
+    const deduped = dedupeModelOptions([option('solo', 'apimart', 'Solo')])
+    const [entry] = buildModelSelectOptions(deduped, healthy)
+    expect(entry.chips).toBeUndefined()
+    expect(entry.trailing).toBe('APIMart')
+  })
+
+  it('批量下拉一家一行：只有病的那一行标红并沉底', () => {
+    const rows = buildVendorExplicitModelOptions(twoVendors(), kieAiling)
+    expect(rows).toHaveLength(2)
+    expect(rows[0].dimmed).toBeFalsy()
+    expect(rows[1].dimmed).toBe(true)
+  })
+
+  it('两家都病了才回退全集（绝不空选）', () => {
+    const model = twoVendors()[0]
+    expect(pickHealthiestProvider(model, () => true)).not.toBeNull()
+  })
+})
+
+// 2026-09-06 用户拍板：没接入的供应商，它的模型不再沉底灰显，而是根本不出现。
+// 于是新装机上这个下拉会一条都不剩——空白下拉读起来像「坏了」，必须换成说得清、点得动的一行。
+describe('一家供应商都没接入 → 诚实空态，而不是空白下拉', () => {
+  it('折叠版下拉给出「还没接入供应商 · 去接入」一行', () => {
+    const view = buildModelSelectOptions([], healthy)
+    expect(view).toHaveLength(1)
+    expect(view[0]).toMatchObject({
+      value: CONNECT_VENDOR_OPTION_VALUE,
+      label: '还没接入供应商',
+      trailing: '去接入',
+      trailingTone: 'accent',
+    })
+  })
+
+  it('批量下拉给出同一行（同一件事只有一种说法）', () => {
+    expect(buildVendorExplicitModelOptions([], healthy)).toEqual(buildModelSelectOptions([], healthy))
+  })
+
+  it('点那一行 = 打开模型接入页，绝不当成选了个模型', () => {
+    const onChange = vi.fn()
+    const events: string[] = []
+    // 这个测试文件跑在无 DOM 环境（纯函数直测），所以只桩出这一行代码真正用到的那个口子。
+    vi.stubGlobal('window', { dispatchEvent: (event: Event) => { events.push(event.type); return true } })
+    try {
+      let view!: DedupedModelSelectView
+      function Probe() {
+        view = useDedupedModelSelect([], '', onChange)
+        return null
+      }
+      renderToStaticMarkup(createElement(Probe))
+      view.onModelPick(CONNECT_VENDOR_OPTION_VALUE)
+      expect(events).toEqual(['nomi-open-model-catalog'])
+      expect(onChange).not.toHaveBeenCalled()
+    } finally {
+      vi.unstubAllGlobals()
+    }
   })
 })

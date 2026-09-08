@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import type { RuntimeToolCallRecord } from "../harness/runtime/runtimePort";
+import type { RuntimeToolCallRecord } from "../shared/agentCapabilities/transportContracts";
 import type { ProjectAgentTaskItem, ProjectAgentTurn } from "../shared/projectAgentContracts";
-import { exportJobTaskItems } from "./projectAgentExecutionHelpers";
+import type { AgentChatRequest } from "../harness/agentChatContracts";
+import { exportJobTaskItems, steeredExecutionPrompt, toolItem } from "./projectAgentExecutionHelpers";
 
 const binding = Object.freeze({
   projectId: "project-a",
@@ -78,5 +79,19 @@ describe("ExportJob TaskRef projection", () => {
     { ...successfulExport(), result: { ...(successfulExport().result as object), foreignStatus: "succeeded" } },
   ])("rejects unsuccessful, mismatched, or non-strict tool results", (record) => {
     expect(exportJobTaskItems(binding, turn, [record], [], "2026-08-29T00:00:00.000Z")).toEqual([]);
+  });
+});
+
+describe("execution prompt authorship", () => {
+  const request = { capability: "canvas-agent", prompt: "continue canvas task" } as AgentChatRequest;
+
+  it("carries only this turn's request; prior turns are the durable Pi context, not prose", () => {
+    expect(steeredExecutionPrompt(request, undefined)).toBe("continue canvas task");
+  });
+
+  it("appends the user's latest steering instruction without rewriting the request", () => {
+    const steered = steeredExecutionPrompt(request, "改成夜景");
+    expect(steered.startsWith("continue canvas task")).toBe(true);
+    expect(steered).toContain("改成夜景");
   });
 });

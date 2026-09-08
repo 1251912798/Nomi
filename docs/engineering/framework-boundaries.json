@@ -1,0 +1,1215 @@
+{
+  "_comment": [
+    "框架边界登记表（R29）。每个框架回答一句话：「它已经提供了什么，仓库里出现什么就说明我们又自己写了一份」。",
+    "门岗 = pnpm run check:framework-boundary（scripts/check-framework-boundary.mjs），债基线 = scripts/framework-boundary-baseline.json。",
+    "登记一个新框架的顺序：先出四列表（它提供 / 我们用了 / 我们另写了 / 我们拆散了，每格 file:line 或文档 URL）→",
+    "把「我们另写了」那一列翻译成这里的 forbidden 规则 → 跑 --update-baseline 把存量登记成债 → 给每条债绑方案和到期日。",
+    "provides/evidence 不是注释，是门岗校验的必填项：没有可复核出处的规则，等于没做过研究。",
+    "2026-09-07：五条 scope 都加了 electron/agentLane/（阶段 1 垂直切片的新目录）。加在写第一行代码之前，",
+    "不是写完再补——否则门岗只能证明「今天的存量」，证明不了「新目录里再长一份自研版本会当场红」（R28）。"
+  ],
+  "capabilityInventory": {
+    "_comment": [
+      "机器抽取的能力词表要覆盖哪些依赖（2026-09-07 加）。上面的 frameworks 是**人手写**的，",
+      "只覆盖已经出过四列表的那几项能力——它天生只包含已知的东西。这里换一条腿：",
+      "scripts/gen-dependency-capabilities.mjs 从 node_modules 的 .d.ts 导出符号与 README 标题",
+      "机器抽出词表，落到 docs/engineering/dependency-capabilities.generated.json，",
+      "给「还不知道自己不知道」的人当原料。加一个包 = 往这个数组里加一行，然后重跑生成器。"
+    ],
+    "packages": [
+      "@earendil-works/pi-coding-agent",
+      "@earendil-works/pi-agent-core",
+      "@earendil-works/pi-ai",
+      "@xyflow/react",
+      "ai",
+      "@mantine/core",
+      "@anthropic-ai/sandbox-runtime"
+    ]
+  },
+  "advisory": {
+    "_comment": [
+      "启发式一条（2026-09-07 加，**先 advisory 不阻断**）：新增/改动文件的文件名或导出符号命中",
+      "下面的能力词，且该文件不在豁免登记里 → 出 warning。它抓的是 forbidden 正则抓不到的那半边：",
+      "换个符号名重写一份框架已有的能力。正则认的是具体写法，词表认的是**这件事本身**。",
+      "为什么先不阻断：这类启发式的死因是误报——一道天天红的门岗等于不存在（R17）。",
+      "先跑一周量误报率，按 promotion 里写死的条件再决定升不升红。"
+    ],
+    "watchWords": ["session", "retry", "steer", "steering", "parent", "compaction", "harness", "transcript", "persistence", "resume"],
+    "exemptions": "scripts/framework-boundary-advisory-exemptions.json",
+    "promotion": {
+      "reviewDue": "2026-09-14",
+      "criteria": [
+        "一周内累计 warning 中，真阳性（确实是重造了框架能力）占比 ≥ 50%",
+        "豁免登记条目 ≤ 8 条，且每条都写得出「为什么这个词在这里不是重造」",
+        "两条都满足 → 把 advisory 改成 exit 1，并把当时的存量写进 scripts/framework-boundary-baseline.json 同款棘轮基线；",
+        "任一条不满足 → 先收窄 watchWords（删掉误报最多的那个词），再观察一周，不许直接放弃这条"
+      ]
+    }
+  },
+  "referenceConformanceAdvisory": {
+    "_comment": [
+      "上游对齐（2026-09-07 加，**advisory 不阻断**）：登记的 upstreamVersion 落后于 node_modules 里",
+      "实装的版本 → warning。为什么不直接红：上游发一个补丁版不等于参考实现变了，一道天天红的",
+      "门岗等于不存在（R17）。为什么也不能不管：参考实现对照是有时效的——框架自己重构了一层，",
+      "我们那张表就还停在旧的分层上，而它读起来和新的一模一样。",
+      "升红条件写在 promotion 里，到期由 R14 周期审计接手复核，不靠谁记得。"
+    ],
+    "promotion": {
+      "reviewDue": "2026-11-07",
+      "criteria": [
+        "两条同时满足才升红：① 所有登记框架都已交出参考实现对照（referenceConformanceDebt 清空）；② 复核期内出现过至少一次「上游发版确实改了分层」的真阳性",
+        "满足 → 把 minor 及以上的版本落后改成 exit 1，patch 版落后仍只出 warning",
+        "不满足 → 保持 advisory，并在下一次周期审计重定 reviewDue，不许静默取消这条"
+      ]
+    }
+  },
+  "referenceConformanceDebt": [
+    {
+      "_comment": "参考实现逐层对照的**债**（R29 第二份必交物）。登记的是欠账不是豁免：每条绑一个到期日，到期不交门岗就红。清掉一条 = 从这里删一行并在框架条目上写 referenceConformance。id = 框架 id 或 capabilityInventory 里的包名。",
+      "id": "pi",
+      "doc": "docs/research/2026-09-07-pi-reference-implementation-conformance.md",
+      "due": "2026-09-14",
+      "why": "九层对照已交（doc 字段那份，2026-09-07 合入 main），它照出 24 条「压根没想到」。债剩下的是**把它们清掉**，不是再写一份对照。到 2026-09-07 阶段 2 为止：阶段 2 前必补的 9 条已销 7 条（G-01 根级 anyOf / G-02 失败必须 throw / G-03 描述三通道+重建系统提示词两段 / G-05 枚举用 enum 形态 / G-09 addedToolNames 已判并写结论，本阶段销；G-04 工具输出截断 / G-08 唯一校验点带容忍梯，阶段 1 已销），剩 2 条各自带票：G-06（改名后旧会话的旧形状 tool call 折旧，阶段 4 迁移旧转录前必补）、G-07（路径参数 containPath()，阶段 3 接生成/导出类工具时才有落点）。阶段 3 前必补的 8 条（G-10～G-17）与 G-18 跨进程会话锁尚未开工。销账明细见 docs/plan/2026-09-07-agent-runtime-rebuild.md §12.10。"
+    },
+    {
+      "id": "xyflow-react",
+      "doc": "docs/research/2026-10-07-xyflow-reference-implementation-conformance.md",
+      "due": "2026-10-07",
+      "why": "生成画布的交互内核（R23 单内核）。React Flow 官方 examples 是同一套 API 的参考实现，我们的画布已经在 sub-flows、受控视口、节点类型注册这些层上各走了自己的路（2026-09-07 已就 sub-flows 单独查过一轮，见 docs/research/2026-09-07-react-flow-subflows-vs-frame.md），但九层从没并排摆过。id 从包名 @xyflow/react 改成框架 id xyflow-react：PR #550 把它从「只在 capabilityInventory 里的包」升成了登记框架，债要挂在框架 id 上才认得出（同一笔债，没有新增）。"
+    },
+    {
+      "id": "ai",
+      "doc": "docs/research/2026-10-07-vercel-ai-sdk-reference-implementation-conformance.md",
+      "due": "2026-10-07",
+      "why": "Vercel AI SDK 是模型调用与流式转录那条线的底座，AI Elements demo 是它的参考实现。工具、转录渲染、控制流三层我们各写了一份宿主侧的版本，没有对照过它的分层。"
+    },
+    {
+      "id": "@mantine/core",
+      "doc": "docs/research/2026-10-31-mantine-reference-implementation-conformance.md",
+      "due": "2026-10-31",
+      "why": "组件层。排在最后是因为它离「重造框架能力」最远（我们的设计系统是 token-only 自持的，D2 意义上的护城河在别处），但扩展 API 与安全两层仍值得并排看一次，尤其是 Mantine 官方 demo 怎么处理受控/非受控与可访问性。"
+    }
+  ],
+  "frameworks": [
+    {
+      "id": "pi",
+      "packages": [
+        "@earendil-works/pi-coding-agent",
+        "@earendil-works/pi-agent-core",
+        "@earendil-works/pi-ai"
+      ],
+      "version": "0.85.1",
+      "fourColumnTable": "docs/plan/2026-09-07-agent-runtime-rebuild.md",
+      "why": "2026-09-06 #546 架构评审：接入时只接了最底层的 agent loop，pi 已提供的会话持久化、有序转录、重试、价格与 steer/followUp 各被我们重写了一份，而且更差。这张表把那次评审的结论钉成机器判据。",
+      "surface": {
+        "why": "2026-09-07 真实事故：electron/agentLane/laneTools.mts:175 给所有 lane 工具硬写 executionMode:'sequential'，而 pi 的 AgentHarnessTool.executionMode 逐工具可选；同一个对象字面量里 replay 已经改成从 mutates 派生。四列表与逐层对照都看的是「层」，看不见「字段」，所以两份都没拦住。",
+        "scope": ["electron/agentLane/", "electron/harness/runtime/pi/", "electron/projectAgentHost/"],
+        "sources": [
+          {
+            "package": "@earendil-works/pi-agent-core",
+            "dtsPath": "node_modules/@earendil-works/pi-agent-core/dist/harness/types.d.ts",
+            "types": [
+              {
+                "name": "AgentHarnessTool",
+                "why": "每个 Nomi lane 工具都要造一个这个形状（laneTools.mts）。这是本门岗的起因：这个类型的字段是「逐工具可选」的，而我们对所有工具写同一份。",
+                "declaredIn": ["node_modules/@earendil-works/"],
+                "anchors": [
+                  {
+                    "kind": "typeAnnotation",
+                    "name": "AgentHarnessTool"
+                  }
+                ],
+                "fields": {
+                  "label": {
+                    "verdict": "derived",
+                    "at": "electron/agentLane/laneTools.mts:170"
+                  },
+                  "prepareArguments": {
+                    "verdict": "derived",
+                    "at": "electron/agentLane/laneTools.mts:182"
+                  },
+                  "replay": {
+                    "verdict": "derived",
+                    "at": "electron/agentLane/laneTools.mts:180"
+                  },
+                  "executionMode": {
+                    "verdict": "derived",
+                    "at": "electron/agentLane/laneTools.mts:186"
+                  },
+                  "name": {
+                    "verdict": "derived",
+                    "at": "electron/agentLane/laneTools.mts:169"
+                  },
+                  "description": {
+                    "verdict": "derived",
+                    "at": "electron/agentLane/laneTools.mts:173"
+                  },
+                  "parameters": {
+                    "verdict": "derived",
+                    "at": "electron/agentLane/laneTools.mts:174"
+                  },
+                  "constrainedSampling": {
+                    "verdict": "unused",
+                    "why": "约束采样是让模型在采样阶段就产不出非法参数的加固。Nomi lane 工具的参数校验必须发生在 execute 里（laneTools.mts:189 的 schema.safeParse + §3.3 形状 throw），因为失败正文要同时喂给模型和面板收据；开了它会变成同一条不变量两层各管一半，而两层的失败正文不一样。"
+                  },
+                  "execute": {
+                    "verdict": "derived",
+                    "at": "electron/agentLane/laneTools.mts:184"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "package": "@earendil-works/pi-agent-core",
+            "dtsPath": "node_modules/@earendil-works/pi-agent-core/dist/harness/agent-harness.d.ts",
+            "types": [
+              {
+                "name": "AgentHarnessOptions",
+                "why": "整条 lane 的装配面：会话、模型、重试、压缩、steer/followUp 排队模式全在这张表上。2026-09-06 #546 那批自研债，每一条都对应这里一颗没接的开关。",
+                "declaredIn": ["node_modules/@earendil-works/"],
+                "anchors": [
+                  {
+                    "kind": "callArgument",
+                    "name": "AgentHarness.create"
+                  }
+                ],
+                "fields": {
+                  "session": {
+                    "verdict": "derived",
+                    "at": "electron/agentLane/laneHost.mts:75"
+                  },
+                  "models": {
+                    "verdict": "derived",
+                    "at": "electron/agentLane/laneHost.mts:75"
+                  },
+                  "model": {
+                    "verdict": "derived",
+                    "at": "electron/agentLane/laneHost.mts:75"
+                  },
+                  "thinkingLevel": {
+                    "verdict": "unused",
+                    "why": "思考档位是模型档案的属性，Nomi 的模型选择在渲染层按档案给（P4：能力按模型身份声明），lane 这层不该再持有一份档位判断——持有就等于两处各决定一次「这个模型要不要思考」。"
+                  },
+                  "activeToolNames": {
+                    "verdict": "derived",
+                    "at": "electron/agentLane/laneHost.mts:76"
+                  },
+                  "tools": {
+                    "verdict": "derived",
+                    "at": "electron/agentLane/laneHost.mts:75"
+                  },
+                  "toolContext": {
+                    "verdict": "unused",
+                    "why": "lane 工具是无上下文的（AgentHarnessTool<undefined>）：每个工具自己从主进程服务取项目状态，不靠 pi 把一份宿主上下文透传进来。透传会把「工具能看见什么」这条边界从工具自己的实现移到装配处，审批闸就再也说不清这次调用能碰到什么。"
+                  },
+                  "systemPrompt": {
+                    "verdict": "derived",
+                    "at": "electron/agentLane/laneHost.mts:75"
+                  },
+                  "resources": {
+                    "verdict": "debt",
+                    "due": "2026-09-21",
+                    "owner": "阶段 3b · 技能与提示词资源",
+                    "why": "DefaultResourceLoader（skills / prompts / themes / AGENTS 文件）是 pi 的资源装配面，Nomi 的技能系统目前走自己那条路。这一格属于 framework-boundaries 已登记的 resource-loading 能力，收敛方案在 docs/plan/2026-09-07-agent-runtime-rebuild.md，裁决要跟着那份方案一起下。"
+                  },
+                  "streamOptions": {
+                    "verdict": "unused",
+                    "why": "流式参数（温度、最大 token、headers）在 Nomi 这条路上由 provider 装配决定：createNomiProvider 的 requestOptions/onPayload 是唯一改写出站报文的地方（laneModelProvider.mts:132-160）。在 lane 这层再给一份会造出第二个改写点，而两处只有一处会被 payload 探针看见。"
+                  },
+                  "retry": {
+                    "verdict": "derived",
+                    "at": "electron/agentLane/laneHost.mts:183",
+                    "why": "阶段 3c（方案 §1.6 第三行）：显式传 LANE_RETRY_POLICY = {enabled:true, maxRetries:3, baseDelayMs:1000}——仍是 pi 自己的 RetryPolicy，不是自研重试；写死的原因是 harness 默认无 jitter、无上限（上游 #8826 open），3 次上限下最长 4s 让 #8826 对我们无感。改数字要先改 laneHost 里那一个常量。"
+                  },
+                  "compaction": {
+                    "verdict": "debt",
+                    "due": "2026-09-21",
+                    "owner": "阶段 3b · 上下文压缩",
+                    "why": "压缩阈值直接决定长会话的成本与「模型忘了前面」的体感，而 Nomi 现在一个数字都没给、也没量过默认阈值在我们的转录形状（画布产物 + 分镜表）下会在第几轮触发。没量过就写常量是把偏好当判据，所以记债。"
+                  },
+                  "steeringMode": {
+                    "verdict": "constant",
+                    "value": "'one-at-a-time'",
+                    "reason": "创作是可撤销的：一条指令要对应一轮、一次可单独看见也可单独撤销的改动。pi 的默认 'all' 会把用户连打的三句一次性注入同一轮（harness/runtime/harness.js:44-45），三条指令的效果搅进同一批改动里，用户既看不出哪一句造成了哪一处，也没法只撤其中一句。这条约束来自领域（本地创作 + 每步可回退），不是排队策略的取舍。介入槽 2026-09-05 已拍板五形态，方案 §1.3 的三态映射就建在这颗上。"
+                  },
+                  "followUpMode": {
+                    "verdict": "constant",
+                    "value": "'one-at-a-time'",
+                    "reason": "同 steeringMode：这两颗是同一件事的两半（这一步之前插队 vs 整轮跑干之后再说），一半写死一半用默认会让「等它做完再说」批量灌进同一轮，用户仍旧撤不动其中一句。"
+                  },
+                  "toolExecution": {
+                    "verdict": "constant",
+                    "value": "'sequential'",
+                    "reason": "花钱与写盘的工具串行执行是审批闸的前提：before_tool 钩子逐次问用户「这一步允不允许」，并行执行会让两条待批的调用同时挂在同一个人面前，而其中一条可能已经改了另一条要读的文稿。这是领域约束（本地创作 + 花钱要审批），不是实现偏好。"
+                  },
+                  "toProviderMessages": {
+                    "verdict": "unused",
+                    "why": "出站报文的最后一次改写只允许有一个地方（laneModelProvider.mts 的 onPayload）。这一格是第二个入口，用了就会出现「payload 探针抓到的和实际发出去的不一致」——那正是 2026-08 那批「断言前先证明你在你以为的现场」的成因。"
+                  },
+                  "entryProjectors": {
+                    "verdict": "derived",
+                    "at": "electron/agentLane/laneHost.mts:78"
+                  }
+                }
+              },
+              {
+                "name": "HookMap",
+                "why": "pi 的扩展点全表。我们只挂了 before_tool（审批闸），其余每一个都该有一条「为什么不挂」——钩子的返回形状同理：block/args 用了哪些、没用哪些。",
+                "anchors": [],
+                "expand": ["before_tool", "before_tool.result"],
+                "fields": {
+                  "before_run": {
+                    "verdict": "unused",
+                    "why": "开跑前不改 prompt：系统提示词由 composeLaneSystemPrompt 在装配处一次拼好（laneHost.mts:73），运行时再插一段就出现了两个提示词来源。"
+                  },
+                  "before_drive": {
+                    "verdict": "unused",
+                    "why": "驱动前没有需要拦的事——审批发生在工具那一层（before_tool），不是整条 run 那一层。"
+                  },
+                  "before_run_end": {
+                    "verdict": "unused",
+                    "why": "自动追问会绕过用户：Nomi 的下一回合必须由人发起（介入槽），不由宿主替他续一句。"
+                  },
+                  "transform_context": {
+                    "verdict": "unused",
+                    "why": "改写喂给模型的转录会让面板显示的和模型看到的分叉——这条链上唯一允许的差别是截断，而截断已经在工具结果那层做了（truncateForModel）。"
+                  },
+                  "before_request": {
+                    "verdict": "unused",
+                    "why": "逐次请求改流式参数是 streamOptions 的运行时版本，同样落在「出站报文只允许一个改写点」那条约束上（见 AgentHarnessOptions.toProviderMessages）。"
+                  },
+                  "before_payload": {
+                    "verdict": "unused",
+                    "why": "报文改写点已经在 createNomiProvider 的 onPayload（laneModelProvider.mts:145），那里是唯一知道供应商协议差异的地方；在钩子里再改一次就是第二个真相源。"
+                  },
+                  "after_response": {
+                    "verdict": "unused",
+                    "why": "响应消息不改：改了之后转录里存的就不是模型真的说过的话，事后追责与复现全部失真。"
+                  },
+                  "before_tool": {
+                    "verdict": "derived",
+                    "at": "electron/agentLane/laneHost.mts:89"
+                  },
+                  "after_tool": {
+                    "verdict": "unused",
+                    "why": "工具结果的投影走 laneProjection 的转录投影一条路；在钩子里再改一次结果会让投影和真实转录分叉（同一语义两份定义）。"
+                  },
+                  "before_compaction": {
+                    "verdict": "debt",
+                    "due": "2026-09-21",
+                    "owner": "阶段 3b · 上下文压缩",
+                    "why": "和 AgentHarnessOptions.compaction 同一件事：压缩策略没定，这个拦截点该不该用就没法裁。两格必须一起下裁决。"
+                  },
+                  "before_navigation": {
+                    "verdict": "unused",
+                    "why": "分支导航（回到转录某个节点重开）目前没有产品入口；有入口时它会连着撤销栈一起设计，那时再裁。"
+                  },
+                  "before_tool.event": {
+                    "verdict": "derived",
+                    "at": "electron/agentLane/laneHost.mts:241"
+                  },
+                  "before_tool.result": {
+                    "verdict": "derived",
+                    "at": "electron/agentLane/laneHost.mts:245"
+                  },
+                  "before_tool.result.args": {
+                    "verdict": "unused",
+                    "why": "审批闸只有「放行 / 拦下」两种结果，永远不改模型填的参数：改了参数，面板收据上写的和实际执行的就不是一回事，而用户是照收据点的头。"
+                  },
+                  "before_tool.result.block": {
+                    "verdict": "derived",
+                    "at": "electron/agentLane/laneHost.mts:245"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "package": "@earendil-works/pi-ai",
+            "dtsPath": "node_modules/@earendil-works/pi-ai/dist/index.d.ts",
+            "types": [
+              {
+                "name": "Model",
+                "why": "createNomiProvider 每次都要造一个 Model<Api>（electron/agentLane/laneModelProvider.mts:117）。cost / contextWindow / reasoning 这三格直接决定 pi 的记账、压缩阈值与思考档位——写死一个值就等于把这三件事从 Nomi 的模型档案里摘下来。",
+                "anchors": [
+                  {
+                    "kind": "typeAnnotation",
+                    "name": "Model"
+                  }
+                ],
+                "fields": {
+                  "id": {
+                    "verdict": "derived",
+                    "at": "electron/agentLane/laneModelProvider.mts:118"
+                  },
+                  "name": {
+                    "verdict": "derived",
+                    "at": "electron/agentLane/laneModelProvider.mts:118"
+                  },
+                  "api": {
+                    "verdict": "derived",
+                    "at": "electron/agentLane/laneModelProvider.mts:119"
+                  },
+                  "provider": {
+                    "verdict": "derived",
+                    "at": "electron/agentLane/laneModelProvider.mts:118"
+                  },
+                  "baseUrl": {
+                    "verdict": "derived",
+                    "at": "electron/agentLane/laneModelProvider.mts:119"
+                  },
+                  "reasoning": {
+                    "verdict": "derived",
+                    "at": "electron/agentLane/laneModelProvider.mts:119"
+                  },
+                  "thinkingLevelMap": {
+                    "verdict": "derived",
+                    "at": "electron/agentLane/laneModelProvider.mts:124"
+                  },
+                  "input": {
+                    "verdict": "constant",
+                    "value": "['text', 'image']",
+                    "reason": "这条通道只接文本与图片：音频/视频产物在 Nomi 走生成画布的产物链，不进模型对话的输入位（进了就等于把大文件塞进转录，冷恢复时要重放整段）。"
+                  },
+                  "cost": {
+                    "verdict": "derived",
+                    "at": "electron/agentLane/laneModelProvider.mts:125"
+                  },
+                  "contextWindow": {
+                    "verdict": "derived",
+                    "at": "electron/agentLane/laneModelProvider.mts:128"
+                  },
+                  "maxTokens": {
+                    "verdict": "derived",
+                    "at": "electron/agentLane/laneModelProvider.mts:128"
+                  },
+                  "samplingParams": {
+                    "verdict": "unused",
+                    "why": "采样参数由 Nomi 的任务参数决定并在 onPayload 写进报文（laneModelProvider.mts:157 起的 temperature 等），那里是唯一知道「这次任务要多稳」的地方；在模型档案上再挂一份会让同一个参数有两个来源。"
+                  },
+                  "headers": {
+                    "verdict": "unused",
+                    "why": "请求头在 createNomiProvider 里按 authType 组装并做了 null 抑制（laneModelProvider.mts:130-136）——那是安全边界（keyless 服务器不许带 Authorization）。模型档案上再开一个 headers 口子会绕过那段抑制。"
+                  },
+                  "compat": {
+                    "verdict": "unused",
+                    "why": "各协议的兼容开关我们不用：Nomi 的协议差异全部收在 protocols[config.kind] 与 onPayload 的 max_tokens 改名那几行，一处可读；再启用 compat 就变成「两处都可能改同一件事」。"
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "capabilities": [
+        {
+          "id": "session-persistence",
+          "provides": "SessionManager 负责会话的落盘、追加与恢复（含 CURRENT_SESSION_VERSION 迁移）",
+          "evidence": "@earendil-works/pi-coding-agent@0.85.1 dist/core/session-manager.d.ts:184 `export declare class SessionManager`；dist/core/session-manager.d.ts:334 `static inMemory`",
+          "scope": ["electron/harness/runtime/pi/", "electron/agentLane/"],
+          "forbidden": [
+            {
+              "id": "opt-out-of-session-store",
+              "pattern": "SessionManager\\.inMemory\\(",
+              "why": "选 inMemory 就等于放弃 pi 的落盘与恢复语义，宿主必须自己补一套持久化——那套是 2026-09-06 评审里「更差的自研版本」的源头。"
+            },
+            {
+              "id": "private-session-snapshot-envelope",
+              "pattern": "nomi\\.pi-work-context",
+              "why": "自研快照信封（版本锁 + sha256）在复刻 SessionManager 已有的会话序列化与版本迁移，pi 升版时要我们自己跟。"
+            }
+          ]
+        },
+        {
+          "id": "retry-policy",
+          "provides": "RetryPolicy：模型请求的重试与退避策略，由 settings.retry 与 provider.maxRetries 驱动",
+          "evidence": "@earendil-works/pi-ai@0.85.1 `RetryPolicy`（经 pi-coding-agent dist/core/compaction/compaction.d.ts:8 import、:105 `completeSummarization(..., retry?: RetryPolicy, ...)` 透出）；pi-coding-agent dist/core/settings-manager.d.ts:81 `retry?: RetrySettings`",
+          "scope": ["electron/harness/runtime/pi/", "electron/agentLane/"],
+          "forbidden": [
+            {
+              "id": "retry-disabled-wholesale",
+              "pattern": "retry:\\s*\\{\\s*enabled:\\s*false",
+              "why": "整条关掉 pi 的重试后，瞬时 5xx/超时的韧性只能由宿主自己补，而宿主那层没有 provider 级退避与错误分类。"
+            },
+            {
+              "id": "max-retries-zero",
+              "pattern": "maxRetries:\\s*0",
+              "why": "把 provider 重试压到 0 是同一件事的第二处开关；两处都在，说明宿主整条重试路径都自持，pi 的策略被架空。"
+            }
+          ]
+        },
+        {
+          "id": "steering",
+          "provides": "AgentSession.steer() / followUp()：把用户的新指令按流式状态排进当前回合或下一回合",
+          "evidence": "@earendil-works/pi-coding-agent@0.85.1 dist/core/agent-session.d.ts:375 `steer(text, images?)`、:383 `followUp(text, images?)`；pi-agent-core dist/agent.d.ts:84/86",
+          "scope": ["electron/projectAgentHost/", "electron/agentLane/"],
+          "forbidden": [
+            {
+              "id": "host-owned-steering-queue",
+              "pattern": "steering:\\s*new Map\\(",
+              "why": "宿主自建一张 turnId→指令 的表，等于把 pi 的排队语义搬到外面重写；pi 的「流式中 steer、非流式 followUp」区分在这里丢失。"
+            },
+            {
+              "id": "host-owned-steering-prompt-fold",
+              "pattern": "steeredExecutionPrompt",
+              "why": "把修正指令拼进下一次 prompt 文本，是 steer 的字符串化仿制品：模型看到的是一段追加文字，不是一条被正确插队的用户消息。"
+            }
+          ]
+        },
+        {
+          "id": "resource-loading",
+          "provides": "DefaultResourceLoader：扩展 / skills / prompts / themes / AGENTS 文件的发现、加载与系统提示词装配",
+          "evidence": "@earendil-works/pi-coding-agent@0.85.1 dist/core/resource-loader.d.ts:120 `export declare class DefaultResourceLoader implements ResourceLoader`",
+          "scope": ["electron/harness/runtime/pi/", "electron/agentLane/"],
+          "forbidden": [
+            {
+              "id": "hand-rolled-resource-loader",
+              "pattern": "createNomiResourceLoader",
+              "why": "手写一个全空的 ResourceLoader 是刻意的隔离决定（沙箱不许从磁盘拿指令），但它同时让我们失去 pi 后续在这一层加的一切；边界要被看见，不能默默漂。"
+            },
+            {
+              "id": "private-skill-resource-catalog",
+              "pattern": "createNomiSkillResourceCatalog|getNomiSkillRoots",
+              "why": "自研 skill 发现与目录装配，与 DefaultResourceLoader.getSkills() 同职责；两份发现逻辑迟早对同一目录给出不同答案。"
+            }
+          ]
+        },
+        {
+          "id": "ordered-transcript",
+          "provides": "AgentSession 的有序事件流与会话条目：按段（文本 / 思考 / 工具调用 / 结果）保序，宿主订阅即可拿到结构",
+          "evidence": "@earendil-works/pi-coding-agent@0.85.1 dist/core/agent-session.d.ts:40 `AgentSessionEvent`、:103 `AgentSessionEventListener`",
+          "scope": ["electron/harness/runtime/pi/", "electron/agentLane/"],
+          "forbidden": [
+            {
+              "id": "flatten-text-deltas-into-one-string",
+              "pattern": "assistantMessageEvent\\.type === 'text_delta'",
+              "why": "把 text_delta 拼成一条扁平字符串，就丢掉了 pi 已经保序的分段结构；UI 想还原「思考→工具→文本」的顺序时只能再猜一次。"
+            }
+          ]
+        },
+        {
+          "id": "coding-tools",
+          "provides": "pi 自带 7 个 coding 工具（read/grep/find/ls/edit/write/bash）与它们的 operations 插槽、BashSpawnHook、输出截断、system-prompt 贡献。工具的执行、schema、渲染全部由 pi 提供；宿主只出范围、沙箱、审批三样策略。",
+          "evidence": "@earendil-works/pi-coding-agent@0.85.1 dist/core/sdk.d.ts:71 `export { …createBashTool, createCodingTools, createEditTool, createFindTool, createGrepTool, createLsTool, createReadTool, createWriteTool… }`；dist/core/tools/bash.d.ts:56-68 `BashToolOptions.operations` / `spawnHook`；dist/core/tools/bash.d.ts:10-13 `bashToolSystemPromptContribution`",
+          "scope": [
+            "electron/agentLane/"
+          ],
+          "forbidden": [
+            {
+              "id": "own-shell-executor",
+              "pattern": "execSync\\(|spawnSync\\(",
+              "why": "自己写一份命令执行器就绕开了 pi 的截断、超时、中止与 operations 插槽——而沙箱正是挂在那个插槽上的。绕开它等于命令跑在沙箱外面，且没有任何东西会报错。"
+            },
+            {
+              "id": "own-file-tool-schema",
+              "pattern": "name:\\s*.(read|write|edit|grep|find|ls|bash).\\s*,[\\s\\S]{0,300}?schema:\\s*z\\.",
+              "why": "把 pi 的工具翻译成 zod 的 LaneToolSpec 再翻回 JSON Schema，就是把它重写了一遍：上游改了描述或参数，我们这份静默漂移，而漂移的症状是模型少知道一件事、没人会发现。"
+            }
+          ]
+        },
+        {
+          "id": "skill-prompt-format",
+          "provides": "pi 出 formatSkillsForPrompt：把技能列表渲染成 Agent Skills 标准的 <available_skills> 段（XML 转义、disable-model-invocation 过滤、「相对路径按技能目录解析」那句话、以及 read/bash 二选一的取正文指令）。宿主只做两件 pi 不知道的事：Nomi 的 SkillRecord → pi 的 Skill 形状，和「这条技能要不要 coding 工具」。",
+          "evidence": "@earendil-works/pi-coding-agent@0.85.1 dist/index.d.ts:21 `export { formatSkillsForPrompt, … }`；dist/core/skills.d.ts:44 `formatSkillsForPrompt(skills, fileReadTool?: \"read\" | \"bash\")`；dist/core/skills.js:275-298 渲染体",
+          "scope": [
+            "electron/agentLane/"
+          ],
+          "forbidden": [
+            {
+              "id": "own-available-skills-xml",
+              "pattern": "<available_skills>",
+              "why": "手拼这段 XML 就是把 pi 的渲染重写一遍：转义漏一个 & 会让整段提示词在模型眼里断掉，而漏掉 disable-model-invocation 过滤会把用户明确藏起来的技能送进模型。两样都不报错。渲染只能来自 formatSkillsForPrompt；映射与解锁判断才是我们的活。"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "xyflow-react",
+      "packages": ["@xyflow/react"],
+      "version": "12.11.5",
+      "fourColumnTable": "docs/research/2026-09-07-react-flow-subflows-vs-frame.md",
+      "why": "2026-09-07 R29 边界检查：React Flow 12 的 sub-flows 我们一层都没接。两件核心语义（extent:'parent' 禁止成员出框、expandParent 父追着子长大）与 Nomi 的框语义正面相反，故不是重造而是刻意不用；相交计算与手势归属两处原本绕开了内核公共 API（真·自研债），已在 PR #550 返工改回公共 API。",
+      "surface": {
+        "why": "第二条登记，用来证明这道门岗与框架无关：判据里没有一个 pi 的符号，换成一个 React 组件的 props 面照样跑。选它还因为它同族——生成画布那个 <ReactFlow> 上有一整排写死的字面量开关。",
+        "scope": ["src/workbench/generationCanvas/"],
+        "sources": [
+          {
+            "package": "@xyflow/react",
+            "dtsPath": "node_modules/@xyflow/react/dist/esm/types/component-props.d.ts",
+            "types": [
+              {
+                "name": "ReactFlowProps",
+                "why": "生产画布唯一的内核入口（R23：只允许 React Flow 一个交互/变换内核）。这排 props 就是「这次拖动归谁」「哪些键能删节点」的全部声明面，写死一颗就等于把一条产品判据钉在代码里而没人复核。",
+                "declaredIn": ["node_modules/@xyflow/react/", "node_modules/@xyflow/system/"],
+                "anchors": [
+                  {
+                    "kind": "jsxElement",
+                    "name": "ReactFlow"
+                  }
+                ],
+                "fields": {
+                  "nodes": {
+                    "verdict": "unused",
+                    "why": "边是**受控投影**（edges={flowEdges} 由 Zustand 派生）。这一格是让内核自己持有边的入口，给了它就有了第二个真相源（R23：Zustand 是业务与持久化真相源）。"
+                  },
+                  "edges": {
+                    "verdict": "derived",
+                    "at": "src/workbench/generationCanvas/reactFlow/GenerationCanvasReactFlowViewport.tsx:169"
+                  },
+                  "defaultNodes": {
+                    "verdict": "derived",
+                    "at": "src/workbench/generationCanvas/reactFlow/GenerationCanvasReactFlowViewport.tsx:168"
+                  },
+                  "defaultEdges": {
+                    "verdict": "unused",
+                    "why": "边是**受控投影**（edges={flowEdges} 由 Zustand 派生）。这一格是让内核自己持有边的入口，给了它就有了第二个真相源（R23：Zustand 是业务与持久化真相源）。"
+                  },
+                  "defaultEdgeOptions": {
+                    "verdict": "unused",
+                    "why": "边是**受控投影**（edges={flowEdges} 由 Zustand 派生）。这一格是让内核自己持有边的入口，给了它就有了第二个真相源（R23：Zustand 是业务与持久化真相源）。"
+                  },
+                  "onNodeClick": {
+                    "verdict": "unused",
+                    "why": "节点是 Nomi 的自定义组件（nodeTypes → GenerationCanvasReactFlowNodes.tsx），点击与悬停的产品动作全写在节点组件内部。再从内核这层接一遍同样的指针事件，就会有两处各判一次「这次点击算什么」。"
+                  },
+                  "onNodeDoubleClick": {
+                    "verdict": "unused",
+                    "why": "节点是 Nomi 的自定义组件（nodeTypes → GenerationCanvasReactFlowNodes.tsx），点击与悬停的产品动作全写在节点组件内部。再从内核这层接一遍同样的指针事件，就会有两处各判一次「这次点击算什么」。"
+                  },
+                  "onNodeMouseEnter": {
+                    "verdict": "unused",
+                    "why": "节点是 Nomi 的自定义组件（nodeTypes → GenerationCanvasReactFlowNodes.tsx），点击与悬停的产品动作全写在节点组件内部。再从内核这层接一遍同样的指针事件，就会有两处各判一次「这次点击算什么」。"
+                  },
+                  "onNodeMouseMove": {
+                    "verdict": "unused",
+                    "why": "节点是 Nomi 的自定义组件（nodeTypes → GenerationCanvasReactFlowNodes.tsx），点击与悬停的产品动作全写在节点组件内部。再从内核这层接一遍同样的指针事件，就会有两处各判一次「这次点击算什么」。"
+                  },
+                  "onNodeMouseLeave": {
+                    "verdict": "unused",
+                    "why": "节点是 Nomi 的自定义组件（nodeTypes → GenerationCanvasReactFlowNodes.tsx），点击与悬停的产品动作全写在节点组件内部。再从内核这层接一遍同样的指针事件，就会有两处各判一次「这次点击算什么」。"
+                  },
+                  "onNodeContextMenu": {
+                    "verdict": "derived",
+                    "at": "src/workbench/generationCanvas/reactFlow/GenerationCanvasReactFlowViewport.tsx:197"
+                  },
+                  "onNodeDragStart": {
+                    "verdict": "derived",
+                    "at": "src/workbench/generationCanvas/reactFlow/GenerationCanvasReactFlowViewport.tsx:191"
+                  },
+                  "onNodeDrag": {
+                    "verdict": "derived",
+                    "at": "src/workbench/generationCanvas/reactFlow/GenerationCanvasReactFlowViewport.tsx:192"
+                  },
+                  "onNodeDragStop": {
+                    "verdict": "derived",
+                    "at": "src/workbench/generationCanvas/reactFlow/GenerationCanvasReactFlowViewport.tsx:193"
+                  },
+                  "onEdgeClick": {
+                    "verdict": "derived",
+                    "at": "src/workbench/generationCanvas/reactFlow/GenerationCanvasReactFlowViewport.tsx:195"
+                  },
+                  "onEdgeContextMenu": {
+                    "verdict": "unused",
+                    "why": "边同样是自定义组件（edgeTypes），线缆上的按钮、模式菜单与 aria 标签都在那里（GenerationCanvasReactFlowNodes.tsx:309 起）。内核这层的指针回调是同一件事的第二个入口。"
+                  },
+                  "onEdgeMouseEnter": {
+                    "verdict": "unused",
+                    "why": "边同样是自定义组件（edgeTypes），线缆上的按钮、模式菜单与 aria 标签都在那里（GenerationCanvasReactFlowNodes.tsx:309 起）。内核这层的指针回调是同一件事的第二个入口。"
+                  },
+                  "onEdgeMouseMove": {
+                    "verdict": "unused",
+                    "why": "边同样是自定义组件（edgeTypes），线缆上的按钮、模式菜单与 aria 标签都在那里（GenerationCanvasReactFlowNodes.tsx:309 起）。内核这层的指针回调是同一件事的第二个入口。"
+                  },
+                  "onEdgeMouseLeave": {
+                    "verdict": "unused",
+                    "why": "边同样是自定义组件（edgeTypes），线缆上的按钮、模式菜单与 aria 标签都在那里（GenerationCanvasReactFlowNodes.tsx:309 起）。内核这层的指针回调是同一件事的第二个入口。"
+                  },
+                  "onEdgeDoubleClick": {
+                    "verdict": "unused",
+                    "why": "边同样是自定义组件（edgeTypes），线缆上的按钮、模式菜单与 aria 标签都在那里（GenerationCanvasReactFlowNodes.tsx:309 起）。内核这层的指针回调是同一件事的第二个入口。"
+                  },
+                  "onReconnect": {
+                    "verdict": "unused",
+                    "why": "线缆端点不可拖改：一条边表示「上游产物 → 下游参考槽」的语义绑定，拖端点等于改语义。要改就重新连一次（onConnect），产品里没有「拖端点」这个动作。"
+                  },
+                  "onReconnectStart": {
+                    "verdict": "unused",
+                    "why": "线缆端点不可拖改：一条边表示「上游产物 → 下游参考槽」的语义绑定，拖端点等于改语义。要改就重新连一次（onConnect），产品里没有「拖端点」这个动作。"
+                  },
+                  "onReconnectEnd": {
+                    "verdict": "unused",
+                    "why": "线缆端点不可拖改：一条边表示「上游产物 → 下游参考槽」的语义绑定，拖端点等于改语义。要改就重新连一次（onConnect），产品里没有「拖端点」这个动作。"
+                  },
+                  "onNodesChange": {
+                    "verdict": "derived",
+                    "at": "src/workbench/generationCanvas/reactFlow/GenerationCanvasReactFlowViewport.tsx:190"
+                  },
+                  "onEdgesChange": {
+                    "verdict": "unused",
+                    "why": "边是**受控投影**（edges={flowEdges} 由 Zustand 派生）。这一格是让内核自己持有边的入口，给了它就有了第二个真相源（R23：Zustand 是业务与持久化真相源）。"
+                  },
+                  "onNodesDelete": {
+                    "verdict": "unused",
+                    "why": "删除走 Nomi 自己的命令（带撤销栈与产物清理）。deleteKeyCode 已置 null 把内核那条删除路整条关掉，所以这一族回调恒不触发。"
+                  },
+                  "onEdgesDelete": {
+                    "verdict": "derived",
+                    "at": "src/workbench/generationCanvas/reactFlow/GenerationCanvasReactFlowViewport.tsx:196"
+                  },
+                  "onDelete": {
+                    "verdict": "unused",
+                    "why": "删除走 Nomi 自己的命令（带撤销栈与产物清理）。deleteKeyCode 已置 null 把内核那条删除路整条关掉，所以这一族回调恒不触发。"
+                  },
+                  "onSelectionDragStart": {
+                    "verdict": "unused",
+                    "why": "选中集的真相源在 Zustand，选中变化只经 onNodesChange 一条路回写。再接一份内核的选中事件就是同一语义两份定义（R14.1）；框选只用到 onSelectionEnd（收框那一下要落 Zustand）。"
+                  },
+                  "onSelectionDrag": {
+                    "verdict": "unused",
+                    "why": "选中集的真相源在 Zustand，选中变化只经 onNodesChange 一条路回写。再接一份内核的选中事件就是同一语义两份定义（R14.1）；框选只用到 onSelectionEnd（收框那一下要落 Zustand）。"
+                  },
+                  "onSelectionDragStop": {
+                    "verdict": "unused",
+                    "why": "选中集的真相源在 Zustand，选中变化只经 onNodesChange 一条路回写。再接一份内核的选中事件就是同一语义两份定义（R14.1）；框选只用到 onSelectionEnd（收框那一下要落 Zustand）。"
+                  },
+                  "onSelectionStart": {
+                    "verdict": "unused",
+                    "why": "选中集的真相源在 Zustand，选中变化只经 onNodesChange 一条路回写。再接一份内核的选中事件就是同一语义两份定义（R14.1）；框选只用到 onSelectionEnd（收框那一下要落 Zustand）。"
+                  },
+                  "onSelectionEnd": {
+                    "verdict": "derived",
+                    "at": "src/workbench/generationCanvas/reactFlow/GenerationCanvasReactFlowViewport.tsx:194"
+                  },
+                  "onSelectionContextMenu": {
+                    "verdict": "unused",
+                    "why": "选中集的真相源在 Zustand，选中变化只经 onNodesChange 一条路回写。再接一份内核的选中事件就是同一语义两份定义（R14.1）；框选只用到 onSelectionEnd（收框那一下要落 Zustand）。"
+                  },
+                  "onConnect": {
+                    "verdict": "derived",
+                    "at": "src/workbench/generationCanvas/reactFlow/GenerationCanvasReactFlowViewport.tsx:200"
+                  },
+                  "onConnectStart": {
+                    "verdict": "derived",
+                    "at": "src/workbench/generationCanvas/reactFlow/GenerationCanvasReactFlowViewport.tsx:201"
+                  },
+                  "onConnectEnd": {
+                    "verdict": "derived",
+                    "at": "src/workbench/generationCanvas/reactFlow/GenerationCanvasReactFlowViewport.tsx:202"
+                  },
+                  "onClickConnectStart": {
+                    "verdict": "unused",
+                    "why": "connectOnClick 已关（不做「点一下起连、再点一下落连」），这一族恒不触发。"
+                  },
+                  "onClickConnectEnd": {
+                    "verdict": "unused",
+                    "why": "connectOnClick 已关（不做「点一下起连、再点一下落连」），这一族恒不触发。"
+                  },
+                  "onInit": {
+                    "verdict": "unused",
+                    "why": "实例句柄在 <ReactFlow> 内部由 useReactFlow() 取（CanvasNodeProjectionSync、视口同步都住在里面）；往外抛一份会让画布外面也能改内核状态。"
+                  },
+                  "onMove": {
+                    "verdict": "derived",
+                    "at": "src/workbench/generationCanvas/reactFlow/GenerationCanvasReactFlowViewport.tsx:206"
+                  },
+                  "onMoveStart": {
+                    "verdict": "derived",
+                    "at": "src/workbench/generationCanvas/reactFlow/GenerationCanvasReactFlowViewport.tsx:203"
+                  },
+                  "onMoveEnd": {
+                    "verdict": "derived",
+                    "at": "src/workbench/generationCanvas/reactFlow/GenerationCanvasReactFlowViewport.tsx:210"
+                  },
+                  "onSelectionChange": {
+                    "verdict": "unused",
+                    "why": "选中集的真相源在 Zustand，选中变化只经 onNodesChange 一条路回写。再接一份内核的选中事件就是同一语义两份定义（R14.1）；框选只用到 onSelectionEnd（收框那一下要落 Zustand）。"
+                  },
+                  "onPaneScroll": {
+                    "verdict": "unused",
+                    "why": "空白区只有两个产品动作：点一下收起选中（onPaneClick）、右键出菜单（onPaneContextMenu）。滚动与悬停没有对应动作。"
+                  },
+                  "onPaneClick": {
+                    "verdict": "derived",
+                    "at": "src/workbench/generationCanvas/reactFlow/GenerationCanvasReactFlowViewport.tsx:199"
+                  },
+                  "onPaneContextMenu": {
+                    "verdict": "derived",
+                    "at": "src/workbench/generationCanvas/reactFlow/GenerationCanvasReactFlowViewport.tsx:198"
+                  },
+                  "onPaneMouseEnter": {
+                    "verdict": "unused",
+                    "why": "空白区只有两个产品动作：点一下收起选中（onPaneClick）、右键出菜单（onPaneContextMenu）。滚动与悬停没有对应动作。"
+                  },
+                  "onPaneMouseMove": {
+                    "verdict": "unused",
+                    "why": "空白区只有两个产品动作：点一下收起选中（onPaneClick）、右键出菜单（onPaneContextMenu）。滚动与悬停没有对应动作。"
+                  },
+                  "onPaneMouseLeave": {
+                    "verdict": "unused",
+                    "why": "空白区只有两个产品动作：点一下收起选中（onPaneClick）、右键出菜单（onPaneContextMenu）。滚动与悬停没有对应动作。"
+                  },
+                  "paneClickDistance": {
+                    "verdict": "upstream-default",
+                    "default": "0",
+                    "why": "画布上没有一条产品判据要求覆盖它。覆盖之前得先有判据——没有判据就写值，等于把偏好钉进代码（R29：偏好不是理由）。"
+                  },
+                  "nodeClickDistance": {
+                    "verdict": "upstream-default",
+                    "default": "0",
+                    "why": "画布上没有一条产品判据要求覆盖它。覆盖之前得先有判据——没有判据就写值，等于把偏好钉进代码（R29：偏好不是理由）。"
+                  },
+                  "onBeforeDelete": {
+                    "verdict": "unused",
+                    "why": "删除走 Nomi 自己的命令（带撤销栈与产物清理）。deleteKeyCode 已置 null 把内核那条删除路整条关掉，所以这一族回调恒不触发。"
+                  },
+                  "nodeTypes": {
+                    "verdict": "derived",
+                    "at": "src/workbench/generationCanvas/reactFlow/GenerationCanvasReactFlowViewport.tsx:170"
+                  },
+                  "edgeTypes": {
+                    "verdict": "derived",
+                    "at": "src/workbench/generationCanvas/reactFlow/GenerationCanvasReactFlowViewport.tsx:171"
+                  },
+                  "connectionLineType": {
+                    "verdict": "unused",
+                    "why": "画布样式只走设计 token 与组件 className（R10：全局/内联样式只可减不可增）。从内核 props 传内联样式会开出第二条样式源。"
+                  },
+                  "connectionLineStyle": {
+                    "verdict": "unused",
+                    "why": "画布样式只走设计 token 与组件 className（R10：全局/内联样式只可减不可增）。从内核 props 传内联样式会开出第二条样式源。"
+                  },
+                  "connectionLineComponent": {
+                    "verdict": "derived",
+                    "at": "src/workbench/generationCanvas/reactFlow/GenerationCanvasReactFlowViewport.tsx:201",
+                    "why": "React Flow owns the connection geometry; CanvasBatchConnectionLine renders the selected-node count through the official preview component extension."
+                  },
+                  "connectionLineContainerStyle": {
+                    "verdict": "unused",
+                    "why": "画布样式只走设计 token 与组件 className（R10：全局/内联样式只可减不可增）。从内核 props 传内联样式会开出第二条样式源。"
+                  },
+                  "connectionMode": {
+                    "verdict": "upstream-default",
+                    "default": "'strict'",
+                    "why": "strict = 只能从 source 连到 target。Nomi 的线缆本来就有方向（产物 → 参考槽），松开方向就会连出语义上不成立的边。"
+                  },
+                  "deleteKeyCode": {
+                    "verdict": "constant",
+                    "value": "null",
+                    "reason": "把内核的删除路整条关掉。删除必须走 Nomi 的命令（撤销栈 + 产物文件清理）——内核删完节点，磁盘上的产物还在，撤销也回不来。"
+                  },
+                  "selectionKeyCode": {
+                    "verdict": "constant",
+                    "value": "\"Shift\"",
+                    "reason": "Shift = 框选。默认就是 Shift，这里显式写出来是因为它和下一行 multiSelectionKeyCode 必须是同一个键：两个键不同的话，用户按住 Shift 拖出的框选不会把命中的节点加进已有选中。"
+                  },
+                  "selectionOnDrag": {
+                    "verdict": "unused",
+                    "why": "选中集的真相源在 Zustand，选中变化只经 onNodesChange 一条路回写。再接一份内核的选中事件就是同一语义两份定义（R14.1）；框选只用到 onSelectionEnd（收框那一下要落 Zustand）。"
+                  },
+                  "selectionMode": {
+                    "verdict": "unused",
+                    "why": "选中集的真相源在 Zustand，选中变化只经 onNodesChange 一条路回写。再接一份内核的选中事件就是同一语义两份定义（R14.1）；框选只用到 onSelectionEnd（收框那一下要落 Zustand）。"
+                  },
+                  "panActivationKeyCode": {
+                    "verdict": "upstream-default",
+                    "default": "'Space'",
+                    "why": "空格平移由 useGenerationCanvasReactFlowPointer 的辅助平移接管；内核这颗保持默认，两者对同一个键的语义一致，没有重绑需求。"
+                  },
+                  "multiSelectionKeyCode": {
+                    "verdict": "constant",
+                    "value": "\"Shift\"",
+                    "reason": "见上：与 selectionKeyCode 同键是「框选即加选」的前提，两格是一条判据的两半，不能各自默认。"
+                  },
+                  "zoomActivationKeyCode": {
+                    "verdict": "upstream-default",
+                    "default": "\"Meta\" for macOS, \"Control\" for other systems",
+                    "why": "画布上没有一条产品判据要求覆盖它。覆盖之前得先有判据——没有判据就写值，等于把偏好钉进代码（R29：偏好不是理由）。"
+                  },
+                  "snapToGrid": {
+                    "verdict": "unused",
+                    "why": "对齐由 Nomi 自己的编组/框语义决定（成员对齐到框，不是对齐到栅格）；开栅格吸附会和框的几何打架。"
+                  },
+                  "snapGrid": {
+                    "verdict": "unused",
+                    "why": "snapToGrid 没开，这一格没有生效路径。"
+                  },
+                  "onlyRenderVisibleElements": {
+                    "verdict": "constant",
+                    "value": "true",
+                    "reason": "只渲染视口内的节点。生成画布的节点带图片/视频缩略图，全量渲染在几百个节点时会把首帧拖垮——这是画布性能战役量过的那条（拖图 49.3→12.9ms 那一轮的同族措施）。"
+                  },
+                  "nodesDraggable": {
+                    "verdict": "derived",
+                    "at": "src/workbench/generationCanvas/reactFlow/GenerationCanvasReactFlowViewport.tsx:177"
+                  },
+                  "autoPanOnNodeFocus": {
+                    "verdict": "upstream-default",
+                    "default": "true",
+                    "why": "键盘聚焦到屏幕外的节点时自动把它带进视野，是无障碍的默认行为，没有理由关。"
+                  },
+                  "nodesConnectable": {
+                    "verdict": "derived",
+                    "at": "src/workbench/generationCanvas/reactFlow/GenerationCanvasReactFlowViewport.tsx:178"
+                  },
+                  "nodesFocusable": {
+                    "verdict": "upstream-default",
+                    "default": "true",
+                    "why": "键盘可达是无障碍基线，关掉它等于把画布从键盘上摘下来。"
+                  },
+                  "nodeOrigin": {
+                    "verdict": "upstream-default",
+                    "default": "[0, 0]",
+                    "why": "节点坐标以左上角为原点，和主进程的 canvasNodeLayout 绝对坐标契约同一套（R29 §4.3）。改原点等于改那条跨进程契约。"
+                  },
+                  "edgesFocusable": {
+                    "verdict": "upstream-default",
+                    "default": "true",
+                    "why": "同 nodesFocusable。"
+                  },
+                  "edgesReconnectable": {
+                    "verdict": "unused",
+                    "why": "线缆端点不可拖改：一条边表示「上游产物 → 下游参考槽」的语义绑定，拖端点等于改语义。要改就重新连一次（onConnect），产品里没有「拖端点」这个动作。"
+                  },
+                  "elementsSelectable": {
+                    "verdict": "derived",
+                    "at": "src/workbench/generationCanvas/reactFlow/GenerationCanvasReactFlowViewport.tsx:179"
+                  },
+                  "selectNodesOnDrag": {
+                    "verdict": "unused",
+                    "why": "选中集的真相源在 Zustand，选中变化只经 onNodesChange 一条路回写。再接一份内核的选中事件就是同一语义两份定义（R14.1）；框选只用到 onSelectionEnd（收框那一下要落 Zustand）。"
+                  },
+                  "panOnDrag": {
+                    "verdict": "derived",
+                    "at": "src/workbench/generationCanvas/reactFlow/GenerationCanvasReactFlowViewport.tsx:181"
+                  },
+                  "minZoom": {
+                    "verdict": "debt",
+                    "due": "2026-09-14",
+                    "owner": "画布交互 · 缩放上下限单一真相源",
+                    "why": "**门岗自己扫出来的第二条**：GenerationCanvasReactFlow.tsx:353 手写 Math.max(0.2, …) 钳缩放，而内核这颗没设、默认 0.5。结果是按钮缩放能到 0.2、滚轮缩放只到 0.5——同一条上下限两个值（R14.1）。修法是把 0.2/3 传给内核，删掉手钳，但那要连着走查一起做，不塞进这个门岗 PR。"
+                  },
+                  "maxZoom": {
+                    "verdict": "debt",
+                    "due": "2026-09-14",
+                    "owner": "画布交互 · 缩放上下限单一真相源",
+                    "why": "同 minZoom：手写上限 3，内核默认 2。"
+                  },
+                  "viewport": {
+                    "verdict": "unused",
+                    "why": "视口走非受控 + defaultViewport：受控视口要求每一帧都由外部回写，而拖动热路径上多一次 React 往返正是画布性能战役压掉的那部分开销。分类视口的记忆由 onMoveEnd 落 Zustand（GenerationCanvasReactFlowViewport.tsx 的 rememberCategoryViewport）。"
+                  },
+                  "defaultViewport": {
+                    "verdict": "derived",
+                    "at": "src/workbench/generationCanvas/reactFlow/GenerationCanvasReactFlowViewport.tsx:172"
+                  },
+                  "onViewportChange": {
+                    "verdict": "unused",
+                    "why": "同上：视口变化只在 onMoveEnd 落一次，逐帧回调会把拖动帧时间还回去。"
+                  },
+                  "translateExtent": {
+                    "verdict": "unused",
+                    "why": "同 nodeExtent：无限画布不设平移边界。"
+                  },
+                  "preventScrolling": {
+                    "verdict": "upstream-default",
+                    "default": "true",
+                    "why": "画布内滚轮归画布，不冒泡去滚外面的工作台——这是「画布是一块独立空间」的前提。"
+                  },
+                  "nodeExtent": {
+                    "verdict": "unused",
+                    "why": "画布是无限的：节点可以拖到任何地方，超出部分靠自动平移与「回到内容」按钮找回来。给 extent 等于给画布加一堵看不见的墙。"
+                  },
+                  "defaultMarkerColor": {
+                    "verdict": "unused",
+                    "why": "画布样式只走设计 token 与组件 className（R10：全局/内联样式只可减不可增）。从内核 props 传内联样式会开出第二条样式源。"
+                  },
+                  "zoomOnScroll": {
+                    "verdict": "upstream-default",
+                    "default": "true",
+                    "why": "滚轮缩放是画布类工具的通用手势（Figma/Miro 同款），没有偏离的理由。"
+                  },
+                  "zoomOnPinch": {
+                    "verdict": "upstream-default",
+                    "default": "true",
+                    "why": "触控板捏合缩放，同上。"
+                  },
+                  "panOnScroll": {
+                    "verdict": "upstream-default",
+                    "default": "false",
+                    "why": "两指滚动走缩放不走平移（zoomOnScroll=true 那条）；两颗同时开会让同一个手势有两种解释。"
+                  },
+                  "panOnScrollSpeed": {
+                    "verdict": "upstream-default",
+                    "default": "0.5",
+                    "why": "panOnScroll 没开，这一格没有生效路径。"
+                  },
+                  "panOnScrollMode": {
+                    "verdict": "upstream-default",
+                    "default": "\"free\"",
+                    "why": "panOnScroll 没开，这一格没有生效路径。"
+                  },
+                  "zoomOnDoubleClick": {
+                    "verdict": "upstream-default",
+                    "default": "true",
+                    "why": "画布上没有一条产品判据要求覆盖它。覆盖之前得先有判据——没有判据就写值，等于把偏好钉进代码（R29：偏好不是理由）。"
+                  },
+                  "reconnectRadius": {
+                    "verdict": "unused",
+                    "why": "线缆端点不可拖改：一条边表示「上游产物 → 下游参考槽」的语义绑定，拖端点等于改语义。要改就重新连一次（onConnect），产品里没有「拖端点」这个动作。"
+                  },
+                  "noDragClassName": {
+                    "verdict": "upstream-default",
+                    "default": "\"nodrag\"",
+                    "why": "内核默认类名已经够用；改名只会让所有引用它的自定义组件跟着改，收益为零。"
+                  },
+                  "noWheelClassName": {
+                    "verdict": "upstream-default",
+                    "default": "\"nowheel\"",
+                    "why": "同 noDragClassName。"
+                  },
+                  "noPanClassName": {
+                    "verdict": "constant",
+                    "value": "\"generation-canvas-react-flow__no-pan\"",
+                    "reason": "把类名收进 Nomi 自己的命名空间，让「这块区域不平移」在样式表里可搜；默认的 'nopan' 是全局裸名，和第三方组件撞名时静默失效。"
+                  },
+                  "fitView": {
+                    "verdict": "constant",
+                    "value": "false",
+                    "reason": "打开画布恢复的是**该分类上次的视口**（rememberCategoryViewport），不是「装下全部」。fitView 会在首帧覆盖掉恢复出来的视口，用户回到画布看到的位置就和离开时不一样。"
+                  },
+                  "fitViewOptions": {
+                    "verdict": "unused",
+                    "why": "fitView 已关（画布打开时恢复的是该分类上次的视口，不是「装下全部」），这一格没有生效路径。"
+                  },
+                  "connectOnClick": {
+                    "verdict": "constant",
+                    "value": "false",
+                    "reason": "连线只有「拖」一种手势。点一下起连、再点一下落连会和「点空白收起选中」抢同一次点击，用户点到画布上就莫名开始连线。"
+                  },
+                  "attributionPosition": {
+                    "verdict": "unused",
+                    "why": "画布样式只走设计 token 与组件 className（R10：全局/内联样式只可减不可增）。从内核 props 传内联样式会开出第二条样式源。"
+                  },
+                  "proOptions": {
+                    "verdict": "constant",
+                    "value": "{ hideAttribution: true }",
+                    "reason": "隐藏 React Flow 的署名角标。这是 xyflow 许可证允许的做法（MIT + 可选署名），角标会盖住画布右下角的产物操作区。"
+                  },
+                  "elevateNodesOnSelect": {
+                    "verdict": "constant",
+                    "value": "false",
+                    "reason": "关掉内核的「选中即提层」。Nomi 的层级由产物链决定（框 < 节点 < 折叠卡片），选中不该改层——改了之后选中一个节点，它会跳到另一个节点前面，用户看到的是画布自己动了。"
+                  },
+                  "elevateEdgesOnSelect": {
+                    "verdict": "upstream-default",
+                    "default": "false",
+                    "why": "边的层级由自定义 edgeTypes 与画布分层决定；让内核在选中时改 z-index 会和 zIndexMode 的分层打架。"
+                  },
+                  "disableKeyboardA11y": {
+                    "verdict": "upstream-default",
+                    "default": "false",
+                    "why": "这颗是「把键盘无障碍整条关掉」的总开关，永远不开。"
+                  },
+                  "autoPanOnNodeDrag": {
+                    "verdict": "upstream-default",
+                    "default": "true",
+                    "why": "拖节点到边缘时画布跟着走，是 2026-09-05 那轮 autoPan 走查确认要保留的行为。"
+                  },
+                  "autoPanOnConnect": {
+                    "verdict": "constant",
+                    "value": "false",
+                    "reason": "关掉连线时的自动平移。拖着线走到边缘就自动跑，会让用户丢失对「我要连到哪」的空间感；需要连远处时先平移再连。"
+                  },
+                  "autoPanOnSelection": {
+                    "verdict": "upstream-default",
+                    "default": "true",
+                    "why": "框选拖到边缘时同上。"
+                  },
+                  "autoPanSpeed": {
+                    "verdict": "upstream-default",
+                    "default": "15",
+                    "why": "画布上没有一条产品判据要求覆盖它。覆盖之前得先有判据——没有判据就写值，等于把偏好钉进代码（R29：偏好不是理由）。"
+                  },
+                  "connectionRadius": {
+                    "verdict": "upstream-default",
+                    "default": "20",
+                    "why": "连线吸附半径；Nomi 的槽位命中判据在自定义组件里（中心点判据），内核这颗只影响拖到接近时的吸附手感，没有量过就不该改。"
+                  },
+                  "onError": {
+                    "verdict": "debt",
+                    "due": "2026-09-21",
+                    "owner": "阶段 · 画布可观测性",
+                    "why": "内核的错误（缺 nodeType、边指向不存在的节点等）现在全落进浏览器 console，没有一条进 Nomi 的日志体系——2026-09-06 盘点的结论正是「无统一落盘日志」。这一格该接，先记债。"
+                  },
+                  "isValidConnection": {
+                    "verdict": "unused",
+                    "why": "连线合法性由 Nomi 自己判（槽位类型 × 产物类型），判定点在 onConnect 与槽位组件里；在内核这层再判一次会出现「内核说不行但产品说行」的分叉。"
+                  },
+                  "nodeDragThreshold": {
+                    "verdict": "upstream-default",
+                    "default": "1",
+                    "why": "1px 起判拖动。框工具就绪时整条拖动已经由 nodesDraggable={false} 交回给框（GenerationCanvasReactFlowViewport.tsx），不靠调阈值分手势——R29 §6.2 说过：手势归属要声明式地说，不靠阈值猜。"
+                  },
+                  "connectionDragThreshold": {
+                    "verdict": "upstream-default",
+                    "default": "1",
+                    "why": "同 nodeDragThreshold。"
+                  },
+                  "width": {
+                    "verdict": "unused",
+                    "why": "尺寸由容器 CSS 决定（画布铺满工作台），传死数字会让它不跟随窗口。"
+                  },
+                  "height": {
+                    "verdict": "unused",
+                    "why": "同 width。"
+                  },
+                  "colorMode": {
+                    "verdict": "debt",
+                    "due": "2026-09-14",
+                    "owner": "画布交互 · 光暗双模式",
+                    "why": "Nomi 是光/暗双模式（token 翻转），内核这颗恒为默认 'light'——它决定 React Flow 自己那部分 DOM 上的 .dark 类。现在看不出问题是因为内核那部分几乎全被自定义组件盖住了，但「盖住」不是判据。要么接上主题，要么证明它一格都不影响，两件都还没做。"
+                  },
+                  "debug": {
+                    "verdict": "upstream-default",
+                    "default": "false",
+                    "why": "内核调试输出恒关：诊断信息要进 Nomi 的日志体系（见 onError 那条债），不是往 console 里洒。"
+                  },
+                  "ariaLabelConfig": {
+                    "verdict": "debt",
+                    "due": "2026-09-14",
+                    "owner": "i18n · 内核自带无障碍文案",
+                    "why": "React Flow 自带的 a11y 文案（节点/边的 aria-label、键盘操作说明）是英文常量，而 R15 要求所有用户可见文字走 i18n。自定义组件那部分我们已经用 t() 了（GenerationCanvasReactFlowNodes.tsx:309 起），内核这部分没有——这是 check:i18n 扫不到的一块（它扫的是我们的源码）。"
+                  },
+                  "zIndexMode": {
+                    "verdict": "upstream-default",
+                    "default": "'basic'",
+                    "why": "basic = 内核只做最基本的层级排序，剩下的交给我们自己的分层（ViewportPortal 里的框投影层、折叠卡片层）。改成更聪明的模式会和那几层争层级。"
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "capabilities": [
+        {
+          "id": "subflow-parenting",
+          "provides": "parentId + extent:'parent' + expandParent + ParentLookup：节点父子、拖父动子、边界约束、父自动扩张",
+          "evidence": "@xyflow/system@0.0.81 dist/esm/types/nodes.d.ts:49-61（parentId/extent/expandParent）、:156（ParentLookup）；https://reactflow.dev/learn/layouting/sub-flows",
+          "scope": ["src/workbench/generationCanvas/reactFlow/", "src/workbench/generationCanvas/components/"],
+          "justifiedOwnImplementation": {
+            "reason": "extent:'parent' 与「拖出框=退组」正面冲突（它 clamp 位置，成员根本拖不出去）；expandParent 逐字就是 2026-09-06 实拍里那条 bug——框追着跑掉的成员长大。原生三件里两件必须关掉，第三件「拖父动子」我们的 moveGroupNodes 还额外带 categoryId 过滤，原生父子不认识 Nomi 的分类。所以这不是重造轮子，是这个轮子朝相反方向转。",
+            "ours": [
+              "src/workbench/generationCanvas/model/generationCanvasTypes.ts:188 NodeGroup.nodeIds（成员名单）",
+              "src/workbench/generationCanvas/store/canvasGraphActions.ts:392 moveGroupNodes（拖父动子 + 分类过滤）",
+              "src/workbench/generationCanvas/model/canvasFrameBounds.ts:68 unionFrameBounds（只长不缩，替 expandParent）"
+            ],
+            "reviewBy": "2026-12-07",
+            "reevaluateWhen": "出现「嵌套框」需求时重新评估 A 方案（改造成原生父子）——那是原生父子唯一能白拿收益的场景。"
+          },
+          "forbidden": [
+            {
+              "id": "half-migrated-native-parenting",
+              "pattern": "\\bparentId\\b",
+              "why": "投影层一旦写 parentId，成员 position 就从绝对坐标变成相对坐标，会穿透到主进程 canvasNodeLayout / canvasNodeFactory 的绝对坐标契约（R29 §4.3），而主进程根本看不见 React Flow。要迁必须整条迁（含 applyExternalGraph 边界的双向转换与契约测试）并改本登记，半迁比不迁危险得多。"
+            },
+            {
+              "id": "extent-parent-cages-members",
+              "pattern": "extent:\\s*['\"]parent['\"]",
+              "why": "extent:'parent' 会把成员 clamp 在框内——用户拖不出去，而「拖出框 = 退组」正是这一档要修的那条 bug 的修法。开了它，框就从「空间」退化成「牢笼」。"
+            }
+          ]
+        },
+        {
+          "id": "node-intersection",
+          "provides": "getIntersectingNodes / isNodeIntersecting / getInternalNode：基于内核 nodeLookup 的绝对坐标（拖动中逐帧更新）+ measured 真实渲染尺寸做命中计算",
+          "evidence": "@xyflow/react@12.11.5 dist/esm/types/instance.d.ts:113-115（getIntersectingNodes）、:126-128（isNodeIntersecting）、:50-55（getInternalNode）；@xyflow/system@0.0.81 dist/esm/types/nodes.d.ts:83-99（InternalNodeBase.measured / internals.positionAbsolute）",
+          "scope": ["src/workbench/generationCanvas/components/"],
+          "forbidden": [
+            {
+              "id": "hand-rolled-node-rect-for-hit-testing",
+              "pattern": "getCanvasNodeVisualSize\\([^)]*\\)[\\s\\S]{0,200}?(contains|intersect|Overlap)",
+              "why": "从 Zustand 重算节点矩形做命中判定，用的是**声明**尺寸而非内核 measured 尺寸——判定线与用户看到的边会分叉（R14.1 同一语义两份定义），表现为「明明拖进去了却没入组」，是最难跟用户解释的一类 bug。中心点判据是我们的产品判据（Figma/Miro 同款），可以保留；矩形必须来自内核。"
+            }
+          ]
+        },
+        {
+          "id": "gesture-ownership",
+          "provides": "panOnDrag / selectionOnDrag / nodesDraggable / nodeDragThreshold：声明式地把一次拖动判给谁",
+          "evidence": "@xyflow/react@12.11.5 dist/esm/types/component-props.d.ts:399（panOnDrag）、:289（selectionOnDrag）、:338（nodesDraggable）、:620（nodeDragThreshold）",
+          "scope": ["src/workbench/generationCanvas/"],
+          "forbidden": [
+            {
+              "id": "capture-phase-gesture-theft",
+              "pattern": "onPointerDownCapture[\\s\\S]{0,400}?stopPropagation",
+              "why": "在 capture 阶段抢 React Flow 的 pointerdown，内核不知道自己被停用，onMoveStart/onMove/onMoveEnd 与新手势各活各的；框架改事件绑定阶段时会**静默**失效（画不出框，没有任何报错）。用 panOnDrag={false} / nodesDraggable={false} 明说（R28：能让框架自己拦的，别留给偷袭）。"
+            }
+          ]
+        },
+        {
+          "id": "internal-store-lookups",
+          "provides": "nodeLookup / parentLookup 由 adoptUserNodes + updateAbsolutePositions 维护，是内核私有面",
+          "evidence": "@xyflow/system@0.0.81 dist/esm/utils/store.d.ts:4（updateAbsolutePositions）、:18（adoptUserNodes）；@xyflow/system dist/esm/types/nodes.d.ts:155-156（NodeLookup / ParentLookup）",
+          "scope": ["src/workbench/generationCanvas/reactFlow/"],
+          "forbidden": [
+            {
+              "id": "write-internal-parent-lookup",
+              "pattern": "setState\\(\\{[^}]*parentLookup",
+              "why": "手改内核的 parentLookup 走的是私有面，升版无兼容承诺；而且我们并不使用它的父子语义，只是在写它的索引。2026-09-07 已证其为死路径（投影从不产 parentId）并删除，这条规则防的是它长回来。"
+            },
+            {
+              "id": "write-internal-node-lookup",
+              "pattern": "setState\\(\\{[^}]*nodeLookup",
+              "why": "拖动热路径直接改内核的 nodeLookup（并把 hasDefaultNodes 置 false），是画布性能战役压帧时间时留下的私有面写入：React Flow 升版改这两处内部形状不会有任何编译错误，只会在拖动时静默错位。"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "anthropic-sandbox-runtime",
+      "packages": [
+        "@anthropic-ai/sandbox-runtime"
+      ],
+      "version": "0.0.75",
+      "fourColumnTable": "docs/research/2026-09-07-pi-coding-tools-layer.md",
+      "why": "2026-09-07 用户拍板：「沙箱机制它肯定有设计，权限设计里肯定有，直接把它抄过来应该就够了」。pi 自带的 sandbox 示例用的就是这个包（examples/extensions/sandbox/index.ts），所以 OS 级沙箱不自研——我们只出策略（allowWrite / denyRead / allowedDomains），一行 seatbelt/bwrap 参数都不写。",
+      "referenceConformance": {
+        "doc": "docs/research/2026-09-07-pi-coding-tools-layer.md",
+        "upstreamVersion": "0.0.75",
+        "verifiedAt": "2026-09-07",
+        "layers": [
+          "工具",
+          "控制流",
+          "观测与测试",
+          "安全"
+        ],
+        "note": "参考实现 = pi 自带的 sandbox 示例（examples/extensions/sandbox/index.ts，它 pin 的是 0.0.26）与 sandbox-runtime 0.0.75 的公共面。九层里裁掉转录渲染/会话/上下文/模型与花费/扩展 API 五层：那个包不碰它们（裁剪写死在 layers，不是省略）。逐层对照见文档 §3。"
+      },
+      "capabilities": [
+        {
+          "id": "os-level-sandbox",
+          "provides": "OS 级文件系统与网络围栏：macOS sandbox-exec、Linux bubblewrap、Windows（alpha）srt-win + WFP。SandboxManager.initialize / wrapWithSandbox / reset 是全部公共面。",
+          "evidence": "@anthropic-ai/sandbox-runtime@0.0.75 dist/index.d.ts:1 `export { SandboxManager }`；dist/sandbox/sandbox-manager.d.ts:36-80 `ISandboxManager`；README §Platform Support（macOS sandbox-exec / Linux bubblewrap / Windows alpha）",
+          "scope": [
+            "electron/agentLane/"
+          ],
+          "forbidden": [
+            {
+              "id": "hand-rolled-os-sandbox-profile",
+              "pattern": "sandbox-exec|\\bbwrap\\b|seatbelt",
+              "why": "手写 SBPL / bwrap 参数就是把这个包重做一遍，而它的难点全在我们看不见的地方（代理端口、violation 归因、嵌套沙箱、Linux 的 userns 限制）。自研版本第一次失效的样子是「沙箱起来了但什么都没挡住」。"
+            },
+            {
+              "id": "own-egress-proxy",
+              "pattern": "socks5|mitm[-_]?ca",
+              "why": "出网过滤是这个包用 SOCKS/HTTP 代理 + MITM CA 实现的；另起一个代理不但重复，两个代理还会互相打架，症状是网络时通时不通。"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

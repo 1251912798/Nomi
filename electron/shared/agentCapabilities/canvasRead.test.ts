@@ -104,11 +104,12 @@ describe("canvas.read canonical contract", () => {
       version: 1,
       aliases: {
         pi: "read_canvas_state",
-        mcp: "nomi_read_canvas",
+        mcp: "nomi_canvas_read",
       },
       inputSchema: canvasReadSemanticInputSchema,
       outputSchema: canvasReadResultSchema,
       effect: "read",
+      effectClass: "reversible_local",
       execution: {
         port: "canvas",
         availability: "main_or_renderer",
@@ -116,13 +117,12 @@ describe("canvas.read canonical contract", () => {
       exposure: "mcp_safe",
       requiredScope: "canvas:read",
       targetKind: "project",
-      approval: "none",
       projections: {
         pi: {
           description: "Read the current generation canvas (nodes + edges).",
         },
         mcp: {
-          description: "Read a project's generation canvas as compact nodes and edges for planning.",
+          description: "Read the project canvas as compact nodes and edges.",
         },
       },
     });
@@ -417,7 +417,7 @@ describe("projectCanvasRead", () => {
         { id: "valid-a", kind: "video", title: "duplicate must not win" },
       ],
       edges: [
-        { id: " edge-a ", source: " valid-a ", target: "valid-b", mode: 7, order: Number.NaN },
+        { id: " edge-a ", source: " valid-a ", target: "valid-b", mode: undefined, order: Number.NaN },
         { id: "edge-a", source: "valid-b", target: "valid-a", mode: "last_frame", order: 2 },
         { id: "edge-missing-target", source: "valid-a", target: "ghost" },
         { id: "", source: "valid-a", target: "valid-b" },

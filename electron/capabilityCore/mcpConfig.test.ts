@@ -19,14 +19,21 @@ import {
   MCP_CONFIG_VERSION,
   MCP_CONFIG_VERSION_ENV,
   installMcp,
+  listCustomMcpProfiles,
   packagedMcpLauncherAvailable,
   readMcpInfo,
+  registerCustomMcpProfile,
+  repairStaleMcpConfigs,
+  removeCustomMcpProfile,
   uninstallMcp,
 } from './mcpConfig'
+import { recordDetectedMcpClient } from './mcpDetectedClients'
 import {
+  CAPABILITY_DIR_ENV,
   MCP_CLIENT_ENV,
   MCP_CLIENT_PROOF_ENV,
   ensureToken,
+  signMcpClient,
   verifyMcpClient,
 } from './security'
 
@@ -42,10 +49,13 @@ function claudeJson(): string {
 
 beforeEach(() => {
   homeDir = tempHome()
+  // 隔离 capability-core 目录（security.ts 的 capabilityCoreDir() 用这个 env）。
+  process.env[CAPABILITY_DIR_ENV] = path.join(homeDir, '.nomi-cap')
   isPackaged = false
   ensureToken()
 })
 afterEach(() => {
+  delete process.env[CAPABILITY_DIR_ENV]
   for (const r of roots.splice(0)) fs.rmSync(r, { recursive: true, force: true })
 })
 
@@ -91,6 +101,7 @@ describe('capabilityCore/mcpConfig', () => {
     expect(after.mcpServers.nomi.env.NOMI_MCP_STDIO).toBe('1')
     expect(after.mcpServers.nomi.env.NOMI_MCP_APP_COMMAND).toBe(process.execPath)
     expect(JSON.parse(after.mcpServers.nomi.env.NOMI_MCP_APP_ARGS)).toEqual(['/fake/repo'])
+    expect(after.mcpServers.nomi.env.NOMI_SETTINGS_DIR).toBe(homeDir)
     expect(after.mcpServers.nomi.env[MCP_CONFIG_VERSION_ENV]).toBe(MCP_CONFIG_VERSION)
     expect(after.mcpServers.nomi.env[MCP_CONFIG_KIND_ENV]).toBe('development')
     expect(after.mcpServers.nomi.env[MCP_CLIENT_ENV]).toBe('claude')
@@ -213,6 +224,43 @@ describe('capabilityCore/mcpConfig', () => {
     expect(readMcpInfo(0).clients.claude.installed).toBe(false) // 各客户端独立
   })
 
+  // pi coding agent 自己不带 MCP；社区适配器 pi-mcp-adapter 自动读**标准共享**配置
+  // `~/.config/mcp/mcp.json`（README 2.32.1）。落点写错 = 用户点了「一键接入」但 pi 里什么都没有。
+  it('pi：install 写 ~/.config/mcp/mcp.json 的 mcpServers.nomi，不碰用户的 ~/.pi', () => {
+    const piPath = path.join(homeDir, '.config', 'mcp', 'mcp.json')
+    expect(fs.existsSync(piPath)).toBe(false)
+    installMcp('pi')
+    const after = JSON.parse(fs.readFileSync(piPath, 'utf8'))
+    expect(after.mcpServers.nomi.env.NOMI_MCP_STDIO).toBe('1')
+    expect(verifyMcpClient(
+      after.mcpServers.nomi.env[MCP_CLIENT_ENV],
+      after.mcpServers.nomi.env[MCP_CLIENT_PROOF_ENV],
+    )).toBe('pi')
+    expect(readMcpInfo(0).clients.pi.installed).toBe(true)
+    expect(readMcpInfo(0).clients.claude.installed).toBe(false) // 各客户端独立
+    // Pi 自有的 override 层是 adapter 的地盘，一键接入不许往那儿写。
+    expect(fs.existsSync(path.join(homeDir, '.pi'))).toBe(false)
+  })
+
+  // 「同源」是这条档的全部价值：pi 拿到的启动条目必须就是 Claude Code 那一份的投影，
+  // 只有客户端身份不同。哪天有人给 pi 手写第二份条目，这条会红。
+  it('pi 与 Claude Code 的启动条目同源，只有客户端身份不同', () => {
+    installMcp('pi')
+    installMcp('claude')
+    const piEntry = JSON.parse(fs.readFileSync(path.join(homeDir, '.config', 'mcp', 'mcp.json'), 'utf8')).mcpServers.nomi
+    const claudeEntry = JSON.parse(fs.readFileSync(claudeJson(), 'utf8')).mcpServers.nomi
+    expect(piEntry.command).toBe(claudeEntry.command)
+    expect(piEntry.args).toEqual(claudeEntry.args)
+    const identityKeys = [MCP_CLIENT_ENV, MCP_CLIENT_PROOF_ENV]
+    const withoutIdentity = (env: Record<string, string>) =>
+      Object.fromEntries(Object.entries(env).filter(([key]) => !identityKeys.includes(key)))
+    expect(withoutIdentity(piEntry.env)).toEqual(withoutIdentity(claudeEntry.env))
+    expect(piEntry.env[MCP_CLIENT_ENV]).toBe('pi')
+    expect(claudeEntry.env[MCP_CLIENT_ENV]).toBe('claude')
+    // 身份是绑死的：pi 的 proof 不能冒充 claude。
+    expect(verifyMcpClient('claude', piEntry.env[MCP_CLIENT_PROOF_ENV])).toBeNull()
+  })
+
   it('binds each installed entry to its client instead of trusting a renamed label', () => {
     installMcp('cursor')
     const cursorPath = path.join(homeDir, '.cursor', 'mcp.json')
@@ -330,6 +378,51 @@ describe('capabilityCore/mcpConfig', () => {
     expect(fs.existsSync(`${claudeJson()}.nomi-backup`)).toBe(false)
   })
 
+  it('repairs a stale host config at boot, without waiting for anyone to open the panel', () => {
+    // The user-visible failure this guards: a config still naming the retired scripts/nomi-mcp.mjs
+    // entry makes the coding assistant print CONNECTION_CLOSED, which says nothing about Nomi. The
+    // repair existed but only ran as a side effect of rendering 模型接入, so it never reached anyone
+    // who did not already suspect Nomi.
+    isPackaged = true
+    fs.writeFileSync(claudeJson(), JSON.stringify({
+      mcpServers: { nomi: { command: 'node', args: ['/old/Nomi/scripts/nomi-mcp.mjs'], env: {} } },
+    }, null, 2))
+
+    const repaired = repairStaleMcpConfigs()
+
+    expect(repaired).toEqual({ changed: true, repaired: [{ client: 'claude', label: 'Claude Code', from: 'legacy-launcher' }] })
+    const after = JSON.parse(fs.readFileSync(claudeJson(), 'utf8'))
+    expect(after.mcpServers.nomi.env[MCP_CONFIG_VERSION_ENV]).toBe(MCP_CONFIG_VERSION)
+    expect(after.mcpServers.nomi.args[0]).not.toContain('scripts/nomi-mcp.mjs')
+    // Idempotent: a healthy config is not rewritten again on the next launch.
+    expect(repairStaleMcpConfigs()).toEqual({ changed: false, repaired: [] })
+  })
+
+  it('does not touch host configs during a walkthrough, whose home directory is the real one', () => {
+    isPackaged = true
+    const original = JSON.stringify({
+      mcpServers: { nomi: { command: 'node', args: ['/old/Nomi/scripts/nomi-mcp.mjs'], env: {} } },
+    }, null, 2)
+    fs.writeFileSync(claudeJson(), original)
+    process.env.NOMI_E2E = '1'
+    try {
+      expect(repairStaleMcpConfigs()).toEqual({ changed: false, repaired: [] })
+      expect(fs.readFileSync(claudeJson(), 'utf8')).toBe(original)
+    } finally {
+      delete process.env.NOMI_E2E
+    }
+  })
+
+  it('leaves a config Nomi did not write alone at boot', () => {
+    isPackaged = true
+    const original = JSON.stringify({ mcpServers: { nomi: { command: 'custom-nomi-proxy', args: ['serve'] } } }, null, 2)
+    fs.writeFileSync(claudeJson(), original)
+
+    expect(repairStaleMcpConfigs()).toEqual({ changed: false, repaired: [] })
+    expect(fs.readFileSync(claudeJson(), 'utf8')).toBe(original)
+    expect(fs.existsSync(`${claudeJson()}.nomi-backup`)).toBe(false)
+  })
+
   it('does not claim a custom proxy merely because it forwards the old Nomi env marker', () => {
     isPackaged = true
     const original = JSON.stringify({
@@ -342,5 +435,79 @@ describe('capabilityCore/mcpConfig', () => {
     const info = readMcpInfo(0)
     expect(info.clients.claude).toMatchObject({ configState: 'custom', migration: 'none' })
     expect(fs.readFileSync(claudeJson(), 'utf8')).toBe(original)
+  })
+})
+
+describe('custom MCP client profiles', () => {
+  it('registers a new custom profile and lists it', () => {
+    const configuredPath = path.join(homeDir, 'workbuddy', 'mcp.json')
+    fs.mkdirSync(path.dirname(configuredPath), { recursive: true })
+    const result = registerCustomMcpProfile({ key: 'workbuddy', label: 'WorkBuddy', format: 'json', configPath: configuredPath })
+    expect(result).toMatchObject({ key: 'workbuddy', label: 'WorkBuddy', isBuiltin: false, detected: false })
+    const profiles = listCustomMcpProfiles()
+    expect(profiles).toHaveLength(1)
+    expect(profiles[0]).toMatchObject({ key: 'workbuddy', label: 'WorkBuddy' })
+  })
+
+  it('rejects registration of a builtin key', () => {
+    const result = registerCustomMcpProfile({ key: 'claude', label: 'My Claude', format: 'json', configPath: path.join(homeDir, 'mcp.json') })
+    expect(result).toBeNull()
+    expect(listCustomMcpProfiles()).toHaveLength(0)
+  })
+
+  it('removes a registered custom profile', () => {
+    const configuredPath = path.join(homeDir, 'wb.json')
+    registerCustomMcpProfile({ key: 'workbuddy', label: 'WorkBuddy', format: 'json', configPath: configuredPath })
+    expect(listCustomMcpProfiles()).toHaveLength(1)
+    const removed = removeCustomMcpProfile('workbuddy')
+    expect(removed).toBe(true)
+    expect(listCustomMcpProfiles()).toHaveLength(0)
+  })
+
+  it('does not remove a builtin client', () => {
+    const removed = removeCustomMcpProfile('claude')
+    expect(removed).toBe(false)
+  })
+
+  it('records a detected external client with a derived key and empty path', () => {
+    recordDetectedMcpClient('WorkBuddy')
+    const profiles = listCustomMcpProfiles()
+    expect(profiles).toHaveLength(1)
+    expect(profiles[0]).toMatchObject({ key: 'workbuddy', label: 'WorkBuddy', detected: true, configPath: '' })
+  })
+
+  it('is idempotent for repeated detection of the same name', () => {
+    recordDetectedMcpClient('WorkBuddy')
+    recordDetectedMcpClient('WorkBuddy')
+    expect(listCustomMcpProfiles()).toHaveLength(1)
+  })
+
+  it('does not overwrite an already-registered profile with the same key on re-detection', () => {
+    const configuredPath = path.join(homeDir, 'wb.json')
+    registerCustomMcpProfile({ key: 'workbuddy', label: 'WorkBuddy', format: 'json', configPath: configuredPath })
+    recordDetectedMcpClient('WorkBuddy')
+    const profiles = listCustomMcpProfiles()
+    expect(profiles).toHaveLength(1)
+    expect(profiles[0]).toMatchObject({ detected: false, configPath: configuredPath })
+  })
+
+  it('signs and verifies a custom client via HMAC (HMAC 安全模型未放松)', () => {
+    // 自定义客户端通过 signMcpClient 签名，proof 绑定到该 key，不能冒用其他 key。
+    const proof = signMcpClient('workbuddy')
+    expect(proof).toBeTruthy()
+    expect(verifyMcpClient('workbuddy', proof)).toBe('workbuddy')
+    expect(verifyMcpClient('claude', proof)).toBeNull()
+    expect(verifyMcpClient('cursor', proof)).toBeNull()
+  })
+
+  it('rejects a detected client from registering over an existing profile', () => {
+    const configuredPath = path.join(homeDir, 'wb.json')
+    registerCustomMcpProfile({ key: 'workbuddy', label: 'WorkBuddy', format: 'json', configPath: configuredPath })
+    // 再次检测同名工具，现有注册的 profile 应被保留，不被 detected=true 条目覆盖。
+    recordDetectedMcpClient('WorkBuddy')
+    const profiles = listCustomMcpProfiles()
+    expect(profiles).toHaveLength(1)
+    expect(profiles[0].detected).toBe(false)
+    expect(profiles[0].configPath).toBe(configuredPath)
   })
 })

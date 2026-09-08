@@ -1,6 +1,7 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { IconChevronLeft, IconMovie, IconPhoto } from '@tabler/icons-react'
+import { PanelRail } from './PanelRail'
 import { cn } from '../../utils/cn'
 import { DesignEmptyState } from '../../design'
 import { lazyWithChunkBoundary } from '../../ui/chunkBoundary'
@@ -11,7 +12,7 @@ import { encodeTimelineGenerationNodeDragPayload, TIMELINE_GENERATION_NODE_DRAG_
 import { addGenerationNodeToTimelineEnd } from '../timeline/addNodeToTimelineEnd'
 import { useFilmstrip } from '../../media/useFilmstrip'
 import { NomiImage } from '../../design/media'
-import { selectCanvasShotSources, type CanvasShotSource } from './canvasShotSources'
+import { selectCanvasShotSourcesFromStore, type CanvasShotSource } from './canvasShotSources'
 
 const AssetLibraryContent = lazyWithChunkBoundary('i18n:sidebar.assetLibrary', () =>
   import('../assets/AssetLibraryPanel').then((module) => ({ default: module.AssetLibraryContent })),
@@ -54,8 +55,11 @@ function ShotCover({ source }: { source: CanvasShotSource }): JSX.Element {
 
 function ShotGrid(): JSX.Element {
   const { t } = useTranslation()
-  const nodes = useGenerationCanvasStore((state) => state.nodes)
-  const sources = React.useMemo(() => selectCanvasShotSources(nodes), [nodes])
+  // 镜头栏按 result/shotIndex 派生已出片镜头；无号镜头（参考卡/首帧图/非分镜产物）按真实
+  // position.y/x 排序 → 必须读真节点，不能喂位置无关投影（S3 F1：投影冻结旧位置 → 拖动后
+  // 顺序不更新）。selectCanvasShotSourcesFromStore 读真 state.nodes 但按输出稳定 memo：位置无
+  // 关的拖动帧产出同一列表引用 → 面板不重渲（保住 S3 画布外零重渲）；真发生重排才发新引用。
+  const sources = useGenerationCanvasStore(selectCanvasShotSourcesFromStore)
 
   if (sources.length === 0) {
     return (
@@ -117,31 +121,26 @@ function ShotGrid(): JSX.Element {
 
 export default function PreviewSourcePanel(): JSX.Element {
   const { t } = useTranslation()
-  const collapsed = useWorkbenchStore((state) => state.previewSourcePanelCollapsed)
-  const setCollapsed = useWorkbenchStore((state) => state.setPreviewSourcePanelCollapsed)
-  const [tab, setTab] = React.useState<'shots' | 'assets'>('shots')
+  // 收起态与宽度都归面板系统（editingPanelLayout.visibility.source）——本栏不再自带第二套
+  // 收起开关与固定宽度（旧 previewSourcePanelCollapsed + --workbench-preview-source-width
+  // 那份在面板系统落地后就是并行版：面板给 300px、aside 却按自己的变量画，于是 tab 被裁成「素」）。
+  const collapsed = useWorkbenchStore((state) => !state.editingPanelLayout.visibility.source)
+  const toggleEditingPanel = useWorkbenchStore((state) => state.toggleEditingPanel)
+  // tab 归 store（editingPanelLayoutSlice）：时间轴空轨右键的「从素材库添加…」要切它。
+  const tab = useWorkbenchStore((state) => state.previewSourceTab)
+  const setTab = useWorkbenchStore((state) => state.openPreviewSourceTab)
   const projectId = getActiveWorkbenchProjectId()
 
   if (collapsed) {
     // 收起态照抄侧栏 rail 的既定做法（2026-07-12 方案 A）：图标下带微字。
     // 只留一个箭头的话「一列孤图标认不出这是素材库」——那正是 rail 当初要治的毛病。
     return (
-      <button
-        type="button"
-        className={cn(
-          'workbench-preview-source workbench-preview-source--collapsed',
-          'flex w-11 flex-none cursor-pointer flex-col items-center gap-0.5 border-0 border-r border-[var(--workbench-border)]',
-          'bg-[var(--workbench-surface)] pt-2.5 text-[var(--workbench-muted)]',
-          'transition-[color,background] duration-[var(--nomi-transition-fast)]',
-          'hover:bg-nomi-ink-05 hover:text-[var(--workbench-ink)]',
-        )}
-        aria-label={t('previewSource.expand')}
+      <PanelRail
+        icon={<IconPhoto size={16} stroke={1.7} />}
+        label={t('previewSource.railLabel')}
         title={t('previewSource.expand')}
-        onClick={() => setCollapsed(false)}
-      >
-        <IconPhoto size={17} stroke={1.7} aria-hidden="true" />
-        <span className="text-micro leading-none">{t('previewSource.railLabel')}</span>
-      </button>
+        onClick={() => toggleEditingPanel('source')}
+      />
     )
   }
 
@@ -149,7 +148,7 @@ export default function PreviewSourcePanel(): JSX.Element {
     <aside
       className={cn(
         'workbench-preview-source',
-        'flex w-[var(--workbench-preview-source-width)] flex-none flex-col overflow-hidden',
+        'flex h-full w-full min-w-0 flex-col overflow-hidden',
         'border-r border-[var(--workbench-border)] bg-[var(--workbench-surface)]',
       )}
       aria-label={t('previewSource.aria')}
@@ -163,14 +162,17 @@ export default function PreviewSourcePanel(): JSX.Element {
             aria-selected={tab === value}
             className={cn(
               'flex-1 cursor-pointer border-0 bg-transparent py-2 text-caption',
-              'transition-[color,box-shadow] duration-[var(--nomi-transition-fast)]',
+              'transition-[color,box-shadow] duration-nomi-fast ease-nomi-fast',
               tab === value
                 ? 'font-semibold text-nomi-ink shadow-[inset_0_-1.5px_0_var(--workbench-accent)]'
                 : 'text-nomi-ink-60 hover:text-nomi-ink',
             )}
             onClick={() => setTab(value)}
           >
-            {t(value === 'shots' ? 'previewSource.tabs.shots' : 'previewSource.tabs.assets')}
+            <span className="inline-flex items-center justify-center gap-1 whitespace-nowrap">
+              {value === 'shots' ? <IconMovie size={14} stroke={1.7} aria-hidden="true" /> : <IconPhoto size={14} stroke={1.7} aria-hidden="true" />}
+              {t(value === 'shots' ? 'previewSource.tabs.shots' : 'previewSource.tabs.assets')}
+            </span>
           </button>
         ))}
       </div>
@@ -198,7 +200,7 @@ export default function PreviewSourcePanel(): JSX.Element {
           'bg-transparent px-2.5 py-1.5 text-micro text-[var(--workbench-muted)] hover:text-[var(--workbench-ink)]',
         )}
         aria-label={t('previewSource.collapse')}
-        onClick={() => setCollapsed(true)}
+        onClick={() => toggleEditingPanel('source')}
       >
         <IconChevronLeft size={13} stroke={1.8} aria-hidden="true" />
         {t('previewSource.collapse')}

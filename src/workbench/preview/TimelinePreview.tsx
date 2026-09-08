@@ -5,7 +5,7 @@ import { useWorkbenchStore } from '../workbenchStore'
 import type { TimelineClip, TimelineState } from '../timeline/timelineTypes'
 import { resolveActiveTextClipsAtFrame } from '../timeline/timelineMath'
 import { resolveTextBox, resolveOverlayTransform } from '../timeline/textLayout'
-import { resolveClipFraming, clampFramingScale } from '../timeline/clipFraming'
+import { resolveClipFraming } from '../timeline/clipFraming'
 import { framingOfTarget, resolveFramingTarget } from '../timeline/framingTarget'
 import { PreviewControlBar } from './PreviewControlBar'
 import { framingToMediaStyle, mediaFitClass, framingOffsetFromDrag } from './previewMediaFraming'
@@ -17,18 +17,27 @@ import { usePreviewBgmPlayback } from './usePreviewBgmPlayback'
 import { PREVIEW_RATIOS } from './previewAspectRatios'
 import { exportTimelineToMp4, type ExportTimelineToMp4Options } from '../export/exportApi'
 import { markChecklistStep } from '../onboarding/onboardingState'
-import { buildMp4ExportButtonTitle } from '../export/exportCopy'
 import { toast } from '../../ui/toast'
 import { useVideoPlaybackHeal } from '../../media/useVideoPlaybackHeal'
 import { computeTimelineDuration } from '../timeline/timelineMath'
 import { getDesktopBridge } from '../../desktop/bridge'
 import { getDesktopActiveProjectId } from '../../desktop/activeProject'
 import { useGenerationCanvasStore } from '../generationCanvas/store/generationCanvasStore'
+import { selectStableCanvasNodes } from '../generationCanvas/store/canvasNodeProjection'
 import { resolveTimelineClipPlaybackUrl } from '../timeline/timelinePlaybackUrl'
 import { usePreviewVideoPlayheadSync } from './usePreviewVideoPlayheadSync'
 import { findTimelineTransitionForClipType, resolveTimelineTransitionsAtFrame } from '../timeline/timelineTransition'
 import { TimelineTransitionLayer } from './TimelineTransitionLayer'
 import { resolvePreviewMediaVolume } from '../timeline/clipAudio'
+import { recordVideoPlaybackState } from '../../media/videoPlaybackTelemetry'
+import {
+  PREVIEW_EXPORT_EVENT,
+  PREVIEW_EXPORT_IDLE,
+  isPreviewExportBusy,
+  previewExportStageKey,
+  publishPreviewExportState,
+  usePreviewExportState,
+} from './previewExportRequest'
 
 type TimelinePreviewProps = {
   activeClips: TimelineClip[]
@@ -37,8 +46,6 @@ type TimelinePreviewProps = {
   playheadFrame: number
   timeline: TimelineState
 }
-
-type PreviewExportStatus = 'idle' | 'preparing' | 'recording' | 'converting' | 'done' | 'error'
 
 export default function TimelinePreview({ activeClips, aspectRatio, fps, playheadFrame, timeline }: TimelinePreviewProps): JSX.Element {
   const { t } = useTranslation()
@@ -54,14 +61,9 @@ export default function TimelinePreview({ activeClips, aspectRatio, fps, playhea
     originOffsetX: number
     originOffsetY: number
   } | null>(null)
-  // 当前在跑导出的 jobId（供进度区「取消」按钮调 exports.cancel）。exportApi 内部生成 jobId
-  // 不直接回传 UI，故这里订阅导出事件、按当前项目相关性捕获（per-project 单 active 锁 →
-  // 同一项目同时至多一个在跑 job，相关性可靠）。
-  const cancelJobIdRef = React.useRef('')
-  const [canCancelExport, setCanCancelExport] = React.useState(false)
   const [stageSize, setStageSize] = React.useState<{ width: number; height: number } | null>(null)
-  const [exportStatus, setExportStatus] = React.useState<PreviewExportStatus>('idle')
-  const [exportRatio, setExportRatio] = React.useState(0)
+  // 导出阶段/进度的真相源在事件桥模块里（顶栏那颗按钮也读它），本组件不再私存一份（P1）。
+  const { status: exportStatus, progress: exportProgress } = usePreviewExportState()
   const [playbackError, setPlaybackError] = React.useState('')
   const [editingTextId, setEditingTextId] = React.useState('')
   const [editingDraft, setEditingDraft] = React.useState('')
@@ -77,14 +79,17 @@ export default function TimelinePreview({ activeClips, aspectRatio, fps, playhea
   const updateTimelineTextClipTransform = useWorkbenchStore((state) => state.updateTimelineTextClipTransform)
   const selectTimelineTextClip = useWorkbenchStore((state) => state.selectTimelineTextClip)
   const selectedTextClipId = useWorkbenchStore((state) => state.selectedTextClipId)
-  const setPreviewAspectRatio = useWorkbenchStore((state) => state.setPreviewAspectRatio)
+  const exportResolution = useWorkbenchStore((state) => state.exportResolution)
+  const exportQuality = useWorkbenchStore((state) => state.exportQuality)
   const setTimelineClipFraming = useWorkbenchStore((state) => state.setTimelineClipFraming)
   const selectedClipIds = useWorkbenchStore((state) => state.selectedTimelineClipIds)
   const setTimelineSelection = useWorkbenchStore((state) => state.setTimelineSelection)
   const playing = useWorkbenchStore((state) => state.timelinePlaying)
   const setTimelinePlaying = useWorkbenchStore((state) => state.setTimelinePlaying)
   const setTimelinePlayhead = useWorkbenchStore((state) => state.setTimelinePlayhead)
-  const generationNodes = useGenerationCanvasStore((state) => state.nodes)
+  // 预览只按 sourceNodeId 解析回放 URL（读 result/history），从不读 position → 位置稳定投影：
+  // 画布拖动期间成片预览不再被连坐重渲（suspect #1）。
+  const generationNodes = useGenerationCanvasStore(selectStableCanvasNodes)
   const videoClip = findClip(activeClips, 'video')
   const imageClip = findClip(activeClips, 'image')
   const audioClip = findClip(activeClips, 'audio')
@@ -119,14 +124,10 @@ export default function TimelinePreview({ activeClips, aspectRatio, fps, playhea
   const totalFrames = computeTimelineDuration(timeline)
   const currentSeconds = (playheadFrame / (timeline.fps || 30)).toFixed(1)
   const totalSeconds = (totalFrames / (timeline.fps || 30)).toFixed(1)
-  const exportBusy = exportStatus === 'preparing' || exportStatus === 'recording' || exportStatus === 'converting'
-  const exportTitle = buildMp4ExportButtonTitle({
-    aspectRatio,
-    isEmpty,
-    isRecording: exportStatus === 'recording',
-    isConverting: exportStatus === 'converting',
-    progressPercent: exportRatio * 100,
-  })
+  const exportBusy = isPreviewExportBusy(exportStatus)
+  const exportPercent = Math.round(exportProgress * 100)
+  const exportStageKey = previewExportStageKey(exportStatus)
+  const exportStageLabel = exportStageKey ? t(exportStageKey) : ''
   const stopPlayback = React.useCallback(() => setTimelinePlaying(false), [setTimelinePlaying])
 
   usePreviewVideoPlayheadSync(videoRef, { videoClip, videoUrl, playheadFrame, fps, playing })
@@ -222,16 +223,6 @@ export default function TimelinePreview({ activeClips, aspectRatio, fps, playhea
     return () => window.removeEventListener('resize', measure)
   }, [activeRatio.height, activeRatio.width])
 
-  const updateMediaScale = React.useCallback((delta: number) => {
-    if (!framingClipId) return
-    setTimelineClipFraming(framingClipId, { scale: clampFramingScale(framing.scale + delta) }, { commit: true })
-  }, [framingClipId, framing.scale, setTimelineClipFraming])
-
-  const resetMediaTransform = React.useCallback(() => {
-    if (!framingClipId) return
-    setTimelineClipFraming(framingClipId, { scale: 1, offsetX: 0, offsetY: 0 }, { commit: true })
-  }, [framingClipId, setTimelineClipFraming])
-
   const addText = React.useCallback((style: 'caption' | 'title') => {
     const id = addTimelineTextClip(style, playheadFrame)
     setEditingTextId(id)
@@ -264,69 +255,38 @@ export default function TimelinePreview({ activeClips, aspectRatio, fps, playhea
   const handleExport = React.useCallback(async () => {
     if (exportBusy) return
     try {
-      setExportStatus('preparing')
-      setExportRatio(0)
+      publishPreviewExportState({ status: 'preparing', progress: 0 })
       const projectId = getDesktopActiveProjectId().trim()
       const result = await exportTimelineToMp4({
         timeline,
         aspectRatio,
         projectId,
-        resolution: '1080p',
-        quality: 'standard',
+        resolution: exportResolution,
+        quality: exportQuality,
         generationNodes,
         onProgress: (progress: Parameters<NonNullable<ExportTimelineToMp4Options['onProgress']>>[0]) => {
-          setExportStatus(progress.status)
-          setExportRatio(progress.ratio)
+          publishPreviewExportState({ status: progress.status, progress: progress.ratio })
         },
       })
       toast(t('timelinePreview.exportComplete', { path: result.relativePath }), 'success')
       // 上手清单第 4 步「导出成片」打勾（导出 fire-and-forget 无持久历史，靠这里标记）。
       markChecklistStep('exported')
       void getDesktopBridge()?.exports.showInFolder({ projectId, relativePath: result.relativePath }).catch(() => undefined)
-      setExportStatus('idle')
+      publishPreviewExportState(PREVIEW_EXPORT_IDLE)
     } catch (error) {
-      setExportStatus('idle')
+      publishPreviewExportState(PREVIEW_EXPORT_IDLE)
       const message = error instanceof Error ? error.message : t('timelinePreview.exportFailed')
       toast(message, 'error')
-    } finally {
-      cancelJobIdRef.current = ''
-      setCanCancelExport(false)
     }
-  }, [aspectRatio, exportBusy, generationNodes, timeline, t])
+  }, [aspectRatio, exportBusy, exportQuality, exportResolution, generationNodes, timeline, t])
 
-  // 导出进行中订阅导出事件，捕获当前项目在跑 job 的 id（供「取消」按钮）。
-  // exportApi 内部生成 jobId 不回传 UI；per-project 单 active 锁保证相关性可靠。
   React.useEffect(() => {
-    if (!exportBusy) return
-    const bridge = getDesktopBridge()
-    const projectId = getDesktopActiveProjectId().trim()
-    if (!bridge?.exports?.onEvent || !bridge.exports.cancel || !projectId) return
-    const unsubscribe = bridge.exports.onEvent((event) => {
-      if (event.projectId !== projectId) return
-      const stage = event.snapshot.progress.stage
-      const active = stage !== 'succeeded' && stage !== 'failed' && stage !== 'cancelled'
-      if (active && event.jobId) {
-        cancelJobIdRef.current = event.jobId
-        setCanCancelExport(true)
-      }
-    })
-    return () => unsubscribe?.()
-  }, [exportBusy])
+    const onExportRequest = () => { void handleExport() }
+    window.addEventListener(PREVIEW_EXPORT_EVENT, onExportRequest)
+    return () => window.removeEventListener(PREVIEW_EXPORT_EVENT, onExportRequest)
+  }, [handleExport])
 
-  const handleCancelExport = React.useCallback(() => {
-    const jobId = cancelJobIdRef.current
-    if (!jobId) return
-    setCanCancelExport(false)
-    // 后端 cancelExportJob abort 在跑的 ffmpeg → finishTempInput 抛 Cancelled，
-    // handleExport 的 catch 收口（复位状态 + toast），这里不重复弹错。
-    void getDesktopBridge()?.exports.cancel(jobId).catch((error: unknown) => {
-      console.warn('Failed to cancel export job', error)
-    })
-  }, [])
-
-  // 注：原先顶栏「导出」在预览页会派 nomi-request-export 让这里代劳。§1.5「一功能一个家」落地后，
-  // 顶栏那颗在预览页整个不渲染（非预览页改叫「去出片」，它本来就只是跳转），派发源没了，
-  // 监听同 commit 一并删（P1 不留逃生口）。预览页唯一的导出入口 = 控制条那颗「导出 MP4」。
+  // 预览页的唯一导出入口是应用顶栏右上那颗「导出 MP4」（合同 §2.2）；事件桥让 transport 与导出实现解耦。
 
   const togglePlayback = React.useCallback(() => {
     const durationFrame = computeTimelineDuration(timeline)
@@ -395,10 +355,12 @@ export default function TimelinePreview({ activeClips, aspectRatio, fps, playhea
   return (
     <section className={cn(
       'workbench-preview-player',
-      'relative min-w-0 min-h-0 flex flex-col items-center p-8 gap-3 bg-[var(--workbench-bg)]',
+      // h-full 是这条的关键：没有它 section 只有内容高，transport 会紧贴画面浮在列**顶部**
+      // （合同 §2.2 要求它贴时间轴上沿）。padding 只给舞台区，transport 才能真正压到列底边。
+      'relative h-full w-full min-w-0 min-h-0 flex flex-col bg-[var(--nomi-ink-05)]',
     )} aria-label={t('timelinePreview.player')}>
       {/* 测量区：stage 居中于此（控制条之上的可用高度），控制条作为下方独立一行不再压住画面。 */}
-      <div ref={playerRef} className="workbench-preview-player__stage-area flex-1 min-h-0 w-full grid place-items-center">
+      <div ref={playerRef} className="workbench-preview-player__stage-area min-h-0 min-w-0 flex-1 w-full grid place-items-center p-6">
       <div
         ref={stageRef}
         className={cn(
@@ -485,10 +447,18 @@ export default function TimelinePreview({ activeClips, aspectRatio, fps, playhea
             playsInline
             style={videoStyle}
             onError={(event) => {
+              recordVideoPlaybackState(getDesktopActiveProjectId(), {
+                phase: 'error', rawUrl: videoUrl, readyState: event.currentTarget.readyState,
+                networkState: event.currentTarget.networkState, mediaErrorCode: event.currentTarget.error?.code,
+              })
               heal.onError(event)
               setTimelinePlaying(false)
             }}
-            onLoadedMetadata={heal.onLoadedMetadata}
+            onLoadedMetadata={(event) => {
+              recordVideoPlaybackState(getDesktopActiveProjectId(), { phase: 'metadata', rawUrl: videoUrl, readyState: event.currentTarget.readyState, networkState: event.currentTarget.networkState })
+              heal.onLoadedMetadata(event)
+            }}
+            onCanPlay={(event) => recordVideoPlaybackState(getDesktopActiveProjectId(), { phase: 'canplay', rawUrl: videoUrl, readyState: event.currentTarget.readyState, networkState: event.currentTarget.networkState })}
           />
         ) : null}
         {videoTransition ? (
@@ -540,7 +510,7 @@ export default function TimelinePreview({ activeClips, aspectRatio, fps, playhea
                 textAlign: 'center',
                 color: 'var(--nomi-ink)',
                 padding: box.hasBackdrop ? '0.32em 0.7em' : 0,
-                background: box.hasBackdrop ? 'color-mix(in oklch, var(--nomi-paper) 86%, transparent)' : 'transparent',
+                background: box.hasBackdrop ? 'color-mix(in oklab, var(--nomi-paper) 86%, transparent)' : 'transparent',
                 border: box.hasBackdrop ? '1px solid var(--nomi-line-soft)' : 'none',
                 borderRadius: 'var(--nomi-radius)',
                 // 折行契约：预览用 CSS 原生折行，导出 canvas 用 textLayout.wrapTextToWidth 复刻同一语义
@@ -614,8 +584,26 @@ export default function TimelinePreview({ activeClips, aspectRatio, fps, playhea
         ) : null}
       </div>
       </div>
-      {/* 控制条抽成 PreviewControlBar（本文件已超 800 行门岗，且控制条本就是独立关注点）。
-          它把三种作用域分了组：传输 / 整片 / 当前片段 / 叠加，并在没有可编辑片段时禁用整组并说明原因。 */}
+      {/* 控制条抽成 PreviewControlBar；属性面板承载整片与片段编辑。 */}
+      {exportBusy ? (
+        <div className="workbench-preview-player__export-progress absolute bottom-10 left-2 right-2 z-[4] flex flex-col gap-1">
+          {/* 三个阶段本来就算出来了却从没渲染过：用户只看见一条无名进度条，不知道卡在哪一步。 */}
+          <span className={cn('text-caption text-[var(--workbench-muted-soft)]')}>
+            {t('timelinePreview.exportStageProgress', { stage: exportStageLabel, percent: exportPercent })}
+          </span>
+          <div
+            className="h-1 overflow-hidden rounded-pill bg-[var(--workbench-border)]"
+            role="progressbar"
+            aria-label={t('timelinePreview.exportMp4')}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={exportPercent}
+            aria-valuetext={t('timelinePreview.exportStageProgress', { stage: exportStageLabel, percent: exportPercent })}
+          >
+            <div className="h-full bg-[var(--workbench-accent)] transition-[width]" style={{ width: `${exportPercent}%` }} />
+          </div>
+        </div>
+      ) : null}
       <PreviewControlBar
         playing={playing}
         isEmpty={isEmpty}
@@ -629,26 +617,10 @@ export default function TimelinePreview({ activeClips, aspectRatio, fps, playhea
         onVolumeChange={(next) => { setVolume(next); setMuted(next === 0) }}
         isFullscreen={isFullscreen}
         onToggleFullscreen={toggleFullscreen}
-        aspectRatio={aspectRatio}
-        onAspectRatioChange={setPreviewAspectRatio}
-        framingTarget={framingTarget}
-        framing={framing}
-        onFitChange={(fit) => { if (framingClipId) setTimelineClipFraming(framingClipId, { fit }, { commit: true }) }}
-        onScaleDelta={updateMediaScale}
-        onResetFraming={resetMediaTransform}
         textMenuRef={textMenuRef}
         textMenuOpen={textMenuOpen}
         onTextMenuOpenChange={setTextMenuOpen}
         onAddText={addText}
-        timeline={timeline}
-        selectedTextClipId={selectedTextClipId}
-        exportStatus={exportStatus}
-        exportRatio={exportRatio}
-        canCancelExport={canCancelExport}
-        onCancelExport={handleCancelExport}
-        onExport={handleExport}
-        exportBusy={exportBusy}
-        exportTitle={exportTitle}
       />
     </section>
   )

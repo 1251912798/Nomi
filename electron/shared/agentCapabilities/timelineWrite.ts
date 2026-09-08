@@ -99,7 +99,7 @@ export function timelineWriteInputForAlias(alias: string, value: unknown): Timel
 export function timelineWritePiDescriptionForAlias(alias: string): string | undefined {
   switch (alias) {
     case TIMELINE_WRITE_ALIASES.applyPlan:
-      return "Apply one compare-and-swap guarded timeline edit plan after user approval.";
+      return "Apply one compare-and-swap guarded timeline edit plan after user approval. Valid operation kinds: move, remove, split, trim, source-window, ripple, transition, text, audio.";
     case TIMELINE_WRITE_ALIASES.undo:
       return "Undo the exact most recent Agent timeline edit after user approval.";
     default:
@@ -110,15 +110,19 @@ export function timelineWritePiDescriptionForAlias(alias: string): string | unde
 export const TIMELINE_WRITE_CAPABILITY = {
   id: "timeline.write",
   version: 1,
-  aliases: { pi: TIMELINE_WRITE_ALIASES.applyPlan },
+  aliases: { pi: TIMELINE_WRITE_ALIASES.applyPlan, mcp: "nomi_timeline_edit" },
   additionalAliases: { pi: Object.freeze([TIMELINE_WRITE_ALIASES.undo]) },
   inputSchema: timelineWriteSemanticInputSchema,
   outputSchema: timelineWriteResultSchema,
   effect: "reversible_write",
+  effectClass: "reversible_local",
+  requiresPlanReview: true,
   execution: { port: "timeline", availability: "renderer_required" },
-  exposure: "internal_only",
+  exposure: "mcp_safe",
   requiredScope: "timeline:write",
   targetKind: "timeline",
-  approval: "proposal",
-  projections: { pi: { description: "Apply or undo an approved project timeline edit." } },
+  projections: {
+    pi: { description: "Apply or undo an approved project timeline edit." },
+    mcp: { description: "Preview/apply/undo revision-guarded timeline edits after Host approval." },
+  },
 } as const satisfies CapabilityContract<TimelineWriteInput, TimelineWriteResult>;

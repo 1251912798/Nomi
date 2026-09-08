@@ -1,0 +1,70 @@
+// Agent lane · `canvas.read` / `canvas.write` 的**执行那一半**。
+//
+// 说明书那一半（三个语义拆分的写工具、扁平 schema、typed 分镜形状、示例、容忍钩子）住
+// `electron/shared/agentCapabilities/canvasModelTools.ts` —— 它不属于任何一个 profile，
+// 对外 MCP 的 `nomi_canvas_edit` 从阶段 5a 起读的是同一份（方案 §3.1）。
+import {
+  canvasReadResultSchema,
+  type CanvasReadResult,
+} from "../shared/agentCapabilities/canvasRead";
+import {
+  canvasWriteSemanticInputSchema,
+  type CanvasWriteInput,
+  type CanvasWriteResult,
+} from "../shared/agentCapabilities/canvasWrite";
+import { canvasModelToolSpecs } from "../shared/agentCapabilities/canvasModelTools";
+import { bindLaneTool, type LaneToolDescriptor } from "./laneRuntimePort";
+
+/** 领域侧。lane 不认识 React Flow，只认识「读一次画布」和「提一次可撤销的改动」。 */
+export interface CanvasLanePort {
+  read(): Promise<unknown>;
+  write(input: CanvasWriteInput): Promise<CanvasWriteResult>;
+}
+
+export function createCanvasLaneTools(port: CanvasLanePort): LaneToolDescriptor[] {
+  return canvasModelToolSpecs().map((spec) => {
+    if (spec.name === "nomi_canvas_read") {
+      return bindLaneTool(spec, async () => {
+        const result: CanvasReadResult = canvasReadResultSchema.parse(await port.read());
+        return { ok: true, text: JSON.stringify(result), details: { nodeCount: result.nodes.length } };
+      });
+    }
+    return bindLaneTool(spec, async (args) => {
+      // `laneTools.mts` 在 pi 的 ajv 之后跑过契约自己的那一次 parse（扁平 schema 的
+      // `transform` → union + 跨字段约束），所以这里拿到的已经是收窄的 `CanvasWriteInput`。
+      // 这里**不再** parse——校验点只有那一个（G-08）。
+      const input = args as CanvasWriteInput;
+      const receipt = await port.write(input);
+      return {
+        ok: true,
+        text: canvasWriteReceiptText(input, receipt),
+        details: receipt,
+      };
+    });
+  });
+}
+
+/**
+ * 模型看到的是一张**收据**，不是被写进去的正文——正文它自己刚写的，回显一遍只是在烧上下文。
+ * 收据里唯一必须有的是**下一步要引用的 id**：`clientIdToNodeId` 把这一轮的临时 id 换成
+ * 真实节点 id，模型下一次连边、挂参考、改提示词全靠它（按 id join，永不复制）。
+ */
+function canvasWriteReceiptText(input: CanvasWriteInput, receipt: CanvasWriteResult): string {
+  if ("cancelled" in receipt) return `The user declined the ${input.operation} proposal. Nothing changed on the canvas.`;
+  const lines = [`Applied ${receipt.operation}. Proposal ${receipt.proposalId}.`];
+  if ("clientIdToNodeId" in receipt) {
+    lines.push(`Real node ids: ${JSON.stringify(receipt.clientIdToNodeId)} — use these, not the clientIds, from now on.`);
+  }
+  if ("skippedEdges" in receipt && receipt.skippedEdges.length > 0) {
+    lines.push(
+      `${receipt.skippedEdges.length} reference edge(s) were skipped because the target model does not support them: `
+      + receipt.skippedEdges.map((edge) => `${edge.source}→${edge.target} (${edge.reason})`).join("; "),
+    );
+  }
+  if ("changedShotIndexes" in receipt) {
+    lines.push(`Changed shots ${receipt.changedShotIndexes.join(", ")} (fields: ${receipt.changedFields.join(", ")}).`);
+  }
+  return lines.join("\n");
+}
+
+export { canvasWriteSemanticInputSchema };

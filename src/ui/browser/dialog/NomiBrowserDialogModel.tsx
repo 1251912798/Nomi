@@ -4,7 +4,7 @@ import i18n from '../../../i18n'
 import { IconBrowser, IconBrush, IconPalette, IconWorld } from '../../../vendor/tablerIcons'
 import type { DesktopBrowserAssetOverlayCaptureRequest, DesktopBrowserPromptCaptureEvent, DesktopBrowserResourceCaptureEvent, DesktopBrowserViewBounds } from '../../../desktop/bridge'
 import { cn } from '../../../utils/cn'
-import { BROWSER_PROMPT_EXTRACTION_MODE_LABELS, type BrowserPromptExtractionMode } from '../prompt/browserPromptExtraction'
+import { BROWSER_PROMPT_EXTRACTION_MODE_LABEL_KEYS, type BrowserPromptExtractionMode } from '../prompt/browserPromptExtraction'
 import type { BrowserAssetPromptCaptureRequest } from '../popover/NomiBrowserAssetPopover'
 import type { FloatingWindowBoundsRect } from '../window/useResizableFloatingWindow'
 
@@ -126,7 +126,7 @@ export const BROWSER_START_SHORTCUTS: readonly BrowserStartShortcut[] = [
 
 export const TOOL_BUTTON_CLASS = cn(
   'inline-grid size-8 shrink-0 place-items-center rounded-nomi-sm border-0 bg-transparent',
-  'cursor-pointer text-nomi-ink-60 transition-[background,color] duration-[var(--nomi-transition-fast)]',
+  'cursor-pointer text-nomi-ink-60 transition-[background,color] duration-nomi-fast ease-nomi-fast',
   'hover:bg-nomi-ink-05 hover:text-nomi-ink disabled:cursor-default disabled:text-nomi-ink-20 disabled:hover:bg-transparent',
 )
 
@@ -134,7 +134,7 @@ export const TAB_CONTEXT_MENU_WIDTH = 176
 export const TAB_CONTEXT_MENU_MARGIN = 8
 export const TAB_CONTEXT_MENU_ITEM_CLASS = cn(
   'flex h-9 w-full items-center gap-2 rounded-nomi-sm border-0 bg-transparent px-2.5 text-left',
-  'cursor-pointer text-body-sm text-nomi-ink transition-[background,color] duration-[var(--nomi-transition-fast)]',
+  'cursor-pointer text-body-sm text-nomi-ink transition-[background,color] duration-nomi-fast ease-nomi-fast',
   'hover:bg-nomi-ink-05 disabled:cursor-default disabled:text-nomi-ink-30 disabled:hover:bg-transparent',
 )
 
@@ -449,14 +449,14 @@ export function PromptModeOption({
       <span
         className={cn(
           'mt-0.5 grid size-7 shrink-0 place-items-center rounded-pill',
-          styleMode ? 'bg-nomi-accent-soft text-nomi-accent' : 'bg-nomi-ink-05 text-nomi-ink-65',
+          styleMode ? 'bg-nomi-accent-soft text-nomi-accent' : 'bg-nomi-ink-05 text-nomi-ink-60',
         )}
       >
         <Icon size={15} stroke={1.8} aria-hidden="true" />
       </span>
       <span className="min-w-0 flex-1">
         <span className="block font-semibold leading-[1.25] text-nomi-ink">
-          {BROWSER_PROMPT_EXTRACTION_MODE_LABELS[mode]}
+          {i18n.t(BROWSER_PROMPT_EXTRACTION_MODE_LABEL_KEYS[mode])}
         </span>
         <span className="mt-0.5 block text-micro leading-snug text-nomi-ink-40">
           {styleMode

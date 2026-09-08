@@ -3,8 +3,8 @@
 // durable restart recovery, safe MCP projections, preview authorization, and a valid final MP4.
 //
 // Transport framing (spawn / initialize / rpc / callTool / terminate) lives in the ONE shared module
-// _mcpJourney.mjs — this sibling and J-MCP1 (mcp-journey.e2e.mjs) both drive it, so there is a single
-// spawn/JSON-RPC implementation (P1: no copy-paste). Differences from J-MCP1 are passed as options:
+// _mcpJourney.mjs — this production journey and the L1/L2 MCP lanes share one
+// spawn/JSON-RPC implementation (P1: no copy-paste). Lane differences are passed as options:
 // the io.modelcontextprotocol/ui client capability + Codex clientInfo, and the production fixture env.
 import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
@@ -28,7 +28,10 @@ fs.mkdirSync(shotsDir, { recursive: true })
 const mcpDirs = { settingsDir: userDataDir, userDataDir, projectsDir, capabilityDir }
 const mcpEnv = { NOMI_E2E_PRODUCTION_FIXTURE: '1' }
 const mcpClientInfo = { name: 'OpenAI Codex', version: 'e2e' }
-const mcpCapabilities = { extensions: { 'io.modelcontextprotocol/ui': { mimeTypes: ['text/html;profile=mcp-app'] } } }
+const mcpCapabilities = {
+  elicitation: {},
+  extensions: { 'io.modelcontextprotocol/ui': { mimeTypes: ['text/html;profile=mcp-app'] } },
+}
 
 const launchGuiOptions = {
   name: 'production-mcp-journey',
@@ -69,7 +72,7 @@ async function initializeMcp() {
 const callTool = (name, args) => mcp.callToolOrThrow(name, args, { timeoutMs: 40_000 })
 
 async function getRunData(projectId, runId) {
-  const result = await callTool('nomi_get_run', { projectId, runId })
+  const result = await callTool('nomi_read', { target: 'run', projectId, runId })
   return result.structuredContent?.nomiRunData
 }
 
@@ -112,6 +115,26 @@ async function openRunFromTaskCenter(window, shotName) {
   }
 }
 
+/**
+ * 按**身份**打开项目库里的某个项目，并证明真的进去了。
+ *
+ * 为什么不能 `.first()`：库卡的顺序是「最近用过」派生量（libraryDiscovery.sortByLibraryUsage），
+ * 本旅程自 2026-09-04 起在同一个隔离库里有**两个**项目（GUI 建的制作项目 + MCP 建的语义夹具），
+ * 两者 updatedAt 常落在同一秒里——`.first()` 于是变成掷硬币。点错那次，任务中心开出来是空的，
+ * 报错却是下游的「[data-production-task-card] 10s 超时」，一路指向假方向。
+ * 身份选择 + 这条 hash 屏障让「点错项目」当场按它真实的名字失败。
+ */
+async function openProjectFromLibrary(window, wantedProjectId) {
+  // 不给 click 加更紧的超时：开屏动画（SplashIntro，5 段 × 2600ms ≈ 13.5s）会挡住库页，
+  // 用 Playwright 默认超时才等得过它——收紧到 10s 会把这条重启步变成另一种抖动。
+  await window.locator(`[data-project-card="true"][data-project-id="${wantedProjectId}"]`).click()
+  await window.waitForFunction(
+    (id) => window.location.hash.includes(`projectId=${id}`),
+    wantedProjectId,
+    { timeout: 10_000 },
+  )
+}
+
 async function approveCurrentProductionGate(window) {
   await openRunFromTaskCenter(window)
   await window.locator('[data-production-primary-action]').first().click()
@@ -148,11 +171,11 @@ try {
   mcp = spawnMcpStdioClient({ ...mcpDirs, clientInfo: mcpClientInfo, capabilities: mcpCapabilities, env: mcpEnv })
   await initializeMcp()
   const tools = (await mcp.rpc('tools/list', {}, 20_000)).result?.tools || []
-  // 期望清单从目录源 derive（mcpToolCatalog = 自身条目 + spread 进来的 mcpGenerationTools 条目），
+  // 期望清单从**已构建的目录源** derive（MCP_TOOL_RESOLVER 就是 tools/list 用的同一份快照——单一真相，
+  // 面收敛后 name 字面量散在多个文件+capability 投影里，regex 扫源文件会漏播 session_open 与 M2 编辑工具），
   // 断言集合相等：漏播/多播都抓得住，目录再长这里也不会烂成过期死数。
-  const catalogNames = ['mcpToolCatalog.ts', 'mcpGenerationTools.ts', 'mcpIntegrationTools.ts']
-    .flatMap((file) => [...fs.readFileSync(path.join(repoRoot, 'electron/capabilityCore', file), 'utf8').matchAll(/\bname:\s*["'](nomi_[a-z0-9_]+)["']/g)]
-      .map((match) => match[1]))
+  const catalogNames = require(path.join(repoRoot, 'dist-electron/capabilityCore/mcpToolCatalog.js'))
+    .MCP_TOOL_RESOLVER.list().map((tool) => tool.name)
   const stdioNames = tools.map((tool) => tool.name)
   const missing = catalogNames.filter((name) => !stdioNames.includes(name))
   const extra = stdioNames.filter((name) => !catalogNames.includes(name))
@@ -160,20 +183,62 @@ try {
     catalogNames.length > 0 && missing.length === 0 && extra.length === 0,
     `real MCP stdio exposes the exact ${catalogNames.length}-tool catalog (missing: ${missing.join(', ') || 'none'}; extra: ${extra.join(', ') || 'none'})`,
   )
-  for (const name of [
-    'nomi_start_playbook', 'nomi_get_run', 'nomi_subscribe_run', 'nomi_get_artifact',
-    'nomi_read_artifact', 'nomi_review_artifact', 'nomi_materialize_storyboard',
-  ]) {
+  // 面收敛：Run 旅程的整套动词并进 4 个对象工具（读侧统一 nomi_read）。
+  for (const name of ['nomi_run_start', 'nomi_read', 'nomi_artifact_review', 'nomi_run_gate']) {
     check(tools.some((tool) => tool.name === name), `${name} is registered over real stdio`)
   }
 
+  // Semantic editing smoke: use the same real GUI+stdio connection as the Run
+  // journey. Stdio's production binding intentionally has no implicit current
+  // project selection, so create an explicit MCP project and open its returned
+  // selection handle; this is the supported production authorization path.
+  const semanticProjectResult = await callTool('nomi_project_create', { name: 'MCP semantic production fixture' })
+  const semanticProjectText = semanticProjectResult.content?.find((block) => block.type === 'text')?.text || '{}'
+  const semanticProject = JSON.parse(semanticProjectText)
+  const semanticProjectId = semanticProject.id
+  const openedSession = await callTool('nomi_session_open', { projectSelectionHandle: semanticProject.projectSelectionHandle })
+  const sessionText = openedSession.content?.find((block) => block.type === 'text')?.text || '{}'
+  const session = JSON.parse(sessionText)
+  const leaseHandle = session.leaseHandle
+  check(typeof leaseHandle === 'string' && leaseHandle.length > 0, 'semantic MCP session opens a verified project lease')
+  const missingDocument = await mcp.callTool('nomi_document_read', { leaseHandle, projectId: semanticProjectId, scope: 'full' })
+  check(missingDocument.isError === true && missingDocument.structuredContent?.nomiOutcome?.errorCode === 'document_not_found', 'document MCP gap is explicit for a newly created project without a creation document')
+
+  const createdSemanticNode = await callTool('nomi_canvas_edit', {
+    leaseHandle,
+    projectId: semanticProjectId,
+    operation: 'create_canvas_nodes',
+    summary: 'semantic maintenance fixture node',
+    nodes: [{ clientId: 'semantic-maintenance-node', kind: 'text', title: 'Semantic maintenance fixture', prompt: 'temporary MCP maintenance node' }],
+  })
+  const nodeId = createdSemanticNode.structuredContent?.clientIdToNodeId?.['semantic-maintenance-node']
+  check(typeof nodeId === 'string' && nodeId.length > 0, 'canvas edit creates a real node before maintenance')
+  const deletedSemanticNode = await callTool('nomi_canvas_maintenance', {
+    leaseHandle,
+    projectId: semanticProjectId,
+    operation: 'delete_canvas_nodes',
+    nodeIds: [nodeId],
+    reason: 'semantic maintenance cleanup',
+  })
+  const undoToken = deletedSemanticNode.structuredContent?.undoToken
+  check(deletedSemanticNode.structuredContent?.deletedNodeIds?.includes(nodeId) && typeof undoToken === 'string', 'canvas maintenance deletes through the real renderer gateway and returns undo')
+  const restoredSemanticNode = await callTool('nomi_canvas_maintenance', {
+    leaseHandle,
+    projectId: semanticProjectId,
+    operation: 'undo_canvas_delete',
+    undoToken,
+  })
+  check(restoredSemanticNode.structuredContent?.restoredNodeIds?.includes(nodeId), 'canvas maintenance undo restores the real node')
+
   const resources = (await mcp.rpc('resources/list', {}, 20_000)).result?.resources || []
-  const directorResource = resources.find((resource) => resource.uri === 'nomi-skill://director-cinematography')
+  // Host cutover content-addresses skill resources: nomi-skill://<dir>/<packageVersion>/<contentHash>.
+  // Match by directory-name prefix and read via the returned uri (same as packaged-mcp-smoke).
+  const directorResource = resources.find((resource) => resource.uri.startsWith('nomi-skill://director-cinematography/'))
   check(Boolean(directorResource), 'director cinematography skill is discoverable through MCP resources')
   const director = (await mcp.rpc('resources/read', { uri: directorResource.uri }, 20_000)).result?.contents?.[0]?.text || ''
   check(director.includes('镜头语言') && director.length > 1_000, 'director skill body can be loaded progressively over MCP')
 
-  const started = await callTool('nomi_start_playbook', {
+  const started = await callTool('nomi_run_start', {
     projectId,
     playbook: 'brand.promo',
     trustLevel: 'confirm_all',
@@ -196,7 +261,7 @@ try {
   await window.screenshot({ path: path.join(shotsDir, '01-direction-gate.png') })
 
   // B1/B5 方向门三选一（获批样张贰幕）：MCP 投影带候选 → GUI 渲染可点 → 选中留痕。
-  const atDirection = (await callTool('nomi_get_run', { projectId, runId })).structuredContent.nomiRunData
+  const atDirection = (await callTool('nomi_read', { target: 'run', projectId, runId })).structuredContent.nomiRunData
   const directionGate = atDirection.gates.find((gate) => gate.gateId === 'gate-direction-v1')
   check(directionGate?.directionCandidates?.length === 3, 'direction gate projects three LLM-planned candidates over MCP')
   check(directionGate.directionCandidates.some((candidate) => candidate.key === 'kinetic'), 'candidate keys survive the safe projection')
@@ -217,29 +282,30 @@ try {
   check(decidedDirection?.decidedChoiceKey === 'kinetic', 'approval records the chosen direction as decidedChoiceKey')
   const scriptArtifact = run.artifacts.find((artifact) => artifact.kind === 'script')
   check(Boolean(scriptArtifact) && !run.artifacts.some((artifact) => artifact.kind === 'storyboard'), 'direction approval produces a durable script candidate before any storyboard')
-  await callTool('nomi_review_artifact', {
+  await callTool('nomi_artifact_review', {
     projectId,
     runId,
     artifactId: scriptArtifact.artifactId,
     expectedVersion: scriptArtifact.version || 1,
-    decision: 'approved',
+    action: 'approve',
   })
   run = await waitForRunStatus(projectId, runId, 'awaiting_storyboard_review')
   check(run.artifacts.some((artifact) => artifact.kind === 'storyboard'), 'script approval produces the durable storyboard candidate')
-  const events = await callTool('nomi_subscribe_run', { projectId, runId, afterCursor: 0, waitMs: 0 })
+  const events = await callTool('nomi_read', { target: 'run_events', projectId, runId, afterCursor: 0, waitMs: 0 })
   check(events.structuredContent?.nomiRunData?.events?.some((event) => event.type === 'skill.loaded'), 'MCP event stream exposes durable skill evidence')
 
   const storyboardArtifact = run.artifacts.find((artifact) => artifact.kind === 'storyboard')
-  await callTool('nomi_review_artifact', {
+  await callTool('nomi_artifact_review', {
     projectId,
     runId,
     artifactId: storyboardArtifact.artifactId,
     expectedVersion: storyboardArtifact.version || 1,
-    decision: 'approved',
+    action: 'approve',
   })
-  const materialized = await callTool('nomi_materialize_storyboard', {
+  const materialized = await callTool('nomi_run_gate', {
     projectId,
     runId,
+    action: 'materialize',
     artifactId: storyboardArtifact.artifactId,
     expectedVersion: storyboardArtifact.version || 1,
   })
@@ -262,8 +328,9 @@ try {
   // 在逐镜头门等待时重启真实 Nomi；门与零提交状态必须从磁盘恢复。
   await gui.app.close()
   gui = await launchGui()
-  await gui.window.locator('[data-project-card="true"]').first().click()
-  await gui.window.waitForFunction(() => window.location.hash.includes('projectId='), undefined, { timeout: 10_000 })
+  await openProjectFromLibrary(gui.window, projectId)
+  const afterRestartCanvas = await callTool('nomi_read', { target: 'canvas', leaseHandle, projectId: semanticProjectId })
+  check(afterRestartCanvas.structuredContent?.nodes?.some((node) => node.id === nodeId), 'canvas semantic undo survives real Nomi restart')
   await openRunFromTaskCenter(gui.window)
   atShot = await waitForWaitingGate(projectId, runId, 'gate-shot-')
   check(atShot.jobs.every((job) => job.status === 'authorized'), 'restart recovers the waiting shot gate without submitting or spending')
@@ -321,7 +388,7 @@ try {
   const exportArtifact = run.artifacts.find((artifact) => artifact.kind === 'export')
   check(Boolean(exportArtifact?.artifactId), 'completed Run exposes a scoped export artifact identity')
 
-  const artifactResult = await callTool('nomi_get_artifact', { projectId, runId, artifactId: exportArtifact.artifactId })
+  const artifactResult = await callTool('nomi_read', { target: 'artifact', projectId, runId, artifactId: exportArtifact.artifactId })
   const serializedArtifact = JSON.stringify(artifactResult)
   const artifactData = artifactResult.structuredContent?.nomiRunData
   check(artifactData.nomiUri === `nomi://project/${projectId}/run/${runId}/artifact/${exportArtifact.artifactId}`, 'MCP returns a scoped nomiUri for the final export')

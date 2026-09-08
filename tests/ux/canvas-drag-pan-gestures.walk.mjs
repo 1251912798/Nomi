@@ -14,7 +14,8 @@ import { mkdirSync, mkdtempSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { screenshotSettled } from './_assert.mjs'
+import { expect, screenshotSettled } from './_assert.mjs'
+import { CANVAS_PANE_SELECTOR, findCanvasBlankPoint, findNodeHitPoint } from './_canvasHit.mjs'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const shotsDir = path.join(repoRoot, 'tests/ux/shots/canvas-drag-pan-gestures')
@@ -82,26 +83,12 @@ async function readTransform() {
   })
 }
 
-// 找一块「真·空白」：扫画布 stage 内的候选点，取第一个命中 stage/变换层本身的点。
+// 空白点判据住在 `_canvasHit.mjs`（单一 owner）：最顶层元素就是 React Flow pane。
+// 找不到就直接报错——「这一屏没有空白」是走查前提被打破，不该悄悄往下走。
 async function findBlankPoint(preferBottom = false) {
-  return getWin().evaluate((bottom) => {
-    const stage = document.querySelector('.generation-canvas-v2__stage')
-    const rect = stage.getBoundingClientRect()
-    const rows = bottom
-      ? [0.88, 0.78, 0.68, 0.58, 0.48, 0.38, 0.28, 0.18, 0.1]
-      : [0.2, 0.28, 0.36, 0.5, 0.64, 0.76, 0.88, 0.12]
-    for (const ry of rows) {
-      for (const rx of [0.62, 0.7, 0.78, 0.86, 0.93, 0.54, 0.42, 0.3, 0.2, 0.12, 0.06]) {
-        const x = rect.left + rect.width * rx
-        const y = rect.top + rect.height * ry
-        const hit = document.elementFromPoint(x, y)
-        if (!hit || !stage.contains(hit)) continue
-        if (hit.closest('.generation-canvas-v2-node, .generation-canvas-v2-toolbar, .generation-canvas-v2__zoom-bar, .generation-canvas-v2__selection-bounds, .generation-canvas-v2__selection-toolbar, button, input, textarea, [role="menu"], [role="toolbar"], .generation-canvas-v2__edge-hit, .generation-canvas-v2__minimap, .generation-canvas-v2__navigation-stack')) continue
-        return { x: Math.round(x), y: Math.round(y) }
-      }
-    }
-    return null
-  }, preferBottom)
+  const point = await findCanvasBlankPoint(getWin(), { preference: preferBottom ? 'bottom' : 'default' })
+  if (!point) throw new Error('WALK FAIL: 画布上找不到任何空白点（stage 被浮层占满）')
+  return point
 }
 
 async function readStageOrigin() {
@@ -120,11 +107,39 @@ function canvasPointAt(transform, screen, origin) {
 }
 
 // 适应视图后，从包围节点的四个方向寻找完整落在 stage 内的框选手势。
-async function findMarqueeGesture() {
+// React Flow 在拖动中把指针带进 pane 边缘 40px 就开始**持续自动平移**
+// （`calcAutoPan(pos, bounds, speed = 15, distance = 40)`，@xyflow/system 0.0.81）。
+// 框选手势的两端必须离边比这更远，否则松手前画面一直在动：截图等不到安定，
+// 走查报的是「这一屏未视觉安定」，看起来像浮层抖动，其实是我们自己按住了自动平移带。
+const REACT_FLOW_AUTO_PAN_BAND_PX = 40
+const MARQUEE_STAGE_INSET_PX = REACT_FLOW_AUTO_PAN_BAND_PX + 8
+// 框选前把两张卡缩到只占画布这么大：余量因此是 stage 的两成起步，既大于自动平移带，
+// 也大于提示词面板让位平移的那几十像素。用比例而不是像素——画布宽度本来就随面板变。
+const MARQUEE_MAX_BOUNDS_RATIO = 0.6
+
+// 两张卡在 stage 里占多大：框选余量够不够，唯一可信的判据是实测，不是猜。
+async function readMarqueeHeadroom() {
   return getWin().evaluate(() => {
     const stage = document.querySelector('.generation-canvas-v2__stage')
     const nodes = Array.from(document.querySelectorAll('.generation-canvas-v2-node'))
-    if (!stage || nodes.length === 0) return null
+    if (!stage || !nodes.length) return null
+    const stageRect = stage.getBoundingClientRect()
+    const rects = nodes.map((node) => node.getBoundingClientRect())
+    const width = Math.max(...rects.map((rect) => rect.right)) - Math.min(...rects.map((rect) => rect.left))
+    const height = Math.max(...rects.map((rect) => rect.bottom)) - Math.min(...rects.map((rect) => rect.top))
+    return {
+      widthRatio: Math.round((width / stageRect.width) * 1000) / 1000,
+      heightRatio: Math.round((height / stageRect.height) * 1000) / 1000,
+    }
+  })
+}
+
+async function findMarqueeGesture() {
+  return getWin().evaluate(({ paneSelector, inset }) => {
+    const stage = document.querySelector('.generation-canvas-v2__stage')
+    const nodes = Array.from(document.querySelectorAll('.generation-canvas-v2-node'))
+    if (!stage) throw new Error('画布 stage 未渲染，无法构造框选手势')
+    if (!nodes.length) throw new Error('画布节点未渲染，无法构造框选手势')
     const stageRect = stage.getBoundingClientRect()
     const nodeRects = nodes.map((node) => node.getBoundingClientRect())
     const bounds = {
@@ -134,22 +149,44 @@ async function findMarqueeGesture() {
       bottom: Math.max(...nodeRects.map((rect) => rect.bottom)),
     }
     const insideStage = (point) =>
-      point.x >= stageRect.left + 8 && point.x <= stageRect.right - 8 &&
-      point.y >= stageRect.top + 8 && point.y <= stageRect.bottom - 8
-    const excluded = '.generation-canvas-v2-node, .generation-canvas-v2-toolbar, .generation-canvas-v2__zoom-bar, .generation-canvas-v2__selection-bounds, .generation-canvas-v2__selection-toolbar, button, input, textarea, [role="menu"], [role="toolbar"], .generation-canvas-v2__edge-hit, .generation-canvas-v2__minimap, .generation-canvas-v2__navigation-stack'
+      point.x >= stageRect.left + inset && point.x <= stageRect.right - inset &&
+      point.y >= stageRect.top + inset && point.y <= stageRect.bottom - inset
 
-    for (const gap of [24, 40, 64, 80]) {
+    // 余量从大往小试，最大那档扫满整块 stage（四边各内缩到自动平移带之外）。
+    // 为什么要余量最大化：框选是**拖动中**判定的，而 React Flow 只选「完全落在框内」的节点；
+    // 拖到一半选中第一个节点会弹出它的提示词面板，面板贴边时生产代码会平移视口让它露出来
+    // （useComposerVisibilityPan），节点因此在框选进行中整体位移几十像素。贴着节点外框 24px
+    // 起手的框在窄画布下会被这几十像素挤掉一个节点——量到的不是「框选坏了」，是「框太紧」。
+    // 扫满 stage 的框对这段位移免疫；余量由 stage 与节点实测推出，唯一的常数是
+    // React Flow 自己的自动平移带宽度（见上方注释）。
+    const gapLadder = [
+      Math.max(
+        bounds.left - (stageRect.left + inset),
+        bounds.top - (stageRect.top + inset),
+        stageRect.right - inset - bounds.right,
+        stageRect.bottom - inset - bounds.bottom,
+      ),
+      80,
+      64,
+      40,
+      24,
+    ]
+    const clampToStage = (point) => ({
+      x: Math.min(Math.max(point.x, stageRect.left + inset), stageRect.right - inset),
+      y: Math.min(Math.max(point.y, stageRect.top + inset), stageRect.bottom - inset),
+    })
+    for (const gap of gapLadder) {
       const gestures = [
         { start: { x: bounds.right + gap, y: bounds.bottom + gap }, end: { x: bounds.left - gap, y: bounds.top - gap } },
         { start: { x: bounds.right + gap, y: bounds.top - gap }, end: { x: bounds.left - gap, y: bounds.bottom + gap } },
         { start: { x: bounds.left - gap, y: bounds.bottom + gap }, end: { x: bounds.right + gap, y: bounds.top - gap } },
         { start: { x: bounds.left - gap, y: bounds.top - gap }, end: { x: bounds.right + gap, y: bounds.bottom + gap } },
-      ]
+      ].map(({ start, end }) => ({ start: clampToStage(start), end: clampToStage(end) }))
       for (const gesture of gestures) {
         if (!insideStage(gesture.start) || !insideStage(gesture.end)) continue
+        // 起手点必须落在 pane 上（同 _canvasHit.mjs 的空白判据），否则手势会被浮层吞掉。
         const hit = document.elementFromPoint(gesture.start.x, gesture.start.y)
-        if (!hit || !stage.contains(hit)) continue
-        if (hit.closest(excluded)) continue
+        if (!hit || !stage.contains(hit) || !hit.matches(paneSelector)) continue
         return {
           start: { x: Math.round(gesture.start.x), y: Math.round(gesture.start.y) },
           end: { x: Math.round(gesture.end.x), y: Math.round(gesture.end.y) },
@@ -157,7 +194,7 @@ async function findMarqueeGesture() {
       }
     }
     return null
-  })
+  }, { paneSelector: CANVAS_PANE_SELECTOR, inset: MARQUEE_STAGE_INSET_PX })
 }
 
 // 数一段操作里「连线层 / 标签层 / 画布外壳」到底被写了多少次 DOM。
@@ -201,13 +238,41 @@ async function selectedNodeIds() {
   )
 }
 
+/** 建一张卡，回报**这一次**新增的那个 React Flow 节点 id（下面按「新建即露出」逐张量）。 */
 async function addNode(kind) {
+  const before = await getWin().evaluate(() =>
+    Array.from(document.querySelectorAll('.react-flow__node')).map((node) => node.getAttribute('data-id')))
   await getWin().locator(`.generation-canvas-v2-toolbar [data-node-kind="${kind}"]`).first().click()
   await getWin().waitForTimeout(700)
+  const after = await getWin().evaluate(() =>
+    Array.from(document.querySelectorAll('.react-flow__node')).map((node) => node.getAttribute('data-id')))
+  return after.find((id) => !before.includes(id)) ?? null
+}
+
+/** 某张卡此刻相对 stage 的位置。stage 尺寸一并交出来：判几何红时先看是不是舞台根本不是这么大。 */
+async function measurePlacement(nodeId) {
+  return getWin().evaluate((id) => {
+    const stage = document.querySelector('.generation-canvas-v2__stage')?.getBoundingClientRect()
+    const node = id ? document.querySelector(`.react-flow__node[data-id="${id}"]`) : null
+    if (!stage || !node) return { id, inside: false, missing: true }
+    const r = node.getBoundingClientRect()
+    return {
+      id,
+      inside: r.left >= stage.left - 1 && r.right <= stage.right + 1 && r.top >= stage.top - 1 && r.bottom <= stage.bottom + 1,
+      overflowRight: Math.round(r.right - stage.right),
+      overflowLeft: Math.round(stage.left - r.left),
+      stage: { w: Math.round(stage.width), h: Math.round(stage.height) },
+      node: { w: Math.round(r.width), h: Math.round(r.height) },
+    }
+  }, nodeId)
 }
 
 const pageErrors = []
 getWin().on('pageerror', (error) => pageErrors.push(String(error)))
+const consoleWarnings = []
+getWin().on('console', (msg) => {
+  if (msg.type() === 'warning' || msg.type() === 'error') consoleWarnings.push(msg.text().slice(0, 200))
+})
 
 try {
   await getWin().waitForLoadState('domcontentloaded')
@@ -244,14 +309,45 @@ try {
   await getWin().locator('.generation-canvas-v2-toolbar').waitFor({ timeout: 8000 })
 
   // ── 任务准备：摆一个图片节点 + 一个视频节点 ─────────────────────────────
-  await addNode('image')
-  await addNode('video')
+  // 新建即可见：每建一张卡，**那张卡**的露出动画（60ms 延迟 + 200ms）与 composer 让位（160ms）
+  // 都得落地。所以逐张建、逐张量——而不是建完两张再要求「画布上所有卡同时都在 stage 内」：
+  // 那条更强的说法只在舞台宽到装得下两张时才成立，CI 的 Linux runner 会把窗口夹到 1280 宽
+  // （下面 resize(1600, 1000) 静默不生效），第一张卡被第二张的露出平移正常地推出左边界，
+  // 于是走查报的是「舞台不够宽」，却写着「被 Agent 面板遮住」。见 docs/lessons/
+  // walkthrough-geometry-must-reverify-under-the-real-cursor.md 同一族。
+  const createdPlacement = []
+  for (const kind of ['image', 'video']) {
+    const createdId = await addNode(kind)
+    await getWin().waitForTimeout(700)
+    createdPlacement.push({ kind, ...(await measurePlacement(createdId)) })
+  }
+  assert(
+    createdPlacement.length === 2 && createdPlacement.every((entry) => entry.inside),
+    '每张新建的卡当场完整露出在 stage 内（不被常驻 Agent 面板遮住）',
+    JSON.stringify(createdPlacement),
+  )
   const nodeIds = await getWin().evaluate(() =>
     Array.from(document.querySelectorAll('.generation-canvas-v2-node')).map((node) => ({
       id: node.getAttribute('data-node-id'),
       kind: node.getAttribute('data-kind'),
     })),
   )
+  if (nodeIds.length < 2) {
+    // 节点建了却没渲染出来：把 React Flow 容器尺寸、视口、节点数与控制台告警一起交出去（NaN 视口那一族见
+    // docs/lessons/walkthrough-geometry-must-reverify-under-the-real-cursor.md）。
+    const diag = await getWin().evaluate(() => {
+      const rf = document.querySelector('.react-flow')?.getBoundingClientRect()
+      const layer = document.querySelector('.generation-canvas-v2__canvas')
+      const m = layer ? new DOMMatrixReadOnly(getComputedStyle(layer).transform) : null
+      return {
+        rf: rf ? { w: Math.round(rf.width), h: Math.round(rf.height) } : null,
+        viewport: m ? { x: Math.round(m.m41), y: Math.round(m.m42), zoom: m.a } : null,
+        rfNodes: document.querySelectorAll('.react-flow__nodes > *').length,
+        stageReady: document.querySelector('.generation-canvas-v2__stage')?.getAttribute('data-ready'),
+      }
+    })
+    console.log('  · DIAG', JSON.stringify({ ...diag, consoleWarnings: consoleWarnings.slice(0, 4), pageErrors }))
+  }
   assert(nodeIds.length >= 2, '画布上有两个节点', JSON.stringify(nodeIds))
 
   // ── ① 空白左键拖 = 平移画布 ────────────────────────────────────────────
@@ -314,8 +410,11 @@ try {
   assert(nodeIdentity >= 2 && sameInstances, '平移前后节点是同一批 DOM 实例（没有整层重建）')
 
   // ── ① 点一下空白 = 取消选中；Shift + 左键拖 = 框选并追加 ─────────────────
-  const firstNode = getWin().locator('.generation-canvas-v2-node').first()
-  await firstNode.click({ position: { x: 20, y: 10 } })
+  // 点卡片本体的那一点由 `_canvasHit.mjs` 定（单一 owner）：外接盒角上的固定偏移在窄舞台下
+  // 会滑到左侧工具条底下，Playwright 只报 "html intercepts pointer events"。
+  const firstNodeHit = await findNodeHitPoint(getWin(), { nodeSelector: '.generation-canvas-v2-node' })
+  assert(Boolean(firstNodeHit), '第一张卡上找得到真正点得到的一点', JSON.stringify(firstNodeHit))
+  await getWin().mouse.click(firstNodeHit.x, firstNodeHit.y)
   await getWin().waitForTimeout(300)
   assert((await selectedNodeIds()).length === 1, '点节点会选中它')
 
@@ -338,6 +437,26 @@ try {
   // Shift 框选：先用真实「适应视图」收回所有节点，再从空白角落包围它们。
   await getWin().locator('.generation-canvas-v2__zoom-bar button').first().click()
   await getWin().waitForTimeout(420)
+  // 适应视图只保证节点**在**视口里，不保证**离边够远**：窄画布下它留的余量可能比 React Flow
+  // 的自动平移带还小，于是「框得住两张卡」和「端点别落进自动平移带」直接打架
+  // （CI 1280 宽实测左边只剩 40px，框到 48px 内缩就切掉了第一张卡的左沿）。
+  // 用户遇到这种情况会往外滚一格再框；走查照做——滚到实测占比够小为止。
+  let headroom = await readMarqueeHeadroom()
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    if (headroom && headroom.widthRatio <= MARQUEE_MAX_BOUNDS_RATIO && headroom.heightRatio <= MARQUEE_MAX_BOUNDS_RATIO) break
+    const zoomOutAt = await findBlankPoint()
+    await getWin().mouse.move(zoomOutAt.x, zoomOutAt.y)
+    await getWin().mouse.wheel(0, 240)
+    await getWin().waitForTimeout(220)
+    headroom = await readMarqueeHeadroom()
+  }
+  assert(
+    Boolean(headroom)
+      && headroom.widthRatio <= MARQUEE_MAX_BOUNDS_RATIO
+      && headroom.heightRatio <= MARQUEE_MAX_BOUNDS_RATIO,
+    '框选前两张卡已缩到画布的六成以内（四角才够离开自动平移带）',
+    JSON.stringify(headroom),
+  )
   const marqueeGesture = await findMarqueeGesture()
   assert(Boolean(marqueeGesture), '框选起手点与终点完整落在画布空白处', JSON.stringify(marqueeGesture))
   await getWin().keyboard.down('Shift')
@@ -587,7 +706,9 @@ try {
   await snap('03-edge-labels-hidden.png')
   assert(labelsWhenIdle === 0, '没选中任何节点时，画布上一个连线标签都没有')
 
-  await videoNode.click({ position: { x: 20, y: 10 } })
+  const videoHit = await findNodeHitPoint(getWin(), { nodeSelector: '.generation-canvas-v2-node[data-kind="video"]' })
+  assert(Boolean(videoHit), '视频卡上找得到真正点得到的一点', JSON.stringify(videoHit))
+  await getWin().mouse.click(videoHit.x, videoHit.y)
   await getWin().waitForTimeout(400)
   const selectedEdgeState = await getWin().evaluate(() => {
     const label = document.querySelector('.generation-canvas-v2__edge-tag-pill')
@@ -615,6 +736,46 @@ try {
     JSON.stringify(selectedEdgeState),
   )
 
+  // 同一条真实任务继续：改边模式 / 断开 / 锁定，各按一次 Cmd+Z，不能撤掉前一笔。
+  const mod = process.platform === 'darwin' ? 'Meta' : 'Control'
+  const edgeLabel = getWin().locator('.generation-canvas-v2__edge-tag-pill').first()
+  const historyEdge = getWin().locator('.generation-canvas-v2__edge').first()
+  const originalMode = await historyEdge.getAttribute('data-mode')
+  const originalModeLabel = await edgeLabel.innerText()
+  await edgeLabel.click()
+  const alternativeMode = getWin().getByRole('menuitemradio', { checked: false }).first()
+  await expect(alternativeMode).toBeVisible()
+  await alternativeMode.click()
+  // 通用 reference 边按现行设计不显示标签；检查真实边语义，不能要求它强行露出。
+  await expect(historyEdge).not.toHaveAttribute('data-mode', originalMode)
+  await expect(historyEdge).toBeVisible()
+  await snap('04a-edge-mode-changed.png')
+  await getWin().keyboard.press(`${mod}+z`)
+  await expect(historyEdge).toHaveAttribute('data-mode', originalMode)
+  await expect(edgeLabel).toHaveText(originalModeLabel)
+  await expect(getWin().locator('.generation-canvas-v2__edge')).toHaveCount(edgeCount)
+  await expect(getWin().locator('.generation-canvas-v2-node')).toHaveCount(nodeIds.length)
+  await snap('04b-edge-mode-undone.png')
+
+  await edgeLabel.click()
+  await getWin().locator('.generation-canvas-react-flow__edge-menu-delete').click()
+  await expect(getWin().locator('.generation-canvas-v2__edge')).toHaveCount(edgeCount - 1)
+  await snap('04c-edge-disconnected.png')
+  await getWin().keyboard.press(`${mod}+z`)
+  await expect(getWin().locator('.generation-canvas-v2__edge')).toHaveCount(edgeCount)
+  await expect(getWin().locator('.generation-canvas-v2-node')).toHaveCount(nodeIds.length)
+  await snap('04d-edge-disconnect-undone.png')
+
+  const lockBadge = videoNode.locator('[data-node-lock]')
+  await expect(lockBadge).toHaveAttribute('data-node-lock', 'unlocked')
+  await lockBadge.click()
+  await expect(lockBadge).toHaveAttribute('data-node-lock', 'locked')
+  await getWin().keyboard.press(`${mod}+z`)
+  await expect(lockBadge).toHaveAttribute('data-node-lock', 'unlocked')
+  await expect(getWin().locator('.generation-canvas-v2__edge')).toHaveCount(edgeCount)
+  await snap('04e-node-lock-undone.png')
+  console.log('  ✓ 改边模式、断线、锁定各按一次 Cmd+Z 还原，前一笔节点/连线保留')
+
   // ── ④ 拖动节点：浮条 / 提示词面板隐身，松手回来 ─────────────────────────
   const composerBefore = await getWin().evaluate(() => {
     const composer = document.querySelector('.generation-canvas-v2-node__composer')
@@ -622,10 +783,13 @@ try {
   })
   assert(composerBefore === 'visible', '选中节点时提示词面板可见')
 
-  const dragBox = await videoNode.boundingBox()
-  await getWin().mouse.move(dragBox.x + dragBox.width / 2, dragBox.y + 12)
+  // 起手点同样按「最顶层就是这张卡」取（外接盒顶边 +12 在窄舞台下会压在卡片标题片/浮层上，
+  // 于是 mousedown 根本没落到卡上，走查报的却是「拖动中画布没发布 data-dragging」）。
+  const dragGrab = await findNodeHitPoint(getWin(), { nodeSelector: '.generation-canvas-v2-node[data-kind="video"]' })
+  assert(Boolean(dragGrab), '视频卡上找得到可以起手拖动的一点', JSON.stringify(dragGrab))
+  await getWin().mouse.move(dragGrab.x, dragGrab.y)
   await getWin().mouse.down()
-  await getWin().mouse.move(dragBox.x + dragBox.width / 2 + 70, dragBox.y + 60, { steps: 12 })
+  await getWin().mouse.move(dragGrab.x + 70, dragGrab.y + 48, { steps: 12 })
   const duringDrag = await getWin().evaluate(() => {
     const stage = document.querySelector('.generation-canvas-v2__stage')
     const composer = document.querySelector('.generation-canvas-v2-node__composer')

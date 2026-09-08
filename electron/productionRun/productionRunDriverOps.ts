@@ -5,15 +5,16 @@
 //
 // 为什么用 factory：driveReconciliation 成功后要重踢 driveGeneration（同层互相引用），且四条都闭包
 // 复用同一组注入依赖（requireRun / executeInternal / requestRenderer / 路径工具 / in-flight 去重集）。
-
 import crypto from 'node:crypto'
 
 import { desktopT } from '../i18n'
 import { settlePauseIfQuiet } from './productionRunControl'
 import { adoptedGenerationShotNodeIds, buildQaRetryPlans, buildQaStageOutcome, type QaVerifyResponse } from './productionQaVerdict'
 import type { ProductionRunRepository } from './productionRunRepository'
+import { freezeGateId, hasApprovedFreezeGate, hasWaitingFreezeGate, hasWaitingSampleGate, isShotGate, sampleGateId, shotGateId, shouldSampleGate } from './productionRunGateIdentity'
 import { trustLevelOf, type ProductionRun } from './productionRunTypes'
 import { loadPlaybookStageEvidence } from '../skills/skillExecutionEvidence'
+import { logError } from '../logging/logger'
 
 /** Job ids intentionally contain a namespace separator (`job:run:node`), but artifact ids are
  * public deep-link identifiers. Keep the mapping stable, collision-resistant, and URL-safe. */
@@ -36,7 +37,7 @@ export type DriverOpsDeps = {
     commandId: string,
   ) => { run: ProductionRun; events: unknown[] }
   requestRenderer: (op: string, payload: unknown, timeoutMs: number) => Promise<unknown>
-  executeProductionExport: (input: { projectId: string; runId: string; outputName: string }) => Promise<{ relativePath: string; size: number }>
+  executeProductionExport: (input: { projectId: string; runId: string; outputName: string }) => Promise<{ relativePath: string; size: number; jobId?: string }>
   writeProjectJson: (projectId: string, relativePath: string, value: unknown) => void
   localAssetPath: (projectId: string, rawUrl: unknown) => string | undefined
   projectRelativePath: (projectId: string, rawPath: unknown, options?: { requireFile?: boolean }) => string
@@ -86,34 +87,6 @@ export function normalizeDirectionCandidates(value: unknown): Array<{ key: strin
   return out
 }
 
-/** One durable, URL-safe gate per plan/job. The hash keeps ids stable even when node ids collide
- * after sanitization, while jobIds[0] remains the authoritative job identity. */
-export function shotGateId(planVersion: number, jobId: string, round = 1): string {
-  const slug = jobId.replace(/[^A-Za-z0-9._-]+/g, '-').replace(/^-+|-+$/g, '').slice(-48) || 'shot'
-  const suffix = crypto.createHash('sha256').update(jobId).digest('hex').slice(0, 10)
-  return `gate-shot-v${planVersion}-${slug}-${suffix}${round > 1 ? `-r${round}` : ''}`
-}
-
-export function isShotGate(gate: Pick<ProductionRun['gates'][number], 'gateId' | 'scope'>): boolean {
-  return gate.scope === 'job_set' && gate.gateId.startsWith('gate-shot-')
-}
-
-function sampleGateId(planVersion: number): string {
-  return `gate-sample-v${planVersion}`
-}
-
-function freezeGateId(planVersion: number): string {
-  return `gate-freeze-v${planVersion}`
-}
-
-function hasApprovedFreezeGate(run: ProductionRun): boolean {
-  return run.gates.some((gate) => gate.gateId === freezeGateId(run.planVersion) && gate.status === 'approved')
-}
-
-function hasWaitingFreezeGate(run: ProductionRun): boolean {
-  return run.gates.some((gate) => gate.gateId === freezeGateId(run.planVersion) && gate.status === 'waiting')
-}
-
 async function readUnfrozenAnchors(
   requestRenderer: DriverOpsDeps['requestRenderer'],
   projectId: string,
@@ -131,7 +104,7 @@ async function readUnfrozenAnchors(
       }))
       .filter((item): item is { nodeId: string; title?: string } => item.nodeId.length > 0)
   } catch (error) {
-    console.error('[nomi:production] freeze check failed (freeze gate skipped):', error instanceof Error ? error.message : String(error))
+    logError('production-run', 'freeze-check-failed-gate-skipped', error)
     return []
   }
 }
@@ -146,6 +119,7 @@ export function isSemanticMultiShotRun(run: Pick<ProductionRun, 'playbook' | 'ge
   return run.playbook.name === 'generation.single-shot' && (run.generationPlan?.shots?.length ?? 0) > 0
 }
 
+export function isRetiredLegacyWriterState(status: ProductionRun['jobs'][number]['status']): boolean { return status === 'submit_intent_persisted' || status === 'submitting' }
 /**
  * A scheduler job can reach `adopted` even when the renderer failed to land
  * its generated node/artifact.  Assembly must never proceed from that partial
@@ -166,14 +140,6 @@ export function semanticGenerationReadiness(run: Pick<ProductionRun, 'jobs' | 'a
     if (!artifact) return { ready: false, reason: desktopT('production.generationMissingArtifact', { jobId: job.jobId }) }
   }
   return { ready: true }
-}
-
-function hasWaitingSampleGate(run: ProductionRun): boolean {
-  return run.gates.some((gate) => gate.gateId === sampleGateId(run.planVersion) && gate.status === 'waiting')
-}
-
-export function shouldSampleGate(run: ProductionRun): boolean {
-  return trustLevelOf(run.policy) !== 'budget_only'
 }
 
 export type DriverOps = {
@@ -212,7 +178,7 @@ export function createDriverOps(deps: DriverOpsDeps): DriverOps {
         response = await requestRenderer('production.verify-shots', { projectId, runId, shotNodeIds }, 10 * 60_000) as QaVerifyResponse
       } catch (error) {
         verificationFailed = true
-        console.error('[nomi:production] shot verify failed (qa skipped):', error instanceof Error ? error.message : String(error))
+        logError('production-run', 'shot-verify-failed-qa-skipped', error)
         response = null
       }
     }
@@ -311,7 +277,7 @@ export function createDriverOps(deps: DriverOpsDeps): DriverOps {
       })
       executeInternal(run.projectId, run.runId, current, 'gate.set_candidates', { gateId: 'gate-direction-v1', candidates }, `driver-${run.runId}-direction-candidates`)
     } catch (error) {
-      console.error('[nomi:production] direction planning failed:', error instanceof Error ? error.message : String(error))
+      logError('production-run', 'direction-planning-failed', error)
     } finally {
       directionsInFlight.delete(run.runId)
       if (generationRerunRequested.delete(run.runId)) {
@@ -378,7 +344,7 @@ export function createDriverOps(deps: DriverOpsDeps): DriverOps {
           })
         } catch { /* Preserve the original planning failure; the run remains inspectable. */ }
       }
-      console.error('[nomi:production] script planning failed:', error instanceof Error ? error.message : String(error))
+      logError('production-run', 'script-planning-failed', error)
     } finally {
       inFlight.delete(run.runId)
       if (generationRerunRequested.delete(run.runId)) {
@@ -439,7 +405,7 @@ export function createDriverOps(deps: DriverOpsDeps): DriverOps {
         payload: { skillName: run.playbook.name, version: run.playbook.version, artifactId: `artifact-storyboard-v${version}`, stageId: 'storyboard', skillEvidence }, issuedAt: timestamp,
       })
     } catch (error) {
-      console.error('[nomi:production] storyboard planning failed:', error instanceof Error ? error.message : String(error))
+      logError('production-run', 'storyboard-planning-failed', error)
     } finally {
       inFlight.delete(run.runId)
       if (generationRerunRequested.delete(run.runId)) {
@@ -466,6 +432,32 @@ export function createDriverOps(deps: DriverOpsDeps): DriverOps {
       current = settlePauseIfQuiet(repository, run.projectId, run.runId, requireRun(run.projectId, run.runId))
       if (current.status !== 'running') return
       if (!semanticMultiShot) {
+        // `authorized` is the pre-submit state owned by the still-supported
+        // legacy compatibility fixture. Once the durable submit intent exists,
+        // the retired writer must never be re-entered after restart/retry.
+        const legacyJobs = current.jobs.filter((job) =>
+          job.stageId === 'generate' && isRetiredLegacyWriterState(job.status))
+        if (legacyJobs.length > 0) {
+          for (const job of legacyJobs) {
+            current = requireRun(run.projectId, run.runId)
+            const latest = current.jobs.find((candidate) => candidate.jobId === job.jobId)
+            if (latest && isRetiredLegacyWriterState(latest.status)) {
+              current = executeInternal(run.projectId, run.runId, current, 'job.status', {
+                jobId: job.jobId,
+                status: 'needs_attention',
+                patch: {
+                  errorCode: 'legacy_generation_writer_retired',
+                  errorMessage: 'Legacy ProductionRun generation writer is retired; create a semantic generation.single-shot plan to continue.',
+                },
+              }, `driver-${run.runId}-${job.jobId}-legacy-writer-retired`).run
+            }
+          }
+          current = requireRun(run.projectId, run.runId)
+          if (current.status !== 'needs_attention') {
+            current = executeInternal(run.projectId, run.runId, current, 'run.status', { status: 'needs_attention' }, `driver-${run.runId}-legacy-writer-retired`).run
+          }
+          return
+        }
         if (current.status === 'running' && !hasApprovedFreezeGate(current)) {
           const pendingJobs = current.jobs.filter((job) => job.status === 'authorized' || job.status === 'submit_intent_persisted')
           if (hasWaitingFreezeGate(current)) return
@@ -575,7 +567,7 @@ export function createDriverOps(deps: DriverOpsDeps): DriverOps {
             if (current.status !== 'needs_attention') {
               try { current = executeInternal(run.projectId, run.runId, current, 'run.status', { status: 'needs_attention' }, `driver-${run.runId}-generation-attention-${current.revision}`).run } catch { /* preserve unknown job state */ }
             }
-            console.error('[nomi:production] generation driver stopped:', error instanceof Error ? error.message : String(error))
+            logError('production-run', 'generation-driver-stopped', error)
             return
           }
         }
@@ -646,7 +638,7 @@ export function createDriverOps(deps: DriverOpsDeps): DriverOps {
       current = executeInternal(run.projectId, run.runId, current, 'stage.upsert', { stage: stageValue(current, 'assemble', { status: 'completed', completedAt: new Date().toISOString() }) }, `driver-${run.runId}-stage-assemble-complete`).run
       current = executeInternal(run.projectId, run.runId, current, 'run.status', { status: 'awaiting_rough_cut_review' }, `driver-${run.runId}-rough-cut`).run
     } catch (error) {
-      console.error('[nomi:production] generation/assembly driver failed:', error instanceof Error ? error.message : String(error))
+      logError('production-run', 'generation-assembly-driver-failed', error)
     } finally {
       inFlight.delete(run.runId)
       if (generationRerunRequested.delete(run.runId)) {
@@ -676,10 +668,12 @@ export function createDriverOps(deps: DriverOpsDeps): DriverOps {
       current = executeInternal(run.projectId, run.runId, current, 'run.status', { status: 'exporting' }, `driver-${run.runId}-export-start`).run
       const result = isSemanticMultiShotRun(current)
         ? await executeProductionExport({ projectId: run.projectId, runId: run.runId, outputName: `nomi-${run.runId}.mp4` })
-        : await requestRenderer('production.export', { projectId: run.projectId, runId: run.runId, outputName: `nomi-${run.runId}.mp4` }, 30 * 60_000) as { relativePath?: string; size?: number }
+        : await requestRenderer('production.export', { projectId: run.projectId, runId: run.runId, outputName: `nomi-${run.runId}.mp4` }, 30 * 60_000) as { relativePath?: string; size?: number; jobId?: string }
       const relativePath = projectRelativePath(run.projectId, result?.relativePath, { requireFile: true })
       current = requireRun(run.projectId, run.runId)
-      current = executeInternal(run.projectId, run.runId, current, 'artifact.add', { artifact: { artifactId: `artifact-export-v${current.planVersion}`, stageId: 'export', kind: 'export', status: 'adopted', projectRelativePath: relativePath, createdAt: new Date().toISOString(), adoptedAt: new Date().toISOString() } }, `driver-${run.runId}-export-artifact`).run
+      const exportVersion = Math.max(0, ...current.artifacts.filter((artifact) => artifact.kind === 'export').map((artifact) => artifact.version || 0)) + 1
+      const exportJobId = typeof result?.jobId === 'string' && result.jobId.trim() ? result.jobId.trim() : `export:${run.runId}:v${exportVersion}`
+      current = executeInternal(run.projectId, run.runId, current, 'artifact.add', { artifact: { artifactId: `artifact-export-v${exportVersion}`, stageId: 'export', kind: 'export', status: 'adopted', jobId: exportJobId, version: exportVersion, source: 'nomi-agent', projectRelativePath: relativePath, createdAt: new Date().toISOString(), adoptedAt: new Date().toISOString() } }, `driver-${run.runId}-export-artifact-v${exportVersion}`).run
       current = executeInternal(run.projectId, run.runId, current, 'stage.upsert', { stage: stageValue(current, 'export', { status: 'completed', completedAt: new Date().toISOString() }) }, `driver-${run.runId}-stage-export`).run
       executeInternal(run.projectId, run.runId, current, 'run.status', { status: 'completed' }, `driver-${run.runId}-completed`)
     } catch (error) {
@@ -687,7 +681,7 @@ export function createDriverOps(deps: DriverOpsDeps): DriverOps {
       if (current && current.status === 'exporting') {
         try { executeInternal(run.projectId, run.runId, current, 'run.status', { status: 'needs_attention' }, `driver-${run.runId}-export-attention-${current.revision}`) } catch { /* preserve export error */ }
       }
-      console.error('[nomi:production] export driver failed:', error instanceof Error ? error.message : String(error))
+      logError('production-run', 'export-driver-failed', error)
     } finally {
       inFlight.delete(run.runId)
     }

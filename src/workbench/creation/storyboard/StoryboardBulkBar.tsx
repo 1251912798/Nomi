@@ -16,6 +16,12 @@ import {
   deriveBulkShotKind,
   type ShotTypeValue,
 } from '../../generationCanvas/agent/storyboardPlanEdits'
+import {
+  ASPECT_OPTIONS,
+  overriddenAspectCount,
+  planDefaultAspect,
+  setPlanDefaultAspect,
+} from '../../generationCanvas/agent/storyboardAspectScope'
 
 /**
  * 「全部镜头」批量条（样张 A 拍板 2026-08-17）。
@@ -44,6 +50,10 @@ export default function StoryboardBulkBar({ plan, imageModelOptions, videoModelO
   const bulkKind = deriveBulkShotKind(plan)
   const bulkModelKey = deriveBulkModelKey(plan)
   const bulkDuration = deriveBulkDuration(plan)
+  // 画幅在 v6 是**项目级设置**（§2.4.1）：这枚胶囊声明的是**整片默认**，不是"把同一个值抄进每一行"。
+  // 行级只在"这一镜真的不一样"时覆盖；改这里，已覆盖的行不跟着变（右侧提示如实写出来）。
+  const planAspect = planDefaultAspect(plan)
+  const overriddenRows = overriddenAspectCount(plan)
 
   // 生效类型：全镜一致 → 那一档；混合 → 按 image 之外处理不了，取视频清单（混合里只要有视频镜就有视频模型可选）。
   const effectiveKind: ShotTypeValue = bulkKind ?? 'video'
@@ -88,13 +98,19 @@ export default function StoryboardBulkBar({ plan, imageModelOptions, videoModelO
       .map((sec) => ({ value: String(sec), label: t('storyboardEditor.second', { count: sec }) })),
   ]
 
+  // 预设 ∪ 当前值（Agent 可能写了预设外的档，别让触发器显错）。'' = 还没定，按模型默认走。
+  const aspectOptions = [
+    { value: '', label: t('storyboardEditor.bulk.aspectDefault') },
+    ...[...new Set([...ASPECT_OPTIONS, ...(planAspect ? [planAspect] : [])])].map((aspect) => ({ value: aspect, label: aspect })),
+  ]
+
   // 选「混合」这个临时项不做事（它只是「当前不一致」的显示态，不是可应用的值）。
   const applyIfReal = (value: string, apply: (value: string) => void): void => {
     if (value !== MIXED_VALUE) apply(value)
   }
 
   return (
-    <div className="flex items-center gap-2 flex-wrap px-4 py-2 border-b border-nomi-line-soft bg-nomi-ink-05">
+    <div className="flex items-center gap-2 flex-wrap px-4 py-2 border-b border-nomi-line-soft bg-nomi-ink-05" data-storyboard-bulkbar="true">
       <span className="inline-flex items-center gap-1.5 shrink-0 text-caption font-medium text-nomi-ink-80">
         <IconStack2 size={14} stroke={1.6} className="text-nomi-ink-60" aria-hidden />
         {t('storyboardEditor.bulk.scope')}
@@ -133,9 +149,20 @@ export default function StoryboardBulkBar({ plan, imageModelOptions, videoModelO
           onChange={(value) => applyIfReal(value, (v) => onChange(applyDurationToAll(plan, Number(v))))}
         />
       ) : null}
+      <span data-storyboard-aspect-default={planAspect || 'model-default'}>
+        <NomiSelect
+          ariaLabel={t('storyboardEditor.bulk.aspectAria')}
+          leadingLabel={t('storyboardEditor.aspect')}
+          size="xs"
+          value={planAspect}
+          options={aspectOptions}
+          onChange={(value) => onChange(setPlanDefaultAspect(plan, value))}
+        />
+      </span>
 
       <span className="ml-auto shrink-0 text-micro text-nomi-ink-40">
         {t('storyboardEditor.bulk.hint', { count: plan.shots.length })}
+        {overriddenRows > 0 ? ` · ${t('storyboardEditor.aspectScope.bulkHint', { count: overriddenRows })}` : ''}
       </span>
     </div>
   )

@@ -11,13 +11,13 @@ import {
   readGenerationCanvasSnapshot,
   type CreateGenerationNodeToolInput,
 } from './generationCanvasTools'
-import { listAvailableModelsForAgent, type AgentModelEntry } from './availableModels'
-import { buildPlannedNodeMeta } from './plannedNodeMeta'
+import { listAvailableModelsForAgent } from './availableModels'
+import { buildModelEntryIndex, buildPlannedNodeMeta } from './plannedNodeMeta'
 import { withCanvasGestureContext, type CanvasGestureContext } from '../events/canvasGestureContext'
 import { layoutPlannedNodes, layoutStoryboardNodes } from './trajectoryLayout'
 import { FOCUS_GENERATION_NODE_EVENT } from '../nodes/nodeSizing'
 import { arrangeStoryboardToTimeline } from './sendStoryboardToTimeline'
-import { parseStoryboardPlan } from './storyboardPlan'
+import { parseStoryboardPlan } from './storyboardPlanSchema'
 import type { StagingSpec, StagingCharacterSpec } from '../nodes/director/agent/stagingBuilder'
 import type { CameraMoveSpec } from '../nodes/director/agent/cameraMoveBuilder'
 import type { LegacySceneTemplate, ScenePropPlacement } from '../nodes/director/migration/legacySceneBuilders'
@@ -25,7 +25,11 @@ import type { CameraSpeed } from '../nodes/director/agent/cameraMoveVocab'
 import { useWorkbenchStore } from '../../workbenchStore'
 import { assertTurnCanWrite } from '../../ai/agentTurnLifecycle'
 import { useGenerationCanvasStore } from '../store/generationCanvasStore'
+import { canvasWriteSemanticInputSchema } from '../../../../electron/shared/agentCapabilities/canvasWrite'
 import { registerCanvasToolClientId, resolveCanvasToolNodeId } from './clientIdRegistry'
+import { previewStoryboardPatchShots } from './storyboardPatchShots'
+import { deliverAgentArtifactToAsset, isTextDeliverableFileType } from './deliverAgentArtifact'
+import i18n from '../../../i18n'
 export { resetClientIdRegistry, resolveCanvasToolNodeId } from './clientIdRegistry'
 
 // 批量创建节点的布局由渲染层 derive，而不是信任 LLM 发来的像素坐标。
@@ -65,13 +69,14 @@ function normalizeEdgeMode(raw: unknown): GenerationCanvasEdgeMode | undefined {
 /** create 携带边 / connect_canvas_edges 共用的边参数归一（clientId→真实 id + mode 白名单）。 */
 function normalizePlannedEdges(
   rawEdges: unknown[],
-): Array<{ source: string; target: string; mode?: GenerationCanvasEdgeMode }> {
+): Array<{ source: string; target: string; mode?: GenerationCanvasEdgeMode; order?: number }> {
   return rawEdges
     .map((raw) => (raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {}))
     .map((edge) => ({
       source: resolveNodeId(String(edge.sourceClientId || edge.source || '').trim()),
       target: resolveNodeId(String(edge.targetClientId || edge.target || '').trim()),
       ...(normalizeEdgeMode(edge.mode) ? { mode: normalizeEdgeMode(edge.mode) } : {}),
+      ...(typeof edge.order === 'number' && Number.isFinite(edge.order) ? { order: edge.order } : {}),
     }))
     .filter((edge) => edge.source && edge.target)
 }
@@ -223,6 +228,12 @@ export async function applyCanvasToolCall(
   }
   assertWritable()
   const record = args && typeof args === 'object' ? (args as Record<string, unknown>) : {}
+  // MCP's public entry is canonical; the semantic operation lives in args.
+  // Do not add the retired bare `patch_shots` name back to the public alias
+  // surface just to make this renderer branch reachable.
+  const operation = toolName === 'nomi_canvas_plan' || toolName === 'nomi_canvas_edit'
+    ? typeof record.operation === 'string' ? record.operation : toolName
+    : toolName
   // S6-2:提议事务把手势上下文传进来,store 变更段(纯同步)包在上下文里——途经 action
   // 发出的画布事件统一携带 source:'agent'+txnId/proposalId。只包同步段,await 间隙不持有
   // (异步持有会让并行的用户手势串台,见 canvasGestureContext 纪律)。
@@ -231,7 +242,45 @@ export async function applyCanvasToolCall(
     return gesture ? withCanvasGestureContext(gesture, fn) : fn()
   }
 
-  if (toolName === 'propose_storyboard_plan') {
+  if (toolName === 'nomi_canvas_plan' && operation === 'patch_shots') {
+    const store = useWorkbenchStore.getState()
+    const targetDocumentId = documentId ?? store.activeDocumentId
+    const targetDesign = store.storyboardDesignsByDocumentId[targetDocumentId]?.find((item) => item.id === (storyboardId ?? store.activeStoryboardId))
+      ?? store.storyboardDesignsByDocumentId[targetDocumentId]?.[0]
+    if (!targetDesign?.plan) {
+      throw Object.assign(new Error('当前原稿还没有分镜方案，先生成一份分镜方案再修改。'), {
+        code: 'capability_target_stale',
+      })
+    }
+    const parsed = canvasWriteSemanticInputSchema.safeParse(record)
+    if (!parsed.success || parsed.data.operation !== 'patch_shots') {
+      throw Object.assign(new Error('分镜修改参数无效。'), { code: 'capability_input_invalid' })
+    }
+    const preview = previewStoryboardPatchShots(targetDesign.plan, parsed.data)
+    const targetStoryboardId = storyboardId
+      ?? store.activeStoryboardId
+      ?? store.storyboardDesignsByDocumentId[targetDocumentId]?.[0]?.id
+    const updatedDesign = store.setStoryboardPlan(
+      preview.nextPlan,
+      targetDocumentId,
+      targetStoryboardId,
+      true,
+      false,
+    )
+    if (!updatedDesign) {
+      throw Object.assign(new Error('目标分镜方案已不存在，未应用修改。'), { code: 'capability_target_stale' })
+    }
+    return {
+      status: 'applied',
+      documentId: targetDocumentId,
+      storyboardDesignId: updatedDesign.id,
+      changedShotIndexes: preview.changedShotIndexes,
+      changedFields: preview.changedFields,
+      message: `已修改第 ${preview.changedShotIndexes.join('、')} 镜：${preview.changedFields.join('、')}。`,
+    } as StoryboardPlanApplicationResult & { changedShotIndexes: number[]; changedFields: string[] }
+  }
+
+  if (operation === 'propose_storyboard_plan') {
     // 规划免费可改:planner 第一手产出结构化方案对象,落创作 store 给用户审/改——不碰画布、零网络、零扣费。
     // 用户确认后才由 storyboardPlanToCreateNodesArgs 转成 create_canvas_nodes 落画布(S4)。
     // 校验失败 throw → 调用方映射成 tool error,回喂 LLM 自我修正(与 gate deny 同语义)。
@@ -264,19 +313,17 @@ export async function applyCanvasToolCall(
       status: 'applied',
       documentId: targetDocumentId,
       storyboardDesignId: design.id,
-      message: `已生成分镜方案「${plan.title || '未命名'}」：${plan.anchors.length} 个锚 · ${plan.shots.length} 个镜头，已放到创作页，待你审阅/修改后确认落画布。`,
+      message: `已生成分镜方案「${plan.title || '未命名'}」：${plan.anchors.length} 个锚 · ${plan.shots.length} 个镜头，已放到分镜页，待你审阅/修改后在行内或底部批量生成。`,
     } satisfies StoryboardPlanApplicationResult
   }
 
-  if (toolName === 'create_canvas_nodes') {
+  if (operation === 'create_canvas_nodes') {
     const incoming = Array.isArray(record.nodes) ? record.nodes : []
     // 任一节点带 modelKey 才加载可用模型清单（校验+补全 agent 选的模型/参数，否则零 IPC）。
     const needsModels = incoming.some(
       (raw) => raw && typeof raw === 'object' && typeof (raw as Record<string, unknown>).modelKey === 'string',
     )
-    const entryByKey = new Map<string, AgentModelEntry>(
-      needsModels ? (await listAvailableModelsForAgent()).map((entry) => [entry.modelKey, entry]) : [],
-    )
+    const entryByKey = buildModelEntryIndex(needsModels ? await listAvailableModelsForAgent() : [])
     const total = incoming.length
     // T4 轨迹分层布局：层由 kind 推导（参考/关键帧/视频三列），原点避让画布已有节点
     // 包围盒（修审计 bug D）；单层/不可推导退网格（同样避让）。忽略 LLM 像素坐标。
@@ -299,6 +346,28 @@ export async function applyCanvasToolCall(
       typeof record.groupCategoryId === 'string' && (CATEGORY_IDS as readonly string[]).includes(record.groupCategoryId)
         ? (record.groupCategoryId as BuiltinCanvasCategoryId)
         : null
+    // agent-artifact 交付：Agent 手写的内容必须先落盘为项目资产（nomi-local://）才能建节点——
+    // 节点不塞内联源码（meta.artifact.url 引用资产文件）。落盘是纯 IO，先全部完成再进 store 事务，
+    // 任一失败即整批中止（一个计划一次意志；不建「指向不存在文件」的半截节点）。
+    const artifactUrlByClientId = new Map<string, { fileType: string; url: string }>()
+    for (const raw of incoming) {
+      const node = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {}
+      if (node.kind !== 'agent-artifact') continue
+      const artifact = node.artifact && typeof node.artifact === 'object' ? (node.artifact as Record<string, unknown>) : {}
+      const fileType = typeof artifact.fileType === 'string' ? artifact.fileType : ''
+      const content = typeof artifact.content === 'string' ? artifact.content : ''
+      const clientId = typeof node.clientId === 'string' ? node.clientId : ''
+      const title = typeof node.title === 'string' ? node.title : ''
+      const name = title || clientId || i18n.t('runtime.nodeRegistry.agent-artifact.untitled')
+      if (!isTextDeliverableFileType(fileType) || !content.trim()) {
+        throw new Error(i18n.t('runtime.nodeRegistry.agent-artifact.missingContent', { name, fileType: fileType || '—' }))
+      }
+      const delivered = await deliverAgentArtifactToAsset({ fileType, content, title })
+      if (!delivered.ok) {
+        throw new Error(i18n.t('runtime.nodeRegistry.agent-artifact.deliverFailed', { name, reason: delivered.reason }))
+      }
+      artifactUrlByClientId.set(clientId, { fileType, url: delivered.url })
+    }
     const inputs: CreateGenerationNodeToolInput[] = incoming.map((raw, index) => {
       const node = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {}
       const kind = plannedKinds[index]
@@ -339,6 +408,27 @@ export async function applyCanvasToolCall(
               x: typeof positionRecord?.x === 'number' ? positionRecord.x : layout[index].x,
               y: typeof positionRecord?.y === 'number' ? positionRecord.y : layout[index].y,
             }
+      // agent-artifact：不走模型/生成 meta，meta.artifact = 落盘资产引用（内容已在上面 deliver 阶段落盘）。
+      // 标题由 agent 给（手艺产物的名字就是用户在画布上看到的）；无 prompt（不调模型）。
+      if (kind === 'agent-artifact') {
+        const clientId = typeof node.clientId === 'string' ? node.clientId : ''
+        const artifact = artifactUrlByClientId.get(clientId)
+        if (!artifact) {
+          throw new Error(i18n.t('runtime.nodeRegistry.agent-artifact.deliverFailed', {
+            name: clientId || i18n.t('runtime.nodeRegistry.agent-artifact.untitled'),
+            reason: 'no-delivered-asset',
+          }))
+        }
+        return {
+          kind,
+          categoryId: groupCategoryId ?? getDefaultCategoryForNodeKind(kind),
+          title: typeof node.title === 'string' && node.title.trim()
+            ? node.title.trim()
+            : i18n.t('runtime.nodeRegistry.agent-artifact.indexedTitle', { index: index + 1 }),
+          position,
+          meta: { artifact: { fileType: artifact.fileType, url: artifact.url } },
+        }
+      }
       return {
         kind,
         // groupCategoryId 在则整批落同一分类（分镜方案：角色/场景/镜头落在一起）；否则按 kind
@@ -430,7 +520,7 @@ export async function applyCanvasToolCall(
     }
   }
 
-  if (toolName === 'create_staging_reference') {
+  if (operation === 'create_staging_reference') {
     const rawShot = typeof record.shotClientId === 'string' ? record.shotClientId.trim() : ''
     const targetNodeId = rawShot ? resolveNodeId(rawShot) : undefined
     const rawChars = Array.isArray(record.characters) ? record.characters : []
@@ -467,7 +557,7 @@ export async function applyCanvasToolCall(
     }
   }
 
-  if (toolName === 'create_camera_move') {
+  if (operation === 'create_camera_move') {
     const parsed = parseCameraMoveSpec(record)
     const rawShot = typeof record.shotClientId === 'string' ? record.shotClientId.trim() : ''
     const targetNodeId = rawShot ? resolveNodeId(rawShot) : undefined
@@ -526,7 +616,7 @@ export async function applyCanvasToolCall(
     }
   }
 
-  if (toolName === 'connect_canvas_edges') {
+  if (operation === 'connect_canvas_edges') {
     const rawEdges = Array.isArray(record.edges) ? record.edges : []
     const edges = normalizePlannedEdges(rawEdges)
     const { connected, skipped } = inCtx(() => generationCanvasTools.connect_nodes(edges))
@@ -534,7 +624,7 @@ export async function applyCanvasToolCall(
     return { connectedCount: connected, ...(skipped.length > 0 ? { skippedEdges: skipped } : {}) }
   }
 
-  if (toolName === 'set_node_prompt') {
+  if (operation === 'set_node_prompt') {
     const nodeId = resolveNodeId(String(record.nodeId || '').trim())
     const prompt = typeof record.prompt === 'string' ? record.prompt : ''
     const node = inCtx(() => generationCanvasTools.update_node_prompt(nodeId, prompt))
@@ -542,7 +632,7 @@ export async function applyCanvasToolCall(
     return { nodeId: node.id }
   }
 
-  if (toolName === 'delete_canvas_nodes') {
+  if (operation === 'delete_canvas_nodes') {
     const nodeIds = Array.isArray(record.nodeIds)
       ? record.nodeIds.map((id) => resolveNodeId(String(id || '').trim())).filter(Boolean)
       : []
@@ -550,7 +640,7 @@ export async function applyCanvasToolCall(
     return { deletedNodeIds: deleted }
   }
 
-  if (toolName === 'arrange_storyboard_to_timeline') {
+  if (operation === 'arrange_storyboard_to_timeline') {
     // 排序/选片全在纯函数(planStoryboardTimeline)里——LLM 只触发,顺序按 shotIndex 镜序确定。
     // 不走 inCtx 手势上下文(那是画布事件域);时间轴变更是 workbenchStore 的事。
     const rawIds = Array.isArray(record.nodeIds)
@@ -573,7 +663,7 @@ export async function applyCanvasToolCall(
     }
   }
 
-  if (toolName === 'tidy_canvas') {
+  if (operation === 'tidy_canvas') {
     // 助手「整理画布」：复用 store 的 tidyCategory（与右下角整理按钮同一实现，P1 无并行版）。
     // categoryId 缺省 = 用户当前正看的子画布（activeCategoryId 在 workbenchStore）；aspect 用视口比例兜底。
     const categoryId =

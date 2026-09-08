@@ -9,10 +9,11 @@
  */
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { IconPlayerStop } from '@tabler/icons-react'
+import { Icon3dCubeSphere, IconBox, IconMusic, IconPhoto, IconPlayerStop, IconUpload, IconUser, IconVideo, IconMap } from '../../../../vendor/tablerIcons'
 import { cn } from '../../../../utils/cn'
 import { NomiLoadingMark } from '../../../../design'
 import i18n from '../../../../i18n'
+import { NodeEmptyState } from './NodeEmptyState'
 
 export const STRIPED_BG_CLASS =
   'bg-[repeating-linear-gradient(45deg,var(--nomi-ink-05)_0_23px,var(--nomi-ink-20)_23px_24px)]'
@@ -58,6 +59,7 @@ export function EmptyStateLauncher({
   onActivate,
   onPreload,
   activateAriaLabel,
+  testId,
 }: {
   icon: React.ReactNode
   label?: string
@@ -65,25 +67,21 @@ export function EmptyStateLauncher({
   onActivate?: () => void
   onPreload?: () => void
   activateAriaLabel?: string
+  testId?: string
 }): JSX.Element {
   const { t } = useTranslation()
-  const cluster = (
-    <>
-      <span className="grid size-12 place-items-center rounded-full bg-nomi-ink text-nomi-paper">{icon}</span>
-      {label ? <span className="text-body-sm font-semibold text-nomi-ink-80">{label}</span> : null}
-      {hint ? <span className="text-caption text-nomi-ink-60">{hint}</span> : null}
-    </>
-  )
+  const cluster = <NodeEmptyState icon={icon} title={label || ''} description={hint || ''} />
   if (!onActivate) {
     return <div className="flex flex-col items-center justify-center gap-2 text-center">{cluster}</div>
   }
   return (
     <button
       type="button"
+      data-testid={testId}
       aria-label={activateAriaLabel || label || t('generationCommon.card.open')}
       className={cn(
         'flex flex-col items-center justify-center gap-2 text-center rounded-nomi px-4 py-3 bg-transparent border-0 cursor-pointer',
-        'transition-[background] duration-[var(--nomi-transition-fast)] hover:bg-nomi-ink-05',
+        'transition-[background] duration-nomi-fast ease-nomi-fast hover:bg-nomi-ink-05',
         'focus-visible:outline-2 focus-visible:outline-nomi-accent focus-visible:outline-offset-2',
       )}
       onClick={(event) => {
@@ -125,16 +123,6 @@ export function VariantChip({ count }: { count: number }): JSX.Element | null {
   )
 }
 
-export function PlaceholderCenter({ label }: { label: string }): JSX.Element {
-  const { t } = useTranslation()
-  return (
-    <div className={cn('flex flex-col items-center justify-center w-full h-full gap-1 pointer-events-none')}>
-      <span className="text-body-sm font-medium text-nomi-ink-60 tabular-nums">{label}</span>
-      <span className="text-micro text-nomi-ink-40">{t('generationCommon.card.pending')}</span>
-    </div>
-  )
-}
-
 /**
  * L3: 生成节点的"待生成"占位卡。未选中时不再只显斜纹 + "等待生成"，而是给
  * 镜头序号徽标 + 标题 + 提示词首行预览，让用户一眼分清哪个镜头（J3 走查）。
@@ -149,62 +137,41 @@ export function PendingGenerationPlaceholder({
   shotIndex,
   title,
   prompt,
+  kind,
 }: {
   selected: boolean
   needsFirstFrame: boolean
-  /** 审计 A15：已连首帧/参考边、只是上游还没生成出画面——提示等待而非再喊拖图。 */
   waitingUpstream?: boolean
   shotIndex: number | null
   title?: string
   prompt?: string
-}): JSX.Element | null {
+  kind: string
+}): JSX.Element {
   const { t } = useTranslation()
-  // Keep the title and prompt visible even while the node is selected and its
-  // composer is open. Hiding the entire placeholder made a selected video
-  // shot look like an empty card, so users could not verify what they were
-  // about to generate.
-  if (needsFirstFrame) {
-    return (
-      <div data-selected-placeholder={selected ? 'true' : 'false'} className="flex w-full h-full flex-col pointer-events-none p-2.5 gap-1 overflow-hidden">
-        <NodeBodyHeader title={title} shotIndex={shotIndex} />
-        {prompt ? (
-          <span className="text-caption text-nomi-ink-60 leading-snug overflow-hidden [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] select-text cursor-text pointer-events-auto" onPointerDown={(event) => event.stopPropagation()}>
-            {prompt}
-          </span>
-        ) : null}
-        <span className="mt-auto text-micro text-nomi-ink-40 leading-relaxed">
-          {waitingUpstream ? (
-            <>
-              {t('generationCommon.card.upstreamConnected')}
-              <br />
-              {t('generationCommon.card.waitingUpstream')}
-            </>
-          ) : (
-            <>
-              {t('generationCommon.card.dragImage')}
-              <br />
-              {t('generationCommon.card.asFirstFrame')}
-            </>
-          )}
-        </span>
-        <span className="text-micro text-nomi-ink-40">{t('generationCommon.card.pendingOnDemand')}</span>
-      </div>
-    )
-  }
+  const isVideo = kind === 'video'
+  // 3D 模型节点也走这条通用占位（无专属卡 body）。不按 kind 分就会拿图片文案自称「图片节点」。
+  const isModel3d = kind === 'model3d'
+  const titleText = title || (isVideo
+    ? t('generationCommon.nodeEmpty.video.title')
+    : isModel3d
+      ? t('generationCommon.nodeEmpty.model3d.title')
+      : t('generationCommon.nodeEmpty.image.title'))
+  const description = waitingUpstream
+    ? t('generationCommon.nodeEmpty.waiting')
+    : needsFirstFrame
+      ? t('generationCommon.nodeEmpty.firstFrame')
+      : isVideo
+        ? t('generationCommon.nodeEmpty.video.description')
+        : isModel3d
+          ? t('generationCommon.nodeEmpty.model3d.description')
+          : t('generationCommon.nodeEmpty.image.description')
   return (
-    <div data-selected-placeholder={selected ? 'true' : 'false'} className="flex w-full h-full flex-col pointer-events-none p-2.5 gap-1 overflow-hidden">
-      <NodeBodyHeader title={title} shotIndex={shotIndex} />
-      {prompt ? (
-        // 提示词是用户最常想复制的内容：穿透容器的 pointer-events-none + 覆盖 stage 的
-        // user-select:none（select-text），并 stopPropagation 防节点拖拽吃掉划选手势。
-        <span
-          className="text-caption text-nomi-ink-60 leading-snug overflow-hidden [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] select-text cursor-text pointer-events-auto"
-          onPointerDown={(event) => event.stopPropagation()}
-        >
-          {prompt}
-        </span>
-      ) : null}
-      <span className="mt-auto text-micro text-nomi-ink-40">{t('generationCommon.card.pendingOnDemand')}</span>
+    <div data-selected-placeholder={selected ? 'true' : 'false'} className="h-full w-full">
+      <NodeEmptyState
+        icon={isVideo ? <IconVideo size={20} stroke={1.6} /> : isModel3d ? <Icon3dCubeSphere size={20} stroke={1.6} /> : <IconPhoto size={20} stroke={1.6} />}
+        title={shotIndex != null ? `${t('generationCommon.card.shot', { index: shotIndex })} · ${titleText}` : titleText}
+        description={prompt ? `${description} ${prompt}` : description}
+      />
     </div>
   )
 }
@@ -214,7 +181,12 @@ function clampProgressPercent(value: number | undefined): number | null {
   return Math.max(0, Math.min(100, Math.round(value)))
 }
 
-function RemoveBackgroundProgressMark({ progress }: { progress?: number }): JSX.Element {
+/**
+ * 进度环。`compact` 是同一个环缩进一条横条里用的那一档（顶部进度条 · 见 GeneratingOverlay
+ * 的 placement='top'）：去掉自带的圆形托底与阴影——横条本身已经是那块底了，再叠一层
+ * 就是「一个东西两层底」，在 28px 高的条里看着像贴了个贴纸。
+ */
+function RemoveBackgroundProgressMark({ progress, compact = false }: { progress?: number; compact?: boolean }): JSX.Element {
   const percent = clampProgressPercent(progress)
   const radius = 18
   const circumference = 2 * Math.PI * radius
@@ -222,12 +194,12 @@ function RemoveBackgroundProgressMark({ progress }: { progress?: number }): JSX.
   return (
     <div
       className={cn(
-        'grid size-14 place-items-center rounded-full',
-        'bg-nomi-paper/[0.92] text-nomi-ink shadow-nomi-md backdrop-blur-[8px]',
+        'grid place-items-center rounded-full',
+        compact ? 'size-4 shrink-0 text-nomi-ink-80' : 'size-14 bg-nomi-paper/[0.92] text-nomi-ink shadow-nomi-md backdrop-blur-[8px]',
       )}
       aria-hidden="true"
     >
-      <svg className="size-10" viewBox="0 0 44 44">
+      <svg className={compact ? 'size-4' : 'size-10'} viewBox="0 0 44 44">
         <circle cx="22" cy="22" r={radius} fill="none" stroke="currentColor" strokeWidth="4" opacity="0.16" />
         <circle
           className={isDeterminate ? undefined : 'origin-center animate-spin motion-reduce:animate-none'}
@@ -308,35 +280,73 @@ export function LocalImageOpPendingStatus({
   )
 }
 
+/** 遮罩里那颗取消按钮。两档摆法共用一颗，别各写一份（两份总有一份会先漂）。 */
+function GeneratingCancelButton({ onCancel, compact }: { onCancel: () => void; compact?: boolean }): JSX.Element {
+  const { t } = useTranslation()
+  return (
+    <button
+      type="button"
+      aria-label={t('generationCommon.card.generationCancelAria')}
+      onClick={(event) => {
+        event.stopPropagation()
+        onCancel()
+      }}
+      onPointerDown={(event) => event.stopPropagation()}
+      className={cn(
+        'pointer-events-auto inline-flex shrink-0 items-center gap-1 rounded-full text-micro font-medium',
+        'text-workbench-danger bg-[var(--workbench-danger-soft)] hover:opacity-85',
+        compact ? 'px-2 py-0.5' : 'px-3.5 py-1',
+      )}
+    >
+      <IconPlayerStop size={13} stroke={1.8} />
+      {t('generationCommon.card.generationCancel')}
+    </button>
+  )
+}
+
 /**
  * 生成中（queued/running）的统一品牌转圈遮罩（pending 规范 #1）。
- * 挂在节点根容器、对分镜/卡片/文本所有节点类型一致生效；z-[1] 盖住正文但低于
- * header 的状态文字徽标（z-[2]，仍显「生成中」），pointer-events-none 不挡交互。
+ * 挂在节点根容器、对分镜/卡片/文本所有节点类型一致生效；pointer-events-none 不挡交互。
+ *
+ * 两档摆法（`placement`）：
+ * · `center`（默认，其余全部调用方）——转圈居中，z-[1]，低于 header 的状态徽标（z-[2]）。
+ * · `top`（2026-09-07 用户拍板：「把那个放到上面 别遮挡视频」）——进度收成贴着卡顶的一条，
+ *   画面区一点不挡。这一档必须盖在 `__preview`（z-[2]）之上：这一族任务（本地深度处理）
+ *   的活预览帧**就是这张卡此刻的内容**，压在占位底纹底下等于没有；居中那一档层级不动，
+ *   所以其余调用方零变化。
  */
+export type GeneratingOverlayPlacement = 'center' | 'top'
+
 export function GeneratingOverlay({
   percent,
   message,
   previewUrl,
   onCancel,
+  placement = 'center',
 }: {
   /** 0-100 真实进度（P 轨 ws 逐节点）。缺省 = 品牌转圈（No fake progress）。 */
   percent?: number
   /** 人话进度（narrate 产出，如「KSampler · 第 3/17 个节点」）。 */
   message?: string
-  /** 活预览帧 data URL（ComfyUI 采样中间图，会话瞬态、不落盘）。 */
+  /** 活预览帧 data URL（ComfyUI 采样中间图 / 深度逐帧回传，会话瞬态、不落盘）。 */
   previewUrl?: string
-  /** 提供即显示遮罩内取消按钮（2026-08-01 拍板 A 位；仅本地 ComfyUI 任务可取消）。 */
+  /** 提供即显示遮罩内取消按钮（2026-08-01 拍板 A 位；仅本地可中断任务）。 */
   onCancel?: () => void
+  /** 进度摆在哪。默认居中；`top` = 贴卡顶一条，不压画面。 */
+  placement?: GeneratingOverlayPlacement
 } = {}): JSX.Element {
   const { t } = useTranslation()
   const determinate = typeof percent === 'number' && Number.isFinite(percent)
+  const atTop = placement === 'top'
   return (
     <div
       className={cn(
         'generation-canvas-v2-node__generating-overlay',
-        'absolute inset-0 z-[1] grid place-items-center rounded-nomi overflow-hidden',
+        'absolute inset-0 rounded-nomi overflow-hidden',
         'bg-nomi-paper/[0.55] backdrop-blur-[2px] pointer-events-none',
+        atTop ? 'z-[4]' : 'z-[1] grid place-items-center',
       )}
+      data-generating-placement={placement}
       aria-hidden={onCancel ? undefined : true}
     >
       {previewUrl ? (
@@ -347,36 +357,35 @@ export function GeneratingOverlay({
           draggable={false}
         />
       ) : null}
-      <div className="relative z-[1] grid place-items-center gap-2">
-        {determinate ? (
-          <RemoveBackgroundProgressMark progress={percent} />
-        ) : (
-          <NomiLoadingMark size={32} label={t('generationCommon.card.generating')} />
-        )}
-        {message ? (
-          <span className="rounded-full bg-nomi-paper/[0.88] px-2.5 py-1 text-micro font-medium text-nomi-ink-80 shadow-nomi-sm backdrop-blur-[8px]">
-            {message}
+      {atTop ? (
+        <div
+          className={cn(
+            'absolute inset-x-0 top-0 z-[1] flex items-center gap-2 px-2 py-1.5',
+            'border-b border-nomi-line bg-nomi-paper/[0.92] shadow-nomi-sm backdrop-blur-[8px]',
+          )}
+          data-generating-progress-bar="true"
+        >
+          <RemoveBackgroundProgressMark progress={percent} compact />
+          <span className="min-w-0 flex-1 truncate text-micro font-medium text-nomi-ink-80">
+            {message || t('generationCommon.card.generating')}
           </span>
-        ) : null}
-        {onCancel ? (
-          <button
-            type="button"
-            aria-label={t('generationCommon.card.generationCancelAria')}
-            onClick={(event) => {
-              event.stopPropagation()
-              onCancel()
-            }}
-            onPointerDown={(event) => event.stopPropagation()}
-            className={cn(
-              'pointer-events-auto inline-flex items-center gap-1 rounded-full px-3.5 py-1 text-micro font-medium',
-              'text-workbench-danger bg-[var(--workbench-danger-soft)] hover:opacity-85',
-            )}
-          >
-            <IconPlayerStop size={13} stroke={1.8} />
-            {t('generationCommon.card.generationCancel')}
-          </button>
-        ) : null}
-      </div>
+          {onCancel ? <GeneratingCancelButton onCancel={onCancel} compact /> : null}
+        </div>
+      ) : (
+        <div className="relative z-[1] grid place-items-center gap-2">
+          {determinate ? (
+            <RemoveBackgroundProgressMark progress={percent} />
+          ) : (
+            <NomiLoadingMark size={32} label={t('generationCommon.card.generating')} />
+          )}
+          {message ? (
+            <span className="rounded-full bg-nomi-paper/[0.88] px-2.5 py-1 text-micro font-medium text-nomi-ink-80 shadow-nomi-sm backdrop-blur-[8px]">
+              {message}
+            </span>
+          ) : null}
+          {onCancel ? <GeneratingCancelButton onCancel={onCancel} /> : null}
+        </div>
+      )}
     </div>
   )
 }
@@ -391,10 +400,12 @@ export function UploadFallback({
   accept,
   label,
   onUpload,
+  kind = 'image',
 }: {
   accept: string
   label: string
   onUpload: (dataUrl: string, file: File) => void
+  kind?: 'image' | 'video' | 'audio' | 'character' | 'scene' | 'prop'
 }): JSX.Element {
   const { t } = useTranslation()
   const handleChange = React.useCallback(
@@ -414,16 +425,29 @@ export function UploadFallback({
   // v0.7.3 fix: 不 stopPropagation onPointerDown — 否则空卡片没法拖动。
   // 「短按弹文件框、长按拖动」由外壳 useNodeDragResize 保证：pointer capture 推迟到拖拽
   // 阈值(2px)跨过才抢——按下就抢会把 click 重定向到外壳，label 弹文件框整类失效（2026-08-03 群反馈）。
+  const isAudio = accept.startsWith('audio')
+  const isVideo = accept.startsWith('video')
+  const icon = isAudio ? <IconMusic size={20} stroke={1.6} /> : isVideo ? <IconVideo size={20} stroke={1.6} /> : kind === 'character' ? <IconUser size={20} stroke={1.6} /> : kind === 'scene' ? <IconMap size={20} stroke={1.6} /> : kind === 'prop' ? <IconBox size={20} stroke={1.6} /> : <IconPhoto size={20} stroke={1.6} />
+  const action = t('generationCommon.card.upload', { label })
+  const nodeCopy = kind === 'character'
+    ? { title: t('generationCommon.nodeEmpty.character.title'), description: t('generationCommon.nodeEmpty.character.description') }
+    : kind === 'scene'
+      ? { title: t('generationCommon.nodeEmpty.scene.title'), description: t('generationCommon.nodeEmpty.scene.description') }
+      : kind === 'prop'
+        ? { title: t('generationCommon.nodeEmpty.prop.title'), description: t('generationCommon.nodeEmpty.prop.description') }
+        : isAudio
+          ? { title: t('generationCommon.nodeEmpty.audio.title'), description: t('generationCommon.nodeEmpty.audio.description') }
+          : isVideo
+            ? { title: t('generationCommon.nodeEmpty.video.title'), description: t('generationCommon.nodeEmpty.video.description') }
+            : { title: t('generationCommon.nodeEmpty.image.title'), description: t('generationCommon.nodeEmpty.image.description') }
   return (
-    <label
-      className={cn(
-        'flex flex-col items-center justify-center w-full h-full gap-1 cursor-pointer',
-        'text-nomi-ink-60 hover:text-nomi-ink hover:bg-nomi-ink-05/50 transition-colors',
-      )}
-    >
-      <span className="text-body-sm font-medium tabular-nums pointer-events-none">
-        {t('generationCommon.card.upload', { label })}
-      </span>
+    <label className="block h-full w-full cursor-pointer text-nomi-ink-60 transition-colors hover:text-nomi-ink hover:bg-nomi-ink-05/50">
+      <NodeEmptyState
+        icon={icon}
+        title={nodeCopy.title}
+        description={nodeCopy.description}
+        action={<span className="inline-flex items-center gap-1.5 rounded-nomi-sm bg-nomi-ink px-3 py-1.5 text-caption font-medium text-nomi-paper"><IconUpload size={14} stroke={1.8} />{action}</span>}
+      />
       <input className="hidden" type="file" accept={accept} onChange={handleChange} />
     </label>
   )

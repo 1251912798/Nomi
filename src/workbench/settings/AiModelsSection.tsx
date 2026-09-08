@@ -6,10 +6,12 @@ import { useTranslation } from 'react-i18next'
 import { DesignSwitch, WorkbenchButton } from '../../design'
 import { getDesktopBridge, type AssetTransportChannelView } from '../../desktop/bridge'
 import type { AutomationPolicySettings } from '../../../electron/settings/automationPolicyContract'
+import { translateModelDisplayText } from '../../i18n/modelDisplayText'
 import { buildProviderHealthView, type SettingsProviderInput } from './settingsAutomationView'
 import { listWorkbenchModelCatalogModels, type ModelCatalogModelDto } from '../api/modelCatalogApi'
 import type { ProductionPolicyRequirement } from '../production/productionPolicyRecovery'
 import { DefaultGenerationModelsSection } from './DefaultGenerationModelsSection'
+import { VendorPreferenceOrderSection } from './VendorPreferenceOrderSection'
 import {
   getGenerationModelDefaults,
   loadGenerationModelDefaults,
@@ -157,6 +159,14 @@ export function AiModelsSection({
     (vendorKey: string) => health.find((provider) => provider.key === vendorKey)?.name || vendorKey,
     [health],
   )
+  // 「已配置」= 现在真的能调（`needs-key` / `disabled` 都不算）。排一个调不动的家没有意义，
+  // 排了还会让人以为排完就能用。判据跟着 buildProviderHealthView 走，不在这里另立一套。
+  const configuredVendorEntries = React.useMemo(
+    () => health
+      .filter((provider) => provider.state !== 'needs-key' && provider.state !== 'disabled')
+      .map((provider) => ({ vendorKey: provider.key, name: translateModelDisplayText(provider.name) })),
+    [health],
+  )
   const requiredProviderModels = React.useMemo(
     () => productionPolicyRequirement?.requiredProviderModels ?? [],
     [productionPolicyRequirement],
@@ -212,6 +222,10 @@ export function AiModelsSection({
         defaults={generationDefaults}
         onChange={handleDefaultsChange}
       />
+
+      {/* 「默认走哪个模型」的紧邻兄弟：「默认走哪家供应商」。两块都是「已接好的东西怎么用」，
+          住一起才不会出现第二个「默认用什么」的家（设计系统 §1.5.2 / §1.7.2）。 */}
+      <VendorPreferenceOrderSection entries={configuredVendorEntries} />
 
       {/* 2026-08-12 删掉顶部那段只读「模型连接」列表：模型的家搬去「模型」tab 之后，
           它就是第二个家；而且下面「默认模型策略」的勾选框本来就逐个列了 provider 且带状态，
@@ -420,7 +434,7 @@ export function AiModelsSection({
                       onChange({ allowedProviders: [...next] })
                     }}
                   />
-                  <span className="truncate">{provider.name}</span>
+                  <span className="truncate">{translateModelDisplayText(provider.name)}</span>
                   {required ? <span className="shrink-0 text-micro text-nomi-accent">{t('settings.ai.policy.requiredForRun')}</span> : null}
                 </label>
                 )
@@ -433,7 +447,9 @@ export function AiModelsSection({
             <div className="grid max-h-36 gap-1 overflow-y-auto sm:grid-cols-2">
               {orderedModels.map((model) => {
                 const required = isRequiredModel(model)
-                const providerName = health.find((provider) => provider.key === model.vendorKey)?.name || model.vendorKey
+                const providerName = translateModelDisplayText(
+                  health.find((provider) => provider.key === model.vendorKey)?.name || model.vendorKey,
+                )
                 return (
                 <label
                   key={`${model.vendorKey}:${model.modelKey}`}
@@ -452,7 +468,7 @@ export function AiModelsSection({
                       onChange({ allowedModels: [...next] })
                     }}
                   />
-                  <span className="min-w-0 truncate">{model.labelZh || model.modelKey} · {providerName}</span>
+                  <span className="min-w-0 truncate">{translateModelDisplayText(model.labelZh || model.modelKey)} · {providerName}</span>
                   {required ? <span className="shrink-0 text-micro text-nomi-accent">{t('settings.ai.policy.requiredForRun')}</span> : null}
                 </label>
                 )

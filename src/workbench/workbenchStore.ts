@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
+import { clampAssistantWidth } from './assistantWidthBounds'
 import {
   addClipAtFrame,
   applyClipStartFrames,
@@ -10,7 +11,6 @@ import {
   removeClipsByIds,
   removeClipsBySourceNodeIds,
   resizeClipEdge,
-  setClipFraming,
   setTimelinePlayheadFrame,
   setTimelineScale,
   splitClipAtFrame,
@@ -18,7 +18,6 @@ import {
 } from './timeline/timelineEdit'
 import { applyRegeneratedResultToClip } from './generationCanvas/model/buildClipFromGenerationNode'
 import type { GenerationNodeResult } from './generationCanvas/model/generationCanvasTypes'
-import type { ClipFraming } from './timeline/clipFraming'
 import {
   addTextClip,
   moveTextClip,
@@ -30,8 +29,9 @@ import {
 } from './timeline/timelineTextEdit'
 import type { Vec2 } from './timeline/overlayTransform'
 import { createDefaultTimeline, normalizeTimeline } from './timeline/timelineMath'
-import { readPreviewSourceCollapsed, writePreviewSourceCollapsed } from './preview/previewSourcePanelPreference'
 import type { TimelineClip, TimelineState, TimelineTextStyle, TimelineTrackType } from './timeline/timelineTypes'
+import type { TimelineTransition } from './timeline/timelineTypes'
+import { applyTimelineOperation } from './timeline/kernel/timelineKernel'
 import { timelineUndoTimeline, type TimelineUndoEntry } from './timeline/timelineUndoHistory'
 import { normalizeWorkbenchDocument, type CreationDocumentTools, type PreviewAspectRatio, type WorkbenchDocument } from './workbenchTypes'
 import type { ComposerAttachment } from './ai/composer/composerAttachmentTypes'
@@ -49,10 +49,11 @@ import { useGenerationCanvasStore } from './generationCanvas/store/generationCan
 import type { AgentContextHandle } from '../../electron/shared/agentContextSnapshot'
 import {
   DEFAULT_PROJECT_AGENT_APPROVAL_POLICY,
-  DEFAULT_PROJECT_AGENT_WORK_MODE,
   type ProjectAgentApprovalPolicy,
-  type ProjectAgentWorkMode,
 } from '../../electron/shared/projectAgentContracts'
+import { createEditingPanelLayoutSlice, type EditingPanelLayoutSlice } from './preview/editingPanelLayoutSlice'
+import { createTimelineClipWritesSlice, type TimelineClipWritesSlice } from './timeline/timelineClipWritesSlice'
+import type { ExportQuality } from './export/exportTypes'
 
 /** 拖动中临时吸附辅助线（非持久化）。 */
 export type TimelineSnapGuide = { frame: number; label: string }
@@ -89,17 +90,14 @@ type GraphViewport = { zoom: number; offset: { x: number; y: number } }
 export type ProjectAgentReference = Readonly<{
   id: string
   label: string
-  kind: 'document' | 'canvas' | 'preview' | 'timeline' | 'browser'
+  kind: 'document' | 'canvas' | 'preview' | 'timeline' | 'browser' | 'asset'
   /** Stable domain identity captured at send time (never a UI-only label). */
   value?: string
   /** Immutable selection handle captured when the user added this reference. */
   contextHandle?: AgentContextHandle
 }>
 
-/** Renderer alias; the canonical work-mode vocabulary lives in shared contracts. */
-export type ProjectAgentRunMode = ProjectAgentWorkMode
-
-type WorkbenchState = WorkbenchDocumentSlice & {
+type WorkbenchState = WorkbenchDocumentSlice & EditingPanelLayoutSlice & TimelineClipWritesSlice & {
   persistRevision: number
   workspaceMode: WorkspaceMode
   /** 生成/预览区右侧助手侧栏宽度（px，可拖宽）。 */
@@ -157,9 +155,10 @@ type WorkbenchState = WorkbenchDocumentSlice & {
   /** 跨生成/预览共享的时间轴高度（会话级 UI 态，不写入项目）。 */
   timelinePanelHeight: number
   setTimelinePanelHeight: (height: number) => void
-  /** 剪辑页左侧素材来源栏收起/展开（跨会话记住：剪片习惯因人而异）。 */
-  previewSourcePanelCollapsed: boolean
-  setPreviewSourcePanelCollapsed: (collapsed: boolean) => void
+  exportResolution: '720p' | '1080p'
+  exportQuality: ExportQuality
+  setExportResolution: (resolution: '720p' | '1080p') => void
+  setExportQuality: (quality: ExportQuality) => void
   /** 时间轴撤销栈（仅时间轴编辑，非持久化）。封顶后丢最旧。 */
   timelineUndoStack: TimelineUndoEntry[]
   /** 时间轴重做栈。撤销时压入；任一新编辑清空（新编辑使 redo 失效，标准语义）。 */
@@ -185,16 +184,18 @@ type WorkbenchState = WorkbenchDocumentSlice & {
   projectAgentAttachments: ComposerAttachment[]
   /** Composer-only references. Host remains the sole owner of durable context/history. */
   projectAgentReferences: ProjectAgentReference[]
-  projectAgentRunMode: ProjectAgentRunMode
-  /** Approval and spend are a separate axis from work mode; this snapshot is copied into each Host turn. */
+  /**
+   * 授权只有**一根**面板轴：审批与花费策略。工作方式三档（Ask / 编辑选中 / Agent）
+   * 于 2026-09-06 拍板 ① 从界面上删除——范围由 composer 的「选中」chip 决定，不再是一个模式。
+   * `ProjectAgentWorkMode` 这根轴仍在宿主合同里、仍被宿主执行（`projectAgentWorkModeDecision`），
+   * 只是渲染层不再挑它，一律走它自己的默认值 `agent`。所以合同那句
+   * 「Changing the work mode never widens approval」照旧成立：我们一根轴都没动。
+   */
   projectAgentApprovalPolicy: ProjectAgentApprovalPolicy
-  projectAgentDockCollapsed: boolean
   setProjectAgentDraft: (draft: string) => void
   setProjectAgentAttachments: (attachments: ComposerAttachment[] | ((attachments: ComposerAttachment[]) => ComposerAttachment[])) => void
   setProjectAgentReferences: (references: ProjectAgentReference[] | ((references: ProjectAgentReference[]) => ProjectAgentReference[])) => void
-  setProjectAgentRunMode: (mode: ProjectAgentRunMode) => void
   setProjectAgentApprovalPolicy: (policy: ProjectAgentApprovalPolicy) => void
-  setProjectAgentDockCollapsed: (collapsed: boolean) => void
   setTimeline: (timeline: TimelineState) => void
   restoreProjectWorkbenchState: (payload: { workbenchDocument: WorkbenchDocument; timeline: TimelineState }) => void
   setTimelinePlaying: (playing: boolean) => void
@@ -207,6 +208,11 @@ type WorkbenchState = WorkbenchDocumentSlice & {
   setTimelineSnapGuide: (guide: TimelineSnapGuide | null) => void
   removeTimelineClip: (clipId: string) => void
   removeSelectedTimelineClips: () => void
+  removeTimelineClips: (clipIds: string[], ripple?: boolean) => void
+  // 一条或一批转场。整批走同一次 set，一次 ⌘Z 全撤（「套用到所有接缝」靠这条）。
+  setTimelineTransition: (transition: TimelineTransition | readonly TimelineTransition[]) => void
+  removeTimelineTransition: (fromClipId: string, toClipId: string) => void
+  setTimelineTrackMuted: (trackId: string, muted: boolean) => void
   /**
    * 删画布节点后的时间轴对账：移除所有引用这些 sourceNodeId 的 clip。
    * 由 canvasNodeActions 的 deleteNode/deleteSelectedNodes 删完节点后调用（跨 store 最小耦合）。
@@ -222,8 +228,6 @@ type WorkbenchState = WorkbenchDocumentSlice & {
   splitTimelineClip: (clipId: string, frame: number) => void
   duplicateTimelineClip: (clipId: string) => void
   nudgeTimelineClip: (clipId: string, deltaFrame: number) => void
-  /** 设置 clip 取景（适应/填充 + 缩放 + 平移）。拖动/连续缩放传 commit:false，落定 commit:true 落盘一次。 */
-  setTimelineClipFraming: (clipId: string, patch: Partial<ClipFraming>, options?: { commit?: boolean }) => void
   /** additive(shift/⌘)：在集合中切换；否则替换为单选。 */
   selectTimelineClip: (clipId: string, options?: { additive?: boolean }) => void
   setTimelineSelection: (clipIds: string[]) => void
@@ -327,9 +331,7 @@ export const useWorkbenchStore = create<WorkbenchState>()(subscribeWithSelector(
   projectAgentDraft: '',
   projectAgentAttachments: [],
   projectAgentReferences: [],
-  projectAgentRunMode: DEFAULT_PROJECT_AGENT_WORK_MODE,
   projectAgentApprovalPolicy: DEFAULT_PROJECT_AGENT_APPROVAL_POLICY,
-  projectAgentDockCollapsed: false,
   setProjectAgentDraft: (projectAgentDraft) => set({ projectAgentDraft }),
   setProjectAgentAttachments: (attachments) => set((state) => ({
     projectAgentAttachments: typeof attachments === 'function' ? attachments(state.projectAgentAttachments) : attachments,
@@ -337,9 +339,7 @@ export const useWorkbenchStore = create<WorkbenchState>()(subscribeWithSelector(
   setProjectAgentReferences: (references) => set((state) => ({
     projectAgentReferences: typeof references === 'function' ? references(state.projectAgentReferences) : references,
   })),
-  setProjectAgentRunMode: (projectAgentRunMode) => set({ projectAgentRunMode }),
   setProjectAgentApprovalPolicy: (projectAgentApprovalPolicy) => set({ projectAgentApprovalPolicy: Object.freeze({ mode: projectAgentApprovalPolicy.mode, spend: projectAgentApprovalPolicy.spend }) }),
-  setProjectAgentDockCollapsed: (projectAgentDockCollapsed) => set({ projectAgentDockCollapsed: Boolean(projectAgentDockCollapsed) }),
   timeline: createDefaultTimeline(),
   timelinePlaying: false,
   previewAspectRatio: '16:9',
@@ -347,25 +347,27 @@ export const useWorkbenchStore = create<WorkbenchState>()(subscribeWithSelector(
   selectedTextClipId: '',
   timelineSnapGuide: null,
   timelineSplitMode: false,
-  // 默认折叠（对齐 origin/main）：展开态时间轴要吃掉画布 stage 底部 ~188px，在 720 最小窗口下
-  // 会把 stage 压到装不下靠底节点的 composer 下挂（j5 composer-usable-at-min-window 红）。cutover 把它
-  // 翻成 false（默认展开）是本回归的根因——恢复 true，可拖拽面板特性不变，用户仍可随时展开/拉高。
+  // 默认折叠以保持最小窗口的 composer 可用空间；用户仍可拖拽展开。
   timelinePanelCollapsed: true,
   setTimelinePanelCollapsed: (collapsed) => set({ timelinePanelCollapsed: Boolean(collapsed) }),
   timelinePanelHeight: TIMELINE_PANEL_DEFAULT,
   setTimelinePanelHeight: (height) => set({ timelinePanelHeight: clampTimelinePanelHeight(height) }),
-  previewSourcePanelCollapsed: readPreviewSourceCollapsed(),
-  setPreviewSourcePanelCollapsed: (collapsed) => {
-    writePreviewSourceCollapsed(Boolean(collapsed))
-    set({ previewSourcePanelCollapsed: Boolean(collapsed) })
-  },
+  ...createEditingPanelLayoutSlice(set, get, store),
+  exportResolution: '1080p',
+  exportQuality: 'standard',
+  setExportResolution: (exportResolution) => set({ exportResolution }),
+  setExportQuality: (exportQuality) => set({ exportQuality }),
   timelineUndoStack: [],
   timelineRedoStack: [],
   setWorkspaceMode: (mode) => {
     if (!isWorkspaceMode(mode)) return
     set({ workspaceMode: mode })
   },
-  setAssistantWidth: (width) => set({ assistantWidth: Math.max(300, Math.min(600, Math.round(width))) }),
+  // 上限按**当下的视口**算，不是一个写死的 600（定稿 §11.2 窄窗态）。视口从 store 里读不到，
+  // 只能问 window；非 DOM 环境（单测、node）落回 0 → `assistantWidthMaxFor` 报满上限。
+  setAssistantWidth: (width) => set({
+    assistantWidth: clampAssistantWidth(width, typeof window === 'undefined' ? 0 : window.innerWidth),
+  }),
   setProjectSidebarWidth: (width) => set({ projectSidebarWidth: Math.max(240, Math.min(720, Math.round(width))) }),
   setCreationDocumentTools: (creationDocumentTools) => {
     set({ creationDocumentTools })
@@ -399,7 +401,6 @@ export const useWorkbenchStore = create<WorkbenchState>()(subscribeWithSelector(
     set({
       workbenchDocuments: [doc],
       activeDocumentId: doc.id,
-      storyboardPlans: {},
       storyboardDesignsByDocumentId: {},
       activeStoryboardId: null,
       timeline: normalizeTimeline(timeline),
@@ -461,11 +462,9 @@ export const useWorkbenchStore = create<WorkbenchState>()(subscribeWithSelector(
   captureTimelineUndo: () => {
     set((state) => {
       const stack = state.timelineUndoStack
-      // 去重：手势重复 capture 同一状态不重复入栈。
       if (stack.length > 0 && stack[stack.length - 1] === state.timeline) return state
       const next = [...stack, state.timeline]
       if (next.length > TIMELINE_UNDO_LIMIT) next.shift()
-      // capture 发生在一次新编辑（多为拖拽手势）首次改动前 → 清空 redo（新编辑使 redo 失效）。
       return { timelineUndoStack: next, timelineRedoStack: [] }
     })
   },
@@ -478,9 +477,7 @@ export const useWorkbenchStore = create<WorkbenchState>()(subscribeWithSelector(
       return {
         timeline: previous,
         timelineUndoStack: stack.slice(0, -1),
-        // 撤销 = 把当前态推入 redo 栈（供 ⇧⌘Z 放回）。
         timelineRedoStack: [...state.timelineRedoStack, state.timeline].slice(-TIMELINE_UNDO_LIMIT),
-        // 撤销后清掉指向已不存在 clip 的选择，避免 Delete/工具作用于幽灵选区
         selectedTimelineClipIds: state.selectedTimelineClipIds.filter((id) => liveIds.has(id)),
         selectedTextClipId: previous.textClips.some((c) => c.id === state.selectedTextClipId) ? state.selectedTextClipId : '',
         timelinePlaying: false,
@@ -496,7 +493,6 @@ export const useWorkbenchStore = create<WorkbenchState>()(subscribeWithSelector(
       const liveIds = new Set(restored.tracks.flatMap((track) => track.clips.map((clip) => clip.id)))
       return {
         timeline: restored,
-        // 重做 = 把当前态推回撤销栈、从 redo 弹出（不清 redo——这不是新编辑）。
         timelineUndoStack: [...state.timelineUndoStack, state.timeline].slice(-TIMELINE_UNDO_LIMIT),
         timelineRedoStack: stack.slice(0, -1),
         selectedTimelineClipIds: state.selectedTimelineClipIds.filter((id) => liveIds.has(id)),
@@ -531,6 +527,67 @@ export const useWorkbenchStore = create<WorkbenchState>()(subscribeWithSelector(
         selectedTimelineClipIds: [],
         timelinePlaying: false,
         persistRevision: changed ? state.persistRevision + 1 : state.persistRevision,
+      }
+    })
+  },
+  removeTimelineClips: (clipIds, ripple = false) => {
+    set((state) => {
+      const ids = Array.from(new Set(clipIds.map((id) => String(id).trim()).filter(Boolean)))
+      if (ids.length === 0) return state
+      const result = applyTimelineOperation(state.timeline, { kind: 'remove', clipIds: ids, ripple })
+      if (!result.ok || !result.diff.changed) return state
+      return {
+        timeline: result.timeline,
+        timelineUndoStack: pushTimelineUndo(state.timelineUndoStack, state.timeline),
+        timelineRedoStack: [],
+        selectedTimelineClipIds: [],
+        timelinePlaying: false,
+        persistRevision: state.persistRevision + 1,
+      }
+    })
+  },
+  setTimelineTransition: (transition) => {
+    set((state) => {
+      const transitions = [...(state.timeline.transitions ?? [])]
+      for (const entry of Array.isArray(transition) ? transition : [transition as TimelineTransition]) {
+        const index = transitions.findIndex((item) => item.fromClipId === entry.fromClipId && item.toClipId === entry.toClipId)
+        if (index >= 0) transitions[index] = entry
+        else transitions.push(entry)
+      }
+      if (JSON.stringify(transitions) === JSON.stringify(state.timeline.transitions ?? [])) return state
+      return {
+        timeline: { ...state.timeline, transitions },
+        timelineUndoStack: pushTimelineUndo(state.timelineUndoStack, state.timeline),
+        timelineRedoStack: [],
+        persistRevision: state.persistRevision + 1,
+      }
+    })
+  },
+  removeTimelineTransition: (fromClipId, toClipId) => {
+    set((state) => {
+      const transitions = state.timeline.transitions ?? []
+      const next = transitions.filter((item) => item.fromClipId !== fromClipId || item.toClipId !== toClipId)
+      if (next.length === transitions.length) return state
+      return {
+        timeline: { ...state.timeline, transitions: next },
+        timelineUndoStack: pushTimelineUndo(state.timelineUndoStack, state.timeline),
+        timelineRedoStack: [],
+        persistRevision: state.persistRevision + 1,
+      }
+    })
+  },
+  setTimelineTrackMuted: (trackId, muted) => {
+    set((state) => {
+      const track = state.timeline.tracks.find((item) => item.id === trackId)
+      if (!track || track.type === 'image' || track.clips.length === 0) return state
+      const tracks = state.timeline.tracks.map((item) => item.id === trackId
+        ? { ...item, clips: item.clips.map((clip) => ({ ...clip, audio: { ...clip.audio, muted } })) }
+        : item)
+      return {
+        timeline: { ...state.timeline, tracks },
+        timelineUndoStack: pushTimelineUndo(state.timelineUndoStack, state.timeline),
+        timelineRedoStack: [],
+        persistRevision: state.persistRevision + 1,
       }
     })
   },
@@ -718,17 +775,7 @@ export const useWorkbenchStore = create<WorkbenchState>()(subscribeWithSelector(
       }
     })
   },
-  setTimelineClipFraming: (clipId, patch, options) => {
-    const commit = options?.commit !== false
-    set((state) => {
-      const next = setClipFraming(state.timeline, clipId, patch)
-      const changed = next !== state.timeline
-      return {
-        timeline: next,
-        persistRevision: commit && changed ? state.persistRevision + 1 : state.persistRevision,
-      }
-    })
-  },
+  ...createTimelineClipWritesSlice(pushTimelineUndo)(set, get, store),
   updateTimelineTextClipFont: (id, fontId) => {
     set((state) => {
       const next = updateTextClipFont(state.timeline, id, fontId)

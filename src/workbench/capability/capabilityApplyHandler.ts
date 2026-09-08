@@ -1,5 +1,10 @@
 import { useGenerationCanvasStore } from '../generationCanvas/store/generationCanvasStore'
 import { getActiveWorkbenchProjectId } from '../project/workbenchProjectSession'
+import {
+  MCP_PROJECT_ADDRESSABLE_CAPABILITY_OPS,
+  MCP_REALTIME_SURFACE_CAPABILITY_OPS,
+  capabilityProjectBindingError,
+} from './capabilityProjectBinding'
 import { useSpendConfirmStore } from '../generationCanvas/spend/spendConfirm'
 import { buildMultiShotContractView, type MultiShotGatePayload } from '../generationCanvas/spend/productionContractView'
 import { getDesktopBridge } from '../../desktop/bridge'
@@ -15,7 +20,8 @@ import { exportTimelineToWebm } from '../export/timelineWebmExport'
 import { verifyShotsAndReport, isShotVerifyEnabled } from '../generationCanvas/agent/shotVerifyStore'
 import { isAnchorFrozen, isVisualAnchorNode } from '../generationCanvas/model/anchorBibleKeys'
 import { assertDraftFilmReady, draftFilmTimelineFromState } from '../preview/timelineSubtitleTransitionContract'
-import { parseStoryboardPlan, storyboardPlanToCreateNodesArgs } from '../generationCanvas/agent/storyboardPlan'
+import { storyboardPlanToCreateNodesArgs } from '../generationCanvas/agent/storyboardPlan'
+import { parseStoryboardPlan } from '../generationCanvas/agent/storyboardPlanSchema'
 import { resolveStoryboardImageDefault, resolveStoryboardVideoDefault } from '../generationCanvas/agent/availableModels'
 import { applyCanvasToolCall, resolveCanvasToolNodeId } from '../generationCanvas/agent/applyCanvasToolCall'
 import { generationCanvasTools, readGenerationCanvasSnapshot } from '../generationCanvas/agent/generationCanvasTools'
@@ -29,6 +35,10 @@ import {
   type CapturedCanvasReadSnapshotHandleWire,
 } from '../../../electron/shared/surfacePortBinding'
 import { handleMultiShotCanvasLandingOp } from './multiShotCanvasLanding'
+import { executeTimelineReadTarget, executeTimelineWriteTarget } from '../timeline/agent/timelineCapabilityTarget'
+import { executeAssetReadTarget, executeExportReadTarget } from '../timeline/agent/phase4CapabilityTargets'
+import { executeCanonicalCanvasPlanPatch } from './canonicalCanvasPlanPatch'
+import { handleMcpHostSurfaceOp } from './mcpHostSurfaceOps'
 
 // 能力核 A 模式实时桥 · 渲染层处理器。
 // 主进程把外部 MCP 的画布读/写/付费确认转发到这里（只在该项目正打开时路由），处理后回结果。
@@ -91,7 +101,7 @@ async function runProductionTextPlanner(input: {
       ? [
           '你是分镜规划师。请根据下面的原分镜方案和修改要求，输出一份完整、可执行的 StoryboardPlan JSON。',
           '只输出 JSON，不要 Markdown、解释或代码围栏。必须包含 title、anchors、shots；每个 shot 必须包含 index、durationSec、anchorIds、prompt。',
-          '允许的 shot 字段：shotId、shotKind(image|video)、durationSec、anchorIds、prompt、modelKey、modeId、params、ffDesc、motionDesc、lfDesc、subtitle、dialogue、variationType(large|medium|small)、camIdx、continuity、transition({type:cut|dissolve|fade|match_cut|whip_pan,durationFrames?})、keyframe。',
+          '允许的 shot 字段：shotId、shotKind(image|video)、durationSec、anchorIds、prompt、modelKey、modeId、params、ffDesc、motionDesc、variationType(large|medium|small)、camIdx、continuity、keyframe。',
           `修改要求：${input.instruction || '保持原方案，只修正明显问题。'}`,
           '原分镜方案：',
           input.source || '',
@@ -336,8 +346,18 @@ export async function handleCapabilityApply(op: string, payload: unknown): Promi
   // 画布读写**只能**作用于当前打开的项目（动 store → 必须是活动项目，否则串台）；目标≠活动 → 拒。
   // 确认门（spend.confirm / plan.confirm）不在此限：AI 想在「非当前项目」生成/落方案时也弹全局卡，
   // 卡里标明项目名，确认后走盘落地（不动非活动 store）。这正是治静默黑洞的关键放开。
-  if (op !== 'spend.confirm' && op !== 'plan.confirm' && projectId && activeId && projectId !== activeId) {
-    throw new Error(i18n.t('runtime.capability.projectChanged'))
+  //
+  // 项目身份按**面**分流（定义与理由住在 capabilityProjectBinding.ts）：
+  // · 可寻址面（asset.read / export.read）——底下按 projectId 直接寻址主进程 store，项目开不开着都能答，
+  //   所以完全豁免本闸，lease 的 projectId 一路往下传（这正是 MCP 宿主「改不了自己建的项目」的根因）。
+  // · 实时面（timeline.read / timeline.write）——真相在打开的那个项目的 store 里，
+  //   **没打开任何项目也算不匹配**（旧闸在这种情况放行，然后适配器抛没有下一步的 project_scope_required）。
+  // · 其余 op 维持原来的「目标≠活动 → 拒」，只是错误换成了会点名的那一句。
+  if (!MCP_PROJECT_ADDRESSABLE_CAPABILITY_OPS.has(op) && op !== 'spend.confirm' && op !== 'plan.confirm' && projectId) {
+    const mismatched = MCP_REALTIME_SURFACE_CAPABILITY_OPS.has(op)
+      ? projectId !== (activeId ?? '')
+      : Boolean(activeId) && projectId !== activeId
+    if (mismatched) throw capabilityProjectBindingError(projectId, activeId)
   }
   const plannerSnapshot =
     op === 'production.plan-storyboard'
@@ -363,7 +383,38 @@ export async function handleCapabilityApply(op: string, payload: unknown): Promi
   const landed = await handleMultiShotCanvasLandingOp(op, data)
   if (landed !== null) return landed
 
+  // 外部 MCP 宿主触发的纯渲染层副作用（打开凭据页 / 宿主配置已修复提示），落点住在 mcpHostSurfaceOps。
+  const hostSurface = handleMcpHostSurfaceOp(op, data)
+  if (hostSurface !== null) return hostSurface
+
   switch (op) {
+    case 'document.write': {
+      const tools = useWorkbenchStore.getState().creationDocumentTools
+      const operation = data.operation === 'insert' || data.operation === 'replace' || data.operation === 'append'
+        ? data.operation
+        : null
+      const content = typeof data.content === 'string' ? data.content : ''
+      const documentId = useWorkbenchStore.getState().activeDocumentId
+      if (!tools || !operation || !content || !documentId) {
+        throw new SurfacePortWireError('surface_port_unavailable')
+      }
+      const current = tools.readState()
+      return tools.applyDocumentWrite({
+        operation,
+        content,
+        target: { kind: 'document', documentId, anchor: current.anchor },
+        preconditions: { document: { revision: current.revision, contentHash: current.contentHash } },
+      })
+    }
+    case 'canvas.write':
+      return executeCanonicalCanvasPlanPatch({
+        projectId,
+        input: data.input,
+        receiptProposalId: typeof data.receiptProposalId === 'string' ? data.receiptProposalId : 'mcp-canvas-plan:renderer',
+        approvalId: typeof data.approvalId === 'string' ? data.approvalId : 'mcp-canvas-plan:renderer',
+        ...(typeof data.actionHash === 'string' ? { actionHash: data.actionHash } : {}),
+        readActiveProjectId: getActiveWorkbenchProjectId,
+      })
     case 'canvas.read-doc':
       return useGenerationCanvasStore.getState().readDocumentSnapshot()
     case 'canvas.apply':
@@ -375,6 +426,96 @@ export async function handleCapabilityApply(op: string, payload: unknown): Promi
       return confirmGenerationGateForAgent(data as GenerationGateConfirmPayload)
     case 'plan.confirm':
       return confirmPlanForAgent(data as PlanConfirmPayload)
+    case 'timeline.read': {
+      // 阶段 5a：`operation` **就是**语义动作名（`read_timeline` / `inspect_timeline_range`）。
+      // 这里原本有一条 `'range' → inspect_timeline_range` 的反向映射，它存在的唯一理由是
+      // 对外 MCP 曾经自带一套动作词表（`read` / `range`）。两个 profile 同源之后那套词表
+      // 没有了，反向映射也就没有了——少一处「外部说的名字在 Nomi 日志里搜不到」的地方。
+      return executeTimelineReadTarget(
+        data.operation === 'inspect_timeline_range'
+          ? {
+              operation: 'inspect_timeline_range',
+              startFrame: data.startFrame,
+              endFrame: data.endFrame,
+            } as Parameters<typeof executeTimelineReadTarget>[0]
+          : { operation: 'read_timeline' },
+      )
+    }
+    case 'timeline.write': {
+      if (data.operation === 'preview') {
+        const plan = data.plan && typeof data.plan === 'object' && !Array.isArray(data.plan) ? data.plan as Record<string, unknown> : {}
+        return executeTimelineReadTarget({ operation: 'propose_edit_plan', ...plan } as Parameters<typeof executeTimelineReadTarget>[0])
+      }
+      const signal = new AbortController().signal
+      const plan = data.plan && typeof data.plan === 'object' && !Array.isArray(data.plan) ? data.plan as Record<string, unknown> : {}
+      const input = data.operation === 'undo'
+        ? { operation: 'undo_timeline_edit', undoToken: data.undoToken, expectedRevision: data.expectedRevision, ...(typeof data.reason === 'string' ? { reason: data.reason } : {}) }
+        : { operation: 'apply_edit_plan', ...plan }
+      const revision = data.operation === 'undo' && typeof data.expectedRevision === 'string'
+        ? data.expectedRevision
+        : typeof plan.baseRevision === 'string' ? plan.baseRevision : ''
+      return executeTimelineWriteTarget({
+        ...(projectId ? { projectId } : {}),
+        input: input as Parameters<typeof executeTimelineWriteTarget>[0]['input'],
+        target: { kind: 'timeline', clipIds: [] },
+        preconditions: { timeline: { revision } },
+        receiptProposalId: typeof data.receiptProposalId === 'string' ? data.receiptProposalId : 'mcp-edit:renderer',
+        approvalId: typeof data.approvalId === 'string' ? data.approvalId : 'mcp-host:renderer',
+        actionHash: typeof data.actionHash === 'string' ? data.actionHash : 'mcp-action:renderer',
+        signal,
+        assertCurrent: () => undefined,
+      })
+    }
+    case 'layout.read': {
+      const layout = useWorkbenchStore.getState().editingPanelLayout
+      return { operation: 'read_layout', ok: true, layout }
+    }
+    case 'layout.write': {
+      const next = data.layout && typeof data.layout === 'object' && !Array.isArray(data.layout)
+        ? data.layout as Parameters<ReturnType<typeof useWorkbenchStore.getState>['setEditingPanelLayout']>[0]
+        : null
+      if (!next) throw new SurfacePortWireError('capability_input_invalid')
+      const store = useWorkbenchStore.getState()
+      const previous = store.editingPanelLayout
+      store.setEditingPanelLayout(next)
+      return { operation: 'write_layout', ok: true, layout: useWorkbenchStore.getState().editingPanelLayout, receipt: `布局已更新 · ⌘Z 可撤销`, undoToken: `layout:${Date.now()}:${previous.preset}` }
+    }
+    case 'asset.read': {
+      // 载荷是**传输形状**（leaseHandle / projectId / operation:'list'…），语义 schema 是 strict 的：
+      // 整包 spread 会把 operation 覆盖回 'list'、还带进 leaseHandle/projectId，两条都直接
+      // capability_input_invalid（真宿主旅程当场撞出来的）。所以按面逐字段搭语义输入。
+      // 阶段 5a：`operation` **就是**语义动作名。这里原本还有一条
+      // `list/get/inspect/source_range/waveform → search_media/…` 的反向映射链，
+      // 与 MCP 侧 `parseCall` 里那条三元表达式是同一张手写表的两半。两边同源之后两半一起没了。
+      const assetId = typeof data.assetId === 'string' ? data.assetId : ''
+      const input = data.operation === 'get_media' || data.operation === 'inspect_media'
+        ? { operation: data.operation, assetId }
+        : data.operation === 'inspect_source_range'
+          ? { operation: 'inspect_source_range', assetId, startFrame: data.startFrame, endFrame: data.endFrame }
+          : data.operation === 'read_waveform'
+            ? {
+                operation: 'read_waveform',
+                assetId,
+                ...(data.startSeconds === undefined ? {} : { startSeconds: data.startSeconds }),
+                ...(data.endSeconds === undefined ? {} : { endSeconds: data.endSeconds }),
+                ...(data.buckets === undefined ? {} : { buckets: data.buckets }),
+              }
+            : {
+                operation: 'search_media',
+                query: typeof data.query === 'string' ? data.query : '',
+                ...(Array.isArray(data.kinds) ? { kinds: data.kinds } : {}),
+                ...(data.limit === undefined ? {} : { limit: data.limit }),
+              }
+      return executeAssetReadTarget({
+        ...(projectId ? { projectId } : {}),
+        input,
+        target: { kind: 'asset', assetIds: assetId ? [assetId] : [] },
+      })
+    }
+    case 'export.read': {
+      const operation = data.operation === 'verify' ? 'verify_render' : 'inspect_export_job'
+      return executeExportReadTarget({ ...(projectId ? { projectId } : {}), input: { operation, jobId: data.jobId }, target: { kind: 'export', jobId: data.jobId } })
+    }
     case 'production.plan-directions': {
       // B1 方向门：driver 停在 awaiting_direction 时让渲染层拟 2-3 个「创意方向」候选（三选一）。
       // 走无工具的一次性文本链路（runDirectionPlanner），语言跟随 brief。失败冒泡给 driver 走
@@ -442,7 +583,6 @@ export async function handleCapabilityApply(op: string, payload: unknown): Promi
           : {}
       const result = await runStoryboardPlanner({
         target: 'production',
-        history: { kind: 'ephemeral' },
         projectId,
         featureKey: plannerFeatureKey,
         snapshot: plannerSnapshot!,
@@ -473,9 +613,11 @@ export async function handleCapabilityApply(op: string, payload: unknown): Promi
       ])
       const args = storyboardPlanToCreateNodesArgs(plan, {
         ...(imageDefault.modelKey ? { defaultImageModelKey: imageDefault.modelKey } : {}),
+        ...(imageDefault.modelVendor ? { defaultImageModelVendor: imageDefault.modelVendor } : {}),
         ...(imageDefault.modeId ? { defaultImageModeId: imageDefault.modeId } : {}),
         ...(imageDefault.refModeId ? { defaultImageRefModeId: imageDefault.refModeId } : {}),
         ...(videoDefault.modelKey ? { defaultVideoModelKey: videoDefault.modelKey } : {}),
+        ...(videoDefault.modelVendor ? { defaultVideoModelVendor: videoDefault.modelVendor } : {}),
         ...(videoDefault.modeId ? { defaultVideoModeId: videoDefault.modeId } : {}),
         ...(materializationOperationId ? { materializationOperationId } : {}),
       })

@@ -58,7 +58,7 @@ export type ProjectAgentApprovalPolicy = Readonly<{
 
 /** Safe, backwards-compatible default for records written before this field existed. */
 export const DEFAULT_PROJECT_AGENT_APPROVAL_POLICY: ProjectAgentApprovalPolicy = Object.freeze({
-  mode: "step",
+  mode: "safe-auto",
   spend: "confirm",
 });
 
@@ -81,6 +81,10 @@ export const PROJECT_AGENT_ITEM_KINDS = [
   "artifact",
   "failure",
 ] as const;
+
+/** User-facing execution profile shared by renderer and Host contracts. */
+export const AGENT_TOOL_PROFILES = ["creation", "generation", "storyboard", "timeline", "production"] as const;
+export type AgentToolProfile = (typeof AGENT_TOOL_PROFILES)[number];
 
 export type ProjectAgentItemKind = (typeof PROJECT_AGENT_ITEM_KINDS)[number];
 
@@ -219,6 +223,10 @@ export type ProjectAgentTurn = ProjectAgentRecordBase &
     workMode?: ProjectAgentWorkMode;
     /** Optional for legacy snapshots; new turns freeze both approval axes. */
     approvalPolicy?: ProjectAgentApprovalPolicy;
+    /** Provider-reported usage for this terminal turn; absent on legacy/running records. */
+    usage?: AgentChatResponse["usage"];
+    /** Runtime-owned Pi context accounting; present after a stable terminal run. */
+    runtimeContext?: ProjectAgentRuntimeContext;
     skillVersions: readonly ProjectAgentVersionRef[];
     capabilityVersions: readonly ProjectAgentVersionRef[];
     contextRef: ProjectAgentContextRef;
@@ -247,6 +255,16 @@ export type ProjectAgentToolItem = ProjectAgentItemBase &
     text?: string;
     capability: ProjectAgentVersionRef;
     resultRef?: string;
+    /** Hash-free provenance projection from the Host-owned prompt receipt. */
+    provenance?: readonly Readonly<{
+      source: string;
+      sourceRef: string;
+      trust: string;
+      tainted: boolean;
+      assetEvidenceRef?: string;
+    }>[];
+    /** Ref-only canonical Skill evidence; the body is re-read and hash-checked on the next turn. */
+    skillLoad?: Readonly<{ name: string; packageVersion: string; contentHash: string }>;
   }>;
 
 export type ProjectAgentProposalItem =
@@ -271,6 +289,13 @@ export type ProjectAgentTaskItem = Omit<ProjectAgentItemBase, "status" | "retrya
     retryable: false;
     deviated: false;
   }>;
+
+export type ProjectAgentRuntimeContext = Readonly<{
+  normalRequests: number;
+  summaryRequests: number;
+  compactions: number;
+  retainedMessages: number;
+}>;
 
 export type ProjectAgentArtifactRef = Readonly<{
   runId: string;
@@ -394,6 +419,9 @@ export type ProjectAgentAsyncResultEnvelope = Readonly<{
   expectedRevision: number;
   items: readonly ProjectAgentItem[];
   turnStatus: ProjectAgentStatus;
+  /** Provider-reported usage is committed with the terminal Host turn. */
+  usage?: AgentChatResponse["usage"];
+  runtimeContext?: ProjectAgentRuntimeContext;
   retryable?: boolean;
   proposalApprovalId?: string;
   proposalStatus?: ProjectAgentStatus;

@@ -45,185 +45,38 @@ import type {
   VideoModelCandidate,
 } from "../shared/videoCapabilities/recommendation";
 import { effectiveVideoModes } from "../shared/videoCapabilities/recommendation";
+import { resolveGenerationPlan, type PlanShotInput } from "../shared/videoCapabilities/planResolver";
+import { generationResolveInputSchema } from "../shared/agentCapabilities/generation";
 import type { GenerationDefaultTaskKind } from "../settings/generationModelDefaultsContract";
 import { semanticCandidateFromParams } from "./semanticGenerationCandidate";
 import { projectGenerationOperationPreview } from "./mcpGenerationPreview";
 export const GENERATION_RECONCILE_OUTCOMES = ["found", "not_found"] as const;
+
+// J06 — 诚实 ETA：冷启动给区间（low/high），不再硬编 40/180s 点值。
+// 历史 P50/P90 落盘后可切 etaBasis='historical'；当前全部为 coldstart。
+// 基线（APIMart 生产 2026-09-03）：video 4-10min / image 10-60s / audio 15-90s。
+const COLDSTART_ETA_BY_KIND: Record<string, { low: number; high: number }> = {
+  video: { low: 240, high: 600 }, image: { low: 10, high: 60 },
+  audio: { low: 15, high: 90 },  model3d: { low: 120, high: 300 },
+};
+/** J06 — shotCount × kind → { waitSeconds, waitSecondsHigh, etaBasis }. */
+export function coldstartEtaForGate(outputKinds: readonly string[], shotCount: number): { waitSeconds: number; waitSecondsHigh: number; etaBasis: 'coldstart' } {
+  const primaryKind = outputKinds.find((k) => k === "video") ?? outputKinds[0] ?? "image";
+  const { low, high } = COLDSTART_ETA_BY_KIND[primaryKind] ?? { low: 120, high: 360 };
+  return { waitSeconds: Math.round(low * shotCount), waitSecondsHigh: Math.round(high * shotCount), etaBasis: "coldstart" as const };
+}
+
 /**
  * The semantic MCP surface is deliberately data-only.  These tools are the
  * same vocabulary a GUI adapter uses; neither the catalog nor this handler
  * knows a vendor-specific parameter or calls a provider.
+ *
+ * 面收敛（surface-16-collapse）：generation-operation 的 8 步 CRUD + get_context 塌成 5 个贴生命周期的工具。
+ * get_context 收进 nomi_read（target=generation_context）不在此。收敛只在 catalog 层：build 按 phase/action 分派
+ * 到**原 method 字面量**（能力核 handler 的 capability 分支逐字不动，付费 seam 一行不碰）；多态工具带
+ * resolveMethod(args)→内部路由键（SEMANTIC_GENERATION_ROUTES 据此选 capability）。
  */
-export const MCP_GENERATION_TOOL_CATALOG = [
-  {
-    name: "nomi_get_generation_context",
-    description: "读取当前项目可用的生成模块、模型、模式和参考素材；不调用模型。",
-    inputSchema: {
-      type: "object",
-      properties: { projectId: { type: "string" }, leaseHandle: { type: "string" } },
-      required: ["leaseHandle"],
-      additionalProperties: false,
-    },
-    method: "nomi_get_generation_context",
-    build: (args: Record<string, unknown>) => ({ projectId: args.projectId, leaseHandle: args.leaseHandle }),
-  },
-  {
-    name: "nomi_operation_create",
-    // P4 S6.5: 单镜给 candidate；多镜给 shots（逐镜计划：每项 {shotId?, role?(anchor/shot), included?, candidate}）
-    // 或 scriptText（剧本文本，服务端拟镜出镜表）。三者给其一。仍不提交、不花额度。
-    description: "创建一份可编辑的生成草稿；此时不提交、不花额度。普通 prompt 走单镜；分钟级/成片 prompt 自动先拟剧本和分镜，多镜也可显式传 shots 或 scriptText。",
-    inputSchema: {
-      type: "object",
-      properties: {
-        projectId: { type: "string" },
-        leaseHandle: { type: "string" },
-        prompt: { type: "string", description: "自然语言目标；省略 candidate 时由设置中的默认模型创建草稿。" },
-        taskKind: { type: "string", enum: ["text_to_image", "image_edit", "text_to_video", "image_to_video"] },
-        moduleId: { type: "string" },
-        providerId: { type: "string" },
-        modelId: { type: "string" },
-        mode: { type: "string" },
-        modeId: { type: "string" },
-        variantId: { type: "string" },
-        parameters: { type: "object" },
-        references: { type: "array" },
-        candidate: { type: "object", description: "单镜：一份完整的生成 candidate。" },
-        shots: {
-          type: "array",
-          description: "多镜：逐镜计划。每项含可选 shotId/role(anchor 形象参考|shot 视频镜)/included(试拍/分批)，与一份完整 candidate。",
-          items: {
-            type: "object",
-            properties: {
-              shotId: { type: "string" },
-              role: { type: "string", enum: ["anchor", "shot"] },
-              included: { type: "boolean" },
-              candidate: { type: "object" },
-            },
-            required: ["candidate"],
-            additionalProperties: false,
-          },
-        },
-        scriptText: { type: "string", description: "多镜：剧本/分镜文本，服务端拟镜出镜表（每镜提示词 + 建议模型/模式 + 锚声明）。" },
-      },
-      required: ["leaseHandle"],
-      additionalProperties: false,
-    },
-    method: "nomi_operation_create",
-    build: (args: Record<string, unknown>) => ({
-      projectId: args.projectId,
-      leaseHandle: args.leaseHandle,
-      ...(typeof args.prompt === "string" ? { prompt: args.prompt } : {}),
-      ...(typeof args.taskKind === "string" ? { taskKind: args.taskKind } : {}),
-      ...(typeof args.moduleId === "string" ? { moduleId: args.moduleId } : {}),
-      ...(typeof args.providerId === "string" ? { providerId: args.providerId } : {}),
-      ...(typeof args.modelId === "string" ? { modelId: args.modelId } : {}),
-      ...(typeof args.mode === "string" ? { mode: args.mode } : {}),
-      ...(typeof args.modeId === "string" ? { modeId: args.modeId } : {}),
-      ...(typeof args.variantId === "string" ? { variantId: args.variantId } : {}),
-      ...(args.parameters && typeof args.parameters === "object" && !Array.isArray(args.parameters) ? { parameters: args.parameters } : {}),
-      ...(Array.isArray(args.references) ? { references: args.references } : {}),
-      ...(args.candidate !== undefined ? { candidate: args.candidate } : {}),
-      ...(Array.isArray(args.shots) ? { shots: args.shots } : {}),
-      ...(typeof args.scriptText === "string" ? { scriptText: args.scriptText } : {}),
-    }),
-  },
-  {
-    name: "nomi_submit_generation_plan",
-    description: "保存当前草稿的编辑结果；仍不调用模型，返回最新草稿版本。",
-    inputSchema: {
-      type: "object",
-      properties: { projectId: { type: "string" }, leaseHandle: { type: "string" }, operationId: { type: "string" }, patch: { type: "object" } },
-      required: ["leaseHandle", "operationId", "patch"],
-      additionalProperties: false,
-    },
-    method: "nomi_submit_generation_plan",
-    build: (args: Record<string, unknown>) => ({ projectId: args.projectId, leaseHandle: args.leaseHandle, operationId: args.operationId, patch: args.patch }),
-  },
-  {
-    name: "nomi_preview_execution",
-    description: "预览将使用的模型、模式、参数和参考素材，并显示不支持字段；不调用模型。",
-    inputSchema: {
-      type: "object",
-      properties: { projectId: { type: "string" }, leaseHandle: { type: "string" }, operationId: { type: "string" } },
-      required: ["leaseHandle", "operationId"],
-      additionalProperties: false,
-    },
-    method: "nomi_preview_execution",
-    build: (args: Record<string, unknown>) => ({ projectId: args.projectId, leaseHandle: args.leaseHandle, operationId: args.operationId }),
-  },
-  {
-    name: "nomi_request_generation_gate",
-    description: "请求一次简短的真人确认预览；确认前不会提交模型。",
-    inputSchema: {
-      type: "object",
-      properties: { projectId: { type: "string" }, leaseHandle: { type: "string" }, operationId: { type: "string" } },
-      required: ["leaseHandle", "operationId"],
-      additionalProperties: false,
-    },
-    method: "nomi_request_generation_gate",
-    build: (args: Record<string, unknown>) => ({ projectId: args.projectId, leaseHandle: args.leaseHandle, operationId: args.operationId }),
-  },
-  {
-    name: "nomi_decide_generation_gate",
-    description: "提交当前客户端已完成的真人确认凭据；裸 confirm/approved 不被接受。",
-    inputSchema: {
-      type: "object",
-      properties: { projectId: { type: "string" }, leaseHandle: { type: "string" }, operationId: { type: "string" }, attempt: { type: "integer", minimum: 1 }, receiptId: { type: "string" }, receiptToken: { type: "string" } },
-      required: ["leaseHandle", "operationId"],
-      additionalProperties: false,
-    },
-    method: "nomi_decide_generation_gate",
-    build: (args: Record<string, unknown>) => ({ projectId: args.projectId, leaseHandle: args.leaseHandle, operationId: args.operationId, attempt: args.attempt, receiptId: args.receiptId, receiptToken: args.receiptToken }),
-  },
-  {
-    name: "nomi_start_generation",
-    description: "在计划已封存且确认有效后开始生成；提交只走统一 Runtime Adapter。",
-    inputSchema: {
-      type: "object",
-      properties: { projectId: { type: "string" }, leaseHandle: { type: "string" }, operationId: { type: "string" }, receiptId: { type: "string" }, receiptToken: { type: "string" } },
-      required: ["leaseHandle", "operationId"],
-      additionalProperties: false,
-    },
-    method: "nomi_start_generation",
-    build: (args: Record<string, unknown>) => ({ projectId: args.projectId, leaseHandle: args.leaseHandle, operationId: args.operationId, receiptId: args.receiptId, receiptToken: args.receiptToken }),
-  },
-  {
-    name: "nomi_operation_read",
-    description: "读取生成草稿或 Run 的当前状态。",
-    inputSchema: {
-      type: "object",
-      properties: { projectId: { type: "string" }, leaseHandle: { type: "string" }, operationId: { type: "string" } },
-      required: ["leaseHandle", "operationId"],
-      additionalProperties: false,
-    },
-    method: "nomi_operation_read",
-    build: (args: Record<string, unknown>) => ({ projectId: args.projectId, leaseHandle: args.leaseHandle, operationId: args.operationId }),
-  },
-  {
-    name: "nomi_cancel_generation",
-    description: "取消尚未提交的生成草稿；已提交任务只进入可核账的取消流程。",
-    inputSchema: {
-      type: "object",
-      properties: { projectId: { type: "string" }, leaseHandle: { type: "string" }, operationId: { type: "string" } },
-      required: ["leaseHandle", "operationId"],
-      additionalProperties: false,
-    },
-    method: "nomi_cancel_generation",
-    build: (args: Record<string, unknown>) => ({ projectId: args.projectId, leaseHandle: args.leaseHandle, operationId: args.operationId }),
-  },
-  {
-    name: "nomi_reconcile_generation",
-    description: "核对提交状态；未知结果不会盲目再次提交。",
-    inputSchema: {
-      type: "object",
-      properties: { projectId: { type: "string" }, leaseHandle: { type: "string" }, operationId: { type: "string" }, outcome: { type: "string", enum: [...GENERATION_RECONCILE_OUTCOMES] } },
-      required: ["leaseHandle", "operationId", "outcome"],
-      additionalProperties: false,
-    },
-    method: "nomi_reconcile_generation",
-    build: (args: Record<string, unknown>) => ({ projectId: args.projectId, leaseHandle: args.leaseHandle, operationId: args.operationId, outcome: args.outcome }),
-  },
-] as const;
+
 export type GenerationOperationState = "draft" | "sealed" | "cancelled" | "submitted";
 
 /**
@@ -561,9 +414,52 @@ export function createGenerationPlanningHandler(deps: GenerationPlanningHandlerD
     });
   };
 
+  const resolvePlanAdvisory = (params: Record<string, unknown>): unknown => {
+    // Generation Strategy Resolver — stateless advisory pass (no durable
+    // operation, no seal, no gate): validate/clamp every shot's model/mode/
+    // params against real capability facts and propose merge/split/duration
+    // structure before any plan is formed (2026-09-06 planResolver).
+    //
+    // Input parsing is the capability contract's zod schema, not a hand-rolled
+    // coercion loop: GUI narrow IPC and the agent/MCP face must accept exactly
+    // the same inputs, and there is one place that says what those are
+    // (GENERATION_RESOLVE_CAPABILITY.inputSchema — rebuild plan §1.2 K1).
+    const parsed = generationResolveInputSchema.safeParse(params);
+    if (!parsed.success) {
+      const first = parsed.error.issues[0];
+      const where = first?.path?.length ? ` at ${first.path.join(".")}` : "";
+      throw Object.assign(new Error(`resolve input is invalid${where}: ${first?.message ?? "unknown"}`), { code: "generation_input_invalid" });
+    }
+    const planResolution = resolveGenerationPlan({
+      shots: parsed.data.shots as PlanShotInput[],
+      candidates: deps.videoModelCandidates ?? [],
+      ...(parsed.data.goals ? { goals: parsed.data.goals } : {}),
+    });
+    return {
+      resolvedShots: planResolution.shots.map((shot) => ({
+        id: shot.id,
+        modelKey: shot.candidate?.modelKey ?? null,
+        modeId: shot.modeId,
+        modeLabel: shot.modeLabel,
+        durationMin: shot.durationMin,
+        durationMax: shot.durationMax,
+        params: shot.params,
+        issues: shot.issues,
+      })),
+      mergeProposals: planResolution.mergeProposals,
+      splitProposals: planResolution.splitProposals,
+      planIssues: planResolution.issues,
+      nextAction: "create",
+    };
+  };
+
   return async (input: { capability: string; params: Record<string, unknown>; lease?: ProjectLeaseV2; origin?: { host: string; actorId?: string } }): Promise<unknown> => {
-    if (!input.lease) throw new Error("A verified project lease is required");
     const params = input.params;
+    // resolve = stateless advisory pass（generation strategy resolver）：纯计算、不落 durable
+    // operation、不触生成，本就不需要项目租赁凭证（GUI 窄 IPC 也是无 lease 进来）→ 提前返回。
+    // 其余 capability（context/create/preview/gate_*/start…）一律要求已核验 lease。
+    if (input.capability === "resolve") return resolvePlanAdvisory(params);
+    if (!input.lease) throw new Error("A verified project lease is required");
     if (input.capability === "context") {
       if (deps.context) return deps.context({ projectId: input.lease.projectId, lease: input.lease });
       const providerProfiles = (deps.registry.snapshot?.() ?? []).flatMap((manifest) => manifest.providers.map((provider) => ({
@@ -660,7 +556,15 @@ export function createGenerationPlanningHandler(deps: GenerationPlanningHandlerD
         ...(normalizedCandidate.modeId ? { modeId: normalizedCandidate.modeId } : { modeId: undefined }),
       };
       const operation = await deps.operations.patch(input.lease.projectId, operationId, normalizedPatch, now());
-      return { operation, nextAction: "preview" };
+      // J05 — 模型/模式切换时返回 changeset，让调用方知道哪些字段被静默重置。
+      const changeset = (modelChanged || modeChanged) ? {
+        modelChanged, modeChanged,
+        ...(modelChanged && userPatch.variantId === undefined && current.candidate.variantId ? { clearedVariantId: current.candidate.variantId } : {}),
+        ...((modelChanged || modeChanged) && userPatch.modeId === undefined && current.candidate.modeId ? { clearedModeId: current.candidate.modeId } : {}),
+        previousModel: `${current.candidate.providerId}/${current.candidate.modelId}`,
+        nextModel: `${nextProviderId}/${nextModelId}`,
+      } : undefined;
+      return { operation, nextAction: "preview", ...(changeset ? { changeset } : {}) };
     }
     if (input.capability === "preview") {
       const candidate = normalizeVideoCandidate(current.candidate, deps.videoModelCandidates);
@@ -702,6 +606,7 @@ export function createGenerationPlanningHandler(deps: GenerationPlanningHandlerD
       const contract = compileExecutionContract(candidate, deps.registry, { parameterSchema: videoParameterSchema(candidate, deps.videoModelCandidates) });
       const readiness = resolveProviderReadiness(deps, candidate);
       if (!readiness.providerReady) throw new GenerationProviderCapabilityError(contract.providerId, readiness.missingForSubmit.length ? readiness.missingForSubmit : ["configured_provider"]);
+      const gateResolved = deps.registry.resolve({ moduleId: candidate.moduleId, providerId: candidate.providerId, modelId: candidate.modelId, mode: candidate.mode }); // J06
       // P4 S6.5: a multi-shot draft seals its per-shot sub-contracts + planHash (built from the draft
       // shots) alongside the top-level contract. `sealMultiShotFor` compiles each included shot's contract
       // and the plan hash; the store forwards them to the reducer (which freezes the batch + hard cap). A
@@ -751,7 +656,7 @@ export function createGenerationPlanningHandler(deps: GenerationPlanningHandlerD
           // The full projection rides here → dispatcher threads it into the MAC-signed challenge display.shots.
           // hardLimit = the estimated plan total (the natural ceiling shown on the card); the scheduler
           // enforces the real cap = min(this, policy.maxSpend) at reserve time (§3.3).
-          shots: { ...multiShot, hardLimit: knownSubtotal, waitSeconds: 180, frozenItems: ["shots", "models", "references", "price"], expiresAt },
+          shots: { ...multiShot, hardLimit: knownSubtotal, ...coldstartEtaForGate(gateResolved.outputKinds, multiShot.shots.length || 1), frozenItems: ["shots", "models", "references", "price"], expiresAt }, // J06 诚实 ETA
           providerReady: readiness.providerReady,
           providerCapabilityProfile: readiness.providerCapabilityProfile,
           recoveryNotice: readiness.recoveryNotice,
@@ -801,3 +706,12 @@ export function createGenerationPlanningHandler(deps: GenerationPlanningHandlerD
     throw new Error(`Unsupported semantic generation capability: ${input.capability}`);
   };
 }
+
+/** 已装配的 planning seam 可调用面（agent/MCP 与 GUI 窄 IPC 共用同一实例 → 候选集/决策天然同源）。
+ *  返回类型取松散版（unknown | Promise）以兼容 authorities 注入的 DispatchContext 版 seam。 */
+export type GenerationPlanningHandler = (input: {
+  capability: string;
+  params: Record<string, unknown>;
+  lease?: ProjectLeaseV2;
+  origin?: { host: string; actorId?: string };
+}) => unknown | Promise<unknown>;

@@ -1,0 +1,127 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-08-reference-slot-outbound-join",
+  "problem_type": "Archetype-declared reference slots silently fail to reach the vendor request body",
+  "symptom": "Users attach a reference image, generation either refuses (\"发不出：参考图\") or succeeds while ignoring the reference; reported as \"GPT Image 2 失败\" and \"Agnes 2.1 连了参考图没传入\"",
+  "direct_cause": "fal's gpt-image-2 edit body read {{request.params.image_urls}} while the archetype projects the contract key input_urls, so no reference reached the payload",
+  "class_root": "The join between a vendor-neutral archetype slot key and each channel's own body field name had no build-time reconciliation; both sides are self-consistent and independently green, so a broken cable ships",
+  "affected_population": [
+    "Every (vendor, model, mode) whose archetype declares a reference slot and whose mapping renders a template body",
+    "Self-built OpenAI-compatible relays whose models carry the real model name on modelAlias",
+    "Canvas nodes persisted with a legacy shared archetype id after a profile split (Agnes Image 2.0/2.1)"
+  ],
+  "scope_paths": [
+    "scripts/check-reference-outbound-contract.ts",
+    "electron/catalog/falOfficial.ts",
+    "electron/providerAdapter/builtinOpenAiCompatibleDraft.ts",
+    "src/workbench/generationCanvas/agent/referenceEdgeCapability.ts"
+  ],
+  "entry_points": [
+    "fal/openai/gpt-image-2 i2i",
+    "builtinDraftForUndocumentedEndpoint",
+    "archetypeForNode"
+  ],
+  "invariants": [
+    "Every reference slot whose modeSlotReach is not 'none' must have its value present in the rendered create body",
+    "Image-edit protocol selection sees both modelKey and modelAlias",
+    "archetypeForNode resolves the same archetype as the send path for the same node"
+  ],
+  "generality_proof": "The gate derives everything from production functions (buildArchetypeInputParams, taskTemplateParams, renderTemplateValue, modeSlotReach) over the seeded builtin catalog. It hardcodes no vendor, model or key name: it plants a synthetic URL into one slot at a time and asserts the rendered payload contains it. Slots the UI already narrows away (reach='none') are excluded, so genuine vendor capability limits (runway veo3.1 last frame, grok single image) are not false-flagged.",
+  "shared_boundaries": [
+    {
+      "path": "scripts/check-reference-outbound-contract.ts",
+      "symbol": "findOutboundContractBreaches",
+      "responsibility": "Reconcile archetype slot keys against every channel's rendered body at build time"
+    },
+    {
+      "path": "src/workbench/generationCanvas/agent/referenceEdgeCapability.ts",
+      "symbol": "archetypeForNode",
+      "responsibility": "Single archetype resolver shared with the send path, including legacyIds migration"
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "electron/catalog/falOfficial.ts",
+      "entry_point": "fal/openai/gpt-image-2 i2i",
+      "disposition": "enforced",
+      "evidence": "Probe over 45 model×mode and 64 promised slots found exactly this one breach; body token changed to input_urls, gate now green"
+    },
+    {
+      "path": "electron/providerAdapter/builtinOpenAiCompatibleDraft.ts",
+      "entry_point": "builtinDraftForUndocumentedEndpoint",
+      "disposition": "enforced",
+      "evidence": "modelAlias threaded into newapiImageEditProfileForModel; mutation test confirms alias-only gpt-image-2 falls back to /v1/chat/completions without the fix"
+    },
+    {
+      "path": "src/workbench/generationCanvas/agent/referenceEdgeCapability.ts",
+      "entry_point": "archetypeForNode",
+      "disposition": "enforced",
+      "evidence": "Probe showed archetypeForNode returning agnes-image while the send path returned agnes-image-2.1 for the same node; resolver collapsed onto resolveArchetypeForModel"
+    },
+    {
+      "path": "electron/catalog/multipartOperation.ts",
+      "entry_point": "multipart imageSource",
+      "disposition": "not-affected",
+      "evidence": "Multipart ops carry no template body, so references travel via multipart.imageSource and this gate's judgment does not apply. Independently covered by multipartOperation.test.ts (FormData image[] parts) and relayConformance.integration.test.ts real-PNG-byte assertions; verified passing this session."
+    },
+    {
+      "path": "electron/catalog/customCallDispatch.ts",
+      "entry_point": "custom call script",
+      "disposition": "not-affected",
+      "evidence": "Custom calls dispatch an imperative script, not a template body, so the archetype-key-to-body-field join this gate reconciles does not exist on that path. Its own separate weakness (the reachability guard being skipped) is recorded in residual_risks rather than silently folded into this class."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Three independent instances of the same mechanism (one fact, two code paths, only one guarded) surfaced in a single investigation across archetype/body keys, model identity, and archetype resolution",
+    "same_class_scan": [
+      "Per-slot outbound probe over the seeded builtin catalog: 45 model×mode, 64 promised slots, 1 breach before the fix, 0 after",
+      "archetypeForNode vs resolveArchetypeForModel differential on a legacy-id Agnes 2.1 node: divergent before, identical after"
+    ]
+  },
+  "prevention": {
+    "kind": "static-gate",
+    "enforcement_path": "scripts/check-reference-outbound-contract.ts",
+    "invariant": "No reference slot the UI promises is missing from the rendered outbound body",
+    "failure_mode": "check:reference-contract exits 1 naming vendor/model/mode/slot, the declared key, and the promised reach",
+    "exception_policy": "none",
+    "strategy": "Hard zero, no baseline file. New gate wired into gates:contracts next to check:orphan-cables, which covers whether a cable is selectable but not what the cable actually carries. A vendor that genuinely cannot carry a slot must stop declaring it, so modeSlotReach reports none and the UI narrows honestly instead of the gate growing an exception list.",
+    "artifacts": [
+      "scripts/check-reference-outbound-contract.ts",
+      "package.json"
+    ]
+  },
+  "regression_tests": [
+    "electron/catalog/referenceOutboundContract.test.ts",
+    "electron/providerAdapter/builtinOpenAiCompatibleDraft.test.ts",
+    "src/workbench/generationCanvas/agent/referenceEdgeCapability.test.ts"
+  ],
+  "class_regression_tests": [
+    "electron/catalog/referenceOutboundContract.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "src/workbench/generationCanvas/agent/referenceEdgeCapability.ts"
+    ],
+    "rationale": "The duplicate archetype-resolution branch was deleted in the same commit; archetypeForNode now delegates wholly to resolveArchetypeForModel, so no parallel implementation remains (P1)."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "No dependency was added, upgraded or retained; all three fixes are in first-party code.",
+    "exit_criteria": []
+  },
+  "migration": "Not required: the fixes change seeded body templates and resolution logic, not persisted user data. Existing canvas nodes self-heal on the next archetype resolve, and existing catalogs are re-seeded from the corrected builtin definitions.",
+  "residual_risks": [
+    "Custom-call scripts bypass the reference reachability gate entirely (runtime.ts passes createBody undefined when a custom call script exists), so a script that ignores the injected references view still charges the user with no signal",
+    "The custom-call trial run sends cannedTestInput with no reference material, so an image-edit script can pass its trial without ever exercising its reference path (buildCustomCallTestFixture exists but no UI imports it)",
+    "There is still no positive, payload-derived receipt telling the user how many reference images this request actually carried; only negative signals exist. Deferred as a user-visible change requiring mockup approval."
+  ],
+  "invariant_owner_layer": {
+    "layer": "scripts/check-reference-outbound-contract.ts",
+    "tests": [
+      "electron/catalog/referenceOutboundContract.test.ts"
+    ]
+  },
+  "internal_only_reason": "This is an internal join reconciliation between two in-repo sources of truth — the vendor-neutral archetype slot key (src/config/modelArchetypes/gptImage2.ts) and each channel's own seeded body field name (electron/catalog/falOfficial.ts). No external vendor contract was changed or newly interpreted: fal's wire field name image_urls and KIE/APIMart's input_urls were both already encoded in the repo from their original doc-checked authoring; the defect was only that the fal body read a param key nothing populates."
+}

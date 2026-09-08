@@ -174,17 +174,20 @@ export function exportWritePiDescriptionForAlias(alias: string): string | undefi
 export const EXPORT_READ_CAPABILITY = {
   id: "export.read",
   version: 1,
-  aliases: { pi: EXPORT_READ_ALIASES.inspect },
+  aliases: { pi: EXPORT_READ_ALIASES.inspect, mcp: "nomi_export_job" },
   additionalAliases: { pi: Object.freeze([EXPORT_READ_ALIASES.verify]) },
   inputSchema: exportReadSemanticInputSchema,
   outputSchema: exportReadResultSchema,
   effect: "read",
+  effectClass: "reversible_local",
   execution: { port: "export", availability: "renderer_required" },
-  exposure: "internal_only",
+  exposure: "mcp_safe",
   requiredScope: "export:read",
   targetKind: "export",
-  approval: "none",
-  projections: { pi: { description: "Inspect and verify active-project export receipts." } },
+  projections: {
+    pi: { description: "Inspect and verify active-project export receipts." },
+    mcp: { description: "Inspect/verify export receipts; Host starts/cancels exports." },
+  },
 } as const satisfies CapabilityContract<ExportReadInput, ExportReadResult>;
 
 export const EXPORT_WRITE_CAPABILITY = {
@@ -195,10 +198,10 @@ export const EXPORT_WRITE_CAPABILITY = {
   inputSchema: exportWriteSemanticInputSchema,
   outputSchema: exportWriteResultSchema,
   effect: "destructive",
+  effectClass: "irreversible",
   execution: { port: "export", availability: "renderer_required" },
   exposure: "internal_only",
   requiredScope: "export:write",
   targetKind: "export",
-  approval: "proposal",
   projections: { pi: { description: "Start or cancel an approved active-project export job." } },
 } as const satisfies CapabilityContract<ExportWriteInput, ExportWriteResult>;

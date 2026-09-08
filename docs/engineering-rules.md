@@ -3,7 +3,7 @@
 > 这是 `CLAUDE.md` 的「按需查阅」层。`CLAUDE.md`（always 加载）= 精简核心：项目事实 + P1–P5 + D1–D5 + 规则索引 + 三闸。本文件存**触发某条规则后才查的细节**：R1–R25 详解、工作流框架、技能库映射、固化的工作纪律。
 > 真相源仍单一：`CLAUDE.md` 的规则索引指明每条住哪；冲突一律以 `CLAUDE.md` 的 P1–P5 / D1–D5 为准。改触发清单同步 `.claude/hooks/self-check.sh`，规则细节只改本文件。
 
-# 详细规则 R1–R25
+# 详细规则 R1–R31
 
 > `CLAUDE.md` 的规则索引触发某个编号后，到这里查它的细节。
 
@@ -16,9 +16,9 @@
 - 旧的有点价值 → 把价值合并进新代码，再删旧
 - **CSS（R10 = R1 的 CSS 实例）**：新样式一律用 Tailwind utility 写在组件 `className` 上；不用 `@apply`；CSS 文件分工固定只可减不可增
   - `src/theme/nomi-tokens.css` — 设计 token
-  - `src/styles/index.css` — 全局 reset/keyframes
-  - `src/styles/vendor-overrides.css` — Mantine 等第三方 DOM 覆盖
-  - `src/styles/globals.css` — 只准删，不准加组件样式
+  - `src/styles/index.css` — App 唯一 CSS 入口（`src/main.tsx` 只 import 它）：三层 `tailwindcss/*` + browserAsset 浮层的两条 `html[data-nomi-overlay]` 规则。只可减不可增
+  - `tailwind.config.ts` 的 `workbenchBasePlugin` addBase — 全局 reset / body / `#root` / keyframes / Mantine 等第三方 DOM 覆盖的**唯一真相源**（编译进 `public/tailwind.generated.css`）
+  - ~~`src/styles/globals.css` / `animations.css` / `vendor-overrides.css`~~ — 2026-09-07 删除：从不在 import 图里（`index.css` 不 import 它们），259 行全是 addBase 已有等价物或死码
 
 ## R2 用户视角 + 极简
 
@@ -67,6 +67,12 @@
 **接入 / 修改任何模型 = 必查真实官方 API 文档，禁凭记忆瞎编（2026-06-30 用户再次要求固化 · 已挂 `model-doc-check.sh` hook）**：接入或修改**任何**模型（新模型、新变体、改参数、改端点、改鉴权），**动手前必须先拿到该模型 / 该 vendor 的真实官方 API 文档**——WebFetch 官方文档站 / vendor 文档门户（如 apimart `docs.apimart.ai`、kie `docs.kie.ai`、即梦官方、火山引擎、ModelScope）/ Context7。照文档**逐项对账**：① 端点路径 + HTTP 方法；② 鉴权方式（bearer / header 名 / OAuth / CLI 登录态）；③ 全部变体（fast/face/lite/quality…）；④ 全部生成模式（t2v/i2v/首尾帧/参考…）；⑤ 全部参数（名字、类型、合法枚举值、默认值、上下限）。**禁止凭记忆或凭印象瞎编**端点、参数名、枚举、模式组合——「记得大概是这样」「应该是这个字段」= 工作错误，必须实查文档原文。这条**每次都要控制住**，不是接一次就免检：每次碰模型接入文件（`electron/catalog/*Vendor.ts` / `*Images.ts` / `*Videos.ts` / `*Texts.ts` / `*Audios.ts` / `*Codec.ts` / `kie*.ts` 等）hook 都会顶提醒。流程固定：抓全官方文档 → 列 {变体×模式×参数} 全表 → 对账现有 catalog/archetype → 补齐/修正缺口 → 真实生成 E2E 验一条（见「固化的工作纪律」接入即验证 + [[model-onboarding-must-cover-full-api-doc]] 记忆）。用户原话：「都要去真实的查到官方文档才去接入，而不是自己去瞎编」。
 
 **实查对象必须是「现役」不是「本机」（2026-09-01 用户抓错后固化）**：判断第三方 CLI / SDK / 模型「支不支持某能力」时，**本机已装版本的 `-h` / 实际行为不算实查**——那是安装那天的旧事实。实翻车：拿本机 2026-06-18 的 dreamina CLI build 断言「CLI 给不了 seedance2.5 / 图片5pro」，被用户甩官方文档当场纠正——官方 v1.4.15（08-01）视频全线已支持 2.5、v1.4.16（08-14）已有 seedream 5.0 pro。正确姿势：先读**官方现役文档 / 更新日志**，或先把工具升到最新版再取证；写下「不支持 X」前自问「我看的是最新版吗」。另注意第三方 CLI 有自己的破坏性变更节奏（dreamina v1.4.14 起图片必填 `--resolution_type`、视频必填 `--video_resolution`）——接入停在旧面貌可能不止缺模型，是**发不出合法请求**。
+
+**模型 wire 契约三段标准作业（2026-09-01 用户定稿 · 2026-09-02 封印粒度升级 · 已刻进 `model-doc-check.sh` hook）**：修任何模型问题、接任何新模型，花费结构固定为「文档给依据、零额度给覆盖、付费给封印」，三段齐了才叫修完：
+
+- **一 · 文档给依据**：抓该 vendor/模型**真实官方现役文档**逐字段对账 {变体×模式×参数}，出处 URL+checkedAt+关键句落库。报错信息只是线索不是依据（栽过：按报错倒推出的值「能跑」，实为隔壁型号的枚举——探测能过≠用对了）。文档与实测冲突以实测为准并在代码注明日期与证据（fal 队列根路径、KIE 响应字段都是文档印错实测纠正的案例）。
+- **二 · 零额度给覆盖**：测试大头零花费做全——合同测试锁非法组合 + **请求构造干跑逐字段比对文档**（本地假服务器不校验格式，干跑对账才抓得住漂移）+ 免费探针（鉴权/列表端点、非 200 校验类）。**全部模式无一漏过**，含参考图/首尾帧/参考视频模式。
+- **三 · 付费给封印**：前两段全绿后，**每个模型**（不是族代表——族代表只是过程降险顺序，不是终态）一发最小参数真实生成。**封印发选覆盖面最大的模式：带参考输入的模式优先**（参考模式 wire 是纯文模式超集，一发管两头）。产物下载后亲眼**双验：提示词特征 + 参考特征**（喂特征强参考图如红色机器人，产物没出现该特征 = 参考没传到，HTTP 200 也不算通）。封印绑定 wire 契约版本，wire 变更/矩阵漂移才重封；多模式模型其余模式：wire 形态与已封模式差异大（另端点/另编码）才补发，仅多一字段且干跑+免费探针对账通过的记「结构已验」。台账列：模型 × 封印模式 × mapping 内容哈希 × 日期 × 产物路径 × 单笔花销（追加进当期验收矩阵文档）。余额不足 → 诚实记 ⛔ + 精确差额，不瞎重试。
 
 **出处必须可追、接入必须一次接完（2026-08-12 用户要求固化 · 已挂门岗 `pnpm run check:archetype-sources`）**：
 上面那条「必查官方文档逐项对账」**早就存在、还挂着 hook，仍然失效了**——2026-08-12 复核 Seedance 2.5 档案，
@@ -205,6 +211,14 @@ CSS 文件分工与「只可减不可增」规则详见 R1 最后一节。
 
 历史同类事故（这条规则的由来，均为「链在最后一跳断裂」）：素材盒修在 win32 分支 mac 没生效+截图没看就交付（07-12）；样张凭脑补不基于真实 UI（v07，×3）；gates 全绿但生产构建无样式（dev≠prod）；走查跑在 stale chunk/僵尸实例上；capturePage 拍不到捕捞子 view。机械闸：Stop hook `completion-check.sh` 已升级为**查眼不查嘴**——改了 src/electron 又宣布完成/交付时，近窗口内必须有图片 Read 痕迹，否则 block。
 
+### 走查三升级（2026-09-02 用户拳单复盘固化：QA 全绿他一上手仍抓一把问题的根因补丁）
+
+用户亲测抓出的问题（反馈中心不在样张位置、假 key 假成功、EN 残留、截断、logo 不齐）没有一个是当时断言体系能拦的——三个结构缺口，走查从此必须带上：
+
+1. **位置断言**：对照获批样张断言控件的**位置/归属**（在哪个 tab、哪个分组、什么层级），不只断言「存在」。存在性断言放过了「反馈中心跑出设置页」这类错位。
+2. **双语对照真截图**：zh 与 en 两轨都跑、都出真截图、都亲眼 Read。regex 网（raw-key/EN-DOM 零 CJK）拦得住残留，拦不住**几何**——EN 串比中文长 1.5-2 倍，按中文定宽的容器只有眼睛能看出截断（栽过：库入口卡标题、时间轴轨道名、vendor 英文名，全是眼睛抓的）。
+3. **真人乱输路径**：照用户真实使用方式砸——瞎写的 API key（必须诚实报错不许假成功）、空态、点关不掉的弹层、断供应商。走查只走 happy path = 用户第一次乱点就穿帮。
+
 ### 旅程构建铁律
 
 **走查旅程必须是真实创作目标，每条要有「任务成功标准」。**
@@ -279,6 +293,7 @@ CSS 文件分工与「只可减不可增」规则详见 R1 最后一节。
 
 - `registered`：确实是独立领域合同，reason 必须说明为什么不能复用。
 - `debt`：已知重复/待收敛 owner；`debtCap` 只减不增，等量换一个 owner 也不算减少。
+- `converged`：收敛 provenance；每条记录用 `retiredOwners` 明列已退役 owner、用 `survivingOwner` 明列 surviving owner。门岗会对 live scan 验证前者全部消失、后者仍存在且有 substantive `registered` entry，并对 reference baseline 验证每个 retired owner 确实在册且成员集与 surviving owner 一致；只有这样的记录能解释历史 `historical-debt-promoted`，不能绕过 `debtCap` 或 `historical-cap-not-tight`。
 
 `--update-baseline` 只生成带 `TODO` 的待解释条目，写完仍然红；它是检索助手，不是自动放行按钮。
 
@@ -306,6 +321,18 @@ CSS 文件分工与「只可减不可增」规则详见 R1 最后一节。
 - 加了内部工具 → 外部 MCP 是否投影同一能力定义与 executor？
 
 这类缺口不一定有第二份代码，静态词表门岗无法发现；所以不能因为 `check:vocabularies` 绿，就跳过七维 owner 审计和对偶路径走查。
+
+#### R14.2 每次审计固定加的三条（2026-09-07）
+
+七维横扫问的是「同一语义有几份定义」。下面三条问的是另一件事：**我们是不是又把别人已经做好的东西重造了一遍、又把「看起来对」当成了「真的对」**。它们固定进清单，不靠谁想起来。
+
+| # | 动作 | 判据（做没做，看得见的产物） |
+|---|---|---|
+| ① **依赖框架四列表重跑** | 对 `docs/engineering/framework-boundaries.json` 里登记的每个框架，重跑一遍 R29 四列表（它提供 / 我们用了 / 我们另写了 / 我们拆散了），每格带 `file:line` 或文档 URL | 审计文档里有这四列表；`pnpm run gen:dependency-capabilities` 的 diff 已人眼过过（新增的词 = 这段时间依赖多出来的能力）；`scripts/framework-boundary-baseline.json` 的债条目逐条对账（清了 / 还在 / 到期日要不要重定） |
+| ② **核心链路真实模型量数字** | 按 R30 用真实模型跑一次核心链路，量出**工具写对率**与**回合成功率** | 两个数字写进审计文档，带跑的日期、模型、任务集。**设计实验室基线绿、走查截图有画面都不算**——它们证明长相，不证明按下去会发生事 |
+| ③ **重造清单反向扫** | 拿 `docs/engineering/dependency-capabilities.generated.json` 的能力词表，反向扫这一轮新增的文件名与导出符号；命中的逐个问「框架里是不是已经有了」 | 命中清单 + 每条的处置（改用框架 / 确属无关并登记进 `scripts/framework-boundary-advisory-exemptions.json`）。`check:framework-boundary` 的 advisory 提醒是这条的自动化半成品，审计要把它跑成人读过的结论 |
+
+**为什么固定进清单**：这三条都是「不做也没人知道」的检查——不做的当天什么都不会红，代价要几周后以「我们又写了一份更差的」形式出现（2026-09-06 #546）。凡是这种延迟结算的检查，只能靠固定清单，不能靠判断力。
 
 ## R15 可见文字国际化
 
@@ -493,6 +520,30 @@ pnpm run delivery:verify-merged -- --expected-sha <merge-commit-sha>
 
 本地 Agent hook 只负责提前提醒，可能不存在；已提交的 `CLAUDE.md`、生成的 `AGENTS.md`、skill 和 CI 才是跨 Agent 的执行链。合同字段和完整步骤不在本节重复，避免规则再次膨胀和分叉。
 
+### R21.1 修完之后必须答的第三个问题：这条不变量归哪层管（2026-09-07）
+
+合同已经逼你写清 symptom / direct_cause / class_root / prevention，却一直**没有一处**逼你说出「这条不变量从此归谁守、那一层有没有测试」。于是「修在最早共享边界」经常落成**一处补丁 + 一句无主的承诺**——承诺没有 owner，下一个人合法地绕过它。
+
+从 2026-09-07 起，日期在这天（含）之后的纠正型合同必须带 `invariant_owner_layer`：
+
+```json
+"invariant_owner_layer": {
+  "layer": "electron/catalog/assetLocalization.ts",   // 归属层；确实没人管就填 "none"
+  "tests": ["electron/catalog/assetLocalization.test.ts"],  // 那一层现有的测试；可以为空
+  "structural_ticket": "docs/plan/2026-09-08-owner.md"      // layer=none 或 tests 为空时必填且必须存在
+}
+```
+
+**填 `none` 是允许的、诚实的答案**——代价是必须附一份结构工单。这条的全部意义就是：让「没人管」变成一条**记在账上的债**，而不是无声地成为没人管。老合同按日期阈值豁免（`scripts/root-cause-contracts.mjs` 的 `INVARIANT_OWNER_LAYER_SINCE`），追溯只会把 200 多份历史合同一次性打红。
+
+### R21.2 同一层七天内第三份合同 = 先出结构评审，不是再修一次（2026-09-07）
+
+根因流程是**逐件**执行的：每份合同都诚实地问过「同类问题还能不能从别的入口回来」，但它问的范围是那一件事。「这个模块这周已经是第三份合同了」这个信号**此前没有 owner**——每个修的人只看得见自己那一件，而三件挨着出现恰恰是「这一层的结构不对」最便宜的证据。人不会去数，那是机器的活。
+
+**门岗**：`pnpm run check:symptom-cluster`（`scripts/check-symptom-cluster.mjs`，判据在 `scripts/symptom-cluster-lib.mjs`）。同一模块键（路径前两段，如 `electron/harness`）在 **7 天窗口**内累计 **≥3 份**根因合同 → 红，要求存在一份日期不早于该窗口最后一份合同、且正文点名该模块的 `docs/audit/*.md` 结构评审。整簇都在 2026-09-07 之后才受管；历史聚簇（当前 37 个）报出来但不追溯。
+
+**门岗只判做没做，不判做得好不好**——一道试图判质量的门岗会开始误判，然后被绕过（R17）。评审的分量是人的验收项。
+
 **派工/自验清单必须显式点名本闸（2026-09-01 教训）**：凡改动触及 electron/ 高风险 pattern（`*ipc.ts` / `*store.ts` / `runtime.ts` / catalog 核心 / validator 等），任务 brief 与自验清单必须写明「跑 `pnpm run check:root-cause-contracts`、改动作者自写契约」——不点名就会漏：曾有 4 个返工 PR 因 brief 验证档只列 typecheck/lint/focused，集体被本闸拦下返场补契约（同批次里自写了契约的 2 个 PR 一次过闸）。
 
 ## R22 验证分层与测试预算
@@ -526,7 +577,7 @@ pnpm run delivery:verify-merged -- --expected-sha <merge-commit-sha>
 
 **分支定性先算 merge-base（2026-09-01 一日三撞的「落后假象」固化）**：评审、对账或打捞任何分支前，先 `git merge-base origin/main <branch>`；真实 authored delta = `MB..branch`。直接对 main tip 的两点视图里出现的大片删除或陌生文件，**第一假设是「main 在分支落后期间前进了」**，不是分支真要删它们；GitHub 页面的 +/- 数字与 behind 红字同理不可直接采信（实例：某评估把三点视图 +1416 当真实贡献，两点实测是 272 文件混合物；另一分支两点视图「删 14.6 万行」实为落后 1500+ commit 的反转幻影）。远落后分支的并线一律 `gh pr update-branch` 服务端做——本地 merge 后 push 的追平 diff 会撞 R25 的评审上限（15-88MB 实测）。
 
-最终交付不再本地跑第三遍：在真实 merged-main SHA 上运行 `pnpm run delivery:verify-merged -- --expected-sha <SHA>`。命令仍用有界 Git fetch 证明 `HEAD`、远端主线和 expected SHA/tree 身份，然后等待该 exact SHA 的 `Quality Gate` 与 `Mac Package` check run。GitHub required-check 语义中的 success/skipped/neutral 可写入 Git common dir 的 per-SHA `ci-evidence.json`；missing、pending、failure 或错误 SHA 都不能生成成功收据。同一 SHA 再调用直接复用收据，不启动 repository tests。
+最终交付不再本地跑第三遍：在真实 merged-main SHA 上运行 `pnpm run delivery:verify-merged -- --expected-sha <SHA>`。命令用有界 Git fetch 确认 expected SHA 对象存在且属于当前远端主线 tip 的祖先，然后等待该 exact SHA 的 `Quality Gate` 与 `Mac Package` check run；即使 main 已继续合入提交，也不需要 checkout。GitHub required-check 语义中的 success/skipped/neutral 可写入 Git common dir 的 per-SHA `ci-evidence.json`，并记录当前 `tip` 与 `relation`；missing、pending、failure、非祖先或错误 SHA 都不能生成成功收据。同一 SHA 在 tip 未变化时直接复用收据，不启动 repository tests。
 
 ## R23 React Flow 生成画布单内核与迁移等价
 
@@ -595,3 +646,206 @@ pnpm run delivery:verify-merged -- --expected-sha <merge-commit-sha>
 **清零路线**（分期，搬迁类须等在途大线合入，见审计分析六）：第一期纯加门岗+地图（零搬迁，本次）；第二期（#241 后）建中立契约层 + 清 29 个 re-export 壳（配 P1）；第三期（#223 后）解 `providerAdapter ↔ catalog ↔ integrationCertification` 硬环。
 
 **归属地图**：`docs/architecture/module-ownership-map.md`（一功能一个家 + 依赖方向铁律）。
+
+## R28 防线建在最早能拦住的那层
+
+**触发**：给某个能力/依赖设计「可选成员」时；或想用「基线 / 欠账名单 / 白名单」放行一处已知缺口时。
+
+**规则**：防线要建在**最早能拦住它的那一层**。能让类型系统拦的，别留给门岗；能让门岗拦的，别留给人肉 review。**安全关键依赖尤其不许写成 optional 成员再配一条欠账登记**——登记只是备忘录，它不阻止下一个人合法地漏传。能力确实可能不存在时，用**显式的 `unsupported` 返回值**表达，不要用 `undefined` 表达。
+
+**依据（2026-09-03 同日两起）**：
+
+- 打包态确认门恒拒：`McpTransport` 把 `confirmGenerationInNomi` 做成可选成员，两个生产装配点各自手写对象字面量，打包态那个漏传。漏传是合法 TypeScript，编译期与 lint 均无信号，只在打包后显形——开发态 43/43 全绿，打包态 15/43。
+- 客户端确认面整条不可达：同一接口的 `verifyClientGenerationConfirmation` 在两个生产装配点都没接，配合签发点无条件要求凭证，使「确认弹在调用方」这条主路径在生产中恒不可达数月，而全套单测绿着。
+- 当日新建的 `scripts/check-transport-assembly.mjs` 采用「欠账登记即放绿」，被外部评审指出**可在安全关键欠账存在时通过**（见 `docs/audit/2026-09-03-codex-agent-host-review.md`）。结构性修法不是记账，是把依赖改成必填。
+
+**自检**：写下 `foo?:` 或往基线里加一条时问——**漏了它会怎样？** 若答案是「运行时静默降级」且该能力碰钱/碰权限/碰数据完整性，就不该是可选的。
+
+## R29 接框架先出四列表
+
+**触发**：你要引入、接入、升级任何框架 / SDK / 运行时，**或者要用它一个此前没用过的层**（这条最容易漏：pi 已经在仓库里了，出事的是「我们只接了 agent loop 这一层」）。
+
+**规矩**：动手写码前，在 `docs/research/` 或 `docs/plan/` 出一张**四列表**，每格都要有 `file:line` 或文档 URL——没有出处的格子等于没查。
+
+| 它提供 | 我们用了 | 我们另写了 | 我们拆散了 |
+|---|---|---|---|
+| 框架已有的能力，带 API 出处 | 我们真的调了它，带调用点 | 我们自己又写了一份，带自研文件 + 为什么 | 我们把它一个完整能力拆开只用一半，带边界点 + 代价 |
+
+三条硬约束：
+
+1. **派工 brief 必须附这张表**，当硬约束写进任务书。少了它，每个实施 agent 只看得见自己那一块，谁都不知道「这块框架已经有了」——2026-09-06 #546 就是这么来的。
+2. **研究结论进门岗才算研究完成**：把「我们另写了 / 我们拆散了」两列翻译成 `docs/engineering/framework-boundaries.json` 的规则，跑 `pnpm run check:framework-boundary`。**只写在文档里的结论，在下一个 agent 眼里等于不存在**——它不会去读一份自己不知道存在的调研。
+3. **存量按债登记，不按豁免登记**：每条债绑一份收敛方案文档和一个到期日，到期不清零门岗就红（R28：登记是有时限的承诺，不是永久放行）。
+
+### 第二份必交物：参考实现逐层对照（2026-09-07 用户拍板）
+
+**四列表按我们自己列的能力清单走，所以它天生只覆盖已经想到的那些。** 「我们另写了」要先知道框架有这个能力，「我们拆散了」要先知道这是一个完整能力——两列都建立在「我们列得出来」之上。真正吃亏的那格不长这样，它长成**「压根没想到还有这一层」**：没人会给自己不知道存在的东西列一行。
+
+补这一格的办法只有一个：**把框架自带的参考实现完整拆开，逐层摆在我们旁边。**
+
+> **参考实现**指的是框架/SDK/运行时自己给出的、把这套 API 用对了的完整应用：pi 自带的 coding agent、React Flow 的官方 examples、AI Elements 的 demo、Mantine 的官方 demo。它不是文档——文档讲「这个 API 怎么调」，参考实现讲「一个完整的东西该分成哪些层、每层交给谁」。
+
+**规矩**：凡接入的框架/SDK/运行时**自带参考实现或官方示例**，除四列表外必须另出一张「参考实现逐层对照」，落 `docs/research/<日期>-<框架>-reference-implementation-conformance.md`（模板 `docs/research/TEMPLATE-reference-conformance.md`）。
+
+**按层走，不按功能走**（层可按框架裁剪，但只能从这九层里选，不许自造一层绕过）：工具 / 转录渲染 / 会话 / 上下文 / 模型与花费 / 控制流 / 扩展 API / 观测与测试 / 安全。
+
+每层四列：
+
+| 它怎么做 | 我们怎么做 | 判定 | 若没想到补在哪个阶段前 |
+|---|---|---|---|
+| 参考实现在这一层的做法，带 `file:line` 或示例 URL | 我们在这一层的做法，带 `file:line`；**没有就写「没有」** | `一致` / `有意不同(理由)` / `没想到` | 只有判定是 `没想到` 时才填：这一格要在哪个实施阶段开工前补上 |
+
+**三条硬约束**：
+
+1. **目标不是一致，是每一处不同都是看过它的做法之后有理由地不同。** 一张全是「一致」的表说明抄了它，一张全是「有意不同」的表说明根本没看——两种都是没做研究。
+2. **`有意不同` 的理由必须是领域约束，不是偏好。** 合法的理由长这样：桌面本地优先（不能假设有服务端）、花钱要用户审批（不能自动重试到扣款）、产物是画布/分镜/时间轴（不是聊天记录）。**不合法的理由**：「我们这样更简单」「当时就这么写的」「风格不一样」——这些是偏好，偏好不是理由，写上去等同于判 `没想到`。
+3. **`没想到` 清单是实施阶段的前置门。** 它不是待办，是闸：那一格没补上，对应阶段不许开工。清零之前这份对照不算交付。
+
+**为什么单独立成一格而不是塞进四列表**：两张表回答的是不同的问题。四列表问「这个能力框架有没有、我们用了没有」，参考实现对照问「一个把这套框架用对了的完整实现分成哪些层，我们缺哪层」。前者是清单核对，后者是结构对齐——把后者塞进前者，等于让一张只列已知项的表去发现未知项。
+
+**上游对齐检查**：框架发版意味着参考实现可能改了分层，而改过分层的参考实现**读起来和旧的一模一样**。所以登记表要记下对照时的上游版本（`upstreamVersion`）与对照日期（`verifiedAt`）；`check:framework-boundary` 每次跑都拿它比 `node_modules` 里实装的版本，落后就出 warning，逼你重跑一遍逐层对照并更新这两格。**这个信号只有一个 owner**——不另起 `radar:frameworks` 脚本：版本差是门岗每次都在算的东西，再写一个雷达就是同一件事的第二份实现（P1）。真需要「框架有没有发新版」这层主动发现时，落点写死在 `check:dependency-capabilities`（它已经在盯依赖版本与能力词表的变化），不新开脚本。升红条件与复核日期写死在登记表的 `referenceConformanceAdvisory.promotion` 里。
+
+**门岗**：`check:framework-boundary`（`scripts/check-framework-boundary.mjs`，判据在 `scripts/framework-boundary-lib.mjs`，登记表 `docs/engineering/framework-boundaries.json`，债基线 `scripts/framework-boundary-baseline.json`）。位置在 `check:boundaries` 之后。加规则前**必须先验它会红**（R17）：在 scope 里造一处自研版本，确认报红且不在基线里；再验清掉一条债后基线不同步会红。
+
+同一道门岗还校验**第二份必交物**：登记框架缺 `referenceConformance`（或 `capabilityInventory.packages` 里在用的包没有任何登记）→ 红，除非登记进 `referenceConformanceDebt` 并绑 `doc` / `why` / 未过期的 `due`；已交的那份要求 `doc` 指得到真实文件、文档里有「参考实现逐层对照」那一节、九层（或声明裁剪后的层）与四列都在；`upstreamVersion` 落后于实装版本只出 warning。R17 红证明四条：缺字段红、文档指不到红、文档缺层缺列红、债到期红；外加一条必须证明**不会**红的——版本落后只出 warning（advisory 若也算红，就没人敢升依赖了）。判据在 `evaluateReferenceConformance`，测试在 `scripts/check-framework-boundary.node-test.mjs`。
+
+**上游两件（2026-09-07 加）**：
+
+- **登记表是人手写的，所以它只包含已知的东西。** 补一条机器抽的：`pnpm run gen:dependency-capabilities` 从 `node_modules` 的 `.d.ts` 导出符号与 README 标题抽出每个依赖的「能力词表」，落 `docs/engineering/dependency-capabilities.generated.json`；`check:dependency-capabilities` 在版本或词表变化时逼你重生成——**依赖升级必然带来能力面变化，重生成一次才看得见**。写四列表前先看这份词表。抽哪些包看登记表的 `capabilityInventory.packages`（起步：pi 三包 + `@xyflow/react` + `ai` + `@mantine/core`）。
+- **forbidden 正则认的是具体写法，换个符号名就抓不到。** 于是加一条**启发式**：改动文件的文件名或导出符号命中能力词（`session` / `retry` / `steer` / `compaction` / `harness` …）且不在 `scripts/framework-boundary-advisory-exemptions.json` 里 → **warning，不阻断**。为什么先不阻断：这类启发式的死因是误报，一道天天红的门岗等于不存在。**升红条件与复核日期写死在登记表的 `advisory.promotion` 里**（一周内真阳性 ≥50% 且豁免 ≤8 条 → 升红；不满足则先收窄词表再观察一周，不许直接放弃）——写进合同的意思是：不靠谁记得。
+
+**已交的学费（2026-09-06 深夜）**：接 pi SDK 时只接了最底层的 agent loop。pi 已经提供的会话持久化（`SessionManager`）、有序转录（`AgentSessionEvent`）、重试（`RetryPolicy`）、价格和 `steer()/followUp()`，我们**各写了一套，而且更差**——`SessionManager.inMemory` + 自研快照信封替掉了落盘与版本迁移；`retry: { enabled: false }` + `maxRetries: 0` 两处开关关掉了 provider 级退避；宿主自己维护一张 `steering` Map 并把修正指令拼进下一次 prompt 文本，丢掉了「流式中插队 vs 排到下一回合」的区分。首批登记 14 条债。
+
+### 第三份必交物：framework-surface 逐字段裁决（2026-09-07）
+
+**前两份都看不见字段。** 四列表按能力清单走，逐层对照按九层走——两张表的最小单位都是「一块能力」。真出事的那一格比它们都小：
+
+> 2026-09-07 早上刚交了 pi 的参考实现逐层对照（`docs/research/2026-09-07-pi-reference-implementation-conformance.md`），同一天用户随口问了一句，才发现 `electron/agentLane/laneTools.mts:175` 给**所有** lane 工具硬写 `executionMode: 'sequential'`，而 pi 的 `AgentHarnessTool.executionMode` 是**逐工具可选**的（`node_modules/@earendil-works/pi-agent-core/dist/types.d.ts:351-359`）。同一个对象字面量里，隔几行的 `replay` 已经改成从 `mutates` 派生了——**做对的和做错的写在相邻两行**，而两份文档级交付物一个字都没拦住。
+
+**规矩**：登记框架**公开的每一个字段**，都要有一条裁决，五种，没有第六种：
+
+| 裁决 | 意思 | 必填 |
+|---|---|---|
+| `derived` | 随输入派生 | `at`（派生点 `file:line`） |
+| `constant` | 钉死一个值 | `value` + `reason`（**领域约束**级别，偏好套话直接红） |
+| `unused` | 这颗开关我们不接 | `why` |
+| `upstream-default` | 让上游默认值站着 | `default`（那个默认值是什么）+ `why` |
+| `debt` | 现在裁不了 | `due` + `owner` + `why`（黄；过期红） |
+
+**门岗**：`check:framework-surface`（`scripts/check-framework-surface.mjs`，判据 `scripts/framework-surface-lib.mjs`，抽取 `scripts/framework-surface-extract.mjs`，登记挂在同一张 `docs/engineering/framework-boundaries.json` 每个框架条目的 `surface` 一格下）。位置在 `check:framework-boundary` 之后。
+
+- **字段是机器抽的，不是人列的。** 抽取器用 TypeScript 编译器 API 读登记表指定的 `.d.ts`（`Omit` / 交叉类型 / 基接口继承全部解开；`expand` 可下钻嵌套可选项与钩子返回形状），所以「上游升级加了一个字段」**必然**变成一条红——这正是要的那声警报。抽到 0 个字段也红：抽空了却放行，等于门岗静默失效。
+- **代码这半靠锚点扫。** 登记表说清「我们在哪儿造这个形状」（JSX 元素名 / 类型标注 / 调用实参），扫描器只在那几处找赋值并判「字面量 vs 派生」。不给锚点就只能按字段名全仓瞎抓，`name` / `id` / `style` 这种词会把裁决全部淹掉。只消费不构造的类型（钩子表、回调参数）可以 `anchors: []`，代价是 `constant` 一律不许用——「这里钉了个值」正是最该被机器复核的那句话。
+- **框架无关是硬要求**（2026-09-07 用户原话：「我希望这个事要成为通用的流程和规则，我们之后可能不是 pi，那之后是其他怎么办？」）。判据与抽取器里没有一个 pi 的符号；首批登记两条正是为了证明这一点：pi（`AgentHarnessTool` / `AgentHarnessOptions` / `HookMap` / `Model`，55 格）与 `@xyflow/react`（`ReactFlowProps`，122 格）。**接任何新框架没有这张表 = 直接红。**
+- **随版本升级自动复核**：`.d.ts` 变了字段就变了，门岗每次都在比，不靠谁记得重跑（和 R29 上游对齐检查同一个 owner，不另起雷达）。
+
+- **裁决只减不增**：一格登记成 `debt`、后来代码里真的接上了，门岗会红并要求把它改成 `derived`——债还了不销账就是登记漂移，而「待裁」的黄字读起来和真欠着一模一样。同理，`constant` 变成派生、`unused` 其实在用，都红。
+
+**R17 红证**（`scripts/check-framework-surface.node-test.mjs`，19 条）：升级加字段红、`derived` 却是字面量红、`derived` 却没人赋值红、陈旧登记红、`debt` 过期红、`debt` 已还却没销账红、`constant` 值漂移红、`unused` 其实在用红、`constant` 其实随输入变红、抽不出字段红；外加必须证明**不会**红的一条——未到期的 `debt` 只出 warning。
+
+**第一批扫出来的东西**（除起因那条之外，都是门岗自己找到的）：
+
+- `ReactFlowProps.minZoom/maxZoom` 没设，而 `GenerationCanvasReactFlow.tsx:353` 手写 `Math.min(3, Math.max(0.2, …))` 钳缩放——按钮缩放能到 0.2、滚轮缩放只到 0.5（内核默认 0.5/2），**同一条上下限两个值**（R14.1）；
+- `ariaLabelConfig` 是 React Flow 自带的英文 a11y 文案，`check:i18n` 扫不到它（它只扫我们的源码）；`colorMode` 恒 `'light'` 而 Nomi 是光/暗双模式；`onError` 的内核报错一条都没进日志体系；
+- **装门岗当天就抓到一次真漂移**：本分支整合最新 `main` 之后，`Model.cost` 从 `{0,0,0,0}` 变成了 `modelCost(config)`、`reasoning` 变成了 `config.reasoning ?? false`、`thinkingLevelMap` 接上了——三格全部当场报红逼着改裁决。这三格的接线不在本 PR 里，是别的分支合进来的：**门岗替我们看见了另一个人的改动把哪些结论作废了**，而这正是文档级交付物永远做不到的事。
+
+**与 R20 / R5 / R6 的分工**（三条常被搞混）：
+
+| 规则 | 管的那一步 | 问题长什么样 |
+|---|---|---|
+| R20 build-vs-buy | **该不该自己写**一个通用能力 | 「我要写个任务队列」→ 先问通用吗、别人怎么做、在不在护城河上 |
+| R5 / R6 查文档读近邻 | **写的时候**照着谁的语义写 | 「这个 API 参数怎么传」→ Context7 / 顶尖开源真实代码 |
+| **R29 框架边界** | **已经选了框架之后**，边界画在哪、有没有重造它已有的东西 | 「pi 已经在仓库里了，可我们又写了一套会话持久化」 |
+
+R20 拦的是「从零造轮子」，R29 拦的是**更隐蔽的那种**：轮子已经买回来了，我们却只用了轮毂，自己又削了一圈轮胎。
+
+## R30 Agent 行为验收靠真实模型数字
+
+**触发**：任何 Agent / 工具定义 / 工具契约 / 系统提示词 / 模型档案的改动，以及任何声称「Agent 面板接好了」的交付。
+
+**规矩**：验收门必须含**两个数字**，而且必须写进 PR 正文：
+
+| 数字 | 定义 | 怎么来 |
+|---|---|---|
+| **工具写对率** | 模型对每个工具产出的参数，有多少比例能通过该工具的运行时校验并成功执行 | 零额度 loopback 夹具跑全部工具，逐工具计数 |
+| **回合成功率** | 一条真实用户任务，从提问到拿到可用产物，有多少比例的回合不需要人接手 | 定期用小额真实模型跑固定任务集 |
+
+**两条分工**：
+- **零额度 loopback 夹具进 CI**：用录制/回放的模型响应驱动真实工具执行路径，每次 PR 都跑，挡住「工具签名改了但没人试过模型能不能填对」。
+- **小额真实模型定期跑**（阶段边界 / 发版前 / 工具面变动后），数字写进 PR。额度默认授权（见「决策自治」）。
+
+**夹具规范与落点**（脚本本体可后续 PR 落地，但落点先钉死，避免第二个人再选一个目录）：
+
+- 目录：`tests/agent-tools/`，与 `tests/agent-runtime/`（运行时契约）、`tests/agent-system/`（编排契约）平级，各管一层，不互相塞。
+- 一个工具一个 case 文件 `tests/agent-tools/<toolName>.case.json`：`{ tool, prompt, recordedModelOutput, expect: { accepted, argsInvariants } }`。
+- 断言只认**真实工具执行结果**，不认「参数长得像」：`accepted` 来自工具自己的运行时校验器，`argsInvariants` 是领域不变量（如「shotId 必须指向真实存在的分镜」）。
+- 汇总落 `tests/agent-tools/report.json`，含逐工具通过数与总写对率；R22 里挂在「Agent 工具面」风险面上，改 `electron/capabilityCore/` 或画布工具定义时触发。
+
+**红线：外观绿不等于接好了。** 设计实验室视觉基线只证**长相**，走查截图只证**界面在**，两者都不证明**按下去会发生事**——单独拿它们判「接好了」是无效验收。
+
+**已交的学费（2026-09-06 深夜，两起同日）**：
+
+- **#547 内部 Agent 工具审计**：给画布写节点的工具，真实模型 **0/18 通过**。所有单测绿着——单测喂的是人手写的合法参数，从来没有一个真实模型试过填它。
+- **Agent 面板 v4**：57 张设计实验室基线全绿、`check:design-lab` 104 passed、逐板对账 18 处出入写明，于是任务书写成「只要接到真实宿主状态」。实际 9 个组件**一个回调 prop 都没有**，composer 的「发送」是 `setValue('')`（清空输入框）。详见 `docs/lessons/design-lab-baselines-green-does-not-mean-wirable.md`。
+
+**与 R16 / P3 的关系**：P3 讲「全绿≠完成」，R16 讲「真实用户任务跑通才算完成」，**R30 是它们在 Agent 这条线上的量化形态**——真实任务闭环对 Agent 来说必须落成两个可比较的数字，否则「跑通了」永远是感觉。
+
+## R31 外部格式/协议/契约必须对齐官方或事实标准
+
+> **一句话**：要对齐官方，而不是自己造一套自以为是的实现；**做方案之前重要的是调研，不是直接写**（2026-09-07 用户拍板）。
+
+**触发**：你要设计、实现或修改任何「**外部也读写**」的东西——
+
+- 技能 / 提示词包的**文件格式**（`SKILL.md` 及其 frontmatter）；
+- **MCP 配置与协议**（`.mcp.json` / `~/.claude.json` / `~/.codex/config.toml` / 协议版本号与消息形状）；
+- **模型可见的工具 schema**（`tools/list` 广播的 `inputSchema`）；
+- **导入导出文件格式**（技能包、项目包、字幕、时间轴交换格式）；
+- **供应商 API 契约**（请求/响应字段、枚举、上限）；
+- **会话 / 转录的落盘格式**，只要它有一天要和别的宿主互通。
+
+判据是一句话：**除了我们自己的代码，还有没有第二个程序（或第二个人手写它）会读写这个东西**。有 → 归 R31 管。
+
+**规矩三条**：
+
+1. **方案前先找规范或事实标准**（Context7 / 官方仓库 / RFC / 主流实现的实际行为）。`docs/plan` 的「## 先查别人」一节里必须有一行**标准对齐**，写死三格：
+   `规范链接` / `我们的偏差` / `偏差理由`。
+   **偏差理由只许是领域约束，不许是偏好。** 合法的长这样：「这是别人家的配置文件，整份覆盖会删掉用户其它的 server」「桌面本地优先，不能假设有服务端」「花钱要用户审批」。不合法的：「我们这样更简单」「当时就这么写的」「风格不一样」——这些是偏好，**偏好不是理由**，写上去等于承认没查。
+2. **没有标准才允许自定义**，而且要写明**查过哪些、为什么没有可对齐的**。登记表里那一格叫 `searched`：每条 `{what, verdict}`，`verdict` 回答「它为什么对不上」。没有这一格，「自定义」和「没查就自己造」在机器眼里一模一样。
+3. **自定义扩展只能放在标准允许的扩展点**（如 frontmatter 的自定义键），**不得另起平行文件**。
+   这一条就是本规则的起因：Agent Skills 的官方形态只有「文件夹 + `SKILL.md` + YAML frontmatter」，我们却在旁边另起了 `skill.json`。扩展点是标准留给你的门，平行文件是你自己凿的墙。
+
+**门岗**：`check:standard-formats`（`scripts/check-standard-formats.mjs`，判据在 `scripts/standard-formats-lib.mjs`，登记表 `docs/engineering/standard-formats.json`，债基线 `scripts/standard-formats-baseline.json`）。位置在 `check:prior-art` 之后。
+
+登记表每项 `{name, kind, files, spec, upstreamVersion, fixtures, readers, writers, deviations, debt?}`。`kind` 五选一，**分档本身就是规则的要害**：
+
+| kind | 含义 | 必填 |
+|---|---|---|
+| `external-standard` | 有正式规范，我们对齐了 | `spec` + `upstreamVersion` + 官方 `fixtures` |
+| `de-facto-standard` | 没规范但生态已收敛（某主流实现的行为即标准） | 同上 |
+| `non-aligned` | **有标准，我们却没对齐** | `spec` + 一条带到期日的收敛 `debt` |
+| `nomi-defined` | 查过了确实没有可对齐的 | `searched`（查过哪些 / 为什么对不上） |
+| `internal` | 只有我们自己读写，从不跨边界 | `why`（凭什么断定它不对外） |
+
+`non-aligned` 和 `nomi-defined` 的区别是整条规则的分水岭：一个是「**有，但没去看**」，一个是「**查过了没有**」。前者只能是在途状态，所以强制绑到期日——没有到期日它就是永久分叉。
+
+**四条判据**（R17 先验会红，输出见 PR 正文）：
+
+- **(a) 官方夹具**：登记项的 `fixtures` 必须存在，**且必须有测试引用它**。「我们读得过自己写的」不证明「我们读得过别人写的」——一份没人读的夹具永远不会红，等于没抓。夹具从官方规范/官方文档**原样抄**，出处记在 `tests/fixtures/standard-formats/SOURCES.md`。**解析器读不过官方样例 = 我们有 bug，不是夹具写错了。**
+- **(b) 未登记的解析入口**：启发式扫 `electron/` 与 `src/`——文件里既有解析调用（`JSON.parse` / yaml / toml / frontmatter）又出现「**别人也叫得出的名字**」（点开头的配置文件 / 全大写 markdown / `skill.json` `manifest.json` `config.toml` 这类通用清单名），就算一个外部格式解析入口。没被登记表认领的入口报红，除非进基线当债。
+  为什么只认「别人也叫得出的名字」：全仓 `JSON.parse` 有几百处，绝大多数读的是我们自己的落盘产物。把它们全拦进来基线会有一百多条，而**一道有一百多条豁免的门岗等于不存在**（R17）。名字才是「外部性」的机器代理——一个格式要能被别人读写，它得先有个别人叫得出的名字。
+  **它抓不到什么**（诚实记分）：把解析写成不出现文件名的纯函数就会漏。所以登记表仍是人写的第一性交付物，启发式只负责在有人**新加一个解析入口**时叫住他。
+- **(c) 无理由的偏差**：`deviations` 每条要 `what` + `reason`，空 `reason` 报红。
+- **(d) 债到期**：登记表里的 `debt` 与基线里的债都绑 `plan` + `due`，到期不清就红（R28：登记是有时限的承诺，不是永久放行）。
+
+**已交的学费（2026-09-07）**：技能格式官方（Claude Code / pi / Codex 的 Agent Skills）只有 `SKILL.md` + frontmatter，我们自造了 `skill.json`。后果分两层：① 2026-08-26 群里抱怨「别人的技能导不进来」——用户原话是「正常用 hermes 或 workbuddy 都是导入一个 zip 包就行，包里有 skill.md 就行了」；② 到 2026-09-07，**文案还在引导用户去造这个文件**。同族的另一起是接 pi SDK 时只接了最底层的 agent loop（R29 已治）。两起同一个机制：**研究这一步靠人记得，高负载下必漏**。
+
+**与 R5 / R20 / R29 的分工**（四条常被搞混）：
+
+| 规则 | 管的那一步 | 问题长什么样 |
+|---|---|---|
+| R5 查官方文档 | 写的时候照着谁的语义写 | 「这个 API 参数怎么传」 |
+| R20 build-vs-buy | 该不该自己写一个通用能力 | 「我要写个任务队列」 |
+| R29 框架边界 | 已经选了框架之后，有没有重造它已有的能力 | 「pi 已经在仓库里了，可我们又写了一套会话持久化」 |
+| **R31 标准对齐** | **和外界交换的东西长什么样** | 「技能格式的标准在那儿，我们却另造了一个 `skill.json`」 |
+
+R29 拦的是**能力重造**，代价落在我们身上（多维护一份、更差一份）；R31 拦的是**格式分叉**，代价落在**用户**身上——别人的文件进不来，我们的文件出不去。所以 R31 的判据比 R29 更硬：R29 允许「有意不同」，R31 的「不同」必须能追到领域约束，否则就是 `non-aligned`，得绑到期日收敛掉。

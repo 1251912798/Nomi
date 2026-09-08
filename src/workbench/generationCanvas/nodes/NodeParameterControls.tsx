@@ -1,3 +1,5 @@
+import { normalizeConditionalParameters } from '../../../../electron/shared/videoCapabilities/crossFieldConstraints'
+import { nodeReferenceCapacity } from './controls/nodeCrossFieldConstraints'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '../../../utils/cn'
@@ -47,8 +49,6 @@ import {
   applyArchetypeModeSwitch,
   applyArchetypeVariantSwitch,
   archetypeModeArraySlots,
-  archetypeModeChoices,
-  archetypeModeSlotReachByKey,
   archetypeModeSlots,
   archetypeModeSourceVideoSlot,
   archetypeVariantChoices,
@@ -57,10 +57,23 @@ import {
   readArchetypeArray,
   referenceSlotStorage,
 } from './controls/archetypeMeta'
+import {
+  archetypeModeChoices,
+  archetypeModeIsVisible,
+  archetypeModeSlotReachByKey,
+  archetypeVariantAxisIsLive,
+  fallbackVisibleModeId,
+} from './controls/channelModeReach'
+import {
+  NARROWED_MODE_GUIDANCE_DISMISSED_META_KEY,
+  referencesSectionIsEmpty,
+  useNarrowedModeGuidance,
+} from './controls/narrowedModeGuidance'
+import NarrowedModeGuidanceNote from './controls/NarrowedModeGuidanceNote'
 import { resolveReferenceSlots, decideArrayReferenceRemoval } from '../runner/referenceSlots'
-import { useChannelCreateBody } from './controls/useChannelCreateBody'
+import { useChannelCreateBodies } from './controls/useChannelCreateBody'
 import { translateModelDisplayText } from '../../../i18n/modelDisplayText'
-import { specializeArchetypeForVariant } from '../../../config/modelArchetypes'
+import { modeTransportFor, specializeArchetypeForVariant } from '../../../config/modelArchetypes'
 import ModeBar from './controls/ModeBar'
 import AssetReference, { type AssetSlot } from '../../assets/AssetReference'
 import type { AssetRef } from '../../assets/assetTypes'
@@ -83,7 +96,6 @@ import {
 } from './aspectRatio'
 import { buildNodeModelChangePatch } from './buildNodeModelChangePatch'
 
-// 模块级常量：比例参数的 key 白名单（与 aspectRatio.ts 的 ASPECT_RATIO_KEYS 保持一致）。
 const ASPECT_RATIO_KEY_SET = new Set<string>(ASPECT_RATIO_KEYS)
 
 type NodeParameterControlsProps = {
@@ -110,17 +122,12 @@ export default function NodeParameterControls({
   const meta = React.useMemo<Record<string, unknown>>(() => node.meta || {}, [node.meta])
   const [uploadingSlotKey, setUploadingSlotKey] = React.useState('')
   const [uploadError, setUploadError] = React.useState('')
-  // 统一的「哪个槽的选择器展开」(单/数组共用一个,P1 归一)+ 数组/源视频上传中标记。
   const [openSlotKey, setOpenSlotKey] = React.useState('')
   const [uploadingArrayKey, setUploadingArrayKey] = React.useState('')
   const isImageLike = isImageLikeGenerationNodeKind(node.kind)
   const isVideoLike = isVideoLikeGenerationNodeKind(node.kind)
-  // C5：文本节点也是可生成节点（executionKind:'text'）——要渲染模型选择器，否则没处选模型。
   const isTextLike = getGenerationNodeExecutionKind(node.kind) === 'text'
-  // 声音节点同为可生成节点：要走模型自动选择(选到「声音」档案)→ ModeBar(配音/转写)+ 参数才显现。
   const isAudioLike = isAudioLikeGenerationNodeKind(node.kind)
-  // 3D 模型节点同为可生成节点(executionKind:'model3d')：与图片/视频共用同一套模型选择器/自动选择/参数机制，
-  // 只是 catalogKind→'model3d'、requiredMode→'text_to_3d'(见 modelOptionsAdapter)把候选过滤到已接入的 3D 模型。
   const isModel3dLike = isModel3dLikeGenerationNodeKind(node.kind)
   const isGenerationNode = isImageLike || isVideoLike || isTextLike || isAudioLike || isModel3dLike
   const requiredMode = requiredModeForGenerationNode(node, { nodes, edges })
@@ -128,36 +135,48 @@ export default function NodeParameterControls({
   const modelOptions = modelOptionsState.options
   const modelCatalogStatus = deriveGenerationModelCatalogStatus(node.kind, modelOptionsState)
 
-  // 模型寻址链单源在 parameterControlModel.nodeSelectedModelAddress（报错卡自定义调用入口共用）。
-  // 必须带上节点存的 vendor 寻址：两个中转站可提供同名 modelKey，裸身份匹配永远命中数组首条
-  // （最新接入那家），下方 vendor 同步 effect 会跟着把 meta.vendor 改写过去——用户锁定被静默翻家。
   const { modelKey: selectedModelValue, vendorKey: selectedModelVendor } = nodeSelectedModelAddress(meta)
   const selectedModelOption = findModelOptionByIdentifier(modelOptions, selectedModelValue, selectedModelVendor) || null
-  // 认得的模型 → 内置档案（供应商无关）；驱动模式分段切换 + 当前模式的槽/参数。认不出 → null（走 flat）。
   const archetype = resolveArchetypeForOption(selectedModelOption)
-  // 变体特化：选中变体可能收窄某 mode 的参数（如 Seedance fast 的 resolution 仅 480/720）——
-  // 槽/参数全由特化后的档案派生，保证 UI 选项与发送一致。无 variants → 原样（零开销）。
-  const variantChoices = archetype ? archetypeVariantChoices(archetype) : []
+  const declaredVariantChoices = archetype ? archetypeVariantChoices(archetype) : []
   const activeVariantId = archetype ? currentArchetypeVariant(archetype, meta)?.id || '' : ''
   const effectiveArchetype = archetype ? specializeArchetypeForVariant(archetype, activeVariantId) : null
   const archMode = effectiveArchetype ? currentArchetypeMode(effectiveArchetype, meta) : null
   const imageCatalogConfig = archetype ? null : buildEffectiveImageCatalogConfig(selectedModelOption?.meta)
   const renderedControls = resolveRenderedControls(selectedModelOption, meta, isImageLike, isVideoLike)
 
-  // ── 渠道诚实：档案声明的槽 × **这条渠道真发得出的键** ──────────────────────────────
-  // UI 能力由档案声明（供应商无关），发得出什么由渠道 mapping 决定；此前两者只在「点生成那一刻」
-  // 才对账，于是用户连好参考、切到「全能参考」、点了生成才被拒。这里提前算出来，发不出的槽不显示、
-  // 只带得动 1 张的槽如实收成 1 张。判据与第三闸同一套（referenceReachability），不另起一份。
-  // 拿不到 body（老 preload / 查不到 mapping）→ 空表 → 一律不收窄，绝不因为查不到就藏用户的槽。
-  const channelCreateBody = useChannelCreateBody(
+  const modeBodySpecs = React.useMemo(
+    () =>
+      (effectiveArchetype?.modes ?? []).map((mode) => ({
+        key: mode.id,
+        taskKind: (modeTransportFor(mode, effectiveArchetype, selectedModelOption?.vendor) ?? '') as string,
+        modeId: mode.id,
+      })),
+    [effectiveArchetype, selectedModelOption?.vendor],
+  )
+  const modeBodies = useChannelCreateBodies(
     selectedModelOption?.vendor ?? '',
     selectedModelOption?.value ?? '',
-    (archMode?.transportTaskKind ?? effectiveArchetype?.transportTaskKind ?? '') as string,
+    modeBodySpecs,
   )
+  // （Runway 把 model 写死、且 veo3.1 / veo3.1_fast 本就是两个目录行）。惰性时整条不显示，别骗用户。
+  const variantChoices = archMode && !archetypeVariantAxisIsLive(modeBodies[archMode.id]) ? [] : declaredVariantChoices
+  // 槽级收窄仍只看**当前**模式的 body（口径不变）。三态里的 undefined/null 都落到「拿不到 body」→ 不收窄。
+  const channelCreateBody = archMode ? (modeBodies[archMode.id]?.body ?? null) : null
   const slotReachByKey = React.useMemo(
     () => (archMode && channelCreateBody ? archetypeModeSlotReachByKey(archMode, channelCreateBody) : {}),
     [archMode, channelCreateBody],
   )
+  // 被收窄的模式：不再静默消失，而是指一条路（样张 B/E）。判据与候选查询都住在 narrowedModeGuidance，
+  // 这里只消费结论——见该模块头注释（含「样张 C 为何故意不做」的实测依据）。
+  // 位置必须在下面那些 early return **之前**：hooks 不能条件调用（react-hooks/rules-of-hooks）。
+  const modeGuidance = useNarrowedModeGuidance({
+    archetype: effectiveArchetype,
+    selectedModelOption,
+    modelOptions,
+    modeBodies,
+    nodeMeta: meta,
+  })
 
   // P1 单一真相源：所有 meta 增量 patch 都从 store 读**最新** meta 再 spread，绝不基于渲染快照 prop
   // `node.meta`（那是第二份真相源）。连边赋图 + 紧接改参数等「先后两次写」时，读快照会让后写覆盖前写
@@ -167,9 +186,18 @@ export default function NodeParameterControls({
 
   const updateMeta = (patch: Record<string, unknown>, options?: CanvasMutationOptions) => {
     updateNode(node.id, {
-      meta: { ...getLatestMeta(), ...patch },
+      meta: archMode ? normalizeConditionalParameters(archMode.params, { ...getLatestMeta(), ...patch }) : { ...getLatestMeta(), ...patch },
     }, options)
   }
+
+  React.useEffect(() => {
+    if (!archMode) return
+    const latest = getLatestMeta()
+    const next = normalizeConditionalParameters(archMode.params, latest)
+    if (next !== latest) updateMeta(next, { history: false })
+    // The effect only writes when a conditional selection is invalid.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [archMode, meta])
 
   const updateAspectRatioMeta = (patch: Record<string, unknown>, targetRatio: number | null) => {
     const latest = useGenerationCanvasStore.getState().nodes.find((candidate) => candidate.id === node.id)
@@ -196,7 +224,6 @@ export default function NodeParameterControls({
 
   useNodeModelAutoSelect({
     node,
-    meta,
     modelOptions,
     selectedModelValue,
     selectedModelOption,
@@ -234,6 +261,24 @@ export default function NodeParameterControls({
     // 触发时机只需「输入边集合 / 模型」变化，语义由下面两个签名精确表达。
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [inputAspectSignature, isVideoLike, selectedModelValue, node.id])
+
+  // 模式收窄的**选择安全**（U4）：收窄只改「显示哪几个」，节点 meta 里钉的 modeId 不会自己动。存量节点
+  // （或用户把模型换到另一家后）可能停在一个已经不显示的模式上——那时模式栏一个都不高亮，而发送路径仍按
+  // 那个看不见的模式投影槽，UI 与发送再次分家（正是本轮要根治的那类病）。这里把它写回 meta，让两边一致。
+  // history:false —— 这是系统纠偏，不是用户操作，不该占一格撤销。
+  const visibleModeIdSignature = archetype
+    ? archetype.modes.filter((mode) => archetypeModeIsVisible(mode, modeBodies[mode.id])).map((m) => m.id).join('|')
+    : ''
+  React.useEffect(() => {
+    if (!archetype) return
+    const visibleIds = visibleModeIdSignature ? visibleModeIdSignature.split('|') : []
+    const latest = getLatestMeta()
+    const next = fallbackVisibleModeId(archetype, latest, visibleIds)
+    if (!next) return
+    updateNode(node.id, { meta: applyArchetypeModeSwitch(latest, archetype, next) }, { history: false })
+    // getLatestMeta/updateNode 每渲染重建；触发时机只需「可见模式集 / 档案 / 节点」变化。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visibleModeIdSignature, archetype?.id, node.id])
 
   if (!isGenerationNode) return null
 
@@ -285,6 +330,12 @@ export default function NodeParameterControls({
   // ── C3 数组参考槽（全能参考，meta-only）：append / remove / 上传，写 node.meta[metaKey] 数组 ──
   const setArrayValue = (metaKey: string, next: string[]) => updateMeta({ [metaKey]: next })
   const handleArrayAdd = (slot: ArchetypeArraySlot, url: string) => {
+    const state = useGenerationCanvasStore.getState()
+    const latestNode = state.nodes.find(n => n.id === node.id) ?? node
+    if (archMode && nodeReferenceCapacity(archMode, latestNode, state.nodes, state.edges) === 0) {
+      showInfoToast(t('generationCommon.parameters.referenceTotal', { max: archMode.maxTotalReferences }))
+      return
+    }
     // 容量先按**已占用位置**判（含连线 + pending 边，单源 resolveReferenceSlots），不能只看 meta 数组长度——
     // 否则被边占满的槽仍允许写入 meta、却落不进槽（显示/发送都没它）=「参考图上不去」。
     const occupied = resolveReferenceSlots(node, nodes, edges).find(
@@ -460,7 +511,11 @@ export default function NodeParameterControls({
           { key: 'lastFrameUrl', label: t('generationCommon.parameters.lastFrame'), group: 'last_frame' },
         ]
       : modelImageUrlSlots
-  const modeChoices = archetype ? archetypeModeChoices(archetype) : []
+  // 模式栏按可达性收窄（U4）：档案声明了模式 ≠ 这家发得出。判据与第三闸同源（archetypeModeIsVisible），
+  // 拿不到 body 一律不收窄。变体特化不改模式 id，故按 id 取 body 与 archetype/effectiveArchetype 无关。
+  const modeChoices = archetype
+    ? archetypeModeChoices(archetype, (mode) => modeBodies[mode.id])
+    : []
   const showModeBar = modeChoices.length > 1
   const showVariantBar = variantChoices.length > 1
   // 当前模式的数组参考槽（全能参考，meta-only）+ 源视频单槽（HappyHorse 视频编辑）。
@@ -648,14 +703,20 @@ export default function NodeParameterControls({
   // 否则用户在下面的提示词框里打了字却毫无作用，只会以为是我们坏了（D4 缺口明着标）。
   const comfyTakesPrompt = comfyWorkflowTakesPrompt(selectedModelOption?.meta)
   const showNoPromptNote = section === 'references' && comfyTakesPrompt === false
+  // 指路提示**独立于模式栏存在**：最坏的一种（样张 D）恰恰是「只剩 1 个模式 → 整条模式栏不显示」，
+  // 那时用户什么都看不到。它若跟着模式栏一起消失，最需要说话的场合反而哑了，所以它单独进空返回判据。
+  const showModeGuidance = showReferences && Boolean(modeGuidance)
 
   if (
     section === 'references' &&
-    imageUrlSlots.length === 0 &&
-    arraySlots.length === 0 &&
-    !sourceVideoSlot &&
-    !showModeBar &&
-    !showNoPromptNote
+    referencesSectionIsEmpty({
+      hasImageUrlSlots: imageUrlSlots.length > 0,
+      hasArraySlots: arraySlots.length > 0,
+      hasSourceVideoSlot: Boolean(sourceVideoSlot),
+      showModeBar,
+      showNoPromptNote,
+      hasModeGuidance: showModeGuidance,
+    })
   )
     return null
 
@@ -669,9 +730,22 @@ export default function NodeParameterControls({
         <ModeBar choices={modeChoices} activeId={archMode?.id || ''} onSelect={handleModeSwitch} />
       ) : null}
 
+      {showModeGuidance && modeGuidance ? (
+        <NarrowedModeGuidanceNote
+          guidance={modeGuidance}
+          currentVendorName={selectedModelOption?.vendorName || selectedModelOption?.vendor || ''}
+          // 复用**已有的** handleModelChange = 与用户手动换模型同一条状态写入路径（updateNode 带 meta patch
+          // → pushEditBurstBarrier），因此天然被 Cmd+Z 覆盖，不新开第二条切换路径。
+          onSwitch={handleModelChange}
+          onDismiss={() => updateMeta({ [NARROWED_MODE_GUIDANCE_DISMISSED_META_KEY]: true })}
+        />
+      ) : null}
+
       {showReferences && assetSlots.length > 0 ? (
         <AssetReference
           slots={assetSlots}
+          remainingCapacity={archMode ? nodeReferenceCapacity(archMode, node, nodes, edges) : undefined}
+          capacityMessage={archMode?.maxTotalReferences === undefined ? undefined : t('generationCommon.parameters.referenceTotal', { max: archMode.maxTotalReferences })}
           valuesByKey={assetValuesByKey}
           occupiedByKey={arrayOccupiedByKey}
           projectId={getDesktopActiveProjectId() || null}

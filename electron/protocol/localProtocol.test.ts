@@ -21,8 +21,12 @@ vi.mock("../projects/repository", () => ({
   resolveProjectRelativePath: vi.fn((_projectId: string, relativePath: string) => path.join(projectRoot, relativePath)),
 }));
 
+const { appendEvents } = vi.hoisted(() => ({ appendEvents: vi.fn() }));
+vi.mock("../events/eventLogRepository", () => ({ appendEvents }));
+
 import { handleNomiLocalRequest } from "./localProtocol";
 import { createArtifactProjection, getArtifactPreviewSecret } from "../productionRun/artifactProjection";
+import { LOCAL_ARTIFACT_CONTENT_SECURITY_POLICY } from "../contentSecurityPolicy";
 
 beforeAll(() => {
   projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "nomi-local-protocol-"));
@@ -65,6 +69,30 @@ describe("handleNomiLocalRequest", () => {
 
     expect(response.status).toBe(200);
     expect(await response.text()).toBe("0123456789");
+  });
+
+  // 类级不变量：nomi-local 是不受信内容离开磁盘的唯一出口——**每一条**响应都得带产物 CSP，
+  // 不管它是 HTML 产物、SVG、还是视频分片。谁也别指望消费方各自记得加 sandbox。
+  it("stamps the sandboxed artifact CSP on every nomi-local response", async () => {
+    const full = await handleNomiLocalRequest(new Request(assetUrl()));
+    expect(full.headers.get("Content-Security-Policy")).toBe(LOCAL_ARTIFACT_CONTENT_SECURITY_POLICY);
+
+    const ranged = await handleNomiLocalRequest(new Request(assetUrl(), { headers: { Range: "bytes=0-0" } }));
+    expect(ranged.status).toBe(206);
+    expect(ranged.headers.get("Content-Security-Policy")).toBe(LOCAL_ARTIFACT_CONTENT_SECURITY_POLICY);
+
+    // 产物出不去网，是这条头的全部意义：任何 https/http 白名单出现在这里都算破防。
+    expect(full.headers.get("Content-Security-Policy")).not.toMatch(/https?:/);
+  });
+
+  it("records the local response status for playback diagnosis", async () => {
+    appendEvents.mockClear();
+    const response = await handleNomiLocalRequest(new Request(assetUrl(), { headers: { Range: "bytes=0-0" } }));
+    expect(response.status).toBe(206);
+    expect(appendEvents).toHaveBeenCalledWith("project-a", [expect.objectContaining({
+      type: "preview.local.response",
+      payload: expect.objectContaining({ status: 206, method: "GET" }),
+    })]);
   });
 
   it("serves byte ranges for video playback", async () => {

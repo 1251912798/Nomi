@@ -1,4 +1,7 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import test from "node:test";
 import {
   inheritLegacyContractHashes,
@@ -6,6 +9,8 @@ import {
   validateRootCauseChange,
   validateRootCauseHistory,
 } from "./root-cause-contracts.mjs";
+
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 const completeContract = {
   __file: "docs/fixes/fixture-media-boundary.root-cause.json",
@@ -73,6 +78,46 @@ const completeContract = {
   migration: "Existing stored values are validated on their next upload.",
   residual_risks: ["Provider-owned URLs outside the upload boundary are not re-fetched."],
 };
+
+const STRUCTURAL_CONTRACT_FILE = "docs/fixes/fixture-structural-change.root-cause.json";
+const STRUCTURAL_PATH = "electron/productionRun/productionRunProjections.ts";
+const STRUCTURAL_TEST = "tests/example/structural-contract.node-test.mjs";
+const structuralSource = [
+  "export function projectProductionRun() {}",
+  "function internalProjection() {}",
+  "export { internalProjection as projectInternalProjection };",
+].join("\n");
+const structuralFiles = new Set([
+  STRUCTURAL_CONTRACT_FILE,
+  STRUCTURAL_PATH,
+  STRUCTURAL_TEST,
+]);
+const structuralContract = {
+  __file: STRUCTURAL_CONTRACT_FILE,
+  schema_version: 3,
+  change_kind: "structural",
+  id: "fixture-structural-change",
+  scope_paths: ["electron/productionRun/"],
+  regression_tests: [STRUCTURAL_TEST],
+  structural_evidence: {
+    affected_paths: [STRUCTURAL_PATH],
+    preserved_exports: [
+      { path: STRUCTURAL_PATH, name: "projectProductionRun" },
+      { path: STRUCTURAL_PATH, name: "projectInternalProjection" },
+    ],
+    behavior_preservation: "The refactor preserves the existing observable behavior.",
+    verification_limits: "The path/export checks are machine-verified; behavioral equivalence remains supported by the changed test and is a declared claim.",
+  },
+};
+
+function validateStructural(contract = structuralContract, fileContents = new Map([[STRUCTURAL_PATH, structuralSource]])) {
+  return validateRootCauseChange({
+    changedFiles: [STRUCTURAL_PATH, STRUCTURAL_TEST, STRUCTURAL_CONTRACT_FILE],
+    contracts: [contract],
+    existingFiles: structuralFiles,
+    fileContents,
+  });
+}
 
 test("match: high-risk production changes require a contract", () => {
   const result = validateRootCauseChange({
@@ -176,6 +221,32 @@ test("not_match: docs-only changes do not require a contract", () => {
   assert.deepEqual(result, { ok: true, errors: [], triggeredFiles: [] });
 });
 
+// 闸门执行体（2026-09-02 加）。这一族的失效是**静默**的：放行得和正常放行一模一样，
+// 所以「改它必须带根因合同」这条本身要有测试钉住——否则谁把某个 hook 从名单里删掉，
+// 也是静默生效的。同时钉住**反面**：提醒型 hook 不该进这张表，否则改一句提示文案都要写合同。
+test("match: 交付闸门的执行体算高风险，提醒型 hook 不算", () => {
+  for (const file of [
+    "scripts/claude-hooks/pre-push-check.sh",
+    "scripts/claude-hooks/secret-guard.sh",
+    "scripts/stamp-gates-ok.mjs",
+    "scripts/ponytail-review-hook.mjs",
+    "scripts/install-claude-hooks.cjs",
+    "scripts/install-git-hooks.cjs",
+  ]) {
+    assert.equal(isHighRiskProductionFile(file), true, `闸门执行体必须算高风险：${file}`);
+  }
+  for (const file of [
+    "scripts/claude-hooks/self-check.sh",
+    "scripts/claude-hooks/handoff-write.sh",
+    "scripts/claude-hooks/model-doc-check.sh",
+    "scripts/claude-hooks/stack-currency-check.sh",
+  ]) {
+    assert.equal(isHighRiskProductionFile(file), false, `提醒型 hook 不该进高风险名单：${file}`);
+  }
+  // 闸门的测试文件本身仍走 isTestFile 豁免——否则改测试也要写合同，会把人逼去绕过门岗。
+  assert.equal(isHighRiskProductionFile("scripts/pre-push-check.node-test.mjs"), false);
+});
+
 test("match: every changed schema v3 contract is validated even without a high-risk production path", () => {
   const result = validateRootCauseChange({
     changedFiles: [completeContract.__file, "electron/catalog/assetLocalization.test.ts"],
@@ -210,6 +281,68 @@ test("match: a complete contract covers changed production and test files", () =
     errors: [],
     triggeredFiles: ["electron/catalog/assetLocalization.ts"],
   });
+});
+
+test("match: a structural contract covers a high-risk production change with structural evidence", () => {
+  const result = validateStructural();
+  assert.deepEqual(result.errors, []);
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.triggeredFiles, [STRUCTURAL_PATH]);
+});
+
+test("match: structural contracts require their own evidence", () => {
+  const contract = { ...structuralContract, structural_evidence: undefined };
+  const result = validateStructural(contract);
+  assert.equal(result.ok, false);
+  assert.match(result.errors.join("\n"), /structural_evidence|affected_paths|behavior_preservation/);
+});
+
+test("match: structural contracts reject missing modules and named exports", () => {
+  const contract = {
+    ...structuralContract,
+    structural_evidence: {
+      ...structuralContract.structural_evidence,
+      affected_paths: ["electron/productionRun/does-not-exist.ts"],
+      preserved_exports: [{ path: STRUCTURAL_PATH, name: "doesNotExist" }],
+    },
+  };
+  const result = validateStructural(contract);
+  assert.equal(result.ok, false);
+  assert.match(result.errors.join("\n"), /structural affected path does not exist/);
+  assert.match(result.errors.join("\n"), /named export does not exist/);
+});
+
+test("match: a contract without change_kind retains the full corrective schema", () => {
+  const contract = { ...completeContract, class_root: "" };
+  const result = validateRootCauseChange({
+    changedFiles: [
+      "electron/catalog/assetLocalization.ts",
+      "electron/catalog/assetLocalization.test.ts",
+      completeContract.__file,
+    ],
+    contracts: [contract],
+    existingFiles: new Set([
+      "electron/catalog/assetLocalization.ts",
+      "electron/catalog/assetLocalization.test.ts",
+      completeContract.__file,
+    ]),
+  });
+  assert.equal(result.ok, false);
+  assert.match(result.errors.join("\n"), /class_root/);
+});
+
+test("match: unknown change_kind fails closed", () => {
+  const contract = { ...structuralContract, change_kind: "refactor" };
+  const result = validateStructural(contract);
+  assert.equal(result.ok, false);
+  assert.match(result.errors.join("\n"), /change_kind/);
+});
+
+test("match: every existing docs/fixes contract still validates through the formal checker", () => {
+  assert.doesNotThrow(() => execFileSync(process.execPath, ["./scripts/check-root-cause-contracts.mjs"], {
+    cwd: repoRoot,
+    stdio: "pipe",
+  }));
 });
 
 test("not_match: unrelated historical contracts are ignored", () => {
@@ -441,4 +574,74 @@ test("an exact bootstrap legacy hash covers its original diff without becoming a
   });
   assert.equal(future.ok, false);
   assert.match(future.errors.join("\n"), /not covered/i);
+});
+
+// —— invariant_owner_layer（2026-09-07 起必填）——
+// 加它的理由：合同已经逼你写清 symptom / direct_cause / class_root / prevention，却**没有一处**
+// 逼你说出「这条不变量从此归谁守、那一层有没有测试」。于是「修在最早共享边界」经常落成
+// 一处补丁 + 一句无主的承诺。填 none 是允许的诚实答案，代价是必须附结构工单。
+const DATED_FILE = "docs/fixes/2026-09-08-fixture.root-cause.json";
+const datedFiles = new Set([
+  DATED_FILE,
+  "electron/catalog/assetLocalization.ts",
+  "electron/catalog/assetLocalization.test.ts",
+  "docs/plan/2026-09-08-owner.md",
+]);
+
+function validateDated(ownerLayer) {
+  const contract = { ...completeContract, __file: DATED_FILE };
+  if (ownerLayer === undefined) delete contract.invariant_owner_layer;
+  else contract.invariant_owner_layer = ownerLayer;
+  return validateRootCauseChange({
+    changedFiles: [DATED_FILE, "electron/catalog/assetLocalization.ts", "electron/catalog/assetLocalization.test.ts"],
+    contracts: [contract],
+    existingFiles: datedFiles,
+  });
+}
+
+test("invariant_owner_layer: 阈值之后的合同缺这一节就红", () => {
+  const result = validateDated(undefined);
+  assert.equal(result.ok, false);
+  assert.match(result.errors.join("\n"), /invariant_owner_layer is required/);
+});
+
+test("invariant_owner_layer: 指名了归属层且那层有真实测试 → 绿", () => {
+  const result = validateDated({
+    layer: "electron/catalog/assetLocalization.ts",
+    tests: ["electron/catalog/assetLocalization.test.ts"],
+  });
+  assert.equal(result.ok, true, result.errors.join("\n"));
+});
+
+test("invariant_owner_layer: 填 none 或那层没测试，都必须附一份存在的结构工单", () => {
+  const noneWithoutTicket = validateDated({ layer: "none", tests: [] });
+  assert.match(noneWithoutTicket.errors.join("\n"), /requires structural_ticket/);
+
+  const noTestsWithoutTicket = validateDated({ layer: "electron/catalog/assetLocalization.ts", tests: [] });
+  assert.match(noTestsWithoutTicket.errors.join("\n"), /requires structural_ticket/);
+
+  const ghostTicket = validateDated({ layer: "none", tests: [], structural_ticket: "docs/plan/ghost.md" });
+  assert.match(ghostTicket.errors.join("\n"), /structural_ticket does not exist/);
+
+  const good = validateDated({ layer: "none", tests: [], structural_ticket: "docs/plan/2026-09-08-owner.md" });
+  assert.equal(good.ok, true, good.errors.join("\n"));
+});
+
+test("invariant_owner_layer: 归属层不存在、测试不是测试文件，都红", () => {
+  const ghostLayer = validateDated({ layer: "electron/ghost.ts", tests: ["electron/catalog/assetLocalization.test.ts"] });
+  assert.match(ghostLayer.errors.join("\n"), /invariant_owner_layer\.layer does not exist/);
+
+  const notATest = validateDated({ layer: "electron/catalog/assetLocalization.ts", tests: ["electron/catalog/assetLocalization.ts"] });
+  assert.match(notATest.errors.join("\n"), /is not a test file/);
+});
+
+test("invariant_owner_layer: 阈值之前 / 没有日期前缀的合同不追溯", () => {
+  const legacyDated = { ...completeContract, __file: "docs/fixes/2026-09-06-fixture.root-cause.json" };
+  delete legacyDated.invariant_owner_layer;
+  const older = validateRootCauseChange({
+    changedFiles: ["docs/fixes/2026-09-06-fixture.root-cause.json", "electron/catalog/assetLocalization.ts", "electron/catalog/assetLocalization.test.ts"],
+    contracts: [legacyDated],
+    existingFiles: new Set(["docs/fixes/2026-09-06-fixture.root-cause.json", "electron/catalog/assetLocalization.ts", "electron/catalog/assetLocalization.test.ts"]),
+  });
+  assert.equal(older.ok, true, older.errors.join("\n"));
 });

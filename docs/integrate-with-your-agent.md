@@ -87,9 +87,10 @@ git clone https://github.com/aqm857886159/Nomi.git
    - 接入卡会**真正启动配置里的命令做一次握手**，不是「配置里有一行」就显示成功。
    - **不要**照网上手写一份只有 `NOMI_MCP_STDIO=1` 的配置：当前版本会为每个客户端生成本机签名的 `NOMI_MCP_CLIENT` / `NOMI_MCP_CLIENT_PROOF`，绑定这台电脑和这个客户端，不能跨客户端复用、不能写死在公开文档里。缺证明的配置能列工具，但正式付费 Production Run 会被安全地当成 `external` 拦下。
 2. 按提示**重启对应客户端**，让它重新加载 MCP 配置。
+   - 从旧版本升上来、客户端里 `nomi` 报 `CONNECTION_CLOSED`：多半是配置还指着已迁移的旧入口 `scripts/nomi-mcp.mjs`。**照上面重新接一次**即可（不要手改配置文件）。
 
 **✅ 验证成功的标志：**
-- 握手成功后，你的客户端里出现 `nomi` 的**33 个工具**（如 `nomi_list_models`、`nomi_create_project`、`nomi_generate`、`nomi_materialize_storyboard`、`nomi_control_run` 等；另有 11 个 `generation.single-shot` 语义工具是零额度的可编辑生成入口）。
+- 握手成功后，你的客户端里出现一组 `nomi` 工具（画布 / 文档 / 时间轴 / 素材的语义读写，外加 `nomi_operation_*` 那条零额度的可编辑生成流程）。工具总数**以 `tools/list` 为准**（别再手抄一个数字：面一收敛，抄下来的那个数就成了错的）。想现在就看真实清单，在仓库里跑 `pnpm exec tsx -e "import('./electron/capabilityCore/mcpToolCatalog').then(m=>console.log(m.MCP_TOOL_RESOLVER.list().map(t=>t.name).join('\n')))"`；在客户端里则直接看它列出的 `nomi` 工具。
 - 你能跑通：「在 Nomi 里新建项目『咖啡广告』→ 列我有哪些图模型 → 加 3 个镜头 → 把第一个生成出来」。
 
 > **边界（诚实标注，也讲给用户）**：MCP 能建 / 观察 / 控制制作；**方向与样片**这类可逆创意门可由 Nomi 服务端向支持 elicitation 的客户端再次向真人确认。但**预算、逐镜头付费提交、粗剪采用、导出**必须回到 Nomi 由用户明确批准，主进程强制执行——你 agent 无法越权花钱。
@@ -100,10 +101,11 @@ git clone https://github.com/aqm857886159/Nomi.git
 
 **适用**：给 Nomi 的 Agent 加一块方法论 / 能力（如某种分镜规划、某种剪辑套路）。格式规范见 `docs/skill-pack-format.md`。
 
-一个 skill 就是 `skills/<skill-key>/` 下的一个目录，核心两个文件：
+一个 skill 就是 `skills/<skill-key>/` 下的一个目录，**只有一个必需文件**：
 
-- **`SKILL.md`**：写给 LLM 的方法论 / 系统提示正文（YAML frontmatter 同步 `name` / `description`；正文建议 ≤200 行）。
-- **`skill.json`**：写给 runtime 的 manifest——`name`（点号分段的全局唯一 key）、`version`（SemVer）、`description`、`tools`（工具白名单，最小授权）、`requiredProviders`、`permissions`。
+- **`SKILL.md`**：开头是 YAML frontmatter（写给 runtime 的元数据：必填 `name`（小写 kebab，且等于目录名）与 `description`；Nomi 独有的工具白名单 / 模态声明 / playbook 放 `metadata.nomi`），后面是写给 LLM 的方法论正文（建议 ≤200 行）。
+
+这就是 [Agent Skills 标准](https://agentskills.io/specification)的形状，pi / Claude Code / Codex 读的都是它——所以**别人的技能目录拖进来能用，我们的拖出去也能用**。
 
 **带用户这样做：**
 
@@ -111,7 +113,9 @@ git clone https://github.com/aqm857886159/Nomi.git
 2. 把整个 `<skill-key>/` 目录**拷贝到仓库的 `skills/` 下**（zip 就先解压）。
 3. 启动 / 重启 Nomi（开发态用 `pnpm dev`）。AI 面板里这个 skill 会**自动被发现**。
 
-> 仅有 `SKILL.md`、没有 `skill.json` 的旧 skill 也能加载，只是拿不到工具白名单 / 权限边界（所有工具都会暴露给 LLM）。runtime 加载失败会在主进程日志打印 Zod 校验错误。
+> 只写 `name` + `description`、不带 `metadata.nomi` 的纯知识层技能照样加载——生态里绝大多数技能就是这样。
+> `metadata.nomi` 写坏时 runtime **fail closed**（该技能拿到零工具），并在面板上给出人话原因；主进程日志同时打印 Zod 校验错误。
+> 2026-09-07 之前的第二份清单 `skill.json` 已退场；用户目录里的存量由加载器一次性迁移进 frontmatter，原文件留 `.bak` 备份。
 
 **✅ 验证成功的标志：**
 - Nomi 的 AI 面板里能看到 / 选到这个 skill。
@@ -144,7 +148,7 @@ git clone https://github.com/aqm857886159/Nomi.git
 - 自定义 / 中转供应商卡：`src/ui/onboarding/CustomVendorCard.tsx`、地址字段 `src/ui/onboarding/VendorBaseUrlField.tsx`、管理块 `src/ui/onboarding/CustomVendorManage.tsx`。
 - 本地 ComfyUI 卡：`src/ui/onboarding/ComfyuiLocalCard.tsx`；后端契约 / 默认值 / `/object_info` 对账：`electron/catalog/comfyuiLocal.ts`。
 - 内置供应商清单（哪些 host 是内置认得的）：`electron/catalog/builtinVendorSeeds.ts`。
-- MCP / CLI 完整流程、33 个工具、故障排查、安全边界：`docs/guide/capability-core-cli-mcp.md`。
+- MCP / CLI 完整流程、工具清单（以 `tools/list` 为准）、故障排查、安全边界：`docs/guide/capability-core-cli-mcp.md`。
 - 技能格式：`docs/skill-pack-format.md`。
 - 供应商接入通用说明：`docs/provider-integration.md`；使用指南：`docs/user-guide.md`。
 

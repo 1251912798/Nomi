@@ -10,6 +10,8 @@ import {
   runCatalogGenerationTask,
 } from './catalogTaskActions'
 import { resolveGenerationReferences } from './generationReferenceResolver'
+import { resolveTaskKind } from './catalogTaskResolve'
+import { GENERATION_NODE_KINDS, getGenerationNodeExecutionKind } from '../model/generationNodeKinds'
 import { MODEL_ARCHETYPES } from '../../../config/modelArchetypes'
 import { encodeMention } from '../../assets/promptMentions'
 import type { GenerationCanvasNode } from '../model/generationCanvasTypes'
@@ -204,6 +206,32 @@ describe('buildCatalogTaskRequest — 档案 mapping 桶由 transportTaskKind �
   it('HappyHorse 任意模式 → text_to_video 桶', () => {
     expect(buildCatalogTaskRequest(videoNode('happyhorse', 't2v')).request.kind).toBe('text_to_video')
     expect(buildCatalogTaskRequest(videoNode('happyhorse', 'i2v', { firstFrameUrl: 'F' })).request.kind).toBe('text_to_video')
+  })
+})
+
+describe('buildCatalogTaskRequest — 保持提示词原文，执行层负责组装对白', () => {
+  const wanNode = (extraMeta: Record<string, unknown> = {}): GenerationCanvasNode => ({
+    id: 'dialogue-shot',
+    kind: 'video',
+    title: '对白镜头',
+    position: { x: 0, y: 0 },
+    prompt: '镜头缓慢推近',
+    meta: {
+      modelKey: 'wan/3-0-video',
+      modelVendor: 'kie',
+      vendor: 'kie',
+      archetype: { id: 'wan-3.0', modeId: 't2v' },
+      dialogue: '你终于来了。',
+      ...extraMeta,
+    },
+  })
+
+  it('直接构建请求不改写持久化 prompt', () => {
+    expect(buildCatalogTaskRequest(wanNode()).request.prompt).toBe('镜头缓慢推近')
+  })
+
+  it('当前 mode 显式关闭 audio 时不注入对白', () => {
+    expect(buildCatalogTaskRequest(wanNode({ audio: false })).request.prompt).toBe('镜头缓慢推近')
   })
 })
 
@@ -912,5 +940,49 @@ describe('resolvePollBudget / isSlowLaneBackend — 轮询超时按后端时延�
     expect(isSlowLaneBackend('text_to_image', 'apimart')).toBe(false)
     expect(resolvePollBudget('text_to_image', 'apimart')).toEqual({ softMs: 120000, hardMs: 120000 })
     expect(resolvePollBudget('image_edit', 'kie')).toEqual({ softMs: 120000, hardMs: 120000 })
+  })
+})
+
+// 穷举矩阵（2026-09-02，#320 缺口②第二边界）：resolveTaskKind 的兜底是 throw「not implemented yet」。
+// 此前 model3d 被两头漏掉——档案桶分支只认 video/image/audio（RunningHub 混元/Meshy 带档案也砸到 throw）、
+// 底部又没有 model3d 兜底。矩阵钉住：每个 registry 声明的 executionKind 都必须解析出 taskKind，不许 throw；
+// 3D 档案的模式 transportTaskKind（text_to_3d / image_to_3d）必须被尊重。新 kind 漏接当场红。
+describe('resolveTaskKind — kind × 能力面穷举（防「档案桶/兜底漏 kind → throw」复发）', () => {
+  const bareNode = (kind: GenerationCanvasNode['kind']): GenerationCanvasNode =>
+    ({ id: 'tk1', kind, title: '', position: { x: 0, y: 0 }, prompt: '一只猫',
+       meta: { modelKey: 'some-custom-model', modelVendor: 'my-relay', vendor: 'my-relay' } } as GenerationCanvasNode)
+
+  const EXPECTED_BARE: Record<string, string> = {
+    text: 'chat', image: 'text_to_image', video: 'text_to_video', audio: 'text_to_audio', model3d: 'text_to_3d',
+  }
+  for (const kind of GENERATION_NODE_KINDS) {
+    const exec = getGenerationNodeExecutionKind(kind)
+    if (!exec) continue // 无 executionKind 的 kind 到不了 resolveTaskKind（派发闸已挡），不在此矩阵
+    it(`${kind}（executionKind=${exec}）：无档案裸节点解析为 ${EXPECTED_BARE[exec]}，不 throw`, () => {
+      expect(resolveTaskKind(bareNode(kind), {})).toBe(EXPECTED_BARE[exec])
+    })
+  }
+
+  it('model3d 无档案 + 有图参考 → image_to_3d（与 image/video 同一启发式口径）', () => {
+    expect(resolveTaskKind(bareNode('model3d'), { referenceImages: ['nomi-local://asset/p/ref.png'] })).toBe('image_to_3d')
+    expect(resolveTaskKind(bareNode('model3d'), { firstFrameUrl: 'nomi-local://asset/p/ref.png' })).toBe('image_to_3d')
+  })
+
+  it('3D 档案（meshy6）模式 transportTaskKind 被尊重：text→text_to_3d / image→image_to_3d', () => {
+    const withMode = (modeId: string): GenerationCanvasNode =>
+      ({ id: 'tk2', kind: 'model3d', title: '', position: { x: 0, y: 0 }, prompt: '一只猫',
+         meta: { modelKey: 'meshy6', archetype: { id: 'meshy6', modeId } } } as GenerationCanvasNode)
+    expect(resolveTaskKind(withMode('text'), {})).toBe('text_to_3d')
+    expect(resolveTaskKind(withMode('image'), {})).toBe('image_to_3d')
+  })
+
+  it('全部 model3d 档案 × 模式：解析结果 = 模式声明的 transportTaskKind（registry 驱动，新 3D 档案自动进矩阵）', () => {
+    for (const archetype of MODEL_ARCHETYPES.filter((a) => a.kind === 'model3d')) {
+      for (const mode of archetype.modes || []) {
+        const node = { id: 'tk3', kind: 'model3d', title: '', position: { x: 0, y: 0 }, prompt: 'x',
+          meta: { modelKey: archetype.identifierPatterns?.[0] || archetype.id, archetype: { id: archetype.id, modeId: mode.id } } } as GenerationCanvasNode
+        expect(resolveTaskKind(node, {})).toBe(mode.transportTaskKind ?? archetype.transportTaskKind)
+      }
+    }
   })
 })

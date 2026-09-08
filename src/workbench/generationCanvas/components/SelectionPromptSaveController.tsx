@@ -5,6 +5,7 @@ import { IconX } from '@tabler/icons-react'
 import { NomiLogoMark } from '../../../design'
 import { addUserPrompt, type PromptMediaType, type PromptReferenceImage } from '../../api/promptLibraryApi'
 import { toast } from '../../../ui/toast'
+import type { TranslationKey } from '../../../i18n/translationKey'
 import { cn } from '../../../utils/cn'
 import type { GenerationCanvasNode } from '../model/generationCanvasTypes'
 import { getGenerationNodeExecutionKind } from '../model/generationNodeKinds'
@@ -17,11 +18,11 @@ type SelectionToolbarState = {
 }
 
 // 提示词只此一家（素材面收敛 2026-07-22）：画布选中文字直存主提示词库，类型收敛 image|video。
-// label 由 savePrompt.imageType/videoType 在渲染处翻译。
-const PROMPT_TYPE_OPTIONS: { id: PromptMediaType; labelKey: string }[] = [
-  { id: 'image', labelKey: 'savePrompt.imageType' },
-  { id: 'video', labelKey: 'savePrompt.videoType' },
-]
+// label 在渲染处翻译；存整键（理由见 i18n/translationKey.ts）。
+const PROMPT_TYPE_OPTIONS = [
+  { id: 'image', labelKey: 'generationCommon.savePrompt.imageType' },
+  { id: 'video', labelKey: 'generationCommon.savePrompt.videoType' },
+] as const satisfies readonly { id: PromptMediaType; labelKey: TranslationKey }[]
 
 type DraftState = {
   text: string
@@ -163,7 +164,7 @@ export function SelectionPromptSaveController({ nodes, disabled = false }: Props
           className={cn(
             'fixed z-[100] inline-flex h-9 -translate-x-1/2 items-center gap-2 rounded-full border border-nomi-line px-3',
             'bg-nomi-paper text-nomi-ink shadow-nomi-lg cursor-pointer',
-            'transition-[background,color,transform] duration-[var(--nomi-transition-fast)] hover:-translate-y-0.5 hover:text-nomi-accent',
+            'transition-[background,color,transform] duration-nomi-fast ease-nomi-fast hover:-translate-y-0.5 hover:text-nomi-accent',
           )}
           style={{ left: toolbar.left, top: toolbar.top }}
           onPointerDown={(event) => event.stopPropagation()}
@@ -191,7 +192,7 @@ export function SelectionPromptSaveController({ nodes, disabled = false }: Props
                 <NomiLogoMark size={22} />
                 {t('generationCommon.savePrompt.title')}
               </div>
-              <button type="button" className="grid size-8 place-items-center rounded-nomi-sm border-0 bg-transparent text-nomi-ink-45 hover:bg-nomi-ink-05 hover:text-nomi-ink" onClick={closeDraft}>
+              <button type="button" className="grid size-8 place-items-center rounded-nomi-sm border-0 bg-transparent text-nomi-ink-40 hover:bg-nomi-ink-05 hover:text-nomi-ink" onClick={closeDraft}>
                 <IconX size={17} stroke={1.8} aria-hidden />
               </button>
             </header>
@@ -219,7 +220,7 @@ export function SelectionPromptSaveController({ nodes, disabled = false }: Props
                   }
                 >
                   {PROMPT_TYPE_OPTIONS.map((option) => (
-                    <option key={option.id} value={option.id}>{t(`generationCommon.${option.labelKey}`)}</option>
+                    <option key={option.id} value={option.id}>{t(option.labelKey)}</option>
                   ))}
                 </select>
               </label>

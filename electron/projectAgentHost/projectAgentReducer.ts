@@ -1,37 +1,34 @@
-import type { ProjectBinding } from "../shared/projectBinding";
+import {
+  reduceProjectAgentThreadMutation,
+} from "./projectAgentThreadReduction";
 import type {
   ProjectAgentAppliedCommand,
   ProjectAgentChange,
   ProjectAgentHostState,
   ProjectAgentMutation,
   ProjectAgentPatch,
-  ProjectAgentProposalApproval,
-  ProjectAgentProposalLifecycle,
-  ProjectAgentQueueItem,
   ProjectAgentStatus,
-  ProjectAgentThread,
   ProjectAgentTurn,
 } from "../shared/projectAgentContracts";
-import { projectAgentApprovalPolicyOf, projectAgentWorkModeOf } from "../shared/projectAgentContracts";
 import { ProjectAgentReducerError, type ProjectAgentReducerErrorCode } from "./projectAgentReducerContract";
-import { assertCanAppendProjectAgentItem } from "./projectAgentItemSemantics";
 import {
-  hasDuplicateProjectAgentApprovalIdentity,
-  hasDuplicateProjectAgentProposalReceiptIdentity,
-} from "./projectAgentSemanticIdentity";
+  reduceProjectAgentProposalPut,
+  reduceProjectAgentProposalTransition,
+} from "./projectAgentProposalReduction";
+import { assertCanAppendProjectAgentItem } from "./projectAgentItemSemantics";
 import {
   assertCanonicalMutationTimestamp,
   assertExactMutationKeys,
   assertOptionalMutationBoolean,
   assertProjectAgentMutationEnvelope,
   hashProjectAgentMutation,
-  isCanonicalProjectAgentId,
 } from "./projectAgentMutationValidation";
+import { assertProjectAgentUsage } from "./projectAgentStateValidationPrimitives";
+import { assertProjectAgentRuntimeContext } from "./projectAgentRuntimeContextValidation";
 import type { ProjectAgentReduction } from "./projectAgentReduction";
 import {
   isProjectAgentAbortStatus,
   isProjectAgentAsyncTurnStatus,
-  isProjectAgentQueueBlockingStatus,
   isProjectAgentProposalSettlementStatus,
 } from "./projectAgentStatusSemantics";
 import {
@@ -50,10 +47,11 @@ import {
 } from "./projectAgentAssistantFinalReduction";
 import { reduceProjectAgentQueueEdit } from "./projectAgentQueueEditReduction";
 import { reduceProjectAgentQueueMutation } from "./projectAgentQueueMutationReduction";
-import { reduceProjectAgentThreadActivation } from "./projectAgentThreadActivation";
 import { reduceProjectAgentTurnStart } from "./projectAgentTurnStartReduction";
 import {
   assertStatusTransition,
+  findQueueForTurn,
+  findTurn,
   replaceById,
   transitionRecord,
   updateProposalItems,
@@ -67,51 +65,8 @@ export type { ProjectAgentReducerErrorCode } from "./projectAgentReducerContract
 export { hashProjectAgentMutation } from "./projectAgentMutationValidation";
 export { replayProjectAgentCompactCommand } from "./projectAgentCompactReplay";
 export type { ProjectAgentReduction } from "./projectAgentReduction";
-function isProposalTransition(from: ProjectAgentProposalLifecycle, to: ProjectAgentProposalLifecycle): boolean {
-  return from === "pending" && (to === "claimed" || to === "expired");
-}
 function fail(code: ProjectAgentReducerErrorCode): never {
   throw new ProjectAgentReducerError(code);
-}
-function assertNoAreaIdentity(thread: ProjectAgentThread): void {
-  const record = thread as unknown as Record<string, unknown>;
-  if (
-    Object.prototype.hasOwnProperty.call(record, "area") ||
-    Object.prototype.hasOwnProperty.call(record, "legacyArea") ||
-    Object.prototype.hasOwnProperty.call(record, "sessionKey")
-  ) {
-    fail("area_identity_forbidden");
-  }
-  if (!isCanonicalProjectAgentId(thread.threadId)) fail("invalid_mutation");
-}
-function assertThreadHistory(existing: ProjectAgentThread | undefined, incoming: ProjectAgentThread): void {
-  if (
-    existing &&
-    (existing.createdAt !== incoming.createdAt ||
-      new Date(incoming.updatedAt).getTime() < new Date(existing.updatedAt).getTime())
-  ) {
-    fail("invalid_mutation");
-  }
-}
-function findTurn(state: ProjectAgentHostState, turnId: string): ProjectAgentTurn {
-  const turn = state.turns.find((value) => value.turnId === turnId);
-  if (!turn) fail("record_not_found");
-  return turn;
-}
-function findQueueForTurn(queue: readonly ProjectAgentQueueItem[], turnId: string): ProjectAgentQueueItem {
-  const item = queue.find((value) => value.turnId === turnId);
-  if (!item) fail("record_not_found");
-  return item;
-}
-
-function assertSingleRunningTurn(state: ProjectAgentHostState, turnId: string): void {
-  if (state.turns.some((turn) => turn.turnId !== turnId && turn.status === "running")) {
-    fail("running_turn_exists");
-  }
-}
-
-function assertQueueBinding(item: ProjectAgentQueueItem, binding: ProjectBinding): void {
-  if (!sameProjectAgentBinding(item.binding, binding)) fail("project_binding_mismatch");
 }
 
 function finalizeReduction(
@@ -185,143 +140,18 @@ export function reduceProjectAgentMutation(
 
   try {
     switch (mutation.type) {
-      case "thread.put": {
-        assertExactMutationKeys(mutation.payload, ["thread", "makeActive"]);
-        const { thread, makeActive = false } = mutation.payload;
-        assertOptionalMutationBoolean(mutation.payload.makeActive);
-        assertNoAreaIdentity(thread);
-        const existingThread = threads.find((value) => value.threadId === thread.threadId);
-        assertThreadHistory(existingThread, thread);
-        threads = existingThread
-          ? replaceById(
-              threads,
-              thread.threadId,
-              (value) => value.threadId,
-              () => thread,
-            )
-          : [...threads, thread];
-        const previousActiveThreadId = activeThreadId;
-        if (makeActive || activeThreadId === null) activeThreadId = thread.threadId;
-        changes.push({ kind: "thread-upserted", thread });
-        if (activeThreadId !== previousActiveThreadId) {
-          changes.push({ kind: "active-thread-changed", activeThreadId });
-        }
-        break;
-      }
-      case "thread.remove": {
-        assertExactMutationKeys(mutation.payload, ["threadId", "occurredAt"]);
-        assertCanonicalMutationTimestamp(mutation.payload.occurredAt);
-        const thread = current.threads.find((value) => value.threadId === mutation.payload.threadId);
-        if (!thread) fail("record_not_found");
-        if (current.activeThreadId === thread.threadId) fail("thread_read_only");
-        if (
-          current.turns.some(
-            (turn) => turn.threadId === thread.threadId && isProjectAgentQueueBlockingStatus(turn.status),
-          )
-        ) {
-          fail("thread_read_only");
-        }
-        const turnIds = new Set(
-          current.turns.filter((turn) => turn.threadId === thread.threadId).map((turn) => turn.turnId),
-        );
-        const itemIds = new Set(
-          current.items.filter((item) => item.threadId === thread.threadId).map((item) => item.itemId),
-        );
-        const queueItemIds = new Set(
-          current.queue.filter((item) => item.threadId === thread.threadId).map((item) => item.queueItemId),
-        );
-        const approvalIds = new Set(
-          current.proposalApprovals
-            .filter((approval) => approval.ref.threadId === thread.threadId)
-            .map((approval) => approval.ref.approvalId),
-        );
-        threads = current.threads.filter((value) => value.threadId !== thread.threadId);
-        turns = current.turns.filter((value) => !turnIds.has(value.turnId));
-        items = current.items.filter((value) => !itemIds.has(value.itemId));
-        queue = current.queue.filter((value) => !queueItemIds.has(value.queueItemId));
-        proposalApprovals = current.proposalApprovals.filter((value) => !approvalIds.has(value.ref.approvalId));
-        changes.push(
-          ...current.items
-            .filter((value) => itemIds.has(value.itemId))
-            .map((value): ProjectAgentChange => ({ kind: "item-removed", itemId: value.itemId })),
-          ...current.queue
-            .filter((value) => queueItemIds.has(value.queueItemId))
-            .map((value): ProjectAgentChange => ({ kind: "queue-removed", queueItemId: value.queueItemId })),
-          ...current.turns
-            .filter((value) => turnIds.has(value.turnId))
-            .map((value): ProjectAgentChange => ({ kind: "turn-removed", turnId: value.turnId })),
-          ...current.proposalApprovals
-            .filter((value) => approvalIds.has(value.ref.approvalId))
-            .map((value): ProjectAgentChange => ({ kind: "proposal-removed", approvalId: value.ref.approvalId })),
-          { kind: "thread-removed", threadId: thread.threadId },
-        );
-        if (activeThreadId === thread.threadId) {
-          activeThreadId = null;
-          changes.push({ kind: "active-thread-changed", activeThreadId });
-        }
-        break;
-      }
-      case "thread.activate": {
-        const activated = reduceProjectAgentThreadActivation(current, mutation);
-        activeThreadId = activated.activeThreadId;
-        changes.push(...activated.changes);
-        break;
-      }
+      case "thread.put":
+      case "thread.remove":
+      case "thread.activate":
       case "turn.enqueue": {
-        assertExactMutationKeys(mutation.payload, ["thread", "turn", "userItem", "queueItem"]);
-        const { thread, turn, userItem, queueItem } = mutation.payload;
-        assertNoAreaIdentity(thread);
-        if (
-          turn.status !== "queued" ||
-          queueItem.status !== "queued" ||
-          userItem.kind !== "user" ||
-          turn.threadId !== thread.threadId ||
-          userItem.threadId !== thread.threadId ||
-          userItem.turnId !== turn.turnId ||
-          queueItem.threadId !== thread.threadId ||
-          queueItem.turnId !== turn.turnId ||
-          queueItem.retryable !== turn.retryable ||
-          queueItem.deviated !== turn.deviated ||
-          queueItem.updatedAt !== turn.updatedAt ||
-          stableProjectAgentJson(queueItem.contextRef) !== stableProjectAgentJson(turn.contextRef) ||
-          stableProjectAgentJson(queueItem.model) !== stableProjectAgentJson(turn.model) ||
-          projectAgentWorkModeOf(queueItem.workMode) !== projectAgentWorkModeOf(turn.workMode) ||
-          stableProjectAgentJson(projectAgentApprovalPolicyOf(queueItem.approvalPolicy)) !==
-            stableProjectAgentJson(projectAgentApprovalPolicyOf(turn.approvalPolicy)) ||
-          stableProjectAgentJson(queueItem.skillVersions) !== stableProjectAgentJson(turn.skillVersions) ||
-          stableProjectAgentJson(queueItem.capabilityVersions) !== stableProjectAgentJson(turn.capabilityVersions) ||
-          turns.some((value) => value.turnId === turn.turnId) ||
-          turns.some((value) => value.executionToken === turn.executionToken) ||
-          items.some((value) => value.itemId === userItem.itemId) ||
-          queue.some((value) => value.queueItemId === queueItem.queueItemId)
-        ) {
-          fail("record_exists");
-        }
-        assertQueueBinding(queueItem, current.binding);
-        const existingThread = threads.find((value) => value.threadId === thread.threadId);
-        assertThreadHistory(existingThread, thread);
-        threads = existingThread
-          ? replaceById(
-              threads,
-              thread.threadId,
-              (value) => value.threadId,
-              () => thread,
-            )
-          : [...threads, thread];
-        turns = [...turns, turn];
-        items = [...items, userItem];
-        queue = [...queue, queueItem];
-        const previousActiveThreadId = activeThreadId;
-        activeThreadId = thread.threadId;
-        changes.push(
-          { kind: "thread-upserted", thread },
-          { kind: "turn-upserted", turn },
-          { kind: "item-upserted", item: userItem },
-          { kind: "queue-upserted", queueItem },
-        );
-        if (activeThreadId !== previousActiveThreadId) {
-          changes.push({ kind: "active-thread-changed", activeThreadId });
-        }
+        const reduced = reduceProjectAgentThreadMutation(current, mutation);
+        activeThreadId = reduced.activeThreadId;
+        threads = reduced.threads;
+        turns = reduced.turns;
+        items = reduced.items;
+        queue = reduced.queue;
+        proposalApprovals = reduced.proposalApprovals;
+        changes.push(...reduced.changes);
         break;
       }
       case "queue.edit": {
@@ -545,169 +375,17 @@ export function reduceProjectAgentMutation(
         changes.push({ kind: "item-upserted", item: updated });
         break;
       }
-      case "proposal.put": {
-        assertExactMutationKeys(mutation.payload, ["approval", "item", "occurredAt"]);
-        const { approval, item, occurredAt } = mutation.payload;
-        assertCanonicalMutationTimestamp(occurredAt);
-        if (
-          !approval ||
-          typeof approval !== "object" ||
-          !approval.ref ||
-          typeof approval.ref !== "object" ||
-          !item ||
-          typeof item !== "object"
-        ) {
-          fail("invalid_mutation");
-        }
-        if (
-          approval.lifecycle !== "pending" ||
-          proposalApprovals.some((value) => value.ref.approvalId === approval.ref.approvalId) ||
-          hasDuplicateProjectAgentApprovalIdentity([...proposalApprovals, approval])
-        ) {
-          fail("record_exists");
-        }
-        const turn = findTurn(current, approval.ref.turnId);
-        const queueItem = findQueueForTurn(queue, turn.turnId);
-        const deferredCanvasAdmission =
-          queueItem.target.kind === "canvas" &&
-          Object.keys(queueItem.preconditions).length === 0 &&
-          approval.ref.target.kind === "canvas" &&
-          Array.isArray(approval.ref.preconditions.edges) &&
-          approval.ref.preconditions.edges.length > 0;
-        if (
-          turn.threadId !== approval.ref.threadId ||
-          turn.status !== "running" ||
-          item.kind !== "proposal" ||
-          !item.approval ||
-          item.status !== "proposed" ||
-          item.threadId !== turn.threadId ||
-          item.turnId !== turn.turnId ||
-          items.some((value) => value.itemId === item.itemId) ||
-          stableProjectAgentJson(item.approval) !== stableProjectAgentJson(approval.ref) ||
-          (!deferredCanvasAdmission &&
-            (stableProjectAgentJson(approval.ref.target) !== stableProjectAgentJson(queueItem.target) ||
-              stableProjectAgentJson(approval.ref.preconditions) !== stableProjectAgentJson(queueItem.preconditions))) ||
-          new Date(occurredAt).getTime() < new Date(turn.updatedAt).getTime() ||
-          new Date(approval.ref.expiresAt).getTime() <= new Date(occurredAt).getTime()
-        ) {
-          fail("proposal_transition_invalid");
-        }
-        if (hasDuplicateProjectAgentProposalReceiptIdentity([...items, item])) fail("record_exists");
-        assertCanAppendProjectAgentItem(items, item, true);
-        assertCanonicalMutationTimestamp(approval.ref.expiresAt);
-        const updatedTurn = transitionRecord(turn, {
-          status: "proposed",
-          updatedAt: occurredAt,
-        });
-        const updatedQueue = transitionRecord(deferredCanvasAdmission
-          ? { ...queueItem, target: approval.ref.target, preconditions: approval.ref.preconditions }
-          : queueItem, { status: "proposed", updatedAt: occurredAt });
-        proposalApprovals = [...proposalApprovals, approval];
-        items = [...items, item];
-        turns = replaceById(
-          turns,
-          turn.turnId,
-          (value) => value.turnId,
-          () => updatedTurn,
-        );
-        queue = replaceById(
-          queue,
-          queueItem.queueItemId,
-          (value) => value.queueItemId,
-          () => updatedQueue,
-        );
-        changes.push(
-          { kind: "proposal-upserted", approval },
-          { kind: "item-upserted", item },
-          { kind: "turn-upserted", turn: updatedTurn },
-          { kind: "queue-upserted", queueItem: updatedQueue },
-        );
-        break;
-      }
+      case "proposal.put":
       case "proposal.transition": {
-        assertExactMutationKeys(mutation.payload, ["approvalId", "lifecycle", "occurredAt"]);
-        assertCanonicalMutationTimestamp(mutation.payload.occurredAt);
-        const existingApproval = proposalApprovals.find(
-          (value) => value.ref.approvalId === mutation.payload.approvalId,
-        );
-        if (!existingApproval) fail("record_not_found");
-        if (!isProposalTransition(existingApproval.lifecycle, mutation.payload.lifecycle)) {
-          fail("proposal_transition_invalid");
-        }
-        const occurredAtMs = new Date(mutation.payload.occurredAt).getTime();
-        const expiresAtMs = new Date(existingApproval.ref.expiresAt).getTime();
-        if (
-          (mutation.payload.lifecycle === "claimed" && occurredAtMs >= expiresAtMs) ||
-          (mutation.payload.lifecycle === "expired" && occurredAtMs < expiresAtMs)
-        ) {
-          fail("proposal_transition_invalid");
-        }
-        const turn = findTurn(current, existingApproval.ref.turnId);
-        const queueItem = findQueueForTurn(queue, turn.turnId);
-        const proposalItem = items.find(
-          (item) => item.kind === "proposal" && item.approval?.approvalId === existingApproval.ref.approvalId,
-        );
-        if (
-          turn.status !== "proposed" ||
-          queueItem.status !== "proposed" ||
-          !proposalItem ||
-          occurredAtMs < new Date(turn.updatedAt).getTime() ||
-          occurredAtMs < new Date(proposalItem.updatedAt).getTime()
-        ) {
-          fail("proposal_transition_invalid");
-        }
-        const claimed = mutation.payload.lifecycle === "claimed";
-        if (claimed) assertSingleRunningTurn(current, turn.turnId);
-        const status: ProjectAgentStatus = claimed ? "running" : "stopped";
-        const updatedApproval: ProjectAgentProposalApproval = freezeProjectAgentIncremental({
-          ...existingApproval,
-          lifecycle: mutation.payload.lifecycle,
-          ...(claimed ? { claimedAt: mutation.payload.occurredAt } : { expiredAt: mutation.payload.occurredAt }),
-        });
-        const updatedTurn = transitionRecord(turn, {
-          status,
-          updatedAt: mutation.payload.occurredAt,
-        });
-        const updatedQueue = transitionRecord(queueItem, {
-          status,
-          updatedAt: mutation.payload.occurredAt,
-        });
-        const proposalItems = updateProposalItems(
-          items,
-          existingApproval.ref.approvalId,
-          status,
-          mutation.payload.occurredAt,
-        );
-        items = proposalItems.items;
-        const terminalAssistant = claimed
-          ? { items, changes: [] }
-          : reduceProjectAgentAssistantTerminal(items, turn.turnId, status, mutation.payload.occurredAt);
-        items = terminalAssistant.items;
-        proposalApprovals = replaceById(
-          proposalApprovals,
-          existingApproval.ref.approvalId,
-          (value) => value.ref.approvalId,
-          () => updatedApproval,
-        );
-        turns = replaceById(
-          turns,
-          turn.turnId,
-          (value) => value.turnId,
-          () => updatedTurn,
-        );
-        queue = replaceById(
-          queue,
-          queueItem.queueItemId,
-          (value) => value.queueItemId,
-          () => updatedQueue,
-        );
-        changes.push(
-          { kind: "proposal-upserted", approval: updatedApproval },
-          { kind: "turn-upserted", turn: updatedTurn },
-          { kind: "queue-upserted", queueItem: updatedQueue },
-          ...proposalItems.changes,
-          ...terminalAssistant.changes,
-        );
+        const reduced =
+          mutation.type === "proposal.put"
+            ? reduceProjectAgentProposalPut(current, mutation)
+            : reduceProjectAgentProposalTransition(current, mutation);
+        turns = reduced.turns;
+        items = reduced.items;
+        queue = reduced.queue;
+        proposalApprovals = reduced.proposalApprovals;
+        changes.push(...reduced.changes);
         break;
       }
       case "async.result": {
@@ -725,6 +403,8 @@ export function reduceProjectAgentMutation(
           "expectedRevision",
           "items",
           "turnStatus",
+          "usage",
+          "runtimeContext",
           "retryable",
           "proposalApprovalId",
           "proposalStatus",
@@ -735,6 +415,14 @@ export function reduceProjectAgentMutation(
         const result = mutation.payload;
         assertCanonicalMutationTimestamp(result.receivedAt);
         assertOptionalMutationBoolean(result.retryable);
+        if (result.runtimeContext !== undefined) { try { assertProjectAgentRuntimeContext(result.runtimeContext); } catch { fail("async_result_stale"); } }
+        if (result.usage !== undefined) {
+          try {
+            assertProjectAgentUsage(result.usage);
+          } catch {
+            fail("async_result_stale");
+          }
+        }
         assertExactMutationKeys(result.binding, ["projectId", "immutableProjectUuid", "projectGeneration"]);
         if (
           result.expectedRevision !== mutation.expectedRevision ||
@@ -834,7 +522,7 @@ export function reduceProjectAgentMutation(
         const assistantFinal = reduceProjectAgentAssistantFinal(items, result);
         items = assistantFinal.items;
         changes.push(...assistantFinal.changes);
-        const updatedTurn = transitionRecord(
+        const updatedTurnBase = transitionRecord(
           turn,
           {
             status: result.turnStatus,
@@ -843,6 +531,11 @@ export function reduceProjectAgentMutation(
           },
           true,
         );
+        const updatedTurn = freezeProjectAgentIncremental({
+          ...updatedTurnBase,
+          ...(result.usage !== undefined ? { usage: result.usage } : {}),
+          ...(result.runtimeContext !== undefined ? { runtimeContext: result.runtimeContext } : {}),
+        }) as ProjectAgentTurn;
         const updatedQueue = transitionRecord(
           queueItem,
           {

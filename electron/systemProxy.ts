@@ -12,12 +12,14 @@ import {
   ProxyAgent,
 } from "undici";
 import { isPrivateHost } from "./networkHostPolicy";
+import { coarseAddressLabel, lastOutboundEnvironment } from "./networkOutboundPolicy";
 import { createSocksDispatcher, parseSocksProxyUrl } from "./socksDispatcher";
 import { networkFailureDetails, redactNetworkMessage, safeNetworkUrl } from "./networkErrorDetails";
 // **只引类型**：proxySettings → runtimePaths → electron 有运行时依赖，引进来会让本模块
 // 没法在纯 Node 下单测（既有 systemProxy.test.ts 正是靠"不碰 electron 运行时"跑起来的）。
 // 故偏好由调用方（main.ts / proxyIpc.ts，它们本来就在 electron 里）读好了注入。
 import type { ProxyMode, ProxyPrefs } from "./proxySettings";
+import { logError } from "./logging/logger";
 
 /** 没有偏好文件时的行为 = 上线本设置前的唯一行为（跟随系统探测）。 */
 const FOLLOW_SYSTEM: ProxyPrefs = { mode: "system", customUrl: "" };
@@ -49,9 +51,19 @@ export type ProxyStatus = {
   /** 当前偏好未能生效的原因；实际已提交线路仍由 activeUrl/source 描述。 */
   unsupported: string;
   source: ProxySource | "";
+  /**
+   * 本机检测到 fake-ip 本地代理（Clash/Surge/sing-box 的 TUN 模式）。
+   *
+   * 这一条**必须显式告诉用户**：TUN 模式下 app 看不到任何代理设置（上面 mode/activeUrl 全是
+   * 「直连」），可每一个域名其实都被本地解析器映射进 198.18/15 交给代理去解析。用户看到「直连」
+   * 却又能上网，会以为 Nomi 没走他的梯子；而这正是 2026-09-06 那次「钱扣了、成片取不回」的
+   * 现场——出站策略需要这条证据才敢放行取片，所以状态也要如实显示出来。
+   */
+  localProxyDetected: boolean;
+  /** 检测到的合成地址样本（如 `198.18.x.x`），空串 = 未检测到。 */
+  localProxySample: string;
 };
 
-const LOG = "[nomi:proxy]";
 
 type CommittedRoute = {
   dispatcher: Dispatcher;
@@ -369,7 +381,9 @@ export function applySystemProxy(session: Session, prefs: ProxyPrefs = FOLLOW_SY
       }
       if (generation === requestedGeneration) {
         applicationError = error instanceof Error ? error : new Error(String(error));
-        console.error(`${LOG} 代理设置未能应用，保留已确认线路:`, redactNetworkMessage(applicationError.message));
+        logError("proxy", "apply-failed-kept-confirmed-route", undefined, {
+          reason: redactNetworkMessage(applicationError.message),
+        });
       }
       return previousResolution();
     }
@@ -385,6 +399,7 @@ export function applySystemProxy(session: Session, prefs: ProxyPrefs = FOLLOW_SY
  */
 export function getProxyStatus(prefs: ProxyPrefs = FOLLOW_SYSTEM): ProxyStatus {
   const lastResolution = activeRoute?.resolution ?? { kind: 'none' };
+  const outbound = lastOutboundEnvironment();
   return {
     mode: prefs.mode,
     customUrl: prefs.customUrl,
@@ -392,6 +407,8 @@ export function getProxyStatus(prefs: ProxyPrefs = FOLLOW_SYSTEM): ProxyStatus {
     unsupported: applicationError ? redactNetworkMessage(applicationError.message)
       : lastResolution.kind === "unsupported" ? redactNetworkMessage(lastResolution.detail) : "",
     source: lastResolution.kind === "none" ? "" : lastResolution.source,
+    localProxyDetected: outbound.syntheticResolver,
+    localProxySample: outbound.syntheticSample ? coarseAddressLabel(outbound.syntheticSample) : "",
   };
 }
 

@@ -51,12 +51,18 @@ describe("Project Agent production cutover structure", () => {
     const app = source("src/workbench/NomiStudioApp.tsx");
     const workbenchStore = source("src/workbench/workbenchStore.ts");
     const residentShell = source("src/workbench/ai/ProjectAgentResidentShell.tsx");
+    const residentData = source("src/workbench/ai/v4/useAgentPanelV4Data.ts");
     const workbenchShell = source("src/workbench/WorkbenchShell.tsx");
 
     expect(app).not.toContain("installProjectAgentSnapshotToUi");
     expect(workbenchStore).not.toContain("creationAiMessages");
     expect(workbenchStore).not.toContain("setCreationAiMessages");
-    expect(residentShell).toContain("useProjectAgentSnapshot");
+    // 「宿主投影只有一个入口」这条不变量没变，位置变了：v4 接线把读侧收进
+    // `useAgentPanelV4Data`，容器只消费它。断言跟着真正读快照的那个模块走，
+    // 否则它就变成一条量不到东西的死断言（`dead-selector-lies-both-ways`）。
+    expect(residentData).toContain("useProjectAgentSnapshot");
+    expect(residentShell).toContain("useAgentPanelV4Data");
+    expect(residentShell).not.toContain("useProjectAgentSnapshot");
     expect(residentShell).toContain("projectAgentDraft");
     expect(workbenchShell).toContain("createPortal(<ProjectAgentResidentShell surface={agentSurface} />, agentDock)");
     expect(workbenchStore).not.toContain("creationAiDraft");
@@ -80,14 +86,16 @@ describe("Project Agent production cutover structure", () => {
   it("removes the retired chat stylesheet without regressing live workbench scrolling", () => {
     const shell = source("src/workbench/WorkbenchShell.tsx");
     const workbenchCss = source("src/workbench/workbench.css");
-    const animationsCss = source("src/styles/animations.css");
 
     expect(exists("src/workbench/workbench-ai.css")).toBe(false);
     expect(shell).not.toContain("workbench-ai.css");
     expect(workbenchCss).toContain(".workbench-editor__scroll");
     expect(workbenchCss).toContain(".workbench-autogrow");
     expect(workbenchCss).not.toContain("tc-ai-chat");
-    expect(animationsCss).not.toContain("tc-ai-chat");
+    // src/styles/animations.css 已整体删除（从不在 main.tsx 的 import 图里，@apply 的
+    // animate-shimmer/animate-sheen 在 tailwind.config.ts 里根本没定义 → 死码）。
+    // 断言跟着「文件不存在」走，别留一条 readFileSync 会直接抛的死断言。
+    expect(exists("src/styles/animations.css")).toBe(false);
   });
 
   it("keeps retired area turn controllers out of the production import graph", () => {

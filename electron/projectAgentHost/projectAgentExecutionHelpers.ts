@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import type { AgentChatRequest, AgentChatResponse } from "../harness/agentChatContracts";
 import type {
   ProjectAgentHostState,
+  ProjectAgentFailureItem,
   ProjectAgentItem,
   ProjectAgentTaskItem,
   ProjectAgentTurn,
@@ -13,6 +14,8 @@ import {
   EXPORT_WRITE_ALIASES,
   exportWriteResultSchema,
 } from "../shared/agentCapabilities/exportCapabilities";
+import { skillReadResultSchema } from "../shared/agentCapabilities/skillRead";
+import type { SkillLedgerItem } from "../harness/context/promptPipe";
 
 export function stableJson(value: unknown): string {
   if (value === null) return "null";
@@ -35,34 +38,30 @@ export function digest(value: unknown): string {
     .digest("hex");
 }
 
+export function hostPromptLedgerForTurn(snapshot: ProjectAgentHostState, threadId: string): SkillLedgerItem[] {
+  return snapshot.items.flatMap((item) => item.threadId === threadId && item.kind === "tool" && item.skillLoad
+    ? [{ kind: "tool", capability: item.capability, skillLoad: item.skillLoad }]
+    : []);
+}
+
 export function statusForResponse(response: AgentChatResponse): ProjectAgentStatus {
   if (response.status === "cancelled") return "stopped";
   if (response.status === "error") return "failed";
   return "done";
 }
 
-export function executionPrompt(snapshot: ProjectAgentHostState, turnId: string, request: AgentChatRequest): string {
-  const prior = snapshot.items
-    .filter((item) => item.threadId === snapshot.activeThreadId && item.turnId !== turnId)
-    .flatMap((item) => {
-      if (item.kind === "user") return [`用户：${item.text}`];
-      if (item.kind === "assistant") return [`Nomi：${item.text}`];
-      return [];
-    })
-    .join("\n");
-  if (!prior) return request.prompt;
-  return `此前同一项目线程：\n${prior}\n\n本轮请求：\n${request.prompt}`;
-}
-
-/** Fold the user's latest steering instruction into the execution prompt (appended, never rewriting a committed effect). */
-export function steeredExecutionPrompt(
-  snapshot: ProjectAgentHostState,
-  turnId: string,
-  request: AgentChatRequest,
-  steering: string | undefined,
-): string {
-  const base = executionPrompt(snapshot, turnId, request);
-  return steering ? `${base}\n用户对当前任务的最新修正：${steering}` : base;
+/**
+ * Fold the user's latest steering instruction into this turn's prompt (appended,
+ * never rewriting a committed effect).
+ *
+ * Prior turns are NOT re-narrated here. A thread's history is the durable Pi
+ * context bound by the Host (`AgentChatRequest.history`), which keeps user
+ * messages, assistant replies, tool calls and their results as structured
+ * messages. Flattening them back into prose lost every tool result, collapsed
+ * the role boundary, and grew without bound.
+ */
+export function steeredExecutionPrompt(request: AgentChatRequest, steering: string | undefined): string {
+  return steering ? `${request.prompt}\n用户对当前任务的最新修正：${steering}` : request.prompt;
 }
 
 /** Steerable turn statuses: only an in-flight or pending turn may take a direction change. */
@@ -94,9 +93,23 @@ export function toolItem(
   turn: ProjectAgentTurn,
   record: AgentChatResponse["toolCalls"][number],
   now: string,
+  provenance?: AgentChatResponse["provenance"],
 ): ProjectAgentItem {
-  const status = record.status === "ok" ? "done" : record.status === "cancelled" ? "stopped" : "failed";
+  // A tool the user refused is not a tool that broke. Folding `denied` into
+  // `failed` made the receipt say "失败" for a decision the user made on
+  // purpose, and left the panel unable to tell "Nomi could not" from "you said
+  // no" at all. `declined` is already a Host status; use it.
+  const status = record.status === "ok"
+    ? "done"
+    : record.status === "cancelled"
+      ? "stopped"
+      : record.status === "denied"
+        ? "declined"
+        : "failed";
   const canonicalCapability = resolveCapabilityAlias(record.toolName)?.contract;
+  const skillResult = canonicalCapability?.id === "skill.read" && record.status === "ok"
+    ? skillReadResultSchema.safeParse(record.result)
+    : { success: false as const };
   return Object.freeze({
     itemId: `tool-${digest([binding, turn.executionToken, record.toolCallId])}`,
     threadId: turn.threadId,
@@ -109,6 +122,14 @@ export function toolItem(
       : { id: record.toolName, version: 1 },
     ...(record.error ? { text: record.error } : {}),
     resultRef: `result-${digest(record.result ?? record.error ?? record.status)}`,
+    ...(provenance?.length ? { provenance } : {}),
+    ...(skillResult.success ? {
+      skillLoad: {
+        name: skillResult.data.name,
+        packageVersion: skillResult.data.packageVersion,
+        contentHash: skillResult.data.contentHash,
+      },
+    } : {}),
     status,
     retryable: false,
     deviated: false,
@@ -199,4 +220,61 @@ export function productionRunTaskItems(
     }));
   }
   return items;
+}
+
+/**
+ * 一个回合收尾时该往流里放的**失败条目**。纯换算，因为它是一条容易被漏掉的对称性：
+ *
+ * - 工具级失败（`capabilityOutcome`）一直都会建条目；
+ * - **运行时自己**失败（供应商 4xx、空回复……）以前什么都不建：抛出那条路会建
+ *   `runtime_error`，而「正常返回但 status=error」这条路不会。于是同一种失败在两条路上
+ *   一条有原因、一条只剩一个状态字，用户那边就是一句没有信息量的「发送失败，请检查后重试。」
+ *
+ * 两者互斥：工具级的更具体，有它就不再补运行时那条。
+ */
+export function terminalFailureItemFor(input: Readonly<{
+  turn: Pick<ProjectAgentTurn, "threadId" | "turnId" | "executionToken">;
+  status: ProjectAgentStatus;
+  receivedAt: string;
+  capabilityOutcome?: Readonly<{
+    toolCallId: string;
+    code: string;
+    message: string;
+    nextAction?: string;
+    status: ProjectAgentStatus;
+    retryable: boolean;
+  }>;
+  /** 运行时 hooks 上说过的那句人话；没有就退到一句诚实的兜底。 */
+  runtimeDiagnostic?: string;
+}>): ProjectAgentFailureItem | undefined {
+  const { turn, status, receivedAt, capabilityOutcome, runtimeDiagnostic } = input;
+  const base = {
+    threadId: turn.threadId,
+    turnId: turn.turnId,
+    kind: "failure" as const,
+    deviated: false,
+    createdAt: receivedAt,
+    updatedAt: receivedAt,
+  };
+  if (capabilityOutcome) {
+    return Object.freeze({
+      ...base,
+      itemId: `failure-${digest([turn.executionToken, capabilityOutcome.toolCallId, capabilityOutcome.code])}`,
+      correlationId: capabilityOutcome.toolCallId,
+      code: capabilityOutcome.code,
+      message: capabilityOutcome.message,
+      nextAction: capabilityOutcome.nextAction,
+      status: capabilityOutcome.status,
+      retryable: capabilityOutcome.retryable,
+    });
+  }
+  if (status !== "failed") return undefined;
+  return Object.freeze({
+    ...base,
+    itemId: `failure-${digest([turn.executionToken, "runtime-response-failure"])}`,
+    code: "runtime_error",
+    message: runtimeDiagnostic ?? "Nomi runtime did not produce a response",
+    status: "failed" as const,
+    retryable: true,
+  });
 }

@@ -1,7 +1,6 @@
 import { normalizeTimeline } from '../timeline/timelineMath'
 import { normalizeWorkbenchDocument } from '../workbenchPersistence'
-import { createDefaultWorkbenchDocument, type WorkbenchDocument } from '../workbenchTypes'
-import type { StoryboardPlan } from '../generationCanvas/agent/storyboardPlan'
+import { createDefaultWorkbenchDocument, type StoryboardDesign, type WorkbenchDocument } from '../workbenchTypes'
 import {
   createDefaultWorkbenchProjectPayload,
   workbenchProjectPayloadSchema,
@@ -12,6 +11,7 @@ import {
   type WorkbenchProjectSummary,
 } from './projectRecordSchema'
 import { normalizeCategories } from './projectCategories'
+import { storyboardPlanSchema } from '../generationCanvas/agent/storyboardPlanSchema'
 import i18n from '../../i18n'
 
 // 封面派生已收口到 ./projectCoverDerive（媒体类型分流版，2026-08-01）：
@@ -92,17 +92,44 @@ export function normalizePayload(input: unknown): WorkbenchProjectPayload {
   const activeDocumentId = activeId && documents.some((d) => (d as WorkbenchDocument).id === activeId)
     ? activeId
     : firstDocumentId
-  // P4 分镜方案迁移：优先读新字段 storyboardPlans；老项目只有单 storyboardPlan → 包装成 { [activeDocumentId]: {...} }。
-  const storyboardPlans: Record<string, { plan: StoryboardPlan; committed: boolean }> = payload.storyboardPlans
-    ? Object.fromEntries(
-        Object.entries(payload.storyboardPlans).map(([docId, entry]) => [
-          docId,
-          { plan: entry.plan, committed: entry.committed ?? false },
-        ]),
-      )
-    : payload.storyboardPlan
-      ? { [activeDocumentId]: { plan: payload.storyboardPlan, committed: payload.storyboardPlanCommitted ?? false } }
-      : {}
+  const raw = input && typeof input === 'object' ? input as Record<string, unknown> : {}
+  const legacyMapKey = ['storyboard', 'Plans'].join('')
+  const legacyPlanKey = ['storyboard', 'Plan'].join('')
+  const legacyCommittedKey = ['storyboard', 'Plan', 'Committed'].join('')
+  const legacyMap = raw[legacyMapKey] && typeof raw[legacyMapKey] === 'object' ? raw[legacyMapKey] as Record<string, unknown> : undefined
+  const owner = payload.storyboardDesignsByDocumentId
+    ? payload.storyboardDesignsByDocumentId
+    : (() => {
+        const migrated: Record<string, StoryboardDesign[]> = {}
+        const legacyEntries = legacyMap
+          ? Object.entries(legacyMap).flatMap(([documentId, value]) => {
+              if (!value || typeof value !== 'object') return []
+              const entry = value as Record<string, unknown>
+              const plan = storyboardPlanSchema.safeParse(entry.plan)
+              if (!plan.success) return []
+              return [[documentId, { plan: plan.data, committed: entry.committed === true }] as const]
+            })
+          : (() => {
+              const plan = storyboardPlanSchema.safeParse(raw[legacyPlanKey])
+              return plan.success ? [[activeDocumentId, { plan: plan.data, committed: raw[legacyCommittedKey] === true }] as const] : []
+            })()
+        for (const [documentId, entry] of legacyEntries) {
+          const document = normalizedDocuments.find((item) => item.id === documentId)
+          const now = Date.now()
+          migrated[documentId] = [{
+            id: `migrated-${documentId}`,
+            documentId,
+            title: entry.plan.title.trim(),
+            plan: entry.plan,
+            committed: entry.committed,
+            status: entry.committed ? 'committed' : 'draft',
+            sourceDocumentUpdatedAt: document?.updatedAt ?? now,
+            createdAt: now,
+            updatedAt: now,
+          }]
+        }
+        return migrated
+      })()
   return {
     workbenchDocuments: normalizedDocuments,
     activeDocumentId,
@@ -110,11 +137,7 @@ export function normalizePayload(input: unknown): WorkbenchProjectPayload {
     generationCanvas: payload.generationCanvas,
     categories: normalizeCategories(payload.categories),
     generationCanvasLastSeq: payload.generationCanvasLastSeq,
-    storyboardPlans,
-    ...(payload.storyboardDesignsByDocumentId
-      && Object.values(payload.storyboardDesignsByDocumentId).some((designs) => designs.length > 0)
-      ? { storyboardDesignsByDocumentId: payload.storyboardDesignsByDocumentId }
-      : {}),
+    ...(Object.values(owner).some((designs) => designs.length > 0) ? { storyboardDesignsByDocumentId: owner } : {}),
   }
 }
 
@@ -135,12 +158,27 @@ function recordHasPersistedContent(raw: unknown): boolean {
   )
 }
 
+/**
+ * 从原始 record 上取未经 zod 剥离的 payload；取不到就退回 undefined，让
+ * normalizePayload 自己走「缺字段」的既有兜底（它第一步就 safeParse）。
+ */
+function readRawPayload(raw: unknown): unknown {
+  if (!raw || typeof raw !== 'object') return undefined
+  return (raw as { payload?: unknown }).payload
+}
+
 export function normalizeRecord(summary: WorkbenchProjectSummary, raw: unknown): WorkbenchProjectRecordV1 {
   const legacyParsed = workbenchProjectRecordSchema.safeParse(raw)
   if (legacyParsed.success) {
     return {
       ...legacyParsed.data,
-      payload: normalizePayload(legacyParsed.data.payload),
+      // 迁移必须吃**原始** payload，不能吃 zod 解析后的那份：payload schema 是普通
+      // z.object，会把它不认识的键默默剥掉——而已退役的那三个老键（见上面
+      // legacyMapKey / legacyPlanKey / legacyCommittedKey 三处拼装）恰恰就不在 schema 里。
+      // 喂解析后的那份，兼容读取就永远看不见它们：老项目的分镜方案打开即静默消失，
+      // 随后任何一次自动保存会把它从盘上永久抹掉。
+      // normalizePayload 自己第一步就重新 safeParse，喂原始值不会放宽任何校验。
+      payload: normalizePayload(readRawPayload(raw)),
     }
   }
   // Freshly-initialized workspace (existing folder opened via "打开文件夹",

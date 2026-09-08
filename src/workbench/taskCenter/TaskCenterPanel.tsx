@@ -9,6 +9,7 @@ import { IconAlertTriangle, IconCheck, IconClock, IconProgress, IconLoader2, Ico
 import type { ExportJobSnapshot } from '../../../electron/shared/contracts/exportJobManager'
 import { getDesktopBridge } from '../../desktop/bridge'
 import { useGenerationCanvasStore } from '../generationCanvas/store/generationCanvasStore'
+import { selectStableCanvasNodes } from '../generationCanvas/store/canvasNodeProjection'
 import { useGenerationQueueStore } from '../generationCanvas/runner/generationQueueStore'
 import { requestTaskCancel } from '../generationCanvas/runner/localTaskControl'
 // 重试复用既有链路（单发 confirmAndRunNode / 批量 confirmAndRunPlan），不另起一套付费路径。
@@ -16,6 +17,7 @@ import { confirmAndRunNode } from '../generationCanvas/runner/generationRunContr
 import { confirmAndRunPlan } from '../generationCanvas/components/batchPlanPreview'
 import { buildDependencyWaves } from '../generationCanvas/runner/dependencyWaves'
 import { buildTaskCenterView, formatElapsed, type TaskCenterRow } from './taskCenterEntries'
+import { toast } from '../../ui/toast'
 import { currentWorkbenchFloatingTopOffset } from '../../ui/app-shell/windowChrome'
 import type { ProductionRunSummary } from '../../../electron/productionRun/productionRunTypes'
 import type { TaskCenterProjection } from './taskCenterProjection'
@@ -47,7 +49,10 @@ export function TaskCenterPanel({ opened, onClose, productionRuns, exportJobs, o
   const topOffset = currentWorkbenchFloatingTopOffset()
   const entries = useGenerationQueueStore((state) => state.entries)
   const batches = useGenerationQueueStore((state) => state.batches)
-  const nodes = useGenerationCanvasStore((state) => state.nodes)
+  // 面板全程挂载（关着也订阅，见 TaskCenterButton）；只按 id 取任务行数据、不读 position
+  // → 位置稳定投影，拖动期这个常挂订阅者不再每帧重渲（suspect #1）。cancel/retry 处理器仍走
+  // getState().nodes 拿真节点，不受投影影响。
+  const nodes = useGenerationCanvasStore(selectStableCanvasNodes)
   const [now, setNow] = React.useState(() => Date.now())
   // N1：制作任务的家搬到这里（原先在画布助手面板里，见 plan 2026-08-11-nomi-side-viewer-and-fallback）。
   // 只在面板打开时加载/轮询完整 run——关着时徽标由 TaskCenterButton 的 summary 轮询维持。
@@ -198,13 +203,23 @@ export function TaskCenterPanel({ opened, onClose, productionRuns, exportJobs, o
     return <TaskRow key={row.id} row={row} onReveal={reveal} onAction={() => void runAction(row)} />
   }
 
+  /**
+   * 行上那颗操作钮（取消 / 中断 / 重试 / 取消导出）里有两条通到主进程，会失败。
+   * 此前整个 Promise 被裸 `void` 丢掉：用户点「取消导出」，行还在跑、按钮还在那儿、
+   * 一个字的解释也没有（设计系统 §4.1 C1）。失败就说一句，别让人对着不动的行猜。
+   */
   const runAction = async (row: TaskCenterProjection): Promise<void> => {
     const action = row.action
     if (!action) return
-    if (action.kind === 'cancel_generation_queue') cancelQueued(row as TaskCenterRow)
-    else if (action.kind === 'interrupt_generation') interruptRunning(row as TaskCenterRow)
-    else if (action.kind === 'retry_generation') await confirmAndRunNode(action.nodeId)
-    else if (action.kind === 'cancel_export_job') await getDesktopBridge()?.exports.cancel(action.jobId)
+    try {
+      if (action.kind === 'cancel_generation_queue') cancelQueued(row as TaskCenterRow)
+      else if (action.kind === 'interrupt_generation') interruptRunning(row as TaskCenterRow)
+      else if (action.kind === 'retry_generation') await confirmAndRunNode(action.nodeId)
+      else if (action.kind === 'cancel_export_job') await getDesktopBridge()?.exports.cancel(action.jobId)
+    } catch (error) {
+      console.error('task center action failed', error)
+      toast(t('taskCenter.actionFailed'), 'error')
+    }
   }
 
   return (
@@ -236,7 +251,7 @@ export function TaskCenterPanel({ opened, onClose, productionRuns, exportJobs, o
             type="button"
             aria-label={t('taskCenter.close')}
             onClick={onClose}
-            className="inline-flex items-center justify-center size-6 rounded-nomi-sm text-nomi-ink-60 hover:bg-nomi-ink-05 hover:text-nomi-ink transition-[background,color] duration-[var(--nomi-transition-fast)]"
+            className="inline-flex items-center justify-center size-6 rounded-nomi-sm text-nomi-ink-60 hover:bg-nomi-ink-05 hover:text-nomi-ink transition-[background,color] duration-nomi-fast ease-nomi-fast"
           >
             <IconX size={15} stroke={1.8} />
           </button>
@@ -356,7 +371,7 @@ function SummaryAction({ label, onClick }: { label: string; onClick: () => void 
     <button
       type="button"
       onClick={onClick}
-      className="shrink-0 text-micro text-nomi-ink-60 border border-nomi-line rounded-full px-2 py-0.5 hover:text-nomi-ink hover:border-nomi-ink-40 transition-[color,border-color] duration-[var(--nomi-transition-fast)]"
+      className="shrink-0 text-micro text-nomi-ink-60 border border-nomi-line rounded-full px-2 py-0.5 hover:text-nomi-ink hover:border-nomi-ink-40 transition-[color,border-color] duration-nomi-fast ease-nomi-fast"
     >
       {label}
     </button>
@@ -383,7 +398,7 @@ function TaskRow({
       onKeyDown={(event) => {
         if (revealable && (event.key === 'Enter' || event.key === ' ')) onReveal?.(row)
       }}
-      className={`flex gap-2.5 px-3.5 py-2 items-start transition-[background] duration-[var(--nomi-transition-fast)] ${revealable ? 'cursor-pointer hover:bg-nomi-ink-05' : ''}`}
+      className={`flex gap-2.5 px-3.5 py-2 items-start transition-[background] duration-nomi-fast ease-nomi-fast ${revealable ? 'cursor-pointer hover:bg-nomi-ink-05' : ''}`}
     >
       <div className="flex-1 min-w-0">
         <div className={['text-body-sm truncate', failed ? 'text-nomi-ink' : 'text-nomi-ink-80'].join(' ')}>{row.title}</div>
@@ -412,7 +427,7 @@ function TaskRow({
             也是在假装知道进度。没数就不画，靠区段标题 + 已跑时长表达「在跑」。 */}
         {row.group === 'running' && typeof row.percent === 'number' ? (
           <div className="h-[3px] bg-nomi-ink-10 rounded-full mt-1.5 overflow-hidden">
-            <div className="h-full bg-nomi-accent rounded-full transition-[width] duration-[var(--nomi-transition-fast)]" style={{ width: `${row.percent}%` }} />
+            <div className="h-full bg-nomi-accent rounded-full transition-[width] duration-nomi-fast ease-nomi-fast" style={{ width: `${row.percent}%` }} />
           </div>
         ) : null}
         {row.kind === 'generation' && row.cancel === 'none' && row.group === 'running' ? (
@@ -430,7 +445,7 @@ function TaskRow({
             event.stopPropagation()
             onAction()
           }}
-          className="shrink-0 text-micro text-nomi-ink-60 border border-nomi-line rounded-full px-2 py-0.5 hover:text-nomi-ink hover:border-nomi-ink-40 transition-[color,border-color] duration-[var(--nomi-transition-fast)]"
+          className="shrink-0 text-micro text-nomi-ink-60 border border-nomi-line rounded-full px-2 py-0.5 hover:text-nomi-ink hover:border-nomi-ink-40 transition-[color,border-color] duration-nomi-fast ease-nomi-fast"
         >
           {row.action.kind === 'retry_generation'
             ? t('taskCenter.row.retry')

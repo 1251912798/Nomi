@@ -5,6 +5,7 @@ import type { CapabilityContract } from "./capabilityContract";
 const canonicalIdSchema = z.string().trim().min(1);
 const revisionSchema = canonicalIdSchema.max(64);
 const nonNegativeFrameSchema = z.number().int().safe().nonnegative();
+const positiveFrameSchema = z.number().int().safe().positive();
 const integerFrameSchema = z.number().int().safe();
 
 const moveOperationSchema = z
@@ -65,6 +66,60 @@ const rippleOperationSchema = z
   })
   .strict();
 
+const transitionOperationSchema = z
+  .object({
+    kind: z.literal("transition"),
+    action: z.enum(["set", "remove"]),
+    fromClipId: canonicalIdSchema,
+    toClipId: canonicalIdSchema,
+    type: z.enum(["cut", "dissolve", "fade", "match_cut", "whip_pan"]).optional(),
+    durationFrames: z.number().int().safe().positive().optional(),
+  })
+  .strict()
+  .refine((value) => value.action === "remove" || value.type !== undefined, {
+    message: "transition set requires type",
+    path: ["type"],
+  })
+  .refine((value) => value.action !== "remove" || value.type === undefined && value.durationFrames === undefined, {
+    message: "transition remove only accepts endpoints",
+    path: ["action"],
+  });
+
+const textOperationSchema = z.object({
+  kind: z.literal("text"), action: z.enum(["add", "edit", "style", "time"]),
+  id: canonicalIdSchema.optional(), clipId: canonicalIdSchema.optional(), sourceNodeId: canonicalIdSchema.optional(),
+  text: z.string().trim().min(1).optional(), style: z.enum(["caption", "title"]).optional(),
+  startFrame: nonNegativeFrameSchema.optional(), endFrame: nonNegativeFrameSchema.optional(),
+}).strict().superRefine((value, context) => {
+  if (value.action === "add" && (!value.id || !value.text || !value.style || value.startFrame === undefined || value.endFrame === undefined)) context.addIssue({ code: z.ZodIssueCode.custom, message: "text add requires id, text, style, startFrame, endFrame" });
+  if (value.action !== "add" && !value.clipId) context.addIssue({ code: z.ZodIssueCode.custom, message: "text edit/style/time requires clipId" });
+  if (value.action === "edit" && !value.text) context.addIssue({ code: z.ZodIssueCode.custom, message: "text edit requires text" });
+  if (value.action === "style" && !value.style) context.addIssue({ code: z.ZodIssueCode.custom, message: "text style requires style" });
+  if (value.action === "time" && (value.startFrame === undefined || value.endFrame === undefined)) context.addIssue({ code: z.ZodIssueCode.custom, message: "text time requires startFrame and endFrame" });
+});
+
+const clipAudioOperationSchema = z
+  .object({
+    kind: z.literal("clip-audio"),
+    clipId: canonicalIdSchema,
+    /**
+     * Patch: omitted fields keep the clip's current value. Gain range and fade bounds are owned by
+     * the timeline kernel (clip_audio_gain_invalid / clip_audio_fade_*) so the limits live in one place.
+     */
+    audio: z
+      .object({
+        gainDb: z.number().finite().optional(),
+        muted: z.boolean().optional(),
+        fadeInFrames: nonNegativeFrameSchema.optional(),
+        fadeOutFrames: nonNegativeFrameSchema.optional(),
+      })
+      .strict()
+      .refine((value) => Object.keys(value).length > 0, {
+        message: "audio patch requires at least one field",
+      }),
+  })
+  .strict();
+
 export const timelineOperationSchema = z.union([
   moveOperationSchema,
   removeOperationSchema,
@@ -72,6 +127,9 @@ export const timelineOperationSchema = z.union([
   trimOperationSchema,
   sourceWindowOperationSchema,
   rippleOperationSchema,
+  transitionOperationSchema,
+  textOperationSchema,
+  clipAudioOperationSchema,
 ]);
 
 export const timelineEditPlanSchema = z
@@ -85,7 +143,12 @@ export const timelineEditPlanSchema = z
 
 const timelineRangeFields = {
   startFrame: nonNegativeFrameSchema,
-  endFrame: nonNegativeFrameSchema,
+  // `endFrame > startFrame ≥ 0` ⇒ endFrame 至少是 1。把它写进**类型**而不是只写进下面的
+  // refine，是因为 refine 到不了模型可见 schema：模型读到的只有 `minimum: 0`，于是
+  // `{startFrame:0, endFrame:0}` 在它看来完全合法，要撞一次执行边界才知道不行。
+  // 阶段 5a 之前对外那份手抄的传输 schema 恰恰写对了这条（`endFrame: {minimum: 1}`），
+  // 而内部那份没有——同源要求两边一致，那就取更准的那一版，两边一起变准。
+  endFrame: positiveFrameSchema,
 } as const;
 const timelineRangeSchema = z
   .object(timelineRangeFields)
@@ -147,6 +210,12 @@ const sourceWindowSchema = z
   .object({ startFrame: nonNegativeFrameSchema, endFrame: nonNegativeFrameSchema })
   .strict()
   .nullable();
+const projectedClipAudioSchema = z.object({
+  gainDb: z.number().finite(),
+  muted: z.boolean(),
+  fadeInFrames: nonNegativeFrameSchema,
+  fadeOutFrames: nonNegativeFrameSchema,
+}).strict();
 const projectedClipSchema = z
   .object({
     id: canonicalIdSchema,
@@ -158,6 +227,7 @@ const projectedClipSchema = z
     endFrame: nonNegativeFrameSchema,
     durationFrames: nonNegativeFrameSchema,
     sourceWindow: sourceWindowSchema,
+    audio: projectedClipAudioSchema.optional(),
     text: z.string().optional(),
     sourceAvailable: z.boolean(),
   })
@@ -277,7 +347,7 @@ export function timelineReadPiDescriptionForAlias(alias: string): string | undef
     case TIMELINE_READ_ALIASES.inspectRange:
       return "Inspect clips and text overlays that intersect one timeline frame range.";
     case TIMELINE_READ_ALIASES.proposePlan:
-      return "Validate and preview an atomic timeline edit plan without changing the project.";
+      return "Validate and preview an atomic timeline edit plan without changing the project. Valid operation kinds: move, remove, split, trim, source-window, ripple, transition, text, audio.";
     default:
       return undefined;
   }
@@ -286,17 +356,20 @@ export function timelineReadPiDescriptionForAlias(alias: string): string | undef
 export const TIMELINE_READ_CAPABILITY = {
   id: "timeline.read",
   version: 1,
-  aliases: { pi: TIMELINE_READ_ALIASES.read },
+  aliases: { pi: TIMELINE_READ_ALIASES.read, mcp: "nomi_timeline_read" },
   additionalAliases: {
     pi: Object.freeze([TIMELINE_READ_ALIASES.inspectRange, TIMELINE_READ_ALIASES.proposePlan]),
   },
   inputSchema: timelineReadSemanticInputSchema,
   outputSchema: timelineReadResultSchema,
   effect: "read",
+  effectClass: "reversible_local",
   execution: { port: "timeline", availability: "renderer_required" },
-  exposure: "internal_only",
+  exposure: "mcp_safe",
   requiredScope: "timeline:read",
   targetKind: "timeline",
-  approval: "none",
-  projections: { pi: { description: "Read and preview the current project timeline." } },
+  projections: {
+    pi: { description: "Read and preview the current project timeline." },
+    mcp: { description: "Read the project timeline or a bounded frame range." },
+  },
 } as const satisfies CapabilityContract<TimelineReadInput, TimelineReadResult>;

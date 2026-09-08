@@ -17,7 +17,7 @@ Nomi is an open-source, local-first desktop workbench for AI video. Use the mode
 ## WeChat / 微信联系
 
 <p align="center">
-  <a href="docs/media/nomi-canvas-group-wechat-2026-09-01.jpg"><img src="docs/media/nomi-canvas-group-wechat-2026-09-01.jpg" alt="Nomi user group WeChat QR" width="220" /></a>
+  <a href="docs/media/nomi-canvas-group-wechat-2026-09-08.jpg"><img src="docs/media/nomi-canvas-group-wechat-2026-09-08.jpg" alt="Nomi user group WeChat QR" width="220" /></a>
   &nbsp;&nbsp;
   <a href="docs/media/qingyang-wechat.jpg"><img src="docs/media/qingyang-wechat.jpg" alt="Nomi maintainer WeChat QR" width="180" /></a>
 </p>
@@ -39,7 +39,7 @@ People generating AI video at scale — and companies that want to put AI video 
 
 **③ Local** — your footage, generated takes, workflows, and provider setup all live on your machine. When you call an external model API, only the inputs required to complete the task are sent to the provider you configured.
 
-And a structural difference: **use Nomi as your agent's generation backend.** Thirty-three MCP tools let Codex / Claude Code / Cursor drive Nomi over MCP for generation, orchestration, and editing, reusing the credits bundled with your agent membership. Online platforms make their money on compute, so structurally they can't offer this; an open-source local app is naturally happy to be driven by an agent.
+And a structural difference: **use Nomi as your agent's generation backend.** 25 MCP tools let Codex / Claude Code / Cursor drive Nomi over MCP for generation, orchestration, and editing, reusing the credits bundled with your agent membership. Online platforms make their money on compute, so structurally they can't offer this; an open-source local app is naturally happy to be driven by an agent.
 
 ## Connecting your own stack
 
@@ -132,6 +132,8 @@ pnpm run test
 pnpm run typecheck
 pnpm run gates
 ```
+
+Research tooling: `scripts/research/tikhub-search.mjs` searches Chinese social platforms (Douyin / Xiaohongshu / Bilibili / X) for what creators are actually saying about a topic. It reads its credential **only** from the `TIKHUB_API_KEY` environment variable — set it in your shell profile (`export TIKHUB_API_KEY="..."`, obtained from <https://www.tikhub.io>), never in a repo file or on the command line; without it the script says so and exits non-zero rather than returning empty results. See [`docs/research/tikhub-api-notes.md`](docs/research/tikhub-api-notes.md).
 
 ## Contributing
 

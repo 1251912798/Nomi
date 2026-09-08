@@ -47,7 +47,11 @@ describe("Antigravity process ownership", () => {
     const cwd = await readFile(path.join(f.dir, "cwd"), "utf8");
     const profile = await readFile(path.join(f.dir, "profile"), "utf8");
     expect(profile).toContain("tools: []");
-    expect(profile).toContain("inheritCustomizations: false");
+    // agy ≥1.1.27 把 hooks 归进 inheritCustomizations 开关：false 时 task-gate 钩子永不执行（本机 2026-09-08 实测），
+    // 图像/改图验证在两个平台都 HOOK_UNVERIFIED。必须 true；MCP 单独关掉。
+    expect(profile).toContain("inheritCustomizations: true");
+    expect(profile).toContain("inheritMcp: false");
+    expect(profile).not.toContain("inheritCustomizations: false");
     expect(profile).toContain("# System Prompt");
     expect(await readFile(path.join(f.dir, "mounted-cwd"), "utf8")).toBe(cwd);
     await expect(stat(cwd)).rejects.toMatchObject({ code: "ENOENT" });
@@ -65,13 +69,22 @@ describe("Antigravity process ownership", () => {
     const f = await fixture(mode);
     // Rescue a regressed blocking FIFO open after the init deadline, so RED
     // fails with INIT_TIMEOUT instead of stranding the test's libuv worker.
+    //
+    // 2026-09-03：这两个数原本是 500 / 1_000，在满载机器上让本用例假红——它期望
+    // PROFILE_UNVERIFIED，实际拿到 ANTIGRAVITY_INIT_TIMEOUT。原因是 500ms 的 init 截止时间
+    // 要和**真实子进程启动**赛跑：本仓常年 20+ worktree 并行跑套件，spawn 一旦超过 500ms，
+    // 绿路径也会先撞上截止时间，于是报的是「机器慢」而不是「诊断文件校验没生效」。
+    // 这两个数都不是判据——判据是抛出的错误码（PROFILE_UNVERIFIED）和 input 文件必须不存在。
+    // 它们只是「别永远挂着」的兜底，且必须保持 init 截止 < rescue 的先后关系（RED 时先超时、
+    // 再解救被 FIFO 堵住的 libuv worker）。所以按同一倍数一起放大，比例与语义都不变；
+    // 绿路径本就在校验完成时立刻 reject，放大不影响它的耗时。
     const rescue = setTimeout(() => {
       void readFile(path.join(f.dir, "cwd"), "utf8")
         .then((cwd) => open(path.join(cwd, "cli.log"), constants.O_WRONLY | constants.O_NONBLOCK))
         .then((file) => file.close()).catch(() => {});
-    }, 1_000);
+    }, 16_000);
     try {
-      await expect(runAntigravityProcess({ prompt: "secret task" }, { invocation: f.invocation, initTimeoutMs: 500 }))
+      await expect(runAntigravityProcess({ prompt: "secret task" }, { invocation: f.invocation, initTimeoutMs: 8_000 }))
         .rejects.toThrow("PROFILE_UNVERIFIED");
       await expect(readFile(path.join(f.dir, "input"))).rejects.toMatchObject({ code: "ENOENT" });
     } finally { clearTimeout(rescue); }
@@ -164,10 +177,10 @@ describe("Antigravity process ownership", () => {
 
 describe("Antigravity bounded media process", () => {
   const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a5foAAAAASUVORK5CYII=", "base64");
-  it.each([undefined, "1.2.0"])("fails closed before spawn for unverified CLI media version: %s", async (cliVersion) => {
+  it.each([undefined, "1.1.20"])("fails closed before spawn for missing or old CLI media version: %s", async (cliVersion) => {
     const f = await fixture("media-image");
     await expect(runAntigravityProcess({ prompt: "draw", capability: "image", cliVersion }, { invocation: f.invocation }))
-      .rejects.toThrow("MEDIA_VERSION");
+      .rejects.toThrow("VERSION");
     await expect(readFile(path.join(f.dir, "cwd"))).rejects.toMatchObject({ code: "ENOENT" });
   });
   it.each(["image", "edit", "vision"] as const)("runs %s with its exact input/tool scope", async (capability) => {
@@ -178,7 +191,7 @@ describe("Antigravity bounded media process", () => {
     const profile = await readFile(path.join(f.dir, "profile"), "utf8");
     expect(JSON.parse(await readFile(path.join(f.dir, "preflight-files"), "utf8"))).not.toContain(true);
     expect(profile).toContain(capability === "vision" ? "view_file" : "generate_image");
-    expect(profile).toContain("plugins:");
+    expect(profile).not.toContain("plugins:");
     if (capability === "vision") expect(result.artifacts).toBeUndefined();
     else expect(result.artifacts).toMatchObject([{ mimeType: "image/png", width: 1, height: 1 }]);
     await expect(stat(await readFile(path.join(f.dir, "cwd"), "utf8"))).rejects.toMatchObject({ code: "ENOENT" });

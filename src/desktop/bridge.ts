@@ -1,10 +1,10 @@
-import type { MobileBridgeEvent, MobileBridgeStatus, MobileBridgeFeedback } from '../../electron/shared/contracts/directorMobileBridge'
 import type { ExportJobEvent, ExportJobSnapshot, ExportJobVerification } from '../../electron/export/exportJobManager'
 import type { WorkspaceFileListResult } from '../../electron/workspace/workspaceFileIndex'
+import type { WorkspaceSyncInspection } from '../../electron/shared/workspaceSyncContracts'
 import type { ProviderKind } from './providerKind'
-import type { DesktopMediaBridge } from './bridgeMedia'
+import type { DesktopMediaBridge, DesktopVideoDepthBridge } from './bridgeMedia'
 import type { DesktopConnectorBridge } from './bridgeConnector'
-import type { McpInfo, McpVerifyResult } from './mcpBridgeTypes'
+import type { McpClientProfile, McpInfo, McpVerifyResult } from './mcpBridgeTypes'
 import type { DesktopSettingsBridge } from './settingsBridge'
 import type { DesktopOnboardingBridge } from './onboardingBridgeTypes'
 import type { DesktopProductionRunBridge } from './productionRunBridgeTypes'
@@ -12,10 +12,13 @@ import type { CustomCallBridge } from './modelCatalogBridgeTypes'
 import type { ComfyCandidateTestPayload, ComfyCandidateTestResult, ComfyWorkflowMutationResult } from './comfyCandidateContracts'
 import type { CanvasReadSurfaceBridge } from '../../electron/shared/surfacePortBinding'
 import type { ProjectAgentBridge } from './projectAgentBridgeTypes'
+import type { GenerationResolvePlanEnvelope, GenerationResolvePlanRequest } from '../../electron/shared/videoCapabilities/planResolutionContracts'
 export type { ProjectAgentBridge, ProjectAgentCommandWire } from './projectAgentBridgeTypes'
 export type { ProviderKind }
 export type { DesktopAdapterModeResult, DesktopProviderAdapterRun, DesktopProviderRegistration } from './onboardingBridgeTypes'
 export type { ScreenshotHotkeyStatus } from './bridgeMedia'
+export type { DesktopDirectorBridge, DesktopDirectorMobileEvent, DesktopDirectorMobileStatus } from './directorBridgeTypes'
+import type { DesktopDirectorBridge } from './directorBridgeTypes'
 
 /** 落盘的对话消息(conversation 域;draft/附件是 session 域不落盘)。 */
 export type PersistedAiMessage = {
@@ -23,7 +26,7 @@ export type PersistedAiMessage = {
   role: string
   content: string
   /** 分镜方案卡锚在这条消息上(方案随项目持久化,它的「家」也要一起落盘)。 */
-  storyboardPlan?: true
+  storyboardArtifact?: true
 }
 
 /** 一条会话线程(v2 会话历史)。messages=该线程气泡;title=一句话摘要(首句兜底)。 */
@@ -45,8 +48,6 @@ export type PersistedConversationsV2 = {
 }
 
 /** 代理三态：跟随系统探测 / 只对 Nomi 生效的自定义地址 / 强制直连。 */
-export type DesktopDirectorMobileStatus = MobileBridgeStatus
-export type DesktopDirectorMobileEvent = MobileBridgeEvent
 
 export type DesktopProxyMode = 'system' | 'custom' | 'off'
 
@@ -70,6 +71,10 @@ export type DesktopProxyStatus = {
   /** 探到但本版用不了（SOCKS 等）的人话详情；否则空串。 */
   unsupported: string
   source: 'env' | 'system' | 'custom' | ''
+  /** 检测到本机跑着 fake-ip 本地代理（TUN 模式下 mode/activeUrl 会显示「直连」，但流量其实走代理）。 */
+  localProxyDetected?: boolean
+  /** 检测到的合成地址样本（如 `198.18.x.x`）；空串 = 未检测到。 */
+  localProxySample?: string
 }
 
 export type DesktopProxyProbeAttempt = { target: string; ok: boolean; ms: number; error: string }
@@ -319,7 +324,8 @@ export type DesktopUpdateEvent =
   | { type: 'downloaded'; version: string }
   | { type: 'error'; message: string }
 
-export type DesktopBridge = DesktopMediaBridge & DesktopConnectorBridge & {
+export type DesktopBridge = DesktopMediaBridge &
+  DesktopVideoDepthBridge & DesktopConnectorBridge & {
   platform: string
   i18n?: {
     setLocale: (locale: 'zh-CN' | 'en') => void
@@ -348,6 +354,9 @@ export type DesktopBridge = DesktopMediaBridge & DesktopConnectorBridge & {
     getPathForFile?: (file: File) => string
   }
   settings?: DesktopSettingsBridge
+  telemetry?: {
+    track: (payload: unknown) => Promise<{ queued: boolean }>
+  }
   productionRuns?: DesktopProductionRunBridge
   startupProbe?: {
     enabled: boolean
@@ -363,6 +372,9 @@ export type DesktopBridge = DesktopMediaBridge & DesktopConnectorBridge & {
       relativePaths: string[]
     }) => Promise<{ ok: boolean; deletedCount: number; failedCount: number }>
     revealProjectFolder: (payload: { projectId: string }) => Promise<{ ok: boolean }>
+    syncInspect?: (payload: string | { projectId: string; adopt?: boolean }) => Promise<WorkspaceSyncInspection>
+    syncReveal?: (projectId: string) => Promise<{ ok: boolean }>
+    syncCopyConflict?: (payload: { projectId: string; source?: 'local' | 'remote' }) => Promise<{ path: string }>
   }
   /** 系统通知（任务中心：跑完且窗口失焦才发）。可选 —— 老 preload / 测试环境没有时调用端降级到自制提示音。 */
   notifications?: {
@@ -525,22 +537,11 @@ export type DesktopBridge = DesktopMediaBridge & DesktopConnectorBridge & {
     }) => Promise<{ layers: string[] }>
   }
   /** 导演台出片 + 手机虚拟相机。开发页 / 老 preload 没有这座桥 → 对话框明说需要桌面运行时。 */
-  director?: {
-    /** 出片：N 帧 PNG dataURL → ffmpeg 拼 mp4 落项目素材（主进程 electron/video/framesToVideo.ts）。 */
-    framesToVideo: (payload: {
-      projectId: string
-      ownerNodeId: string
-      fileName: string
-      fps: number
-      frames: string[]
-    }) => Promise<{ url: string; assetId?: string }>
-    mobile: {
-      feedback: (payload: MobileBridgeFeedback) => Promise<boolean>
-      start: (payload?: { text?: Record<string, string> }) => Promise<DesktopDirectorMobileStatus>
-      stop: () => Promise<DesktopDirectorMobileStatus>
-      status: () => Promise<DesktopDirectorMobileStatus>
-      onEvent: (callback: (event: DesktopDirectorMobileEvent) => void) => () => void
-    }
+  director?: DesktopDirectorBridge
+  /** Generation strategy resolver GUI 窄 IPC：planning seam 在 main（候选/决策与 agent/MCP 同源），
+    渲染层不自构候选。可选（`?`）：旧 preload 没有此口，调用方须兜住 undefined。 */
+  generationStrategy?: {
+    resolvePlan: (payload: GenerationResolvePlanRequest) => Promise<GenerationResolvePlanEnvelope>
   }
   exports: {
     startJob: (payload: DesktopExportJobStartPayload) => Promise<DesktopExportJobStartResult>
@@ -573,6 +574,7 @@ export type DesktopBridge = DesktopMediaBridge & DesktopConnectorBridge & {
   events?: {
     append: (projectId: string, events: unknown[]) => Promise<{ ok: boolean; count: number; lastSeq: number }>
     read: (projectId: string, fromSeq: number) => Promise<{ ok: boolean; events: unknown[] }>
+    generationEtaStats?: (projectId: string) => { ok: boolean; stats: unknown[] }
   }
   /** S9 项目记忆卡:get=增量提炼+读;update=pin/纠正(text→origin:user);remove=删+墓碑。 */
   memory?: {
@@ -635,6 +637,7 @@ export type DesktopBridge = DesktopMediaBridge & DesktopConnectorBridge & {
     describeChannels: () => AssetTransportChannelView[]
   }
   modelCatalog: CustomCallBridge & {
+    onChanged?: (cb: () => void) => () => void
     listVendors: () => unknown[]
     listModels: (params?: unknown) => unknown[]
     listMappings: (params?: unknown) => unknown[]
@@ -759,10 +762,11 @@ export type DesktopBridge = DesktopMediaBridge & DesktopConnectorBridge & {
     installMcp: (client?: string) => { ok: boolean; client: string; configPath: string; backupPath: string | null }
     /** 撤销接入指定客户端：删 nomi 条目。默认 Claude Code。 */
     uninstallMcp: (client?: string) => { ok: boolean; client: string }
-    /**
-     * 实连验证：真起一次**配置里那条**命令握手。可选（老 preload 无此口 → 卡片退回只读配置的老口径）。
-     * 「配置里有 nomi 这行字」≠「还连得上」：老版本写的脚本已被删、dev 构建钉的 worktree 被删都会失效。
-     */
+    listCustomMcpProfiles?: () => Promise<McpClientProfile[]>
+    registerCustomMcpProfile?: (profile: unknown) => Promise<McpClientProfile | null>
+    removeCustomMcpProfile?: (key: string) => Promise<boolean>
+    onMcpProfilesChanged?: (cb: () => void) => () => void
+    /** 实连验证：真起一次配置里那条命令握手（老 preload 无此口）。「配置里有这行字」≠「还连得上」。 */
     verifyMcp?: (client?: string) => Promise<McpVerifyResult>
     /** A 模式实时桥：注册处理器，接主进程转发来的外部 MCP 画布读/写/付费确认。返回反注册函数。 */
     onApply?: (handler: (op: string, payload: unknown) => unknown | Promise<unknown>) => () => void

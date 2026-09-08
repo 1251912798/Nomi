@@ -1,17 +1,104 @@
 import type { IntegrationKind } from '../integrationCertification/integrationSession'
 
-type Tool = { name: string; description: string; inputSchema: Record<string, unknown>; method: string; build: (args: Record<string, unknown>) => Record<string, unknown> }
-const sessionFields = { sessionId: { type: 'string' }, expectedRevision: { type: 'integer', minimum: 1 } }
-export const MCP_INTEGRATION_TOOL_CATALOG: readonly Tool[] = [
-  { name: 'nomi_integration_begin', description: '创建模型或 ComfyUI 接入会话；只接受公开连接资料，绝不接收 API key 或 Authorization 值。', inputSchema: { type: 'object', properties: { kind: { type: 'string', enum: ['http-api-provider', 'comfyui-workflow'] }, name: { type: 'string', minLength: 1, maxLength: 240 }, baseUrl: { type: 'string', maxLength: 2000 }, docs: { type: 'string', maxLength: 65536, description: '公开文档 URL 或公开契约文本' }, providerKind: { type: 'string', maxLength: 80, description: '公开协议提示，例如 openai' }, authType: { type: 'string', enum: ['none', 'bearer', 'x-api-key', 'query'] }, authHeader: { type: 'string', maxLength: 200, description: '认证 header 名，不是值' }, authQueryParam: { type: 'string', maxLength: 200, description: '认证 query 参数名，不是值' }, clientRequestId: { type: 'string', maxLength: 200 } }, required: ['kind', 'name'], additionalProperties: false }, method: 'integration.begin', build: (a) => ({ kind: a.kind, name: a.name, ...(a.baseUrl ? { baseUrl: a.baseUrl } : {}), ...(a.docs ? { docs: a.docs } : {}), ...(a.providerKind ? { providerKind: a.providerKind } : {}), ...(a.authType ? { authType: a.authType } : {}), ...(a.authHeader ? { authHeader: a.authHeader } : {}), ...(a.authQueryParam ? { authQueryParam: a.authQueryParam } : {}), ...(a.clientRequestId ? { clientRequestId: a.clientRequestId } : {}) }) },
-  { name: 'nomi_integration_open_credentials', description: '打开 Nomi 安全凭据页面；绝不接收或回显密钥。', inputSchema: { type: 'object', properties: sessionFields, required: ['sessionId', 'expectedRevision'], additionalProperties: false }, method: 'integration.open_credentials', build: (a) => ({ sessionId: a.sessionId, expectedRevision: a.expectedRevision }) },
-  { name: 'nomi_integration_discover', description: '发现并分页返回模型候选及证据。', inputSchema: { type: 'object', properties: { ...sessionFields, page: { type: 'integer', minimum: 0 }, search: { type: 'string', maxLength: 200 } }, required: ['sessionId', 'expectedRevision'], additionalProperties: false }, method: 'integration.discover', build: (a) => ({ sessionId: a.sessionId, expectedRevision: a.expectedRevision, ...(a.page !== undefined ? { page: a.page } : {}), ...(a.search ? { search: a.search } : {}) }) },
-  { name: 'nomi_integration_select', description: '选择精确模型候选，进入花费确认。', inputSchema: { type: 'object', properties: { ...sessionFields, selections: { type: 'array', maxItems: 100, items: { type: 'object', properties: { modelKey: { type: 'string', minLength: 1 } }, required: ['modelKey'], additionalProperties: false } } }, required: ['sessionId', 'expectedRevision', 'selections'], additionalProperties: false }, method: 'integration.select', build: (a) => ({ sessionId: a.sessionId, expectedRevision: a.expectedRevision, selections: a.selections }) },
-  { name: 'nomi_integration_request_confirmation', description: '生成不可变认证合同摘要并请求 Nomi 安全 UI 的花费确认；不会接收密钥或直接执行。', inputSchema: { type: 'object', properties: { ...sessionFields, idempotencyKey: { type: 'string', minLength: 1, maxLength: 200 } }, required: ['sessionId', 'expectedRevision', 'idempotencyKey'], additionalProperties: false }, method: 'integration.request_confirmation', build: (a) => ({ sessionId: a.sessionId, expectedRevision: a.expectedRevision, idempotencyKey: a.idempotencyKey }) },
-  { name: 'nomi_integration_submit_workflow', description: '提交 ComfyUI workflow 文本到会话，等待解析和绑定。', inputSchema: { type: 'object', properties: { ...sessionFields, workflow: { type: 'string', minLength: 1, maxLength: 2097152 } }, required: ['sessionId', 'expectedRevision', 'workflow'], additionalProperties: false }, method: 'integration.submit_workflow', build: (a) => ({ sessionId: a.sessionId, expectedRevision: a.expectedRevision, workflow: a.workflow }) },
-  { name: 'nomi_integration_resolve_input', description: '一次提交会话返回的全部未决字段答案。', inputSchema: { type: 'object', properties: { ...sessionFields, answers: { type: 'object', additionalProperties: true } }, required: ['sessionId', 'expectedRevision', 'answers'], additionalProperties: false }, method: 'integration.resolve_input', build: (a) => ({ sessionId: a.sessionId, expectedRevision: a.expectedRevision, answers: a.answers }) },
-  { name: 'nomi_integration_start', description: '确认不可变认证合同并启动唯一 canonical certification run。', inputSchema: { type: 'object', properties: { ...sessionFields, idempotencyKey: { type: 'string', minLength: 1, maxLength: 200 }, receipt: { type: 'string', minLength: 1, maxLength: 8192 } }, required: ['sessionId', 'expectedRevision', 'idempotencyKey', 'receipt'], additionalProperties: false }, method: 'integration.start', build: (a) => ({ sessionId: a.sessionId, expectedRevision: a.expectedRevision, idempotencyKey: a.idempotencyKey, receipt: a.receipt }) },
-  { name: 'nomi_integration_get', description: '读取脱敏的接入会话状态、候选、计数和下一步。', inputSchema: { type: 'object', properties: { sessionId: { type: 'string' } }, required: ['sessionId'], additionalProperties: false }, method: 'integration.get', build: (a) => ({ sessionId: a.sessionId }) },
-  { name: 'nomi_integration_cancel', description: '取消尚未提交的接入会话或任务。', inputSchema: { type: 'object', properties: { ...sessionFields }, required: ['sessionId', 'expectedRevision'], additionalProperties: false }, method: 'integration.cancel', build: (a) => ({ sessionId: a.sessionId, expectedRevision: a.expectedRevision }) },
-]
+// T14 · 确定性接入缝：Nomi 只持有凭据、提案落库、付费确认/启动和取消。
+// 发现候选、翻页、适配杂牌 API、构造 workflow、补未决字段属于情境活，由驱动 Agent 完成后一次 propose。
+// confirm → start 保持两相，expectedRevision 是会话状态指纹；key 和 receipt 永远不在 MCP 参数中。
+
+const istr = (value: unknown): string => (typeof value === 'string' ? value : '')
+
+/** action → 内部路由键（integration.* dispatch case）。get 进 nomi_read。 */
+export const INTEGRATION_METHOD_BY_ACTION: Record<string, string> = {
+  begin: 'integration.begin',
+  open_credentials: 'integration.open_credentials',
+  propose: 'integration.propose',
+  confirm: 'integration.request_confirmation',
+  start: 'integration.start',
+  cancel: 'integration.cancel',
+}
+
+const sessionFields = {
+  sessionId: { type: 'string', minLength: 1 },
+  expectedRevision: { type: 'integer', minimum: 1 },
+}
+
+const candidateSchema = {
+  type: 'object',
+  properties: {
+    modelKey: { type: 'string', minLength: 1, maxLength: 160 },
+    kind: { type: 'string', enum: ['text', 'image', 'video', 'audio', 'model3d'] },
+  },
+  required: ['modelKey', 'kind'],
+  additionalProperties: false,
+} as const
+
+const proposalSchema = {
+  type: 'object',
+  properties: {
+    candidates: { type: 'array', minItems: 1, maxItems: 100, items: candidateSchema },
+    selections: {
+      type: 'array', minItems: 1, maxItems: 100,
+      items: { type: 'object', properties: { modelKey: { type: 'string', minLength: 1, maxLength: 160 } }, required: ['modelKey'], additionalProperties: false },
+    },
+    workflow: { type: 'string', minLength: 1, maxLength: 2097152 },
+    modelKey: { type: 'string', minLength: 1, maxLength: 160 },
+  },
+  additionalProperties: false,
+} as const
+
+export const MCP_INTEGRATION_TOOL = {
+  name: 'nomi_integration',
+  title: '模型 / ComfyUI 接入：公开配置、凭据页、提案、确认、启动、取消。',
+  description: '空 proposal 探测 /models；candidates 可手填兜底；不得传 key。',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      action: { type: 'string', enum: ['begin', 'open_credentials', 'propose', 'confirm', 'start', 'cancel'] },
+      ...sessionFields,
+      kind: { type: 'string', enum: ['http-api-provider', 'comfyui-workflow'] },
+      name: { type: 'string', minLength: 1, maxLength: 240 },
+      baseUrl: { type: 'string', maxLength: 2000 },
+      docs: { type: 'string', maxLength: 65536 },
+      providerKind: { type: 'string', maxLength: 80 },
+      authType: { type: 'string', enum: ['none', 'bearer', 'x-api-key', 'query'] },
+      authHeader: { type: 'string', maxLength: 200, description: 'header 名（非值）。' },
+      authQueryParam: { type: 'string', maxLength: 200, description: 'query 名（非值）。' },
+      clientRequestId: { type: 'string', maxLength: 200 },
+      proposal: proposalSchema,
+      idempotencyKey: { type: 'string', minLength: 1, maxLength: 200 },
+      receipt: { type: 'string', minLength: 1, maxLength: 8192 },
+    },
+    required: ['action'],
+    additionalProperties: false,
+  },
+  method: 'integration.begin',
+  resolveMethod: (a: Record<string, unknown>): string => INTEGRATION_METHOD_BY_ACTION[istr(a.action)] ?? 'integration.begin',
+  build: (a: Record<string, unknown>): Record<string, unknown> => {
+    switch (istr(a.action)) {
+      case 'begin':
+        return {
+          kind: a.kind,
+          name: a.name,
+          ...(a.baseUrl ? { baseUrl: a.baseUrl } : {}),
+          ...(a.docs ? { docs: a.docs } : {}),
+          ...(a.providerKind ? { providerKind: a.providerKind } : {}),
+          ...(a.authType ? { authType: a.authType } : {}),
+          ...(a.authHeader ? { authHeader: a.authHeader } : {}),
+          ...(a.authQueryParam ? { authQueryParam: a.authQueryParam } : {}),
+          ...(a.clientRequestId ? { clientRequestId: a.clientRequestId } : {}),
+        }
+      case 'open_credentials':
+      case 'cancel':
+        return { sessionId: a.sessionId, expectedRevision: a.expectedRevision }
+      case 'propose':
+        return { sessionId: a.sessionId, expectedRevision: a.expectedRevision, proposal: a.proposal }
+      case 'confirm':
+        return { sessionId: a.sessionId, expectedRevision: a.expectedRevision, idempotencyKey: a.idempotencyKey }
+      case 'start':
+        return { sessionId: a.sessionId, expectedRevision: a.expectedRevision, idempotencyKey: a.idempotencyKey, receipt: a.receipt }
+      default:
+        return {}
+    }
+  },
+} as const
+
 export type IntegrationToolKind = IntegrationKind

@@ -22,8 +22,13 @@
 /** 校验器认识的 JSON Schema 关键字。目录里出现白名单以外的关键字 = 有人以为在校验其实没有 → 结构门报红。 */
 export const SUPPORTED_SCHEMA_KEYWORDS = new Set([
   'type', 'properties', 'required', 'items', 'enum',
-  'additionalProperties', 'minimum', 'maximum', 'maxItems',
+  'additionalProperties', 'minimum', 'maximum', 'minItems', 'maxItems',
   'minLength', 'maxLength',
+  // `.positive()` / `.negative()` 生成的是 exclusive 边界，不是 `minimum`。阶段 5a 之前它们
+  // 不在白名单里，于是每个用了 `.positive()` 的契约都进不了对外传输层——传输 schema 因此只能
+  // 手抄一份「差不多」的，那正是内外两份说明书分家的机械成因之一。补上校验行为（下面）后
+  // 收进白名单：**能校验的才许出现**，白名单不是豁免表。
+  'exclusiveMinimum', 'exclusiveMaximum',
   // 以下两个是纯描述性的（不产生校验行为），列入白名单以免结构门误报。
   'default', 'description',
 ])
@@ -105,6 +110,9 @@ function validateValue(value: unknown, schema: SchemaLike, path: string, issues:
       issues.push({ path, message: `必须是数组（收到 ${describeType(value)}）` })
       return
     }
+    if (typeof schema.minItems === 'number' && value.length < schema.minItems) {
+      issues.push({ path, message: `至少 ${schema.minItems} 项（收到 ${value.length} 项）` })
+    }
     if (typeof schema.maxItems === 'number' && value.length > schema.maxItems) {
       issues.push({ path, message: `最多 ${schema.maxItems} 项（收到 ${value.length} 项）` })
     }
@@ -120,15 +128,16 @@ function validateValue(value: unknown, schema: SchemaLike, path: string, issues:
       issues.push({ path, message: `必须是字符串（收到 ${describeType(value)}）` })
       return
     }
+    const characterCount = Array.from(value).length
     // minLength:1 在目录里是「不许给空串」的写法（如修改指令），必须真拦——否则空指令被当成合法定点修改。
-    if (typeof schema.minLength === 'number' && value.length < schema.minLength) {
+    if (typeof schema.minLength === 'number' && characterCount < schema.minLength) {
       issues.push({
         path,
-        message: schema.minLength === 1 ? '不能为空' : `至少 ${schema.minLength} 个字符（收到 ${value.length} 个）`,
+        message: schema.minLength === 1 ? '不能为空' : `至少 ${schema.minLength} 个字符（收到 ${characterCount} 个）`,
       })
     }
-    if (typeof schema.maxLength === 'number' && value.length > schema.maxLength) {
-      issues.push({ path, message: `最多 ${schema.maxLength} 个字符（收到 ${value.length} 个）` })
+    if (typeof schema.maxLength === 'number' && characterCount > schema.maxLength) {
+      issues.push({ path, message: `最多 ${schema.maxLength} 个字符（收到 ${characterCount} 个）` })
     }
     return
   }
@@ -147,6 +156,12 @@ function validateValue(value: unknown, schema: SchemaLike, path: string, issues:
     }
     if (typeof schema.maximum === 'number' && value > schema.maximum) {
       issues.push({ path, message: `不能大于 ${schema.maximum}（收到 ${value}）` })
+    }
+    if (typeof schema.exclusiveMinimum === 'number' && value <= schema.exclusiveMinimum) {
+      issues.push({ path, message: `必须大于 ${schema.exclusiveMinimum}（收到 ${value}）` })
+    }
+    if (typeof schema.exclusiveMaximum === 'number' && value >= schema.exclusiveMaximum) {
+      issues.push({ path, message: `必须小于 ${schema.exclusiveMaximum}（收到 ${value}）` })
     }
     return
   }
@@ -176,7 +191,7 @@ export function validateToolArguments(toolName: string, schema: unknown, args: u
   const detail = issues
     .map((issue) => (issue.path ? `${issue.path}：${issue.message}` : issue.message))
     .join('；')
-  return new Error(`参数不符合 ${toolName} 的契约 —— ${detail}`)
+  return Object.assign(new Error(`参数不符合 ${toolName} 的契约 —— ${detail}`), { code: 'capability_input_invalid' })
 }
 
 /**

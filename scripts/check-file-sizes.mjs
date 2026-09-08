@@ -13,10 +13,10 @@
 //
 // 用法：node ./scripts/check-file-sizes.mjs
 
-import { execSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { gitPaths } from "./lib/gitPaths.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const MAX_LINES = 800;
@@ -31,26 +31,27 @@ const ALLOWLIST = {
   // transitions together. It is reviewed as one security boundary and must
   // be split only along a stable ownership seam, not by moving methods into
   // a second writer. (2026-08-29)
-  "electron/integrationCertification/integrationSession.ts": 1696,
+  "electron/integrationCertification/integrationSession.ts": 1695,
   // Existing SettingsDialog shell now owns the durable integration handoff
   // projection alongside the legacy model settings pages. Keep this reviewed
   // baseline until the planned settings-surface extraction. (2026-08-29)
-  "src/ui/onboarding/OnboardingDrawer.tsx": 811,
-  "src/workbench/generationCanvas/nodes/BaseGenerationNode.tsx": 705, // …→ 713（2026-08-29 React Flow 单内核：移除旧布局与缩放分支）→ 705（2026-09-03 导演台切换门：删 scene3d 分支）
+  "src/ui/onboarding/OnboardingDrawer.tsx": 806,
+  "src/workbench/generationCanvas/nodes/BaseGenerationNode.tsx": 703, // …→ 731（2026-08-25 P4 S6：多镜叠加合一 ProductionShotOverlays）→ 713（2026-08-29 React Flow 单内核：移除旧布局与缩放分支）→ 710（2026-09-07 agent-artifact：正文/浮条插槽移出壳 + composer 排除表收进 resolveRenderKind）
   // Project Agent Host 迁移巨壳（M1 transplant：electron 切片随 r2 入库、renderer 切片随
   // 本次 cutover 入库；上游 pr223 原型已人工评审同一批 owner，数字按本分支实际行数锁棘轮，
   // 只减不增，下一个分解批次按稳定 ownership seam 拆分后逐个出表）。834→836：并 origin/main 的
-  // TikHub connector（#296）加 registerTikhubConnectorIpc 的 import+调用两行；仍远低于本分支起点 847。
-  "electron/main.ts": 836,
-  "electron/capabilityCore/mcpGenerationTools.ts": 803,
-  "electron/capabilityCore/verifiedCapabilityInvocation.ts": 1257,
-  "electron/productionRun/productionRunService.ts": 816,
-  "electron/projectAgentHost/projectAgentExecutionCoordinator.ts": 1840,
-  "electron/projectAgentHost/projectAgentReducer.ts": 936,
-  "electron/projectAgentHost/projectAgentState.ts": 809,
+  // TikHub connector（#296）加 registerTikhubConnectorIpc 的 import+调用两行；836→839：#298-v2
+  // 自定义 MCP 客户端 profile 接入（registerCustomMcpProfileIpc + watchMcpProfiles + import）3行；
+  // 839→846：registerIntegrationHandoffIpc + registerIntegrationSessionIpc 的 import+调用（integration
+  // certification handoff queue，0b6441c6 transplant 时误删后按根因恢复）7行；仍远低于本分支起点 847。
+  // 846→828：console.* 收口到 logging/logger 时，把 registerDevDiagnostics（dev-only 窗口诊断挂钩，
+  // 整族最后都落在 logDevDetail 上）搬进 electron/logging/devDiagnostics.ts（−26 行），
+  // 同 commit 加回「profile 被隔离时日志跟着走」那段带注释的 setPath（+8 行）。
+  "electron/main.ts": 828,
+  "electron/projectAgentHost/projectAgentState.ts": 803,
   // Phase 6 常驻壳成为唯一 Agent UI 后的应用外壳（pr223 评审基线曾为 908；并 origin/main 拆解面板宿主后
   // 折叠一行多名 import，曾 907；m1 侧栏收起修复顺手折叠 hydrate/navigate 多行调用参数，实际 903，锁棘轮只减不增）。
-  "src/workbench/NomiStudioApp.tsx": 903,
+  "src/workbench/NomiStudioApp.tsx": 855,
   // PR#21 白板节点引入（2026-06-25）：WhiteboardDrawingTool（1032）与 WhiteboardLeaferCanvas（3406）两巨壳
   // 已按 Rule 9 全部拆完、双双出白名单。LeaferCanvas → whiteboardCanvasTypes/Export/NodeOps/Geometry 四纯模块
   // + whiteboardSceneRender（渲染树）+ useWhiteboardDrawing/BoxSelection/SelectionActions/SceneSync 四交互 hook，
@@ -59,17 +60,13 @@ const ALLOWLIST = {
   // canvasNodeActions.ts + canvasGraphActions.ts + canvasRunActions.ts 后壳文件缩到 161 < 800，已出白名单。
   // NodeParameterControls.tsx 曾 1097 行（巨壳）；C2b 抽出 controls/parameterControlModel.ts +
   // archetypeMeta.ts + ModeBar.tsx 后缩到 605 < 800 硬上限，已出白名单（Rule 12：逐步清空白名单）。
-  // （历史）V1 Scene3DFullscreen.tsx 曾 3822 行（最大巨壳），切换门后整目录已删；#10b 拆出 scene3dToolbar/inspector/objects/
+  // Scene3DFullscreen.tsx 曾 3822 行（最大巨壳）；#10b 拆出 scene3dToolbar/inspector/objects/
   // viewControllers/sceneView/sceneContent/cameraPreview 七个子模块后壳缩到 771 < 800，已出白名单。
 };
 
 function listFiles() {
   // 用 git 列出受跟踪文件，天然排除 node_modules / dist / 未跟踪草稿。
-  const out = execSync("git ls-files " + SCAN_DIRS.join(" "), { cwd: ROOT, encoding: "utf8" });
-  return out
-    .split("\n")
-    .map((l) => l.trim())
-    .filter(Boolean)
+  return gitPaths(["ls-files", ...SCAN_DIRS], { cwd: ROOT })
     .filter((f) => /\.(?:tsx?|[mc]ts)$/.test(f))
     .filter((f) => !/\.test\.(?:tsx?|[mc]ts)$/.test(f))
     .filter((f) => !/\.d\.(?:ts|[mc]ts)$/.test(f))

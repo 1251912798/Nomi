@@ -9,7 +9,8 @@ import type { StoryboardPlanApplicationResult } from './applyCanvasToolCall'
 import { evaluateGate } from './gate'
 import { buildLockGateContext } from './lockGateContext'
 import { STORYBOARD_PLANNER_SKILL, buildStoryboardPlanningMessage, type StoryboardShotMode } from './storyboardLauncher'
-import { parseStoryboardPlan, type StoryboardPlan } from './storyboardPlan'
+import type { StoryboardPlan } from './storyboardPlan'
+import { parseStoryboardPlan } from './storyboardPlanSchema'
 
 type StoryboardPlannerInput = {
   turnId?: string
@@ -29,10 +30,9 @@ type StoryboardPlannerInput = {
   onContent?: (text: string) => void
   onCancelReady?: (cancel: () => void) => void
 } & (
-  | { target: 'creation'; history: AgentChatHistory }
+  | { target: 'creation' }
   | {
       target: 'production'
-      history: Extract<AgentChatHistory, { kind: 'ephemeral' }>
       snapshot: CanvasReadResult
       capturedCanvasReadSnapshot: CapturedCanvasReadSnapshotHandleWire
     }
@@ -114,13 +114,11 @@ export async function runStoryboardPlanner(
     input.target === 'production'
       ? {
           ...agentRequestBase,
-          history: input.history,
           snapshot: input.snapshot,
           capturedCanvasReadSnapshot: input.capturedCanvasReadSnapshot,
         }
       : {
           ...agentRequestBase,
-          history: input.history,
           snapshot: readGenerationCanvasSnapshot(),
         },
   )

@@ -38,7 +38,7 @@ function makeRepository(t) {
   git(root, ['config', 'user.name', 'Ponytail Test'])
   fs.writeFileSync(path.join(root, 'tracked.txt'), 'initial\n')
   git(root, ['add', 'tracked.txt'])
-  git(root, ['commit', '--quiet', '--no-verify', '-m', 'fixture'])
+  git(root, ['commit', '--quiet', '-m', 'fixture'])
   return root
 }
 
@@ -79,7 +79,12 @@ test('review diff is restricted to staged changes or outgoing ranges', () => {
   }
   const staged = collectReviewDiff({ repoRoot: '/repo', scope: 'staged', runGit: fakeGit })
   assert.equal(staged.diff, 'staged patch')
-  assert.match(calls[0].join(' '), /--cached/)
+  // 按意图断言而不是按调用下标：staged 侧现在会先探一次 MERGE_HEAD（判断这是不是一次合并
+  // 提交），`calls[0]` 因此不再是 diff 本身。要钉的不变量是「取的是索引、不是工作区」。
+  assert.ok(
+    calls.some((args) => args[0] === 'diff' && args.includes('--cached')),
+    'staged review must read the index (`git diff --cached`), never the worktree',
+  )
   assert.ok(!calls.some((args) => args.includes('--binary')), 'binary payloads must not be requested')
 
   const pushed = collectReviewDiff({
@@ -88,15 +93,14 @@ test('review diff is restricted to staged changes or outgoing ranges', () => {
     remoteName: 'origin',
     pushInput: `refs/heads/task ${SHA_B} refs/heads/task ${ZERO}`,
     runGit: (_root, args) => {
-      if (args[0] === 'symbolic-ref') return 'origin/main'
-      if (args[0] === 'merge-base') return SHA_A
+      if (args[0] === 'for-each-ref') return SHA_A
+      if (args[0] === 'rev-list') return args.includes('--parents') ? `${SHA_B} ${SHA_A}` : SHA_B
       return fakeGit(_root, args)
     },
   })
-  assert.match(pushed.diff, new RegExp(`^### refs/heads/task \\(${SHA_B}\\) → refs/heads/task \\(${ZERO}\\); new ref baseline origin/main \\(${SHA_A}\\)`))
+  assert.match(pushed.diff, /1 commit\(s\) not already reachable from origin/)
   assert.match(pushed.diff, /outgoing patch$/)
-  const rangeCall = calls.find((args) => args.includes(`${SHA_A}..${SHA_B}`) && args.includes('--unified=80'))
-  assert.ok(rangeCall, 'range text diff must be requested over from..to')
+  assert.ok(calls.some((args) => args[0] === 'show' && args.includes(SHA_B)), 'new refs use authored commits too')
 })
 
 test('review input is bounded and rejects excessive push updates', () => {
@@ -108,6 +112,15 @@ test('review input is bounded and rejects excessive push updates', () => {
     `refs/heads/task-${index} ${SHA_A} refs/heads/task-${index} ${ZERO}`,
   ).join('\n')
   assert.throws(() => parsePushInput(updates), /update count exceeds/)
+})
+
+test('multi-megabyte staged input is rejected with guidance instead of ENOBUFS', (t) => {
+  const root = makeRepository(t)
+  for (const bytes of [7_500_000, 8_500_000]) {
+    fs.writeFileSync(path.join(root, 'large.txt'), 'x'.repeat(bytes))
+    git(root, ['add', 'large.txt'])
+    assert.throws(() => collectReviewDiff({ repoRoot: root, scope: 'staged' }), /按目录拆提交/)
+  }
 })
 
 test('staged binary diff omits base85 payload and carries a byte summary', (t) => {
@@ -129,7 +142,7 @@ test('push-range binary diff omits base85 payload and carries a byte summary', (
   const base = git(root, ['rev-parse', 'HEAD'])
   fs.writeFileSync(path.join(root, 'clip.png'), pngBytes(512 * 1024))
   git(root, ['add', 'clip.png'])
-  git(root, ['commit', '--quiet', '--no-verify', '-m', 'add clip'])
+  git(root, ['commit', '--quiet', '-m', 'add clip'])
   const head = git(root, ['rev-parse', 'HEAD'])
   const collected = collectReviewDiff({
     repoRoot: root,
@@ -151,7 +164,7 @@ test('a binary file larger than the text cap no longer fails closed on commit or
   assert.match(staged.diff, /^BINARY: added huge\.png \(2\.0 MB\)$/m)
   assert.ok(Buffer.byteLength(staged.diff, 'utf8') <= MAX_REVIEW_DIFF_BYTES, 'pure binary must stay under the text cap')
 
-  git(root, ['commit', '--quiet', '--no-verify', '-m', 'add huge'])
+  git(root, ['commit', '--quiet', '-m', 'add huge'])
   const head = git(root, ['rev-parse', 'HEAD'])
   const pushed = collectReviewDiff({
     repoRoot: root,
@@ -398,7 +411,7 @@ test('linked worktrees get isolated hook paths without touching the base worktre
   git(root, ['config', 'extensions.worktreeConfig', 'true'])
   fs.writeFileSync(path.join(root, 'tracked.txt'), 'initial\n')
   git(root, ['add', 'tracked.txt'])
-  git(root, ['commit', '--quiet', '--no-verify', '-m', 'fixture'])
+  git(root, ['commit', '--quiet', '-m', 'fixture'])
   git(root, ['worktree', 'add', '--quiet', '-b', 'linked', linked])
 
   const result = installer.installHooks({ repoRoot: linked, logger: { log() {}, warn() {} } })
@@ -407,4 +420,267 @@ test('linked worktrees get isolated hook paths without touching the base worktre
   assert.equal(result.hookDir, expectedHookDir)
   assert.equal(git(linked, ['config', '--worktree', '--get', 'core.hooksPath']), expectedHookDir)
   assert.equal(fs.existsSync(path.join(root, '.git', 'hooks', 'pre-push')), false)
+})
+
+// ── 评审单元 = 「本次作者写的」，不是「本次携带的」（2026-09-02 根因修复）────────────────
+//
+// 起因：一条落后主线的任务分支追平 main 时，钩子连着三次挡下交付——
+// 先是 ENOBUFS（当时上限 1.5MB，端点 diff 2.85MB），上限提到 8MB 后改成 Codex 侧
+// runner_failed（2.85MB ≈ 七八十万 token，模型吃不下）。提上限只是把失败点从 git 的
+// 缓冲区挪到模型的上下文窗口，没碰到根因。
+//
+// 根因：评审范围用**端点差**算——push 用 `remoteSha..localSha`、staged 用 index↔HEAD。
+// base 一动（rebase / 追平 merge / force-push），端点差就把 base 漂移的全部内容卷进来；
+// 那些不是本次作者写的，而且**已经在主线上被同一道闸审过一次**。实测同一次合并：
+// 端点差 2.85MB，其中真正该审的只有 0.37MB。
+//
+// 更糟的是它顺带放过了最该抓的东西：那次合并里真正由人做的决定是冲突解析
+// （门岗链取并集、测试文件括号），而我在这两处**都写错了**——一处静默吞掉一个门岗、
+// 一处吞掉两层收尾括号让整个测试文件零执行。scope 错了，于是既跑不动又抓不到。
+
+/** 造一个「分支落后主线，主线上堆了大量与我无关的改动」的真实仓库。 */
+function makeDivergedRepository(t) {
+  const root = makeRepository(t)
+  const base = git(root, ['rev-parse', 'HEAD'])
+  // 主线：一堆别人的改动（体量刻意做大，代表 base 漂移）。
+  git(root, ['checkout', '--quiet', '-b', 'mainline'])
+  fs.writeFileSync(path.join(root, 'mainline-drift.txt'), 'MAINLINE-DRIFT\n'.repeat(4000))
+  git(root, ['add', 'mainline-drift.txt'])
+  git(root, ['commit', '--quiet', '-m', 'mainline drift'])
+  const mainlineTip = git(root, ['rev-parse', 'HEAD'])
+  // 让 resolveNewRefBase / 新逻辑找得到「远端默认分支」。
+  git(root, ['update-ref', 'refs/remotes/origin/mainline', mainlineTip])
+  git(root, ['symbolic-ref', 'refs/remotes/origin/HEAD', 'refs/remotes/origin/mainline'])
+  // 我的分支：从 base 岔出去，只写一行。
+  git(root, ['checkout', '--quiet', '-b', 'task', base])
+  fs.writeFileSync(path.join(root, 'mine.txt'), 'MY-OWN-WORK\n')
+  git(root, ['add', 'mine.txt'])
+  git(root, ['commit', '--quiet', '-m', 'my work'])
+  return { root, base, mainlineTip, taskTip: git(root, ['rev-parse', 'HEAD']) }
+}
+
+test('追平 merge 后推送：只审我写的，不把主线漂移卷进来', (t) => {
+  const { root, taskTip } = makeDivergedRepository(t)
+  const pushedTip = taskTip // 远端已有的 tip
+  // 真实场景：本地又写了一个新提交，然后为了追平主线做了一次 merge，最后一起推。
+  fs.writeFileSync(path.join(root, 'later.txt'), 'LATER-WORK\n')
+  git(root, ['add', 'later.txt'])
+  git(root, ['commit', '--quiet', '-m', 'later work'])
+  git(root, ['merge', '--quiet', '--no-edit', 'mainline'])
+  const merged = git(root, ['rev-parse', 'HEAD'])
+
+  const collected = collectReviewDiff({
+    repoRoot: root,
+    scope: 'push',
+    pushInput: `refs/heads/task ${merged} refs/heads/task ${pushedTip}`,
+    remoteName: 'origin',
+  })
+
+  assert.match(collected.diff, /LATER-WORK/, '本次新写的提交必须在评审范围里')
+  assert.doesNotMatch(
+    collected.diff,
+    /MAINLINE-DRIFT/,
+    '主线漂移不该进评审范围：它不是本次作者写的，且已在主线上审过一次',
+  )
+})
+
+test('rebase 后 force-push：只审我写的，不把主线漂移卷进来', (t) => {
+  const { root } = makeDivergedRepository(t)
+  const oldRemoteTip = git(root, ['rev-parse', 'HEAD']) // 远端上那个基于旧 base 的 tip
+  git(root, ['rebase', '--quiet', 'mainline'])
+  const rebasedTip = git(root, ['rev-parse', 'HEAD'])
+  assert.notEqual(rebasedTip, oldRemoteTip, 'rebase 应当重写了历史，否则这条测试没测到东西')
+
+  const collected = collectReviewDiff({
+    repoRoot: root,
+    scope: 'push',
+    pushInput: `refs/heads/task ${rebasedTip} refs/heads/task ${oldRemoteTip}`,
+    remoteName: 'origin',
+  })
+
+  assert.match(collected.diff, /MY-OWN-WORK/, '我自己写的必须在评审范围里')
+  assert.doesNotMatch(collected.diff, /MAINLINE-DRIFT/, 'force-push 的端点差会卷进整段主线漂移')
+})
+
+test('普通快进推送不受影响：范围仍是远端 tip → 本地 tip（不因修复而变宽）', (t) => {
+  const { root, mainlineTip } = makeDivergedRepository(t)
+  git(root, ['checkout', '--quiet', 'task'])
+  const pushedTip = git(root, ['rev-parse', 'HEAD'])
+  fs.writeFileSync(path.join(root, 'second.txt'), 'SECOND-COMMIT\n')
+  git(root, ['add', 'second.txt'])
+  git(root, ['commit', '--quiet', '-m', 'second'])
+  const head = git(root, ['rev-parse', 'HEAD'])
+
+  const collected = collectReviewDiff({
+    repoRoot: root,
+    scope: 'push',
+    pushInput: `refs/heads/task ${head} refs/heads/task ${pushedTip}`,
+    remoteName: 'origin',
+  })
+
+  assert.match(collected.diff, /SECOND-COMMIT/, '新提交要审')
+  assert.doesNotMatch(collected.diff, /MY-OWN-WORK/, '已推送过的提交不该被重审——范围不许因修复而变宽')
+  assert.ok(mainlineTip, 'fixture sanity')
+})
+
+test('合并提交的 staged 评审：只剩冲突解析与我的改动，不含被合入分支带来的内容', (t) => {
+  const { root } = makeDivergedRepository(t)
+  // 制造一次真冲突：两边都动 tracked.txt。
+  git(root, ['checkout', '--quiet', 'mainline'])
+  fs.writeFileSync(path.join(root, 'tracked.txt'), 'MAINLINE-SIDE\n')
+  git(root, ['commit', '--quiet', '-am', 'mainline edits tracked'])
+  const mainlineTip = git(root, ['rev-parse', 'HEAD'])
+  git(root, ['update-ref', 'refs/remotes/origin/mainline', mainlineTip])
+  git(root, ['checkout', '--quiet', 'task'])
+  fs.writeFileSync(path.join(root, 'tracked.txt'), 'TASK-SIDE\n')
+  git(root, ['commit', '--quiet', '-am', 'task edits tracked'])
+
+  const merge = spawnSync('git', ['merge', '--no-commit', '--no-ff', 'mainline'], { cwd: root, encoding: 'utf8' })
+  assert.notEqual(merge.status, 0, '这条测试的前提是真冲突；没冲突就没测到东西')
+  fs.writeFileSync(path.join(root, 'tracked.txt'), 'RESOLVED-BY-HAND\n')
+  git(root, ['add', 'tracked.txt'])
+
+  const collected = collectReviewDiff({ repoRoot: root, scope: 'staged' })
+  assert.match(collected.diff, /RESOLVED-BY-HAND/, '冲突解析是本次唯一由人做的决定，必须审')
+  assert.doesNotMatch(collected.diff, /MAINLINE-DRIFT/, '被合入分支带来的内容不该进评审范围')
+})
+
+test('追平 merge 的冲突解析必须进评审——它是这次合并里唯一由人做的决定', (t) => {
+  const { root } = makeDivergedRepository(t)
+  git(root, ['symbolic-ref', '--delete', 'refs/remotes/origin/HEAD'])
+  // 两边都改同一行 → 制造真冲突，然后手工解析成第三种内容。
+  git(root, ['checkout', '--quiet', 'mainline'])
+  fs.writeFileSync(path.join(root, 'tracked.txt'), 'MAINLINE-SIDE\n')
+  git(root, ['commit', '--quiet', '-am', 'mainline edits tracked'])
+  git(root, ['update-ref', 'refs/remotes/origin/mainline', git(root, ['rev-parse', 'HEAD'])])
+  git(root, ['checkout', '--quiet', 'task'])
+  fs.writeFileSync(path.join(root, 'tracked.txt'), 'TASK-SIDE\n')
+  git(root, ['commit', '--quiet', '-am', 'task edits tracked'])
+  const pushedTip = git(root, ['rev-parse', 'HEAD'])
+
+  const merge = spawnSync('git', ['merge', '--no-commit', '--no-ff', 'mainline'], { cwd: root, encoding: 'utf8' })
+  assert.notEqual(merge.status, 0, '前提是真冲突；没冲突这条就没测到东西')
+  fs.writeFileSync(path.join(root, 'tracked.txt'), 'RESOLVED-BY-HAND\n')
+  git(root, ['add', 'tracked.txt'])
+  git(root, ['commit', '--quiet', '--no-edit'])
+  const merged = git(root, ['rev-parse', 'HEAD'])
+
+  const collected = collectReviewDiff({
+    repoRoot: root,
+    scope: 'push',
+    pushInput: `refs/heads/task ${merged} refs/heads/task ${pushedTip}`,
+    remoteName: 'origin',
+  })
+
+  assert.match(collected.diff, /diff --cc tracked.txt/)
+  assert.match(collected.diff, /RESOLVED-BY-HAND/, '冲突解析是这次合并唯一由人做的决定，漏了它这道闸就白设')
+  assert.doesNotMatch(collected.diff, /MAINLINE-DRIFT|MY-OWN-WORK/, '被合入的主线内容不该进评审')
+})
+
+
+test('origin tracking refs without HEAD exclude 2MB mainline in a temporary worktree', (t) => {
+  const root = makeRepository(t)
+  const base = git(root, ['rev-parse', 'HEAD'])
+  fs.writeFileSync(path.join(root, 'upstream.txt'), 'UPSTREAM-ONLY\n'.repeat(160000))
+  git(root, ['add', '.'])
+  git(root, ['commit', '--quiet', '-m', 'upstream'])
+  git(root, ['update-ref', 'refs/remotes/origin/main', git(root, ['rev-parse', 'HEAD'])])
+  const worktree = path.join(root, 'task-worktree')
+  git(root, ['worktree', 'add', '--quiet', '-b', 'task', worktree, base])
+  fs.writeFileSync(path.join(worktree, 'mine.txt'), 'BRANCH-DELTA\n')
+  git(worktree, ['add', 'mine.txt'])
+  git(worktree, ['commit', '--quiet', '-m', 'task delta'])
+  git(worktree, ['merge', '--quiet', '--no-edit', 'refs/remotes/origin/main'])
+  const localSha = git(worktree, ['rev-parse', 'HEAD'])
+  for (const remoteSha of [base, ZERO]) {
+    const { diff } = collectReviewDiff({ repoRoot: worktree, scope: 'push', remoteName: 'origin',
+      pushInput: `refs/heads/task ${localSha} refs/heads/task ${remoteSha}` })
+    assert.ok(!diff.includes('UPSTREAM-ONLY'), `mainline leaked: ${Buffer.byteLength(diff)} bytes`)
+    assert.match(diff, /BRANCH-DELTA/)
+    assert.ok(Buffer.byteLength(diff) < 2000)
+  }
+})
+
+test('commit traversal errors block review instead of becoming an empty patch', () => {
+  assert.throws(() => collectReviewDiff({ repoRoot: '/repo', scope: 'push',
+    pushInput: `refs/heads/task ${SHA_B} refs/heads/task ${SHA_A}`,
+    runGit: (_root, args) => {
+      if (args[0] === 'for-each-ref') return SHA_A
+      if (args[0] === 'rev-list') throw new Error('Git object missing')
+      return ''
+    } }), /Git object missing/)
+})
+
+test('oversized authored commit blocks before runner with directory splitting instructions', () => {
+  assert.throws(() => runPonytailReview({ repoRoot: '/repo', scope: 'push',
+    pushInput: `refs/heads/task ${SHA_B} refs/heads/task ${SHA_A}`,
+    runGit: (_root, args) => {
+      if (args[0] === 'for-each-ref') return SHA_A
+      if (args[0] === 'rev-list') return args.includes('--parents') ? `${SHA_B} ${SHA_A}` : SHA_B
+      return 'x'.repeat(MAX_REVIEW_DIFF_BYTES + 1)
+    }, spawnSyncImpl: () => assert.fail('oversized commit must not launch the runner') }),
+  /commit b{40}.*按目录拆提交/)
+})
+
+
+test('individually bounded commits exceeding the total cap require batched push', () => {
+  assert.throws(() => collectReviewDiff({ repoRoot: '/repo', scope: 'push',
+    pushInput: `refs/heads/task ${SHA_B} refs/heads/task ${SHA_A}`,
+    runGit: (_root, args) => {
+      if (args[0] === 'for-each-ref') return SHA_A
+      if (args[0] === 'rev-list') return `${SHA_A}\n${SHA_B}`
+      if (args[0] === 'show') return 'x'.repeat(80_000)
+      return ''
+    } }), /分批 push/)
+})
+
+test('new ref binary summary never compares against an unrelated origin branch tip', (t) => {
+  const root = makeRepository(t)
+  const base = git(root, ['rev-parse', 'HEAD'])
+  git(root, ['checkout', '--quiet', '-b', 'unrelated'])
+  fs.writeFileSync(path.join(root, 'unrelated.png'), pngBytes(1024))
+  git(root, ['add', 'unrelated.png'])
+  git(root, ['commit', '--quiet', '-m', 'unrelated image'])
+  git(root, ['update-ref', 'refs/remotes/origin/aaa-unrelated', git(root, ['rev-parse', 'HEAD'])])
+  git(root, ['update-ref', 'refs/remotes/origin/main', base])
+  git(root, ['checkout', '--quiet', '-b', 'task', base])
+  fs.writeFileSync(path.join(root, 'mine.png'), pngBytes(2048))
+  git(root, ['add', 'mine.png'])
+  git(root, ['commit', '--quiet', '-m', 'task image'])
+  const head = git(root, ['rev-parse', 'HEAD'])
+  const { diff } = collectReviewDiff({ repoRoot: root, scope: 'push',
+    pushInput: `refs/heads/task ${head} refs/heads/task ${ZERO}` })
+  assert.doesNotMatch(diff, /unrelated.png/)
+  assert.match(diff, /BINARY: added mine.png/)
+})
+
+test('staged conflict review uses AUTO_MERGE without re-reviewing a huge authored branch', (t) => {
+  const { root } = makeDivergedRepository(t)
+  git(root, ['checkout', '--quiet', 'mainline'])
+  fs.writeFileSync(path.join(root, 'tracked.txt'), 'UPSTREAM-SIDE\n')
+  git(root, ['commit', '--quiet', '-am', 'upstream conflict'])
+  git(root, ['checkout', '--quiet', 'task'])
+  fs.writeFileSync(path.join(root, 'already-reviewed.txt'), 'ALREADY-REVIEWED\n'.repeat(15000))
+  fs.writeFileSync(path.join(root, 'tracked.txt'), 'TASK-SIDE\n')
+  git(root, ['add', '.'])
+  git(root, ['commit', '--quiet', '-m', 'large reviewed branch'])
+  assert.notEqual(spawnSync('git', ['merge', '--no-commit', 'mainline'], { cwd: root }).status, 0)
+  assert.match(git(root, ['rev-parse', '--verify', 'AUTO_MERGE^{tree}']), /^[0-9a-f]{40}$/)
+  fs.writeFileSync(path.join(root, 'tracked.txt'), 'RESOLUTION-ONLY\n')
+  fs.writeFileSync(path.join(root, 'manual.txt'), 'EXTRA-STAGED-DECISION\n')
+  git(root, ['add', 'tracked.txt', 'manual.txt'])
+  const { diff } = collectReviewDiff({ repoRoot: root, scope: 'staged' })
+  assert.match(diff, /RESOLUTION-ONLY/)
+  assert.match(diff, /EXTRA-STAGED-DECISION/)
+  assert.doesNotMatch(diff, /ALREADY-REVIEWED|MAINLINE-DRIFT|MY-OWN-WORK/)
+  assert.ok(Buffer.byteLength(diff) < 2000)
+})
+
+test('clean merge without AUTO_MERGE still reviews manually staged changes', (t) => {
+  const { root } = makeDivergedRepository(t)
+  git(root, ['merge', '--quiet', '--no-commit', 'mainline'])
+  fs.writeFileSync(path.join(root, 'manual.txt'), 'MANUAL-CLEAN-MERGE\n')
+  git(root, ['add', 'manual.txt'])
+  const { diff } = collectReviewDiff({ repoRoot: root, scope: 'staged' })
+  assert.match(diff, /MANUAL-CLEAN-MERGE/)
 })

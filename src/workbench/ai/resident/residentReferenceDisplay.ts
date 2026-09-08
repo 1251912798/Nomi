@@ -1,3 +1,4 @@
+import type { TranslationKey } from '../../../i18n/translationKey'
 import type { ProjectAgentReference } from '../../workbenchStore'
 
 type Translate = (key: string, options?: Record<string, unknown>) => string
@@ -8,14 +9,16 @@ type Translate = (key: string, options?: Record<string, unknown>) => string
  * only; the Host snapshot remains the source of reference identity/revision.
  */
 export function residentReferenceRole(t: Translate, kind: ProjectAgentReference['kind']): string {
+  // 整键，不拼命名空间（拼接会让死键门岗对整棵 agentResident 失明）。
   const key = {
-    document: 'referenceRoleDocument',
-    canvas: 'referenceRoleCanvas',
-    preview: 'referenceRolePreview',
-    timeline: 'referenceRoleTimeline',
-    browser: 'referenceRoleBrowser',
-  }[kind]
-  return t(`agentResident.${key}`)
+    document: 'agentResident.referenceRoleDocument',
+    canvas: 'agentResident.referenceRoleCanvas',
+    preview: 'agentResident.referenceRolePreview',
+    timeline: 'agentResident.referenceRoleTimeline',
+    browser: 'agentResident.referenceRoleBrowser',
+    asset: 'agentResident.referenceRoleAsset',
+  } as const satisfies Record<ProjectAgentReference['kind'], TranslationKey>
+  return t(key[kind])
 }
 
 export type ResidentReferencePresentation = Readonly<{
@@ -24,6 +27,11 @@ export type ResidentReferencePresentation = Readonly<{
   state?: string
   accessibleLabel: string
 }>
+
+export function isResidentReferenceStale(state: string | undefined): boolean {
+  const normalized = state?.trim().toLowerCase() ?? ''
+  return normalized === 'stale' || normalized.endsWith('.referencechanged')
+}
 
 /**
  * Build the visible/accessible copy without inventing a revision.  A future

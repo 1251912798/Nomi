@@ -11,6 +11,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import http from 'node:http'
 import { screenshotSettled } from './_assert.mjs'
+import { addCanvasNodeFromRail } from './_canvasRail.mjs'
 const repoRoot = process.cwd()
 const shotsDir = path.join(repoRoot, 'tests/ux/shots/remove-background')
 fs.mkdirSync(shotsDir, { recursive: true })
@@ -36,7 +37,12 @@ function waitForUrl(url, timeoutMs) {
   })
 }
 console.log('  … 启动 vite dev server …')
-const vite = spawn('node', ['node_modules/vite/bin/vite.js', '--host', '127.0.0.1', '--port', '5273'], { cwd: repoRoot, env: { ...process.env }, stdio: 'ignore' })
+const vite = spawn('node', ['node_modules/vite/bin/vite.js', '--host', '127.0.0.1', '--port', '5273'], {
+  cwd: repoRoot,
+  // This journey asserts SharedArrayBuffer for the ONNX worker; opt into the Vite headers it needs.
+  env: { ...process.env, NOMI_DEV_CROSS_ORIGIN_ISOLATION: '1' },
+  stdio: 'ignore',
+})
 await waitForUrl('http://127.0.0.1:5273', 60000).catch((e) => { console.error('vite 启动失败', e); })
 
 const consoleErrors = []
@@ -125,14 +131,13 @@ try {
   await getWin().waitForTimeout(500)
   await snap('canvas-tab')
 
-  const addMenu = getWin().locator('[aria-label="添加节点菜单"]').first()
-  if (await addMenu.count()) { await addMenu.click({ timeout: 3000 }).catch(() => {}); await getWin().waitForTimeout(500) }
-  const addWb = getWin().locator('[aria-label="添加画板节点"]').first()
-  await addWb.click({ timeout: 4000 }).catch(() => {})
+  // 画板自 2026-09-06「第三档」起住在左缘的「更多」里；点法收口在 _canvasRail，找不到当场抛
+  //（原来那句 `.catch(() => {})` 会静默不建节点，后面每一步都在空画布上跑成假绿）。
+  await addCanvasNodeFromRail(getWin(), 'whiteboard')
   await getWin().waitForTimeout(1200)
   await snap('node-added')
 
-  await getWin().locator('text=点击打开画板').first().click({ timeout: 4000 }).catch(() => {})
+  await getWin().locator('[data-testid="whiteboard-empty-action"]').first().click({ timeout: 4000 }).catch(() => {})
   await getWin().waitForTimeout(1000)
   const modal = getWin().locator('[data-nomi-whiteboard-modal="true"]').first()
   await modal.waitFor({ state: 'visible', timeout: 6000 }).catch(() => {})

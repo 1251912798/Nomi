@@ -6,13 +6,15 @@ import { useGenerationCanvasStore } from '../store/generationCanvasStore'
 import { useWorkbenchStore } from '../../workbenchStore'
 import { toast } from '../../../ui/toast'
 import { mintSpendGrant } from '../../api/taskApi'
-import { confirmGenerationSpend, describeGenerationCost, type GenerationCostKind } from '../spend/spendConfirm'
+import { confirmGenerationSpend, describeGenerationCost, generationCostContextForNode, type GenerationCostKind } from '../spend/spendConfirm'
 import { generationNodeExecutor, type GenerationNodeExecutor } from './generationNodeExecutor'
 import { narrateProgress } from '../../observability/narrate'
 import { LocalTaskCancelledError, clearTaskCancel, isTaskCancelRequested, isLocalTaskCancelledError } from './localTaskControl'
-import { useComfyuiPreviewStore } from '../store/comfyuiPreviewStore'
+import { useNodeLivePreviewStore } from '../store/nodeLivePreviewStore'
 import { isRecoverableTimeoutError } from './recoverableTimeout'
-import { recordModelFailure, recordModelSuccess } from './modelHealthMemory'
+import { outboundBlockedRecoverableMessage } from './outboundBlockedRecovery'
+import { describeOpaqueFailure } from '../../observability/opaqueFailure'
+import { recordNodeModelFailure, recordNodeModelSuccess } from './nodeModelHealth'
 import {
   beginSingletonBatch,
   isEntryCancelled,
@@ -24,6 +26,7 @@ import {
 export { classifyGenerationError, type GenerationErrorReport } from '../../observability/classifyError'
 import type { DependencyWavePlan } from './dependencyWaves'
 import { resolveGenerationReferences } from './generationReferenceResolver'
+import { stampUpstreamRefSnapshot } from './refSnapshotStamp'
 import { archetypeForNode, resolveModeForConnectedReferences } from '../agent/referenceEdgeCapability'
 import {
   applyArchetypeModeSwitch,
@@ -44,11 +47,13 @@ import {
 } from './assetUploadConsent'
 import type { HostingDisclosure } from '../spend/spendConfirm'
 import { FOCUS_GENERATION_NODE_EVENT } from '../nodes/nodeSizing'
+import { buildDialoguePromptSuffix } from '../agent/storyboardDialogue'
 
 /** 节点 kind → 付费预估用的产物口径，喂给 describeGenerationCost 报对名词与时长。 */
 function spendCostKind(kind: GenerationNodeKind): Exclude<GenerationCostKind, 'mixed'> {
   const exec = getGenerationNodeExecutionKind(kind)
-  return exec === 'text' || exec === 'video' || exec === 'audio' ? exec : 'image'
+  // model3d 同为一等产物口径——落回 'image' 会让花钱确认卡把 3D 生成说成「1 张画面」（同族 kind 边界漏 3D）。
+  return exec === 'text' || exec === 'video' || exec === 'audio' || exec === 'model3d' ? exec : 'image'
 }
 
 /** 一批节点的产物口径：全同则取该类，混合则 'mixed'，喂给 describeGenerationCost 报对名词。 */
@@ -229,12 +234,6 @@ export function reconcileNodeModeWithConnectedReferences(nodeId: string): void {
   })
 }
 
-/** 结算时读节点当前绑定的模型键（健康记忆的记账主体；meta 无 modelKey 的异常路径记空=跳过）。 */
-function currentNodeModelKey(nodeId: string): unknown {
-  const node = useGenerationCanvasStore.getState().nodes.find((candidate) => candidate.id === nodeId)
-  return (node?.meta as Record<string, unknown> | undefined)?.modelKey
-}
-
 // options 没有默认值：`= {}` 正是让调用点能省略托管同意的那个逃生口（F16b 根因）。
 // 去掉它之后，「谁问的用户」在编译期就必须有答案。
 export async function runGenerationNode(
@@ -252,7 +251,9 @@ export async function runGenerationNode(
     throw new Error(
       initialNode.kind === 'video'
         ? '视频节点缺少上游真实图片或视频资产 URL。请先生成或选择首帧/参考图后再生成视频。'
-        : `暂不支持「${initialNode.kind}」类型节点的生成`,
+        : getGenerationNodeExecutionKind(initialNode.kind) === 'model3d'
+          ? i18n.t('generationCommon.composer.model3dReferenceRequired')
+          : `暂不支持「${initialNode.kind}」类型节点的生成`,
     )
   }
 
@@ -260,6 +261,8 @@ export async function runGenerationNode(
   // resolveAutonomousUploadConsent）。这一层不再问、也不再有能问的东西——它只把已决的答案
   // 往下透传给 executor。F16b 之前这里会自己弹第二张卡，那张卡现已删除，见 assetUploadConsent.ts。
   const resolvedReferences = resolveGenerationReferences(initialNode, { nodes: initialState.nodes, edges: initialState.edges })
+  // 提交时打上游版本戳（refSnapshot）：参考图后来重生成 → diff 即知「这次产物用的是旧图」。
+  stampUpstreamRefSnapshot(id, { nodes: initialState.nodes, edges: initialState.edges })
   const hasLocalReference = hasLocalAssetReference({
     ...initialNode,
     references: [
@@ -299,12 +302,18 @@ export async function runGenerationNode(
     for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
       const state = useGenerationCanvasStore.getState()
       const node = state.nodes.find((candidate) => candidate.id === id) || initialNode
+      const nodeMeta = (node.meta || {}) as Record<string, unknown>
+      const dialogueArchetype = resolveTaskArchetype(nodeMeta)
+      const dialogueMode = dialogueArchetype ? currentArchetypeMode(dialogueArchetype, nodeMeta) : null
+      const dialoguePromptSuffix = buildDialoguePromptSuffix(dialogueMode, nodeMeta, nodeMeta.dialogue)
       try {
         result = await executor(node, {
           nodes: state.nodes,
           edges: state.edges,
           ...(options.grantId ? { grantId: options.grantId } : {}),
-          ...(options.promptSuffix ? { promptSuffix: options.promptSuffix } : {}),
+          ...(options.promptSuffix || dialoguePromptSuffix
+            ? { promptSuffix: [options.promptSuffix, dialoguePromptSuffix].filter(Boolean).join('\n\n') }
+            : {}),
           // 提交幂等键 = 本次 run.id：重试循环内每次 attempt 复用同一个 run.id，
           // electron 侧台账据此认作「同一次意图提交」→ 重试绝不二次下单。新生成 = 新 run.id。
           idempotencyKey: run.id,
@@ -333,7 +342,7 @@ export async function runGenerationNode(
         await waitForRetry(attempt, baseDelayMs)
       }
     }
-    if (!result) throw new Error('生成失败')
+    if (!result) throw new Error(describeOpaqueFailure(null))
     useGenerationCanvasStore.getState().addNodeResult(id, result)
     // 自动另存（集中设置页开启时）：新生成的图/视频静默复制一份到用户目录。fire-and-forget——不 await
     // （不拖慢生成收尾）、失败不冒泡（best-effort 全在主进程侧，关着/没设目录/失败都静默）。只对新生成，
@@ -344,7 +353,7 @@ export async function runGenerationNode(
         ?.assets?.autoSave?.({ url: result.url as string, suggestedName: title || undefined })
         .catch(() => undefined)
     }
-    recordModelSuccess(currentNodeModelKey(id))
+    recordNodeModelSuccess(id)
     useGenerationQueueStore.getState().markSettled(batchId, id, 'success')
     await persistActiveWorkbenchProjectNow().catch(() => {})
     return result
@@ -375,11 +384,19 @@ export async function runGenerationNode(
       })
       throw error
     }
-    recordModelFailure(currentNodeModelKey(id))
-    // Store the RAW message; the UI (NodeErrorReport) runs classifyGenerationError
-    // to show a human reason + hint + the raw detail. Keeping node.error a plain
-    // string avoids a persisted-shape migration for existing project files.
-    const rawMessage = error instanceof Error && error.message ? error.message : '生成失败'
+    // 出站被自家策略拒下 = 钱已花、只是没取回来 → recoverable（免费续查），不是 error（那会把
+    // 用户推到付费重试上）。判据、「找不找得回」与刹车方向为何与超时相反，都在 outboundBlockedRecovery。
+    const blocked = outboundBlockedRecoverableMessage(error, useGenerationCanvasStore.getState().nodes.find((n) => n.id === id))
+    if (blocked) {
+      // 不记模型失败（挂的是本机网络），但刹车照记：后续每条都会同样失败而提交侧照旧扣费。
+      useGenerationCanvasStore.getState().setNodeStatus(id, 'recoverable', blocked)
+      useGenerationQueueStore.getState().markSettled(batchId, id, 'error', { error: blocked })
+      throw error
+    }
+    recordNodeModelFailure(id)
+    // Store the RAW message (describeOpaqueFailure only fills in when there is none): NodeErrorReport
+    // runs classifyGenerationError over it, and a plain string needs no persisted-shape migration.
+    const rawMessage = describeOpaqueFailure(error)
     useGenerationCanvasStore.getState().setNodeStatus(id, 'error', rawMessage)
     // 真执行失败 → 计入刹车（连续 3 个即暂停队列，防上游整体挂掉时把剩下的额度一路烧完）。
     useGenerationQueueStore.getState().markSettled(batchId, id, 'error', { error: rawMessage })
@@ -387,7 +404,7 @@ export async function runGenerationNode(
   } finally {
     // 取消登记与活预览帧都是会话瞬态：任务收尾（成/败/取消）一律清，防泄漏到下一次生成。
     clearTaskCancel(id)
-    useComfyuiPreviewStore.getState().clearPreview(id)
+    useNodeLivePreviewStore.getState().clearPreview(id)
     // 单发路径的批次由本函数自建，也由本函数收尾（批量路径归 runGenerationNodesByPlan 收）。
     if (ownsBatch) useGenerationQueueStore.getState().finishBatch(batchId)
   }
@@ -565,7 +582,7 @@ export async function confirmAndRunNode(nodeId: string, opts: { rerun?: boolean 
     title: opts.rerun
       ? i18n.t('generationCommon.spend.generateVariant')
       : i18n.t('generationCommon.spend.startGeneration'),
-    message: describeGenerationCost(1, node ? spendCostKind(node.kind) : 'image'),
+    message: describeGenerationCost(1, node ? spendCostKind(node.kind) : 'image', generationCostContextForNode(node)),
     confirmLabel: opts.rerun
       ? i18n.t('generationCommon.spend.generateVariant')
       : i18n.t('generationCommon.spend.generate'),
@@ -621,7 +638,7 @@ export async function confirmAndRunNodeVariants(
   if (!hosting.allowed) return
   const ok = await confirmGenerationSpend([node], {
     title: i18n.t('generationCommon.spend.startGeneration'),
-    message: describeGenerationCost(total, node ? spendCostKind(node.kind) : 'image'),
+    message: describeGenerationCost(total, node ? spendCostKind(node.kind) : 'image', generationCostContextForNode(node)),
     confirmLabel: i18n.t('generationCommon.spend.generate'),
     light: true,
     ...(hosting.disclosure ? { hostingDisclosure: hosting.disclosure } : {}),
@@ -657,16 +674,22 @@ export async function confirmAndRunNodeVariants(
  * 与「基于此生成变体」(confirmAndRunNode{rerun} = duplicate) 分流，
  * 别共用一个口子（一个改这一镜、一个长出新镜）。
  */
-export async function regenerateNodeInPlace(nodeId: string): Promise<void> {
+export async function regenerateNodeInPlace(
+  nodeId: string,
+  // 确认卡可带调用方的动作名（如分镜表「用新图重跑」）：用户点的是什么，卡上就回声什么，
+  // 不让一张通用「重新生成」卡吃掉刚建立的语境（R16 情绪走查：小白在这一步会迟疑
+  // 「到底用没用新图」）。缺省仍是「重新生成」，画布 composer 等既有调用方零变化。
+  opts?: { title?: string; confirmLabel?: string },
+): Promise<void> {
   const id = String(nodeId || '').trim()
   if (!id) return
   const node = useGenerationCanvasStore.getState().nodes.find((n) => n.id === id)
   const hosting = await resolveHostingDisclosure(node)
   if (!hosting.allowed) return
   const ok = await confirmGenerationSpend([node], {
-    title: i18n.t('generationCommon.composer.regenerate'),
-    message: describeGenerationCost(1, node ? spendCostKind(node.kind) : 'image'),
-    confirmLabel: i18n.t('generationCommon.composer.regenerate'),
+    title: opts?.title || i18n.t('generationCommon.composer.regenerate'),
+    message: describeGenerationCost(1, node ? spendCostKind(node.kind) : 'image', generationCostContextForNode(node)),
+    confirmLabel: opts?.confirmLabel || i18n.t('generationCommon.composer.regenerate'),
     light: true,
     ...(hosting.disclosure ? { hostingDisclosure: hosting.disclosure } : {}),
   })
@@ -726,7 +749,12 @@ export function canRunGenerationNode(
     const audioReferences = 'id' in node && node.id ? resolveGenerationReferences(node, context) : undefined
     return Boolean(audioArchetype && hasAnyArchetypeReference(meta, audioArchetype, audioReferences))
   }
-  if (executionKind !== 'video') return false
+  // 视频与 3D **共用**下面这段「档案模式声明」判定（P1 不复制第二份）：3D 档案与视频同构——
+  // text 模式 slots:[]（文生3D，prompt-only）、image 模式带 first_frame 参考槽（图生3D）。
+  // 此前这里只认 video，其余 kind 一律 false → model3d 节点生成钮恒灰、runner 抛「暂不支持」，
+  // 画布 3D 节点永远发不出去（#320 J11 实证；同族第二次发作，第一次=#286 参数底栏）。
+  // 「新 kind 漏分支」整类由 canRunGenerationNode.test.ts 的 registry 穷举矩阵当场报红。
+  if (executionKind !== 'video' && executionKind !== 'model3d') return false
   if (!('id' in node) || !node.id) return false
   const meta = node.meta || {}
   const archetype = resolveTaskArchetype(meta)

@@ -235,9 +235,17 @@ export async function expectNoCjkInEnglishDom(win, { message, allowSelectors = [
       const cjk = new RegExp(cjkSource)
       const skipSelectors = ['[data-user-content]', 'style', 'script', 'noscript', ...allow]
       const isSkipped = (el) => skipSelectors.some((sel) => el.matches?.(sel))
-      const isHidden = (el) => {
+      // 剪枝只认「必然连累整棵子树」的属性:display:none / opacity≈0 / visibility:hidden。
+      // **元素自己盒子是 0 不算**——布局包装层(子元素绝对定位、overflow 可见、display:contents)
+      // 经常自身 0 高而内容满屏。2026-09-02 实测:设置→模型 的供应商列表外面套着一个 1440x0 的
+      // div,旧写法把它判成 hidden 直接 return,于是整份供应商列表(含肉眼可见的「火山方舟」)
+      // 从网里被摘掉——截图上明晃晃是中文,断言却报「无残留中文」全绿。假绿比不测更坏。
+      const isPrunedSubtree = (el) => {
         const style = getComputedStyle(el)
-        if (style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity) <= 0.01) return true
+        return style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity) <= 0.01
+      }
+      // 真正「这段字用户看不见」的判据,只对**承载中文的那个元素自己**用。
+      const isInvisibleSelf = (el) => {
         const r = el.getBoundingClientRect()
         return r.width < 1 || r.height < 1
       }
@@ -249,12 +257,12 @@ export async function expectNoCjkInEnglishDom(win, { message, allowSelectors = [
       }
       const hits = []
       const walk = (el) => {
-        if (isSkipped(el) || isHidden(el)) return
+        if (isSkipped(el) || isPrunedSubtree(el)) return
         // 只看**直接**文本子节点的中文(子元素各自递归判,避免把整棵子树的文本重复归到父节点)。
         for (const node of el.childNodes) {
           if (node.nodeType === Node.TEXT_NODE && cjk.test(node.nodeValue || '')) {
             const text = (node.nodeValue || '').replace(/\s+/g, ' ').trim()
-            if (text) hits.push({ where: describe(el), text: text.slice(0, 60) })
+            if (text && !isInvisibleSelf(el)) hits.push({ where: describe(el), text: text.slice(0, 60) })
           }
         }
         for (const child of el.children) walk(child)
@@ -262,7 +270,7 @@ export async function expectNoCjkInEnglishDom(win, { message, allowSelectors = [
       if (document.body) walk(document.body)
       // 还要查 title/aria-label/placeholder 这类可见但不在文本节点里的字。
       for (const el of document.querySelectorAll('[title],[aria-label],[placeholder]')) {
-        if (isSkipped(el) || isHidden(el)) continue
+        if (isSkipped(el) || isPrunedSubtree(el) || isInvisibleSelf(el)) continue
         for (const attr of ['title', 'aria-label', 'placeholder']) {
           const v = el.getAttribute(attr)
           if (v && cjk.test(v)) hits.push({ where: `${describe(el)}@${attr}`, text: v.replace(/\s+/g, ' ').trim().slice(0, 60) })
@@ -270,7 +278,7 @@ export async function expectNoCjkInEnglishDom(win, { message, allowSelectors = [
       }
       // 去重(同一段中文可能被多个祖先命中)。
       const seen = new Set()
-      return hits.filter((h) => { const k = `${h.where} ${h.text}`; if (seen.has(k)) return false; seen.add(k); return true })
+      return hits.filter((h) => { const k = `${h.where}\0${h.text}`; if (seen.has(k)) return false; seen.add(k); return true })
     },
     { cjkSource: CJK_RE.source, allow: allowSelectors },
   )
@@ -384,7 +392,7 @@ export async function expectNoRawI18nKeysInDom(win, { message, allowSelectors = 
 //   (a) 主题翻转——走查只写了 data-mantine-color-scheme 一个属性，而生产路径走的是
 //       applyNomiColorScheme（src/theme/colorScheme.ts:54），它要写**四个**：
 //       dataset.theme / dataset.nomiColorScheme / data-mantine-color-scheme / style.colorScheme。
-//       只写一个 = 半翻的主题，再叠上 ~140ms 的 --nomi-transition-fast 过渡；
+//       只写一个 = 半翻的主题，再叠上 ~140ms 的 --nomi-duration-fast 过渡；
 //   (b) 已关闭的弹窗还在画退场动画（Mantine 的常驻 Modal，见 src/design/confirmDialog.tsx:70）；
 //   (c) toast 被拍在滑入动画中途，让视口边缘切掉一半。
 //
@@ -552,7 +560,7 @@ export async function applyColorSchemeForShot(win, scheme) {
     root.setAttribute('data-mantine-color-scheme', value)
     root.style.colorScheme = value
   }, scheme)
-  // 翻完还有 ~140ms 的 --nomi-transition-fast 在跑，等它跑完再让调用方截图。
+  // 翻完还有 ~140ms 的 --nomi-duration-fast 在跑，等它跑完再让调用方截图。
   await waitForVisualQuiescence(win)
 }
 
@@ -568,3 +576,103 @@ export async function readComputedColorChannels(locator, property = 'color') {
   const channels = (raw.match(/-?\d*\.?\d+/g) ?? []).map(Number)
   return { raw, channels }
 }
+
+/**
+ * 浮层「够得着」判据：不是「在 DOM 里」，是**渲染出来的那一块，人真的看得见、点得到**。
+ *
+ * 为什么必须另立一条（2026-09-06 转场选择器真机撞上）：常用的三样证据在这一族上**全部失明**——
+ *   · `toBeVisible()` 绿：DOM 在、没有 display:none、rect 非零，被祖先 overflow 裁掉它一概不知；
+ *   · `getBoundingClientRect()` 绿：**裁切不改 rect**，被裁的浮层照样报完整尺寸、照样"在视口内"；
+ *   · `click()` 绿：Playwright 点击前会 scrollIntoViewIfNeeded，把那个 overflow 容器滚一下再点，
+ *     于是脚本点得动、用户一辈子点不到。上一轮走查就是这么把只露出一条边的选择器判成通过的。
+ *
+ * 所以只能问渲染结果：在浮层矩形上撒网格采样，每个点 `document.elementFromPoint` 必须命中
+ * 浮层自己或它的后代。这一条把「被祖先裁掉」和「被别的浮层盖住」一起挡了，
+ * 视口外的点 elementFromPoint 返回 null，也算漏。
+ *
+ * 用法（`expectOverlayReachable` 默认要求 100% 命中——浮层被切掉一角就是 bug，不设容差）：
+ *   await expectOverlayReachable(picker, '转场选择器')
+ * 漏点会把「那个位置上实际画的是谁」一起报出来，直接指认裁它的那个容器。
+ */
+export async function measureOverlayReach(locator, { grid = 7 } = {}) {
+  return locator.first().evaluate((el, cols) => {
+    const rect = el.getBoundingClientRect()
+    const owns = (node) => Boolean(node) && (node === el || el.contains(node))
+    const describe = (node) => {
+      if (!node) return 'null（点落在视口外）'
+      const className = typeof node.className === 'string' ? node.className : ''
+      return `${node.tagName.toLowerCase()}${className ? `.${className.split(/\s+/).filter(Boolean).slice(0, 3).join('.')}` : ''}`
+    }
+    let hit = 0
+    const misses = []
+    for (let i = 0; i < cols; i += 1) {
+      for (let j = 0; j < cols; j += 1) {
+        const x = rect.left + ((i + 0.5) / cols) * rect.width
+        const y = rect.top + ((j + 0.5) / cols) * rect.height
+        if (owns(document.elementFromPoint(x, y))) hit += 1
+        else if (misses.length < 4) misses.push(`(${Math.round(x)},${Math.round(y)}) 上画的是 ${describe(document.elementFromPoint(x, y))}`)
+      }
+    }
+    return {
+      rect: { x: Math.round(rect.left), y: Math.round(rect.top), width: Math.round(rect.width), height: Math.round(rect.height) },
+      inViewport: rect.left >= 0 && rect.top >= 0 && rect.right <= window.innerWidth && rect.bottom <= window.innerHeight,
+      samples: cols * cols,
+      hits: hit,
+      misses,
+    }
+  }, grid)
+}
+
+export async function expectOverlayReachable(locator, label, { grid = 7 } = {}) {
+  if (!label || typeof label !== 'string') {
+    throw new Error('expectOverlayReachable(locator, label)：label 必填，报红要说人话')
+  }
+  await expect(locator.first(), `「${label}」根本没出现，谈不上够不够得着`).toBeVisible({ timeout: DEFAULT_TIMEOUT_MS })
+  const reach = await measureOverlayReach(locator, { grid })
+  if (reach.hits < reach.samples || !reach.inViewport) {
+    throw new Error(
+      `「${label}」在 DOM 里，但人点不到：${reach.hits}/${reach.samples} 个采样点命中它自己，`
+        + `inViewport=${reach.inViewport}，rect=${JSON.stringify(reach.rect)}。\n`
+        + `  漏点上实际画着谁：${reach.misses.join(' | ') || '（无）'}\n`
+        + '  这一族的根因通常是「浮层没出 Portal，被祖先的 overflow 裁了」。\n'
+        + '  别加 z-index、别把祖先改成 overflow-visible（都是症状修法）——\n'
+        + '  改用 src/design/AnchoredPopover.tsx（Portal 到 body + fixed 贴锚点）。',
+    )
+  }
+  return reach
+}
+
+/**
+ * 单个控件「点得到」：中心点的 elementFromPoint 必须命中它自己（不是被别的东西盖住）。
+ * 和上面那条的分工：上面量整块浮层露没露全，这条钉死「这一颗按钮真的能按」。
+ */
+export async function expectHittable(locator, label) {
+  if (!label || typeof label !== 'string') {
+    throw new Error('expectHittable(locator, label)：label 必填')
+  }
+  const target = locator.first()
+  await expect(target, `「${label}」没出现`).toBeVisible({ timeout: DEFAULT_TIMEOUT_MS })
+  const result = await target.evaluate((el) => {
+    const rect = el.getBoundingClientRect()
+    const at = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2)
+    const className = at && typeof at.className === 'string' ? at.className : ''
+    return {
+      hit: Boolean(at) && (at === el || el.contains(at)),
+      at: at ? `${at.tagName.toLowerCase()}${className ? `.${className.split(/\s+/).filter(Boolean).slice(0, 3).join('.')}` : ''}` : 'null（视口外）',
+      rect: { x: Math.round(rect.left), y: Math.round(rect.top), width: Math.round(rect.width), height: Math.round(rect.height) },
+    }
+  })
+  if (!result.hit) {
+    throw new Error(
+      `「${label}」点不到：它的中心点 ${JSON.stringify(result.rect)} 上画的是 ${result.at}，不是它自己。\n`
+        + '  要么被祖先 overflow 裁掉了，要么被别的浮层盖住了。\n'
+        + '  注意 Playwright 的 click 在这种情况下**仍会成功**（它会先把容器滚一下），所以点得动证明不了什么。',
+    )
+  }
+  return result
+}
+
+// ── 形态契约（2026-09-03）──
+// 意图层（拍板方手写的结构关系）与自动层（从样张导出的挂点/几何/token）**共用这一个入口**，
+// 实现在 `_contract.mjs`。走查里 `import { assertMockupContract } from './_assert.mjs'` 即可。
+export { assertMockupContract, TOKEN_STEP_PX, MAGNITUDE_RATIO } from './_contract.mjs'

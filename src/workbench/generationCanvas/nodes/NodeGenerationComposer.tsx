@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { IconFileText } from '../../../vendor/tablerIcons'
 import { NomiLoadingMark, NomiSelect } from '../../../design'
+import type { TranslationKey } from '../../../i18n/translationKey'
 import { cn } from '../../../utils/cn'
 import { fetchUserPrompts, type PromptMediaType, type PromptReferenceImage } from '../../api/promptLibraryApi'
 import PromptEditor from '../../assets/PromptEditor'
@@ -30,6 +31,7 @@ import {
   getGenerationNodePromptPlaceholder,
   isAudioLikeGenerationNodeKind,
   isImageLikeGenerationNodeKind,
+  isModel3dLikeGenerationNodeKind,
   isVideoLikeGenerationNodeKind,
 } from '../model/generationNodeKinds'
 import { resolveArchetypeForModel } from '../../../config/modelArchetypes'
@@ -53,17 +55,19 @@ import {
 import { nodeSelectedModelAddress } from './controls/parameterControlModel'
 import { comfyWorkflowTakesPrompt } from '../runner/promptRequirement'
 
-// C5 P2：文本节点的三种生成模式（label 由 composer.append/rewrite/replace 在渲染处翻译）。
-const TEXT_GEN_MODES: { value: TextGenMode; labelKey: string }[] = [
-  { value: 'append', labelKey: 'composer.append' },
-  { value: 'rewrite', labelKey: 'composer.rewrite' },
-  { value: 'replace', labelKey: 'composer.replace' },
-]
-const TEXT_MODE_PLACEHOLDER_KEY: Record<TextGenMode, string> = {
-  append: 'composer.appendPlaceholder',
-  rewrite: 'composer.rewritePlaceholder',
-  replace: 'composer.replacePlaceholder',
-}
+// C5 P2：文本节点的三种生成模式（label 在渲染处翻译）。
+// 存**整键**而非相对片段：编译器替我们校验键存在（satisfies TranslationKey），
+// 且不给死键门岗留下 `generationCommon.` 这种覆盖整命名空间的模板 head（见 i18n/translationKey.ts）。
+const TEXT_GEN_MODES = [
+  { value: 'append', labelKey: 'generationCommon.composer.append' },
+  { value: 'rewrite', labelKey: 'generationCommon.composer.rewrite' },
+  { value: 'replace', labelKey: 'generationCommon.composer.replace' },
+] as const satisfies readonly { value: TextGenMode; labelKey: TranslationKey }[]
+const TEXT_MODE_PLACEHOLDER_KEY = {
+  append: 'generationCommon.composer.appendPlaceholder',
+  rewrite: 'generationCommon.composer.rewritePlaceholder',
+  replace: 'generationCommon.composer.replacePlaceholder',
+} as const satisfies Record<TextGenMode, TranslationKey>
 
 const PROMPT_PICKER_WIDTH = 245
 const PROMPT_PICKER_MIN_WIDTH = 240
@@ -191,8 +195,8 @@ function BrowserPromptPickerPopover({
                 role="menuitem"
                 className={cn(
                   'grid w-full min-w-0 grid-cols-[32px_minmax(0,1fr)] items-center gap-2 border-0 bg-transparent px-2.5 py-1.5 text-left',
-                  'cursor-pointer transition-colors duration-[var(--nomi-transition-fast)]',
-                  'text-nomi-ink-70 hover:bg-nomi-ink-05 hover:text-nomi-ink',
+                  'cursor-pointer transition-colors duration-nomi-fast ease-nomi-fast',
+                  'text-nomi-ink-60 hover:bg-nomi-ink-05 hover:text-nomi-ink',
                 )}
                 onMouseEnter={(event) => showHoveredPrompt(item.id, event.currentTarget)}
                 onFocus={(event) => showHoveredPrompt(item.id, event.currentTarget)}
@@ -206,7 +210,7 @@ function BrowserPromptPickerPopover({
                     className="block size-8 rounded-nomi-sm object-cover"
                   />
                 ) : (
-                  <span className="grid size-8 place-items-center rounded-nomi-sm bg-nomi-bg text-nomi-ink-35">
+                  <span className="grid size-8 place-items-center rounded-nomi-sm bg-nomi-bg text-nomi-ink-40">
                     <IconFileText size={15} stroke={1.6} aria-hidden="true" />
                   </span>
                 )}
@@ -239,7 +243,7 @@ function BrowserPromptPickerPopover({
               </div>
             ))}
             {hoveredItem?.prompt ? (
-              <div className="overflow-hidden rounded-nomi-sm bg-nomi-bg/70 px-2 py-1.5 text-caption leading-snug text-nomi-ink-70 [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:6] [overflow-wrap:anywhere]">
+              <div className="overflow-hidden rounded-nomi-sm bg-nomi-bg/70 px-2 py-1.5 text-caption leading-snug text-nomi-ink-60 [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:6] [overflow-wrap:anywhere]">
                 {hoveredItem.prompt}
               </div>
             ) : null}
@@ -313,7 +317,11 @@ export default function NodeGenerationComposer({ node, visualSize }: Props): JSX
   const textGenMode = getTextGenMode(node)
   const hasPromptPickerButton = Boolean(nodeExecutionKind) && acceptsPrompt && !audioIsTranscribe && !isTextKind
   const hasReferenceControls =
-    isImageLikeGenerationNodeKind(node.kind) || isVideoLikeGenerationNodeKind(node.kind) || isAudioKind
+    isImageLikeGenerationNodeKind(node.kind) ||
+    isVideoLikeGenerationNodeKind(node.kind) ||
+    isAudioKind ||
+    // 3D 的图生3D模式带 first_frame 参考槽——漏了它参考区整个不渲染，图生3D没法放参考（同族 kind 边界漏 3D）。
+    isModel3dLikeGenerationNodeKind(node.kind)
   // 持有 prompt 编辑器实例,供「点参考 tile → 在光标处插入 chip」(@ 内联引用主路径)。
   const [promptEditor, setPromptEditor] = React.useState<Editor | null>(null)
   const [promptPickerOpen, setPromptPickerOpen] = React.useState(false)
@@ -589,10 +597,10 @@ export default function NodeGenerationComposer({ node, visualSize }: Props): JSX
               type="button"
               className={cn(
                 'inline-flex h-7 shrink-0 items-center gap-1.5 rounded-nomi-sm border-0 bg-transparent px-2',
-                'cursor-pointer text-nomi-ink-45 transition-[background,color,transform] duration-[var(--nomi-transition-fast)]',
+                'cursor-pointer text-nomi-ink-40 transition-[background,color,transform] duration-nomi-fast ease-nomi-fast',
                 'hover:-translate-y-0.5 hover:bg-nomi-ink-05 hover:text-nomi-accent',
                 promptPickerOpen && 'bg-nomi-ink-05 text-nomi-accent',
-                node.locked && 'cursor-not-allowed opacity-45 hover:translate-y-0 hover:bg-transparent hover:text-nomi-ink-45',
+                node.locked && 'cursor-not-allowed opacity-45 hover:translate-y-0 hover:bg-transparent hover:text-nomi-ink-40',
               )}
               aria-label={t('generationCommon.composer.openPromptLibrary')}
               aria-haspopup="menu"
@@ -638,7 +646,7 @@ export default function NodeGenerationComposer({ node, visualSize }: Props): JSX
               type="button"
               aria-pressed={textGenMode === option.value}
               data-active={textGenMode === option.value ? 'true' : 'false'}
-              title={t(`generationCommon.${option.labelKey}`)}
+              title={t(option.labelKey)}
               onClick={(event) => {
                 event.stopPropagation()
                 updateNode(node.id, { meta: { ...(node.meta || {}), textGenMode: option.value } })
@@ -649,7 +657,7 @@ export default function NodeGenerationComposer({ node, visualSize }: Props): JSX
                 'data-[active=true]:bg-nomi-paper data-[active=true]:text-nomi-ink data-[active=true]:shadow-nomi-sm',
               )}
             >
-              {t(`generationCommon.${option.labelKey}`)}
+              {t(option.labelKey)}
             </button>
           ))}
         </div>
@@ -672,7 +680,7 @@ export default function NodeGenerationComposer({ node, visualSize }: Props): JSX
           <PromptEditor
             className={cn('min-h-[72px]')}
             value={node.prompt || ''}
-            placeholder={appendMentionHint(isTextKind ? t(`generationCommon.${TEXT_MODE_PLACEHOLDER_KEY[textGenMode]}`) : getGenerationNodePromptPlaceholder(node.kind))}
+            placeholder={appendMentionHint(isTextKind ? t(TEXT_MODE_PLACEHOLDER_KEY[textGenMode]) : getGenerationNodePromptPlaceholder(node.kind))}
             editable={!node.locked}
             onChange={(next) => updateNode(node.id, { prompt: next })}
             onBlur={() => { void persistActiveWorkbenchProjectNow().catch(() => {}) }}
@@ -730,7 +738,10 @@ export default function NodeGenerationComposer({ node, visualSize }: Props): JSX
                 ? acceptsDrop
                   ? t('generationCommon.composer.imageReferenceRequired')
                   : t('generationCommon.composer.imageConnectionRequired')
-                : t('generationCommon.composer.unsupportedKind', { kind: node.kind })
+                : nodeExecutionKind === 'model3d'
+                  // 图生3D缺参考时的诚实原因——此前落到 unsupportedKind「暂不支持」，明明支持只是缺图（同族 kind 边界漏 3D）。
+                  ? t('generationCommon.composer.model3dReferenceRequired')
+                  : t('generationCommon.composer.unsupportedKind', { kind: node.kind })
             : undefined
           const title = disabledReason
             ?? (isGenerating

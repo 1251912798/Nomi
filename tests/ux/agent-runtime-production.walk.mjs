@@ -7,9 +7,10 @@ import { createHash } from 'node:crypto'
 import { clickOrFail, expect, expectAbsent, proveProbe } from './_assert.mjs'
 import { FIXTURE_IMAGE_MODEL, flattenRequestText } from './agent-runtime-fixture.mjs'
 import {
-  CANVAS_PANEL, CREATION_PANEL, DOCUMENT, chooseCreationMode, createRuntimeWalk, hasToolResult,
+  APPROVAL_CARD, CANVAS_PANEL, COMPOSER_SEND, CREATION_PANEL, DOCUMENT, INTERVENTION_CONFIRM,
+  createRuntimeWalk, hasToolResult,
   openCanvas, readConversations, readNativeContexts, readProject, recorded, sendCreation,
-  snapshotMessages, toolNames,
+  readCurrentProjectAgentHostSnapshot, snapshotMessages, toolNames,
 } from './agent-runtime-walk-support.mjs'
 
 const STORY = 'F_INLINE_STORY：清晨，一位创作者来到咖啡馆。她将红色杯子放到白桌正中央，然后坐在窗边整理相机。镜头保持正面中景，自然光照亮杯沿，背景不要多余物件。画面只需要表现拍摄开始前安静的准备时刻。'
@@ -23,13 +24,10 @@ const CANDIDATES = [
 ]
 
 function snapshots(projectRoot, settingsRoot) {
-  const read = (root) => {
-    try { return fs.readFileSync(path.join(root, '.nomi', 'agent-session.json'), 'utf8') }
-    catch (error) { if (error.code === 'ENOENT') return null; throw error }
-  }
-  // Include the whole container and the local bucket: empty/cleared records,
-  // source/state metadata and newly created files must not disappear in a projection.
-  return { project: read(projectRoot), local: read(settingsRoot) }
+  const host = readCurrentProjectAgentHostSnapshot(settingsRoot, projectRoot)
+  // Include the complete Host snapshot as the positive persistence control;
+  // ephemeral tasks must leave this canonical source unchanged.
+  return { host: host ? JSON.stringify(host) : null }
 }
 
 const walk = await createRuntimeWalk('production')
@@ -40,7 +38,6 @@ try {
   const settingsRoot = path.join(walk.report.tempRoot, 'settings')
   await win.locator(DOCUMENT).fill(STORY)
   await expect(win.locator(DOCUMENT)).toHaveText(STORY)
-  await chooseCreationMode(win, 'general')
   const parent = walk.fixture.expectText({
     label: 'establish an actual parent conversation before inline planning',
     match: (body) => flattenRequestText(body).includes(PARENT),
@@ -49,19 +46,26 @@ try {
   await sendCreation(win, PARENT)
   await recorded(parent.received, 'parent conversation request')
   await expect(win.locator(CREATION_PANEL)).toContainText('F_PARENT_ACK')
-  await expect(win.getByRole('button', { name: '创作 AI 发送', exact: true })).toBeVisible()
-  await expect.poll(async () => (await readConversations(win, projectId))?.creation.threads[0]?.messages
+  // The resident composer owns the send control; its accessible label is
+  // localized and changed with the Agent shell copy, while this data contract
+  // remains the stable user action.
+  await expect(win.locator(`${CREATION_PANEL} ${COMPOSER_SEND}`)).toBeVisible()
+  const durableRoots = { settingsRoot, projectRoot }
+  await expect.poll(async () => (await readConversations(win, projectId, durableRoots))?.creation.threads[0]?.messages
     .some((message) => message.content === PARENT), { timeout: 30_000 }).toBe(true)
-  const parentThreadId = (await readConversations(win, projectId)).creation.activeId
+  const persistedConversations = await readConversations(win, projectId, durableRoots)
+  const parentThreadId = persistedConversations.creation.activeId
   expect(parentThreadId).toMatch(/^thread-/)
-  const parentContext = readNativeContexts(projectRoot).find((record) => record.threadId === parentThreadId)
-  expect(snapshotMessages(parentContext).some((message) => message.role === 'user'
-    && flattenRequestText({ messages: [message] }) === PARENT)).toBe(true)
+  // The current cutover snapshot is the persistence proof; the retired
+  // agent-session.json container is intentionally absent in fresh projects.
+  expect(persistedConversations.creation.threads
+    .find((thread) => thread.id === parentThreadId)?.messages
+    .some((message) => message.role === 'user' && message.content === PARENT)).toBe(true)
   const planner = walk.fixture.expectText({
     label: 'inline storyboard planner inherits the creation thread',
     match: (body) => flattenRequestText(body).includes('F_INLINE_STORY') && !hasToolResult(body, PLAN_CALL),
-    reply: { type: 'tool', id: PLAN_CALL, name: 'propose_storyboard_plan', args: {
-      title: 'F镜头', anchors: [],
+    reply: { type: 'tool', id: PLAN_CALL, name: 'nomi_canvas_plan', args: {
+      operation: 'propose_storyboard_plan', title: 'F镜头', anchors: [],
       shots: [{ index: 1, shotKind: 'image', durationSec: 0, anchorIds: [],
         modelKey: FIXTURE_IMAGE_MODEL, modeId: 't2i', params: { size: '1024x1024' },
         prompt: '正面中景，红色杯子放在白桌中央。' }],
@@ -72,53 +76,63 @@ try {
     match: (body) => hasToolResult(body, PLAN_CALL),
     reply: { type: 'text', text: 'F_PLAN_DONE：请先审阅，再落到画布。' },
   })
-  await clickOrFail(win.locator('[data-action-run="storyboard"]'), '在创作区就地拆镜头')
+  // The inline storyboard action is selection-scoped: a fresh user must select
+  // the brief text before the popover action becomes enabled.
+  const document = win.locator(DOCUMENT)
+  await document.click()
+  await document.selectText()
+  const selectionStoryboardButton = win.locator('.workbench-selection-popover').getByRole('button', { name: '拆成镜头', exact: true })
+  await expect(selectionStoryboardButton).toBeEnabled()
+  await clickOrFail(selectionStoryboardButton, '在创作区就地拆镜头')
   const plannerWire = await recorded(planner.received, 'inline planner request')
-  expect(toolNames(plannerWire.body)).toEqual(['propose_storyboard_plan', 'read_canvas_state'])
+  expect(toolNames(plannerWire.body)).toEqual([
+    'load_skill', 'nomi_canvas_edit', 'nomi_canvas_plan', 'nomi_canvas_read',
+    'nomi_document_edit', 'nomi_document_read', 'nomi_generation_plan', 'nomi_generation_status',
+  ])
   expect(plannerWire.body.messages.some((message) => message.role === 'user'
-    && flattenRequestText({ messages: [message] }) === PARENT),
-  'Planning must retain a separate native parent message, not copy its words into a new prompt').toBe(true)
+    && flattenRequestText({ messages: [message] }).includes(PARENT)),
+  'Planning must retain the parent thread context in the Host request').toBe(true)
+  // v4：待批准的提议住在介入槽，确认钮是 [data-v4-control="confirm"]（文案「确认」）。
+  const storyboardApproval = win.locator(`${CREATION_PANEL} ${APPROVAL_CARD}`)
+  const storyboardApprovalProof = await proveProbe(storyboardApproval,
+    'Inline storyboard planning reaches the real Resident approval boundary')
+  await clickOrFail(storyboardApproval.locator(INTERVENTION_CONFIRM),
+    '批准内联分镜规划', { noWaitAfter: true })
+  await expectAbsent(storyboardApproval.locator(INTERVENTION_CONFIRM), {
+    provenBy: storyboardApprovalProof,
+    message: 'The applied storyboard approval is no longer actionable',
+  })
   await recorded(plannerDone.received, 'inline planner result')
-  await expect(win.locator('[data-storyboard-card="editing"]')).toBeVisible()
-  await expect(win.getByRole('textbox', { name: '方案标题', exact: true })).toHaveValue('F镜头')
+  // 方案落成后，用户看得见的那条「有一个分镜方案在这」= 左侧栏的分镜条目。
+  // 2026-09-06 v4 接线删掉了 Agent 面板里的分镜收据行（data-agent-storyboard-receipt），
+  // 侧栏条目现在是它唯一的可见落点，也是进分镜页那条路的入口。
+  await expect(win.locator('[data-storyboard-id]').first()).toBeVisible()
   await expect(win.locator('[data-workspace-mode="creation"]')).toBeVisible()
-  await expect.poll(async () => (await readProject(win, projectId)).payload.storyboardPlan?.title,
+  await expect.poll(async () => {
+    const payload = (await readProject(win, projectId)).payload
+    return payload.storyboardDesignsByDocumentId?.[payload.activeDocumentId]?.[0]?.plan?.title
+  },
     { timeout: 30_000 }).toBe('F镜头')
   const draft = (await readProject(win, projectId)).payload
-  expect(draft.storyboardPlanCommitted).toBe(false)
+  expect(draft.storyboardDesignsByDocumentId?.[draft.activeDocumentId]?.[0]?.committed).toBe(false)
   expect(draft.generationCanvas.nodes).toHaveLength(0)
   expect(walk.fixture.images).toHaveLength(0)
-  await expect.poll(() => readNativeContexts(projectRoot)?.some((record) => record.snapshot
+  await expect.poll(() => readNativeContexts(projectRoot, settingsRoot)?.some((record) => record.snapshot
     && snapshotMessages(record).some((message) => message.role === 'toolResult' && message.toolCallId === PLAN_CALL)),
   { timeout: 30_000 }).toBe(true)
-  const plannerContext = readNativeContexts(projectRoot).find((record) => record.snapshot
+  const plannerContext = readNativeContexts(projectRoot, settingsRoot).find((record) => record.snapshot
     && snapshotMessages(record).some((message) => message.role === 'toolResult' && message.toolCallId === PLAN_CALL))
   expect(plannerContext.sessionKey, 'A creation bubble must not secretly use the generation memory bucket')
     .toBe(`nomi:workbench:${projectId}:creation`)
   expect(plannerContext.threadId, 'Inline planning must keep the exact initiating thread, not open a new creation thread')
     .toBe(parentThreadId)
-  expect((await readConversations(win, projectId)).creation.activeId).toBe(parentThreadId)
+  expect((await readConversations(win, projectId, durableRoots)).creation.activeId).toBe(parentThreadId)
   await walk.snap('inline-plan-awaits-human')
 
-  await clickOrFail(win.getByRole('button', { name: '确认落画布', exact: true }), '把已审阅方案落到画布')
-  await expect(win.locator('[data-workspace-mode="generation"]')).toBeVisible()
-  await expect.poll(async () => (await readProject(win, projectId)).payload.storyboardPlanCommitted,
-    { timeout: 30_000 }).toBe(true)
-  const canvas = (await readProject(win, projectId)).payload.generationCanvas
-  expect(canvas.nodes).toHaveLength(1)
-  const shot = canvas.nodes[0]
-  expect(shot.kind).toBe('image')
-  expect(shot.shotIndex).toBe(1)
-  expect(shot.meta.modelKey).toBe(FIXTURE_IMAGE_MODEL)
-  await openCanvas(win)
-  // The reviewed shot is selected on adoption. The existing all-scope dock is
-  // intentionally hidden while a node is selected; click real empty canvas first.
-  const stage = win.locator('.generation-canvas-v2__stage')
-  // Top-left empty grid stays within the stage while the side panel animates;
-  // a pre-animation width would place a right-edge click under that panel.
-  await clickOrFail(stage, '点击画布空白，退出单镜编辑并显示批量入口',
-    { position: { x: 80, y: 80 } })
-  await expect(win.locator('[data-batch-scope="all"]')).toBeVisible()
+  // v5 执行面：没有「确认落画布」——进分镜页，footer「生成未生成的 N 镜」按需 materialize + 批量。
+  // 入口是侧栏那条分镜条目（onClick 直接 setWorkspaceMode('storyboard')，DocumentListSidebar.tsx:110-114）。
+  await clickOrFail(win.locator('[data-storyboard-id]').first(), '从侧栏分镜条目进入分镜页')
+  await expect(win.getByRole('textbox', { name: '方案标题', exact: true })).toHaveValue('F镜头')
   const beforeJudge = snapshots(projectRoot, settingsRoot)
   const judge = walk.fixture.expectText({
     label: 'batch completion invokes the actual image judge',
@@ -127,7 +141,15 @@ try {
       reason: 'F_VERIFY_LOW：杯子偏到画面边缘。', scores: { identity: 5, composition: 1 },
     }) },
   })
-  await clickOrFail(win.locator('[data-batch-scope="all"]'), '生成全部待制作镜头')
+  await clickOrFail(win.locator('[data-storyboard-batch="true"]'), '生成未生成的镜头')
+  // materialize 是免费副作用：节点先建（零 vendor 调用），确认卡再守花钱那一步。
+  await expect.poll(async () => (await readProject(win, projectId)).payload.generationCanvas.nodes.length,
+    { timeout: 30_000 }).toBe(1)
+  const canvas = (await readProject(win, projectId)).payload.generationCanvas
+  const shot = canvas.nodes[0]
+  expect(shot.kind).toBe('image')
+  expect(shot.shotIndex).toBe(1)
+  expect(shot.meta.modelKey).toBe(FIXTURE_IMAGE_MODEL)
   const spendDialog = win.locator('div.fixed.inset-0').filter({ hasText: '开始生成' }).last()
   const spendProof = await proveProbe(spendDialog, 'Real batch generation asks for approval')
   expect(walk.fixture.images).toHaveLength(0)
@@ -135,6 +157,7 @@ try {
   await clickOrFail(spendDialog.getByRole('button', { name: '生成', exact: true }), '批准本机图片生成')
   await expectAbsent(spendDialog, { provenBy: spendProof, message: 'Generation confirmation is consumed' })
   const judgeWire = await recorded(judge.received, 'real renderer image-judge request')
+  await openCanvas(win)
   expect(toolNames(judgeWire.body)).toEqual([])
   const imageParts = judgeWire.body.messages.flatMap((message) => Array.isArray(message.content) ? message.content : [])
     .filter((part) => part.type === 'image_url')

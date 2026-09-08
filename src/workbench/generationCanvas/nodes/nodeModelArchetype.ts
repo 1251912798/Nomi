@@ -1,3 +1,4 @@
+import { constrainParameterControls } from '../../../../electron/shared/videoCapabilities/crossFieldConstraints'
 // NodeParameterControls 的模型/档案派生纯函数。
 // 从 NodeParameterControls.tsx 抽出，供组件、InlineParameterBar、useNodeModelAutoSelect 共用（单一来源）。
 import type { ModelOption } from '../../../config/models'
@@ -42,7 +43,7 @@ export function chooseDefaultModelOption(
   // 不再霸占默认让新节点必死（2026-07-29 批量体检根治）。只影响自动默认（手动选择不拦）；
   // 全部候选都在避让期 → 回退原序，绝不空选。
   return (
-    runnable.find((option) => !isModelRecentlyAiling(option.modelKey || option.value)) ||
+    runnable.find((option) => !isModelRecentlyAiling({ modelKey: option.modelKey || option.value, vendor: option.vendor })) ||
     runnable[0] ||
     recognized[0] ||
     options[0]
@@ -76,7 +77,7 @@ export function resolveRenderedControls(
     const specialized = specializeArchetypeForVariant(archetype, currentArchetypeVariant(archetype, meta)?.id)
     return localizeDynamicControls(
       buildDynamicControls({
-        parameterControls: archetypeModeParams(currentArchetypeMode(specialized, meta)),
+        parameterControls: constrainParameterControls(archetypeModeParams(currentArchetypeMode(specialized, meta)), meta),
         imageCatalogConfig: null,
         videoCatalogConfig: null,
         isImageLike,

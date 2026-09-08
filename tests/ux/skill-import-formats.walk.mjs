@@ -6,6 +6,10 @@
 //
 // 这条走查刻意走**用户真实路径**（点侧栏 → 点导入 → 选文件 → 看 toast → 文件落盘），
 // 不直接调 importSkillPackageToUserDir —— 只测 IPC 会漏掉解析器、accept 过滤、i18n 文案和刷新。
+//
+// 2026-09-03 更新（根因合同 2026-09-03-skill-ipc-missing-handlers）：此走查现在也覆盖
+// nomi:skill:import handler 注册修复——三个 write handler 此前从 registerSkillIpc 消失，
+// 导致选文件后静默失败。走查经过 IPC 层完整路径，handler 缺失立刻使 toast 不出现/报错。
 import { launchNomiApp } from './_launchApp.mjs'
 import { clickOrFail, expectVisible } from './_assert.mjs'
 import { zipSync, strToU8 } from 'fflate'
@@ -76,7 +80,9 @@ const skillDirs = () =>
 async function waitForSkillDir(win, dirName, label) {
   const deadline = Date.now() + 10000
   while (Date.now() < deadline) {
-    if (skillDirs().includes(dirName)) return
+    // 等的是 **SKILL.md 落到位**，不是目录出现：`mkdirSync` 一跑目录就存在了，
+    // 此时读 `SKILL.md` 会 ENOENT——只等目录名会时不时红成一次假故障。
+    if (skillDirs().includes(dirName) && fs.existsSync(path.join(userSkillsRoot, dirName, 'SKILL.md'))) return
     await win.waitForTimeout(200)
   }
   throw new Error(`${label}：等了 10s，${userSkillsRoot} 里没出现 ${dirName}（现有：${skillDirs().join(', ') || '空'}）`)
@@ -117,8 +123,11 @@ try {
   // 打开技能库（侧栏 rail 按钮 aria-label = 技能库）
   await clickOrFail(win.getByRole('button', { name: '技能库', exact: true }).first(), '侧栏「技能库」')
 
-  // 隐藏的 file input 就是导入入口（用户点「导入文件」触发它）
-  const fileInput = win.locator('input[type="file"]').first()
+  // 隐藏的 file input 就是导入入口（用户点「导入文件」触发它）。
+  // 必须钉在技能库面板内部：这一屏上画布工具栏和 Agent composer 各有一个
+  // `input[type="file"]`，全页 `.first()` 谁先挂载就选谁——这条走查曾因此
+  // 拿到画布那个 `image/*,video/*` 的 input，报出「accept 未放开 .md」的误导性红。
+  const fileInput = win.locator('[data-skill-drop-zone] input[type="file"]').first()
   await fileInput.waitFor({ state: 'attached', timeout: 8000 })
 
   // accept 必须真的放开了，否则用户在系统对话框里根本选不到 .md / .zip —— 这正是用户遇到的那一幕
@@ -146,12 +155,12 @@ try {
   if (fs.existsSync(path.join(zipDir, 'walk-zipped-main'))) throw new Error('外层文件夹前缀没剥掉')
 
   // ③ 技能真的出现在面板里（落盘 ≠ 用户看得见），且**描述取自标准 frontmatter**。
-  // 这两条是本轮走查抓出真 bug 的那条：此前 skillIpc 只读 skill.json 的 description，
+  // 这两条是本轮走查抓出真 bug 的那条：此前 skillIpc 只读第二份清单 skill.json 的 description，
   // 没有 manifest 的技能一律显示「暂无说明」——导入成功却像张废卡。
   // 断言用作用域 locator 而不是全页 innerText：后者会把 toast 文案也算进去，等于自证。
   await expectVisible(
     win.getByText('走查用·zip 包', { exact: false }).first(),
-    'zip 技能卡片没显示 frontmatter 的 description（多半又退回只读 skill.json 了）',
+    'zip 技能卡片没显示 frontmatter 的 description（frontmatter 是唯一清单，显示不出来就是加载器坏了）',
   )
   await expectVisible(
     win.getByText('走查用·裸 SKILL.md', { exact: false }).first(),

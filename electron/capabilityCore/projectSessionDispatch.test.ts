@@ -8,7 +8,7 @@ import { dispatch } from './dispatcher'
 import { isSemanticGenerationRoute } from './generationDispatcher'
 import type { McpConnectionContext } from './mcpConnectionContext'
 import { createMcpGenerationPolicy } from './mcpGenerationPolicy'
-import { MCP_GENERATION_TOOL_CATALOG } from './mcpGenerationTools'
+import { MCP_GENERATION_TOOL_CATALOG } from './mcpGenerationToolCatalog'
 import { createMcpProtocol, type McpTransport } from './mcpProtocol'
 import { MCP_TOOL_RESOLVER } from './mcpToolCatalog'
 import { createProjectLeaseAuthority } from './projectLease'
@@ -110,7 +110,7 @@ describe('generic project-session route', () => {
     expect(opened).toMatchObject({
       protocolVersion: 2,
       projectId: 'project-1',
-      effectiveScope: ['canvas:read'],
+      effectiveScope: expect.arrayContaining(['canvas:read', 'canvas:write', 'document:read', 'document:write']),
     })
     expect(runTask).not.toHaveBeenCalled()
     expect(isSemanticGenerationRoute('nomi_session_open')).toBe(false)

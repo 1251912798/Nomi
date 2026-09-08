@@ -89,11 +89,11 @@
     "electron/capabilityCore/projectSessionRuntime.repository.integration.test.ts",
     "src/workbench/project/projectRepository.rename.test.ts",
     "src/workbench/project/projectPersistenceService.agentTurn.test.ts",
-    "src/workbench/project/workbenchProjectSession.persistence.test.ts",
+    "src/workbench/project/workbenchProjectSession.saveReceipt.test.ts",
     "src/workbench/project/useProjectWindowLifecycle.test.ts",
     "src/workbench/project/releaseWorkbenchProjectSession.test.ts"
   ],
-  "class_regression_tests": ["electron/workspace/workspaceSaveLock.test.ts", "electron/workspace/workspaceManifestTransaction.test.ts", "src/workbench/project/workbenchProjectSession.persistence.test.ts", "src/workbench/project/useProjectWindowLifecycle.test.ts", "src/workbench/project/projectPersistenceService.agentTurn.test.ts"],
+  "class_regression_tests": ["electron/workspace/workspaceSaveLock.test.ts", "electron/workspace/workspaceManifestTransaction.test.ts", "src/workbench/project/workbenchProjectSession.saveReceipt.test.ts", "src/workbench/project/useProjectWindowLifecycle.test.ts", "src/workbench/project/projectPersistenceService.agentTurn.test.ts"],
   "legacy_paths": {
     "status": "removed",
     "removed_paths": ["electron/projects/projectsIpc.ts", "electron/preload.ts", "src/desktop/bridge.ts", "src/workbench/project/workbenchProjectSession.ts"],

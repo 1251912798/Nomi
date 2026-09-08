@@ -5,7 +5,7 @@ import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { agentToolsForRequest } from "../harness/agentChatPolicy";
-import type { RuntimeToolCall } from "../harness/runtime/runtimePort";
+import type { RuntimeToolCall } from "../shared/agentCapabilities/transportContracts";
 import { createCanvasReadSurfaceRegistry, createSurfaceOwnerAuthority } from "./canvasReadSurfaceRegistry";
 import { createMainCapabilityExecutorRegistry } from "./capabilityExecutorRegistry";
 import { compileExecutionContract, type PlanCandidate } from "./executionContract";
@@ -263,10 +263,9 @@ describe("resident Agent production journey (zero quota contract)", () => {
     const toolNames = tools.map((tool) => tool.name);
     expect(toolNames).toEqual(expect.arrayContaining([
       "start_production_run",
-      "propose_storyboard_plan",
+      "nomi_canvas_plan",
       "nomi_generation_plan",
       "nomi_generation_status",
-      "arrange_storyboard_to_timeline",
       "export_timeline",
     ]));
 

@@ -3,6 +3,7 @@
 // 渲染层不消费这些（electron 专用；渲染层有自己的 DTO，经 desktopClient 单源）。
 import type { ApiKeyRecord } from "./secrets";
 import type { ParamMap } from "./paramTranslate";
+import catalogVersion from "./catalogVersion.json";
 import {
   AI_SDK_PROVIDER_KINDS,
   ASSET_MEDIA_KINDS,
@@ -243,7 +244,7 @@ export type Vendor = {
    */
   providerKind?: AiSdkProviderKind;
   /** Optional per-connection egress. Empty/absent preserves the application-level route. */
-  network?: { proxyUrl?: string };
+  network?: { proxyUrl?: string; proxyEnabled?: boolean };
   /** R1:本地素材吞入策略。curated vendor 也可由代码注册表兜底(见 assetLocalization.curatedAssetIngestion)。 */
   assetIngestion?: AssetIngestion;
   meta?: unknown;
@@ -258,6 +259,8 @@ export type Model = {
   labelZh: string;
   kind: BillingModelKind;
   enabled: boolean;
+  /** Complete provider-list evidence; recovery clears this without enabling. */
+  unlisted?: boolean;
   meta?: unknown;
   /**
    * 自定义调用脚本（用户数据，2026-08-04 拍板）：存在即整体接管该模型的请求构造/轮询/响应解析
@@ -278,6 +281,45 @@ export type Model = {
     updatedAt?: string;
     specCosts: Array<{ specKey: string; cost: number; enabled: boolean; createdAt?: string; updatedAt?: string }>;
   };
+  /**
+   * 按 token 计费的价目，**单位一律「美元 / 每百万 token」**（USD per 1M tokens）。
+   *
+   * **和上面的 `pricing` 是两件事，永远不要混**：`pricing` 是「生成一次图 / 一段视频扣多少点」
+   * （per-generation，见 `shotPricing.ts`），只对 image / video / audio 那几类模型有意义；
+   * `tokenPricing` 是对话模型（`kind: "text"`）按 token 结算的单价，是 Agent 花费那一行的唯一来源。
+   * 一个模型不会同时用到两者——把两个数放进同一个字段，第一次就会印出一个差几个数量级的金额。
+   *
+   * **为什么必须是「每百万」而不是「每千」或「每个」**：下游 `createNomiProvider` 把它原样交给
+   * pi 的 `Model.cost`，而 pi 的 `calculateCost` 写死 `rates.input / 1_000_000 * tokens`
+   * （`pi-ai/dist/models.js:543-547`）。单位选错不会报错，只会让面板上的金额差 1000 倍——
+   * 这正是 `tests/agent-runtime/lane-cost.test.mts` 那条手算对账要钉住的东西。
+   *
+   * 缺席 = 「我们没有这个模型的价目」，**不是 0**。运行时据此把花费那一行渲染成「不可知」
+   * 而不是一个 ¥0.00（方案 §1.7）。真正不花钱的模型走下面的 `free`。
+   */
+  tokenPricing?: {
+    /** 未命中缓存的输入单价（USD / 1M tokens）。 */
+    inputPerMTokUsd: number;
+    /** 输出单价（USD / 1M tokens）。思考型模型的 thinking token 计在输出里。 */
+    outputPerMTokUsd: number;
+    /** 命中缓存前缀的输入单价。缺省 = 与 `inputPerMTokUsd` 同价（供应商不单列时的真实行为）。 */
+    cacheReadPerMTokUsd?: number;
+    /** 写入缓存前缀的单价。缺省 = 与 `inputPerMTokUsd` 同价。 */
+    cacheWritePerMTokUsd?: number;
+    /**
+     * 出处。**必填**，与 `ModelArchetype.sources` 同一条纪律（`check:archetype-sources`）：
+     * 注释可以写「已对过官网」而没人能反证，结构化出处才检查得了。
+     */
+    source: { url: string; checkedAt: string };
+  };
+  /**
+   * 显式「这个模型不按 token 计费」（例如魔搭的免费推理额度）。**只对 `kind: "text"` 有意义**，
+   * 和生成模型的点数（`pricing`）无关。
+   *
+   * 它和「没有 `tokenPricing`」是两件不同的事：前者是我们查过、答案是不花钱；后者是我们不知道。
+   * 面板上前者印「免费」，后者印「不可知」——两者都不许印 ¥0.00。
+   */
+  free?: true;
   /**
    * Catalog v2+: present when this model was produced by the onboarding agent.
    * Carries the doc-quote evidence per parameter so we can audit / re-trial later.
@@ -515,9 +557,16 @@ export function selectTaskMapping(
   if (requestedMode) {
     const exactMode = candidates.filter((m) => (m.modeId || "").trim() === requestedMode);
     if (exactMode.length === 1) return exactMode[0];
-    // A single candidate can safely serve several UI modes when the provider
-    // exposes one shared wire shape (older rows may be mode-less).
-    return exactMode.length === 0 && candidates.length === 1 ? candidates[0] : null;
+    // A single **mode-less** candidate can safely serve several UI modes: that is the
+    // designed shared-wire case (one vendor endpoint behind several UI modes, and older
+    // rows predate modeId entirely). A single candidate that declares a **different**
+    // mode must never be borrowed — its body is that other mode's contract, so the
+    // requested mode's reference keys are simply absent and the request silently
+    // degrades to the other mode's shape. That is how `runway/happyhorse_1_0/reference`
+    // (declares 10 reference images) quietly became "one promptImage", and how three fal
+    // modes borrowed a sibling's wire. Fail closed instead; the caller surfaces the gap.
+    const onlyCandidateIsModeless = candidates.length === 1 && !(candidates[0].modeId || "").trim();
+    return exactMode.length === 0 && onlyCandidateIsModeless ? candidates[0] : null;
   }
   // Once a model has multiple mode-specific mappings, an omitted mode is
   // ambiguous and must fail closed instead of silently selecting the first row.
@@ -585,9 +634,11 @@ export function billingKindForTaskKind(kind: ProfileKind): BillingModelKind {
  *  safeStorage-backed vendor credential record. Legacy plaintext stays readable until an explicit
  *  vendor write migrates every secret atomically (mirrors the v8→v9 customConfig deferral). */
 export type CatalogVersion = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12;
-export const CURRENT_CATALOG_VERSION: CatalogVersion = 12;
+export const CURRENT_CATALOG_VERSION: CatalogVersion = catalogVersion.current as CatalogVersion;
 
 export type CatalogState = {
+  /** User-deleted builtin identities must not be inserted by subsequent seeding. */
+  suppressedBuiltinModels?: Array<{ vendorKey: string; modelKey: string }>;
   version: CatalogVersion;
   vendors: Vendor[];
   models: Model[];

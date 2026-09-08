@@ -1,4 +1,4 @@
-import type { RuntimeToolCall, RuntimeToolDecision } from "../harness/runtime/runtimePort";
+import type { RuntimeToolCall, RuntimeToolDecision } from "../shared/agentCapabilities/transportContracts";
 import { documentReadScopeForAlias } from "../shared/agentCapabilities/documentRead";
 import type { CapabilityExecutorRegistry } from "./capabilityExecutorRegistry";
 import type { CanvasReadSurfaceRegistry, CapturedCanvasReadPort } from "./canvasReadSurfaceRegistry";
@@ -37,7 +37,10 @@ export function createPiDocumentReadTransportAdapter(input: Readonly<{
   let disposed = false;
   return Object.freeze({
     async tryExecute(call, documentId, signal) {
-      const scope = documentReadScopeForAlias(call.toolName);
+      const scope = documentReadScopeForAlias(call.toolName)
+        ?? (call.toolName === "nomi_document_read" && call.args && typeof call.args === "object"
+          && (call.args as Record<string, unknown>).scope === "selection" ? "selection" : undefined)
+        ?? (call.toolName === "nomi_document_read" ? "full" : undefined);
       if (!scope) return null;
       if (disposed) return { ok: false, code: "surface_port_unavailable", message: "surface_port_unavailable" };
       try {

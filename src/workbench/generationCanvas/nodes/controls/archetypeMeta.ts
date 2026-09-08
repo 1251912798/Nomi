@@ -23,10 +23,22 @@ import {
 } from '../../../../config/modelArchetypes'
 import type { ImageUrlSlot } from '../../model/parameterReferenceSlots'
 import { translateModelDisplayText } from '../../../../i18n/modelDisplayText'
-import { DEFAULT_SLOT_INPUT_KEY, modeSlotReach, type SlotReach } from '../../../../../electron/catalog/referenceReachability'
+import {
+  DEFAULT_SLOT_INPUT_KEY,
+  modeSlotReach,
+  wireReferencedParamKeys,
+  type SlotReach,
+} from '../../../../../electron/catalog/referenceReachability'
 
 export { resolveArchetypeForModel }
 export type { ModelArchetype, ArchetypeMode, ModelArchetypeVariant }
+
+// 可达性判据（第三闸与 UI 收窄共用的那把尺子）经**本模块**转出给渲染层的其它文件（channelModeReach）。
+// 为什么从这里转、而不是让它各自 import electron/：`src-no-import-electron` 是棘轮门岗，本文件那条越界
+// 已登记在 boundaries-baseline 里；新开一个文件直连 electron/ 会被判成**新增**违规（棘轮只减不增，绝不
+// 许把新违规追加进基线）。转出一次 = 渲染层对 electron/ 的入口仍只有这一处，基线不涨。
+export { modeSlotReach, wireReferencedParamKeys }
+export type { SlotReach }
 
 /**
  * 单图 frame 槽 → 现有 flat 传输键映射（首/尾帧，走画布边 + 单缩略图）。url 键即传输读取的键
@@ -120,17 +132,6 @@ export function archetypeVariantChoices(archetype: ModelArchetype): ArchetypeVar
   const variants = archetype.variants
   if (!variants || variants.length <= 1) return []
   return variants.map((v) => ({ id: v.id, label: translateModelDisplayText(v.label) }))
-}
-
-export type ArchetypeModeChoice = { id: string; vendorTerm: string; hint: string }
-
-/** 模式分段切换的选项（标签 = 模型自己的真名 vendorTerm；仅当 >1 模式时 UI 才显示该段）。 */
-export function archetypeModeChoices(archetype: ModelArchetype): ArchetypeModeChoice[] {
-  return archetype.modes.map((mode) => ({
-    id: mode.id,
-    vendorTerm: translateModelDisplayText(mode.vendorTerm),
-    hint: translateModelDisplayText(mode.hint),
-  }))
 }
 
 /** 当前模式的**单图 frame 槽** → 现有 ImageUrlSlot（首/尾帧，走画布边）。数组槽见 archetypeModeArraySlots。 */
@@ -274,26 +275,6 @@ export function hasAnyArchetypeReference(
     const uploaded = typeof meta?.[metaKey] === 'string' ? (meta[metaKey] as string).trim() : ''
     return Boolean(uploaded || filledValueForSingleSlot(slot.kind, references))
   })
-}
-
-/**
- * 当前模式各槽在**这条渠道**上的真实承载力，按 assetSlots 用的存储键索引。
- *
- * 判据来自 electron/catalog/referenceReachability——与第三闸**同一套计算**，不另起一份（UI 说能发、
- * 闸门判发不出，正是本轮反复在修的病）。createBody = 这条 mapping 的 create.body；拿不到时上层
- * 一律按「不收窄」处理，绝不因为查不到就把用户的槽藏掉。
- */
-export function archetypeModeSlotReachByKey(mode: ArchetypeMode, createBody: unknown): Record<string, SlotReach> {
-  const reach = modeSlotReach(mode.slots, createBody, mode.combineSlotsInto?.key)
-  const out: Record<string, SlotReach> = {}
-  mode.slots.forEach((slot, index) => {
-    const key =
-      FRAME_SLOT_FLAT[slot.kind]?.urlKey ??
-      ARRAY_SLOT_ROUTE[slot.kind]?.metaKey ??
-      (slot.kind === 'source_video' ? SINGLE_SLOT_META_KEY.source_video : undefined)
-    if (key) out[key] = reach[index]
-  })
-  return out
 }
 
 /** 当前模式的「源视频」单槽（HappyHorse video-edit）。返回 meta 存储键 + 标签；无则 null。 */
@@ -600,8 +581,28 @@ export function referenceSlotStorage(slot: { kind: ArchetypeReferenceSlotKind })
 function slotInputKey(slot: { kind: ArchetypeReferenceSlotKind; inputKey?: string }): string {
   return slot.inputKey ?? DEFAULT_SLOT_INPUT_KEY[slot.kind]
 }
-function slotAsArray(slot: { kind: ArchetypeReferenceSlotKind; asArray?: boolean }): boolean {
+/**
+ * 「这个槽是一格还是一袋」的**唯一判据**（P1）：声明的 `asArray` 优先，缺省按 kind 推（DEFAULT_AS_ARRAY）。
+ * 从前分镜行另有一份写死的 `NAMED_FRAME_SLOT_KINDS` 集合与这里并列——两份真相源今天恰好一致、
+ * 明天任一档案写 `asArray` 覆盖就分家。任何「单槽 vs 数组槽」的分叉都必须问这个函数。
+ */
+export function slotAsArray(slot: { kind: ArchetypeReferenceSlotKind; asArray?: boolean }): boolean {
   return slot.asArray ?? DEFAULT_AS_ARRAY[slot.kind]
+}
+
+/** 单帧槽收哪种媒体（数组槽由 ARRAY_SLOT_ROUTE 给）。首/尾帧收图、源视频收视频。 */
+const SINGLE_SLOT_ACCEPT: Partial<Record<ArchetypeReferenceSlotKind, 'image' | 'video' | 'audio'>> = {
+  first_frame: 'image',
+  last_frame: 'image',
+  source_video: 'video',
+}
+
+/**
+ * 槽接受哪种媒体的**唯一真相源**（声明里没有这个字段，只能由 kind 推——brief §D1 已核实）。
+ * 「视频槽拒图片、图片槽拒视频」的判据就是它，不许在各消费端各推一遍。
+ */
+export function referenceSlotAccept(kind: ArchetypeReferenceSlotKind): 'image' | 'video' | 'audio' {
+  return ARRAY_SLOT_ROUTE[kind]?.accept ?? SINGLE_SLOT_ACCEPT[kind] ?? 'image'
 }
 
 function volcengineImageContentItem(url: string, role: string): Record<string, unknown> {

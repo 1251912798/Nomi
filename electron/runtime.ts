@@ -188,7 +188,7 @@ export async function localizeTaskAsset(
   projectId: string,
   assetUrl: string,
   type: "image" | "video" | "audio" | "model3d",
-  nodeId?: string, vendor?: Pick<Vendor, "key" | "baseUrlHint">,
+  nodeId?: string, vendor?: Pick<Vendor, "key" | "baseUrlHint" | "network">,
   certificationEvidence?: import("./providerAdapter/certificationMedia").CertificationMediaEvidence,
 ): Promise<TaskResult["assets"][number]> {
   const imported = (await importRemoteAsset({
@@ -199,7 +199,7 @@ export async function localizeTaskAsset(
     fileName: localizedTaskAssetFileName(type, assetUrl),
   }, {
     trustedPrivateOrigin: trustedLocalOutputOrigin(vendor) || undefined,
-    ...(certificationEvidence ? { certificationEvidence } : {}),
+    ...(certificationEvidence ? { certificationEvidence } : {}), ...(vendor?.network ? { providerNetwork: vendor.network } : {}),
   })) as { id?: string; name?: string; data?: { url?: string; absolutePath?: string } };
   const durationSeconds = await probeLocalizedDurationSeconds(type, imported.data?.absolutePath);
   if (type === "image" || type === "video")
@@ -471,7 +471,7 @@ export async function runTask(payload: unknown): Promise<TaskResult> {
     endpoint(vendor, suffix),
     fallbackHeaders,
     {},
-    {
+    { // 键形状由 taskParams.NO_MAPPING_FALLBACK_BODY 声明并被测试钉死（两处必须同构）。
       model: model.modelAlias || model.modelKey,
       prompt: request.prompt,
       size: request.width && request.height ? `${request.width}x${request.height}` : undefined,

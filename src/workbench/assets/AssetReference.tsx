@@ -27,6 +27,8 @@ export type AssetSlot = {
 
 type AssetReferenceProps = {
   slots: AssetSlot[]
+  remainingCapacity?: number
+  capacityMessage?: string
   /** 每个槽当前值:单 → 缩略图 url(空串=空);数组 → url 列表(仅有 url 的显示项)。 */
   valuesByKey: Record<string, string | string[]>
   /** 数组槽**已占用位置数**(含连线 + pending 边,单源 resolveReferenceSlots.fills.length)。容量(能否再加)
@@ -61,7 +63,7 @@ function kindFromFile(file: File): AssetKind {
 }
 
 export default function AssetReference({
-  slots, valuesByKey, occupiedByKey, projectId, openSlotKey, uploadingSlotKey,
+  slots, remainingCapacity, capacityMessage, valuesByKey, occupiedByKey, projectId, openSlotKey, uploadingSlotKey,
   onTogglePicker, onPick, onUpload, onRemove, onInsertMention, onReorder, onBrowseAll,
 }: AssetReferenceProps): JSX.Element {
   const { t } = useTranslation()
@@ -84,11 +86,12 @@ export default function AssetReference({
     const urls = (Array.isArray(raw) ? raw : []).filter(Boolean)
     return urls.map((url, index) => ({ slot, url, index }))
   })
-  const arrayCanAdd = arraySlots.some((slot) => (slot.max === undefined || occupiedOf(slot) < slot.max))
+  const totalFull = remainingCapacity !== undefined && remainingCapacity <= 0
+  const arrayCanAdd = !totalFull && arraySlots.some((slot) => (slot.max === undefined || occupiedOf(slot) < slot.max))
   const arrayUploading = arraySlots.some((slot) => uploadingSlotKey === slot.key)
   // 已到上限的类型(该数组满)→ 在合并 picker 里灰显;点击仍走 onPick→handleArrayAdd 出「最多 N」toast。
   const atLimitKinds = arraySlots
-    .filter((slot) => slot.max !== undefined && occupiedOf(slot) >= slot.max)
+    .filter((slot) => totalFull || (slot.max !== undefined && occupiedOf(slot) >= slot.max))
     .map((slot) => slot.accept)
 
   const routeByKind = (kind: AssetKind): AssetSlot => arraySlots.find((s) => s.accept === kind) ?? arraySlots[0]
@@ -103,7 +106,7 @@ export default function AssetReference({
             const url = typeof raw === 'string' ? raw : ''
             const isOpen = openSlotKey === slot.key
             return (
-              <div key={slot.key} className={cn('relative flex flex-col gap-[4px]')}>
+              <div key={slot.key} data-asset-slot={slot.key} className={cn('relative flex flex-col gap-[4px]')}>
                 {labelSingles ? <span className={cn('text-nomi-ink-60 text-micro leading-none')}>{slot.label}</span> : null}
                 {url
                   ? <AssetTile asset={displayRef(url, slot.accept, slot.label)} onRemove={() => onRemove(slot, 0)} />
@@ -128,7 +131,7 @@ export default function AssetReference({
 
       {/* 数组参考:合并成一排方块 + 一个「+」(样张態①),无标签无 caption */}
       {arraySlots.length > 0 ? (
-        <div className={cn('relative flex flex-col gap-[4px]')}>
+        <div data-asset-slot-group="array" className={cn('relative flex flex-col gap-[4px]')}>
           <div className={cn('flex flex-wrap items-center gap-[8px]')}>
             {arrayTiles.map(({ slot, url, index }) => (
               <AssetTile
@@ -158,6 +161,7 @@ export default function AssetReference({
               <AssetAddTile label={t('assetLibrary.addReference')} selected={openSlotKey === MERGED_ARRAY_KEY} onClick={() => onTogglePicker(MERGED_ARRAY_KEY)} />
             ) : null}
           </div>
+          {totalFull && capacityMessage ? <span className="text-micro text-nomi-ink-60" role="status">{capacityMessage}</span> : null}
           {openSlotKey === MERGED_ARRAY_KEY ? (
             <AssetPickerPopover onClose={() => onTogglePicker(MERGED_ARRAY_KEY)}>
               <AssetPicker

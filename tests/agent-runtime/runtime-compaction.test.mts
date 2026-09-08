@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { z } from 'zod';
-import type { RuntimeActivityEvent } from '../../electron/harness/runtime/runtimePort.js';
+import type { RuntimeActivityEvent } from '../../electron/shared/agentCapabilities/transportContracts.js';
 import { runAgentTurn } from '../../electron/harness/runtime/pi/nativeLoader.cjs';
 import { createRuntimeFixture, type FixtureReply } from './httpFixture.mjs';
 
@@ -26,7 +26,9 @@ test('mid-step overflow uses one SDK summary, retains its prompt/budget/usage, a
   assert.equal(result.context?.normalRequests, 8);
   assert.equal(result.context?.compactions, 1);
   assert.equal(http.requests.length, 9);
-  assert.equal(result.error?.kind, 'step-limit');
+  // 压缩不重置预算：8 次普通请求就是 8 次。**但用光预算不是失败**——此前这里断言的
+  // `kind:'step-limit'` 是 `run.mts` 第三层伪造的（本次已删，见该文件 :259 的说明）。
+  assert.equal(result.error, undefined);
   const summary = http.requests[3].body;
   assert.notEqual((summary.messages as Array<{ content: unknown }>)[0].content, request.systemPrompt);
   assert.match(JSON.stringify(summary), /summar/i);
@@ -36,7 +38,8 @@ test('mid-step overflow uses one SDK summary, retains its prompt/budget/usage, a
   assert.equal(http.requests[0].body.max_tokens, 30_000);
   assert.equal(result.text.includes('Summary:'), false, 'summary output is not normal user-visible text');
   assert.equal(events.some((event) => event.type === 'content-delta' && event.delta.includes('Summary:')), false);
-  assert.deepEqual(result.usage, { promptTokens: 80, completionTokens: 32, cachedPromptTokens: 0, totalTokens: 112 });
+  // 夹具报的 reasoning 是 0——**报了 0** 和「没报」是两件事，字段在就说明这家报过。
+  assert.deepEqual(result.usage, { promptTokens: 80, completionTokens: 32, cachedPromptTokens: 0, totalTokens: 112, reasoningTokens: 0 });
   assert.deepEqual(http.requests.map((call) => JSON.stringify(call.body).includes('TRANSIENT_WORK_NOT_A_SUMMARY')),
     [true, true, true, false, true, true, true, true, true]);
   assert.doesNotMatch(result.snapshot ?? '', /TRANSIENT_WORK_NOT_A_SUMMARY/);

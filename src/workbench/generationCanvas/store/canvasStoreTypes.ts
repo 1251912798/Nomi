@@ -1,4 +1,5 @@
 import type { StateCreator } from 'zustand'
+import type { CanvasFrameRect } from '../model/canvasFrameBounds'
 import type {
   GenerationCanvasEdge,
   GenerationCanvasNode,
@@ -83,7 +84,7 @@ export type CanvasGraphActions = {
   cancelConnection: () => void
   // 返回连边能力校验结果:ok=已连;否则带 reason(手动连线总闸,UI 据此提示)。
   connectToNode: (targetNodeId: string) => EdgeCapabilityResult | GroupConnectResult
-  connectNodes: (sourceNodeId: string, targetNodeId: string, mode?: GenerationCanvasEdge['mode'], targetParamKey?: string) => void
+  connectNodes: (sourceNodeId: string, targetNodeId: string, mode?: GenerationCanvasEdge['mode'], targetParamKey?: string, order?: number) => void
   /**
    * 把待连的线落到**一个组**上：给组内每个成员各连一根真边，并记下组入参
    * （以后新进组的成员自动补一根）。图结构不变——组只是输入手势的语法糖，见 model/groupInputLinks.ts。
@@ -93,9 +94,16 @@ export type CanvasGraphActions = {
   /** 单槽编辑解除该编组输入关系、保留其它槽；缺省仍按线菜单语义整组断开。 */
   disconnectEdge: (edgeId: string, options?: { scope: 'parameter' }) => void
   moveGroupNodes: (groupId: string, delta: { x: number; y: number }, options?: CanvasMutationOptions) => void
-  createGroup: (categoryId: string, name?: string, options?: { materializationOperationId?: string; nodeIds?: string[] }) => NodeGroup | null
+  createGroup: (categoryId: string, name?: string, options?: { materializationOperationId?: string; nodeIds?: string[]; frameBounds?: CanvasFrameRect }) => NodeGroup | null
+  /**
+   * 画一个**空框**（框工具第一档）：边界就是用户拖出来的那个矩形，成员为空。
+   * 与 `createGroup` 的差别只有「有没有成员」，走的是同一条建组路径——框只有一种。
+   */
+  createFrame: (categoryId: string, bounds: CanvasFrameRect, name?: string, nodeIds?: readonly string[]) => NodeGroup | null
   groupSelectedNodes: (categoryId: string, name?: string) => NodeGroup | null
   renameGroup: (groupId: string, name: string) => void
+  /** 框头部那一句灰字说明。传空串 = 清空（与改名不同：说明本来就可以没有）。 */
+  setGroupDescription: (groupId: string, description: string) => void
   setGroupColor: (groupId: string, color: string) => void
   setGroupCollapsed: (groupId: string, collapsed: boolean) => void
   ungroup: (groupId: string) => void
@@ -164,6 +172,7 @@ export type GenerationCanvasState = {
   setVideoDeconstructionEntry: (nodeId: string, patch: Partial<DeconstructionEntry>) => void
   /** 勾选/取消某镜（会话态）。 */
   toggleVideoDeconstructionShot: (nodeId: string, shotIndex: number) => void
+  duplicateNodesForDrag: (nodeIds: string[]) => Map<string, string>
   copySelectedNodes: () => void
   cutSelectedNodes: () => void
   pasteNodes: (basePosition?: { x: number; y: number }) => void

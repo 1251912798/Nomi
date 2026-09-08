@@ -17,7 +17,7 @@ import {
   type BuiltRequest,
 } from "../requestPipeline";
 import { describeIllegalHeader, findIllegalHeader, isJsonRecord, mergeHeadersCaseInsensitive, pickUpstreamMessage } from "../../jsonUtils";
-import { parseModelListPage, type ModelListFailureKind } from "./modelListResponse";
+import { parseModelListPage, type ModelListResult, type ModelListDescriptor, type ModelListFailureKind } from "./modelListResponse";
 import { modelListErrorRedactor } from "./modelListSafety";
 import { createExplicitProxyDispatcher } from "../../systemProxy";
 import type { Dispatcher } from "undici";
@@ -25,17 +25,29 @@ export type { ModelListFailureKind } from "./modelListResponse";
 
 export async function describeNetworkErrorLazy(error: unknown): Promise<string> {
   const { describeNetworkError } = await import("../../systemProxy");
-  return describeNetworkError(error);
+  const reason = describeNetworkError(error);
+  return `Network error: ${reason}. Next: check the relay URL, local network, and proxy settings, then retry.`;
 }
 
 /** 上游失败体 → 那句人话。键优先级表住 jsonUtils（全仓唯一），挑不出来才退回原文/HTTP 码。 */
+function nextStepForUpstreamError(status: number, message: string): string {
+  if (status === 401 || status === 403 || /api[_ -]?key|auth|forbidden|permission/i.test(message)) return 'check the API key, auth header, and relay permissions, then retry'
+  if (status === 404 || status === 405) return 'check the saved base URL and that its /models route is enabled'
+  if (status === 429) return 'wait for the provider rate limit to reset, then retry'
+  if (status >= 500) return 'check the relay/provider status and retry when the upstream is healthy'
+  return 'check the endpoint response and authentication settings, then retry'
+}
+
+/** Keep status, safe provider-body context, and a repair action together at the shared error boundary. */
 export function upstreamErrorText(bodyText: string, status: number, sanitize?: (message: string) => string): string {
   let parsed: unknown;
   try { parsed = bodyText ? JSON.parse(bodyText) : null; } catch { parsed = null; }
   const said = isJsonRecord(parsed) ? pickUpstreamMessage(parsed, sanitize) : "";
-  if (/^no message available[.!]?$/i.test(said || bodyText.trim())) return `HTTP ${status}`;
-  const message = said || bodyText.trim() || `HTTP ${status}`;
-  return (sanitize ? sanitize(message) : message).slice(0, 300);
+  const rawBody = sanitize ? sanitize(bodyText.trim()) : bodyText.trim();
+  const usableMessage = said && !/^no message available[.!]?$/i.test(said) ? said : '';
+  const bodySummary = usableMessage || (rawBody ? 'provider returned no usable error message' : 'provider returned an empty error body');
+  const safeSummary = bodySummary.slice(0, 220);
+  return `HTTP ${status}: provider returned ${safeSummary}. Next: ${nextStepForUpstreamError(status, safeSummary)}.`.slice(0, 500);
 }
 
 /** payload.headers（用户自填的中转请求头）→ 干净的 kv。 */
@@ -65,9 +77,7 @@ export function buildAuthHeaders(
   );
 }
 
-export type ModelListResult =
-  | { ok: true; models: string[]; statuses: number[]; partial?: boolean }
-  | { ok: false; status?: number; error: string; statuses: number[]; failureKind?: ModelListFailureKind };
+export type { ModelListResult } from "./modelListResponse";
 
 type Failure = Extract<ModelListResult, { ok: false }> & { failureKind: ModelListFailureKind };
 const FAILURE_PRIORITY: Record<ModelListFailureKind, number> = {
@@ -139,7 +149,7 @@ export async function fetchModelList(
   baseUrl: string,
   headers: Record<string, string>,
   signal: AbortSignal,
-  options: { query?: Record<string, string>; proxyUrl?: string } = {},
+  options: { query?: Record<string, string>; proxyUrl?: string; validator?: { url: string; etag: string } } = {},
 ): Promise<ModelListResult> {
   const query = options.query || {};
   const redact = modelListErrorRedactor(baseUrl, headers, query);
@@ -179,6 +189,7 @@ export async function fetchModelList(
     let url = new URL(candidate.url);
     const seenPages = new Set<string>();
     const models = new Set<string>();
+    const descriptors = new Map<string, ModelListDescriptor>();
     for (let pageNumber = 0; pageNumber < MAX_PAGES; pageNumber += 1) {
       seenPages.add(pageIdentity(url));
       let res: Response;
@@ -186,17 +197,20 @@ export async function fetchModelList(
       let status: number | undefined;
       try {
         // Never auto-follow redirects with arbitrary gateway auth headers/query credentials.
-        res = await appFetch(url.toString(), { method: candidate.method, headers: candidate.headers, signal, redirect: "manual", ...(dispatcher ? { dispatcher } : {}) });
+        res = await appFetch(url.toString(), { method: candidate.method, headers: { ...candidate.headers, ...(pageNumber === 0 && options.validator?.url === url.toString() ? { "If-None-Match": options.validator.etag } : {}) }, signal, redirect: "manual", ...(dispatcher ? { dispatcher } : {}) });
         statuses.push(res.status);
         status = res.status;
         body = await res.text();
       } catch (error) {
         const failed = status === 401 || status === 403 || status === 429
-          ? failure(failureKindForStatus(status), `HTTP ${status}`, status)
+          ? failure(failureKindForStatus(status), upstreamErrorText('', status, redact), status)
           : failure("network", await describeNetworkErrorLazy(error), status);
         const best = remember(failed);
         if (pageNumber > 0 || signal.aborted) return best;
         break;
+      }
+      if (res.status === 304 && pageNumber === 0 && options.validator?.url === url.toString()) {
+        return { ok: true, models: [], statuses, notModified: true, validator: options.validator };
       }
       if (!res.ok) {
         const failed = remember(failure(failureKindForStatus(res.status), upstreamErrorText(body, res.status, redact), res.status));
@@ -205,11 +219,12 @@ export async function fetchModelList(
       }
       const page = parseModelListPage(body, redact);
       if (!page.ok) {
-        const failed = remember(failure(page.failureKind, page.error || "Response is not a valid model list", res.status));
+        const failed = remember(failure(page.failureKind, upstreamErrorText(body, res.status, redact), res.status));
         if (pageNumber > 0) return failed;
         break;
       }
       for (const id of page.models) models.add(id);
+      for (const descriptor of page.descriptors || []) descriptors.set(descriptor.id, descriptor);
       let next: URL | undefined;
       if (page.next || page.afterId) {
         try {
@@ -226,10 +241,10 @@ export async function fetchModelList(
         } catch { return remember(failure("invalid_response", "Invalid model-list pagination link", res.status)); }
       }
       if (models.size > MAX_MODELS || (next && (models.size >= MAX_MODELS || pageNumber + 1 === MAX_PAGES))) {
-        return { ok: true, models: [...models].slice(0, MAX_MODELS), statuses, partial: true };
+        return { ok: true, models: [...models].slice(0, MAX_MODELS), ...(descriptors.size ? { descriptors: [...descriptors.values()].slice(0, MAX_MODELS) } : {}), statuses, partial: true };
       }
       if (next) { url = next; continue; }
-      if (models.size > 0) return { ok: true, models: [...models], statuses };
+      if (models.size > 0) return { ok: true, ...(pageNumber === 0 && res.headers.get("etag") ? { validator: { url: url.toString(), etag: res.headers.get("etag")! } } : {}), models: [...models], ...(descriptors.size ? { descriptors: [...descriptors.values()] } : {}), statuses };
       sawEmptyList = true;
       break;
     }

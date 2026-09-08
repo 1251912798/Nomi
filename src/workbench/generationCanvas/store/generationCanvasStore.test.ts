@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { useGenerationCanvasStore } from './generationCanvasStore'
 import { setCanvasEventSinkForTests, type CanvasShadowEvent } from '../events/canvasEventEmitter'
 import type { GenerationCanvasNode, GenerationNodeResult, NodeGroup } from '../model/generationCanvasTypes'
+import { withCanvasGestureContext } from '../events/canvasGestureContext'
 import { MEDIA_DIMENSION_UPDATE_OPTIONS } from '../nodes/nodeSizing'
 
 function node(id: string, categoryId: GenerationCanvasNode['categoryId'], groupId?: string): GenerationCanvasNode {
@@ -30,6 +31,91 @@ function group(id: string, categoryId: NodeGroup['categoryId'], nodeIds: string[
 function imageResult(id: string, url: string): GenerationNodeResult {
   return { id, type: 'image', url, createdAt: 1 }
 }
+
+describe('standalone canvas gesture undo barriers', () => {
+  beforeEach(() => {
+    useGenerationCanvasStore.getState().restoreSnapshot({
+      nodes: [node('src', 'shots'), node('dst', 'shots')],
+      edges: [{ id: 'edge', source: 'src', target: 'dst', mode: 'reference' }],
+      groups: [], selectedNodeIds: [],
+    })
+  })
+
+  it.each(['mode', 'disconnect', 'lock'] as const)('%s is one undo step without undoing the preceding gesture', (gesture) => {
+    const store = useGenerationCanvasStore.getState()
+    store.addNode({ kind: 'text', title: 'earlier gesture', position: { x: 700, y: 20 } })
+    const before = useGenerationCanvasStore.getState().readDocumentSnapshot()
+    if (gesture === 'mode') store.updateEdgeMode('edge', 'composition_ref')
+    if (gesture === 'disconnect') store.disconnectEdge('edge')
+    if (gesture === 'lock') store.setNodeLocked('src', true)
+    const after = useGenerationCanvasStore.getState().readDocumentSnapshot()
+    expect(after).not.toEqual(before)
+    store.undo()
+    const undone = useGenerationCanvasStore.getState()
+    expect({ nodes: undone.nodes, edges: undone.edges, groups: undone.groups }).toEqual({ nodes: before.nodes, edges: before.edges, groups: before.groups })
+    store.redo()
+    const redone = useGenerationCanvasStore.getState()
+    expect({ nodes: redone.nodes, edges: redone.edges, groups: redone.groups }).toEqual({ nodes: after.nodes, edges: after.edges, groups: after.groups })
+    store.undo()
+    store.undo()
+    expect(useGenerationCanvasStore.getState().nodes.map((n) => n.id)).toEqual(['src', 'dst'])
+    expect(useGenerationCanvasStore.getState().canUndo).toBe(false)
+  })
+
+  it.each([false, true])('group disconnection (parameter=%s) restores the entire declaration in one undo', (parameter) => {
+    const members = [node('dst', 'shots', 'g'), node('other', 'shots', 'g')]
+    const g = { ...group('g', 'shots', ['dst', 'other']), inputLinks: [{ sourceNodeId: 'src', mode: 'reference' as const }] }
+    const edges = members.map((member) => ({ id: member.id, source: 'src', target: member.id, mode: 'reference' as const, viaGroupId: 'g' }))
+    const store = useGenerationCanvasStore.getState()
+    store.restoreSnapshot({ nodes: [node('src', 'shots'), ...members], edges, groups: [g], selectedNodeIds: [] })
+    store.addNode({ kind: 'text', title: 'earlier gesture' })
+    const before = useGenerationCanvasStore.getState().readDocumentSnapshot()
+    store.disconnectEdge('dst', parameter ? { scope: 'parameter' } : undefined)
+    expect(useGenerationCanvasStore.getState().edges).toHaveLength(parameter ? 1 : 0)
+    store.undo()
+    expect(useGenerationCanvasStore.getState().edges).toEqual(before.edges)
+    expect(useGenerationCanvasStore.getState().groups).toEqual(before.groups)
+    expect(useGenerationCanvasStore.getState().nodes).toEqual(before.nodes)
+    store.undo()
+    expect(useGenerationCanvasStore.getState().nodes).toHaveLength(3)
+  })
+
+  it('lock then unlock are two independent reversible gestures', () => {
+    const store = useGenerationCanvasStore.getState()
+    store.setNodeLocked('src', true)
+    expect(useGenerationCanvasStore.getState().canUndo).toBe(true)
+    store.setNodeLocked('src', false)
+    store.undo()
+    expect(useGenerationCanvasStore.getState().nodes.find((n) => n.id === 'src')?.locked).toBe(true)
+    store.undo()
+    expect(useGenerationCanvasStore.getState().nodes.find((n) => n.id === 'src')?.locked).toBeFalsy()
+    expect(useGenerationCanvasStore.getState().canUndo).toBe(false)
+  })
+
+  it('proposal-owned edge and lock writes remain one undo step', () => {
+    const store = useGenerationCanvasStore.getState()
+    store.captureHistory()
+    withCanvasGestureContext({ source: 'agent', txnId: 'test-composite', suppressUndoBarriers: true }, () => {
+      store.updateEdgeMode('edge', 'composition_ref')
+      store.setNodeLocked('src', true)
+      store.disconnectEdge('edge')
+    })
+    store.undo()
+    expect(useGenerationCanvasStore.getState().edges).toMatchObject([{ id: 'edge', mode: 'reference' }])
+    expect(useGenerationCanvasStore.getState().nodes.find((n) => n.id === 'src')?.locked).toBeFalsy()
+    expect(useGenerationCanvasStore.getState().canUndo).toBe(false)
+  })
+
+  it.each(['mode', 'disconnect', 'lock'] as const)('%s no-op does not consume the preceding undo step', (gesture) => {
+    const store = useGenerationCanvasStore.getState()
+    store.addNode({ kind: 'text', title: 'earlier gesture', position: { x: 700, y: 20 } })
+    if (gesture === 'mode') store.updateEdgeMode('edge', 'reference')
+    if (gesture === 'disconnect') store.disconnectEdge('missing')
+    if (gesture === 'lock') store.setNodeLocked('src', false)
+    store.undo()
+    expect(useGenerationCanvasStore.getState().nodes.map((n) => n.id)).toEqual(['src', 'dst'])
+  })
+})
 
 describe('connectToNode — 连一张图进图片节点自动切到「参考图/改图」模式(根因回归 2026-06-29)', () => {
   function archImageNode(id: string, modeId: string): GenerationCanvasNode {
@@ -66,6 +152,23 @@ describe('connectToNode — 连一张图进图片节点自动切到「参考图/
     useGenerationCanvasStore.getState().connectToNode('dst')
     const dst = useGenerationCanvasStore.getState().nodes.find((n) => n.id === 'dst')
     expect((dst?.meta?.archetype as { modeId?: string } | undefined)?.modeId).toBe('edit')
+  })
+
+  it('手拖出来的边能被 Cmd+Z 撤掉（2026-09-07 真机走查：这里一直没打 undo barrier）', () => {
+    useGenerationCanvasStore.getState().restoreSnapshot({
+      nodes: [node('src', 'shots'), archImageNode('dst', 't2i')],
+      edges: [],
+      selectedNodeIds: [],
+      groups: [],
+    })
+    useGenerationCanvasStore.getState().startConnection('src')
+    useGenerationCanvasStore.getState().connectToNode('dst')
+    expect(useGenerationCanvasStore.getState().edges).toHaveLength(1)
+
+    useGenerationCanvasStore.getState().undo()
+    // 撤销后这条边没了。此前 connectToNode 不打 barrier，Cmd+Z 要么毫无反应、
+    // 要么去撤上一笔——两种都是「撤销把别的东西弄没了」。
+    expect(useGenerationCanvasStore.getState().edges).toHaveLength(0)
   })
 
   it('从目标左侧输入端起拖到源图 → 真边仍是源图→目标，并自动切到改图', () => {
@@ -320,6 +423,88 @@ describe('generationCanvasStore sidebar grouping actions', () => {
     expect(state.nodes.some((candidate) => candidate.id === 'cast-1')).toBe(true)
   })
 
+  it('解散框：节点留下，**边一根都不撤**（解散的是组织方式，不是节点关系）', () => {
+    // 框工具第一档的 ⋯ 菜单里「解散」走的就是这条路。它必须与既有 ungroup 逐字同义——
+    // 一旦顺手把成员之间的边也撤了，用户失去的是接线，而他以为自己只是拆了个框。
+    useGenerationCanvasStore.getState().restoreSnapshot({
+      nodes: [node('m1', 'cast', 'frame-1'), node('m2', 'cast', 'frame-1')],
+      edges: [{ id: 'm1->m2', source: 'm1', target: 'm2' }],
+      selectedNodeIds: [],
+      groups: [{ ...group('frame-1', 'cast', ['m1', 'm2']), frameBounds: { x: 0, y: 0, w: 600, h: 400 } }],
+    })
+    useGenerationCanvasStore.getState().ungroup('frame-1')
+
+    const state = useGenerationCanvasStore.getState()
+    expect(state.groups.some((candidate) => candidate.id === 'frame-1')).toBe(false)
+    expect(state.edges.map((edge) => edge.id)).toEqual(['m1->m2'])
+    expect(state.nodes.map((candidate) => candidate.id).sort()).toEqual(['m1', 'm2'])
+  })
+
+  it('createFrame：画出来的空框可用，边界就是用户拖的那个矩形', () => {
+    const bounds = { x: 120, y: 80, w: 640, h: 420 }
+    const frame = useGenerationCanvasStore.getState().createFrame('shots', bounds, '未命名框')
+    expect(frame?.frameBounds).toEqual(bounds)
+    expect(frame?.nodeIds).toEqual([])
+    // 画出来的和 ⌘G 建出来的是同一种东西（P1：框只有一种），所以照样进 groups。
+    expect(useGenerationCanvasStore.getState().groups.some((candidate) => candidate.id === frame?.id)).toBe(true)
+  })
+
+  it('createFrame：圈住的东西当场就是这个框的成员', () => {
+    // 用户在三张卡外面拖一圈，画布回他一个写着「0」的空框——他看见的和框说的是相反的两件事。
+    // 判定谁被圈住归 useCanvasFrameTool（和拖进拖出同一条中心点判据），这里钉的是
+    // 「名单真的落进了这个组、旧组也真的把人交出来了」。
+    useGenerationCanvasStore.getState().restoreSnapshot({
+      nodes: [node('in-1', 'shots'), node('in-2', 'shots')],
+      edges: [],
+      selectedNodeIds: [],
+      groups: [group('old-group', 'shots', ['in-2'])],
+    })
+    const bounds = { x: 0, y: 0, w: 900, h: 700 }
+    const frame = useGenerationCanvasStore.getState().createFrame('shots', bounds, '第三幕 · 雨夜', ['in-1', 'in-2'])
+    expect(frame?.nodeIds).toEqual(['in-1', 'in-2'])
+    // 边界仍然是用户拖的那个矩形，不被成员包围盒改写。
+    expect(frame?.frameBounds).toEqual(bounds)
+    const state = useGenerationCanvasStore.getState()
+    // 一个节点只属一个框：旧组要把人交出来（与 ⌘G 同语义，不是第二套）。
+    expect(state.groups.find((candidate) => candidate.id === 'old-group')?.nodeIds).toEqual([])
+    expect(state.nodes.find((candidate) => candidate.id === 'in-2')?.groupId).toBe(frame?.id)
+  })
+
+  it('createFrame：在空地上画的仍然是空框（不硬塞成员）', () => {
+    useGenerationCanvasStore.getState().restoreSnapshot({
+      nodes: [node('far-away', 'shots')],
+      edges: [],
+      selectedNodeIds: [],
+      groups: [],
+    })
+    const frame = useGenerationCanvasStore.getState().createFrame('shots', { x: 0, y: 0, w: 300, h: 200 }, '空框', [])
+    expect(frame?.nodeIds).toEqual([])
+    expect(useGenerationCanvasStore.getState().nodes.find((candidate) => candidate.id === 'far-away')?.groupId).toBeFalsy()
+  })
+
+  it('groupSelectedNodes 顺手写下 frameBounds——⌘G 建的也是框', () => {
+    useGenerationCanvasStore.getState().restoreSnapshot({
+      nodes: [node('g1', 'shots'), node('g2', 'shots')],
+      edges: [],
+      selectedNodeIds: [],
+      groups: [],
+    })
+    useGenerationCanvasStore.getState().selectNodes(['g1', 'g2'])
+    const created = useGenerationCanvasStore.getState().groupSelectedNodes('shots')
+    expect(created).toBeTruthy()
+    expect(created?.frameBounds).toBeTruthy()
+    expect(created?.frameBounds?.w).toBeGreaterThan(0)
+  })
+
+  it('setGroupDescription：说明可以被清空（与改名不同，说明本来就可以没有）', () => {
+    const frame = useGenerationCanvasStore.getState().createFrame('shots', { x: 0, y: 0, w: 400, h: 300 })
+    const frameId = frame?.id || ''
+    useGenerationCanvasStore.getState().setGroupDescription(frameId, '  第二幕 · 咖啡馆  ')
+    expect(useGenerationCanvasStore.getState().groups.find((g) => g.id === frameId)?.description).toBe('第二幕 · 咖啡馆')
+    useGenerationCanvasStore.getState().setGroupDescription(frameId, '')
+    expect(useGenerationCanvasStore.getState().groups.find((g) => g.id === frameId)?.description).toBeUndefined()
+  })
+
   it('deletes a group with its member nodes when requested', () => {
     useGenerationCanvasStore.getState().deleteGroup('cast-group', true)
 
@@ -485,6 +670,45 @@ describe('generationCanvasStore sidebar grouping actions', () => {
     } finally {
       setCanvasEventSinkForTests(null)
     }
+  })
+
+  it('carries the frame rectangle along when the whole frame is dragged', () => {
+    // 框的位置有两份真相：用户画的那个矩形（frameBounds）和成员各自的位置。渲染出来的框是
+    // 两者的**并集**且只长不缩——只搬成员、把矩形钉在原地，框不会跟着走，它会被**拉长**
+    // （左上角留在出发地、右下角被成员拽走）。2026-09-07 真机走查逼出来的那条。
+    useGenerationCanvasStore.getState().restoreSnapshot({
+      nodes: [
+        { ...node('cast-1', 'cast', 'cast-group'), position: { x: 100, y: 100 } },
+        { ...node('cast-2', 'cast', 'cast-group'), position: { x: 200, y: 160 } },
+      ],
+      edges: [],
+      selectedNodeIds: [],
+      groups: [{ ...group('cast-group', 'cast', ['cast-1', 'cast-2']), frameBounds: { x: 60.5, y: 40.5, w: 400, h: 300 } }],
+    })
+
+    useGenerationCanvasStore.getState().moveGroupNodes('cast-group', { x: 30, y: -20 })
+
+    const moved = useGenerationCanvasStore.getState().groups.find((candidate) => candidate.id === 'cast-group')
+    // 位移和成员一模一样；尺寸一个像素都不变（变了就是被拉长了）。
+    expect(moved?.frameBounds).toEqual({ x: 90.5, y: 20.5, w: 400, h: 300 })
+    expect(useGenerationCanvasStore.getState().nodes.find((candidate) => candidate.id === 'cast-1')?.position)
+      .toEqual({ x: 130, y: 80 })
+  })
+
+  it('moves an empty frame that has no members at all', () => {
+    // 空框是「先圈一块地方，再往里放东西」这条路的第一步。以前守卫写在 nodeIds.length 上，
+    // 于是刚画出来的空框**压根拖不动**——手在动，框纹丝不动，没有任何提示。
+    useGenerationCanvasStore.getState().restoreSnapshot({
+      nodes: [],
+      edges: [],
+      selectedNodeIds: [],
+      groups: [{ ...group('empty-frame', 'shots', []), frameBounds: { x: 10, y: 20, w: 300, h: 200 } }],
+    })
+
+    useGenerationCanvasStore.getState().moveGroupNodes('empty-frame', { x: 25, y: 15 })
+
+    expect(useGenerationCanvasStore.getState().groups.find((candidate) => candidate.id === 'empty-frame')?.frameBounds)
+      .toEqual({ x: 35, y: 35, w: 300, h: 200 })
   })
 
   it('moves legacy shots nodes without explicit category when grouped', () => {

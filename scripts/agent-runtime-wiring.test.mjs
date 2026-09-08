@@ -5,6 +5,11 @@ import { ESLint } from 'eslint'
 import ts from 'typescript'
 import { describe, expect, test } from 'vitest'
 
+// 可达性判据只有一份：门岗自己的 resolveReachable。这里原先抄了一份只认 `pnpm run x` 的
+// 正则闭包，gates:contracts 改成 runner 实参清单后它立刻报出「typecheck 不可达」的假红——
+// 两份判据必然漂移（R14.1）。要改可达性语义只改 scripts/check-gates-chain.mjs。
+import { resolveReachable } from './check-gates-chain.mjs'
+
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const read = (relative) => fs.readFileSync(path.join(repoRoot, relative), 'utf8')
 const pkg = JSON.parse(read('package.json'))
@@ -35,27 +40,22 @@ function stringArrayProperty(relative, propertyName) {
   return values
 }
 
-function reachable(entry) {
-  const seen = new Set()
-  const pending = [entry]
-  while (pending.length) {
-    const name = pending.pop()
-    if (seen.has(name)) continue
-    seen.add(name)
-    for (const match of (pkg.scripts[name] ?? '').matchAll(/\b(?:pnpm|npm)\s+run\s+([\w:-]+)/g)) {
-      pending.push(match[1])
-    }
-  }
-  return seen
-}
+const reachable = (entry) => resolveReachable(pkg.scripts, entry)
 
 describe('private pi build and test wiring', () => {
   test('pins the verified SDK graph while preserving non-Agent ai@4 and Nomi Zod', () => {
     for (const name of ['pi-agent-core', 'pi-ai', 'pi-coding-agent']) {
-      expect(pkg.dependencies[`@earendil-works/${name}`]).toBe('0.84.3')
+      expect(pkg.dependencies[`@earendil-works/${name}`]).toBe('0.85.1')
     }
-    for (const name of ['pi-agent-core', 'pi-ai', 'pi-client', 'pi-coding-agent', 'pi-protocol', 'pi-tui']) {
-      expect(pkg.pnpm.overrides?.[`@earendil-works/${name}`]).toBe('0.84.3')
+    // The override set is exactly the pi packages that exist in the 0.85.1 tree:
+    // the three direct dependencies plus the three they pull in (chord, pi-telemetry,
+    // pi-tui). pi-client and pi-protocol left the tree in 0.85.1, so pinning them
+    // would be a dead lock nobody can notice going stale.
+    expect(Object.keys(pkg.pnpm.overrides ?? {}).filter((name) => name.startsWith('@earendil-works/')).sort())
+      .toEqual(['@earendil-works/chord', '@earendil-works/pi-agent-core', '@earendil-works/pi-ai',
+        '@earendil-works/pi-coding-agent', '@earendil-works/pi-telemetry', '@earendil-works/pi-tui'])
+    for (const name of ['chord', 'pi-agent-core', 'pi-ai', 'pi-coding-agent', 'pi-telemetry', 'pi-tui']) {
+      expect(pkg.pnpm.overrides?.[`@earendil-works/${name}`]).toBe('0.85.1')
     }
     expect(pkg.dependencies.typebox).toBe('1.3.7')
     expect(pkg.dependencies['zod-to-json-schema']).toBe('3.25.1')
@@ -69,12 +69,19 @@ describe('private pi build and test wiring', () => {
     const config = json('electron/tsconfig.pi.json')
     expect(config.compilerOptions).toMatchObject({ module: 'NodeNext', moduleResolution: 'NodeNext',
       rootDir: '.', outDir: '../dist-electron', strict: true, noEmitOnError: true })
-    expect(config.include).toEqual(['harness/runtime/pi/**/*.mts', 'harness/runtime/pi/**/*.cts'])
+    // 岛地有两块，因为直接摸 pi 的文件有两处：老 seam（harness/runtime/pi/）和阶段 1 的
+    // agent lane（agentLane/，方案 2026-09-07 §6）。两块共用同一个 NodeNext 工程，
+    // 而不是各起一个——两个 ESM 工程写同一个 outDir 迟早给同一个文件写出两份不同的产物。
+    expect(config.include).toEqual(['harness/runtime/pi/**/*.mts', 'harness/runtime/pi/**/*.cts',
+      'agentLane/**/*.mts'])
     const parsed = ts.getParsedCommandLineOfConfigFile(path.join(repoRoot, 'electron/tsconfig.json'), {}, {
       ...ts.sys, onUnRecoverableConfigFileDiagnostic: (diagnostic) => { throw new Error(String(diagnostic.messageText)) },
     })
     const program = ts.createProgram(parsed.fileNames, parsed.options)
-    expect(program.getSourceFiles().filter((file) => /harness\/runtime\/pi\/.*\.[mc]ts$/.test(file.fileName))).toEqual([])
+    // CommonJS 那半**看不见**任何一块岛地的 .mts/.cts。断言两块而不只是老那块：
+    // 只钉一块的话，新岛地哪天漏进 CJS 工程也是静默的——而那正是这条断言存在的意义。
+    expect(program.getSourceFiles().filter((file) =>
+      /(?:harness\/runtime\/pi|agentLane)\/.*\.[mc]ts$/.test(file.fileName))).toEqual([])
     const host = read('electron/ai/agentChatV2.ts')
     expect(host).toContain("../harness/skillIndex.js")
     expect(host).not.toMatch(/harness\/runtime\/pi\/.*\.(?:m|c)?js/)
@@ -94,7 +101,7 @@ describe('private pi build and test wiring', () => {
 
   test('all four native suites run once outside Vitest against private production modules', () => {
     expect(pkg.scripts['test:agent-runtime']).toBe(
-      'tsc -p tests/agent-runtime/tsconfig.json && node --test --test-concurrency=1 .tmp/agent-runtime-tests/tests/agent-runtime/*.test.mjs',
+      'python3 scripts/with-gates-lock.py --command "tsc -p tests/agent-runtime/tsconfig.json && node --test --test-concurrency=1 --test-timeout=60000 .tmp/agent-runtime-tests/tests/agent-runtime/*.test.mjs"',
     )
     expect(reachable('test').has('test:agent-runtime')).toBe(true)
     expect(reachable('gates').has('test:agent-runtime')).toBe(true)

@@ -6,6 +6,10 @@ import path from 'node:path'
 export const FIXTURE_VENDOR = 'agent-runtime-loopback'
 export const FIXTURE_TEXT_MODEL = 'agent-runtime-text'
 export const FIXTURE_IMAGE_MODEL = 'agent-runtime-image'
+// v4 的模型弹层每行只印**显示名**（`labelZh || modelKey`），没有 per-row 挂点，
+// 所以走查按名字选模型。名字与下面的 catalog 共用同一个常量，两边不会各写一份。
+export const FIXTURE_TEXT_MODEL_LABEL = 'Fixture 文本'
+export const FIXTURE_IMAGE_MODEL_LABEL = 'Fixture 图片'
 export const FIXTURE_API_KEY = 'sk-agent-runtime-fixture'
 export const FIXTURE_USAGE = Object.freeze({
   prompt_tokens: 11, completion_tokens: 7, total_tokens: 18,
@@ -51,12 +55,12 @@ function modelCatalog(baseURL) {
     version: 8,
     vendors: [{
       key: FIXTURE_VENDOR, name: 'Agent Runtime Loopback', enabled: true, baseUrlHint: baseURL,
-      authType: 'bearer', authHeader: null, authQueryParam: null, providerKind: 'openai-compatible',
+      authType: 'none', authHeader: null, authQueryParam: null, providerKind: 'openai-compatible',
       createdAt: NOW, updatedAt: NOW,
     }],
     models: [
-      { ...common, modelKey: FIXTURE_TEXT_MODEL, labelZh: 'Fixture 文本', kind: 'text', meta: { supportsImageInput: true } },
-      { ...common, modelKey: FIXTURE_IMAGE_MODEL, labelZh: 'Fixture 图片', kind: 'image', meta: { archetypeId: 'agnes-image' } },
+      { ...common, modelKey: FIXTURE_TEXT_MODEL, labelZh: FIXTURE_TEXT_MODEL_LABEL, kind: 'text', published: true, meta: { supportsImageInput: true } },
+      { ...common, modelKey: FIXTURE_IMAGE_MODEL, labelZh: FIXTURE_IMAGE_MODEL_LABEL, kind: 'image', published: true, meta: { archetypeId: 'agnes-image' } },
     ],
     mappings: ['text_to_image', 'image_edit'].map(imageMapping),
     apiKeysByVendor: {
@@ -69,7 +73,8 @@ function validateReply(reply, allowHold = true) {
   if (reply?.type === 'text' && typeof reply.text === 'string') return
   if (allowHold && reply?.type === 'hold' && (reply.text === undefined || typeof reply.text === 'string')) return
   if (reply?.type === 'tool' && typeof reply.id === 'string' && reply.id
-    && typeof reply.name === 'string' && reply.name && reply.args !== undefined) {
+    && typeof reply.name === 'string' && reply.name && reply.args !== undefined
+    && (reply.text === undefined || typeof reply.text === 'string')) {
     if (JSON.stringify(reply.args) !== undefined) return
   }
   throw new TypeError('Expected a text/tool reply, or a hold with optional text')
@@ -110,10 +115,16 @@ function sendReply(state, reply) {
     return
   }
   if (reply.type === 'text') wire += frame(state, { content: reply.text })
-  else wire += frame(state, { tool_calls: [{
-    index: 0, id: reply.id, type: 'function',
-    function: { name: reply.name, arguments: JSON.stringify(reply.args) },
-  }] })
+  else {
+    // 真实模型常在**同一条消息**里既说话又调工具（「让我修正…」+ 下一次调用）。
+    // 少了这一路，走查就复现不出「工具失败之间夹着模型自言自语」那个形状——
+    // 而那正是 2026-09-06 打包版上用户看到的东西。
+    if (reply.text) wire += frame(state, { content: reply.text })
+    wire += frame(state, { tool_calls: [{
+      index: 0, id: reply.id, type: 'function',
+      function: { name: reply.name, arguments: JSON.stringify(reply.args) },
+    }] })
+  }
   wire += frame(state, {}, reply.type === 'tool' ? 'tool_calls' : 'stop')
   wire += frame(state, {}, null, FIXTURE_USAGE)
   state.response.end(`${wire}data: [DONE]\n\n`)
@@ -121,7 +132,7 @@ function sendReply(state, reply) {
 
 /**
  * @typedef {{path:string, body:unknown, authorization:string, headers:object}} RequestRecord
- * @typedef {{type:'text', text:string}|{type:'tool', id:string, name:string, args:unknown}
+ * @typedef {{type:'text', text:string}|{type:'tool', id:string, name:string, args:unknown, text?:string}
  *   |{type:'hold', text?:string}} Reply
  *
  * Seed only a new, caller-isolated settings directory. Existing catalogs are never overwritten.

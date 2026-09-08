@@ -9,6 +9,8 @@ import { useVideoPlaybackHeal } from '../../media/useVideoPlaybackHeal'
 import { usePreviewVideoPlayheadSync } from '../preview/usePreviewVideoPlayheadSync'
 import { findTimelineTransitionForClipType, resolveTimelineTransitionsAtFrame } from './timelineTransition'
 import { TimelineTransitionLayer } from '../preview/TimelineTransitionLayer'
+import { getDesktopActiveProjectId } from '../../desktop/activeProject'
+import { recordVideoPlaybackState } from '../../media/videoPlaybackTelemetry'
 
 /**
  * 生成页时间轴的迷你画面窗：跟随播放头显示当前帧，治「画布上盲剪」——
@@ -69,6 +71,9 @@ export default function TimelineMiniPreview(): JSX.Element | null {
           'text-micro font-medium text-nomi-ink-60 shadow-workbench-pop cursor-pointer',
           'hover:bg-nomi-ink-05 hover:text-nomi-ink',
         )}
+        // 常驻底部：画布上的选择浮条得让开这一块（量法见
+        // generationCanvas/reactFlow/useCanvasBottomDockRects.ts）。
+        data-canvas-bottom-dock="true"
         aria-label={t('timelineEditor.miniPreview.expand')}
         onClick={() => setCollapsedPersist(false)}
       >
@@ -86,6 +91,9 @@ export default function TimelineMiniPreview(): JSX.Element | null {
         'rounded-nomi border border-[var(--workbench-border)]',
         'bg-nomi-paper shadow-workbench-pop',
       )}
+      // 常驻底部：画布上的选择浮条得让开这一块（量法见
+      // generationCanvas/reactFlow/useCanvasBottomDockRects.ts）。
+      data-canvas-bottom-dock="true"
       aria-label={t('timelineEditor.miniPreview.title')}
     >
       <div className={cn('flex items-center justify-between gap-2 px-2.5 py-1.5')}>
@@ -124,8 +132,15 @@ export default function TimelineMiniPreview(): JSX.Element | null {
             muted
             playsInline
             preload="metadata"
-            onError={heal.onError}
-            onLoadedMetadata={heal.onLoadedMetadata}
+            onError={(event) => {
+              recordVideoPlaybackState(getDesktopActiveProjectId(), { phase: 'error', rawUrl: videoClip?.url ?? '', readyState: event.currentTarget.readyState, networkState: event.currentTarget.networkState, mediaErrorCode: event.currentTarget.error?.code })
+              heal.onError(event)
+            }}
+            onLoadedMetadata={(event) => {
+              recordVideoPlaybackState(getDesktopActiveProjectId(), { phase: 'metadata', rawUrl: videoClip?.url ?? '', readyState: event.currentTarget.readyState, networkState: event.currentTarget.networkState })
+              heal.onLoadedMetadata(event)
+            }}
+            onCanPlay={(event) => recordVideoPlaybackState(getDesktopActiveProjectId(), { phase: 'canplay', rawUrl: videoClip?.url ?? '', readyState: event.currentTarget.readyState, networkState: event.currentTarget.networkState })}
           />
         ) : null}
         {videoTransition ? (

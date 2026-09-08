@@ -53,6 +53,29 @@ export function assertSafeInteger(value: unknown, minimum = 0): asserts value is
   }
 }
 
+export function assertProjectAgentUsage(value: unknown): void {
+  const usage = asRecord(value);
+  assertAllowedKeys(usage, [
+    "promptTokens",
+    "completionTokens",
+    "cachedPromptTokens",
+    "totalTokens",
+    "reasoningTokens",
+    "costUsd",
+  ]);
+  for (const key of ["promptTokens", "completionTokens", "cachedPromptTokens", "totalTokens"] as const) {
+    assertSafeInteger(usage[key]);
+  }
+  // The two optional fields are optional because the provider may not report
+  // them. Present-but-nonsense is still a corrupt record; absent is legal.
+  if (usage.reasoningTokens !== undefined) assertSafeInteger(usage.reasoningTokens);
+  if (usage.costUsd !== undefined) {
+    if (typeof usage.costUsd !== "number" || !Number.isFinite(usage.costUsd) || usage.costUsd < 0) {
+      throw new ProjectAgentStateError("invalid_state");
+    }
+  }
+}
+
 export function assertStringArray(value: unknown): asserts value is readonly string[] {
   if (!Array.isArray(value) || value.some((item) => typeof item !== "string" || !item.trim())) {
     throw new ProjectAgentStateError("invalid_state");
@@ -76,6 +99,16 @@ export function assertVersionRef(value: unknown): void {
 export function assertVersionRefs(value: unknown): void {
   if (!Array.isArray(value)) throw new ProjectAgentStateError("invalid_state");
   value.forEach(assertVersionRef);
+}
+
+export function assertSkillLoadReference(value: unknown): void {
+  const reference = asRecord(value);
+  assertAllowedKeys(reference, ["name", "packageVersion", "contentHash"]);
+  assertNonEmpty(reference.name);
+  assertNonEmpty(reference.packageVersion);
+  if (typeof reference.contentHash !== "string" || !/^[a-f0-9]{64}$/iu.test(reference.contentHash)) {
+    throw new ProjectAgentStateError("invalid_state");
+  }
 }
 
 export function assertStatusRecord(value: Record<string, unknown>): void {

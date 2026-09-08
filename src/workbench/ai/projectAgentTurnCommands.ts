@@ -1,4 +1,4 @@
-import type { AgentChatRequest, AgentChatToolDecision } from '../../../electron/shared/contracts/agentChatContracts'
+import type { AgentChatToolDecision, ProjectAgentExecutionRequest } from '../../../electron/shared/contracts/agentChatContracts'
 import type {
   ProjectAgentExecutionEvent,
   ProjectAgentAttachmentClaim,
@@ -33,7 +33,7 @@ export type ProjectAgentTurnTarget = Readonly<{
 
 export type ProjectAgentTurnCommandInput = ProjectAgentTurnTarget &
   Readonly<{
-    request: AgentChatRequest
+    request: ProjectAgentExecutionRequest
     displayPrompt: string
     threadTitle?: string
     turnId?: string
@@ -73,7 +73,7 @@ function activeWritableThread(snapshot: ProjectAgentHostState, now: string): Pro
   return Object.freeze({ ...active, ...(active.title ? { title: active.title } : {}), updatedAt: now })
 }
 
-function modelRef(request: AgentChatRequest): ProjectAgentTurn['model'] {
+function modelRef(request: ProjectAgentExecutionRequest): ProjectAgentTurn['model'] {
   const vendor =
     typeof request.agentVendorKey === 'string' && request.agentVendorKey.trim()
       ? request.agentVendorKey.trim()
@@ -176,7 +176,7 @@ export async function enqueueProjectAgentTurn(
   // Approval/spend belongs to the Host turn/queue snapshot.  Keep the
   // renderer request projection incapable of carrying a second authority
   // field, even when a stale caller sends one at runtime.
-  const { approvalPolicy: _ignoredApprovalPolicy, ...requestWithoutHostPolicy } = input.request as AgentChatRequest & {
+  const { approvalPolicy: _ignoredApprovalPolicy, ...requestWithoutHostPolicy } = input.request as ProjectAgentExecutionRequest & {
     approvalPolicy?: unknown
   }
   const result = await projectAgentClient.command({
@@ -188,7 +188,6 @@ export async function enqueueProjectAgentTurn(
       ...records,
       request: {
         ...requestWithoutHostPolicy,
-        history: { kind: 'ephemeral' as const },
         workMode: records.turn.workMode,
       },
       ...(input.capturedCanvasReadSnapshot
@@ -248,6 +247,47 @@ export async function stopProjectAgentTurn(turnId: string): Promise<void> {
       projectAgentProjectionStore.applySnapshot(fresh)
     }
   }
+}
+
+/**
+ * Live turn controls. Both have existed in main since the execution
+ * coordinator landed (`projectAgentIpc.ts` handles them before the reducer
+ * path); nothing in the renderer had a name for them, so the panel's only
+ * "stop" was `turn.transition → stopped`, which marks the record and lets the
+ * in-flight provider request run to completion on its own.
+ *
+ * They deliberately do NOT retry on `revision_conflict`: neither carries a
+ * `knownRevision` the Host compares, and main answers with a fresh snapshot,
+ * so a retry loop would only re-send the same instruction twice.
+ */
+async function turnControl(
+  type: 'turn.steer' | 'turn.interrupt',
+  payload: Readonly<{ turnId: string; instruction?: string }>,
+): Promise<void> {
+  const state = projectAgentProjectionStore.getState()
+  const subscriptionId = state.subscriptionId
+  const snapshot = state.snapshot
+  if (!subscriptionId || !snapshot) throw new Error('project_agent_unavailable')
+  const result = await projectAgentClient.command({
+    subscriptionId,
+    clientCommandId: id(type === 'turn.steer' ? 'ui-steer' : 'ui-interrupt'),
+    knownRevision: snapshot.hostRevision,
+    type,
+    payload,
+  })
+  projectAgentProjectionStore.applySnapshot(result.state)
+}
+
+/** 「继续」: hand the running turn one more instruction before its next model request. */
+export async function steerProjectAgentTurn(turnId: string, instruction: string): Promise<void> {
+  const normalized = instruction.trim()
+  if (!normalized) throw new Error('invalid_steer_instruction')
+  await turnControl('turn.steer', { turnId, instruction: normalized })
+}
+
+/** 真中断: abort the in-flight request, not just mark the record stopped. */
+export async function interruptProjectAgentTurn(turnId: string): Promise<void> {
+  await turnControl('turn.interrupt', { turnId })
 }
 
 export function subscribeProjectAgentEvents(listener: (event: ProjectAgentExecutionEvent) => void): () => void {

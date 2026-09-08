@@ -4,6 +4,7 @@ import os from "node:os";
 import { parseAntigravityTestRequest, type AntigravityCheck, type AntigravityTestRequest, type AntigravityConnectionStatus } from "../shared/antigravity";
 import {
   assertPreparedAntigravityInvocation,
+  assertAntigravityPlatform,
   buildAntigravityEnv,
   prepareAntigravityInvocation,
   resolveAntigravityBin,
@@ -55,8 +56,9 @@ export async function antigravityEnvironment(): Promise<NodeJS.ProcessEnv> {
 
 /** Invocation/env overrides are main-process test seams, never renderer input. */
 export async function prepareAntigravity(signal?: AbortSignal, overrides: {
-  invocation?: AntigravityInvocation; env?: NodeJS.ProcessEnv;
+  invocation?: AntigravityInvocation; env?: NodeJS.ProcessEnv; platform?: NodeJS.Platform;
 } = {}): Promise<PreparedAntigravity> {
+  assertAntigravityPlatform(overrides.platform);
   const env = overrides.env ?? await antigravityEnvironment();
   const prepared = await prepareAntigravityInvocation({ invocation: overrides.invocation, env });
   const bin = prepared.invocation.command;
@@ -71,7 +73,6 @@ export async function prepareAntigravity(signal?: AbortSignal, overrides: {
     await assertPreparedAntigravityInvocation(prepared);
     const version = versionResult.stdout.match(/\b\d+\.\d+\.\d+\b/)?.[0];
     if (!version) throw new Error("ANTIGRAVITY_VERSION_UNRECOGNIZED");
-    if (process.platform === "win32" && !overrides.invocation) throw new Error("ANTIGRAVITY_PLATFORM_UNVERIFIED");
     const modelRun = exec(bin, [...prefix, "models"], options);
     // Noninteractive discovery waits for EOF with Node's otherwise-open pipe.
     modelRun.child.stdin?.on("error", () => {});
@@ -92,7 +93,7 @@ export async function prepareAntigravity(signal?: AbortSignal, overrides: {
 
 /** Read-only discovery keeps its legacy return shape; execution callers use prepareAntigravity. */
 export async function probeAntigravity(signal?: AbortSignal, overrides: {
-  invocation?: AntigravityInvocation; env?: NodeJS.ProcessEnv;
+  invocation?: AntigravityInvocation; env?: NodeJS.ProcessEnv; platform?: NodeJS.Platform;
 } = {}): Promise<AntigravityDiscovery> {
   return (await prepareAntigravity(signal, overrides)).discovery;
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import type { RuntimeToolCall } from "../harness/runtime/runtimePort";
+import type { RuntimeToolCall } from "../shared/agentCapabilities/transportContracts";
 import { SKILL_READ_CAPABILITY } from "../shared/agentCapabilities/skillRead";
 import type { SkillRecord } from "../skills/skillStore";
 import { createPiSkillReadTransportAdapter } from "./skillReadTransportAdapters";

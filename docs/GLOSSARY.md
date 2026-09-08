@@ -34,9 +34,9 @@
 
 | 你可能搜的词 | 规范名 | 去哪找 |
 |---|---|---|
-| agent 引擎 · runAgentChatV2 · streamText 循环 | **pi runtime**（pi SDK 0.84.3）。`runAgentChatV2` 是**已被取代**的旧名 | `electron/harness/runtime/pi/` |
+| agent 引擎 · runAgentChatV2 · streamText 循环 | **pi runtime**（pi SDK 0.85.1）。`runAgentChatV2` 是**已被取代**的旧名 | `electron/harness/runtime/pi/` |
 | 工具组 · toolset · skillKey 选工具 | **capability**（工具组按 capability 选，**不按 skillKey**） | `electron/harness/agentChatPolicy.ts:35` |
-| 工具定义 · tool schema · descriptor | **descriptors**（`canvasDescriptors.ts` / `documentDescriptors.ts`） | `electron/harness/tools/` |
+| 工具定义 · tool schema · descriptor | **模型可见工具清单**（`modelToolSurfaceManifest.ts`；`canvasDescriptors.ts` / `documentDescriptors.ts` 是**已删**的旧名） | `electron/harness/tools/` |
 | 统一 agent · 跨区 agent · 常驻助手 | **R2-U1 项目级统一 Agent**（未交付） | `docs/plan/2026-08-26-pi-agent-loop-file-migration.md` §7 |
 | 会话 · 线程 · session · thread | **`{sessionKey, threadId}` 二元组**；area 仅 `creation \| generation` | `src/workbench/ai/agentSessionKey.ts:3` |
 | 幻影工具 · phantom tool | 后端有 schema、前端未实现的工具（历史问题，已修） | `docs/plan/agent-merge-architecture.md`（⛔ 已过期） |
@@ -48,8 +48,9 @@
 | 画布 · canvas · 节点图 · 流程图 | **生成画布 GenerationCanvas**（`@xyflow/react` 单内核，R21） | `src/workbench/generationCanvas/` |
 | 3D 场景 · scene3d · 导演台 · director · 站位参考 · 运镜参考 · 灰模 | **导演台 director 节点**（唯一的 3D 节点；`scene3d` 是已删的 V1，老节点加载时自动迁移）；AI 来导 = **站位参考**（create_staging_reference → 灰模图喂 composition_ref）/ **运镜参考**（create_camera_move → 灰模 mp4 喂 video_ref） | `src/workbench/generationCanvas/nodes/director/`（`agent/`、`migration/`） |
 | 拆镜头 · 分镜 · storyboard · 镜头表 | **分镜 / storyboard**；产物是 **StoryboardPlan** | `src/workbench/generationCanvas/agent/storyboardPlan.ts` |
-| 锚 · 参考图 · 角色圣经 · 定妆 | **视觉锚 anchor**（character/scene/prop/style），**冻结**=frozen | `canvasDescriptors.ts` storyboardAnchorSchema |
+| 锚 · 参考图 · 角色圣经 · 定妆 | **视觉锚 anchor**（character/scene/prop/style），**冻结**=frozen | `electron/shared/agentCapabilities/canvasModelShapes.ts` storyboardAnchorSchema |
 | 镜号 · shot number · 顺序 | **`shotIndex`**（存储身份，拖动不变，排片唯一排序信号） | `src/workbench/generationCanvas/model/shotNumbering.ts` |
+| 手艺产物 · Agent 画的图 · Agent 做的表 | **agent-artifact 节点**（Agent 不调模型、用代码/标记语言直接做出来的表达物：SVG/HTML/Markdown/表格/3D） | `src/workbench/generationCanvas/nodes/artifact/`，方案 `docs/plan/2026-09-06-agent-artifact-node.md` |
 
 ## 生产 / 门禁
 
@@ -81,3 +82,4 @@
 | **metadata / meta** | planned node 上叫 `metadata` | 真实 canvas node 上叫 **`meta`**（`applyCanvasToolCall.ts:308` 做的转换） |
 | **transition** | `TimelineTransition` **数据**（已实现） | 转场**渲染效果**（**未实现**，见 `docs/ARCHITECTURE-NOW.md`） |
 | **plans 目录** | `docs/plan/`（397 篇，功能级方案） | `docs/superpowers/plans/`（35 篇，**跨阶段总纲住这**） |
+| **表格 / table** | **产物表格** = `agent-artifact` 的一个 `fileType`（`ARTIFACT_FILE_TYPES` 里的 `'table'`）：Agent 手写的一段**静态只读 HTML 片段**，落盘成文件、只用来看，没有行模型、不可编辑、不投影任何东西 | **分镜表**（storyboard shot table）= 创作面的**可编辑行编辑器**，行是 StoryboardPlan 的镜头、每行绑模型与参考槽、双向投影回画布节点 |

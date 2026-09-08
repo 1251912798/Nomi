@@ -1,0 +1,223 @@
+// Agent 面板 v4 · 积木与状态的词表
+//
+// 真相源是 `docs/design/2026-09-06-agent-panel-v4.md`（用户 2026-09-06 拍板）：
+// **只有 8 个积木**（用户气泡 · 助手文本 · 一行收据 · 任务卡 · 介入槽 · 队列行 · 收起坞 · composer），
+// 其余全是这 8 个的**状态**。所以这里的每个 union 都挂在某一个积木上，不另立第九种东西。
+//
+// 权限档**不新造词**：画布上的「每步问 / 自动改 / 全自动」直接就是仓库合同
+// `ProjectAgentApprovalPolicy.mode` 的三个值，spend 由 mode derive（定稿表 §2）。
+// 早先那版把三档做成中文字面量 union（'每步问' | '自动改' | '全自动'），
+// 既违反 R15（可见文字必须走 i18n），又凭空多了一份要和合同对齐的词表。
+import type { ProjectAgentApprovalPolicy } from '../../../../electron/shared/projectAgentContracts'
+import type { LaneTaskStatus } from '../../../../electron/shared/agentLane/laneContracts'
+
+/** AI Elements Tool 的七态协议（vendor/aiElementsContract.ts 是它的外部参照）。 */
+export type V4ToolStatus =
+  | 'input-streaming'
+  | 'input-available'
+  | 'approval-requested'
+  | 'approval-responded'
+  | 'output-available'
+  | 'output-denied'
+  | 'output-error'
+
+/** 助手文本三态（定稿 Vocabulary 板 ②）：流式光标 · 完成（hover 出动作）· 已中断。 */
+export type V4AssistantStatus = 'streaming' | 'complete' | 'interrupted'
+
+/**
+ * 任务卡五态（定稿 Vocabulary 板 ④）。**owner 在中立契约层**，这里只是它在 v4 词表里的名字。
+ *
+ * 为什么 owner 在那边而不是这边：这五个词现在是**跨进程**的——主进程从 ProductionRun 领域
+ * join 出来的事实里就带着它（`LaneTaskFacts.status`），渲染层照着画。两侧各写一份字面量
+ * union，就得再写一张两份之间的映射表，而那张表正是 R14.1 要横扫的「同一语义两份定义」；
+ * 而且 `electron/` 不许 import `src/`（`check:boundaries`），所以能容下这个 owner 的只有
+ * `electron/shared/`。名字留在这里，是因为 v4 的组件按 `V4*` 这套词表读。
+ */
+export type V4TaskStatus = LaneTaskStatus
+
+/** 介入槽的内容体（定稿 Vocabulary 板 ⑤）：一个组件，kind 不同。 */
+export type V4InterventionKind =
+  | 'approval-irreversible'
+  | 'approval-reversible'
+  | 'reject-reason'
+  | 'spend'
+  | 'question'
+  | 'plan'
+  | 'credential'
+  | 'deviation'
+
+/**
+ * 一行收据 / 任务卡 / 思考行的 icon 家族（定稿 Process 板「icon ↔ 动词」表）。
+ * icon 标的是**动的那个对象**（文稿 / 时间轴 / 节点 / 图 / 视频 / 音频），不是工具名。
+ */
+export type V4ActionFamily =
+  | 'think'
+  | 'document'
+  | 'timeline'
+  | 'canvas'
+  | 'search'
+  | 'write'
+  | 'image'
+  | 'video'
+  | 'audio'
+  | 'edit'
+  | 'transition'
+  | 'skill'
+  | 'plan'
+  | 'export'
+  | 'attachment'
+  | 'layout'
+  | 'spend'
+  | 'credential'
+  | 'question'
+
+/** composer 的三种视图上下文（空闲 / 运行中排队 / 带引用 chip）。 */
+export type ComposerMode = 'idle' | 'running' | 'reference'
+
+/** 权限三档 = 合同里的 approvalPolicy.mode，不是第二份词表。 */
+export type PermissionTier = ProjectAgentApprovalPolicy['mode']
+
+/** composer 底栏可弹的三个层，一次只开一个。 */
+export type ComposerPopover = 'model' | 'skill' | 'permission'
+
+export type V4ChipKind = 'file' | 'skill' | 'clip'
+export type V4Chip = Readonly<{ kind: V4ChipKind; label: string }>
+
+export type ToolReceipt = Readonly<{
+  /** 人话动词 + 对象，例如「读取时间轴」。 */
+  label: string
+  action: V4ActionFamily
+  status: V4ToolStatus
+  /** 行中摘要（「3 段 · 9.0s」）。 */
+  summary?: string
+  /** 行尾用时或原因。 */
+  trailing?: string
+  /** 展开体：输入 / 输出。只有「还有内容可看」才带 ›。 */
+  input?: string
+  output?: string
+  expanded?: boolean
+  /** 可撤销的改动在行尾多一个「撤销」。 */
+  undoable?: boolean
+}>
+
+export type TaskCandidate = Readonly<{ tag: string; adopted?: boolean; pending?: boolean }>
+
+export type TaskCardData = Readonly<{
+  title: string
+  action: V4ActionFamily
+  status: V4TaskStatus
+  /** 卡头右端的计数 / 用时 / 花费。 */
+  trailing?: string
+  /** 提示词摘录，最多 2 行。 */
+  excerpt?: string
+  /** 参数 chip（模型 / 画幅 / 分辨率 / 预估花费）。 */
+  params?: readonly string[]
+  cost?: string
+  progress?: number
+  candidates?: readonly TaskCandidate[]
+  /** 失败时的一句话原因 + 一个动作。 */
+  error?: string
+  errorAction?: string
+  footnote?: string
+  /** 卡尾右端的第二个数（画布 FlowGeneration 板的「已花 ¥0.24」）。 */
+  footnoteTrailing?: string
+  undoable?: boolean
+}>
+
+export type PlanRow = Readonly<{ label: string; detail?: string; checked: boolean }>
+
+export type InterventionData = Readonly<{
+  kind: V4InterventionKind
+  title: string
+  /** 槽头右端的小字（「不可逆」「可撤销」「付费」「≈ ¥0.48」）。 */
+  badge?: string
+  summary?: string
+  scope?: string
+  params?: readonly string[]
+  options?: readonly string[]
+  selectedOption?: number
+  plan?: readonly PlanRow[]
+  /** 「不要」之后渐进披露的拒绝原因输入。 */
+  reasonPlaceholder?: string
+  confirmLabel?: string
+  /** 第二动作（「改一下」「换模型」「去配置」）。 */
+  alternateLabel?: string
+}>
+
+/**
+ * 对话流里的一条 = 一个积木。壳不认识内容，只按 `kind` 派发。
+ *
+ * `suggestion` 是**缺参数**那一档的家（2026-09-06 拍板 ④）：它不是第九个积木，
+ * 而是「助手文本 + 一排选项 chip」两件已有件的组合——缺参数不该占用介入槽，
+ * 那个槽是给「要不要让我做」这类问题的，而缺参数只是 Nomi 少问了一句话。
+ * 用户点 chip 或直接在 composer 里回答，两条路都回填同一个参数。
+ */
+export type V4FlowItem =
+  | { kind: 'user'; text: string; chips?: readonly V4Chip[] }
+  | { kind: 'assistant'; text: string; status: V4AssistantStatus }
+  | { kind: 'thinking'; label: string; meta: string }
+  | { kind: 'tool'; receipt: ToolReceipt }
+  // 同一个工具连着调 N 次时，N 行收据折成的那一行（`agentPanelV4Collapse.ts` 是唯一产地）。
+  // 它**不是**第九个积木：展开体里逐条渲染的就是普通的一行收据。
+  | {
+      kind: 'tool-group'
+      label: string
+      action: V4ActionFamily
+      status: V4ToolStatus
+      count: number
+      /** 行尾那句「全部失败 / 3 次失败 / 全部完成」。 */
+      trailing: string
+      /** 第一条失败的原因短句。全成功时没有。 */
+      reason?: string
+      receipts: readonly ToolReceipt[]
+    }
+  // 反复试的过程里，模型说给自己听的那几段。收起态就是助手文本的一个状态。
+  | { kind: 'process'; label: string; segments: readonly string[] }
+  | { kind: 'task'; task: TaskCardData }
+  | { kind: 'suggestion'; text: string; options: readonly string[] }
+  | { kind: 'error'; reason: string; action?: string }
+
+export type QueueRowData = Readonly<{
+  title: string
+  status: 'queued' | 'running' | 'complete'
+  /** 行尾动作（插队 / 删 / 立即中断）。 */
+  actions?: readonly string[]
+  destructiveAction?: string
+}>
+
+/**
+ * 上下文环的数据。**每一项都可缺**——这是本类型最重要的一条。
+ *
+ * 现役面板头上那句「还能聊 ~40 轮」是 `Math.max(1, 40 - sessionTurns)`，一个写死的常数
+ * 减法，不是任何真实用量。换掉它的意义就在于「印出来的数都是量出来的」，所以宿主没给的
+ * 分项一律 `undefined` = **那一行不渲染**，不是 `?? 0`：
+ *   - `max` 缺   → 环画灰、不给百分比（模型目录没写 contextWindow 就是没写）
+ *   - `reasoning` 缺 → 供应商没报推理 token（多数不报），整行不出现
+ *   - `cost` 缺  → 运行时对这个模型没有价目（中转/自建端点常见），不印 ¥0.00
+ * 组件侧 `undefined` 一律「不渲染那一件」，单测钉死这条，防止以后有人拿 `?? 0` 糊回去。
+ */
+export type ContextUsage = Readonly<{
+  used?: number
+  max?: number
+  input?: string
+  output?: string
+  reasoning?: string
+  cache?: string
+  cost?: string
+}>
+
+/**
+ * 三档 → 合同两个字段。定稿 §2：「每步问」= 改动/花钱/计划都先问；「自动改」= 可撤销改动直接做、
+ * 付费仍逐次问；「全自动」= 预算内都不问。介入槽的「不再问 →」= 当场抬到下一档。
+ */
+export const PERMISSION_POLICIES: Readonly<Record<PermissionTier, ProjectAgentApprovalPolicy>> = {
+  step: { mode: 'step', spend: 'confirm' },
+  'safe-auto': { mode: 'safe-auto', spend: 'confirm' },
+  project: { mode: 'project', spend: 'within-budget' },
+}
+
+/** 档位顺序，用于「不再问 →」抬一档。 */
+export const PERMISSION_TIERS: readonly PermissionTier[] = ['step', 'safe-auto', 'project']
+
+/** 默认「自动改」（定稿 §2，与 DEFAULT_PROJECT_AGENT_APPROVAL_POLICY 同值）。 */
+export const DEFAULT_PERMISSION_TIER: PermissionTier = 'safe-auto'

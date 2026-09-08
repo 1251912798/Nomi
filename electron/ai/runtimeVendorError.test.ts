@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { RuntimeErrorFacts } from '../harness/runtime/runtimePort';
+import type { RuntimeErrorFacts } from '../shared/agentCapabilities/transportContracts';
 import { parseVendorErrorFromMessage } from '../../src/workbench/generationCanvas/runner/vendorErrorIpc';
 import { describeRuntimeError } from './runtimeVendorError';
 

@@ -1,4 +1,6 @@
 import { app, ipcMain } from "electron";
+import { writePersistedLocale } from './settings/localePreference'
+import { getSettingsRoot } from './settings/settingsRoot'
 
 // locale 归一是纯逻辑，住在 electron-free 的 desktopLocale.ts（打包裸 Node launcher 也要 require 它，
 // 不能碰 electron）。本地引来给 setDesktopLocale 用，再原样导出——保持 i18n 对既有消费者的公开面不变
@@ -41,14 +43,50 @@ const translations = {
     // ⚠️ 长度纪律：错误卡大标题走 classifyError.truncateLine，**超 100 字会被截尾**（那正是
     // 「该怎么办」那半句）。这两条 key 因此写得短，完整上下文留在 raw / 上游原话里。
     "tasks.noQueryOperation": "这个模型没有配置「查询结果」接口，而本次创建也没有返回任何产物——没有第二次查询可发，已按失败处理。请检查该模型的接入配置。",
+    "outbound.fakeIpBlocked": "取片被安全策略拦下：{{host}} 解析到 {{address}}（RFC 2544 段，本地代理 fake-ip 常用它做合成地址），Nomi 无法确认这是代理而不是内网，于是拒绝了下载。**已付费的任务没有丢**，上游多半已经生成好了——请到「模型设置 → 网络」确认本地代理已开启，再用「重新拉取结果」免费取回，不用重新生成。",
+    "outbound.privateAddress": "取片被安全策略拦下：{{host}} 解析到内网地址 {{address}}，Nomi 不会向内网下载产物（防止被诱导去探测你的路由器/NAS）。已付费的任务没有丢，修好 DNS 或代理后可用「重新拉取结果」免费取回。",
+    "outbound.privateHost": "这个地址指向本机或内网（{{host}}），Nomi 不会从这里下载产物。若这是你自己的本地生成后端，请在模型设置里把它配置成供应商，而不是直接填链接。",
+    "outbound.unresolvable": "找不到 {{host}} 的服务器地址（DNS 没有返回任何结果）。请检查网络或代理是否正常，然后用「重新拉取结果」免费重试。",
+    "outbound.submitFakeIpBlocked": "这次生成**没有发出去，也没有扣费**：{{host}} 解析到 {{address}}（RFC 2544 段，本地代理 fake-ip 常用它做合成地址），Nomi 无法确认这是代理而不是内网，于是在请求发出前就拦下了。请到「模型接入 → 网络」确认本地代理已开启（那一行会写「检测到本地代理」），然后重新生成。",
+    "outbound.submitPrivateAddress": "这次生成**没有发出去，也没有扣费**：{{host}} 解析到内网地址 {{address}}，Nomi 不会把带着密钥的请求发往内网。请检查 DNS 或代理；如果这确实是你自己的服务，请在模型设置里把它的完整地址配成供应商接入地址。",
+    "outbound.submitPrivateHost": "这次生成**没有发出去，也没有扣费**：接入地址指向本机或内网（{{host}}）。如果这是你自己的本地后端，请在「模型接入」里把它配置成供应商；链路本地/元数据地址（169.254.x）永远不会被放行。",
+    "outbound.submitUnresolvable": "这次生成**没有发出去，也没有扣费**：找不到 {{host}} 的服务器地址（DNS 没有返回任何结果）。请检查网络或代理，然后重新生成。",
     "tasks.completedWithoutOutput": "供应商报告任务完成，但没有返回可用产物；已按失败处理。请检查该模型的结果接口。",
     "tasks.missingTaskId": "供应商没有返回任务编号，无法安全查询结果；已按失败处理。请检查该模型的创建接口。",
     "tasks.upstreamSaid": "（上游原话：{{detail}}）",
     "textTask.imagesUnreadable": "参考图都读不出来（{{count}} 张），没法让模型看图作答。请检查素材是否还在项目里。",
+    "vendor.apimartOmni.imageUrlsArray": "APIMart Omni 参考图必须是图片数组。",
+    "vendor.apimartOmni.imageCount": "APIMart Omni 参考图只支持 1 或 3 张。",
+    "vendor.apimartOmni.generationType": "APIMart Omni 使用参考图时必须声明 reference 模式。",
     "updater.devUnavailable": "开发模式下不可用，请在安装版中检查更新",
     "agent.confirmTimeout": "工具确认超时（长时间无响应，已自动跳过）",
     "agent.sessionCancelled": "会话已取消",
     "agent.processInterrupted": "上一次 Agent 进程在本轮完成前结束了。",
+    "agent.provenanceConfirmation": "这段上下文来自未经验证的来源（{{sources}}），未经你确认不能直接执行{{action}}操作。",
+    "integration.discoveryMissingBaseUrl": "无法探测模型：缺少中转站地址。请填写 base URL，并可手动填写 model ID。",
+    "integration.discoveryMissingCredential": "无法探测模型：Nomi 没有找到已保存的密钥。请打开安全凭据页保存 key，或手动填写 model ID。",
+    "integration.discoveryUnsupported": "中转站没有可用的 /models 接口，无法自动读取模型清单。请直接手动填写 model ID 后再次提交。",
+    "integration.discoveryAuthFailed": "中转站拒绝了已保存的密钥。请回到安全凭据页重新保存 key，或手动填写 model ID。",
+    "integration.discoveryFailed": "自动读取模型清单失败（{{reason}}）。请检查 base URL 后重试，也可以手动填写 model ID。",
+    "integration.discoveryPlainText": "未能从模型清单识别类型，已按纯文本模型接入；如果它不是文本模型，请手动改类型。",
+    // MCP URL 模式 elicitation 的凭据页文案（spec 2025-11-25 §URL Mode：密钥必须走页面、不得走 form）。
+    "integration.credentialPage.title": "把 API 密钥交给 Nomi",
+    "integration.credentialPage.lede": "只有这台电脑上的 Nomi 会看到你输入的密钥：它加密存在本机，不会经过 AI 助手、不会进模型上下文、不会写进日志。",
+    "integration.credentialPage.providerLabel": "供应商",
+    "integration.credentialPage.baseUrlLabel": "接口地址",
+    "integration.credentialPage.keyLabel": "API 密钥",
+    "integration.credentialPage.keyPlaceholder": "粘贴供应商给你的 key",
+    "integration.credentialPage.keyRequired": "请先填写密钥。",
+    "integration.credentialPage.test": "测试连接",
+    "integration.credentialPage.testing": "正在连接…",
+    "integration.credentialPage.testOk": "连上了，读到 {{count}} 个模型。",
+    "integration.credentialPage.testFailed": "测试失败：{{reason}}",
+    "integration.credentialPage.save": "保存并关闭",
+    "integration.credentialPage.saving": "正在保存…",
+    "integration.credentialPage.saved": "已保存。可以关掉这个页面，回你的 AI 助手继续。",
+    "integration.credentialPage.saveFailed": "保存失败：{{reason}}",
+    "integration.credentialPage.expired": "这个链接已失效（一次性、10 分钟有效）。回到 AI 助手重新发起一次接入即可。",
+    "experience.untitled": "未命名经验",
     "browser.promptCategory.image": "图片提示词",
     "browser.promptCategory.video": "视频提示词",
     "export.missingWebmInput": "导出失败：缺少 WebM 输入数据",
@@ -98,6 +136,8 @@ const translations = {
     "browserMedia.downloadFailed": "网页素材下载失败（HTTP {{status}}）",
     "browserMedia.promptImageTooLarge": "图片过大，无法用于提示词提取（最大 16 MB）",
     "minimaxH3.mixedReferences": "MiniMax H3 请求参数冲突：首尾帧与参考素材不能同时使用，请只保留一组输入。",
+    "modelConstraints.referenceTotal": "参考素材总数最多 {{max}} 个（图片、视频和音频合计）。",
+    "modelConstraints.parameterCombination": "当前参数组合不支持 {{parameter}}，请重新选择。",
     "minimaxH3.audioOnly": "MiniMax H3 多模态参考中音频不能单独输入，请至少提供参考图或参考视频。",
     "comfyWorkflow.invalidJson": "不是合法 JSON —— 请粘贴完整的 ComfyUI workflow.json 或 workflow_api.json。",
     "comfyWorkflow.invalidShape": "workflow 格式不对（应是节点对象）。",
@@ -174,14 +214,49 @@ const translations = {
     "tasks.unrecognizedStatus": "The provider returned an unrecognized task status: “{{status}}”. It stayed that way for {{polls}} polls over {{seconds}}s, so Nomi is treating the task as failed. It may still be running on the provider side — check your provider dashboard.",
     "tasks.pollTimedOut": "Timed out waiting for the result (waited {{seconds}}s, last status: {{status}}). The task may still be running on the provider side — check your provider dashboard or fetch the result again later.",
     "tasks.noQueryOperation": "This model has no result-query operation and the create call returned nothing. Check its setup.",
+    "outbound.fakeIpBlocked": "The download was blocked by Nomi's own network policy: {{host}} resolved to {{address}} (the RFC 2544 range that local fake-IP proxies use for synthetic addresses). Nomi could not confirm a proxy is running, so it refused the download. **Your paid task is not lost** - confirm your local proxy under Model settings > Network, then use \"Re-fetch result\" to retrieve it for free. Do not regenerate.",
+    "outbound.privateAddress": "The download was blocked by Nomi's own network policy: {{host}} resolved to the private address {{address}}, and Nomi never downloads results from private networks. Your paid task is not lost - fix DNS or the proxy, then use \"Re-fetch result\" to retrieve it for free.",
+    "outbound.privateHost": "This address points at your own machine or private network ({{host}}), so Nomi will not download results from it. If it is your own local backend, configure it as a provider in model settings instead of pasting the link.",
+    "outbound.unresolvable": "No server address found for {{host}} (DNS returned nothing). Check your network or proxy, then use \"Re-fetch result\" to retry for free.",
+    "outbound.submitFakeIpBlocked": "This generation **was never sent, and nothing was charged**: {{host}} resolved to {{address}} (the RFC 2544 range local fake-IP proxies use for synthetic addresses), and Nomi could not confirm a proxy is running, so it stopped the request before it left your machine. Confirm your local proxy under Model Access > Network (that row reads \"Local proxy detected\"), then generate again.",
+    "outbound.submitPrivateAddress": "This generation **was never sent, and nothing was charged**: {{host}} resolved to the private address {{address}}, and Nomi never sends a credential-bearing request into a private network. Check DNS or your proxy; if this really is your own service, configure its full address as a provider endpoint in model settings.",
+    "outbound.submitPrivateHost": "This generation **was never sent, and nothing was charged**: the endpoint points at your own machine or private network ({{host}}). If it is your own local backend, configure it as a provider under Model Access. Link-local / metadata addresses (169.254.x) are never allowed.",
+    "outbound.submitUnresolvable": "This generation **was never sent, and nothing was charged**: no server address was found for {{host}} (DNS returned nothing). Check your network or proxy, then generate again.",
     "tasks.completedWithoutOutput": "The provider reported completion but returned no usable output. Check this model's result endpoint.",
     "tasks.missingTaskId": "The provider did not return a task ID, so Nomi cannot safely query the result. Check this model's create endpoint.",
     "tasks.upstreamSaid": " (Upstream said: {{detail}})",
     "textTask.imagesUnreadable": "None of the {{count}} reference image(s) could be read, so the model cannot answer from the image. Check that the assets are still in the project.",
+    "vendor.apimartOmni.imageUrlsArray": "APIMart Omni reference images must be an image array.",
+    "vendor.apimartOmni.imageCount": "APIMart Omni supports exactly 1 or 3 reference images.",
+    "vendor.apimartOmni.generationType": "APIMart Omni requires reference mode when reference images are used.",
     "updater.devUnavailable": "Updates are unavailable in development mode. Check for updates in an installed build.",
     "agent.confirmTimeout": "Tool confirmation timed out and the action was skipped",
     "agent.sessionCancelled": "The session was cancelled",
     "agent.processInterrupted": "The previous Agent process ended before this turn completed.",
+    "agent.provenanceConfirmation": "This context came from unverified sources ({{sources}}); your explicit confirmation is required before this {{action}} action.",
+    "integration.discoveryMissingBaseUrl": "Model discovery needs a relay URL. Enter a base URL, or enter a model ID manually.",
+    "integration.discoveryMissingCredential": "Model discovery could not find a saved key. Save it in Nomi's secure page, or enter a model ID manually.",
+    "integration.discoveryUnsupported": "This relay has no usable /models route, so Nomi cannot read its model list. Enter model IDs manually and submit again.",
+    "integration.discoveryAuthFailed": "The relay rejected the saved key. Save it again in Nomi's secure page, or enter a model ID manually.",
+    "integration.discoveryFailed": "Model-list discovery failed ({{reason}}). Check the base URL and retry, or enter a model ID manually.",
+    "integration.discoveryPlainText": "The model list did not identify a capability, so this was added as plain text. Change its type if needed.",
+    "integration.credentialPage.title": "Give Nomi the API key",
+    "integration.credentialPage.lede": "Only Nomi on this computer sees what you type: the key is encrypted locally and never reaches your AI assistant, the model context, or any log.",
+    "integration.credentialPage.providerLabel": "Provider",
+    "integration.credentialPage.baseUrlLabel": "API base URL",
+    "integration.credentialPage.keyLabel": "API key",
+    "integration.credentialPage.keyPlaceholder": "Paste the key your provider gave you",
+    "integration.credentialPage.keyRequired": "Enter the key first.",
+    "integration.credentialPage.test": "Test connection",
+    "integration.credentialPage.testing": "Connecting\u2026",
+    "integration.credentialPage.testOk": "Connected. Found {{count}} models.",
+    "integration.credentialPage.testFailed": "Test failed: {{reason}}",
+    "integration.credentialPage.save": "Save and close",
+    "integration.credentialPage.saving": "Saving\u2026",
+    "integration.credentialPage.saved": "Saved. You can close this page and go back to your AI assistant.",
+    "integration.credentialPage.saveFailed": "Could not save: {{reason}}",
+    "integration.credentialPage.expired": "This link is no longer valid (single use, 10 minutes). Ask your AI assistant to start the connection again.",
+    "experience.untitled": "Untitled experience",
     "browser.promptCategory.image": "Image prompts",
     "browser.promptCategory.video": "Video prompts",
     "export.missingWebmInput": "Export failed: missing WebM input data",
@@ -231,6 +306,8 @@ const translations = {
     "browserMedia.downloadFailed": "Could not download web media (HTTP {{status}})",
     "browserMedia.promptImageTooLarge": "The image is too large for prompt extraction (maximum 16 MB)",
     "minimaxH3.mixedReferences": "MiniMax H3 cannot use first/last frames and reference media together. Keep only one input group.",
+    "modelConstraints.referenceTotal": "Use at most {{max}} references in total (images, videos and audio combined).",
+    "modelConstraints.parameterCombination": "The current parameter combination does not support {{parameter}}. Choose another value.",
     "minimaxH3.audioOnly": "MiniMax H3 cannot use audio as the only multimodal reference. Add a reference image or video.",
     "comfyWorkflow.invalidJson": "Invalid JSON. Paste a complete ComfyUI workflow.json or workflow_api.json.",
     "comfyWorkflow.invalidShape": "Invalid workflow shape. It must be a node object.",
@@ -296,7 +373,14 @@ export function desktopT(key: DesktopTranslationKey, values: Record<string, stri
 //  · set-locale：渲染层切语言 → 同步桌面侧（原生菜单/对话框文案）。
 //  · get-system-locale：首启无存储偏好时，渲染层同步探测 OS 语言（app.getLocale() 由 --lang/系统设定）。
 export function registerI18nIpc(): void {
-  ipcMain.on("nomi:i18n:set-locale", (_event, locale: unknown) => setDesktopLocale(locale));
+  ipcMain.on("nomi:i18n:set-locale", (_event, locale: unknown) => {
+    setDesktopLocale(locale)
+    try {
+      writePersistedLocale(getSettingsRoot(), getDesktopLocale())
+    } catch {
+      // Locale still applies for this session when the settings root is unavailable.
+    }
+  });
   ipcMain.on("nomi:i18n:get-system-locale", (event) => {
     try {
       event.returnValue = { ok: true, value: app.getLocale() };

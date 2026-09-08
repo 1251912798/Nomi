@@ -15,8 +15,9 @@ import { app, desktopCapturer, globalShortcut, screen, shell, systemPreferences 
 import path from "node:path";
 import { getSettingsRoot, ensureDir, readJson } from "../runtimePaths";
 import { writeJsonFileAtomic } from "../jsonFile";
-import { getMainWindow } from "../mainWindowRegistry";
+import { getMainWindow } from "../appWindowRegistry";
 import { writeAsset } from "../runtime";
+import { logError } from "../logging/logger";
 
 const PREFS_FILE = "screenshot-hotkey-prefs.json";
 
@@ -99,7 +100,7 @@ export function applyScreenshotHotkey(prefs?: ScreenshotHotkeyPrefs): Screenshot
     try {
       registered = globalShortcut.register(config.accelerator, () => {
         void captureScreenToCanvas().catch((error) => {
-          console.error("[nomi:screenshot] capture failed:", error);
+          logError("screenshot", "capture-failed", error);
         });
       });
     } catch {

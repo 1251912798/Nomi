@@ -137,7 +137,7 @@ export default function NomiStudioApp(): JSX.Element {
   const navigate = useNavigate()
   const location = useLocation()
   const [view, setView] = React.useState<AppView>('library')
-  const { projects, refreshProjects } = useLocalProjects()
+  const { refreshProjects } = useLocalProjects()
   const [activeProject, setActiveProject] = React.useState<LocalProjectSummary | null>(null)
   const settingsDialogController = useSettingsDialogController()
   const [handbookOpened, setHandbookOpened] = React.useState(false)
@@ -771,7 +771,6 @@ export default function NomiStudioApp(): JSX.Element {
     view === 'library' ? (
       <>
         <ProjectLibraryPage
-          projects={projects}
           onOpenProject={openProject}
           onDeleteProject={deleteProject}
           onRenameProject={renameLibraryProject}

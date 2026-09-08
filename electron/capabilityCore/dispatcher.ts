@@ -1,5 +1,6 @@
 // 能力核 · 方法路由（单一真相源）。
 // RPC 传输（rpcServer）与 headless host（host）共用这一份 method→core 映射，杜绝两份路由漂移（P1）。
+import crypto from 'node:crypto'
 import {
   addProjectNodes,
   connectProjectNodes,
@@ -13,12 +14,18 @@ import {
   type MakeVerifyDeps,
   type RunTaskFn,
 } from './core'
+import { CANVAS_WRITE_OPERATIONS, canvasWriteSemanticInputSchema, type CanvasWriteOperation } from '../shared/agentCapabilities/canvasWrite'
+import { canvasDeleteSemanticInputSchema } from '../shared/agentCapabilities/canvasDelete'
+import { documentWriteSemanticInputSchema } from '../shared/agentCapabilities/documentWrite'
+import { readProjectDocument, writeProjectDocument } from './documentSurface'
+import { CanvasGraphError, type CanvasSnapshot } from './canvasGraph'
 import { listSkillSummariesForMcp, readSkillContentForMcp, type SkillMcpAccess } from '../skills/skillStore'
 import type { ProductionRunService } from '../productionRun/productionRunService'
 import type { ProductionBrief } from '../productionRun/productionRunTypes'
 import { isAnchorCheckpointGate } from '../productionRun/anchorCheckpoint'
 import { withPreApprovedPlan, type ProjectGateway } from './gateway'
 import { INTAKE_MAX_QUESTIONS, buildIntakeMessage, buildIntakeQuestions } from './mcpBriefIntake'
+import { isBuiltinMcpClient } from './security'
 import type { CapabilityOriginHost } from './security'
 import { createMcpGenerationPolicy, type McpGenerationPolicy } from './mcpGenerationPolicy'
 import { dispatchSemanticGeneration, guardLegacyGenerationRoute, isSemanticGenerationRoute } from './generationDispatcher'
@@ -33,6 +40,8 @@ import {
   getIntegrationSessionService,
   type IntegrationSessionService,
 } from '../integrationCertification/integrationSession'
+import { withCredentialElicitationTicket } from '../integrationCertification/credentialElicitation'
+import { manageModelCatalogConnection } from '../catalog/catalogManagement'
 
 export function projectIdOf(params: Record<string, unknown>): string {
   return typeof params.projectId === 'string' ? params.projectId : ''
@@ -97,6 +106,8 @@ export type DispatchContext = {
   makeVerifyDeps?: MakeVerifyDeps
   /** Conversational model-integration session authority. External MCP clients drive begin→…→start here. */
   integrationSessions?: IntegrationSessionService
+  /** GUI-owned credential handoff effect. Called after the durable handoff is queued. */
+  openCredentialsInNomi?: (input: { sessionId: string; vendorName: string }) => { opened: boolean } | void | Promise<{ opened: boolean } | void>
 }
 
 const PROJECT_SESSION_RETRY = 'Open a new project session and retry'
@@ -105,9 +116,7 @@ function mcpSkillAccess(origin: DispatchContext['origin']): SkillMcpAccess {
   // `origin.host` is populated only after the MCP client proof has been
   // verified by the transport.  Treat every other caller as public; never
   // trust an audience field supplied in tool params.
-  return origin?.host === 'claude' || origin?.host === 'codex' || origin?.host === 'cursor'
-    ? 'local-authenticated'
-    : 'public'
+  return isBuiltinMcpClient(origin?.host) ? 'local-authenticated' : 'public'
 }
 
 function errorCodeOf(error: unknown): string | undefined {
@@ -180,6 +189,37 @@ function projectSessionOpenPublicError(error: unknown): RpcError {
     capability: 'project.session',
   })
 }
+
+async function leasedProject(
+  ctx: DispatchContext,
+  params: Record<string, unknown>,
+  scope: string,
+): Promise<ProjectLeaseV2> {
+  const session = ctx.projectSession
+  const leaseHandle = typeof params.leaseHandle === 'string' ? params.leaseHandle.trim() : ''
+  if (!session || !leaseHandle) {
+    throw new RpcError('A verified project-session lease is required', 403, {
+      code: 'lease_required', nextAction: PROJECT_SESSION_RETRY, capability: 'project.session',
+    })
+  }
+  try {
+    return await session.authority.verifyLease(leaseHandle, {
+      connection: session.connection,
+      ...(typeof params.projectId === 'string' && params.projectId.trim() ? { projectHint: params.projectId.trim() } : {}),
+      scope,
+    })
+  } catch (error) {
+    throw leasePublicError(error)
+  }
+}
+
+function proposalId(): string { return `proposal-${crypto.randomUUID()}` }
+
+function canvasRecovery(deviationCount = 0) {
+  return { ok: deviationCount === 0, deviationCount }
+}
+
+const canvasDeleteUndoJournal = new Map<string, Readonly<{ projectId: string; snapshot: CanvasSnapshot; deletedNodeIds: readonly string[] }>>()
 
 const PRODUCTION_START_FIELDS = new Set([
   'projectId', 'playbook', 'playbookVersion', 'host', 'actorId', 'brief', 'trustLevel',
@@ -291,6 +331,15 @@ function productionStartInput(params: Record<string, unknown>, authority: Dispat
   }
 }
 
+/**
+ * 主进程（无头 stdio / 磁盘网关）自己就能落账的画布操作。
+ * 补集（分镜/站位/运镜/时间轴落地/整理布局）的耐久 owner 在渲染层创作区，主进程只能诚实地说「需要 GUI」，
+ * 不再假装那是一次生成计划。
+ */
+const HEADLESS_CANVAS_OPERATIONS: ReadonlySet<CanvasWriteOperation> = new Set<CanvasWriteOperation>([
+  'set_node_prompt', 'create_canvas_nodes', 'connect_canvas_edges',
+])
+
 export async function dispatch(method: string, params: Record<string, unknown>, ctx: DispatchContext): Promise<unknown> {
   if (method === 'nomi_session_open') {
     if (!ctx.projectSession) throw projectSessionOpenPublicError(undefined)
@@ -319,8 +368,25 @@ export async function dispatch(method: string, params: Record<string, unknown>, 
   switch (method) {
     case 'ping':
       return { ok: true }
-    case 'project.list':
-      return { projects: listAllProjects() }
+    case 'project.list': {
+      const projects = listAllProjects()
+      // 每一行都带上可直接喂给 nomi_session_open 的 projectSelectionHandle。
+      // 修复前只有 project.create 会签发 handle（同一个 issueProjectSelection，此处不复制第二份签发逻辑），
+      // 于是没开 GUI 的外部宿主只能在「本次连接里刚建的项目」里干活：重启即失忆，用户已有的项目一个也接不上。
+      // 单个项目的身份校验失败（工程目录被移走/权限没了）只让**那一行**没有 handle，不连累整份列表 ——
+      // 列表本身是只读投影，宿主至少还能看见项目在。
+      if (!ctx.projectSession) return { projects }
+      const projectSession = ctx.projectSession
+      const withHandles = await Promise.all(projects.map(async (project) => {
+        try {
+          const selection = await projectSession.authority.issueProjectSelection('listed_project', project.id, projectSession.connection)
+          return { ...project, projectSelectionHandle: selection.token }
+        } catch {
+          return project
+        }
+      }))
+      return { projects: withHandles }
+    }
     case 'project.create': {
       const created = createNamedProject(typeof params.name === 'string' ? params.name : undefined)
       if (!ctx.projectSession) return created
@@ -482,6 +548,147 @@ export async function dispatch(method: string, params: Record<string, unknown>, 
       })
       return ctx.productionRuns.readProjection(projectId, runId)
     }
+    case 'canvas.write': {
+      const lease = await leasedProject(ctx, params, 'canvas:write')
+      const raw = { ...params }
+      delete raw.leaseHandle
+      delete raw.projectId
+      // 未知 operation 必须当场说清「合法的有哪些」：Zod 的 discriminator 错误只会说
+      // "Invalid discriminator value"，模型据此没法自纠（MCP spec 要求输入错误可恢复）。
+      if (!CANVAS_WRITE_OPERATIONS.includes(raw.operation as CanvasWriteOperation)) {
+        throw new RpcError(`未知的画布操作：${JSON.stringify(raw.operation ?? null)}`, 400, {
+          code: 'capability_input_invalid',
+          nextAction: `Use one of: ${CANVAS_WRITE_OPERATIONS.join(', ')}`,
+          capability: 'canvas.write' as never,
+        })
+      }
+      const input = canvasWriteSemanticInputSchema.parse(raw)
+      const base = ctx.makeGateway(lease.projectId)
+      if (input.operation === 'set_node_prompt') {
+        const result = await setProjectNodePrompt(base, input.nodeId, input.prompt)
+        if (!result.changed) throw new CanvasGraphError('node_not_found', `Canvas node not found: ${input.nodeId}`)
+        return { applied: true, proposalId: proposalId(), operation: input.operation, affectedNodeIds: [input.nodeId], reconciliation: canvasRecovery() }
+      }
+      if (input.operation === 'create_canvas_nodes') {
+        const created = await addProjectNodes(
+          ctx.planConfirmed ? withPreApprovedPlan(base) : base,
+          input.nodes.map((node) => ({
+            kind: node.kind, title: node.title, prompt: node.prompt,
+            ...(node.position ? { x: node.position.x, y: node.position.y } : {}),
+            ...(node.vendor || node.modelVendor ? { vendor: node.vendor || node.modelVendor } : {}),
+            ...(node.modelKey ? { modelKey: node.modelKey } : {}),
+          })),
+          lease.projectId,
+        )
+        if (created.cancelled) return { applied: false, proposalId: proposalId(), operation: input.operation, cancelled: true, affectedNodeIds: [], affectedEdgeIds: [], clientIdToNodeId: {}, connectedCount: 0, skippedEdges: [], reconciliation: canvasRecovery() }
+        const clientIdToNodeId = Object.fromEntries(input.nodes.map((node, index) => [node.clientId, created.ids[index]]))
+        const edges = (input.edges ?? []).map((edge) => ({
+          source: clientIdToNodeId[edge.sourceClientId] ?? edge.sourceClientId,
+          target: clientIdToNodeId[edge.targetClientId] ?? edge.targetClientId,
+          ...(edge.mode ? { mode: edge.mode } : {}),
+        }))
+        const connected = edges.length
+          ? await connectProjectNodes(ctx.makeGateway(lease.projectId), edges)
+          : { edgeIds: [], skipped: [] }
+        const skippedEdges = connected.skipped.map((item) => ({ source: item.connection.source, target: item.connection.target, reason: item.reason }))
+        return { applied: true, proposalId: proposalId(), operation: input.operation, affectedNodeIds: created.ids, affectedEdgeIds: connected.edgeIds, clientIdToNodeId, connectedCount: connected.edgeIds.length, skippedEdges, reconciliation: canvasRecovery(skippedEdges.length) }
+      }
+      if (input.operation === 'connect_canvas_edges') {
+        const connected = await connectProjectNodes(ctx.makeGateway(lease.projectId), input.edges.map((edge) => ({
+          source: edge.sourceClientId, target: edge.targetClientId, ...(edge.mode ? { mode: edge.mode } : {}),
+        })))
+        const skippedEdges = connected.skipped.map((item) => ({ source: item.connection.source, target: item.connection.target, reason: item.reason }))
+        return { applied: true, proposalId: proposalId(), operation: input.operation, affectedNodeIds: [], affectedEdgeIds: connected.edgeIds, connectedCount: connected.edgeIds.length, skippedEdges, reconciliation: canvasRecovery(skippedEdges.length) }
+      }
+      // ── 剩下的 6 个 operation 是**渲染层拥有**的（分镜/站位/运镜/时间轴落地/整理布局）：
+      // 它们的耐久 owner 是创作区 store，主进程这条路没有实现。
+      //
+      // 曾经这里的兜底是 `ctx.generationPlanning({ capability: input.operation, ... })` —— 把画布动作
+      // 当成一次**生成计划**递进去。generationPlanning 只认 create/preview/gate_request/start… 这套
+      // 生成词表，收到 `tidy_canvas` 会先铸一个 `op-<uuid>` 再去查一个根本不存在的 production run，
+      // 于是宿主看到的是 `Production run not found: op-…` —— 一句像内部崩溃的话，而不是「这条路需要 GUI」。
+      // 更糟的是它**吞掉了未知 operation**：任何将来新增却没接上的动作都会变成同一句假崩溃。
+      //
+      // 现在按 MCP 规范办：结构性不可用 = isError 的工具错误 + **列全部合法 operation**，让模型能自纠。
+      throw new RpcError(
+        `画布操作 ${input.operation} 需要 Nomi 创作区正在运行（它的耐久 owner 是创作区，不是主进程）`,
+        501,
+        {
+          code: 'capability_unsupported',
+          nextAction: `Open the Nomi creation surface and retry. Operations available on this transport right now: ${[...HEADLESS_CANVAS_OPERATIONS].join(', ')}`,
+          capability: 'canvas.write' as never,
+        },
+      )
+    }
+    case 'canvas.delete': {
+      const lease = await leasedProject(ctx, params, 'canvas:write')
+      const gateway = ctx.makeGateway(lease.projectId)
+      if (params.operation === 'undo_canvas_delete') {
+        const undoToken = typeof params.undoToken === 'string' ? params.undoToken.trim() : ''
+        const entry = canvasDeleteUndoJournal.get(undoToken)
+        if (!entry || entry.projectId !== lease.projectId) {
+          throw new RpcError('Canvas undo token is invalid or expired', 409, {
+            code: 'capability_input_invalid',
+            nextAction: 'Use the latest deletion receipt or refresh the Canvas and retry',
+            capability: 'canvas.delete',
+          })
+        }
+        const current = await gateway.readDoc()
+        const currentIds = new Set(current.nodes.map((node) => node.id))
+        const restoredNodes = entry.snapshot.nodes.filter((node) => entry.deletedNodeIds.includes(node.id) && !currentIds.has(node.id))
+        const restoredIds = restoredNodes.map((node) => node.id)
+        if (!restoredNodes.length) {
+          throw new RpcError('Canvas deletion has already been undone or superseded', 409, {
+            code: 'capability_input_invalid',
+            nextAction: 'Refresh the Canvas and continue from its current state',
+            capability: 'canvas.delete',
+          })
+        }
+        const restoredIdSet = new Set([...currentIds, ...restoredIds])
+        const currentEdgeIds = new Set(current.edges.map((edge) => edge.id))
+        const restoredEdges = entry.snapshot.edges.filter((edge) =>
+          !currentEdgeIds.has(edge.id) && restoredIdSet.has(edge.source) && restoredIdSet.has(edge.target))
+        await gateway.apply({ ...current, nodes: [...current.nodes, ...restoredNodes], edges: [...current.edges, ...restoredEdges] })
+        canvasDeleteUndoJournal.delete(undoToken)
+        return {
+          applied: true,
+          proposalId: proposalId(),
+          operation: 'undo_canvas_delete',
+          restoredNodeIds: restoredIds,
+          recoveryActions: ['undo_applied'],
+          reconciliation: canvasRecovery(),
+        }
+      }
+      if (params.operation !== 'delete_canvas_nodes' || params.confirmation !== true) {
+        throw new RpcError('Human confirmation is required before deleting Canvas nodes', 403, { code: 'human_approval_required', nextAction: 'Confirm the destructive Canvas maintenance request and retry', capability: 'canvas.write' as never })
+      }
+      const input = canvasDeleteSemanticInputSchema.parse({ operation: 'delete_canvas_nodes', nodeIds: params.nodeIds, ...(typeof params.reason === 'string' ? { reason: params.reason } : {}) })
+      const before = await gateway.readDoc()
+      const deleted = await deleteProjectNodes(gateway, input.nodeIds)
+      if (!deleted.deleted.length) throw new CanvasGraphError('node_not_found', 'One or more canvas nodes were not found')
+      const undoToken = `undo-${crypto.randomUUID()}`
+      canvasDeleteUndoJournal.set(undoToken, { projectId: lease.projectId, snapshot: before, deletedNodeIds: deleted.deleted })
+      return {
+        applied: true,
+        proposalId: proposalId(),
+        operation: input.operation,
+        deletedNodeIds: deleted.deleted,
+        undoToken,
+        recoveryActions: ['Call nomi_canvas_maintenance with this undoToken before making another canvas edit.'],
+        reconciliation: canvasRecovery(),
+      }
+    }
+    case 'document.read': {
+      const lease = await leasedProject(ctx, params, 'document:read')
+      const scope = params.scope === 'selection' ? 'selection' : params.scope === 'full' ? 'full' : null
+      if (!scope) throw new RpcError('Document scope is required', 400, { code: 'capability_input_invalid', nextAction: 'Retry with scope full or selection', capability: 'document.read' as never })
+      return readProjectDocument(lease.projectId, typeof params.documentId === 'string' ? params.documentId : undefined, scope)
+    }
+    case 'document.write': {
+      const lease = await leasedProject(ctx, params, 'document:write')
+      const input = documentWriteSemanticInputSchema.parse({ operation: params.operation, content: params.content })
+      return writeProjectDocument(lease.projectId, typeof params.documentId === 'string' ? params.documentId : undefined, input.operation, input.content)
+    }
     case 'canvas.addNodes': {
       // 方案已被协议层 elicitation-first 批准 → 预批准方案门（不再弹渲染层卡，免双问）；否则原网关照常确认。
       const base = ctx.makeGateway(projectIdOf(params))
@@ -530,26 +737,29 @@ export async function dispatch(method: string, params: Record<string, unknown>, 
         ctx.origin?.host || 'external',
       )
     }
-    case 'integration.open_credentials':
-      return (ctx.integrationSessions || getIntegrationSessionService()).openCredentials(
+    case 'integration.open_credentials': {
+      const opened = (ctx.integrationSessions || getIntegrationSessionService()).openCredentials(
         params.sessionId,
         params.expectedRevision,
         ctx.origin?.host || 'external',
       )
-    case 'integration.discover':
-      return (ctx.integrationSessions || getIntegrationSessionService()).discover(
+      let ui: { opened: boolean } | void
+      try {
+        ui = await ctx.openCredentialsInNomi?.({ sessionId: opened.id, vendorName: opened.config.name })
+      } catch {
+        // A window can disappear between durable enqueue and the renderer request. Keep the MCP
+        // contract usable; the queued handoff will replay when Nomi is opened next time.
+        ui = { opened: false }
+      }
+      // 附上一次性凭据页（MCP URL 模式 elicitation）。铸在这一层 = 铸在真正持有会话的那个进程里。
+      return withCredentialElicitationTicket({ ...opened, credentialUiOpened: ui?.opened === true })
+    }
+    case 'integration.propose':
+      return (ctx.integrationSessions || getIntegrationSessionService()).propose(
         params.sessionId,
         params.expectedRevision,
         ctx.origin?.host || 'external',
-        typeof params.page === 'number' ? params.page : 0,
-        typeof params.search === 'string' ? params.search : undefined,
-      )
-    case 'integration.select':
-      return (ctx.integrationSessions || getIntegrationSessionService()).select(
-        params.sessionId,
-        params.expectedRevision,
-        ctx.origin?.host || 'external',
-        params.selections as Array<{ modelKey: string }>,
+        params.proposal,
       )
     case 'integration.request_confirmation':
       return (ctx.integrationSessions || getIntegrationSessionService()).requestConfirmation(
@@ -557,20 +767,6 @@ export async function dispatch(method: string, params: Record<string, unknown>, 
         params.expectedRevision,
         ctx.origin?.host || 'external',
         params.idempotencyKey as string,
-      )
-    case 'integration.submit_workflow':
-      return (ctx.integrationSessions || getIntegrationSessionService()).submitWorkflow(
-        params.sessionId,
-        params.expectedRevision,
-        ctx.origin?.host || 'external',
-        params.workflow as string,
-      )
-    case 'integration.resolve_input':
-      return (ctx.integrationSessions || getIntegrationSessionService()).resolveInput(
-        params.sessionId,
-        params.expectedRevision,
-        ctx.origin?.host || 'external',
-        params.answers as Record<string, unknown>,
       )
     case 'integration.start':
       return (ctx.integrationSessions || getIntegrationSessionService()).start(
@@ -591,6 +787,12 @@ export async function dispatch(method: string, params: Record<string, unknown>, 
         params.expectedRevision,
         ctx.origin?.host || 'external',
       )
+    case 'integration.manage.update_vendor':
+    case 'integration.manage.delete_vendor':
+    case 'integration.manage.delete_model':
+    case 'integration.manage.set_proxy':
+      if (ctx.origin?.host === 'external' || !ctx.origin?.host) throw new RpcError('Signed client identity is required', 403)
+      return manageModelCatalogConnection(params)
     default:
       throw new RpcError(`未知方法: ${method}`, 404)
   }

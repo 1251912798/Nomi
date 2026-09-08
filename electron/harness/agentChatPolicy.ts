@@ -6,8 +6,7 @@ import {
   type AgentToolProfile,
 } from "./agentChatContracts";
 import { PROJECT_AGENT_WORK_MODES } from "../shared/projectAgentContracts";
-import { assertAgentContextBinding } from "./context/contextBinding";
-import { projectIdFromSessionKey } from "../events/eventLogRepository";
+import { captureAgentContextBinding } from "./context/contextBinding";
 import {
   agentToolCatalog,
   agentToolNames,
@@ -23,8 +22,7 @@ export function captureAgentHistory(history: AgentChatHistory): AgentChatHistory
   if (!history || typeof history !== "object") throw new Error("Explicit Agent history scope is required");
   if (history.kind === "ephemeral") return { kind: "ephemeral" };
   if (history.kind !== "persistent") throw new Error("Invalid Agent history scope");
-  assertAgentContextBinding(history.binding);
-  return { kind: "persistent", binding: { ...history.binding } };
+  return { kind: "persistent", binding: captureAgentContextBinding(history.binding) };
 }
 
 /** Validate and capture before any asynchronous catalog, context or attachment preparation. */
@@ -52,7 +50,7 @@ export function captureAgentChatRequest(input: AgentChatRequest): AgentChatReque
   if (knownProjects.some((id) => id !== knownProjects[0])) throw new Error("Agent project bindings disagree");
   if (
     history.kind === "persistent" &&
-    knownProjects.some((id) => id !== projectIdFromSessionKey(history.binding.sessionKey))
+    knownProjects.some((id) => id !== history.binding.project.projectId)
   ) {
     throw new Error("Agent project does not match its persistent history binding");
   }
@@ -83,17 +81,20 @@ export function agentToolsForCapability(capability: AgentChatRequest["capability
   const descriptors: readonly RuntimeToolDescriptor[] =
     capability === "creation-editor"
       ? agentToolProjection.documentAll
+      // `author_skill` is not on the model surface (`modelToolSurfaceManifest.document`
+      // owns it and declares only read/edit), so the old `.find("author_skill")`
+      // concat here was always empty. `skill.write` reaching the model again is a
+      // product decision, not a projection accident; it must come back through the
+      // manifest, not through a private branch in this file.
       : capability === "creation-chat"
-        ? agentToolProjection.documentRead.concat(agentToolProjection.documentAll.find(({ name }) => name === "author_skill")
-          ? [agentToolProjection.documentAll.find(({ name }) => name === "author_skill")!]
-          : [])
+        ? agentToolProjection.documentRead
       : capability === "canvas-agent"
           ? [...agentToolProjection.canvasAll, ...agentToolProjection.timelineAll, ...agentToolProjection.generationAll]
           : capability === "canvas-refine"
-            ? agentToolProjection.canvasCore.filter(({ name }) => name === "set_node_prompt")
+            ? agentToolProjection.canvasCore.filter(({ name }) => name === "nomi_canvas_edit")
             : capability === "storyboard"
-              ? agentToolProjection.canvasCore.filter(({ name }) => name === "read_canvas_state")
-                .concat(agentToolProjection.canvasAll.filter(({ name }) => name === "propose_storyboard_plan"))
+              ? agentToolProjection.canvasCore.filter(({ name }) => name === "nomi_canvas_read")
+                .concat(agentToolProjection.canvasAll.filter(({ name }) => name === "nomi_canvas_plan"))
               : [];
   return descriptors.map(({ name, description, schema }) => ({ name, description, schema }));
 }
@@ -107,12 +108,9 @@ export function agentToolsForCapabilityAndSkill(
 
 const CANVAS_CORE_TOOL_NAMES = new Set(agentToolProjection.canvasCore.map(({ name }) => name));
 const CANVAS_TOOL_NAMES = new Set(agentToolNames.canvas);
-const CANVAS_DESTRUCTIVE_TOOL_NAMES = new Set(["delete_canvas_nodes", "tidy_canvas"]);
+const CANVAS_DESTRUCTIVE_TOOL_NAMES = new Set(["nomi_canvas_maintenance", "nomi_canvas_edit"]);
 const STORYBOARD_TOOL_NAMES = new Set([
-  "propose_storyboard_plan",
-  "arrange_storyboard_to_timeline",
-  "create_staging_reference",
-  "create_camera_move",
+  "nomi_canvas_plan",
 ]);
 const MEDIA_READ_TOOL_NAMES = new Set([
   "get_media",

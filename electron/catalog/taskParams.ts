@@ -160,8 +160,28 @@ export function taskTemplateParams(request: TaskParamsInput, selected?: Paramete
   const speed = numericWireParam(extras.speed);
   const refInput = referenceInputParams(extras, selected);
   const jsonEditInput = jsonImageEditInput(refInput.reference_images);
+  // 变体（档案切档的产物）优先，其次目录身份回落。详见下方 model 键的注释。
+  const wireModel = firstString(extras.model) || firstString(selected?.wireModelKey);
   return {
     ...extras,
+    // **要发出去的 model 串的单一真相源**（变体轴 > 目录身份）。
+    //
+    // 为什么必须在这里补默认：body 模板写 `{{request.params.model}}` 才能让变体切换真的换掉线上的
+    // model 串（archetypeVariantAxisIsLive 读的就是「body 有没有引用 params.model」）。但 extras.model
+    // 只有**带变体的档案**才产出（buildArchetypeInputParams 末尾：变体 > mode.modelEnum > 不带）——
+    // 裸模型走同一条 body 时 params.model 是 undefined，而 renderTemplateValue 对整 token 的
+    // undefined 是**整键丢弃**（requestPipeline.ts:110-117 实测：{model:"{{request.params.model}}"}
+    // 渲染成 {}），于是每个没变体的中转模型都会发出一个**没有 model 字段**的请求 → 站点必 400。
+    // 所以「模板层没有 fallback 语法」这件事在这里一次性补齐（followPath 只会走点号路径，`||` 之类
+    // 写法解析不出任何东西，实测渲染成 {}）——回落值取与 `{{model.modelKey}}` **完全同一个**表达式
+    // （modelAlias 优先、否则 modelKey，见 profileHttpRequest.templateContext），保证换成参数化 model
+    // 之后裸模型的线上字节与换之前逐字节一致。
+    // 单源纪律（P1）：全仓只有这一处决定「发哪个 model 串」，各家 catalog 不再各自兜底。
+    //
+    // 用条件展开而不是 `model: ... || undefined`：后者会留下一个**值为 undefined 的自有键**，
+    // 于是调用方的 `{ model: 兜底, ...params }` 会被这个空键反向覆盖掉（渲染结果照样没有 model）。
+    // 键干脆不存在，才能让上游的展开兜底按直觉生效。
+    ...(wireModel ? { model: wireModel } : {}),
     // An unset size must stay undefined so exact template fields are omitted.
     // Sending the empty alias (the persisted value for the gpt-image-2
     // `Auto` aspect-ratio choice) makes OpenAI-compatible endpoints reject the
@@ -194,7 +214,25 @@ export function taskTemplateParams(request: TaskParamsInput, selected?: Paramete
     // xAI 单图编辑固定沿用输入图比例；只有多图编辑才允许显式 aspect_ratio。
     json_edit_aspect_ratio: jsonEditInput.images ? firstString(extras.aspect_ratio, extras.aspectRatio) || undefined : undefined,
     max_tokens: extras.maxTokens ?? extras.max_tokens,
+    // 通用中转视频的 `metadata`（供应商自定义参数袋）——**整个对象在这里构造，不在模板里逐键写**。
+    // 理由是模板层的一个真实边界：它丢得掉值为 undefined 的**键**，却丢不掉因此变空的**父对象**，
+    // 逐键写法在用户什么都没填时会发出 `"metadata":{}`（实测），凭空给严格端点多一个空对象。
+    // 没有任何内容 → 整个键 undefined → 模板把 metadata 一起丢掉，wire 与加这个字段之前逐字节一致。
+    relay_metadata: relayVideoMetadata(request.negativePrompt ?? extras.negative_prompt),
   };
+}
+
+/**
+ * 通用中转视频 `metadata` 袋（R5 核 doc.newapi.pro/api/kling-jimeng/ 2026-09-03，原文：
+ * 「供应商特定/自定义参数（如 negative_prompt, style, quality_level 等）」）。
+ *
+ * 只放**文档点名**的键。这是有意的克制：metadata 是自由袋，往里塞我们自己想当然的键名
+ * （generate_audio 之类）不会报错、也不会生效，只会变成一种更难发现的静默丢弃——
+ * 看起来发出去了，实际上没有哪个供应商认得。没有文档依据的参数宁可如实标成「送不到」。
+ */
+function relayVideoMetadata(negativePrompt: unknown): JsonRecord | undefined {
+  const negative = firstString(negativePrompt);
+  return negative ? { negative_prompt: negative } : undefined;
 }
 
 function numericWireParam(value: unknown): number | string | undefined {
@@ -607,6 +645,24 @@ export function projectReferencesOntoBodyKeys(
 }
 
 /**
+ * **无 mapping 时 runtime 兜底请求体的形状**（单一真相源）。
+ *
+ * runtime 在找不到任何 mapping 时会 POST `/v1/images/generations` 或 `/v1/videos/generations`，
+ * body 是写死的这几个键（electron/runtime.ts 的兜底分支直接展开它）。这里声明它是为了让 L3 第三闸
+ * 能用**同一份形状**判断「参考发不发得出去」——闸门与真实 wire 必须同源，否则又是一处
+ * 「UI/闸门说能发、实际发不出」的漂移。值用 `{{request.params.X}}` 占位与模板同构，
+ * bodyReferencedParamKeys 据此取键；**刻意不含任何参考族的键**（这条兜底 wire 确实没有图片位）。
+ */
+export const NO_MAPPING_FALLBACK_BODY = {
+  model: "{{model.modelKey}}",
+  prompt: "{{request.prompt}}",
+  size: "{{request.params.size}}",
+  seed: "{{request.params.seed}}",
+  n: "{{request.params.n}}",
+  response_format: "url",
+} as const;
+
+/**
  * L3 诚实护栏（runTask 前置闸，纯函数）：图生图/图生视频「参考图缺失」或「无传输 mapping」→ 返回
  * 人话错误（调用方在付费守卫/vendor 调用之前拒发，零扣费）；其余情况 null。此前会静默退化成纯文生
  * ——模板引擎丢空键 / fallback body 根本没有图片位——生成成功、扣费成功、和原图毫无关系，
@@ -625,12 +681,34 @@ export function imageEditGuardError(
   modeBodies?: ModelModeBody[],
   selected?: ParameterReferenceSelection,
 ): string | null {
+  // image_to_prompt is a runtime-fixed multimodal text path: executeTextTask
+  // sends its referenceImages directly through streamTextTask, so it has no
+  // profile/fallback body for this guard to audit.
+  if (kind === "image_to_prompt") return null;
+
   // 第三闸对**所有 kind** 生效（运镜的参考视频可能挂在 t2v/omni 上），且只在真带了参考时才可能触发。
-  if (typeof createBody !== "undefined") {
-    const unreachable = unreachableReferenceLabels(request, createBody, selected);
+  //
+  // `createBody === undefined` 有两种截然不同的成因，处置也相反：
+  //  · 有 mapping、只是调用方没把 body 传进来（如 customCall 走脚本，不看模板 body）→ 无证据，放行；
+  //  · **压根没有 mapping**（hasMapping=false）→ 这不是「查不到」，而是**确知**接下来会走
+  //    runtime 的无 mapping 兜底（electron/runtime.ts:449-481），那条 body 是写死的
+  //    `{model,prompt,size,seed,n,response_format,extras}`，**任何参考族都没有位置**。
+  // 后者此前只在 image_edit / image_to_video 两个 kind 被拦（下方 !hasMapping 分支），于是
+  // 自建中转的 text_to_image / text_to_video 带着参考图落进兜底：模板丢键 → 生成成功、扣费成功、
+  // 和参考图毫无关系——正是本闸设立要根治的那种静默退化，只是从另一个 kind 的入口回来了。
+  // 用 FALLBACK-body 同款判据（不 hardcode 参考键名），让所有 kind 一口径。
+  //
+  // 补兜底 body 只补**下方没管的那些 kind**：image_edit / image_to_video 无 mapping 时，
+  // 下方那条「没有『图生图（改图）』通道」更具体（点名缺的是哪条通道、该怎么办），
+  // 拒发与零扣费的效果二者相同，就把话语权留给更会说话的那条，别在这儿抢答。
+  const fallbackBodyApplies = !hasMapping && kind !== "image_edit" && kind !== "image_to_video";
+  const effectiveBody = typeof createBody !== "undefined" ? createBody
+    : fallbackBodyApplies ? NO_MAPPING_FALLBACK_BODY : undefined;
+  if (typeof effectiveBody !== "undefined") {
+    const unreachable = unreachableReferenceLabels(request, effectiveBody, selected);
     if (unreachable.length > 0) {
       const base = `模型「${modelLabel}」在这个接入方式下发不出：${unreachable.join(" / ")}。连上的这些素材不会进入请求——为免白扣费这次不发。请断开它们，或换一个支持这些参考的渠道/模型。`;
-      const suggestion = reachableModeSuggestion(request, createBody, modeBodies, selected);
+      const suggestion = reachableModeSuggestion(request, effectiveBody, modeBodies, selected);
       return suggestion ? `${base}\n${suggestion}` : base;
     }
   }
