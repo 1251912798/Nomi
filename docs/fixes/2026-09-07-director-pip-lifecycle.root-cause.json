@@ -28,5 +28,6 @@
   "legacy_paths": {"status":"removed","removed_paths":["src/workbench/generationCanvas/nodes/director/panels/viewport/PipViewport.tsx"],"rationale":"Replace child-layout-phase host measurement and visibility-blind dependencies in place; no fallback polling or parallel renderer."},
   "dependency_lifecycle": {"decision":"not-applicable","rationale":"React 18 commit ordering and ResizeObserver behave as designed. This is application ownership/timing, fixed using existing documented useEffect without runtime upgrade.","exit_criteria":[]},
   "migration": "No saved data changes; reopening existing scenes uses the corrected measurement lifecycle.",
-  "residual_risks": ["The Node component slice substitutes DOM commit scheduling/ResizeObserver; the same-build Electron screenshot-pixel journey supplies actual React, DOM and GPU evidence."]
+  "residual_risks": ["The Node component slice substitutes DOM commit scheduling/ResizeObserver; the same-build Electron screenshot-pixel journey supplies actual React, DOM and GPU evidence."],
+  "invariant_owner_layer": {"layer": "src/workbench/generationCanvas/nodes/director/panels/viewport/PipViewport.tsx", "tests": ["src/workbench/generationCanvas/nodes/director/panels/viewport/PipViewport.test.ts", "tests/ux/director-electron.walk.mjs"], "why": "不变量由 src/workbench/generationCanvas/nodes/director/panels/viewport/PipViewport.tsx 单点持有（即本合同的 prevention.enforcement_path / shared_boundaries）；上游其它入口只调用它、不各自重判。tests 是该层现有的类级与回归测试，改动这条不变量必先让它们红。"}
 }

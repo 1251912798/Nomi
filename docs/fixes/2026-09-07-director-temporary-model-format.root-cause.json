@@ -92,5 +92,6 @@
   "residual_risks": [
     "Temporary uploads still expire when their owning browser document closes; the UI explicitly says to re-upload.",
     "External-resource .gltf packages have not been validated in this isolated walk."
-  ]
+  ],
+  "invariant_owner_layer": {"layer": "src/workbench/generationCanvas/nodes/director/panels/side/AssetsTab.tsx", "tests": ["tests/ux/director-model-import.walk.mjs"], "why": "不变量由 src/workbench/generationCanvas/nodes/director/panels/side/AssetsTab.tsx 单点持有（即本合同的 prevention.enforcement_path / shared_boundaries）；上游其它入口只调用它、不各自重判。tests 是该层现有的类级与回归测试，改动这条不变量必先让它们红。"}
 }

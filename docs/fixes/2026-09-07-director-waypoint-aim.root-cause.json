@@ -107,5 +107,6 @@
   "migration": "Optional lookAtObjectId is preserved when present, absent legacy values remain free orientation.",
   "residual_risks": [
     "9 model regressions passed including independent THREE XYZ/YXZ forward-vector oracle; 9 real-browser cases passed with zero page errors; full desktop J1-J8 integration is owned by the coordinator."
-  ]
+  ],
+  "invariant_owner_layer": {"layer": "src/workbench/generationCanvas/nodes/director/model/storeTimelineActions.ts", "tests": ["src/workbench/generationCanvas/nodes/director/model/waypointAim.test.ts", "tests/ux/director-waypoint-aim.walk.mjs"], "why": "不变量由 src/workbench/generationCanvas/nodes/director/model/storeTimelineActions.ts 单点持有（即本合同的 prevention.enforcement_path / shared_boundaries）；上游其它入口只调用它、不各自重判。tests 是该层现有的类级与回归测试，改动这条不变量必先让它们红。"}
 }

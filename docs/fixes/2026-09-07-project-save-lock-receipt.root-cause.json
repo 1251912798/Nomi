@@ -105,5 +105,6 @@
     "The original Electron log discarded errno and owner information, so it cannot prove which historical publication contender or filesystem holder caused that individual failure.",
     "Windows symlink privilege is unavailable in this environment; existing true-symlink tests retain their capability skips, while lexical canonical-root alias ordering is exercised.",
     "Abrupt process termination and power loss cannot wait for renderer close handshakes; existing atomic file and recovery semantics remain responsible for those cases."
-  ]
+  ],
+  "invariant_owner_layer": {"layer": "electron/workspace/workspaceManifestTransaction.ts", "tests": ["electron/workspace/workspaceSaveLock.test.ts", "electron/workspace/workspaceManifestTransaction.test.ts", "src/workbench/project/workbenchProjectSession.saveReceipt.test.ts", "src/workbench/project/useProjectWindowLifecycle.test.ts", "src/workbench/project/projectPersistenceService.agentTurn.test.ts", "electron/workspace/workspaceRepository.test.ts", "electron/runtime.workspace-projects.test.ts", "electron/capabilityCore/projectSessionRuntime.repository.integration.test.ts", "src/workbench/project/projectRepository.rename.test.ts", "src/workbench/project/releaseWorkbenchProjectSession.test.ts"], "why": "不变量由 electron/workspace/workspaceManifestTransaction.ts 单点持有（即本合同的 prevention.enforcement_path / shared_boundaries）；上游其它入口只调用它、不各自重判。tests 是该层现有的类级与回归测试，改动这条不变量必先让它们红。"}
 }

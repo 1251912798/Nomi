@@ -87,5 +87,6 @@
   "residual_risks": [
     "Reference selection is tested locally; live external AI scene generation requires a configured provider."
   ],
-  "internal_only_reason": "Canvas image ownership is defined by GenerationNodeResult.type and per-node history. The approved director feature inventory (section 2.6) explicitly includes current and historical images."
+  "internal_only_reason": "Canvas image ownership is defined by GenerationNodeResult.type and per-node history. The approved director feature inventory (section 2.6) explicitly includes current and historical images.",
+  "invariant_owner_layer": {"layer": "src/workbench/generationCanvas/nodes/director/bridge/canvasImages.ts", "tests": ["src/workbench/generationCanvas/nodes/director/bridge/canvasImages.test.ts"], "why": "不变量由 src/workbench/generationCanvas/nodes/director/bridge/canvasImages.ts 单点持有（即本合同的 prevention.enforcement_path / shared_boundaries）；上游其它入口只调用它、不各自重判。tests 是该层现有的类级与回归测试，改动这条不变量必先让它们红。"}
 }

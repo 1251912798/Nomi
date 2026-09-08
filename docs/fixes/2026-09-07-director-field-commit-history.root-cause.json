@@ -127,5 +127,6 @@
   "migration": "No persisted schema change; existing controls consume the corrected primitives.",
   "residual_risks": [
     "17 field browser cases passed; continuous trajectory/action/closeup/single/batch slider cases passed in waypoint-ui-green.log; coordinator owns full desktop integration."
-  ]
+  ],
+  "invariant_owner_layer": {"layer": "src/workbench/generationCanvas/nodes/director/panels/fields/useNumberDraft.ts", "tests": ["tests/ux/director-fields.walk.mjs", "tests/ux/director-waypoint-aim.walk.mjs"], "why": "不变量由 src/workbench/generationCanvas/nodes/director/panels/fields/useNumberDraft.ts 单点持有（即本合同的 prevention.enforcement_path / shared_boundaries）；上游其它入口只调用它、不各自重判。tests 是该层现有的类级与回归测试，改动这条不变量必先让它们红。"}
 }

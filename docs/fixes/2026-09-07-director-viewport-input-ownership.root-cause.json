@@ -178,5 +178,6 @@
   "migration": "No persisted schema changes. Existing projects use the corrected runtime boundaries upon next open.",
   "residual_risks": [
     "Hardware keyboard layouts and native IME behavior require platform integration evidence; deterministic regression tests exercise actual hook ownership with synthetic input."
-  ]
+  ],
+  "invariant_owner_layer": {"layer": "src/workbench/generationCanvas/nodes/director/scene/ViewCamera.tsx", "tests": ["src/workbench/generationCanvas/nodes/director/scene/ViewCamera.test.ts", "src/workbench/generationCanvas/nodes/director/scene/creation/creationCoordinates.test.ts"], "why": "不变量由 src/workbench/generationCanvas/nodes/director/scene/ViewCamera.tsx 单点持有（即本合同的 prevention.enforcement_path / shared_boundaries）；上游其它入口只调用它、不各自重判。tests 是该层现有的类级与回归测试，改动这条不变量必先让它们红。"}
 }

@@ -179,5 +179,6 @@
   "residual_risks": [
     "Physical handset LAN certificate acceptance, browser permissions and sensor drift are not verified by the local Chrome phone simulation.",
     "Preview is a bounded 480px monitor (one capture in flight, 250ms delay after completion); it is not a delivery-quality video stream."
-  ]
+  ],
+  "invariant_owner_layer": {"layer": "electron/director/mobileBridgeServer.ts", "tests": ["electron/director/mobilePage.test.ts", "electron/director/mobileBridgeLifecycle.test.ts", "electron/director/mobileBridgeFeedback.test.ts", "electron/director/mobileBridgeIpc.test.ts", "src/workbench/generationCanvas/nodes/director/useMobilePreview.test.ts", "tests/ux/director-mobile.walk.mjs", "electron/director/mobileBridgeServer.test.ts"], "why": "不变量由 electron/director/mobileBridgeServer.ts 单点持有（即本合同的 prevention.enforcement_path / shared_boundaries）；上游其它入口只调用它、不各自重判。tests 是该层现有的类级与回归测试，改动这条不变量必先让它们红。"}
 }

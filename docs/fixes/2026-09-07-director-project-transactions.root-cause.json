@@ -126,5 +126,6 @@
   "residual_risks": [
     "Non-uniform parent scale combined with rotation can create shear that the existing TRS schema cannot represent exactly; no new shear schema is introduced.",
     "Physical-phone sensors and external AI service are outside the project graph tests."
-  ]
+  ],
+  "invariant_owner_layer": {"layer": "src/workbench/generationCanvas/nodes/director/model/directorStore.ts", "tests": ["src/workbench/generationCanvas/nodes/director/model/directorSceneTransactions.test.ts"], "why": "不变量由 src/workbench/generationCanvas/nodes/director/model/directorStore.ts 单点持有（即本合同的 prevention.enforcement_path / shared_boundaries）；上游其它入口只调用它、不各自重判。tests 是该层现有的类级与回归测试，改动这条不变量必先让它们红。"}
 }

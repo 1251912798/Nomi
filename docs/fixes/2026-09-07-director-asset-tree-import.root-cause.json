@@ -103,5 +103,6 @@
     "Previously persisted externally corrupted cyclic folder data is not migrated by this patch; new move operations reject loops.",
     "Deleting asset entries deliberately removes project references, not shared cached files.",
     "Splat decoding and reveal are verified with the current Spark renderer through the uploaded PLY valley walkthrough."
-  ]
+  ],
+  "invariant_owner_layer": {"layer": "src/workbench/generationCanvas/nodes/director/model/storeAssetActions.ts", "tests": ["src/workbench/generationCanvas/nodes/director/model/storeAssetActions.test.ts", "src/workbench/generationCanvas/nodes/director/model/assetFolders.test.ts", "tests/ux/director-assets.walk.mjs"], "why": "不变量由 src/workbench/generationCanvas/nodes/director/model/storeAssetActions.ts 单点持有（即本合同的 prevention.enforcement_path / shared_boundaries）；上游其它入口只调用它、不各自重判。tests 是该层现有的类级与回归测试，改动这条不变量必先让它们红。"}
 }

@@ -33,5 +33,6 @@
   "legacy_paths":{"status":"removed","removed_paths":["src/workbench/generationCanvas/nodes/director/panels/side/AssetsTab.tsx"],"rationale":"Removes the unconditional zero rotation at asset insertion; no alternate insertion implementation is introduced."},
   "dependency_lifecycle":{"decision":"not-applicable","rationale":"The source-product creation default is controlled by Nomi asset insertion, not a loader or dependency version.","exit_criteria":[]},
   "migration":"No automatic migration: existing project object rotations may be authored. Only newly inserted assets use the corrected default.",
-  "residual_risks":["The source-product splat default may need manual user rotation for scans authored with another coordinate convention; no format-wide claim is made."]
+  "residual_risks":["The source-product splat default may need manual user rotation for scans authored with another coordinate convention; no format-wide claim is made."],
+  "invariant_owner_layer": {"layer": "src/workbench/generationCanvas/nodes/director/panels/side/AssetsTab.tsx", "tests": ["src/workbench/generationCanvas/nodes/director/panels/side/AssetsTab.test.ts", "tests/ux/director-assets.walk.mjs"], "why": "不变量由 src/workbench/generationCanvas/nodes/director/panels/side/AssetsTab.tsx 单点持有（即本合同的 prevention.enforcement_path / shared_boundaries）；上游其它入口只调用它、不各自重判。tests 是该层现有的类级与回归测试，改动这条不变量必先让它们红。"}
 }

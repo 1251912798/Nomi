@@ -98,5 +98,6 @@
     "Physical model-provider output quality is not established by deterministic AI fixture tests.",
     "When file persistence completes after cancellation, no project handle is published; the unreferenced cached file follows the existing asset cache lifecycle.",
     "The hook callback unit tests do not mount React effects; unmount cleanup is code-reviewed, not claimed as an exercised unit path."
-  ]
+  ],
+  "invariant_owner_layer": {"layer": "src/workbench/generationCanvas/nodes/director/useAiSceneBuilder.ts", "tests": ["src/workbench/generationCanvas/nodes/director/useAiSceneBuilder.test.ts", "src/workbench/generationCanvas/nodes/director/model/storeAiSceneActions.test.ts"], "why": "不变量由 src/workbench/generationCanvas/nodes/director/useAiSceneBuilder.ts 单点持有（即本合同的 prevention.enforcement_path / shared_boundaries）；上游其它入口只调用它、不各自重判。tests 是该层现有的类级与回归测试，改动这条不变量必先让它们红。"}
 }

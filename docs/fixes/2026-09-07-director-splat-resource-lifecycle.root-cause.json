@@ -36,5 +36,6 @@
   "legacy_paths":{"status":"removed","removed_paths":["src/workbench/generationCanvas/nodes/director/scene/entities/SplatEntity.tsx"],"rationale":"Removes name/translator-triggered resource teardown; no parallel loader or compatibility route remains."},
   "dependency_lifecycle":{"decision":"not-applicable","rationale":"React and Spark implement the expected lifecycle; the defect is Nomi's resource-identity declaration. No third-party upgrade controls this invariant.","exit_criteria":[]},
   "migration":"No stored data changes. Existing splats retain user transforms and names.",
-  "residual_risks":["The deterministic lifecycle slice mocks Spark decoding; the existing real-SPZ browser journey verifies the resource identity and visible result."]
+  "residual_risks":["The deterministic lifecycle slice mocks Spark decoding; the existing real-SPZ browser journey verifies the resource identity and visible result."],
+  "invariant_owner_layer": {"layer": "src/workbench/generationCanvas/nodes/director/scene/entities/SplatEntity.tsx", "tests": ["src/workbench/generationCanvas/nodes/director/scene/entities/SplatEntity.test.ts", "tests/ux/director-assets.walk.mjs"], "why": "不变量由 src/workbench/generationCanvas/nodes/director/scene/entities/SplatEntity.tsx 单点持有（即本合同的 prevention.enforcement_path / shared_boundaries）；上游其它入口只调用它、不各自重判。tests 是该层现有的类级与回归测试，改动这条不变量必先让它们红。"}
 }

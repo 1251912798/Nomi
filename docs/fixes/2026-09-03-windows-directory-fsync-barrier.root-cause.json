@@ -15,7 +15,7 @@
     "electron/projectAgentHost/projectAgentRepository.ts",
     "electron/projectAgentHost/projectAgentMigration.ts",
     "electron/projectAgentHost/projectAgentCutoverManifest.ts",
-    "electron/projectAgentHost/projectAgentProposalReceiptStore.ts",
+    "electron/capabilityCore/projectAgentProposalReceiptStore.ts",
     "electron/capabilityCore/projectLeaseStore.ts",
     "electron/productionRun/productionRunLock.ts",
     "electron/productionRun/productionRunIntentLog.ts",
@@ -78,7 +78,7 @@
       "evidence": "Replaced by fsyncDirectoryIfDurable(nomiDir(projectRoot))."
     },
     {
-      "path": "electron/projectAgentHost/projectAgentProposalReceiptStore.ts",
+      "path": "electron/capabilityCore/projectAgentProposalReceiptStore.ts",
       "entry_point": "fsyncReceiptDirectory",
       "disposition": "enforced",
       "evidence": "Thin wrapper now delegates; the win32 early return moved into the shared barrier."
