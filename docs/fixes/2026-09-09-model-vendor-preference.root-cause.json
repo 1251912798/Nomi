@@ -1,0 +1,97 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-09-model-vendor-preference",
+  "problem_type": "Provider preference diverges between display and persistence",
+  "symptom": "Bare gpt-image-2 persists the first catalog vendor rather than preferred APIMart",
+  "direct_cause": "buildModelEntryIndex uses catalog insertion order while dedupeByModelKey uses saved preference",
+  "class_root": "No common provider ordering at display and model resolution boundaries",
+  "affected_population": [
+    "Same model key published by multiple vendors",
+    "Agent or storyboard nodes without explicit vendor"
+  ],
+  "scope_paths": [
+    "electron/shared/contracts/vendorPreference.ts",
+    "src/workbench/ai/v4/agentPanelV4ModelRows.ts",
+    "src/workbench/generationCanvas/agent/plannedNodeMeta.ts",
+    "src/workbench/generationCanvas/agent/availableModels.ts"
+  ],
+  "entry_points": [
+    "Composer model choices",
+    "Agent create_canvas_nodes",
+    "Storyboard materialization"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "Internal saved provider preference and model identity; no external protocol or dependency change.",
+  "invariants": [
+    "An unpinned model resolves to the earliest saved provider preference; an explicit vendor remains authoritative."
+  ],
+  "generality_proof": "Display deduplication and entry ordering both consume the shared provider ranking with stable catalog fallback. All node writes build the same index.",
+  "shared_boundaries": [
+    {
+      "path": "electron/shared/contracts/vendorPreference.ts",
+      "symbol": "orderByVendorPreference",
+      "responsibility": "Stable generic ordering by saved vendor preference"
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/workbench/ai/v4/agentPanelV4ModelRows.ts",
+      "entry_point": "dedupeByModelKey",
+      "disposition": "enforced",
+      "evidence": "Chooses first provider in shared preference order"
+    },
+    {
+      "path": "src/workbench/generationCanvas/agent/availableModels.ts",
+      "entry_point": "listAvailableModelsForAgent",
+      "disposition": "enforced",
+      "evidence": "Loads saved preference and orders all entries before consumers index bare model keys"
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Any catalog order or additional vendor can change the incorrect winner.",
+    "same_class_scan": [
+      "rg dedupeByModelKey / buildModelEntryIndex / listAvailableModelsForAgent found composer, Agent and storyboard consumers"
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "electron/shared/contracts/vendorPreference.ts",
+    "invariant": "Saved vendor ordering selects the same winner for every bare model key.",
+    "failure_mode": "Unknown vendors remain behind ranked vendors; explicit identities retain their own entries.",
+    "exception_policy": "none",
+    "strategy": "One shared stable ordering consumed by display and persistence.",
+    "artifacts": [
+      "electron/shared/contracts/vendorPreference.ts",
+      "src/workbench/generationCanvas/agent/availableModels.ts"
+    ]
+  },
+  "regression_tests": [
+    "src/workbench/generationCanvas/agent/plannedNodeMeta.test.ts"
+  ],
+  "class_regression_tests": [
+    "src/workbench/generationCanvas/agent/plannedNodeMeta.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "src/workbench/ai/v4/agentPanelV4ModelRows.ts"
+    ],
+    "rationale": "Remove independent rank implementation; preserve output catalog order."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "Internal pure ordering; no third party controls the invariant.",
+    "exit_criteria": []
+  },
+  "migration": "No persisted data rewrite; affects new bare-key resolution only.",
+  "residual_risks": [
+    "Explicit vendor identities intentionally remain pinned; preference changes apply only to later bare-model resolution."
+  ],
+  "invariant_owner_layer": {
+    "layer": "electron/shared/contracts/vendorPreference.ts",
+    "tests": [
+      "src/workbench/generationCanvas/agent/plannedNodeMeta.test.ts"
+    ]
+  }
+}

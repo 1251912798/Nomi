@@ -129,7 +129,7 @@ describe('custom capability contract catalog -> canvas -> request', () => {
     expect(resolveTaskArchetype(selected.meta)).toBeNull()
   })
 
-  it('restores the target catalog contract when a disconnected provider is replaced at runtime', async () => {
+  it('keeps the disconnected provider until the user chooses its successor', async () => {
     const node = createGenerationNode({ id: 'migrate-node', kind: 'video' })
     node.meta = {
       modelKey: 'future-video-v1',
@@ -176,16 +176,11 @@ describe('custom capability contract catalog -> canvas -> request', () => {
       updatedAt: '',
     }]
 
-    const migrated = await resolveExecutableNodeFromCatalog(node, {
+    await expect(resolveExecutableNodeFromCatalog(node, {
       listCatalogVendors: async () => vendors,
       listCatalogModels: async () => models,
-    })
+    })).rejects.toThrow(/disconnected-relay/)
+    expect(node.meta?.modelVendor).toBe('disconnected-relay')
 
-    expect(migrated.meta?.modelVendor).toBe('replacement-relay')
-    expect(parseCustomCapabilityContract(migrated.meta)).toEqual(contract)
-    expect(resolveTaskArchetype(migrated.meta ?? {})?.modes.map((mode) => mode.id)).toEqual([
-      'references',
-      'frames',
-    ])
   })
 })

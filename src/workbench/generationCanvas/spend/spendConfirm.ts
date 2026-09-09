@@ -1,3 +1,6 @@
+import { toast } from '../../../ui/toast'
+import { DEFAULT_CANVAS_BATCH_CONCURRENCY } from '../components/canvasProductionScope'
+import type { SpendQuote } from '../../../../electron/shared/contracts/spendQuote'
 import { isComfyuiVendorKey } from '../model/comfyuiVendor'
 import { create } from 'zustand'
 import { mintSpendGrant } from '../../api/taskApi'
@@ -35,8 +38,8 @@ export function generationCostContextForNodes(nodes: readonly ({ meta?: Record<s
   const vendorKeys = new Set(contexts.map((context) => context.vendorKey).filter(Boolean))
   const modelKeys = new Set(contexts.map((context) => context.modelKey).filter(Boolean))
   return vendorKeys.size === 1 && modelKeys.size === 1
-    ? { vendorKey: [...vendorKeys][0], modelKey: [...modelKeys][0], projectId: contexts.find((context) => context.projectId)?.projectId }
-    : {}
+    ? { concurrency: DEFAULT_CANVAS_BATCH_CONCURRENCY, vendorKey: [...vendorKeys][0], modelKey: [...modelKeys][0], projectId: contexts.find((context) => context.projectId)?.projectId }
+    : { concurrency: DEFAULT_CANVAS_BATCH_CONCURRENCY }
 }
 
 export type HostingDisclosure = {
@@ -46,7 +49,7 @@ export type HostingDisclosure = {
 }
 
 // 付费生成确认 + 铸令牌（渲染层单一收口）。
-// 方案：docs/plan/2026-06-21-spend-confirmation-gate.md（务实纵深 A1：用户直发轻确认、agent 强确认）。
+// 方案：docs/plan/2026-06-21-spend-confirmation-gate.md（所有付费入口使用本次报价确认）。
 //
 // 铸令牌只发生在「真人点击确认」的 onClick → resolve(true) → mintSpendGrant 这条链上。
 // AI 只能发 tool-call / 文本，够不到这里；agent 受理走同一确认（不可 light 抑制）。
@@ -56,8 +59,6 @@ export type SpendConfirmRequest = {
   message: string
   confirmLabel?: string
   cancelLabel?: string
-  /** 轻确认（用户直发）：允许「本次会话不再提示」。agent 受理不传 = 每次必确认。 */
-  light?: boolean
   /** 来源：'agent' = 外部 AI 助手（MCP）驱动，换机器人图标 + 副标。缺省按用户直发（金币图标）。 */
   source?: 'user' | 'agent'
   /**
@@ -122,20 +123,16 @@ export type SpendConfirmState = {
    * FIFO：先到先显。
    */
   queue: Pending[]
-  lightSuppressed: boolean
-  /** 弹确认；resolve true/false。light 且本会话已抑制 → 直接 true 不弹。已有在显 → 入队等候（不覆盖）。 */
+  /** 弹确认；resolve true/false。每次付费都需确认。已有在显 → 入队等候（不覆盖）。 */
   requestConfirm: (req: SpendConfirmRequest) => Promise<boolean>
-  /** 对话框按钮回调：ok=确认；suppressLight=勾了「本会话不再提示」。决议队首后自动晋升下一个。 */
-  resolvePending: (ok: boolean, suppressLight?: boolean, rememberHosting?: boolean) => void
+  /** 对话框按钮回调：ok=确认。决议队首后自动晋升下一个。 */
+  resolvePending: (ok: boolean, rememberHosting?: boolean) => void
 }
 
 export const useSpendConfirmStore = create<SpendConfirmState>()((set, get) => ({
   pending: null,
   queue: [],
-  lightSuppressed: false,
   requestConfirm: (req) => {
-    // A remembered spend prompt must not suppress a still-unanswered hosting disclosure.
-    if (req.light && get().lightSuppressed && !req.hostingDisclosure) return Promise.resolve(true)
     return new Promise<boolean>((resolve) => {
       const entry = { ...req, resolve }
       // 队首空着就直接显；否则排队（根治：绝不覆盖已在等待的 resolve）。
@@ -143,7 +140,7 @@ export const useSpendConfirmStore = create<SpendConfirmState>()((set, get) => ({
       else set({ pending: entry })
     })
   },
-  resolvePending: (ok, suppressLight, rememberHosting) => {
+  resolvePending: (ok, rememberHosting) => {
     const p = get().pending
     // 先决议当前队首，再从队列晋升下一个到显示位（空则 null）。
     set((state) => {
@@ -151,7 +148,6 @@ export const useSpendConfirmStore = create<SpendConfirmState>()((set, get) => ({
       return {
         pending: next ?? null,
         queue: rest,
-        ...(ok && suppressLight ? { lightSuppressed: true } : {}),
       }
     })
     if (ok && rememberHosting) void p?.hostingDisclosure?.onRemember?.()
@@ -168,22 +164,22 @@ export async function confirmAndMintGrant(opts: {
   title: string
   message: string
   confirmLabel?: string
-  light?: boolean
   maxAttemptsPerNode?: number
   /** 本次要跑的节点（用来判「花不花额度」——本地 ComfyUI 不花就不弹卡）。 */
   nodes?: Array<{ meta?: Record<string, unknown> | null } | undefined>
   hostingDisclosure?: HostingDisclosure
 }): Promise<string | null> {
   // nodes 传进来才判得出花不花钱；没传就照旧弹卡（保守：宁可多问一次）。
+  let quoteId: string | undefined
   const ok = await confirmGenerationSpend(opts.nodes ?? [undefined], {
     title: opts.title,
     message: opts.message,
+    onQuoteConfirmed: (id) => { quoteId = id },
     ...(opts.confirmLabel ? { confirmLabel: opts.confirmLabel } : {}),
-    ...(opts.light ? { light: true } : {}),
     ...(opts.hostingDisclosure ? { hostingDisclosure: opts.hostingDisclosure } : {}),
   })
   if (!ok) return null
-  return mintSpendGrant(opts.nodeIds, opts.maxAttemptsPerNode)
+  return mintSpendGrant(opts.nodeIds, opts.maxAttemptsPerNode, quoteId)
 }
 
 /**
@@ -209,16 +205,28 @@ export function generationSpendsCredits(nodes: Array<{ meta?: Record<string, unk
 /** 付费确认（不花额度就直接放行，不弹卡）。返回 false = 用户取消。 */
 export async function confirmGenerationSpend(
   nodes: Array<{ meta?: Record<string, unknown> | null } | undefined>,
-  opts: { title: string; message: string; confirmLabel?: string; light?: boolean; hostingDisclosure?: HostingDisclosure },
+  opts: { title: string; message: string; confirmLabel?: string; hostingDisclosure?: HostingDisclosure; onQuoteConfirmed?: (quoteId: string) => void },
 ): Promise<boolean> {
   if (!generationSpendsCredits(nodes)) return true
-  return useSpendConfirmStore.getState().requestConfirm({
+  const inputs = nodes.map((node) => {
+    const context = generationCostContextForNode(node)
+    return { vendorKey: context.vendorKey ?? '', modelKey: context.modelKey ?? '', parameters: node?.meta ?? {} }
+  })
+  let quote
+  try { quote = await getDesktopBridge()?.tasks.quoteSpend(inputs) }
+  catch (error) {
+    toast(error instanceof Error ? error.message : i18n.t('generationCommon.batchPlan.authorizationFailed'), 'error')
+    return false
+  }
+  const confirmed = await useSpendConfirmStore.getState().requestConfirm({
+    details: [spendQuoteDetail(quote ?? { amount: null })],
     title: opts.title,
     message: opts.message,
     ...(opts.confirmLabel ? { confirmLabel: opts.confirmLabel } : {}),
-    ...(opts.light ? { light: true } : {}),
     ...(opts.hostingDisclosure ? { hostingDisclosure: opts.hostingDisclosure } : {}),
   })
+  if (confirmed && quote) opts.onQuoteConfirmed?.(quote.quoteId)
+  return confirmed
 }
 
 export type GenerationCostKind = 'text' | 'image' | 'video' | 'audio' | 'model3d' | 'mixed'
@@ -227,6 +235,8 @@ export type GenerationCostContext = {
   vendorKey?: string
   modelKey?: string
   projectId?: string
+  concurrency?: number
+  waveSizes?: readonly number[]
   etaStats?: readonly GenerationEtaBucket[]
 }
 
@@ -259,10 +269,12 @@ function historicalEta(context: GenerationCostContext | undefined, kind: Generat
 }
 
 function etaMinutes(count: number, kind: GenerationCostKind, context?: GenerationCostContext): string {
+  const concurrency = Math.max(1, context?.concurrency ?? 1)
+  const batches = (context?.waveSizes ?? [count]).reduce((sum, size) => sum + Math.ceil(size / concurrency), 0)
   const sample = historicalEta(context, kind)
   const [lowSeconds, highSeconds] = sample
-    ? [sample.p50Seconds * count, sample.p90Seconds * count]
-    : kind === 'text' || kind === 'mixed' ? [0, 0] : COLD_START_SECONDS[kind].map((seconds) => seconds * count) as [number, number]
+    ? [sample.p50Seconds * batches, sample.p90Seconds * batches]
+    : kind === 'text' || kind === 'mixed' ? [0, 0] : COLD_START_SECONDS[kind].map((seconds) => seconds * batches) as [number, number]
   const low = Math.max(1, Math.round(lowSeconds / 60))
   const high = Math.max(low, Math.round(highSeconds / 60))
   return low === high ? String(low) : `${low}–${high}`
@@ -274,4 +286,14 @@ export function describeGenerationCost(count: number, kind: GenerationCostKind =
   const minutes = etaMinutes(count, kind, context)
   const unit = i18n.t(`generationCommon.spend.cost.units.${kind}`, { count })
   return i18n.t('generationCommon.spend.cost.media', { count, unit, minutes })
+}
+
+
+export function spendQuoteDetail(quote: Pick<SpendQuote, 'amount'>): { label: string; value: string } {
+  return {
+    label: i18n.t('generationCommon.spend.estimatedAmount'),
+    value: quote.amount === null
+      ? i18n.t('generationCommon.spend.catalogUnpriced')
+      : i18n.t('generationCommon.spend.catalogCredits', { amount: quote.amount }),
+  }
 }

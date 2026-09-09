@@ -33,7 +33,7 @@ export function getProductionRunService(): ProductionRunService {
               trustedHosts: [...settings.trustedHosts],
               allowedProviders: [...settings.allowedProviders],
               allowedModels: [...settings.allowedModels],
-              maxSpend: settings.maxSpend,
+
               maxAttemptsPerJob: settings.maxAttemptsPerJob,
               minimizeUploads: settings.minimizeUploads,
             }

@@ -1,3 +1,11 @@
+// Fixture user accepts the quote card; the real taskSpend guard still runs.
+vi.mock("./capabilityCore/rendererBridge", () => ({
+  requestRenderer: vi.fn(async (operation: string) => {
+    if (operation !== "spend.confirm") throw new Error(`Unexpected renderer operation: ${operation}`);
+    return { confirmed: true };
+  }),
+}));
+
 /**
  * runTask 自定义调用派发点回归锁：
  * ① 模型带脚本 → 脚本接管（不需要 mapping、不走通用 fallback 网络路），零网络成功出产物；
@@ -108,7 +116,7 @@ return 'data:image/png;base64,eA=='`,
         vendor: "custom-cc",
         request: { kind: "text_to_image", prompt: "x", extras: { modelKey: "cc-model", nodeId: "n1", grantId: "bogus" } },
       }),
-    ).rejects.toThrow(/确认|grant|授权|令牌/i);
+    ).rejects.toThrow(/确认|grant|授权|令牌|authorization/i);
   });
 
   it("改图缺参考仍被 L3 护栏拦（不因脚本存在而放行空参考付费）", async () => {

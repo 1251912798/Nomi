@@ -9,6 +9,8 @@ import {
   upsertRendererCatalogVendorApiKey,
 } from "./rendererCatalogMutation";
 import * as store from "./catalogStore";
+import { fetchModelList } from "../ai/onboarding/modelListProbe";
+vi.mock("../ai/onboarding/modelListProbe", async (original) => ({ ...await original<typeof import("../ai/onboarding/modelListProbe")>(), fetchModelList: vi.fn() }));
 
 vi.mock("./catalogStore", async (importActual) => {
   const actual = await importActual<typeof import("./catalogStore")>();
@@ -132,7 +134,7 @@ describe("renderer Catalog mutation boundary", () => {
     });
   });
 
-  it("writes the credential disabled-pending-certification and delegates the vendor de-publish to the store", () => {
+  it("writes the credential disabled-pending-certification and delegates the vendor de-publish to the store", async () => {
     // The reported honesty gap — a credential written disabled-pending-certification beside an
     // enabled vendor, which the model home reads as 已接入 / N 个可使用 while resolveTextBrainKeys
     // (needs an enabled credential) returns null — is prevented one layer down, inside
@@ -143,7 +145,9 @@ describe("renderer Catalog mutation boundary", () => {
     catalog.vendors[0] = { ...catalog.vendors[0], enabled: true } as never;
     vi.mocked(store.readCatalog).mockReturnValue(catalog);
 
-    upsertRendererCatalogVendorApiKey("relay", { apiKey: "sk-test", enabled: true });
+    catalog.vendors[0].baseUrlHint = "https://relay.test/v1";
+    vi.mocked(fetchModelList).mockResolvedValue({ ok: true, models: ["image-1"], statuses: [200] });
+    await upsertRendererCatalogVendorApiKey("relay", { apiKey: "sk-test", enabled: true });
 
     expect(store.upsertModelCatalogVendorApiKey).toHaveBeenCalledWith("relay", { apiKey: "sk-test", enabled: false });
     expect(store.upsertModelCatalogVendor).not.toHaveBeenCalled();
@@ -166,3 +170,34 @@ describe("renderer Catalog mutation boundary", () => {
 });
 
 type Json = Record<string, unknown>;
+
+
+describe("B4 candidate credentials", () => {
+  afterEach(() => vi.clearAllMocks());
+  it("validates through the connection's configured network route", async () => {
+    const catalog = state();
+    catalog.vendors[0].baseUrlHint = "https://relay.test/v1";
+    catalog.vendors[0].network = { proxyEnabled: true, proxyUrl: "http://127.0.0.1:7897" };
+    vi.mocked(store.readCatalog).mockReturnValue(catalog);
+    vi.mocked(fetchModelList).mockResolvedValue({ ok: true, models: ["image-1"], statuses: [200] });
+    await upsertRendererCatalogVendorApiKey("relay", { apiKey: "candidate-test" });
+    expect(fetchModelList).toHaveBeenLastCalledWith(expect.anything(), expect.anything(), expect.anything(), expect.anything(), expect.objectContaining({ proxyUrl: "http://127.0.0.1:7897" }));
+  });
+  it("network failure saves the candidate with an unverified marker", async () => {
+    const catalog = state();
+    catalog.vendors[0].baseUrlHint = "https://relay.test/v1";
+    vi.mocked(store.readCatalog).mockReturnValue(catalog);
+    vi.mocked(fetchModelList).mockResolvedValue({ ok: false, statuses: [], failureKind: "network", error: "offline" });
+    await upsertRendererCatalogVendorApiKey("relay", { apiKey: "candidate-test" });
+    expect(store.upsertModelCatalogVendorApiKey).toHaveBeenCalledWith("relay", { apiKey: "candidate-test", enabled: false, verificationPending: true });
+  });
+  it.each([401, 403])("%i never overwrites the previous credential or disables its vendor", async (status) => {
+    const catalog = state();
+    catalog.vendors[0] = { ...catalog.vendors[0], enabled: true, baseUrlHint: "https://relay.test/v1" };
+    vi.mocked(store.readCatalog).mockReturnValue(catalog);
+    vi.mocked(fetchModelList).mockResolvedValue({ ok: false, status, statuses: [status], failureKind: "auth", error: `HTTP ${status}` });
+    await expect(Promise.resolve().then(() => upsertRendererCatalogVendorApiKey("relay", { apiKey: "invalid-test-key" }))).rejects.toThrow();
+    expect(store.upsertModelCatalogVendorApiKey).not.toHaveBeenCalled();
+    expect(store.upsertModelCatalogVendor).not.toHaveBeenCalled();
+  });
+});
