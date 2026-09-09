@@ -1,0 +1,42 @@
+=== Forced scheduling: split old printf after command name; osascript startup sleep 1s; afplay arguments sleep 3s. Product untouched. ===
+✖ official Notification input reaches play.sh via actual registered command, safely (4030.177333ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4062.727333
+
+✖ failing tests:
+
+test at scripts/attention-cue/attention-cue.node-test.mjs:54:1
+✖ official Notification input reaches play.sh via actual registered command, safely (4030.177333ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /afplay\n.*\/assets\/sound\/nomi-attention.wav/. Input:
+  
+  'afplay\n' +
+    'osascript\n' +
+    '-e\n' +
+    'on run argv\n' +
+    '-e\n' +
+    'display notification (item 1 of argv) with title "Nomi 需要你"\n' +
+    '-e\n' +
+    'end run\n' +
+    '要花钱 ¥33 "quote"\n' +
+    '$(touch /tmp/nomi-cue-should-not-run)\n' +
+    '/Users/aoqimin/Desktop/Nomi-cue-flake/scripts/attention-cue/../../assets/sound/nomi-attention.wav\n'
+  
+      at TestContext.<anonymous> (file:///Users/aoqimin/Desktop/Nomi-cue-flake/scripts/attention-cue/attention-cue.node-test.mjs:60:10)
+      at Test.runInAsyncScope (node:async_hooks:214:14)
+      at Test.run (node:internal/test_runner/test:1103:25)
+      at Test.start (node:internal/test_runner/test:1000:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:358:17) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'afplay\nosascript\n-e\non run argv\n-e\ndisplay notification (item 1 of argv) with title "Nomi 需要你"\n-e\nend run\n要花钱 ¥33 "quote"\n$(touch /tmp/nomi-cue-should-not-run)\n/Users/aoqimin/Desktop/Nomi-cue-flake/scripts/attention-cue/../../assets/sound/nomi-attention.wav\n',
+    expected: /afplay\n.*\/assets\/sound\/nomi-attention.wav/,
+    operator: 'match',
+    diff: 'simple'
+  }
+Forced scheduling exit: 1
