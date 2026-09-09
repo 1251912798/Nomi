@@ -1,3 +1,11 @@
+// Fixture user accepts the quote card; the real taskSpend guard still runs.
+vi.mock("./capabilityCore/rendererBridge", () => ({
+  requestRenderer: vi.fn(async (operation: string) => {
+    if (operation !== "spend.confirm") throw new Error(`Unexpected renderer operation: ${operation}`);
+    return { confirmed: true };
+  }),
+}));
+
 /**
  * runTask 的 image/video **fallback 路径**（无 curated mapping 时走的
  * `/v1/{images,videos}/generations` OpenAI 兼容形状）回归。覆盖两个机制审计 P1：

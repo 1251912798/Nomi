@@ -50,7 +50,7 @@ import { modelModeBodies } from "./catalog/modelCatalogListing";
 import { runCustomCallTask } from "./catalog/customCallDispatch";
 import { resolveCustomCallExecution } from "./catalog/customCallMode";
 import { certifyTaskOutputAndSettleComfyCandidate, materializeCertifiedComfyAssets, resolveComfyCandidateExecution } from "./catalog/comfyuiCandidateLifecycle";
-import { assertAndConsumeSpendGrant } from "./spendGrant";
+import { consumeTaskSpend } from "./tasks/taskSpend";
 import { desktopT } from "./i18n";
 export type {
   AiSdkProviderKind,
@@ -328,7 +328,7 @@ export async function runTask(payload: unknown): Promise<TaskResult> {
   if (customCallScript)
     return runCustomCallTask({ vendor, model, apiKey, customConfig, script: customCallScript, taskKind: customCall!.taskKind, modeId: customCall!.modeId, request, kind, wantedKind, projectId, nodeId, grantId, taskId, localizeTaskAsset, writeAsset });
   if (usesSynchronousAudioRunner(wantedKind, mapping)) {
-    assertAndConsumeSpendGrant(grantId, nodeId);
+    await consumeTaskSpend({ grantId, nodeId, projectId, vendorKey: vendor.key, modelKey: model.modelKey, parameters: request.extras });
     return runAudioTask({ vendor, model, apiKey, request, kind, taskId, projectId, nodeId, mapping });
   }
   if (mapping) {
@@ -352,7 +352,7 @@ export async function runTask(payload: unknown): Promise<TaskResult> {
     const cachedHit = readCachedTaskResult({ projectId, fingerprint, nodeId, extras: request.extras });
     if (cachedHit) return cachedHit as TaskResult;
     const antigravityPreflight = await prepareAntigravityCreateOperation({ vendorKey: effectiveVendorKey, modelKey: model.modelKey, taskKind: kind, operation: mapping.create, request });
-    assertAndConsumeSpendGrant(grantId, nodeId); // 付费守卫：缓存未命中=真发 vendor，发前校验消费令牌
+    await consumeTaskSpend({ grantId, nodeId, projectId, vendorKey: vendor.key, modelKey: model.modelKey, parameters: request.extras }); // 付费守卫：缓存未命中=真发 vendor，发前校验消费令牌
     let createOperation = mapping.create; let executed;
     try {
       executed = await executeProfileOperation({ vendor, model, apiKey, request, operation: createOperation, stage: "create", antigravityPreflight });
@@ -408,7 +408,10 @@ export async function runTask(payload: unknown): Promise<TaskResult> {
     return normalized.result;
   }
 
-  if (wantedKind === "text") return executeTextTask({ vendor, model, apiKey, kind, request, taskId });
+  if (wantedKind === "text") {
+    await consumeTaskSpend({ grantId, nodeId, projectId, vendorKey: vendor.key, modelKey: model.modelKey, parameters: request.extras });
+    return executeTextTask({ vendor, model, apiKey, kind, request, taskId });
+  }
 
   const suffix = wantedKind === "video" ? "/v1/videos/generations" : "/v1/images/generations";
   const fallbackRecipe = buildNormalizedRecipe({ vendor, model, request });
@@ -420,7 +423,7 @@ export async function runTask(payload: unknown): Promise<TaskResult> {
     extras: request.extras,
   });
   if (fallbackHit) return fallbackHit as TaskResult;
-  assertAndConsumeSpendGrant(grantId, nodeId);
+  await consumeTaskSpend({ grantId, nodeId, projectId, vendorKey: vendor.key, modelKey: model.modelKey, parameters: request.extras });
   const fallbackExtraHeaders = extractVendorExtraHeaders(vendor);
   const fallbackHeaders: Record<string, string> = {
     "Content-Type": "application/json",
