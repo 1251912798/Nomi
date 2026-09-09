@@ -36,3 +36,5 @@ HTML 可视规格：[真实宿主折叠样张](folding-specimen.html)。本任�
 完整验证：76门岗、73通过、0阻断失败、3文档advisory；1331个测试文件通过，12272项测试通过、2项跳过；Vite与Electron构建通过。原始完整日志：`/private/tmp/nomi-skill-ui-b-full-gates-5.log`。
 
 冷启动补充：内置表情曾被外部源下载阻塞；cold-start-red/green.txt证明未完成网络也能立即返回25项表情，旧磁盘缓存立即返回且后台更新可在下次读取。共享入口仅复用既有缓存与刷新器。
+
+补充门岗核查：一次完整视觉检查中既有sb-zone-10-playback-skipped发生63像素SVG字形差异；未改代码/基线/容差，定向连续3次通过，记录见playback-recheck.txt。之后完整gates重新执行。
