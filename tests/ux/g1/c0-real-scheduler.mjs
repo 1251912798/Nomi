@@ -1,8 +1,6 @@
 import fs from 'node:fs'
-import ffmpeg from '@ffmpeg-installer/ffmpeg'
-import { execFileSync } from 'node:child_process'
 import { quotePlanSample } from './c0-plan-sample-budget.mjs'
-import { shots } from './c0-fixture.mjs'
+import { shots, createSyntheticC0Media } from './c0-fixture.mjs'
 import { scorePlanner, scoreLanePlanner } from './c0-r30.mjs'
 import path from 'node:path'
 import { prepareIsolation, readEventsLog } from '../../../evals/lib/isoApp.mjs'
@@ -55,12 +53,7 @@ export async function createRealScheduler({ tempRoot, attemptDir, outputDir, rep
   const priorCost = mixed ? (earlier?.billedCny ?? earlier?.billedCnyAtBudgetRate ?? 0) : 0
   const priorReserved = mixed ? (earlier?.reservedCny ?? 0) : 0
   const firstRequest = mixed ? (earlier?.requests?.length ?? 0) : 0
-  const mediaFiles = []
-  if (mixed) for (const shot of shots) {
-    const file = path.join(attemptDir, `synthetic-${shot.index}.mp4`)
-    execFileSync(ffmpeg.path, ['-v','error','-y','-f','lavfi','-i', `testsrc2=size=640x360:rate=24,hue=h=${shot.index * 35}`, '-f','lavfi','-i', `sine=frequency=${220 + shot.index * 55}:sample_rate=44100`, '-t','8','-c:v','libx264','-preset','ultrafast','-pix_fmt','yuv420p','-c:a','aac','-movflags','+faststart', file], { stdio: 'pipe' })
-    mediaFiles.push(file)
-  }
+  const mediaFiles = mixed ? createSyntheticC0Media(path.join(attemptDir, 'fixture-media')) : []
   let app, planEvents = [], nativeMessages
   const readNativeMessages = async (projectRoot) => {
     // Reuse the candidate's versioned observer rather than duplicating the pi format reader.
