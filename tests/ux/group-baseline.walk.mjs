@@ -91,14 +91,20 @@ const nodeToolbar = win.locator('[role="toolbar"]').first()
 await snapNear(win, 'node-floating-toolbar-real', nodeToolbar, 20)
 
 // @ 弹层（无参考图时的空态）
-const editor = win.locator('.ProseMirror').first()
-if (await editor.count()) {
-  await editor.click({ timeout: 4000 }).catch(() => {})
-  await win.waitForTimeout(300)
-  await win.keyboard.type('@')
-  await win.waitForTimeout(700)
-  await snap(win, 'mention-popup-empty')
-}
+const editor = composer.locator('[data-prompt-box] [contenteditable="true"]')
+await expect.poll(() => editor.evaluate(element => element.closest('[data-prompt-box]').parentElement.clientHeight), { message: '分组后图片提示词区仍保留三行可输入空间' }).toBeGreaterThanOrEqual(72)
+await editor.click({ timeout: 4000 })
+await win.waitForTimeout(300)
+await win.keyboard.type('@')
+await expect(editor).toContainText('@')
+await win.waitForTimeout(700)
+await snap(win, 'mention-popup-empty')
+// Fixed controls remain reachable when the card, rather than the input, must scroll.
+await win.keyboard.press('Escape')
+await composer.locator('[data-effect-more]').click({ timeout: 4000 })
+await expectVisible(win.getByTestId('node-effect-menu'), '受限高度下效果菜单仍可点击打开')
+await snap(win, 'effects-menu-reachable')
+await win.keyboard.press('Escape')
 
 // 组框的几何/配色实测（mockup 要用真值）
 const facts = await win.evaluate(() => {

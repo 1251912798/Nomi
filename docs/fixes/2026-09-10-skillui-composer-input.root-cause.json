@@ -1,0 +1,95 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-10-skillui-composer-input",
+  "problem_type": "Dynamic composer controls collapse the prompt scrollport",
+  "symptom": "PR #685 addNodeWithPrompt:177 fails: empty effect chips intercept pointer events; video prompt not visible.",
+  "direct_cause": "The shrink-0 effect row consumes space while the prompt flex child has min-h-0; fixed 150px overflow threshold does not represent the dynamic content height.",
+  "class_root": "The shared composer does not reserve a usable prompt scrollport when auxiliary controls grow.",
+  "affected_population": [
+    "Image and video composers with limited placement height and dynamic effect/reference controls"
+  ],
+  "scope_paths": [
+    "src/workbench/generationCanvas/nodes/NodeGenerationComposer.tsx"
+  ],
+  "entry_points": [
+    "Image creation and video creation through NodeGenerationComposer"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "Internal flex sizing invariant; no SDK or protocol behavior changes.",
+  "invariants": [
+    "Prompt scrollport retains three-line minimum; overflowing card remains scrollable."
+  ],
+  "generality_proof": "Both image and video kinds render the same prompt flex child and card; CSS minimum height and parent overflow apply regardless of effect count or reference controls.",
+  "shared_boundaries": [
+    {
+      "path": "src/workbench/generationCanvas/nodes/NodeGenerationComposer.tsx",
+      "symbol": "NodeGenerationComposer",
+      "responsibility": "Own prompt minimum and card overflow together"
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/workbench/generationCanvas/nodes/NodeGenerationComposer.tsx",
+      "entry_point": "image prompt",
+      "disposition": "enforced",
+      "evidence": "Shared PromptEditor branch and NodeEffectChips below it"
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/NodeGenerationComposer.tsx",
+      "entry_point": "video prompt",
+      "disposition": "enforced",
+      "evidence": "Same branch with additional reference controls; original failure is video creation"
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Any viewport or control row growth can exhaust the flex prompt area.",
+    "same_class_scan": [
+      "Read NodeEffectChips shrink-0 row and NodeGenerationComposer PromptEditor/card sizing",
+      "Read group-baseline editor click and canvas-batch-production image/video creation",
+      "Read useComposerViewportPlacement and composerObstaclePlacement: available height varies with obstacles"
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "src/workbench/generationCanvas/nodes/NodeGenerationComposer.tsx",
+    "invariant": "Prompt keeps its minimum height and card can scroll when controls exceed available height.",
+    "failure_mode": "Overflow is scrollable instead of hiding the editable area.",
+    "exception_policy": "none",
+    "strategy": "CSS minimum on the prompt scrollport and overflow auto on its parent; remove fixed-threshold flex override.",
+    "artifacts": [
+      "src/workbench/generationCanvas/nodes/NodeGenerationComposer.tsx"
+    ]
+  },
+  "regression_tests": [
+    "tests/ux/canvas-batch-production.walk.mjs",
+    "tests/ux/group-baseline.walk.mjs"
+  ],
+  "class_regression_tests": [
+    "tests/ux/canvas-batch-production.walk.mjs",
+    "tests/ux/group-baseline.walk.mjs"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "src/workbench/generationCanvas/nodes/NodeGenerationComposer.tsx"
+    ],
+    "rationale": "Remove zero-height prompt shrink and fixed-threshold scroll exception in the existing component."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "No third-party API or version change; internal layout ownership.",
+    "exit_criteria": []
+  },
+  "migration": "No stored data or API changes.",
+  "residual_risks": [
+    "Linux CI rerun remains required after local macOS Electron acceptance."
+  ],
+  "invariant_owner_layer": {
+    "layer": "src/workbench/generationCanvas/nodes/NodeGenerationComposer.tsx",
+    "tests": [
+      "tests/ux/canvas-batch-production.walk.mjs",
+      "tests/ux/group-baseline.walk.mjs"
+    ]
+  }
+}
