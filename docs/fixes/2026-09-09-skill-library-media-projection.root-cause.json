@@ -110,9 +110,9 @@
       "src/workbench/skillLibrary/SkillCard.tsx",
       "src/workbench/ai/ProjectAgentResidentShell.tsx",
       "src/workbench/library/libraryAdapters.ts",
-      "electron/skills/skillCuration.ts"
+      "electron/shared/skillCuration.ts"
     ],
-    "rationale": "Old text-only card implementation is replaced; early prompt slicing is removed. Remove obsolete skill filter (project filter stays) and the curation forwarding module; all consumers import the canonical shared schema directly."
+    "rationale": "Old text-only card implementation is replaced; early prompt slicing is removed. Remove obsolete skill filter (project filter stays) and the curation forwarding module; all consumers import the canonical shared schema directly. Git identifies the original schema as a rename to electron/shared/skillCuration.ts; removed_paths uses the diff destination."
   },
   "dependency_lifecycle": {
     "decision": "not-applicable",
