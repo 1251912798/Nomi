@@ -1,3 +1,4 @@
+import { CANVAS_MIN_ZOOM } from '../model/canvasFitBounds'
 import type { GenerationCanvasNode } from '../model/generationCanvasTypes'
 
 export type CanvasFocusViewport = {
@@ -29,4 +30,14 @@ export function resolvePendingCanvasFocus(
   if (target) return { type: 'focus', node: target }
   if (!allNodes.some((node) => node.id === pending.nodeId)) return { type: 'restore', viewport: pending.viewport }
   return { type: 'wait' }
+}
+
+/** Focusing means reading a node, not retaining the overview's miniature scale. */
+export function resolveCanvasFocusZoom(
+  node: { width: number; height: number },
+  stage: { width: number; height: number },
+  currentZoom: number,
+): number {
+  const fit = Math.min(stage.width * 0.8 / node.width, stage.height * 0.8 / node.height)
+  return Math.max(CANVAS_MIN_ZOOM, Math.min(fit, Math.max(1, currentZoom), 3))
 }
