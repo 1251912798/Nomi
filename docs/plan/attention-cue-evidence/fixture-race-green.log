@@ -1,0 +1,551 @@
+=== Same forced scheduling as red: split writes; osascript startup sleep 1s; afplay arguments sleep 3s. Private invocation files. Product untouched. ===
+✔ official Notification input reaches play.sh via actual registered command, safely (4073.036625ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4103.78675
+Forced scheduling exit: 0
+=== repaired run 1 ===
+✔ three committed WAVs are deterministic PCM16, bounded, audible and unclipped (41.047916ms)
+✔ official Notification input reaches play.sh via actual registered command, safely (888.504084ms)
+✔ only human-attention types match; malformed/other events remain silent (145.457542ms)
+✔ missing afplay is silent, successful, and still sends the native notification (575.33725ms)
+✔ Linux native player selection: paplay (640.5705ms)
+✔ Linux native player selection: aplay (593.867208ms)
+✔ MINGW64_NT native player selection: powershell.exe (593.152ms)
+✔ Darwin native player selection: silent without players (304.83ms)
+✔ fixture preserves concurrent invocations and exact argument boundaries (576.324083ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4393.370041
+=== repaired run 2 ===
+✔ three committed WAVs are deterministic PCM16, bounded, audible and unclipped (39.533958ms)
+✔ official Notification input reaches play.sh via actual registered command, safely (877.92575ms)
+✔ only human-attention types match; malformed/other events remain silent (152.811667ms)
+✔ missing afplay is silent, successful, and still sends the native notification (586.844708ms)
+✔ Linux native player selection: paplay (580.192083ms)
+✔ Linux native player selection: aplay (573.370375ms)
+✔ MINGW64_NT native player selection: powershell.exe (567.038708ms)
+✔ Darwin native player selection: silent without players (284.200292ms)
+✔ fixture preserves concurrent invocations and exact argument boundaries (581.486416ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4281.609209
+=== repaired run 3 ===
+✔ three committed WAVs are deterministic PCM16, bounded, audible and unclipped (51.937666ms)
+✔ official Notification input reaches play.sh via actual registered command, safely (925.626458ms)
+✔ only human-attention types match; malformed/other events remain silent (265.632708ms)
+✔ missing afplay is silent, successful, and still sends the native notification (659.418334ms)
+✔ Linux native player selection: paplay (714.534917ms)
+✔ Linux native player selection: aplay (611.025666ms)
+✔ MINGW64_NT native player selection: powershell.exe (575.225917ms)
+✔ Darwin native player selection: silent without players (288.088333ms)
+✔ fixture preserves concurrent invocations and exact argument boundaries (585.063458ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4742.983375
+=== repaired run 4 ===
+✔ three committed WAVs are deterministic PCM16, bounded, audible and unclipped (45.727916ms)
+✔ official Notification input reaches play.sh via actual registered command, safely (886.194208ms)
+✔ only human-attention types match; malformed/other events remain silent (237.952125ms)
+✔ missing afplay is silent, successful, and still sends the native notification (622.126417ms)
+✔ Linux native player selection: paplay (597.136125ms)
+✔ Linux native player selection: aplay (578.893541ms)
+✔ MINGW64_NT native player selection: powershell.exe (590.388917ms)
+✔ Darwin native player selection: silent without players (301.928833ms)
+✔ fixture preserves concurrent invocations and exact argument boundaries (611.600208ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4507.524916
+=== repaired run 5 ===
+✔ three committed WAVs are deterministic PCM16, bounded, audible and unclipped (57.606625ms)
+✔ official Notification input reaches play.sh via actual registered command, safely (908.742292ms)
+✔ only human-attention types match; malformed/other events remain silent (167.958375ms)
+✔ missing afplay is silent, successful, and still sends the native notification (585.3835ms)
+✔ Linux native player selection: paplay (564.714625ms)
+✔ Linux native player selection: aplay (581.390208ms)
+✔ MINGW64_NT native player selection: powershell.exe (590.544958ms)
+✔ Darwin native player selection: silent without players (313.637209ms)
+✔ fixture preserves concurrent invocations and exact argument boundaries (567.127417ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4373.807125
+=== repaired run 6 ===
+✔ three committed WAVs are deterministic PCM16, bounded, audible and unclipped (43.189417ms)
+✔ official Notification input reaches play.sh via actual registered command, safely (946.912209ms)
+✔ only human-attention types match; malformed/other events remain silent (206.36625ms)
+✔ missing afplay is silent, successful, and still sends the native notification (574.000459ms)
+✔ Linux native player selection: paplay (573.775084ms)
+✔ Linux native player selection: aplay (572.136417ms)
+✔ MINGW64_NT native player selection: powershell.exe (622.497208ms)
+✔ Darwin native player selection: silent without players (303.018916ms)
+✔ fixture preserves concurrent invocations and exact argument boundaries (566.936125ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4441.147209
+=== repaired run 7 ===
+✔ three committed WAVs are deterministic PCM16, bounded, audible and unclipped (49.764417ms)
+✔ official Notification input reaches play.sh via actual registered command, safely (912.652ms)
+✔ only human-attention types match; malformed/other events remain silent (166.839917ms)
+✔ missing afplay is silent, successful, and still sends the native notification (575.684917ms)
+✔ Linux native player selection: paplay (590.823167ms)
+✔ Linux native player selection: aplay (583.185417ms)
+✔ MINGW64_NT native player selection: powershell.exe (575.348417ms)
+✔ Darwin native player selection: silent without players (281.201375ms)
+✔ fixture preserves concurrent invocations and exact argument boundaries (589.586458ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4358.417125
+=== repaired run 8 ===
+✔ three committed WAVs are deterministic PCM16, bounded, audible and unclipped (41.182375ms)
+✔ official Notification input reaches play.sh via actual registered command, safely (1449.8215ms)
+✔ only human-attention types match; malformed/other events remain silent (140.331417ms)
+✔ missing afplay is silent, successful, and still sends the native notification (572.978833ms)
+✔ Linux native player selection: paplay (587.160375ms)
+✔ Linux native player selection: aplay (628.49925ms)
+✔ MINGW64_NT native player selection: powershell.exe (575.975583ms)
+✔ Darwin native player selection: silent without players (297.601ms)
+✔ fixture preserves concurrent invocations and exact argument boundaries (563.837209ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4887.905667
+=== repaired run 9 ===
+✔ three committed WAVs are deterministic PCM16, bounded, audible and unclipped (47.411042ms)
+✔ official Notification input reaches play.sh via actual registered command, safely (874.140167ms)
+✔ only human-attention types match; malformed/other events remain silent (146.910167ms)
+✔ missing afplay is silent, successful, and still sends the native notification (563.86475ms)
+✔ Linux native player selection: paplay (585.051666ms)
+✔ Linux native player selection: aplay (570.225416ms)
+✔ MINGW64_NT native player selection: powershell.exe (568.427083ms)
+✔ Darwin native player selection: silent without players (283.270667ms)
+✔ fixture preserves concurrent invocations and exact argument boundaries (568.056875ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4236.81075
+=== repaired run 10 ===
+✔ three committed WAVs are deterministic PCM16, bounded, audible and unclipped (47.677458ms)
+✔ official Notification input reaches play.sh via actual registered command, safely (882.434666ms)
+✔ only human-attention types match; malformed/other events remain silent (147.068334ms)
+✔ missing afplay is silent, successful, and still sends the native notification (580.068042ms)
+✔ Linux native player selection: paplay (563.677917ms)
+✔ Linux native player selection: aplay (938.7875ms)
+✔ MINGW64_NT native player selection: powershell.exe (1104.628209ms)
+✔ Darwin native player selection: silent without players (745.714167ms)
+✔ fixture preserves concurrent invocations and exact argument boundaries (568.323333ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 5609.117292
+=== repaired run 11 ===
+✔ three committed WAVs are deterministic PCM16, bounded, audible and unclipped (43.866333ms)
+✔ official Notification input reaches play.sh via actual registered command, safely (908.997125ms)
+✔ only human-attention types match; malformed/other events remain silent (172.090084ms)
+✔ missing afplay is silent, successful, and still sends the native notification (571.037375ms)
+✔ Linux native player selection: paplay (559.755042ms)
+✔ Linux native player selection: aplay (562.314792ms)
+✔ MINGW64_NT native player selection: powershell.exe (564.148333ms)
+✔ Darwin native player selection: silent without players (288.727ms)
+✔ fixture preserves concurrent invocations and exact argument boundaries (561.04675ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4262.971458
+=== repaired run 12 ===
+✔ three committed WAVs are deterministic PCM16, bounded, audible and unclipped (44.678583ms)
+✔ official Notification input reaches play.sh via actual registered command, safely (873.079833ms)
+✔ only human-attention types match; malformed/other events remain silent (142.271667ms)
+✔ missing afplay is silent, successful, and still sends the native notification (578.015084ms)
+✔ Linux native player selection: paplay (1083.3175ms)
+✔ Linux native player selection: aplay (953.351541ms)
+✔ MINGW64_NT native player selection: powershell.exe (589.278667ms)
+✔ Darwin native player selection: silent without players (289.821792ms)
+✔ fixture preserves concurrent invocations and exact argument boundaries (582.695625ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 5166.836459
+=== repaired run 13 ===
+✔ three committed WAVs are deterministic PCM16, bounded, audible and unclipped (46.615167ms)
+✔ official Notification input reaches play.sh via actual registered command, safely (921.732042ms)
+✔ only human-attention types match; malformed/other events remain silent (177.654792ms)
+✔ missing afplay is silent, successful, and still sends the native notification (585.207875ms)
+✔ Linux native player selection: paplay (583.532ms)
+✔ Linux native player selection: aplay (583.714083ms)
+✔ MINGW64_NT native player selection: powershell.exe (596.836541ms)
+✔ Darwin native player selection: silent without players (296.146125ms)
+✔ fixture preserves concurrent invocations and exact argument boundaries (565.850292ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4400.418167
+=== repaired run 14 ===
+✔ three committed WAVs are deterministic PCM16, bounded, audible and unclipped (46.600791ms)
+✔ official Notification input reaches play.sh via actual registered command, safely (897.959417ms)
+✔ only human-attention types match; malformed/other events remain silent (174.245958ms)
+✔ missing afplay is silent, successful, and still sends the native notification (947.453167ms)
+✔ Linux native player selection: paplay (575.672792ms)
+✔ Linux native player selection: aplay (573.304375ms)
+✔ MINGW64_NT native player selection: powershell.exe (573.539958ms)
+✔ Darwin native player selection: silent without players (286.1935ms)
+✔ fixture preserves concurrent invocations and exact argument boundaries (605.318417ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4718.8165
+=== repaired run 15 ===
+✔ three committed WAVs are deterministic PCM16, bounded, audible and unclipped (39.378417ms)
+✔ official Notification input reaches play.sh via actual registered command, safely (1385.117917ms)
+✔ only human-attention types match; malformed/other events remain silent (155.581458ms)
+✔ missing afplay is silent, successful, and still sends the native notification (888.788ms)
+✔ Linux native player selection: paplay (605.643916ms)
+✔ Linux native player selection: aplay (575.517375ms)
+✔ MINGW64_NT native player selection: powershell.exe (586.390291ms)
+✔ Darwin native player selection: silent without players (306.588ms)
+✔ fixture preserves concurrent invocations and exact argument boundaries (627.908209ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 5207.444708
+=== repaired run 16 ===
+✔ three committed WAVs are deterministic PCM16, bounded, audible and unclipped (126.84975ms)
+✔ official Notification input reaches play.sh via actual registered command, safely (969.547292ms)
+✔ only human-attention types match; malformed/other events remain silent (282.0895ms)
+✔ missing afplay is silent, successful, and still sends the native notification (607.663333ms)
+✔ Linux native player selection: paplay (609.446292ms)
+✔ Linux native player selection: aplay (605.434417ms)
+✔ MINGW64_NT native player selection: powershell.exe (615.6265ms)
+✔ Darwin native player selection: silent without players (316.20375ms)
+✔ fixture preserves concurrent invocations and exact argument boundaries (605.574333ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4830.236833
+=== repaired run 17 ===
+✔ three committed WAVs are deterministic PCM16, bounded, audible and unclipped (42.707667ms)
+✔ official Notification input reaches play.sh via actual registered command, safely (960.850958ms)
+✔ only human-attention types match; malformed/other events remain silent (190.971375ms)
+✔ missing afplay is silent, successful, and still sends the native notification (609.899541ms)
+✔ Linux native player selection: paplay (597.284042ms)
+✔ Linux native player selection: aplay (590.819583ms)
+✔ MINGW64_NT native player selection: powershell.exe (610.35725ms)
+✔ Darwin native player selection: silent without players (301.498916ms)
+✔ fixture preserves concurrent invocations and exact argument boundaries (605.975458ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4549.786333
+=== repaired run 18 ===
+✔ three committed WAVs are deterministic PCM16, bounded, audible and unclipped (72.787917ms)
+✔ official Notification input reaches play.sh via actual registered command, safely (994.882ms)
+✔ only human-attention types match; malformed/other events remain silent (275.689916ms)
+✔ missing afplay is silent, successful, and still sends the native notification (674.107875ms)
+✔ Linux native player selection: paplay (664.794125ms)
+✔ Linux native player selection: aplay (625.290291ms)
+✔ MINGW64_NT native player selection: powershell.exe (760.764084ms)
+✔ Darwin native player selection: silent without players (325.596833ms)
+✔ fixture preserves concurrent invocations and exact argument boundaries (667.332208ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 5143.960917
+=== repaired run 19 ===
+✔ three committed WAVs are deterministic PCM16, bounded, audible and unclipped (114.469917ms)
+✔ official Notification input reaches play.sh via actual registered command, safely (934.657875ms)
+✔ only human-attention types match; malformed/other events remain silent (306.310791ms)
+✔ missing afplay is silent, successful, and still sends the native notification (612.384667ms)
+✔ Linux native player selection: paplay (595.145375ms)
+✔ Linux native player selection: aplay (600.068042ms)
+✔ MINGW64_NT native player selection: powershell.exe (596.393291ms)
+✔ Darwin native player selection: silent without players (292.036833ms)
+✔ fixture preserves concurrent invocations and exact argument boundaries (609.735833ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4754.386334
+=== repaired run 20 ===
+✔ three committed WAVs are deterministic PCM16, bounded, audible and unclipped (73.487333ms)
+✔ official Notification input reaches play.sh via actual registered command, safely (942.468417ms)
+✔ only human-attention types match; malformed/other events remain silent (259.891958ms)
+✔ missing afplay is silent, successful, and still sends the native notification (604.082416ms)
+✔ Linux native player selection: paplay (592.112125ms)
+✔ Linux native player selection: aplay (653.196125ms)
+✔ MINGW64_NT native player selection: powershell.exe (605.181625ms)
+✔ Darwin native player selection: silent without players (303.600083ms)
+✔ fixture preserves concurrent invocations and exact argument boundaries (602.606875ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4693.513625
+=== repaired run 21 ===
+✔ three committed WAVs are deterministic PCM16, bounded, audible and unclipped (42.854042ms)
+✔ official Notification input reaches play.sh via actual registered command, safely (926.787042ms)
+✔ only human-attention types match; malformed/other events remain silent (200.550541ms)
+✔ missing afplay is silent, successful, and still sends the native notification (614.838583ms)
+✔ Linux native player selection: paplay (601.616584ms)
+✔ Linux native player selection: aplay (603.928583ms)
+✔ MINGW64_NT native player selection: powershell.exe (692.052ms)
+✔ Darwin native player selection: silent without players (294.496583ms)
+✔ fixture preserves concurrent invocations and exact argument boundaries (598.643708ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4612.23275
+=== repaired run 22 ===
+✔ three committed WAVs are deterministic PCM16, bounded, audible and unclipped (98.16575ms)
+✔ official Notification input reaches play.sh via actual registered command, safely (927.690041ms)
+✔ only human-attention types match; malformed/other events remain silent (248.301041ms)
+✔ missing afplay is silent, successful, and still sends the native notification (608.211209ms)
+✔ Linux native player selection: paplay (617.371542ms)
+✔ Linux native player selection: aplay (615.392166ms)
+✔ MINGW64_NT native player selection: powershell.exe (595.375083ms)
+✔ Darwin native player selection: silent without players (302.137292ms)
+✔ fixture preserves concurrent invocations and exact argument boundaries (571.815209ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4631.624291
+=== repaired run 23 ===
+✔ three committed WAVs are deterministic PCM16, bounded, audible and unclipped (78.995166ms)
+✔ official Notification input reaches play.sh via actual registered command, safely (939.243ms)
+✔ only human-attention types match; malformed/other events remain silent (176.406541ms)
+✔ missing afplay is silent, successful, and still sends the native notification (586.955458ms)
+✔ Linux native player selection: paplay (628.216208ms)
+✔ Linux native player selection: aplay (612.213167ms)
+✔ MINGW64_NT native player selection: powershell.exe (597.393375ms)
+✔ Darwin native player selection: silent without players (325.237ms)
+✔ fixture preserves concurrent invocations and exact argument boundaries (608.189208ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4605.403834
+=== repaired run 24 ===
+✔ three committed WAVs are deterministic PCM16, bounded, audible and unclipped (45.548667ms)
+✔ official Notification input reaches play.sh via actual registered command, safely (943.134416ms)
+✔ only human-attention types match; malformed/other events remain silent (195.527833ms)
+✔ missing afplay is silent, successful, and still sends the native notification (588.033083ms)
+✔ Linux native player selection: paplay (623.103042ms)
+✔ Linux native player selection: aplay (617.591583ms)
+✔ MINGW64_NT native player selection: powershell.exe (592.152625ms)
+✔ Darwin native player selection: silent without players (309.463166ms)
+✔ fixture preserves concurrent invocations and exact argument boundaries (612.884167ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4587.342917
+=== repaired run 25 ===
+✔ three committed WAVs are deterministic PCM16, bounded, audible and unclipped (69.581916ms)
+✔ official Notification input reaches play.sh via actual registered command, safely (943.407708ms)
+✔ only human-attention types match; malformed/other events remain silent (187.099208ms)
+✔ missing afplay is silent, successful, and still sends the native notification (589.727917ms)
+✔ Linux native player selection: paplay (593.205291ms)
+✔ Linux native player selection: aplay (605.602583ms)
+✔ MINGW64_NT native player selection: powershell.exe (608.099459ms)
+✔ Darwin native player selection: silent without players (288.770458ms)
+✔ fixture preserves concurrent invocations and exact argument boundaries (605.828ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4551.593625
+=== repaired run 26 ===
+✔ three committed WAVs are deterministic PCM16, bounded, audible and unclipped (74.746792ms)
+✔ official Notification input reaches play.sh via actual registered command, safely (959.223875ms)
+✔ only human-attention types match; malformed/other events remain silent (241.197958ms)
+✔ missing afplay is silent, successful, and still sends the native notification (611.344458ms)
+✔ Linux native player selection: paplay (612.02375ms)
+✔ Linux native player selection: aplay (618.26025ms)
+✔ MINGW64_NT native player selection: powershell.exe (615.829375ms)
+✔ Darwin native player selection: silent without players (306.132375ms)
+✔ fixture preserves concurrent invocations and exact argument boundaries (604.889708ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4725.95925
+=== repaired run 27 ===
+✔ three committed WAVs are deterministic PCM16, bounded, audible and unclipped (70.95125ms)
+✔ official Notification input reaches play.sh via actual registered command, safely (969.8865ms)
+✔ only human-attention types match; malformed/other events remain silent (217.297959ms)
+✔ missing afplay is silent, successful, and still sends the native notification (706.75225ms)
+✔ Linux native player selection: paplay (610.387708ms)
+✔ Linux native player selection: aplay (601.772041ms)
+✔ MINGW64_NT native player selection: powershell.exe (594.519875ms)
+✔ Darwin native player selection: silent without players (313.741792ms)
+✔ fixture preserves concurrent invocations and exact argument boundaries (606.68425ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4764.192875
+=== repaired run 28 ===
+✔ three committed WAVs are deterministic PCM16, bounded, audible and unclipped (55.282583ms)
+✔ official Notification input reaches play.sh via actual registered command, safely (933.676708ms)
+✔ only human-attention types match; malformed/other events remain silent (197.612458ms)
+✔ missing afplay is silent, successful, and still sends the native notification (605.144333ms)
+✔ Linux native player selection: paplay (599.63675ms)
+✔ Linux native player selection: aplay (602.585958ms)
+✔ MINGW64_NT native player selection: powershell.exe (604.059709ms)
+✔ Darwin native player selection: silent without players (297.923875ms)
+✔ fixture preserves concurrent invocations and exact argument boundaries (600.388209ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4557.33025
+=== repaired run 29 ===
+✔ three committed WAVs are deterministic PCM16, bounded, audible and unclipped (97.713208ms)
+✔ official Notification input reaches play.sh via actual registered command, safely (960.310167ms)
+✔ only human-attention types match; malformed/other events remain silent (252.417917ms)
+✔ missing afplay is silent, successful, and still sends the native notification (598.151042ms)
+✔ Linux native player selection: paplay (592.244959ms)
+✔ Linux native player selection: aplay (604.50525ms)
+✔ MINGW64_NT native player selection: powershell.exe (602.168084ms)
+✔ Darwin native player selection: silent without players (299.4465ms)
+✔ fixture preserves concurrent invocations and exact argument boundaries (640.148791ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4696.651458
+=== repaired run 30 ===
+✔ three committed WAVs are deterministic PCM16, bounded, audible and unclipped (98.371959ms)
+✔ official Notification input reaches play.sh via actual registered command, safely (942.819042ms)
+✔ only human-attention types match; malformed/other events remain silent (240.578375ms)
+✔ missing afplay is silent, successful, and still sends the native notification (594.645709ms)
+✔ Linux native player selection: paplay (595.563458ms)
+✔ Linux native player selection: aplay (599.129208ms)
+✔ MINGW64_NT native player selection: powershell.exe (617.916458ms)
+✔ Darwin native player selection: silent without players (290.008584ms)
+✔ fixture preserves concurrent invocations and exact argument boundaries (573.922666ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4616.501708
