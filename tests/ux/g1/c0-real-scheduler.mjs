@@ -1,10 +1,11 @@
 import fs from 'node:fs'
 import { quotePlanSample } from './c0-plan-sample-budget.mjs'
+import { shots } from './c0-fixture.mjs'
 import { scorePlanner } from './c0-r30.mjs'
 import path from 'node:path'
 import { readLaneTranscripts, laneMessages } from '../agent-lane-observer.mjs'
 import { prepareIsolation } from '../../../evals/lib/isoApp.mjs'
-import { publicPrices, quoteC0, assertAffordable, REAL_MODELS } from './c0-real-budget.mjs'
+import { publicPrices, quoteC0, assertAffordable, REAL_MODELS, requestQuote } from './c0-real-budget.mjs'
 
 export async function createRealScheduler({ tempRoot, attemptDir, outputDir, report, planOnly = false, plannerModel }) {
   const response = await fetch('https://apimart.ai/pricing', { signal: AbortSignal.timeout(30_000), redirect: 'error' })
@@ -70,6 +71,14 @@ export async function createRealScheduler({ tempRoot, attemptDir, outputDir, rep
   }
   return {
     iso, model: models.video,
+    async videoWaitQuote() {
+      const reserved = JSON.parse(fs.readFileSync(ledgerPath, 'utf8')).requests.filter(r => r.model === REAL_MODELS.video)
+      // Queued shots may not have reached dispatch: use the same reservation quote function.
+      const planned = shots.map(s => requestQuote('https://api.apimart.ai/v1/videos/generations', 'POST',
+        { model: REAL_MODELS.video, resolution: '768P', duration: s.durationSec, aspect_ratio: '16:9' }, quote))
+      return { requests: reserved.length === planned.length ? reserved : planned,
+        concurrency: 6, measuredMultiplier: 30, source: 'gate4b measured 120–240s per 8s video', ledgerPath }
+    },
     async attach(launched) {
       app = launched.app
       await app.evaluate(async (_electron, options) => {

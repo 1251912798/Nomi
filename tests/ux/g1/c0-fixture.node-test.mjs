@@ -50,3 +50,25 @@ test('C0 loopback works without system media tools, returns eight decodable clip
     fs.rmSync(temp, { recursive: true, force: true })
   }
 })
+
+test('delayed loopback submits immediately and exposes pending then completed through task polling', async () => {
+  const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'c0-delayed-test-'))
+  const fixture = await createC0Fixture(rootDir, path.join(temp, 'settings'), path.join(temp, 'media'), { videoDelayMs: { 7: 190_000, 8: 1 } })
+  try {
+    const catalog = JSON.parse(fs.readFileSync(path.join(temp, 'settings/model-catalog.json'), 'utf8'))
+    const base = catalog.vendors.find(v => v.key === 'c0-video-loopback').baseUrlHint
+    for (const index of [7, 8]) {
+      const response = await fetch(`${base}/v1/videos/generations`, { method: 'POST',
+        body: JSON.stringify({ model: MODEL, prompt: shots[index - 1].prompt }) })
+      const created = await response.json()
+      assert.equal(created.data[0].task_id, `c0-delayed-${index}`)
+    }
+    const pending = await (await fetch(`${base}/v1/tasks/c0-delayed-7`)).json()
+    assert.equal(pending.data.status, 'processing')
+    assert.equal(pending.data.result, undefined)
+    const { expect } = await import('@playwright/test')
+    await expect.poll(async () => (await (await fetch(`${base}/v1/tasks/c0-delayed-8`)).json()).data.status).toBe('completed')
+    const completed = await (await fetch(`${base}/v1/tasks/c0-delayed-8`)).json()
+    assert.match(completed.data.result.videos[0].url[0], /^data:video\/mp4;base64,/)
+  } finally { await fixture.close(); fs.rmSync(temp, { recursive: true, force: true }) }
+})

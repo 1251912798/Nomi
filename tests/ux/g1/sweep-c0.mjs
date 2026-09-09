@@ -2,8 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { createWalkSession } from '../_assert.mjs'
 import { startEvidence, saveCase, copyTranscripts, writeJson, scoreCollectedAgent } from './sweep-evidence.mjs'
-import { repairStoryboard } from './sweep-repair.mjs'
-import { shots } from './c0-fixture.mjs'
+import { repairStoryboard, c0RepairPlan } from './sweep-repair.mjs'
 
 export function createC0Collection(directory, report) {
   let evidence, read, win, projectId, evidencePrefix = '', restart = 0
@@ -27,8 +26,8 @@ export function createC0Collection(directory, report) {
       if (evidence) { const current = evidence; evidence = null; await current.stop() }
     },
     async step(id, action, expected, run, interruption) {
-      const repair = id === '02' ? { name: 'c0-fixture storyboard seed (test-side only)',
-        run: () => repairStoryboard(win, projectId(), { title: '日落前的一分钟', shots }) } : undefined
+      const repair = id === '02' ? { name: `c0-script t2v eight-shot repair (${report.mode}; no reference cards; test-side only)`,
+        run: () => repairStoryboard(win, projectId(), c0RepairPlan(report.mode)) } : undefined
       const row = await walk.station({ id, action, interruption, expected: `${action}：${expected}`, surface: Number(id) < 3 ? 'storyboard' : Number(id) < 5 ? 'canvas-node' : id === '06' ? 'export' : 'timeline', repair }, run)
       return row
     },
