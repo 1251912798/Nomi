@@ -306,6 +306,7 @@ export default function ProjectAgentResidentShell({ surface }: { surface: Reside
   const commandRows: readonly V4CommandRow[] = React.useMemo(() => {
     const query = commandQuery.trim()
     const skillRows: V4CommandRow[] = data.skills
+      .filter((skill) => skill.curation?.kind !== 'effect')
       .filter((skill) => !query || `${skill.label} ${skill.name}`.toLowerCase().includes(query.toLowerCase()))
       // 自己导进来的排在内置前面。用户刚把一个技能弄进 Nomi，下一秒来这里找它——
       // 让他先滚过四个他没装过的内置技能才看见自己那个，是把「我刚做的事」排在最后。
@@ -315,6 +316,8 @@ export default function ProjectAgentResidentShell({ surface }: { surface: Reside
         name: skill.label,
         command: `/${skill.name}`,
         desc: skill.description ?? skill.stageLabels.join(' · '),
+        cover: skill.cover,
+        preview: skill.preview,
         section: t('agentPanelV4.sectionSkills'),
         selected: activeSkill?.key === skill.name,
       }))
@@ -326,11 +329,12 @@ export default function ProjectAgentResidentShell({ surface }: { surface: Reside
         id: `prompt:${prompt.id}`,
         name: promptDisplayTitle(prompt),
         command: `/${prompt.id}`,
-        desc: prompt.prompt.slice(0, 60),
-        section: t('agentPanelV4.sectionPrompts'),
+        desc: prompt.prompt,
+        section: prompt.curation?.kind === 'effect' ? t('libraries.gallery.effect') : t('agentPanelV4.sectionPrompts'),
+        preview: prompt.mediaUrl ? { url: prompt.mediaUrl, type: prompt.mediaType } : undefined,
         // 提示词库本来就有封面（`mediaUrl` = 首图），此前在这里被整包丢掉，
         // 于是每一行都退化成同一个白块。有图就把图给它。
-        ...(prompt.mediaUrl ? { cover: prompt.mediaUrl } : {}),
+        ...(prompt.mediaType === 'image' && prompt.mediaUrl ? { cover: prompt.mediaUrl } : {}),
         selected: actions.selectedLibraryPrompt?.id === prompt.id,
       }))
     return Object.freeze([...skillRows, ...promptRows])
@@ -342,7 +346,7 @@ export default function ProjectAgentResidentShell({ surface }: { surface: Reside
       ? (
         <V4SkillPopover
           rows={commandRows}
-          categories={[t('agentPanelV4.skillAll'), t('agentPanelV4.sectionSkills'), t('agentPanelV4.sectionPrompts')]}
+          categories={[t('agentPanelV4.skillAll'), t('agentPanelV4.sectionSkills'), t('agentPanelV4.sectionPrompts'), t('libraries.gallery.effect')]}
           query={commandQuery}
           onQueryChange={setCommandQuery}
           onSelect={(row) => {
@@ -355,7 +359,6 @@ export default function ProjectAgentResidentShell({ surface }: { surface: Reside
             } else {
               const id = row.id.slice('prompt:'.length)
               const prompt = [...promptLibrary.items, ...userPromptLibrary.items].find((item) => item.id === id)
-              setActiveSkill(null)
               actions.setSelectedLibraryPrompt(prompt ?? null)
             }
             setPopover(null)

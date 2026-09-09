@@ -17,7 +17,7 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '../../../utils/cn'
-import { NomiSelect, type NomiSelectOption } from '../../../design'
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider, NomiSelect, type NomiSelectOption } from '../../../design'
 import {
   IconArrowUp,
   IconChevronDown,
@@ -30,6 +30,8 @@ import { approvalPolicyForTier, maxComposerHeight, useComposerHeight, shouldSubm
 import type { ComposerMode, ComposerPopover, PermissionTier, V4Chip } from './agentPanelV4Types'
 import { DEFAULT_PERMISSION_TIER, PERMISSION_TIERS } from './agentPanelV4Types'
 
+import { SkillMedia } from '../../skillLibrary/SkillMedia'
+
 const MODEL_TRIGGER_WIDTH = 164
 
 function compactModelLabel(label: string): string {
@@ -37,7 +39,7 @@ function compactModelLabel(label: string): string {
 }
 
 function ComposerChip({ chip, removeLabel, onRemove }: { chip: V4Chip; removeLabel: string; onRemove?: () => void }): JSX.Element {
-  return (
+  const content = (
     <span
       className={cn(
         'inline-flex h-6 shrink-0 items-center gap-[5px] rounded-nomi-sm border pl-1 pr-2 text-micro',
@@ -48,7 +50,7 @@ function ComposerChip({ chip, removeLabel, onRemove }: { chip: V4Chip; removeLab
       data-v4-chip={chip.kind}
     >
       {chip.kind === 'skill' ? (
-        <IconPackage size={12} aria-hidden="true" />
+        <SkillMedia cover={chip.cover} preview={chip.preview} className="size-4 rounded-nomi-sm object-cover" />
       ) : (
         <span
           className={cn('h-3.5 w-[18px] shrink-0 rounded-sm', chip.kind === 'clip' ? 'bg-nomi-track-video' : 'bg-nomi-ink-20')}
@@ -61,6 +63,13 @@ function ComposerChip({ chip, removeLabel, onRemove }: { chip: V4Chip; removeLab
       </button>
     </span>
   )
+  if (chip.kind !== 'skill') return content
+  return <TooltipProvider delayDuration={180}><Tooltip><TooltipTrigger asChild>{content}</TooltipTrigger>
+    <TooltipContent side="top" className="z-popover w-80 whitespace-normal bg-nomi-paper p-3 text-nomi-ink">
+      <SkillMedia cover={chip.cover} preview={chip.preview} play className="mb-2 max-h-60 w-full object-contain" />
+      <strong>{chip.label}</strong><p className="mt-2 max-h-48 overflow-y-auto whitespace-pre-wrap text-caption leading-relaxed">{chip.description}</p>
+    </TooltipContent>
+  </Tooltip></TooltipProvider>
 }
 
 export type AgentPanelV4ComposerProps = {
@@ -361,46 +370,12 @@ export type V4CommandRow = Readonly<{
   section: string
   /** 封面。提示词库有 `mediaUrl`；技能今天没有封面字段，所以多数行不会有。 */
   cover?: string
+  preview?: { url: string; type: 'image' | 'video' }
   selected?: boolean
 }>
 
-/**
- * 行首那一格。
- *
- * 2026-09-06 用户在打包版上看到的是**一排白块**：这一格原本是一个纯色 `<span>`，
- * 为「hover 换预览视频」预留的位置，但那个功能没做、`SkillListItemDto` 里也从来没有封面字段。
- * 于是每一行都画一个 36×56 的白方块——它不承载任何信息，只是在告诉用户「这里有东西没加载出来」。
- *
- * 现在：**有图才画图，没图画图标**。提示词库那一段本来就带 `mediaUrl`（此前被整包丢掉），
- * 技能那一段没有封面就落到图标格。图挂了（404 / 文件没了）也退回图标，不留破图。
- */
 function CommandRowCover({ row }: { row: V4CommandRow }): JSX.Element {
-  const [broken, setBroken] = React.useState(false)
-  React.useEffect(() => setBroken(false), [row.cover])
-  if (row.cover && !broken) {
-    return (
-      <img
-        src={row.cover}
-        alt=""
-        loading="lazy"
-        onError={() => setBroken(true)}
-        className="h-9 w-14 shrink-0 rounded-sm object-cover"
-        data-v4-command-cover="image"
-      />
-    )
-  }
-  return (
-    <span
-      className={cn(
-        'grid h-9 w-14 shrink-0 place-items-center rounded-sm border',
-        row.selected ? 'border-nomi-accent-soft text-nomi-accent' : 'border-nomi-line-soft text-nomi-ink-30',
-      )}
-      data-v4-command-cover="icon"
-      aria-hidden="true"
-    >
-      <IconPackage size={15} />
-    </span>
-  )
+  return <SkillMedia cover={row.cover} preview={row.preview} className="h-9 w-14 shrink-0 rounded-nomi-sm object-cover" />
 }
 
 /**
@@ -431,6 +406,9 @@ export function V4SkillPopover({
   onManage?: () => void
 }): JSX.Element {
   const { t } = useTranslation()
+  const [localCategory, setLocalCategory] = React.useState(categories[0])
+  const selectedCategory = activeCategory ?? localCategory
+  const visibleRows = rows.filter(row => selectedCategory === categories[0] || row.section === selectedCategory)
   let lastSection = ''
   return (
     <aside
@@ -447,14 +425,14 @@ export function V4SkillPopover({
         className="mx-2.5 mb-1.5 mt-2 flex h-7 w-[calc(100%-20px)] items-center gap-1.5 rounded-nomi-sm border border-nomi-line bg-transparent px-2 text-caption text-nomi-ink outline-none placeholder:text-nomi-ink-40"
       />
       <div className="flex gap-1 overflow-hidden px-2.5 pb-1.5">
-        {categories.map((category, index) => (
+        {categories.map((category) => (
           <button
             type="button"
             key={category}
-            onClick={() => onSelectCategory?.(category)}
+            onClick={() => { setLocalCategory(category); onSelectCategory?.(category) }}
             className={cn(
               'inline-flex h-[22px] shrink-0 items-center whitespace-nowrap rounded-pill px-2 text-micro',
-              (activeCategory ?? categories[0]) === category || (activeCategory === undefined && index === 0)
+              selectedCategory === category
                 ? 'bg-nomi-ink text-nomi-paper'
                 : 'bg-nomi-ink-05 text-nomi-ink-60',
             )}
@@ -464,15 +442,15 @@ export function V4SkillPopover({
         ))}
       </div>
       <div className="max-h-[260px] overflow-y-auto overscroll-contain">
-        {rows.map((row) => {
+        {visibleRows.map((row) => {
           const header = row.section !== lastSection ? row.section : ''
           lastSection = row.section
           return (
-            <React.Fragment key={row.id}>
+            <TooltipProvider key={row.id} delayDuration={180}><Tooltip>
               {header ? (
                 <div className="px-2.5 pb-0.5 pt-1.5 text-micro text-nomi-ink-40">{header}</div>
               ) : null}
-              <button
+              <TooltipTrigger asChild><button
                 type="button"
                 onClick={() => onSelect?.(row)}
                 data-v4-command={row.id}
@@ -486,8 +464,15 @@ export function V4SkillPopover({
                   </span>
                   <span className="block truncate text-micro text-nomi-ink-60">{row.desc}</span>
                 </span>
-              </button>
-            </React.Fragment>
+              </button></TooltipTrigger>
+              <TooltipContent side="right" className="z-popover whitespace-normal w-80 max-w-[80vw] bg-nomi-paper p-3 text-nomi-ink shadow-nomi-lg">
+                <div data-skill-hover={row.id} className="max-h-[60vh] overflow-y-auto">
+                  <SkillMedia cover={row.cover} preview={row.preview} play className="mb-3 max-h-60 w-full rounded-nomi-sm object-contain" />
+                  <strong className="text-title">{row.name}</strong>
+                  <p className="mt-2 whitespace-pre-wrap text-caption leading-relaxed text-nomi-ink-60">{row.desc}</p>
+                </div>
+              </TooltipContent>
+            </Tooltip></TooltipProvider>
           )
         })}
       </div>

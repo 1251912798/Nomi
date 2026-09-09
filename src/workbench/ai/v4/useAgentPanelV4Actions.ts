@@ -122,7 +122,8 @@ export type AgentPanelV4Actions = Readonly<{
 export function useAgentPanelV4Actions(surface: ResidentSurface, data: AgentPanelV4Data): AgentPanelV4Actions {
   const { t } = useTranslation()
   const [error, setError] = React.useState('')
-  const [selectedLibraryPrompt, setSelectedLibraryPrompt] = React.useState<LibraryPrompt | null>(null)
+  const selectedLibraryPrompt = useWorkbenchStore((state) => state.selectedLibraryPrompt)
+  const setSelectedLibraryPrompt = useWorkbenchStore((state) => state.setSelectedLibraryPrompt)
   const setDraft = useWorkbenchStore((state) => state.setProjectAgentDraft)
   const attachments = useWorkbenchStore((state) => state.projectAgentAttachments)
   const setAttachments = useWorkbenchStore((state) => state.setProjectAgentAttachments)
