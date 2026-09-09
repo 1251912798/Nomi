@@ -1,0 +1,52 @@
+
+> nomi@0.21.0 test:feel:browser /Users/aoqimin/Desktop/Nomi-density
+> python3 scripts/with-gates-lock.py -- node --test tests/ux/_feel.browser.mjs tests/ux/_feel-observer.browser.mjs tests/ux/experience/collector.browser.mjs
+
+✔ baseline accepts known counts and reports increases and reductions (5.549291ms)
+feel ratchet: agent-panel/clean.png; findings=0; new-surfaces=0; evidence: /var/folders/f4/vz86j5nd0_sf56qdhzrmbbvw0000gn/T/feel-observer-Or8y1h
+feel ratchet: agent-panel/waitForFunction.png; findings=0; new-surfaces=0; evidence: /var/folders/f4/vz86j5nd0_sf56qdhzrmbbvw0000gn/T/feel-observer-Or8y1h
+feel ratchet: agent-panel/unregistered.png; findings=1; new-surfaces=1; evidence: /var/folders/f4/vz86j5nd0_sf56qdhzrmbbvw0000gn/T/feel-observer-Or8y1h
+feel ratchet: agent-panel/bad.png; findings=1; new-surfaces=0; evidence: /var/folders/f4/vz86j5nd0_sf56qdhzrmbbvw0000gn/T/feel-observer-Or8y1h
+feel ratchet: agent-panel/locator.png; findings=1; new-surfaces=0; evidence: /var/folders/f4/vz86j5nd0_sf56qdhzrmbbvw0000gn/T/feel-observer-Or8y1h
+feel ratchet: agent-panel/waitForFunction.png; findings=1; new-surfaces=0; evidence: /var/folders/f4/vz86j5nd0_sf56qdhzrmbbvw0000gn/T/feel-observer-Or8y1h
+feel ratchet: agent-panel/state.png; findings=0; new-surfaces=0; evidence: /var/folders/f4/vz86j5nd0_sf56qdhzrmbbvw0000gn/T/feel-observer-Or8y1h/reduction
+✔ shared observer scans screenshots and completed state waits without author calls (614.322333ms)
+feel record: eval-iso/bad.png; findings=1; new-surfaces=1; evidence: /var/folders/f4/vz86j5nd0_sf56qdhzrmbbvw0000gn/T/feel-real-record-Ws8Svv/eval-iso
+feel record: eval-iso/locator.png; findings=1; new-surfaces=1; evidence: /var/folders/f4/vz86j5nd0_sf56qdhzrmbbvw0000gn/T/feel-real-record-Ws8Svv/eval-iso
+feel record: eval-iso/waitForFunction.png; findings=1; new-surfaces=1; evidence: /var/folders/f4/vz86j5nd0_sf56qdhzrmbbvw0000gn/T/feel-real-record-Ws8Svv/eval-iso
+feel record: real-user-test-gates/bad.png; findings=1; new-surfaces=1; evidence: /var/folders/f4/vz86j5nd0_sf56qdhzrmbbvw0000gn/T/feel-real-record-Ws8Svv/real-user-test-gates
+feel record: real-user-test-gates/locator.png; findings=1; new-surfaces=1; evidence: /var/folders/f4/vz86j5nd0_sf56qdhzrmbbvw0000gn/T/feel-real-record-Ws8Svv/real-user-test-gates
+feel record: real-user-test-gates/waitForFunction.png; findings=1; new-surfaces=1; evidence: /var/folders/f4/vz86j5nd0_sf56qdhzrmbbvw0000gn/T/feel-real-record-Ws8Svv/real-user-test-gates
+✔ real journey observer records known budget overruns on page, locator and waits (342.661417ms)
+feel ratchet: agent-panel/rows.png; findings=1; new-surfaces=1; evidence: /var/folders/f4/vz86j5nd0_sf56qdhzrmbbvw0000gn/T/feel-repeated-p5hmtx
+feel ratchet: agent-panel/threshold.png; findings=1; new-surfaces=1; evidence: /var/folders/f4/vz86j5nd0_sf56qdhzrmbbvw0000gn/T/feel-repeated-p5hmtx
+feel ratchet: agent-panel/noninteractive.png; findings=1; new-surfaces=1; evidence: /var/folders/f4/vz86j5nd0_sf56qdhzrmbbvw0000gn/T/feel-repeated-p5hmtx
+feel ratchet: agent-panel/negative.png; findings=0; new-surfaces=0; evidence: /var/folders/f4/vz86j5nd0_sf56qdhzrmbbvw0000gn/T/feel-repeated-p5hmtx
+feel ratchet: agent-panel/negative.png; findings=0; new-surfaces=0; evidence: /var/folders/f4/vz86j5nd0_sf56qdhzrmbbvw0000gn/T/feel-repeated-p5hmtx
+feel ratchet: agent-panel/negative.png; findings=0; new-surfaces=0; evidence: /var/folders/f4/vz86j5nd0_sf56qdhzrmbbvw0000gn/T/feel-repeated-p5hmtx
+feel ratchet: agent-panel/negative.png; findings=0; new-surfaces=0; evidence: /var/folders/f4/vz86j5nd0_sf56qdhzrmbbvw0000gn/T/feel-repeated-p5hmtx
+feel ratchet: agent-panel/negative.png; findings=0; new-surfaces=0; evidence: /var/folders/f4/vz86j5nd0_sf56qdhzrmbbvw0000gn/T/feel-repeated-p5hmtx
+feel ratchet: agent-panel/negative.png; findings=1; new-surfaces=1; evidence: /var/folders/f4/vz86j5nd0_sf56qdhzrmbbvw0000gn/T/feel-repeated-p5hmtx
+✔ repeated rows records five tool steps without ratcheting even with a registered zero (330.796375ms)
+✔ text-overlap: red defect / green correction (326.828625ms)
+✔ out-of-viewport: red defect / green correction (276.098625ms)
+✔ clipped-content: red defect / green correction (140.856042ms)
+✔ font-size: red defect / green correction (124.877583ms)
+✔ unreachable-interaction: red defect / green correction (123.440167ms)
+✔ blocked-interaction: red defect / green correction (140.504167ms)
+✔ locator root excludes unrelated defects; ancestor text is not duplicated (124.158833ms)
+✔ text clipped by its own box cannot overlap the next control (116.746583ms)
+✔ ordinary document scrolling is not an out-of-viewport defect (112.640792ms)
+feel record: experience-shared/waitForFunction.png; findings=0; new-surfaces=0; evidence: /var/folders/f4/vz86j5nd0_sf56qdhzrmbbvw0000gn/T/experience-shared-observer-G8JvgX/feel
+feel record: experience-shared/01-continue-before.png; findings=0; new-surfaces=0; evidence: /var/folders/f4/vz86j5nd0_sf56qdhzrmbbvw0000gn/T/experience-shared-observer-G8JvgX/feel
+feel record: experience-shared/waitForFunction.png; findings=0; new-surfaces=0; evidence: /var/folders/f4/vz86j5nd0_sf56qdhzrmbbvw0000gn/T/experience-shared-observer-G8JvgX/feel
+feel record: experience-shared/01-continue-after.png; findings=0; new-surfaces=0; evidence: /var/folders/f4/vz86j5nd0_sf56qdhzrmbbvw0000gn/T/experience-shared-observer-G8JvgX/feel
+✔ collector consumes the existing observer screenshot record without another scan (616.549625ms)
+ℹ tests 14
+ℹ suites 0
+ℹ pass 14
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1741.15225
