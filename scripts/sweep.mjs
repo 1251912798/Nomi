@@ -10,19 +10,22 @@ import { launchNomiApp } from '../tests/ux/_launchApp.mjs'
 import { createAgentRuntimeFixture } from '../tests/ux/agent-runtime-fixture.mjs'
 import { DOCUMENT } from '../tests/ux/agent-runtime-walk-support.mjs'
 import { startEvidence, copyTranscripts, writeJson, saveCase, saveReport, scoreCollectedAgent } from '../tests/ux/g1/sweep-evidence.mjs'
-import { prepareRealText, attachRealText } from '../tests/ux/g1/sweep-real.mjs'
-import { inspectMcp } from '../tests/ux/g1/sweep-mcp.mjs'
+import { prepareRealText, attachRealText, assertRealTextCredential } from '../tests/ux/g1/sweep-real.mjs'
+import { c0Invocation } from '../tests/ux/g1/sweep-c0.mjs'
 import { runSurface } from '../tests/ux/g1/sweep-surfaces.mjs'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const { values } = parseArgs({ options: { packaged: { type: 'string' }, 'real-text': { type: 'boolean' },
-  budget: { type: 'string', default: '3' }, case: { type: 'string' }, help: { type: 'boolean' } } })
+  'planner-model': { type: 'string' }, budget: { type: 'string', default: '3' }, case: { type: 'string' }, help: { type: 'boolean' } } })
 if (values.help) {
-  console.log('pnpm run sweep [--packaged /absolute/Nomi.app] [--budget 3] [--case C0] [--real-text]')
+  console.log('pnpm run sweep [--packaged /absolute/Nomi.app] [--budget 3] [--case C0] [--real-text] [--planner-model gpt-5-nano|deepseek-v4-pro]')
   process.exit(0)
 }
 const budgetCny = Number(values.budget)
 if (!Number.isFinite(budgetCny) || budgetCny < 0 || budgetCny > 3) throw Error('Sweep budget must be 0–3 CNY')
+if (values['planner-model'] && (!values['real-text'] || values.case !== 'C0')) throw Error('--planner-model requires --real-text --case C0')
+if (values['real-text']) assertRealTextCredential()
+const { inspectMcp } = await import('../tests/ux/g1/sweep-mcp.mjs')
 const runId = new Date().toISOString().replaceAll(':', '-'), directory = path.join(root, 'artifacts/sweep', runId)
 fs.mkdirSync(directory, { recursive: true })
 const cases = JSON.parse(fs.readFileSync(path.join(root, 'tests/ux/g1/cases.json'), 'utf8'))
@@ -53,10 +56,16 @@ for (const entry of cases) for (const input of entry.inputs) {
   if (input.executor === 'c0') {
     let childError
     try {
-      await promisify(execFile)(process.execPath, [path.join(root, 'tests/ux/g1/c0-short-film.walk.mjs'), '--dry-run', ...(values.packaged ? ['--packaged', values.packaged] : [])],
-        { cwd: root, env: { ...process.env, NOMI_WALK_MODE: 'collect', NOMI_SWEEP_CASE_DIR: target }, maxBuffer: 1024 * 1024 })
+      const child = c0Invocation({ root, target, directory, realText: values['real-text'],
+        plannerModel: values['planner-model'], budgetCny, packaged: values.packaged })
+      await promisify(execFile)(process.execPath, child.args, { cwd: root, env: child.env, maxBuffer: 1024 * 1024 })
     } catch (error) { childError = error }
     for (const key of ['stations', 'deviations']) if (fs.existsSync(path.join(target, `${key}.json`))) record[key] = JSON.parse(fs.readFileSync(path.join(target, `${key}.json`), 'utf8'))
+    const childReport = path.join(target, 'report.json')
+    if (fs.existsSync(childReport)) {
+      const result = JSON.parse(fs.readFileSync(childReport, 'utf8'))
+      Object.assign(record, { costCny: result.costCny, reservedCny: result.reservedCny, mediaMode: result.mediaMode, plannerModel: result.plannerModel })
+    }
     Object.assign(walk, { stations: record.stations, deviations: record.deviations })
     if (childError) walk.record(Error(`C0 child failed: ${childError.code ?? 'unknown'}`), { id: 'c0-process', surface: 'storyboard' })
     if (!fs.existsSync(path.join(target, 'trace.zip'))) fs.writeFileSync(path.join(target, 'trace-unavailable.md'), 'C0 tracing did not finish; see deviations.json.\n')

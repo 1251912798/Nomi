@@ -1,6 +1,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import { prepareIsolation } from '../../../evals/lib/isoApp.mjs'
+import { prepareIsolation, realCatalogPath } from '../../../evals/lib/isoApp.mjs'
 import { publicPrices, REAL_MODELS } from './c0-real-budget.mjs'
 export async function prepareRealText(profile) {
   const response = await fetch('https://apimart.ai/pricing', { signal: AbortSignal.timeout(30000) })
@@ -38,4 +38,11 @@ export async function attachRealText(launched, { profile, quote, ledgerPath, bud
     localStorage.setItem('nomi.assistantModel', JSON.stringify({ vendorKey: 'apimart', modelKey }))
     window.dispatchEvent(new CustomEvent('nomi:assistant-model-changed'))
   }, REAL_MODELS.text)
+}
+
+export function assertRealTextCredential(file = realCatalogPath()) {
+  let record
+  try { record = JSON.parse(fs.readFileSync(file, 'utf8')).apiKeysByVendor?.apimart } catch { /* Report only a safe configuration error. */ }
+  if (record?.enc !== 'safeStorage' || record.enabled === false || typeof record.apiKey !== 'string' || !record.apiKey.trim())
+    throw Error('SWEEP_REAL_TEXT_KEY_REQUIRED: --real-text requires an enabled APIMart key in Nomi settings; no loopback fallback')
 }

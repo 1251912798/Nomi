@@ -78,3 +78,11 @@ Ponytail 独立明细发现四项机制问题，推送前一并修正：timeline
 总账问题分类 recurring（测试报告，非生产修复）：症状是同一批小字逐站重复使总账不可读；直接原因 saveReport 把 captureIssues 全量逐条输出；类根因是原始证据粒度与阅读粒度没有区分。实扫 startEvidence.capture → _collect.record 和 C0 createC0Collection.capture → 同一 saveReport，两类入口共用报告边界。按原始 rule/text/target/surface 元组聚合，不用坐标或站点作身份；每组保留首次站、次数、证据链接。功能 deviation 仍逐条；原始 deviations/stations/feel JSON 保持完整。依赖生命周期 not-applicable，无旧实现并行保留。
 
 验收：三站同命中先红后绿；不同规则/文字/目标/面不误合、跨 case 可合、功能断言不合并。相关 Node 测试、完整 loopback sweep、完整带锁 gates（排锁上限 40 分钟），正常 hooks commit/push 到现有 PR #666，确认无冲突。SWEEP-LAST 顶部 ≤8 行记录本轮数字与 push 后 HEAD。回滚撤销本轮测试/报告改动，保留 main 合并。
+
+## 混合模式（2026-09-09）
+
+用途：簇 A 这类模型契约验收只花文本钱；显式 `sweep --case C0 --real-text --planner-model <档> --budget <元>` 让规划请求走真实文本模型，媒体生成和审片使用有标识的本地测试信号，不能称为真实成片验收。默认 loopback 不变，不改生产代码。
+
+根因分类 recurring（测试机制）：C0 子进程始终 dry-run，CLI 的 real-text 意图未传到调度器；付费开关把文本与媒体绑在一起。实扫 scripts/sweep.mjs 的 C0/非 C0 两个入口、c0-real-main.mjs 的 appFetch/global fetch 两个出口、c0-real-budget.mjs 与 sweep-real-main.mjs 的预留边界。修在测试调度/发送边界，所有混合媒体请求只能本地响应或拒绝，文本按所选公开报价、请求字节上界和强制输出上限预留后才能发送；缺凭据明确失败，不回退。依赖版本不变，无生产修复合同；迁入补丁缺少的测试侧预算模块，不引入框架或新协议。
+
+范围：仅 scripts/tests 与本文；保留 main #668 视频等待、原生转录观察器和真实 C0 原预算。nano 输出最高 16000、deepseek 8192，报价低于上限时取小值。撤回本任务提交即可回滚，无数据迁移。验收：参数/预算传递、零媒体出站、并发及超预算拒发先红后绿；无 key 明确报错；完整 loopback 复扫及完整 gates exit 0，正常 hooks 后 push/PR。

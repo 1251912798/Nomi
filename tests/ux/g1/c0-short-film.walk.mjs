@@ -15,7 +15,7 @@ import { parseArgs } from 'node:util'
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..')
 const { values } = parseArgs({ options: {
   'dry-run': { type: 'boolean' }, real: { type: 'boolean' },
-  packaged: { type: 'string' }, help: { type: 'boolean' },
+  'planner-model': { type: 'string' }, packaged: { type: 'string' }, help: { type: 'boolean' },
 }, allowPositionals: false })
 if (values.help) {
   console.log('node tests/ux/g1/c0-short-film.walk.mjs (--dry-run | --real) [--packaged /absolute/Nomi.app]')
@@ -104,7 +104,7 @@ try {
   }
   if (executablePath) report.executableSha256 = hash(executablePath)
   scheduler = values.real
-    ? await (await import('./c0-real-scheduler.mjs')).createRealScheduler({ tempRoot, attemptDir, outputDir, report })
+    ? await (await import('./c0-real-scheduler.mjs')).createRealScheduler({ tempRoot, attemptDir, outputDir, report, plannerModel: values['planner-model'] })
     : await createDryScheduler(root, settingsDir, path.join(attemptDir, 'fixture-media'), report)
   const MODEL = scheduler.model
   const launch = async () => {
