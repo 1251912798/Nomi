@@ -235,7 +235,7 @@ export function useNodeModelAutoSelect({
       message: failure
         ? t('generationCommon.node.providerFailed', { vendor: sourceVendor, reason: failure.reason, hint: failure.hint })
         : t('generationCommon.node.providerDisconnected', { vendor: sourceVendor }),
-      actionLabel: t('generationCommon.node.switchProvider', { model: target.label, vendor: optionVendor }),
+      actionLabel: t('generationCommon.node.switchProvider', { model: target.label, vendor: target.vendorName }),
       onAction: () => {
         const current = getLatestMeta()
         if (readMeta(current, 'modelVendor') !== readMeta(latestMeta, 'modelVendor')
