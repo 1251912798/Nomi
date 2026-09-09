@@ -64,6 +64,7 @@ import {
   resolveNodeVisualSize,
 } from './nodeSizing'
 import { useNodeVideoHoverPreview } from './useNodeVideoHoverPreview'
+import { NodeLabelRow } from './NodeLabelRow'
 import { NodeInlineImageTitle } from './NodeImagePreviewActions'
 import { useNodeDisplayPrompt } from './useNodeDisplayPrompt'
 import { useNodeMediaPreview } from './useNodeMediaPreview'
@@ -200,10 +201,6 @@ function BaseGenerationNodeImpl({
   // C5: 文本节点走专属可编辑 body（TextDocumentNode），像 card 那样脱离图片预览。
   const isTextKind = node.kind === 'text'
   const hasResult = Boolean(node.result?.url)
-  const imagePreviewUrl = node.kind !== 'panorama' && node.result?.type === 'image'
-    ? (node.result.url || '').trim()
-    : ''
-  const canOpenImagePreview = Boolean(imagePreviewUrl)
   const mediaPreviewPriority = selected || focusFlash
   const localImageOpPending = isLocalImageOpPending(node)
   // 可视尺寸（卡片固定宽 / 动态高）的单一真相源 resolveNodeVisualSize——连线锚点 / 最小地图 /
@@ -431,14 +428,10 @@ function BaseGenerationNodeImpl({
         />
       ) : null}
       {mediaPreviewControls}
-      <header
-        className={cn(
-          'generation-canvas-v2-node__header',
-          'absolute top-[10px] left-[10px] right-[10px] z-[4]',
-          'flex items-center justify-start gap-2 min-h-0 p-0',
-          'pointer-events-auto cursor-grab',
-        )}
-      >
+      <NodeLabelRow>
+        <ShotPreviewOverlays shotIndex={shotIndex} />
+        {!isCardKind && !isTextKind ? <NodeInlineImageTitle nodeId={node.id} value={node.title || ''} readOnly={readOnly} /> : null}
+        {!isCardKind ? <ShotMountBadges cards={mountedCards} /> : null}
         <NodeGenerationStatus node={node} />
         <TechnicalReviewBadge meta={node.meta} />
         {/* 拆解收起态（视图 07）：视频节点有拆解结果且面板未占槽时，挂「已拆解 · N 镜」角标 + 可点回浮条。 */}
@@ -464,10 +457,7 @@ function BaseGenerationNodeImpl({
           </button>
         ) : null}
         {/* 2026-08-04 撤离卡片右上两颗常驻按钮（放大＝浮条「全屏」去重；生成记录迁进浮动工具栏，门是 selected 非 hover）——动作不压内容（§1.5）。 */}
-      </header>
-
-      {/* 切片2：镜头挂载的设定卡徽章——不选中也能一眼看「挂了谁」（卡节点不显，组件空挂载自返 null）。 */}
-      {!isCardKind ? <ShotMountBadges cards={mountedCards} /> : null}
+      </NodeLabelRow>
 
       <ProvenancePanel node={node} open={provenanceOpen} onClose={() => setProvenanceOpen(false)} />
 
@@ -598,14 +588,9 @@ function BaseGenerationNodeImpl({
             kind={node.kind}
             selected={selected} needsFirstFrame={needsFirstFrame}
             waitingUpstream={hasFrameSourceEdge}
-            shotIndex={shotIndex}
-            title={node.title}
             prompt={displayPrompt}
           />
         )}
-        {canOpenImagePreview && !isCardKind && !readOnly && !resultStackOpen && imageEditing.editGrid === null ? (
-          <NodeInlineImageTitle nodeId={node.id} value={node.title || ''} selected={selected} />
-        ) : null}
         {imageEditing.editGrid !== null &&
         (node.kind === 'image' || isAssetKind) &&
         node.result?.type === 'image' &&
@@ -643,7 +628,6 @@ function BaseGenerationNodeImpl({
       ) : null}
 
       {!localImageOpPending ? <NodeGeneratingOverlay reportFeedback={reportFeedback} node={node} motion={waitingMotion} preset={waitingPreset} /> : null}
-      <ShotPreviewOverlays shotIndex={shotIndex} />
 
       <ProductionShotOverlays reportFeedback={reportFeedback} node={node} selected={selected && !isMultiSelectActive} />{/* P4 S5+S6 多镜叠加：占位三态 + 版本条（非多镜早退零开销） */}
       {showSideTimelineDrag ? (

@@ -1,0 +1,134 @@
+[
+  {
+    "kind": "empty",
+    "zoom": 0.2,
+    "area": 0,
+    "rowBottom": 158.8000030517578,
+    "mediaTop": 160,
+    "toolbarBottom": 152,
+    "rowTop": 153.1999969482422,
+    "rowLeft": 160,
+    "mediaLeft": 160
+  },
+  {
+    "kind": "empty",
+    "zoom": 0.4,
+    "area": 0,
+    "rowBottom": 157.60000610351562,
+    "mediaTop": 160,
+    "toolbarBottom": 144,
+    "rowTop": 146.39999389648438,
+    "rowLeft": 160,
+    "mediaLeft": 160
+  },
+  {
+    "kind": "empty",
+    "zoom": 1,
+    "area": 0,
+    "rowBottom": 154,
+    "mediaTop": 160,
+    "toolbarBottom": 120,
+    "rowTop": 126,
+    "rowLeft": 160,
+    "mediaLeft": 160
+  },
+  {
+    "kind": "empty",
+    "zoom": 2,
+    "area": 0,
+    "rowBottom": 148,
+    "mediaTop": 160,
+    "toolbarBottom": 80,
+    "rowTop": 92,
+    "rowLeft": 160,
+    "mediaLeft": 160
+  },
+  {
+    "kind": "image",
+    "zoom": 0.2,
+    "area": 0,
+    "rowBottom": 158.8000030517578,
+    "mediaTop": 160,
+    "toolbarBottom": 152,
+    "rowTop": 153.1999969482422,
+    "rowLeft": 160,
+    "mediaLeft": 160
+  },
+  {
+    "kind": "image",
+    "zoom": 0.4,
+    "area": 0,
+    "rowBottom": 157.60000610351562,
+    "mediaTop": 160,
+    "toolbarBottom": 144,
+    "rowTop": 146.39999389648438,
+    "rowLeft": 160,
+    "mediaLeft": 160
+  },
+  {
+    "kind": "image",
+    "zoom": 1,
+    "area": 0,
+    "rowBottom": 154,
+    "mediaTop": 160,
+    "toolbarBottom": 120,
+    "rowTop": 126,
+    "rowLeft": 160,
+    "mediaLeft": 160
+  },
+  {
+    "kind": "image",
+    "zoom": 2,
+    "area": 0,
+    "rowBottom": 148,
+    "mediaTop": 160,
+    "toolbarBottom": 80,
+    "rowTop": 92,
+    "rowLeft": 160,
+    "mediaLeft": 160
+  },
+  {
+    "kind": "video",
+    "zoom": 0.2,
+    "area": 0,
+    "rowBottom": 158.8000030517578,
+    "mediaTop": 160,
+    "toolbarBottom": 152,
+    "rowTop": 153.1999969482422,
+    "rowLeft": 160,
+    "mediaLeft": 160
+  },
+  {
+    "kind": "video",
+    "zoom": 0.4,
+    "area": 0,
+    "rowBottom": 157.60000610351562,
+    "mediaTop": 160,
+    "toolbarBottom": 144,
+    "rowTop": 146.39999389648438,
+    "rowLeft": 160,
+    "mediaLeft": 160
+  },
+  {
+    "kind": "video",
+    "zoom": 1,
+    "area": 0,
+    "rowBottom": 154,
+    "mediaTop": 160,
+    "toolbarBottom": 120,
+    "rowTop": 126,
+    "rowLeft": 160,
+    "mediaLeft": 160
+  },
+  {
+    "kind": "video",
+    "zoom": 2,
+    "area": 0,
+    "rowBottom": 148,
+    "mediaTop": 160,
+    "toolbarBottom": 80,
+    "rowTop": 92,
+    "rowLeft": 160,
+    "mediaLeft": 160
+  }
+]
