@@ -23,10 +23,10 @@ export const shots = [
 
 // These are deliberately synthetic motion/audio test signals, NOT a pre-made film.
 // Each request selects its own shot; results enter the project only through generation.
-export async function createC0Fixture(rootDir, settingsDir, mediaDir) {
+export async function createC0Fixture(rootDir, settingsDir, mediaDir, { videoDelayMs = {} } = {}) {
   const text = await createAgentRuntimeFixture({ rootDir, settingsDir })
   const calls = []
-  const sockets = new Set()
+  const sockets = new Set(), tasks = new Map()
   let server
   try {
     fs.mkdirSync(mediaDir, { recursive: true })
@@ -41,6 +41,15 @@ export async function createC0Fixture(rootDir, settingsDir, mediaDir) {
     })
     server = http.createServer(async (req, res) => {
       try {
+        if (req.method === 'GET' && req.url.startsWith('/v1/tasks/')) {
+          const id = req.url.split('/').at(-1), task = tasks.get(id)
+          if (!task) { res.writeHead(404).end(); return }
+          const ready = performance.now() >= task.readyAt
+          res.writeHead(200, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ data: { id, status: ready ? 'completed' : 'processing',
+            ...(ready ? { result: { videos: [{ url: [results[task.index]] }] } } : {}) } }))
+          return
+        }
         const chunks = []
         for await (const chunk of req) chunks.push(chunk)
         const body = JSON.parse(Buffer.concat(chunks).toString('utf8'))
@@ -52,6 +61,13 @@ export async function createC0Fixture(rootDir, settingsDir, mediaDir) {
           return
         }
         calls.push(index + 1)
+        if (videoDelayMs[index + 1]) {
+          const taskId = `c0-delayed-${index + 1}`
+          tasks.set(taskId, { index, readyAt: performance.now() + videoDelayMs[index + 1] })
+          res.writeHead(200, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ data: [{ status: 'submitted', task_id: taskId }] }))
+          return
+        }
         res.writeHead(200, { 'Content-Type': 'application/json' })
         res.end(JSON.stringify({ data: [{ url: results[index] }] }))
       } catch {
@@ -80,7 +96,11 @@ export async function createC0Fixture(rootDir, settingsDir, mediaDir) {
       create: { method: 'POST', path: '/v1/videos/generations',
         headers: { 'Content-Type': 'application/json' },
         body: { model: '{{model.modelKey}}', prompt: '{{request.prompt}}' },
-        response_mapping: { video_url: 'data.0.url' } } })
+        response_mapping: { video_url: 'data.0.url', task_id: 'data.0.task_id' },
+        provider_meta_mapping: { task_id: 'data.0.task_id' } },
+      query: { method: 'GET', path: '/v1/tasks/{{providerMeta.task_id}}',
+        response_mapping: { task_id: 'data.id', status: 'data.status', video_url: 'data.result.videos.0.url.0' } },
+      statusMapping: { queued: ['submitted'], running: ['processing'], succeeded: ['completed'], failed: ['failed'] } })
     fs.writeFileSync(catalogFile, JSON.stringify(catalog))
     return { text, calls, async close() {
       await text.close()
@@ -99,11 +119,15 @@ export async function createC0Fixture(rootDir, settingsDir, mediaDir) {
 
 // Provider behavior only; the walk owns every UI action and domain assertion.
 export async function createDryScheduler(root, settingsDir, mediaDir, report) {
-  const fixture = await createC0Fixture(root, settingsDir, mediaDir)
+  const videoDelayMs = JSON.parse(process.env.NOMI_C0_VIDEO_DELAYS ?? '{}')
+  report.videoFixtureDelays = videoDelayMs
+  const fixture = await createC0Fixture(root, settingsDir, mediaDir, { videoDelayMs })
   let plan, done
   const planId = 'c0-plan-1', reviews = []
   return {
     model: MODEL,
+    async videoWaitQuote() { return { requests: shots.map(s => ({ model: MODEL, duration: s.durationSec })),
+      concurrency: 6, measuredMultiplier: 30, source: 'gate4b task brief: 8s clips take 120–240s; loopback uses same wait contract' } },
     get requests() { return fixture.text.requests },
     async attach() {},
     async assertNoGeneration(expect) { expect(fixture.calls).toEqual([]) },
@@ -133,9 +157,9 @@ export async function createDryScheduler(root, settingsDir, mediaDir, report) {
       reply: { type: 'text', text: JSON.stringify({ reason: '零额度测试信号，不能评故事质量；待真实模型验收。', scores: { identity: 0, composition: 0, continuity: 0, action: 0 } }) },
     }))
     },
-    async generationCompleted({ expect }) {
+    async generationCompleted({ expect, complete = true }) {
       expect([...fixture.calls].sort((a, b) => a - b)).toEqual(shots.map((s) => s.index))
-      await Promise.all(reviews.map((r) => recorded(r.received, 'C0 synthetic review')))
+      if (complete) await Promise.all(reviews.map((r) => recorded(r.received, 'C0 synthetic review')))
     },
     async finish() {
       fixture.text.assertClean()

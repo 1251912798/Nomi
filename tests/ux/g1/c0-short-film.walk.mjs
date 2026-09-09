@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // C0: one UI journey, with either synthetic or budgeted real provider dispatch.
 import fs from 'node:fs'
+import { videoWaitBudget, waitForVideos } from './c0-video-wait.mjs'
 import { BUDGET_CNY } from './c0-real-budget.mjs'
 import ffmpeg from '@ffmpeg-installer/ffmpeg'
 import ffprobe from '@ffprobe-installer/ffprobe'
@@ -179,7 +180,7 @@ try {
     await clickOrFail(win.locator('[data-storyboard-id]').first(), '进入可编辑分镜表')
     await expect(win.getByRole('textbox', { name: '方案标题', exact: true })).toHaveValue('日落前的一分钟')
   }, '分镜审批 1 次')
-  let spendDialog, spendProof
+  let spendDialog, spendProof, readyNodeIds = []
   await step('03', '分镜物化到画布', '八个节点顺序、参数对应；生成前仍零媒体请求', async () => {
     await clickOrFail(win.locator('[data-storyboard-batch="true"]'), '生成未生成的八镜')
     await expect.poll(async () => (await payload()).generationCanvas.nodes.length).toBe(8)
@@ -199,20 +200,32 @@ try {
     await clickOrFail(spendDialog.getByRole('button', { name: '生成', exact: true }), values.real ? '批准预算内生成' : '批准零额度生成')
     await expectAbsent(spendDialog, { provenBy: spendProof, message: '生成确认已消费' })
     await screenshotSettled(win, { path: path.join(attemptDir, `C0-${sha.slice(0, 8)}-04-submitted.png`) })
-    await expect.poll(async () => {
-      const nodes = (await payload()).generationCanvas.nodes
-      const failed = nodes.find((n) => n.status === 'error')
-      if (failed) throw new Error(`Generation failed: ${failed.error}`)
-      return nodes.filter((n) => n.result?.type === 'video' && n.result.url.startsWith('nomi-local://')).length
-    }, { timeout: 180_000 }).toBe(8)
+    const waitQuote = await scheduler.videoWaitQuote()
+    const budget = videoWaitBudget(waitQuote)
+    report.videoWaitQuote = waitQuote
+    const observations = await waitForVideos({ nodeIds, budget,
+      readNodes: async () => (await payload()).generationCanvas.nodes,
+      progress: row => {
+        fs.appendFileSync(path.join(attemptDir, 'video-progress.jsonl'), JSON.stringify(row) + '\n')
+        console.log('C0_VIDEO_PROGRESS', JSON.stringify(row))
+      },
+      deviation: row => {
+        const error = Error(`视频未就绪：${JSON.stringify(row)}`)
+        if (collection) collection.walk.record(error, collection.walk.stations.at(-1),
+          { assertion: 'video-terminal-result', ...row })
+        else { report.videoDeviations ??= []; report.videoDeviations.push(row) }
+      },
+    })
+    readyNodeIds = observations.filter(row => row.ready).map(row => row.nodeId)
+    expect(readyNodeIds).toHaveLength(8)
     expect((await payload()).generationCanvas.nodes.every((n) => n.meta.modelKey === MODEL)).toBe(true)
-    await scheduler.generationCompleted({ expect })
+    await scheduler.generationCompleted({ expect, readyNodeIds, complete: readyNodeIds.length === nodeIds.length })
     await openCanvas(win)
     await clickOrFail(win.getByLabel('适应视图').first(), '检查画布全貌')
-    expect((await payload()).generationCanvas.nodes.every((n) => Boolean(n.result.url))).toBe(true)
+    expect(observations.every(row => row.ready)).toBe(true)
   }, values.real ? '预算内生成确认 1 次' : '零额度生成确认 1 次')
   await step('05', '按叙事加入时间轴并预览', '八段引用对应节点、无空隙、64秒；预览真实推进', async () => {
-    for (const [i, id] of nodeIds.entries()) {
+    for (const [i, id] of readyNodeIds.entries()) {
       const node = win.locator(`[data-node-id="${id}"]`)
       // The minimum zoom can leave the last row below the viewport after the timeline opens.
       if (await node.count() === 0) {
@@ -230,7 +243,7 @@ try {
     const clips = videoClips(p)
     expect(clips.map((c) => c.sourceNodeId)).toEqual(nodeIds)
     for (const [i, clip] of clips.entries()) expect(clip.startFrame).toBe(i ? clips[i - 1].endFrame : 0)
-    expect(clips.at(-1).endFrame / p.timeline.fps).toBeCloseTo(64, 1)
+    expect((clips.at(-1)?.endFrame ?? 0) / p.timeline.fps).toBeCloseTo(64, 1)
     await clickOrFail(win.locator('[aria-label="工作区切换"]').getByText('预览', { exact: true }), '预览成片')
     const video = win.locator('.workbench-preview-player__video').first()
     await expect(video).toBeVisible()

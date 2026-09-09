@@ -1,0 +1,34 @@
+feel record: g1-c0/waitForFunction.png; findings=5; new-surfaces=1; evidence: /Users/aoqimin/Desktop/Nomi-sweep-b/artifacts/feel/g1-c0-4451d39c-34b4-4f82-a1a5-73e780b57cc8
+feel record: g1-c0/00.png; findings=5; new-surfaces=1; evidence: /Users/aoqimin/Desktop/Nomi-sweep-b/artifacts/feel/g1-c0-4451d39c-34b4-4f82-a1a5-73e780b57cc8
+feel record: g1-c0/waitForFunction.png; findings=5; new-surfaces=0; evidence: /Users/aoqimin/Desktop/Nomi-sweep-b/artifacts/feel/g1-c0-4451d39c-34b4-4f82-a1a5-73e780b57cc8
+feel record: g1-c0/01.png; findings=5; new-surfaces=1; evidence: /Users/aoqimin/Desktop/Nomi-sweep-b/artifacts/feel/g1-c0-4451d39c-34b4-4f82-a1a5-73e780b57cc8
+feel record: g1-c0/waitForFunction.png; findings=21; new-surfaces=1; evidence: /Users/aoqimin/Desktop/Nomi-sweep-b/artifacts/feel/g1-c0-4451d39c-34b4-4f82-a1a5-73e780b57cc8
+feel record: g1-c0/C0-e1f7e732-02-approval.png; findings=21; new-surfaces=2; evidence: /Users/aoqimin/Desktop/Nomi-sweep-b/artifacts/feel/g1-c0-4451d39c-34b4-4f82-a1a5-73e780b57cc8
+feel record: g1-c0/waitForFunction.png; findings=36; new-surfaces=2; evidence: /Users/aoqimin/Desktop/Nomi-sweep-b/artifacts/feel/g1-c0-4451d39c-34b4-4f82-a1a5-73e780b57cc8
+feel record: g1-c0/02.png; findings=36; new-surfaces=3; evidence: /Users/aoqimin/Desktop/Nomi-sweep-b/artifacts/feel/g1-c0-4451d39c-34b4-4f82-a1a5-73e780b57cc8
+feel record: g1-c0/waitForFunction.png; findings=97; new-surfaces=0; evidence: /Users/aoqimin/Desktop/Nomi-sweep-b/artifacts/feel/g1-c0-4451d39c-34b4-4f82-a1a5-73e780b57cc8
+feel record: g1-c0/03.png; findings=97; new-surfaces=3; evidence: /Users/aoqimin/Desktop/Nomi-sweep-b/artifacts/feel/g1-c0-4451d39c-34b4-4f82-a1a5-73e780b57cc8
+feel record: g1-c0/waitForFunction.png; findings=38; new-surfaces=0; evidence: /Users/aoqimin/Desktop/Nomi-sweep-b/artifacts/feel/g1-c0-4451d39c-34b4-4f82-a1a5-73e780b57cc8
+feel record: g1-c0/C0-e1f7e732-04-submitted.png; findings=38; new-surfaces=3; evidence: /Users/aoqimin/Desktop/Nomi-sweep-b/artifacts/feel/g1-c0-4451d39c-34b4-4f82-a1a5-73e780b57cc8
+C0_VIDEO_PROGRESS {"waitedMs":0,"ready":6,"failed":0,"total":8,"budget":600000}
+C0_VIDEO_PROGRESS {"waitedMs":30801,"ready":6,"failed":0,"total":8,"budget":600000}
+C0_VIDEO_PROGRESS {"waitedMs":61398,"ready":6,"failed":0,"total":8,"budget":600000}
+C0_VIDEO_PROGRESS {"waitedMs":91892,"ready":6,"failed":0,"total":8,"budget":600000}
+C0_VIDEO_PROGRESS {"waitedMs":122368,"ready":6,"failed":0,"total":8,"budget":600000}
+C0_VIDEO_PROGRESS {"waitedMs":152868,"ready":6,"failed":0,"total":8,"budget":600000}
+C0_VIDEO_PROGRESS {"waitedMs":183489,"ready":6,"failed":0,"total":8,"budget":600000}
+C0_VIDEO_PROGRESS {"waitedMs":189230,"ready":8,"failed":0,"total":8,"budget":600000,"final":true}
+feel record: g1-c0/waitForFunction.png; findings=91; new-surfaces=0; evidence: /Users/aoqimin/Desktop/Nomi-sweep-b/artifacts/feel/g1-c0-4451d39c-34b4-4f82-a1a5-73e780b57cc8
+feel record: g1-c0/04.png; findings=88; new-surfaces=4; evidence: /Users/aoqimin/Desktop/Nomi-sweep-b/artifacts/feel/g1-c0-4451d39c-34b4-4f82-a1a5-73e780b57cc8
+feel record: g1-c0/waitForFunction.png; findings=91; new-surfaces=0; evidence: /Users/aoqimin/Desktop/Nomi-sweep-b/artifacts/feel/g1-c0-4451d39c-34b4-4f82-a1a5-73e780b57cc8
+feel record: g1-c0/05.png; findings=91; new-surfaces=2; evidence: /Users/aoqimin/Desktop/Nomi-sweep-b/artifacts/feel/g1-c0-4451d39c-34b4-4f82-a1a5-73e780b57cc8
+feel record: g1-c0/waitForFunction.png; findings=99; new-surfaces=0; evidence: /Users/aoqimin/Desktop/Nomi-sweep-b/artifacts/feel/g1-c0-4451d39c-34b4-4f82-a1a5-73e780b57cc8
+feel record: g1-c0/06.png; findings=92; new-surfaces=3; evidence: /Users/aoqimin/Desktop/Nomi-sweep-b/artifacts/feel/g1-c0-4451d39c-34b4-4f82-a1a5-73e780b57cc8
+feel record: g1-c0/waitForFunction.png; findings=90; new-surfaces=2; evidence: /Users/aoqimin/Desktop/Nomi-sweep-b/artifacts/feel/g1-c0-11e8e844-b61c-408c-8cc7-e7f2bea8bd79
+feel record: g1-c0/07.png; findings=90; new-surfaces=2; evidence: /Users/aoqimin/Desktop/Nomi-sweep-b/artifacts/feel/g1-c0-11e8e844-b61c-408c-8cc7-e7f2bea8bd79
+C0 collected-deviations; evidence: /Users/aoqimin/Desktop/Nomi-sweep-b/artifacts/sweep/c0-video-wait-green; paid calls: 0
+
+GREEN_RECEIPT {"result": "collected-deviations", "functionalDeviations": 0, "feelDeviations": 504, "exportSeconds": "64.000000", "exportSha256": "760d8f6370e3b032f445462135bcc48c2d63d5cee93331d2c49657fa821f6e1b", "frames": {"first.png": "2c475ced49729abdf79f704ebb868c610322ac037cd40a3b028a252f09914183", "middle.png": "50e7d6b3da2401043803ff53e05a0ad973f8066f7ea73223b1a1d5dda6db9b94", "last.png": "08c04448baeab8ef0ed9f7036bda39e570445b280c2dcf3212ef4ca15afd7e46"}}
+VISUAL_REVIEW: first/middle/last PNG inspected: distinct expected loopback test patterns, final frame timecode 00:00:07.000 of eighth clip. These prove export continuity and decoding only, not real story/identity quality.
+FULL_SWEEP_RECEIPT {"ledger": "artifacts/sweep/2026-09-09T01-00-44.689Z/report.md", "completedCases": 33, "functionalDeviations": [], "feelFindings": 5912, "exitCode": 0}
+GATES_RECEIPT {"command": "python3 scripts/with-gates-lock.py -- pnpm run gates", "exitCode": 0, "log": "artifacts/sweep/c0-video-wait-gates.log", "sha256": "9d79d3778970a6d26bc76d437c185a6617462c996aca0a869ffd0517c32a7877", "contracts": "76 total; 73 passed; 0 blocking; 3 advisory", "vitest": "12083 passed; 2 skipped"}
