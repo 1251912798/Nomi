@@ -166,3 +166,5 @@ ds-bundle/
 # Codex/agent 盘上现场文件——只住 worktree，不进树（09-06 曾经由 #524 漏进 main）
 .codex-heartbeat
 CODEX-REPORT.md
+/*-LAST.md
+/*-RULINGS.md
