@@ -1,3 +1,5 @@
+import { createLaneModelRead } from './laneModelRead.mjs';
+import type { AgentModelEntry } from '../shared/agentCapabilities/availableModels.js';
 // Assemble upstream tools; pi owns tool activation and its durable addedToolNames transitions.
 import type { AgentHarnessTool } from '@earendil-works/pi-agent-core';
 import type { Context } from '@earendil-works/pi-agent-core/harness/context';
@@ -43,10 +45,12 @@ export async function createLaneNativeAssembly(input: Omit<LaneCodingToolsInput,
   factories?: LaneCodingToolsInput['factories'];
   deferredGroups?: readonly LaneDeferredGroup[];
   initialUnlockReasons?: readonly LaneCodingUnlockReason[];
+  availableModels?: () => readonly AgentModelEntry[];
 }) {
   const coding = await createLaneCodingTools({ ...input, factories: input.factories ?? await loadPiCodingToolFactories() });
   const groups: readonly LaneDeferredGroup[] = [
     { name: 'coding', toolNames: LANE_CODING_TOOL_NAMES }, ...(input.deferredGroups ?? []),
+    { name: 'models', toolNames: ['nomi_read'] },
   ];
   const alwaysOn = laneToolMenu().activeToolNames;
   const names = new Set(alwaysOn);
@@ -93,16 +97,18 @@ export async function createLaneNativeAssembly(input: Omit<LaneCodingToolsInput,
   };
   const effects: Readonly<Record<string, LaneToolEffects>> = Object.freeze({
     ...LANE_CODING_TOOL_EFFECTS,
+    nomi_read: { mutates: false, billable: false, reversal: 'none' },
     [LANE_TOOL_REQUEST_TOOL_NAME]: { mutates: false, billable: false, reversal: 'none' },
   });
-  const promptSources = [...coding, request] as unknown as PiAgentTool[];
+  const modelRead = createLaneModelRead(() => input.availableModels?.() ?? []);
+  const promptSources = [...coding, modelRead, request] as unknown as PiAgentTool[];
   const promptTools = promptSources.flatMap((tool) => tool.promptSnippet ? [{
     name: tool.name,
     promptSnippet: tool.promptSnippet,
     ...(tool.promptGuidelines ? { promptGuidelines: tool.promptGuidelines } : {}),
   }] : []);
   return {
-    tools: [...coding, request],
+    tools: [...coding, modelRead as AgentHarnessTool<undefined>, request],
     promptTools,
     groups,
     effects,

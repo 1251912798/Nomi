@@ -1,6 +1,7 @@
 // Production resource assembly. The installed libraries own shell execution and OS isolation.
 import { SandboxManager } from '@anthropic-ai/sandbox-runtime';
 import { createLocalBashOperations } from '@earendil-works/pi-coding-agent';
+import type { AgentModelEntry } from '../shared/agentCapabilities/availableModels.js';
 import type { SkillRecord } from '../skills/skillStore.js';
 import { LANE_WRITE_TOOL_TIMEOUT_MS } from '../shared/agentLane/laneToolContract.js';
 import { openLaneSandbox, sandboxPolicyFor, type LaneBashOperations } from './laneCodingSandbox.mjs';
@@ -12,6 +13,7 @@ export async function openLaneNativeDesktop(input: {
   settingsRoot: string;
   skills: readonly SkillRecord[];
   deferredGroups?: readonly LaneDeferredGroup[];
+  availableModels?: () => readonly AgentModelEntry[];
 }) {
   const installed = await createLaneInstalledSkills(input.skills);
   const local = createLocalBashOperations();
@@ -30,6 +32,7 @@ export async function openLaneNativeDesktop(input: {
       sandbox,
       bashTimeoutMs: LANE_WRITE_TOOL_TIMEOUT_MS,
       deferredGroups: input.deferredGroups,
+      availableModels: input.availableModels,
     });
     return { ...assembly, skills: installed.skills, sandboxActive: sandbox.active,
       ...(sandbox.inactiveReason ? { sandboxInactiveReason: sandbox.inactiveReason } : {}),
