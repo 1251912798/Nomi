@@ -1,16 +1,16 @@
 import { useTranslation } from 'react-i18next'
 import { useCanvasMenuPreferenceStore } from '../store/canvasMenuPreferenceStore'
 import { DEFAULT_CANVAS_MENU_PREFERENCE_SETTINGS } from '../../../../electron/shared/contracts/canvasMenuPreference'
-import { showInfoToast } from '../../../utils/showInfoToast'
+import { notify } from '../../../ui/notificationPolicy'
 import { moveCanvasIntentUp, type CanvasAddIntentId } from './canvasToolbarModel'
 
-export function CanvasAddPreferenceActions({ intentId, previousIntentId, onDone }: { intentId?: CanvasAddIntentId; previousIntentId?: CanvasAddIntentId; onDone?: () => void }): JSX.Element | null {
+export function CanvasAddPreferenceActions({ intentId, previousIntentId, onDone, onFeedback }: { intentId?: CanvasAddIntentId; previousIntentId?: CanvasAddIntentId; onDone?: () => void; onFeedback: (message: string) => void }): JSX.Element | null {
   const { t } = useTranslation()
   const preference = useCanvasMenuPreferenceStore((state) => state.preference)
   const save = useCanvasMenuPreferenceStore((state) => state.save)
   const apply = (value: typeof preference) => {
-    void save(value).catch(() => showInfoToast(t('canvas.menuPreference.saveFailed')))
-    onDone?.()
+    onFeedback('')
+    void save(value).then(() => { onFeedback(''); onDone?.() }).catch(() => notify({ identity: `canvas-menu:${intentId ?? 'reset'}`, reason: 'save-failed', message: t('canvas.menuPreference.saveFailed'), type: 'error', level: 'inline', present: onFeedback }))
   }
   const buttonClass = 'px-2 py-1 text-micro text-nomi-ink-60 rounded-nomi hover:bg-nomi-ink-05 disabled:opacity-40'
   if (!intentId) {

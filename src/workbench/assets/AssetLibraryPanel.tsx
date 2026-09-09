@@ -25,7 +25,7 @@ import { useGenerationCanvasStore } from '../generationCanvas/store/generationCa
 import { useWorkbenchStore } from '../workbenchStore'
 import { confirmDialog, DesignEmptyState, NomiLoadingMark, promptDialog, TooltipProvider } from '../../design'
 import { acceptAttrForKinds, mediaKindFromExtension } from '../../../electron/assets/mediaTypes'
-import { toast } from '../../ui/toast'
+import { notify } from '../../ui/notificationPolicy'
 import {
   AssetGridCell,
   FolderGridCell,
@@ -86,23 +86,21 @@ export function classifyUploadFiles(files: File[]): UploadClassification {
 }
 
 // 导入结果 → 用户反馈（Gap C：此前计数全被丢弃，超大/重复/失败/超上限零提示）。
-function reportMediaImport(result: GenerationAssetImportResult): void {
-  if (result.created.length) toast(i18n.t('assetLibrary.importedAssets', { count: result.created.length }), 'success')
+function reportMediaImport(result: GenerationAssetImportResult, present: (message: string) => void): void {
   const skipped: string[] = []
   if (result.skippedTooLargeCount) skipped.push(i18n.t('assetLibrary.skippedTooLarge', { count: result.skippedTooLargeCount }))
   if (result.skippedOverLimitCount) skipped.push(i18n.t('assetLibrary.skippedOverLimit', { count: result.skippedOverLimitCount }))
   if (result.skippedDuplicateCount) skipped.push(i18n.t('assetLibrary.skippedDuplicate', { count: result.skippedDuplicateCount }))
   if (result.failedCount) skipped.push(i18n.t('assetLibrary.skippedFailed', { count: result.failedCount }))
-  if (skipped.length) toast(i18n.t('assetLibrary.skippedSummary', { items: skipped.join(i18n.t('assetLibrary.listSeparator')) }), result.failedCount ? 'error' : 'warning')
+  if (skipped.length) present(i18n.t('assetLibrary.skippedSummary', { items: skipped.join(i18n.t('assetLibrary.listSeparator')) }))
 }
 
-function reportAudioImport(result: AudioImportResult): void {
-  if (result.uploadedCount) toast(i18n.t('assetLibrary.importedAudio', { count: result.uploadedCount }), 'success')
+function reportAudioImport(result: AudioImportResult, present: (message: string) => void): void {
   const skipped: string[] = []
   if (result.skippedTooLargeCount) skipped.push(i18n.t('assetLibrary.skippedTooLarge', { count: result.skippedTooLargeCount }))
   if (result.skippedDuplicateCount) skipped.push(i18n.t('assetLibrary.skippedDuplicate', { count: result.skippedDuplicateCount }))
   if (result.failedCount) skipped.push(i18n.t('assetLibrary.skippedFailed', { count: result.failedCount }))
-  if (skipped.length) toast(i18n.t('assetLibrary.skippedSummary', { items: skipped.join(i18n.t('assetLibrary.listSeparator')) }), result.failedCount ? 'error' : 'warning')
+  if (skipped.length) present(i18n.t('assetLibrary.skippedSummary', { items: skipped.join(i18n.t('assetLibrary.listSeparator')) }))
 }
 
 type AssetLibraryContentProps = {
@@ -131,6 +129,15 @@ export function AssetLibraryContent({
   className,
 }: AssetLibraryContentProps): JSX.Element {
   const { t } = useTranslation()
+  const [feedback, setFeedback] = React.useState<Record<string, string[]>>({})
+  const feedbackOwner = projectId ?? ''
+  const present = React.useCallback((message: string) => {
+    setFeedback((current) => ({ ...current, [feedbackOwner]: message
+      ? [...new Set([...(current[feedbackOwner] ?? []), message])] : [] }))
+  }, [feedbackOwner])
+  const report = React.useCallback((message: string, type: 'info' | 'warning' | 'error' = 'warning') => {
+    notify({ identity: `asset-library:${feedbackOwner}`, reason: 'operation', message, type, level: 'inline', present })
+  }, [feedbackOwner, present])
   const uploadInputRef = React.useRef<HTMLInputElement>(null)
   const filterButtonRef = React.useRef<HTMLButtonElement | null>(null)
   const filterMenuRef = React.useRef<HTMLDivElement | null>(null)
@@ -160,7 +167,7 @@ export function AssetLibraryContent({
     partial: allProjectAssetsPartial,
     refresh: refreshAllProjectAssets,
   } = useAllProjectAssets()
-  const localImport = useAssetLibraryLocalImport({ projectId, refreshProjectAssets, refreshAllProjectAssets })
+  const localImport = useAssetLibraryLocalImport({ projectId, refreshProjectAssets, refreshAllProjectAssets, present })
   const folderApi = useAssetFolders(projectId)
   const allSourceAssets = React.useMemo(
     () => (includeAudio ? filterPlayableAssets(allProjectAssets) : filterCanvasLibraryAssets(allProjectAssets)),
@@ -266,6 +273,7 @@ export function AssetLibraryContent({
   })
 
   const handleUploadFiles = React.useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    present('')
     const all = Array.from(event.currentTarget.files || [])
     event.currentTarget.value = ''
     const { mediaFiles, audioFiles, unsupported } = classifyUploadFiles(all)
@@ -276,7 +284,7 @@ export function AssetLibraryContent({
         .then((result) => {
           refreshProjectAssets()
           refreshAllProjectAssets()
-          reportMediaImport(result)
+          reportMediaImport(result, report)
           // 落点可见性（2026-08-07 飞书反馈「上传传到另一个位置没看到」）：选中首个新节点 +
           // 请求画布 fit 平移视口过去（复用 Scene3DEditor 同款组合，不造第二套）。
           const firstNode = result.created[0]?.node
@@ -287,7 +295,7 @@ export function AssetLibraryContent({
         })
         .catch((error) => {
           console.error('asset library upload failed', error)
-          toast(t('assetLibrary.importFailed'), 'error')
+          report(t('assetLibrary.importFailed'), 'error')
         })
     }
     if (audioFiles.length) {
@@ -295,24 +303,24 @@ export function AssetLibraryContent({
         .then((result) => {
           refreshProjectAssets()
           refreshAllProjectAssets()
-          reportAudioImport(result)
+          reportAudioImport(result, report)
         })
         .catch((error) => {
           console.error('asset library audio upload failed', error)
-          toast(t('assetLibrary.audioImportFailed'), 'error')
+          report(t('assetLibrary.audioImportFailed'), 'error')
         })
     }
     if (unsupported.length) {
-      toast(t('assetLibrary.skippedUnsupported', { count: unsupported.length }), 'warning')
+      report(t('assetLibrary.skippedUnsupported', { count: unsupported.length }), 'warning')
     }
-  }, [projectId, refreshAllProjectAssets, refreshProjectAssets, t])
+  }, [projectId, refreshAllProjectAssets, refreshProjectAssets, present, report, t])
 
   // 贴链接导入（TikHub）：分享链接 → 无水印直链 → 落成项目视频素材。落库后回流刷新，
   // 素材即出现在库里供用户用现有节点拆解。失败态三段式在 pasteShareLinkImport 里。
   const handlePasteLink = React.useCallback(() => {
     void runPasteShareLinkImport(projectId, {
       prompt: promptDialog,
-      toast,
+      present,
       t,
       onImported: () => {
         refreshProjectAssets()
@@ -323,7 +331,7 @@ export function AssetLibraryContent({
         window.dispatchEvent(new CustomEvent('nomi-open-settings', { detail: { tab: 'models', section: 'tikhub-connector' } }))
       },
     })
-  }, [projectId, refreshAllProjectAssets, refreshProjectAssets, t])
+  }, [projectId, refreshAllProjectAssets, refreshProjectAssets, present, t])
 
   const isEmpty = scopedAssets.length === 0 && visibleFolders.length === 0
   const sourceEmpty = sourceFilteredAssets.length === 0
@@ -475,22 +483,24 @@ export function AssetLibraryContent({
     if (assetBelongsToProject(asset, projectId)) markLibraryUsed('asset', asset.id)
   } : undefined, [itemAction, projectId])
   const assetDragStartAction = React.useCallback((asset: AssetRef, event: React.DragEvent<HTMLDivElement>): void => {
+    present('')
     if (!assetBelongsToProject(asset, projectId)) {
       event.preventDefault()
-      toast(t('assetLibrary.externalAssetHint'), 'info')
+      report(t('assetLibrary.externalAssetHint'), 'info')
       return
     }
     if (projectSelectionEnabled) handleFolderAssignDragStart(asset, event)
     else handleAssetDragStart(asset, event)
-  }, [handleAssetDragStart, handleFolderAssignDragStart, projectId, projectSelectionEnabled, t])
+  }, [handleAssetDragStart, handleFolderAssignDragStart, projectId, projectSelectionEnabled, present, report, t])
 
   const deleteSelectedProjectAssets = React.useCallback(async (): Promise<void> => {
+    present('')
     if (!projectId) {
-      toast(t('assetLibrary.deleteNoProject'), 'warning')
+      report(t('assetLibrary.deleteNoProject'), 'warning')
       return
     }
     if (selectedProjectAssets.length === 0) {
-      toast(t('assetLibrary.selectToDelete'), 'warning')
+      report(t('assetLibrary.selectToDelete'), 'warning')
       return
     }
     const confirmed = await confirmDialog({
@@ -510,19 +520,18 @@ export function AssetLibraryContent({
       refreshProjectAssets()
       refreshAllProjectAssets()
       setSelectedIds(new Set())
-      if (removedCount > 0) toast(t('assetLibrary.deletedProjectAssets', { count: removedCount }), 'success')
-      else if (deletedFileCount > 0) toast(t('assetLibrary.deletedFiles', { count: deletedFileCount }), 'success')
-      else if (failedFileCount === 0) toast(t('assetLibrary.cannotDeleteSelected'), 'warning')
-      if (failedFileCount > 0) toast(t('assetLibrary.failedFiles', { count: failedFileCount }), 'warning')
+      if (removedCount === 0 && deletedFileCount === 0 && failedFileCount === 0) report(t('assetLibrary.cannotDeleteSelected'), 'warning')
+      if (failedFileCount > 0) report(t('assetLibrary.failedFiles', { count: failedFileCount }), 'warning')
     } catch (error) {
       console.error('delete project assets failed', error)
-      toast(t('assetLibrary.deleteFailed'), 'error')
+      report(t('assetLibrary.deleteFailed'), 'error')
     }
-  }, [projectId, refreshAllProjectAssets, refreshProjectAssets, selectedProjectAssets, t])
+  }, [projectId, refreshAllProjectAssets, refreshProjectAssets, selectedProjectAssets, present, report, t])
 
   const deleteOneAsset = React.useCallback(async (asset: AssetRef): Promise<void> => {
+    present('')
     if (!assetBelongsToProject(asset, projectId)) {
-      toast(t('assetLibrary.externalAssetHint'), 'info')
+      report(t('assetLibrary.externalAssetHint'), 'info')
       return
     }
     const confirmed = await confirmDialog({
@@ -537,13 +546,12 @@ export function AssetLibraryContent({
       refreshProjectAssets()
       refreshAllProjectAssets()
       setPreviewAsset((current) => current?.id === asset.id ? null : current)
-      if (outcome.failedFileCount > 0) toast(t('assetLibrary.failedFiles', { count: outcome.failedFileCount }), 'warning')
-      else toast(t('assetLibrary.deletedProjectAssets', { count: 1 }), 'success')
+      if (outcome.failedFileCount > 0) report(t('assetLibrary.failedFiles', { count: outcome.failedFileCount }), 'warning')
     } catch (error) {
       console.error('delete asset result failed', error)
-      toast(t('assetLibrary.deleteFailed'), 'error')
+      report(t('assetLibrary.deleteFailed'), 'error')
     }
-  }, [projectId, refreshAllProjectAssets, refreshProjectAssets, t])
+  }, [projectId, refreshAllProjectAssets, refreshProjectAssets, present, report, t])
 
   return (
     <TooltipProvider delayDuration={180} skipDelayDuration={80}>
@@ -580,6 +588,11 @@ export function AssetLibraryContent({
           onChange={handleUploadFiles}
         />
 
+        {(feedback[feedbackOwner] ?? []).length > 0 ? (
+          <div role="status" aria-live="polite" className="shrink-0 border-b border-nomi-line px-3 py-2 text-caption text-nomi-ink-60" data-asset-library-feedback>
+            {feedback[feedbackOwner].map((message) => <p key={message}>{message}</p>)}
+          </div>
+        ) : null}
         <AssetLibraryToolbar
           compact={compact}
           uploadInputRef={uploadInputRef}
