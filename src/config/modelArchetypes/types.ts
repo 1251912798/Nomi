@@ -85,7 +85,10 @@ export type ArchetypeIntent = "text" | "single" | "firstlast" | "character" | "e
 export type ArchetypeTransportTaskKind = "text_to_video" | "image_to_video" | "text_to_image" | "image_edit" | "text_to_audio" | "transcribe" | "text_to_3d" | "image_to_3d";
 
 /** Mode facts are owned by the shared capability layer, including combination limits. */
-export type ArchetypeMode = SharedArchetypeMode;
+export type ArchetypeMode = SharedArchetypeMode & {
+  /** Runtime-only capability derived from slots by anchorsConsumedBy. */
+  readonly consumesAnchors?: readonly import("./anchorPolicy").AnchorConsumption[];
+};
 
 /**
  * **变体（variant）正交轴**（与 modes 平行的新轴，用户拍板方案 A：通用分段选择器）。

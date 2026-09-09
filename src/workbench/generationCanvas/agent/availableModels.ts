@@ -1,3 +1,4 @@
+import { anchorsConsumedBy } from '../../../config/modelArchetypes/anchorPolicy';
 // 可用模型清单生成器：把 catalog 真实可用的模型 join 上各自档案（archetype），
 // flatten 成 agent 可读 / 计划清单卡可渲染的清单。
 //
@@ -201,7 +202,10 @@ export function formatAvailableModelsForPrompt(entries: readonly AgentModelEntry
         const slots = m.slots.length
           ? `[参考槽:${m.slots.map((s) => `${s.label}${s.max !== undefined && s.max > 1 ? `×${s.max}` : ""}`).join("/")}]`
           : "[纯文生,不接参考边]";
-        return `${m.modeId}(${m.vendorTerm})${slots}`;
+        const consumption = anchorsConsumedBy(m);
+        const policy = consumption.includes('none') ? '[不吃任何参考图]'
+          : `[吃:${consumption.map(kind => ({ character: '角色锚', scene: '角色/场景锚', firstFrame: '首帧', none: '' })[kind]).join('/')}]`;
+        return `${m.modeId}(${m.vendorTerm})${policy}${slots}`;
       })
       .join(" / ");
     const params =
@@ -216,6 +220,8 @@ export function formatAvailableModelsForPrompt(entries: readonly AgentModelEntry
   return [
     "可用模型（为每个节点选一个，在 create_canvas_nodes 的节点里给出 modelKey、可选 modeId、params）：",
     ...lines,
+    "引用视觉锚就必须显式选择能吃图片的模式，modelKey/modeId 不能留空；未指定时优先该模型吃得下锚的模式。",
+    "用户点名 t2v 就听用户，不自动改模式或删锚；方案摘要必须说明哪些镜的参考图不会被使用，并给出换同模型 i2v / 去掉视觉锚的纠正。",
     "规则：modelKey 必须用上面列出的；modeId 用该模型的模式 id；params 用对应模型/模式支持的取值（如 aspect_ratio=9:16）。用户会在确认卡上调整，配错会被自动纠正。",
     "连参考边只连目标模型支持的：character_ref/style_ref/composition_ref 需要目标模式有图片参考槽（角色参考/参考图/输入图）；first_frame/last_frame 需要对应的首/尾帧槽；纯文生模式（无参考槽）不要连任何参考边。文本/镜头/输出节点不能作参考源（它们没有可参考的产物）。配错的边会被跳过并在 skippedEdges 里告知原因。",
   ].join("\n");

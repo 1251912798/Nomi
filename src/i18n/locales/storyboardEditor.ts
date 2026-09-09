@@ -1,4 +1,18 @@
 export const zhStoryboardEditor = {
+  anchorPolicy: {
+    ignoredReason: '模式 {{mode}} 没有图片参考槽，参考图不会被使用',
+    switchMode: '第 {{index}} 镜按 {{mode}} 生成，「{{anchors}}」参考图不会被使用；要使用它们，请换同模型的 {{alternative}} 模式，或去掉该镜视觉锚。',
+    removeAnchors: '第 {{index}} 镜的 {{mode}} 模式不会使用「{{anchors}}」参考图；请去掉该镜视觉锚，或选择支持图片参考的模型。',
+    countWarning: '{{total}} 镜引用了它，其中 {{ignored}} 镜的模型不吃参考图，这张参考图在那 {{ignored}} 镜里不会被使用',
+    rowIgnored: '参考图不会被使用',
+  },
+  overrides: {
+    badge: '画布改的：{{value}}',
+    effective: '按画布上的「{{value}}」生成',
+    adopt: '采纳到方案',
+    discard: '丢弃',
+  },
+
   empty: {
     title: '还没有分镜方案',
     description: '先在创作页写一段故事，让 AI 拆成镜头，再回到这里审阅、落画布。',
@@ -350,6 +364,20 @@ type TranslationShape<T> = {
 }
 
 export const enStoryboardEditor = {
+  anchorPolicy: {
+    ignoredReason: 'Mode {{mode}} has no image input; reference images will not be used',
+    switchMode: 'Shot {{index}} uses {{mode}} and will ignore reference images {{anchors}}. Switch to {{alternative}} on the same model, or remove this shot’s visual anchors.',
+    removeAnchors: 'Shot {{index}} mode {{mode}} will ignore reference images {{anchors}}. Remove its visual anchors or select a model that accepts images.',
+    countWarning: '{{total}} shots reference it; {{ignored}} use models without image inputs and will not use this reference image',
+    rowIgnored: 'Reference images will not be used',
+  },
+  overrides: {
+    badge: 'Canvas edit: {{value}}',
+    effective: 'Generate using canvas value “{{value}}”',
+    adopt: 'Adopt into plan',
+    discard: 'Discard',
+  },
+
   empty: {
     title: 'No storyboard plan yet',
     description: 'Write a story in the Creation workspace and let AI split it into shots, then review and add it to the canvas here.',
