@@ -189,6 +189,20 @@ const startInput = {
 };
 
 describe("ProviderAdapterService", () => {
+  it("reports an unavailable pre-call credential probe without running or promoting a model", async () => {
+    const catalog = fakeCatalog();
+    catalog.load = async () => { throw new Error("credential still offline"); };
+    const deps = dependencies(catalog);
+    deps.schedule = () => {};
+    const verify = vi.spyOn(deps, "verify");
+    const adapterStore = store();
+    const service = new ProviderAdapterService(adapterStore, deps);
+    const run = await service.start(startInput);
+    await expect(service.executeRun(run.id)).resolves.toBeUndefined();
+    expect(adapterStore.getRun(run.id)).toMatchObject({ stage: "failed", error: "credential still offline" });
+    expect(verify).not.toHaveBeenCalled();
+    expect(catalog.promoted).toEqual([]);
+  });
   it("rejects direct starts that bypass the canonical certification contract", async () => {
     const service = new ProviderAdapterService(store(), dependencies(fakeCatalog()));
     const uncertified = { ...startInput } as Partial<typeof startInput>;

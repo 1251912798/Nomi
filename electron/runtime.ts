@@ -1,3 +1,4 @@
+import { revalidatePendingCredential } from './catalog/validateCandidateCredential';
 import crypto from "node:crypto";
 import { assertLocalAssetTransportReady, localizeAssetsForVendor } from "./catalog/assetLocalization";
 import { assetIngestionResolver, assetLocalizationOptions } from "./catalog/assetTransportRuntime";
@@ -312,6 +313,7 @@ export async function runTask(payload: unknown): Promise<TaskResult> {
   const modelKey = firstString(request.extras?.modelKey, request.extras?.modelAlias);
   const archetypeMeta = request.extras?.archetype;
   const modeId = archetypeMeta && typeof archetypeMeta === "object" ? firstString((archetypeMeta as JsonRecord).modeId) : firstString(request.extras?.modeId);
+  await revalidatePendingCredential(vendorKey);
   const stagedCandidate = resolveComfyCandidateExecution(request);
   const { vendor, model, apiKey, customConfig } = stagedCandidate || findExecutableModel(vendorKey, modelKey, wantedKind);
   const projectId = trim(request.extras?.projectId) || activeTaskProjectFallback();
