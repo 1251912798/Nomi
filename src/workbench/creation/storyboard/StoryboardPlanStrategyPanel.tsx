@@ -8,7 +8,7 @@ import {
   storyboardShotId,
 } from '../../generationCanvas/agent/storyboardStrategy'
 import type { MergeProposal, SplitProposal } from '../../../../electron/shared/videoCapabilities/planResolver'
-import { describeIssue, describeMerge, describeSplit } from './strategyText'
+import { aggregateIssues, describeIssue, describeMerge, describeSplit } from './strategyText'
 import type { StoryboardStrategyState } from './useStoryboardStrategy'
 
 /**
@@ -68,7 +68,8 @@ export default function StoryboardPlanStrategyPanel({ plan, state, onChange }: S
     )
   }
 
-  const total = view.requiredMerges.length + view.mergeSuggestions.length + view.splits.length + view.blockers.length
+  const aggregatedBlockers = aggregateIssues(view.blockers)
+  const total = view.requiredMerges.length + view.mergeSuggestions.length + view.splits.length + aggregatedBlockers.length
   if (total === 0) {
     return (
       <StatusBar stateKey="clear">
@@ -84,6 +85,10 @@ export default function StoryboardPlanStrategyPanel({ plan, state, onChange }: S
     const shot = plan.shots.find((candidate) => storyboardShotId(candidate) === shotId)
     if (!shot) return shotId
     return t('storyboardEditor.strategy.shotTag', { index: shot.index, seconds: shot.durationSec })
+  }
+  const blockerShotTag = (shotId: string): string => {
+    const shot = plan.shots.find((candidate) => storyboardShotId(candidate) === shotId)
+    return shot ? t('storyboardEditor.strategy.shotTagShort', { index: shot.index }) : shotId
   }
   const mergeRow = (proposal: MergeProposal, tone: 'required' | 'advisory'): JSX.Element => (
     <ProposalRow
@@ -135,14 +140,17 @@ export default function StoryboardPlanStrategyPanel({ plan, state, onChange }: S
             {t('storyboardEditor.strategy.blockersHeading')}
           </div>
         ) : null}
-        {view.blockers.map((issue, index) => (
+        {aggregatedBlockers.map(({ issue, shotIds }) => (
           <div
-            key={`${issue.shotId ?? 'plan'}-${issue.code}-${index}`}
+            key={`${issue.code}-${String(issue.params.requested ?? '')}-${String(issue.params.modelLabel ?? '')}`}
             className="flex items-start gap-1.5 py-1 text-caption text-nomi-danger"
             data-storyboard-strategy-blocker="true"
           >
             <IconAlertTriangle size={13} stroke={1.8} className="shrink-0 mt-[3px]" />
-            <span className="min-w-0">{describeIssue(t, issue)}</span>
+            <span className="min-w-0">
+              {describeIssue(t, issue)}
+              {shotIds.length ? ` · ${t('storyboardEditor.strategy.affectedShots', { count: shotIds.length, shots: shotIds.map(blockerShotTag).join('、') })}` : null}
+            </span>
           </div>
         ))}
       </div>
