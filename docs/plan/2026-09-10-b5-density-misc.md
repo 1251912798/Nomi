@@ -34,3 +34,5 @@ B4：先 git apply --check，再采用用户给定 patch，展示名与供应商
 定向基线只有 `src/workbench/settings/settingsDialogStructure.test.ts` 中 `src/workbench/settings/AiModelsSection.tsx`、`src/workbench/settings/AutomationPermissionsSection.tsx`、`src/workbench/settings/CanvasGestureSection.tsx` 三个源码SHA。未放宽任何走查断言、等待或基线阈值。
 
 首轮完整 gates 排队后因 main 前进，被 check:fresh-base 阻止；同步最新 main 后重跑，最终状态另附。
+
+定向视觉基线：`tests/ux/design-lab/__baselines__/canvas-frame/canvas-frame-shot-label-outside.png`，仅 DC21 提示文案变化；已并排查看实际/预期图。
