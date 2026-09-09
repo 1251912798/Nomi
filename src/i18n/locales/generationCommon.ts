@@ -834,11 +834,6 @@ export const zhGenerationCommon = {
     },
   },
   lightweightNode: {
-    queued: '排队中',
-    running: '生成中',
-    error: '失败',
-    success: '已生成',
-    idle: '待生成',
     untitled: '未命名节点',
   },
   navigation: {
@@ -2315,11 +2310,6 @@ export const enGenerationCommon = {
     },
   },
   lightweightNode: {
-    queued: 'Queued',
-    running: 'Generating',
-    error: 'Failed',
-    success: 'Generated',
-    idle: 'Ready',
     untitled: 'Untitled node',
   },
   navigation: {
