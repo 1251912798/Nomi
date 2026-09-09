@@ -1,6 +1,6 @@
 # B2c 样张 / 实现逐项对账
 
-状态：🚧 进行中。实现和真机走查已完成；两张旧品牌基线定向更新已获授权；完整 gates 尚待本轮验证，绿后推送。
+状态：🚧 进行中。实现和真机走查已完成；两张旧品牌基线已按授权定向重录，214 张其余基线哈希不变；完整 gates 尚待本轮验证，绿后推送。
 
 真实平台：本分支 Vite renderer + 本分支 Electron 主进程，1440×1000，隔离项目和三类目录；无真实模型调用，费用 0。三态用确定性 host snapshot 驱动真实 ProjectAgentResidentShell，不冒充实际模型生成。调用间 thinking / 回答先于调用的回归另见 process-red.txt 与 unit.txt。
 
