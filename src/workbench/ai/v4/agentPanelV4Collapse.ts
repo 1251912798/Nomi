@@ -1,30 +1,11 @@
-// Agent 面板 v4 · 对话流的**折叠层**：把一段「反复试」压成两行。
-//
-// 为什么需要这一层（2026-09-06 打包版真实使用抓到）：
-// 用户让 Agent「从原稿重拆 10 镜」，右侧面板出现 **6 条一模一样**的
-// 「创建或修改镜头卡 · 只建卡·不生成 · ⚠ <1s」，中间夹着模型的自言自语
-// （「我看到参数需要是数组而不是字符串…」「我把 JSON 字符串化两次了…」）。
-// 用户原话：「这堆工具没什么重要的东西……不可能有这么多都放在那里……看的时候得点入」。
-//
-// 平铺的代价不是难看，是**读不出结构**：六条同名收据看起来像六件事，
-// 而它其实是同一件事失败了六次；夹在中间的过程文本是模型在跟自己说话，
-// 不是给用户的回答，却和最终回答长得一模一样、一样占满宽度。
-//
-// 所以这一层做两件、且只做两件事（Claude Code 的做法）：
-//   ③→ 同一个工具连着调 N 次（N≥2）折成一行「创建或修改镜头卡 ×6 · 全部失败 · 原因」，
-//       展开才逐次；
-//   ②→ 这一段里**不是最终回答**的助手文本折成一条过程行「尝试了 6 次 · 展开」。
-//
-// 不新增第九个积木：`tool-group` 就是一行收据的容器态，`process` 就是助手文本的收起态。
-// 只调了一次的工具、以及最终那条回答，一律原样——折叠只在「重复」出现时才有意义，
-// 把一条也折起来只会让用户多点一下。
+// Collapse repeated work; uncertain assistant text remains visible (B2a).
 import type { ToolReceipt, V4FlowItem, V4ToolStatus } from './agentPanelV4Types'
 
 type Translate = (key: string, options?: Record<string, unknown>) => string
 
 /** 一段「工作」的边界：用户气泡、任务卡、介入相关的任何东西都会把它截断。 */
 function isWorkItem(item: V4FlowItem): boolean {
-  return item.kind === 'tool' || item.kind === 'assistant'
+  return item.kind === 'tool' || item.kind === 'assistant' || item.kind === 'thinking'
 }
 
 function groupKey(receipt: ToolReceipt): string {
@@ -96,49 +77,30 @@ export function collapseV4Flow(flow: readonly V4FlowItem[], t: Translate): reado
     let end = index
     while (end < flow.length && isWorkItem(flow[end]!)) end += 1
     const stretch = flow.slice(index, end)
-    const toolCount = stretch.filter((entry) => entry.kind === 'tool').length
+    const receipts = stretch.flatMap((entry) => entry.kind === 'tool' ? [entry.receipt] : [])
     // 一段可以**从助手文本起头**：模型常常先说一句「我先看看画布」再调工具，
     // 那句话和后面几句自我纠正是同一类东西。只按工具起头会把它漏在外面，
     // 于是过程行少了第一句、而那一句还占着满宽。
-    if (toolCount < 2) {
+    if (receipts.length < 2) {
       out.push(item)
       index += 1
       continue
     }
+    const lastToolAt = stretch.length - 1 - [...stretch].reverse().findIndex((entry) => entry.kind === 'tool')
+    const thinking = stretch.slice(0, lastToolAt).filter((entry): entry is Extract<V4FlowItem, { kind: 'thinking' }> => entry.kind === 'thinking')
+    // V4 has no reliable per-turn final-answer marker. Complete/streaming text may contain
+    // the answer even before a tool; only explicitly typed thinking is safe to hide.
     const firstToolAt = stretch.findIndex((entry) => entry.kind === 'tool')
-    let lastToolAt = -1
-    stretch.forEach((entry, at) => {
-      if (entry.kind === 'tool') lastToolAt = at
-    })
-    const receipts = stretch.filter((entry): entry is Extract<V4FlowItem, { kind: 'tool' }> => entry.kind === 'tool')
-      .map((entry) => entry.receipt)
-    const assistantsIn = (from: number, to: number): readonly string[] =>
-      stretch.slice(from, to)
-        .filter((entry): entry is Extract<V4FlowItem, { kind: 'assistant' }> => entry.kind === 'assistant')
-        .map((entry) => entry.text)
-    // 「最终回答」= 最后一次工具调用**之后**还说的话。之前说的每一句都是过程——
-    // 模型在读报错、在自我纠正，那不是给用户的答案。
-    //
-    // 但**这一段里必须始终留着一条摊开的回答**。宿主把整回合的助手正文合并成一条，
-    // 投影层只有拿到调用偏移量才切得开；切不开时那一条会整段落在工具**前面**，
-    // 这时候把它也折进过程行，用户就一个字的回答都看不到了——比平铺更糟。
-    // 所以：后面真有回答时，前面那几句一起折；没有回答时，只折**夹在两次调用之间**的那几句。
-    const hasAnswer = stretch.slice(lastToolAt + 1).some((entry) => entry.kind === 'assistant')
-    const leading = assistantsIn(0, firstToolAt)
-    const between = assistantsIn(firstToolAt, lastToolAt)
-    const intermediate = hasAnswer ? [...leading, ...between] : between
-    if (!hasAnswer) {
-      for (const entry of stretch.slice(0, firstToolAt)) out.push(entry)
-    }
+    for (const entry of stretch.slice(0, firstToolAt)) if (entry.kind === 'assistant') out.push(entry)
     emitTools(receipts, t, out)
-    if (intermediate.length) {
-      out.push({
-        kind: 'process',
-        label: t('agentPanelV4.processAttempts', { count: toolCount }),
-        segments: Object.freeze(intermediate),
-      })
+    if (thinking.length) out.push({
+      kind: 'process',
+      label: t('agentPanelV4.processThinking', { count: thinking.length }),
+      segments: Object.freeze(thinking.map((entry) => entry.meta || entry.label)),
+    })
+    for (const [at, entry] of stretch.entries()) {
+      if ((at >= firstToolAt && entry.kind === 'assistant') || (at > lastToolAt && entry.kind === 'thinking')) out.push(entry)
     }
-    for (const trailing of stretch.slice(lastToolAt + 1)) out.push(trailing)
     index = end
   }
   return Object.freeze(out)
