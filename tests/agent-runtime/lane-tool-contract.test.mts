@@ -66,15 +66,14 @@ test('每个示例都能通过它自己工具的 schema', () => {
   }
 });
 
-test('示例真的进了模型读到的 description', () => {
-  const spec = LANE_MODEL_TOOL_CATALOG.find((candidate) => candidate.name === 'nomi_storyboard_write');
-  assert.ok(spec);
-  const rendered = laneToolModelDescription(spec);
-  assert.ok(rendered.includes(spec.description), '说明本体不能被示例挤掉');
-  assert.ok(rendered.includes('"propose_storyboard_plan"'), '示例必须出现在模型真正读到的那段文字里');
-  // 阳性对照：一个没有示例的 spec 渲染出来必须与它的 description 逐字相同——
-  // 否则「示例进去了」这条断言可能只是在匹配 description 里本来就有的字。
-  assert.equal(laneToolModelDescription({ ...spec, examples: [] }), spec.description);
+test('examples and complete guidance move losslessly from schema into the system prompt', () => {
+  for (const spec of LANE_MODEL_TOOL_CATALOG) {
+    const rendered = laneToolModelDescription(spec);
+    assert.ok(spec.description.startsWith(rendered));
+    const prompt = renderLanePromptSections([spec]);
+    assert.ok(prompt.includes(spec.description));
+    for (const example of spec.examples) assert.ok(prompt.includes(JSON.stringify(example.arguments)));
+  }
 });
 
 test('工具预算是一条会挡人的规则，不是一句注释', () => {

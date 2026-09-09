@@ -3,11 +3,10 @@ import { useTranslation } from 'react-i18next'
 import { IconChevronLeft, IconFilter, IconFolderPlus, IconLink, IconPlus, IconTrash } from '@tabler/icons-react'
 import { cn } from '../../utils/cn'
 import { DesignSearchInput } from '../../design'
-import { AssetFilterMenu, NewFolderInput } from './AssetLibraryPanelParts'
+import { AssetKindFilterMenu, NewFolderInput } from './AssetLibraryPanelParts'
 import type { FilterValue } from './assetLibraryPanelFilters'
 import type { AssetKind } from './assetTypes'
 import type { AssetLibrarySourceFilter } from './assetLibraryUsage'
-import type { AssetProvenance } from './assetProvenance'
 
 type SourceOption = {
   value: AssetLibrarySourceFilter
@@ -18,10 +17,7 @@ export type AssetLibraryToolbarProps = {
   compact: boolean
   uploadInputRef: React.RefObject<HTMLInputElement | null>
   /** 贴分享链接导入（TikHub 解析无水印直链 → 落项目视频素材）。 */
-  /** 开合「找参考」面板。语义 = 拿外部素材进来（贴链接 = 已知道要哪条；搜关键词 = 还不知道）。 */
   onPasteLink: () => void
-  /** 面板是否展开（按钮据此点亮）。 */
-  findOpen?: boolean
   sourceOptions: readonly SourceOption[]
   sourceFilter: AssetLibrarySourceFilter
   onSourceFilterChange: (value: AssetLibrarySourceFilter) => void
@@ -42,15 +38,12 @@ export type AssetLibraryToolbarProps = {
   filterMenuRef: React.MutableRefObject<HTMLDivElement | null>
   visibleKinds: ReadonlySet<AssetKind>
   filterCounts: ReadonlyMap<FilterValue, number>
-  visibleProvenances: ReadonlySet<AssetProvenance>
-  provenanceCounts: ReadonlyMap<AssetProvenance, number>
   filterOpen: boolean
   filterActive: boolean
   activeFilterLabel: string
   onToggleFilter: () => void
   onToggleKind: (kind: AssetKind) => void
   onShowAllKinds: () => void
-  onToggleProvenance: (provenance: AssetProvenance) => void
   folderViewActive: boolean
   activeFolder: { label: string } | null
   folderManagementEnabled: boolean
@@ -67,7 +60,6 @@ export function AssetLibraryToolbar({
   compact,
   uploadInputRef,
   onPasteLink,
-  findOpen = false,
   sourceOptions,
   sourceFilter,
   onSourceFilterChange,
@@ -88,15 +80,12 @@ export function AssetLibraryToolbar({
   filterMenuRef,
   visibleKinds,
   filterCounts,
-  visibleProvenances,
-  provenanceCounts,
   filterOpen,
   filterActive,
   activeFilterLabel,
   onToggleFilter,
   onToggleKind,
   onShowAllKinds,
-  onToggleProvenance,
   folderViewActive,
   activeFolder,
   folderManagementEnabled,
@@ -111,7 +100,7 @@ export function AssetLibraryToolbar({
       className={cn(
         'inline-flex items-center justify-center gap-1.5 rounded-full cursor-pointer',
         'bg-nomi-ink text-nomi-paper text-caption font-semibold border-0',
-        'transition-[background] duration-[var(--nomi-transition-fast)] hover:bg-nomi-ink-80',
+        'transition-[background] duration-nomi-fast ease-nomi-fast hover:bg-nomi-ink-80',
         compact ? 'h-[30px] px-2.5 shrink-0' : 'h-7 px-3',
       )}
       aria-label={t('assetLibrary.uploadAssets')}
@@ -127,15 +116,12 @@ export function AssetLibraryToolbar({
       type="button"
       className={cn(
         'inline-flex shrink-0 items-center justify-center rounded-full border border-nomi-line bg-nomi-paper',
-        'cursor-pointer text-nomi-ink-60 transition-[background,color,border-color] duration-[var(--nomi-transition-fast)]',
+        'cursor-pointer text-nomi-ink-60 transition-[background,color,border-color] duration-nomi-fast ease-nomi-fast',
         'hover:border-nomi-ink-20 hover:bg-nomi-ink-05 hover:text-nomi-ink',
         compact ? 'h-[30px] w-[30px]' : 'h-7 w-7',
-        findOpen && 'border-nomi-accent bg-nomi-accent-soft text-nomi-accent',
       )}
-      aria-label={t('assetLibrary.findReference.entry')}
-      title={t('assetLibrary.findReference.entry')}
-      aria-expanded={findOpen}
-      data-find-open={findOpen}
+      aria-label={t('assetLibrary.pasteLink.button')}
+      title={t('assetLibrary.pasteLink.button')}
       onClick={onPasteLink}
     >
       <IconLink size={compact ? 14 : 15} stroke={1.8} aria-hidden="true" />
@@ -147,7 +133,7 @@ export function AssetLibraryToolbar({
       type="button"
       className={cn(
         'inline-flex h-8 min-w-10 shrink-0 items-center justify-center gap-1.5 rounded-nomi-sm border text-caption font-semibold tabular-nums',
-        'transition-[background,color,border-color] duration-[var(--nomi-transition-fast)]',
+        'transition-[background,color,border-color] duration-nomi-fast ease-nomi-fast',
         selectedProjectAssetCount > 0
           ? 'cursor-pointer border-workbench-danger/20 bg-workbench-danger-soft px-2 text-workbench-danger hover:bg-workbench-danger-soft/80'
           : 'cursor-default border-nomi-line bg-nomi-ink-05 px-2 text-nomi-ink-30',
@@ -183,7 +169,7 @@ export function AssetLibraryToolbar({
             aria-selected={active}
             className={cn(
               'rounded-full text-caption cursor-pointer border-0 bg-transparent whitespace-nowrap',
-              'transition-[background,color] duration-[var(--nomi-transition-fast)]',
+              'transition-[background,color] duration-nomi-fast ease-nomi-fast',
               compact ? 'min-w-0 flex-1 px-1.5 py-1' : 'px-2.5 py-1',
               active
                 ? 'bg-nomi-paper text-nomi-ink font-semibold shadow-nomi-sm'
@@ -212,7 +198,7 @@ export function AssetLibraryToolbar({
         type="button"
         className={cn(
           'inline-flex items-center justify-center gap-1.5 rounded-nomi-sm border border-nomi-line bg-nomi-paper',
-          'cursor-pointer text-caption text-nomi-ink-60 transition-[background,color,border-color] duration-[var(--nomi-transition-fast)]',
+          'cursor-pointer text-caption text-nomi-ink-60 transition-[background,color,border-color] duration-nomi-fast ease-nomi-fast',
           'hover:border-nomi-ink-20 hover:bg-nomi-ink-05 hover:text-nomi-ink',
           compact ? 'h-8 px-2.5' : 'h-8 px-3',
           (filterOpen || filterActive) && 'border-nomi-ink-20 bg-nomi-ink-05 text-nomi-ink',
@@ -225,25 +211,17 @@ export function AssetLibraryToolbar({
         onClick={onToggleFilter}
       >
         <IconFilter size={15} stroke={1.8} aria-hidden="true" />
-        {/*
-          窄栏平时只放图标（密度优先），但**一旦真的在筛**就必须把筛的是什么写出来：
-          2026-09-08 真机走查——从「找参考」回来落在「只看参考」上，左侧栏是 compact，
-          屏幕上只剩 1 条素材而没有任何一个字说明原因，看起来就像素材丢了（卡点④）。
-        */}
-        {!compact || filterActive ? <span className="truncate">{activeFilterLabel}</span> : null}
+        {!compact ? <span>{activeFilterLabel}</span> : null}
       </button>
       {filterOpen ? (
-        <AssetFilterMenu
+        <AssetKindFilterMenu
           selectedKinds={visibleKinds}
           counts={filterCounts}
-          selectedProvenances={visibleProvenances}
-          provenanceCounts={provenanceCounts}
           setNodeRef={(node) => {
             filterMenuRef.current = node
           }}
           onToggleKind={onToggleKind}
           onShowAll={onShowAllKinds}
-          onToggleProvenance={onToggleProvenance}
         />
       ) : null}
     </div>
@@ -267,7 +245,7 @@ export function AssetLibraryToolbar({
               type="button"
               className={cn(
                 'inline-flex h-8 shrink-0 items-center justify-center rounded-nomi-sm border border-nomi-line bg-nomi-paper px-2.5',
-                'cursor-pointer text-nomi-ink-60 transition-[background,color,border-color] duration-[var(--nomi-transition-fast)]',
+                'cursor-pointer text-nomi-ink-60 transition-[background,color,border-color] duration-nomi-fast ease-nomi-fast',
                 'hover:border-nomi-ink-20 hover:bg-nomi-ink-05 hover:text-nomi-ink',
               )}
               aria-label={t('assetLibrary.newFolder')}
@@ -286,7 +264,7 @@ export function AssetLibraryToolbar({
             type="button"
             className={cn(
               'inline-flex shrink-0 items-center gap-0.5 rounded-nomi-sm border-0 bg-transparent px-1.5 py-1',
-              'cursor-pointer text-caption text-nomi-accent transition-colors duration-[var(--nomi-transition-fast)] hover:bg-nomi-ink-05',
+              'cursor-pointer text-caption text-nomi-accent transition-colors duration-nomi-fast ease-nomi-fast hover:bg-nomi-ink-05',
             )}
             aria-label={t('assetLibrary.backToAllAssets')}
             title={t(folderManagementEnabled ? 'assetLibrary.backDropToRemove' : 'assetLibrary.backToAllAssets')}

@@ -1,4 +1,7 @@
 import React from 'react'
+import { NodeGenerationStatus } from '../nodes/NodeGenerationStatus'
+import { NodeLabelRow } from '../nodes/NodeLabelRow'
+import { ShotPreviewOverlays } from '../nodes/ConvertShotToVideoButton'
 import { useTranslation } from 'react-i18next'
 import { cn } from '../../../utils/cn'
 import type { GenerationCanvasNode } from '../model/generationCanvasTypes'
@@ -24,17 +27,6 @@ export function LightweightGenerationNode({
   const { t } = useTranslation()
   const size = getCanvasNodeVisualSize(node)
   const preview = resolveLightweightNodePreview(node)
-  const status = node.status || 'idle'
-  const statusLabel =
-    status === 'queued'
-      ? t('generationCommon.lightweightNode.queued')
-      : status === 'running'
-        ? node.progress?.message || t('generationCommon.lightweightNode.running')
-        : status === 'error'
-          ? t('generationCommon.lightweightNode.error')
-          : status === 'success'
-            ? t('generationCommon.lightweightNode.success')
-            : t('generationCommon.lightweightNode.idle')
   return (
     <article
       className={cn(
@@ -55,26 +47,21 @@ export function LightweightGenerationNode({
         height: size.height,
       }}
     >
+      <NodeLabelRow>
+        <ShotPreviewOverlays shotIndex={node.shotIndex ?? null} />
+        <span className="min-w-0 flex-1 truncate font-normal text-nomi-ink-60">{node.title || t('generationCommon.lightweightNode.untitled')}</span>
+      </NodeLabelRow>
+      <div data-node-inline-status className="pointer-events-none absolute inset-x-0 bottom-[calc(100%+40px)] z-[4] flex h-7 items-center [&_[data-generation-message]]:truncate [&_[data-generation-status]]:bg-nomi-paper/90">
+        <NodeGenerationStatus node={node} />
+      </div>
       <div
         className={cn(
           'w-full h-full overflow-hidden rounded-nomi border',
           selected ? 'border-nomi-accent ring-2 ring-nomi-accent' : 'border-nomi-line',
           'bg-nomi-paper/90 shadow-nomi-sm',
-          'grid grid-rows-[4px_minmax(0,1fr)]',
+          'grid',
         )}
       >
-        <div
-          className={cn(
-            'w-full',
-            status === 'error'
-              ? 'bg-workbench-danger'
-              : status === 'success'
-                ? 'bg-workbench-success'
-                : status === 'queued' || status === 'running'
-                  ? 'bg-nomi-accent'
-                  : 'bg-nomi-ink-20',
-          )}
-        />
         <div className="relative min-w-0 min-h-0 overflow-hidden bg-nomi-ink-05">
           {preview?.kind === 'image' ? (
             <DeferredNodeImage
@@ -93,14 +80,7 @@ export function LightweightGenerationNode({
               controls={false}
             />
           ) : null}
-          <div className="absolute inset-x-0 bottom-0 flex min-w-0 flex-col gap-1 bg-nomi-paper/90 p-3">
-            <div className="min-w-0 truncate text-body-sm font-medium text-nomi-ink">
-              {node.title || t('generationCommon.lightweightNode.untitled')}
-            </div>
-            <div className="min-w-0 truncate text-micro text-nomi-ink-40">
-              {statusLabel}
-            </div>
-          </div>
+
         </div>
       </div>
     </article>

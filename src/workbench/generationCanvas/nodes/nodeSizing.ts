@@ -4,12 +4,6 @@ import type { GenerationCanvasNode } from "../model/generationCanvasTypes";
 import { readNodeAspectRatio } from "./aspectRatio";
 import { isCardRenderKind, resolveNodeRenderKind } from "./resolveRenderKind";
 
-export const STATUS_LABEL: Record<string, string> = {
-    queued: "排队中",
-    running: "生成中",
-    error: "生成失败",
-};
-
 export type ResizeDirection = "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw";
 
 export const RESIZE_DIRECTIONS: ResizeDirection[] = [
@@ -140,7 +134,6 @@ export function getNodeSizeBounds(kind: GenerationCanvasNode["kind"]): NodeSizeB
 export const TIMELINE_TRACK_CLIPS_SELECTOR = ".workbench-timeline-track__clips";
 
 export const FOCUS_GENERATION_NODE_EVENT = "nomi-focus-generation-node";
-export const ENSURE_COMPOSER_VISIBLE_EVENT = "nomi-ensure-composer-visible";
 
 /**
  * composer 的「最小可用高度」：提示词 3 行(72) + 底栏 + 内边距/间距。
@@ -272,6 +265,7 @@ export const MEDIA_DIMENSION_UPDATE_OPTIONS = {
  * 保持壳瘦身（R9）+ 可裸测。视频回填 meta.videoDuration 是「拖入视频一律 5 秒」的 catch-all 修复键。
  */
 export function computeMediaMetaPatch(params: {
+  preserveSize?: boolean;
   resultType: string | undefined;
   meta: Record<string, unknown>;
   currentSize: { width?: number; height?: number } | undefined;
@@ -300,7 +294,7 @@ export function computeMediaMetaPatch(params: {
       }
     : { imageWidth: width, imageHeight: height, imageAspectRatio: width / height };
   const shouldPatchSize =
-    !userResized &&
+    !params.preserveSize && !userResized &&
     (currentSize?.width !== nextSize.width || currentSize?.height !== nextSize.height);
   if (
     previousWidth === width &&
@@ -311,7 +305,7 @@ export function computeMediaMetaPatch(params: {
     return null;
   return {
     ...(shouldPatchSize ? { size: { width: nextSize.width, height: nextSize.height } } : {}),
-    meta: { ...meta, ...mediaPatch, previewHeight: nextSize.previewHeight },
+    meta: { ...meta, ...mediaPatch, previewHeight: params.preserveSize ? currentSize?.height ?? nextSize.previewHeight : nextSize.previewHeight },
   };
 }
 

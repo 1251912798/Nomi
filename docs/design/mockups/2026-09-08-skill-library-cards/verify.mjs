@@ -1,0 +1,110 @@
+import console from 'node:console'
+import process from 'node:process'
+import assert from 'node:assert/strict'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { chromium } from 'playwright'
+import { assertRenderedMarkdown } from './build.mjs'
+const dir = path.dirname(fileURLToPath(import.meta.url))
+const base = process.env.NOMI_MOCKUP_BASE ?? 'http://127.0.0.1:5198/docs/design/mockups/2026-09-08-skill-library-cards/'
+const browser = await chromium.launch()
+try {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } })
+  const errors = []
+  page.on('pageerror', (error) => errors.push(error.message))
+  // Red proof: the previous pre.textContent path must fail this exact assertion.
+  await page.setContent('<div class="skill-prose"><pre># 多视图设定\n**配方**</pre></div>')
+  await assert.rejects(page.evaluate(assertRenderedMarkdown), /Raw Markdown/)
+  await page.goto(`${base}library-cards.html`)
+  await page.locator('.skill-prose h2').first().waitFor()
+  await page.evaluate(() => globalThis.document.fonts.ready)
+  await page.evaluate(assertRenderedMarkdown)
+  assert.equal(await page.locator('#detail-title').evaluate(el => globalThis.getComputedStyle(el).fontSize), '28px')
+  assert.equal(await page.locator('.skill-prose p').first().evaluate(el => globalThis.getComputedStyle(el).lineHeight), '20px')
+  assert.equal(await page.locator('.expand-body, [data-folded]').count(), 0)
+  assert.equal(await page.locator('.hero').evaluate(el => globalThis.getComputedStyle(el).justifyContent), 'flex-start')
+  assert.equal(await page.locator('.prompt-pane').evaluate(el => globalThis.getComputedStyle(el).overflowY), 'auto')
+  // Both consumers and every input population use the same production renderer.
+  const all = await page.evaluate(() => [...globalThis.nomiMockupSkills, ...globalThis.nomiMockupEffects])
+  for (const entry of all) {
+    await page.evaluate(e => globalThis.window.dispatchEvent(new globalThis.CustomEvent('nomi-mockup-detail', { detail: e })), entry)
+    await page.waitForFunction(title => globalThis.document.querySelector('#detail-title')?.textContent === title, entry.title['zh-CN'])
+    await page.evaluate(assertRenderedMarkdown)
+  }
+  const fixture = {...all[0], title: {'zh-CN':'结构验收'}, summary:{'zh-CN':'简介'}, prompt:'---\nname: fixture\n---\n\n# 结构验收\n\n简介\n\n## 小节\n\n**粗体**与`行内代码`。\n\n- {角色名}\n- 第二项\n\n| 列 | 值 |\n| --- | --- |\n| 甲 | 乙 |'}
+  await page.evaluate(e => globalThis.window.dispatchEvent(new globalThis.CustomEvent('nomi-mockup-detail', { detail: e })), fixture)
+  await page.locator('.skill-prose table').waitFor()
+  await page.evaluate(assertRenderedMarkdown)
+  assert.equal(await page.locator('.skill-prose strong').count(), 1)
+  assert.equal(await page.locator('.skill-prose code').count(), 1)
+  assert.equal(await page.locator('.skill-prose li').count(), 2)
+  assert.equal(await page.locator('.slot-chip').innerText(), '{角色名}')
+  // A long body remains fully rendered and its last line is reachable by scrolling.
+  const longEntry = {...fixture, prompt: Array.from({length: 80}, (_, i) => `段落 ${i + 1}：完整正文。`).join('\n\n')}
+  await page.evaluate(e => globalThis.window.dispatchEvent(new globalThis.CustomEvent('nomi-mockup-detail', { detail: e })), longEntry)
+  await page.waitForFunction(() => globalThis.document.querySelector('.skill-prose')?.textContent.includes('段落 80'))
+  assert.equal(await page.locator('.expand-body, [data-folded]').count(), 0)
+  assert.equal(await page.locator('.skill-prose p').count(), 80)
+  assert.ok(await page.locator('.prompt-pane').evaluate(el => {
+    el.scrollTop = el.scrollHeight
+    const last = el.querySelector('.skill-prose p:last-child').getBoundingClientRect()
+    const pane = el.getBoundingClientRect()
+    return el.scrollTop > 0 && last.bottom <= pane.bottom && last.top >= pane.top
+  }))
+  await page.locator('.prompt-pane').evaluate(el => { el.scrollTop = 0 })
+  await page.locator('.card').first().click()
+  await page.waitForFunction(() => globalThis.document.querySelector('#detail-title')?.textContent === '多视图设定')
+  await page.evaluate(() => Promise.all([...globalThis.document.images].map((image) => image.decode())))
+  assert.match(await page.locator('#detail-source').innerText(), /Apache-2.0/)
+  await page.screenshot({ path: path.join(dir, 'library-cards.png') })
+  const retina = await browser.newPage({viewport:{width:1440,height:900},deviceScaleFactor:2})
+  await retina.goto(`${base}library-cards.html`)
+  await retina.locator('.skill-prose h2').first().waitFor()
+  await retina.evaluate(() => Promise.all([globalThis.document.fonts.ready, ...[...globalThis.document.images].map(image => image.decode())]))
+  await retina.evaluate(assertRenderedMarkdown)
+  await retina.screenshot({path:path.join(dir,'library-cards@2x.png')})
+  await page.getByRole('button', { name: '提示词库', exact: true }).click()
+  await page.locator('.slot-chip').first().waitFor()
+  assert.match(await page.locator('#detail-prompt').innerText(), /{[^}]+}/)
+  assert.match(await page.locator('.hero figcaption').innerText(), /未批准|已批准封面/)
+  await page.getByRole('button', { name: '引用到 Agent', exact: true }).click()
+  assert.equal(await page.locator('.agent-chip').count(), 1)
+  await page.getByRole('button', { name: '用到节点', exact: true }).click()
+  await page.waitForURL('**/node-effects.html?apply=1')
+  assert.ok((await page.locator('#editor').innerText()).trim())
+  await page.goto(`${base}node-effects.html`)
+  await page.evaluate(() => Promise.all([...globalThis.document.images].map((image) => image.decode())))
+  await page.screenshot({ path: path.join(dir, 'node-effects.png') })
+  await retina.goto(`${base}node-effects.html`)
+  await retina.evaluate(() => Promise.all([globalThis.document.fonts.ready, ...[...globalThis.document.images].map(image => image.decode())]))
+  await retina.screenshot({path:path.join(dir,'node-effects@2x.png')})
+  await retina.close()
+  assert.equal(await page.locator('#favorites button').first().evaluate(el => globalThis.getComputedStyle(el).fontSize), '12px')
+  assert.equal(await page.locator('.menu button').first().evaluate(el => globalThis.getComputedStyle(el).fontSize), '12px')
+  assert.equal(await page.locator('.menu strong').first().evaluate(el => globalThis.getComputedStyle(el).fontSize), '11px')
+  await page.locator('#favorites [data-effect="effect-character-three-view"]').click()
+  assert.equal(await page.locator('#favorites').isHidden(), true)
+  assert.equal(await page.locator('#editor mark').count(), 1)
+  assert.equal(await page.locator('#editor mark').getAttribute('data-slot'), '{角色名}')
+  await page.getByRole('button', { name: '撤销', exact: true }).click()
+  assert.equal((await page.locator('#editor').innerText()).trim(), '')
+  assert.equal(await page.locator('#favorites').isVisible(), true)
+  await page.locator('#editor').fill('保留原文。')
+  await page.locator('.more').first().click()
+  await page.locator('.menu [data-effect="effect-object-six-view"]').click()
+  assert.match(await page.locator('#editor').innerText(), /^保留原文。/)
+  assert.match(await page.locator('#editor').innerText(), /连接的主体参考/)
+  await page.getByRole('button', { name: '撤销', exact: true }).click()
+  assert.equal((await page.locator('#editor').innerText()).trim(), '保留原文。')
+  await page.locator('#filled-more').click()
+  await page.locator('.menu [data-effect="effect-character-three-view"]').click()
+  assert.match(await page.locator('#filled-editor').innerText(), /^柔和的自然光/)
+  assert.equal(await page.locator('#filled-editor mark').count(), 1)
+  await page.getByRole('button', { name: '撤销', exact: true }).click()
+  assert.equal((await page.locator('#filled-editor').innerText()).trim(), '柔和的自然光，保持原有服装和构图。')
+  assert.deepEqual(errors, [])
+  console.log(`Markdown DOM assertion: ${all.length} entries + structural fixture passed; old raw pre failed as expected. 1440/2x captures passed.`)
+  console.log('Mockups: media decoded; details, both tabs, reference, append, inherited slots, missing slots and undo verified.')
+} finally {
+  await browser.close()
+}

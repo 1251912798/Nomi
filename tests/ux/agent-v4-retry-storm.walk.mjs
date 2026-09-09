@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { stationTimeout } from './_station-budget.mjs'
 // 真实任务走查（R16）：**Agent 反复试同一个工具**。
 //
 // 复现的是 2026-09-06 晚打包版上的现场：用户在分镜表里让 Agent「从原稿重拆 10 镜」，
@@ -9,14 +10,14 @@
 // 这条走查证的是三件事，逐条对应那次截图里的三个问题：
 //   A 展开一条收据，**输入是真实入参、输出是真实结果**，两栏不再是同一句工具描述；
 //   B 同名工具连着调 3 次折成**一行**，行内带失败原因，展开才逐次；
-//   C 工具之间那几段自我纠正**该**折成一条过程行——这一条真机上走不到，原因在宿主，
-//     §C 那一段逐条写清了为什么，并断言了折叠层的退让（回答必须读得到）。
+//   C lane 保留工具之间的独立助手文本：自我纠正折成过程行，最终回答保持展开。
 //
 // 零额度：供应商是 loopback（`agent-runtime-fixture.mjs`）。工具调用是**真的**被执行、
 // 真的失败——入参喂的是解不出的 JSON 文本，所以它走的是生产的失败路径，不是假装失败。
 //
 // 用法：node tests/ux/agent-v4-retry-storm.walk.mjs
-import { clickOrFail, expect, expectAbsent, proveProbe } from './_assert.mjs'
+import { clickOrFail, expect, proveProbe } from './_assert.mjs'
+import { laneMessages, laneMessageText, readLaneTranscripts } from './agent-lane-observer.mjs'
 import { FIXTURE_TEXT_MODEL_LABEL, flattenRequestText } from './agent-runtime-fixture.mjs'
 import {
   CANVAS_PANEL,
@@ -26,6 +27,7 @@ import {
   createRuntimeWalk,
   hasToolResult,
   openCanvas,
+  readProject,
   recorded,
   sendCanvas,
   waitForV4TurnIdle,
@@ -50,7 +52,7 @@ const walk = await createRuntimeWalk('v4-retry-storm')
 let failure
 try {
   const { win } = await walk.start({ first: true })
-  await walk.newProject()
+  const { projectId, projectRoot } = await walk.newProject()
   await chooseAssistantModel(win, FIXTURE_TEXT_MODEL_LABEL)
   await openCanvas(win)
   const panel = win.locator(CANVAS_PANEL)
@@ -72,7 +74,7 @@ try {
     reply: {
       type: 'tool',
       id: ATTEMPTS[0],
-      name: 'nomi_canvas_edit',
+      name: 'nomi_canvas_write',
       args: { operation: 'create_canvas_nodes', summary: '重拆 10 镜', nodes: BROKEN_NODES },
     },
   })
@@ -84,7 +86,7 @@ try {
     reply: {
       type: 'tool',
       id,
-      name: 'nomi_canvas_edit',
+      name: 'nomi_canvas_write',
       text: SELF_TALK[index],
       args: { operation: 'create_canvas_nodes', summary: '重拆 10 镜', nodes: BROKEN_NODES },
     },
@@ -117,27 +119,32 @@ try {
   await expect(panel.locator(`${TOOL_GROUP} ${TOOL_RECEIPT}`)).toHaveCount(3)
   await walk.snap('01-collapsed-retry-row')
 
-  // ── C 过程自述：**这一档下真机走不到**，如实记在这里 ─────────────────────
-  //
-  // 折叠逻辑本身有单测（`agentPanelV4Collapse.test.ts`）与实验室格
-  // （`v4-process-folded`），但真机上这一档看不到过程行，原因在宿主，不在这一层：
-  //   ① 宿主把**一个回合的全部助手正文合并成一条** item，切点只能靠「这次调用发生时
-  //      正文写到哪儿了」（`assistantTextAnchor`）；
-  //   ② 那个锚只在**要审批**的那条路上算，「自动改」下的安全改动是 silent 放行的；
-  //   ③ 而参数非法的调用在拿到审批之前就被执行边界拒掉，所以换成「每步问」也拿不到锚。
-  // 于是模型说的每一句在真机上都是一整段，而且因为 item 建得早，它整段排在收据**前面**。
-  // 折叠层对此有明确的退让：切不开就整段原样渲染，绝不把唯一那条回答折没。
-  // 这里断言的就是那条退让——回答必须读得到。要真机看到过程行，得先让宿主在 silent 路上
-  // 也给出锚（本轮范围之外，PR 正文单列）。
+  // ── C lane 原始消息顺序 → 过程折叠 + 一条最终回答 ──────────────────────
+  // pi 每次 assistant 消息保留正文与调用位置，不再依赖旧 Host 的审批锚点。
   const answers = panel.locator(ASSISTANT_MESSAGE)
-  await expect(answers, '不管折不折，回答都必须读得到——一条摊开的回答都不剩比平铺更糟').toHaveCount(1)
-  await expect(answers.first()).toContainText('直接把分镜写进文稿')
-  // 「没有过程行」这句话得先证明这个探针测得到东西——否则和「选择器早就失效了」分不开。
-  const processProbe = await proveProbe(panel.locator(TOOL_RECEIPT), '过程行的探针测得到流里的东西')
-  await expectAbsent(panel.locator(PROCESS_ROW), {
-    provenBy: processProbe,
-    message: '拿不到切点时不硬折：宁可整段原样，也不折没回答',
-  })
+  await expect(answers, '自我纠正折叠之后最终回答仍须展开').toHaveCount(1)
+  await expect(answers.first()).toContainText(GIVE_UP)
+  const process = panel.locator(PROCESS_ROW)
+  await expect(process, '两段自我纠正必须归在同一条过程行').toHaveCount(1)
+  await expect(process).toHaveAttribute('data-count', '2')
+  await clickOrFail(process.locator('> summary'), '展开真实的工具重试过程')
+  for (const text of SELF_TALK) await expect(process).toContainText(text)
+  await clickOrFail(process.locator('> summary'), '收起工具重试过程')
+
+  await expect.poll(() => readLaneTranscripts(projectRoot).flatMap(laneMessages)
+    .filter(message => message.role === 'toolResult' && ATTEMPTS.includes(message.toolCallId)).length,
+  { message: '三次真实失败结果必须写入 lane JSONL', timeout: stationTimeout({ operations: 2 }) }).toBe(3)
+  const messages = readLaneTranscripts(projectRoot).flatMap(laneMessages)
+  const calls = messages.filter(message => message.role === 'assistant')
+    .flatMap(message => message.content).filter(part => part.type === 'toolCall')
+  expect(calls.filter(call => ATTEMPTS.includes(call.id)).map(call => [call.name, call.arguments.nodes]))
+    .toEqual(ATTEMPTS.map(() => ['nomi_canvas_write', BROKEN_NODES]))
+  const results = messages.filter(message => message.role === 'toolResult' && ATTEMPTS.includes(message.toolCallId))
+  expect(results.every(message => message.isError && laneMessageText(message).length > 0)).toBe(true)
+  expect(messages.filter(message => message.role === 'assistant').map(laneMessageText).filter(Boolean))
+    .toEqual([...SELF_TALK, GIVE_UP])
+  expect((await readProject(win, projectId)).payload.generationCanvas.nodes,
+    '三次非法工具入参不能创建任何节点').toHaveLength(0)
   await walk.snap('02-answer-still-readable')
 
   // ── A 展开收据：输入是真入参，输出是真结果 ──────────────────────────────

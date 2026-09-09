@@ -16,7 +16,6 @@ import { NodeExecutionEnv } from '@earendil-works/pi-agent-core/harness/env/node
 import { BACKGROUND_CONTEXT } from '@earendil-works/pi-agent-core/harness/context';
 import { getOrThrow } from '@earendil-works/pi-agent-core';
 
-import { openLane } from '../../electron/agentLane/laneHost.mjs';
 import { LANE_READ_TOOL_TIMEOUT_MS } from '../../electron/shared/agentLane/laneToolContract.js';
 import { createLaneFileSystem, LANE_DIR_MODE, LANE_FILE_MODE } from '../../electron/agentLane/laneFileSystem.mjs';
 import { laneSessionsRoot } from '../../electron/agentLane/laneSession.mjs';
@@ -48,7 +47,7 @@ test('the transcript is owner-only on disk — it holds the user’s manuscript,
   t.after(() => { process.umask(previousUmask); });
 
   const fixture = await createLaneFixture(t, [...ONE_TURN]);
-  const lane = await openLane(fixture.options);
+  const lane = await fixture.openLane(fixture.options);
   await lane.execute({ kind: 'prompt', text: 'Read the document.' });
   await lane.close();
 
@@ -89,7 +88,7 @@ test('renameFile stays pi’s own: an atomic same-filesystem replace, never a co
 
 test('every atomic publish stages its temp file as a sibling — that is what makes “same filesystem” structural', async (t) => {
   const fixture = await createLaneFixture(t, [...ONE_TURN]);
-  const lane = await openLane(fixture.options);
+  const lane = await fixture.openLane(fixture.options);
   await lane.execute({ kind: 'prompt', text: 'Read the document.' });
   await lane.close();
 
@@ -103,29 +102,33 @@ test('every atomic publish stages its temp file as a sibling — that is what ma
 
 test('one session has exactly one owner: a second open in this process is refused, not silently duplicated', async (t) => {
   const fixture = await createLaneFixture(t, [...ONE_TURN]);
-  const first = await openLane(fixture.options);
-  t.after(() => first.close());
+  const first = await fixture.openLane(fixture.options);
 
   // 上游 #8852：同一条 JSONL 被打开两次会写出重复 `seq` 并把文件写坏。Nomi 是多窗口
   // Electron——「一个项目被两个窗口打开」是日常操作。
-  await assert.rejects(() => openLane({ ...fixture.options, sessionId: first.sessionId }),
+  await assert.rejects(() => fixture.openLane({ ...fixture.options, sessionId: first.sessionId }),
     /already has an owner/, 'the second opener is turned away with the reason, not handed a second writer');
 
   // 阳性对照 ①：拦的是**这一条会话**，不是「这个项目」。同一个项目里另起一条 lane 照常打开——
   // 否则这道防线会把「两个窗口看两条不同对话」也一起拦掉，那是产品功能不是事故。
-  const sibling = await openLane(fixture.options);
-  t.after(() => sibling.close());
+  //
+  // ⚠️ 阶段 3d 起「另起一条 lane」必须给一个**不同的名字**：不带 sessionId 打开同名 lane
+  // 现在是「接着那条对话」（`openLaneSession` 按 lane 复用），不再是「每次新建一条」。
+  // 每次新建的旧行为会让对话列表里同一个名字长出一串空壳，而用户以为点开的是昨天那条。
+  const sibling = await fixture.openLane({ ...fixture.options, laneName: 'research' });
   assert.notEqual(sibling.sessionId, first.sessionId);
+
+  // 阳性对照 ②：**同名**再开一次，拿到的是同一条会话的持有权冲突——不是一条新的空对话。
+  await assert.rejects(() => fixture.openLane(fixture.options), /already has an owner/);
 });
 
 test('the owner is released on close — a reopened history is not permanently locked out', async (t) => {
   const fixture = await createLaneFixture(t, [...ONE_TURN]);
-  const first = await openLane(fixture.options);
+  const first = await fixture.openLane(fixture.options);
   const { sessionId } = first;
   await first.close();
 
-  const reopened = await openLane({ ...fixture.options, sessionId });
-  t.after(() => reopened.close());
+  const reopened = await fixture.openLane({ ...fixture.options, sessionId });
   assert.equal(reopened.sessionId, sessionId);
 });
 
@@ -134,11 +137,10 @@ test('a failed assembly hands the session back — the next open does not meet a
   // 两个同名工具：`createLaneTools` 在装配阶段抛。会话此刻已经打开了。
   const duplicated = [...createDocumentLaneTools(createDocumentPort())];
   const clash = duplicated[0] as LaneToolDescriptor;
-  await assert.rejects(() => openLane({ ...fixture.options, tools: [clash, clash] }), /duplicate/i);
+  await assert.rejects(() => fixture.openLane({ ...fixture.options, tools: [clash, clash] }), /duplicate/i);
 
   // 会话没有被一个失败退出的调用扣住。
-  const lane = await openLane(fixture.options);
-  t.after(() => lane.close());
+  const lane = await fixture.openLane(fixture.options);
   assert.ok(lane.sessionId);
 });
 
@@ -165,8 +167,7 @@ test('G-02 · a tool failure throws, so pi records an errored result instead of 
     { type: 'tool', calls: [{ id: 'good', name: 'always_succeeds', arguments: {} }] },
     { type: 'text', text: 'Done.' },
   ]);
-  const lane = await openLane({ ...fixture.options, tools: [failing, succeeding] });
-  t.after(() => lane.close());
+  const lane = await fixture.openLane({ ...fixture.options, tools: [failing, succeeding] });
   await lane.execute({ kind: 'prompt', text: 'Try both.' });
 
   const results = lane.projection().parts.filter((part) => part.kind === 'tool-result');

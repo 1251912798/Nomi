@@ -1,0 +1,16 @@
+# Full inherited diagnostic outputs stay local; retain the minimal red/green review evidence.
+ci-artifacts-*/
+*.log
+!latest-main-group-ci1280.log
+!latest-main-batch-production.log
+!group-1280-green.log
+!group-1680-green.log
+!batch-green.log
+!sequence-unit-red.log
+!sequence-unit-green.log
+!invariant-tests-green.log
+!verification-summary.log
+window-observer.mjs
+green-1280/*
+!green-1280/01-canvas-4-nodes.png
+!green-1280/03-canvas-grouped.png

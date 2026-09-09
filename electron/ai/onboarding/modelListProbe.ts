@@ -17,7 +17,7 @@ import {
   type BuiltRequest,
 } from "../requestPipeline";
 import { describeIllegalHeader, findIllegalHeader, isJsonRecord, mergeHeadersCaseInsensitive, pickUpstreamMessage } from "../../jsonUtils";
-import { parseModelListPage, type ModelListDescriptor, type ModelListFailureKind } from "./modelListResponse";
+import { parseModelListPage, type ModelListResult, type ModelListDescriptor, type ModelListFailureKind } from "./modelListResponse";
 import { modelListErrorRedactor } from "./modelListSafety";
 import { createExplicitProxyDispatcher } from "../../systemProxy";
 import type { Dispatcher } from "undici";
@@ -77,9 +77,7 @@ export function buildAuthHeaders(
   );
 }
 
-export type ModelListResult =
-  | { ok: true; models: string[]; descriptors?: ModelListDescriptor[]; statuses: number[]; partial?: boolean }
-  | { ok: false; status?: number; error: string; statuses: number[]; failureKind?: ModelListFailureKind };
+export type { ModelListResult } from "./modelListResponse";
 
 type Failure = Extract<ModelListResult, { ok: false }> & { failureKind: ModelListFailureKind };
 const FAILURE_PRIORITY: Record<ModelListFailureKind, number> = {
@@ -151,7 +149,7 @@ export async function fetchModelList(
   baseUrl: string,
   headers: Record<string, string>,
   signal: AbortSignal,
-  options: { query?: Record<string, string>; proxyUrl?: string } = {},
+  options: { query?: Record<string, string>; proxyUrl?: string; validator?: { url: string; etag: string } } = {},
 ): Promise<ModelListResult> {
   const query = options.query || {};
   const redact = modelListErrorRedactor(baseUrl, headers, query);
@@ -199,7 +197,7 @@ export async function fetchModelList(
       let status: number | undefined;
       try {
         // Never auto-follow redirects with arbitrary gateway auth headers/query credentials.
-        res = await appFetch(url.toString(), { method: candidate.method, headers: candidate.headers, signal, redirect: "manual", ...(dispatcher ? { dispatcher } : {}) });
+        res = await appFetch(url.toString(), { method: candidate.method, headers: { ...candidate.headers, ...(pageNumber === 0 && options.validator?.url === url.toString() ? { "If-None-Match": options.validator.etag } : {}) }, signal, redirect: "manual", ...(dispatcher ? { dispatcher } : {}) });
         statuses.push(res.status);
         status = res.status;
         body = await res.text();
@@ -210,6 +208,9 @@ export async function fetchModelList(
         const best = remember(failed);
         if (pageNumber > 0 || signal.aborted) return best;
         break;
+      }
+      if (res.status === 304 && pageNumber === 0 && options.validator?.url === url.toString()) {
+        return { ok: true, models: [], statuses, notModified: true, validator: options.validator };
       }
       if (!res.ok) {
         const failed = remember(failure(failureKindForStatus(res.status), upstreamErrorText(body, res.status, redact), res.status));
@@ -243,7 +244,7 @@ export async function fetchModelList(
         return { ok: true, models: [...models].slice(0, MAX_MODELS), ...(descriptors.size ? { descriptors: [...descriptors.values()].slice(0, MAX_MODELS) } : {}), statuses, partial: true };
       }
       if (next) { url = next; continue; }
-      if (models.size > 0) return { ok: true, models: [...models], ...(descriptors.size ? { descriptors: [...descriptors.values()] } : {}), statuses };
+      if (models.size > 0) return { ok: true, ...(pageNumber === 0 && res.headers.get("etag") ? { validator: { url: url.toString(), etag: res.headers.get("etag")! } } : {}), models: [...models], ...(descriptors.size ? { descriptors: [...descriptors.values()] } : {}), statuses };
       sawEmptyList = true;
       break;
     }

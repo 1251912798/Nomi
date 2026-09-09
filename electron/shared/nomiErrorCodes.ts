@@ -13,6 +13,7 @@
 
 /** 目前纳入码化的自有错误类别。新增一类时在这里加一个稳定字符串常量，别在别处硬编码字面量。 */
 export type NomiErrorCode =
+  | 'model-config' // 本地目录无可执行模型；恢复动作不依赖可翻译文案
   | 'asset-too-large' // 素材超过所有上传通道的体积上限（HTTP 413 全挂）——确定性失败，得压缩不能重试
   | 'asset-upload-failed' // 所有上传通道都没成功（非 413）——失败在我们这侧，服务商没被请求到
   // Nomi **自己的**出站安全策略拒绝了这次取片（私网/回环/fake-ip 未确证）。与上面两条同族：
@@ -37,7 +38,12 @@ export function tagNomiError(code: NomiErrorCode, humanMessage: string): string 
 /** classify 端：从 message 里解出 Nomi 错误码；没有标记 → null（走 legacy 兜底）。 */
 export function matchNomiErrorCode(message: string): NomiErrorCode | null {
   const m = MARKER_RE.exec(String(message || ''))
-  return m ? (m[1] as NomiErrorCode) : null
+  if (m) return m[1] as NomiErrorCode
+  // Frozen pre-code serialization templates from catalogTaskResolve. Decode only
+  // whole historical records here; new producers must tag their translated prose.
+  // This is a bounded old-data migration, not substring classification.
+  const legacyCatalogRecord = /^(?:当前没有已连接的供应商提供「[^」]+」模型。请重新连接原供应商，或在该节点上改选一个已连接供应商的模型。|供应商「[^」]+」已断开，且该节点未记录模型。请重新连接，或在该节点上改选已连接供应商的模型。)$/
+  return legacyCatalogRecord.test(message) ? 'model-config' : null
 }
 
 /** 展示端：剥掉码标记，只留人话（技术详情里的 raw 若要保留原样则不调它）。 */

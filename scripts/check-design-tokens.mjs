@@ -53,7 +53,7 @@ const RULES = [
 ];
 
 function listFiles() {
-  return gitPaths(["ls-files", "src"], { cwd: ROOT })
+  return Array.from(new Set(gitPaths(["ls-files", "--cached", "--others", "--exclude-standard", "src"], { cwd: ROOT })))
     .filter((f) => /\.tsx?$/.test(f))
     .filter((f) => !/\.test\.tsx?$/.test(f))
     // 3D 预设动作校准台：仅 dev 工具（独立 Three.js 渲染页，非产品 UI），不纳入设计 token 门禁。
@@ -76,6 +76,15 @@ for (const rel of files) {
 
 const errors = [];
 const warnings = [];
+// AI rows are debt-free. Other production paths may only remove existing debt.
+const edgeClasses = /\b(?:ml-auto|justify-between)\b/g;
+const edgeBaseline = JSON.parse(fs.readFileSync(path.join(ROOT, 'scripts/design-row-edge-baseline.json'), 'utf8'));
+for (const rel of files) {
+  const count = [...fs.readFileSync(path.join(ROOT, rel), 'utf8').matchAll(edgeClasses)].length;
+  const limit = rel.startsWith('src/workbench/ai/') ? 0 : (edgeBaseline[rel] ?? 0);
+  if (count > limit) errors.push(`✗ 行尾贴边：${rel} ${count} > ${limit}；附属信息使用 V4Row 内容流`);
+}
+
 RULES.forEach((rule, i) => {
   const n = counts[i];
   if (n > rule.baseline) {

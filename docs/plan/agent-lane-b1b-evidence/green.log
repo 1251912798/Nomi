@@ -1,0 +1,18 @@
+✔ C59 stable catalog is in system context; user turns contain only catalog changes (341.763166ms)
+✔ C58 resident read loads a Skill but refuses project files without coding (29.210208ms)
+✔ C61 native compaction uses the cost budget even with a million-token model window (188.195ms)
+✔ C59 the 24 recorded user turns reduce total input by 60 percent and add under 2k tokens per turn (1251.798125ms)
+ℹ {"method":"pi estimateTokens on real loopback request bodies; legacy catalog projection reconstructed","turns":24,"before":1175691,"after":53619,"reduction":0.9543936289382159,"indexTokens":785,"newInputTokens":[1929,19,19,20,20,20,21,23,26,20,22,20,20,21,25,18,224,19,19,20,19,20,17,23]}
+✔ C58 real loopback loads the installed Skill before any coding request and refuses src (179.39375ms)
+✔ C59 on-demand models returns every mode contract and follows the latest catalog (0.5955ms)
+✔ C61 configured cost thresholds retain the real small-window safety margin and reject invalid budgets (0.377ms)
+✔ C58 reopening an older lane adds resident read without requiring a group request (32.079666ms)
+✔ C58 skill-only reads reject symlink escapes and allow project reads only after coding activation (5.514417ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3094.160833

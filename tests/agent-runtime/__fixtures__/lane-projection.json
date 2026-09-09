@@ -79,11 +79,16 @@
       "reason": "model-has-no-reasoning"
     }
   },
+  "queues": [],
   "thinking": {
     "supportedLevels": [
       "off"
     ],
     "level": "off",
     "canTurnOff": true
+  },
+  "model": {
+    "provider": "nomi-lane",
+    "modelId": "chosen-model"
   }
 }

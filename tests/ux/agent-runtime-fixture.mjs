@@ -70,6 +70,7 @@ function modelCatalog(baseURL) {
 }
 
 function validateReply(reply, allowHold = true) {
+  if (reply?.reasoning !== undefined && typeof reply.reasoning !== 'string') throw new TypeError('reasoning must be text')
   if (reply?.type === 'text' && typeof reply.text === 'string') return
   if (allowHold && reply?.type === 'hold' && (reply.text === undefined || typeof reply.text === 'string')) return
   if (reply?.type === 'tool' && typeof reply.id === 'string' && reply.id
@@ -110,6 +111,7 @@ function beginStream(state) {
 function sendReply(state, reply) {
   if (!canWrite(state.response)) return
   let wire = beginStream(state)
+  if (reply.reasoning) wire += frame(state, { reasoning_content: reply.reasoning })
   if (reply.type === 'hold') {
     state.response.write(wire + frame(state, { content: reply.text }))
     return
@@ -132,8 +134,8 @@ function sendReply(state, reply) {
 
 /**
  * @typedef {{path:string, body:unknown, authorization:string, headers:object}} RequestRecord
- * @typedef {{type:'text', text:string}|{type:'tool', id:string, name:string, args:unknown, text?:string}
- *   |{type:'hold', text?:string}} Reply
+ * @typedef {({type:'text', text:string}|{type:'tool', id:string, name:string, args:unknown, text?:string}
+ *   |{type:'hold', text?:string}) & {reasoning?:string}} Reply
  *
  * Seed only a new, caller-isolated settings directory. Existing catalogs are never overwritten.
  * expectText consumes the first unconsumed matching expectation, exactly once. Matchers are sync.
@@ -196,7 +198,7 @@ export async function createAgentRuntimeFixture({ rootDir, settingsDir }) {
     response.once('close', () => { expectation.state = undefined })
     expectation.resolveReceived(record)
     const reply = expectation.releasedReply ?? expectation.reply
-    if (reply.type !== 'hold' || reply.text !== undefined) sendReply(state, reply)
+    if (reply.type !== 'hold' || reply.text !== undefined || reply.reasoning !== undefined) sendReply(state, reply)
   }
 
   const server = http.createServer((request, response) => {
@@ -275,4 +277,15 @@ export async function createAgentRuntimeFixture({ rootDir, settingsDir }) {
     await close()
     throw error
   }
+}
+
+/** Real renderer projection; callers provide catalog DTOs, never a hand-authored prompt block. */
+export async function projectAgentRuntimeModels(rootDir, models) {
+  const { createServer } = await import('vite')
+  const server = await createServer({ root: rootDir, server: { middlewareMode: true }, appType: 'custom' })
+  try {
+    const { toCatalogModelOptions } = await server.ssrLoadModule('/src/config/modelOptionMappers.ts')
+    const { buildAgentModelEntries } = await server.ssrLoadModule('/src/workbench/generationCanvas/agent/availableModels.ts')
+    return buildAgentModelEntries(toCatalogModelOptions(models))
+  } finally { await server.close() }
 }

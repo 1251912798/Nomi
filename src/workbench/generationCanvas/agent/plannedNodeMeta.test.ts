@@ -173,3 +173,16 @@ describe("模型身份唯一键含 vendor（选 A 家就发去 A 家）", () => 
     expect(resolved.modelVendor).toBe("apimart");
   });
 });
+
+
+describe("B4 provider preference at node persistence", () => {
+  it("lands a bare gpt-image-2 key on APIMart when APIMart is preferred", () => {
+    const entries = buildAgentModelEntries([
+      { value: "gpt-image-2", modelKey: "gpt-image-2", label: "GPT Image 2", vendor: "relay", kind: "image" },
+      { value: "gpt-image-2", modelKey: "gpt-image-2", label: "GPT Image 2", vendor: "apimart", kind: "image" },
+    ] as ModelOption[]);
+    const index = buildModelEntryIndex(entries, ["apimart", "relay"]);
+    expect(buildPlannedNodeMeta({ modelKey: "gpt-image-2" }, index)?.modelVendor).toBe("apimart");
+    expect(buildPlannedNodeMeta({ modelKey: "gpt-image-2", vendor: "relay" }, index)?.modelVendor).toBe("relay");
+  });
+});

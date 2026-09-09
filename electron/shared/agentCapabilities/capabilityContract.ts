@@ -26,6 +26,8 @@ export type CapabilityContract<Input, Output> = {
   readonly outputSchema: ZodType<Output>;
   readonly effect: CapabilityEffect;
   readonly effectClass: CapabilityEffectClass;
+  /** Undo support is independent of mandatory destructive approval. */
+  readonly undoable?: boolean;
   readonly operationEffectClasses?: Readonly<Record<string, CapabilityEffectClass>>;
   /**
    * This capability's payload is a plan the user has to *read* before it runs,
@@ -38,6 +40,8 @@ export type CapabilityContract<Input, Output> = {
    * commits it before the highlight is drawn.
    */
   readonly requiresPlanReview?: boolean;
+  /** Operation-specific review. Its presence requires review; false forbids reusing any prior approval. */
+  readonly operationPlanReview?: Readonly<Record<string, Readonly<{ allowReuse: boolean }>>>;
   readonly execution: {
     readonly port: CapabilityPortKind;
     readonly availability: CapabilityAvailability;

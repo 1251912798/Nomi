@@ -36,13 +36,20 @@
 
 ## A. 走查与体验验证（Playwright / Electron 真机）
 
+- [打包成功不证明包来自当前源码](package-only-is-not-a-source-build.md) — 切分支、合并、修代码后打包验收，必须核验两份构建戳
+- [测 Agent 不用各种 prompt 打它、走查靠灌状态 = 测不出东西](agent-tests-must-be-prompt-driven-and-human-path.md) — 写验收走查/派走查任务书前先读；执行版在 `docs/engineering/acceptance-walkthrough-doctrine.md`
+
+- [UA 默认样式泄漏是一类问题，但蓝框未必来自 UA](ua-default-style-leaks-are-a-class.md) — 输入框点击厚环；先查计算样式，再按文本/非文本控件在全局边界治理
+
 - [跑批渲染必须一格一个浏览上下文，复用同一个到第 34 次就再也起不来](one-browser-context-per-render-or-the-batch-dies-midway.md) — 前几十格都好、从某一格起 `waitForFunction` 恒超时，而单独 `ONLY=` 跑那一格完全正常
 - [走查断言必须有真信号](walkthrough-assertions-need-a-real-signal.md) — 写/改走查前必读：用 `tests/ux/_assert.mjs`，假绿是框架缺陷不是手滑
 - [走查取点只信真实光标到位后的那一次](walkthrough-geometry-must-reverify-under-the-real-cursor.md) — stage 一变窄「点空白被磁性 + 吃掉 / 框选 autoPan 永不安定 / 连线点中心被卡拦」一起来；判据是白名单（最顶层元素就是 pane），单一 owner `tests/ux/_canvasHit.mjs`
 - [`waitForFunction` 配 async 判据 = 一个从不等待的等待](wait-for-function-with-async-predicate-never-waits.md) — 判据里有 `await` 就等于没等：Promise 被当 truthy，0ms 返回 null；下游那句 `Cannot read properties of null` 长得像业务 bug。换 `expect.poll`
 - [expectAbsent 会通过得太早](expect-absent-passes-too-early.md) — 「元素不存在」断言在计数本来就是 0 时首次采样即过
 - [gates 全绿 ≠ 走查真的跑过](gates-green-does-not-mean-walkthrough-ran.md) — `check:walkthroughs` 是静态检查；旧截图不会自动失效
-- [hook 指向的技能可以根本不存在，而且没有任何东西会发现](hook-pointed-at-a-skill-that-never-existed.md) — 「我们明明有规则为什么没照做」；任何 hook/文档说「走 XX 技能」时先 ls 那个文件；.claude/* 是 gitignore 的本机数据、技能没有仓内真相源也没门岗
+- [门岗说「机器超载」，其实是页面自己崩了](gate-blames-environment-for-a-page-error.md) — 任何「等不到 ready / 预热超时」的失败，尤其它还贴了 load 数字时；先开页面看控制台再谈环境，curl 一下就能分开「服务器起没起」和「页面崩没崩」
+- [「先查别人」要查两层：open PR 之外还有已合入 main 的](check-merged-main-not-just-open-prs.md) — 动手修红之前；gh pr list 查不到已经合进 main、只是你没 fetch 的那条修复；同一晚躲过一次、没躲过一次，代价是造了一份并行版
+- [typecheck 绿 ≠ 构建绿：图标白名单 barrel 只在构建期生效](typecheck-green-does-not-mean-build-green.md) — 新加 Tabler 图标；src/vendor/tablerIcons.ts 只有 252 个，typecheck 解析真包、构建解析 barrel，两者看的不是同一份模块图
 - [设计实验室基线全绿 ≠ 那套组件能接线](design-lab-baselines-green-does-not-mean-wirable.md) — 接手「已落基线、只差接线」的组件前先查两条：有没有回调 props、`src/` 里有没有非 devlab 的 importer；顺带附「换 UI 先数 DOM 测试锚点」的量法
 - [修过期走查先打探针，别读源码猜选择器](walkthrough-repair-probe-first.md) — 附画布 composer 已验证锚点与三个坑
 - [走查里别用 `win.reload()`](walkthrough-no-win-reload.md) — 原地刷新后活动项目恒 null，面板静默空掉，像极了真 bug
@@ -57,7 +64,12 @@
 - [带状态的 UI 元素要立双层一致性合同](stateful-ui-needs-two-layer-conformance-contract.md) — 设计断言 + 功能承诺三层验证，专防装饰性 UI（`deviated` 恒 false 前科）
 - [弹层被祖先 overflow 裁掉时三样证据同时失明](overlay-clipped-by-ancestor-overflow.md) — 浮层走查必查：`toBeVisible` / rect / 「点得动」全绿也可能用户点不到，改用 `expectOverlayReachable`
 
+- [固定等待三连坑](fixed-station-waits-three-incidents.md) — 视频、审批、点击统一用状态判据与预算上限；R18 拦固定等待
+
 ## B. 测试与 CI 的红绿判读
+
+- [启动器默认值不能覆盖调用配置](launcher-defaults-must-not-override-env.md) — GUI 已起但 MCP resources/list 超时：先打印双方 capabilityDir；默认派生只能在显式参数与 env 都未配置时发生。
+- [测试目录必须等资源真正关闭后再删](fixture-teardown-must-await-resource-owners.md) — node:test 红后挂死、临时目录 ENOTEMPTY、kill-only 清理。
 - [停掉一个 agent ≠ 现场清空：子 agent 还在写、哨兵还在跑](stopping-an-agent-leaves-children-and-sentinels.md) — B · TaskStop 只停一个；先 ListAgents 停子 agent，再 pgrep 杀 until 循环，证明无写入后才派接力写手
 
 - [管道跑测试会吞掉退出码](piped-test-runs-mask-exit-codes.md) — `| tail` 的 exit 0 是 tail 的；错的 reporter 名会「全绿」通过
@@ -99,6 +111,10 @@
 - [合并后不立刻录交付收据，窗口就永久关闭](verify-merged-receipt-window-closes-fast.md) — `verify-merged` 要求 HEAD == `origin/main` == 目标 SHA；main 一前进就再也录不成，收据命令要自带重试
 
 ## D. 排查与平台故障
+- [Antigravity 图像验证两平台一起红：自己的 agent 定义关掉了自己的钩子](antigravity-hooks-need-inherit-customizations.md) — `inheritCustomizations:false` 在 agy ≥1.1.27 连 hooks 一起关；「加载了」≠「执行了」；同码双平台红先查共享层
+
+- [平台门控必须在 UI 上说人话](platform-gates-must-explain-user-action.md) — Windows 等平台被拒绝却显示未检测或部分受限时
+- [Antigravity CLI Windows 修复计划](../plan/2026-09-08-antigravity-cli-windows.md) — 六条现场记录核实、回归与 RC 边界
 
 - [`ERR_INVALID_STATE` 其实是 `ReadableStream.from`](err-invalid-state-is-readablestreamfrom.md) — 栈里有 `undici:NNNN` 就别去升 Electron
 - [探测本机解析器要用真实 TLD，`.invalid` 探不到代理](reserved-tlds-cannot-probe-the-resolver.md) — 写「这台机器是不是被本地代理接管」的探针前必读：RFC 保留 TLD 被解析器就地答成 NXDOMAIN，查询根本不出门，真机上恒失效而单测全绿
@@ -112,6 +128,7 @@
 - [多会话同开 MCP 会串库](nomi-mcp-multi-instance-library-swap.md) — 报「项目不存在」别重试、别改用当前 id
 - [`nomi_get_run` 结果要读 `structuredContent.nomiRunData`](nomi-get-run-mcp-projection-shape.md) — text 块是人话不是 JSON
 - [MCP elicitation 的支持面（结论已反转）](claude-code-lacks-elicitation-capability.md) — CLI ≥2.1.76 已支持；旧结论别再当前提
+- [「参考图连了没用上」断在档案键 ↔ body 字段名的 join](reference-slot-to-body-key-join.md) — 先跑 `check:reference-contract` 别读码猜；含「reach=none 不等于 bug」「一次只种一个槽」两个假红坑
 
 ## E. 产品判断与对外表达
 
@@ -143,5 +160,5 @@
 > 另见 playbook [§14 门岗验「没变坏」，不验「做到了」](../engineering/agent-orchestration-playbook.md#14-门岗验没变坏不验做到了把-p3-机器化进派工合同)——派下去的活「36 门全绿」不等于规格达成；派工要绑验收物、收货先验规格再看门岗。
 - [两个各自绿的 PR 合到一起会红](two-green-prs-merge-red.md) — 连合同一区域 PR 前先 update-branch 等 CI；分类器 skip 的门不算绿
 - [合并收据只认 main 的 tip](merge-receipts-need-exact-tip.md) — 合一个等 CI 记一个再合下一个；probe worktree 分离 HEAD 跑 verify-merged
-- [Docs Gate Autosync 往受保护 main 推必败](docs-autosync-cannot-push-protected-main.md) — GH006 三连 = 有文档没进索引/没状态，本地补即可
+- [Docs Gate Autosync 必须有正式 CI](docs-autosync-cannot-push-protected-main.md) — GH006 与跳过 CI 是写回链故障；固定 action PR + 默认 token 防循环，CI 批准边界明确
 - [样张两条硬纪律：真字形、真比例](mockups-need-real-glyphs-and-true-proportions.md) — 图标从 @tabler 包抽真实路径；布局线框按 1680×842 真比例并自己看过

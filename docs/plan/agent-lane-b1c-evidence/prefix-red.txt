@@ -1,0 +1,497 @@
+✖ B1c 24-turn loopback keeps the tool and system prefix after switching groups (628.020459ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1485.392042
+
+✖ failing tests:
+
+test at .tmp/agent-runtime-tests/tests/agent-runtime/lane-switch-prefix.test.mjs:8:1
+✖ B1c 24-turn loopback keeps the tool and system prefix after switching groups (628.020459ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  ... Skipped lines
+  
+    {
+      system: [
+        {
+          content: 'NOMI_LANE_SYSTEM\n' +
+            '\n' +
+  ...
+            '- read_timeline: read the whole timeline (fps, clips, text, transitions) plus the revision to plan against.\n' +
+  +         "- get_production_run: Read one production task's current status, gates, jobs, budget, and artifact refs. Use the runId returned when the draft was created. Read-only; no provider work is submitted.\n" +
+  +         '- subscribe_production_run: Read meaningful progress after a cursor; use the returned nextCursor to continue without duplicate events. Waiting is bounded; this observes existing work and never starts or resumes a job.\n' +
+  +         "- read_production_artifact: Read a versioned artifact's metadata and preview ref; use the content tool only when the actual text/plan is needed. Supply runId and artifactId from the current task projection.\n" +
+  +         '- read_production_artifact_content: Read one persisted script or storyboard only when its content is needed for the next decision; bounded by the domain owner.\n' +
+  +         '- start_production_run: Create a reviewable brief/playbook draft only; it stops at the first review gate and never generates media. For a concrete image/video request or a multi-minute finished piece, use the generation plan intent; Nomi Host handles preview, approval, and start transitions.\n' +
+  +         '- control_production_run: Pause, resume, cancel, or change the run trust level. Paid gates and unknown provider receipts remain protected. Use the current runId; state transitions are validated by the production owner.\n' +
+  +         "- decide_production_gate: Record a user's decision for a creative or anchor checkpoint gate; budget and paid gates stay in Nomi. Use the gateId and allowed choice from the current production task.\n" +
+  +         '- revise_production_artifact: Request a new script or storyboard version from an existing artifact; never overwrite the source version. Read the artifact first and supply its exact expectedVersion with the requested revision.\n' +
+  +         '- review_production_artifact: Approve, request changes to, or reject one exact artifact version; the version is never implicit. Read the current artifact and provide expectedVersion; stale review targets are rejected.\n' +
+  +         '- materialize_production_storyboard: Attach an approved storyboard version to the real generation canvas, preserving run/artifact provenance. Supply its exact expectedVersion; this writes the canvas and does not generate paid media.\n' +
+            '- read: Read file contents\n' +
+            '- nomi_request_tools: Switch to another tool group when the current tools do not cover the task\n' +
+            '\n' +
+            'Guidelines:\n' +
+            '- Read the creation document before you change it: the user may have edited it since the last thing you saw.\n' +
+  ...
+            '- Optional individual gray-model props (a car beside the character, a tree behind, etc.). Prefer sceneTemplate for a full backdrop; use props for a few specific placed objects.\n' +
+  +         "- For blocking/composition that's OUTSIDE the layout/pose/facing vocab above (e.g. a complex multi-tier formation, an over-the-shoulder framing, a specific prop-relative arrangement, or 'match this reference image's composition') — DO NOT force a wrong vocab value. Describe it here in natural language and it is injected as a composition directive into the shot's KEYFRAME IMAGE prompt (the tool will NOT 3D-render a staging image; less precise than the rendered reference, but the honest fallback). Use proper film/composition terms. When you use customBlocking, the structured vocab fields (characters/layout/camera…) may be omitted. Provide EITHER vocab characters (precise 3D stag"... 2873 more characters,
+  -         "- For blocking/composition that's OUTSIDE the layout/pose/facing vocab above (e.g. a complex multi-tier formation, an over-the-shoulder framing, a specific prop-relative arrangement, or 'match this reference image's composition') — DO NOT force a wrong vocab value. Describe it here in natural language and it is injected as a composition directive into the shot's KEYFRAME IMAGE prompt (the tool will NOT 3D-render a staging image; less precise than the rendered reference, but the honest fallback). Use proper film/composition terms. When you use customBlocking, the structured vocab fields (characters/layout/camera…) may be omitted. Provide EITHER vocab characters (precise 3D staging) OR customBlocking (prompt-guided fallback) — not neither.\n" +
+  -         "- clientId (from this turn's create_canvas_nodes) or real node id of the shot's VIDEO node this camera move drives. The rendered camera-move clip auto-attaches to it as a video reference (the model copies the camera path, not the gray content).\n" +
+  -         "- The single dominant camera move for this shot. orbit_left/right = camera circles the subject (~300°); push_in/pull_out = dolly toward/away; crane_up/down = boom up/down; track_left/right = lateral tracking; arc_left/right = short arc (~90°); zoom_in/zoom_out = lens zoom with the camera static (FOV ramp); dolly_zoom = Hitchcock/vertigo effect (camera pulls back while zooming in, subject size constant, background stretches away). Use ONE of these enum values ONLY when the intended move IS one of them (renders a precise 3D reference). If the move is NOT in this set (e.g. whip-pan, handheld follow, a compound/sequenced move, or 'match this reference video'), DO NOT force a wrong enum — leave move empty and use customMove instead.\n" +
+  -         "- Natural-language camera-move description for moves OUTSIDE the enum (whip pan, handheld follow, a compound/sequenced move like 'push in then whip to the window', or 'match this reference video's camerawork'). The tool will NOT 3D-render this — it injects it as a cinematography directive into the shot's video prompt (less precise than the rendered reference; the honest fallback). Use proper film terms. Set move OR customMove, never both for the same intent.\n" +
+  -         '- Optional body-pose preset id for the subject mannequin the camera moves around (e.g. standing / sit / walk). Default standing.\n' +
+  -         "- Optional gray-model backdrop under the subject: street (road/buildings/trees/cars) or room (walls/furniture). Use when the camera move should read as happening in an environment (e.g. 'push in on a person standing on a street'). The camera still orbits/pushes the subject at origin.\n" +
+  -         '- [x, z] ground position in meters. Subject is at origin; omit to auto-spread props to its right.\n' +
+  -         "- Optional individual gray-model props placed in the move's scene (a car beside the subject, a tree behind). Prefer sceneTemplate for a full backdro"... 574 more characters,
+          role: 'system'
+        }
+      ],
+      tools: [
+        {
+  ...
+        },
+  +     {
+  +       function: {
+  +         description: "Read one production task's current status, gates, jobs, budget, and artifact refs. Use the runId returned when the draft was created. Read-only; no provider work is submitted.",
+  +         name: 'get_production_run',
+  +         parameters: {
+  +           '$schema': 'http://json-schema.org/draft-07/schema#',
+  +           additionalProperties: false,
+  +           properties: {
+  +             runId: {
+  +               description: 'The run id returned by start_production_run.',
+  +               maxLength: 160,
+  +               minLength: 1,
+  +               type: 'string'
+  +             }
+  +           },
+  +           required: [
+  +             'runId'
+  +           ],
+  +           type: 'object'
+  +         },
+  +         strict: false
+  +       },
+  +       type: 'function'
+  +     },
+  +     {
+  +       function: {
+  +         description: 'Read meaningful progress after a cursor; use the returned nextCursor to continue without duplicate events. Waiting is bounded; this observes existing work and never starts or resumes a job.',
+  +         name: 'subscribe_production_run',
+  +         parameters: {
+  +           '$schema': 'http://json-schema.org/draft-07/schema#',
+  +           additionalProperties: false,
+  +           properties: {
+  +             afterCursor: {
+  +               description: 'Last consumed event cursor; default 0.',
+  +               minimum: 0,
+  +               type: 'integer'
+  +             },
+  +             runId: {
+  +               description: 'The run id returned by start_production_run.',
+  +               maxLength: 160,
+  +               minLength: 1,
+  +               type: 'string'
+  +             },
+  +             waitMs: {
+  +               description: 'Optional bounded wait for new progress.',
+  +               maximum: 25000,
+  +               minimum: 0,
+  +               type: 'integer'
+  +             }
+  +           },
+  +           required: [
+  +             'runId'
+  +           ],
+  +           type: 'object'
+  +         },
+  +         strict: false
+  +       },
+  +       type: 'function'
+  +     },
+  +     {
+  +       function: {
+  +         description: "Read a versioned artifact's metadata and preview ref; use the content tool only when the actual text/plan is needed. Supply runId and artifactId from the current task projection.",
+  +         name: 'read_production_artifact',
+  +         parameters: {
+  +           '$schema': 'http://json-schema.org/draft-07/schema#',
+  +           additionalProperties: false,
+  +           properties: {
+  +             artifactId: {
+  +               description: 'The artifact id from the run projection.',
+  +               maxLength: 160,
+  +               minLength: 1,
+  +               type: 'string'
+  +             },
+  +             runId: {
+  +               description: 'The run id returned by start_production_run.',
+  +               maxLength: 160,
+  +               minLength: 1,
+  +               type: 'string'
+  +             }
+  +           },
+  +           required: [
+  +             'runId',
+  +             'artifactId'
+  +           ],
+  +           type: 'object'
+  +         },
+  +         strict: false
+  +       },
+  +       type: 'function'
+  +     },
+  +     {
+  +       function: {
+  +         description: 'Read one persisted script or storyboard only when its content is needed for the next decision; bounded by the domain owner.',
+  +         name: 'read_production_artifact_content',
+  +         parameters: {
+  +           '$schema': 'http://json-schema.org/draft-07/schema#',
+  +           additionalProperties: false,
+  +           properties: {
+  +             artifactId: {
+  +               description: 'The artifact id from the run projection.',
+  +               maxLength: 160,
+  +               minLength: 1,
+  +               type: 'string'
+  +             },
+  +             runId: {
+  +               description: 'The run id returned by start_production_run.',
+  +               maxLength: 160,
+  +               minLength: 1,
+  +               type: 'string'
+  +             }
+  +           },
+  +           required: [
+  +             'runId',
+  +             'artifactId'
+  +           ],
+  +           type: 'object'
+  +         },
+  +         strict: false
+  +       },
+  +       type: 'function'
+  +     },
+  +     {
+  +       function: {
+  +         description: 'Create a reviewable brief/playbook draft only; it stops at the first review gate and never generates media. For a concrete image/video request or a multi-minute finished piece, use the generation plan intent; Nomi Host handles preview, approval, and start transitions.\n' +
+  +           'Example:\n' +
+  +           'Create a reviewable brief draft:\n' +
+  +           '{"goal":"A short product introduction","durationSeconds":30}',
+  +         name: 'start_production_run',
+  +         parameters: {
+  +           '$schema': 'http://json-schema.org/draft-07/schema#',
+  +           additionalProperties: false,
+  +           properties: {
+  +             audience: {
+  +               maxLength: 500,
+  +               minLength: 1,
+  +               type: 'string'
+  +             },
+  +             channel: {
+  +               maxLength: 200,
+  +               minLength: 1,
+  +               type: 'string'
+  +             },
+  +             durationSeconds: {
+  +               maximum: 3600,
+  +               minimum: 1,
+  +               type: 'integer'
+  +             },
+  +             goal: {
+  +               description: 'What the finished piece should achieve; do not force the user into a schema.',
+  +               maxLength: 2000,
+  +               minLength: 1,
+  +               type: 'string'
+  +             },
+  +             playbook: {
+  +               description: 'Optional registered playbook name; omit to use the default.',
+  +               maxLength: 160,
+  +               minLength: 1,
+  +               type: 'string'
+  +             },
+  +             playbookVersion: {
+  +               maxLength: 64,
+  +               minLength: 1,
+  +               type: 'string'
+  +             },
+  +             sellingPoints: {
+  +               items: {
+  +                 maxLength: 500,
+  +                 minLength: 1,
+  +                 type: 'string'
+  +               },
+  +               maxItems: 20,
+  +               type: 'array'
+  +             },
+  +             tone: {
+  +               maxLength: 200,
+  +               minLength: 1,
+  +               type: 'string'
+  +             }
+  +           },
+  +           required: [
+  +             'goal'
+  +           ],
+  +           type: 'object'
+  +         },
+  +         strict: false
+  +       },
+  +       type: 'function'
+  +     },
+  +     {
+  +       function: {
+  +         description: 'Pause, resume, cancel, or change the run trust level. Paid gates and unknown provider receipts remain protected. Use the current runId; state transitions are validated by the production owner.',
+  +         name: 'control_production_run',
+  +         parameters: {
+  +           '$schema': 'http://json-schema.org/draft-07/schema#',
+  +           additionalProperties: false,
+  +           properties: {
+  +             action: {
+  +               enum: [
+  +                 'pause',
+  +                 'resume',
+  +                 'cancel',
+  +                 'set_trust'
+  +               ],
+  +               type: 'string'
+  +             },
+  +             runId: {
+  +               description: 'The run id returned by start_production_run.',
+  +               maxLength: 160,
+  +               minLength: 1,
+  +               type: 'string'
+  +             },
+  +             trustLevel: {
+  +               enum: [
+  +                 'key_confirm',
+  +                 'budget_only',
+  +                 'confirm_all'
+  +               ],
+  +               type: 'string'
+  +             }
+  +           },
+  +           required: [
+  +             'runId',
+  +             'action'
+  +           ],
+  +           type: 'object'
+  +         },
+  +         strict: false
+  +       },
+  +       type: 'function'
+  +     },
+  +     {
+  +       function: {
+  +         description: "Record a user's decision for a creative or anchor checkpoint gate; budget and paid gates stay in Nomi. Use the gateId and allowed choice from the current production task.",
+  +         name: 'decide_production_gate',
+  +         parameters: {
+  +           '$schema': 'http://json-schema.org/draft-07/schema#',
+  +           additionalProperties: false,
+  +           properties: {
+  +             choiceKey: {
+  +               maxLength: 40,
+  +               minLength: 1,
+  +               type: 'string'
+  +             },
+  +             decision: {
+  +               enum: [
+  +                 'approved',
+  +                 'rejected'
+  +               ],
+  +               type: 'string'
+  +             },
+  +             gateId: {
+  +               maxLength: 160,
+  +               minLength: 1,
+  +               type: 'string'
+  +             },
+  +             runId: {
+  +               description: 'The run id returned by start_production_run.',
+  +               maxLength: 160,
+  +               minLength: 1,
+  +               type: 'string'
+  +             }
+  +           },
+  +           required: [
+  +             'runId',
+  +             'gateId',
+  +             'decision'
+  +           ],
+  +           type: 'object'
+  +         },
+  +         strict: false
+  +       },
+  +       type: 'function'
+  +     },
+  +     {
+  +       function: {
+  +         description: 'Request a new script or storyboard version from an existing artifact; never overwrite the source version. Read the artifact first and supply its exact expectedVersion with the requested revision.',
+  +         name: 'revise_production_artifact',
+  +         parameters: {
+  +           '$schema': 'http://json-schema.org/draft-07/schema#',
+  +           additionalProperties: false,
+  +           properties: {
+  +             artifactId: {
+  +               description: 'The artifact id from the run projection.',
+  +               maxLength: 160,
+  +               minLength: 1,
+  +               type: 'string'
+  +             },
+  +             expectedVersion: {
+  +               minimum: 1,
+  +               type: 'integer'
+  +             },
+  +             instruction: {
+  +               maxLength: 4000,
+  +               minLength: 1,
+  +               type: 'string'
+  +             },
+  +             kind: {
+  +               enum: [
+  +                 'script',
+  +                 'storyboard'
+  +               ],
+  +               type: 'string'
+  +             },
+  +             runId: {
+  +               description: 'The run id returned by start_production_run.',
+  +               maxLength: 160,
+  +               minLength: 1,
+  +               type: 'string'
+  +             }
+  +           },
+  +           required: [
+  +             'runId',
+  +             'artifactId',
+  +             'expectedVersion',
+  +             'kind',
+  +             'instruction'
+  +           ],
+  +           type: 'object'
+  +         },
+  +         strict: false
+  +       },
+  +       type: 'function'
+  +     },
+  +     {
+  +       function: {
+  +         description: 'Approve, request changes to, or reject one exact artifact version; the version is never implicit. Read the current artifact and provide expectedVersion; stale review targets are rejected.',
+  +         name: 'review_production_artifact',
+  +         parameters: {
+  +           '$schema': 'http://json-schema.org/draft-07/schema#',
+  +           additionalProperties: false,
+  +           properties: {
+  +             artifactId: {
+  +               description: 'The artifact id from the run projection.',
+  +               maxLength: 160,
+  +               minLength: 1,
+  +               type: 'string'
+  +             },
+  +             decision: {
+  +               enum: [
+  +                 'approved',
+  +                 'changes_requested',
+  +                 'rejected'
+  +               ],
+  +               type: 'string'
+  +             },
+  +             expectedVersion: {
+  +               minimum: 1,
+  +               type: 'integer'
+  +             },
+  +             runId: {
+  +               description: 'The run id returned by start_production_run.',
+  +               maxLength: 160,
+  +               minLength: 1,
+  +               type: 'string'
+  +             }
+  +           },
+  +           required: [
+  +             'runId',
+  +             'artifactId',
+  +             'expectedVersion',
+  +             'decision'
+  +           ],
+  +           type: 'object'
+  +         },
+  +         strict: false
+  +       },
+  +       type: 'function'
+  +     },
+  +     {
+  +       function: {
+  +         description: 'Attach an approved storyboard version to the real generation canvas, preserving run/artifact provenance. Supply its exact expectedVersion; this writes the canvas and does not generate paid media.',
+  +         name: 'materialize_production_storyboard',
+  +         parameters: {
+  +           '$schema': 'http://json-schema.org/draft-07/schema#',
+  +           additionalProperties: false,
+  +           properties: {
+  +             artifactId: {
+  +               description: 'The artifact id from the run projection.',
+  +               maxLength: 160,
+  +               minLength: 1,
+  +               type: 'string'
+  +             },
+  +             expectedVersion: {
+  +               minimum: 1,
+  +               type: 'integer'
+  +             },
+  +             runId: {
+  +               description: 'The run id returned by start_production_run.',
+  +               maxLength: 160,
+  +               minLength: 1,
+  +               type: 'string'
+  +             }
+  +           },
+  +           required: [
+  +             'runId',
+  +             'artifactId',
+  +             'expectedVersion'
+  +           ],
+  +           type: 'object'
+  +         },
+  +         strict: false
+  +       },
+  +       type: 'function'
+  +     }
+      ]
+    }
+  
+      at TestContext.<anonymous> (file:///Users/aoqimin/Desktop/Nomi-stage4-switch/.tmp/agent-runtime-tests/tests/agent-runtime/lane-switch-prefix.test.mjs:26:16)
+      at async Test.run (node:internal/test_runner/test:1110:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:358:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: {
+      tools: [
+        [Object], [Object], [Object],
+        [Object], [Object], [Object],
+        [Object], [Object], [Object],
+        [Object], [Object], [Object],
+        [Object], [Object], [Object],
+        [Object], [Object], [Object],
+        [Object], [Object], [Object],
+        [Object]
+      ],
+      system: [ [Object] ]
+    },
+    expected: {
+      tools: [
+        [Object], [Object],
+        [Object], [Object],
+        [Object], [Object],
+        [Object], [Object],
+        [Object], [Object],
+        [Object], [Object]
+      ],
+      system: [ [Object] ]
+    },
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }

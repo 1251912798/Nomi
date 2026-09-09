@@ -1,4 +1,15 @@
 export const zhSettings = {
+  sound: {
+    title: '提醒与声音', brand: 'Nomi 提醒音', description: '需要你决定的时候，轻轻响一声',
+    preview: '试听', stop: '停止', enabled: '需要我时响一声', events: '响哪些',
+    decision: '需要你决定（审批、要花钱、失败要处理）', completed: '生成完成', slow: '比平时久',
+    custom: '用自己的声音', replace: '换一个…', reset: '恢复默认', duration: '{{seconds}} 秒',
+    formats: 'WAV / MP3 / AIFF / M4A · 最长 10 秒 · 最大 2 MB',
+    enableFirst: '开启提醒音后可选择', unavailable: '正在连接桌面声音设置',
+    invalid: '请选择不超过 10 秒、2 MB 的有效音频文件', saveError: '未能保存，请重试',
+    previewError: '未能播放，请检查本机音频设备',
+  },
+
   title: '设置',
   close: '关闭',
   unsaved: {
@@ -75,8 +86,6 @@ export const zhSettings = {
       requiredForRun: '本次必需',
       requiredUnavailable: '本次需要的连接已停用或不存在',
       openModelCatalog: '检查模型',
-      hardBudget: '制作硬预算上限（CNY）',
-      hardBudgetHint: '批准生成和付费必须有明确上限；留空会阻止付费制作。',
       providers: '允许的供应商',
       providersHint: '只允许在这里勾选的供应商提交生成任务。',
       models: '允许的模型',
@@ -180,17 +189,25 @@ export const zhSettings = {
       codex: { name: 'Codex', hint: '只可发起草稿、查看状态和打开安全深链。' },
       cursor: { name: 'Cursor', hint: '只可发起草稿、查看状态和打开安全深链。' },
       pi: { name: 'Pi', hint: '只可发起草稿、查看状态和打开安全深链。' },
+      workbuddy: { name: 'WorkBuddy', hint: '只可发起草稿、查看状态和打开安全深链。' },
     },
     notifications: {
       title: '任务通知',
       system: '需要确认、失败和完成时系统通知',
       systemHint: '通知只显示状态与安全深链，不显示本地绝对路径。',
-      sound: '任务完成提示音',
-      soundHint: '系统通知开启时使用系统提示音；关闭时仅播放一声本地提示。',
     },
   },
   general: {
     title: '通用',
+    trace: {
+      title: '日志',
+      description: '当前项目的 Agent 会话轨迹，仅保存在本机。',
+      open: '打开目录',
+      opening: '正在打开…',
+      noProject: '请先打开一个项目，再查看日志。',
+      projectChanged: '项目已切换，请重新打开日志。',
+      failed: '无法打开日志目录，请重试。',
+    },
     screenshot: '全局截图热键',
     screenshotHint:
       '默认关。开启后按一下热键就能把屏幕抓进画布——Nomi 没在前台也管用（找参考时很顺手）。macOS 需要「屏幕录制」权限。',
@@ -264,6 +281,17 @@ export const zhSettings = {
 }
 
 export const enSettings = {
+  sound: {
+    title: 'Alerts & sound', brand: 'Nomi attention sound', description: 'A gentle note when a decision needs you',
+    preview: 'Preview', stop: 'Stop', enabled: 'Play a sound when I’m needed', events: 'Play for',
+    decision: 'Your decision (approval, spending, or a failure)', completed: 'Generation complete', slow: 'Taking longer than usual',
+    custom: 'Use your own sound', replace: 'Choose…', reset: 'Restore default', duration: '{{seconds}} sec',
+    formats: 'WAV / MP3 / AIFF / M4A · Up to 10 seconds · Up to 2 MB',
+    enableFirst: 'Enable sound to choose events', unavailable: 'Connecting to desktop sound settings',
+    invalid: 'Choose a valid audio file up to 10 seconds and 2 MB', saveError: 'Could not save. Please retry.',
+    previewError: 'Could not play. Check your audio device.',
+  },
+
   title: 'Settings',
   close: 'Close',
   unsaved: {
@@ -340,8 +368,6 @@ export const enSettings = {
       requiredForRun: 'Required now',
       requiredUnavailable: 'A required connection is disabled or unavailable',
       openModelCatalog: 'Check models',
-      hardBudget: 'Hard production budget (CNY)',
-      hardBudgetHint: 'Approving generation and paying require a hard ceiling; leaving this empty blocks paid production.',
       providers: 'Allowed providers',
       providersHint: 'Only checked providers may submit generation jobs.',
       models: 'Allowed models',
@@ -444,17 +470,25 @@ export const enSettings = {
       codex: { name: 'Codex', hint: 'May only start drafts, read status, and open safe deep links.' },
       cursor: { name: 'Cursor', hint: 'May only start drafts, read status, and open safe deep links.' },
       pi: { name: 'Pi', hint: 'May only start drafts, read status, and open safe deep links.' },
+      workbuddy: { name: 'WorkBuddy', hint: 'May only start drafts, read status, and open safe deep links.' },
     },
     notifications: {
       title: 'Task notifications',
       system: 'System notifications for approval, failure, and completion',
       systemHint: 'Notifications show status and safe deep links, never absolute local paths.',
-      sound: 'Completion sound',
-      soundHint: 'Use the OS sound with system notifications; otherwise play one local chime.',
     },
   },
   general: {
     title: 'General',
+    trace: {
+      title: 'Logs',
+      description: 'Agent conversation traces for this project, stored locally.',
+      open: 'Open folder',
+      opening: 'Opening…',
+      noProject: 'Open a project to view its logs.',
+      projectChanged: 'The project changed. Open the logs again.',
+      failed: 'Could not open the log folder. Try again.',
+    },
     screenshot: 'Global screenshot hotkey',
     screenshotHint:
       'Off by default. When on, one keypress grabs the screen into the canvas — even when Nomi is not in front (handy while hunting references). macOS needs Screen Recording permission.',

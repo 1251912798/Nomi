@@ -262,6 +262,25 @@ test('convergence records are explicit, live-verified, and scoped to historical 
     }
   })
 
+  await t.test('a record whose retired owners the reference never carried is inert, not invented', () => {
+    // The state every record reaches one commit after it lands: the reduction it
+    // explains already sits inside the reference, so the record grants nothing.
+    // Failing here made a convergence live exactly one commit and turned `main`
+    // red the commit after it merged.
+    const fixture = makeFixture(
+      { 'electron/shared/status.ts': `const STATUS_VALUES = ['queued', 'running'] as const` },
+      { debtCap: 0, registered: [entries.surviving], debt: [], converged: [convergence] },
+    )
+    const referencePath = path.join(fixture.root, 'reference-baseline.json')
+    writeJson(referencePath, { debtCap: 0, registered: [entries.surviving], debt: [] })
+    try {
+      const result = runChecker(fixture, '--reference-baseline', referencePath)
+      assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+    } finally {
+      cleanup(fixture)
+    }
+  })
+
   await t.test('a convergence record cannot grow the historical debt cap', () => {
     const fixture = makeFixture(
       { 'electron/shared/status.ts': `const STATUS_VALUES = ['queued', 'running'] as const` },

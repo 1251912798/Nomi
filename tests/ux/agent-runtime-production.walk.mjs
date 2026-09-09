@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { stationTimeout } from './_station-budget.mjs'
 // R1-F: inline planner, renderer image judge, direction task and script task.
 // Only the vendor is a loopback fixture; no direct Agent calls or canned ProductionRun driver.
 import fs from 'node:fs'
@@ -7,11 +8,13 @@ import { createHash } from 'node:crypto'
 import { clickOrFail, expect, expectAbsent, proveProbe } from './_assert.mjs'
 import { FIXTURE_IMAGE_MODEL, flattenRequestText } from './agent-runtime-fixture.mjs'
 import {
-  APPROVAL_CARD, CANVAS_PANEL, COMPOSER_SEND, CREATION_PANEL, DOCUMENT, INTERVENTION_CONFIRM,
+  APPROVAL_CARD, CANVAS_PANEL, COMPOSER_SEND, CREATION_PANEL, DOCUMENT, INTERVENTION_CONFIRM, TOOL_RECEIPT,
   createRuntimeWalk, hasToolResult,
-  openCanvas, readConversations, readNativeContexts, readProject, recorded, sendCreation,
-  readCurrentProjectAgentHostSnapshot, snapshotMessages, toolNames,
+  openCanvas, readProject, recorded, sendCreation, waitForV4TurnIdle,
+  toolNames,
 } from './agent-runtime-walk-support.mjs'
+import { laneDiskSnapshot, laneMessages, laneMessageText, readLaneTranscripts } from './agent-lane-observer.mjs'
+import { residentToolNames } from './agent-runtime-walk-support.mjs'
 
 const STORY = 'F_INLINE_STORY：清晨，一位创作者来到咖啡馆。她将红色杯子放到白桌正中央，然后坐在窗边整理相机。镜头保持正面中景，自然光照亮杯沿，背景不要多余物件。画面只需要表现拍摄开始前安静的准备时刻。'
 const PLAN_CALL = 'f-inline-plan-1'
@@ -23,19 +26,11 @@ const CANDIDATES = [
   { key: 'b', title: '产品特写', oneLiner: '用界面细节展示创作过程。' },
 ]
 
-function snapshots(projectRoot, settingsRoot) {
-  const host = readCurrentProjectAgentHostSnapshot(settingsRoot, projectRoot)
-  // Include the complete Host snapshot as the positive persistence control;
-  // ephemeral tasks must leave this canonical source unchanged.
-  return { host: host ? JSON.stringify(host) : null }
-}
-
 const walk = await createRuntimeWalk('production')
 let failure
 try {
   const { win } = await walk.start({ first: true })
   const { projectId, projectRoot } = await walk.newProject()
-  const settingsRoot = path.join(walk.report.tempRoot, 'settings')
   await win.locator(DOCUMENT).fill(STORY)
   await expect(win.locator(DOCUMENT)).toHaveText(STORY)
   const parent = walk.fixture.expectText({
@@ -50,21 +45,20 @@ try {
   // localized and changed with the Agent shell copy, while this data contract
   // remains the stable user action.
   await expect(win.locator(`${CREATION_PANEL} ${COMPOSER_SEND}`)).toBeVisible()
-  const durableRoots = { settingsRoot, projectRoot }
-  await expect.poll(async () => (await readConversations(win, projectId, durableRoots))?.creation.threads[0]?.messages
-    .some((message) => message.content === PARENT), { timeout: 30_000 }).toBe(true)
-  const persistedConversations = await readConversations(win, projectId, durableRoots)
-  const parentThreadId = persistedConversations.creation.activeId
-  expect(parentThreadId).toMatch(/^thread-/)
-  // The current cutover snapshot is the persistence proof; the retired
-  // agent-session.json container is intentionally absent in fresh projects.
-  expect(persistedConversations.creation.threads
-    .find((thread) => thread.id === parentThreadId)?.messages
-    .some((message) => message.role === 'user' && message.content === PARENT)).toBe(true)
+  await waitForV4TurnIdle(win, { panel: CREATION_PANEL,
+    settledBy: win.locator(CREATION_PANEL).getByText('F_PARENT_ACK：已记住红杯。', { exact: true }) })
+  await expect.poll(() => readLaneTranscripts(projectRoot).some((session) => laneMessages(session)
+    .some((message) => message.role === 'nomi.input' && laneMessageText(message) === PARENT)),
+  { timeout: stationTimeout({ operations: 2 }) }).toBe(true)
+  const persistedConversations = readLaneTranscripts(projectRoot)
+  expect(persistedConversations).toHaveLength(1)
+  const parentThreadId = persistedConversations[0].sessionId
+  expect(parentThreadId).toMatch(/^[a-f0-9-]{36}$/)
+  expect(persistedConversations[0].laneName).toBe('main')
   const planner = walk.fixture.expectText({
     label: 'inline storyboard planner inherits the creation thread',
     match: (body) => flattenRequestText(body).includes('F_INLINE_STORY') && !hasToolResult(body, PLAN_CALL),
-    reply: { type: 'tool', id: PLAN_CALL, name: 'nomi_canvas_plan', args: {
+    reply: { type: 'tool', id: PLAN_CALL, name: 'nomi_storyboard_write', args: {
       operation: 'propose_storyboard_plan', title: 'F镜头', anchors: [],
       shots: [{ index: 1, shotKind: 'image', durationSec: 0, anchorIds: [],
         modelKey: FIXTURE_IMAGE_MODEL, modeId: 't2i', params: { size: '1024x1024' },
@@ -85,13 +79,10 @@ try {
   await expect(selectionStoryboardButton).toBeEnabled()
   await clickOrFail(selectionStoryboardButton, '在创作区就地拆镜头')
   const plannerWire = await recorded(planner.received, 'inline planner request')
-  expect(toolNames(plannerWire.body)).toEqual([
-    'load_skill', 'nomi_canvas_edit', 'nomi_canvas_plan', 'nomi_canvas_read',
-    'nomi_document_edit', 'nomi_document_read', 'nomi_generation_plan', 'nomi_generation_status',
-  ])
+  expect(toolNames(plannerWire.body)).toEqual(residentToolNames())
   expect(plannerWire.body.messages.some((message) => message.role === 'user'
     && flattenRequestText({ messages: [message] }).includes(PARENT)),
-  'Planning must retain the parent thread context in the Host request').toBe(true)
+  'Planning must retain the parent lane context in the provider request').toBe(true)
   // v4：待批准的提议住在介入槽，确认钮是 [data-v4-control="confirm"]（文案「确认」）。
   const storyboardApproval = win.locator(`${CREATION_PANEL} ${APPROVAL_CARD}`)
   const storyboardApprovalProof = await proveProbe(storyboardApproval,
@@ -117,23 +108,28 @@ try {
   expect(draft.storyboardDesignsByDocumentId?.[draft.activeDocumentId]?.[0]?.committed).toBe(false)
   expect(draft.generationCanvas.nodes).toHaveLength(0)
   expect(walk.fixture.images).toHaveLength(0)
-  await expect.poll(() => readNativeContexts(projectRoot, settingsRoot)?.some((record) => record.snapshot
-    && snapshotMessages(record).some((message) => message.role === 'toolResult' && message.toolCallId === PLAN_CALL)),
-  { timeout: 30_000 }).toBe(true)
-  const plannerContext = readNativeContexts(projectRoot, settingsRoot).find((record) => record.snapshot
-    && snapshotMessages(record).some((message) => message.role === 'toolResult' && message.toolCallId === PLAN_CALL))
-  expect(plannerContext.sessionKey, 'A creation bubble must not secretly use the generation memory bucket')
-    .toBe(`nomi:workbench:${projectId}:creation`)
-  expect(plannerContext.threadId, 'Inline planning must keep the exact initiating thread, not open a new creation thread')
-    .toBe(parentThreadId)
-  expect((await readConversations(win, projectId, durableRoots)).creation.activeId).toBe(parentThreadId)
+  await expect.poll(() => readLaneTranscripts(projectRoot).some((session) => laneMessages(session)
+    .some((message) => message.role === 'toolResult' && message.toolCallId === PLAN_CALL)),
+  { timeout: stationTimeout({ operations: 2 }) }).toBe(true)
+  const plannerContext = readLaneTranscripts(projectRoot).find((session) => laneMessages(session)
+    .some((message) => message.role === 'toolResult' && message.toolCallId === PLAN_CALL))
+  expect(plannerContext.laneName, 'Inline planning must stay in the initiating lane').toBe('main')
+  expect(plannerContext.sessionId, 'Inline planning must keep the exact initiating session').toBe(parentThreadId)
+  expect(readLaneTranscripts(projectRoot)).toHaveLength(1)
+  await waitForV4TurnIdle(win, { panel: CREATION_PANEL,
+    settledBy: win.locator(CREATION_PANEL).getByText('F_PLAN_DONE：请先审阅，再落到画布。', { exact: true }) })
+  const planReceipt = win.locator(`${CREATION_PANEL} ${TOOL_RECEIPT}`).last()
+  await expect(planReceipt, 'Saving an uncommitted storyboard must not claim canvas cards were created')
+    .toContainText('保存分镜方案')
+  await expect(planReceipt).toContainText('更新分镜方案中的镜头安排')
+  await expect(planReceipt).not.toContainText('把镜头卡写入当前画布')
   await walk.snap('inline-plan-awaits-human')
 
   // v5 执行面：没有「确认落画布」——进分镜页，footer「生成未生成的 N 镜」按需 materialize + 批量。
   // 入口是侧栏那条分镜条目（onClick 直接 setWorkspaceMode('storyboard')，DocumentListSidebar.tsx:110-114）。
   await clickOrFail(win.locator('[data-storyboard-id]').first(), '从侧栏分镜条目进入分镜页')
   await expect(win.getByRole('textbox', { name: '方案标题', exact: true })).toHaveValue('F镜头')
-  const beforeJudge = snapshots(projectRoot, settingsRoot)
+  const beforeJudge = laneDiskSnapshot(projectRoot)
   const judge = walk.fixture.expectText({
     label: 'batch completion invokes the actual image judge',
     match: (body) => flattenRequestText(body).includes('资深影视分镜审片'),
@@ -170,10 +166,10 @@ try {
   await expect.poll(async () => (await readProject(win, projectId)).payload.generationCanvas.nodes[0].result?.url,
     { timeout: 30_000 }).toBeTruthy()
   expect(walk.fixture.images).toHaveLength(1)
-  expect(snapshots(projectRoot, settingsRoot), 'Ephemeral image judging must not touch project or local working contexts').toEqual(beforeJudge)
+  expect(laneDiskSnapshot(projectRoot), 'Ephemeral image judging must not touch project or local working contexts').toEqual(beforeJudge)
   await walk.snap('real-judge-reports-shot-deviation')
 
-  const beforeProduction = snapshots(projectRoot, settingsRoot)
+  const beforeProduction = laneDiskSnapshot(projectRoot)
   let runDir
   let scriptGateAtDispatch
   const directions = walk.fixture.expectText({
@@ -239,7 +235,7 @@ try {
     await clickOrFail(win.locator('[data-task-center-trigger="true"]'), '重新打开任务中心查看剧本候选状态')
   }
   await expect(productionStatus).toContainText('剧本草稿已准备好')
-  expect(snapshots(projectRoot, settingsRoot), 'Direction and script tasks must not touch project or local working contexts').toEqual(beforeProduction)
+  expect(laneDiskSnapshot(projectRoot), 'Direction and script tasks must not touch project or local working contexts').toEqual(beforeProduction)
   expect(flattenRequestText(directionWire.body)).not.toContain('F_PLAN_DONE')
   expect(flattenRequestText(scriptWire.body)).not.toContain('F_VERIFY_LOW')
   expect(walk.fixture.requests).toHaveLength(6)

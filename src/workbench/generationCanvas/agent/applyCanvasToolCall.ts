@@ -1,3 +1,4 @@
+import { hasRealCharacterReferences, normalizeStoryboardAnchorDefaults, validateAnchorModelFit } from './storyboardAnchorPolicy'
 import type {
   BuiltinCanvasCategoryId,
   GenerationCanvasEdgeMode,
@@ -277,7 +278,8 @@ export async function applyCanvasToolCall(
       storyboardDesignId: updatedDesign.id,
       changedShotIndexes: preview.changedShotIndexes,
       changedFields: preview.changedFields,
-      message: `已修改第 ${preview.changedShotIndexes.join('、')} 镜：${preview.changedFields.join('、')}。`,
+      anchorIssues: preview.anchorIssues,
+      message: `已修改第 ${preview.changedShotIndexes.join('、')} 镜：${preview.changedFields.join('、')}。${preview.anchorIssues.map(issue => issue.correction).join('\n')}`,
     } as StoryboardPlanApplicationResult & { changedShotIndexes: number[]; changedFields: string[] }
   }
 
@@ -285,7 +287,10 @@ export async function applyCanvasToolCall(
     // 规划免费可改:planner 第一手产出结构化方案对象,落创作 store 给用户审/改——不碰画布、零网络、零扣费。
     // 用户确认后才由 storyboardPlanToCreateNodesArgs 转成 create_canvas_nodes 落画布(S4)。
     // 校验失败 throw → 调用方映射成 tool error,回喂 LLM 自我修正(与 gate deny 同语义)。
-    const plan = parseStoryboardPlan(record)
+    const parsedPlan = parseStoryboardPlan(record)
+    const plan = hasRealCharacterReferences(parsedPlan)
+      ? normalizeStoryboardAnchorDefaults(parsedPlan, await listAvailableModelsForAgent())
+      : parsedPlan
     const store = useWorkbenchStore.getState()
     // P4:按 documentId 存方案。documentId 由调用方在发起拆镜头时捕获，异步期间切文档不串稿。
     // 缺 documentId（如旧调用方）回退 activeDocumentId，保证至少落到当前激活文档。
@@ -314,7 +319,8 @@ export async function applyCanvasToolCall(
       status: 'applied',
       documentId: targetDocumentId,
       storyboardDesignId: design.id,
-      message: `已生成分镜方案「${plan.title || '未命名'}」：${plan.anchors.length} 个锚 · ${plan.shots.length} 个镜头，已放到分镜页，待你审阅/修改后在行内或底部批量生成。`,
+      anchorIssues: validateAnchorModelFit(plan),
+      message: `已生成分镜方案「${plan.title || '未命名'}」：${plan.anchors.length} 个锚 · ${plan.shots.length} 个镜头，已放到分镜页，待你审阅/修改后在行内或底部批量生成。${validateAnchorModelFit(plan).map(issue => issue.correction).join('\n')}`,
     } satisfies StoryboardPlanApplicationResult
   }
 
@@ -705,6 +711,7 @@ export const STORYBOARD_PLAN_APPLICATION_STATUSES = ['applied', 'obsolete'] as c
 export type StoryboardPlanApplicationStatus = typeof STORYBOARD_PLAN_APPLICATION_STATUSES[number]
 
 export type StoryboardPlanApplicationResult = {
+  anchorIssues?: ReturnType<typeof validateAnchorModelFit>
   status: StoryboardPlanApplicationStatus
   documentId: string
   storyboardDesignId?: string

@@ -3,7 +3,7 @@ import { setImmediate } from 'node:timers/promises';
 import { test } from 'node:test';
 import { createAssistantMessageEventStream, type AssistantMessage, type AssistantMessageEvent,
   type AssistantMessageEventStream } from '@earendil-works/pi-ai';
-import { observeNativeStream, type NativeClock } from '../../electron/harness/runtime/pi/observeStream.mjs';
+import { observeNativeStream, type NativeClock } from '../../electron/agentLane/laneStreamObserver.mjs';
 
 const message = (text = 'Ready'): AssistantMessage => ({ role: 'assistant', content: [{ type: 'text', text }],
   api: 'openai-completions', provider: 'fixture', model: 'chosen', stopReason: 'stop', timestamp: 1,

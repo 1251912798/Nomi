@@ -1,0 +1,33 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-08-agent-lane-storyboard-review",
+  "problem_type": "Operation-specific plan review lost during host replacement",
+  "symptom": "Default safe-auto immediately writes a storyboard plan or batch patch without showing the required review card.",
+  "direct_cause": "The lane reads only capability-level requiresPlanReview; canvas.write has mixed operations, and the old host's renderer-owned storyboard guard was not represented in that contract.",
+  "class_root": "Operation-specific review and reuse facts are encoded in a retiring caller instead of the shared capability owner.",
+  "affected_population": ["Whole storyboard replacement", "Batch storyboard patches", "Calls with existing canvas session grants", "Project approval mode"],
+  "scope_paths": ["electron/shared/agentCapabilities/capabilityContract.ts", "electron/shared/agentCapabilities/registry.ts", "electron/shared/agentCapabilities/canvasWrite.ts", "electron/shared/agentCapabilities/capabilityApprovalPolicy.ts", "electron/agentLane/laneApprovalGate.ts"],
+  "entry_points": ["Model-facing storyboard writes", "Shared capability approval preflight", "Plan-review session grant decisions"],
+  "external_sources": [],
+  "internal_only_reason": "Nomi's former coordinator explicitly excluded renderer-owned propose/patch calls before its safe-auto and session-grant test. The existing shared capability policy is the correct owner of this product review boundary.",
+  "invariants": ["Every whole-plan or batch-patch storyboard write requires a fresh user review in every approval mode.", "A canvas session grant cannot bypass or be minted by a non-reusable plan review.", "Ordinary local canvas writes retain safe-auto behavior.", "The lane derives review facts from capability and operation metadata, never a model-facing tool-name list."],
+  "generality_proof": "A shared operation metadata resolver supplies the same requires-review and reuse facts to the generic policy for any model-facing name mapped to the capability.",
+  "shared_boundaries": [
+    { "path": "electron/shared/agentCapabilities/registry.ts", "symbol": "capabilityPlanReviewOf", "responsibility": "Derive effective review requirements and reuse permission from the canonical contract and operation." },
+    { "path": "electron/shared/agentCapabilities/capabilityApprovalPolicy.ts", "symbol": "capabilityIsHardGated", "responsibility": "Make non-reusable plan review independent of approval mode and session grants." }
+  ],
+  "same_class_entry_points": [
+    { "path": "electron/shared/agentCapabilities/canvasWrite.ts", "entry_point": "CANVAS_WRITE_CAPABILITY operationPlanReview", "disposition": "enforced", "evidence": "Whole-plan replacement and patches declare allowReuse false; other canvas operations have no review override." },
+    { "path": "electron/agentLane/laneApprovalGate.ts", "entry_point": "subjectOf", "disposition": "enforced", "evidence": "The gate consumes the shared derived facts through capability IDs and parsed operation arguments." },
+    { "path": "electron/shared/agentCapabilities/capabilityApprovalPolicy.ts", "entry_point": "capabilityMayReuseSafeApproval", "disposition": "enforced", "evidence": "The shared hard gate runs before both project-mode and session-grant fast paths." }
+  ],
+  "recurrence": { "classification": "recurring", "reason": "Every operation with mixed review semantics under one capability can be bypassed when a new caller reads only capability-level effects.", "same_class_scan": ["Read old coordinator renderer-owned storyboard guard before safeApprovalGranted.", "Inspected canvas operation effect maps, timeline requiresPlanReview, registry alias lookup, Lane subjectOf and shared grant policy."] },
+  "prevention": { "kind": "centralized-boundary", "enforcement_path": "electron/shared/agentCapabilities/capabilityApprovalPolicy.ts", "invariant": "Operation-declared fresh review cannot be bypassed by mode, grant or tool alias.", "failure_mode": "With UI the tool waits on a non-grantable card; without UI it is denied before any domain write.", "exception_policy": "none", "strategy": "Declare review facts once in the capability contract and derive the shared approval subject.", "artifacts": ["electron/shared/agentCapabilities/capabilityContract.ts", "electron/shared/agentCapabilities/registry.ts", "electron/shared/agentCapabilities/canvasWrite.ts", "electron/shared/agentCapabilities/capabilityApprovalPolicy.ts", "electron/agentLane/laneApprovalGate.ts"] },
+  "regression_tests": ["tests/agent-runtime/lane-storyboard-review.test.mts", "electron/shared/agentLane/laneApproval.test.ts", "electron/shared/agentCapabilities/registry.test.ts", "electron/shared/agentCapabilities/canvasWrite.test.ts"],
+  "class_regression_tests": ["tests/agent-runtime/lane-storyboard-review.test.mts", "electron/shared/agentLane/laneApproval.test.ts", "electron/shared/agentCapabilities/registry.test.ts"],
+  "legacy_paths": { "status": "removed", "removed_paths": ["electron/shared/agentCapabilities/canvasWrite.ts"], "rationale": "The old renderer-owned predicate derives its operation membership from the canonical metadata instead of maintaining another operation list; the old host is removed by the atomic cutover." },
+  "dependency_lifecycle": { "decision": "not-applicable", "rationale": "The SDK's before_tool hook works correctly; the missing review fact belongs to Nomi's capability contract.", "exit_criteria": [] },
+  "migration": "No stored format changes. Existing session grants remain incapable of satisfying a fresh plan review.",
+  "residual_risks": ["The real Electron review-card appearance is verified by the parent production walkthrough; these tests prove the actual SDK-to-domain write gate."],
+  "invariant_owner_layer": { "layer": "electron/shared/agentCapabilities/capabilityApprovalPolicy.ts", "tests": ["electron/shared/agentLane/laneApproval.test.ts", "tests/agent-runtime/lane-storyboard-review.test.mts"], "why": "The earliest shared approval boundary can prevent the same bypass across current and future tool names and host adapters." }
+}

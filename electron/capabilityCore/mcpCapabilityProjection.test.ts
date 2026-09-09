@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
 
+import { mcpProfileToolFor } from "../shared/agentCapabilities/modelFacingToolRegistry";
 import type { CapabilityContract } from "../shared/agentCapabilities/capabilityContract";
 import {
   CANVAS_READ_CAPABILITY,
@@ -175,7 +176,7 @@ describe("canvas.read MCP capability projection", () => {
     const [tool] = MCP_CAPABILITY_RESOLVER.list();
     expect(tool).toMatchObject({
       name: CANVAS_READ_CAPABILITY.aliases.mcp,
-      description: CANVAS_READ_CAPABILITY.projections.mcp?.description,
+      description: mcpProfileToolFor(CANVAS_READ_CAPABILITY.id)?.description,
       method: CANVAS_READ_CAPABILITY.id,
       inputSchema: CANVAS_READ_MCP_ADAPTER.transportInputSchema,
       annotations: { readOnlyHint: true },

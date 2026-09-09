@@ -1,0 +1,148 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-08-agent-lane-stage4-desktop",
+  "problem_type": "Desktop lane lifecycle and renderer ownership",
+  "symptom": "Opening or switching a project cannot publish its saved lane history through the shadow-only IPC registration.",
+  "direct_cause": "IPC subscribes only to the workspace present at application registration; commands have no renderer-bound open or close lifecycle.",
+  "class_root": "The IPC boundary does not own subscription replacement and bind every command to the renderer that opened the project.",
+  "affected_population": [
+    "First project open",
+    "Project switch",
+    "Window recreation",
+    "Commands from another renderer"
+  ],
+  "scope_paths": [
+    "electron/agentLane/laneIpc.ts",
+    "electron/agentLane/laneDesktopRuntime.ts",
+    "electron/main.ts",
+    "electron/preload.ts",
+    "src/workbench/NomiStudioApp.tsx",
+    "src/workbench/ai/lane/laneClient.ts",
+    "src/workbench/ai/v4/useAgentPanelV4Actions.ts",
+    "electron/productionRun/productionRunRuntime.ts",
+    "electron/agentLane/laneDesktopTasks.ts",
+    "electron/agentLane/laneHistory.mts"
+  ],
+  "entry_points": [
+    "Workspace open",
+    "Lane command",
+    "Workspace close"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "This invariant belongs to Nomi's Electron sender and committed-project authority; the pi operation contract is unchanged.",
+  "invariants": [
+    "History is published immediately after open",
+    "Old subscriptions close before replacement",
+    "Only the opening renderer can command a workspace",
+    "An input and its frozen context cross one owner-checked command; owner and lane are checked again after asynchronous configuration.",
+    "Only pi durable admission acknowledges a prompt; ongoing execution cannot hold approval or cancellation IPC behind it.",
+    "Task cards read current facts from ProductionRun and refresh on its domain events without doing disk I/O on token updates.",
+    "Historical and live lane handles resolve and refresh the same current ProductionRun task facts.",
+    "Project switch, delete and return to library require successful main release; a rejected close retains the owner for an explicit retry."
+  ],
+  "generality_proof": "All renderer commands cross one registered handler, which owns the active sender, subscription and workspace lifecycle.",
+  "shared_boundaries": [
+    {
+      "path": "electron/agentLane/laneIpc.ts",
+      "symbol": "registerAgentLaneIpc",
+      "responsibility": "Replace subscriptions and validate renderer ownership before dispatch."
+    },
+    {
+      "path": "electron/productionRun/productionRunRuntime.ts",
+      "symbol": "subscribeProductionRunChanges",
+      "responsibility": "The existing domain event commit notifies current task card consumers."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "electron/agentLane/laneIpc.ts",
+      "entry_point": "workspace-open",
+      "disposition": "enforced",
+      "evidence": "First open and project replacement both close the previous owner and publish the current snapshot."
+    },
+    {
+      "path": "electron/agentLane/laneIpc.ts",
+      "entry_point": "command",
+      "disposition": "enforced",
+      "evidence": "Every prompt, approval and queue command checks the sender before accessing the workspace."
+    },
+    {
+      "path": "electron/agentLane/laneIpc.ts",
+      "entry_point": "inputPreparation",
+      "disposition": "enforced",
+      "evidence": "The concurrent-send and project-replacement fixtures prove each prompt captures its own composer and no delayed configuration sends into a replacement project."
+    },
+    {
+      "path": "electron/agentLane/laneDesktopTasks.ts",
+      "entry_point": "createDesktopLaneTasks",
+      "disposition": "enforced",
+      "evidence": "Tests prove domain status/currency/cost updates, project isolation and no disk read for repeated conversation publications."
+    },
+    {
+      "path": "electron/agentLane/laneHistory.mts",
+      "entry_point": "openLaneHistory",
+      "disposition": "enforced",
+      "evidence": "Real Electron stage4 walk compares live task facts with the same card after a full process restart."
+    },
+    {
+      "path": "src/workbench/ai/lane/laneClient.ts",
+      "entry_point": "close",
+      "disposition": "enforced",
+      "evidence": "Rejected main close throws before project lifecycle callers proceed; the owner remains until ACK. Red/green test in laneClient.test.ts."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Every project/window replacement can leave the original subscription stale.",
+    "same_class_scan": [
+      "Read main.ts registration and NomiStudioApp project open/close flows",
+      "Read laneIpc.ts registration-time subscription and command dispatch"
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "electron/agentLane/laneIpc.ts",
+    "invariant": "One current renderer owns one active workspace subscription.",
+    "failure_mode": "Reject commands from a missing or different owner before executing them.",
+    "exception_policy": "none",
+    "strategy": "Bind open, close, snapshot publication and command validation at the IPC boundary.",
+    "artifacts": [
+      "electron/agentLane/laneIpc.ts"
+    ]
+  },
+  "regression_tests": [
+    "electron/agentLane/laneIpc.test.ts",
+    "electron/agentLane/laneDesktopTasks.test.ts",
+    "tests/ux/stage4-switch.walk.mjs",
+    "src/workbench/ai/lane/laneClient.test.ts"
+  ],
+  "class_regression_tests": [
+    "electron/agentLane/laneIpc.test.ts",
+    "electron/agentLane/laneDesktopTasks.test.ts",
+    "tests/ux/stage4-switch.walk.mjs",
+    "src/workbench/ai/lane/laneClient.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "electron/agentLane/laneIpc.ts"
+    ],
+    "rationale": "Replace registration-time-only subscription; retain no fallback."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "No dependency change is needed to bind Nomi workspace ownership.",
+    "exit_criteria": []
+  },
+  "migration": "Workspace lifetimes are ephemeral; saved conversations are handled separately by the stage 4 legacy migration.",
+  "residual_risks": [
+    "Real Electron open/switch/close journey remains to be verified before delivery."
+  ],
+  "invariant_owner_layer": {
+    "layer": "electron/agentLane/laneIpc.ts",
+    "tests": [
+      "electron/agentLane/laneIpc.test.ts"
+    ],
+    "why": "Electron IPC is the first shared boundary that knows both the trusted sender and the workspace lifetime."
+  }
+}

@@ -1,7 +1,6 @@
-import { CANVAS_READ_CAPABILITY } from "../shared/agentCapabilities/canvasRead";
-import { formatCanvasForAgent } from "../shared/agentCapabilities/canvasReadCompact";
+import { CANVAS_READ_CAPABILITY, type CanvasReadResult } from "../shared/agentCapabilities/canvasRead";
 import type { IpcMainInvokeEvent } from "electron";
-import type { RuntimeToolCall, RuntimeToolDecision } from "../harness/runtime/runtimePort";
+import type { RuntimeToolCall, RuntimeToolDecision } from "../shared/agentCapabilities/transportContracts";
 import type { CapabilityExecutorRegistry } from "./capabilityExecutorRegistry";
 import {
   SurfacePortError,
@@ -98,8 +97,11 @@ export function createInternalCanvasReadTransportAdapter(
   });
 }
 
+type PiCanvasReadDecision = Extract<RuntimeToolDecision, { ok: false }>
+  | { ok: true; result: CanvasReadResult; silent: true };
+
 export type PiCanvasReadTransportAdapter = Readonly<{
-  tryExecute(call: RuntimeToolCall, signal: AbortSignal): Promise<RuntimeToolDecision | null>;
+  tryExecute(call: RuntimeToolCall, signal: AbortSignal): Promise<PiCanvasReadDecision | null>;
   dispose(): void;
 }>;
 
@@ -187,7 +189,7 @@ export function createPiCanvasReadTransportAdapter(
       try {
         const invocation = await factory.mint({ toolCallId: call.toolCallId, input: call.args });
         const result = await input.executor.execute(invocation, { signal });
-        return { ok: true, result: formatCanvasForAgent(result), silent: true };
+        return { ok: true, result, silent: true };
       } catch (error) {
         return safeFailure(error);
       }
@@ -217,7 +219,7 @@ export function createCapturedPiCanvasReadTransportAdapter(
       try {
         const invocation = await factory.mint({ toolCallId: call.toolCallId, input: call.args });
         const result = await input.executor.execute(invocation, { signal });
-        return { ok: true, result: formatCanvasForAgent(result), silent: true };
+        return { ok: true, result, silent: true };
       } catch (error) {
         return safeFailure(error);
       }

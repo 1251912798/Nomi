@@ -1,19 +1,15 @@
 // R16 real-user task matrix for provider capability degradation.
 //
 // This journey deliberately spends zero credits and never calls a network provider. It exercises the
-// built production adapter with the kinds of changes a real MCP user makes between attempts: provider,
+// production adapter source with the kinds of changes a real MCP user makes between attempts: provider,
 // model, mode, parameters and references all vary. The only invariant is the user-visible contract:
 // submit when a provider can submit, never invent recovery, and never retry an uncertain receipt.
 import assert from 'node:assert/strict'
-import path from 'node:path'
-import { createRequire } from 'node:module'
-import { fileURLToPath } from 'node:url'
+import { require as tsxRequire } from 'tsx/cjs/api'
 
-const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
-const require = createRequire(import.meta.url)
-const { createGenerationRuntimeAdapter } = require(path.join(repoRoot, 'dist-electron/capabilityCore/generationRuntimeAdapter.js'))
-const { projectGenerationRecovery } = require(path.join(repoRoot, 'dist-electron/capabilityCore/generationRecoveryProjection.js'))
-const { productionGenerationPayloadHash } = require(path.join(repoRoot, 'dist-electron/productionRun/productionGenerationAuthorization.js'))
+const { createGenerationRuntimeAdapter } = tsxRequire('../../electron/capabilityCore/generationRuntimeAdapter.ts', import.meta.url)
+const { projectGenerationRecovery } = tsxRequire('../../electron/capabilityCore/generationRecoveryProjection.ts', import.meta.url)
+const { productionGenerationPayloadHash } = tsxRequire('../../electron/productionRun/productionGenerationAuthorization.ts', import.meta.url)
 
 const contract = (overrides = {}) => ({
   contractHash: 'contract-1', providerId: 'provider-a', modelId: 'model-a', mode: 'text-to-image',

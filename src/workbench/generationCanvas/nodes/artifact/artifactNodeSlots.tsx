@@ -15,6 +15,7 @@ const ArtifactBody = lazyWithChunkBoundary('Agent 产物预览', () => import('.
 const ArtifactNodeToolbar = lazyWithChunkBoundary('Agent 产物操作', () => import('./ArtifactNodeToolbar'))
 
 export type ArtifactNodeSlotsOptions = {
+  reportFeedback: (message: string) => void
   selected: boolean
   isMultiSelectActive: boolean
   readOnly: boolean
@@ -63,7 +64,7 @@ export function useArtifactNodeSlots(node: GenerationCanvasNode, options: Artifa
   const showToolbar = Boolean(artifact) && options.selected && !options.isMultiSelectActive && !options.readOnly
   const toolbar = showToolbar && artifact ? (
     <React.Suspense fallback={null}>
-      <ArtifactNodeToolbar nodeId={node.id} title={title} artifact={artifact} canCopyText={Boolean(copyText)} onCopyText={copyText} />
+      <ArtifactNodeToolbar reportFeedback={options.reportFeedback} nodeId={node.id} title={title} artifact={artifact} canCopyText={Boolean(copyText)} onCopyText={copyText} />
     </React.Suspense>
   ) : null
 

@@ -7,7 +7,7 @@ import { useSpendConfirmStore } from './spendConfirm'
 // 前一个决议后自动出下一个，两个 resolve 都会兑现、互不覆盖。
 
 function resetStore() {
-  useSpendConfirmStore.setState({ pending: null, queue: [], lightSuppressed: false })
+  useSpendConfirmStore.setState({ pending: null, queue: [] })
 }
 
 describe('spendConfirm FIFO 队列 (B4 · 竞态不丢 resolve)', () => {
@@ -59,24 +59,15 @@ describe('spendConfirm FIFO 队列 (B4 · 竞态不丢 resolve)', () => {
     expect(useSpendConfirmStore.getState().pending).toBeNull()
   })
 
-  it('light 抑制仍即时短路（不入队、不占显示位）', async () => {
-    useSpendConfirmStore.setState({ pending: null, queue: [], lightSuppressed: true })
-    const ok = await useSpendConfirmStore.getState().requestConfirm({ title: 'X', message: 'x', light: true })
-    expect(ok).toBe(true)
-    expect(useSpendConfirmStore.getState().pending).toBeNull()
-    expect(useSpendConfirmStore.getState().queue).toHaveLength(0)
-  })
-
-  it('勾选「本会话不再提示」在队列语义下仍生效（只对 light 请求短路后续）', async () => {
+  it('a previous approval never suppresses the next paid confirmation', async () => {
     const store = useSpendConfirmStore.getState()
-    const p1 = store.requestConfirm({ title: 'A', message: 'a', light: true })
-    store.resolvePending(true, true) // 确认并勾抑制
-    await expect(p1).resolves.toBe(true)
-    expect(useSpendConfirmStore.getState().lightSuppressed).toBe(true)
-    // 后续 light 请求直接放行（不弹）。
-    const p2 = store.requestConfirm({ title: 'B', message: 'b', light: true })
-    await expect(p2).resolves.toBe(true)
-    expect(useSpendConfirmStore.getState().pending).toBeNull()
+    const first = store.requestConfirm({ title: 'A', message: 'a' })
+    store.resolvePending(true)
+    await expect(first).resolves.toBe(true)
+    const next = store.requestConfirm({ title: 'B', message: 'b' })
+    expect(useSpendConfirmStore.getState().pending?.title).toBe('B')
+    store.resolvePending(false)
+    await expect(next).resolves.toBe(false)
   })
 
   it('resolves the merged hosting disclosure and remembers only when checked', async () => {
@@ -84,11 +75,10 @@ describe('spendConfirm FIFO 队列 (B4 · 竞态不丢 resolve)', () => {
     const promise = useSpendConfirmStore.getState().requestConfirm({
       title: '开始生成',
       message: '将生成 1 张画面',
-      light: true,
       hostingDisclosure: { message: '素材会离开本机', rememberLabel: '记住我的选择', onRemember: remember },
     })
     expect(useSpendConfirmStore.getState().pending?.hostingDisclosure?.rememberLabel).toBe('记住我的选择')
-    useSpendConfirmStore.getState().resolvePending(true, false, true)
+    useSpendConfirmStore.getState().resolvePending(true, true)
     await expect(promise).resolves.toBe(true)
     expect(remember).toHaveBeenCalledTimes(1)
   })

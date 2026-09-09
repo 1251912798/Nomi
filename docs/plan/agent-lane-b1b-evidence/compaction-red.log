@@ -1,0 +1,30 @@
+✔ C59 stable catalog is in system context; user turns contain only catalog changes (75.092375ms)
+✔ C58 resident read loads a Skill but refuses project files without coding (4.027625ms)
+✖ C61 native compaction uses the cost budget even with a million-token model window (16.039333ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 2
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 712.987333
+
+✖ failing tests:
+
+test at .tmp/agent-runtime-tests/tests/agent-runtime/lane-context-budget.test.mjs:68:1
+✖ C61 native compaction uses the cost budget even with a million-token model window (16.039333ms)
+  AssertionError [ERR_ASSERTION]: An upstream summary request must precede the second assistant call
+  
+  2 !== 3
+  
+      at TestContext.<anonymous> (file:///Users/aoqimin/Desktop/Nomi-stage4-switch/.tmp/agent-runtime-tests/tests/agent-runtime/lane-context-budget.test.mjs:77:12)
+      at async Test.run (node:internal/test_runner/test:1110:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:785:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 2,
+    expected: 3,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

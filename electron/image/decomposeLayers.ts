@@ -3,7 +3,7 @@
 // 复用现有原语：catalog 读 key / 付费令牌消费 / 本地素材吞入 / vendor HTTP / 图层落地。不污染单结果 runtime。
 import { readCatalog } from "../catalog/catalogStore";
 import { decryptApiKeyRecord } from "../catalog/secrets";
-import { assertAndConsumeSpendGrant } from "../spendGrant";
+import { consumeTaskSpend } from "../tasks/taskSpend";
 import { resolveLocalAsset } from "../catalog/assetLocalization";
 import { readNomiLocalAsset, postJsonForAssetUpload, postMultipartForAssetUpload, putBinaryForAssetUpload } from "../assets/localAssetFile";
 import { requestJson } from "../vendor/vendorHttp";
@@ -11,6 +11,7 @@ import { importRemoteAsset } from "../runtime";
 import { desktopT } from "../i18n";
 import {
   REPLICATE_VENDOR_SEED,
+  REPLICATE_DECOMPOSE_MODEL,
   REPLICATE_DECOMPOSE_PREDICTIONS_PATH,
   buildDecomposeInput,
   parseDecomposeOutput,
@@ -56,7 +57,7 @@ export async function decomposeLayers(payload: DecomposeLayersPayload): Promise<
   if (!apiKey) throw new Error(desktopT("decompose.missingToken"));
 
   // 付费令牌：必须在真发 vendor 之前同步消费（与现有 task 路径同铁律，spendGrant.ts）。
-  assertAndConsumeSpendGrant(payload?.grantId, nodeId);
+  await consumeTaskSpend({ grantId: payload?.grantId, nodeId, vendorKey: vendor.key, modelKey: REPLICATE_DECOMPOSE_MODEL, projectId: payload.projectId });
 
   // 本地素材（nomi-local://）→ 传 Replicate 文件 API 拿可达 URL；http/data 已可达直接用。
   let reachableUrl = imageUrl;

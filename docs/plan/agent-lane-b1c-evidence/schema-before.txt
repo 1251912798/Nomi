@@ -1,0 +1,39 @@
+
+> nomi@0.21.0 check:model-schema /Users/aoqimin/Desktop/Nomi-stage4-switch
+> pnpm exec tsx --test ./scripts/check-model-schema.node-test.mjs && pnpm exec tsx scripts/check-model-schema.ts
+
+✔ the budget enumerates every menu the runtime can actually send: always-on plus each single group (711.711208ms)
+✔ a newly enlarged deferred domain fails on its own single-group menu, not only on the report-only total (4.413583ms)
+✔ empty schema {} 被抓到；显式的空对象不被误伤 (0.095459ms)
+✔ 没有 items 的数组被抓到；有 items 的不被误伤 (0.039333ms)
+✔ 值也没类型的开放对象被抓到；值有类型的开放对象不被误伤 (0.04875ms)
+✔ 根级 anyOf 被抓到；扁平对象不被误伤（G-01） (0.114083ms)
+✔ 任意位置的 const 被抓到；enum 形态不被误伤（G-05） (0.049625ms)
+✔ `enum` 数组里的字符串不会被误当成 const (0.028125ms)
+✔ 运输分支（T1 的 JSON 文本那一支）不进模型可见 schema (7.321333ms)
+✔ 两个 profile 的同名别名 schema 不同 → 抓到；相同 → 不误伤 (0.185292ms)
+✔ 一个别名只在一边存在 → 抓到，且说清少在哪一边 (0.055792ms)
+✔ 广播出去的 inputSchema 必须是共享描述符算出来的那份（手写一份即红） (2.644667ms)
+✔ 显式单面别名不误报，未声明的缺失和广播漂移仍被拦住 (0.610541ms)
+✔ schema defaults and examples are data, while actual empty child schemas still fail (0.047042ms)
+✔ the official recursive person example keeps its local reference and rejects erased children (0.5425ms)
+ℹ tests 15
+ℹ suites 0
+ℹ pass 15
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1576.121334
+模型可见 schema：74 个工具（lane 37 / internal 12 / mcp 25）；当前 126 处违规；基线冻结 126 处（棘轮只减不增，阶段 4 归零）
+✅ 模型可见 schema 棘轮通过（无新增空 schema / 根级 union / const / 重复工具；基线只减不增）。
+  · always-on（含 request）：12 个工具，约 4582 token
+  · always-on + coding：18 个工具，约 5539 token
+  · always-on + models：13 个工具，约 4674 token
+  · always-on + timeline：16 个工具，约 6709 token
+  · always-on + media：21 个工具，约 5646 token
+  · always-on + maintenance：13 个工具，约 4703 token
+  · always-on + generation：14 个工具，约 6079 token
+  · always-on + production：22 个工具，约 6263 token
+  · 全部组一起亮（运行时发不出，只作报告）：45 个工具，约 12121 token（仅报告，不作判据）
+✅ lane 工具预算通过（always-on ≤ 12，且「常驻 + 任一单组」逐一 ≤ 10000 token）。

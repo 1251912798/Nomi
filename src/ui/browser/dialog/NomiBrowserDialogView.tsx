@@ -84,6 +84,7 @@ export function NomiBrowserDialogView({
   removeBookmark,
   removeCaptureFlyout,
   renameBookmark,
+  editingBookmark, setEditingBookmark, commitBookmarkRename, browserFeedback,
   runBrowserScreenshotPrompt,
   saveBookmark,
   setActiveTabId,
@@ -250,7 +251,7 @@ export function NomiBrowserDialogView({
                 type="button"
                 className={cn(
                   'grid size-6 shrink-0 place-items-center rounded-pill border-0 bg-transparent',
-                  'cursor-pointer text-nomi-ink-40 transition-colors duration-[var(--nomi-transition-fast)] hover:bg-nomi-ink-05 hover:text-nomi-ink',
+                  'cursor-pointer text-nomi-ink-40 transition-colors duration-nomi-fast ease-nomi-fast hover:bg-nomi-ink-05 hover:text-nomi-ink',
                   activeBookmarked && 'text-nomi-accent hover:text-nomi-accent',
                   (!activeTab?.url || activeBookmarked) && 'cursor-default',
                 )}
@@ -272,7 +273,7 @@ export function NomiBrowserDialogView({
                   type="button"
                   className={cn(
                     'inline-flex h-8 shrink-0 items-center gap-1.5 rounded-nomi-sm border-0 bg-transparent px-2',
-                    'cursor-pointer text-caption font-semibold text-nomi-ink-60 transition-[background,color] duration-[var(--nomi-transition-fast)]',
+                    'cursor-pointer text-caption font-semibold text-nomi-ink-60 transition-[background,color] duration-nomi-fast ease-nomi-fast',
                     'hover:bg-nomi-ink-05 hover:text-nomi-ink',
                     materialSitesOpen && 'bg-nomi-ink-05 text-nomi-ink',
                   )}
@@ -325,7 +326,7 @@ export function NomiBrowserDialogView({
                 type="button"
                 className={cn(
                   'inline-flex h-8 shrink-0 items-center gap-1.5 rounded-nomi-sm border-0 bg-transparent px-2',
-                  'cursor-pointer text-caption font-semibold text-nomi-ink-60 transition-[background,color] duration-[var(--nomi-transition-fast)]',
+                  'cursor-pointer text-caption font-semibold text-nomi-ink-60 transition-[background,color] duration-nomi-fast ease-nomi-fast',
                   'hover:bg-nomi-ink-05 hover:text-nomi-ink',
                   browserAssetPopoverOpen && 'bg-nomi-ink-05 text-nomi-ink',
                 )}
@@ -342,7 +343,17 @@ export function NomiBrowserDialogView({
 
           <div className="flex min-h-9 shrink-0 items-center gap-1 overflow-hidden border-b border-nomi-line-soft bg-nomi-paper px-3">
             {bookmarks.slice(0, 10).map((bookmark: BrowserBookmark) => (
-              <button
+              editingBookmark?.id === bookmark.id ? <input
+                key={bookmark.id} autoFocus value={editingBookmark.title}
+                aria-label={t('browserAssets.renameBookmark')}
+                className="h-7 min-w-0 rounded-nomi-sm border border-nomi-line bg-nomi-paper px-2 text-caption text-nomi-ink"
+                onChange={(event) => setEditingBookmark({ id: bookmark.id, title: event.target.value })}
+                onBlur={commitBookmarkRename}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') { event.preventDefault(); commitBookmarkRename() }
+                  if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); setEditingBookmark(null) }
+                }}
+              /> : <button
                 key={bookmark.id}
                 type="button"
                 className="group inline-flex h-7 min-w-0 max-w-[180px] items-center gap-1.5 rounded-nomi-sm border-0 bg-transparent px-2 text-caption text-nomi-ink-60 hover:bg-nomi-ink-05 hover:text-nomi-ink"
@@ -366,6 +377,7 @@ export function NomiBrowserDialogView({
             <span className="ml-auto shrink-0 text-micro text-nomi-ink-30">{t('browserAssets.contextMenuHint')}</span>
           </div>
 
+          {lastError || browserFeedback ? <div role="status" data-browser-action-feedback className={cn('shrink-0 border-b border-nomi-line-soft px-3 py-2 text-caption', lastError ? 'text-workbench-danger' : 'text-nomi-ink-60')}>{lastError || browserFeedback}</div> : null}
           <main
             ref={webContainerRef}
             className={cn(
@@ -436,7 +448,7 @@ export function NomiBrowserDialogView({
                             type="button"
                             className={cn(
                               'group flex items-center gap-2.5 rounded-nomi border border-nomi-line bg-nomi-paper p-2.5 text-left',
-                              'cursor-pointer transition-[background,border-color,transform,box-shadow] duration-[var(--nomi-transition-fast)]',
+                              'cursor-pointer transition-[background,border-color,transform,box-shadow] duration-nomi-fast ease-nomi-fast',
                               'hover:-translate-y-px hover:border-nomi-accent hover:shadow-nomi-md',
                             )}
                             onClick={() => {
@@ -457,11 +469,6 @@ export function NomiBrowserDialogView({
                     </div>
                   </div>
                 </div>
-              </div>
-            ) : null}
-            {lastError ? (
-              <div className="absolute left-1/2 top-4 z-[2] -translate-x-1/2 rounded-pill border border-nomi-line bg-nomi-paper px-3 py-1.5 text-caption text-workbench-danger shadow-nomi-sm">
-                {lastError}
               </div>
             ) : null}
             </div>

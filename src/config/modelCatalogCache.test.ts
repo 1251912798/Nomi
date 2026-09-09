@@ -161,3 +161,17 @@ describe('未接入的供应商在 catalog 那层就没了', () => {
     await expect(preloadModelOptions('image')).resolves.toMatchObject([{ value: 'with-key', vendor: 'has-key' }])
   })
 })
+
+it('agent catalog capture includes reference-only models through the real publication and archetype projection', async () => {
+  vi.clearAllMocks()
+  notifyModelOptionsRefresh()
+  mocks.listVendors.mockResolvedValue([{ key: 'relay', name: 'Relay', enabled: true, authType: 'none' }])
+  mocks.listModels.mockImplementation(async ({ kind }: { kind: string }) => kind === 'video'
+    ? [{ ...row('reference-video', ['image_to_video'], { archetypeId: 'vidu-q3' }), kind: 'video' }]
+    : kind === 'image'
+      ? [row('edit-only', ['image_edit'], { archetypeId: 'gpt-image-2' }), row('unpublished', [], { archetypeId: 'gpt-image-2' })]
+      : [])
+  const { listAvailableModelsForAgent } = await import('../workbench/generationCanvas/agent/availableModels')
+  const entries = await listAvailableModelsForAgent()
+  expect(entries.map((entry) => entry.modelKey).sort()).toEqual(['edit-only', 'reference-video'])
+})

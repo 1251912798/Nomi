@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { GenerationCanvasNode } from '../model/generationCanvasTypes'
 import { getCanvasNodeVisualSize } from './generationCanvasGeometry'
-import { REVEAL_MARGIN_PX, revealPanDelta, shouldRestoreAfterReveal } from './useCreatedNodeVisibilityPan'
+import { REVEAL_MARGIN_PX, revealPanDelta, shouldRestoreAfterReveal, revealCreatedSequenceViewport, sameCreatedSequenceViewport } from './useCreatedNodeVisibilityPan'
 
 const at = (x: number, y: number): GenerationCanvasNode =>
   ({ id: 'created', kind: 'image', position: { x, y } } as unknown as GenerationCanvasNode)
@@ -72,5 +72,46 @@ describe('shouldRestoreAfterReveal', () => {
   it('没有露出记录或没有自动让位记录 → 不回', () => {
     expect(shouldRestoreAfterReveal(null, new Set(), revealLanding, revealLanding)).toBe(false)
     expect(shouldRestoreAfterReveal(record, new Set(), revealLanding, null)).toBe(false)
+  })
+})
+
+
+describe('revealCreatedSequenceViewport', () => {
+  const sequence = [at(300, 180), at(680, 180), at(1060, 180), at(1440, 180)]
+  it.each([798, 1198])('keeps all four consecutive creations inside a %spx stage', (width) => {
+    const next = revealCreatedSequenceViewport(sequence, sequence[3], { zoom: 1, offset: { x: 0, y: 0 } }, width, 800)!
+    expect(next.zoom).toBeLessThan(1)
+    for (const node of sequence) {
+      expect(node.position.x * next.zoom + next.offset.x).toBeGreaterThanOrEqual(REVEAL_MARGIN_PX - 0.001)
+      expect((node.position.x + W) * next.zoom + next.offset.x).toBeLessThanOrEqual(width - REVEAL_MARGIN_PX + 0.001)
+    }
+  })
+  it('uses the smallest translation when the whole sequence fits, without recentering', () => {
+    const nodes = [at(100, 100), at(500, 100)]
+    expect(revealCreatedSequenceViewport(nodes, nodes[1], { zoom: 1, offset: { x: 0, y: 0 } }, 820, 800))
+      .toEqual({ zoom: 1, offset: { x: 820 - REVEAL_MARGIN_PX - 500 - W, y: 0 } })
+  })
+  it('does nothing when all creations are visible', () => {
+    expect(revealCreatedSequenceViewport([at(100, 100)], at(100, 100), { zoom: 1, offset: { x: 0, y: 0 } }, 1200, 800)).toBeNull()
+  })
+  it('at the existing minimum zoom reveals the newest card even if the oldest cannot fit', () => {
+    const nodes = [at(0, 100), at(10000, 100)]
+    const next = revealCreatedSequenceViewport(nodes, nodes[1], { zoom: 1, offset: { x: 0, y: 0 } }, 798, 800)!
+    expect(next.zoom).toBe(0.2)
+    expect((nodes[1].position.x + W) * next.zoom + next.offset.x).toBeCloseTo(798 - REVEAL_MARGIN_PX)
+    expect(nodes[0].position.x * next.zoom + next.offset.x).toBeLessThan(0)
+  })
+})
+
+
+describe('creation sequence viewport ownership', () => {
+  const previous = { zoom: 1, offset: { x: 50, y: 20 } }
+  it('continues at an automatic landing, allowing subpixel animation rounding', () => {
+    expect(sameCreatedSequenceViewport({ zoom: 1, offset: { x: 50.1, y: 19.9 } }, previous)).toBe(true)
+  })
+  it('ends a sequence after a user pan or zoom instead of fitting earlier unrelated cards', () => {
+    expect(sameCreatedSequenceViewport({ zoom: 1, offset: { x: 70, y: 20 } }, previous)).toBe(false)
+    expect(sameCreatedSequenceViewport({ zoom: 0.8, offset: previous.offset }, previous)).toBe(false)
+    expect(sameCreatedSequenceViewport(previous, null)).toBe(false)
   })
 })

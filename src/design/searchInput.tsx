@@ -3,9 +3,15 @@ import { IconSearch } from '@tabler/icons-react'
 import { cn } from '../utils/cn'
 
 /**
- * 全仓统一搜索框（见 design system §3.4）。收口项目库/提示词库/素材库/拾取器各手写一份
- * 「搜索图标 + token 描边 + accent 聚焦 + 占位」的重复结构（高度/圆角/占位曾各不一）。
+ * 搜索框：搜索图标 + token 描边 + accent 聚焦 + 占位（见 design system §3.4）。
  * 宽度由调用方经 className 给（如 'w-[280px]' 或 'flex-1'）。
+ *
+ * **收口范围（2026-09-07 实测，别写成「全仓统一」）**：6 个消费者已收口
+ * （项目/工作流库工具条、素材库工具条、素材浮层、模型设置首页、模型选择屏）。
+ * 仍另有 3 处手写「IconSearch + <input>」：`ui/onboarding/ModelEnableEditor.tsx:92`、
+ * `ui/onboarding/ComfyuiTemplateLibrary.tsx:144`、`workbench/assets/AssetPicker.tsx:79`——
+ * 三处都是**更小的内嵌过滤框**（icon 12–14px、行高比 size='sm' 还矮），套现有两档会变形；
+ * 要收口得先给这个组件加一档更紧凑的 size，不是直接替换。
  */
 export type DesignSearchInputProps = {
   value: string
@@ -35,9 +41,7 @@ export function DesignSearchInput({
     <div
       className={cn(
         'inline-flex items-center gap-1.5 rounded-full border border-nomi-line bg-nomi-paper text-nomi-ink-40',
-        'transition-[border-color,box-shadow] duration-150',
-        'focus-within:border-[color-mix(in_oklch,var(--nomi-accent)_55%,transparent)]',
-        'focus-within:shadow-[0_0_0_3px_color-mix(in_oklch,var(--nomi-accent)_10%,transparent)]',
+        'transition-colors duration-150',
         size === 'md' ? 'h-9 px-3' : 'h-[30px] px-2.5',
         className,
       )}

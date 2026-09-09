@@ -15,6 +15,12 @@ export { normalizeDesktopLocale, getDesktopLocale, setDesktopLocale, type Deskto
 
 const translations = {
   "zh-CN": {
+    "agent.legacySummary": "旧版摘要：",
+    "agent.legacyUnverifiedTool": "旧版工具结果未验证。",
+    "credential.invalid": "密钥验证失败，请检查密钥和权限后重试。原密钥和连接已保留。",
+    "credential.revalidationUnavailable": "密钥已保存，尚未验证。请联网后重试，届时会自动复验。",
+    "credential.validationUnavailable": "暂时无法验证密钥，请检查接口地址和网络后重试。原密钥和连接已保留。",
+    "credential.changed": "验证期间连接已更改，请重新保存。原密钥未覆盖。",
     "workspace.selectTitle": "选择 Nomi 项目文件夹",
     "workspace.openButton": "打开文件夹",
     "workspace.invalidFolder": "未选择有效的文件夹",
@@ -136,6 +142,8 @@ const translations = {
     "browserMedia.downloadFailed": "网页素材下载失败（HTTP {{status}}）",
     "browserMedia.promptImageTooLarge": "图片过大，无法用于提示词提取（最大 16 MB）",
     "minimaxH3.mixedReferences": "MiniMax H3 请求参数冲突：首尾帧与参考素材不能同时使用，请只保留一组输入。",
+    "modelConstraints.referenceTotal": "参考素材总数最多 {{max}} 个（图片、视频和音频合计）。",
+    "modelConstraints.parameterCombination": "当前参数组合不支持 {{parameter}}，请重新选择。",
     "minimaxH3.audioOnly": "MiniMax H3 多模态参考中音频不能单独输入，请至少提供参考图或参考视频。",
     "comfyWorkflow.invalidJson": "不是合法 JSON —— 请粘贴完整的 ComfyUI workflow.json 或 workflow_api.json。",
     "comfyWorkflow.invalidShape": "workflow 格式不对（应是节点对象）。",
@@ -186,6 +194,12 @@ const translations = {
     "customCall.emptyScript": "脚本为空——先写点内容或让 AI 生成",
   },
   en: {
+    "agent.legacySummary": "Legacy summary: ",
+    "agent.legacyUnverifiedTool": "Legacy tool outcome is unverified.",
+    "credential.invalid": "Key validation failed. Check the key and permissions, then retry. Your previous key and connection are unchanged.",
+    "credential.revalidationUnavailable": "Key saved but not verified. Reconnect and retry to verify automatically.",
+    "credential.validationUnavailable": "Cannot validate the key. Check the API address and network, then retry. Your previous key and connection are unchanged.",
+    "credential.changed": "The connection changed during validation. Save again. The previous key was not overwritten.",
     "workspace.selectTitle": "Choose a Nomi project folder",
     "workspace.openButton": "Open folder",
     "workspace.invalidFolder": "No valid folder was selected",
@@ -304,6 +318,8 @@ const translations = {
     "browserMedia.downloadFailed": "Could not download web media (HTTP {{status}})",
     "browserMedia.promptImageTooLarge": "The image is too large for prompt extraction (maximum 16 MB)",
     "minimaxH3.mixedReferences": "MiniMax H3 cannot use first/last frames and reference media together. Keep only one input group.",
+    "modelConstraints.referenceTotal": "Use at most {{max}} references in total (images, videos and audio combined).",
+    "modelConstraints.parameterCombination": "The current parameter combination does not support {{parameter}}. Choose another value.",
     "minimaxH3.audioOnly": "MiniMax H3 cannot use audio as the only multimodal reference. Add a reference image or video.",
     "comfyWorkflow.invalidJson": "Invalid JSON. Paste a complete ComfyUI workflow.json or workflow_api.json.",
     "comfyWorkflow.invalidShape": "Invalid workflow shape. It must be a node object.",
@@ -357,8 +373,8 @@ const translations = {
 
 type DesktopTranslationKey = keyof (typeof translations)["zh-CN"];
 
-export function desktopT(key: DesktopTranslationKey, values: Record<string, string | number> = {}): string {
-  let text: string = translations[getDesktopLocale()][key];
+export function desktopT(key: DesktopTranslationKey, values: Record<string, string | number> = {}, locale: DesktopLocale = getDesktopLocale()): string {
+  let text: string = translations[locale][key];
   for (const [name, value] of Object.entries(values)) {
     text = text.replace(new RegExp(`\\{\\{${name}\\}\\}`, 'g'), String(value));
   }

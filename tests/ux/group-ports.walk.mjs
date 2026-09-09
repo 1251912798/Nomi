@@ -12,9 +12,6 @@ const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../
 const shotsDir = path.join(repoRoot, 'tests/ux/shots/group-ports')
 fs.rmSync(shotsDir, { recursive: true, force: true })
 fs.mkdirSync(shotsDir, { recursive: true })
-const userData = path.join(repoRoot, '.tmp', 'nomi-groupports-userdata')
-fs.rmSync(userData, { recursive: true, force: true })
-fs.mkdirSync(userData, { recursive: true })
 
 let n = 0
 const fail = []
@@ -47,34 +44,16 @@ async function snapNear(win, name, locator, pad = 30) {
 
 const { app, win } = await launchNomiApp({
   name: 'group-ports',
-  userDataDir: userData,
   args: ['--no-proxy-server'],
   settleMs: 0,
+  initialLocalStorage: { 'nomi:splash:v1': 'seen', 'nomi:journey-tour:v1': 'seen' },
 })
-await win.evaluate(() => {
-  window.localStorage.setItem('__nomiE2E', '1')
-  for (const k of ['nomi:splash:v1', 'nomi:journey-tour:v1', 'nomi:canvas-gesture-hint:v1']) {
-    window.localStorage.setItem(k, 'seen')
-  }
-})
-await win.reload()
-await win.waitForLoadState('domcontentloaded')
-await win.waitForTimeout(2200)
-for (const label of ['新建空白项目', '开始一个项目']) {
-  const el = win.locator('button', { hasText: label }).first()
-  if (await el.count()) { await el.click({ timeout: 4000 }).catch(() => {}); break }
-}
-await win
-  .locator('div.fixed.inset-0')
-  .filter({ hasText: /开始生成/ })
-  .last()
-  .waitFor({ state: 'visible', timeout: 15_000 })
-  .catch(() => {})
-const genTab = win.locator('button', { hasText: /^生成$/ }).first()
-if (await genTab.count()) await genTab.click({ timeout: 5000 }).catch(() => {})
-await win.waitForTimeout(2500)
+await win.getByRole('button', { name: '新建空白项目', exact: false }).first().click()
+// 项目工作区是实际就绪信号；旧首启弹层不会出现，不能等超时再吞掉。
+await win.getByRole('button', { name: '生成', exact: true }).click()
 
 const addImage = win.locator('[aria-label="添加图片节点"]').first()
+await addImage.waitFor({ state: 'visible' })
 if (!(await addImage.count())) { console.error('❌ 找不到「添加图片节点」'); await app.close(); process.exit(1) }
 for (let i = 0; i < 4; i += 1) { await addImage.click({ timeout: 4000 }); await win.waitForTimeout(300) }
 await win.waitForTimeout(900)

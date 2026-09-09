@@ -1,18 +1,32 @@
 // 渲染层订阅：本层**零状态机**。所以这一族测试问的都是「它有没有偷偷记账」。
 import { describe, expect, it, vi } from 'vitest'
 
-import type { LaneCommand, LaneProjection } from '../../../../electron/shared/agentLane/laneContracts'
-import { EMPTY_LANE_PROJECTION, createLaneClient, resolveLaneBridge, type LaneBridge } from './laneClient'
+import type {
+  LaneProjection, LaneWorkspaceProjection,
+} from '../../../../electron/shared/agentLane/laneContracts'
+import type { LaneDesktopCommand } from '../../../../electron/shared/agentLane/laneDesktopContracts'
+import {
+  EMPTY_LANE_PROJECTION, EMPTY_LANE_WORKSPACE, createLaneClient, resolveLaneBridge, type LaneBridge,
+} from './laneClient'
 
 function fakeBridge() {
-  const listeners = new Set<(projection: LaneProjection) => void>()
-  const sent: LaneCommand[] = []
+  const listeners = new Set<(projection: LaneWorkspaceProjection) => void>()
+  const sent: LaneDesktopCommand[] = []
   const bridge: LaneBridge = {
     onProjection: (listener) => { listeners.add(listener); return () => { listeners.delete(listener) } },
     send: async (command) => { sent.push(command); return { ok: true } },
   }
-  return { bridge, sent, listenerCount: () => listeners.size, push: (projection: LaneProjection) => { for (const l of listeners) l(projection) } }
+  return {
+    bridge, sent, listenerCount: () => listeners.size,
+    push: (projection: LaneWorkspaceProjection) => { for (const l of listeners) l(projection) },
+  }
 }
+
+/** 一个只有一条对话的工作区。多 lane 那一族的断言在 `lane-multi.test.mts`（真落盘那一侧）。 */
+const workspace = (active: LaneProjection): LaneWorkspaceProjection => ({
+  lanes: [{ laneName: 'main', sessionId: 's-1', createdAt: 1, updatedAt: 2 }],
+  active,
+})
 
 const projection = (text: string): LaneProjection => ({
   lane: 'main', running: false,
@@ -26,11 +40,27 @@ const projection = (text: string): LaneProjection => ({
     reasoningTokens: { state: 'unknown', reason: 'no-settled-turn' },
   },
   thinking: { supportedLevels: ['off'], level: 'off', canTurnOff: true },
+  queues: [],
 })
 
 describe('laneClient', () => {
-  it('is unreachable in this build — that is the shadow period, not a bug', () => {
-    // preload 没暴露 `agentLane`，`main.ts` 也没注册那两条通道（规则 O6）。
+  it('does not acknowledge release or discard the owner when main rejects close', async () => {
+    const binding = { projectId: 'p', immutableProjectUuid: 'u', projectGeneration: 1 }
+    const bridge = fakeBridge().bridge
+    bridge.send = vi.fn().mockResolvedValueOnce({ ok: true, workspaceId: 'w' })
+      .mockResolvedValueOnce({ ok: false, code: 'agent_lane_execute_failed', message: 'storage close failed' })
+      .mockResolvedValueOnce({ ok: true })
+    const client = createLaneClient(bridge)
+    await client.open(binding)
+    await expect(client.close()).rejects.toThrow('storage close failed')
+    expect(client.context()?.subscriptionId).toBe('w')
+    await client.close()
+    expect(client.context()).toBeNull()
+    expect(bridge.send).toHaveBeenLastCalledWith({ kind: 'workspace-close', workspaceId: 'w' })
+  })
+
+  it('has no desktop bridge in a plain browser without Electron preload', () => {
+    // 普通浏览器没有 Electron preload，实验室通过参数注入桥。
     expect(resolveLaneBridge({})).toBeUndefined()
     expect(resolveLaneBridge({ nomiDesktop: {} })).toBeUndefined()
     expect(resolveLaneBridge(undefined)).toBeUndefined()
@@ -44,14 +74,17 @@ describe('laneClient', () => {
     const first = client.projection()
     expect(client.projection()).toBe(first)
     const next = projection('hello')
-    push(next)
+    push(workspace(next))
     expect(client.projection()).toBe(next)
     expect(client.projection()).toBe(next)
   })
 
   it('starts from an empty projection, not from undefined', () => {
     const client = createLaneClient(fakeBridge().bridge)
+    expect(client.workspace()).toBe(EMPTY_LANE_WORKSPACE)
     expect(client.projection()).toBe(EMPTY_LANE_PROJECTION)
+    // 桥没接上时列不出对话。这句话不是「这个项目没有对话」，是「还没问到」。
+    expect(client.lanes()).toEqual([])
     // 「这条 lane 还没有内容」和「出错了」是两句话。空投影说的是前者。
     expect(client.projection().parts).toEqual([])
   })
@@ -62,18 +95,72 @@ describe('laneClient', () => {
     const seen: string[] = []
     const stop = client.subscribe(() => seen.push('a'))
     client.subscribe(() => seen.push('b'))
-    push(projection('one'))
+    push(workspace(projection('one')))
     stop()
-    push(projection('two'))
+    push(workspace(projection('two')))
     expect(seen).toEqual(['a', 'b', 'b'])
   })
 
-  it('sends only the two commands the renderer is allowed to say', async () => {
+  it('sends intents only — every id it puts on the wire came from the main process', async () => {
     const { bridge, sent } = fakeBridge()
     const client = createLaneClient(bridge)
     await client.prompt('Append a line.')
+    await client.steer('Landscape, not portrait.')
+    await client.followUp('Then export it.')
+    await client.cancelQueued('entry-7')
+    await client.selectLane('research')
+    await client.createLane('research')
+    await client.deleteLane('research')
     await client.abort()
-    expect(sent).toEqual([{ kind: 'prompt', text: 'Append a line.' }, { kind: 'abort' }])
+    expect(sent).toEqual([
+      { kind: 'prompt', text: 'Append a line.' },
+      { kind: 'steer', text: 'Landscape, not portrait.' },
+      { kind: 'follow-up', text: 'Then export it.' },
+      { kind: 'cancel-queued', entryId: 'entry-7' },
+      { kind: 'lane-select', laneName: 'research' },
+      { kind: 'lane-create', laneName: 'research' },
+      { kind: 'lane-delete', laneName: 'research' },
+      { kind: 'abort' },
+    ])
+  })
+
+  it('say(): 同一句话在三种状态下走三条不同的路（方案 §1.3 那张表）', async () => {
+    const { bridge, sent, push } = fakeBridge()
+    const client = createLaneClient(bridge)
+
+    // ① 空闲：新一轮。
+    push(workspace(projection('idle')))
+    await client.say('横屏')
+
+    // ② 在跑、没卡：默认 steer，次选 followUp。
+    push(workspace({ ...projection('busy'), running: true }))
+    await client.say('横屏')
+    await client.say('横屏', 'secondary')
+
+    // ③ 有卡在等：默认 steer 交宿主解除等待，次级选择才 follow-up。
+    push(workspace({
+      ...projection('waiting'), running: true,
+      pending: { toolCallId: 'call-9', toolName: 'write_document', args: {}, grantable: false, pendingCount: 1 },
+    }))
+    await client.say('横屏')
+    await client.say('横屏', 'secondary')
+
+    expect(sent).toEqual([
+      { kind: 'prompt', text: '横屏' },
+      { kind: 'steer', text: '横屏' },
+      { kind: 'follow-up', text: '横屏' },
+      { kind: 'steer', text: '横屏' },
+      { kind: 'follow-up', text: '横屏' },
+    ])
+  })
+
+  it('空闲态没有次选：按到「第二个按钮」也回落到主动作，不抛错', async () => {
+    const { bridge, sent, push } = fakeBridge()
+    const client = createLaneClient(bridge)
+    push(workspace(projection('idle')))
+    expect(client.intent('横屏').secondary).toBeUndefined()
+    await client.say('横屏', 'secondary')
+    expect(sent).toEqual([{ kind: 'prompt', text: '横屏' }])
   })
 
   it('answers with a named failure when the bridge is absent, instead of throwing or pretending', async () => {
@@ -97,7 +184,7 @@ describe('laneClient', () => {
     const client = createLaneClient(bridge)
     const sent = projection('untouched')
     const spy = vi.spyOn(Array.prototype, 'sort')
-    push(sent)
+    push(workspace(sent))
     expect(client.projection()).toBe(sent)
     expect(spy).not.toHaveBeenCalled()
     spy.mockRestore()
@@ -127,9 +214,9 @@ describe('laneClient', () => {
   it('按停止时没送出去的话原样交回调用方——它要回到输入框，不是被丢掉', async () => {
     const client = createLaneClient({
       onProjection: () => () => {},
-      send: async () => ({ ok: true, restoredInput: ['不对，横屏'] }),
+      send: async () => ({ ok: true, restoredInput: [{ text: '不对，横屏' }] }),
     })
     const result = await client.abort()
-    expect(result).toEqual({ ok: true, restoredInput: ['不对，横屏'] })
+    expect(result).toEqual({ ok: true, restoredInput: [{ text: '不对，横屏' }] })
   })
 })

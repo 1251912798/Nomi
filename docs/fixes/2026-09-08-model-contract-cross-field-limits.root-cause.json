@@ -1,0 +1,134 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-08-model-contract-cross-field-limits",
+  "problem_type": "Missing cross-field capability invariants",
+  "symptom": "Hailuo 1080p+10s and H3 thirteen mixed references reach invalid provider requests",
+  "direct_cause": "Independent options and slot maxima accept invalid combinations",
+  "class_root": "Shared capability facts and their consumers lack combination constraints",
+  "affected_population": [
+    "UI parameter changes",
+    "Stored node metadata",
+    "Headless API requests",
+    "Uploaded and connected references"
+  ],
+  "scope_paths": [
+    "electron/catalog/apimartMinimaxH3.ts",
+    "electron/catalog/apimartHailuo23.ts",
+    "electron/catalog/apimartVideos.ts",
+    "electron/i18n.ts",
+    "src/workbench/assets/AssetReference.tsx",
+    "src/config/modelArchetypes/types.ts",
+    "src/i18n/locales/generationCommon.ts",
+    "electron/shared/videoCapabilities/**",
+    "src/workbench/generationCanvas/nodes/**",
+    "scripts/archetype-sources-baseline.json"
+  ],
+  "entry_points": [
+    "Canvas parameter controls",
+    "Canvas reference picker",
+    "APIMart request transform"
+  ],
+  "external_sources": [
+    {
+      "kind": "official-doc",
+      "url": "https://platform.minimax.io/docs/api-reference/video-generation-i2v",
+      "checked_at": "2026-09-08",
+      "purpose": "Verify published combination limits"
+    },
+    {
+      "kind": "official-doc",
+      "url": "https://platform.minimax.io/docs/guides/video-generation",
+      "checked_at": "2026-09-08",
+      "purpose": "Verify published combination limits"
+    },
+    {
+      "kind": "official-doc",
+      "url": "https://docs.apimart.ai/en/api-reference/videos/minimax-hailuo-2.3/generation.md",
+      "checked_at": "2026-09-08",
+      "purpose": "Verify published combination limits"
+    }
+  ],
+  "invariants": [
+    "Declared conditional option sets and aggregate reference maxima are enforced before provider submission"
+  ],
+  "generality_proof": "Generic pure functions consume capability facts, not model identifiers; both UI and transport guards use the same declarations.",
+  "shared_boundaries": [
+    {
+      "path": "electron/shared/videoCapabilities/crossFieldConstraints.ts",
+      "symbol": "validateModeConstraints",
+      "responsibility": "Validate conditional options and reference totals from shared facts"
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/workbench/generationCanvas/nodes/nodeModelArchetype.ts",
+      "entry_point": "resolveRenderedControls",
+      "disposition": "enforced",
+      "evidence": "Consumes constrained options for current metadata"
+    },
+    {
+      "path": "electron/catalog/apimartMinimaxH3.ts",
+      "entry_point": "validateMinimaxH3Body",
+      "disposition": "enforced",
+      "evidence": "Reads total reference maximum from the shared mode"
+    },
+    {
+      "path": "electron/catalog/apimartHailuo23.ts",
+      "entry_point": "validateHailuo23Body",
+      "disposition": "enforced",
+      "evidence": "Reads conditional options from the shared mode"
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "New users, persisted invalid selections and non-UI requests can reproduce independently.",
+    "same_class_scan": [
+      "rg ModelParameterControl, slot.max, requiresAnyOf across src and electron",
+      "Checked archetypeMeta mode/variant clamp, nodeModelArchetype, AssetReference, APIMart request transforms"
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "electron/shared/videoCapabilities/crossFieldConstraints.ts",
+    "invariant": "Declared conditional option sets and aggregate reference maxima are enforced before provider submission",
+    "failure_mode": "UI options/capacity narrow; transport rejects invalid combinations",
+    "exception_policy": "none",
+    "strategy": "Declare once in facts, consume in UI and request validation",
+    "artifacts": [
+      "electron/shared/videoCapabilities/crossFieldConstraints.ts",
+      "src/workbench/generationCanvas/nodes/nodeModelArchetype.ts",
+      "electron/catalog/apimartMinimaxH3.ts"
+    ]
+  },
+  "regression_tests": [
+    "electron/shared/videoCapabilities/crossFieldConstraints.test.ts",
+    "electron/catalog/apimartCrossFieldConstraints.test.ts",
+    "src/workbench/generationCanvas/nodes/controls/nodeCrossFieldConstraints.test.ts"
+  ],
+  "class_regression_tests": [
+    "electron/shared/videoCapabilities/crossFieldConstraints.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "src/workbench/generationCanvas/nodes/nodeModelArchetype.ts"
+    ],
+    "rationale": "Unconditional option projection is replaced by constraint-aware projection; no parallel UI or guard syntax."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "Internal pure capability data; no dependency upgrade or new package needed.",
+    "exit_criteria": []
+  },
+  "migration": "No stored media removed. UI normalizes invalid conditional selections; headless and old invalid request bodies fail before send.",
+  "residual_risks": [
+    "H3 audio-only and Hailuo Fast t2v availability remain unverified; no paid probes."
+  ],
+  "invariant_owner_layer": {
+    "layer": "electron/shared/videoCapabilities",
+    "tests": [
+      "electron/shared/videoCapabilities/crossFieldConstraints.test.ts"
+    ],
+    "structural_ticket": "docs/plan/2026-09-08-model-contract-cross-field-limits.md"
+  }
+}

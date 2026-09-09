@@ -60,3 +60,6 @@ export const PRODUCTION_ARTIFACT_WRITE_CAPABILITY = {
   targetKind: "production",
   projections: { pi: { description: "Revise, review, or materialize a versioned production artifact." } },
 } as const satisfies CapabilityContract<unknown, unknown>;
+
+export const ARTIFACT_REVIEW_DECISIONS = ["approved", "changes_requested", "rejected"] as const;
+export type ArtifactReviewDecision = (typeof ARTIFACT_REVIEW_DECISIONS)[number];

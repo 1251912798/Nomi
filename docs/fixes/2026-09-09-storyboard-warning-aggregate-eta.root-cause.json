@@ -1,0 +1,32 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-09-storyboard-warning-aggregate-eta",
+  "problem_type": "Repeated read-only storyboard corrections and serial batch ETA projection",
+  "symptom": "Eight identical missing-model corrections render as eight warning rows, and an eight-shot confirmation estimates eight sequential task durations despite concurrency six.",
+  "direct_cause": "StoryboardPlanStrategyPanel maps blockers one-for-one; coldstartEtaForGate multiplies the single-task interval by shotCount without batch rounds.",
+  "class_root": "Shared read-only projections do not preserve the identity of equivalent corrections or the scheduler's concurrency invariant.",
+  "affected_population": ["Storyboard plans with repeated model corrections", "Multi-shot confirmations using cold-start ETA"],
+  "scope_paths": ["src/workbench/creation/storyboard/strategyText.ts", "src/workbench/creation/storyboard/StoryboardPlanStrategyPanel.tsx", "electron/capabilityCore/mcpGenerationTools.ts"],
+  "entry_points": ["StoryboardPlanStrategyPanel blocker projection", "multi-shot generation planning confirmation projection"],
+  "external_sources": [],
+  "internal_only_reason": "Both invariants are application projections defined by the existing plan resolver and scheduler contracts; no third-party behavior determines them.",
+  "invariants": ["Equivalent issue code plus original model plus target model produces one warning with all affected shots.", "Cold-start ETA uses ceil(task count / scheduler concurrency) rounds times the single-task low/high interval."],
+  "generality_proof": "All storyboard blocker rows pass through aggregateIssues before rendering, and all multi-shot cold-start receipts pass through coldstartEtaForGate at the shared planning boundary.",
+  "shared_boundaries": [
+    {"path": "src/workbench/creation/storyboard/strategyText.ts", "symbol": "aggregateIssues", "responsibility": "Groups equivalent structured issues while retaining shot identities."},
+    {"path": "electron/capabilityCore/mcpGenerationTools.ts", "symbol": "coldstartEtaForGate", "responsibility": "Converts task count and concurrency into ETA rounds."}
+  ],
+  "same_class_entry_points": [
+    {"path": "src/workbench/creation/storyboard/StoryboardPlanStrategyPanel.tsx", "entry_point": "blocker list rendering", "disposition": "enforced", "evidence": "All visible blocker rows now consume aggregateIssues output."},
+    {"path": "electron/capabilityCore/mcpGenerationTools.ts", "entry_point": "multi-shot receipt assembly", "disposition": "enforced", "evidence": "The receipt calls coldstartEtaForGate with the batch scheduler default concurrency of six."}
+  ],
+  "recurrence": {"classification": "recurring", "reason": "Any repeated structured issue or batch size can reproduce the projection error.", "same_class_scan": ["rg for modelMissing/blockers in storyboard editor", "rg for coldstartEtaForGate/waitSeconds in generation planning and tests", "checked strategy panel and multi-shot receipt assembly"]},
+  "invariant_owner_layer": {"layer": "src/workbench/creation/storyboard/strategyText.ts", "tests": ["src/workbench/creation/storyboard/strategyText.test.ts", "electron/capabilityCore/mcpGenerationTools.test.ts"]},
+  "prevention": {"kind": "centralized-boundary", "enforcement_path": "src/workbench/creation/storyboard/strategyText.ts", "invariant": "Projection identity and scheduler concurrency are applied before UI serialization.", "failure_mode": "Unknown issue fields remain separate; invalid concurrency is clamped to one round worker.", "exception_policy": "none", "strategy": "Keep aggregation and round calculation pure and covered by class tests.", "artifacts": ["src/workbench/creation/storyboard/strategyText.ts", "electron/capabilityCore/mcpGenerationTools.ts"]},
+  "regression_tests": ["src/workbench/creation/storyboard/strategyText.test.ts", "electron/capabilityCore/mcpGenerationTools.test.ts"],
+  "class_regression_tests": ["src/workbench/creation/storyboard/strategyText.test.ts", "electron/capabilityCore/mcpGenerationTools.test.ts"],
+  "legacy_paths": {"status": "removed", "removed_paths": ["src/workbench/creation/storyboard/StoryboardPlanStrategyPanel.tsx", "electron/capabilityCore/mcpGenerationTools.ts"], "rationale": "The old projection behavior is replaced in the same shared boundaries."},
+  "dependency_lifecycle": {"decision": "not-applicable", "rationale": "No dependency controls either invariant.", "exit_criteria": []},
+  "migration": "No persisted data or plan writes change; this is a read-only projection adjustment.",
+  "residual_risks": ["Historical ETA samples are not yet available, so cold-start ranges remain conservative profile-based intervals."]
+}

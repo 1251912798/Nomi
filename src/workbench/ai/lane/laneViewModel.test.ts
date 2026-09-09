@@ -9,9 +9,12 @@ import type {
 } from '../../../../electron/shared/agentLane/laneContracts'
 import { LANE_APPROVAL_NOTE_TYPE } from '../../../../electron/shared/agentLane/laneContracts'
 import { laneInterventionSource, laneViewModel, type LaneViewModelLabels } from './laneViewModel'
+import { humanizeToolFailure, readableToolName, readableToolSummary } from '../resident/residentToolDisplay'
 
 const labels: LaneViewModelLabels = {
   toolLabel: (name) => `[${name}]`,
+  toolSummary: () => undefined,
+  toolFailure: () => undefined,
   thinkingLabel: '[thinking]',
   formatTokens: (value) => `${value}t`,
   formatCost: (usd) => `$${usd.toFixed(4)}`,
@@ -20,6 +23,10 @@ const labels: LaneViewModelLabels = {
   // 是为了让「本层自己编了一个字」当场露馅——占位符长什么样是调用方的事，不是这一层的。
   unknown: '[unknown]',
   free: '[free]',
+  taskTitle: '[task]',
+  formatStages: (done, total) => `${done}/${total} stages`,
+  formatMoney: (currency, amount) => `${currency} ${amount.toFixed(2)}`,
+  taskUnknown: '[task-unknown]',
 }
 
 /** 三态的常用取值。写成构件是因为下面几乎每条都要摆一次。 */
@@ -42,10 +49,128 @@ const part = (input: Omit<LanePart, 'sequence' | 'entrySeq' | 'contentIndex'> & 
   ({ sequence: next++, entrySeq: next, contentIndex: 0, ...input }) as LanePart
 
 function projection(parts: LanePart[], overrides: Partial<LaneProjection> = {}): LaneProjection {
-  return { lane: 'main', parts, running: false, usage: usageOf(), thinking: THINKING, ...overrides }
+  return { lane: 'main', parts, running: false, usage: usageOf(), thinking: THINKING, queues: [], ...overrides }
 }
 
 describe('laneViewModel', () => {
+  it('maps a durable aborted partial to the existing interrupted assistant card', () => {
+    const partial = { ...part({ kind: 'assistant-text', text: 'Actual partial', streaming: false }), interrupted: true as const,
+      continuationEntryId: 'native-stopped-entry' }
+    expect(laneViewModel(projection([partial]), labels).items).toEqual([
+      { kind: 'assistant', text: 'Actual partial', status: 'interrupted', continuationEntryId: 'native-stopped-entry' },
+    ])
+  })
+
+  it('shows undo only on the successful tool selected by the durable receipt join', () => {
+    next = 0
+    const parts = [
+      part({ kind: 'tool-call', toolCallId: 'c1', toolName: 'nomi_canvas_write', args: {}, running: false }),
+      part({ kind: 'tool-result', toolCallId: 'c1', toolName: 'nomi_canvas_write', text: 'Created.', isError: false }),
+      part({ kind: 'tool-call', toolCallId: 'c2', toolName: 'nomi_canvas_write', args: {}, running: false }),
+      part({ kind: 'tool-result', toolCallId: 'c2', toolName: 'nomi_canvas_write', text: 'Failed.', isError: true }),
+    ]
+    const items = laneViewModel(projection(parts), labels, 'c1').items
+    expect(items[0]).toMatchObject({ kind: 'tool', receipt: { toolCallId: 'c1', undoable: true } })
+    expect(items[1]).toMatchObject({ kind: 'tool', receipt: { toolCallId: 'c2' } })
+    expect(JSON.stringify(laneViewModel(projection(parts), labels, 'c2').items)).not.toContain('undoable')
+    expect(JSON.stringify(laneViewModel(projection(parts), labels).items)).not.toContain('undoable')
+  })
+
+  it('keeps the actual canvas effect visible and replaces it on failure or refusal', () => {
+    const translate = (key: string) => key
+    const display: LaneViewModelLabels = {
+      ...labels,
+      toolLabel: (name, args) => readableToolName(translate, name, args),
+      toolSummary: (name, args) => readableToolSummary(translate, name, args),
+      toolFailure: text => humanizeToolFailure(translate, text),
+    }
+    const receipt = (isError: boolean, denied = false) => {
+      next = 0
+      const model = laneViewModel(projection([
+        ...(denied ? [part({ kind: 'host-note', noteType: LANE_APPROVAL_NOTE_TYPE,
+          data: { toolCallId: 'c1', toolName: 'nomi_canvas_write', decision: 'denied', reason: 'Declined.' } })] : []),
+        part({ kind: 'tool-call', toolCallId: 'c1', toolName: 'nomi_canvas_write',
+          args: { operation: 'create_canvas_nodes', nodes: [{ kind: 'shot', title: 'Opening' }] }, running: false }),
+        part({ kind: 'tool-result', toolCallId: 'c1', toolName: 'nomi_canvas_write',
+          text: isError ? 'Validation failed for tool "nomi_canvas_write":\n  - nodes: Expected array\n\nReceived arguments:\n{}' : 'Created.', isError }),
+      ]), display)
+      const item = model.items[0]
+      if (item.kind !== 'tool') throw new Error('missing receipt')
+      return item.receipt
+    }
+    expect(receipt(false)).toMatchObject({ label: 'agentResident.toolCanvasCreate', action: 'canvas', status: 'output-available' })
+    expect(receipt(false).summary).toContain('agentResident.toolNoGeneration')
+    expect(receipt(true).summary).not.toContain('agentResident.toolNoGeneration')
+    expect(receipt(true).summary).toContain('agentResident.issueExpected')
+    expect(receipt(true).output).toBe('Validation failed for tool "nomi_canvas_write":\n  - nodes: Expected array\n\nReceived arguments:\n{}')
+    expect(receipt(true, true)).toMatchObject({ status: 'output-denied' })
+    expect(receipt(true, true).summary).toBeUndefined()
+  })
+
+  it('任务卡：状态 / 进度 / 金额全部来自 join 出来的领域事实，卡本身只有两个 id', () => {
+    next = 0
+    const model = laneViewModel(projection([
+      part({
+        kind: 'task', productionRunId: 'run-7', operationId: 'call-1',
+        facts: {
+          status: 'running', progress: 33, stagesDone: 1, stagesTotal: 3,
+          currency: 'CNY', spent: 0.24, estimated: 0.48, candidates: ['a1', 'a2'].map(artifactId => ({
+            artifactId, projectId: 'project-a', productionRunId: 'run-7', thumbnailUrl: `nomi-local://asset/project-a/${artifactId}.png`, adopted: false, canAdopt: true,
+          })),
+        },
+      }),
+    ]), labels)
+
+    expect(model.items).toEqual([{
+      kind: 'task',
+      task: {
+        title: '[task]', action: 'video', status: 'running',
+        trailing: '1/3 stages', progress: 33,
+        candidates: ['a1', 'a2'].map((artifactId, index) => ({
+          artifactId, projectId: 'project-a', productionRunId: 'run-7', thumbnailUrl: `nomi-local://asset/project-a/${artifactId}.png`, adopted: false, canAdopt: true, tag: String(index + 1),
+        })),
+        // 「预估」上卡头，「已花」上卡尾——与画布 FlowGeneration 板拍板过的位置一致。
+        cost: 'CNY 0.48', footnoteTrailing: 'CNY 0.24',
+      },
+    }])
+  })
+
+  it('任务卡 join 不到领域事实：只画标题 + 一句「详情在别处」，不给一个假的「排队中」', () => {
+    next = 0
+    const model = laneViewModel(projection([
+      part({ kind: 'task', productionRunId: 'run-7' }),
+    ]), labels)
+    const [item] = model.items
+    expect(item.kind === 'task' && item.task).toEqual({
+      title: '[task]', action: 'video', status: 'queued', footnote: '[task-unknown]',
+    })
+    // 阳性对照：上一条同样是 `status: queued` 的卡**带着进度和金额**。两张卡状态字面相同、
+    // 意思相反（「排着队」vs「不知道」），区别只在有没有 footnote —— 所以这条断言查的是整张卡。
+    expect(item.kind === 'task' && item.task.progress).toBeUndefined()
+  })
+
+  it('没有币种就不印金额：一个没有币种的数字看起来完全正常，而它可能是另一种钱', () => {
+    next = 0
+    const model = laneViewModel(projection([
+      part({ kind: 'task', productionRunId: 'run-7', facts: { status: 'complete', spent: 0.24 } }),
+    ]), labels)
+    const [item] = model.items
+    expect(item.kind === 'task' && item.task.footnoteTrailing).toBeUndefined()
+  })
+
+  it('队列原样带出去：不合并、不去重、不改顺序——pi 的 FIFO 就是用户打字的顺序', () => {
+    next = 0
+    const queues = [
+      { entryId: 'q1', kind: 'steer' as const, text: '一句' },
+      { entryId: 'q2', kind: 'follow-up' as const, text: '两句' },
+    ]
+    const model = laneViewModel(projection([], { queues }), labels)
+    expect(model.queues).toBe(queues)
+    // 队列**不进流**：它是还没发生的事。混进去用户会看到自己刚打的话排在模型的回答后面，
+    // 像是模型已经读过它了。
+    expect(model.items).toEqual([])
+  })
+
   it('emits one flow item per part, in the order the transcript recorded', () => {
     next = 0
     const model = laneViewModel(projection([
@@ -303,5 +428,19 @@ describe('审批（阶段 3a）', () => {
     expect(laneInterventionSource(pending)).toEqual({
       toolName: 'append_to_end', args: { content: 'x' }, effectClass: 'reversible_local', pendingCount: 1,
     })
+  })
+})
+
+
+describe('thinking content is not status metadata', () => {
+  it.each([true, false])('keeps long reasoning in a collapsible body (streaming=%s)', (streaming) => {
+    const text = 'I need to check the canvas before delivering. '.repeat(100)
+    const model = laneViewModel(projection([
+      part({ kind: 'user', text: '查看画布' }),
+      part({ kind: 'thinking', text, streaming }),
+      part({ kind: 'assistant-text', text: '已完成。', streaming: false }),
+    ]), labels)
+    expect(model.items[1]).toEqual({ kind: 'thinking', label: '[thinking]', meta: '', text, streaming })
+    expect(model.items.map((item) => item.kind)).toEqual(['user', 'thinking', 'assistant'])
   })
 })

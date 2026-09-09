@@ -7,7 +7,6 @@ import { resolveNodeVisualSize } from '../nodes/nodeSizing'
 import { readCharacterMeta } from '../model/nodeMetaFields'
 import { buildBasicCharacterFixation, buildBasicSceneFixation } from './fixationPromptTemplates'
 import { useGenerationCanvasStore } from '../store/generationCanvasStore'
-import { toast } from '../../../ui/toast'
 import i18n from '../../../i18n'
 
 export type FixationNodeSpec = {
@@ -78,5 +77,5 @@ export function applyFixationMakeup(node: GenerationCanvasNode): void {
   store.updateNode(created.id, { prompt: spec.prompt, references: spec.references, meta: spec.meta })
   store.selectNode(created.id)
   // 节点出现在画布即反馈，toast 只留有用的下一步引导（弹窗审计 R2）。
-  toast(i18n.t('generationCommon.derivative.fixationReady'), 'info')
+
 }

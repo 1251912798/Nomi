@@ -117,9 +117,9 @@ test('stable production seams are separate from planned test doubles and include
   assert.deepEqual(
     surfaces.filter((owner) => owner.startsWith('electron/')),
     [
-      'electron/harness/runtime/pi/session.mts',
-      'electron/harness/runtime/pi/run.mts',
-      'electron/harness/context/contextService.ts',
+      'electron/agentLane/laneSession.mts',
+      'electron/agentLane/laneHost.mts',
+      'electron/agentLane/laneDesktopRuntime.ts',
       'electron/productionRun/productionRunRuntime.ts',
       'electron/capabilityCore/rendererBridge.ts',
       'electron/skills/skillStore.ts',
@@ -143,7 +143,7 @@ test('stable production seams are separate from planned test doubles and include
       status: 'current',
       kind: 'production-seam',
       surface: 'creation.agent',
-      owner: 'electron/harness/runtime/pi/session.mts',
+      owner: 'electron/agentLane/laneSession.mts',
     }).success,
     true,
   )

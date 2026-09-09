@@ -2,20 +2,23 @@ import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { IconAlertTriangle, IconDownload, IconRefresh, IconX } from '@tabler/icons-react'
 import { NomiMarkdown } from '../../workbench/common/NomiMarkdown'
-import { DesignProgress, WorkbenchButton } from '../../design'
+import { DesignProgress, useOverlayEscape, WorkbenchButton } from '../../design'
 import type { Updater } from './useUpdater'
 import { shouldShowUpdaterDialog } from './useUpdater'
 import { cn } from '../../utils/cn'
 
 export function UpdaterDialog({ updater, hasRunningTask }: { updater: Updater; hasRunningTask: boolean }): JSX.Element | null {
   const { t } = useTranslation()
-  const [dismissed, setDismissed] = React.useState(false)
-  const visible = shouldShowUpdaterDialog({ phase: updater.phase, hasRunningTask }) && !dismissed
+  const [requested, setRequested] = React.useState(false)
+  const visible = shouldShowUpdaterDialog({ phase: updater.phase, requested })
+  // Esc = 右上角「关闭」（更新提示是可推迟的，不是不可逆动作），让位规则走共用原语。
+  const dialogRef = React.useRef<HTMLElement | null>(null)
+  useOverlayEscape(dialogRef, visible, () => setRequested(false))
   React.useEffect(() => {
-    if (updater.phase === 'available' || updater.phase === 'downloaded') setDismissed(false)
+    if (updater.phase === 'idle' || updater.phase === 'up-to-date') setRequested(false)
   }, [updater.phase])
 
-  const badgeVisible = hasRunningTask && (updater.phase === 'available' || updater.phase === 'downloading' || updater.phase === 'downloaded' || updater.phase === 'error')
+  const badgeVisible = !visible && (updater.phase === 'available' || updater.phase === 'downloading' || updater.phase === 'downloaded' || updater.phase === 'error')
   if (!visible && !badgeVisible) return null
 
   const title = updater.phase === 'error' ? t('updaterDialog.errorTitle') : updater.phase === 'downloading' ? t('updaterDialog.downloadingTitle') : updater.phase === 'downloaded' ? t('updaterDialog.downloadedTitle') : t('updaterDialog.availableTitle')
@@ -27,8 +30,8 @@ export function UpdaterDialog({ updater, hasRunningTask }: { updater: Updater; h
           type="button"
           data-updater-badge="true"
           className="fixed right-4 top-[calc(var(--workbench-topbar-height)+0.75rem)] z-[140] inline-flex items-center gap-1.5 rounded-pill border border-nomi-accent bg-nomi-accent-soft px-3 py-1.5 text-caption font-medium text-nomi-accent shadow-nomi-sm"
-          title={t('updaterDialog.runningHint')}
-          onClick={() => setDismissed(false)}
+          title={hasRunningTask ? t('updaterDialog.runningHint') : title}
+          onClick={() => setRequested(true)}
         >
           <IconDownload size={14} stroke={1.8} aria-hidden="true" />
           {t('updaterDialog.badge')}
@@ -37,6 +40,7 @@ export function UpdaterDialog({ updater, hasRunningTask }: { updater: Updater; h
       {visible ? (
         <div className="fixed inset-0 z-[130] grid place-items-center bg-nomi-ink/20 p-4" role="presentation" data-updater-dialog="true">
           <section
+            ref={dialogRef}
             role="dialog"
             aria-modal="true"
             aria-labelledby="updater-dialog-title"
@@ -50,7 +54,7 @@ export function UpdaterDialog({ updater, hasRunningTask }: { updater: Updater; h
                 <h2 id="updater-dialog-title" className="text-title font-semibold text-nomi-ink">{title}</h2>
                 {updater.latestVersion ? <p className="mt-1 text-body-sm text-nomi-ink-60">{t('updaterDialog.version', { version: updater.latestVersion })}</p> : null}
               </div>
-              <button type="button" aria-label={t('common.close')} title={t('common.close')} onClick={() => setDismissed(true)} className="grid size-8 place-items-center rounded-nomi-sm text-nomi-ink-60 hover:bg-nomi-ink-05 hover:text-nomi-ink">
+              <button type="button" aria-label={t('common.close')} title={t('common.close')} onClick={() => setRequested(false)} className="grid size-8 place-items-center rounded-nomi-sm text-nomi-ink-60 hover:bg-nomi-ink-05 hover:text-nomi-ink">
                 <IconX size={16} stroke={1.8} />
               </button>
             </header>
@@ -74,14 +78,14 @@ export function UpdaterDialog({ updater, hasRunningTask }: { updater: Updater; h
             ) : null}
 
             <footer className={cn('mt-5 flex items-center justify-end gap-2', updater.phase === 'downloading' && 'hidden')}>
-              <WorkbenchButton variant="default" onClick={() => setDismissed(true)}>{t('common.later')}</WorkbenchButton>
+              <WorkbenchButton variant="default" onClick={() => setRequested(false)}>{t('common.later')}</WorkbenchButton>
               {updater.phase === 'error' ? (
                 <WorkbenchButton variant="primary" onClick={updater.check}><IconRefresh size={14} />{t('common.retry')}</WorkbenchButton>
               ) : updater.phase === 'downloaded' ? (
-                <WorkbenchButton variant="primary" onClick={updater.install}>{t('updaterDialog.restartInstall')}</WorkbenchButton>
+                <WorkbenchButton variant="primary" disabled={hasRunningTask} title={hasRunningTask ? t('updaterDialog.runningHint') : undefined} onClick={updater.install}>{t('updaterDialog.restartInstall')}</WorkbenchButton>
               ) : updater.phase === 'available' ? (
                 updater.canAutoInstall
-                  ? <WorkbenchButton variant="primary" onClick={updater.download}>{t('updaterDialog.updateAndRestart')}</WorkbenchButton>
+                  ? <WorkbenchButton variant="primary" onClick={updater.download}>{t('about.downloadUpdate')}</WorkbenchButton>
                   : <WorkbenchButton variant="primary" onClick={updater.openDownload}>{t('about.openDownload')}</WorkbenchButton>
               ) : null}
             </footer>

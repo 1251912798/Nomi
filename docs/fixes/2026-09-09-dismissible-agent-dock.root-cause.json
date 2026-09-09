@@ -1,0 +1,115 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-09-dismissible-agent-dock",
+  "problem_type": "Workspace overlay ignores user dismissal preference",
+  "symptom": "Collapsed Agent composer obscures workspace content and cannot be closed.",
+  "direct_cause": "Collapsed resident shell unconditionally mounts the dock; clearance only avoids the transport bar.",
+  "class_root": "Panel visibility and overlay dismissal are distinct user choices, but only panel visibility has an owner.",
+  "affected_population": [
+    "All four workbench surfaces, including users switching projects or restarting"
+  ],
+  "scope_paths": [
+    "src/workbench/preview/editingPanelLayoutSlice.ts",
+    "src/workbench/ai/ProjectAgentResidentShell.tsx",
+    "src/workbench/ai/v4/AgentPanelV4Dock.tsx",
+    "src/i18n/locales/agentPanelV4.ts"
+  ],
+  "entry_points": [
+    "Collapsed resident dock",
+    "Topbar restoration",
+    "Preview keyboard panel toggle",
+    "Project layout restoration"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "Internal UI preference; no new framework or external protocol. Reuse existing localStorage and design button APIs.",
+  "invariants": [
+    "Hidden dock has no rendered content or clearance height.",
+    "User dismissal survives panel toggles and project layout restoration.",
+    "Unread and pending activity never clear the preference; topbar remains the restore entry."
+  ],
+  "generality_proof": "All surfaces share ProjectAgentResidentShell and one workbench layout slice; hide gates the entire dock while the shell continues publishing badges.",
+  "shared_boundaries": [
+    {
+      "path": "src/workbench/preview/editingPanelLayoutSlice.ts",
+      "symbol": "createEditingPanelLayoutSlice",
+      "responsibility": "Own user dismissal preference independently of per-project panel state."
+    },
+    {
+      "path": "src/workbench/ai/ProjectAgentResidentShell.tsx",
+      "symbol": "ProjectAgentResidentShell",
+      "responsibility": "Gate the dock subtree without stopping topbar attention projection."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/ui/app-shell/CollapsedAiChip.tsx",
+      "entry_point": "expandResident(false)",
+      "disposition": "enforced",
+      "evidence": "Only changes panel collapsed state through the layout slice; does not clear dismissal."
+    },
+    {
+      "path": "src/workbench/preview/PreviewWorkspace.tsx",
+      "entry_point": "onKeyDown",
+      "disposition": "enforced",
+      "evidence": "Existing Meta+Backslash toggles the same panel action regardless of dock visibility."
+    },
+    {
+      "path": "src/workbench/project/releaseWorkbenchProjectSession.ts",
+      "entry_point": "releaseWorkbenchProjectSession",
+      "disposition": "enforced",
+      "evidence": "Project release resets panel state only; user dismissal is not a project payload field."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Every collapse, surface switch and new project can reproduce the obstruction.",
+    "same_class_scan": [
+      "rg projectAgentDockCollapsed src: layout actions, project release, lab host, resident shell and preview keyboard inspected.",
+      "rg V4CollapsedDock src: resident shell is the sole dock caller.",
+      "rg localStorage src: user preference storage established in canvasGesturePreference."
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "src/workbench/ai/ProjectAgentResidentShell.tsx",
+    "invariant": "A dismissed dock is unmounted on every surface while panel restore stays available.",
+    "failure_mode": "No dock subtree and no transport observer when hidden; unavailable storage still permits session dismissal.",
+    "exception_policy": "none",
+    "strategy": "One user-level boolean in existing layout owner; no attention or project action writes it.",
+    "artifacts": [
+      "src/workbench/preview/editingPanelLayoutSlice.ts",
+      "src/workbench/ai/ProjectAgentResidentShell.tsx",
+      "src/workbench/ai/v4/AgentPanelV4Dock.tsx"
+    ]
+  },
+  "regression_tests": [
+    "src/workbench/preview/agentDockHidden.test.ts",
+    "tests/ux/agent-dock-dismiss.walk.mjs"
+  ],
+  "class_regression_tests": [
+    "src/workbench/preview/agentDockHidden.test.ts",
+    "tests/ux/agent-dock-dismiss.walk.mjs"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "src/workbench/ai/ProjectAgentResidentShell.tsx"
+    ],
+    "rationale": "Replace unconditional dock mounting with the single preference-controlled path."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "No third-party defect or dependency change; existing store and browser storage APIs suffice.",
+    "exit_criteria": []
+  },
+  "migration": "New user preference defaults false when absent; never added to project payload.",
+  "residual_risks": [
+    "Storage unavailability limits memory to the current session."
+  ],
+  "invariant_owner_layer": {
+    "layer": "src/workbench/preview/editingPanelLayoutSlice.ts",
+    "tests": [
+      "src/workbench/preview/agentDockHidden.test.ts"
+    ]
+  }
+}

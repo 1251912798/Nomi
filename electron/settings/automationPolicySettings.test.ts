@@ -62,16 +62,13 @@ describe("automation policy settings", () => {
   it("normalizes notification, automation, privacy, and spend values", () => {
     expect(normalizeAutomationPolicySettings({
       systemNotifications: false,
-      notificationSound: false,
       autoContinueWithinBudget: false,
       minimizeUploads: false,
       maxSpend: -2,
     })).toMatchObject({
       systemNotifications: false,
-      notificationSound: false,
       autoContinueWithinBudget: false,
       minimizeUploads: false,
-      maxSpend: null,
     });
   });
 
@@ -81,14 +78,16 @@ describe("automation policy settings", () => {
     expect(normalizeAutomationPolicySettings({ anonymousAssetHosting: "anything" }).anonymousAssetHosting).toBe("ask");
   });
 
+  it("drops the obsolete global budget", () => {
+    expect(normalizeAutomationPolicySettings({ maxSpend: 25 })).not.toHaveProperty("maxSpend");
+  });
+
   it("persists normalized settings atomically", () => {
     const written = writeAutomationPolicySettings({
       mode: "policy-auto",
       trustedHosts: ["claude"],
-      maxSpend: 25,
       maxAttemptsPerJob: 4,
       systemNotifications: true,
-      notificationSound: false,
       autoContinueWithinBudget: true,
       minimizeUploads: true,
     });

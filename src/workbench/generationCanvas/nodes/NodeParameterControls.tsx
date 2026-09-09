@@ -1,3 +1,6 @@
+import { notify } from '../../../ui/notificationPolicy'
+import { normalizeConditionalParameters } from '../../../../electron/shared/videoCapabilities/crossFieldConstraints'
+import { nodeReferenceCapacity } from './controls/nodeCrossFieldConstraints'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '../../../utils/cn'
@@ -77,7 +80,6 @@ import AssetReference, { type AssetSlot } from '../../assets/AssetReference'
 import type { AssetRef } from '../../assets/assetTypes'
 import { moveArrayItem } from '../../assets/assetTypes'
 import { removeMention } from '../../assets/promptMentions'
-import { showInfoToast } from '../../../utils/showInfoToast'
 import InlineParameterBar from './InlineParameterBar'
 import { useNodeModelAutoSelect } from './useNodeModelAutoSelect'
 import { resolveArchetypeForOption, resolveRenderedControls } from './nodeModelArchetype'
@@ -94,7 +96,6 @@ import {
 } from './aspectRatio'
 import { buildNodeModelChangePatch } from './buildNodeModelChangePatch'
 
-// 模块级常量：比例参数的 key 白名单（与 aspectRatio.ts 的 ASPECT_RATIO_KEYS 保持一致）。
 const ASPECT_RATIO_KEY_SET = new Set<string>(ASPECT_RATIO_KEYS)
 
 type NodeParameterControlsProps = {
@@ -112,6 +113,10 @@ export default function NodeParameterControls({
   onInsertMention,
   composerAttachmentSide = 'bottom',
 }: NodeParameterControlsProps): JSX.Element | null {
+  const reportFeedback = React.useCallback((message: string) => {
+    notify({ identity: `NodeParameterControls:${node.id}`, reason: 'interaction', message, level: 'inline', present: setUploadError })
+  }, [node.id])
+
   const { t } = useTranslation()
   const nodes = useGenerationCanvasStore((state) => state.nodes)
   const edges = useGenerationCanvasStore((state) => state.edges)
@@ -121,17 +126,12 @@ export default function NodeParameterControls({
   const meta = React.useMemo<Record<string, unknown>>(() => node.meta || {}, [node.meta])
   const [uploadingSlotKey, setUploadingSlotKey] = React.useState('')
   const [uploadError, setUploadError] = React.useState('')
-  // 统一的「哪个槽的选择器展开」(单/数组共用一个,P1 归一)+ 数组/源视频上传中标记。
   const [openSlotKey, setOpenSlotKey] = React.useState('')
   const [uploadingArrayKey, setUploadingArrayKey] = React.useState('')
   const isImageLike = isImageLikeGenerationNodeKind(node.kind)
   const isVideoLike = isVideoLikeGenerationNodeKind(node.kind)
-  // C5：文本节点也是可生成节点（executionKind:'text'）——要渲染模型选择器，否则没处选模型。
   const isTextLike = getGenerationNodeExecutionKind(node.kind) === 'text'
-  // 声音节点同为可生成节点：要走模型自动选择(选到「声音」档案)→ ModeBar(配音/转写)+ 参数才显现。
   const isAudioLike = isAudioLikeGenerationNodeKind(node.kind)
-  // 3D 模型节点同为可生成节点(executionKind:'model3d')：与图片/视频共用同一套模型选择器/自动选择/参数机制，
-  // 只是 catalogKind→'model3d'、requiredMode→'text_to_3d'(见 modelOptionsAdapter)把候选过滤到已接入的 3D 模型。
   const isModel3dLike = isModel3dLikeGenerationNodeKind(node.kind)
   const isGenerationNode = isImageLike || isVideoLike || isTextLike || isAudioLike || isModel3dLike
   const requiredMode = requiredModeForGenerationNode(node, { nodes, edges })
@@ -139,15 +139,9 @@ export default function NodeParameterControls({
   const modelOptions = modelOptionsState.options
   const modelCatalogStatus = deriveGenerationModelCatalogStatus(node.kind, modelOptionsState)
 
-  // 模型寻址链单源在 parameterControlModel.nodeSelectedModelAddress（报错卡自定义调用入口共用）。
-  // 必须带上节点存的 vendor 寻址：两个中转站可提供同名 modelKey，裸身份匹配永远命中数组首条
-  // （最新接入那家），下方 vendor 同步 effect 会跟着把 meta.vendor 改写过去——用户锁定被静默翻家。
   const { modelKey: selectedModelValue, vendorKey: selectedModelVendor } = nodeSelectedModelAddress(meta)
   const selectedModelOption = findModelOptionByIdentifier(modelOptions, selectedModelValue, selectedModelVendor) || null
-  // 认得的模型 → 内置档案（供应商无关）；驱动模式分段切换 + 当前模式的槽/参数。认不出 → null（走 flat）。
   const archetype = resolveArchetypeForOption(selectedModelOption)
-  // 变体特化：选中变体可能收窄某 mode 的参数（如 Seedance fast 的 resolution 仅 480/720）——
-  // 槽/参数全由特化后的档案派生，保证 UI 选项与发送一致。无 variants → 原样（零开销）。
   const declaredVariantChoices = archetype ? archetypeVariantChoices(archetype) : []
   const activeVariantId = archetype ? currentArchetypeVariant(archetype, meta)?.id || '' : ''
   const effectiveArchetype = archetype ? specializeArchetypeForVariant(archetype, activeVariantId) : null
@@ -155,16 +149,6 @@ export default function NodeParameterControls({
   const imageCatalogConfig = archetype ? null : buildEffectiveImageCatalogConfig(selectedModelOption?.meta)
   const renderedControls = resolveRenderedControls(selectedModelOption, meta, isImageLike, isVideoLike)
 
-  // ── 渠道诚实：档案声明的槽 × **这条渠道真发得出的键** ──────────────────────────────
-  // UI 能力由档案声明（供应商无关），发得出什么由渠道 mapping 决定；此前两者只在「点生成那一刻」
-  // 才对账，于是用户连好参考、切到「全能参考」、点了生成才被拒。这里提前算出来，发不出的槽不显示、
-  // 只带得动 1 张的槽如实收成 1 张。判据与第三闸同一套（referenceReachability），不另起一份。
-  // 拿不到 body（老 preload / 查不到 mapping）→ 空表 → 一律不收窄，绝不因为查不到就藏用户的槽。
-  //
-  // 模式栏（U4）要的是**每个**声明模式各自的 body，不只是当前选中那个：档案的模式集供应商无关，
-  // 而「这家到底有没有这个模式」得逐模式问 mapping（至多两个 taskKind：text_to_video / image_to_video）。
-  // taskKind 走唯一入口 modeTransportFor（供应商特化 > 模式级 > 档案级）：同一模型身份在 kie 是单端点
-  // （text_to_video）、在 Runway 图模式走 /v1/image_to_video，问错桶会查不到 mapping 而误收窄。
   const modeBodySpecs = React.useMemo(
     () =>
       (effectiveArchetype?.modes ?? []).map((mode) => ({
@@ -179,7 +163,6 @@ export default function NodeParameterControls({
     selectedModelOption?.value ?? '',
     modeBodySpecs,
   )
-  // 变体轴收窄：变体的意义是换一个真发出去的 model 串，渠道没把 model 参数化就什么也不会发生
   // （Runway 把 model 写死、且 veo3.1 / veo3.1_fast 本就是两个目录行）。惰性时整条不显示，别骗用户。
   const variantChoices = archMode && !archetypeVariantAxisIsLive(modeBodies[archMode.id]) ? [] : declaredVariantChoices
   // 槽级收窄仍只看**当前**模式的 body（口径不变）。三态里的 undefined/null 都落到「拿不到 body」→ 不收窄。
@@ -207,9 +190,18 @@ export default function NodeParameterControls({
 
   const updateMeta = (patch: Record<string, unknown>, options?: CanvasMutationOptions) => {
     updateNode(node.id, {
-      meta: { ...getLatestMeta(), ...patch },
+      meta: archMode ? normalizeConditionalParameters(archMode.params, { ...getLatestMeta(), ...patch }) : { ...getLatestMeta(), ...patch },
     }, options)
   }
+
+  React.useEffect(() => {
+    if (!archMode) return
+    const latest = getLatestMeta()
+    const next = normalizeConditionalParameters(archMode.params, latest)
+    if (next !== latest) updateMeta(next, { history: false })
+    // The effect only writes when a conditional selection is invalid.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [archMode, meta])
 
   const updateAspectRatioMeta = (patch: Record<string, unknown>, targetRatio: number | null) => {
     const latest = useGenerationCanvasStore.getState().nodes.find((candidate) => candidate.id === node.id)
@@ -342,20 +334,26 @@ export default function NodeParameterControls({
   // ── C3 数组参考槽（全能参考，meta-only）：append / remove / 上传，写 node.meta[metaKey] 数组 ──
   const setArrayValue = (metaKey: string, next: string[]) => updateMeta({ [metaKey]: next })
   const handleArrayAdd = (slot: ArchetypeArraySlot, url: string) => {
+    const state = useGenerationCanvasStore.getState()
+    const latestNode = state.nodes.find(n => n.id === node.id) ?? node
+    if (archMode && nodeReferenceCapacity(archMode, latestNode, state.nodes, state.edges) === 0) {
+      reportFeedback(t('generationCommon.parameters.referenceTotal', { max: archMode.maxTotalReferences }))
+      return
+    }
     // 容量先按**已占用位置**判（含连线 + pending 边，单源 resolveReferenceSlots），不能只看 meta 数组长度——
     // 否则被边占满的槽仍允许写入 meta、却落不进槽（显示/发送都没它）=「参考图上不去」。
     const occupied = resolveReferenceSlots(node, nodes, edges).find(
       (rs) => referenceSlotStorage({ kind: rs.slotKind })?.metaKey === slot.metaKey,
     )?.fills.length
     if (occupied != null && slot.max !== undefined && occupied >= slot.max) {
-      showInfoToast(t('generationCommon.parameters.referenceFull', { max: slot.max }))
+      reportFeedback(t('generationCommon.parameters.referenceFull', { max: slot.max }))
       return
     }
     // 单源去重/上限：与拖入/连线共用 appendArchetypeArrayValue（规则 1：不另开写路径）。
     // 读最新 meta 计算追加（避免基于渲染快照算出过期数组 → 覆盖刚连边写入的项）。
     const result = appendArchetypeArrayValue(getLatestMeta(), slot, url)
     if (result.status === 'full') {
-      showInfoToast(t('generationCommon.parameters.maximum', { max: slot.max, label: slot.label }))
+      reportFeedback(t('generationCommon.parameters.maximum', { max: slot.max, label: slot.label }))
       return
     } // 到上限:明确告知(对抗评审:别静默丢)
     if (result.status !== 'added') return // empty / duplicate：静默
@@ -750,6 +748,8 @@ export default function NodeParameterControls({
       {showReferences && assetSlots.length > 0 ? (
         <AssetReference
           slots={assetSlots}
+          remainingCapacity={archMode ? nodeReferenceCapacity(archMode, node, nodes, edges) : undefined}
+          capacityMessage={archMode?.maxTotalReferences === undefined ? undefined : t('generationCommon.parameters.referenceTotal', { max: archMode.maxTotalReferences })}
           valuesByKey={assetValuesByKey}
           occupiedByKey={arrayOccupiedByKey}
           projectId={getDesktopActiveProjectId() || null}

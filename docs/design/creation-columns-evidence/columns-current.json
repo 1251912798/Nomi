@@ -1,0 +1,161 @@
+{
+  "frame": [
+    {
+      "selector": "[data-creation-resource-tree]",
+      "radius": "0px",
+      "border": [
+        "0px solid oklab(0.95 0.000520944 0.00295442)",
+        "1px solid oklab(0.95 0.000520944 0.00295442)",
+        "0px solid oklab(0.95 0.000520944 0.00295442)",
+        "0px solid oklab(0.95 0.000520944 0.00295442)"
+      ],
+      "shadow": "none",
+      "padding": "0px",
+      "background": "oklab(1 0 0)",
+      "x": 0,
+      "y": 56,
+      "width": 240,
+      "height": 844
+    },
+    {
+      "selector": "[data-creation-editor]",
+      "radius": "10px",
+      "border": [
+        "1px solid oklab(0.91 0.000694592 0.00393923)",
+        "1px solid oklab(0.91 0.000694592 0.00393923)",
+        "1px solid oklab(0.91 0.000694592 0.00393923)",
+        "1px solid oklab(0.91 0.000694592 0.00393923)"
+      ],
+      "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, oklch(0 0 0 / 0.04) 0px 2px 4px 0px, oklch(0 0 0 / 0.06) 0px 8px 24px 0px",
+      "padding": "0px",
+      "background": "oklab(1 0 0)",
+      "x": 256,
+      "y": 72,
+      "width": 746,
+      "height": 812
+    },
+    {
+      "selector": "[data-v4-panel]",
+      "radius": "10px",
+      "border": [
+        "1px solid oklab(0.91 0.000694592 0.00393923)",
+        "1px solid oklab(0.91 0.000694592 0.00393923)",
+        "1px solid oklab(0.91 0.000694592 0.00393923)",
+        "1px solid oklab(0.91 0.000694592 0.00393923)"
+      ],
+      "shadow": "none",
+      "padding": "0px",
+      "background": "oklab(1 0 0)",
+      "x": 1034,
+      "y": 72,
+      "width": 390,
+      "height": 812
+    }
+  ],
+  "header": [
+    {
+      "selector": "[data-creation-resource-tree]>div:first-child",
+      "radius": "0px",
+      "border": [
+        "0px solid oklab(0.95 0.000520944 0.00295442)",
+        "0px solid oklab(0.95 0.000520944 0.00295442)",
+        "1px solid oklab(0.95 0.000520944 0.00295442)",
+        "0px solid oklab(0.95 0.000520944 0.00295442)"
+      ],
+      "shadow": "none",
+      "padding": "0px 12px",
+      "background": "rgba(0, 0, 0, 0)",
+      "x": 0,
+      "y": 56,
+      "width": 239,
+      "height": 48
+    },
+    {
+      "selector": ".workbench-editor-toolbar",
+      "radius": "0px",
+      "border": [
+        "0px solid oklab(0.95 0.000520944 0.00295442)",
+        "0px solid oklab(0.95 0.000520944 0.00295442)",
+        "1px solid oklab(0.95 0.000520944 0.00295442)",
+        "0px solid oklab(0.95 0.000520944 0.00295442)"
+      ],
+      "shadow": "none",
+      "padding": "0px 12px",
+      "background": "oklab(1 0 0)",
+      "x": 257,
+      "y": 73,
+      "width": 744,
+      "height": 44
+    },
+    {
+      "selector": "[data-v4-panel]>header",
+      "radius": "0px",
+      "border": [
+        "0px solid oklab(0.95 0.000520944 0.00295442)",
+        "0px solid oklab(0.95 0.000520944 0.00295442)",
+        "1px solid oklab(0.95 0.000520944 0.00295442)",
+        "0px solid oklab(0.95 0.000520944 0.00295442)"
+      ],
+      "shadow": "none",
+      "padding": "0px 12px",
+      "background": "rgba(0, 0, 0, 0)",
+      "x": 1035,
+      "y": 73,
+      "width": 388,
+      "height": 40
+    }
+  ],
+  "body": [
+    {
+      "selector": "[data-creation-resource-tree]>nav",
+      "radius": "0px",
+      "border": [
+        "0px solid rgb(229, 231, 235)",
+        "0px solid rgb(229, 231, 235)",
+        "0px solid rgb(229, 231, 235)",
+        "0px solid rgb(229, 231, 235)"
+      ],
+      "shadow": "none",
+      "padding": "8px",
+      "background": "rgba(0, 0, 0, 0)",
+      "x": 0,
+      "y": 104,
+      "width": 239,
+      "height": 796
+    },
+    {
+      "selector": ".tiptap",
+      "radius": "0px",
+      "border": [
+        "0px solid rgb(229, 231, 235)",
+        "0px solid rgb(229, 231, 235)",
+        "0px solid rgb(229, 231, 235)",
+        "0px solid rgb(229, 231, 235)"
+      ],
+      "shadow": "none",
+      "padding": "24px 32px 80px",
+      "background": "rgba(0, 0, 0, 0)",
+      "x": 289,
+      "y": 117,
+      "width": 680,
+      "height": 766
+    },
+    {
+      "selector": "[data-v4-flow]",
+      "radius": "0px",
+      "border": [
+        "0px solid rgb(229, 231, 235)",
+        "0px solid rgb(229, 231, 235)",
+        "0px solid rgb(229, 231, 235)",
+        "0px solid rgb(229, 231, 235)"
+      ],
+      "shadow": "none",
+      "padding": "10px 12px",
+      "background": "rgba(0, 0, 0, 0)",
+      "x": 1035,
+      "y": 113,
+      "width": 388,
+      "height": 666
+    }
+  ]
+}

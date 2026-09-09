@@ -27,7 +27,7 @@ await run(process.execPath, [compiler,
   'electron/systemProxy.ts', 'electron/appFetch.ts', 'electron/vendor/vendorBaseFallback.ts',
   'electron/ai/buildAiSdkModel.ts', 'electron/proxyProbe.ts', 'electron/hardenedFetch.ts',
   '--target', 'ES2022', '--module', 'commonjs', '--moduleResolution', 'node',
-  '--esModuleInterop', '--skipLibCheck', '--strict', '--noEmitOnError',
+  '--esModuleInterop', '--resolveJsonModule', '--skipLibCheck', '--strict', '--noEmitOnError',
   '--rootDir', 'electron', '--outDir', buildRoot,
 ]);
 const env = { ...process.env };

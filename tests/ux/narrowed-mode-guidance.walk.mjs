@@ -23,7 +23,7 @@ import { mkdirSync, mkdtempSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { expectVisible, expectAbsent, proveProbe, screenshotSettled, waitForVisualQuiescence } from './_assert.mjs'
+import { expect, expectVisible, expectAbsent, proveProbe, screenshotSettled, waitForVisualQuiescence } from './_assert.mjs'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const shotsDir = path.join(repoRoot, 'tests/ux/shots/narrowed-mode-guidance')
@@ -250,13 +250,9 @@ try {
     const nodes = record?.payload?.generationCanvas?.nodes
     return Array.isArray(nodes) && nodes.some((node) => node?.id === nodeId && node?.meta?.narrowedModeGuidanceDismissed === true)
   }, { projectIdValue, nodeIdValue })
-  await getWin().waitForFunction(async ({ projectId: id, nodeId }) => {
-    const projects = window.nomiDesktop?.projects
-    if (!projects || !id || !nodeId) return false
-    const record = projects.readAsync ? await projects.readAsync(id) : projects.read(id)
-    const nodes = record?.payload?.generationCanvas?.nodes
-    return Array.isArray(nodes) && nodes.some((node) => node?.id === nodeId && node?.meta?.narrowedModeGuidanceDismissed === true)
-  }, { projectId, nodeId: firstNodeId }, { timeout: 10_000 })
+  await expect.poll(async () => readPersistedDismissal(projectId, firstNodeId), {
+    timeout: 10_000,
+  }).toBe(true)
   const persistedDismissal = await readPersistedDismissal(projectId, firstNodeId)
   assert(persistedDismissal, '关闭标记已落到当前项目的节点快照', String(persistedDismissal))
   await screenshotSettled(getWin(), { path: path.join(shotsDir, '02-dismissed-on-first-node.png') })

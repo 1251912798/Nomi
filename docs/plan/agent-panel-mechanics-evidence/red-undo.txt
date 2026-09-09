@@ -1,0 +1,37 @@
+
+ RUN  v4.1.8 /Users/aoqimin/Desktop/Nomi-panel-mechanics
+
+ ❯ src/workbench/ai/v4/agentPanelV4Mechanics.test.ts (8 tests | 1 failed) 577ms
+   × C44 delete still asks once but its badge acknowledges undo 540ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/workbench/ai/v4/agentPanelV4Mechanics.test.ts > C44 delete still asks once but its badge acknowledges undo
+AssertionError: expected { kind: 'approval-irreversible', …(5) } to match object { kind: 'approval-irreversible', …(1) }
+(4 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+-   "badge": "可撤销",
++   "badge": "不可逆",
+    "kind": "approval-irreversible",
+  }
+
+ ❯ src/workbench/ai/v4/agentPanelV4Mechanics.test.ts:61:18
+     59|   const labels = { irreversible:'不可逆', reversible:'可撤销' }
+     60|   const result = projectV4Intervention({toolName:'delete_canvas_nodes'…
+     61|   expect(result).toMatchObject({kind:'approval-irreversible',badge:'可撤…
+       |                  ^
+     62| })
+     63|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 7 passed (8)
+   Start at  15:45:50
+   Duration  2.47s (transform 840ms, setup 38ms, import 1.71s, tests 577ms, environment 0ms)
+

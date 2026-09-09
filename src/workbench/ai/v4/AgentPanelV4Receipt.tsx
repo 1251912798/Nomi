@@ -6,10 +6,17 @@
 // 失败留在原行变红 + 一句话原因，**不弹窗不 toast**（Process 板时刻 5）——
 // 错误发生在哪一行就留在哪一行，用户回看时能对上。
 import React from 'react'
+import { projectToolOutput } from './agentPanelV4ToolOutput'
+import { AgentPanelV4Markdown } from './AgentPanelV4Markdown'
+import { V4Row, V4Shimmer } from './AgentPanelV4Row'
 import { useTranslation } from 'react-i18next'
 import { cn } from '../../../utils/cn'
 import { ActionIcon, IconAlertTriangle, IconChevronRight, ToolStatusIcon } from './AgentPanelV4Icons'
 import type { ToolReceipt, V4FlowItem } from './agentPanelV4Types'
+
+// The base :root :focus-visible selector is more specific than a utility class.
+// Only these summaries use the requested full accent; keyboard focus stays native.
+const SUMMARY_FOCUS = 'outline-none focus-visible:outline-2 focus-visible:!outline-[var(--nomi-accent)] focus-visible:outline-offset-2'
 
 const STATUS_TONE: Record<string, string> = {
   'output-available': 'text-nomi-success',
@@ -36,8 +43,8 @@ export function V4ToolReceipt({
         <ActionIcon action={receipt.action} />
       </span>
       <span className="shrink-0 font-medium text-nomi-ink-80">{receipt.label}</span>
-      {receipt.summary ? <span className="truncate text-micro text-nomi-ink-40">{receipt.summary}</span> : null}
-      <span className={cn('ml-auto flex shrink-0 items-center gap-1 text-micro', tone)}>
+      {receipt.summary ? <div className="min-w-0 line-clamp-1 text-micro text-nomi-ink-40"><AgentPanelV4Markdown text={receipt.summary} /></div> : null}
+      <span className={cn('flex shrink-0 items-center gap-1 text-micro', tone)}>
         <ToolStatusIcon status={receipt.status} />
         {receipt.trailing ?? statusLabel}
         {receipt.undoable && undoLabel ? (
@@ -59,7 +66,7 @@ export function V4ToolReceipt({
         {expandable ? (
           <IconChevronRight
             size={12}
-            className="text-nomi-ink-40 transition-transform group-open:rotate-90"
+            className="text-nomi-ink-40 transition-transform group-open/receipt:rotate-90"
           />
         ) : null}
       </span>
@@ -67,46 +74,48 @@ export function V4ToolReceipt({
   )
   if (!expandable) {
     return (
-      <div
-        className="flex min-h-7 items-center gap-[7px] rounded-nomi-sm px-2 text-caption text-nomi-ink-60"
+      <V4Row
+        className="min-h-7 rounded-nomi-sm px-2 text-caption text-nomi-ink-60"
         data-v4-block="tool"
         data-status={receipt.status}
       >
         {row}
-      </div>
+      </V4Row>
     )
   }
   return (
     <details
       open={receipt.expanded}
-      className="group"
+      className="group/receipt"
       data-v4-block="tool"
       data-status={receipt.status}
     >
-      <summary
+      <V4Row as="summary"
         className={cn(
-          'flex min-h-7 cursor-pointer list-none items-center gap-[7px] rounded-nomi-sm px-2 text-caption text-nomi-ink-60 hover:bg-nomi-ink-05',
-          'group-open:bg-nomi-ink-05',
+          'min-h-7 cursor-pointer list-none rounded-nomi-sm px-2 text-caption text-nomi-ink-60 hover:bg-nomi-ink-05',
+          'group-open/receipt:bg-nomi-ink-05', SUMMARY_FOCUS,
         )}
       >
         {row}
-      </summary>
+      </V4Row>
       <div className="mt-1 rounded-nomi-sm border border-nomi-line-soft bg-nomi-paper px-2.5 py-2 text-caption text-nomi-ink-60">
         {receipt.input ? <ReceiptBlock labelKey="agentPanelV4.input" value={receipt.input} /> : null}
-        {receipt.output ? <ReceiptBlock labelKey="agentPanelV4.output" value={receipt.output} /> : null}
+        {receipt.output ? <ReceiptBlock labelKey="agentPanelV4.output" value={receipt.output} markdown /> : null}
       </div>
     </details>
   )
 }
 
-function ReceiptBlock({ labelKey, value }: { labelKey: string; value: string }): JSX.Element {
+function ReceiptBlock({ labelKey, value, markdown = false }: { labelKey: string; value: string; markdown?: boolean }): JSX.Element {
   const { t } = useTranslation()
+  const content = markdown ? projectToolOutput(value) : { technical: value }
   return (
     <div className="mb-1.5 last:mb-0">
       <div className="mb-0.5 text-micro text-nomi-ink-40">{t(labelKey)}</div>
-      <pre className="m-0 whitespace-pre-wrap rounded-nomi-sm bg-nomi-ink-05 px-2 py-1.5 font-nomi-mono text-micro text-nomi-ink-80">
-        {value}
-      </pre>
+      {content.markdown !== undefined ? <AgentPanelV4Markdown text={content.markdown} /> : null}
+      {content.technical !== undefined ? <pre className="m-0 whitespace-pre-wrap rounded-nomi-sm bg-nomi-ink-05 px-2 py-1.5 font-nomi-mono text-micro text-nomi-ink-80">
+        {content.technical}
+      </pre> : null}
     </div>
   )
 }
@@ -124,18 +133,22 @@ function ReceiptBlock({ labelKey, value }: { labelKey: string; value: string }):
 export function V4ToolGroup({
   group,
   statusLabel,
+  undoLabel,
+  onUndo,
 }: {
   group: Extract<V4FlowItem, { kind: 'tool-group' }>
   statusLabel: string
+  undoLabel?: string
+  onUndo?: (toolCallId: string) => void
 }): JSX.Element {
   const { t } = useTranslation()
   const tone = STATUS_TONE[group.status] ?? 'text-nomi-accent'
   return (
-    <details className="group" data-v4-block="tool-group" data-status={group.status} data-count={group.count}>
-      <summary
+    <details className="group/tool-group" data-v4-block="tool-group" data-status={group.status} data-count={group.count}>
+      <V4Row as="summary"
         className={cn(
-          'flex min-h-7 cursor-pointer list-none items-center gap-[7px] rounded-nomi-sm px-2 text-caption text-nomi-ink-60 hover:bg-nomi-ink-05',
-          'group-open:bg-nomi-ink-05',
+          'min-h-7 cursor-pointer list-none rounded-nomi-sm px-2 text-caption text-nomi-ink-60 hover:bg-nomi-ink-05',
+          'group-open/tool-group:bg-nomi-ink-05', SUMMARY_FOCUS,
         )}
       >
         <span className="shrink-0 text-nomi-ink-60">
@@ -145,16 +158,17 @@ export function V4ToolGroup({
         <span className="shrink-0 font-nomi-mono text-micro text-nomi-ink-40">
           {t('agentPanelV4.toolGroupCount', { count: group.count })}
         </span>
-        {group.reason ? <span className="truncate text-micro text-nomi-ink-40">{group.reason}</span> : null}
-        <span className={cn('ml-auto flex shrink-0 items-center gap-1 text-micro', tone)}>
+        {group.reason ? <div className="min-w-0 line-clamp-1 text-micro text-nomi-ink-40"><AgentPanelV4Markdown text={group.reason} /></div> : null}
+        <span className={cn('flex shrink-0 items-center gap-1 text-micro', tone)}>
           <ToolStatusIcon status={group.status} />
           {group.trailing || statusLabel}
-          <IconChevronRight size={12} className="text-nomi-ink-40 transition-transform group-open:rotate-90" />
+          <IconChevronRight size={12} className="text-nomi-ink-40 transition-transform group-open/tool-group:rotate-90" />
         </span>
-      </summary>
+      </V4Row>
       <div className="mt-1 flex flex-col gap-0.5 border-l border-nomi-line-soft pl-1.5">
         {group.receipts.map((receipt, index) => (
-          <V4ToolReceipt key={`${receipt.label}-${index}`} receipt={receipt} statusLabel={statusLabel} />
+          <V4ToolReceipt key={`${receipt.label}-${index}`} receipt={receipt} statusLabel={statusLabel}
+            undoLabel={undoLabel} onUndo={() => { if (receipt.toolCallId) onUndo?.(receipt.toolCallId) }} />
         ))}
       </div>
     </details>
@@ -167,27 +181,44 @@ export function V4ToolGroup({
  * 定稿 ⑦「过程反馈按 Claude Code」：过程默认收起，只有**最终回答**摊开。
  * 平铺的时候它和最终回答一样宽、一样黑，用户得逐段读完才知道哪一段是给他的。
  */
-export function V4Process({ label, segments }: { label: string; segments: readonly string[] }): JSX.Element {
+export function V4Process({ label, segments, running, elapsed, children }: {
+  label: string; segments: readonly string[]; running?: boolean; elapsed?: string; children?: React.ReactNode
+}): JSX.Element {
   const { t } = useTranslation()
+  const bodyRef = React.useRef<HTMLDivElement>(null)
+  const [long, setLong] = React.useState(false)
+  const [expanded, setExpanded] = React.useState(false)
+  React.useEffect(() => {
+    const body = bodyRef.current
+    if (!body) return
+    const measure = () => {
+      if (body.getBoundingClientRect().height === 0) return
+      setLong(body.scrollHeight > Number.parseFloat(getComputedStyle(body).lineHeight) * 12 + 1)
+    }
+    const observer = new ResizeObserver(measure)
+    observer.observe(body)
+    measure()
+    return () => observer.disconnect()
+  }, [children, segments])
   return (
-    <details className="group" data-v4-block="process" data-count={segments.length}>
-      <summary className="flex min-h-7 cursor-pointer list-none items-center gap-[7px] rounded-nomi-sm px-2 text-caption text-nomi-ink-40 hover:bg-nomi-ink-05">
-        <span className="shrink-0">
-          <ActionIcon action="think" />
-        </span>
-        <span className="truncate">{label}</span>
-        <span className="ml-auto flex shrink-0 items-center gap-1 text-micro">
-          {t('agentPanelV4.processExpand')}
-          <IconChevronRight size={12} className="transition-transform group-open:rotate-90" />
-        </span>
-      </summary>
-      <div className="mt-1 flex flex-col gap-1.5 border-l border-nomi-line-soft py-1 pl-2.5">
-        {segments.map((segment, index) => (
-          <p key={index} className="m-0 whitespace-pre-wrap text-caption text-nomi-ink-60">
-            {segment}
-          </p>
-        ))}
+    <details key={running ? "running" : "settled"} className={cn(
+      'group/process text-nomi-ink-60',
+      // Neutral text belongs to the process; status colors, icons and elapsed time do not.
+      '[&_:is(.text-nomi-ink,.text-nomi-ink-80,.text-nomi-ink-40):not(svg):not([data-process-elapsed])]:text-nomi-ink-60',
+      '[&_.font-medium]:font-normal [&_.font-semibold]:font-normal [&_.font-bold]:font-normal',
+      // Markdown emphasis and inline syntax colors cannot outrank their container either.
+      '[&_[data-v4-markdown]_*]:!text-nomi-ink-60 [&_[data-v4-markdown]_*]:!font-normal',
+    )} data-v4-block="process" data-running={Boolean(running)}>
+      <V4Row as="summary" className={cn("min-h-7 cursor-pointer list-none rounded-nomi-sm px-2 text-caption text-nomi-ink-60 hover:bg-nomi-ink-05 [&>svg]:text-nomi-ink-40", SUMMARY_FOCUS)}>
+        <ActionIcon action={running ? 'think' : 'document'} />
+        <>{running ? <V4Shimmer>{label}</V4Shimmer> : <span className="min-w-0 truncate">{label}</span>}</>
+        {elapsed ? <span data-process-elapsed className="shrink-0 font-nomi-mono text-micro text-nomi-ink-40">{elapsed}</span> : null}
+        <IconChevronRight size={12} className="shrink-0 text-nomi-ink-40 transition-transform group-open/process:rotate-90" />
+      </V4Row>
+      <div ref={bodyRef} className={cn("mt-1 flex flex-col gap-1.5 border-l border-nomi-line-soft py-1 pl-2.5 text-caption leading-relaxed", !expanded && "max-h-[12lh] overflow-hidden", long && !expanded && "[mask-image:linear-gradient(black_80%,transparent)]")} data-process-folded={long && !expanded}>
+        {children ?? segments.map((segment, index) => <AgentPanelV4Markdown key={index} text={segment} />)}
       </div>
+      {long ? <button type="button" className="mt-1 text-micro text-nomi-ink-60" onClick={() => setExpanded(value => !value)}>{t(expanded ? 'agentPanelV4.collapse' : 'agentPanelV4.expand')}</button> : null}
     </details>
   )
 }
@@ -203,7 +234,7 @@ export function V4ErrorBar({ reason, action, onAction }: { reason: string; actio
       data-v4-block="errorbar"
     >
       <IconAlertTriangle size={13} aria-hidden="true" />
-      <span className="flex-1">{reason}</span>
+      <AgentPanelV4Markdown text={reason} />
       {action ? (
         <button type="button" className="font-medium text-nomi-ink-80" onClick={onAction}>
           {action}

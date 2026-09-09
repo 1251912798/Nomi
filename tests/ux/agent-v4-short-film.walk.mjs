@@ -11,6 +11,7 @@
 //
 // 用法：node tests/ux/agent-v4-short-film.walk.mjs
 import { clickOrFail, expect, expectAbsent, proveProbe } from './_assert.mjs'
+import { laneMessages, laneMessageText, readLaneTranscripts } from './agent-lane-observer.mjs'
 import { FIXTURE_TEXT_MODEL_LABEL, flattenRequestText } from './agent-runtime-fixture.mjs'
 import {
   APPROVAL_CARD,
@@ -84,7 +85,7 @@ let failure
 try {
   let { win } = await walk.start({ first: true })
   const project = await walk.newProject()
-  const { projectId } = project
+  const { projectId, projectRoot } = project
   await chooseAssistantModel(win, FIXTURE_TEXT_MODEL_LABEL)
 
   // ── 1. 冷启动：面板是空的，但不该是**沉默**的 ──────────────────────────────
@@ -182,7 +183,7 @@ try {
   const tightenRequest = walk.fixture.expectText({
     label: 'agent proposes tightening the ending',
     match: (body) => flattenRequestText(body).includes(TIGHTEN) && !hasToolResult(body, TIGHTEN_TOOL),
-    reply: { type: 'tool', id: TIGHTEN_TOOL, name: 'nomi_document_edit', args: { operation: 'append', content: TIGHTEN_APPLIED } },
+    reply: { type: 'tool', id: TIGHTEN_TOOL, name: 'append_to_end', args: { content: TIGHTEN_APPLIED } },
   })
   const tightenFollowup = walk.fixture.expectText({
     label: 'tighten result returns to the model',
@@ -268,7 +269,7 @@ try {
   const refusedRequest = walk.fixture.expectText({
     label: 'agent proposes deleting the opening',
     match: (body) => flattenRequestText(body).includes(REFUSED) && !hasToolResult(body, REFUSED_TOOL),
-    reply: { type: 'tool', id: REFUSED_TOOL, name: 'nomi_document_edit', args: { operation: 'append', content: REFUSED_TEXT } },
+    reply: { type: 'tool', id: REFUSED_TOOL, name: 'append_to_end', args: { content: REFUSED_TEXT } },
   })
   const refusedFollowup = walk.fixture.expectText({
     label: 'rejection returns to the model',
@@ -419,8 +420,18 @@ try {
   // ── 9. 关掉重开：昨天的活儿还在 ────────────────────────────────────────
   //
   // 这一段测的是**收据的七态 join 在冷启动之后仍然对**：重启后渲染层的待决登记表是空的，
-  // 只剩宿主快照，所以每一条收据的状态必须完全由宿主说了算。判定顺序写反的话，
+  // 只剩 lane JSONL，所以每一条收据的状态必须由真实消息与审批记录投影。判定顺序写反的话，
   // 这里会看到一条早就完成的调用被画成「待确认」。
+  const persistedBeforeRestart = readLaneTranscripts(projectRoot)
+  expect(persistedBeforeRestart, '跨创作/画布仍是同一条 lane').toHaveLength(1)
+  const laneBeforeRestart = persistedBeforeRestart[0]
+  const messagesBeforeRestart = laneMessages(laneBeforeRestart)
+  const toolResults = messagesBeforeRestart.filter(message => message.role === 'toolResult')
+  expect(toolResults.filter(message => [TIGHTEN_TOOL, REFUSED_TOOL, REFERENCE_TOOL].includes(message.toolCallId)))
+    .toHaveLength(3)
+  expect(toolResults.find(message => message.toolCallId === TIGHTEN_TOOL)?.isError).toBe(false)
+  expect(toolResults.find(message => message.toolCallId === REFUSED_TOOL)?.isError).toBe(true)
+  expect(laneMessageText(toolResults.find(message => message.toolCallId === REFUSED_TOOL))).toContain('开头是全片的锚')
   const requestsBeforeRestart = walk.fixture.requests.length
   await walk.stopApp()
   ;({ win } = await walk.start())
@@ -434,8 +445,13 @@ try {
     provenBy: restoredProof,
     message: '冷重启后不该有介入槽——待决登记表是空的，一条早就完成的调用被画成「待确认」就是七态 join 写反了',
   })
-  // 重启本身不该产生任何模型调用：恢复读的是落盘的宿主状态，不是重跑一遍。
+  // 重启本身不该产生任何模型调用：恢复读的是落盘的 lane JSONL，不是重跑一遍。
   expect(walk.fixture.requests).toHaveLength(requestsBeforeRestart)
+  const restoredLane = readLaneTranscripts(projectRoot).find(session => session.sessionId === laneBeforeRestart.sessionId)
+  expect(restoredLane, '冷重启必须恢复原来的 SDK session 身份').toBeTruthy()
+  expect(laneMessages(restoredLane), '历史消息按原始顺序恢复，不能重放工具').toEqual(messagesBeforeRestart)
+  await expect(win.locator(DOCUMENT)).toContainText(TIGHTEN_APPLIED)
+  await expect(win.locator(DOCUMENT)).not.toContainText(REFUSED_TEXT)
   await walk.snap('12-cold-restart')
 
 } catch (error) {

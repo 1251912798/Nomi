@@ -1,0 +1,54 @@
+$ "/opt/hostedtoolcache/node/24.20.0/x64/bin/node" "tests/ux/canvas-batch-production.walk.mjs"
+
+[stdout]
+  ok: 种子供应商 Batch Mock 已在模型设置里可见
+  screenshot: 01-light-model-settings.png
+  ok: 连接点和目标节点都有可点击区域
+  ok: 真实点击建立依赖边
+  ok: 无选择入口显示两个待生成节点
+  ok: 未框选时批量模型更新已触发项目持久化
+  ok: 未框选时图片节点统一切到图片 B
+  ok: 并发偏好写入本地存储
+  screenshot: 02-light-generate-all.png
+  screenshot: 03-spend-confirm-before-cancel.png
+  ok: 取消付费确认后 vendor 零调用
+  screenshot: 04-generate-all-completed.png
+  ok: 依赖波次两个请求都完成
+  ok: 下游在上游完成后才开始
+  ok: 下游请求收到上游图片参考
+  ok: 真实点击新增图片和视频节点
+  ok: 混合选择只统计两个待生成节点
+  ok: 批量模型更新已触发项目持久化
+  ok: 三个图片节点统一切到图片 B
+  ok: 视频节点切到视频 B
+  screenshot: 05-light-mixed-selection-models.png
+  screenshot: 06-dark-mixed-selection-models.png
+  ok: 暗色下模型设置仍列出 Batch Mock 供应商
+  ok: 模型切换反馈通知仍然可见
+  ok: 模型面板打开时通知不会遮挡面板
+  screenshot: 07-dark-model-settings.png
+  ok: 混合选中生成取消后 vendor 零新增调用
+  ok: 选中批量只生成一个失败待测节点
+  ok: 批量开始时只有一条对应通知
+  ok: 通知宽度为 344px
+  ok: 通知容器避开窗口栏和顶栏（top=68px）
+  ok: 堆叠通知不会越过通知容器顶部
+  ok: 开始到失败原位更新同一个通知 DOM
+  ok: 失败后没有堆叠第二条批量通知
+  ok: 失败通知提供独立的重试按钮
+  screenshot: 08-failed-with-retry-action.png
+  ok: 重试完成后仍只有一条对应通知
+  ok: 失败节点通过一键重试成功
+  ok: 重试后并发偏好仍为 2
+  screenshot: 09-retry-completed-dark.png
+
+[stderr]
+file:///home/runner/work/Nomi/Nomi/tests/ux/canvas-batch-production.walk.mjs:164
+  if (!condition) throw new Error(`${message}${details ? `: ${details}` : ''}`)
+                        ^
+
+Error: 批量底栏没有盖住时间轴展开入口
+    at check (file:///home/runner/work/Nomi/Nomi/tests/ux/canvas-batch-production.walk.mjs:164:25)
+    at file:///home/runner/work/Nomi/Nomi/tests/ux/canvas-batch-production.walk.mjs:435:3
+
+Node.js v24.20.0

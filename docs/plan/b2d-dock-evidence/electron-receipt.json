@@ -1,0 +1,28 @@
+{
+  "modelCalls": 0,
+  "evidence": "real Electron App with isolated catalog and deterministic host snapshots",
+  "frames": {},
+  "screenshots": [
+    "process-done-non-hover",
+    "process-done-hover",
+    "dock-before-close",
+    "dock-closed-canvas",
+    "hidden-with-pending-badge",
+    "chip-restored-panel"
+  ],
+  "processNonHover": {
+    "hover": false,
+    "background": "rgba(0, 0, 0, 0)",
+    "border": "0px",
+    "shadow": "none"
+  },
+  "processHover": {
+    "hover": true,
+    "background": "oklab(0.97 0.000520944 0.00295442)"
+  },
+  "unreadStaysHidden": true,
+  "pendingStaysHidden": true,
+  "keyboardRestores": true,
+  "persistedDismissal": true,
+  "newProjectStaysHidden": true
+}

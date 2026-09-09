@@ -9,7 +9,6 @@ import { AssetVideoCover } from './AssetVideoCover'
 import { assetAspectRatio, type AssetKind, type AssetRef } from './assetTypes'
 import { isAssetGridActivationKey, type AssetGridActivationEvent } from './assetLibraryUsage'
 import { ASSET_KIND_FILTER_VALUES, FILTER_OPTIONS, type FilterValue } from './assetLibraryPanelFilters'
-import { ASSET_PROVENANCE_OPTIONS, type AssetProvenance } from './assetProvenance'
 
 const KIND_LABEL_KEY: Record<AssetKind, string> = {
   image: 'assetLibrary.image',
@@ -42,74 +41,18 @@ function AssetKindBadge({ kind, compact = false }: { kind: AssetKind; compact?: 
   )
 }
 
-type FilterRow = {
-  key: string
-  labelKey: string
-  count: number
-  selected: boolean
-  onClick: () => void
-}
-
-function FilterOptionRow({ row }: { row: FilterRow }): JSX.Element {
-  const { t } = useTranslation()
-  const EyeIcon = row.selected ? IconEye : IconEyeOff
-  const muted = row.count === 0 && !row.selected
-  return (
-    <button
-      type="button"
-      role="option"
-      aria-selected={row.selected}
-      className={cn(
-        'grid h-8 items-center gap-2 rounded-nomi-sm border-0 px-1.5',
-        'bg-transparent text-left text-caption transition-colors duration-[var(--nomi-transition-fast)]',
-        'cursor-pointer text-nomi-ink-60 hover:bg-nomi-ink-05 hover:text-nomi-ink',
-        muted && 'text-nomi-ink-40',
-        row.selected && 'bg-nomi-accent-soft font-semibold text-nomi-accent',
-      )}
-      style={{ gridTemplateColumns: '20px minmax(42px, 1fr) auto' }}
-      onClick={row.onClick}
-    >
-      <EyeIcon size={15} stroke={1.8} aria-hidden="true" />
-      <span className="min-w-0 whitespace-nowrap">{t(row.labelKey)}</span>
-      <span
-        className={cn(
-          'min-w-7 justify-self-end rounded-nomi-sm px-1.5 py-0.5 text-center text-micro leading-none tabular-nums',
-          row.selected
-            ? 'bg-nomi-paper text-nomi-accent'
-            : muted
-              ? 'text-nomi-ink-30'
-              : 'bg-nomi-ink-05 text-nomi-ink-40',
-        )}
-      >
-        {row.count}
-      </span>
-    </button>
-  )
-}
-
-/**
- * 素材漏斗：种类 + 来源两条轴同住一个菜单。
- * 「来源」不另起一个常驻控件（§1.5 硬规则 2：一功能一个家）——它和种类是同一件事的两个维度，
- * 用户的问句都是「只看 X」。
- */
-export function AssetFilterMenu({
+export function AssetKindFilterMenu({
   selectedKinds,
   counts,
-  selectedProvenances,
-  provenanceCounts,
   setNodeRef,
   onToggleKind,
   onShowAll,
-  onToggleProvenance,
 }: {
   selectedKinds: ReadonlySet<AssetKind>
   counts: ReadonlyMap<FilterValue, number>
-  selectedProvenances: ReadonlySet<AssetProvenance>
-  provenanceCounts: ReadonlyMap<AssetProvenance, number>
   setNodeRef: (node: HTMLDivElement | null) => void
   onToggleKind: (kind: AssetKind) => void
   onShowAll: () => void
-  onToggleProvenance: (provenance: AssetProvenance) => void
 }): JSX.Element {
   const { t } = useTranslation()
   const allSelected = ASSET_KIND_FILTER_VALUES.every((kind) => selectedKinds.has(kind))
@@ -128,35 +71,43 @@ export function AssetFilterMenu({
       <div className="grid gap-0.5" role="listbox" aria-label={t('assetLibrary.kinds')} aria-multiselectable="true">
         {FILTER_OPTIONS.map((option) => {
           const kind = option.value === 'all' ? null : option.value
+          const count = counts.get(option.value) ?? 0
+          const selected = kind === null ? allSelected : selectedKinds.has(kind)
+          const EyeIcon = selected ? IconEye : IconEyeOff
+          const muted = count === 0 && !selected
           return (
-            <FilterOptionRow
+            <button
               key={option.value}
-              row={{
-                key: option.value,
-                labelKey: option.labelKey,
-                count: counts.get(option.value) ?? 0,
-                selected: kind === null ? allSelected : selectedKinds.has(kind),
-                onClick: kind === null ? onShowAll : () => onToggleKind(kind),
-              }}
-            />
+              type="button"
+              role="option"
+              aria-selected={selected}
+              className={cn(
+                'grid h-8 items-center gap-2 rounded-nomi-sm border-0 px-1.5',
+                'bg-transparent text-left text-caption transition-colors duration-nomi-fast ease-nomi-fast',
+                'cursor-pointer text-nomi-ink-60 hover:bg-nomi-ink-05 hover:text-nomi-ink',
+                muted && 'text-nomi-ink-40',
+                selected && 'bg-nomi-accent-soft font-semibold text-nomi-accent',
+              )}
+              style={{ gridTemplateColumns: '20px minmax(42px, 1fr) auto' }}
+              onClick={kind === null ? onShowAll : () => onToggleKind(kind)}
+            >
+              <EyeIcon size={15} stroke={1.8} aria-hidden="true" />
+              <span className="min-w-0 whitespace-nowrap">{t(option.labelKey)}</span>
+              <span
+                className={cn(
+                  'min-w-7 justify-self-end rounded-nomi-sm px-1.5 py-0.5 text-center text-micro leading-none tabular-nums',
+                  selected
+                    ? 'bg-nomi-paper text-nomi-accent'
+                    : muted
+                      ? 'text-nomi-ink-30'
+                      : 'bg-nomi-ink-05 text-nomi-ink-40',
+                )}
+              >
+                {count}
+              </span>
+            </button>
           )
         })}
-      </div>
-      <div className="my-1.5 h-px bg-nomi-line" role="presentation" />
-      <div className="px-1.5 pb-1 text-micro leading-none text-nomi-ink-40">{t('assetLibrary.provenance')}</div>
-      <div className="grid gap-0.5" role="listbox" aria-label={t('assetLibrary.provenance')} aria-multiselectable="true">
-        {ASSET_PROVENANCE_OPTIONS.map((option) => (
-          <FilterOptionRow
-            key={option.value}
-            row={{
-              key: option.value,
-              labelKey: option.labelKey,
-              count: provenanceCounts.get(option.value) ?? 0,
-              selected: selectedProvenances.has(option.value),
-              onClick: () => onToggleProvenance(option.value),
-            }}
-          />
-        ))}
       </div>
     </div>
   )
@@ -191,7 +142,7 @@ export function FolderGridCell({
       aria-label={t('assetLibrary.openFolder', { label })}
       className={cn(
         'group relative flex flex-col items-center justify-center gap-1 overflow-hidden rounded-nomi-sm border bg-nomi-paper',
-        'cursor-pointer transition-[border-color,background,box-shadow] duration-[var(--nomi-transition-fast)]',
+        'cursor-pointer transition-[border-color,background,box-shadow] duration-nomi-fast ease-nomi-fast',
         compact ? 'mb-2.5 h-[92px] w-full' : 'aspect-square',
         dragOver ? 'border-nomi-accent bg-nomi-accent-soft shadow-nomi-md' : 'border-nomi-line hover:border-nomi-ink-20 hover:bg-nomi-ink-05',
       )}
@@ -220,7 +171,7 @@ export function FolderGridCell({
         type="button"
         className={cn(
           'absolute right-1.5 top-1.5 grid size-6 place-items-center rounded-nomi-sm border-0 bg-transparent',
-          'cursor-pointer text-transparent transition-colors duration-[var(--nomi-transition-fast)]',
+          'cursor-pointer text-transparent transition-colors duration-nomi-fast ease-nomi-fast',
           'hover:bg-workbench-danger-soft hover:text-workbench-danger group-hover:text-nomi-ink-40',
         )}
         aria-label={t('assetLibrary.deleteFolder', { label })}
@@ -344,7 +295,7 @@ export const AssetGridCell = React.memo(function AssetGridCell({
       type="button"
       className={cn(
         'absolute right-1.5 top-1.5 z-[2] grid size-6 place-items-center rounded-nomi-sm border border-workbench-danger/20',
-        'bg-nomi-paper text-workbench-danger shadow-nomi-sm opacity-0 transition-[opacity,background] duration-[var(--nomi-transition-fast)]',
+        'bg-nomi-paper text-workbench-danger shadow-nomi-sm opacity-0 transition-[opacity,background] duration-nomi-fast ease-nomi-fast',
         'hover:bg-workbench-danger-soft focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-workbench-danger/25',
         'group-hover:opacity-100',
       )}
@@ -372,7 +323,7 @@ export const AssetGridCell = React.memo(function AssetGridCell({
             onDragStart={handleDragStart}
             className={cn(
               'group relative mb-2.5 inline-block w-full overflow-hidden rounded-nomi border border-nomi-line bg-nomi-paper align-top',
-              'shadow-nomi-sm transition-[border-color,box-shadow,transform] duration-[var(--nomi-transition-fast)]',
+              'shadow-nomi-sm transition-[border-color,box-shadow,transform] duration-nomi-fast ease-nomi-fast',
               'hover:border-nomi-ink-20 hover:shadow-nomi-md',
               canDrag ? 'cursor-grab active:cursor-grabbing' : onPreview || selectable ? 'cursor-pointer' : 'cursor-default',
               selected && 'border-nomi-accent shadow-nomi-md ring-2 ring-nomi-accent ring-offset-1 ring-offset-nomi-paper',

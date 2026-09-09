@@ -1,4 +1,4 @@
-import type { RuntimeToolCall, RuntimeToolDecision } from "../harness/runtime/runtimePort";
+import type { RuntimeToolCall, RuntimeToolDecision, CanvasWriteApprovalAuthority } from "../shared/agentCapabilities/transportContracts";
 import {
   CANVAS_DELETE_CAPABILITY,
   CANVAS_DELETE_ALIAS,
@@ -26,12 +26,6 @@ type CanvasMutationInput = CanvasWriteInput | CanvasDeleteInput;
 export type PreparedCanvasWrite = Readonly<{
   call: RuntimeToolCall;
   invocation: VerifiedCapabilityInvocation<CanvasMutationInput, Extract<TargetRef, { kind: "canvas" }>>;
-}>;
-
-export type CanvasWriteApprovalAuthority = Readonly<{
-  receiptProposalId: string;
-  approvalId: string;
-  actionHash: string;
 }>;
 
 export type PiCanvasWriteTransportAdapter = Readonly<{

@@ -1,0 +1,100 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-10-b1c-coding-authority-before-approval",
+  "problem_type": "Execution authority checked after interactive approval",
+  "symptom": "Locked bash stalls awaiting user approval instead of returning execution denial to the model when sandbox is unavailable.",
+  "direct_cause": "laneHost before_tool calls approval preflight before native tool.execute checks durable coding access.",
+  "class_root": "Prerequisite execution authority was enforced too late, inside the operation after approval.",
+  "affected_population": [
+    "Platforms without active sandbox",
+    "Step approval mode for locked native project operations"
+  ],
+  "scope_paths": [
+    "electron/agentLane/laneHost.mts",
+    "electron/agentLane/laneNativeAssembly.mts"
+  ],
+  "entry_points": [
+    "Locked bash without OS sandbox",
+    "Locked write in step approval mode"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "Internal hook order and durable access ownership. Existing SDK before_tool block contract is already used for surface authority; no upstream behavior change.",
+  "invariants": [
+    "Native project authority is checked before preparation and approval, using the same durable coding access owner as execution."
+  ],
+  "generality_proof": "The existing native assembly owns the set of coding tools and durable coding access query. A shared denial function is used by both host admission and direct execution, covering every locked native operation except read, whose trusted-skill path has its own authority.",
+  "shared_boundaries": [
+    {
+      "path": "electron/agentLane/laneNativeAssembly.mts",
+      "symbol": "toolAccessDenial",
+      "responsibility": "Derive native project tool admission from durable coding access."
+    },
+    {
+      "path": "electron/agentLane/laneHost.mts",
+      "symbol": "before_tool",
+      "responsibility": "Return a tool error before side effects and approval."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "electron/agentLane/laneNativeAssembly.mts",
+      "entry_point": "bash execution wrapper",
+      "disposition": "enforced",
+      "evidence": "No-sandbox safe-auto and step fixture reproduce unwanted approval before coding denial."
+    },
+    {
+      "path": "electron/agentLane/laneNativeAssembly.mts",
+      "entry_point": "write execution wrapper",
+      "disposition": "enforced",
+      "evidence": "Step mode reproduces same unwanted approval; safe-auto is a passing control."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Changing platform sandbox availability or approval mode reproduces the ordering bug.",
+    "same_class_scan": [
+      "Inspected laneNativeApproval shell classifier and all LANE_CODING_TOOL_NAMES wrappers.",
+      "Inspected laneHost before_tool ordering, read trusted-skill exception and native assembly direct-execution tests."
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "electron/agentLane/laneNativeAssembly.mts",
+    "invariant": "Missing coding authority returns denial before approval.",
+    "failure_mode": "before_tool returns block.reason; pi persists toolResult.isError and sends it to the model.",
+    "exception_policy": "none",
+    "strategy": "Reuse a single native admission query in host and execute wrappers.",
+    "artifacts": [
+      "electron/agentLane/laneNativeAssembly.mts",
+      "electron/agentLane/laneHost.mts"
+    ]
+  },
+  "regression_tests": [
+    "tests/agent-runtime/lane-surface-authority.test.mts"
+  ],
+  "class_regression_tests": [
+    "tests/agent-runtime/lane-surface-authority.test.mts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "electron/agentLane/laneNativeAssembly.mts"
+    ],
+    "rationale": "Replace inline late-only check with the shared admission function; direct execution still consults the same owner."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "Existing pi before_tool block API; application-owned authority ordering, not SDK failure.",
+    "exit_criteria": []
+  },
+  "migration": "No stored format changes. Read the existing durable coding access entry.",
+  "residual_risks": [
+    "Linux UI rerun belongs to remote CI; the no-sandbox difference is covered by the deterministic real-lane matrix. Local resident and all seven real-user journeys pass."
+  ],
+  "invariant_owner_layer": {
+    "layer": "electron/agentLane/laneNativeAssembly.mts",
+    "tests": [
+      "tests/agent-runtime/lane-surface-authority.test.mts"
+    ]
+  }
+}

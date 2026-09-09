@@ -43,15 +43,21 @@ describe('reduceUpdaterState', () => {
 })
 
 describe('shouldShowUpdaterDialog', () => {
-  it('keeps the update quiet while a task is running', () => {
-    expect(shouldShowUpdaterDialog({ phase: 'available', hasRunningTask: true })).toBe(false)
-    expect(shouldShowUpdaterDialog({ phase: 'downloading', hasRunningTask: true })).toBe(false)
-    expect(shouldShowUpdaterDialog({ phase: 'error', hasRunningTask: true })).toBe(false)
+  it('never opens from background phases or task completion alone', () => {
+    for (const phase of ['available', 'downloading', 'downloaded', 'error'] as const) {
+      expect(shouldShowUpdaterDialog({ phase, requested: false })).toBe(false)
+    }
   })
 
-  it('shows pending update states once the workspace is idle', () => {
-    expect(shouldShowUpdaterDialog({ phase: 'available', hasRunningTask: false })).toBe(true)
-    expect(shouldShowUpdaterDialog({ phase: 'downloaded', hasRunningTask: false })).toBe(true)
-    expect(shouldShowUpdaterDialog({ phase: 'idle', hasRunningTask: false })).toBe(false)
+  it('opens pending update details only when requested', () => {
+    expect(shouldShowUpdaterDialog({ phase: 'available', requested: true })).toBe(true)
+    expect(shouldShowUpdaterDialog({ phase: 'downloaded', requested: true })).toBe(true)
+    expect(shouldShowUpdaterDialog({ phase: 'idle', requested: true })).toBe(false)
+  })
+
+  it('does not leave stale details open after a check completes', () => {
+    for (const phase of ['idle', 'checking', 'up-to-date'] as const) {
+      expect(shouldShowUpdaterDialog({ phase, requested: true })).toBe(false)
+    }
   })
 })

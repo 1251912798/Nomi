@@ -313,3 +313,25 @@ describe("buildOpenAiCompatibleDraft", () => {
     expect(mode.create.headers?.["anthropic-version"]).toBeUndefined();
   });
 });
+
+it("中转把 gpt-image-2 登记成不透明 id、真名在 alias 上时，改图仍选 multipart 协议（2026-09-08 根因）", () => {
+  // 自建中转常见形状：modelKey 是 `custom-1` 之类的不透明串，modelAlias 才是模型真名。
+  // alias 被丢掉时 smartDefaultImageEditProtocol 只看得到 modelKey → 判成 chat 协议，
+  // 中转如实回 400「not supported on the Chat Completions endpoint」→ 改图通道验证失败，
+  // 连了参考图的节点被直接拒发，而这家中转其实完全支持改图。
+  const draft = buildOpenAiCompatibleDraft({
+    baseUrl: "http://10.0.0.7:3000/v1",
+    authType: "bearer",
+    models: [{ modelKey: "custom-1", modelAlias: "gpt-image-2", labelZh: "改图", kind: "image" }],
+  });
+  const edit = draft.models[0].modes.find((mode) => mode.taskKind === "image_edit");
+  expect(edit?.create.path).toBe("/v1/images/edits");
+  expect(edit?.create.multipart?.imageField).toBe("image[]");
+  // 反面对照：没有 alias 的不透明 id 仍走 chat 多模态（不因本修改而误判整片）。
+  const noAlias = buildOpenAiCompatibleDraft({
+    baseUrl: "http://10.0.0.7:3000/v1",
+    authType: "bearer",
+    models: [{ modelKey: "custom-1", labelZh: "改图", kind: "image" }],
+  });
+  expect(noAlias.models[0].modes.find((mode) => mode.taskKind === "image_edit")?.create.path).toBe("/v1/chat/completions");
+});

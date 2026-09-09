@@ -4,11 +4,8 @@ export type ViewportTarget = { zoom: number; offset: Offset }
 /**
  * 「视口正要去哪」的单一登记处。
  *
- * 为什么需要它：画布上有多个「自动让位」来源——新建节点要露出自己（useCreatedNodeVisibilityPan）、
- * composer 装不下要把画布推开（useComposerVisibilityPan）——它们都走同一个 `animateViewportTo`，
- * 而底层（React Flow `setViewport({ duration })`）是**后来者打断先来者**。两个请求几乎同时到
- * （建卡后 60ms 内 composer 就量完了），谁后到谁赢，先到的那段位移直接丢掉：
- * 2026-09-05 真机探针里 video 卡右边 200+px 压在常驻 Agent 面板底下、视口 x 恒 0，就是这么来的。
+ * 新建节点自动露出等视口动画共用 `animateViewportTo`；React Flow 后来的请求会打断先前请求。
+ * 因此连续请求需要保留正在去的目标，避免丢掉先前位移。
  *
  * 规则：每个自动让位都**从「正在去的目标」出发算自己的增量**，而不是从当前位置。
  * 这样后到的请求把先到的目标带着一起走，而不是覆盖它。

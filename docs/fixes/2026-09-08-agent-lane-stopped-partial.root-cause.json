@@ -1,0 +1,138 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-08-agent-lane-stopped-partial",
+  "problem_type": "Cancellation drops observed assistant content at provider terminal conversion",
+  "symptom": "Streaming assistant text disappears after Stop and no interrupted continuation card survives cold reopen.",
+  "direct_cause": "The observer correctly rejects immediately on abort, but guardProviderStreams converts that rejection to a new empty assistant error message; projection then maps all settled text to complete.",
+  "class_root": "The shared provider fault boundary discards the current official streamed message while changing only its terminal outcome, and the transport projection omits the durable aborted fact.",
+  "affected_population": [
+    "User cancellation after partial output for every supported protocol",
+    "Timeout or delegate failure after partial output",
+    "Cold history and live v4 rendering of aborted assistant messages"
+  ],
+  "scope_paths": [
+    "electron/agentLane/laneProviderGuard.mts",
+    "electron/shared/agentLane/laneContracts.ts",
+    "electron/shared/agentLane/laneProjection.ts",
+    "src/workbench/ai/lane/laneViewModel.ts",
+    "electron/agentLane/laneStreamObserver.mts"
+  ],
+  "entry_points": [
+    "ProviderStreams.stream",
+    "ProviderStreams.streamSimple",
+    "projectLaneSnapshot",
+    "laneViewModel"
+  ],
+  "external_sources": [
+    {
+      "kind": "source-code",
+      "url": "https://github.com/earendil-works/pi/blob/v0.85.1/packages/ai/src/utils/assistant-message-frame.ts",
+      "checked_at": "2026-09-08",
+      "purpose": "Installed official encoder/reducer copy public assistant metadata and content while excluding parser scratch fields; used once on fault, not as a parallel transcript."
+    },
+    {
+      "kind": "source-code",
+      "url": "https://github.com/earendil-works/pi/blob/v0.85.1/packages/agent/src/harness/runtime/drive/response.ts",
+      "checked_at": "2026-09-08",
+      "purpose": "Installed publishResponse/normalizeAborted spread the actual response content and persist it in the original response entry; no extra append is needed."
+    }
+  ],
+  "invariants": [
+    "Fault conversion preserves the actual observed assistant content and identity, while user abort never retries or admits late tool execution.",
+    "The provider keeps only a reference to its current official partial and takes one sanitized SDK snapshot on fault; no event log or per-token full-message cloning/replay is added.",
+    "Interrupted UI status derives from the same durable assistant stopReason and survives cold reopen without renderer memory."
+  ],
+  "generality_proof": "Both provider stream methods use guardedStream across all three protocols. The original SDK response commit remains the only transcript owner, and its aborted fact flows through one pure shared projection to the existing v4 interrupted component.",
+  "shared_boundaries": [
+    {
+      "path": "electron/agentLane/laneProviderGuard.mts",
+      "symbol": "guardedStream",
+      "responsibility": "Preserve current SDK message when adapting immediate observer faults into terminal responses."
+    },
+    {
+      "path": "electron/shared/agentLane/laneProjection.ts",
+      "symbol": "pushAssistantParts",
+      "responsibility": "Carry durable abort outcome as an optional interrupted fact without changing successful or streaming projection shapes."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "electron/agentLane/laneProviderGuard.mts",
+      "entry_point": "stream and streamSimple fault paths",
+      "disposition": "enforced",
+      "evidence": "Native-versus-guarded actual HTTP cancellation tests cover all three protocols; guarded calls alone previously lost text."
+    },
+    {
+      "path": "electron/shared/agentLane/laneProjection.ts",
+      "entry_point": "Live and cold transcript projection",
+      "disposition": "enforced",
+      "evidence": "Real host abort and fresh history open must retain one identical partial with interrupted status."
+    },
+    {
+      "path": "electron/agentLane/laneStreamObserver.mts",
+      "entry_point": "Immediate abort and uncooperative upstream cleanup",
+      "disposition": "enforced",
+      "evidence": "Fault notification snapshots current evidence before upstream return/abort cleanup can mutate it. Immediate rejection and uncooperative iterator cleanup remain unchanged."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Any partial stream fault travels through the same empty fault-message conversion independent of provider or UI surface.",
+    "same_class_scan": [
+      "Inspected native OpenAI/Responses/Anthropic stream error settlement, observer rejection and guard fault conversion.",
+      "Inspected AgentHarness response settlement and original durable entry ownership.",
+      "Checked shared projection, viewModel interrupted mapping and existing Continue handler; Continue action ownership stays in the parent UI task."
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "electron/agentLane/laneProviderGuard.mts",
+    "invariant": "Replacing an outcome never replaces observed content with an empty message.",
+    "failure_mode": "Abort immediately ends observer admission; the guarded terminal contains only already observed SDK content, with no retry or tool continuation.",
+    "exception_policy": "none",
+    "strategy": "Capture the current public partial reference and use SDK encoder/reducer once during synchronous fault notification; change only terminal outcome and project its existing interrupted state.",
+    "artifacts": [
+      "electron/agentLane/laneProviderGuard.mts",
+      "electron/shared/agentLane/laneProjection.ts",
+      "src/workbench/ai/lane/laneViewModel.ts",
+      "electron/agentLane/laneStreamObserver.mts"
+    ]
+  },
+  "regression_tests": [
+    "tests/agent-runtime/lane-stop-partial.test.mts",
+    "src/workbench/ai/lane/laneViewModel.test.ts"
+  ],
+  "class_regression_tests": [
+    "tests/agent-runtime/lane-stop-partial.test.mts",
+    "src/workbench/ai/lane/laneViewModel.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "electron/agentLane/laneProviderGuard.mts",
+      "src/workbench/ai/lane/laneViewModel.ts"
+    ],
+    "rationale": "Remove unconditional empty-message fault conversion and unconditional complete status for settled aborted text; no second transcript or UI cache added."
+  },
+  "dependency_lifecycle": {
+    "decision": "retain-with-exit",
+    "current": "@earendil-works/pi-ai and pi-agent-core 0.85.1",
+    "target": "Supported pi version retaining public assistant frame codec and original-response cancellation settlement",
+    "rationale": "Native cancellation preserves content correctly. Nomi must stop erasing it in its watchdog adapter.",
+    "exit_criteria": [
+      "Rerun the native-versus-guarded protocol matrix, uncooperative observer tests and cold aborted-message retention when upgrading pi."
+    ]
+  },
+  "migration": "No migration or format rewrite. Existing stored partial messages project interrupted; already erased historical text cannot be invented or recovered.",
+  "residual_risks": [
+    "Root and runner own the existing Continue click path and real Electron Stop/late-write/cold walkthrough."
+  ],
+  "invariant_owner_layer": {
+    "layer": "electron/agentLane/laneProviderGuard.mts",
+    "tests": [
+      "tests/agent-runtime/lane-stop-partial.test.mts",
+      "src/workbench/ai/lane/laneViewModel.test.ts"
+    ],
+    "why": "This is the first shared layer converting stream errors into a provider response and can preserve the official message before the SDK commits it."
+  }
+}

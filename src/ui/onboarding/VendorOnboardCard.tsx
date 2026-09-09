@@ -41,6 +41,7 @@ type VendorOnboardCardProps = {
   onOpenDetails?: () => void
   detailMode?: boolean
   onOpenModel?: (model: ChipModel) => void
+  onDeleteModel?: (model: ChipModel) => void
   focus?: ModelSettingsConnectionFocus
 }
 
@@ -55,6 +56,7 @@ export function VendorOnboardCard({
   onOpenDetails,
   detailMode = false,
   onOpenModel,
+  onDeleteModel,
   focus,
 }: VendorOnboardCardProps): JSX.Element {
   const { t } = useTranslation()
@@ -87,7 +89,7 @@ export function VendorOnboardCard({
     })
   }, [focus])
 
-  const total = models.length
+  const total = models.filter((model) => model.enabled).length
 
   // 凭证字段：档案声明了 credentialFields 就按声明渲染多框；否则退化成单框（沿用 credentialPlaceholder）。
   const fields = React.useMemo(
@@ -108,7 +110,7 @@ export function VendorOnboardCard({
     setDrafts((prev) => ({ ...prev, [key]: value }))
   }, [])
 
-  const handleUnlock = React.useCallback(() => {
+  const handleUnlock = React.useCallback(async () => {
     const parts = fields.map((field) => (drafts[field.key] ?? '').trim())
     if (parts.some((part) => !part)) {
       setError(
@@ -125,15 +127,10 @@ export function VendorOnboardCard({
     setBusy(true)
     setError('')
     try {
-      // Saving a new key invalidates any previous certification. The vendor
-      // remains hidden from executable model selection until a canonical run
-      // verifies the selected modes.
-      bridge.modelCatalog.upsertVendor({ key: directory.vendorKey, enabled: false })
-      bridge.modelCatalog.upsertVendorApiKey(directory.vendorKey, { apiKey, enabled: false })
+      await bridge.modelCatalog.upsertVendorApiKey(directory.vendorKey, { apiKey, enabled: false })
       setDrafts({})
       setEditing(false)
       onChanged()
-      // 保存是本地同步写入，永不被网络阻塞。连通性交给旁路的 useVendorHealth——
       // 换 key 不改地址（fingerprint 不变），所以这里显式重探一次。
       recheck()
     } catch (e) {
@@ -357,6 +354,7 @@ export function VendorOnboardCard({
         connected={hasApiKey}
         onToggle={hasApiKey ? onToggleModel : undefined}
         onOpenModel={onOpenModel}
+        onDelete={onDeleteModel}
       />
 
       {/* 推广位：移到 body 末尾，折叠态不显（减噪）；软话术、不营销 */}

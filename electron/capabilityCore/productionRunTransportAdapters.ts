@@ -1,16 +1,16 @@
 import { createHash } from "node:crypto";
-import type { RuntimeToolCall, RuntimeToolDecision } from "../harness/runtime/runtimePort";
+import type { RuntimeToolCall, RuntimeToolDecision } from "../shared/agentCapabilities/transportContracts";
 import {
   productionRunToolDescriptors,
   productionRunReadToolNames,
   productionRunWriteToolNames,
   productionArtifactWriteToolNames,
-} from "../harness/tools/productionRunDescriptors";
+} from "../shared/agentCapabilities/productionRunDescriptors";
 import type { ProjectBinding } from "../shared/projectBinding";
 import type { PreconditionSet, TargetRef } from "../shared/capabilityTargeting";
 import type { ProductionRunService } from "../productionRun/productionRunService";
 import { isAnchorCheckpointGate } from "../productionRun/anchorCheckpoint";
-import type { ArtifactReviewDecision } from "../productionRun/productionRunReducer";
+import type { ArtifactReviewDecision } from "../shared/agentCapabilities/productionRun";
 
 const PUBLIC_FAILURE_CODES = new Set([
   "capability_input_invalid",

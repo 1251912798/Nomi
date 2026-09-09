@@ -9,6 +9,7 @@
 // 单一真相源。
 import fs from 'node:fs'
 import path from 'node:path'
+import os from 'node:os'
 import { capabilityCoreDir, isBuiltinMcpClient } from './security'
 
 const PROFILES_FILE = 'mcp-client-profiles.json'
@@ -69,5 +70,15 @@ export function recordDetectedMcpClient(name: string): void {
     fs.renameSync(tmp, filePath)
   } catch {
     /* 写失败不致命——检测是尽力而为 */
+  }
+}
+
+/** 宿主存在不等于 Nomi 已配置；只读官方用户目录，不登记伪连接。 */
+export function isMcpClientAppInstalled(client: string): boolean {
+  if (client !== 'workbuddy') return false
+  try {
+    return fs.statSync(path.join(os.homedir(), '.workbuddy')).isDirectory()
+  } catch {
+    return false
   }
 }

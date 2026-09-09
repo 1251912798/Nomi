@@ -152,9 +152,9 @@ test('package.json 的 gates:contracts 就是这个 runner，且 advisory 只限
   const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
   const scripts = JSON.parse(fs.readFileSync(path.join(repoRoot, 'package.json'), 'utf8')).scripts
   const command = scripts['gates:contracts']
-  assert.match(command, /^node scripts\/run-gates-contracts\.mjs /)
+  assert.match(command, /^python3 scripts\/with-gates-lock\.py -- node scripts\/run-gates-contracts\.mjs /)
 
-  const { gates, advisory } = parseGateArgs(command.split(/\s+/).slice(2))
+  const { gates, advisory } = parseGateArgs(command.split(/\s+/).slice(5))
   assertGatesExist(gates, scripts)
   // advisory 名单不许长大。两类各自点名，加一条就得回来改这里并写清它属于哪类——
   // 这就是「不许悄悄降级门岗」那道棘轮本体。
@@ -177,14 +177,16 @@ test('package.json 的 gates:contracts 就是这个 runner，且 advisory 只限
   }
 })
 
-test('Docs Gate Autosync never writes protected main directly and opens a SHA-scoped PR', async () => {
+test('Docs Gate Autosync never writes protected main directly and updates one fixed-branch PR without skipping CI', async () => {
   const { default: fs } = await import('node:fs')
   const { default: path } = await import('node:path')
   const { fileURLToPath } = await import('node:url')
   const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
   const autosync = fs.readFileSync(path.join(repoRoot, '.github/workflows/docs-autosync.yml'), 'utf8')
   assert.match(autosync, /peter-evans\/create-pull-request@v7/)
-  assert.match(autosync, /branch:\s*docs\/autosync-\$\{\{ github\.sha \}\}/)
-  assert.match(autosync, /commit-message:.*\[skip ci\]/)
+  assert.match(autosync, /^\s+branch:\s*docs\/autosync\s*$/m)
+  assert.doesNotMatch(autosync, /branch-suffix:|\[(?:skip ci|ci skip|no ci|skip actions|actions skip)\]|skip-checks:\s*true/i)
   assert.doesNotMatch(autosync, /git push[^\n]*HEAD:main/)
+  assert.doesNotMatch(autosync, /gh pr create|DOCS_AUTOSYNC_TOKEN|gh workflow run/)
+  assert.match(autosync, /token:\s*\$\{\{ secrets\.GITHUB_TOKEN \}\}/)
 })

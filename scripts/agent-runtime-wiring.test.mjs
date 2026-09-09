@@ -13,7 +13,7 @@ import { resolveReachable } from './check-gates-chain.mjs'
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const read = (relative) => fs.readFileSync(path.join(repoRoot, relative), 'utf8')
 const pkg = JSON.parse(read('package.json'))
-const nativeTests = ['attachments', 'context', 'session', 'snapshot'].map((name) => `${name}.test.mts`)
+const nativeTests = ['attachments', 'lane-session-durability', 'lane-shadow-parity', 'lane-multi'].map((name) => `${name}.test.mts`)
 const normalizedPath = (value) => path.resolve(value).split(path.sep).join('/')
 
 function json(relative) {
@@ -69,11 +69,8 @@ describe('private pi build and test wiring', () => {
     const config = json('electron/tsconfig.pi.json')
     expect(config.compilerOptions).toMatchObject({ module: 'NodeNext', moduleResolution: 'NodeNext',
       rootDir: '.', outDir: '../dist-electron', strict: true, noEmitOnError: true })
-    // 岛地有两块，因为直接摸 pi 的文件有两处：老 seam（harness/runtime/pi/）和阶段 1 的
-    // agent lane（agentLane/，方案 2026-09-07 §6）。两块共用同一个 NodeNext 工程，
-    // 而不是各起一个——两个 ESM 工程写同一个 outDir 迟早给同一个文件写出两份不同的产物。
-    expect(config.include).toEqual(['harness/runtime/pi/**/*.mts', 'harness/runtime/pi/**/*.cts',
-      'agentLane/**/*.mts'])
+    // 现役 lane 是唯一 NodeNext 运行时岛。
+    expect(config.include).toEqual(['agentLane/**/*.mts', 'agentLane/**/*.cts'])
     const parsed = ts.getParsedCommandLineOfConfigFile(path.join(repoRoot, 'electron/tsconfig.json'), {}, {
       ...ts.sys, onUnRecoverableConfigFileDiagnostic: (diagnostic) => { throw new Error(String(diagnostic.messageText)) },
     })
@@ -82,8 +79,8 @@ describe('private pi build and test wiring', () => {
     // 只钉一块的话，新岛地哪天漏进 CJS 工程也是静默的——而那正是这条断言存在的意义。
     expect(program.getSourceFiles().filter((file) =>
       /(?:harness\/runtime\/pi|agentLane)\/.*\.[mc]ts$/.test(file.fileName))).toEqual([])
-    const host = read('electron/ai/agentChatV2.ts')
-    expect(host).toContain("../harness/skillIndex.js")
+    const host = read('electron/agentLane/laneDesktopRuntime.ts')
+    expect(host).toContain('laneNativeLoader.cjs')
     expect(host).not.toMatch(/harness\/runtime\/pi\/.*\.(?:m|c)?js/)
   })
 
@@ -101,7 +98,7 @@ describe('private pi build and test wiring', () => {
 
   test('all four native suites run once outside Vitest against private production modules', () => {
     expect(pkg.scripts['test:agent-runtime']).toBe(
-      'tsc -p tests/agent-runtime/tsconfig.json && node --test --test-concurrency=1 --test-timeout=60000 .tmp/agent-runtime-tests/tests/agent-runtime/*.test.mjs',
+      'python3 scripts/with-gates-lock.py --command "tsc -p tests/agent-runtime/tsconfig.json && node --test --test-concurrency=1 --test-timeout=60000 .tmp/agent-runtime-tests/tests/agent-runtime/*.test.mjs"',
     )
     expect(reachable('test').has('test:agent-runtime')).toBe(true)
     expect(reachable('gates').has('test:agent-runtime')).toBe(true)
@@ -114,7 +111,7 @@ describe('private pi build and test wiring', () => {
       expect(vitestIncludes.some((pattern) => path.matchesGlob(relative, pattern))).toBe(false)
       const source = read(relative)
       expect(source).toContain("from 'node:test'")
-      expect(source).toContain('../../electron/harness/runtime/pi/')
+      expect(source).toMatch(/\.\.\/\.\.\/electron\/(?:agentLane\/|ai\/nativePdfPayload)/)
       expect(source).not.toMatch(/from ['"]vitest['"]|experiments\/pi-agent-runtime/)
     }
   })
@@ -139,7 +136,7 @@ describe('private pi build and test wiring', () => {
     const eslint = new ESLint({ cwd: repoRoot })
     const extensions = ['mts', 'cts']
     const configs = await Promise.all(extensions.map((extension) =>
-      eslint.calculateConfigForFile(`electron/harness/runtime/pi/example.${extension}`)))
+      eslint.calculateConfigForFile(`electron/agentLane/example.${extension}`)))
     for (const config of configs) {
       expect(config.languageOptions.globals?.process).toBe(false)
       expect(config.rules['@typescript-eslint/no-unused-vars'][0]).toBe(1)

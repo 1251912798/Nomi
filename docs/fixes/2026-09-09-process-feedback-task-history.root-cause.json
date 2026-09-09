@@ -1,0 +1,95 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-09-process-feedback-task-history",
+  "problem_type": "Settled attempts borrow live node narration",
+  "symptom": "Regenerating a saved node makes its previous completed task row say generating.",
+  "direct_cause": "buildTaskCenterView calls generationFeedback on the live node for settled queue entries.",
+  "class_root": "Task attempt outcome and mutable node state are not separated at the projection boundary.",
+  "affected_population": [
+    "Success, failure, cancellation histories while the same node generates again"
+  ],
+  "scope_paths": [
+    "src/workbench/taskCenter/taskCenterEntries.ts",
+    "src/workbench/taskCenter/TaskCenterPanel.tsx"
+  ],
+  "entry_points": [
+    "TaskCenterPanel rows",
+    "TaskCenterButton summary"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "Internal Electron event and generation lifecycle; no third-party contract or new dependency.",
+  "invariants": [
+    "Settled attempts use their own recorded outcome/error; only active entries use live generation narration."
+  ],
+  "generality_proof": "One task projection serves panel and summary; every settled outcome is resolved independently of the newer attempt.",
+  "shared_boundaries": [
+    {
+      "path": "src/workbench/taskCenter/taskCenterEntries.ts",
+      "symbol": "buildTaskCenterView",
+      "responsibility": "Resolve historical and live facts by attempt lifecycle."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/workbench/taskCenter/TaskCenterPanel.tsx",
+      "entry_point": "TaskCenterPanel",
+      "disposition": "enforced",
+      "evidence": "Uses buildTaskCenterView for grouped rows."
+    },
+    {
+      "path": "src/workbench/taskCenter/TaskCenterButton.tsx",
+      "entry_point": "TaskCenterButton",
+      "disposition": "enforced",
+      "evidence": "Uses the same projection for summary, including recoverable counts."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Any node regeneration can reinterpret all prior attempts.",
+    "same_class_scan": [
+      "Read TaskCenterPanel and TaskCenterButton calls to buildTaskCenterView.",
+      "Checked success/error/cancelled entries sharing one running node."
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "src/workbench/taskCenter/taskCenterEntries.ts",
+    "invariant": "Only live queue groups consume mutable node feedback.",
+    "failure_mode": "Missing settled error uses the recorded generic outcome, never newer live narration.",
+    "exception_policy": "none",
+    "strategy": "Use entry error/outcome for done rows; recoverability applies only to the latest node entry.",
+    "artifacts": [
+      "src/workbench/taskCenter/taskCenterEntries.ts"
+    ]
+  },
+  "regression_tests": [
+    "src/workbench/taskCenter/taskCenterEntries.test.ts",
+    "tests/ux/process-feedback-electron.e2e.mjs"
+  ],
+  "class_regression_tests": [
+    "src/workbench/taskCenter/taskCenterEntries.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "src/workbench/taskCenter/taskCenterEntries.ts"
+    ],
+    "rationale": "Unconditional live-node narration for settled entries removed."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "Existing Electron IPC and runtime; no package change.",
+    "exit_criteria": []
+  },
+  "migration": "No persisted changes.",
+  "residual_risks": [
+    "Historical entries without recorded error can show only the generic outcome."
+  ],
+  "invariant_owner_layer": {
+    "layer": "src/workbench/taskCenter/taskCenterEntries.ts",
+    "tests": [
+      "src/workbench/taskCenter/taskCenterEntries.test.ts"
+    ],
+    "note": "The task projection owns attempt identity."
+  }
+}

@@ -1,0 +1,126 @@
+{
+  "totalSpentCny": 0.36032364619299995,
+  "model": "deepseek-v4-flash",
+  "turns": [
+    {
+      "input": "画布上有什么",
+      "parts": [
+        {
+          "sequence": 0,
+          "entrySeq": 4,
+          "contentIndex": 0,
+          "kind": "user",
+          "text": "画布上有什么"
+        },
+        {
+          "sequence": 1,
+          "entrySeq": 19,
+          "contentIndex": 0,
+          "kind": "assistant-text",
+          "text": "\n\n",
+          "streaming": false
+        },
+        {
+          "sequence": 2,
+          "entrySeq": 19,
+          "contentIndex": 1,
+          "kind": "tool-call",
+          "toolCallId": "call_d653f9b2e31449e18982aba9",
+          "toolName": "nomi_canvas_read",
+          "args": {},
+          "running": false
+        },
+        {
+          "sequence": 3,
+          "entrySeq": 31,
+          "contentIndex": 0,
+          "kind": "tool-result",
+          "toolCallId": "call_d653f9b2e31449e18982aba9",
+          "toolName": "nomi_canvas_read",
+          "text": "画布节点 1 个(id | 类型 | 标题 | 状态 | prompt 摘要 | 结果身份):\n当前选中: 无\n- gen-v2-image-opening | image | 第 1 镜 | prompt: 黄昏天台，女孩放下相机\n引用边: 无",
+          "isError": false
+        },
+        {
+          "sequence": 4,
+          "entrySeq": 36,
+          "contentIndex": 0,
+          "kind": "host-note",
+          "noteType": "nomi.ui.approval",
+          "data": {
+            "toolCallId": "call_d653f9b2e31449e18982aba9",
+            "toolName": "nomi_canvas_read",
+            "decision": "auto-granted"
+          }
+        },
+        {
+          "sequence": 5,
+          "entrySeq": 96,
+          "contentIndex": 0,
+          "kind": "assistant-text",
+          "text": "画布上目前有 **1 个节点**：\n\n- **第 1 镜**（`image` 类型）—— prompt：*黄昏天台，女孩放下相机*\n- 没有引用边，没有分组。\n\n这是之前生成的一张图片节点。需要我帮你继续扩展这组分镜，或者创建新节点吗？",
+          "streaming": false
+        }
+      ]
+    },
+    {
+      "input": "第 1 镜试拍一下",
+      "parts": [
+        {
+          "sequence": 6,
+          "entrySeq": 105,
+          "contentIndex": 0,
+          "kind": "user",
+          "text": "第 1 镜试拍一下"
+        },
+        {
+          "sequence": 7,
+          "entrySeq": 178,
+          "contentIndex": 0,
+          "kind": "assistant-text",
+          "text": "\n\n我已经读取了画布，目前只有一个\"第 1 镜\"节点。不过，**我作为助手无法直接触发生成/试拍操作**。生成需要通过画布上的\"提交\"或\"生成\"按钮由系统执行。\n\n你可以在画布上选中这个节点，然后点击生成按钮来试拍。如果你希望**修改 prompt** 或**创建新节点**后再试拍，告诉我就好。",
+          "streaming": false
+        },
+        {
+          "sequence": 8,
+          "entrySeq": 183,
+          "contentIndex": 0,
+          "kind": "user",
+          "text": "等等别动"
+        },
+        {
+          "sequence": 9,
+          "entrySeq": 197,
+          "contentIndex": 0,
+          "kind": "assistant-text",
+          "text": "好，不动。需要做什么随时说。",
+          "streaming": false
+        }
+      ]
+    }
+  ],
+  "inserted": true,
+  "writes": [],
+  "reservedCny": 0.7269353355039998,
+  "requests": 4,
+  "groupSwitches": 0,
+  "idsInReply": false,
+  "usage": {
+    "inputTokens": 35057,
+    "outputTokens": 203,
+    "cacheReadTokens": 0,
+    "cacheWriteTokens": 0,
+    "totalTokens": 35260,
+    "cost": {
+      "state": "known",
+      "value": 0.015285413488999998
+    },
+    "contextTokens": {
+      "state": "known",
+      "value": 8904
+    },
+    "reasoningTokens": {
+      "state": "not-applicable",
+      "reason": "model-has-no-reasoning"
+    }
+  }
+}

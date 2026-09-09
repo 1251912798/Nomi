@@ -32,6 +32,7 @@ export type AntigravityRunOptions = {
   onDelta?: (delta: string) => void;
 };
 type ProcessOptions = {
+  platform?: NodeJS.Platform;
   /** Main-process test seam, never supplied by the renderer. */
   invocation?: AntigravityInvocation;
   /** Exact main-process invocation returned by discovery/preflight. */
@@ -134,18 +135,22 @@ function failureFromExit(stderr: string): Error {
   return new Error("ANTIGRAVITY_PROCESS_FAILED");
 }
 
+/** Both discovery and execution fail before spawn until Windows tree ownership is proven. */
+export function assertAntigravityPlatform(platform: NodeJS.Platform = process.platform): void {
+  if (platform === "win32") throw new Error("ANTIGRAVITY_WINDOWS_UNSUPPORTED");
+}
+
+export function antigravityRuntimeBudget(capability: AntigravityCapability): { workMs: number; drainMs: number } {
+  return capability === "text" ? { workMs: 120_000, drainMs: 2_000 } : { workMs: 240_000, drainMs: 30_000 };
+}
+
 export async function runAntigravityProcess(input: AntigravityRunOptions, options: ProcessOptions = {}): Promise<AntigravityResult> {
-  // Windows needs a Job Object to own descendants even after the CLI exits.
-  // Do not advertise bounded cancellation there until that boundary exists.
-  // A prepared invocation is the authenticated result of main-process discovery
-  // and is safe to use on Windows just like the explicit test seam invocation.
-  if (process.platform === "win32" && !options.invocation && !options.preparedInvocation) {
-    throw new Error("ANTIGRAVITY_PLATFORM_UNVERIFIED");
-  }
+  assertAntigravityPlatform(options.platform);
   if (input.signal?.aborted) throw abortError();
   if (!input.prompt.trim()) throw new Error("ANTIGRAVITY_EMPTY_PROMPT");
   if (input.model && !/^[a-zA-Z0-9][a-zA-Z0-9._/-]{0,127}$/.test(input.model)) throw new Error("ANTIGRAVITY_INVALID_MODEL");
   const capability = input.capability ?? "text";
+  const budget = antigravityRuntimeBudget(capability);
   if (options.preparedImages) {
     if (input.images !== undefined) throw new Error("ANTIGRAVITY_PREPARED_MEDIA_INVALID");
     assertPreparedAntigravityMediaInput(capability, options.preparedImages, input.cliVersion);
@@ -161,9 +166,14 @@ export async function runAntigravityProcess(input: AntigravityRunOptions, option
     await mkdir(agentDir, { recursive: true });
     await writeFile(path.join(agentDir, "agent.md"), [
       "---", "name: " + agentName, "description: Nomi bounded generation", "tools: " + JSON.stringify(media?.tools ?? []),
-      ...(media ? ["plugins: " + JSON.stringify([media.plugin])] : []),
       "mainAgent: true", "subagent: false", 'commandExecutionPolicy: "off"',
-      "inheritCustomizations: false", "---", "# System Prompt",
+      // agy ≥1.1.27 把 hooks 也归进 inheritCustomizations 这一个开关（二进制 changelog：「single inheritCustomizations
+      // switch … skills, rules, plugins, subagents and MCP servers」，且 hooks_manager 走 hooksInheritUser）。
+      // 本机实测 2026-09-08：false 时 .agents/hooks.json 被「loaded」但从不执行，PreInvocation/PreToolUse 标记文件不落地，
+      // 图像/改图验证在 macOS 与 Windows 上一律 ANTIGRAVITY_HOOK_UNVERIFIED；true 时 initialized.json 立刻出现。
+      // 因此必须 true 才能让我们自己的 task-gate 钩子生效；MCP 单独关掉（inheritMcp 是唯一的按类开关），
+      // 工具面仍由上面的 tools 白名单 + --sandbox + task-gate 授权账本约束。
+      "inheritCustomizations: true", "inheritMcp: false", "---", "# System Prompt",
       media?.system ?? "Return only the requested text. Do not use tools or access files.",
     ].join("\n"), { mode: 0o600 });
     if (input.signal?.aborted) throw abortError();
@@ -171,7 +181,7 @@ export async function runAntigravityProcess(input: AntigravityRunOptions, option
     const logPath = path.join(cwd, "cli.log");
     const args = [...invocation.args, "--add-dir", cwd, "--log-file", logPath, "--agent", agentName, "--input-format", "stream-json",
       "--output-format", "stream-json", "--disable-slash-commands", "--sandbox",
-      "--print-timeout", media ? "240s" : "120s", ...(input.model && input.model !== "auto" ? ["--model", input.model] : [])];
+      "--print-timeout", `${budget.workMs / 1000}s`, ...(input.model && input.model !== "auto" ? ["--model", input.model] : [])];
     const environment = options.preparedInvocation?.env ?? options.env ?? buildAntigravityEnv();
     const home = media ? await realpath(environment.HOME ?? os.homedir()) : undefined;
     if (options.preparedInvocation) await assertPreparedAntigravityInvocation(options.preparedInvocation);
@@ -229,7 +239,7 @@ export async function runAntigravityProcess(input: AntigravityRunOptions, option
       const onAbort = () => stop(abortError());
       // Authenticated cold startup has exceeded 10s in the real CLI; still bounded independently of generation.
       const initTimer = setTimeout(() => stop(new Error("ANTIGRAVITY_INIT_TIMEOUT")), options.initTimeoutMs ?? 30_000);
-      const overallTimer = setTimeout(() => stop(new Error("ANTIGRAVITY_TIMEOUT")), options.timeoutMs ?? (media ? 245_000 : 125_000));
+      const overallTimer = setTimeout(() => stop(new Error("ANTIGRAVITY_TIMEOUT")), options.timeoutMs ?? (30_000 + budget.workMs + budget.drainMs));
       const parser = new AntigravityProtocol(() => {
         readiness = (options.preparedInvocation
           ? assertPreparedAntigravityInvocation(options.preparedInvocation)
@@ -245,14 +255,14 @@ export async function runAntigravityProcess(input: AntigravityRunOptions, option
         agent: agentName, cwd, capability: "text", ...(input.model && input.model !== "auto" ? { model: input.model } : {}),
       });
       const boundDrain = () => {
-        drainTimer ??= setTimeout(() => stop(new Error("ANTIGRAVITY_DRAIN_TIMEOUT")), 2_000);
+        drainTimer ??= setTimeout(() => stop(new Error("ANTIGRAVITY_DRAIN_TIMEOUT")), budget.drainMs);
       };
       const acceptLine = (line: string) => {
         if (!line.trim() || failure) return;
         try {
           parser.accept(JSON.parse(line));
           if (parser.completed && media && !mediaReady) {
-            if (mediaPreparing || parser.finish().text.trim() !== media.handshake) throw new Error("ANTIGRAVITY_HOOK_UNVERIFIED");
+            if (mediaPreparing || parser.finish().text.trim() !== media.handshake) throw new Error("ANTIGRAVITY_HANDSHAKE_MISMATCH");
             mediaPreparing = true;
             readiness = stageAntigravityMedia(media).then(() => {
               if (failure || closed || input.signal?.aborted) return;

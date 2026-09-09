@@ -1,0 +1,28 @@
+{
+  "command": "python3 scripts/with-gates-lock.py -- pnpm run gates",
+  "exit_code": 0,
+  "head_before_commit": "163486eb91217c7b6d1cc207c41b203eded40909",
+  "base": "7f6d224bb86ba2da4fb350670aa1df9c2002eed4",
+  "log": "docs/plan/process-feedback-evidence/ci-round6/gates.log",
+  "log_sha256": "cf31dc3c836080e189f57e8bda4da9d418f36174bb3a7309816823f6d17678cc",
+  "contracts": {
+    "total": 76,
+    "passed": 73,
+    "blocking_failures": 0,
+    "advisory": 3
+  },
+  "visual_passed": 153,
+  "vitest": {
+    "passed": 12113,
+    "skipped": 2
+  },
+  "build": "passed",
+  "source_sha256": {
+    "tests/ux/canvas-perf/failureDiagnostics.mjs": "43e6a6c080e747d24f002733d3e47d17f0fbd52a0cfbc17ddd9727639b01efd9",
+    "tests/ux/canvas-perf/failureDiagnostics.test.mjs": "6da527005bf20fab83c9b9533dedab9b15d56f90c16df3f9b3c57490c87a0bed",
+    "tests/ux/canvas-perf/waitingFxScenario.mjs": "73103b6d11aef9f752671e81fce3a0fc0d809b548f3c03963f70d942761bf256",
+    "tests/ux/canvas-performance-benchmark.e2e.mjs": "0b94c5f0400b52c794089a1d8330b18b53635be74b44bac00d1a87fcbcd1bd7b",
+    "tests/ux/canvas-real-suite.mjs": "6e27c211f06eca5c32df57981cf315482da42e55b796542d1a96e89772541db3",
+    "tests/ux/canvas-real-suite.test.mjs": "b9b80043102be0f665593ca75edb7e28db32743f47ea6da9c15bbad6adc09184"
+  }
+}

@@ -12,10 +12,13 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import ts from 'typescript'
+import { execFileSync } from 'node:child_process'
+import { createHash } from 'node:crypto'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 
-function collectTestFiles() {
+export function collectTestFiles(root = repoRoot) {
   const files = []
   const walk = (dir) => {
     if (!fs.existsSync(dir)) return
@@ -23,15 +26,15 @@ function collectTestFiles() {
       if (entry.name === 'node_modules' || entry.name === 'dist' || entry.name === 'dist-electron') continue
       const full = path.join(dir, entry.name)
       if (entry.isDirectory()) walk(full)
-      else if (/\.test\.(tsx?|mts|cts|mjs)$/.test(entry.name)) files.push(full)
+      else if (/\.(?:[cm]?[jt]sx?)$/.test(entry.name) && (full.startsWith(path.join(root, 'tests') + path.sep) || /\.(?:test|spec|node-test|walk|e2e)\./.test(entry.name) || /sweep/.test(entry.name))) files.push(full)
     }
   }
-  for (const dir of ['src', 'electron', 'evals', 'scripts', 'tests']) walk(path.join(repoRoot, dir))
+  for (const dir of ['src', 'electron', 'evals', 'scripts', 'tests']) walk(path.join(root, dir))
   return files
 }
 
 function stripComments(source) {
-  return source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
+  return source.replace(/\/\*[\s\S]*?\*\//g, (comment) => comment.replace(/[^\n]/g, ' ')).replace(/^[ \t]*\/\/.*$/gm, '')
 }
 
 // 从「墙钟差」赋值出来的变量名，例如 `const elapsed = Date.now() - t0`。收集它们，是为了抓住
@@ -45,7 +48,144 @@ function collectClockDeltaNames(source) {
   return names
 }
 
+// Parse callbacks so newlines, comments and quoted examples cannot bypass or falsely trigger the gate.
+export function asyncWaitForFunctionLines(source, file = 'test.ts') {
+  const parsed = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true)
+  const lines = new Set()
+  const visit = (node) => {
+    if (ts.isCallExpression(node)) {
+      const callee = node.expression
+      const name = ts.isPropertyAccessExpression(callee) ? callee.name.text
+        : ts.isElementAccessExpression(callee) && ts.isStringLiteral(callee.argumentExpression) ? callee.argumentExpression.text : null
+      let predicate = node.arguments[0]
+      while (predicate && ts.isParenthesizedExpression(predicate)) predicate = predicate.expression
+      if (name === 'waitForFunction' && predicate &&
+          (ts.isArrowFunction(predicate) || ts.isFunctionExpression(predicate)) &&
+          predicate.modifiers?.some((modifier) => modifier.kind === ts.SyntaxKind.AsyncKeyword)) {
+        lines.add(parsed.getLineAndCharacterOfPosition(node.getStart(parsed)).line)
+      }
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(parsed)
+  return lines
+}
+
+// Node after hooks are independent, registration-ordered callbacks. Directory deletion
+// belongs to createLaneFixture's resource owner, never to a separate test hook: even
+// awaiting one lane.close() there does not close sibling lanes, probes or crash children.
+export function unownedLaneCleanupLines(source, file) {
+  const lines = new Set()
+  if (!file.replaceAll('\\', '/').startsWith('tests/agent-runtime/')) return lines
+  const parsed = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true)
+  const definitions = new Map()
+  const removers = new Set(['rm', 'rmSync'])
+  const hooks = new Set(['after', 'afterEach'])
+  const contexts = new Set(['t'])
+  const nameOf = (node) => {
+    if (ts.isIdentifier(node)) return node.text
+    if (ts.isPropertyAccessExpression(node)) return node.name.text
+    if (ts.isElementAccessExpression(node) && ts.isStringLiteral(node.argumentExpression)) return node.argumentExpression.text
+    return null
+  }
+  const collect = (node) => {
+    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer) definitions.set(node.name.text, node.initializer)
+    if (ts.isFunctionDeclaration(node) && node.name) definitions.set(node.name.text, node)
+    if (ts.isParameter(node) && ts.isIdentifier(node.name) && node.type?.getText(parsed) === 'TestContext') contexts.add(node.name.text)
+    if (ts.isCallExpression(node) && ['test', 'it'].includes(nameOf(node.expression))) {
+      const callback = node.arguments.find((argument) => ts.isArrowFunction(argument) || ts.isFunctionExpression(argument))
+      const context = callback?.parameters[0]?.name
+      if (context && ts.isIdentifier(context)) contexts.add(context.text)
+    }
+    if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier)) {
+      const module = node.moduleSpecifier.text
+      const bindings = node.importClause?.namedBindings
+      if (bindings && ts.isNamedImports(bindings)) {
+        for (const item of bindings.elements) {
+          const original = (item.propertyName ?? item.name).text
+          if (/^(?:node:)?fs(?:\/promises)?$/.test(module) && ['rm', 'rmSync'].includes(original)) removers.add(item.name.text)
+          if (module === 'node:test' && ['after', 'afterEach'].includes(original)) hooks.add(item.name.text)
+        }
+      }
+    }
+    ts.forEachChild(node, collect)
+  }
+  collect(parsed)
+  const unwrap = (node, seen = new Set()) => {
+    if (ts.isParenthesizedExpression(node)) return unwrap(node.expression, seen)
+    if (ts.isIdentifier(node) && definitions.has(node.text) && !seen.has(node.text)) {
+      seen.add(node.text)
+      return unwrap(definitions.get(node.text), seen)
+    }
+    return node
+  }
+  const isLaneDirectory = (node, seen = new Set()) => {
+    if (!node) return false
+    if (/^(?:project|lane)Dir$/.test(nameOf(node) ?? '')) return true
+    if (ts.isParenthesizedExpression(node)) return isLaneDirectory(node.expression, seen)
+    if (ts.isIdentifier(node) && definitions.has(node.text) && !seen.has(node.text)) {
+      seen.add(node.text)
+      return isLaneDirectory(definitions.get(node.text), seen)
+    }
+    return false
+  }
+  const inspectCleanup = (node) => {
+    if (ts.isCallExpression(node) && removers.has(nameOf(node.expression)) && isLaneDirectory(node.arguments[0])) {
+      lines.add(parsed.getLineAndCharacterOfPosition(node.getStart(parsed)).line)
+    }
+    ts.forEachChild(node, inspectCleanup)
+  }
+  const visit = (node) => {
+    if (ts.isCallExpression(node)) {
+      const callee = node.expression
+      const name = nameOf(callee)
+      const isHook = ts.isIdentifier(callee) ? hooks.has(name)
+        : name === 'afterEach' || (name === 'after' && contexts.has(nameOf(callee.expression)))
+      if (isHook && node.arguments[0]) inspectCleanup(unwrap(node.arguments[0]))
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(parsed)
+  return lines
+}
+
+// Test module declarations must resolve from a clean checkout, before any app build.
+export function builtArtifactImportLines(source, file) {
+  const lines = new Set()
+  if (!file.replaceAll('\\', '/').startsWith('tests/')) return lines
+  const parsed = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true)
+  const visit = (node) => {
+    let specifier
+    if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) specifier = node.moduleSpecifier
+    if (ts.isCallExpression(node) && (node.expression.kind === ts.SyntaxKind.ImportKeyword ||
+        (ts.isIdentifier(node.expression) && ['require', 'tsImport', 'tsxRequire'].includes(node.expression.text)))) specifier = node.arguments[0]
+    if (specifier && (ts.isStringLiteral(specifier) || ts.isNoSubstitutionTemplateLiteral(specifier)) &&
+        /^(?:\.\.?[/\\]|[/\\]|file:)/.test(specifier.text) &&
+        /(?:^|[/\\])dist(?:-electron)?[/\\]/.test(specifier.text)) {
+      lines.add(parsed.getLineAndCharacterOfPosition(node.getStart(parsed)).line)
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(parsed)
+  return lines
+}
+
 const RULES = [
+  {
+    id: 'built-artifact-test-import',
+    label: '测试模块必须从源码加载，禁止 import dist/ 或 dist-electron/',
+    test: (_line, context) => context.builtArtifactImportLines.has(context.lineIndex),
+  },
+  {
+    id: 'unowned-lane-directory-cleanup',
+    label: 'lane 目录清理必须由共享 fixture owner 等待全部资源 close 后执行，禁止独立 after/afterEach 删除',
+    test: (_line, context) => context.unownedLaneCleanupLines.has(context.lineIndex),
+  },
+  {
+    id: 'async-waitforfunction-predicate',
+    label: 'waitForFunction 的 async 判据会把 Promise 当 truthy，形成空等待；改用 expect.poll + evaluate',
+    test: (_line, context) => context.asyncWaitLines.has(context.lineIndex),
+  },
   {
     id: 'private-waitfor',
     label: '测试文件里定义私有 waitFor——共享 waitForProduction 之外的第二套等待',
@@ -131,64 +271,166 @@ const WALLCLOCK_BUDGET_BASELINE = new Map([
   ['electron/capabilityCore/shotVerifyOrchestrate.test.ts', 2],
 ])
 
-const hits = []
-for (const file of collectTestFiles()) {
-  const source = stripComments(fs.readFileSync(file, 'utf8'))
-  const context = { clockDeltaNames: collectClockDeltaNames(source), spiesOnFsRead: FS_READ_SPY.test(source) }
-  source.split('\n').forEach((line, i) => {
-    for (const rule of RULES) {
-      if (rule.test(line, context)) hits.push({ rule, file, line: i + 1, text: line.trim().slice(0, 120) })
+// Station waits share the existing R18 gate. AST parsing excludes prose and comments.
+export function stationWaitHits(source, file) {
+  if (!/^(?:tests\/ux\/|scripts\/.*sweep|evals\/.*(?:walk|sweep))/.test(file)) return []
+  if (/\.(?:node-test|test|spec)\./.test(file)) return []
+  const parsed = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true)
+  const definitions = new Map(), hits = []
+  const collect = node => {
+    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer) definitions.set(node.name.text, node.initializer)
+    ts.forEachChild(node, collect)
+  }
+  collect(parsed)
+  const number = (node, seen = new Set()) => {
+    if (!node) return NaN
+    if (ts.isNumericLiteral(node)) return Number(node.text)
+    if (ts.isParenthesizedExpression(node)) return number(node.expression, seen)
+    if (ts.isIdentifier(node) && definitions.has(node.text) && !seen.has(node.text)) {
+      return number(definitions.get(node.text), new Set([...seen, node.text]))
     }
-  })
+    if (ts.isBinaryExpression(node)) {
+      const a = number(node.left, seen), b = number(node.right, seen)
+      switch (node.operatorToken.kind) {
+        case ts.SyntaxKind.AsteriskToken: return a * b
+        case ts.SyntaxKind.PlusToken: return a + b
+        case ts.SyntaxKind.SlashToken: return a / b
+        case ts.SyntaxKind.MinusToken: return a - b
+      }
+    }
+    return NaN
+  }
+  const nameOf = node => ts.isIdentifier(node) || ts.isStringLiteral(node) ? node.text
+    : ts.isPropertyAccessExpression(node) ? node.name.text
+    : ts.isElementAccessExpression(node) && ts.isStringLiteral(node.argumentExpression) ? node.argumentExpression.text : ''
+  const visit = node => {
+    if (ts.isCallExpression(node)) {
+      const name = nameOf(node.expression)
+      const waits = /^(?:waitFor|toBe|toHave|toContain|poll$|click$|dblclick$|fill$|press$|selectText$|setDefaultTimeout$|clickOrFail$|proveProbe$|expectVisible$|expectHidden$|expectCount$|expectText$|expectAbsent$)/.test(name)
+      if (waits) {
+        const values = []
+        for (const argument of node.arguments) {
+          if (ts.isObjectLiteralExpression(argument)) {
+            for (const prop of argument.properties) {
+              if (ts.isPropertyAssignment(prop) && nameOf(prop.name) === 'timeout') values.push(prop.initializer)
+              if (ts.isShorthandPropertyAssignment(prop) && prop.name.text === 'timeout') values.push(prop.name)
+            }
+          } else if (['waitForTimeout', 'setDefaultTimeout', 'proveProbe', 'expectVisible', 'expectHidden', 'expectCount', 'expectText', 'expectAbsent'].includes(name)) values.push(argument)
+        }
+        if (values.some(value => number(value) >= 5000)) hits.push({
+          line: parsed.getLineAndCharacterOfPosition(node.getStart(parsed)).line + 1,
+          text: node.getText(parsed).replace(/\s+/g, ' '),
+        })
+      }
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(parsed)
+  return hits
 }
 
-const budgetHits = hits.filter((hit) => hit.rule.id === 'wallclock-budget-assertion')
-const hardHits = hits.filter((hit) => hit.rule.id !== 'wallclock-budget-assertion')
-const budgetByFile = new Map()
-for (const hit of budgetHits) {
-  const relative = path.relative(repoRoot, hit.file)
-  budgetByFile.set(relative, [...(budgetByFile.get(relative) ?? []), hit])
+// Keep debt identity stable without copying whole callbacks into the baseline.
+const stationKey = (file, text) => JSON.stringify([file, createHash('sha256').update(text).digest('hex')])
+const flattenStationBaseline = baseline => Object.fromEntries(Object.entries(baseline).flatMap(([file, entries]) =>
+  Object.entries(entries).map(([fingerprint, count]) => [JSON.stringify([file, fingerprint]), count])))
+
+export function main() {
+  const hits = []
+  const baseline = flattenStationBaseline(JSON.parse(fs.readFileSync(path.join(repoRoot, 'scripts/station-waits-baseline.json'), 'utf8')))
+  const stationHits = []
+  for (const file of collectTestFiles()) {
+    const raw = fs.readFileSync(file, 'utf8')
+    stationHits.push(...stationWaitHits(raw, path.relative(repoRoot, file)).map(hit => ({ ...hit, file: path.relative(repoRoot, file) })))
+    const source = stripComments(raw)
+    const context = { clockDeltaNames: collectClockDeltaNames(source), spiesOnFsRead: FS_READ_SPY.test(source), asyncWaitLines: asyncWaitForFunctionLines(raw, file),
+      builtArtifactImportLines: builtArtifactImportLines(raw, path.relative(repoRoot, file)),
+      unownedLaneCleanupLines: unownedLaneCleanupLines(raw, path.relative(repoRoot, file)) }
+    const unitTest = /\.test\.(tsx?|mts|cts|mjs)$/.test(file)
+    source.split('\n').forEach((line, i) => {
+      context.lineIndex = i
+      for (const rule of RULES) {
+        if (!unitTest && !['async-waitforfunction-predicate', 'unowned-lane-directory-cleanup', 'built-artifact-test-import'].includes(rule.id)) continue
+        if (rule.test(line, context)) hits.push({ rule, file, line: i + 1, text: line.trim().slice(0, 120) })
+      }
+    })
+  }
+
+  const actual = new Map()
+  for (const hit of stationHits) {
+    const key = stationKey(hit.file, hit.text)
+    actual.set(key, (actual.get(key) ?? 0) + 1)
+  }
+  const stationErrors = []
+  // A future PR cannot add or enlarge debt entries, even while deleting other debt.
+  const base = execFileSync('git', ['merge-base', 'HEAD', 'origin/main'], { cwd: repoRoot, encoding: 'utf8' }).trim()
+  const baseFiles = execFileSync('git', ['ls-tree', '-z', '--name-only', base, 'scripts/station-waits-baseline.json'], { cwd: repoRoot, encoding: 'utf8' }).trim()
+  if (baseFiles) {
+    const previous = flattenStationBaseline(JSON.parse(execFileSync('git', ['show', `${base}:scripts/station-waits-baseline.json`], { cwd: repoRoot, encoding: 'utf8' })))
+    for (const [key, count] of Object.entries(baseline)) if (count > (previous[key] ?? 0)) stationErrors.push(`station baseline growth: ${key}`)
+  }
+  for (const [key, count] of actual) if (count > (baseline[key] ?? 0)) stationErrors.push(`${key}: ${count} > baseline ${baseline[key] ?? 0}`)
+  for (const [key, count] of Object.entries(baseline)) if ((actual.get(key) ?? 0) !== count) stationErrors.push(`stale station baseline: ${key}`)
+  for (const error of stationErrors) console.log(`[station-fixed-timeout] ${error}`)
+  for (const hit of stationHits) if ((actual.get(stationKey(hit.file, hit.text)) ?? 0) > (baseline[stationKey(hit.file, hit.text)] ?? 0))
+    console.log(`  ${hit.file}:${hit.line} ${hit.text}`)
+  console.log(`Station wait baseline: ${Object.values(baseline).reduce((a, b) => a + b, 0)} occurrences; new/stale: ${stationErrors.length}`)
+  const budgetHits = hits.filter((hit) => hit.rule.id === 'wallclock-budget-assertion')
+  const hardHits = hits.filter((hit) => hit.rule.id !== 'wallclock-budget-assertion')
+  const budgetByFile = new Map()
+  for (const hit of budgetHits) {
+    const relative = path.relative(repoRoot, hit.file)
+    budgetByFile.set(relative, [...(budgetByFile.get(relative) ?? []), hit])
+  }
+
+  const budgetViolations = []
+  for (const [relative, fileHits] of budgetByFile) {
+    const allowed = WALLCLOCK_BUDGET_BASELINE.get(relative) ?? 0
+    if (fileHits.length > allowed) budgetViolations.push({ relative, fileHits, allowed })
+  }
+  const staleBaseline = [...WALLCLOCK_BUDGET_BASELINE].filter(
+    ([relative, allowed]) => (budgetByFile.get(relative)?.length ?? 0) < allowed,
+  )
+
+  if (stationErrors.length > 0 || hardHits.length > 0 || budgetViolations.length > 0 || staleBaseline.length > 0) {
+    console.log('✖ 测试等待门岗未通过：测试不许空等待、私有墙钟等待、墙钟判分或无 owner 的 lane 清理')
+    for (const hit of hardHits.slice(0, 20)) {
+      console.log(`    ${path.relative(repoRoot, hit.file)}:${hit.line}  [${hit.rule.id}]  ${hit.text}`)
+    }
+    for (const { relative, fileHits, allowed } of budgetViolations) {
+      console.log(`    ${relative}  [wallclock-budget-assertion]  ${fileHits.length} 处 > 基线 ${allowed} 处`)
+      for (const hit of fileHits) console.log(`        :${hit.line}  ${hit.text}`)
+    }
+    for (const [relative, allowed] of staleBaseline) {
+      const actual = budgetByFile.get(relative)?.length ?? 0
+      console.log(`    ${relative}  [wallclock-budget-assertion]  基线陈旧：登记 ${allowed} 处、实际 ${actual} 处`)
+      console.log('        → 好事，把 WALLCLOCK_BUDGET_BASELINE 里的数字降到实际值（棘轮只减不增）')
+    }
+    if (hardHits.some((hit) => !['fs-read-spy-path-filter', 'async-waitforfunction-predicate', 'unowned-lane-directory-cleanup', 'built-artifact-test-import'].includes(hit.rule.id))) {
+      console.log('  → 等后台编排链请 import electron/productionRun/productionRunTestHelpers 的 waitForProduction')
+      console.log('    （60s 安全网只拦真死锁/真回归，不给磁盘排队计时；来龙去脉见 docs/plan/2026-08-25-fix-flaky-production-run-tests.md）')
+    }
+    if (hardHits.some((hit) => hit.rule.id === 'fs-read-spy-path-filter')) {
+      console.log('  → fs-read-spy-path-filter：生产按 fd 读，按路径过滤读 spy 恒空、断言恒真（假绿）。')
+      console.log('    改用生产侧计数器（__projectAgentCommandLedgerScanCountForTests 那一套），')
+      console.log('    并配一条阳性对照用例钉住「它真的会涨」——见 docs/lessons/vacuous-probe-passes-forever.md')
+    }
+    if (hardHits.some((hit) => hit.rule.id === 'async-waitforfunction-predicate')) {
+      console.log('  → async waitForFunction：改用 expect.poll(async () => page.evaluate(...), { timeout }).toBe(true)，真正等待异步读数。')
+    }
+    if (hardHits.some((hit) => hit.rule.id === 'unowned-lane-directory-cleanup')) {
+      console.log('  → lane 目录交给 createLaneFixture；用 fixture.openLane / fixture.after 注册资源，等待全部 close 完成后再统一删除。')
+    }
+    if (budgetViolations.length > 0) {
+      console.log('  → 新增的耗时断言：若它量的是「这段计算够不够快」，删掉换与机器速度无关的判据')
+      console.log('    （计数器 / 两个等长窗口的工作量相等 / 直接观测被测机制），真要守常数因子性能请拆去 performance 风险面；')
+      console.log('    若它量的是「生产代码的硬超时有没有生效」，在 WALLCLOCK_BUDGET_BASELINE 登记并写明理由。')
+    }
+    process.exit(1)
+  }
+  console.log(
+    `✅ 测试等待门岗通过：0 处空等待/私有墙钟等待/无 owner 的 lane 清理（硬零），${budgetHits.length} 处墙钟预算断言（棘轮基线，只减不增）`,
+  )
+
 }
 
-const budgetViolations = []
-for (const [relative, fileHits] of budgetByFile) {
-  const allowed = WALLCLOCK_BUDGET_BASELINE.get(relative) ?? 0
-  if (fileHits.length > allowed) budgetViolations.push({ relative, fileHits, allowed })
-}
-const staleBaseline = [...WALLCLOCK_BUDGET_BASELINE].filter(
-  ([relative, allowed]) => (budgetByFile.get(relative)?.length ?? 0) < allowed,
-)
-
-if (hardHits.length > 0 || budgetViolations.length > 0 || staleBaseline.length > 0) {
-  console.log('✖ 测试等待门岗未通过：测试不许手写墙钟等待/墙钟判分（单跑看不出，并行跑必间歇翻红）')
-  for (const hit of hardHits.slice(0, 20)) {
-    console.log(`    ${path.relative(repoRoot, hit.file)}:${hit.line}  [${hit.rule.id}]  ${hit.text}`)
-  }
-  for (const { relative, fileHits, allowed } of budgetViolations) {
-    console.log(`    ${relative}  [wallclock-budget-assertion]  ${fileHits.length} 处 > 基线 ${allowed} 处`)
-    for (const hit of fileHits) console.log(`        :${hit.line}  ${hit.text}`)
-  }
-  for (const [relative, allowed] of staleBaseline) {
-    const actual = budgetByFile.get(relative)?.length ?? 0
-    console.log(`    ${relative}  [wallclock-budget-assertion]  基线陈旧：登记 ${allowed} 处、实际 ${actual} 处`)
-    console.log('        → 好事，把 WALLCLOCK_BUDGET_BASELINE 里的数字降到实际值（棘轮只减不增）')
-  }
-  if (hardHits.some((hit) => hit.rule.id !== 'fs-read-spy-path-filter')) {
-    console.log('  → 等后台编排链请 import electron/productionRun/productionRunTestHelpers 的 waitForProduction')
-    console.log('    （60s 安全网只拦真死锁/真回归，不给磁盘排队计时；来龙去脉见 docs/plan/2026-08-25-fix-flaky-production-run-tests.md）')
-  }
-  if (hardHits.some((hit) => hit.rule.id === 'fs-read-spy-path-filter')) {
-    console.log('  → fs-read-spy-path-filter：生产按 fd 读，按路径过滤读 spy 恒空、断言恒真（假绿）。')
-    console.log('    改用生产侧计数器（__projectAgentCommandLedgerScanCountForTests 那一套），')
-    console.log('    并配一条阳性对照用例钉住「它真的会涨」——见 docs/lessons/vacuous-probe-passes-forever.md')
-  }
-  if (budgetViolations.length > 0) {
-    console.log('  → 新增的耗时断言：若它量的是「这段计算够不够快」，删掉换与机器速度无关的判据')
-    console.log('    （计数器 / 两个等长窗口的工作量相等 / 直接观测被测机制），真要守常数因子性能请拆去 performance 风险面；')
-    console.log('    若它量的是「生产代码的硬超时有没有生效」，在 WALLCLOCK_BUDGET_BASELINE 登记并写明理由。')
-  }
-  process.exit(1)
-}
-console.log(
-  `✅ 测试等待门岗通过：0 处私有墙钟等待（硬零），${budgetHits.length} 处墙钟预算断言（棘轮基线，只减不增）`,
-)
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main()

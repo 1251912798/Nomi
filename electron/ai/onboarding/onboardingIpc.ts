@@ -1,4 +1,5 @@
 import { ipcMain } from "electron";
+import { upsertRendererCatalogVendorApiKey } from "../../catalog/rendererCatalogMutation";
 import { appFetch } from "../../appFetch";
 import type { AiSdkProviderKind } from "../../catalog/types";
 import { describeIllegalHeader, findIllegalHeader, findNonHeaderSafeChar, mergeHeadersCaseInsensitive } from "../../jsonUtils";
@@ -71,6 +72,12 @@ async function probeOneProtocol(
 }
 export function registerOnboardingIpc(): void {
   registerAntigravityIpc();
+  ipcMain.handle("nomi:model-catalog:vendor-api-key:upsert", async (event, vendorKey: string, payload: unknown) => {
+    assertTrustedSender(event);
+    try { return { ok: true, value: await upsertRendererCatalogVendorApiKey(vendorKey, payload) }; }
+    catch (error) { return { ok: false, error: error instanceof Error ? error.message : String(error) }; }
+  });
+
   // 「AI 读文档」接入路径已下线（Issue #8：改为中转拉取式接入图片/视频/文本）。
 
   // 供应商连接健康：模型面板每次打开时按家自查「现在能不能用」。凭证由主进程自取——

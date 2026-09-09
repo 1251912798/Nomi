@@ -1,0 +1,8 @@
+
+ RUN  v4.1.8 /Users/aoqimin/Desktop/Nomi-process-feedback
+
+
+ Test Files  1 passed (1)
+      Tests  9 passed (9)
+   Start at  03:52:41
+   Duration  671ms (transform 486ms, setup 31ms, import 567ms, tests 6ms, environment 0ms)

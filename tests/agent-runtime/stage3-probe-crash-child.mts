@@ -13,7 +13,7 @@ import { createDocumentPort, LANE_SYSTEM_PROMPT } from './laneFixture.mjs';
 const [projectDir, baseURL] = process.argv.slice(2);
 if (!projectDir || !baseURL) throw new Error('usage: stage3-probe-crash-child <projectDir> <baseURL>');
 
-const lane = await openLane({
+const lane = await openLane({ fetch: globalThis.fetch,
   projectDir,
   systemPrompt: LANE_SYSTEM_PROMPT,
   model: { kind: 'openai-compatible', providerId: 'nomi-lane', modelId: 'chosen-model', baseURL, authType: 'api-key', apiKey: 'fixture-key' },

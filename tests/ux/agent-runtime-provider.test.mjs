@@ -30,7 +30,7 @@ const variableIndex = (name) => uiTry.tryBlock.statements.findIndex((statement) 
 const evidenceStart = variableIndex('landed')
 const evidenceEnd = variableIndex('receipt')
 if (evidenceStart < 0 || evidenceEnd <= evidenceStart) throw new Error('The live walk must validate persisted canvas and native tool evidence')
-const verifyCanvasEvidence = new AsyncFunction('readProject', 'win', 'projectId', 'readNativeContexts', 'projectRoot', 'snapshotMessages', 'expect',
+const verifyCanvasEvidence = new AsyncFunction('readProject', 'win', 'projectId', 'readLaneTranscripts', 'projectRoot', 'laneMessages', 'expect',
   uiTry.tryBlock.statements.slice(evidenceStart, evidenceEnd).map((statement) => statement.getText(tree)).join('\n'))
 
 function canvasEvidence(overrides = {}) {
@@ -38,10 +38,10 @@ function canvasEvidence(overrides = {}) {
     nodes: [{ id: 'source', title: 'NOMILIVESOURCE', kind: 'image' }, { id: 'target', title: 'NOMILIVETARGET', kind: 'image' }],
     edges: [{ source: 'source', target: 'target', mode: overrides.mode ?? 'reference' }],
   }
-  const result = { role: 'toolResult', toolName: 'create_canvas_nodes', toolCallId: 'create-1', isError: false,
-    details: { ok: true }, content: [{ type: 'text', text: JSON.stringify({ createdNodeIds: ['source', 'target'] }) }], ...overrides.result }
-  const messages = [{ role: 'assistant', content: [{ type: 'toolCall', name: 'create_canvas_nodes', id: 'create-1' }] }, result]
-  return verifyCanvasEvidence(async () => ({ payload: { generationCanvas: landed } }), {}, 'project', () => [{ snapshot: true }], '/synthetic', () => messages, expect)
+  const result = { role: 'toolResult', toolName: 'nomi_canvas_write', toolCallId: 'create-1', isError: false,
+    details: { applied: true, operation: 'create_canvas_nodes', affectedNodeIds: ['source', 'target'] }, content: [{ type: 'text', text: 'Applied create_canvas_nodes.' }], ...overrides.result }
+  const messages = [{ role: 'assistant', content: [{ type: 'toolCall', name: 'nomi_canvas_write', id: 'create-1', arguments: { operation: 'create_canvas_nodes' } }] }, result]
+  return verifyCanvasEvidence(async () => ({ payload: { generationCanvas: landed } }), {}, 'project', () => [{}], '/synthetic', () => messages, expect)
 }
 
 let root
@@ -116,9 +116,9 @@ test('the paid smoke also exercises the reported canvas task without approving m
   // （`data-plan-confirm-all`）随旧组件整件删除。这条断言守的是
   // 「付费冒烟真的按下了批准」，锚点跟着契约走，不跟着已经不存在的 class 走。
   expect(source).toContain('INTERVENTION_CONFIRM')
-  expect(source).toContain('run_generation_batch')
+  expect(source).toContain('No media generation or unrelated tool may be requested')
   expect(source).toContain('nodes: 2, edges: 1')
-  expect(source).toContain('data-proposal-undo-all')
+  expect(source).toContain("receipt.getByRole('button', { name: '撤销', exact: true })")
   expect(source).toContain("proveProbe(approval, 'The real model must propose an actual append for human approval', 120_000)")
   expect(source).toContain('expect(win.locator(DOCUMENT)).toBeVisible({ timeout: 120_000 })')
   expect(source).toContain("expect(win.locator(CREATION_PANEL)).toContainText('NOMI_PI_LIVE_OK', { timeout: 120_000 })")
@@ -136,7 +136,9 @@ test('the real acceptance assertions reject a different edge mode', async () => 
 test.each([
   { isError: true },
   { toolCallId: 'another-call' },
-  { content: [{ type: 'text', text: JSON.stringify({ createdNodeIds: ['unrelated-node'] }) }] },
+  { details: { applied: true, operation: 'create_canvas_nodes', affectedNodeIds: ['unrelated-node'] } },
+  { details: { applied: false, operation: 'create_canvas_nodes', affectedNodeIds: ['source', 'target'] } },
+  { details: { applied: true, operation: 'set_node_prompt', affectedNodeIds: ['source', 'target'] } },
 ])('the real acceptance assertions reject unsuccessful or unrelated native evidence: %j', async (result) => {
   await expect(canvasEvidence({ result })).rejects.toThrow()
 })

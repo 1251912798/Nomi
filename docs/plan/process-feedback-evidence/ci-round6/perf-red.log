@@ -1,0 +1,22 @@
+Source: GitHub Actions run 34297944064 / job 102298752338 / canvas-performance-evidence / canvas-validation-gate.json
+HEAD: 5bffa71ba0b2dd1f78133ee5c815220220f059be
+Error: expect(locator).toHaveCount(expected) failed
+
+Locator:  locator('[data-process-static-band]')
+Expected: 8
+Received: 6
+Timeout:  5000ms
+
+Call log:
+  - Expect "to.have.count" with timeout 5000ms
+  - waiting for locator('[data-process-static-band]')
+    14 × locator resolved to 6 elements
+       - unexpected value "6"
+
+    at captureRawStack (/home/runner/work/Nomi/Nomi/node_modules/.pnpm/playwright-core@1.60.0/node_modules/playwright-core/lib/coreBundle.js:3130:17)
+    at callMatcherAsStep (/home/runner/work/Nomi/Nomi/node_modules/.pnpm/playwright@1.60.0/node_modules/playwright/lib/matchers/expect.js:12873:57)
+    at Object.toHaveCount (/home/runner/work/Nomi/Nomi/node_modules/.pnpm/playwright@1.60.0/node_modules/playwright/lib/matchers/expect.js:12863:23)
+    at Proxy.<anonymous> (/home/runner/work/Nomi/Nomi/tests/ux/_collect.mjs:18:32)
+    at prepareWaitingFx (/home/runner/work/Nomi/Nomi/tests/ux/canvas-perf/waitingFxScenario.mjs:33:60)
+    at async runScenario (/home/runner/work/Nomi/Nomi/tests/ux/canvas-performance-benchmark.e2e.mjs:1125:5)
+    at async file:///home/runner/work/Nomi/Nomi/tests/ux/canvas-performance-benchmark.e2e.mjs:1509:24

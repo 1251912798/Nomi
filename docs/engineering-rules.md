@@ -16,9 +16,9 @@
 - 旧的有点价值 → 把价值合并进新代码，再删旧
 - **CSS（R10 = R1 的 CSS 实例）**：新样式一律用 Tailwind utility 写在组件 `className` 上；不用 `@apply`；CSS 文件分工固定只可减不可增
   - `src/theme/nomi-tokens.css` — 设计 token
-  - `src/styles/index.css` — 全局 reset/keyframes
-  - `src/styles/vendor-overrides.css` — Mantine 等第三方 DOM 覆盖
-  - `src/styles/globals.css` — 只准删，不准加组件样式
+  - `src/styles/index.css` — App 唯一 CSS 入口（`src/main.tsx` 只 import 它）：三层 `tailwindcss/*` + browserAsset 浮层的两条 `html[data-nomi-overlay]` 规则。只可减不可增
+  - `tailwind.config.ts` 的 `workbenchBasePlugin` addBase — 全局 reset / body / `#root` / keyframes / Mantine 等第三方 DOM 覆盖的**唯一真相源**（编译进 `public/tailwind.generated.css`）
+  - ~~`src/styles/globals.css` / `animations.css` / `vendor-overrides.css`~~ — 2026-09-07 删除：从不在 import 图里（`index.css` 不 import 它们），259 行全是 addBase 已有等价物或死码
 
 ## R2 用户视角 + 极简
 
@@ -353,6 +353,8 @@ CSS 文件分工与「只可减不可增」规则详见 R1 最后一节。
 
 ## R16 真实用户任务测试系统 = 完成的一部分
 
+> **执行版**（2026-09-09 用户拍板）：怎么跑才算数见 [`engineering/acceptance-walkthrough-doctrine.md`](engineering/acceptance-walkthrough-doctrine.md)——像人一样点、测 Agent 先写 ≥20 句用户会说的话、每功能少量真出、一次扫全再批修、每屏记信息密度。
+
 > 2026-08-01 用户拍板固化。**R16 是 P3「全绿≠完成」的量化门**：功能类交付，光有单测/五门绿、甚至跑一次 R13 走查，都不算真完成——必须建起「真实用户任务」的端到端测试系统、带真实任务把整个使用闭环跑通、把过程中冒出的问题全修掉，才算完毕、不留半成品。
 
 **为什么**：五门只证代码健康；一次性走查只证「这一条路当时能走」。**一个功能真正好不好用、闭不闭环、体感对不对，只有拿真实任务从头走到尾才暴露**——多数体验/设计/UI/UX/产品感/功能问题不在单测里，在「用户真的想干成一件事」的完整流程里。所以交付的一部分，是把这套「真实任务测试」建成可复跑的系统，并跑到干净。
@@ -459,6 +461,7 @@ CSS 文件分工与「只可减不可增」规则详见 R1 最后一节。
 **`stripComments()` 必须逐行等高**：抹注释不许改变总行数，否则报出来的 `file:line` 点开是别的地方。两个坑都踩过并已修（2026-08-25）：① 块注释整段删会把后面的行整体上移；② 行注释正则写 `^\s*//` 时 `\s` **含换行**，「空行 + `//` 注释」会被吞掉一行。修之前全仓 2015 个被扫文件里 **1053 个行号是错的，最差的一个偏 995 行**。
 **加新规则的姿势**（P2 通用性判定的落地路径）：修完一个 bug → 判断是不是通用 → 全仓实扫拿 file:line → 能 grep 的加进本门岗的 `RULES`（写清 label + hint，hint 必须给出替代写法）→ `node scripts/check-heavy-path.mjs --update-baseline` 把存量收进基线 → 存量后续慢慢清零。
 ## R18 测试等待门岗（并行才炸的私有墙钟等待）
+走查/sweep 站点等待必须观察状态，超时来自预算派生或终态等待辅助函数；直接写死 ≥5000ms（含局部常量与算式）由同一 `check:test-waits` 判红，`scripts/station-waits-baseline.json` 按调用指纹登记存量，只减不增。
 **门岗**：`pnpm run check:test-waits`（`scripts/check-test-waits.mjs`，硬零无基线）。已进 `gates` 链。
 **它抓什么**：测试文件里的私有 `waitFor` 定义与 `Date.now()` 截止时间轮询。起因（2026-08-25）：electron/productionRun 十一个测试文件各自复制/手写墙钟等待（硬闹钟 500ms~5s），赛跑「每条命令 3 次真 fsync」的 ProductionRunService 编排链——单跑永远绿，vitest 并行满载时 fsync 排队放大 → 干净 main 上 5 跑 4 挂。flake 的两条腿分两处修：**耗时腿**在 `electron/durability.ts`（单测 ephemeral 不 fsync，测试 20× 提速，PR #139）；**赛跑腿**在本门岗——就算测试再快，复制粘贴的私有闹钟也是下一次事故的年轮，机器拦住不许再长。
 **正确姿势**：等 detached driver（`void driveGeneration(...)` 这类）一律用 `productionRunTestHelpers.waitForProduction`（全仓唯一等待实现，统一预算、超时信息带 `check.toString()` 直接定位卡在哪步）。不许在测试里再写 `function waitFor` 或 `Date.now()` 截止轮询——第 11 个复制品（`productionStoryboardBinding` 的匿名内联循环，连名字都不叫 waitFor）就是靠本门岗的模式扫描抓出来的。来龙去脉：`docs/plan/2026-08-25-production-run-test-flake-fsync.md`（耗时腿）+ `docs/plan/2026-08-25-fix-flaky-production-run-tests.md`（赛跑腿与门岗）。
@@ -760,6 +763,8 @@ pnpm run delivery:verify-merged -- --expected-sha <merge-commit-sha>
 R20 拦的是「从零造轮子」，R29 拦的是**更隐蔽的那种**：轮子已经买回来了，我们却只用了轮毂，自己又削了一圈轮胎。
 
 ## R30 Agent 行为验收靠真实模型数字
+
+> 数字怎么采（≥20 句 prompt 集、首调写对/回合成功/切组次数/审批/裸 Markdown/首字耗时）见 [`engineering/acceptance-walkthrough-doctrine.md`](engineering/acceptance-walkthrough-doctrine.md) §二.2、§二.6。
 
 **触发**：任何 Agent / 工具定义 / 工具契约 / 系统提示词 / 模型档案的改动，以及任何声称「Agent 面板接好了」的交付。
 

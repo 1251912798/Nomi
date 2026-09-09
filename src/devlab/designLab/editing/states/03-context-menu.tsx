@@ -15,9 +15,11 @@ import type { LabState } from '../../labScreen'
 
 function MenuCell({ target, height }: { target: TimelineContextTarget; height: number }): JSX.Element {
   useLabTimeline()
+  const [feedback, setFeedback] = React.useState('')
   return (
     <FixedStage width={300} height={height}>
-      <TimelineContextMenu target={target} x={16} y={16} onClose={NOOP} onRegenerate={NOOP} onChangeTransition={NOOP} onArrange={NOOP} />
+      <TimelineContextMenu target={target} x={16} y={16} onClose={NOOP} onRegenerate={NOOP} onChangeTransition={NOOP} onArrange={NOOP} onFeedback={setFeedback} />
+      {feedback ? <p role="status" className="text-caption text-workbench-danger">{feedback}</p> : null}
     </FixedStage>
   )
 }

@@ -3,13 +3,20 @@
 // 夹具文案（分镜名、提示词摘录、花费）也走这里：设计实验室渲的是**现役组件**，
 // 组件里不许留硬编码中文，哪怕它只在实验室出现——否则 `check:i18n` 的基线只会越欠越多。
 export const zhAgentPanelV4 = {
+  legacyNotice: '这段对话来自旧版本',
+  legacyArrayOrder: '保留原记录顺序',
+  legacySummaries: '含旧版摘要',
+  legacyArchived: '部分内容仅归档',
+  legacyMissingArguments: '旧工具参数未保存',
+  legacySeparator: '；',
+  queueHint: '排队的指令可以取消后重发',
+  newConversation: '新对话 {{number}}',
   // 壳
-  brand: 'Nomi',
-  logo: 'N',
   history: '历史会话',
   collapsePanel: '收起面板',
   // 收起坞 · 右上角那枚 Nomi logo 钮（2026-09-06 用户改：收起态回到 logo + 状态叠加）
   dockOpen: '展开 Nomi',
+  dockClose: '关闭输入坞',
   dockIdle: 'Nomi 在这儿',
   dockRunning: 'Nomi 正在做',
   dockNeedsConfirm: '等你确认 {{count}} 条',
@@ -26,8 +33,6 @@ export const zhAgentPanelV4 = {
   stop: '停止',
   skill: 'Skill',
   model: 'GPT-5.6',
-  modelDialog: '模型',
-  modelHint: '每类一个默认，Agent 帮你生成时用它',
   modelChat: '对话',
   chatModel: 'GPT-5.6',
   imageDefault: '图片默认',
@@ -58,6 +63,8 @@ export const zhAgentPanelV4 = {
 
   // Context 环
   context: '上下文用量',
+  contextInputTotal: '累计输入',
+  contextOutputTotal: '累计输出',
   input: '输入',
   output: '输出',
   reasoning: '推理',
@@ -77,7 +84,6 @@ export const zhAgentPanelV4 = {
   image: '图片',
   expand: '展开',
   collapse: '收起',
-  moreRows: '还有 {{count}} 行 · 展开',
 
   // 一行收据
   toolStatus: {
@@ -106,7 +112,9 @@ export const zhAgentPanelV4 = {
   // 队列
   queueStatus: { queued: '排队', running: '进行中', complete: '完成' },
   queueJumpAhead: '插队',
-  queueDelete: '删',
+  processSummary: '用了 {{count}} 个工具',
+  processSummaryWithRetries: '用了 {{count}} 个工具 · {{retries}} 次重试',
+  queueDelete: '取消这条指令',
   queueInterrupt: '立即中断',
 
 
@@ -114,6 +122,10 @@ export const zhAgentPanelV4 = {
   // 这一段和上面的 `fixture*` 是两回事：fixture 是实验室里摆的样品，
   // 这一段是运行时真的会印给用户看的字。缺数据时**整件不渲染**，不用这里的字兜底。
   contextUnknown: '—',
+  retrying: '正在重试 {{attempt}}/{{maxAttempts}}',
+  contextCostFree: '免费',
+  queueAlreadyConsumed: '这条指令已经送出，无法取消。',
+  queueNotFound: '队列已经变化，请查看当前队列。',
   contextUsedOnly: '已用 {{amount}}',
   modelUnset: '选择模型',
   modelAuto: '自动选',
@@ -128,7 +140,6 @@ export const zhAgentPanelV4 = {
   toolGroupSomeFailed: '{{count}} 次失败',
   toolGroupAllDone: '全部完成',
   processAttempts: '尝试了 {{count}} 次',
-  processExpand: '展开',
   // 实验室夹具：2026-09-06 打包版那次「重拆 10 镜」的六连失败
   fixtureShotCard: '创建或修改镜头卡',
   fixtureShotCardReason: 'nodes：必须是数组（收到 字符串）',
@@ -137,15 +148,23 @@ export const zhAgentPanelV4 = {
   fixtureProcessTwo: '我把 JSON 字符串化两次了，这次直接传数组。',
 
   thinkingLabel: '正在想…',
-  thinkingMeta: 'esc 打断',
-  toolStopped: '已停止',
-  clipFallback: '片段 {{id}}',
+  thinkingDone: '思考过程',
+  thinkingSeconds: '{{count}}s',
   clipStale: '{{label}} · 已变更',
   taskRun: '生成任务',
   taskUnknown: '任务详情在任务中心',
   taskStages: '{{done}} / {{total}} 阶段',
+  // 撤回一条排队插话的三态。中间那条**必须**是另一句话：用户点了撤回，而它刚好已经被听见了。
+  laneQueueCancelled: '已撤回',
+  laneQueueAlreadyConsumed: '晚了一步，它已经听见了',
+  laneQueueNotFound: '这条已经不在队列里',
+  // composer 的次选按钮（主动作走回车，见 laneComposerIntent 的三态表）。
+  laneOptionDenyWithReason: '按这句话改',
+  laneOptionQueueSteer: '排到下一步',
+  laneOptionQueueFollowUp: '等它做完再说',
+  laneOptionNewTurn: '发送',
   money: '{{currency}} {{amount}}',
-  costUsd: '${{amount}}',
+  costUsd: 'USD {{amount}}',
   waitingApproval: '等你确认',
   ready: '就绪',
   queueUntitled: '未命名任务',
@@ -334,11 +353,18 @@ export const zhAgentPanelV4 = {
 } as const
 
 export const enAgentPanelV4 = {
-  brand: 'Nomi',
-  logo: 'N',
+  legacyNotice: 'This conversation came from an earlier version',
+  legacyArrayOrder: 'original record order preserved',
+  legacySummaries: 'includes earlier summaries',
+  legacyArchived: 'some content is archived only',
+  legacyMissingArguments: 'earlier tool arguments were not saved',
+  legacySeparator: '; ',
+  queueHint: 'Cancel a queued instruction to edit and resend it.',
+  newConversation: 'New conversation {{number}}',
   history: 'Conversation history',
   collapsePanel: 'Collapse panel',
   dockOpen: 'Open Nomi',
+  dockClose: 'Close input dock',
   dockIdle: 'Nomi is here',
   dockRunning: 'Nomi is working',
   dockNeedsConfirm: '{{count}} waiting for you',
@@ -354,8 +380,6 @@ export const enAgentPanelV4 = {
   stop: 'Stop',
   skill: 'Skill',
   model: 'GPT-5.6',
-  modelDialog: 'Model',
-  modelHint: 'One default per kind; Nomi uses it when generating',
   modelChat: 'Chat',
   chatModel: 'GPT-5.6',
   imageDefault: 'Image default',
@@ -385,6 +409,8 @@ export const enAgentPanelV4 = {
   },
 
   context: 'Context usage',
+  contextInputTotal: 'Total input',
+  contextOutputTotal: 'Total output',
   input: 'Input',
   output: 'Output',
   reasoning: 'Reasoning',
@@ -403,7 +429,6 @@ export const enAgentPanelV4 = {
   image: 'Image',
   expand: 'Expand',
   collapse: 'Collapse',
-  moreRows: '{{count}} more lines · expand',
 
   toolStatus: {
     inputStreaming: 'Running',
@@ -428,11 +453,17 @@ export const enAgentPanelV4 = {
 
   queueStatus: { queued: 'Queued', running: 'Running', complete: 'Done' },
   queueJumpAhead: 'Move up',
-  queueDelete: 'Delete',
+  processSummary: '{{count}} tools',
+  processSummaryWithRetries: '{{count}} tools · {{retries}} retries',
+  queueDelete: 'Cancel this instruction',
   queueInterrupt: 'Interrupt now',
 
 
   contextUnknown: '—',
+  retrying: 'Retrying {{attempt}}/{{maxAttempts}}',
+  contextCostFree: 'Free',
+  queueAlreadyConsumed: 'This instruction was already sent and cannot be cancelled.',
+  queueNotFound: 'The queue has changed. Check the current queue.',
   contextUsedOnly: 'Used {{amount}}',
   modelUnset: 'Choose a model',
   modelAuto: 'Auto',
@@ -446,7 +477,6 @@ export const enAgentPanelV4 = {
   toolGroupSomeFailed: '{{count}} failed',
   toolGroupAllDone: 'all done',
   processAttempts: 'Tried {{count}} times',
-  processExpand: 'Expand',
   fixtureShotCard: 'Create or edit shot cards',
   fixtureShotCardReason: 'nodes: expected array, received string',
   fixtureShotCardInput: '{ "operation": "create_canvas_nodes", "nodes": "[{…}]" }',
@@ -454,15 +484,21 @@ export const enAgentPanelV4 = {
   fixtureProcessTwo: 'I serialized the JSON twice; sending the array directly this time.',
 
   thinkingLabel: 'Thinking…',
-  thinkingMeta: 'esc to interrupt',
-  toolStopped: 'Stopped',
-  clipFallback: 'Clip {{id}}',
+  thinkingDone: 'Thought process',
+  thinkingSeconds: '{{count}}s',
   clipStale: '{{label}} · changed',
   taskRun: 'Generation run',
   taskUnknown: 'Open the task centre for details',
   taskStages: '{{done}} / {{total}} stages',
+  laneQueueCancelled: 'Withdrawn',
+  laneQueueAlreadyConsumed: 'Too late — it already heard that',
+  laneQueueNotFound: 'That message is no longer queued',
+  laneOptionDenyWithReason: 'Use this as the reason',
+  laneOptionQueueSteer: 'Queue it for the next step',
+  laneOptionQueueFollowUp: 'Wait until it finishes',
+  laneOptionNewTurn: 'Send',
   money: '{{currency}} {{amount}}',
-  costUsd: '${{amount}}',
+  costUsd: 'USD {{amount}}',
   waitingApproval: 'Waiting for you',
   ready: 'Ready',
   queueUntitled: 'Untitled task',

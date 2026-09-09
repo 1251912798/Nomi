@@ -1,0 +1,159 @@
+{
+  "label": "round5-software-red",
+  "commit": "906b6687e7a713a41950141c854a9edec32ce178",
+  "dirty": true,
+  "platform": "darwin",
+  "arch": "arm64",
+  "machine": {
+    "cpu": "Apple M5",
+    "logicalCpus": 10,
+    "totalMemoryGB": 24
+  },
+  "viewport": {
+    "width": 1600,
+    "height": 1000
+  },
+  "sampleCount": 1,
+  "warmupCount": 1,
+  "scales": [
+    "M"
+  ],
+  "scenarios": [
+    "waiting-effects"
+  ],
+  "leg": {
+    "devServer": false,
+    "cpuThrottleRate": 1,
+    "kind": "prod"
+  },
+  "results": [
+    {
+      "scale": "M",
+      "scenario": "waiting-effects",
+      "runIndex": 1,
+      "fixture": {
+        "scale": "M",
+        "imageNodes": 48,
+        "videoNodes": 48,
+        "nodes": 96,
+        "edges": 192,
+        "clips": 24,
+        "imageBytes": [
+          58064,
+          208825
+        ],
+        "videoBytes": [
+          387068,
+          386811
+        ]
+      },
+      "error": "Error: expect(locator).toHaveCount(expected) failed\n\nLocator:  locator('[data-process-fx]')\nExpected: 4\nReceived: 0\nTimeout:  5000ms\n\nCall log:\n  - Expect \"to.have.count\" with timeout 5000ms\n  - waiting for locator('[data-process-fx]')\n    14 × locator resolved to 0 elements\n       - unexpected value \"0\"\n\n    at captureRawStack (/Users/aoqimin/Desktop/Nomi-process-feedback/node_modules/.pnpm/playwright-core@1.60.0/node_modules/playwright-core/lib/coreBundle.js:3130:17)\n    at callMatcherAsStep (/Users/aoqimin/Desktop/Nomi-process-feedback/node_modules/.pnpm/playwright@1.60.0/node_modules/playwright/lib/matchers/expect.js:12873:57)\n    at Object.toHaveCount (/Users/aoqimin/Desktop/Nomi-process-feedback/node_modules/.pnpm/playwright@1.60.0/node_modules/playwright/lib/matchers/expect.js:12863:23)\n    at prepareWaitingFx (/Users/aoqimin/Desktop/Nomi-process-feedback/tests/ux/canvas-perf/waitingFxScenario.mjs:20:53)\n    at async runScenario (/Users/aoqimin/Desktop/Nomi-process-feedback/tests/ux/canvas-performance-benchmark.e2e.mjs:1125:5)\n    at async file:///Users/aoqimin/Desktop/Nomi-process-feedback/tests/ux/canvas-performance-benchmark.e2e.mjs:1509:24",
+      "pageErrors": [],
+      "consoleErrors": [],
+      "elapsedMs": 23800
+    }
+  ],
+  "warmupFailures": [
+    {
+      "scale": "M",
+      "scenario": "waiting-effects",
+      "runIndex": 0,
+      "failures": [
+        "scenario error: Error: expect(locator).toHaveCount(expected) failed"
+      ],
+      "advisoryOnly": false
+    }
+  ],
+  "summary": {
+    "M/waiting-effects": {
+      "samples": 1,
+      "errors": 1,
+      "metrics": {
+        "coldFirstCanvasMs": null,
+        "coldMediaSettledMs": null,
+        "fps": null,
+        "frameGapP95Ms": null,
+        "maxFrameGapMs": null,
+        "longTaskMs": null,
+        "longTaskP95Ms": null,
+        "maxLoadingImages": null,
+        "maxLoadingVideos": null,
+        "maxActiveVideos": null,
+        "layoutCount": null,
+        "recalcStyleCount": null,
+        "scriptDurationMs": null,
+        "layoutDurationMs": null,
+        "jsHeapUsedMB": null,
+        "visibleMedia": null,
+        "visibleMediaNodes": null,
+        "visibleMediaPending": null,
+        "visibleMediaFailures": null,
+        "loadedImages": null,
+        "loadedVideos": null,
+        "activeVideos": null,
+        "rendererWorkingSetMB": null,
+        "reloadHeapDeltaMB": null,
+        "reloadDurationP95Ms": null
+      },
+      "advisory": {
+        "perMove": {
+          "scriptPerMoveMs": {
+            "median": null,
+            "p95": null,
+            "samples": []
+          },
+          "layoutPerMove": {
+            "median": null,
+            "p95": null,
+            "samples": []
+          }
+        },
+        "dragOverPan": {
+          "scriptRatio": {
+            "median": null,
+            "samples": []
+          },
+          "layoutRatio": {
+            "median": null,
+            "samples": []
+          }
+        },
+        "actionLatency": {
+          "samples": [],
+          "p95Ms": null,
+          "medianMs": null
+        },
+        "offCanvasRender": {
+          "installed": false,
+          "windows": 0,
+          "totalMax": null,
+          "totalMedian": null,
+          "perComponentMax": {
+            "CategoryTree": null,
+            "AssetLibraryPanel": null,
+            "AssetPicker": null,
+            "TaskCenterButton": null,
+            "TaskCenterPanel": null,
+            "TimelinePreview": null,
+            "PreviewSourcePanel": null,
+            "OnboardingChecklist": null
+          }
+        }
+      },
+      "verdict": {
+        "pass": false,
+        "advisoryOnly": false,
+        "budgetsAdvisory": false,
+        "hardFailures": [
+          {
+            "runIndex": 1,
+            "reason": "scenario error: Error: expect(locator).toHaveCount(expected) failed"
+          }
+        ],
+        "budgetChecks": []
+      }
+    }
+  },
+  "runtimeVersions": null,
+  "pass": false
+}

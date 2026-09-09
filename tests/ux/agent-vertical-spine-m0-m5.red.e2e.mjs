@@ -6,6 +6,7 @@
 // It does not seed a project, inject a Zustand/store state, call a handler, or use
 // a loopback provider. A future green implementation must make every later step
 // execute through the same real UI/preload/public-MCP path.
+import { expect } from './_assert.mjs'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -266,10 +267,10 @@ async function runPhase(phase, executablePath = undefined) {
     await win.waitForFunction(() => /projectId=/.test(location.href), undefined, { timeout: 15_000 })
     const projectId = projectIdFromUrl(win.url())
     if (!projectId) throw new Error('M0 project creation did not produce a projectId route')
-    await win.waitForFunction(async (id) => {
+    await expect.poll(async () => win.evaluate(async (id) => {
       const record = await window.nomiDesktop?.projects?.readAsync?.(id)
       return Boolean(record?.id === id && record?.payload)
-    }, projectId, { timeout: 15_000 })
+    }, projectId), { timeout: 15_000 }).toBe(true)
     const projectDir = projectDirFor(dirs, projectId)
     if (!projectDir) throw new Error(`M0 project ${projectId} was not readable from the isolated project root`)
     const initial = readProject(projectDir)

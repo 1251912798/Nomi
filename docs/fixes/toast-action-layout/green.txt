@@ -1,0 +1,16 @@
+{"width":360,"language":"zh","glyphsPerLine":[12,12,12,4],"action":110.390625,"row":276,"clipped":true}
+{"width":344,"language":"zh","glyphsPerLine":[11,11,11,7],"action":104,"row":260,"clipped":true}
+{"width":320,"language":"zh","glyphsPerLine":[10,10,10,10],"action":94.390625,"row":236,"clipped":true}
+{"width":180,"language":"zh","glyphsPerLine":[10,10,10,10],"action":94.390625,"row":236,"clipped":true}
+{"width":360,"language":"en","glyphsPerLine":[21,22,24,10],"action":110.390625,"row":276,"clipped":true}
+▶ toast readability in a narrow notification
+  ✔ preserves readable lines beside arbitrary long actions (650.779541ms)
+✔ toast readability in a narrow notification (651.107792ms)
+ℹ tests 1
+ℹ suites 1
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1685.785

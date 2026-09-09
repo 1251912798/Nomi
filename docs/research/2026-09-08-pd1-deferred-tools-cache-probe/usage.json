@@ -1,0 +1,799 @@
+{
+  "date": "2026-09-08",
+  "status": "measured-default-sticky-unlock",
+  "runtime": "Electron 43.4.1; pi 0.85.1; openProbeLane",
+  "probeFile": "tests/ux/pd1-deferred-tools-cache.probe.mjs",
+  "mode": "Three user prompts per actual lane; attached code unlocks via lane.setActiveTools; default compat only; no tool execution",
+  "rows": [
+    {
+      "api": "anthropic-messages",
+      "model": "claude-haiku-4-5-20251001",
+      "turn": 1,
+      "sessionId": "01a07fb2-0458-71ae-b89c-c70e48f0f602",
+      "status": "measured",
+      "input": 3,
+      "output": 4,
+      "cacheRead": 0,
+      "cacheWrite": 7626,
+      "piUsage": {
+        "input": 3,
+        "output": 4,
+        "cacheRead": 0,
+        "cacheWrite": 7626,
+        "totalTokens": 7633
+      },
+      "stopReason": "stop",
+      "laneStats": {
+        "messageCount": 2,
+        "usage": {
+          "input": 3,
+          "output": 4,
+          "cacheRead": 0,
+          "cacheWrite": 7626,
+          "cacheWrite1h": 0,
+          "totalTokens": 7633
+        }
+      },
+      "billedUsdCumulative": 0.02354200000002038,
+      "httpStatus": 200,
+      "activeToolCount": 12
+    },
+    {
+      "api": "anthropic-messages",
+      "model": "claude-haiku-4-5-20251001",
+      "turn": 2,
+      "sessionId": "01a07fb2-0458-71ae-b89c-c70e48f0f602",
+      "status": "measured",
+      "input": 3,
+      "output": 4,
+      "cacheRead": 0,
+      "cacheWrite": 8977,
+      "piUsage": {
+        "input": 3,
+        "output": 4,
+        "cacheRead": 0,
+        "cacheWrite": 8977,
+        "totalTokens": 8984
+      },
+      "stopReason": "stop",
+      "laneStats": {
+        "messageCount": 4,
+        "usage": {
+          "input": 6,
+          "output": 8,
+          "cacheRead": 0,
+          "cacheWrite": 16603,
+          "cacheWrite1h": 0,
+          "totalTokens": 16617
+        }
+      },
+      "billedUsdCumulative": 0.03253800000001661,
+      "httpStatus": 200,
+      "activeToolCount": 19
+    },
+    {
+      "api": "anthropic-messages",
+      "model": "claude-haiku-4-5-20251001",
+      "turn": 3,
+      "sessionId": "01a07fb2-0458-71ae-b89c-c70e48f0f602",
+      "status": "measured",
+      "input": 3,
+      "output": 4,
+      "cacheRead": 8977,
+      "cacheWrite": 12,
+      "piUsage": {
+        "input": 3,
+        "output": 4,
+        "cacheRead": 8977,
+        "cacheWrite": 12,
+        "totalTokens": 8996
+      },
+      "stopReason": "stop",
+      "laneStats": {
+        "messageCount": 6,
+        "usage": {
+          "input": 9,
+          "output": 12,
+          "cacheRead": 8977,
+          "cacheWrite": 16615,
+          "cacheWrite1h": 0,
+          "totalTokens": 25613
+        }
+      },
+      "billedUsdCumulative": 0.033287999999998874,
+      "httpStatus": 200,
+      "activeToolCount": 19
+    },
+    {
+      "api": "openai-responses",
+      "model": "gpt-5-nano",
+      "turn": 1,
+      "sessionId": "01a07fad-61c5-76a2-958c-e03fa3e4df11",
+      "status": "measured",
+      "input": 4733,
+      "output": 19,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "piUsage": {
+        "input": 4733,
+        "output": 19,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "totalTokens": 4752
+      },
+      "stopReason": "stop",
+      "laneStats": {
+        "messageCount": 2,
+        "usage": {
+          "input": 4733,
+          "output": 19,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "reasoning": 0,
+          "totalTokens": 4752
+        }
+      },
+      "billedUsdCumulative": 0.007888000000008333,
+      "httpStatus": 200,
+      "piUsageSource": "main-process LaneSnapshot.stats.usage delta; initial oldest-entry selection corrected from preserved cumulative stats",
+      "activeToolCount": 12
+    },
+    {
+      "api": "openai-responses",
+      "model": "gpt-5-nano",
+      "turn": 2,
+      "sessionId": "01a07fad-61c5-76a2-958c-e03fa3e4df11",
+      "status": "measured",
+      "input": 1111,
+      "output": 19,
+      "cacheRead": 4480,
+      "cacheWrite": 0,
+      "piUsage": {
+        "input": 1111,
+        "output": 19,
+        "cacheRead": 4480,
+        "cacheWrite": 0,
+        "totalTokens": 5610
+      },
+      "stopReason": "stop",
+      "laneStats": {
+        "messageCount": 4,
+        "usage": {
+          "input": 5844,
+          "output": 38,
+          "cacheRead": 4480,
+          "cacheWrite": 0,
+          "reasoning": 0,
+          "totalTokens": 10362
+        }
+      },
+      "billedUsdCumulative": 0.008174000000025217,
+      "httpStatus": 200,
+      "piUsageSource": "main-process LaneSnapshot.stats.usage delta; initial oldest-entry selection corrected from preserved cumulative stats",
+      "activeToolCount": 19
+    },
+    {
+      "api": "openai-responses",
+      "model": "gpt-5-nano",
+      "turn": 3,
+      "sessionId": "01a07fad-61c5-76a2-958c-e03fa3e4df11",
+      "status": "measured",
+      "input": 103,
+      "output": 19,
+      "cacheRead": 5504,
+      "cacheWrite": 0,
+      "piUsage": {
+        "input": 103,
+        "output": 19,
+        "cacheRead": 5504,
+        "cacheWrite": 0,
+        "totalTokens": 5626
+      },
+      "stopReason": "stop",
+      "laneStats": {
+        "messageCount": 6,
+        "usage": {
+          "input": 5947,
+          "output": 57,
+          "cacheRead": 9984,
+          "cacheWrite": 0,
+          "reasoning": 0,
+          "totalTokens": 15988
+        }
+      },
+      "billedUsdCumulative": 0.008460000000013679,
+      "httpStatus": 200,
+      "piUsageSource": "main-process LaneSnapshot.stats.usage delta; initial oldest-entry selection corrected from preserved cumulative stats",
+      "activeToolCount": 19
+    },
+    {
+      "api": "openai-completions",
+      "model": "gpt-5-nano",
+      "turn": 1,
+      "sessionId": "01a07fad-9136-76a2-958c-e05f4abe41a6",
+      "status": "measured",
+      "input": 4814,
+      "output": 10,
+      "cacheRead": 0,
+      "cacheWrite": null,
+      "piUsage": {
+        "input": 4814,
+        "output": 10,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "totalTokens": 4824
+      },
+      "stopReason": "stop",
+      "laneStats": {
+        "messageCount": 2,
+        "usage": {
+          "input": 4814,
+          "output": 10,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "reasoning": 0,
+          "totalTokens": 4824
+        }
+      },
+      "billedUsdCumulative": 0.008460000000013679,
+      "httpStatus": 200,
+      "piUsageSource": "main-process LaneSnapshot.stats.usage delta; initial oldest-entry selection corrected from preserved cumulative stats",
+      "activeToolCount": 12
+    },
+    {
+      "api": "openai-completions",
+      "model": "gpt-5-nano",
+      "turn": 2,
+      "sessionId": "01a07fad-9136-76a2-958c-e05f4abe41a6",
+      "status": "measured",
+      "input": 1192,
+      "output": 10,
+      "cacheRead": 4480,
+      "cacheWrite": null,
+      "piUsage": {
+        "input": 1192,
+        "output": 10,
+        "cacheRead": 4480,
+        "cacheWrite": 0,
+        "totalTokens": 5682
+      },
+      "stopReason": "stop",
+      "laneStats": {
+        "messageCount": 4,
+        "usage": {
+          "input": 6006,
+          "output": 20,
+          "cacheRead": 4480,
+          "cacheWrite": 0,
+          "reasoning": 0,
+          "totalTokens": 10506
+        }
+      },
+      "billedUsdCumulative": 0.008460000000013679,
+      "httpStatus": 200,
+      "piUsageSource": "main-process LaneSnapshot.stats.usage delta; initial oldest-entry selection corrected from preserved cumulative stats",
+      "activeToolCount": 19
+    },
+    {
+      "api": "openai-completions",
+      "model": "gpt-5-nano",
+      "turn": 3,
+      "sessionId": "01a07fad-9136-76a2-958c-e05f4abe41a6",
+      "status": "measured",
+      "input": 184,
+      "output": 10,
+      "cacheRead": 5504,
+      "cacheWrite": null,
+      "piUsage": {
+        "input": 184,
+        "output": 10,
+        "cacheRead": 5504,
+        "cacheWrite": 0,
+        "totalTokens": 5698
+      },
+      "stopReason": "stop",
+      "laneStats": {
+        "messageCount": 6,
+        "usage": {
+          "input": 6190,
+          "output": 30,
+          "cacheRead": 9984,
+          "cacheWrite": 0,
+          "reasoning": 0,
+          "totalTokens": 16204
+        }
+      },
+      "billedUsdCumulative": 0.008460000000013679,
+      "httpStatus": 200,
+      "piUsageSource": "main-process LaneSnapshot.stats.usage delta; initial oldest-entry selection corrected from preserved cumulative stats",
+      "activeToolCount": 19
+    }
+  ],
+  "requests": [
+    {
+      "api": "anthropic-messages",
+      "turn": 1,
+      "bodyBytes": 23999,
+      "reserveCny": 0.058779,
+      "inputBound": 8141,
+      "calibration": "2026-09-08T06:23:19.518Z",
+      "topLevelTools": [
+        "read_full_text",
+        "read_selection",
+        "insert_at_cursor",
+        "replace_selection",
+        "append_to_end",
+        "nomi_canvas_read",
+        "nomi_canvas_write",
+        "nomi_storyboard_write",
+        "nomi_shot_reference_write",
+        "read_timeline",
+        "inspect_timeline_range",
+        "nomi_request_tools"
+      ],
+      "toolsSha256": "c52f4df1110cf6ceecae38bfad3842ce0eafe5626646a98882a56fb1e1669d2d",
+      "deferredCount": 0,
+      "cacheMarkers": 3,
+      "rawUsage": [
+        {
+          "input_tokens": 3,
+          "output_tokens": 1,
+          "cache_read_input_tokens": 0,
+          "cache_creation_input_tokens": 7626,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 7626,
+            "ephemeral_1h_input_tokens": 0
+          }
+        },
+        {
+          "input_tokens": 3,
+          "output_tokens": 4,
+          "cache_read_input_tokens": 0,
+          "cache_creation_input_tokens": 7626,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 7626
+          }
+        }
+      ],
+      "httpStatus": 200
+    },
+    {
+      "api": "anthropic-messages",
+      "turn": 2,
+      "bodyBytes": 29168,
+      "reserveCny": 0.094962,
+      "inputBound": 13310,
+      "calibration": "2026-09-08T06:26:04.059Z",
+      "topLevelTools": [
+        "read_full_text",
+        "read_selection",
+        "insert_at_cursor",
+        "replace_selection",
+        "append_to_end",
+        "nomi_canvas_read",
+        "nomi_canvas_write",
+        "nomi_storyboard_write",
+        "nomi_shot_reference_write",
+        "read_timeline",
+        "inspect_timeline_range",
+        "nomi_request_tools",
+        "read",
+        "grep",
+        "find",
+        "ls",
+        "edit",
+        "write",
+        "bash"
+      ],
+      "toolsSha256": "b93b00d0c9bd83e5335281b10189a0f55697d4ca7e91633604ed5bd876e2fd3f",
+      "deferredCount": 0,
+      "cacheMarkers": 3,
+      "rawUsage": [
+        {
+          "input_tokens": 3,
+          "output_tokens": 1,
+          "cache_read_input_tokens": 0,
+          "cache_creation_input_tokens": 8977,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 8977,
+            "ephemeral_1h_input_tokens": 0
+          }
+        },
+        {
+          "input_tokens": 3,
+          "output_tokens": 4,
+          "cache_read_input_tokens": 0,
+          "cache_creation_input_tokens": 8977,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 8977
+          }
+        }
+      ],
+      "httpStatus": 200
+    },
+    {
+      "api": "anthropic-messages",
+      "turn": 3,
+      "bodyBytes": 29300,
+      "reserveCny": 0.06916,
+      "inputBound": 9624,
+      "calibration": "2026-09-08T06:26:04.059Z",
+      "topLevelTools": [
+        "read_full_text",
+        "read_selection",
+        "insert_at_cursor",
+        "replace_selection",
+        "append_to_end",
+        "nomi_canvas_read",
+        "nomi_canvas_write",
+        "nomi_storyboard_write",
+        "nomi_shot_reference_write",
+        "read_timeline",
+        "inspect_timeline_range",
+        "nomi_request_tools",
+        "read",
+        "grep",
+        "find",
+        "ls",
+        "edit",
+        "write",
+        "bash"
+      ],
+      "toolsSha256": "b93b00d0c9bd83e5335281b10189a0f55697d4ca7e91633604ed5bd876e2fd3f",
+      "deferredCount": 0,
+      "cacheMarkers": 3,
+      "rawUsage": [
+        {
+          "input_tokens": 3,
+          "output_tokens": 1,
+          "cache_read_input_tokens": 8977,
+          "cache_creation_input_tokens": 12,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 12,
+            "ephemeral_1h_input_tokens": 0
+          }
+        },
+        {
+          "input_tokens": 3,
+          "output_tokens": 4,
+          "cache_read_input_tokens": 8977,
+          "cache_creation_input_tokens": 12,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 12
+          }
+        }
+      ],
+      "httpStatus": 200
+    },
+    {
+      "api": "openai-responses",
+      "turn": 1,
+      "bodyBytes": 24693,
+      "reserveCny": 0.011720399999999999,
+      "topLevelTools": [
+        "read_full_text",
+        "read_selection",
+        "insert_at_cursor",
+        "replace_selection",
+        "append_to_end",
+        "nomi_canvas_read",
+        "nomi_canvas_write",
+        "nomi_storyboard_write",
+        "nomi_shot_reference_write",
+        "read_timeline",
+        "inspect_timeline_range",
+        "nomi_request_tools"
+      ],
+      "toolsSha256": "04ad60e5938c1e7e19d6919ac948eb764bbc76882b70594d283e577c48d22a36",
+      "deferredCount": 0,
+      "cacheMarkers": 0,
+      "rawUsage": [
+        {
+          "input_tokens": 4733,
+          "output_tokens": 19,
+          "total_tokens": 4752,
+          "input_tokens_details": {
+            "cached_tokens": 0,
+            "cache_write_tokens": 0
+          },
+          "output_tokens_details": {
+            "reasoning_tokens": 0
+          }
+        }
+      ],
+      "httpStatus": 200
+    },
+    {
+      "api": "openai-responses",
+      "turn": 2,
+      "bodyBytes": 31270,
+      "reserveCny": 0.014351200000000001,
+      "topLevelTools": [
+        "read_full_text",
+        "read_selection",
+        "insert_at_cursor",
+        "replace_selection",
+        "append_to_end",
+        "nomi_canvas_read",
+        "nomi_canvas_write",
+        "nomi_storyboard_write",
+        "nomi_shot_reference_write",
+        "read_timeline",
+        "inspect_timeline_range",
+        "nomi_request_tools",
+        "read",
+        "grep",
+        "find",
+        "ls",
+        "edit",
+        "write",
+        "bash"
+      ],
+      "toolsSha256": "0dc1231a4ab6205008708c444e4629d6eef87397b2ac8e67f0ceeb62a0220689",
+      "deferredCount": 0,
+      "cacheMarkers": 0,
+      "rawUsage": [
+        {
+          "input_tokens": 5591,
+          "output_tokens": 19,
+          "total_tokens": 5610,
+          "input_tokens_details": {
+            "cached_tokens": 4480,
+            "cache_write_tokens": 0
+          },
+          "output_tokens_details": {
+            "reasoning_tokens": 0
+          }
+        }
+      ],
+      "httpStatus": 200
+    },
+    {
+      "api": "openai-responses",
+      "turn": 3,
+      "bodyBytes": 32915,
+      "reserveCny": 0.0150092,
+      "topLevelTools": [
+        "read_full_text",
+        "read_selection",
+        "insert_at_cursor",
+        "replace_selection",
+        "append_to_end",
+        "nomi_canvas_read",
+        "nomi_canvas_write",
+        "nomi_storyboard_write",
+        "nomi_shot_reference_write",
+        "read_timeline",
+        "inspect_timeline_range",
+        "nomi_request_tools",
+        "read",
+        "grep",
+        "find",
+        "ls",
+        "edit",
+        "write",
+        "bash"
+      ],
+      "toolsSha256": "0dc1231a4ab6205008708c444e4629d6eef87397b2ac8e67f0ceeb62a0220689",
+      "deferredCount": 0,
+      "cacheMarkers": 0,
+      "rawUsage": [
+        {
+          "input_tokens": 5607,
+          "output_tokens": 19,
+          "total_tokens": 5626,
+          "input_tokens_details": {
+            "cached_tokens": 5504,
+            "cache_write_tokens": 0
+          },
+          "output_tokens_details": {
+            "reasoning_tokens": 0
+          }
+        }
+      ],
+      "httpStatus": 200
+    },
+    {
+      "api": "openai-completions",
+      "turn": 1,
+      "bodyBytes": 24991,
+      "reserveCny": 0.0118396,
+      "topLevelTools": [
+        "read_full_text",
+        "read_selection",
+        "insert_at_cursor",
+        "replace_selection",
+        "append_to_end",
+        "nomi_canvas_read",
+        "nomi_canvas_write",
+        "nomi_storyboard_write",
+        "nomi_shot_reference_write",
+        "read_timeline",
+        "inspect_timeline_range",
+        "nomi_request_tools"
+      ],
+      "toolsSha256": "9f8430b531e27d837ce600b638c3b7a5c658430c473f3c860846326e4b3610de",
+      "deferredCount": 0,
+      "cacheMarkers": 0,
+      "rawUsage": [
+        {
+          "prompt_tokens": 4814,
+          "completion_tokens": 10,
+          "total_tokens": 4824,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 0
+          }
+        }
+      ],
+      "httpStatus": 200
+    },
+    {
+      "api": "openai-completions",
+      "turn": 2,
+      "bodyBytes": 30226,
+      "reserveCny": 0.0139336,
+      "topLevelTools": [
+        "read_full_text",
+        "read_selection",
+        "insert_at_cursor",
+        "replace_selection",
+        "append_to_end",
+        "nomi_canvas_read",
+        "nomi_canvas_write",
+        "nomi_storyboard_write",
+        "nomi_shot_reference_write",
+        "read_timeline",
+        "inspect_timeline_range",
+        "nomi_request_tools",
+        "read",
+        "grep",
+        "find",
+        "ls",
+        "edit",
+        "write",
+        "bash"
+      ],
+      "toolsSha256": "cc3738c7e615fa6facb477d07aae0223acfb7128f6d48e15753023e519146a6e",
+      "deferredCount": 0,
+      "cacheMarkers": 0,
+      "rawUsage": [
+        {
+          "prompt_tokens": 5672,
+          "completion_tokens": 10,
+          "total_tokens": 5682,
+          "prompt_tokens_details": {
+            "cached_tokens": 4480
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 0
+          }
+        }
+      ],
+      "httpStatus": 200
+    },
+    {
+      "api": "openai-completions",
+      "turn": 3,
+      "bodyBytes": 30333,
+      "reserveCny": 0.0139764,
+      "topLevelTools": [
+        "read_full_text",
+        "read_selection",
+        "insert_at_cursor",
+        "replace_selection",
+        "append_to_end",
+        "nomi_canvas_read",
+        "nomi_canvas_write",
+        "nomi_storyboard_write",
+        "nomi_shot_reference_write",
+        "read_timeline",
+        "inspect_timeline_range",
+        "nomi_request_tools",
+        "read",
+        "grep",
+        "find",
+        "ls",
+        "edit",
+        "write",
+        "bash"
+      ],
+      "toolsSha256": "cc3738c7e615fa6facb477d07aae0223acfb7128f6d48e15753023e519146a6e",
+      "deferredCount": 0,
+      "cacheMarkers": 0,
+      "rawUsage": [
+        {
+          "prompt_tokens": 5688,
+          "completion_tokens": 10,
+          "total_tokens": 5698,
+          "prompt_tokens_details": {
+            "cached_tokens": 5504
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 0
+          }
+        }
+      ],
+      "httpStatus": 200
+    }
+  ],
+  "cost": {
+    "generationRequests": 11,
+    "reportedSequenceRequests": 9,
+    "calibrationRequests": 2,
+    "billingBalanceStart": 185.691884,
+    "billingBalanceEnd": 185.725172,
+    "billedUsd": 0.033288,
+    "creditsConsumed": 0.33288,
+    "creditsPerUsd": 10,
+    "budgetCny": 0.3,
+    "budgetCnyPerUsd": 7,
+    "billedCnyAtBudgetRate": 0.233016,
+    "fxReference": {
+      "usdCny": 6.7108,
+      "source": "https://www.investing.com/currencies/usd-cny-historical-data",
+      "date": "2026-09-08"
+    },
+    "firstCalibrationSource": ".tmp/pd1-cache-1788848451432.json",
+    "secondCalibrationSource": ".tmp/pd1-cache-1788848597304.json",
+    "completeAnthropicSource": ".tmp/pd1-cache-1788848761824.json"
+  },
+  "prices": {
+    "anthropic-messages": {
+      "model": "claude-haiku-4-5-20251001",
+      "group": "default",
+      "rates": {
+        "input": 1,
+        "cached_input": 0.1,
+        "cache_write_5m": 1.25,
+        "cache_write_1h": 2,
+        "output": 5
+      },
+      "effectiveRates": {
+        "input": 0.8,
+        "cached_input": 0.08,
+        "cache_write_5m": 1,
+        "cache_write_1h": 1.6,
+        "output": 4
+      },
+      "source": "https://apimart.ai/pricing"
+    },
+    "openai-responses": {
+      "model": "gpt-5-nano",
+      "group": "default",
+      "rates": {
+        "input": 0.05,
+        "cached_input": 0.005,
+        "output": 0.4
+      },
+      "effectiveRates": {
+        "input": 0.04,
+        "cached_input": 0.004,
+        "output": 0.32
+      },
+      "source": "https://apimart.ai/pricing"
+    },
+    "openai-completions": {
+      "model": "gpt-5-nano",
+      "group": "default",
+      "rates": {
+        "input": 0.05,
+        "cached_input": 0.005,
+        "output": 0.4
+      },
+      "effectiveRates": {
+        "input": 0.04,
+        "cached_input": 0.004,
+        "output": 0.32
+      },
+      "source": "https://apimart.ai/pricing"
+    }
+  },
+  "sourceCatalogUnchanged": true,
+  "temporaryCredentialRemoved": true,
+  "nativeDeferredLiveCertified": false,
+  "codexResponses": "unmeasured: APIMart does not provide the native Codex OAuth transport",
+  "additionalToolsInEveryRequest": 0
+}

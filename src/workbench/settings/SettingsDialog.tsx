@@ -25,8 +25,10 @@ import { defaultAutomationPolicySettings } from './settingsAutomationView'
 import type { AutomationPolicySettings } from '../../../electron/settings/automationPolicyContract'
 import type { ProductionPolicyRequirement } from '../production/productionPolicyRecovery'
 import { hasSettingsUnsavedChanges } from './settingsUnsavedChanges'
+import { AttentionSoundSection } from './AttentionSoundSection'
 import { TelemetrySection } from './TelemetrySection'
 import { DiagnosticsBundleSection } from './DiagnosticsBundleSection'
+import { AgentTraceSection } from './AgentTraceSection'
 
 // ⚠️ 必须懒加载：SettingsDialog 本身是 NomiStudioApp 里**同步 import** 的，而接入面整棵树
 // （OnboardingWizard / 各家 VendorCard / ComfyUI 那套）是个 160KB+ 的独立 chunk。直接 import
@@ -356,6 +358,7 @@ export function SettingsDialog({
             ) : tab === 'general' ? (
               <div>
                 <div className="mb-4 text-body font-medium text-nomi-ink">{t('settings.general.title')}</div>
+                <AgentTraceSection />
                 <ScreenshotHotkeySection />
                 <CanvasGestureSection />
                 {/* 语言 / 外观归位到这里（§1.5「归位」）：它们过去挤在 studio 顶栏右簇 + 项目库顶栏，
@@ -377,7 +380,7 @@ export function SettingsDialog({
                         onClick={() => setAppLocale(option)}
                         className={cn(
                           'rounded-nomi-sm border px-2.5 py-1.5 text-caption cursor-pointer',
-                          'transition-colors duration-[var(--nomi-transition-fast)]',
+                          'transition-colors duration-nomi-fast ease-nomi-fast',
                           option === locale
                             ? 'border-nomi-accent bg-nomi-accent-soft text-nomi-accent'
                             : 'border-nomi-line bg-nomi-paper text-nomi-ink-60 hover:bg-nomi-ink-05',
@@ -398,6 +401,7 @@ export function SettingsDialog({
                 </div>
                 {/* 「隐私与诊断」是一格两半：TelemetrySection 管「发不发匿名计数」，
                     DiagnosticsBundleSection 管「出事时怎么把本机证据交出来」。同块相邻，不另起 tab。 */}
+                <AttentionSoundSection />
                 <TelemetrySection />
                 <DiagnosticsBundleSection />
               </div>

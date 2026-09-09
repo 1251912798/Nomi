@@ -1,0 +1,98 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-08-lane-legacy-import-plan",
+  "problem_type": "legacy_conversion_order_and_execution_authority",
+  "symptom": "Old host items have no canonical tool pairing and old native metadata could be mistaken for current execution authority.",
+  "direct_cause": "The new public append API accepts unpaired messages; legacy arrays and native branches need conversion before append.",
+  "class_root": "No pure source-aware conversion boundary preserves every source position while separating inert history from executable messages.",
+  "affected_population": [
+    "v4 context records and direct pi envelopes",
+    "host snapshots",
+    "unbound AI SDK histories"
+  ],
+  "scope_paths": [
+    "electron/agentLane/laneLegacyImportPlan.mts"
+  ],
+  "entry_points": [
+    "planLegacyImport"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "Approved stage-4 migration maps private Nomi formats into the existing public append API. Source format validation is shared with laneLegacyIntegrity.",
+  "invariants": [
+    "Host N items plus T tool items yield N+T parts in array order.",
+    "Only proven v4 thread identity suppresses duplicate host history, including cleared contexts.",
+    "Unknown and unpaired content is inert legacy history, never current approval/task configuration."
+  ],
+  "generality_proof": "All three validated source formats converge on one ordered append plan with complete sourceIndex coverage and a shared tool-pair check.",
+  "shared_boundaries": [
+    {
+      "path": "electron/agentLane/laneLegacyImportPlan.mts",
+      "symbol": "planLegacyImport",
+      "responsibility": "Convert trusted sources to stable, non-executing append operations."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "electron/agentLane/laneLegacySources.ts",
+      "entry_point": "parseLegacySource",
+      "disposition": "enforced",
+      "evidence": "All decoded source kinds pass integrity validation then this plan before import."
+    },
+    {
+      "path": "tests/agent-runtime/lane-legacy-import-plan.test.mts",
+      "entry_point": "three-source public append tests",
+      "disposition": "not-affected",
+      "evidence": "The retained synthetic regression exercises public append and cold projection including orphan pairs; obsolete P2 runtime probe was removed in step 4."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Array-order and orphan-result mistakes recur across every old thread and source format.",
+    "same_class_scan": [
+      "Read laneProjection message/custom part contributions and host item union.",
+      "Read stage3-probe-p2-legacy-import positive control and pi appendMessage implementation."
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "electron/agentLane/laneLegacyImportPlan.mts",
+    "invariant": "Every original item retains its position and no old executable record acquires current authority.",
+    "failure_mode": "Reject invalid sources before planning; unsupported payloads and invalid pairs become inert custom entries.",
+    "exception_policy": "none",
+    "strategy": "Pure ordered conversion after source validation and before any append.",
+    "artifacts": [
+      "electron/agentLane/laneLegacyImportPlan.mts"
+    ]
+  },
+  "regression_tests": [
+    "tests/agent-runtime/lane-legacy-import-plan.test.mts"
+  ],
+  "class_regression_tests": [
+    "tests/agent-runtime/lane-legacy-import-plan.test.mts"
+  ],
+  "legacy_paths": {
+    "status": "not-applicable",
+    "removed_paths": [],
+    "rationale": "First implementation of the approved pure migration plan; legacy runtime removal remains step 4."
+  },
+  "dependency_lifecycle": {
+    "decision": "retain-with-exit",
+    "rationale": "Read only old pi 0.84.3/0.85.1 snapshots using the installed 0.85.1 public session contract; no dependency change.",
+    "current": "pi 0.85.1",
+    "target": "pi 0.85.1 public append API",
+    "exit_criteria": [
+      "Step 4 deletes the old runtime writer/loader; shared legacy reader remains for existing source files."
+    ]
+  },
+  "migration": "Plan only; raw bytes are retained by the source owner and the following transaction archives them.",
+  "residual_risks": [
+    "Durable append, archive and workspace admission remain the next subtask."
+  ],
+  "invariant_owner_layer": {
+    "layer": "electron/agentLane/laneLegacyImportPlan.mts",
+    "tests": [
+      "tests/agent-runtime/lane-legacy-import-plan.test.mts"
+    ],
+    "why": "Owns ordered source conversion before any public append."
+  }
+}

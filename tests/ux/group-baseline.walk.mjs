@@ -1,17 +1,16 @@
 // R8 前置：把「组 / 选择浮条 / 节点浮条 / 提示词 composer + @ 弹层」的**真实样子**拍下来，
 // 样张才能是「真实布局 + 改动」而不是脑补（CLAUDE.md 三闸①）。
 // 用法: node tests/ux/group-baseline.walk.mjs
-import { launchNomiApp } from './_launchApp.mjs'
+import { launchNomiApp, ACCEPTANCE_WIDE_VIEWPORT } from './_launchApp.mjs'
+import { findCanvasBlankPoint, expectNodeInsideCanvas } from './_canvasHit.mjs'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { screenshotSettled } from './_assert.mjs'
+import { expect, expectVisible, screenshotSettled } from './_assert.mjs'
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const shotsDir = path.join(repoRoot, 'tests/ux/shots/group-baseline')
 fs.rmSync(shotsDir, { recursive: true, force: true })
 fs.mkdirSync(shotsDir, { recursive: true })
-const userData = path.join(repoRoot, '.tmp', 'nomi-groupbase-userdata')
-fs.mkdirSync(userData, { recursive: true })
 
 let n = 0
 async function snap(win, name, clip) {
@@ -21,8 +20,9 @@ async function snap(win, name, clip) {
   console.log(`  · shot ${tag}`)
 }
 async function snapNear(win, name, locator, pad = 40) {
-  const box = await locator.boundingBox().catch(() => null)
-  if (!box) { console.error(`  ⚠️ 找不到 ${name} 的盒子`); return null }
+  await expectVisible(locator, `${name} 的真实控件已出现`)
+  const box = await locator.boundingBox()
+  if (!box) throw new Error(`${name} 没有可截图的盒子`)
   await snap(win, name, {
     x: Math.max(0, box.x - pad), y: Math.max(0, box.y - pad),
     width: Math.min(1400, box.width + pad * 2), height: Math.min(900, box.height + pad * 2),
@@ -32,39 +32,36 @@ async function snapNear(win, name, locator, pad = 40) {
 
 const { app, win } = await launchNomiApp({
   name: 'group-baseline',
-  userDataDir: userData,
+  ...(process.argv.includes('--wide') ? { viewportSize: ACCEPTANCE_WIDE_VIEWPORT } : {}),
   args: ['--no-proxy-server'],
   settleMs: 0,
+  initialLocalStorage: { 'nomi:splash:v1': 'seen', 'nomi:journey-tour:v1': 'seen' },
 })
-await win.evaluate(() => {
-  window.localStorage.setItem('__nomiE2E', '1')
-  for (const k of ['nomi:splash:v1', 'nomi:journey-tour:v1', 'nomi:canvas-gesture-hint:v1']) {
-    window.localStorage.setItem(k, 'seen')
-  }
-})
-await win.reload()
-await win.waitForLoadState('domcontentloaded')
-await win.waitForTimeout(2200)
-
-for (const label of ['新建空白项目', '开始一个项目']) {
-  const el = win.locator('button', { hasText: label }).first()
-  if (await el.count()) { await el.click({ timeout: 4000 }).catch(() => {}); break }
-}
-await win.waitForTimeout(2500)
-
-const genTab = win.locator('button', { hasText: /^生成$/ }).first()
-if (await genTab.count()) await genTab.click({ timeout: 5000 }).catch(() => {})
-await win.waitForTimeout(2500)
+await win.getByRole('button', { name: '新建空白项目', exact: false }).first().click()
+await win.getByRole('button', { name: '生成', exact: true }).click()
 
 const addImage = win.locator('[aria-label="添加图片节点"]').first()
+await expectVisible(addImage, '生成画布已可添加节点')
 if (!(await addImage.count())) { console.error('❌ 找不到「添加图片节点」'); await app.close(); process.exit(1) }
-for (let i = 0; i < 4; i += 1) { await addImage.click({ timeout: 4000 }); await win.waitForTimeout(280) }
+let firstCreatedId
+for (let i = 0; i < 4; i += 1) {
+  await addImage.click({ timeout: 4000 })
+  await win.waitForTimeout(280)
+  if (!firstCreatedId) {
+    firstCreatedId = await win.locator('.generation-canvas-v2-node[data-node-id]').first().getAttribute('data-node-id')
+    if (!firstCreatedId) throw new Error('第一张新卡必须有真实 ID，不能把后续可见卡当成首卡')
+  }
+}
 await win.waitForTimeout(900)
+await expectNodeInsideCanvas(win, win.locator(`.generation-canvas-v2-node[data-node-id="${firstCreatedId}"]`), '连续建完四张后首卡完整在舞台内')
 await snap(win, 'canvas-4-nodes')
 
 // 全选 → 选择浮条（真实样子：计数 + 生成 N + 编组 + 关闭）
-await win.locator('.generation-canvas-v2, [data-canvas-stage]').first().click({ position: { x: 40, y: 40 } }).catch(() => {})
+const blank = await findCanvasBlankPoint(win)
+if (!blank) throw new Error('画布没有可点击的真实空白点')
+await win.mouse.click(blank.x, blank.y)
 await win.keyboard.press('Control+a')
+await expect(win.locator('.generation-canvas-v2-node[data-selected="true"]')).toHaveCount(4)
 await win.waitForTimeout(600)
 const toolbar = win.locator('.generation-canvas-v2__selection-toolbar').first()
 await snapNear(win, 'selection-toolbar-real', toolbar, 24)
@@ -80,23 +77,14 @@ await snapNear(win, 'group-frame-real', groupBox, 30)
 const groupLabel = win.locator('.generation-canvas-v2__group-box-label').first()
 await snapNear(win, 'group-label-real', groupLabel, 16)
 
-// 单选一个节点 → composer 的真实样子
-await win.keyboard.press('Escape')
-await win.waitForTimeout(300)
-const firstNode = win.locator('[data-node-id]').first()
-await firstNode.click({ timeout: 4000 }).catch(() => {})
-await win.waitForTimeout(900)
+// 先证单选，再取 composer；旧尺寸 class 已退役，等待它只会吞掉定位超时。
+await win.getByRole('button', { name: '清除选择', exact: true }).click()
+const firstNode = win.locator('.generation-canvas-v2-node[data-node-id]').first()
+await firstNode.click({ timeout: 4000 })
+await expect(win.locator('.generation-canvas-v2-node[data-selected="true"]')).toHaveCount(1)
 await snap(win, 'canvas-node-selected')
-const composer = win.locator('.generation-canvas-v2 [class*="min-h-\\[150px\\]"]').first()
-const cbox = await composer.boundingBox().catch(() => null)
-if (cbox) {
-  await snap(win, 'composer-real', {
-    x: Math.max(0, cbox.x - 20), y: Math.max(0, cbox.y - 20),
-    width: cbox.width + 40, height: cbox.height + 40,
-  })
-} else {
-  console.error('  ⚠️ composer 盒子没读到，改拍整窗下半')
-}
+const composer = firstNode.locator('.generation-canvas-v2-node__composer-card')
+await snapNear(win, 'composer-real', composer, 20)
 
 // 节点浮动工具栏（图片节点的那条，@ 与抽帧共用同一 shell）
 const nodeToolbar = win.locator('[role="toolbar"]').first()

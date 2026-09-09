@@ -1,18 +1,25 @@
 // Agent lane · 主进程侧的接缝（CJS 这一半）
 //
-// 与 `electron/harness/runtime/runtimePort.ts` 同一个形状、同一条理由：pi 的包是
+// 与旧运行核那道端口同一个形状、同一条理由：pi 的包是
 // ESM-only（探针报告 §2.3 实测 `require()` 恒 `ERR_PACKAGE_PATH_NOT_EXPORTED`），
 // 所以主进程只能通过动态 `import()` 摸到它。这道门外面只出现 Nomi 自己的结构。
 //
 // **和旧接缝的区别只有一处，但那一处是重做的全部理由**：旧的 `RuntimeTurnResult`
-// 把一轮回复压成 `text: string` + `toolCalls[]` 两堆（`runtimePort.ts:122-133`），
+// 把一轮回复压成 `text: string` + `toolCalls[]` 两堆（`harness/runtime/runtimePort.ts` 的
+// `RuntimeTurnResult`，随阶段 4 的切换 PR 一起删），
 // 「先说什么后做什么」在数据里就不存在了；这道门送出去的是 `LaneProjection`，
 // 一串**有序的段**，顺序是记下来的不是推出来的。
-import type { LaneHandle, LanePendingApproval, LaneProjection } from '../shared/agentLane/laneContracts'
+import type {
+  LaneHandle, LanePendingApproval, LaneProjection, LaneSkillIndexEntry, LaneTaskFacts, LaneWorkspaceHandle,
+} from '../shared/agentLane/laneContracts'
 import { LaneDomainFailure } from '../shared/agentLane/laneToolContract'
 import type { LaneToolEffects, LaneToolFailureShape, LaneToolSpec } from '../shared/agentLane/laneToolContract'
-import type { NomiModelConfig } from '../harness/runtime/runtimePort'
-import type { ProjectAgentApprovalPolicy, ProjectAgentWorkMode } from '../shared/projectAgentContracts'
+import type { RuntimeToolCall } from '../shared/agentCapabilities/transportContracts'
+import type { LaneComposerContext, LaneInputMessage } from '../shared/agentLane/laneDesktopContracts'
+import type { NomiModelConfig } from '../shared/agentLane/laneModelConfig'
+import type { ProjectAgentApprovalPolicy, ProjectAgentWorkMode } from '../shared/agentCapabilities/capabilityApprovalPolicy';
+import type { LaneApprovalSubjectResolver } from '../shared/agentLane/laneApproval'
+import type { SkillRecord } from '../skills/skillStore'
 
 export type { LaneHandle, LaneProjection }
 export type { LaneToolEffects, LaneToolFailureShape, LaneToolSpec }
@@ -41,8 +48,10 @@ export type LaneToolOutcome =
  * 活着的领域 port。焊在一起的结果就是想扫一眼「模型看到了什么」都得先起半个 App——
  * 于是没人扫，于是 `z.record(z.unknown())` 活了半年。
  */
+export type LaneToolExecutionContext = { toolCallId: string; signal: AbortSignal }
+
 export type LaneToolDescriptor = LaneToolSpec & {
-  execute(args: unknown, context: { toolCallId: string; signal: AbortSignal }): Promise<LaneToolOutcome>
+  execute(args: unknown, context: LaneToolExecutionContext): Promise<LaneToolOutcome>
 }
 
 /**
@@ -90,6 +99,7 @@ export function bindLaneTool(
  * 「自动改」是允许的，下一次预检就该按新档位走。传快照等于把用户刚做的选择冻在开 lane 那一刻。
  */
 export interface LaneApprovalOptions {
+  resolveSubject?: LaneApprovalSubjectResolver
   policy?(): ProjectAgentApprovalPolicy | undefined
   workMode?(): ProjectAgentWorkMode | undefined
   /**
@@ -102,6 +112,8 @@ export interface LaneApprovalOptions {
 }
 
 export interface OpenLaneOptions {
+  fetch: typeof globalThis.fetch
+  native?: { settingsRoot: string; skills: readonly SkillRecord[] }
   /** 项目目录。会话落在 `<project>/.nomi/agent-sessions/` 下。 */
   projectDir: string
   /** 一条 lane = 一条独立的对话轨。默认 `main`。 */
@@ -111,9 +123,36 @@ export interface OpenLaneOptions {
   model: NomiModelConfig
   /** 宿主的身份提示词。`Available tools` / `Guidelines` 两段由 `openLane` 按 `tools` 自己拼，别在这里手写。 */
   systemPrompt: string
+  /** Snapshot the composer per message; activate only after pi consumes that message. */
+  input?: {
+    capture(): LaneComposerContext
+    activate(context: LaneComposerContext): void
+    rewritePayload(payload: unknown, api: string): unknown
+    providerContent(message: LaneInputMessage, previous?: LaneComposerContext): Promise<string | Array<{ type: 'text'; text: string } | { type: 'image'; data: string; mimeType: string }>>
+  }
   tools: readonly LaneToolDescriptor[]
+  /** Domain ports prepare before confirmation, then persist the accepted authority in the lane. */
+  toolLifecycle?: {
+    prepare(call: RuntimeToolCall, signal: AbortSignal): Promise<void>
+    approved(call: RuntimeToolCall, record: (type: string, data: Record<string, string | number>) => Promise<void>): Promise<void>
+    settled(call: RuntimeToolCall): void
+  }
+  /**
+   * 这条 lane 看得见的技能索引（name + description + SKILL.md 绝对路径）。
+   * 正文**不在这里**——模型按 description 自己决定去 `read` 哪一条（方案 §3.4 的「自动触发就是 description」）。
+   * 缺省 = 这个项目没有技能，那一段整个不出现（`formatSkillsForPrompt` 对空数组返回空串）。
+   */
+  skills?: readonly LaneSkillIndexEntry[]
   /** 审批闸。**不传 = 不装闸**（阶段 1 的影子夹具就是这样跑的）；装了就是 fail-closed 的那一套。 */
   approval?: LaneApprovalOptions
+  /**
+   * 任务卡的领域读口（方案 §2.2 G13）。**给函数，不给快照**：任务卡上的进度和金额每秒都在变，
+   * 传一份快照进来就等于把「这张卡现在什么样」冻在开 lane 那一刻。
+   *
+   * 不传 = 任务卡只画标题（`LanePart.facts` 缺席）。这是诚实的降级：join 不到就说 join 不到，
+   * 不给一个「排队中」——那会让用户以为有东西在跑。
+   */
+  tasks?: LaneTaskFactsResolver
   /**
    * 传输层看门狗的两个预算（毫秒）。缺省是 `laneHost` 的 `LANE_FIRST_RESPONSE_MS` /
    * `LANE_IDLE_MS`。
@@ -124,7 +163,25 @@ export interface OpenLaneOptions {
    */
   watchdog?: { firstResponseMs?: number; idleMs?: number }
   /** 一个回合最多几次模型请求。缺省 `LANE_MAX_MODEL_REQUESTS`。 */
-  limits?: { maxModelRequests?: number }
+  limits?: { maxModelRequests?: number; contextTokenBudget?: number }
 }
 
+/** `productionRunId` → 领域投影出的那一份事实。解不出来返回 `undefined`，**不返回空对象**。 */
+export type LaneTaskFactsResolver = (productionRunId: string) => LaneTaskFacts | undefined
+
 export type OpenLane = (options: OpenLaneOptions) => Promise<LaneHandle>
+
+export type OpenDesktopLaneWorkspace = (options: Omit<OpenLaneOptions, 'model'> & {
+  model?: NomiModelConfig
+  approval: LaneApprovalOptions
+  toolLifecycle: NonNullable<OpenLaneOptions['toolLifecycle']>
+}) => Promise<LaneWorkspaceHandle>
+
+export type RunLaneSingleShot = (options: {
+  fetch: typeof globalThis.fetch
+  model: NomiModelConfig
+  systemPrompt?: string
+  prompt: string
+  input?: OpenLaneOptions['input']
+  signal?: AbortSignal
+}) => Promise<LaneProjection>

@@ -1,0 +1,50 @@
+另一棵 worktree 在跑 gates（pid=43012 cwd=/Users/aoqimin/Desktop/Nomi-skill-ui 已跑 0.7 分钟）；排队等待
+另一棵 worktree 在跑 gates（pid=43012 cwd=/Users/aoqimin/Desktop/Nomi-skill-ui 已跑 1.2 分钟）；排队等待
+另一棵 worktree 在跑 gates（pid=43012 cwd=/Users/aoqimin/Desktop/Nomi-skill-ui 已跑 1.7 分钟）；排队等待
+另一棵 worktree 在跑 gates（pid=43012 cwd=/Users/aoqimin/Desktop/Nomi-skill-ui 已跑 2.2 分钟）；排队等待
+另一棵 worktree 在跑 gates（pid=43012 cwd=/Users/aoqimin/Desktop/Nomi-skill-ui 已跑 2.7 分钟）；排队等待
+另一棵 worktree 在跑 gates（pid=43012 cwd=/Users/aoqimin/Desktop/Nomi-skill-ui 已跑 3.2 分钟）；排队等待
+另一棵 worktree 在跑 gates（pid=43012 cwd=/Users/aoqimin/Desktop/Nomi-skill-ui 已跑 3.7 分钟）；排队等待
+另一棵 worktree 在跑 gates（pid=43012 cwd=/Users/aoqimin/Desktop/Nomi-skill-ui 已跑 4.2 分钟）；排队等待
+另一棵 worktree 在跑 gates（pid=43012 cwd=/Users/aoqimin/Desktop/Nomi-skill-ui 已跑 4.7 分钟）；排队等待
+✔ P4 · a priced model yields a cost that equals the hand-computed per-million-token amount (63.680166ms)
+✔ P4 · cache reads are billed at the cache rate, not the input rate (7.863667ms)
+✔ P4 · an omitted cache rate falls back to the input rate, never to free (5.957375ms)
+✔ G3d · 首轮：一条回合都还没结算时，三行全部「不可知」，一个 0 都不画 (2.180416ms)
+✔ G3d · 无价目模型：花费「不可知」，不是 $0.00；token 那几列照常有数 (5.72375ms)
+✔ G3d · 免费模型：花费是「不适用」，和「不可知」不是同一句话 (5.302583ms)
+✔ G3d · 刚压缩完：上下文「不可知」，因为旧数字描述的是压缩前的上下文 (5.204459ms)
+✔ 推理：不会思考的模型「不适用」；会思考但供应商没报的「不可知」；报了的才有数 (9.260709ms)
+✔ 推理档由 getSupportedThinkingLevels derive；off 被标 null 的模型关不掉思考 (2.854125ms)
+✔ P-D1 anthropic-messages / enabled: locked → unlock → sticky third request (59.980291ms)
+ℹ {"api":"anthropic-messages","arm":"enabled","paidCalls":0,"catalogCount":10,"unlockFixtureCount":1,"topLevelCounts":[12,18,18],"toolArrayBytes":[18515,22940,22940]}
+✔ P-D1 anthropic-messages / default: locked → unlock → sticky third request (6.437417ms)
+ℹ {"api":"anthropic-messages","arm":"default","paidCalls":0,"catalogCount":10,"unlockFixtureCount":1,"topLevelCounts":[12,18,18],"toolArrayBytes":[18515,22814,22814]}
+✔ P-D1 anthropic-messages / without-addedToolNames: locked → unlock → sticky third request (4.54025ms)
+ℹ {"api":"anthropic-messages","arm":"without-addedToolNames","paidCalls":0,"catalogCount":10,"unlockFixtureCount":1,"topLevelCounts":[12,18,18],"toolArrayBytes":[18515,22814,22814]}
+✔ P-D1 openai-responses / enabled: locked → unlock → sticky third request (22.800708ms)
+ℹ {"api":"openai-responses","arm":"enabled","paidCalls":0,"catalogCount":10,"unlockFixtureCount":1,"topLevelCounts":[12,12,12],"toolArrayBytes":[19091,19091,19091]}
+✔ P-D1 openai-responses / default: locked → unlock → sticky third request (4.085042ms)
+ℹ {"api":"openai-responses","arm":"default","paidCalls":0,"catalogCount":10,"unlockFixtureCount":1,"topLevelCounts":[12,18,18],"toolArrayBytes":[19091,23298,23298]}
+✔ P-D1 openai-responses / without-addedToolNames: locked → unlock → sticky third request (4.205084ms)
+ℹ {"api":"openai-responses","arm":"without-addedToolNames","paidCalls":0,"catalogCount":10,"unlockFixtureCount":1,"topLevelCounts":[12,18,18],"toolArrayBytes":[19091,23298,23298]}
+✔ P-D1 openai-codex-responses / enabled: locked → unlock → sticky third request (6.945917ms)
+ℹ {"api":"openai-codex-responses","arm":"enabled","paidCalls":0,"catalogCount":10,"unlockFixtureCount":1,"topLevelCounts":[12,12,12],"toolArrayBytes":[19259,19259,19259]}
+✔ P-D1 openai-codex-responses / default: locked → unlock → sticky third request (3.738ms)
+ℹ {"api":"openai-codex-responses","arm":"default","paidCalls":0,"catalogCount":10,"unlockFixtureCount":1,"topLevelCounts":[12,18,18],"toolArrayBytes":[19259,23550,23550]}
+✔ P-D1 openai-codex-responses / without-addedToolNames: locked → unlock → sticky third request (5.059541ms)
+ℹ {"api":"openai-codex-responses","arm":"without-addedToolNames","paidCalls":0,"catalogCount":10,"unlockFixtureCount":1,"topLevelCounts":[12,18,18],"toolArrayBytes":[19259,23550,23550]}
+✔ P-D1 openai-completions / enabled: locked → unlock → sticky third request (6.385083ms)
+ℹ {"api":"openai-completions","arm":"enabled","paidCalls":0,"catalogCount":10,"unlockFixtureCount":1,"topLevelCounts":[12,18,18],"toolArrayBytes":[19427,23802,23802]}
+✔ P-D1 openai-completions / default: locked → unlock → sticky third request (3.064792ms)
+ℹ {"api":"openai-completions","arm":"default","paidCalls":0,"catalogCount":10,"unlockFixtureCount":1,"topLevelCounts":[12,18,18],"toolArrayBytes":[19427,23802,23802]}
+✔ P-D1 openai-completions / without-addedToolNames: locked → unlock → sticky third request (3.3545ms)
+ℹ {"api":"openai-completions","arm":"without-addedToolNames","paidCalls":0,"catalogCount":10,"unlockFixtureCount":1,"topLevelCounts":[12,18,18],"toolArrayBytes":[19427,23802,23802]}
+ℹ tests 21
+ℹ suites 0
+ℹ pass 21
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1119.6385

@@ -1,3 +1,4 @@
+import { CANVAS_MIN_ZOOM } from '../model/canvasFitBounds'
 // 画布视口手势控制器（从 GenerationCanvas 抽出，R9/R12 防巨壳）。
 // 收口三类输入（2026-07-31 用户拍板 #832，2026-08-03 补齐二选一，2026-08-08 平移改回默认手势）：
 //   · 滚轮：**语义可配**（canvasGesturePreference）——默认缩放锚光标（ComfyUI 式），
@@ -186,7 +187,7 @@ export function useCanvasViewportGestures({
     setViewport({ zoom: nextZoom, offset: nextOffset })
   }, [offsetRef, setViewport, zoomRef])
 
-  // 离散跳转（适应视图 / 重置 / 聚焦节点）的平滑过渡：rAF 在 ~140ms（--nomi-transition-fast）
+  // 离散跳转（适应视图 / 重置 / 聚焦节点）的平滑过渡：rAF 在 ~140ms（--nomi-duration-fast）
   // 内 easeOutCubic 插值 zoom+offset。连续控件（缩放条/捏合）不走这里，保持即时跟手。
   const animateViewportTo = React.useCallback((
     targetZoom: number,
@@ -438,7 +439,7 @@ export function useCanvasViewportGestures({
     }
     if (!stageRef.current) return
     const rect = stageRef.current.getBoundingClientRect()
-    const nextZoom = clampNumber(zoomRef.current * getWheelZoomFactor(event), 0.2, 3)
+    const nextZoom = clampNumber(zoomRef.current * getWheelZoomFactor(event), CANVAS_MIN_ZOOM, 3)
     zoomAtStagePoint(nextZoom, { x: event.clientX - rect.left, y: event.clientY - rect.top })
   }, [gestureScheme, offsetRef, scheduleOffset, setContextNodeMenu, stageRef, zoomAtStagePoint, zoomRef])
 

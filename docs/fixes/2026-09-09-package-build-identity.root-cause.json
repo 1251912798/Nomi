@@ -1,0 +1,99 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-09-package-build-identity",
+  "problem_type": "Packaging stale build outputs",
+  "symptom": "Round 4 package omitted model context injection despite current source containing it",
+  "direct_cause": "Both dist scripts package existing outputs without validating their source identity",
+  "class_root": "Packaging must enforce matching HEAD and working tree identity for both build outputs",
+  "affected_population": [
+    "Both packaging scripts, all branches and dirty worktrees"
+  ],
+  "scope_paths": [
+    "scripts/package-build-stamp.mjs",
+    "scripts/build-electron.mjs",
+    "package.json"
+  ],
+  "entry_points": [
+    "dist",
+    "dist:mac:dir",
+    "build:renderer",
+    "build:electron"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "This is an internal Git/build assembly invariant; no SDK or external format changes.",
+  "invariants": [
+    "Both output stamps must match the current HEAD and actual working tree hash before packaging"
+  ],
+  "generality_proof": "Both package scripts call verifyBuild, full builds stamp only after success and stable inputs, partial builds invalidate both stamps.",
+  "shared_boundaries": [
+    {
+      "path": "scripts/package-build-stamp.mjs",
+      "symbol": "verifyBuild",
+      "responsibility": "Reject missing or mismatched identities before packaging"
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "package.json",
+      "entry_point": "dist",
+      "disposition": "enforced",
+      "evidence": "Runs shared stamp verification before electron-builder"
+    },
+    {
+      "path": "package.json",
+      "entry_point": "dist:mac:dir",
+      "disposition": "enforced",
+      "evidence": "Runs shared stamp verification before electron-builder"
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Every packaging invocation can reuse old output after a source change",
+    "same_class_scan": [
+      "rg electron-builder scripts package.json: both dist entry points directly package existing output",
+      "Inspected build:renderer and build:electron: partial compilation can mix outputs"
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "scripts/package-build-stamp.mjs",
+    "invariant": "Current source identity must equal both successful full-build stamps",
+    "failure_mode": "Exit nonzero with pnpm build instruction; failed builds leave no valid stamps",
+    "exception_policy": "none",
+    "strategy": "Invalidate before every build; stamp after successful stable full build; verify at both package entry points",
+    "artifacts": [
+      "scripts/package-build-stamp.mjs",
+      "scripts/build-electron.mjs",
+      "package.json"
+    ]
+  },
+  "regression_tests": [
+    "scripts/package-build-stamp.node-test.mjs"
+  ],
+  "class_regression_tests": [
+    "scripts/package-build-stamp.node-test.mjs"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "package.json"
+    ],
+    "rationale": "Replaced unchecked packaging scripts; no alternate package script retained"
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "No external dependency behavior controls the missing internal assembly invariant",
+    "exit_criteria": []
+  },
+  "migration": "Existing unstamped builds must be rebuilt with pnpm build; never infer or backfill identity.",
+  "residual_risks": [
+    "Stamps prove source identity, not artifact tamper resistance; direct invocation of electron-builder outside package scripts is outside this boundary."
+  ],
+  "invariant_owner_layer": {
+    "layer": "scripts/package-build-stamp.mjs",
+    "tests": [
+      "scripts/package-build-stamp.node-test.mjs"
+    ],
+    "why": "Build and packaging assembly owns artifact/source identity"
+  }
+}

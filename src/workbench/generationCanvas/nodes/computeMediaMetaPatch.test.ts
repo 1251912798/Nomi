@@ -41,3 +41,9 @@ describe('computeMediaMetaPatch 媒体回填', () => {
     expect(patch).toBeNull()
   })
 })
+
+it('preserves an acknowledged generation footprint when the returned frame has a different aspect ratio', () => {
+  const patch = computeMediaMetaPatch({ resultType: 'image', meta: {}, currentSize: { width: 340, height: 240 }, width: 640, height: 360, preserveSize: true })
+  expect(patch?.size).toBeUndefined()
+  expect(patch?.meta.previewHeight).toBe(240)
+})

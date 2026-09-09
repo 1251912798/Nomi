@@ -7,7 +7,16 @@ import { NOMI_OVERLAY_Z_INDEX } from './overlayLayers'
 import { NomiIdentityIcon, type NomiIdentityIconSource } from './NomiIdentityIcon'
 
 /**
- * NomiSelect —— 全仓统一的「选择面板」通用组件（规则 1/5：一个来源，别散落原生 <select>）。
+ * NomiSelect —— 设计系统的「选择面板」组件（27 个文件在用，是本仓选择器的主力）。
+ *
+ * ⚠️ **不是「全仓统一」**（这句话在 2026-09-07 之前写在这里，而全仓仍有 6 处原生 `<select>`）：
+ *   · `generationCanvas/nodes/scene3d/scene3dMoveHub.tsx:166`、
+ *     `generationCanvas/components/SelectionPromptSaveController.tsx:215`、
+ *     `creation/storyboard/StoryboardSelectionToolbar.tsx:70,85`、
+ *     `creation/storyboard/shotRow/StoryboardFrameActions.tsx:126` —— 这 5 处是真该迁的；
+ *   · `generationCanvas/components/CanvasToolbar.tsx:392` 是**有意的例外**：一个 `opacity-0`
+ *     的原生 select 铺在图标上当菜单触发器，形态是「图标钮弹菜单」不是「选择面板」。
+ *     它真正该等的是菜单原语（D 档刀 1），不是本组件。
  *
  * 为什么不用原生 <select>：原生下拉点开是 OS 框，字体/圆角/阴影/选中态全不受控、长列表大块留白，
  * 跟设计语言割裂。这里基于 Mantine `Combobox`（官方原语，R5：定位/翻向/键盘/点外关闭都由它处理），
@@ -38,6 +47,7 @@ export type NomiSelectOption = {
   disabled?: boolean
   /** 整行减淡（仍可点）——「能选但眼下不建议」，如近期连败的模型沉底后。 */
   dimmed?: boolean
+  more?: boolean
 }
 
 export type NomiSelectProps = {
@@ -101,11 +111,13 @@ export function NomiSelect({
   portalTarget,
 }: NomiSelectProps): JSX.Element {
   const { t } = useTranslation()
+  const [more, setMore] = React.useState(false)
   const [search, setSearch] = React.useState('')
   const combobox = useCombobox({
     onDropdownClose: () => {
       combobox.resetSelectedOption()
       setSearch('')
+      setMore(false)
     },
   })
   const wasOpen = React.useRef(false)
@@ -121,7 +133,7 @@ export function NomiSelect({
   const triggerText = selected?.label ?? (value || placeholder || t('common.select'))
   const heightClass = size === 'xs' ? 'h-6' : 'h-7'
   const query = search.trim().toLocaleLowerCase()
-  const visibleOptions = searchable && query ? options.filter((option) => option.label.toLocaleLowerCase().includes(query)) : options
+  const visibleOptions = searchable && query ? options.filter((option) => option.label.toLocaleLowerCase().includes(query)) : options.filter((option) => more || !option.more || option.value === value)
   const hasChips = options.some((option) => (option.chips?.length ?? 0) > 0)
 
   return (
@@ -281,6 +293,9 @@ export function NomiSelect({
               </Combobox.Option>
             )
           })}
+          {!more && !query && options.some((option) => option.more && option.value !== value) ? (
+            <button type="button" onClick={() => { setMore(true); combobox.resetSelectedOption() }} className="w-full px-2 py-1.5 text-left text-caption text-nomi-ink-60">{t('onboardingProviders.modelControls.more')}</button>
+          ) : null}
         </Combobox.Options>
       </Combobox.Dropdown>
     </Combobox>

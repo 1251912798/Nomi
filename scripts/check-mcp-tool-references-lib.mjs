@@ -1,5 +1,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
+import ts from 'typescript'
 
 const CALL_FUNCTION = /\b(?:callTool|callToolOrThrow|invokeTool|toolCall)\s*\(\s*(['"`])(nomi_[a-z0-9_]+)\1/g
 const NAME_PROPERTY = /(?:['"]?name['"]?\s*:\s*)(['"`])(nomi_[a-z0-9_]+)\1/g
@@ -31,13 +32,61 @@ export function executableUnits(source, file) {
   return units
 }
 
-function isHostFixture(source, index) {
-  const before = source.slice(Math.max(0, index - 240), index)
-  return /\btype\s*:\s*['"]tool['"][^}]{0,160}$/.test(before)
+// Group tokens by their immediate delimiter owner. Unlike a context window,
+// this tolerates reordered fields, long values and incomplete excerpt syntax.
+// TypeScript owns lexing so braces in comments/strings are not object boundaries.
+function hostNamePositions(source) {
+  const scanner = ts.createScanner(ts.ScriptTarget.Latest, true, ts.LanguageVariant.Standard, source)
+  const K = ts.SyntaxKind
+  const closing = new Map([
+    [K.OpenBraceToken, K.CloseBraceToken],
+    [K.OpenBracketToken, K.CloseBracketToken],
+    [K.OpenParenToken, K.CloseParenToken],
+  ])
+  const stack = [{ tokens: [] }]
+  const positions = new Set()
+  for (let kind = scanner.scan(); kind !== K.EndOfFileToken; kind = scanner.scan()) {
+    const group = stack[stack.length - 1]
+    if (kind === K.CloseBraceToken && group.template) {
+      // Resume template text after ${...}; its closing brace is not an object.
+      if (scanner.reScanTemplateToken(false) === K.TemplateTail) stack.pop()
+      continue
+    }
+    if (kind === K.TemplateHead) {
+      stack.push({ tokens: [], template: true })
+      continue
+    }
+    if (kind === group.close) {
+      stack.pop()
+      if (group.open !== K.OpenBraceToken) continue
+      const fields = new Map()
+      for (let i = 0; i < group.tokens.length - 2; i++) {
+        const [key, colon, value] = group.tokens.slice(i, i + 3)
+        if ((i === 0 || group.tokens[i - 1].kind === K.CommaToken) && colon.kind === K.ColonToken)
+          fields.set(key.text, { key, value })
+      }
+      const type = fields.get('type')?.value
+      const host =
+        (type?.kind === K.StringLiteral && type.text === 'tool') ||
+        (type?.kind === K.StringLiteral && type.text === 'toolCall' && fields.has('id') && fields.has('arguments')) ||
+        ['intent', 'capabilityRefs', 'inputSchema', 'outputSchema'].every((key) => fields.has(key))
+      const name = fields.get('name')
+      if (host && name) positions.add(name.key.index)
+      continue
+    }
+    group.tokens.push({
+      kind,
+      index: scanner.getTokenPos(),
+      text: kind === K.StringLiteral ? scanner.getTokenValue() : scanner.getTokenText(),
+    })
+    if (closing.has(kind)) stack.push({ tokens: [], open: kind, close: closing.get(kind) })
+  }
+  return positions
 }
 
 export function scanSource(source, { declared, hostDeclared = new Set() }) {
   const references = []
+  const hostPositions = hostNamePositions(source)
   const add = (match, kind, catalog) =>
     references.push({
       name: match[2] ?? match[1],
@@ -47,7 +96,7 @@ export function scanSource(source, { declared, hostDeclared = new Set() }) {
     })
   for (const match of source.matchAll(CALL_FUNCTION)) add(match, 'call', declared)
   for (const match of source.matchAll(NAME_PROPERTY))
-    add(match, 'name', isHostFixture(source, match.index ?? 0) ? hostDeclared : declared)
+    add(match, 'name', hostPositions.has(match.index ?? 0) ? hostDeclared : declared)
   const unique = new Map()
   for (const reference of references) unique.set(`${reference.index}:${reference.name}`, reference)
   return [...unique.values()].sort((a, b) => a.index - b.index)

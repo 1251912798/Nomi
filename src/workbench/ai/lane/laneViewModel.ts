@@ -1,3 +1,5 @@
+import { capabilitySupportsUndo } from '../../../../electron/shared/agentCapabilities/registry'
+import { redactToolArguments, redactResidentSensitiveText } from '../resident/residentToolText'
 // Agent lane · 视图投影（纯函数，唯一 owner）
 //
 // **这一层最重要的一句话是「它不排序」。**
@@ -21,6 +23,7 @@ import type {
   LanePart,
   LanePendingApproval,
   LaneProjection,
+  LaneQueuedMessage,
 } from '../../../../electron/shared/agentLane/laneContracts'
 import {
   LANE_APPROVAL_NOTE_TYPE,
@@ -28,10 +31,11 @@ import {
   laneApprovalWasRefused,
 } from '../../../../electron/shared/agentLane/laneContracts'
 import type { V4InterventionSource } from '../v4/agentPanelV4Intervention'
-import { resolveCapabilityAlias } from '../../../../electron/shared/agentCapabilities/registry'
+import { resolveModelToolCapabilityId } from '../../../../electron/shared/agentCapabilities/modelFacingToolRegistry'
 import { actionFamilyForCapability } from '../v4/agentPanelV4ActionFamily'
 import type {
   ContextUsage,
+  TaskCardData,
   ToolReceipt,
   V4ActionFamily,
   V4FlowItem,
@@ -45,7 +49,9 @@ import type {
  */
 export interface LaneViewModelLabels {
   /** 工具别名 → 人话动词 + 对象（「读取文稿」）。 */
-  toolLabel(toolName: string): string
+  toolLabel(toolName: string, args: unknown): string
+  toolSummary(toolName: string, args: unknown): string | undefined
+  toolFailure(text: string): string | undefined
   /** 思考行左侧那个词。 */
   thinkingLabel: string
   /** 数字格式化：token 数、金额。缺省不印，不是印 0。 */
@@ -78,6 +84,17 @@ export interface LaneViewModelLabels {
    * 与旁边的 `unknown`（今天已经是活的 `agentPanelV4.contextUnknown`）走同一条路。
    */
   free: string
+  /** 任务卡的标题（「生成任务」）。卡上其余文字全是数字，所以只需要这一句。 */
+  taskTitle: string
+  /** 「{done} / {total} 阶段」。两个数分开传，是因为不同语言的量词位置不同。 */
+  formatStages(done: number, total: number): string
+  /**
+   * 金额。**币种由领域给**（`ProductionRun.budget.currency`），不是这一层猜的——
+   * 同一个项目里用 APIMart 和用 kie 结算的币种可以不同，印错的那个数看起来完全正常。
+   */
+  formatMoney(currency: string, amount: number): string
+  /** join 不到领域事实时卡上那句脚注（「任务详情在任务中心」）。 */
+  taskUnknown: string
 }
 
 /**
@@ -97,6 +114,16 @@ export interface LaneViewModel {
   items: readonly V4FlowItem[]
   usage: ContextUsage
   running: boolean
+  /**
+   * 排着队还没被送出去的插话（v4 的积木⑥「队列行」）。
+   *
+   * **它不进 `items`**：`items` 是已经发生的事，队列是**还没发生**的事。混进去的话，
+   * 用户会在时间线里看到一句他刚打的话排在模型的回答后面，像是模型已经读过它了——
+   * 而 `one-at-a-time` 下它要等到下一次请求才被吃进去。
+   *
+   * 原样带出 `entryId`：撤回那一条要靠它，而「队里最后一条」是猜（队列随时会被消费）。
+   */
+  queues: readonly LaneQueuedMessage[]
   /**
    * 只在真的在退避时存在。**缺失 = 没在重试**，不是重试了 0 次——面板据此决定画不画那一行，
    * 而一个恒存在的「重试 0/4」会把「一切正常」说成「它在挣扎」。
@@ -133,31 +160,53 @@ interface ToolSlot {
 }
 
 function familyFor(toolName: string, args: unknown): V4ActionFamily {
-  const resolved = resolveCapabilityAlias(toolName)
+  const resolved = resolveModelToolCapabilityId(toolName, args)
   // 认不出来的别名走 `write`：它是「动了什么东西」里最不宣称具体对象的那个。
   // 猜一个具体 icon（比如看名字里有没有 "image"）会在收据上印一个我们没量过的断言。
-  return resolved ? actionFamilyForCapability(resolved.contract.id, args) : 'write'
+  return resolved ? actionFamilyForCapability(resolved, args) : 'write'
 }
 
-function stringifyArgs(args: unknown): string | undefined {
-  if (args === undefined || args === null) return undefined
-  if (typeof args === 'string') return args || undefined
-  try {
-    const text = JSON.stringify(args)
-    return text && text !== '{}' ? text : undefined
-  } catch {
-    return undefined
-  }
-}
 
 function receiptFor(part: Extract<LanePart, { kind: 'tool-call' }>, labels: LaneViewModelLabels): ToolReceipt {
+  const summary = labels.toolSummary(part.toolName, part.args)
   return {
-    label: labels.toolLabel(part.toolName),
+    toolCallId: part.toolCallId,
+    label: labels.toolLabel(part.toolName, part.args),
+    ...(summary ? { summary: redactResidentSensitiveText(summary) } : {}),
     action: familyFor(part.toolName, part.args),
     // 「跑着呢」和「填参数呢」是两件事：`input-available` 说的是参数已经齐了。
     // 结果落定之前不许写 `output-available`——那是在替一件还没发生的事下结论。
     status: part.running ? 'input-available' : 'input-streaming',
-    input: stringifyArgs(part.args),
+    input: part.args && typeof part.args === 'object' && Object.keys(part.args).length === 0
+      ? undefined : redactToolArguments(part.args) || undefined,
+  }
+}
+
+/**
+ * 一张任务卡（方案 §2.2 G13）。
+ *
+ * **`facts` 缺席 = 只画标题 + 一句「详情在任务中心」**，与今天 `taskCardFor` 的裁决逐字相同：
+ * join 不到就不给状态，而不是给一个「排队中」——那会让用户以为有东西在跑，
+ * 而实际上我们只是没读到那条 run。
+ */
+function taskCardFor(part: Extract<LanePart, { kind: 'task' }>, labels: LaneViewModelLabels): TaskCardData {
+  const { facts } = part
+  if (!facts) return { title: labels.taskTitle, action: 'video', status: 'queued', footnote: labels.taskUnknown }
+  const money = (amount: number | undefined): string | undefined =>
+    amount !== undefined && facts.currency !== undefined ? labels.formatMoney(facts.currency, amount) : undefined
+  const spent = money(facts.spent)
+  const estimated = money(facts.estimated)
+  return {
+    title: labels.taskTitle,
+    action: 'video',
+    status: facts.status,
+    ...(facts.stagesTotal ? { trailing: labels.formatStages(facts.stagesDone ?? 0, facts.stagesTotal) } : {}),
+    ...(facts.progress === undefined ? {} : { progress: facts.progress }),
+    // Keep the verified artifact identity and image; numbering is display-only.
+    ...(facts.candidates?.length
+      ? { candidates: facts.candidates.map((candidate, index) => ({ ...candidate, tag: String(index + 1) })) } : {}),
+    ...(estimated === undefined ? {} : { cost: estimated }),
+    ...(spent === undefined ? {} : { footnoteTrailing: spent }),
   }
 }
 
@@ -174,7 +223,7 @@ function settledStatus(isError: boolean, denied: boolean): V4ToolStatus {
  * 这里**断言**这件事而不是相信它：顺序一旦在某一层被悄悄打乱，面板上看到的就是
  * 「它先做了、后说要做」，而那种错在截图里非常像「模型自己顺序乱」。
  */
-export function laneViewModel(projection: LaneProjection, labels: LaneViewModelLabels): LaneViewModel {
+export function laneViewModel(projection: LaneProjection, labels: LaneViewModelLabels, undoableToolCallId?: string): LaneViewModel {
   const items: V4FlowItem[] = []
   const slots = new Map<string, ToolSlot>()
   const denials = new Map<string, LaneApprovalNote>()
@@ -195,16 +244,25 @@ export function laneViewModel(projection: LaneProjection, labels: LaneViewModelL
       }
       continue
     }
+    if (part.kind === 'error') {
+      items.push({ kind: 'error', reason: part.text })
+      continue
+    }
+    if (part.kind === 'task') {
+      items.push({ kind: 'task', task: taskCardFor(part, labels) })
+      continue
+    }
     if (part.kind === 'user') {
       items.push({ kind: 'user', text: part.text })
       continue
     }
     if (part.kind === 'assistant-text') {
-      items.push({ kind: 'assistant', text: part.text, status: part.streaming ? 'streaming' : 'complete' })
+      items.push({ kind: 'assistant', text: part.text, status: part.interrupted ? 'interrupted' : part.streaming ? 'streaming' : 'complete',
+        ...(part.continuationEntryId ? { continuationEntryId: part.continuationEntryId } : {}) })
       continue
     }
     if (part.kind === 'thinking') {
-      items.push({ kind: 'thinking', label: labels.thinkingLabel, meta: part.text })
+      items.push({ kind: 'thinking', label: labels.thinkingLabel, meta: '', text: part.text, streaming: part.streaming })
       continue
     }
     if (part.kind === 'tool-call') {
@@ -222,11 +280,17 @@ export function laneViewModel(projection: LaneProjection, labels: LaneViewModelL
     // 被拒的那一行只说「已拒绝」（拍板过的 Vocabulary 板 `v4-tool-output-denied`：行尾是状态词，
     // 没有摘要、没有展开体）。理由住在用户自己填它的那张介入槽里；再把它印到行尾、又塞进
     // 展开体，同一句话就在面板上出现三次——设计实验室 P6 探针把这一格接上真投影时当场红了。
+    const { summary: _summary, ...withoutSummary } = existing.receipt
+    const failure = part.isError ? labels.toolFailure(part.text) : undefined
     items[slot.index] = {
       kind: 'tool',
       receipt: denial !== undefined
-        ? { ...existing.receipt, status: 'output-denied' }
-        : { ...existing.receipt, status: settledStatus(part.isError, false), output: part.text || undefined },
+        ? { ...withoutSummary, status: 'output-denied' }
+        : { ...(part.isError ? withoutSummary : existing.receipt), status: settledStatus(part.isError, false),
+          ...(failure ? { summary: redactResidentSensitiveText(failure) } : {}),
+          ...(!part.isError && part.toolCallId === undoableToolCallId
+            && capabilitySupportsUndo(resolveModelToolCapabilityId(slot.toolName, slot.args) ?? slot.toolName, slot.args) ? { undoable: true } : {}),
+          output: redactResidentSensitiveText(part.text) || undefined },
     }
   }
 
@@ -238,6 +302,8 @@ export function laneViewModel(projection: LaneProjection, labels: LaneViewModelL
   return {
     items,
     running: projection.running,
+    // 队列原样带出去：这一层不合并、不去重、不改顺序——pi 的 FIFO 就是用户打字的顺序。
+    queues: projection.queues,
     ...(projection.retry
       ? { retry: labels.retryLabel(projection.retry.attempt, projection.retry.maxAttempts) }
       : {}),

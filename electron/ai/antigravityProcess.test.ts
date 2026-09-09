@@ -47,7 +47,11 @@ describe("Antigravity process ownership", () => {
     const cwd = await readFile(path.join(f.dir, "cwd"), "utf8");
     const profile = await readFile(path.join(f.dir, "profile"), "utf8");
     expect(profile).toContain("tools: []");
-    expect(profile).toContain("inheritCustomizations: false");
+    // agy ≥1.1.27 把 hooks 归进 inheritCustomizations 开关：false 时 task-gate 钩子永不执行（本机 2026-09-08 实测），
+    // 图像/改图验证在两个平台都 HOOK_UNVERIFIED。必须 true；MCP 单独关掉。
+    expect(profile).toContain("inheritCustomizations: true");
+    expect(profile).toContain("inheritMcp: false");
+    expect(profile).not.toContain("inheritCustomizations: false");
     expect(profile).toContain("# System Prompt");
     expect(await readFile(path.join(f.dir, "mounted-cwd"), "utf8")).toBe(cwd);
     await expect(stat(cwd)).rejects.toMatchObject({ code: "ENOENT" });
@@ -173,10 +177,10 @@ describe("Antigravity process ownership", () => {
 
 describe("Antigravity bounded media process", () => {
   const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a5foAAAAASUVORK5CYII=", "base64");
-  it.each([undefined, "1.2.0"])("fails closed before spawn for unverified CLI media version: %s", async (cliVersion) => {
+  it.each([undefined, "1.1.20"])("fails closed before spawn for missing or old CLI media version: %s", async (cliVersion) => {
     const f = await fixture("media-image");
     await expect(runAntigravityProcess({ prompt: "draw", capability: "image", cliVersion }, { invocation: f.invocation }))
-      .rejects.toThrow("MEDIA_VERSION");
+      .rejects.toThrow("VERSION");
     await expect(readFile(path.join(f.dir, "cwd"))).rejects.toMatchObject({ code: "ENOENT" });
   });
   it.each(["image", "edit", "vision"] as const)("runs %s with its exact input/tool scope", async (capability) => {
@@ -187,7 +191,7 @@ describe("Antigravity bounded media process", () => {
     const profile = await readFile(path.join(f.dir, "profile"), "utf8");
     expect(JSON.parse(await readFile(path.join(f.dir, "preflight-files"), "utf8"))).not.toContain(true);
     expect(profile).toContain(capability === "vision" ? "view_file" : "generate_image");
-    expect(profile).toContain("plugins:");
+    expect(profile).not.toContain("plugins:");
     if (capability === "vision") expect(result.artifacts).toBeUndefined();
     else expect(result.artifacts).toMatchObject([{ mimeType: "image/png", width: 1, height: 1 }]);
     await expect(stat(await readFile(path.join(f.dir, "cwd"), "utf8"))).rejects.toMatchObject({ code: "ENOENT" });

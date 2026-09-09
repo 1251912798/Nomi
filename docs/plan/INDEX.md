@@ -1,4 +1,6 @@
 # docs/plan 索引地图
+- [模型契约跨字段约束](2026-09-08-model-contract-cross-field-limits.md) — Hailuo 1080p/时长与 H3 混合参考总量。
+- [阶段 5b：目录活性 reconcile](2026-09-08-catalog-liveness-reconcile.md) — 自动禁用、保留配置、周探针与明暗样张。
 
 > 方案/执行文档按**主题**分组的查找表。文件本身保持平铺（彼此有大量路径互链，移动会断链），本表负责「按主题/状态秒定位」。
 > 本索引仍有历史存量缺口；查不到时必须继续全量搜索。`check:docs-index` 保证缺口只减不增。
@@ -11,6 +13,8 @@
 
 | 文件 | 一句话 | 状态 |
 |---|---|---|
+| [2026-09-08-vacuous-waitforfunction-sweep.md](2026-09-08-vacuous-waitforfunction-sweep.md) | 清扫七处 async 空等待，测试等待门岗覆盖 walk/e2e 并提供 R17 红证 | ✅ |
+| [2026-09-08-mcp-tool-refs-catalog-detection.md](2026-09-08-mcp-tool-refs-catalog-detection.md) | 工具引用按对象结构选择 Agent/MCP 目录；含 R17 红绿证据 | 📎 |
 | [2026-09-07-generation-strategy-resolver.md](2026-09-07-generation-strategy-resolver.md) | **生成策略解析器**：生成前按真实模型档案裁决每一镜的时长/参数上限，给出「必须合并 / 必须拆条」建议并一键采纳，落画布前再过一道闸；纯函数引擎 + GUI 审阅面板 + 行内警示 + 内外同源的 `resolve` 能力契约。附录 G 记 2026-09-07 接手 PR #573 的返工（判断有两份答案那一族根因） | 🚧 |
 | [2026-09-07-model-generation-core-path.md](2026-09-07-model-generation-core-path.md) | **生成主干道**：fake-ip（198.18/15）下「钱扣了、片取不回」的类根因修——出站判据收成唯一 owner + `check:outbound-policy` 棘轮、fake-ip 凭阳性证据放行（探不到就 fail-closed）、删 `LAB_ALLOW_LOCALHOST` 逃生口、错误说人话、已付费落 `recoverable` 走免费重拉不再二次扣费、`deepseek-v3.2-think` 实测下架 + LLM 进模型雷达；文末列了 6 条未做（提交侧未接入 / 退役自动探测 / 零额度夹具 / 轮询活性 / 洗白点盘点） | 🚧 |
 | [2026-09-07-rules-round2-adversary-inventory.md](2026-09-07-rules-round2-adversary-inventory.md) | **规则第二轮：把「先查别人」做成机器强制**——反方 agent 机器强制进 R27 手册 §16 + `check:prior-art`、依赖能力清单自动生成 + 框架边界 advisory 启发式、钩子随 checkout 生效不再靠 install、根因流程三条（症状聚类 / `invariant_owner_layer` / R14.2 审计三条） | 🚧 |
@@ -101,6 +105,7 @@
 
 | 文件 | 一句话 | 状态 |
 |---|---|---|
+| [2026-09-08-canvas-undo-barrier-sweep.md](2026-09-08-canvas-undo-barrier-sweep.md) | 独立边模式、断线、节点锁手势的撤销边界与同族扫描 | 📎 |
 | [2026-09-06-agent-artifact-node.md](2026-09-06-agent-artifact-node.md) | **AI 手艺产物节点（agent-artifact）**：承载 SVG / 动态 HTML / 表格 / Markdown / 3D 摆位等不调模型的产物；meta.artifact 不扩 result 闭集、HTML 沙箱 allow-scripts、动作复用 FloatingToolbarShell；v1 已落地（Agent 交付落盘/渲染/下载/复制/SVG 固化为参考图），3D 视口截图与手艺选择决策树 = 下一刀 | 🚧 |
 | [2026-09-06-depth-video-canvas-node.md](2026-09-06-depth-video-canvas-node.md) | **本机跑深度视频当动作参考**（Depth Anything V2 Small，WebGPU 渲染层推理、ffmpeg 抽帧合成、权重按需下载校验）；2026-09-07 用户两次拍板后收成「选中视频 → 浮条『提取深度』→ 点了直接跑 → 旁边长出一张带出身的普通视频卡」，无面板无参数，骨架链已随 mode 一起删 | ✅ |
 | [2026-09-06-canvas-frame-tool.md](2026-09-06-canvas-frame-tool.md) | **框工具（Frame）第一档**：现役 Group 进化成 Frame——`frameBounds` 从没人读变成真相之一（框只长不缩）、左下工具簇加「框」钮 + F 画框、拖进=入组拖出=退组（拖动中就给计数预览）、头部带说明与 ⋯ 菜单（生成整框 / 整框进时间轴 / 折叠 / 解散）；旧组按包围盒回填一次 | 🚧 |
@@ -139,6 +144,8 @@
 | [file-preview.md](file-preview.md) | 本地文件预览（画布旁点开就看） | 🚧 |
 
 ## Agent / Harness / 助手
+
+- [2026-09-08-lane-tool-parallelism-and-approval-default.md](2026-09-08-lane-tool-parallelism-and-approval-default.md) — 读并行、lane 写 FIFO 与审批默认 project+confirm；真实撤销清单、pi 预检顺序、验收门及未发布 issue 草稿（方案）。
 
 | 文件 | 一句话 | 状态 |
 |---|---|---|
@@ -235,6 +242,7 @@
 | 文件 | 一句话 | 状态 |
 |---|---|---|
 | [2026-09-06-stack-upgrade-react19-aisdk-tailwind4.md](2026-09-06-stack-upgrade-react19-aisdk-tailwind4.md) | **技术栈升级立项**（React 19 · AI SDK · Tailwind 4）：实查纠正三个前提（我们没用 `useChat`，AI SDK 升级与 Agent 面板无因果；目标是 SDK 6 不是 5，7 是 ESM-only 进不来；React 19 捆着 Mantine 8 + R3F 9 两个次级迁移），逐条命中清单（`JSX.Element` 652 处 / AI SDK 仅 8 个生产文件 / Tailwind 132 处类名）、R3 三方案对比与四步执行门 | 📋 |
+| [../research/2026-09-08-mantine-8-upgrade-probe.md](../research/2026-09-08-mantine-8-upgrade-probe.md) | **Mantine 7.17.8 → 8 升级探针**（变动四步协议 ①，零改码）：`cssVariablesResolver` 签名一字未改故状态色收口安全；实跑纠正立项书三处（ScrollArea `display:table` 仍在、Mantine `Switch` 我们在用、`Portal.reuseTargetNode` 默认翻转是唯一真行为变更）；**`DesignPagination` 无选中态与 Mantine 无关**——根因是 `src/devlab/designLab.tsx:25` 重复 import `UnstyledButton.css` 盖掉了 Pagination 样式（附阳性对照）；含步骤②的基线预期红清单与真回归判据 | 📋 |
 | [2026-06-08-performance-foundation.md](2026-06-08-performance-foundation.md) | 性能地基改造立项 | ⛔ |
 | [2026-05-25-phase-e2-completion-and-tech-uplift.md](2026-05-25-phase-e2-completion-and-tech-uplift.md) | Phase E.2 完成 + 技术栈升级(v0.6) | ⛔ |
 | [2026-05-31-unify-request-pipeline.md](2026-05-31-unify-request-pipeline.md) | 统一请求构建管线（根治测试过/生产挂） | 📋 |
@@ -276,9 +284,17 @@
 
 - [2026-09-05] [第三刀·投影清零方案](2026-09-05-storyboard-projection-cleanup.md) — 分镜唯一 owner、旧字段一次迁移后丢弃、取证 runner 读 Host snapshot。
 
+- [2026-09-07 设计系统优化](2026-09-07-design-system-optimization.md) — 三路体检后的 A 卫生 / B 补洞 / C 加门岗三档实施，D（组件权威）只出方案。
+
+- [2026-09-07 设计系统：从值的字典升级为组件的权威](2026-09-07-design-system-component-authority.md) — 上游 D 档方案：Menu(77 处/20 文件手写) / Dialog(32 文件) / Spinner 三个缺失原语的 R20 build-vs-buy 判断（结论：**买 Radix，别自研**）、Mantine 与 Radix 的 R29 四列表（最刺眼一格：`nomiTheme.ts:221` 配好了 `Menu` defaultProps 却零调用）、primitive 实验室新抓到的 `DesignPagination` 无选中态与 Mantine 色板旁路、刀 0-4 分阶段路线与影响面、R3 三条路对比、**七条「不做什么」**。
+
+- [2026-09-08 菜单原语现状清单（刀 1 ①）](2026-09-08-menu-primitive-inventory.md) — 17 文件 / **24 个手写菜单**逐个对账（触发·项·分隔线·禁用·定位·避让·风险）：**方向键 0/24**、点外不关 2 个、定位机制 5 套、六处各猜一遍菜单宽高的硬编码常数；A 建议**先迁时间轴右键菜单**（宿主最小、今天最坏）并把 `CanvasToolbar` 挪出刀 1（hover-open + 无触发元素 + file input 三条边界）；B 从真实用法反推 API（含 checkbox/radio/段名/危险项/项内副标题；**子菜单不做**）；C **19 条形态差异只列不改**等用户拍板；附 `AnchoredPopover` 注释按「浮层里放的是什么」划界的写法。（📋 方案待拍板）
+
 ## 🤖 自动收录（待人工归位）
 
 > 这些链接由 `.github/workflows/docs-autosync.yml` 在 main 上自动补登，只保证「能被搜到」，
 > 不代表已归好类。顺手把某一行挪进上面对应主题的表里即可——挪走后本区自然变短。
 
 - [2026-09-07-skill-import-real-use](2026-09-07-skill-import-real-use.md)
+- [2026-09-08-g1-use-case-suite](2026-09-08-g1-use-case-suite.md)
+- [2026-09-08-docs-autosync-ci](2026-09-08-docs-autosync-ci.md) — 固定 action PR、默认 token 防循环与 CI 合同修复

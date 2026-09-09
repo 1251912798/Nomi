@@ -1,9 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
-import type { AntigravityCapability } from "../shared/antigravity";
+import { assertAntigravityMediaVersion, type AntigravityCapability } from "../shared/antigravity";
 import type { AntigravityResult, AntigravityToolStep } from "./antigravityProtocol";
-import { antigravityHookCommand, antigravityHookSource, antigravityImageDigest, type AntigravityMediaPolicy } from "./antigravityMediaHook";
+import { antigravityHookCommand, antigravityHookSource, antigravityHookWrapper, antigravityImageDigest, type AntigravityMediaPolicy } from "./antigravityMediaHook";
 import { readAntigravityFile, recoverAntigravityArtifact, validateAntigravityImage } from "./antigravityArtifacts";
 
 export type AntigravityImageInput = { bytes: Uint8Array; mimeType: string };
@@ -27,7 +27,7 @@ export async function prepareAntigravityImageInput(input: AntigravityImageInput,
 
 export function assertAntigravityMediaInput(capability: AntigravityCapability, images: AntigravityImageInput[], version?: string): void {
   if (!["text", "vision", "image", "edit"].includes(capability)) throw new Error("ANTIGRAVITY_INVALID_CAPABILITY");
-  if (capability !== "text" && version !== "1.1.21") throw new Error("ANTIGRAVITY_MEDIA_VERSION_UNVERIFIED");
+  if (capability !== "text") assertAntigravityMediaVersion(version);
   if (!Array.isArray(images) || images.length > 4 || ((capability === "vision" || capability === "edit") ? !images.length : images.length > 0)
     || images.some((image) => !(image?.bytes instanceof Uint8Array) || typeof image.mimeType !== "string")
     || images.reduce((sum, image) => sum + image.bytes.byteLength, 0) > 40 * 1024 * 1024) {
@@ -43,7 +43,7 @@ export function assertPreparedAntigravityMediaInput(capability: AntigravityCapab
 }
 
 export async function prepareAntigravityMedia(cwd: string, capability: Exclude<AntigravityCapability, "text">,
-  images: PreparedAntigravityImageInput[], _signal?: AbortSignal): Promise<AntigravityMediaContext> {
+  images: PreparedAntigravityImageInput[], _signal?: AbortSignal, platform: NodeJS.Platform = process.platform): Promise<AntigravityMediaContext> {
   const snapshots: Array<{ bytes: Buffer; mimeType: string; metadata: AntigravityImageMetadata }> = [];
   const unique = new Set(images);
   const records = images.map((image) => preparedImages.get(image));
@@ -66,11 +66,13 @@ export async function prepareAntigravityMedia(cwd: string, capability: Exclude<A
     staged.push({ path: absolute, bytes: image.bytes });
     policy.images.push({ path: absolute, sha256: antigravityImageDigest(image.bytes) });
   }
-  await writeFile(path.join(plugin, "plugin.json"), JSON.stringify({ name: "nomi-task-gate", description: "Nomi task image scope" }), { mode: 0o600 });
   const script = path.join(plugin, "gate.cjs");
   await writeFile(script, antigravityHookSource(policy), { mode: 0o400 });
-  const command = antigravityHookCommand(process.execPath, script);
-  await writeFile(path.join(plugin, "hooks.json"), JSON.stringify({ "nomi-task-gate": {
+  if (platform === "win32") await writeFile(script.replace(/\.cjs$/, ".cmd"), antigravityHookWrapper(process.execPath, script), { mode: 0o400 });
+  const command = antigravityHookCommand(process.execPath, platform === "win32" ? "..\\task-gate\\gate.cjs" : script, platform);
+  const customization = path.join(cwd, ".agents");
+  await mkdir(customization, { recursive: true, mode: 0o700 });
+  await writeFile(path.join(customization, "hooks.json"), JSON.stringify({ "nomi-task-gate": {
     PreInvocation: [{ type: "command", command: command + " init", timeout: 3 }],
     PreToolUse: [{ matcher: "*", hooks: [{ type: "command", command: command + " tool", timeout: 3 }] }],
   } }), { mode: 0o600 });

@@ -1,5 +1,6 @@
+import { formatAvailableModelsForPrompt } from "../../../../electron/shared/agentCapabilities/availableModels";
 import { describe, it, expect } from "vitest";
-import { buildAgentModelEntries, formatAvailableModelsForPrompt } from "./availableModels";
+import { buildAgentModelEntries } from "./availableModels";
 import type { ModelOption } from "../../../config/models";
 
 // 用 meta.archetypeId 显式命中内置档案（resolveArchetypeForModel 优先看 archetypeId）。
@@ -93,6 +94,25 @@ describe("buildAgentModelEntries", () => {
 });
 
 describe("formatAvailableModelsForPrompt", () => {
+  it("preserves derived anchor capability and current guidance through the shared prompt owner", () => {
+    const entries = buildAgentModelEntries([opt({ value: 'imagen-4', meta: { archetypeId: 'imagen-4' } })]);
+    expect(entries[0]?.modes.every(mode => mode.consumesAnchors?.includes('none'))).toBe(true);
+    const prompt = formatAvailableModelsForPrompt(entries);
+    expect(prompt).toContain('[consumesAnchors:none]');
+    expect(prompt).toContain('modelKey/modeId 不能留空');
+    expect(prompt).toContain('用户点名 t2v 就听用户');
+  });
+  it("排序稳定且标题不绑定旧工具名", () => {
+    const entries = buildAgentModelEntries([
+      opt({ value: "seedance-2", meta: { archetypeId: "seedance-2" } }),
+      opt({ value: "imagen-4", meta: { archetypeId: "imagen-4" } }),
+    ]);
+    const original = [...entries];
+    expect(formatAvailableModelsForPrompt(entries)).toBe(formatAvailableModelsForPrompt([...entries].reverse()));
+    expect(entries).toEqual(original);
+    expect(formatAvailableModelsForPrompt(entries)).not.toContain("create_canvas_nodes");
+  });
+
   it("空清单返回空串（不注入）", () => {
     expect(formatAvailableModelsForPrompt([])).toBe("");
   });

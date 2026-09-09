@@ -1,3 +1,7 @@
+import { CREATION_COLUMNS_STATES } from './creationColumns/states/01-columns'
+import { PROCESS_FEEDBACK_STATES } from './processFeedback/states/01-process-feedback'
+import { SETTINGS_SOUND_STATES } from './settingsSound/states/01-sound'
+import { CATALOG_LIVENESS_STATES } from './catalogLiveness/states/01-listing'
 import { CANVAS_ADD_MENU_STATES } from './canvasAddMenu/canvasAddMenuStates'
 import { CANVAS_FRAME_STATES } from './canvasFrame/canvasFrameStates'
 import { CANVAS_FRAME_CELL_HEIGHT, CANVAS_FRAME_CELL_WIDTH } from './canvasFrame/canvasFrameLabKit'
@@ -7,6 +11,11 @@ import { STORYBOARD_STATES } from './storyboard/storyboardStates'
 import { STAGE_HEIGHT, STAGE_WIDTH } from './storyboard/storyboardLabKit'
 import { EDITING_CELL_HEIGHT, EDITING_CELL_WIDTH } from './editing/editingLabKit'
 import { HOST_CONFIG_STATES } from './hostConfig/hostConfigStates'
+import { PRIMITIVE_CELL_HEIGHT, PRIMITIVE_STAGE_WIDTH } from './primitives/primitivesLabKit'
+import { PRIMITIVES_ACTIONS_STATES } from './primitivesActions/primitivesActionsStates'
+import { PRIMITIVES_FORMS_STATES } from './primitivesForms/primitivesFormsStates'
+import { PRIMITIVES_MENU_STATES } from './primitivesMenu/primitivesMenuStates'
+import { PRIMITIVES_SURFACES_STATES } from './primitivesSurfaces/primitivesSurfacesStates'
 import { SETTINGS_STATES } from './settings/settingsStates'
 import { SETTINGS_CELL_HEIGHT, SETTINGS_CELL_WIDTH } from './settings/settingsLabKit'
 import { AGENT_PANEL_V4_STATES, V4_CELL_HEIGHT, V4_PANEL_WIDTH } from './v4/agentPanelV4States'
@@ -22,6 +31,9 @@ import type { LabScreen, LabState } from './labScreen'
  * 只改一处 = 那一屏要么截不出图、要么孤儿基线）。
  */
 export const LAB_SCREENS: readonly LabScreen[] = [
+  { id: 'process-feedback', label: '生成过程反馈 C1', states: PROCESS_FEEDBACK_STATES, cell: { width: 800, height: 560 } },
+  { id: 'settings-sound', label: '提醒与声音', states: SETTINGS_SOUND_STATES, cell: { width: 564, height: 550 } },
+  { id: 'catalog-liveness', label: '模型目录活性', states: CATALOG_LIVENESS_STATES, cell: { width: 960, height: 760 } },
   {
     id: 'agent-panel-v4',
     label: 'Agent 面板 v4',
@@ -75,6 +87,41 @@ export const LAB_SCREENS: readonly LabScreen[] = [
     // 这屏各状态取景框一样大（设置内容区实际可用宽），尺寸从取景台取，不另抄一个数。
     cell: { width: SETTINGS_CELL_WIDTH, height: SETTINGS_CELL_HEIGHT },
   },
+  // ── primitive 陈列三屏 ────────────────────────────────────────────────────
+  //
+  // 上面每一屏画的都是**某个功能界面**；这三屏画的是 `src/design/` 那套共用积木本身。
+  // 为什么拆三屏而不是一屏：接触表是按屏平铺的一张图，34 个格子挤在一屏里读不动；
+  // 而且取景框是**按屏**给的一个尺寸——动作族一格 480 宽就够，浮层族要整屏、结构族要
+  // 装得下一张表，硬塞进同一个 cell 会让一半格子留大片空白、另一半被截。按族分屏，
+  // 每族拿自己合适的取景框，接触表也各自读得完。
+  {
+    id: 'primitives-actions',
+    label: '积木 · 动作',
+    states: PRIMITIVES_ACTIONS_STATES,
+    cell: { width: PRIMITIVE_STAGE_WIDTH, height: PRIMITIVE_CELL_HEIGHT },
+  },
+  {
+    id: 'primitives-forms',
+    label: '积木 · 表单与选择',
+    states: PRIMITIVES_FORMS_STATES,
+    // 表单格比动作格高一档（四态竖排 + 展开的下拉都在这一屏）。
+    cell: { width: PRIMITIVE_STAGE_WIDTH, height: PRIMITIVE_CELL_HEIGHT + 120 },
+  },
+  {
+    id: 'primitives-menu',
+    label: '积木 · 菜单',
+    states: PRIMITIVES_MENU_STATES,
+    // 这一屏每一格都是整屏取景：菜单走 Radix Portal 到 body + fixed 贴视口点位，
+    // 按元素截只会截出「菜单没打开」。取景框按走查用的那个视口开列。
+    cell: { width: 520, height: 420 },
+  },
+  {
+    id: 'primitives-surfaces',
+    label: '积木 · 状态 / 浮层 / 结构',
+    states: PRIMITIVES_SURFACES_STATES,
+    // 这屏混着元素格与整屏格（浮层族 Portal 到 body，只能截整屏），取景框按整屏那一族开列。
+    cell: { width: 900, height: 560 },
+  },
   {
     id: 'depth-action',
     label: '画布 · 提取深度',
@@ -88,6 +135,7 @@ export const LAB_SCREENS: readonly LabScreen[] = [
     states: VENDOR_ORDER_STATES,
     cell: { width: VENDOR_ORDER_STAGE_WIDTH, height: VENDOR_ORDER_STAGE_HEIGHT + 40 },
   },
+  { id: 'creation-columns', label: '创作三栏 · 外框样张', states: CREATION_COLUMNS_STATES, cell: { width: 1440, height: 900 } },
 ]
 
 export function findLabScreen(id: string | null): LabScreen {

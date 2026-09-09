@@ -1,3 +1,4 @@
+import { notify } from '../../../ui/notificationPolicy'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import type { Editor } from '@tiptap/react'
@@ -38,7 +39,6 @@ import { resolveArchetypeForModel } from '../../../config/modelArchetypes'
 import { applyArchetypeModeSwitch, currentArchetypeMode } from './controls/archetypeMeta'
 import { archetypeForNode, resolveModeForReferenceDemand } from '../agent/referenceEdgeCapability'
 import { addAssetUrlToNode } from './nodeAssetWrite'
-import { toast } from '../../../ui/toast'
 import { getTextGenMode, type TextGenMode } from '../runner/textActions'
 import {
   GENERATION_VARIANT_COUNTS,
@@ -88,6 +88,7 @@ type PromptPickerPosition = {
 // 所有生成相关依赖（runner / NodeParameterControls / 布局计算）都收在这里，壳保持 kind 无关。
 
 type Props = {
+  onFeedback: (message: string) => void
   node: GenerationCanvasNode
   visualSize: { width: number; height: number }
 }
@@ -195,7 +196,7 @@ function BrowserPromptPickerPopover({
                 role="menuitem"
                 className={cn(
                   'grid w-full min-w-0 grid-cols-[32px_minmax(0,1fr)] items-center gap-2 border-0 bg-transparent px-2.5 py-1.5 text-left',
-                  'cursor-pointer transition-colors duration-[var(--nomi-transition-fast)]',
+                  'cursor-pointer transition-colors duration-nomi-fast ease-nomi-fast',
                   'text-nomi-ink-60 hover:bg-nomi-ink-05 hover:text-nomi-ink',
                 )}
                 onMouseEnter={(event) => showHoveredPrompt(item.id, event.currentTarget)}
@@ -255,7 +256,16 @@ function BrowserPromptPickerPopover({
   )
 }
 
-export default function NodeGenerationComposer({ node, visualSize }: Props): JSX.Element {
+export default function NodeGenerationComposer({ onFeedback, node, visualSize }: Props): JSX.Element {
+  const feedbackOwnerRef = React.useRef<string | null>(node.id)
+  feedbackOwnerRef.current = node.id
+  React.useEffect(() => { feedbackOwnerRef.current = node.id; return () => { feedbackOwnerRef.current = null } }, [node.id])
+  const [feedback, setFeedback] = React.useState<string | null>(null)
+  const reportFeedback = React.useCallback((message: string) => {
+    if (feedbackOwnerRef.current !== node.id) { onFeedback(message); return }
+    notify({ identity: `NodeGenerationComposer:${node.id}`, reason: 'interaction', message, level: 'inline', present: setFeedback })
+  }, [node.id, onFeedback])
+
   const { t } = useTranslation()
   const updateNode = useGenerationCanvasStore((state) => state.updateNode)
   const status = node.status || 'idle'
@@ -332,7 +342,7 @@ export default function NodeGenerationComposer({ node, visualSize }: Props): JSX
   const promptPickerButtonRef = React.useRef<HTMLButtonElement | null>(null)
   const promptPickerPopoverRef = React.useRef<HTMLDivElement | null>(null)
   // 拖文件到卡 → 加为参考（捷径 A）。仅当当前模式有数组参考槽时接管拖拽。
-  const { acceptsDrop, isDragOver, isUploading, dropHandlers } = useNodeAssetDrop(node)
+  const { acceptsDrop, isDragOver, isUploading, dropHandlers } = useNodeAssetDrop(node, reportFeedback)
   // @ 候选 = 当前模式 image_ref 槽的有序填充（连线在前+上传，option 2 单源），与面板编号①②③、
   // 发送的 reference_image 数组同一口径——连线进来的参考图也在候选里、能被 @（此前只读 meta 漏掉边）。
   // 候选已扩到三组：当前参考 / 画布已出图节点 / 素材库。后两组选中会**先真的建立引用**再插 chip
@@ -346,7 +356,7 @@ export default function NodeGenerationComposer({ node, visualSize }: Props): JSX
     [projectAssets],
   )
   const { orderedReferenceUrls: mentionCandidates, orderedMediaReferences, mentionSearch, onMentionSelect } =
-    useNodeMentionSource(node, mentionLibraryAssets)
+    useNodeMentionSource(node, mentionLibraryAssets, reportFeedback)
   const insertMention = React.useCallback((url: string) => {
     if (!promptEditor || promptEditor.isDestroyed) return
     const reference = orderedMediaReferences.find((candidate) => candidate.url === url)
@@ -477,13 +487,13 @@ export default function NodeGenerationComposer({ node, visualSize }: Props): JSX
         }
         const outcomes = referenceUrls.map((url) => addAssetUrlToNode(node.id, 'image', url))
         if (outcomes.every((outcome) => outcome.status === 'no-slot')) {
-          toast(t('generationCommon.composer.promptReferenceUnsupported'), 'info')
+          reportFeedback(t('generationCommon.composer.promptReferenceUnsupported'))
         }
       }
       setPromptPickerOpen(false)
       void persistActiveWorkbenchProjectNow().catch(() => {})
     },
-    [mentionCandidates, node.id, node.locked, promptEditor, t, updateNode],
+    [mentionCandidates, node.id, node.locked, promptEditor, reportFeedback, t, updateNode],
   )
 
   const handleGenerate = async (event: React.MouseEvent<HTMLButtonElement>) => {
@@ -511,7 +521,7 @@ export default function NodeGenerationComposer({ node, visualSize }: Props): JSX
 
   // 吃提示词的节点才有「最小可用高度」——不吃的（如某些 ComfyUI 工作流）本来就该按内容自然矮。
   const minUsableHeight = acceptsPrompt ? COMPOSER_MIN_USABLE_HEIGHT : 0
-  const { anchorRef, canvasZoom, flipUp, aboveClearance, shiftX, maxHeight } = useComposerViewportPlacement({
+  const { anchorRef, canvasZoom, flipUp, left, top, maxWidth, maxHeight } = useComposerViewportPlacement({
     node,
     visualSize,
     gap: composerLayout.gap,
@@ -519,21 +529,15 @@ export default function NodeGenerationComposer({ node, visualSize }: Props): JSX
     minUsableHeight,
   })
 
-  // 卡宽 = **内容驱动**（用户拍板 2026-06-16，推翻 06-13 的「按最宽模型恒定宽」）：
-  // 卡片 **w-max**（max-content）跟着当前模型的「底栏一行」(锁+参数+生成钮)自然撑开。参数已主次分层
-  // （最常调内联、其余收进 InlineParameterBar 的「更多」弹层，方案 B 2026-06-25），底栏恒单行，生成钮 ml-auto 贴右。
-  // **为什么不能用 w-fit**：composer 是 absolute + left-1/2 锚在节点上，fit-content 的可用宽被节点框
-  // (~300px) 卡死 → 塌回 min-content(min-w-360)、参数多就被挤截断（实测 2026-06-16 真机：card 卡 360）。
-  // max-content 不吃可用宽约束，按内容真实宽长开。提示词/参考区用 w-0 min-w-full **只填不撑**(贡献 0 到
-  // max-content，长 prompt 在卡宽内换行，不把卡撑爆)。max-w 兜底防极端。（离屏测量器已删，纯 CSS。）
+  // 卡宽由当前模型底栏驱动；放置层按屏幕空间限制可用宽高，拥挤时滚动。
 
   return (
-    // 外层只做定位锚（不裁剪），宽度跟随内层卡（w-max 包住按内容长开的卡，便于 -translate-x-1/2 居中）。
+    // 外层只做屏幕空间定位锚，反向缩放保持参数卡可读。
     <div
       ref={anchorRef}
       className={cn(
         'generation-canvas-v2-node__composer',
-        'absolute left-1/2 z-[8] w-max',
+        'absolute z-[8] w-max',
         // 画布拖动期间隐身（拖节点、拖选区/组框、拖画布平移都算；状态源=stage 的 data-dragging，见 canvasDraggingFlag）。
         // 刻意用 visibility 而非条件卸载：里面是 TipTap 编辑器实例，卸载 = 丢未提交的输入 +
         // 每次拖动重建编辑器（拖动是最高频动作）。
@@ -541,44 +545,36 @@ export default function NodeGenerationComposer({ node, visualSize }: Props): JSX
       )}
       data-flipped={flipUp ? 'true' : 'false'}
       style={{
-        // 用户反馈③：反向缩放抵消画布 scale(zoom) → 面板恒定屏幕尺寸（缩小画布只缩上面的卡片框，
-        // 不缩这个参数框）。横向居中的 -translate-x-1/2 改写进 transform（否则被 scale 覆盖）。
-        // transform-origin 贴住与节点相连的那条边（默认朝下=顶边、翻上=底边），缩放时锚点不漂移。
-        // 最左的 translateX(shiftX px) 在屏幕空间生效（不被 scale 缩）→ 横向夹取把溢出视口的宽卡拉回。
-        transform: `translateX(${shiftX}px) translateX(-50%) scale(${1 / (canvasZoom || 1)})`,
-        transformOrigin: flipUp ? 'bottom center' : 'top center',
-        ...(flipUp
-          ? { bottom: `calc(100% + ${composerLayout.gap + aboveClearance}px)` }
-          : { top: `calc(100% + ${composerLayout.gap}px)` }),
+        left,
+        top,
+        transform: `scale(${1 / (canvasZoom || 1)})`,
+        transformOrigin: 'top left',
+        maxWidth,
+        visibility: maxHeight > 0 && maxWidth > 0 ? undefined : 'hidden',
         cursor: 'default',
         userSelect: 'auto',
         touchAction: 'auto',
       }}
       onPointerDown={(event) => event.stopPropagation()}
+      onWheel={(event) => event.stopPropagation()}
       {...(acceptsDrop ? dropHandlers : {})}
     >
+      {feedback ? <p role="status" className="m-0 px-2 py-1 text-caption text-nomi-ink-60">{feedback}</p> : null}
       <div
         className={cn(
           'generation-canvas-v2-node__composer-card',
-          'relative flex flex-col gap-2.5 p-3 min-w-[360px] max-w-[880px] w-max',
-          // 高度下限只由 style.minHeight 一处给（COMPOSER_MIN_USABLE_HEIGHT）：
-          // 旧的 min-h-[150px] 与下面的 Math.min(150, maxHeight) 是两套魔数、且后者允许塌到不可用，已删（P1）。
-          // 宽度内容驱动（w-max）：按底栏一行(锁+参数+生成钮)的真实宽长开，参数少则窄、多则宽，不塌不爆、不换行。
-          // max-w-[880px] 兜底：现有最宽是 apimart Seedance 7 控件(model+变体+比例+清晰度+时长+seed+生成音频)
-          // ≈810px，880 留头不触发截断；纯防极端（防 omni 模式参考槽行等异常撑爆）。实测 2026-06-16 校准。
-          // 卡片本身 overflow-hidden（非 overflow-y-auto）：底栏靠 shrink-0 mt-auto 恒贴卡底可见、
-          // 提示词只在内层 flex-1 滚动壳里滚（见下）。cutover 曾把这里改成 overflow-y-auto 想让「视口窄时
-          // body 滚、底栏可达」，但那会解除对内层 flex 列「必须塞进卡片固定高」的压力 → flex-1 min-h-0 滚动壳
-          // 塌成 0、72px 编辑器溢出到底栏上方与「生成参数」重叠、提示词区一个点都点不到（2026-09-01 smoke
-          // click 恒被拦、本机 elementFromPoint 复现命中「生成参数」）。origin/main 的 overflow-hidden 本就
-          // 让底栏恒可见 + 提示词内层滚，无此病，故恢复。
+          'relative flex flex-col gap-2.5 p-3 min-w-0 max-w-[880px] w-max',
+          // 常规空间保留底栏、内层滚动；拥挤时整个卡在无碰撞矩形内滚动。
           'border border-nomi-line rounded-nomi bg-nomi-paper overflow-hidden shadow-nomi-md',
           'transition-[outline-color] duration-150',
           isDragOver && 'outline-2 outline-dashed outline-nomi-accent outline-offset-[-2px]',
         )}
         style={{
           maxHeight,
-          minHeight: minUsableHeight,
+          maxWidth,
+          minWidth: Math.min(360, maxWidth),
+          minHeight: Math.min(minUsableHeight, maxHeight),
+          overflow: maxHeight < minUsableHeight || maxWidth < 360 ? 'auto' : undefined,
           cursor: 'default',
           userSelect: 'auto',
           touchAction: 'auto',
@@ -597,7 +593,7 @@ export default function NodeGenerationComposer({ node, visualSize }: Props): JSX
               type="button"
               className={cn(
                 'inline-flex h-7 shrink-0 items-center gap-1.5 rounded-nomi-sm border-0 bg-transparent px-2',
-                'cursor-pointer text-nomi-ink-40 transition-[background,color,transform] duration-[var(--nomi-transition-fast)]',
+                'cursor-pointer text-nomi-ink-40 transition-[background,color,transform] duration-nomi-fast ease-nomi-fast',
                 'hover:-translate-y-0.5 hover:bg-nomi-ink-05 hover:text-nomi-accent',
                 promptPickerOpen && 'bg-nomi-ink-05 text-nomi-accent',
                 node.locked && 'cursor-not-allowed opacity-45 hover:translate-y-0 hover:bg-transparent hover:text-nomi-ink-40',
@@ -675,7 +671,7 @@ export default function NodeGenerationComposer({ node, visualSize }: Props): JSX
         // 用 overflow-y-auto 而非 overflow-auto：卡宽已被 w-0 min-w-full 锁死、prompt 在卡宽内换行，横向永不溢出，明确关掉横向滚动条。
         <div
           className={cn('relative flex-1 min-h-0 w-0 min-w-full overflow-y-auto overscroll-contain')}
-          style={{ cursor: node.locked ? 'default' : 'text', userSelect: node.locked ? 'auto' : 'text' }}
+          style={{ flex: maxHeight < minUsableHeight ? '0 0 auto' : undefined, cursor: node.locked ? 'default' : 'text', userSelect: node.locked ? 'auto' : 'text' }}
         >
           <PromptEditor
             className={cn('min-h-[72px]')}

@@ -92,13 +92,17 @@ metadata:
 ```yaml
     stages:
       - id: script                       # 必填，阶段稳定 id
-        goal: 先出一份可审阅的编号剧本      # 必填
-        tools: [read_full_text]          # 必填，本阶段工具白名单（空 = 纯规划）
-        depends-on: []                   # 可选，DAG 依赖
-        pause: true                      # 可选，完成后暂停让用户确认
+        goal: 先出一份可审阅的编号剧本      # 必填，deprecated 兼容元数据
+        tools: [read_full_text]          # 必填，deprecated；不授权工具
+        depends-on: []                   # 可选，deprecated；不调度依赖
+        pause: true                      # 可选，deprecated；不触发暂停
         skill-refs: [writer-screenwriter] # 可选，本阶段按需注入的方法论技能
-        model-prefs: [{ kind: text }]     # 可选，**只声明 kind + family**
+        model-prefs: [{ kind: text }]     # 可选，kind 驱动模态 chip
 ```
+
+**兼容字段（deprecated，无阶段执行作用）**：`goal`、`tools`、`depends-on`、`pause` 和 `model-prefs[].family` 已被内置及存量技能包写入，因此仍按原 schema 解析；不要把它们当作规划、工具授权、依赖排序、暂停或模型家族选择指令。`goal` 仍投影为 DTO 标签：技能卡使用阶段数量，`ProjectAgentResidentShell` 在缺少描述时用标签拼接备用说明。因此 `goal` 仍有 UI 元数据用途，但不参与阶段规划。必填的 `goal` / `tools` 暂时保留原格式要求，避免破坏存量包。
+
+仍生效的是 `id` / `skill-refs`（生产阶段的方法论引用与执行证据）及 `model-prefs[].kind`（供应商模态 chip）。真正执行的阶段顺序与门由 `electron/productionRun/productionPlaybooks.ts` 及生产 driver 管理，不从这些兼容字段生成。
 
 `model-prefs` 用 `.strict()` 从结构上拒绝 `archetypeId` / `params` 等 vendor 专属键——技能分享出去不该绑死某个供应商（P4）。
 
@@ -134,3 +138,11 @@ pnpm run test -- electron/skills   # 内置技能的扩展块回归
 | `electron/skills/skillPackage.ts` | 导出 / 导入 / 删除、路径安全 |
 | `electron/skills/skillCapability.ts` | 能力派生与授权收窄 |
 | `scripts/check-skills-format.mjs` | 格式门岗 |
+
+## 9. 精选内容与封面（2026-09-08）
+
+`metadata.nomi.library` 是技能和节点效果共用的策展元数据；`kind` 区分 `skill` / `effect`，`appliesTo` 使用现役 text/image/video 模态。包含双语 title/summary/group、slots（token + reference）、source（原始 URL、40位 commit、作者、更改说明、证据链接），可选 preview（目录内路径、媒体类型、真实来源/本地产物/插画标记）。正文仅在 SKILL.md 保存，提示词库从目录投影，禁止另写一份 JSON 正文。
+
+精选内容再分发必须有标准顶层 license；只拒绝缺许可的精选条目，不拒绝无许可的用户私有技能。官方 SKILL.md 样例仍能导入。媒体路径不得越出本技能目录，允许 assets/ 或 references/ 下 PNG/JPEG/WebP/MP4/WebM。原仓配图与 Nomi 实测、用途插画三种证据不可混称。现役文本分享信封不携带这些二进制媒体；本期提供随内置目录发布的媒体，UI 接线及二进制分享另行交付。
+
+策展媒体目前仅随应用内置技能目录发布；现有文本分享信封不能携带图片/视频。包含 preview 的导入会明确拒收，导出返回不可导出；不会生成缺图却声称有效的分享包。卡片与 Agent hover 共用 `nomi-local://skill-preview/<directoryName>`，由主进程只开放已声明的内置媒体。

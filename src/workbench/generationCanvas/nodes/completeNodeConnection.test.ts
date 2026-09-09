@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { projectParameterReferenceSlots } from '../model/parameterReferenceSlots'
-import { showInfoToast } from '../../../utils/showInfoToast'
-vi.mock('../../../utils/showInfoToast', () => ({ showInfoToast: vi.fn() }))
+import { notify } from '../../../ui/notificationPolicy'
+vi.mock('../../../ui/notificationPolicy', () => ({ notify: vi.fn() }))
 import { useGenerationCanvasStore } from '../store/generationCanvasStore'
 import { completeNodeConnection } from './completeNodeConnection'
 import type { GenerationCanvasNode } from '../model/generationCanvasTypes'
@@ -43,7 +43,7 @@ const refImages = (id: string) =>
   (useGenerationCanvasStore.getState().nodes.find((n) => n.id === id)?.meta?.referenceImageUrls as string[] | undefined)
 const edgesTo = (id: string) => useGenerationCanvasStore.getState().edges.filter((e) => e.target === id)
 
-beforeEach(() => { seed([]); vi.mocked(showInfoToast).mockClear() })
+beforeEach(() => { seed([]); vi.mocked(notify).mockClear() })
 
 describe('completeNodeConnection — 捷径 B（地基收口：数组参考也建有序边）', () => {
   it('declared media slots do not report a successful bare connection as full', () => {
@@ -55,11 +55,11 @@ describe('completeNodeConnection — 捷径 B（地基收口：数组参考也�
     useGenerationCanvasStore.getState().startConnection('src')
     completeNodeConnection('dst')
     expect(edgesTo('dst')).toMatchObject([{ targetParamKey: 'input_a' }])
-    expect(showInfoToast).not.toHaveBeenCalled()
+    expect(notify).not.toHaveBeenCalled()
     useGenerationCanvasStore.getState().startConnection('src')
     completeNodeConnection('dst')
     expect(edgesTo('dst')).toHaveLength(1)
-    expect(showInfoToast).toHaveBeenCalledOnce()
+    expect(notify).toHaveBeenCalledOnce()
   })
   it('image source(有结果) → omni target：建有序 character_ref 边(order 0)，不写 meta-only，不弹 toast', () => {
     seed([imageNode('src', 'https://cdn/x.png'), omniVideoNode('dst')])

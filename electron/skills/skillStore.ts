@@ -1,10 +1,11 @@
 import fs from "node:fs";
 import path from "node:path";
+import { readSkillCuration, type SkillCuration } from "./skillCuration";
 
 import { getSkillsRoots, getUserSkillsRoot } from "../runtimePaths";
 import { frontmatterString, parseSkillFrontmatter, type SkillFrontmatter } from "./skillFrontmatter";
 import { migrateLegacySkillManifest } from "./skillManifestMigration";
-import { computeSkillContentHash, readSkillDirFiles, SKILL_PACKAGE_VERSION } from "./skillPackage";
+import { computeSkillContentHash, isSafeSkillFilePath, readSkillDirFiles, SKILL_PACKAGE_VERSION } from "./skillPackage";
 import {
   parseSkillManifest,
   type SkillAudience,
@@ -12,6 +13,7 @@ import {
 } from "./skillManifestSchema";
 
 export type SkillRecord = {
+  curation?: SkillCuration;
   name: string;
   directoryName: string;
   filePath: string;
@@ -193,6 +195,7 @@ export function discoverSkillRecordsFromRoots(
       const front = parseSkillFrontmatter(body);
       const { manifest, error } = readSkillManifest(front);
       records.push({
+        curation: front.error ? undefined : readSkillCuration(front.values),
         // `name` and `description` have exactly one owner now: the two required
         // frontmatter fields the Agent Skills spec defines.  The extension block
         // may not restate them, so the two-manifest drift cannot come back.
@@ -305,18 +308,34 @@ export function listSkillSummaries(
   }));
 }
 
+/** Re-read through the canonical package reader; a changed package never answers an old identity. */
+function currentMcpSkillFiles(record: SkillRecord): Record<string, string> | null {
+  try {
+    const root = path.dirname(record.filePath);
+    if (!path.isAbsolute(root) || fs.lstatSync(root).isSymbolicLink()) return null;
+    const files = readSkillDirFiles(root);
+    return computeSkillContentHash(files) === record.contentHash ? files : null;
+  } catch {
+    return null;
+  }
+}
+
 export function listSkillSummariesForMcp(
   access: SkillMcpAccess = "public",
   records: SkillRecord[] = readSkillRecords(),
-): SkillSummary[] {
-  return records.filter((record) => isSkillVisibleToMcp(record, access)).map((record) => ({
-    name: record.name,
-    directoryName: record.directoryName,
-    description: record.description,
-    origin: record.origin,
-    packageVersion: record.packageVersion,
-    contentHash: record.contentHash,
-  }));
+): Array<SkillSummary & { filePaths: string[] }> {
+  return records.filter((record) => isSkillVisibleToMcp(record, access)).flatMap((record) => {
+    const files = currentMcpSkillFiles(record);
+    return files ? [{
+      name: record.name,
+      directoryName: record.directoryName,
+      description: record.description,
+      origin: record.origin,
+      packageVersion: record.packageVersion,
+      contentHash: record.contentHash,
+      filePaths: Object.keys(files).sort(),
+    }] : [];
+  });
 }
 
 export type SkillContent = SkillSummary & { body: string };
@@ -348,17 +367,21 @@ export function readSkillContentForMcp(
   access: SkillMcpAccess = "public",
   records: SkillRecord[] = readSkillRecords(),
   expected?: Readonly<{ packageVersion: string; contentHash: string }>,
+  filePath = "SKILL.md",
 ): SkillContent | null {
   const record = findExactSkillRecord(key, records);
   if (!record || !isSkillVisibleToMcp(record, access)) return null;
   if (expected && (record.packageVersion !== expected.packageVersion || record.contentHash !== expected.contentHash)) {
     return null;
   }
+  if (!isSafeSkillFilePath(filePath)) return null;
+  const files = currentMcpSkillFiles(record);
+  if (!files || !Object.prototype.hasOwnProperty.call(files, filePath)) return null;
   return {
     name: record.name,
     directoryName: record.directoryName,
     description: record.description,
-    body: record.body,
+    body: files[filePath],
     origin: record.origin,
     packageVersion: record.packageVersion,
     contentHash: record.contentHash,

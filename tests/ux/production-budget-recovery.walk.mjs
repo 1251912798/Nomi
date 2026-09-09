@@ -3,7 +3,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { launchNomiApp } from './_launchApp.mjs'
-import { screenshotSettled } from './_assert.mjs'
+import { expect, screenshotSettled } from './_assert.mjs'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'nomi-production-budget-ux-'))
@@ -181,17 +181,17 @@ try {
   await screenshotSettled(window, { path: path.join(shotsDir, `${shotPrefix}02-policy-settings-focused.png`) })
 
   await budgetInput.fill('25')
-  await window.waitForFunction(
+  await expect.poll(async () => window.evaluate(
     async () => (await window.nomiDesktop?.settings?.automationPolicy?.get())?.maxSpend === 25,
-  )
+  ), { timeout: 30_000 }).toBe(true)
   await providerInput.check()
-  await window.waitForFunction(
+  await expect.poll(async () => window.evaluate(
     async () => (await window.nomiDesktop?.settings?.automationPolicy?.get())?.allowedProviders.includes('kie'),
-  )
+  ), { timeout: 30_000 }).toBe(true)
   await modelInput.check()
-  await window.waitForFunction(
+  await expect.poll(async () => window.evaluate(
     async () => (await window.nomiDesktop?.settings?.automationPolicy?.get())?.allowedModels.includes('gpt-image-2-text-to-image'),
-  )
+  ), { timeout: 30_000 }).toBe(true)
   let run = await window.evaluate(({ pid, rid }) => window.nomiDesktop?.productionRuns?.read(pid, rid), {
     pid: projectId,
     rid: runId,

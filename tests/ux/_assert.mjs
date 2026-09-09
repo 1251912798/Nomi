@@ -10,10 +10,14 @@
 // 官方断言能治竞态那一半。治不了的另一半是：**在一个根本不可能出现坏东西的现场，
 // 断言「没看到坏东西」**。这种空洞通过没有任何库能替你挡——只能由本文件的 API 在签名上逼出来，
 // 这就是 expectAbsent 强制要 provenBy 的全部理由。
-import { expect } from '@playwright/test'
+import { stationTimeout } from './_station-budget.mjs'
+import { expect as nativeExpect } from '@playwright/test'
+import { collectingExpect } from './_collect.mjs'
+export { createWalkSession } from './_collect.mjs'
+const expect = collectingExpect(nativeExpect)
 
 /** 走查里所有等待的统一上限。比 Playwright 默认 5s 宽：Electron 冷启动 + 真模型都慢。 */
-export const DEFAULT_TIMEOUT_MS = 15_000
+export const DEFAULT_TIMEOUT_MS = stationTimeout()
 
 export { expect }
 
@@ -78,7 +82,7 @@ export async function proveProbe(locator, label, timeout = DEFAULT_TIMEOUT_MS) {
   if (!label || typeof label !== 'string') {
     throw new Error('proveProbe(locator, label)：label 必填，失败信息要说人话，别让人对着 selector 猜')
   }
-  await expect(
+  await nativeExpect(
     locator,
     `基线不成立：「${label}」应当能被探针找到，但一个都没找到。`
       + '\n如果连它都找不到，说明面板没渲染 / 选择器写错了，'
@@ -392,7 +396,7 @@ export async function expectNoRawI18nKeysInDom(win, { message, allowSelectors = 
 //   (a) 主题翻转——走查只写了 data-mantine-color-scheme 一个属性，而生产路径走的是
 //       applyNomiColorScheme（src/theme/colorScheme.ts:54），它要写**四个**：
 //       dataset.theme / dataset.nomiColorScheme / data-mantine-color-scheme / style.colorScheme。
-//       只写一个 = 半翻的主题，再叠上 ~140ms 的 --nomi-transition-fast 过渡；
+//       只写一个 = 半翻的主题，再叠上 ~140ms 的 --nomi-duration-fast 过渡；
 //   (b) 已关闭的弹窗还在画退场动画（Mantine 的常驻 Modal，见 src/design/confirmDialog.tsx:70）；
 //   (c) toast 被拍在滑入动画中途，让视口边缘切掉一半。
 //
@@ -560,7 +564,7 @@ export async function applyColorSchemeForShot(win, scheme) {
     root.setAttribute('data-mantine-color-scheme', value)
     root.style.colorScheme = value
   }, scheme)
-  // 翻完还有 ~140ms 的 --nomi-transition-fast 在跑，等它跑完再让调用方截图。
+  // 翻完还有 ~140ms 的 --nomi-duration-fast 在跑，等它跑完再让调用方截图。
   await waitForVisualQuiescence(win)
 }
 
@@ -676,3 +680,5 @@ export async function expectHittable(locator, label) {
 // 意图层（拍板方手写的结构关系）与自动层（从样张导出的挂点/几何/token）**共用这一个入口**，
 // 实现在 `_contract.mjs`。走查里 `import { assertMockupContract } from './_assert.mjs'` 即可。
 export { assertMockupContract, TOKEN_STEP_PX, MAGNITUDE_RATIO } from './_contract.mjs'
+
+export { scanFeel, formatFeelFindings } from './_feel.mjs'

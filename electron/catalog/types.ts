@@ -233,6 +233,7 @@ export type Vendor = {
   name: string;
   enabled: boolean;
   hasApiKey?: boolean;
+  credentialVerificationPending?: boolean;
   baseUrlHint?: string | null;
   authType?: VendorAuthType;
   authHeader?: string | null;
@@ -259,6 +260,8 @@ export type Model = {
   labelZh: string;
   kind: BillingModelKind;
   enabled: boolean;
+  /** Complete provider-list evidence; recovery clears this without enabling. */
+  unlisted?: boolean;
   meta?: unknown;
   /**
    * 自定义调用脚本（用户数据，2026-08-04 拍板）：存在即整体接管该模型的请求构造/轮询/响应解析
@@ -635,6 +638,8 @@ export type CatalogVersion = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12;
 export const CURRENT_CATALOG_VERSION: CatalogVersion = catalogVersion.current as CatalogVersion;
 
 export type CatalogState = {
+  /** User-deleted builtin identities must not be inserted by subsequent seeding. */
+  suppressedBuiltinModels?: Array<{ vendorKey: string; modelKey: string }>;
   version: CatalogVersion;
   vendors: Vendor[];
   models: Model[];

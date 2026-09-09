@@ -1,3 +1,4 @@
+import { V4Row, V4Shimmer } from './AgentPanelV4Row'
 // Agent 面板 v4 · 积木 ① 用户气泡 · ② 助手文本（含思考行）
 //
 // 定稿 Vocabulary 板 ①②：用户气泡右对齐 ink 深底，附件缩成 chip **在气泡内**；
@@ -7,6 +8,7 @@
 // 思考行是 Process 板时刻 2：shimmer 文字 +「4s · esc 打断」。刻意**不用转圈**——
 // 转圈没有时间感，秒数才告诉用户「没死」。它是助手文本的一个状态，不是第九个积木。
 import React from 'react'
+import { useTranslation } from 'react-i18next'
 import { cn } from '../../../utils/cn'
 import { AgentPanelV4Markdown } from './AgentPanelV4Markdown'
 import { ActionIcon, IconChevronRight, IconCopy, IconRefresh } from './AgentPanelV4Icons'
@@ -44,10 +46,12 @@ export function V4UserBubble({
   chips?: readonly V4Chip[]
   darkMode?: boolean
 }): JSX.Element {
+  const { t } = useTranslation()
+  const lines = text.split(/\r?\n/)
   return (
     <div
       className={cn(
-        'ml-auto max-w-[86%] rounded-nomi px-3 py-2 text-body-sm',
+        'self-end max-w-[86%] rounded-nomi px-3 py-2 text-body-sm',
         // 暗色下用 ink-10 底而不是纯黑（定稿 Dark 板批注）：token 翻转后纯 ink 会变成浅色块。
         darkMode ? 'bg-nomi-ink-10 text-nomi-ink' : 'bg-nomi-ink text-nomi-paper',
       )}
@@ -60,7 +64,16 @@ export function V4UserBubble({
           ))}
         </div>
       ) : null}
-      <p className="m-0">{text}</p>
+      {lines.length > 12 ? (
+        <details className="group/user-input">
+          <summary className="cursor-pointer list-none">
+            <span className="block whitespace-pre-wrap group-open/user-input:hidden">{lines.slice(0, 12).join('\n')}</span>
+            <span className="text-micro group-open/user-input:hidden">{t('agentPanelV4.expand')}</span>
+            <span className="hidden text-micro group-open/user-input:inline">{t('agentPanelV4.collapse')}</span>
+          </summary>
+          <p className="m-0 whitespace-pre-wrap">{text}</p>
+        </details>
+      ) : <p className="m-0 whitespace-pre-wrap">{text}</p>}
     </div>
   )
 }
@@ -69,7 +82,6 @@ export function V4AssistantMessage({
   text,
   status,
   labels,
-  panelHeight,
   onCopy,
   onRetry,
   onContinue,
@@ -77,8 +89,6 @@ export function V4AssistantMessage({
   text: string
   status: V4AssistantStatus
   labels: { copy: string; retry: string; continue: string }
-  /** 折叠阈值由它 derive（定稿：超过面板高 60% 折起来）。单件取景时不给 = 不折。 */
-  panelHeight?: number
   /** 三个动作都可缺：设计实验室单件取景时没有宿主可调，钮仍在，只是按下去没有去处。 */
   onCopy?: (text: string) => void
   onRetry?: () => void
@@ -89,11 +99,7 @@ export function V4AssistantMessage({
     <div className="group" data-v4-block="assistant" data-status={status}>
       <Message role="assistant">
         <MessageResponse streaming={status === 'streaming'}>
-          {status === 'interrupted' ? (
-            <p className="m-0 text-body-sm text-nomi-ink-60">{text}</p>
-          ) : (
-            <AgentPanelV4Markdown text={text} panelHeight={panelHeight} streaming={status === 'streaming'} />
-          )}
+          <AgentPanelV4Markdown text={text} streaming={status === 'streaming'} />
         </MessageResponse>
         {/* 完成态才有动作，且 **hover 才显**——定稿 ②「hover 出复制/重来两个图标」。 */}
         {status === 'complete' ? (
@@ -179,18 +185,16 @@ export function V4Suggestion({
   text,
   options,
   onSelect,
-  panelHeight,
 }: {
   text: string
   options: readonly string[]
   onSelect?: (option: string) => void
-  panelHeight?: number
 }): JSX.Element {
   return (
     <div className="flex flex-col gap-1.5" data-v4-block="suggestion">
       <Message role="assistant">
         <MessageResponse>
-          <AgentPanelV4Markdown text={text} panelHeight={panelHeight} />
+          <AgentPanelV4Markdown text={text} />
         </MessageResponse>
       </Message>
       <V4OptionChips options={options} onSelect={(option) => onSelect?.(option)} />
@@ -202,14 +206,40 @@ export function V4Suggestion({
  * 思考行（Process 板时刻 2）。`brain` icon **只在这一行出现**，秒数与 esc 提示在同一行右端。
  * shimmer 走背景渐变裁字，不是骨架屏。
  */
-export function V4Thinking({ label, meta }: { label: string; meta: string }): JSX.Element {
-  return (
-    <div className="inline-flex h-7 items-center gap-2 text-caption text-nomi-ink-60" data-v4-block="thinking">
-      <ActionIcon action="think" />
-      <span className="bg-gradient-to-r from-nomi-ink-40 via-nomi-ink to-nomi-ink-40 bg-clip-text text-transparent">
-        {label}
+export function V4Thinking({ label, meta, text, streaming }: {
+  label: string
+  meta: string
+  text?: string
+  streaming?: boolean
+}): JSX.Element {
+  const { t } = useTranslation()
+  // Only measure the live interval we actually observed. Restored history has no duration.
+  const [seconds, setSeconds] = React.useState<number>()
+  React.useEffect(() => {
+    if (!streaming) return undefined
+    const started = performance.now()
+    setSeconds(0)
+    const timer = window.setInterval(() => setSeconds(Math.floor((performance.now() - started) / 1000)), 1000)
+    return () => window.clearInterval(timer)
+  }, [streaming])
+  const row = (
+    <>
+      <span className="shrink-0"><ActionIcon action="think" /></span>
+      {streaming === false ? <span className="min-w-0 truncate">{t('agentPanelV4.thinkingDone')}</span> : <V4Shimmer>{label}</V4Shimmer>}
+      <span className="shrink-0 whitespace-nowrap font-nomi-mono text-micro text-nomi-ink-40">
+        {seconds === undefined ? meta : t('agentPanelV4.thinkingSeconds', { count: seconds })}
       </span>
-      <span className="ml-auto font-nomi-mono text-micro text-nomi-ink-40">{meta}</span>
+      {text ? <IconChevronRight size={12} className="shrink-0 transition-transform group-open:rotate-90" /> : null}
+    </>
+  )
+  return (
+    <div className="min-w-0 text-caption text-nomi-ink-60" data-v4-block="thinking" data-streaming={streaming}>
+      {text ? (
+        <details className="group">
+          <V4Row as="summary" className="min-h-7 cursor-pointer list-none [&::-webkit-details-marker]:hidden">{row}</V4Row>
+          <div className="whitespace-pre-wrap break-words py-2 text-body-sm [overflow-wrap:anywhere]" data-v4-thinking-body="true">{text}</div>
+        </details>
+      ) : <V4Row className="min-h-7">{row}</V4Row>}
     </div>
   )
 }

@@ -5,7 +5,7 @@ import {
   type AgentChatHistory,
   type AgentToolProfile,
 } from "./agentChatContracts";
-import { PROJECT_AGENT_WORK_MODES } from "../shared/projectAgentContracts";
+import { PROJECT_AGENT_WORK_MODES } from '../shared/agentCapabilities/capabilityApprovalPolicy';
 import { captureAgentContextBinding } from "./context/contextBinding";
 import {
   agentToolCatalog,
@@ -13,7 +13,7 @@ import {
   agentToolProjection,
   productionCapabilityContracts,
 } from "./tools/agentToolCatalog";
-import type { RuntimeToolCall, RuntimeToolDescriptor } from "./runtime/runtimePort";
+import type { RuntimeToolCall, RuntimeToolDescriptor } from "../shared/agentCapabilities/transportContracts";
 import { capabilityAliasesFor, capabilityOperationAliasesFor } from "../shared/agentCapabilities/registry";
 import { restrictToolsToSkillCapabilities } from "../skills/skillCapability";
 import { freezeAgentContextSnapshot } from "../shared/agentContextSnapshot";

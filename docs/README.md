@@ -3,6 +3,10 @@
 > 查文档前先看这张表，按「我要找什么」跳到对应目录；索引仍有历史存量缺口，查不到时必须继续全量 grep。
 > 各目录若有自己的索引（如 plan/），表里直接给出。
 
+- [交付流程去堵：评审单位、机器锁与合并队列方案](plan/2026-09-08-delivery-flow-unclog.md)
+- [Agent runtime 测试资源生命周期修复](plan/2026-09-08-agent-runtime-flakes.md)
+- [删除未接线的技能 playbook orchestrator](plan/2026-09-08-delete-playbook-orchestrator.md)
+
 ## 按「我要找什么」定位
 
 | 我要找… | 去这里 |
@@ -28,6 +32,7 @@
 | **多智能体编排（如何派工/收货/接力多个 Codex/Opus 执行体）** | [`engineering/agent-orchestration-playbook.md`](engineering/agent-orchestration-playbook.md)（CLAUDE.md R27 的 L2 详解）|
 | **做一次调研（模板 / 必查的信息面 / 自媒体来源怎么抓）** | [`research/TEMPLATE.md`](research/TEMPLATE.md) + [`engineering/agent-orchestration-playbook.md`](engineering/agent-orchestration-playbook.md) §15；TikHub 接口契约在 [`research/tikhub-api-notes.md`](research/tikhub-api-notes.md) |
 | **当前哪些战线在途 / 哪些文件面被占道（动共享面前必查必登）** | [`engineering/active-lanes.md`](engineering/active-lanes.md) |
+| **Agent 运行时切换前的回放影子夜跑（怎么跑 / 报告在哪 / 7 天绿从哪天起算）** | [`engineering/agent-lane-replay-shadow.md`](engineering/agent-lane-replay-shadow.md) |
 | **本仓踩过的坑（走查假绿 / CI 红绿判读 / 分支合并 / 平台故障 / 产品判断）** | [`lessons/INDEX.md`](lessons/INDEX.md) — 按触发场景查，别通读 |
 | **模型接入实测产物（mapping/试验记录）** | [`onboarding-trials/`](onboarding-trials/) → 见其 `README.md` |
 | **QA / 测试记录** | [`qa/`](qa/) |
@@ -60,3 +65,5 @@
 - **会话记忆索引**：`~/.claude/.../memory/MEMORY.md`（跨会话事实，每行一条）。**踩坑教训的真相源已迁入 [`lessons/`](lessons/INDEX.md)**（2026-09-02），本机记忆里对应文件只剩一行指针；那边现在只留本机环境与在途战况。
 - **生成画布代码入口图**：[`../src/workbench/generationCanvas/ENTRY.md`](../src/workbench/generationCanvas/ENTRY.md)
 - **工程纪律**：`../CLAUDE.md`（速览 + R1–R14）
+
+- [技能库样张 v2：真实 Markdown 与排版验收](plan/2026-09-09-skill-library-mockup-v2.md)

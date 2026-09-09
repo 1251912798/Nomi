@@ -189,9 +189,6 @@ export function AiModelsSection({
   React.useEffect(() => {
     if (!focusEnabled || !productionPolicyRequirement || focusedRequirementRef.current === productionPolicyRequirement) return
     let target: HTMLInputElement | undefined
-    if (settings.maxSpend === null) {
-      target = policySectionRef.current?.querySelector<HTMLInputElement>('[data-settings-field="hard-budget"]') ?? undefined
-    } else {
       const missingProvider = requiredProviderModels.find((item) => !settings.allowedProviders.includes(item.provider))?.provider
       if (missingProvider) {
         target = [...(policySectionRef.current?.querySelectorAll<HTMLInputElement>('[data-settings-field="production-provider"]') ?? [])]
@@ -202,7 +199,6 @@ export function AiModelsSection({
         target = [...(policySectionRef.current?.querySelectorAll<HTMLInputElement>('[data-settings-field="production-model"]') ?? [])]
           .find((input) => input.dataset.policyKey === `${missingPair.provider}:${missingPair.model}`)
       }
-    }
     if (!target) return
     focusedRequirementRef.current = productionPolicyRequirement
     const frame = window.requestAnimationFrame(() => {
@@ -210,7 +206,7 @@ export function AiModelsSection({
       target?.focus({ preventScroll: true })
     })
     return () => window.cancelAnimationFrame(frame)
-  }, [focusEnabled, models, productionPolicyRequirement, providers, requiredProviderModels, settings.allowedModels, settings.allowedProviders, settings.maxSpend])
+  }, [focusEnabled, models, productionPolicyRequirement, providers, requiredProviderModels, settings.allowedModels, settings.allowedProviders])
 
   return (
     <div data-settings-section="ai-models">
@@ -394,21 +390,6 @@ export function AiModelsSection({
           <div className="mt-0.5 text-caption leading-relaxed text-nomi-ink-40">{t('settings.ai.policy.mediaHint')}</div>
         </div>
         <div className="mt-3 grid gap-3 rounded-nomi-sm border border-nomi-line-soft bg-nomi-ink-05 p-3">
-          <label htmlFor="settings-hard-budget" className="grid gap-1.5">
-            <span className="text-caption font-medium text-nomi-ink-80">{t('settings.ai.policy.hardBudget')}</span>
-            <span className="text-micro text-nomi-ink-40">{t('settings.ai.policy.hardBudgetHint')}</span>
-            <input
-              data-settings-field="hard-budget"
-              id="settings-hard-budget"
-              type="number"
-              min={0}
-              step="0.01"
-              value={settings.maxSpend ?? ''}
-              onChange={(event) => onChange({ maxSpend: event.currentTarget.value === '' ? null : Math.max(0, Number(event.currentTarget.value)) })}
-              aria-label={t('settings.ai.policy.hardBudget')}
-              className="h-8 w-40 rounded-nomi-sm border border-nomi-line bg-nomi-paper px-2 text-caption text-nomi-ink outline-none focus:border-nomi-accent"
-            />
-          </label>
           <div className="grid gap-1.5">
             <span className="text-caption font-medium text-nomi-ink-80">{t('settings.ai.policy.providers')}</span>
             <span className="text-micro text-nomi-ink-40">{t('settings.ai.policy.providersHint')}</span>

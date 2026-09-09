@@ -1,0 +1,60 @@
+[
+  {
+    "criterion": "no-fabricated-image",
+    "result": "green",
+    "canvases": [
+      {
+        "width": 340,
+        "height": 240,
+        "rect": {
+          "x": 24,
+          "y": 24,
+          "width": 340,
+          "height": 240,
+          "top": 24,
+          "right": 364,
+          "bottom": 264,
+          "left": 24
+        }
+      },
+      {
+        "width": 300,
+        "height": 150,
+        "rect": {
+          "x": 24,
+          "y": 24,
+          "width": 340,
+          "height": 240,
+          "top": 24,
+          "right": 364,
+          "bottom": 264,
+          "left": 24
+        }
+      }
+    ]
+  },
+  {
+    "screenshot": "pf-fx-generating"
+  },
+  {
+    "screenshot": "pf-fx-preview-reveal"
+  },
+  {
+    "screenshot": "pf-fx-final-reveal"
+  },
+  {
+    "screenshot": "pf-fx-done-clean"
+  },
+  {
+    "criterion": "terminal-zero-waiting-overlay",
+    "deadlineMs": 1200,
+    "result": "green"
+  },
+  {
+    "screenshot": "pf-fx-reduced"
+  },
+  {
+    "criterion": "reduced-zoom-visibility-failure",
+    "result": "green"
+  }
+]

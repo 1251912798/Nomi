@@ -1,3 +1,4 @@
+import { notify } from '../../../ui/notificationPolicy'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { IconCube, IconMaximize } from '@tabler/icons-react'
@@ -5,7 +6,6 @@ import { lazyWithChunkBoundary } from '../../../ui/chunkBoundary'
 import { cn } from '../../../utils/cn'
 import { EmptyStateLauncher } from './render/CardCommon'
 import { NomiLoadingMark } from '../../../design'
-import { toast } from '../../../ui/toast'
 import { persistActiveWorkbenchProjectNow } from '../../project/workbenchProjectSession'
 import { useWorkbenchStore } from '../../workbenchStore'
 import type { GenerationCanvasNode } from '../model/generationCanvasTypes'
@@ -124,6 +124,11 @@ function Scene3DTakeGeneratingOverlay(): JSX.Element {
 }
 
 function Scene3DEditor({ node, width, height, readOnly = false }: Scene3DEditorProps): JSX.Element {
+  const [feedback, setFeedback] = React.useState<string | null>(null)
+  const reportFeedback = React.useCallback((message: string) => {
+    notify({ identity: `Scene3DEditor:${node.id}`, reason: 'interaction', message, level: 'inline', present: setFeedback })
+  }, [node.id])
+
   const { t } = useTranslation()
   const [fullscreen, setFullscreen] = React.useState(false)
   const updateNode = useGenerationCanvasStore((state) => state.updateNode)
@@ -309,18 +314,18 @@ function Scene3DEditor({ node, width, height, readOnly = false }: Scene3DEditorP
           scene3dState: nextSceneState,
         },
       })
-      toast(t('scene3d.fullscreen.screenshotCreated'), 'success')
       // P3：标记截图节点，关编辑器后 fit + 高亮
       pendingFitNodeIdRef.current = screenshotNode.id
     } catch (error) {
-      toast(error instanceof Error ? error.message : t('scene3d.fullscreen.screenshotFailed'), 'error')
+      reportFeedback(error instanceof Error ? error.message : t('scene3d.fullscreen.screenshotFailed'))
     }
-  }, [addNode, connectNodes, node.id, node.meta, node.position.x, node.position.y, referenceTarget, t, updateNode, width])
+  }, [addNode, connectNodes, node.id, node.meta, node.position.x, node.position.y, referenceTarget, reportFeedback, t, updateNode, width])
 
   const takeCaptureStatus = readTakeCaptureStatus(node)
 
   return (
     <>
+      {feedback ? <p role="status" className="m-0 px-2 py-1 text-caption text-nomi-ink-60">{feedback}</p> : null}
       <div className="group relative w-full h-full overflow-hidden" data-tour-target="staging trajectory">
         {takeCaptureStatus === 'generating' ? <Scene3DTakeGeneratingOverlay /> : null}
         {cardPreview.kind === 'video' ? (
@@ -353,7 +358,7 @@ function Scene3DEditor({ node, width, height, readOnly = false }: Scene3DEditorP
             <div
               className={cn(
                 'pointer-events-none absolute inset-0 grid place-items-center',
-                'bg-nomi-ink/0 transition-colors duration-[var(--nomi-transition-fast)] group-hover:bg-nomi-ink/[0.32]',
+                'bg-nomi-ink/0 transition-colors duration-nomi-fast ease-nomi-fast group-hover:bg-nomi-ink/[0.32]',
               )}
             >
               <button
@@ -362,7 +367,7 @@ function Scene3DEditor({ node, width, height, readOnly = false }: Scene3DEditorP
                 className={cn(
                   'pointer-events-auto inline-flex items-center gap-1.5 rounded-nomi px-3 py-1.5 border-0 cursor-pointer',
                   'bg-nomi-paper/[0.92] text-body-sm font-semibold text-nomi-ink shadow-nomi-sm backdrop-blur-[10px]',
-                  'opacity-0 transition-opacity duration-[var(--nomi-transition-fast)] group-hover:opacity-100',
+                  'opacity-0 transition-opacity duration-nomi-fast ease-nomi-fast group-hover:opacity-100',
                   'focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-nomi-accent focus-visible:outline-offset-2',
                 )}
                 onFocus={preloadFullscreenEditor}
@@ -416,6 +421,7 @@ function Scene3DEditor({ node, width, height, readOnly = false }: Scene3DEditorP
       {fullscreen ? (
         <React.Suspense fallback={null}>
           <Scene3DFullscreen
+              feedbackMessage={feedback}
             initialState={sceneState}
             nodeTitle={node.title || t('scene3d.fullscreen.sceneTitle')}
             readOnly={readOnly}

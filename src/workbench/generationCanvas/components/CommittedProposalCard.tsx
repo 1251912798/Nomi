@@ -3,7 +3,7 @@ import { IconChevronDown, IconChevronRight } from '@tabler/icons-react'
 import { cn } from '../../../utils/cn'
 import { WorkbenchButton } from '../../../design'
 import { useTranslation } from 'react-i18next'
-import { toast } from '../../../ui/toast'
+import { notify } from '../../../ui/notificationPolicy'
 import { useWorkbenchStore } from '../../workbenchStore'
 import { detectLostUserEdits, runProposalUndo, type CommittedProposalRecord } from '../agent/proposalUndo'
 
@@ -23,8 +23,12 @@ export default function CommittedProposalCard({
   flat?: boolean
 }): JSX.Element {
   const { t } = useTranslation()
+  const [feedback, setFeedback] = React.useState<{ proposalId: string; message: string } | null>(null)
   const [stepsOpen, setStepsOpen] = React.useState(false)
-  const [lostEdits, setLostEdits] = React.useState<string[] | null>(null)
+  const [lostEdits, setLostEdits] = React.useState<{ proposalId: string; lines: string[] } | null>(null)
+  const currentLostEdits = lostEdits?.proposalId === record.proposalId ? lostEdits.lines : null
+  const currentProposalId = React.useRef(record.proposalId)
+  currentProposalId.current = record.proposalId
   const setActiveCategoryId = useWorkbenchStore((state) => state.setActiveCategoryId)
   const activeCategoryId = useWorkbenchStore((state) => state.activeCategoryId)
   // 落点回报(审计 A1):本笔节点落进了哪些分类——非当前分类的给跳转 chip,
@@ -32,16 +36,17 @@ export default function CommittedProposalCard({
   const jumpTargets = (record.categoryCounts ?? []).filter((item) => item.count > 0)
 
   const handleUndo = async () => {
+    setFeedback(null)
     const lost = detectLostUserEdits(record)
-    if (lost.length && lostEdits === null) {
-      setLostEdits(lost) // 先列明将丢失的修改,等第二次确认
+    if (lost.length && currentLostEdits === null) {
+      setLostEdits({ proposalId: record.proposalId, lines: lost }) // 先列明将丢失的修改,等第二次确认
       return
     }
     try {
       await runProposalUndo(record)
-      onUndone?.()
+      if (currentProposalId.current === record.proposalId) onUndone?.()
     } catch (error: unknown) {
-      toast(error instanceof Error ? error.message : String(error), 'error')
+      notify({ identity: record.proposalId, reason: 'undo-failed', message: error instanceof Error ? error.message : String(error), type: 'error', level: 'inline', present: (message) => setFeedback({ proposalId: record.proposalId, message }) })
     }
   }
 
@@ -108,6 +113,7 @@ export default function CommittedProposalCard({
           {t('generationCommon.committedProposal.undo')}
         </WorkbenchButton>
       </div>
+      {feedback?.proposalId === record.proposalId ? <p role="status" className="m-0 text-caption text-nomi-danger">{feedback.message}</p> : null}
       {stepsOpen ? (
         <ol className={cn('flex flex-col gap-1 list-none p-0 m-0')}>
           {record.stepLabels.map((label, index) => (
@@ -117,12 +123,12 @@ export default function CommittedProposalCard({
           ))}
         </ol>
       ) : null}
-      {lostEdits ? (
+      {currentLostEdits ? (
         <div className={cn('flex flex-col gap-2 p-2 rounded-nomi-sm bg-nomi-paper border border-nomi-line')}>
           <span className={cn('text-caption font-medium text-[var(--nomi-snap-tag)]')}>
             {t('generationCommon.committedProposal.lostEdits')}
           </span>
-          {lostEdits.map((line, index) => (
+          {currentLostEdits.map((line, index) => (
             <span key={index} className={cn('text-caption text-nomi-ink-80')}>
               · {line}
             </span>

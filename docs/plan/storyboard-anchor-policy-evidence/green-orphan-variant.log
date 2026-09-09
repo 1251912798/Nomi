@@ -1,0 +1,9 @@
+
+ RUN  v4.1.8 /Users/aoqimin/Desktop/Nomi-anchor-policy
+
+
+ Test Files  1 passed (1)
+      Tests  27 passed (27)
+   Start at  16:20:03
+   Duration  1.14s (transform 736ms, setup 57ms, import 875ms, tests 21ms, environment 0ms)
+

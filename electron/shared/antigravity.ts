@@ -32,3 +32,18 @@ export function parseAntigravityTestRequest(value: unknown): AntigravityTestRequ
   }
   return { capability: input.capability as AntigravityCapability, modelId: input.modelId };
 }
+
+/** Nomi compatibility policy, not an upstream guarantee. Evidence never grants execution. */
+export const ANTIGRAVITY_MEDIA_PROTOCOL = {
+  minimumVersion: "1.1.21",
+  verifiedThrough: "1.1.22",
+} as const;
+
+export function assertAntigravityMediaVersion(version?: string): void {
+  if (!version || !/^\d+\.\d+\.\d+$/.test(version)) throw new Error("ANTIGRAVITY_VERSION_UNRECOGNIZED");
+  const actual = version.split(".").map(Number);
+  const minimum = ANTIGRAVITY_MEDIA_PROTOCOL.minimumVersion.split(".").map(Number);
+  if (actual.some(value => !Number.isSafeInteger(value))) throw new Error("ANTIGRAVITY_VERSION_UNRECOGNIZED");
+  const difference = actual.map((value, index) => value - minimum[index]).find(value => value !== 0) ?? 0;
+  if (difference < 0) throw new Error("ANTIGRAVITY_VERSION_TOO_OLD");
+}

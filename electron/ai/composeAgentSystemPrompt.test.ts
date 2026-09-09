@@ -22,6 +22,7 @@ beforeEach(() => setDesktopLocale("en"));
 const LANGUAGE_RULE_EN = [
   "Response-language rule (highest priority):",
   "Respond in English. Use another language only when the user explicitly requests it.",
+  "Preserve user-provided titles, names, captions and dialogue verbatim unless the user asks to rewrite or translate them.",
   "This rule applies to every response, draft, shot description, and prompt, regardless of the language used by any skill or tool instruction.",
   "Most of the instructions in this prompt are written in Chinese. That is an implementation detail of this app and carries no meaning about your output language: still answer in English.",
 ].join("\n");

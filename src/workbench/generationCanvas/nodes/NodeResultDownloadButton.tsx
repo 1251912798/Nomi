@@ -10,6 +10,7 @@ import type { GenerationCanvasNode } from '../model/generationCanvasTypes'
 // 其它非图片结果 → 仅下载。图片结果的下载在 NodeImageEditToolbar。仅在选中且有可下载结果时渲染。
 
 type Props = {
+  reportFeedback: (message: string) => void
   node: GenerationCanvasNode
   selected: boolean
   onPreview: () => void
@@ -17,18 +18,20 @@ type Props = {
   onOpenProvenance: () => void
 }
 
-export default function NodeResultDownloadButton({ node, selected, onPreview, onOpenProvenance }: Props): JSX.Element | null {
+export default function NodeResultDownloadButton({ reportFeedback, node, selected, onPreview, onOpenProvenance }: Props): JSX.Element | null {
+
   const { t } = useTranslation()
-  const { canDownload, downloading, download } = useResultDownload(node)
+  const { canDownload, downloading, download } = useResultDownload(node, reportFeedback)
   if (!selected || !canDownload || node.result?.type === 'image') return null
 
   // 视频结果 → 专用浮条（抽首/尾帧 + 下载）。
   if (node.result?.type === 'video') {
-    return <NodeVideoFrameToolbar node={node} downloading={downloading} onDownload={download} onPreview={onPreview} onOpenProvenance={onOpenProvenance} />
+    return <><NodeVideoFrameToolbar reportFeedback={reportFeedback} node={node} downloading={downloading} onDownload={download} onPreview={onPreview} onOpenProvenance={onOpenProvenance} /></>
   }
 
   return (
     <FloatingToolbarShell ariaLabel={t('generationCommon.resultDownload.actions')}>
+
       <ToolbarButton
         icon={<IconDownload size={I.size} stroke={I.stroke} />}
         label={t('generationCommon.resultDownload.download')}

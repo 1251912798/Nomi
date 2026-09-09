@@ -17,11 +17,12 @@
 import type { GenerationCanvasEdge, GenerationCanvasEdgeMode, GenerationCanvasNode } from '../model/generationCanvasTypes'
 import { getGenerationNodeDefinition, getGenerationNodeExecutionKind } from '../model/generationNodeKinds'
 import type { ArchetypeMode, ArchetypeReferenceSlotKind, ModelArchetype } from '../../../config/modelArchetypes'
-import { getArchetypeById, resolveArchetypeForModel } from '../../../config/modelArchetypes'
+import { resolveArchetypeForModel } from '../../../config/modelArchetypes'
 import { currentArchetypeMode } from '../nodes/controls/archetypeMeta'
 
 /** 源节点产出的可参考资产类型;text/shot/output 等无产出 → null(不能作参考源)。 */
-export type ReferenceAssetKind = 'image' | 'video'
+import { SLOT_ACCEPTS, type ReferenceAssetKind } from '../../../config/modelArchetypes/anchorPolicy'
+export { SLOT_ACCEPTS, type ReferenceAssetKind } from '../../../config/modelArchetypes/anchorPolicy'
 
 export type EdgeSkipReason = 'dangling' | 'source_not_referenceable' | 'unsupported_reference'
 
@@ -61,14 +62,7 @@ export function isTextPromptEdge(
 }
 
 /** 每种参考槽能被哪种源资产喂。first_frame 收视频=尾帧接力(resolver 抽帧),故收 image+video。 */
-export const SLOT_ACCEPTS: Record<ArchetypeReferenceSlotKind, readonly ReferenceAssetKind[]> = {
-  first_frame: ['image', 'video'],
-  last_frame: ['image'],
-  image_ref: ['image'],
-  video_ref: ['video'],
-  source_video: ['video'],
-  audio_ref: [], // 当前无音频源节点种类;音频参考只能手动上传到槽,不经画布边
-}
+
 
 /**
  * 边语义 → 它要落到目标模型的哪些参考槽(任一满足即可)。通用 reference 接受任意槽。
@@ -88,27 +82,32 @@ const EDGE_MODE_SLOTS: Record<GenerationCanvasEdgeMode, readonly ArchetypeRefere
   composition_ref: ['image_ref'],
 }
 
-/** 从节点 meta 解析模型档案:优先 meta.archetype.id(命名空间),回退 meta.modelKey 身份匹配。无 → null。 */
+/**
+ * 从节点 meta 解析模型档案 —— **一律走发送路径同一个解析器** `resolveArchetypeForModel`。
+ *
+ * 为什么不能在这里就地读 `meta.archetype.id`（旧实现干过，2026-09-08 修掉）：那条捷径**跳过了
+ * `legacyIds` 迁移**。档案一分为二时（Agnes Image 2.0/2.1 就是：2.1 声明 `legacyIds: ['agnes-image']`），
+ * 存量节点的 meta 里还钉着旧的共享 id，发送路径按 legacyIds + 模型身份迁移到 2.1，而这里直接
+ * `getArchetypeById('agnes-image')` 拿到 2.0 —— **同一个节点，两条路径认到两个不同档案**。
+ * 于是「按活边自动纠正模式」的守卫拿 2.0 去算模式、写回 2.0 的 id、再按 2.0 的参数表把用户选的
+ * 2.1 档位（1K/2K/4K）夹回 1024x1024，而报文仍按 2.1 渲染。用户体感就是「Agnes 2.1 连了参考图，
+ * 结果不对/没传入」。
+ *
+ * `resolveArchetypeForModel` 自己就读 `meta.archetype.id`（readArchetypeIdFromMeta）并在其上做
+ * 自定义契约 → 显式 id → legacyIds 迁移 → 身份匹配的完整解析，所以这里只要把 meta 原样交给它，
+ * 不留第二套判断（P1）。modelKey 缺失时传空串：解析器退化成「只认 meta 里的显式 id」，与旧行为一致。
+ */
 export function archetypeForNode(node: GenerationCanvasNode): ModelArchetype | null {
   const meta = node.meta
   if (!meta || typeof meta !== 'object') return null
   const record = meta as Record<string, unknown>
-  const arch = record.archetype
-  const archId = arch && typeof arch === 'object' ? (arch as Record<string, unknown>).id : undefined
-  if (typeof archId === 'string' && archId) {
-    const byId = getArchetypeById(archId)
-    if (byId) return byId
-  }
-  const modelKey = record.modelKey
-  if (typeof modelKey === 'string' && modelKey) {
-    const modelVendor = record.modelVendor
-    return resolveArchetypeForModel({
-      modelKey,
-      vendorKey: typeof modelVendor === 'string' ? modelVendor : null,
-      meta,
-    })
-  }
-  return null
+  const modelKey = typeof record.modelKey === 'string' ? record.modelKey : ''
+  const modelVendor = record.modelVendor
+  return resolveArchetypeForModel({
+    modelKey,
+    vendorKey: typeof modelVendor === 'string' ? modelVendor : null,
+    meta,
+  })
 }
 
 /**

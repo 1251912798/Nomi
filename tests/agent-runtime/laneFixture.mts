@@ -7,22 +7,42 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { TestContext } from 'node:test';
+import { openLane } from '../../electron/agentLane/laneHost.mjs';
 
 import { createDocumentLaneTools, type DocumentLanePort } from '../../electron/agentLane/laneDocumentTools.js';
 import type { LaneApprovalOptions, OpenLaneOptions } from '../../electron/agentLane/laneRuntimePort.js';
 import type { DocumentWriteInput, DocumentWriteResult } from '../../electron/shared/agentCapabilities/documentWrite.js';
 import { createHttpFixture, type FixtureReply } from './httpFixture.mjs';
 
+// One after hook per test also closes sibling fixtures if one fixture fails.
+const cleanupsByTest = new WeakMap<TestContext, Array<() => Promise<void>>>();
+
+function registerFixtureCleanup(t: TestContext, close: () => Promise<void>): void {
+  let cleanups = cleanupsByTest.get(t);
+  if (!cleanups) {
+    cleanups = [];
+    cleanupsByTest.set(t, cleanups);
+    const owned = cleanups;
+    t.after(async () => {
+      const results = await Promise.allSettled(owned.map((cleanup) => cleanup()));
+      const errors = results.flatMap((result) => result.status === 'rejected' ? [result.reason] : []);
+      if (errors.length === 1) throw errors[0];
+      if (errors.length > 1) throw new AggregateError(errors, 'Lane fixtures cleanup failed');
+    });
+  }
+  cleanups.push(close);
+}
+
 export const LANE_SYSTEM_PROMPT = 'NOMI_LANE_SYSTEM';
 
 /** 一个最小但**真**的文稿端口：写进去的东西读得回来，revision 会涨。 */
-export function createDocumentPort(initial = 'The opening scene.'): DocumentLanePort & { text(): string } {
+export function createDocumentPort(initial = 'The opening scene.') {
   let text = initial;
   let selection = '';
   let revision = 0;
   return {
     text: () => text,
-    read: async (scope) => (scope === 'full' ? { text } : { text: selection }),
+    read: async (scope: Parameters<DocumentLanePort['read']>[0]) => (scope === 'full' ? { text } : { text: selection }),
     write: async (input: DocumentWriteInput): Promise<DocumentWriteResult> => {
       if (input.operation === 'append') text = `${text}${input.content}`;
       else if (input.operation === 'insert') text = `${input.content}${text}`;
@@ -34,6 +54,8 @@ export function createDocumentPort(initial = 'The opening scene.'): DocumentLane
 }
 
 export interface LaneFixture {
+  after(fn: () => void | Promise<void>): void;
+  openLane: typeof openLane;
   options: OpenLaneOptions;
   projectDir: string;
   document: ReturnType<typeof createDocumentPort>;
@@ -46,11 +68,25 @@ export async function createLaneFixture(
   approval?: LaneApprovalOptions,
 ): Promise<LaneFixture> {
   const projectDir = await mkdtemp(join(tmpdir(), 'nomi-lane-'));
-  t.after(() => rm(projectDir, { recursive: true, force: true }));
+  const owners: Array<() => void | Promise<void>> = [];
+  const after = (close: () => void | Promise<void>) => { owners.push(close); };
+  // node:test runs after hooks in registration order and stops after a rejected hook.
+  // One owner must close dependencies before removing the directory, even on failure.
+  registerFixtureCleanup(t, async () => {
+    const errors: unknown[] = [];
+    for (const close of owners.reverse()) {
+      try { await close(); } catch (error) { errors.push(error); }
+    }
+    // A failed close may still have a writer. Preserve its directory and report the failure.
+    if (errors.length === 1) throw errors[0];
+    if (errors.length > 1) throw new AggregateError(errors, 'Lane fixture cleanup failed');
+    await rm(projectDir, { recursive: true, force: true });
+  });
   const http = await createHttpFixture(replies);
-  t.after(http.close);
+  after(http.close);
   const document = createDocumentPort();
   const options: OpenLaneOptions = {
+    fetch: globalThis.fetch,
     projectDir,
     systemPrompt: LANE_SYSTEM_PROMPT,
     model: {
@@ -60,5 +96,11 @@ export async function createLaneFixture(
     tools: createDocumentLaneTools(document),
     ...(approval ? { approval } : {}),
   };
-  return { options, projectDir, document, http };
+  return { options, projectDir, document, http, after,
+    openLane: async (input) => {
+      const lane = await openLane(input);
+      after(() => lane.close());
+      return lane;
+    },
+  };
 }

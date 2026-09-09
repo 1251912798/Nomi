@@ -14,7 +14,6 @@ import { estimateTokens } from '@earendil-works/pi-agent-core';
 import { createCanvasLaneTools, type CanvasLanePort } from '../../electron/agentLane/laneCanvasTools.js';
 import type { LaneToolDescriptor } from '../../electron/agentLane/laneRuntimePort.js';
 import { createLaneTools } from '../../electron/agentLane/laneTools.mjs';
-import { openLane } from '../../electron/agentLane/laneHost.mjs';
 import { createLaneFixture } from './laneFixture.mjs';
 
 const TOOL = 'nomi_storyboard_write';
@@ -66,10 +65,9 @@ test('P5 ① · size of the flat nomi_storyboard_write schema, by pi\'s own esti
   }
   const properties = Object.keys((storyboard.parameters as { properties: Record<string, unknown> }).properties);
   assert.deepEqual(properties, ['operation', 'title', 'anchors', 'shots', 'select', 'patch', 'nodeIds'], 'flat root: one enum + every branch field as optional');
-  // 钉住今天的数：估计值已经**超过**方案写的 1 200。这不是让测试红，是让它在长得更大、
-  // 或有人把预算当成已达成时红。真实 tokenizer 的数见 ③ 与研究文档。
-  assert.ok(schemaTokens + descriptionTokens > TOKEN_BUDGET, `pi's estimate (${schemaTokens + descriptionTokens}) is over the §4.3 budget of ${TOKEN_BUDGET} — recorded as red in the probe report`);
-  assert.ok(schemaTokens + descriptionTokens < 2_200, 'and it has not grown past the value the probe report was written against');
+  // B1c moves full guidance/examples into the stable system prompt, meeting the original budget.
+  assert.ok(schemaTokens + descriptionTokens <= TOKEN_BUDGET,
+    `pi's estimate (${schemaTokens + descriptionTokens}) must stay within the original ${TOKEN_BUDGET} budget`);
 });
 
 async function firstCallSucceeds(t: TestContext, arm: 'with-tolerance' | 'without-tolerance', args: unknown) {
@@ -79,8 +77,7 @@ async function firstCallSucceeds(t: TestContext, arm: 'with-tolerance' | 'withou
     { type: 'tool', calls: [{ id: 'first', name: TOOL, arguments: args }] },
     { type: 'text', text: 'Done.' },
   ]);
-  const lane = await openLane({ ...fixture.options, tools: arm === 'with-tolerance' ? tools : withoutTolerance(tools) });
-  t.after(() => lane.close());
+  const lane = await fixture.openLane({ ...fixture.options, tools: arm === 'with-tolerance' ? tools : withoutTolerance(tools) });
   await lane.execute({ kind: 'prompt', text: 'Save the storyboard.' });
   const result = lane.projection().parts.find((part) => part.kind === 'tool-result' && part.toolCallId === 'first');
   assert.ok(result?.kind === 'tool-result');

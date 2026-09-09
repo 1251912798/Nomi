@@ -18,13 +18,16 @@
 // 而格式在这里逐字镜像（`pi-coding-agent/dist/core/system-prompt.js:41-88`）——
 // 它是模型见过无数次的形状，改写它没有收益只有风险。
 import type { LaneToolSpec } from "../shared/agentLane/laneToolContract";
+import { renderLaneToolExamples } from '../shared/agentLane/laneToolContract';
+type PromptTool = Pick<LaneToolSpec, 'name' | 'promptSnippet' | 'promptGuidelines'>
+  & Partial<Pick<LaneToolSpec, 'description' | 'examples'>>;
 
 /**
  * 渲染两段。**顺序即合同**：菜单按目录顺序，纪律按首次出现顺序去重——
  * 与 `agentToolCatalog.ts:31-35` 的「`tools/list` 确定性顺序」同一条理由，
  * 系统提示词是 prompt cache 的前缀，抖一下就整段失效。
  */
-export function renderLanePromptSections(tools: readonly LaneToolSpec[]): string {
+export function renderLanePromptSections(tools: readonly PromptTool[]): string {
   const menu = tools.length > 0
     ? tools.map((tool) => `- ${tool.name}: ${tool.promptSnippet}`).join("\n")
     : "(none)";
@@ -47,15 +50,38 @@ export function renderLanePromptSections(tools: readonly LaneToolSpec[]): string
     "Available tools:",
     menu,
     "",
+    "Tool usage:",
+    ...tools.flatMap(tool => tool.description ? [`${tool.name}: ${tool.description}${renderLaneToolExamples(tool.examples ?? [])}`] : []),
+    "",
     "Guidelines:",
     guidelines.length > 0 ? guidelines.map((guideline) => `- ${guideline}`).join("\n") : "(none)",
   ].join("\n");
 }
 
 /**
- * 把两段接到宿主自己的身份提示词后面。**只有这一个拼接点**——散在各处拼字符串，
+ * 把三段接到宿主自己的身份提示词后面。**只有这一个拼接点**——散在各处拼字符串，
  * 结果就是某条路径上少了 `Guidelines`，而少了不会报错，只会让模型忘记「别编 nodeId」。
+ *
+ * `skillSection` 是 `<available_skills>` 那一段（`laneSkillIndex.mts` 用 pi 的
+ * `formatSkillsForPrompt` 渲染的原文），没有技能时是空串。**它是必填参数不是可选的**：
+ * 可选意味着某条装配路径可以「忘了传」，而忘了传的症状是模型看不见任何技能——
+ * 一件不报错、只会让它每次从零编一遍的事（R28：能让编译器拦的别留给门岗）。
+ *
+ * 顺序是 身份 → 工具 → 技能：技能索引里那句「用 read 工具去读」要在模型已经读过
+ * `Available tools` 之后才成立。
  */
-export function composeLaneSystemPrompt(identityPrompt: string, tools: readonly LaneToolSpec[]): string {
-  return `${identityPrompt.trimEnd()}\n\n${renderLanePromptSections(tools)}\n`;
+export function composeLaneSystemPrompt(
+  identityPrompt: string,
+  tools: readonly PromptTool[],
+  skillSection: string,
+): string {
+  const skills = skillSection.trim();
+  const body = skills.length > 0
+    ? `${renderLanePromptSections(tools)}\n\n${skills}`
+    : renderLanePromptSections(tools);
+  return `${identityPrompt.trimEnd()}\n\n${body}\n\n${[
+    '不向用户展示内部 id，用标题指代；后续编辑先读取当前对象获取引用。',
+    'Agent 不接收全局金额预算，文稿中的金额不是系统上限或付费授权。费用只引用报价卡/目录单价，答不出就说提交时会显示报价。',
+    '回答长度随问题：只读/收尾类 ≤3 行；不复述清单。',
+  ].join('\n')}\n`;
 }

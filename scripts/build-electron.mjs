@@ -2,9 +2,11 @@ import { spawnSync } from 'node:child_process'
 import { createRequire } from 'node:module'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { invalidateBuild } from './package-build-stamp.mjs'
 import { assertElectronBuildArtifacts } from './electron-build-artifacts.mjs'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
+invalidateBuild(repoRoot)
 const require = createRequire(import.meta.url)
 const tscBin = require.resolve('typescript/bin/tsc')
 

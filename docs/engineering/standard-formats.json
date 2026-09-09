@@ -16,24 +16,69 @@
       "启发式只扫生产代码。scripts/ 里的 JSON.parse 读的是自家门岗基线与走查产物，不是和外界互通的格式；",
       "把它们扫进来，基线会有一百多条，而一道有一百多条豁免的门岗等于不存在（R17）。"
     ],
-    "roots": ["electron", "src"]
+    "roots": [
+      "electron",
+      "src"
+    ]
   },
   "formats": [
     {
+      "name": "claude-notification",
+      "kind": "external-standard",
+      "files": [
+        "Notification stdin JSON"
+      ],
+      "spec": "https://code.claude.com/docs/en/hooks#notification",
+      "upstreamVersion": "Official Notification input example, retrieved 2026-09-09",
+      "why": "Forward only notifications requesting human attention to the native local cue.",
+      "fixtures": [
+        "tests/fixtures/standard-formats/claude-notification/input.json"
+      ],
+      "readers": [
+        "scripts/claude-hooks/attention-cue.sh"
+      ],
+      "writers": [],
+      "deviations": []
+    },
+    {
+      "name": "antigravity-hooks",
+      "kind": "external-standard",
+      "files": [
+        "hooks.json"
+      ],
+      "spec": "https://antigravity.google/docs/hooks/",
+      "upstreamVersion": "Official Hooks schema example, retrieved 2026-09-08; local CLI embedded docs 1.1.22",
+      "why": "Nomi writes the CLI-owned named-hook format; authorization nonce files remain private task-gate state.",
+      "fixtures": [
+        "tests/fixtures/standard-formats/antigravity-hooks/hooks.json"
+      ],
+      "readers": [],
+      "writers": [
+        "electron/ai/antigravityMedia.ts"
+      ],
+      "deviations": []
+    },
+    {
       "name": "agent-skill",
       "kind": "external-standard",
-      "files": ["SKILL.md"],
+      "files": [
+        "SKILL.md"
+      ],
       "spec": "https://code.claude.com/docs/en/skills",
       "upstreamVersion": "Claude Code Agent Skills 文档，2026-09-07 抓取",
       "why": "技能是**用户手里流动的东西**：他从别人那儿拿一个技能包，希望它在 Nomi 里也能用。这条路上的格式不是我们的实现细节，是互操作契约。Claude Code / pi / Codex 三家都收敛到「文件夹 + SKILL.md + YAML frontmatter」，没有第二种形态。",
-      "fixtures": ["tests/fixtures/standard-formats/agent-skill/SKILL.md"],
+      "fixtures": [
+        "tests/fixtures/standard-formats/agent-skill/SKILL.md",
+        "tests/fixtures/standard-formats/agent-skill/anthropic-algorithmic-art.md"
+      ],
       "readers": [
         "electron/skills/skillStore.ts",
         "electron/skills/skillFrontmatter.ts",
         "electron/skills/skillPackage.ts",
         "electron/skills/skillManifestMigration.ts",
         "src/workbench/skillLibrary/parseSkillImport.ts",
-        "src/workbench/skillLibrary/skillDropIntake.ts"
+        "src/workbench/skillLibrary/skillDropIntake.ts",
+        "electron/skills/skillCuration.ts"
       ],
       "writers": [
         "electron/skills/skillPackage.ts",
@@ -48,13 +93,19 @@
         {
           "what": "Nomi 独有的声明（audience / requested-capabilities / stages / required-providers 等）住在 frontmatter 的 `metadata.nomi.*` 下，而且 `metadata` 里放的是嵌套结构，不是规范正文写的「string→string 映射」",
           "reason": "顶层键在规范里是闭集——官方参考校验器 skills-ref 的 validator.py:104-115 多一个顶层键就报 error，所以扩展只能走 `metadata`：pi 忽略它、Claude Code 明说忽略其内容、参考校验器对 metadata 内部不做任何校验（validator.py:118-147）。嵌套是「规范正文比参考实现更严」的一处，我们选参考实现的行为，并让 check:skills-format 的 F6 把 33 个内置技能交给 pi 自己的加载器判分（33/33、零 diagnostics）守住这一格。2026-09-07 起 frontmatter 用真 YAML 解析（js-yaml），与三家同一档严格度。"
+        },
+        {
+          "what": "策展条目在 metadata.nomi.library 中声明适用节点、分组、槽位、来源与目录内 preview；license 从标准顶层读取。",
+          "reason": "领域约束：随应用再分发的精选内容必须明确可再分发许可，普通用户私有/官方技能仍不要求license。封面归属技能目录并可供库卡片与Agent引用chip复用，不生成第二份元数据文件。"
         }
       ]
     },
     {
       "name": "nomi-skill-manifest",
       "kind": "non-aligned",
-      "files": ["skill.json"],
+      "files": [
+        "skill.json"
+      ],
       "spec": "https://code.claude.com/docs/en/skills",
       "upstreamVersion": "Claude Code Agent Skills 文档，2026-09-07 抓取",
       "why": "技能包里我们自己另加的一份 JSON 清单（name / description / archetypeId 等）。**它是 R31 这条规则的起因**：标准把这些字段放在 SKILL.md 的 frontmatter 里，我们却在旁边另起了一个平行文件。PR #580 已经把它从仓库、从加载路径、从写入路径、从模型可见的 author_skill 参数里全部删掉——今天它只剩**一个读者**：用户自己技能目录里的存量文件，由加载时的一次性迁移折进 frontmatter，原文件改名成 .bak 留在原地。",
@@ -68,7 +119,9 @@
           "verdict": "同一份元数据已经能从 frontmatter 读出来，两份定义必然漂移——skill.json 缺失时卡片显示「暂无说明」的 bug（2026-08-27 真机走查）就是漂移的一次显形。"
         }
       ],
-      "readers": ["electron/skills/skillManifestMigration.ts"],
+      "readers": [
+        "electron/skills/skillManifestMigration.ts"
+      ],
       "writers": [],
       "debt": {
         "what": "格式本身已经退场（仓库里不存在、不再有人写出），只剩一次性迁移器 electron/skills/skillManifestMigration.ts 还认得它",
@@ -80,7 +133,9 @@
     {
       "name": "nomi-skill-envelope",
       "kind": "nomi-defined",
-      "files": [".nomiskill.json"],
+      "files": [
+        ".nomiskill.json"
+      ],
       "why": "Nomi 自己导出技能时的单文件信封 `{version, exportedAt, dirName, files}`。它存在的理由是「一个文件就能发给别人」，zip 做不到被聊天软件当文本贴出来。",
       "searched": [
         {
@@ -92,8 +147,13 @@
           "verdict": "对不上：它们仍然是二进制包，解决不了「贴进聊天框」这个真实摩擦，反而多一层依赖。"
         }
       ],
-      "readers": ["electron/skills/skillPackage.ts", "src/workbench/skillLibrary/parseSkillImport.ts"],
-      "writers": ["electron/skills/skillPackage.ts"],
+      "readers": [
+        "electron/skills/skillPackage.ts",
+        "src/workbench/skillLibrary/parseSkillImport.ts"
+      ],
+      "writers": [
+        "electron/skills/skillPackage.ts"
+      ],
       "deviations": [
         {
           "what": "信封里的 files 表是纯文本 map，不带二进制附件",
@@ -104,13 +164,24 @@
     {
       "name": "mcp-servers-config",
       "kind": "external-standard",
-      "files": [".mcp.json", "mcp.json", ".claude.json"],
+      "files": [
+        ".mcp.json",
+        "mcp.json",
+        ".claude.json"
+      ],
       "spec": "https://modelcontextprotocol.io/docs/develop/connect-local-servers",
-      "upstreamVersion": "MCP 文档 2026-09-07 抓取；协议版本见 electron/capabilityCore/mcpProtocol.ts 的 PROTOCOL_VERSION = 2025-11-25",
-      "why": "「一键接入」写的是**用户的别的工具的配置文件**（Claude Code 的 ~/.claude.json、Cursor 的 ~/.cursor/mcp.json、通用 ~/.config/mcp/mcp.json、项目级 .mcp.json）。写错格式的后果不是我们的功能不好用，是把用户已有的 MCP 配置弄坏。",
-      "fixtures": ["tests/fixtures/standard-formats/mcp/.mcp.json"],
-      "readers": ["electron/capabilityCore/mcpConfig.ts"],
-      "writers": ["electron/capabilityCore/mcpConfig.ts"],
+      "upstreamVersion": "MCP 文档 2026-09-07 抓取；WorkBuddy 官方 MCP 指南 2026-09-09：https://www.workbuddy.ai/docs/zh/workbuddy/From-Beginner-to-Expert-Guide/Function-Description/MCP-Guide（无偏差）；协议版本见 electron/capabilityCore/mcpProtocol.ts 的 PROTOCOL_VERSION = 2025-11-25",
+      "why": "「一键接入」写的是**用户的别的工具的配置文件**（Claude Code 的 ~/.claude.json、Cursor 的 ~/.cursor/mcp.json、通用 ~/.config/mcp/mcp.json、WorkBuddy 的 ~/.workbuddy/mcp.json、项目级 .mcp.json）。写错格式的后果不是我们的功能不好用，是把用户已有的 MCP 配置弄坏。",
+      "fixtures": [
+        "tests/fixtures/standard-formats/mcp/.mcp.json",
+        "tests/fixtures/standard-formats/mcp/workbuddy.json"
+      ],
+      "readers": [
+        "electron/capabilityCore/mcpConfig.ts"
+      ],
+      "writers": [
+        "electron/capabilityCore/mcpConfig.ts"
+      ],
       "deviations": [
         {
           "what": "只写 mcpServers.nomi 这一个键，合并而不是覆盖，写前自动备份、tmp→rename 原子写",
@@ -121,12 +192,18 @@
     {
       "name": "codex-mcp-config-toml",
       "kind": "de-facto-standard",
-      "files": ["config.toml"],
+      "files": [
+        "config.toml"
+      ],
       "spec": "https://github.com/openai/codex/blob/main/docs/config.md",
       "upstreamVersion": "Codex CLI config 文档（[mcp_servers.<name>] 表布局）",
       "why": "Codex 用 TOML 而不是 JSON 表达同一件事（一个 MCP server 条目）。同一个「一键接入」按钮要同时写两种格式。",
-      "readers": ["electron/capabilityCore/mcpConfig.ts"],
-      "writers": ["electron/capabilityCore/mcpConfig.ts"],
+      "readers": [
+        "electron/capabilityCore/mcpConfig.ts"
+      ],
+      "writers": [
+        "electron/capabilityCore/mcpConfig.ts"
+      ],
       "deviations": [
         {
           "what": "块级文本合并（按 [表头] 边界只替换我们自己的 [mcp_servers.nomi] 块），不引 TOML 库做完整读-改-写",
@@ -149,8 +226,12 @@
       "spec": "https://json-schema.org/draft-07/schema",
       "upstreamVersion": "JSON Schema draft-07；MCP 协议版本见 electron/capabilityCore/mcpProtocol.ts 的 PROTOCOL_VERSION = 2025-11-25",
       "why": "tools/list 广播出去的 inputSchema 是**模型和外部宿主唯一看得见的工具契约**。它不是文件而是线上载荷，但同样是「外部也读写」的东西：schema 写窄一格，外部宿主就永远构造不出那个参数（2026-09 实测：9 个已发布 operation 里 7 个不可达，见 electron/capabilityCore/mcpTransportSchemaFromZod.ts 头部）。",
-      "readers": ["electron/capabilityCore/mcpArgValidation.ts"],
-      "writers": ["electron/capabilityCore/mcpTransportSchemaFromZod.ts"],
+      "readers": [
+        "electron/capabilityCore/mcpArgValidation.ts"
+      ],
+      "writers": [
+        "electron/capabilityCore/mcpTransportSchemaFromZod.ts"
+      ],
       "deviations": [
         {
           "what": "运行时校验器只实现 draft-07 的 11 个关键字子集，不认 anyOf/oneOf；广播前把 discriminated union 确定性地展平成属性并集 + 必填交集的扁平超集",
@@ -167,34 +248,151 @@
     {
       "name": "nomi-project-file",
       "kind": "internal",
-      "files": ["project.json"],
+      "files": [
+        "project.json"
+      ],
       "why": "项目库里每个 .nomi 项目目录的 project.json。它只被本机的 Nomi 主进程读写，不导出、不给别的程序读、不进任何分享路径——外部要拿数据走的是导出 MP4 与 MCP 投影，不是这个文件。一旦它开始对外（例如做「项目文件互导」），这一格要立刻改成 external-standard 或 nomi-defined 并补 searched。",
-      "readers": ["electron/jsonFile.ts", "electron/runtimePaths.ts"],
-      "writers": ["electron/jsonFile.ts"]
+      "readers": [
+        "electron/jsonFile.ts",
+        "electron/runtimePaths.ts"
+      ],
+      "writers": [
+        "electron/jsonFile.ts"
+      ]
     },
     {
       "name": "nomi-diagnostics-bundle",
       "kind": "internal",
-      "files": ["manifest.json"],
+      "files": [
+        "manifest.json"
+      ],
       "why": "诊断包的清单，只在本机生成、只被同一份代码读回来做自检。它确实会被用户手动发给我们看，但那是**当证据读**（人眼 + 我们自己的解析），没有第二个程序按契约消费它。",
-      "readers": ["electron/diagnostics/diagnosticsBundle.ts"],
-      "writers": ["electron/diagnostics/diagnosticsBundle.ts"]
+      "readers": [
+        "electron/diagnostics/diagnosticsBundle.ts"
+      ],
+      "writers": [
+        "electron/diagnostics/diagnosticsBundle.ts"
+      ]
     },
     {
       "name": "nomi-export-job-store",
       "kind": "internal",
-      "files": ["manifest.json"],
+      "files": [
+        "manifest.json"
+      ],
       "why": "导出任务的落盘中间态（manifest / job / result / error）。它是崩溃恢复用的进程内状态的持久化形式，用户拿到的产物是 MP4，从来没有别的程序读这些文件。",
-      "readers": ["electron/export/exportJobStore.ts"],
-      "writers": ["electron/export/exportJobStore.ts"]
+      "readers": [
+        "electron/export/exportJobStore.ts"
+      ],
+      "writers": [
+        "electron/export/exportJobStore.ts"
+      ]
     },
     {
       "name": "nomi-certification-cleanup",
       "kind": "internal",
-      "files": [".cleanup-manifest.json"],
+      "files": [
+        ".cleanup-manifest.json"
+      ],
       "why": "认证流程留下的待清理产物清单，写完当次跑完就被同一份代码删掉。它的生命周期不跨进程边界，也不跨版本。",
-      "readers": ["electron/providerAdapter/certificationCleanup.ts"],
-      "writers": ["electron/providerAdapter/certificationCleanup.ts"]
+      "readers": [
+        "electron/providerAdapter/certificationCleanup.ts"
+      ],
+      "writers": [
+        "electron/providerAdapter/certificationCleanup.ts"
+      ]
+    },
+    {
+      "name": "pi-session-jsonl",
+      "kind": "external-standard",
+      "files": [
+        "*.jsonl (pi JsonlSessionRepo format 4)"
+      ],
+      "spec": "https://github.com/earendil-works/pi/blob/main/packages/agent/src/harness/session/testing/conformance/session-repo.ts",
+      "upstreamVersion": "@earendil-works/pi-agent-core 0.85.1; JSONL format 4 / storageVersion 1; installed official conformance helper, 2026-09-10",
+      "why": "Native pi JSONL remains the only session authority. Nomi reads it through session.findEntries, never a parallel parser or recorder.",
+      "fixtures": [
+        "tests/fixtures/standard-formats/pi-session/conformance-messages.json"
+      ],
+      "readers": [
+        "electron/agentLane/laneSession.mts",
+        "electron/agentLane/laneTrace.mts",
+        "electron/agentLane/laneTraceRedaction.mts"
+      ],
+      "writers": [
+        "electron/agentLane/laneSession.mts",
+        "electron/agentLane/laneTraceRecorder.mts"
+      ],
+      "deviations": [
+        {
+          "what": "Host timings, pricing and credential-redaction locations use standard custom entries (nomi.ui.trace / nomi.ui.trace-redactions); native messages and usage retain their SDK shape.",
+          "reason": "Tool execution start time and host pricing provenance are absent from message entries. Session.mutate commits detached custom entries, without copying messages or changing the model branch; redaction locations make cold derived rebuild independent of retained credentials."
+        }
+      ]
+    },
+    {
+      "name": "nomi-agent-trace-view",
+      "kind": "nomi-defined",
+      "files": [
+        "trace.md",
+        "trace.jsonl",
+        "index.md (agent sessions)"
+      ],
+      "why": "Human-readable and queryable derived views, rebuilt from native pi entries. A sessionId.trace subdirectory prevents collisions and avoids native top-level JSONL discovery.",
+      "searched": [
+        {
+          "what": "https://code.claude.com/docs/en/hooks and https://code.claude.com/docs/en/costs",
+          "verdict": "Claude transcript and current /usage are product-specific, not a reusable per-user-turn schema; adopting them would create a second native session format."
+        },
+        {
+          "what": "https://github.com/openai/codex/blob/main/codex-rs/rollout/src/recorder.rs",
+          "verdict": "Codex rollout is a native session recorder, not a pi derived view. Keep its inspectability principle, not its private payload schema."
+        },
+        {
+          "what": "https://github.com/open-telemetry/semantic-conventions-genai/blob/main/docs/gen-ai/gen-ai-spans.md",
+          "verdict": "Reuse invoke_agent/execute_tool semantics; no OTLP transport is required for offline local files. Preserve separate pi cache counters rather than mislabel input as OTel cache-inclusive input."
+        }
+      ],
+      "readers": [],
+      "writers": [
+        "electron/agentLane/laneTrace.mts",
+        "electron/agentLane/laneSession.mts"
+      ],
+      "deviations": [
+        {
+          "what": "Each JSONL row is a user turn, not an OTLP span. Unknown metrics remain null; cost is estimated USD from native usage with pricing provenance.",
+          "reason": "Creators need one local record per prompt plus session totals; streamed model/tool events would obscure the user-turn boundary."
+        }
+      ]
+    },
+    {
+      "name": "mcp-skill-resources-prompts",
+      "kind": "external-standard",
+      "wire": true,
+      "files": [],
+      "wireContract": "MCP resources/list/read and prompts/list/get for content-addressed skill packages",
+      "spec": "https://modelcontextprotocol.io/specification/2025-11-25/server/prompts",
+      "upstreamVersion": "2025-11-25, official request example retrieved 2026-09-10",
+      "why": "External hosts discover complete skill text packages using standard resources and prompt arguments.",
+      "fixtures": [
+        "tests/fixtures/standard-formats/mcp/prompts-get.json"
+      ],
+      "readers": [
+        "electron/capabilityCore/mcpProtocol.ts"
+      ],
+      "writers": [
+        "electron/capabilityCore/mcpProtocol.ts"
+      ],
+      "deviations": [
+        {
+          "what": "Resources use the custom nomi-skill URI scheme and prompt _meta carries package identity.",
+          "reason": "Domain constraint: resources must remain bound to an authorized local skill package and its exact content hash, not arbitrary local files. These fields use standard MCP extension points."
+        },
+        {
+          "what": "Binary preview media is not exposed as a skill text resource.",
+          "reason": "Domain constraint: the canonical text skill package hash includes only supported text and script source files; this endpoint reads that package and never executes its scripts."
+        }
+      ]
     }
   ]
 }

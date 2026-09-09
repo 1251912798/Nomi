@@ -1,0 +1,163 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-08-process-feedback-c1",
+  "problem_type": "Generation feedback consumer divergence",
+  "symptom": "Node micro badge, independently narrated queue cards, and missing timeline feedback obscure the same generation.",
+  "direct_cause": "Consumers interpret status independently and queue producers synthesize zero percent.",
+  "class_root": "No shared presentation boundary enforces exhaustive five-phase narration and real numeric evidence.",
+  "affected_population": [
+    "Image, video and audio generation consumers"
+  ],
+  "scope_paths": [
+    "src/workbench/observability/narrate.ts",
+    "src/workbench/generationCanvas/model/generationCanvasTypes.ts",
+    "src/workbench/generationCanvas/runner/generationRunController.ts",
+    "src/workbench/generationCanvas/comfyuiProgressBridge.ts",
+    "src/workbench/observability/generationFeedback.ts",
+    "src/workbench/observability/useGenerationFeedback.ts",
+    "src/workbench/generationCanvas/nodes/BaseGenerationNode.tsx",
+    "src/workbench/generationCanvas/nodes/GenerationStatusBar.tsx",
+    "src/workbench/generationCanvas/nodes/NodeGenerationStatus.tsx",
+    "src/workbench/generationCanvas/nodes/nodeSizing.ts",
+    "src/workbench/generationCanvas/nodes/NodeGeneratingOverlay.tsx",
+    "src/workbench/generationCanvas/nodes/GenerationWaitingSurface.tsx",
+    "src/workbench/generationCanvas/nodes/render/AudioStripNode.tsx",
+    "src/workbench/generationCanvas/store/canvasRunActions.ts",
+    "src/workbench/generationCanvas/nodes/NodeErrorReport.tsx",
+    "src/workbench/generationCanvas/nodes/GenerationTimingHint.tsx",
+    "src/workbench/observability/generationTiming.ts",
+    "src/workbench/taskCenter/TaskCenterPanel.tsx",
+    "src/workbench/taskCenter/taskCenterEntries.ts",
+    "src/workbench/timeline/TimelineClip.tsx",
+    "src/workbench/timeline/TimelineGenerationFeedback.tsx",
+    "src/workbench/generationCanvas/store/runRecordHelpers.ts"
+  ],
+  "entry_points": [
+    "Generation runner",
+    "ComfyUI progress bridge",
+    "Task center projection"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "Approved C0/C1/C2 are an internal presentation contract; no external protocol or runtime is being introduced.",
+  "invariants": [
+    "Every backend narration stage maps exhaustively to one display phase.",
+    "Unknown percentage and queue position remain absent.",
+    "Generated result adoption cannot change the visible node footprint."
+  ],
+  "generality_proof": "An exhaustive mapping in the existing narration owner applies independent of provider or media kind.",
+  "shared_boundaries": [
+    {
+      "path": "src/workbench/observability/narrate.ts",
+      "symbol": "narrateProgress",
+      "responsibility": "Own the five-phase wording and truthful numeric narration."
+    },
+    {
+      "path": "src/workbench/observability/generationFeedback.ts",
+      "symbol": "generationFeedback",
+      "responsibility": "Memoize one truthful narration per live progress snapshot and shared clock tick for all three surfaces."
+    },
+    {
+      "path": "src/workbench/generationCanvas/store/canvasRunActions.ts",
+      "symbol": "addNodeResult",
+      "responsibility": "Preserve the rendered footprint when adopting a generated result with different intrinsic dimensions."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/workbench/generationCanvas/runner/generationRunController.ts",
+      "entry_point": "onProgress",
+      "disposition": "enforced",
+      "evidence": "Progress messages originate in narrateProgress."
+    },
+    {
+      "path": "src/workbench/generationCanvas/comfyuiProgressBridge.ts",
+      "entry_point": "initComfyuiProgressBridge",
+      "disposition": "enforced",
+      "evidence": "Queue and execution events call the same narration owner."
+    },
+    {
+      "path": "src/workbench/taskCenter/taskCenterEntries.ts",
+      "entry_point": "buildTaskCenterView",
+      "disposition": "enforced",
+      "evidence": "Generation queue entries consume the shared narration without waiting-wave/elapsed text composition."
+    },
+    {
+      "path": "src/workbench/timeline/TimelineGenerationFeedback.tsx",
+      "entry_point": "TimelineGenerationFeedback",
+      "disposition": "enforced",
+      "evidence": "Existing clips subscribe to their source node and consume the same narration."
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/NodeGeneratingOverlay.tsx",
+      "entry_point": "isVideoDepthProgressPhase branch",
+      "disposition": "not-affected",
+      "evidence": "Local depth processing is not a model generation stage; it retains its separately approved top progress overlay."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Every consumer can independently reinterpret progress for each future run.",
+    "same_class_scan": [
+      "rg narrateProgress src/workbench",
+      "TaskCenterPanel.tsx:406 waitingWave/waitingSlot and elapsed composition",
+      "TimelineClip.tsx:36 has no generation status text"
+    ]
+  },
+  "prevention": {
+    "kind": "type-system",
+    "enforcement_path": "src/workbench/observability/narrate.ts",
+    "invariant": "Every backend stage has a display phase and human narration.",
+    "failure_mode": "Adding a stage without mapping fails TypeScript.",
+    "exception_policy": "none",
+    "strategy": "Record keyed by the full existing stage union; display wording owned by narrate.",
+    "artifacts": [
+      "src/workbench/observability/narrate.ts",
+      "src/workbench/observability/generationFeedback.ts",
+      "src/workbench/generationCanvas/store/canvasRunActions.ts",
+      "src/workbench/generationCanvas/store/runRecordHelpers.ts"
+    ]
+  },
+  "regression_tests": [
+    "src/workbench/observability/processFeedback.test.ts",
+    "src/workbench/observability/generationFeedback.test.ts",
+    "src/workbench/generationCanvas/nodes/computeMediaMetaPatch.test.ts",
+    "src/workbench/observability/generationTiming.test.ts",
+    "tests/ux/process-feedback.e2e.mjs",
+    "tests/ux/process-feedback-electron.e2e.mjs"
+  ],
+  "class_regression_tests": [
+    "src/workbench/observability/processFeedback.test.ts",
+    "src/workbench/observability/generationFeedback.test.ts",
+    "src/workbench/generationCanvas/nodes/computeMediaMetaPatch.test.ts",
+    "tests/ux/process-feedback.e2e.mjs",
+    "tests/ux/process-feedback-electron.e2e.mjs"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "src/workbench/observability/narrate.ts",
+      "src/workbench/generationCanvas/nodes/NodeQueuedBadge.tsx",
+      "src/workbench/generationCanvas/nodes/nodeSizing.ts",
+      "src/workbench/generationCanvas/nodes/BaseGenerationNode.tsx"
+    ],
+    "rationale": "Replace the ten independent human-stage texts with the approved five-phase vocabulary."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "Internal narration and existing React content layer; no new dependency.",
+    "exit_criteria": []
+  },
+  "migration": "Existing backend stage identifiers remain valid; presentation derives from them.",
+  "residual_risks": [
+    "No initial-generation timeline ghost clips are introduced; existing source-linked clips show feedback when generation runs again.",
+    "Typical duration uses only verified matching runs in the loaded local project; missing or insufficient provenance suppresses the hint.",
+    "True preview frames currently reach Nomi through the existing ComfyUI bridge; no Replicate provider integration is added."
+  ],
+  "invariant_owner_layer": {
+    "layer": "src/workbench/observability/narrate.ts",
+    "tests": [
+      "src/workbench/observability/processFeedback.test.ts"
+    ],
+    "note": "User-facing generation narration owns exhaustive phase mapping and unknown numeric omission."
+  }
+}

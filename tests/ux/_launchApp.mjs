@@ -23,6 +23,7 @@ import path from 'node:path'
 import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import { ensureElectronSignature } from '../../scripts/ensure-electron-signature.mjs'
+import { installFeelObserver } from './_feel-observer.mjs'
 import { assertElectronBuildArtifacts } from '../../scripts/electron-build-artifacts.mjs'
 
 const require = createRequire(import.meta.url)
@@ -73,6 +74,32 @@ export const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)
 
 /** 默认等窗口的上限。取 60s：明显短于 Playwright 默认的 180s，让**我们的**错误信息先落地。 */
 const DEFAULT_WINDOW_TIMEOUT_MS = 60_000
+
+/** Content pixels, not native-window bounds: Canvas Acceptance's measured Linux baseline. */
+export const ACCEPTANCE_VIEWPORT = Object.freeze({ width: 1280, height: 933 })
+export const ACCEPTANCE_WIDE_VIEWPORT = Object.freeze({ width: 1680, height: 1050 })
+
+
+/** Seed ordinary persisted preferences before the renderer's first script.
+ * Electron's -r module runs before the application's main entry; the session
+ * preload leaves the product preload and existing profile values intact. */
+export function prepareLocalStorageSeed(tempRoot, entries) {
+  if (!entries || typeof entries !== 'object' || Array.isArray(entries) || Object.values(entries).some((value) => typeof value !== 'string')) {
+    throw new TypeError('initialLocalStorage must contain string values')
+  }
+  const framePath = path.join(tempRoot, 'initial-local-storage.cjs')
+  const registerPath = path.join(tempRoot, 'register-local-storage.cjs')
+  fs.writeFileSync(framePath, `if (process.isMainFrame) {
+  for (const [key, value] of ${JSON.stringify(Object.entries(entries))}) {
+    if (window.localStorage.getItem(key) === null) window.localStorage.setItem(key, value)
+  }
+}\n`)
+  fs.writeFileSync(registerPath, `const { app } = require('electron')
+app.once('session-created', (session) => {
+  session.registerPreloadScript({ type: 'frame', filePath: ${JSON.stringify(framePath)} })
+})\n`)
+  return ['-r', registerPath]
+}
 
 /**
  * 拼一套「窗口一定能起来」的 env。抽成纯函数是为了让那条不变量能被单测钉住
@@ -168,10 +195,13 @@ export function withPackagedPlaywrightOrigin(args, isPackaged) {
  * @param {string} [options.userDataDir]    单独指定（默认 <tempRoot>/user-data）
  * @param {string} [options.settingsDir]    单独指定（默认 <tempRoot>/settings）
  * @param {string} [options.projectsDir]    单独指定（默认 <tempRoot>/projects）
- * @param {string} [options.capabilityDir]  单独指定（默认 <tempRoot>/capability）
+ * @param {string} [options.capabilityDir]  优先于 env.NOMI_CAPABILITY_DIR；均未设时隔离实例派生 <tempRoot>/capability
  * @param {number} [options.testedCatalogVersion]  被测构建的 catalog 版本；默认读取仓库 canonical manifest
+ * @param {{width: number, height: number}} [options.viewportSize] Content viewport; defaults to ACCEPTANCE_VIEWPORT.
  * @param {number} [options.timeout]        等窗口上限（ms）
  * @param {number} [options.settleMs=1500]  domcontentloaded 后再等一会儿（渲染层挂载）
+ * @param {Record<string,string>} [options.initialLocalStorage] Existing product preferences for an isolated dev fixture; omitted for first-run tests.
+ * @param {(win: import('playwright').Page) => Promise<void>} [options.observeWindow] Optional measurement observer
  * @param {boolean} [options.syntheticCredentialStorage=false]  仅供隔离目录里的非秘密测试凭据；Linux CI 使用 basic 后端
  * @returns {Promise<{app: import('playwright').ElectronApplication, win: import('playwright').Page,
  *   tempRoot: string, userDataDir: string, settingsDir: string, projectsDir: string, close: () => Promise<void>}>}
@@ -190,6 +220,9 @@ export async function launchNomiApp(options = {}) {
   } = options
 
   const isolate = options.isolate !== false
+  if (options.initialLocalStorage && !isolate) {
+    throw new Error('initialLocalStorage requires an isolated Nomi profile')
+  }
   if (syntheticCredentialStorage && !isolate) {
     throw new Error('syntheticCredentialStorage requires an isolated Nomi profile')
   }
@@ -197,6 +230,9 @@ export async function launchNomiApp(options = {}) {
   // 开发 electron 二进制要靠 `.` 指到仓库根去加载 dist-electron；**打包好的 .app 自带产物**，
   // 再塞个 `.` 反而会被当成「要打开的路径」参数。所以这两件事都跟着「是不是开发构建」走。
   const isDevElectron = executablePath === require('electron')
+  if (options.initialLocalStorage && !isDevElectron) {
+    throw new Error('initialLocalStorage requires the development Electron executable')
+  }
   if (isDevElectron) {
     assertElectronBuildArtifacts(repoRoot)
     // Apple 会在首次启动时直接删除已吊销公证的 Electron.app。走查必须在 spawn 前复用
@@ -211,7 +247,11 @@ export async function launchNomiApp(options = {}) {
   const userDataDir = isolate ? (options.userDataDir ?? path.join(tempRoot, 'user-data')) : null
   const settingsDir = isolate ? (options.settingsDir ?? path.join(tempRoot, 'settings')) : null
   const projectsDir = isolate ? (options.projectsDir ?? path.join(tempRoot, 'projects')) : null
-  const capabilityDir = isolate ? (options.capabilityDir ?? path.join(tempRoot, 'capability')) : null
+  // GUI advert/token 与 helper 发现目录必须同源；显式配置优先，最后才派生隔离默认值。
+  const capabilityDir = options.capabilityDir
+    ?? extraEnv.NOMI_CAPABILITY_DIR
+    ?? process.env.NOMI_CAPABILITY_DIR
+    ?? (isolate ? path.join(tempRoot, 'capability') : null)
 
   // 只建目录，**绝不清空**：不少走查会在起飞前往 projectsDir/settingsDir 里预埋工程或 catalog
   //（如 toolbar-order.walk.mjs 先写好 project.json 再启动）。启动器擅自 rm 会把它们的前置条件擦掉。
@@ -223,6 +263,7 @@ export async function launchNomiApp(options = {}) {
     executablePath,
     args: withLinuxNoSandbox(withLinuxSyntheticCredentialStorage(
       withPackagedPlaywrightOrigin([
+        ...(options.initialLocalStorage ? prepareLocalStorageSeed(tempRoot, options.initialLocalStorage) : []),
         ...(isDevElectron ? ['.'] : []),
         ...(userDataDir ? [`--user-data-dir=${userDataDir}`] : []),
         ...extraArgs,
@@ -270,7 +311,35 @@ export async function launchNomiApp(options = {}) {
       throw new Error(diagnoseLaunchFailure(`等了 ${timeout}ms 没等到窗口`, name, error, logTail))
     }
     await win.waitForLoadState('domcontentloaded')
+    const viewportSize = options.viewportSize ?? ACCEPTANCE_VIEWPORT
+    // Native resize alone may be clamped by CI's display; bind Chromium content geometry too.
+    const browserWindow = await app.browserWindow(win)
+    await browserWindow.evaluate((window, size) => window.setContentSize(size.width, size.height), viewportSize)
+    await win.setViewportSize(viewportSize)
+    const actualViewport = await win.evaluate(() => ({ width: innerWidth, height: innerHeight }))
+    if (actualViewport.width !== viewportSize.width || actualViewport.height !== viewportSize.height) {
+      await closeNomiApp(app)
+      throw new Error(`Acceptance viewport mismatch: expected ${JSON.stringify(viewportSize)}, got ${JSON.stringify(actualViewport)}`)
+    }
+    console.log('[walkthrough] content viewport', JSON.stringify(actualViewport))
+    // Optional test observer owns measurement; installed before caller setup/actions.
+    try {
+      if (options.observeWindow) await options.observeWindow(win)
+    } catch (error) {
+      await closeNomiApp(app)
+      throw error
+    }
+    if (options.initialLocalStorage) {
+      const missing = await win.evaluate((keys) => keys.filter((key) => localStorage.getItem(key) === null), Object.keys(options.initialLocalStorage))
+      if (missing.length) {
+        await app.close().catch(() => undefined)
+        throw new Error(`initialLocalStorage was not seeded before the first document: ${missing.join(', ')}`)
+      }
+    }
     if (settleMs > 0) await win.waitForTimeout(settleMs)
+    installFeelObserver(win, { name })
+    let nextWindow = 1
+    app.on('window', (page) => installFeelObserver(page, { name: `${name}-window-${++nextWindow}` }))
   }
 
   try {

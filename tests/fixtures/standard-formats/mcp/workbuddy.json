@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "wecom": {
+      "command": "uvx",
+      "args": [
+        "wecom-bot-mcp-server"
+      ],
+      "env": {
+        "WECOM_WEBHOOK_URL": "your-webhook-url"
+      }
+    }
+  }
+}

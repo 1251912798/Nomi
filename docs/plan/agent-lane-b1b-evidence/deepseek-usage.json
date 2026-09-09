@@ -1,0 +1,151 @@
+{
+  "attempts": [
+    {
+      "transcript": ".tmp/b1b-real/project-XV77Jm/.nomi/agent-sessions/--nomi-lane-main--/2026-09-09T12-03-41-521Z_01a0860d-6b51-76b9-aa14-4b47de6c333f.jsonl",
+      "turns": [
+        {
+          "input": "把这份文稿拆成分镜",
+          "calls": [
+            {
+              "input": 10280,
+              "uncached": 10280,
+              "cacheRead": 0,
+              "output": 36,
+              "costCny": 0.031163969087999996
+            },
+            {
+              "input": 10901,
+              "uncached": 10901,
+              "cacheRead": 0,
+              "output": 82,
+              "costCny": 0.033440967132999995
+            },
+            {
+              "input": 15906,
+              "uncached": 15906,
+              "cacheRead": 0,
+              "output": 125,
+              "costCny": 0.048842952031999995
+            },
+            {
+              "input": 16047,
+              "uncached": 16047,
+              "cacheRead": 0,
+              "output": 2960,
+              "costCny": 0.074780945939
+            }
+          ],
+          "skillLoads": [
+            "workbench-storyboard-planner"
+          ],
+          "previousTotal": null,
+          "newInputTokens": 10280,
+          "netNewContextTokens": 10280
+        }
+      ],
+      "costCny": 0.18822883419199998
+    },
+    {
+      "transcript": ".tmp/b1b-real/project-z4aKAy/.nomi/agent-sessions/--nomi-lane-main--/2026-09-09T12-07-22-654Z_01a08610-cb1e-7615-98e8-b9e55281eb9e.jsonl",
+      "turns": [
+        {
+          "input": "把这份文稿拆成分镜",
+          "calls": [
+            {
+              "input": 10280,
+              "uncached": 10280,
+              "cacheRead": 0,
+              "output": 35,
+              "costCny": 0.031154969089999998
+            },
+            {
+              "input": 10900,
+              "uncached": 10900,
+              "cacheRead": 0,
+              "output": 89,
+              "costCny": 0.03350096712199999
+            },
+            {
+              "input": 15912,
+              "uncached": 15912,
+              "cacheRead": 0,
+              "output": 2065,
+              "costCny": 0.066320948134
+            },
+            {
+              "input": 17996,
+              "uncached": 17996,
+              "cacheRead": 0,
+              "output": 183,
+              "costCny": 0.055634945645999995
+            }
+          ],
+          "skillLoads": [
+            "workbench-storyboard-planner"
+          ],
+          "previousTotal": null,
+          "newInputTokens": 10280,
+          "netNewContextTokens": 10280
+        },
+        {
+          "input": "第 1 镜试拍一下",
+          "calls": [
+            {
+              "input": 18190,
+              "uncached": 18190,
+              "cacheRead": 0,
+              "output": 46,
+              "costCny": 0.054983945338
+            },
+            {
+              "input": 18766,
+              "uncached": 2382,
+              "cacheRead": 16384,
+              "output": 283,
+              "costCny": 0.01952335952
+            },
+            {
+              "input": 19124,
+              "uncached": 2740,
+              "cacheRead": 16384,
+              "output": 195,
+              "costCny": 0.019805358622
+            }
+          ],
+          "skillLoads": [],
+          "previousTotal": 18179,
+          "newInputTokens": 194,
+          "netNewContextTokens": 11
+        },
+        {
+          "input": "重新拆一遍",
+          "calls": [
+            {
+              "input": 19325,
+              "uncached": 2941,
+              "cacheRead": 16384,
+              "output": 1672,
+              "costCny": 0.033701355065
+            },
+            {
+              "input": 21016,
+              "uncached": 4632,
+              "cacheRead": 16384,
+              "output": 140,
+              "costCny": 0.024986353056
+            }
+          ],
+          "skillLoads": [],
+          "previousTotal": 19319,
+          "newInputTokens": 201,
+          "netNewContextTokens": 6
+        }
+      ],
+      "costCny": 0.339612201593
+    }
+  ],
+  "method": "Primary: first request input+cacheRead+cacheWrite minus previous turn final request input (same input-growth basis as original transcript). Also report netNewContextTokens after subtracting prior output.",
+  "totalCostCny": 0.527841035785,
+  "toolWriteAccuracy": "5/6 actual tool calls; all storyboard writes 2/2 and tiers 8/8 each",
+  "taskCompletion": "2/3: storyboard + replan passed; test-shot did not create a generation draft"
+}

@@ -1,0 +1,32 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-08-agent-lane-close-resources",
+  "problem_type": "Lane resources retained after cleanup failure",
+  "symptom": "A failed session close leaves the project repository holder and native sandbox alive after the workspace has closed.",
+  "direct_cause": "Cleanup awaits run sequentially without finally; a transcript or session error skips all later resource releases.",
+  "class_root": "Owned resources are released only along the successful close path.",
+  "affected_population": ["Executing lane close", "Saved-history close", "History construction failures"],
+  "scope_paths": ["electron/agentLane/laneHost.mts", "electron/agentLane/laneHistory.mts"],
+  "entry_points": ["Lane close", "Read-only history close", "Failed construction cleanup"],
+  "external_sources": [],
+  "internal_only_reason": "Nomi owns the nesting of pi session, repository and native sandbox resources. Public SDK fault-injection fixtures reproduce the skipped release.",
+  "invariants": ["Every owned resource receives its close or release attempt even if an earlier cleanup rejects.", "Closing failures still reject; resource release does not convert them into success."],
+  "generality_proof": "Finally boundaries cover both live and read-only handles and their construction failures, independent of the underlying storage failure.",
+  "shared_boundaries": [
+    { "path": "electron/agentLane/laneHost.mts", "symbol": "openLane", "responsibility": "Unwind native resources and repository ownership on all live lane close paths." },
+    { "path": "electron/agentLane/laneHistory.mts", "symbol": "openLaneHistory", "responsibility": "Release history repository ownership even if session cleanup fails." }
+  ],
+  "same_class_entry_points": [
+    { "path": "electron/agentLane/laneHost.mts", "entry_point": "LaneHandle.close and assemble catch", "disposition": "enforced", "evidence": "Session or approval-note failure cannot skip native close and repository release." },
+    { "path": "electron/agentLane/laneHistory.mts", "entry_point": "LaneHandle.close and construction catch", "disposition": "enforced", "evidence": "Both session cleanup paths release repository ownership in finally." }
+  ],
+  "recurrence": { "classification": "recurring", "reason": "Any storage or hook failure can reject a cleanup await before later resources are released.", "same_class_scan": ["Inspected openLane assemble catch and close.", "Inspected openLaneHistory construction catch and close; checked laneSession repository holder ownership."] },
+  "prevention": { "kind": "centralized-boundary", "enforcement_path": "electron/agentLane/laneHost.mts", "invariant": "Resource ownership is unwound on success and failure.", "failure_mode": "Close rejects while finally still attempts every remaining owned release.", "exception_policy": "none", "strategy": "Use nested finally at the existing resource owners without adding a parallel lifecycle manager.", "artifacts": ["electron/agentLane/laneHost.mts", "electron/agentLane/laneHistory.mts"] },
+  "regression_tests": ["tests/agent-runtime/lane-close-resources.test.mts"],
+  "class_regression_tests": ["tests/agent-runtime/lane-close-resources.test.mts"],
+  "legacy_paths": { "status": "not-applicable", "removed_paths": [], "rationale": "Existing close owners are repaired in place; no alternate lifecycle implementation exists." },
+  "dependency_lifecycle": { "decision": "retain-with-exit", "current": "@earendil-works/pi 0.85.1", "target": "A supported pi version preserving explicit session and repository close ownership.", "rationale": "Rejected cleanup is an ordinary public API outcome; the application must unwind its own resources.", "exit_criteria": ["Rerun public session-close fault fixtures whenever pi changes close ownership or error propagation."] },
+  "migration": "No persisted data changes.",
+  "residual_risks": ["A resource may itself fail to close; this change guarantees every close is attempted and errors remain visible."],
+  "invariant_owner_layer": { "layer": "electron/agentLane/laneHost.mts", "tests": ["tests/agent-runtime/lane-close-resources.test.mts"], "why": "The existing lane handle owns the SDK and sandbox lifetimes, so its finally boundary must release them." }
+}

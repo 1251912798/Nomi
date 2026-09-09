@@ -1,4 +1,5 @@
 import { app, BrowserWindow, dialog, ipcMain, protocol, session, shell } from "electron";
+import { startCatalogReconciliation } from "./ai/onboarding/vendorHealth";
 import type { Rectangle, WebContents } from "electron";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -18,7 +19,7 @@ import {
   listModelCatalogModels,
   listModelCatalogVendors,
 } from "./catalog/catalogStore";
-import { importRendererCatalogPackage, upsertRendererCatalogMapping, upsertRendererCatalogModel, upsertRendererCatalogVendor, upsertRendererCatalogVendorApiKey } from "./catalog/rendererCatalogMutation";
+import { importRendererCatalogPackage, upsertRendererCatalogMapping, upsertRendererCatalogModel, upsertRendererCatalogVendor } from "./catalog/rendererCatalogMutation";
 import { registerAssetTransportIpc } from "./assetTransportIpc";
 import { retypeModelCatalogModel } from "./catalog/modelRetype";
 import { registerTaskIpcHandlers } from "./tasks/taskIpcHandlers";
@@ -49,9 +50,9 @@ import { verifyMcp } from "./capabilityCore/mcpVerify";
 import { registerCustomMcpProfileIpc, watchMcpProfiles } from "./capabilityCore/mcpProfiles";
 import { registerLocalProtocol } from "./protocol/localProtocol";
 import { installMainWindowInteractions } from "./mainWindowInteractions";
-import { getMainWindow, setMainWindow } from "./mainWindowRegistry";
+import { getMainWindow, setMainWindow } from "./appWindowRegistry";
 import { createMainWindowGuard } from "./mainWindowPresence";
-import { assertTrustedSender } from "./ipcSenderGuard";
+import { assertTrustedSender, assertTrustedUiSender } from "./ipcSenderGuard";
 import { registerScreenshotIpc } from "./screenshot/screenshotIpc";
 import { registerVideoIpc } from "./video/videoIpc";
 import { registerTikhubConnectorIpc } from "./connectors/tikhubConnectorIpc";
@@ -64,29 +65,10 @@ import { registerProductionActionIpc } from "./productionRun/productionActionIpc
 import { installProductionRunDesktopLifecycle } from "./productionRun/productionRunDesktopLifecycle";
 import { canvasReadSurfaceRuntime } from "./capabilityCore/canvasReadSurfaceRuntime";
 import { registerDesktopCanvasReadRuntime, type CanvasReadExecutionRuntime } from "./capabilityCore/canvasReadMainRuntime";
-import { createPiCanvasReadIpcCapture, createPiCanvasReadTransportAdapter } from "./capabilityCore/canvasReadTransportAdapters";
-import { createPiDocumentReadTransportAdapter } from "./capabilityCore/documentReadTransportAdapters";
-import { createPiDocumentWriteTransportAdapter } from "./capabilityCore/documentWriteTransportAdapters";
-import { createPiCanvasWriteTransportAdapter } from "./capabilityCore/canvasWriteTransportAdapters";
-import {
-  createPiTimelineReadTransportAdapter,
-  createPiTimelineWriteTransportAdapter,
-} from "./capabilityCore/timelineTransportAdapters";
-import { createPiPhase4SurfaceTransportAdapter } from "./capabilityCore/phase4SurfaceTransportAdapters";
-import { createPiSkillWriteTransportAdapter } from "./capabilityCore/skillWriteTransportAdapters";
-import { createPiSkillReadTransportAdapter } from "./capabilityCore/skillReadTransportAdapters";
-import { createPiProductionRunTransportAdapter } from "./capabilityCore/productionRunTransportAdapters";
-import { getProductionRunService } from "./productionRun/productionRunRuntime";
-import { getSettingsRoot, getWorkspaceRepositoryDeps } from "./runtimePaths";
-import { getInstalledProductionProjectAgentHost, installProductionProjectAgentHost } from "./projectAgentHost/projectAgentProductionRuntime";
-import { createProjectAgentRepositoryRouter } from "./projectAgentHost/projectAgentRepositoryRouter";
-import { registerProjectAgentIpc } from "./projectAgentHost/projectAgentIpc";
-import { migrateProjectAgentLegacy } from "./projectAgentHost/projectAgentMigration";
-import { createProjectAgentProposalReceiptService } from "./capabilityCore/projectAgentProposalReceiptStore";
+import { registerAgentLaneIpc, type LaneIpcRegistration } from "./agentLane/laneIpc";
+import { createDesktopLaneDependencies } from "./agentLane/laneDesktopRuntime";
+import type { ResidentGenerationAdapterFactory } from "./capabilityCore/residentGenerationAdapterFactory";
 import { createDesktopProposalReceiptResolver } from "./capabilityCore/projectAgentReceiptResolver";
-import { resolveProjectAgentAttachmentClaims } from "./assets/projectAssetStore";
-import { ensureWorkspaceProjectIdentity } from "./workspace/workspaceProjectIdentity";
-import { resolveWorkspaceProjectDir } from "./workspace/workspaceRepository";
 import { installContentSecurityPolicy } from "./contentSecurityPolicy";
 import { registerSkillIpc } from "./skills/skillIpc";
 import { logError, logInfo, logWarn } from "./logging/logger";
@@ -176,6 +158,8 @@ function getActiveCapabilityPort(): number | null {
   return capabilityPortCache;
 }
 
+let desktopLaneIpc: LaneIpcRegistration | undefined;
+let desktopGenerationAdapterFactory: ResidentGenerationAdapterFactory['factory'] | undefined;
 async function startDesktopCapabilityCore(): Promise<void> {
   if (!desktopCanvasReadExecutionRuntime) throw new Error("Canvas read execution runtime is unavailable");
   const core = await loadCapabilityCoreModule();
@@ -190,7 +174,7 @@ async function startDesktopCapabilityCore(): Promise<void> {
     },
     {
       canvasReadExecutionRuntime: desktopCanvasReadExecutionRuntime,
-      onGenerationReady: (factory) => getInstalledProductionProjectAgentHost()?.setGenerationAdapterFactory(factory),
+      onGenerationReady: (factory) => { desktopGenerationAdapterFactory = factory; },
       proposalReceiptFor: createDesktopProposalReceiptResolver(),
     },
   );
@@ -416,109 +400,9 @@ function registerIpc(): void {
   // independent from the delayed/optional external capability core.
   const canvasReadExecutionRuntime = registerDesktopCanvasReadRuntime();
   desktopCanvasReadExecutionRuntime = canvasReadExecutionRuntime;
-  const projectAgentCanvasReadCapture = createPiCanvasReadIpcCapture({
-    surfaceCapture: canvasReadExecutionRuntime.surfaceCapture,
-    registry: canvasReadSurfaceRuntime.registry,
-    capturedSnapshots: canvasReadSurfaceRuntime.capturedSnapshots,
-    executor: canvasReadExecutionRuntime.executor,
-  });
-  // ProjectAgentHost is an app-process owner. It is installed once before the
-  // first BrowserWindow and receives the already-registered Surface authority;
-  // window recreation only opens/releases subscriptions on this owner.
-  installProductionProjectAgentHost({
-    createRepository: () => createProjectAgentRepositoryRouter({ rootDir: getSettingsRoot() }),
-    subscribeSurface: () => canvasReadSurfaceRuntime.subscribeCommittedProject(() => undefined),
-    productionRun: (binding) => createPiProductionRunTransportAdapter({ service: getProductionRunService(), binding }),
-    registerIpc: (runtime) => registerProjectAgentIpc({
-      runtime,
-      surfaceCapture: canvasReadExecutionRuntime.surfaceCapture,
-      captureCanvasRead: (event, binding, requestId) => {
-        const capturedPort = canvasReadExecutionRuntime.surfaceCapture.captureCommittedCanvasReadPort(event, binding);
-        return createPiCanvasReadTransportAdapter({
-          registry: canvasReadSurfaceRuntime.registry,
-          capturedPort,
-          requestId,
-          executor: canvasReadExecutionRuntime.executor,
-        });
-      },
-      captureCanvasReadSnapshot: (event, binding, handle, requestId) => projectAgentCanvasReadCapture.capture(
-        event,
-        { capturedCanvasReadSnapshot: handle, projectId: binding.projectId },
-        requestId,
-      ),
-      captureDocumentRead: (event, binding, requestId) => createPiDocumentReadTransportAdapter({
-        registry: canvasReadSurfaceRuntime.registry,
-        capturedPort: canvasReadExecutionRuntime.surfaceCapture.captureCommittedCanvasReadPort(event, binding),
-        requestId,
-        executor: canvasReadExecutionRuntime.executor,
-      }),
-      captureDocumentWrite: (event, binding, requestId) => createPiDocumentWriteTransportAdapter({
-        registry: canvasReadSurfaceRuntime.registry,
-        capturedPort: canvasReadExecutionRuntime.surfaceCapture.captureCommittedCanvasReadPort(event, binding),
-        requestId,
-        executor: canvasReadExecutionRuntime.executor,
-      }),
-      captureCanvasWrite: (event, binding, requestId) => {
-        const capturedPort = canvasReadExecutionRuntime.surfaceCapture.captureCommittedCanvasReadPort(event, binding);
-        const surfacePortRuntime = canvasReadExecutionRuntime.surfacePortRuntime;
-        if (!surfacePortRuntime) throw new Error("surface_port_unavailable");
-        return createPiCanvasWriteTransportAdapter({
-          registry: canvasReadSurfaceRuntime.registry,
-          capturedPort,
-          requestId,
-          port: surfacePortRuntime.createCanvasWritePort(capturedPort),
-          executor: canvasReadExecutionRuntime.executor,
-        });
-      },
-      captureTimelineRead: (event, binding, requestId) => createPiTimelineReadTransportAdapter({
-        registry: canvasReadSurfaceRuntime.registry,
-        capturedPort: canvasReadExecutionRuntime.surfaceCapture.captureCommittedCanvasReadPort(event, binding),
-        requestId,
-        executor: canvasReadExecutionRuntime.executor,
-      }),
-      captureTimelineWrite: (event, binding, requestId) => createPiTimelineWriteTransportAdapter({
-        registry: canvasReadSurfaceRuntime.registry,
-        capturedPort: canvasReadExecutionRuntime.surfaceCapture.captureCommittedCanvasReadPort(event, binding),
-        requestId,
-        executor: canvasReadExecutionRuntime.executor,
-      }),
-      capturePhase4Surface: (event, binding, requestId) => createPiPhase4SurfaceTransportAdapter({
-        registry: canvasReadSurfaceRuntime.registry,
-        capturedPort: canvasReadExecutionRuntime.surfaceCapture.captureCommittedCanvasReadPort(event, binding),
-        requestId,
-        executor: canvasReadExecutionRuntime.executor,
-      }),
-      captureSkillWrite: (_event, binding) => createPiSkillWriteTransportAdapter({
-        // The package importer is main-process owned.  Binding remains part
-        // of the Host approval/queue envelope; no renderer data is trusted by
-        // this adapter.
-        binding,
-        now: () => Date.now(),
-      }),
-      captureSkillRead: (_event, _binding) => createPiSkillReadTransportAdapter(),
-      prepareProject: async (binding) => {
-        const root = resolveWorkspaceProjectDir(binding.projectId, getWorkspaceRepositoryDeps());
-        if (!root) throw new Error("project_identity_unavailable");
-        const identity = await ensureWorkspaceProjectIdentity(root);
-        if (
-          identity.projectId !== binding.projectId ||
-          identity.immutableProjectUuid !== binding.immutableProjectUuid ||
-          identity.projectGeneration !== binding.projectGeneration
-        ) {
-          throw new Error("project_binding_stale");
-        }
-        migrateProjectAgentLegacy({
-          projectRoot: root,
-          binding,
-          router: runtime.repositoryRouter,
-        });
-        return {
-          proposalReceipts: createProjectAgentProposalReceiptService({ projectRoot: root, binding }),
-          resolveAttachmentClaims: (claims) => resolveProjectAgentAttachmentClaims(binding.projectId, claims),
-        };
-      },
-    }),
-  });
+  desktopLaneIpc = registerAgentLaneIpc(createDesktopLaneDependencies(
+    canvasReadExecutionRuntime, () => desktopGenerationAdapterFactory,
+  ));
   registerI18nIpc();
   // 会话式模型接入的可信渲染层交接（凭据保存/确认/handoff 队列）。0b6441c6 移植时这两行被误删，而
   // preload 与 OnboardingWizard/IntegrationConfirmationPanel 仍调这些通道（No handler registered）；
@@ -566,7 +450,6 @@ function registerIpc(): void {
   registerSyncIpc("nomi:model-catalog:health", getModelCatalogHealth);
   registerSyncIpc("nomi:model-catalog:vendor:upsert", upsertRendererCatalogVendor);
   registerSyncIpc("nomi:model-catalog:vendor:delete", deleteModelCatalogVendor);
-  registerSyncIpc("nomi:model-catalog:vendor-api-key:upsert", upsertRendererCatalogVendorApiKey);
   registerSyncIpc("nomi:model-catalog:vendor-api-key:clear", clearModelCatalogVendorApiKey);
   registerSyncIpc("nomi:model-catalog:model:upsert", upsertRendererCatalogModel);
   // 改类型是**领域操作**不是字段 upsert：改 kind 的同时要按新 kind 重建调用通道，否则只是把
@@ -693,7 +576,7 @@ function registerIpc(): void {
     return importRemoteAsset(payload);
   });
   ipcMain.handle("nomi:assets:list", async (event, payload) => {
-    assertTrustedSender(event);
+    assertTrustedUiSender(event); // UI 面：素材盒界面长在浮层窗里，理由见 ipcSenderGuard#assertTrustedUiSender
     const { listProjectAssets } = await loadRuntimeModule();
     return listProjectAssets(payload);
   });
@@ -765,8 +648,7 @@ if (hasSingleInstanceLock)
         skipCrossOriginIsolationForWindowsFrameless: SKIP_CROSS_ORIGIN_ISOLATION_FOR_WINDOWS_FRAMELESS,
         disableCrossOriginIsolation: process.env.NOMI_DISABLE_CROSS_ORIGIN_ISOLATION === "1",
       });
-      // Start before exposing IPC/window. Painting is not blocked; appFetch
-      // waits for this configuration instead of silently sending early direct.
+      // appFetch waits for proxy configuration before sending early requests.
       void applyProxyAtBoot()
         .then(() => import("./vendor/vendorBaseFallbackBoot"))
         .then((m) => m.configureVendorBaseFallbackAtBoot())
@@ -802,7 +684,7 @@ if (hasSingleInstanceLock)
         },
         lowMemoryMode ? 15000 : 3000,
       );
-
+      app.once("before-quit", startCatalogReconciliation());
       app.on("activate", () => void ensureMainWindow()); // macOS 关窗后进程不退，点 Dock 靠这条把窗口建回来
     })
     .catch((error) => {
@@ -818,6 +700,7 @@ app.on("window-all-closed", () => {
 app.on("before-quit", () => {
   // 能力核退出清理：清实例广告 + 关 RPC，让外部探测立刻知道「app 已关」。同步、不抛。
   stopDesktopCapabilityCore();
+  void desktopLaneIpc?.dispose().catch((error) => logError("agent", "close-on-quit-failed", error));
   try {
     const { abortAllActiveExports } = require("./export/exportJobs") as typeof import("./export/exportJobs");
     const aborted = abortAllActiveExports();

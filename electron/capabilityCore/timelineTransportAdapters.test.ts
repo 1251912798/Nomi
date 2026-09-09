@@ -81,6 +81,17 @@ async function setup() {
 }
 
 describe("timeline capability Pi transports", () => {
+  it("accepts the empty read alias and refuses a caller-supplied semantic operation field", async () => {
+    const test = await setup();
+    const signal = new AbortController().signal;
+    await expect(test.readAdapter.tryExecute({ toolCallId: "empty-read", toolName: "read_timeline", args: {} }, signal))
+      .resolves.toMatchObject({ ok: true, result: { operation: "read_timeline", revision: "deadbeef" } });
+    await expect(test.readAdapter.tryExecute({ toolCallId: "bound-field", toolName: "read_timeline",
+      args: { operation: "read_timeline" } }, signal))
+      .resolves.toMatchObject({ ok: false, code: "capability_input_invalid" });
+    expect(test.read).toHaveBeenCalledOnce();
+  });
+
   it("auto-executes a strict read alias through one verified Timeline port", async () => {
     const test = await setup();
     const signal = new AbortController().signal;

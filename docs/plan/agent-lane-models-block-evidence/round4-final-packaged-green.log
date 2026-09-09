@@ -1,0 +1,3 @@
+asar sha256 5214e066ac68f42f2537097ad6f3917a7634bbad727cc18a734a9e68f84afc97
+{"entry":"ProjectAgentResidentShell.launch","availableVideoModels":4,"injected":4,"missing":[],"paidCalls":0}
+PASS resident launch -> provider prompt; all available video model keys

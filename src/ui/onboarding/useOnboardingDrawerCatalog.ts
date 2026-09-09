@@ -1,6 +1,5 @@
 import React from 'react'
 import type { Mapping } from '../../../electron/catalog/types'
-import { notifyModelOptionsRefresh } from '../../config/useModelOptions'
 import { getDesktopBridge } from '../../desktop/bridge'
 import type { DreaminaStatus } from './DreaminaMemberCard'
 import type { ChipModel } from './ModelChipGroups'
@@ -9,6 +8,7 @@ import { projectModelSettingsCatalog } from './modelSettingsCatalogProjection'
 export type OnboardingVendorMeta = {
   name: string
   hasApiKey: boolean
+  credentialVerificationPending?: boolean
   baseUrl: string
   enabled: boolean
   authType: string
@@ -69,6 +69,7 @@ export function useOnboardingDrawerCatalog(): {
         metaMap.set(String(vendor.key), {
           name: String(vendor.name || vendor.key),
           hasApiKey: Boolean(vendor.hasApiKey),
+          credentialVerificationPending: vendor.credentialVerificationPending === true,
           baseUrl: String(vendor.baseUrlHint || ''),
           enabled: vendor.enabled !== false,
           authType: String(vendor.authType || ''),
@@ -99,6 +100,12 @@ export function useOnboardingDrawerCatalog(): {
     return () => { alive = false }
   }, [version])
 
+  React.useEffect(() => {
+    const changed = (): void => setVersion((value) => value + 1)
+    window.addEventListener('nomi-model-catalog-changed', changed)
+    return () => window.removeEventListener('nomi-model-catalog-changed', changed)
+  }, [])
+
   const reloadFromError = React.useCallback(() => {
     bridgeRetries.current = 0
     setBridgeMissing(false)
@@ -107,8 +114,6 @@ export function useOnboardingDrawerCatalog(): {
   }, [])
 
   const refresh = React.useCallback(() => {
-    notifyModelOptionsRefresh('all')
-    setVersion((value) => value + 1)
     window.dispatchEvent(new CustomEvent('nomi-model-catalog-changed'))
   }, [])
 

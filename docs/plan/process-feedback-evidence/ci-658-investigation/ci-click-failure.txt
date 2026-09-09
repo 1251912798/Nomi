@@ -1,0 +1,30 @@
+Canvas Acceptance (Linux) (2)	Full functional canvas acceptance	2026-09-08T16:43:37.8107944Z locator.click: Timeout 30000ms exceeded.
+Canvas Acceptance (Linux) (2)	Full functional canvas acceptance	2026-09-08T16:43:37.8108222Z Call log:
+Canvas Acceptance (Linux) (2)	Full functional canvas acceptance	2026-09-08T16:43:37.8108614Z   - waiting for locator('.react-flow__node[data-id="gen-v2-image-mtswe4zy-6xkj"]')
+Canvas Acceptance (Linux) (2)	Full functional canvas acceptance	2026-09-08T16:43:37.8110868Z     - locator resolved to <div tabindex="0" role="group" aria-roledescription="node" data-id="gen-v2-image-mtswe4zy-6xkj" aria-describedby="react-flow__node-desc-1" data-testid="rf__node-gen-v2-image-mtswe4zy-6xkj" class="react-flow__node react-flow__node-generation generation-canvas-react-flow__no-pan generation-canvas-react-flow__node selectable draggable">…</div>
+Canvas Acceptance (Linux) (2)	Full functional canvas acceptance	2026-09-08T16:43:37.8112746Z   - attempting click action
+Canvas Acceptance (Linux) (2)	Full functional canvas acceptance	2026-09-08T16:43:37.8113184Z     2 × waiting for element to be visible, enabled and stable
+Canvas Acceptance (Linux) (2)	Full functional canvas acceptance	2026-09-08T16:43:37.8113595Z       - element is visible, enabled and stable
+Canvas Acceptance (Linux) (2)	Full functional canvas acceptance	2026-09-08T16:43:37.8113931Z       - scrolling into view if needed
+Canvas Acceptance (Linux) (2)	Full functional canvas acceptance	2026-09-08T16:43:37.8114202Z       - done scrolling
+Canvas Acceptance (Linux) (2)	Full functional canvas acceptance	2026-09-08T16:43:37.8116305Z       - <div class="flex flex-col gap-1">…</div> from <div tabindex="0" role="group" aria-roledescription="node" data-id="gen-v2-image-mtswehva-0dwa" aria-describedby="react-flow__node-desc-1" data-testid="rf__node-gen-v2-image-mtswehva-0dwa" class="react-flow__node react-flow__node-generation generation-canvas-react-flow__no-pan generation-canvas-react-flow__node selected selectable draggable">…</div> subtree intercepts pointer events
+Canvas Acceptance (Linux) (2)	Full functional canvas acceptance	2026-09-08T16:43:37.8118202Z     - retrying click action
+Canvas Acceptance (Linux) (2)	Full functional canvas acceptance	2026-09-08T16:43:37.8118469Z     - waiting 20ms
+Canvas Acceptance (Linux) (2)	Full functional canvas acceptance	2026-09-08T16:43:37.8118968Z     2 × waiting for element to be visible, enabled and stable
+Canvas Acceptance (Linux) (2)	Full functional canvas acceptance	2026-09-08T16:43:37.8119357Z       - element is visible, enabled and stable
+Canvas Acceptance (Linux) (2)	Full functional canvas acceptance	2026-09-08T16:43:37.8119686Z       - scrolling into view if needed
+Canvas Acceptance (Linux) (2)	Full functional canvas acceptance	2026-09-08T16:43:37.8119952Z       - done scrolling
+Canvas Acceptance (Linux) (2)	Full functional canvas acceptance	2026-09-08T16:43:37.8122336Z       - <div class="flex flex-col gap-1">…</div> from <div tabindex="0" role="group" aria-roledescription="node" data-id="gen-v2-image-mtswehva-0dwa" aria-describedby="react-flow__node-desc-1" data-testid="rf__node-gen-v2-image-mtswehva-0dwa" class="react-flow__node react-flow__node-generation generation-canvas-react-flow__no-pan generation-canvas-react-flow__node selected selectable draggable">…</div> subtree intercepts pointer events
+Canvas Acceptance (Linux) (2)	Full functional canvas acceptance	2026-09-08T16:43:37.8124030Z     - retrying click action
+Canvas Acceptance (Linux) (2)	Full functional canvas acceptance	2026-09-08T16:43:37.8124274Z       - waiting 100ms
+Canvas Acceptance (Linux) (2)	Full functional canvas acceptance	2026-09-08T16:43:37.8124653Z     58 × waiting for element to be visible, enabled and stable
+Canvas Acceptance (Linux) (2)	Full functional canvas acceptance	2026-09-08T16:43:37.8125061Z        - element is visible, enabled and stable
+Canvas Acceptance (Linux) (2)	Full functional canvas acceptance	2026-09-08T16:43:37.8125403Z        - scrolling into view if needed
+Canvas Acceptance (Linux) (2)	Full functional canvas acceptance	2026-09-08T16:43:37.8125674Z        - done scrolling
+Canvas Acceptance (Linux) (2)	Full functional canvas acceptance	2026-09-08T16:43:37.8127751Z        - <div class="flex flex-col gap-1">…</div> from <div tabindex="0" role="group" aria-roledescription="node" data-id="gen-v2-image-mtswehva-0dwa" aria-describedby="react-flow__node-desc-1" data-testid="rf__node-gen-v2-image-mtswehva-0dwa" class="react-flow__node react-flow__node-generation generation-canvas-react-flow__no-pan generation-canvas-react-flow__node selected selectable draggable">…</div> subtree intercepts pointer events
+Canvas Acceptance (Linux) (2)	Full functional canvas acceptance	2026-09-08T16:43:37.8129418Z      - retrying click action
+Canvas Acceptance (Linux) (2)	Full functional canvas acceptance	2026-09-08T16:43:37.8129673Z        - waiting 500ms
+Canvas Acceptance (Linux) (2)	Full functional canvas acceptance	2026-09-08T16:43:37.8129807Z 
+Canvas Acceptance (Linux) (2)	Full functional canvas acceptance	2026-09-08T16:43:37.8130103Z     at /home/runner/work/Nomi/Nomi/tests/ux/canvas-batch-production.walk.mjs:410:65 {
+Canvas Acceptance (Linux) (2)	Full functional canvas acceptance	2026-09-08T16:43:37.8130543Z   name: 'TimeoutError'
+Canvas Acceptance (Linux) (2)	Full functional canvas acceptance	2026-09-08T16:43:37.8130775Z }

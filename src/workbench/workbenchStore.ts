@@ -1,3 +1,4 @@
+import { projectStoryboardDesign } from './creation/storyboard/exec/storyboardProjection'
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
 import { clampAssistantWidth } from './assistantWidthBounds'
@@ -47,10 +48,7 @@ import {
 } from './project/projectCategories'
 import { useGenerationCanvasStore } from './generationCanvas/store/generationCanvasStore'
 import type { AgentContextHandle } from '../../electron/shared/agentContextSnapshot'
-import {
-  DEFAULT_PROJECT_AGENT_APPROVAL_POLICY,
-  type ProjectAgentApprovalPolicy,
-} from '../../electron/shared/projectAgentContracts'
+import { DEFAULT_PROJECT_AGENT_APPROVAL_POLICY, type ProjectAgentApprovalPolicy } from '../../electron/shared/agentCapabilities/capabilityApprovalPolicy';
 import { createEditingPanelLayoutSlice, type EditingPanelLayoutSlice } from './preview/editingPanelLayoutSlice'
 import { createTimelineClipWritesSlice, type TimelineClipWritesSlice } from './timeline/timelineClipWritesSlice'
 import type { ExportQuality } from './export/exportTypes'
@@ -101,7 +99,6 @@ type WorkbenchState = WorkbenchDocumentSlice & EditingPanelLayoutSlice & Timelin
   persistRevision: number
   workspaceMode: WorkspaceMode
   /** 生成/预览区右侧助手侧栏宽度（px，可拖宽）。 */
-  assistantWidth: number
   /** 左侧项目/素材侧栏展开态宽度覆盖值（px，可拖宽；null = 跟随 tab 默认：库 500 / 分组 300）。
       2026-08-08 飞书反馈「素材库宽度锁死不能拖拽」。 */
   projectSidebarWidth: number | null
@@ -252,10 +249,9 @@ export function isWorkspaceMode(value: unknown): value is WorkspaceMode {
 }
 
 export const useWorkbenchStore = create<WorkbenchState>()(subscribeWithSelector((set, get, store) => ({
-  ...createWorkbenchDocumentSlice(set, get, store),
+  ...createWorkbenchDocumentSlice(set, get, store, design => projectStoryboardDesign(design, useGenerationCanvasStore.getState())),
   persistRevision: 0,
   workspaceMode: 'generation',
-  assistantWidth: 340,
   projectSidebarWidth: null,
   activeCategoryId: 'shots',
   categories: cloneBuiltinCategories(),
@@ -365,7 +361,7 @@ export const useWorkbenchStore = create<WorkbenchState>()(subscribeWithSelector(
   },
   // 上限按**当下的视口**算，不是一个写死的 600（定稿 §11.2 窄窗态）。视口从 store 里读不到，
   // 只能问 window；非 DOM 环境（单测、node）落回 0 → `assistantWidthMaxFor` 报满上限。
-  setAssistantWidth: (width) => set({
+  setAssistantWidth: (width) => get().syncEditingPanelSize({
     assistantWidth: clampAssistantWidth(width, typeof window === 'undefined' ? 0 : window.innerWidth),
   }),
   setProjectSidebarWidth: (width) => set({ projectSidebarWidth: Math.max(240, Math.min(720, Math.round(width))) }),

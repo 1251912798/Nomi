@@ -12,7 +12,6 @@ import { getDesktopBridge } from '../../../../desktop/bridge'
 import { getDesktopActiveProjectId } from '../../../../desktop/activeProject'
 import { listWorkbenchModelCatalogVendors } from '../../../api/modelCatalogApi'
 import { confirmDialog } from '../../../../design/confirmDialogStore'
-import { toast } from '../../../../ui/toast'
 import i18n from '../../../../i18n'
 
 /**
@@ -42,24 +41,25 @@ export type DecomposeLayersController = {
   clearDecompose: () => void
 }
 
-export function useDecomposeLayers(node: GenerationCanvasNode, imageUrl: string): DecomposeLayersController {
+export function useDecomposeLayers(node: GenerationCanvasNode, imageUrl: string, reportFeedback: (message: string) => void): DecomposeLayersController {
   const [decomposeBusy, setDecomposeBusy] = React.useState(false)
   const [decomposeState, setDecomposeState] = React.useState<WhiteboardState | null>(null)
 
   const runDecompose = React.useCallback(async () => {
+    reportFeedback('')
     if (!imageUrl || decomposeBusy) return
     // 先确保 Replicate 已接入，否则引导去接入（不甩死胡同错误）。
     if (!(await ensureReplicateConnectedOrGuide())) return
     const grantId = await confirmAndMintGrant({
       nodeIds: [node.id],
+      nodes: [{ meta: { modelVendor: 'replicate', modelKey: 'qwen/qwen-image-layered' } }],
       title: i18n.t('generationCommon.decompose.title'),
       message: `${describeGenerationCost(1, 'image', generationCostContextForNode(node))}${i18n.t('generationCommon.decompose.costSuffix')}`,
       confirmLabel: i18n.t('generationCommon.decompose.confirm'),
-      light: true,
     })
     if (!grantId) return
     setDecomposeBusy(true)
-    toast(i18n.t('generationCommon.decompose.working'), 'info')
+
     try {
       const bridge = getDesktopBridge()
       if (!bridge) throw new Error(i18n.t('generationCommon.decompose.desktopUnavailable'))
@@ -74,16 +74,13 @@ export function useDecomposeLayers(node: GenerationCanvasNode, imageUrl: string)
       if (!layers || layers.length === 0) throw new Error(i18n.t('generationCommon.decompose.noLayers'))
       const ratio = inferWhiteboardAspectRatio(node.meta?.imageWidth, node.meta?.imageHeight)
       setDecomposeState(buildLayerWhiteboardState(layers, ratio))
-      toast(i18n.t('generationCommon.decompose.completed'), 'success')
+
     } catch (error) {
-      toast(
-        error instanceof Error && error.message ? error.message : i18n.t('generationCommon.decompose.failed'),
-        'error',
-      )
+      reportFeedback(error instanceof Error && error.message ? error.message : i18n.t('generationCommon.decompose.failed'))
     } finally {
       setDecomposeBusy(false)
     }
-  }, [decomposeBusy, imageUrl, node])
+  }, [decomposeBusy, imageUrl, node, reportFeedback])
 
   const clearDecompose = React.useCallback(() => setDecomposeState(null), [])
 

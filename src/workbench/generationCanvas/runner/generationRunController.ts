@@ -1,10 +1,12 @@
+import { normalizeCanvasBatchConcurrency } from '../components/canvasProductionScope'
 import type { GenerationCanvasEdge, GenerationCanvasNode, GenerationNodeResult } from '../model/generationCanvasTypes'
 import { getDesktopBridge } from '../../../desktop/bridge'
 import { getGenerationNodeExecutionKind } from '../model/generationNodeKinds'
 import { persistActiveWorkbenchProjectNow } from '../../project/workbenchProjectSession'
 import { useGenerationCanvasStore } from '../store/generationCanvasStore'
 import { useWorkbenchStore } from '../../workbenchStore'
-import { toast } from '../../../ui/toast'
+import { reportCanvasFeedback } from '../components/canvasFeedback'
+import { getDesktopActiveProjectId } from '../../../desktop/activeProject'
 import { mintSpendGrant } from '../../api/taskApi'
 import { confirmGenerationSpend, describeGenerationCost, generationCostContextForNode, type GenerationCostKind } from '../spend/spendConfirm'
 import { generationNodeExecutor, type GenerationNodeExecutor } from './generationNodeExecutor'
@@ -48,6 +50,11 @@ import {
 import type { HostingDisclosure } from '../spend/spendConfirm'
 import { FOCUS_GENERATION_NODE_EVENT } from '../nodes/nodeSizing'
 import { buildDialoguePromptSuffix } from '../agent/storyboardDialogue'
+
+function reportAuthorizationFailure(error: unknown, projectId: string, nodeId: string): void {
+  const message = error instanceof Error && error.message ? error.message : i18n.t('generationCommon.batchPlan.authorizationFailed')
+  reportCanvasFeedback(message, 'error', { projectId, identity: `node:${nodeId}`, reason: 'authorization', nodeIds: [nodeId] })
+}
 
 /** 节点 kind → 付费预估用的产物口径，喂给 describeGenerationCost 报对名词与时长。 */
 function spendCostKind(kind: GenerationNodeKind): Exclude<GenerationCostKind, 'mixed'> {
@@ -291,7 +298,6 @@ export async function runGenerationNode(
     runId: run.id,
     phase: 'queued',
     message: narrateProgress('queued'),
-    percent: 0,
   })
 
   try {
@@ -426,10 +432,6 @@ export type RunGenerationNodesBatchResult = {
   failures: Array<{ nodeId: string; error: Error }>
 }
 
-function normalizeConcurrency(value: unknown): number {
-  if (typeof value !== 'number' || !Number.isFinite(value)) return 6
-  return Math.max(1, Math.min(8, Math.floor(value)))
-}
 
 /**
  * Run a batch of generation nodes with bounded concurrency. Each node
@@ -451,7 +453,7 @@ export async function runGenerationNodesBatch(
   const queue = nodeIds
     .map((value) => String(value || '').trim())
     .filter((value, index, array) => Boolean(value) && array.indexOf(value) === index)
-  const concurrency = normalizeConcurrency(options.concurrency)
+  const concurrency = normalizeCanvasBatchConcurrency(options.concurrency)
   const successes: RunGenerationNodesBatchResult['successes'] = []
   const failures: RunGenerationNodesBatchResult['failures'] = []
   let cursor = 0
@@ -575,10 +577,13 @@ export async function runGenerationNodesByPlan(
  * rerun=true 是「基于此生成变体」：先复制出新节点再绑令牌跑；普通重新生成走 regenerateNodeInPlace。
  */
 export async function confirmAndRunNode(nodeId: string, opts: { rerun?: boolean } = {}): Promise<void> {
+  const projectId = getDesktopActiveProjectId()
   const node = useGenerationCanvasStore.getState().nodes.find((n) => n.id === nodeId)
   const hosting = await resolveHostingDisclosure(node)
   if (!hosting.allowed) return
+  let quoteId: string | undefined
   const ok = await confirmGenerationSpend([node], {
+    onQuoteConfirmed: (id) => { quoteId = id },
     title: opts.rerun
       ? i18n.t('generationCommon.spend.generateVariant')
       : i18n.t('generationCommon.spend.startGeneration'),
@@ -586,7 +591,6 @@ export async function confirmAndRunNode(nodeId: string, opts: { rerun?: boolean 
     confirmLabel: opts.rerun
       ? i18n.t('generationCommon.spend.generateVariant')
       : i18n.t('generationCommon.spend.generate'),
-    light: true,
     ...(hosting.disclosure ? { hostingDisclosure: hosting.disclosure } : {}),
   })
   if (!ok) return
@@ -601,14 +605,9 @@ export async function confirmAndRunNode(nodeId: string, opts: { rerun?: boolean 
   }
   let grantId: string
   try {
-    grantId = await mintSpendGrant([runId])
+    grantId = await mintSpendGrant([runId], undefined, quoteId)
   } catch (error) {
-    toast(
-      error instanceof Error && error.message
-        ? error.message
-        : i18n.t('generationCommon.batchPlan.authorizationFailed'),
-      'error',
-    )
+    reportAuthorizationFailure(error, projectId, runId)
     return
   }
   try {
@@ -630,39 +629,34 @@ export async function confirmAndRunNodeVariants(
   // 托管同意由本函数自己的花钱卡问出来（下方固定传 'allow'），调用方给不了也不该给。
   options: Omit<RunGenerationNodeOptions, 'assetUploadConsent'> = {},
 ): Promise<void> {
-  const id = String(nodeId || '').trim()
-  if (!id) return
-  const total = Math.max(1, Math.min(8, Math.floor(count)))
-  const node = useGenerationCanvasStore.getState().nodes.find((n) => n.id === id)
-  const hosting = await resolveHostingDisclosure(node)
-  if (!hosting.allowed) return
-  const ok = await confirmGenerationSpend([node], {
-    title: i18n.t('generationCommon.spend.startGeneration'),
-    message: describeGenerationCost(total, node ? spendCostKind(node.kind) : 'image', generationCostContextForNode(node)),
-    confirmLabel: i18n.t('generationCommon.spend.generate'),
-    light: true,
-    ...(hosting.disclosure ? { hostingDisclosure: hosting.disclosure } : {}),
-  })
-  if (!ok) return
-  for (let index = 0; index < total; index += 1) {
-    let grantId: string
-    try {
-      grantId = await mintSpendGrant([id])
-    } catch (error) {
-      toast(
-        error instanceof Error && error.message
-          ? error.message
-          : i18n.t('generationCommon.batchPlan.authorizationFailed'),
-        'error',
-      )
-      return
+  const projectId = getDesktopActiveProjectId()
+  try {
+    const id = String(nodeId || '').trim()
+    if (!id) return
+    const total = Math.max(1, Math.min(8, Math.floor(count)))
+    const node = useGenerationCanvasStore.getState().nodes.find((n) => n.id === id)
+    const hosting = await resolveHostingDisclosure(node)
+    if (!hosting.allowed) return
+    let quoteId: string | undefined
+    const ok = await confirmGenerationSpend(Array.from({ length: total }, () => node), {
+      onQuoteConfirmed: (id) => { quoteId = id },
+      title: i18n.t('generationCommon.spend.startGeneration'),
+      message: describeGenerationCost(total, node ? spendCostKind(node.kind) : 'image', generationCostContextForNode(node)),
+      confirmLabel: i18n.t('generationCommon.spend.generate'),
+      ...(hosting.disclosure ? { hostingDisclosure: hosting.disclosure } : {}),
+    })
+    if (!ok) return
+    const grantId = await mintSpendGrant([id], total, quoteId)
+    for (let index = 0; index < total; index += 1) {
+      try {
+        const result = await runGenerationNode(id, { ...options, grantId, assetUploadConsent: 'allow' })
+        useWorkbenchStore.getState().reconcileTimelineForUpdatedNodes(id, result)
+      } catch {
+        return // 失败已落节点卡片（人话错误）；停发剩余变体
+      }
     }
-    try {
-      const result = await runGenerationNode(id, { ...options, grantId, assetUploadConsent: 'allow' })
-      useWorkbenchStore.getState().reconcileTimelineForUpdatedNodes(id, result)
-    } catch {
-      return // 失败已落节点卡片（人话错误）；停发剩余变体
-    }
+  } catch (error) {
+    reportAuthorizationFailure(error, projectId, nodeId)
   }
 }
 
@@ -681,29 +675,26 @@ export async function regenerateNodeInPlace(
   // 「到底用没用新图」）。缺省仍是「重新生成」，画布 composer 等既有调用方零变化。
   opts?: { title?: string; confirmLabel?: string },
 ): Promise<void> {
+  const projectId = getDesktopActiveProjectId()
   const id = String(nodeId || '').trim()
   if (!id) return
   const node = useGenerationCanvasStore.getState().nodes.find((n) => n.id === id)
   const hosting = await resolveHostingDisclosure(node)
   if (!hosting.allowed) return
+  let quoteId: string | undefined
   const ok = await confirmGenerationSpend([node], {
+    onQuoteConfirmed: (id) => { quoteId = id },
     title: opts?.title || i18n.t('generationCommon.composer.regenerate'),
     message: describeGenerationCost(1, node ? spendCostKind(node.kind) : 'image', generationCostContextForNode(node)),
     confirmLabel: opts?.confirmLabel || i18n.t('generationCommon.composer.regenerate'),
-    light: true,
     ...(hosting.disclosure ? { hostingDisclosure: hosting.disclosure } : {}),
   })
   if (!ok) return
   let grantId: string
   try {
-    grantId = await mintSpendGrant([id])
+    grantId = await mintSpendGrant([id], undefined, quoteId)
   } catch (error) {
-    toast(
-      error instanceof Error && error.message
-        ? error.message
-        : i18n.t('generationCommon.batchPlan.authorizationFailed'),
-      'error',
-    )
+    reportAuthorizationFailure(error, projectId, id)
     return
   }
   try {

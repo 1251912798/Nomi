@@ -14,7 +14,7 @@ import { mkdirSync, mkdtempSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { screenshotSettled } from './_assert.mjs'
+import { expect, screenshotSettled } from './_assert.mjs'
 import { CANVAS_PANE_SELECTOR, findCanvasBlankPoint, findNodeHitPoint } from './_canvasHit.mjs'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
@@ -154,11 +154,8 @@ async function findMarqueeGesture() {
 
     // 余量从大往小试，最大那档扫满整块 stage（四边各内缩到自动平移带之外）。
     // 为什么要余量最大化：框选是**拖动中**判定的，而 React Flow 只选「完全落在框内」的节点；
-    // 拖到一半选中第一个节点会弹出它的提示词面板，面板贴边时生产代码会平移视口让它露出来
-    // （useComposerVisibilityPan），节点因此在框选进行中整体位移几十像素。贴着节点外框 24px
-    // 起手的框在窄画布下会被这几十像素挤掉一个节点——量到的不是「框选坏了」，是「框太紧」。
-    // 扫满 stage 的框对这段位移免疫；余量由 stage 与节点实测推出，唯一的常数是
-    // React Flow 自己的自动平移带宽度（见上方注释）。
+    // 扫满 stage，避免窄画布下框选边缘过紧；余量由 stage 与节点实测推出，
+    // 唯一的常数是 React Flow 自己的自动平移带宽度（见上方注释）。
     const gapLadder = [
       Math.max(
         bounds.left - (stageRect.left + inset),
@@ -288,9 +285,16 @@ try {
   await dismissFirstRun()
 
   // 占位 key：让内置图像/视频模型出现，连线能算出真实 mode（全程不点生成、零额度）。
-  await getWin().evaluate(() =>
-    window.nomiDesktop?.modelCatalog?.upsertVendorApiKey('kie', { apiKey: 'nomi-e2e-placeholder', enabled: true }),
-  )
+  const savedCredential = await getWin().evaluate(async () => {
+    const catalog = window.nomiDesktop.modelCatalog
+    const vendor = catalog.listVendors().find(item => item.key === 'kie')
+    catalog.upsertVendor({ ...vendor, baseUrlHint: 'http://127.0.0.1:1' })
+    const saved = await catalog.upsertVendorApiKey('kie', { apiKey: 'nomi-e2e-placeholder', enabled: true })
+    return { saved, vendor: catalog.listVendors().find(item => item.key === 'kie') }
+  })
+  expect(savedCredential.saved.verificationPending).toBe(true)
+  expect(savedCredential.vendor.credentialVerificationPending).toBe(true)
+  expect(savedCredential.saved.hasApiKey).toBe(true)
   await getWin().reload()
   await getWin().waitForLoadState('domcontentloaded')
   await getWin().waitForTimeout(1500)
@@ -735,6 +739,46 @@ try {
     '连线标签恢复 12px accent 文字与下拉图标',
     JSON.stringify(selectedEdgeState),
   )
+
+  // 同一条真实任务继续：改边模式 / 断开 / 锁定，各按一次 Cmd+Z，不能撤掉前一笔。
+  const mod = process.platform === 'darwin' ? 'Meta' : 'Control'
+  const edgeLabel = getWin().locator('.generation-canvas-v2__edge-tag-pill').first()
+  const historyEdge = getWin().locator('.generation-canvas-v2__edge').first()
+  const originalMode = await historyEdge.getAttribute('data-mode')
+  const originalModeLabel = await edgeLabel.innerText()
+  await edgeLabel.click()
+  const alternativeMode = getWin().getByRole('menuitemradio', { checked: false }).first()
+  await expect(alternativeMode).toBeVisible()
+  await alternativeMode.click()
+  // 通用 reference 边按现行设计不显示标签；检查真实边语义，不能要求它强行露出。
+  await expect(historyEdge).not.toHaveAttribute('data-mode', originalMode)
+  await expect(historyEdge).toBeVisible()
+  await snap('04a-edge-mode-changed.png')
+  await getWin().keyboard.press(`${mod}+z`)
+  await expect(historyEdge).toHaveAttribute('data-mode', originalMode)
+  await expect(edgeLabel).toHaveText(originalModeLabel)
+  await expect(getWin().locator('.generation-canvas-v2__edge')).toHaveCount(edgeCount)
+  await expect(getWin().locator('.generation-canvas-v2-node')).toHaveCount(nodeIds.length)
+  await snap('04b-edge-mode-undone.png')
+
+  await edgeLabel.click()
+  await getWin().locator('.generation-canvas-react-flow__edge-menu-delete').click()
+  await expect(getWin().locator('.generation-canvas-v2__edge')).toHaveCount(edgeCount - 1)
+  await snap('04c-edge-disconnected.png')
+  await getWin().keyboard.press(`${mod}+z`)
+  await expect(getWin().locator('.generation-canvas-v2__edge')).toHaveCount(edgeCount)
+  await expect(getWin().locator('.generation-canvas-v2-node')).toHaveCount(nodeIds.length)
+  await snap('04d-edge-disconnect-undone.png')
+
+  const lockBadge = videoNode.locator('[data-node-lock]')
+  await expect(lockBadge).toHaveAttribute('data-node-lock', 'unlocked')
+  await lockBadge.click()
+  await expect(lockBadge).toHaveAttribute('data-node-lock', 'locked')
+  await getWin().keyboard.press(`${mod}+z`)
+  await expect(lockBadge).toHaveAttribute('data-node-lock', 'unlocked')
+  await expect(getWin().locator('.generation-canvas-v2__edge')).toHaveCount(edgeCount)
+  await snap('04e-node-lock-undone.png')
+  console.log('  ✓ 改边模式、断线、锁定各按一次 Cmd+Z 还原，前一笔节点/连线保留')
 
   // ── ④ 拖动节点：浮条 / 提示词面板隐身，松手回来 ─────────────────────────
   const composerBefore = await getWin().evaluate(() => {

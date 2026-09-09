@@ -1,0 +1,75 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-08-agent-lane-stage3d-queue-and-lanes",
+  "change_kind": "structural",
+  "problem_type": "three things the user can already do on the live path have no承接点 on the rebuilt one — interject while it runs, watch a generation card, and keep two conversations apart — and each of them, built carelessly, grows a second owner: a queue policy that batches three sentences into one turn, a task card that freezes its own copy of the progress, and a conversation index file that drifts from what is on disk",
+  "symptom": "The root-cause gate flags electron/agentLane/laneIpc.ts as a high-risk production file (it matches electron/**ipc.ts) because this change replaces its single-lane dependency with a workspace and widens the command union from three kinds to nine. This is not a repair of a broken channel: it is stage 3d of the agent runtime rebuild (docs/plan/2026-09-07-agent-rebuild-stage3-5-deep-plan.md §1.3, §1.4 rule two and three, §2.2 rows G2 and G13), and it is the last of the three no-successor features that §2.2 says must land before the stage-4 deletion. The failure modes worth writing down are not the channel. They are: (a) pi's default steering mode is \"all\", which injects every queued sentence into the same request — measured here as [0,3,3,3] against the one-at-a-time [0,1,2,3]; (b) a task card that copies status into the transcript freezes at whatever the run was doing when the entry was appended, while the task centre keeps moving; (c) a conversation list kept in a second index file says a conversation exists after the user deleted its file by hand.",
+  "migration": "No runtime migration and no data migration. The lane bridge is still unreachable: electron/main.ts does not call registerAgentLaneIpc, preload exposes no nomi:agent-lane:* channel, and resolveLaneBridge() returns undefined in every shipped build — electron/agentLane/laneShadowStructure.test.ts asserts all three and is unchanged and green. On-disk shape does change, but only inside the shadow path that no shipped build writes to: lane sessions used to land in one slug directory derived from the project's absolute path (LANE_SESSION_CWD = 'nomi-project' resolved against the project dir), and now land in one directory per conversation derived from a host-independent constant (laneSessionCwd(name) = '/nomi-lane/<name>'). That is the fix for a latent bug the old comment claimed not to have: renaming the project folder moved sessionsRoot with it but left the slug spelling the old absolute path, so list({cwd}) matched nothing and the history looked deleted. Nothing in a user's project has ever been written under the old layout by a shipped build, so there is nothing to migrate.",
+  "scope_paths": [
+    "electron/agentLane/",
+    "electron/shared/agentLane/",
+    "src/workbench/ai/lane/",
+    "src/workbench/ai/v4/agentPanelV4Types.ts",
+    "tests/agent-runtime/"
+  ],
+  "structural_evidence": {
+    "affected_paths": [
+      "electron/agentLane/laneIpc.ts",
+      "electron/agentLane/laneWorkspace.mts",
+      "electron/agentLane/laneHost.mts",
+      "electron/agentLane/laneSession.mts",
+      "electron/agentLane/laneProjection.mts",
+      "electron/agentLane/laneCommandCodec.ts",
+      "electron/agentLane/laneRuntimePort.ts",
+      "electron/shared/agentLane/laneContracts.ts",
+      "electron/shared/agentLane/laneComposerIntent.ts",
+      "src/workbench/ai/lane/laneClient.ts",
+      "src/workbench/ai/lane/laneViewModel.ts",
+      "src/workbench/ai/lane/laneComposerLabels.ts",
+      "src/workbench/ai/v4/agentPanelV4Types.ts"
+    ],
+    "preserved_exports": [
+      { "path": "electron/agentLane/laneIpc.ts", "name": "registerAgentLaneIpc" },
+      { "path": "electron/agentLane/laneSession.mts", "name": "openLaneSession" },
+      { "path": "electron/agentLane/laneSession.mts", "name": "laneSessionsRoot" },
+      { "path": "electron/agentLane/laneProjection.mts", "name": "projectLaneSnapshot" },
+      { "path": "electron/agentLane/laneCommandCodec.ts", "name": "parseLaneCommand" },
+      { "path": "src/workbench/ai/lane/laneClient.ts", "name": "createLaneClient" },
+      { "path": "src/workbench/ai/lane/laneViewModel.ts", "name": "laneViewModel" }
+    ],
+    "behavior_preservation": "Three claims, each with the evidence that would go red if it were false. (1) The live path is untouched: not one file under electron/projectAgentHost/ or src/workbench/ai/v4/ changed except agentPanelV4Types.ts, and there the only edit is that V4TaskStatus stops being its own literal union and becomes a type alias of LaneTaskStatus with the same five members in the same spelling — no component's import path or narrowing changes, and check:vocabularies verifies the move as an owner relocation with identical members rather than a second definition. (2) The shadow path keeps the shape the renderer is already tested against: the checked-in projection fixture (tests/agent-runtime/__fixtures__/lane-projection.json) gains exactly one field, \"queues\": [], and lane-slice.test.mts still asserts a real pi lane produces that file byte for byte, while laneViewModel.fixture.test.ts still projects the same four v4 items from it. (3) The 62 design-lab baselines are byte-identical — no PNG under tests/ux/design-lab/__baselines__ appears in this diff — and design-lab visual specs pass; the only edit in src/devlab is four label functions added to a labels object that the receipt cell never renders (the cell has no task part), which is why nothing moved on screen. What is genuinely new — one-at-a-time steering, the three-state cancel, the restored input, the task card, the four lane commands — has no counterpart on the live path and is therefore proven by its own tests, not by parity.",
+    "verification_limits": "Stated plainly, four of them. (a) The one-at-a-time claim is measured against a fixture HTTP endpoint, not a real provider: lane-queue.test.mts counts how many of three queued sentences appear in each outbound request body and asserts [0,1,2,3]. Its positive control was run by hand on 2026-09-08 by flipping steeringMode back to 'all' in laneHost.mts, which produced [0,3,3,3] — the two are a digit apart in the diff and unmistakable, but the control is a recorded manual run, not a second permanent test. (b) No screenshot exists for any of this, and none can: photographing the queue rows or a task card would require registering the lane IPC, which would break the unreachability that laneShadowStructure.test.ts asserts. Everything on the renderer side is data — laneViewModel gains a task item and passes the queue through; no v4 component was edited. (c) The i18n copy for the three cancel outcomes and the two secondary buttons is in place (zh-CN and en) and referenced from a typed exhaustive Record in laneComposerLabels.ts, but that module has no importer yet, so the words have been written and never rendered; the panel wiring is stage 4. (d) The task card's domain facts are supplied through an injected resolver and refreshed only when the domain says so (refreshTasks). No production caller passes that resolver yet — the generation capability that would mint a nomi.ui.task entry lands later — so the join is proven against a fixture ProductionRun in three states, not against the real store.",
+    "structural_tests": [
+      "tests/agent-runtime/lane-queue.test.mts",
+      "tests/agent-runtime/lane-multi.test.mts",
+      "tests/agent-runtime/lane-task-card.test.mts"
+    ]
+  },
+  "regression_tests": [
+    "tests/agent-runtime/lane-queue.test.mts",
+    "tests/agent-runtime/lane-multi.test.mts",
+    "tests/agent-runtime/lane-task-card.test.mts",
+    "tests/agent-runtime/lane-session-durability.test.mts",
+    "tests/agent-runtime/lane-slice.test.mts",
+    "electron/agentLane/laneCommandCodec.test.ts",
+    "electron/shared/agentLane/laneComposerIntent.test.ts",
+    "src/workbench/ai/lane/laneViewModel.test.ts",
+    "src/workbench/ai/lane/laneClient.test.ts"
+  ],
+  "residual_risks": [
+    "Upstream pi issue #9260 (closed, not in 0.85.1) redefines steer as 'interrupt the current turn and deliver as a new turn'. On a version that carries it, the middle row of the §1.3 table changes what the user feels — from 'finish this step, then listen to me' to 'stop now and listen to me'. That is a product semantics change, not a version bump, and nothing in this change would go red on it: the queue counts asserted here stay [0,1,2,3] either way. It has to be caught by the upstream radar's follow/deliberately-do-not-follow triage.",
+    "Switching conversations closes the current lane, which settles any waiting approval card as cancelled{cause:'window-closed'} and aborts the run in flight. That is the honest semantics — 'I walked away, that action should not happen behind my back' — but it also means a long generation started in conversation A stops when the user glances at conversation B. Whether users expect that is a product question nobody has watched a real person answer; the machine part (only one lane is open at a time) is asserted, the felt part is not.",
+    "repo.delete() removes the conversation's jsonl and leaves an empty slug directory behind. We deliberately do not clean it up, because doing so means encoding pi's directory layout in our code and following it whenever upstream changes. The cost is that a project that has had many conversations deleted accumulates empty directories; the test asserts the transcript is gone, not that the directory is.",
+    "Two conversations in one project cannot be open at once, so 'watch it work in one tab while typing in another' is not possible and is not planned. The reason is pi's single-opener rule per session (#8852) plus the fact that a hidden lane that is still running is still spending money the user cannot see. If the product later wants concurrent lanes, this is the decision to revisit, and it is a decision, not an implementation detail."
+  ],
+  "internal_only_reason": "Every fact this contract turns on is a property of this repository or of the installed pi package read at file:line: which queue mode the harness defaults to (harness/runtime/harness.js:44-45), that cancelQueued answers with three kinds (harness/agent-harness.d.ts:32-34), that an appendCustomEntry issued during an operation is queued as kind:\"write\" rather than written straight through (runtime/lane.js:1490-1545), that JsonlSessionRepo resolves the cwd it is handed through FileSystem.absolutePath and derives the slug directory from the result (session/jsonl/repo.js:180, sessionDirectoryName), and that repo.delete removes only the file (repo.js:113-122). The queue-mode claim was additionally measured end to end against a fixture endpoint in this change rather than trusted from the source read. There is no external source to cite beyond the package itself.",
+  "invariant_owner_layer": {
+    "layer": "electron/shared/agentLane/laneContracts.ts",
+    "tests": [
+      "electron/shared/agentLane/laneComposerIntent.test.ts",
+      "tests/agent-runtime/lane-queue.test.mts",
+      "tests/agent-runtime/lane-task-card.test.mts"
+    ],
+    "why": "这次一共三条不变量，三条都归**中立契约层**管，不归任何一侧的实现：①「一句话一轮」（队列模式）②「转录只记引用，状态现去领域读」（任务卡）③「用户此刻打的那句话是什么意思」（三态映射）。选这一层是 R28：三条的共同点是**两侧都要同意**。队列的词表（steer / follow-up / next-run，以及 write 不算插话）跨进程；任务卡的 LaneTaskFacts 跨进程；三态映射更极端——主进程侧的验收门和渲染层的 composer 用的必须是同一份判据，各写一份的结果是「面板说 steer、宿主做 followUp，而两边测试都是绿的」。把判据放在 laneComposerIntent.ts / laneContracts.ts（都在 electron/shared/），是唯一两侧都 import 得到的位置——electron/ 不许 import src/（check:boundaries），所以另一半的方案根本不存在。\n三份测试各证一件不同的事，缺一件另外两件都成立却仍然是坏的：`laneComposerIntent.test.ts` 证判据本身（纯函数，三态各走哪条命令，那句话一字不改地穿过去）；`lane-queue.test.mts` 证**pi 真的按判据行事**——它数的是出站报文里每次请求多吃了几句，而不是我们自己的状态变量，所以一个只改了注释没改 steeringMode 的实现会当场红（手动对照：'all' 下是 [0,3,3,3]）；`lane-task-card.test.mts` 证「引用而不复制」——同一条转录、三份领域事实、三张不同的卡，一个把状态写进转录的实现在这里会连出三张一模一样的排队卡。"
+  }
+}

@@ -14,6 +14,7 @@ export type DesktopProjectLocationResult =
   | { ok: false; error: DesktopProjectLocationError }
 
 export type DesktopSettingsBridge = {
+  attentionSound: import("../../electron/shared/contracts/attentionSound").AttentionSoundBridge
   projectLocation: {
     get: () => Promise<DesktopProjectLocationResult>
     check: () => Promise<DesktopProjectLocationResult>
@@ -42,6 +43,10 @@ export type DesktopSettingsBridge = {
     get: () => Promise<import('../../electron/shared/contracts/vendorPreference').VendorPreferenceSettings>
     set: (payload: unknown) => Promise<import('../../electron/shared/contracts/vendorPreference').VendorPreferenceSettings>
   }
+  canvasMenuPreference: {
+    get: () => Promise<import('../../electron/shared/contracts/canvasMenuPreference').CanvasMenuPreferenceSettings>
+    set: (payload: unknown) => Promise<import('../../electron/shared/contracts/canvasMenuPreference').CanvasMenuPreferenceSettings>
+  }
   telemetry?: {
     get: () => Promise<import('../../electron/shared/contracts/telemetry').TelemetrySettingsView>
     set: (payload: unknown) => Promise<import('../../electron/shared/contracts/telemetry').TelemetrySettingsView>
@@ -50,5 +55,6 @@ export type DesktopSettingsBridge = {
   }
   diagnostics?: {
     exportBundle: () => Promise<import('../../electron/shared/contracts/diagnostics').DiagnosticsExportResult>
+    openTraceDirectory?: (laneName?: string) => Promise<import('../../electron/shared/contracts/agentTrace').AgentTraceOpenResult>
   }
 }

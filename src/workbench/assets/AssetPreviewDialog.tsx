@@ -8,7 +8,7 @@ import { useVideoPlaybackHeal } from '../../media/useVideoPlaybackHeal'
 import { VideoPlaybackStatusOverlay } from '../../media/VideoPlaybackStatusOverlay'
 import type { AssetRef } from './assetTypes'
 import { getDesktopBridge } from '../../desktop/bridge'
-import { toast } from '../../ui/toast'
+import { notify } from '../../ui/notificationPolicy'
 
 const Model3DViewer = React.lazy(() => import('../generationCanvas/nodes/model3d/Model3DViewer'))
 
@@ -45,19 +45,25 @@ export function AssetPreviewDialog({ asset, onClose, sequence, initialIndex = 0 
   const sourceName = current.sourceProjectName?.trim() || ''
   const mediaTypeLabel = current.kind === 'video' ? t('assetLibrary.video') : t('assetLibrary.image')
   const [downloading, setDownloading] = React.useState(false)
+  const [downloadFeedback, setDownloadFeedback] = React.useState<{ owner: string; message: string; path?: string; error: boolean } | null>(null)
   const downloadModel = React.useCallback(() => {
     const bridge = getDesktopBridge()
     if (!bridge?.assets?.download || downloading) return
     const suggestedName = /\.glb$/i.test(title) ? title : `${title || 'model'}.glb`
+    setDownloadFeedback(null)
     setDownloading(true)
+    const report = (message: string, error: boolean, path?: string): void => { notify({
+      identity: `asset-preview:${current.id}`, reason: 'download', message, type: error ? 'error' : 'success', level: 'inline',
+      present: (text) => setDownloadFeedback({ owner: current.id, message: text, error, path }),
+    }) }
     void bridge.assets.download({ url: current.renderUrl, suggestedName })
       .then((result) => {
-        if (result.ok) toast(t('assetLibrary.downloadedModel3d'), 'success')
-        else if (!result.canceled) toast(t('assetLibrary.downloadModel3dFailed'), 'error')
+        if (result.ok) report(t('assetLibrary.downloadedModel3d'), false, result.path)
+        else if (!result.canceled) report(t('assetLibrary.downloadModel3dFailed'), true)
       })
-      .catch(() => toast(t('assetLibrary.downloadModel3dFailed'), 'error'))
+      .catch(() => report(t('assetLibrary.downloadModel3dFailed'), true))
       .finally(() => setDownloading(false))
-  }, [current.renderUrl, downloading, t, title])
+  }, [current.id, current.renderUrl, downloading, t, title])
 
   React.useEffect(() => {
     // capture 阶段拦 Esc：素材库/画布也监听 window keydown，先于它们关预览（不误删节点等）。
@@ -111,9 +117,10 @@ export function AssetPreviewDialog({ asset, onClose, sequence, initialIndex = 0 
 
   return createPortal(
     <div
-      className={cn('fixed inset-0 z-[10000] flex items-center justify-center overflow-hidden p-8', 'bg-black/60')}
+      className={cn('fixed inset-0 z-application-modal flex items-center justify-center overflow-hidden p-8', 'bg-black/60')}
       role="dialog"
       aria-modal="true"
+      data-asset-preview-dialog="true"
       aria-label={t('assetLibrary.previewAria', { name: title })}
       {...(sequence ? { 'data-storyboard-player': 'true' } : {})}
       onPointerDown={(event) => {
@@ -179,6 +186,12 @@ export function AssetPreviewDialog({ asset, onClose, sequence, initialIndex = 0 
         </button>
       ) : null}
 
+      {downloadFeedback?.owner === current.id ? (
+        <div role={downloadFeedback.error ? 'alert' : 'status'} className="absolute right-16 top-16 z-[3] max-w-sm break-words rounded-nomi-sm bg-nomi-paper px-3 py-2 text-caption text-nomi-ink">
+          <p>{downloadFeedback.message}</p>
+          {downloadFeedback.path ? <p className="mt-1 text-micro text-nomi-ink-60">{downloadFeedback.path}</p> : null}
+        </div>
+      ) : null}
       {current.kind === 'model3d' ? (
         <div
           className="h-[72vh] max-h-[720px] w-[84vw] max-w-[960px] overflow-hidden rounded-nomi bg-nomi-paper shadow-nomi-lg"

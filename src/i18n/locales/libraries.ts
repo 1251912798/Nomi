@@ -57,7 +57,6 @@ export const zhLibraries = {
     exportNotFound: '导出失败：没找到这个技能',
     deleteFailed: '删除失败',
     deleted: '已删除 · {{name}}',
-    imported: '已导入 · {{name}}',
     importedWithSkips: '已导入 · {{name}}（跳过 {{count}} 个非文本文件）',
     importFailed: '导入失败：{{message}}',
     importReason: {
@@ -154,7 +153,7 @@ export const zhLibraries = {
     createGroup: '新建子组',
     rename: '重命名',
     deleteCategory: '删除分类',
-    copy: '复制',
+    copy: '复制到…',
     regenerateDerived: '派生重新生成',
     ungroup: '解组（保留节点）',
     deleteWithNodes: '删除（连节点）',
@@ -239,7 +238,6 @@ export const enLibraries = {
     exportNotFound: 'Export failed: skill not found',
     deleteFailed: 'Delete failed',
     deleted: 'Deleted · {{name}}',
-    imported: 'Imported · {{name}}',
     importedWithSkips: 'Imported · {{name}} ({{count}} non-text files skipped)',
     importFailed: 'Import failed: {{message}}',
     importReason: {
@@ -336,7 +334,7 @@ export const enLibraries = {
     createGroup: 'New subgroup',
     rename: 'Rename',
     deleteCategory: 'Delete category',
-    copy: 'Copy',
+    copy: 'Copy to…',
     regenerateDerived: 'Regenerate as derivative',
     ungroup: 'Ungroup (keep nodes)',
     deleteWithNodes: 'Delete with nodes',

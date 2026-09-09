@@ -1,3 +1,4 @@
+import { NomiMarkdown } from '../common/NomiMarkdown'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Portal } from '@mantine/core'
@@ -161,7 +162,7 @@ export function PromptPreviewOverlay({ prompt, originRect, onClose, onSendToCanv
           {/* 内容 */}
           <div className={cn('flex-1 min-h-0 overflow-y-auto px-4 pt-3.5 pb-4')}>
             <div className={cn('text-title font-semibold text-nomi-ink mb-2')}>{displayTitle}</div>
-            <p className={cn('text-body-sm leading-relaxed text-nomi-ink-80 whitespace-pre-wrap')}>{prompt.prompt}</p>
+            <NomiMarkdown>{prompt.prompt}</NomiMarkdown>
           </div>
 
           {/* 操作 */}
@@ -172,7 +173,7 @@ export function PromptPreviewOverlay({ prompt, originRect, onClose, onSendToCanv
               className={cn(
                 'inline-flex items-center gap-1.5 h-9 px-4 rounded-full cursor-pointer border-0',
                 'bg-nomi-ink text-nomi-paper text-body-sm font-semibold hover:bg-nomi-accent',
-                'transition-[background] duration-[var(--nomi-transition-fast)]',
+                'transition-[background] duration-nomi-fast ease-nomi-fast',
               )}
             >
               {sent ? <IconCheck size={16} stroke={2} /> : <IconLayoutBoard size={16} stroke={1.8} />}

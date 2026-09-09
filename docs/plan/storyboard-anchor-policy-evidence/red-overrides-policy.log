@@ -1,0 +1,85 @@
+
+ RUN  v4.1.8 /Users/aoqimin/Desktop/Nomi-anchor-policy
+
+ ❯ src/config/modelArchetypes/anchorPolicy.test.ts (0 test)
+ ❯ src/workbench/creation/storyboard/exec/storyboardOverrides.integration.test.ts (3 tests | 3 failed) 6ms
+     × Agent edit then generate keeps night instead of silently restoring dusk 4ms
+     × manual edits use the same boundary; variants and clamped duration do not override 1ms
+     × an unmarked node is a projection even if its previous prompt differs 0ms
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/config/modelArchetypes/anchorPolicy.test.ts [ src/config/modelArchetypes/anchorPolicy.test.ts ]
+Error: Cannot find module './anchorPolicy' imported from /Users/aoqimin/Desktop/Nomi-anchor-policy/src/config/modelArchetypes/anchorPolicy.test.ts
+ ❯ src/config/modelArchetypes/anchorPolicy.test.ts:2:1
+      1| import { describe, expect, it } from 'vitest'
+      2| import { anchorsConsumedBy } from './anchorPolicy'
+       | ^
+      3|
+      4| describe('anchor policy derives from slots', () => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/workbench/creation/storyboard/exec/storyboardOverrides.integration.test.ts > plan truth and canvas overrides > Agent edit then generate keeps night instead of silently restoring dusk
+AssertionError: expected undefined to deeply equal [ 'prompt' ]
+
+- Expected:
+[
+  "prompt",
+]
+
++ Received:
+undefined
+
+ ❯ src/workbench/creation/storyboard/exec/storyboardOverrides.integration.test.ts:23:43
+     21|   it('Agent edit then generate keeps night instead of silently restori…
+     22|     await applyCanvasToolCall('set_node_prompt', { nodeId: 'n3', promp…
+     23|     expect(node().meta?.overriddenFields).toEqual(['prompt'])
+       |                                           ^
+     24|     await materializeShotRow(ctx, shot, null)
+     25|     expect(node().prompt).toBe('夜景')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  src/workbench/creation/storyboard/exec/storyboardOverrides.integration.test.ts > plan truth and canvas overrides > manual edits use the same boundary; variants and clamped duration do not override
+AssertionError: expected undefined to deeply equal [ 'prompt' ]
+
+- Expected:
+[
+  "prompt",
+]
+
++ Received:
+undefined
+
+ ❯ src/workbench/creation/storyboard/exec/storyboardOverrides.integration.test.ts:30:43
+     28|   it('manual edits use the same boundary; variants and clamped duratio…
+     29|     useGenerationCanvasStore.getState().updateNode('n3', { prompt: '夜景…
+     30|     expect(node().meta?.overriddenFields).toEqual(['prompt'])
+       |                                           ^
+     31|     useGenerationCanvasStore.getState().updateNode('n3', { meta: { ...…
+     32|     expect(node().meta?.overriddenFields).toEqual(['prompt'])
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+ FAIL  src/workbench/creation/storyboard/exec/storyboardOverrides.integration.test.ts > plan truth and canvas overrides > an unmarked node is a projection even if its previous prompt differs
+TypeError: effectiveShotValue is not a function
+ ❯ src/workbench/creation/storyboard/exec/storyboardOverrides.integration.test.ts:38:12
+     36|   })
+     37|   it('an unmarked node is a projection even if its previous prompt dif…
+     38|     expect(effectiveShotValue(shot, node(), 'prompt')).toBe('傍晚')
+       |            ^
+     39|     await materializeShotRow(ctx, { ...shot, prompt: '清晨' }, null)
+     40|     expect(node().prompt).toContain('清晨')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/4]⎯
+
+
+ Test Files  2 failed (2)
+      Tests  3 failed (3)
+   Start at  15:56:06
+   Duration  1.48s (transform 746ms, setup 47ms, import 1.37s, tests 6ms, environment 0ms)
+

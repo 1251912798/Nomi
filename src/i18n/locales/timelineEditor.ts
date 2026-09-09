@@ -24,7 +24,7 @@ export const zhTimelineEditor = {
   fitShortcut: '适配时间轴（0）',
   aiArrangeShortcut: 'AI 拼片：把生成区已出片的镜头按镜序排进时间轴',
   context: {
-    split: '在播放头处分割', duplicate: '复制', duplicateShortcut: '复制（⌘D）', splitShortcut: '分割（S）', delete: '删除', deleteShortcut: '删除（⌫）', rippleDelete: '涟漪删除', deleteLeft: '删除播放头左侧', deleteRight: '删除播放头右侧', mute: '静音', unmute: '取消静音', editText: '改文字', alignToShot: '对齐到所在镜头', changeTransition: '换转场…', applyTransitionAll: '套用到所有接缝', removeTransition: '删除转场', addFromAssets: '从素材库添加…', alignToShotMissing: '这条字幕下面没有画面，先把它拖到某一镜上', applyTransitionAllNone: '没有别的接缝放得下这个转场', applyTransitionAllDone: '已把这个转场套到 {{count}} 条接缝',
+    split: '在播放头处分割', duplicate: '创建副本', duplicateShortcut: '创建副本（⌘D）', splitShortcut: '分割（S）', delete: '删除', deleteShortcut: '删除（⌫）', rippleDelete: '涟漪删除', deleteLeft: '删除播放头左侧', deleteRight: '删除播放头右侧', mute: '静音', unmute: '取消静音', editText: '改文字', alignToShot: '对齐到所在镜头', changeTransition: '换转场…', applyTransitionAll: '套用到所有接缝', removeTransition: '删除转场', addFromAssets: '从素材库添加…', alignToShotMissing: '这条字幕下面没有画面，先把它拖到某一镜上', applyTransitionAllNone: '没有别的接缝放得下这个转场',
   },
   shortcuts: { title: '快捷键', open: '快捷键（?）', toggleSnap: '切换吸附', toggleAssistant: '收起 / 展开 Nomi', zoom: '缩小 / 放大 / 适配', splitKey: 'S', duplicateKey: '⌘D', deleteKey: '⌫', rippleKey: '⇧⌫', leftKey: 'Q', rightKey: 'W', undoKey: '⌘Z', redoKey: '⇧⌘Z', snapKey: 'N', assistantKey: '⌘\\', zoomKey: '− / ＋ / 0' },
   ruler: '时间刻度',
@@ -34,6 +34,7 @@ export const zhTimelineEditor = {
   addedAtPosition: '已加入时间轴指定位置',
   adoption: {
     alreadyOnTimeline: '已在时间轴上',
+    openTimeline: '查看时间轴',
     stale: '时间轴已变化，请重新加入',
     versionChanged: '这个镜头已重新生成，请确认后再加入',
     failedRecovered: '未能加入，时间轴保持原样',
@@ -176,7 +177,7 @@ export const enTimelineEditor = {
   fitShortcut: 'Fit timeline (0)',
   aiArrangeShortcut: 'AI arrange: lay the finished shots onto the timeline in shot order',
   context: {
-    split: 'Split at playhead', duplicate: 'Duplicate', duplicateShortcut: 'Duplicate (⌘D)', splitShortcut: 'Split (S)', delete: 'Delete', deleteShortcut: 'Delete (⌫)', rippleDelete: 'Ripple delete', deleteLeft: 'Delete left of playhead', deleteRight: 'Delete right of playhead', mute: 'Mute', unmute: 'Unmute', editText: 'Edit text', alignToShot: 'Align to shot', changeTransition: 'Change transition…', applyTransitionAll: 'Apply to all seams', removeTransition: 'Remove transition', addFromAssets: 'Add from Assets…', alignToShotMissing: 'No shot under this caption — drag it onto one first', applyTransitionAllNone: 'No other seam can take this transition', applyTransitionAllDone: 'Applied this transition to {{count}} seams',
+    split: 'Split at playhead', duplicate: 'Duplicate', duplicateShortcut: 'Duplicate (⌘D)', splitShortcut: 'Split (S)', delete: 'Delete', deleteShortcut: 'Delete (⌫)', rippleDelete: 'Ripple delete', deleteLeft: 'Delete left of playhead', deleteRight: 'Delete right of playhead', mute: 'Mute', unmute: 'Unmute', editText: 'Edit text', alignToShot: 'Align to shot', changeTransition: 'Change transition…', applyTransitionAll: 'Apply to all seams', removeTransition: 'Remove transition', addFromAssets: 'Add from Assets…', alignToShotMissing: 'No shot under this caption — drag it onto one first', applyTransitionAllNone: 'No other seam can take this transition',
   },
   shortcuts: { title: 'Keyboard shortcuts', open: 'Keyboard shortcuts (?)', toggleSnap: 'Toggle snapping', toggleAssistant: 'Collapse / expand Nomi', zoom: 'Zoom out / in / fit', splitKey: 'S', duplicateKey: '⌘D', deleteKey: '⌫', rippleKey: '⇧⌫', leftKey: 'Q', rightKey: 'W', undoKey: '⌘Z', redoKey: '⇧⌘Z', snapKey: 'N', assistantKey: '⌘\\', zoomKey: '− / + / 0' },
   ruler: 'Time ruler',
@@ -186,6 +187,7 @@ export const enTimelineEditor = {
   addedAtPosition: 'Added to the timeline where you dropped it',
   adoption: {
     alreadyOnTimeline: 'Already on the timeline',
+    openTimeline: 'View timeline',
     stale: 'The timeline changed. Add it again to use the latest timeline.',
     versionChanged: 'This shot was regenerated. Confirm the version before adding it.',
     failedRecovered: 'Could not add it. The timeline is unchanged.',
