@@ -24,11 +24,11 @@ async function shot(name) {
       const rect = element => { const r = element.getBoundingClientRect(); return { left: r.left, top: r.top, right: r.right, bottom: r.bottom, width: r.width, height: r.height } }
       return { node: rect(el), number: rect(el.querySelector('[data-shot-number]')), status: el.querySelector('[data-generation-status]') ? rect(el.querySelector('[data-generation-status]')) : null, toolbar: el.querySelector('[data-node-floating-toolbar]') ? rect(el.querySelector('[data-node-floating-toolbar]')) : null }
     })
-    expect(geometry.number.bottom).toBeLessThanOrEqual(geometry.node.bottom)
-    expect(geometry.number.top).toBeGreaterThan(geometry.node.top + geometry.node.height / 2)
+    expect(geometry.number.bottom).toBeLessThanOrEqual(geometry.node.top)
+    expect(geometry.number.left).toBeGreaterThanOrEqual(geometry.node.left)
     if (name.endsWith('generating')) {
-      expect(geometry.status.top).toBeGreaterThanOrEqual(geometry.node.top)
-      expect(geometry.status.bottom).toBeLessThan(geometry.number.top)
+      expect(geometry.status.bottom).toBeLessThanOrEqual(geometry.node.top)
+      expect(geometry.status.left).toBeGreaterThan(geometry.number.right)
     } else expect(geometry.status).toBeNull()
     if (geometry.toolbar) expect(geometry.toolbar.bottom).toBeLessThanOrEqual(geometry.node.top)
     receipt.checks.push({ criterion: name, geometry, result: 'green' })

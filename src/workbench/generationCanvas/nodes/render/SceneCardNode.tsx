@@ -2,7 +2,7 @@
  * SceneCardNode body — 场景分类节点（v0.8 极简版）。
  *
  * 信息条仍 absolute 浮在主图底部（保留场景"沉浸全图"的视觉），
- * 但只在有名字 / mood / usage 时渲染。
+ * 但只在有名字 / mood / usage 且悬停或编辑标题时显现，常驻时不遮媒体。
  * 场景名 inline 可编辑。
  */
 import React from 'react'
@@ -48,11 +48,12 @@ function SceneCardNodeImpl({ node }: Props): JSX.Element {
 
       {hasInfoBar ? (
         <div
+          data-node-scene-info="true"
           className={cn(
             'absolute bottom-2 left-2 right-2',
             'px-3 py-2 rounded-nomi-sm',
             'bg-nomi-ink/[0.78] backdrop-blur-md text-nomi-paper',
-            'flex flex-col gap-0.5',
+            'flex flex-col gap-0.5 opacity-0 pointer-events-none group-hover/node:opacity-100 group-hover/node:pointer-events-auto focus-within:opacity-100 focus-within:pointer-events-auto',
           )}
         >
           <div className="flex items-center justify-between gap-2">
