@@ -234,18 +234,18 @@ export function V4Intervention({
         ) : null}
         {data.plan?.length ? (
           <div className="flex flex-col gap-1">
-            {data.plan.map((row) => (
-              <label key={row.label} className="flex items-center gap-2 py-[3px] text-caption text-nomi-ink-80">
+            {data.plan.map((row, index) => (
+              <label key={`${index}-${row.label}`} className="flex items-center gap-2 py-[3px] text-caption text-nomi-ink-80">
                 <input
                   type="checkbox"
                   checked={row.checked}
                   onChange={(event) => onPlanToggle?.(row.label, event.target.checked)}
                   className="size-3.5 shrink-0 accent-nomi-accent"
                 />
-                <span className="min-w-0 flex-1 truncate">{row.label}</span>
-                {row.detail ? (
-                  <span className="shrink-0 font-nomi-mono text-micro text-nomi-ink-40">{row.detail}</span>
-                ) : null}
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate">{row.label}</span>
+                  {row.detail ? <span className="block truncate text-micro text-nomi-ink-40">{row.detail}</span> : null}
+                </span>
               </label>
             ))}
           </div>
@@ -374,8 +374,8 @@ export function V4Queue({
               </button>
             ))}
             {row.destructiveAction ? (
-              <button type="button" className="font-medium text-nomi-danger" onClick={() => onDestructiveAction?.(rowIndex)}>
-                {row.destructiveAction}
+              <button type="button" aria-label={row.destructiveAction} className="grid size-[22px] place-items-center rounded-nomi-sm text-nomi-ink-60 hover:bg-nomi-ink-05 hover:text-nomi-danger" onClick={() => onDestructiveAction?.(rowIndex)}>
+                <IconX size={14} aria-hidden="true" />
               </button>
             ) : null}
             {row.actions?.length || row.destructiveAction ? null : labels[row.status]}

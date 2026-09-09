@@ -212,6 +212,8 @@ function isAllArtifactDelivery(args: unknown): boolean {
 
 export function readableToolName(t: Translate, name: string, args?: unknown): string {
   const normalized = toolIdentity(name, args)
+  if (normalized.includes('arrange_storyboard_to_timeline')) return t('agentResident.toolTimelineAdd')
+  if (normalized.includes('create_canvas_nodes') && !isAllArtifactDelivery(args)) return t('agentResident.toolCanvasCreate')
   if (isCanvasDeleteToolName(name, args)) return t('agentResident.toolCanvasDelete')
   if (normalized.includes('append_to_end') || normalized.includes('document_append')) return t('agentResident.toolDocumentWrite')
   if (isCanvasWriteToolName(name, args) && isAllArtifactDelivery(args)) return t('agentResident.toolCanvasWriteArtifact')

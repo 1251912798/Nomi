@@ -1,3 +1,4 @@
+import { capabilitySupportsUndo } from '../../../../electron/shared/agentCapabilities/registry'
 // Agent 面板 v4 · 积木 ⑤ 介入槽的投影。
 //
 // 这个槽今天的数据**不来自宿主状态**：它来自渲染层的待决登记表，而那份记录的 `kind`
@@ -139,10 +140,11 @@ export function projectV4Intervention(
   const params = residentProposalParameters(source.args)
   const plan: readonly PlanRow[] = planRowsOf(source)
   const options = residentQuestionOptions(source.args).map((option) => option.label)
+  const badge = capabilitySupportsUndo(source.toolName, source.args) && (kind === 'approval-irreversible' || kind === 'approval-reversible') ? labels.reversible : badgeOf(kind, labels)
   const base = {
     kind,
     title: titleOf(kind, source, labels, t),
-    ...(badgeOf(kind, labels) ? { badge: badgeOf(kind, labels) } : {}),
+    ...(badge ? { badge } : {}),
     ...(summaryParts.length ? { summary: summaryParts.join(' · ') } : {}),
     ...(params.length ? { params } : {}),
     ...(options.length ? { options } : {}),

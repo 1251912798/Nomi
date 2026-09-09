@@ -1,0 +1,153 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-09-agent-panel-mechanics",
+  "problem_type": "Panel presentation loses semantic or spatial ownership",
+  "symptom": "Thinking fragments repeated work, answers and uncovered pane disappear, model names duplicate and actions mislabel.",
+  "direct_cause": "Tool position and height used as answer classification; right aligned popover and workspace-wide preview selectors; tool labels omit operation.",
+  "class_root": "Presentation derives visibility and labels from semantic content and covered geometry; ambiguous answers remain visible.",
+  "affected_population": [
+    "All conversation models and image/video preview callers"
+  ],
+  "scope_paths": [
+    "electron/shared/agentCapabilities/canvasDelete.ts",
+    "electron/shared/agentCapabilities/capabilityContract.ts",
+    "electron/shared/agentCapabilities/registry.ts",
+    "src/i18n/locales/agentPanelV4.ts",
+    "src/i18n/locales/agentResident.ts",
+    "src/workbench/ai/resident/residentExceptionProjections.ts",
+    "src/workbench/ai/resident/residentToolDisplay.ts",
+    "src/workbench/ai/v4/AgentPanelV4Cards.tsx",
+    "src/workbench/ai/v4/AgentPanelV4Composer.tsx",
+    "src/workbench/ai/v4/AgentPanelV4Context.tsx",
+    "src/workbench/ai/v4/AgentPanelV4Markdown.tsx",
+    "src/workbench/ai/v4/AgentPanelV4Message.tsx",
+    "src/workbench/ai/v4/agentPanelV4Collapse.ts",
+    "src/workbench/ai/v4/agentPanelV4Intervention.ts",
+    "src/workbench/ai/v4/agentPanelV4Labels.ts",
+    "src/workbench/ai/v4/agentPanelV4Projection.ts",
+    "src/workbench/ai/v4/agentPanelV4UsageFormat.ts",
+    "src/workbench/creation/storyboard/shotPresentation.ts",
+    "src/workbench/creation/storyboard/shotRow/StoryboardShotFrame.tsx",
+    "src/workbench/generationCanvas/nodes/NodeMediaPreviewDialog.tsx",
+    "src/workbench/generationCanvas/styles/generationCanvas.css",
+    "src/workbench/ai/v4/AgentPanelV4Panel.tsx"
+  ],
+  "entry_points": [
+    "V4 flow and composer",
+    "NodeMediaPreviewDialog"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "Restoring approved internal component behavior without a dependency or protocol change.",
+  "invariants": [
+    "Presentation derives visibility and labels from semantic content and covered geometry; ambiguous answers remain visible."
+  ],
+  "generality_proof": "Shared V4 components and preview owner enforce behavior for all hosts and providers.",
+  "shared_boundaries": [
+    {
+      "path": "src/workbench/ai/v4/agentPanelV4Collapse.ts",
+      "symbol": "collapseV4Flow",
+      "responsibility": "Presentation derives visibility and labels from semantic content and covered geometry; ambiguous answers remain visible."
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/NodeMediaPreviewDialog.tsx",
+      "symbol": "NodeMediaPreviewDialog",
+      "responsibility": "Only covered canvas children become inert."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/workbench/ai/v4/agentPanelV4Collapse.ts",
+      "entry_point": "collapseV4Flow",
+      "disposition": "enforced",
+      "evidence": "Tests cover thinking between calls and complete answer before trailing call."
+    },
+    {
+      "path": "src/workbench/ai/v4/AgentPanelV4Markdown.tsx",
+      "entry_point": "AgentPanelV4Markdown",
+      "disposition": "enforced",
+      "evidence": "Read assistant and suggestion consumers; both can carry next steps."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Any subsequent model turn or preview can hit the mechanism.",
+    "same_class_scan": [
+      "Read V4 projection and lane view model, which both emit assistant and thinking items.",
+      "Read context header and composer placement owner.",
+      "Read image/video preview callers and cross-workspace CSS selectors."
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "src/workbench/ai/v4/agentPanelV4Collapse.ts",
+    "invariant": "Presentation derives visibility and labels from semantic content and covered geometry; ambiguous answers remain visible.",
+    "failure_mode": "Uncertain answer classification leaves text visible.",
+    "exception_policy": "none",
+    "strategy": "Remove heuristic answer hiding and workspace-wide overlay effects; reuse semantic/placement owners.",
+    "artifacts": [
+      "electron/shared/agentCapabilities/canvasDelete.ts",
+      "electron/shared/agentCapabilities/capabilityContract.ts",
+      "electron/shared/agentCapabilities/registry.ts",
+      "src/i18n/locales/agentPanelV4.ts",
+      "src/i18n/locales/agentResident.ts",
+      "src/workbench/ai/resident/residentExceptionProjections.ts",
+      "src/workbench/ai/resident/residentToolDisplay.ts",
+      "src/workbench/ai/v4/AgentPanelV4Cards.tsx",
+      "src/workbench/ai/v4/AgentPanelV4Composer.tsx",
+      "src/workbench/ai/v4/AgentPanelV4Context.tsx",
+      "src/workbench/ai/v4/AgentPanelV4Markdown.tsx",
+      "src/workbench/ai/v4/AgentPanelV4Message.tsx",
+      "src/workbench/ai/v4/agentPanelV4Collapse.ts",
+      "src/workbench/ai/v4/agentPanelV4Intervention.ts",
+      "src/workbench/ai/v4/agentPanelV4Labels.ts",
+      "src/workbench/ai/v4/agentPanelV4Projection.ts",
+      "src/workbench/ai/v4/agentPanelV4UsageFormat.ts",
+      "src/workbench/creation/storyboard/shotPresentation.ts",
+      "src/workbench/creation/storyboard/shotRow/StoryboardShotFrame.tsx",
+      "src/workbench/generationCanvas/nodes/NodeMediaPreviewDialog.tsx",
+      "src/workbench/generationCanvas/styles/generationCanvas.css",
+      "src/workbench/ai/v4/AgentPanelV4Panel.tsx"
+    ]
+  },
+  "regression_tests": [
+    "src/workbench/ai/resident/residentExceptionProjections.test.ts",
+    "src/workbench/ai/resident/residentToolDisplay.test.ts",
+    "src/workbench/ai/v4/agentPanelV4Collapse.test.ts",
+    "src/workbench/ai/v4/agentPanelV4Mechanics.test.ts",
+    "src/workbench/ai/v4/agentPanelV4Projection.test.ts",
+    "tests/ux/agent-panel-mechanics.walk.mjs"
+  ],
+  "class_regression_tests": [
+    "src/workbench/ai/resident/residentExceptionProjections.test.ts",
+    "src/workbench/ai/resident/residentToolDisplay.test.ts",
+    "src/workbench/ai/v4/agentPanelV4Collapse.test.ts",
+    "src/workbench/ai/v4/agentPanelV4Mechanics.test.ts",
+    "src/workbench/ai/v4/agentPanelV4Projection.test.ts",
+    "tests/ux/agent-panel-mechanics.walk.mjs"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "src/workbench/ai/v4/agentPanelV4Collapse.ts",
+      "src/workbench/ai/v4/AgentPanelV4Markdown.tsx",
+      "src/workbench/generationCanvas/styles/generationCanvas.css"
+    ],
+    "rationale": "Remove positional answer guessing, whole-answer clipping, and cross-region preview hiding."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "Internal presentation invariants; existing dependencies retained unchanged.",
+    "exit_criteria": []
+  },
+  "migration": "No persisted data change; old transcripts with ambiguous boundaries stay visible.",
+  "residual_risks": [
+    "RuntimeUsage exposes USD-normalized cost only; no supplier bill currency/amount is available to this panel. No currency relabeling or conversion is fabricated.",
+    "Production lane files are frozen; their host-note approval entries are skipped before V4 and do not split work runs."
+  ],
+  "invariant_owner_layer": {
+    "layer": "src/workbench/ai/v4/agentPanelV4Collapse.ts",
+    "tests": [
+      "src/workbench/ai/v4/agentPanelV4Mechanics.test.ts"
+    ]
+  }
+}

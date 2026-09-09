@@ -1,3 +1,5 @@
+import { capabilitySupportsUndo } from '../../../../electron/shared/agentCapabilities/registry'
+import { formatV4Tokens } from './agentPanelV4UsageFormat'
 // Agent 面板 v4 · 宿主快照 → 8 个积木的视图模型。**这一层是唯一的 owner。**
 //
 // 为什么必须是一层而不是散在组件里：v4 的 9 个组件此前一个回调都没有，全部只接拼好的
@@ -220,7 +222,7 @@ function receiptFor(input: {
     ...(trailing ? { trailing } : {}),
     ...(inputText ? { input: inputText } : {}),
     ...(output ? { output } : {}),
-    ...(input.undoable ? { undoable: true } : {}),
+    ...(input.undoable && capabilitySupportsUndo(capabilityId, args) ? { undoable: true } : {}),
   })
 }
 
@@ -507,7 +509,7 @@ export function contextPercent(usage: ContextUsage): number | undefined {
 
 const EMPTY_QUEUE: readonly QueueRowData[] = Object.freeze([])
 
-const kilo = (value: number): string => `${(value / 1000).toFixed(value % 1000 === 0 ? 0 : 1)}K`
+
 
 /**
  * 本**线程**的用量，不是 App 会话累计。
@@ -543,8 +545,8 @@ export function projectV4Context(input: {
   return Object.freeze({
     ...(last ? { used: last.promptTokens } : {}),
     ...(input.contextWindow !== undefined ? { max: input.contextWindow } : {}),
-    ...(settled.length ? { input: kilo(inputTokens), output: kilo(outputTokens), cache: kilo(cacheTokens) } : {}),
-    ...(reasoningTokens !== undefined ? { reasoning: kilo(reasoningTokens) } : {}),
+    ...(settled.length ? { input: formatV4Tokens(inputTokens), output: formatV4Tokens(outputTokens), cache: formatV4Tokens(cacheTokens) } : {}),
+    ...(reasoningTokens !== undefined ? { reasoning: formatV4Tokens(reasoningTokens) } : {}),
     ...(cost !== undefined ? { cost: input.formatCost(cost) } : {}),
   })
 }
