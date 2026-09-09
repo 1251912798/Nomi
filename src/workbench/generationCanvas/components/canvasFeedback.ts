@@ -1,3 +1,4 @@
+import type { ToastType } from '../../../ui/toast'
 import i18n from '../../../i18n'
 import { getDesktopActiveProjectId } from '../../../desktop/activeProject'
 import { notify, revealNotificationTarget } from '../../../ui/notificationPolicy'
@@ -7,7 +8,7 @@ import { notify, revealNotificationTarget } from '../../../ui/notificationPolicy
  * and target; editable node/panel hosts must use notify(level: 'inline') instead. */
 export function reportCanvasFeedback(
   message: string,
-  type: 'info' | 'success' | 'warning' | 'error',
+  type: ToastType,
   context: { identity: string; reason: string; nodeIds?: string[]; projectId?: string; taskCenter?: boolean; workspaceMode?: 'preview' | 'generation' },
 ): void {
   const projectId = context.projectId ?? getDesktopActiveProjectId()

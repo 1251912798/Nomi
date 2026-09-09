@@ -1,3 +1,4 @@
+import type { ToastType } from './toast'
 import { confirmDialog } from '../design/confirmDialogStore'
 import { useToastStore } from './toast'
 
@@ -5,7 +6,7 @@ type Feedback = {
   identity: string
   reason: string
   message: string
-  type?: 'info' | 'success' | 'warning' | 'error'
+  type?: ToastType
 }
 
 type NotificationInput = Feedback & (

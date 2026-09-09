@@ -1,5 +1,5 @@
 {
-  "debtCap": 73,
+  "debtCap": 72,
   "converged": [
     {
       "retiredOwners": [
@@ -2184,16 +2184,6 @@
         "success"
       ],
       "reason": "OpenWorkspaceProjectFromPickerOptions.showMessage 与 library 入口完全共用语义；应复用 OpenWorkspaceMessageTone = Extract<ToastType, 'error' | 'success'>，删除第二份参数字面量。"
-    },
-{
-      "site": "src/workbench/production/productionShotActions.ts::type:ToastKind/type-union",
-      "members": [
-        "error",
-        "info",
-        "success",
-        "warning"
-      ],
-      "reason": "与 src/ui/toast.tsx::type:ToastType/type-union 成员完全相同；待直接复用共享 ToastType。"
     },
     {
       "site": "src/workbench/production/shotPlaceholderState.ts::variable:DONE_STATUSES/set",

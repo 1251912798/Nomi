@@ -1,3 +1,4 @@
+import type { ToastType } from '../../toast'
 // 网页提示词提取 runner（素材面收敛 2026-07-22）：产物只此一家=主提示词库「我的库」。
 // 此前提取在素材盒弹层内跑、结果存 localStorage 私账卡（正牌提示词库找不到、顶栏浮窗恒空）；
 // 提取由浏览器侧直接驱动：请求宿主原地反馈进度，成品 addUserPrompt 入主库（带参考图+模式标签）。
@@ -119,7 +120,7 @@ function fallbackTitle(request: BrowserAssetPromptCaptureRequest, extractedTitle
 /** 提取结果由请求宿主原地承接；纯 runner 不另开素材盒或全局提示。 */
 export async function runBrowserPromptExtractionToLibrary(request: BrowserAssetPromptCaptureRequest, present: (message: string) => void): Promise<void> {
   const mode = promptExtractionModeFromRequest(request)
-  const report = (message: string, type: 'info' | 'success' | 'error') => notify({ identity: `browser-prompt:${request.requestId}`, reason: 'extraction', level: 'inline', message, type, present })
+  const report = (message: string, type: ToastType) => notify({ identity: `browser-prompt:${request.requestId}`, reason: 'extraction', level: 'inline', message, type, present })
   report(i18n.t('browserAssets.extractingPrompt', { mode: i18n.t(BROWSER_PROMPT_EXTRACTION_MODE_LABEL_KEYS[mode]) }), 'info')
   try {
     const settings = await loadExtractionSettings()

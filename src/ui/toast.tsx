@@ -5,7 +5,7 @@ import { IconAlertCircle, IconAlertTriangle, IconCircleCheck, IconInfoCircle } f
 
 // 全仓唯一通用 toast。统一走 @mantine/notifications 的单一容器（main.tsx 的 <Notifications/>）。
 // 语义变体 showUndoToast（点击撤销）/ showInfoToast（一次性告知）也走同一容器，不再有本地并行 store/host。
-type ToastType = 'info' | 'success' | 'error' | 'warning'
+export type ToastType = 'info' | 'success' | 'error' | 'warning'
 type Toast = {
   id: string
   message: React.ReactNode
