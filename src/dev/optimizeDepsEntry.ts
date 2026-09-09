@@ -28,7 +28,7 @@ import 'clsx';
 import 'framer-motion';
 import 'i18next';
 import 'react-i18next';
-import 'react-markdown';
+import 'streamdown';
 import '@photo-sphere-viewer/core';
 import 'tailwind-merge';
 import 'swr';

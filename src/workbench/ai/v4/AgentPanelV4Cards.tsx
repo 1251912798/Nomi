@@ -12,6 +12,7 @@ import { V4Row } from './AgentPanelV4Row'
 //
 // ⑥ 队列行：只在「运行中还继续输入」时出现在 composer 顶上；完成的划掉；空队列不渲染。
 import React from 'react'
+import { AgentPanelV4Markdown } from './AgentPanelV4Markdown'
 import { cn } from '../../../utils/cn'
 import {
   ActionIcon,
@@ -67,7 +68,7 @@ export function V4TaskCard({
     >
       <V4Row as="header" className="px-2.5 py-2 text-caption font-medium text-nomi-ink">
         <ActionIcon action={task.action} />
-        <span className="truncate">{task.title}</span>
+        <div className="min-w-0 line-clamp-1"><AgentPanelV4Markdown text={task.title} /></div>
         <span className={cn('flex shrink-0 items-center gap-1 font-normal', TASK_TONE[task.status])}>
           <TaskStatusIcon status={task.status} />
           {labels.status[task.status]}
@@ -81,7 +82,7 @@ export function V4TaskCard({
       {task.excerpt || task.params || task.candidates || task.error || task.footnote || task.undoable || task.progress !== undefined ? (
         <div className="flex flex-col gap-1.5 px-2.5 pb-2.5">
           {task.excerpt ? (
-            <p className="m-0 line-clamp-2 text-caption text-nomi-ink-60">{task.excerpt}</p>
+            <AgentPanelV4Markdown text={task.excerpt} />
           ) : null}
           {task.params?.length ? (
             <div className="flex flex-wrap gap-1">
@@ -136,7 +137,7 @@ export function V4TaskCard({
           {task.error ? <V4ErrorBar reason={task.error} action={task.errorAction} onAction={onErrorAction} /> : null}
           {task.footnote || task.footnoteTrailing || task.undoable ? (
             <V4Row as="div" className="text-micro text-nomi-ink-40">
-              <span className="min-w-0 truncate">{task.footnote ?? ''}</span>
+              <AgentPanelV4Markdown text={task.footnote ?? ''} />
               {task.footnoteTrailing ? <span className="shrink-0">{task.footnoteTrailing}</span> : null}
               {task.undoable ? (
                 <button type="button" className="font-medium text-nomi-accent" onClick={onUndo}>
@@ -217,11 +218,11 @@ export function V4Intervention({
     >
       <V4Row as="header" className="bg-nomi-accent-soft px-2.5 py-2 text-caption font-semibold text-nomi-accent">
         <SlotIcon kind={data.kind} />
-        <span className="min-w-0">{data.title}</span>
+        <AgentPanelV4Markdown text={data.title} />
         {data.badge ? <span className="shrink-0 font-normal opacity-85">{data.badge}</span> : null}
       </V4Row>
       <div className="flex flex-col gap-1.5 px-2.5 py-2 text-caption text-nomi-ink">
-        {data.summary ? <p className="m-0">{data.summary}</p> : null}
+        {data.summary ? <AgentPanelV4Markdown text={data.summary} /> : null}
         {data.params?.length ? (
           <div className="flex flex-wrap gap-1">
             {data.params.map((param) => (
@@ -251,12 +252,12 @@ export function V4Intervention({
                 {row.technical ? (
                   <details className="group min-w-0 flex-1" data-v4-block="plan-detail">
                     <summary className="flex cursor-pointer list-none items-start gap-1">
-                      <span className="min-w-0 flex-1 break-words">{row.label}{row.detail ? <span className="block truncate text-micro text-nomi-ink-40">{row.detail}</span> : null}</span>
+                      <div className="min-w-0 flex-1"><AgentPanelV4Markdown text={row.label} />{row.detail ? <AgentPanelV4Markdown text={row.detail} /> : null}</div>
                       <IconChevronRight size={12} className="mt-0.5 shrink-0 group-open:rotate-90" aria-hidden="true" />
                     </summary>
                     <pre className="m-0 mt-1 whitespace-pre-wrap break-all font-nomi-mono text-micro text-nomi-ink-40">{row.technical}</pre>
                   </details>
-                ) : <span className="min-w-0 flex-1 break-words">{row.label}{row.detail ? <span className="block truncate text-micro text-nomi-ink-40">{row.detail}</span> : null}</span>}
+                ) : <div className="min-w-0 flex-1"><AgentPanelV4Markdown text={row.label} />{row.detail ? <AgentPanelV4Markdown text={row.detail} /> : null}</div>}
               </div>
             ))}
           </div>

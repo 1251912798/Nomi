@@ -1,0 +1,167 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-09-agent-markdown-kernel",
+  "problem_type": "Markdown prose loses semantics across presentation states",
+  "symptom": "Copy returns object Object; interrupted/tool/approval/process output exposes Markdown markers; CJK emphasis is unparsed.",
+  "direct_cause": "ReactNode converted to string for copy; callers bypass renderer and approval projection truncates source.",
+  "class_root": "No enforced single Markdown owner across prose exits and lifecycle states.",
+  "affected_population": [
+    "All assistant states, tool prose, approval text, plans, tasks, errors and library previews"
+  ],
+  "scope_paths": [
+    "src/workbench/common/NomiMarkdown.tsx",
+    "src/workbench/ai/v4/AgentPanelV4Markdown.tsx",
+    "src/workbench/ai/v4/AgentPanelV4Message.tsx",
+    "src/workbench/ai/v4/AgentPanelV4Receipt.tsx",
+    "src/workbench/ai/v4/AgentPanelV4Cards.tsx",
+    "src/workbench/ai/v4/agentPanelV4Intervention.ts",
+    "src/workbench/ai/v4/vendor/aiElementsPrimitives.tsx",
+    "src/workbench/promptLibrary/PromptPreviewOverlay.tsx",
+    "src/workbench/ai/v4/agentPanelV4ToolOutput.ts"
+  ],
+  "entry_points": [
+    "Assistant states",
+    "Receipt output and summary",
+    "Approval content",
+    "Process segments",
+    "Task and error prose",
+    "Plan rows"
+  ],
+  "external_sources": [
+    {
+      "kind": "official-doc",
+      "url": "https://streamdown.ai/docs/getting-started",
+      "checked_at": "2026-09-09",
+      "purpose": "React18/Tailwind3 and Streamdown plugin contract"
+    }
+  ],
+  "invariants": [
+    "Every model prose exit uses NomiMarkdown without truncating its source.",
+    "Code source extraction and copying belong to Streamdown.",
+    "Answers never fold; user and process content may fold after 12 lines."
+  ],
+  "generality_proof": "All six domain exits and assistant states converge on NomiMarkdown; shared kernel handles any provider or persisted text.",
+  "shared_boundaries": [
+    {
+      "path": "src/workbench/common/NomiMarkdown.tsx",
+      "symbol": "NomiMarkdown",
+      "responsibility": "Single semantic Markdown renderer and safe token skin"
+    },
+    {
+      "path": "src/workbench/ai/v4/agentPanelV4ToolOutput.ts",
+      "symbol": "projectToolOutput",
+      "responsibility": "Decode declared JSON text envelope into Markdown, preserve other metadata as technical data."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/workbench/ai/v4/AgentPanelV4Markdown.tsx",
+      "entry_point": "AgentPanelV4Markdown",
+      "disposition": "enforced",
+      "evidence": "Repository scan found direct prose rendering; now routed through NomiMarkdown adapter."
+    },
+    {
+      "path": "src/workbench/ai/v4/AgentPanelV4Message.tsx",
+      "entry_point": "AgentPanelV4Message",
+      "disposition": "enforced",
+      "evidence": "Repository scan found direct prose rendering; now routed through NomiMarkdown adapter."
+    },
+    {
+      "path": "src/workbench/ai/v4/AgentPanelV4Receipt.tsx",
+      "entry_point": "AgentPanelV4Receipt",
+      "disposition": "enforced",
+      "evidence": "Repository scan found direct prose rendering; now routed through NomiMarkdown adapter."
+    },
+    {
+      "path": "src/workbench/ai/v4/AgentPanelV4Cards.tsx",
+      "entry_point": "AgentPanelV4Cards",
+      "disposition": "enforced",
+      "evidence": "Repository scan found direct prose rendering; now routed through NomiMarkdown adapter."
+    },
+    {
+      "path": "src/workbench/ai/v4/agentPanelV4Intervention.ts",
+      "entry_point": "agentPanelV4Intervention",
+      "disposition": "enforced",
+      "evidence": "Repository scan found direct prose rendering; now routed through NomiMarkdown adapter."
+    },
+    {
+      "path": "src/workbench/ai/v4/vendor/aiElementsPrimitives.tsx",
+      "entry_point": "aiElementsPrimitives",
+      "disposition": "enforced",
+      "evidence": "Repository scan found direct prose rendering; now routed through NomiMarkdown adapter."
+    },
+    {
+      "path": "src/workbench/promptLibrary/PromptPreviewOverlay.tsx",
+      "entry_point": "PromptPreviewOverlay",
+      "disposition": "enforced",
+      "evidence": "Repository scan found direct prose rendering; now routed through NomiMarkdown adapter."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Any model or stored source can reproduce this across six independent exits.",
+    "same_class_scan": [
+      "rg NomiMarkdown|ReactMarkdown src",
+      "Read Message, Receipt, Cards, Intervention projection and prompt preview in full."
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "src/workbench/common/NomiMarkdown.tsx",
+    "invariant": "Prose keeps Markdown semantics regardless of lifecycle and card type.",
+    "failure_mode": "Unsafe markup/URLs are sanitized by the kernel; no raw-text fallback renderer.",
+    "exception_policy": "none",
+    "strategy": "Replace kernel, remove bypasses and source truncation, enforce caller structure.",
+    "artifacts": [
+      "src/workbench/common/NomiMarkdown.tsx",
+      "src/workbench/ai/v4/AgentPanelV4Markdown.tsx",
+      "src/workbench/ai/v4/AgentPanelV4Message.tsx",
+      "src/workbench/ai/v4/AgentPanelV4Receipt.tsx",
+      "src/workbench/ai/v4/AgentPanelV4Cards.tsx",
+      "src/workbench/ai/v4/agentPanelV4Intervention.ts",
+      "src/workbench/ai/v4/vendor/aiElementsPrimitives.tsx",
+      "src/workbench/promptLibrary/PromptPreviewOverlay.tsx",
+      "src/workbench/ai/v4/agentPanelV4ToolOutput.ts"
+    ]
+  },
+  "regression_tests": [
+    "src/workbench/ai/v4/agentPanelV4MarkdownKernel.test.ts"
+  ],
+  "class_regression_tests": [
+    "src/workbench/ai/v4/agentPanelV4MarkdownKernel.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "src/workbench/common/NomiMarkdown.tsx",
+      "src/workbench/ai/v4/AgentPanelV4Message.tsx",
+      "src/workbench/ai/v4/AgentPanelV4Receipt.tsx",
+      "src/workbench/ai/v4/AgentPanelV4Cards.tsx"
+    ],
+    "rationale": "Remove ReactMarkdown, AgentV4Code and direct model prose JSX paths in the same change."
+  },
+  "dependency_lifecycle": {
+    "decision": "upgrade-now",
+    "current": "react-markdown 10.1.0 + remark-gfm 4.0.1",
+    "target": "streamdown 2.6.0 + code 1.1.1 + cjk 1.0.3",
+    "rationale": "Official complete streaming renderer replaces application-owned code extraction and CJK gaps.",
+    "exit_criteria": [
+      "No direct ReactMarkdown import remains; code/pre owned by Streamdown."
+    ]
+  },
+  "migration": "No persisted format changes; existing Markdown strings render through the new kernel.",
+  "residual_risks": [
+    "Math and Mermaid remain intentionally unsupported under the approved scope; arbitrary malformed Markdown is not rewritten into a new authored document. Skill detail integration must reuse this owner when the separate skill-ui branch lands.",
+    "The existing host unavailable banner after stop is outside Markdown rendering and remains in the frozen lifecycle path; screenshots retain it honestly."
+  ],
+  "invariant_owner_layer": {
+    "layer": "src/workbench/common",
+    "owner_paths": [
+      "src/workbench/common/NomiMarkdown.tsx"
+    ],
+    "justification": "Rendering preserves source semantics without modifying execution or persisted data.",
+    "tests": [
+      "src/workbench/ai/v4/agentPanelV4MarkdownKernel.test.ts"
+    ]
+  }
+}

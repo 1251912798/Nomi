@@ -64,11 +64,12 @@ export function V4UserBubble({
           ))}
         </div>
       ) : null}
-      {lines.length >= 8 ? (
-        <details>
+      {lines.length > 12 ? (
+        <details className="group/user-input">
           <summary className="cursor-pointer list-none">
-            <span className="block truncate">{lines[0]}</span>
-            <span className="text-micro">{t('agentPanelV4.expand')}</span>
+            <span className="block whitespace-pre-wrap group-open/user-input:hidden">{lines.slice(0, 12).join('\n')}</span>
+            <span className="text-micro group-open/user-input:hidden">{t('agentPanelV4.expand')}</span>
+            <span className="hidden text-micro group-open/user-input:inline">{t('agentPanelV4.collapse')}</span>
           </summary>
           <p className="m-0 whitespace-pre-wrap">{text}</p>
         </details>
@@ -98,11 +99,7 @@ export function V4AssistantMessage({
     <div className="group" data-v4-block="assistant" data-status={status}>
       <Message role="assistant">
         <MessageResponse streaming={status === 'streaming'}>
-          {status === 'interrupted' ? (
-            <p className="m-0 text-body-sm text-nomi-ink-60">{text}</p>
-          ) : (
-            <AgentPanelV4Markdown text={text} />
-          )}
+          <AgentPanelV4Markdown text={text} streaming={status === 'streaming'} />
         </MessageResponse>
         {/* 完成态才有动作，且 **hover 才显**——定稿 ②「hover 出复制/重来两个图标」。 */}
         {status === 'complete' ? (

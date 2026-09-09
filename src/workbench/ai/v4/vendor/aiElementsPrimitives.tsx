@@ -40,13 +40,7 @@ export function MessageResponse({
     <div
       data-ai-element="response"
       data-streaming={streaming ? 'true' : undefined}
-      // 流式光标：一个方块，不是转圈（定稿 Process 板时刻 6）。
-      // 它必须**贴在最后一行文字末尾**——做成兄弟节点会被 markdown 的块级 <p> 挤到下一行，
-      // 看起来像「回复完了下面还有个方块」。所以用最后一段的 ::after 画。
-      className={cn(
-        streaming &&
-          "[&_p:last-of-type]:after:ml-0.5 [&_p:last-of-type]:after:inline-block [&_p:last-of-type]:after:h-3.5 [&_p:last-of-type]:after:w-2 [&_p:last-of-type]:after:translate-y-0.5 [&_p:last-of-type]:after:rounded-sm [&_p:last-of-type]:after:bg-nomi-ink-30 [&_p:last-of-type]:after:content-['']",
-      )}
+
     >
       {children}
     </div>
