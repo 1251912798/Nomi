@@ -1,6 +1,6 @@
 # B5 信息密度杂项
 
-状态：🚧 实施中；尚未完成真机复扫、gates 或 PR 交付。
+状态：🚧 进行中；七条实现与隔离真机验收完成，正在完成 gates 与 PR 交付。
 
 范围：09-09 总账 DC21–DC24、C53 导入去重、C09 概览阅读、B4 显示名。每项独立小提交，一个 PR。用户本轮任务书授权依已有审计方向直接修复；以真实外壳改前/改后截图对账。仅隔离 Electron profile，不读取用户资料库。
 
@@ -31,8 +31,12 @@ B4：先 git apply --check，再采用用户给定 patch，展示名与供应商
 
 截图与真实操作见 `docs/fixes/b5-density-evidence/README.md`；额外组件证据见 `docs/plan/2026-09-10-b5-density-evidence/component-evidence/provenance.json`（明确不替代真实旅程）。真实导入、冷重启后旧/新内容去重、3秒MP4导出与任务“查看成片”已跑通；失败原因与B4以真实组件+边界单测补证，不冒充付费模型验收。
 
-定向基线只有 `src/workbench/settings/settingsDialogStructure.test.ts` 中 `src/workbench/settings/AiModelsSection.tsx`、`src/workbench/settings/AutomationPermissionsSection.tsx`、`src/workbench/settings/CanvasGestureSection.tsx` 三个源码SHA。未放宽任何走查断言、等待或基线阈值。
+定向源码基线： `src/workbench/settings/settingsDialogStructure.test.ts` 中 `src/workbench/settings/AiModelsSection.tsx`、`src/workbench/settings/AutomationPermissionsSection.tsx`、`src/workbench/settings/CanvasGestureSection.tsx` 三个源码SHA。未放宽任何走查断言、等待或基线阈值。
 
 首轮完整 gates 排队后因 main 前进，被 check:fresh-base 阻止；同步最新 main 后重跑，最终状态另附。
 
 定向视觉基线：`tests/ux/design-lab/__baselines__/canvas-frame/canvas-frame-shot-label-outside.png`，仅 DC21 提示文案变化；已并排查看实际/预期图。
+
+全量单测首次发现4条旧契约预期（导入日期路径3条、被删设置说明1条），已按C53内容身份与DC24选中手势说明精确更新；43项相关单测通过，文件内容/类型/原生入口校验保留。未修改走查断言或超时。
+
+合入 main 的分镜徽标更新时，同一视觉基线冲突；按合并后实际渲染重新取图并与最新main并排核对，保留主线徽标样式，本分支差异仍仅DC21提示文案。最终完整gates与PR收据见PR正文及本地 `b5-density-LAST.md`。
