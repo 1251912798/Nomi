@@ -69,3 +69,19 @@ Context7 `/earendil-works/pi` 已查询；实际安装版本 0.85.1 的 `harness
 - `src/workbench/NomiStudioApp.tsx`：保留 main 新通知策略、project feedback 清理及展示；冲突 import 保留 laneClient/laneReceiptClient，不恢复已删除的 projectAgentClient/projectAgentProjectionStore；焦点事件随 main 归入 useProjectNotificationTarget，删除 App 已不使用的两个焦点 import（实扫 hook 保留节点聚焦路径）。
 
 正常 pre-commit 完成 merge 后运行完整 gates；日志 `.tmp/b1b-finish/gates.log`，最终提交/推送身份写入 ignored `SWITCH-LAST.md` 和指定 scratchpad 收据。
+
+### 并发 main 前进后的追加并线（#683）
+
+首次完整 gates 于 `bdba2ed56` exit 0（76 contracts 零阻断、Vitest 11828/2 skipped、runtime 394/394、build 通过）。首批正常 push 已到 `e07781284`。交付期间 fetch 发现 main 从 d3fa25888 前进至 `ad95ab47e`（#683），暂停后续推送，追加本地 merge 后重跑完整 gates。
+
+- `agentPanelV4LabHost.tsx`：保留 laneClient 真宿主注入，采纳 main 的 editingPanelLayout.assistantWidth 唯一宽度 owner。
+- `agentPanelV4.ts`：保留 lane 历史/队列文案，采纳 main 删除 brand/logo 文案；两种语言一致。
+- `residentShellDisplay.ts`：保持 lane 的精简显示边界，不复活依赖旧 ProjectAgentItem 的 residentItemClassName。
+- `AgentPanelV4Message.tsx`：保留真实思考正文展开、streaming 和观测计时；采纳 main 的 V4Row/V4Shimmer，删除重复高光动画与尾部 spacer。
+- `agentPanelV4Projection.ts` 与其测试：保持删除；新面板继续从 laneViewModel 获取投影。
+- `agentPanelV4Types.ts`：toolCallId 行操作身份和 main 的可选 turnId 计时身份并存，各司其职。
+- `useAgentPanelV4Data.ts`：保持 laneViewModel、lane 审批与队列；不恢复旧 Host turn/queue/projection。
+- `agentPanelV4Collapse.ts`：保留 main 新过程聚合，仅将旧 Host turn 类型改成实际读取的最小字段形状。lane 未提供历史 turn 时不伪造耗时。
+- `b2cFormFixtures.tsx` / `06-b2c-form.tsx`：新样张复用 V4ToolStatus，计时夹具显式给定三字段，不依赖已删除的 Host 合同和旧 labHostState.turns；样张数据和像素预期保持。
+
+应用 tsc exit 0；后续完整门岗、测试、设计实验室及构建日志 `.tmp/b1b-finish/gates-latest.log`。

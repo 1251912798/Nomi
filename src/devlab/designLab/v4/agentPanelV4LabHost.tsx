@@ -67,7 +67,7 @@ export function ShellStage({ snapshot, surface = 'generation', draft = '', width
       onProjection: (listener) => { listener(snapshot); return () => undefined },
       send: async () => ({ ok: false, code: 'design_lab_read_only', message: '' }),
     })
-    useWorkbenchStore.setState({ assistantWidth: width, projectAgentDockCollapsed: false,
+    useWorkbenchStore.setState({ editingPanelLayout: { ...useWorkbenchStore.getState().editingPanelLayout, assistantWidth: width }, projectAgentDockCollapsed: false,
       projectAgentDraft: draft, projectAgentAttachments: [], creationActiveSkill: null })
     return null
   }, [draft, snapshot, width])
