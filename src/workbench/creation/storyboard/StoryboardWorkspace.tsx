@@ -1,3 +1,5 @@
+import { AssistantPane } from '../../AssistantPane'
+import { assistantPaneWidth } from '../../assistantWidthBounds'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { IconMovie } from '@tabler/icons-react'
@@ -23,7 +25,7 @@ export default function StoryboardWorkspace({ projectId, aiCollapsed = false, ag
   const workspaceMode = useWorkbenchStore((state) => state.workspaceMode)
   const activeDocumentId = useWorkbenchStore((state) => state.activeDocumentId)
   const activeStoryboardId = useWorkbenchStore((state) => state.activeStoryboardId)
-  const assistantWidth = useWorkbenchStore((state) => state.assistantWidth)
+  const assistantWidth = useWorkbenchStore((state) => state.editingPanelLayout.assistantWidth)
   const designsForActiveDocument = useWorkbenchStore((state) => state.storyboardDesignsByDocumentId[state.activeDocumentId] ?? [])
   const setActiveStoryboardId = useWorkbenchStore((state) => state.setActiveStoryboardId)
   // 直接进分镜页（URL/前进后退）没有激活方案时自动选该稿第一个（原住 CreationWorkspace，随挂载点搬家）。
@@ -38,13 +40,13 @@ export default function StoryboardWorkspace({ projectId, aiCollapsed = false, ag
     return (
       <section
         className={cn('workbench-storyboard relative w-full h-full min-w-0 min-h-0', 'grid min-h-0 bg-workbench-bg', agentDockRef && !aiCollapsed ? 'grid-cols-[minmax(0,1fr)_var(--storyboard-assistant-width)]' : 'grid-cols-[minmax(0,1fr)]')}
-        style={{ '--storyboard-assistant-width': aiCollapsed ? '0px' : `${assistantWidth}px` } as React.CSSProperties}
+        style={{ '--storyboard-assistant-width': aiCollapsed ? '0px' : `${assistantPaneWidth(assistantWidth)}px` } as React.CSSProperties}
         aria-label={t('workspace.storyboard')}
       >
         <div className="min-w-0 min-h-0 overflow-hidden pt-[22px] px-6 pb-6">
           <StoryboardPlanEditor projectId={projectId} />
         </div>
-        {agentDockRef ? <aside className={cn(aiCollapsed ? 'pointer-events-none absolute inset-0 z-40 overflow-visible' : 'min-w-0 min-h-0 overflow-hidden border-l border-[var(--workbench-border)] bg-[var(--workbench-surface)]')}><div ref={agentDockRef} className="h-full w-full min-w-0 min-h-0" /></aside> : null}
+        {agentDockRef ? <AssistantPane dockRef={agentDockRef} collapsed={aiCollapsed} /> : null}
       </section>
     )
   }
@@ -52,7 +54,7 @@ export default function StoryboardWorkspace({ projectId, aiCollapsed = false, ag
   return (
     <section
       className={cn('workbench-storyboard relative w-full h-full min-w-0 min-h-0', 'grid min-h-0 bg-workbench-bg', agentDockRef && !aiCollapsed ? 'grid-cols-[minmax(0,1fr)_var(--storyboard-assistant-width)]' : 'grid-cols-[minmax(0,1fr)]')}
-      style={{ '--storyboard-assistant-width': aiCollapsed ? '0px' : `${assistantWidth}px` } as React.CSSProperties}
+      style={{ '--storyboard-assistant-width': aiCollapsed ? '0px' : `${assistantPaneWidth(assistantWidth)}px` } as React.CSSProperties}
       aria-label={t('workspace.storyboard')}
     >
       <div className="min-w-0 min-h-0 grid place-items-center">
@@ -67,7 +69,7 @@ export default function StoryboardWorkspace({ projectId, aiCollapsed = false, ag
           }
         />
       </div>
-      {agentDockRef ? <aside className={cn(aiCollapsed ? 'pointer-events-none absolute inset-0 z-40 overflow-visible' : 'min-w-0 min-h-0 overflow-hidden border-l border-[var(--workbench-border)] bg-[var(--workbench-surface)]')}><div ref={agentDockRef} className="h-full w-full min-w-0 min-h-0" /></aside> : null}
+      {agentDockRef ? <AssistantPane dockRef={agentDockRef} collapsed={aiCollapsed} /> : null}
     </section>
   )
 }

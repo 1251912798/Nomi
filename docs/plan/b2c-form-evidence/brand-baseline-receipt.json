@@ -1,0 +1,9 @@
+{
+  "changed": [
+    "tests/ux/design-lab/__baselines__/primitives-surfaces/ps-14-identity.png",
+    "tests/ux/design-lab/__baselines__/primitives-surfaces/ps-16-preview-host.png"
+  ],
+  "unchanged_count": 214,
+  "reviewed_actual_pixel_match": true,
+  "command": "pnpm exec playwright test -c tests/ux/design-lab/playwright.config.mjs --grep ps-14-identity|ps-16-preview-host --update-snapshots"
+}

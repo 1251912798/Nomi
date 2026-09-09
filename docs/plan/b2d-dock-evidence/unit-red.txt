@@ -1,0 +1,65 @@
+
+ RUN  v4.1.8 /Users/aoqimin/Desktop/Nomi-panel-form
+
+ ❯ src/workbench/preview/agentDockHidden.test.ts (3 tests | 3 failed) 4ms
+     × defaults visible; dismiss survives rebuilding the store without modifying project persistence 2ms
+     × panel restore, collapse, project layout load, presets and undo preserve dismissal 0ms
+     × unavailable preference storage does not prevent closing for this session 0ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/workbench/preview/agentDockHidden.test.ts > collapsed dock user preference > defaults visible; dismiss survives rebuilding the store without modifying project persistence
+AssertionError: expected undefined to be false // Object.is equality
+
+- Expected:
+false
+
++ Received:
+undefined
+
+ ❯ src/workbench/preview/agentDockHidden.test.ts:23:46
+     21|   it('defaults visible; dismiss survives rebuilding the store without …
+     22|     const store = makeStore()
+     23|     expect(store.getState().agentDockHidden).toBe(false)
+       |                                              ^
+     24|     store.getState().setAgentDockHidden(true)
+     25|     expect(store.getState().agentDockHidden).toBe(true)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  src/workbench/preview/agentDockHidden.test.ts > collapsed dock user preference > panel restore, collapse, project layout load, presets and undo preserve dismissal
+TypeError: store.getState(...).setAgentDockHidden is not a function
+ ❯ src/workbench/preview/agentDockHidden.test.ts:32:22
+     30|   it('panel restore, collapse, project layout load, presets and undo p…
+     31|     const store = makeStore()
+     32|     store.getState().setAgentDockHidden(true)
+       |                      ^
+     33|     store.getState().setProjectAgentDockCollapsed(false)
+     34|     store.getState().setProjectAgentDockCollapsed(true)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  src/workbench/preview/agentDockHidden.test.ts > collapsed dock user preference > unavailable preference storage does not prevent closing for this session
+AssertionError: expected undefined to be false // Object.is equality
+
+- Expected:
+false
+
++ Received:
+undefined
+
+ ❯ src/workbench/preview/agentDockHidden.test.ts:50:46
+     48|     })
+     49|     const store = makeStore()
+     50|     expect(store.getState().agentDockHidden).toBe(false)
+       |                                              ^
+     51|     store.getState().setAgentDockHidden(true)
+     52|     expect(store.getState().agentDockHidden).toBe(true)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  3 failed (3)
+   Start at  19:27:19
+   Duration  657ms (transform 52ms, setup 30ms, import 550ms, tests 4ms, environment 0ms)
