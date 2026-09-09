@@ -107,6 +107,7 @@ export function projectOnboardingConnections({ models, vendorMeta, dreaminaStatu
       glyph: card.directory.glyph,
       baseUrl: card.meta.baseUrl,
       hasApiKey: card.meta.hasApiKey,
+      credentialVerificationPending: card.meta.credentialVerificationPending,
     })),
     ...otherVendorGroups.map((group) => {
       const meta = vendorMeta.get(group.vendorKey)
@@ -117,6 +118,7 @@ export function projectOnboardingConnections({ models, vendorMeta, dreaminaStatu
         models: group.models,
         baseUrl: meta?.baseUrl ?? '',
         hasApiKey: meta?.hasApiKey ?? true,
+        credentialVerificationPending: meta?.credentialVerificationPending,
         // 与 renderCustomVendorCard 同一判据：direct-script 那类没有可预检的通用接口。
         skipHealthProbe: Boolean(meta?.customCallOnly)
           && group.models.every((model) => model.hasCustomCall || model.customCallDraft),
@@ -169,6 +171,8 @@ export function projectOnboardingConnections({ models, vendorMeta, dreaminaStatu
       models: [],
       logo: card.directory.logo,
       glyph: card.directory.glyph,
+      hasApiKey: card.meta.hasApiKey,
+      credentialVerificationPending: card.meta.credentialVerificationPending,
     // usesPlatformConnect 缺省 true（档案未声明 = 支持）→ 路由到 platformConnect（key 填入 + 继续验证）。
     // 硬编码 vendorKey 白名单已移除（P1 加新删旧）：由档案字段 derive，不写死。
     }, card.directory.usesPlatformConnect !== false

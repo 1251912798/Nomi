@@ -22,7 +22,9 @@ import { useGenerationCanvasStore } from '../store/generationCanvasStore'
 import type { CanvasMutationOptions } from '../store/canvasGuards'
 import { whenCanvasWriteBoundarySettled } from '../events/canvasWriteBoundary'
 import { remapArchetypeMode } from '../runner/usableVendorModel'
-import { providerSwitchToastId, showInfoToast } from '../../../utils/showInfoToast'
+import { providerSwitchToastId } from '../../../utils/showInfoToast'
+import { useToastStore } from '../../../ui/toast'
+import { classifyGenerationError } from '../../observability/classifyError'
 import { chooseDefaultModelOption, resolveArchetypeForOption } from './nodeModelArchetype'
 import {
   generationModelDefaultsLoaded,
@@ -139,7 +141,7 @@ export function useNodeModelAutoSelect({
       readMeta(latestMeta, 'modelVendor') ||
       readMeta(latestMeta, 'vendor') ||
       readMeta(latestMeta, isVideoLike ? 'videoModelVendor' : 'imageModelVendor')
-    if (!optionVendor) return
+    if (!optionVendor || (currentVendor && currentVendor !== optionVendor)) return
     const contractChanged = JSON.stringify(parseCustomCapabilityContract(latestMeta))
       !== JSON.stringify(parseCustomCapabilityContract(selectedModelOption.meta))
     const modelMeta = replaceCustomCapabilityContractMeta(latestMeta, selectedModelOption.meta)
@@ -195,10 +197,10 @@ export function useNodeModelAutoSelect({
   }, [getLatestMeta, isGenerationNode, isVideoLike, node.id, selectedModelOption, selectedModelValue, writeDerivedMeta])
 
   // 供应商断开后，节点钉死的旧模型已从下拉移除（selectedModelOption===null，但 selectedModelValue 仍在）。
-  // 按 archetype 在当前可用 options 里找同款，自动改选并写回 meta —— 否则节点会卡在选不中的死供应商上，
-  // 标签/参数全错。与运行时咽喉 resolveExecutableNodeFromCatalog 同策略（同 id 优先，family 兜底）。
+  // 只给可点的替代建议；用户点击前绝不改写模型身份。
   React.useEffect(() => {
-    if (!isGenerationNode || !selectedModelValue || selectedModelOption) return
+    const failure = node.status === 'error' && node.error ? classifyGenerationError(node.error) : null
+    if (!isGenerationNode || !selectedModelValue || (selectedModelOption && !failure)) return
     const latestMeta = getLatestMeta()
     const sourceArchetype = resolveArchetypeForModel({
       modelKey: selectedModelValue,
@@ -207,9 +209,11 @@ export function useNodeModelAutoSelect({
       meta: latestMeta,
     })
     if (!sourceArchetype) return
+    const sourceVendor = readMeta(latestMeta, 'modelVendor') || readMeta(latestMeta, 'vendor')
+    const alternatives = modelOptions.filter((option) => option.vendor !== sourceVendor)
     const target =
-      modelOptions.find((option) => resolveArchetypeForOption(option)?.id === sourceArchetype.id) ||
-      modelOptions.find((option) => resolveArchetypeForOption(option)?.family === sourceArchetype.family)
+      alternatives.find((option) => resolveArchetypeForOption(option)?.id === sourceArchetype.id) ||
+      alternatives.find((option) => resolveArchetypeForOption(option)?.family === sourceArchetype.family)
     const optionVendor = typeof target?.vendor === 'string' ? target.vendor.trim() : ''
     if (!target?.value || !optionVendor) return
     const targetArchetype = resolveArchetypeForOption(target)
@@ -222,37 +226,48 @@ export function useNodeModelAutoSelect({
           optionVendor,
         )
       : null
-    writeDerivedMeta(node.id, {
-      meta: {
-        ...replaceCustomCapabilityContractMeta(latestMeta, target.meta),
-        modelKey: target.modelKey || target.value,
-        modelAlias: target.modelAlias || target.value,
-        modelVendor: optionVendor,
-        vendor: optionVendor,
-        modelLabel: target.label,
-        ...(remapped ? { archetype: remapped } : {}),
-        ...(isVideoLike
-          ? { videoModel: target.value, videoModelVendor: optionVendor }
-          : { imageModel: target.value, imageModelVendor: optionVendor }),
-      },
-    })
-    const sourceVendor = readMeta(latestMeta, 'modelVendor') || readMeta(latestMeta, 'vendor')
     const sourceModel = readMeta(latestMeta, 'modelAlias') || readMeta(latestMeta, 'modelKey') || selectedModelValue
     const targetModel = target.modelAlias || target.modelKey || target.value
-    showInfoToast(
-      t('generationCommon.node.providerDisconnectedSwitched', { model: target.label }),
-      providerSwitchToastId([node.id, sourceVendor, sourceModel, optionVendor, targetModel]),
-    )
+    useToastStore.getState().push({
+      id: providerSwitchToastId([node.id, sourceVendor, sourceModel, optionVendor, targetModel]),
+      type: 'warning',
+      ttl: false,
+      message: failure
+        ? t('generationCommon.node.providerFailed', { vendor: sourceVendor, reason: failure.reason, hint: failure.hint })
+        : t('generationCommon.node.providerDisconnected', { vendor: sourceVendor }),
+      actionLabel: t('generationCommon.node.switchProvider', { model: target.label, vendor: optionVendor }),
+      onAction: () => {
+        const current = getLatestMeta()
+        if (readMeta(current, 'modelVendor') !== readMeta(latestMeta, 'modelVendor')
+          || readMeta(current, 'modelKey') !== readMeta(latestMeta, 'modelKey')) return
+        updateNode(node.id, {
+          meta: {
+            ...replaceCustomCapabilityContractMeta(current, target.meta),
+            modelKey: target.modelKey || target.value,
+            modelAlias: target.modelAlias || target.value,
+            modelVendor: optionVendor,
+            vendor: optionVendor,
+            modelLabel: target.label,
+            ...(remapped ? { archetype: remapped } : {}),
+            ...(isVideoLike
+              ? { videoModel: target.value, videoModelVendor: optionVendor }
+              : { imageModel: target.value, imageModelVendor: optionVendor }),
+      },
+    })
+      },
+    })
   }, [
     getLatestMeta,
     isGenerationNode,
     isVideoLike,
     modelOptions,
     node.id,
+    node.status,
+    node.error,
     selectedModelOption,
     selectedModelValue,
     t,
-    writeDerivedMeta,
+    updateNode,
   ])
 
   // 选到一个有内置档案的模型、还没有命名空间 meta 时，初始化 node.meta.archetype（落到默认模式）。
@@ -275,4 +290,3 @@ export function useNodeModelAutoSelect({
     )
   }, [archetype, getLatestNode, isGenerationNode, node.id, writeDerivedMeta])
 }
-

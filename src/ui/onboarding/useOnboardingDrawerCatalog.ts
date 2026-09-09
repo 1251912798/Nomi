@@ -8,6 +8,7 @@ import { projectModelSettingsCatalog } from './modelSettingsCatalogProjection'
 export type OnboardingVendorMeta = {
   name: string
   hasApiKey: boolean
+  credentialVerificationPending?: boolean
   baseUrl: string
   enabled: boolean
   authType: string
@@ -68,6 +69,7 @@ export function useOnboardingDrawerCatalog(): {
         metaMap.set(String(vendor.key), {
           name: String(vendor.name || vendor.key),
           hasApiKey: Boolean(vendor.hasApiKey),
+          credentialVerificationPending: vendor.credentialVerificationPending === true,
           baseUrl: String(vendor.baseUrlHint || ''),
           enabled: vendor.enabled !== false,
           authType: String(vendor.authType || ''),

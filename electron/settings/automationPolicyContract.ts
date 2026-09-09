@@ -11,7 +11,6 @@ export type AutomationPolicySettings = {
   trustedHosts: string[];
   allowedProviders: string[];
   allowedModels: string[];
-  maxSpend: number | null;
   maxAttemptsPerJob: number;
   confirmFirstSpend: true;
   autoContinueWithinBudget: boolean;
@@ -31,7 +30,6 @@ export const DEFAULT_AUTOMATION_POLICY_SETTINGS: AutomationPolicySettings = {
   trustedHosts: ["nomi", "claude", "codex"],
   allowedProviders: [],
   allowedModels: [],
-  maxSpend: null,
   maxAttemptsPerJob: 3,
   confirmFirstSpend: true,
   autoContinueWithinBudget: true,
@@ -70,9 +68,6 @@ function trustedHosts(value: unknown): string[] {
 export function normalizeAutomationPolicySettings(value: unknown): AutomationPolicySettings {
   const raw = record(value);
   const mode = raw.mode === "guided" || raw.mode === "policy-auto" ? raw.mode : "balanced";
-  const maxSpend = typeof raw.maxSpend === "number" && Number.isFinite(raw.maxSpend) && raw.maxSpend >= 0
-    ? raw.maxSpend
-    : null;
   const attempts = typeof raw.maxAttemptsPerJob === "number" && Number.isFinite(raw.maxAttemptsPerJob)
     ? Math.min(10, Math.max(1, Math.floor(raw.maxAttemptsPerJob)))
     : DEFAULT_AUTOMATION_POLICY_SETTINGS.maxAttemptsPerJob;
@@ -85,7 +80,6 @@ export function normalizeAutomationPolicySettings(value: unknown): AutomationPol
     trustedHosts: trustedHosts(raw.trustedHosts),
     allowedProviders: catalogKeys(raw.allowedProviders),
     allowedModels: catalogKeys(raw.allowedModels),
-    maxSpend,
     maxAttemptsPerJob: attempts,
     confirmFirstSpend: true,
     autoContinueWithinBudget: boolean(raw.autoContinueWithinBudget, true),

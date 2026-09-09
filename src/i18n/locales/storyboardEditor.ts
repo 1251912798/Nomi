@@ -71,6 +71,7 @@ export const zhStoryboardEditor = {
     generateRemaining: '生成未生成的 {{count}} 镜',
   },
   exec: {
+    actionPending: '已有操作正在处理，请先完成当前确认。',
     actionFailed: '操作没成功，请重试。',
   },
   row: {
@@ -434,6 +435,7 @@ export const enStoryboardEditor = {
     generateRemaining: 'Generate {{count}} remaining shots',
   },
   exec: {
+    actionPending: 'An action is in progress. Complete the current confirmation first.',
     actionFailed: 'The action did not go through. Try again.',
   },
   row: {

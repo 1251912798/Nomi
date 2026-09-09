@@ -60,3 +60,10 @@
 覆写生命周期补充：原有内部 proposal receipt 的 restore-prompt 补偿条目新增可选布尔 promptOverridden，记录此前该字段归属；旧收据保持可读，不新增格式或 MCP operation。提示词写入原子恢复值与归属，同一 gesture 附 node.updated 元数据事件供既有重放器消费。仅增加现有内部协议允许键；不改冻结区。
 
 最终验收：`python3 scripts/with-gates-lock.py -- pnpm run gates` exit 0，SHA `62c72f362bbc8f66eac13adadfecb26e00e7e244`。76 contracts 无阻断失败；12132 单测通过，306 Agent runtime 通过，153 视觉场景通过，Vite/Electron 构建通过。
+
+## 并线 f708568df
+
+本次仅把最新 `origin/main`（`f708568dfc19f3d2e68d10adc723a20c1c6eef42`，含 #682）并入 #681；唯一冲突是 `availableModels.ts` 文件顶部同位置新增的 import。
+裁决：两边均保留。#682 的 `getVendorPreference` / `orderByVendorPreference` 继续在 `listAvailableModelsForAgent` 按供应商偏好排序，同名模型解析沿用该顺序；#681 的 `anchorsConsumedBy` 继续只在 `formatAvailableModelsForPrompt` 派生每模式的锚消费说明，并保留两行视觉锚 / 用户点名 t2v 规则。解析归解析，格式化归格式化，不合并职责。
+这是两项独立改动的文本冲突，不新增生产行为或修复合同；已有供应商偏好与锚消费回归一起验证。范围不扩展，回滚本次 merge 使用第一父提交作为主线。
+验收顺序：正常 hooks 提交 merge → `pnpm run test -- availableModels storyboard anchor` → 完整 `python3 scripts/with-gates-lock.py -- pnpm run gates` exit 0 → 正常 push 任务分支；fresh-base 若落后则再并入、重验。

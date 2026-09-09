@@ -278,36 +278,36 @@ export class ProviderAdapterService {
       return;
     }
     if (this.markStaleIfSuperseded(initial)) return;
-    const connection = this.dependencies.catalog.load(initial.vendorKey, initial.selectedModelKeys);
-    if (!connection) {
-      this.finishWithError(id, "failed", "Provider credentials or selected models are no longer available");
-      return;
-    }
-    const fingerprint = connectionFingerprint({
-      baseUrl: String(connection.vendor.baseUrlHint || ""),
-      authType: connection.vendor.authType || "bearer",
-      apiKey: connection.apiKey,
-      selectedModelKeys: initial.selectedModelKeys,
-      headers: connection.headers,
-      proxyUrl: connection.vendor.network?.proxyUrl,
-    });
-    if (fingerprint !== initial.connectionFingerprint) {
-      const staleAt = this.dependencies.now();
-      const stale: ProviderAdapterRun = {
-        ...initial,
-        stage: "stale",
-        error: "Provider connection changed before verification completed",
-        currentModelKey: undefined,
-        stageStartedAt: staleAt,
-        lastProgressAt: staleAt,
-        updatedAt: staleAt,
-      };
-      this.dependencies.catalog.fail(stale);
-      this.store.upsertRun(stale);
-      return;
-    }
-
     try {
+      const connection = await this.dependencies.catalog.load(initial.vendorKey, initial.selectedModelKeys);
+      if (!connection) {
+        this.finishWithError(id, "failed", "Provider credentials or selected models are no longer available");
+        return;
+      }
+      const fingerprint = connectionFingerprint({
+        baseUrl: String(connection.vendor.baseUrlHint || ""),
+        authType: connection.vendor.authType || "bearer",
+        apiKey: connection.apiKey,
+        selectedModelKeys: initial.selectedModelKeys,
+        headers: connection.headers,
+        proxyUrl: connection.vendor.network?.proxyUrl,
+      });
+      if (fingerprint !== initial.connectionFingerprint) {
+        const staleAt = this.dependencies.now();
+        const stale: ProviderAdapterRun = {
+          ...initial,
+          stage: "stale",
+          error: "Provider connection changed before verification completed",
+          currentModelKey: undefined,
+          stageStartedAt: staleAt,
+          lastProgressAt: staleAt,
+          updatedAt: staleAt,
+        };
+        this.dependencies.catalog.fail(stale);
+        this.store.upsertRun(stale);
+        return;
+      }
+
       // 自建/局域网端点没有公开文档可读（为什么见 builtinOpenAiCompatibleDraft 头注释）：不猜文档、
       // 不叫 AI，直接用内置 OpenAI 兼容契约进真实验证。必须在下面的分级之前——媒体模型也一样适用。
       const builtinDraft = builtinDraftForUndocumentedEndpoint(connection);

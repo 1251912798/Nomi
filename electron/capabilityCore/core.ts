@@ -449,6 +449,7 @@ export async function generateOnProject(
     intent,
     vendor: input.vendor,
     modelKey: input.modelKey,
+    parameters: input.params,
     prompt,
     // 协议层置位（不是模型能填的入参）：这张卡点下去还会换来一段免问期 → 卡上要写明授权范围。
     ...(input.grantsSessionTrust ? { grantsSessionTrust: true } : {}),

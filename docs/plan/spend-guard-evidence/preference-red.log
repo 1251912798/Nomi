@@ -1,0 +1,32 @@
+
+ RUN  v4.1.8 /Users/aoqimin/Desktop/Nomi-money-guard
+
+ ❯ src/workbench/generationCanvas/agent/plannedNodeMeta.test.ts (19 tests | 1 failed) 6ms
+     × lands a bare gpt-image-2 key on APIMart when APIMart is preferred 2ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/workbench/generationCanvas/agent/plannedNodeMeta.test.ts > B4 provider preference at node persistence > lands a bare gpt-image-2 key on APIMart when APIMart is preferred
+AssertionError: expected 'relay' to be 'apimart' // Object.is equality
+
+Expected: "apimart"
+Received: "relay"
+
+ ❯ src/workbench/generationCanvas/agent/plannedNodeMeta.test.ts:185:83
+    183|     ] as ModelOption[]);
+    184|     const index = buildModelEntryIndex(entries, ["apimart", "relay"]);
+    185|     expect(buildPlannedNodeMeta({ modelKey: "gpt-image-2" }, index)?.m…
+       |                                                                                   ^
+    186|     expect(buildPlannedNodeMeta({ modelKey: "gpt-image-2", vendor: "re…
+    187|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 18 passed (19)
+   Start at  16:03:20
+   Duration  459ms (transform 311ms, setup 23ms, import 366ms, tests 6ms, environment 0ms)
+
+
+exit=1

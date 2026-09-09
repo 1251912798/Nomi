@@ -3,14 +3,14 @@
 import { create } from 'zustand'
 import { toast, useToastStore } from '../../../ui/toast'
 import { runGenerationNodesByPlan, spendCostKindForNodes } from '../runner/generationRunController'
-import { mintSpendGrant } from '../../api/taskApi'
-import { confirmAndMintGrant, confirmGenerationSpend, describeGenerationCost, generationCostContextForNodes } from '../spend/spendConfirm'
+import { confirmAndMintGrant, describeGenerationCost, generationCostContextForNodes } from '../spend/spendConfirm'
 import { hasLocalAssetReference, resolveAssetUploadConsent } from '../runner/assetUploadConsent'
 import { resolveGenerationReferences } from '../runner/generationReferenceResolver'
 import { buildDependencyWaves, type DependencyWavePlan } from '../runner/dependencyWaves'
 import { useGenerationCanvasStore } from '../store/generationCanvasStore'
 import { verifyShotsAndReport } from '../agent/shotVerifyStore'
 import i18n from '../../../i18n'
+import { normalizeCanvasBatchConcurrency } from './canvasProductionScope'
 
 export const BATCH_RUN_TOAST_ID = 'canvas-batch-run'
 
@@ -31,26 +31,12 @@ export const useBatchPlanPreviewStore = create<BatchPlanPreviewState>()((set, ge
     const { plan, running } = get()
     if (!plan || running) return
     set({ running: true })
-    // 计划 overlay 的「按计划生成」点击本身 = 真人手势 → 铸付费令牌（绑本批节点）。
-    let grantId: string
     try {
-      grantId = await mintSpendGrant(plan.waves.flat())
-    } catch (error) {
+      await confirmAndRunPlan(plan)
+      set({ plan: null })
+    } finally {
       set({ running: false })
-      toast(
-        error instanceof Error && error.message
-          ? error.message
-          : i18n.t('generationCommon.batchPlan.authorizationFailed'),
-        'error',
-      )
-      return
     }
-    set({ plan: null, running: false })
-    // 计划 overlay 走的是 confirmAndRunPlan 之外的一条真人手势路径：托管同意同样必须先解析出来
-    // （策略/KIE 判定 → 需要问就带披露块弹卡），不能省略成「让 runner 自己弹第二张」。
-    const consent = await confirmPlanHostingConsent(plan.waves.flat())
-    if (!consent) return
-    await runPlanWithToasts(plan, { grantId, assetUploadConsent: consent })
   },
 }))
 
@@ -122,28 +108,6 @@ function hostingDisclosureFor(
 }
 
 /**
- * 计划 overlay 的托管确认：这条路径的付费令牌在点「按计划生成」时就铸好了，
- * 所以披露必须自己弹一次（同一张 SpendConfirmDialog，只是这次只承载托管披露）。
- * 返回 null = 用户拒绝或策略 deny → 这批不跑。
- */
-async function confirmPlanHostingConsent(ids: string[]): Promise<'allow' | 'not-needed' | null> {
-  const hosting = await resolveBatchHosting(ids)
-  if (!hosting) return null
-  if (!hosting.needsConfirmation) return 'not-needed'
-  const ok = await confirmGenerationSpend(
-    ids.map((id) => useGenerationCanvasStore.getState().nodes.find((n) => n.id === id)),
-    {
-      title: i18n.t('generationCommon.batchPlan.startTitle'),
-      message: describeGenerationCost(ids.length, spendCostKindForNodes(ids), generationCostContextForNodes(ids.map((id) => useGenerationCanvasStore.getState().nodes.find((node) => node.id)))),
-      confirmLabel: i18n.t('generationCommon.batchPlan.confirmGenerate'),
-      light: true,
-      ...hostingDisclosureFor(hosting),
-    },
-  )
-  return ok ? 'allow' : null
-}
-
-/**
  * 用户直发批量（框选「生成 N 个」）：轻确认 + 铸令牌 + 跑。取消则零调用零扣费。
  * 抽到此处而非内联进 GenerationCanvas（巨壳 800 行顶格，不喂）。
  */
@@ -164,9 +128,12 @@ export async function confirmAndRunPlan(
     nodeIds: ids,
     nodes: ids.map((id) => nodesById.get(id)),
     title: i18n.t('generationCommon.batchPlan.startTitle'),
-    message: describeGenerationCost(ids.length, spendCostKindForNodes(ids), generationCostContextForNodes(ids.map((id) => nodesById.get(id)))),
+    message: describeGenerationCost(ids.length, spendCostKindForNodes(ids), {
+      ...generationCostContextForNodes(ids.map((id) => nodesById.get(id))),
+      concurrency: normalizeCanvasBatchConcurrency(options.concurrency),
+      waveSizes: plan.waves.map((wave) => wave.length),
+    }),
     confirmLabel: i18n.t('generationCommon.batchPlan.confirmGenerate'),
-    light: true,
     ...hostingDisclosureFor(hosting),
   })
   if (!grantId) return

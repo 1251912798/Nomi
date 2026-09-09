@@ -3,6 +3,8 @@ import { app, ipcMain } from "electron";
 import { assertTrustedSender } from "../ipcSenderGuard";
 import { runTaskWithIdempotency } from "../submissionLedger";
 import { mintSpendGrant } from "../spendGrant";
+import { prepareSpendQuote, takeSpendQuote } from "../spendQuote";
+import type { SpendQuoteInput } from "../shared/contracts/spendQuote";
 import { runTaskIpcGuard } from "./taskIpcGuard";
 import { withTaskOwner } from "./localTaskJobs";
 import { antigravityImageJobs } from "../catalog/antigravityImageOperation";
@@ -22,13 +24,18 @@ export function registerTaskIpcHandlers(loadRuntimeModule: RuntimeLoader): void 
     exiting = true;
     void antigravityImageJobs.cancelAll().finally(() => { drained = true; app.quit(); });
   });
+  ipcMain.handle("nomi:tasks:quote-spend", (event, inputs: SpendQuoteInput[]) => {
+    assertTrustedSender(event);
+    if (!Array.isArray(inputs) || inputs.length === 0 || inputs.length > 1000) throw new Error("Invalid quote targets");
+    return prepareSpendQuote(inputs);
+  });
   // 付费守卫铸令牌：仅由渲染层「真人确认」事件链调用（务实纵深：铸造面小而审计过 + 主进程硬闸兜底）。
   ipcMain.handle("nomi:tasks:grant-spend", (event, payload) => {
     assertTrustedSender(event);
-    const raw = (payload || {}) as { nodeIds?: unknown; maxAttemptsPerNode?: unknown };
+    const raw = (payload || {}) as { nodeIds?: unknown; maxAttemptsPerNode?: unknown; quoteId?: string };
     const nodeIds = Array.isArray(raw.nodeIds) ? raw.nodeIds.map((id) => String(id)) : [];
     const maxAttemptsPerNode = typeof raw.maxAttemptsPerNode === "number" ? raw.maxAttemptsPerNode : undefined;
-    return { grantId: mintSpendGrant({ nodeIds, ...(maxAttemptsPerNode ? { maxAttemptsPerNode } : {}) }) };
+    return { grantId: mintSpendGrant({ nodeIds, ...(maxAttemptsPerNode ? { maxAttemptsPerNode } : {}), ...(raw.quoteId ? { quote: takeSpendQuote(raw.quoteId) } : {}) }) };
   });
 
   // 提交幂等包在 IPC 边界：渲染层每次提交（含控制器重试）都经此，同 idempotencyKey 的提交内核 at-most-once。
