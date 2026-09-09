@@ -5,6 +5,7 @@
 // 缺 key 时明确跳过并说清楚，不静默假绿。
 //
 // 逐步截图落 tests/ux/shots/find-reference/，跑完人眼逐张看（R13：截图是给人判断的，不是给断言的）。
+import { stationTimeout } from './_station-budget.mjs'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -59,10 +60,10 @@ try {
   // ── 用户第一次打开，先建个项目 ─────────────────────────────────────────────
   // 等的是「入口出现了」，不是「过了 1.5 秒」——机器慢一点就读到空白的那种假绿。
   const newProject = win.getByText('新建空白项目', { exact: true }).first()
-  await newProject.waitFor({ state: 'visible', timeout: 20_000 })
+  await newProject.waitFor({ state: 'visible', timeout: stationTimeout() })
   await shot(win, 'app-open', '刚打开的样子')
   await newProject.click()
-  await win.waitForFunction(() => /projectId=/.test(location.href), undefined, { timeout: 20_000 })
+  await win.waitForFunction(() => /projectId=/.test(location.href), undefined, { timeout: stationTimeout() })
   await win.waitForTimeout(1200)
   await shot(win, 'project-created', '进了一个空项目')
 
@@ -77,7 +78,7 @@ try {
   if (!(await assetSection.isVisible().catch(() => false))) {
     await win.getByRole('button', { name: '素材库', exact: true }).first().click().catch(() => {})
   }
-  await assetSection.waitFor({ state: 'visible', timeout: 15_000 })
+  await assetSection.waitFor({ state: 'visible', timeout: stationTimeout() })
   await win.waitForTimeout(600)
   await shot(win, 'asset-library-empty', '素材库空态——卡点①：这里能不能看见「找参考」')
 
@@ -113,11 +114,11 @@ try {
   await win.waitForFunction(
     () => !document.querySelector('[data-find-reference-panel]')?.textContent?.includes('正在搜索'),
     undefined,
-    { timeout: 60_000 },
+    { timeout: stationTimeout({ operations: 4 }) },
   ).catch(() => note('⚠️ 60 秒还在「正在搜索」'))
   // 等第一张结果卡真的挂上来（搜不到时超时走空路径），而不是数秒。
   const cards = win.locator('[data-find-reference-panel] .grid > div')
-  await cards.first().waitFor({ state: 'visible', timeout: 20_000 }).catch(() => note('⚠️ 20 秒没等到结果卡'))
+  await cards.first().waitFor({ state: 'visible', timeout: stationTimeout() }).catch(() => note('⚠️ 单步预算内没等到结果卡'))
   await shot(win, 'results', '结果回来了——卡点④：角标看不看得懂')
 
   const cardCount = await cards.count()
@@ -144,8 +145,8 @@ try {
   await win.waitForFunction(
     () => [...document.querySelectorAll('[data-find-reference-panel] img')].every((i) => i.complete),
     undefined,
-    { timeout: 20_000 },
-  ).catch(() => note('⚠️ 20 秒后仍有封面没加载完'))
+    { timeout: stationTimeout() },
+  ).catch(() => note('⚠️ 单步预算结束仍有封面没加载完'))
   await coverProbe('等到全部 complete 之后')
   await shot(win, 'results-covers-settled', '等封面加载完之后——对比上一张，看是「慢」还是「挂」')
   const panelText = await panel.textContent().catch(() => '')
@@ -173,7 +174,7 @@ try {
       // 等按钮自己改口成「已加入」（data-added），那才是这一步真的完了的信号。
       // 数秒会把「下载慢」误判成「导入坏了」——2026-09-08 走查已经栽过一次。
       await win.locator('[data-find-reference-panel] button[data-added="true"]')
-        .first().waitFor({ state: 'visible', timeout: 30_000 })
+        .first().waitFor({ state: 'visible', timeout: stationTimeout({ operations: 2 }) })
         .catch(() => note('⚠️ 30 秒内没有任何卡片变成「已加入」'))
       await shot(win, 'added', '点了「加入素材库」等它改口之后')
       const btnText = await addBtn.textContent().catch(() => null)

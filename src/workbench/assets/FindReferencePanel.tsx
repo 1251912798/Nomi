@@ -159,7 +159,7 @@ export function FindReferencePanel({
             data-active={id === platform}
             aria-pressed={id === platform}
             className={cn(
-              'h-6 rounded-full border px-2.5 text-caption transition-[background,color,border-color] duration-[var(--nomi-transition-fast)]',
+              'h-6 rounded-full border px-2.5 text-caption transition-[background,color,border-color] duration-nomi-fast ease-nomi-fast',
               id === platform
                 ? 'border-nomi-accent bg-nomi-accent-soft font-semibold text-nomi-accent'
                 : 'border-nomi-line bg-nomi-paper text-nomi-ink-60 hover:text-nomi-ink',
