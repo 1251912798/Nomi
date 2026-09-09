@@ -18,7 +18,9 @@
 // 而格式在这里逐字镜像（`pi-coding-agent/dist/core/system-prompt.js:41-88`）——
 // 它是模型见过无数次的形状，改写它没有收益只有风险。
 import type { LaneToolSpec } from "../shared/agentLane/laneToolContract";
-type PromptTool = Pick<LaneToolSpec, 'name' | 'promptSnippet' | 'promptGuidelines'>;
+import { renderLaneToolExamples } from '../shared/agentLane/laneToolContract';
+type PromptTool = Pick<LaneToolSpec, 'name' | 'promptSnippet' | 'promptGuidelines'>
+  & Partial<Pick<LaneToolSpec, 'description' | 'examples'>>;
 
 /**
  * 渲染两段。**顺序即合同**：菜单按目录顺序，纪律按首次出现顺序去重——
@@ -47,6 +49,9 @@ export function renderLanePromptSections(tools: readonly PromptTool[]): string {
   return [
     "Available tools:",
     menu,
+    "",
+    "Tool usage:",
+    ...tools.flatMap(tool => tool.description ? [`${tool.name}: ${tool.description}${renderLaneToolExamples(tool.examples ?? [])}`] : []),
     "",
     "Guidelines:",
     guidelines.length > 0 ? guidelines.map((guideline) => `- ${guideline}`).join("\n") : "(none)",

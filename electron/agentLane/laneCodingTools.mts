@@ -1,3 +1,4 @@
+import { laneToolModelDescription } from '../shared/agentLane/laneToolContract.js';
 // Agent lane · **把 pi 自带的 coding 工具接进来**，一个执行器都不自研。
 //
 // 用户 2026-09-07 原话：「pi Agent 不本来就是个 coding Agent 吗？我们是不是能够直接把那些
@@ -293,6 +294,8 @@ function adaptPiTool(tool: PiAgentTool): AgentHarnessTool<undefined> {
   const effects = LANE_CODING_TOOL_EFFECTS[tool.name as LaneCodingToolName];
   const adapted = {
     ...tool,
+    description: laneToolModelDescription(tool),
+    promptGuidelines: [tool.description, ...(tool.promptGuidelines ?? [])],
     // 崩溃恢复敢不敢替我们再跑一次——与 `laneTools.mts` 同一个派生点、同一条判据。
     replay: effects && !effects.mutates ? 'safe' : 'never',
     execute: async (

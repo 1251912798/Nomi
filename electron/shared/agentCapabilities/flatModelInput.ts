@@ -230,7 +230,7 @@ export function flattenDiscriminatedUnion<T extends z.ZodTypeAny>(
   const shape: z.ZodRawShape = {
     [discriminator]: z
       .enum(values as [string, ...string[]])
-      .describe(options.discriminatorDescription ?? `Which action to perform. Every other field is required by, or only meaningful to, specific values here.`),
+      .describe(options.discriminatorDescription ?? `Action; field annotations identify applicable values.`),
   };
   for (const [field, entry] of merged) {
     // 这个前缀不是装饰：扁平化把 N 张说明书合成了一张，模型必须知道「这个字段属于哪个

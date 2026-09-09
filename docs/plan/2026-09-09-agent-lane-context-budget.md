@@ -85,3 +85,31 @@ Context7 `/earendil-works/pi` 已查询；实际安装版本 0.85.1 的 `harness
 - `b2cFormFixtures.tsx` / `06-b2c-form.tsx`：新样张复用 V4ToolStatus，计时夹具显式给定三字段，不依赖已删除的 Host 合同和旧 labHostState.turns；样张数据和像素预期保持。
 
 应用 tsc exit 0；后续完整门岗、测试、设计实验室及构建日志 `.tmp/b1b-finish/gates-latest.log`。
+
+## B1c 切组（2026-09-09）
+
+用户裁决覆盖 B1b 待裁决：10,000 token 不抬；先无损瘦身，所有工具 description 仅保留选择工具的一句说明，示例和限制移至稳定系统段。仍超才按既有规则拆 read/write 子组；已用组不得退休。传输差异只记录代价，不决定策略。
+
+根因 recurring：`laneNativeAssembly` 模型 request 与 `laneHost` 技能 unlock 都用替换菜单，且 `systemPromptFor` 随菜单过滤；恢复旧会话也会延续旧菜单。共享不变量为切组不撤销既有工具、稳定指导不随组变化、实际可达最大 schema 组合必须 ≤10k。不改变任何参数类型、枚举、必填、边界或副作用审批；不动分镜/画布数据层，不打包。回滚用本批 scoped commit 的 revert。
+
+实施顺序：记录真实 schema 基线；24 回合 loopback 加切组和下一调用前缀断言，先红；描述投影瘦身与稳定提示；真实菜单预算量化决定是否拆子组；同类宿主/恢复路径回归；DeepSeek 三回合（含切组，≤¥1）报告工具写对率、回合成功率、切组后首调 cacheRead 和输入增量；完整 gates exit 0 后正常 hooks commit/push 原分支，不新开 PR。
+
+### B1c 结果与取舍
+
+全组 schema 从 12,121 → 9,893 token（45 工具，pi 原生估算，完整输出见 `agent-lane-b1c-evidence/schema-{before,after}.txt`）。9,893 < 10,000，因此本轮走裁决的第一分支：所有宿主实际注册的 schema 自首调常驻；无需拆读/写子组。核心工具目录计数仍 ≤12，领域 schema 的实际最大组合必须通过 10k 硬门禁，删除旧 reportOnly 豁免。未来超过才拆子组并延迟未用组，不抬预算。
+
+无损含义：不删除任何工具、参数、枚举、必填、ref、跨字段约束或审批；一句选择说明在 schema，完整原说明与经过校验的示例在固定系统段。`.describe()` 仅将扁平判别字段重复的默认措辞缩短，保留每字段的适用 operation 标注。`nomi_read` 说明合为一句，target/models 与 modelKey 意义保留。工具模型可见不等于执行授权：coding 文件操作仍需显式 coding 请求或技能解锁，权限放 pi 的标准 custom entry 扩展点中；旧 coding 菜单恢复时迁移该授权，新会话不可因全 schema 可见自动访问项目。
+
+根因边界实扫：模型 `nomi_request_tools`、宿主技能解锁、旧 lane 恢复均检查；部分宿主只注册部分领域时，只发布真实存在的工具，避免未知名字让 pi 在发请求前拒绝。稳定系统提示包括所有实际工具的指导与审批描述；审批政策本身变更仍会按真实政策更新，不伪称永远字节不变。
+
+传输代价：pi 0.85.1 的 `splitDeferredTools` 在 Anthropic tool references / Responses additional tools 通道把解锁放转录，通常不改工具前缀；Chat Completions 默认把新工具加入顶层 tools，首次解锁会打穿工具缓存。本轮统一常驻，使各传输切组均无需改 tools/system；代价是首调付全部 schema 的输入费用。未按供应商分叉策略；不伪造 cacheRead。DeepSeek 官方缓存说明：<https://api-docs.deepseek.com/guides/kv_cache>（2026-09-09 实读），命中依赖公共前缀及服务端缓存，不保证每次非零。
+
+验证：24 个真实记录用户回合，每回合实际调用一次切组工具，共 48 次 HTTP；修改前 tools/system 比较失败，修改后全部逐字一致。权限补验覆盖：常驻技能读取、coding 前项目读/grep 拒绝、解锁后读取、换到 models 仍可读取、重开后授权保留，以及设置目录写与沙箱访问仍被拒。工具指导与示例的完整性、原有 schema 等价测试继续通过。
+
+六角色复核：CTO—使用 pi 已有 custom entries，无平行激活状态或自研缓存；设计—无 UI 变化；PM—以切组后首调命中验收，说明冷启动代价；前端—不碰分镜/画布数据；后端—schema 可见与文件授权分开，审批继续原路径；真实用户—三回合读文稿→切时间轴→回读文稿闭环，不能只凭类型检查宣称完成。
+
+完整 gates 正在按全仓锁排队。最终 exit code、提交及原 PR 推送身份写入 SWITCH-LAST 和指定 scratchpad；无新 PR、无打包。
+
+R30 最终小样：`deepseek-v4-flash` 经本机已配置的 APIMart 端点，文稿/时间轴为隔离域端口；三回合为读文稿→切 timeline 并读取→回读文稿。工具写对率 4/4、回合成功率 3/3；切组后首调 input=19,900、cacheRead=16,384>0、新增输入=75，全部请求 tools/system 前缀相同。3 次开发小样共 ¥0.552033（配置未折扣价格、USD×7 保守估计），未提交媒体生成。10k 是 schema 门岗口径，不是模型总输入；最终首调仍含固定指导等约 19.7k provider input，不能把搬到系统提示的文字说成免费。
+
+每日雷达：模型脚本检出 7 个新增；apimart 文本模型因 safeStorage 凭据未解密未查成；未更新供应商基线、未接模型。当前机器未发现 nomi-research-radar / nomi-model-radar 技能，未编造今日论文报告或自动分诊。
