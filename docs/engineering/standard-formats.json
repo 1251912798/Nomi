@@ -170,10 +170,11 @@
         ".claude.json"
       ],
       "spec": "https://modelcontextprotocol.io/docs/develop/connect-local-servers",
-      "upstreamVersion": "MCP 文档 2026-09-07 抓取；协议版本见 electron/capabilityCore/mcpProtocol.ts 的 PROTOCOL_VERSION = 2025-11-25",
-      "why": "「一键接入」写的是**用户的别的工具的配置文件**（Claude Code 的 ~/.claude.json、Cursor 的 ~/.cursor/mcp.json、通用 ~/.config/mcp/mcp.json、项目级 .mcp.json）。写错格式的后果不是我们的功能不好用，是把用户已有的 MCP 配置弄坏。",
+      "upstreamVersion": "MCP 文档 2026-09-07 抓取；WorkBuddy 官方 MCP 指南 2026-09-09：https://www.workbuddy.ai/docs/zh/workbuddy/From-Beginner-to-Expert-Guide/Function-Description/MCP-Guide（无偏差）；协议版本见 electron/capabilityCore/mcpProtocol.ts 的 PROTOCOL_VERSION = 2025-11-25",
+      "why": "「一键接入」写的是**用户的别的工具的配置文件**（Claude Code 的 ~/.claude.json、Cursor 的 ~/.cursor/mcp.json、通用 ~/.config/mcp/mcp.json、WorkBuddy 的 ~/.workbuddy/mcp.json、项目级 .mcp.json）。写错格式的后果不是我们的功能不好用，是把用户已有的 MCP 配置弄坏。",
       "fixtures": [
-        "tests/fixtures/standard-formats/mcp/.mcp.json"
+        "tests/fixtures/standard-formats/mcp/.mcp.json",
+        "tests/fixtures/standard-formats/mcp/workbuddy.json"
       ],
       "readers": [
         "electron/capabilityCore/mcpConfig.ts"
