@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { requireCredential, recordBlocked } from './credential-precheck.mjs'
+import { realCatalogPath } from '../../../evals/lib/isoApp.mjs'
 // C0: one UI journey, with either synthetic or budgeted real provider dispatch.
 import fs from 'node:fs'
 import { videoWaitBudget, waitForVideos } from './c0-video-wait.mjs'
@@ -81,6 +83,7 @@ async function step(id, action, expected, run, interruption = '无自动检测�
   }
 }
 try {
+  if (values.real) requireCredential(realCatalogPath(), attemptDir)
   // Check before importing Playwright so a missing development environment leaves a report.
   const missing = ['node_modules', ...(!values.packaged ? ['dist/index.html', 'dist-electron/main.js'] : [])]
     .filter((name) => !fs.existsSync(path.join(root, name)))
@@ -117,14 +120,15 @@ try {
     try {
       await scheduler.attach(launched)
       if (collection) await collection.attach(launched, payload, () => projectId)
-    } catch (error) { await launched.close(); throw error }
+    } catch (error) { if (error.code !== 'CREDENTIAL_BLOCKED') await launched.close(); throw error }
     return launched
   }
   let projectId, projectRoot, nodeIds, before, exportPath
   const payload = async () => (await readProject(win, projectId)).payload
   const videoClips = (p) => p.timeline.tracks.flatMap((t) => t.clips).filter((c) => c.type === 'video').sort((a, b) => a.startFrame - b.startFrame)
+  const initialLaunch = await launch()
   await step('00', '准备隔离空项目', '独立 profile、版本可核对、项目库为空', async () => {
-    const launched = await launch()
+    const launched = initialLaunch
     ;({ app, win } = launched)
     win.setDefaultTimeout(30_000)
     report.build = await app.evaluate(({ app: main }) => ({ version: main.getVersion(), packaged: main.isPackaged, appPath: main.getAppPath(), userData: main.getPath('userData') }))
@@ -293,21 +297,26 @@ try {
   })
   report.result = collection?.walk.deviations.length ? 'collected-deviations' : `${report.mode}-assertions-passed-review-pending`
 } catch (error) {
-  report.result = error.message === 'C0_BLOCKED_BUDGET' ? 'blocked-budget' : 'failed'
-  report.blocker = values.real ? (String(error.message).match(/C0_[A-Z_]+/)?.[0] ?? 'C0_WALK_FAILED_RAW_ERROR_SUPPRESSED') : error.message
-  if (win) {
-    try { await win.screenshot({ path: path.join(attemptDir, 'FAIL.png') }) }
-    catch { report.failureScreenshot = 'unavailable' }
+  if (error.code === 'CREDENTIAL_BLOCKED') {
+    recordBlocked(attemptDir, report, error.receipt, ['00','01','02','03','04','05','06','07'])
+    report.blocker = error.receipt.reason
+  } else {
+    report.result = error.message === 'C0_BLOCKED_BUDGET' ? 'blocked-budget' : 'failed'
+    report.blocker = values.real ? (String(error.message).match(/C0_[A-Z_]+/)?.[0] ?? 'C0_WALK_FAILED_RAW_ERROR_SUPPRESSED') : error.message
+    if (win) {
+      try { await win.screenshot({ path: path.join(attemptDir, 'FAIL.png') }) }
+      catch { report.failureScreenshot = 'unavailable' }
+    }
+    console.error(`C0 ${report.result}: ${report.blocker}`)
+    process.exitCode = 1
   }
-  console.error(`C0 ${report.result}: ${report.blocker}`)
-  process.exitCode = 1
 } finally {
-  if (collection) {
+  if (collection && report.result !== 'blocked') {
     try { await collection.stop(); collection.finish(path.join(attemptDir, 'profile'), scheduler?.requests ?? []) }
     catch (error) { report.collectionError = error.message; process.exitCode = 1 }
   }
   try { if (scheduler) await scheduler.close() } catch { report.cleanupError = 'C0_SCHEDULER_CLEANUP_FAILED'; process.exitCode = 1 }
-  try { if (app) await stopRuntimeApp(app) } catch { report.cleanupError = 'C0_APP_CLEANUP_FAILED'; process.exitCode = 1 }
+  try { if (app && report.result !== 'blocked') await stopRuntimeApp(app) } catch { report.cleanupError = 'C0_APP_CLEANUP_FAILED'; process.exitCode = 1 }
   if (values.real) fs.rmSync(path.join(attemptDir, 'profile/settings'), { recursive: true, force: true })
   save()
   console.log(`C0 ${report.result}; evidence: ${attemptDir}; paid calls: ${report.paidCalls}`)

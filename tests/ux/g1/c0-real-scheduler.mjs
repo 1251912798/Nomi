@@ -1,3 +1,4 @@
+import { watchCredential } from './credential-precheck.mjs'
 import fs from 'node:fs'
 import { quotePlanSample } from './c0-plan-sample-budget.mjs'
 import { shots, createSyntheticC0Media } from './c0-fixture.mjs'
@@ -54,7 +55,7 @@ export async function createRealScheduler({ tempRoot, attemptDir, outputDir, rep
   const priorReserved = mixed ? (earlier?.reservedCny ?? 0) : 0
   const firstRequest = mixed ? (earlier?.requests?.length ?? 0) : 0
   const mediaFiles = mixed ? createSyntheticC0Media(path.join(attemptDir, 'fixture-media')) : []
-  let app, planEvents = [], nativeMessages
+  let app, credentialBlocked = false, planEvents = [], nativeMessages
   const readNativeMessages = async (projectRoot) => {
     // Reuse the candidate's versioned observer rather than duplicating the pi format reader.
     const observer = await import('../agent-lane-observer.mjs')
@@ -62,7 +63,7 @@ export async function createRealScheduler({ tempRoot, attemptDir, outputDir, rep
   }
   const bridge = path.join(tempRoot, 'c0-main.cjs')
   const snapshot = async () => {
-    if (!app) return
+    if (!app || credentialBlocked) return
     try {
       const ledger = await app.evaluate(() => globalThis.__c0Dispatch.snapshot())
       report.costCny = ledger.billedCnyAtBudgetRate - priorCost
@@ -97,10 +98,10 @@ export async function createRealScheduler({ tempRoot, attemptDir, outputDir, rep
     async attach(launched) {
       app = launched.app
       fs.writeFileSync(bridge, `module.exports = import(${JSON.stringify(new URL('./c0-real-main.mjs', import.meta.url).href)});`, { mode: 0o600 })
-      try { await app.evaluate(async (_electron, options) => {
+      try { await watchCredential({ directory: attemptDir, kill: () => { credentialBlocked = true; app.process().kill('SIGKILL') }, run: credentialMarker => app.evaluate(async (_electron, options) => {
         const module = await process.mainModule.require(options.bridge)
         globalThis.__c0Dispatch = await module.attachRealDispatch(options)
-      }, { bridge, quote, ledgerPath, mediaFiles, requestsPath: path.join(attemptDir, 'model-requests.json') }) } finally { fs.rmSync(bridge, { force: true }) }
+      }, { bridge, quote, ledgerPath, mediaFiles, requestsPath: path.join(attemptDir, 'model-requests.json'), credentialMarker }) }) } finally { fs.rmSync(bridge, { force: true }) }
       await launched.win.evaluate(({ models }) => {
         localStorage.setItem('nomi.assistantModel', JSON.stringify({ vendorKey: 'apimart', modelKey: models.text }))
         window.dispatchEvent(new CustomEvent('nomi:assistant-model-changed'))

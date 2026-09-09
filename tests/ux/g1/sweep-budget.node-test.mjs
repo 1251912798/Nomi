@@ -1,3 +1,4 @@
+import './credential-precheck.node-test.mjs'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
@@ -32,11 +33,14 @@ test('media, foreign endpoints, unknown models and unknown budget cannot spend',
   }
 })
 test('real-text bridge cleans executable scratch on both attachment success and failure', async () => {
-  const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'sweep-bridge-'))
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'sweep-bridge-'))
+  const profile = path.join(directory, 'profile')
+  fs.mkdirSync(profile)
   try {
     for (const fail of [false, true]) {
       const launched = { app: { async evaluate(_fn, options) {
         assert.equal(fs.existsSync(options.bridge), true)
+        fs.writeFileSync(options.credentialMarker, JSON.stringify({ status: 'ready' }))
         if (fail) throw Error('attach failed')
       } }, win: { async evaluate() {} } }
       const result = attachRealText(launched, { profile, quote, budgetCny: 3 })
@@ -44,7 +48,7 @@ test('real-text bridge cleans executable scratch on both attachment success and 
       else await result
       assert.equal(fs.existsSync(path.join(profile, 'sweep-main.cjs')), false)
     }
-  } finally { fs.rmSync(profile, { recursive: true, force: true }) }
+  } finally { fs.rmSync(directory, { recursive: true, force: true }) }
 })
 
 test('mixed dispatch caps each quoted text tier at 1.5 and never forwards media', async () => {
@@ -84,20 +88,14 @@ test('C0 invocation passes the selected real text tier and budget; default stays
 })
 
 test('real-text without a configured enabled key fails explicitly before any request', async () => {
-  const { assertRealTextCredential } = await import('./sweep-real.mjs')
+  const { requireCredential } = await import('./credential-precheck.mjs')
   const fs = await import('node:fs'), os = await import('node:os'), path = await import('node:path')
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mixed-key-')), file = path.join(dir, 'catalog.json')
   try {
-    assert.throws(() => assertRealTextCredential(file), /SWEEP_REAL_TEXT_KEY_REQUIRED/)
-    const { spawnSync } = await import('node:child_process')
-    const preload = 'data:text/javascript,' + encodeURIComponent(`import os from 'node:os'; os.homedir = () => ${JSON.stringify(dir)}`)
-    const cli = spawnSync(process.execPath, ['--import', preload, new URL('../../../scripts/sweep.mjs', import.meta.url).pathname, '--case', 'C0', '--real-text'], { encoding: 'utf8' })
-    assert.equal(cli.status, 1)
-    assert.match(cli.stderr, /SWEEP_REAL_TEXT_KEY_REQUIRED/)
-    assert.doesNotMatch(cli.stdout, /SWEEP C0/)
+    assert.throws(() => requireCredential(file, dir), /CREDENTIAL_BLOCKED/)
     for (const apimart of [undefined, { enc: 'safeStorage', enabled: false }]) {
       fs.writeFileSync(file, JSON.stringify({ apiKeysByVendor: { apimart } }))
-      assert.throws(() => assertRealTextCredential(file), /SWEEP_REAL_TEXT_KEY_REQUIRED/)
+      assert.throws(() => requireCredential(file, dir), /CREDENTIAL_BLOCKED/)
     }
   } finally { fs.rmSync(dir, { recursive: true, force: true }) }
 })

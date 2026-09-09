@@ -1,3 +1,4 @@
+import { watchCredential } from './credential-precheck.mjs'
 // Zero-paid-call assembly check: actual isolated Electron catalog encryption/decryption and
 // C0 guard installation, with both transports replaced by a local function before attachment.
 import { expect } from '../_assert.mjs'
@@ -9,33 +10,32 @@ import { launchNomiApp } from '../_launchApp.mjs'
 const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'c0-real-assembly-'))
 const bridge = path.join(tempRoot, 'bridge.cjs')
 fs.writeFileSync(bridge, `module.exports = import(${JSON.stringify(new URL('./c0-real-main.mjs', import.meta.url).href)});`)
-let launched
+let launched, blocked = false
 try {
   const bundle = process.argv[2] && path.resolve(process.argv[2])
   launched = await launchNomiApp({ name: 'c0-real-assembly', tempRoot,
     ...(bundle ? { executablePath: path.join(bundle, 'Contents/MacOS/Nomi') } : {}),
     env: { NOMI_DISABLE_AUTO_UPDATE: '1', NOMI_RENDERER_URL: '', VITE_DEV_SERVER_URL: '' },
   })
-  const proof = await launched.app.evaluate(async ({ app }, { bridge, ledgerPath }) => {
+  const proof = await watchCredential({ directory: tempRoot, kill: () => { blocked = true; launched.app.process().kill('SIGKILL') },
+    run: credentialMarker => launched.app.evaluate(async ({ app }, { bridge, ledgerPath, credentialMarker }) => {
     const require = process.mainModule.require.bind(process.mainModule)
     const catalog = require(`${app.getAppPath()}/dist-electron/catalog/catalogStore.js`)
     catalog.upsertModelCatalogVendorApiKey('apimart', { apiKey: 'c0-synthetic-credential', enabled: true })
     const transport = require(`${app.getAppPath()}/dist-electron/appFetch.js`)
     let relayed = 0, decrypted = false
-    const send = async (input) => {
+    const send = async (input, init) => {
       if (String(input).endsWith('/v1/balance')) {
+        decrypted = init.headers.Authorization === 'Bearer c0-synthetic-credential'
         return new Response(JSON.stringify({ success: true, used_balance: 0, used_credits: 0 }))
       }
       relayed++
       return new Response('synthetic-transport-response', { status: 201 })
     }
-    // Read the application-stored ciphertext through the exact production reader, not a test secret decoder.
-    const secrets = require(`${app.getAppPath()}/dist-electron/catalog/secrets.js`)
-    decrypted = secrets.decryptApiKeyRecord(catalog.readCatalog().apiKeysByVendor.apimart) === 'c0-synthetic-credential'
     transport.appFetch = send
     globalThis.fetch = send
     const module = await require(bridge)
-    const guard = await module.attachRealDispatch({ ledgerPath,
+    const guard = await module.attachRealDispatch({ ledgerPath, credentialMarker,
       quote: { textRequestUsd: .01, maxOutputTokens: 16000, videoPerSecondUsd: .0714, imageUsd: .010625 } })
     const request = (model) => transport.appFetch('https://api.apimart.ai/v1/chat/completions', {
       method: 'POST', body: JSON.stringify({ model, messages: [{ role: 'user', content: 'assembly only' }] }),
@@ -47,7 +47,7 @@ try {
     return { decrypted, refused, relayed, responseStatus: response.status, response: await response.text(),
       reservations: ledger.requests.length, reservedCny: ledger.reservedCny, billedUsd: ledger.billedUsd,
       packaged: app.isPackaged }
-  }, { bridge, ledgerPath: path.join(tempRoot, 'ledger.json') })
+  }, { bridge, ledgerPath: path.join(tempRoot, 'ledger.json'), credentialMarker }) })
   expect(proof.decrypted).toBe(true)
   expect(proof.refused).toBe(true)
   expect(proof.relayed).toBe(1)
@@ -62,6 +62,6 @@ try {
   console.error('C0 ASSEMBLY FAILED (raw exception suppressed)')
   process.exitCode = 1
 } finally {
-  await launched?.close()
+  if (!blocked) await launched?.close()
   fs.rmSync(tempRoot, { recursive: true, force: true })
 }

@@ -1,3 +1,4 @@
+import { decryptForDispatch } from './credential-main.mjs'
 // Loaded through a file-backed bridge inside the candidate Electron main process.
 // Credentials never cross this boundary. Production catalog/transport modules come from app.asar.
 import fs from 'node:fs'
@@ -5,16 +6,13 @@ import path from 'node:path'
 import { createRequire } from 'node:module'
 import { planSampleFetch } from './c0-plan-sample-budget.mjs'
 import { budgetedFetch, CNY_PER_USD } from './c0-real-budget.mjs'
-export async function attachRealDispatch({ quote, ledgerPath, mediaFiles = [], requestsPath }) {
+export async function attachRealDispatch({ quote, ledgerPath, mediaFiles = [], requestsPath, credentialMarker }) {
   const require = createRequire(import.meta.url)
   const { app } = require('electron')
   const compiled = path.join(app.getAppPath(), 'dist-electron')
   const { readCatalog } = require(path.join(compiled, 'catalog/catalogStore.js'))
   const { decryptApiKeyRecord } = require(path.join(compiled, 'catalog/secrets.js'))
-  const catalog = readCatalog()
-  const record = catalog.apiKeysByVendor?.apimart
-  const key = record?.enabled !== false ? decryptApiKeyRecord(record) : ''
-  if (!key) throw new Error('C0_APPLICATION_CREDENTIAL_UNAVAILABLE')
+  const key = decryptForDispatch({ record: readCatalog().apiKeysByVendor?.apimart, decrypt: decryptApiKeyRecord, credentialMarker })
   const transport = require(path.join(compiled, 'appFetch.js'))
   const originalAppFetch = transport.appFetch
   const originalGlobalFetch = globalThis.fetch
