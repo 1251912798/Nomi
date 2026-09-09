@@ -381,7 +381,7 @@ export function applyCompensationOps(compensation: readonly ProjectAgentProposal
         if (edge) useGenerationCanvasStore.getState().disconnectEdge(edge.id)
       }
     } else if (op.kind === 'restore-prompt') {
-      useGenerationCanvasStore.getState().updateNodePrompt(op.nodeId, op.prompt)
+      useGenerationCanvasStore.getState().updateNodePrompt(op.nodeId, op.prompt, op.promptOverridden)
     } else if (op.kind === 'restore-graph') {
       useGenerationCanvasStore
         .getState()

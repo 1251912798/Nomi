@@ -285,6 +285,12 @@ export default function StoryboardAnchorRow({
             </button>
           </div>
 
+          {runtime.visual && runtime.referencedByCount > runtime.consumedByShotCount ? (
+            <p className="text-micro text-nomi-warning" data-anchor-consumption-warning={anchor.id}>
+              {t('storyboardEditor.anchorPolicy.countWarning', { total: runtime.referencedByCount, ignored: runtime.referencedByCount - runtime.consumedByShotCount })}
+            </p>
+          ) : null}
+
           <AutoGrowTextarea
             value={anchor.description}
             onChange={(event) => onUpdate({ description: event.target.value })}

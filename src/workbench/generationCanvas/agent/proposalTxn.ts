@@ -1,3 +1,4 @@
+import { isStoryboardOriginal, overriddenShotFields } from '../model/storyboardOverrides'
 // 提议事务执行器(harness S6-2)——状态机 approved→committed/aborted 的落地层。
 // 一笔提议(plan card 的 create+connect 折叠,或单工具)= 一个 proposalId = 一次原子批量:
 // 全成 → agent.txn.committed;中途失败 → 补偿回滚(删已建节点)+ agent.txn.aborted,零半截(I3)。
@@ -30,7 +31,7 @@ export type ProposalStep = {
 export type CompensationOp =
   | { kind: 'delete-nodes'; nodeIds: string[] }
   | { kind: 'disconnect-edges'; pairs: { source: string; target: string }[] }
-  | { kind: 'restore-prompt'; nodeId: string; prompt: string }
+  | { kind: 'restore-prompt'; nodeId: string; prompt: string; promptOverridden?: boolean }
   | { kind: 'restore-graph'; nodes: unknown[]; edges: unknown[] }
 
 /** 编辑哨点:commit 时记下 AI 落地的节点状态,整笔撤销前对比——用户改过的要列明再丢。 */
@@ -73,7 +74,7 @@ function captureStepCompensation(
     const previous = before.nodes.find((node) => node.id === nodeId)
     const current = after.nodes.find((node) => node.id === nodeId)
     if (previous && current && previous.prompt !== current.prompt)
-      ops.push({ kind: 'restore-prompt', nodeId, prompt: previous.prompt || '' })
+      ops.push({ kind: 'restore-prompt', nodeId, prompt: previous.prompt || '', ...(isStoryboardOriginal(previous) ? { promptOverridden: overriddenShotFields(previous).includes('prompt') } : {}) })
   }
   if (step.toolName === 'delete_canvas_nodes') {
     const remaining = new Set(after.nodes.map((node) => node.id))

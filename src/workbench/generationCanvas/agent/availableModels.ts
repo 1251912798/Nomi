@@ -56,6 +56,7 @@ export function buildAgentModelEntries(options: readonly ModelOption[]): AgentMo
           vendorTerm: mode.vendorTerm,
           intent: mode.intent,
           hint: mode.hint,
+          consumesAnchors: mode.consumesAnchors,
           params: mode.params,
           slots: mode.slots.map((slot) => ({
             kind: slot.kind,

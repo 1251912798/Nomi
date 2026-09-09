@@ -115,3 +115,7 @@ R30 最终小样：`deepseek-v4-flash` 经本机已配置的 APIMart 端点，�
 每日雷达：模型脚本检出 7 个新增；apimart 文本模型因 safeStorage 凭据未解密未查成；未更新供应商基线、未接模型。当前机器未发现 nomi-research-radar / nomi-model-radar 技能，未编造今日论文报告或自动分诊。
 
 B1c 首次完整 gates：76 contracts 阻断项全部通过，Vitest 11,841 通过 / 2 skipped；runtime 395/396，唯一红为旧 P5 探针硬断言分镜 schema >1,200（本次已降至 1,133）。已将该历史反向断言改为守住原 1,200 上限。Ponytail 明细两项（控制器未用读写菜单方法、Map 未用值）已删除；不改变行为，随后重跑完整 gates。
+
+### B1c 推送前再并 main #681
+
+第二轮完整 gates 在 `2127e1280` exit 0：76 contracts、Vitest 11,841/2 skipped、runtime 396/396、build 均通过。推送前 preflight 刷新到 `a645aaa08`（#681），依任务书暂停推送并本地 merge。唯一冲突 `generationCanvas/agent/availableModels.ts`：不复活已迁走的格式化器；新锚点能力从 archetype owner 已派生的 `mode.consumesAnchors` 投影到共享目录，main 两条锚点指导只定义一次，由完整目录与稳定索引复用。main 的分镜/画布数据层原样接纳，不另写策略。后续再次完整 gates exit 0 才推送。

@@ -1,3 +1,4 @@
+import { validateAnchorModelFit, type AnchorModelFitIssue } from './storyboardAnchorPolicy'
 import { effectiveShotDurationSec, type PlanAnchor, type PlanAnchorCarrier, type PlanAnchorKind, type PlanShot, type StoryboardPlan } from './storyboardPlan'
 import { hasMentions, mentionUrlsInOrder } from '../../assets/promptMentions'
 
@@ -292,6 +293,7 @@ export function totalDurationSec(shots: readonly PlanShot[]): number {
 // ── 校验：生成前的拦截项（footer 计数 + 行红标的唯一真相源；v5 行内/批量生成共用）──
 
 export type PlanIssue =
+  | AnchorModelFitIssue
   | { kind: 'no-shots' }
   | { kind: 'dangling-ref'; shotIndex: number; anchorId: string }
   | { kind: 'empty-shot-prompt'; shotIndex: number }
@@ -299,7 +301,7 @@ export type PlanIssue =
 
 /** 一个方案的全部待处理项；空数组 = 可生成。 */
 export function validatePlan(plan: StoryboardPlan): PlanIssue[] {
-  const issues: PlanIssue[] = []
+  const issues: PlanIssue[] = [...validateAnchorModelFit(plan)]
   const anchorIds = new Set(plan.anchors.map((anchor) => anchor.id))
 
   // 视觉锚没名字 = 落画布后卡片没标题，且镜头按名引用不到 → 拦。

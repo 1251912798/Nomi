@@ -1,3 +1,4 @@
+import { StoryboardOverrideBadge } from './StoryboardOverrideBadge'
 import { notify } from '../../../ui/notificationPolicy'
 import React from 'react'
 import type { ImageGenerationPreset } from 'img-fx'
@@ -618,6 +619,7 @@ function BaseGenerationNodeImpl({
         />
       ) : null}
 
+      <div className="absolute left-0 top-full max-w-full pt-1"><StoryboardOverrideBadge node={node} /></div>
       {artifactSlots.toolbar}
 
       {showTimelineNotch ? (

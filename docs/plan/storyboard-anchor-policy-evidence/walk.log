@@ -1,0 +1,9 @@
+feel record: storyboard-anchor-policy/waitForFunction.png; findings=31; new-surfaces=1; evidence: /Users/aoqimin/Desktop/Nomi-anchor-policy/artifacts/feel/storyboard-anchor-policy-0a4971c9-fbb4-46c4-9578-5a2a46b879c3
+feel record: storyboard-anchor-policy/00-anchor-warning.png; findings=31; new-surfaces=1; evidence: /Users/aoqimin/Desktop/Nomi-anchor-policy/artifacts/feel/storyboard-anchor-policy-0a4971c9-fbb4-46c4-9578-5a2a46b879c3
+feel record: storyboard-anchor-policy/waitForFunction.png; findings=28; new-surfaces=0; evidence: /Users/aoqimin/Desktop/Nomi-anchor-policy/artifacts/feel/storyboard-anchor-policy-0a4971c9-fbb4-46c4-9578-5a2a46b879c3
+feel record: storyboard-anchor-policy/01-inline-night.png; findings=28; new-surfaces=1; evidence: /Users/aoqimin/Desktop/Nomi-anchor-policy/artifacts/feel/storyboard-anchor-policy-0a4971c9-fbb4-46c4-9578-5a2a46b879c3
+feel record: storyboard-anchor-policy/waitForFunction.png; findings=17; new-surfaces=1; evidence: /Users/aoqimin/Desktop/Nomi-anchor-policy/artifacts/feel/storyboard-anchor-policy-0a4971c9-fbb4-46c4-9578-5a2a46b879c3
+feel record: storyboard-anchor-policy/03-canvas-badge.png; findings=17; new-surfaces=2; evidence: /Users/aoqimin/Desktop/Nomi-anchor-policy/artifacts/feel/storyboard-anchor-policy-0a4971c9-fbb4-46c4-9578-5a2a46b879c3
+feel record: storyboard-anchor-policy/waitForFunction.png; findings=25; new-surfaces=1; evidence: /Users/aoqimin/Desktop/Nomi-anchor-policy/artifacts/feel/storyboard-anchor-policy-0a4971c9-fbb4-46c4-9578-5a2a46b879c3
+feel record: storyboard-anchor-policy/02-discard-dusk.png; findings=25; new-surfaces=2; evidence: /Users/aoqimin/Desktop/Nomi-anchor-policy/artifacts/feel/storyboard-anchor-policy-0a4971c9-fbb4-46c4-9578-5a2a46b879c3
+{"status":"passed","checks":["inline badge","discard without modal","original row stays in place"],"screenshots":"/Users/aoqimin/Desktop/Nomi-anchor-policy/docs/plan/storyboard-anchor-policy-evidence/screenshots"}

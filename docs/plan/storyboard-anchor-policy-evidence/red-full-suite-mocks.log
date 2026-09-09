@@ -1,0 +1,176 @@
+ RUN  v4.1.8 /Users/aoqimin/Desktop/Nomi-anchor-policy
+
+ ❯ src/workbench/generationCanvas/agent/applyCanvasToolCall.test.ts (39 tests | 5 failed) 295ms
+     × applies promptAppend to the selected rows and returns a canonical receipt payload 20ms
+     × preserves every unselected shot and every unselected field 1ms
+     × 合法方案 → 落统一创作页 + 不动画布,回执含计数 1ms
+     × 规划期间用户切走后不抢回工作区，结果仍落原文稿 1ms
+     × 全新拆镜不会覆盖当前已确认的分镜设计 1ms
+ ❯ src/workbench/generationCanvas/agent/agentTurnMutations.test.ts (10 tests | 1 failed) 77ms
+     × closes compensation before a synchronous subscriber starts the replacement proposal 13ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 6 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/workbench/generationCanvas/agent/agentTurnMutations.test.ts > final asynchronous Agent mutation boundary > closes compensation before a synchronous subscriber starts the replacement proposal
+AssertionError: expected [] to deeply equal [ Array(3) ]
+
+- Expected
++ Received
+
+- [
+-   "A edited",
+-   "A",
+-   "new approved edit",
+- ]
++ []
+
+ ❯ src/workbench/generationCanvas/agent/agentTurnMutations.test.ts:135:28
+    133|         .filter((event) => event.type === 'canvas.node.prompt-changed'…
+    134|         .map((event) => event.payload.prompt)
+    135|       expect(promptEvents).toEqual(['A edited', 'A', 'new approved edi…
+       |                            ^
+    136|
+    137|       useGenerationCanvasStore.getState().undo()
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/6]⎯
+
+ FAIL  src/workbench/generationCanvas/agent/applyCanvasToolCall.test.ts > applyCanvasToolCall canonical nomi_canvas_plan patch_shots > applies promptAppend to the selected rows and returns a canonical receipt payload
+Error: [vitest] No "buildAgentModelEntries" export is defined on the "./availableModels" mock. Did you forget to return it from "vi.mock"?
+If you need to partially mock a module, you can use "importOriginal" helper inside:
+
+vi.mock(import("./availableModels"), async (importOriginal) => {
+  const actual = await importOriginal()
+  return {
+    ...actual,
+    // your mocked methods
+  }
+})
+
+ ❯ projectStoryboardDesign src/workbench/creation/storyboard/exec/storyboardProjection.ts:70:42
+     68| export function projectStoryboardDesign(design: StoryboardDesign, canv…
+     69|   for (const shot of design.plan.shots) {
+     70|     const entries = buildModelEntryIndex(buildAgentModelEntries(shot.m…
+       |                                          ^
+     71|     const profile = resolveArchetypeForModel({ modelKey: shot.modelKey…
+     72|     const mode = profile?.modes.find(candidate => candidate.id === (sh…
+ ❯ src/workbench/workbenchStore.ts:256:62
+ ❯ Object.setStoryboardPlan src/workbench/workbenchDocumentSlice.ts:300:24
+ ❯ Module.applyCanvasToolCall src/workbench/generationCanvas/agent/applyCanvasToolCall.ts:265:33
+ ❯ patch src/workbench/generationCanvas/agent/applyCanvasToolCall.test.ts:210:53
+ ❯ src/workbench/generationCanvas/agent/applyCanvasToolCall.test.ts:213:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/6]⎯
+
+ FAIL  src/workbench/generationCanvas/agent/applyCanvasToolCall.test.ts > applyCanvasToolCall canonical nomi_canvas_plan patch_shots > preserves every unselected shot and every unselected field
+Error: [vitest] No "buildAgentModelEntries" export is defined on the "./availableModels" mock. Did you forget to return it from "vi.mock"?
+If you need to partially mock a module, you can use "importOriginal" helper inside:
+
+vi.mock(import("./availableModels"), async (importOriginal) => {
+  const actual = await importOriginal()
+  return {
+    ...actual,
+    // your mocked methods
+  }
+})
+
+ ❯ projectStoryboardDesign src/workbench/creation/storyboard/exec/storyboardProjection.ts:70:42
+     68| export function projectStoryboardDesign(design: StoryboardDesign, canv…
+     69|   for (const shot of design.plan.shots) {
+     70|     const entries = buildModelEntryIndex(buildAgentModelEntries(shot.m…
+       |                                          ^
+     71|     const profile = resolveArchetypeForModel({ modelKey: shot.modelKey…
+     72|     const mode = profile?.modes.find(candidate => candidate.id === (sh…
+ ❯ src/workbench/workbenchStore.ts:256:62
+ ❯ Object.setStoryboardPlan src/workbench/workbenchDocumentSlice.ts:300:24
+ ❯ Module.applyCanvasToolCall src/workbench/generationCanvas/agent/applyCanvasToolCall.ts:265:33
+ ❯ patch src/workbench/generationCanvas/agent/applyCanvasToolCall.test.ts:210:53
+ ❯ src/workbench/generationCanvas/agent/applyCanvasToolCall.test.ts:220:11
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/6]⎯
+
+ FAIL  src/workbench/generationCanvas/agent/applyCanvasToolCall.test.ts > applyCanvasToolCall propose_storyboard_plan > 合法方案 → 落统一创作页 + 不动画布,回执含计数
+Error: [vitest] No "buildAgentModelEntries" export is defined on the "./availableModels" mock. Did you forget to return it from "vi.mock"?
+If you need to partially mock a module, you can use "importOriginal" helper inside:
+
+vi.mock(import("./availableModels"), async (importOriginal) => {
+  const actual = await importOriginal()
+  return {
+    ...actual,
+    // your mocked methods
+  }
+})
+
+ ❯ projectStoryboardDesign src/workbench/creation/storyboard/exec/storyboardProjection.ts:70:42
+     68| export function projectStoryboardDesign(design: StoryboardDesign, canv…
+     69|   for (const shot of design.plan.shots) {
+     70|     const entries = buildModelEntryIndex(buildAgentModelEntries(shot.m…
+       |                                          ^
+     71|     const profile = resolveArchetypeForModel({ modelKey: shot.modelKey…
+     72|     const mode = profile?.modes.find(candidate => candidate.id === (sh…
+ ❯ src/workbench/workbenchStore.ts:256:62
+ ❯ Object.setStoryboardPlan src/workbench/workbenchDocumentSlice.ts:300:24
+ ❯ Module.applyCanvasToolCall src/workbench/generationCanvas/agent/applyCanvasToolCall.ts:303:26
+ ❯ src/workbench/generationCanvas/agent/applyCanvasToolCall.test.ts:318:23
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/6]⎯
+
+ FAIL  src/workbench/generationCanvas/agent/applyCanvasToolCall.test.ts > applyCanvasToolCall propose_storyboard_plan > 规划期间用户切走后不抢回工作区，结果仍落原文稿
+Error: [vitest] No "buildAgentModelEntries" export is defined on the "./availableModels" mock. Did you forget to return it from "vi.mock"?
+If you need to partially mock a module, you can use "importOriginal" helper inside:
+
+vi.mock(import("./availableModels"), async (importOriginal) => {
+  const actual = await importOriginal()
+  return {
+    ...actual,
+    // your mocked methods
+  }
+})
+
+ ❯ projectStoryboardDesign src/workbench/creation/storyboard/exec/storyboardProjection.ts:70:42
+     68| export function projectStoryboardDesign(design: StoryboardDesign, canv…
+     69|   for (const shot of design.plan.shots) {
+     70|     const entries = buildModelEntryIndex(buildAgentModelEntries(shot.m…
+       |                                          ^
+     71|     const profile = resolveArchetypeForModel({ modelKey: shot.modelKey…
+     72|     const mode = profile?.modes.find(candidate => candidate.id === (sh…
+ ❯ src/workbench/workbenchStore.ts:256:62
+ ❯ Object.setStoryboardPlan src/workbench/workbenchDocumentSlice.ts:300:24
+ ❯ Module.applyCanvasToolCall src/workbench/generationCanvas/agent/applyCanvasToolCall.ts:303:26
+ ❯ src/workbench/generationCanvas/agent/applyCanvasToolCall.test.ts:337:11
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/6]⎯
+
+ FAIL  src/workbench/generationCanvas/agent/applyCanvasToolCall.test.ts > applyCanvasToolCall propose_storyboard_plan > 全新拆镜不会覆盖当前已确认的分镜设计
+Error: [vitest] No "buildAgentModelEntries" export is defined on the "./availableModels" mock. Did you forget to return it from "vi.mock"?
+If you need to partially mock a module, you can use "importOriginal" helper inside:
+
+vi.mock(import("./availableModels"), async (importOriginal) => {
+  const actual = await importOriginal()
+  return {
+    ...actual,
+    // your mocked methods
+  }
+})
+
+ ❯ projectStoryboardDesign src/workbench/creation/storyboard/exec/storyboardProjection.ts:70:42
+     68| export function projectStoryboardDesign(design: StoryboardDesign, canv…
+     69|   for (const shot of design.plan.shots) {
+     70|     const entries = buildModelEntryIndex(buildAgentModelEntries(shot.m…
+       |                                          ^
+     71|     const profile = resolveArchetypeForModel({ modelKey: shot.modelKey…
+     72|     const mode = profile?.modes.find(candidate => candidate.id === (sh…
+ ❯ src/workbench/workbenchStore.ts:256:62
+ ❯ Object.setStoryboardPlan src/workbench/workbenchDocumentSlice.ts:300:24
+ ❯ Module.applyCanvasToolCall src/workbench/generationCanvas/agent/applyCanvasToolCall.ts:303:26
+ ❯ src/workbench/generationCanvas/agent/applyCanvasToolCall.test.ts:344:11
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/6]⎯
+
+
+ Test Files  2 failed | 1306 passed | 1 skipped (1309)
+      Tests  6 failed | 12123 passed | 2 skipped (12131)
+   Start at  16:58:15
+   Duration  53.38s (transform 26.59s, setup 14.55s, import 203.32s, tests 137.91s, environment 86ms)
+
+ ELIFECYCLE  Test failed. See above for more details.
+ ELIFECYCLE  Command failed with exit code 1.

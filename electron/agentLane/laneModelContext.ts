@@ -1,3 +1,4 @@
+import { MODEL_ANCHOR_GUIDANCE } from '../shared/agentCapabilities/availableModels'
 import type { AgentModelEntry } from '../shared/agentCapabilities/availableModels'
 import type { LaneComposerContext } from '../shared/agentLane/laneDesktopContracts'
 
@@ -25,6 +26,7 @@ export function formatLaneModelIndex(context: LaneComposerContext): string {
     '可用模型索引（modelKey: modeId[resolution]；* 是默认模式，逗号并列模式共用同一档位；保留原大小写）：',
     ...(selected ? [`text ${selected.vendorKey}/${selected.modelKey}（当前对话）`] : []),
     ...lines,
+    ...MODEL_ANCHOR_GUIDANCE,
     '这里只列图片/视频任务。完整类别、参数、参考槽与各模式约束：nomi_request_tools group=models 后 nomi_read target=models（可用 modelKey 缩小）；使用未列参数或参考边前先查。不要猜档位或混用不同模式参数。',
   ].join('\n');
 }

@@ -1,3 +1,5 @@
+import { anchorsConsumedBy } from '../../../../config/modelArchetypes/anchorPolicy'
+import { ignoredShotAnchors, type IgnoredAnchor } from '../../../generationCanvas/agent/storyboardAnchorPolicy'
 import type { GenerationCanvasNode } from '../../../generationCanvas/model/generationCanvasTypes'
 import type { ArchetypeMode, ArchetypeReferenceSlot } from '../../../../config/modelArchetypes/types'
 import type { ModelOption } from '../../../../config/models'
@@ -5,7 +7,7 @@ import { stableShotId, type PlanAnchor, type PlanShot, type StoryboardPlan } fro
 import { isVisualAnchor } from '../../../generationCanvas/agent/storyboardPromptCompiler'
 import { isAnchorFrozen } from '../../../generationCanvas/model/anchorBibleKeys'
 import { hasUsableResult } from '../../../generationCanvas/runner/dependencyWaves'
-import { missingRequiredSlots, referencedVisualAnchors, resolveShotArchetypeMode } from '../shotRow/shotRowModel'
+import { effectiveShotValue, missingRequiredSlots, referencedVisualAnchors, resolveShotArchetypeMode } from '../shotRow/shotRowModel'
 import { findAnchorNode, findShotKeyframeNode, findShotNode } from './storyboardNodeBinding'
 
 /**
@@ -28,7 +30,7 @@ import { findAnchorNode, findShotKeyframeNode, findShotNode } from './storyboard
  * - done             有可用结果（画面格 = 结果图 + 悬停浮条）；
  * - locked           已锁定（结果满意，不进批量不被重跑；同参考卡锁语义）。
  */
-export const SHOT_ROW_STATUSES = ['ready', 'waiting-refs', 'missing-required', 'generating', 'failed', 'recoverable', 'done', 'locked'] as const
+export const SHOT_ROW_STATUSES = ['ready', 'anchor-ignored', 'waiting-refs', 'missing-required', 'generating', 'failed', 'recoverable', 'done', 'locked'] as const
 export type ShotRowStatus = (typeof SHOT_ROW_STATUSES)[number]
 
 export type WaitingRef = {
@@ -50,6 +52,7 @@ export type ShotRowExec = {
   recoverableNode: GenerationCanvasNode | null
   /** 未就绪的引用锚（等参考图）。 */
   waitingRefs: WaitingRef[]
+  ignoredAnchors: IgnoredAnchor[]
   /** 已出图但未锁定的引用锚：单跑不拦（画布同一破锁语义）、批量要等锁。 */
   unlockedRefs: PlanAnchor[]
   /** 缺必填参考的槽（红态文案用第一个）。 */
@@ -93,7 +96,7 @@ function resultDisplayUrl(node: GenerationCanvasNode | null): string | null {
 
 /** 该行（按当前解析的档案模式）吃不吃参考：无档案（默认模型）按吃处理（保守，同建边行为）。 */
 export function rowConsumesReferences(mode: ArchetypeMode | null | undefined): boolean {
-  return !mode || mode.slots.length > 0
+  return !mode || !anchorsConsumedBy(mode).includes('none')
 }
 
 export function deriveShotRowExec(input: {
@@ -111,6 +114,7 @@ export function deriveShotRowExec(input: {
 
   // 引用锚就绪度（等参考图 / 待锁定）：吃参考的行才看；镜像批量波次的判据
   // （hasUsableResult + frozen），footer 排除原因与真实批次行为不打架。
+  const ignoredAnchors = ignoredShotAnchors(plan, shot, mode)
   const waitingRefs: WaitingRef[] = []
   const unlockedRefs: PlanAnchor[] = []
   if (rowConsumesReferences(mode)) {
@@ -149,7 +153,7 @@ export function deriveShotRowExec(input: {
               ? 'missing-required'
               : waitingRefs.length > 0
                 ? 'waiting-refs'
-                : 'ready'
+                : ignoredAnchors.length ? 'anchor-ignored' : 'ready'
 
   // 参考已变：diff「吃参考节点」（有首帧则锚边连在首帧图上）的提交时快照 vs 锚节点当前 result。
   // 快照里没这把锚（旧产物/后加的引用）不亮——只有确知「跑时用的是旧版」才报，不造假警报。
@@ -184,6 +188,7 @@ export function deriveShotRowExec(input: {
     keyframeNode,
     recoverableNode,
     waitingRefs,
+    ignoredAnchors,
     unlockedRefs,
     missingSlots,
     changedRefs,
@@ -215,8 +220,11 @@ export function deriveStoryboardRowRuntimes(input: {
   const { plan, designId, imageModelOptions, videoModelOptions, nodes } = input
   return plan.shots.map((shot) => {
     const options = shot.shotKind === 'image' ? imageModelOptions : videoModelOptions
-    const modelOption = options.find((option) => option.value === shot.modelKey) ?? null
-    const mode = resolveShotArchetypeMode(modelOption, shot.modeId)?.mode ?? null
+    const node = findShotNode(nodes, designId, shot)
+    const modelKey = effectiveShotValue(shot, node, 'modelKey')
+    const vendor = effectiveShotValue(shot, node, 'modelVendor')
+    const modelOption = options.find((option) => option.value === modelKey && (!vendor || option.vendor === vendor)) ?? null
+    const mode = resolveShotArchetypeMode(modelOption, effectiveShotValue(shot, node, 'modeId') as string | undefined)?.mode ?? null
     return { shot, mode, exec: deriveShotRowExec({ plan, shot, designId, nodes, mode }) }
   })
 }
@@ -240,6 +248,7 @@ export type AnchorCardRuntime = {
   locked: boolean
   /** 引用此锚的镜数（visual 反查计数；文本锚=写进提示词的镜数）。 */
   referencedByCount: number
+  consumedByShotCount: number
   /** 其中还没出图、正等这张卡的镜数（astat「N 镜在等它」）。 */
   waitingShotCount: number
 }
@@ -273,6 +282,7 @@ export function deriveAnchorCardRuntimes(input: {
         : null,
       locked: Boolean(node && isAnchorFrozen(node) && hasUsableResult(node)),
       referencedByCount: plan.shots.filter((shot) => shot.anchorIds.includes(anchor.id)).length,
+      consumedByShotCount: rows.filter(row => row.shot.anchorIds.includes(anchor.id) && (!visual || rowConsumesReferences(row.mode))).length,
       waitingShotCount: rows.filter((row) => row.exec.waitingRefs.some((ref) => ref.anchor.id === anchor.id)).length,
     }
   })
@@ -327,7 +337,7 @@ export function deriveStoryboardBatch<T extends StoryboardRowWithExec>(
     // 跳过是**批次筛选**，不是状态：它不改 countByStatus（那一份说的是"这镜做完没有"），
     // 只把这一行从 runnable 里摘出来。
     if (skippedShotIds?.has(stableShotId(row.shot))) {
-      if (row.exec.status === 'ready' || row.exec.status === 'failed') view.excluded.skipped += 1
+      if (row.exec.status === 'ready' || row.exec.status === 'anchor-ignored' || row.exec.status === 'failed') view.excluded.skipped += 1
       if (row.exec.status === 'done') view.doneCount += 1
       continue
     }
@@ -351,6 +361,7 @@ export function deriveStoryboardBatch<T extends StoryboardRowWithExec>(
       case 'missing-required':
         view.excluded.missingRequired += 1
         break
+      case 'anchor-ignored':
       case 'ready':
       case 'failed':
         // 就绪/失败重试的行：引用锚未锁定 → 不进批（批量波次的冻结门会拦，提前说清而不是让 toast 事后报）。

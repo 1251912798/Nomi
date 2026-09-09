@@ -19,6 +19,8 @@ export type AgentModelMode = {
   params: ModelParameterControl[];
   /** 该模式支持的参考槽（空=纯文生，不接任何参考边）。喂给 agent 让它按模型真实能力连边（T8）。 */
   slots: AgentModelSlot[];
+  /** Derived by the archetype policy owner; never recomputed by the prompt layer. */
+  consumesAnchors?: readonly string[];
 };
 
 export type AgentModelEntry = {
@@ -33,6 +35,12 @@ export type AgentModelEntry = {
   modes: AgentModelMode[];
 };
 
+/** Shared instruction text for the full catalog and the stable discovery index. */
+export const MODEL_ANCHOR_GUIDANCE = [
+  "引用视觉锚就必须显式选择能吃图片的模式，modelKey/modeId 不能留空；未指定时优先该模型吃得下锚的模式。",
+  "用户点名 t2v 就听用户，不自动改模式或删锚；方案摘要必须说明哪些镜的参考图不会被使用，并给出换同模型 i2v / 去掉视觉锚的纠正。",
+] as const;
+
 /** 把可选模型清单格式化成注入 agent 用户消息的紧凑文本。空清单返回 ''（不注入）。 */
 export function formatAvailableModelsForPrompt(entries: readonly AgentModelEntry[]): string {
   if (entries.length === 0) return "";
@@ -43,7 +51,7 @@ export function formatAvailableModelsForPrompt(entries: readonly AgentModelEntry
         const slots = m.slots.length
           ? `[参考槽:${m.slots.map((s) => `${s.label}${s.max !== undefined && s.max > 1 ? `×${s.max}` : ""}`).join("/")}]`
           : "[纯文生,不接参考边]";
-        return `${m.modeId}(${m.vendorTerm})${slots}`;
+        return `${m.modeId}(${m.vendorTerm})${m.consumesAnchors ? `[consumesAnchors:${m.consumesAnchors.join(",")}]` : ""}${slots}`;
       })
       .join(" / ");
     const params =
@@ -58,6 +66,7 @@ export function formatAvailableModelsForPrompt(entries: readonly AgentModelEntry
   return [
     "可用模型（为每个分镜/节点选一个，给出 modelKey、可选 modeId、params）：",
     ...lines,
+    ...MODEL_ANCHOR_GUIDANCE,
     "规则：modelKey 必须用上面列出的；modeId 用该模型的模式 id；params 用对应模型/模式支持的取值（如 aspect_ratio=9:16）。用户会在确认卡上调整，配错会被自动纠正。",
     "连参考边只连目标模型支持的：character_ref/style_ref/composition_ref 需要目标模式有图片参考槽（角色参考/参考图/输入图）；first_frame/last_frame 需要对应的首/尾帧槽；纯文生模式（无参考槽）不要连任何参考边。文本/镜头/输出节点不能作参考源（它们没有可参考的产物）。配错的边会被跳过并在 skippedEdges 里告知原因。",
   ].join("\n");
