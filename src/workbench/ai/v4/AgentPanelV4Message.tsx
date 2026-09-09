@@ -1,3 +1,4 @@
+import { V4Row, V4Shimmer } from './AgentPanelV4Row'
 // Agent 面板 v4 · 积木 ① 用户气泡 · ② 助手文本（含思考行）
 //
 // 定稿 Vocabulary 板 ①②：用户气泡右对齐 ink 深底，附件缩成 chip **在气泡内**；
@@ -50,7 +51,7 @@ export function V4UserBubble({
   return (
     <div
       className={cn(
-        'ml-auto max-w-[86%] rounded-nomi px-3 py-2 text-body-sm',
+        'self-end max-w-[86%] rounded-nomi px-3 py-2 text-body-sm',
         // 暗色下用 ink-10 底而不是纯黑（定稿 Dark 板批注）：token 翻转后纯 ink 会变成浅色块。
         darkMode ? 'bg-nomi-ink-10 text-nomi-ink' : 'bg-nomi-ink text-nomi-paper',
       )}
@@ -210,12 +211,10 @@ export function V4Suggestion({
  */
 export function V4Thinking({ label, meta }: { label: string; meta: string }): JSX.Element {
   return (
-    <div className="inline-flex h-7 items-center gap-2 text-caption text-nomi-ink-60" data-v4-block="thinking">
+    <V4Row className="h-7 text-caption text-nomi-ink-60" data-v4-block="thinking">
       <ActionIcon action="think" />
-      <span className="bg-gradient-to-r from-nomi-ink-40 via-nomi-ink to-nomi-ink-40 bg-clip-text text-transparent">
-        {label}
-      </span>
-      <span className="ml-auto font-nomi-mono text-micro text-nomi-ink-40">{meta}</span>
-    </div>
+      <V4Shimmer>{label}</V4Shimmer>
+      <span className="font-nomi-mono text-micro text-nomi-ink-40">{meta}</span>
+    </V4Row>
   )
 }
