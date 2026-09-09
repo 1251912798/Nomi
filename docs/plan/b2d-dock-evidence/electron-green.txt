@@ -1,18 +1,19 @@
-feel record: b2d-dock/waitForFunction.png; findings=36; new-surfaces=2; evidence: /Users/aoqimin/Desktop/Nomi-panel-form/artifacts/feel/b2d-dock-f02ad093-fd42-41cd-81d4-bf2cdfa16381
-feel record: b2d-dock/process-done-non-hover.png; findings=36; new-surfaces=2; evidence: /Users/aoqimin/Desktop/Nomi-panel-form/artifacts/feel/b2d-dock-f02ad093-fd42-41cd-81d4-bf2cdfa16381
+feel record: b2d-dock/waitForFunction.png; findings=36; new-surfaces=2; evidence: /Users/aoqimin/Desktop/Nomi-panel-form/artifacts/feel/b2d-dock-4b5fe99d-6b85-4dc7-a2c6-f8d4ef1315f7
+feel record: b2d-dock/process-done-non-hover.png; findings=36; new-surfaces=2; evidence: /Users/aoqimin/Desktop/Nomi-panel-form/artifacts/feel/b2d-dock-4b5fe99d-6b85-4dc7-a2c6-f8d4ef1315f7
 SHOT process-done-non-hover
-feel record: b2d-dock/waitForFunction.png; findings=36; new-surfaces=0; evidence: /Users/aoqimin/Desktop/Nomi-panel-form/artifacts/feel/b2d-dock-f02ad093-fd42-41cd-81d4-bf2cdfa16381
-feel record: b2d-dock/process-done-hover.png; findings=36; new-surfaces=2; evidence: /Users/aoqimin/Desktop/Nomi-panel-form/artifacts/feel/b2d-dock-f02ad093-fd42-41cd-81d4-bf2cdfa16381
+feel record: b2d-dock/waitForFunction.png; findings=36; new-surfaces=0; evidence: /Users/aoqimin/Desktop/Nomi-panel-form/artifacts/feel/b2d-dock-4b5fe99d-6b85-4dc7-a2c6-f8d4ef1315f7
+feel record: b2d-dock/process-done-hover.png; findings=36; new-surfaces=2; evidence: /Users/aoqimin/Desktop/Nomi-panel-form/artifacts/feel/b2d-dock-4b5fe99d-6b85-4dc7-a2c6-f8d4ef1315f7
 SHOT process-done-hover
-feel record: b2d-dock/waitForFunction.png; findings=8; new-surfaces=1; evidence: /Users/aoqimin/Desktop/Nomi-panel-form/artifacts/feel/b2d-dock-f02ad093-fd42-41cd-81d4-bf2cdfa16381
-feel record: b2d-dock/dock-before-close.png; findings=8; new-surfaces=3; evidence: /Users/aoqimin/Desktop/Nomi-panel-form/artifacts/feel/b2d-dock-f02ad093-fd42-41cd-81d4-bf2cdfa16381
+feel record: b2d-dock/waitForFunction.png; findings=8; new-surfaces=1; evidence: /Users/aoqimin/Desktop/Nomi-panel-form/artifacts/feel/b2d-dock-4b5fe99d-6b85-4dc7-a2c6-f8d4ef1315f7
+feel record: b2d-dock/dock-before-close.png; findings=8; new-surfaces=3; evidence: /Users/aoqimin/Desktop/Nomi-panel-form/artifacts/feel/b2d-dock-4b5fe99d-6b85-4dc7-a2c6-f8d4ef1315f7
 SHOT dock-before-close
-feel record: b2d-dock/waitForFunction.png; findings=6; new-surfaces=0; evidence: /Users/aoqimin/Desktop/Nomi-panel-form/artifacts/feel/b2d-dock-f02ad093-fd42-41cd-81d4-bf2cdfa16381
-feel record: b2d-dock/dock-closed-canvas.png; findings=6; new-surfaces=1; evidence: /Users/aoqimin/Desktop/Nomi-panel-form/artifacts/feel/b2d-dock-f02ad093-fd42-41cd-81d4-bf2cdfa16381
+feel record: b2d-dock/waitForFunction.png; findings=6; new-surfaces=0; evidence: /Users/aoqimin/Desktop/Nomi-panel-form/artifacts/feel/b2d-dock-4b5fe99d-6b85-4dc7-a2c6-f8d4ef1315f7
+feel record: b2d-dock/dock-closed-canvas.png; findings=6; new-surfaces=1; evidence: /Users/aoqimin/Desktop/Nomi-panel-form/artifacts/feel/b2d-dock-4b5fe99d-6b85-4dc7-a2c6-f8d4ef1315f7
 SHOT dock-closed-canvas
-feel record: b2d-dock/waitForFunction.png; findings=7; new-surfaces=0; evidence: /Users/aoqimin/Desktop/Nomi-panel-form/artifacts/feel/b2d-dock-f02ad093-fd42-41cd-81d4-bf2cdfa16381
-feel record: b2d-dock/hidden-with-pending-badge.png; findings=7; new-surfaces=1; evidence: /Users/aoqimin/Desktop/Nomi-panel-form/artifacts/feel/b2d-dock-f02ad093-fd42-41cd-81d4-bf2cdfa16381
+feel record: b2d-dock/waitForFunction.png; findings=7; new-surfaces=0; evidence: /Users/aoqimin/Desktop/Nomi-panel-form/artifacts/feel/b2d-dock-4b5fe99d-6b85-4dc7-a2c6-f8d4ef1315f7
+feel record: b2d-dock/hidden-with-pending-badge.png; findings=7; new-surfaces=1; evidence: /Users/aoqimin/Desktop/Nomi-panel-form/artifacts/feel/b2d-dock-4b5fe99d-6b85-4dc7-a2c6-f8d4ef1315f7
 SHOT hidden-with-pending-badge
-feel record: b2d-dock/waitForFunction.png; findings=57; new-surfaces=0; evidence: /Users/aoqimin/Desktop/Nomi-panel-form/artifacts/feel/b2d-dock-f02ad093-fd42-41cd-81d4-bf2cdfa16381
-feel record: b2d-dock/chip-restored-panel.png; findings=57; new-surfaces=2; evidence: /Users/aoqimin/Desktop/Nomi-panel-form/artifacts/feel/b2d-dock-f02ad093-fd42-41cd-81d4-bf2cdfa16381
+feel record: b2d-dock/waitForFunction.png; findings=57; new-surfaces=0; evidence: /Users/aoqimin/Desktop/Nomi-panel-form/artifacts/feel/b2d-dock-4b5fe99d-6b85-4dc7-a2c6-f8d4ef1315f7
+feel record: b2d-dock/chip-restored-panel.png; findings=57; new-surfaces=2; evidence: /Users/aoqimin/Desktop/Nomi-panel-form/artifacts/feel/b2d-dock-4b5fe99d-6b85-4dc7-a2c6-f8d4ef1315f7
 SHOT chip-restored-panel
+exit_code=0
