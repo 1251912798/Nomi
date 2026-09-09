@@ -1,0 +1,26 @@
+# B5 信息密度杂项
+
+状态：🚧 实施中；尚未完成真机复扫、gates 或 PR 交付。
+
+范围：09-09 总账 DC21–DC24、C53 导入去重、C09 概览阅读、B4 显示名。每项独立小提交，一个 PR。用户本轮任务书授权依已有审计方向直接修复；以真实外壳改前/改后截图对账。仅隔离 Electron profile，不读取用户资料库。
+
+## 先查别人
+
+- 反方只读代理核对：`src/ui/notificationPolicy.ts:24` 已统一原地/后台归属；`src/ui/toast.tsx:99` 已按身份及原因更新 Mantine 单 store、计次和清旧动作。DC23 沿用并补证据，不重造。
+- `electron/assets/projectAssetStore.ts:240` 已有 SHA256；`:246` bytes 与 `:341` native 落盘仍每次 uniqueAssetPath。C53 在这些共享上传边界复用同项目内容身份，保留同名异内容与生成产物。
+- `src/workbench/generationCanvas/model/canvasFitBounds.ts:39` 已合并节点和框；`reactFlow/GenerationCanvasReactFlow.tsx:334` 调框架 getViewportForBounds。保留全景能力，以现役聚焦提供可阅读缩放，不提高最低缩放裁内容。
+- `src/workbench/generationCanvas/nodes/render/CardCommon.tsx:149` 已有等待上游/首帧/生成的行动提示；删除完整 prompt 的第二投影，编辑器继续拥有全文。
+- `src/workbench/taskCenter/exportJobTaskCenter.ts:28` 丢失原因且终态 action 为 null；沿既有 TaskCenter 动作与 bridge 补真实后续入口，禁止回显路径或原始错误。
+- 外部依据沿已有通知政策的实读记录：[通知政策](2026-09-09-notification-policy.md)、[密度审计](2026-09-09-info-density-audit.md)。本次不引入依赖、协议、供应商或第二套通知/缩放内核。
+
+## 实施与验收
+
+DC21：占位只有当前下一步，图片/视频/3D 全覆盖。
+DC22：结果不能停在裸失败标签，保留安全原因和真实可执行动作；恢复与阻塞分别验证。
+DC23：证明同对象重复更新、不同对象不误合并、原地反馈撤回旧全局提示。
+DC24：正常合法静默；重复教学删去。隐私、付费、不可逆授权与实际手势差异保留。
+C53：按内容 SHA256 复用同项目上传素材；跨次、并发、bytes/native、同名异内容覆盖。
+C09：概览保全景，既有聚焦/比例入口可以看清选中媒体，不引入第二缩放状态。
+B4：先 git apply --check，再采用用户给定 patch，展示名与供应商身份分离。
+
+验证：改前/改后隔离真机截图、人眼审核；针对性红绿回归；基线仅按本次变化定向更新并在 PR 列全名；`python3 scripts/with-gates-lock.py -- pnpm run gates` 等待锁直至完成。正常 hooks commit/push；一个 PR。回滚按条目 revert，小提交无用户数据迁移。最终写 b5-density-LAST.md 并复制到指定 scratchpad。

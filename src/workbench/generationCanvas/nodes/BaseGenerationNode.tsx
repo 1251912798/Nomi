@@ -589,7 +589,6 @@ function BaseGenerationNodeImpl({
             kind={node.kind}
             selected={selected} needsFirstFrame={needsFirstFrame}
             waitingUpstream={hasFrameSourceEdge}
-            prompt={displayPrompt}
           />
         )}
         {imageEditing.editGrid !== null &&

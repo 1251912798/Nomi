@@ -91,8 +91,8 @@ export const zhGenerationCommon = {
     someMissing: '{{count}} 张没加载出来，那几格留了空位',
   },
   nodeEmpty: {
-    image: { title: '图片节点', description: '放入图片，作为参考或生成结果。' },
-    video: { title: '视频节点', description: '连接首帧或提示词，生成一段视频。' },
+    image: { title: '图片节点', description: '在下方输入提示词，点击生成。' },
+    video: { title: '视频节点', description: '在下方输入提示词，点击生成视频。' },
     audio: { title: '音频节点', description: '放入声音，为作品添加配乐或旁白。' },
     text: { title: '文本节点', description: '写下脚本、对白或制作备注。' },
     clip: { title: '剪辑节点', description: '把视频节点连进来，或从素材库添加图片/视频。' },
@@ -1579,8 +1579,8 @@ export const enGenerationCommon = {
     someMissing: '{{count}} images failed to load; those cells were left blank',
   },
   nodeEmpty: {
-    image: { title: 'Image node', description: 'Add an image as a reference or generation result.' },
-    video: { title: 'Video node', description: 'Connect a first frame or prompt to generate a clip.' },
+    image: { title: 'Image node', description: 'Enter a prompt below, then generate.' },
+    video: { title: 'Video node', description: 'Enter a prompt below, then generate a video.' },
     audio: { title: 'Audio node', description: 'Add sound for music, effects, or voiceover.' },
     text: { title: 'Text node', description: 'Write a script, dialogue, or production note.' },
     clip: { title: 'Clip node', description: 'Connect a video node or add image/video from your library.' },
