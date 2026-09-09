@@ -1,0 +1,103 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-09-toast-action-layout",
+  "problem_type": "Unbounded notification action consumes message width",
+  "symptom": "Chinese notification body wraps to one glyph per line at 360px.",
+  "direct_cause": "ToastMessage action has shrink-0 without a width cap; flex-1 min-w-0 body absorbs all compression.",
+  "class_root": "Shared notification content lacks a sibling width budget and readable minimum geometry.",
+  "affected_population": [
+    "Any toast caller with long localized or dynamic action labels"
+  ],
+  "scope_paths": [
+    "src/ui/toast.tsx"
+  ],
+  "entry_points": [
+    "Undo notifications",
+    "Batch generation retry",
+    "Scene camera selection"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "Application CSS width allocation, not a dependency API defect; installed Mantine notification rendering is exercised unchanged.",
+  "invariants": [
+    "Action width <=40% of content row; full accessible label and title survive truncation.",
+    "Notification has viewport-safe minimum width; text remains readable."
+  ],
+  "generality_proof": "Every toast caller passes through ToastMessage; geometry depends on available space, not provider or input length.",
+  "shared_boundaries": [
+    {
+      "path": "src/ui/toast.tsx",
+      "symbol": "ToastMessage",
+      "responsibility": "Allocate readable message width and bounded action width for all inputs."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/utils/showUndoToast.ts",
+      "entry_point": "showUndoToast",
+      "disposition": "enforced",
+      "evidence": "Pushes localized undo labels through useToastStore."
+    },
+    {
+      "path": "src/workbench/generationCanvas/components/batchPlanPreview.ts",
+      "entry_point": "runPlanWithToasts",
+      "disposition": "enforced",
+      "evidence": "Retry failed-count action uses the same toast store."
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/scene3d/useScene3DFullscreenActions.ts",
+      "entry_point": "useScene3DFullscreenActions",
+      "disposition": "enforced",
+      "evidence": "Camera-name action can be arbitrarily long and uses the same toast store."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Any localized or user-derived action can repeat the failure.",
+    "same_class_scan": [
+      "AST scan of all src/electron TSX flex rows with min-w-0 flex-1 body and unbounded shrink-0 siblings; 89 candidates (105 raw output lines) recorded in scan report.",
+      "rg actionLabel and useToastStore locates undo, batch retry and scene camera callers."
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "src/ui/toast.tsx",
+    "invariant": "The action never consumes more than 40% of row width.",
+    "failure_mode": "Overlong labels truncate visually while full label remains in title and accessible name.",
+    "exception_policy": "none",
+    "strategy": "Constrain the shared component rather than individual labels or callers.",
+    "artifacts": [
+      "src/ui/toast.tsx"
+    ]
+  },
+  "regression_tests": [
+    "tests/ux/toast-layout.spec.ts",
+    "src/ui/toast.test.ts"
+  ],
+  "class_regression_tests": [
+    "tests/ux/toast-layout.spec.ts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "src/ui/toast.tsx"
+    ],
+    "rationale": "Replaces the unbounded action class in place; no parallel host."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "No framework change; application owns CSS geometry. Real installed Mantine is retained and rendered in browser regression.",
+    "exit_criteria": []
+  },
+  "migration": "No persisted state changes or migration.",
+  "residual_risks": [
+    "B4 switch-action producer is an uncommitted change in Nomi-money-guard, absent from origin/main. Display-name patch is prepared but not applied or tested.",
+    "Non-toast homologous layout risks are enumerated in the report; browser verification covers the shared toast only."
+  ],
+  "invariant_owner_layer": {
+    "layer": "src/ui/toast.tsx",
+    "tests": [
+      "tests/ux/toast-layout.spec.ts",
+      "src/ui/toast.test.ts"
+    ]
+  }
+}

@@ -43,6 +43,7 @@ const GenerationWorkspace = lazyWithChunkBoundary(
 const PreviewWorkspace = lazyWithChunkBoundary("预览区", () => import("./preview/PreviewWorkspace"));
 
 type WorkbenchShellProps = {
+    projectFeedback?: React.ReactNode;
     generation: React.ReactNode;
     projectId?: string | null;
     projectName?: string;
@@ -138,6 +139,7 @@ function openBrowser(): void {
 }
 
 export default function WorkbenchShell({
+    projectFeedback,
     generation,
     projectId,
     projectName,
@@ -342,6 +344,7 @@ export default function WorkbenchShell({
                 onOpenSettings={onOpenSettings}
                 onRenameProject={onRenameProject}
             />
+            {projectFeedback}
             <UpdaterDialog updater={updater} hasRunningTask={hasRunningTask} />
 
             {/* 左侧面板重做: 分类导航 + 文件树统一收进 ProjectExplorerSidebar 的双 Tab。

@@ -67,3 +67,10 @@
 裁决：两边均保留。#682 的 `getVendorPreference` / `orderByVendorPreference` 继续在 `listAvailableModelsForAgent` 按供应商偏好排序，同名模型解析沿用该顺序；#681 的 `anchorsConsumedBy` 继续只在 `formatAvailableModelsForPrompt` 派生每模式的锚消费说明，并保留两行视觉锚 / 用户点名 t2v 规则。解析归解析，格式化归格式化，不合并职责。
 这是两项独立改动的文本冲突，不新增生产行为或修复合同；已有供应商偏好与锚消费回归一起验证。范围不扩展，回滚本次 merge 使用第一父提交作为主线。
 验收顺序：正常 hooks 提交 merge → `pnpm run test -- availableModels storyboard anchor` → 完整 `python3 scripts/with-gates-lock.py -- pnpm run gates` exit 0 → 正常 push 任务分支；fresh-base 若落后则再并入、重验。
+
+## 并线 d3fa25888
+
+本次仅把 `origin/main`（`d3fa258883c6db9cf6565be6699c0f92cf4fbe2b`，含 #679）并入 #681；merge-base 为 `f708568dfc19f3d2e68d10adc723a20c1c6eef42`，唯一冲突是 `BaseGenerationNode.tsx` 顶部同位置新增的 import。
+裁决：保留两条 import。#679 的 `notify` 继续使用节点身份 `BaseGenerationNodeImpl:${node.id}`、`level: 'inline'` 和 `present: setFeedback` 更新原地反馈；失败重试、结果栈等入口继续接 `reportFeedback`。#681 的 `StoryboardOverrideBadge` 保留原挂载位置，从节点逐字段覆写派生「画布改的：夜景」角标。反馈与覆写信息同时保留，不重新引入 toast。
+这是既有独立实现的文本冲突，不新增行为或修复合同；已检查 `useProductionNodeRetry`、`NodeResultStack` 的反馈消费者及共享 `notificationPolicy` inline 分支，保留两侧既有边界与回归。范围不扩展，回滚本次 merge 使用第一父提交作为主线。
+验收顺序：正常 hooks 提交 merge → `pnpm run test -- BaseGenerationNode storyboard anchor notification` → 完整 `python3 scripts/with-gates-lock.py -- pnpm run gates` exit 0 → 正常 push 任务分支；fresh-base 若落后则再并入、重验。

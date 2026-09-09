@@ -1,4 +1,4 @@
-import { toast } from '../../../ui/toast'
+import { reportCanvasFeedback } from '../components/canvasFeedback'
 import {
   hostedAssetUrl,
   importWorkbenchLocalAssetFile,
@@ -545,14 +545,13 @@ export async function pasteClipboardImageToGenerationCanvas(
   return pasteClipboardMediaToGenerationCanvas(options)
 }
 
-export function showClipboardMediaPasteNotes(result: ClipboardMediaPasteResult): void {
+export function showClipboardMediaPasteNotes(result: ClipboardMediaPasteResult, projectId: string): void {
   if (!result.handled) return
   const notes: string[] = []
   if (result.skippedOverLimitCount > 0) notes.push(`超过 8 个，已忽略 ${result.skippedOverLimitCount} 个`)
   if (result.skippedTooLargeCount > 0) notes.push(`${result.skippedTooLargeCount} 个媒体过大`)
   if (result.failedCount > 0) notes.push(`${result.failedCount} 个媒体导入失败`)
-  if (result.usedExternalUrl) notes.push('网页媒体已作为外链引用')
-  if (notes.length) toast(notes.join('；'), result.failedCount > 0 ? 'error' : 'info')
+  if (notes.length) reportCanvasFeedback(notes.join('；'), result.failedCount > 0 ? 'error' : 'warning', { projectId, identity: 'canvas-paste', reason: 'paste-incomplete' })
 }
 
 export const showClipboardImagePasteNotes = showClipboardMediaPasteNotes

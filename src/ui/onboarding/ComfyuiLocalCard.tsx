@@ -16,8 +16,8 @@ import { translateModelDisplayText } from '../../i18n/modelDisplayText'
 import { IconServerBolt, IconPlugConnected, IconCircleCheck, IconAlertTriangle, IconPhoto, IconMovie, IconRefresh, IconExternalLink, IconCheck, IconX, IconTrash, IconChevronRight } from '@tabler/icons-react'
 import { cn } from '../../utils/cn'
 import { getDesktopBridge } from '../../desktop/bridge'
-import { toast } from '../toast'
-import { alertDialog, confirmDialog } from '../../design'
+import { notify } from '../notificationPolicy'
+import { confirmDialog } from '../../design'
 import { FoldableModelCard } from './FoldableModelCard'
 import { ComfyuiWorkflowImportPanel } from './ComfyuiWorkflowImportPanel'
 import { ComfyuiPresetSection } from './ComfyuiPresetSection'
@@ -77,6 +77,11 @@ export function ComfyuiLocalCard({ vendorKey, instanceName, enabled, baseUrl, mo
   const [health, setHealth] = React.useState<ComfyuiHealth | null>(null)
   const [checking, setChecking] = React.useState(false)
   const [busy, setBusy] = React.useState(false)
+  const [feedback, setFeedback] = React.useState<{ owner: string; message: string; error: boolean } | null>(null)
+  const report = (reason: string, message: string, error = true) => notify({
+    identity: `comfyui:${key}`, reason, message, type: error ? 'error' : 'info', level: 'inline',
+    present: (text) => setFeedback({ owner: key, message: text, error }),
+  })
   const [editing, setEditing] = React.useState(false)
   // 打开「工作流设置」整页（'' = 只开页不预选某条）。整页是配置动作的唯一入口（2026-08-12 拍板）。
   const [workflowPageKey, setWorkflowPageKey] = React.useState<string | null>(null)
@@ -109,6 +114,7 @@ export function ComfyuiLocalCard({ vendorKey, instanceName, enabled, baseUrl, mo
   if (!catalog) return null
 
   const handleEnable = async () => {
+    setFeedback(null)
     setBusy(true)
     try {
       const r = await probe()
@@ -116,35 +122,37 @@ export function ComfyuiLocalCard({ vendorKey, instanceName, enabled, baseUrl, mo
       // canonical run reaches promotion; this prevents save-then-enable.
       catalog.upsertVendor({ key, enabled: false, baseUrlHint: normalizeComfyuiAddressInput(baseUrl) })
       onChanged()
-      toast(r.ok ? t('onboardingProviders.comfyWorkflow.awaitingVerification', { name: instanceName || key }) : t('onboardingProviders.comfyLocal.enabledWithoutConnection'), 'info')
+      report('verification-required', r.ok ? t('onboardingProviders.comfyWorkflow.awaitingVerification', { name: instanceName || key }) : t('onboardingProviders.comfyLocal.enabledWithoutConnection'), false)
     } catch (e) {
-      toast(e instanceof Error ? e.message : t('onboardingProviders.comfyLocal.enableFailed'), 'error')
+      report('enable-failed', e instanceof Error ? e.message : t('onboardingProviders.comfyLocal.enableFailed'))
     } finally {
       setBusy(false)
     }
   }
 
   const handleDisable = () => {
+    setFeedback(null)
     setBusy(true)
     try {
       catalog.upsertVendor({ key, enabled: false })
       setHealth(null)
       onChanged()
-      toast(t('onboardingProviders.comfyLocal.disabled'), 'success')
     } catch (e) {
-      toast(e instanceof Error ? e.message : t('onboardingProviders.comfyLocal.disableFailed'), 'error')
+      report('disable-failed', e instanceof Error ? e.message : t('onboardingProviders.comfyLocal.disableFailed'))
     } finally {
       setBusy(false)
     }
   }
 
   const handleSaveAddr = async () => {
+    setFeedback(null)
     const next = normalizeComfyuiAddressInput(addrDraft)
     if (!next) return
-    catalog.upsertVendor({ key, baseUrlHint: next })
-    setEditing(false)
-    onChanged() // 父组件重查 → baseUrl 变 → useEffect 重探
-    toast(t('onboardingProviders.comfyLocal.addressUpdated'), 'success')
+    try {
+      catalog.upsertVendor({ key, baseUrlHint: next })
+      setEditing(false)
+      onChanged() // 父组件重查 → baseUrl 变 → useEffect 重探
+    } catch (e) { report('address-failed', e instanceof Error ? e.message : String(e)) }
   }
 
   const cancelAddressEditing = (): void => {
@@ -161,14 +169,14 @@ export function ComfyuiLocalCard({ vendorKey, instanceName, enabled, baseUrl, mo
       danger: true,
     })
     if (!ok) return
+    setFeedback(null)
     setBusy(true)
     try {
       if (models.length > 0) catalog.deleteModels(models.map((m) => ({ vendorKey: key, modelKey: m.modelKey })))
       catalog.deleteVendor?.(key)
       onChanged()
-      toast(t('onboardingProviders.comfyInstance.removed', { name: instanceName || key }), 'success')
     } catch (e) {
-      void alertDialog({ title: t('onboardingProviders.drawer.deleteFailed'), message: e instanceof Error ? e.message : String(e) })
+      report('delete-failed', e instanceof Error ? e.message : String(e))
     } finally {
       setBusy(false)
     }
@@ -182,12 +190,12 @@ export function ComfyuiLocalCard({ vendorKey, instanceName, enabled, baseUrl, mo
       danger: true,
     })
     if (!ok) return
+    setFeedback(null)
     try {
       catalog.deleteModels([{ vendorKey: key, modelKey: model.modelKey }])
       onChanged()
-      toast(t('onboardingProviders.comfyLocal.workflowDeleted', { name: model.labelZh }), 'success')
     } catch (e) {
-      void alertDialog({ title: t('onboardingProviders.drawer.deleteFailed'), message: e instanceof Error ? e.message : String(e) })
+      report('delete-failed', e instanceof Error ? e.message : String(e))
     }
   }
 
@@ -257,6 +265,7 @@ export function ComfyuiLocalCard({ vendorKey, instanceName, enabled, baseUrl, mo
       onOpenDetails={onOpenDetails}
       detailMode={detailMode}
     >
+      {feedback?.owner === key ? <p role={feedback.error ? 'alert' : 'status'} className={cn('text-caption leading-relaxed', feedback.error ? 'text-workbench-danger' : 'text-nomi-ink-60')}>{feedback.message}</p> : null}
       {!enabled ? (
         <>
           {addrRow}

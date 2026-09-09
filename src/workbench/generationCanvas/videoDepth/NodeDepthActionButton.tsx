@@ -20,16 +20,18 @@ import { TOOLBAR_ICON as I, ToolbarButton } from '../nodes/NodeFloatingToolbar'
 import { startVideoDepthDerivation } from './startVideoDepthDerivation'
 import type { GenerationCanvasNode } from '../model/generationCanvasTypes'
 
-export default function NodeDepthActionButton({
+export default function NodeDepthActionButton({ reportFeedback,
   node,
   disabled = false,
 }: {
+  reportFeedback: (message: string) => void
   node: GenerationCanvasNode
   disabled?: boolean
 }): JSX.Element {
+
   const { t } = useTranslation()
   return (
-    <ToolbarButton
+    <><ToolbarButton
       icon={<IconShadow size={I.size} stroke={I.stroke} />}
       label={t('videoDepth.action.label')}
       // 那句诚实边界（§12.4：深度参考不承载手指/表情/衣物，也不保证比原片更准）此前住在
@@ -38,8 +40,8 @@ export default function NodeDepthActionButton({
       title={t('videoDepth.action.hint')}
       disabled={disabled}
       onClick={() => {
-        startVideoDepthDerivation(node)
+        startVideoDepthDerivation(node, reportFeedback)
       }}
-    />
+    /></>
   )
 }

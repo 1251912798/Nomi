@@ -1,15 +1,18 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { BATCH_RUN_TOAST_ID, describeBlockedNotice, runPlanWithToasts } from './batchPlanPreview'
 import type { DependencyWavePlan } from '../runner/dependencyWaves'
 import { runGenerationNodesByPlan } from '../runner/generationRunController'
 
 const mocks = vi.hoisted(() => ({
+  projectId: 'project-a',
   toast: vi.fn(),
   toastPush: vi.fn(),
   confirmAndMintGrant: vi.fn(async () => 'retry-grant'),
   nodes: [{ id: 'a', kind: 'image', title: 'A', position: { x: 0, y: 0 } }],
   edges: [],
 }))
+
+vi.mock('../../../desktop/activeProject', () => ({ getDesktopActiveProjectId: () => mocks.projectId }))
 
 vi.mock('../../../ui/toast', () => ({
   toast: mocks.toast,
@@ -66,8 +69,10 @@ describe('describeBlockedNotice — 批量「缺啥提示啥」', () => {
 })
 
 describe('runPlanWithToasts concurrency', () => {
+  afterEach(() => vi.unstubAllGlobals())
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.projectId = 'project-a'
     vi.mocked(runGenerationNodesByPlan).mockResolvedValue({ totalCount: 1, successes: [], failures: [] })
     mocks.confirmAndMintGrant.mockResolvedValue('retry-grant')
   })
@@ -85,7 +90,7 @@ describe('runPlanWithToasts concurrency', () => {
     })
   })
 
-  it('updates start and terminal feedback through one stable notification id', async () => {
+  it('keeps ordinary progress and success on nodes without toast echoes', async () => {
     vi.mocked(runGenerationNodesByPlan).mockResolvedValueOnce({
       totalCount: 1,
       successes: [{ nodeId: 'a', result: { id: 'result-a', type: 'image', url: 'data:image/png;base64,a', createdAt: 1 } }],
@@ -94,9 +99,37 @@ describe('runPlanWithToasts concurrency', () => {
 
     await runPlanWithToasts(plan({ waves: [['a']] }), { assetUploadConsent: 'not-needed' })
 
-    expect(mocks.toastPush).toHaveBeenCalledTimes(2)
-    expect(mocks.toastPush.mock.calls[0][0]).toMatchObject({ id: BATCH_RUN_TOAST_ID, ttl: false })
-    expect(mocks.toastPush.mock.calls[1][0]).toMatchObject({ id: BATCH_RUN_TOAST_ID, type: 'success' })
+    expect(mocks.toastPush).not.toHaveBeenCalled()
+  })
+
+  it('never retries an old batch against the newly active project', async () => {
+    vi.mocked(runGenerationNodesByPlan).mockResolvedValueOnce({
+      totalCount: 1, successes: [], failures: [{ nodeId: 'a', error: new Error('failed') }],
+    })
+    await runPlanWithToasts(plan({ waves: [['a']] }), { assetUploadConsent: 'not-needed' })
+    mocks.projectId = 'project-b'
+    const dispatchEvent = vi.fn((_event: Event) => true) // No application navigation handler accepted this request.
+    vi.stubGlobal('window', { dispatchEvent })
+    await mocks.toastPush.mock.calls[0][0].onAction()
+    expect(runGenerationNodesByPlan).toHaveBeenCalledTimes(1)
+    expect(mocks.confirmAndMintGrant).not.toHaveBeenCalled()
+    expect(dispatchEvent.mock.calls[0][0]).toHaveProperty('detail.projectId', 'project-a')
+  })
+
+  it('does not replace another project recovery action when node IDs match and no grant is supplied', async () => {
+    vi.mocked(runGenerationNodesByPlan).mockResolvedValue({ totalCount: 1, successes: [], failures: [{ nodeId: 'a', error: new Error('offline') }] })
+    await runPlanWithToasts(plan({ waves: [['a']] }), { assetUploadConsent: 'not-needed' })
+    mocks.projectId = 'project-b'
+    await runPlanWithToasts(plan({ waves: [['a']] }), { assetUploadConsent: 'not-needed' })
+    const [first, second] = mocks.toastPush.mock.calls.map(([notice]) => notice)
+    expect(first.id).not.toBe(second.id)
+    expect(first.id).toContain('project-a')
+    expect(second.id).toContain('project-b')
+    const dispatchEvent = vi.fn((_event: Event) => true)
+    vi.stubGlobal('window', { dispatchEvent })
+    await first.onAction()
+    expect(dispatchEvent.mock.calls[0][0]).toHaveProperty('detail.projectId', 'project-a')
+    expect(mocks.confirmAndMintGrant).not.toHaveBeenCalled()
   })
 
   it('keeps the selected concurrency when the explicit retry action reruns failures', async () => {
@@ -113,9 +146,9 @@ describe('runPlanWithToasts concurrency', () => {
       })
 
     await runPlanWithToasts(plan({ waves: [['a']] }), { concurrency: 4, assetUploadConsent: 'not-needed' })
-    const failedToast = mocks.toastPush.mock.calls[1][0]
+    const failedToast = mocks.toastPush.mock.calls[0][0]
     expect(failedToast).toMatchObject({
-      id: BATCH_RUN_TOAST_ID,
+      id: `${BATCH_RUN_TOAST_ID}:project-a:a`,
       type: 'error',
       actionLabel: expect.any(String),
       onAction: expect.any(Function),
@@ -131,6 +164,6 @@ describe('runPlanWithToasts concurrency', () => {
       // 本用例的节点没有本地素材，所以正确答案是 not-needed：压根不碰公共托管。
       assetUploadConsent: 'not-needed',
     })
-    expect(mocks.toastPush.mock.calls.slice(2).every(([input]) => input.id === BATCH_RUN_TOAST_ID)).toBe(true)
+    expect(mocks.toastPush).toHaveBeenCalledTimes(1)
   })
 })

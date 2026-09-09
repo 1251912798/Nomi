@@ -1,0 +1,54 @@
+
+ RUN  v4.1.8 /Users/aoqimin/Desktop/Nomi-toast
+
+ ❯ src/ui/toast.test.ts (4 tests | 1 failed) 7ms
+     × keeps the full dynamic action label available when visually truncated 2ms
+ ❯ src/ui/toast.layout.test.ts (1 test | 1 failed) 255ms
+     × preserves readable lines beside arbitrary long actions 254ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/ui/toast.layout.test.ts > toast readability in a narrow notification > preserves readable lines beside arbitrary long actions
+AssertionError: 360px: glyphs per line 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ src/ui/toast.layout.test.ts:42:102
+     40|         })
+     41|         await page.screenshot({ path: `${output}/${process.env.TOAST_E…
+     42|         expect(lines.length >= 5 && Math.max(...lines) <= 2, `${width}…
+       |                                                                                                      ^
+     43|         expect(Math.max(...lines), 'body must retain useful width').to…
+     44|         const button = page.getByRole('button', { name: actionLabel })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/ui/toast.test.ts > Nomi toast contract > keeps the full dynamic action label available when visually truncated
+AssertionError: expected undefined to be '切到供应商显示名称 · GPT Image 2' // Object.is equality
+
+- Expected:
+"切到供应商显示名称 · GPT Image 2"
+
++ Received:
+undefined
+
+ ❯ src/ui/toast.test.ts:81:32
+     79|       (child) => React.isValidElement(child) && child.type === 'button…
+     80|     ) as React.ReactElement<{ title: string; children: string }>
+     81|     expect(action.props.title).toBe(label)
+       |                                ^
+     82|     expect(action.props.children).toBe(label)
+     83|   })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  2 failed (2)
+      Tests  2 failed | 3 passed (5)
+   Start at  16:40:53
+   Duration  1.17s (transform 115ms, setup 73ms, import 860ms, tests 263ms, environment 0ms)
+

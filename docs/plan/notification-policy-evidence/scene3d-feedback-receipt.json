@@ -1,0 +1,22 @@
+[
+  {
+    "phase": "before",
+    "inputEvents": 5,
+    "counts": {
+      "visible": 2,
+      "queued": 3
+    },
+    "screenshot": "before-scene3d-panorama-inline.png",
+    "scope": "real Scene3DEnvironmentPanel + production CSS + actual file input validation; component fixture, not complete Electron journey"
+  },
+  {
+    "phase": "after",
+    "inputEvents": 5,
+    "counts": {
+      "visible": 0,
+      "queued": 0
+    },
+    "screenshot": "after-scene3d-panorama-inline.png",
+    "scope": "real Scene3DEnvironmentPanel + production CSS + actual file input validation; component fixture, not complete Electron journey"
+  }
+]

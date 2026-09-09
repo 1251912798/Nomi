@@ -1,3 +1,4 @@
+import { notify } from '../../../ui/notificationPolicy'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import type { Editor } from '@tiptap/react'
@@ -38,7 +39,6 @@ import { resolveArchetypeForModel } from '../../../config/modelArchetypes'
 import { applyArchetypeModeSwitch, currentArchetypeMode } from './controls/archetypeMeta'
 import { archetypeForNode, resolveModeForReferenceDemand } from '../agent/referenceEdgeCapability'
 import { addAssetUrlToNode } from './nodeAssetWrite'
-import { toast } from '../../../ui/toast'
 import { getTextGenMode, type TextGenMode } from '../runner/textActions'
 import {
   GENERATION_VARIANT_COUNTS,
@@ -88,6 +88,7 @@ type PromptPickerPosition = {
 // 所有生成相关依赖（runner / NodeParameterControls / 布局计算）都收在这里，壳保持 kind 无关。
 
 type Props = {
+  onFeedback: (message: string) => void
   node: GenerationCanvasNode
   visualSize: { width: number; height: number }
 }
@@ -255,7 +256,16 @@ function BrowserPromptPickerPopover({
   )
 }
 
-export default function NodeGenerationComposer({ node, visualSize }: Props): JSX.Element {
+export default function NodeGenerationComposer({ onFeedback, node, visualSize }: Props): JSX.Element {
+  const feedbackOwnerRef = React.useRef<string | null>(node.id)
+  feedbackOwnerRef.current = node.id
+  React.useEffect(() => { feedbackOwnerRef.current = node.id; return () => { feedbackOwnerRef.current = null } }, [node.id])
+  const [feedback, setFeedback] = React.useState<string | null>(null)
+  const reportFeedback = React.useCallback((message: string) => {
+    if (feedbackOwnerRef.current !== node.id) { onFeedback(message); return }
+    notify({ identity: `NodeGenerationComposer:${node.id}`, reason: 'interaction', message, level: 'inline', present: setFeedback })
+  }, [node.id, onFeedback])
+
   const { t } = useTranslation()
   const updateNode = useGenerationCanvasStore((state) => state.updateNode)
   const status = node.status || 'idle'
@@ -332,7 +342,7 @@ export default function NodeGenerationComposer({ node, visualSize }: Props): JSX
   const promptPickerButtonRef = React.useRef<HTMLButtonElement | null>(null)
   const promptPickerPopoverRef = React.useRef<HTMLDivElement | null>(null)
   // 拖文件到卡 → 加为参考（捷径 A）。仅当当前模式有数组参考槽时接管拖拽。
-  const { acceptsDrop, isDragOver, isUploading, dropHandlers } = useNodeAssetDrop(node)
+  const { acceptsDrop, isDragOver, isUploading, dropHandlers } = useNodeAssetDrop(node, reportFeedback)
   // @ 候选 = 当前模式 image_ref 槽的有序填充（连线在前+上传，option 2 单源），与面板编号①②③、
   // 发送的 reference_image 数组同一口径——连线进来的参考图也在候选里、能被 @（此前只读 meta 漏掉边）。
   // 候选已扩到三组：当前参考 / 画布已出图节点 / 素材库。后两组选中会**先真的建立引用**再插 chip
@@ -346,7 +356,7 @@ export default function NodeGenerationComposer({ node, visualSize }: Props): JSX
     [projectAssets],
   )
   const { orderedReferenceUrls: mentionCandidates, orderedMediaReferences, mentionSearch, onMentionSelect } =
-    useNodeMentionSource(node, mentionLibraryAssets)
+    useNodeMentionSource(node, mentionLibraryAssets, reportFeedback)
   const insertMention = React.useCallback((url: string) => {
     if (!promptEditor || promptEditor.isDestroyed) return
     const reference = orderedMediaReferences.find((candidate) => candidate.url === url)
@@ -477,13 +487,13 @@ export default function NodeGenerationComposer({ node, visualSize }: Props): JSX
         }
         const outcomes = referenceUrls.map((url) => addAssetUrlToNode(node.id, 'image', url))
         if (outcomes.every((outcome) => outcome.status === 'no-slot')) {
-          toast(t('generationCommon.composer.promptReferenceUnsupported'), 'info')
+          reportFeedback(t('generationCommon.composer.promptReferenceUnsupported'))
         }
       }
       setPromptPickerOpen(false)
       void persistActiveWorkbenchProjectNow().catch(() => {})
     },
-    [mentionCandidates, node.id, node.locked, promptEditor, t, updateNode],
+    [mentionCandidates, node.id, node.locked, promptEditor, reportFeedback, t, updateNode],
   )
 
   const handleGenerate = async (event: React.MouseEvent<HTMLButtonElement>) => {
@@ -549,6 +559,7 @@ export default function NodeGenerationComposer({ node, visualSize }: Props): JSX
       onWheel={(event) => event.stopPropagation()}
       {...(acceptsDrop ? dropHandlers : {})}
     >
+      {feedback ? <p role="status" className="m-0 px-2 py-1 text-caption text-nomi-ink-60">{feedback}</p> : null}
       <div
         className={cn(
           'generation-canvas-v2-node__composer-card',
