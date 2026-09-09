@@ -29,3 +29,7 @@ First full gates attempt ran all 76 contracts and reported two blockers: fixed s
 The final 340px panel probe reproduced footer overflow (controlsInside=false) after the first green gates. Shared footer spacing now preserves the full DeepSeek V4 Pro label and keeps every control within both 340px and 390px panels; both probes pass. Real DeepSeek/APIMart tasks read the canvas and created one node: tool success 2/2, write success 1/1, turn success 2/2. Reported prompt tokens 54,200, completion 772 (cached input 38,400; reasoning 506); provider returned no monetary cost. No media generation was requested.
 
 Final locked gates exited 0 on baseline 2baa00d5e6ed: 1304 test files passed, 1 skipped; 12127 tests passed, 2 skipped; contracts, agent runtime and build passed. Final Electron reopening confirmed modelReadable=true and controlsInside=true. Evidence index: [agent-panel-mechanics-evidence/README.md](agent-panel-mechanics-evidence/README.md).
+
+Ponytail follow-up removed the orphan preview data attribute, obsolete answer-height prop forwarding, and duplicate browser-result text. Structured browser-result.json remains the evidence owner. Full locked gates are repeated after this cleanup.
+
+Post-Ponytail cleanup: complete locked gates exited 0, again 1304 passed test files and 12127 passed tests, 2 skipped tests. All eight browser screenshots are byte-identical to the inspected evidence after removing dead attributes/props.

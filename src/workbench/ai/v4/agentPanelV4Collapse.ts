@@ -77,16 +77,15 @@ export function collapseV4Flow(flow: readonly V4FlowItem[], t: Translate): reado
     let end = index
     while (end < flow.length && isWorkItem(flow[end]!)) end += 1
     const stretch = flow.slice(index, end)
-    const toolCount = stretch.filter((entry) => entry.kind === 'tool').length
+    const receipts = stretch.flatMap((entry) => entry.kind === 'tool' ? [entry.receipt] : [])
     // 一段可以**从助手文本起头**：模型常常先说一句「我先看看画布」再调工具，
     // 那句话和后面几句自我纠正是同一类东西。只按工具起头会把它漏在外面，
     // 于是过程行少了第一句、而那一句还占着满宽。
-    if (toolCount < 2) {
+    if (receipts.length < 2) {
       out.push(item)
       index += 1
       continue
     }
-    const receipts = stretch.flatMap((entry) => entry.kind === 'tool' ? [entry.receipt] : [])
     const lastToolAt = stretch.length - 1 - [...stretch].reverse().findIndex((entry) => entry.kind === 'tool')
     const thinking = stretch.slice(0, lastToolAt).filter((entry): entry is Extract<V4FlowItem, { kind: 'thinking' }> => entry.kind === 'thinking')
     // V4 has no reliable per-turn final-answer marker. Complete/streaming text may contain

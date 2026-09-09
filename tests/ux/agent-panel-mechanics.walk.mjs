@@ -30,7 +30,6 @@ await page.screenshot({path:`${out}/queue.png`})
 const queueProbe = await proveProbe(page.locator('[data-v4-block="queue"]'), 'seeded queued instruction')
 await page.locator('[data-v4-block="queue"] button').click()
 await expectAbsent(page.locator('[data-v4-block="queue"]'), {provenBy:queueProbe})
-const queueDeleted = true
 await page.getByText('切换长回答',{exact:true}).click()
 await page.screenshot({path:`${out}/next-step.png`})
 const nextStepExposed = await page.locator('[data-v4-block="assistant"]').evaluate(el => !el.querySelector('[data-folded="true"]'))
@@ -49,8 +48,8 @@ const narrow = await page.locator('[data-v4-control="model"]').evaluate(el => {
   return { modelReadable:label.scrollWidth <= label.clientWidth, controlsInside:[...el.parentElement.querySelectorAll('button')].every(button=>{const r=button.getBoundingClientRect();return r.left>=panel.left && r.right<=panel.right}) }
 })
 await page.screenshot({path:`${out}/model-narrow.png`})
-const result = { inside, queueDeleted, nextStepExposed, visibleChildren, inert, narrow, errors }
+const result = { inside, queueDeleted: true, nextStepExposed, visibleChildren, inert, narrow, errors }
 await writeFile(`${out}/browser-result.json`,JSON.stringify(result,null,2))
 await browser.close()
 console.log(result)
-if (!inside || !queueDeleted || !nextStepExposed || !visibleChildren || !inert || !narrow.modelReadable || !narrow.controlsInside || errors.length) process.exitCode = 1
+if (!inside || !nextStepExposed || !visibleChildren || !inert || !narrow.modelReadable || !narrow.controlsInside || errors.length) process.exitCode = 1

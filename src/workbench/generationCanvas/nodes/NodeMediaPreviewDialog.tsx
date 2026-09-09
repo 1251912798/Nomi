@@ -24,12 +24,9 @@ export default function NodeMediaPreviewDialog({ mediaType, url, title, onClose 
   const closeButtonRef = React.useRef<HTMLButtonElement | null>(null)
   const canvasViewport =
     typeof document === 'undefined' ? null : document.querySelector<HTMLElement>('.workbench-generation__canvas')
-  const generationWorkspace = canvasViewport?.closest<HTMLElement>('.workbench-generation') ?? null
 
   React.useEffect(() => {
     const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
-    const previousPreviewState = generationWorkspace?.getAttribute('data-media-preview-open') ?? null
-    generationWorkspace?.setAttribute('data-media-preview-open', 'true')
     // The portal is a sibling of the covered canvas roots. Never inert its parent
     // (that would disable the dialog too) or the uncovered Agent/sidebar region.
     const previousInert = new Map<HTMLElement, boolean>()
@@ -53,13 +50,9 @@ export default function NodeMediaPreviewDialog({ mediaType, url, title, onClose 
       document.removeEventListener('keydown', handleKeyDown)
       observer.disconnect()
       for (const [child, inert] of previousInert) child.inert = inert
-      if (generationWorkspace) {
-        if (previousPreviewState === null) generationWorkspace.removeAttribute('data-media-preview-open')
-        else generationWorkspace.setAttribute('data-media-preview-open', previousPreviewState)
-      }
       previousFocus?.focus()
     }
-  }, [canvasViewport, generationWorkspace, onClose])
+  }, [canvasViewport, onClose])
 
   const mediaTypeLabel =
     mediaType === 'video' ? t('generationCommon.imagePreview.video') : t('generationCommon.imagePreview.image')

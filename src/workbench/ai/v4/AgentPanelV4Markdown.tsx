@@ -6,8 +6,6 @@ import { useTranslation } from 'react-i18next'
 
 export function AgentPanelV4Markdown({ text }: {
   text: string
-  panelHeight?: number
-  streaming?: boolean
 }): JSX.Element {
   const { t } = useTranslation()
   return (
