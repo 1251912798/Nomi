@@ -22,6 +22,11 @@ const closing = { type: 'text' as const, text: '完成。' };
 const plan = () => LANE_DEFERRED_TOOL_CATALOG.find(s => s.name === 'nomi_generation_plan')!;
 const textOf = (result: { content: readonly { type: string; text?: string }[] }) => result.content.map(p => p.text ?? '').join('\n');
 
+const canvasArgs = { operation: 'create_canvas_nodes', summary: '开场', nodes: [{ clientId: 'opening', kind: 'image', title: '开场', prompt: '落日' }] };
+const canvasTools = () => createCanvasLaneTools({ read: async () => ({}), write: async () => ({
+  applied: true, operation: 'create_canvas_nodes', proposalId: 'op-proposal', clientIdToNodeId: { opening: 'gen-v2-image-opening' },
+} as never) });
+
 test('C19 · switching groups tells the model core tools remain callable', async t => {
   const f = await createLaneFixture(t, [
     { type: 'tool', calls: [{ id: 'switch', name: 'nomi_request_tools', arguments: { group: 'coding' } }] },
@@ -88,6 +93,19 @@ test('C29 · 246KB context defaults to a useful <=4KB summary; full scope is exp
   assert.doesNotMatch(textOf(bounded), /showing the first 0/);
 });
 
+test('C27 · prompt approval projection follows current policy changes', async t => {
+  let mode: 'safe-auto' | 'step' = 'safe-auto';
+  const f = await createLaneFixture(t, [closing, closing], { hasUserInterface: true, policy: () => ({ mode, spend: 'confirm' }) });
+  const lane = await f.openLane({ ...f.options, tools: canvasTools() });
+  await lane.execute({ kind: 'prompt', text: '看一下' });
+  mode = 'step';
+  await lane.execute({ kind: 'prompt', text: '再看一下' });
+  const system = (i: number) => JSON.stringify((f.http.requests[i].body.messages as Array<{ role: string }>).filter(m => m.role === 'system'));
+  assert.match(system(0), /直接生效并可撤销/);
+  assert.match(system(1), /会向用户确认/);
+  assert.notEqual(system(0), system(1));
+});
+
 test('C29 class · taskKind removes unrelated video modes; full scope retains detail and UTF-8 head is intact', async () => {
   const huge = { videoModels: [
     { modelId: 'text-model', modes: [{ id: 'text', transportTaskKind: 'text_to_video' }] },
@@ -102,4 +120,20 @@ test('C29 class · taskKind removes unrelated video modes; full scope retains de
   const tool = createLaneTools([{ ...desc, schema: z.object({}), execute: async () => ({ ok: true, text: '文'.repeat(100000) }) }])[0];
   const bounded = await tool.execute('ctx', {}, (() => undefined) as never, undefined, {} as never, BACKGROUND_CONTEXT);
   assert.doesNotMatch(textOf(bounded), /�/);
+});
+
+test('C27 class · read confirmation and trusted overrides use the execution decision', async t => {
+  const f = await createLaneFixture(t, [closing], { hasUserInterface: true, policy: () => ({ mode: 'step', spend: 'confirm' }) });
+  const lane = await f.openLane(f.options);
+  await lane.execute({ kind: 'prompt', text: '只看一下' });
+  assert.match(JSON.stringify(f.http.requests[0].body.messages), /- read_full_text: 此动作会向用户确认/);
+  const g = await createLaneFixture(t, [closing], {
+    hasUserInterface: true, policy: () => ({ mode: 'safe-auto', spend: 'confirm' }),
+    resolveSubject: () => ({ forceConfirmation: true, subject: { toolName: 'nomi_canvas_write',
+      capabilityId: 'canvas.write', effect: 'reversible_write', effectClass: 'reversible_local',
+      requiresPlanReview: false, destructiveHint: false } }),
+  });
+  const overridden = await g.openLane({ ...g.options, tools: canvasTools() });
+  await overridden.execute({ kind: 'prompt', text: '看看权限' });
+  assert.match(JSON.stringify(g.http.requests[0].body.messages), /- nomi_canvas_write.create_canvas_nodes: 此动作会向用户确认/);
 });

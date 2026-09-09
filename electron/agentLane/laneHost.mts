@@ -285,6 +285,7 @@ export const openLane: OpenLane = async (options: OpenLaneOptions): Promise<Lane
         onPendingChange: (next) => { pending = next; publish(); },
       })
     : undefined;
+  const directlyApplied = new Set<string>();
   const maxModelRequests = options.limits?.maxModelRequests ?? LANE_MAX_MODEL_REQUESTS;
   // 计数按 **run** 走，不按 lane 走：上限说的是「这一轮」，一条 lane 活一整天。
   const requests = { runId: '', count: 0 };
@@ -308,7 +309,16 @@ export const openLane: OpenLane = async (options: OpenLaneOptions): Promise<Lane
   harness.hooks.on('transform_context', async (event, hookContext) => {
     const input = [...event.messages].reverse().find(isLaneInputMessage);
     if (input && options.input) options.input.activate(input.context);
-    return { systemPrompt: [systemPromptFor(await lane.getActiveTools(hookContext)), input?.context.systemPrompt].filter(Boolean).join('\n\n') };
+    const active = await lane.getActiveTools(hookContext);
+    const authority = gate ? tools.filter(tool => active.includes(tool.name) && options.tools.some(spec => spec.name === tool.name))
+      .flatMap(tool => {
+        const operation = (tool.parameters as unknown as { properties?: Record<string, { enum?: unknown[] }> }).properties?.operation;
+        const operations = operation?.enum?.filter((value): value is string => typeof value === 'string') ?? [undefined];
+        return operations.map(value => `- ${tool.name}${value ? `.${value}` : ''}: ${gate.describe({
+          toolCallId: '', toolName: tool.name, args: value ? { operation: value } : {},
+        })}`);
+      }).join('\n') : '';
+    return { systemPrompt: [systemPromptFor(active), input?.context.systemPrompt, authority].filter(Boolean).join('\n\n') };
   });
 
   harness.hooks.on('before_tool', async (event, hookContext) => {
@@ -326,6 +336,7 @@ export const openLane: OpenLane = async (options: OpenLaneOptions): Promise<Lane
         { toolCallId: event.toolCallId, toolName: event.toolName, args: event.args },
         hookContext.abortSignal,
       );
+      if (outcome.allow && outcome.decision === 'auto-granted' && outcome.undoable) directlyApplied.add(event.toolCallId);
       // 宿主领域记录骑在**同一条**转录上，按 `toolCallId` join，永不复制工具正文
       // （方案 §7 岔路 2 = B，2026-09-07 用户拍板）。等待本身**不写**——它不是发生了的事。
       //
@@ -374,6 +385,7 @@ export const openLane: OpenLane = async (options: OpenLaneOptions): Promise<Lane
 
   harness.hooks.on('after_tool', (event) => {
     options.toolLifecycle?.settled(event);
+    const appliedDirectly = directlyApplied.delete(event.toolCallId);
     // 「同一个失败」按**工具名 + 失败正文首行**认。为什么是首行：`renderLaneToolFailure`
     // 把 `code` 留给了 UI 分档、没写进正文（那是刻意的，`[error] E_DENIED` 对模型等于没说），
     // 而首行正是那句「哪里错、期望什么」——同一堵墙每次都给同一句。
@@ -382,7 +394,8 @@ export const openLane: OpenLane = async (options: OpenLaneOptions): Promise<Lane
     // 「连续」的定义就在这一行：任何一条别的结果——成功了，或者换了一堵墙——都把计数清掉。
     if (key !== failures.key) { failures.key = key; failures.count = key ? 1 : 0; }
     else if (key) failures.count += 1;
-    return undefined;
+    return appliedDirectly && !event.isError
+      ? { content: [...event.content, { type: 'text', text: '\nApplied directly (undoable)' }] } : undefined;
   });
 
   function inputMessage(text: string): string | LaneInputMessage {
