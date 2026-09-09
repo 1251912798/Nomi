@@ -65,7 +65,15 @@ describe('Cursor MCP activation remains truthful', () => {
       'utf8',
     )
     expect(card).toContain("tab: 'automation', section: 'cursor-host'")
-    expect(card).toContain("remove(CURSOR_CONNECTED_TOAST_ID)")
+    // Connection feedback now lives in the card; there is no detached toast to dismiss.
+    expect(card).not.toContain('CURSOR_CONNECTED_TOAST_ID')
+    expect(card).not.toMatch(/\b(?:toast|notify)\(/)
+    expect(card).toContain('activation.showCursorPermissionAction ?')
+    expect(card).toContain('onClick={openAutomationPermissions}')
+    expect(card).toContain('onOpenAutomationPermissions()')
+    // Installing MCP config must never approve the host. Trust is changed only by the settings switch.
+    expect(card).not.toMatch(/trustedHosts\s*[:=]\s*\[|trustedHosts\.(?:push|splice)|toggleHost\(|updateAutomationPolicy\(/)
+    expect(permissions).toContain('onChange={(event) => toggleHost(host.key, event.currentTarget.checked)}')
     expect(permissions).toContain("section={host.key === 'cursor' ? 'cursor-host' : undefined}")
     expect(card).not.toContain('mcp-approvals.json')
   })

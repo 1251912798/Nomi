@@ -47,9 +47,10 @@ const settingsDirectory = path.join(process.cwd(), 'src/workbench/settings')
 //             **这次只有这一行变**，
 //             对应正向断言见下方 uses the split motion tokens on the gesture options——锁住它不许
 //             退回打包写法（退回=按钮 hover 又变回硬切，而所有快照仍然全绿）。
-const MAIN_NON_MODEL_SECTION_SHA256 = {
+const APPROVED_NON_MODEL_SECTION_SHA256 = {
   // 2026-09-04：检查反馈 tone 改为从公共 toast 函数参数推导，避免重复词表 owner。
-  'ProjectLocationSection.tsx': 'c0b2350bda45c5126b69296a0b526fda521feb210a1f6908c5d8ac187a7a0c3a',
+  // 2026-09-09：目录操作错误回现有status；保留共享tone类型，正向回归见下方local feedback。
+  'ProjectLocationSection.tsx': '6fdcf159d9a0e32e72637049fce6d0f9acaeee43369d0c8d2be46d3f7ec81c10',
   // 2026-09-02: AiModelsSection 按渲染边界收口供应商/模型展示名（translateModelDisplayText）。
   'AiModelsSection.tsx': '991aed2910a81b3cedd005c230f5585efa7cbdc5cd4cb1e309c818b183d42504',
   // 2026-09-03：toggleHost 参数类型从 SettingsHostKey（四值联合）泛化为 string（支持自定义 profile key）；
@@ -106,12 +107,40 @@ describe('settings dialog structure', () => {
     expect(projectLocationSource).toContain('aria-expanded={showSyncSteps}')
     expect(projectLocationSource).toContain('data-project-location-check-feedback')
     expect(projectLocationSource).toContain('data-feedback-tone')
-    expect(projectLocationSource).toContain('NonNullable<Parameters<typeof toast>[1]>')
+    expect(projectLocationSource).toContain("import type { ToastType } from '../../ui/toast'")
+    expect(projectLocationSource).toContain('tone: ToastType')
     expect(projectLocationSource).toContain('role="status"')
     expect(projectLocationSource).toContain('aria-live="polite"')
     expect(projectLocationSource).toContain('https://www.verysync.com/')
     expect(projectLocationSource).toContain('https://www.jianguoyun.com/s/downloads')
     expect(settingsSource).not.toContain('settings.file.autoSave')
+  })
+
+  it('keeps directory failures in the visible status beside retry controls', () => {
+    expect(projectLocationSource).not.toMatch(/\b(?:toast|showInfoToast|alertDialog)\(/)
+    expect(projectLocationSource).toContain("setCheckFeedback({ tone: 'error', messageKey: ERROR_KEY[result.error] })")
+    expect(projectLocationSource).toContain("setCheckFeedback({ tone: 'error', messageKey: 'settings.file.projectLocationErrorUnknown' })")
+    expect(projectLocationSource).toContain('setCheckFeedback(null)')
+    expect(projectLocationSource).toContain('t(checkFeedback.messageKey)')
+    expect(projectLocationSource).toContain('void checkDirectory()')
+    for (const action of ['pick', 'reveal', 'reset']) expect(projectLocationSource).toContain(`void run(api.${action})`)
+    expect(projectLocationSource).toContain('disabled={unavailable || managed}')
+    expect(projectLocationSource).toContain('if (!result.canceled) setLocation(result.location)')
+  })
+
+  it('keeps each of the five non-model sections in its own settings tab', () => {
+    const sections = {
+      file: 'ProjectLocationSection', ai: 'AiModelsSection', automation: 'AutomationPermissionsSection',
+      general: 'CanvasGestureSection', about: 'AboutSection',
+    }
+    for (const [tab, section] of Object.entries(sections)) {
+      const start = settingsSource.indexOf(`tab === '${tab}' ? (`)
+      expect(start, tab).toBeGreaterThan(-1)
+      const next = settingsSource.indexOf(") : tab === '", start + 1)
+      const content = settingsSource.slice(start, next === -1 ? undefined : next)
+      expect(content, `${section} belongs to ${tab}`).toContain(`<${section}`)
+      expect(settingsSource.match(new RegExp(`<${section}\\b`, 'g')), section).toHaveLength(1)
+    }
   })
 
   it('keeps model management in one settings host', () => {
@@ -229,8 +258,8 @@ describe('settings dialog structure', () => {
     expect(gestureSource, '打包成一个值的旧 token 会让 transition-duration 非法、计算值 0s').not.toContain('--nomi-transition-fast')
   })
 
-  it('keeps all five non-model sections byte-for-byte at the origin/main baseline', () => {
-    for (const [fileName, expectedHash] of Object.entries(MAIN_NON_MODEL_SECTION_SHA256)) {
+  it('keeps all five non-model sections at their explicitly approved content baseline', () => {
+    for (const [fileName, expectedHash] of Object.entries(APPROVED_NON_MODEL_SECTION_SHA256)) {
       const source = fs.readFileSync(path.join(settingsDirectory, fileName), 'utf8').replaceAll('\r\n', '\n')
       expect(createHash('sha256').update(source).digest('hex'), fileName).toBe(expectedHash)
     }
