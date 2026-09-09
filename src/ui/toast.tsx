@@ -54,12 +54,13 @@ function ToastMessage({
 
   return (
     <span className="flex min-w-0 items-center gap-2">
-      <span className="min-w-0 flex-1 text-body-sm text-nomi-ink-80">{message}</span>
+      <span className="min-w-0 flex-1 break-words text-body-sm text-nomi-ink-80">{message}</span>
       {actionLabel && onAction ? (
         <button
           type="button"
           onClick={handleAction}
-          className="shrink-0 rounded-nomi-sm bg-nomi-accent-soft px-2 py-1 text-caption font-semibold text-nomi-accent hover:bg-nomi-ink-10"
+          title={actionLabel}
+          className="max-w-[40%] shrink-0 truncate rounded-nomi-sm bg-nomi-accent-soft px-2 py-1 text-caption font-semibold text-nomi-accent hover:bg-nomi-ink-10"
         >
           {actionLabel}
         </button>
@@ -85,6 +86,7 @@ export function buildToastNotification(input: Toast): NotificationData {
     autoClose: input.ttl === undefined ? (actionable ? 8000 : defaultTtl(input.type)) : input.ttl,
     withCloseButton: input.dismissible ?? (actionable || input.type === 'warning' || input.type === 'error'),
     withBorder: true,
+    classNames: { root: 'min-w-[min(20rem,calc(100vw-1.5rem))]' },
   }
 }
 

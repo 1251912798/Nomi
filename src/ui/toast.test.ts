@@ -70,6 +70,18 @@ describe('Nomi toast contract', () => {
     expect(notificationMocks.hide.mock.invocationCallOrder[0]).toBeLessThan(onAction.mock.invocationCallOrder[0])
   })
 
+  it('keeps the full dynamic action label available when visually truncated', () => {
+    const label = '切到供应商显示名称 · GPT Image 2'
+    const rendered = renderToastMessage(buildToastNotification({
+      id: 'long-action', message: '检查连接', actionLabel: label, onAction: vi.fn(),
+    }))
+    const action = React.Children.toArray(rendered.props.children).find(
+      (child) => React.isValidElement(child) && child.type === 'button',
+    ) as React.ReactElement<{ title: string; children: string }>
+    expect(action.props.title).toBe(label)
+    expect(action.props.children).toBe(label)
+  })
+
   it('updates a stable id and uses idempotent show to cover its first appearance', () => {
     useToastStore.getState().push({ id: 'canvas-batch-run', message: 'starting', ttl: false })
     useToastStore.getState().push({ id: 'canvas-batch-run', message: 'still starting', ttl: false })
