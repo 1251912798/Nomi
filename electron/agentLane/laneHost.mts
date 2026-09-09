@@ -360,6 +360,8 @@ export const openLane: OpenLane = async (options: OpenLaneOptions): Promise<Lane
       return { block: { reason: `surface_authority_denied: This action requires the ${contract.targetKind} surface. `
         + 'Ask the user to switch to that surface and send the action again; approval cannot grant another surface.' } };
     }
+    const accessDenial = await native?.toolAccessDenial(event.toolName);
+    if (accessDenial) return { block: { reason: accessDenial } };
     await options.toolLifecycle?.prepare(event, hookContext.abortSignal ?? new AbortController().signal);
     // ② 闸。上限先判：到了上限就没有「问用户要不要放行」这回事了。
     if (gate) {

@@ -1,3 +1,4 @@
+import { require as tsxRequire } from 'tsx/cjs/api'
 // Real built Electron + real MCP stdio Production Run journey. No provider calls: the fixture is
 // double-gated and disabled in packaged builds. This test owns all four GUI approvals and proves
 // durable restart recovery, safe MCP projections, preview authorization, and a valid final MP4.
@@ -171,10 +172,10 @@ try {
   mcp = spawnMcpStdioClient({ ...mcpDirs, clientInfo: mcpClientInfo, capabilities: mcpCapabilities, env: mcpEnv })
   await initializeMcp()
   const tools = (await mcp.rpc('tools/list', {}, 20_000)).result?.tools || []
-  // 期望清单从**已构建的目录源** derive（MCP_TOOL_RESOLVER 就是 tools/list 用的同一份快照——单一真相，
+  // 期望清单从**源码目录** derive（MCP_TOOL_RESOLVER 就是 tools/list 用的同一份快照——单一真相，
   // 面收敛后 name 字面量散在多个文件+capability 投影里，regex 扫源文件会漏播 session_open 与 M2 编辑工具），
   // 断言集合相等：漏播/多播都抓得住，目录再长这里也不会烂成过期死数。
-  const catalogNames = require(path.join(repoRoot, 'dist-electron/capabilityCore/mcpToolCatalog.js'))
+  const catalogNames = tsxRequire('../../electron/capabilityCore/mcpToolCatalog.ts', import.meta.url)
     .MCP_TOOL_RESOLVER.list().map((tool) => tool.name)
   const stdioNames = tools.map((tool) => tool.name)
   const missing = catalogNames.filter((name) => !stdioNames.includes(name))

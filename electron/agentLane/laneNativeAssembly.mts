@@ -41,11 +41,19 @@ export async function createLaneNativeAssembly(input: Omit<LaneCodingToolsInput,
     if (!activeTools) return false;
     return (await activeTools.findEntries({ type: 'custom', customType: LANE_CODING_ACCESS_NOTE, limit: 1 }, BACKGROUND_CONTEXT)).length > 0;
   };
+  const toolAccessDenial = async (toolName: string): Promise<string | undefined> => {
+    // read owns a separate trusted-Skill path check; all other coding tools need project access.
+    if (toolName !== 'read' && LANE_CODING_TOOL_NAMES.some(name => name === toolName) && !(await canReadProject())) {
+      return 'Request coding before accessing project files.';
+    }
+    return undefined;
+  };
   const coding = (await createLaneCodingTools({ ...input,
     factories: input.factories ?? await loadPiCodingToolFactories(), canReadProject,
   })).map(tool => tool.name === 'read' ? tool : ({ ...tool,
     execute: async (...args: Parameters<typeof tool.execute>) => {
-      if (!(await canReadProject())) throw new Error('Request coding before accessing project files.');
+      const denial = await toolAccessDenial(tool.name);
+      if (denial) throw new Error(denial);
       return tool.execute(...args);
     },
   }));
@@ -109,6 +117,7 @@ export async function createLaneNativeAssembly(input: Omit<LaneCodingToolsInput,
     // pi commits newly unlocked names with each tool result (tool-placement.js:137–156).
     activeToolNames: () => laneToolMenu({ groups }).activeToolNames,
     unlockCoding,
+    toolAccessDenial,
     bindActiveTools: (controller: LaneActiveToolsController) => { activeTools = controller; },
     resolveApprovalSubject: createLaneNativeApprovalResolver({
       projectDir: input.projectDir, sandboxActive: input.sandbox.active, effects,

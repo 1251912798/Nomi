@@ -7,8 +7,10 @@ import { once } from 'node:events'
 import { launchNomiApp, repoRoot } from './_launchApp.mjs'
 import { clickOrFail, expect, screenshotSettled } from './_assert.mjs'
 import { createAgentRuntimeFixture } from './agent-runtime-fixture.mjs'
-import { LANE_MODEL_TOOL_CATALOG, LANE_DEFERRED_TOOL_CATALOG } from '../../dist-electron/agentLane/laneToolCatalog.js'
-import { LANE_CODING_TOOL_NAMES } from '../../dist-electron/agentLane/laneCodingTools.mjs'
+import { require as tsxRequire } from 'tsx/cjs/api'
+
+const { LANE_MODEL_TOOL_CATALOG, LANE_DEFERRED_TOOL_CATALOG } = tsxRequire('../../electron/agentLane/laneToolCatalog.ts', import.meta.url)
+const { LANE_CODING_TOOL_NAMES } = tsxRequire('../../electron/agentLane/laneCodingTools.mts', import.meta.url)
 
 // ── 面板选择器：v4 契约的**唯一**一份 ────────────────────────────────────────
 //

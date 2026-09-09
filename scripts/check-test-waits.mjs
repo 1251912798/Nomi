@@ -149,7 +149,33 @@ export function unownedLaneCleanupLines(source, file) {
   return lines
 }
 
+// Test module declarations must resolve from a clean checkout, before any app build.
+export function builtArtifactImportLines(source, file) {
+  const lines = new Set()
+  if (!file.replaceAll('\\', '/').startsWith('tests/')) return lines
+  const parsed = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true)
+  const visit = (node) => {
+    let specifier
+    if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) specifier = node.moduleSpecifier
+    if (ts.isCallExpression(node) && (node.expression.kind === ts.SyntaxKind.ImportKeyword ||
+        (ts.isIdentifier(node.expression) && ['require', 'tsImport', 'tsxRequire'].includes(node.expression.text)))) specifier = node.arguments[0]
+    if (specifier && (ts.isStringLiteral(specifier) || ts.isNoSubstitutionTemplateLiteral(specifier)) &&
+        /^(?:\.\.?[/\\]|[/\\]|file:)/.test(specifier.text) &&
+        /(?:^|[/\\])dist(?:-electron)?[/\\]/.test(specifier.text)) {
+      lines.add(parsed.getLineAndCharacterOfPosition(node.getStart(parsed)).line)
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(parsed)
+  return lines
+}
+
 const RULES = [
+  {
+    id: 'built-artifact-test-import',
+    label: '测试模块必须从源码加载，禁止 import dist/ 或 dist-electron/',
+    test: (_line, context) => context.builtArtifactImportLines.has(context.lineIndex),
+  },
   {
     id: 'unowned-lane-directory-cleanup',
     label: 'lane 目录清理必须由共享 fixture owner 等待全部资源 close 后执行，禁止独立 after/afterEach 删除',
@@ -317,12 +343,13 @@ export function main() {
     stationHits.push(...stationWaitHits(raw, path.relative(repoRoot, file)).map(hit => ({ ...hit, file: path.relative(repoRoot, file) })))
     const source = stripComments(raw)
     const context = { clockDeltaNames: collectClockDeltaNames(source), spiesOnFsRead: FS_READ_SPY.test(source), asyncWaitLines: asyncWaitForFunctionLines(raw, file),
+      builtArtifactImportLines: builtArtifactImportLines(raw, path.relative(repoRoot, file)),
       unownedLaneCleanupLines: unownedLaneCleanupLines(raw, path.relative(repoRoot, file)) }
     const unitTest = /\.test\.(tsx?|mts|cts|mjs)$/.test(file)
     source.split('\n').forEach((line, i) => {
       context.lineIndex = i
       for (const rule of RULES) {
-        if (!unitTest && !['async-waitforfunction-predicate', 'unowned-lane-directory-cleanup'].includes(rule.id)) continue
+        if (!unitTest && !['async-waitforfunction-predicate', 'unowned-lane-directory-cleanup', 'built-artifact-test-import'].includes(rule.id)) continue
         if (rule.test(line, context)) hits.push({ rule, file, line: i + 1, text: line.trim().slice(0, 120) })
       }
     })
@@ -378,7 +405,7 @@ export function main() {
       console.log(`    ${relative}  [wallclock-budget-assertion]  基线陈旧：登记 ${allowed} 处、实际 ${actual} 处`)
       console.log('        → 好事，把 WALLCLOCK_BUDGET_BASELINE 里的数字降到实际值（棘轮只减不增）')
     }
-    if (hardHits.some((hit) => !['fs-read-spy-path-filter', 'async-waitforfunction-predicate', 'unowned-lane-directory-cleanup'].includes(hit.rule.id))) {
+    if (hardHits.some((hit) => !['fs-read-spy-path-filter', 'async-waitforfunction-predicate', 'unowned-lane-directory-cleanup', 'built-artifact-test-import'].includes(hit.rule.id))) {
       console.log('  → 等后台编排链请 import electron/productionRun/productionRunTestHelpers 的 waitForProduction')
       console.log('    （60s 安全网只拦真死锁/真回归，不给磁盘排队计时；来龙去脉见 docs/plan/2026-08-25-fix-flaky-production-run-tests.md）')
     }
