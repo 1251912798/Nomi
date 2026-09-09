@@ -84,3 +84,9 @@ export const generationStatusInputSchema = z.discriminatedUnion("operation", [
   z.object({ operation: z.literal("cancel"), operationId }).strict(),
   z.object({ operation: z.literal("reconcile"), operationId, outcome: z.enum(GENERATION_RECONCILE_OUTCOMES) }).strict(),
 ]);
+
+/** Host capability projection retains the canonical branches, never a parallel schema. */
+export function generationPlanSchemaForHost(host: { preview: boolean }) {
+  const [context, create, patch] = generationPlanInputSchema.options;
+  return host.preview ? generationPlanInputSchema : z.discriminatedUnion('operation', [context, create, patch]);
+}

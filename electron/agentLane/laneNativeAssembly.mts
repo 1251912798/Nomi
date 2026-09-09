@@ -82,8 +82,9 @@ export async function createLaneNativeAssembly(input: Omit<LaneCodingToolsInput,
       const retired = previous.filter((name) => !next.includes(name));
       return {
         content: [{ type: 'text', text:
-          `Available tools: ${byGroup.get(requested)!.join(', ')}.`
-          + (retired.length ? ` Retired until requested again: ${retired.join(', ')}.` : '')
+          `Always available: ${alwaysOn.join(', ')}. `
+          + `Added by ${requested}: ${added.join(', ') || 'none'}. `
+          + `Retired: ${retired.join(', ') || 'none'}.`
           + ' Existing approval and file permissions still apply.' }],
         details: { groups: [requested] },
         ...(added.length ? { addedToolNames: added } : {}),

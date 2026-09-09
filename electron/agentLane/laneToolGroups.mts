@@ -73,7 +73,7 @@ export function laneRequestToolDefinition(groups: readonly { name: string }[]) {
     name: LANE_TOOL_REQUEST_TOOL_NAME,
     label: 'Tools',
     description: `Switch this conversation to one group of additional tools. Groups: ${groups.map(group => group.name).join(', ')}. `
-      + 'One group is available at a time: requesting a group retires the previous one, and you can switch back later at any point. '
+      + 'Core tools stay available in every group. One group is available at a time: requesting a group retires the previous one, and you can switch back later at any point. '
       + 'Request coding before reading an installed Skill or working with project files. Activation does not approve any action.',
     promptSnippet: 'Switch to another tool group when the current tools do not cover the task',
     parameters: Type.Object({

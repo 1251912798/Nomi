@@ -4,7 +4,7 @@ import { timelineWritePiInputSchemaForAlias, timelineWritePiDescriptionForAlias,
 import { exportReadPiInputSchemaForAlias, exportWritePiInputSchemaForAlias, exportReadPiDescriptionForAlias,
   exportWritePiDescriptionForAlias, EXPORT_READ_ALIASES, EXPORT_WRITE_ALIASES } from './exportCapabilities'
 import { CANVAS_DELETE_ALIAS, canvasDeletePiInputSchema, canvasDeletePiDescriptionForAlias } from './canvasDelete'
-import { generationPlanInputSchema, generationStatusInputSchema } from './generationPlanSchemas'
+import { generationPlanSchemaForHost, generationStatusInputSchema } from './generationPlanSchemas'
 import { modelArgumentTolerance } from './modelArgumentTolerance'
 import { modelEffectsForCapability, MODEL_TOOL_READ_TIMEOUT_MS, MODEL_TOOL_WRITE_TIMEOUT_MS, type ModelFacingToolSpec } from './modelFacingTools'
 import { capabilityContractById } from './registry'
@@ -50,11 +50,10 @@ export function extendedModelToolSpecs(): ModelFacingToolSpec[] {
     spec({ name: CANVAS_DELETE_ALIAS, contractId: 'canvas.delete', internalGroup: 'maintenance',
       description: canvasDeletePiDescriptionForAlias(CANVAS_DELETE_ALIAS)!, schema: canvasDeletePiInputSchema }),
     spec({ name: 'nomi_generation_plan', contractId: 'generation.plan', internalGroup: 'generation',
-      description: 'Read generation context, create or revise a plan, then preview it. Use existing operation identifiers for updates. This never approves or starts paid generation.',
-      schema: flattenDiscriminatedUnion(generationPlanInputSchema, { name: 'generation plan' }),
-      operationCapabilityIds: { context: 'generation.context.read', create: 'generation.plan', patch: 'generation.plan', preview: 'generation.plan' },
-      examples: [{ when: 'Create a draft:', arguments: { operation: 'create', prompt: 'A quiet sunrise above the sea' } },
-        { when: 'Preview the draft before asking for approval:', arguments: { operation: 'preview', operationId: 'run-1' } }],
+      description: 'Read generation context, create or revise a draft. This host cannot preview. Use existing operation identifiers for updates. This never approves or starts paid generation.',
+      schema: flattenDiscriminatedUnion(generationPlanSchemaForHost({ preview: false }), { name: 'generation plan' }),
+      operationCapabilityIds: { context: 'generation.context.read', create: 'generation.plan', patch: 'generation.plan' },
+      examples: [{ when: 'Create a draft:', arguments: { operation: 'create', prompt: 'A quiet sunrise above the sea' } }],
     }),
     spec({ name: 'nomi_generation_status', contractId: 'generation.control', internalGroup: 'generation',
       description: 'Read, cancel, or reconcile one generation operation. Read status before cancellation or reconciliation. Never retry unknown provider work or spend credit.',
