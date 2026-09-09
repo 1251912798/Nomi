@@ -368,15 +368,11 @@ export type V4CommandRow = Readonly<{
   desc: string
   /** 分段名：技能 / 提示词。同一个菜单两段，各自有名字（2026-09-06 拍板 ⑤）。 */
   section: string
-  /** 封面。提示词库有 `mediaUrl`；技能今天没有封面字段，所以多数行不会有。 */
+  /** 来自技能或提示词标准元数据的封面与预览。 */
   cover?: string
   preview?: { url: string; type: 'image' | 'video' }
   selected?: boolean
 }>
-
-function CommandRowCover({ row }: { row: V4CommandRow }): JSX.Element {
-  return <SkillMedia cover={row.cover} preview={row.preview} className="h-9 w-14 shrink-0 rounded-nomi-sm object-cover" />
-}
 
 /**
  * `/` 命令弹层：搜索 + 分类 chip + 列表（名称 + /命令 + 一句描述）。
@@ -456,7 +452,7 @@ export function V4SkillPopover({
                 data-v4-command={row.id}
                 className={cn('flex w-full items-start gap-2.5 px-2.5 py-2 text-left', row.selected && 'bg-nomi-ink-05')}
               >
-                <CommandRowCover row={row} />
+                <SkillMedia cover={row.cover} preview={row.preview} className="h-9 w-14 shrink-0 rounded-nomi-sm object-cover" />
                 <span className="min-w-0">
                   <span className="block truncate text-caption font-medium text-nomi-ink">
                     {row.name}

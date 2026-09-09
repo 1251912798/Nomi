@@ -1,7 +1,8 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { launchNomiApp } from './_launchApp.mjs'
-import { expect } from '@playwright/test'
+import { expect, expectAbsent, proveProbe } from './_assert.mjs'
+import { stationTimeout } from './_station-budget.mjs'
 import { COMPOSER_SKILL, SKILL_POPOVER } from './agent-runtime-walk-support.mjs'
 const output = path.resolve('docs/design/verification/2026-09-09-skill-library')
 fs.mkdirSync(output, { recursive: true })
@@ -10,7 +11,7 @@ const run = await launchNomiApp({ name: 'skill-library-cards', settleMs: 0,
   initialLocalStorage: { 'nomi-color-scheme': 'light', 'nomi:splash:v1': 'seen', 'nomi:journey-tour:v1': 'seen', 'nomi:canvas-gesture-hint:v1': 'seen' },
 })
 const page = run.win
-page.setDefaultTimeout(30000)
+page.setDefaultTimeout(stationTimeout({ operations: 2 }))
 try {
   const window = await run.app.browserWindow(page)
   await window.evaluate(w => w.setBounds({ x: 0, y: 0, width: 1680, height: 980 }))
@@ -20,7 +21,7 @@ try {
   const picker = page.locator(SKILL_POPOVER).first()
   await picker.getByRole('button', { name: '新建 · 管理', exact: false }).click()
   const gallery = page.locator('[data-skill-drop-zone]')
-  await expect(gallery.locator('[data-skill-card]')).not.toHaveCount(0)
+  await proveProbe(gallery.locator('[data-skill-card]'), '真实技能卡片已加载')
   await gallery.getByRole('radio', { name: '技能', exact: true }).click()
   const multi = gallery.locator('[data-skill-card="skill:curated-multi-view"]')
   await multi.scrollIntoViewIfNeeded()
@@ -37,8 +38,10 @@ try {
   await expect(page.locator('[data-v4-chip="skill"]').first()).toContainText('多视图设定')
   await page.locator(COMPOSER_SKILL).first().click()
   const selectedPicker = page.locator(SKILL_POPOVER).first()
+  const promptProof = await proveProbe(selectedPicker.locator('[data-v4-command^="prompt:"]'), '全部分面显示提示词')
+  const skillProof = await proveProbe(selectedPicker.locator('[data-v4-command^="skill:"]'), '全部分面显示技能')
   await selectedPicker.getByRole('button', { name: '技能', exact: true }).click()
-  await expect(selectedPicker.locator('[data-v4-command^="prompt:"]')).toHaveCount(0)
+  await expectAbsent(selectedPicker.locator('[data-v4-command^="prompt:"]'), { provenBy: promptProof })
   await selectedPicker.locator('[data-v4-control="skill-search"]').fill('多视图')
   await selectedPicker.locator('[data-v4-command="skill:curated-multi-view"]').hover()
   await expect(page.locator('[data-skill-hover="skill:curated-multi-view"]').first()).toBeVisible()
@@ -47,7 +50,7 @@ try {
   await page.locator(COMPOSER_SKILL).first().click()
   await selectedPicker.locator('[data-v4-control="skill-search"]').fill('')
   await selectedPicker.getByRole('button', { name: '效果', exact: true }).click()
-  await expect(selectedPicker.locator('[data-v4-command^="skill:"]')).toHaveCount(0)
+  await expectAbsent(selectedPicker.locator('[data-v4-command^="skill:"]'), { provenBy: skillProof })
   await expect(selectedPicker.locator('[data-v4-command="prompt:effect-character-three-view"]')).toBeVisible()
   await selectedPicker.getByRole('button', { name: '新建 · 管理', exact: false }).click()
   await gallery.getByRole('radio', { name: '效果', exact: true }).click()
@@ -57,6 +60,7 @@ try {
   const editor = page.locator('.generation-canvas-v2-node__composer [contenteditable="true"]').first()
   await editor.fill('')
   await expect(page.locator('[data-node-effect-chips="empty"] [data-effect-chip]')).toHaveCount(4)
+  const chipsProof = await proveProbe(page.locator('[data-effect-chip]'), '空节点四个常用效果')
   await page.screenshot({ path: path.join(output, '04-node-empty.png') })
   await page.locator('[data-effect-more]').click()
   await expect(page.getByTestId('node-effect-menu')).toBeVisible()
@@ -78,7 +82,7 @@ try {
   await page.screenshot({ path: path.join(output, '05-node-more.png') })
   await page.getByTestId('node-effect-menu').getByText('人物三视图', { exact: true }).click()
   await expect(editor).toContainText('三格人物等高')
-  await expect(page.locator('[data-effect-chip]')).toHaveCount(0)
+  await expectAbsent(page.locator('[data-effect-chip]'), { provenBy: chipsProof })
   await page.screenshot({ path: path.join(output, '06-node-filled.png') })
   await page.getByRole('button', { name: '撤销', exact: true }).last().click()
   await expect(editor).toHaveText('')

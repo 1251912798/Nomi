@@ -11,7 +11,8 @@
   "scope_paths": [
     "src/design/menu.tsx",
     "src/workbench/generationCanvas/nodes/NodeEffectChips.tsx",
-    "tests/ux/skill-library-cards.walk.mjs"
+    "tests/ux/skill-library-cards.walk.mjs",
+    "src/devlab/designLab/editing/states/03-context-menu.tsx"
   ],
   "entry_points": [
     "NodeEffectChips More menu",
@@ -48,6 +49,12 @@
       "entry_point": "TimelineContextMenu",
       "disposition": "enforced",
       "evidence": "Uses the same WorkbenchMenu point API and now the same body anchor."
+    },
+    {
+      "path": "src/devlab/designLab/editing/states/03-context-menu.tsx",
+      "entry_point": "MenuCell",
+      "disposition": "enforced",
+      "evidence": "Lab projects the real anchor DOMRect to viewport coordinates instead of passing local coordinates; four existing PNG baselines are retained."
     }
   ],
   "recurrence": {
@@ -70,7 +77,8 @@
     ]
   },
   "regression_tests": [
-    "tests/ux/skill-library-cards.walk.mjs"
+    "tests/ux/skill-library-cards.walk.mjs",
+    "tests/ux/design-lab/design-lab.visual.spec.mjs"
   ],
   "class_regression_tests": [
     "tests/ux/skill-library-cards.walk.mjs"
