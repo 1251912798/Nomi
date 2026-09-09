@@ -1,7 +1,8 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { alertDialog, confirmDialog } from '../../design'
+import { confirmDialog } from '../../design'
+import { notify } from '../../ui/notificationPolicy'
 import { useGenerationCanvasStore } from '../generationCanvas/store/generationCanvasStore'
 import { useSpendConfirmStore } from '../generationCanvas/spend/spendConfirm'
 import { buildProductionContractView } from '../generationCanvas/spend/productionContractView'
@@ -67,6 +68,15 @@ export function useProductionStatus(options: { enabled?: boolean } = {}) {
   const { t } = useTranslation()
   const production = useActiveProductionRun(undefined, options)
   const actionInFlightRef = React.useRef(false)
+  const [failure, setFailure] = React.useState<{ identity: string; message: string } | null>(null)
+  const identity = production.run ? `production-run:${production.run.projectId}:${production.run.runId}` : ''
+  const reportFailure = React.useCallback((error: unknown, reason: string) => {
+    notify({
+      identity, reason, level: 'inline', type: 'error',
+      message: `${t(reason)}: ${error instanceof Error ? error.message : String(error)}`,
+      present: (message) => setFailure({ identity, message }),
+    })
+  }, [identity, t])
   const view = React.useMemo(() => (production.run ? buildProductionRunView(production.run) : null), [production.run])
   const executeCommand = React.useCallback(
     (projectId: string, runId: string, command: Parameters<typeof productionRunApi.command>[2]) =>
@@ -81,6 +91,7 @@ export function useProductionStatus(options: { enabled?: boolean } = {}) {
     async (action: Exclude<ProductionRunPrimaryAction, null>) => {
       if (actionInFlightRef.current) return
       actionInFlightRef.current = true
+      setFailure(null)
       try {
         const run = production.run
         if (!run) return
@@ -117,10 +128,7 @@ export function useProductionStatus(options: { enabled?: boolean } = {}) {
             })
             await useProductionRunStore.getState().loadRun(run.projectId, run.runId)
           } catch (error) {
-            await alertDialog({
-              title: t('generationCommon.production.gate.failed'),
-              message: error instanceof Error ? error.message : String(error),
-            })
+            reportFailure(error, 'generationCommon.production.gate.failed')
           }
           return
         }
@@ -140,10 +148,7 @@ export function useProductionStatus(options: { enabled?: boolean } = {}) {
             })
             await useProductionRunStore.getState().loadRun(run.projectId, run.runId)
           } catch (error) {
-            await alertDialog({
-              title: t('generationCommon.production.control.failed'),
-              message: error instanceof Error ? error.message : String(error),
-            })
+            reportFailure(error, 'generationCommon.production.control.failed')
           }
           return
         }
@@ -180,10 +185,7 @@ export function useProductionStatus(options: { enabled?: boolean } = {}) {
             })
             await useProductionRunStore.getState().loadRun(run.projectId, run.runId)
           } catch (error) {
-            await alertDialog({
-              title: t('generationCommon.production.reconcile.failed'),
-              message: error instanceof Error ? error.message : String(error),
-            })
+            reportFailure(error, 'generationCommon.production.reconcile.failed')
           }
           return
         }
@@ -225,10 +227,7 @@ export function useProductionStatus(options: { enabled?: boolean } = {}) {
               }
               await useProductionRunStore.getState().loadRun(activeRun.projectId, activeRun.runId)
             } catch (error) {
-              await alertDialog({
-                title: t('generationCommon.production.gate.failed'),
-                message: error instanceof Error ? error.message : String(error),
-              })
+              reportFailure(error, 'generationCommon.production.gate.failed')
             }
             return
           }
@@ -245,10 +244,7 @@ export function useProductionStatus(options: { enabled?: boolean } = {}) {
             })
             await useProductionRunStore.getState().loadRun(activeRun.projectId, activeRun.runId)
           } catch (error) {
-            await alertDialog({
-              title: t('generationCommon.production.gate.failed'),
-              message: error instanceof Error ? error.message : String(error),
-            })
+            reportFailure(error, 'generationCommon.production.gate.failed')
           }
           return
         }
@@ -266,10 +262,7 @@ export function useProductionStatus(options: { enabled?: boolean } = {}) {
             gate = activeRun.gates.find((item) => item.gateId === gate?.gateId && item.status === 'waiting')
             if (!gate) return
           } catch (error) {
-            await alertDialog({
-              title: t('generationCommon.production.gate.failed'),
-              message: error instanceof Error ? error.message : String(error),
-            })
+            reportFailure(error, 'generationCommon.production.gate.failed')
             return
           }
         }
@@ -335,10 +328,7 @@ export function useProductionStatus(options: { enabled?: boolean } = {}) {
             })
             await useProductionRunStore.getState().loadRun(activeRun.projectId, activeRun.runId)
           } catch (error) {
-            await alertDialog({
-              title: t('generationCommon.production.gate.failed'),
-              message: error instanceof Error ? error.message : String(error),
-            })
+            reportFailure(error, 'generationCommon.production.gate.failed')
           }
           return
         }
@@ -378,7 +368,7 @@ export function useProductionStatus(options: { enabled?: boolean } = {}) {
         actionInFlightRef.current = false
       }
     },
-    [executeCommand, production.run, t, view?.targetId],
+    [executeCommand, production.run, reportFailure, t, view?.targetId],
   )
 
   // A4 情境控制：暂停直接执行；取消是破坏性动作先 confirmDialog（§3.5）。两者与 MCP 同走 run.control。
@@ -387,6 +377,7 @@ export function useProductionStatus(options: { enabled?: boolean } = {}) {
       const run = production.run
       if (!run || actionInFlightRef.current) return
       actionInFlightRef.current = true
+      setFailure(null)
       try {
         if (action === 'cancel') {
           const confirmed = await confirmDialog({
@@ -407,15 +398,12 @@ export function useProductionStatus(options: { enabled?: boolean } = {}) {
         })
         await useProductionRunStore.getState().loadRun(run.projectId, run.runId)
       } catch (error) {
-        await alertDialog({
-          title: t('generationCommon.production.control.failed'),
-          message: error instanceof Error ? error.message : String(error),
-        })
+        reportFailure(error, 'generationCommon.production.control.failed')
       } finally {
         actionInFlightRef.current = false
       }
     },
-    [executeCommand, production.run, t],
+    [executeCommand, production.run, reportFailure, t],
   )
 
   const navigationTarget = production.navigationTarget
@@ -426,5 +414,5 @@ export function useProductionStatus(options: { enabled?: boolean } = {}) {
       ? (navigationTarget.artifactId ?? null)
       : null
 
-  return { production, view, focusedArtifactId, onPrimaryAction, onControl }
+  return { production, view, focusedArtifactId, actionError: failure?.identity === identity ? failure.message : null, onPrimaryAction, onControl }
 }
