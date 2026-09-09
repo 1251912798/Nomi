@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { stationTimeout } from '../_station-budget.mjs'
+import { completedExports } from './sweep-timeline.mjs'
 import { requireCredential, recordBlocked } from './credential-precheck.mjs'
 import { realCatalogPath } from '../../../evals/lib/isoApp.mjs'
 // C0: one UI journey, with either synthetic or budgeted real provider dispatch.
@@ -154,7 +156,7 @@ try {
   await step('01', '导入原创剧本和五约束', '全文在编辑区可编辑，落盘保留人物地点结局和占位说明', async () => {
     await win.locator(DOCUMENT).fill(script)
     await expect(win.locator(DOCUMENT)).toContainText('五约束')
-    await expect.poll(async () => JSON.stringify(support.requireCurrentPersistedWorkbenchDocument(await readProject(win, projectId))), { timeout: 30_000 }).toContain('今天没有拍下整座城市')
+    await expect.poll(async () => JSON.stringify(support.requireCurrentPersistedWorkbenchDocument(await readProject(win, projectId))), { timeout: stationTimeout({ operations: 2 }) }).toContain('今天没有拍下整座城市')
     for (const constraint of ['16:9', '64 秒', '小禾', '修鞋摊', '合上电脑']) await expect(win.locator(DOCUMENT)).toContainText(constraint)
   })
   await step('02', '拆分并审阅八镜分镜', '真实提案审批，八镜共64秒，尚无媒体生成调用', async () => {
@@ -166,8 +168,8 @@ try {
     await scheduler.planRequested()
     report.r30[values.real ? 'real' : 'simulated'].firstTool = '0/1 (0%; result not yet verified)'
     const approval = win.locator(`${CREATION_PANEL} ${APPROVAL_CARD}`)
-    // A remote planner may spend minutes before its first tool; use the inference budget.
-    const proof = await proveProbe(approval, '真实分镜审批已出现', values.real ? 180_000 : undefined)
+    if (values.real) await (await import('./sweep-c0.mjs')).waitForPlannerTerminal({ approval, projectRoot, win, directory: attemptDir })
+    const proof = await proveProbe(approval, '真实分镜审批已出现')
     await screenshotSettled(win, { path: path.join(attemptDir, `C0-${sha.slice(0, 8)}-02-approval.png`) })
     await clickOrFail(approval.locator(INTERVENTION_CONFIRM), '批准分镜')
     await expectAbsent(approval.locator(INTERVENTION_CONFIRM), { provenBy: proof, message: '分镜审批已消费' })
@@ -257,14 +259,14 @@ try {
   await step('06', '通过 Nomi 导出 MP4', '实际导出可完整解码，16:9、60–120秒、含音轨', async () => {
     await clickOrFail(win.locator('[aria-label="导出 MP4"]').first(), '导出 MP4')
     const findExport = () => {
-      const candidates = fs.readdirSync(projectRoot, { recursive: true }).filter((name) => name.endsWith('.mp4') && name.split(path.sep).includes('exports'))
+      const candidates = completedExports(projectRoot)
       return candidates.length === 1 ? path.join(projectRoot, candidates[0]) : undefined
     }
     await expect.poll(() => {
       const file = findExport()
       if (!file) return false
       try { execFileSync(ffprobe.path, ['-v', 'error', '-show_format', file], { stdio: 'pipe' }); return true } catch { return false }
-    }, { timeout: 180_000 }).toBe(true)
+    }, { timeout: stationTimeout({ turns: 1, operations: 0 }) }).toBe(true)
     exportPath = findExport()
     const probe = JSON.parse(execFileSync(ffprobe.path, ['-v', 'error', '-show_streams', '-show_format', '-of', 'json', exportPath], { encoding: 'utf8' }))
     const video = probe.streams.find((s) => s.codec_type === 'video')

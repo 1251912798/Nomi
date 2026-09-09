@@ -1,0 +1,32 @@
+✖ export completion ignores decodable temporary files until atomic publication (327.021208ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 381.757292
+
+✖ failing tests:
+
+test at tests/ux/g1/c0-real-budget.node-test.mjs:183:1
+✖ export completion ignores decodable temporary files until atomic publication (327.021208ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+
+  + [
+  +   'exports/film.partial.mp4'
+  + ]
+  - []
+
+      at TestContext.<anonymous> (file:///Users/aoqimin/Desktop/Nomi-sweep-d/tests/ux/g1/c0-real-budget.node-test.mjs:191:12)
+      at async Test.run (node:internal/test_runner/test:1110:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:358:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [ 'exports/film.partial.mp4' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
