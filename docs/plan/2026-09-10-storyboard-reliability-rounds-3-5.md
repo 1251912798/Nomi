@@ -10,7 +10,10 @@
 
 ## 先查别人与共享边界
 
-沿用上轮已实查的一手资料：DeepSeek https://api-docs.deepseek.com/guides/tool_calls 与定价 https://api-docs.deepseek.com/quick_start/pricing；GPT Image 2 https://docs.kie.ai/market/gpt/gpt-image-2-text-to-image。官方resolution档位经 src/config/modelArchetypes/gptImage2.ts:19 映射为 canonical 参数；供应商线缆字段不能直接塞计划。
+1. DeepSeek官方工具调用：https://api-docs.deepseek.com/guides/tool_calls 。沿用上轮已实查来源，工具错误回流给模型修正，不取消共享验证。
+2. DeepSeek官方定价：https://api-docs.deepseek.com/quick_start/pricing 。沿用峰值Flash输入/输出单价和缓存单价，USD/CNY=8记录费用上界。
+3. GPT Image 2供应商官方契约：https://docs.kie.ai/market/gpt/gpt-image-2-text-to-image 。官方resolution档位经 src/config/modelArchetypes/gptImage2.ts:19 映射为canonical参数，供应商线缆字段不能直接塞计划。
+4. 已有真实投影：tests/ux/agent-runtime-fixture.mjs:283 调用toCatalogModelOptions和buildAgentModelEntries；复用既有共享边界，不重造目录。
 
 现有 tests/ux/agent-runtime-fixture.mjs:283 projectAgentRuntimeModels 已调用真实 toCatalogModelOptions → buildAgentModelEntries。复用此边界投影目录，argsFor 从投影的 mode.params 找实际允许该档位的键；删除手填 size。同类入口扫描包括模型1K/2K两句、普通图片 fixture 与真实 Electron 目录。工具调用保持原 operation，不改用户提示词。
 
