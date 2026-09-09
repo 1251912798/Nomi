@@ -1,6 +1,6 @@
 # skill-ui-b：同类变体与封面验收
 
-状态：真实 Electron 折叠任务与88张媒体逐项加载通过；完整 gates 正排锁验证。
+状态：首轮完整gates在9ba41581d75a上exit 0；最终冷启动走查发现并修正本地内容等待网络，补充完整验证中。
 
 真实来源：内置表情包25项（五种情绪各五档），不是四个策展技能正文里的配方展开。开工截图 `before-composer.png`、`before-library.png`；搜索喜悦时原本仍是五项平铺。
 
@@ -32,3 +32,7 @@ HTML 可视规格：[真实宿主折叠样张](folding-specimen.html)。本任�
 `cover-wall.json`逐条记录48技能+40效果图片加载成功；`wall-skill-*.png`和`wall-effect-*.png`是实际滚动后的桌面截图，非拼接模拟。每张均滚动到卡片、展开所属组、检查真实协议图片解码成功。
 
 本次生成33+返工3=36次，采用33张；3张首轮不合格保留不用。费用$0.306，按8元/美元保守折算¥2.448。详情见`../../covers/skill-ui-b-visual-review.md`、88项接触表和`generation-receipt.json`。
+
+完整验证：76门岗、73通过、0阻断失败、3文档advisory；1331个测试文件通过，12272项测试通过、2项跳过；Vite与Electron构建通过。原始完整日志：`/private/tmp/nomi-skill-ui-b-full-gates-5.log`。
+
+冷启动补充：内置表情曾被外部源下载阻塞；cold-start-red/green.txt证明未完成网络也能立即返回25项表情，旧磁盘缓存立即返回且后台更新可在下次读取。共享入口仅复用既有缓存与刷新器。
