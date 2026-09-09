@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { hasSoftwareRenderer } from './useReducedProcessMotion'
+import { readProcessMotionCapability, shouldReduceProcessMotion } from './processMotionCapability'
 
 afterEach(() => vi.unstubAllGlobals())
 
@@ -17,16 +17,26 @@ describe('process motion renderer admission', () => {
       getExtension: () => ({ UNMASKED_RENDERER_WEBGL: 0x9246 }),
       getParameter: () => renderer,
     } as unknown as WebGLRenderingContext)
-    expect(hasSoftwareRenderer()).toBe(reduced)
+    expect(shouldReduceProcessMotion(readProcessMotionCapability())).toBe(reduced)
   })
 
   it('uses the static surface when no WebGL context exists', () => {
     mockContext(null)
-    expect(hasSoftwareRenderer()).toBe(true)
+    expect(shouldReduceProcessMotion(readProcessMotionCapability())).toBe(true)
   })
 
   it('uses the static surface when context creation throws', () => {
     vi.stubGlobal('document', { createElement: () => { throw new Error('context unavailable') } })
-    expect(hasSoftwareRenderer()).toBe(true)
+    expect(shouldReduceProcessMotion(readProcessMotionCapability())).toBe(true)
+  })
+})
+
+// Accessibility preference and renderer are independent inputs at the shared boundary.
+describe('pure process motion policy', () => {
+  it.each([
+    ['SwiftShader', false, true], ['llvmpipe', false, true], ['Software Rasterizer', false, true],
+    [null, false, true], ['Apple M2', false, false], ['Apple M2', true, true], ['', false, false],
+  ] as const)('renderer=%s reducedPreference=%s', (renderer, prefersReducedMotion, expected) => {
+    expect(shouldReduceProcessMotion({ renderer, prefersReducedMotion })).toBe(expected)
   })
 })

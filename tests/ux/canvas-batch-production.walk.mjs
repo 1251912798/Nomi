@@ -1,12 +1,13 @@
 // Real Electron journey for canvas batch production. The UI, spend gate, IPC, queue, HTTP transport,
 // persistence, retry, and screenshots are real; only the remote vendor is replaced by a loopback fixture.
 import { launchNomiApp } from './_launchApp.mjs'
+import { findCanvasBlankPoint } from './_canvasHit.mjs'
 import fs from 'node:fs'
 import http from 'node:http'
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { expectAbsent, proveProbe, screenshotSettled } from './_assert.mjs'
+import { expect, expectAbsent, proveProbe, screenshotSettled } from './_assert.mjs'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const shotsDir = path.join(repoRoot, 'tests/ux/shots/canvas-batch-production')
@@ -179,14 +180,18 @@ async function addNodeWithPrompt(win, kind, prompt) {
   return id
 }
 
+async function clickCanvasBlank(win) {
+  const point = await findCanvasBlankPoint(win)
+  if (!point) throw new Error('No unobstructed canvas pane for selection')
+  await win.mouse.click(point.x, point.y)
+}
+
 async function clearSelection(win) {
   const clear = win.locator('button[aria-label="清除选择"]').first()
   if (await clear.count()) {
     await clear.click()
   } else {
-    const stage = win.locator('.generation-canvas-v2__stage').first()
-    const box = await stage.boundingBox()
-    if (box) await stage.click({ position: { x: Math.max(20, box.width - 80), y: 80 } })
+    await clickCanvasBlank(win)
   }
   await win.waitForTimeout(500)
 }
@@ -241,6 +246,7 @@ try {
   }))
   const browserWindow = await app.browserWindow(win)
   await browserWindow.evaluate((window) => window.setBounds({ x: 0, y: 0, width: 1680, height: 1020 }))
+  await win.setViewportSize({ width: 1680, height: 993 })
   win.on('pageerror', (error) => pageErrors.push(String(error)))
   win.on('console', (message) => {
     if (message.type() === 'error') consoleErrors.push(message.text())
@@ -349,7 +355,8 @@ try {
   const videoId = await addNodeWithPrompt(win, '视频', '批量视频模型切换验证')
   check(Boolean(retryImageId && videoId), '真实点击新增图片和视频节点')
   await clearSelection(win)
-  await win.locator('.generation-canvas-v2__stage').click({ position: { x: 900, y: 100 } }).catch(() => {})
+  await clickCanvasBlank(win)
+  await expect(win.getByRole('button', { name: '展开生成时间轴' })).toHaveCount(1)
   await win.keyboard.press('Meta+a')
   await win.waitForTimeout(900)
 
@@ -456,6 +463,7 @@ try {
   await finalBatchDock.waitFor({ timeout: 5000 })
   const timelineHandle = win.getByRole('button', { name: '展开生成时间轴' })
   console.log('TIMELINE_HANDLE_DIAGNOSTIC', JSON.stringify({
+    previousScenario: process.env.NOMI_CANVAS_PREVIOUS_SCENARIO ?? null,
     count: await timelineHandle.count(),
     elements: await timelineHandle.evaluateAll((elements) => elements.map((element) => element.outerHTML)),
     document: await win.evaluate(() => ({
@@ -465,10 +473,13 @@ try {
         hiddenAncestor: element.closest('[aria-hidden="true"]')?.outerHTML.slice(0, 300),
       })),
       timelines: document.querySelectorAll('section[aria-label="生成时间轴"]').length,
+      timelineExpanded: document.querySelector('section[aria-label="生成时间轴"]') !== null,
+      timelineState: document.querySelector('.workbench-generation')?.outerHTML.slice(0, 650),
       dialogs: [...document.querySelectorAll('[role="dialog"]')].map((element) => element.textContent.slice(0, 200)),
     })),
   }))
   check(await timelineHandle.count() === 1, '批量底栏没有盖住时间轴展开入口')
+  await snap(win, 'batch-dock-timeline-handle')
   const dismissBatchDock = win.getByRole('button', { name: '隐藏批量生成栏' })
   check(await dismissBatchDock.count() === 1, '批量底栏提供可识别的隐藏入口')
   await dismissBatchDock.click()

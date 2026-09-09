@@ -180,7 +180,7 @@ export function runCanvasSuite(profile, { cwd = repoRoot, env = process.env, sha
 
   for (const scenario of scenariosForProfile(profile, { shard })) {
     console.log(`\n[canvas:${suiteLabel}] ${scenario.id}`)
-    results.push(runCanvasScenario(scenario, { cwd, env, outputDir }))
+    results.push(runCanvasScenario(scenario, { cwd, env: { ...env, NOMI_CANVAS_PREVIOUS_SCENARIO: results.at(-1)?.id ?? '' }, outputDir }))
   }
 
   const summary = {

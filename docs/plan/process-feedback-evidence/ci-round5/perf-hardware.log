@@ -1,0 +1,16 @@
+
+▶ M / waiting-effects
+feel record: canvas-perf-benchmark/waitForFunction.png; findings=18; new-surfaces=2; evidence: /Users/aoqimin/Desktop/Nomi-process-feedback/artifacts/feel/canvas-perf-benchmark-5f046209-94af-49b4-a0c5-082c9225d538
+WAITING_FX_CAPABILITY {"renderer":"ANGLE (Apple, ANGLE Metal Renderer: Apple M5, Unspecified Version)","prefersReducedMotion":false,"effectCount":4}
+WAITING_FX_CAPABILITY {"renderer":"ANGLE (Apple, ANGLE Metal Renderer: Apple M5, Unspecified Version)","prefersReducedMotion":false,"effectCount":4}
+WAITING_FX_HANDOVER {"effectCount":4,"staticCount":0}
+  warmup ok
+feel record: canvas-perf-benchmark/waitForFunction.png; findings=18; new-surfaces=2; evidence: /Users/aoqimin/Desktop/Nomi-process-feedback/artifacts/feel/canvas-perf-benchmark-267c2a80-4419-4132-9d3c-349523f7af0d
+WAITING_FX_CAPABILITY {"renderer":"ANGLE (Apple, ANGLE Metal Renderer: Apple M5, Unspecified Version)","prefersReducedMotion":false,"effectCount":4}
+WAITING_FX_CAPABILITY {"renderer":"ANGLE (Apple, ANGLE Metal Renderer: Apple M5, Unspecified Version)","prefersReducedMotion":false,"effectCount":4}
+WAITING_FX_HANDOVER {"effectCount":4,"staticCount":0}
+  sample 1 ok
+
+✅ 画布性能 benchmark 完成：/Users/aoqimin/Desktop/Nomi-process-feedback/tests/ux/perf-results/canvas-round5-hardware.json
+
+PROCESS_EXIT_CODE=0

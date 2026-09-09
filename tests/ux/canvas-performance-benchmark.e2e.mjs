@@ -1065,7 +1065,7 @@ async function runScenario({ scale, scenario, runIndex, rootDir }) {
       userDataDir,
       settingsDir: userDataDir,
       projectsDir,
-      args: ['--no-proxy-server'],
+      args: ['--no-proxy-server', ...args.filter(arg => arg.startsWith('--use-gl=') || arg.startsWith('--use-angle=') || arg === '--enable-unsafe-swiftshader')],
       timeout: launchTimeoutMs,
       settleMs: 900,
       env: {
