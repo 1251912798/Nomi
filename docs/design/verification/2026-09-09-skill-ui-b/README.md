@@ -1,6 +1,6 @@
 # skill-ui-b：同类变体与封面验收
 
-状态：首轮完整gates在9ba41581d75a上exit 0；最终冷启动走查发现并修正本地内容等待网络，补充完整验证中。
+状态：已完成。最终 pnpm run gates 在 aa94da24305b 上 exit 0；冷启动折叠、卡片引用/撤销和88张媒体验收通过。
 
 真实来源：内置表情包25项（五种情绪各五档），不是四个策展技能正文里的配方展开。开工截图 `before-composer.png`、`before-library.png`；搜索喜悦时原本仍是五项平铺。
 
@@ -38,3 +38,5 @@ HTML 可视规格：[真实宿主折叠样张](folding-specimen.html)。本任�
 冷启动补充：内置表情曾被外部源下载阻塞；cold-start-red/green.txt证明未完成网络也能立即返回25项表情，旧磁盘缓存立即返回且后台更新可在下次读取。共享入口仅复用既有缓存与刷新器。
 
 补充门岗核查：一次完整视觉检查中既有sb-zone-10-playback-skipped发生63像素SVG字形差异；未改代码/基线/容差，定向连续3次通过，记录见playback-recheck.txt。之后完整gates重新执行。
+
+最终完整收据：`/private/tmp/nomi-skill-ui-b-full-gates-7.log`；76门岗0阻断失败、3文档advisory，1332测试文件/12274测试通过、2项跳过，Vite/Electron构建通过。先前SVG文字差异用例本轮完整视觉检查通过，未更新基线或容差。
