@@ -1,0 +1,25 @@
+✔ lane cleanup rejects rm-first hooks and separate or unawaited close hooks (3.742959ms)
+✔ lane cleanup recognizes aliases, multiline callbacks and bracket access (1.282958ms)
+✔ lane cleanup leaves owner-managed teardown, completed evidence and ordinary directories alone (0.403708ms)
+✔ lane cleanup recognizes inferred test contexts instead of depending on the name t (0.186208ms)
+✔ rejects inline, multiline, commented and parenthesized async callbacks (0.41ms)
+✔ ignores comments, strings, synchronous DOM predicates and awaited evaluate samples (0.397792ms)
+✔ discovers real walk/e2e/helper scripts and unit tests while skipping generated dependencies (1.828291ms)
+✖ station waits reject all three incidents, aliases and arithmetic, but accept budget helpers (0.137542ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 7
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 191.069708
+
+✖ failing tests:
+
+test at scripts/check-test-waits.node-test.mjs:91:1
+✖ station waits reject all three incidents, aliases and arithmetic, but accept budget helpers (0.137542ms)
+  TypeError: stationWaitHits is not a function
+      at TestContext.<anonymous> (file:///Users/aoqimin/Desktop/Nomi-sweep-d/scripts/check-test-waits.node-test.mjs:102:20)
+      at async Test.run (node:internal/test_runner/test:1110:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:785:7)

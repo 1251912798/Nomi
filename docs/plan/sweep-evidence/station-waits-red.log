@@ -1,0 +1,5 @@
+[station-fixed-timeout] ["tests/ux/station-waits-negative.walk.mjs","page.waitForFunction(() => ready, null, { timeout: 180_000 })"]: 1 > baseline 0
+[station-fixed-timeout] ["tests/ux/station-waits-negative.walk.mjs","approval.toBeVisible({ timeout: 15_000 })"]: 1 > baseline 0
+[station-fixed-timeout] ["tests/ux/station-waits-negative.walk.mjs","button.click({ timeout: 30_000 })"]: 1 > baseline 0
+Station wait baseline: 880 occurrences; new/stale: 3
+✖ 测试等待门岗未通过：测试不许空等待、私有墙钟等待、墙钟判分或无 owner 的 lane 清理

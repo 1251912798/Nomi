@@ -1,0 +1,23 @@
+✔ full H3 film fits the approved budget and over-budget estimates fail closed (0.969292ms)
+✔ unquoted models, paid routes, parameters and cross-origin destinations are refused (2.5685ms)
+✔ in-flight requests and failures retain reservations; persistence fails before send (2.849125ms)
+✔ dispatch reserves before forwarding, preserves real responses and never retries a failed send (37.2355ms)
+✔ mixed dispatch caps each quoted text tier at 3 and never forwards media (39.12225ms)
+C0_PLANNER_PROGRESS {"status":"推理中","terminal":false,"outcome":null,"pendingTools":[],"waitedMs":5,"budget":300000,"lastEvent":null,"final":false}
+✔ transport evidence retains raw errors, HTTP prefixes and pre-dispatch budget refusals (9.018625ms)
+✔ transport cancellation records the original signal reason and lifecycle without replacing it (2.823041ms)
+✔ stage02 waits through reasoning and tool turns, but stops on approval or native terminal (363.349958ms)
+✔ mixed preflight refusals are evidence even before reaching paid budget dispatch (1.002292ms)
+C0_PLANNER_PROGRESS {"status":"等审批","terminal":true,"outcome":"approval","waitedMs":1007,"budget":300000,"lastEvent":null,"final":false}
+C0_PLANNER_PROGRESS {"status":"等审批","terminal":true,"outcome":"approval","waitedMs":1007,"budget":300000,"lastEvent":null,"final":true}
+C0_PLANNER_PROGRESS {"status":"回合失败","terminal":true,"outcome":"error","waitedMs":0,"budget":300000,"lastEvent":"agent.turn.error","final":false}
+C0_PLANNER_PROGRESS {"status":"回合失败","terminal":true,"outcome":"error","waitedMs":1,"budget":300000,"lastEvent":"agent.turn.error","final":true}
+✔ planner wait polls through nonterminal state and returns at approval with a derived ceiling (1010.160125ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1573.41525

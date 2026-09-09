@@ -61,6 +61,8 @@
 - [带状态的 UI 元素要立双层一致性合同](stateful-ui-needs-two-layer-conformance-contract.md) — 设计断言 + 功能承诺三层验证，专防装饰性 UI（`deviated` 恒 false 前科）
 - [弹层被祖先 overflow 裁掉时三样证据同时失明](overlay-clipped-by-ancestor-overflow.md) — 浮层走查必查：`toBeVisible` / rect / 「点得动」全绿也可能用户点不到，改用 `expectOverlayReachable`
 
+- [固定等待三连坑](fixed-station-waits-three-incidents.md) — 视频、审批、点击统一用状态判据与预算上限；R18 拦固定等待
+
 ## B. 测试与 CI 的红绿判读
 
 - [启动器默认值不能覆盖调用配置](launcher-defaults-must-not-override-env.md) — GUI 已起但 MCP resources/list 超时：先打印双方 capabilityDir；默认派生只能在显式参数与 env 都未配置时发生。
