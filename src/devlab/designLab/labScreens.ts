@@ -1,3 +1,4 @@
+import { CREATION_COLUMNS_STATES } from './creationColumns/states/01-columns'
 import { PROCESS_FEEDBACK_STATES } from './processFeedback/states/01-process-feedback'
 import { SETTINGS_SOUND_STATES } from './settingsSound/states/01-sound'
 import { CATALOG_LIVENESS_STATES } from './catalogLiveness/states/01-listing'
@@ -134,6 +135,7 @@ export const LAB_SCREENS: readonly LabScreen[] = [
     states: VENDOR_ORDER_STATES,
     cell: { width: VENDOR_ORDER_STAGE_WIDTH, height: VENDOR_ORDER_STAGE_HEIGHT + 40 },
   },
+  { id: 'creation-columns', label: '创作三栏 · 外框样张', states: CREATION_COLUMNS_STATES, cell: { width: 1440, height: 900 } },
 ]
 
 export function findLabScreen(id: string | null): LabScreen {

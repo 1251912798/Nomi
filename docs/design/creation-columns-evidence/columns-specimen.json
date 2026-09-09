@@ -1,0 +1,161 @@
+{
+  "frame": [
+    {
+      "selector": "[data-creation-resource-tree]",
+      "radius": "10px",
+      "border": [
+        "1px solid oklab(0.91 0.000694592 0.00393923)",
+        "1px solid oklab(0.91 0.000694592 0.00393923)",
+        "1px solid oklab(0.91 0.000694592 0.00393923)",
+        "1px solid oklab(0.91 0.000694592 0.00393923)"
+      ],
+      "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+      "padding": "0px",
+      "background": "oklab(1 0 0)",
+      "x": 16,
+      "y": 72,
+      "width": 240,
+      "height": 812
+    },
+    {
+      "selector": "[data-creation-editor]",
+      "radius": "10px",
+      "border": [
+        "1px solid oklab(0.91 0.000694592 0.00393923)",
+        "1px solid oklab(0.91 0.000694592 0.00393923)",
+        "1px solid oklab(0.91 0.000694592 0.00393923)",
+        "1px solid oklab(0.91 0.000694592 0.00393923)"
+      ],
+      "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+      "padding": "0px",
+      "background": "oklab(1 0 0)",
+      "x": 272,
+      "y": 72,
+      "width": 746,
+      "height": 812
+    },
+    {
+      "selector": "[data-v4-panel]",
+      "radius": "10px",
+      "border": [
+        "1px solid oklab(0.91 0.000694592 0.00393923)",
+        "1px solid oklab(0.91 0.000694592 0.00393923)",
+        "1px solid oklab(0.91 0.000694592 0.00393923)",
+        "1px solid oklab(0.91 0.000694592 0.00393923)"
+      ],
+      "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+      "padding": "0px",
+      "background": "oklab(1 0 0)",
+      "x": 1034,
+      "y": 72,
+      "width": 390,
+      "height": 812
+    }
+  ],
+  "header": [
+    {
+      "selector": "[data-creation-resource-tree]>div:first-child",
+      "radius": "0px",
+      "border": [
+        "0px solid oklab(0.95 0.000520944 0.00295442)",
+        "0px solid oklab(0.95 0.000520944 0.00295442)",
+        "1px solid oklab(0.95 0.000520944 0.00295442)",
+        "0px solid oklab(0.95 0.000520944 0.00295442)"
+      ],
+      "shadow": "none",
+      "padding": "0px 12px",
+      "background": "oklab(1 0 0)",
+      "x": 17,
+      "y": 73,
+      "width": 238,
+      "height": 48
+    },
+    {
+      "selector": ".workbench-editor-toolbar",
+      "radius": "0px",
+      "border": [
+        "0px solid oklab(0.95 0.000520944 0.00295442)",
+        "0px solid oklab(0.95 0.000520944 0.00295442)",
+        "1px solid oklab(0.95 0.000520944 0.00295442)",
+        "0px solid oklab(0.95 0.000520944 0.00295442)"
+      ],
+      "shadow": "none",
+      "padding": "0px 12px",
+      "background": "oklab(1 0 0)",
+      "x": 273,
+      "y": 73,
+      "width": 744,
+      "height": 48
+    },
+    {
+      "selector": "[data-v4-panel]>header",
+      "radius": "0px",
+      "border": [
+        "0px solid oklab(0.95 0.000520944 0.00295442)",
+        "0px solid oklab(0.95 0.000520944 0.00295442)",
+        "1px solid oklab(0.95 0.000520944 0.00295442)",
+        "0px solid oklab(0.95 0.000520944 0.00295442)"
+      ],
+      "shadow": "none",
+      "padding": "0px 12px",
+      "background": "oklab(1 0 0)",
+      "x": 1035,
+      "y": 73,
+      "width": 388,
+      "height": 48
+    }
+  ],
+  "body": [
+    {
+      "selector": "[data-creation-resource-tree]>nav",
+      "radius": "0px",
+      "border": [
+        "0px solid rgb(229, 231, 235)",
+        "0px solid rgb(229, 231, 235)",
+        "0px solid rgb(229, 231, 235)",
+        "0px solid rgb(229, 231, 235)"
+      ],
+      "shadow": "none",
+      "padding": "8px",
+      "background": "rgba(0, 0, 0, 0)",
+      "x": 17,
+      "y": 121,
+      "width": 238,
+      "height": 762
+    },
+    {
+      "selector": ".tiptap",
+      "radius": "0px",
+      "border": [
+        "0px solid rgb(229, 231, 235)",
+        "0px solid rgb(229, 231, 235)",
+        "0px solid rgb(229, 231, 235)",
+        "0px solid rgb(229, 231, 235)"
+      ],
+      "shadow": "none",
+      "padding": "24px 32px 80px",
+      "background": "rgba(0, 0, 0, 0)",
+      "x": 305,
+      "y": 121,
+      "width": 680,
+      "height": 762
+    },
+    {
+      "selector": "[data-v4-flow]",
+      "radius": "0px",
+      "border": [
+        "0px solid rgb(229, 231, 235)",
+        "0px solid rgb(229, 231, 235)",
+        "0px solid rgb(229, 231, 235)",
+        "0px solid rgb(229, 231, 235)"
+      ],
+      "shadow": "none",
+      "padding": "10px 12px",
+      "background": "rgba(0, 0, 0, 0)",
+      "x": 1035,
+      "y": 121,
+      "width": 388,
+      "height": 658
+    }
+  ]
+}
