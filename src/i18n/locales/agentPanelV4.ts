@@ -8,6 +8,7 @@ export const zhAgentPanelV4 = {
   collapsePanel: '收起面板',
   // 收起坞 · 右上角那枚 Nomi logo 钮（2026-09-06 用户改：收起态回到 logo + 状态叠加）
   dockOpen: '展开 Nomi',
+  dockClose: '关闭输入坞',
   dockIdle: 'Nomi 在这儿',
   dockRunning: 'Nomi 正在做',
   dockNeedsConfirm: '等你确认 {{count}} 条',
@@ -343,6 +344,7 @@ export const enAgentPanelV4 = {
   history: 'Conversation history',
   collapsePanel: 'Collapse panel',
   dockOpen: 'Open Nomi',
+  dockClose: 'Close input dock',
   dockIdle: 'Nomi is here',
   dockRunning: 'Nomi is working',
   dockNeedsConfirm: '{{count}} waiting for you',

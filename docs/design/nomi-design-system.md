@@ -263,6 +263,8 @@ DaVinci Resolve 确实有「选中跟随播放头」，但它是 **opt-in 且默
 
 ### 2.0 浮层层级（z-index）—— 只有这一份刻度，禁止硬写数字
 
+**工作区浮层必须可关闭**：任何浮在工作区上的元素都必须能关掉；关闭后完全消失，不留残余高度或占位。还原入口在常驻 chrome，关闭选择按用户记住；新消息或待确认不得擅自弹回。避让只是次选，不能代替关闭权。Agent 输入坞的还原是顶栏角标展开面板，之后再收起仍尊重关闭选择。
+
 真相源 `src/design/overlayLayers.ts` 的 `NOMI_OVERLAY_Z_INDEX`，六档（低→高）：
 `floatingPanel 4000` < `applicationModal 9000` < `dialog 9100` < `popover 9200` < `confirmation 9300` < `feedback`。
 

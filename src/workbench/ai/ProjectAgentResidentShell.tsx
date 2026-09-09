@@ -67,6 +67,8 @@ export default function ProjectAgentResidentShell({ surface }: { surface: Reside
   const labels = useV4Labels()
   const size = usePanelSize()
   const collapsed = useWorkbenchStore((state) => state.projectAgentDockCollapsed)
+  const dockHidden = useWorkbenchStore((state) => state.agentDockHidden)
+  const setDockHidden = useWorkbenchStore((state) => state.setAgentDockHidden)
   const setCollapsed = useWorkbenchStore((state) => state.setProjectAgentDockCollapsed)
   const draft = useWorkbenchStore((state) => state.projectAgentDraft)
   const setDraft = useWorkbenchStore((state) => state.setProjectAgentDraft)
@@ -302,7 +304,7 @@ export default function ProjectAgentResidentShell({ surface }: { surface: Reside
 
   // 收起 = 藏起**对话流**，不是藏起对话（定稿 Collapsed 板）。同一个 composer 掉到画面下沿
   // 居中，介入槽跟着它——这样一份编辑计划仍然读得到、批得下，不必把整列还给面板。
-  // 把 composer 也收走，才是真的把对话中断了。
+  // 用户可独立关闭这条坞；关闭选择跨项目记住，提醒仍由顶栏角标承担。
   //
   // 叫回它的入口只有一个，而且**不在这里**：顶栏右簇「浏览器」与「设置」之间那一格
   // （`src/ui/app-shell/CollapsedAiChip.tsx`，09-01 定稿 §11.2）。收起态的家跟着 chrome 走、
@@ -319,7 +321,7 @@ export default function ProjectAgentResidentShell({ surface }: { surface: Reside
       >
         <TimelineAgentReceiptEffect />
         {timelinePlanPreviewPortal}
-        <V4CollapsedDock>
+        {!dockHidden && <V4CollapsedDock onClose={() => setDockHidden(true)}>
           {data.slot ? (
             <V4Intervention
               data={data.slot}
@@ -344,7 +346,7 @@ export default function ProjectAgentResidentShell({ surface }: { surface: Reside
             modelLabel={data.modelLabel}
             skillSelected={Boolean(activeSkill || actions.selectedLibraryPrompt)}
           />
-        </V4CollapsedDock>
+        </V4CollapsedDock>}
       </section>
     )
   }
