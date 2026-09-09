@@ -1,3 +1,6 @@
+import { applyProposalBatch } from '../../../generationCanvas/agent/proposalTxn'
+import { setCanvasEventSinkForTests } from '../../../generationCanvas/events/canvasEventEmitter'
+import { applyCanvasEvent } from '../../../generationCanvas/events/canvasEventReducer'
 import { useWorkbenchStore } from '../../../workbenchStore'
 import { resolveStoryboardOverride } from './storyboardOverrideActions'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -73,4 +76,22 @@ it('plan edits project immediately except marked fields; discard is undoable and
   resolveStoryboardOverride('n3', 'prompt', 'adopt')
   expect(useWorkbenchStore.getState().storyboardDesignsByDocumentId.doc[0].plan.shots[0].prompt).toBe('夜景')
   expect(node().meta?.overriddenFields).toEqual([])
+})
+
+it('aborted Agent edits restore field ownership as well as the prompt', async () => {
+  const result = await applyProposalBatch([
+    { toolCallId: 'edit', toolName: 'set_node_prompt', effectiveArgs: { nodeId: 'n3', prompt: '夜景' } },
+    { toolCallId: 'fail', toolName: 'set_node_prompt', effectiveArgs: { nodeId: 'missing', prompt: 'x' } },
+  ])
+  expect(result.status).toBe('aborted')
+  expect(node().prompt).toBe('傍晚')
+  expect(node().meta?.overriddenFields ?? []).not.toContain('prompt')
+})
+it('prompt event replay retains the same override ownership as the live node', async () => {
+  let replay = { nodes: [structuredClone(node())], edges: [], groups: [] } as Parameters<typeof applyCanvasEvent>[0]
+  setCanvasEventSinkForTests(events => { for (const event of events) replay = applyCanvasEvent(replay, event) })
+  try {
+    await applyCanvasToolCall('set_node_prompt', { nodeId: 'n3', prompt: '夜景' })
+    expect(replay.nodes[0].meta).toEqual(node().meta)
+  } finally { setCanvasEventSinkForTests(null) }
 })

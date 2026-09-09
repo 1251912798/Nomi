@@ -56,3 +56,5 @@
 补充验证：`red-orphan-variant.log`→`green-orphan-variant.log` 证明原节点缺失时变体不抢行身份（regeneratedFrom / derivedFrom 两路）；`final-generation-loopback.log` 证明真实行生成入口向 runner 交付夜景。`screenshots/03-canvas-badge.png` 为真实节点卡角标。
 
 全量套件补充：提示词入口保留 `canvas.node.prompt-changed` 与编辑突发撤销，只共用 `markStoryboardOverrides`，不把专用事件退化为通用 node.updated。全模块 mock 改为只 mock IPC 读取，真实模型档案纯函数参与投影。53 条定向回归转绿。
+
+覆写生命周期补充：原有内部 proposal receipt 的 restore-prompt 补偿条目新增可选布尔 promptOverridden，记录此前该字段归属；旧收据保持可读，不新增格式或 MCP operation。提示词写入原子恢复值与归属，同一 gesture 附 node.updated 元数据事件供既有重放器消费。仅增加现有内部协议允许键；不改冻结区。

@@ -24,7 +24,11 @@
     "scripts/vocabularies-baseline.json",
     "skills/workbench-storyboard-planner/SKILL.md",
     "src/workbench/generationCanvas/nodes/BaseGenerationNode.tsx",
-    "src/workbench/generationCanvas/model/generationCanvasTypes.ts"
+    "src/workbench/generationCanvas/model/generationCanvasTypes.ts",
+    "electron/shared/projectAgentProposalReceipt.ts",
+    "src/workbench/generationCanvas/agent/proposalTxn.ts",
+    "src/workbench/generationCanvas/agent/proposalUndo.ts",
+    "src/workbench/generationCanvas/store/canvasStoreTypes.ts"
   ],
   "entry_points": [
     "Agent set_node_prompt and manual updateNode/updateNodePrompt",
@@ -93,12 +97,16 @@
     "artifacts": [
       "src/workbench/generationCanvas/model/storyboardOverrides.ts",
       "src/workbench/creation/storyboard/shotRow/shotRowModel.ts",
-      "src/config/modelArchetypes/anchorPolicy.ts"
+      "src/config/modelArchetypes/anchorPolicy.ts",
+      "src/workbench/generationCanvas/store/canvasNodeActions.ts",
+      "src/workbench/generationCanvas/agent/proposalTxn.ts",
+      "src/workbench/generationCanvas/agent/proposalUndo.ts"
     ]
   },
   "regression_tests": [
     "src/config/modelArchetypes/anchorPolicy.test.ts",
-    "src/workbench/creation/storyboard/exec/storyboardOverrides.integration.test.ts"
+    "src/workbench/creation/storyboard/exec/storyboardOverrides.integration.test.ts",
+    "electron/shared/projectAgentProposalReceipt.test.ts"
   ],
   "class_regression_tests": [
     "src/config/modelArchetypes/anchorPolicy.test.ts",

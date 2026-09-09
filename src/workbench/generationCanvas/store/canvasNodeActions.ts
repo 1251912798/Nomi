@@ -1,4 +1,4 @@
-import { markStoryboardOverrides } from '../model/storyboardOverrides'
+import { markStoryboardOverrides, overriddenShotFields } from '../model/storyboardOverrides'
 import { createEdgeId, createGenerationNode, removeNodes, upsertNode } from '../model/graphOps'
 import { normalizeParameterEdges } from '../model/parameterReferenceSlots'
 import { resolveInsertionPosition } from './resolveInsertionPosition'
@@ -155,10 +155,15 @@ export const createCanvasNodeActions: CanvasSliceCreator<CanvasNodeActions> = (s
       applicable.map(({ nodeId, patch }) => ({ type: 'canvas.node.updated', payload: { nodeId, patch } })),
     )
   },
-  updateNodePrompt: (nodeId, prompt) => {
+  updateNodePrompt: (nodeId, prompt, promptOverridden) => {
     const existing = get().nodes.find((candidate) => candidate.id === nodeId)
     if (!existing) return
     const patch = markStoryboardOverrides(existing, { prompt })
+    if (promptOverridden !== undefined) {
+      const fields = overriddenShotFields(existing).filter(field => field !== 'prompt')
+      if (promptOverridden) fields.push('prompt')
+      patch.meta = { ...existing.meta, overriddenFields: fields }
+    }
     pushEditBurstBarrier(nodeId, get())
     set((state) => {
       const node = state.nodes.find((candidate) => candidate.id === nodeId)
@@ -166,7 +171,10 @@ export const createCanvasNodeActions: CanvasSliceCreator<CanvasNodeActions> = (s
       Object.assign(node, patch)
       bumpPersistRevision(state)
     })
-    emitCanvasGesture([{ type: 'canvas.node.prompt-changed', payload: { nodeId, prompt } }])
+    emitCanvasGesture([
+      { type: 'canvas.node.prompt-changed', payload: { nodeId, prompt } },
+      ...(patch.meta ? [{ type: 'canvas.node.updated' as const, payload: { nodeId, patch: { meta: patch.meta } } }] : []),
+    ])
   },
   setNodeLocked: (nodeId, locked) => {
     const existing = get().nodes.find((candidate) => candidate.id === nodeId)
