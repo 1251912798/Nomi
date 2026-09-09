@@ -145,3 +145,5 @@ CI run 34347335160 的 Electron smoke 报 font-size 新增 1；本地 smoke 同�
 像素边界以随附 manifest 为准：23 张在 y=0–8，pf-zoom-60 在 y=8–14，均为顶部标签区，媒体区不变。
 
 定向重录 24/24 通过；逐像素对照发现 7 张动效帧采样与获批 actual 不同，因此最终仅复制审核目录中保存的 24 张获批 actual，未接纳重录产生的媒体变化。Git 旧基线变更集合与 manifest 完全一致，24 张均与获批 actual 字节一致；完整 gates 对最终获批图重新比对。
+
+排锁期间 main 合入 #683，首轮完整 gates 在 check:fresh-base 以 exit 1 停止（尚未进入 contracts）。再次 fetch 后无冲突合入 origin/main `ad95ab47e790`；main 自带的 agent-panel 基线随合并保留，不属于本任务重录。重新运行完整 gates，仍要求 exit 0 后才推送。
