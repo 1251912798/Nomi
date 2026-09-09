@@ -91,3 +91,10 @@ ShotPreviewOverlays 在 ConvertShotToVideoButton.tsx:14 写死 bottom；BaseGene
 - `tests/ux/design-lab/__baselines__/process-feedback/pf-preview-dark.png`
 - `tests/ux/design-lab/__baselines__/depth-action/depth-action-01-toolbar.png`
 - `tests/ux/design-lab/__baselines__/depth-action/depth-action-01-toolbar-dark.png`
+
+## 收尾验收收据
+
+- 同一 Electron 验收脚本先红 exit 1（轻量节点常驻文字遮挡 2826 CSS px²），应用获准补丁后绿 exit 0（面积 0）。标准节点 12 组几何检查、元数据共存、鼠标/键盘视频控件、真实项目改名/拖动/放大/关闭一并通过。
+- 根因合同门禁通过；红绿收据见 [red-green.json](2026-09-09-node-label-evidence/red-green.json)。截图与三组前后并排见同目录。
+- 已核对旧基线改动集合恰为授权的 26 张；另有此前已批准的新 specimen 一张。
+- 最终完整 gates 的 exit code 和精确 head 以 PR 收据为准；gates-result.txt 仅保留授权前第三轮失败历史。
