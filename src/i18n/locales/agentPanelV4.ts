@@ -58,6 +58,8 @@ export const zhAgentPanelV4 = {
 
   // Context 环
   context: '上下文用量',
+  contextInputTotal: '累计输入',
+  contextOutputTotal: '累计输出',
   input: '输入',
   output: '输出',
   reasoning: '推理',
@@ -77,7 +79,6 @@ export const zhAgentPanelV4 = {
   image: '图片',
   expand: '展开',
   collapse: '收起',
-  moreRows: '还有 {{count}} 行 · 展开',
 
   // 一行收据
   toolStatus: {
@@ -106,7 +107,8 @@ export const zhAgentPanelV4 = {
   // 队列
   queueStatus: { queued: '排队', running: '进行中', complete: '完成' },
   queueJumpAhead: '插队',
-  queueDelete: '删',
+  processThinking: '思考 ×{{count}}',
+  queueDelete: '取消这条指令',
   queueInterrupt: '立即中断',
 
 
@@ -154,7 +156,7 @@ export const zhAgentPanelV4 = {
   laneOptionQueueFollowUp: '等它做完再说',
   laneOptionNewTurn: '发送',
   money: '{{currency}} {{amount}}',
-  costUsd: '${{amount}}',
+  costUsd: 'USD {{amount}}',
   waitingApproval: '等你确认',
   ready: '就绪',
   queueUntitled: '未命名任务',
@@ -394,6 +396,8 @@ export const enAgentPanelV4 = {
   },
 
   context: 'Context usage',
+  contextInputTotal: 'Total input',
+  contextOutputTotal: 'Total output',
   input: 'Input',
   output: 'Output',
   reasoning: 'Reasoning',
@@ -412,7 +416,6 @@ export const enAgentPanelV4 = {
   image: 'Image',
   expand: 'Expand',
   collapse: 'Collapse',
-  moreRows: '{{count}} more lines · expand',
 
   toolStatus: {
     inputStreaming: 'Running',
@@ -437,7 +440,8 @@ export const enAgentPanelV4 = {
 
   queueStatus: { queued: 'Queued', running: 'Running', complete: 'Done' },
   queueJumpAhead: 'Move up',
-  queueDelete: 'Delete',
+  processThinking: 'Thinking ×{{count}}',
+  queueDelete: 'Cancel this instruction',
   queueInterrupt: 'Interrupt now',
 
 
@@ -478,7 +482,7 @@ export const enAgentPanelV4 = {
   laneOptionQueueFollowUp: 'Wait until it finishes',
   laneOptionNewTurn: 'Send',
   money: '{{currency}} {{amount}}',
-  costUsd: '${{amount}}',
+  costUsd: 'USD {{amount}}',
   waitingApproval: 'Waiting for you',
   ready: 'Ready',
   queueUntitled: 'Untitled task',

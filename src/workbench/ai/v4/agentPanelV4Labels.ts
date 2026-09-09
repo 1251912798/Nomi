@@ -48,8 +48,8 @@ export function useV4Labels() {
     },
     context: {
       context: t('agentPanelV4.context'),
-      input: t('agentPanelV4.input'),
-      output: t('agentPanelV4.output'),
+      input: t('agentPanelV4.contextInputTotal'),
+      output: t('agentPanelV4.contextOutputTotal'),
       reasoning: t('agentPanelV4.reasoning'),
       cache: t('agentPanelV4.cache'),
       threadCost: t('agentPanelV4.threadCost'),
