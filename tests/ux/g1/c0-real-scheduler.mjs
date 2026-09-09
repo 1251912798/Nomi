@@ -1,3 +1,4 @@
+import { stationTimeout } from '../_station-budget.mjs'
 import { watchCredential } from './credential-precheck.mjs'
 import fs from 'node:fs'
 import { quotePlanSample } from './c0-plan-sample-budget.mjs'
@@ -117,9 +118,9 @@ export async function createRealScheduler({ tempRoot, attemptDir, outputDir, rep
         await expect.poll(async () => {
           nativeMessages = await readNativeMessages(projectRoot)
           return scoreLanePlanner(nativeMessages, true).turns
-        }, { timeout: 180_000 }).toBe('1/1 (100%)')
+        }, { timeout: stationTimeout({ turns: 1, operations: 0 }) }).toBe('1/1 (100%)')
       } else {
-        await expect.poll(() => readEventsLog(projectRoot).some((e) => e.type === 'agent.turn.finished'), { timeout: 180_000 }).toBe(true)
+        await expect.poll(() => readEventsLog(projectRoot).some((e) => e.type === 'agent.turn.finished'), { timeout: stationTimeout({ turns: 1, operations: 0 }) }).toBe(true)
         planEvents = readEventsLog(projectRoot)
       }
     },
@@ -133,7 +134,10 @@ export async function createRealScheduler({ tempRoot, attemptDir, outputDir, rep
     prepareGeneration() {}, async generationCompleted() { await snapshot() },
     async finish() { await snapshot() },
     async close() {
-      try { await snapshot() } finally {
+      try {
+        if (app && !credentialBlocked) await app.evaluate(() => globalThis.__c0Dispatch?.markLifecycle('C0_SCHEDULER_CLEANUP'))
+        await snapshot()
+      } finally {
         fs.rmSync(iso.settingsDir, { recursive: true, force: true })
         fs.rmSync(lockPath, { force: true })
       }

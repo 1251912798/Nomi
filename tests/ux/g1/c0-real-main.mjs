@@ -16,12 +16,17 @@ export async function attachRealDispatch({ quote, ledgerPath, mediaFiles = [], r
   const transport = require(path.join(compiled, 'appFetch.js'))
   const originalAppFetch = transport.appFetch
   const originalGlobalFetch = globalThis.fetch
+  const proxy = require(path.join(compiled, 'systemProxy.js'))
+  const observe = createTransportEvidence({ evidencePath: path.join(path.dirname(requestsPath), 'transport-evidence.json'),
+    redact: value => String(value).split(key).join('[REDACTED]'),
+    proxyState: () => { const status = proxy.getProxyStatus(); return { viaProxy: Boolean(status.activeUrl), source: status.source, mode: status.mode,
+      route: status.activeUrl ? 'PROXY (address omitted)' : 'DIRECT', limitation: 'application routing; transparent TUN cannot be observed' } } })
   const ledger = fs.existsSync(ledgerPath) ? JSON.parse(fs.readFileSync(ledgerPath, 'utf8'))
     : { reservedCny: 0, requests: [], initialUsedUsd: null, billedUsd: null }
   const persist = () => fs.writeFileSync(ledgerPath, JSON.stringify(ledger, null, 2), { mode: 0o600 })
   const balance = async () => {
     try {
-      const response = await originalAppFetch('https://api.apimart.ai/v1/balance', {
+      const response = await observe(originalAppFetch, 'appFetch:balance')('https://api.apimart.ai/v1/balance', {
         headers: { Authorization: `Bearer ${key}` }, signal: AbortSignal.timeout(20_000), redirect: 'error',
       })
       const data = await response.json()
@@ -33,10 +38,11 @@ export async function attachRealDispatch({ quote, ledgerPath, mediaFiles = [], r
   }
   ledger.initialUsedUsd ??= await balance()
   persist()
-  const wrap = createDispatchWrapper({ quote, ledger, persist, requestsPath, mediaFiles, ledgerPath })
-  transport.appFetch = wrap(originalAppFetch)
-  globalThis.fetch = wrap(originalGlobalFetch)
+  const wrap = createDispatchWrapper({ quote, ledger, persist, requestsPath, mediaFiles, ledgerPath, observe })
+  transport.appFetch = wrap(originalAppFetch, 'appFetch')
+  globalThis.fetch = wrap(originalGlobalFetch, 'globalFetch')
   return {
+    markLifecycle(reason) { observe.markLifecycle(reason) },
     async snapshot() {
       ledger.billedUsd = Math.max(ledger.billedUsd ?? 0, (await balance()) - ledger.initialUsedUsd)
       ledger.billedCnyAtBudgetRate = ledger.billedUsd * CNY_PER_USD
@@ -47,17 +53,17 @@ export async function attachRealDispatch({ quote, ledgerPath, mediaFiles = [], r
   }
 }
 
-export function createDispatchWrapper({ quote, ledger, persist, requestsPath, mediaFiles = [], ledgerPath }) {
+export function createDispatchWrapper({ quote, ledger, persist, requestsPath, mediaFiles = [], ledgerPath, observe = createTransportEvidence({ evidencePath: ledgerPath && path.join(path.dirname(ledgerPath), 'transport-evidence.json') }) }) {
   const wrapFetch = quote.mediaDryRun ? planSampleFetch : budgetedFetch
   const requests = requestsPath && fs.existsSync(requestsPath) ? JSON.parse(fs.readFileSync(requestsPath, 'utf8')) : []
   let mediaIndex = 0
-  const wrap = send => {
+  const wrap = (send, transportName = 'test-send') => observe(send, transportName, observedSend => {
     const paid = wrapFetch({ send: async (input, init) => {
       const request = new Request(input instanceof Request ? input.clone() : input, init)
       const body = request.method === 'POST' ? await request.clone().json() : undefined
       requests.push({ path: new URL(request.url).pathname, body })
       if (requestsPath) fs.writeFileSync(requestsPath, JSON.stringify(requests, null, 2))
-      return send(input, init)
+      return observedSend(input, init)
     }, quote, ledger, persist })
     return async (input, init) => {
       if (!quote.mediaDryRun) return paid(input, init)
@@ -77,6 +83,69 @@ export function createDispatchWrapper({ quote, ledger, persist, requestsPath, me
       }
       return paid(input, init)
     }
-  }
+  })
   return wrap
+}
+
+// Record below the budget wrapper (raw network failure) and above it (local refusal).
+// A separate row per invocation also preserves concurrent calls and SDK retries.
+export function createTransportEvidence({ evidencePath, redact = String, proxyState = () => ({ viaProxy: null, route: 'unknown' }) } = {}) {
+  const rows = evidencePath && fs.existsSync(evidencePath) ? JSON.parse(fs.readFileSync(evidencePath, 'utf8')) : []
+  const save = () => { if (evidencePath) fs.writeFileSync(evidencePath, JSON.stringify(rows, null, 2), { mode: 0o600 }) }
+  const errorInfo = error => error == null ? null : { name: error.name ?? null, message: redact(error.message ?? error),
+    stack: error.stack ? redact(error.stack) : null, code: error.code ?? null, cause: error.cause ? errorInfo(error.cause) : null }
+  let lifecycle = null
+  const observe = (send, transportName, budget = fn => fn) => async (input, init) => {
+    const started = performance.now(), request = new Request(input instanceof Request ? input.clone() : input, init)
+    const signal = init?.signal ?? (input instanceof Request ? input.signal : undefined)
+    const row = { id: rows.length + 1, started: new Date().toISOString(), transportName, path: new URL(request.url).pathname,
+      dispatched: false, httpStatus: null, bodyPrefix: null, elapsedMs: null, ...proxyState(),
+      exception: null, localReason: null, abortReason: null, lifecycleAtStart: lifecycle }
+    rows.push(row); save()
+    const abort = () => { row.abortReason = errorInfo(signal.reason); row.abortElapsedMs = Math.round(performance.now() - started); row.lifecycleAtAbort = lifecycle; save() }
+    if (signal?.aborted) abort()
+    else signal?.addEventListener('abort', abort, { once: true })
+    let originalError
+    const observedSend = async (target, options) => {
+      const outgoing = new Request(target, options)
+      const body = outgoing.method === 'POST' ? await outgoing.clone().text() : ''
+      const parsed = body ? JSON.parse(body) : {}
+      Object.assign(row, { requestBytes: Buffer.byteLength(body), model: parsed.model ?? null, maxTokens: parsed.max_tokens ?? null,
+        stream: parsed.stream ?? false, toolsCount: parsed.tools?.length ?? 0, dispatched: true, ...proxyState() }); save()
+      try {
+        const response = await send(target, options)
+        Object.assign(row, { httpStatus: response.status, elapsedMs: Math.round(performance.now() - started) }); save()
+        // Drain a clone asynchronously for transport liveness; retain only a bounded prefix.
+        void (async () => {
+          const reader = response.clone().body?.getReader(), decoder = new TextDecoder()
+          let prefix = ''
+          row.streamBytes = 0; row.streamState = 'reading'; save()
+          try {
+            if (reader) while (true) {
+              const { done, value } = await reader.read()
+              if (done) { row.streamState = 'completed'; row.streamEndElapsedMs = Math.round(performance.now() - started); break }
+              row.streamBytes += value.byteLength
+              row.lastChunkElapsedMs = Math.round(performance.now() - started)
+              if (Array.from(prefix).length < 300) prefix = Array.from(prefix + decoder.decode(value, { stream: true })).slice(0, 300).join('')
+              row.bodyPrefix = Array.from(redact(prefix)).slice(0, 300).join(''); save()
+            }
+            row.bodyPrefix = Array.from(redact(prefix)).slice(0, 300).join('')
+          } catch (error) { row.streamState = 'failed'; row.bodyReadException = errorInfo(error); row.bodyPrefix = Array.from(redact(prefix)).slice(0, 300).join('') }
+          finally { row.prefixElapsedMs = Math.round(performance.now() - started); save(); if (reader) void reader.cancel().catch(() => {}) }
+        })().catch(error => { row.observerException = errorInfo(error); save() })
+        return response
+      } catch (error) { originalError = error; row.exception = errorInfo(error); throw error }
+    }
+    try { return await budget(observedSend)(input, init) }
+    catch (error) {
+      row.elapsedMs = Math.round(performance.now() - started)
+      if (!row.dispatched) { row.localReason = errorInfo(error); row.exception = errorInfo(error) }
+      else if (!row.exception) row.exception = errorInfo(error)
+      row.wrapperException = originalError && error !== originalError ? errorInfo(error) : null
+      save()
+      throw originalError ?? error
+    }
+  }
+  observe.markLifecycle = reason => { lifecycle = { reason, at: new Date().toISOString() } }
+  return observe
 }

@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import fs from 'node:fs'
+import { stationTimeout } from '../tests/ux/_station-budget.mjs'
 import { createHash } from 'node:crypto'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -32,7 +33,7 @@ const cases = JSON.parse(fs.readFileSync(path.join(root, 'tests/ux/g1/cases.json
 const runs = [], skipped = []
 let credentialBlock
 if (values.case && !cases.some(c => c.id === values.case)) throw Error(`Unknown case: ${values.case}`)
-const sourceFiles = ['scripts/sweep.mjs', 'tests/ux/_assert.mjs', 'tests/ux/_collect.mjs', ...fs.readdirSync(path.join(root, 'tests/ux/g1')).filter(f => /\.(mjs|json)$/.test(f)).map(f => `tests/ux/g1/${f}`)]
+const sourceFiles = ['scripts/sweep.mjs', 'tests/ux/_assert.mjs', 'tests/ux/_station-budget.mjs', 'tests/ux/_collect.mjs', ...fs.readdirSync(path.join(root, 'tests/ux/g1')).filter(f => /\.(mjs|json)$/.test(f)).map(f => `tests/ux/g1/${f}`)]
 writeJson(path.join(directory, 'source-files.json'), Object.fromEntries(sourceFiles.map(file => [file, createHash('sha256').update(fs.readFileSync(path.join(root, file))).digest('hex')])))
 writeJson(path.join(directory, 'run.json'), { runId, sourceSha: execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim(), budgetCny, mode: values['real-text'] ? 'real-text' : 'loopback', packaged: values.packaged ?? null })
 for (const entry of cases) for (const input of entry.inputs) {
@@ -100,7 +101,7 @@ for (const entry of cases) for (const input of entry.inputs) {
     if (real) await attachRealText(launched, { profile, quote: real.quote, ledgerPath, budgetCny, requestsPath: path.join(target, 'model-requests.json') })
     await station('launch', '独立 profile 启动真实 Electron', async () => {
       evidence = await startEvidence({ ...launched, directory: target, payload })
-      launched.win.setDefaultTimeout(5000)
+      launched.win.setDefaultTimeout(stationTimeout())
       await launched.win.evaluate(() => {
         localStorage.setItem('nomi:locale:v1', 'zh-CN')
         for (const key of ['nomi:splash:v1','nomi:journey-tour:v1','nomi:canvas-gesture-hint:v1']) localStorage.setItem(key, 'seen')
