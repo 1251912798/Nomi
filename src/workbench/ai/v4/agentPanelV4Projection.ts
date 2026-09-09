@@ -181,6 +181,7 @@ function failureBar(t: Translate, text: string): string {
 }
 
 function receiptFor(input: {
+  turnId?: string
   capabilityId: string
   args: unknown
   status: V4ToolStatus
@@ -215,6 +216,7 @@ function receiptFor(input: {
     : elapsed || undefined
   return Object.freeze({
     // 手上还有真参数就现算，没有就用调用当时存下的那份（历史行的 args 已经不在了）。
+    ...(input.turnId ? { turnId: input.turnId } : {}),
     label: projection?.label || readableToolName(t, capabilityId, args),
     action: actionFamilyForCapability(capabilityId, args),
     status: input.status,
@@ -385,6 +387,7 @@ export function projectV4Flow(input: V4FlowInput): readonly V4FlowItem[] {
       flow.push({
         kind: 'tool',
         receipt: receiptFor({
+          turnId: item.turnId,
           capabilityId: item.capability.id,
           args,
           status: toolStatusOf(item.status, pending?.state),
@@ -446,6 +449,7 @@ export function projectV4Flow(input: V4FlowInput): readonly V4FlowItem[] {
     flow.push({
       kind: 'tool',
       receipt: receiptFor({
+        turnId: pending.turnId,
         capabilityId: pending.toolName,
         args: pending.args,
         status: toolStatusOf(undefined, pending.state),

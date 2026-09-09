@@ -101,6 +101,10 @@ Script → Generate → Edit → Preview → Export
 
 ---
 
+## 行布局：附属信息跟随内容流
+
+一行里的耗时、状态、展开箭头和次级动作紧跟说明文字，用 `gap-1.5` 小间距排列；只有主动作（确认/发送）和危险动作允许贴右边缘。Agent 面板统一复用 `V4Row`，不在消费者另写 `ml-auto` / `justify-between` 或给标签加伸展来推远附属。用户气泡的整体靠右不属于附属行，使用 `self-end` 保持对话布局。`check:tokens` 对 AI 目录行尾类硬零，其余生产路径按文件登记存量只减不增。
+
 ## 1.5 控件层级规则（强制 · 画图前必过）
 
 > **这份文档过去只管「长什么样」，不管「住哪一层」。** 2026-08-02 全 App 控件盘点（10 个界面、约 620 个可点位）发现：十个界面各自发明了十套摆法——画布左缘 8 个平铺竖条、剪辑页一条 toolbar 横铺 15 个跨 4 类心智、3D 四面包围、节点四面包围再叠 hover 浮条。
@@ -258,6 +262,8 @@ DaVinci Resolve 确实有「选中跟随播放头」，但它是 **opt-in 且默
 | 几何/排版（TS）| `src/theme/nomiTheme.ts` 中的 `nomiDesignTokens` | `radius` / `spacing` / `fontSize` / `lineHeight` / `shadow` | Tailwind config 引用 |
 
 ### 2.0 浮层层级（z-index）—— 只有这一份刻度，禁止硬写数字
+
+**工作区浮层必须可关闭**：任何浮在工作区上的元素都必须能关掉；关闭后完全消失，不留残余高度或占位。还原入口在常驻 chrome，关闭选择按用户记住；新消息或待确认不得擅自弹回。避让只是次选，不能代替关闭权。Agent 输入坞的还原是顶栏角标展开面板，之后再收起仍尊重关闭选择。
 
 真相源 `src/design/overlayLayers.ts` 的 `NOMI_OVERLAY_Z_INDEX`，六档（低→高）：
 `floatingPanel 4000` < `applicationModal 9000` < `dialog 9100` < `popover 9200` < `confirmation 9300` < `feedback`。

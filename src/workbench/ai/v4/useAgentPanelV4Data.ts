@@ -366,7 +366,7 @@ export function useAgentPanelV4Data(surface: ResidentSurface): AgentPanelV4Data 
     if (suggestion) extra.push({ kind: 'suggestion', text: suggestion.text, options: suggestion.options })
     // 折叠**最后**做：它认的是「相邻的同名收据」和「最后一次调用之前的助手文本」，
     // 而思考行 / 缺参数提问是接在流尾的活件——先折再补，会把它们算进上一段的过程里。
-    return collapseV4Flow(extra.length ? [...base, ...extra] : base, t)
+    return collapseV4Flow(extra.length ? [...base, ...extra] : base, t, { turns, liveTurnId: !primaryPending ? liveTurn?.turnId : undefined, elapsedSeconds: thinkingSeconds })
   }, [clipLabels, items, liveTurn, pendingTools, primaryPending, queueItems, skillNames, suggestion, t, taskFacts, thinkingSeconds, toolArgs, toolProjections, turns, undoableToolKey])
 
   const slot = React.useMemo(() => {

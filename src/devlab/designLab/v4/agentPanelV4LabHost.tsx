@@ -160,7 +160,7 @@ export function ShellStage({
     projectAgentProjectionStore.install('design-lab', 1, snapshot)
     agentPanelV4PendingTools.reset()
     useWorkbenchStore.setState({
-      assistantWidth: width,
+      editingPanelLayout: { ...useWorkbenchStore.getState().editingPanelLayout, assistantWidth: width },
       projectAgentDockCollapsed: false,
       projectAgentDraft: draft,
       projectAgentAttachments: [],

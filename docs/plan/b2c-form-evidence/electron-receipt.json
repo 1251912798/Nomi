@@ -1,0 +1,124 @@
+{
+  "modelCalls": 0,
+  "evidence": "real Electron App with isolated catalog and deterministic host snapshots",
+  "frames": {
+    "creation": {
+      "x": 1034,
+      "y": 72,
+      "width": 390,
+      "height": 912,
+      "radius": "10px",
+      "border": "1px"
+    },
+    "storyboard": {
+      "x": 1034,
+      "y": 72,
+      "width": 390,
+      "height": 912,
+      "radius": "10px",
+      "border": "1px"
+    },
+    "generation": {
+      "x": 1034,
+      "y": 72,
+      "width": 390,
+      "height": 912,
+      "radius": "10px",
+      "border": "1px"
+    },
+    "preview": {
+      "x": 1034,
+      "y": 72,
+      "width": 390,
+      "height": 912,
+      "radius": "10px",
+      "border": "1px"
+    }
+  },
+  "screenshots": [
+    "frame-creation",
+    "frame-storyboard",
+    "frame-generation",
+    "frame-preview",
+    "width-600",
+    "width-600-preview",
+    "width-300",
+    "width-before-refresh",
+    "model-electron",
+    "process-running-electron",
+    "process-running-expanded-electron",
+    "process-done-electron",
+    "process-done-expanded-electron",
+    "process-failed-electron",
+    "process-failed-expanded-electron"
+  ],
+  "crossSurface600": true,
+  "refreshWidth": 310,
+  "models": [
+    "对话DeepSeek V4 Pro",
+    "图片默认GPT Image 2",
+    "视频默认MiniMax H3"
+  ],
+  "dragWidth": 468,
+  "processrunningSurfaces": [
+    {
+      "background": "rgba(0, 0, 0, 0)",
+      "shadow": "none",
+      "border": "0px"
+    },
+    {
+      "background": "rgba(0, 0, 0, 0)",
+      "shadow": "none",
+      "border": "0px"
+    },
+    {
+      "background": "rgba(0, 0, 0, 0)",
+      "shadow": "none",
+      "border": "0px"
+    }
+  ],
+  "processdoneSurfaces": [
+    {
+      "background": "rgba(0, 0, 0, 0)",
+      "shadow": "none",
+      "border": "0px"
+    },
+    {
+      "background": "rgba(0, 0, 0, 0)",
+      "shadow": "none",
+      "border": "0px"
+    },
+    {
+      "background": "rgba(0, 0, 0, 0)",
+      "shadow": "none",
+      "border": "0px"
+    }
+  ],
+  "processfailedSurfaces": [
+    {
+      "background": "rgba(0, 0, 0, 0)",
+      "shadow": "none",
+      "border": "0px"
+    },
+    {
+      "background": "rgba(0, 0, 0, 0)",
+      "shadow": "none",
+      "border": "0px"
+    },
+    {
+      "background": "rgba(0, 0, 0, 0)",
+      "shadow": "none",
+      "border": "0px"
+    }
+  ],
+  "brandFonts": {
+    "fonts": [
+      {
+        "familyName": "Fraunces",
+        "postScriptName": "Fraunces-Regular_wght1900000",
+        "isCustomFont": true,
+        "glyphCount": 4
+      }
+    ]
+  }
+}

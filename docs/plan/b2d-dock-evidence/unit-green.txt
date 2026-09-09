@@ -1,0 +1,8 @@
+
+ RUN  v4.1.8 /Users/aoqimin/Desktop/Nomi-panel-form
+
+
+ Test Files  2 passed (2)
+      Tests  9 passed (9)
+   Start at  19:29:31
+   Duration  1.21s (transform 647ms, setup 45ms, import 1.49s, tests 4ms, environment 0ms)

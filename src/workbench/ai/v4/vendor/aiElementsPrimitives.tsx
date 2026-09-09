@@ -19,7 +19,7 @@ export function Message({ role, children }: { role: 'user' | 'assistant'; childr
         'text-body-sm leading-relaxed',
         // 助手侧**无气泡、无底色**（AI Elements Message assistant）；用户侧才是深底气泡，
         // 但那一件由 V4UserBubble 自己画（它还要装 chip），这里只负责助手侧排版。
-        role === 'user' ? 'ml-auto max-w-[86%] rounded-nomi bg-nomi-ink px-3 py-2 text-nomi-paper' : 'text-nomi-ink',
+        role === 'user' ? 'self-end max-w-[86%] rounded-nomi bg-nomi-ink px-3 py-2 text-nomi-paper' : 'text-nomi-ink',
       )}
       data-ai-element="message"
       data-role={role}

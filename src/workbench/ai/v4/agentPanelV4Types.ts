@@ -84,6 +84,8 @@ export type V4ChipKind = 'file' | 'skill' | 'clip'
 export type V4Chip = Readonly<{ kind: V4ChipKind; label: string }>
 
 export type ToolReceipt = Readonly<{
+  /** Host identity for turn timing; never displayed. */
+  turnId?: string
   /** 人话动词 + 对象，例如「读取时间轴」。 */
   label: string
   action: V4ActionFamily
@@ -172,7 +174,7 @@ export type V4FlowItem =
       receipts: readonly ToolReceipt[]
     }
   // 反复试的过程里，模型说给自己听的那几段。收起态就是助手文本的一个状态。
-  | { kind: 'process'; label: string; segments: readonly string[] }
+  | { kind: 'process'; label: string; segments: readonly string[]; running?: boolean; toolCount?: number; retries?: number; elapsed?: string; details?: readonly { item: V4FlowItem; index: number }[] }
   | { kind: 'task'; task: TaskCardData }
   | { kind: 'suggestion'; text: string; options: readonly string[] }
   | { kind: 'error'; reason: string; action?: string }

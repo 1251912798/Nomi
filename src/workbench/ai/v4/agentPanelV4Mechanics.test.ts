@@ -17,8 +17,9 @@ const html = (component: React.ReactElement) => renderToStaticMarkup(React.creat
 describe('B2a mechanics', () => {
   it('C25 groups receipts across thinking, with thinking count', () => {
     const result = collapseV4Flow([tool, think, tool, think, tool, answer], t)
-    expect(result.find(item => item.kind === 'tool-group')).toMatchObject({ count: 3 })
-    expect(result.find(item => item.kind === 'process')).toMatchObject({ label: 'agentPanelV4.processThinking{"count":2}' })
+    const process = result.find(item => item.kind === 'process')
+    expect(process).toMatchObject({ toolCount: 3, segments: ['检查工具组', '检查工具组'] })
+    expect(process?.kind === 'process' && process.details?.find(detail => detail.item.kind === 'tool-group')?.item).toMatchObject({ count: 3 })
     expect(result).toContainEqual(answer)
   })
   it('C25 keeps a complete answer between calls visible without reliable offsets', () => {

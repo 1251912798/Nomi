@@ -1,3 +1,5 @@
+import { AssistantPane } from '../AssistantPane'
+import { assistantPaneWidth } from '../assistantWidthBounds'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { IconChevronUp, IconLayoutList } from '@tabler/icons-react'
@@ -33,8 +35,7 @@ export default function GenerationWorkspace({
   agentDockRef,
 }: GenerationWorkspaceProps): JSX.Element {
   const { t } = useTranslation()
-  const width = useWorkbenchStore((s) => s.assistantWidth)
-  const setWidth = useWorkbenchStore((s) => s.setAssistantWidth)
+  const width = useWorkbenchStore((s) => s.editingPanelLayout.assistantWidth)
   const timeline = useWorkbenchStore((s) => s.timeline)
   const reduceMotion = useReducedMotion()
   const timelineCollapsed = useWorkbenchStore((state) => state.timelinePanelCollapsed)
@@ -50,32 +51,7 @@ export default function GenerationWorkspace({
     const ss = String(totalSeconds % 60).padStart(2, '0')
     return { clipCount, durationLabel: `${mm}:${ss}` }
   }, [timeline])
-  const dragRef = React.useRef<{ startX: number; startW: number } | null>(null)
-  const onPointerDown = React.useCallback(
-    (e: React.PointerEvent) => {
-      dragRef.current = { startX: e.clientX, startW: width }
-      e.currentTarget.setPointerCapture(e.pointerId)
-    },
-    [width],
-  )
-  const onPointerMove = React.useCallback(
-    (e: React.PointerEvent) => {
-      const st = dragRef.current
-      if (!st) return
-      // 右侧停靠：往左拖（clientX 变小）= 加宽。
-      setWidth(st.startW + (st.startX - e.clientX))
-    },
-    [setWidth],
-  )
-  const endDrag = React.useCallback((e: React.PointerEvent) => {
-    dragRef.current = null
-    try {
-      e.currentTarget.releasePointerCapture(e.pointerId)
-    } catch {
-      /* noop */
-    }
-  }, [])
-  const assistantTargetWidth = `${width}px`
+  const assistantTargetWidth = `${assistantPaneWidth(width)}px`
   const hasAssistant = Boolean(agentDockRef)
   const assistantColumnWidth = hasAssistant ? (aiCollapsed ? '0px' : assistantTargetWidth) : '0px'
   const isDockedAssistant = hasAssistant
@@ -148,38 +124,7 @@ export default function GenerationWorkspace({
         {/* 时间轴展开时的迷你画面窗：跟播放头，治画布上盲剪（收起态自持久化）。 */}
         {timelineCollapsed ? null : <TimelineMiniPreview />}
       </div>
-      {hasAssistant ? (
-        <aside
-          className={cn(
-            'workbench-generation__ai relative',
-            'grid min-w-0 min-h-0 border-b border-[var(--workbench-border)]',
-            aiCollapsed
-              ? 'pointer-events-none absolute inset-0 z-40 overflow-visible justify-items-end border-0 bg-transparent'
-              : 'overflow-hidden justify-items-end border-l border-l-[var(--workbench-border)] bg-[var(--workbench-surface)]',
-          )}
-          aria-label={t('generationCommon.workspace.assistantSidebar')}
-        >
-          {/* 左缘拖手柄：仅停靠态显示。 */}
-          {isDockedAssistant ? (
-            <div
-              role="separator"
-              aria-label={t('generationCommon.workspace.resizeAssistant')}
-              aria-orientation="vertical"
-              className={cn(
-                'group absolute left-0 top-0 bottom-0 z-10 w-2 -translate-x-1/2',
-                'flex cursor-col-resize items-center justify-center touch-none',
-              )}
-              onPointerDown={onPointerDown}
-              onPointerMove={onPointerMove}
-              onPointerUp={endDrag}
-              onPointerCancel={endDrag}
-            >
-              <span className={cn('h-8 w-[3px] rounded-full bg-nomi-ink-30 group-hover:bg-nomi-accent')} />
-            </div>
-          ) : null}
-          <div ref={agentDockRef} className="h-full w-full min-w-0 min-h-0" />
-        </aside>
-      ) : null}
+      {hasAssistant ? <AssistantPane dockRef={agentDockRef} collapsed={aiCollapsed} /> : null}
       <div className={cn('workbench-generation__timeline', 'relative col-span-full min-w-0 min-h-0')}>
         {timelineCollapsed ? null : (
           <>

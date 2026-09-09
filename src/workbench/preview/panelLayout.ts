@@ -1,3 +1,5 @@
+import { z } from 'zod'
+import { ASSISTANT_WIDTH_MIN, ASSISTANT_WIDTH_MAX, clampAssistantWidth } from '../assistantWidthBounds'
 export type EditingPanelPreset = 'default' | 'focus' | 'result' | 'portrait' | 'custom'
 
 export type EditingPanelVisibility = {
@@ -39,20 +41,13 @@ export const EDITING_PANEL_PRESETS: Record<Exclude<EditingPanelPreset, 'custom'>
 export const EDITING_PANEL_BOUNDS = {
   source: { min: 240, max: 520 },
   inspector: { min: 200, max: 420 },
-  assistant: { min: 320, max: 600 },
+  assistant: { min: ASSISTANT_WIDTH_MIN, max: ASSISTANT_WIDTH_MAX },
   timeline: { min: 140, max: 360 },
   /** 预览列不可收起，只有下限。 */
   preview: { min: 480 },
   /** 舞台行（预览 + 左右两栏）的高度下限，给时间轴让出 260 后仍能站住画面。 */
   stage: { min: 260 },
 } as const
-
-/**
- * 左三块（镜头 / 预览 / 属性）合起来的最小宽度。
- * 直接由三块的下限相加 derive，别再手写一个数——那正是「同一语义两份定义」的老坑。
- */
-export const EDITING_PANEL_MAIN_MIN =
-  EDITING_PANEL_BOUNDS.source.min + EDITING_PANEL_BOUNDS.preview.min + EDITING_PANEL_BOUNDS.inspector.min
 
 /** 收起后的图标条宽度（合同 §2.1：32px）。 */
 export const EDITING_PANEL_RAIL_WIDTH = 32
@@ -68,7 +63,7 @@ export function clampEditingPanelLayout(layout: EditingPanelLayout): EditingPane
     ...layout,
     sourceWidth: clamp(layout.sourceWidth, EDITING_PANEL_BOUNDS.source),
     inspectorWidth: clamp(layout.inspectorWidth, EDITING_PANEL_BOUNDS.inspector),
-    assistantWidth: clamp(layout.assistantWidth, EDITING_PANEL_BOUNDS.assistant),
+    assistantWidth: clampAssistantWidth(layout.assistantWidth, typeof window === 'undefined' ? 0 : window.innerWidth),
     timelineHeight: clamp(layout.timelineHeight, EDITING_PANEL_BOUNDS.timeline),
     visibility: { ...layout.visibility },
   }
@@ -77,3 +72,11 @@ export function clampEditingPanelLayout(layout: EditingPanelLayout): EditingPane
 export function cloneEditingPanelLayout(layout: EditingPanelLayout): EditingPanelLayout {
   return { ...layout, visibility: { ...layout.visibility } }
 }
+
+/** Persisted layout is validated before the normalizer retains it. */
+export const editingPanelLayoutSchema: z.ZodType<EditingPanelLayout> = z.object({
+  sourceWidth: z.number().finite(), inspectorWidth: z.number().finite(),
+  assistantWidth: z.number().finite(), timelineHeight: z.number().finite(),
+  visibility: z.object({ source: z.boolean(), inspector: z.boolean(), assistant: z.boolean() }),
+  preset: z.custom<EditingPanelPreset>(value => typeof value === 'string' && (value === 'custom' || Object.prototype.hasOwnProperty.call(EDITING_PANEL_PRESETS, value))),
+})
