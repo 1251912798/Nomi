@@ -102,6 +102,7 @@ export default function StoryboardPlanEditor({ projectId }: { projectId?: string
   const deletedPlanUndoRef = React.useRef<{ plan: NonNullable<typeof plan>; canvasSteps: number } | null>(null)
 
   const firstIssueLabel = (issue: PlanIssue): string => {
+    if (issue.kind === 'anchor-not-consumable') return issue.correction
     switch (issue.kind) {
       case 'no-shots': return t('storyboardEditor.issue.noShots')
       case 'empty-shot-prompt': return t('storyboardEditor.issue.emptyPrompt', { index: issue.shotIndex })
@@ -219,7 +220,7 @@ export default function StoryboardPlanEditor({ projectId }: { projectId?: string
 
   if (!plan) return null
 
-  const issues = validatePlan(plan)
+  const issues = validatePlan(plan).filter(issue => issue.kind !== 'anchor-not-consumable')
   const emptyPromptShots = new Set(issues.filter((i) => i.kind === 'empty-shot-prompt').map((i) => i.shotIndex))
   const noNameAnchorIds = new Set(issues.filter((i) => i.kind === 'anchor-no-name').map((i) => i.anchorId))
 
