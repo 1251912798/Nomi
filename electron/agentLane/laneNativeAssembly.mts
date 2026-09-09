@@ -27,12 +27,7 @@ export interface LaneDeferredGroup {
  * 所以由宿主在 `harness.lane()` 之后回头把它交进来。**不复制一份本地激活状态**：
  * 唯一真相仍然是 pi 的快照，这里只是一支笔。
  */
-export interface LaneActiveToolsController {
-  getActiveTools(context: Context): Promise<readonly string[]>;
-  setActiveTools(toolNames: string[], context: Context): Promise<void>;
-  findEntries: AgentLane["findEntries"];
-  appendCustomEntry: AgentLane["appendCustomEntry"];
-}
+export type LaneActiveToolsController = Pick<AgentLane, 'findEntries' | 'appendCustomEntry'>;
 
 export const LANE_CODING_ACCESS_NOTE = 'nomi.coding-access';
 
@@ -60,7 +55,7 @@ export async function createLaneNativeAssembly(input: Omit<LaneCodingToolsInput,
   ];
   const alwaysOn = laneToolMenu().activeToolNames;
   const names = new Set(alwaysOn);
-  const byGroup = new Map<string, readonly string[]>();
+  const byGroup = new Set<string>();
   for (const group of groups) {
     if (!/^[a-z][a-z0-9-]*$/.test(group.name) || byGroup.has(group.name) || !group.toolNames.length) {
       throw new Error(`Invalid or duplicate deferred tool group: ${group.name}`);
@@ -69,7 +64,7 @@ export async function createLaneNativeAssembly(input: Omit<LaneCodingToolsInput,
       if (!name || names.has(name)) throw new Error(`Duplicate deferred tool name: ${name}`);
       names.add(name);
     }
-    byGroup.set(group.name, [...group.toolNames]);
+    byGroup.add(group.name);
   }
   const unlockCoding = async (context: Context) => {
     if (!activeTools) throw new Error('Lane tool controller is not bound.');
@@ -83,7 +78,7 @@ export async function createLaneNativeAssembly(input: Omit<LaneCodingToolsInput,
       const requested = (args as { group?: unknown }).group;
       // Validate before producing a result. No model value creates a group or a tool.
       if (typeof requested !== 'string' || !byGroup.has(requested)) {
-        throw new Error(`Request exactly one registered group: ${[...byGroup.keys()].join(', ')}.`);
+        throw new Error(`Request exactly one registered group: ${[...byGroup].join(', ')}.`);
       }
       if (requested === LANE_CODING_TOOL_GROUP) await unlockCoding(context);
       return {

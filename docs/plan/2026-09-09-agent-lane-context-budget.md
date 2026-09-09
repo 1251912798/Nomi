@@ -113,3 +113,5 @@ Context7 `/earendil-works/pi` 已查询；实际安装版本 0.85.1 的 `harness
 R30 最终小样：`deepseek-v4-flash` 经本机已配置的 APIMart 端点，文稿/时间轴为隔离域端口；三回合为读文稿→切 timeline 并读取→回读文稿。工具写对率 4/4、回合成功率 3/3；切组后首调 input=19,900、cacheRead=16,384>0、新增输入=75，全部请求 tools/system 前缀相同。3 次开发小样共 ¥0.552033（配置未折扣价格、USD×7 保守估计），未提交媒体生成。10k 是 schema 门岗口径，不是模型总输入；最终首调仍含固定指导等约 19.7k provider input，不能把搬到系统提示的文字说成免费。
 
 每日雷达：模型脚本检出 7 个新增；apimart 文本模型因 safeStorage 凭据未解密未查成；未更新供应商基线、未接模型。当前机器未发现 nomi-research-radar / nomi-model-radar 技能，未编造今日论文报告或自动分诊。
+
+B1c 首次完整 gates：76 contracts 阻断项全部通过，Vitest 11,841 通过 / 2 skipped；runtime 395/396，唯一红为旧 P5 探针硬断言分镜 schema >1,200（本次已降至 1,133）。已将该历史反向断言改为守住原 1,200 上限。Ponytail 明细两项（控制器未用读写菜单方法、Map 未用值）已删除；不改变行为，随后重跑完整 gates。
