@@ -11,12 +11,23 @@ vi.mock("../../catalog/catalogStore", () => ({
 }));
 vi.mock("./vendorHealth", () => ({ checkVendorHealth: vi.fn() }));
 
+vi.mock("../../catalog/rendererCatalogMutation", () => ({
+  upsertRendererCatalogVendorApiKey: vi.fn(async () => { throw new Error("candidate rejected; old key preserved"); }),
+}));
+
 import { registerOnboardingIpc } from "./onboardingIpc";
 
 beforeEach(() => { handlers.clear(); registerOnboardingIpc(); });
 afterEach(() => vi.unstubAllGlobals());
 
 describe("onboarding discovery IPC preserves the shared result contract", () => {
+  it("returns credential rejection in the IPC result envelope", async () => {
+    const handler = handlers.get("nomi:model-catalog:vendor-api-key:upsert");
+    expect(handler).toBeTypeOf("function");
+    expect(await handler?.({}, "vendor", { apiKey: "invalid-fixture" })).toEqual({
+      ok: false, error: "candidate rejected; old key preserved",
+    });
+  });
   it("does not register the removed raw manual Catalog commit bypass", () => {
     expect(handlers.has("nomi:onboarding:manual-commit")).toBe(false);
   });

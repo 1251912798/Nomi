@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import type { SpendQuote, SpendQuoteLine } from "./shared/contracts/spendQuote";
 
 // 付费生成统一确认守卫——令牌（spend grant）核心。
 // 方案：docs/plan/2026-06-21-spend-confirmation-gate.md（务实纵深 + 媒体生成/调试出口闸）。
@@ -19,6 +20,9 @@ type SpendGrant = {
   // nodeId → 剩余可发起的 vendor 请求次数（首发 + 自动重试共享，= maxAttemptsPerNode）。
   nodeBudgets: Map<string, number>;
   expiresAt: number;
+  quote?: SpendQuote;
+  remainingAmount: number;
+  unknownRemaining: number;
 };
 
 const GRANTS = new Map<string, SpendGrant>();
@@ -47,6 +51,7 @@ export function mintSpendGrant(options: {
   nodeIds: readonly string[];
   maxAttemptsPerNode?: number;
   ttlMs?: number;
+  quote?: SpendQuote;
 }): string {
   purgeExpired();
   const grantId = crypto.randomUUID();
@@ -57,7 +62,9 @@ export function mintSpendGrant(options: {
     const key = String(id || "").trim() || GENERIC_NODE_KEY;
     nodeBudgets.set(key, attempts);
   }
-  GRANTS.set(grantId, { grantId, nodeBudgets, expiresAt: now() + (options.ttlMs ?? DEFAULT_TTL_MS) });
+  GRANTS.set(grantId, { grantId, nodeBudgets, expiresAt: now() + (options.ttlMs ?? DEFAULT_TTL_MS), quote: options.quote,
+    remainingAmount: options.quote?.lines.reduce((sum, line) => sum + (line.amount ?? 0), 0) ?? 0,
+    unknownRemaining: options.quote?.lines.filter((line) => line.amount === null).length ?? 0 });
   return grantId;
 }
 
@@ -109,4 +116,40 @@ export function __resetSpendGrantsForTests(): void {
 /** 测试辅助：当前令牌数。 */
 export function __spendGrantCountForTests(): number {
   return GRANTS.size;
+}
+
+
+const confirmationLocks = new Map<string, Promise<void>>();
+
+/** Serialize quote checks and consumption per grant: concurrent jobs cannot overspend one quote. */
+export async function assertAndConsumeQuotedSpend(
+  grantId: string | undefined,
+  nodeId: string | undefined,
+  charge: SpendQuoteLine,
+  confirm: (charge: SpendQuoteLine) => Promise<boolean>,
+): Promise<void> {
+  const id = String(grantId || '').trim();
+  const previous = confirmationLocks.get(id) ?? Promise.resolve();
+  const current = previous.catch(() => undefined).then(async () => {
+    const grant = GRANTS.get(id);
+    const key = String(nodeId || '').trim() || GENERIC_NODE_KEY;
+    if (!grant || grant.expiresAt <= now() || !grant.nodeBudgets.has(key)) {
+      throw new SpendNotAuthorizedError('Authorization expired or does not cover this target; confirm again');
+    }
+    const identityApproved = grant.quote?.lines.some((line) => line.vendorKey === charge.vendorKey && line.modelKey === charge.modelKey);
+    const covered = identityApproved && (charge.amount === null ? grant.unknownRemaining > 0 : grant.remainingAmount >= charge.amount);
+    if (!covered) {
+      if (!await confirm(charge)) throw new SpendNotAuthorizedError('Updated quote was not confirmed; nothing was submitted');
+      // Revalidate after the human wait; expiry/removal cannot be resurrected by a late response.
+      if (GRANTS.get(id) !== grant || grant.expiresAt <= now()) throw new SpendNotAuthorizedError('Authorization expired; confirm again');
+      grant.quote = { lines: [charge], amount: charge.amount };
+      grant.remainingAmount = charge.amount ?? 0;
+      grant.unknownRemaining = charge.amount === null ? 1 : 0;
+    }
+    assertAndConsumeSpendGrant(id, key);
+    if (charge.amount === null) grant.unknownRemaining -= 1;
+    else grant.remainingAmount -= charge.amount;
+  });
+  confirmationLocks.set(id, current);
+  try { await current; } finally { if (confirmationLocks.get(id) === current) confirmationLocks.delete(id); }
 }

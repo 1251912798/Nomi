@@ -76,7 +76,6 @@ describe('production contract view', () => {
       policy: {
         ready: true,
         issueCount: 0,
-        missingHardBudget: false,
         requiredProviderModels: [{ provider: 'tapcanvas', model: 'seedance-1.0' }],
         missingProviders: [],
         missingModels: [],

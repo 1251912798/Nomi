@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import {
   mintSpendGrant,
   assertAndConsumeSpendGrant,
@@ -65,5 +65,25 @@ describe("spendGrant 付费守卫令牌", () => {
     // A 用尽，B 仍可用
     expect(() => assertAndConsumeSpendGrant(id, "A")).toThrow(SpendNotAuthorizedError);
     expect(() => assertAndConsumeSpendGrant(id, "B")).not.toThrow();
+  });
+});
+
+
+describe('quote-bound paid submission', () => {
+  it('asks again when a batch exceeds its confirmed quote and never spends after rejection', async () => {
+    const { assertAndConsumeQuotedSpend } = await import('./spendGrant');
+    const grantId = mintSpendGrant({ nodeIds: ['a', 'b'], quote: { lines: [{ vendorKey: 'relay', modelKey: 'image', amount: 2 }], amount: 2 } });
+    const ask = vi.fn(async () => false);
+    await assertAndConsumeQuotedSpend(grantId, 'a', { vendorKey: 'relay', modelKey: 'image', amount: 2 }, ask);
+    expect(ask).not.toHaveBeenCalled();
+    await expect(assertAndConsumeQuotedSpend(grantId, 'b', { vendorKey: 'relay', modelKey: 'image', amount: 3 }, ask)).rejects.toThrow();
+    expect(ask).toHaveBeenCalledOnce();
+  });
+  it('requires quote confirmation for a legacy count-only grant', async () => {
+    const { assertAndConsumeQuotedSpend } = await import('./spendGrant');
+    const grantId = mintSpendGrant({ nodeIds: ['a'] });
+    const ask = vi.fn(async () => true);
+    await assertAndConsumeQuotedSpend(grantId, 'a', { vendorKey: 'relay', modelKey: 'image', amount: 1 }, ask);
+    expect(ask).toHaveBeenCalledOnce();
   });
 });

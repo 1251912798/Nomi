@@ -353,7 +353,7 @@ describe('buildCatalogTaskRequest — 标准参考面与档案投影并存（中
 
 // 已持久化 vendor 的节点只能沿候选 revision lineage 迁移；独立供应商即便同名/同 archetype 也不能
 // 被静默选中，否则一次 credential repair 会把旧节点送到完全无关的端点并产生付费请求。
-describe('runCatalogGenerationTask — 旧节点只沿 catalog lineage 迁移', () => {
+describe('runCatalogGenerationTask — 旧节点供应商只由用户切换', () => {
   const vendorDto = (key: string, hasApiKey: boolean, meta?: unknown): ModelCatalogVendorDto => ({ key, name: key, enabled: true, hasApiKey, ...(meta ? { meta } : {}), createdAt: '', updatedAt: '' })
   const apimartSeedream: ModelCatalogModelDto = { modelKey: 'doubao-seedream-4.5', vendorKey: 'apimart', labelZh: 'Seedream 4.5', kind: 'image', enabled: true, published: true, publishedModes: ['text_to_image'], meta: { archetypeId: 'seedream' }, createdAt: '', updatedAt: '' }
 
@@ -377,11 +377,11 @@ describe('runCatalogGenerationTask — 旧节点只沿 catalog lineage 迁移', 
 
   it('无 lineage 的 legacy vendor 不再按 archetype 静默请求 apimart', async () => {
     const { calls, options } = harness()
-    await expect(runCatalogGenerationTask(staleKieNode, options)).rejects.toThrow(/没有已连接的供应商提供/)
+    await expect(runCatalogGenerationTask(staleKieNode, options)).rejects.toThrow(/NOMI_ERR::model-config/)
     expect(calls).toHaveLength(0)
   })
 
-  it('无关同名模型排前时，真实 resolve→run 调用链只请求同 lineage active successor', async () => {
+  it('即使存在同 lineage successor 也停止，等待用户主动切换', async () => {
     const calls: Array<{ vendor: string; request: TaskRequestDto }> = []
     const candidate = {
       ...apimartSeedream,
@@ -396,7 +396,7 @@ describe('runCatalogGenerationTask — 旧节点只沿 catalog lineage 迁移', 
       },
     }
 
-    await runCatalogGenerationTask(staleKieNode, {
+    await expect(runCatalogGenerationTask(staleKieNode, {
       listCatalogVendors: async () => [
         vendorDto('kie', true),
         vendorDto('unrelated', true),
@@ -411,11 +411,10 @@ describe('runCatalogGenerationTask — 旧节点只沿 catalog lineage 迁移', 
         calls.push({ vendor, request })
         return { id: 't-candidate', kind: request.kind, status: 'succeeded', assets: [{ type: 'image', url: 'https://x/candidate.png' }], raw: {} }
       },
-    })
+    })).rejects.toThrow(/NOMI_ERR::model-config/)
 
-    expect(calls).toHaveLength(1)
-    expect(calls[0].vendor).toBe('kie--candidate-revision-2')
-    expect(calls[0].request.extras?.modelKey).toBe('seedream')
+    expect(calls).toHaveLength(0)
+    expect(staleKieNode.meta?.modelVendor).toBe('kie')
   })
 
   it('同 lineage successor disabled 时不向无关同名供应商提交请求', async () => {
@@ -431,7 +430,7 @@ describe('runCatalogGenerationTask — 旧节点只沿 catalog lineage 迁移', 
       ],
       listCatalogModels: async () => [{ ...apimartSeedream, modelKey: 'seedream', vendorKey: 'unrelated' }],
       runTask,
-    })).rejects.toThrow(/没有已连接的供应商提供/)
+    })).rejects.toThrow(/NOMI_ERR::model-config/)
     expect(runTask).not.toHaveBeenCalled()
   })
 
@@ -439,7 +438,7 @@ describe('runCatalogGenerationTask — 旧节点只沿 catalog lineage 迁移', 
     const { options } = harness()
     await expect(
       runCatalogGenerationTask(staleKieNode, { ...options, listCatalogVendors: async () => [vendorDto('kie', false)], listCatalogModels: async () => [] }),
-    ).rejects.toThrow(/没有已连接的供应商提供/)
+    ).rejects.toThrow(/NOMI_ERR::model-config/)
   })
 })
 

@@ -38,6 +38,7 @@ export const VENDOR_CONFIG_FIELD_CLASSIFICATION: Record<keyof Vendor, VendorConf
   name: "non-credential",
   enabled: "non-credential",
   hasApiKey: "non-credential",
+  credentialVerificationPending: "non-credential",
   baseUrlHint: "non-credential",
   authType: "non-credential",
   authHeader: "non-credential",

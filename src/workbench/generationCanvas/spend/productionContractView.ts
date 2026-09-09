@@ -128,7 +128,6 @@ export function buildProductionContractView(run: ProductionRun, gate: Production
 const EMPTY_POLICY: ProductionPolicyReadiness = {
   ready: true,
   issueCount: 0,
-  missingHardBudget: false,
   requiredProviderModels: [],
   missingProviders: [],
   missingModels: [],

@@ -1,0 +1,126 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-09-quote-bound-spend",
+  "problem_type": "Paid submission authorization scope",
+  "symptom": "Global empty budget blocks production while ordinary grants carry no monetary ceiling",
+  "direct_cause": "Settings maxSpend gates readiness; spendGrant binds only node count",
+  "class_root": "Paid authorization lacked a shared invariant binding each submitted request to the current user-confirmed quote.",
+  "affected_population": [
+    "Existing nodes and persisted project drafts"
+  ],
+  "scope_paths": [
+    "electron/capabilityCore/core.ts",
+    "electron/capabilityCore/gateway.ts",
+    "electron/catalog/customCallDispatch.ts",
+    "electron/image/decomposeLayers.ts",
+    "electron/productionRun/productionPolicyReadiness.ts",
+    "electron/productionRun/productionRunRuntime.ts",
+    "electron/productionRun/productionRunService.ts",
+    "electron/runtime.ts",
+    "electron/settings/automationPolicyContract.ts",
+    "electron/shared/contracts/spendQuote.ts",
+    "electron/spendGrant.ts",
+    "electron/spendQuote.ts",
+    "electron/tasks/taskIpcHandlers.ts",
+    "electron/tasks/taskSpend.ts",
+    "src/i18n/locales/settings.ts",
+    "src/i18n/locales/storyboardEditor.ts",
+    "src/workbench/api/taskApi.ts",
+    "src/workbench/capability/capabilityApplyHandler.ts",
+    "src/workbench/generationCanvas/components/batchPlanPreview.ts",
+    "src/workbench/generationCanvas/nodes/decompose/useDecomposeLayers.ts",
+    "src/workbench/generationCanvas/runner/generationRunController.ts",
+    "src/workbench/generationCanvas/spend/SpendConfirmDialog.tsx",
+    "src/workbench/generationCanvas/spend/productionContractView.ts",
+    "src/workbench/generationCanvas/spend/spendConfirm.ts",
+    "src/workbench/settings/AiModelsSection.tsx"
+  ],
+  "entry_points": [
+    "runtime.runTask",
+    "confirmGenerationSpend",
+    "ProductionRun approval"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "Internal selection and action boundaries, no external protocol changes.",
+  "invariants": [
+    "Every paid submission consumes a current quote confirmed by the user, not a global budget setting"
+  ],
+  "generality_proof": "All paid vendor submissions must consume quote-bound grants; production uses its confirmed quote ledger.",
+  "shared_boundaries": [
+    {
+      "path": "electron/spendGrant.ts",
+      "symbol": "assertAndConsumeQuotedSpend",
+      "responsibility": "Every paid submission consumes a current quote confirmed by the user, not a global budget setting"
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "electron/runtime.ts",
+      "entry_point": "runTask",
+      "disposition": "enforced",
+      "evidence": "Paid runtime branches consume spend grant before vendor submit."
+    },
+    {
+      "path": "src/workbench/generationCanvas/spend/spendConfirm.ts",
+      "entry_point": "confirmGenerationSpend",
+      "disposition": "enforced",
+      "evidence": "Single and batch renderer confirmations use the shared card."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Other vendors and persisted projects can reach the same paths.",
+    "same_class_scan": [
+      "rg runTask / assertAndConsumeSpendGrant / mintSpendGrant across electron and src; plan contains paid entry map."
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "electron/spendGrant.ts",
+    "invariant": "Every paid submission consumes a current quote confirmed by the user, not a global budget setting",
+    "failure_mode": "Stop and show actionable feedback",
+    "exception_policy": "none",
+    "strategy": "Bind confirmed quote to grant at shared vendor submit boundary.",
+    "artifacts": [
+      "electron/spendGrant.ts",
+      "electron/spendQuote.ts",
+      "electron/tasks/taskSpend.ts",
+      "src/workbench/generationCanvas/spend/spendConfirm.ts"
+    ]
+  },
+  "regression_tests": [
+    "electron/productionRun/productionPolicyReadiness.test.ts",
+    "electron/spendGrant.test.ts",
+    "src/workbench/generationCanvas/spend/spendQuoteCard.test.ts",
+    "electron/tasks/taskSpend.test.ts",
+    "src/workbench/generationCanvas/spend/spendConfirm.test.ts"
+  ],
+  "class_regression_tests": [
+    "electron/spendGrant.test.ts",
+    "electron/tasks/taskSpend.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "electron/settings/automationPolicyContract.ts",
+      "electron/productionRun/productionPolicyReadiness.ts"
+    ],
+    "rationale": "Delete global hard budget setting and readiness requirement; no fallback."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "Internal application invariant.",
+    "exit_criteria": []
+  },
+  "migration": "Drop global settings maxSpend during normalization; run-local confirmed quote ceilings remain scoped to their run.",
+  "residual_risks": [
+    "Catalog credits are not fiat. Real APIMart catalog has no pricing, so its card explicitly displays unpriced; official 1K quote is separately recorded.",
+    "Account settlement receipt was not available; real generation cost is reported as an official-price estimate."
+  ],
+  "invariant_owner_layer": {
+    "layer": "electron/spendGrant.ts",
+    "tests": [
+      "electron/spendGrant.test.ts"
+    ]
+  }
+}

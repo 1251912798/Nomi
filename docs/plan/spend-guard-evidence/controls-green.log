@@ -1,0 +1,5 @@
+
+> nomi@0.21.0 check:controls /Users/aoqimin/Desktop/Nomi-money-guard
+> node ./scripts/check-control-contract.mjs
+
+✓ 控件交互契约门岗通过：无「点了没反应」「点了失败没人说」的控件（例外 0 条，均已写明理由）。
