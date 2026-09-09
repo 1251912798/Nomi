@@ -350,15 +350,14 @@ export const openLane: OpenLane = async (options: OpenLaneOptions): Promise<Lane
         `This turn has reached its ${maxModelRequests}-model-request limit, so no further tool call will run. `
         + 'State your conclusion and what is still undone, in text, now.' } };
     }
-    // Schema residency grants discovery, never authority over another Composer surface.
+    // Destructive actions require their own surface, even with approval. Reversible
+    // workflows may intentionally cross surfaces (e.g. planning a storyboard from a document).
     // Use the consumed input (also on replay), not capture(): that may be a queued draft.
     const spec = options.tools.find(tool => tool.name === event.toolName);
     const contract = spec ? capabilityContractById(modelToolCapabilityId(spec, event.args)) : undefined;
-    const port = contract?.execution.port;
-    if (options.input && contract?.effect !== 'read' && contract?.execution.availability === 'renderer_required'
-      && (port === 'document' || port === 'canvas' || port === 'timeline')
-      && consumedContext?.target?.kind !== port) {
-      return { block: { reason: `surface_authority_denied: This action requires the ${port} surface. `
+    if (options.input && contract?.effect === 'destructive' && contract.execution.availability === 'renderer_required'
+      && consumedContext?.target?.kind !== contract.targetKind) {
+      return { block: { reason: `surface_authority_denied: This action requires the ${contract.targetKind} surface. `
         + 'Ask the user to switch to that surface and send the action again; approval cannot grant another surface.' } };
     }
     await options.toolLifecycle?.prepare(event, hookContext.abortSignal ?? new AbortController().signal);

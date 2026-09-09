@@ -132,8 +132,10 @@ B1c 首次完整 gates：76 contracts 阻断项全部通过，Vitest 11,841 通�
 新契约：所有已注册工具常驻可见；真实调用仍须通过执行层权限、coding 解锁和 Surface 授权，loopback 验证拒绝结果与副作用不变。
 为什么：schema 可见性只负责模型发现能力，不能替代执行授权；本次迁移两份走查的旧断言，保留真实审批闭环，回滚仅 revert 本次测试/文档提交，验收为单条走查、7 条真实旅程及完整 gates。
 
-B1c-fix 实测：创作面 delete_canvas_nodes 在确认后成功删除，证据 `.tmp/b1c-fix/authority-red.log`。属于 recurring 产品缺口：在 lane 的 before_tool 共用入口，按已消费输入的 target 与规范 capability.execution.port 校验 document/canvas/timeline 写操作，再进入准备和审批；原生 coding 的持久授权继续独立。无新 UI/框架/格式，不改域执行器，不复制工具名单；旧无 target 输入 fail-closed。类测试先红，含正确面/错误面/缺失面四类能力；回滚仅本次 scoped commit。
+B1c-fix 实测：创作面 delete_canvas_nodes 在确认后成功删除，证据 `.tmp/b1c-fix/authority-red.log`。属于 recurring 产品缺口：在 lane 的 before_tool 共用入口，按已消费输入的 target 与规范 capability.targetKind 校验 destructive renderer 操作，再进入准备和审批；原生 coding 的持久授权继续独立。无新 UI/框架/格式，不改域执行器，不复制工具名单；旧无 target 输入 fail-closed。类测试先红，含删除的正确面/错误面/缺失面与三类可逆跨面操作的保留；回滚仅本次 scoped commit。
 
-执行证据：`electron/agentLane/laneHost.mts:361` 的 pi before_tool block 生成 `surface_authority_denied: This action requires the canvas surface.`；`electron/agentLane/laneNativeAssembly.mts:48` 在委托 pi bash 执行器之前抛出 `Request coding before accessing project files.`。两者在真实 JSONL 均为 `toolResult.isError=true`，下一 HTTP 请求实际携带拒绝；节点全量相等、已写入基线的可写 shell 哨兵字节不变。单条 Electron 走查 exit 0（10 次 loopback HTTP，零付费），类测试 12/12；红/绿日志 `.tmp/b1c-fix/`。全仓扫描另检出 `agent-real-user-conversation.walk.mjs` 删除和 timeline 两处旧裁剪断言，移除冗余切组夹具、保留真实审批/落盘闭环；`agentChatPolicy.test.ts` 与 MCP retirement 的 absence 测试验证独立规范别名/已删除工具，不是本次 lane 可见性契约。
+执行证据：`electron/agentLane/laneHost.mts:360` 的 pi before_tool block 生成 `surface_authority_denied: This action requires the canvas surface.`；`electron/agentLane/laneNativeAssembly.mts:48` 在委托 pi bash 执行器之前抛出 `Request coding before accessing project files.`。两者在真实 JSONL 均为 `toolResult.isError=true`，下一 HTTP 请求实际携带拒绝；节点全量相等、已写入基线的可写 shell 哨兵字节不变。单条 Electron 走查 exit 0（10 次 loopback HTTP，零付费），类测试 12/12；红/绿日志 `.tmp/b1c-fix/`。全仓扫描另检出 `agent-real-user-conversation.walk.mjs` 删除和 timeline 两处旧裁剪断言，移除冗余切组夹具、保留真实审批/落盘闭环；`agentChatPolicy.test.ts` 与 MCP retirement 的 absence 测试验证独立规范别名/已删除工具，不是本次 lane 可见性契约。
 
 扫描补全：`agent-runtime-editing.walk.mjs` 两处、`agent-runtime-production.walk.mjs` 一处完整集合断言仍仅期望核心目录；统一通过 `agent-runtime-walk-support.mjs` 从正式 domain/native 目录派生 45 个常驻工具。production 走查三处 single-shot 的空 tools 是禁工具调用合同，保留。
+
+最终范围裁决：扩展走查实证创作面分镜规划是既有跨面可逆流程，不能把全部 renderer 写操作一刀切封住；共享入口仅依据规范 contract.effect=destructive + renderer_required + targetKind 校验，不列工具名，不改可逆审批。类测试同时保护文稿/画布/时间轴可逆调用。额外编辑走查已过完整菜单断言，后停在既有整笔撤销按钮探针（本任务不修改撤销 UI）；其日志 `.tmp/b1c-fix/other-walks.log`，不得称该整条走查绿。

@@ -14,7 +14,7 @@ for (const contractId of ['canvas.delete', 'canvas.write', 'timeline.write', 'do
       const context: LaneComposerContext = { approvalPolicy: { mode: 'safe-auto', spend: 'confirm' }, ...(target ? { target } : {}) };
       let preparations = 0;
       let executions = 0;
-      const expectedAllowed = target?.kind === contractId.split('.')[0];
+      const expectedAllowed = contractId !== 'canvas.delete' || target?.kind === 'canvas';
       const lane = await fixture.openLane({ ...fixture.options,
         input: { capture: () => context, activate: () => {}, rewritePayload: payload => payload,
           providerContent: async message => message.content },

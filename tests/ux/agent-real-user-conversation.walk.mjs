@@ -27,7 +27,7 @@ import {
   recorded, sendCanvas, sendCreation, toolNames, waitForV4TurnIdle,
 } from './agent-runtime-walk-support.mjs'
 import { laneDiskSnapshot, laneMessages, readLaneTranscripts } from './agent-lane-observer.mjs'
-import { LANE_MODEL_TOOL_CATALOG } from '../../dist-electron/agentLane/laneToolCatalog.js'
+import { residentToolNames } from './agent-runtime-walk-support.mjs'
 
 const INTERVENTION = APPROVAL_CARD
 
@@ -150,7 +150,7 @@ try {
   const t1Wire = await recorded(t1Call.received, 'turn 1 first request')
   note(`创作面工具目录：${toolNames(t1Wire.body).join(', ')}`)
   expect(toolNames(t1Wire.body), '创作面必须把文稿读写能力摆上桌')
-    .toEqual([...LANE_MODEL_TOOL_CATALOG.map((tool) => tool.name), 'nomi_request_tools'].sort())
+    .toEqual(residentToolNames())
   const t1ResultWire = await recorded(t1Result.received, 'turn 1 tool-result request')
   expect(flattenRequestText(t1ResultWire.body), '工具结果里带着真实文稿').toContain('K_SEG_B')
   await expect(creation, '第一轮的回答必须出现在面板里').toContainText('K_T1_DONE')

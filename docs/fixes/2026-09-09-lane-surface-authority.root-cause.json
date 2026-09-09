@@ -4,7 +4,7 @@
   "problem_type": "Resident tool visibility mistaken for surface execution authority",
   "symptom": "CI rejects resident delete schema; real creation Composer can delete persisted canvas nodes after confirmation.",
   "direct_cause": "B1c made schemas resident while lane before_tool checked approval but never matched renderer mutation port against the consumed Composer target.",
-  "class_root": "Approval grants an action but cannot grant a different surface. Renderer mutation authority must be checked before preparation and approval.",
+  "class_root": "Approval must not expand destructive renderer actions beyond the consumed Composer surface; schema residency cannot substitute for this execution check.",
   "affected_population": [
     "Resident creation, canvas and timeline turns, including queued and restored inputs"
   ],
@@ -18,10 +18,11 @@
   "external_sources": [],
   "internal_only_reason": "Internal application authority contract; existing pi before_tool block API already used in laneHost, no new external API or format.",
   "invariants": [
-    "A renderer document/canvas/timeline mutation requires the consumed Composer target kind to match its canonical execution port.",
-    "Mismatch or missing target is denied before preparation, approval, and execution; schemas remain resident."
+    "A destructive renderer capability requires the consumed Composer target kind to match its canonical targetKind.",
+    "Mismatch or missing target is denied before preparation, approval and execution; schemas remain resident.",
+    "Reversible workflows may intentionally cross surfaces, including creation-to-storyboard planning."
   ],
-  "generality_proof": "Resolve operation-aware capability through the shared catalog, then use its execution port for every domain tool. No tool name or provider allowlist; native coding keeps its independent unlock boundary.",
+  "generality_proof": "Resolve operation-aware capability through the shared catalog and compare destructive renderer capability targetKind for all tool names/providers. Native coding retains its independent unlock. Reversible canvas/document/timeline writes retain their existing domain and approval authority, since creation-to-storyboard intentionally crosses surfaces.",
   "shared_boundaries": [
     {
       "path": "electron/agentLane/laneHost.mts",
@@ -38,9 +39,9 @@
     },
     {
       "path": "tests/agent-runtime/lane-surface-authority.test.mts",
-      "entry_point": "canvas.write, canvas.delete, timeline.write, document.write",
+      "entry_point": "canvas.delete missing/document/canvas targets; reversible canvas.write, timeline.write, document.write controls",
       "disposition": "enforced",
-      "evidence": "Different and missing targets deny before lifecycle prepare; matching targets execute."
+      "evidence": "Missing/document targets deny canvas.delete before lifecycle prepare; canvas target executes. Reversible canvas.write/timeline.write/document.write retain existing cross-surface behavior."
     }
   ],
   "recurrence": {
@@ -55,7 +56,7 @@
   "prevention": {
     "kind": "centralized-boundary",
     "enforcement_path": "electron/agentLane/laneHost.mts",
-    "invariant": "Canonical renderer mutation port matches consumed target.",
+    "invariant": "Destructive renderer capability targetKind matches consumed Composer target.",
     "failure_mode": "pi before_tool block returns surface_authority_denied as an error tool result.",
     "exception_policy": "none",
     "strategy": "Derive authority from existing canonical capability execution port and immutable consumed input, never the newest queued draft or visible schema.",
@@ -84,7 +85,7 @@
     "rationale": "No dependency behavior change: use the existing pi before_tool block API and error-result persistence.",
     "exit_criteria": []
   },
-  "migration": "No storage migration. Consumed input already carries target; old inputs without target fail closed for these writes. Non-Composer domain harnesses retain their separately supplied authority.",
+  "migration": "No storage migration. Old Composer inputs without target fail closed for destructive renderer writes. Reversible cross-surface workflows and separately authorized non-Composer domain harnesses retain existing behavior.",
   "residual_risks": [
     "Authority is scoped to the consumed Composer target; verified domain ports remain responsible for sender, revision, identifiers and current project binding."
   ],
