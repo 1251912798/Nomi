@@ -14,6 +14,7 @@ import { findLaneReceiptAuthority } from './laneReceiptAuthority.mjs';
 // 「不重试」说的是不写重试循环：`LANE_RETRY_POLICY` 是**配置**，退避、事件、状态全是 pi 的。
 //
 // 对照今天的宿主：`electron/projectAgentHost/` 是 52 个生产文件、9 688 行。
+import { formatLaneModelIndex } from './laneModelContext.js';
 import { convertToLlm } from '@earendil-works/pi-agent-core';
 import { draftInputFromMessage, isLaneInputMessage } from '../shared/agentLane/laneInputMessage.js';
 import type { LaneInputMessage } from '../shared/agentLane/laneDesktopContracts.js';
@@ -198,7 +199,7 @@ export const openLane: OpenLane = async (options: OpenLaneOptions): Promise<Lane
   const systemPrompt = systemPromptFor(activeToolNames);
   const { harness } = await AgentHarness.create<undefined>({
     session, models, model, systemPrompt, tools,
-    toProviderMessages: async (messages) => convertToLlm(await Promise.all(messages.map(async (message) => {
+    toProviderMessages: async (messages) => convertToLlm(await Promise.all(messages.map(async (message, index) => {
       // pi's AJV preparation failures are immediate results, before after_tool.
       // Enrich the model projection without revalidating or changing its recorded arguments.
       if (message.role === 'toolResult' && message.isError
@@ -209,7 +210,7 @@ export const openLane: OpenLane = async (options: OpenLaneOptions): Promise<Lane
       }
       if (!isLaneInputMessage(message)) return message;
       if (!options.input) throw new Error('This lane cannot resolve its recorded input context.');
-      const content = await options.input.providerContent(message);
+      const content = await options.input.providerContent(message, messages.slice(0, index).reverse().find(isLaneInputMessage)?.context);
       const reference = message.context.continueFromEntryId;
       return { role: 'user' as const, content: reference === undefined ? content
         : appendLaneContinuation(content, laneContinuationText(await session.getEntry(reference, context))),
@@ -309,6 +310,7 @@ export const openLane: OpenLane = async (options: OpenLaneOptions): Promise<Lane
   harness.hooks.on('transform_context', async (event, hookContext) => {
     const input = [...event.messages].reverse().find(isLaneInputMessage);
     if (input && options.input) options.input.activate(input.context);
+    const catalogBase = event.messages.find(isLaneInputMessage);
     const active = await lane.getActiveTools(hookContext);
     const authority = gate ? tools.filter(tool => active.includes(tool.name) && options.tools.some(spec => spec.name === tool.name))
       .flatMap(tool => {
@@ -318,7 +320,7 @@ export const openLane: OpenLane = async (options: OpenLaneOptions): Promise<Lane
           toolCallId: '', toolName: tool.name, args: value ? { operation: value } : {},
         })}`);
       }).join('\n') : '';
-    return { systemPrompt: [systemPromptFor(active), input?.context.systemPrompt, authority].filter(Boolean).join('\n\n') };
+    return { systemPrompt: [systemPromptFor(active), catalogBase ? formatLaneModelIndex(catalogBase.context) : '', input?.context.systemPrompt, authority].filter(Boolean).join('\n\n') };
   });
 
   harness.hooks.on('before_tool', async (event, hookContext) => {

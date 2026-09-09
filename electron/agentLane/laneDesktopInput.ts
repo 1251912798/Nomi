@@ -1,4 +1,4 @@
-import { formatAvailableModelsForPrompt } from "../shared/agentCapabilities/availableModels"
+import { formatLaneModelDelta } from "./laneModelContext"
 import { agentModelEntrySchema } from "../shared/agentCapabilities/availableModelsSchema"
 import { createHash } from 'node:crypto'
 import { z } from 'zod'
@@ -47,7 +47,7 @@ export function createDesktopLaneInput(input: {
   return {
     capture: input.capture,
     activate: (context) => { pdfs.clear(); input.activate(context) },
-    providerContent: async (message) => {
+    providerContent: async (message, previous) => {
       const selected = input.model()
       if (!selected) throw new Error('Model is not configured')
       const refs = resolveProjectAgentAttachmentClaims(input.projectId, message.context.attachments ?? [])
@@ -57,7 +57,7 @@ export function createDesktopLaneInput(input: {
       }] : [])
       const { model } = selected
       const content = await buildAgentUserContent({
-        prompt: [message.content, formatAgentContextSnapshot(message.context.contextSnapshot), formatAvailableModelsForPrompt(message.context.availableModels ?? [])].filter(Boolean).join('\n\n'),
+        prompt: [message.content, formatAgentContextSnapshot(message.context.contextSnapshot), formatLaneModelDelta(message.context, previous)].filter(Boolean).join('\n\n'),
         attachments,
         supportsImageInput: modelSupportsImageInput(model.modelKey, model.modelAlias, model.meta),
         supportsPdfInput: selected.kind !== 'openai-compatible' && modelSupportsPdfInput(model.modelKey, model.modelAlias, model.meta),

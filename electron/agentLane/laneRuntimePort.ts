@@ -128,7 +128,7 @@ export interface OpenLaneOptions {
     capture(): LaneComposerContext
     activate(context: LaneComposerContext): void
     rewritePayload(payload: unknown, api: string): unknown
-    providerContent(message: LaneInputMessage): Promise<string | Array<{ type: 'text'; text: string } | { type: 'image'; data: string; mimeType: string }>>
+    providerContent(message: LaneInputMessage, previous?: LaneComposerContext): Promise<string | Array<{ type: 'text'; text: string } | { type: 'image'; data: string; mimeType: string }>>
   }
   tools: readonly LaneToolDescriptor[]
   /** Domain ports prepare before confirmation, then persist the accepted authority in the lane. */
