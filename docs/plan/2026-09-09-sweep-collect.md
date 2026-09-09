@@ -69,3 +69,12 @@ Ponytail 独立明细发现四项机制问题，推送前一并修正：timeline
 - 最终树完整验证：`artifacts/sweep/gates-final-tree.log` exit 0；75 项 contracts 无阻断、1294 个 Vitest 文件 / 12077 测试通过，Agent/runtime 与构建通过。最终使用这份收据交付；Ponytail 150KB diff 上限要求按机制/登记/复核修正拆提交并分批推送，同一个 PR 交付全部内容。
 - 推送前 #662 合入，已整合 `ac9f5cf22`（合并提交 `53e964aa2`，只处理 package.json 命令并列注册冲突）。重新全量 sweep/gates 验证实际扫描器；R30 将体感/证据失败与 Agent 领域失败区分，防止字体或截屏问题误计成工具写错，单测覆盖。
 - 带 #662 的最终 sweep：`artifacts/sweep/2026-09-08T23-10-36.886Z/report.md`，33 输入 / 221 站 / 33 trace / 6 pi 转录，¥0；体感实际运行并记录 5,897 条逐站原始命中（字号 2,669、遮挡 2,420、重叠 725、截断 83），功能断言无新增失败。原始命中不等于已确认问题，人工去重归因见 human-review.md。
+
+
+### PR #666 合 main 与总账聚合（2026-09-09）
+
+范围：保留 main 的两层体感、提醒音夹具和 C0 ¥50 预算/原生记录；仅合并测试机制与总账呈现。不改生产代码，不增加扫描器或观察器。package.json 唯一冲突保留 main 带锁 feel:nightly，并列保留 sweep 命令。SWEEP-LAST.md 取消跟踪但保留本地文件，不改忽略规则。
+
+总账问题分类 recurring（测试报告，非生产修复）：症状是同一批小字逐站重复使总账不可读；直接原因 saveReport 把 captureIssues 全量逐条输出；类根因是原始证据粒度与阅读粒度没有区分。实扫 startEvidence.capture → _collect.record 和 C0 createC0Collection.capture → 同一 saveReport，两类入口共用报告边界。按原始 rule/text/target/surface 元组聚合，不用坐标或站点作身份；每组保留首次站、次数、证据链接。功能 deviation 仍逐条；原始 deviations/stations/feel JSON 保持完整。依赖生命周期 not-applicable，无旧实现并行保留。
+
+验收：三站同命中先红后绿；不同规则/文字/目标/面不误合、跨 case 可合、功能断言不合并。相关 Node 测试、完整 loopback sweep、完整带锁 gates（排锁上限 40 分钟），正常 hooks commit/push 到现有 PR #666，确认无冲突。SWEEP-LAST 顶部 ≤8 行记录本轮数字与 push 后 HEAD。回滚撤销本轮测试/报告改动，保留 main 合并。

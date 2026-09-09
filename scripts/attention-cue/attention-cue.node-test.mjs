@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, symlinkSync, rmSync } from 'node:fs'
+import { mkdtempSync, mkdirSync, readdirSync, readFileSync, writeFileSync, symlinkSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -18,14 +18,16 @@ function fixture(t, platform = 'Darwin', players = ['afplay', 'osascript']) {
   const bin = path.join(dir, 'bin')
   mkdirSync(bin)
   const log = path.join(dir, 'calls')
+  mkdirSync(log)
   const script = (name, body) => writeFileSync(path.join(bin, name), '#!/bin/bash\n' + body, { mode: 0o755 })
   script('uname', `echo '${platform}'\n`)
   symlinkSync('/bin/bash', path.join(bin, 'bash'))
   symlinkSync('/bin/sh', path.join(bin, 'sh'))
   symlinkSync(process.execPath, path.join(bin, 'node'))
-  for (const name of players) script(name, `printf '%s\\n' '${name}' "$@" >> "$CUE_TEST_LOG"\n`)
+  // A private file per process keeps concurrent invocations separate, even for large arguments.
+  for (const name of players) script(name, `printf '%s\\0' '${name}' "$@" > "$CUE_TEST_LOG/${name}.$$"\n`)
   const env = { ...process.env, PATH: bin, CLAUDE_PROJECT_DIR: root, CUE_TEST_LOG: log }
-  const calls = () => { try { return readFileSync(log, 'utf8') } catch { return '' } }
+  const calls = () => readdirSync(log).map(file => readFileSync(path.join(log, file), 'utf8').split('\0').slice(0, -1))
   return { dir, env, calls, script }
 }
 
@@ -57,9 +59,9 @@ test('official Notification input reaches play.sh via actual registered command,
   const run = spawnSync('/bin/sh', ['-c', registration.hooks[0].command], { env: f.env, input: JSON.stringify({ ...official, message: reason }), encoding: 'utf8' })
   assert.equal(run.status, 0, run.stderr)
   assert.equal(run.stdout, '')
-  assert.match(f.calls(), /afplay\n.*\/assets\/sound\/nomi-attention.wav/)
-  assert.ok(f.calls().includes(reason))
-  assert.ok(f.calls().includes('Nomi 需要你'))
+  const calls = f.calls()
+  assert.ok(calls.some(([command, ...args]) => command === 'afplay' && args.some(arg => arg.endsWith('/assets/sound/nomi-attention.wav'))))
+  assert.ok(calls.some(([command, ...args]) => command === 'osascript' && args.includes(reason) && args.some(arg => arg.includes('Nomi 需要你'))))
 })
 
 test('only human-attention types match; malformed/other events remain silent', (t) => {
@@ -74,7 +76,7 @@ test('only human-attention types match; malformed/other events remain silent', (
   for (const input of ['{', JSON.stringify({ ...official, hook_event_name: 'PostToolUse' })]) {
     assert.equal(spawnSync('/bin/sh', ['-c', registration.hooks[0].command], { env: f.env, input }).status, 0)
   }
-  assert.equal(f.calls(), '')
+  assert.deepEqual(f.calls(), [])
 })
 
 test('missing afplay is silent, successful, and still sends the native notification', (t) => {
@@ -83,7 +85,7 @@ test('missing afplay is silent, successful, and still sends the native notificat
   assert.equal(run.status, 0)
   assert.equal(run.stderr, '')
   assert.equal(run.stdout, '')
-  assert.match(f.calls(), /osascript/)
+  assert.ok(f.calls().some(([command]) => command === 'osascript'))
 })
 
 for (const [platform, players, expected] of [
@@ -97,7 +99,21 @@ for (const [platform, players, expected] of [
     const run = spawnSync('/bin/bash', [path.join(root, 'scripts/play-attention-cue.sh'), '--candidate', 'b'], { env: f.env, encoding: 'utf8' })
     assert.equal(run.status, 0)
     assert.equal(run.stderr, '')
-    if (expected) assert.ok(f.calls().startsWith(expected + '\n'))
-    else assert.equal(f.calls(), '')
+    if (expected) assert.deepEqual(f.calls().map(([command]) => command), [expected])
+    else assert.deepEqual(f.calls(), [])
   })
 }
+
+test('fixture preserves concurrent invocations and exact argument boundaries', (t) => {
+  const f = fixture(t)
+  const args = ['line one\nline two', '', 'quote " and $literal', 'x'.repeat(8192)]
+  const run = spawnSync('/bin/bash', ['-c', 'for i in {1..8}; do afplay "$@" & osascript "$@" & done; wait', 'fixture', ...args], { env: f.env, encoding: 'utf8' })
+  assert.equal(run.status, 0, run.stderr)
+  const calls = f.calls()
+  assert.equal(calls.length, 16)
+  for (const command of ['afplay', 'osascript']) {
+    const records = calls.filter(([name]) => name === command)
+    assert.equal(records.length, 8)
+    for (const record of records) assert.deepEqual(record, [command, ...args])
+  }
+})

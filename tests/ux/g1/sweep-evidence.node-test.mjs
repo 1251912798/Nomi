@@ -91,3 +91,38 @@ test('drain waits for in-flight headers and bodies registered after drain starts
   await assert.rejects(recorder.track(() => { dispatched = true }), /DRAINING/)
   assert.equal(dispatched, false)
 })
+test('feel ledger aggregates three stations once with count=3 and first evidence', () => {
+  const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'sweep-dedup-'))
+  try {
+    const deviations = ['first', 'second', 'third'].map((station, i) => ({
+      station, surface: 'storyboard', assertion: 'feel:font-size', layer: 'UI', screenshot: `${station}.png`,
+      actual: { rule: 'font-size', text: ['重复小字'], target: ['span'], rects: [{ x: i }] }, phenomenon: '重复小字',
+    }))
+    saveReport(temp, [{ id: 'case', surface: 'storyboard', stations: [], deviations }], [], 3)
+    const rows = fs.readFileSync(path.join(temp, 'report.md'), 'utf8').split('\n').filter(row => row.includes('重复小字'))
+    assert.equal(rows.length, 1)
+    assert.match(rows[0], /\| 3 \|/)
+    assert.match(rows[0], /case\/first/)
+    assert.match(rows[0], /case\/first.png/)
+    assert.equal(deviations.length, 3)
+  } finally { fs.rmSync(temp, { recursive: true, force: true }) }
+})
+test('feel identity spans cases but preserves rule, text, target and surface; functional failures stay individual', () => {
+  const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'sweep-identity-'))
+  try {
+    const hit = { station: 'first', surface: 'storyboard', assertion: 'feel:font-size', actual: { rule: 'font-size', text: ['identity-text'], target: ['span'] } }
+    const variants = [hit, { ...hit, actual: { ...hit.actual, rule: 'clipping' } },
+      { ...hit, actual: { ...hit.actual, text: ['other-text'] } },
+      { ...hit, actual: { ...hit.actual, target: ['button'] } }, { ...hit, surface: 'export' }]
+    const functional = { station: 'first', surface: 'storyboard', assertion: 'toEqual', phenomenon: 'functional-failure' }
+    saveReport(temp, [
+      { id: 'one', surface: 'storyboard', stations: [], deviations: [...variants, functional, functional] },
+      { id: 'two', surface: 'storyboard', stations: [], deviations: [hit] },
+    ], [], 3)
+    const report = fs.readFileSync(path.join(temp, 'report.md'), 'utf8')
+    const rows = report.split('\n').filter(row => /identity-text|other-text/.test(row))
+    assert.equal(rows.length, 5)
+    assert.match(rows[0], /\| 2 \|/)
+    assert.equal(report.split('\n').filter(row => row.includes('functional-failure')).length, 2)
+  } finally { fs.rmSync(temp, { recursive: true, force: true }) }
+})

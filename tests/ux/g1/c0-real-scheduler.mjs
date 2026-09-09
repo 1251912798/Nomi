@@ -1,5 +1,5 @@
 import fs from 'node:fs'
-import { scorePlanner } from './c0-r30.mjs'
+import { scorePlanner, scoreLanePlanner } from './c0-r30.mjs'
 import path from 'node:path'
 import { prepareIsolation, readEventsLog } from '../../../evals/lib/isoApp.mjs'
 import { publicPrices, quoteC0, assertAffordable, REAL_MODELS } from './c0-real-budget.mjs'
@@ -16,6 +16,12 @@ export async function createRealScheduler({ tempRoot, attemptDir, outputDir, rep
   const iso = prepareIsolation(tempRoot, { requireCatalog: true })
   const catalogFile = path.join(iso.settingsDir, 'model-catalog.json')
   const catalog = JSON.parse(fs.readFileSync(catalogFile, 'utf8'))
+  // The fixture owns its fixed text model; only the encrypted vendor credential and
+  // existing media mappings come from application settings. Never edit the source catalog.
+  if (!catalog.models.some((m) => m.vendorKey === 'apimart' && m.modelKey === REAL_MODELS.text)) {
+    catalog.models.push({ vendorKey: 'apimart', modelKey: REAL_MODELS.text,
+      labelZh: REAL_MODELS.text, kind: 'text', enabled: true })
+  }
   for (const vendor of catalog.vendors) vendor.enabled = vendor.key === 'apimart'
   for (const model of catalog.models) model.enabled = model.vendorKey === 'apimart' && Object.values(REAL_MODELS).includes(model.modelKey)
   for (const modelKey of Object.values(REAL_MODELS)) {
@@ -29,7 +35,12 @@ export async function createRealScheduler({ tempRoot, attemptDir, outputDir, rep
   const lock = fs.openSync(lockPath, 'wx', 0o600)
   fs.closeSync(lock)
   const ledgerPath = path.join(outputDir, 'real-budget-ledger.json')
-  let app, planEvents = []
+  let app, planEvents = [], nativeMessages
+  const readNativeMessages = async (projectRoot) => {
+    // Reuse the candidate's versioned observer rather than duplicating the pi format reader.
+    const observer = await import('../agent-lane-observer.mjs')
+    return observer.readLaneTranscripts(projectRoot).flatMap(observer.laneMessages)
+  }
   const bridge = path.join(tempRoot, 'c0-main.cjs')
   fs.writeFileSync(bridge, `module.exports = import(${JSON.stringify(new URL('./c0-real-main.mjs', import.meta.url).href)});`, { mode: 0o600 })
   const snapshot = async () => {
@@ -72,12 +83,19 @@ export async function createRealScheduler({ tempRoot, attemptDir, outputDir, rep
       expect(report.outbound.filter((r) => r.model !== REAL_MODELS.text)).toEqual([])
     },
     async planCompleted({ projectRoot, expect }) {
-      await expect.poll(() => readEventsLog(projectRoot).some((e) => e.type === 'agent.turn.finished'), { timeout: 180_000 }).toBe(true)
-      planEvents = readEventsLog(projectRoot)
+      if (fs.existsSync(path.join(projectRoot, '.nomi/agent-sessions'))) {
+        await expect.poll(async () => {
+          nativeMessages = await readNativeMessages(projectRoot)
+          return scoreLanePlanner(nativeMessages, true).turns
+        }, { timeout: 180_000 }).toBe('1/1 (100%)')
+      } else {
+        await expect.poll(() => readEventsLog(projectRoot).some((e) => e.type === 'agent.turn.finished'), { timeout: 180_000 }).toBe(true)
+        planEvents = readEventsLog(projectRoot)
+      }
     },
     verifyPlan(actual, expect) {
       expect(actual.every((s) => s.modelKey === REAL_MODELS.video && s.params?.resolution === '768P')).toBe(true)
-      report.r30.real = scorePlanner(planEvents, true)
+      report.r30.real = nativeMessages ? scoreLanePlanner(nativeMessages, true) : scorePlanner(planEvents, true)
       fs.writeFileSync(path.join(attemptDir, 'r30-events.json'), JSON.stringify(planEvents.filter((e) => /^agent\.(turn\.|tool\.)/.test(e.type))
         .map((e) => ({ type: e.type, toolName: e.payload?.toolName, status: e.payload?.status, ok: e.payload?.ok,
           toolCallId: e.payload?.toolCallId, hasFinalText: Boolean(e.payload?.finalTextHead?.trim()) })), null, 2))

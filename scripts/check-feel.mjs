@@ -59,7 +59,9 @@ if (/^import\s/m.test(scanner) || /data-testid|react-flow|nomi|agent-panel/i.tes
 }
 const catalog = read('tests/ux/journeys/catalog.json')
 for (const journey of catalog.journeys) {
-  if (!journey.id || !journey.states.length) throw new Error('Invalid feel journey')
+  const experienceOnly = journey.experience === true && journey.runner === 'experience.walk.mjs'
+    && Array.isArray(journey.steps) && journey.steps.length > 0
+  if (!journey.id || !Array.isArray(journey.states) || (!journey.states.length && !experienceOnly)) throw new Error('Invalid feel journey')
   for (const state of journey.states) if (!state.id || !state.html || !state.owner) throw new Error('Invalid feel state')
 }
 console.log('Feel generic boundary and baseline/exemption ratchets passed')

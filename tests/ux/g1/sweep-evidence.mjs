@@ -111,7 +111,24 @@ export function saveCase(directory, walk) {
 export function saveReport(directory, runs, skipped, budgetCny) {
   const lines = ['# Sweep 问题总账', '', `模式：记录并继续；预算上限 ¥${budgetCny}。费用取供应商余额增量，缺账单写未知；站点费用为保守预留增量。修补不算通过；各输入只证明登记的子任务，不能代替完整 G1 验收。`, '',
     '| case/input | surface | 站 | 现象 | 证据 | 初判层 | root_cause_cluster |', '|---|---|---|---|---|---|---|']
-  for (const r of runs) for (const d of r.deviations) lines.push(`| ${r.id} | ${cell(d.surface)} | ${cell(d.station)} | ${cell(d.phenomenon)} | [轨迹](${r.id}/${fs.existsSync(path.join(directory, r.id, 'trace.zip')) ? 'trace.zip' : 'trace-unavailable.md'}) / [断言](${r.id}/deviations.json)${d.screenshot ? ` / [截图](${r.id}/${d.screenshot})` : ''} | ${cell(d.layer)} | |`)
+  const evidence = (r, d) => `[轨迹](${r.id}/${fs.existsSync(path.join(directory, r.id, 'trace.zip')) ? 'trace.zip' : 'trace-unavailable.md'}) / [断言](${r.id}/deviations.json)${d.screenshot ? ` / [截图](${r.id}/${d.screenshot})` : ''}`
+  const feelGroups = new Map()
+  for (const r of runs) for (const d of r.deviations) {
+    if (d.assertion?.startsWith('feel:')) {
+      const finding = d.actual ?? {}
+      const identity = [finding.rule ?? d.assertion.slice(5), finding.text ?? [], finding.target ?? [], d.surface ?? r.surface]
+      const key = JSON.stringify(identity)
+      const group = feelGroups.get(key)
+      if (group) group.count += 1
+      else feelGroups.set(key, { identity, r, d, count: 1 })
+    } else lines.push(`| ${r.id} | ${cell(d.surface)} | ${cell(d.station)} | ${cell(d.phenomenon)} | ${evidence(r, d)} | ${cell(d.layer)} | |`)
+  }
+  lines.push('', '## 体感命中（规则 × 文字 × 目标 × 面聚合）', '',
+    `原始命中 ${[...feelGroups.values()].reduce((n, group) => n + group.count, 0)} 条 → 聚合 ${feelGroups.size} 行；完整逐站证据保留在各 case 的 deviations.json。`, '',
+    '| 规则 | 文字 | 目标 | surface | 首次 case/站 | count | 证据 |', '|---|---|---|---|---|---|---|')
+  for (const { identity: [rule, text, target, surface], r, d, count } of feelGroups.values()) {
+    lines.push(`| ${cell(rule)} | ${cell(JSON.stringify(text))} | ${cell(JSON.stringify(target))} | ${cell(surface)} | ${cell(r.id)}/${cell(d.station)} | ${count} | ${evidence(r, d)} |`)
+  }
   lines.push('', '## 临时修补（均保留失败）', '')
   for (const r of runs) for (const d of r.deviations.filter(d => d.repaired)) lines.push(`- ${r.id}/${d.station}：${d.repairedBy}`)
   lines.push('', '## 按 surface 汇总', '', '| surface | 跑了几条 | 到达几站 | 修补几次 | 真失败几条（含已修补） | 费用 ¥ |', '|---|---|---|---|---|---|')
