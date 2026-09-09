@@ -44,15 +44,12 @@ import {
 import { invalidateProviderAdapterRunsForVendors } from "../providerAdapter/store";
 import { invalidateVendorValidation, normalizedConnectionScope } from "./vendorValidationInvalidation";
 import { logWarn } from "../logging/logger";
-
 export type { CustomCallConfigPatchEntry, CustomCallConfigPublicEntry } from "./customConfigStore";
-
 // 各版 relay 迁移各住独立模块（R9 分层：迁移与读写盘/事务无关）。这里只做接线 + 再导出，
 // 测试与既有调用方按原路径 import 不变。
 export { migrateRelayImageEditProtocols } from "./relayImageEditMigration";
 export { migrateRelayVideoImageToVideo } from "./relayVideoI2vMigration";
 export { migrateRelayImageEditCapability, migrateRelayParamMaps } from "./relayLegacyMigrations";
-
 function catalogPath(): string {
   return path.join(getSettingsRoot(), CATALOG_FILE);
 }
@@ -89,6 +86,7 @@ export function readCatalog(): CatalogState {
         ...vendor,
         providerKind: normalizeProviderKind(vendor.providerKind),
         hasApiKey: apiKeyDecryptStatus(apiKeysByVendor[vendor.key]) === "ok",
+        credentialVerificationPending: apiKeysByVendor[vendor.key]?.verificationPending === true,
       };
       // Overlay the DECRYPTED proxy/header credentials onto the INTERNAL vendor at
       // this single read choke point so every outbound consumer keeps reading them
@@ -463,11 +461,12 @@ function applyApiKeyUpsert(state: CatalogState, vendorKey: string, payload: unkn
   const enabled = normalizeEnabled((payload as JsonRecord)?.enabled, true);
   state.apiKeysByVendor[key] = {
     ...makeApiKeyRecordFromPlain(apiKey, key, enabled, existing?.createdAt || t, t),
+    ...((payload as JsonRecord)?.verificationPending === true ? { verificationPending: true as const } : {}),
+    ...(existing?.networkConfig ? { networkConfig: existing.networkConfig } : {}),
     ...(existing?.customConfig ? { customConfig: existing.customConfig } : {}),
   };
   if (!enabled) invalidateVendorValidation(state, key);
-  // 名实一致：停用凭据 = 该 vendor 退出「已接入/可用」投影，与凭据写入同一次落盘。见 credentialPublication。
-  if (!enabled) depublishVendorForDisabledCredential(state, key, t);
+  if (!enabled || state.apiKeysByVendor[key].verificationPending) depublishVendorForDisabledCredential(state, key, t);
 }
 export function upsertModelCatalogVendorApiKey(vendorKey: string, payload: unknown): unknown {
   const state = readCatalog();
@@ -476,7 +475,7 @@ export function upsertModelCatalogVendorApiKey(vendorKey: string, payload: unkno
   const key = String(vendorKey || "").trim();
   const rec = state.apiKeysByVendor[key];
   if (rec?.enabled === false) invalidateProviderAdapterRunsForVendors(new Set([key]));
-  return { vendorKey: key, hasApiKey: true, enabled: rec.enabled, createdAt: rec.createdAt, updatedAt: rec.updatedAt };
+  return { vendorKey: key, hasApiKey: true, verificationPending: rec.verificationPending === true, enabled: rec.enabled, createdAt: rec.createdAt, updatedAt: rec.updatedAt };
 }
 export function clearModelCatalogVendorApiKey(vendorKey: string): unknown {
   const state = readCatalog();

@@ -1,3 +1,4 @@
+import { orderByVendorPreference } from "../../../../electron/shared/contracts/vendorPreference";
 // 把 agent 建议的 modelKey/modeId/params 校验+补全成可写入 node.meta 的对象。
 //
 // 关键约束（bug① spike）：agent 一旦写了 modelKey，useNodeModelAutoSelect 的 effect1（只在
@@ -60,9 +61,9 @@ const isValidParamValue = isParamValueAllowed;
  * 裸键取**第一次出现**的条目（后来者不覆盖），避免「索引里最后写入的那家」这种随机身份。
  * 两处落地路径（applyCanvasToolCall / storyboardRowActions）共用本构造器，不各写一份（P1）。
  */
-export function buildModelEntryIndex(entries: readonly AgentModelEntry[]): Map<string, AgentModelEntry> {
+export function buildModelEntryIndex(entries: readonly AgentModelEntry[], orderedVendorKeys: readonly string[] = []): Map<string, AgentModelEntry> {
   const index = new Map<string, AgentModelEntry>();
-  for (const entry of entries) {
+  for (const entry of orderByVendorPreference(entries, orderedVendorKeys, (row) => row.vendor)) {
     if (entry.vendor) index.set(`${entry.vendor}::${entry.modelKey}`, entry);
     if (!index.has(entry.modelKey)) index.set(entry.modelKey, entry);
   }

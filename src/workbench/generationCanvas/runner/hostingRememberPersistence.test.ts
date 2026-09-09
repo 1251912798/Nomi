@@ -32,7 +32,7 @@ describe('托管「记住我的选择」落盘（生产 onRemember）', () => {
   })
 
   it('勾选后把 anonymousAssetHosting 写成 allow，且不冲掉其它策略字段', async () => {
-    policyGet.mockResolvedValue({ anonymousAssetHosting: 'ask', hardBudget: 42, maxAttemptsPerJob: 3 })
+    policyGet.mockResolvedValue({ anonymousAssetHosting: 'ask', maxAttemptsPerJob: 3 })
 
     const resolution = await resolveAssetUploadConsent(localNode)
     // 前提先立住：这就是「会弹披露块」的那个现场，否则下面的 remember 是在验一个不会发生的场景。
@@ -43,7 +43,6 @@ describe('托管「记住我的选择」落盘（生产 onRemember）', () => {
     expect(policySet).toHaveBeenCalledTimes(1)
     expect(policySet).toHaveBeenCalledWith({
       anonymousAssetHosting: 'allow',
-      hardBudget: 42,
       maxAttemptsPerJob: 3,
     })
   })

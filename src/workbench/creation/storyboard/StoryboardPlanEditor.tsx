@@ -64,16 +64,17 @@ const EMPTY_STRATEGY_PLAN: StoryboardPlan = { title: '', anchors: [], shots: [] 
 
 export default function StoryboardPlanEditor({ projectId }: { projectId?: string | null }): JSX.Element | null {
   const { t } = useTranslation()
-  const plan = useWorkbenchStore((s) => {
+  const activeDesign = useWorkbenchStore((s) => {
     const designs = s.activeDocumentId ? s.storyboardDesignsByDocumentId[s.activeDocumentId] ?? [] : []
-    return (designs.find((design) => design.id === s.activeStoryboardId) ?? designs[0])?.plan ?? null
+    return designs.find((design) => design.id === s.activeStoryboardId) ?? designs[0] ?? null
   })
+  const plan = activeDesign?.plan ?? null
+  const designId = activeDesign?.id ?? ''
   const setStoryboardPlan = useWorkbenchStore((s) => s.setStoryboardPlan)
   const deleteStoryboardDesign = useWorkbenchStore((s) => s.deleteStoryboardDesign)
   const setWorkspaceMode = useWorkbenchStore((s) => s.setWorkspaceMode)
   const setActiveStoryboardId = useWorkbenchStore((s) => s.setActiveStoryboardId)
   const activeDocumentId = useWorkbenchStore((s) => s.activeDocumentId)
-  const activeStoryboardId = useWorkbenchStore((s) => s.activeStoryboardId)
   const setProjectAgentReferences = useWorkbenchStore((s) => s.setProjectAgentReferences)
   const setProjectAgentDraft = useWorkbenchStore((s) => s.setProjectAgentDraft)
   const setProjectAgentDockCollapsed = useWorkbenchStore((s) => s.setProjectAgentDockCollapsed)
@@ -85,8 +86,8 @@ export default function StoryboardPlanEditor({ projectId }: { projectId?: string
   const [busy, setBusy] = React.useState(false)
   const [actionFeedback, setActionFeedback] = React.useState<{ designId: string | null; message: string } | null>(null)
   const reportFailure = (message: string): void => {
-    notify({ identity: `storyboard:${activeDocumentId}:${activeStoryboardId}`, reason: 'edit-action', level: 'inline', type: 'error', message,
-      present: (value) => setActionFeedback({ designId: activeStoryboardId, message: value }),
+    notify({ identity: `storyboard:${activeDocumentId}:${designId}`, reason: 'edit-action', level: 'inline', type: 'error', message,
+      present: (value) => setActionFeedback({ designId, message: value }),
     })
   }
   // 放大预览：存 nodeId（不存快照），渲染时从画布节点现取结果——重生成后再开永远是最新图。
@@ -117,7 +118,6 @@ export default function StoryboardPlanEditor({ projectId }: { projectId?: string
   }
 
   // 行执行态：plan × 画布节点的实时 derive（F2：组头/标题/footer 计数同一份，禁静态快照）。
-  const designId = activeStoryboardId ?? ''
   const rows = React.useMemo(
     () => (plan ? deriveStoryboardRowRuntimes({ plan, designId, imageModelOptions, videoModelOptions, nodes: canvasNodes }) : []),
     [plan, designId, imageModelOptions, videoModelOptions, canvasNodes],
@@ -231,7 +231,7 @@ export default function StoryboardPlanEditor({ projectId }: { projectId?: string
 
   const onDiscard = async () => {
     const targetDocumentId = activeDocumentId
-    const targetStoryboardId = activeStoryboardId
+    const targetStoryboardId = designId
     if (!targetStoryboardId) return
     const ok = await confirmDialog({
       title: t('storyboardEditor.discardTitle'),
@@ -244,7 +244,9 @@ export default function StoryboardPlanEditor({ projectId }: { projectId?: string
 
   // 动作统一包一层：失败原因回当前方案（生成失败本身落在节点卡片，这里只兜 materialize/确认前异常）。
   const runAction = async (action: () => Promise<void>): Promise<void> => {
-    if (busy || !activeStoryboardId) return
+    if (busy) {
+      return
+    }
     setBusy(true)
     setActionFeedback(null)
     try {
@@ -634,7 +636,7 @@ export default function StoryboardPlanEditor({ projectId }: { projectId?: string
         </div>
       </footer>
 
-      {actionFeedback?.designId === activeStoryboardId ? <p role="status" data-storyboard-action-feedback className="px-3 py-2 text-caption text-workbench-danger">{actionFeedback.message}</p> : null}
+      {actionFeedback?.designId === designId ? <p role="status" data-storyboard-action-feedback className="px-3 py-2 text-caption text-workbench-danger">{actionFeedback.message}</p> : null}
 
       {/* 放大预览：素材库同一 body-portal lightbox（NodeMediaPreviewDialog 挂画布容器在分镜页不可见）。 */}
       {playbackOpen && playbackSequence.length > 0 ? (

@@ -1,3 +1,11 @@
+// Fixture user accepts the quote card; the real taskSpend guard still runs.
+vi.mock("./capabilityCore/rendererBridge", () => ({
+  requestRenderer: vi.fn(async (operation: string) => {
+    if (operation !== "spend.confirm") throw new Error(`Unexpected renderer operation: ${operation}`);
+    return { confirmed: true };
+  }),
+}));
+
 /**
  * runTask 的 L3 诚实护栏（docs/plan/2026-07-06-i2i-reference-reliability.md）：
  *

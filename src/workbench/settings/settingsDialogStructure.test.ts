@@ -52,7 +52,8 @@ const APPROVED_NON_MODEL_SECTION_SHA256 = {
   // 2026-09-09：目录操作错误回现有status；保留共享tone类型，正向回归见下方local feedback。
   'ProjectLocationSection.tsx': '6fdcf159d9a0e32e72637049fce6d0f9acaeee43369d0c8d2be46d3f7ec81c10',
   // 2026-09-02: AiModelsSection 按渲染边界收口供应商/模型展示名（translateModelDisplayText）。
-  'AiModelsSection.tsx': '991aed2910a81b3cedd005c230f5585efa7cbdc5cd4cb1e309c818b183d42504',
+  // B4: user explicitly removed the global budget setting; the positive absence assertion is below.
+  'AiModelsSection.tsx': '951e7387058010b094d2faf5b0357a6ae3e77b9d8e6ab307081197b9641a4fbb',
   // 2026-09-03：toggleHost 参数类型从 SettingsHostKey（四值联合）泛化为 string（支持自定义 profile key）；
   // 新增 CustomMcpClientCard UI TODO 注释（底层能力已就绪，UI 面另排样张拍板）。
   // 2026-09-09：声音归通用设置的单一入口，移除这里的旧开关；下方断言保留系统通知策略。
@@ -80,7 +81,7 @@ describe('settings dialog structure', () => {
     expect(settingsSource).toContain('data-settings-tab-id={id}')
     expect(settingsSource).toContain('active.offsetLeft - (nav.clientWidth - active.offsetWidth) / 2')
     expect(settingsSource).toContain("'production-policy'")
-    expect(aiModelsSource).toContain('data-settings-field="hard-budget"')
+    expect(aiModelsSource).not.toContain('data-settings-field="hard-budget"')
   })
 
   it('keeps notification policy in settings instead of duplicating it in task center', () => {

@@ -47,10 +47,10 @@ export function useVendorHealth(
   vendorKey: string,
   {
     hasApiKey,
-    baseUrl,
+    baseUrl = '',
     disableProbe = false,
     skipImplicitProbe = false,
-  }: { hasApiKey: boolean; baseUrl: string; disableProbe?: boolean; skipImplicitProbe?: boolean },
+  }: { hasApiKey: boolean; baseUrl?: string; disableProbe?: boolean; skipImplicitProbe?: boolean },
 ): { connection: VendorConnection | null; recheck: () => void } {
   const fingerprint = `${vendorKey}|${baseUrl}`
   const [health, setHealth] = React.useState<VendorHealth | null>(() => lastKnown.get(fingerprint) ?? null)
@@ -70,8 +70,13 @@ export function useVendorHealth(
       setNonce((value) => value + 1)
     }
     if (typeof window === 'undefined') return undefined
+    const onOnline = () => { forceRef.current = true; setNonce(value => value + 1) }
+    window.addEventListener('online', onOnline)
     window.addEventListener('nomi-model-catalog-changed', onCatalogChanged)
-    return () => window.removeEventListener('nomi-model-catalog-changed', onCatalogChanged)
+    return () => {
+      window.removeEventListener('online', onOnline)
+      window.removeEventListener('nomi-model-catalog-changed', onCatalogChanged)
+    }
   }, [vendorKey])
 
   React.useEffect(() => {

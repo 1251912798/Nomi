@@ -69,7 +69,6 @@ describe("automation policy settings", () => {
       systemNotifications: false,
       autoContinueWithinBudget: false,
       minimizeUploads: false,
-      maxSpend: null,
     });
   });
 
@@ -79,11 +78,14 @@ describe("automation policy settings", () => {
     expect(normalizeAutomationPolicySettings({ anonymousAssetHosting: "anything" }).anonymousAssetHosting).toBe("ask");
   });
 
+  it("drops the obsolete global budget", () => {
+    expect(normalizeAutomationPolicySettings({ maxSpend: 25 })).not.toHaveProperty("maxSpend");
+  });
+
   it("persists normalized settings atomically", () => {
     const written = writeAutomationPolicySettings({
       mode: "policy-auto",
       trustedHosts: ["claude"],
-      maxSpend: 25,
       maxAttemptsPerJob: 4,
       systemNotifications: true,
       autoContinueWithinBudget: true,

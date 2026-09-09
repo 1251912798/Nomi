@@ -1,0 +1,23 @@
+
+> nomi@0.21.0 check:prior-art /Users/aoqimin/Desktop/Nomi-money-guard
+> node --test ./scripts/check-prior-art.node-test.mjs && node ./scripts/check-prior-art.mjs
+
+✔ 缺整节 → 红 (0.587791ms)
+✔ 有节但带出处的条目不足 3 条 → 红 (0.260334ms)
+✔ 四问答满且带出处 → 绿 (0.79525ms)
+✔ 阈值之前的老方案不追溯，无日期前缀的同样不追溯 (0.082584ms)
+✔ 节的边界只到同级或更高级标题，四级小标题算节内 (0.078334ms)
+✔ 大改 PR 正文没引用任何方案 → 红；小改不管 (0.2055ms)
+✔ 大改 PR 引用了合格方案 → 绿；引用不存在或不合格的 → 红 (0.159584ms)
+✔ 正文里的方案路径去重保序 (0.076584ms)
+✔ 出处第三种：链接指向仓库里存在的文件算数，指不到的不算 (0.394542ms)
+✔ 相对路径解析：../ 与 ./ 都按方案文档所在目录算，外链不解析 (0.133417ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 39.530042
+✅ 先查别人门岗：55 份受管方案（阈值 2026-09-07，共 580 份）；⏭️ PR 侧跳过（不在 pull_request 事件里，且未加 --pr）

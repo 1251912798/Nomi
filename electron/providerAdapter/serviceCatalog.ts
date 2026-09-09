@@ -1,3 +1,4 @@
+import { revalidatePendingCredential } from '../catalog/validateCandidateCredential';
 import {
   extractVendorExtraHeaders,
   mutateCatalog,
@@ -53,7 +54,7 @@ export type ProviderAdapterCatalogPort = {
   register(input: ProviderAdapterRegisterInput & { vendorKey: string; savedAt: string }): { vendor: Vendor; models: Model[] };
   stage(input: ProviderAdapterConnectionInput & { vendorKey: string; runId: string }): StagedProviderAdapterCatalog;
   findStagedRun?(runId: string): { vendorKey: string; lineageRootVendorKey: string } | null;
-  load(vendorKey: string, selectedModelKeys: readonly string[]): LoadedConnection | null;
+  load(vendorKey: string, selectedModelKeys: readonly string[]): LoadedConnection | null | Promise<LoadedConnection | null>;
   promote(input: {
     run: ProviderAdapterRun;
     draft: ProviderAdapterDraft;
@@ -150,9 +151,9 @@ export const defaultCatalog: ProviderAdapterCatalogPort = {
         },
       });
       if (input.authType === "none") tx.deleteApiKey(targetVendorKey);
-      else if (!input.preserveExistingCredential) tx.upsertApiKey(targetVendorKey, { apiKey: input.apiKey, enabled: true });
+      else if (!input.preserveExistingCredential) tx.upsertApiKey(targetVendorKey, { apiKey: input.apiKey, enabled: true, ...(before.apiKeysByVendor[sourceVendorKey]?.verificationPending ? { verificationPending: true } : {}) });
       else if (isolatedCandidate) {
-        tx.upsertApiKey(targetVendorKey, { apiKey: decryptApiKeyRecord(savedCredential), enabled: true });
+        tx.upsertApiKey(targetVendorKey, { apiKey: decryptApiKeyRecord(savedCredential), enabled: true, ...(savedCredential?.verificationPending ? { verificationPending: true } : {}) });
       }
       const models = input.models.map((selected) => {
         const existing = before.models.find(
@@ -227,7 +228,7 @@ export const defaultCatalog: ProviderAdapterCatalogPort = {
         },
       });
       if (input.authType === "none") tx.deleteApiKey(targetVendorKey);
-      else tx.upsertApiKey(targetVendorKey, { apiKey: input.apiKey, enabled: true });
+      else tx.upsertApiKey(targetVendorKey, { apiKey: input.apiKey, enabled: true, ...(before.apiKeysByVendor[sourceVendorKey]?.verificationPending ? { verificationPending: true } : {}) });
       const models = input.models.map((selected) => {
         const existing = before.models.find(
           (model) => model.vendorKey === targetVendorKey && model.modelKey === selected.modelKey,
@@ -277,7 +278,8 @@ export const defaultCatalog: ProviderAdapterCatalogPort = {
     };
   },
 
-  load(vendorKey, selectedModelKeys) {
+  async load(vendorKey, selectedModelKeys) {
+    await revalidatePendingCredential(vendorKey);
     const state = readCatalog();
     const vendor = state.vendors.find((item) => item.key === vendorKey);
     if (!vendor) return null;

@@ -459,7 +459,7 @@ export function OnboardingDrawer({ pageRequest = null }: { pageRequest?: ModelPa
       <KnownVendorKeyConnectPage
         directory={card.directory}
         vendorName={translateModelDisplayText(card.meta.name)}
-        modelCount={card.vendorModels.length} hasApiKey={card.meta.hasApiKey}
+        modelCount={card.vendorModels.length} hasApiKey={card.meta.hasApiKey} credentialVerificationPending={card.meta.credentialVerificationPending}
         onBack={goBack}
         onSaved={refresh}
         onContinueVerification={() => openWizard(undefined, card.directory.vendorKey)}

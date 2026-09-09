@@ -113,7 +113,6 @@ export const zhRuntime = {
     spendMessage: '确认后将消耗模型额度生成。',
     spendMessageWithPrompt: '提示词：「{{prompt}}」。确认后将消耗模型额度生成。',
     // 授权范围必须写在卡上：用户以为批的是「这一张」，实际还批掉了一段免问期（D4 缺口明着标）。
-    spendGrantsSessionTrust: '另外：确认后本次会话在这个项目里的后续生成不再逐次打断你（最多 20 次，之后会再确认一次）。',
     confirmGenerate: '确认生成',
     generationGateTitle: '允许 Nomi 生成这一镜？',
     generationGateBatchTitle: '允许 Nomi 生成这一批镜头？',
@@ -290,7 +289,6 @@ export const enRuntime = {
     referenceTitle: 'The AI assistant wants to generate a reference image',
     spendMessage: 'Confirm to spend model credits and start generation.',
     spendMessageWithPrompt: 'Prompt: “{{prompt}}”. Confirm to spend model credits and start generation.',
-    spendGrantsSessionTrust: 'Also: after you confirm, further generations in this project will not interrupt you again for the rest of this session (up to 20, then it asks once more).',
     confirmGenerate: 'Confirm generation',
     generationGateTitle: 'Allow Nomi to generate this shot?',
     generationGateBatchTitle: 'Allow Nomi to generate this batch of shots?',
