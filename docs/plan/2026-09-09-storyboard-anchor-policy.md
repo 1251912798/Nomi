@@ -76,3 +76,5 @@
 验收顺序：正常 hooks 提交 merge → `pnpm run test -- BaseGenerationNode storyboard anchor notification` → 完整 `python3 scripts/with-gates-lock.py -- pnpm run gates` exit 0 → 正常 push 任务分支；fresh-base 若落后则再并入、重验。
 
 排锁后的 fresh-base 重验：指定测试命令 exit 0（12231 条单测通过），首次完整 gates 因 `origin/main` 已前进到 `ad95ab47e790` 而 exit 1，未推送。随后正常并入该基线（含 #683），无冲突；`BaseGenerationNode.tsx` 的上述裁决保持不变，在新 merge head 重跑指定测试与完整 gates。
+
+第二次排锁后的 fresh-base 重验：指定测试命令再次 exit 0（12244 条单测通过），完整 gates 因 main 前进到 `77b8d4c07812`（#684）而 exit 1，仍未推送。再次无冲突并入；#684 的外置节点标签与本任务覆写角标、#679 的原地反馈同时保留，正常 hooks 提交后重验。

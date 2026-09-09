@@ -1,7 +1,7 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 
-/** 镜头号固定在媒体左下，不随选择或生成状态消失。 */
+/** 镜头号由框外 NodeLabelRow 定位，不随选择或生成状态换位。 */
 export function ShotPreviewOverlays({
   shotIndex,
 }: {
@@ -10,7 +10,7 @@ export function ShotPreviewOverlays({
   const { t } = useTranslation()
   if (shotIndex == null) return null
   return (
-    <span data-shot-number className="absolute bottom-1.5 left-1.5 z-[4] inline-flex items-center px-2 py-1 rounded-full bg-nomi-paper/90 text-nomi-ink-60 text-micro font-medium tabular-nums pointer-events-none">
+    <span data-shot-number className="inline-flex shrink-0 items-center text-nomi-ink-60 font-normal tabular-nums pointer-events-none">
       {t('generationCommon.shotConversion.shot', { index: shotIndex })}
     </span>
   )

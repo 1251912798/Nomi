@@ -1,0 +1,26 @@
+{
+  "standard": {
+    "redPersistentShotOverlap": 1181.359375,
+    "greenPersistentShotOverlap": 0,
+    "geometry": "geometry.json"
+  },
+  "lightweight": {
+    "before": {
+      "nodes": 81,
+      "requestedZoom": 0.2,
+      "actualZoom": 0.5,
+      "persistentTextOverlap": 2826
+    },
+    "after": {
+      "nodes": 81,
+      "requestedZoom": 0.2,
+      "actualZoom": 0.5,
+      "persistentTextOverlap": 0
+    }
+  },
+  "redCommand": "python3 scripts/with-gates-lock.py -- node tests/ux/node-label-outside.e2e.mjs",
+  "redExitCode": 1,
+  "greenCommand": "python3 scripts/with-gates-lock.py --command \"node scripts/build-tailwind.mjs && node tests/ux/node-label-outside.e2e.mjs && node scripts/check-root-cause-contracts.mjs\"",
+  "greenExitCode": 0,
+  "residual": "C09 留给 #646 合后；真实视口仍将 20% 夹回 50%。"
+}
