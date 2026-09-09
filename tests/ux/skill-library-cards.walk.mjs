@@ -10,6 +10,9 @@ const run = await launchNomiApp({ name: 'skill-library-cards', settleMs: 0,
   env: process.env.NOMI_SKILL_UI_DEV_URL ? { NOMI_RENDERER_URL: process.env.NOMI_SKILL_UI_DEV_URL, VITE_DEV_SERVER_URL: process.env.NOMI_SKILL_UI_DEV_URL } : {},
   initialLocalStorage: { 'nomi-color-scheme': 'light', 'nomi:splash:v1': 'seen', 'nomi:journey-tour:v1': 'seen', 'nomi:canvas-gesture-hint:v1': 'seen' },
 })
+async function expandGroups(host) {
+  while (await host.locator('details:not([open]) > summary').count()) await host.locator('details:not([open]) > summary').first().click()
+}
 const page = run.win
 page.setDefaultTimeout(stationTimeout({ operations: 2 }))
 try {
@@ -23,6 +26,8 @@ try {
   const gallery = page.locator('[data-skill-drop-zone]')
   await proveProbe(gallery.locator('[data-skill-card]'), '真实技能卡片已加载')
   await gallery.getByRole('radio', { name: '技能', exact: true }).click()
+  await expect(gallery.getByRole('radio', { name: '技能', exact: true })).toHaveAttribute('aria-checked', 'true')
+  await expandGroups(gallery)
   const multi = gallery.locator('[data-skill-card="skill:curated-multi-view"]')
   await multi.scrollIntoViewIfNeeded()
   await expect(multi.locator('img')).toBeVisible()
@@ -38,6 +43,7 @@ try {
   await expect(page.locator('[data-v4-chip="skill"]').first()).toContainText('多视图设定')
   await page.locator(COMPOSER_SKILL).first().click()
   const selectedPicker = page.locator(SKILL_POPOVER).first()
+  await expandGroups(selectedPicker)
   const promptProof = await proveProbe(selectedPicker.locator('[data-v4-command^="prompt:"]'), '全部分面显示提示词')
   const skillProof = await proveProbe(selectedPicker.locator('[data-v4-command^="skill:"]'), '全部分面显示技能')
   await selectedPicker.getByRole('button', { name: '技能', exact: true }).click()
@@ -51,9 +57,12 @@ try {
   await selectedPicker.locator('[data-v4-control="skill-search"]').fill('')
   await selectedPicker.getByRole('button', { name: '效果', exact: true }).click()
   await expectAbsent(selectedPicker.locator('[data-v4-command^="skill:"]'), { provenBy: skillProof })
+  await expandGroups(selectedPicker)
   await expect(selectedPicker.locator('[data-v4-command="prompt:effect-character-three-view"]')).toBeVisible()
   await selectedPicker.getByRole('button', { name: '新建 · 管理', exact: false }).click()
   await gallery.getByRole('radio', { name: '效果', exact: true }).click()
+  await expect(gallery.getByRole('radio', { name: '效果', exact: true })).toHaveAttribute('aria-checked', 'true')
+  await expandGroups(gallery)
   await gallery.locator('[data-skill-card="prompt:effect-character-three-view"]').click()
   await detail.getByRole('button', { name: '用到节点', exact: true }).click()
   await expect(page.locator('[data-node-effect-chips="filled"]')).toBeVisible()

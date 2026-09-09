@@ -33,7 +33,7 @@ export const skillCurationSchema = z.object({
 }).strict();
 
 const licensedCurationSchema = skillCurationSchema.extend({
-  license: z.enum(["MIT", "Apache-2.0", "CC0-1.0", "CC-BY-4.0", "CC-BY-SA-4.0"]),
+  license: z.enum(["MIT", "Apache-2.0", "CC0-1.0", "CC-BY-4.0", "CC-BY-SA-4.0", "AGPL-3.0-only"]),
 });
 export type SkillCuration = z.infer<typeof licensedCurationSchema>;
 

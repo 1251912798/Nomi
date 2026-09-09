@@ -252,7 +252,7 @@ export default function ProjectAgentResidentShell({ surface }: { surface: Reside
         group: libraryGroup(skill, i18n.language),
         name: skill.curation?.title[locale] ?? skill.label,
         command: `/${skill.name}`,
-        desc: skill.description ?? skill.stageLabels.join(' · '),
+        desc: skill.curation?.summary[locale] ?? skill.description ?? skill.stageLabels.join(' · '),
         cover: skill.cover,
         preview: skill.preview,
         section: t('agentPanelV4.sectionSkills'),
