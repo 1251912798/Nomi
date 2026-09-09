@@ -293,3 +293,13 @@ main 整合预演发现上游同时修改了 C0 全程预算与观察器；已 `
 Mac持续锁屏导致首个付费尝试约28分钟仍未离开凭据读取，现已终止本任务该实例（TERM无效后对已核实的PID 25224 KILL），保留blocked收据 `round4-paid-blocked.json`。未完成nano样本，不以零额度数替代。接下来用本次gates构建重新打包最终整合树，不保留后台挂起的付费尝试。
 
 最终整合树打包 `dist:mac:dir` **exit0**（`.tmp/round4-package-final.log`），asar SHA256 `5214e066ac68f42f2537097ad6f3917a7634bbad727cc18a734a9e68f84afc97`；packaged MCP25 tools/89 resources通过，最终包常驻启动器视频清单4/4通过，`round4-final-packaged-green.log`。本轮未取得nano×2付费数字；原尝试按真实C0输出 paid calls=0，隔离凭据已清理，没有挂起的付费实例。修复与证据已暂存，未commit、未push；只有main整合提交69d505570已在本地。仍需用户解锁Mac，以及答复此前提出的打包边界修复范围问题，才能完成剩余交付；不宣称本任务完成。
+
+## 已批打包边界收尾（2026-09-09）
+
+第四轮（b）「清单没到模型」来自过期包，该结论作废；视频站、时间轴、导出和体感发现仍有效。用户确认此次约 ¥26 的浪费源于 dist:mac:dir 复用现成产物。
+
+根因类别 recurring：package.json 的 dist 与 dist:mac:dir 都直接执行 electron-builder，缺少构建身份不变量。范围仅 scripts/ 与 package.json 脚本，另附合同、证据与教训；不改生产 UI、技能、schema、审批、C0 或预算。现有 build:renderer、build:electron 也须在执行前作废旧戳，防止部分构建后混用。
+
+实现：完整构建前取 HEAD 与真实工作树 Git tree（临时 index，不改变暂存区，含非忽略的未跟踪文件），删除两份旧戳；构建成功且前后身份一致才在 dist/、dist-electron/ 写相同戳。两个打包入口共用校验，缺戳、坏戳、任一身份漂移均退出并提示先 pnpm build。戳记录 dirty，不以单一布尔值代替内容身份。构建过程失败不发戳。
+
+验收：Node 临时 Git 仓测试过期戳、HEAD 变化、staged/unstaged/untracked 变化、缺戳/坏戳、部分/失败构建；正确戳通过。红绿日志 package-stamp-{red,green}.log。完整 gates 必须 exit 0 后原分支正常 push。回滚 revert 打包修复提交；已有无戳产物必须重建，不迁写假戳。Mac 锁屏，nano×2 待钥匙串授权后补。

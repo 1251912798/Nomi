@@ -36,6 +36,8 @@
 
 ## A. 走查与体验验证（Playwright / Electron 真机）
 
+- [打包成功不证明包来自当前源码](package-only-is-not-a-source-build.md) — 切分支、合并、修代码后打包验收，必须核验两份构建戳
+
 - [UA 默认样式泄漏是一类问题，但蓝框未必来自 UA](ua-default-style-leaks-are-a-class.md) — 输入框点击厚环；先查计算样式，再按文本/非文本控件在全局边界治理
 
 - [跑批渲染必须一格一个浏览上下文，复用同一个到第 34 次就再也起不来](one-browser-context-per-render-or-the-batch-dies-midway.md) — 前几十格都好、从某一格起 `waitForFunction` 恒超时，而单独 `ONLY=` 跑那一格完全正常
