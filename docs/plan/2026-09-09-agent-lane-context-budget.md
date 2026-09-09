@@ -139,3 +139,5 @@ B1c-fix 实测：创作面 delete_canvas_nodes 在确认后成功删除，证据
 扫描补全：`agent-runtime-editing.walk.mjs` 两处、`agent-runtime-production.walk.mjs` 一处完整集合断言仍仅期望核心目录；统一通过 `agent-runtime-walk-support.mjs` 从正式 domain/native 目录派生 45 个常驻工具。production 走查三处 single-shot 的空 tools 是禁工具调用合同，保留。
 
 最终范围裁决：扩展走查实证创作面分镜规划是既有跨面可逆流程，不能把全部 renderer 写操作一刀切封住；共享入口仅依据规范 contract.effect=destructive + renderer_required + targetKind 校验，不列工具名，不改可逆审批。类测试同时保护文稿/画布/时间轴可逆调用。额外编辑走查已过完整菜单断言，后停在既有整笔撤销按钮探针（本任务不修改撤销 UI）；其日志 `.tmp/b1c-fix/other-walks.log`，不得称该整条走查绿。
+
+#688 并线同类检查：新增 `agent-process-tone.walk.mjs` 三个真实 loopback 调用仍用旧 Host 的 nomi_document_read(scope=full)，在 lane 目录门岗报红；同步迁为 read_full_text({})，不动 UI/历史视觉证据。
