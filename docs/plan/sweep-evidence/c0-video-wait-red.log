@@ -1,0 +1,38 @@
+feel record: g1-c0/waitForFunction.png; findings=5; new-surfaces=1; evidence: /Users/aoqimin/Desktop/Nomi-sweep-b/artifacts/feel/g1-c0-ca522f83-a475-4a05-8190-ccad0677c8ed
+feel record: g1-c0/00.png; findings=5; new-surfaces=1; evidence: /Users/aoqimin/Desktop/Nomi-sweep-b/artifacts/feel/g1-c0-ca522f83-a475-4a05-8190-ccad0677c8ed
+feel record: g1-c0/waitForFunction.png; findings=5; new-surfaces=0; evidence: /Users/aoqimin/Desktop/Nomi-sweep-b/artifacts/feel/g1-c0-ca522f83-a475-4a05-8190-ccad0677c8ed
+feel record: g1-c0/01.png; findings=5; new-surfaces=1; evidence: /Users/aoqimin/Desktop/Nomi-sweep-b/artifacts/feel/g1-c0-ca522f83-a475-4a05-8190-ccad0677c8ed
+feel record: g1-c0/waitForFunction.png; findings=21; new-surfaces=1; evidence: /Users/aoqimin/Desktop/Nomi-sweep-b/artifacts/feel/g1-c0-ca522f83-a475-4a05-8190-ccad0677c8ed
+feel record: g1-c0/C0-e1f7e732-02-approval.png; findings=21; new-surfaces=2; evidence: /Users/aoqimin/Desktop/Nomi-sweep-b/artifacts/feel/g1-c0-ca522f83-a475-4a05-8190-ccad0677c8ed
+feel record: g1-c0/waitForFunction.png; findings=36; new-surfaces=2; evidence: /Users/aoqimin/Desktop/Nomi-sweep-b/artifacts/feel/g1-c0-ca522f83-a475-4a05-8190-ccad0677c8ed
+feel record: g1-c0/02.png; findings=36; new-surfaces=3; evidence: /Users/aoqimin/Desktop/Nomi-sweep-b/artifacts/feel/g1-c0-ca522f83-a475-4a05-8190-ccad0677c8ed
+feel record: g1-c0/waitForFunction.png; findings=97; new-surfaces=0; evidence: /Users/aoqimin/Desktop/Nomi-sweep-b/artifacts/feel/g1-c0-ca522f83-a475-4a05-8190-ccad0677c8ed
+feel record: g1-c0/03.png; findings=97; new-surfaces=3; evidence: /Users/aoqimin/Desktop/Nomi-sweep-b/artifacts/feel/g1-c0-ca522f83-a475-4a05-8190-ccad0677c8ed
+feel record: g1-c0/waitForFunction.png; findings=38; new-surfaces=0; evidence: /Users/aoqimin/Desktop/Nomi-sweep-b/artifacts/feel/g1-c0-ca522f83-a475-4a05-8190-ccad0677c8ed
+feel record: g1-c0/C0-e1f7e732-04-submitted.png; findings=38; new-surfaces=3; evidence: /Users/aoqimin/Desktop/Nomi-sweep-b/artifacts/feel/g1-c0-ca522f83-a475-4a05-8190-ccad0677c8ed
+feel record: g1-c0/waitForFunction.png; findings=92; new-surfaces=0; evidence: /Users/aoqimin/Desktop/Nomi-sweep-b/artifacts/feel/g1-c0-ca522f83-a475-4a05-8190-ccad0677c8ed
+feel record: g1-c0/04.png; findings=88; new-surfaces=4; evidence: /Users/aoqimin/Desktop/Nomi-sweep-b/artifacts/feel/g1-c0-ca522f83-a475-4a05-8190-ccad0677c8ed
+feel record: g1-c0/waitForFunction.png; findings=91; new-surfaces=0; evidence: /Users/aoqimin/Desktop/Nomi-sweep-b/artifacts/feel/g1-c0-ca522f83-a475-4a05-8190-ccad0677c8ed
+feel record: g1-c0/05.png; findings=91; new-surfaces=2; evidence: /Users/aoqimin/Desktop/Nomi-sweep-b/artifacts/feel/g1-c0-ca522f83-a475-4a05-8190-ccad0677c8ed
+feel record: g1-c0/waitForFunction.png; findings=98; new-surfaces=0; evidence: /Users/aoqimin/Desktop/Nomi-sweep-b/artifacts/feel/g1-c0-ca522f83-a475-4a05-8190-ccad0677c8ed
+feel record: g1-c0/06.png; findings=91; new-surfaces=2; evidence: /Users/aoqimin/Desktop/Nomi-sweep-b/artifacts/feel/g1-c0-ca522f83-a475-4a05-8190-ccad0677c8ed
+feel record: g1-c0/waitForFunction.png; findings=90; new-surfaces=2; evidence: /Users/aoqimin/Desktop/Nomi-sweep-b/artifacts/feel/g1-c0-960e8d41-9379-4614-90fa-bbf803911ca5
+feel record: g1-c0/07.png; findings=90; new-surfaces=2; evidence: /Users/aoqimin/Desktop/Nomi-sweep-b/artifacts/feel/g1-c0-960e8d41-9379-4614-90fa-bbf803911ca5
+C0 collected-deviations; evidence: /Users/aoqimin/Desktop/Nomi-sweep-b/artifacts/sweep/c0-video-wait-red-poll; paid calls: 0
+inal result expression replay on real loopback pending snapshot: TypeError: Cannot read properties of undefined (reading 'url')
+    at eval (eval at <anonymous> (file:///Users/aoqimin/Desktop/Nomi-sweep-b/[eval1]:14:7), <anonymous>:3:44)
+    at Array.every (<anonymous>)
+    at eval (eval at <anonymous> (file:///Users/aoqimin/Desktop/Nomi-sweep-b/[eval1]:14:7), <anonymous>:3:14)
+    at file:///Users/aoqimin/Desktop/Nomi-sweep-b/[eval1]:14:56
+    at ModuleJob.run (node:internal/modules/esm/module_job:430:25)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:268:26)
+    at async ModuleLoader.executeModuleJob (node:internal/modules/esm/loader:265:20)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+
+TARGET RED: original station 04: Expected 8, Received 6; Timeout 180000ms exceeded. Source: artifacts/sweep/c0-video-wait-red-poll/deviations.json
+RESULT READ RED: original n.result.url expression on actual 6/8 pending snapshot throws Cannot read properties of undefined (reading 'url'). Source: artifacts/sweep/c0-video-wait-red-poll/pending-result-snapshot.json
+
+RED RECEIPT: original source e1f7e7329f14ceded007082dd348449da4d08aaf:tests/ux/g1/c0-short-film.walk.mjs; loopback videoDelayMs={7:190000,8:190000}.
+Original full walk returned collect exit 0 with station 04 Expected 8 / Received 6 / Timeout 180000ms. A collect exit 0 is not a passing assertion.
+Original n.result.url replay against pending-result-snapshot.json: TypeError: Cannot read properties of undefined (reading 'url'). The loopback scheduler waits for review completion after timeout; the real scheduler only snapshots billing, so this consumer failure is independently demonstrated on the pending snapshot.
