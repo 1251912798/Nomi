@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { stationTimeout } from './_station-budget.mjs'
 // R1-F: real editor/Agent/tool-host/IPC/SDK/disk path, also runnable against Nomi.app.
 // No adapter call, renderer module import, seeded project or production fixture.
 import { clickOrFail, expect, expectAbsent, proveProbe } from './_assert.mjs'
@@ -170,7 +171,7 @@ try {
       receiptOperationId: savedReceipt?.operationId ?? null,
       receiptProposalId: savedReceipt?.proposalId ?? null,
     }
-  }, { timeout: 30_000 }).toEqual({
+  }, { timeout: stationTimeout({ operations: 2 }) }).toEqual({
     nodes: 0,
     edges: 0,
     toolSucceeded: true,

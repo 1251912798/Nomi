@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { stationTimeout } from './_station-budget.mjs'
 // 真实任务走查（R16）：**Agent 反复试同一个工具**。
 //
 // 复现的是 2026-09-06 晚打包版上的现场：用户在分镜表里让 Agent「从原稿重拆 10 镜」，
@@ -132,7 +133,7 @@ try {
 
   await expect.poll(() => readLaneTranscripts(projectRoot).flatMap(laneMessages)
     .filter(message => message.role === 'toolResult' && ATTEMPTS.includes(message.toolCallId)).length,
-  { message: '三次真实失败结果必须写入 lane JSONL', timeout: 30_000 }).toBe(3)
+  { message: '三次真实失败结果必须写入 lane JSONL', timeout: stationTimeout({ operations: 2 }) }).toBe(3)
   const messages = readLaneTranscripts(projectRoot).flatMap(laneMessages)
   const calls = messages.filter(message => message.role === 'assistant')
     .flatMap(message => message.content).filter(part => part.type === 'toolCall')

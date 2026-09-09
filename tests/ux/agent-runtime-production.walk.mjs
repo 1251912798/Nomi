@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { stationTimeout } from './_station-budget.mjs'
 // R1-F: inline planner, renderer image judge, direction task and script task.
 // Only the vendor is a loopback fixture; no direct Agent calls or canned ProductionRun driver.
 import fs from 'node:fs'
@@ -48,7 +49,7 @@ try {
     settledBy: win.locator(CREATION_PANEL).getByText('F_PARENT_ACK：已记住红杯。', { exact: true }) })
   await expect.poll(() => readLaneTranscripts(projectRoot).some((session) => laneMessages(session)
     .some((message) => message.role === 'nomi.input' && laneMessageText(message) === PARENT)),
-  { timeout: 30_000 }).toBe(true)
+  { timeout: stationTimeout({ operations: 2 }) }).toBe(true)
   const persistedConversations = readLaneTranscripts(projectRoot)
   expect(persistedConversations).toHaveLength(1)
   const parentThreadId = persistedConversations[0].sessionId
@@ -109,7 +110,7 @@ try {
   expect(walk.fixture.images).toHaveLength(0)
   await expect.poll(() => readLaneTranscripts(projectRoot).some((session) => laneMessages(session)
     .some((message) => message.role === 'toolResult' && message.toolCallId === PLAN_CALL)),
-  { timeout: 30_000 }).toBe(true)
+  { timeout: stationTimeout({ operations: 2 }) }).toBe(true)
   const plannerContext = readLaneTranscripts(projectRoot).find((session) => laneMessages(session)
     .some((message) => message.role === 'toolResult' && message.toolCallId === PLAN_CALL))
   expect(plannerContext.laneName, 'Inline planning must stay in the initiating lane').toBe('main')

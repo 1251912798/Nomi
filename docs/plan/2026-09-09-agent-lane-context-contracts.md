@@ -110,3 +110,10 @@ C42 次级入口：运行时 Alt+Enter 明确 follow-up，普通 Enter/发送为
 | AgentPanelV4Cards.tsx | 保留主线技术详情渐进展开；镜头参数副行按 #680 常显，技术详情与副行分别承载；保留 #680 队列取消图标与可访问名称、重复行 index key。 |
 
 根因分类 recurring：旧运行时删除后，上游展示不变量可能落在退役投影而漏入现役链。已分别检查 lane 收据、lane 待决审批和用量宿主入口，沿现役共享 owner 移植；更新 #680 v3 合同路径，不引入依赖或协议变化。
+
+并线验证补充：完整测试暴露旧 `c0-plan-sample-budget.test.mjs` 夹具未随之前 main 合并声明报价输出上限与 `planOnly`；补齐事实字段及显式模式，仍验证原 ¥2 边界，不放宽生产校验。卡片技术详情回归改为 `technical`，并同时断言参数副行存在。
+提交粒度：pre-commit 首次 staged diff 158331 bytes 超 150000 限额，正常拆出 lane 撤销/token 两文件后评审通过；未绕过 hook。
+
+完整门岗第二项发现：stage4 迁移改变了 10 处 E2E 等待的语义指纹，并留下 14 条退役等待登记。根因是等待仍内嵌常量而未走 main 的共享 station budget；仅把这 10 处接到 `stationTimeout({ operations: 2 })`（仍为 30 秒安全上限，完成仍由原状态断言判断），删除失效登记，不新增债、不扩大超时。
+
+交付粒度调整：pre-push 对每个尚未远达的 merge 使用 dense combined diff；原 `453c300b1` 为 182065 bytes、本次 `56a20db14` 为 224596 bytes，均超过 150000，单纯按原 merge SHA 分批仍无法过闸。保留本地 tip 备份和六簇 B1 原提交，把两笔未推送 merge 的部分合并结果延到紧邻小提交，所有 commit/push 正常 hooks；最终以 tree SHA 相等验明文件内容未变，远端只快进。完成后重新跑完整 gates。

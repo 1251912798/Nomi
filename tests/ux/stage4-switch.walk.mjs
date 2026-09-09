@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { stationTimeout } from './_station-budget.mjs'
 // Four real lane UI states. Only the external provider is a loopback fixture.
 import { clickOrFail, expect, expectAbsent, proveProbe } from './_assert.mjs'
 import { FIXTURE_TEXT_MODEL_LABEL, flattenRequestText } from './agent-runtime-fixture.mjs'
@@ -85,7 +86,7 @@ try {
     const ready = await win.evaluate(({ pid, rid }) => window.nomiDesktop.productionRuns.read(pid, rid),
       { pid: projectId, rid: note.data.productionRunId })
     return ready.gates.find((gate) => gate.gateId === 'gate-direction-v1')?.directionCandidates
-  }, { timeout: 30_000 }).toEqual(DIRECTIONS)
+  }, { timeout: stationTimeout({ operations: 2 }) }).toEqual(DIRECTIONS)
   expect(run.runId).toBe(note.data.productionRunId)
   expect(run.status).toBe('awaiting_direction')
   expect(run.budget.actual).toBe(0)

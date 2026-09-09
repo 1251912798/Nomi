@@ -1,3 +1,4 @@
+import { stationTimeout } from './_station-budget.mjs'
 // Real resident storyboard launch -> IPC -> native lane -> loopback HTTP.
 // The fixture supplies directory rows and a remote response, never composer context.
 import assert from 'node:assert/strict'
@@ -53,7 +54,7 @@ try {
   await win.locator(DOCUMENT).fill('小禾来到河边修鞋摊，拍摄修鞋师傅。请拆成分镜。')
   await win.locator(DOCUMENT).selectText()
   await win.locator('.workbench-selection-popover').getByRole('button', { name: '拆成镜头', exact: true }).click()
-  await expect(win.locator('body')).toContainText('MODELS_BLOCK_VERIFIED', { timeout: 30_000 })
+  await expect(win.locator('body')).toContainText('MODELS_BLOCK_VERIFIED', { timeout: stationTimeout({ operations: 2 }) })
   assert.equal(fixture.requests.length, 1)
   const users = fixture.requests[0].body.messages.filter((message) => message.role === 'user')
   const prompt = flattenRequestText({ messages: users })

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { stationTimeout } from './_station-budget.mjs'
 // R13/R16 · 常驻 Agent 对话面的「真实用户任务」体验走查（零额度 loopback 供应商）。
 //
 // 人物设定：林秋，一个人做美食短片。她今天要做一条「一碗深夜牛肉面」的片子——
@@ -712,18 +713,18 @@ try {
   expect(laneMessages(oldSession).length, '必须真的删除带有多轮和工具结果的历史').toBeGreaterThan(20)
   expect(laneMessages(oldSession).some((message) => message.role === 'toolResult' && message.toolCallId === READ_CALL)).toBe(true)
   await newConversation(win, CREATION_PANEL)
-  await expect.poll(() => lanes().length, { message: '新建后两份独立 native session', timeout: 30_000 }).toBe(2)
+  await expect.poll(() => lanes().length, { message: '新建后两份独立 native session', timeout: stationTimeout({ operations: 2 }) }).toBe(2)
   const newSession = lanes().find((session) => session.sessionId !== oldThreadId)
   await expect(creationAfter, '新对话必须为空').not.toContainText('K_T3_DONE')
   await clickOrFail(creationAfter.locator(HISTORY_BUTTON), '打开列表删除旧对话')
   await expect(threadRows).toHaveCount(3)
   const oldRow = threadRows.filter({ has: win.getByRole('button', { name: '未命名对话', exact: true }) })
   await clickOrFail(oldRow.getByRole('button', { name: '删除对话' }), '删除非当前的旧对话')
-  await expect.poll(() => lanes().map((session) => session.sessionId), { timeout: 30_000 }).toEqual([newSession.sessionId])
+  await expect.poll(() => lanes().map((session) => session.sessionId), { timeout: stationTimeout({ operations: 2 }) }).toEqual([newSession.sessionId])
   await expect(threadRows).toHaveCount(2)
   await clickOrFail(threadRows.nth(1).getByRole('button', { name: '删除对话' }), '删除当前对话')
   await expect.poll(() => ({ ids: lanes().map((session) => session.sessionId).filter((id) => id === newSession.sessionId), count: lanes().length }),
-    { message: '删除当前对话必须切到新的独立空 session', timeout: 30_000 }).toEqual({ ids: [], count: 1 })
+    { message: '删除当前对话必须切到新的独立空 session', timeout: stationTimeout({ operations: 2 }) }).toEqual({ ids: [], count: 1 })
   const survivingThreadId = lanes()[0].sessionId
   expect(survivingThreadId).not.toBe(oldThreadId)
   expect(laneMessages(lanes()[0])).toEqual([])

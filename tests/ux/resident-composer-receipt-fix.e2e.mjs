@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { stationTimeout } from './_station-budget.mjs'
 // Real user task: visible Resident Composer -> real lane proposal -> user approval or
 // refusal -> durable proposal receipt -> real MCP stdio document write -> cold restart readback.
 // The model is deterministic only at the external provider boundary. This file never injects
@@ -217,7 +218,7 @@ try {
   expect((await readProject(win, projectId)).payload.generationCanvas.nodes.map((node) => node.id)).toContain(fixtureNodeId)
   await expect.poll(() => readLaneTranscripts(projectRoot).flatMap(laneMessages)
     .some(message => message.role === 'toolResult' && message.toolCallId === 'resident-receipt-fix-rejected'),
-  { message: '拒绝结果必须落在真实 lane JSONL', timeout: 30_000 }).toBe(true)
+  { message: '拒绝结果必须落在真实 lane JSONL', timeout: stationTimeout({ operations: 2 }) }).toBe(true)
   const laneResults = readLaneTranscripts(projectRoot).flatMap(laneMessages)
     .filter(message => message.role === 'toolResult')
   expect(laneResults.find(message => message.toolCallId === 'resident-receipt-fix-1')?.isError).toBe(false)
