@@ -154,7 +154,6 @@ export default function TimelineTextTrack(): JSX.Element {
               'text-[var(--nomi-ink-40)] leading-none text-micro font-medium pointer-events-none',
             )}
           >
-            {t('timelineEditor.textTrack.emptyHint')}
           </div>
         ) : null}
         {textClips.map((clip) => {

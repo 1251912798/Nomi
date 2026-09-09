@@ -213,13 +213,11 @@ export default function ShotReferenceZone({ mode, archetype, bindings, onChangeB
       style={{ width: REFERENCE_COLUMN_WIDTH }}
       data-storyboard-refzone="true"
     >
-      {column.kind === 'none-accepted' ? (
+      {column.kind === 'none-accepted' ? (column.switchTo ? (
         <span className="text-micro leading-relaxed text-nomi-ink-30">
           {/* 模式名和槽名撞词时（「首帧」模式的槽也叫「首帧」）换一句说法——
               「切「首帧」可挂首帧」读起来像卡带了。 */}
-          {!column.switchTo
-            ? t('storyboardEditor.row.noRefAccepted', { mode: column.modeLabel })
-            : column.switchTo.modeLabel === column.switchTo.slotLabel
+          {column.switchTo.modeLabel === column.switchTo.slotLabel
               ? t('storyboardEditor.row.noRefAcceptedSwitchSame', {
                   mode: column.modeLabel,
                   other: column.switchTo.modeLabel,
@@ -230,7 +228,7 @@ export default function ShotReferenceZone({ mode, archetype, bindings, onChangeB
                   slot: column.switchTo.slotLabel,
                 })}
         </span>
-      ) : column.kind === 'unknown-contract' ? (
+      ) : null) : column.kind === 'unknown-contract' ? (
         // 契约未知（默认模型无档案）：不假装知道能收什么，退回通用「@」入口。
         <span className="flex flex-col items-center gap-0.5 self-start" data-storyboard-ref-slot="__mention__">
           <button

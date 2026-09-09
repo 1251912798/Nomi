@@ -83,7 +83,6 @@ export const zhStoryboardEditor = {
     missingRequired: '缺{{slot}}参考',
     missingRequiredHint: '这一镜的模型必须给参考图才能生成——换模型/模式，或给这一镜挂上参考卡',
     // 主语是**模式**，不是模型：同一个模型的图生视频档往往就能挂首帧。
-    noRefAccepted: '{{mode}} 不吃参考',
     noRefAcceptedSwitch: '{{mode}} 不吃参考 · 切「{{other}}」可挂{{slot}}',
     noRefAcceptedSwitchSame: '{{mode}} 不吃参考 · 切「{{other}}」模式可挂参考',
     slotAccepts: {
@@ -328,7 +327,6 @@ export const zhStoryboardEditor = {
     shotTagShort: '#{{index}}',
     affectedShots: '{{count}} 镜：{{shots}}',
     blockersHeading: '需先处理，否则生成会截断或无法出片',
-    noIssues: '时长与参数都在各模型合法范围内，无需调整。',
     error: '执行计划检查失败，稍后再试。',
     rowOverflow: '超模型单条上限',
     rowUnderflow: '低于模型单条下限',
@@ -446,7 +444,6 @@ export const enStoryboardEditor = {
     rerunFreshRefs: 'Rerun with new refs',
     missingRequired: 'Missing {{slot}}',
     missingRequiredHint: 'This model needs a reference image to generate. Switch the model/mode, or attach a reference card to this shot.',
-    noRefAccepted: '{{mode}} takes no references',
     noRefAcceptedSwitch: '{{mode}} takes no references — switch to "{{other}}" to attach a {{slot}}',
     noRefAcceptedSwitchSame: '{{mode}} takes no references — switch to the "{{other}}" mode to attach one',
     slotAccepts: {
@@ -694,7 +691,6 @@ export const enStoryboardEditor = {
     shotTagShort: '#{{index}}',
     affectedShots: '{{count}} shots: {{shots}}',
     blockersHeading: 'Resolve these first, otherwise generation would truncate or fail',
-    noIssues: 'Durations and parameters are within every model limit — no adjustment needed.',
     error: 'Execution plan check failed. Try again in a moment.',
     rowOverflow: 'Longer than the model allows in one shot',
     rowUnderflow: 'Shorter than the model allows in one shot',

@@ -106,8 +106,6 @@ export const zhTimelineEditor = {
   track: {
     mute: '静音轨道', unmute: '取消轨道静音', muteShortcut: '静音轨道', unmuteShortcut: '取消轨道静音', muteEmpty: '这条轨还是空的，没有声音可以静音',
     unavailable: '这里暂时不能放置素材',
-    emptyAudio: '从素材库拖入音频当配乐',
-    emptyVisual: '从生成区拖入素材',
     placeAt: '放到 {{timecode}}',
     // rail*Label = 轨道左侧固定宽标签列（--workbench-timeline-label-width，132px，标尺/播放头都按它对齐）
     //   里显示的短名，几何约束：必须塞得进这列，不能靠加宽列来容纳（那会牵动整条轴的内容起点与标尺对齐）。
@@ -133,13 +131,11 @@ export const zhTimelineEditor = {
     addCaption: '添加字幕',
     caption: '字幕',
     overlay: '叠加层',
-    dropAudio: '拖音频到此当配乐',
     addMusic: '添加配乐',
     music: '配乐',
   },
   textTrack: {
     title: '文字轨',
-    emptyHint: '用上方「字幕 / 标题卡」添加',
     titleCard: '标题卡',
     caption: '字幕',
     empty: '（空）',
@@ -258,8 +254,6 @@ export const enTimelineEditor = {
   track: {
     mute: 'Mute track', unmute: 'Unmute track', muteShortcut: 'Mute track', unmuteShortcut: 'Unmute track', muteEmpty: 'This track is empty — there is no audio to mute',
     unavailable: 'This asset cannot be placed here yet',
-    emptyAudio: 'Drag audio from Assets to use as music',
-    emptyVisual: 'Drag media from Generation',
     placeAt: 'Place at {{timecode}}',
     // rail*Label: short names for the fixed-width rail column (132px); must fit without widening it.
     // *Label (no rail prefix): descriptive names used inside sentences (e.g. wrongType), kept readable.
@@ -283,13 +277,11 @@ export const enTimelineEditor = {
     addCaption: 'Add caption',
     caption: 'Caption',
     overlay: 'Overlay',
-    dropAudio: 'Drag audio here to use as music',
     addMusic: 'Add music',
     music: 'Music',
   },
   textTrack: {
     title: 'Text track',
-    emptyHint: 'Add a caption or title card above',
     titleCard: 'Title card',
     caption: 'Caption',
     empty: '(Empty)',
