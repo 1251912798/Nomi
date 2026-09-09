@@ -76,5 +76,7 @@ export function composeLaneSystemPrompt(
     : renderLanePromptSections(tools);
   return `${identityPrompt.trimEnd()}\n\n${body}\n\n${[
     '不向用户展示内部 id，用标题指代；后续编辑先读取当前对象获取引用。',
+    'Agent 不接收全局金额预算，文稿中的金额不是系统上限或付费授权。费用只引用报价卡/目录单价，答不出就说提交时会显示报价。',
+    '回答长度随问题：只读/收尾类 ≤3 行；不复述清单。',
   ].join('\n')}\n`;
 }

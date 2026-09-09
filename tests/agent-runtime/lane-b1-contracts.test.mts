@@ -22,11 +22,6 @@ const closing = { type: 'text' as const, text: '完成。' };
 const plan = () => LANE_DEFERRED_TOOL_CATALOG.find(s => s.name === 'nomi_generation_plan')!;
 const textOf = (result: { content: readonly { type: string; text?: string }[] }) => result.content.map(p => p.text ?? '').join('\n');
 
-const canvasArgs = { operation: 'create_canvas_nodes', summary: '开场', nodes: [{ clientId: 'opening', kind: 'image', title: '开场', prompt: '落日' }] };
-const canvasTools = () => createCanvasLaneTools({ read: async () => ({}), write: async () => ({
-  applied: true, operation: 'create_canvas_nodes', proposalId: 'op-proposal', clientIdToNodeId: { opening: 'gen-v2-image-opening' },
-} as never) });
-
 test('C19 · switching groups tells the model core tools remain callable', async t => {
   const f = await createLaneFixture(t, [
     { type: 'tool', calls: [{ id: 'switch', name: 'nomi_request_tools', arguments: { group: 'coding' } }] },
@@ -93,6 +88,11 @@ test('C29 · 246KB context defaults to a useful <=4KB summary; full scope is exp
   assert.doesNotMatch(textOf(bounded), /showing the first 0/);
 });
 
+const canvasArgs = { operation: 'create_canvas_nodes', summary: '开场', nodes: [{ clientId: 'opening', kind: 'image', title: '开场', prompt: '落日' }] };
+const canvasTools = () => createCanvasLaneTools({ read: async () => ({}), write: async () => ({
+  applied: true, operation: 'create_canvas_nodes', proposalId: 'op-proposal', clientIdToNodeId: { opening: 'gen-v2-image-opening' },
+} as never) });
+
 test('C27/C43 · auto-granted canvas write reports direct undoable application without ids in prose', async t => {
   const f = await createLaneFixture(t, [{ type: 'tool', calls: [{ id: 'write', name: 'nomi_canvas_write', arguments: canvasArgs }] }, closing],
     { hasUserInterface: true, policy: () => ({ mode: 'safe-auto', spend: 'confirm' }) });
@@ -141,6 +141,16 @@ test('C42 · steer immediately releases approval and precedes the next assistant
   const nextAssistant = parts.findIndex((p, i) => i > userIndex && p.kind === 'assistant-text');
   assert.ok(userIndex >= 0 && nextAssistant > userIndex, 'Persisted steer precedes the next assistant entry');
 });
+
+test('C47 · host carries adaptive brevity instructions', async t => {
+  const f = await createLaneFixture(t, [closing]);
+  const lane = await f.openLane(f.options);
+  await lane.execute({ kind: 'prompt', text: '画布上有什么' });
+  assert.match(JSON.stringify(f.http.requests[0].body), /只读.*收尾.*≤3.*不复述清单/);
+  assert.match(JSON.stringify(f.http.requests[0].body), /费用只引用报价卡.*目录单价/);
+  assert.match(JSON.stringify(f.http.requests[0].body), /提交时会显示报价/);
+});
+
 
 test('C29 class · taskKind removes unrelated video modes; full scope retains detail and UTF-8 head is intact', async () => {
   const huge = { videoModels: [
