@@ -46,9 +46,9 @@ export async function createLaneCodingPaths(projectDir: string, trustedSkillRoot
   };
   const project = await pin(projectDir);
   const skills = await Promise.all([...new Set(trustedSkillRoots)].map(pin));
-  const check = async (targetPath: string, writing: boolean, missing = false): Promise<string> => {
+  const check = async (targetPath: string, writing: boolean, missing = false, skillsOnly = false): Promise<string> => {
     const target = path.resolve(targetPath);
-    const allowed = writing ? [project] : [project, ...skills];
+    const allowed = writing ? [project] : skillsOnly ? skills : [project, ...skills];
     // Canonical aliases (e.g. /var -> /private/var) remain usable after pi resolves a previous path.
     const roots = allowed.filter((root) => within(target, root.lexical) || within(target, root.canonical));
     if (!roots.length) throw new LaneCodingPathError(targetPath, project.lexical);
@@ -63,6 +63,7 @@ export async function createLaneCodingPaths(projectDir: string, trustedSkillRoot
   };
   return {
     read: (target: string) => check(target, false),
+    readSkill: (target: string) => check(target, false, false, true),
     write: (target: string) => check(target, true, true),
     readExists: async (target: string) => {
       try { await check(target, false); return true; } catch (cause) {

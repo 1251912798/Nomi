@@ -1,3 +1,4 @@
+import { timelineModelToolSpecs } from '../shared/agentCapabilities/timelineModelTools'
 import { laneGenerationContextText } from './laneGenerationContext'
 import type { RuntimeToolCall, RuntimeToolDecision } from '../shared/agentCapabilities/transportContracts'
 import { LANE_DEFERRED_TOOL_CATALOG } from './laneToolCatalog'
@@ -8,7 +9,9 @@ export interface LaneExtendedPort {
 }
 
 export function createExtendedLaneTools(port: LaneExtendedPort): LaneToolDescriptor[] {
-  return LANE_DEFERRED_TOOL_CATALOG.map(spec => bindLaneTool(spec, async (args, context) => {
+  // Visibility groups do not transfer execution ownership: timeline reads keep their typed port.
+  const timelineReads = new Set(timelineModelToolSpecs().map(spec => spec.name))
+  return LANE_DEFERRED_TOOL_CATALOG.filter(spec => !timelineReads.has(spec.name)).map(spec => bindLaneTool(spec, async (args, context) => {
     const decision = await port.execute({ toolCallId: context.toolCallId, toolName: spec.name, args }, context.signal)
     if (!decision.ok) throw new LaneDomainFailure({ code: decision.code ?? 'capability_execution_failed',
       message: `${spec.name} could not complete the requested action (${decision.code ?? 'capability_execution_failed'}).`,

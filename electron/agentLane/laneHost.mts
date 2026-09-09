@@ -252,7 +252,14 @@ export const openLane: OpenLane = async (options: OpenLaneOptions): Promise<Lane
   }
   // 换组那支笔只有这里递得出去：装配层先于 harness 存在，而 lane 后于 harness 才有。
   // `nomi_request_tools` 拿到它才能真的把上一组撤回去（`addedToolNames` 只增不减）。
-  native?.bindActiveTools(lane);
+  if (native) {
+    const resident = native.activeToolNames();
+    const restored = await lane.getActiveTools(context);
+    if (resident.some(name => !restored.includes(name))) {
+      await lane.setActiveTools([...resident, ...restored.filter(name => !resident.includes(name))], context);
+    }
+    native.bindActiveTools(lane);
+  }
 
   // 投影先立起来，闸才挂得上去：「它在等你」这一段**不在 pi 的快照里**（停在预检里的
   // 调用不在 `runningTools`，`operation.status` 只会写 `open`——探针 §2.1），所以它由

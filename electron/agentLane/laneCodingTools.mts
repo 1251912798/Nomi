@@ -142,6 +142,7 @@ export interface LaneCodingToolsInput {
   /** Main-process installed package roots. Read-only; never inferred from model arguments. */
   readonly trustedSkillRoots?: readonly string[]
   /** bash 用的沙箱（`openLaneSandbox` 的产物）。`active:false` 时策略层会把自动放行整档摘掉。 */
+  readonly canReadProject?: () => Promise<boolean>
   readonly sandbox: LaneSandbox
   /** 逐工具超时（3c 契约的 `execution.timeoutMs`）。bash 传给 pi；其余工具由 harness 的中止信号管。 */
   readonly bashTimeoutMs: number
@@ -187,12 +188,14 @@ export async function createLaneCodingTools(
   const fileSystem = input.fileSystem ?? (await defaultFileSystem());
   const paths = await createLaneCodingPaths(projectDir, input.trustedSkillRoots);
   const { factories } = input;
+  const readPath = async (target: string) => input.canReadProject && !(await input.canReadProject())
+    ? paths.readSkill(target) : paths.read(target);
 
   const tools: PiAgentTool[] = [
     factories.createReadTool(projectDir, {
       operations: {
-        readFile: async (absolutePath: string) => fileSystem.readFile(await paths.read(absolutePath)),
-        access: async (absolutePath: string) => fileSystem.access(await paths.read(absolutePath)),
+        readFile: async (absolutePath: string) => fileSystem.readFile(await readPath(absolutePath)),
+        access: async (absolutePath: string) => fileSystem.access(await readPath(absolutePath)),
       },
     }),
     factories.createGrepTool(projectDir, {
@@ -247,7 +250,17 @@ export async function createLaneCodingTools(
     }),
   ];
 
-  return tools.map(adaptPiTool);
+  return tools.map(tool => {
+    const adapted = adaptPiTool(tool);
+    if (tool.name !== 'read') return adapted;
+    return { ...adapted, execute: async (...args: Parameters<typeof adapted.execute>) => {
+      const result = await adapted.execute(...args);
+      const target = (args[1] as { path: string }).path;
+      const skillPath = await paths.readSkill(path.resolve(projectDir, target)).catch(() => undefined);
+      if (!skillPath || path.basename(skillPath) !== 'SKILL.md') return result;
+      return { ...result, details: { ...(result.details && typeof result.details === 'object' ? result.details : {}), skill: { name: path.basename(path.dirname(skillPath)), path: skillPath } } };
+    } };
+  });
 }
 
 /**

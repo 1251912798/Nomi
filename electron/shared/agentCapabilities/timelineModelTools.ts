@@ -76,6 +76,7 @@ export function timelineModelToolSpecs(): ModelFacingToolSpec[] {
     return {
       contractId: "timeline.read",
       name: tool.alias,
+      ...(tool.alias === TIMELINE_READ_ALIASES.inspectRange ? { internalGroup: "timeline" as const } : {}),
       description: tool.description,
       promptSnippet: tool.promptSnippet,
       promptGuidelines: TIMELINE_GUIDELINES,

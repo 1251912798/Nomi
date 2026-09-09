@@ -2,7 +2,7 @@
 //
 // ── 它在解决哪个真实摩擦（D6 ①）──
 //
-// 装了 coding 工具之后 lane 有 11 + 7 = 18 个工具。`LANE_TOOL_BUDGET` 是 12，而
+// B1b：read 常驻只读技能，coding 延迟开放其余六个工具与项目读取。`LANE_TOOL_BUDGET` 是 12，而
 // `laneToolCatalog.ts` 的注释早就写死了处置：**超预算先开延迟加载，不许抬预算**。
 // 用户那一刻的感受是：写小说的时候，模型的工具菜单里不该杵着 `bash` 和 `edit`——
 // 那不是「多了两行字」，那是每一轮都在花钱买一段与这次创作无关的说明书。
@@ -56,7 +56,7 @@ export interface LaneToolGroupDefinition {
   readonly toolNames: readonly string[]
 }
 
-/** pi 自带那 7 个 coding 工具所在的组名。解锁条件（下面三条）只对它成立。 */
+/** coding 解锁其余六个原生工具，并授予 resident read 项目读取能力。 */
 export const LANE_CODING_TOOL_GROUP = 'coding';
 
 /** 找工具的那个工具。**唯一一个 always-on 的解锁入口**，schema 极小（照 pi 的 kimi 示例形状）。 */
@@ -74,7 +74,7 @@ export function laneRequestToolDefinition(groups: readonly { name: string }[]) {
     label: 'Tools',
     description: `Switch this conversation to one group of additional tools. Groups: ${groups.map(group => group.name).join(', ')}. `
       + 'Core tools stay available in every group. One group is available at a time: requesting a group retires the previous one, and you can switch back later at any point. '
-      + 'Request coding before reading an installed Skill or working with project files. Activation does not approve any action.',
+      + 'Read installed Skills with the resident read tool. Request coding before reading or changing other project files. Activation does not approve any action.',
     promptSnippet: 'Switch to another tool group when the current tools do not cover the task',
     parameters: Type.Object({
       group: Type.String({ enum: groups.map(group => group.name) }),
@@ -116,14 +116,14 @@ export interface LaneToolMenu {
  * 门岗量的就不再是运行时真正发出去的那份菜单。
  */
 export function laneToolMenu(input: LaneToolMenuInput = {}): LaneToolMenu {
-  const alwaysOn = [...LANE_MODEL_TOOL_CATALOG.map((tool) => tool.name), LANE_TOOL_REQUEST_TOOL_NAME];
+  const alwaysOn = [...LANE_MODEL_TOOL_CATALOG.map((tool) => tool.name), LANE_TOOL_REQUEST_TOOL_NAME, 'read'];
   const requested = input.activeGroup ?? null;
   if (requested === null) return { activeToolNames: alwaysOn, activeGroup: null, codingUnlocked: false };
   const groups = input.groups ?? [{ name: LANE_CODING_TOOL_GROUP, toolNames: LANE_CODING_TOOL_NAMES }];
   const group = groups.find((candidate) => candidate.name === requested);
   if (!group) throw new Error(`Unknown lane tool group: ${requested}. Registered: ${groups.map((one) => one.name).join(', ')}.`);
   return {
-    activeToolNames: [...alwaysOn, ...group.toolNames],
+    activeToolNames: [...new Set([...alwaysOn, ...group.toolNames])],
     activeGroup: group.name,
     codingUnlocked: group.name === LANE_CODING_TOOL_GROUP,
   };

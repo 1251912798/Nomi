@@ -1,7 +1,8 @@
+// Assemble upstream tools; pi owns tool activation and its durable addedToolNames transitions.
 import { createLaneModelRead } from './laneModelRead.mjs';
 import type { AgentModelEntry } from '../shared/agentCapabilities/availableModels.js';
-// Assemble upstream tools; pi owns tool activation and its durable addedToolNames transitions.
 import type { AgentHarnessTool } from '@earendil-works/pi-agent-core';
+import { BACKGROUND_CONTEXT } from '@earendil-works/pi-agent-core/harness/context';
 import type { Context } from '@earendil-works/pi-agent-core/harness/context';
 import type { LaneToolEffects } from '../shared/agentLane/laneToolContract.js';
 import {
@@ -47,9 +48,14 @@ export async function createLaneNativeAssembly(input: Omit<LaneCodingToolsInput,
   initialUnlockReasons?: readonly LaneCodingUnlockReason[];
   availableModels?: () => readonly AgentModelEntry[];
 }) {
-  const coding = await createLaneCodingTools({ ...input, factories: input.factories ?? await loadPiCodingToolFactories() });
+  let activeTools: LaneActiveToolsController | undefined;
+  const coding = await createLaneCodingTools({ ...input, factories: input.factories ?? await loadPiCodingToolFactories(),
+    canReadProject: async () => {
+      const active = activeTools ? await activeTools.getActiveTools(BACKGROUND_CONTEXT) : [];
+      return LANE_CODING_TOOL_NAMES.filter(name => name !== 'read').every(name => active.includes(name));
+    } });
   const groups: readonly LaneDeferredGroup[] = [
-    { name: 'coding', toolNames: LANE_CODING_TOOL_NAMES }, ...(input.deferredGroups ?? []),
+    { name: 'coding', toolNames: LANE_CODING_TOOL_NAMES.filter(name => name !== 'read') }, ...(input.deferredGroups ?? []),
     { name: 'models', toolNames: ['nomi_read'] },
   ];
   const alwaysOn = laneToolMenu().activeToolNames;
@@ -67,7 +73,6 @@ export async function createLaneNativeAssembly(input: Omit<LaneCodingToolsInput,
   }
   // 换组的那支笔。宿主在 `harness.lane()` 之后交进来；单测直接调 `execute` 时它是空的，
   // 那时「上一份菜单」按常驻算——本地不留第二份激活状态。
-  let activeTools: LaneActiveToolsController | undefined;
   const request: AgentHarnessTool<undefined> & { promptSnippet: string } = {
     ...laneRequestToolDefinition(groups),
     execute: async (_id, args, _onUpdate, _toolContext, _invocation, context) => {

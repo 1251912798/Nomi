@@ -37,6 +37,7 @@ import {
   evaluateLaneToolBudget, laneRequestToolDefinition, LANE_TOOL_SCHEMA_TOKEN_CEILING,
   type LaneToolCombination,
 } from "../electron/agentLane/laneToolGroups.mjs";
+import { laneModelReadDefinition } from "../electron/agentLane/laneModelRead.mjs";
 import { LANE_CODING_TOOL_NAMES, loadPiCodingToolFactories } from "../electron/agentLane/laneCodingTools.mjs";
 import { laneToolModelDescription, type LaneToolSpec } from "../electron/shared/agentLane/laneToolContract";
 import {
@@ -98,7 +99,8 @@ interface Finding {
 // ── 枚举模型可见工具 ────────────────────────────────────────────────────────
 
 function collectTools(): ModelVisibleTool[] {
-  const tools: ModelVisibleTool[] = [];
+  const tools: ModelVisibleTool[] = [{ profile: "lane", name: laneModelReadDefinition.name, description: laneModelReadDefinition.description,
+    schema: laneModelReadDefinition.parameters, hasExample: false }];
 
   for (const tool of [...LANE_MODEL_TOOL_CATALOG, ...LANE_DEFERRED_TOOL_CATALOG]) {
     tools.push({
@@ -411,15 +413,17 @@ export async function laneToolCombinations(deferred: readonly LaneToolSpec[] = L
       + "上游改了工具面——先读 CHANGELOG 决定跟不跟，别在这里补一个自研版本（R29）。",
     );
   }
-  const codingChunks = LANE_CODING_TOOL_NAMES.map((name) => {
+  const codingChunks = LANE_CODING_TOOL_NAMES.filter(name => name !== 'read').map((name) => {
     const tool = codingByName.get(name)!;
     return tool.description + JSON.stringify(tool.parameters);
   });
   const domainGroupNames = [...new Set(deferred.map(tool => tool.internalGroup!))];
-  const groups = [{ name: "coding" }, ...domainGroupNames.map(name => ({ name }))];
+  const groups = [{ name: "coding" }, { name: "models" }, ...domainGroupNames.map(name => ({ name }))];
   const request = laneRequestToolDefinition(groups);
-  const alwaysOnNames = [...LANE_MODEL_TOOL_CATALOG.map(tool => tool.name), request.name];
-  const alwaysOn = await estimateSchemaTokens([...alwaysOnChunks, request.description + JSON.stringify(request.parameters)]);
+  const alwaysOnNames = [...LANE_MODEL_TOOL_CATALOG.map(tool => tool.name), request.name, "read"];
+  const read = codingByName.get("read")!;
+  const alwaysOn = await estimateSchemaTokens([...alwaysOnChunks, request.description + JSON.stringify(request.parameters), read.description + JSON.stringify(read.parameters)]);
+  const modelReadTokens = await estimateSchemaTokens([laneModelReadDefinition.description + JSON.stringify(laneModelReadDefinition.parameters)]);
   const coding = await estimateSchemaTokens(codingChunks);
   const domainChunk = (tool: LaneToolSpec) =>
     laneToolModelDescription(tool) + JSON.stringify(toPublishedJsonSchema(tool.schema));
@@ -431,11 +435,12 @@ export async function laneToolCombinations(deferred: readonly LaneToolSpec[] = L
     { label: "always-on（含 request）", toolNames: alwaysOnNames, estimatedTokens: alwaysOn },
     {
       label: "always-on + coding",
-      toolNames: [...alwaysOnNames, ...LANE_CODING_TOOL_NAMES],
+      toolNames: [...alwaysOnNames, ...LANE_CODING_TOOL_NAMES.filter(name => name !== "read")],
       estimatedTokens: alwaysOn + coding,
     },
   ];
-  let domainTokens = 0;
+  combinations.push({ label: "always-on + models", toolNames: [...alwaysOnNames, laneModelReadDefinition.name], estimatedTokens: alwaysOn + modelReadTokens });
+  let domainTokens = modelReadTokens;
   for (const name of domainGroupNames) {
     const tools = deferred.filter(tool => tool.internalGroup === name);
     const tokens = await estimateSchemaTokens(tools.map(domainChunk));
@@ -448,7 +453,7 @@ export async function laneToolCombinations(deferred: readonly LaneToolSpec[] = L
   }
   combinations.push({
     label: "全部组一起亮（运行时发不出，只作报告）",
-    toolNames: [...alwaysOnNames, ...LANE_CODING_TOOL_NAMES, ...deferred.map(tool => tool.name)],
+    toolNames: [...alwaysOnNames, ...LANE_CODING_TOOL_NAMES.filter(name => name !== "read"), laneModelReadDefinition.name, ...deferred.map(tool => tool.name)],
     estimatedTokens: alwaysOn + coding + domainTokens,
     reportOnly: true,
   });
