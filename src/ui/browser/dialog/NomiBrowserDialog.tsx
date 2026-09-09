@@ -597,6 +597,7 @@ export function NomiBrowserDialog({ opened, onClose }: NomiBrowserDialogProps): 
     openTabContextMenu,
     removeBookmark,
     renameBookmark,
+    editingBookmark, setEditingBookmark, commitBookmarkRename, browserFeedback,
     runBrowserScreenshotPrompt,
     saveBookmark,
     toggleBrowserResourceCapture,
@@ -674,6 +675,7 @@ export function NomiBrowserDialog({ opened, onClose }: NomiBrowserDialogProps): 
       removeBookmark={removeBookmark}
       removeCaptureFlyout={removeCaptureFlyout}
       renameBookmark={renameBookmark}
+      editingBookmark={editingBookmark} setEditingBookmark={setEditingBookmark} commitBookmarkRename={commitBookmarkRename} browserFeedback={browserFeedback}
       runBrowserScreenshotPrompt={runBrowserScreenshotPrompt}
       saveBookmark={saveBookmark}
       setActiveTabId={setActiveTabId}

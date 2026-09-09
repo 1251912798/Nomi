@@ -1,7 +1,7 @@
 import * as React from 'react'
 import i18n from '../../i18n'
 import { getDesktopBridge, type DesktopAssetDto } from '../../desktop/bridge'
-import { toast } from '../../ui/toast'
+import { notify } from '../../ui/notificationPolicy'
 
 export type LocalImageImportResult = {
   created: DesktopAssetDto[]
@@ -48,15 +48,12 @@ export async function importImagePathsToLibrary(projectId: string | null, paths:
   return copyFiles({ projectId: normalizedProjectId, paths })
 }
 
-function reportImport(result: LocalImageImportResult): void {
-  if (result.created.length > 0) {
-    toast(i18n.t('assetLibrary.importedAssets', { count: result.created.length }), 'success')
-  }
+function reportImport(result: LocalImageImportResult, report: (message: string) => void): void {
   if (result.skippedUnsupportedCount > 0) {
-    toast(i18n.t('assetLibrary.skippedUnsupported', { count: result.skippedUnsupportedCount }), 'warning')
+    report(i18n.t('assetLibrary.skippedUnsupported', { count: result.skippedUnsupportedCount }))
   }
   if (result.failedCount > 0) {
-    toast(i18n.t('assetLibrary.localImportFailed', { count: result.failedCount }), 'error')
+    report(i18n.t('assetLibrary.localImportFailed', { count: result.failedCount }))
   }
 }
 
@@ -64,12 +61,14 @@ type UseAssetLibraryLocalImportOptions = {
   projectId: string | null
   refreshProjectAssets: () => void
   refreshAllProjectAssets: () => void
+  present: (message: string) => void
 }
 
 export function useAssetLibraryLocalImport({
   projectId,
   refreshProjectAssets,
   refreshAllProjectAssets,
+  present,
 }: UseAssetLibraryLocalImportOptions): {
   isDragOver: boolean
   onDragOver: React.DragEventHandler<HTMLDivElement>
@@ -78,22 +77,26 @@ export function useAssetLibraryLocalImport({
   onPaste: React.ClipboardEventHandler<HTMLDivElement>
 } {
   const [isDragOver, setIsDragOver] = React.useState(false)
+  const report = React.useCallback((message: string, type: 'warning' | 'error' = 'warning') => {
+    notify({ identity: `asset-import:${projectId ?? ''}`, reason: 'local-import', message, type, level: 'inline', present })
+  }, [projectId, present])
 
   const runImport = React.useCallback(async (paths: string[]) => {
+    present('')
     if (paths.length === 0) {
-      toast(i18n.t('assetLibrary.localImportNoImages'), 'warning')
+      report(i18n.t('assetLibrary.localImportNoImages'), 'warning')
       return
     }
     try {
       const result = await importImagePathsToLibrary(projectId, paths)
       refreshProjectAssets()
       refreshAllProjectAssets()
-      reportImport(result)
+      reportImport(result, report)
     } catch (error) {
       console.error('asset library local image copy failed', error)
-      toast(i18n.t('assetLibrary.localImportFailed', { count: paths.length }), 'error')
+      report(i18n.t('assetLibrary.localImportFailed', { count: paths.length }), 'error')
     }
-  }, [projectId, refreshAllProjectAssets, refreshProjectAssets])
+  }, [projectId, refreshAllProjectAssets, refreshProjectAssets, present, report])
 
   const onDragOver = React.useCallback<React.DragEventHandler<HTMLDivElement>>((event) => {
     if (!Array.from(event.dataTransfer.types).includes('Files')) return
@@ -117,18 +120,19 @@ export function useAssetLibraryLocalImport({
   const onPaste = React.useCallback<React.ClipboardEventHandler<HTMLDivElement>>((event) => {
     if (isTextEditingTarget(event.target)) return
     event.preventDefault()
+    present('')
     const readFilePaths = getDesktopBridge()?.clipboard?.readFilePaths
     if (!readFilePaths) {
-      toast(i18n.t('assetLibrary.localImportUnavailable'), 'error')
+      report(i18n.t('assetLibrary.localImportUnavailable'), 'error')
       return
     }
     void readFilePaths()
       .then((paths) => runImport(paths))
       .catch((error) => {
         console.error('asset library clipboard read failed', error)
-        toast(i18n.t('assetLibrary.localImportFailed', { count: 1 }), 'error')
+        report(i18n.t('assetLibrary.localImportFailed', { count: 1 }), 'error')
       })
-  }, [runImport])
+  }, [runImport, present, report])
 
   return { isDragOver, onDragOver, onDragLeave, onDrop, onPaste }
 }

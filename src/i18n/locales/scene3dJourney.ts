@@ -27,7 +27,6 @@ export const zhScene3dJourney = {
     goBindTarget: '去轨迹面板绑定',
   },
   export: {
-    moveReady: '运镜就绪 → 切到顶栏「运镜参考」，点右上角「生成参考视频」',
     referenceVideoUnsupported: '当前环境不支持导出参考视频',
     cameraMoveRequired: '先整运镜——选中相机后点运镜预设，或画轨迹绑定相机',
     bindCameraFirst: '轨迹还没绑相机 —— 绑上相机才能出片',
@@ -105,7 +104,6 @@ export const enScene3dJourney = {
     goBindTarget: 'Open trajectory binding',
   },
   export: {
-    moveReady: 'Camera move ready → switch to “Camera move” up top, then click “Generate reference video”',
     referenceVideoUnsupported: 'Reference-video export is unavailable in this environment',
     cameraMoveRequired: 'Direct the camera first by applying a preset or drawing a trajectory and binding it to a camera',
     bindCameraFirst: 'The trajectory isn’t bound to a camera yet — bind one to export',

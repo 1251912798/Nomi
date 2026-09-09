@@ -13,14 +13,12 @@ import {
 } from '@tabler/icons-react'
 import { cn } from '../../utils/cn'
 import { getDesktopBridge } from '../../desktop/bridge'
-import { toast, useToastStore } from '../toast'
 import { FoldableModelCard } from './FoldableModelCard'
 import { DesignSegmentedControl } from '../../design'
 import type { McpInfo, McpVerifyReason } from '../../desktop/mcpBridgeTypes'
 import { resolveAssistantActivationState, type AssistantClientKey } from './assistantActivationState'
 
 const GUIDE_URL = 'https://github.com/aqm857886159/Nomi/blob/main/docs/guide/capability-core-cli-mcp.md'
-const CURSOR_CONNECTED_TOAST_ID = 'mcp:cursor-connected'
 type ClientKey = AssistantClientKey
 const CLIENT_LABEL: Record<ClientKey, string> = { claude: 'Claude Code', codex: 'Codex', cursor: 'Cursor', pi: 'Pi', workbuddy: 'WorkBuddy' }
 const CLIENT_ORDER: ClientKey[] = ['claude', 'codex', 'cursor', 'pi', 'workbuddy']
@@ -143,16 +141,7 @@ export function ConnectAssistantCard({
       capability.installMcp(target)
       onChanged()
       setCheckNonce((n) => n + 1) // 重连后立刻复验，别让刚修好的还挂着「已失效」。
-      const message = t(target === 'cursor'
-          ? info.trustedHosts?.includes('cursor')
-            ? 'onboardingProviders.assistant.cursorConnectedTrustedToast'
-            : 'onboardingProviders.assistant.cursorConnectedToast'
-          : 'onboardingProviders.assistant.connectedToast', { client: label })
-      if (target === 'cursor') {
-        useToastStore.getState().push({ id: CURSOR_CONNECTED_TOAST_ID, message, type: 'success' })
-      } else {
-        toast(message, 'success')
-      }
+
     } catch (e) {
       setError(t('onboardingProviders.assistant.connectFailed', { message: e instanceof Error ? e.message : String(e) }))
     } finally {
@@ -167,7 +156,6 @@ export function ConnectAssistantCard({
     try {
       capability.uninstallMcp(target)
       onChanged()
-      toast(t('onboardingProviders.assistant.disconnectedToast'), 'success')
     } catch (e) {
       setError(t('onboardingProviders.assistant.disconnectFailed', { message: e instanceof Error ? e.message : String(e) }))
     } finally {
@@ -178,7 +166,6 @@ export function ConnectAssistantCard({
   const handleCopy = () => {
     void navigator.clipboard.writeText(client.snippet).then(() => {
       setCopied(true)
-      toast(t('onboardingProviders.assistant.copiedToast'), 'success')
       window.setTimeout(() => setCopied(false), 1600)
     })
   }
@@ -186,13 +173,11 @@ export function ConnectAssistantCard({
   const handleCopyAdapterCommand = () => {
     void navigator.clipboard.writeText(PI_ADAPTER_COMMAND).then(() => {
       setAdapterCopied(true)
-      toast(t('onboardingProviders.assistant.copiedToast'), 'success')
       window.setTimeout(() => setAdapterCopied(false), 1600)
     })
   }
 
   const openAutomationPermissions = () => {
-    useToastStore.getState().remove(CURSOR_CONNECTED_TOAST_ID)
     if (onOpenAutomationPermissions) {
       onOpenAutomationPermissions()
       return

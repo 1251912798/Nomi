@@ -15,7 +15,7 @@ import { useTranslation } from 'react-i18next'
 import { IconMovie, IconCheck, IconX, IconCopy, IconExternalLink, IconRefresh, IconAlertTriangle } from '@tabler/icons-react'
 import { cn } from '../../utils/cn'
 import { getDesktopBridge } from '../../desktop/bridge'
-import { toast } from '../toast'
+import { notify } from '../notificationPolicy'
 import { resolvePrecheckGateAction } from './precheckGate'
 import { translateModelDisplayText } from '../../i18n/modelDisplayText'
 
@@ -39,6 +39,8 @@ type ComfyuiPresetSectionProps = {
 
 export function ComfyuiPresetSection({ vendorKey, modelLabels, onImported, onVerificationRequested }: ComfyuiPresetSectionProps): JSX.Element | null {
   const { t } = useTranslation()
+  const currentVendor = React.useRef(vendorKey)
+  currentVendor.current = vendorKey
   const catalog = getDesktopBridge()?.modelCatalog
   const presets = React.useMemo<Preset[]>(() => {
     try { return (catalog?.listComfyuiPresets?.() as Preset[]) ?? [] } catch { return [] }
@@ -46,6 +48,8 @@ export function ComfyuiPresetSection({ vendorKey, modelLabels, onImported, onVer
   const [openKey, setOpenKey] = React.useState<string | null>(null)
   const [reconcileByKey, setReconcileByKey] = React.useState<Record<string, Reconcile | 'checking' | null>>({})
   const [busy, setBusy] = React.useState(false)
+  const [feedback, setFeedback] = React.useState<Record<string, string>>({})
+  const report = (key: string, message: string) => notify({ identity: `comfy-preset:${vendorKey}:${key}`, reason: 'operation', level: 'inline', message, present: (value) => setFeedback((old) => ({ ...old, [`${vendorKey}:${key}`]: value })) })
   /** 哪个模板已进入「仍要启用」的二次确认态（同时最多一个）。 */
   const [armedKey, setArmedKey] = React.useState<string | null>(null)
 
@@ -65,14 +69,15 @@ export function ComfyuiPresetSection({ vendorKey, modelLabels, onImported, onVer
   const enable = async (preset: Preset) => {
     const prepare = getDesktopBridge()?.onboarding?.integrationSessionPrepareComfy
     if (!prepare) return
+    report(preset.key, '')
     setBusy(true)
     try {
       await prepare({ vendorKey, name: preset.labelZh, workflow: preset.workflowText, binding: preset.binding })
-      toast(t('onboardingProviders.comfyWorkflow.awaitingVerification', { name: preset.labelZh }), 'info')
+      if (currentVendor.current !== vendorKey) return
       onImported()
       onVerificationRequested?.()
     } catch (error) {
-      toast(error instanceof Error ? error.message : String(error), 'error')
+      report(preset.key, error instanceof Error ? error.message : String(error))
     } finally { setBusy(false) }
   }
 
@@ -133,6 +138,7 @@ export function ComfyuiPresetSection({ vendorKey, modelLabels, onImported, onVer
                 <span className="text-micro text-nomi-ink-30 shrink-0">{checking ? t('onboardingProviders.comfyPreset.chipChecking') : t('onboardingProviders.comfyPreset.chipTap')}</span>
               )}
             </button>
+            {feedback[`${vendorKey}:${preset.key}`] ? <p role="status" className="m-0 px-3 py-1 text-caption text-nomi-ink-60">{feedback[`${vendorKey}:${preset.key}`]}</p> : null}
             {open ? (
               <div className="border-t border-nomi-line px-3 py-2.5 flex flex-col gap-2">
                 {result && !result.serverReachable ? (
@@ -161,7 +167,7 @@ export function ComfyuiPresetSection({ vendorKey, modelLabels, onImported, onVer
                         type="button"
                         aria-label={t('onboardingProviders.comfyPreset.copyName', { name: m.file })}
                         title={t('onboardingProviders.comfyPreset.copyNameShort')}
-                        onClick={() => { void navigator.clipboard.writeText(m.file); toast(t('onboardingProviders.comfyPreset.copied'), 'success') }}
+                        onClick={() => { report(preset.key, ''); void navigator.clipboard.writeText(m.file).then(() => report(preset.key, t('onboardingProviders.comfyPreset.copied'))).catch((error: unknown) => report(preset.key, error instanceof Error ? error.message : String(error))) }}
                         className="grid size-6 shrink-0 place-items-center rounded-nomi-sm text-nomi-ink-30 hover:bg-nomi-ink-05 hover:text-nomi-ink-60"
                       >
                         <IconCopy size={13} stroke={1.7} />

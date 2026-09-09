@@ -1,6 +1,5 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { toast } from '../../../ui/toast'
 import { persistNodeImageBlob, persistNodeImageFile } from '../adapters/persistNodeImage'
 import { useGenerationCanvasStore } from '../store/generationCanvasStore'
 import type { GenerationCanvasNode } from '../model/generationCanvasTypes'
@@ -14,6 +13,7 @@ import { mediaNodeSize } from './nodeSizing'
 export function useNodePanoramaHandlers(
   node: GenerationCanvasNode,
   visualSize: { width: number; height: number },
+  reportFeedback: (message: string) => void,
 ): {
   handlePanoramaFileChange: (event: React.ChangeEvent<HTMLInputElement>) => void
   handlePanoramaScreenshot: (screenshot: PanoramaScreenshot) => void
@@ -57,7 +57,7 @@ export function useNodePanoramaHandlers(
       const stored = await persistNodeImageBlob(blob, screenshotNode.id, `panorama-shot-${createdAt}.png`).catch(() => null)
       if (!stored) {
         updateNode(screenshotNode.id, { status: 'error', error: t('generationCommon.panorama.captureFailed') })
-        toast(t('generationCommon.panorama.captureFailed'), 'error')
+        reportFeedback(t('generationCommon.panorama.captureFailed'))
         return
       }
       const result = {
@@ -91,9 +91,9 @@ export function useNodePanoramaHandlers(
         },
       })
       connectNodes(node.id, screenshotNode.id, 'reference')
-      toast(t('generationCommon.node.panoramaScreenshotCreated'), 'success')
+
     },
-    [addNode, node.id, node.position.x, node.position.y, connectNodes, updateNode, visualSize.width, t],
+    [addNode, t, node.position.x, node.position.y, node.id, visualSize.width, updateNode, connectNodes, reportFeedback],
   )
 
   return { handlePanoramaFileChange, handlePanoramaScreenshot }

@@ -1,3 +1,4 @@
+import { notify } from '../../../ui/notificationPolicy'
 import React from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
@@ -7,7 +8,6 @@ import { IconCamera, IconMaximize, IconX } from '@tabler/icons-react'
 import { NomiImage } from '../../../design/media'
 import { cn } from '../../../utils/cn'
 import { WorkbenchIconButton } from '../../../design/actions'
-import { toast } from '../../../ui/toast'
 import i18n from '../../../i18n'
 
 export type PanoramaScreenshot = {
@@ -346,6 +346,7 @@ function PanoramaDialogControls({
 }): JSX.Element {
   const { t } = useTranslation()
   const viewer = React.useContext(PhotoSphereViewerContext)
+  const feedbackHostId = React.useId()
   const [capturing, setCapturing] = React.useState(false)
   const [feedback, setFeedback] = React.useState<PanoramaCaptureFeedback | null>(null)
   const mountedRef = React.useRef(true)
@@ -353,11 +354,12 @@ function PanoramaDialogControls({
 
   const showFeedback = React.useCallback((nextFeedback: PanoramaCaptureFeedback) => {
     if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current)
-    setFeedback(nextFeedback)
+    notify({ identity: `panorama-capture:${feedbackHostId}`, reason: 'capture', message: nextFeedback.message, level: 'inline', present: (message) => setFeedback({ ...nextFeedback, message }) })
+    if (nextFeedback.tone !== 'success') return
     feedbackTimerRef.current = setTimeout(() => {
       if (mountedRef.current) setFeedback(null)
     }, 2200)
-  }, [])
+  }, [feedbackHostId])
 
   React.useEffect(() => {
     mountedRef.current = true
@@ -371,7 +373,6 @@ function PanoramaDialogControls({
     if (capturing) return
     if (!viewer || !captureFrameRef.current) {
       showFeedback({ tone: 'info', message: t('generationCommon.panorama.notReady') })
-      toast(t('generationCommon.panorama.notReady'), 'info')
       return
     }
 
@@ -381,7 +382,6 @@ function PanoramaDialogControls({
       .then((screenshot) => {
         if (!screenshot) {
           showFeedback({ tone: 'error', message: t('generationCommon.panorama.captureFailed') })
-          toast(t('generationCommon.panorama.captureFailed'), 'error')
           return
         }
         onScreenshot?.(screenshot)
@@ -389,7 +389,6 @@ function PanoramaDialogControls({
       })
       .catch(() => {
         showFeedback({ tone: 'error', message: t('generationCommon.panorama.captureFailed') })
-        toast(t('generationCommon.panorama.captureFailed'), 'error')
       })
       .finally(() => {
         if (mountedRef.current) setCapturing(false)

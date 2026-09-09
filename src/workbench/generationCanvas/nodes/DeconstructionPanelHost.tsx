@@ -20,5 +20,5 @@ export default function DeconstructionPanelHost(): JSX.Element | null {
   }, [openNodeId, node, close])
 
   if (!openNodeId || !node) return null
-  return <NodeDeconstructionPanel node={node} />
+  return <NodeDeconstructionPanel key={node.id} node={node} />
 }

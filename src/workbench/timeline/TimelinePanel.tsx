@@ -21,7 +21,7 @@ import TimelineTextTrack from './TimelineTextTrack'
 import { TimelineSecondaryAddRow } from './TimelineSecondaryAddRow'
 import { frameToPixel, pixelToFrame, TIMELINE_MIN_SCALE, TIMELINE_MAX_SCALE } from './timelineEdit'
 import { buildSnapPoints, resolveSnap, pixelThresholdToFrames } from './snapping'
-import { toast } from '../../ui/toast'
+import { notify } from '../../ui/notificationPolicy'
 import { reportAdoptionOutcome } from '../adoption/adoptionReceipt'
 import { dispatchTimelineShortcut } from './timelineShortcuts'
 import { groupTimelineTransitionFeedbackByTrack } from './timelineVisualFeedback'
@@ -105,28 +105,34 @@ export default function TimelinePanel({ density = 'compact', regionLabel, action
   const setSnapEnabled = useWorkbenchStore((state) => state.setTimelineSnapEnabled)
   const [contextMenu, setContextMenu] = React.useState<{ target: TimelineContextTarget; x: number; y: number } | null>(null)
   const [shortcutsOpen, setShortcutsOpen] = React.useState(false)
+  const [feedback, setFeedback] = React.useState('')
+  const presentFeedback = React.useCallback((message: string) => {
+    notify({ identity: `timeline-panel:${density}`, reason: 'editing-action', level: 'inline', type: 'error', message, present: setFeedback })
+  }, [density])
 
   // AI 拼片仍保留在时间轴工具栏；移除空态里的大号「一键拼成初稿」促销条，
   // 避免在用户尚未准备好时抢占工作区。Agent 后续可在对话中按状态给出建议。
   const handleAiArrange = React.useCallback(() => {
+    setFeedback('')
     void import('../generationCanvas/agent/sendStoryboardToTimeline').then(({ arrangeStoryboardToTimeline }) => {
-      void arrangeStoryboardToTimeline(activeStoryboardId ? { storyboardDesignId: activeStoryboardId } : {}).then((result) => {
+      return arrangeStoryboardToTimeline(activeStoryboardId ? { storyboardDesignId: activeStoryboardId } : {}).then((result) => {
         if (result.scopeError) {
-          toast(t('timelineEditor.storyboardScopeRequired'), 'info')
+          presentFeedback(t('timelineEditor.storyboardScopeRequired'))
           return
         }
         if (result.total === 0) {
-          toast(t('timelineEditor.noShots'), 'info')
+          presentFeedback(t('timelineEditor.noShots'))
           return
         }
         reportAdoptionOutcome(result.outcome, {
+          level: 'inline', present: setFeedback,
           successMessage: result.sent.length > 0
             ? t('timelineEditor.arranged', { count: result.sent.length })
             : undefined,
         })
       })
-    })
-  }, [activeStoryboardId, t])
+    }).catch((error: unknown) => presentFeedback(error instanceof Error ? error.message : t('timelineEditor.adoption.failedRecovered')))
+  }, [activeStoryboardId, presentFeedback, t])
 
   const setTimelinePlayhead = useWorkbenchStore((state) => state.setTimelinePlayhead)
   const splitTimelineClip = useWorkbenchStore((state) => state.splitTimelineClip)
@@ -295,6 +301,7 @@ export default function TimelinePanel({ density = 'compact', regionLabel, action
 
   const handleContextMenu = React.useCallback((event: React.MouseEvent<HTMLElement>) => {
     event.preventDefault()
+    setFeedback('')
     const element = event.target as HTMLElement
     const clip = element.closest<HTMLElement>('[data-clip-id]')
     const text = element.closest<HTMLElement>('[data-text-clip-id]')
@@ -508,7 +515,8 @@ export default function TimelinePanel({ density = 'compact', regionLabel, action
             </>
           )
         })()}
-        {contextMenu ? <TimelineContextMenu target={contextMenu.target} x={contextMenu.x} y={contextMenu.y} onClose={() => setContextMenu(null)} onRegenerate={handleRegenerate} onChangeTransition={handleChangeTransition} onArrange={handleAiArrange} /> : null}
+        {feedback ? <p role="status" data-timeline-action-feedback className="py-1 text-caption text-workbench-danger">{feedback}</p> : null}
+        {contextMenu ? <TimelineContextMenu target={contextMenu.target} x={contextMenu.x} y={contextMenu.y} onClose={() => setContextMenu(null)} onRegenerate={handleRegenerate} onChangeTransition={handleChangeTransition} onArrange={handleAiArrange} onFeedback={presentFeedback} /> : null}
         {shortcutsOpen ? <TimelineShortcutsDialog onClose={() => setShortcutsOpen(false)} /> : null}
       </div>
     </section>

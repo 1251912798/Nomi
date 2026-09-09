@@ -1,3 +1,4 @@
+import { notify } from '../../../../ui/notificationPolicy'
 /**
  * AudioStripNode body — 声音分类节点（spec §4.4，2026-06-15 升级）。
  *
@@ -11,7 +12,6 @@ import { useTranslation } from 'react-i18next'
 import { IconPlayerPlay, IconPlayerPause, IconWaveSine, IconFileText, IconCopy, IconBadgeCc } from '../../../../vendor/tablerIcons'
 import { cn } from '../../../../utils/cn'
 import { WorkbenchButton } from '../../../../design'
-import { toast } from '../../../../ui/toast'
 import type { GenerationCanvasNode } from '../../model/generationCanvasTypes'
 import { readAudioMeta } from '../../model/nodeMetaFields'
 import { useNodeUsageCount } from '../../hooks/useNodeRelationships'
@@ -103,6 +103,11 @@ function PlayBar({ progress, onSeek }: { progress: number; onSeek: (fraction: nu
 }
 
 function AudioStripNodeImpl({ node }: Props): JSX.Element {
+  const [feedback, setFeedback] = React.useState<string | null>(null)
+  const reportFeedback = React.useCallback((message: string) => {
+    notify({ identity: `AudioStripNodeImpl:${node.id}`, reason: 'interaction', message, level: 'inline', present: setFeedback })
+  }, [node.id])
+
   const { t } = useTranslation()
   const meta = readAudioMeta(node)
   const usageCount = useNodeUsageCount(node.id, node.title)
@@ -130,7 +135,7 @@ function AudioStripNodeImpl({ node }: Props): JSX.Element {
       // 随每次保存全量序列化（同「九宫格切图卡死」的病根，见 docs/plan/2026-08-20-grid-split-freeze.md）。
       void persistNodeImageFile(file, node.id).then((localUrl) => {
         if (!localUrl) {
-          toast(t('generationCommon.audio.uploadFailed'), 'error')
+          reportFeedback(t('generationCommon.audio.uploadFailed'))
           return
         }
         updateNode(node.id, {
@@ -139,7 +144,7 @@ function AudioStripNodeImpl({ node }: Props): JSX.Element {
         })
       })
     },
-    [node.id, node.meta, updateNode, t],
+    [node.id, node.meta, updateNode, reportFeedback, t],
   )
 
   const handleTogglePlay = React.useCallback((event: React.MouseEvent) => {
@@ -175,21 +180,22 @@ function AudioStripNodeImpl({ node }: Props): JSX.Element {
       event.stopPropagation()
       const srt = buildSrt(node)
       if (!srt) {
-        toast(t('generationCommon.audio.noSubtitleContent'), 'error')
+        reportFeedback(t('generationCommon.audio.noSubtitleContent'))
         return
       }
       void navigator.clipboard
         ?.writeText(srt)
-        .then(() => toast(t('generationCommon.audio.subtitleCopied'), 'success'))
+        .then(() => reportFeedback(t('generationCommon.audio.subtitleCopied')))
         .catch(() => {})
     },
-    [node, t],
+    [node, reportFeedback, t],
   )
 
   // 转写文本态：文本 + 复制 + 生成字幕（SRT）。
   if (isTranscript) {
     return (
       <div className={cn('w-full h-full rounded-nomi-lg bg-nomi-paper flex items-center gap-3 px-3')}>
+      {feedback ? <p role="status" className="m-0 px-2 py-1 text-caption text-nomi-ink-60">{feedback}</p> : null}
         <span
           className={cn(
             'inline-flex shrink-0 items-center justify-center w-8 h-8 rounded-full bg-nomi-accent-soft text-nomi-accent',
@@ -231,6 +237,7 @@ function AudioStripNodeImpl({ node }: Props): JSX.Element {
 
   if (!hasAudio) {
     return <label className="block h-full w-full cursor-pointer bg-nomi-paper" title={t('generationCommon.audio.upload')}>
+      {feedback ? <p role="status" className="m-0 px-2 py-1 text-caption text-nomi-ink-60">{feedback}</p> : null}
       <NodeEmptyState compact icon={<IconWaveSine size={20} stroke={1.6} />} title={t('generationCommon.nodeEmpty.audio.title')} description={t('generationCommon.nodeEmpty.audio.description')} />
       <input className="hidden" type="file" accept="audio/*" onChange={handleUpload} />
     </label>
@@ -240,6 +247,7 @@ function AudioStripNodeImpl({ node }: Props): JSX.Element {
 
   return (
     <div className={cn('w-full h-full rounded-nomi-lg bg-nomi-paper flex items-center gap-3 px-3')}>
+      {feedback ? <p role="status" className="m-0 px-2 py-1 text-caption text-nomi-ink-60">{feedback}</p> : null}
       {hasAudio ? (
         <audio
           ref={audioRef}

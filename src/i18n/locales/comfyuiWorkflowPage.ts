@@ -16,11 +16,9 @@ export const zhComfyuiWorkflowPage = {
     addressAria: '{{name}} 的接入地址',
     edit: '改地址',
     save: '保存地址',
-    saved: '地址已更新',
     remove: '移除这台',
     removeTitle: '移除这台 ComfyUI',
     removeMessage: '确定移除「{{name}}」吗？它名下的 {{count}} 条工作流会一起删除——那些工作流指向的是这台的地址，留着是死的。',
-    removed: '已移除「{{name}}」',
     offline: '连不上',
     online: '已连上',
     checking: '检查中',
@@ -50,7 +48,6 @@ export const zhComfyuiWorkflowPage = {
     delete: '删除',
     deleteTitle: '删除这条工作流',
     deleteMessage: '确定删除「{{name}}」吗？画布上已经用它生成过的结果不受影响。',
-    deleted: '已删除「{{name}}」',
     noOutput: '还没指定成品节点——不知道从哪取结果，保存了也跑不出东西',
   },
 
@@ -109,7 +106,6 @@ export const zhComfyuiWorkflowPage = {
     runNeedsFrame: '这条工作流绑了首帧/尾帧，没图跑不起来；试跑不带素材，去画布上连一张图再生成',
     runNeedsMissing: '缺少 {{count}} 个模型文件：{{names}}',
     runNeedsNodes: '缺少 {{count}} 个自定义节点，无法试跑',
-    runNeedsSave: '工作流还没保存成功，先保存',
   },
 
   errors: {
@@ -138,11 +134,9 @@ export const enComfyuiWorkflowPage = {
     addressAria: 'Address for {{name}}',
     edit: 'Edit address',
     save: 'Save address',
-    saved: 'Address updated',
     remove: 'Remove this backend',
     removeTitle: 'Remove this ComfyUI',
     removeMessage: 'Remove “{{name}}”? Its {{count}} workflows are deleted with it — they point at this backend’s address, so they would be dead anyway.',
-    removed: 'Removed “{{name}}”',
     offline: 'Unreachable',
     online: 'Connected',
     checking: 'Checking',
@@ -172,7 +166,6 @@ export const enComfyuiWorkflowPage = {
     delete: 'Delete',
     deleteTitle: 'Delete this workflow',
     deleteMessage: 'Delete “{{name}}”? Results already generated with it on the canvas are unaffected.',
-    deleted: 'Deleted “{{name}}”',
     noOutput: 'No output node assigned yet — there is nowhere to read the result from',
   },
 
@@ -231,7 +224,6 @@ export const enComfyuiWorkflowPage = {
     runNeedsFrame: 'This workflow binds a first/last frame and cannot run without one. Test runs carry no media — connect an image on the canvas instead.',
     runNeedsMissing: 'This workflow is missing {{count}} model files: {{names}}',
     runNeedsNodes: 'This workflow is missing {{count}} custom nodes and cannot run',
-    runNeedsSave: 'The workflow has not been saved yet — save first',
   },
 
   errors: {

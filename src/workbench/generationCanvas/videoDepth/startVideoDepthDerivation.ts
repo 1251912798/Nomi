@@ -26,7 +26,6 @@ import { useGenerationCanvasStore } from '../store/generationCanvasStore'
 import { useNodeLivePreviewStore } from '../store/nodeLivePreviewStore'
 import { clearTaskCancel, isTaskCancelRequested } from '../runner/localTaskControl'
 import { resolveNodeVisualSize } from '../nodes/nodeSizing'
-import { toast } from '../../../ui/toast'
 import i18n from '../../../i18n'
 import type { GenerationCanvasNode } from '../model/generationCanvasTypes'
 import { createVideoDepthWorkerChannel, runVideoDepth } from './videoDepthClient'
@@ -56,18 +55,18 @@ export type VideoDepthDerivationHandle = {
  *
  * 前置条件不满足时返回 null 并 toast 说清原因，不静默什么都不做。
  */
-export function startVideoDepthDerivation(sourceNode: GenerationCanvasNode): VideoDepthDerivationHandle | null {
+export function startVideoDepthDerivation(sourceNode: GenerationCanvasNode, reportFeedback: (message: string) => void): VideoDepthDerivationHandle | null {
   const source = videoDepthSourceFromNode(sourceNode)
   if (!source) return null
 
   const projectId = getActiveWorkbenchProjectId()
   if (!projectId) {
-    toast(i18n.t('generationCommon.node.extractFrame.missingProject'), 'error')
+    reportFeedback(i18n.t('generationCommon.node.extractFrame.missingProject'))
     return null
   }
   const bridge = getDesktopBridge()?.videoDepth
   if (!bridge) {
-    toast(i18n.t('videoDepth.action.desktopOnly'), 'error')
+    reportFeedback(i18n.t('videoDepth.action.desktopOnly'))
     return null
   }
 

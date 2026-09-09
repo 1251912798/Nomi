@@ -19,6 +19,7 @@ import { NomiLoadingMark } from '../../../design'
 // 共享组件（token 合规，§2/§6）。图片类与素材类节点共用此条。
 
 type Props = {
+  reportFeedback: (message: string) => void
   node: GenerationCanvasNode
   /** 当前打开的可调框：null=未开，1=裁剪，2/3=切图。开着或忙时禁用编辑入口。 */
   editGrid: CropGridSize | null
@@ -42,12 +43,13 @@ type Props = {
   onToggleFreeze?: () => void
 }
 
-export default function NodeImageEditToolbar({ node, editGrid, imageOpBusy, onGridSplit, onCrop, onTransform, onRemoveBackground, removeBackgroundBusy = false, onPreview, onOpenProvenance, onMakeup, isAnchor = false, frozen = false, onToggleFreeze }: Props): JSX.Element {
+export default function NodeImageEditToolbar({ reportFeedback, node, editGrid, imageOpBusy, onGridSplit, onCrop, onTransform, onRemoveBackground, removeBackgroundBusy = false, onPreview, onOpenProvenance, onMakeup, isAnchor = false, frozen = false, onToggleFreeze }: Props): JSX.Element {
+
   const { t } = useTranslation()
-  const { downloading, download } = useResultDownload(node)
+  const { downloading, download } = useResultDownload(node, reportFeedback)
   const [whiteboardOpen, setWhiteboardOpen] = React.useState(false)
   const imageUrl = node.result?.type === 'image' ? node.result.url || '' : ''
-  const { decomposeBusy, decomposeState, runDecompose, clearDecompose } = useDecomposeLayers(node, imageUrl)
+  const { decomposeBusy, decomposeState, runDecompose, clearDecompose } = useDecomposeLayers(node, imageUrl, reportFeedback)
   const busy = editGrid !== null || imageOpBusy || removeBackgroundBusy || decomposeBusy
   // 拆解出图后自动打开白板（effect-first：用户立刻看到一堆可抓的元素，设计评审定）。
   React.useEffect(() => {
@@ -55,6 +57,7 @@ export default function NodeImageEditToolbar({ node, editGrid, imageOpBusy, onGr
   }, [decomposeState])
   return (
     <>
+
       <FloatingToolbarShell ariaLabel={t('generationCommon.imageToolbar.aria')}>
         {/* 锚卡（角色/场景/道具参考卡）：最左是「定妆」= 确认形象、放行下游镜头（F15 装上的操作者）。
             一功能一个家——锚卡不再显示「建参考卡」（对着参考卡再建参考卡冗余）。 */}
