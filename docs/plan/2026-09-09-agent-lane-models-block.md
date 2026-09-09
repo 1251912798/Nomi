@@ -235,3 +235,61 @@ MiniMax-H3 参数: resolution[2K,768P] aspect_ratio[21:9,16:9,4:3,1:1,3:4,9:16] 
 已补只读定量核验 `deepseek-budget-proof.json`：首请求 61,746 UTF-8 bytes；两个工具结果正文增加 2,131 bytes、两条调用名称再增加 30 bytes。即使完全不计调用 ID、JSON 包装和可能回传的推理，下一次请求至少 63,907 bytes。按官方原价和 8,192 输出上限，其最大预留至少 ¥0.796347，加前面保留的 ¥1.203798，合计至少 ¥2.000145，必然被小样闸在发送前拒绝。native SDK 把此拒绝表现为 Connection error。实际账单虽仅 ¥0.204694，本任务不提高 ¥2 限额、不清除失败预留或重跑凑绿，按允许的 2/3 验收诚实交付。
 
 真实设置目录结构复核：12 个可能可用供应商、92 个已发布模型投影为 90 条，138,103 bytes；90 条均通过 composer parser，低于原 262,144-byte 总限额。该只读上界测量未解密凭据，未打印或投影 key。
+
+## 第四轮复盘（2026-09-09，证据先行）
+
+### 包身份与三种假设
+
+未改生产代码，先核对 gate4b nano/default `report.json` 的 `packagedAsarSha256`，均为 `d8f84ef10063e7fd1179b5569c88ca1e89c0399621907ab160149f107bb1f657`。实读该包（`/Users/aoqimin/Desktop/Nomi-switch-gate/release/mac-arm64/Nomi.app`）哈希一致，但包内 `dist-electron/agentLane/laneDesktopInput.js` **没有 availableModels schema 或 formatter 调用**，全部 renderer bundle **没有 availableModels 字段**。源码 HEAD 标签不能证明被启动包内的代码身份。
+
+复现：复用 `_launchApp.mjs` + `prepareIsolation` 拷真实设置，仅在隔离目录追加现有 loopback 文本供应商；点击真实编辑器「拆成镜头」，走 `ProjectAgentResidentShell` 注册的 launch，不直接调用 send/providerContent。临时只读探针在主进程记录收到的 renderer command context，并包装实际 providerContent 记录拼接结果，均只打印字段是否存在、条数与 skillKey，不打印 key 或用户正文。模型响应来自 localhost，费用 ¥0；结束删除隔离凭据目录。
+
+| 假设 | 第四轮实证 |
+|---|---|
+| 常驻启动器没有经过采集 | **被测旧包根本不含采集代码**。真实 `skillKey=workbench.storyboard.planner` prompt command 的 `availableModels` 不存在；主进程也不存在；请求 0 行。当前本地构建同一点击路径发送 87 条，并成功拼入 prompt。不能称当前源码绕过 send。 |
+| listAvailableModelsForAgent 抛错被吞 | 当前实现本身无 catch；send 外层 catch 会显示 error 并停止发送。当前构建实跑成功返回 87 条，旧包不含该采集调用，不能将旧包的缺失归因此异常。 |
+| skillKey 跳过清单 | 当前构建带同一 skillKey 的回合已实证 renderer 87 → main 87 → HTTP 有 modelKey=。排除。 |
+
+诊断日志：`agent-lane-models-block-evidence/round4-{package,current}-diagnostic.log`。打包版红属于陈旧产物，不是三种源码假设中的任何一种。`dist:mac:dir` 当前只检查 Electron 安装后直接 electron-builder，没有先执行 build；打包流程可吞入旧 dist/dist-electron。归类 recurring，尚待据此修复与新包验收，不借当前源码的绿替代新包结果。
+
+### 完整目录的独立发现
+
+真实设置 `deriveModelListing` 得到 35 个 keyStatus=ok 视频模型，当前请求只有 33 个：缺 `dreamina-multiframe` 与 APIMart `viduq3`。只读目录核对：两项均 enabled、有 archetype，但仅有 image_to_video mapping；`listAvailableModelsForAgent` 调 `preloadModelOptions('video')`，后者默认只收 text_to_video。这与注入整体消失是两个机制。尚未改动，不把 33/35 报作全部模型通过。
+
+### 本轮范围与验收约束
+
+用户指定保留目录/分支、两个未跟踪 SWITCH 文件；preflight 已刷新 origin/main（ca9a6fad7），仅因这两文件报 dirty_worktree。任务起点 HEAD 4e50e47c8；merge-base 4886cdde3，HEAD/main 两侧 71/38。禁止改 SKILL/schema 描述/审批/C0 断言或预算；付费仅 nano×2 到阶段02，≤¥0.3。最后须本轮完整 gates exit 0、正常 hooks commit/push 原分支，SWITCH-LAST 顶部≤12行；不新 PR、不合并。
+
+### 已证实的目录完整性修复方案
+
+在唯一的 `listAvailableModelsForAgent` 采集函数中汇总现有 image/imageEdit/video text_to_video/image_to_video 发布投影，继续由既有 `(vendor, modelKey)` 去重。调用方不增加任何采集路径，不复制目录过滤规则，picker 的默认模式约束不改。真实启动器端到端红：4 个可用视频模型仅注入2个，缺 reference-only 与内置 dreamina-multiframe。独立 class 单测使用真实 DTO→publication→archetype 链，证明 image_edit 同类也漏，失败已留存。回滚为 revert 本轮改动，不迁写历史。打包根因修复范围正在等主会话答复；其间不改打包边界。
+
+main 整合预演发现上游同时修改了 C0 全程预算与观察器；已 `git merge --abort` 回到任务树，保留本轮未提交证据/测试，未把上游预算变更带入本任务，也未提交任何合并。
+
+### 本轮已取得的绿灯（仍未交付）
+
+- 唯一采集函数已汇总文生与参考图输入发布模式；35 条定向测试通过。
+- 真实常驻 launch：修前 2/4 → 修后 4/4 视频模型 key；请求来自真实 IPC/native lane，夹具不提供 composer context。`round4-red.log` / `round4-green.log`。
+- 先执行带锁 `pnpm run build`，再执行原 `pnpm run dist:mac:dir`，命令 exit 0，packaged MCP 25 tools / 89 resources 冒烟通过。新包 asar SHA256 `8209b44bcb841bdb816f072327bb8dcd589f1cc78fa31de356c552ee93d816f6`。打包版同一真实 launch 4/4：`round4-packaged-green.log`。此包生成于整合 main 之前，不能冒充最终 HEAD 的整包身份。
+- 第一个 nano 样本停在新签名包的 macOS 钥匙串授权：`sample` 主线程持续在 `SecItemCopyMatching → SecKeychainItemCopyContent → SecurityServer::ClientSession::decrypt`；没有文本出站账本。已请求本机用户处理系统授权，不向聊天索取密码/key。原 C0 预算/断言文件未改；外置 test-only facade 在已有预算器的入参再施加 ¥0.3 总额上限，保存出站 JSON body（不含请求头）。
+- main 整合已完成为 `69d505570`（Ponytail 正常 PASS）。保留任务分支原 `c0-script.md` / `c0-real-budget.mjs` / 对应测试原样（¥8），冲突保留原 plan-only 与原 native storyboard 断言，同时接受上游 collect 观察器和通用 native 首工具统计。合并核对 13 条 node tests + 2 条预算 Vitest 通过；无 force 或 hook 绕过。
+- 模型雷达：APIMart 新增 gemini-omni-1.1-flash；LLM 车道受 safeStorage 凭据限制未查成。未更新雷达基线、未接模型；输出仅保存在本轮 .tmp。
+
+真实设置全目录补验（零额度、相同常驻启动器）：修后 renderer 91 → main 91 → HTTP 视频 modelKey **35/35**，missing=[]，同时覆盖仅图生视频的两项。日志 `round4-real-catalog-green.log`。这一轮仍为本地构建，不替代被钥匙串阻塞的新包真实付费模型数字。
+
+系统授权阻塞的进一步证据：只读 IORegistry 返回 `CGSSessionScreenIsLocked=true` / `kCGSSessionOnConsoleKey=true`；SecurityAgent 没有可见窗口。因此不能断言用户此时已经看得到钥匙串弹窗，须先解锁 Mac。完整 gates 已取得共享锁进入执行；本轮未因排队先推。
+
+### 完整 gates 首轮与合并修正
+
+首轮已跑完76门岗（205.6秒）：71通过、2阻断、3 advisory，exit1；未进入后续完整单测/构建，不称全绿。阻断证据在 `.tmp/round4-gates.log`。
+
+1. 词表合并时取“main所有登记并集”错误地复活了本分支已删的 context store 登记。改为真正三方比较：保留任务分支登记，只加入 main 相对 merge-base 新增的 owner；不改门岗/断言，不保留不存在的路径。已有回归先红，修后63条 node tests、205 owner登记核验通过。
+2. main 新增走查夹具使用旧应用内工具名。按真实生产 `laneCanvasTools`/`documentModelTools` 对账，把 sweep 的 `nomi_canvas_plan` 改为 `nomi_storyboard_write`（原 propose_storyboard_plan 参数保持）；体验走查改为 `append_to_end`，其真实 schema 仅接 content，去掉旧统一 MCP 的 operation 入参。未改C0断言或任何生产工具 schema。MCP引用门岗117调用点通过。
+
+两项均是本次main整合暴露的测试/登记差异，原门岗完整保留；收敛后重新排完整 gates，不复用首轮失败收据。
+
+第二轮完整 gates **exit 0**：`.tmp/round4-gates2.log`；76 contracts（73通过、0阻断、3 advisory）；Vitest 1264文件通过/1文件跳过，11689测试通过/2跳过；Agent runtime373、janitor13、stats8通过；renderer与Electron构建通过，五门戳 HEAD `69d505570821`。修复仍暂存未提交，未push。
+
+Mac持续锁屏导致首个付费尝试约28分钟仍未离开凭据读取，现已终止本任务该实例（TERM无效后对已核实的PID 25224 KILL），保留blocked收据 `round4-paid-blocked.json`。未完成nano样本，不以零额度数替代。接下来用本次gates构建重新打包最终整合树，不保留后台挂起的付费尝试。
+
+最终整合树打包 `dist:mac:dir` **exit0**（`.tmp/round4-package-final.log`），asar SHA256 `5214e066ac68f42f2537097ad6f3917a7634bbad727cc18a734a9e68f84afc97`；packaged MCP25 tools/89 resources通过，最终包常驻启动器视频清单4/4通过，`round4-final-packaged-green.log`。本轮未取得nano×2付费数字；原尝试按真实C0输出 paid calls=0，隔离凭据已清理，没有挂起的付费实例。修复与证据已暂存，未commit、未push；只有main整合提交69d505570已在本地。仍需用户解锁Mac，以及答复此前提出的打包边界修复范围问题，才能完成剩余交付；不宣称本任务完成。

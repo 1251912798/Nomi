@@ -1,0 +1,15 @@
+{
+  "status": "blocked-before-model-dispatch",
+  "attempt": "attempt-hb3Hb6",
+  "packagedAsarSha256": "8209b44bcb841bdb816f072327bb8dcd589f1cc78fa31de356c552ee93d816f6",
+  "model": "gpt-5-nano",
+  "requestedSamples": 2,
+  "completedSamples": 0,
+  "modelRequests": 0,
+  "mediaRequests": 0,
+  "taskBudgetCny": 0.3,
+  "screenLocked": true,
+  "mainThread": "SecItemCopyMatching -> SecKeychainItemCopyContent -> SecurityServer::ClientSession::decrypt",
+  "billingReceipt": "unavailable; application credential access blocked before balance query",
+  "nextAction": "Unlock the Mac, then rerun the isolated packaged samples; do not send credentials in chat"
+}
