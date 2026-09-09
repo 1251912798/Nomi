@@ -31,6 +31,8 @@
 ![详情并排](comparison-detail.jpg)
 ![节点并排](comparison-node.jpg)
 
-合并基线 f708568dfc19 后再次构建并执行 Electron 完整任务，exit 0。六张真机图与并排图已替换为合并后的结果；宿主节点新增的供应商就绪提示来自 main。
+合并基线 f708568dfc19 后再次构建并执行 Electron 完整任务，exit 0。六张真机图与并排图已替换为合并后的结果；宿主节点控制区沿用 main 的现役布局。
 
 最终 Ponytail 复核再清除旧技能筛选器和 curation 转发文件；名称、供应商中英文别名、多词搜索覆盖迁入新 gallery，44 条相关测试通过。保留共享 SkillMedia 和跨库选择状态，二者有真实调用者。
+
+旧路径清理后的最终 build 与 Electron 全流程再次 exit 0，六张真机图为该次结果。
