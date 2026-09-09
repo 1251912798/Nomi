@@ -1,0 +1,95 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-09-agent-models-reference-only",
+  "problem_type": "Agent model catalog loses models whose published mode requires a reference",
+  "symptom": "Resident storyboard launcher provider prompt omits available image_to_video models",
+  "direct_cause": "listAvailableModelsForAgent requests the picker default text_to_video and text_to_image modes only",
+  "class_root": "Agent catalog capture must cover all published media input modes, not one picker default",
+  "affected_population": [
+    "All agent and storyboard callers; reference-only image and video models across vendors"
+  ],
+  "scope_paths": [
+    "src/workbench/generationCanvas/agent/availableModels.ts"
+  ],
+  "entry_points": [
+    "Resident storyboard launcher",
+    "Storyboard form model listing"
+  ],
+  "external_sources": [],
+  "invariants": [
+    "Every reference-only published image/video model available through the existing catalog projection participates in agent model capture"
+  ],
+  "generality_proof": "The sole listAvailableModelsForAgent function collects both existing text and reference input mode projections, with existing vendor/model deduplication; all callers consume the same complete entries.",
+  "shared_boundaries": [
+    {
+      "path": "src/workbench/generationCanvas/agent/availableModels.ts",
+      "symbol": "listAvailableModelsForAgent",
+      "responsibility": "Collect both text and reference published media model projections"
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/workbench/ai/ProjectAgentResidentShell.tsx",
+      "entry_point": "launch",
+      "disposition": "enforced",
+      "evidence": "Real editor selection click launches resident actions.send; HTTP regression exposes both video modes"
+    },
+    {
+      "path": "src/workbench/generationCanvas/agent/runStoryboardPlanner.ts",
+      "entry_point": "runStoryboardPlanner",
+      "disposition": "enforced",
+      "evidence": "Imports the same listAvailableModelsForAgent; no alternate collection"
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Every reference-only model is omitted, including existing dreamina-multiframe and viduq3 and future vendors",
+    "same_class_scan": [
+      "rg preloadModelOptions/listAvailableModelsForAgent: renderer picker defaultPublishedMode and agent/form/default consumers",
+      "Real app deriveModelListing keyStatus=ok 35 video rows versus HTTP 33; missing both image_to_video-only rows"
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "src/workbench/generationCanvas/agent/availableModels.ts",
+    "invariant": "Agent capture includes reference-only publication modes",
+    "failure_mode": "Existing catalog publication and runnable vendor filters continue rejecting unpublished/unavailable models; failed capture rejects the send",
+    "exception_policy": "none",
+    "strategy": "Replace text-only capture with both existing input-mode projections at its single owner",
+    "artifacts": [
+      "src/workbench/generationCanvas/agent/availableModels.ts"
+    ]
+  },
+  "regression_tests": [
+    "tests/ux/agent-lane-models-block.e2e.mjs",
+    "src/config/modelCatalogCache.test.ts"
+  ],
+  "class_regression_tests": [
+    "src/config/modelCatalogCache.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "src/workbench/generationCanvas/agent/availableModels.ts"
+    ],
+    "rationale": "Replaces the text-only capture expression; no parallel catalog path added"
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "Application publication selection, not third-party behavior",
+    "exit_criteria": []
+  },
+  "migration": "No persisted data or schema changes; each new send captures the complete catalog.",
+  "residual_risks": [
+    "Original gate4b package lacks prior injection code entirely; new packaged verification remains required."
+  ],
+  "invariant_owner_layer": {
+    "layer": "src/workbench/generationCanvas/agent/availableModels.ts",
+    "tests": [
+      "src/config/modelCatalogCache.test.ts",
+      "tests/ux/agent-lane-models-block.e2e.mjs"
+    ],
+    "why": "Agent catalog projection owns inclusion across published input modes"
+  },
+  "internal_only_reason": "Internal publication projection: real isolated Electron catalog, production picker mode filter and actual HTTP request establish the mechanism."
+}

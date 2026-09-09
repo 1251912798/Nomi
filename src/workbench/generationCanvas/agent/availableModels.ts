@@ -87,14 +87,16 @@ export function buildAgentModelEntries(options: readonly ModelOption[]): AgentMo
 
 /** 拉取 image+video 两类真实可用模型，join 档案生成 agent 可选清单（渲染层，走 catalog IPC）。 */
 export async function listAvailableModelsForAgent(): Promise<AgentModelEntry[]> {
-  const [textOptions, imageOptions, videoOptions] = await Promise.all([
+  const options = await Promise.all([
     // Text nodes are real generation nodes too. Keep their catalog identity in
     // the same model block so an explicit chat model survives planning.
     preloadModelOptions("text", "chat"),
     preloadModelOptions("image"),
+    preloadModelOptions("imageEdit"),
     preloadModelOptions("video"),
+    preloadModelOptions("video", "image_to_video"),
   ]);
-  return buildAgentModelEntries([...textOptions, ...imageOptions, ...videoOptions]);
+  return buildAgentModelEntries(options.flat());
 }
 
 /**
