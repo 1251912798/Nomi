@@ -285,9 +285,16 @@ try {
   await dismissFirstRun()
 
   // 占位 key：让内置图像/视频模型出现，连线能算出真实 mode（全程不点生成、零额度）。
-  await getWin().evaluate(() =>
-    window.nomiDesktop?.modelCatalog?.upsertVendorApiKey('kie', { apiKey: 'nomi-e2e-placeholder', enabled: true }),
-  )
+  const savedCredential = await getWin().evaluate(async () => {
+    const catalog = window.nomiDesktop.modelCatalog
+    const vendor = catalog.listVendors().find(item => item.key === 'kie')
+    catalog.upsertVendor({ ...vendor, baseUrlHint: 'http://127.0.0.1:1' })
+    const saved = await catalog.upsertVendorApiKey('kie', { apiKey: 'nomi-e2e-placeholder', enabled: true })
+    return { saved, vendor: catalog.listVendors().find(item => item.key === 'kie') }
+  })
+  expect(savedCredential.saved.verificationPending).toBe(true)
+  expect(savedCredential.vendor.credentialVerificationPending).toBe(true)
+  expect(savedCredential.saved.hasApiKey).toBe(true)
   await getWin().reload()
   await getWin().waitForLoadState('domcontentloaded')
   await getWin().waitForTimeout(1500)

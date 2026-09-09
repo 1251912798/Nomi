@@ -51,6 +51,7 @@ export type ModelCatalogVendorDto = {
   name: string
   enabled: boolean
   hasApiKey?: boolean
+  credentialVerificationPending?: boolean
   baseUrlHint?: string | null
   authType?: ModelCatalogVendorAuthType
   authHeader?: string | null
@@ -113,6 +114,7 @@ export type ModelCatalogMappingDto = {
 }
 
 export type ModelCatalogVendorApiKeyStatusDto = {
+  verificationPending?: boolean
   vendorKey: string
   hasApiKey: boolean
   enabled: boolean
