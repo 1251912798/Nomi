@@ -1,7 +1,7 @@
 // 渲染层要的 skill 列表 DTO（主进程组装）。按「路 A」：这里只把 manifest 原样给渲染层，
 // 能力比对（缺哪个 provider）放渲染层用 getCatalogHealth 做，catalog 一变实时刷新、不耦合。
 import { skillPreviewUrl } from "./skillPreview";
-import type { SkillCuration } from "./skillCuration";
+import type { SkillCuration } from "../shared/skillCuration";
 import { deriveSkillNeeds } from "./skillCapability";
 import { ipcMain } from "electron";
 import { assertTrustedSender } from "../ipcSenderGuard";

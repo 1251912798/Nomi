@@ -19,7 +19,7 @@ import { parseSkillImportFile, type SkillImportParse } from './parseSkillImport'
 import { parseSkillDrop } from './skillDropIntake'
 import { SkillCard } from './SkillCard'
 import { markLibraryUsed, sortByLibraryUsage, useLibraryUsageVersion } from '../library/libraryDiscovery'
-import { galleryEntries, type SkillGalleryEntry } from './skillGallery'
+import { galleryEntries, matchesGalleryQuery, type SkillGalleryEntry } from './skillGallery'
 import { SkillDetail } from './SkillDetail'
 import { usePromptLibrary } from '../promptLibrary/usePromptLibrary'
 import { useUserPrompts } from '../promptLibrary/useUserPrompts'
@@ -77,7 +77,7 @@ export function SkillLibraryContent({
     sortedItems.filter(s => source === 'mine' ? s.origin === 'user' : s.origin === 'builtin'),
     source === 'mine' ? userPrompts.items : prompts.items, i18n.language,
   ).filter(entry => (category === 'all' || entry.kind === category)
-    && `${entry.title} ${entry.description}`.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase())),
+    && matchesGalleryQuery(entry, query)),
   [sortedItems, source, userPrompts.items, prompts.items, i18n.language, category, query])
 
   React.useEffect(() => {

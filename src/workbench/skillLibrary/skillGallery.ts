@@ -1,6 +1,7 @@
 import type { SkillListItemDto } from '../api/skillApi'
 import type { LibraryPrompt } from '../api/promptLibraryApi'
 import { promptDisplayTitle } from '../promptLibrary/promptDisplay'
+import { matchesLibraryQuery } from '../library/libraryDiscovery'
 
 export type SkillGalleryEntry = {
   id: string
@@ -44,4 +45,18 @@ export function galleryBody(entry: SkillGalleryEntry): string {
   if (blocks[0] === `# ${entry.title}`) blocks.shift()
   if (blocks[0] === entry.description) blocks.shift()
   return blocks.join('\n\n')
+}
+
+const PROVIDER_SEARCH_ALIASES: Record<string, readonly string[]> = {
+  text: ['text', '文本', '文字'],
+  image: ['image', '图像', '图片'],
+  video: ['video', '视频'],
+  audio: ['audio', '音频'],
+}
+
+export function matchesGalleryQuery(entry: SkillGalleryEntry, query: string): boolean {
+  return matchesLibraryQuery({
+    title: entry.title, description: entry.description, tags: entry.prompt?.tags,
+    keywords: [entry.skill?.name ?? '', ...(entry.skill?.neededProviders ?? []).flatMap(provider => PROVIDER_SEARCH_ALIASES[provider] ?? [provider])],
+  }, query)
 }

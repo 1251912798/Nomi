@@ -6,7 +6,7 @@ import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import yaml from "js-yaml";
 import { parseSkillFrontmatter, readSkillFrontmatterIdentity } from "./skillFrontmatter";
-import { readSkillCuration } from "./skillCuration";
+import { readSkillCuration } from "../shared/skillCuration";
 import { discoverSkillRecordsFromRoots } from "./skillStore";
 import { buildSkillPackage, validateSkillPackage, readSkillDirFiles, exportSkillPackageByName } from "./skillPackage";
 import { getCuratedPrompts } from "../promptLibrary/curatedPrompts";

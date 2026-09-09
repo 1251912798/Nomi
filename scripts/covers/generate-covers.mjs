@@ -29,7 +29,7 @@ function saveLedger(ledger) {
 }
 function getEntries() {
   const { parseSkillFrontmatter } = require(path.join(root, 'dist-electron/skills/skillFrontmatter.js'))
-  const { readSkillCuration } = require(path.join(root, 'dist-electron/skills/skillCuration.js'))
+  const { readSkillCuration } = require(path.join(root, 'dist-electron/shared/skillCuration.js'))
   return fs.readdirSync(path.join(root, 'skills')).sort().flatMap((name) => {
     const filename = path.join(root, 'skills', name, 'SKILL.md')
     if (!fs.existsSync(filename)) return []

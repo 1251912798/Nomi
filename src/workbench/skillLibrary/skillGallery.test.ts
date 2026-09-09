@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { galleryBody, galleryEntries } from './skillGallery'
+import { galleryBody, galleryEntries, matchesGalleryQuery } from './skillGallery'
 import type { SkillListItemDto } from '../api/skillApi'
 import type { LibraryPrompt } from '../api/promptLibraryApi'
 
@@ -9,6 +9,12 @@ const skill: SkillListItemDto = {
   body: '---\nname: external\n---\n\n# External\n\nSummary\n\n## Method\n\nDo the work.',
 }
 describe('skill gallery projection', () => {
+  it('preserves name, provider aliases and multi-term search in the new gallery', () => {
+    const [entry] = galleryEntries([{ ...skill, neededProviders: ['image'] }], [], 'en')
+    expect(matchesGalleryQuery(entry, 'external 图像')).toBe(true)
+    expect(matchesGalleryQuery(entry, 'image summary')).toBe(true)
+    expect(matchesGalleryQuery(entry, 'video')).toBe(false)
+  })
   it('keeps old external Skills without covers and displays their complete body without frontmatter', () => {
     const [entry] = galleryEntries([skill], [], 'en')
     expect(entry.cover).toBeUndefined()

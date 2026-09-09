@@ -16,7 +16,12 @@
     "src/workbench/api/skillApi.ts",
     "src/workbench/api/promptLibraryApi.ts",
     "src/workbench/skillLibrary/",
-    "src/workbench/ai/ProjectAgentResidentShell.tsx"
+    "src/workbench/ai/ProjectAgentResidentShell.tsx",
+    "electron/skills/skillPackage.ts",
+    "electron/skills/skillStore.ts",
+    "electron/skills/skillFrontmatter.ts",
+    "electron/promptLibrary/promptLibraryTypes.ts",
+    "src/workbench/library/libraryAdapters.ts"
   ],
   "entry_points": [
     "SkillLibraryContent reads listWorkbenchSkills",
@@ -73,7 +78,8 @@
     "reason": "Every newly installed curated Skill would lose its cover at the same DTO boundary.",
     "same_class_scan": [
       "rg SkillListItem/listSkillsForRenderer traced skillIpc, skillApi and useWorkbenchSkills.",
-      "rg V4CommandRow/mediaUrl/curation traced Agent composer, prompt toPrompt and curatedPrompts."
+      "rg V4CommandRow/mediaUrl/curation traced Agent composer, prompt toPrompt and curatedPrompts.",
+      "rg filterSkillLibraryItems found only tests after gallery replacement; move provider/name search to matchesGalleryQuery and remove the obsolete filter and category types."
     ]
   },
   "prevention": {
@@ -102,9 +108,11 @@
     "status": "removed",
     "removed_paths": [
       "src/workbench/skillLibrary/SkillCard.tsx",
-      "src/workbench/ai/ProjectAgentResidentShell.tsx"
+      "src/workbench/ai/ProjectAgentResidentShell.tsx",
+      "src/workbench/library/libraryAdapters.ts",
+      "electron/skills/skillCuration.ts"
     ],
-    "rationale": "Old text-only card implementation is replaced; early prompt slicing is removed."
+    "rationale": "Old text-only card implementation is replaced; early prompt slicing is removed. Remove obsolete skill filter (project filter stays) and the curation forwarding module; all consumers import the canonical shared schema directly."
   },
   "dependency_lifecycle": {
     "decision": "not-applicable",
