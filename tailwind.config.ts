@@ -637,6 +637,8 @@ export default {
    * `docs/lessons/tailwind-content-ts-classnames-silently-dropped.md`。
    */
   content: [
+    './node_modules/streamdown/dist/*.js',
+    './node_modules/@streamdown/code/dist/*.js',
     './index.html',
     './src/**/*.tsx',
     './src/**/*.ts',

@@ -63,8 +63,8 @@ describe('① 用户气泡', () => {
 describe('② 助手文本', () => {
   const labels = { copy: '复制回复', retry: '重来', continue: '继续' }
   it('流式带光标、完成不带', () => {
-    expect(html(el(V4AssistantMessage, { text: 'x', status: 'streaming', labels }))).toContain('bg-nomi-ink-30')
-    expect(html(el(V4AssistantMessage, { text: 'x', status: 'complete', labels }))).not.toContain('bg-nomi-ink-30')
+    expect(html(el(V4AssistantMessage, { text: 'x', status: 'streaming', labels }))).toContain('style="--streamdown-caret:')
+    expect(html(el(V4AssistantMessage, { text: 'x', status: 'complete', labels }))).not.toContain('style="--streamdown-caret:')
   })
 
   it('完成态的复制/重来 hover 才显（默认透明）', () => {
