@@ -10,7 +10,7 @@ const deps = vi.hoisted(() => ({
   captureSurface: vi.fn(),
   sealSurfaceSnapshot: vi.fn(),
 }))
-vi.mock('./workbenchAgentRunner', () => ({ runWorkbenchAgent: deps.send }))
+vi.mock('./agentLoopMode', () => ({ runSingleShotAgent: deps.send }))
 vi.mock('../windowUrlParam', () => ({ readWindowUrlParam: () => deps.project }))
 vi.mock('../project/workbenchProjectSession', () => ({ getActiveWorkbenchProjectId: () => deps.project }))
 vi.mock('../../desktop/bridge', () => ({ getDesktopBridge: () => ({
@@ -73,8 +73,9 @@ describe('remaining production callers use the explicit shared Agent profile', (
     expect(await runDirectionPlanner({ projectId: 'explicit-project', brief: { goal: 'launch goal' } })).toEqual({ candidates })
     expect(deps.send).toHaveBeenCalledWith(expect.objectContaining({
       projectId: 'explicit-project', featureKey: 'nomi:production-directions:explicit-project',
-      capability: 'single-shot',
     }))
+    expect(deps.send.mock.calls[0]![0]).not.toHaveProperty('skillKey')
+    expect(deps.send.mock.calls[0]![0]).not.toHaveProperty('skillName')
   })
 
   it('shot verification captures project before frame extraction and keeps its image attached', async () => {
@@ -88,11 +89,13 @@ describe('remaining production callers use the explicit shared Agent profile', (
     await judge.judge('check A', await extracting)
     expect(deps.frame).toHaveBeenCalledWith({ videoUrl: 'nomi-local://video', which: 'first', projectId: 'A' })
     expect(deps.send).toHaveBeenCalledWith(expect.objectContaining({ projectId: 'A', featureKey: 'nomi:shot-verify:A',
-      capability: 'single-shot', attachments: [
+      attachments: [
         { url: 'nomi-local://frame-A', contentType: 'image/png', fileName: 'shot-frame.png', kind: 'image' },
       ],
       attachmentClaims: [{ assetId: 'asset-frame-A', version: 1 }],
     }))
+    expect(deps.send.mock.calls[0]![0]).not.toHaveProperty('skillKey')
+    expect(deps.send.mock.calls[0]![0]).not.toHaveProperty('skillName')
   })
 
   it('refuses a local frame that has no main-owned asset identity', async () => {
@@ -106,9 +109,11 @@ describe('remaining production callers use the explicit shared Agent profile', (
     deps.send.mockResolvedValueOnce({ text: operation.endsWith('storyboard') ? JSON.stringify(plan) : 'actual script' })
     const result = await handleCapabilityApply(operation, { projectId: 'A', runId: 'run-A', brief: { goal: 'goal' }, sourceContent: 'source', instruction: 'revise' })
     expect(result).toEqual(operation.endsWith('storyboard') ? { plan } : { text: 'actual script' })
-    expect(deps.send).toHaveBeenCalledWith(expect.objectContaining({ projectId: 'A', capability: 'single-shot',
+    expect(deps.send).toHaveBeenCalledWith(expect.objectContaining({ projectId: 'A',
       featureKey: 'nomi:production-script:A',
     }))
+    expect(deps.send.mock.calls[0]![0]).not.toHaveProperty('skillKey')
+    expect(deps.send.mock.calls[0]![0]).not.toHaveProperty('skillName')
   })
 
   it('production storyboard keeps the launch snapshot/run attribution and returns its own plan after UI project changes', async () => {

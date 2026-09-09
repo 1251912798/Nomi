@@ -36,19 +36,15 @@ const storyboardAnchorSchema = z.object({
   id: z
     .string()
     .min(1)
-    .describe("Stable id; used as the clientId when the plan lands on the canvas (e.g. 'anchor-1')."),
+    .describe("Stable anchor id; becomes the canvas clientId."),
   kind: z.enum(["character", "scene", "prop", "style"]),
   name: z.string().describe("Display name & shot-reference key ('林夏' / '天台' / '红书包' / '全片风格')."),
   description: z
     .string()
-    .describe(
-      "Standard description. Visual anchor (carrier=visual) → reference-card / cast-sheet prompt (stable appearance/environment, neutral). Text anchor (carrier=text) → folded into the prompt of every shot that references it.",
-    ),
+    .describe("Reusable anchor appearance or prompt text."),
   carrier: z
     .enum(["visual", "text"])
-    .describe(
-      "visual = generate a reference image and hang it on the shot's reference slot (faces / specific scenes / props that prompt words can't pin down). text = describe in words only, folded into shot prompts (tone / brand color / wardrobe words). character/scene/prop default visual; style defaults text.",
-    ),
+    .describe("visual: reference image; text: words folded into shot prompts."),
   scope: z
     .enum(["all", "selective"])
     .optional()
@@ -61,71 +57,49 @@ const storyboardShotSchema = z.object({
     .string()
     .min(1)
     .optional()
-    .describe(
-      "Scene/group id this shot belongs to (e.g. 'scene-1'). Shots of the same scene must be contiguous and share the id; omit when the story has no scene grouping.",
-    ),
+    .describe("Optional scene/group id; same-scene shots share it and remain contiguous."),
   shotKind: z
     .enum(["image", "video"])
     .optional()
-    .describe(
-      "Shot kind: 'image' = still image-storyboard frame (image-to-image, no duration, no camera move / transition / dialogue), 'video' = video shot (has duration + camera motion). Match ALL shots to the storyboard mode requested by the user; default to 'image' unless the user explicitly wants video.",
-    ),
+    .describe("image: still frame (default); video: duration and camera motion."),
   durationSec: z
     .number()
-    .describe(
-      "Shot duration in seconds (video shots only; for image shots emit 0). Clamped to the chosen model's max when it lands.",
-    ),
+    .describe("Seconds; image shots use 0. Clamped to model maximum."),
   anchorIds: z
     .array(z.string())
-    .describe(
-      "Which anchors this shot uses (by anchor.id) → visual anchors become reference edges, text anchors fold into the prompt.",
-    ),
+    .describe("Referenced anchor ids."),
   prompt: z
     .string()
-    .describe(
-      "Directly-generatable prompt: camera move + action progression; do NOT restate the anchors' static descriptions.",
-    ),
+    .describe("Generatable action and camera prompt; omit static anchor descriptions."),
   // P0-9:让 AI 一并产出每镜的模型/模式/参数(含负面词)。取值必须来自用户消息里的「可用模型」清单,
   // 不要编不存在的 modelKey/参数名;不确定就留空,落画布时系统用默认视频模型兜底。
   modelKey: z
     .string()
     .optional()
-    .describe(
-      "Video model key for this shot, chosen from the 「可用模型」 list in the user message. Omit to use the default video model.",
-    ),
+    .describe("已指定填目录键；未指定用默认。"),
   modeId: z
     .string()
     .optional()
-    .describe(
-      "Model mode/variant id (paired with modelKey), from the same list. Omit to use the model's default mode.",
-    ),
+    .describe("Catalog mode/variant paired with modelKey; omit for default."),
   params: z
     .record(generationParamValueSchema)
     .optional()
-    .describe(
-      "Per-shot generation params keyed exactly as the chosen model exposes them in the 「可用模型」 list (e.g. aspect_ratio, resolution, and negative_prompt where the model supports it). Only use param keys that model actually lists; omit unknowns.",
-    ),
+    .describe("已指定按档案填；未指定派生，禁编键。"),
   subtitle: z
     .string()
     .optional()
-    .describe(
-      "On-screen caption/subtitle text for this shot, carried verbatim to canvas metadata and timeline assembly.",
-    ),
+    .describe("Verbatim on-screen caption."),
   dialogue: z
     .string()
     .optional()
-    .describe(
-      "Spoken dialogue for this shot (speaker + line), carried verbatim to canvas metadata and timeline assembly.",
-    ),
+    .describe("Verbatim spoken dialogue: speaker and line."),
   transition: z
     .object({
       type: z.enum(["cut", "dissolve", "fade", "match_cut", "whip_pan"]),
       durationFrames: z.number().int().positive().optional(),
     })
     .optional()
-    .describe(
-      "Explicit editorial transition into the next shot; emit cut for an intentional hard cut, omit when no transition is authored.",
-    ),
+    .describe("Transition to next shot; cut means hard cut, omit if unauthored."),
   keyframe: z
     .object({
       enabled: z
@@ -135,30 +109,22 @@ const storyboardShotSchema = z.object({
       prompt: z
         .string()
         .optional()
-        .describe(
-          "Static first-frame image prompt: composition, shot size, light, character pose/expression, environment. No camera movement, action progression, dialogue, subtitles, or sound.",
-        ),
+        .describe("Static first-frame composition, light, pose and environment."),
       modelKey: z
         .string()
         .optional()
-        .describe(
-          "Image model key for the first-frame image, chosen from the available image models. Omit to use the default image model.",
-        ),
+        .describe("Catalog first-frame image model key; omit for saved default."),
       modeId: z
         .string()
         .optional()
-        .describe(
-          "Image model mode id for the first-frame image. Prefer an image_ref/edit mode when this shot references visual anchors.",
-        ),
+        .describe("First-frame image mode; prefer reference/edit with visual anchors."),
       params: z
         .record(generationParamValueSchema)
         .optional()
-        .describe("First-frame image params, using only keys supported by the chosen image model/mode."),
+        .describe("Parameters declared by the selected first-frame image model."),
     })
     .optional()
-    .describe(
-      "Optional first-frame plan. In 图片+视频 mode keep this as part of the same logical shot instead of emitting a separate image shot.",
-    ),
+    .describe("First-frame image plan within this logical shot."),
 });
 
 export const storyboardPlanParamsSchema = z.object({
@@ -176,9 +142,7 @@ export const stagingReferenceParamsSchema = z.object({
   shotClientId: z
     .string()
     .optional()
-    .describe(
-      "clientId (from this turn's create_canvas_nodes) or real node id of the shot/keyframe/video this staging locks; the rendered reference auto-connects to it as composition_ref. Omit for a standalone reference.",
-    ),
+    .describe("Shot/keyframe/video clientId or nodeId; omit for standalone staging."),
   characters: z
     .array(
       z.object({
@@ -200,9 +164,7 @@ export const stagingReferenceParamsSchema = z.object({
             "cheer",
           ])
           .optional()
-          .describe(
-            "Body pose preset (default standing). squat=deep squat, crouch=upright half-crouch, single-knee=proposal kneel, hands-on-hips, point, wave, cheer=arms up.",
-          ),
+          .describe("Body-pose preset; default standing."),
         facing: z
           .enum(["toward", "away", "camera", "left", "right"])
           .optional()
@@ -211,13 +173,11 @@ export const stagingReferenceParamsSchema = z.object({
     )
     .max(6)
     .optional()
-    .describe("Characters to stage (1-6) for vocab-based precise 3D staging. Omit only when using customBlocking."),
+    .describe("1–6 staged characters, or use customBlocking."),
   layout: z
     .enum(["solo", "facing", "side-by-side", "line", "behind", "circle"])
     .optional()
-    .describe(
-      "Spatial arrangement. side-by-side = shoulder-to-shoulder in a row (并排/一排/一字排开, e.g. a lineup or saluting row); line = a single-file queue front-to-back (纵队/列队前后排); facing = two face each other (对峙/对坐/对话); behind = one in front of another (一前一后/跟踪); circle = around a center (围绕/环绕).",
-    ),
+    .describe("Layout: side-by-side is a row; line is a front-to-back queue."),
   camera: z
     .object({
       angle: z.enum(["front", "three-quarter", "side", "back"]).optional(),
@@ -237,9 +197,7 @@ export const stagingReferenceParamsSchema = z.object({
   sceneTemplate: z
     .enum(["street", "room"])
     .optional()
-    .describe(
-      "Optional gray-model backdrop laid under the characters: street = city street (road/lane-lines/sidewalk/buildings/trees/streetlamps/cars), room = interior (three walls/bed/table/sofa/ceiling light). Use when the shot needs a legible environment + scale reference. Set environment=day for street (sky) if you want it lit.",
-    ),
+    .describe("Gray backdrop: street or room; environment=day lights the street."),
   props: z
     .array(
       z.object({
@@ -265,26 +223,20 @@ export const stagingReferenceParamsSchema = z.object({
           .array(z.number())
           .length(2)
           .optional()
-          .describe(
-            "[x, z] ground position in meters. Character(s) are at origin; omit to auto-spread props to the character's right.",
-          ),
+          .describe("Ground [x,z] meters, relative to characters at origin."),
         rotationY: z.number().optional().describe("Yaw in degrees."),
         scale: z.number().optional().describe("Uniform scale (0.1–10, default 1)."),
       }),
     )
     .max(12)
     .optional()
-    .describe(
-      "Optional individual gray-model props (a car beside the character, a tree behind, etc.). Prefer sceneTemplate for a full backdrop; use props for a few specific placed objects.",
-    ),
+    .describe("Placed gray-model props; use sceneTemplate for a full backdrop."),
   // 词表外逃生口（站位）：词表(layout/pose/facing…)是精确首选，但站位/构图意图不在词表里时
   // 不要硬塞最近的词——填自由文本，执行器不渲站位图、把它当 composition 指令追加进关键帧图 prompt。
   customBlocking: z
     .string()
     .optional()
-    .describe(
-      "For blocking/composition that's OUTSIDE the layout/pose/facing vocab above (e.g. a complex multi-tier formation, an over-the-shoulder framing, a specific prop-relative arrangement, or 'match this reference image's composition') — DO NOT force a wrong vocab value. Describe it here in natural language and it is injected as a composition directive into the shot's KEYFRAME IMAGE prompt (the tool will NOT 3D-render a staging image; less precise than the rendered reference, but the honest fallback). Use proper film/composition terms. When you use customBlocking, the structured vocab fields (characters/layout/camera…) may be omitted. Provide EITHER vocab characters (precise 3D staging) OR customBlocking (prompt-guided fallback) — not neither.",
-    ),
+    .describe("Composition outside the vocabulary, injected into the keyframe prompt."),
 });
 
 // ── 运镜参考 schema（create_camera_move 的参数；镜像渲染层 cameraMoveBuilder 的 CameraMoveSpec，
@@ -292,9 +244,7 @@ export const stagingReferenceParamsSchema = z.object({
 export const cameraMoveParamsObjectSchema = z.object({
   shotClientId: z
     .string()
-    .describe(
-      "clientId (from this turn's create_canvas_nodes) or real node id of the shot's VIDEO node this camera move drives. The rendered camera-move clip auto-attaches to it as a video reference (the model copies the camera path, not the gray content).",
-    ),
+    .describe("Target video nodeId or this turn's clientId."),
   move: z
     .enum([
       "orbit_left",
@@ -312,10 +262,7 @@ export const cameraMoveParamsObjectSchema = z.object({
       "dolly_zoom",
     ])
     .optional()
-    .describe(
-      "The single dominant camera move for this shot. orbit_left/right = camera circles the subject (~300°); push_in/pull_out = dolly toward/away; crane_up/down = boom up/down; track_left/right = lateral tracking; arc_left/right = short arc (~90°); zoom_in/zoom_out = lens zoom with the camera static (FOV ramp); dolly_zoom = Hitchcock/vertigo effect (camera pulls back while zooming in, subject size constant, background stretches away). " +
-        "Use ONE of these enum values ONLY when the intended move IS one of them (renders a precise 3D reference). If the move is NOT in this set (e.g. whip-pan, handheld follow, a compound/sequenced move, or 'match this reference video'), DO NOT force a wrong enum — leave move empty and use customMove instead.",
-    ),
+    .describe("One dominant vocabulary camera move; otherwise use customMove."),
   // 词表外逃生口（运镜）：enum 是精确首选(确定性渲 3D 参考)，但意图不在 enum 里时
   // 不要硬塞最近的词——填自由文本，执行器不渲小片、把它当运镜指令追加进目标视频 prompt。
   customMove: z
@@ -323,9 +270,7 @@ export const cameraMoveParamsObjectSchema = z.object({
     .trim()
     .min(1)
     .optional()
-    .describe(
-      "Natural-language camera-move description for moves OUTSIDE the enum (whip pan, handheld follow, a compound/sequenced move like 'push in then whip to the window', or 'match this reference video's camerawork'). The tool will NOT 3D-render this — it injects it as a cinematography directive into the shot's video prompt (less precise than the rendered reference; the honest fallback). Use proper film terms. Set move OR customMove, never both for the same intent.",
-    ),
+    .describe("Out-of-vocabulary cinematography, injected into video prompt; excludes move."),
   speed: z
     .enum(["slow", "medium", "fast"])
     .optional()
@@ -351,16 +296,12 @@ export const cameraMoveParamsObjectSchema = z.object({
       "cheer",
     ])
     .optional()
-    .describe(
-      "Optional body-pose preset id for the subject mannequin the camera moves around (e.g. standing / sit / walk). Default standing.",
-    ),
+    .describe("Subject body-pose preset; default standing."),
   // 灰模布景（走站位/UI 同一套 builder）：让运镜小片的参考里带上环境/尺度背景。相机仍绕主体运镜。
   sceneTemplate: z
     .enum(["street", "room"])
     .optional()
-    .describe(
-      "Optional gray-model backdrop under the subject: street (road/buildings/trees/cars) or room (walls/furniture). Use when the camera move should read as happening in an environment (e.g. 'push in on a person standing on a street'). The camera still orbits/pushes the subject at origin.",
-    ),
+    .describe("Gray backdrop beneath the subject at origin."),
   props: z
     .array(
       z.object({
@@ -386,14 +327,58 @@ export const cameraMoveParamsObjectSchema = z.object({
           .array(z.number())
           .length(2)
           .optional()
-          .describe("[x, z] ground position in meters. Subject is at origin; omit to auto-spread props to its right."),
+          .describe("Ground [x,z] meters, relative to subject at origin."),
         rotationY: z.number().optional().describe("Yaw in degrees."),
         scale: z.number().optional().describe("Uniform scale (0.1–10, default 1)."),
       }),
     )
     .max(12)
     .optional()
-    .describe(
-      "Optional individual gray-model props placed in the move's scene (a car beside the subject, a tree behind). Prefer sceneTemplate for a full backdrop.",
-    ),
+    .describe("Placed gray-model props; use sceneTemplate for a full backdrop."),
 });
+
+/** Workflow guidance shared by the model profiles; field schemas retain their concise meanings. */
+export const STORYBOARD_MODEL_GUIDELINES = Object.freeze([
+  "Stable id; used as the clientId when the plan lands on the canvas (e.g. 'anchor-1').",
+  "Standard description. Visual anchor (carrier=visual) → reference-card / cast-sheet prompt (stable appearance/environment, neutral). Text anchor (carrier=text) → folded into the prompt of every shot that references it.",
+  "visual = generate a reference image and hang it on the shot's reference slot (faces / specific scenes / props that prompt words can't pin down). text = describe in words only, folded into shot prompts (tone / brand color / wardrobe words). character/scene/prop default visual; style defaults text.",
+  "Scene/group id this shot belongs to (e.g. 'scene-1'). Shots of the same scene must be contiguous and share the id; omit when the story has no scene grouping.",
+  "Shot kind: 'image' = still image-storyboard frame (image-to-image, no duration, no camera move / transition / dialogue), 'video' = video shot (has duration + camera motion). Match ALL shots to the storyboard mode requested by the user; default to 'image' unless the user explicitly wants video.",
+  "Shot duration in seconds (video shots only; for image shots emit 0). Clamped to the chosen model's max when it lands.",
+  "Which anchors this shot uses (by anchor.id) → visual anchors become reference edges, text anchors fold into the prompt.",
+  "Directly-generatable prompt: camera move + action progression; do NOT restate the anchors' static descriptions.",
+  "Video model key for this shot, chosen from the 「可用模型」 list in the user message. Omit to use the default video model.",
+  "Model mode/variant id (paired with modelKey), from the same list. Omit to use the model's default mode.",
+  "Per-shot generation params keyed exactly as the chosen model exposes them in the 「可用模型」 list (e.g. aspect_ratio, resolution, and negative_prompt where the model supports it). Only use param keys that model actually lists; omit unknowns.",
+  "On-screen caption/subtitle text for this shot, carried verbatim to canvas metadata and timeline assembly.",
+  "Spoken dialogue for this shot (speaker + line), carried verbatim to canvas metadata and timeline assembly.",
+  "Explicit editorial transition into the next shot; emit cut for an intentional hard cut, omit when no transition is authored.",
+  "Static first-frame image prompt: composition, shot size, light, character pose/expression, environment. No camera movement, action progression, dialogue, subtitles, or sound.",
+  "Image model key for the first-frame image, chosen from the available image models. Omit to use the default image model.",
+  "Image model mode id for the first-frame image. Prefer an image_ref/edit mode when this shot references visual anchors.",
+  "First-frame image params, using only keys supported by the chosen image model/mode.",
+  "Optional first-frame plan. In 图片+视频 mode keep this as part of the same logical shot instead of emitting a separate image shot."
+]);
+
+/** Workflow guidance shared by the model profiles; field schemas retain their concise meanings. */
+export const STAGING_MODEL_GUIDELINES = Object.freeze([
+  "clientId (from this turn's create_canvas_nodes) or real node id of the shot/keyframe/video this staging locks; the rendered reference auto-connects to it as composition_ref. Omit for a standalone reference.",
+  "Body pose preset (default standing). squat=deep squat, crouch=upright half-crouch, single-knee=proposal kneel, hands-on-hips, point, wave, cheer=arms up.",
+  "Characters to stage (1-6) for vocab-based precise 3D staging. Omit only when using customBlocking.",
+  "Spatial arrangement. side-by-side = shoulder-to-shoulder in a row (并排/一排/一字排开, e.g. a lineup or saluting row); line = a single-file queue front-to-back (纵队/列队前后排); facing = two face each other (对峙/对坐/对话); behind = one in front of another (一前一后/跟踪); circle = around a center (围绕/环绕).",
+  "Optional gray-model backdrop laid under the characters: street = city street (road/lane-lines/sidewalk/buildings/trees/streetlamps/cars), room = interior (three walls/bed/table/sofa/ceiling light). Use when the shot needs a legible environment + scale reference. Set environment=day for street (sky) if you want it lit.",
+  "[x, z] ground position in meters. Character(s) are at origin; omit to auto-spread props to the character's right.",
+  "Optional individual gray-model props (a car beside the character, a tree behind, etc.). Prefer sceneTemplate for a full backdrop; use props for a few specific placed objects.",
+  "For blocking/composition that's OUTSIDE the layout/pose/facing vocab above (e.g. a complex multi-tier formation, an over-the-shoulder framing, a specific prop-relative arrangement, or 'match this reference image's composition') — DO NOT force a wrong vocab value. Describe it here in natural language and it is injected as a composition directive into the shot's KEYFRAME IMAGE prompt (the tool will NOT 3D-render a staging image; less precise than the rendered reference, but the honest fallback). Use proper film/composition terms. When you use customBlocking, the structured vocab fields (characters/layout/camera…) may be omitted. Provide EITHER vocab characters (precise 3D staging) OR customBlocking (prompt-guided fallback) — not neither."
+]);
+
+/** Workflow guidance shared by the model profiles; field schemas retain their concise meanings. */
+export const CAMERA_MOVE_MODEL_GUIDELINES = Object.freeze([
+  "clientId (from this turn's create_canvas_nodes) or real node id of the shot's VIDEO node this camera move drives. The rendered camera-move clip auto-attaches to it as a video reference (the model copies the camera path, not the gray content).",
+  "The single dominant camera move for this shot. orbit_left/right = camera circles the subject (~300°); push_in/pull_out = dolly toward/away; crane_up/down = boom up/down; track_left/right = lateral tracking; arc_left/right = short arc (~90°); zoom_in/zoom_out = lens zoom with the camera static (FOV ramp); dolly_zoom = Hitchcock/vertigo effect (camera pulls back while zooming in, subject size constant, background stretches away). Use ONE of these enum values ONLY when the intended move IS one of them (renders a precise 3D reference). If the move is NOT in this set (e.g. whip-pan, handheld follow, a compound/sequenced move, or 'match this reference video'), DO NOT force a wrong enum — leave move empty and use customMove instead.",
+  "Natural-language camera-move description for moves OUTSIDE the enum (whip pan, handheld follow, a compound/sequenced move like 'push in then whip to the window', or 'match this reference video's camerawork'). The tool will NOT 3D-render this — it injects it as a cinematography directive into the shot's video prompt (less precise than the rendered reference; the honest fallback). Use proper film terms. Set move OR customMove, never both for the same intent.",
+  "Optional body-pose preset id for the subject mannequin the camera moves around (e.g. standing / sit / walk). Default standing.",
+  "Optional gray-model backdrop under the subject: street (road/buildings/trees/cars) or room (walls/furniture). Use when the camera move should read as happening in an environment (e.g. 'push in on a person standing on a street'). The camera still orbits/pushes the subject at origin.",
+  "[x, z] ground position in meters. Subject is at origin; omit to auto-spread props to its right.",
+  "Optional individual gray-model props placed in the move's scene (a car beside the subject, a tree behind). Prefer sceneTemplate for a full backdrop."
+]);

@@ -22,6 +22,7 @@ import { createHash } from 'node:crypto';
 import { readFile, readdir, stat } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
+import { parseLegacySource, legacyRecord as asRecord, type LegacySource, type LegacySourceKind, type LegacyConversation } from '../../electron/agentLane/laneLegacySources.js';
 
 /** 一段有序内容。与 pi `AssistantMessage.content` 的三种成员一一对应，不多不少。 */
 export type RecordedPart =
@@ -37,7 +38,7 @@ export type RecordedMessage =
       readonly text: string; readonly isError: boolean;
     };
 
-export type RecordedSourceKind = 'pi-snapshot' | 'agent-chat-v2' | 'host-snapshot';
+export type RecordedSourceKind = LegacySourceKind;
 
 export interface RecordedConversation {
   readonly sourceKind: RecordedSourceKind;
@@ -69,9 +70,6 @@ export function countTurns(conversation: RecordedConversation): number {
   return conversation.messages.filter((message) => message.role === 'assistant').length;
 }
 
-function asRecord(value: unknown): Record<string, unknown> | undefined {
-  return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : undefined;
-}
 
 function textOfUnknown(value: unknown): string {
   if (typeof value === 'string') return value;
@@ -100,8 +98,10 @@ async function listDirectories(root: string): Promise<string[]> {
   }
 }
 
-async function readJson(file: string): Promise<unknown> {
-  return JSON.parse(await readFile(file, 'utf8')) as unknown;
+async function readSource(file: string, kind: LegacySourceKind): Promise<LegacySource> {
+  const source = parseLegacySource(kind, await readFile(file));
+  if (source.status !== 'decoded') throw new Error(source.reason);
+  return source;
 }
 
 async function modifiedAtOf(file: string): Promise<number> {
@@ -158,9 +158,9 @@ async function readPiSnapshots(projectsRoot: string): Promise<{ scan: SourceScan
   let filesSeen = 0;
   for (const projectDir of await listDirectories(projectsRoot)) {
     const file = join(projectDir, '.nomi', 'agent-thread-context-v1.json');
-    let envelope: unknown;
+    let source: LegacySource;
     try {
-      envelope = await readJson(file);
+      source = await readSource(file, 'pi-snapshot');
     } catch (cause) {
       if ((cause as NodeJS.ErrnoException).code !== 'ENOENT') {
         unreadable.push({ file: labelOf(file), reason: (cause as Error).message });
@@ -168,13 +168,17 @@ async function readPiSnapshots(projectsRoot: string): Promise<{ scan: SourceScan
       continue;
     }
     filesSeen += 1;
-    const data = asRecord(asRecord(envelope)?.data);
-    const messages = messagesOfPiEntries(data?.entries);
-    if (messages.length === 0) continue;
-    conversations.push({
-      sourceKind: 'pi-snapshot', projectLabel: labelOf(projectDir),
-      conversationId: `${labelOf(projectDir)}/pi`, modifiedAt: await modifiedAtOf(file), messages,
-    });
+    for (const decoded of source.conversations) {
+      if (decoded.state === 'unsupported') { unreadable.push({ file: labelOf(file), reason: 'unsupported-record' }); continue; }
+      if (decoded.state === 'cleared') continue;
+      const messages = replayMessages(decoded);
+      if (messages.length === 0) continue;
+      conversations.push({
+        sourceKind: 'pi-snapshot', projectLabel: labelOf(projectDir),
+        conversationId: `${labelOf(projectDir)}/${createHash('sha256').update(decoded.key).digest('hex').slice(0, 8)}`,
+        modifiedAt: await modifiedAtOf(file), messages,
+      });
+    }
   }
   return {
     scan: {
@@ -213,7 +217,7 @@ function toolResultsOfAiSdk(content: unknown): RecordedMessage[] {
   for (const raw of content) {
     const part = asRecord(raw);
     if (part?.type !== 'tool-result' || typeof part.toolCallId !== 'string') continue;
-    const value = part.result ?? part.output;
+    const value = Object.hasOwn(part, 'result') ? part.result : part.output;
     results.push({
       role: 'toolResult', toolCallId: part.toolCallId,
       toolName: typeof part.toolName === 'string' ? part.toolName : 'unknown',
@@ -230,9 +234,9 @@ async function readAgentChatV2(projectsRoot: string): Promise<{ scan: SourceScan
   let filesSeen = 0;
   for (const projectDir of await listDirectories(projectsRoot)) {
     const file = join(projectDir, '.nomi', 'agent-session.json');
-    let parsed: unknown;
+    let source: LegacySource;
     try {
-      parsed = await readJson(file);
+      source = await readSource(file, 'agent-chat-v2');
     } catch (cause) {
       if ((cause as NodeJS.ErrnoException).code !== 'ENOENT') {
         unreadable.push({ file: labelOf(file), reason: (cause as Error).message });
@@ -240,23 +244,13 @@ async function readAgentChatV2(projectsRoot: string): Promise<{ scan: SourceScan
       continue;
     }
     filesSeen += 1;
-    const sessions = asRecord(asRecord(parsed)?.sessions);
-    if (!sessions) continue;
     const modifiedAt = await modifiedAtOf(file);
-    for (const [sessionKey, raw] of Object.entries(sessions)) {
-      if (!Array.isArray(raw)) continue;
-      const messages: RecordedMessage[] = [];
-      for (const item of raw) {
-        const message = asRecord(item);
-        if (!message) continue;
-        if (message.role === 'user') messages.push({ role: 'user', text: textOfUnknown(message.content) });
-        else if (message.role === 'assistant') messages.push({ role: 'assistant', parts: partsOfAiSdkAssistant(message.content) });
-        else if (message.role === 'tool') messages.push(...toolResultsOfAiSdk(message.content));
-      }
+    for (const decoded of source.conversations) {
+      const messages = replayMessages(decoded);
       if (messages.length === 0) continue;
       conversations.push({
         sourceKind: 'agent-chat-v2', projectLabel: labelOf(projectDir),
-        conversationId: `${labelOf(projectDir)}/${createHash('sha256').update(sessionKey).digest('hex').slice(0, 8)}`,
+        conversationId: `${labelOf(projectDir)}/${createHash('sha256').update(decoded.key).digest('hex').slice(0, 8)}`,
         modifiedAt, messages,
       });
     }
@@ -282,9 +276,9 @@ async function readHostSnapshots(hostRoot: string): Promise<{ scan: SourceScan; 
   let filesSeen = 0;
   for (const partitionDir of await listDirectories(hostRoot)) {
     const file = join(partitionDir, 'snapshot-v1.json');
-    let parsed: unknown;
+    let source: LegacySource;
     try {
-      parsed = await readJson(file);
+      source = await readSource(file, 'host-snapshot');
     } catch (cause) {
       if ((cause as NodeJS.ErrnoException).code !== 'ENOENT') {
         unreadable.push({ file: labelOf(file), reason: (cause as Error).message });
@@ -292,23 +286,15 @@ async function readHostSnapshots(hostRoot: string): Promise<{ scan: SourceScan; 
       continue;
     }
     filesSeen += 1;
-    const items = asRecord(asRecord(parsed)?.state)?.items;
-    if (!Array.isArray(items)) continue;
-    const messages: RecordedMessage[] = [];
-    for (const raw of items) {
-      const item = asRecord(raw);
-      // `proposal` / `failure` / `task` / `artifact` 在新通路里是 custom entry
-      // （方案 §2.1 第二档），不是模型回复——回放影子只比模型回复，跳过它们。
-      if (item?.kind === 'user' && typeof item.text === 'string') messages.push({ role: 'user', text: item.text });
-      else if (item?.kind === 'assistant' && typeof item.text === 'string') {
-        messages.push({ role: 'assistant', parts: item.text ? [{ kind: 'text', text: item.text }] : [] });
-      }
+    for (const decoded of source.conversations) {
+      const messages = replayMessages(decoded);
+      if (messages.length === 0) continue;
+      conversations.push({
+        sourceKind: 'host-snapshot', projectLabel: labelOf(partitionDir),
+        conversationId: `${labelOf(partitionDir)}/${createHash('sha256').update(decoded.key).digest('hex').slice(0, 8)}`,
+        modifiedAt: await modifiedAtOf(file), messages,
+      });
     }
-    if (messages.length === 0) continue;
-    conversations.push({
-      sourceKind: 'host-snapshot', projectLabel: labelOf(partitionDir),
-      conversationId: `${labelOf(partitionDir)}/host`, modifiedAt: await modifiedAtOf(file), messages,
-    });
   }
   return {
     scan: {
@@ -317,6 +303,27 @@ async function readHostSnapshots(hostRoot: string): Promise<{ scan: SourceScan; 
     },
     conversations,
   };
+}
+
+/** Deliberately narrow replay view; migration consumes decoded raw items instead. */
+function replayMessages(decoded: LegacyConversation): RecordedMessage[] {
+  if (decoded.format === 'pi') return messagesOfPiEntries(decoded.items.map(item => item.raw));
+  const messages: RecordedMessage[] = [];
+  for (const { raw } of decoded.items) {
+    const item = asRecord(raw);
+    if (!item) continue;
+    if (decoded.format === 'ai-sdk') {
+      if (item.role === 'user') messages.push({ role: 'user', text: textOfUnknown(item.content) });
+      else if (item.role === 'assistant') messages.push({ role: 'assistant', parts: partsOfAiSdkAssistant(item.content) });
+      else if (item.role === 'tool') messages.push(...toolResultsOfAiSdk(item.content));
+    } else if (decoded.format === 'host') {
+      if (item.kind === 'user' && typeof item.text === 'string') messages.push({ role: 'user', text: item.text });
+      else if (item.kind === 'assistant' && typeof item.text === 'string') {
+        messages.push({ role: 'assistant', parts: item.text ? [{ kind: 'text', text: item.text }] : [] });
+      }
+    }
+  }
+  return messages;
 }
 
 export interface SourceRoots {

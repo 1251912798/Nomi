@@ -1,77 +1,63 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { EMPTY_LANE_PROJECTION } from './lane/laneClient'
 
-const runWorkbenchAgent = vi.fn(async (..._args: unknown[]) => ({
-  id: 'turn-a',
-  status: 'finished' as const,
-  text: 'ok',
-  toolCalls: [],
-  artifacts: [],
-  usage: { promptTokens: 0, completionTokens: 1, cachedPromptTokens: 0, totalTokens: 1 },
-  finishReason: 'stop' as const,
+const deps = vi.hoisted(() => ({ singleShot: vi.fn(), abort: vi.fn() }))
+vi.mock('./lane/laneClient', async (load) => ({
+  ...await load<typeof import('./lane/laneClient')>(),
+  laneClient: { singleShot: deps.singleShot, abortSingleShot: deps.abort },
 }))
+import { runSingleShotAgent } from './agentLoopMode'
 
-vi.mock('./workbenchAgentRunner', () => ({
-  runWorkbenchAgent: (...args: unknown[]) => runWorkbenchAgent(...args),
-}))
+const request = { featureKey: 'directions:p1', prompt: 'hi', displayPrompt: 'plan', projectId: 'p1', skillKey: 'direction' }
+beforeEach(() => {
+  vi.clearAllMocks()
+  deps.singleShot.mockResolvedValue({ ok: true, singleShot: { ...EMPTY_LANE_PROJECTION, parts: [
+    { kind: 'assistant-text', sequence: 1, entrySeq: 2, contentIndex: 0, text: 'result', streaming: false },
+  ] } })
+})
 
-import { runSingleShotAgent, AGENT_LOOP_MODE } from './agentLoopMode'
-
-afterEach(() => vi.clearAllMocks())
-
-describe('runSingleShotAgent', () => {
-  it('declares both loop modes', () => {
-    expect(AGENT_LOOP_MODE).toEqual({ singleShot: 'single-shot', multiTurn: 'multi-turn' })
+describe('single-shot requests', () => {
+  it('uses the isolated lane command without enqueuing on the user conversation', async () => {
+    const response = await runSingleShotAgent(request)
+    expect(deps.singleShot).toHaveBeenCalledWith(expect.objectContaining({
+      prompt: 'hi', projectId: 'p1', featureKey: 'directions:p1',
+      context: expect.objectContaining({ skillKey: 'direction', approvalPolicy: { mode: 'step', spend: 'confirm' } }),
+    }))
+    expect(response).toMatchObject({ status: 'finished', text: 'result', toolCalls: [] })
   })
 
-  it('routes one zero-tool ephemeral turn through ProjectAgentHost', async () => {
-    await runSingleShotAgent({
-      featureKey: 'nomi:production-directions:p1',
-      prompt: 'hi',
-      displayPrompt: 'plan direction',
-      projectId: 'p1',
-      skillKey: 'workbench.production.direction-planner',
-      skillName: 'direction planner',
+  it('preserves asset claims instead of accepting display URLs as authority', async () => {
+    await runSingleShotAgent({ ...request,
+      attachments: [{ url: 'nomi-local://frame', contentType: 'image/png', fileName: 'frame.png', kind: 'image' }],
+      attachmentClaims: [{ assetId: 'frame', version: 1 }],
     })
-    expect(runWorkbenchAgent).toHaveBeenCalledExactlyOnceWith({
-      prompt: 'hi',
-      displayPrompt: 'plan direction',
-      featureKey: 'nomi:production-directions:p1',
-      capability: 'single-shot',
-      projectId: 'p1',
-      skillKey: 'workbench.production.direction-planner',
-      skillName: 'direction planner',
-      mode: 'chat',
-    })
+    expect(deps.singleShot.mock.calls[0][0].context.attachments).toEqual([{ assetId: 'frame', version: 1 }])
+    expect(deps.singleShot.mock.calls[0][0]).not.toHaveProperty('attachments')
   })
 
-  it('omits an absent project id and forwards attachments', async () => {
-    const attachments = [{
-      url: 'nomi-local://x.png',
-      contentType: 'image/png',
-      fileName: 'shot-frame.png',
-      kind: 'image' as const,
-    }]
-    await runSingleShotAgent({
-      featureKey: 'nomi:shot-verify',
-      prompt: 'judge',
-      displayPrompt: 'judge',
-      skillKey: 'workbench.shot-verify',
-      skillName: 'shot verify',
-      attachments,
-    })
-    const input = runWorkbenchAgent.mock.calls[0]?.[0] as Record<string, unknown>
-    expect(input).not.toHaveProperty('projectId')
-    expect(input.attachments).toEqual(attachments)
+  it('does not turn a feature attribution into a requested installed skill', async () => {
+    const { skillKey: _skill, ...featureOnly } = request
+    await runSingleShotAgent(featureOnly)
+    expect(deps.singleShot.mock.calls[0][0].context).not.toHaveProperty('skillKey')
   })
 
-  it('returns the Host runner response unchanged', async () => {
-    runWorkbenchAgent.mockResolvedValueOnce({
-      id: 'turn-b', status: 'finished', text: 'candidate json', toolCalls: [], artifacts: [],
-      usage: { promptTokens: 2, completionTokens: 3, cachedPromptTokens: 0, totalTokens: 5 }, finishReason: 'stop',
-    })
-    const result = await runSingleShotAgent({
-      featureKey: 'k', prompt: 'p', displayPrompt: 'd', skillKey: 'sk', skillName: 'sn',
-    })
-    expect(result).toMatchObject({ id: 'turn-b', text: 'candidate json', usage: { totalTokens: 5 } })
+  it('preserves the main rejection for an explicitly requested missing skill', async () => {
+    deps.singleShot.mockResolvedValue({ ok: false, message: 'agent_skill_unavailable' })
+    await expect(runSingleShotAgent(request)).rejects.toThrow('agent_skill_unavailable')
+    expect(deps.singleShot).toHaveBeenCalledOnce()
+  })
+
+  it('rejects an explicit attachment that has no main-resolvable asset claim', async () => {
+    await expect(runSingleShotAgent({ ...request, attachments: [
+      { url: 'nomi-local://frame', contentType: 'image/png', fileName: 'frame.png', kind: 'image' },
+    ] })).rejects.toThrow('agent_attachment_claim_required')
+    expect(deps.singleShot).not.toHaveBeenCalled()
+  })
+
+  it('does not return a successful empty plan when the provider failed', async () => {
+    deps.singleShot.mockResolvedValue({ ok: true, singleShot: { ...EMPTY_LANE_PROJECTION, parts: [
+      { kind: 'error', sequence: 1, entrySeq: 2, contentIndex: 0, text: 'provider failed' },
+    ] } })
+    await expect(runSingleShotAgent(request)).rejects.toThrow('provider failed')
   })
 })

@@ -32,12 +32,7 @@
 // 两者不重叠：前者是形状，后者是组合。**不是**两个互不认识的验证器各判一遍
 // （那正是 #547 §2.2③「8 行报错只有 1 行是真的」的成因）。
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
-
-// `zodToJsonSchema` 的泛型签名会在 zod 的深层递归类型上把 tsc 顶爆
-// （TS2589 "Type instantiation is excessively deep"）。仓库里已有先例，
-// 同款处置：`mcpTransportSchemaFromZod.ts:29`。运行时行为一个字没变。
-const convertToJsonSchema = zodToJsonSchema as unknown as (schema: unknown, options: Record<string, unknown>) => unknown;
+import { toPublishedJsonSchema } from "./modelVisibleJsonSchema";
 
 import { modelFacingBranch } from "./jsonArgTolerance";
 
@@ -132,7 +127,7 @@ function inferDiscriminator(branches: readonly AnyBranch[]): string {
 
 /** 结构指纹与键序无关，否则「同一个 schema」会因为构造顺序不同被误判成冲突。 */
 function fingerprint(schema: z.ZodTypeAny): string {
-  return stableStringify(convertToJsonSchema(schema, { $refStrategy: "none", effectStrategy: "input" }));
+  return stableStringify(toPublishedJsonSchema(schema));
 }
 
 function stableStringify(value: unknown): string {
@@ -182,6 +177,8 @@ function discriminatorValue(branch: AnyBranch, discriminator: string): string {
 export interface FlattenOptions {
   /** 进报错用。它是这条信息里唯一能让人「知道去哪儿看」的东西。 */
   readonly name: string;
+  /** Explicit finite-enum publication union; canonical branch validation is retained unchanged. */
+  readonly mergeEnumFields?: readonly string[];
   /** 判别字段自己的说明。不给就用一句派生的。 */
   readonly discriminatorDescription?: string;
 }
@@ -215,7 +212,16 @@ export function flattenDiscriminatedUnion<T extends z.ZodTypeAny>(
         continue;
       }
       if (existing.print !== print) {
-        throw new ConflictingBranchField(options.name, field, [...existing.operations, values[index]]);
+        const left = existing.schema._def as { typeName?: string; values?: string[] };
+        const right = bare._def as { typeName?: string; values?: string[] };
+        if (options.mergeEnumFields?.includes(field)
+          && left.typeName === z.ZodFirstPartyTypeKind.ZodEnum && right.typeName === z.ZodFirstPartyTypeKind.ZodEnum
+          && left.values && right.values) {
+          existing.schema = z.enum([...new Set([...left.values, ...right.values])] as [string, ...string[]]);
+          existing.print = fingerprint(existing.schema);
+        } else {
+          throw new ConflictingBranchField(options.name, field, [...existing.operations, values[index]]);
+        }
       }
       existing.operations.push(values[index]);
     }
@@ -224,7 +230,7 @@ export function flattenDiscriminatedUnion<T extends z.ZodTypeAny>(
   const shape: z.ZodRawShape = {
     [discriminator]: z
       .enum(values as [string, ...string[]])
-      .describe(options.discriminatorDescription ?? `Which action to perform. Every other field is required by, or only meaningful to, specific values here.`),
+      .describe(options.discriminatorDescription ?? `Action; field annotations identify applicable values.`),
   };
   for (const [field, entry] of merged) {
     // 这个前缀不是装饰：扁平化把 N 张说明书合成了一张，模型必须知道「这个字段属于哪个

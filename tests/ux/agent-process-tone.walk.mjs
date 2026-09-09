@@ -19,8 +19,8 @@ try {
   await win.locator(DOCUMENT).click()
   const ask = '请读取两次文稿并核对'
   const calls = ['tone-read-1', 'tone-read-2']
-  const first = walk.fixture.expectText({ label: 'first read', match: body => flattenRequestText(body).includes(ask) && !hasToolResult(body, calls[0]), reply: { type: 'tool', id: calls[0], name: 'nomi_document_read', args: { scope: 'full' } } })
-  walk.fixture.expectText({ label: 'second read', match: body => hasToolResult(body, calls[0]) && !hasToolResult(body, calls[1]), reply: { type: 'tool', id: calls[1], name: 'nomi_document_read', args: { scope: 'full' } } })
+  const first = walk.fixture.expectText({ label: 'first read', match: body => flattenRequestText(body).includes(ask) && !hasToolResult(body, calls[0]), reply: { type: 'tool', id: calls[0], name: 'read_full_text', args: {} } })
+  walk.fixture.expectText({ label: 'second read', match: body => hasToolResult(body, calls[0]) && !hasToolResult(body, calls[1]), reply: { type: 'tool', id: calls[1], name: 'read_full_text', args: {} } })
   const done = walk.fixture.expectText({ label: 'comparison', match: body => hasToolResult(body, calls[1]), reply: { type: 'text', text: '已核对，两次读取的文稿一致。' } })
   await sendCreation(win, ask)
   await recorded(first.received, 'first document read')
@@ -78,7 +78,7 @@ try {
   // Independent entry: ungrouped receipt containing headings, bold and syntax colors.
   await win.locator(DOCUMENT).fill('# 核对标题\n\n**重点**\n\n```js\nconst scene = "山"\n```')
   const formatAsk = '请再读取文稿并核对格式'
-  const formatRead = walk.fixture.expectText({ label: 'formatted document read', match: body => flattenRequestText(body).includes(formatAsk) && !hasToolResult(body, 'tone-format'), reply: { type: 'tool', id: 'tone-format', name: 'nomi_document_read', args: { scope: 'full' } } })
+  const formatRead = walk.fixture.expectText({ label: 'formatted document read', match: body => flattenRequestText(body).includes(formatAsk) && !hasToolResult(body, 'tone-format'), reply: { type: 'tool', id: 'tone-format', name: 'read_full_text', args: {} } })
   const formatDone = walk.fixture.expectText({ label: 'format answer', match: body => hasToolResult(body, 'tone-format'), reply: { type: 'text', text: '格式核对完成。' } })
   await sendCreation(win, formatAsk)
   await recorded(formatRead.received, 'formatted document read')

@@ -1,3 +1,4 @@
+import { require as tsxRequire } from 'tsx/cjs/api'
 import { execFileSync, spawnSync } from 'node:child_process'
 import fs from 'node:fs'
 import http from 'node:http'
@@ -91,7 +92,7 @@ export function encryptFixtureKey(userDataDir) {
 }
 
 export function writeFakeApimartCatalog(settingsDir, userDataDir, _origin = '', { withKey = true } = {}) {
-  const { applyBuiltinSeeds } = require(path.join(repoRoot, 'dist-electron/catalog/seedBuiltins.js'))
+  const { applyBuiltinSeeds } = tsxRequire('../../electron/catalog/seedBuiltins.ts', import.meta.url)
   const seeded = applyBuiltinSeeds({ version: currentCatalogVersion(), vendors: [], models: [], mappings: [], apiKeysByVendor: {} }, new Date().toISOString()).state
   const encrypted = encryptFixtureKey(userDataDir)
   const models = seeded.models.map((model) => model.vendorKey === 'apimart' && model.kind === 'video'

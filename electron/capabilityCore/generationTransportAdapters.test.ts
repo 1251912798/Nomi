@@ -4,7 +4,7 @@ import type { RuntimeToolCall } from "../shared/agentCapabilities/transportContr
 import type { ProjectBinding } from "../shared/projectBinding";
 import type { ProjectLeaseV2 } from "./projectLease";
 import { createPiGenerationTransportAdapter } from "./generationTransportAdapters";
-import { generationPlanInputSchema } from "../harness/tools/modelToolSurfaceManifest";
+import { generationPlanInputSchema } from "../shared/agentCapabilities/generationPlanSchemas";
 import { GENERATION_RESOLVE_CAPABILITY } from "../shared/agentCapabilities/generation";
 import type { ApprovalReceiptAuthority } from "./approvalReceipt";
 

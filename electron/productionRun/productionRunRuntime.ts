@@ -11,8 +11,21 @@ import {
 } from './productionRunE2eFixture'
 import { readAutomationPolicySettings } from '../settings/automationPolicySettings'
 import { createProductionNotificationsListener } from './productionNotificationsDesktop'
+import type { ProductionRun, RunEvent } from './productionRunTypes'
 
 let shared: ProductionRunService | null = null
+const listeners = new Set<(run: ProductionRun) => void>()
+export function subscribeProductionRunChanges(listener: (run: ProductionRun) => void): () => void {
+  listeners.add(listener)
+  return () => { listeners.delete(listener) }
+}
+function productionEvents() {
+  const notify = createProductionNotificationsListener()
+  return (events: RunEvent[], run: ProductionRun) => {
+    notify(events, run)
+    for (const listener of listeners) listener(run)
+  }
+}
 
 /** One in-process control plane for MCP, RPC, IPC and recovery. The repository remains the durable source of truth. */
 export function getProductionRunService(): ProductionRunService {
@@ -23,7 +36,7 @@ export function getProductionRunService(): ProductionRunService {
       const recoverIncompletePolicy = process.env.NOMI_E2E_PRODUCTION_MISSING_POLICY === '1'
       shared = createProductionRunService({
         projectRootResolver,
-        onEvents: createProductionNotificationsListener(),
+        onEvents: productionEvents(),
         requestRenderer: createProductionRunE2eRenderer({ projectRootResolver }),
         policyResolver: () => {
           if (recoverIncompletePolicy) {
@@ -50,7 +63,7 @@ export function getProductionRunService(): ProductionRunService {
         },
       })
     } else {
-      shared = createProductionRunService({ onEvents: createProductionNotificationsListener() })
+      shared = createProductionRunService({ onEvents: productionEvents() })
     }
   }
   return shared

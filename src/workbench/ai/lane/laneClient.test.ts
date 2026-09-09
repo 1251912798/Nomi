@@ -2,15 +2,16 @@
 import { describe, expect, it, vi } from 'vitest'
 
 import type {
-  LaneCommand, LaneProjection, LaneWorkspaceProjection,
+  LaneProjection, LaneWorkspaceProjection,
 } from '../../../../electron/shared/agentLane/laneContracts'
+import type { LaneDesktopCommand } from '../../../../electron/shared/agentLane/laneDesktopContracts'
 import {
   EMPTY_LANE_PROJECTION, EMPTY_LANE_WORKSPACE, createLaneClient, resolveLaneBridge, type LaneBridge,
 } from './laneClient'
 
 function fakeBridge() {
   const listeners = new Set<(projection: LaneWorkspaceProjection) => void>()
-  const sent: LaneCommand[] = []
+  const sent: LaneDesktopCommand[] = []
   const bridge: LaneBridge = {
     onProjection: (listener) => { listeners.add(listener); return () => { listeners.delete(listener) } },
     send: async (command) => { sent.push(command); return { ok: true } },
@@ -43,8 +44,23 @@ const projection = (text: string): LaneProjection => ({
 })
 
 describe('laneClient', () => {
-  it('is unreachable in this build — that is the shadow period, not a bug', () => {
-    // preload 没暴露 `agentLane`，`main.ts` 也没注册那两条通道（规则 O6）。
+  it('does not acknowledge release or discard the owner when main rejects close', async () => {
+    const binding = { projectId: 'p', immutableProjectUuid: 'u', projectGeneration: 1 }
+    const bridge = fakeBridge().bridge
+    bridge.send = vi.fn().mockResolvedValueOnce({ ok: true, workspaceId: 'w' })
+      .mockResolvedValueOnce({ ok: false, code: 'agent_lane_execute_failed', message: 'storage close failed' })
+      .mockResolvedValueOnce({ ok: true })
+    const client = createLaneClient(bridge)
+    await client.open(binding)
+    await expect(client.close()).rejects.toThrow('storage close failed')
+    expect(client.context()?.subscriptionId).toBe('w')
+    await client.close()
+    expect(client.context()).toBeNull()
+    expect(bridge.send).toHaveBeenLastCalledWith({ kind: 'workspace-close', workspaceId: 'w' })
+  })
+
+  it('has no desktop bridge in a plain browser without Electron preload', () => {
+    // 普通浏览器没有 Electron preload，实验室通过参数注入桥。
     expect(resolveLaneBridge({})).toBeUndefined()
     expect(resolveLaneBridge({ nomiDesktop: {} })).toBeUndefined()
     expect(resolveLaneBridge(undefined)).toBeUndefined()
@@ -121,7 +137,7 @@ describe('laneClient', () => {
     await client.say('横屏')
     await client.say('横屏', 'secondary')
 
-    // ③ 有卡在等：默认 = 「不要」+ 这句话当 reason（**不是**排队），次选才是排队。
+    // ③ 有卡在等：默认 steer 交宿主解除等待，次级选择才 follow-up。
     push(workspace({
       ...projection('waiting'), running: true,
       pending: { toolCallId: 'call-9', toolName: 'write_document', args: {}, grantable: false, pendingCount: 1 },
@@ -133,8 +149,8 @@ describe('laneClient', () => {
       { kind: 'prompt', text: '横屏' },
       { kind: 'steer', text: '横屏' },
       { kind: 'follow-up', text: '横屏' },
-      { kind: 'approval', toolCallId: 'call-9', action: 'deny', reason: '横屏' },
       { kind: 'steer', text: '横屏' },
+      { kind: 'follow-up', text: '横屏' },
     ])
   })
 
@@ -198,9 +214,9 @@ describe('laneClient', () => {
   it('按停止时没送出去的话原样交回调用方——它要回到输入框，不是被丢掉', async () => {
     const client = createLaneClient({
       onProjection: () => () => {},
-      send: async () => ({ ok: true, restoredInput: ['不对，横屏'] }),
+      send: async () => ({ ok: true, restoredInput: [{ text: '不对，横屏' }] }),
     })
     const result = await client.abort()
-    expect(result).toEqual({ ok: true, restoredInput: ['不对，横屏'] })
+    expect(result).toEqual({ ok: true, restoredInput: [{ text: '不对，横屏' }] })
   })
 })

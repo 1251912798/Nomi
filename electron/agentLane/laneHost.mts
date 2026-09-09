@@ -1,3 +1,9 @@
+import { capabilityContractById } from '../shared/agentCapabilities/registry.js';
+import { modelToolCapabilityId } from '../shared/agentCapabilities/modelFacingTools.js';
+import type { LaneComposerContext } from '../shared/agentLane/laneDesktopContracts.js';
+import { LANE_CODING_TOOL_NAMES } from './laneCodingTools.mjs';
+import { LANE_LEGACY_NOTE, LANE_LEGACY_TOOLS_NOTE, laneLegacyFacts } from '../shared/agentLane/laneLegacyNote.js';
+import { findLaneReceiptAuthority } from './laneReceiptAuthority.mjs';
 // Agent lane · 主进程宿主（**薄**）
 //
 // 它只做三件事，方案 §2.1 ⑤ 写死的那三件：
@@ -12,6 +18,11 @@
 // 「不重试」说的是不写重试循环：`LANE_RETRY_POLICY` 是**配置**，退避、事件、状态全是 pi 的。
 //
 // 对照今天的宿主：`electron/projectAgentHost/` 是 52 个生产文件、9 688 行。
+import { configureLaneContextBudget, laneCompactionSettings } from './laneContextBudget.mjs';
+import { formatLaneModelIndex } from './laneModelContext.js';
+import { convertToLlm } from '@earendil-works/pi-agent-core';
+import { draftInputFromMessage, isLaneInputMessage } from '../shared/agentLane/laneInputMessage.js';
+import type { LaneInputMessage } from '../shared/agentLane/laneDesktopContracts.js';
 import { AgentHarness, reduceLaneSnapshot, type AgentLane, type LaneSnapshot } from '@earendil-works/pi-agent-core';
 import { BACKGROUND_CONTEXT, type Context } from '@earendil-works/pi-agent-core/harness/context';
 import { createModels, getSupportedThinkingLevels } from '@earendil-works/pi-ai';
@@ -28,6 +39,10 @@ import { loadPiSkillFormatter, renderLaneSkillSection } from './laneSkillIndex.m
 import { openLaneSession } from './laneSession.mjs';
 import { createLaneTools } from './laneTools.mjs';
 import { projectLaneSnapshot, type LaneModelFacts } from '../shared/agentLane/laneProjection.js';
+import { openLaneNativeDesktop } from './laneNativeDesktop.mjs';
+import { LANE_DEFERRED_TOOL_GROUPS } from './laneToolCatalog.js';
+import { laneSkillUnlockReason } from './laneSkillIndex.mjs';
+import { appendLaneContinuation, laneContinuationText } from './laneContinuation.mjs';
 
 /** 阶段 1 的观测：pi 每个 delta 自报的 `contentIndex`，与我们从 content 数组下标推出来的那个。 */
 export interface LaneOrderObservation {
@@ -126,17 +141,6 @@ function interruptedToolCallIds(snapshot: LaneSnapshot): string[] {
   return [...called];
 }
 
-/** `AbortResult.steer` 里那条消息的纯文本。拿不出文本的（图片等）不编一个占位串。 */
-function textOfMessage(message: { role: string; content?: unknown }): string[] {
-  if (!Array.isArray(message.content)) return typeof message.content === 'string' ? [message.content] : [];
-  const text = message.content
-    .filter((part): part is { type: 'text'; text: string } =>
-      !!part && typeof part === 'object' && (part as { type?: unknown }).type === 'text')
-    .map((part) => part.text)
-    .join('');
-  return text ? [text] : [];
-}
-
 const PART_TYPE_BY_EVENT: Readonly<Record<string, string>> = {
   text_start: 'text', text_delta: 'text', text_end: 'text',
   thinking_start: 'thinking', thinking_delta: 'thinking', thinking_end: 'thinking',
@@ -147,22 +151,32 @@ export const openLane: OpenLane = async (options: OpenLaneOptions): Promise<Lane
   const context: Context = BACKGROUND_CONTEXT;
   const laneName = options.laneName ?? 'main';
   const { session, sessionId, release } = await openLaneSession({ ...options, laneName }, context);
+  let native: Awaited<ReturnType<typeof openLaneNativeDesktop>> | undefined;
   // 会话一旦打开，这个进程就是它**唯一**的持有者。装配到一半失败（模型配置写错、
   // 工具名重复、schema 门岗报红）而不交还持有权，用户下一次打开同一条历史会撞上
   // 「已经有人开着」——而那个人是一个早就失败退出的调用。
   try {
     return await assemble();
   } catch (cause) {
-    await session.close(context).catch(() => undefined);
-    await release(context);
+    try { await native?.close(); }
+    finally {
+      await session.close(context).catch(() => undefined);
+      await release(context);
+    }
     throw cause;
   }
 
   async function assemble(): Promise<LaneHandleWithObservations> {
+  if (options.native) native = await openLaneNativeDesktop({ projectDir: options.projectDir,
+    ...options.native, deferredGroups: LANE_DEFERRED_TOOL_GROUPS.map(group => ({ ...group,
+      toolNames: group.toolNames.filter(name => options.tools.some(tool => tool.name === name)),
+    })).filter(group => group.toolNames.length > 0),
+    availableModels: () => snapshot.transcript.flatMap(entry => entry.type === 'message' && isLaneInputMessage(entry.message) ? [entry.message.context.availableModels ?? []] : []).at(-1) ?? [],
+  });
   // 看门狗装在 provider 的流上，所以**每一次**模型请求都带着它——包括压缩与分支摘要那两次
   // （它们走 `streamSimple`，只用 `result()`）。装在别处就会漏掉那两条路，而它们卡住的样子
   // 和主请求卡住一模一样。
-  const { provider, model, credentials, pricingBasis } = await createNomiProvider(options.model, {
+  const { provider, model, credentials, pricingBasis } = await createNomiProvider(options.model, options.fetch, {
     firstResponseMs: options.watchdog?.firstResponseMs ?? LANE_FIRST_RESPONSE_MS,
     idleMs: options.watchdog?.idleMs ?? LANE_IDLE_MS,
   });
@@ -177,19 +191,40 @@ export const openLane: OpenLane = async (options: OpenLaneOptions): Promise<Lane
     ...(options.model.contextWindow === undefined ? {} : { contextWindow: options.model.contextWindow }) };
   const models = createModels({ credentials });
   models.setProvider(provider);
-  const tools = createLaneTools(options.tools);
+  const tools = [...createLaneTools(options.tools), ...(native?.tools ?? [])];
+  const activeToolNames = native?.activeToolNames() ?? tools.map((tool) => tool.name);
   // `Available tools` / `Guidelines` 两段由宿主拼，不靠调用方记得（G-03 的后一半）。
   // 2026-09-07 合并评审实核：`composeLaneSystemPrompt` 此前零生产调用者——通道②③写满了，
   // 一个字都到不了模型。拼接点放在这里，是因为这里是唯一知道「这条 lane 装了哪些工具」的地方。
   // 技能索引那一段用 pi 的 `formatSkillsForPrompt` 渲染（`laneSkillIndex.mts` 里一行渲染代码都没有）。
   // 没有技能时不去 import 那个包：一条 lane 不该为了拿一个空串付一次 ESM 解析。
-  const skillSection = (options.skills?.length ?? 0) > 0
-    ? renderLaneSkillSection(await loadPiSkillFormatter(), options.skills ?? [])
+  const skills = native?.skills ?? options.skills ?? [];
+  const skillSection = skills.length > 0
+    ? renderLaneSkillSection(await loadPiSkillFormatter(), skills)
     : '';
-  const systemPrompt = composeLaneSystemPrompt(options.systemPrompt, options.tools, skillSection);
+  const promptTools = [...options.tools, ...(native?.promptTools ?? [])];
+  const systemPrompt = composeLaneSystemPrompt(options.systemPrompt, promptTools, skillSection);
   const { harness } = await AgentHarness.create<undefined>({
     session, models, model, systemPrompt, tools,
-    activeToolNames: tools.map((tool) => tool.name),
+    compaction: laneCompactionSettings(model.contextWindow, options.limits?.contextTokenBudget),
+    toProviderMessages: async (messages) => convertToLlm(await Promise.all(messages.map(async (message, index) => {
+      // pi's AJV preparation failures are immediate results, before after_tool.
+      // Enrich the model projection without revalidating or changing its recorded arguments.
+      if (message.role === 'toolResult' && message.isError
+        && message.content.some(part => part.type === 'text' && /additional properties/.test(part.text))) {
+        const example = options.tools.find(tool => tool.name === message.toolName)?.examples[0];
+        if (example) return { ...message, content: [...message.content,
+          { type: 'text' as const, text: '应长这样：' + JSON.stringify(example.arguments) }] };
+      }
+      if (!isLaneInputMessage(message)) return message;
+      if (!options.input) throw new Error('This lane cannot resolve its recorded input context.');
+      const content = await options.input.providerContent(message, messages.slice(0, index).reverse().find(isLaneInputMessage)?.context);
+      const reference = message.context.continueFromEntryId;
+      return { role: 'user' as const, content: reference === undefined ? content
+        : appendLaneContinuation(content, laneContinuationText(await session.getEntry(reference, context))),
+      timestamp: message.timestamp };
+    }))),
+    activeToolNames: [...activeToolNames],
     toolExecution: 'sequential',
     // **一次只吃一句**（G-24）。pi 的默认是 `"all"`（`harness/runtime/harness.js:44-45`）：
     // 用户连打三句，下一次模型请求会把三句**一起**注入同一轮。在写码场景那是效率；
@@ -201,7 +236,36 @@ export const openLane: OpenLane = async (options: OpenLaneOptions): Promise<Lane
     retry: { ...LANE_RETRY_POLICY },
     entryProjectors: uiOnlyProjectors(LANE_APPROVAL_NOTE_TYPE, LANE_TASK_NOTE_TYPE),
   }, context);
+  await configureLaneContextBudget({ harness, models, model, context, options });
   const lane: AgentLane = await harness.lane(laneName, context);
+  // Constructor model only seeds new lanes; restored configuration still holds
+  // the previous selection. Bind Nomi's explicit selection through the public
+  // API while retaining pi's persisted active tools (including addedToolNames).
+  // Same-model opens are read-only: a redundant commit changes list ordering.
+  const currentModel = await lane.getModel(context);
+  if (currentModel?.provider !== model.provider || currentModel?.id !== model.id) {
+    await lane.setModel({ provider: model.provider, modelId: model.id }, context);
+  }
+  const legacySource = (await lane.findEntries({ type: 'custom', customType: LANE_LEGACY_NOTE, limit: 1 }, context))[0];
+  if (legacySource?.type === 'custom' && laneLegacyFacts(legacySource.data)
+    && !(await lane.findEntries({ type: 'custom', customType: LANE_LEGACY_TOOLS_NOTE, limit: 1 }, context)).length) {
+    // Import seeds no tools. Initialize only once through the public API; later
+    // opens must retain the user's selected group and pi's addedToolNames.
+    await lane.setActiveTools([...activeToolNames], context);
+    await lane.appendCustomEntry(LANE_LEGACY_TOOLS_NOTE, { version: 1 }, context);
+  }
+  // Upgrade old menus once, preserving explicit coding access before schemas become resident.
+  if (native) {
+    const resident = native.activeToolNames();
+    const restored = await lane.getActiveTools(context);
+    native.bindActiveTools(lane);
+    if (resident.some(name => !restored.includes(name)) && LANE_CODING_TOOL_NAMES.every(name => restored.includes(name))) {
+      await native.unlockCoding(context);
+    }
+    if (resident.some(name => !restored.includes(name))) {
+      await lane.setActiveTools([...resident, ...restored.filter(name => !resident.includes(name))], context);
+    }
+  }
 
   // 投影先立起来，闸才挂得上去：「它在等你」这一段**不在 pi 的快照里**（停在预检里的
   // 调用不在 `runningTools`，`operation.status` 只会写 `open`——探针 §2.1），所以它由
@@ -229,6 +293,7 @@ export const openLane: OpenLane = async (options: OpenLaneOptions): Promise<Lane
     ? createLaneApprovalGate({
         specs: options.tools,
         hasUserInterface: approval.hasUserInterface,
+        resolveSubject: (request) => native?.resolveApprovalSubject(request) ?? approval.resolveSubject?.(request),
         ...(approval.policy ? { policy: approval.policy } : {}),
         ...(approval.workMode ? { workMode: approval.workMode } : {}),
         // 重启后 pi 会对停在预检里的调用**再问一次** `before_tool`（探针 ③）。
@@ -239,6 +304,7 @@ export const openLane: OpenLane = async (options: OpenLaneOptions): Promise<Lane
         onPendingChange: (next) => { pending = next; publish(); },
       })
     : undefined;
+  const directlyApplied = new Set<string>();
   const maxModelRequests = options.limits?.maxModelRequests ?? LANE_MAX_MODEL_REQUESTS;
   // 计数按 **run** 走，不按 lane 走：上限说的是「这一轮」，一条 lane 活一整天。
   const requests = { runId: '', count: 0 };
@@ -256,6 +322,26 @@ export const openLane: OpenLane = async (options: OpenLaneOptions): Promise<Lane
     return undefined;
   });
 
+  harness.hooks.on('before_payload', (event) => options.input
+    ? { payload: options.input.rewritePayload(event.payload, event.model.api) } : undefined);
+
+  let consumedContext: LaneComposerContext | undefined;
+  harness.hooks.on('transform_context', async (event) => {
+    const input = [...event.messages].reverse().find(isLaneInputMessage);
+    consumedContext = input?.context;
+    if (input && options.input) options.input.activate(input.context);
+    const catalogBase = event.messages.find(isLaneInputMessage);
+    const authority = gate ? tools.filter(tool => options.tools.some(spec => spec.name === tool.name))
+      .flatMap(tool => {
+        const operation = (tool.parameters as unknown as { properties?: Record<string, { enum?: unknown[] }> }).properties?.operation;
+        const operations = operation?.enum?.filter((value): value is string => typeof value === 'string') ?? [undefined];
+        return operations.map(value => `- ${tool.name}${value ? `.${value}` : ''}: ${gate.describe({
+          toolCallId: '', toolName: tool.name, args: value ? { operation: value } : {},
+        })}`);
+      }).join('\n') : '';
+    return { systemPrompt: [systemPrompt, catalogBase ? formatLaneModelIndex(catalogBase.context) : '', input?.context.systemPrompt, authority].filter(Boolean).join('\n\n') };
+  });
+
   harness.hooks.on('before_tool', async (event, hookContext) => {
     // ① 回合上限。**模型看到的是一句人话，不是一个 `step-limit` 错误码**——它还有机会
     // 用这一步把结论说出来，而错误码只会让这一轮以「失败」收场，尽管活已经干了大半。
@@ -264,12 +350,26 @@ export const openLane: OpenLane = async (options: OpenLaneOptions): Promise<Lane
         `This turn has reached its ${maxModelRequests}-model-request limit, so no further tool call will run. `
         + 'State your conclusion and what is still undone, in text, now.' } };
     }
+    // Destructive actions require their own surface, even with approval. Reversible
+    // workflows may intentionally cross surfaces (e.g. planning a storyboard from a document).
+    // Use the consumed input (also on replay), not capture(): that may be a queued draft.
+    const spec = options.tools.find(tool => tool.name === event.toolName);
+    const contract = spec ? capabilityContractById(modelToolCapabilityId(spec, event.args)) : undefined;
+    if (options.input && contract?.effect === 'destructive' && contract.execution.availability === 'renderer_required'
+      && consumedContext?.target?.kind !== contract.targetKind) {
+      return { block: { reason: `surface_authority_denied: This action requires the ${contract.targetKind} surface. `
+        + 'Ask the user to switch to that surface and send the action again; approval cannot grant another surface.' } };
+    }
+    const accessDenial = await native?.toolAccessDenial(event.toolName);
+    if (accessDenial) return { block: { reason: accessDenial } };
+    await options.toolLifecycle?.prepare(event, hookContext.abortSignal ?? new AbortController().signal);
     // ② 闸。上限先判：到了上限就没有「问用户要不要放行」这回事了。
     if (gate) {
       const outcome = await gate.preflight(
         { toolCallId: event.toolCallId, toolName: event.toolName, args: event.args },
         hookContext.abortSignal,
       );
+      if (outcome.allow && outcome.decision === 'auto-granted' && outcome.undoable) directlyApplied.add(event.toolCallId);
       // 宿主领域记录骑在**同一条**转录上，按 `toolCallId` join，永不复制工具正文
       // （方案 §7 岔路 2 = B，2026-09-07 用户拍板）。等待本身**不写**——它不是发生了的事。
       //
@@ -310,10 +410,15 @@ export const openLane: OpenLane = async (options: OpenLaneOptions): Promise<Lane
         + 'Do not send it again. Either take a different route — a different tool, a narrower scope, '
         + 'values re-read from the current state — or tell the user plainly that this cannot be done.' } };
     }
+    await options.toolLifecycle?.approved(event, async (type, data) => {
+      await lane.appendCustomEntry(type, data, hookContext);
+    });
     return undefined;
   });
 
   harness.hooks.on('after_tool', (event) => {
+    options.toolLifecycle?.settled(event);
+    const appliedDirectly = directlyApplied.delete(event.toolCallId);
     // 「同一个失败」按**工具名 + 失败正文首行**认。为什么是首行：`renderLaneToolFailure`
     // 把 `code` 留给了 UI 分档、没写进正文（那是刻意的，`[error] E_DENIED` 对模型等于没说），
     // 而首行正是那句「哪里错、期望什么」——同一堵墙每次都给同一句。
@@ -322,8 +427,20 @@ export const openLane: OpenLane = async (options: OpenLaneOptions): Promise<Lane
     // 「连续」的定义就在这一行：任何一条别的结果——成功了，或者换了一堵墙——都把计数清掉。
     if (key !== failures.key) { failures.key = key; failures.count = key ? 1 : 0; }
     else if (key) failures.count += 1;
-    return undefined;
+    return appliedDirectly && !event.isError
+      ? { content: [...event.content, { type: 'text', text: '\nApplied directly (undoable)' }] } : undefined;
   });
+
+  function inputMessage(text: string): string | LaneInputMessage {
+    if (!options.input) return text;
+    const captured = structuredClone(options.input.capture());
+    // Validate the actual selected branch before pi persists or acknowledges any input.
+    // An older stopped card on this branch remains selectable; IDs from other lanes do not.
+    if (captured.continueFromEntryId !== undefined) {
+      laneContinuationText(snapshot.transcript.find((entry) => entry.id === captured.continueFromEntryId));
+    }
+    return { role: 'nomi.input', content: text, timestamp: Date.now(), context: captured };
+  }
 
   const observations: LaneOrderObservation[] = [];
   const stopObserving = harness.events.on('message_update', (event) => {
@@ -359,6 +476,7 @@ export const openLane: OpenLane = async (options: OpenLaneOptions): Promise<Lane
   let closing: Promise<void> | undefined;
   return {
     laneName, sessionId,
+    receiptAuthority: (proposalId) => findLaneReceiptAuthority(snapshot, proposalId),
     projection: () => projection,
     subscribe: (listener) => {
       listeners.add(listener);
@@ -373,28 +491,50 @@ export const openLane: OpenLane = async (options: OpenLaneOptions): Promise<Lane
     // 领域说它那边的任务变了。转录一个字没动，卡却该换个样子——这正是「引用而不复制」
     // 想要的效果，代价就是需要有人来说这一句。
     refreshTasks: () => publish(),
-    execute: async (command: LaneCommand): Promise<LaneCommandOutcome> => {
-      if (command.kind === 'prompt') {
-        await lane.prompt(command.text, undefined, context);
+    execute: async (command: LaneCommand, executionOptions): Promise<LaneCommandOutcome> => {
+      if (command.kind === 'prompt' && !projection.running && !pending) {
+        const message = inputMessage(command.text);
+        const unlock = typeof message !== 'string' ? laneSkillUnlockReason(skills, [message.context.skillKey ?? '']) : null;
+        if (native && unlock) {
+          await native.unlockCoding(context);
+        }
+        // pi's public admission boundary persists the input before acknowledging the composer.
+        // The same accepted operation then drives to settlement for every caller, including tests.
+        const request = typeof message === 'string'
+          ? { kind: 'prompt' as const, prompt: message } : { kind: 'prompt' as const, prompt: message };
+        const admission = await lane.accept(request, context);
+        if (!admission.ok) throw new Error(admission.error._tag);
+        executionOptions?.onAccepted?.();
+        const result = await lane.drive({ operationId: admission.value.operationId, waitForRetry: true }, context);
+        if (!result.ok) throw new Error(result.error._tag);
         return {};
       }
       // 插话两条。**回值带 pi 铸的 `entryId`**：没有它，用户点「撤回」时面板只能靠
       // 「队里最后那条」去猜，而队列随时会被消费——猜出来的那条可能是别人的话。
-      if (command.kind === 'steer' || command.kind === 'follow-up') {
-        const queued = command.kind === 'steer'
-          ? await lane.steer(command.text, undefined, context)
-          : await lane.followUp(command.text, undefined, context);
+      if (command.kind === 'steer' || command.kind === 'follow-up' || command.kind === 'prompt') {
+        const steering = command.kind !== 'follow-up';
+        const queued = steering
+          ? await lane.steer(inputMessage(command.text), undefined, context)
+          : await lane.followUp(inputMessage(command.text), undefined, context);
         // 错误只报 `_tag`（`Closed` / `InvalidMessage`），不报 `message`：那句话是 pi 写给
         // 开发者的，直接弹给用户等于把内部词表当文案用。人话在调用方按 `_tag` 选。
         if (!queued.ok) throw new Error(`This agent lane refused the message: ${queued.error._tag}`);
+        // Persist steering first: settling the card can immediately resume the drive.
+        if (steering) {
+          while (gate?.pending()) gate.answer(gate.pending()!.toolCallId, 'deny', 'The user interrupted this unapproved action. It did not run; follow the new user message.');
+        }
+        executionOptions?.onAccepted?.();
         return { queuedEntryId: queued.value.entryId };
       }
       // 撤回一条排队的话。**三态原样交出去**，不折成一个布尔：`already_consumed`
       // （刚被吃进去了）和 `cancelled`（没送出去）在用户那里是两件相反的事。
       if (command.kind === 'cancel-queued') {
+        const queued = snapshot.queues.find((item) => item.entryId === command.entryId && item.kind !== 'write');
         const cancelled = await lane.cancelQueued(command.entryId, context);
         if (!cancelled.ok) throw new Error(`This agent lane could not cancel that message: ${cancelled.error._tag}`);
-        return { cancelQueued: cancelled.value.kind as LaneCancelQueuedResult };
+        return { cancelQueued: cancelled.value.kind as LaneCancelQueuedResult,
+          ...(cancelled.value.kind === 'cancelled' && queued?.type === 'message'
+            ? { restoredInput: [draftInputFromMessage(queued.message)] } : {}) };
       }
       // lane 的增删切在 `laneWorkspace` 那一层：它才知道这个项目里还有哪些对话。
       // 一条 lane 的宿主对隔壁一无所知，**这是它该有的样子**——知道了就会长出第二个所有者。
@@ -416,27 +556,31 @@ export const openLane: OpenLane = async (options: OpenLaneOptions): Promise<Lane
       gate?.cancelAll('stopped');
       const aborted = await lane.abort(context);
       await flushApprovalNotes();
-      // 用户按停止的那一刻，他刚打进去还没送出的话不能丢（`AbortResult.steer`，
-      // `lane.js:799-808`；TUI 的 `restoreQueuedMessagesToEditor` 就是这么做的）。
-      const restoredInput = aborted.ok ? aborted.value.steer.flatMap(textOfMessage) : [];
+      // pi returns both unconsumed queues with their original nomi.input context.
+      const restoredInput = aborted.ok ? [...aborted.value.steer, ...aborted.value.followUp].map(draftInputFromMessage) : [];
       return restoredInput.length > 0 ? { restoredInput } : {};
     },
     close: () => closing ??= (async () => {
       // 关窗 / 切项目：等待中的卡以 `cancelled{cause:'window-closed'}` 收尾，**记录先落盘**。
       // 顺序反过来就没得写了——`harness.close()` 之后这条 lane 再也 append 不进任何东西，
       // 用户重开这条对话会看到一个永远停在「在等你」的幽灵。
-      if (gate?.pending()) {
-        gate.cancelAll('window-closed');
-        await lane.abort(context).catch(() => undefined);
-        await flushApprovalNotes();
+      try {
+        if (gate?.pending()) {
+          gate.cancelAll('window-closed');
+          await lane.abort(context).catch(() => undefined);
+          await flushApprovalNotes();
+        }
+      } finally {
+        stopObserving();
+        watch.unsubscribe();
+        listeners.clear();
+        try { await harness.close(context); }
+        finally {
+          try { await native?.close(); }
+          // The repository is shared by project; return this handle's ownership even after cleanup failure.
+          finally { await release(context); }
+        }
       }
-      stopObserving();
-      watch.unsubscribe();
-      listeners.clear();
-      await harness.close(context);
-      // repo 是**按项目共享的**（`laneSession.mts`：pi 的单打开者名单只有一张才拦得住 #8852），
-      // 所以这里交还持有权，而不是替别的 lane 把它关掉。
-      await release(context);
     })(),
   };
   }

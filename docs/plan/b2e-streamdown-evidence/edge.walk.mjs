@@ -39,8 +39,8 @@ for(const theme of ['light','dark']){
   await newConversation(win,CREATION_PANEL)
   await win.locator(DOCUMENT).fill(Array.from({length:16},(_,i)=>`- 核对第 ${i+1} 镜的光线和道具连续性。`).join('\n'))
   const proc='EDGE_'+theme+'_12-process'
-  const p1=walk.fixture.expectText({label:proc,match:b=>flattenRequestText(b).includes(proc),reply:{type:'tool',id:proc+'a',name:'nomi_document_read',args:{scope:'full'},text:'**检查步骤**\n\n- 先读当前文稿。\n- 再核对镜头编号。\n\n'}})
-  const p2=walk.fixture.expectText({label:proc+'2',match:b=>hasToolResult(b,proc+'a'),reply:{type:'tool',id:proc+'b',name:'nomi_document_read',args:{scope:'full'},text:'| 检查项 | 结果 |\n| --- | --- |\n| 文稿 | 已读取 |\n\n'}})
+  const p1=walk.fixture.expectText({label:proc,match:b=>flattenRequestText(b).includes(proc),reply:{type:'tool',id:proc+'a',name:'read_full_text',args:{},text:'**检查步骤**\n\n- 先读当前文稿。\n- 再核对镜头编号。\n\n'}})
+  const p2=walk.fixture.expectText({label:proc+'2',match:b=>hasToolResult(b,proc+'a'),reply:{type:'tool',id:proc+'b',name:'read_full_text',args:{},text:'| 检查项 | 结果 |\n| --- | --- |\n| 文稿 | 已读取 |\n\n'}})
   const p3=walk.fixture.expectText({label:proc+'3',match:b=>hasToolResult(b,proc+'b'),reply:{type:'text',text:'两次检查完成，未修改文稿。'}})
   await sendCreation(win,proc+' 请读取两次文稿并核对。');await recorded(p1.received,proc);await recorded(p2.received,proc+'2');await recorded(p3.received,proc+'3')
   await waitForV4TurnIdle(win,{panel:CREATION_PANEL,settledBy:panel.getByText('两次检查完成，未修改文稿。',{exact:true})})

@@ -1,0 +1,123 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-09-agent-lane-models-block",
+  "problem_type": "Runtime migration drops dynamic model context",
+  "symptom": "C0 eight shots have empty modelKey and no resolution",
+  "direct_cause": "laneDesktopInput omitted the model block previously appended by the renderer client",
+  "class_root": "Every user turn must preserve catalog capability context through the runtime input boundary",
+  "affected_population": [
+    "All Agent panel surfaces, vendors and refreshed catalogs"
+  ],
+  "scope_paths": [
+    "electron/agentLane/laneDesktopInput.ts",
+    "electron/shared/agentLane/laneDesktopContracts.ts",
+    "electron/shared/agentCapabilities/availableModels.ts",
+    "src/workbench/ai/v4/useAgentPanelV4Actions.ts",
+    "src/workbench/generationCanvas/agent/availableModels.ts",
+    "src/workbench/generationCanvas/agent/runStoryboardPlanner.ts",
+    "electron/shared/agentCapabilities/availableModelsSchema.ts"
+  ],
+  "entry_points": [
+    "Agent panel send",
+    "Storyboard form planner"
+  ],
+  "external_sources": [
+    {
+      "kind": "official-doc",
+      "url": "https://pi.dev/docs/latest/sdk",
+      "checked_at": "2026-09-09",
+      "purpose": "Per-prompt user input and custom context conversion"
+    }
+  ],
+  "invariants": [
+    "Every newly submitted panel turn carries the current structured catalog projection; provider user content includes its shared formatted block, omitted only when empty"
+  ],
+  "generality_proof": "All panel surfaces share send and desktop providerContent. The form uses the same formatter. Vendor capabilities remain derived from existing archetypes.",
+  "shared_boundaries": [
+    {
+      "path": "electron/agentLane/laneDesktopInput.ts",
+      "symbol": "createDesktopLaneInput",
+      "responsibility": "Convert captured model context into each provider user message"
+    },
+    {
+      "path": "electron/shared/agentCapabilities/availableModels.ts",
+      "symbol": "formatAvailableModelsForPrompt",
+      "responsibility": "Single format and deterministic order"
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/workbench/ai/v4/useAgentPanelV4Actions.ts",
+      "entry_point": "send",
+      "disposition": "enforced",
+      "evidence": "All panel surfaces call laneClient.say with captured context"
+    },
+    {
+      "path": "src/workbench/generationCanvas/agent/runStoryboardPlanner.ts",
+      "entry_point": "runStoryboardPlanner",
+      "disposition": "enforced",
+      "evidence": "Existing form uses listAvailableModelsForAgent and shared formatter"
+    },
+    {
+      "path": "tests/ux/g1/c0-real-scheduler.mjs",
+      "entry_point": "planCompleted",
+      "disposition": "enforced",
+      "evidence": "C0 now observes native pi transcript rather than retired agent.turn.finished events"
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Every turn on every vendor repeats the missing context",
+    "same_class_scan": [
+      "rg listAvailableModelsForAgent: form and image/video defaults",
+      "rg LaneComposerContext/contextSnapshot: panel send, desktop input, single-shot"
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "electron/agentLane/laneDesktopInput.ts",
+    "invariant": "Structured model entries are validated and formatted at the desktop provider user boundary",
+    "failure_mode": "Malformed composer entries rejected by parser; empty catalog omitted truthfully",
+    "exception_policy": "none",
+    "strategy": "Restore shared per-turn capability capture and delete renderer-only formatter ownership",
+    "artifacts": [
+      "electron/agentLane/laneDesktopInput.ts",
+      "electron/shared/agentCapabilities/availableModels.ts",
+      "src/workbench/ai/v4/useAgentPanelV4Actions.ts"
+    ]
+  },
+  "regression_tests": [
+    "tests/agent-runtime/lane-models-block.test.mts",
+    "src/workbench/generationCanvas/agent/availableModels.test.ts",
+    "tests/ux/g1/c0-r30.node-test.mjs",
+    "src/workbench/ai/v4/useAgentPanelV4Actions.test.ts"
+  ],
+  "class_regression_tests": [
+    "tests/agent-runtime/lane-models-block.test.mts",
+    "src/workbench/ai/v4/useAgentPanelV4Actions.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "src/workbench/generationCanvas/agent/availableModels.ts"
+    ],
+    "rationale": "Renderer-only formatter moved to shared layer; no parallel formatter remains"
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "No SDK defect or new SDK layer: existing documented custom-message conversion already handles user input",
+    "exit_criteria": []
+  },
+  "migration": "Optional context field preserves old transcripts; new sends always capture current catalog. No rewrite of stored history.",
+  "residual_risks": [
+    "Real sample acceptance 2/3: both nano runs write MiniMax-H3/768P on 8/8 shots; deepseek identifies correct catalog parameters but its follow-up reservation exceeds the shared \u00a52 cap before storyboard write. Native Connection error obscures the test-budget rejection; byte lower-bound proof is recorded.",
+    "Catalog snapshot retains the existing 256 KiB composer payload cap; no new payload limit or bypass introduced."
+  ],
+  "invariant_owner_layer": {
+    "layer": "electron/agentLane/laneDesktopInput.ts",
+    "tests": [
+      "tests/agent-runtime/lane-models-block.test.mts"
+    ],
+    "why": "Provider input assembly owns dynamic user-side context preservation"
+  }
+}

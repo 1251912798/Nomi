@@ -1,0 +1,139 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-09-agent-lane-switch-prefix",
+  "problem_type": "Tool-group transitions invalidate reusable model context",
+  "symptom": "Switching groups changes schema and system prefix on the next call.",
+  "direct_cause": "Native request and skill unlock replace active tools; host filters prompt guidance by that menu.",
+  "class_root": "Tool visibility and execution authority are coupled; stable guidance has no stable shared owner.",
+  "affected_population": [
+    "Every native lane, restored session, model-requested group and skill unlock"
+  ],
+  "scope_paths": [
+    "electron/agentLane/laneNativeAssembly.mts",
+    "electron/agentLane/laneToolGroups.mts",
+    "electron/agentLane/laneHost.mts",
+    "electron/agentLane/lanePromptSections.ts",
+    "electron/shared/agentLane/laneToolContract.ts",
+    "electron/agentLane/laneCodingTools.mts",
+    "electron/shared/agentCapabilities/flatModelInput.ts",
+    "scripts/check-model-schema.ts",
+    "electron/agentLane/laneToolCatalog.ts",
+    "electron/agentLane/laneModelRead.mts",
+    "electron/agentLane/laneModelContext.ts",
+    "electron/shared/agentCapabilities/availableModels.ts",
+    "src/workbench/generationCanvas/agent/availableModels.ts",
+    "electron/shared/agentCapabilities/availableModelsSchema.ts"
+  ],
+  "entry_points": [
+    "nomi_request_tools",
+    "laneHost.execute skill unlock",
+    "openLane session restore"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "The user has decided the internal residency budget and strategy. Installed pi public APIs already own activation, serialization and durable custom entries; no protocol changes.",
+  "invariants": [
+    "Published schema constraints stay unchanged; total reachable schema tokens never exceed 10000.",
+    "Tool group switches do not remove tools or rewrite stable guidance.",
+    "Schema visibility cannot implicitly grant project file access."
+  ],
+  "generality_proof": "All native entry points use one assembly and host. Stable schema and guidance are shared across transports; file access remains independently authorized using pi durable session entries.",
+  "shared_boundaries": [
+    {
+      "path": "electron/agentLane/laneNativeAssembly.mts",
+      "symbol": "createLaneNativeAssembly",
+      "responsibility": "Separate resident descriptions from coding authorization."
+    },
+    {
+      "path": "electron/shared/agentLane/laneToolContract.ts",
+      "symbol": "laneToolModelDescription",
+      "responsibility": "One selection sentence; full guidance remains in the stable system prompt."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "electron/agentLane/laneNativeAssembly.mts",
+      "entry_point": "nomi_request_tools.execute",
+      "disposition": "enforced",
+      "evidence": "Model group request reaches shared assembly."
+    },
+    {
+      "path": "electron/agentLane/laneHost.mts",
+      "entry_point": "openLane / execute",
+      "disposition": "enforced",
+      "evidence": "Skill activation and restored histories converge on native assembly."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Every repeated group transition can recreate the prefix invalidation.",
+    "same_class_scan": [
+      "rg laneToolMenu and menuForUnlock: native model request, initial assembly and host skill activation.",
+      "rg systemPromptFor and getActiveTools: host transform_context and restore."
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "electron/agentLane/laneNativeAssembly.mts",
+    "invariant": "Resident schema does not change with tool group requests; execution authority remains explicit.",
+    "failure_mode": "Unknown group rejected; unauthorized project reads rejected; over-budget schema fails the gate.",
+    "exception_policy": "none",
+    "strategy": "Keep schema/guidance stable and persist authorization in the existing pi session.",
+    "artifacts": [
+      "electron/agentLane/laneNativeAssembly.mts",
+      "electron/agentLane/laneToolGroups.mts",
+      "electron/agentLane/laneHost.mts",
+      "electron/agentLane/lanePromptSections.ts",
+      "electron/shared/agentLane/laneToolContract.ts"
+    ]
+  },
+  "regression_tests": [
+    "tests/agent-runtime/lane-switch-prefix.test.mts",
+    "tests/agent-runtime/lane-context-budget.test.mts",
+    "tests/agent-runtime/lane-native-assembly.test.mts",
+    "tests/agent-runtime/lane-tool-contract.test.mts",
+    "scripts/check-model-schema.node-test.mjs",
+    "tests/agent-runtime/lane-b1-contracts.test.mts",
+    "tests/agent-runtime/lane-native-desktop.test.mts",
+    "src/workbench/generationCanvas/agent/availableModels.test.ts",
+    "tests/agent-runtime/lane-models-block.test.mts"
+  ],
+  "class_regression_tests": [
+    "tests/agent-runtime/lane-switch-prefix.test.mts",
+    "tests/agent-runtime/lane-context-budget.test.mts",
+    "tests/agent-runtime/lane-native-assembly.test.mts",
+    "tests/agent-runtime/lane-tool-contract.test.mts",
+    "scripts/check-model-schema.node-test.mjs",
+    "tests/agent-runtime/lane-b1-contracts.test.mts",
+    "tests/agent-runtime/lane-native-desktop.test.mts",
+    "src/workbench/generationCanvas/agent/availableModels.test.ts",
+    "tests/agent-runtime/lane-models-block.test.mts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "electron/agentLane/laneNativeAssembly.mts",
+      "electron/agentLane/laneHost.mts"
+    ],
+    "rationale": "Remove single-group retirement and active-only prompt filtering."
+  },
+  "dependency_lifecycle": {
+    "decision": "retain-with-exit",
+    "current": "@earendil-works/pi 0.85.1",
+    "target": "Current installed public harness API",
+    "rationale": "No dependency bug; use existing activation and durable entry APIs.",
+    "exit_criteria": [
+      "Re-run actual serializer and loopback prefix tests on pi upgrades."
+    ]
+  },
+  "migration": "Restored sessions receive resident tools; existing coding access must be preserved without granting it to previously locked histories.",
+  "residual_risks": [
+    "DeepSeek through the configured APIMart endpoint is measured; direct official endpoints and other model families are not paid-tested in this ≤¥1 sample."
+  ],
+  "invariant_owner_layer": {
+    "layer": "electron/agentLane/laneNativeAssembly.mts",
+    "tests": [
+      "tests/agent-runtime/lane-switch-prefix.test.mts"
+    ],
+    "why": "Assembly determines tool residency and coding file access for all native callers."
+  }
+}

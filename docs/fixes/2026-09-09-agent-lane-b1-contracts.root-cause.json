@@ -1,0 +1,158 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-09-agent-lane-b1-contracts",
+  "problem_type": "Model-facing lane contracts omit runtime capability and authority facts",
+  "symptom": "Human DeepSeek transcript cycles groups, guesses invalid create shape, sees empty context, promises nonexistent confirmation, ignores interruption and quotes stale budget.",
+  "direct_cause": "Incremental tool menu is advertised as complete; examples omit candidate; preview is advertised without host implementation; unbounded JSON is line-truncated; approval decisions are absent from model context.",
+  "class_root": "Host projections do not derive model-visible affordances, authority and bounded results from their existing owners.",
+  "affected_population": [
+    "Every provider using the desktop lane, all document sizes and queued inputs"
+  ],
+  "scope_paths": [
+    "electron/agentLane/laneNativeAssembly.mts",
+    "electron/agentLane/laneToolGroups.mts",
+    "electron/agentLane/laneTools.mts",
+    "electron/agentLane/laneHost.mts",
+    "electron/agentLane/lanePromptSections.ts",
+    "electron/agentLane/laneCanvasTools.ts",
+    "electron/agentLane/laneExtendedTools.ts",
+    "electron/agentLane/laneGenerationContext.ts",
+    "electron/agentLane/laneDesktopInput.ts",
+    "electron/shared/agentCapabilities/generationPlanSchemas.ts",
+    "electron/shared/agentCapabilities/extendedModelTools.ts",
+    "electron/agentLane/laneApprovalGate.ts",
+    "electron/shared/agentLane/laneComposerIntent.ts",
+    "src/workbench/ai/v4/AgentPanelV4Composer.tsx",
+    "src/workbench/ai/ProjectAgentResidentShell.tsx",
+    "src/workbench/ai/v4/useAgentPanelV4Actions.ts"
+  ],
+  "entry_points": [
+    "Native group request and domain tool result",
+    "Desktop workspace and singleShot provider context"
+  ],
+  "external_sources": [
+    {
+      "kind": "source-code",
+      "url": "https://github.com/earendil-works/pi",
+      "checked_at": "2026-09-09",
+      "purpose": "Installed harness argument validation, hooks and steering boundary verified; see five-product prior art plan."
+    }
+  ],
+  "invariants": [
+    "Core tools remain advertised after group switching",
+    "Lane preview is absent; external contract retains preview",
+    "Default context is bounded and scoped; long single-line results retain a nonempty head",
+    "Approval prose follows actual policy and decisions; no global spending budget is projected",
+    "Steer releases pending approval before the next request"
+  ],
+  "generality_proof": "All providers cross the same model-visible schema, prompt, result and user input boundaries. Native pi queues remain the single owner; no model-specific branches.",
+  "shared_boundaries": [
+    {
+      "path": "electron/agentLane/laneTools.mts",
+      "symbol": "createLaneTools",
+      "responsibility": "Bound every model tool output"
+    },
+    {
+      "path": "electron/agentLane/laneHost.mts",
+      "symbol": "openLane",
+      "responsibility": "Project approval, error help and interruption semantics"
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "electron/agentLane/laneNativeAssembly.mts",
+      "entry_point": "createLaneNativeAssembly",
+      "disposition": "enforced",
+      "evidence": "Core menu and added/retired response share laneToolMenu"
+    },
+    {
+      "path": "electron/agentLane/laneExtendedTools.ts",
+      "entry_point": "createExtendedLaneTools",
+      "disposition": "enforced",
+      "evidence": "Generation context summary before public truncation"
+    },
+    {
+      "path": "electron/agentLane/laneDesktopInput.ts",
+      "entry_point": "createDesktopLaneInput",
+      "disposition": "enforced",
+      "evidence": "Workspace and singleShot both resolve provider content here"
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Every new session and large context can reproduce the same missing projection.",
+    "same_class_scan": [
+      "rg generation_plan: extendedModelTools, generationPlanSchemas, generationTransportAdapters",
+      "rg steer/followUp: laneHost, laneComposerIntent",
+      "rg maxSpend/readMcpInfo: automationPolicySettings, mcpConfig, laneDesktopInput"
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "electron/agentLane/laneHost.mts",
+    "invariant": "Model sees only supported affordances and runtime authority facts.",
+    "failure_mode": "Unsupported operations fail schema validation; steering denies the pending action; no global budget is injected.",
+    "exception_policy": "none",
+    "strategy": "Derive descriptions from canonical schemas and approval decisions, omit global budgets and bound tool output at the lane boundary.",
+    "artifacts": [
+      "electron/agentLane/laneNativeAssembly.mts",
+      "electron/agentLane/laneToolGroups.mts",
+      "electron/agentLane/laneTools.mts",
+      "electron/agentLane/laneHost.mts",
+      "electron/agentLane/lanePromptSections.ts",
+      "electron/agentLane/laneCanvasTools.ts",
+      "electron/agentLane/laneExtendedTools.ts",
+      "electron/agentLane/laneGenerationContext.ts",
+      "electron/shared/agentCapabilities/generationPlanSchemas.ts",
+      "electron/shared/agentCapabilities/extendedModelTools.ts",
+      "electron/agentLane/laneApprovalGate.ts",
+      "electron/shared/agentLane/laneComposerIntent.ts",
+      "src/workbench/ai/v4/AgentPanelV4Composer.tsx",
+      "src/workbench/ai/ProjectAgentResidentShell.tsx",
+      "src/workbench/ai/v4/useAgentPanelV4Actions.ts"
+    ]
+  },
+  "regression_tests": [
+    "tests/agent-runtime/lane-b1-contracts.test.mts",
+    "electron/agentLane/laneB1Budget.test.ts",
+    "electron/shared/agentLane/laneComposerIntent.test.ts",
+    "src/workbench/ai/lane/laneClient.test.ts",
+    "src/workbench/ai/v4/useAgentPanelV4Actions.test.ts",
+    "tests/agent-runtime/laneL1Scenarios.mts"
+  ],
+  "class_regression_tests": [
+    "tests/agent-runtime/lane-b1-contracts.test.mts",
+    "electron/agentLane/laneB1Budget.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "electron/agentLane/laneNativeAssembly.mts",
+      "electron/agentLane/laneCanvasTools.ts"
+    ],
+    "rationale": "Replace misleading menu and id-bearing receipt prose in place; retain structured receipts."
+  },
+  "dependency_lifecycle": {
+    "decision": "retain-with-exit",
+    "current": "Installed @earendil-works/pi-agent-core",
+    "target": "Upstream harness supporting schema-error result hooks",
+    "rationale": "Reuse native steer, followUp and validation; immediate AJV failures bypass after_tool, so provider-message projection adds example without revalidating.",
+    "exit_criteria": [
+      "When upstream routes preparation errors through result hooks, move example projection into that hook and retain wire regression."
+    ]
+  },
+  "migration": "No stored-state migration; existing sessions receive current prompt and schema on next request.",
+  "residual_risks": [
+    "Real DeepSeek final sample: first-tool accuracy 1/3 requested turns (1/1 actual tool calls), task completion 2/3; paid generation remains outside this lane and belongs to B4.",
+    "C47 prompt is present but the real read-only response still exceeds three lines. Earlier samples also overstepped read-only intent and claimed generation; a later passing interruption cannot prove those model behavior risks absent.",
+    "Original B1 gates stopped at check:fresh-base. B1-finish now authorizes integrating main; complete gates and push receipts are required before delivery."
+  ],
+  "invariant_owner_layer": {
+    "layer": "electron/agentLane/laneHost.mts",
+    "tests": [
+      "tests/agent-runtime/lane-b1-contracts.test.mts",
+      "electron/agentLane/laneB1Budget.test.ts"
+    ],
+    "why": "All requests and running messages cross this host; desktop input absence of budget injection is checked independently."
+  }
+}

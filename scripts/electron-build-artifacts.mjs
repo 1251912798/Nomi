@@ -17,7 +17,7 @@ export function assertElectronBuildArtifacts(repoRoot) {
   const { compilerOptions } = JSON.parse(fs.readFileSync(path.join(configDir, 'tsconfig.pi.json'), 'utf8'))
   const rootDir = path.resolve(configDir, compilerOptions.rootDir)
   const outDir = path.resolve(configDir, compilerOptions.outDir)
-  const sources = nativeSources(path.join(configDir, 'harness/runtime/pi'))
+  const sources = nativeSources(path.join(configDir, 'agentLane'))
   if (!sources.length) throw new Error('Electron private pi runtime has no source modules')
   const outputs = sources.map((file) => path.join(outDir, path.relative(rootDir, file)
     .replace(/\.mts$/, '.mjs').replace(/\.cts$/, '.cjs')))

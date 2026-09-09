@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 
-import { CANVAS_WRITE_OPERATIONS, canvasWriteSemanticInputSchema } from "../shared/agentCapabilities/canvasWrite";
+import { CANVAS_WRITE_OPERATIONS, CANVAS_NODE_PROMPT_GUIDELINES, canvasWriteSemanticInputSchema, plannedNodeSchema } from "../shared/agentCapabilities/canvasWrite";
 import { findUnsupportedSchemaFeatures } from "./mcpArgValidation";
 import { MCP_CAPABILITY_RESOLVER } from "./mcpCapabilityProjection";
 import { transportSchemaFromZod } from "./mcpTransportSchemaFromZod";
+import { MCP_TOOL_RESOLVER } from "./mcpToolCatalog";
 
 describe("transportSchemaFromZod", () => {
   it("flattens a discriminated union into a property superset with an intersected required list", () => {
@@ -60,7 +61,12 @@ describe("the published canvas.write transport schema is derived, not hand-writt
 
   it("carries the Zod prompt-writing guidance all the way to tools/list", () => {
     const nodePrompt = ((properties.nodes?.items as Record<string, unknown>)?.properties as Record<string, { description?: string }>)?.prompt;
-    expect(nodePrompt?.description).toMatch(/STRUCTURED skeleton/);
+    expect(nodePrompt?.description).toBe(plannedNodeSchema.innerType().shape.prompt.description);
+    expect(nodePrompt?.description).toMatch(/Generation prompt/);
+    const published = MCP_TOOL_RESOLVER.list().find(item => item.name === 'nomi_canvas_edit');
+    // Shared writing guidance moved from each nested field to the published tool description.
+    // Verify the external catalog retains it, not merely the short field label.
+    for (const guideline of CANVAS_NODE_PROMPT_GUIDELINES) expect(published?.description).toContain(guideline);
     const edgeMode = ((properties.edges?.items as Record<string, unknown>)?.properties as Record<string, { description?: string }>)?.mode;
     expect(edgeMode?.description).toMatch(/character_ref/);
   });

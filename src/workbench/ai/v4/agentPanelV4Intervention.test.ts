@@ -147,7 +147,8 @@ describe('③ 槽里没有可编辑的东西', () => {
       t,
     )
     expect(slot?.kind).toBe('plan')
-    expect(slot?.plan).toEqual([{ label: '镜头 2 尾部裁 0.4s', detail: '{"op":"trim"}', checked: true }])
+    expect(slot?.scope).toBeUndefined()
+    expect(slot?.plan).toEqual([{ label: '镜头 2 尾部裁 0.4s', technical: '{"op":"trim"}', checked: true }])
     expect(slot?.params).toEqual(['kling-o1'])
     // 视图模型里没有任何「可编辑」的字段——编辑器整件删了，这条防止它以后从别处回来。
     expect(Object.keys(slot ?? {})).not.toContain('editable')

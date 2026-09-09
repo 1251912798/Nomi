@@ -10,7 +10,7 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '../../utils/cn'
-import type { AgentToolProfile } from '../../../electron/shared/projectAgentContracts'
+import { STORYBOARD_PLANNER_SKILL } from '../generationCanvas/agent/storyboardLauncher'
 import { useWorkbenchStore } from '../workbenchStore'
 import { useComposerAttachments, COMPOSER_ATTACHMENT_ACCEPT } from './composer/useComposerAttachments'
 import { useResidentActivityStore } from './residentActivity'
@@ -25,6 +25,8 @@ import { useV4DockStatus } from './v4/agentPanelV4DockStatus'
 import { AgentPanelV4Composer, V4ModelPopover, V4PermissionPopover, V4SkillPopover, type V4CommandRow } from './v4/AgentPanelV4Composer'
 import { useAgentPanelV4Data } from './v4/useAgentPanelV4Data'
 import { useAgentPanelV4Actions } from './v4/useAgentPanelV4Actions'
+import { useShotVerifyFeedback } from './resident/useShotVerifyFeedback'
+import { adoptLaneTaskCandidate } from './lane/laneTaskCandidateActions'
 import { useV4Labels } from './v4/agentPanelV4Labels'
 import { usePromptLibrary } from '../promptLibrary/usePromptLibrary'
 import { useUserPrompts } from '../promptLibrary/useUserPrompts'
@@ -81,6 +83,7 @@ export default function ProjectAgentResidentShell({ surface }: { surface: Reside
 
   const data = useAgentPanelV4Data(surface)
   const actions = useAgentPanelV4Actions(surface, data)
+  const shotVerifyFeedback = useShotVerifyFeedback(surface, actions.send)
   /**
    * 「他读到哪儿了」得活在这棵子树之外（定稿 §11.2：点角标 = 原宽**原状态**还原）。
    *
@@ -107,8 +110,8 @@ export default function ProjectAgentResidentShell({ surface }: { surface: Reside
   React.useEffect(() => {
     if (surface !== 'creation') return
     const launch = (displayPrompt?: string): void => {
-      void actions.send(t('agentResident.storyboardRequest'), {
-        toolProfile: 'storyboard' as AgentToolProfile,
+      void actions.send([t('agentResident.storyboardRequest'), displayPrompt].filter(Boolean).join('\n\n'), {
+        skillKey: STORYBOARD_PLANNER_SKILL.key,
         ...(displayPrompt ? { displayText: displayPrompt } : {}),
       })
     }
@@ -136,7 +139,7 @@ export default function ProjectAgentResidentShell({ surface }: { surface: Reside
    * 失败看「最后一件事是不是坏的」——面板级错误带，或者流末尾那条 error。翻历史找旧失败
    * 会让一个早就被绕过去的错误永远在 logo 上挂着，那是假报警。
    */
-  const dockPendingCount = data.pendingRecords.filter((record) => record.state === 'pending').length
+  const dockPendingCount = data.primaryPending?.pendingCount ?? 0
   const dockStatus = useV4DockStatus({
     running: data.running,
     pendingCount: dockPendingCount,
@@ -192,12 +195,11 @@ export default function ProjectAgentResidentShell({ surface }: { surface: Reside
     setDraft(hint || t('agentResident.editPlanPrompt'))
   }, [actions, data.flow, setDraft, t])
 
-  const submit = React.useCallback(() => {
+  const submit = React.useCallback((choice: 'primary' | 'secondary' = 'primary') => {
     const text = draft.trim()
     if (!text) return
-    setDraft('')
-    void actions.send(text)
-  }, [actions, draft, setDraft])
+    void actions.send(text, { choice })
+  }, [actions, draft])
 
   /**
    * 空态起手 chip：把那句话填进 composer 并把光标交给用户——**不发送**。
@@ -389,19 +391,26 @@ export default function ProjectAgentResidentShell({ surface }: { surface: Reside
         scrollMemory={flowScroll}
         width={size.width}
         height={actions.error ? size.height - 20 : size.height}
+        legacy={data.snapshot.active.legacy}
         flow={data.flow}
+        flowTail={shotVerifyFeedback}
         surface={surface}
         onStarter={startFromStarter}
         slot={data.slot}
         queue={data.queue}
+        queueHint={t('agentPanelV4.queueHint')}
         context={data.context}
         onHistory={() => setThreadsOpen((value) => !value)}
         onCollapse={() => setCollapsed(true)}
         flowHandlers={{
           onCopy: (text) => { void navigator.clipboard?.writeText(text) },
-          onContinue: () => actions.steer(draft.trim() || t('agentResident.editPlanPrompt')),
-          onUndoTool: actions.undoLastProposal,
-          onUndoTask: actions.undoLastProposal,
+          onContinue: (index) => {
+            const item = data.flow[index]
+            if (item?.kind !== 'assistant' || !item.continuationEntryId) return
+            void actions.send(draft.trim() || t('agentPanelV4.continue'), { continueFromEntryId: item.continuationEntryId })
+          },
+          onUndoTool: actions.undoTool,
+          onAdoptCandidate: (index, _tag, candidateIndex) => adoptLaneTaskCandidate(data.flow, index, candidateIndex, t),
           onErrorAction: recoverFromFailure,
           onSuggestion: (_index, option) => actions.answerOption(option),
         }}
@@ -454,23 +463,23 @@ export default function ProjectAgentResidentShell({ surface }: { surface: Reside
               {t('agentResident.newThread')}
             </button>
           </div>
-          {(data.snapshot?.threads ?? []).map((thread) => (
+          {data.snapshot.lanes.map((thread) => (
             <div
-              key={thread.threadId}
-              className={cn('flex items-center gap-1 rounded-nomi-sm px-2 py-1', thread.threadId === data.activeThreadId && 'bg-nomi-accent-soft')}
+              key={thread.laneName}
+              className={cn('flex items-center gap-1 rounded-nomi-sm px-2 py-1', thread.laneName === data.snapshot.active.lane && 'bg-nomi-accent-soft')}
             >
               <button
                 type="button"
                 className="min-w-0 flex-1 truncate text-left text-caption"
-                onClick={() => { actions.activateThread(thread.threadId); setThreadsOpen(false) }}
+                onClick={() => { actions.activateThread(thread.laneName); setThreadsOpen(false) }}
               >
-                {thread.title || t('agentResident.untitledThread')}
+                {thread.laneName === 'main' ? t('agentResident.untitledThread') : thread.laneName}
               </button>
               <button
                 type="button"
                 className="grid size-7 place-items-center rounded-nomi-sm hover:bg-nomi-ink-10"
                 aria-label={t('agentResident.removeThread')}
-                onClick={() => actions.removeThread(thread.threadId)}
+                onClick={() => actions.removeThread(thread.laneName)}
               >
                 ×
               </button>

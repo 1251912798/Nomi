@@ -62,7 +62,7 @@ function emitTools(receipts: readonly ToolReceipt[], t: Translate, out: V4FlowIt
 export function collapseV4Flow(
   flow: readonly V4FlowItem[],
   t: Translate,
-  timing?: { turns: readonly import('../../../../electron/shared/projectAgentContracts').ProjectAgentTurn[]; liveTurnId?: string; elapsedSeconds: number },
+  timing?: { turns: readonly { turnId: string; createdAt: string; updatedAt: string }[]; liveTurnId?: string; elapsedSeconds: number },
 ): readonly V4FlowItem[] {
   const out: V4FlowItem[] = []
   let index = 0

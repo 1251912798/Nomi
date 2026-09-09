@@ -1,0 +1,24 @@
+{"entry":"ProjectAgentResidentShell.launch","availableVideoModels":4,"injected":2,"missing":["video-reference-only","dreamina-multiframe"],"paidCalls":0}
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: Main-process HTTP user prompt must contain every available video model
++ actual - expected
+
++ [
++   'video-reference-only',
++   'dreamina-multiframe'
++ ]
+- []
+
+    at file:///Users/aoqimin/Desktop/Nomi-stage4-switch/tests/ux/agent-lane-models-block.e2e.mjs:63:10 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: [ 'video-reference-only', 'dreamina-multiframe' ],
+  expected: [],
+  operator: 'deepStrictEqual',
+  diff: 'simple'
+}
+
+Node.js v24.13.1

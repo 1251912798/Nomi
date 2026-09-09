@@ -1,4 +1,3 @@
-import { anchorsConsumedBy } from '../../../config/modelArchetypes/anchorPolicy';
 import { getVendorPreference } from "../../api/vendorPreferenceApi";
 import { orderByVendorPreference } from "../../../../electron/shared/contracts/vendorPreference";
 // 可用模型清单生成器：把 catalog 真实可用的模型 join 上各自档案（archetype），
@@ -13,45 +12,13 @@ import { orderByVendorPreference } from "../../../../electron/shared/contracts/v
 // 参数随 (model × mode × vendor) 三元组变：每个 model 带 modes[]，每个 mode 带自己的 params
 // （resolveArchetypeForModel 内部已按 vendor 特化）。agent 必须同时选 modelKey + modeId。
 import type { ModelOption } from "../../../config/models";
-import type { ModelParameterControl } from "../../../config/modelCatalogMeta";
 import { parseModelParameterControls } from "../../../config/modelCatalogMeta";
-import type { ArchetypeReferenceSlotKind } from "../../../config/modelArchetypes";
 import { resolveArchetypeForModel } from "../../../config/modelArchetypes";
 import { preloadModelOptions } from "../../../config/modelCatalogCache";
 import i18n from "../../../i18n";
 
-/** 该模式声明的一个参考槽——agent 据此知道这个模式吃哪些参考、各能吃几张，从而只连模型真支持的边。 */
-export type AgentModelSlot = {
-  kind: ArchetypeReferenceSlotKind;
-  /** 模型自己的槽名（vendor 原词，如「角色参考」「首帧」）。 */
-  label: string;
-  max?: number;
-  /** 角色参考（按序对应 prompt 的 character1..N）。 */
-  characterIndexed?: boolean;
-};
-
-export type AgentModelMode = {
-  modeId: string;
-  /** 模型自己的叫法（vendor 原词，如「全能参考」）——计划卡副标签 + agent 提示用真名。 */
-  vendorTerm: string;
-  intent: string;
-  hint: string;
-  params: ModelParameterControl[];
-  /** 该模式支持的参考槽（空=纯文生，不接任何参考边）。喂给 agent 让它按模型真实能力连边（T8）。 */
-  slots: AgentModelSlot[];
-};
-
-export type AgentModelEntry = {
-  modelKey: string;
-  modelAlias: string | null;
-  vendor: string | null;
-  label: string;
-  kind: "text" | "image" | "video" | "audio" | "model3d";
-  /** Media models have a stable archetype; chat models are catalog-defined and need none. */
-  archetypeId?: string;
-  defaultModeId: string;
-  modes: AgentModelMode[];
-};
+import type { AgentModelEntry } from "../../../../electron/shared/agentCapabilities/availableModels";
+export type { AgentModelEntry, AgentModelMode, AgentModelSlot } from "../../../../electron/shared/agentCapabilities/availableModels";
 
 /**
  * 把 catalog 的 ModelOption[] join 档案后 flatten 成 agent 可选模型清单。纯函数，可单测。
@@ -89,6 +56,7 @@ export function buildAgentModelEntries(options: readonly ModelOption[]): AgentMo
           vendorTerm: mode.vendorTerm,
           intent: mode.intent,
           hint: mode.hint,
+          consumesAnchors: mode.consumesAnchors,
           params: mode.params,
           slots: mode.slots.map((slot) => ({
             kind: slot.kind,
@@ -122,15 +90,17 @@ export function buildAgentModelEntries(options: readonly ModelOption[]): AgentMo
 
 /** 拉取 image+video 两类真实可用模型，join 档案生成 agent 可选清单（渲染层，走 catalog IPC）。 */
 export async function listAvailableModelsForAgent(): Promise<AgentModelEntry[]> {
-  const [textOptions, imageOptions, videoOptions, preference] = await Promise.all([
-    // Text nodes are real generation nodes too. Keep their catalog identity in
-    // the same model block so an explicit chat model survives planning.
-    preloadModelOptions("text", "chat"),
-    preloadModelOptions("image"),
-    preloadModelOptions("video"),
+  const [options, preference] = await Promise.all([
+    Promise.all([
+      preloadModelOptions("text", "chat"),
+      preloadModelOptions("image"),
+      preloadModelOptions("imageEdit"),
+      preloadModelOptions("video"),
+      preloadModelOptions("video", "image_to_video"),
+    ]),
     getVendorPreference(),
   ]);
-  return orderByVendorPreference(buildAgentModelEntries([...textOptions, ...imageOptions, ...videoOptions]), preference.orderedVendorKeys, (row) => row.vendor);
+  return orderByVendorPreference(buildAgentModelEntries(options.flat()), preference.orderedVendorKeys, (row) => row.vendor);
 }
 
 /**
@@ -193,39 +163,4 @@ export async function resolveStoryboardVideoDefault(): Promise<{ modelKey?: stri
     ...(prefer.vendor ? { modelVendor: prefer.vendor } : {}),
     ...(mode ? { modeId: mode.modeId } : {}),
   }
-}
-
-/** 把可选模型清单格式化成注入 agent 系统提示词的紧凑文本。空清单返回 ''（不注入）。 */
-export function formatAvailableModelsForPrompt(entries: readonly AgentModelEntry[]): string {
-  if (entries.length === 0) return "";
-  const lines = entries.map((entry) => {
-    const modes = entry.modes
-      .map((m) => {
-        // 每个模式带它的参考槽——agent 据此知道这个模式吃哪些参考、各能吃几张，只连模型真支持的边。
-        const slots = m.slots.length
-          ? `[参考槽:${m.slots.map((s) => `${s.label}${s.max !== undefined && s.max > 1 ? `×${s.max}` : ""}`).join("/")}]`
-          : "[纯文生,不接参考边]";
-        const consumption = anchorsConsumedBy(m);
-        const policy = consumption.includes('none') ? '[不吃任何参考图]'
-          : `[吃:${consumption.map(kind => ({ character: '角色锚', scene: '角色/场景锚', firstFrame: '首帧', none: '' })[kind]).join('/')}]`;
-        return `${m.modeId}(${m.vendorTerm})${policy}${slots}`;
-      })
-      .join(" / ");
-    const params =
-      entry.modes[0]?.params
-        .map((p) => {
-          const opts = p.options?.map((o) => o.value).join(",");
-          return opts ? `${p.key}[${opts}]` : p.key;
-        })
-        .join(" ") ?? "";
-    return `- modelKey=${entry.modelKey}（${entry.label}，${entry.kind}）模式: ${modes}；参数: ${params}`;
-  });
-  return [
-    "可用模型（为每个节点选一个，在 create_canvas_nodes 的节点里给出 modelKey、可选 modeId、params）：",
-    ...lines,
-    "引用视觉锚就必须显式选择能吃图片的模式，modelKey/modeId 不能留空；未指定时优先该模型吃得下锚的模式。",
-    "用户点名 t2v 就听用户，不自动改模式或删锚；方案摘要必须说明哪些镜的参考图不会被使用，并给出换同模型 i2v / 去掉视觉锚的纠正。",
-    "规则：modelKey 必须用上面列出的；modeId 用该模型的模式 id；params 用对应模型/模式支持的取值（如 aspect_ratio=9:16）。用户会在确认卡上调整，配错会被自动纠正。",
-    "连参考边只连目标模型支持的：character_ref/style_ref/composition_ref 需要目标模式有图片参考槽（角色参考/参考图/输入图）；first_frame/last_frame 需要对应的首/尾帧槽；纯文生模式（无参考槽）不要连任何参考边。文本/镜头/输出节点不能作参考源（它们没有可参考的产物）。配错的边会被跳过并在 skippedEdges 里告知原因。",
-  ].join("\n");
 }

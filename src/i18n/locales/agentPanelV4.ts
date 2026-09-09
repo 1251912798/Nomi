@@ -3,6 +3,14 @@
 // 夹具文案（分镜名、提示词摘录、花费）也走这里：设计实验室渲的是**现役组件**，
 // 组件里不许留硬编码中文，哪怕它只在实验室出现——否则 `check:i18n` 的基线只会越欠越多。
 export const zhAgentPanelV4 = {
+  legacyNotice: '这段对话来自旧版本',
+  legacyArrayOrder: '保留原记录顺序',
+  legacySummaries: '含旧版摘要',
+  legacyArchived: '部分内容仅归档',
+  legacyMissingArguments: '旧工具参数未保存',
+  legacySeparator: '；',
+  queueHint: '排队的指令可以取消后重发',
+  newConversation: '新对话 {{number}}',
   // 壳
   history: '历史会话',
   collapsePanel: '收起面板',
@@ -114,6 +122,10 @@ export const zhAgentPanelV4 = {
   // 这一段和上面的 `fixture*` 是两回事：fixture 是实验室里摆的样品，
   // 这一段是运行时真的会印给用户看的字。缺数据时**整件不渲染**，不用这里的字兜底。
   contextUnknown: '—',
+  retrying: '正在重试 {{attempt}}/{{maxAttempts}}',
+  contextCostFree: '免费',
+  queueAlreadyConsumed: '这条指令已经送出，无法取消。',
+  queueNotFound: '队列已经变化，请查看当前队列。',
   contextUsedOnly: '已用 {{amount}}',
   modelUnset: '选择模型',
   modelAuto: '自动选',
@@ -136,9 +148,8 @@ export const zhAgentPanelV4 = {
   fixtureProcessTwo: '我把 JSON 字符串化两次了，这次直接传数组。',
 
   thinkingLabel: '正在想…',
-  thinkingMeta: 'esc 打断',
-  toolStopped: '已停止',
-  clipFallback: '片段 {{id}}',
+  thinkingDone: '思考过程',
+  thinkingSeconds: '{{count}}s',
   clipStale: '{{label}} · 已变更',
   taskRun: '生成任务',
   taskUnknown: '任务详情在任务中心',
@@ -342,6 +353,14 @@ export const zhAgentPanelV4 = {
 } as const
 
 export const enAgentPanelV4 = {
+  legacyNotice: 'This conversation came from an earlier version',
+  legacyArrayOrder: 'original record order preserved',
+  legacySummaries: 'includes earlier summaries',
+  legacyArchived: 'some content is archived only',
+  legacyMissingArguments: 'earlier tool arguments were not saved',
+  legacySeparator: '; ',
+  queueHint: 'Cancel a queued instruction to edit and resend it.',
+  newConversation: 'New conversation {{number}}',
   history: 'Conversation history',
   collapsePanel: 'Collapse panel',
   dockOpen: 'Open Nomi',
@@ -441,6 +460,10 @@ export const enAgentPanelV4 = {
 
 
   contextUnknown: '—',
+  retrying: 'Retrying {{attempt}}/{{maxAttempts}}',
+  contextCostFree: 'Free',
+  queueAlreadyConsumed: 'This instruction was already sent and cannot be cancelled.',
+  queueNotFound: 'The queue has changed. Check the current queue.',
   contextUsedOnly: 'Used {{amount}}',
   modelUnset: 'Choose a model',
   modelAuto: 'Auto',
@@ -461,9 +484,8 @@ export const enAgentPanelV4 = {
   fixtureProcessTwo: 'I serialized the JSON twice; sending the array directly this time.',
 
   thinkingLabel: 'Thinking…',
-  thinkingMeta: 'esc to interrupt',
-  toolStopped: 'Stopped',
-  clipFallback: 'Clip {{id}}',
+  thinkingDone: 'Thought process',
+  thinkingSeconds: '{{count}}s',
   clipStale: '{{label}} · changed',
   taskRun: 'Generation run',
   taskUnknown: 'Open the task centre for details',

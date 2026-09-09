@@ -72,7 +72,7 @@ export type AgentPanelV4ComposerProps = {
   /** 受控文本。没有 `onValueChange` 时框是只读的展示件（设计实验室取景用）。 */
   value?: string
   onValueChange?: (value: string) => void
-  onSubmit?: () => void
+  onSubmit?: (choice?: 'primary' | 'secondary') => void
   onStop?: () => void
   onRemoveChip?: (chip: V4Chip, index: number) => void
   onAddFile?: () => void
@@ -177,7 +177,7 @@ export function AgentPanelV4Composer({
             })
           ) {
             event.preventDefault()
-            if (canSend) onSubmit?.()
+            if (canSend) onSubmit?.(event.altKey ? 'secondary' : 'primary')
           }
         }}
         placeholder={running ? t('agentPanelV4.placeholderRunning') : t('agentPanelV4.placeholder')}

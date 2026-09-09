@@ -1,16 +1,18 @@
 #!/usr/bin/env node
+import { stationTimeout } from './_station-budget.mjs'
 // R1-F: real editor/Agent/tool-host/IPC/SDK/disk path, also runnable against Nomi.app.
 // No adapter call, renderer module import, seeded project or production fixture.
 import { clickOrFail, expect, expectAbsent, proveProbe } from './_assert.mjs'
-import path from 'node:path'
 import { FIXTURE_IMAGE_MODEL, FIXTURE_TEXT_MODEL_LABEL, flattenRequestText } from './agent-runtime-fixture.mjs'
 import {
   ASSISTANT_MESSAGE, CANVAS_PANEL, COMPOSER, COMPOSER_SEND, CREATION_PANEL, DOCUMENT, TOOL_RECEIPT,
   USER_BUBBLE, chooseAssistantModel, createRuntimeWalk, hasToolResult,
-  newConversation, openCanvas, readCurrentProjectAgentHostSnapshot, readCurrentProjectAgentToolEvidence, readProject,
+  newConversation, openCanvas, readProject, readProjectAgentProposalReceipt,
   recorded, requireCurrentPersistedWorkbenchDocument,
-  selectConversationAt, sendCanvas, sendCreation, toolNames,
+  selectConversation, sendCanvas, sendCreation, toolNames, waitForV4TurnIdle,
 } from './agent-runtime-walk-support.mjs'
+import { laneMessages, laneMessageText, readLaneTranscripts } from './agent-lane-observer.mjs'
+import { residentToolNames } from './agent-runtime-walk-support.mjs'
 
 const ORIGINAL = '清晨，创作者打开咖啡馆的门。她将红色杯子放到白色桌面，整理相机，再坐下来准备一天的拍摄。窗外的自然光照亮杯沿，背景保持简洁。'
 const A_PROMPT = 'F_A_文稿追加：在文末加一句收尾。'
@@ -20,36 +22,40 @@ const DOC_TOOL = 'f-doc-append-1'
 const CANVAS_TOOL = 'f-canvas-create-1'
 const B_PROMPT = 'F_B_独立对话：只回复这条新消息。'
 const RESUMED_REPLY = 'F_RESTORED：我记得已批准的追加及其工具结果。'
-const DOC_TOOLS = ['load_skill', 'nomi_document_edit', 'nomi_document_read'].sort()
-const CANVAS_TOOLS = ['load_skill', 'nomi_canvas_edit', 'nomi_canvas_plan', 'nomi_canvas_read',
-  'nomi_generation_plan', 'nomi_generation_status'].sort()
+const TOOLS = residentToolNames()
 
-function readCurrentAgentConversations(settingsRoot, projectRoot) {
-  const state = readCurrentProjectAgentHostSnapshot(settingsRoot, projectRoot)
-  if (!state) return null
-  const turns = new Map(state.turns.map((turn) => [turn.turnId, turn]))
+function toolEvidence(projectRoot, toolCallId) {
+  const session = readLaneTranscripts(projectRoot).find((lane) => laneMessages(lane)
+    .some((message) => message.role === 'toolResult' && message.toolCallId === toolCallId))
+  if (!session) return undefined
   return {
-    creation: {
-      activeId: state.activeThreadId,
-      threads: state.threads.map((thread) => ({
-        id: thread.threadId,
-        messages: state.items
-          .filter((item) => item.threadId === thread.threadId && (item.kind === 'user' || item.kind === 'assistant'))
-          .filter((item) => turns.get(item.turnId)?.capabilityVersions.some(({ id }) => id === 'creation-editor'))
-          .map((item) => ({ id: item.itemId, role: item.kind, content: item.text })),
-      })),
-    },
+    session,
+    results: laneMessages(session).filter((message) => message.role === 'toolResult' && message.toolCallId === toolCallId),
+    calls: laneMessages(session).filter((message) => message.role === 'assistant').flatMap((message) => message.content)
+      .filter((part) => part.type === 'toolCall' && part.id === toolCallId),
+    approvals: session.entries.filter((entry) => entry.type === 'custom' && entry.customType === 'nomi.ui.approval'
+      && entry.data.toolCallId === toolCallId),
+    authorities: session.entries.filter((entry) => entry.type === 'custom' && entry.customType === 'nomi.ui.receipt-authority'
+      && entry.data.toolCallId === toolCallId),
   }
 }
 
-function threadState(state, threadId) {
-  return {
-    thread: state.threads.find((thread) => thread.threadId === threadId),
-    turns: state.turns.filter((turn) => turn.threadId === threadId),
-    items: state.items.filter((item) => item.threadId === threadId),
-    queue: state.queue.filter((item) => item.threadId === threadId),
-  }
+function assertCommittedWrite(projectRoot, toolCallId) {
+  const evidence = toolEvidence(projectRoot, toolCallId)
+  expect(evidence.calls).toHaveLength(1)
+  expect(evidence.results).toEqual([expect.objectContaining({ toolCallId, isError: false })])
+  expect(evidence.approvals).toEqual([expect.objectContaining({ data: expect.objectContaining({ decision: 'auto-granted' }) })])
+  expect(evidence.authorities).toHaveLength(1)
+  const authority = evidence.authorities[0].data
+  const receipt = readProjectAgentProposalReceipt(projectRoot)
+  expect(receipt).toMatchObject({ lifecycle: 'committed', proposalId: authority.receiptProposalId,
+    proposal: { proposalId: authority.receiptProposalId, hostApprovalId: authority.approvalId, hostActionHash: authority.actionHash } })
+  return { session: evidence.session, receipt }
 }
+
+// Preserve the actual SDK entry id and payload; exclude tool-only assistant entries from bubble counts.
+const conversationEntries = (session) => session.entries.filter((entry) => entry.type === 'message'
+  && (entry.message.role === 'nomi.input' || entry.message.role === 'assistant' && laneMessageText(entry.message)))
 
 const walk = await createRuntimeWalk('editing')
 let failure
@@ -57,7 +63,6 @@ try {
   let { win } = await walk.start({ first: true })
   const project = await walk.newProject()
   const { projectId, projectRoot } = project
-  const settingsRoot = path.join(walk.report.tempRoot, 'settings')
   await chooseAssistantModel(win, FIXTURE_TEXT_MODEL_LABEL)
   const document = win.locator(DOCUMENT)
   await document.fill(ORIGINAL)
@@ -68,7 +73,7 @@ try {
   const appendRequest = walk.fixture.expectText({
     label: 'creation-editor proposes a real append',
     match: (body) => flattenRequestText(body).includes(A_PROMPT) && !hasToolResult(body, DOC_TOOL),
-    reply: { type: 'tool', id: DOC_TOOL, name: 'nomi_document_edit', args: { operation: 'append', content: APPEND } },
+    reply: { type: 'tool', id: DOC_TOOL, name: 'append_to_end', args: { content: APPEND } },
   })
   const appendFollowup = walk.fixture.expectText({
     label: 'document execution result returns to the model',
@@ -77,13 +82,8 @@ try {
   })
   await sendCreation(win, A_PROMPT)
   const docWire = await recorded(appendRequest.received, 'creation editor HTTP request')
-  expect(toolNames(docWire.body), 'The real editor profile advertises precisely its six tools').toEqual(DOC_TOOLS)
-  // 出厂审批档是 safe-auto（electron/shared/projectAgentContracts.ts:60-63）：
-  // document.write 的 effectClass 是 reversible_local 且不需要计划审阅，于是它**不弹审批卡**，
-  // 直接应用并留收据（projectAgentExecutionPolicy.ts:83-88）。
-  // 这条走查原来在这里等一张卡再去点「批准」——那是 step 档的行为。审批分档合入后产品不再
-  // 那样跑，走查却没跟着改，于是它在 main 上一直红着，报的还是「面板没渲染」这种误导人的话。
-  // 现在验的是**产品真正的承诺**：可逆本地写自动落，落完仍然有完整证据链（下面那段 evidence）。
+  expect(toolNames(docWire.body), 'The actual lane advertises its assembled default tools').toEqual(TOOLS)
+  // safe-auto applies reversible local edits without an extra approval; disk receipts prove authority.
   await recorded(appendFollowup.received, 'auto-applied document tool result')
   await expect(win.locator(CREATION_PANEL)).toContainText('F_DOC_DONE')
   await expect(win.locator(`${CREATION_PANEL} ${COMPOSER}[data-mode="running"]`)).toHaveCount(0)
@@ -98,30 +98,9 @@ try {
     { timeout: 30_000 }).not.toContain(APPEND)
   await walk.snap('document-undone')
 
-  await expect.poll(() => {
-    const evidence = readCurrentProjectAgentToolEvidence(settingsRoot, projectRoot, 'document.write')
-    return Boolean(evidence?.tool?.status === 'done'
-      && evidence.tool.resultRef
-      && evidence.proposal?.approval?.toolCallId
-      && evidence.receipt?.lifecycle === 'committed'
-      && evidence.receipt.proposal?.hostApprovalId === evidence.proposal.approval.approvalId
-      && evidence.receipt.proposal?.proposalId === evidence.proposal.approval.receiptProposalId)
-  }, { message: 'Full real tool result evidence must bind Host tool item, approval and disk receipt, not only chat bubbles', timeout: 30_000 }).toBe(true)
-  const documentEvidence = readCurrentProjectAgentToolEvidence(settingsRoot, projectRoot, 'document.write')
-  expect(documentEvidence.tool).toMatchObject({ kind: 'tool', status: 'done', resultRef: expect.any(String) })
-  expect(documentEvidence.proposal?.approval?.toolCallId).toBeTruthy()
-  expect(documentEvidence.receipt).toMatchObject({
-    lifecycle: 'committed',
-    proposal: {
-      hostApprovalId: documentEvidence.proposal.approval.approvalId,
-      proposalId: documentEvidence.proposal.approval.receiptProposalId,
-    },
-  })
-  const creationA = {
-    threadId: documentEvidence.proposal.approval.threadId,
-    state: documentEvidence.state,
-  }
-  expect(creationA.threadId).toMatch(/^thread-/)
+  const creationA = assertCommittedWrite(projectRoot, DOC_TOOL).session
+  expect(creationA.laneName).toBe('main')
+  expect(creationA.sessionId).toMatch(/^[a-f0-9-]{36}$/)
 
   await openCanvas(win)
   const createArgs = {
@@ -137,7 +116,7 @@ try {
   const canvasRequest = walk.fixture.expectText({
     label: 'canvas-agent proposes linked nodes',
     match: (body) => flattenRequestText(body).includes('F_CANVAS_REQUEST') && !hasToolResult(body, CANVAS_TOOL),
-    reply: { type: 'tool', id: CANVAS_TOOL, name: 'nomi_canvas_edit', args: { operation: 'create_canvas_nodes', ...createArgs } },
+    reply: { type: 'tool', id: CANVAS_TOOL, name: 'nomi_canvas_write', args: { operation: 'create_canvas_nodes', ...createArgs } },
   })
   const canvasFollowup = walk.fixture.expectText({
     label: 'canvas receipt returns exactly once',
@@ -146,7 +125,7 @@ try {
   })
   await sendCanvas(win, 'F_CANVAS_REQUEST：创建两个杯子镜头并连接参考，不要生成。')
   const canvasWire = await recorded(canvasRequest.received, 'canvas HTTP request')
-  expect(toolNames(canvasWire.body)).toEqual(CANVAS_TOOLS)
+  expect(toolNames(canvasWire.body)).toEqual(TOOLS)
   // 同上：canvas.write 也是 reversible_local，safe-auto 档下自动落，不弹卡。
   // 「用户能读到它做了什么」这条承诺没变——两个镜头的标题必须出现在面板的工具明细里。
   expect(walk.fixture.images, '落画布不许顺手触发生成').toHaveLength(0)
@@ -170,17 +149,11 @@ try {
   // （`ToolReceipt.undoable` 渲染出来的那颗）。
   const receipt = win.locator(`${CANVAS_PANEL} ${TOOL_RECEIPT}`).last()
   await proveProbe(receipt, 'A committed canvas proposal has an Undo receipt')
-  await expect.poll(() => {
-    const evidence = readCurrentProjectAgentToolEvidence(settingsRoot, projectRoot, 'canvas.write')
-    return Boolean(evidence?.tool?.status === 'done'
-      && evidence.proposal?.approval?.toolCallId
-      && evidence.receipt?.lifecycle === 'committed'
-      && evidence.receipt.proposal?.hostApprovalId === evidence.proposal.approval.approvalId
-      && evidence.receipt.proposal?.proposalId === evidence.proposal.approval.receiptProposalId)
-  }, { timeout: 30_000 }).toBe(true)
-  const canvasEvidence = readCurrentProjectAgentToolEvidence(settingsRoot, projectRoot, 'canvas.write')
-  const proposalId = canvasEvidence?.receipt?.proposalId
-  expect(proposalId).toBeTruthy()
+  await waitForV4TurnIdle(win, { panel: CANVAS_PANEL,
+    settledBy: win.locator(CANVAS_PANEL).getByText('F_CANVAS_DONE：两张卡已落画布。', { exact: true }) })
+  const canvasEvidence = assertCommittedWrite(projectRoot, CANVAS_TOOL)
+  expect(canvasEvidence.session.sessionId).toBe(creationA.sessionId)
+  const proposalId = canvasEvidence.receipt.proposalId
   await walk.snap('canvas-committed')
   // 先证明这颗撤销钮真的能被探针找到，下面两处「撤销过就不该再有撤销钮」才不是空话。
   const undoButton = receipt.getByRole('button', { name: '撤销', exact: true })
@@ -188,19 +161,20 @@ try {
   await clickOrFail(undoButton, '整笔撤销画布提案')
   await expect.poll(async () => {
     const canvas = (await readProject(win, projectId)).payload.generationCanvas
-    const evidence = readCurrentProjectAgentToolEvidence(settingsRoot, projectRoot, 'canvas.write')
+    const evidence = toolEvidence(projectRoot, CANVAS_TOOL)
+    const savedReceipt = readProjectAgentProposalReceipt(projectRoot)
     return {
       nodes: canvas.nodes.length,
       edges: canvas.edges.length,
-      toolStatus: evidence?.tool?.status ?? null,
-      receiptLifecycle: evidence?.receipt?.lifecycle ?? null,
-      receiptOperationId: evidence?.receipt?.operationId ?? null,
-      receiptProposalId: evidence?.receipt?.proposalId ?? null,
+      toolSucceeded: evidence?.results[0]?.isError === false,
+      receiptLifecycle: savedReceipt?.lifecycle ?? null,
+      receiptOperationId: savedReceipt?.operationId ?? null,
+      receiptProposalId: savedReceipt?.proposalId ?? null,
     }
-  }, { timeout: 30_000 }).toEqual({
+  }, { timeout: stationTimeout({ operations: 2 }) }).toEqual({
     nodes: 0,
     edges: 0,
-    toolStatus: 'done',
+    toolSucceeded: true,
     receiptLifecycle: 'undone',
     receiptOperationId: `proposal-undo-complete:${proposalId}`,
     receiptProposalId: proposalId,
@@ -229,17 +203,23 @@ try {
   await expect(stoppedAssistant, 'A stopped assistant item remains visible with its terminal status').toBeVisible()
   await expect(stoppedAssistant.getByRole('button', { name: '继续', exact: true }),
     'The retained stopped turn has an explicit user-facing marker').toBeVisible()
-  stoppedRequest.release({ type: 'tool', id: 'f-late-write', name: 'nomi_document_edit', args: { operation: 'append', content: 'F_FORBIDDEN_LATE_WRITE' } })
+  stoppedRequest.release({ type: 'tool', id: 'f-late-write', name: 'append_to_end', args: { content: 'F_FORBIDDEN_LATE_WRITE' } })
   // 「晚到的写入不许落」这条以前是靠「审批卡没冒出来」来证的。safe-auto 档下可逆写本来就
   // 不弹卡，那条缺席断言于是恒真——换成直接查**文稿本身**：晚到的写入真落了，这段文字就会
   // 出现在编辑器和盘上，这是个有值的判据，不是空话。
   await expect(win.locator(DOCUMENT)).toHaveText(ORIGINAL)
   expect(JSON.stringify(requireCurrentPersistedWorkbenchDocument(await readProject(win, projectId))),
     '被停止的请求不许把晚到的写入落到盘上').not.toContain('F_FORBIDDEN_LATE_WRITE')
-  const savedA = readCurrentProjectAgentToolEvidence(settingsRoot, projectRoot, 'document.write')
-  expect(savedA?.tool?.status).toBe('done')
-  expect(savedA?.proposal?.approval?.threadId).toBe(creationA.threadId)
-  const savedAThreadState = threadState(readCurrentProjectAgentToolEvidence(settingsRoot, projectRoot, 'document.write').state, creationA.threadId)
+  const savedA = toolEvidence(projectRoot, DOC_TOOL)
+  expect(savedA.results).toHaveLength(1)
+  expect(savedA.session.sessionId).toBe(creationA.sessionId)
+  const savedABytes = savedA.session.bytes
+  const originalEntries = conversationEntries(savedA.session)
+  expect(originalEntries.map((entry) => entry.message.role))
+    .toEqual(['nomi.input', 'assistant', 'nomi.input', 'assistant', 'nomi.input', 'assistant'])
+  expect(laneMessageText(originalEntries[1].message)).toContain('F_DOC_DONE')
+  expect(laneMessageText(originalEntries[3].message)).toContain('F_CANVAS_DONE')
+  expect(laneMessageText(originalEntries[5].message)).toContain('F_STOP_PARTIAL')
   await walk.snap('stopped-without-late-write')
 
   await newConversation(win, CREATION_PANEL)
@@ -253,31 +233,29 @@ try {
   expect(flattenRequestText(bWire.body)).not.toContain(A_PROMPT)
   expect(hasToolResult(bWire.body, DOC_TOOL)).toBe(false)
   await expect(win.locator(CREATION_PANEL)).toContainText('F_B_DONE')
-  await expect.poll(() => readCurrentAgentConversations(settingsRoot, projectRoot)?.creation.threads.length,
-    { timeout: 30_000 }).toBe(2)
-  const conversationsB = readCurrentAgentConversations(settingsRoot, projectRoot)
-  expect(conversationsB.creation.activeId).not.toBe(creationA.threadId)
-  const originalBubbles = conversationsB.creation.threads.find((thread) => thread.id === creationA.threadId)
-    .messages.map(({ id, role, content }) => ({ id, role, content }))
-  expect(originalBubbles.map((message) => message.role)).toEqual(['user', 'assistant', 'user', 'assistant'])
-  expect(originalBubbles[1].content).toContain('F_DOC_DONE')
-  expect(originalBubbles[3].content).toContain('F_STOP_PARTIAL')
-  expect(threadState(readCurrentProjectAgentToolEvidence(settingsRoot, projectRoot, 'document.write').state, creationA.threadId)).toEqual(savedAThreadState)
+  await waitForV4TurnIdle(win, { panel: CREATION_PANEL,
+    settledBy: win.locator(CREATION_PANEL).getByText('F_B_DONE：这是一条独立的新对话。', { exact: true }) })
+  const conversationsB = readLaneTranscripts(projectRoot)
+  expect(conversationsB).toHaveLength(2)
+  const b = conversationsB.find((session) => session.sessionId !== creationA.sessionId)
+  expect(laneMessages(b).filter((message) => message.role === 'nomi.input').map(laneMessageText)).toEqual([B_PROMPT])
+  expect(toolEvidence(projectRoot, DOC_TOOL).session.bytes).toBe(savedABytes)
   await walk.snap('independent-thread-b')
 
   const requestsBeforeRestart = walk.fixture.requests.length
   await walk.stopApp()
   ;({ win } = await walk.start())
-  await clickOrFail(win.locator('[data-project-card="true"]').filter({ hasText: project.name }), '冷重启后打开同一项目')
+  const projectCard = win.locator('[data-project-card="true"]').filter({ hasText: project.name })
+  await projectCard.hover()
+  await clickOrFail(projectCard.getByRole('button', { name: /继续创作/ }), '冷重启后打开同一项目')
   await clickOrFail(win.getByRole('button', { name: '创作', exact: true }), '创作工作区')
   await expect(win.locator(CREATION_PANEL)).toContainText('F_B_DONE')
-  const coldConversations = readCurrentAgentConversations(settingsRoot, projectRoot)
-  expect(coldConversations.creation.threads.find((thread) => thread.id !== creationA.threadId)?.messages.at(-1)?.content).toContain('F_B_DONE')
-  await selectConversationAt(win, CREATION_PANEL, 0)
+  expect(laneMessageText(laneMessages(readLaneTranscripts(projectRoot).find((session) => session.sessionId === b.sessionId)).at(-1))).toContain('F_B_DONE')
+  await selectConversation(win, CREATION_PANEL, '未命名对话')
   await expect(win.locator(CREATION_PANEL)).toContainText('F_DOC_DONE')
   await expect(win.locator(DOCUMENT)).toHaveText(ORIGINAL)
   expect(walk.fixture.requests).toHaveLength(requestsBeforeRestart)
-  expect(threadState(readCurrentProjectAgentToolEvidence(settingsRoot, projectRoot, 'document.write').state, creationA.threadId)).toEqual(savedAThreadState)
+  expect(toolEvidence(projectRoot, DOC_TOOL).session.bytes).toBe(savedABytes)
   const resume = walk.fixture.expectText({
     label: 'cold restored A contains native tool history',
     match: (body) => flattenRequestText(body).includes('F_RESUME_A'),
@@ -291,13 +269,11 @@ try {
   expect(hasToolResult(restoredWire.body, DOC_TOOL)).toBe(true)
   expect(flattenRequestText(restoredWire.body)).toContain(A_PROMPT)
   expect(flattenRequestText(restoredWire.body)).not.toContain(B_PROMPT)
-  const resumedEvidence = readCurrentProjectAgentToolEvidence(settingsRoot, projectRoot, 'document.write')
-  const resumedDocumentTools = resumedEvidence.state.items.filter((item) => item.kind === 'tool' && item.capability?.id === 'document.write')
-  expect(resumedDocumentTools).toHaveLength(1)
-  expect(resumedDocumentTools[0]).toMatchObject({ status: 'done', resultRef: expect.any(String) })
-  const provenanceKeys = resumedDocumentTools[0].provenance.map(({ source, sourceRef }) => `${source}:${sourceRef}`)
-  expect(new Set(provenanceKeys).size).toBe(provenanceKeys.length)
-  expect(resumedEvidence.receipt).toMatchObject({ lifecycle: 'undone', proposalId })
+  const resumedEvidence = toolEvidence(projectRoot, DOC_TOOL)
+  expect(resumedEvidence.results).toHaveLength(1)
+  expect(resumedEvidence.calls).toHaveLength(1)
+  expect(resumedEvidence.authorities).toHaveLength(1)
+  expect(readProjectAgentProposalReceipt(projectRoot)).toMatchObject({ lifecycle: 'undone', proposalId })
   await expect(win.locator(CREATION_PANEL)).toContainText('F_RESTORED')
   await expect(win.locator(`${CREATION_PANEL} ${COMPOSER}[data-mode="running"]`)).toHaveCount(0)
   const assistantBubbles = win.locator(`${CREATION_PANEL} ${ASSISTANT_MESSAGE}`)
@@ -307,20 +283,12 @@ try {
   await expect(assistantBubbles.nth(2)).toContainText('F_STOP_PARTIAL')
   await expect(assistantBubbles.last(), 'The new reply belongs at the end of the resumed conversation').toContainText('F_RESTORED')
   await expect(win.locator(`${CREATION_PANEL} ${USER_BUBBLE}`)).toHaveCount(4)
-  await expect.poll(async () => {
-    const saved = readCurrentAgentConversations(settingsRoot, projectRoot)
-    return { activeId: saved.creation.activeId,
-      reply: saved.creation.threads.find((thread) => thread.id === creationA.threadId)?.messages.at(-1)?.content }
-  }, { message: 'The completed resumed turn must be saved before the app closes', timeout: 30_000 })
-    .toEqual({ activeId: creationA.threadId, reply: RESUMED_REPLY })
-  const resumedBubbles = readCurrentAgentConversations(settingsRoot, projectRoot).creation.threads
-    .find((thread) => thread.id === creationA.threadId).messages
-  expect(resumedBubbles).toHaveLength(originalBubbles.length + 2)
-  expect(resumedBubbles.slice(0, originalBubbles.length).map(({ id, role, content }) => ({ id, role, content })))
-    .toEqual(originalBubbles)
-  expect(new Set(resumedBubbles.map((message) => message.id)).size, 'Message identity must remain unique after a cold restart')
-    .toBe(resumedBubbles.length)
-  expect(resumedBubbles.slice(-2).map((message) => message.role)).toEqual(['user', 'assistant'])
+  const resumedEntries = conversationEntries(toolEvidence(projectRoot, DOC_TOOL).session)
+  expect(resumedEntries).toHaveLength(originalEntries.length + 2)
+  expect(resumedEntries.slice(0, originalEntries.length)).toEqual(originalEntries)
+  expect(new Set(resumedEntries.map((entry) => entry.id)).size).toBe(resumedEntries.length)
+  expect(resumedEntries.slice(-2).map((entry) => entry.message.role)).toEqual(['nomi.input', 'assistant'])
+  expect(laneMessageText(resumedEntries.at(-1).message)).toBe(RESUMED_REPLY)
   await expect(win.locator(DOCUMENT)).toHaveText(ORIGINAL)
   await clickOrFail(win.getByRole('button', { name: '生成', exact: true }), '冷重启后生成工作区')
   await expect(win.locator(CANVAS_PANEL)).toBeVisible()
@@ -330,9 +298,8 @@ try {
     { provenBy: undoButtonProof, message: 'Cold start must not restore an undone action' })
   const coldCanvas = (await readProject(win, projectId)).payload.generationCanvas
   expect({ nodes: coldCanvas.nodes.length, edges: coldCanvas.edges.length }).toEqual({ nodes: 0, edges: 0 })
-  const coldCanvasEvidence = readCurrentProjectAgentToolEvidence(settingsRoot, projectRoot, 'canvas.write')
-  expect(coldCanvasEvidence?.tool?.status).toBe('done')
-  expect(coldCanvasEvidence?.receipt).toMatchObject({ lifecycle: 'undone', proposalId })
+  expect(toolEvidence(projectRoot, CANVAS_TOOL).results[0].isError).toBe(false)
+  expect(readProjectAgentProposalReceipt(projectRoot)).toMatchObject({ lifecycle: 'undone', proposalId })
   expect(walk.fixture.requests).toHaveLength(requestsBeforeRestart + 1)
   expect(walk.report.launches[1].pid).not.toBe(walk.report.launches[0].pid)
   await walk.snap('cold-restored-native-context')

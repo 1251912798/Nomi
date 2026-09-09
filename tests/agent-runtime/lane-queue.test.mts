@@ -168,7 +168,7 @@ test('G3b② 非空侧 · 按停止：没送出去的那句话回到输入框，
   const outcome = await lane.execute({ kind: 'abort' });
   await run.catch(() => undefined);
 
-  assert.deepEqual(outcome.restoredInput, ['横屏，不要竖的'],
+  assert.deepEqual(outcome.restoredInput, [{ text: '横屏，不要竖的' }],
     'AbortResult 里那条没被消费的插话必须交回调用方 —— 抄 pi TUI 的 restoreQueuedMessagesToEditor');
   // 阳性对照在 3a：没有排队插话时 `restoredInput` **缺席**，不是一个空数组。
 });

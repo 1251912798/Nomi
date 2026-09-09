@@ -68,6 +68,7 @@ function hostNamePositions(source) {
       const type = fields.get('type')?.value
       const host =
         (type?.kind === K.StringLiteral && type.text === 'tool') ||
+        (type?.kind === K.StringLiteral && type.text === 'toolCall' && fields.has('id') && fields.has('arguments')) ||
         ['intent', 'capabilityRefs', 'inputSchema', 'outputSchema'].every((key) => fields.has(key))
       const name = fields.get('name')
       if (host && name) positions.add(name.key.index)

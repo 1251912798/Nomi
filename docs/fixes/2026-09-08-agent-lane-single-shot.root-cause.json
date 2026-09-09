@@ -1,0 +1,136 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-08-agent-lane-single-shot",
+  "problem_type": "ephemeral-request-isolation",
+  "symptom": "One-shot planning and shot verification enter the persistent old host instead of an isolated one-request lane. The real stage-4 production walk then generated an image but dispatched no judge request because feature labels were treated as installed Skill identities.",
+  "direct_cause": "runSingleShotAgent delegates to runWorkbenchAgent, which enqueues a normal durable host turn. An attempted AgentHarness with no tools still made a second request for an unknown tool: unknown names bypass before_tool and hook exceptions are not a request-denial mechanism. Three legacy callers supplied invented workbench.* skillKey values; the new desktop boundary correctly rejected their catalog lookup as agent_skill_unavailable before dispatch. The shot verifier catches per-frame failures, so this appeared as absent verification.",
+  "class_root": "Feature attribution must not select a persistent conversation, request a nonexistent installed Skill, or permit tools and retries for a one-shot request.",
+  "affected_population": [
+    "Production direction planning",
+    "Storyboard planning",
+    "Shot image verification"
+  ],
+  "scope_paths": [
+    "electron/agentLane/laneSingleShot.mts",
+    "src/workbench/ai/agentLoopMode.ts",
+    "src/workbench/generationCanvas/agent/runStoryboardPlanner.ts",
+    "electron/shared/agentLane/laneProjection.ts",
+    "src/workbench/generationCanvas/agent/storyboardLauncher.ts",
+    "src/workbench/generationCanvas/agent/canvasSystemPrompt.ts",
+    "src/workbench/ai/resident/residentShellDisplay.ts",
+    "src/workbench/generationCanvas/agent/shotVerifyJudge.ts",
+    "src/workbench/generationCanvas/agent/runDirectionPlanner.ts",
+    "src/workbench/capability/capabilityApplyHandler.ts"
+  ],
+  "entry_points": [
+    "runSingleShotAgent",
+    "runStoryboardPlanner"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "The isolation requirement is the Nomi feature contract; installed pi 0.85.1 Models.streamSimple was inspected at dist/models.d.ts:141 and exercised through real HTTP fixtures for all three supported protocols.",
+  "invariants": [
+    "One admitted request makes at most one provider request, advertises zero tools, and writes no disk transcript.",
+    "featureKey identifies an application task; optional skillKey refers only to a real installed Skill. Missing explicitly requested Skills remain rejected before network or transcript changes."
+  ],
+  "generality_proof": "All one-shot callers converge on exactly one call to the pi Models.streamSimple API. No loop, retry policy, tool executor, repository or persistent lane exists in this entry. Shot verification, direction planning, script planning and revisions now use their existing task prompts and featureKey without fabricated Skill claims. Actual storyboard Skill keys still reach the strict main-process catalog lookup. Dedicated Electron public-IPC negative control proves missing requested Skills cannot silently fall back.",
+  "shared_boundaries": [
+    {
+      "path": "electron/agentLane/laneSingleShot.mts",
+      "symbol": "runLaneSingleShot",
+      "responsibility": "Own one provider request with no tool or persistent session capability."
+    },
+    {
+      "path": "src/workbench/ai/agentLoopMode.ts",
+      "symbol": "SingleShotAgentRequest",
+      "responsibility": "Separate mandatory feature attribution from optional installed Skill identity; omit absent Skill claims without suppressing explicit lookup errors."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/workbench/generationCanvas/agent/runDirectionPlanner.ts",
+      "entry_point": "runDirectionPlanner",
+      "disposition": "enforced",
+      "evidence": "Calls runSingleShotAgent and parses returned candidate JSON."
+    },
+    {
+      "path": "src/workbench/generationCanvas/agent/shotVerifyJudge.ts",
+      "entry_point": "makeShotVerifyDeps().judge",
+      "disposition": "enforced",
+      "evidence": "Each frame uses runSingleShotAgent with captured project asset claims."
+    },
+    {
+      "path": "src/workbench/capability/capabilityApplyHandler.ts",
+      "entry_point": "runProductionTextPlanner",
+      "disposition": "enforced",
+      "evidence": "Script planning, script revision and storyboard revision share the feature-only single-shot path; agentCallers.test.ts checks all three."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Every frame and planning feature repeats the same lifecycle conflation.",
+    "same_class_scan": [
+      "rg runSingleShotAgent src finds direction, shot verify and capability planning callers.",
+      "rg runWorkbenchAgent and sendGenerationCanvasAgentMessage src identifies the sole storyboard production chain.",
+      "rg skillKey across every runSingleShotAgent caller found three invented task labels versus the real storyboard skill.key; caller tests failed 6 cases before removal."
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "electron/agentLane/laneSingleShot.mts",
+    "invariant": "One admitted request makes at most one provider request, advertises zero tools, and writes no disk transcript.",
+    "failure_mode": "Unknown tool output remains unexecuted and is rejected by the renderer adapter; no second model request is representable.",
+    "exception_policy": "none",
+    "strategy": "Use pi Models.streamSimple once; retain the same Nomi provider watchdog, payload conversion and pure projection. Use optional Skill identity only for actual installed Skills; all other task labels remain featureKey values.",
+    "artifacts": [
+      "electron/agentLane/laneSingleShot.mts",
+      "src/workbench/ai/agentLoopMode.ts",
+      "electron/shared/agentLane/laneProjection.ts"
+    ]
+  },
+  "regression_tests": [
+    "tests/agent-runtime/lane-single-shot.test.mts",
+    "src/workbench/ai/agentLoopMode.test.ts",
+    "src/workbench/ai/agentCallers.test.ts",
+    "tests/ux/agent-single-shot-skill-boundary.walk.mjs",
+    "tests/ux/agent-runtime-production.walk.mjs"
+  ],
+  "class_regression_tests": [
+    "tests/agent-runtime/lane-single-shot.test.mts",
+    "src/workbench/ai/agentLoopMode.test.ts",
+    "src/workbench/ai/agentCallers.test.ts",
+    "tests/ux/agent-single-shot-skill-boundary.walk.mjs",
+    "tests/ux/agent-runtime-production.walk.mjs"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "src/workbench/ai/agentLoopMode.ts",
+      "src/workbench/ai/workbenchAgentRunner.ts",
+      "src/workbench/generationCanvas/agent/generationCanvasAgentClient.ts",
+      "src/workbench/creation/creationToolCalls.ts"
+    ],
+    "rationale": "Delete the old renderer execution and host enqueue chain after the sole live storyboard caller moves to isolated JSON planning."
+  },
+  "dependency_lifecycle": {
+    "decision": "retain-with-exit",
+    "current": "@earendil-works/pi-agent-core 0.85.1",
+    "target": "A later pi version only after the same isolation fixtures pass.",
+    "rationale": "pi 0.85.1 public Models.streamSimple preserves the no-loop invariant; AgentHarness hook-based limits failed the unknown-tool HTTP fixture and were discarded.",
+    "exit_criteria": [
+      "Re-run one-request, no-tool, cancellation and no-filesystem fixtures before changing pi."
+    ]
+  },
+  "migration": "No history migration for one-shot requests; they are intentionally ephemeral.",
+  "residual_risks": [
+    "Root agent owns IPC sender authorization and native module loader integration."
+  ],
+  "invariant_owner_layer": {
+    "layer": "electron/agentLane/laneSingleShot.mts",
+    "tests": [
+      "tests/agent-runtime/lane-single-shot.test.mts",
+      "src/workbench/ai/agentCallers.test.ts",
+      "tests/ux/agent-single-shot-skill-boundary.walk.mjs"
+    ],
+    "why": "The main-side harness owns network request count and repository lifetime. The renderer request contract separates feature attribution from optional Skill identity; the desktop boundary continues to reject explicit missing Skills."
+  }
+}

@@ -15,6 +15,8 @@ export { normalizeDesktopLocale, getDesktopLocale, setDesktopLocale, type Deskto
 
 const translations = {
   "zh-CN": {
+    "agent.legacySummary": "旧版摘要：",
+    "agent.legacyUnverifiedTool": "旧版工具结果未验证。",
     "credential.invalid": "密钥验证失败，请检查密钥和权限后重试。原密钥和连接已保留。",
     "credential.revalidationUnavailable": "密钥已保存，尚未验证。请联网后重试，届时会自动复验。",
     "credential.validationUnavailable": "暂时无法验证密钥，请检查接口地址和网络后重试。原密钥和连接已保留。",
@@ -192,6 +194,8 @@ const translations = {
     "customCall.emptyScript": "脚本为空——先写点内容或让 AI 生成",
   },
   en: {
+    "agent.legacySummary": "Legacy summary: ",
+    "agent.legacyUnverifiedTool": "Legacy tool outcome is unverified.",
     "credential.invalid": "Key validation failed. Check the key and permissions, then retry. Your previous key and connection are unchanged.",
     "credential.revalidationUnavailable": "Key saved but not verified. Reconnect and retry to verify automatically.",
     "credential.validationUnavailable": "Cannot validate the key. Check the API address and network, then retry. Your previous key and connection are unchanged.",
@@ -369,8 +373,8 @@ const translations = {
 
 type DesktopTranslationKey = keyof (typeof translations)["zh-CN"];
 
-export function desktopT(key: DesktopTranslationKey, values: Record<string, string | number> = {}): string {
-  let text: string = translations[getDesktopLocale()][key];
+export function desktopT(key: DesktopTranslationKey, values: Record<string, string | number> = {}, locale: DesktopLocale = getDesktopLocale()): string {
+  let text: string = translations[locale][key];
   for (const [name, value] of Object.entries(values)) {
     text = text.replace(new RegExp(`\\{\\{${name}\\}\\}`, 'g'), String(value));
   }

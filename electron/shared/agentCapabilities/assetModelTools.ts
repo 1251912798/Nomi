@@ -63,7 +63,7 @@ export function assetModelToolSpecs(): ModelFacingToolSpec[] {
       schema,
       examples: [],
       aliasBoundInput: Object.freeze({ operation: alias }),
-      profiles: Object.freeze(["mcp" as const]),
+      internalGroup: "media",
       prepareArguments: modelArgumentTolerance({ arrayFields: ["kinds"] }),
     };
   });

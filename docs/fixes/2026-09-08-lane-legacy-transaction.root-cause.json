@@ -1,0 +1,132 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-08-lane-legacy-transaction",
+  "problem_type": "legacy_import_prefix_and_archive_transaction",
+  "symptom": "Interrupted import may duplicate history or remove original source bytes before a verified target exists.",
+  "direct_cause": "Public append commits one operation at a time while source cleanup spans multiple files.",
+  "class_root": "One migration transaction must own source hashes, deterministic target identities, prefix recovery and cleanup completion.",
+  "affected_population": [
+    "v4 context records and direct pi envelopes",
+    "host snapshots",
+    "unbound AI SDK histories"
+  ],
+  "scope_paths": [
+    "electron/agentLane/laneLegacyMigration.mts",
+    "electron/agentLane/laneLegacyImportLane.mts",
+    "electron/agentLane/laneSession.mts",
+    "electron/agentLane/laneModelProvider.mts",
+    "electron/shared/agentLane/laneLegacyNote.ts",
+    "electron/shared/agentLane/laneContracts.ts",
+    "electron/shared/agentLane/laneProjection.ts",
+    "electron/agentLane/laneLegacyPriorArchive.mts",
+    "electron/agentLane/laneNativeLoader.cts",
+    "electron/agentLane/laneDesktopRuntime.ts",
+    "electron/agentLane/laneHost.mts",
+    "electron/i18n.ts",
+    "electron/shared/agentLane/laneLegacyMigrationContract.ts",
+    "electron/agentLane/laneLegacyImportPlan.mts",
+    "src/workbench/ai/ProjectAgentResidentShell.tsx",
+    "src/workbench/ai/v4/AgentPanelV4Panel.tsx",
+    "src/i18n/locales/agentPanelV4.ts"
+  ],
+  "entry_points": [
+    "migrateLaneLegacy"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "Approved private Nomi migration transaction; pi public appendMessage/appendCustomEntry/watch and SessionCreateOptions.id were checked in installed 0.85.1 declarations.",
+  "invariants": [
+    "Archive bytes survive every append/cleanup failure.",
+    "Only a real transcript prefix of the deterministic plan can be resumed.",
+    "Completed imports never recreate user-deleted lanes.",
+    "No tools, credentials or provider are created during import."
+  ],
+  "generality_proof": "All sources are validated and planned together, archived before writes, and resumed through one manifest/prefix boundary.",
+  "shared_boundaries": [
+    {
+      "path": "electron/agentLane/laneLegacyMigration.mts",
+      "symbol": "migrateLaneLegacy",
+      "responsibility": "Own source/target identity, archive, prefix recovery, cold verification and completed cleanup."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "electron/agentLane/laneLegacyImportPlan.mts",
+      "entry_point": "planLegacyImport",
+      "disposition": "enforced",
+      "evidence": "Every source operation enters the shared append-prefix transaction."
+    },
+    {
+      "path": "electron/agentLane/laneSession.mts",
+      "entry_point": "openLaneSession",
+      "disposition": "enforced",
+      "evidence": "Fixed import session IDs use the existing shared pi repository, never direct JSONL."
+    },
+    {
+      "path": "electron/agentLane/laneLegacyPriorArchive.mts",
+      "entry_point": "readLegacyPriorArchive",
+      "disposition": "enforced",
+      "evidence": "Only exact matching old preparation/completion bindings and contextHash identify recoverable agent-session bytes; provenance is fixed in the new transaction."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Any interruption between append operations or cleanup files can recur.",
+    "same_class_scan": [
+      "Read pi AgentLane appendMessage/appendCustomEntry and public SessionCreateOptions.id.",
+      "Read openLaneSession shared repo and legacy cutover preparation/archive cleanup order.",
+      "Old projectAgentMigration archive path derives from preparation.startedAt; completion uses the same timestamp. G5 is never read."
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "electron/agentLane/laneLegacyMigration.mts",
+    "invariant": "Originals are archived before append; only verified prefixes are continued; cleanup completes before completed state.",
+    "failure_mode": "Retain originals/archive and report a content-free error on source, target or prefix mismatch.",
+    "exception_policy": "none",
+    "strategy": "Single project admission plus file lock, preparation hashes, deterministic public append plan and two-phase cleanup.",
+    "artifacts": [
+      "electron/agentLane/laneLegacyMigration.mts",
+      "electron/agentLane/laneLegacyImportLane.mts",
+      "electron/agentLane/laneSession.mts",
+      "electron/agentLane/laneModelProvider.mts",
+      "electron/shared/agentLane/laneLegacyNote.ts",
+      "electron/agentLane/laneLegacyPriorArchive.mts",
+      "electron/shared/agentLane/laneLegacyMigrationContract.ts"
+    ]
+  },
+  "regression_tests": [
+    "tests/agent-runtime/lane-legacy-migration.test.mts",
+    "tests/agent-runtime/lane-legacy-transaction-sources.test.mts",
+    "src/workbench/ai/v4/agentPanelV4Legacy.test.ts",
+    "tests/ux/agent-lane-legacy-migration.walk.mjs"
+  ],
+  "class_regression_tests": [
+    "tests/agent-runtime/lane-legacy-migration.test.mts",
+    "tests/agent-runtime/lane-legacy-transaction-sources.test.mts"
+  ],
+  "legacy_paths": {
+    "status": "not-applicable",
+    "removed_paths": [],
+    "rationale": "The old cutover is not invoked. This new transaction is the authorized migration boundary and old runtime deletion is step 4."
+  },
+  "dependency_lifecycle": {
+    "decision": "retain-with-exit",
+    "rationale": "Use pi 0.85.1 public session/lane APIs only, with no new dependency.",
+    "current": "pi 0.85.1",
+    "target": "pi public append and session ID APIs",
+    "exit_criteria": [
+      "Delete legacy runtime and host directories in step 4 after this migration is wired and verified."
+    ]
+  },
+  "migration": "Fixed project context/agentChatV2 and exact host partition source paths; preserve original bytes in .nomi/legacy-archive; no G5 receipt path included.",
+  "residual_risks": [
+    "Packaged C0 and seven-day L2 merge gates remain mandatory."
+  ],
+  "invariant_owner_layer": {
+    "layer": "electron/agentLane/laneLegacyMigration.mts",
+    "tests": [
+      "tests/agent-runtime/lane-legacy-migration.test.mts"
+    ],
+    "why": "Only boundary allowed to decide an import is durable and its active source can be moved."
+  }
+}

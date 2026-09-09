@@ -12,8 +12,10 @@
 //
 // 除此之外的任何不同都是漂移，`scripts/check-model-schema.ts` 的 `profile-schema-drift`
 // 规则按能力逐条比指纹，当场红。
-import { CAPABILITY_CONTRACTS } from "./registry";
+import { CAPABILITY_CONTRACTS, resolveCapabilityAlias } from "./registry";
 import type { CapabilityContract } from "./capabilityContract";
+import { extendedModelToolSpecs } from "./extendedModelTools";
+import { productionModelToolSpecs } from "./productionModelTools";
 import { assetModelToolSpecs } from "./assetModelTools";
 import { canvasModelToolSpecs } from "./canvasModelTools";
 import { documentModelToolSpecs } from "./documentModelTools";
@@ -21,6 +23,7 @@ import { timelineModelToolSpecs } from "./timelineModelTools";
 import { projectsToInternalProfile } from "./paidBoundary";
 import {
   projectMcpTool,
+  modelToolCapabilityId,
   projectsToProfile,
   type McpProfileTool,
   type ModelFacingToolSpec,
@@ -40,6 +43,8 @@ function collectSpecs(): readonly ModelFacingToolSpec[] {
     ...canvasModelToolSpecs(),
     ...timelineModelToolSpecs(),
     ...assetModelToolSpecs(),
+    ...extendedModelToolSpecs(),
+    ...productionModelToolSpecs(),
   ];
   const names = new Set<string>();
   for (const spec of specs) {
@@ -66,6 +71,12 @@ function contractById(id: string): AnyCapabilityContract | undefined {
 }
 
 export const MODEL_FACING_TOOL_SPECS: readonly ModelFacingToolSpec[] = collectSpecs();
+
+/** Resolve current model names and external aliases through their actual descriptor owners. */
+export function resolveModelToolCapabilityId(name: string, args?: unknown): string | undefined {
+  const spec = MODEL_FACING_TOOL_SPECS.find(candidate => candidate.name === name);
+  return spec ? modelToolCapabilityId(spec, args) : resolveCapabilityAlias(name)?.contract.id;
+}
 
 /** 某个能力的全部别名说明书，按声明顺序。 */
 export function specsForCapability(contractId: string): readonly ModelFacingToolSpec[] {

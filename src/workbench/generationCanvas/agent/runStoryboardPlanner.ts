@@ -1,19 +1,18 @@
-import type { AgentChatHistory, AgentChatStatus } from '../../../../electron/harness/agentChatContracts'
+import { formatAvailableModelsForPrompt } from "../../../../electron/shared/agentCapabilities/availableModels";
 import type { CapturedCanvasReadSnapshotHandleWire } from '../../../../electron/shared/surfacePortBinding'
 import type { CanvasReadResult } from '../../../../electron/shared/agentCapabilities/canvasRead'
+import { toPublishedJsonSchema } from '../../../../electron/shared/agentCapabilities/modelVisibleJsonSchema'
 import { assertTurnCanWrite } from '../../ai/agentTurnLifecycle'
-import { sendGenerationCanvasAgentMessage, type ToolCallEvent } from './generationCanvasAgentClient'
-import { readGenerationCanvasSnapshot } from './generationCanvasTools'
-import { applyCanvasToolCall } from './applyCanvasToolCall'
-import type { StoryboardPlanApplicationResult } from './applyCanvasToolCall'
-import { evaluateGate } from './gate'
-import { buildLockGateContext } from './lockGateContext'
+import { runSingleShotAgent } from '../../ai/agentLoopMode'
 import { STORYBOARD_PLANNER_SKILL, buildStoryboardPlanningMessage, type StoryboardShotMode } from './storyboardLauncher'
 import type { StoryboardPlan } from './storyboardPlan'
-import { parseStoryboardPlan } from './storyboardPlanSchema'
+import { parseStoryboardPlan, storyboardPlanSchema } from './storyboardPlanSchema'
+import { assertIssuedCanvasReadResult } from './canvasReadResultSeal'
+import { formatCanvasForAgent } from './canvasPromptContext'
+import { listAvailableModelsForAgent } from './availableModels'
 
 type StoryboardPlannerInput = {
-  turnId?: string
+  target: 'production'
   projectId?: string
   featureKey?: string
   canWrite: () => boolean
@@ -22,105 +21,35 @@ type StoryboardPlannerInput = {
   currentPlan?: StoryboardPlan | null
   revisionRequest?: string
   displayPrompt?: string
-  /** P4：方案归属的原稿 documentId（发起拆镜头时捕获，异步期间切文档不串稿）。 */
-  documentId?: string
-  /** Existing design to revise. Omit when the planner should create a new design. */
-  storyboardId?: string
   skill?: { key: string; name: string }
-  onContent?: (text: string) => void
-  onCancelReady?: (cancel: () => void) => void
-} & (
-  | { target: 'creation' }
-  | {
-      target: 'production'
-      snapshot: CanvasReadResult
-      capturedCanvasReadSnapshot: CapturedCanvasReadSnapshotHandleWire
-    }
-)
+  snapshot: CanvasReadResult
+  capturedCanvasReadSnapshot: CapturedCanvasReadSnapshotHandleWire
+}
 
-/** Same planner capability for inline and production. Only the inline caller
- * projects the parsed plan into the editor; production owns the returned plan. */
-export async function runStoryboardPlanner(
-  input: StoryboardPlannerInput,
-): Promise<{ text: string; status: AgentChatStatus; plan?: StoryboardPlan; application?: StoryboardPlanApplicationResult }> {
-  const target = input.target
-  const canWrite = input.canWrite
-  let plan: StoryboardPlan | undefined
-  let application: StoryboardPlanApplicationResult | undefined
-  const agentRequestBase = {
-    ...(input.turnId ? { turnId: input.turnId } : {}),
-    message: buildStoryboardPlanningMessage({
-      storyText: input.storyText,
-      currentPlan: input.currentPlan,
-      revisionRequest: input.revisionRequest,
-      ...(input.shotMode ? { shotMode: input.shotMode } : {}),
-    }),
-    ...(input.displayPrompt ? { displayMessage: input.displayPrompt } : {}),
+/** Production planning returns an IR. The approved materialization operation owns every write. */
+export async function runStoryboardPlanner(input: StoryboardPlannerInput) {
+  assertTurnCanWrite(input.canWrite)
+  assertIssuedCanvasReadResult(input.snapshot)
+  const canvas = formatCanvasForAgent(input.snapshot)
+  const models = formatAvailableModelsForPrompt(await listAvailableModelsForAgent())
+  assertTurnCanWrite(input.canWrite)
+  const prompt = [
+    '只输出 JSON 对象，不调用工具，不写入画布。',
+    '输出 JSON Schema：', JSON.stringify(toPublishedJsonSchema(storyboardPlanSchema)),
+    '当前画布：', canvas, models,
+    buildStoryboardPlanningMessage(input),
+  ].filter(Boolean).join('\n\n')
+  const skill = input.skill ?? STORYBOARD_PLANNER_SKILL
+  const response = await runSingleShotAgent({
     projectId: input.projectId,
-    featureKey: input.featureKey,
-    capability: 'storyboard' as const,
-    canWrite,
-    selectedNodes: [],
-    mode: 'agent' as const,
-    skill: input.skill || STORYBOARD_PLANNER_SKILL,
-    onContent: (_delta: string, text: string) => {
-      if (canWrite()) input.onContent?.(text)
-    },
-    onCancelReady: input.onCancelReady,
-    onToolCall: async (event: ToolCallEvent) => {
-      // canvas.read is intercepted and executed by the main-process capability
-      // registry. Anything except the planner proposal reaching this renderer
-      // callback is an ownership violation and fails closed.
-      if (!canWrite() || event.toolName !== 'propose_storyboard_plan') {
-        await event.confirm({ ok: false, denied: true, message: 'storyboard turn cannot perform this action' })
-        return
-      }
-      try {
-        let result: unknown
-        if (target === 'creation') {
-          const gate = evaluateGate(
-            { kind: 'tool-call', toolName: event.toolName, args: event.args },
-            buildLockGateContext(),
-          )
-          if (gate.outcome !== 'allow') {
-            await event.confirm({
-              ok: false,
-              denied: true,
-              message: gate.outcome === 'deny' ? gate.reason : 'storyboard action requires approval',
-            })
-            return
-          }
-          result = await applyCanvasToolCall(event.toolName, event.args, undefined, canWrite, input.documentId, input.storyboardId)
-          application = result as StoryboardPlanApplicationResult
-        }
-        assertTurnCanWrite(canWrite)
-        const parsedPlan = parseStoryboardPlan(event.args)
-        if (target === 'production' || application?.status === 'applied') plan = parsedPlan
-        if (target === 'production')
-          result = { title: parsedPlan.title, anchorCount: parsedPlan.anchors.length, shotCount: parsedPlan.shots.length }
-        await event.confirm({ ok: true, result, silent: true })
-      } catch (error: unknown) {
-        const code = error instanceof Error ? (error as Error & { code?: unknown }).code : undefined
-        await event.confirm({
-          ok: false,
-          message: error instanceof Error ? error.message : String(error),
-          ...(typeof code === 'string' ? { code } : {}),
-          ...(!canWrite() ? { denied: true } : {}),
-        })
-      }
-    },
-  }
-  const { response } = await sendGenerationCanvasAgentMessage(
-    input.target === 'production'
-      ? {
-          ...agentRequestBase,
-          snapshot: input.snapshot,
-          capturedCanvasReadSnapshot: input.capturedCanvasReadSnapshot,
-        }
-      : {
-          ...agentRequestBase,
-          snapshot: readGenerationCanvasSnapshot(),
-        },
-  )
-  return { text: response.text.trim(), status: response.status, ...(plan ? { plan } : {}), ...(application ? { application } : {}) }
+    featureKey: input.featureKey ?? 'production.plan-storyboard',
+    prompt, displayPrompt: input.displayPrompt ?? input.storyText ?? '',
+    skillKey: skill.key,
+  })
+  assertTurnCanWrite(input.canWrite)
+  if (response.status !== 'finished') return { text: response.text, status: response.status }
+  const text = response.text.trim()
+  const candidate = text.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i)?.[1] ?? text
+  const plan = parseStoryboardPlan(JSON.parse(candidate))
+  return { text, status: response.status, plan }
 }

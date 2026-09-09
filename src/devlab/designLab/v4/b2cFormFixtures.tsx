@@ -1,5 +1,4 @@
 import React from 'react'
-import type { ProjectAgentStatus } from '../../../../electron/shared/projectAgentContracts'
 import type { GenerationModelDefaultMap } from '../../../workbench/generationCanvas/model/generationModelDefaults'
 import { useTranslation } from 'react-i18next'
 import { AgentPanelV4Panel } from '../../../workbench/ai/v4/AgentPanelV4Panel'
@@ -8,7 +7,6 @@ import { buildV4ModelRows } from '../../../workbench/ai/v4/agentPanelV4ModelRows
 import { collapseV4Flow } from '../../../workbench/ai/v4/agentPanelV4Collapse'
 import type { V4FlowItem, V4ToolStatus } from '../../../workbench/ai/v4/agentPanelV4Types'
 import type { ModelCatalogModelDto } from '../../../workbench/api/modelCatalogApi'
-import { labHostState } from './agentPanelV4LabHost'
 
 // Same catalog DTOs and three kind-specific calls as useAgentPanelV4Data.reloadModels.
 const B2C_MODELS: ModelCatalogModelDto[] = [
@@ -30,19 +28,19 @@ export function B2cModelSpecimen(): JSX.Element {
   return <V4ModelPopover rows={rows} />
 }
 
-export function B2cProcessSpecimen({ state }: { state: ProjectAgentStatus }): JSX.Element {
+export function B2cProcessSpecimen({ state }: { state: V4ToolStatus }): JSX.Element {
   const { t } = useTranslation()
-  const turn = { ...labHostState({ items: [] }).turns[0]!, createdAt: '2026-09-09T00:00:00Z', updatedAt: '2026-09-09T00:00:12Z' }
+  const turn = { turnId: 'b2c-turn', createdAt: '2026-09-09T00:00:00Z', updatedAt: '2026-09-09T00:00:12Z' }
   const tool = (label: string, status: V4ToolStatus): V4FlowItem => ({ kind: 'tool', receipt: { label, action: 'document', status, turnId: turn.turnId, summary: status === 'output-error' ? '写入失败，请重试' : undefined } })
   const flow: V4FlowItem[] = [
     { kind: 'user', text: '把这篇文稿拆成 8 个分镜。' },
-    ...(state === 'done' ? [{ kind: 'assistant', text: '已写入 8 个分镜。\n\n下一步：补齐角色参考图，再开始生成。', status: 'complete' } as V4FlowItem] : []),
+    ...(state === 'output-available' ? [{ kind: 'assistant', text: '已写入 8 个分镜。\n\n下一步：补齐角色参考图，再开始生成。', status: 'complete' } as V4FlowItem] : []),
     tool('读取全文', 'output-available'),
     { kind: 'thinking', label: '思考', meta: '检查分镜结构' },
     tool('加载分镜技能', 'output-available'),
-    tool('写入 8 镜', state === 'running' ? 'input-available' : state === 'failed' ? 'output-error' : 'output-available'),
+    tool('写入 8 镜', state === 'input-available' ? 'input-available' : state === 'output-error' ? 'output-error' : 'output-available'),
   ]
   return <div style={{ width: 390, height: 620 }}><AgentPanelV4Panel width={390} height={620} context={{}}
-    flow={collapseV4Flow(flow, t, { turns: [turn], elapsedSeconds: 8, liveTurnId: state === 'running' ? turn.turnId : undefined })}
-    composer={{ mode: state === 'running' ? 'running' : 'idle', modelLabel: 'DeepSeek V4 Pro' }} /></div>
+    flow={collapseV4Flow(flow, t, { turns: [turn], elapsedSeconds: 8, liveTurnId: state === 'input-available' ? turn.turnId : undefined })}
+    composer={{ mode: state === 'input-available' ? 'running' : 'idle', modelLabel: 'DeepSeek V4 Pro' }} /></div>
 }

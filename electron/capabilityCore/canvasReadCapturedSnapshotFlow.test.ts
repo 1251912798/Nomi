@@ -1,26 +1,18 @@
 import { EventEmitter } from "node:events";
-import fs from "node:fs";
-import os from "node:os";
-import path from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { IpcMainInvokeEvent } from "electron";
-import type { AgentChatV2Hooks } from "../ai/agentChatV2";
-import type { AgentChatResponse } from "../harness/agentChatContracts";
-import type { ProjectAgentHostState } from "../shared/projectAgentContracts";
+import type { LaneDesktopResult, LaneSingleShotRequest } from "../shared/agentLane/laneDesktopContracts";
+import { LANE_IPC_CHANNELS } from "../shared/agentLane/laneContracts";
 
 const state = vi.hoisted(() => ({
   handlers: new Map<string, (event: IpcMainInvokeEvent, payload: unknown) => unknown>(),
-  run: vi.fn(),
   landing: vi.fn(),
   captureSurface: vi.fn(),
   sealSurfaceSnapshot: vi.fn(),
   rendererEvent: null as IpcMainInvokeEvent | null,
   surfaceBinding: null as unknown,
   desktopBridge: null as unknown,
-  projectAgentEventListener: null as ((event: unknown) => void) | null,
-  projectAgentPatchListener: null as ((patch: unknown) => void) | null,
-  projectAgentCleanup: null as (() => void) | null,
   activeProjectId: "project-a",
 }));
 
@@ -29,22 +21,10 @@ vi.mock("electron", () => ({
     handle: (channel: string, handler: (event: IpcMainInvokeEvent, payload: unknown) => unknown) => {
       state.handlers.set(channel, handler);
     },
+    removeHandler: (channel: string) => state.handlers.delete(channel),
   },
 }));
 vi.mock("../ipcSenderGuard", () => ({ assertTrustedSender: () => undefined }));
-vi.mock("../events/agentChatTrace", () => ({
-  beginTurnTrace: () => undefined,
-  traceChatEvent: () => undefined,
-  traceToolDecision: () => undefined,
-  traceGateDenied: () => undefined,
-}));
-vi.mock("../i18n", () => ({ desktopT: () => "confirmation expired" }));
-vi.mock("../ai/agentChatV2", () => ({
-  runAgentChatV2: state.run,
-  seedAgentChatV2History: vi.fn(),
-  agentChatV2HasHistory: vi.fn(),
-  clearAgentChatV2History: vi.fn(),
-}));
 vi.mock("../../src/workbench/capability/multiShotCanvasLanding", () => ({
   handleMultiShotCanvasLandingOp: state.landing,
 }));
@@ -79,18 +59,10 @@ import { createCanvasReadPortResolver } from "./canvasReadPortResolver";
 import { registerCanvasReadSurfaceIpc } from "./canvasReadSurfaceIpc";
 import { createCanvasReadSurfaceRegistry, createSurfaceOwnerAuthority } from "./canvasReadSurfaceRegistry";
 import { createPiCanvasReadIpcCapture } from "./canvasReadTransportAdapters";
-import { createProjectAgentExecutionCoordinator } from "../projectAgentHost/projectAgentExecutionCoordinator";
-import { createProjectAgentRepositoryRouter } from "../projectAgentHost/projectAgentRepositoryRouter";
-import {
-  PROJECT_AGENT_COMMAND_CHANNEL,
-  PROJECT_AGENT_EVENT_CHANNEL,
-  PROJECT_AGENT_OPEN_CHANNEL,
-  PROJECT_AGENT_PATCH_CHANNEL,
-  PROJECT_AGENT_RELEASE_CHANNEL,
-  PROJECT_AGENT_SNAPSHOT_CHANNEL,
-  registerProjectAgentIpc,
-} from "../projectAgentHost/projectAgentIpc";
-import { projectAgentProjectionStore } from "../../src/workbench/ai/projectAgentProjectionStore";
+import { registerAgentLaneIpc, type LaneIpcDependencies } from "../agentLane/laneIpc";
+import { runLaneSingleShot } from "../agentLane/laneSingleShot.mjs";
+import { createHttpFixture } from "../../tests/agent-runtime/httpFixture.mjs";
+import { laneClient } from "../../src/workbench/ai/lane/laneClient";
 import { handleCapabilityApply } from "../../src/workbench/capability/capabilityApplyHandler";
 import { useGenerationCanvasStore } from "../../src/workbench/generationCanvas/store/generationCanvasStore";
 
@@ -119,16 +91,7 @@ function source() {
     url: "file:///nomi/index.html",
     detached: false,
     isDestroyed: () => false,
-    send: vi.fn((channel: string, packet: { sessionId?: string; event?: unknown }) => {
-      if (channel === PROJECT_AGENT_EVENT_CHANNEL) {
-        state.projectAgentEventListener?.(packet);
-        return;
-      }
-      if (channel === PROJECT_AGENT_PATCH_CHANNEL) {
-        projectAgentProjectionStore.applyPatch(packet as never);
-        state.projectAgentPatchListener?.(packet);
-      }
-    }),
+    send: vi.fn(),
   };
   const sender = Object.assign(new EventEmitter(), {
     id: 1,
@@ -138,96 +101,27 @@ function source() {
   return { frame, sender, event: { sender, senderFrame: frame } as unknown as IpcMainInvokeEvent };
 }
 
-function response(): AgentChatResponse {
-  return {
-    id: "result",
-    text: "done",
-    status: "finished",
-    finishReason: "stop",
-    toolCalls: [],
-    artifacts: [],
-    usage: { promptTokens: 1, completionTokens: 1, cachedPromptTokens: 0, totalTokens: 2 },
-  };
-}
-
 function invoke(channel: string, event: IpcMainInvokeEvent, payload: unknown) {
   const handler = state.handlers.get(channel);
   if (!handler) throw new Error(`missing handler: ${channel}`);
   return Promise.resolve().then(() => handler(event, payload));
 }
 
+const cleanups: Array<() => Promise<unknown>> = [];
+
 function connectDesktopBridge(renderer: ReturnType<typeof source>): void {
   state.rendererEvent = renderer.event;
-  state.desktopBridge = {
-    projectAgent: {
-      open: (binding: unknown) => invoke(PROJECT_AGENT_OPEN_CHANNEL, renderer.event, { binding }),
-      snapshot: (subscriptionId: string) => invoke(PROJECT_AGENT_SNAPSHOT_CHANNEL, renderer.event, { subscriptionId }),
-      command: (command: unknown) => invoke(PROJECT_AGENT_COMMAND_CHANNEL, renderer.event, command),
-      release: (subscriptionId: string) => invoke(PROJECT_AGENT_RELEASE_CHANNEL, renderer.event, { subscriptionId }),
-      readProposalReceipt: async () => null,
-      writeProposalReceipt: async () => { throw new Error("not used"); },
-      transitionProposalReceipt: async () => { throw new Error("not used"); },
-      clearProposalReceipt: async () => { throw new Error("not used"); },
-      onPatch: (listener: (patch: unknown) => void) => {
-        state.projectAgentPatchListener = listener;
-        return () => {
-          if (state.projectAgentPatchListener === listener) state.projectAgentPatchListener = null;
-        };
-      },
-      onEvent: (listener: (event: unknown) => void) => {
-        state.projectAgentEventListener = listener;
-        return () => {
-          if (state.projectAgentEventListener === listener) state.projectAgentEventListener = null;
-        };
-      },
-    },
-  };
+  laneClient.connect({
+    send: async (command) => await invoke(LANE_IPC_CHANNELS.command, renderer.event, command) as LaneDesktopResult,
+    onProjection: () => () => undefined,
+  });
 }
 
-async function installProjectAgentHost(
-  renderer: ReturnType<typeof source>,
-  surfaceCapture: ReturnType<typeof registerCanvasReadSurfaceIpc>,
-  canvasRead: ReturnType<typeof createPiCanvasReadIpcCapture>,
-  binding: { projectId: string; immutableProjectUuid: string; projectGeneration: number },
-): Promise<void> {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), "nomi-project-agent-canvas-read-flow-"));
-  const repositoryRouter = createProjectAgentRepositoryRouter({ rootDir: root });
-  const executionCoordinator = createProjectAgentExecutionCoordinator(
-    repositoryRouter,
-    () => `subscription-${globalThis.crypto.randomUUID()}`,
-    { runAgent: state.run },
-  );
-  registerProjectAgentIpc({
-    runtime: {
-      repositoryRouter,
-      executionCoordinator,
-      attachProject: (projectBinding) => repositoryRouter.attach(projectBinding),
-      setGenerationAdapterFactory: () => {},
-    },
-    surfaceCapture,
-    captureCanvasRead: (_event, projectBinding, requestId) => canvasRead.capture(
-      renderer.event,
-      { surfaceBinding: state.surfaceBinding, projectId: projectBinding.projectId },
-      requestId,
-    ),
-    captureCanvasReadSnapshot: (event, projectBinding, handle, requestId) => canvasRead.capture(
-      event,
-      { capturedCanvasReadSnapshot: handle, projectId: projectBinding.projectId },
-      requestId,
-    ),
-  });
-  const opened = await invoke(PROJECT_AGENT_OPEN_CHANNEL, renderer.event, { binding });
-  if (!opened || typeof opened !== "object" || !(opened as { ok?: boolean }).ok) {
-    throw new Error("project agent open failed");
-  }
-  const value = (opened as {
-    value: { subscriptionId: string; subscriptionEpoch: number; snapshot: ProjectAgentHostState };
-  }).value;
-  projectAgentProjectionStore.install(value.subscriptionId, value.subscriptionEpoch, value.snapshot);
-  state.projectAgentCleanup = () => {
-    void invoke(PROJECT_AGENT_RELEASE_CHANNEL, renderer.event, { subscriptionId: value.subscriptionId });
-    fs.rmSync(root, { recursive: true, force: true });
-  };
+function installLaneSingleShot(singleShot: LaneIpcDependencies['singleShot']): void {
+  const unexpected = () => { throw new Error('Planning must not open or mutate a conversation'); };
+  const registration = registerAgentLaneIpc({ singleShot, openWorkspace: unexpected, validate: unexpected,
+    configure: unexpected, receipt: unexpected, updatePolicy: unexpected, restoreInput: unexpected });
+  cleanups.push(() => registration.dispose());
 }
 
 beforeEach(() => {
@@ -236,8 +130,6 @@ beforeEach(() => {
   state.rendererEvent = null;
   state.surfaceBinding = null;
   state.desktopBridge = null;
-  state.projectAgentEventListener = null;
-  state.projectAgentPatchListener = null;
   state.activeProjectId = "project-a";
   state.landing.mockResolvedValue(null);
   state.captureSurface.mockImplementation(() => state.surfaceBinding);
@@ -259,14 +151,13 @@ beforeEach(() => {
   });
 });
 
-afterEach(() => {
-  state.projectAgentCleanup?.();
-  state.projectAgentCleanup = null;
-  projectAgentProjectionStore.clear();
+afterEach(async () => {
+  laneClient.connect(undefined);
+  for (const cleanup of cleanups.splice(0).reverse()) await cleanup();
 });
 
 describe("production captured canvas read through real main interception", () => {
-  it("keeps the real production prompt and main tool read on one canonical snapshot after selection and project switch", async () => {
+  it("keeps the production single-shot prompt and sealed main read on canonical A after a project switch without canvas writes", async () => {
     const renderer = source();
     connectDesktopBridge(renderer);
     const ownerAuthority = createSurfaceOwnerAuthority();
@@ -334,11 +225,6 @@ describe("production captured canvas read through real main interception", () =>
       value: { binding: { binding: { projectId: string; immutableProjectUuid: string; projectGeneration: number } } };
     };
     state.surfaceBinding = committedA.value.binding;
-    await installProjectAgentHost(renderer, surfaceCapture, canvasRead, committedA.value.binding.binding as {
-      projectId: string;
-      immutableProjectUuid: string;
-      projectGeneration: number;
-    });
     useGenerationCanvasStore.getState().restoreSnapshot({
       nodes: [
         {
@@ -383,27 +269,23 @@ describe("production captured canvas read through real main interception", () =>
     };
     let compactA = "";
     let readDecision: unknown;
-    let proposalDecision: unknown;
-    state.run.mockImplementationOnce(async (request, hooks: AgentChatV2Hooks) => {
+    const http = await createHttpFixture([{ type: 'text', text: JSON.stringify(plan) }]);
+    cleanups.push(http.close);
+    installLaneSingleShot(async (event, wire, signal) => {
+      const request = wire as LaneSingleShotRequest;
       expect(request.prompt).toContain(compactA);
       expect(request.prompt).not.toContain("Later live B");
-      readDecision = await hooks.awaitToolConfirmation(
-        {
-          toolCallId: "read-captured-a",
-          toolName: "read_canvas_state",
-          args: {},
-        },
-        hooks.abortSignal!,
-      );
-      proposalDecision = await hooks.awaitToolConfirmation(
-        {
-          toolCallId: "propose-captured-a",
-          toolName: "propose_storyboard_plan",
-          args: plan,
-        },
-        hooks.abortSignal!,
-      );
-      return response();
+      expect(request.featureKey).toMatch(/^nomi:production-planner:project-a:/);
+      if (request.projectId !== 'project-a') throw new Error('Unexpected fixture project');
+      // The planner returns JSON IR with no tools. Independently exercise the
+      // same sealed read capability in main; it cannot read the later live B.
+      const handle = await state.sealSurfaceSnapshot.mock.results[0]!.value;
+      const adapter = canvasRead.capture(event, { capturedCanvasReadSnapshot: handle, projectId: request.projectId }, 'production-a-1');
+      try {
+        readDecision = await adapter.tryExecute({ toolCallId: 'read-captured-a', toolName: 'read_canvas_state', args: {} }, signal);
+      } finally { adapter.dispose(); }
+      return runLaneSingleShot({ fetch: globalThis.fetch, model: { kind: 'openai-compatible', providerId: 'fixture', modelId: 'fixture',
+        baseURL: http.baseURL, authType: 'api-key', apiKey: 'fixture' }, prompt: request.prompt, signal });
     });
 
     const pending = handleCapabilityApply("production.plan-storyboard", {
@@ -446,13 +328,15 @@ describe("production captured canvas read through real main interception", () =>
     });
     releaseLanding();
 
-    await expect(pending).resolves.toMatchObject({ text: "done", plan: { title: "Captured plan" } });
-    expect(readDecision).toEqual({ ok: true, result: compactA, silent: true });
-    expect(proposalDecision).toMatchObject({
-      ok: true,
-      result: { title: "Captured plan", anchorCount: 0, shotCount: 1 },
-      silent: true,
-    });
+    await expect(pending).resolves.toMatchObject({ text: JSON.stringify(plan), plan: { title: "Captured plan" } });
+    expect(readDecision).toEqual({ ok: true, result: canvasReadResultSchema.parse(canonicalA), silent: true });
+    expect(http.requests).toHaveLength(1);
+    expect(http.requests[0]!.body.tools ?? []).toEqual([]);
+    const promptBody = JSON.stringify(http.requests[0]!.body);
+    expect(promptBody).toContain('Captured A');
+    expect(promptBody).not.toContain('Later live B');
+    expect(promptBody).not.toContain('secret.invalid');
+    expect(useGenerationCanvasStore.getState().nodes.map(node => node.id)).toEqual(['node-b']);
     expect(readDisk).not.toHaveBeenCalled();
     expect(renderer.frame.send.mock.calls.some(([channel]) => channel === "nomi:surface:canvasRead:request")).toBe(
       false,
@@ -526,11 +410,6 @@ describe("production captured canvas read through real main interception", () =>
       value: { binding: { binding: { projectId: string; immutableProjectUuid: string; projectGeneration: number } } };
     };
     state.surfaceBinding = committedA.value.binding;
-    await installProjectAgentHost(renderer, surfaceCapture, canvasRead, committedA.value.binding.binding as {
-      projectId: string;
-      immutableProjectUuid: string;
-      projectGeneration: number;
-    });
     const sealedA = (await invoke("nomi:surface:captureCanvasReadSnapshot", renderer.event, {
       binding: structuredClone(committedA.value.binding),
       snapshot: structuredClone(SNAPSHOT_A),
@@ -544,14 +423,8 @@ describe("production captured canvas read through real main interception", () =>
       suspension: structuredClone(suspendedB.value.suspension),
     });
 
-    // 2026-09-07: this leg used to drive `nomi:agents:chatV2:start`. Nothing in
-    // production registered that channel (preload never exposed it), so the leg was
-    // proving a transport no user could reach. It now claims the sealed handle
-    // through the seam `registerProjectAgentIpc` actually calls in production —
-    // `canvasRead.capture(..., { capturedCanvasReadSnapshot })` — so the same three
-    // invariants (canonical A wins over live B, no disk read, no renderer round trip)
-    // are asserted on the live path.
-    const prompt = formatCanvasForAgent(canvasReadResultSchema.parse(SNAPSHOT_A));
+    // Main's sealed capability remains single-use and read-only, independent
+    // of the planner's tool-free JSON request or the later live Surface.
     const capturedAdapter = canvasRead.capture(
       renderer.event,
       { capturedCanvasReadSnapshot: structuredClone(sealedA.value.handle), projectId: "project-a" },
@@ -562,7 +435,7 @@ describe("production captured canvas read through real main interception", () =>
         { toolCallId: "read-captured-a", toolName: "read_canvas_state", args: {} },
         new AbortController().signal,
       ),
-    ).resolves.toEqual({ ok: true, result: prompt, silent: true });
+    ).resolves.toEqual({ ok: true, result: canvasReadResultSchema.parse(SNAPSHOT_A), silent: true });
     expect(readDisk).not.toHaveBeenCalled();
     expect(renderer.frame.send.mock.calls.some(([channel]) => channel === "nomi:surface:canvasRead:request")).toBe(
       false,

@@ -1,3 +1,4 @@
+import { require as tsxRequire } from 'tsx/cjs/api'
 // MCP 测试网 L1：真实 in-Electron stdio 进程的协议握手回归。
 // 零额度、无窗口断言；只走 initialize/tools/list/tools/call/notification framing。
 import crypto from 'node:crypto'
@@ -9,18 +10,18 @@ import { measureMcpToolsListPayload, measureMcpToolsListPayloadByLocale } from '
 // 面收敛（surface-16-collapse）：拉分支时存在的 42 个 API 镜像塌成 15 个按对象归并的工具。nomi_intake_brief 从
 // MCP 目录移除（无外部 MCP 消费者，内部 capability 保留）。并线 main 后 **+4 个 M2 语义编辑工具**
 // （nomi_timeline_read/edit · nomi_export_job · nomi_media_query，main #16290f6e 收敛后新增的独立对象，原样保留、
-// 未并入 nomi_read/collapse，续裁见 PR body）→ 面数与 payload 不再手抄：随编译目录与棘轮 json 派生（ratchet 只减不增仍由 check:mcp-payload 守）。
+// 未并入 nomi_read/collapse，续裁见 PR body）→ 面数与 payload 不再手抄：随源码目录与棘轮 json 派生（ratchet 只减不增仍由 check:mcp-payload 守）。
 // 三个锚全部派生自真相源（手抄版三次被有意扩容撞红：#337 波、#360 slice-3；教训见
 // docs/fixes/2026-09-02-stale-hand-copied-surface-baseline.root-cause.json）：
-// 名单 ← 编译目录 MCP_TOOL_NAMES；只读表 ← catalog annotations.readOnlyHint；载荷 ← 棘轮 json（check:mcp-payload 单一真相）。
+// 名单 ← 源码目录 MCP_TOOL_NAMES；只读表 ← catalog annotations.readOnlyHint；载荷 ← 棘轮 json（check:mcp-payload 单一真相）。
 const repoRoot = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..', '..')
 const BASELINE_PAYLOAD_BYTES = JSON.parse(fs.readFileSync(path.join(repoRoot, 'scripts', 'mcp-payload-baseline.json'), 'utf8')).maxBytes
-const { MCP_TOOL_NAMES } = await import('../../dist-electron/capabilityCore/mcpProtocol.js')
-const { MCP_TOOL_RESOLVER } = await import('../../dist-electron/capabilityCore/mcpToolCatalog.js')
+const { MCP_TOOL_NAMES } = tsxRequire('../../electron/capabilityCore/mcpProtocol.ts', import.meta.url)
+const { MCP_TOOL_RESOLVER } = tsxRequire('../../electron/capabilityCore/mcpToolCatalog.ts', import.meta.url)
 // C5 的 stderr 锚也派生自真相源：这条诊断的事件名由两条启动路（Electron stdio server /
 // 裸 Node launcher）共用一个常量，手抄一句散文的结局是改了代码这里静默漂成假绿。
-const { MAX_MCP_LINE_BYTES } = await import('../../dist-electron/capabilityCore/mcpStdioLine.js')
-const { MCP_OVERSIZED_LINE_EVENT } = await import('../../dist-electron/capabilityCore/mcpStdioDiagnostics.js')
+const { MAX_MCP_LINE_BYTES } = tsxRequire('../../electron/capabilityCore/mcpStdioLine.ts', import.meta.url)
+const { MCP_OVERSIZED_LINE_EVENT } = tsxRequire('../../electron/capabilityCore/mcpStdioDiagnostics.ts', import.meta.url)
 const TOOL_NAMES = [...MCP_TOOL_NAMES]
 const READ_ONLY_TOOL_NAMES = MCP_TOOL_RESOLVER.list().filter((tool) => tool.annotations?.readOnlyHint === true).map((tool) => tool.name)
 

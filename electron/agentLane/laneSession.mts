@@ -161,13 +161,20 @@ export async function deleteLaneSession(projectDir: string, laneName: string, co
  *   对话列表里同一个名字会长出一串空壳，而用户以为他点开的是昨天那条。
  */
 export async function openLaneSession(
-  options: { projectDir: string; laneName?: string; sessionId?: string }, context: Context,
+  options: { projectDir: string; laneName?: string; sessionId?: string; createSessionId?: string }, context: Context,
 ): Promise<LaneSessionOpen> {
   const repo = await acquireRepo(options.projectDir);
   const release = (releaseContext: Context) => releaseRepo(options.projectDir, releaseContext);
   const cwd = laneSessionCwd(options.laneName ?? 'main');
   try {
     const known = await repo.list({ cwd }, context);
+    if (options.createSessionId !== undefined) {
+      if (options.sessionId !== undefined || known.length > 1
+        || (known.length === 1 && known[0].id !== options.createSessionId)) throw new Error('legacy-target-session-conflict');
+      const session = known[0] ? await repo.open(known[0], context)
+        : await repo.create({ cwd, id: options.createSessionId }, context);
+      return { session, sessionId: session.metadata.id, release };
+    }
     if (options.sessionId === undefined) {
       // 同一条 lane 下有多份时取最新的那份（见 `listLaneSessions` 的同一条裁决）。
       const newest = known.reduce<JsonlSessionMetadata | undefined>(
