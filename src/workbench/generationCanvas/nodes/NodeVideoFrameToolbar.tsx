@@ -27,6 +27,7 @@ import type { GenerationCanvasNode } from '../model/generationCanvasTypes'
 // 「一功能一个家」——深度提取从此只有这一个入口，独立节点与加号菜单里的那份同 commit 删掉。
 
 type Props = {
+  reportFeedback: (message: string) => void
   node: GenerationCanvasNode
   downloading: boolean
   onDownload: (event: React.MouseEvent) => void
@@ -35,7 +36,8 @@ type Props = {
   onOpenProvenance: () => void
 }
 
-export default function NodeVideoFrameToolbar({ node, downloading, onDownload, onPreview, onOpenProvenance }: Props): JSX.Element {
+export default function NodeVideoFrameToolbar({ reportFeedback, node, downloading, onDownload, onPreview, onOpenProvenance }: Props): JSX.Element {
+
   const { t } = useTranslation()
   const [busy, setBusy] = React.useState<'first' | 'last' | null>(null)
   const [shotCutOpen, setShotCutOpen] = React.useState(false)
@@ -44,11 +46,12 @@ export default function NodeVideoFrameToolbar({ node, downloading, onDownload, o
   const extract = (which: 'first' | 'last') => {
     if (busy) return
     setBusy(which)
-    void extractVideoFrameToNode(node, which).finally(() => setBusy(null))
+    void extractVideoFrameToNode(node, which, reportFeedback).finally(() => setBusy(null))
   }
   return (
     <>
-    {shotCutOpen ? <NodeShotCutPanel node={node} onClose={() => setShotCutOpen(false)} /> : null}
+
+    {shotCutOpen ? <NodeShotCutPanel onFeedback={reportFeedback} node={node} onClose={() => setShotCutOpen(false)} /> : null}
     <FloatingToolbarShell ariaLabel={t('generationCommon.videoToolbar.aria')}>
       <ToolbarButton
         icon={<IconPlayerTrackPrev size={I.size} stroke={I.stroke} />}
@@ -85,7 +88,7 @@ export default function NodeVideoFrameToolbar({ node, downloading, onDownload, o
         disabled={busy !== null}
         onClick={() => openDeconstruction(node.id, { title: node.title || '', videoUrl: node.result?.url || '' })}
       />
-      <NodeDepthActionButton node={node} disabled={busy !== null} />
+      <NodeDepthActionButton reportFeedback={reportFeedback} node={node} disabled={busy !== null} />
       <ToolbarDuplicateVariantButton nodeId={node.id} />
       <ToolbarDivider />
       <ToolbarIconButton

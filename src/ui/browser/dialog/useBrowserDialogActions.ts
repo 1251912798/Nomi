@@ -7,7 +7,7 @@ import {
   type DesktopBrowserPromptCaptureEvent,
   type DesktopBrowserTextPromptSaveEvent,
 } from '../../../desktop/bridge'
-import { toast } from '../../toast'
+import { notify } from '../../notificationPolicy'
 import { browserUrlDisplayTitle, normalizeBrowserInput } from './browserUrl'
 import {
   type BrowserAssetPromptCaptureRequest,
@@ -85,6 +85,13 @@ export function useBrowserDialogActions({
   tabsRef,
 }: UseBrowserDialogActionsArgs): Record<string, any> {
   const { t } = useTranslation()
+  const [editingBookmark, setEditingBookmark] = React.useState<{ id: string; title: string } | null>(null)
+  const [feedbackByTab, setFeedbackByTab] = React.useState<Record<string, string>>({})
+  const presentTabFeedback = React.useCallback((tabId: string, message: string) => {
+    notify({ identity: `browser-tab:${tabId}`, reason: 'prompt-library', level: 'inline', message,
+      present: (value) => setFeedbackByTab((current) => ({ ...current, [tabId]: value })),
+    })
+  }, [])
   const createTab = React.useCallback(
     async (input?: string): Promise<void> => {
       if (tabsRef.current.length >= TAB_LIMIT) {
@@ -248,14 +255,18 @@ export function useBrowserDialogActions({
   }, [])
 
   const renameBookmark = React.useCallback((bookmark: BrowserBookmark): void => {
-    const nextTitle = window.prompt(t('browserAssets.renameBookmark'), bookmark.title)?.trim()
-    if (!nextTitle || nextTitle === bookmark.title) return
-    setBookmarks((current) => {
-      const next = current.map((item) => (item.id === bookmark.id ? { ...item, title: nextTitle } : item))
+    setEditingBookmark({ id: bookmark.id, title: bookmark.title })
+  }, [])
+  const commitBookmarkRename = React.useCallback((): void => {
+    if (!editingBookmark) return
+    const title = editingBookmark.title.trim()
+    if (title) setBookmarks((current) => {
+      const next = current.map((item) => item.id === editingBookmark.id ? { ...item, title } : item)
       writeBookmarks(next)
       return next
     })
-  }, [])
+    setEditingBookmark(null)
+  }, [editingBookmark, setBookmarks])
 
   const openBookmarkContextMenu = React.useCallback(
     (bookmark: BrowserBookmark, event: React.MouseEvent<HTMLButtonElement>): void => {
@@ -323,7 +334,8 @@ export function useBrowserDialogActions({
   const startBrowserPromptExtraction = React.useCallback(
     (request: BrowserAssetPromptCaptureRequest): void => {
       setLastError(null)
-      void runBrowserPromptExtractionToLibrary(request)
+      const tabId = activeTabIdRef.current
+      void runBrowserPromptExtractionToLibrary(request, (message) => presentTabFeedback(tabId, message))
     },
     [],
   )
@@ -354,8 +366,8 @@ export function useBrowserDialogActions({
         promptType: event.promptType === 'video' ? 'video' : 'image',
         tags: ['网页选中文字'],
       })
-        .then(() => toast(t('browserAssets.savedToPromptLibraryToast'), 'success'))
-        .catch((error) => toast(t('browserAssets.saveToPromptLibraryFailed', { error: error instanceof Error ? error.message : String(error) }), 'error'))
+        .then(() => presentTabFeedback(event.tabId, t('browserAssets.savedToPromptLibraryToast')))
+        .catch((error) => presentTabFeedback(event.tabId, t('browserAssets.saveToPromptLibraryFailed', { error: error instanceof Error ? error.message : String(error) })))
     })
   }, [browserBridge])
 
@@ -527,6 +539,8 @@ export function useBrowserDialogActions({
     openTabContextMenu,
     removeBookmark,
     renameBookmark,
+    editingBookmark, setEditingBookmark, commitBookmarkRename,
+    browserFeedback: feedbackByTab[activeTab?.id ?? ''] ?? '',
     runBrowserScreenshotPrompt,
     saveBookmark,
     toggleBrowserResourceCapture,

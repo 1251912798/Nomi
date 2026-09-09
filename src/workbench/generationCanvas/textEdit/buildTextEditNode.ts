@@ -6,7 +6,6 @@
 import type { GenerationCanvasNode } from '../model/generationCanvasTypes'
 import { resolveNodeVisualSize } from '../nodes/nodeSizing'
 import { useGenerationCanvasStore } from '../store/generationCanvasStore'
-import { toast } from '../../../ui/toast'
 import i18n from '../../../i18n'
 
 export type TextEditNodeSpec = {
@@ -77,5 +76,5 @@ export function applyTextEdit(node: GenerationCanvasNode): void {
   })
   store.updateNode(created.id, { prompt: spec.prompt, references: spec.references, meta: spec.meta })
   store.selectNode(created.id)
-  toast(i18n.t('generationCommon.derivative.textEditReady'), 'info')
+
 }

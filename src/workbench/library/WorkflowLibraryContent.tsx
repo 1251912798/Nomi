@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { IconDeviceFloppy, IconPencil, IconRoute, IconStar, IconStarFilled, IconX } from '@tabler/icons-react'
 import { cn } from '../../utils/cn'
 import { DesignEmptyState, DesignModal, DesignSearchInput, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../design'
-import { toast } from '../../ui/toast'
+import { notify } from '../../ui/notificationPolicy'
 import { getDesktopBridge } from '../../desktop/bridge'
 import { useGenerationCanvasStore } from '../generationCanvas/store/generationCanvasStore'
 import { rewriteCanvasWorkflowTemplateAssetUrls, type CanvasWorkflowTemplate } from '../generationCanvas/plugins/canvasWorkflowTemplates'
@@ -238,6 +238,8 @@ export function WorkflowLibraryContent({ projectId, compact = false, showHeader 
   const [filter, setFilter] = React.useState<WorkflowFilter>('all')
   const [editingEntry, setEditingEntry] = React.useState<WorkflowLibraryEntry | null>(null)
   const [copyingId, setCopyingId] = React.useState<string | null>(null)
+  const [feedback, setFeedback] = React.useState<{ projectId: string | null | undefined; message: string } | null>(null)
+  const report = React.useCallback((entryId: string, message: string) => notify({ identity: `workflow:${projectId}:${entryId}`, reason: 'copy', level: 'inline', message, present: (value) => setFeedback({ projectId, message: value }) }), [projectId])
 
   const refresh = React.useCallback(() => setEntries(readWorkflowLibrary()), [])
   React.useEffect(() => {
@@ -252,21 +254,25 @@ export function WorkflowLibraryContent({ projectId, compact = false, showHeader 
 
   const copyToCanvas = React.useCallback(async (entry: WorkflowLibraryEntry) => {
     if (!projectId || projectId !== getActiveWorkbenchProjectId()) {
-      toast(t('libraries.workflow.unavailable'), 'warning')
+      report(entry.id, t('libraries.workflow.unavailable'))
       return
     }
     if (copyingId) return
+    setFeedback(null)
     setCopyingId(entry.id)
     try {
       const materialized = await materializeWorkflowAssets(entry.template, projectId)
+      if (projectId !== getActiveWorkbenchProjectId()) { report(entry.id, t('libraries.workflow.unavailable')); return }
       const created = useGenerationCanvasStore.getState().instantiateWorkflowTemplateSnapshot(materialized.template, insertionPosition())
       if (!created.length) return
       markWorkflowLibraryEntryUsed(entry.id)
-      toast(materialized.failed ? t('libraries.workflow.assetCopyFailed') : t('libraries.workflow.copied', { name: entry.name }), materialized.failed ? 'warning' : 'success')
+      if (materialized.failed) report(entry.id, t('libraries.workflow.assetCopyFailed'))
+    } catch (error) {
+      report(entry.id, error instanceof Error ? error.message : String(error))
     } finally {
       setCopyingId(null)
     }
-  }, [copyingId, projectId, t])
+  }, [copyingId, projectId, report, t])
 
   const toggleFavorite = React.useCallback((entry: WorkflowLibraryEntry) => {
     updateWorkflowLibraryEntry(entry.id, { favorite: !entry.favorite })
@@ -299,6 +305,7 @@ export function WorkflowLibraryContent({ projectId, compact = false, showHeader 
           ))}
         </div>
       </div>
+      {feedback?.projectId === projectId && feedback.message ? <p role="alert" className="m-0 px-3 py-1 text-caption text-nomi-danger">{feedback.message}</p> : null}
       <div className={cn('min-h-0 flex-1 overflow-y-auto', compact ? 'px-3 pb-3' : 'px-5 pb-5')}>
         {!projectId ? (
           <DesignEmptyState density="inline" icon={<IconRoute size={28} className="text-nomi-ink-30" />} title={t('libraries.workflow.unavailable')} />

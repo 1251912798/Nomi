@@ -2,7 +2,7 @@ import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { IconPhoto, IconTrash, IconUpload } from '@tabler/icons-react'
 import { cn } from '../../../../utils/cn'
-import { toast } from '../../../../ui/toast'
+import { notify } from '../../../../ui/notificationPolicy'
 import { Switch } from '../../../../ui/switch'
 import { hostedAssetUrl, importWorkbenchLocalAssetFile } from '../../../api/assetUploadApi'
 import {
@@ -105,6 +105,11 @@ export function Scene3DEnvironmentPanel({
   onEnvironmentPatch: (patch: Partial<Scene3DState['environment']>) => void
 }): JSX.Element {
   const { t } = useTranslation()
+  const feedbackHostId = React.useId()
+  const [feedback, setFeedback] = React.useState<string | null>(null)
+  const reportFeedback = React.useCallback((message: string) => {
+    notify({ identity: `scene3d:panorama-import:${feedbackHostId}`, reason: 'import', message, level: 'inline', present: setFeedback })
+  }, [feedbackHostId])
   const panoramaInputRef = React.useRef<HTMLInputElement | null>(null)
   const panoramaImportRunRef = React.useRef(0)
   // 从预览 img 的 naturalWidth/Height 派生（不进持久化状态），给非 2:1 图挂常驻「可能拉伸」提示。
@@ -116,12 +121,13 @@ export function Scene3DEnvironmentPanel({
 
   const handlePanoramaFile = React.useCallback((file: File) => {
     if (readOnly) return
+    setFeedback(null)
     if (!file.type.startsWith('image/')) {
-      toast(t('scene3d.environment.imageOnly'), 'warning')
+      reportFeedback(t('scene3d.environment.imageOnly'))
       return
     }
     if (file.size > PANORAMA_IMPORT_MAX_BYTES) {
-      toast(t('scene3d.environment.fileTooLarge'), 'warning')
+      reportFeedback(t('scene3d.environment.fileTooLarge'))
       return
     }
 
@@ -135,15 +141,12 @@ export function Scene3DEnvironmentPanel({
         try {
           dimensions = await readImageDimensions(previewUrl)
         } catch {
-          toast(t('scene3d.environment.dimensionsUnreadable'), 'warning')
+          reportFeedback(t('scene3d.environment.dimensionsUnreadable'))
           return
         }
         if (panoramaImportRunRef.current !== importRunId) return
         // 非 2:1 不拒收（equirect 对任意比例渲染安全），降级为「可能拉伸」警告照常导入。
-        const standardRatio = isStandardPanoramaDimensions(dimensions)
-        if (!standardRatio) {
-          toast(t('scene3d.environment.nonStandardImported', { width: dimensions.width, height: dimensions.height }), 'warning')
-        }
+        setPreviewDimensions(dimensions)
 
         onEnvironmentPatch({
           panoramaUrl: previewUrl,
@@ -160,7 +163,6 @@ export function Scene3DEnvironmentPanel({
           panoramaUrl: hostedUrl,
           panoramaFileName: file.name || t('scene3d.environment.defaultName'),
         })
-        if (standardRatio) toast(t('scene3d.environment.imported'), 'success')
       } catch {
         try {
           const dataUrl = await readImageFileDataUrl(file)
@@ -169,18 +171,18 @@ export function Scene3DEnvironmentPanel({
             panoramaUrl: dataUrl,
             panoramaFileName: file.name || t('scene3d.environment.defaultName'),
           })
-          toast(t('scene3d.environment.importedTemporary'), 'info')
+          reportFeedback(t('scene3d.environment.importedTemporary'))
         } catch {
           if (panoramaImportRunRef.current === importRunId) {
             onEnvironmentPatch({ panoramaUrl: undefined, panoramaFileName: undefined })
           }
-          toast(t('scene3d.environment.importFailed'), 'error')
+          reportFeedback(t('scene3d.environment.importFailed'))
         }
       } finally {
         window.setTimeout(() => URL.revokeObjectURL(previewUrl), 30_000)
       }
     })()
-  }, [onEnvironmentPatch, readOnly, t])
+  }, [onEnvironmentPatch, readOnly, t, reportFeedback])
 
   const handlePanoramaInputChange = React.useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.currentTarget.files?.[0]
@@ -190,6 +192,7 @@ export function Scene3DEnvironmentPanel({
 
   const clearPanorama = React.useCallback(() => {
     if (readOnly) return
+    setFeedback(null)
     panoramaImportRunRef.current += 1
     onEnvironmentPatch({
       panoramaUrl: undefined,
@@ -369,6 +372,14 @@ export function Scene3DEnvironmentPanel({
             {t('scene3d.environment.importPanorama')}
           </button>
         )}
+        {feedback ? (
+          <div role="status" className="grid gap-1 text-caption text-[var(--nomi-ink-60)]">
+            <span>{feedback}</span>
+            {environment.panoramaUrl ? <button type="button" className="justify-self-start text-[var(--nomi-accent)]" disabled={readOnly} onClick={() => panoramaInputRef.current?.click()}>
+              {t('scene3d.environment.importPanorama')}
+            </button> : null}
+          </div>
+        ) : null}
         <input
           ref={panoramaInputRef}
           className="hidden"

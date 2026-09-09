@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom'
 import { IconX } from '@tabler/icons-react'
 import { NomiLogoMark } from '../../../design'
 import { addUserPrompt, type PromptMediaType, type PromptReferenceImage } from '../../api/promptLibraryApi'
-import { toast } from '../../../ui/toast'
+import { notify } from '../../../ui/notificationPolicy'
 import type { TranslationKey } from '../../../i18n/translationKey'
 import { cn } from '../../../utils/cn'
 import type { GenerationCanvasNode } from '../model/generationCanvasTypes'
@@ -68,7 +68,10 @@ export function SelectionPromptSaveController({ nodes, disabled = false }: Props
   const { t } = useTranslation()
   const nodeById = React.useMemo(() => new Map(nodes.map((node) => [node.id, node])), [nodes])
   const [toolbar, setToolbar] = React.useState<SelectionToolbarState | null>(null)
+  const [saveError, setSaveError] = React.useState('')
   const [draft, setDraft] = React.useState<DraftState | null>(null)
+  const draftRevision = React.useRef(0)
+  const [saving, setSaving] = React.useState(false)
 
   React.useEffect(() => {
     if (disabled) return undefined
@@ -119,6 +122,9 @@ export function SelectionPromptSaveController({ nodes, disabled = false }: Props
   }, [disabled, draft, nodeById])
 
   const openDraft = React.useCallback(() => {
+    draftRevision.current += 1
+    setSaving(false)
+    setSaveError('')
     if (!toolbar) return
     const node = nodeById.get(toolbar.nodeId) ?? null
     setDraft({
@@ -129,12 +135,18 @@ export function SelectionPromptSaveController({ nodes, disabled = false }: Props
   }, [nodeById, toolbar])
 
   const closeDraft = React.useCallback(() => {
+    if (saving) return
+    draftRevision.current += 1
+    setSaving(false)
     setDraft(null)
-  }, [])
+  }, [saving])
 
   const saveDraft = React.useCallback(() => {
     const text = draft?.text.trim()
-    if (!draft || !text) return
+    if (!draft || !text || saving) return
+    const revision = draftRevision.current
+    setSaving(true)
+    setSaveError('')
     void addUserPrompt({
       title: text.slice(0, 24),
       prompt: text,
@@ -143,15 +155,17 @@ export function SelectionPromptSaveController({ nodes, disabled = false }: Props
       referenceImages: draft.referenceImages,
     })
       .then(() => {
-        toast(t('generationCommon.savePrompt.saved'), 'success')
+        if (draftRevision.current !== revision) return
         setDraft(null)
         setToolbar(null)
         window.getSelection()?.removeAllRanges()
       })
       .catch((error) => {
-        toast(t('generationCommon.savePrompt.saveFailed', { message: error instanceof Error ? error.message : String(error) }), 'error')
+        if (draftRevision.current !== revision) return
+        notify({ identity: `selection-prompt:${revision}`, reason: 'save-failed', message: t('generationCommon.savePrompt.saveFailed', { message: error instanceof Error ? error.message : String(error) }), type: 'error', level: 'inline', present: setSaveError })
       })
-  }, [draft, t])
+      .finally(() => { if (draftRevision.current === revision) setSaving(false) })
+  }, [draft, saving, t])
 
   if (typeof document === 'undefined') return null
 
@@ -192,7 +206,7 @@ export function SelectionPromptSaveController({ nodes, disabled = false }: Props
                 <NomiLogoMark size={22} />
                 {t('generationCommon.savePrompt.title')}
               </div>
-              <button type="button" className="grid size-8 place-items-center rounded-nomi-sm border-0 bg-transparent text-nomi-ink-40 hover:bg-nomi-ink-05 hover:text-nomi-ink" onClick={closeDraft}>
+              <button type="button" className="grid size-8 place-items-center rounded-nomi-sm border-0 bg-transparent text-nomi-ink-40 hover:bg-nomi-ink-05 hover:text-nomi-ink" onClick={closeDraft} disabled={saving}>
                 <IconX size={17} stroke={1.8} aria-hidden />
               </button>
             </header>
@@ -204,6 +218,7 @@ export function SelectionPromptSaveController({ nodes, disabled = false }: Props
                     type="button"
                     className="absolute right-2 top-2 grid size-7 place-items-center rounded-full border-0 bg-black/55 text-white hover:bg-black/70"
                     aria-label={t('generationCommon.savePrompt.removeReference')}
+                    disabled={saving}
                     onClick={() => setDraft((current) => current ? { ...current, referenceImages: [] } : current)}
                   >
                     <IconX size={14} stroke={2} aria-hidden />
@@ -215,6 +230,7 @@ export function SelectionPromptSaveController({ nodes, disabled = false }: Props
                 <select
                   className="h-11 rounded-nomi-sm border border-nomi-line bg-nomi-bg px-3 text-body-sm text-nomi-ink outline-none"
                   value={draft.promptType}
+                  disabled={saving}
                   onChange={(event) =>
                     setDraft((current) => current ? { ...current, promptType: event.target.value === 'video' ? 'video' : 'image' } : current)
                   }
@@ -229,14 +245,16 @@ export function SelectionPromptSaveController({ nodes, disabled = false }: Props
                 <textarea
                   className="h-44 min-h-44 resize-none overflow-y-auto rounded-nomi-sm border border-nomi-line bg-nomi-bg p-3 text-body leading-7 text-nomi-ink outline-none"
                   value={draft.text}
+                  disabled={saving}
                   onChange={(event) => setDraft((current) => current ? { ...current, text: event.target.value } : current)}
                 />
               </label>
+              {saveError ? <p role="status" className="m-0 text-caption text-nomi-danger">{saveError}</p> : null}
               <div className="flex items-center justify-end gap-3 pt-1">
-                <button type="button" className="h-10 rounded-nomi-sm border border-nomi-line bg-transparent px-4 text-body-sm text-nomi-ink-60 hover:bg-nomi-ink-05" onClick={closeDraft}>
+                <button type="button" className="h-10 rounded-nomi-sm border border-nomi-line bg-transparent px-4 text-body-sm text-nomi-ink-60 hover:bg-nomi-ink-05" onClick={closeDraft} disabled={saving}>
                   {t('generationCommon.savePrompt.cancel')}
                 </button>
-                <button type="button" className="h-10 rounded-nomi-sm border-0 bg-nomi-ink px-5 text-body-sm font-semibold text-nomi-paper hover:bg-nomi-accent" onClick={saveDraft}>
+                <button type="button" className="h-10 rounded-nomi-sm border-0 bg-nomi-ink px-5 text-body-sm font-semibold text-nomi-paper hover:bg-nomi-accent" onClick={saveDraft} disabled={saving || !draft.text.trim()}>
                   {t('generationCommon.savePrompt.save')}
                 </button>
               </div>

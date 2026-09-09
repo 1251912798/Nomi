@@ -18,7 +18,8 @@ import { assetBelongsToProject } from '../../assets/assetLibraryUsage'
 import { getGenerationNodeDefaultSize, getGenerationNodeFootprintSize } from '../model/generationNodeKinds'
 import { dropKindFromFile } from '../model/nodeAssetDrop'
 import { useGenerationCanvasStore } from '../store/generationCanvasStore'
-import { toast } from '../../../ui/toast'
+import { reportCanvasFeedback } from './canvasFeedback'
+import { getDesktopActiveProjectId } from '../../../desktop/activeProject'
 import type { BrowserAssetCanvasImportItem } from '../../../ui/browser/overlay/globalAssetPopoverEvents'
 import type { TiptapDocJson } from '../model/generationCanvasTypes'
 import i18n from '../../../i18n'
@@ -294,12 +295,12 @@ export function handleCanvasStageDrop(event: DragEvent<HTMLDivElement>, ctx: Can
     event.stopPropagation()
     const allowedItems = assetDragItems.filter((asset) => isAssetLibraryDropAllowed(asset, ctx.activeProjectId))
     if (allowedItems.length < assetDragItems.length) {
-      toast(i18n.t('assetLibrary.externalAssetHint'), 'info')
+      reportCanvasFeedback(i18n.t('assetLibrary.externalAssetHint'), 'warning', { projectId: ctx.activeProjectId ?? '', identity: 'canvas-drop', reason: 'external-project' })
     }
     if (!allowedItems.length) return
     const mediaItems = allowedItems.filter((asset) => asset.kind !== 'audio')
     if (!mediaItems.length) {
-      toast(i18n.t('generationCommon.canvas.audioToTimeline'), 'info')
+      reportCanvasFeedback(i18n.t('generationCommon.canvas.audioToTimeline'), 'info', { projectId: ctx.activeProjectId ?? '', identity: 'canvas-drop', reason: 'audio-target', workspaceMode: 'preview' })
       return
     }
     const store = useGenerationCanvasStore.getState()
@@ -337,7 +338,7 @@ export function handleCanvasStageDrop(event: DragEvent<HTMLDivElement>, ctx: Can
     })
     nodeIds.forEach((nodeId, index) => store.selectNode(nodeId, index > 0))
     if (mediaItems.length < assetDragItems.length) {
-      toast(i18n.t('generationCommon.canvas.audioToTimeline'), 'info')
+      reportCanvasFeedback(i18n.t('generationCommon.canvas.audioToTimeline'), 'info', { projectId: ctx.activeProjectId ?? '', identity: 'canvas-drop', reason: 'audio-target', workspaceMode: 'preview' })
     }
     return
   }
@@ -390,13 +391,14 @@ export function importLocalFilesToGenerationCanvas(
   files: readonly File[],
   options: { basePosition: { x: number; y: number }; categoryId?: string },
 ): Promise<void> {
+  const projectId = getDesktopActiveProjectId()
   return importLocalMediaFilesToGenerationCanvas([...files], options)
     .then((result) => {
       const notes: string[] = []
       if (result.skippedOverLimitCount > 0) notes.push(`超过 8 个，已忽略 ${result.skippedOverLimitCount} 个`)
       if (result.skippedTooLargeCount > 0) notes.push(`${result.skippedTooLargeCount} 个文件过大`)
       if (result.failedCount > 0) notes.push(`${result.failedCount} 个导入失败`)
-      if (notes.length) toast(notes.join('；'), result.failedCount > 0 ? 'error' : 'info')
+      if (notes.length) reportCanvasFeedback(notes.join('；'), result.failedCount > 0 ? 'error' : 'warning', { projectId, identity: 'canvas-import', reason: 'import-incomplete' })
     })
     .catch(() => {})
 }

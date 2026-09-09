@@ -1,12 +1,13 @@
+import type { ToastType } from '../../toast'
 // 网页提示词提取 runner（素材面收敛 2026-07-22）：产物只此一家=主提示词库「我的库」。
 // 此前提取在素材盒弹层内跑、结果存 localStorage 私账卡（正牌提示词库找不到、顶栏浮窗恒空）；
-// 收敛后提取由浏览器侧直接驱动：toast 反馈进度，成品 addUserPrompt 入主库（带参考图+模式标签）。
+// 提取由浏览器侧直接驱动：请求宿主原地反馈进度，成品 addUserPrompt 入主库（带参考图+模式标签）。
 import i18n from '../../../i18n'
 import { getDesktopActiveProjectId } from '../../../desktop/activeProject'
 import { getDesktopBridge } from '../../../desktop/bridge'
 import { addUserPrompt, getTextBrain } from '../../../workbench/api/promptLibraryApi'
 import { runWorkbenchTaskByVendor } from '../../../workbench/api/taskApi'
-import { toast } from '../../toast'
+import { notify } from '../../notificationPolicy'
 import type {
   BrowserAssetPromptCaptureRequest,
   BrowserAssetPromptReference,
@@ -116,23 +117,11 @@ function fallbackTitle(request: BrowserAssetPromptCaptureRequest, extractedTitle
   return request.sourceType === 'screenshot' ? i18n.t('browserAssets.screenshotPromptTitle') : i18n.t('browserAssets.extraction.imagePrompt')
 }
 
-/** 就地反馈事件：浏览器页是原生 WebContentsView，恒盖主窗 DOM——全局 toast 用户根本看不见
- * （2026-08-07 飞书反馈「点击提取画面复刻提示词 然后就不知道生成哪里去了」根因）。
- * 素材盒（DOM 浮层）监听这个事件做就地反馈条。 */
-export const PROMPT_EXTRACTION_FEEDBACK_EVENT = 'nomi:prompt-extraction-feedback'
-
-function dispatchExtractionFeedback(detail: { ok: boolean; title?: string; error?: string }): void {
-  try {
-    window.dispatchEvent(new CustomEvent(PROMPT_EXTRACTION_FEEDBACK_EVENT, { detail }))
-  } catch {
-    /* 非浏览器环境（测试）静默放行 */
-  }
-}
-
-/** 浏览器截图/图片右键 → 提取提示词 → 直存主提示词库。fire-and-forget，进度/结果全走 toast。 */
-export async function runBrowserPromptExtractionToLibrary(request: BrowserAssetPromptCaptureRequest): Promise<void> {
+/** 提取结果由请求宿主原地承接；纯 runner 不另开素材盒或全局提示。 */
+export async function runBrowserPromptExtractionToLibrary(request: BrowserAssetPromptCaptureRequest, present: (message: string) => void): Promise<void> {
   const mode = promptExtractionModeFromRequest(request)
-  toast(i18n.t('browserAssets.extractingPrompt', { mode: i18n.t(BROWSER_PROMPT_EXTRACTION_MODE_LABEL_KEYS[mode]) }))
+  const report = (message: string, type: ToastType) => notify({ identity: `browser-prompt:${request.requestId}`, reason: 'extraction', level: 'inline', message, type, present })
+  report(i18n.t('browserAssets.extractingPrompt', { mode: i18n.t(BROWSER_PROMPT_EXTRACTION_MODE_LABEL_KEYS[mode]) }), 'info')
   try {
     const settings = await loadExtractionSettings()
     const initialReferences = promptReferenceImagesFromRequest(request)
@@ -146,12 +135,10 @@ export async function runBrowserPromptExtractionToLibrary(request: BrowserAssetP
       tags: [i18n.t('browserAssets.webExtraction'), i18n.t(BROWSER_PROMPT_EXTRACTION_MODE_LABEL_KEYS[mode])],
       referenceImages: prepared.references,
     })
-    toast(i18n.t('browserAssets.savedToPromptLibraryNamed', { name: title }), 'success')
-    dispatchExtractionFeedback({ ok: true, title })
+    report(i18n.t('browserAssets.savedToPromptLibraryNamed', { name: title }), 'success')
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error)
     console.error('[nomi:browser] 提示词提取失败:', reason)
-    toast(i18n.t('browserAssets.promptExtractionFailedToast', { error: reason }), 'error')
-    dispatchExtractionFeedback({ ok: false, error: reason })
+    report(i18n.t('browserAssets.promptExtractionFailedToast', { error: reason }), 'error')
   }
 }

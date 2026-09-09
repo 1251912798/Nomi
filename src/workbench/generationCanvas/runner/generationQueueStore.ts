@@ -14,7 +14,8 @@
 // 内存态不持久化：进行中的调度天然瞬态（重启本就在终态收敛，见 canvasRunActions.ts 头注释），
 // 历史留痕已在 node.runs[] 里持久化 —— 不另立第二份历史真相源。
 import { create } from 'zustand'
-import { toast } from '../../../ui/toast'
+import { notify, revealNotificationTarget } from '../../../ui/notificationPolicy'
+import { getDesktopActiveProjectId } from '../../../desktop/activeProject'
 import i18n from '../../../i18n'
 
 export type QueueEntryState = 'queued' | 'running' | 'success' | 'error' | 'cancelled'
@@ -36,6 +37,7 @@ export type GenerationQueueEntry = {
 
 export type GenerationQueueBatch = {
   id: string
+  projectId: string
   createdAt: number
   total: number
   /** 用户点了「取消排队」：worker 取任务前据此跳出，已提交的不动。 */
@@ -44,6 +46,11 @@ export type GenerationQueueBatch = {
   paused: boolean
   consecutiveFailures: number
   finishedAt?: number
+}
+
+function clearBrakeNotification(batch: GenerationQueueBatch | undefined): void {
+  if (!batch) return
+  notify({ identity: `queue:${batch.projectId}:${batch.id}`, reason: 'consecutive-failures', level: 'status', message: '' })
 }
 
 /** 连续失败几个就刹车。用户 2026-08-02 拍板：3 个。 */
@@ -118,7 +125,7 @@ export const useGenerationQueueStore = create<GenerationQueueState>()((set, get)
       entries: [...state.entries, ...fresh],
       batches: {
         ...state.batches,
-        [id]: { id, createdAt: now, total: fresh.length, cancelRequested: false, paused: false, consecutiveFailures: 0 },
+        [id]: { id, projectId: getDesktopActiveProjectId(), createdAt: now, total: fresh.length, cancelRequested: false, paused: false, consecutiveFailures: 0 },
       },
     }))
     return id
@@ -154,7 +161,8 @@ export const useGenerationQueueStore = create<GenerationQueueState>()((set, get)
     // 刹车刚刚踩下 → 必须主动喊一声。否则 worker 静静挂起等用户决定，而用户没开面板压根不知道要去点，
     // 只会觉得「卡住了」。这条 toast 是那个悬停状态的唯一出口。
     if (!wasPaused && get().batches[batchId]?.paused) {
-      toast(i18n.t('taskCenter.brake.toast'), 'warning')
+      const projectId = get().batches[batchId].projectId
+      notify({ identity: `queue:${projectId}:${batchId}`, reason: 'consecutive-failures', level: 'background', type: 'warning', message: i18n.t('taskCenter.brake.toast'), actionLabel: i18n.t('taskCenter.title'), onAction: () => { void revealNotificationTarget({ projectId, taskCenter: true }) } })
     }
   },
 
@@ -169,6 +177,7 @@ export const useGenerationQueueStore = create<GenerationQueueState>()((set, get)
   },
 
   cancelBatchRemaining: (batchId) => {
+    clearBrakeNotification(get().batches[batchId])
     const pending = get().entries.filter((entry) => entry.batchId === batchId && entry.state === 'queued')
     if (pending.length === 0) {
       // 没有待取消条目也要落 cancelRequested：被刹车挂起的 worker 靠它跳出。
@@ -195,6 +204,7 @@ export const useGenerationQueueStore = create<GenerationQueueState>()((set, get)
   },
 
   resumeBatch: (batchId) => {
+    clearBrakeNotification(get().batches[batchId])
     set((state) => {
       const batch = state.batches[batchId]
       if (!batch) return {}
@@ -203,6 +213,7 @@ export const useGenerationQueueStore = create<GenerationQueueState>()((set, get)
   },
 
   finishBatch: (batchId) => {
+    clearBrakeNotification(get().batches[batchId])
     set((state) => {
       const batch = state.batches[batchId]
       if (!batch) return {}

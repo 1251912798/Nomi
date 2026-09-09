@@ -18,7 +18,7 @@ import { confirmAndRunNode } from '../generationCanvas/runner/generationRunContr
 import { confirmAndRunPlan } from '../generationCanvas/components/batchPlanPreview'
 import { buildDependencyWaves } from '../generationCanvas/runner/dependencyWaves'
 import { buildTaskCenterView, formatElapsed, type TaskCenterRow } from './taskCenterEntries'
-import { toast } from '../../ui/toast'
+import { notify } from '../../ui/notificationPolicy'
 import { currentWorkbenchFloatingTopOffset } from '../../ui/app-shell/windowChrome'
 import type { ProductionRunSummary } from '../../../electron/productionRun/productionRunTypes'
 import type { TaskCenterProjection } from './taskCenterProjection'
@@ -43,6 +43,7 @@ type Props = {
 export function TaskCenterPanel({ opened, onClose, productionRuns, exportJobs, onRevealProductionRun, onRevealNode }: Props): JSX.Element | null {
   const { t } = useTranslation()
   const panelRef = React.useRef<HTMLDivElement>(null)
+  const [actionErrors, setActionErrors] = React.useState<Record<string, string>>({})
   // 渲染时现算，别提到模块作用域：模块常量在 import 那一刻定死，拿不到 platform 就悄悄
   // 回落成 mac 的 64px，Windows 上浮卡上移 32px 贴进自绘窗口栏（issue #58 同因）。
   const topOffset = currentWorkbenchFloatingTopOffset()
@@ -144,7 +145,7 @@ export function TaskCenterPanel({ opened, onClose, productionRuns, exportJobs, o
   const cancelQueued = (row: TaskCenterRow) => useGenerationQueueStore.getState().cancelEntry(row.batchId, row.nodeId)
   const interruptRunning = (row: TaskCenterRow) => {
     const node = nodes.find((candidate) => candidate.id === row.nodeId)
-    if (node) requestTaskCancel(node)
+    if (node) requestTaskCancel(node, (message) => setActionErrors((previous) => ({ ...previous, [row.id]: message })))
   }
   const cancelAllQueued = () => {
     const batchIds = new Set(queued.filter((row): row is TaskCenterRow => row.kind === 'generation').map((row) => row.batchId))
@@ -186,14 +187,15 @@ export function TaskCenterPanel({ opened, onClose, productionRuns, exportJobs, o
             playbookName={run.playbook.name}
             artifacts={run.artifacts}
             focusedArtifactId={production.focusedArtifactId}
-            onPrimaryAction={(action) => { void production.onPrimaryAction(action) }}
-            onControl={(action) => { void production.onControl(action) }}
+            actionError={production.actionError}
+            onPrimaryAction={production.onPrimaryAction}
+            onControl={production.onControl}
             onOpenPreview={() => reveal(row)}
           />
         </div>
       )
     }
-    return <TaskRow key={row.id} row={row} onReveal={reveal} onAction={() => void runAction(row)} />
+    return <TaskRow key={row.id} row={row} actionError={actionErrors[row.id]} onReveal={reveal} onAction={() => void runAction(row)} />
   }
 
   /**
@@ -204,6 +206,7 @@ export function TaskCenterPanel({ opened, onClose, productionRuns, exportJobs, o
   const runAction = async (row: TaskCenterProjection): Promise<void> => {
     const action = row.action
     if (!action) return
+    setActionErrors((current) => { const next = { ...current }; delete next[row.id]; return next })
     try {
       if (action.kind === 'cancel_generation_queue') cancelQueued(row as TaskCenterRow)
       else if (action.kind === 'interrupt_generation') interruptRunning(row as TaskCenterRow)
@@ -211,7 +214,11 @@ export function TaskCenterPanel({ opened, onClose, productionRuns, exportJobs, o
       else if (action.kind === 'cancel_export_job') await getDesktopBridge()?.exports.cancel(action.jobId)
     } catch (error) {
       console.error('task center action failed', error)
-      toast(t('taskCenter.actionFailed'), 'error')
+      notify({
+        identity: row.id, reason: action.kind, level: 'inline', type: 'error',
+        message: `${t('taskCenter.actionFailed')}: ${error instanceof Error ? error.message : String(error)}`,
+        present: (message) => setActionErrors((current) => ({ ...current, [row.id]: message })),
+      })
     }
   }
 
@@ -373,10 +380,12 @@ function SummaryAction({ label, onClick }: { label: string; onClick: () => void 
 
 export function TaskRow({
   row,
+  actionError,
   onReveal,
   onAction,
 }: {
   row: TaskCenterProjection
+  actionError?: string
   onReveal?: (row: TaskCenterProjection) => void
   onAction?: () => void
 }): JSX.Element {
@@ -404,6 +413,7 @@ export function TaskRow({
               ? [row.phaseText, row.elapsedMs !== undefined ? t('taskCenter.row.elapsed', { time: formatElapsed(row.elapsedMs) }) : ''].filter(Boolean).join(' · ')
               : row.phaseText}
         </div>
+        {actionError ? <div role="status" data-task-action-error className="mt-1 text-micro text-workbench-danger">{actionError}</div> : null}
         {/* 只有真拿到百分比才画进度条。很多厂商不报进度，画一条永远空的槽会被读成分隔线（走查实锤），
             也是在假装知道进度。没数就不画，靠区段标题 + 已跑时长表达「在跑」。 */}
         {row.group === 'running' && typeof row.percent === 'number' ? (

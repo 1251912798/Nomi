@@ -1,7 +1,7 @@
 import React from 'react'
 import type { ModelOption } from '../../../config/models'
 import i18n from '../../../i18n'
-import { showInfoToast } from '../../../utils/showInfoToast'
+import { reportCanvasFeedback } from './canvasFeedback'
 import { showUndoToast } from '../../../utils/showUndoToast'
 import { findModelOptionByIdentifier, requiredModeForGenerationNode } from '../adapters/modelOptionsAdapter'
 import { getGenerationNodeExecutionKind } from '../model/generationNodeKinds'
@@ -61,7 +61,7 @@ export function useCanvasProductionActions(params: { activeCategoryId: string; s
           requiredModeForGenerationNode(node, { nodes: state.nodes, edges: state.edges }) === input.requiredMode,
       )
       if (targets.length === 0) {
-        showInfoToast(i18n.t('generationCommon.production.lockedModelChange'))
+        reportCanvasFeedback(i18n.t('generationCommon.production.lockedModelChange'), 'warning', { identity: `model-change:${activeCategoryId}`, reason: 'locked', nodeIds: [...selectedNodeIds] })
         return
       }
       const updates = targets.map((node) => ({
@@ -85,7 +85,7 @@ export function useCanvasProductionActions(params: { activeCategoryId: string; s
         onUndo: undo,
       })
     },
-    [productionScope, undo, updateNodes],
+    [activeCategoryId, selectedNodeIds, productionScope, undo, updateNodes],
   )
 
   return {

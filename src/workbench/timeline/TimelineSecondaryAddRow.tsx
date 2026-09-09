@@ -4,7 +4,7 @@ import { IconMusic, IconSubtitles } from '@tabler/icons-react'
 import { useWorkbenchStore } from '../workbenchStore'
 import { cn } from '../../utils/cn'
 import { WorkbenchButton } from '../../design'
-import { toast } from '../../ui/toast'
+import { notify } from '../../ui/notificationPolicy'
 import { ASSET_LIBRARY_DRAG_MIME } from '../assets/assetLibraryDrag'
 import { addAssetToTimeline, tryAddAssetFromDragData } from './addAssetToTimeline'
 import AssetPicker from '../assets/AssetPicker'
@@ -31,6 +31,10 @@ export function TimelineSecondaryAddRow({
   const fps = useWorkbenchStore((state) => state.timeline.fps)
   const [dropHover, setDropHover] = React.useState(false)
   const [musicPickerOpen, setMusicPickerOpen] = React.useState(false)
+  const [feedback, setFeedback] = React.useState('')
+  const presentFeedback = (message: string) => {
+    notify({ identity: 'timeline-secondary-audio', reason: 'add-audio', level: 'inline', type: 'error', message, present: setFeedback })
+  }
   if (!showAudio && !showText) return null
 
   const addText = () => {
@@ -40,6 +44,7 @@ export function TimelineSecondaryAddRow({
   // 收起态音频轨没有 lane → 让虚线 lane 本身收音频拖放(落到播放头)。
   const onDrop = (event: React.DragEvent<HTMLDivElement>) => {
     setDropHover(false)
+    setFeedback('')
     if (!showAudio) return
     const playhead = useWorkbenchStore.getState().timeline.playheadFrame
     const result = tryAddAssetFromDragData(event.dataTransfer.getData(ASSET_LIBRARY_DRAG_MIME), {
@@ -47,10 +52,12 @@ export function TimelineSecondaryAddRow({
       startFrame: playhead,
       targetTrackType: 'audio',
       activeProjectId: getActiveWorkbenchProjectId(),
+      onFailure: (error) => presentFeedback(error instanceof Error ? error.message : t('timelineEditor.adoption.failedRecovered')),
     })
     if (!result) return
     event.preventDefault()
-    if (result.status === 'reject-external') toast(t('assetLibrary.externalAssetHint'), 'info')
+    if (result.status === 'reject') presentFeedback(t('timelineEditor.track.wrongType', { track: result.expectedTrack === 'video' ? t('timelineEditor.track.videoLabel') : t('timelineEditor.track.audioLabel') }))
+    if (result.status === 'reject-external') presentFeedback(t('assetLibrary.externalAssetHint'))
   }
   const acceptsAudio = (types: readonly string[]) => showAudio && types.includes(ASSET_LIBRARY_DRAG_MIME)
 
@@ -59,7 +66,7 @@ export function TimelineSecondaryAddRow({
   const musicBtn = showAudio ? (
     <span className="relative inline-flex">
       <WorkbenchButton
-        onClick={() => setMusicPickerOpen((open) => !open)}
+        onClick={() => { setFeedback(''); setMusicPickerOpen((open) => !open) }}
         className="h-6 px-2 text-micro [&>svg]:size-3 gap-1"
         aria-label={t('timelineEditor.secondary.addMusic')}
       >
@@ -73,6 +80,7 @@ export function TimelineSecondaryAddRow({
             projectId={getActiveWorkbenchProjectId()}
             accept={['audio']}
             onPick={(asset) => {
+              setFeedback('')
               // 第一段配乐铺在**片头**，不是播放头。点「+ 配乐」的人说的是「给这支片子配个乐」，
               // 没有位置意图；落在播放头上会让成片凭空长出一截黑场（15 秒的片子随手一拖播放头，
               // 配乐从 7.5 秒起，导出就变成 22.5 秒），而用户完全不知道那一截哪来的。
@@ -87,11 +95,11 @@ export function TimelineSecondaryAddRow({
               // 「轴保持原样」是真的：失败都发生在写轴之前。
               void addAssetToTimeline(asset, { fps, startFrame: audioTrackEmpty ? 0 : state.timeline.playheadFrame })
                 .then((clip) => {
-                  if (!clip) toast(t('timelineEditor.adoption.failedRecovered'), 'error')
+                  if (!clip) presentFeedback(t('timelineEditor.adoption.failedRecovered'))
                 })
                 .catch((error: unknown) => {
                   console.error('add music to timeline failed', error)
-                  toast(t('timelineEditor.adoption.failedRecovered'), 'error')
+                  presentFeedback(error instanceof Error ? error.message : t('timelineEditor.adoption.failedRecovered'))
                 })
               setMusicPickerOpen(false)
             }}
@@ -173,6 +181,7 @@ export function TimelineSecondaryAddRow({
       ) : (
         <div className="flex items-center">{subtitleBtn}</div>
       )}
+      {feedback ? <p role="status" data-timeline-audio-feedback className="col-start-2 py-1 text-caption text-workbench-danger">{feedback}</p> : null}
     </div>
   )
 }

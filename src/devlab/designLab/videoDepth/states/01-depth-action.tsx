@@ -59,8 +59,10 @@ const PAIR_LEFT = Math.round((DEPTH_ACTION_CELL_WIDTH - (DEPTH_CARD.width * 2 + 
 const PAIR_RIGHT = PAIR_LEFT + DEPTH_CARD.width + PAIR_GAP
 
 function SoloStage(): JSX.Element {
+  const [feedback, setFeedback] = React.useState<string | null>(null)
   return (
     <DepthActionStage>
+      {feedback ? <p role="status" className="text-caption text-nomi-ink-60">{feedback}</p> : null}
       <div className="absolute" style={{ left: SOLO_LEFT, top: SOLO_TOP }}>
         <DepthNodeCard
           title={SOURCE_TITLE}
@@ -68,6 +70,7 @@ function SoloStage(): JSX.Element {
           selected
           toolbar={
             <NodeVideoFrameToolbar
+              reportFeedback={setFeedback}
               node={SOURCE_NODE}
               downloading={false}
               onDownload={NOOP}
