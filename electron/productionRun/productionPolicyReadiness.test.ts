@@ -14,29 +14,25 @@ const jobs = [
 describe('production policy readiness', () => {
   it('reports every missing contract prerequisite at once', () => {
     const readiness = evaluateProductionPolicyReadiness({
-      maxSpend: null,
       allowedProviders: [],
       allowedModels: [],
     }, jobs)
 
     expect(readiness).toEqual({
       ready: false,
-      issueCount: 3,
-      missingHardBudget: true,
+      issueCount: 2,
       requiredProviderModels: [{ provider: 'code-newcli-com', model: 'gpt-image-2' }],
       missingProviders: ['code-newcli-com'],
       missingModels: ['gpt-image-2'],
     })
     expect(() => assertProductionPolicyReady({
-      maxSpend: null,
       allowedProviders: [],
       allowedModels: [],
     }, jobs)).toThrowError(new ProductionPolicyIncompleteError(readiness))
   })
 
-  it('is ready only after the explicit ceiling and both allowlists are present', () => {
+  it('is ready without a global ceiling when both allowlists are present', () => {
     expect(evaluateProductionPolicyReadiness({
-      maxSpend: 25,
       allowedProviders: ['code-newcli-com'],
       allowedModels: ['gpt-image-2'],
     }, jobs)).toMatchObject({ ready: true, issueCount: 0 })

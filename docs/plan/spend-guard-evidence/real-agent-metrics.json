@@ -1,0 +1,46 @@
+{
+  "scenario": "Create one GPT Image 2 node without vendor; never generate media",
+  "attempts": 2,
+  "successfulUserTasks": 1,
+  "toolCalls": [
+    {
+      "capability": "canvas.read",
+      "status": "done"
+    },
+    {
+      "capability": "canvas.write",
+      "status": "done"
+    }
+  ],
+  "usage": [
+    {
+      "status": "failed",
+      "usage": {
+        "cachedPromptTokens": 0,
+        "completionTokens": 0,
+        "promptTokens": 0,
+        "totalTokens": 0
+      }
+    },
+    {
+      "status": "done",
+      "usage": {
+        "cachedPromptTokens": 0,
+        "completionTokens": 465,
+        "promptTokens": 41114,
+        "reasoningTokens": 175,
+        "totalTokens": 41579
+      }
+    }
+  ],
+  "nodes": [
+    {
+      "title": "B4 工具验收",
+      "modelKey": "gpt-image-2",
+      "vendor": "code-newcli-com",
+      "hasGeneratedResult": false
+    }
+  ],
+  "firstAttemptFailure": "ECONNRESET before secure TLS; no tool calls",
+  "billing": "No provider account settlement receipt. Token usage is not monetary settlement."
+}

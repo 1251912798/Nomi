@@ -13,7 +13,6 @@ describe('production policy recovery', () => {
     expect(buildProductionPolicySettingsTarget({
       ready: false,
       issueCount: 3,
-      missingHardBudget: true,
       requiredProviderModels: [{ provider: 'code-newcli-com', model: 'gpt-image-2' }],
       missingProviders: ['code-newcli-com'],
       missingModels: ['gpt-image-2'],

@@ -379,6 +379,8 @@ export const zhOnboardingProviders = {
     bridgeMissingBody: '应用后台可能还在启动。点下面重试；若多次无效，请重启 Nomi。',
   },
   keyOnly: {
+    offlineTitle: '已保存 · 未验证',
+    offlineHint: '密钥已加密保存。联网后会自动复验，下次调用前也会先检查一次。',
     title: '接入 {{name}}',
     subtitle: '已适配平台 · 只需填写 API Key',
     catalogManaged: 'Nomi 已维护 {{count}} 个预置模型及其请求方式',
@@ -1530,6 +1532,8 @@ export const enOnboardingProviders = {
     bridgeMissingBody: 'The app backend may still be starting. Retry below; if it keeps failing, restart Nomi.',
   },
   keyOnly: {
+    offlineTitle: 'Saved · Not verified',
+    offlineHint: 'Your key is saved securely. It will be checked again when connected, and before the next call.',
     title: 'Connect {{name}}',
     subtitle: 'Adapted platform · Only an API key is required',
     catalogManaged: 'Nomi maintains {{count}} preset models and their request behavior',
