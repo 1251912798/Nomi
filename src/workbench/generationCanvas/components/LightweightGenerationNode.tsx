@@ -1,4 +1,6 @@
 import React from 'react'
+import { NodeLabelRow } from '../nodes/NodeLabelRow'
+import { ShotPreviewOverlays } from '../nodes/ConvertShotToVideoButton'
 import { useTranslation } from 'react-i18next'
 import { cn } from '../../../utils/cn'
 import type { GenerationCanvasNode } from '../model/generationCanvasTypes'
@@ -55,6 +57,11 @@ export function LightweightGenerationNode({
         height: size.height,
       }}
     >
+      <NodeLabelRow>
+        <ShotPreviewOverlays shotIndex={node.shotIndex ?? null} />
+        <span className="min-w-0 flex-1 truncate text-micro font-normal text-nomi-ink-60">{node.title || t('generationCommon.lightweightNode.untitled')}</span>
+        <span className="shrink-0 text-micro font-normal text-nomi-ink-60">{statusLabel}</span>
+      </NodeLabelRow>
       <div
         className={cn(
           'w-full h-full overflow-hidden rounded-nomi border',
@@ -93,14 +100,7 @@ export function LightweightGenerationNode({
               controls={false}
             />
           ) : null}
-          <div className="absolute inset-x-0 bottom-0 flex min-w-0 flex-col gap-1 bg-nomi-paper/90 p-3">
-            <div className="min-w-0 truncate text-body-sm font-medium text-nomi-ink">
-              {node.title || t('generationCommon.lightweightNode.untitled')}
-            </div>
-            <div className="min-w-0 truncate text-micro text-nomi-ink-40">
-              {statusLabel}
-            </div>
-          </div>
+
         </div>
       </div>
     </article>

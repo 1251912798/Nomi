@@ -7,6 +7,7 @@
 // 六态基线已录在 tests/ux/design-lab/__baselines__/canvas-frame/，
 // 由 check:design-lab 逐格比对；这屏不在 calibration.json 的 pendingApprovalScreens 里。
 import { CANVAS_FRAME_STATES as FRAME_STATES } from './states/01-frame'
+import { SHOT_LABEL_STATES } from './states/02-shot-label'
 import type { LabState } from '../labScreen'
 
-export const CANVAS_FRAME_STATES: readonly LabState[] = [...FRAME_STATES]
+export const CANVAS_FRAME_STATES: readonly LabState[] = [...FRAME_STATES, ...SHOT_LABEL_STATES]

@@ -1,0 +1,156 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-09-node-label-outside",
+  "problem_type": "Persistent node metadata obscures media",
+  "symptom": "镜头 N 在媒体左下，生成前后标题位置不一致",
+  "direct_cause": "ShotPreviewOverlays bottom-1.5, header top-10px, image title bottom-2 independently overlay media",
+  "class_root": "No shared outside-media layout boundary owns persistent metadata and toolbar clearance",
+  "affected_population": [
+    "Empty image shots",
+    "Generated image shots",
+    "Generated video shots",
+    "Mounted reference cards and active status",
+    "Large canvases with more than 80 nodes using lightweight previews"
+  ],
+  "scope_paths": [
+    "src/workbench/generationCanvas/nodes/BaseGenerationNode.tsx",
+    "src/workbench/generationCanvas/nodes/ConvertShotToVideoButton.tsx",
+    "src/workbench/generationCanvas/nodes/NodeFloatingToolbar.tsx",
+    "src/workbench/generationCanvas/nodes/NodeImagePreviewActions.tsx",
+    "src/workbench/generationCanvas/nodes/render/ShotMountBadges.tsx",
+    "src/workbench/generationCanvas/nodes/NodeGenerationStatus.tsx",
+    "src/workbench/generationCanvas/nodes/NodeLabelRow.tsx",
+    "src/workbench/generationCanvas/nodes/NodeDeconstructionBadge.tsx",
+    "src/workbench/generationCanvas/nodes/render/SceneCardNode.tsx",
+    "src/workbench/generationCanvas/nodes/NodeVideoPlaybackGuard.tsx",
+    "src/workbench/generationCanvas/nodes/render/CardCommon.tsx",
+    "src/workbench/generationCanvas/components/LightweightGenerationNode.tsx"
+  ],
+  "entry_points": [
+    "BaseGenerationNode empty/image/video branches",
+    "LightweightGenerationNode large-canvas body"
+  ],
+  "external_sources": [
+    {
+      "kind": "official-doc",
+      "url": "https://react.dev/reference/react-dom/components/common#handling-focus-events",
+      "checked_at": "2026-09-09",
+      "purpose": "Pointer enter/leave and subtree focus handling for native video controls."
+    }
+  ],
+  "invariants": [
+    "Persistent metadata remains above media; toolbar remains above metadata at every supported zoom."
+  ],
+  "generality_proof": "Standard empty/image/video nodes and lightweight large-canvas previews reuse NodeLabelRow, which places persistent metadata outside the media; no independent in-media title/status positioning remains in these bodies.",
+  "shared_boundaries": [
+    {
+      "path": "src/workbench/generationCanvas/nodes/NodeLabelRow.tsx",
+      "symbol": "NodeLabelRow",
+      "responsibility": "Place and clip one metadata row outside media; hide at overview zoom."
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/NodeVideoPlaybackGuard.tsx",
+      "symbol": "NodeVideoPlaybackGuard",
+      "responsibility": "Native controls only while pointer/focus is inside; renderer tests cover both input methods."
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/render/SceneCardNode.tsx",
+      "symbol": "SceneCardNodeImpl",
+      "responsibility": "Scene metadata remains hidden outside hover/edit interaction."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/workbench/generationCanvas/nodes/BaseGenerationNode.tsx",
+      "entry_point": "PendingGenerationPlaceholder",
+      "disposition": "enforced",
+      "evidence": "Empty shot uses same outer row as generated result."
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/BaseGenerationNode.tsx",
+      "entry_point": "NodeVideoPlaybackGuard / DeferredNodeImage",
+      "disposition": "enforced",
+      "evidence": "Generated image and video branches share the outer metadata row."
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/render/SceneCardNode.tsx",
+      "entry_point": "SceneCardNodeImpl",
+      "disposition": "enforced",
+      "evidence": "Scene card uses its dedicated media body; interaction-only metadata is tested in the shared Electron fixture."
+    },
+    {
+      "path": "src/workbench/generationCanvas/components/LightweightGenerationNode.tsx",
+      "entry_point": "LightweightGenerationNode",
+      "disposition": "enforced",
+      "evidence": "Authorized single-file consolidation into NodeLabelRow; 81-node real-project regression exercises the LOD renderer and asserts zero persistent-text overlap."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Any result type or state transition can reproduce independently positioned overlays.",
+    "same_class_scan": [
+      "rg ShotPreviewOverlays: BaseGenerationNode and ConvertShotToVideoButton",
+      "rg NodeInlineImageTitle: BaseGenerationNode and NodeImagePreviewActions",
+      "rg ShotMountBadges / NodeGenerationStatus: common BaseGenerationNode header",
+      "Read components/LightweightGenerationNode.tsx and components/canvasNodeLevelOfDetail.ts: >80 nodes and zoom<0.55 bypass the standard body; route metadata through NodeLabelRow as well."
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "src/workbench/generationCanvas/nodes/NodeLabelRow.tsx",
+    "invariant": "Metadata row bottom is above media top; toolbar bottom is above row top.",
+    "failure_mode": "Long content is truncated inside a single bounded outside-media row; overview row is hidden.",
+    "exception_policy": "none",
+    "strategy": "Move existing metadata into the common outside-media row and remove per-child absolute placement.",
+    "artifacts": [
+      "src/workbench/generationCanvas/nodes/BaseGenerationNode.tsx",
+      "src/workbench/generationCanvas/nodes/ConvertShotToVideoButton.tsx",
+      "src/workbench/generationCanvas/nodes/NodeFloatingToolbar.tsx",
+      "src/workbench/generationCanvas/nodes/NodeImagePreviewActions.tsx",
+      "src/workbench/generationCanvas/nodes/render/ShotMountBadges.tsx",
+      "src/workbench/generationCanvas/nodes/NodeGenerationStatus.tsx",
+      "src/workbench/generationCanvas/nodes/NodeLabelRow.tsx",
+      "src/workbench/generationCanvas/nodes/NodeDeconstructionBadge.tsx",
+      "src/workbench/generationCanvas/nodes/render/SceneCardNode.tsx",
+      "src/workbench/generationCanvas/nodes/NodeVideoPlaybackGuard.tsx",
+      "src/workbench/generationCanvas/nodes/render/CardCommon.tsx",
+      "src/workbench/generationCanvas/components/LightweightGenerationNode.tsx"
+    ]
+  },
+  "regression_tests": [
+    "tests/ux/node-label-outside.e2e.mjs",
+    "tests/ux/node-label-project-journey.mjs",
+    "tests/ux/process-feedback-electron.e2e.mjs"
+  ],
+  "class_regression_tests": [
+    "tests/ux/node-label-outside.e2e.mjs",
+    "tests/ux/node-label-project-journey.mjs"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "src/workbench/generationCanvas/nodes/ConvertShotToVideoButton.tsx",
+      "src/workbench/generationCanvas/nodes/NodeImagePreviewActions.tsx",
+      "src/workbench/generationCanvas/nodes/render/ShotMountBadges.tsx",
+      "src/workbench/generationCanvas/components/LightweightGenerationNode.tsx"
+    ],
+    "rationale": "Remove bottom-left shot/mount positioning and generated-only bottom-right title positioning. Remove the lightweight body bottom title/status overlay in favor of the same shared row."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "Existing React/CSS composition only, no dependency behavior changed.",
+    "exit_criteria": []
+  },
+  "migration": "No data change; existing nodes render through common row.",
+  "residual_risks": [
+    "Actual React Flow viewport clamps requested 20% to upstream minZoom 50%; reactFlow/** is frozen. Host fixture 20% is proven, actual viewport 20% is not. C09 留给 #646 合后。"
+  ],
+  "invariant_owner_layer": {
+    "layer": "src/workbench/generationCanvas/nodes/NodeLabelRow.tsx",
+    "tests": [
+      "tests/ux/node-label-outside.e2e.mjs",
+      "tests/ux/node-label-project-journey.mjs"
+    ],
+    "why": "Shared node chrome owns persistent metadata geometry for all media branches."
+  }
+}
