@@ -1,3 +1,4 @@
+import { NomiBrand } from '../../../design/identity'
 // Agent 面板 v4 · 整块面板的装配壳
 //
 // 定稿三张 Flow 板（创作 / 生成 / 预览）+ Rendering + Dark 板画的都是**同一个壳**装不同内容：
@@ -150,7 +151,9 @@ export function V4FlowRow({
   if (item.kind === 'tool-group') {
     return <V4ToolGroup group={item} statusLabel={labels.toolStatus[item.status]} undoLabel={labels.task.undo} onUndo={handlers?.onUndoTool} />
   }
-  if (item.kind === 'process') return <V4Process label={item.label} segments={item.segments} />
+  if (item.kind === 'process') return <V4Process {...item}>{item.details?.map((detail, position) => (
+    <V4FlowRow key={position} item={detail.item} index={detail.index} darkMode={darkMode} handlers={handlers} />
+  ))}</V4Process>
   if (item.kind === 'task') {
     return (
       <V4TaskCard
@@ -249,13 +252,7 @@ export function AgentPanelV4Panel({
       data-v4-panel="true"
     >
       <header className="flex h-10 shrink-0 items-center gap-2 border-b border-nomi-line-soft px-3 text-body-sm font-semibold">
-        <span
-          className="grid size-[18px] shrink-0 place-items-center rounded-nomi-sm bg-nomi-ink text-micro not-italic text-nomi-paper"
-          aria-hidden="true"
-        >
-          {t('agentPanelV4.logo')}
-        </span>
-        {t('agentPanelV4.brand')}
+        <NomiBrand markSize={18} wordSize={14} />
         <V4ContextRing usage={context} labels={labels.context} />
         <span className="flex-1" />
         <span className="flex shrink-0 gap-2 text-nomi-ink-40">

@@ -1,0 +1,171 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-09-b2c-panel-form",
+  "problem_type": "Duplicated panel presentation ownership",
+  "symptom": "附属信息贴右，过程挤占回答；四面宽度外框不同；字标落宋体。",
+  "direct_cause": "各组件独立写行布局、各面独立宽度布局，runtime display token 漏 Variable。 真机发现尺寸 observer StrictMode 清理后未重建；normalizePayload 丢弃布局字段。 预览外层分栏 minimum 把共享600宽度缩成487，助手仍有并行几何owner。 Process / ToolGroup / Receipt 的无名 group-open 让祖先展开状态污染子收据背景与箭头。",
+  "class_root": "行、面板和品牌没有由共同展示边界强制不变量。",
+  "affected_population": [
+    "四个工作面及全部工具/思考/任务行"
+  ],
+  "scope_paths": [
+    "src/workbench/ai/v4/AgentPanelV4Row.tsx",
+    "src/workbench/ai/v4/agentPanelV4Collapse.ts",
+    "src/workbench/ai/v4/AgentPanelV4Receipt.tsx",
+    "src/workbench/ai/v4/AgentPanelV4Panel.tsx",
+    "src/workbench/ai/v4/AgentPanelV4Message.tsx",
+    "src/workbench/ai/v4/AgentPanelV4Cards.tsx",
+    "src/workbench/ai/v4/AgentPanelV4Composer.tsx",
+    "src/workbench/ai/v4/AgentPanelV4Context.tsx",
+    "src/workbench/ai/v4/agentPanelV4Types.ts",
+    "src/workbench/ai/v4/agentPanelV4Projection.ts",
+    "src/workbench/ai/v4/useAgentPanelV4Data.ts",
+    "src/workbench/workbenchStore.ts",
+    "src/workbench/AssistantPane.tsx",
+    "src/workbench/creation/CreationWorkspace.tsx",
+    "src/workbench/creation/storyboard/StoryboardWorkspace.tsx",
+    "src/workbench/generation/GenerationWorkspace.tsx",
+    "src/workbench/preview/PreviewWorkspace.tsx",
+    "src/workbench/preview/panelLayout.ts",
+    "tailwind.config.ts",
+    "src/workbench/assistantWidthBounds.ts",
+    "src/workbench/ai/v4/agentPanelV4ModelRows.ts",
+    "src/workbench/project/projectNormalize.ts",
+    "src/workbench/project/projectRecordSchema.ts"
+  ],
+  "entry_points": [
+    "Receipt / Thinking / Cards / Composer",
+    "Creation / Storyboard / Generation / Preview"
+  ],
+  "external_sources": [
+    {
+      "kind": "official-doc",
+      "url": "https://v3.tailwindcss.com/docs/hover-focus-and-other-states#differentiating-nested-groups",
+      "checked_at": "2026-09-09",
+      "purpose": "具名 group 限定嵌套展开状态，只由所属父级驱动样式。"
+    }
+  ],
+  "internal_only_reason": "批准样张定义内部展示约束；不更改供应商或协议。",
+  "invariants": [
+    "附属信息跟内容流。",
+    "一个过程入口，回答保持可见。",
+    "一份持久化宽度，四面一致外框。",
+    "品牌复用已安装 Variable 字族。",
+    "过程内未展开收据无底板，展开样式只由所属 details 控制。"
+  ],
+  "generality_proof": "共享 V4Row、collapseV4Flow、AssistantPane、已持久化 editingPanelLayout 与品牌 token 统一所有已枚举入口。",
+  "shared_boundaries": [
+    {
+      "path": "src/workbench/ai/v4/AgentPanelV4Row.tsx",
+      "symbol": "V4Row",
+      "responsibility": "行内附属不跨空白。"
+    },
+    {
+      "path": "src/workbench/ai/v4/agentPanelV4Collapse.ts",
+      "symbol": "collapseV4Flow",
+      "responsibility": "过程与答案分离。"
+    },
+    {
+      "path": "src/workbench/AssistantPane.tsx",
+      "symbol": "AssistantPane",
+      "responsibility": "统一 inset 和拖动宽度。"
+    },
+    {
+      "path": "src/workbench/ai/v4/agentPanelV4ModelRows.ts",
+      "symbol": "buildV4ModelRows",
+      "responsibility": "三类模型与单价从目录派生，不在夹具重写行数据。"
+    },
+    {
+      "path": "src/workbench/project/projectNormalize.ts",
+      "symbol": "normalizePayload",
+      "responsibility": "保存和加载均保留经 schema 验证的 editingPanelLayout，包含宽度与折叠偏好。"
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/workbench/ai/v4/AgentPanelV4Receipt.tsx",
+      "entry_point": "V4ToolReceipt",
+      "disposition": "enforced",
+      "evidence": "原 ml-auto 将状态推右；消费 V4Row。"
+    },
+    {
+      "path": "src/workbench/ai/v4/AgentPanelV4Message.tsx",
+      "entry_point": "V4Thinking",
+      "disposition": "enforced",
+      "evidence": "原 ml-auto 将秒数推右；消费 V4Row。"
+    },
+    {
+      "path": "src/workbench/ai/ProjectAgentResidentShell.tsx",
+      "entry_point": "buildV4ModelRows",
+      "disposition": "enforced",
+      "evidence": "真实宿主与 B2cModelSpecimen 统一通过目录投影构建三行；原 mechanics 夹具只传一行已删除。"
+    },
+    {
+      "path": "src/workbench/preview/PreviewWorkspace.tsx",
+      "entry_point": "assistant outer pane",
+      "disposition": "enforced",
+      "evidence": "Electron 600px跨面断言先红(487)，删除独立助手Panel分配，外层统一AssistantPane。"
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "多个调用者共享同类布局缺陷，新增状态仍可复发。",
+    "same_class_scan": [
+      "rg ml-auto|justify-between src/workbench/ai：Receipt、Cards、Thinking、Context",
+      "rg assistantWidth src/workbench：固定创作宽度、生成宽度、独立预览布局",
+      "rg group-open AgentPanelV4Receipt.tsx：V4Process、V4ToolGroup、V4ToolReceipt 三层无名分组；Message/Panel/Row 无过程底板。"
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "src/workbench/ai/v4/AgentPanelV4Row.tsx",
+    "invariant": "图标、标签、附属、箭头处于小间距内容流。",
+    "failure_mode": "check:tokens 对 AI 行尾类硬零、其它路径债不得新增。",
+    "exception_policy": "none",
+    "strategy": "共享行组件与静态棘轮阻止调用者重新拉开附属。",
+    "artifacts": [
+      "src/workbench/ai/v4/AgentPanelV4Row.tsx",
+      "scripts/check-design-tokens.mjs",
+      "src/workbench/ai/v4/AgentPanelV4Receipt.tsx"
+    ]
+  },
+  "regression_tests": [
+    "src/workbench/ai/v4/agentPanelV4Form.test.ts",
+    "src/workbench/ai/v4/agentPanelV4ModelRows.test.ts",
+    "src/workbench/ai/v4/agentPanelV4ModelPopover.test.ts",
+    "src/workbench/project/projectNormalize.test.ts",
+    "tests/ux/agent-panel-form.walk.mjs"
+  ],
+  "class_regression_tests": [
+    "src/workbench/ai/v4/agentPanelV4Form.test.ts",
+    "src/workbench/ai/v4/agentPanelV4ModelRows.test.ts",
+    "src/workbench/project/projectNormalize.test.ts",
+    "tests/ux/agent-panel-form.walk.mjs"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "src/workbench/ai/v4/AgentPanelV4Receipt.tsx",
+      "src/workbench/ai/v4/AgentPanelV4Message.tsx",
+      "src/workbench/workbenchStore.ts",
+      "src/workbench/preview/PreviewWorkspace.tsx"
+    ],
+    "rationale": "删除独立行 flex 与非持久化 assistantWidth 字段。"
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "无依赖版本变化；用已打包字体与现役布局能力。",
+    "exit_criteria": []
+  },
+  "migration": "宽度以已有持久化 editingPanelLayout.assistantWidth 为唯一值；旧项目由原有 layout 默认机制恢复。",
+  "residual_risks": [
+    "真实 Electron 三态无底板验证通过；完整 gates 尚待运行。"
+  ],
+  "invariant_owner_layer": {
+    "layer": "src/workbench/ai/v4/AgentPanelV4Row.tsx",
+    "tests": [
+      "src/workbench/ai/v4/agentPanelV4Form.test.ts"
+    ],
+    "why": "展示 owner 负责过程/行布局；静态门岗阻止重复实现。"
+  }
+}

@@ -1,3 +1,4 @@
+import { V4Row, V4Shimmer } from './AgentPanelV4Row'
 // Agent 面板 v4 · 积木 ① 用户气泡 · ② 助手文本（含思考行）
 //
 // 定稿 Vocabulary 板 ①②：用户气泡右对齐 ink 深底，附件缩成 chip **在气泡内**；
@@ -50,7 +51,7 @@ export function V4UserBubble({
   return (
     <div
       className={cn(
-        'ml-auto max-w-[86%] rounded-nomi px-3 py-2 text-body-sm',
+        'self-end max-w-[86%] rounded-nomi px-3 py-2 text-body-sm',
         // 暗色下用 ink-10 底而不是纯黑（定稿 Dark 板批注）：token 翻转后纯 ink 会变成浅色块。
         darkMode ? 'bg-nomi-ink-10 text-nomi-ink' : 'bg-nomi-ink text-nomi-paper',
       )}
@@ -217,7 +218,6 @@ export function V4Thinking({ label, meta, text, streaming }: {
   const { t } = useTranslation()
   // Only measure the live interval we actually observed. Restored history has no duration.
   const [seconds, setSeconds] = React.useState<number>()
-  const labelRef = React.useRef<HTMLSpanElement>(null)
   React.useEffect(() => {
     if (!streaming) return undefined
     const started = performance.now()
@@ -225,21 +225,11 @@ export function V4Thinking({ label, meta, text, streaming }: {
     const timer = window.setInterval(() => setSeconds(Math.floor((performance.now() - started) / 1000)), 1000)
     return () => window.clearInterval(timer)
   }, [streaming])
-  React.useEffect(() => {
-    if (!streaming || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return undefined
-    const animation = labelRef.current?.animate(
-      [{ backgroundPosition: '200% 0' }, { backgroundPosition: '-200% 0' }],
-      { duration: 2000, iterations: Infinity, easing: 'linear' },
-    )
-    return () => animation?.cancel()
-  }, [streaming])
   const row = (
     <>
       <span className="shrink-0"><ActionIcon action="think" /></span>
-      <span ref={labelRef} className={cn('min-w-0 truncate', streaming !== false && 'bg-gradient-to-r from-nomi-ink-40 via-nomi-ink to-nomi-ink-40 bg-clip-text text-transparent', streaming && '[background-size:200%_100%]')}>
-        {streaming === false ? t('agentPanelV4.thinkingDone') : label}
-      </span>
-      <span className="ml-auto shrink-0 whitespace-nowrap font-nomi-mono text-micro text-nomi-ink-40">
+      {streaming === false ? <span className="min-w-0 truncate">{t('agentPanelV4.thinkingDone')}</span> : <V4Shimmer>{label}</V4Shimmer>}
+      <span className="shrink-0 whitespace-nowrap font-nomi-mono text-micro text-nomi-ink-40">
         {seconds === undefined ? meta : t('agentPanelV4.thinkingSeconds', { count: seconds })}
       </span>
       {text ? <IconChevronRight size={12} className="shrink-0 transition-transform group-open:rotate-90" /> : null}
@@ -249,10 +239,10 @@ export function V4Thinking({ label, meta, text, streaming }: {
     <div className="min-w-0 text-caption text-nomi-ink-60" data-v4-block="thinking" data-streaming={streaming}>
       {text ? (
         <details className="group">
-          <summary className="flex min-h-7 cursor-pointer list-none items-center gap-2 [&::-webkit-details-marker]:hidden">{row}</summary>
+          <V4Row as="summary" className="min-h-7 cursor-pointer list-none [&::-webkit-details-marker]:hidden">{row}</V4Row>
           <div className="whitespace-pre-wrap break-words py-2 text-body-sm [overflow-wrap:anywhere]" data-v4-thinking-body="true">{text}</div>
         </details>
-      ) : <div className="flex min-h-7 items-center gap-2">{row}</div>}
+      ) : <V4Row className="min-h-7">{row}</V4Row>}
     </div>
   )
 }

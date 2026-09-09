@@ -1,3 +1,4 @@
+import { V4Row } from './AgentPanelV4Row'
 import { formatV4Tokens } from './agentPanelV4UsageFormat'
 import { resolveComposerObstaclePlacement } from '../../generationCanvas/nodes/composerObstaclePlacement'
 // Agent 面板 v4 · 积木 ⑧ 上下文用量（AI Elements Context）
@@ -84,9 +85,9 @@ export function V4ContextRing({
       data-context-known={percent === undefined ? undefined : 'true'}
       onToggle={(event) => { setOpen(event.currentTarget.open); onToggle?.(event.currentTarget.open) }}
     >
-      <summary
+      <V4Row as="summary"
         className={cn(
-          'inline-flex h-[22px] cursor-pointer list-none items-center gap-[5px] rounded-pill border border-nomi-line text-micro font-normal text-nomi-ink-60',
+          'h-[22px] cursor-pointer list-none rounded-pill border border-nomi-line text-micro font-normal text-nomi-ink-60',
           percent === undefined ? 'px-2' : 'pl-[5px] pr-2',
         )}
         aria-label={labels.context}
@@ -109,10 +110,10 @@ export function V4ContextRing({
             ? labels.usedOnly.replace('{{amount}}', formatV4Tokens(usage.used))
             : labels.unknown}
         <IconChevronDown size={11} />
-      </summary>
+      </V4Row>
       <div ref={popoverRef} style={position} className="absolute left-0 top-full z-10 w-[230px] overflow-auto rounded-nomi border border-nomi-line bg-nomi-paper text-caption shadow-nomi-md">
         <div className="p-2.5 pb-0">
-          <div className="flex items-center justify-between">
+          <V4Row as="div" className="">
             <strong>{percent === undefined ? labels.unknown : `${percent}%`}</strong>
             {usage.used !== undefined ? (
               <span className="text-nomi-ink-60">
@@ -120,7 +121,7 @@ export function V4ContextRing({
                 {usage.max !== undefined ? ` / ${formatV4Tokens(usage.max)}` : ''}
               </span>
             ) : null}
-          </div>
+          </V4Row>
           {/* 进度条和环读同一个 `percent`。没有百分比时不画一根 0 宽的条——
               那看起来像「用量是 0」，而不是「不知道」。 */}
           {percent === undefined ? null : (
@@ -131,7 +132,7 @@ export function V4ContextRing({
           {rows.length ? (
             <dl className="m-0 grid gap-0.5 pb-2.5">
               {rows.map(([term, value]) => (
-                <div key={term} className="flex justify-between py-0.5 text-nomi-ink-60">
+                <div key={term} className="flex gap-1.5 py-0.5 text-nomi-ink-60">
                   <dt>{term}</dt>
                   <dd className="m-0 font-medium text-nomi-ink">{value}</dd>
                 </div>
@@ -140,7 +141,7 @@ export function V4ContextRing({
           ) : null}
         </div>
         {usage.cost ? (
-          <footer className="flex justify-between bg-nomi-ink-05 px-2.5 py-2 font-medium">
+          <footer className="flex gap-1.5 bg-nomi-ink-05 px-2.5 py-2 font-medium">
             <span>{labels.threadCost}</span>
             <span>{usage.cost}</span>
           </footer>

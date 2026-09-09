@@ -6,6 +6,7 @@
 // 失败留在原行变红 + 一句话原因，**不弹窗不 toast**（Process 板时刻 5）——
 // 错误发生在哪一行就留在哪一行，用户回看时能对上。
 import React from 'react'
+import { V4Row, V4Shimmer } from './AgentPanelV4Row'
 import { useTranslation } from 'react-i18next'
 import { cn } from '../../../utils/cn'
 import { ActionIcon, IconAlertTriangle, IconChevronRight, ToolStatusIcon } from './AgentPanelV4Icons'
@@ -37,7 +38,7 @@ export function V4ToolReceipt({
       </span>
       <span className="shrink-0 font-medium text-nomi-ink-80">{receipt.label}</span>
       {receipt.summary ? <span className="truncate text-micro text-nomi-ink-40">{receipt.summary}</span> : null}
-      <span className={cn('ml-auto flex shrink-0 items-center gap-1 text-micro', tone)}>
+      <span className={cn('flex shrink-0 items-center gap-1 text-micro', tone)}>
         <ToolStatusIcon status={receipt.status} />
         {receipt.trailing ?? statusLabel}
         {receipt.undoable && undoLabel ? (
@@ -59,7 +60,7 @@ export function V4ToolReceipt({
         {expandable ? (
           <IconChevronRight
             size={12}
-            className="text-nomi-ink-40 transition-transform group-open:rotate-90"
+            className="text-nomi-ink-40 transition-transform group-open/receipt:rotate-90"
           />
         ) : null}
       </span>
@@ -67,30 +68,30 @@ export function V4ToolReceipt({
   )
   if (!expandable) {
     return (
-      <div
-        className="flex min-h-7 items-center gap-[7px] rounded-nomi-sm px-2 text-caption text-nomi-ink-60"
+      <V4Row
+        className="min-h-7 rounded-nomi-sm px-2 text-caption text-nomi-ink-60"
         data-v4-block="tool"
         data-status={receipt.status}
       >
         {row}
-      </div>
+      </V4Row>
     )
   }
   return (
     <details
       open={receipt.expanded}
-      className="group"
+      className="group/receipt"
       data-v4-block="tool"
       data-status={receipt.status}
     >
-      <summary
+      <V4Row as="summary"
         className={cn(
-          'flex min-h-7 cursor-pointer list-none items-center gap-[7px] rounded-nomi-sm px-2 text-caption text-nomi-ink-60 hover:bg-nomi-ink-05',
-          'group-open:bg-nomi-ink-05',
+          'min-h-7 cursor-pointer list-none rounded-nomi-sm px-2 text-caption text-nomi-ink-60 hover:bg-nomi-ink-05',
+          'group-open/receipt:bg-nomi-ink-05',
         )}
       >
         {row}
-      </summary>
+      </V4Row>
       <div className="mt-1 rounded-nomi-sm border border-nomi-line-soft bg-nomi-paper px-2.5 py-2 text-caption text-nomi-ink-60">
         {receipt.input ? <ReceiptBlock labelKey="agentPanelV4.input" value={receipt.input} /> : null}
         {receipt.output ? <ReceiptBlock labelKey="agentPanelV4.output" value={receipt.output} /> : null}
@@ -135,11 +136,11 @@ export function V4ToolGroup({
   const { t } = useTranslation()
   const tone = STATUS_TONE[group.status] ?? 'text-nomi-accent'
   return (
-    <details className="group" data-v4-block="tool-group" data-status={group.status} data-count={group.count}>
-      <summary
+    <details className="group/tool-group" data-v4-block="tool-group" data-status={group.status} data-count={group.count}>
+      <V4Row as="summary"
         className={cn(
-          'flex min-h-7 cursor-pointer list-none items-center gap-[7px] rounded-nomi-sm px-2 text-caption text-nomi-ink-60 hover:bg-nomi-ink-05',
-          'group-open:bg-nomi-ink-05',
+          'min-h-7 cursor-pointer list-none rounded-nomi-sm px-2 text-caption text-nomi-ink-60 hover:bg-nomi-ink-05',
+          'group-open/tool-group:bg-nomi-ink-05',
         )}
       >
         <span className="shrink-0 text-nomi-ink-60">
@@ -150,12 +151,12 @@ export function V4ToolGroup({
           {t('agentPanelV4.toolGroupCount', { count: group.count })}
         </span>
         {group.reason ? <span className="truncate text-micro text-nomi-ink-40">{group.reason}</span> : null}
-        <span className={cn('ml-auto flex shrink-0 items-center gap-1 text-micro', tone)}>
+        <span className={cn('flex shrink-0 items-center gap-1 text-micro', tone)}>
           <ToolStatusIcon status={group.status} />
           {group.trailing || statusLabel}
-          <IconChevronRight size={12} className="text-nomi-ink-40 transition-transform group-open:rotate-90" />
+          <IconChevronRight size={12} className="text-nomi-ink-40 transition-transform group-open/tool-group:rotate-90" />
         </span>
-      </summary>
+      </V4Row>
       <div className="mt-1 flex flex-col gap-0.5 border-l border-nomi-line-soft pl-1.5">
         {group.receipts.map((receipt, index) => (
           <V4ToolReceipt key={`${receipt.label}-${index}`} receipt={receipt} statusLabel={statusLabel}
@@ -172,26 +173,19 @@ export function V4ToolGroup({
  * 定稿 ⑦「过程反馈按 Claude Code」：过程默认收起，只有**最终回答**摊开。
  * 平铺的时候它和最终回答一样宽、一样黑，用户得逐段读完才知道哪一段是给他的。
  */
-export function V4Process({ label, segments }: { label: string; segments: readonly string[] }): JSX.Element {
-  const { t } = useTranslation()
+export function V4Process({ label, segments, running, elapsed, children }: {
+  label: string; segments: readonly string[]; running?: boolean; elapsed?: string; children?: React.ReactNode
+}): JSX.Element {
   return (
-    <details className="group" data-v4-block="process" data-count={segments.length}>
-      <summary className="flex min-h-7 cursor-pointer list-none items-center gap-[7px] rounded-nomi-sm px-2 text-caption text-nomi-ink-40 hover:bg-nomi-ink-05">
-        <span className="shrink-0">
-          <ActionIcon action="think" />
-        </span>
-        <span className="truncate">{label}</span>
-        <span className="ml-auto flex shrink-0 items-center gap-1 text-micro">
-          {t('agentPanelV4.processExpand')}
-          <IconChevronRight size={12} className="transition-transform group-open:rotate-90" />
-        </span>
-      </summary>
+    <details key={running ? "running" : "settled"} className="group/process" data-v4-block="process" data-running={Boolean(running)}>
+      <V4Row as="summary" className="min-h-7 cursor-pointer list-none rounded-nomi-sm px-2 text-caption text-nomi-ink-40 hover:bg-nomi-ink-05">
+        <ActionIcon action={running ? 'think' : 'document'} />
+        <>{running ? <V4Shimmer>{label}</V4Shimmer> : <span className="min-w-0 truncate">{label}</span>}</>
+        {elapsed ? <span className="shrink-0 font-nomi-mono text-micro">{elapsed}</span> : null}
+        <IconChevronRight size={12} className="shrink-0 transition-transform group-open/process:rotate-90" />
+      </V4Row>
       <div className="mt-1 flex flex-col gap-1.5 border-l border-nomi-line-soft py-1 pl-2.5">
-        {segments.map((segment, index) => (
-          <p key={index} className="m-0 whitespace-pre-wrap text-caption text-nomi-ink-60">
-            {segment}
-          </p>
-        ))}
+        {children ?? segments.map((segment, index) => <p key={index} className="m-0 whitespace-pre-wrap text-caption text-nomi-ink-60">{segment}</p>)}
       </div>
     </details>
   )
@@ -208,7 +202,7 @@ export function V4ErrorBar({ reason, action, onAction }: { reason: string; actio
       data-v4-block="errorbar"
     >
       <IconAlertTriangle size={13} aria-hidden="true" />
-      <span className="flex-1">{reason}</span>
+      <span className="min-w-0">{reason}</span>
       {action ? (
         <button type="button" className="font-medium text-nomi-ink-80" onClick={onAction}>
           {action}

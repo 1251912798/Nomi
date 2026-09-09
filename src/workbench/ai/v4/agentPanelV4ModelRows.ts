@@ -16,6 +16,10 @@ import { orderByVendorPreference } from '../../../../electron/shared/contracts/v
 //
 // 供应商去重也在这一层：同一个模型经三家中转接进来，目录里是三行，但对用户是**一个**模型。
 // 摊三行只会逼他去比三个他分不清的供应商名（PR #535 已经在设置页把这条做过一遍）。
+import type { AgentPanelV4Data } from './useAgentPanelV4Data'
+import type { V4ModelRow } from './AgentPanelV4Composer'
+import { buildDefaultModelOptions } from '../../settings/defaultGenerationModelOptions'
+import { encodeModelIdentity } from '../assistantModelIdentity'
 import type { ModelCatalogModelDto } from '../../api/modelCatalogApi'
 import { labelForModel } from '../assistantModelIdentity'
 
@@ -57,4 +61,60 @@ export function chatModelChoices(
     // 价格只在目录真的写了才给。`pricing.cost` 是**积分**，不是编出来的 ≈¥/张。
     ...(model.pricing?.enabled && model.pricing.cost > 0 ? { trailing: creditsLabel(model.pricing.cost) } : {}),
   })))
+}
+
+/** Shared catalog-to-row projection used by the resident shell and visual fixtures. */
+export function buildV4ModelRows(data: Pick<AgentPanelV4Data, 'models' | 'vendors' | 'orderedVendorKeys' | 'selectedModel' | 'modelLabel' | 'selectModel' | 'generationModels' | 'generationDefaults' | 'setGenerationDefault'>, t: (key: string, options?: Record<string, unknown>) => string): readonly V4ModelRow[] {
+  const generationOptions = buildDefaultModelOptions(data.generationModels, key => data.vendors[key] ?? key, t('agentPanelV4.modelAuto'))
+  const rows: V4ModelRow[] = []
+  const chatChoices = chatModelChoices(
+    data.models,
+    data.vendors,
+    data.orderedVendorKeys,
+    encodeModelIdentity,
+    (cost) => t('agentPanelV4.modelCredits', { cost }),
+  )
+  const selectedChat = data.selectedModel ? encodeModelIdentity(data.selectedModel) : ''
+  rows.push({
+    slot: t('agentPanelV4.modelChat'),
+    name: data.modelLabel,
+    cost: chatChoices.find(choice => choice.value === selectedChat)?.trailing,
+    ...(chatChoices.length
+      ? {
+          options: chatChoices.map(choice => ({ value: choice.value, label: choice.label, ...(choice.trailing ? { trailing: choice.trailing } : {}) })),
+          selectedValue: selectedChat,
+          onChange: (value: string) => {
+            const model = data.models.find(candidate => encodeModelIdentity(candidate) === value)
+            if (model) data.selectModel(model)
+          },
+        }
+      : { empty: t('agentPanelV4.modelNone') }),
+  })
+  for (const [slot, taskKind] of [
+    [t('agentPanelV4.imageDefault'), 'text_to_image'],
+    [t('agentPanelV4.videoDefault'), 'text_to_video'],
+  ] as const) {
+    const options = generationOptions.optionsByKind[taskKind]
+    const current = data.generationDefaults[taskKind]
+    const selectedValue = current ? generationOptions.encode(current) : ''
+    const selectedModel = data.generationModels.find(model => model.vendorKey === current?.vendorKey && model.modelKey === current?.modelKey)
+    const cost = selectedModel?.pricing?.enabled && selectedModel.pricing.cost > 0
+      ? t('agentPanelV4.modelCredits', { cost: selectedModel.pricing.cost }) : undefined
+    const label = options.find(option => option.value === selectedValue)?.label
+    rows.push({
+      slot,
+      cost,
+      // 目录里已经没有这个模型时明确标不可用；默认仍是现役自动选择。
+      name: label ?? (current ? t('agentPanelV4.modelGone') : t('agentPanelV4.modelAuto')),
+      // options[0] 恒为自动选，因此 >1 才有可选模型。
+      ...(options.length > 1
+        ? {
+            options,
+            selectedValue: selectedValue ?? '',
+            onChange: (value: string) => data.setGenerationDefault(taskKind, generationOptions.decode(value)),
+          }
+        : { empty: t('agentPanelV4.modelNone') }),
+    })
+  }
+  return Object.freeze(rows)
 }

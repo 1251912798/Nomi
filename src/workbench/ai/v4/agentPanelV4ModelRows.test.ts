@@ -64,3 +64,18 @@ describe('对话那一行的选项', () => {
     expect(withPrice?.trailing).toBe('3 积分')
   })
 })
+
+it('projects all three catalog kinds through the production row owner and preserves selection callbacks', async () => {
+  const { buildV4ModelRows } = await import('./agentPanelV4ModelRows')
+  const chat = model('catalog', 'chat')
+  const image: ModelCatalogModelDto = { ...model('catalog', 'image'), kind: 'image', pricing: { enabled: true, cost: 3, specCosts: [] } }
+  const video: ModelCatalogModelDto = { ...model('catalog', 'video'), kind: 'video' }
+  let changed: unknown
+  const rows = buildV4ModelRows({ models: [chat], generationModels: [image, video], vendors: {}, orderedVendorKeys: [], selectedModel: chat, modelLabel: chat.labelZh, selectModel: () => {}, generationDefaults: { text_to_image: image, text_to_video: video }, setGenerationDefault: (kind, identity) => { changed = { kind, identity } } }, (key, args) => `${key}${args?.cost ?? ''}`)
+  expect(rows.map(row => row.slot)).toEqual(['agentPanelV4.modelChat', 'agentPanelV4.imageDefault', 'agentPanelV4.videoDefault'])
+  expect(rows.every(row => row.options?.length)).toBe(true)
+  expect(rows[1]?.cost).toBe('agentPanelV4.modelCredits3')
+  expect(rows[2]?.cost).toBeUndefined()
+  rows[2]?.onChange?.(rows[2].selectedValue!)
+  expect(changed).toEqual({ kind: 'text_to_video', identity: { vendorKey: 'catalog', modelKey: 'video' } })
+})

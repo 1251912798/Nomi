@@ -12,12 +12,11 @@ export const zhAgentPanelV4 = {
   queueHint: '排队的指令可以取消后重发',
   newConversation: '新对话 {{number}}',
   // 壳
-  brand: 'Nomi',
-  logo: 'N',
   history: '历史会话',
   collapsePanel: '收起面板',
   // 收起坞 · 右上角那枚 Nomi logo 钮（2026-09-06 用户改：收起态回到 logo + 状态叠加）
   dockOpen: '展开 Nomi',
+  dockClose: '关闭输入坞',
   dockIdle: 'Nomi 在这儿',
   dockRunning: 'Nomi 正在做',
   dockNeedsConfirm: '等你确认 {{count}} 条',
@@ -34,8 +33,6 @@ export const zhAgentPanelV4 = {
   stop: '停止',
   skill: 'Skill',
   model: 'GPT-5.6',
-  modelDialog: '模型',
-  modelHint: '每类一个默认，Agent 帮你生成时用它',
   modelChat: '对话',
   chatModel: 'GPT-5.6',
   imageDefault: '图片默认',
@@ -115,7 +112,7 @@ export const zhAgentPanelV4 = {
   // 队列
   queueStatus: { queued: '排队', running: '进行中', complete: '完成' },
   queueJumpAhead: '插队',
-  processThinking: '思考 ×{{count}}',
+  processSummary: '用了 {{count}} 个工具 · {{retries}} 次重试',
   queueDelete: '取消这条指令',
   queueInterrupt: '立即中断',
 
@@ -142,7 +139,6 @@ export const zhAgentPanelV4 = {
   toolGroupSomeFailed: '{{count}} 次失败',
   toolGroupAllDone: '全部完成',
   processAttempts: '尝试了 {{count}} 次',
-  processExpand: '展开',
   // 实验室夹具：2026-09-06 打包版那次「重拆 10 镜」的六连失败
   fixtureShotCard: '创建或修改镜头卡',
   fixtureShotCardReason: 'nodes：必须是数组（收到 字符串）',
@@ -364,11 +360,10 @@ export const enAgentPanelV4 = {
   legacySeparator: '; ',
   queueHint: 'Cancel a queued instruction to edit and resend it.',
   newConversation: 'New conversation {{number}}',
-  brand: 'Nomi',
-  logo: 'N',
   history: 'Conversation history',
   collapsePanel: 'Collapse panel',
   dockOpen: 'Open Nomi',
+  dockClose: 'Close input dock',
   dockIdle: 'Nomi is here',
   dockRunning: 'Nomi is working',
   dockNeedsConfirm: '{{count}} waiting for you',
@@ -384,8 +379,6 @@ export const enAgentPanelV4 = {
   stop: 'Stop',
   skill: 'Skill',
   model: 'GPT-5.6',
-  modelDialog: 'Model',
-  modelHint: 'One default per kind; Nomi uses it when generating',
   modelChat: 'Chat',
   chatModel: 'GPT-5.6',
   imageDefault: 'Image default',
@@ -459,7 +452,7 @@ export const enAgentPanelV4 = {
 
   queueStatus: { queued: 'Queued', running: 'Running', complete: 'Done' },
   queueJumpAhead: 'Move up',
-  processThinking: 'Thinking ×{{count}}',
+  processSummary: '{{count}} tools · {{retries}} retries',
   queueDelete: 'Cancel this instruction',
   queueInterrupt: 'Interrupt now',
 
@@ -482,7 +475,6 @@ export const enAgentPanelV4 = {
   toolGroupSomeFailed: '{{count}} failed',
   toolGroupAllDone: 'all done',
   processAttempts: 'Tried {{count}} times',
-  processExpand: 'Expand',
   fixtureShotCard: 'Create or edit shot cards',
   fixtureShotCardReason: 'nodes: expected array, received string',
   fixtureShotCardInput: '{ "operation": "create_canvas_nodes", "nodes": "[{…}]" }',
