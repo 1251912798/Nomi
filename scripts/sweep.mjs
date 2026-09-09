@@ -10,7 +10,9 @@ import { launchNomiApp } from '../tests/ux/_launchApp.mjs'
 import { createAgentRuntimeFixture } from '../tests/ux/agent-runtime-fixture.mjs'
 import { DOCUMENT } from '../tests/ux/agent-runtime-walk-support.mjs'
 import { startEvidence, copyTranscripts, writeJson, saveCase, saveReport, scoreCollectedAgent } from '../tests/ux/g1/sweep-evidence.mjs'
-import { prepareRealText, attachRealText, assertRealTextCredential } from '../tests/ux/g1/sweep-real.mjs'
+import { prepareRealText, attachRealText } from '../tests/ux/g1/sweep-real.mjs'
+import { requireCredential, recordBlocked } from '../tests/ux/g1/credential-precheck.mjs'
+import { realCatalogPath } from '../evals/lib/isoApp.mjs'
 import { c0Invocation } from '../tests/ux/g1/sweep-c0.mjs'
 import { runSurface } from '../tests/ux/g1/sweep-surfaces.mjs'
 
@@ -24,12 +26,11 @@ if (values.help) {
 const budgetCny = Number(values.budget)
 if (!Number.isFinite(budgetCny) || budgetCny < 0 || budgetCny > 3) throw Error('Sweep budget must be 0–3 CNY')
 if (values['planner-model'] && (!values['real-text'] || values.case !== 'C0')) throw Error('--planner-model requires --real-text --case C0')
-if (values['real-text']) assertRealTextCredential()
-const { inspectMcp } = await import('../tests/ux/g1/sweep-mcp.mjs')
 const runId = new Date().toISOString().replaceAll(':', '-'), directory = path.join(root, 'artifacts/sweep', runId)
 fs.mkdirSync(directory, { recursive: true })
 const cases = JSON.parse(fs.readFileSync(path.join(root, 'tests/ux/g1/cases.json'), 'utf8'))
 const runs = [], skipped = []
+let credentialBlock
 if (values.case && !cases.some(c => c.id === values.case)) throw Error(`Unknown case: ${values.case}`)
 const sourceFiles = ['scripts/sweep.mjs', 'tests/ux/_assert.mjs', 'tests/ux/_collect.mjs', ...fs.readdirSync(path.join(root, 'tests/ux/g1')).filter(f => /\.(mjs|json)$/.test(f)).map(f => `tests/ux/g1/${f}`)]
 writeJson(path.join(directory, 'source-files.json'), Object.fromEntries(sourceFiles.map(file => [file, createHash('sha256').update(fs.readFileSync(path.join(root, file))).digest('hex')])))
@@ -53,6 +54,20 @@ for (const entry of cases) for (const input of entry.inputs) {
   } })
   const station = (id, expected, fn) => walk.station({ id, surface: input.surface, expected }, fn)
   console.log(`SWEEP ${id}`)
+  const needsCredential = realText || (input.executor === 'c0' && values['real-text'])
+  if (needsCredential) {
+    try {
+      if (credentialBlock) throw Object.assign(Error('CREDENTIAL_BLOCKED'), { receipt: credentialBlock })
+      requireCredential(realCatalogPath(), target)
+    } catch (error) {
+      if (!error.receipt) throw error
+      credentialBlock = error.receipt
+      writeJson(path.join(target, 'credential-precheck.json'), credentialBlock)
+      recordBlocked(target, record, credentialBlock, input.executor === 'c0' ? ['00','01','02','03','04','05','06','07'] : ['launch','input','agent','storyboard','agent-evidence','feel'])
+      saveReport(directory, runs, skipped, budgetCny)
+      continue
+    }
+  }
   if (input.executor === 'c0') {
     let childError
     try {
@@ -64,8 +79,9 @@ for (const entry of cases) for (const input of entry.inputs) {
     const childReport = path.join(target, 'report.json')
     if (fs.existsSync(childReport)) {
       const result = JSON.parse(fs.readFileSync(childReport, 'utf8'))
-      Object.assign(record, { costCny: result.costCny, reservedCny: result.reservedCny, mediaMode: result.mediaMode, plannerModel: result.plannerModel })
+      Object.assign(record, { result: result.result, credentialPrecheck: result.credentialPrecheck, costCny: result.costCny, reservedCny: result.reservedCny, mediaMode: result.mediaMode, plannerModel: result.plannerModel })
     }
+    if (record.result === 'blocked') credentialBlock = record.credentialPrecheck
     Object.assign(walk, { stations: record.stations, deviations: record.deviations })
     if (childError) walk.record(Error(`C0 child failed: ${childError.code ?? 'unknown'}`), { id: 'c0-process', surface: 'storyboard' })
     if (!fs.existsSync(path.join(target, 'trace.zip'))) fs.writeFileSync(path.join(target, 'trace-unavailable.md'), 'C0 tracing did not finish; see deviations.json.\n')
@@ -75,13 +91,14 @@ for (const entry of cases) for (const input of entry.inputs) {
   try {
     if (realText) real = await prepareRealText(profile)
     else fixture = await createAgentRuntimeFixture({ rootDir: root, settingsDir: path.join(profile, 'settings') })
+    let executablePath = values.packaged
+    if (executablePath?.endsWith('.app')) executablePath = path.join(executablePath, 'Contents/MacOS/Nomi')
+    launched = await launchNomiApp({ name: id, tempRoot: profile, capabilityDir: path.join(profile, 'capability'), settleMs: 0,
+      ...(executablePath ? { executablePath } : {}),
+      env: { NOMI_RENDERER_URL: '', VITE_DEV_SERVER_URL: '', NOMI_DESKTOP_DEV: '', NOMI_E2E_PRODUCTION_FIXTURE: '0', NOMI_DISABLE_AUTO_UPDATE: '1' } })
+    // Before collect: blocked credentials cannot become a failed/repaired station.
+    if (real) await attachRealText(launched, { profile, quote: real.quote, ledgerPath, budgetCny, requestsPath: path.join(target, 'model-requests.json') })
     await station('launch', '独立 profile 启动真实 Electron', async () => {
-      let executablePath = values.packaged
-      if (executablePath?.endsWith('.app')) executablePath = path.join(executablePath, 'Contents/MacOS/Nomi')
-      launched = await launchNomiApp({ name: id, tempRoot: profile, capabilityDir: path.join(profile, 'capability'), settleMs: 0,
-        ...(executablePath ? { executablePath } : {}),
-        env: { NOMI_RENDERER_URL: '', VITE_DEV_SERVER_URL: '', NOMI_DESKTOP_DEV: '', NOMI_E2E_PRODUCTION_FIXTURE: '0', NOMI_DISABLE_AUTO_UPDATE: '1' } })
-      if (real) await attachRealText(launched, { profile, quote: real.quote, ledgerPath, budgetCny, requestsPath: path.join(target, 'model-requests.json') })
       evidence = await startEvidence({ ...launched, directory: target, payload })
       launched.win.setDefaultTimeout(5000)
       await launched.win.evaluate(() => {
@@ -95,7 +112,7 @@ for (const entry of cases) for (const input of entry.inputs) {
       projectId = projects[0].id
     })
     await runSurface({ walk, win: launched?.win, input, fixture, realText, directory: target, payload, projectId })
-    if (launched && input.surface === 'mcp') await inspectMcp({ profile, directory: target, projectId, packaged: values.packaged, input, walk })
+    if (launched && input.surface === 'mcp') await (await import('../tests/ux/g1/sweep-mcp.mjs')).inspectMcp({ profile, directory: target, projectId, packaged: values.packaged, input, walk })
     await station('agent-evidence', '原生转录、请求与工具结果可复盘', async () => {
       // Request bodies are original provider input; authentication headers are never copied.
       if (fixture) writeJson(path.join(target, 'model-requests.json'), fixture.requests.map(r => ({ path: r.path, body: r.body })))
@@ -110,19 +127,25 @@ for (const entry of cases) for (const input of entry.inputs) {
       writeJson(path.join(target, 'feel.json'), await scanFeel(launched.win, { label: id }))
     })
 
-  } catch (error) { walk.record(error, { id: 'assembly', surface: input.surface, reachedViaRepair: false }) }
+  } catch (error) {
+    if (error.code === 'CREDENTIAL_BLOCKED') {
+      credentialBlock = error.receipt
+      recordBlocked(target, record, credentialBlock, ['launch','input','agent','storyboard','agent-evidence','feel'])
+      Object.assign(walk, { stations: record.stations, deviations: record.deviations })
+    } else walk.record(error, { id: 'assembly', surface: input.surface, reachedViaRepair: false })
+  }
   finally {
     try {
-      if (real && launched) for (const error of await launched.app.evaluate(async () => globalThis.__sweepDispatch?.drainResponses() ?? [])) {
+      if (real && launched && record.result !== 'blocked') for (const error of await launched.app.evaluate(async () => globalThis.__sweepDispatch?.drainResponses() ?? [])) {
         walk.record(Error(`Response evidence failed: ${error.file}: ${error.message}`), { id: 'response-evidence', surface: input.surface })
       }
     } catch (error) { walk.record(error, { id: 'response-evidence', surface: input.surface }) }
-    try { if (real && launched) { await launched.app.evaluate(async () => globalThis.__sweepDispatch.snapshot()); billingVerified = true } }
+    try { if (real && launched && record.result !== 'blocked') { await launched.app.evaluate(async () => globalThis.__sweepDispatch.snapshot()); billingVerified = true } }
     catch (e) { walk.record(Error('SWEEP_BILLING_UNAVAILABLE'), { id: 'billing', surface: input.surface }) }
     try { if (evidence) await evidence.stop() } catch (e) { walk.record(e, { id: 'trace-stop', surface: input.surface }) }
-    try { if (launched) await launched.close() } catch (e) { walk.record(e, { id: 'close', surface: input.surface }) }
+    try { if (launched && record.result !== 'blocked') await launched.close() } catch (e) { walk.record(e, { id: 'close', surface: input.surface }) }
     try { if (fixture) await fixture.close() } catch (e) { walk.record(e, { id: 'fixture-close', surface: input.surface }) }
-    if (real && fs.existsSync(ledgerPath)) {
+    if (real && record.result !== 'blocked' && fs.existsSync(ledgerPath)) {
       const ledger = JSON.parse(fs.readFileSync(ledgerPath, 'utf8'))
       record.reservedCny = ledger.reservedCny - priorReserved
       record.costCny = billingVerified && Number.isFinite(ledger.billedCny) ? ledger.billedCny - priorBilled : null
