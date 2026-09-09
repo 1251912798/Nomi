@@ -49,7 +49,7 @@
 - 真实 Electron `walk.log`：打开项目→分镜→锚卡橙字→第 3 行覆写→原地丢弃。
 - `screenshots/00-anchor-warning.png`、`01-inline-night.png`、`02-discard-dusk.png` 经人眼检查：原有表布局中展示，图标+短标签同一行，无冲突弹框；消费提示仅行/卡展示，不放 footer 红色阻断汇总。
 - R30 零额度 loopback：`storyboardAnchorPolicy.test.ts` 的真实 applyCanvasToolCall 接收视觉锚+t2v并回纠正文本；`storyboardOverrides.integration.test.ts` 的 set_node_prompt→materialize 保留夜景。该数字只证确定性执行，不冒称真实模型选工具率。
-- 类型检查、lint（81 个现有 warning / 0 error）、边界棘轮通过；完整 gates 仍待完成。
+- 类型检查、lint（81 个现有 warning / 0 error）、边界棘轮通过；完整 gates 已 exit 0（最终收据见 evidence/README.md）。
 
 集成基线：2026-09-09 开工后 origin/main 前进 3 提交，已无冲突 fast-forward 到 `2baa00d5e`，任务文件原样保留；最终 gates 在新基线上运行。
 
@@ -58,3 +58,5 @@
 全量套件补充：提示词入口保留 `canvas.node.prompt-changed` 与编辑突发撤销，只共用 `markStoryboardOverrides`，不把专用事件退化为通用 node.updated。全模块 mock 改为只 mock IPC 读取，真实模型档案纯函数参与投影。53 条定向回归转绿。
 
 覆写生命周期补充：原有内部 proposal receipt 的 restore-prompt 补偿条目新增可选布尔 promptOverridden，记录此前该字段归属；旧收据保持可读，不新增格式或 MCP operation。提示词写入原子恢复值与归属，同一 gesture 附 node.updated 元数据事件供既有重放器消费。仅增加现有内部协议允许键；不改冻结区。
+
+最终验收：`python3 scripts/with-gates-lock.py -- pnpm run gates` exit 0，SHA `62c72f362bbc8f66eac13adadfecb26e00e7e244`。76 contracts 无阻断失败；12132 单测通过，306 Agent runtime 通过，153 视觉场景通过，Vite/Electron 构建通过。

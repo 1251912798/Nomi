@@ -127,7 +127,7 @@
   },
   "migration": "Existing unmarked nodes remain projections; no guessing legacy authorship. Existing named plans preserved. Variants excluded.",
   "residual_risks": [
-    "Full gates and remote review pending. True-model tool-selection rates are not inferred from deterministic loopback."
+    "Full gates passed at 62c72f362bbc8f66eac13adadfecb26e00e7e244. Remote review pending. True-model tool-selection rates are not inferred from deterministic loopback."
   ],
   "invariant_owner_layer": {
     "layer": "src/workbench/generationCanvas/model",
