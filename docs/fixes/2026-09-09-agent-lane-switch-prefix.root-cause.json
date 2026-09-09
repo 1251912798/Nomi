@@ -21,7 +21,8 @@
     "electron/agentLane/laneModelRead.mts",
     "electron/agentLane/laneModelContext.ts",
     "electron/shared/agentCapabilities/availableModels.ts",
-    "src/workbench/generationCanvas/agent/availableModels.ts"
+    "src/workbench/generationCanvas/agent/availableModels.ts",
+    "electron/shared/agentCapabilities/availableModelsSchema.ts"
   ],
   "entry_points": [
     "nomi_request_tools",
@@ -93,7 +94,8 @@
     "scripts/check-model-schema.node-test.mjs",
     "tests/agent-runtime/lane-b1-contracts.test.mts",
     "tests/agent-runtime/lane-native-desktop.test.mts",
-    "src/workbench/generationCanvas/agent/availableModels.test.ts"
+    "src/workbench/generationCanvas/agent/availableModels.test.ts",
+    "tests/agent-runtime/lane-models-block.test.mts"
   ],
   "class_regression_tests": [
     "tests/agent-runtime/lane-switch-prefix.test.mts",
@@ -103,7 +105,8 @@
     "scripts/check-model-schema.node-test.mjs",
     "tests/agent-runtime/lane-b1-contracts.test.mts",
     "tests/agent-runtime/lane-native-desktop.test.mts",
-    "src/workbench/generationCanvas/agent/availableModels.test.ts"
+    "src/workbench/generationCanvas/agent/availableModels.test.ts",
+    "tests/agent-runtime/lane-models-block.test.mts"
   ],
   "legacy_paths": {
     "status": "removed",

@@ -10,6 +10,7 @@ export const agentModelEntrySchema: z.ZodType<AgentModelEntry> = z.object({
   kind: z.enum(BILLING_MODEL_KINDS), archetypeId: text.optional(), defaultModeId: text,
   modes: z.array(z.object({
     modeId: text, vendorTerm: text, intent: text, hint: text,
+    consumesAnchors: z.array(text).max(64).optional(),
     params: z.array(z.object({
       key: text, label: text, type: z.enum(['select', 'number', 'text', 'boolean', 'image-url']),
       mediaKind: z.enum(['image', 'video']).optional(),

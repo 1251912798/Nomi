@@ -11,6 +11,7 @@ buildSync({ entryPoints: [path.resolve('electron/agentLane/laneDesktopInput.ts')
 after(() => rmSync(desktopBundle, { force: true }));
 const { createDesktopLaneInput, parseLaneComposerContext } = require(desktopBundle);
 import { deriveModelListing } from '../../electron/catalog/modelCatalogListing.js';
+import type { AgentModelEntry } from '../../electron/shared/agentCapabilities/availableModels.js';
 import type { CatalogState } from '../../electron/catalog/types.js';
 import type { LaneComposerContext } from '../../electron/shared/agentLane/laneDesktopContracts.js';
 import { createLaneFixture } from './laneFixture.mjs';
@@ -23,7 +24,8 @@ async function catalogProjection() {
   const listing = deriveModelListing(state);
   assert.equal(listing[0]?.keyStatus, 'ok');
   const models = state.models.filter((model) => listing.some((row) => row.keyStatus === 'ok' && row.modelKey === model.modelKey));
-  return { listing, entries: await fixtureModule.projectAgentRuntimeModels(process.cwd(), models) };
+  const entries: AgentModelEntry[] = await fixtureModule.projectAgentRuntimeModels(process.cwd(), models);
+  return { listing, entries };
 }
 
 const policy = { mode: 'safe-auto', spend: 'confirm' } as const;
@@ -57,7 +59,11 @@ test('C0 real desktop callsite sends catalog-projected model discovery in stable
 test('composer boundary accepts the real projection and rejects malformed model entries', async () => {
   const { entries } = await catalogProjection();
   const context = { approvalPolicy: policy, availableModels: entries };
+  assert.ok(entries.some(entry => entry.modes.some(mode => mode.consumesAnchors?.length)));
   assert.deepEqual(parseLaneComposerContext(context), context);
+  const malformed = structuredClone(context);
+  Object.assign(malformed.availableModels[0]!.modes[0]!, { consumesAnchors: [123] });
+  assert.throws(() => parseLaneComposerContext(malformed), /Expected string/);
   assert.throws(() => parseLaneComposerContext({ ...context, availableModels: [{ modelKey: 'incomplete' }] }));
   assert.deepEqual(parseLaneComposerContext({ approvalPolicy: policy }), { approvalPolicy: policy });
 });

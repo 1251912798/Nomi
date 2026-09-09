@@ -119,3 +119,5 @@ B1c 首次完整 gates：76 contracts 阻断项全部通过，Vitest 11,841 通�
 ### B1c 推送前再并 main #681
 
 第二轮完整 gates 在 `2127e1280` exit 0：76 contracts、Vitest 11,841/2 skipped、runtime 396/396、build 均通过。推送前 preflight 刷新到 `a645aaa08`（#681），依任务书暂停推送并本地 merge。唯一冲突 `generationCanvas/agent/availableModels.ts`：不复活已迁走的格式化器；新锚点能力从 archetype owner 已派生的 `mode.consumesAnchors` 投影到共享目录，main 两条锚点指导只定义一次，由完整目录与稳定索引复用。main 的分镜/画布数据层原样接纳，不另写策略。后续再次完整 gates exit 0 才推送。
+
+第三轮 contracts 全过、Vitest 11,857/2 skipped；runtime 395/396，真实 renderer projection 在严格 composer schema 被 consumesAnchors 新字段拒绝。补齐共享 agentModelEntrySchema 的有界字符串数组字段；真实目录通过/错误元素类型拒绝由同一入口测试守住。不放宽 strict 或跳过校验。
