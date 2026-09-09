@@ -1,0 +1,26 @@
+feel ratchet: agent-panel/rows.png; findings=0; new-surfaces=0; evidence: /var/folders/f4/vz86j5nd0_sf56qdhzrmbbvw0000gn/T/feel-repeated-FA241w
+✖ repeated rows records five tool steps without ratcheting even with a registered zero (1312.596458ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2095.87425
+
+✖ failing tests:
+
+test at tests/ux/_feel-observer.browser.mjs:87:1
+✖ repeated rows records five tool steps without ratcheting even with a registered zero (1312.596458ms)
+  Error: expect(received).toHaveLength(expected)
+  
+  Expected length: 1
+  Received length: 0
+  Received array:  []
+      at captureRawStack (/Users/aoqimin/Desktop/Nomi-density/node_modules/.pnpm/playwright-core@1.60.0/node_modules/playwright-core/lib/coreBundle.js:3130:17)
+      at callMatcherAsStep (/Users/aoqimin/Desktop/Nomi-density/node_modules/.pnpm/playwright@1.60.0/node_modules/playwright/lib/matchers/expect.js:12873:57)
+      at Object.toHaveLength (/Users/aoqimin/Desktop/Nomi-density/node_modules/.pnpm/playwright@1.60.0/node_modules/playwright/lib/matchers/expect.js:12863:23)
+      at TestContext.<anonymous> (/Users/aoqimin/Desktop/Nomi-density/tests/ux/_feel-observer.browser.mjs:100:18) {
+    matcherResult: { message: 'expect(received).toHaveLength(expected)\n\nExpected length: 1\nReceived length: 0\nReceived array:  []', pass: false, name: 'toHaveLength' }
+  }

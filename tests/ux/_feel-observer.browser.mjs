@@ -83,3 +83,41 @@ test('real journey observer records known budget overruns on page, locator and w
     fs.rmSync(dir, { recursive: true, force: true })
   }
 })
+
+test('repeated rows records five tool steps without ratcheting even with a registered zero', async () => {
+  const browser = await chromium.launch({ headless: true })
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'feel-repeated-'))
+  try {
+    const page = await browser.newPage()
+    const observer = installFeelObserver(page, {
+      name: 'agent-panel', outputDir: dir, exemptions: { entries: [] },
+      baseline: { entries: [{ journey: 'agent-panel', screenshotName: 'rows.png', rule: 'repeated-rows', count: 0 }] },
+    })
+    const row = (i) => `<div>准备工具 · 参数 其他设置 ${i} 项 · ✓完成 <time>14:20:${10 + i}</time></div>`
+    await page.setContent(`<section>${[1, 2, 3, 4, 5].map(row).join('')}</section>`)
+    const result = await observer.checkpoint('rows')
+    const hits = result.findings.filter((finding) => finding.rule === 'repeated-rows')
+    expect(hits).toHaveLength(1)
+    expect(hits[0].text).toHaveLength(5)
+    expect(observer.records[0].drift).toEqual([])
+    expect(observer.records[0].newSurfaces).toEqual([expect.objectContaining({ rule: 'repeated-rows', mode: 'record' })])
+    await page.setContent(`<section>${[1, 2, 3].map(row).join('')}</section>`)
+    expect((await observer.checkpoint('threshold')).findings.filter((finding) => finding.rule === 'repeated-rows')).toHaveLength(1)
+    await page.setContent(`<section style="pointer-events:none">${[1, 2, 3].map(row).join('')}</section>`)
+    expect((await observer.checkpoint('noninteractive')).findings.filter((finding) => finding.rule === 'repeated-rows')).toHaveLength(1)
+    for (const content of [
+      `<section>${row(1)}${row(2)}</section>`,
+      `<section>${row(1)}${row(2)}<div>等待用户确认</div>${row(3)}${row(4)}</section>`,
+      `<section>${row(1)}${row(2)}</section><section>${row(3)}</section>`,
+      `<section hidden>${row(1)}${row(2)}${row(3)}</section>`,
+      `<details><summary>准备工具 ×5</summary>${row(1)}${row(2)}${row(3)}</details>`,
+      `<section style="height:40px;overflow:hidden">${row(1)}${row(2)}<div style="height:2000px"></div>${row(3)}${row(4)}${row(5)}</section>`,
+    ]) {
+      await page.setContent(content)
+      expect((await observer.checkpoint('negative')).findings.filter((finding) => finding.rule === 'repeated-rows')).toEqual([])
+    }
+  } finally {
+    await browser.close()
+    fs.rmSync(dir, { recursive: true, force: true })
+  }
+})

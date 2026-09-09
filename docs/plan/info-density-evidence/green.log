@@ -1,0 +1,32 @@
+✔ baseline accepts known counts and reports increases and reductions (3.78275ms)
+feel ratchet: agent-panel/clean.png; findings=0; new-surfaces=0; evidence: /var/folders/f4/vz86j5nd0_sf56qdhzrmbbvw0000gn/T/feel-observer-8iaVts
+feel ratchet: agent-panel/waitForFunction.png; findings=0; new-surfaces=0; evidence: /var/folders/f4/vz86j5nd0_sf56qdhzrmbbvw0000gn/T/feel-observer-8iaVts
+feel ratchet: agent-panel/unregistered.png; findings=1; new-surfaces=1; evidence: /var/folders/f4/vz86j5nd0_sf56qdhzrmbbvw0000gn/T/feel-observer-8iaVts
+feel ratchet: agent-panel/bad.png; findings=1; new-surfaces=0; evidence: /var/folders/f4/vz86j5nd0_sf56qdhzrmbbvw0000gn/T/feel-observer-8iaVts
+feel ratchet: agent-panel/locator.png; findings=1; new-surfaces=0; evidence: /var/folders/f4/vz86j5nd0_sf56qdhzrmbbvw0000gn/T/feel-observer-8iaVts
+feel ratchet: agent-panel/waitForFunction.png; findings=1; new-surfaces=0; evidence: /var/folders/f4/vz86j5nd0_sf56qdhzrmbbvw0000gn/T/feel-observer-8iaVts
+feel ratchet: agent-panel/state.png; findings=0; new-surfaces=0; evidence: /var/folders/f4/vz86j5nd0_sf56qdhzrmbbvw0000gn/T/feel-observer-8iaVts/reduction
+✔ shared observer scans screenshots and completed state waits without author calls (726.520333ms)
+feel record: eval-iso/bad.png; findings=1; new-surfaces=1; evidence: /var/folders/f4/vz86j5nd0_sf56qdhzrmbbvw0000gn/T/feel-real-record-6fIHAQ/eval-iso
+feel record: eval-iso/locator.png; findings=1; new-surfaces=1; evidence: /var/folders/f4/vz86j5nd0_sf56qdhzrmbbvw0000gn/T/feel-real-record-6fIHAQ/eval-iso
+feel record: eval-iso/waitForFunction.png; findings=1; new-surfaces=1; evidence: /var/folders/f4/vz86j5nd0_sf56qdhzrmbbvw0000gn/T/feel-real-record-6fIHAQ/eval-iso
+feel record: real-user-test-gates/bad.png; findings=1; new-surfaces=1; evidence: /var/folders/f4/vz86j5nd0_sf56qdhzrmbbvw0000gn/T/feel-real-record-6fIHAQ/real-user-test-gates
+feel record: real-user-test-gates/locator.png; findings=1; new-surfaces=1; evidence: /var/folders/f4/vz86j5nd0_sf56qdhzrmbbvw0000gn/T/feel-real-record-6fIHAQ/real-user-test-gates
+feel record: real-user-test-gates/waitForFunction.png; findings=1; new-surfaces=1; evidence: /var/folders/f4/vz86j5nd0_sf56qdhzrmbbvw0000gn/T/feel-real-record-6fIHAQ/real-user-test-gates
+✔ real journey observer records known budget overruns on page, locator and waits (378.118375ms)
+feel ratchet: agent-panel/rows.png; findings=1; new-surfaces=1; evidence: /var/folders/f4/vz86j5nd0_sf56qdhzrmbbvw0000gn/T/feel-repeated-hKaUAU
+feel ratchet: agent-panel/negative.png; findings=0; new-surfaces=0; evidence: /var/folders/f4/vz86j5nd0_sf56qdhzrmbbvw0000gn/T/feel-repeated-hKaUAU
+feel ratchet: agent-panel/negative.png; findings=0; new-surfaces=0; evidence: /var/folders/f4/vz86j5nd0_sf56qdhzrmbbvw0000gn/T/feel-repeated-hKaUAU
+feel ratchet: agent-panel/negative.png; findings=0; new-surfaces=0; evidence: /var/folders/f4/vz86j5nd0_sf56qdhzrmbbvw0000gn/T/feel-repeated-hKaUAU
+feel ratchet: agent-panel/negative.png; findings=0; new-surfaces=0; evidence: /var/folders/f4/vz86j5nd0_sf56qdhzrmbbvw0000gn/T/feel-repeated-hKaUAU
+feel ratchet: agent-panel/negative.png; findings=0; new-surfaces=0; evidence: /var/folders/f4/vz86j5nd0_sf56qdhzrmbbvw0000gn/T/feel-repeated-hKaUAU
+feel ratchet: agent-panel/negative.png; findings=1; new-surfaces=1; evidence: /var/folders/f4/vz86j5nd0_sf56qdhzrmbbvw0000gn/T/feel-repeated-hKaUAU
+✔ repeated rows records five tool steps without ratcheting even with a registered zero (442.724083ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1757.633
