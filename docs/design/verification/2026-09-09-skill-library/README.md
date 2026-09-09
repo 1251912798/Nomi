@@ -30,3 +30,5 @@
 
 ![详情并排](comparison-detail.jpg)
 ![节点并排](comparison-node.jpg)
+
+合并基线 f708568dfc19 后再次构建并执行 Electron 完整任务，exit 0。六张真机图与并排图已替换为合并后的结果；宿主节点新增的供应商就绪提示来自 main。
