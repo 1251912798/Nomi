@@ -505,7 +505,7 @@ describe('⑧ Context 环 · 缺字段就不渲染', () => {
     })
     expect(usage.used).toBe(3000)
     expect(usage.input).toBe('4K')
-    expect(usage.reasoning).toBe('0.5K')
+    expect(usage.reasoning).toBe('500')
     expect(usage.cost).toBe('$0.03')
   })
 })
