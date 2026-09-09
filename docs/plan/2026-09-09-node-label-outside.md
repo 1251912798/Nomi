@@ -98,3 +98,11 @@ ShotPreviewOverlays 在 ConvertShotToVideoButton.tsx:14 写死 bottom；BaseGene
 - 根因合同门禁通过；红绿收据见 [red-green.json](2026-09-09-node-label-evidence/red-green.json)。截图与三组前后并排见同目录。
 - 已核对旧基线改动集合恰为授权的 26 张；另有此前已批准的新 specimen 一张。
 - 最终完整 gates 的 exit code 和精确 head 以 PR 收据为准；gates-result.txt 仅保留授权前第三轮失败历史。
+
+## PR #684 字阶修复计划（2026-09-09）
+
+CI run 34347335160 的 Electron smoke 报 font-size 新增 1；本地 smoke 同样 exit 1，artifacts/feel/smoke-8f1ebda1-956b-43ea-9792-758d681e95a3/new-surfaces.json 记录镜头号和标题为 11px。规则 DEFAULT_RULES.minFontSize=12；caption=12，micro=11。
+根因是框外常驻 metadata 错用角标字阶，且子组件重复覆盖字号；普通空/图/视频和 >80 节点轻量 body 都可复发。NodeLabelRow 负责 caption 字阶，子项继承（带自身字阶的共享控件明确 text-[length:inherit]）。保留次级墨色和所有几何/视口行为，不动 reactFlow/** 或体感规则/容差。同步设计文档与现有 v3 合同，扩充 Electron 回归验证元数据和轻量路径的实际字号。
+先跑红回归；修后重建 Tailwind/生产包、smoke 和标签真实旅程、tokens。只更新本 PR 新增 canvas-frame-shot-label-outside specimen；旧基线若出现真实漂移先报告。最后完整 with-gates-lock gates exit 0，正常 hooks commit/push。回滚用本次提交的 revert，无数据迁移。
+
+字阶红绿收据：新增 scanFeel 回归先在 empty/0.4 抓到镜头号/标题 11px（/tmp/nomi-label-font-red.log）；修后 node-label-outside.e2e.mjs exit 0，涵盖空/图/视频各缩放、参考/状态/拆解、真实项目改名/拖动/放大/关闭和 81 节点轻量路径。smoke exit 0（17 assertions），check:tokens exit 0，build exit 0。新 specimen 定向更新 1 张；现有体感规则、容差与旧视觉基线未改。此次截图保存在 /tmp/nomi-label-font-evidence，目视确认白底 specimen 与暗色真实项目均保持次级墨色和框外位置。

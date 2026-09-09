@@ -59,8 +59,8 @@ export function LightweightGenerationNode({
     >
       <NodeLabelRow>
         <ShotPreviewOverlays shotIndex={node.shotIndex ?? null} />
-        <span className="min-w-0 flex-1 truncate text-micro font-normal text-nomi-ink-60">{node.title || t('generationCommon.lightweightNode.untitled')}</span>
-        <span className="shrink-0 text-micro font-normal text-nomi-ink-60">{statusLabel}</span>
+        <span className="min-w-0 flex-1 truncate font-normal text-nomi-ink-60">{node.title || t('generationCommon.lightweightNode.untitled')}</span>
+        <span className="shrink-0 font-normal text-nomi-ink-60">{statusLabel}</span>
       </NodeLabelRow>
       <div
         className={cn(

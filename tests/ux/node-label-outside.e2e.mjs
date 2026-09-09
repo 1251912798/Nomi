@@ -5,6 +5,7 @@ import { labOriginFor, labPortFor, assertLabPortOwnership } from './design-lab/l
 import { launchNomiApp } from './_launchApp.mjs'
 import { expect, proveProbe, expectAbsent } from './_assert.mjs'
 import { stationTimeout } from './_station-budget.mjs'
+import { scanFeel } from './_feel.mjs'
 import { runNodeLabelProjectJourney } from './node-label-project-journey.mjs'
 
 const role = 'walk-canvas-frame'
@@ -45,7 +46,11 @@ try {
       await mutate(kind, zoom, true)
       const row = win.locator('[data-node-label-row]')
       if (zoom < 0.4) await expect(row).toBeHidden()
-      else await expect(row).toBeVisible()
+      else {
+        await expect(row).toBeVisible()
+        const feel = await scanFeel(row)
+        expect(feel.findings.filter((finding) => finding.rule === 'font-size'), `${kind}/${zoom}: metadata must meet readable font floor`).toEqual([])
+      }
       const toolbar = win.locator('[data-node-floating-toolbar]')
       await expect(toolbar).toBeVisible()
       if (kind === 'image') await expect(win.locator('.generation-canvas-v2-node__preview img')).toBeVisible()
@@ -78,6 +83,8 @@ try {
     await expect(win.locator('[data-node-mount-badges]')).toBeVisible()
     const selector = kind === 'image' ? '[data-generation-status]' : '[data-decon-node-badge]'
     await expect(win.locator(selector)).toBeVisible()
+    const feel = await scanFeel(win.locator('[data-node-label-row]'))
+    expect(feel.findings.filter((finding) => finding.rule === 'font-size'), `${kind}: mounted cards and status must remain readable`).toEqual([])
     const bounds = await win.locator('[data-node-label-row]').evaluate((row) => {
       const media = document.querySelector('.generation-canvas-v2-node__preview').getBoundingClientRect()
       return [...row.querySelectorAll('*')].map((e) => e.getBoundingClientRect().bottom - media.top)

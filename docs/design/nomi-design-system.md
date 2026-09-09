@@ -652,7 +652,7 @@ mark 是 **28×28 viewBox 的圆角方块**：深色底（`oklch(0.22 0.01 80)` 
 
 用户 2026-09-09 02:05 / 02:20 / 22:45 裁决为准：镜头号、标题、参考与状态放在图片**左上角上方**，生成前后位置相同，不占媒体区。03:00 的媒体内左上状态、左下编号方案作废。
 
-共同 owner：`src/workbench/generationCanvas/nodes/NodeLabelRow.tsx`。镜头编号与标题使用 `text-micro font-normal text-nomi-ink-60`；单行高 28px，底边在节点上沿外 6px，长内容截断。标签随节点移动和缩放；缩放低于 40% 隐藏整行，20% 全景不逆向放大占邻图。
+共同 owner：`src/workbench/generationCanvas/nodes/NodeLabelRow.tsx`。镜头编号与标题继承标签行的 `text-caption`（12px 可读下限），使用 `font-normal text-nomi-ink-60`，淡化靠次级墨色；单行高 28px，底边在节点上沿外 6px，长内容截断。标签随节点移动和缩放；缩放低于 40% 隐藏整行，20% 全景不逆向放大占邻图。
 
 `FloatingToolbarShell` 的底边在节点上沿外 40px，严格位于标签行上方；菜单向上展开，不跨标签行或媒体。动作选中时出现，常驻信息不得另在媒体内设置定位。自动化证据：`tests/ux/node-label-outside.e2e.mjs`（空、图、视频、选择、缩放、放大预览）。
 

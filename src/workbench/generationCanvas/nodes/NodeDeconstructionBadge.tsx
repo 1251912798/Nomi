@@ -38,7 +38,7 @@ export default function NodeDeconstructionBadge({ node }: Props): JSX.Element | 
   return (
     <button
       type="button"
-      className={cn('inline-flex min-w-0 shrink-0 items-center gap-1 text-micro font-normal text-nomi-ink-60 cursor-pointer')}
+      className={cn('inline-flex min-w-0 shrink-0 items-center gap-1 font-normal text-nomi-ink-60 cursor-pointer')}
       title={`${t('generationCommon.node.deconstruct.stubLabel')} · ${t('generationCommon.node.deconstruct.shotCountBadge', { count: shotCount })}`}
       data-decon-node-badge={nodeId}
       data-decon-node-stub={nodeId}

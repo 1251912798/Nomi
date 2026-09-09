@@ -3,6 +3,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { launchNomiApp } from './_launchApp.mjs'
 import { expect, screenshotSettled, proveProbe, expectAbsent } from './_assert.mjs'
+import { scanFeel } from './_feel.mjs'
 import { stationTimeout } from './_station-budget.mjs'
 
 /** Persisted project -> project library -> real React Flow canvas -> rename/drag/preview. */
@@ -56,6 +57,8 @@ export async function runNodeLabelProjectJourney(origin, out, { largeCanvas = fa
       const actualZoom = Number(await zoom.inputValue()) / 100
       const lightweight = win.locator('article[data-node-id="label-image"][data-render-mode="lightweight"]')
       await expect(lightweight).toBeVisible()
+      const feel = await scanFeel(lightweight.locator('[data-node-label-row]'))
+      expect(feel.findings.filter((finding) => finding.rule === 'font-size'), 'Lightweight metadata must meet readable font floor').toEqual([])
       const area = await lightweight.evaluate((node) => {
         const media = node.querySelector('img').getBoundingClientRect()
         return [...node.querySelectorAll('div,span')].filter((e) => e.children.length === 0 && e.textContent.trim() && getComputedStyle(e).visibility !== 'hidden').reduce((sum, e) => {
