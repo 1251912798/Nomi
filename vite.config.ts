@@ -125,7 +125,7 @@ function createManualChunks(id: string): string | undefined {
     return 'tiptap-vendor'
   }
   if (
-    normalizedId.includes('/node_modules/react-markdown/') ||
+    normalizedId.includes('/node_modules/streamdown/') ||
     normalizedId.includes('/node_modules/remark-') ||
     normalizedId.includes('/node_modules/rehype-') ||
     normalizedId.includes('/node_modules/unified/') ||
@@ -296,7 +296,7 @@ export default defineConfig(async ({ command, mode }: ConfigEnv): Promise<UserCo
         'framer-motion',
         'i18next',
         'react-i18next',
-        'react-markdown',
+        'streamdown',
         '@photo-sphere-viewer/core',
         'tailwind-merge',
         'swr',

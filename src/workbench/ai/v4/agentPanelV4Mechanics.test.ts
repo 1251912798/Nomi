@@ -26,7 +26,7 @@ describe('B2a mechanics', () => {
     expect(collapseV4Flow([tool, answer, tool], t)).toContainEqual(answer)
   })
   it('C25 long user messages default closed with full text available', () => {
-    const text = Array.from({ length: 8 }, (_, i) => `line ${i}`).join('\n')
+    const text = Array.from({ length: 13 }, (_, i) => `line ${i}`).join('\n')
     const markup = html(React.createElement(V4UserBubble, { text }))
     expect(markup).toContain('<details')
     expect(markup).not.toContain(' open=""')

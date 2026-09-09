@@ -1,0 +1,226 @@
+[
+  {
+    "file": "01-table-dark.png",
+    "width": 1440,
+    "height": 840,
+    "sha256": "720a6b59a00da3d078581be300f8ebf865ee480f21203f99997a0c2ed3cc56c8",
+    "visuallyRead": true,
+    "review": "逐张人眼评估见主报告第4节"
+  },
+  {
+    "file": "01-table-light.png",
+    "width": 1440,
+    "height": 840,
+    "sha256": "1a69e98601498c84ef54fd2f2d2813b0f0f86bf6c0e162866c88d8450c5813e1",
+    "visuallyRead": true,
+    "review": "逐张人眼评估见主报告第4节"
+  },
+  {
+    "file": "02-code-dark.png",
+    "width": 1440,
+    "height": 840,
+    "sha256": "e725eb8df5cccb7689c1dd444aed1fbab4f6063d2047bf7563470b726eda79ef",
+    "visuallyRead": true,
+    "review": "逐张人眼评估见主报告第4节"
+  },
+  {
+    "file": "02-code-light.png",
+    "width": 1440,
+    "height": 840,
+    "sha256": "92ce1c9b3a071ab69eefc01614b24f516eadde90371a324c8666be09aa5a0b67",
+    "visuallyRead": true,
+    "review": "逐张人眼评估见主报告第4节"
+  },
+  {
+    "file": "03-nested-dark.png",
+    "width": 1440,
+    "height": 840,
+    "sha256": "d335001b8fc95a04a08b0db0ad376be2c0198fd110d8504c3fa23f5f19614118",
+    "visuallyRead": true,
+    "review": "逐张人眼评估见主报告第4节"
+  },
+  {
+    "file": "03-nested-light.png",
+    "width": 1440,
+    "height": 840,
+    "sha256": "3607a7de03abef89f5674abefb1ede5a486bdc32d37d08aba7b1212b0dcfd525",
+    "visuallyRead": true,
+    "review": "逐张人眼评估见主报告第4节"
+  },
+  {
+    "file": "04-tasks-dark.png",
+    "width": 1440,
+    "height": 840,
+    "sha256": "04d77eacf24d173317d479ff6c9a58f5b6ac7a0dbe9dc2a4f8ef3530369cb053",
+    "visuallyRead": true,
+    "review": "逐张人眼评估见主报告第4节"
+  },
+  {
+    "file": "04-tasks-light.png",
+    "width": 1440,
+    "height": 840,
+    "sha256": "c894453818f6d7b1cc7594367b880f6d5d0a5ae9b992c3511badee0f006c216c",
+    "visuallyRead": true,
+    "review": "逐张人眼评估见主报告第4节"
+  },
+  {
+    "file": "05-inline-dark.png",
+    "width": 1440,
+    "height": 840,
+    "sha256": "388e999acf89d94358d159579f1c655713fefdf9f6a5404e0508540bdda043ed",
+    "visuallyRead": true,
+    "review": "逐张人眼评估见主报告第4节"
+  },
+  {
+    "file": "05-inline-light.png",
+    "width": 1440,
+    "height": 840,
+    "sha256": "1083bb4bda4b93906ad433ed5daf30d2404ffdd79a5e49bb2ae2e3d1cc76a71a",
+    "visuallyRead": true,
+    "review": "逐张人眼评估见主报告第4节"
+  },
+  {
+    "file": "06-storyboard-dark.png",
+    "width": 1440,
+    "height": 840,
+    "sha256": "97e1093f9f08c72760d400401ae4bed6fae73835180d0f3524657fffc3970b6e",
+    "visuallyRead": true,
+    "review": "逐张人眼评估见主报告第4节"
+  },
+  {
+    "file": "06-storyboard-expanded-dark.png",
+    "width": 1440,
+    "height": 840,
+    "sha256": "fe7b4a2211e3209d7542a1301cf80212c0a5c090742a09c0687133b74c02b3b8",
+    "visuallyRead": true,
+    "review": "逐张人眼评估见主报告第4节"
+  },
+  {
+    "file": "06-storyboard-expanded-light.png",
+    "width": 1440,
+    "height": 840,
+    "sha256": "a78009e17ff1a1980f76dfac22650b449a1c84a28cb8341d872d371e9999ff19",
+    "visuallyRead": true,
+    "review": "逐张人眼评估见主报告第4节"
+  },
+  {
+    "file": "06-storyboard-light.png",
+    "width": 1440,
+    "height": 840,
+    "sha256": "11e6e0b59ed87ce92c3fcd138f5246a4573b8849bc226ddf6c96b0bbc2b35ae3",
+    "visuallyRead": true,
+    "review": "逐张人眼评估见主报告第4节"
+  },
+  {
+    "file": "07-receipt-dark.png",
+    "width": 1440,
+    "height": 840,
+    "sha256": "6cf37047c706efc81625b9d4323c3f02020d9f1de17fe1b85f9a17ec15ff554b",
+    "visuallyRead": true,
+    "review": "逐张人眼评估见主报告第4节"
+  },
+  {
+    "file": "07-receipt-light.png",
+    "width": 1440,
+    "height": 840,
+    "sha256": "5eed75d4f2cec467acb3af983b4ab9b1e6ad9382ea70b734c636f5aac35506a7",
+    "visuallyRead": true,
+    "review": "逐张人眼评估见主报告第4节"
+  },
+  {
+    "file": "08-approval-dark.png",
+    "width": 1440,
+    "height": 840,
+    "sha256": "6f885e9998befacc09ee089e11221493cb1698d7ab1e01e3322a5030b80a8961",
+    "visuallyRead": true,
+    "review": "逐张人眼评估见主报告第4节"
+  },
+  {
+    "file": "08-approval-light.png",
+    "width": 1440,
+    "height": 840,
+    "sha256": "694058a82505e3e9d00c2226f06c61037bd25ed8070a4c1edf506074ecc507b5",
+    "visuallyRead": true,
+    "review": "逐张人眼评估见主报告第4节"
+  },
+  {
+    "file": "09-no-language-dark.png",
+    "width": 1440,
+    "height": 842,
+    "sha256": "5965accfc02ba6c50c90a8e04903af98b6d41b84308f9250de85263fb3e54113",
+    "visuallyRead": true,
+    "review": "逐张人眼评估见主报告第4节"
+  },
+  {
+    "file": "09-no-language-light.png",
+    "width": 1440,
+    "height": 842,
+    "sha256": "a8160345ddcae188328e4d142a1b88a502bbaaa304548cfd5aab456111698982",
+    "visuallyRead": true,
+    "review": "逐张人眼评估见主报告第4节"
+  },
+  {
+    "file": "10-image-math-dark.png",
+    "width": 1440,
+    "height": 842,
+    "sha256": "64c58b2e572c61ee9f67333b9a8c11512a538b16873ff9501f58f0812771f52e",
+    "visuallyRead": true,
+    "review": "逐张人眼评估见主报告第4节"
+  },
+  {
+    "file": "10-image-math-light.png",
+    "width": 1440,
+    "height": 842,
+    "sha256": "34ab8ca059ca4b2af3d788e24453d1a5ff62cfb85d98ef9af82346fc6a211afe",
+    "visuallyRead": true,
+    "review": "逐张人眼评估见主报告第4节"
+  },
+  {
+    "file": "11-after-stop-dark.png",
+    "width": 1440,
+    "height": 842,
+    "sha256": "a25fbcdde157419b99c1c00b2d2ecb2033a3c0259f68007740b3e8e8b5069aec",
+    "visuallyRead": true,
+    "review": "逐张人眼评估见主报告第4节"
+  },
+  {
+    "file": "11-after-stop-light.png",
+    "width": 1440,
+    "height": 842,
+    "sha256": "3ce7cbede2d9a7fb20d00ad347dffb788002bc20e61e6ba096b4fc5f1bb916a8",
+    "visuallyRead": true,
+    "review": "逐张人眼评估见主报告第4节"
+  },
+  {
+    "file": "11-before-stop-dark.png",
+    "width": 1440,
+    "height": 842,
+    "sha256": "406b698c182a4379d8b1c74499cac4bbc53757b87d551ae8b641eea3308834e8",
+    "visuallyRead": true,
+    "review": "逐张人眼评估见主报告第4节"
+  },
+  {
+    "file": "11-before-stop-light.png",
+    "width": 1440,
+    "height": 842,
+    "sha256": "b686e74e3920fba932f01481d062f282fa05534011b6c20cfb29c0a35c86c43b",
+    "visuallyRead": true,
+    "review": "逐张人眼评估见主报告第4节"
+  },
+  {
+    "file": "12-process-dark.png",
+    "width": 1440,
+    "height": 842,
+    "sha256": "23262d9401b7f89a9df3b60241f9c2776bd4f8cb433345cd1a9249271cae3636",
+    "visuallyRead": true,
+    "review": "逐张人眼评估见主报告第4节"
+  },
+  {
+    "file": "12-process-light.png",
+    "width": 1440,
+    "height": 842,
+    "sha256": "26995ed350ad5cc2531d77a7588c75dca90229a9da0662a50148c23f5376e3c6",
+    "visuallyRead": true,
+    "review": "逐张人眼评估见主报告第4节"
+  }
+]
