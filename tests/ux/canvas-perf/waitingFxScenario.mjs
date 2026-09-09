@@ -27,10 +27,31 @@ export async function prepareWaitingFx(page) {
     }))
     store.setState({ nodes, edges: [], groups: [], selectedNodeIds: [] })
   })
+  // Native window bounds may be clamped by the display (e.g. Linux Xvfb).
+  // Fit the unchanged eight-node workload before React Flow culls offscreen nodes.
+  await page.getByRole('button', { name: '适应视图', exact: true }).click()
+  await expect.poll(() => page.evaluate(() => {
+    const stage = document.querySelector('.generation-canvas-v2__stage').getBoundingClientRect()
+    const nodes = [...document.querySelectorAll('article[data-node-id]')]
+    return nodes.length === 8 && nodes.every(node => {
+      const rect = node.getBoundingClientRect()
+      return rect.left >= stage.left && rect.right <= stage.right
+        && rect.top >= stage.top && rect.bottom <= stage.bottom
+    })
+  }), { message: 'All eight waiting nodes must be inside the actual canvas viewport' }).toBe(true)
   await expect(page.locator('[data-generation-waiting]')).toHaveCount(8)
+  await expect.poll(() => page.locator('[data-generation-waiting]').evaluateAll(surfaces =>
+    surfaces.every(surface => Number(surface.dataset.processZoom) >= 0.4)),
+  { message: 'The waiting workload must retain effect-eligible zoom' }).toBe(true)
   const effectCount = await expectedEffects(page)
   await expect(page.locator('[data-process-fx]')).toHaveCount(effectCount)
   await expect(page.locator('[data-process-static-band]')).toHaveCount(8 - effectCount)
+  console.log('WAITING_FX_READY', JSON.stringify(await page.evaluate(() => ({
+    viewport: { width: innerWidth, height: innerHeight },
+    nodes: document.querySelectorAll('article[data-node-id]').length,
+    effectCount: document.querySelectorAll('[data-process-fx]').length,
+    staticCount: document.querySelectorAll('[data-process-static-band]').length,
+  }))))
   await page.evaluate(() => new Promise(resolve => {
     let frames = 0
     const frame = () => { if (++frames >= 60) resolve(); else requestAnimationFrame(frame) }

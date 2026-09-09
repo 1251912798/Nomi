@@ -100,13 +100,8 @@ function stripAnsi(value) {
 }
 
 export function summarizeCanvasScenarioFailure({ error, stdout, stderr }) {
-  const lines = stripAnsi([text(error), text(stderr), text(stdout)].filter(Boolean).join('\n'))
-    .split(/\r?\n/)
-    .map((line) => line.trimEnd())
-    .filter(Boolean)
-  const marker = lines.findIndex((line) => /WALK FAIL|(?:^|\s)(?:Error|TimeoutError):|❌|ELIFECYCLE|\bFAIL\b/.test(line))
-  const relevant = marker >= 0 ? lines.slice(Math.max(0, marker - 2), marker + 10) : lines.slice(-12)
-  return relevant.join('\n').slice(0, 4000) || 'scenario exited without an error message'
+  return stripAnsi([text(error), text(stderr), text(stdout)].filter(Boolean).join('\n')).trimEnd()
+    || 'scenario exited without an error message'
 }
 
 function scenarioLogPath(outputDir, scenarioId) {

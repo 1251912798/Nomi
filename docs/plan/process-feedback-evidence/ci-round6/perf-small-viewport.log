@@ -1,0 +1,52 @@
+
+▶ M / waiting-effects
+feel record: canvas-perf-benchmark/waitForFunction.png; findings=28; new-surfaces=2; evidence: /Users/aoqimin/Desktop/Nomi-process-feedback/artifacts/feel/canvas-perf-benchmark-ea347916-f9da-4a88-81af-99a8cc0f9b15
+feel record: canvas-perf-benchmark/M-waiting-effects-0.png; findings=16; new-surfaces=2; evidence: /Users/aoqimin/Desktop/Nomi-process-feedback/artifacts/feel/canvas-perf-benchmark-ea347916-f9da-4a88-81af-99a8cc0f9b15
+CANVAS_SCENARIO_FAILURE {"message":"expect(locator).toHaveCount(expected) failed\n\nLocator:  locator('[data-generation-waiting]')\nExpected: 8\nReceived: 6\nTimeout:  5000ms\n\nCall log:\n  - Expect \"to.have.count\" with timeout 5000ms\n  - waiting for locator('[data-generation-waiting]')\n    12 × locator resolved to 6 elements\n       - unexpected value \"6\"\n","counts":{"fx":0,"fxCanvas":0,"staticShells":6,"waiting":6,"nodes":6,"surfaces":[{"nodeId":"waiting-perf-0","motion":"reduced","zoom":"1","fx":0,"staticShells":1},{"nodeId":"waiting-perf-1","motion":"reduced","zoom":"1","fx":0,"staticShells":1},{"nodeId":"waiting-perf-2","motion":"reduced","zoom":"1","fx":0,"staticShells":1},{"nodeId":"waiting-perf-4","motion":"reduced","zoom":"1","fx":0,"staticShells":1},{"nodeId":"waiting-perf-5","motion":"reduced","zoom":"1","fx":0,"staticShells":1},{"nodeId":"waiting-perf-6","motion":"reduced","zoom":"1","fx":0,"staticShells":1}]},"captureErrors":[],"screenshot":"/Users/aoqimin/Desktop/Nomi-process-feedback/outputs/canvas-acceptance/performance/failures/round6-small/M-waiting-effects-0.png"}
+  warmup ERROR Error: expect(locator).toHaveCount(expected) failed
+
+Locator:  locator('[data-generation-waiting]')
+Expected: 8
+Received: 6
+Timeout:  5000ms
+
+Call log:
+  - Expect "to.have.count" with timeout 5000ms
+  - waiting for locator('[data-generation-waiting]')
+    12 × locator resolved to 6 elements
+       - unexpected value "6"
+
+    at captureRawStack (/Users/aoqimin/Desktop/Nomi-process-feedback/node_modules/.pnpm/playwright-core@1.60.0/node_modules/playwright-core/lib/coreBundle.js:3130:17)
+    at callMatcherAsStep (/Users/aoqimin/Desktop/Nomi-process-feedback/node_modules/.pnpm/playwright@1.60.0/node_modules/playwright/lib/matchers/expect.js:12873:57)
+    at Object.toHaveCount (/Users/aoqimin/Desktop/Nomi-process-feedback/node_modules/.pnpm/playwright@1.60.0/node_modules/playwright/lib/matchers/expect.js:12863:23)
+    at Proxy.<anonymous> (/Users/aoqimin/Desktop/Nomi-process-feedback/tests/ux/_collect.mjs:18:32)
+    at prepareWaitingFx (/Users/aoqimin/Desktop/Nomi-process-feedback/tests/ux/canvas-perf/waitingFxScenario.mjs:30:59)
+    at async runScenario (/private/tmp/pf-round6-small-viewport.mjs:1127:5)
+    at async file:///private/tmp/pf-round6-small-viewport.mjs:1513:24
+feel record: canvas-perf-benchmark/waitForFunction.png; findings=28; new-surfaces=2; evidence: /Users/aoqimin/Desktop/Nomi-process-feedback/artifacts/feel/canvas-perf-benchmark-d34b5ee7-c2c7-40f3-a8b5-3bafee913464
+feel record: canvas-perf-benchmark/M-waiting-effects-1.png; findings=16; new-surfaces=2; evidence: /Users/aoqimin/Desktop/Nomi-process-feedback/artifacts/feel/canvas-perf-benchmark-d34b5ee7-c2c7-40f3-a8b5-3bafee913464
+CANVAS_SCENARIO_FAILURE {"message":"expect(locator).toHaveCount(expected) failed\n\nLocator:  locator('[data-generation-waiting]')\nExpected: 8\nReceived: 6\nTimeout:  5000ms\n\nCall log:\n  - Expect \"to.have.count\" with timeout 5000ms\n  - waiting for locator('[data-generation-waiting]')\n    12 × locator resolved to 6 elements\n       - unexpected value \"6\"\n","counts":{"fx":0,"fxCanvas":0,"staticShells":6,"waiting":6,"nodes":6,"surfaces":[{"nodeId":"waiting-perf-0","motion":"reduced","zoom":"1","fx":0,"staticShells":1},{"nodeId":"waiting-perf-1","motion":"reduced","zoom":"1","fx":0,"staticShells":1},{"nodeId":"waiting-perf-2","motion":"reduced","zoom":"1","fx":0,"staticShells":1},{"nodeId":"waiting-perf-4","motion":"reduced","zoom":"1","fx":0,"staticShells":1},{"nodeId":"waiting-perf-5","motion":"reduced","zoom":"1","fx":0,"staticShells":1},{"nodeId":"waiting-perf-6","motion":"reduced","zoom":"1","fx":0,"staticShells":1}]},"captureErrors":[],"screenshot":"/Users/aoqimin/Desktop/Nomi-process-feedback/outputs/canvas-acceptance/performance/failures/round6-small/M-waiting-effects-1.png"}
+  sample 1 ERROR Error: expect(locator).toHaveCount(expected) failed
+
+Locator:  locator('[data-generation-waiting]')
+Expected: 8
+Received: 6
+Timeout:  5000ms
+
+Call log:
+  - Expect "to.have.count" with timeout 5000ms
+  - waiting for locator('[data-generation-waiting]')
+    12 × locator resolved to 6 elements
+       - unexpected value "6"
+
+    at captureRawStack (/Users/aoqimin/Desktop/Nomi-process-feedback/node_modules/.pnpm/playwright-core@1.60.0/node_modules/playwright-core/lib/coreBundle.js:3130:17)
+    at callMatcherAsStep (/Users/aoqimin/Desktop/Nomi-process-feedback/node_modules/.pnpm/playwright@1.60.0/node_modules/playwright/lib/matchers/expect.js:12873:57)
+    at Object.toHaveCount (/Users/aoqimin/Desktop/Nomi-process-feedback/node_modules/.pnpm/playwright@1.60.0/node_modules/playwright/lib/matchers/expect.js:12863:23)
+    at Proxy.<anonymous> (/Users/aoqimin/Desktop/Nomi-process-feedback/tests/ux/_collect.mjs:18:32)
+    at prepareWaitingFx (/Users/aoqimin/Desktop/Nomi-process-feedback/tests/ux/canvas-perf/waitingFxScenario.mjs:30:59)
+    at async runScenario (/private/tmp/pf-round6-small-viewport.mjs:1127:5)
+    at async file:///private/tmp/pf-round6-small-viewport.mjs:1513:24
+
+✅ 画布性能 benchmark 完成：/Users/aoqimin/Desktop/Nomi-process-feedback/tests/ux/perf-results/canvas-round6-small.json
+⚠ warmup 失败 1 次（gating 场景），结果标记为不可靠
+❌ 画布性能 benchmark 未通过预算或可靠性门槛
