@@ -1,3 +1,4 @@
+import { expectComposerFooterHit } from './_composerFixedFooter.mjs'
 // R8 前置：把「组 / 选择浮条 / 节点浮条 / 提示词 composer + @ 弹层」的**真实样子**拍下来，
 // 样张才能是「真实布局 + 改动」而不是脑补（CLAUDE.md 三闸①）。
 // 用法: node tests/ux/group-baseline.walk.mjs
@@ -84,7 +85,11 @@ await firstNode.click({ timeout: 4000 })
 await expect(win.locator('.generation-canvas-v2-node[data-selected="true"]')).toHaveCount(1)
 await snap(win, 'canvas-node-selected')
 const composer = firstNode.locator('.generation-canvas-v2-node__composer-card')
+await expectComposerFooterHit(composer, '分组后空提示词')
 await snapNear(win, 'composer-real', composer, 20)
+// Reference controls may scroll in their own area after recommendations yield.
+await composer.getByRole('button', { name: '文生图', exact: true }).click()
+await expectComposerFooterHit(composer, '参考区内部滚动后')
 
 // 节点浮动工具栏（图片节点的那条，@ 与抽帧共用同一 shell）
 const nodeToolbar = win.locator('[role="toolbar"]').first()
@@ -99,8 +104,9 @@ await win.keyboard.type('@')
 await expect(editor).toContainText('@')
 await win.waitForTimeout(700)
 await snap(win, 'mention-popup-empty')
-// Fixed controls remain reachable when the card, rather than the input, must scroll.
+// Fixed controls must already be reachable before Playwright can scroll anything.
 await win.keyboard.press('Escape')
+await expectComposerFooterHit(composer, '分组后填字')
 await composer.locator('[data-effect-more]').click({ timeout: 4000 })
 await expectVisible(win.getByTestId('node-effect-menu'), '受限高度下效果菜单仍可点击打开')
 await snap(win, 'effects-menu-reachable')

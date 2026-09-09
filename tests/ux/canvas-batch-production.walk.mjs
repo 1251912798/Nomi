@@ -1,3 +1,4 @@
+import { expectComposerFooterHit } from './_composerFixedFooter.mjs'
 // Real Electron journey for canvas batch production. The UI, spend gate, IPC, queue, HTTP transport,
 // persistence, retry, and screenshots are real; only the remote vendor is replaced by a loopback fixture.
 import { launchNomiApp, ACCEPTANCE_WIDE_VIEWPORT } from './_launchApp.mjs'
@@ -178,6 +179,7 @@ async function addNodeWithPrompt(win, kind, prompt) {
   // Assert the actual visible input region for both image and video composers.
   await expect.poll(() => editor.evaluate(element => element.closest('[data-prompt-box]').parentElement.clientHeight), { message: `${kind}提示词区保留三行可输入空间` }).toBeGreaterThanOrEqual(72)
   await editor.click({ timeout: 5000 })
+  await expectComposerFooterHit(editor.locator('xpath=ancestor::*[contains(@class, "generation-canvas-v2-node__composer-card")]'), `${kind}生成`)
   await editor.fill(prompt)
   await win.waitForTimeout(500)
   return id

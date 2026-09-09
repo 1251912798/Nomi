@@ -6,7 +6,7 @@ import { NomiLoadingMark, NomiSelect } from '../../../design'
 import type { TranslationKey } from '../../../i18n/translationKey'
 import { cn } from '../../../utils/cn'
 import type { LibraryPrompt } from '../../api/promptLibraryApi'
-import { NodeEffectChips } from './NodeEffectChips'
+import { useNodeEffectChips } from './NodeEffectChips'
 import { showUndoToast } from '../../../utils/showUndoToast'
 import PromptEditor from '../../assets/PromptEditor'
 import { promptToContent } from '../../assets/promptEditorContent'
@@ -89,8 +89,8 @@ function floatingComposerLayout(_width: number, _height: number, kind: Generatio
   //
   // 高度同理**内容驱动**，不再绑节点高（旧 `height*0.72` 是 bug 根因：小节点 → 矮卡，
   // 「参考区 + 3 行提示词 + 底栏」放不下，overflow-hidden 把底栏的生成钮裁到卡外，修③④）。
-  // 卡片在 flex-col 里自然按内容长高；只有一个可伸缩区（提示词 flex-1 overflow-auto），
-  // 底栏不收缩；提示词保留三行。内容超过上限时整卡滚动，控件都可达。
+  // 卡片在 flex-col 里自然按内容长高；提示词 flex-1 overflow-auto，推荐项只占剩余空间，
+  // 底栏不收缩；提示词保留三行，推荐项不挤占输入和主行动。
   const maxHeight = kind === 'video' ? 460 : 400
   // 连接间距是空间关系，不应随节点画幅宽度跨阈值跳变；否则 1:1 → 21:9 时即使底边
   // 锚点完全不动，composer 仍会被旧的 10px → 14px 分支推开，看起来像断开。
@@ -280,7 +280,7 @@ export default function NodeGenerationComposer({ onFeedback, node, visualSize }:
 
   // 吃提示词的节点才有「最小可用高度」——不吃的（如某些 ComfyUI 工作流）本来就该按内容自然矮。
   const minUsableHeight = acceptsPrompt ? COMPOSER_MIN_USABLE_HEIGHT : 0
-  const { anchorRef, canvasZoom, flipUp, left, top, maxWidth, maxHeight } = useComposerViewportPlacement({
+  const { anchorRef, canvasZoom, flipUp, left, top, maxWidth, maxHeight, referenceMaxHeight } = useComposerViewportPlacement({
     node,
     visualSize,
     gap: composerLayout.gap,
@@ -288,7 +288,9 @@ export default function NodeGenerationComposer({ onFeedback, node, visualSize }:
     minUsableHeight,
   })
 
-  // 卡宽由当前模型底栏驱动；放置层按屏幕空间限制可用宽高，拥挤时滚动。
+  const effects = useNodeEffectChips({ enabled: hasPromptPickerButton, empty: !node.prompt?.trim(), kind: nodeExecutionKind ?? node.kind, disabled: node.locked, onSelect: applyPromptPickerItem })
+
+  // 卡宽由模型底栏驱动；推荐项让位，输入内滚、底栏固定。
 
   return (
     // 外层只做屏幕空间定位锚，反向缩放保持参数卡可读。
@@ -322,9 +324,9 @@ export default function NodeGenerationComposer({ onFeedback, node, visualSize }:
       <div
         className={cn(
           'generation-canvas-v2-node__composer-card',
-          'relative flex flex-col gap-2.5 p-3 min-w-0 max-w-[880px] w-max',
-          // 常规空间保留底栏、内层滚动；拥挤时整个卡在无碰撞矩形内滚动。
-          'border border-nomi-line rounded-nomi bg-nomi-paper overflow-auto shadow-nomi-md',
+          'relative flex flex-col gap-1.5 p-3 min-w-0 max-w-[880px] w-max',
+          // 卡片不滚动，只有提示词拥有滚动；附属推荐行承担收缩。
+          'border border-nomi-line rounded-nomi bg-nomi-paper overflow-hidden shadow-nomi-md',
           'transition-[outline-color] duration-150',
           isDragOver && 'outline-2 outline-dashed outline-nomi-accent outline-offset-[-2px]',
         )}
@@ -338,11 +340,10 @@ export default function NodeGenerationComposer({ onFeedback, node, visualSize }:
           touchAction: 'auto',
         }}
       >
-      {hasReferenceControls && <NodeParameterControls node={node} section="references" onInsertMention={insertMention} />}
-      {/* 参考区：图像/视频的参考槽，以及声音的「配音生成/转写」模式切换 + 转写的音频参考槽。 */}
       {hasReferenceControls ? (
-        // 样张 v4 .divider：参考区与描述之间一条极淡分隔线
-        <div className={cn('h-px bg-nomi-line-soft')} />
+        <div data-node-composer-references className="min-h-0 shrink-0 overflow-y-auto overscroll-contain border-b border-nomi-line-soft" style={{ maxHeight: referenceMaxHeight }}>
+          <NodeParameterControls node={node} section="references" onInsertMention={insertMention} />
+        </div>
       ) : null}
       {isTextKind ? (
         <div
@@ -374,12 +375,13 @@ export default function NodeGenerationComposer({ onFeedback, node, visualSize }:
         </div>
       ) : null}
       {/* 长 prompt 在编辑器内部滚动/换行；卡宽确定，提示词不撑爆卡片。 */}
-      {/* 输入区始终保留三行；参考区/效果行变高时由整卡滚动，不能挤没输入。 */}
+      {/* 输入区始终保留三行，推荐项在剩余高度内展示。 */}
       {/* 转写模式无台词输入（音频参考即输入）。 */}
       {audioIsTranscribe || isTextKind || !acceptsPrompt ? null : (
         // w-0 min-w-full keeps long prompts from widening the card. The bounded
         // scrollport retains its minimum even when fixed controls exhaust the card.
         <div
+          data-node-composer-prompt
           className={cn('relative flex-1 min-h-[72px] w-0 min-w-full overflow-y-auto overscroll-contain')}
           style={{ cursor: node.locked ? 'default' : 'text', userSelect: node.locked ? 'auto' : 'text' }}
         >
@@ -398,13 +400,14 @@ export default function NodeGenerationComposer({ onFeedback, node, visualSize }:
           />
         </div>
       )}
-      {hasPromptPickerButton && <NodeEffectChips empty={!node.prompt?.trim()} kind={nodeExecutionKind ?? node.kind} disabled={node.locked} onSelect={applyPromptPickerItem} />}
+      {hasPromptPickerButton && effects.recommendations}
       {/* 底栏铺满卡宽（w-full）：生成钮 ml-auto 永远贴右。底栏恒单行——参数已主次分层（最常调的内联、
           其余收进 InlineParameterBar 的「更多」弹层，方案 B），不会再横排超长/截断/换行（D2 根治）。 */}
       <div className={cn('flex items-center gap-2 mt-auto pt-1 shrink-0 w-full')}>
         {/* 锁从节点卡片移到这里（编辑面板底栏）：卡片预览保持干净，锁定/解锁在选中编辑时就近可达。
             selected 恒为真（composer 只在选中时挂载）→ 始终可见：未锁=描边开锁、已锁=实心锁。 */}
         <NodeLockBadge nodeId={node.id} locked={node.locked} selected />
+        {hasPromptPickerButton && effects.more}
         <NodeParameterControls
           node={node}
           section="parameters"

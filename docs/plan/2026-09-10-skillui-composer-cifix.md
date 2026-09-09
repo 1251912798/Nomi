@@ -1,6 +1,6 @@
 # #685 composer 输入区被效果行挤没
 
-状态：已实现；最终合并树四条走查通过，完整 gates 验证中。
+状态：已被第二轮纠正。整卡滚动违反既有 Electron smoke 契约，现由 [固定底栏方案](2026-09-10-skillui-fixed-footer.md) 取代；以下保留上一轮决策记录。
 
 范围：NodeGenerationComposer 的 flex/overflow 边界，以及 canvas-batch-production、group-baseline 两条验收。保留四 chip、更多、模型参数与断言语义；不改等待预算、不改其他技能功能。
 
