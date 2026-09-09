@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next'
 import { useWorkbenchStore } from '../workbenchStore'
 import { WorkbenchMenu, type WorkbenchMenuNode } from '../../design/menu'
 import { collectApplicableSeams } from './timelineTransition'
-import { toast } from '../../ui/toast'
 
 /**
  * 时间轴右键菜单。**2026-09-08 刀 1：只换实现，不动形态。**
@@ -36,11 +35,13 @@ export function TimelineContextMenu({
   onRegenerate,
   onChangeTransition,
   onArrange,
+  onFeedback,
 }: {
   target: TimelineContextTarget
   x: number
   y: number
   onClose: () => void
+  onFeedback: (message: string) => void
   onRegenerate?: (clipId: string) => void
   onChangeTransition?: (fromClipId: string, toClipId: string) => void
   /** 空轨上的「AI 拼片」= 工具条那一颗，不是第二条链路。 */
@@ -100,7 +101,7 @@ export function TimelineContextMenu({
           .flatMap((item) => item.clips)
           .find((item) => item.startFrame <= centre && centre < item.endFrame)
         if (!shot) {
-          toast(t('timelineEditor.context.alignToShotMissing'), 'info')
+          onFeedback(t('timelineEditor.context.alignToShotMissing'))
           return
         }
         moveTimelineTextClip(textClip.id, shot.startFrame)
@@ -118,11 +119,10 @@ export function TimelineContextMenu({
         if (!source) return
         const seams = collectApplicableSeams(timeline, { type: source.type, durationFrames: source.durationFrames })
         if (seams.length === 0) {
-          toast(t('timelineEditor.context.applyTransitionAllNone'), 'info')
+          onFeedback(t('timelineEditor.context.applyTransitionAllNone'))
           return
         }
         setTimelineTransition(seams)
-        toast(t('timelineEditor.context.applyTransitionAllDone', { count: seams.length }), 'success')
       } },
       { id: 'remove-transition', label: t('timelineEditor.context.removeTransition'), danger: true, onClick: () => removeTimelineTransition(target.fromClipId, target.toClipId) },
     )

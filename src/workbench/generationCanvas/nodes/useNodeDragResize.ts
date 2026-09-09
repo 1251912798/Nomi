@@ -12,7 +12,6 @@ import { useWorkbenchStore } from '../../workbenchStore'
 import { clientXToFrame } from '../../timeline/timelineEdit'
 import { adoptGenerationNode } from '../../adoption/adoptGenerationNode'
 import { reportAdoptionOutcome } from '../../adoption/adoptionReceipt'
-import { toast } from '../../../ui/toast'
 import { emitCanvasGesture } from '../events/canvasEventEmitter'
 import { CANVAS_DRAGGING_OWNER, setCanvasDragging } from '../components/canvasDraggingFlag'
 import i18n from '../../../i18n'
@@ -31,6 +30,7 @@ import {
 type StoreUpdate = (nodeId: string, patch: Partial<GenerationCanvasNode>, options?: { persist?: boolean }) => void
 
 type UseNodeDragResizeArgs = {
+  reportFeedback: (message: string) => void
   node: GenerationCanvasNode
   selected: boolean
   readOnly: boolean
@@ -50,6 +50,7 @@ type UseNodeDragResizeArgs = {
 }
 
 export function useNodeDragResize({
+  reportFeedback,
   node,
   selected,
   readOnly,
@@ -328,7 +329,7 @@ export function useNodeDragResize({
     const timelineDropTarget = droppedOverTimeline && node.result?.url ? droppedOverTimeline : null
     // 用户把还没生成画面的节点拖到时间轴：给反馈，别静默弹回（P0-9 / I-1）。
     if (droppedOverTimeline && !node.result?.url) {
-      toast(i18n.t('generationCommon.node.generateBeforeTimeline'), 'info')
+      reportFeedback(i18n.t('generationCommon.node.generateBeforeTimeline'))
     }
     if (timelineDropTarget) {
       const timeline = useWorkbenchStore.getState().timeline

@@ -17,7 +17,7 @@ import { useTranslation } from 'react-i18next'
 import { IconSparkles, IconCircleCheck } from '@tabler/icons-react'
 import { cn } from '../../utils/cn'
 import { getDesktopBridge } from '../../desktop/bridge'
-import { toast } from '../toast'
+import { notify } from '../notificationPolicy'
 import { FoldableModelCard } from './FoldableModelCard'
 import { CODEX_LOCAL_VENDOR_KEY } from './codexLocalProvider'
 
@@ -34,21 +34,26 @@ export function CodexLocalImageCard({ enabled, onChanged, onOpenDetails, detailM
   const { t } = useTranslation()
   const catalog = getDesktopBridge()?.modelCatalog
   const [busy, setBusy] = React.useState(false)
+  const [error, setError] = React.useState('')
 
   // 老 preload（无模型目录口）：整卡不显，避免坏入口。
   if (!catalog?.upsertVendor) return null
 
   const toggle = (next: boolean) => {
     setBusy(true)
+    setError('')
     try {
       // 只翻 enabled——applyVendorUpsert 保留 authType/baseUrl（同 ComfyuiLocalCard）。
       catalog.upsertVendor({ key: CODEX_LOCAL_VENDOR_KEY, enabled: next })
       onChanged()
-      toast(t(next ? 'onboardingProviders.codexImage.enabledToast' : 'onboardingProviders.codexImage.disabledToast'), 'success')
     } catch (error) {
       // 例如旧安装包打开了新版本目录时，主进程会为防止降级而拒绝写盘（invokeSync 同步抛）。
       // 不能让这个受保护的错误穿过 React 事件处理器变成“按钮点了没反应”（静默失败根因修）。
-      toast(error instanceof Error ? error.message : t('onboardingProviders.drawer.operationFailed'), 'error')
+      notify({
+        identity: CODEX_LOCAL_VENDOR_KEY, reason: 'vendor-enabled-write', level: 'inline', type: 'error',
+        message: error instanceof Error ? error.message : t('onboardingProviders.drawer.operationFailed'),
+        present: setError,
+      })
     } finally {
       setBusy(false)
     }
@@ -105,6 +110,7 @@ export function CodexLocalImageCard({ enabled, onChanged, onOpenDetails, detailM
           {t('onboardingProviders.codexImage.turnOn')}
         </button>
       )}
+      {error ? <div role="status" className="text-caption text-workbench-danger">{error}</div> : null}
     </FoldableModelCard>
   )
 }

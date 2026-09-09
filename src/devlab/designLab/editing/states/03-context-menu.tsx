@@ -15,6 +15,7 @@ import type { LabState } from '../../labScreen'
 
 function MenuCell({ target, height }: { target: TimelineContextTarget; height: number }): JSX.Element {
   useLabTimeline()
+  const [feedback, setFeedback] = React.useState('')
   const anchor = React.useRef<HTMLSpanElement>(null)
   const [point, setPoint] = React.useState<{ x: number; y: number } | null>(null)
   React.useLayoutEffect(() => {
@@ -24,7 +25,8 @@ function MenuCell({ target, height }: { target: TimelineContextTarget; height: n
   return (
     <FixedStage width={300} height={height}>
       <span ref={anchor} className="absolute left-4 top-4 size-0" />
-      {point && <TimelineContextMenu target={target} x={point.x} y={point.y} onClose={NOOP} onRegenerate={NOOP} onChangeTransition={NOOP} onArrange={NOOP} />}
+      {point && <TimelineContextMenu target={target} x={point.x} y={point.y} onClose={NOOP} onRegenerate={NOOP} onChangeTransition={NOOP} onArrange={NOOP} onFeedback={setFeedback} />}
+      {feedback ? <p role="status" className="text-caption text-workbench-danger">{feedback}</p> : null}
     </FixedStage>
   )
 }

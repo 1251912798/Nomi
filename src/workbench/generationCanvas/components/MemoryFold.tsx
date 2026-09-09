@@ -2,7 +2,8 @@ import React from 'react'
 import { IconBrain, IconChevronDown, IconPin, IconPinFilled, IconX } from '@tabler/icons-react'
 import { cn } from '../../../utils/cn'
 import { useTranslation } from 'react-i18next'
-import { toast } from '../../../ui/toast'
+import { notify } from '../../../ui/notificationPolicy'
+import { getDesktopActiveProjectId, subscribeDesktopActiveProjectIdChange } from '../../../desktop/activeProject'
 import {
   fetchProjectMemoryFacts,
   removeProjectMemoryFact,
@@ -18,22 +19,25 @@ import {
 export function MemoryFold({ refreshKey }: { refreshKey: number }): JSX.Element | null {
   const { t } = useTranslation()
   const [open, setOpen] = React.useState(false)
-  const [facts, setFacts] = React.useState<MemoryFactView[]>([])
+  const projectId = React.useSyncExternalStore(subscribeDesktopActiveProjectIdChange, getDesktopActiveProjectId, getDesktopActiveProjectId)
+  const [factState, setFactState] = React.useState<{ projectId: string; facts: MemoryFactView[] } | null>(null)
+  const facts = factState?.projectId === projectId ? factState.facts : []
   const [editingId, setEditingId] = React.useState<string | null>(null)
   const [draft, setDraft] = React.useState('')
+  const [feedback, setFeedback] = React.useState<{ projectId: string; message: string } | null>(null)
 
   // 重取时机:挂载+每轮对话后(refreshKey)+每次展开(锁/解锁等画布动作不经对话,展开时要新鲜)。
   React.useEffect(() => {
     let alive = true
     void fetchProjectMemoryFacts().then((next) => {
-      if (alive) setFacts(next)
+      if (alive && getDesktopActiveProjectId() === projectId) setFactState({ projectId, facts: next })
     })
     return () => {
       alive = false
     }
-  }, [refreshKey, open])
+  }, [refreshKey, open, projectId])
 
-  if (facts.length === 0) return null
+  if (facts.length === 0 && feedback?.projectId !== projectId) return null
 
   /**
    * 三颗记忆按钮（改文本 / 置顶 / 删）走的都是主进程的记忆接口，它会失败（读写记忆文件、
@@ -42,12 +46,15 @@ export function MemoryFold({ refreshKey }: { refreshKey: number }): JSX.Element 
    * 一个包装管三处：成功了刷新列表，失败了说一句、并把列表拉回真相（乐观显示不留假象）。
    */
   const runMemoryCommand = (command: () => Promise<MemoryFactView[]>): void => {
+    const projectId = getDesktopActiveProjectId()
+    setFeedback(null)
     void command()
-      .then(setFacts)
+      .then((next) => { if (getDesktopActiveProjectId() === projectId) setFactState({ projectId, facts: next }) })
       .catch((error: unknown) => {
         console.error('project memory command failed', error)
-        toast(t('generationCommon.memory.changeFailed'), 'error')
-        void fetchProjectMemoryFacts().then(setFacts).catch(() => undefined)
+        if (getDesktopActiveProjectId() !== projectId) return
+        notify({ identity: `memory:${projectId}`, reason: 'change-failed', message: t('generationCommon.memory.changeFailed'), type: 'error', level: 'inline', present: (message) => setFeedback({ projectId, message }) })
+        void fetchProjectMemoryFacts().then((next) => { if (getDesktopActiveProjectId() === projectId) setFactState({ projectId, facts: next }) }).catch(() => undefined)
       })
   }
 
@@ -74,6 +81,7 @@ export function MemoryFold({ refreshKey }: { refreshKey: number }): JSX.Element 
         {t('generationCommon.memory.count', { count: facts.length })}
         <IconChevronDown size={11} className={cn('ml-0.5 transition-transform', open && 'rotate-180')} />
       </button>
+      {feedback?.projectId === getDesktopActiveProjectId() ? <p role="status" className="m-0 px-3 text-caption text-nomi-danger">{feedback.message}</p> : null}
       {open ? (
         <ul className={cn('flex flex-col gap-1 px-3 pb-2 list-none p-0 m-0')}>
           {facts.map((fact) => (

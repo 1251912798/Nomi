@@ -17,7 +17,7 @@ import { usePreviewBgmPlayback } from './usePreviewBgmPlayback'
 import { PREVIEW_RATIOS } from './previewAspectRatios'
 import { exportTimelineToMp4, type ExportTimelineToMp4Options } from '../export/exportApi'
 import { markChecklistStep } from '../onboarding/onboardingState'
-import { toast } from '../../ui/toast'
+import { reportPreviewExportFailure } from './previewExportFeedback'
 import { useVideoPlaybackHeal } from '../../media/useVideoPlaybackHeal'
 import { computeTimelineDuration } from '../timeline/timelineMath'
 import { getDesktopBridge } from '../../desktop/bridge'
@@ -65,6 +65,7 @@ export default function TimelinePreview({ activeClips, aspectRatio, fps, playhea
   // 导出阶段/进度的真相源在事件桥模块里（顶栏那颗按钮也读它），本组件不再私存一份（P1）。
   const { status: exportStatus, progress: exportProgress } = usePreviewExportState()
   const [playbackError, setPlaybackError] = React.useState('')
+  const [exportError, setExportError] = React.useState<{ projectId: string; message: string } | null>(null)
   const [editingTextId, setEditingTextId] = React.useState('')
   const [editingDraft, setEditingDraft] = React.useState('')
   const [textMenuOpen, setTextMenuOpen] = React.useState(false)
@@ -254,9 +255,10 @@ export default function TimelinePreview({ activeClips, aspectRatio, fps, playhea
 
   const handleExport = React.useCallback(async () => {
     if (exportBusy) return
+    const projectId = getDesktopActiveProjectId().trim()
+    setExportError(null)
     try {
       publishPreviewExportState({ status: 'preparing', progress: 0 })
-      const projectId = getDesktopActiveProjectId().trim()
       const result = await exportTimelineToMp4({
         timeline,
         aspectRatio,
@@ -268,7 +270,6 @@ export default function TimelinePreview({ activeClips, aspectRatio, fps, playhea
           publishPreviewExportState({ status: progress.status, progress: progress.ratio })
         },
       })
-      toast(t('timelinePreview.exportComplete', { path: result.relativePath }), 'success')
       // 上手清单第 4 步「导出成片」打勾（导出 fire-and-forget 无持久历史，靠这里标记）。
       markChecklistStep('exported')
       void getDesktopBridge()?.exports.showInFolder({ projectId, relativePath: result.relativePath }).catch(() => undefined)
@@ -276,7 +277,7 @@ export default function TimelinePreview({ activeClips, aspectRatio, fps, playhea
     } catch (error) {
       publishPreviewExportState(PREVIEW_EXPORT_IDLE)
       const message = error instanceof Error ? error.message : t('timelinePreview.exportFailed')
-      toast(message, 'error')
+      reportPreviewExportFailure({ projectId, message, actionLabel: t('taskCenter.title'), hostConnected: Boolean(playerRef.current?.isConnected), present: setExportError })
     }
   }, [aspectRatio, exportBusy, exportQuality, exportResolution, generationNodes, timeline, t])
 
@@ -359,6 +360,7 @@ export default function TimelinePreview({ activeClips, aspectRatio, fps, playhea
       // （合同 §2.2 要求它贴时间轴上沿）。padding 只给舞台区，transport 才能真正压到列底边。
       'relative h-full w-full min-w-0 min-h-0 flex flex-col bg-[var(--nomi-ink-05)]',
     )} aria-label={t('timelinePreview.player')}>
+      {exportError?.projectId === getDesktopActiveProjectId() ? <p role="status" className="m-0 px-3 py-2 text-caption text-nomi-danger" data-preview-export-error>{exportError.message}</p> : null}
       {/* 测量区：stage 居中于此（控制条之上的可用高度），控制条作为下方独立一行不再压住画面。 */}
       <div ref={playerRef} className="workbench-preview-player__stage-area min-h-0 min-w-0 flex-1 w-full grid place-items-center p-6">
       <div

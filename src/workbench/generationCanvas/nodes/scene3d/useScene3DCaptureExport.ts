@@ -2,7 +2,7 @@
 // 视口截图、相机截图、运镜首尾帧离屏导出——「把画面变成产物」的动作集中一处。
 import React from 'react'
 import i18n from '../../../../i18n'
-import { toast } from '../../../../ui/toast'
+import type { ReportScene3DFeedback } from './useScene3DFullscreenActions'
 import {
   type CaptureApi,
   type Scene3DCamera,
@@ -11,13 +11,14 @@ import {
 } from './scene3dTypes'
 import { cameraWithPlaybackPosition } from './scene3dPlayback'
 import { Scene3DTrajectoryCapture, type CameraMoveCaptureResult } from './Scene3DTrajectoryCapture'
-import { toastPickCameraFirst } from './useScene3DFullscreenActions'
+import { reportPickCameraFirst } from './useScene3DFullscreenActions'
 import type { useScene3DTrajectoryEditing } from './useScene3DTrajectoryEditing'
 import { scene3dCameraDisplayName } from './scene3dObjectNames'
 
 // 视口/相机截图（live 场景 captureScene——editor-only 对象已由 SCENE3D_EDITOR_ONLY_FLAG 隐藏）。
 // 返回是否截成：出片面板据此弹截图完成卡（产物落在被编辑器盖住的画布上，无卡=用户以为没发生）。
 export function useScene3DCaptureActions({
+  reportFeedback,
   stateRef,
   captureApiRef,
   trajectory,
@@ -25,6 +26,7 @@ export function useScene3DCaptureActions({
   onScreenshot,
   onPickCamera,
 }: {
+  reportFeedback: ReportScene3DFeedback
   stateRef: React.MutableRefObject<Scene3DState>
   captureApiRef: React.MutableRefObject<CaptureApi | null>
   trajectory: ReturnType<typeof useScene3DTrajectoryEditing>
@@ -33,18 +35,20 @@ export function useScene3DCaptureActions({
   onPickCamera: (cameraId: string) => void
 }): { captureViewport: () => boolean; captureSelectedCamera: () => boolean } {
   const captureViewport = React.useCallback((): boolean => {
+    reportFeedback(null)
     const capture = captureApiRef.current?.captureViewport()
     if (!capture) {
-      toast(i18n.t('scene3d.fullscreen.screenshotFailed'), 'error')
+      reportFeedback({ message: i18n.t('scene3d.fullscreen.screenshotFailed') })
       return false
     }
     onScreenshot(capture)
     return true
-  }, [captureApiRef, onScreenshot])
+  }, [captureApiRef, onScreenshot, reportFeedback])
 
   const captureSelectedCamera = React.useCallback((): boolean => {
+    reportFeedback(null)
     if (!selectedCamera) {
-      toastPickCameraFirst(stateRef.current.cameras[0], onPickCamera)
+      reportPickCameraFirst(stateRef.current.cameras[0], onPickCamera, reportFeedback)
       return false
     }
     const captureCamera = cameraWithPlaybackPosition(
@@ -55,12 +59,12 @@ export function useScene3DCaptureActions({
     )
     const capture = captureApiRef.current?.captureCamera(captureCamera)
     if (!capture) {
-      toast(i18n.t('scene3d.fullscreen.cameraScreenshotFailed'), 'error')
+      reportFeedback({ message: i18n.t('scene3d.fullscreen.cameraScreenshotFailed') })
       return false
     }
     onScreenshot(capture)
     return true
-  }, [captureApiRef, onPickCamera, onScreenshot, selectedCamera, stateRef, trajectory.activeTrajectoryIds, trajectory.playheadRef])
+  }, [captureApiRef, onPickCamera, onScreenshot, selectedCamera, stateRef, trajectory.activeTrajectoryIds, trajectory.playheadRef, reportFeedback])
 
   return { captureViewport, captureSelectedCamera }
 }
@@ -71,14 +75,16 @@ export function useScene3DCaptureActions({
 // 2026-07-22 审计 P0（live 截图把 TransformControls 烧进成片、构图与 MP4 不一致）在此根治：
 // 不再挪 live 播放头、不再走 live captureCamera（P1 删旧路径）。
 export function useScene3DMoveFrameExport({
+  reportFeedback,
   stateRef,
   onScreenshot,
   onKeyframesExported,
 }: {
+  reportFeedback: ReportScene3DFeedback
   stateRef: React.MutableRefObject<Scene3DState>
   onScreenshot: (capture: Scene3DCaptureResult) => void
   /** F2：首尾帧两张节点都建好后回调（count=生成张数），宿主据此弹持久结果卡（替代瞬时 toast）。 */
-  onKeyframesExported?: (count: number) => void
+  onKeyframesExported: (count: number) => void
 }): {
   exportCameraMoveFrames: (cameraId: string) => Promise<void>
   /** 有导出请求时挂在编辑器 JSX 里的隐藏离屏捕获元素 */
@@ -87,6 +93,7 @@ export function useScene3DMoveFrameExport({
   const [request, setRequest] = React.useState<{ state: Scene3DState; cameraName: string; attempt: number } | null>(null)
 
   const exportCameraMoveFrames = React.useCallback(async (cameraId: string) => {
+    reportFeedback(null)
     const current = stateRef.current
     const camera = current.cameras.find((candidate) => candidate.id === cameraId)
     if (!camera) return
@@ -94,7 +101,7 @@ export function useScene3DMoveFrameExport({
       binding.objects.some((bound) => bound.objectId === cameraId)
     ))
     if (!hasBinding) {
-      toast(i18n.t('scene3d.fullscreen.cameraHasNoMove'), 'warning')
+      reportFeedback({ message: i18n.t('scene3d.fullscreen.cameraHasNoMove') })
       return
     }
     // 与 MP4 同口径：离屏采样器恒用 cameras[0]（同 takeRecording 的重排），把选定相机排到首位。
@@ -103,12 +110,12 @@ export function useScene3DMoveFrameExport({
       cameraName: scene3dCameraDisplayName(camera, current.cameras),
       attempt: (previous?.attempt ?? 0) + 1,
     }))
-  }, [stateRef])
+  }, [stateRef, reportFeedback])
 
   const handleResult = React.useCallback((result: CameraMoveCaptureResult | null, cameraName: string) => {
     setRequest(null)
     if (!result || result.frames.length < 2) {
-      toast(i18n.t('scene3d.fullscreen.frameExportFailed'), 'error')
+      reportFeedback({ message: i18n.t('scene3d.fullscreen.frameExportFailed') })
       return
     }
     const labeled: Array<[string, string]> = [
@@ -122,20 +129,19 @@ export function useScene3DMoveFrameExport({
       title: i18n.t('scene3d.fullscreen.cameraMoveFrameTitle', { camera: cameraName, frame: label }),
       source: 'scene3d-camera',
     }))
-    // F2：两张节点已建 → 弹持久结果卡（替代瞬时 toast，用户能回看/回画布）。无宿主回调时退回 toast。
-    if (onKeyframesExported) onKeyframesExported(labeled.length)
-    else toast(i18n.t('scene3d.fullscreen.frameExported'), 'success')
-  }, [onKeyframesExported, onScreenshot])
+    // F2：两张节点已建 → 弹持久结果卡（替代瞬时 toast，用户能回看/回画布）。宿主结果回调必填，不再退回全局通知。
+    onKeyframesExported(labeled.length)
+  }, [onKeyframesExported, onScreenshot, reportFeedback])
 
   // 看门狗：离屏 WebGL 出不来（上下文丢失等）不能让导出永远悬着。
   React.useEffect(() => {
     if (!request) return undefined
     const timer = window.setTimeout(() => {
       setRequest(null)
-      toast(i18n.t('scene3d.fullscreen.frameExportTimeout'), 'error')
+      reportFeedback({ message: i18n.t('scene3d.fullscreen.frameExportTimeout') })
     }, 30_000)
     return () => window.clearTimeout(timer)
-  }, [request])
+  }, [request, reportFeedback])
 
   const moveFrameCapture = request
     ? React.createElement(Scene3DTrajectoryCapture, {

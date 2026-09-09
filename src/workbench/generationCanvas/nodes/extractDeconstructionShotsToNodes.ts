@@ -13,7 +13,6 @@ import { useGenerationCanvasStore } from '../store/generationCanvasStore'
 import { useWorkbenchStore } from '../../workbenchStore'
 import { getActiveWorkbenchProjectId } from '../../project/workbenchProjectSession'
 import { getDesktopBridge } from '../../../desktop/bridge'
-import { toast } from '../../../ui/toast'
 import { withCanvasGestureContext } from '../events/canvasGestureContext'
 import { pushUndoSnapshot } from '../events/canvasUndoJournal'
 import { interruptPendingCanvasWrite } from '../events/canvasWriteBoundary'
@@ -38,22 +37,23 @@ type ShotNodeMeta = {
 }
 
 export async function extractDeconstructionShotsToNodes(params: {
+  reportFeedback: (message: string) => void
   node: GenerationCanvasNode
   shots: readonly DeconstructionShot[]
   onProgress?: (progress: ExtractDeconstructionProgress) => void
 }): Promise<{ created: number; failed: number; groupId: string | null }> {
-  const { node, shots, onProgress } = params
+  const { reportFeedback, node, shots, onProgress } = params
   const videoUrl = node.result?.url
   if (node.result?.type !== 'video' || !videoUrl || !shots.length) return { created: 0, failed: 0, groupId: null }
 
   const projectId = getActiveWorkbenchProjectId()
   if (!projectId) {
-    toast(i18n.t('generationCommon.node.extractFrame.missingProject'), 'error')
+    reportFeedback(i18n.t('generationCommon.node.extractFrame.missingProject'))
     return { created: 0, failed: 0, groupId: null }
   }
   const extractFrame = getDesktopBridge()?.video?.extractFrame
   if (!extractFrame) {
-    toast(i18n.t('generationCommon.node.extractFrame.desktopOnly'), 'error')
+    reportFeedback(i18n.t('generationCommon.node.extractFrame.desktopOnly'))
     return { created: 0, failed: 0, groupId: null }
   }
 
@@ -141,7 +141,7 @@ export async function extractDeconstructionShotsToNodes(params: {
   }
 
   if (failed > 0) {
-    toast(i18n.t('generationCommon.node.deconstruct.someFailed', { failed, created: createdIds.length }), 'error')
+    reportFeedback(i18n.t('generationCommon.node.deconstruct.someFailed', { failed, created: createdIds.length }))
   }
   return { created: createdIds.length, failed, groupId }
 }

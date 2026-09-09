@@ -57,7 +57,6 @@ export const zhLibraries = {
     exportNotFound: '导出失败：没找到这个技能',
     deleteFailed: '删除失败',
     deleted: '已删除 · {{name}}',
-    imported: '已导入 · {{name}}',
     importedWithSkips: '已导入 · {{name}}（跳过 {{count}} 个非文本文件）',
     importFailed: '导入失败：{{message}}',
     importReason: {
@@ -228,7 +227,6 @@ export const enLibraries = {
     exportNotFound: 'Export failed: skill not found',
     deleteFailed: 'Delete failed',
     deleted: 'Deleted · {{name}}',
-    imported: 'Imported · {{name}}',
     importedWithSkips: 'Imported · {{name}} ({{count}} non-text files skipped)',
     importFailed: 'Import failed: {{message}}',
     importReason: {

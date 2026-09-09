@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { IconPlus } from '../../../../vendor/tablerIcons'
 import { cn } from '../../../../utils/cn'
 import { NomiImage } from '../../../../design/media'
-import { showInfoToast } from '../../../../utils/showInfoToast'
+import { notify } from '../../../../ui/notificationPolicy'
 import { getDesktopActiveProjectId } from '../../../../desktop/activeProject'
 import type { AssetKind, AssetRef } from '../../../assets/assetTypes'
 import { importWorkbenchLocalAssetFile } from '../../../api/assetUploadApi'
@@ -125,32 +125,38 @@ export default function ShotReferenceZone({ mode, archetype, bindings, onChangeB
   const [openSlotKey, setOpenSlotKey] = React.useState('')
   const [uploadingSlotKey, setUploadingSlotKey] = React.useState('')
   const [uploadError, setUploadError] = React.useState('')
+  const feedbackIdentity = React.useId()
+  const report = React.useCallback((message: string) => {
+    notify({ identity: `storyboard-reference:${feedbackIdentity}`, reason: 'reference-input', level: 'inline', type: 'error', message, present: setUploadError })
+  }, [feedbackIdentity])
   const column = referenceColumnOf(mode, bindings, archetype)
   const anchorsById = React.useMemo(() => new Map(anchors.map((anchor) => [anchor.id, anchor])), [anchors])
 
   // 拒绝理由都用人话说清「为什么不行」，不做沉默失败（§1.6：禁用不做沟通死路）。
   const applyAppend = React.useCallback(
     (cell: ShotReferenceCell, url: string, kind: AssetKind, extra: { name?: string; sourceNodeId?: string }) => {
+      setUploadError('')
       const result = appendBinding(bindings, cell.declared, { url, ...extra }, kind)
       if (result.status === 'wrong-kind') {
-        showInfoToast(t(WRONG_KIND_KEY[result.accept], { label: cell.label }))
+        report(t(WRONG_KIND_KEY[result.accept], { label: cell.label }))
         return
       }
       if (result.status === 'full') {
-        showInfoToast(t('storyboardEditor.row.slotFull', { label: cell.label, max: result.max }))
+        report(t('storyboardEditor.row.slotFull', { label: cell.label, max: result.max }))
         return
       }
       if (result.status === 'duplicate') return
       onChangeBindings(result.next)
     },
-    [bindings, onChangeBindings, t],
+    [bindings, onChangeBindings, report, t],
   )
 
   const handleUpload = React.useCallback(
     async (cell: ShotReferenceCell, file: File) => {
+      setUploadError('')
       const kind = assetKindOfFile(file)
       if (kind !== cell.assetSlot.accept) {
-        if (cell.assetSlot.accept !== 'model3d') showInfoToast(t(WRONG_KIND_KEY[cell.assetSlot.accept], { label: cell.label }))
+        if (cell.assetSlot.accept !== 'model3d') report(t(WRONG_KIND_KEY[cell.assetSlot.accept], { label: cell.label }))
         return
       }
       setUploadingSlotKey(cell.key)
@@ -166,7 +172,7 @@ export default function ShotReferenceZone({ mode, archetype, bindings, onChangeB
         setUploadingSlotKey('')
       }
     },
-    [applyAppend, t],
+    [applyAppend, report, t],
   )
 
   /** 这一次引用的「要忽略的特征」：写在**槽的这条绑定**上，不回写锚（§4.4）。 */

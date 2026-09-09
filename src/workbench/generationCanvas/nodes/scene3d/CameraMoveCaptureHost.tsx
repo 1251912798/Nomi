@@ -19,7 +19,7 @@ import {
 import type { GenerationCanvasNode } from '../../model/generationCanvasTypes'
 import type { CameraMove } from './cameraMoveVocab'
 import { computeAttachCameraMove } from './attachCameraMoveToTarget'
-import { toast } from '../../../../ui/toast'
+import { reportCanvasFeedback } from '../../components/canvasFeedback'
 
 type CameraMoveAutoCapture = {
   targetNodeId?: string
@@ -103,7 +103,7 @@ function attachCameraMoveToTarget(targetNodeId: string, mp4Url: string, move: Ca
   const store = useGenerationCanvasStore.getState()
   const target = store.nodes.find((node) => node.id === targetNodeId)
   const outcome = computeAttachCameraMove(target, mp4Url, move)
-  if (outcome.toast) toast(outcome.toast.message, outcome.toast.level)
+  if (outcome.toast) reportCanvasFeedback(outcome.toast.message, outcome.toast.level, { identity: `camera-move:${targetNodeId}`, reason: 'attachment', nodeIds: [targetNodeId] })
   if (outcome.kind === 'patch') store.updateNode(targetNodeId, outcome.patch)
 }
 

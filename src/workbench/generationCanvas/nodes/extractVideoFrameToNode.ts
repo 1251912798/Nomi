@@ -6,23 +6,22 @@ import { resolveNodeVisualSize } from './nodeSizing'
 import { useGenerationCanvasStore } from '../store/generationCanvasStore'
 import { getActiveWorkbenchProjectId } from '../../project/workbenchProjectSession'
 import { getDesktopBridge } from '../../../desktop/bridge'
-import { toast } from '../../../ui/toast'
 import type { GenerationCanvasNode } from '../model/generationCanvasTypes'
 import i18n from '../../../i18n'
 
-export async function extractVideoFrameToNode(node: GenerationCanvasNode, which: 'first' | 'last'): Promise<void> {
+export async function extractVideoFrameToNode(node: GenerationCanvasNode, which: 'first' | 'last', reportFeedback: (message: string) => void): Promise<void> {
   const videoUrl = node.result?.url
   if (node.result?.type !== 'video' || !videoUrl) return
   const label = i18n.t(`generationCommon.node.extractFrame.${which}`)
 
   const projectId = getActiveWorkbenchProjectId()
   if (!projectId) {
-    toast(i18n.t('generationCommon.node.extractFrame.missingProject'), 'error')
+    reportFeedback(i18n.t('generationCommon.node.extractFrame.missingProject'))
     return
   }
   const extractFrame = getDesktopBridge()?.video?.extractFrame
   if (!extractFrame) {
-    toast(i18n.t('generationCommon.node.extractFrame.desktopOnly'), 'error')
+    reportFeedback(i18n.t('generationCommon.node.extractFrame.desktopOnly'))
     return
   }
 
@@ -31,17 +30,14 @@ export async function extractVideoFrameToNode(node: GenerationCanvasNode, which:
     const result = await extractFrame({ videoUrl, which, projectId })
     url = result?.url || ''
   } catch (error) {
-    toast(
-      i18n.t('generationCommon.node.extractFrame.failed', {
+    reportFeedback(i18n.t('generationCommon.node.extractFrame.failed', {
         frame: label,
         message: error instanceof Error ? error.message : String(error),
-      }),
-      'error',
-    )
+      }))
     return
   }
   if (!url) {
-    toast(i18n.t('generationCommon.node.extractFrame.empty', { frame: label }), 'error')
+    reportFeedback(i18n.t('generationCommon.node.extractFrame.empty', { frame: label }))
     return
   }
 

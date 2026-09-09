@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { getDesktopActiveProjectId } from '../../../desktop/activeProject'
 import { getDesktopBridge } from '../../../desktop/bridge'
 import { confirmDialog } from '../../../design'
-import { toast } from '../../toast'
+import { notify } from '../../notificationPolicy'
 import type { NomiBrowserAsset, NomiBrowserAssetTab } from '../assets/browserAssetData'
 import type { AssetContextMenuState } from './browserAssetPopoverTypes'
 import type { FloatingWindowRect } from '../window/useResizableFloatingWindow'
@@ -42,6 +42,7 @@ type UseBrowserAssetActionsOptions = {
   setAssetContextMenu: React.Dispatch<React.SetStateAction<AssetContextMenuState | null>>
   setFiltersOpen: React.Dispatch<React.SetStateAction<boolean>>
   setDeleteConfirmOpen: React.Dispatch<React.SetStateAction<boolean>>
+  presentFeedback: (message: string) => void
 }
 
 export function useBrowserAssetActions({
@@ -60,6 +61,7 @@ export function useBrowserAssetActions({
   setAssetContextMenu,
   setFiltersOpen,
   setDeleteConfirmOpen,
+  presentFeedback,
 }: UseBrowserAssetActionsOptions): {
   addLocalFiles: (files: readonly File[]) => void
   selectAsset: (asset: NomiBrowserAsset, event: React.MouseEvent<HTMLDivElement>) => void
@@ -68,14 +70,18 @@ export function useBrowserAssetActions({
   handleTileDragStart: (asset: NomiBrowserAsset, event: React.DragEvent<HTMLDivElement>) => void
 } {
   const { t } = useTranslation()
+  const report = React.useCallback((message: string) => {
+    notify({ identity: `browser-assets:${getDesktopActiveProjectId()}`, reason: 'asset-action', level: 'inline', type: 'error', message, present: presentFeedback })
+  }, [presentFeedback])
   const addLocalFiles = React.useCallback((files: readonly File[]): void => {
+    presentFeedback('')
     // 收件箱只收图/视频；其他类型（文本等）去素材库上传，不在这里静默变卡。
     const mediaFiles = [...files].flatMap((file) => {
       const type = assetTypeFromFile(file)
       return type ? [{ file, type }] : []
     })
     if (mediaFiles.length === 0) {
-      if (files.length > 0) toast(t('browserAssets.onlyImagesAndVideos'), 'warning')
+      if (files.length > 0) report(t('browserAssets.onlyImagesAndVideos'))
       return
     }
     const projectId = getDesktopActiveProjectId()
@@ -138,7 +144,7 @@ export function useBrowserAssetActions({
         }
       })()
     })
-  }, [previewUrlsRef, setActiveTab, setLocalAssets, setPersistedAssets, setSelectedIds, t])
+  }, [presentFeedback, report, previewUrlsRef, setActiveTab, setLocalAssets, setPersistedAssets, setSelectedIds, t])
 
   const selectAsset = React.useCallback((asset: NomiBrowserAsset, event: React.MouseEvent<HTMLDivElement>) => {
     setAssetContextMenu(null)
@@ -172,6 +178,7 @@ export function useBrowserAssetActions({
     if (deleteInFlightRef.current) return
     setAssetContextMenu(null)
     const assetsToDelete = [...selectedAssets]
+    presentFeedback('')
     void (async () => {
       deleteInFlightRef.current = true
       try {
@@ -190,11 +197,11 @@ export function useBrowserAssetActions({
           const projectId = getDesktopActiveProjectId()
           const deleteFiles = getDesktopBridge()?.workspace?.deleteFiles
           if (!projectId || !deleteFiles) {
-            toast(t('browserAssets.deleteUnsupported'), 'error')
+            report(t('browserAssets.deleteUnsupported'))
             return
           }
           const result = await deleteFiles({ projectId, relativePaths })
-          if (result.failedCount > 0) toast(t('browserAssets.deleteCountFailed', { count: result.failedCount }), 'warning')
+          if (result.failedCount > 0) report(t('browserAssets.deleteCountFailed', { count: result.failedCount }))
         }
         // 会话内临时卡（无落盘文件）直接从本地状态移除；落盘桶重拉对账真实盘面
         // （deleteFiles 不广播 nomi:assets:updated，必须手动重拉）。
@@ -204,12 +211,12 @@ export function useBrowserAssetActions({
         if (relativePaths.length > 0) await refreshPersistedAssets()
       } catch (error) {
         console.error('[nomi:browser] 删除素材失败:', error)
-        toast(t('browserAssets.deleteFailedPermission'), 'error')
+        report(error instanceof Error ? error.message : t('browserAssets.deleteFailedPermission'))
       } finally {
         deleteInFlightRef.current = false
       }
     })()
-  }, [refreshPersistedAssets, selectedAssets, setAssetContextMenu, setDeleteConfirmOpen, setLocalAssets, setPersistedAssets, setSelectedIds, t])
+  }, [presentFeedback, report, refreshPersistedAssets, selectedAssets, setAssetContextMenu, setDeleteConfirmOpen, setLocalAssets, setPersistedAssets, setSelectedIds, t])
 
   const selectAllVisibleAssets = React.useCallback((): void => {
     if (filteredAssets.length > 0) setSelectedIds(new Set(filteredAssets.map((asset) => asset.id)))
