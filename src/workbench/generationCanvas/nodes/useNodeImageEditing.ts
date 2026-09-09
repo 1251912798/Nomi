@@ -143,6 +143,7 @@ export type NodeImageEditing = {
 export function useNodeImageEditing(
   node: GenerationCanvasNode,
   visualSize: { width: number; height: number },
+  reportFeedback: (message: string) => void,
 ): NodeImageEditing {
   const updateNode = useGenerationCanvasStore((state) => state.updateNode)
   const [editGrid, setEditGrid] = React.useState<CropGridSize | null>(null)
@@ -353,13 +354,12 @@ export function useNodeImageEditing(
       } catch {
         // 源图读不进画布（CORS/解码失败）时别再静默——用户点了确认什么都没发生，看起来就是「卡死」。
         updateNode(nodeId, { status: previousStatus, progress: undefined })
-        const { toast } = await import('../../../ui/toast')
-        toast(i18n.t('generationCommon.imageToolbar.editFailed'), 'error')
+        reportFeedback(i18n.t('generationCommon.imageToolbar.editFailed'))
       } finally {
         setImageOpBusy(false)
       }
     },
-    [cancelEdit, editGrid, imageOpBusy, nodeHistory, nodeId, nodeMeta, nodeResult, nodeStatus, splitIntoTiles, updateNode, visualWidth],
+    [cancelEdit, editGrid, imageOpBusy, nodeHistory, nodeId, nodeMeta, nodeResult, nodeStatus, reportFeedback, splitIntoTiles, updateNode, visualWidth],
   )
 
   // 旋转 / 翻转：写回当前节点历史堆叠，并切换为当前主图。
@@ -407,16 +407,16 @@ export function useNodeImageEditing(
           },
         })
       } catch {
-        const { toast } = await import('../../../ui/toast')
-        toast(i18n.t('generationCommon.imageToolbar.editFailed'), 'error')
+        reportFeedback(i18n.t('generationCommon.imageToolbar.editFailed'))
       } finally {
         setImageOpBusy(false)
       }
     },
-    [imageOpBusy, nodeHistory, nodeId, nodeMeta, nodeResult, updateNode, visualWidth],
+    [imageOpBusy, nodeHistory, nodeId, nodeMeta, nodeResult, reportFeedback, updateNode, visualWidth],
   )
 
   const handleRemoveBackground = React.useCallback(async () => {
+    reportFeedback('')
     const imageUrl = nodeResult?.type === 'image' ? nodeResult.url : undefined
     if (!imageUrl || imageOpBusy) return
     setImageOpBusy(true)
@@ -481,12 +481,11 @@ export function useNodeImageEditing(
         status: previousStatus,
         progress: undefined,
       })
-      const { toast } = await import('../../../ui/toast')
-      toast(i18n.t('generationCommon.whiteboard.removeBackgroundFailed'), 'error')
+      reportFeedback(i18n.t('generationCommon.whiteboard.removeBackgroundFailed'))
     } finally {
       setImageOpBusy(false)
     }
-  }, [imageOpBusy, nodeHistory, nodeId, nodeMeta, nodeResult, nodeStatus, updateNode])
+  }, [imageOpBusy, nodeHistory, nodeId, nodeMeta, nodeResult, nodeStatus, reportFeedback, updateNode])
 
   return {
     editGrid,

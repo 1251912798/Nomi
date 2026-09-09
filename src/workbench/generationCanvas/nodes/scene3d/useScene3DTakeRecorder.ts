@@ -1,6 +1,6 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { toast } from '../../../../ui/toast'
+import type { ReportScene3DFeedback } from './useScene3DFullscreenActions'
 import {
   buildRecordedTakeScene,
   buildRecordedCameraTakeScene,
@@ -60,11 +60,13 @@ export type TakeRecorder = {
 }
 
 export function useScene3DTakeRecorder({
+  reportFeedback,
   possessTarget,
   readOnly,
   stateRef,
   onRecorded,
 }: {
+  reportFeedback: ReportScene3DFeedback
   // 统一操控目标（角色/相机/无）。录角色 = 走位主轨迹；录相机 = 运镜主轨迹。互斥单值。
   possessTarget: PossessTarget
   readOnly: boolean
@@ -102,6 +104,7 @@ export function useScene3DTakeRecorder({
   }, [])
 
   const startRecording = React.useCallback(() => {
+    reportFeedback(null)
     // #C 根因修：守卫/种子读**实时** possessTargetRef.current，不读渲染期快照 possessTarget?.id。
     //   倒计时里「先接管角色，再排 3s 定时器开录」时，定时器闭包持有的 startRecording 是接管前那次渲染的
     //   版本；若它守卫在当时快照的 possessId(=null) 上就早退，isRecording 不翻、CTA 退回「开始录制」，必须
@@ -128,7 +131,7 @@ export function useScene3DTakeRecorder({
     tickRef.current = window.setInterval(() => {
       setElapsedSeconds((performance.now() - startMsRef.current) / 1000)
     }, 100)
-  }, [clearTick, readOnly, stateRef])
+  }, [clearTick, readOnly, stateRef, reportFeedback])
 
   const sampleCharacter = React.useCallback(
     (position: Scene3DVector3) => {
@@ -190,7 +193,7 @@ export function useScene3DTakeRecorder({
     setIsRecording(false)
     // 即时反馈（用户反馈 #11）：点停止后按钮瞬间变回「录 take」，用户以为白录。先即时确认「已停止」，
     // 出片是异步的，结果状态由画布上「录制走位参考」节点的徽标接力（生成中 → 已生成 ✓，见 Scene3DEditor）。
-    toast(t('scene3d.character.recordingStopped'), 'success')
+
     const endMs = performance.now()
     const target = possessTargetRef.current
     const characterSamples = characterSamplesRef.current
@@ -218,7 +221,7 @@ export function useScene3DTakeRecorder({
       }
       const recordedState = buildRecordedCameraTakeScene(stateRef.current, cameraTake)
       if (!recordedState) {
-        toast(t('scene3d.character.noCameraMove'), 'warning')
+        reportFeedback({ message: t('scene3d.character.noCameraMove') })
         return
       }
       onRecorded(recordedState)
@@ -235,12 +238,12 @@ export function useScene3DTakeRecorder({
     }
     const recordedState = buildRecordedTakeScene(stateRef.current, take)
     if (!recordedState) {
-      toast(t('scene3d.character.noCharacterMove'), 'warning')
+      reportFeedback({ message: t('scene3d.character.noCharacterMove') })
       return
     }
     stashRecordedTakeForE2E(recordedState)
     onRecorded(recordedState)
-  }, [clearTick, onRecorded, stateRef, t])
+  }, [clearTick, onRecorded, stateRef, t, reportFeedback])
 
   // 兜底 only：正常「退出操控」现在由触发退出的动作本身先调 stopRecording()（见 Scene3DFullscreen 的
   // onBeforeExit 接线），出片/toast/建 take 节点都已在那一步跑完，这里不会再赶上 isRecording=true。
