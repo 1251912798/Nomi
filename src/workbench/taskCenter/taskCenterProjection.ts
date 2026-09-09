@@ -47,7 +47,10 @@ export type ExportJobTaskCenterProjection = TaskCenterProjectionBase & {
     kind: 'export_job'
     jobId: string
   }
-  action: { kind: 'cancel_export_job'; jobId: string } | null
+  action:
+    | { kind: 'cancel_export_job'; jobId: string }
+    | { kind: 'reveal_export_output'; projectId: string; relativePath: string }
+    | { kind: 'return_to_export'; projectId: string }
 }
 
 export type TaskCenterProjection =

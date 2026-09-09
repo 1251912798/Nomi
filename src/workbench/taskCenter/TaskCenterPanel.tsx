@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next'
 import { Portal } from '@mantine/core'
 import { IconAlertTriangle, IconCheck, IconClock, IconProgress, IconLoader2, IconLock, IconX } from '@tabler/icons-react'
 import type { ExportJobSnapshot } from '../../../electron/shared/contracts/exportJobManager'
-import { getDesktopBridge } from '../../desktop/bridge'
+import { runExportJobTaskAction } from './exportJobTaskAction'
 import { useGenerationCanvasStore } from '../generationCanvas/store/generationCanvasStore'
 import { selectStableCanvasNodes } from '../generationCanvas/store/canvasNodeProjection'
 import { useGenerationQueueStore } from '../generationCanvas/runner/generationQueueStore'
@@ -111,6 +111,10 @@ export function TaskCenterPanel({ opened, onClose, productionRuns, exportJobs, o
   const exportRows = React.useMemo(() => buildExportJobTaskRows(exportJobs, {
     title: t('taskCenter.exportJob.title'),
     failed: t('taskCenter.exportJob.failed'),
+    missingFile: t('taskCenter.exportJob.missingFile'),
+    diskFull: t('taskCenter.exportJob.diskFull'),
+    permissionDenied: t('taskCenter.exportJob.permissionDenied'),
+    mediaUnreadable: t('taskCenter.exportJob.mediaUnreadable'),
     statuses: {
       queued: t('taskCenter.exportJob.statuses.queued'),
       preparing: t('taskCenter.exportJob.statuses.preparing'),
@@ -211,12 +215,16 @@ export function TaskCenterPanel({ opened, onClose, productionRuns, exportJobs, o
       if (action.kind === 'cancel_generation_queue') cancelQueued(row as TaskCenterRow)
       else if (action.kind === 'interrupt_generation') interruptRunning(row as TaskCenterRow)
       else if (action.kind === 'retry_generation') await confirmAndRunNode(action.nodeId)
-      else if (action.kind === 'cancel_export_job') await getDesktopBridge()?.exports.cancel(action.jobId)
+      else if (row.kind === 'export_job') {
+        if (!(await runExportJobTaskAction(row.action))) throw new Error('Export destination unavailable')
+        if (row.action.kind === 'return_to_export') onClose()
+      }
     } catch (error) {
       console.error('task center action failed', error)
       notify({
         identity: row.id, reason: action.kind, level: 'inline', type: 'error',
-        message: `${t('taskCenter.actionFailed')}: ${error instanceof Error ? error.message : String(error)}`,
+        message: row.kind === 'export_job' ? t('taskCenter.actionFailed')
+          : `${t('taskCenter.actionFailed')}: ${error instanceof Error ? error.message : String(error)}`,
         present: (message) => setActionErrors((current) => ({ ...current, [row.id]: message })),
       })
     }
@@ -413,6 +421,7 @@ export function TaskRow({
               ? [row.phaseText, row.elapsedMs !== undefined ? t('taskCenter.row.elapsed', { time: formatElapsed(row.elapsedMs) }) : ''].filter(Boolean).join(' · ')
               : row.phaseText}
         </div>
+        {row.kind === 'export_job' && row.error ? <div data-task-result-reason className="mt-1 text-micro text-nomi-danger">{row.error}</div> : null}
         {actionError ? <div role="status" data-task-action-error className="mt-1 text-micro text-workbench-danger">{actionError}</div> : null}
         {/* 只有真拿到百分比才画进度条。很多厂商不报进度，画一条永远空的槽会被读成分隔线（走查实锤），
             也是在假装知道进度。没数就不画，靠区段标题 + 已跑时长表达「在跑」。 */}
@@ -438,7 +447,11 @@ export function TaskRow({
           }}
           className="shrink-0 text-micro text-nomi-ink-60 border border-nomi-line rounded-full px-2 py-0.5 hover:text-nomi-ink hover:border-nomi-ink-40 transition-[color,border-color] duration-nomi-fast ease-nomi-fast"
         >
-          {row.action.kind === 'retry_generation'
+          {row.action.kind === 'reveal_export_output'
+            ? t('taskCenter.exportJob.revealOutput')
+            : row.action.kind === 'return_to_export'
+              ? t('taskCenter.exportJob.returnToExport')
+              : row.action.kind === 'retry_generation'
             ? t('taskCenter.row.retry')
             : row.cancel === 'free'
               ? t('taskCenter.row.cancel')

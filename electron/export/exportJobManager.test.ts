@@ -200,10 +200,11 @@ describe("ExportJobManager", () => {
     const projectDir = makeTempDir();
     const firstManager = new ExportJobManager({ idGenerator: () => "job-1", clock: () => "2026-05-24T01:00:00.000Z" });
     firstManager.createJob({ projectIdentity, projectDir, manifest: makeManifest() });
-    const failed = firstManager.failJob("job-1", new Error("ffmpeg crashed"));
+    const failed = firstManager.failJob("job-1", Object.assign(new Error("ffmpeg crashed"), { code: "ENOSPC" }));
 
     const restartedManager = new ExportJobManager({ projectDirs: [projectDir] });
 
+    expect(failed.error).toMatchObject({ code: "ENOSPC" });
     expect(restartedManager.getJob("job-1")).toEqual(failed);
     expect(restartedManager.listJobs("project-1")).toEqual([failed]);
   });

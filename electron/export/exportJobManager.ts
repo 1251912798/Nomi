@@ -45,6 +45,7 @@ export type ExportJobVerification = Readonly<{
 }>;
 
 export type ExportJobError = {
+  code?: string;
   message: string;
   name?: string;
   stack?: string;
@@ -112,7 +113,9 @@ function isActive(status: ExportJobStatus): boolean {
 
 function toErrorDetails(error: unknown): ExportJobError {
   if (error instanceof Error) {
-    return { message: error.message, name: error.name, stack: error.stack };
+    return { message: error.message, name: error.name, stack: error.stack,
+      ...("code" in error && typeof error.code === "string" ? { code: error.code } : {}),
+    };
   }
   if (typeof error === "string") {
     return { message: error };
