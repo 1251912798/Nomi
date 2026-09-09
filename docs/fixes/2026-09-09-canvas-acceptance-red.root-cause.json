@@ -1,0 +1,140 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-09-canvas-acceptance-red",
+  "problem_type": "Consecutive creation visibility and acceptance geometry contract drift",
+  "symptom": "1280×933 group-baseline first-card click intercepted by rail; batch walk waits for retired progress toast.",
+  "direct_cause": "Single-card reveal forgets previous creations; launcher has no content-size contract; notification assertions still require removed progress/success alerts.",
+  "class_root": "Automatic creation viewport lacks a sequence visibility invariant and acceptance does not bind real geometry/current feedback lifecycle.",
+  "affected_population": [
+    "All interactive sequential creation callers in narrow canvas stages",
+    "Electron acceptance callers on Linux/macOS with different display sizes"
+  ],
+  "scope_paths": [
+    "src/workbench/generationCanvas/components/useCreatedNodeVisibilityPan.ts",
+    "src/workbench/generationCanvas/model/canvasFitBounds.ts",
+    "src/workbench/generationCanvas/reactFlow/GenerationCanvasReactFlow.tsx",
+    "src/workbench/generationCanvas/components/useCanvasViewportGestures.ts",
+    "tests/ux/_launchApp.mjs",
+    "tests/ux/_canvasHit.mjs"
+  ],
+  "entry_points": [
+    "Toolbar addNode",
+    "Duplicate and progressive node creation",
+    "Shared Electron launcher",
+    "Batch selected generation and retry"
+  ],
+  "external_sources": [
+    {
+      "kind": "official-doc",
+      "url": "https://reactflow.dev/api-reference/utils/get-viewport-for-bounds",
+      "checked_at": "2026-09-09",
+      "purpose": "Reuse bounded fit with pixel padding"
+    },
+    {
+      "kind": "source-code",
+      "url": "https://github.com/tldraw/tldraw/blob/main/packages/editor/src/lib/editor/Editor.ts#L3859",
+      "checked_at": "2026-09-09",
+      "purpose": "Minimal offscreen selection pan and bounded zoomToBounds"
+    }
+  ],
+  "invariants": [
+    "Consecutive new cards remain in measured stage until their union cannot fit at the existing minimum zoom.",
+    "Existing zoom is retained when sequence fits; only minimum translation is applied.",
+    "Stale nodes from deletion/loading and user-directed viewports do not remain in a creation sequence.",
+    "Acceptance uses a measured content viewport; notification lifecycle assertions track real nodes and silence probes."
+  ],
+  "generality_proof": "All node additions pass the same nodes-diff hook regardless of caller or media kind; dimensions come from the shared visual-size resolver and actual stage. Electron callers share one launcher dimension assertion.",
+  "shared_boundaries": [
+    {
+      "path": "src/workbench/generationCanvas/components/useCreatedNodeVisibilityPan.ts",
+      "symbol": "useCreatedNodeVisibilityPan",
+      "responsibility": "Track creation sequence and perform bounded minimal reveal using current measured geometry."
+    },
+    {
+      "path": "tests/ux/_launchApp.mjs",
+      "symbol": "launchNomiApp",
+      "responsibility": "Fix and verify content viewport before caller actions."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/workbench/generationCanvas/reactFlow/GenerationCanvasReactFlow.tsx",
+      "entry_point": "useCreatedNodeVisibilityPan({ nodes, ... })",
+      "disposition": "enforced",
+      "evidence": "Toolbar and duplicate additions are observed as node ID additions at the same host hook."
+    },
+    {
+      "path": "src/workbench/generationCanvas/components/useAutoFitOnLoad.ts",
+      "entry_point": "useAutoFitOnLoad",
+      "disposition": "not-affected",
+      "evidence": "Initial/multi-node snapshots retain existing auto-fit ownership; sequence is reset on non-single additions."
+    },
+    {
+      "path": "tests/ux/canvas-batch-production.walk.mjs",
+      "entry_point": "selected batch retry lifecycle",
+      "disposition": "enforced",
+      "evidence": "Node status and same DOM replace retired progress/success toast assertions; failure retry remains."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Every narrow viewport and future sequential creation can lose previous cards; CI dimensions vary by launcher/display.",
+    "same_class_scan": [
+      "rg useCreatedNodeVisibilityPan and readLastAutoTarget: all automatic reveal callers converge in ReactFlow host.",
+      "rg addNode/duplicate in generationCanvas: toolbars, duplication and gradual creation change shared nodes.",
+      "rg minZoom/0.2 in generationCanvas: existing fit and gesture lower bound consolidated.",
+      "Read _launchApp, journeyRunner, group-baseline and batch-production: launcher dimension and toast policy drift."
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "src/workbench/generationCanvas/components/useCreatedNodeVisibilityPan.ts",
+    "invariant": "Retain sequence union in measured stage while readable; then minimally reveal latest at minimum zoom.",
+    "failure_mode": "Unmeasured stages do not animate; deleted/replaced snapshots cancel pending sequence; invalid launcher geometry throws rather than silently clamping.",
+    "exception_policy": "none",
+    "strategy": "Track sequence at shared nodes-diff boundary, reuse React Flow fit and canonical visual geometry; fix viewport at shared launcher.",
+    "artifacts": [
+      "src/workbench/generationCanvas/components/useCreatedNodeVisibilityPan.ts",
+      "src/workbench/generationCanvas/model/canvasFitBounds.ts",
+      "tests/ux/_launchApp.mjs",
+      "tests/ux/_canvasHit.mjs"
+    ]
+  },
+  "regression_tests": [
+    "src/workbench/generationCanvas/components/useCreatedNodeVisibilityPan.test.ts",
+    "tests/ux/group-baseline.walk.mjs",
+    "tests/ux/canvas-batch-production.walk.mjs"
+  ],
+  "class_regression_tests": [
+    "src/workbench/generationCanvas/components/useCreatedNodeVisibilityPan.test.ts",
+    "tests/ux/group-baseline.walk.mjs"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "src/workbench/generationCanvas/components/useCreatedNodeVisibilityPan.ts",
+      "tests/ux/canvas-batch-production.walk.mjs"
+    ],
+    "rationale": "Replace single-last-card-only reveal and retired toast lifecycle assertions in place, no parallel viewport or notification implementation."
+  },
+  "dependency_lifecycle": {
+    "decision": "retain-with-exit",
+    "rationale": "Installed React Flow already supplies fit with padding; Playwright click semantics require product geometry correctness, not a dependency workaround.",
+    "current": "@xyflow/react installed lockfile version and Playwright 1.60.0",
+    "target": "Current supported installed dependencies; no upgrade required for this invariant.",
+    "exit_criteria": [
+      "Re-evaluate when upstream getViewportForBounds or click geometry changes; sequence and two-size real Electron regressions must remain green."
+    ]
+  },
+  "migration": "No persistent data changes. Sequence is ephemeral; existing nodes load via current auto-fit. Acceptance replaces obsolete notification expectations.",
+  "residual_risks": [
+    "Native Linux rerun awaits PR CI; source CI red screenshot and local matching Chromium content geometry are preserved. At the existing minimum zoom a sequence larger than the stage intentionally prioritizes the latest card."
+  ],
+  "invariant_owner_layer": {
+    "layer": "src/workbench/generationCanvas/components/useCreatedNodeVisibilityPan.ts",
+    "tests": [
+      "src/workbench/generationCanvas/components/useCreatedNodeVisibilityPan.test.ts"
+    ],
+    "why": "Viewport reveal observes all creation callers and measured stage before any automatic animation; testing only click points cannot prevent user-visible displacement."
+  }
+}
