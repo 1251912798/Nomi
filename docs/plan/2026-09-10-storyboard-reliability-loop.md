@@ -1,8 +1,8 @@
 # 分镜方案可靠性自迭代
 
-> 🚧 状态：进行中 · 2026-09-10
+> 📎 状态：两轮模型循环已退出，交付验证中 · 2026-09-10
 > 分支：fix/storyboard-reliability-loop-20260910
-> 基线：807c475d68f023ff4e4670bc35507b6e04048a51（最新 origin/main，含 #646）
+> 基线：初始 807c475d68f023ff4e4670bc35507b6e04048a51；交付前整合 c6fe8c608c3f91adf6d01029b87ba174ffc9870d（origin/main，含 #646/#691/#692）
 > 验收：每轮 UI loopback 10 句 + 官方 DeepSeek 10 句；零媒体生成。
 > 上限：5 轮，每轮 ¥1.5，总 ¥8；每轮一个 commit。
 > 退出：连续两轮真实保存 ≥95% 且回合 ≥90%；或轮数/费用到顶；或同簇连续两轮无法修复。
@@ -32,7 +32,7 @@
 
 ## 轮次结果
 
-尚未开始；不得把未执行写成成功。
+已完成两轮、共 40 句 UI 走查；下列记录保留严格失败判定，按退出④结束，未达到稳定阈值。
 
 ## Round 1 根因决策与审阅
 
@@ -40,4 +40,13 @@
 
 六角色复核：CTO—复用现有 admission/hash，不建独立分镜端口；设计—无控件变更；PM—保留显式新建入口；前端—选中变化不得串写；后端—旧 approval hash 与新证据不匹配会拒绝；真实用户—同名重复不能用工具绿灯洗成成功。原生转录较大，用 gzip 无损封存供完整回放，trace.jsonl 只保留工具状态摘要。官方定价来源 https://api-docs.deepseek.com/quick_start/pricing ：峰值 Flash 输入 $0.44/M、缓存 $0.014/M、输出 $1.32/M；统一乘8计人民币上界，不把 pi 未配置价目产生的0当免费。
 
-第一轮严格指标：loopback 写对2/10、保存2/10、回合2/10；DeepSeek 写对2/6、保存2/10、回合2/10。工具执行均未报错，但重复目标和后续错目标均判失败。真实 usage 费用上界 ¥0.430618，另认证探测预留 ¥0.01。详见 [REPORT](../fixes/storyboard-reliability/round-1/REPORT.md)。
+第一轮严格指标：loopback 写对2/10、保存2/10、回合2/10；DeepSeek 写对2/6、保存2/10、回合2/10。工具执行均未报错，但重复目标和后续错目标均判失败。真实 usage 费用上界 ¥0.430618，另认证探测预留 ¥0.03。详见 [REPORT](../fixes/storyboard-reliability/round-1/REPORT.md)。
+
+## Round 2 与退出
+
+参见 [Round 2 REPORT](../fixes/storyboard-reliability/round-2/REPORT.md)。真实写对6/6、保存6/10、回合8/10；loopback8/10、8/10、8/10。目标身份簇复扫消失，但媒体模型缺前提连续两轮未修下，按退出④结束模型循环。尚未达到稳定阈值。累计费用保守上界¥1.082421，零媒体；完整 gates/PR 交付继续。
+
+## 新簇先查别人
+
+4. [GPT Image 2 官方供应商文档](https://docs.kie.ai/market/gpt/gpt-image-2-text-to-image)，2026-09-10实查 resolution/1K/2K；Nomi 的 `src/config/modelArchetypes/gptImage2.ts:19` 使用 canonical resolution。现有冻结 loopback误填size，因此档位两句保持失败，不伪造参数写对证据。
+5. [DeepSeek 模型目录与定价](https://api-docs.deepseek.com/quick_start/pricing)：官方只提供DeepSeek文本/视觉理解模型，不提供GPT Image 2。真实 UI 获取官方目录为3个DeepSeek模型。Nomi `availableModels.ts` 保持可用模型过滤，没有可用GPT媒体配置时拒绝虚构身份是正确行为；本任务不以媒体认证越过零生成约束。

@@ -146,7 +146,7 @@ function stableJson(value: unknown): string {
   throw new CanvasWriteEvidenceError("capability_input_invalid");
 }
 
-export function canvasWriteEvidenceHash(domain: "node" | "result" | "membership" | "canvas", value: unknown): string {
+export function canvasWriteEvidenceHash(domain: "node" | "result" | "membership" | "canvas" | "storyboard" | "storyboard-target", value: unknown): string {
   const text = `nomi-canvas-write:${domain}:v1\0${stableJson(value)}`;
   return `sha256-${synchronousSha256(text)}`;
 }
