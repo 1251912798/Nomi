@@ -6,7 +6,10 @@ import {
   buildAssetTimelineClip,
   findAssetAppendFrame,
   resolveAssetDrop,
+  tryAddAssetFromDragData,
 } from './addAssetToTimeline'
+
+vi.mock('../../media/audioDurationProbe', () => ({ readAudioDurationSeconds: vi.fn() }))
 
 function payload(kind: AssetLibraryDragPayload['kind']): AssetLibraryDragPayload {
   const extension = kind === 'image' ? 'png' : kind === 'video' ? 'mp4' : 'mp3'
@@ -51,6 +54,18 @@ const timeline: TimelineState = {
 }
 
 describe('asset timeline actions', () => {
+  it('delivers asynchronous media probe rejection to the supplied local feedback host', async () => {
+    const error = new Error('Media probe failed')
+    const probe = vi.mocked((await import('../../media/audioDurationProbe')).readAudioDurationSeconds).mockRejectedValue(error)
+    const failure = new Promise<unknown>((resolve) => {
+      expect(tryAddAssetFromDragData(JSON.stringify(payload('audio')), {
+        fps: 30, startFrame: 0, targetTrackType: 'audio', activeProjectId: 'project-a', onFailure: resolve,
+      })).toMatchObject({ status: 'accept' })
+    })
+    await expect(failure).resolves.toBe(error)
+    probe.mockRestore()
+  })
+
   it.each(['image', 'video', 'audio'] as const)('normalizes a %s drag payload to AssetRef', (kind) => {
     const asset = assetRefFromDragPayload(payload(kind))
     expect(asset).toMatchObject({

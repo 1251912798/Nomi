@@ -9,8 +9,7 @@ import { useTranslation } from 'react-i18next'
 import { IconBooks, IconUpload, IconWand, IconX } from '@tabler/icons-react'
 import { cn } from '../../utils/cn'
 import { DesignEmptyState, NomiSegmented, NomiWordmark, TooltipProvider } from '../../design'
-import { toast } from '../../ui/toast'
-import { showInfoToast } from '../../utils/showInfoToast'
+import { notify } from '../../ui/notificationPolicy'
 import { showUndoToast } from '../../utils/showUndoToast'
 import { useWorkbenchStore } from '../workbenchStore'
 import type { SkillListItemDto } from '../api/skillApi'
@@ -50,6 +49,8 @@ export function SkillLibraryContent({
   const [source, setSource] = React.useState<Source>('mine')
   const [category, setCategory] = React.useState<SkillLibraryCategory>('all')
   const [query, setQuery] = React.useState('')
+  const [feedback, setFeedback] = React.useState<Record<string, string>>({})
+  const report = React.useCallback((identity: string, message: string) => notify({ identity: `skill-library:${identity}`, reason: 'operation', level: 'inline', message, present: (value) => setFeedback((old) => ({ ...old, [identity]: value })) }), [])
   const fileInputRef = React.useRef<HTMLInputElement>(null)
   const [dragActive, setDragActive] = React.useState(false)
   const usageVersion = useLibraryUsageVersion()
@@ -102,9 +103,10 @@ export function SkillLibraryContent({
   // 导出：技能包对象 → JSON Blob → 浏览器下载，不弹系统对话框。
   const handleExport = React.useCallback(
     (skill: SkillListItemDto) => {
+      setFeedback({})
       const pkg = exportPackage(skill.directoryName)
       if (!pkg) {
-        showInfoToast(t('libraries.skill.exportNotFound'))
+        report(skill.directoryName, t('libraries.skill.exportNotFound'))
         return
       }
       const blob = new Blob([JSON.stringify(pkg, null, 2)], { type: 'application/json' })
@@ -115,16 +117,17 @@ export function SkillLibraryContent({
       a.click()
       URL.revokeObjectURL(url)
     },
-    [exportPackage, t],
+    [exportPackage, report, t],
   )
 
   // 删除可撤销：删前先把包抓在手里，撤销 = 重新导入（落回用户目录，目录名冲突会自动避让）。
   const handleDelete = React.useCallback(
     (skill: SkillListItemDto) => {
+      setFeedback({})
       const snapshot = exportPackage(skill.directoryName)
       const res = remove(skill.directoryName)
       if (!res.ok) {
-        showInfoToast(res.error ?? t('libraries.skill.deleteFailed'))
+        report(skill.directoryName, res.error ?? t('libraries.skill.deleteFailed'))
         return
       }
       showUndoToast({
@@ -134,7 +137,7 @@ export function SkillLibraryContent({
         },
       })
     },
-    [exportPackage, remove, importPackage, t],
+    [exportPackage, remove, importPackage, report, t],
   )
 
   // 导入：渲染层把 SKILL.md / zip / .nomiskill.json 归一成 {dirName, files} → 落用户目录
@@ -143,30 +146,32 @@ export function SkillLibraryContent({
   // 两条路只是「怎么把包递过来」不同，落地与回执必须是同一份（否则两条路的行为会各自漂移）。
   const landImport = React.useCallback(
     (parsed: SkillImportParse) => {
-      // 失败走 error 档，不走 info。这不是措辞问题：info 是灰色 ⓘ、3 秒自动消失、没有关闭钮，
-      // 和成功回执**长得一模一样**——用户会把「导入失败」看成「导入成功」然后去找那张不存在的卡片。
-      // error 档是红色、6 秒、带关闭钮，且这条失败文案本身要说得出下一步（见 importReason.*）。
+      // Import errors and skipped files stay beside the intake controls; newly imported cards show success.
       if (!parsed.ok) {
-        toast(t(`libraries.skill.importReason.${parsed.reason}`), 'error')
+        report(`import:${parsed.reason}`, t(`libraries.skill.importReason.${parsed.reason}`))
         return
       }
       const res = importPackage(parsed.payload)
       if (!res.ok) {
-        toast(t('libraries.skill.importFailed', { message: res.error ?? t('libraries.skill.unknownError') }), 'error')
+        report(`import:${parsed.payload.dirName}`, t('libraries.skill.importFailed', { message: res.error ?? t('libraries.skill.unknownError') }))
         return
       }
       const name = res.skillName ?? t('libraries.skill.newSkill')
       // 跳过的文件如实报数，不静默丢（二进制/超深路径进不了知识层包）。
-      showInfoToast(parsed.skipped.length
-        ? t('libraries.skill.importedWithSkips', { name, count: parsed.skipped.length })
-        : t('libraries.skill.imported', { name }))
+      setSource('mine')
+      setCategory('all')
+      setQuery('')
+      if (parsed.skipped.length) report(`import:${name}`, t('libraries.skill.importedWithSkips', { name, count: parsed.skipped.length }))
     },
-    [importPackage, t],
+    [importPackage, report, t],
   )
 
   const handleImportFile = React.useCallback(
-    async (file: File) => landImport(await parseSkillImportFile(file)),
-    [landImport],
+    async (file: File) => {
+      setFeedback({})
+      try { landImport(await parseSkillImportFile(file)) } catch (error) { report(file.name, error instanceof Error ? error.message : String(error)) }
+    },
+    [landImport, report],
   )
 
   // 拖拽是加速器不是新入口（设计系统 §1.5.2）：不加按钮，只让面板认得「松手」。
@@ -193,9 +198,12 @@ export function SkillLibraryContent({
       event.preventDefault()
       setDragActive(false)
       // 一次拖多个各自成败：一个坏包不该把同批的好包一起否掉。
-      for (const parsed of await parseSkillDrop(event.dataTransfer)) landImport(parsed)
+      setFeedback({})
+      try {
+        for (const parsed of await parseSkillDrop(event.dataTransfer)) landImport(parsed)
+      } catch (error) { report('drop', error instanceof Error ? error.message : String(error)) }
     },
-    [landImport],
+    [landImport, report],
   )
 
   const showNewTile = source === 'mine' && category === 'all' && !query.trim()
@@ -334,6 +342,8 @@ export function SkillLibraryContent({
             e.target.value = ''
           }}
         />
+
+        {Object.entries(feedback).map(([key, message]) => message ? <p key={key} role="status" className="m-0 px-5 py-1 text-caption text-nomi-ink-60">{message}</p> : null)}
 
         {/* 网格 */}
         <div className={cn('flex-1 overflow-y-auto', compact ? 'px-3 pb-3' : 'px-5 pb-5')}>
