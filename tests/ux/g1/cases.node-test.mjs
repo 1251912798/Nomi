@@ -6,7 +6,7 @@ const cases = JSON.parse(readFileSync(new URL('./cases.json', import.meta.url), 
 const plan = readFileSync(new URL('../../../docs/plan/2026-09-08-g1-use-case-suite.md', import.meta.url), 'utf8')
 const fields = [
   'id', 'title', 'dimension', 'friction', 'user_quote', 'expected_experience',
-  'capabilities', 'status', 'status_reason', 'gaps', 'evidence', 'r30', 'budget_cny', 'emotion_log',
+  'surfaces', 'inputs', 'capabilities', 'status', 'status_reason', 'gaps', 'evidence', 'r30', 'budget_cny', 'emotion_log',
 ]
 const statuses = ['runnable-now', 'needs-stage-4', 'capability-gap']
 const dimensions = ['core', 'tools', 'mcp', 'skill', 'research', 'material', 'long-running']
@@ -22,7 +22,7 @@ test('every case has complete, well-typed fields and a bounded budget', () => {
   for (const entry of cases) {
     for (const field of fields) assert.ok(Object.hasOwn(entry, field), `${entry.id}: missing ${field}`)
     assert.deepEqual(Object.keys(entry).sort(), [...fields].sort(), `${entry.id}: unexpected fields`)
-    for (const field of fields.filter((key) => !['capabilities', 'gaps', 'budget_cny'].includes(key))) {
+    for (const field of fields.filter((key) => !['surfaces', 'inputs', 'capabilities', 'gaps', 'budget_cny'].includes(key))) {
       nonempty(entry[field], `${entry.id}.${field}`)
     }
     assert.match(entry.id, /^[A-Z][0-9]+$/, 'id must be a stable case code')
@@ -89,5 +89,23 @@ test('every capability gap is in section 4 with its owner and affected case, and
   for (const [id, row] of rows) {
     const affected = cases.filter((entry) => entry.gaps.some((gap) => gap.id === id)).map((entry) => entry.id)
     assert.deepEqual([...row.affected].sort(), affected.sort(), `${id}: affected cases mismatch`)
+  }
+})
+
+ test('every surface has at least three runnable input variations', () => {
+  for (const surface of ['agent-panel','storyboard','canvas-node','timeline','export','settings','mcp','skill-library','prompt-library']) {
+    const inputs = cases.flatMap(c => c.inputs.map(i => ({ ...i, id: c.id + '-' + i.id }))).filter(i => i.surface === surface && i.status === 'runnable-now')
+    assert.ok(inputs.length >= 3, surface)
+    assert.equal(new Set(inputs.map(i => i.id)).size, inputs.length)
+  }
+  for (const c of cases) for (const input of c.inputs) {
+    assert.ok(c.surfaces.includes(input.surface))
+    assert.ok(statuses.includes(input.status))
+    nonempty(input.coverage, 'coverage')
+    nonempty(input.reason, 'reason')
+  }
+  for (const surface of ['timeline', 'export', 'settings']) {
+    const scenarios = new Set(cases.flatMap(c => c.inputs).filter(i => i.surface === surface && i.status === 'runnable-now').map(i => i.scenario))
+    assert.ok(scenarios.size >= 3 && !scenarios.has(undefined), `${surface}: inputs must drive three distinct host states`)
   }
 })
