@@ -55,13 +55,13 @@ describe("copyLocalImageFile", () => {
 
     const asset = await copyLocalImageFile(workspace.id, sourcePath) as { data: { absolutePath: string; relativePath: string; kind: string } };
 
-    expect(asset.data.relativePath).toBe("assets/imported/" + new Date().toISOString().slice(0, 10) + "/hero.png");
+    expect(asset.data.relativePath).toBe(`assets/imported/sha256/${sourceHash}/hero.png`);
     expect(asset.data.kind).toBe("upload");
     expect(hash(asset.data.absolutePath)).toBe(sourceHash);
     expect(fs.existsSync(sourcePath)).toBe(true);
   });
 
-  it("uses a unique filename and skips non-images in a batch", async () => {
+  it("reuses identical file content and skips non-images in a batch", async () => {
     const workspace = createWorkspace();
     const sourceDir = makeTempDir();
     const first = path.join(sourceDir, "same.jpg");
@@ -73,8 +73,8 @@ describe("copyLocalImageFile", () => {
 
     expect(result.created).toHaveLength(2);
     expect(result.created.map((item) => (item as { data: { relativePath: string } }).data.relativePath).sort()).toEqual([
-      "assets/imported/" + new Date().toISOString().slice(0, 10) + "/same-2.jpg",
-      "assets/imported/" + new Date().toISOString().slice(0, 10) + "/same.jpg",
+      `assets/imported/sha256/${hash(first)}/same.jpg`,
+      `assets/imported/sha256/${hash(first)}/same.jpg`,
     ]);
     expect(result.skippedUnsupportedCount).toBe(1);
     expect(result.failedCount).toBe(0);
