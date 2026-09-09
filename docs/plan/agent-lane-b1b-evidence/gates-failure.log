@@ -1,0 +1,24 @@
+      详见 docs/engineering/agent-orchestration-playbook.md §15。
+       ELIFECYCLE  Command failed with exit code 1.
+
+❌ 1 个门岗阻断失败：
+  · check:vocabularies（退出码 1）
+      ✔ boolean, number, object, and punctuation-only reasons cannot make the gate green (725.444709ms)
+      ✔ the generic authoritative-owner template cannot make the gate green (191.413875ms)
+      ℹ tests 63
+      ℹ suites 0
+      ℹ pass 63
+      ℹ fail 0
+      ℹ cancelled 0
+      ℹ skipped 0
+      ℹ todo 0
+      ℹ duration_ms 5921.622708
+      ✖ 语义词表门岗未通过。
+        historical new debt site：src/workbench/production/productionShotActions.ts::type:ToastKind/type-union
+          members：[error | info | success | warning]
+          reference：origin/main:scripts/vocabularies-baseline.json
+       ELIFECYCLE  Command failed with exit code 1.
+
+  这一轮已经跑完全部门岗，上面就是**全部**需要修的东西——一次改完，不用一轮推一个。
+ ELIFECYCLE  Command failed with exit code 1.
+ ELIFECYCLE  Command failed with exit code 1.

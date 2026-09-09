@@ -1,0 +1,43 @@
+✖ C59 stable catalog is in system context; user turns contain only catalog changes (85.493084ms)
+✖ C58 resident read loads a Skill but refuses project files without coding (3.798792ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 0
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 541.49075
+
+✖ failing tests:
+
+test at .tmp/agent-runtime-tests/tests/agent-runtime/lane-context-budget.test.mjs:20:1
+✖ C59 stable catalog is in system context; user turns contain only catalog changes (85.493084ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /MiniMax-H3/. Input:
+  
+  `[{"role":"system","content":"NOMI_LANE_SYSTEM\\n\\nAvailable tools:\\n- read_full_text: read the whole creation document as plain text.\\n- read_selection: read just the text the user has selected — the only way to resolve \\"this\\" or \\"here\\".\\n- insert_at_cursor: insert finished prose at the user's cursor, pushing later text down.\\n- replace_selection: swap the user's current selection for new prose.\\n- append_to_end: add a new section at the very end of the document.\\n\\nGuidelines:\\n- Read the creation document before you change it: the user may have edited it since the last thing you saw.\\n- Write finished prose into the document, never a diff, a summary of your change, or a plan to write it later.\\n\\n不向用户展示内部 id，用标题指代；后续编辑先读取当前对象获取引用。\\nAgent 不接收全局金额预算，文稿中的金额不是系统上限或付费授权。费用只引用报价卡/目录单价，答不出就说提交时会显示报价。\\n回答长度随问题：只读/收尾类 ≤3 行；不复述清单。\\n"}]`
+  
+      at TestContext.<anonymous> (file:///Users/aoqimin/Desktop/Nomi-stage4-switch/.tmp/agent-runtime-tests/tests/agent-runtime/lane-context-budget.test.mjs:42:12)
+      at async Test.run (node:internal/test_runner/test:1110:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:358:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: `[{"role":"system","content":"NOMI_LANE_SYSTEM\\n\\nAvailable tools:\\n- read_full_text: read the whole creation document as plain text.\\n- read_selection: read just the text the user has selected — the only way to resolve \\"this\\" or \\"here\\".\\n- insert_at_cursor: insert finished prose at the user's cursor, pushing later text down.\\n- replace_selection: swap the user's current selection for new prose.\\n- append_to_end: add a new section at the very end of the document.\\n\\nGuidelines:\\n- Read the creation document before you change it: the user may have edited it since the last thing you saw.\\n- Write finished prose into the document, never a diff, a summary of your change, or a plan to write it later.\\n\\n不向用户展示内部 id，用标题指代；后续编辑先读取当前对象获取引用。\\nAgent 不接收全局金额预算，文稿中的金额不是系统上限或付费授权。费用只引用报价卡/目录单价，答不出就说提交时会显示报价。\\n回答长度随问题：只读/收尾类 ≤3 行；不复述清单。\\n"}]`,
+    expected: /MiniMax-H3/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at .tmp/agent-runtime-tests/tests/agent-runtime/lane-context-budget.test.mjs:51:1
+✖ C58 resident read loads a Skill but refuses project files without coding (3.798792ms)
+  AssertionError [ERR_ASSERTION]: read must be resident before any group switch
+      at TestContext.<anonymous> (file:///Users/aoqimin/Desktop/Nomi-stage4-switch/.tmp/agent-runtime-tests/tests/agent-runtime/lane-context-budget.test.mjs:60:12)
+      at async Test.run (node:internal/test_runner/test:1110:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:785:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
