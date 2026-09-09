@@ -193,7 +193,6 @@ describe("ProviderAdapterService", () => {
     const catalog = fakeCatalog();
     catalog.load = async () => { throw new Error("credential still offline"); };
     const deps = dependencies(catalog);
-    deps.schedule = () => {};
     const verify = vi.spyOn(deps, "verify");
     const adapterStore = store();
     const service = new ProviderAdapterService(adapterStore, deps);
