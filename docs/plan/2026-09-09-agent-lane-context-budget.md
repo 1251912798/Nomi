@@ -123,3 +123,5 @@ B1c 首次完整 gates：76 contracts 阻断项全部通过，Vitest 11,841 通�
 第三轮 contracts 全过、Vitest 11,857/2 skipped；runtime 395/396，真实 renderer projection 在严格 composer schema 被 consumesAnchors 新字段拒绝。补齐共享 agentModelEntrySchema 的有界字符串数组字段；真实目录通过/错误元素类型拒绝由同一入口测试守住。不放宽 strict 或跳过校验。
 
 #686 再并线：preflight 在下一次 gates 前刷新到 `8a3136955`。唯一冲突 AgentPanelV4Cards 的计划行：保留 lane 技术详情折叠和 checkbox 的 aria-label；标签/说明采用 main 的 AgentPanelV4Markdown。未新增面板样式方案；原有已批准交互与 main Markdown 渲染同时保留。
+
+#686 集成环境检查：新包 Streamdown/code/cjk 尚未安装，已按 pnpm-lock.yaml 执行 frozen-lockfile install；不改依赖版本。main 新增的两份可执行 Markdown 走查脚本仍用旧 Agent 文稿工具名，统一改到 read_full_text（空参数）与 append_to_end（content），不修改历史截图/结果。全部阻断项收敛后再跑完整 gates。

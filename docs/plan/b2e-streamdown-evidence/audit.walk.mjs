@@ -93,7 +93,7 @@ try {
   const receiptMd='## 拍摄参数\n\n| 参数 | 值 |\n| --- | --- |\n| 比例 | **16:9** |\n| 时长 | `8 秒` |\n\n- 保留中文标点。\n- 保持窗光方向。'
   await win.locator(DOCUMENT).fill(receiptMd)
   const marker=`AUDIT_${theme}_07-receipt`
-  const req=walk.fixture.expectText({label:marker,match:b=>flattenRequestText(b).includes(marker),reply:{type:'tool',id:marker,name:'nomi_document_read',args:{scope:'full'}}})
+  const req=walk.fixture.expectText({label:marker,match:b=>flattenRequestText(b).includes(marker),reply:{type:'tool',id:marker,name:'read_full_text',args:{}}})
   const done=walk.fixture.expectText({label:marker+' done',match:b=>hasToolResult(b,marker),reply:{type:'text',text:'已读取文稿中的拍摄参数，未发起生成。'}})
   await sendCreation(win,marker+' 请读取当前文稿。')
   await recorded(req.received,marker);await recorded(done.received,marker+' done')
@@ -107,7 +107,7 @@ try {
   await clickOrFail(panel().locator(COMPOSER_PERMISSION),'打开权限')
   await clickOrFail(win.locator(permissionTier('step')),'每步问')
   const approval=`AUDIT_${theme}_08-approval`
-  const req2=walk.fixture.expectText({label:approval,match:b=>flattenRequestText(b).includes(approval),reply:{type:'tool',id:approval,name:'nomi_document_edit',args:{operation:'append',content:'\n- **镜头一**：窗边全景。\n- **镜头二**：茶杯特写。\n- **镜头三**：人物轻饮。'}}})
+  const req2=walk.fixture.expectText({label:approval,match:b=>flattenRequestText(b).includes(approval),reply:{type:'tool',id:approval,name:'append_to_end',args:{content:'\n- **镜头一**：窗边全景。\n- **镜头二**：茶杯特写。\n- **镜头三**：人物轻饮。'}}})
   const reject=walk.fixture.expectText({label:approval+' declined',match:b=>hasToolResult(b,approval),reply:{type:'text',text:'已取消追加，文稿保持原样。'}})
   await sendCreation(win,approval+' 请将这三条镜头列表追加到文稿，先让我确认。')
   await recorded(req2.received,approval)
