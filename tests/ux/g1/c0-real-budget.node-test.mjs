@@ -213,3 +213,40 @@ test('plan-only keeps its 2 CNY ceiling and rejects media even alongside mixed f
   await assert.rejects(dispatch('https://api.apimart.ai/v1/chat/completions', post({ model: text })), /BLOCKED_BUDGET/)
   assert.equal(sent, 1)
 })
+
+test('official DeepSeek quote has dated source and accounts cache tokens at conservative peak rates', async () => {
+  const { officialPlannerPrice, textUsageCost } = await import('./c0-real-budget.mjs')
+  const price = officialPlannerPrice('deepseek-v4-pro')
+  assert.equal(price.source, 'https://api-docs.deepseek.com/quick_start/pricing')
+  assert.equal(price.checkedAt, '2026-09-10')
+  assert.equal(textUsageCost({ prompt_tokens: 1000000, prompt_cache_hit_tokens: 250000, prompt_cache_miss_tokens: 750000, completion_tokens: 100000 }, price), (750000 * 1.32 + 250000 * .044 + 100000 * 3.96) / 1e6 * 7)
+  assert.throws(() => textUsageCost({ prompt_tokens: 1, completion_tokens: 1, prompt_cache_hit_tokens: 2 }, price), /USAGE_INVALID/)
+  const q = { ...quote, models: { ...REAL_MODELS, text: 'deepseek-v4-pro' }, plannerVendor: 'deepseek-official', plannerPrice: price }
+  assert.equal(requestQuote('https://api.deepseek.com/v1/chat/completions', 'POST', { model: 'deepseek-v4-pro', max_tokens: 10 }, q).model, 'deepseek-v4-pro')
+  assert.throws(() => requestQuote('https://api.deepseek.com/v1/chat/completions', 'POST', { model: 'deepseek-v4-pro', max_tokens: 10 }, quote), /REFUSED/)
+})
+
+test('official streaming usage settles a reserved request without rewriting the model response', async () => {
+  const { budgetedFetch, officialPlannerPrice, drainTextUsage } = await import('./c0-real-budget.mjs')
+  const q = { ...quote, models: { ...REAL_MODELS, text: 'deepseek-v4-pro' }, plannerVendor: 'deepseek-official', plannerPrice: officialPlannerPrice('deepseek-v4-pro') }
+  const ledger = { requests: [], reservedCny: 0 }
+  const content = 'data: ' + JSON.stringify({ choices: [{ delta: { reasoning_content: 'original reasoning' } }], usage: { prompt_tokens: 10, prompt_cache_hit_tokens: 5, completion_tokens: 2 } }) + '\n\ndata: [DONE]\n\n'
+  const wrapped = budgetedFetch({ quote: q, ledger, persist() {}, send: async () => {
+    assert.equal(ledger.requests.length, 1)
+    assert.ok(ledger.reservedCny > 0)
+    return new Response(content)
+  } })
+  const result = await wrapped('https://api.deepseek.com/v1/chat/completions', { method: 'POST', body: JSON.stringify({ model: q.models.text, max_tokens: 10 }) })
+  assert.equal(await result.text(), content)
+  await drainTextUsage()
+  assert.equal(ledger.textRequests, 1)
+  assert.equal(ledger.requests[0].usage.prompt_cache_hit_tokens, 5)
+  assert.ok(Math.abs(ledger.reservedCny - ledger.requests[0].costCny) < 1e-10)
+})
+
+test('ninth media submission is refused even when earlier settled costs leave room', async () => {
+  const { budgetedFetch } = await import('./c0-real-budget.mjs')
+  const ledger = { requests: Array.from({ length: 8 }, () => ({ model: REAL_MODELS.video })), reservedCny: 0 }
+  const wrapped = budgetedFetch({ quote, ledger, persist() {}, send() { assert.fail('ninth shot must not dispatch') } })
+  await assert.rejects(wrapped('https://api.apimart.ai/v1/videos/generations', { method: 'POST', body: JSON.stringify({ model: REAL_MODELS.video, resolution: '768P', duration: 8, aspect_ratio: '16:9' }) }), /C0_SHOT_LIMIT/)
+})

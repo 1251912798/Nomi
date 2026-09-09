@@ -1,3 +1,4 @@
+import { selectPlannerInUi } from './sweep-real.mjs'
 import { stationTimeout } from '../_station-budget.mjs'
 import { watchCredential } from './credential-precheck.mjs'
 import fs from 'node:fs'
@@ -7,17 +8,25 @@ import { scorePlanner } from './c0-r30.mjs'
 import path from 'node:path'
 import { readLaneTranscripts, laneMessages } from '../agent-lane-observer.mjs'
 import { prepareIsolation } from '../../../evals/lib/isoApp.mjs'
-import { publicPrices, quoteC0, assertAffordable, REAL_MODELS, requestQuote } from './c0-real-budget.mjs'
+import { publicPrices, quoteC0, assertAffordable, REAL_MODELS, requestQuote, officialPlannerPrice } from './c0-real-budget.mjs'
 
-export async function createRealScheduler({ tempRoot, attemptDir, outputDir, report, planOnly = false, plannerModel }) {
+export async function createRealScheduler({ tempRoot, attemptDir, outputDir, report, planOnly = false, plannerModel, plannerVendor }) {
   const mixed = !planOnly && process.env.NOMI_C0_MEDIA_DRY_RUN === '1'
+  const planner = resolvePlanner({ planOnly, mixed, plannerModel, plannerVendor })
   if (mixed) outputDir = process.env.NOMI_C0_LEDGER_DIR ?? attemptDir
   const response = await fetch('https://apimart.ai/pricing', { signal: AbortSignal.timeout(30_000), redirect: 'error' })
   if (!response.ok) throw new Error('C0_PUBLIC_PRICE_UNAVAILABLE')
   const html = await response.text()
   fs.writeFileSync(path.join(attemptDir, 'public-pricing.html'), html)
-  if (plannerModel && !planOnly && !mixed) throw new Error('C0_PLANNER_OVERRIDE_REQUIRES_MIXED_MODE')
   const quote = planOnly || mixed ? quotePlanSample(publicPrices(html), plannerModel ?? REAL_MODELS.text, { planOnly }) : quoteC0(publicPrices(html))
+  quote.plannerVendor = planner.vendor
+  if (planner.vendor === 'deepseek-official') {
+    quote.plannerPrice = officialPlannerPrice(planner.model)
+    quote.models = { ...quote.models, text: planner.model }
+    quote.maxOutputTokens = quote.plannerPrice.maxOutputTokens
+    // Text dispatch is separately reserved from actual serialized input; no assumed turn count.
+    quote.totalUpperCny = (64 * quote.videoPerSecondUsd + 2 * quote.imageUsd) * quote.cnyPerUsd
+  }
   const models = quote.models
   if (mixed) {
     const budget = Number(process.env.NOMI_C0_TEXT_BUDGET ?? 3)
@@ -34,13 +43,24 @@ export async function createRealScheduler({ tempRoot, attemptDir, outputDir, rep
   const iso = prepareIsolation(tempRoot, { requireCatalog: true })
   const catalogFile = path.join(iso.settingsDir, 'model-catalog.json')
   const catalog = JSON.parse(fs.readFileSync(catalogFile, 'utf8'))
+  if (planner.vendor === 'deepseek-official') {
+    if (!process.env.DEEPSEEK_API_KEY) throw Error('C0_OFFICIAL_CREDENTIAL_REQUIRED')
+    catalog.vendors = catalog.vendors.filter(v => v.key !== planner.vendor)
+    catalog.vendors.push({ key: planner.vendor, name: 'DeepSeek Official',
+      enabled: true, baseUrlHint: 'https://api.deepseek.com', providerKind: 'openai-compatible', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() })
+  }
   // Sample identity is user-selected and priced from the live official catalog; only the isolated copy changes.
-  if (!catalog.models.some((m) => m.vendorKey === 'apimart' && m.modelKey === models.text)) {
-    catalog.models.push({ vendorKey: 'apimart', modelKey: models.text, labelZh: models.text,
+  if (!catalog.models.some((m) => m.vendorKey === planner.vendor && m.modelKey === models.text)) {
+    catalog.models.push({ vendorKey: planner.vendor, modelKey: models.text, labelZh: models.text,
       kind: 'text', enabled: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() })
   }
-  for (const vendor of catalog.vendors) vendor.enabled = vendor.key === 'apimart'
-  for (const model of catalog.models) model.enabled = model.vendorKey === 'apimart' && Object.values(models).includes(model.modelKey)
+  if (quote.plannerPrice) {
+    const model = catalog.models.find(m => m.vendorKey === planner.vendor && m.modelKey === models.text)
+    model.tokenPricing = { inputPerMTokUsd: quote.plannerPrice.rates.input, outputPerMTokUsd: quote.plannerPrice.rates.output,
+      cacheReadPerMTokUsd: quote.plannerPrice.rates.cached_input }
+  }
+  for (const vendor of catalog.vendors) vendor.enabled = vendor.key === 'apimart' || vendor.key === planner.vendor
+  for (const model of catalog.models) model.enabled = model.kind === 'text' ? model.vendorKey === planner.vendor && model.modelKey === models.text : model.vendorKey === 'apimart' && [models.image, models.video].includes(model.modelKey)
   for (const modelKey of Object.values(models)) {
     if (!catalog.models.some((m) => m.enabled && m.modelKey === modelKey)) throw new Error('C0_CONFIGURED_MODEL_UNAVAILABLE')
   }
@@ -66,7 +86,9 @@ export async function createRealScheduler({ tempRoot, attemptDir, outputDir, rep
       report.costCny = Math.max(0, ledger.billedCnyAtBudgetRate - earlierCostCny)
       report.groupCostCny = ledger.billedCnyAtBudgetRate
       report.billedUsd = ledger.billedUsd
-      report.billingAttribution = 'APIMart token balance delta; concurrent use of the same token may be included'
+      report.textRequests = ledger.textRequests ?? 0
+      report.billingAttribution = 'APIMart media reservation plus text usage at quoted conservative rates; no balance queries'
+      if (ledger.requests.some(row => row.usageError)) throw Error('C0_TEXT_USAGE_INVALID')
     } catch {
       report.costCny = null
       report.billingError = 'C0_BILLING_UNAVAILABLE'
@@ -100,11 +122,9 @@ export async function createRealScheduler({ tempRoot, attemptDir, outputDir, rep
         const module = await process.mainModule.require(options.bridge)
         globalThis.__c0Dispatch = await module.attachRealDispatch(options)
       }, { bridge, quote, ledgerPath, mediaFiles, requestsPath: path.join(attemptDir, 'model-requests.json'), credentialMarker }) }) } finally { fs.rmSync(bridge, { force: true }) }
-      await launched.win.evaluate(({ models }) => {
-        localStorage.setItem('nomi.assistantModel', JSON.stringify({ vendorKey: 'apimart', modelKey: models.text }))
-        window.dispatchEvent(new CustomEvent('nomi:assistant-model-changed'))
-      }, { models })
+
     },
+    async selectPlanner(win) { await selectPlannerInUi(win, models.text) },
     preparePlan() {}, async planRequested() {},
     async assertNoGeneration(expect) {
       await snapshot()
@@ -134,4 +154,14 @@ export async function createRealScheduler({ tempRoot, attemptDir, outputDir, rep
       }
     },
   }
+}
+
+export function resolvePlanner({ planOnly = false, mixed = false, plannerModel, plannerVendor } = {}) {
+  const vendor = plannerVendor ?? 'apimart', model = plannerModel ?? REAL_MODELS.text
+  if (!['apimart', 'deepseek-official'].includes(vendor)) throw Error('C0_PLANNER_VENDOR_REFUSED')
+  if (vendor === 'deepseek-official') {
+    officialPlannerPrice(model)
+    if (planOnly || mixed) throw Error('C0_OFFICIAL_REQUIRES_REAL_MEDIA')
+  } else if (!planOnly && !mixed && model !== REAL_MODELS.text) throw Error('C0_PLANNER_VENDOR_REQUIRED')
+  return { vendor, model }
 }

@@ -5,38 +5,33 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { createRequire } from 'node:module'
 import { planSampleFetch } from './c0-plan-sample-budget.mjs'
-import { budgetedFetch, CNY_PER_USD } from './c0-real-budget.mjs'
+import { budgetedFetch, CNY_PER_USD, drainTextUsage } from './c0-real-budget.mjs'
 export async function attachRealDispatch({ quote, ledgerPath, mediaFiles = [], requestsPath, credentialMarker }) {
   const require = createRequire(import.meta.url)
   const { app } = require('electron')
   const compiled = path.join(app.getAppPath(), 'dist-electron')
-  const { readCatalog } = require(path.join(compiled, 'catalog/catalogStore.js'))
-  const { decryptApiKeyRecord } = require(path.join(compiled, 'catalog/secrets.js'))
-  const key = decryptForDispatch({ record: readCatalog().apiKeysByVendor?.apimart, decrypt: decryptApiKeyRecord, credentialMarker })
+  const { decryptApiKeyRecord, makeApiKeyRecordFromPlain } = require(path.join(compiled, 'catalog/secrets.js'))
+  const catalogFile = path.join(process.env.NOMI_SETTINGS_DIR, 'model-catalog.json')
+  const catalog = JSON.parse(fs.readFileSync(catalogFile, 'utf8'))
+  if (quote.plannerVendor === 'deepseek-official') {
+    const secret = process.env.DEEPSEEK_API_KEY
+    if (!secret) throw Error('C0_OFFICIAL_CREDENTIAL_REQUIRED')
+    const date = new Date().toISOString()
+    catalog.apiKeysByVendor[quote.plannerVendor] = makeApiKeyRecordFromPlain(secret, quote.plannerVendor, true, date, date)
+    fs.writeFileSync(catalogFile, JSON.stringify(catalog), { mode: 0o600 })
+  }
+  const key = decryptForDispatch({ record: catalog.apiKeysByVendor?.apimart, decrypt: decryptApiKeyRecord, credentialMarker })
   const transport = require(path.join(compiled, 'appFetch.js'))
   const originalAppFetch = transport.appFetch
   const originalGlobalFetch = globalThis.fetch
   const proxy = require(path.join(compiled, 'systemProxy.js'))
   const observe = createTransportEvidence({ evidencePath: path.join(path.dirname(requestsPath), 'transport-evidence.json'),
-    redact: value => String(value).split(key).join('[REDACTED]'),
+    redact: value => String(value).split(key).join('[REDACTED]').split(process.env.DEEPSEEK_API_KEY || '\0').join('[REDACTED]'),
     proxyState: () => { const status = proxy.getProxyStatus(); return { viaProxy: Boolean(status.activeUrl), source: status.source, mode: status.mode,
       route: status.activeUrl ? 'PROXY (address omitted)' : 'DIRECT', limitation: 'application routing; transparent TUN cannot be observed' } } })
   const ledger = fs.existsSync(ledgerPath) ? JSON.parse(fs.readFileSync(ledgerPath, 'utf8'))
     : { reservedCny: 0, requests: [], initialUsedUsd: null, billedUsd: null }
   const persist = () => fs.writeFileSync(ledgerPath, JSON.stringify(ledger, null, 2), { mode: 0o600 })
-  const balance = async () => {
-    try {
-      const response = await observe(originalAppFetch, 'appFetch:balance')('https://api.apimart.ai/v1/balance', {
-        headers: { Authorization: `Bearer ${key}` }, signal: AbortSignal.timeout(20_000), redirect: 'error',
-      })
-      const data = await response.json()
-      if (!response.ok || data.success !== true || !Number.isFinite(data.used_balance)
-        || !Number.isFinite(data.used_credits) || Math.abs(data.used_credits - data.used_balance * 10) > .00001)
-        throw new Error('invalid')
-      return data.used_balance
-    } catch { throw new Error('C0_BILLING_UNAVAILABLE') }
-  }
-  ledger.initialUsedUsd ??= await balance()
   persist()
   const wrap = createDispatchWrapper({ quote, ledger, persist, requestsPath, mediaFiles, ledgerPath, observe })
   transport.appFetch = wrap(originalAppFetch, 'appFetch')
@@ -44,8 +39,9 @@ export async function attachRealDispatch({ quote, ledgerPath, mediaFiles = [], r
   return {
     markLifecycle(reason) { observe.markLifecycle(reason) },
     async snapshot() {
-      ledger.billedUsd = Math.max(ledger.billedUsd ?? 0, (await balance()) - ledger.initialUsedUsd)
-      ledger.billedCnyAtBudgetRate = ledger.billedUsd * CNY_PER_USD
+      await drainTextUsage()
+      ledger.billedCnyAtBudgetRate = ledger.requests.reduce((sum, row) => sum + (row.costCny ?? row.upperUsd * CNY_PER_USD), 0)
+      ledger.billedUsd = ledger.billedCnyAtBudgetRate / CNY_PER_USD
       if (quote.mediaDryRun) ledger.billedCny = ledger.billedCnyAtBudgetRate
       persist()
       return ledger

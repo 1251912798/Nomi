@@ -19,7 +19,7 @@ import { parseArgs } from 'node:util'
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..')
 const { values } = parseArgs({ options: {
   'dry-run': { type: 'boolean' }, real: { type: 'boolean' },
-  'plan-only': { type: 'boolean' }, 'planner-model': { type: 'string' }, 'output-dir': { type: 'string' },
+  'plan-only': { type: 'boolean' }, 'planner-model': { type: 'string' }, 'planner-vendor': { type: 'string' }, 'output-dir': { type: 'string' },
   packaged: { type: 'string' }, help: { type: 'boolean' },
 }, allowPositionals: false })
 if (values.help) {
@@ -110,7 +110,7 @@ try {
   }
   if (executablePath) report.executableSha256 = hash(executablePath)
   scheduler = values.real
-    ? await (await import('./c0-real-scheduler.mjs')).createRealScheduler({ tempRoot, attemptDir, outputDir, report, planOnly: values['plan-only'], plannerModel: values['planner-model'] })
+    ? await (await import('./c0-real-scheduler.mjs')).createRealScheduler({ tempRoot, attemptDir, outputDir, report, planOnly: values['plan-only'], plannerModel: values['planner-model'], plannerVendor: values['planner-vendor'] })
     : await createDryScheduler(root, settingsDir, path.join(attemptDir, 'fixture-media'), report)
   const MODEL = scheduler.model
   const launch = async () => {
@@ -145,6 +145,7 @@ try {
     await win.reload({ waitUntil: 'domcontentloaded' })
     await clickOrFail(win.getByRole('button', { name: /^新建空白项目/ }), '创建 C0 空项目')
     await expect(win.locator(DOCUMENT)).toBeVisible()
+    await scheduler.selectPlanner?.(win)
     const projects = await win.evaluate(() => window.nomiDesktop.projects.listAsync())
     expect(projects).toHaveLength(1)
     projectId = projects[0].id
