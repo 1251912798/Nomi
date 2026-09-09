@@ -1,3 +1,5 @@
+import { expect } from './_assert.mjs'
+
 // 画布命中几何的**单一 owner**：「哪儿是空白」「连线上哪个点真的点得到」。
 //
 // 为什么要有这个文件（2026-09-05）：此前六份走查各抄了一份 `findBlankPoint`，
@@ -340,4 +342,21 @@ export async function findFrameDrawRectAround(page, { nodeSelectors, margin = 56
     },
     { selectors: [...nodeSelectors], marginPx: margin, stageSelector: CANVAS_STAGE_SELECTOR, paneSelector: CANVAS_PANE_SELECTOR },
   )
+}
+
+
+/** Fail on a clipped card instead of moving the canvas or choosing a forgiving click offset. */
+export async function expectNodeInsideCanvas(page, node, message = '新卡完整位于舞台内') {
+  await expect(node, message).toBeVisible()
+  const geometry = await node.evaluate((element, stageSelector) => {
+    const stage = document.querySelector(stageSelector)?.getBoundingClientRect()
+    const card = element.getBoundingClientRect()
+    return { stage: stage?.toJSON(), card: card.toJSON() }
+  }, CANVAS_STAGE_SELECTOR)
+  console.log('CANVAS_NODE_VISIBILITY', JSON.stringify(geometry))
+  const { stage, card } = geometry
+  expect(Boolean(stage && card.width > 0 && card.height > 0
+    && card.left >= stage.left && card.top >= stage.top
+    && card.right <= stage.right && card.bottom <= stage.bottom), `${message}: ${JSON.stringify(geometry)}`).toBe(true)
+  return geometry
 }

@@ -45,3 +45,6 @@ export function unionCanvasFitBounds(rects: readonly (CanvasFitRect | null | und
   const bottom = Math.max(...usable.map((rect) => rect.y + rect.height))
   return { x: left, y: top, width: right - left, height: bottom - top }
 }
+
+/** Shared readable lower bound for explicit fit, gestures and creation reveal. */
+export const CANVAS_MIN_ZOOM = 0.2

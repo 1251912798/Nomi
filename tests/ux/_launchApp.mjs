@@ -75,6 +75,11 @@ export const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)
 /** 默认等窗口的上限。取 60s：明显短于 Playwright 默认的 180s，让**我们的**错误信息先落地。 */
 const DEFAULT_WINDOW_TIMEOUT_MS = 60_000
 
+/** Content pixels, not native-window bounds: Canvas Acceptance's measured Linux baseline. */
+export const ACCEPTANCE_VIEWPORT = Object.freeze({ width: 1280, height: 933 })
+export const ACCEPTANCE_WIDE_VIEWPORT = Object.freeze({ width: 1680, height: 1050 })
+
+
 /** Seed ordinary persisted preferences before the renderer's first script.
  * Electron's -r module runs before the application's main entry; the session
  * preload leaves the product preload and existing profile values intact. */
@@ -192,6 +197,7 @@ export function withPackagedPlaywrightOrigin(args, isPackaged) {
  * @param {string} [options.projectsDir]    单独指定（默认 <tempRoot>/projects）
  * @param {string} [options.capabilityDir]  优先于 env.NOMI_CAPABILITY_DIR；均未设时隔离实例派生 <tempRoot>/capability
  * @param {number} [options.testedCatalogVersion]  被测构建的 catalog 版本；默认读取仓库 canonical manifest
+ * @param {{width: number, height: number}} [options.viewportSize] Content viewport; defaults to ACCEPTANCE_VIEWPORT.
  * @param {number} [options.timeout]        等窗口上限（ms）
  * @param {number} [options.settleMs=1500]  domcontentloaded 后再等一会儿（渲染层挂载）
  * @param {Record<string,string>} [options.initialLocalStorage] Existing product preferences for an isolated dev fixture; omitted for first-run tests.
@@ -305,6 +311,17 @@ export async function launchNomiApp(options = {}) {
       throw new Error(diagnoseLaunchFailure(`等了 ${timeout}ms 没等到窗口`, name, error, logTail))
     }
     await win.waitForLoadState('domcontentloaded')
+    const viewportSize = options.viewportSize ?? ACCEPTANCE_VIEWPORT
+    // Native resize alone may be clamped by CI's display; bind Chromium content geometry too.
+    const browserWindow = await app.browserWindow(win)
+    await browserWindow.evaluate((window, size) => window.setContentSize(size.width, size.height), viewportSize)
+    await win.setViewportSize(viewportSize)
+    const actualViewport = await win.evaluate(() => ({ width: innerWidth, height: innerHeight }))
+    if (actualViewport.width !== viewportSize.width || actualViewport.height !== viewportSize.height) {
+      await closeNomiApp(app)
+      throw new Error(`Acceptance viewport mismatch: expected ${JSON.stringify(viewportSize)}, got ${JSON.stringify(actualViewport)}`)
+    }
+    console.log('[walkthrough] content viewport', JSON.stringify(actualViewport))
     // Optional test observer owns measurement; installed before caller setup/actions.
     try {
       if (options.observeWindow) await options.observeWindow(win)
