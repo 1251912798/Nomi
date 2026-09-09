@@ -52,10 +52,10 @@ export function useDecomposeLayers(node: GenerationCanvasNode, imageUrl: string)
     if (!(await ensureReplicateConnectedOrGuide())) return
     const grantId = await confirmAndMintGrant({
       nodeIds: [node.id],
+      nodes: [{ meta: { modelVendor: 'replicate', modelKey: 'qwen/qwen-image-layered' } }],
       title: i18n.t('generationCommon.decompose.title'),
       message: `${describeGenerationCost(1, 'image', generationCostContextForNode(node))}${i18n.t('generationCommon.decompose.costSuffix')}`,
       confirmLabel: i18n.t('generationCommon.decompose.confirm'),
-      light: true,
     })
     if (!grantId) return
     setDecomposeBusy(true)

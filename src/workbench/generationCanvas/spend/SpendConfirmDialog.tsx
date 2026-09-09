@@ -19,7 +19,6 @@ export function SpendConfirmDialog() {
   const { t } = useTranslation()
   const pending = useSpendConfirmStore((state) => state.pending)
   const resolvePending = useSpendConfirmStore((state) => state.resolvePending)
-  const [suppress, setSuppress] = React.useState(false)
   const [rememberHosting, setRememberHosting] = React.useState(false)
   const [remainingMs, setRemainingMs] = React.useState(0)
   // P4 S3a：多镜确认卡「交互即暂停」——用户一旦在卡上动一下（点/移入/聚焦），倒计时停在原地，
@@ -74,7 +73,6 @@ export function SpendConfirmDialog() {
   const countdownPaused = isMultiShot && interacted
 
   React.useEffect(() => {
-    if (!pending) setSuppress(false)
     setChoiceKey(pending?.directionCandidates?.[0]?.key ?? null)
     setInteracted(false)
     setRememberHosting(false)
@@ -298,9 +296,6 @@ export function SpendConfirmDialog() {
               {t('generationCommon.production.gate.missingPolicyTitle', { count: pending.contract!.policy.issueCount })}
             </div>
             <div className={cn('mt-1 grid gap-0.5')}>
-              {pending.contract!.policy.missingHardBudget ? (
-                <div data-production-policy-issue="budget">{t('generationCommon.production.gate.missingPolicyBudget')}</div>
-              ) : null}
               {pending.contract!.policy.missingProviders.length ? (
                 <div data-production-policy-issue="providers">
                   {t('generationCommon.production.gate.missingPolicyProviders', { providers: pending.contract!.policy.missingProviders.join(', ') })}
@@ -343,14 +338,7 @@ export function SpendConfirmDialog() {
           </div>
         ) : null}
 
-        {pending.light ? (
-          <label
-            className={cn('flex items-center gap-2 mb-4 cursor-pointer select-none text-caption text-nomi-ink-60')}
-          >
-            <input type="checkbox" checked={suppress} onChange={(event) => setSuppress(event.target.checked)} />
-            {t('generationCommon.spend.suppressSession')}
-          </label>
-        ) : null}
+
 
         <div className={cn('flex items-center justify-end gap-2')}>
           <WorkbenchButton className={cn('h-8 px-4 cursor-pointer')} onClick={() => resolvePending(false)}>
@@ -375,7 +363,7 @@ export function SpendConfirmDialog() {
               onClick={() => {
                 // B1：方向门确认时先回传选中候选（沿用 onOpenPolicySettings 的回调模式），再 resolve。
                 if (directionCandidates.length) pending.onDirectionDecision?.(choiceKey)
-                resolvePending(true, suppress, rememberHosting)
+                resolvePending(true, rememberHosting)
               }}
             >
               {pending.confirmLabel || t('generationCommon.spend.confirm')}
