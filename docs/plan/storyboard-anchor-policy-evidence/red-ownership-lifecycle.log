@@ -1,0 +1,51 @@
+
+ RUN  v4.1.8 /Users/aoqimin/Desktop/Nomi-anchor-policy
+
+ ❯ src/workbench/creation/storyboard/exec/storyboardOverrides.integration.test.ts (6 tests | 2 failed) 14ms
+   × aborted Agent edits restore field ownership as well as the prompt 2ms
+   × prompt event replay retains the same override ownership as the live node 2ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/workbench/creation/storyboard/exec/storyboardOverrides.integration.test.ts > aborted Agent edits restore field ownership as well as the prompt
+AssertionError: expected [ 'prompt' ] to not include 'prompt'
+ ❯ src/workbench/creation/storyboard/exec/storyboardOverrides.integration.test.ts:88:51
+     86|   expect(result.status).toBe('aborted')
+     87|   expect(node().prompt).toBe('傍晚')
+     88|   expect(node().meta?.overriddenFields ?? []).not.toContain('prompt')
+       |                                                   ^
+     89| })
+     90| it('prompt event replay retains the same override ownership as the liv…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/workbench/creation/storyboard/exec/storyboardOverrides.integration.test.ts > prompt event replay retains the same override ownership as the live node
+AssertionError: expected { shotId: 's3', …(1) } to deeply equal { shotId: 's3', …(2) }
+
+- Expected
++ Received
+
+  {
+-   "overriddenFields": [
+-     "prompt",
+-   ],
+    "shotId": "s3",
+    "storyboardDesignId": "design",
+  }
+
+ ❯ src/workbench/creation/storyboard/exec/storyboardOverrides.integration.test.ts:95:34
+     93|   try {
+     94|     await applyCanvasToolCall('set_node_prompt', { nodeId: 'n3', promp…
+     95|     expect(replay.nodes[0].meta).toEqual(node().meta)
+       |                                  ^
+     96|   } finally { setCanvasEventSinkForTests(null) }
+     97| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 4 passed (6)
+   Start at  17:03:13
+   Duration  1.41s (transform 667ms, setup 23ms, import 1.30s, tests 14ms, environment 0ms)
+
