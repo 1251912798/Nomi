@@ -1,3 +1,6 @@
+import { capabilityContractById } from '../shared/agentCapabilities/registry.js';
+import { modelToolCapabilityId } from '../shared/agentCapabilities/modelFacingTools.js';
+import type { LaneComposerContext } from '../shared/agentLane/laneDesktopContracts.js';
 import { LANE_CODING_TOOL_NAMES } from './laneCodingTools.mjs';
 import { LANE_LEGACY_NOTE, LANE_LEGACY_TOOLS_NOTE, laneLegacyFacts } from '../shared/agentLane/laneLegacyNote.js';
 import { findLaneReceiptAuthority } from './laneReceiptAuthority.mjs';
@@ -322,8 +325,10 @@ export const openLane: OpenLane = async (options: OpenLaneOptions): Promise<Lane
   harness.hooks.on('before_payload', (event) => options.input
     ? { payload: options.input.rewritePayload(event.payload, event.model.api) } : undefined);
 
+  let consumedContext: LaneComposerContext | undefined;
   harness.hooks.on('transform_context', async (event) => {
     const input = [...event.messages].reverse().find(isLaneInputMessage);
+    consumedContext = input?.context;
     if (input && options.input) options.input.activate(input.context);
     const catalogBase = event.messages.find(isLaneInputMessage);
     const authority = gate ? tools.filter(tool => options.tools.some(spec => spec.name === tool.name))
@@ -344,6 +349,17 @@ export const openLane: OpenLane = async (options: OpenLaneOptions): Promise<Lane
       return { block: { terminate: true, reason:
         `This turn has reached its ${maxModelRequests}-model-request limit, so no further tool call will run. `
         + 'State your conclusion and what is still undone, in text, now.' } };
+    }
+    // Schema residency grants discovery, never authority over another Composer surface.
+    // Use the consumed input (also on replay), not capture(): that may be a queued draft.
+    const spec = options.tools.find(tool => tool.name === event.toolName);
+    const contract = spec ? capabilityContractById(modelToolCapabilityId(spec, event.args)) : undefined;
+    const port = contract?.execution.port;
+    if (options.input && contract?.effect !== 'read' && contract?.execution.availability === 'renderer_required'
+      && (port === 'document' || port === 'canvas' || port === 'timeline')
+      && consumedContext?.target?.kind !== port) {
+      return { block: { reason: `surface_authority_denied: This action requires the ${port} surface. `
+        + 'Ask the user to switch to that surface and send the action again; approval cannot grant another surface.' } };
     }
     await options.toolLifecycle?.prepare(event, hookContext.abortSignal ?? new AbortController().signal);
     // ② 闸。上限先判：到了上限就没有「问用户要不要放行」这回事了。

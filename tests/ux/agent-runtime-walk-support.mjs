@@ -7,6 +7,8 @@ import { once } from 'node:events'
 import { launchNomiApp, repoRoot } from './_launchApp.mjs'
 import { clickOrFail, expect, screenshotSettled } from './_assert.mjs'
 import { createAgentRuntimeFixture } from './agent-runtime-fixture.mjs'
+import { LANE_MODEL_TOOL_CATALOG, LANE_DEFERRED_TOOL_CATALOG } from '../../dist-electron/agentLane/laneToolCatalog.js'
+import { LANE_CODING_TOOL_NAMES } from '../../dist-electron/agentLane/laneCodingTools.mjs'
 
 // ── 面板选择器：v4 契约的**唯一**一份 ────────────────────────────────────────
 //
@@ -102,6 +104,12 @@ export const ACTIVE_PERMISSION_TIER = `${PERMISSION_POPOVER} [data-tier][data-ac
 /** 头部两个图标钮。 */
 export const HISTORY_BUTTON = '[data-v4-control="history"]'
 export const COLLAPSE_BUTTON = '[data-v4-control="collapse"]'
+
+/** The real desktop assembly publishes domain and native schemas from the first request. */
+export function residentToolNames() {
+  return [...LANE_MODEL_TOOL_CATALOG, ...LANE_DEFERRED_TOOL_CATALOG].map(tool => tool.name)
+    .concat([...LANE_CODING_TOOL_NAMES, 'nomi_read', 'nomi_request_tools']).sort()
+}
 
 export function toolNames(body) {
   return (body.tools ?? []).map((tool) => tool.function.name).sort()

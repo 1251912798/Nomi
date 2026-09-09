@@ -344,11 +344,6 @@ try {
   const nodesAfterCreate = await canvasNodeIds()
   await walk.snap('06-canvas-three-nodes-no-card')
 
-  const unlockMaintenance = walk.fixture.expectText({
-    label: 'the model explicitly loads the maintenance group',
-    match: (body) => flattenRequestText(body).includes('K_CANVAS2') && !hasToolResult(body, 'k-unlock-maintenance'),
-    reply: { type: 'tool', id: 'k-unlock-maintenance', name: 'nomi_request_tools', args: { group: 'maintenance' } },
-  })
   const deleteCall = walk.fixture.expectText({
     label: 'canvas turn 2 proposes an irreversible delete',
     match: (body) => flattenRequestText(body).includes('K_CANVAS2') && !hasToolResult(body, DELETE_CALL),
@@ -363,13 +358,11 @@ try {
     reply: { type: 'text', text: DELETE_REPLY },
   })
   await sendCanvas(win, 'K_CANVAS2：把第三个多余的镜头删除。')
-  const unlockWire = await recorded(unlockMaintenance.received, 'maintenance discovery request')
-  expect(toolNames(unlockWire.body), '维护工具必须先由模型请求解锁').not.toContain('delete_canvas_nodes')
   const deleteRequestWire = await recorded(deleteCall.received, 'canvas delete request')
-  expect(toolNames(deleteRequestWire.body), '解锁回执后破坏性维护工具才可见')
-    .toContain('delete_canvas_nodes')
+  expect(toolNames(deleteRequestWire.body), '维护工具常驻，真实执行仍须审批').toContain('delete_canvas_nodes')
   const approval = win.locator(INTERVENTION)
   const approvalProof = await proveProbe(approval, '不可逆动作会浮出介入槽审批卡')
+  expect(await canvasNodeIds(), '工具已调用但未经审批，节点必须保持原样').toEqual(nodesAfterCreate)
   await expect(approval, '删节点是不可逆动作').toHaveAttribute('data-kind', 'approval-irreversible')
   await expect(approval.locator(INTERVENTION_CONFIRM), '不可逆动作必须给「确认」（= 仅这一次）').toBeVisible()
   await expect(approval, '不可逆动作必须把授权范围写在卡面上').toContainText('范围：仅这一次')
@@ -564,11 +557,6 @@ try {
     match: (body) => flattenRequestText(body).includes('K_TL：') && !hasToolResult(body, TIMELINE_READ_CALL),
     reply: { type: 'tool', id: TIMELINE_READ_CALL, name: 'read_timeline', args: {} },
   })
-  const unlockTimeline = walk.fixture.expectText({
-    label: 'load timeline edit tools after reading the actual revision',
-    match: (body) => hasToolResult(body, TIMELINE_READ_CALL) && !hasToolResult(body, 'k-unlock-timeline'),
-    reply: { type: 'tool', id: 'k-unlock-timeline', name: 'nomi_request_tools', args: { group: 'timeline' } },
-  })
   const planCall = walk.fixture.expectText({
     label: 'the timeline turn proposes a revision-guarded plan',
     match: (body) => hasToolResult(body, TIMELINE_READ_CALL) && !hasToolResult(body, TIMELINE_PLAN_CALL),
@@ -587,8 +575,7 @@ try {
   note(`剪辑面工具目录：${toolNames(readWire.body).join(', ')}`)
   expect(toolNames(readWire.body), '剪辑面必须摆出时间轴读写链')
     .toContain('read_timeline')
-  expect(toolNames(readWire.body)).not.toContain('apply_edit_plan')
-  await recorded(unlockTimeline.received, 'timeline discovery request')
+  expect(toolNames(readWire.body), '时间轴写工具常驻，真实执行仍须计划审批').toContain('apply_edit_plan')
   const planWire = await recorded(planCall.received, 'timeline plan request')
   expect(toolNames(planWire.body)).toEqual(expect.arrayContaining(['apply_edit_plan', 'undo_timeline_edit']))
   planCall.release({

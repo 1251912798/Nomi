@@ -125,3 +125,15 @@ B1c 首次完整 gates：76 contracts 阻断项全部通过，Vitest 11,841 通�
 #686 再并线：preflight 在下一次 gates 前刷新到 `8a3136955`。唯一冲突 AgentPanelV4Cards 的计划行：保留 lane 技术详情折叠和 checkbox 的 aria-label；标签/说明采用 main 的 AgentPanelV4Markdown。未新增面板样式方案；原有已批准交互与 main Markdown 渲染同时保留。
 
 #686 集成环境检查：新包 Streamdown/code/cjk 尚未安装，已按 pnpm-lock.yaml 执行 frozen-lockfile install；不改依赖版本。main 新增的两份可执行 Markdown 走查脚本仍用旧 Agent 文稿工具名，统一改到 read_full_text（空参数）与 append_to_end（content），不修改历史截图/结果。全部阻断项收敛后再跑完整 gates。
+
+### 可见性与执行把关
+
+旧契约：按面/按组裁剪模型可见工具，走查以工具名缺席推断安全。
+新契约：所有已注册工具常驻可见；真实调用仍须通过执行层权限、coding 解锁和 Surface 授权，loopback 验证拒绝结果与副作用不变。
+为什么：schema 可见性只负责模型发现能力，不能替代执行授权；本次迁移两份走查的旧断言，保留真实审批闭环，回滚仅 revert 本次测试/文档提交，验收为单条走查、7 条真实旅程及完整 gates。
+
+B1c-fix 实测：创作面 delete_canvas_nodes 在确认后成功删除，证据 `.tmp/b1c-fix/authority-red.log`。属于 recurring 产品缺口：在 lane 的 before_tool 共用入口，按已消费输入的 target 与规范 capability.execution.port 校验 document/canvas/timeline 写操作，再进入准备和审批；原生 coding 的持久授权继续独立。无新 UI/框架/格式，不改域执行器，不复制工具名单；旧无 target 输入 fail-closed。类测试先红，含正确面/错误面/缺失面四类能力；回滚仅本次 scoped commit。
+
+执行证据：`electron/agentLane/laneHost.mts:361` 的 pi before_tool block 生成 `surface_authority_denied: This action requires the canvas surface.`；`electron/agentLane/laneNativeAssembly.mts:48` 在委托 pi bash 执行器之前抛出 `Request coding before accessing project files.`。两者在真实 JSONL 均为 `toolResult.isError=true`，下一 HTTP 请求实际携带拒绝；节点全量相等、已写入基线的可写 shell 哨兵字节不变。单条 Electron 走查 exit 0（10 次 loopback HTTP，零付费），类测试 12/12；红/绿日志 `.tmp/b1c-fix/`。全仓扫描另检出 `agent-real-user-conversation.walk.mjs` 删除和 timeline 两处旧裁剪断言，移除冗余切组夹具、保留真实审批/落盘闭环；`agentChatPolicy.test.ts` 与 MCP retirement 的 absence 测试验证独立规范别名/已删除工具，不是本次 lane 可见性契约。
+
+扫描补全：`agent-runtime-editing.walk.mjs` 两处、`agent-runtime-production.walk.mjs` 一处完整集合断言仍仅期望核心目录；统一通过 `agent-runtime-walk-support.mjs` 从正式 domain/native 目录派生 45 个常驻工具。production 走查三处 single-shot 的空 tools 是禁工具调用合同，保留。

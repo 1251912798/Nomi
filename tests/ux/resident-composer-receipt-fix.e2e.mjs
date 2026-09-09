@@ -171,16 +171,9 @@ try {
   // policy no longer lives in the work-mode popover; use an irreversible canvas
   // maintenance action so the default safe-auto posture still has to show the
   // intervention card without spending provider credits.
-  const maintenanceRequest = walk.fixture.expectText({
-    label: 'Agent explicitly requests the deferred maintenance tools',
-    match: (body) => flattenRequestText(body).includes('请提出一个需要拒绝的删除动作')
-      && !hasToolResult(body, 'resident-receipt-fix-maintenance'),
-    reply: { type: 'tool', id: 'resident-receipt-fix-maintenance', name: 'nomi_request_tools',
-      args: { group: 'maintenance' } },
-  })
   const rejectedRequest = walk.fixture.expectText({
     label: 'Resident Composer gated-action rejection proposal',
-    match: (body) => hasToolResult(body, 'resident-receipt-fix-maintenance')
+    match: (body) => flattenRequestText(body).includes('请提出一个需要拒绝的删除动作')
       && !hasToolResult(body, 'resident-receipt-fix-rejected'),
     reply: {
       type: 'tool', id: 'resident-receipt-fix-rejected', name: 'delete_canvas_nodes',
@@ -193,10 +186,8 @@ try {
     reply: { type: 'text', text: '已记录拒绝，本次没有删除画布内容。' },
   })
   await sendResidentIntent(win, '请提出一个需要拒绝的删除动作，不要自行删除。')
-  const maintenanceWire = await recorded(maintenanceRequest.received, 'the real tool-group request')
-  expect(toolNames(maintenanceWire.body)).not.toContain('delete_canvas_nodes')
   const deletionWire = await recorded(rejectedRequest.received, 'the real gated-action proposal')
-  expect(toolNames(deletionWire.body), 'maintenance must be activated before the model calls delete').toContain('delete_canvas_nodes')
+  expect(toolNames(deletionWire.body), 'Resident tools remain visible before any group request').toContain('delete_canvas_nodes')
   const rejectedApprovalCard = win.locator(`${CREATION_PANEL} ${APPROVAL_CARD}`).last()
   // 删节点是不可逆的：v4 把这件事写在槽的 data-kind 上（fail-closed 到 irreversible）。
   await expect(rejectedApprovalCard).toHaveAttribute('data-kind', 'approval-irreversible')
@@ -227,6 +218,51 @@ try {
   expect(laneMessageText(refusedResult)).toContain('这次先不删')
   walk.report.matrix.E = { status: 'passed', evidence: ['irreversible action -> real approval card -> refusal -> no project mutation'] }
   await clickOrFail(win.getByRole('button', { name: '创作', exact: true }), '返回创作工作区')
+
+  // Exercise visible tools on the real creation surface, before any coding unlock.
+  const creationProof = await proveProbe(win.locator(`${CREATION_PANEL}[data-agent-surface="creation"]`),
+    'Permission probes run in the mounted creation Composer')
+  const shellMarker = path.join(projectRoot, 'b1c-shell-must-not-run.txt')
+  fs.writeFileSync(shellMarker, 'not executed\n')
+  const nodesBeforeProbes = (await readProject(win, projectId)).payload.generationCanvas.nodes
+  const denials = []
+  for (const probe of [
+    { name: 'delete_canvas_nodes', args: { nodeIds: [fixtureNodeId], reason: 'creation surface authority probe' } },
+    { name: 'bash', args: { command: 'printf executed > b1c-shell-must-not-run.txt' } },
+  ]) {
+    const id = `resident-creation-denied-${probe.name}`
+    const intent = `权限回归探针 ${id}`
+    const request = walk.fixture.expectText({
+      label: `${probe.name} is actually called from creation`,
+      match: body => flattenRequestText(body).includes(intent) && !hasToolResult(body, id),
+      reply: { type: 'tool', id, name: probe.name, args: probe.args },
+    })
+    const followup = walk.fixture.expectText({
+      label: `${probe.name} returns its execution denial to the model`,
+      match: body => hasToolResult(body, id),
+      reply: { type: 'text', text: `权限探针完成 ${id}` },
+    })
+    await sendResidentIntent(win, intent)
+    const wire = await recorded(request.received, `${probe.name} request`)
+    expect(toolNames(wire.body)).toContain(probe.name)
+    const resultWire = await recorded(followup.received, `${probe.name} execution denial`)
+    const wireResult = resultWire.body.messages.find(message => message.role === 'tool' && message.tool_call_id === id)
+    await expect.poll(() => readLaneTranscripts(projectRoot).flatMap(laneMessages)
+      .find(message => message.role === 'toolResult' && message.toolCallId === id),
+    { message: 'The real execution result must be durable', timeout: stationTimeout({ operations: 2 }) }).toBeTruthy()
+    const result = readLaneTranscripts(projectRoot).flatMap(laneMessages)
+      .find(message => message.role === 'toolResult' && message.toolCallId === id)
+    denials.push({ tool: probe.name, wire: wireResult, result })
+    walk.report.executionDenials = denials
+    expect(result.isError, `${probe.name} must be refused by execution authority`).toBe(true)
+    if (probe.name === 'delete_canvas_nodes') expect(laneMessageText(result)).toContain('surface_authority_denied: This action requires the canvas surface.')
+    if (probe.name === 'bash') expect(laneMessageText(result)).toContain('Request coding before accessing project files.')
+    await expectAbsent(win.locator(`${CREATION_PANEL} ${APPROVAL_CARD}`), {
+      provenBy: creationProof, message: 'Unauthorized tools must be refused before requesting user approval',
+    })
+    expect((await readProject(win, projectId)).payload.generationCanvas.nodes).toEqual(nodesBeforeProbes)
+    expect(fs.readFileSync(shellMarker, 'utf8'), 'A real writable canary must remain unchanged').toBe('not executed\n')
+  }
 
   // N: use a separately spawned production MCP stdio Electron process. Elicitation accepts the
   // user's confirmation, then the GUI RPC boundary owns the same project-bound receipt service.

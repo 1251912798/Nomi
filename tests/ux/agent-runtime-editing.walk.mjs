@@ -12,7 +12,7 @@ import {
   selectConversation, sendCanvas, sendCreation, toolNames, waitForV4TurnIdle,
 } from './agent-runtime-walk-support.mjs'
 import { laneMessages, laneMessageText, readLaneTranscripts } from './agent-lane-observer.mjs'
-import { LANE_MODEL_TOOL_CATALOG } from '../../dist-electron/agentLane/laneToolCatalog.js'
+import { residentToolNames } from './agent-runtime-walk-support.mjs'
 
 const ORIGINAL = '清晨，创作者打开咖啡馆的门。她将红色杯子放到白色桌面，整理相机，再坐下来准备一天的拍摄。窗外的自然光照亮杯沿，背景保持简洁。'
 const A_PROMPT = 'F_A_文稿追加：在文末加一句收尾。'
@@ -22,7 +22,7 @@ const DOC_TOOL = 'f-doc-append-1'
 const CANVAS_TOOL = 'f-canvas-create-1'
 const B_PROMPT = 'F_B_独立对话：只回复这条新消息。'
 const RESUMED_REPLY = 'F_RESTORED：我记得已批准的追加及其工具结果。'
-const TOOLS = [...LANE_MODEL_TOOL_CATALOG.map((tool) => tool.name), 'nomi_request_tools'].sort()
+const TOOLS = residentToolNames()
 
 function toolEvidence(projectRoot, toolCallId) {
   const session = readLaneTranscripts(projectRoot).find((lane) => laneMessages(lane)

@@ -14,7 +14,7 @@ import {
   toolNames,
 } from './agent-runtime-walk-support.mjs'
 import { laneDiskSnapshot, laneMessages, laneMessageText, readLaneTranscripts } from './agent-lane-observer.mjs'
-import { LANE_MODEL_TOOL_CATALOG } from '../../dist-electron/agentLane/laneToolCatalog.js'
+import { residentToolNames } from './agent-runtime-walk-support.mjs'
 
 const STORY = 'F_INLINE_STORY：清晨，一位创作者来到咖啡馆。她将红色杯子放到白桌正中央，然后坐在窗边整理相机。镜头保持正面中景，自然光照亮杯沿，背景不要多余物件。画面只需要表现拍摄开始前安静的准备时刻。'
 const PLAN_CALL = 'f-inline-plan-1'
@@ -79,7 +79,7 @@ try {
   await expect(selectionStoryboardButton).toBeEnabled()
   await clickOrFail(selectionStoryboardButton, '在创作区就地拆镜头')
   const plannerWire = await recorded(planner.received, 'inline planner request')
-  expect(toolNames(plannerWire.body)).toEqual([...LANE_MODEL_TOOL_CATALOG.map((tool) => tool.name), 'nomi_request_tools'].sort())
+  expect(toolNames(plannerWire.body)).toEqual(residentToolNames())
   expect(plannerWire.body.messages.some((message) => message.role === 'user'
     && flattenRequestText({ messages: [message] }).includes(PARENT)),
   'Planning must retain the parent lane context in the provider request').toBe(true)
