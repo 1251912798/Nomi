@@ -1,4 +1,5 @@
 import { anchorsConsumedBy } from '../../../../config/modelArchetypes/anchorPolicy'
+import { NodeGenerationStatus } from '../../../generationCanvas/nodes/NodeGenerationStatus'
 import { StoryboardOverrideBadge } from '../../../generationCanvas/nodes/StoryboardOverrideBadge'
 import { resolveStoryboardOverride } from '../exec/storyboardOverrideActions'
 import React from 'react'
@@ -284,6 +285,7 @@ export default function StoryboardShotRow(props: Props): JSX.Element {
         selected={props.selected}
         onSelect={props.onSelect}
       />
+      <NodeGenerationStatus node={exec.node} keyframeNode={exec.keyframeNode} />
       <StoryboardFrameActions
         shot={shot}
         exec={exec}
