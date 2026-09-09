@@ -1,0 +1,58 @@
+feel record: b2c-form/waitForFunction.png; findings=4; new-surfaces=1; evidence: /Users/aoqimin/Desktop/Nomi-panel-form/artifacts/feel/b2c-form-2ceb42ae-02c8-49c6-a37e-3129f2b7025d
+feel record: b2c-form/frame-creation.png; findings=4; new-surfaces=1; evidence: /Users/aoqimin/Desktop/Nomi-panel-form/artifacts/feel/b2c-form-2ceb42ae-02c8-49c6-a37e-3129f2b7025d
+SHOT frame-creation
+feel record: b2c-form/waitForFunction.png; findings=22; new-surfaces=1; evidence: /Users/aoqimin/Desktop/Nomi-panel-form/artifacts/feel/b2c-form-2ceb42ae-02c8-49c6-a37e-3129f2b7025d
+feel record: b2c-form/frame-storyboard.png; findings=22; new-surfaces=2; evidence: /Users/aoqimin/Desktop/Nomi-panel-form/artifacts/feel/b2c-form-2ceb42ae-02c8-49c6-a37e-3129f2b7025d
+SHOT frame-storyboard
+feel record: b2c-form/waitForFunction.png; findings=7; new-surfaces=0; evidence: /Users/aoqimin/Desktop/Nomi-panel-form/artifacts/feel/b2c-form-2ceb42ae-02c8-49c6-a37e-3129f2b7025d
+feel record: b2c-form/frame-generation.png; findings=7; new-surfaces=1; evidence: /Users/aoqimin/Desktop/Nomi-panel-form/artifacts/feel/b2c-form-2ceb42ae-02c8-49c6-a37e-3129f2b7025d
+SHOT frame-generation
+feel record: b2c-form/waitForFunction.png; findings=24; new-surfaces=0; evidence: /Users/aoqimin/Desktop/Nomi-panel-form/artifacts/feel/b2c-form-2ceb42ae-02c8-49c6-a37e-3129f2b7025d
+feel record: b2c-form/frame-preview.png; findings=24; new-surfaces=1; evidence: /Users/aoqimin/Desktop/Nomi-panel-form/artifacts/feel/b2c-form-2ceb42ae-02c8-49c6-a37e-3129f2b7025d
+SHOT frame-preview
+separators [ { name: '拖动调整助手宽度' } ]
+feel record: b2c-form/waitForFunction.png; findings=5; new-surfaces=0; evidence: /Users/aoqimin/Desktop/Nomi-panel-form/artifacts/feel/b2c-form-2ceb42ae-02c8-49c6-a37e-3129f2b7025d
+feel record: b2c-form/width-600.png; findings=5; new-surfaces=2; evidence: /Users/aoqimin/Desktop/Nomi-panel-form/artifacts/feel/b2c-form-2ceb42ae-02c8-49c6-a37e-3129f2b7025d
+SHOT width-600
+feel record: b2c-form/waitForFunction.png; findings=26; new-surfaces=1; evidence: /Users/aoqimin/Desktop/Nomi-panel-form/artifacts/feel/b2c-form-2ceb42ae-02c8-49c6-a37e-3129f2b7025d
+feel record: b2c-form/width-600-preview.png; findings=26; new-surfaces=3; evidence: /Users/aoqimin/Desktop/Nomi-panel-form/artifacts/feel/b2c-form-2ceb42ae-02c8-49c6-a37e-3129f2b7025d
+SHOT width-600-preview
+feel record: b2c-form/waitForFunction.png; findings=5; new-surfaces=0; evidence: /Users/aoqimin/Desktop/Nomi-panel-form/artifacts/feel/b2c-form-2ceb42ae-02c8-49c6-a37e-3129f2b7025d
+feel record: b2c-form/width-300.png; findings=5; new-surfaces=2; evidence: /Users/aoqimin/Desktop/Nomi-panel-form/artifacts/feel/b2c-form-2ceb42ae-02c8-49c6-a37e-3129f2b7025d
+SHOT width-300
+feel record: b2c-form/waitForFunction.png; findings=5; new-surfaces=0; evidence: /Users/aoqimin/Desktop/Nomi-panel-form/artifacts/feel/b2c-form-2ceb42ae-02c8-49c6-a37e-3129f2b7025d
+feel record: b2c-form/width-before-refresh.png; findings=5; new-surfaces=2; evidence: /Users/aoqimin/Desktop/Nomi-panel-form/artifacts/feel/b2c-form-2ceb42ae-02c8-49c6-a37e-3129f2b7025d
+SHOT width-before-refresh
+feel record: b2c-form/waitForFunction.png; findings=10; new-surfaces=0; evidence: /Users/aoqimin/Desktop/Nomi-panel-form/artifacts/feel/b2c-form-2ceb42ae-02c8-49c6-a37e-3129f2b7025d
+feel record: b2c-form/model-electron.png; findings=10; new-surfaces=1; evidence: /Users/aoqimin/Desktop/Nomi-panel-form/artifacts/feel/b2c-form-2ceb42ae-02c8-49c6-a37e-3129f2b7025d
+SHOT model-electron
+feel record: b2c-form/waitForFunction.png; findings=39; new-surfaces=0; evidence: /Users/aoqimin/Desktop/Nomi-panel-form/artifacts/feel/b2c-form-2ceb42ae-02c8-49c6-a37e-3129f2b7025d
+feel record: b2c-form/process-running-electron.png; findings=39; new-surfaces=3; evidence: /Users/aoqimin/Desktop/Nomi-panel-form/artifacts/feel/b2c-form-2ceb42ae-02c8-49c6-a37e-3129f2b7025d
+SHOT process-running-electron
+feel record: b2c-form/failure.png; findings=39; new-surfaces=3; evidence: /Users/aoqimin/Desktop/Nomi-panel-form/artifacts/feel/b2c-form-2ceb42ae-02c8-49c6-a37e-3129f2b7025d
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+ExpectError: expect(received).toBe(expected) // Object.is equality
+
+Expected: true
+Received: false
+    at captureRawStack (/Users/aoqimin/Desktop/Nomi-panel-form/node_modules/.pnpm/playwright-core@1.60.0/node_modules/playwright-core/lib/coreBundle.js:3130:17)
+    at callMatcherAsStep (/Users/aoqimin/Desktop/Nomi-panel-form/node_modules/.pnpm/playwright@1.60.0/node_modules/playwright/lib/matchers/expect.js:12873:57)
+    at Object.toBe (/Users/aoqimin/Desktop/Nomi-panel-form/node_modules/.pnpm/playwright@1.60.0/node_modules/playwright/lib/matchers/expect.js:12863:23)
+    at Proxy.<anonymous> (/Users/aoqimin/Desktop/Nomi-panel-form/tests/ux/_collect.mjs:18:32)
+    at /Users/aoqimin/Desktop/Nomi-panel-form/tests/ux/agent-panel-form.walk.mjs:126:123 {
+  matcherResult: {
+    actual: false,
+    expected: true,
+    message: 'expect(received).toBe(expected) // Object.is equality\n' +
+      '\n' +
+      'Expected: true\n' +
+      'Received: false',
+    name: 'toBe',
+    pass: false
+  }
+}
+
+Node.js v24.13.1

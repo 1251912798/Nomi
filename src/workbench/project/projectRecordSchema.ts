@@ -10,7 +10,7 @@ import {
 import type { StoryboardDesign } from '../workbenchTypes'
 import { createDefaultGenerationCanvasSnapshot } from '../generationCanvas/store/generationCanvasDefaults'
 import type { GenerationCanvasSnapshot } from '../generationCanvas/model/generationCanvasTypes'
-import type { EditingPanelLayout } from '../preview/panelLayout'
+import { editingPanelLayoutSchema, type EditingPanelLayout } from '../preview/panelLayout'
 import { storyboardPlanSchema } from '../generationCanvas/agent/storyboardPlanSchema'
 import { cloneBuiltinCategories, projectCategorySchema, type ProjectCategory } from './projectCategories'
 
@@ -77,7 +77,7 @@ export const workbenchProjectPayloadSchema = z.object({
       updatedAt: z.number().finite(),
     })),
   ).optional(),
-  editingPanelLayout: z.unknown().optional(),
+  editingPanelLayout: editingPanelLayoutSchema.optional(),
 })
 
 export const workbenchProjectRecordSchema = workbenchProjectSummarySchema.extend({

@@ -58,49 +58,50 @@ function emitTools(receipts: readonly ToolReceipt[], t: Translate, out: V4FlowIt
   flush()
 }
 
-/**
- * 折叠一整条对话流。纯函数：同一份输入永远得到同一份输出，可逐条单测。
- *
- * 一段的判据是「从一条工具收据起，直到出现工具/助手以外的东西为止」，且这一段里
- * **至少有两次工具调用**——只调一次的地方一个字都不动，历史走查与已录基线因此不受影响。
- */
-export function collapseV4Flow(flow: readonly V4FlowItem[], t: Translate): readonly V4FlowItem[] {
+/** One process per work stretch. Assistant text remains visible even before a call. */
+export function collapseV4Flow(
+  flow: readonly V4FlowItem[],
+  t: Translate,
+  timing?: { turns: readonly import('../../../../electron/shared/projectAgentContracts').ProjectAgentTurn[]; liveTurnId?: string; elapsedSeconds: number },
+): readonly V4FlowItem[] {
   const out: V4FlowItem[] = []
   let index = 0
   while (index < flow.length) {
-    const item = flow[index]!
-    if (!isWorkItem(item)) {
-      out.push(item)
-      index += 1
-      continue
-    }
+    if (!isWorkItem(flow[index]!)) { out.push(flow[index]!); index += 1; continue }
     let end = index
     while (end < flow.length && isWorkItem(flow[end]!)) end += 1
     const stretch = flow.slice(index, end)
-    const receipts = stretch.flatMap((entry) => entry.kind === 'tool' ? [entry.receipt] : [])
-    // 一段可以**从助手文本起头**：模型常常先说一句「我先看看画布」再调工具，
-    // 那句话和后面几句自我纠正是同一类东西。只按工具起头会把它漏在外面，
-    // 于是过程行少了第一句、而那一句还占着满宽。
-    if (receipts.length < 2) {
-      out.push(item)
-      index += 1
-      continue
-    }
-    const lastToolAt = stretch.length - 1 - [...stretch].reverse().findIndex((entry) => entry.kind === 'tool')
-    const thinking = stretch.slice(0, lastToolAt).filter((entry): entry is Extract<V4FlowItem, { kind: 'thinking' }> => entry.kind === 'thinking')
-    // V4 has no reliable per-turn final-answer marker. Complete/streaming text may contain
-    // the answer even before a tool; only explicitly typed thinking is safe to hide.
-    const firstToolAt = stretch.findIndex((entry) => entry.kind === 'tool')
-    for (const entry of stretch.slice(0, firstToolAt)) if (entry.kind === 'assistant') out.push(entry)
-    emitTools(receipts, t, out)
-    if (thinking.length) out.push({
-      kind: 'process',
-      label: t('agentPanelV4.processThinking', { count: thinking.length }),
-      segments: Object.freeze(thinking.map((entry) => entry.meta || entry.label)),
+    const receipts = stretch.flatMap(item => item.kind === 'tool' ? [item.receipt] : [])
+    if (!receipts.length) { out.push(...stretch); index = end; continue }
+    const last = receipts[receipts.length - 1]!
+    const turn = timing?.turns.find(entry => entry.turnId === last.turnId)
+    const running = turn
+      ? timing?.liveTurnId === turn.turnId
+      : receipts.some(receipt => receipt.status === 'input-streaming' || receipt.status === 'input-available')
+    const work = stretch.filter(item => item.kind !== 'assistant')
+    // Group same tools across explicit thinking as in B2a; retain all thinking in details.
+    const grouped: V4FlowItem[] = []
+    emitTools(receipts, t, grouped)
+    grouped.push(...work.filter(item => item.kind === 'thinking'))
+    const details = grouped.map(item => ({ item, index: index + stretch.findIndex(entry =>
+      item.kind === 'tool-group' ? entry.kind === 'tool' && entry.receipt === item.receipts[0]
+        : item.kind === 'tool' ? entry.kind === 'tool' && entry.receipt === item.receipt
+          : entry === item) })).sort((a, b) => a.index - b.index)
+    // An unsuccessful attempt counts as a retry only if the same operation was attempted again.
+    const retried = receipts.filter((receipt, at) => receipt.status === 'output-error'
+      && receipts.slice(at + 1).some(next => groupKey(next) === groupKey(receipt)))
+    const unresolved = receipts.filter((receipt, at) => receipt.status === 'output-error'
+      && !receipts.slice(at + 1).some(next => groupKey(next) === groupKey(receipt)))
+    const duration = turn ? (running ? timing!.elapsedSeconds : (Date.parse(turn.updatedAt) - Date.parse(turn.createdAt)) / 1000) : undefined
+    const elapsed = duration !== undefined && Number.isFinite(duration) ? `${Math.max(0, Math.round(duration))}s` : undefined
+    out.push({
+      kind: 'process', running, toolCount: receipts.length, retries: retried.length,
+      label: running ? last.label : t('agentPanelV4.processSummary', { count: receipts.length, retries: retried.length }),
+      ...(elapsed ? { elapsed } : {}), details,
+      segments: work.flatMap(item => item.kind === 'thinking' ? [item.meta || item.label] : []),
     })
-    for (const [at, entry] of stretch.entries()) {
-      if ((at >= firstToolAt && entry.kind === 'assistant') || (at > lastToolAt && entry.kind === 'thinking')) out.push(entry)
-    }
+    for (const receipt of unresolved) out.push({ kind: 'error', reason: receipt.summary || receipt.label })
+    out.push(...stretch.filter(item => item.kind === 'assistant'))
     index = end
   }
   return Object.freeze(out)

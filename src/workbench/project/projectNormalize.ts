@@ -137,6 +137,7 @@ export function normalizePayload(input: unknown): WorkbenchProjectPayload {
     generationCanvas: payload.generationCanvas,
     categories: normalizeCategories(payload.categories),
     generationCanvasLastSeq: payload.generationCanvasLastSeq,
+    ...(payload.editingPanelLayout ? { editingPanelLayout: payload.editingPanelLayout } : {}),
     ...(Object.values(owner).some((designs) => designs.length > 0) ? { storyboardDesignsByDocumentId: owner } : {}),
   }
 }

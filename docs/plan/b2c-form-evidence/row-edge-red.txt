@@ -1,0 +1,3 @@
+
+设计 token 门岗未通过（token-only）：
+✗ 行尾贴边：src/workbench/ai/v4/AgentPanelV4Receipt.tsx 1 > 0；附属信息使用 V4Row 内容流

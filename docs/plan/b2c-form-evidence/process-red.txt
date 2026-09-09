@@ -1,0 +1,151 @@
+
+ RUN  v4.1.8 /Users/aoqimin/Desktop/Nomi-panel-form
+
+ ❯ src/workbench/ai/v4/agentPanelV4Form.test.ts (5 tests | 5 failed) 6ms
+     × settles interleaved thinking and calls into one process, keeping an early answer below it 3ms
+     × replaces the live row with the latest tool instead of leaving previous steps on screen 1ms
+     × keeps an unresolved failure outside collapsed details and keeps the answer 0ms
+     × does not join processes across a user message 0ms
+   × preserves detail ordering and source indexes across interleaved thinking 1ms
+
+ Test Files  1 failed (1)
+      Tests  5 failed (5)
+   Start at  17:46:20
+   Duration  298ms (transform 189ms, setup 184ms, import 16ms, tests 6ms, environment 0ms)
+
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/workbench/ai/v4/agentPanelV4Form.test.ts > B2c process contract > settles interleaved thinking and calls into one process, keeping an early answer below it
+AssertionError: expected [ 'assistant', 'tool', 'tool', …(1) ] to deeply equal [ 'process', 'assistant' ]
+
+- Expected
++ Received
+
+  [
+-   "process",
+    "assistant",
++   "tool",
++   "tool",
++   "process",
+  ]
+
+ ❯ src/workbench/ai/v4/agentPanelV4Form.test.ts:11:43
+      9|   it('settles interleaved thinking and calls into one process, keeping…
+     10|     const result = collapseV4Flow([answer, tool('读取全文'), thinking, too…
+     11|     expect(result.map(item => item.kind)).toEqual(['process', 'assista…
+       |                                           ^
+     12|     expect(result[0]).toMatchObject({ running: false, toolCount: 2 })
+     13|     expect(result[1]).toEqual(answer)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/5]⎯
+
+ FAIL  src/workbench/ai/v4/agentPanelV4Form.test.ts > B2c process contract > replaces the live row with the latest tool instead of leaving previous steps on screen
+AssertionError: expected [ { kind: 'tool', …(1) }, …(2) ] to have a length of 1 but got 3
+
+- Expected
++ Received
+
+- 1
++ 3
+
+ ❯ src/workbench/ai/v4/agentPanelV4Form.test.ts:17:20
+     15|   it('replaces the live row with the latest tool instead of leaving pr…
+     16|     const result = collapseV4Flow([tool('读取全文'), thinking, tool('加载分镜技…
+     17|     expect(result).toHaveLength(1)
+       |                    ^
+     18|     expect(result[0]).toMatchObject({ kind: 'process', running: true, …
+     19|   })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/5]⎯
+
+ FAIL  src/workbench/ai/v4/agentPanelV4Form.test.ts > B2c process contract > keeps an unresolved failure outside collapsed details and keeps the answer
+AssertionError: expected [ 'tool', 'tool', 'assistant' ] to deeply equal [ 'process', 'error', 'assistant' ]
+
+- Expected
++ Received
+
+  [
+-   "process",
+-   "error",
++   "tool",
++   "tool",
+    "assistant",
+  ]
+
+ ❯ src/workbench/ai/v4/agentPanelV4Form.test.ts:22:43
+     20|   it('keeps an unresolved failure outside collapsed details and keeps …
+     21|     const result = collapseV4Flow([tool('读取全文'), tool('写入 8 镜', 'outpu…
+     22|     expect(result.map(item => item.kind)).toEqual(['process', 'error',…
+       |                                           ^
+     23|     expect(result[1]).toMatchObject({ reason: '无法读取' })
+     24|   })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/5]⎯
+
+ FAIL  src/workbench/ai/v4/agentPanelV4Form.test.ts > B2c process contract > does not join processes across a user message
+AssertionError: expected [ 'tool', 'user', 'tool' ] to deeply equal [ 'process', 'user', 'process' ]
+
+- Expected
++ Received
+
+  [
+-   "process",
++   "tool",
+    "user",
+-   "process",
++   "tool",
+  ]
+
+ ❯ src/workbench/ai/v4/agentPanelV4Form.test.ts:27:43
+     25|   it('does not join processes across a user message', () => {
+     26|     const result = collapseV4Flow([tool('读取全文'), { kind: 'user', text:…
+     27|     expect(result.map(item => item.kind)).toEqual(['process', 'user', …
+       |                                           ^
+     28|   })
+     29| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/5]⎯
+
+ FAIL  src/workbench/ai/v4/agentPanelV4Form.test.ts > preserves detail ordering and source indexes across interleaved thinking
+AssertionError: expected { kind: 'assistant', …(2) } to match object { details: [ …(3) ] }
+(3 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+-   "details": [
+-     {
+-       "index": 1,
+-       "item": {
+-         "kind": "tool",
+-       },
+-     },
+-     {
+-       "index": 2,
+-       "item": {
+-         "kind": "thinking",
+-       },
+-     },
+-     {
+-       "index": 3,
+-       "item": {
+-         "kind": "tool",
+-       },
+-     },
+-   ],
++   "kind": "assistant",
++   "status": "complete",
++   "text": "已完成八个镜头。",
+  }
+
+ ❯ src/workbench/ai/v4/agentPanelV4Form.test.ts:34:21
+     32| it('preserves detail ordering and source indexes across interleaved th…
+     33|   const result = collapseV4Flow([answer, tool('读取全文'), thinking, tool(…
+     34|   expect(result[0]).toMatchObject({ details: [
+       |                     ^
+     35|     { index: 1, item: { kind: 'tool' } },
+     36|     { index: 2, item: { kind: 'thinking' } },
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/5]⎯

@@ -1,3 +1,4 @@
+import { V4Row } from './AgentPanelV4Row'
 // Agent 面板 v4 · 积木 ⑧ composer（AI Elements PromptInput + MiniMax 底栏）
 //
 // 底栏**逐件**照定稿 Composer 板：`[+] [模型名 ▾] ｜ [Skill] …… [权限 ▾] [↑/■]`
@@ -203,7 +204,7 @@ export function AgentPanelV4Composer({
           又允许浏览器把 scrollLeft 推到 17px 且用户拖不回来，助手正文、工具收据、
           头部头像左边全被**永久**裁掉。让模型钮成为那个会缩的（`min-w-0` + 名字 truncate），
           这一行就再也宽不过面板。 */}
-      <div className="flex h-10 min-w-0 shrink-0 items-center gap-0 px-1 pb-2 pt-1">
+      <V4Row as="div" className="h-10 min-w-0 shrink-0 px-1 pb-2 pt-1">
         <button
           type="button"
           aria-label={t('agentPanelV4.addAnyFile')}
@@ -213,25 +214,25 @@ export function AgentPanelV4Composer({
         >
           <IconPlus size={16} />
         </button>
-        <button
+        <V4Row as="button"
           type="button"
           onClick={() => onTogglePopover?.('model')}
           aria-expanded={openPopover === 'model'}
           title={modelLabel ?? undefined}
           style={{ maxWidth: MODEL_TRIGGER_WIDTH }}
-          className="inline-flex h-7 min-w-0 shrink items-center gap-[5px] whitespace-nowrap rounded-nomi-sm px-1 text-caption text-nomi-ink-80 hover:bg-nomi-ink-05"
+          className="h-7 min-w-0 shrink whitespace-nowrap rounded-nomi-sm px-1 text-caption text-nomi-ink-80 hover:bg-nomi-ink-05"
           data-v4-control="model"
         >
           <span className="min-w-0 truncate">{modelLabel ? compactModelLabel(modelLabel) : t('agentPanelV4.model')}</span>
           <IconChevronDown size={12} className="shrink-0" />
-        </button>
+        </V4Row>
         <span className="h-4 w-px shrink-0 bg-nomi-line" aria-hidden="true" />
-        <button
+        <V4Row as="button"
           type="button"
           onClick={() => onTogglePopover?.('skill')}
           aria-expanded={openPopover === 'skill'}
           className={cn(
-            'inline-flex h-7 shrink-0 items-center gap-[5px] whitespace-nowrap rounded-nomi-sm px-1 text-caption text-nomi-ink-80 hover:bg-nomi-ink-05',
+            'h-7 shrink-0 whitespace-nowrap rounded-nomi-sm px-1 text-caption text-nomi-ink-80 hover:bg-nomi-ink-05',
             skillSelected && 'bg-nomi-ink-05',
           )}
           data-v4-control="skill"
@@ -240,18 +241,18 @@ export function AgentPanelV4Composer({
           <IconPackage size={14} />
           {t('agentPanelV4.skill')}
           {skillSelected ? <span className="size-1.5 rounded-pill bg-nomi-accent" aria-hidden="true" /> : null}
-        </button>
-        <span className="flex-1" />
-        <button
+        </V4Row>
+
+        <V4Row as="button"
           type="button"
           onClick={() => onTogglePopover?.('permission')}
           aria-expanded={openPopover === 'permission'}
-          className="inline-flex h-7 shrink-0 items-center gap-[5px] whitespace-nowrap rounded-nomi-sm px-1 text-caption text-nomi-ink-80 hover:bg-nomi-ink-05"
+          className="h-7 shrink-0 whitespace-nowrap rounded-nomi-sm px-1 text-caption text-nomi-ink-80 hover:bg-nomi-ink-05"
           data-v4-control="permission"
         >
           {t(`agentPanelV4.permission.${permission}`)}
           <IconChevronDown size={12} />
-        </button>
+        </V4Row>
         {/* 有东西可发才点亮（文本或已挂 chip）。画布自己两种画法都出现过——
             高度① 那格（专门讲空框）画的是灰钮，Flow 三板画的是深钮。
             取「空框不该假装能发」这一条：它是那格的**论点**，另两处只是背景。
@@ -279,7 +280,7 @@ export function AgentPanelV4Composer({
             <IconArrowUp size={15} />
           )}
         </button>
-      </div>
+      </V4Row>
     </form>
   )
 }
@@ -316,22 +317,17 @@ export function V4ModelPopover({ rows, onOpenLibrary }: { rows: readonly V4Model
   const { t } = useTranslation()
   return (
     <aside
-      className="w-[340px] max-w-full overflow-hidden rounded-nomi border border-nomi-line bg-nomi-paper shadow-nomi-md"
+      className="w-max max-w-full overflow-hidden rounded-nomi border border-nomi-line bg-nomi-paper shadow-nomi-md"
       data-v4-popover="model"
     >
-      <div className="flex items-center gap-1.5 px-2.5 pb-1.5 pt-2 text-micro text-nomi-ink-40">
-        <span>{t('agentPanelV4.modelDialog')}</span>
-        <span className="flex-1" />
-        <span>{t('agentPanelV4.modelHint')}</span>
-      </div>
       {rows.map((row) => (
-        <div
+        <V4Row as="div"
           key={row.slot}
-          className="flex min-h-9 w-full items-center gap-2 px-2.5 text-left text-caption text-nomi-ink"
+          className="min-h-9 w-full px-2.5 text-left text-caption text-nomi-ink"
           data-v4-model-row={row.slot}
         >
           <span className="shrink-0 text-micro text-nomi-ink-60">{row.slot}</span>
-          <span className="min-w-0 flex-1">
+          <span className="min-w-0">
             {row.options?.length ? (
               <NomiSelect
                 size="xs"
@@ -345,17 +341,17 @@ export function V4ModelPopover({ rows, onOpenLibrary }: { rows: readonly V4Model
             ) : <span className="text-micro text-nomi-ink-40">{row.empty || row.name}</span>}
           </span>
           {row.cost ? <span className="shrink-0 text-micro text-nomi-ink-40">{row.cost}</span> : null}
-        </div>
+        </V4Row>
       ))}
-      <button
+      <V4Row as="button"
         type="button"
         onClick={onOpenLibrary}
-        className="flex w-full items-center gap-2 border-t border-nomi-line-soft px-2.5 py-2 text-left text-caption text-nomi-ink-60 hover:bg-nomi-ink-05"
+        className="w-full border-t border-nomi-line-soft px-2.5 py-2 text-left text-caption text-nomi-ink-60 hover:bg-nomi-ink-05"
       >
         <span>{t('agentPanelV4.modelLibrary')}</span>
-        <span className="flex-1" />
+
         <IconChevronRight size={12} />
-      </button>
+      </V4Row>
     </aside>
   )
 }
@@ -422,19 +418,19 @@ export function V4SkillPopover({
       />
       <div className="flex gap-1 overflow-hidden px-2.5 pb-1.5">
         {categories.map((category) => (
-          <button
+          <V4Row as="button"
             type="button"
             key={category}
             onClick={() => { setLocalCategory(category); onSelectCategory?.(category) }}
             className={cn(
-              'inline-flex h-[22px] shrink-0 items-center whitespace-nowrap rounded-pill px-2 text-micro',
+              'h-[22px] shrink-0 whitespace-nowrap rounded-pill px-2 text-micro',
               selectedCategory === category
                 ? 'bg-nomi-ink text-nomi-paper'
                 : 'bg-nomi-ink-05 text-nomi-ink-60',
             )}
           >
             {category}
-          </button>
+          </V4Row>
         ))}
       </div>
       <div className="max-h-[260px] overflow-y-auto overscroll-contain">
@@ -472,16 +468,16 @@ export function V4SkillPopover({
           )
         })}
       </div>
-      <button
+      <V4Row as="button"
         type="button"
         onClick={onManage}
-        className="flex w-full items-center gap-2 border-t border-nomi-line-soft px-2.5 py-2 text-left text-caption text-nomi-ink-60 hover:bg-nomi-ink-05"
+        className="w-full border-t border-nomi-line-soft px-2.5 py-2 text-left text-caption text-nomi-ink-60 hover:bg-nomi-ink-05"
       >
         <span>{t('agentPanelV4.skillExplore')}</span>
-        <span className="flex-1" />
+
         <IconPlus size={12} />
         {t('agentPanelV4.skillManage')}
-      </button>
+      </V4Row>
     </aside>
   )
 }
@@ -502,21 +498,21 @@ export function V4PermissionPopover({
     >
       <div className="inline-flex gap-0.5 rounded-nomi-sm bg-nomi-ink-05 p-0.5">
         {PERMISSION_TIERS.map((tier) => (
-          <button
+          <V4Row as="button"
             type="button"
             key={tier}
             data-tier={tier}
             data-active={tier === permission ? 'true' : undefined}
             onClick={() => onSelect?.(tier)}
             className={cn(
-              'inline-flex min-h-6 items-center whitespace-nowrap rounded-nomi-sm px-2.5 text-caption',
+              'min-h-6 whitespace-nowrap rounded-nomi-sm px-2.5 text-caption',
               tier === permission
                 ? 'bg-nomi-paper font-semibold text-nomi-ink shadow-nomi-sm'
                 : 'text-nomi-ink-60',
             )}
           >
             {t(`agentPanelV4.permission.${tier}`)}
-          </button>
+          </V4Row>
         ))}
       </div>
       <p className="mb-0 mt-2 text-micro leading-relaxed text-nomi-ink-60">

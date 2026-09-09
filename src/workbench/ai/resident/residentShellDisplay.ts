@@ -8,7 +8,7 @@
  *
  * **带 Tailwind 类名的换算可以住这里**（2026-09-06 更新）。曾经不行：`tailwind.config.ts` 的
  * content 只列 `.tsx`，类名字符串一进 `.ts` 就不再被生成，而且完全静默——`residentItemClassName`
- * 第一次搬进来时，用户气泡的 `ml-auto` / `max-w-[86%]` 当场消失，从右侧小卡片变成整行通栏。
+ * 第一次搬进来时，用户气泡的 `self-end` / `max-w-[86%]` 当场消失，从右侧小卡片变成整行通栏。
  * 当时的处置是把它搬回壳里 + 留一条「不能搬」的注释，那是**把防线建在人的记忆上**，
  * 而且和本文件存在的理由（R9 分层）正面打架。现在 content 同时扫 `.ts` 与 `.tsx`，
  * 由 `scripts/build-tailwind.test.ts` 守住不再退回去；来龙去脉见
@@ -83,7 +83,7 @@ export function friendlyError(error: unknown, t: Translate): string {
 
 /** 每一条消息挂什么样式。纯换算：只看这条消息是什么、有没有被拒，不碰任何 React 状态。 */
 export function residentItemClassName(item: ProjectAgentItem, declined: boolean): string {
-  if (item.kind === 'user') return 'ml-auto min-h-[52px] max-w-[86%] text-caption text-nomi-paper'
+  if (item.kind === 'user') return 'self-end min-h-[52px] max-w-[86%] text-caption text-nomi-paper'
   if (item.kind === 'assistant') return 'max-w-full px-1 text-caption leading-5'
   const ownsCard = (item.kind === 'failure' && !declined) || (item.kind === 'artifact' && (item.status === 'running' || item.status === 'failed'))
   if (ownsCard) return 'max-w-full'
