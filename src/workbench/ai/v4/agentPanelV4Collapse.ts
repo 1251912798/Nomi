@@ -96,7 +96,7 @@ export function collapseV4Flow(
     const elapsed = duration !== undefined && Number.isFinite(duration) ? `${Math.max(0, Math.round(duration))}s` : undefined
     out.push({
       kind: 'process', running, toolCount: receipts.length, retries: retried.length,
-      label: running ? last.label : t('agentPanelV4.processSummary', { count: receipts.length, retries: retried.length }),
+      label: running ? last.label : t(retried.length ? 'agentPanelV4.processSummaryWithRetries' : 'agentPanelV4.processSummary', { count: receipts.length, retries: retried.length }),
       ...(elapsed ? { elapsed } : {}), details,
       segments: work.flatMap(item => item.kind === 'thinking' ? [item.meta || item.label] : []),
     })
