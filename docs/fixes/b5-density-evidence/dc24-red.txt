@@ -1,0 +1,19 @@
+Exact failure summary; full local output: /tmp/b5-dc24-red.log
+     × renders no all-clear banner for an actionable-issue-free storyboard 5ms
+     × keeps track landing surfaces without repeating the main empty-state lesson 1ms
+     × makes a known no-reference mode quiet only when it has no mode-switch action 8ms
+     × keeps selected gestures and shared permissions, removes repeated teaching 3ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/workbench/settings/quietDefaults.test.ts > DC24 quiet defaults preserve actionable boundaries > renders no all-clear banner for an actionable-issue-free storyboard
+AssertionError: expected '<div data-storyboard-strategy-root="t…' to be '' // Object.is equality
+ FAIL  src/workbench/settings/quietDefaults.test.ts > DC24 quiet defaults preserve actionable boundaries > keeps track landing surfaces without repeating the main empty-state lesson
+AssertionError: expected 'import React from \'react\'\nimport {…' not to match /t\('timelineEditor\.(track\.emptyAudi…/
+ FAIL  src/workbench/settings/quietDefaults.test.ts > DC24 quiet defaults preserve actionable boundaries > makes a known no-reference mode quiet only when it has no mode-switch action
+AssertionError: expected 'import React from \'react\'\nimport {…' not to contain 't(\'storyboardEditor.row.noRefAccepte…'
++  * 卡片自己是 44×56，扇开之后要占到 65×73——少预留那一圈，扇面就压到右边的槽和下面的 caption 上；
+ FAIL  src/workbench/settings/quietDefaults.test.ts > DC24 quiet defaults preserve actionable boundaries > keeps selected gestures and shared permissions, removes repeated teaching
+AssertionError: expected '/**\n * 设置 · 通用 · 画布滚轮语义（需求 #832，2026…' not to contain 't(\'settings.general.canvasGestureHin…'
+ Test Files  1 failed (1)
+      Tests  4 failed (4)
+   Start at  04:46:58
+   Duration  629ms (transform 231ms, setup 41ms, import 388ms, tests 17ms, environment 0ms)

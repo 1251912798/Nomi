@@ -47,18 +47,20 @@ const settingsDirectory = path.join(process.cwd(), 'src/workbench/settings')
 //             **这次只有这一行变**，
 //             对应正向断言见下方 uses the split motion tokens on the gesture options——锁住它不许
 //             退回打包写法（退回=按钮 hover 又变回硬切，而所有快照仍然全绿）。
+// 2026-09-10 DC24: remove repeated teaching; retain actionable upload/privacy and gesture details.
+// Positive cross-surface coverage: quietDefaults.test.ts.
 const APPROVED_NON_MODEL_SECTION_SHA256 = {
   // 2026-09-04：检查反馈 tone 改为从公共 toast 函数参数推导，避免重复词表 owner。
   // 2026-09-09：目录操作错误回现有status；保留共享tone类型，正向回归见下方local feedback。
   'ProjectLocationSection.tsx': '6fdcf159d9a0e32e72637049fce6d0f9acaeee43369d0c8d2be46d3f7ec81c10',
   // 2026-09-02: AiModelsSection 按渲染边界收口供应商/模型展示名（translateModelDisplayText）。
   // B4: user explicitly removed the global budget setting; the positive absence assertion is below.
-  'AiModelsSection.tsx': '951e7387058010b094d2faf5b0357a6ae3e77b9d8e6ab307081197b9641a4fbb',
+  'AiModelsSection.tsx': '8fee6e8299842d0b52892766a4e94c88a37fb69e0fa9900095f00a4a299e3c7c',
   // 2026-09-03：toggleHost 参数类型从 SettingsHostKey（四值联合）泛化为 string（支持自定义 profile key）；
   // 新增 CustomMcpClientCard UI TODO 注释（底层能力已就绪，UI 面另排样张拍板）。
   // 2026-09-09：声音归通用设置的单一入口，移除这里的旧开关；下方断言保留系统通知策略。
-  'AutomationPermissionsSection.tsx': '632e010df63500fb9df8f4c624a629c47ec3d43a8e0f47c379edba67f36bdda0',
-  'CanvasGestureSection.tsx': '9968732470ea89e6b0f123cf7442cb969385361dbaafea29189e5ceb62cd18bd',
+  'AutomationPermissionsSection.tsx': '5eaf11a9f41fb95a0d6873de082de9e8e5fe62eded8282304c0cd6298a357c40',
+  'CanvasGestureSection.tsx': '6f6fbf6802c6daae381c83838b387623a78ac7de49ffb1e47ee6101db312c95d',
   'AboutSection.tsx': 'b38e0e2265f29ca56da53595e4bb5886bd14799ea3a7f7f36797b33d46eda57f',
 } as const
 

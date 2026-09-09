@@ -246,7 +246,6 @@ export function AiModelsSection({
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <div className="text-body-sm font-medium text-nomi-ink">{t('settings.ai.upload.channel.title')}</div>
-                <div className="mt-0.5 text-caption leading-relaxed text-nomi-ink-60">{t('settings.ai.upload.channel.hint')}</div>
               </div>
               {kieConnected ? (
                 <span className="inline-flex shrink-0 items-center gap-1 rounded-nomi-sm bg-[color-mix(in_oklch,var(--workbench-success)_12%,var(--nomi-paper))] px-2 py-1 text-caption text-[color:var(--workbench-success-ink)]">
@@ -281,15 +280,15 @@ export function AiModelsSection({
                 </div>
               ))}
             </div>
-            <div className="mt-2 text-caption leading-relaxed text-nomi-ink-60">
-              {t(kieConnected ? 'settings.ai.upload.channel.settled' : 'settings.ai.upload.channel.upsell')}
-            </div>
           </div>
           <details className="border-t border-nomi-line-soft pt-2" data-settings-custom-relay>
             <summary className="cursor-pointer text-caption font-medium text-nomi-ink-80">
               {t('settings.ai.upload.customRelay.title')}
             </summary>
             <div className="mt-2 grid gap-2">
+              <div className="text-micro leading-relaxed text-nomi-ink-40">
+                {t(kieConnected ? 'settings.ai.upload.channel.settled' : 'settings.ai.upload.channel.upsell')}
+              </div>
               <div className="text-micro leading-relaxed text-nomi-ink-40">
                 {t('settings.ai.upload.customRelay.hint')}
               </div>

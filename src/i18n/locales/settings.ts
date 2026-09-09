@@ -45,7 +45,6 @@ export const zhSettings = {
       minimizeHint: '项目文件、历史记录和未采用素材默认不上传；外部模型仍会收到完成任务所必需的数据。',
       channel: {
         title: '素材上传通道',
-        hint: '本机素材要先换成公网地址，模型才取得到。现在实际走的是：',
         kind: { image: '图片', video: '视频', audio: '音频' },
         privateLease: '私有链接 · {{lease}}',
         publicLease: '任何人可访问 · {{lease}}',
@@ -184,12 +183,13 @@ export const zhSettings = {
     hosts: {
       title: '可信发起方',
       local: '本机',
+      sharedHint: '外部发起方只可发起草稿、查看状态和打开安全深链。',
       nomi: { name: 'Nomi', hint: '本机工作台，负责编辑、批准、采用与导出。' },
-      claude: { name: 'Claude Code', hint: '只可发起草稿、查看状态和打开安全深链。' },
-      codex: { name: 'Codex', hint: '只可发起草稿、查看状态和打开安全深链。' },
-      cursor: { name: 'Cursor', hint: '只可发起草稿、查看状态和打开安全深链。' },
-      pi: { name: 'Pi', hint: '只可发起草稿、查看状态和打开安全深链。' },
-      workbuddy: { name: 'WorkBuddy', hint: '只可发起草稿、查看状态和打开安全深链。' },
+      claude: { name: 'Claude Code' },
+      codex: { name: 'Codex' },
+      cursor: { name: 'Cursor' },
+      pi: { name: 'Pi' },
+      workbuddy: { name: 'WorkBuddy' },
     },
     notifications: {
       title: '任务通知',
@@ -217,12 +217,10 @@ export const zhSettings = {
       'macOS 还没给 Nomi「屏幕录制」权限，现在按热键抓不到画面。这项权限没法由应用自己申请，得去系统设置里勾上，勾完要重开 Nomi 才生效。',
     screenshotOpenSettings: '打开系统设置',
     canvasGesture: '画布滚轮',
-    canvasGestureHint:
-      '生成画布和 ComfyUI 工作流设置共用此滚轮/双指手势。在生成画布中，空白处左键拖动为平移，Shift+左键拖动为框选（加进当前选区），点击空白取消选中。',
     canvasGestureZoom: '缩放',
-    canvasGestureZoomHint: '滚轮直接缩放，以光标位置为中心。多数节点编辑器（ComfyUI 等）的习惯。',
+    canvasGestureZoomHint: '滚轮以光标为中心缩放。',
     canvasGesturePan: '平移',
-    canvasGesturePanHint: '滚轮/双指滑平移画布，捏合或 ⌘/Ctrl+滚轮缩放。触控板用户通常选这档（Figma 等的习惯）。',
+    canvasGesturePanHint: '滚轮/双指滑平移；捏合或 ⌘/Ctrl+滚轮缩放。',
     telemetry: {
       title: '隐私与诊断',
       description: '可选的匿名频率数据，只统计功能使用次数和耗时区间，不发送提示词、项目名、文件路径或用户标识。默认关闭，随时可以关闭并删除本机记录。',
@@ -327,7 +325,6 @@ export const enSettings = {
       minimizeHint: 'Project files, history, and unused assets stay local by default. External models still receive data required to complete the task.',
       channel: {
         title: 'Asset upload channel',
-        hint: 'Local files need a public address before a model can fetch them. Right now they go through:',
         kind: { image: 'Images', video: 'Video', audio: 'Audio' },
         privateLease: 'Private link · {{lease}}',
         publicLease: 'Anyone can open it · {{lease}}',
@@ -465,12 +462,13 @@ export const enSettings = {
     hosts: {
       title: 'Trusted initiators',
       local: 'Local',
+      sharedHint: 'External hosts may only start drafts, read status, and open safe deep links.',
       nomi: { name: 'Nomi', hint: 'The local workbench owns editing, approval, adoption, and export.' },
-      claude: { name: 'Claude Code', hint: 'May only start drafts, read status, and open safe deep links.' },
-      codex: { name: 'Codex', hint: 'May only start drafts, read status, and open safe deep links.' },
-      cursor: { name: 'Cursor', hint: 'May only start drafts, read status, and open safe deep links.' },
-      pi: { name: 'Pi', hint: 'May only start drafts, read status, and open safe deep links.' },
-      workbuddy: { name: 'WorkBuddy', hint: 'May only start drafts, read status, and open safe deep links.' },
+      claude: { name: 'Claude Code' },
+      codex: { name: 'Codex' },
+      cursor: { name: 'Cursor' },
+      pi: { name: 'Pi' },
+      workbuddy: { name: 'WorkBuddy' },
     },
     notifications: {
       title: 'Task notifications',
@@ -498,12 +496,10 @@ export const enSettings = {
       'macOS has not granted Nomi Screen Recording permission, so the hotkey cannot capture anything yet. Apps cannot request this permission themselves — enable it in System Settings, then restart Nomi.',
     screenshotOpenSettings: 'Open System Settings',
     canvasGesture: 'Canvas wheel',
-    canvasGestureHint:
-      'The generation canvas and ComfyUI workflow settings share this wheel/two-finger gesture. On the generation canvas, left-drag empty space to pan, Shift+left-drag to add a box selection, or click empty space to clear the selection.',
     canvasGestureZoom: 'Zoom',
-    canvasGestureZoomHint: 'The wheel zooms directly, centered on the cursor. What most node editors (ComfyUI and friends) do.',
+    canvasGestureZoomHint: 'Wheel zooms around the cursor.',
     canvasGesturePan: 'Pan',
-    canvasGesturePanHint: 'Wheel/two-finger swipe pans the canvas; pinch or ⌘/Ctrl+wheel zooms. Usually what trackpad users want (the Figma convention).',
+    canvasGesturePanHint: 'Wheel/two-finger swipe pans; pinch or ⌘/Ctrl+wheel zooms.',
     telemetry: {
       title: 'Privacy & diagnostics',
       description: 'Optional anonymous frequency data counts feature use and duration buckets only. Prompts, project names, file paths, and user identifiers are never sent. Off by default; you can turn it off and delete local records anytime.',

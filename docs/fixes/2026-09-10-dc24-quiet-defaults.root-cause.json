@@ -1,0 +1,194 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-10-dc24-quiet-defaults",
+  "problem_type": "Repeated non-actionable presentation of valid defaults",
+  "symptom": "Storyboard, timeline and settings repeat all-clear and teaching copy that crowds out decisions.",
+  "direct_cause": "Normal state branches render explanations per row and per track; host rows repeat identical permission boundaries.",
+  "class_root": "Shared presentation owners do not distinguish an actionable exception or consent boundary from ordinary valid state.",
+  "affected_population": [
+    "All storyboard modes, empty timeline tracks and settings readers"
+  ],
+  "scope_paths": [
+    "src/workbench/creation/storyboard/shotRow/ShotReferenceZone.tsx",
+    "src/workbench/creation/storyboard/StoryboardPlanStrategyPanel.tsx",
+    "src/workbench/timeline/TimelineTrack.tsx",
+    "src/workbench/timeline/TimelineTextTrack.tsx",
+    "src/workbench/settings/CanvasGestureSection.tsx",
+    "src/workbench/settings/AutomationPermissionsSection.tsx",
+    "src/workbench/settings/AiModelsSection.tsx",
+    "src/i18n/locales/settings.ts",
+    "src/workbench/timeline/TimelineSecondaryAddRow.tsx",
+    "src/i18n/locales/storyboardEditor.ts",
+    "src/i18n/locales/timelineEditor.ts"
+  ],
+  "entry_points": [
+    "ShotReferenceZone",
+    "StoryboardPlanStrategyPanel",
+    "TimelineTrack",
+    "TimelineTextTrack",
+    "CanvasGestureSection",
+    "AutomationPermissionsSection",
+    "AiModelsSection"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "Internal rendering and consent semantics; no dependency behavior or external format changes.",
+  "invariants": [
+    "Valid states with no action render quietly; actual switch choices, privacy and irreversible or paid permission boundaries remain.",
+    "Each independently authorized external host keeps its own switch; common permission wording appears once."
+  ],
+  "generality_proof": "Each listed component is the shared renderer for all rows, tracks or options of its kind. Removing redundant copy there covers every caller without provider or project exceptions.",
+  "shared_boundaries": [
+    {
+      "path": "src/workbench/creation/storyboard/shotRow/ShotReferenceZone.tsx",
+      "symbol": "ShotReferenceZone",
+      "responsibility": "Own actionable state and remove duplicate normal-state teaching for all callers."
+    },
+    {
+      "path": "src/workbench/creation/storyboard/StoryboardPlanStrategyPanel.tsx",
+      "symbol": "StoryboardPlanStrategyPanel",
+      "responsibility": "Own actionable state and remove duplicate normal-state teaching for all callers."
+    },
+    {
+      "path": "src/workbench/timeline/TimelineTrack.tsx",
+      "symbol": "TimelineTrack",
+      "responsibility": "Own actionable state and remove duplicate normal-state teaching for all callers."
+    },
+    {
+      "path": "src/workbench/timeline/TimelineTextTrack.tsx",
+      "symbol": "TimelineTextTrack",
+      "responsibility": "Own actionable state and remove duplicate normal-state teaching for all callers."
+    },
+    {
+      "path": "src/workbench/settings/CanvasGestureSection.tsx",
+      "symbol": "CanvasGestureSection",
+      "responsibility": "Own actionable state and remove duplicate normal-state teaching for all callers."
+    },
+    {
+      "path": "src/workbench/settings/AutomationPermissionsSection.tsx",
+      "symbol": "AutomationPermissionsSection",
+      "responsibility": "Own actionable state and remove duplicate normal-state teaching for all callers."
+    },
+    {
+      "path": "src/workbench/settings/AiModelsSection.tsx",
+      "symbol": "AiModelsSection",
+      "responsibility": "Own actionable state and remove duplicate normal-state teaching for all callers."
+    },
+    {
+      "path": "src/workbench/timeline/TimelineSecondaryAddRow.tsx",
+      "symbol": "TimelineSecondaryAddRow",
+      "responsibility": "Preserve music/caption controls and landing surface without repeating audio drop instruction."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/workbench/creation/storyboard/shotRow/ShotReferenceZone.tsx",
+      "entry_point": "ShotReferenceZone",
+      "disposition": "enforced",
+      "evidence": "Inspected production component against density audit D09–D13; preserves actionable controls and warnings."
+    },
+    {
+      "path": "src/workbench/creation/storyboard/StoryboardPlanStrategyPanel.tsx",
+      "entry_point": "StoryboardPlanStrategyPanel",
+      "disposition": "enforced",
+      "evidence": "Inspected production component against density audit D09–D13; preserves actionable controls and warnings."
+    },
+    {
+      "path": "src/workbench/timeline/TimelineTrack.tsx",
+      "entry_point": "TimelineTrack",
+      "disposition": "enforced",
+      "evidence": "Inspected production component against density audit D09–D13; preserves actionable controls and warnings."
+    },
+    {
+      "path": "src/workbench/timeline/TimelineTextTrack.tsx",
+      "entry_point": "TimelineTextTrack",
+      "disposition": "enforced",
+      "evidence": "Inspected production component against density audit D09–D13; preserves actionable controls and warnings."
+    },
+    {
+      "path": "src/workbench/settings/CanvasGestureSection.tsx",
+      "entry_point": "CanvasGestureSection",
+      "disposition": "enforced",
+      "evidence": "Inspected production component against density audit D09–D13; preserves actionable controls and warnings."
+    },
+    {
+      "path": "src/workbench/settings/AutomationPermissionsSection.tsx",
+      "entry_point": "AutomationPermissionsSection",
+      "disposition": "enforced",
+      "evidence": "Inspected production component against density audit D09–D13; preserves actionable controls and warnings."
+    },
+    {
+      "path": "src/workbench/settings/AiModelsSection.tsx",
+      "entry_point": "AiModelsSection",
+      "disposition": "enforced",
+      "evidence": "Inspected production component against density audit D09–D13; preserves actionable controls and warnings."
+    },
+    {
+      "path": "src/workbench/timeline/TimelineSecondaryAddRow.tsx",
+      "entry_point": "TimelineSecondaryAddRow",
+      "disposition": "enforced",
+      "evidence": "Isolated Electron before capture found another duplicated empty-audio teaching line alongside music button."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Every new valid shot, empty track or settings visit reproduces the same explanation branches.",
+    "same_class_scan": [
+      "Inspected ShotReferenceZone none-accepted with and without switchTo and StrategyPanel total === 0.",
+      "Searched both TimelineTrack and TimelineTextTrack empty renderers.",
+      "Searched CanvasGestureSection, AutomationPermissionsSection and AiModelsSection hint rendering; independently authorized controls retained."
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "src/workbench/creation/storyboard/StoryboardPlanStrategyPanel.tsx",
+    "invariant": "Every declared shared presenter renders only actionable or consent-relevant explanations.",
+    "failure_mode": "Issue-free storyboard returns no status banner; missing reference mode advice stays visible only with switchTo.",
+    "exception_policy": "none",
+    "strategy": "Remove redundant branches in their shared component owners, group shared host guidance once and retain each permission control.",
+    "artifacts": [
+      "src/workbench/creation/storyboard/shotRow/ShotReferenceZone.tsx",
+      "src/workbench/creation/storyboard/StoryboardPlanStrategyPanel.tsx",
+      "src/workbench/timeline/TimelineTrack.tsx",
+      "src/workbench/timeline/TimelineTextTrack.tsx",
+      "src/workbench/settings/CanvasGestureSection.tsx",
+      "src/workbench/settings/AutomationPermissionsSection.tsx",
+      "src/workbench/settings/AiModelsSection.tsx",
+      "src/workbench/timeline/TimelineSecondaryAddRow.tsx"
+    ]
+  },
+  "regression_tests": [
+    "src/workbench/settings/quietDefaults.test.ts"
+  ],
+  "class_regression_tests": [
+    "src/workbench/settings/quietDefaults.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "src/workbench/creation/storyboard/shotRow/ShotReferenceZone.tsx",
+      "src/workbench/creation/storyboard/StoryboardPlanStrategyPanel.tsx",
+      "src/workbench/timeline/TimelineTrack.tsx",
+      "src/workbench/timeline/TimelineTextTrack.tsx",
+      "src/workbench/settings/CanvasGestureSection.tsx",
+      "src/workbench/settings/AutomationPermissionsSection.tsx",
+      "src/workbench/settings/AiModelsSection.tsx",
+      "src/workbench/timeline/TimelineSecondaryAddRow.tsx"
+    ],
+    "rationale": "Remove all-clear, no-reference-without-action and repeated teaching render branches; no alternate presentation path introduced."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "Presentation-only change uses existing React/i18n components and no changed third-party behavior.",
+    "exit_criteria": []
+  },
+  "migration": "No persisted state or permission migration.",
+  "residual_risks": [
+    "Visual acceptance requires isolated Electron before/after capture by the main task."
+  ],
+  "invariant_owner_layer": {
+    "layer": "src/workbench/settings",
+    "tests": [
+      "src/workbench/settings/quietDefaults.test.ts"
+    ]
+  }
+}
