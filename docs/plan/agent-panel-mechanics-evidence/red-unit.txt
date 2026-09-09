@@ -1,0 +1,190 @@
+
+ RUN  v4.1.8 /Users/aoqimin/Desktop/Nomi-panel-mechanics
+
+stderr | src/workbench/ai/v4/agentPanelV4Mechanics.test.ts > B2a mechanics > C24 one model name per row
+react-i18next:: useTranslation: You will need to pass in an i18next instance by using initReactI18next or by passing it via props or context. In monorepo setups, make sure there is only one instance of react-i18next. { code: 'NO_I18NEXT_INSTANCE' }
+Warning: useLayoutEffect does nothing on the server, because its effect cannot be encoded into the server renderer's output format. This will lead to a mismatch between the initial, non-hydrated UI and the intended UI. To avoid this, useLayoutEffect should only be used in components that render exclusively on the client. See https://reactjs.org/link/uselayouteffect-ssr for common fixes.
+    at NomiSelect (/Users/aoqimin/Desktop/Nomi-panel-mechanics/src/design/NomiSelect.tsx:29:3)
+    at span
+    at div
+    at aside
+    at V4ModelPopover (/Users/aoqimin/Desktop/Nomi-panel-mechanics/src/workbench/ai/v4/AgentPanelV4Composer.tsx:356:27)
+
+ ❯ src/workbench/ai/v4/agentPanelV4Mechanics.test.ts (7 tests | 7 failed) 15ms
+     × C25 groups receipts across thinking, with thinking count 4ms
+     × C25 keeps a complete answer between calls visible without reliable offsets 1ms
+     × C25 long user messages default closed with full text available 3ms
+     × C33 queue cancel is an accessible icon 1ms
+     × C24 one model name per row 3ms
+     × C21 million context uses M 2ms
+     × C44 timeline operation names the action 0ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 7 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/workbench/ai/v4/agentPanelV4Mechanics.test.ts > B2a mechanics > C25 groups receipts across thinking, with thinking count
+AssertionError: expected undefined to match object { count: 3 }
+
+- Expected:
+{
+  "count": 3,
+}
+
++ Received:
+undefined
+
+ ❯ src/workbench/ai/v4/agentPanelV4Mechanics.test.ts:19:61
+     17|   it('C25 groups receipts across thinking, with thinking count', () =>…
+     18|     const result = collapseV4Flow([tool, think, tool, think, tool, ans…
+     19|     expect(result.find(item => item.kind === 'tool-group')).toMatchObj…
+       |                                                             ^
+     20|     expect(result.find(item => item.kind === 'process')).toMatchObject…
+     21|     expect(result).toContainEqual(answer)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/7]⎯
+
+ FAIL  src/workbench/ai/v4/agentPanelV4Mechanics.test.ts > B2a mechanics > C25 keeps a complete answer between calls visible without reliable offsets
+AssertionError: expected [ { kind: 'tool-group', …(6) }, …(1) ] to deep equally contain { kind: 'assistant', …(2) }
+
+- Expected:
+{
+  "kind": "assistant",
+  "status": "complete",
+  "text": "请先补齐参考图，再生成。",
+}
+
++ Received:
+[
+  {
+    "action": "write",
+    "count": 2,
+    "kind": "tool-group",
+    "label": "准备工具",
+    "receipts": [
+      {
+        "action": "write",
+        "label": "准备工具",
+        "status": "output-available",
+      },
+      {
+        "action": "write",
+        "label": "准备工具",
+        "status": "output-available",
+      },
+    ],
+    "status": "output-available",
+    "trailing": "agentPanelV4.toolGroupAllDone",
+  },
+  {
+    "kind": "process",
+    "label": "agentPanelV4.processAttempts{\"count\":2}",
+    "segments": [
+      "请先补齐参考图，再生成。",
+    ],
+  },
+]
+
+ ❯ src/workbench/ai/v4/agentPanelV4Mechanics.test.ts:24:53
+     22|   })
+     23|   it('C25 keeps a complete answer between calls visible without reliab…
+     24|     expect(collapseV4Flow([tool, answer, tool], t)).toContainEqual(ans…
+       |                                                     ^
+     25|   })
+     26|   it('C25 long user messages default closed with full text available',…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/7]⎯
+
+ FAIL  src/workbench/ai/v4/agentPanelV4Mechanics.test.ts > B2a mechanics > C25 long user messages default closed with full text available
+AssertionError: expected '<div class="ml-auto max-w-[86%] round…' to contain '<details'
+
+- Expected
++ Received
+
+- <details
++ <div class="ml-auto max-w-[86%] rounded-nomi px-3 py-2 text-body-sm bg-nomi-ink text-nomi-paper" data-v4-block="user"><p class="m-0">line 0
++ line 1
++ line 2
++ line 3
++ line 4
++ line 5
++ line 6
++ line 7</p></div>
+
+ ❯ src/workbench/ai/v4/agentPanelV4Mechanics.test.ts:29:20
+     27|     const text = Array.from({ length: 8 }, (_, i) => `line ${i}`).join…
+     28|     const markup = html(React.createElement(V4UserBubble, { text }))
+     29|     expect(markup).toContain('<details')
+       |                    ^
+     30|     expect(markup).not.toContain(' open=""')
+     31|     expect(markup).toContain('<summary')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/7]⎯
+
+ FAIL  src/workbench/ai/v4/agentPanelV4Mechanics.test.ts > B2a mechanics > C33 queue cancel is an accessible icon
+AssertionError: expected '<section class="flex flex-col gap-0.5…' to contain 'aria-label="取消这条指令"'
+
+Expected: "aria-label="取消这条指令""
+Received: "<section class="flex flex-col gap-0.5 rounded-nomi-sm border border-nomi-line-soft bg-nomi-ink-05 px-2 py-1.5" data-v4-block="queue"><div class="flex h-6 items-center gap-2 text-caption text-nomi-ink-80" data-status="queued"><span class="size-1.5 shrink-0 rounded-pill bg-nomi-ink-30" aria-hidden="true"></span><span class="min-w-0 flex-1 truncate">继续</span><span class="ml-auto flex shrink-0 items-center gap-1.5 text-micro text-nomi-ink-40"><button type="button" class="font-medium text-nomi-danger">取消这条指令</button></span></div></section>"
+
+ ❯ src/workbench/ai/v4/agentPanelV4Mechanics.test.ts:36:20
+     34|   it('C33 queue cancel is an accessible icon', () => {
+     35|     const markup = html(React.createElement(V4Queue, { rows: [{ title:…
+     36|     expect(markup).toContain('aria-label="取消这条指令"')
+       |                    ^
+     37|     expect(markup).toContain('<svg')
+     38|     expect(markup).not.toContain('>取消这条指令</button>')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/7]⎯
+
+ FAIL  src/workbench/ai/v4/agentPanelV4Mechanics.test.ts > B2a mechanics > C24 one model name per row
+Error: @mantine/core: MantineProvider was not found in component tree, make sure you have it in your app
+ ❯ useMantineTheme node_modules/.pnpm/@mantine+core@8.3.18_@mantine+hooks@8.3.18_react@18.3.1__@types+react@18.3.29_react-dom_3fe860e55c8f1aaf9facc27a0471f454/node_modules/@mantine/core/src/core/MantineProvider/MantineThemeProvider/MantineThemeProvider.tsx:13:10
+ ❯ useProps node_modules/.pnpm/@mantine+core@8.3.18_@mantine+hooks@8.3.18_react@18.3.1__@types+react@18.3.29_react-dom_3fe860e55c8f1aaf9facc27a0471f454/node_modules/@mantine/core/src/core/MantineProvider/use-props/use-props.ts:14:16
+ ❯ Combobox node_modules/.pnpm/@mantine+core@8.3.18_@mantine+hooks@8.3.18_react@18.3.1__@types+react@18.3.29_react-dom_3fe860e55c8f1aaf9facc27a0471f454/node_modules/@mantine/core/src/components/Combobox/Combobox.tsx:120:16
+ ❯ renderWithHooks node_modules/.pnpm/react-dom@18.3.1_react@18.3.1/node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js:5662:16
+ ❯ renderIndeterminateComponent node_modules/.pnpm/react-dom@18.3.1_react@18.3.1/node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js:5736:15
+ ❯ renderElement node_modules/.pnpm/react-dom@18.3.1_react@18.3.1/node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js:5961:7
+ ❯ renderNodeDestructiveImpl node_modules/.pnpm/react-dom@18.3.1_react@18.3.1/node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js:6119:11
+ ❯ renderNodeDestructive node_modules/.pnpm/react-dom@18.3.1_react@18.3.1/node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js:6091:14
+ ❯ renderIndeterminateComponent node_modules/.pnpm/react-dom@18.3.1_react@18.3.1/node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js:5790:7
+ ❯ renderElement node_modules/.pnpm/react-dom@18.3.1_react@18.3.1/node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js:5961:7
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/7]⎯
+
+ FAIL  src/workbench/ai/v4/agentPanelV4Mechanics.test.ts > B2a mechanics > C21 million context uses M
+AssertionError: expected '<details class="relative" open="" dat…' to contain '1M'
+
+Expected: "1M"
+Received: "<details class="relative" open="" data-v4-block="context" data-context-known="true"><summary class="inline-flex h-[22px] cursor-pointer list-none items-center gap-[5px] rounded-pill border border-nomi-line text-micro font-normal text-nomi-ink-60 pl-[5px] pr-2" aria-label="context"><span class="relative size-3 shrink-0 rounded-pill after:absolute after:inset-[2.5px] after:rounded-pill after:bg-nomi-paper after:content-[&#x27;&#x27;]" style="background:conic-gradient(var(--nomi-accent) 3%, var(--nomi-ink-10) 0)" aria-hidden="true"></span>3%<svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="tabler-icon tabler-icon-chevron-down "><path d="M6 9l6 6l6 -6"></path></svg></summary><div class="absolute right-0 top-full z-10 mt-1 w-[230px] overflow-hidden rounded-nomi border border-nomi-line bg-nomi-paper text-caption shadow-nomi-md"><div class="p-2.5 pb-0"><div class="flex items-center justify-between"><strong>3%</strong><span class="text-nomi-ink-60">33.2K / 1048.6K</span></div><div class="my-2 h-1 overflow-hidden rounded-sm bg-nomi-ink-10"><div class="h-full rounded-sm bg-nomi-accent" style="width:3%"></div></div></div></div></details>"
+
+ ❯ src/workbench/ai/v4/agentPanelV4Mechanics.test.ts:47:20
+     45|     const labels = { context: 'context', input: 'input', output: 'outp…
+     46|     const markup = html(React.createElement(V4ContextRing, { usage: { …
+     47|     expect(markup).toContain('1M')
+       |                    ^
+     48|     expect(markup).not.toContain('1048.6K')
+     49|   })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/7]⎯
+
+ FAIL  src/workbench/ai/v4/agentPanelV4Mechanics.test.ts > B2a mechanics > C44 timeline operation names the action
+AssertionError: expected 'agentResident.toolGeneric' to be 'agentResident.toolTimelineAdd' // Object.is equality
+
+Expected: "agentResident.toolTimelineAdd"
+Received: "agentResident.toolGeneric"
+
+ ❯ src/workbench/ai/v4/agentPanelV4Mechanics.test.ts:51:103
+     49|   })
+     50|   it('C44 timeline operation names the action', () => {
+     51|     expect(readableToolName(t, 'nomi_canvas_write', { operation: 'arra…
+       |                                                                                                       ^
+     52|     expect(readableToolName(t, 'nomi_canvas_write', { operation: 'crea…
+     53|   })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/7]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  7 failed (7)
+   Start at  15:37:58
+   Duration  966ms (transform 213ms, setup 22ms, import 849ms, tests 15ms, environment 0ms)
+

@@ -63,7 +63,7 @@ describe('③ 同一个工具连着调 N 次 → 一行', () => {
 })
 
 describe('② 过程自述折起来，最终回答摊开', () => {
-  it('最后一次调用之前的助手文本折成一条过程行，之后的留在流里', () => {
+  it('没有可靠正文边界时，每段助手文本都保留可见', () => {
     const flow = collapseV4Flow(
       [
         tool('创建或修改镜头卡', 'output-error', '必须是数组'),
@@ -75,12 +75,8 @@ describe('② 过程自述折起来，最终回答摊开', () => {
       ],
       t,
     )
-    expect(flow.map((item) => item.kind)).toEqual(['tool-group', 'process', 'assistant'])
-    const process = flow[1]!
-    if (process.kind !== 'process') throw new Error('第二条应是过程行')
-    expect(process.label).toBe('agentPanelV4.processAttempts(3)')
-    expect(process.segments).toHaveLength(2)
-    const final = flow[2]!
+    expect(flow.map((item) => item.kind)).toEqual(['tool-group', 'assistant', 'assistant', 'assistant'])
+    const final = flow[3]!
     if (final.kind !== 'assistant') throw new Error('最终回答必须留在流里')
     expect(final.text).toContain('直接把分镜写进文稿')
   })
@@ -99,7 +95,7 @@ describe('② 过程自述折起来，最终回答摊开', () => {
     expect(flow.map((item) => item.kind)).toEqual(['assistant', 'tool-group'])
   })
 
-  it('夹在两次调用之间的那几句照折——即便后面没有回答', () => {
+  it('夹在两次调用之间的助手文本不按位置猜成过程', () => {
     const flow = collapseV4Flow(
       [
         tool('创建或修改镜头卡', 'output-error'),
@@ -108,7 +104,7 @@ describe('② 过程自述折起来，最终回答摊开', () => {
       ],
       t,
     )
-    expect(flow.map((item) => item.kind)).toEqual(['tool-group', 'process'])
+    expect(flow.map((item) => item.kind)).toEqual(['tool-group', 'assistant'])
   })
 
   it('没有中间自述时不凭空造一条过程行', () => {

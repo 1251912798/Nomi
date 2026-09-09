@@ -1,0 +1,63 @@
+{
+  "model": "DeepSeek V4 Pro / APIMart",
+  "turns": [
+    {
+      "index": 1,
+      "answer": "画布为空。下一步：先在创作区写好故事文案，再拆成镜头落到画布；或直接让我帮你建角色卡「小禾」+ 场景卡「河边旧街·黄昏」打底。",
+      "errors": 0,
+      "tools": [
+        {
+          "status": "output-available",
+          "text": "读取画布只是看一眼，不改动任何东西<1s输入{}输出画布当前为空。"
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "answer": "已创建。下一步：建角色卡「小禾」锚定外观，跨镜头才能一致。",
+      "errors": 0,
+      "tools": [
+        {
+          "status": "output-available",
+          "text": "读取画布只是看一眼，不改动任何东西<1s输入{}输出画布当前为空。"
+        },
+        {
+          "status": "output-available",
+          "text": "创建节点1 个镜头卡 · 只建卡 · 不生成<1s撤销输入{\n  \"operation\": \"create_canvas_nodes\",\n  \"summary\": \"创建图片节点「小禾走到河边旧街」\",\n  \"nodes\": [\n    {\n      \"clientId\": \"shot-xiaohe-river-01\",\n      \"kind\": \"image\",\n      \"title\": \"小禾走到河边旧街\",\n      \"prompt\": \"下午五点，小禾背着相机走到河边旧街，温暖自然光，横屏构图\",\n      \"params\": {\n        \"aspectRatio\""
+        }
+      ]
+    }
+  ],
+  "error": null,
+  "metrics": [
+    {
+      "type": "execution-result",
+      "turnId": "turn-resident-ddeaa6d6-023c-40d2-a720-21816e8338e0",
+      "usage": {
+        "promptTokens": 26541,
+        "completionTokens": 164,
+        "cachedPromptTokens": 12288,
+        "totalTokens": 26705,
+        "reasoningTokens": 85
+      },
+      "finishReason": "stop"
+    },
+    {
+      "type": "execution-result",
+      "turnId": "turn-resident-4306a6b3-3d4e-4ad3-97f9-2d60ac5b22b5",
+      "usage": {
+        "promptTokens": 27659,
+        "completionTokens": 608,
+        "cachedPromptTokens": 26112,
+        "totalTokens": 28267,
+        "reasoningTokens": 421
+      },
+      "finishReason": "stop"
+    }
+  ],
+  "final_build_geometry": {
+    "model": "DeepSeek V4 Pro",
+    "modelReadable": true,
+    "controlsInside": true
+  }
+}
