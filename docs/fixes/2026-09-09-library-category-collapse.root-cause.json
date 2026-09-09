@@ -107,7 +107,7 @@
   },
   "migration": "No stored data/schema changes; group identity is derived from existing curation or source metadata.",
   "residual_risks": [
-    "Screenshot and keyboard interaction verification pending."
+    "Native disclosure expansion state is session-local; changing the active facet may reset groups to their declared default."
   ],
   "invariant_owner_layer": {
     "layer": "src/workbench/library",
