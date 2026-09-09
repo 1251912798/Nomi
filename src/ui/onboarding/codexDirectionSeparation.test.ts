@@ -48,7 +48,11 @@ describe('Codex 两个方向必须分开', () => {
   it('生图开关写盘失败时必须给出错误反馈，不能表现成死按钮', () => {
     const src = read('CodexLocalImageCard.tsx')
     expect(src).toContain('} catch (error)')
-    expect(src).toContain('toast(error instanceof Error ? error.message')
-    expect(src).toContain("'error'")
+    expect(src).toContain('message: error instanceof Error ? error.message')
+    expect(src).toContain('present: setError')
+    expect(src).toContain("level: 'inline'")
+    expect(src).toContain('role="status"')
+    expect(src).toContain("setError('')")
+    expect(src).not.toContain("toast(")
   })
 })

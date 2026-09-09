@@ -1,3 +1,4 @@
+import type { ToastType } from '../../ui/toast'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { IconChevronDown, IconCircleCheck, IconFolderOpen, IconRefresh, IconSettings } from '@tabler/icons-react'
@@ -8,7 +9,6 @@ import type {
   DesktopProjectLocationError,
   DesktopProjectLocationResult,
 } from '../../desktop/settingsBridge'
-import { toast } from '../../ui/toast'
 
 const ERROR_KEY: Record<DesktopProjectLocationError, string> = {
   'not-directory': 'settings.file.projectLocationErrorNotDirectory',
@@ -18,7 +18,7 @@ const ERROR_KEY: Record<DesktopProjectLocationError, string> = {
 }
 
 type CheckFeedback = {
-  tone: NonNullable<Parameters<typeof toast>[1]>
+  tone: ToastType
   messageKey: string
 }
 
@@ -40,10 +40,12 @@ export function ProjectLocationSection(): JSX.Element {
     }
     void api.get()
       .then((result) => {
-        if (active && result.ok) setLocation(result.location)
+        if (!active) return
+        if (result.ok) setLocation(result.location)
+        else setCheckFeedback({ tone: 'error', messageKey: ERROR_KEY[result.error] })
       })
       .catch(() => {
-        if (active) toast(t('settings.file.projectLocationErrorUnknown'), 'error')
+        if (active) setCheckFeedback({ tone: 'error', messageKey: 'settings.file.projectLocationErrorUnknown' })
       })
       .finally(() => {
         if (active) setLoading(false)
@@ -53,15 +55,16 @@ export function ProjectLocationSection(): JSX.Element {
 
   const run = async (action: () => Promise<DesktopProjectLocationResult>): Promise<void> => {
     setBusy(true)
+    setCheckFeedback(null)
     try {
       const result = await action()
       if (result.ok) {
         if (!result.canceled) setLocation(result.location)
       } else {
-        toast(t(ERROR_KEY[result.error]), 'error')
+        setCheckFeedback({ tone: 'error', messageKey: ERROR_KEY[result.error] })
       }
     } catch {
-      toast(t('settings.file.projectLocationErrorUnknown'), 'error')
+      setCheckFeedback({ tone: 'error', messageKey: 'settings.file.projectLocationErrorUnknown' })
     } finally {
       setBusy(false)
     }
@@ -80,14 +83,11 @@ export function ProjectLocationSection(): JSX.Element {
       if (result.ok) {
         setLocation(result.location)
         setCheckFeedback({ tone: 'success', messageKey: 'settings.file.projectLocationCheckSuccess' })
-        toast(t('settings.file.projectLocationCheckSuccess'), 'success')
       } else {
         setCheckFeedback({ tone: 'error', messageKey: ERROR_KEY[result.error] })
-        toast(t(ERROR_KEY[result.error]), 'error')
       }
     } catch {
       setCheckFeedback({ tone: 'error', messageKey: 'settings.file.projectLocationErrorUnknown' })
-      toast(t('settings.file.projectLocationErrorUnknown'), 'error')
     } finally {
       setChecking(false)
     }

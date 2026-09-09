@@ -9,7 +9,6 @@ import { resolveNodeVisualSize } from './nodeSizing'
 import { useGenerationCanvasStore } from '../store/generationCanvasStore'
 import { getActiveWorkbenchProjectId } from '../../project/workbenchProjectSession'
 import { getDesktopBridge } from '../../../desktop/bridge'
-import { toast } from '../../../ui/toast'
 import type { GenerationCanvasNode } from '../model/generationCanvasTypes'
 import { formatShotTimestamp, shotCutNodePositions } from './shotCutSelection'
 import i18n from '../../../i18n'
@@ -17,22 +16,23 @@ import i18n from '../../../i18n'
 export type ExtractShotCutsProgress = { done: number; total: number }
 
 export async function extractShotCutsToNodes(params: {
+  reportFeedback: (message: string) => void
   node: GenerationCanvasNode
   seconds: readonly number[]
   onProgress?: (progress: ExtractShotCutsProgress) => void
 }): Promise<{ created: number; failed: number }> {
-  const { node, seconds, onProgress } = params
+  const { reportFeedback, node, seconds, onProgress } = params
   const videoUrl = node.result?.url
   if (node.result?.type !== 'video' || !videoUrl || !seconds.length) return { created: 0, failed: 0 }
 
   const projectId = getActiveWorkbenchProjectId()
   if (!projectId) {
-    toast(i18n.t('generationCommon.node.extractFrame.missingProject'), 'error')
+    reportFeedback(i18n.t('generationCommon.node.extractFrame.missingProject'))
     return { created: 0, failed: 0 }
   }
   const extractFrame = getDesktopBridge()?.video?.extractFrame
   if (!extractFrame) {
-    toast(i18n.t('generationCommon.node.extractFrame.desktopOnly'), 'error')
+    reportFeedback(i18n.t('generationCommon.node.extractFrame.desktopOnly'))
     return { created: 0, failed: 0 }
   }
 
@@ -82,7 +82,7 @@ export async function extractShotCutsToNodes(params: {
   }
 
   if (failed > 0) {
-    toast(i18n.t('generationCommon.node.shotCuts.someFailed', { failed, created: createdIds.length }), 'error')
+    reportFeedback(i18n.t('generationCommon.node.shotCuts.someFailed', { failed, created: createdIds.length }))
   }
   return { created: createdIds.length, failed }
 }

@@ -2,7 +2,7 @@
  * 撤销 toast — 用于跨分类拖拽创建独立副本场景（spec §6.6 / 决策 3）。
  *
  * 触发：跨分类拖拽完成、跨分类 Cmd+V 粘贴。
- * 行为：5 秒内可点击 toast 任意位置 = 撤销（删除刚创建的副本节点）；
+ * 行为：5 秒内可点击「撤销」按钮 = 撤销（删除刚创建的副本节点）；
  *      5 秒后自动消失，副本永久保留。
  *
  */
@@ -31,6 +31,7 @@ export type UndoToastOptions = {
 }
 
 const DEFAULT_DURATION_MS = 5000
+let undoOperationSequence = 0
 
 export function showUndoToast({
   message,
@@ -56,6 +57,8 @@ export function showUndoToast({
   }
 
   const id = useToastStore.getState().push({
+    id: `undo:${++undoOperationSequence}`,
+    reason: 'undo-operation',
     message,
     type: 'success',
     ttl: durationMs,

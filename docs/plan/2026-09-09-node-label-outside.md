@@ -106,3 +106,9 @@ CI run 34347335160 的 Electron smoke 报 font-size 新增 1；本地 smoke 同�
 先跑红回归；修后重建 Tailwind/生产包、smoke 和标签真实旅程、tokens。只更新本 PR 新增 canvas-frame-shot-label-outside specimen；旧基线若出现真实漂移先报告。最后完整 with-gates-lock gates exit 0，正常 hooks commit/push。回滚用本次提交的 revert，无数据迁移。
 
 字阶红绿收据：新增 scanFeel 回归先在 empty/0.4 抓到镜头号/标题 11px（/tmp/nomi-label-font-red.log）；修后 node-label-outside.e2e.mjs exit 0，涵盖空/图/视频各缩放、参考/状态/拆解、真实项目改名/拖动/放大/关闭和 81 节点轻量路径。smoke exit 0（17 assertions），check:tokens exit 0，build exit 0。新 specimen 定向更新 1 张；现有体感规则、容差与旧视觉基线未改。此次截图保存在 /tmp/nomi-label-font-evidence，目视确认白底 specimen 与暗色真实项目均保持次级墨色和框外位置。
+
+## #684 字阶基线收尾与并线（2026-09-09）
+
+- 用户已看过 `/tmp/nomi-label-font-baseline-review/contact-sheet.png` 和 manifest，授权仅更新清单内 24 张 process-feedback 旧图；不运行全量更新，不改规则、容差或 reactFlow/**。
+- 合入 origin/main `d3fa258883c6db9cf6565be6699c0f92cf4fbe2b`。唯一冲突在 BaseGenerationNode.tsx：保留 main 新增的 NodeGeneratingOverlay.reportFeedback 及其余反馈接线；镜头号仍只在 NodeLabelRow 渲染，删除 main 冲突块中原媒体覆盖位置的重复 ShotPreviewOverlays，保住框外标签意图。
+- 从 manifest 生成精确 Playwright grep，重录 24 张后核对 Git 图片变更集合完全一致，再执行完整 with-gates-lock gates；exit 0 后正常 hooks 提交/推送。回滚以本次提交 revert 为边界，不回滚 main。

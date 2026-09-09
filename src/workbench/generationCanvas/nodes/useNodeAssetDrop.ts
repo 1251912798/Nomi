@@ -8,7 +8,6 @@ import i18n from '../../../i18n'
 import type { GenerationCanvasNode } from '../model/generationCanvasTypes'
 import { importWorkbenchLocalAssetFile } from '../../api/assetUploadApi'
 import { assetUrl } from './controls/parameterControlModel'
-import { showInfoToast } from '../../../utils/showInfoToast'
 import {
   WORKSPACE_FILE_DRAG_MIME,
   buildWorkspaceFileUrl,
@@ -31,15 +30,15 @@ export type NodeAssetDrop = {
   dropHandlers: DropHandlers
 }
 
-function reportOutcome(outcome: AddAssetOutcome): void {
+function reportOutcome(outcome: AddAssetOutcome, reportFeedback: (message: string) => void): void {
   if (outcome.status === 'full') {
-    showInfoToast(i18n.t('generationCommon.node.assetDrop.full', { max: outcome.max, label: outcome.label }))
+    reportFeedback(i18n.t('generationCommon.node.assetDrop.full', { max: outcome.max, label: outcome.label }))
   } else if (outcome.status === 'no-slot') {
-    showInfoToast(i18n.t('generationCommon.node.assetDrop.noSlot'))
+    reportFeedback(i18n.t('generationCommon.node.assetDrop.noSlot'))
   }
 }
 
-export function useNodeAssetDrop(node: GenerationCanvasNode): NodeAssetDrop {
+export function useNodeAssetDrop(node: GenerationCanvasNode, reportFeedback: (message: string) => void): NodeAssetDrop {
   const [isDragOver, setDragOver] = React.useState(false)
   const [isUploading, setUploading] = React.useState(false)
   const acceptsDrop = React.useMemo(() => resolveNodeArraySlots(node.meta).length > 0, [node.meta])
@@ -76,11 +75,11 @@ export function useNodeAssetDrop(node: GenerationCanvasNode): NodeAssetDrop {
       if (workspace) {
         const kind = dropKindFromWorkspaceKind(workspace.kind)
         if (!kind) {
-          showInfoToast(i18n.t('generationCommon.node.assetDrop.noSlot'))
+          reportFeedback(i18n.t('generationCommon.node.assetDrop.noSlot'))
           return
         }
         reportOutcome(
-          addAssetUrlToNode(node.id, kind, buildWorkspaceFileUrl(workspace.projectId, workspace.relativePath)),
+          addAssetUrlToNode(node.id, kind, buildWorkspaceFileUrl(workspace.projectId, workspace.relativePath)), reportFeedback,
         )
         return
       }
@@ -93,7 +92,7 @@ export function useNodeAssetDrop(node: GenerationCanvasNode): NodeAssetDrop {
         for (const file of files) {
           const kind = dropKindFromFile(file)
           if (!kind) {
-            showInfoToast(i18n.t('generationCommon.node.assetDrop.unsupported'))
+            reportFeedback(i18n.t('generationCommon.node.assetDrop.unsupported'))
             continue
           }
           try {
@@ -107,18 +106,16 @@ export function useNodeAssetDrop(node: GenerationCanvasNode): NodeAssetDrop {
             )
             const url = assetUrl(uploaded)
             if (!url) throw new Error(i18n.t('generationCommon.node.assetDrop.missingUrl'))
-            reportOutcome(addAssetUrlToNode(node.id, kind, url))
+            reportOutcome(addAssetUrlToNode(node.id, kind, url), reportFeedback)
           } catch (error) {
-            showInfoToast(
-              error instanceof Error ? error.message : i18n.t('generationCommon.node.assetDrop.uploadFailed'),
-            )
+            reportFeedback(error instanceof Error ? error.message : i18n.t('generationCommon.node.assetDrop.uploadFailed'))
           }
         }
       } finally {
         setUploading(false)
       }
     },
-    [acceptsDrop, node.id],
+    [acceptsDrop, node.id, reportFeedback],
   )
 
   return { acceptsDrop, isDragOver, isUploading, dropHandlers: { onDragOver, onDragLeave, onDrop } }

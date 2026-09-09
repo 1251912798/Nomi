@@ -1,0 +1,14 @@
+{
+  "phase": "before",
+  "pageErrors": [],
+  "counts": {
+    "failCodex": true,
+    "failProduction": true,
+    "enabled": false,
+    "commandCalls": 0,
+    "visible": 2,
+    "queued": 3
+  },
+  "baseline": "1d565961f actual source via Vite transform",
+  "retryVerified": false
+}

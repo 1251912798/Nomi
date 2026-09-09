@@ -1,4 +1,5 @@
 import React from 'react'
+import { getDesktopActiveProjectId } from '../../../desktop/activeProject'
 import {
   pasteClipboardMediaToGenerationCanvas,
   extractClipboardMediaFiles,
@@ -305,6 +306,7 @@ export function useCanvasShortcuts(opts: {
         return
       }
       event.preventDefault()
+      const projectId = getDesktopActiveProjectId()
       void pasteClipboardMediaToGenerationCanvas({
         clipboardData: event.clipboardData,
         basePosition: pastePosition,
@@ -314,7 +316,7 @@ export function useCanvasShortcuts(opts: {
           pasteNodes(pastePosition)
           return
         }
-        showClipboardMediaPasteNotes(result)
+        showClipboardMediaPasteNotes(result, projectId)
       }).catch(() => {
         pasteNodes(pastePosition)
       })

@@ -5,7 +5,7 @@
 //   2. host-config.repaired：主进程只在真的改了配置文件时才发这一条，并附上该重启哪些助手
 //      （Claude Code / Codex / Cursor 或用户自建 profile）。名字从修复结果来，不在这里再写死一个。
 import i18n, { getAppLocale } from '../../i18n'
-import { toast } from '../../ui/toast'
+import { notify } from '../../ui/notificationPolicy'
 
 /** 未处理返回 null，让 capabilityApplyHandler 继续走它自己的 switch。 */
 export function handleMcpHostSurfaceOp(op: string, data: Record<string, unknown>): Record<string, unknown> | null {
@@ -16,7 +16,14 @@ export function handleMcpHostSurfaceOp(op: string, data: Record<string, unknown>
   if (op === 'host-config.repaired') {
     const clients = Array.isArray(data.clients) ? data.clients.filter((name): name is string => typeof name === 'string') : []
     if (!clients.length) return { notified: false }
-    toast(i18n.t('studio.hostConfigRepaired', { clients: clients.join(getAppLocale() === 'en' ? ', ' : '、') }), 'info')
+    notify({
+      identity: `host-config:${clients.slice().sort().map(encodeURIComponent).join(':')}`,
+      reason: 'repaired',
+      level: 'background',
+      message: i18n.t('studio.hostConfigRepaired', { clients: clients.join(getAppLocale() === 'en' ? ', ' : '、') }),
+      actionLabel: i18n.t('settings.tab.automation'),
+      onAction: () => window.dispatchEvent(new CustomEvent('nomi-open-settings', { detail: { tab: 'automation' } })),
+    })
     return { notified: true }
   }
   return null

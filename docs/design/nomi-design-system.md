@@ -709,30 +709,27 @@ mark 是 **28×28 viewBox 的圆角方块**：深色底（`oklch(0.22 0.01 80)` 
 - 强调色只允许出现在共享的瞬时交互反馈（键盘焦点、连接握把），不能成为编组常驻底色或描边
 - 可拖动整组
 
-### 4.5 Notification / `showUndoToast`
+### 4.5 通知：原地 → 状态 → toast → 必须决定
 
-文件：`src/ui/toast.tsx`、`src/utils/showUndoToast.ts`
+文件：`src/ui/notificationPolicy.ts`、`src/ui/toast.tsx`、`src/utils/showUndoToast.ts`。依据与全量清单：[通知策略](../plan/2026-09-09-notification-policy.md)。
 
-API：
+**先问有没有行动价值，再问用户正在看哪里。**
+
+- 当前对象发生的事在对象上说：节点卡、任务行、按钮旁的原地文字。已有结果/状态时不重复播报。失败保留原因与下一步，用户重试时清旧错误；不要让自动消失的 toast 成为错误唯一记录。
+- 成功默认不弹；状态徽标、列表变化、复制按钮回声承担反馈。纯进度不占 toast；持续影响当前工作面的障碍用当前面 banner。不能把“已保存”换成需要点“知道了”的模态。
+- toast 用于视线之外且需要知道的变化，提供一个真实动作（去看对象/重试/恢复）。撤销有时限的真实行动，即使结果在眼前也可保留；不能为了凑动作加“知道了”。
+- **通知/确认模态**只用于必须暂停决定的风险（花费、不可撤回、只读/信任边界），继续 09-08 已批审批档。用户主动打开的设置、编辑器、预览属于工作面，不受“只准风险模态”误删。
+- DC23：调用方提供稳定对象身份及原因码。同身份保留最新内容和最新动作；同原因显示累计次数，新原因重置次数；关闭后再次发生从 1 开始。可见和排队项都去重；独立撤销操作不得合并。
+
+`notify` 接受 `identity/reason/message` 和明确上下文：`inline` 必填真实 `present` 落点；`status` 由现有对象状态承担；`background` 必填动作；`decision` 复用既有确认宿主。禁止全局入口猜 DOM、给错误补虚假动作、或删通知却没接原地失败状态。冻结的旧标量入口经同一容器去重，不得在本任务擅改其领域触发逻辑。
+
+视觉：沿用唯一 Mantine 容器，右上顶栏下 12px、宽 344px、最多同时 2 条、间距 8px，语义色只作用于图标，整卡不铺色。有动作默认 8 秒；warning 5 秒/error 6 秒，关闭由 Mantine 管。动作右侧按钮，整张不可点击；动作最多占行宽 40%，长标签截断但 title/可访问名称完整。重复次数在正文旁显示 `×N`；同 id 更新内容不承诺重置上游倒计时。
 
 ```typescript
-showUndoToast({
-  message: '已复制到 角色',
-  onUndo: () => deleteNode(copied.id),
-  durationMs: 5000,  // optional, default 5s
-})
+notify({ identity: `task:${taskId}`, reason: 'download-failed',
+  message, type: 'error', level: 'inline', present: setError })
+showUndoToast({ message, onUndo, isUndoable, watchUndoable })
 ```
-
-视觉与行为：
-
-- 全仓只挂一套 `@mantine/notifications` 容器；右上角位于 56px 顶栏下 12px。
-- 宽 344px，最多同时显示 2 条，间距 8px；表面统一用 `--nomi-paper`、`--nomi-line`、`--nomi-shadow-md` 和 10px 圆角。
-- info / success / warning / error 只用语义图标区分，不给整张通知铺语义色。
-- 普通 info 3 秒、success 2.6 秒、warning 5 秒、error 6 秒；有动作时默认 8 秒。
-- 动作用右侧明确的文字按钮承载；整张通知不可点击，避免用户不知道点哪里会发生什么。
-- 长任务使用稳定 `id` 原位更新。画布批量生成从开始、失败、重试到完成始终使用 `canvas-batch-run`，不堆历史通知。
-
-**使用场景**：跨分类拖拽完成、跨分类 Cmd+V 粘贴等"用户可能误操作"的写入。
 
 ---
 
@@ -1149,3 +1146,5 @@ CSS 不会报错、不会回退到默认值，而是**静默作废整条声明**
 ### 过程反馈状态条（C1，2026-09-08）
 
 `src/workbench/generationCanvas/nodes/GenerationStatusBar.tsx`：图、视频、音频共用纸白胶囊，6px 状态点、正文 token 人话、等宽真实数字。压媒体时使用 overlay-chip 底与固定白字 token。排队 ink-30、进行 accent、完成 success、软超时 warning、失败 danger。状态不参与节点几何布局；点 1.6s 呼吸，reduced-motion 常亮；完成停 2s 后 240ms 淡出，减弱动态时停 4s 直接消失。失败动作沿用节点现役错误卡，不复制操作入口。
+
+重复 warning/error 第二次起转为可关闭持久提示，直到用户关闭或原地恢复回执撤回；不靠抖动 TTL 伪造续时，避免最新失败只剩上一次倒计时的几毫秒。普通单次通知仍沿用 Mantine 原生时长。

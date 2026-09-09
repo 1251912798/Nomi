@@ -1,3 +1,5 @@
+import i18n from '../../../i18n'
+import { notify } from '../../../ui/notificationPolicy'
 /**
  * 视频拆解面板：一条参考视频 → 一张结构化分镜表 → 勾选镜头落画布成组。
  *
@@ -28,7 +30,6 @@ import { cn } from '../../../utils/cn'
 import { getDesktopBridge } from '../../../desktop/bridge'
 import { getActiveWorkbenchProjectId } from '../../project/workbenchProjectSession'
 import { useGenerationCanvasStore } from '../store/generationCanvasStore'
-import { toast } from '../../../ui/toast'
 import type { GenerationCanvasNode } from '../model/generationCanvasTypes'
 import type { DeconstructionResult, DeconstructionShot } from './deconstructionTypes'
 import { NODE_DECONSTRUCTION_META_KEY } from './deconstructionTypes'
@@ -42,6 +43,21 @@ type Props = { node: GenerationCanvasNode }
 const PHASES = [0, 1, 2] as const
 
 export default function NodeDeconstructionPanel({ node }: Props): JSX.Element {
+  const feedbackOwnerRef = React.useRef<string | null>(node.id)
+  feedbackOwnerRef.current = node.id
+  React.useEffect(() => { feedbackOwnerRef.current = node.id; return () => { feedbackOwnerRef.current = null } }, [node.id])
+  const [feedback, setFeedback] = React.useState<string | null>(null)
+  const reportFeedback = React.useCallback((message: string) => {
+    if (feedbackOwnerRef.current !== node.id) {
+      if (message) notify({ identity: `node-deconstruction:${node.id}`, reason: 'operation-failed', message, level: 'background', actionLabel: i18n.t('generationCommon.node.locateNode'), onAction: () => {
+        const current = useGenerationCanvasStore.getState().nodes.find((entry) => entry.id === node.id)
+        if (current) useGenerationCanvasStore.getState().openVideoDeconstruction(current.id, { title: current.title || '', videoUrl: current.result?.url || '' })
+      } })
+      return
+    }
+    notify({ identity: `NodeDeconstructionPanel:${node.id}`, reason: 'interaction', message, level: 'inline', present: setFeedback })
+  }, [node.id])
+
   const { t } = useTranslation()
   const nodeId = node.id
   const videoUrl = node.result?.url || ''
@@ -145,12 +161,12 @@ export default function NodeDeconstructionPanel({ node }: Props): JSX.Element {
         })
         setEntry(nodeId, { result: nextResult })
       } catch (error) {
-        toast(error instanceof Error ? error.message : String(error), 'error')
+        reportFeedback(error instanceof Error ? error.message : String(error))
       } finally {
         setRetryingShot(null)
       }
     },
-    [node.meta, nodeId, result, setEntry, videoUrl],
+    [node.meta, nodeId, reportFeedback, result, setEntry, videoUrl],
   )
 
   const selectedShots = React.useMemo<DeconstructionShot[]>(
@@ -160,16 +176,17 @@ export default function NodeDeconstructionPanel({ node }: Props): JSX.Element {
 
   /** 勾选的镜头逐个落节点、自动编组、整批一个 Cmd+Z（复用旧拍板 extractDeconstructionShotsToNodes）。 */
   const addToCanvas = React.useCallback(async () => {
+    reportFeedback('')
     if (!selectedShots.length || committing) return
     setCommitting({ done: 0, total: selectedShots.length })
-    const outcome = await extractDeconstructionShotsToNodes({
+    const outcome = await extractDeconstructionShotsToNodes({ reportFeedback,
       node,
       shots: selectedShots,
       onProgress: (progress) => setCommitting(progress),
     })
     setCommitting(null)
     if (outcome.created > 0) closePanel()
-  }, [closePanel, committing, node, selectedShots])
+  }, [closePanel, committing, node, reportFeedback, selectedShots])
 
   /** 用这套结构起稿：把镜头表整理成草稿推进现有生成 AI composer（复用 setGenerationAiDraft）。 */
   const startDraft = React.useCallback(() => {
@@ -231,6 +248,7 @@ export default function NodeDeconstructionPanel({ node }: Props): JSX.Element {
       data-deconstruct-status={status}
       onPointerDown={(event) => event.stopPropagation()}
     >
+      {feedback ? <p role="status" className="m-0 px-2 py-1 text-caption text-nomi-ink-60">{feedback}</p> : null}
       {header}
 
       {status === 'idle' ? (

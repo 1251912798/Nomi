@@ -6,7 +6,7 @@ import { getDesktopBridge } from '../../../desktop/bridge'
 import { useGenerationCanvasStore } from '../store/generationCanvasStore'
 import { useNodeLivePreviewStore } from '../store/nodeLivePreviewStore'
 import { isVideoDepthProgressPhase } from '../videoDepth/videoDepthProgressPhase'
-import { toast } from '../../../ui/toast'
+import { notify } from '../../../ui/notificationPolicy'
 import i18n from '../../../i18n'
 
 const cancelRequested = new Set<string>()
@@ -35,7 +35,12 @@ export function requestTaskCancel(node: {
   id: string
   progress?: { phase?: string; taskId?: string } | null
   runs?: Array<{ taskId?: string }> | null
-}): void {
+}, present: (message: string) => void): void {
+  present('')
+  const report = (reason: 'failed' | 'queueOnly') => notify({
+    identity: `task-cancel:${node.id}`, reason, level: 'inline', present,
+    message: reason === 'failed' ? i18n.t('generationCommon.comfyuiCancel.failed') : i18n.t('generationCommon.comfyuiCancel.queueOnly'), type: 'warning',
+  })
   // 本地深度处理没有 taskId（它不是一次「任务」，是一段跑在本机的处理），所以它只需要
   // 把登记放下——编排每批之间会问一次 isTaskCancelRequested。**这里不改节点状态**：
   // 收摊要做的事是把那个还没出片的派生节点删掉（startVideoDepthDerivation），
@@ -49,7 +54,7 @@ export function requestTaskCancel(node: {
   const tasks = getDesktopBridge()?.tasks
   if (promptId.startsWith('local-')) {
     void tasks?.cancel?.(promptId).then((result) => {
-      if (!result.ok) toast(i18n.t('generationCommon.comfyuiCancel.failed'), 'warning')
+      if (!result.ok) report('failed')
       else {
         const store = useGenerationCanvasStore.getState()
         const current = store.nodes.find((candidate) => candidate.id === node.id)
@@ -57,17 +62,17 @@ export function requestTaskCancel(node: {
         if (current?.status === 'running') cancelRequested.add(node.id)
         store.setNodeStatus(node.id, 'idle')
       }
-    }).catch(() => toast(i18n.t('generationCommon.comfyuiCancel.failed'), 'warning'))
+    }).catch(() => report('failed'))
     return
   }
   cancelRequested.add(node.id)
   if (promptId) {
     void tasks?.comfyuiInterrupt?.(promptId)
       .then((result) => {
-        if (result.mode === 'queue-only') toast(i18n.t('generationCommon.comfyuiCancel.queueOnly'), 'warning')
-        else if (!result.ok) toast(i18n.t('generationCommon.comfyuiCancel.failed'), 'warning')
+        if (result.mode === 'queue-only') report('queueOnly')
+        else if (!result.ok) report('failed')
       })
-      .catch(() => toast(i18n.t('generationCommon.comfyuiCancel.failed'), 'warning'))
+      .catch(() => report('failed'))
       .finally(() => { void tasks?.comfyuiUnwatch?.(promptId).catch(() => undefined) })
   }
   useNodeLivePreviewStore.getState().clearPreview(node.id)

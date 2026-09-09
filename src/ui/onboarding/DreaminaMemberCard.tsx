@@ -13,7 +13,6 @@ import { useTranslation } from 'react-i18next'
 import { IconMovie, IconExternalLink, IconCircleCheck, IconQrcode, IconDownload, IconCopy, IconCheck } from '@tabler/icons-react'
 import { cn } from '../../utils/cn'
 import { getDesktopBridge } from '../../desktop/bridge'
-import { toast } from '../toast'
 import { FoldableModelCard } from './FoldableModelCard'
 
 export type DreaminaStatus = { installed: boolean; loggedIn: boolean; totalCredit: number | null; vipLevel: string; notMaestroVip: boolean }
@@ -47,7 +46,7 @@ export function DreaminaMemberCard({ status, onChanged, onOpenDetails, detailMod
     setBusy(true); setError('')
     try {
       const r = await dreamina.install()
-      if (r.ok) { toast(t('onboardingProviders.dreamina.installComplete'), 'success'); onChanged() }
+      if (r.ok) { onChanged() }
       else setError(r.message)
     } catch (e) { setError(e instanceof Error ? e.message : String(e)) } finally { setBusy(false) }
   }
@@ -59,7 +58,7 @@ export function DreaminaMemberCard({ status, onChanged, onOpenDetails, detailMod
       // checklogin 单次最多阻塞 ~60s；循环续查直到成功/出错/用户取消（设备码有效期内）。
       for (let i = 0; i < 8 && !cancelPoll.current; i += 1) {
         const r = await dreamina.loginPoll(deviceCode)
-        if (r.status === 'success') { toast(t('onboardingProviders.dreamina.loginComplete'), 'success'); setFlow(null); onChanged(); return }
+        if (r.status === 'success') { setFlow(null); onChanged(); return }
         if (r.status === 'error') { setError(r.message); return }
         // pending → 继续下一轮
       }
@@ -76,7 +75,6 @@ export function DreaminaMemberCard({ status, onChanged, onOpenDetails, detailMod
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e)
       if (/复用.*登录态|已登录|already logged in|already authenticated/i.test(message)) {
-        toast(t('onboardingProviders.dreamina.alreadyLoggedIn'), 'success')
         onChanged()
       } else {
         setError(message)
@@ -87,14 +85,14 @@ export function DreaminaMemberCard({ status, onChanged, onOpenDetails, detailMod
   const handleLogout = async () => {
     cancelPoll.current = true
     setBusy(true); setError('')
-    try { await dreamina.logout(); setFlow(null); onChanged(); toast(t('onboardingProviders.dreamina.loggedOut'), 'success') }
+    try { await dreamina.logout(); setFlow(null); onChanged() }
     catch (e) { setError(e instanceof Error ? e.message : String(e)) } finally { setBusy(false) }
   }
 
   const handleCopyLink = () => {
     if (!flow) return
     void navigator.clipboard.writeText(flow.verificationUri).then(() => {
-      setCopied(true); toast(t('onboardingProviders.dreamina.linkCopied'), 'success'); window.setTimeout(() => setCopied(false), 1600)
+      setCopied(true); window.setTimeout(() => setCopied(false), 1600)
     })
   }
 

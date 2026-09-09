@@ -1,3 +1,4 @@
+import { notify } from '../../../../ui/notificationPolicy'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { createPortal } from 'react-dom'
@@ -52,7 +53,7 @@ import {
 import type { Scene3DMoveHubTab } from './scene3dMoveHub'
 import type { Scene3DReferenceTargetSummary } from './scene3dReferenceDirector'
 import {
-  useScene3DClipboardActions,
+  type Scene3DFeedback, type ReportScene3DFeedback, useScene3DClipboardActions,
   useScene3DTrajectoryModeActions,
   useScene3DKeyboardShortcuts,
   useScene3DAddActions,
@@ -63,20 +64,19 @@ import {
 } from './useScene3DFullscreenActions'
 import { useScene3DCaptureActions, useScene3DMoveFrameExport } from './useScene3DCaptureExport'
 type Scene3DFullscreenProps = {
+  feedbackMessage?: string | null
   initialState: Scene3DState
   nodeTitle: string
   readOnly?: boolean
   onClose: () => void
   onStateChange: (state: Scene3DState) => void
   onScreenshot: (capture: Scene3DCaptureResult) => void
-  // 录 take（S2）：把录制好的（含角色/机位轨迹的）场景交回宿主建 scene3d 节点 + 打捕获标志。
-  // 可选——未传则不出现「录 take」按钮（如样张/只读环境）。返回新建节点 id 供产物卡追踪。
   onRecordTake?: (recordedState: Scene3DState) => string | void
   referenceTarget?: Scene3DReferenceTargetSummary
 }
 
 export default function Scene3DFullscreen({
-  initialState,
+  feedbackMessage, initialState,
   nodeTitle,
   readOnly = false,
   onClose,
@@ -86,10 +86,14 @@ export default function Scene3DFullscreen({
   referenceTarget,
 }: Scene3DFullscreenProps): JSX.Element {
   const { t } = useTranslation()
-  // 进编辑器即把 totalDuration 同步到内容真实长度（第3期：老工程存的 stale-high / 默认 10s 一并回收，迁移-free）。
+  const feedbackHostId = React.useId()
+  const [feedback, setFeedback] = React.useState<Scene3DFeedback | null>(null)
+  const reportFeedback = React.useCallback<ReportScene3DFeedback>((next) => {
+    if (!next) { setFeedback(null); return }
+    notify({ identity: `scene3d:editor:${feedbackHostId}`, reason: 'editing', message: next.message, level: 'inline', present: (message) => setFeedback({ ...next, message }) })
+  }, [feedbackHostId])
   const [state, setState] = React.useState(() => syncSceneTimelineDuration(cloneScene3DState(initialState)))
   const [selection, setSelection] = React.useState<Scene3DSelection>(null)
-  // 首次进入的三步教练标注（方案 A，2026-07-11 拍板）；只出现一次，localStorage 记忆。
   const [showCoach, setShowCoach] = React.useState(() => !hasSeenScene3DCoach())
   const [transformMode, setTransformMode] = React.useState<Scene3DTransformMode>('translate')
   const [viewLocked, setViewLocked] = React.useState(false)
@@ -127,7 +131,6 @@ export default function Scene3DFullscreen({
   const cameraViewEditCamera = cameraViewEditId
     ? state.cameras.find((camera) => camera.id === cameraViewEditId)
     : undefined
-  // 整运镜分区（IA 重排一期）：预设/轨迹/录 take 三 tab，替代原右栏顶层「属性/轨迹」两 tab
   const [moveHubTab, setMoveHubTab] = React.useState<Scene3DMoveHubTab>('preset')
   const trajectory = useScene3DTrajectoryEditing({ state, setState, readOnly })
   const trajectoryMode = trajectory.trajectoryEditMode
@@ -235,7 +238,7 @@ export default function Scene3DFullscreen({
     setCameraViewEditId,
   })
 
-  const { addObject, addProp, addCamera, addCrowd, applySceneTemplate } = useScene3DAddActions({
+  const { addObject, addProp, addCamera, addCrowd, applySceneTemplate } = useScene3DAddActions({ reportFeedback,
     readOnly,
     stateRef,
     setState,
@@ -245,7 +248,7 @@ export default function Scene3DFullscreen({
   })
 
   const { startKeyboardNavigation, stopKeyboardNavigation, copySelection, pasteClipboard } =
-    useScene3DClipboardActions({
+    useScene3DClipboardActions({ reportFeedback,
       readOnly,
       stateRef,
       selectionRef,
@@ -257,8 +260,7 @@ export default function Scene3DFullscreen({
       setFocusId,
     })
 
-  // 视口/相机截图（返回是否截成：出片面板据此弹截图完成卡）——动作体在 useScene3DCaptureExport.ts
-  const { captureViewport, captureSelectedCamera } = useScene3DCaptureActions({
+  const { captureViewport, captureSelectedCamera } = useScene3DCaptureActions({ reportFeedback,
     stateRef,
     captureApiRef,
     trajectory,
@@ -267,7 +269,6 @@ export default function Scene3DFullscreen({
     onPickCamera: (cameraId) => setSelection({ type: 'camera', id: cameraId }),
   })
 
-  // 出片动作（任务优先重构）：三个导出 handler + 接力 toast + 产物卡片状态（R9 抽到 actions 文件）
   const {
     exportCard,
     dismissExportCard,
@@ -276,10 +277,8 @@ export default function Scene3DFullscreen({
     handleExportScreenshotCamera,
     trackTakeExport,
     markKeyframesExported,
-  } = useScene3DExportActions({
-    state,
+  } = useScene3DExportActions({ reportFeedback,
     stateRef,
-    readOnly,
     selectedCamera,
     onRecordTake,
     onPickCamera: (cameraId) => setSelection({ type: 'camera', id: cameraId }),
@@ -287,8 +286,7 @@ export default function Scene3DFullscreen({
     captureSelectedCamera,
     setState,
   })
-  // 首尾帧离屏导出（F2：两张节点建好 → markKeyframesExported 弹持久结果卡）。放在 exportActions 后拿其回调。
-  const { exportCameraMoveFrames, moveFrameCapture } = useScene3DMoveFrameExport({ stateRef, onScreenshot, onKeyframesExported: markKeyframesExported })
+  const { exportCameraMoveFrames, moveFrameCapture } = useScene3DMoveFrameExport({ reportFeedback, stateRef, onScreenshot, onKeyframesExported: markKeyframesExported })
 
   const unlockViewForSceneEdit = React.useCallback(() => {
     suppressCanvasMissedSelectionRef.current = true
@@ -310,7 +308,6 @@ export default function Scene3DFullscreen({
     }, 160)
   }, [])
 
-  // 绑定对象拖拽仲裁（播放中抓取先暂停 + 松手即对齐）——逻辑体在 useScene3DBoundDrag.ts。
   const { beginSceneTransformInteraction, handleBoundDragEnd } = useScene3DBoundDrag({
     isPlaying: trajectory.isPlaying,
     setIsPlaying: trajectory.setIsPlaying,
@@ -342,7 +339,6 @@ export default function Scene3DFullscreen({
       setTimelineOpen: trajectory.setTimelineOpen,
     })
 
-  // 滚轮导航（工作视图）：解锁取景 + 写回编辑器相机（updateEditorCamera 现由取景 hook 提供，R9 迁移后）。
   const handleWheelNavigation = React.useCallback((editorCamera: Scene3DState['editorCamera']) => {
     setViewLocked(false)
     setFocusId('')
@@ -378,7 +374,7 @@ export default function Scene3DFullscreen({
     characterDrive.exitCameraPossess()
   }, [characterDrive, onRecordTake, trackTakeExport])
 
-  const takeRecorder = useScene3DTakeRecorder({
+  const takeRecorder = useScene3DTakeRecorder({ reportFeedback,
     possessTarget: characterDrive.possessTarget,
     readOnly,
     stateRef,
@@ -389,8 +385,7 @@ export default function Scene3DFullscreen({
   // 不用在这里判断「现在是否在录」（判断会撞过期闭包，见 stopRecording 注释）。
   stopRecordingBeforeExitRef.current = takeRecorder.stopRecording
 
-  // 任务优先状态机（拍板样张 2026-07-22）：任务切换 / 倒计时录制 / 主视图身份 / 状态句 / CTA / 原位重播
-  const taskFlow = useScene3DTaskFlow({
+  const taskFlow = useScene3DTaskFlow({ reportFeedback,
     stateRef,
     selection,
     selectionRef,
@@ -422,7 +417,6 @@ export default function Scene3DFullscreen({
     takeRecorder.recordPoseEvent(effectivePresetId)
   }, [characterDrive, takeRecorder])
 
-  // 统一 semantic pose transition（D）：C 键与动作库共用同一录制入口（详见 useScene3DSemanticPose）。
   const { handlePoseTransition, handlePoseResume } = useScene3DSemanticPose({ possessId: characterDrive.possessId, patchObject, recordPoseEvent: takeRecorder.recordPoseEvent, recordPoseResume: takeRecorder.recordPoseResume })
   const {
     selectTrajectoryForMode,
@@ -434,7 +428,7 @@ export default function Scene3DFullscreen({
     assignTrajectoryToGroup,
     bindTargetToTrajectoryForMode,
     requestTrajectoryPlayChange,
-  } = useScene3DTrajectoryModeActions({
+  } = useScene3DTrajectoryModeActions({ reportFeedback,
     trajectory,
     enterTrajectoryMode,
     trajectoryMode,
@@ -535,6 +529,12 @@ export default function Scene3DFullscreen({
         onClose={handleClose}
       />
 
+      {feedback || feedbackMessage ? (
+        <div role="status" className="flex shrink-0 items-center gap-2 border-b border-[var(--nomi-line-soft)] px-4 py-2 text-caption text-[var(--nomi-ink-60)]">
+          <span className="min-w-0 flex-1">{feedback?.message || feedbackMessage}</span>
+          {feedback?.onAction && feedback.actionLabel ? <button type="button" className="shrink-0 text-[var(--nomi-accent)]" onClick={() => { setFeedback(null); feedback.onAction?.() }}>{feedback.actionLabel}</button> : null}
+        </div>
+      ) : null}
       <main className="relative flex min-h-0 flex-1 overflow-hidden bg-[var(--workbench-bg)]">
         <AnimatePresence initial={false}>
           {leftPanelOpen ? (

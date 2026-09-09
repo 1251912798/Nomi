@@ -2,7 +2,7 @@
 // 主视图身份切换 / 全局状态句 / 任务 CTA / 原位重播。行为与原内联实现等价（P1 无并行版）。
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { toast } from '../../../../ui/toast'
+import type { ReportScene3DFeedback } from './useScene3DFullscreenActions'
 import { cloneScene3DState } from './scene3dSerializer'
 import { setScene3DPlayheadSeconds } from './trajectory'
 import { cameraWithPlaybackPosition } from './scene3dPlayback'
@@ -24,6 +24,7 @@ import type { useScene3DTrajectoryEditing } from './useScene3DTrajectoryEditing'
 import { scene3dCameraDisplayName, scene3dObjectDisplayName } from './scene3dObjectNames'
 
 export function useScene3DTaskFlow({
+  reportFeedback,
   stateRef,
   selection,
   selectionRef,
@@ -45,6 +46,7 @@ export function useScene3DTaskFlow({
   handleExportReferenceVideo,
   handleExportScreenshotCamera,
 }: {
+  reportFeedback: ReportScene3DFeedback
   stateRef: React.MutableRefObject<Scene3DState>
   selection: Scene3DSelection
   selectionRef: React.MutableRefObject<Scene3DSelection>
@@ -85,12 +87,13 @@ export function useScene3DTaskFlow({
   }, [])
 
   const beginCountdownRecording = React.useCallback(() => {
+    reportFeedback(null)
     if (takeRecorder.isRecording || countdownTimerRef.current !== null) return
     if (!hasPossessTarget) {
       // effect-first：act 任务 CTA 直达——没在操控就替用户接管第一个角色。
       const firstMannequin = stateRef.current.objects.find((object) => object.type === 'mannequin')
       if (!firstMannequin) {
-        toast(t('scene3d.taskFlow.addCharacterBeforeRecord'), 'warning')
+        reportFeedback({ message: t('scene3d.taskFlow.addCharacterBeforeRecord') })
         return
       }
       setSelection({ type: 'object', id: firstMannequin.id })
@@ -111,7 +114,7 @@ export function useScene3DTaskFlow({
         return current - 1
       })
     }, 1000)
-  }, [enterPossess, hasPossessTarget, setSelection, stateRef, takeRecorder, t])
+  }, [enterPossess, hasPossessTarget, setSelection, stateRef, takeRecorder, t, reportFeedback])
 
   React.useEffect(() => {
     if (recordCountdown === null) return undefined
@@ -130,13 +133,14 @@ export function useScene3DTaskFlow({
 
   // —— 主视图身份切换（审计 §6.2：主画面必须明说是不是输出画面）——
   const handleToggleOutputView = React.useCallback(() => {
+    reportFeedback(null)
     if (cameraViewEditCamera) {
       exitCameraViewEdit()
       return
     }
     const camera = selectedCamera ?? stateRef.current.cameras[0]
     if (!camera) {
-      toast(t('scene3d.taskFlow.addCameraForOutputView'), 'warning')
+      reportFeedback({ message: t('scene3d.taskFlow.addCameraForOutputView') })
       return
     }
     // F1：auto 相机在进「输出画面」前按当前主体重解安全画幅（头脚不裁）；manual 相机原样不动。
@@ -161,7 +165,7 @@ export function useScene3DTaskFlow({
       ? { ...stateRef.current, cameras: stateRef.current.cameras.map((item) => (item.id === camera.id ? outputCamera : item)) }
       : stateRef.current
     enterCameraViewEdit(cameraWithPlaybackPosition(outputState, outputCamera, trajectory.playheadRef.current, trajectory.activeTrajectoryIds))
-  }, [cameraViewEditCamera, enterCameraViewEdit, exitCameraViewEdit, selectedCamera, selectionRef, setSelection, setState, stateRef, trajectory.activeTrajectoryIds, trajectory.playheadRef, t])
+  }, [cameraViewEditCamera, enterCameraViewEdit, exitCameraViewEdit, selectedCamera, selectionRef, setSelection, setState, stateRef, trajectory.activeTrajectoryIds, trajectory.playheadRef, t, reportFeedback])
 
   // —— 任务 CTA：完成按钮就是产物动作（构图=相机截图 / 动作=录 take / 运镜=参考视频）——
   const handleTaskCta = React.useCallback(() => {
