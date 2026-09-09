@@ -7,7 +7,6 @@ export function decryptForDispatch({ record, decrypt, credentialMarker }) {
   let key = '', reason = 'no-key'
   if (hasCredential(record)) {
     reason = 'keychain-denied'
-    fs.writeFileSync(credentialMarker, JSON.stringify({ status: 'probing' }))
     try { key = decrypt(record) } catch { /* Only the safe reason crosses the process boundary. */ }
   }
   fs.writeFileSync(credentialMarker, JSON.stringify(key ? { status: 'ready' } : { status: 'blocked', reason }))
