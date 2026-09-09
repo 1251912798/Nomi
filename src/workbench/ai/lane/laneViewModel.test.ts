@@ -98,7 +98,7 @@ describe('laneViewModel', () => {
       if (item.kind !== 'tool') throw new Error('missing receipt')
       return item.receipt
     }
-    expect(receipt(false)).toMatchObject({ label: 'agentResident.toolCanvasWrite', action: 'canvas', status: 'output-available' })
+    expect(receipt(false)).toMatchObject({ label: 'agentResident.toolCanvasCreate', action: 'canvas', status: 'output-available' })
     expect(receipt(false).summary).toContain('agentResident.toolNoGeneration')
     expect(receipt(true).summary).not.toContain('agentResident.toolNoGeneration')
     expect(receipt(true).summary).toContain('agentResident.issueExpected')

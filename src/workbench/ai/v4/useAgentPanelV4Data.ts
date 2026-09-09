@@ -1,3 +1,4 @@
+import { formatV4Tokens } from './agentPanelV4UsageFormat'
 // The lane owns conversation state; workbenchStore owns unsent input.
 import React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -170,7 +171,7 @@ export function useAgentPanelV4Data(surface: ResidentSurface): AgentPanelV4Data 
     toolSummary: (name, args) => readableToolSummary(t, name, args),
     toolFailure: (text) => humanizeToolFailure(t, text) ?? text,
     thinkingLabel: t('agentPanelV4.thinkingLabel'),
-    formatTokens: (value) => value.toLocaleString(),
+    formatTokens: formatV4Tokens,
     formatCost: (amount) => t('agentPanelV4.costUsd', { amount: amount.toFixed(2) }),
     retryLabel: (attempt, maxAttempts) => t('agentPanelV4.retrying', { attempt, maxAttempts }),
     unknown: t('agentPanelV4.contextUnknown'),

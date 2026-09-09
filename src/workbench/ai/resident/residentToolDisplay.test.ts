@@ -22,7 +22,7 @@ describe('resident tool display projection', () => {
   it('names every current lane tool and preserves operation-specific effects', () => {
     expect(modelFacingToolSpecs('internal').filter(spec => readableToolName(translate, spec.name) === 'agentResident.toolGeneric')
       .map(spec => spec.name)).toEqual([])
-    expect(readableToolName(translate, 'nomi_canvas_write', { operation: 'create_canvas_nodes' })).toBe('agentResident.toolCanvasWrite')
+    expect(readableToolName(translate, 'nomi_canvas_write', { operation: 'create_canvas_nodes' })).toBe('agentResident.toolCanvasCreate')
     expect(readableToolName(translate, 'nomi_storyboard_write', { operation: 'patch_shots' })).toBe('agentResident.toolStoryboardWrite')
     expect(readableToolSummary(translate, 'nomi_canvas_write', { operation: 'create_canvas_nodes' })).toContain('agentResident.toolNoGeneration')
     expect(isReadOnlyToolName('read_full_text')).toBe(true)

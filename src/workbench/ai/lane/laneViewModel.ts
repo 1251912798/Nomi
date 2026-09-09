@@ -1,3 +1,4 @@
+import { capabilitySupportsUndo } from '../../../../electron/shared/agentCapabilities/registry'
 import { redactToolArguments, redactResidentSensitiveText } from '../resident/residentToolText'
 // Agent lane · 视图投影（纯函数，唯一 owner）
 //
@@ -287,7 +288,8 @@ export function laneViewModel(projection: LaneProjection, labels: LaneViewModelL
         ? { ...withoutSummary, status: 'output-denied' }
         : { ...(part.isError ? withoutSummary : existing.receipt), status: settledStatus(part.isError, false),
           ...(failure ? { summary: redactResidentSensitiveText(failure) } : {}),
-          ...(!part.isError && part.toolCallId === undoableToolCallId ? { undoable: true } : {}),
+          ...(!part.isError && part.toolCallId === undoableToolCallId
+            && capabilitySupportsUndo(resolveModelToolCapabilityId(slot.toolName, slot.args) ?? slot.toolName, slot.args) ? { undoable: true } : {}),
           output: redactResidentSensitiveText(part.text) || undefined },
     }
   }
