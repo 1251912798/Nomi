@@ -29,6 +29,8 @@ export type McpConfigState =
 
 export type McpClientInfo = {
   installed: boolean
+  /** 宿主应用存在；与 Nomi 配置是否写入独立。 */
+  appInstalled?: boolean
   configPath: string
   snippet: string
   configState: McpConfigState

@@ -15,6 +15,7 @@ describe('settings automation view', () => {
       { key: 'cursor', enabled: false, locked: false },
       // 新加的内置客户端默认**不可信**（和 Cursor 一样要用户显式勾）——写档不等于给权限。
       { key: 'pi', enabled: false, locked: false },
+      { key: 'workbuddy', enabled: false, locked: false },
     ])
     expect(view.mandatoryGates).toEqual(['first-spend', 'irreversible'])
   })

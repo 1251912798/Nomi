@@ -22,8 +22,8 @@ import { resolveAssistantActivationState, type AssistantClientKey } from './assi
 const GUIDE_URL = 'https://github.com/aqm857886159/Nomi/blob/main/docs/guide/capability-core-cli-mcp.md'
 const CURSOR_CONNECTED_TOAST_ID = 'mcp:cursor-connected'
 type ClientKey = AssistantClientKey
-const CLIENT_LABEL: Record<ClientKey, string> = { claude: 'Claude Code', codex: 'Codex', cursor: 'Cursor', pi: 'Pi' }
-const CLIENT_ORDER: ClientKey[] = ['claude', 'codex', 'cursor', 'pi']
+const CLIENT_LABEL: Record<ClientKey, string> = { claude: 'Claude Code', codex: 'Codex', cursor: 'Cursor', pi: 'Pi', workbuddy: 'WorkBuddy' }
+const CLIENT_ORDER: ClientKey[] = ['claude', 'codex', 'cursor', 'pi', 'workbuddy']
 // pi 是唯一一个「写完配置还差一步」的客户端：它自己不带 MCP，得先装社区适配器（pi-mcp-adapter）。
 // 这条命令我们只给、不代跑——装第三方包是用户自己机器上的决定（R20/R28）。
 const PI_ADAPTER_COMMAND = 'pi install npm:pi-mcp-adapter'
@@ -97,6 +97,7 @@ export function ConnectAssistantCard({
     if (!info || pickedDefault.current) return
     pickedDefault.current = true
     const installed = CLIENT_ORDER.find((key) => info.clients[key]?.installed)
+      ?? CLIENT_ORDER.find((key) => info.clients[key]?.appInstalled)
     if (installed) setTarget(installed)
   }, [info])
 

@@ -1,4 +1,4 @@
-export type AssistantClientKey = 'claude' | 'codex' | 'cursor' | 'pi'
+export type AssistantClientKey = 'claude' | 'codex' | 'cursor' | 'pi' | 'workbuddy'
 export type AssistantVerifyPhase = 'checking' | 'ok' | 'broken' | null
 
 export function resolveAssistantActivationState(input: {
