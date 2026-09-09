@@ -1,3 +1,4 @@
+import { laneGenerationContextText } from './laneGenerationContext'
 import type { RuntimeToolCall, RuntimeToolDecision } from '../shared/agentCapabilities/transportContracts'
 import { LANE_DEFERRED_TOOL_CATALOG } from './laneToolCatalog'
 import { bindLaneTool, LaneDomainFailure, type LaneToolDescriptor } from './laneRuntimePort'
@@ -13,6 +14,9 @@ export function createExtendedLaneTools(port: LaneExtendedPort): LaneToolDescrip
       message: `${spec.name} could not complete the requested action (${decision.code ?? 'capability_execution_failed'}).`,
       nextAction: 'Read the current project state and review the current identifiers, revision and approval before requesting a new action. Do not repeat an unknown paid submission.',
     })
-    return { ok: true, text: JSON.stringify(decision.result ?? null), details: decision.result }
+    const operation = args && typeof args === 'object' && 'operation' in args ? args.operation : undefined
+    const text = spec.name === 'nomi_generation_plan' && operation === 'context'
+      ? laneGenerationContextText(decision.result, args) : JSON.stringify(decision.result ?? null)
+    return { ok: true, text, details: decision.result }
   }))
 }

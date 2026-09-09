@@ -82,7 +82,7 @@ export const L1_SCENARIOS: readonly L1Scenario[] = [
     calls(domain('preview-t3', 'propose_edit_plan', plan, { valid: true, baseRevision: 'r1' })),
     calls(domain('write-t3', 'apply_edit_plan', plan, { applied: true, revision: 'r2', undoToken: 'undo-1' })), say('The edit has an undo token.'))]),
   scenario('G1', 'generation', 'Read catalog context and create a draft without spending', [turn('Draft a sunrise image.',
-    calls(domain('context-g1', 'nomi_generation_plan', { operation: 'context' }, { models: ['fixture-image'] })),
+    calls({ ...domain('context-g1', 'nomi_generation_plan', { operation: 'context', scope: 'full' }, { models: ['fixture-image'] }), resultText: JSON.stringify({ models: ['fixture-image'] }, null, 2) }),
     calls(domain('create-g1', 'nomi_generation_plan', { operation: 'create', prompt: 'Sunrise' }, { operationId: 'gen-1', state: 'draft' })), say('The draft awaits review.'))]),
   scenario('G2', 'generation', 'Read a submitted operation then cancel it', [turn('Stop the existing generation.',
     calls(domain('read-g2', 'nomi_generation_status', { operation: 'read', operationId: 'gen-2' }, { operationId: 'gen-2', state: 'submitted' })),

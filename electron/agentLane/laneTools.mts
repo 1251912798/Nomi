@@ -69,6 +69,16 @@ function truncateForModel(text: string): { text: string; truncation?: LaneOutput
     maxLines: LANE_MODEL_OUTPUT_MAX_LINES, maxBytes: LANE_MODEL_OUTPUT_MAX_BYTES,
   });
   if (!result.truncated || result.truncatedBy === null) return { text };
+  // pi deliberately keeps complete lines. A one-line JSON/document can exceed
+  // the byte cap alone; preserve a UTF-8-safe prefix instead of returning zero information.
+  if (result.firstLineExceedsLimit) {
+    const bytes = Buffer.from(text, 'utf8');
+    let end = LANE_MODEL_OUTPUT_MAX_BYTES;
+    while (end > 0 && (bytes[end]! & 0xc0) === 0x80) end -= 1;
+    result.content = bytes.subarray(0, end).toString('utf8');
+    result.outputBytes = end;
+    result.outputLines = 1;
+  }
   // 这句话是模型唯一能读到的截断信号。它必须说清三件事：**被截了**（否则它会把
   // 半截原稿当成全文继续写）、**截掉了多少**、**下一步做什么**。少了第三件，
   // 模型知道自己看不全却无路可走，只能猜——那比不截断更糟。

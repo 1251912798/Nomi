@@ -72,7 +72,9 @@ const createFields = {
 const operationId = z.string().trim().min(1);
 
 export const generationPlanInputSchema = z.discriminatedUnion("operation", [
-  z.object({ operation: z.literal("context") }).strict(),
+  z.object({ operation: z.literal("context"),
+    taskKind: createFields.taskKind, scope: z.enum(["summary", "full"]).optional(),
+  }).strict(),
   z.object({ operation: z.literal("create"), ...createFields }).strict(),
   z.object({ operation: z.literal("patch"), operationId, patch: candidatePatch }).strict(),
   z.object({ operation: z.literal("preview"), operationId }).strict(),
@@ -90,3 +92,9 @@ export function generationPlanSchemaForHost(host: { preview: boolean }) {
   const [context, create, patch] = generationPlanInputSchema.options;
   return host.preview ? generationPlanInputSchema : z.discriminatedUnion('operation', [context, create, patch]);
 }
+
+export const GENERATION_CREATE_EXAMPLE = {
+  operation: 'create', taskKind: 'text_to_image',
+  candidate: { candidateId: 'candidate-1', revision: 1, moduleId: 'image', providerId: 'from-context',
+    modelId: 'from-context', mode: 'from-context', prompt: '海上日出' },
+} as const;

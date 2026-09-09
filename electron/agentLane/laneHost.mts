@@ -199,6 +199,14 @@ export const openLane: OpenLane = async (options: OpenLaneOptions): Promise<Lane
   const { harness } = await AgentHarness.create<undefined>({
     session, models, model, systemPrompt, tools,
     toProviderMessages: async (messages) => convertToLlm(await Promise.all(messages.map(async (message) => {
+      // pi's AJV preparation failures are immediate results, before after_tool.
+      // Enrich the model projection without revalidating or changing its recorded arguments.
+      if (message.role === 'toolResult' && message.isError
+        && message.content.some(part => part.type === 'text' && /additional properties/.test(part.text))) {
+        const example = options.tools.find(tool => tool.name === message.toolName)?.examples[0];
+        if (example) return { ...message, content: [...message.content,
+          { type: 'text' as const, text: '应长这样：' + JSON.stringify(example.arguments) }] };
+      }
       if (!isLaneInputMessage(message)) return message;
       if (!options.input) throw new Error('This lane cannot resolve its recorded input context.');
       const content = await options.input.providerContent(message);

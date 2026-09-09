@@ -54,9 +54,52 @@ test('C19 · switching groups tells the model core tools remain callable', async
 
 });
 
+test('C26 · replay the first human failure and show a valid candidate example', async t => {
+  const args = JSON.parse(await readFile('docs/plan/agent-lane-b1-evidence/c26-first-call.json', 'utf8'));
+  const f = await createLaneFixture(t, [{ type: 'tool', calls: [{ id: 'bad', name: plan().name, arguments: args }] }, closing]);
+  const lane = await f.openLane({ ...f.options, tools: createExtendedLaneTools({ execute: async () => { throw new Error('Invalid call must not execute'); } }) });
+  await lane.execute({ kind: 'prompt', text: '试拍' });
+  const body = JSON.stringify(f.http.requests.at(-1)?.body);
+  assert.match(body, /应长这样/);
+  assert.ok(plan().examples.some(e => e.arguments.taskKind && e.arguments.candidate));
+  for (const e of plan().examples) assert.equal(plan().schema.safeParse(e.arguments).success, true);
+});
+
 test('C28 · lane hides preview while the external contract retains it', () => {
   assert.equal(plan().schema.safeParse({ operation: 'preview', operationId: 'op-one' }).success, false);
   const schema = toModelVisibleSchema(plan().schema, { toolName: plan().name });
   assert.doesNotMatch(JSON.stringify(schema), /preview/);
   assert.equal(generationPlanInputSchema.safeParse({ operation: 'preview', operationId: 'op-one' }).success, true);
+});
+
+test('C29 · 246KB context defaults to a useful <=4KB summary; full scope is explicit', async () => {
+  const huge = { projectId: 'fixture-project', providerProfiles: [{ providerId: 'fixture', modelIds: ['video-one'] }],
+    videoModels: [{ providerId: 'fixture', modelId: 'video-one', label: '视频一', variants: [{ modes: [{ id: 't2v', transportTaskKind: 'text_to_video' }] }], description: 'x'.repeat(246 * 1024) }], nextAction: 'create' };
+  const desc = createExtendedLaneTools({ execute: async () => ({ ok: true, result: huge }) }).find(s => s.name === plan().name)!;
+  const result = await desc.execute({ operation: 'context', taskKind: 'text_to_video' }, { toolCallId: 'ctx', signal: new AbortController().signal });
+  assert.ok(result.ok);
+  assert.ok(Buffer.byteLength(result.text) <= 4096);
+  assert.match(result.text, /video-one/);
+  assert.match(result.text, /scope/);
+  assert.equal(desc.schema.safeParse({ operation: 'context', scope: 'full', taskKind: 'text_to_video' }).success, true);
+  const tool = createLaneTools([{ ...desc, schema: z.object({}), execute: async () => ({ ok: true, text: 'HEAD-' + '文'.repeat(100000) }) }])[0];
+  const bounded = await tool.execute('ctx', {}, (() => undefined) as never, undefined, {} as never, BACKGROUND_CONTEXT);
+  assert.match(textOf(bounded), /^HEAD-/);
+  assert.doesNotMatch(textOf(bounded), /showing the first 0/);
+});
+
+test('C29 class · taskKind removes unrelated video modes; full scope retains detail and UTF-8 head is intact', async () => {
+  const huge = { videoModels: [
+    { modelId: 'text-model', modes: [{ id: 'text', transportTaskKind: 'text_to_video' }] },
+    { modelId: 'image-model', modes: [{ id: 'image', transportTaskKind: 'image_to_video', parameters: [{ key: 'duration' }] }] },
+  ], providerProfiles: [{ providerId: 'image-provider', modelIds: ['image-generation'] }] };
+  const desc = createExtendedLaneTools({ execute: async () => ({ ok: true, result: huge }) }).find(s => s.name === plan().name)!;
+  const context = { toolCallId: 'ctx', signal: new AbortController().signal };
+  const result = await desc.execute({ operation: 'context', taskKind: 'image_to_video', scope: 'full' }, context);
+  assert.ok(result.ok);
+  assert.match(result.text, /duration/);
+  assert.doesNotMatch(result.text, /text-model|image-provider/);
+  const tool = createLaneTools([{ ...desc, schema: z.object({}), execute: async () => ({ ok: true, text: '文'.repeat(100000) }) }])[0];
+  const bounded = await tool.execute('ctx', {}, (() => undefined) as never, undefined, {} as never, BACKGROUND_CONTEXT);
+  assert.doesNotMatch(textOf(bounded), /�/);
 });
