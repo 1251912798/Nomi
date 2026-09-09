@@ -87,3 +87,18 @@ test('discovers real walk/e2e/helper scripts and unit tests while skipping gener
     fs.rmSync(root, { recursive: true, force: true })
   }
 })
+
+test('station waits reject all three incidents, aliases and arithmetic, but accept budget helpers', async () => {
+  const { stationWaitHits } = await import('./check-test-waits.mjs')
+  const source = [
+    'await page.waitForFunction(() => ready, null, { timeout: 180_000 })',
+    'await approval.toBeVisible({ timeout: 15_000 })',
+    'await button.click({ timeout: 30_000 })',
+    'const limit = 30 * 1000; await expect.poll(sample, { timeout: limit }).toBe(true)',
+    'await page.waitForFunction(sample, null, { timeout: stationTimeout(budget) })',
+    'await approval.toBeVisible({ timeout: 4999 })',
+    '// await approval.toBeVisible({ timeout: 9000 })',
+  ].join('\n')
+  assert.deepEqual(stationWaitHits(source, 'tests/ux/example.walk.mjs').map(h => h.line), [1, 2, 3, 4])
+  assert.deepEqual(stationWaitHits(source, 'src/example.ts'), [])
+})
