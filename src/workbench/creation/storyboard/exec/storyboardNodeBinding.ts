@@ -36,6 +36,7 @@ export function findShotNode(
   return preferOriginal(nodes.filter((node) => {
     const meta = metaOf(node)
     return belongsToDesign(node, designId) && meta.shotId === shotId && meta.storyboardKeyframe !== true
+      && !node.regeneratedFrom && !node.derivedFrom
   }))
 }
 

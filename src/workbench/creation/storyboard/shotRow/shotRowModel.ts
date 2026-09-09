@@ -1,3 +1,5 @@
+import type { GenerationCanvasNode } from '../../../generationCanvas/model/generationCanvasTypes'
+import { nodeShotField, overriddenShotFields } from '../../../generationCanvas/model/storyboardOverrides'
 import type { ModelOption } from '../../../../config/models'
 import { resolveArchetypeForModel } from '../../../../config/modelArchetypes'
 import type { ArchetypeMode, ArchetypeReferenceSlot, ModelArchetype } from '../../../../config/modelArchetypes/types'
@@ -72,3 +74,10 @@ export function missingRequiredSlots(
 // 参考列的视图模型**不在这一层**：v6 改成「一个槽一个格」之后它由 `shotReferenceCells.ts` 拥有
 // （v5 的 `referenceZoneView` / `ReferenceZoneView` 已随本次改版删除——它把数组槽的每一张素材
 // 都摊成一个 tile，正是行高被撑爆的成因，见合同 §4.1 规则①）。
+
+/** Single owner: unmarked fields belong to the plan; marked fields belong to the original canvas node. */
+export function effectiveShotValue(shot: PlanShot, node: GenerationCanvasNode | null | undefined, field: string): unknown {
+  if (node && overriddenShotFields(node).includes(field)) return nodeShotField(node, field)
+  if (field.startsWith('params.')) return shot.params?.[field.slice(7)]
+  return shot[field as keyof PlanShot]
+}

@@ -1,3 +1,4 @@
+import { projectStoryboardDesign } from './creation/storyboard/exec/storyboardProjection'
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
 import { clampAssistantWidth } from './assistantWidthBounds'
@@ -252,7 +253,7 @@ export function isWorkspaceMode(value: unknown): value is WorkspaceMode {
 }
 
 export const useWorkbenchStore = create<WorkbenchState>()(subscribeWithSelector((set, get, store) => ({
-  ...createWorkbenchDocumentSlice(set, get, store),
+  ...createWorkbenchDocumentSlice(set, get, store, design => projectStoryboardDesign(design, useGenerationCanvasStore.getState())),
   persistRevision: 0,
   workspaceMode: 'generation',
   assistantWidth: 340,

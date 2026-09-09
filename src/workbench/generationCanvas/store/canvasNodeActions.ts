@@ -1,3 +1,4 @@
+import { markStoryboardOverrides } from '../model/storyboardOverrides'
 import { createEdgeId, createGenerationNode, removeNodes, upsertNode } from '../model/graphOps'
 import { normalizeParameterEdges } from '../model/parameterReferenceSlots'
 import { resolveInsertionPosition } from './resolveInsertionPosition'
@@ -108,7 +109,9 @@ export const createCanvasNodeActions: CanvasSliceCreator<CanvasNodeActions> = (s
     })
   },
   updateNode: (nodeId, patch, options) => {
-    if (!get().nodes.some((candidate) => candidate.id === nodeId)) return
+    const existing = get().nodes.find((candidate) => candidate.id === nodeId)
+    if (!existing) return
+    if (options?.origin !== 'storyboard-projection' && options?.history !== false) patch = markStoryboardOverrides(existing, patch)
     // 用户态内容与插件 envelope 编辑按统一撤销边界落点；状态机等运行态 patch 不打。
     // 插件只能通过这个 action 请求 state patch，因此不会产生绕过 undo 的第二条写路径。
     if (options?.history !== false && ('prompt' in patch || 'meta' in patch || 'title' in patch)) {
@@ -131,7 +134,7 @@ export const createCanvasNodeActions: CanvasSliceCreator<CanvasNodeActions> = (s
   updateNodes: (updates) => {
     const currentState = get()
     const existingIds = new Set(currentState.nodes.map((node) => node.id))
-    const applicable = updates.filter((update) => existingIds.has(update.nodeId))
+    const applicable = updates.filter((update) => existingIds.has(update.nodeId)).map(update => ({ ...update, patch: markStoryboardOverrides(currentState.nodes.find(node => node.id === update.nodeId)!, update.patch) }))
     if (applicable.length === 0) return
     pushUndoSnapshot(currentState)
     set((state) => {
@@ -153,15 +156,7 @@ export const createCanvasNodeActions: CanvasSliceCreator<CanvasNodeActions> = (s
     )
   },
   updateNodePrompt: (nodeId, prompt) => {
-    if (!get().nodes.some((candidate) => candidate.id === nodeId)) return
-    pushEditBurstBarrier(nodeId, get())
-    set((state) => {
-      const node = state.nodes.find((candidate) => candidate.id === nodeId)
-      if (!node) return
-      node.prompt = prompt
-      bumpPersistRevision(state)
-    })
-    emitCanvasGesture([{ type: 'canvas.node.prompt-changed', payload: { nodeId, prompt } }])
+    get().updateNode(nodeId, { prompt })
   },
   setNodeLocked: (nodeId, locked) => {
     const existing = get().nodes.find((candidate) => candidate.id === nodeId)
