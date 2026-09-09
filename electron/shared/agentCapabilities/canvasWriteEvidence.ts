@@ -98,6 +98,11 @@ export const canvasWriteBatchRawEvidenceSchema = z
           .strict(),
       )
       .max(16),
+    storyboard: z.object({
+      documentId: canonicalIdSchema,
+      storyboardId: canonicalIdSchema.nullable(),
+      contentHash: canonicalIdSchema,
+    }).strict().optional(),
     resolvedReferences: z
       .array(
         z
@@ -275,6 +280,7 @@ function buildBatchCanvasWriteAdmission(
     edges: evidence.edges,
     groups: evidence.groups,
     resolvedReferences: evidence.resolvedReferences,
+    ...(evidence.storyboard ? { storyboard: evidence.storyboard } : {}),
   });
   const inputReferenceIds = requestedReferenceIds(input);
   const targetNodeIds =
