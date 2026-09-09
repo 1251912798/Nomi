@@ -1,3 +1,4 @@
+import { validateAnchorModelFit, type AnchorModelFitIssue } from './storyboardAnchorPolicy'
 import type { CanvasWriteInput } from '../../../../electron/shared/agentCapabilities/canvasWrite'
 import type { PlanShot, StoryboardPlan } from './storyboardPlan'
 import { updateShotAt } from './storyboardPlanEdits'
@@ -8,6 +9,7 @@ export type StoryboardPatchShotsPreview = Readonly<{
   nextPlan: StoryboardPlan
   changedShotIndexes: number[]
   changedFields: string[]
+  anchorIssues: AnchorModelFitIssue[]
 }>
 
 export class StoryboardPatchShotsError extends Error {
@@ -77,6 +79,7 @@ export function previewStoryboardPatchShots(
   }
   return {
     nextPlan,
+    anchorIssues: validateAnchorModelFit(nextPlan),
     changedShotIndexes: positions.map((position) => position + 1).sort((a, b) => a - b),
     changedFields: [...changedFields],
   }

@@ -127,6 +127,8 @@ describe('storyboardNodeBinding（表 ↔ 节点）', () => {
   it('变体复制（regeneratedFrom）不抢行身份：优先原节点', () => {
     const dup = nodeOf({ id: 'n-dup', regeneratedFrom: 'n-shot', meta: { storyboardDesignId: DESIGN, shotId: 'shot-a' } })
     expect(findShotNode([dup, shotNode], DESIGN, shotOf())?.id).toBe('n-shot')
+    expect(findShotNode([dup], DESIGN, shotOf())).toBeNull()
+    expect(findShotNode([{ ...dup, regeneratedFrom: undefined, derivedFrom: 'n-shot' }], DESIGN, shotOf())).toBeNull()
   })
 
   it('锚按 anchorId 绑；旧项目（无 anchorId）回退 referenceSheet + 同名匹配', () => {
@@ -174,7 +176,7 @@ describe('deriveShotRowExec（行状态机）', () => {
   })
 
   it('不吃参考的模式（t2v）不等锚', () => {
-    expect(derive([], t2vMode).status).toBe('ready')
+    expect(derive([], t2vMode).status).toBe('anchor-ignored')
   })
 
   it('必填槽无来源 → missing-required（红态；批量排除）', () => {
@@ -295,6 +297,7 @@ describe('deriveStoryboardBatch（批量分桶 = footer 同一份）', () => {
       keyframeNode: null,
       recoverableNode: null,
       waitingRefs: [],
+      ignoredAnchors: [],
       unlockedRefs: unlocked ? [hero] : [],
       missingSlots: [],
       changedRefs: [],

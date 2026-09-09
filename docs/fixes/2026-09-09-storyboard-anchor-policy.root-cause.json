@@ -1,0 +1,138 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-09-storyboard-anchor-policy",
+  "problem_type": "Plan projections lose field ownership and misreport image consumption",
+  "symptom": "Agent night prompt is replaced by dusk at generation; visual anchors appear used by text-only modes",
+  "direct_cause": "syncShotNodeWithRow unconditionally writes prompt; rowConsumesReferences counts any slot",
+  "class_root": "Missing shared per-field ownership and slot-derived image-consumption invariants",
+  "affected_population": [
+    "All bound storyboard original nodes edited by Agent or user",
+    "All visual anchors referenced by modes without image input"
+  ],
+  "scope_paths": [
+    "src/workbench/creation/storyboard/**",
+    "src/workbench/generationCanvas/agent/**",
+    "src/workbench/generationCanvas/store/canvasNodeActions.ts",
+    "src/workbench/generationCanvas/model/storyboardOverrides.ts",
+    "src/config/modelArchetypes/**",
+    "src/workbench/workbenchDocumentSlice.ts",
+    "src/workbench/generationCanvas/nodes/StoryboardOverrideBadge.tsx",
+    "src/workbench/generationCanvas/store/canvasGuards.ts",
+    "src/workbench/workbenchStore.ts",
+    "src/devlab/designLab/storyboard/storyboardFixtures.ts",
+    "src/i18n/locales/storyboardEditor.ts",
+    "scripts/vocabularies-baseline.json",
+    "skills/workbench-storyboard-planner/SKILL.md",
+    "src/workbench/generationCanvas/nodes/BaseGenerationNode.tsx",
+    "src/workbench/generationCanvas/model/generationCanvasTypes.ts",
+    "electron/shared/projectAgentProposalReceipt.ts",
+    "src/workbench/generationCanvas/agent/proposalTxn.ts",
+    "src/workbench/generationCanvas/agent/proposalUndo.ts",
+    "src/workbench/generationCanvas/store/canvasStoreTypes.ts"
+  ],
+  "entry_points": [
+    "Agent set_node_prompt and manual updateNode/updateNodePrompt",
+    "Plan propose/patch_shots and row/batch generation"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "Application ownership is determined by the approved plan B; no third-party behavior or protocol change is involved.",
+  "invariants": [
+    "Marked fields read original-node values; unmarked fields read PlanShot; duration is never an override",
+    "Image consumption derives exclusively from slots using shared SLOT_ACCEPTS; warnings never reject user t2v choices"
+  ],
+  "generality_proof": "All canvas content write actions mark field ownership; projection writes preserve marks. All policy consumers use slot-derived capabilities across vendors.",
+  "shared_boundaries": [
+    {
+      "path": "src/workbench/creation/storyboard/shotRow/shotRowModel.ts",
+      "symbol": "effectiveShotValue",
+      "responsibility": "Own effective field resolution"
+    },
+    {
+      "path": "src/config/modelArchetypes/anchorPolicy.ts",
+      "symbol": "anchorsConsumedBy",
+      "responsibility": "Own image consumption derived from slots"
+    },
+    {
+      "path": "src/workbench/generationCanvas/model/storyboardOverrides.ts",
+      "symbol": "markStoryboardOverrides",
+      "responsibility": "Classify explicit canvas field edits at the mutation boundary"
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/workbench/generationCanvas/store/canvasNodeActions.ts",
+      "entry_point": "updateNode",
+      "disposition": "enforced",
+      "evidence": "Manual composer and parameter controls converge here"
+    },
+    {
+      "path": "src/workbench/generationCanvas/agent/applyCanvasToolCall.ts",
+      "entry_point": "set_node_prompt",
+      "disposition": "enforced",
+      "evidence": "Uses generationCanvasTools.update_node_prompt → updateNodePrompt"
+    },
+    {
+      "path": "src/workbench/creation/storyboard/exec/storyboardRowActions.ts",
+      "entry_point": "materializeShotRow",
+      "disposition": "enforced",
+      "evidence": "Row, regeneration and batch share syncShotNodeWithRow"
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Any node edit followed by row or batch generation repeats the issue",
+    "same_class_scan": [
+      "rg updateNode/updateNodePrompt/update_node_prompt across canvas store, tools and composer",
+      "Read materializeShotRow/regenerateShotRow/generateShotRowVariants/runStoryboardBatch",
+      "Read rowConsumesReferences, referenceEdgeCapability.SLOT_ACCEPTS and defaults resolvers"
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "src/workbench/generationCanvas/model/storyboardOverrides.ts",
+    "invariant": "Only original nodes acquire explicit field ownership; projection writes cannot silently erase it",
+    "failure_mode": "Retain overridden value and show inline adopt/discard; return actionable ignored-anchor reasons",
+    "exception_policy": "none",
+    "strategy": "Single mutation classifier and single effective value owner, with slot-derived consumption policy",
+    "artifacts": [
+      "src/workbench/generationCanvas/model/storyboardOverrides.ts",
+      "src/workbench/creation/storyboard/shotRow/shotRowModel.ts",
+      "src/config/modelArchetypes/anchorPolicy.ts",
+      "src/workbench/generationCanvas/store/canvasNodeActions.ts",
+      "src/workbench/generationCanvas/agent/proposalTxn.ts",
+      "src/workbench/generationCanvas/agent/proposalUndo.ts"
+    ]
+  },
+  "regression_tests": [
+    "src/config/modelArchetypes/anchorPolicy.test.ts",
+    "src/workbench/creation/storyboard/exec/storyboardOverrides.integration.test.ts",
+    "electron/shared/projectAgentProposalReceipt.test.ts"
+  ],
+  "class_regression_tests": [
+    "src/config/modelArchetypes/anchorPolicy.test.ts",
+    "src/workbench/creation/storyboard/exec/storyboardOverrides.integration.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "src/workbench/creation/storyboard/exec/storyboardRowActions.ts",
+      "src/workbench/creation/storyboard/exec/storyboardRowStatus.ts"
+    ],
+    "rationale": "Remove unconditional overwrite and any-slot means image consumption"
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "Internal store and domain invariants; no dependency change",
+    "exit_criteria": []
+  },
+  "migration": "Existing unmarked nodes remain projections; no guessing legacy authorship. Existing named plans preserved. Variants excluded.",
+  "residual_risks": [
+    "Full gates passed at 62c72f362bbc8f66eac13adadfecb26e00e7e244. Remote review pending. True-model tool-selection rates are not inferred from deterministic loopback."
+  ],
+  "invariant_owner_layer": {
+    "layer": "src/workbench/generationCanvas/model",
+    "tests": [
+      "src/workbench/creation/storyboard/exec/storyboardOverrides.integration.test.ts"
+    ]
+  }
+}

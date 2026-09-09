@@ -1,3 +1,4 @@
+import { validateAnchorModelFit } from './storyboardAnchorPolicy'
 import type {
   BuiltinCanvasCategoryId,
   GenerationCanvasEdgeMode,
@@ -277,7 +278,8 @@ export async function applyCanvasToolCall(
       storyboardDesignId: updatedDesign.id,
       changedShotIndexes: preview.changedShotIndexes,
       changedFields: preview.changedFields,
-      message: `已修改第 ${preview.changedShotIndexes.join('、')} 镜：${preview.changedFields.join('、')}。`,
+      anchorIssues: preview.anchorIssues,
+      message: `已修改第 ${preview.changedShotIndexes.join('、')} 镜：${preview.changedFields.join('、')}。${preview.anchorIssues.map(issue => issue.correction).join('\n')}`,
     } as StoryboardPlanApplicationResult & { changedShotIndexes: number[]; changedFields: string[] }
   }
 
@@ -314,7 +316,8 @@ export async function applyCanvasToolCall(
       status: 'applied',
       documentId: targetDocumentId,
       storyboardDesignId: design.id,
-      message: `已生成分镜方案「${plan.title || '未命名'}」：${plan.anchors.length} 个锚 · ${plan.shots.length} 个镜头，已放到分镜页，待你审阅/修改后在行内或底部批量生成。`,
+      anchorIssues: validateAnchorModelFit(plan),
+      message: `已生成分镜方案「${plan.title || '未命名'}」：${plan.anchors.length} 个锚 · ${plan.shots.length} 个镜头，已放到分镜页，待你审阅/修改后在行内或底部批量生成。${validateAnchorModelFit(plan).map(issue => issue.correction).join('\n')}`,
     } satisfies StoryboardPlanApplicationResult
   }
 
@@ -705,6 +708,7 @@ export const STORYBOARD_PLAN_APPLICATION_STATUSES = ['applied', 'obsolete'] as c
 export type StoryboardPlanApplicationStatus = typeof STORYBOARD_PLAN_APPLICATION_STATUSES[number]
 
 export type StoryboardPlanApplicationResult = {
+  anchorIssues?: ReturnType<typeof validateAnchorModelFit>
   status: StoryboardPlanApplicationStatus
   documentId: string
   storyboardDesignId?: string

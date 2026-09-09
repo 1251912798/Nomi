@@ -26,6 +26,7 @@ function row(position: number, status: StoryboardRowRuntime['exec']['status'], u
       keyframeNode: null,
       recoverableNode: null,
       waitingRefs: [],
+      ignoredAnchors: [],
       unlockedRefs: [],
       missingSlots: [],
       changedRefs: [],

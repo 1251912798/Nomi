@@ -1,11 +1,10 @@
+import { projectShotNode } from './storyboardProjection'
+import { ignoredShotAnchors, type IgnoredAnchor } from '../../../generationCanvas/agent/storyboardAnchorPolicy'
 import type { GenerationCanvasNode } from '../../../generationCanvas/model/generationCanvasTypes'
 import type { ArchetypeMode } from '../../../../config/modelArchetypes/types'
 import type { PlanAnchor, PlanShot, StoryboardPlan } from '../../../generationCanvas/agent/storyboardPlan'
 import { buildAnchorSheetPrompt } from '../../../generationCanvas/agent/storyboardPromptCompiler'
 import {
-  renderShotKeyframePrompt,
-  renderShotNodePrompt,
-  effectiveShotDurationSec,
   stableShotId,
   storyboardAnchorToCreateNodesArgs,
   storyboardShotToCreateNodesArgs,
@@ -23,11 +22,10 @@ import { buildDependencyWaves, hasUsableResult } from '../../../generationCanvas
 import { confirmAndRunNode, confirmAndRunNodeVariants, regenerateNodeInPlace } from '../../../generationCanvas/runner/generationRunController'
 import { confirmAndRunPlan } from '../../../generationCanvas/components/batchPlanPreview'
 import i18n from '../../../../i18n'
-import { buildModelEntryIndex, buildPlannedNodeMeta } from '../../../generationCanvas/agent/plannedNodeMeta'
+import { buildModelEntryIndex } from '../../../generationCanvas/agent/plannedNodeMeta'
 import { ANCHOR_META_KEYS, isAnchorFrozen, type AnchorFrozenMark } from '../../../generationCanvas/model/anchorBibleKeys'
 import { findAnchorNode, findShotKeyframeNode, findShotNode } from './storyboardNodeBinding'
 import { rowConsumesReferences, type StoryboardRowRuntime } from './storyboardRowStatus'
-import { shotReferenceMetaPatch } from '../shotRow/shotReferenceSlots'
 
 /**
  * 分镜表的**执行动作层**（v5 B）：行内/批量生成 = 按需 materialize（没建过的节点此刻建）+
@@ -35,8 +33,8 @@ import { shotReferenceMetaPatch } from '../shotRow/shotReferenceSlots'
  * confirmAndRunPlan）。**只有这一条执行通路**：spendConfirm、付费令牌、失败即停、队列刹车、
  * undo journal 全部沿用，不另起循环（check:batch-machines 钉死 runGenerationNode 不外扩）。
  *
- * 运行前先把表行的当前编辑**写回节点**（syncShotNodeWithRow）：表是节点的表格表示，
- * 改了提示词/参数再点重跑，跑的必须是改后的——否则「改了没生效」是最阴的静默陷阱。
+ * 运行前通过 projectShotNode 投影方案；节点明确覆写的字段保留画布值。
+ * 方案是内容正本，行内采纳/丢弃控制字段归属，生成不静默夺回覆写字段。
  */
 
 type RowActionContext = {
@@ -98,56 +96,12 @@ async function applyCreate(args: PlanCreateNodesArgs): Promise<Record<string, st
 
 // ── 行编辑写回节点（跑之前的唯一收口）──
 
-const PRIMITIVE = new Set(['string', 'number', 'boolean'])
-
-/**
- * 把表行当前的提示词/参数/时长写回已建节点；模型/模式被改过时按新模型重铺模型层 meta
- * （buildPlannedNodeMeta 同一写边界；旧模型的残留参数键 inert，同画布切模式「不清空已存数据」语义）。
- * frozen/refSnapshot 等运行时标记原样保留（meta 全量 spread）。
- */
-async function syncShotNodeWithRow(
-  ctx: RowActionContext,
-  shot: PlanShot,
-  node: GenerationCanvasNode,
-  part: 'shot' | 'keyframe',
-  mode?: ArchetypeMode | null,
-): Promise<void> {
-  const isImageShot = shot.shotKind === 'image'
-  const prompt = part === 'shot' ? renderShotNodePrompt(ctx.plan, shot) : renderShotKeyframePrompt(ctx.plan, shot)
-  const meta: Record<string, unknown> = { ...(node.meta || {}) }
-  const rowModelKey = part === 'shot' ? shot.modelKey : shot.keyframe?.modelKey
-  const rowModelVendor = part === 'shot' ? shot.modelVendor : shot.keyframe?.modelVendor
-  const rowModeId = part === 'shot' ? shot.modeId : shot.keyframe?.modeId
-  const rowParams = (part === 'shot' ? shot.params : shot.keyframe?.params) || {}
-  const metaModeId = (meta.archetype as { modeId?: unknown } | undefined)?.modeId
-  if (rowModelKey && (meta.modelKey !== rowModelKey || (rowModeId && metaModeId !== rowModeId))) {
-    const entryByKey = buildModelEntryIndex(await listAvailableModelsForAgent())
-    // 行上选的 vendor 一起递进去：同名模型来自不同供应商是两个模型（身份唯一键）。
-    const planned = buildPlannedNodeMeta(
-      { modelKey: rowModelKey, ...(rowModelVendor ? { modelVendor: rowModelVendor } : {}), modeId: rowModeId, params: rowParams },
-      entryByKey,
-    )
-    if (planned) Object.assign(meta, planned)
-  } else {
-    for (const [key, value] of Object.entries(rowParams)) {
-      if (PRIMITIVE.has(typeof value)) meta[key] = value
-    }
-  }
-  if (part === 'shot' && !isImageShot && Number.isFinite(shot.durationSec) && shot.durationSec > 0) {
-    meta.duration = shot.durationSec
-  }
-  if (part === 'shot' && isImageShot) {
-    meta.imageDurationSec = effectiveShotDurationSec(shot)
-  }
-  // 按槽参考绑定 → 节点 meta（存储键与画布同一张表 referenceSlotStorage）。请求体仍由
-  // buildArchetypeInputParams 按档案的 inputKey/asArray 构造 —— 分镜侧零供应商分支（P4）。
-  // 空绑定也写空值：用户刚删掉的首帧不能还留在节点上被发出去。
-  if (part === 'shot' && mode !== undefined) {
-    Object.assign(meta, shotReferenceMetaPatch(mode, shot))
-  }
-  const patch: { prompt?: string; meta: Record<string, unknown> } = { meta }
-  if ((node.prompt || '') !== prompt) patch.prompt = prompt
-  useGenerationCanvasStore.getState().updateNode(node.id, patch)
+async function syncShotNodeWithRow(ctx: RowActionContext, shot: PlanShot, node: GenerationCanvasNode, part: 'shot' | 'keyframe', mode?: ArchetypeMode | null): Promise<void> {
+  const entries = buildModelEntryIndex(await listAvailableModelsForAgent())
+  const current = useGenerationCanvasStore.getState().nodes.find(candidate => candidate.id === node.id)
+  if (!current) return
+  const patch = projectShotNode(ctx.plan, shot, current, part, entries, mode)
+  useGenerationCanvasStore.getState().updateNode(node.id, patch, { origin: 'storyboard-projection' })
 }
 
 /**
@@ -158,13 +112,14 @@ export async function materializeShotRow(
   ctx: RowActionContext,
   shot: PlanShot,
   mode: ArchetypeMode | null,
-): Promise<{ shotNodeId: string; keyframeNodeId: string | null }> {
+): Promise<{ shotNodeId: string; keyframeNodeId: string | null; ignoredAnchors: IgnoredAnchor[] }> {
+  const ignoredAnchors = ignoredShotAnchors(ctx.plan, shot, mode)
   const existing = existingRowBindings(ctx, shot)
   const keyframeEnabled = shot.shotKind !== 'image' && shot.keyframe?.enabled === true
   if (existing.shotNode && (!keyframeEnabled || existing.keyframeNode)) {
     await syncShotNodeWithRow(ctx, shot, existing.shotNode, 'shot', mode)
     if (existing.keyframeNode) await syncShotNodeWithRow(ctx, shot, existing.keyframeNode, 'keyframe')
-    return { shotNodeId: existing.shotNode.id, keyframeNodeId: existing.keyframeNode?.id ?? null }
+    return { ignoredAnchors, shotNodeId: existing.shotNode.id, keyframeNodeId: existing.keyframeNode?.id ?? null }
   }
   const defaults = await resolveDefaults()
   const args = storyboardShotToCreateNodesArgs(ctx.plan, shot, {
@@ -185,7 +140,7 @@ export async function materializeShotRow(
   const created = canvasState().nodes.find((node) => node.id === shotNodeId)
   if (created) await syncShotNodeWithRow(ctx, shot, created, 'shot', mode)
   if (existing.keyframeNode) await syncShotNodeWithRow(ctx, shot, existing.keyframeNode, 'keyframe')
-  return { shotNodeId, keyframeNodeId }
+  return { shotNodeId, keyframeNodeId, ignoredAnchors }
 }
 
 /**
@@ -310,7 +265,7 @@ function syncAnchorNodeWithCard(anchor: PlanAnchor, node: GenerationCanvasNode):
   const patch: { prompt?: string; title?: string; meta: Record<string, unknown> } = { meta }
   if ((node.prompt || '') !== prompt) patch.prompt = prompt
   if (anchor.name.trim() && node.title !== anchor.name.trim()) patch.title = anchor.name.trim()
-  useGenerationCanvasStore.getState().updateNode(node.id, patch)
+  useGenerationCanvasStore.getState().updateNode(node.id, patch, { origin: 'storyboard-projection' })
 }
 
 // ── 批量（footer 主按钮）──

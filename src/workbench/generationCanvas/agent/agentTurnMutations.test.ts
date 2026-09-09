@@ -3,7 +3,10 @@ import type { AgentTurnHandle } from '../../ai/agentTurnLifecycle'
 import type { TimelineClip } from '../../timeline/timelineTypes'
 import type { GenerationCanvasNode } from '../model/generationCanvasTypes'
 const deps = vi.hoisted(() => ({ catalog: vi.fn(), clip: vi.fn() }))
-vi.mock('./availableModels', () => ({ listAvailableModelsForAgent: deps.catalog }))
+vi.mock('./availableModels', async (importOriginal) => ({
+  ...await importOriginal<typeof import('./availableModels')>(),
+  listAvailableModelsForAgent: deps.catalog,
+}))
 vi.mock('../../timeline/buildGenerationNodeTimelineClip', () => ({ buildGenerationNodeTimelineClip: deps.clip }))
 import { applyCanvasToolCall } from './applyCanvasToolCall'
 import { applyProposalBatch, type ProposalStep, type ProposalOutcome } from './proposalTxn'
