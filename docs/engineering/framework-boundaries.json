@@ -1409,6 +1409,291 @@
           }
         ]
       }
+    },
+    {
+      "id": "streamdown",
+      "packages": [
+        "streamdown",
+        "@streamdown/code",
+        "@streamdown/cjk"
+      ],
+      "version": "2.6.0",
+      "fourColumnTable": "docs/plan/2026-09-09-b2e-streamdown.md",
+      "why": "One Markdown kernel for all model prose; remove duplicate code extraction and lifecycle renderers.",
+      "referenceConformance": {
+        "doc": "docs/plan/2026-09-09-b2e-streamdown.md",
+        "upstreamVersion": "2.6.0",
+        "verifiedAt": "2026-09-09",
+        "layers": [
+          "控制流",
+          "观测与测试"
+        ],
+        "note": "Official Message rendering and code/cjk plugins; agent execution layers remain outside renderer."
+      },
+      "capabilities": [
+        {
+          "id": "markdown-kernel",
+          "provides": "GFM, streaming blocks, CJK and source-owned code highlighting/copy",
+          "evidence": "https://github.com/vercel/streamdown; node_modules/streamdown/dist/index.d.ts:526",
+          "scope": [
+            "src/workbench/common/",
+            "src/workbench/ai/v4/",
+            "src/workbench/promptLibrary/"
+          ],
+          "forbidden": [
+            {
+              "id": "duplicate-markdown-parser",
+              "pattern": "(?:from|import)\\s*[\"'](?:react-markdown|remark-gfm)[\"']|function AgentV4Code",
+              "why": "Rendering and source extraction belong to Streamdown."
+            }
+          ]
+        }
+      ],
+      "surface": {
+        "scope": [
+          "src/workbench/common/"
+        ],
+        "sources": [
+          {
+            "package": "streamdown",
+            "dtsPath": "node_modules/streamdown/dist/index.d.ts",
+            "types": [
+              {
+                "name": "StreamdownProps",
+                "why": "Public renderer props including inherited Options are version drift contract.",
+                "declaredIn": [
+                  "streamdown/"
+                ],
+                "anchors": [
+                  {
+                    "kind": "jsxElement",
+                    "name": "Streamdown"
+                  }
+                ],
+                "fields": {
+                  "allowElement": {
+                    "verdict": "unused",
+                    "why": "No domain override: retain upstream behavior; no new custom rendering pipeline."
+                  },
+                  "allowedElements": {
+                    "verdict": "unused",
+                    "why": "No domain override: retain upstream behavior; no new custom rendering pipeline."
+                  },
+                  "children": {
+                    "verdict": "unused",
+                    "why": "No domain override: retain upstream behavior; no new custom rendering pipeline."
+                  },
+                  "components": {
+                    "verdict": "derived",
+                    "at": "src/workbench/common/NomiMarkdown.tsx:99"
+                  },
+                  "disallowedElements": {
+                    "verdict": "unused",
+                    "why": "No domain override: retain upstream behavior; no new custom rendering pipeline."
+                  },
+                  "rehypePlugins": {
+                    "verdict": "unused",
+                    "why": "Use upstream raw/sanitize/harden pipeline without replacing it."
+                  },
+                  "remarkPlugins": {
+                    "verdict": "unused",
+                    "why": "Use upstream GFM and installed CJK plugin without replacing it."
+                  },
+                  "remarkRehypeOptions": {
+                    "verdict": "derived",
+                    "at": "src/workbench/common/NomiMarkdown.tsx:101"
+                  },
+                  "skipHtml": {
+                    "verdict": "constant",
+                    "value": "true",
+                    "reason": "Model prose must not introduce executable or raw HTML UI."
+                  },
+                  "unwrapDisallowed": {
+                    "verdict": "unused",
+                    "why": "No domain override: retain upstream behavior; no new custom rendering pipeline."
+                  },
+                  "urlTransform": {
+                    "verdict": "unused",
+                    "why": "No domain override: retain upstream behavior; no new custom rendering pipeline."
+                  },
+                  "mode": {
+                    "verdict": "constant",
+                    "value": "\"streaming\"",
+                    "reason": "All lifecycle states keep the same block parser and footnote semantics."
+                  },
+                  "dir": {
+                    "verdict": "unused",
+                    "why": "No domain override: retain upstream behavior; no new custom rendering pipeline."
+                  },
+                  "BlockComponent": {
+                    "verdict": "unused",
+                    "why": "No domain override: retain upstream behavior; no new custom rendering pipeline."
+                  },
+                  "parseMarkdownIntoBlocksFn": {
+                    "verdict": "unused",
+                    "why": "No domain override: retain upstream behavior; no new custom rendering pipeline."
+                  },
+                  "parseIncompleteMarkdown": {
+                    "verdict": "constant",
+                    "value": "false",
+                    "reason": "09-06 contract preserves incomplete source without speculative syntax completion."
+                  },
+                  "normalizeHtmlIndentation": {
+                    "verdict": "unused",
+                    "why": "No domain override: retain upstream behavior; no new custom rendering pipeline."
+                  },
+                  "className": {
+                    "verdict": "constant",
+                    "value": "\"space-y-1 [&_[data-streamdown=code-block]]:my-2 [&_[data-streamdown=code-block]]:round…",
+                    "reason": "Nomi token skin and Tailwind3-compatible overflow utilities."
+                  },
+                  "shikiTheme": {
+                    "verdict": "unused",
+                    "why": "Theme is configured on code plugin once using Nomi tokens."
+                  },
+                  "mermaid": {
+                    "verdict": "unused",
+                    "why": "09-06 explicitly excludes Mermaid."
+                  },
+                  "codeBlockMaxHeight": {
+                    "verdict": "constant",
+                    "value": "0",
+                    "reason": "Answers including code never fold under C25/B2a."
+                  },
+                  "controls": {
+                    "verdict": "derived",
+                    "at": "src/workbench/common/NomiMarkdown.tsx:99"
+                  },
+                  "isAnimating": {
+                    "verdict": "derived",
+                    "at": "src/workbench/common/NomiMarkdown.tsx:100"
+                  },
+                  "tableMaxHeight": {
+                    "verdict": "constant",
+                    "value": "0",
+                    "reason": "Answers including tables never fold under C25/B2a."
+                  },
+                  "animated": {
+                    "verdict": "unused",
+                    "why": "No extra word animation; streaming state and caret suffice."
+                  },
+                  "caret": {
+                    "verdict": "constant",
+                    "value": "\"block\"",
+                    "reason": "The approved streaming cursor is a block; kernel owns its position."
+                  },
+                  "plugins": {
+                    "verdict": "derived",
+                    "at": "src/workbench/common/NomiMarkdown.tsx:99"
+                  },
+                  "remend": {
+                    "verdict": "unused",
+                    "why": "No domain override: retain upstream behavior; no new custom rendering pipeline."
+                  },
+                  "linkSafety": {
+                    "verdict": "unused",
+                    "why": "Custom link adapter delegates HTTP links to the existing Electron boundary; internal anchors stay in document."
+                  },
+                  "allowedTags": {
+                    "verdict": "unused",
+                    "why": "No domain override: retain upstream behavior; no new custom rendering pipeline."
+                  },
+                  "literalTagContent": {
+                    "verdict": "unused",
+                    "why": "No domain override: retain upstream behavior; no new custom rendering pipeline."
+                  },
+                  "translations": {
+                    "verdict": "derived",
+                    "at": "src/workbench/common/NomiMarkdown.tsx:103"
+                  },
+                  "icons": {
+                    "verdict": "unused",
+                    "why": "No domain override: retain upstream behavior; no new custom rendering pipeline."
+                  },
+                  "prefix": {
+                    "verdict": "unused",
+                    "why": "No domain override: retain upstream behavior; no new custom rendering pipeline."
+                  },
+                  "lineNumbers": {
+                    "verdict": "constant",
+                    "value": "false",
+                    "reason": "Narrow conversation code is source prose, not an editor with gutters."
+                  },
+                  "onAnimationStart": {
+                    "verdict": "unused",
+                    "why": "No domain override: retain upstream behavior; no new custom rendering pipeline."
+                  },
+                  "onAnimationEnd": {
+                    "verdict": "unused",
+                    "why": "No domain override: retain upstream behavior; no new custom rendering pipeline."
+                  }
+                }
+              },
+              {
+                "name": "PluginConfig",
+                "why": "Every plugin slot is explicitly chosen; math/Mermaid cannot appear through a hidden parallel renderer.",
+                "declaredIn": [
+                  "streamdown/"
+                ],
+                "anchors": [
+                  {
+                    "kind": "typeAnnotation",
+                    "name": "PluginConfig"
+                  }
+                ],
+                "fields": {
+                  "code": {
+                    "verdict": "derived",
+                    "at": "src/workbench/common/NomiMarkdown.tsx:81"
+                  },
+                  "cjk": {
+                    "verdict": "derived",
+                    "at": "src/workbench/common/NomiMarkdown.tsx:81"
+                  },
+                  "math": {
+                    "verdict": "unused",
+                    "why": "09-06 product decision excludes math."
+                  },
+                  "mermaid": {
+                    "verdict": "unused",
+                    "why": "09-06 product decision excludes Mermaid."
+                  },
+                  "renderers": {
+                    "verdict": "unused",
+                    "why": "No custom language renderer; preserve source-owned code path."
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "package": "@streamdown/code",
+            "dtsPath": "node_modules/@streamdown/code/dist/index.d.ts",
+            "types": [
+              {
+                "name": "createCodePlugin",
+                "kind": "callParameter",
+                "why": "Public code plugin options are mapped to Nomi tokens; language/tokenization/cache remain upstream.",
+                "declaredIn": [
+                  "@streamdown/code/"
+                ],
+                "anchors": [
+                  {
+                    "kind": "callArgument",
+                    "name": "createCodePlugin"
+                  }
+                ],
+                "fields": {
+                  "themes": {
+                    "verdict": "derived",
+                    "at": "src/workbench/common/NomiMarkdown.tsx:81"
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
     }
   ]
 }
