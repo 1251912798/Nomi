@@ -1,66 +1,61 @@
-import { memo, useState, type ReactNode } from 'react'
-import { IconChevronDown, IconCopy, IconPhoto } from '@tabler/icons-react'
-import ReactMarkdown, { type Components } from 'react-markdown'
-import remarkGfm from 'remark-gfm'
+import { memo, useId, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
+import { IconPhoto } from '@tabler/icons-react'
+import { Streamdown, type Components, type PluginConfig } from 'streamdown'
+import { createCodePlugin } from '@streamdown/code'
+import { cjk } from '@streamdown/cjk'
 
-/**
- * Token-styled Markdown renderer (single source of truth — used by both the file
- * preview and the AI chat panel).
- *
- * react-markdown emits bare HTML tags that, after Tailwind's preflight reset,
- * render with no hierarchy — so every tag is explicitly mapped to design-system
- * tokens here (font sizes, ink ladder, mono code, accent links).
- *
- * `remark-gfm` enables GitHub-Flavored Markdown — **tables, strikethrough, task
- * lists, autolinks** — which LLM replies use constantly; without it a `| a | b |`
- * table renders as raw pipe text (2026-06-22 真机实测 bug). The extra `table/
- * thead/th/td/del/input` tags GFM emits are token-mapped below.
- *
- * `compact` tightens spacing + shrinks headings for narrow contexts like chat
- * bubbles; the default (doc) spacing suits the wider file-preview panel.
- */
+/** Single Markdown owner. Streamdown owns parsing, streaming, code source and copy.
+ * The component map only supplies Nomi typography and local-first link/image policy. */
 type MarkdownProfile = 'agent-v4'
 
-function makeComponents(compact: boolean, profile?: MarkdownProfile, labels?: MarkdownLabels): Components {
+function makeComponents(compact: boolean, profile: MarkdownProfile | undefined, labels: MarkdownLabels): Components {
   const pMy = compact ? 'my-1' : 'my-2'
   const hMt = compact ? 'mt-2.5' : 'mt-4'
   const hMb = compact ? 'mb-1' : 'mb-2'
-  // agent-v4 档：390 宽的面板里**标题一律降成粗体行**（13px/600），不放大字号——
-  // 聊天里没有文档层级，放大只会像广告（定稿 Rendering 板「标题 △ 降级」）。
-  // 正文同样落到 13px：14px 在 390 宽里一行装不下一句完整的镜头描述。
   const flat = profile === 'agent-v4'
-  const h1 = flat ? 'text-body-sm' : compact ? 'text-title' : 'text-h2'
-  const h2 = flat ? 'text-body-sm' : compact ? 'text-body' : 'text-title'
-  const h3 = flat ? 'text-body-sm' : compact ? 'text-body-sm' : 'text-body'
+  const h1 = compact ? 'text-title' : 'text-h2'
+  const h2 = compact ? 'text-body' : 'text-title'
+  const h3 = compact ? 'text-body-sm' : 'text-body'
   const bodyText = flat ? 'text-body-sm' : 'text-body'
   return {
     h1: ({ node: _n, ...p }) => <h1 className={`${h1} font-semibold leading-snug text-nomi-ink ${hMt} ${hMb} first:mt-0`} {...p} />,
     h2: ({ node: _n, ...p }) => <h2 className={`${h2} font-semibold leading-snug text-nomi-ink ${hMt} ${hMb} first:mt-0`} {...p} />,
     h3: ({ node: _n, ...p }) => <h3 className={`${h3} font-semibold leading-snug text-nomi-ink ${hMt} ${hMb} first:mt-0`} {...p} />,
+    h4: ({ node: _n, ...p }) => <h4 className={`text-body-sm font-medium text-nomi-ink ${hMt} ${hMb}`} {...p} />,
+    h5: ({ node: _n, ...p }) => <h5 className={`text-caption font-semibold text-nomi-ink ${hMt} ${hMb}`} {...p} />,
+    h6: ({ node: _n, ...p }) => <h6 className={`text-caption font-medium text-nomi-ink-80 ${hMt} ${hMb}`} {...p} />,
     p: ({ node: _n, ...p }) => <p className={`${bodyText} leading-relaxed text-nomi-ink-80 ${pMy}`} {...p} />,
     ul: ({ node: _n, className, ...p }) => {
       const isTask = /contains-task-list/.test(className || '')
-      return <ul className={`${isTask ? 'list-none pl-1' : 'list-disc pl-5'} ${pMy} ${bodyText} leading-relaxed text-nomi-ink-80`} {...p} />
+      return <ul className={`${isTask ? 'list-none pl-5' : 'list-disc pl-5'} ${pMy} ${bodyText} leading-relaxed text-nomi-ink-80`} {...p} />
     },
     ol: ({ node: _n, ...p }) => <ol className={`list-decimal pl-5 ${pMy} ${bodyText} leading-relaxed text-nomi-ink-80`} {...p} />,
     li: ({ node: _n, className, ...p }) => <li className={`my-0.5 ${/task-list-item/.test(className || '') ? 'list-none' : ''}`.trim()} {...p} />,
-    a: ({ node: _n, children, ...p }) => <a className="text-nomi-accent underline underline-offset-2 [overflow-wrap:anywhere]" target="_blank" rel="noreferrer" {...p}>{children}{profile === 'agent-v4' ? <span aria-hidden="true" className="ml-0.5 no-underline">↗</span> : null}</a>,
+    a: ({ node: _n, children, href, ...p }) => {
+      const external = Boolean(href && /^https?:\/\//i.test(href))
+      const anchor = Boolean(href?.startsWith('#'))
+      const destination = href?.startsWith('#user-content-') ? `#${labels.anchorPrefix}${href.slice('#user-content-'.length)}` : href
+      if (!external && !anchor) return <span>{children}</span>
+      return <a {...p} href={destination} onClick={anchor ? (event) => {
+        // HashRouter owns location.hash; document references must scroll without navigation.
+        event.preventDefault()
+        document.getElementById(destination!.slice(1))?.scrollIntoView({ block: 'nearest' })
+      } : undefined} className="text-nomi-accent underline underline-offset-2 [overflow-wrap:anywhere]" target={external ? '_blank' : undefined} rel={external ? 'noreferrer' : undefined}>{children}{external && profile === 'agent-v4' ? <span aria-hidden="true" className="ml-0.5 no-underline">↗</span> : null}</a>
+    },
     blockquote: ({ node: _n, ...p }) => <blockquote className={`border-l-2 border-nomi-line pl-3 ${pMy} text-nomi-ink-60`} {...p} />,
     hr: ({ node: _n, ...p }) => <hr className="border-nomi-line my-3" {...p} />,
     strong: ({ node: _n, ...p }) => <strong className="font-semibold text-nomi-ink" {...p} />,
     del: ({ node: _n, ...p }) => <del className="line-through text-nomi-ink-60" {...p} />,
-    code: ({ node: _n, className, children, ...p }) => {
-      const isBlock = String(className || '').includes('language-')
-      return isBlock
-        ? <code className={`font-nomi-mono text-caption ${className || ''}`.trim()} {...p}>{children}</code>
-        : <code className="font-nomi-mono text-caption bg-nomi-ink-05 rounded-nomi-sm px-1 py-0.5 [overflow-wrap:anywhere]" {...p}>{children}</code>
+    inlineCode: ({ node: _n, ...p }) => <code className="font-nomi-mono text-caption bg-nomi-ink-05 rounded-nomi-sm px-1 py-0.5 [overflow-wrap:anywhere]" {...p} />,
+    // Do not request model-provided image URLs automatically. Preserve an explicit entry.
+    img: ({ node: _n, alt, src }) => {
+      const content = <><IconPhoto size={12} />{alt || labels?.imageLabel}</>
+      const skin = 'inline-flex items-center gap-1 rounded-nomi-sm border border-nomi-line bg-nomi-ink-05 px-1.5 py-0.5 text-caption text-nomi-ink-60'
+      return src && /^https?:\/\//i.test(src)
+        ? <a className={skin} href={src} target="_blank" rel="noreferrer">{content}</a>
+        : <span className={skin}>{content}</span>
     },
-    pre: ({ node: _n, children, ...p }) => profile === 'agent-v4'
-      ? <AgentV4Code labels={labels} {...p}>{children}</AgentV4Code>
-      : <pre className={`bg-nomi-ink-05 rounded-nomi-sm p-3 ${pMy} overflow-auto text-nomi-ink-80`} {...p}>{children}</pre>,
-    img: ({ node: _n, alt }) => profile === 'agent-v4'
-      ? <span className="inline-flex items-center gap-1 rounded-nomi-sm border border-nomi-line bg-nomi-ink-05 px-1.5 py-0.5 text-caption text-nomi-ink-60"><IconPhoto size={12} />{alt || labels?.imageLabel}</span>
-      : <img alt={alt} />,
     // GFM 表格：token 化 + 整体可横向滚动（窄聊天列不溢出/不撑破气泡）。
     table: ({ node: _n, ...p }) => (
       <div className={`${pMy} max-w-full overflow-x-auto`}>
@@ -75,47 +70,46 @@ function makeComponents(compact: boolean, profile?: MarkdownProfile, labels?: Ma
   }
 }
 
-type MarkdownLabels = { copyLabel: string; imageLabel: string; expandLabel: string; collapseLabel: string }
+type MarkdownLabels = { imageLabel: string; anchorPrefix: string }
 
-function AgentV4Code({ children, labels, ...props }: { children?: ReactNode; labels?: MarkdownLabels } & Record<string, unknown>): JSX.Element {
-  const [expanded, setExpanded] = useState(false)
-  const source = String(children ?? '')
-  const long = source.split('\n').length > 12
-  const copy = () => { void navigator.clipboard?.writeText(source) }
-  return <div className="relative my-1"><button type="button" onClick={copy} aria-label={labels?.copyLabel} className="absolute right-1 top-1 rounded-nomi-sm p-1 text-nomi-ink-60 hover:bg-nomi-ink-10"><IconCopy size={13} /></button><pre className={`bg-nomi-ink-05 rounded-nomi-sm p-3 pr-8 overflow-auto text-nomi-ink-80 ${long && !expanded ? 'max-h-52' : ''}`} {...props}>{children}</pre>{long ? <button type="button" onClick={() => setExpanded(value => !value)} className="inline-flex items-center gap-1 text-micro text-nomi-ink-60"><IconChevronDown size={12} className={expanded ? 'rotate-180' : undefined} />{expanded ? labels?.collapseLabel : labels?.expandLabel}</button> : null}</div>
+// Shiki keeps its tokenizer/cache; theme values follow the same Nomi tokens in both modes.
+const theme = {
+  name: 'nomi', fg: 'var(--nomi-ink-80)', bg: 'var(--nomi-ink-05)',
+  tokenColors: [
+    { scope: ['comment', 'punctuation.definition.comment'], settings: { foreground: 'var(--nomi-ink-40)' } },
+    { scope: ['keyword', 'storage'], settings: { foreground: 'var(--nomi-accent)' } },
+    { scope: ['string'], settings: { foreground: 'var(--nomi-success)' } },
+    { scope: ['constant.numeric', 'constant.language'], settings: { foreground: 'var(--nomi-warning)' } },
+    { scope: ['entity.name.function', 'support.function'], settings: { foreground: 'var(--nomi-info-ink)' } },
+  ],
 }
+const plugins: PluginConfig = { code: createCodePlugin({ themes: [theme, theme] }), cjk }
+const controls = { code: { copy: true, download: false }, table: false, image: false }
 
-const docComponents = makeComponents(false)
-const compactComponents = makeComponents(true)
-// 模块级常量：避免会渲染的那几次给 ReactMarkdown 传新数组引用（触发其内部 effect 重跑）。
-const REMARK_PLUGINS = [remarkGfm]
-
-// memo（P0 流式卡顿）：props 仅 children:string + compact:boolean（原始值，默认浅比较即可）。
-// 流式时只有「正在吐字那条」的 children 在变 → 它照常重渲重 parse；已 done 的历史气泡 children
-// 不变 → memo 跳过，不再每个 token 帧陪绑重新 mdast 解析整段累积全文（这是「对话越长越卡」的放大器）。
 export const NomiMarkdown = memo(function NomiMarkdown({
-  children,
-  compact = false,
-  profile,
-  copyLabel,
-  imageLabel,
-  expandLabel,
-  collapseLabel,
+  children, compact = false, profile, streaming = false, copyLabel, imageLabel,
 }: {
   children: string
   compact?: boolean
   profile?: MarkdownProfile
+  streaming?: boolean
   copyLabel?: string
   imageLabel?: string
-  expandLabel?: string
-  collapseLabel?: string
 }): JSX.Element {
-  const labels = profile === 'agent-v4' ? { copyLabel: copyLabel ?? 'Copy', imageLabel: imageLabel ?? 'Image', expandLabel: expandLabel ?? 'Expand', collapseLabel: collapseLabel ?? 'Collapse' } : undefined
+  const { t } = useTranslation()
+  const id = useId()
+  const components = useMemo(() => makeComponents(compact, profile, { imageLabel: imageLabel ?? t('agentPanelV4.image'), anchorPrefix: `nomi-${id}-` }), [compact, profile, imageLabel, id, t])
+  const remarkRehypeOptions = useMemo(() => ({ clobberPrefix: `nomi-${id}-` }), [id])
   return (
     <div className="min-w-0 [overflow-wrap:anywhere]">
-      <ReactMarkdown remarkPlugins={REMARK_PLUGINS} components={profile === 'agent-v4' ? makeComponents(compact, profile, labels) : (compact ? compactComponents : docComponents)}>
+      <Streamdown components={components} plugins={plugins} controls={controls}
+        mode="streaming" isAnimating={streaming} caret="block" parseIncompleteMarkdown={false}
+        skipHtml remarkRehypeOptions={remarkRehypeOptions} lineNumbers={false}
+        codeBlockMaxHeight={0} tableMaxHeight={0}
+        translations={{ copyCode: copyLabel ?? t('agentPanelV4.copy'), copied: t('libraries.prompt.preview.copied') }}
+        className="space-y-1 [&_[data-streamdown=code-block]]:my-2 [&_[data-streamdown=code-block]]:rounded-nomi-sm [&_[data-streamdown=code-block]]:border-nomi-line [&_[data-streamdown=code-block]]:bg-nomi-ink-05 [&_[data-streamdown=code-block]]:text-nomi-ink-80 [&_[data-streamdown=code-block-header]]:px-3 [&_[data-streamdown=code-block-header]]:py-1 [&_[data-streamdown=code-block-header]]:text-micro [&_[data-streamdown=code-block-body]]:border-nomi-line [&_[data-streamdown=code-block-body]]:rounded-nomi-sm [&_[data-streamdown=code-block-copy-button]]:border-nomi-line [&_[data-streamdown=code-block-copy-button]]:rounded-nomi-sm [&_[data-streamdown=code-block-copy-button]]:text-nomi-ink-60 [&_pre]:overflow-x-auto [&_pre]:p-3 [&_pre]:font-nomi-mono [&_pre]:text-caption [&_pre]:leading-relaxed [&_pre_code]:font-nomi-mono">
         {children}
-      </ReactMarkdown>
+      </Streamdown>
     </div>
   )
 })
