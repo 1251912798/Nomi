@@ -1,0 +1,1447 @@
+{
+  "seedance-2/kie": {
+    "image": {},
+    "video": {
+      "modelKey": "bytedance/seedance-2",
+      "modelVendor": "kie",
+      "modeId": "first"
+    }
+  },
+  "seedance-2/apimart": {
+    "image": {},
+    "video": {
+      "modelKey": "bytedance/seedance-2",
+      "modelVendor": "apimart",
+      "modeId": "first"
+    }
+  },
+  "seedance-2/runway": {
+    "image": {},
+    "video": {
+      "modelKey": "bytedance/seedance-2",
+      "modelVendor": "runway",
+      "modeId": "first"
+    }
+  },
+  "seedance-2.5/kie": {
+    "image": {},
+    "video": {
+      "modelKey": "bytedance/seedance-2-5",
+      "modelVendor": "kie",
+      "modeId": "first"
+    }
+  },
+  "seedance-2.5/apimart": {
+    "image": {},
+    "video": {
+      "modelKey": "bytedance/seedance-2-5",
+      "modelVendor": "apimart",
+      "modeId": "first"
+    }
+  },
+  "minimax-h3/kie": {
+    "image": {},
+    "video": {
+      "modelKey": "minimax-h3",
+      "modelVendor": "kie",
+      "modeId": "i2v"
+    }
+  },
+  "minimax-h3/apimart": {
+    "image": {},
+    "video": {
+      "modelKey": "minimax-h3",
+      "modelVendor": "apimart",
+      "modeId": "i2v"
+    }
+  },
+  "minimax-h3-max/kie": {
+    "image": {},
+    "video": {
+      "modelKey": "minimax/h3-max",
+      "modelVendor": "kie",
+      "modeId": "i2v"
+    }
+  },
+  "minimax-h3-max/apimart": {
+    "image": {},
+    "video": {
+      "modelKey": "minimax/h3-max",
+      "modelVendor": "apimart",
+      "modeId": "i2v"
+    }
+  },
+  "happyhorse/kie": {
+    "image": {},
+    "video": {
+      "modelKey": "happyhorse",
+      "modelVendor": "kie",
+      "modeId": "i2v"
+    }
+  },
+  "happyhorse/apimart": {
+    "image": {},
+    "video": {
+      "modelKey": "happyhorse",
+      "modelVendor": "apimart",
+      "modeId": "i2v"
+    }
+  },
+  "happyhorse/runway": {
+    "image": {},
+    "video": {
+      "modelKey": "happyhorse",
+      "modelVendor": "runway",
+      "modeId": "i2v"
+    }
+  },
+  "vidu-q3/kie": {
+    "image": {},
+    "video": {
+      "modelKey": "viduq3",
+      "modelVendor": "kie",
+      "modeId": "ref"
+    }
+  },
+  "vidu-q3/apimart": {
+    "image": {},
+    "video": {
+      "modelKey": "viduq3",
+      "modelVendor": "apimart",
+      "modeId": "ref"
+    }
+  },
+  "kling-3.0-turbo/kie": {
+    "image": {},
+    "video": {
+      "modelKey": "kling-3.0-turbo",
+      "modelVendor": "kie",
+      "modeId": "i2v"
+    }
+  },
+  "kling-3.0-turbo/apimart": {
+    "image": {},
+    "video": {
+      "modelKey": "kling-3.0-turbo",
+      "modelVendor": "apimart",
+      "modeId": "i2v"
+    }
+  },
+  "happyhorse-1.1/kie": {
+    "image": {},
+    "video": {
+      "modelKey": "happyhorse-1.1",
+      "modelVendor": "kie",
+      "modeId": "i2v"
+    }
+  },
+  "happyhorse-1.1/apimart": {
+    "image": {},
+    "video": {
+      "modelKey": "happyhorse-1.1",
+      "modelVendor": "apimart",
+      "modeId": "i2v"
+    }
+  },
+  "grok-imagine-1.5-video/kie": {
+    "image": {},
+    "video": {
+      "modelKey": "grok-imagine-1.5-video-apimart",
+      "modelVendor": "kie",
+      "modeId": "i2v"
+    }
+  },
+  "grok-imagine-1.5-video/apimart": {
+    "image": {},
+    "video": {
+      "modelKey": "grok-imagine-1.5-video-apimart",
+      "modelVendor": "apimart",
+      "modeId": "i2v"
+    }
+  },
+  "grok-imagine-1.5-video/runway": {
+    "image": {},
+    "video": {
+      "modelKey": "grok-imagine-1.5-video-apimart",
+      "modelVendor": "runway",
+      "modeId": "i2v"
+    }
+  },
+  "sora-2/kie": {
+    "image": {},
+    "video": {
+      "modelKey": "sora-2",
+      "modelVendor": "kie",
+      "modeId": "i2v"
+    }
+  },
+  "sora-2/apimart": {
+    "image": {},
+    "video": {
+      "modelKey": "sora-2",
+      "modelVendor": "apimart",
+      "modeId": "i2v"
+    }
+  },
+  "veo-3.1/kie": {
+    "image": {},
+    "video": {
+      "modelKey": "veo-3.1",
+      "modelVendor": "kie",
+      "modeId": "reference"
+    }
+  },
+  "veo-3.1/apimart": {
+    "image": {},
+    "video": {
+      "modelKey": "veo-3.1",
+      "modelVendor": "apimart",
+      "modeId": "reference"
+    }
+  },
+  "veo-3.1/runway": {
+    "image": {},
+    "video": {
+      "modelKey": "veo-3.1",
+      "modelVendor": "runway",
+      "modeId": "reference"
+    }
+  },
+  "gemini-omni-1.1/kie": {
+    "image": {},
+    "video": {
+      "modelKey": "google/gemini-omni-flash-1-1",
+      "modelVendor": "kie",
+      "modeId": "firstlast"
+    }
+  },
+  "gemini-omni-1.1/apimart": {
+    "image": {},
+    "video": {
+      "modelKey": "google/gemini-omni-flash-1-1",
+      "modelVendor": "apimart",
+      "modeId": "firstlast"
+    }
+  },
+  "gemini-omni-1.1/runway": {
+    "image": {},
+    "video": {
+      "modelKey": "google/gemini-omni-flash-1-1",
+      "modelVendor": "runway",
+      "modeId": "firstlast"
+    }
+  },
+  "runway-gen4.5/kie": {
+    "image": {},
+    "video": {
+      "modelKey": "gen4.5",
+      "modelVendor": "kie",
+      "modeId": "i2v"
+    }
+  },
+  "runway-gen4.5/apimart": {
+    "image": {},
+    "video": {
+      "modelKey": "gen4.5",
+      "modelVendor": "apimart",
+      "modeId": "i2v"
+    }
+  },
+  "runway-gen4-turbo/kie": {
+    "image": {},
+    "video": {
+      "modelKey": "gen4_turbo",
+      "modelVendor": "kie",
+      "modeId": "i2v"
+    }
+  },
+  "runway-gen4-turbo/apimart": {
+    "image": {},
+    "video": {
+      "modelKey": "gen4_turbo",
+      "modelVendor": "apimart",
+      "modeId": "i2v"
+    }
+  },
+  "kling-3.0/kie": {
+    "image": {},
+    "video": {
+      "modelKey": "kling-3.0",
+      "modelVendor": "kie",
+      "modeId": "i2v"
+    }
+  },
+  "kling-3.0/apimart": {
+    "image": {},
+    "video": {
+      "modelKey": "kling-3.0",
+      "modelVendor": "apimart",
+      "modeId": "i2v"
+    }
+  },
+  "seedance-2-apimart/kie": {
+    "image": {},
+    "video": {
+      "modelKey": "doubao-seedance-2.0",
+      "modelVendor": "kie",
+      "modeId": "i2v"
+    }
+  },
+  "seedance-2-apimart/apimart": {
+    "image": {},
+    "video": {
+      "modelKey": "doubao-seedance-2.0",
+      "modelVendor": "apimart",
+      "modeId": "i2v"
+    }
+  },
+  "seedance-2.5-apimart/kie": {
+    "image": {},
+    "video": {
+      "modelKey": "doubao-seedance-2.5",
+      "modelVendor": "kie",
+      "modeId": "first"
+    }
+  },
+  "seedance-2.5-apimart/apimart": {
+    "image": {},
+    "video": {
+      "modelKey": "doubao-seedance-2.5",
+      "modelVendor": "apimart",
+      "modeId": "first"
+    }
+  },
+  "seedance-2.5-runway/kie": {
+    "image": {},
+    "video": {
+      "modelKey": "seedance2_5",
+      "modelVendor": "kie",
+      "modeId": "first"
+    }
+  },
+  "seedance-2.5-runway/apimart": {
+    "image": {},
+    "video": {
+      "modelKey": "seedance2_5",
+      "modelVendor": "apimart",
+      "modeId": "first"
+    }
+  },
+  "minimax-h3-apimart/kie": {
+    "image": {},
+    "video": {
+      "modelKey": "MiniMax-H3",
+      "modelVendor": "kie",
+      "modeId": "first"
+    }
+  },
+  "minimax-h3-apimart/apimart": {
+    "image": {},
+    "video": {
+      "modelKey": "MiniMax-H3",
+      "modelVendor": "apimart",
+      "modeId": "first"
+    }
+  },
+  "wan-2.7/kie": {
+    "image": {},
+    "video": {
+      "modelKey": "wan-2.7",
+      "modelVendor": "kie",
+      "modeId": "i2v"
+    }
+  },
+  "wan-2.7/apimart": {
+    "image": {},
+    "video": {
+      "modelKey": "wan-2.7",
+      "modelVendor": "apimart",
+      "modeId": "i2v"
+    }
+  },
+  "wan-3.0/kie": {
+    "image": {},
+    "video": {
+      "modelKey": "wan/3-0-video",
+      "modelVendor": "kie",
+      "modeId": "first"
+    }
+  },
+  "wan-3.0/apimart": {
+    "image": {},
+    "video": {
+      "modelKey": "wan/3-0-video",
+      "modelVendor": "apimart",
+      "modeId": "first"
+    }
+  },
+  "wan-3.0/runway": {
+    "image": {},
+    "video": {
+      "modelKey": "wan/3-0-video",
+      "modelVendor": "runway",
+      "modeId": "first"
+    }
+  },
+  "wan-3.0-apimart/kie": {
+    "image": {},
+    "video": {
+      "modelKey": "wan3.0-video",
+      "modelVendor": "kie",
+      "modeId": "first"
+    }
+  },
+  "wan-3.0-apimart/apimart": {
+    "image": {},
+    "video": {
+      "modelKey": "wan3.0-video",
+      "modelVendor": "apimart",
+      "modeId": "first"
+    }
+  },
+  "hailuo-2.3/kie": {
+    "image": {},
+    "video": {
+      "modelKey": "hailuo-2.3",
+      "modelVendor": "kie",
+      "modeId": "i2v"
+    }
+  },
+  "hailuo-2.3/apimart": {
+    "image": {},
+    "video": {
+      "modelKey": "hailuo-2.3",
+      "modelVendor": "apimart",
+      "modeId": "i2v"
+    }
+  },
+  "omni-flash-ext/kie": {
+    "image": {},
+    "video": {
+      "modelKey": "omni-flash-ext",
+      "modelVendor": "kie",
+      "modeId": "i2v"
+    }
+  },
+  "omni-flash-ext/apimart": {
+    "image": {},
+    "video": {
+      "modelKey": "omni-flash-ext",
+      "modelVendor": "apimart",
+      "modeId": "i2v"
+    }
+  },
+  "minimax-h3-regeneration/kie": {
+    "image": {},
+    "video": {
+      "modelKey": "MiniMax-H3-Regeneration",
+      "modelVendor": "kie",
+      "modeId": "regenerate"
+    }
+  },
+  "minimax-h3-regeneration/apimart": {
+    "image": {},
+    "video": {
+      "modelKey": "MiniMax-H3-Regeneration",
+      "modelVendor": "apimart",
+      "modeId": "regenerate"
+    }
+  },
+  "volcengine-seedance-2/kie": {
+    "image": {},
+    "video": {
+      "modelKey": "doubao-seedance-2-0-260128",
+      "modelVendor": "kie",
+      "modeId": "first"
+    }
+  },
+  "volcengine-seedance-2/apimart": {
+    "image": {},
+    "video": {
+      "modelKey": "doubao-seedance-2-0-260128",
+      "modelVendor": "apimart",
+      "modeId": "first"
+    }
+  },
+  "volcengine-seedance-2-5/kie": {
+    "image": {},
+    "video": {
+      "modelKey": "doubao-seedance-2-5-260628",
+      "modelVendor": "kie",
+      "modeId": "first"
+    }
+  },
+  "volcengine-seedance-2-5/apimart": {
+    "image": {},
+    "video": {
+      "modelKey": "doubao-seedance-2-5-260628",
+      "modelVendor": "apimart",
+      "modeId": "first"
+    }
+  },
+  "dreamina-seedance-2/kie": {
+    "image": {},
+    "video": {
+      "modelKey": "dreamina-seedance-2.0",
+      "modelVendor": "kie",
+      "modeId": "i2v"
+    }
+  },
+  "dreamina-seedance-2/apimart": {
+    "image": {},
+    "video": {
+      "modelKey": "dreamina-seedance-2.0",
+      "modelVendor": "apimart",
+      "modeId": "i2v"
+    }
+  },
+  "dreamina-multiframe/kie": {
+    "image": {},
+    "video": {
+      "modelKey": "dreamina-multiframe",
+      "modelVendor": "kie",
+      "modeId": "multiframe"
+    }
+  },
+  "dreamina-multiframe/apimart": {
+    "image": {},
+    "video": {
+      "modelKey": "dreamina-multiframe",
+      "modelVendor": "apimart",
+      "modeId": "multiframe"
+    }
+  },
+  "runninghub-seedance/kie": {
+    "image": {},
+    "video": {
+      "modelKey": "bytedance/seedance-2.0-global",
+      "modelVendor": "kie",
+      "modeId": "image"
+    }
+  },
+  "runninghub-seedance/apimart": {
+    "image": {},
+    "video": {
+      "modelKey": "bytedance/seedance-2.0-global",
+      "modelVendor": "apimart",
+      "modeId": "image"
+    }
+  },
+  "rh-veo-3.1/kie": {
+    "image": {},
+    "video": {
+      "modelKey": "rhart-video-v3.1-pro-official",
+      "modelVendor": "kie",
+      "modeId": "image"
+    }
+  },
+  "rh-veo-3.1/apimart": {
+    "image": {},
+    "video": {
+      "modelKey": "rhart-video-v3.1-pro-official",
+      "modelVendor": "apimart",
+      "modeId": "image"
+    }
+  },
+  "rh-kling-3.0/kie": {
+    "image": {},
+    "video": {
+      "modelKey": "kling-v3.0-pro",
+      "modelVendor": "kie",
+      "modeId": "image"
+    }
+  },
+  "rh-kling-3.0/apimart": {
+    "image": {},
+    "video": {
+      "modelKey": "kling-v3.0-pro",
+      "modelVendor": "apimart",
+      "modeId": "image"
+    }
+  },
+  "rh-wan-2.7/kie": {
+    "image": {},
+    "video": {
+      "modelKey": "rh-wan-2.7",
+      "modelVendor": "kie",
+      "modeId": "image"
+    }
+  },
+  "rh-wan-2.7/apimart": {
+    "image": {},
+    "video": {
+      "modelKey": "rh-wan-2.7",
+      "modelVendor": "apimart",
+      "modeId": "image"
+    }
+  },
+  "rh-hailuo-2.3/kie": {
+    "image": {},
+    "video": {
+      "modelKey": "rh-hailuo-2.3",
+      "modelVendor": "kie",
+      "modeId": "image"
+    }
+  },
+  "rh-hailuo-2.3/apimart": {
+    "image": {},
+    "video": {
+      "modelKey": "rh-hailuo-2.3",
+      "modelVendor": "apimart",
+      "modeId": "image"
+    }
+  },
+  "rh-sora-2/kie": {
+    "image": {},
+    "video": {
+      "modelKey": "rhart-video-s-official",
+      "modelVendor": "kie",
+      "modeId": "image"
+    }
+  },
+  "rh-sora-2/apimart": {
+    "image": {},
+    "video": {
+      "modelKey": "rhart-video-s-official",
+      "modelVendor": "apimart",
+      "modeId": "image"
+    }
+  },
+  "agnes-video/kie": {
+    "image": {},
+    "video": {
+      "modelKey": "agnes-video",
+      "modelVendor": "kie",
+      "modeId": "i2v"
+    }
+  },
+  "agnes-video/apimart": {
+    "image": {},
+    "video": {
+      "modelKey": "agnes-video",
+      "modelVendor": "apimart",
+      "modeId": "i2v"
+    }
+  },
+  "agnes-video-2.5/kie": {
+    "image": {},
+    "video": {
+      "modelKey": "agnes-video-2.5",
+      "modelVendor": "kie",
+      "modeId": "keyframe"
+    }
+  },
+  "agnes-video-2.5/apimart": {
+    "image": {},
+    "video": {
+      "modelKey": "agnes-video-2.5",
+      "modelVendor": "apimart",
+      "modeId": "keyframe"
+    }
+  },
+  "agnes-video-2.5-flash/kie": {
+    "image": {},
+    "video": {
+      "modelKey": "agnes-video-2.5-flash",
+      "modelVendor": "kie",
+      "modeId": "keyframe"
+    }
+  },
+  "agnes-video-2.5-flash/apimart": {
+    "image": {},
+    "video": {
+      "modelKey": "agnes-video-2.5-flash",
+      "modelVendor": "apimart",
+      "modeId": "keyframe"
+    }
+  },
+  "minimax-music-3/kie": {
+    "image": {},
+    "video": {}
+  },
+  "minimax-music-3/apimart": {
+    "image": {},
+    "video": {}
+  },
+  "minimax-speech-2.8/kie": {
+    "image": {},
+    "video": {}
+  },
+  "minimax-speech-2.8/apimart": {
+    "image": {},
+    "video": {}
+  },
+  "eleven-v3/kie": {
+    "image": {},
+    "video": {}
+  },
+  "eleven-v3/apimart": {
+    "image": {},
+    "video": {}
+  },
+  "eleven-v3/runway": {
+    "image": {},
+    "video": {}
+  },
+  "eleven-multilingual-v2/kie": {
+    "image": {},
+    "video": {}
+  },
+  "eleven-multilingual-v2/apimart": {
+    "image": {},
+    "video": {}
+  },
+  "eleven-music-v2/kie": {
+    "image": {},
+    "video": {}
+  },
+  "eleven-music-v2/apimart": {
+    "image": {},
+    "video": {}
+  },
+  "eleven-sfx-v2/kie": {
+    "image": {},
+    "video": {}
+  },
+  "eleven-sfx-v2/apimart": {
+    "image": {},
+    "video": {}
+  },
+  "eleven-sfx-v2/runway": {
+    "image": {},
+    "video": {}
+  },
+  "eleven-scribe-v2/kie": {
+    "image": {},
+    "video": {}
+  },
+  "eleven-scribe-v2/apimart": {
+    "image": {},
+    "video": {}
+  },
+  "meshy-7/kie": {
+    "image": {},
+    "video": {}
+  },
+  "meshy-7/apimart": {
+    "image": {},
+    "video": {}
+  },
+  "runway-gen4-image/kie": {
+    "image": {
+      "modelKey": "gen4_image",
+      "modelVendor": "kie",
+      "modeId": "t2i",
+      "refModeId": "i2i"
+    },
+    "video": {}
+  },
+  "runway-gen4-image/apimart": {
+    "image": {
+      "modelKey": "gen4_image",
+      "modelVendor": "apimart",
+      "modeId": "t2i",
+      "refModeId": "i2i"
+    },
+    "video": {}
+  },
+  "runway-gen4-image-turbo/kie": {
+    "image": {
+      "modelKey": "gen4_image_turbo",
+      "modelVendor": "kie",
+      "modeId": "i2i",
+      "refModeId": "i2i"
+    },
+    "video": {}
+  },
+  "runway-gen4-image-turbo/apimart": {
+    "image": {
+      "modelKey": "gen4_image_turbo",
+      "modelVendor": "apimart",
+      "modeId": "i2i",
+      "refModeId": "i2i"
+    },
+    "video": {}
+  },
+  "runway-muse-image/kie": {
+    "image": {
+      "modelKey": "muse_image",
+      "modelVendor": "kie",
+      "modeId": "t2i",
+      "refModeId": "i2i"
+    },
+    "video": {}
+  },
+  "runway-muse-image/apimart": {
+    "image": {
+      "modelKey": "muse_image",
+      "modelVendor": "apimart",
+      "modeId": "t2i",
+      "refModeId": "i2i"
+    },
+    "video": {}
+  },
+  "grok-imagine-image-2/kie": {
+    "image": {
+      "modelKey": "grok_imagine_image_2",
+      "modelVendor": "kie",
+      "modeId": "t2i",
+      "refModeId": "i2i"
+    },
+    "video": {}
+  },
+  "grok-imagine-image-2/apimart": {
+    "image": {
+      "modelKey": "grok_imagine_image_2",
+      "modelVendor": "apimart",
+      "modeId": "t2i",
+      "refModeId": "i2i"
+    },
+    "video": {}
+  },
+  "gemini-image-3-pro/kie": {
+    "image": {
+      "modelKey": "gemini_image3_pro",
+      "modelVendor": "kie",
+      "modeId": "t2i",
+      "refModeId": "i2i"
+    },
+    "video": {}
+  },
+  "gemini-image-3-pro/apimart": {
+    "image": {
+      "modelKey": "gemini_image3_pro",
+      "modelVendor": "apimart",
+      "modeId": "t2i",
+      "refModeId": "i2i"
+    },
+    "video": {}
+  },
+  "gemini-image-3.1-flash/kie": {
+    "image": {
+      "modelKey": "gemini_image3.1_flash",
+      "modelVendor": "kie",
+      "modeId": "t2i",
+      "refModeId": "i2i"
+    },
+    "video": {}
+  },
+  "gemini-image-3.1-flash/apimart": {
+    "image": {
+      "modelKey": "gemini_image3.1_flash",
+      "modelVendor": "apimart",
+      "modeId": "t2i",
+      "refModeId": "i2i"
+    },
+    "video": {}
+  },
+  "runway-seed-audio/kie": {
+    "image": {},
+    "video": {}
+  },
+  "runway-seed-audio/apimart": {
+    "image": {},
+    "video": {}
+  },
+  "gpt-image-2/kie": {
+    "image": {
+      "modelKey": "gpt-image-2",
+      "modelVendor": "kie",
+      "modeId": "t2i",
+      "refModeId": "i2i"
+    },
+    "video": {}
+  },
+  "gpt-image-2/apimart": {
+    "image": {
+      "modelKey": "gpt-image-2",
+      "modelVendor": "apimart",
+      "modeId": "t2i",
+      "refModeId": "i2i"
+    },
+    "video": {}
+  },
+  "gpt-image-2/runway": {
+    "image": {
+      "modelKey": "gpt-image-2",
+      "modelVendor": "runway",
+      "modeId": "t2i",
+      "refModeId": "i2i"
+    },
+    "video": {}
+  },
+  "seedream/kie": {
+    "image": {
+      "modelKey": "seedream",
+      "modelVendor": "kie",
+      "modeId": "t2i",
+      "refModeId": "edit"
+    },
+    "video": {}
+  },
+  "seedream/apimart": {
+    "image": {
+      "modelKey": "seedream",
+      "modelVendor": "apimart",
+      "modeId": "t2i",
+      "refModeId": "edit"
+    },
+    "video": {}
+  },
+  "kie-seedream-5-pro/kie": {
+    "image": {
+      "modelKey": "seedream/5-pro-text-to-image",
+      "modelVendor": "kie",
+      "modeId": "t2i",
+      "refModeId": "edit"
+    },
+    "video": {}
+  },
+  "kie-seedream-5-pro/apimart": {
+    "image": {
+      "modelKey": "seedream/5-pro-text-to-image",
+      "modelVendor": "apimart",
+      "modeId": "t2i",
+      "refModeId": "edit"
+    },
+    "video": {}
+  },
+  "kie-seedream-5-lite/kie": {
+    "image": {
+      "modelKey": "seedream/5-lite-text-to-image",
+      "modelVendor": "kie",
+      "modeId": "t2i",
+      "refModeId": "edit"
+    },
+    "video": {}
+  },
+  "kie-seedream-5-lite/apimart": {
+    "image": {
+      "modelKey": "seedream/5-lite-text-to-image",
+      "modelVendor": "apimart",
+      "modeId": "t2i",
+      "refModeId": "edit"
+    },
+    "video": {}
+  },
+  "kie-seedream-5-lite/runway": {
+    "image": {
+      "modelKey": "seedream/5-lite-text-to-image",
+      "modelVendor": "runway",
+      "modeId": "t2i",
+      "refModeId": "edit"
+    },
+    "video": {}
+  },
+  "nano-banana-2/kie": {
+    "image": {
+      "modelKey": "nano-banana-2",
+      "modelVendor": "kie",
+      "modeId": "t2i",
+      "refModeId": "edit"
+    },
+    "video": {}
+  },
+  "nano-banana-2/apimart": {
+    "image": {
+      "modelKey": "nano-banana-2",
+      "modelVendor": "apimart",
+      "modeId": "t2i",
+      "refModeId": "edit"
+    },
+    "video": {}
+  },
+  "nano-banana-2-lite/kie": {
+    "image": {
+      "modelKey": "nano-banana-2-lite",
+      "modelVendor": "kie",
+      "modeId": "t2i",
+      "refModeId": "edit"
+    },
+    "video": {}
+  },
+  "nano-banana-2-lite/apimart": {
+    "image": {
+      "modelKey": "nano-banana-2-lite",
+      "modelVendor": "apimart",
+      "modeId": "t2i",
+      "refModeId": "edit"
+    },
+    "video": {}
+  },
+  "nano-banana/kie": {
+    "image": {
+      "modelKey": "nano-banana",
+      "modelVendor": "kie",
+      "modeId": "t2i",
+      "refModeId": "edit"
+    },
+    "video": {}
+  },
+  "nano-banana/apimart": {
+    "image": {
+      "modelKey": "nano-banana",
+      "modelVendor": "apimart",
+      "modeId": "t2i",
+      "refModeId": "edit"
+    },
+    "video": {}
+  },
+  "nano-banana/runway": {
+    "image": {
+      "modelKey": "nano-banana",
+      "modelVendor": "runway",
+      "modeId": "t2i",
+      "refModeId": "edit"
+    },
+    "video": {}
+  },
+  "flux-2-pro/kie": {
+    "image": {
+      "modelKey": "flux-2/pro-text-to-image",
+      "modelVendor": "kie",
+      "modeId": "t2i",
+      "refModeId": "edit"
+    },
+    "video": {}
+  },
+  "flux-2-pro/apimart": {
+    "image": {
+      "modelKey": "flux-2/pro-text-to-image",
+      "modelVendor": "apimart",
+      "modeId": "t2i",
+      "refModeId": "edit"
+    },
+    "video": {}
+  },
+  "qwen-image-3/kie": {
+    "image": {
+      "modelKey": "qwen-image-3.0",
+      "modelVendor": "kie",
+      "modeId": "t2i",
+      "refModeId": "edit"
+    },
+    "video": {}
+  },
+  "qwen-image-3/apimart": {
+    "image": {
+      "modelKey": "qwen-image-3.0",
+      "modelVendor": "apimart",
+      "modeId": "t2i",
+      "refModeId": "edit"
+    },
+    "video": {}
+  },
+  "qwen-image/kie": {
+    "image": {
+      "modelKey": "qwen-image",
+      "modelVendor": "kie",
+      "modeId": "t2i",
+      "refModeId": "edit"
+    },
+    "video": {}
+  },
+  "qwen-image/apimart": {
+    "image": {
+      "modelKey": "qwen-image",
+      "modelVendor": "apimart",
+      "modeId": "t2i",
+      "refModeId": "edit"
+    },
+    "video": {}
+  },
+  "imagen-4/kie": {
+    "image": {
+      "modelKey": "imagen-4",
+      "modelVendor": "kie",
+      "modeId": "t2i"
+    },
+    "video": {}
+  },
+  "imagen-4/apimart": {
+    "image": {
+      "modelKey": "imagen-4",
+      "modelVendor": "apimart",
+      "modeId": "t2i"
+    },
+    "video": {}
+  },
+  "z-image-turbo/kie": {
+    "image": {
+      "modelKey": "z-image-turbo",
+      "modelVendor": "kie",
+      "modeId": "t2i"
+    },
+    "video": {}
+  },
+  "z-image-turbo/apimart": {
+    "image": {
+      "modelKey": "z-image-turbo",
+      "modelVendor": "apimart",
+      "modeId": "t2i"
+    },
+    "video": {}
+  },
+  "seedream-5-pro/kie": {
+    "image": {
+      "modelKey": "doubao-seedream-5-0-pro",
+      "modelVendor": "kie",
+      "modeId": "t2i",
+      "refModeId": "edit"
+    },
+    "video": {}
+  },
+  "seedream-5-pro/apimart": {
+    "image": {
+      "modelKey": "doubao-seedream-5-0-pro",
+      "modelVendor": "apimart",
+      "modeId": "t2i",
+      "refModeId": "edit"
+    },
+    "video": {}
+  },
+  "seedream-5-pro/runway": {
+    "image": {
+      "modelKey": "doubao-seedream-5-0-pro",
+      "modelVendor": "runway",
+      "modeId": "t2i",
+      "refModeId": "edit"
+    },
+    "video": {}
+  },
+  "nomi-audio/kie": {
+    "image": {},
+    "video": {}
+  },
+  "nomi-audio/apimart": {
+    "image": {},
+    "video": {}
+  },
+  "suno-v5.5/kie": {
+    "image": {},
+    "video": {}
+  },
+  "suno-v5.5/apimart": {
+    "image": {},
+    "video": {}
+  },
+  "suno-sfx-v5.5/kie": {
+    "image": {},
+    "video": {}
+  },
+  "suno-sfx-v5.5/apimart": {
+    "image": {},
+    "video": {}
+  },
+  "lyria-3.5/kie": {
+    "image": {},
+    "video": {}
+  },
+  "lyria-3.5/apimart": {
+    "image": {},
+    "video": {}
+  },
+  "volcengine-doubao-tts/kie": {
+    "image": {},
+    "video": {}
+  },
+  "volcengine-doubao-tts/apimart": {
+    "image": {},
+    "video": {}
+  },
+  "seed-tts/kie": {
+    "image": {},
+    "video": {}
+  },
+  "seed-tts/apimart": {
+    "image": {},
+    "video": {}
+  },
+  "modelscope-image/kie": {
+    "image": {
+      "modelKey": "tongyi-mai/z-image",
+      "modelVendor": "kie",
+      "modeId": "t2i"
+    },
+    "video": {}
+  },
+  "modelscope-image/apimart": {
+    "image": {
+      "modelKey": "tongyi-mai/z-image",
+      "modelVendor": "apimart",
+      "modeId": "t2i"
+    },
+    "video": {}
+  },
+  "modelscope-image-edit/kie": {
+    "image": {
+      "modelKey": "qwen/qwen-image-edit",
+      "modelVendor": "kie",
+      "modeId": "edit",
+      "refModeId": "edit"
+    },
+    "video": {}
+  },
+  "modelscope-image-edit/apimart": {
+    "image": {
+      "modelKey": "qwen/qwen-image-edit",
+      "modelVendor": "apimart",
+      "modeId": "edit",
+      "refModeId": "edit"
+    },
+    "video": {}
+  },
+  "volcengine-seedream/kie": {
+    "image": {
+      "modelKey": "doubao-seedream-5-0-260128",
+      "modelVendor": "kie",
+      "modeId": "t2i",
+      "refModeId": "edit"
+    },
+    "video": {}
+  },
+  "volcengine-seedream/apimart": {
+    "image": {
+      "modelKey": "doubao-seedream-5-0-260128",
+      "modelVendor": "apimart",
+      "modeId": "t2i",
+      "refModeId": "edit"
+    },
+    "video": {}
+  },
+  "volcengine-seedream-5-pro/kie": {
+    "image": {
+      "modelKey": "doubao-seedream-5-0-pro-260628",
+      "modelVendor": "kie",
+      "modeId": "t2i",
+      "refModeId": "edit"
+    },
+    "video": {}
+  },
+  "volcengine-seedream-5-pro/apimart": {
+    "image": {
+      "modelKey": "doubao-seedream-5-0-pro-260628",
+      "modelVendor": "apimart",
+      "modeId": "t2i",
+      "refModeId": "edit"
+    },
+    "video": {}
+  },
+  "dreamina-image/kie": {
+    "image": {
+      "modelKey": "dreamina-image",
+      "modelVendor": "kie",
+      "modeId": "t2i",
+      "refModeId": "i2i"
+    },
+    "video": {}
+  },
+  "dreamina-image/apimart": {
+    "image": {
+      "modelKey": "dreamina-image",
+      "modelVendor": "apimart",
+      "modeId": "t2i",
+      "refModeId": "i2i"
+    },
+    "video": {}
+  },
+  "dreamina-upscale/kie": {
+    "image": {
+      "modelKey": "dreamina-upscale",
+      "modelVendor": "kie",
+      "modeId": "upscale",
+      "refModeId": "upscale"
+    },
+    "video": {}
+  },
+  "dreamina-upscale/apimart": {
+    "image": {
+      "modelKey": "dreamina-upscale",
+      "modelVendor": "apimart",
+      "modeId": "upscale",
+      "refModeId": "upscale"
+    },
+    "video": {}
+  },
+  "codex-imagegen/kie": {
+    "image": {
+      "modelKey": "codex-imagegen",
+      "modelVendor": "kie",
+      "modeId": "t2i",
+      "refModeId": "i2i"
+    },
+    "video": {}
+  },
+  "codex-imagegen/apimart": {
+    "image": {
+      "modelKey": "codex-imagegen",
+      "modelVendor": "apimart",
+      "modeId": "t2i",
+      "refModeId": "i2i"
+    },
+    "video": {}
+  },
+  "antigravity-image/kie": {
+    "image": {
+      "modelKey": "antigravity-cli/generate_image",
+      "modelVendor": "kie",
+      "modeId": "t2i",
+      "refModeId": "i2i"
+    },
+    "video": {}
+  },
+  "antigravity-image/apimart": {
+    "image": {
+      "modelKey": "antigravity-cli/generate_image",
+      "modelVendor": "apimart",
+      "modeId": "t2i",
+      "refModeId": "i2i"
+    },
+    "video": {}
+  },
+  "hunyuan3d/kie": {
+    "image": {},
+    "video": {}
+  },
+  "hunyuan3d/apimart": {
+    "image": {},
+    "video": {}
+  },
+  "hitem3d/kie": {
+    "image": {},
+    "video": {}
+  },
+  "hitem3d/apimart": {
+    "image": {},
+    "video": {}
+  },
+  "meshy6/kie": {
+    "image": {},
+    "video": {}
+  },
+  "meshy6/apimart": {
+    "image": {},
+    "video": {}
+  },
+  "rh-seedream-4.5/kie": {
+    "image": {
+      "modelKey": "seedream-v4.5",
+      "modelVendor": "kie",
+      "modeId": "text",
+      "refModeId": "edit"
+    },
+    "video": {}
+  },
+  "rh-seedream-4.5/apimart": {
+    "image": {
+      "modelKey": "seedream-v4.5",
+      "modelVendor": "apimart",
+      "modeId": "text",
+      "refModeId": "edit"
+    },
+    "video": {}
+  },
+  "rh-nano-banana/kie": {
+    "image": {
+      "modelKey": "rhart-image-v1",
+      "modelVendor": "kie",
+      "modeId": "text",
+      "refModeId": "edit"
+    },
+    "video": {}
+  },
+  "rh-nano-banana/apimart": {
+    "image": {
+      "modelKey": "rhart-image-v1",
+      "modelVendor": "apimart",
+      "modeId": "text",
+      "refModeId": "edit"
+    },
+    "video": {}
+  },
+  "rh-gpt-image-2/kie": {
+    "image": {
+      "modelKey": "rhart-image-g-2-official",
+      "modelVendor": "kie",
+      "modeId": "text",
+      "refModeId": "edit"
+    },
+    "video": {}
+  },
+  "rh-gpt-image-2/apimart": {
+    "image": {
+      "modelKey": "rhart-image-g-2-official",
+      "modelVendor": "apimart",
+      "modeId": "text",
+      "refModeId": "edit"
+    },
+    "video": {}
+  },
+  "rh-qwen-image-2.0/kie": {
+    "image": {
+      "modelKey": "rh-qwen-image-2.0",
+      "modelVendor": "kie",
+      "modeId": "text",
+      "refModeId": "edit"
+    },
+    "video": {}
+  },
+  "rh-qwen-image-2.0/apimart": {
+    "image": {
+      "modelKey": "rh-qwen-image-2.0",
+      "modelVendor": "apimart",
+      "modeId": "text",
+      "refModeId": "edit"
+    },
+    "video": {}
+  },
+  "agnes-image/kie": {
+    "image": {
+      "modelKey": "agnes-image",
+      "modelVendor": "kie",
+      "modeId": "t2i",
+      "refModeId": "edit"
+    },
+    "video": {}
+  },
+  "agnes-image/apimart": {
+    "image": {
+      "modelKey": "agnes-image",
+      "modelVendor": "apimart",
+      "modeId": "t2i",
+      "refModeId": "edit"
+    },
+    "video": {}
+  },
+  "agnes-image-2.1/kie": {
+    "image": {
+      "modelKey": "agnes-image-2.1-flash",
+      "modelVendor": "kie",
+      "modeId": "t2i",
+      "refModeId": "edit"
+    },
+    "video": {}
+  },
+  "agnes-image-2.1/apimart": {
+    "image": {
+      "modelKey": "agnes-image-2.1-flash",
+      "modelVendor": "apimart",
+      "modeId": "t2i",
+      "refModeId": "edit"
+    },
+    "video": {}
+  },
+  "all": {
+    "image": {
+      "modelKey": "gpt-image-2",
+      "modelVendor": "kie",
+      "modeId": "t2i",
+      "refModeId": "i2i"
+    },
+    "video": {
+      "modelKey": "bytedance/seedance-2",
+      "modelVendor": "kie",
+      "modeId": "first"
+    }
+  }
+}
