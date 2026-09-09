@@ -1,0 +1,20 @@
+
+ RUN  v4.1.8 /Users/aoqimin/Desktop/Nomi-process-feedback
+
+ ❯ src/workbench/generationCanvas/nodes/composerObstaclePlacement.test.ts (7 tests | 1 failed) 4ms
+     × keeps a scrollable card when all four surrounding regions are completely occupied 1ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/workbench/generationCanvas/nodes/composerObstaclePlacement.test.ts > composer neighbor collision boundary > keeps a scrollable card when all four surrounding regions are completely occupied
+AssertionError: expected 0 to be greater than 0
+ ❯ src/workbench/generationCanvas/nodes/composerObstaclePlacement.test.ts:30:32
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 6 passed (7)
+   Start at  03:13:59
+   Duration  171ms (transform 28ms, setup 26ms, import 13ms, tests 4ms, environment 0ms)

@@ -14,6 +14,7 @@ import {
   PERFORMANCE_CANVAS_SCENARIO_TIMEOUT_MS,
   runCanvasScenario,
   scenariosForProfile,
+  summarizeCanvasScenarioFailure,
 } from './canvas-real-suite.mjs'
 
 describe('real canvas acceptance suite', () => {
@@ -152,4 +153,9 @@ describe('real canvas acceptance suite', () => {
     expect(transcript).toContain('[stdout]\nfixture setup started')
     expect(transcript).toContain('[stderr]\nError: System secure storage is unavailable')
   })
+})
+
+it('preserves the entire multiline assertion including long call logs in suite summaries', () => {
+  const message = 'Error: expect(locator).toHaveCount(expected) failed\nLocator: [data-process-static-band]\nExpected: 8\nReceived: 4\nCall log:\n' + '  retry details\n'.repeat(400) + '  final observation'
+  expect(summarizeCanvasScenarioFailure({ stderr: message })).toBe(message)
 })

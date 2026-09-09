@@ -1,7 +1,8 @@
 import React from 'react'
+import { GenerationStatusBar } from './GenerationStatusBar'
 import { MODEL_ACCESS_ENTRY } from '../../../../electron/shared/contracts/modelAccessCapabilities'
 import { useTranslation } from 'react-i18next'
-import { IconAlertTriangle, IconChevronDown, IconChevronRight, IconRefresh, IconReplace, IconSettings, IconWand, IconX } from '@tabler/icons-react'
+import { IconChevronDown, IconChevronRight, IconRefresh, IconReplace, IconSettings, IconWand, IconX } from '@tabler/icons-react'
 import { cn } from '../../../utils/cn'
 import { WorkbenchButton } from '../../../design'
 import { isKnownVendor } from '../../../config/knownVendors'
@@ -206,8 +207,7 @@ export function NodeErrorReport({
       // （用户真机反馈）。放行 → 节点可拖可选、参数框正常弹；复制错误详情走卡里的「复制详情」按钮（不靠划选）。
     >
       <div className="flex items-start gap-2">
-        <IconAlertTriangle size={16} stroke={1.6} className="mt-[1px] shrink-0 text-workbench-danger" />
-        <span className="min-w-0 flex-1 select-text cursor-text text-body font-bold leading-snug text-nomi-ink">{report.reason}</span>
+        <GenerationStatusBar feedback={{ phase: 'failed', message: report.reason, active: false, saved: false, late: false, previewLabel: '' }} />
         {/* 收起：失败卡是铺满正文的遮罩，节点先前生成的片子就压在它下面——没有这颗钮，用户「一直看不了
             原本的视频」（2026-08-24 用户反馈，并在截图上把 × 画在了这个位置）。§1.5：它是 L2 情境控件，
             只随失败卡存在，且长在卡自己的不透明表面上、不是压在画面内容上（§1.5.3 那条硬规则）。

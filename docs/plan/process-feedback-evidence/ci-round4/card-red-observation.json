@@ -1,0 +1,72 @@
+{
+  "kind": "observed-state-commit-gap-not-a-synthetic-test",
+  "immediate_current_check": false,
+  "sample": {
+    "phase": "store",
+    "at": 4221.300000011921,
+    "store": "image-v1",
+    "dom": "image-v3"
+  },
+  "settled_samples": [
+    {
+      "phase": "100ms",
+      "at": 4301.699999988079,
+      "store": "image-v1",
+      "dom": "image-v1"
+    },
+    {
+      "phase": "100ms",
+      "at": 4403,
+      "store": "image-v1",
+      "dom": "image-v1"
+    },
+    {
+      "phase": "100ms",
+      "at": 4502.900000035763,
+      "store": "image-v1",
+      "dom": "image-v1"
+    },
+    {
+      "phase": "100ms",
+      "at": 4602.699999988079,
+      "store": "image-v1",
+      "dom": "image-v1"
+    },
+    {
+      "phase": "100ms",
+      "at": 4704,
+      "store": "image-v1",
+      "dom": "image-v1"
+    },
+    {
+      "phase": "100ms",
+      "at": 4803,
+      "store": "image-v1",
+      "dom": "image-v1"
+    },
+    {
+      "phase": "100ms",
+      "at": 4902.900000035763,
+      "store": "image-v1",
+      "dom": "image-v1"
+    },
+    {
+      "phase": "100ms",
+      "at": 5004,
+      "store": "image-v1",
+      "dom": "image-v1"
+    },
+    {
+      "phase": "100ms",
+      "at": 5103.800000011921,
+      "store": "image-v1",
+      "dom": "image-v1"
+    },
+    {
+      "phase": "100ms",
+      "at": 5203.199999988079,
+      "store": "image-v1",
+      "dom": "image-v1"
+    }
+  ]
+}

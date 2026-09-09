@@ -1,0 +1,110 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-09-process-feedback-zoom",
+  "problem_type": "Status readability uses obsolete viewport state",
+  "symptom": "Real 60 percent canvas shows 8.4 pixel status text. Composer and floating toolbar also shrink to unreadable controls.",
+  "direct_cause": "Status reads legacy canvasZoom which React Flow no longer updates.",
+  "class_root": "Screen-size feedback must derive from the active category viewport owner.",
+  "affected_population": [
+    "Image and video feedback at reduced canvas zoom"
+  ],
+  "scope_paths": [
+    "src/workbench/generationCanvas/nodes/NodeGenerationStatus.tsx",
+    "src/workbench/generationCanvas/nodes/NodeFloatingToolbar.tsx",
+    "src/workbench/generationCanvas/nodes/useComposerViewportPlacement.ts"
+  ],
+  "entry_points": [
+    "Image status",
+    "Video status"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "Existing internal category viewport ownership; no new framework API.",
+  "invariants": [
+    "Status compensation follows the current category viewport."
+  ],
+  "generality_proof": "Both image and video nodes render NodeGenerationStatus.",
+  "shared_boundaries": [
+    {
+      "path": "src/workbench/generationCanvas/nodes/NodeGenerationStatus.tsx",
+      "symbol": "NodeGenerationStatus",
+      "responsibility": "Derive feedback scale from current category viewport."
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/NodeFloatingToolbar.tsx",
+      "symbol": "FloatingToolbarShell",
+      "responsibility": "Keep toolbar controls at screen size."
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/useComposerViewportPlacement.ts",
+      "symbol": "useComposerViewportPlacement",
+      "responsibility": "Derive composer size and position from current viewport."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/workbench/generationCanvas/nodes/BaseGenerationNode.tsx",
+      "entry_point": "BaseGenerationNode",
+      "disposition": "enforced",
+      "evidence": "Shared image/video body uses NodeGenerationStatus."
+    },
+    {
+      "path": "src/devlab/designLab/processFeedback/processFeedbackLabKit.tsx",
+      "entry_point": "ProcessFeedbackStage",
+      "disposition": "enforced",
+      "evidence": "Lab seeds the same authoritative category viewport instead of obsolete canvasZoom."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Every real zoom can reproduce this.",
+    "same_class_scan": [
+      "Checked image/video status and lab viewport seeding.",
+      "Inspected GenerationCanvasReactFlowViewport onMoveEnd category viewport writeback.",
+      "NodeFloatingToolbar and useComposerViewportPlacement have the same obsolete zoom subscription; all three now consume categoryViewports."
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "src/workbench/generationCanvas/nodes/NodeGenerationStatus.tsx",
+    "invariant": "Status compensation consumes the viewport owner.",
+    "failure_mode": "Uninitialized category uses canonical initial zoom 1.",
+    "exception_policy": "none",
+    "strategy": "Remove legacy zoom read at shared image/video feedback renderer.",
+    "artifacts": [
+      "src/workbench/generationCanvas/nodes/NodeGenerationStatus.tsx",
+      "src/workbench/generationCanvas/nodes/NodeFloatingToolbar.tsx",
+      "src/workbench/generationCanvas/nodes/useComposerViewportPlacement.ts"
+    ]
+  },
+  "regression_tests": [
+    "tests/ux/process-feedback-electron.e2e.mjs"
+  ],
+  "class_regression_tests": [
+    "tests/ux/process-feedback-electron.e2e.mjs"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "src/workbench/generationCanvas/nodes/NodeGenerationStatus.tsx",
+      "src/workbench/generationCanvas/nodes/NodeFloatingToolbar.tsx",
+      "src/workbench/generationCanvas/nodes/useComposerViewportPlacement.ts"
+    ],
+    "rationale": "Obsolete canvasZoom read removed from status."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "Uses existing internal viewport store, no framework change.",
+    "exit_criteria": []
+  },
+  "migration": "No persistence changes.",
+  "residual_risks": [
+    "Compensation updates at viewport gesture completion, following existing category persistence."
+  ],
+  "invariant_owner_layer": {
+    "layer": "src/workbench/generationCanvas/nodes/NodeGenerationStatus.tsx",
+    "tests": [
+      "tests/ux/process-feedback-electron.e2e.mjs"
+    ],
+    "note": "Real DOM screen font size measured after actual canvas zoom."
+  }
+}

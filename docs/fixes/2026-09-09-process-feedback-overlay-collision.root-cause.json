@@ -1,0 +1,97 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-09-process-feedback-overlay-collision",
+  "problem_type": "Media feedback and shot numbering compete for the same visual region.",
+  "symptom": "Saved status overlaps the shot number.",
+  "direct_cause": "Shot number does not account for transient feedback.",
+  "class_root": "Status and shot number have no distinct permanent spatial owners.",
+  "affected_population": [
+    "Image and video generation, including persisted errors"
+  ],
+  "scope_paths": [
+    "src/workbench/generationCanvas/nodes/ConvertShotToVideoButton.tsx",
+    "src/workbench/generationCanvas/nodes/GenerationStatusBar.tsx",
+    "src/workbench/generationCanvas/nodes/NodeGenerationStatus.tsx",
+    "src/workbench/generationCanvas/nodes/BaseGenerationNode.tsx",
+    "src/workbench/generationCanvas/nodes/NodeImagePreviewActions.tsx",
+    "src/workbench/generationCanvas/nodes/render/CardCommon.tsx"
+  ],
+  "entry_points": [
+    "ShotPreviewOverlays"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "Internal presentation and error contracts; no external protocol.",
+  "invariants": [
+    "Status occupies media top-left only while active or failed; shot number always occupies media bottom-left; actions remain outside above."
+  ],
+  "generality_proof": "Enforced in shared production boundaries for every image/video caller.",
+  "shared_boundaries": [
+    {
+      "path": "src/workbench/generationCanvas/nodes/ConvertShotToVideoButton.tsx",
+      "symbol": "ShotPreviewOverlays",
+      "responsibility": "Status occupies media top-left only while active or failed; shot number always occupies media bottom-left; actions remain outside above."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/workbench/generationCanvas/nodes/ConvertShotToVideoButton.tsx",
+      "entry_point": "ShotPreviewOverlays",
+      "disposition": "enforced",
+      "evidence": "Production boundary covered by changed real App test and regression."
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/BaseGenerationNode.tsx",
+      "entry_point": "BaseGenerationNode",
+      "disposition": "enforced",
+      "evidence": "Shared image/video shell mounts the overlay."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Any image/video generation can encounter this state.",
+    "same_class_scan": [
+      "Read actual image and video node rendering and catalog resolution.",
+      "Read task history projection and real screenshot/DOM results."
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "src/workbench/generationCanvas/nodes/ConvertShotToVideoButton.tsx",
+    "invariant": "Status occupies media top-left only while active or failed; shot number always occupies media bottom-left; actions remain outside above.",
+    "failure_mode": "Uses existing shared narration and state ownership.",
+    "exception_policy": "none",
+    "strategy": "Remove completed-state timer; always anchor shot number bottom-left and use quiet shared status styling.",
+    "artifacts": [
+      "src/workbench/generationCanvas/nodes/ConvertShotToVideoButton.tsx"
+    ]
+  },
+  "regression_tests": [
+    "tests/ux/process-feedback-electron.e2e.mjs"
+  ],
+  "class_regression_tests": [
+    "tests/ux/process-feedback-electron.e2e.mjs"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "src/workbench/generationCanvas/nodes/ConvertShotToVideoButton.tsx"
+    ],
+    "rationale": "Removed ambiguous behavior at the original shared boundary."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "Internal component/error ownership; no dependency changes.",
+    "exit_criteria": []
+  },
+  "migration": "No persisted state or schema change; existing media nodes use the same fixed corner ownership.",
+  "residual_risks": [
+    "Real App evidence covers the isolated loopback path; other providers use the same shared boundary."
+  ],
+  "invariant_owner_layer": {
+    "layer": "src/workbench/generationCanvas/nodes/ConvertShotToVideoButton.tsx",
+    "tests": [
+      "tests/ux/process-feedback-electron.e2e.mjs"
+    ],
+    "note": "Status occupies media top-left only while active or failed; shot number always occupies media bottom-left; actions remain outside above."
+  }
+}

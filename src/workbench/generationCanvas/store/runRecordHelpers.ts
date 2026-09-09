@@ -29,7 +29,8 @@ export function getResultTaskKind(result: GenerationNodeResult): GenerationNodeT
 }
 
 export function createProgress(progress: NodeProgressInput, fallbackRunId?: string): GenerationNodeProgress {
-  const percent = typeof progress.percent === 'number' ? Math.min(100, Math.max(0, progress.percent)) : undefined
+  const percent = typeof progress.percent === 'number' && Number.isFinite(progress.percent) && progress.percent >= 0 && progress.percent <= 100
+    ? progress.percent : undefined
   return {
     ...progress,
     runId: progress.runId ?? fallbackRunId,

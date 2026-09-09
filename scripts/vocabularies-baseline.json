@@ -12,6 +12,17 @@
   ],
   "registered": [
     {
+      "site": "src/workbench/observability/narrate.ts::type:GenerationFeedbackPhase/type-union",
+      "members": [
+        "failed",
+        "finalizing",
+        "generating",
+        "queued",
+        "submitting"
+      ],
+      "reason": "用户批准的 C1 五段生成反馈唯一语义 owner；后端十阶段由 narrate 的穷举 Record 映射，所有媒体消费者共用。"
+    },
+    {
       "site": "src/devlab/designLab/settingsSound/settingsSoundLabKit.tsx::function:SoundStage/parameter:0/property:state/type-union",
       "members": ["custom", "off", "on", "playing"],
       "reason": "提醒音实验室的四种视觉夹具：开/关通过持久化 enabled 驱动，自定义通过 custom 元数据驱动，试听中通过真实 preview handler 驱动。它是验收取景的场景选择，不是通知事件类别或生产任务生命周期；生产设置无平行状态机，也不复用其他业务的同名 on/off 状态。"

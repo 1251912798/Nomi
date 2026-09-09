@@ -93,6 +93,12 @@
         "threshold": 0.2,
         "maxDiffPixels": 40
       }
+    },
+    "process-feedback": {
+      "tolerance": {
+        "threshold": 0.2,
+        "maxDiffPixels": 40
+      }
     }
   },
   "why": {

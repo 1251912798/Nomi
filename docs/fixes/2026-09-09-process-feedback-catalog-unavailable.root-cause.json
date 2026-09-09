@@ -1,0 +1,110 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-09-process-feedback-catalog-unavailable",
+  "problem_type": "Catalog resolution emits unclassified prose.",
+  "symptom": "Disconnected supplier tells the user to retry a configuration failure.",
+  "direct_cause": "Catalog resolution emits unclassified prose.",
+  "class_root": "Error recovery relied on mutable prose rather than a machine-readable code; substring compatibility also misclassified quoted fragments.",
+  "affected_population": [
+    "Image and video generation, including persisted errors"
+  ],
+  "scope_paths": [
+    "src/workbench/generationCanvas/runner/catalogTaskResolve.ts",
+    "src/workbench/observability/classifyError.ts",
+    "electron/shared/nomiErrorCodes.ts"
+  ],
+  "entry_points": [
+    "resolveExecutableNodeFromCatalog",
+    "classifyGenerationError"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "Internal presentation and error contracts; no external protocol.",
+  "invariants": [
+    "Catalog-unavailable errors use a stable model-config code across languages; only exact frozen historical templates decode as legacy model-config."
+  ],
+  "generality_proof": "Image/video and missing-key failures share the catalog resolver; translated messages classify by code. Tests cover three languages, both historical templates and a misleading partial quotation.",
+  "shared_boundaries": [
+    {
+      "path": "src/workbench/generationCanvas/runner/catalogTaskResolve.ts",
+      "symbol": "resolveExecutableNodeFromCatalog",
+      "responsibility": "Missing executable models use the existing model-config signature and recovery actions."
+    },
+    {
+      "path": "src/workbench/observability/classifyError.ts",
+      "symbol": "classifyGenerationError",
+      "responsibility": "Missing executable models use the existing model-config signature and recovery actions."
+    },
+    {
+      "path": "electron/shared/nomiErrorCodes.ts",
+      "symbol": "matchNomiErrorCode",
+      "responsibility": "Decode stable codes and strictly bounded historical serialized catalog errors."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/workbench/generationCanvas/runner/catalogTaskResolve.ts",
+      "entry_point": "resolveExecutableNodeFromCatalog",
+      "disposition": "enforced",
+      "evidence": "Production boundary covered by changed real App test and regression."
+    },
+    {
+      "path": "src/workbench/observability/classifyError.ts",
+      "entry_point": "classifyGenerationError",
+      "disposition": "enforced",
+      "evidence": "Production boundary covered by changed real App test and regression."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Any image/video generation can encounter this state.",
+    "same_class_scan": [
+      "Read actual image and video node rendering and catalog resolution.",
+      "Read task history projection and real screenshot/DOM results.",
+      "Read both catalogTaskResolve throws and detectLegacyErrorKind; old main writes untagged Chinese errors, so old-data compatibility is required.",
+      "Read shared nomiErrorCodes tag/read/strip owner; extend its existing channel rather than invent another message prefix."
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "src/workbench/generationCanvas/runner/catalogTaskResolve.ts",
+    "invariant": "Catalog-unavailable errors use a stable model-config code across languages; only exact frozen historical templates decode as legacy model-config.",
+    "failure_mode": "Uses existing shared narration and state ownership.",
+    "exception_policy": "none",
+    "strategy": "Tag new catalog errors using NOMI_ERR; remove broad Chinese substring classification. Decode only the two complete historical templates at the shared code reader.",
+    "artifacts": [
+      "src/workbench/generationCanvas/runner/catalogTaskResolve.ts",
+      "src/workbench/observability/classifyError.ts",
+      "electron/shared/nomiErrorCodes.ts"
+    ]
+  },
+  "regression_tests": [
+    "src/workbench/generationCanvas/runner/catalogUnavailableFeedback.test.ts"
+  ],
+  "class_regression_tests": [
+    "src/workbench/generationCanvas/runner/catalogUnavailableFeedback.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "src/workbench/generationCanvas/runner/catalogTaskResolve.ts",
+      "src/workbench/observability/classifyError.ts"
+    ],
+    "rationale": "Removed ambiguous behavior at the original shared boundary."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "Internal component/error ownership; no dependency changes.",
+    "exit_criteria": []
+  },
+  "migration": "Two frozen historical Chinese serialization templates decode to model-config; current producers always write NOMI_ERR::model-config::. Partial quotations are not historical records.",
+  "residual_risks": [
+    "Real App evidence covers the isolated loopback path; other providers use the same shared boundary."
+  ],
+  "invariant_owner_layer": {
+    "layer": "electron/shared/nomiErrorCodes.ts",
+    "tests": [
+      "src/workbench/generationCanvas/runner/catalogUnavailableFeedback.test.ts"
+    ],
+    "note": "Catalog-unavailable errors use a stable model-config code across languages; only exact frozen historical templates decode as legacy model-config."
+  }
+}

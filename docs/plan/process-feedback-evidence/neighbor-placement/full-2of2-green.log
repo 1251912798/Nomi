@@ -1,0 +1,367 @@
+
+[canvas:full 2/2] group-ports
+  → 节点: 4
+  · shot 01-grouped
+  ✓ 组框内找得到不压节点的空白点
+  → 点组框后选择浮条: "已选 4 个图片 ×4统一模型生成选中 4 个并发6"
+  ✓ 点组框 = 选中全部成员（整组运行的现成入口） — 已选 4 个图片 ×4统一模型生成选中 4 个并发6
+  ✓ 浮条上有「生成选中 4 个」 — 已选 4 个图片 ×4统一模型生成选中 4 个并发6
+  → 同屏生成动作: {"onGroupLabel":0,"runAll":1}
+  ✓ 组标签上没有第二个运行钮（并行版已删，防复发） — {"onGroupLabel":0,"runAll":1}
+  ✓ 生成动作全屏只有一个（就是选择浮条那个） — {"onGroupLabel":0,"runAll":1}
+  · shot 02-group-label-no-run-button
+  · shot 03-after-run-group
+  → 确认卡: "开始生成将生成 4 张画面 · 预计约 2–12 分钟 · 会消耗模型额度本次会话不再提示取消生成"
+  ✓ 整组运行走现成的批量确认卡 — 开始生成将生成 4 张画面 · 预计约 2–12 分钟 · 会消耗模型额度本次会话不再提示取消生成
+  ✓ 确认卡张数 = 组成员数 4 — 开始生成将生成 4 张画面 · 预计约 2–12 分钟 · 会消耗模型额度本次会话不再提示取消生成
+  ✓ 取消后确认卡收掉
+  → 连线源: gen-v2-image-mtt3bfz6-jd90
+  ✓ 找得到连接点
+  ✓ 组框内找得到不压节点的空白落点 — {"x":125.99728393554688,"y":190.8421630859375}
+  ✓ 连接点中心命中 React Flow 握把 — {"box":{"x":1043.711181640625,"y":455.8548278808594,"width":0.57763671875,"height":0.577728271484375},"viewport":{"width":1440,"height":844},"point":{"x":1044,"y":456.14369201660156},"stack":[{"tag":"SPAN","className":"generation-canvas-react-flow__handle-hit","nodeId":"gen-v2-image-mtt3bfz6-jd90"},{"tag":"DIV","className":"react-flow__handle react-flow__handle-right nodrag generation-canvas-react-flow__no-pan generation-canvas-react-flow__handle generation-canvas-react-flow__handle--source generation-canvas-react-flow__handle--magnetic source connectable connectablestart connectionindicator","nodeId":"gen-v2-image-mtt3bfz6-jd90"},{"tag":"DIV","className":"react-flow__resize-control nodrag right line","nodeId":"gen-v2-image-mtt3bfz6-jd90"},{"tag":"DIV","className":"react-flow__pane draggable","nodeId":null},{"tag":"DIV","className":"react-flow__renderer","nodeId":null},{"tag":"DIV","className":"react-flow light","nodeId":null},{"tag":"SECTION","className":"generation-canvas-react-flow generation-canvas-v2__stage group/canvas relative w-full h-full min-w-0 min-h-0 bg-workbench-bg text-workbench-ink","nodeId":null},{"tag":"DIV","className":"relative w-full h-full","nodeId":null}],"handle":{"nodeId":"gen-v2-image-mtt3bfz6-jd90","handleId":"source-right","handleType":"react-flow__handle react-flow__handle-right nodrag generation-canvas-react-flow__no-pan generation-canvas-react-flow__handle generation-canvas-react-flow__handle--source generation-canvas-react-flow__handle--magnetic source connectable connectablestart connectionindicator"}}
+  → 待连时组框: {"borderStyle":"dashed","bg":"oklab(0.3 0.000522935 0.00597717)","cursor":"copy","aria":"连到「组 1」· 组内 4 个各连一根"}
+  ✓ 有线待连时组框变成可落点（虚线边） — {"borderStyle":"dashed","bg":"oklab(0.3 0.000522935 0.00597717)","cursor":"copy","aria":"连到「组 1」· 组内 4 个各连一根"}
+  ✓ 可落点时 aria 说清「连到哪、几个」 — 连到「组 1」· 组内 4 个各连一根
+  · shot 04-group-drop-target
+  → 边数 0 → 4
+  ✓ 连到组后组内 4 个成员各得一根边 — 实得 4
+  · shot 05-after-connect-to-group
+  ✓ 连完组框恢复常态（不再是虚线） — solid
+
+✅ 全部达标
+
+[canvas:full 2/2] card-stack-persistence
+{
+  "ok": true,
+  "checks": [
+    {
+      "name": "图片版本卡角可见",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "视频版本卡角可见",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "图片卡角最多两层",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "视频两版只有一层后卡",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "托盘列出三版",
+      "ok": true,
+      "detail": "image-v3,image-v2,image-v1"
+    },
+    {
+      "name": "切换当前版不重排历史",
+      "ok": true,
+      "detail": "image-v3,image-v2,image-v1"
+    },
+    {
+      "name": "第一版成为当前",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "历史图片预览载入原图",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "历史图片提供下载入口",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "历史图片下载文件非空",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "删除历史结果后其他版本保留",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "复制变体新增一个节点且用户立即看得到",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "复制变体可一次撤销",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "版本托盘避开画布视口边缘",
+      "ok": true,
+      "detail": "left"
+    },
+    {
+      "name": "悬停历史视频真实播放元素可见",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "历史视频默认静音",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "历史视频进度条可见",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "拖动进度条连续跳转",
+      "ok": true,
+      "detail": "45.072218"
+    },
+    {
+      "name": "键盘左键精确回退一秒",
+      "ok": true,
+      "detail": "45.072218 -> 44.082192"
+    },
+    {
+      "name": "离开历史视频后播放暂停并回到起点",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "历史视频预览挂载视频元素",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "历史视频预览提供原生控制条",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "收起后只剩一个组卡",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "三位成员已从画布投影隐藏",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "编组显示节点语义",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "收起编组保留可交互的左右悬浮加号",
+      "ok": true,
+      "detail": "[{\"side\":\"left\",\"rendered\":true,\"hasPlusIcon\":true},{\"side\":\"right\",\"rendered\":true,\"hasPlusIcon\":true}]"
+    },
+    {
+      "name": "三条成员输入聚合为一条编组线",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "聚合编组输入线上存在真的点得到的点",
+      "ok": true,
+      "detail": "{\"x\":478.56988525390625,\"y\":306.3134002685547}"
+    },
+    {
+      "name": "返回项目库仍能看到两个项目",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "重新打开后节点与聚合连接仍在",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "重新打开后历史结果仍保留",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "点击卡角恢复组内节点",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "展开后恢复三条真实成员输入线",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "聚合线一次断开整组关系",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "收起状态写入项目",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "断开的编组声明不再持久化",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "展开后素材库面板可见",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "切换项目后左侧栏自动收起",
+      "ok": true,
+      "detail": ""
+    }
+  ]
+}
+
+[canvas:full 2/2] shortcuts
+
+── 修饰键 Meta ──
+  ✓ Meta: 节点已选中（复制的前提）
+  ✓ Meta+C / Meta+V 复制粘贴生效 — 1 → 2
+  ✓ Meta+Z 撤销粘贴生效 — 2 → 1
+  ✓ Meta: Delete 删除生效 — 1 → 0
+  ✓ Meta+Z 撤销删除生效（误删救得回来） — 0 → 1
+
+── 修饰键 Control ──
+  ✓ Control: 节点已选中（复制的前提）
+  ✓ Control+C / Control+V 复制粘贴生效 — 1 → 2
+  ✓ Control+Z 撤销粘贴生效 — 2 → 1
+  ✓ Control: Delete 删除生效 — 1 → 0
+  ✓ Control+Z 撤销删除生效（误删救得回来） — 0 → 1
+  · 截图 01-final.png
+
+✅ 画布快捷键走查通过：10 项
+
+[canvas:full 2/2] node-context-menu
+  ✓ 找得到画布空白点
+  ✓ 右键空白仍弹「添加节点」菜单（未回归）
+  ✓ 建出了 1 个节点 — 1
+  ✓ 右键节点弹出「节点操作」菜单
+  · 截图 01-node-menu.png
+  ✓ 菜单里有「复制」项
+  ✓ 「复制」项右侧标出了快捷键 — "复制⌘ C"
+  · 截图 02-after-copy-paste.png
+  ✓ 点「复制」后粘贴，真的多出一个节点 — 1 → 2
+  ✓ 动作完成后菜单收起
+
+✅ 节点右键菜单走查通过：8 项
+
+[canvas:full 2/2] batch-production
+  ok: 种子供应商 Batch Mock 已在模型设置里可见
+  screenshot: 01-light-model-settings.png
+  ok: 连接点和目标节点都有可点击区域
+  ok: 真实点击建立依赖边
+  ok: 无选择入口显示两个待生成节点
+  ok: 未框选时批量模型更新已触发项目持久化
+  ok: 未框选时图片节点统一切到图片 B
+  ok: 并发偏好写入本地存储
+  screenshot: 02-light-generate-all.png
+  screenshot: 03-spend-confirm-before-cancel.png
+  ok: 取消付费确认后 vendor 零调用
+  screenshot: 04-generate-all-completed.png
+  ok: 依赖波次两个请求都完成
+  ok: 下游在上游完成后才开始
+  ok: 下游请求收到上游图片参考
+  ok: 真实点击新增图片和视频节点
+  ok: 混合选择只统计两个待生成节点
+  ok: 批量模型更新已触发项目持久化
+  ok: 三个图片节点统一切到图片 B
+  ok: 视频节点切到视频 B
+  screenshot: 05-light-mixed-selection-models.png
+  screenshot: 06-dark-mixed-selection-models.png
+  ok: 暗色下模型设置仍列出 Batch Mock 供应商
+  ok: 模型切换反馈通知仍然可见
+  ok: 模型面板打开时通知不会遮挡面板
+  screenshot: 07-dark-model-settings.png
+  ok: 混合选中生成取消后 vendor 零新增调用
+  ok: 选中批量只生成一个失败待测节点
+  ok: 批量开始时只有一条对应通知
+  ok: 通知宽度为 344px
+  ok: 通知容器避开窗口栏和顶栏（top=68px）
+  ok: 堆叠通知不会越过通知容器顶部
+  ok: 开始到失败原位更新同一个通知 DOM
+  ok: 失败后没有堆叠第二条批量通知
+  ok: 失败通知提供独立的重试按钮
+  screenshot: 08-failed-with-retry-action.png
+  ok: 重试完成后仍只有一条对应通知
+  ok: 失败节点通过一键重试成功
+  ok: 重试后并发偏好仍为 2
+  screenshot: 09-retry-completed-dark.png
+  ok: 批量底栏没有盖住时间轴展开入口
+  ok: 批量底栏提供可识别的隐藏入口
+  ok: 隐藏批量底栏后不再遮挡画布底部
+  ok: 隐藏批量底栏后时间轴入口仍可用
+  ok: 时间轴可从底部入口正常展开
+  screenshot: 10-timeline-unblocked.png
+  ok: 页面运行无 pageerror
+  ok: 控制台无意外 error
+  expected console errors from fail-once path: 0
+  screenshots: /Users/aoqimin/Desktop/Nomi-process-feedback/tests/ux/shots/canvas-batch-production
+CANVAS BATCH PRODUCTION WALK: PASS
+
+[canvas:full 2/2] selection-toolbar
+  · shot 01-canvas
+  · shot 02-selection-toolbar
+  · 浮条宽 721px（组件 max-w 是 760px，超了就会横向滚动）
+  · 浮条控件： [
+  "图片 ×3",
+  "视频 ×2",
+  "生成选中 5 个",
+  "并发",
+  "拼成联系表（5 张）",
+  "创建分组 (⌘G)",
+  "保存为流程",
+  "清除选择"
+]
+  · shot 04-bulk-dropdown-open
+  · 下拉共 4 行：
+      Nano BananaAPIMart   ⟵ ux-apimart\u0000nano-banana-ux-apimart
+      Nano BananaKie   ⟵ ux-kie\u0000nano-banana-ux-kie
+      GPT Image 2APIMart   ⟵ ux-apimart\u0000gpt-image-2
+      D即梦图片（会员）即梦   ⟵ dreamina\u0000dreamina-image
+✅ 多家模型按供应商摊开 — Nano Banana 出现在 2 家名下：APIMart、Kie（种了 APIMart + Kie，期望两家都能单独选到）
+✅ 没有「N 家」折叠行 — 折叠行 0 个（期望 0——那种形态下用户没有入口指定走哪家）
+✅ 没有两行完全相同的选项 — 每一行的「模型 + 厂商」组合都唯一，用户区分得开
+
+[canvas:full 2/2] canvas-landing
+  ✓ E2E 桥挂上（真 handler + 画布 store + landing store）
+  ✓ 进入项目（id=project-1788897514965-2q75d4）
+  ✓ materialize-shots 落 4 个占位并回 bindings（实得 4）
+  ✓ 建了分镜组（groupId 非空）
+  ✓ 画布落了 4 个占位节点（章=canvas-landing:run-s5-e2e）
+  ✓ 分镜组收全 4 个占位（锚+3 镜，实得 4）
+  ✓ 幂等：第二次 materialize 不重复建节点（仍 4 个，实得 4）
+  ✓ 适应视图后 4 个占位全部进入视口
+  ✓ 三态：有「生成中」占位（shot-1 polling）
+  ✓ 三态：有「排队中」占位（shot-2 无 job）
+  ✓ 三态：有「已停」占位（shot-3 · run 预算 halt，warning 非 danger）
+  ✓ 已停占位边框=warning 色（≠danger，截计算色比对）
+  ✓ attach-shot-result 回填 shot-1（本地 url 断言通过）
+  ✓ shot-1 占位节点拿到 result（逐个冒：一个填一个）
+  ✓ attach 非本地 url（https CDN）当场被断言拒（R17）
+  ✓ 撤销前画布上 4 个占位节点在（实得 4）
+  ✓ 整批落地后撤销栈保留一个事务边界
+  ✓ 一个 Cmd+Z 整组消失：4 节点全撤（实得剩 0）
+  ✓ 分镜组也随同一步撤销消失
+  ✓ 截图 01-three-states-light.png 落地且非空（520131 字节）
+  ✓ 截图 02-three-states-dark.png 落地且非空（483084 字节）
+  ✓ 截图 03-after-undo.png 落地且非空（173777 字节）
+
+S5 CANVAS LANDING PASS: 22 断言；真管线落地+三态+逐镜回填+整批一撤，provider=0。
+  截图 → /Users/aoqimin/Desktop/Nomi-process-feedback/tests/ux/shots/p4-s5-canvas-landing
+
+canvas-full 2/2: PASS (7/7)

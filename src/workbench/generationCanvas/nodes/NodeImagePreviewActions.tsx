@@ -26,7 +26,7 @@ export function NodeInlineImageTitle({
   return (
     <div
       className={cn(
-        'absolute bottom-2 left-2 z-[4] max-w-[calc(100%-72px)] rounded-nomi-sm px-2 py-1',
+        'absolute bottom-2 right-2 z-[4] max-w-[calc(100%-72px)] rounded-nomi-sm px-2 py-1',
         'bg-nomi-ink/85 text-nomi-paper shadow-nomi-sm backdrop-blur-[8px] pointer-events-auto',
         'transition-opacity duration-nomi-fast ease-nomi-fast',
         selected ? 'opacity-100' : 'opacity-0 group-hover/node:opacity-100 focus-within:opacity-100',

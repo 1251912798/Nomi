@@ -1,0 +1,46 @@
+
+ RUN  v4.1.8 /Users/aoqimin/Desktop/Nomi-process-feedback
+
+ ❯ src/workbench/generationCanvas/runner/catalogUnavailableFeedback.test.ts (9 tests | 4 failed) 15ms
+     × machine code survives translated wording: 供应商已断开 11ms
+     × machine code survives translated wording: Provider disconnected 1ms
+     × machine code survives translated wording: Fournisseur déconnecté 0ms
+     × does not classify an arbitrary message quoting a fragment of an old error 0ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/workbench/generationCanvas/runner/catalogUnavailableFeedback.test.ts > unavailable catalog model feedback > machine code survives translated wording: 供应商已断开
+ FAIL  src/workbench/generationCanvas/runner/catalogUnavailableFeedback.test.ts > unavailable catalog model feedback > machine code survives translated wording: Provider disconnected
+ FAIL  src/workbench/generationCanvas/runner/catalogUnavailableFeedback.test.ts > unavailable catalog model feedback > machine code survives translated wording: Fournisseur déconnecté
+AssertionError: expected 'unknown' to be 'model-config' // Object.is equality
+
+Expected: "model-config"
+Received: "unknown"
+
+ ❯ src/workbench/generationCanvas/runner/catalogUnavailableFeedback.test.ts:8:81
+      6| describe('unavailable catalog model feedback', () => {
+      7|   it.each(['供应商已断开', 'Provider disconnected', 'Fournisseur déconnecté'…
+      8|     expect(classifyGenerationError(`NOMI_ERR::model-config:: ${message…
+       |                                                                                 ^
+      9|   })
+     10|   it('does not classify an arbitrary message quoting a fragment of an …
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  src/workbench/generationCanvas/runner/catalogUnavailableFeedback.test.ts > unavailable catalog model feedback > does not classify an arbitrary message quoting a fragment of an old error
+AssertionError: expected 'model-config' not to be 'model-config' // Object.is equality
+ ❯ src/workbench/generationCanvas/runner/catalogUnavailableFeedback.test.ts:11:75
+      9|   })
+     10|   it('does not classify an arbitrary message quoting a fragment of an …
+     11|     expect(classifyGenerationError('日志引用：已断开，且该节点未记录模型。不是原始错误').kind).…
+       |                                                                           ^
+     12|   })
+     13|   it.each(['image', 'video'] as const)('%s unavailable source directs …
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  4 failed | 5 passed (9)
+   Start at  03:51:36
+   Duration  1.05s (transform 727ms, setup 60ms, import 859ms, tests 15ms, environment 0ms)

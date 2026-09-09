@@ -133,3 +133,26 @@ export type DesktopVideoDepthBridge = {
     ) => () => void
   }
 }
+
+export type DesktopAssetDto = {
+  id: string
+  name: string
+  userId: string
+  projectId?: string | null
+  createdAt: string
+  updatedAt: string
+  data: Record<string, unknown>
+}
+
+export type DesktopAssetFolder = {
+  id: string
+  label: string
+  order: number
+}
+
+export type DesktopAssetFoldersState = {
+  version: 1
+  folders: DesktopAssetFolder[]
+  /** 素材 renderUrl → folderId。 */
+  assignments: Record<string, string>
+}

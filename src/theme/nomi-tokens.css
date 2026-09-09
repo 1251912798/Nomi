@@ -1,4 +1,5 @@
 :root {
+  --nomi-media-ink: oklch(1 0 0);
   --nomi-bg: oklch(0.985 0.003 90);
   --nomi-paper: oklch(1 0 0);
   --nomi-ink: oklch(0.22 0.01 80);

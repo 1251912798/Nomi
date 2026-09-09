@@ -15,3 +15,12 @@ export function broadcastAssetsUpdated(projectId: string): void {
       /* 测试环境无 electron → no-op */
     });
 }
+
+/** Catalog generation owns this signal, before importing bytes into the project. */
+export function broadcastAssetLocalizationStarted(payload: { projectId: string; nodeId: string }): Promise<void> {
+  return import("electron").then(({ BrowserWindow }) => {
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (!win.isDestroyed()) win.webContents.send("nomi:assets:localization-started", payload);
+    }
+  }).catch(() => { /* Pure Node tests have no Electron window. */ });
+}
