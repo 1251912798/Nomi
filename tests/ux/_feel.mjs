@@ -152,3 +152,30 @@ export async function scanFeel(root, { rules = {}, label = 'page' } = {}) {
 }
 
 export const formatFeelFindings = (result) => JSON.stringify(result, null, 2)
+
+/** Disclosure text hierarchy: computed OKLCH lightness and weight, never token names.
+ * Callers declare semantic exceptions (status, timestamps, icons) explicitly.
+ */
+export async function measureDisclosureHierarchy(details, { exclude = '' } = {}) {
+  return details.evaluate((root, excluded) => {
+    const summary = root.querySelector(':scope > summary')
+    if (!summary) throw new Error('Disclosure has no direct summary')
+    const lightness = color => {
+      if (!/^okl(?:ch|ab)\(/.test(color)) throw new Error(`Expected computed OKLab/OKLCH color, got ${color}`)
+      const token = color.match(/\(\s*([\d.]+)(%?)/)
+      return Number(token[1]) / (token[2] ? 100 : 1)
+    }
+    const headline = getComputedStyle(summary)
+    const reference = { lightness: lightness(headline.color), weight: Number(headline.fontWeight) }
+    const rows = [...root.querySelectorAll('*')].filter(el =>
+      el.getClientRects().length && getComputedStyle(el).visibility !== 'hidden'
+      && !(excluded && el.closest(excluded))
+      && [...el.childNodes].some(node => node.nodeType === 3 && node.textContent.trim()),
+    ).map(el => {
+      const style = getComputedStyle(el)
+      return { text: el.textContent.trim().slice(0, 80), lightness: lightness(style.color), weight: Number(style.fontWeight) }
+    })
+    if (!rows.length) throw new Error('Disclosure hierarchy probe has no text')
+    return { reference, rows, violations: rows.filter(row => row.lightness + 0.00001 < reference.lightness || row.weight > reference.weight) }
+  }, exclude)
+}

@@ -142,3 +142,22 @@ describe('② 过程自述折起来，最终回答摊开', () => {
     expect(flow.map((item) => item.kind)).toEqual(['process', 'error'])
   })
 })
+
+describe('process retry summary', () => {
+  it.each([0, 1, 2])('selects a complete localized summary for %i retries', async retries => {
+    const { createInstance } = await import('i18next')
+    const { zhAgentPanelV4, enAgentPanelV4 } = await import('../../../i18n/locales/agentPanelV4')
+    for (const [lng, locale, expected] of [
+      ['zh-CN', zhAgentPanelV4, retries ? `用了 ${retries + 1} 个工具 · ${retries} 次重试` : '用了 1 个工具'],
+      ['en', enAgentPanelV4, retries ? `${retries + 1} tools · ${retries} retries` : '1 tools'],
+    ] as const) {
+      const i18n = createInstance()
+      await i18n.init({ lng, resources: { [lng]: { translation: { agentPanelV4: locale } } } })
+      const flow = collapseV4Flow([
+        ...Array.from({ length: retries }, () => tool('读取文稿', 'output-error')),
+        tool('读取文稿', 'output-available'),
+      ], (key, options) => String(i18n.t(key, options)))
+      expect(flow[0]).toMatchObject({ kind: 'process', retries, label: expected })
+    }
+  })
+})
