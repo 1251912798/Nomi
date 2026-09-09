@@ -25,7 +25,7 @@ import {
 } from "./generation";
 import { SKILL_WRITE_CAPABILITY } from "./skillWrite";
 import { SKILL_READ_CAPABILITY } from "./skillRead";
-import { CAPABILITY_ALIAS_ENTRIES, CAPABILITY_CONTRACTS, capabilityOperationAliasesFor, resolveCapabilityAlias } from "./registry";
+import { CAPABILITY_ALIAS_ENTRIES, CAPABILITY_CONTRACTS, capabilityOperationAliasesFor, capabilityPlanReviewOf, capabilityRequiresPlanReview, resolveCapabilityAlias } from "./registry";
 import type { ContractOnlyRegistry } from "./registry";
 
 type AssertNever<Value extends never> = Value;
@@ -42,6 +42,19 @@ type MissingEffectClass = Omit<CapabilityContract<unknown, unknown>, "effectClas
 // @ts-expect-error Every registered capability must declare its Host effect class.
 const missingEffectClassMustFail: CapabilityContract<unknown, unknown> = {} as MissingEffectClass;
 void missingEffectClassMustFail;
+
+it("derives fresh storyboard review from operation metadata without making ordinary canvas writes require review", () => {
+  for (const operation of ["propose_storyboard_plan", "patch_shots"]) {
+    expect(capabilityPlanReviewOf(CANVAS_WRITE_CAPABILITY, { operation }))
+      .toEqual({ requiresPlanReview: true, planReviewAllowsReuse: false });
+    expect(capabilityRequiresPlanReview("nomi_canvas_edit", { operation })).toBe(true);
+  }
+  expect(capabilityRequiresPlanReview("propose_storyboard_plan")).toBe(true);
+  expect(capabilityPlanReviewOf(CANVAS_WRITE_CAPABILITY, { operation: "set_node_prompt" }))
+    .toEqual({ requiresPlanReview: false, planReviewAllowsReuse: true });
+  expect(capabilityPlanReviewOf(TIMELINE_WRITE_CAPABILITY, {}))
+    .toEqual({ requiresPlanReview: true, planReviewAllowsReuse: true });
+});
 
 describe("capability contract registry", () => {
   it("registers canonical contracts exactly once with globally unique aliases", () => {

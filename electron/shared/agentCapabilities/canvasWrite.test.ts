@@ -44,6 +44,10 @@ describe("canvas.write canonical contract", () => {
         create_camera_move: "reversible_local",
         set_node_prompt: "reversible_local",
       },
+      operationPlanReview: {
+        propose_storyboard_plan: { allowReuse: false },
+        patch_shots: { allowReuse: false },
+      },
       execution: { port: "canvas", availability: "renderer_required" },
       exposure: "mcp_safe",
       requiredScope: "canvas:write",

@@ -101,7 +101,7 @@ export function timelineWritePiDescriptionForAlias(alias: string): string | unde
     case TIMELINE_WRITE_ALIASES.applyPlan:
       return "Apply one compare-and-swap guarded timeline edit plan after user approval. Valid operation kinds: move, remove, split, trim, source-window, ripple, transition, text, audio.";
     case TIMELINE_WRITE_ALIASES.undo:
-      return "Undo the exact most recent Agent timeline edit after user approval.";
+      return "Undo the exact most recent Agent timeline edit after user approval. Use its returned undoToken and the current expectedRevision; stale or superseded edits are rejected.";
     default:
       return undefined;
   }

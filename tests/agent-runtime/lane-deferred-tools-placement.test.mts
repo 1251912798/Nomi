@@ -11,7 +11,7 @@ import { openAICompletionsApi } from '@earendil-works/pi-ai/api/openai-completio
 import { createCodingTools, createReadOnlyTools } from '@earendil-works/pi-coding-agent';
 import { LANE_MODEL_TOOL_CATALOG } from '../../electron/agentLane/laneToolCatalog.js';
 import { LANE_CODING_TOOL_NAMES } from '../../electron/agentLane/laneCodingTools.mjs';
-import { addedToolNamesForUnlock, laneToolMenu, LANE_TOOL_REQUEST_TOOL_NAME }
+import { laneToolMenu, LANE_TOOL_REQUEST_TOOL_NAME }
   from '../../electron/agentLane/laneToolGroups.mjs';
 import { laneToolModelDescription } from '../../electron/shared/agentLane/laneToolContract.js';
 import { toPublishedJsonSchema } from '../../electron/shared/agentCapabilities/modelVisibleJsonSchema.js';
@@ -45,7 +45,7 @@ function toolsForMenu(): { locked: Tool[]; unlocked: Tool[] } {
     ...createCodingTools('/pd1-fixture'), ...createReadOnlyTools('/pd1-fixture')]
     .map((tool) => [tool.name, tool]));
   const select = (unlocked: boolean): Tool[] => laneToolMenu({
-    unlocked: unlocked ? ['model-requested'] : [],
+    activeGroup: unlocked ? 'coding' : null,
   }).activeToolNames.map((name) => {
     const tool = byName.get(name);
     assert.ok(tool, `Missing real catalog/factory tool: ${name}`);
@@ -79,7 +79,7 @@ for (const transport of TRANSPORTS) {
       };
       const { locked, unlocked } = toolsForMenu();
       assert.deepEqual(unlocked.slice(0, locked.length), locked);
-      assert.deepEqual(unlocked.slice(locked.length).map((tool) => tool.name), [...LANE_CODING_TOOL_NAMES]);
+      assert.deepEqual(unlocked.slice(locked.length).map((tool) => tool.name), LANE_CODING_TOOL_NAMES.filter(name => name !== 'read'));
       const context: Context = {
         systemPrompt: 'P-D1 deterministic transport placement fixture.', tools: locked,
         messages: [{ role: 'user', content: 'Unlock coding.', timestamp: 1 }],
@@ -111,7 +111,7 @@ for (const transport of TRANSPORTS) {
           context.messages.push({
             role: 'toolResult', toolCallId: call.id, toolName: call.name,
             content: [{ type: 'text', text: 'Coding unlocked.' }], isError: false, timestamp: 2,
-            ...(arm === 'without-addedToolNames' ? {} : { addedToolNames: [...addedToolNamesForUnlock()] }),
+            ...(arm === 'without-addedToolNames' ? {} : { addedToolNames: LANE_CODING_TOOL_NAMES.filter(name => name !== 'read') }),
           });
         } else if (turn === 2) {
           context.messages.push({ role: 'user', content: 'Keep the same tools.', timestamp: 3 });
@@ -142,7 +142,7 @@ for (const transport of TRANSPORTS) {
         const additions = input.filter((item) => item.type === 'additional_tools');
         assert.equal(additions.length, transcriptDefinitions ? 1 : 0);
         if (transcriptDefinitions) {
-          assert.deepEqual(names(wireTools(additions[0])), [...LANE_CODING_TOOL_NAMES]);
+          assert.deepEqual(names(wireTools(additions[0])), LANE_CODING_TOOL_NAMES.filter(name => name !== 'read'));
           const additionIndex = input.indexOf(additions[0]);
           assert.equal(input[additionIndex - 1]?.type, 'function_call_output');
           assert.deepEqual((third.input as unknown[]).slice(0, input.length), input);
@@ -150,9 +150,9 @@ for (const transport of TRANSPORTS) {
         }
       } else if (transport.api === 'anthropic-messages') {
         assert.equal(expanded.filter((tool) => tool.defer_loading === true).length,
-          deferred ? LANE_CODING_TOOL_NAMES.length : 0);
+          deferred ? LANE_CODING_TOOL_NAMES.filter(name => name !== 'read').length : 0);
         const references = JSON.stringify(second.messages).match(/"type":"tool_reference"/g) ?? [];
-        assert.equal(references.length, deferred ? LANE_CODING_TOOL_NAMES.length : 0);
+        assert.equal(references.length, deferred ? LANE_CODING_TOOL_NAMES.filter(name => name !== 'read').length : 0);
         assert.deepEqual(second.system, first.system);
       } else {
         assert.ok(!JSON.stringify(second.messages).includes('additional_tools'));

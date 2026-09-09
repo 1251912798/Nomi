@@ -1,0 +1,116 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-08-lane-shot-verify-feedback",
+  "problem_type": "Domain feedback and user input must remain owned until lane admission",
+  "symptom": "Production image judging returns a content deviation but the generation panel has no card; failed sends also lose typed draft.",
+  "direct_cause": "The v4 shell omitted the existing shot verification consumer and cleared draft before awaiting send admission.",
+  "class_root": "UI initiation was treated as execution acceptance, while domain feedback was not joined from its existing owner.",
+  "affected_population": [
+    "Every generated shot with a failed verification dimension",
+    "Composer or repair sends rejected by missing skills, project binding, upload state or lane admission"
+  ],
+  "scope_paths": [
+    "src/workbench/ai/ProjectAgentResidentShell.tsx",
+    "src/workbench/ai/v4/AgentPanelV4Panel.tsx",
+    "src/workbench/ai/v4/useAgentPanelV4Actions.ts",
+    "src/workbench/ai/resident/useShotVerifyFeedback.tsx"
+  ],
+  "entry_points": [
+    "Generation panel renders verification findings",
+    "User clicks AI repair",
+    "User sends composer draft"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "Existing internal store, approved UI component and lane admission API own this invariant; no external dependency behavior changes.",
+  "invariants": [
+    "Current-project verification findings render from the original domain store.",
+    "A rejected send preserves feedback, repair budget and typed draft.",
+    "Only an accepted current request consumes one existing repair round; project or verification changes invalidate late completion."
+  ],
+  "generality_proof": "All visible repair initiation uses the same existing actions.send admission result; original verification store state is read directly and rechecked after the asynchronous boundary.",
+  "shared_boundaries": [
+    {
+      "path": "src/workbench/ai/resident/useShotVerifyFeedback.tsx",
+      "symbol": "requestShotVerifyFix",
+      "responsibility": "Join domain feedback and commit repair-budget transition only after accepted current admission."
+    },
+    {
+      "path": "src/workbench/ai/v4/useAgentPanelV4Actions.ts",
+      "symbol": "useAgentPanelV4Actions",
+      "responsibility": "Return admission success and clear only the unchanged current composer input after ACK."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/workbench/ai/ProjectAgentResidentShell.tsx",
+      "entry_point": "generation flowTail",
+      "disposition": "enforced",
+      "evidence": "The shell renders the original card through the feedback hook."
+    },
+    {
+      "path": "src/workbench/ai/ProjectAgentResidentShell.tsx",
+      "entry_point": "submit and storyboard launcher",
+      "disposition": "enforced",
+      "evidence": "Both use actions.send; neither may infer acceptance merely from clicking."
+    },
+    {
+      "path": "src/workbench/generationCanvas/agent/shotVerifyStore.ts",
+      "entry_point": "completeVerify",
+      "disposition": "not-affected",
+      "evidence": "The existing domain owner already checks project and request identity and owns the two-round budget."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Every low verification score and every rejected async send can reproduce the same omitted feedback or premature cleanup.",
+    "same_class_scan": [
+      "Read all Shell send entry points and useAgentPanelV4Actions ACK cleanup",
+      "Read shotVerifyStore initial/live/request lifecycle and all consumeRound/markFixing consumers",
+      "Read approved wiring plan deviation mapping and complete original card"
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "src/workbench/ai/resident/useShotVerifyFeedback.tsx",
+    "invariant": "Feedback and repair budget transition only after current lane admission succeeds.",
+    "failure_mode": "Rejected, failed, duplicate or stale initiation leaves original domain feedback and budget intact.",
+    "exception_policy": "none",
+    "strategy": "Use one domain-feedback join and one acknowledged send result, with no transcript or store duplication.",
+    "artifacts": [
+      "src/workbench/ai/resident/useShotVerifyFeedback.tsx",
+      "src/workbench/ai/v4/useAgentPanelV4Actions.ts",
+      "src/workbench/ai/v4/AgentPanelV4Panel.tsx",
+      "src/workbench/ai/ProjectAgentResidentShell.tsx"
+    ]
+  },
+  "regression_tests": [
+    "src/workbench/ai/resident/useShotVerifyFeedback.test.ts",
+    "src/workbench/ai/v4/useAgentPanelV4Actions.test.ts",
+    "src/workbench/ai/v4/agentPanelV4Blocks.test.ts"
+  ],
+  "class_regression_tests": [
+    "src/workbench/ai/resident/useShotVerifyFeedback.test.ts",
+    "src/workbench/ai/v4/useAgentPanelV4Actions.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "not-applicable",
+    "removed_paths": [],
+    "rationale": "Reconnect the existing domain card; remove premature Shell draft cleanup in place. No parallel implementation is introduced."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "No third-party runtime, schema or external format changes.",
+    "exit_criteria": []
+  },
+  "migration": "No persisted data changes; original store owns current findings and budget.",
+  "residual_risks": [
+    "Real Electron generation feedback and click verification remain with the shared runner after integration."
+  ],
+  "invariant_owner_layer": {
+    "layer": "src/workbench/ai/resident/useShotVerifyFeedback.tsx",
+    "tests": [
+      "src/workbench/ai/resident/useShotVerifyFeedback.test.ts"
+    ],
+    "why": "The UI-domain join owns admission gating and stale feedback protection."
+  }
+}

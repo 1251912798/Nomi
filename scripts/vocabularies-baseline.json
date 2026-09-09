@@ -1,5 +1,5 @@
 {
-  "debtCap": 72,
+  "debtCap": 70,
   "converged": [
     {
       "retiredOwners": [
@@ -12,6 +12,34 @@
   ],
   "registered": [
     {
+      "site": "electron/agentLane/laneLegacyMigration.mts::variable:manifestSchema/property:phase/z.enum",
+      "members": [
+        "completed",
+        "prepared",
+        "verified"
+      ],
+      "reason": "旧对话迁移事务的唯一阶段 owner：prepared 允许续接已提交前缀，verified 只允许冷验后清理已有归档保护的源，completed 不再打开或复活用户删除的 lane；与模型执行和旧 cutover 生命周期不同。"
+    },
+    {
+      "site": "electron/agentLane/laneLegacySources.ts::interface:LegacyConversation/property:state/type-union",
+      "members": [
+        "cleared",
+        "empty",
+        "ready",
+        "unsupported"
+      ],
+      "reason": "旧文件解包后的会话分类：cleared 保留旧 v4 明确清空事实，empty 表示合法但没有数组内容，ready 表示有原项，unsupported 表示只能保留原记录的旧 v3 无绑定形状。这不是 contextService 对现役上下文的 ready/cleared 生命周期；迁移不得复用它而把未知格式或空历史冒充可续聊上下文。唯一 owner 是三来源共享 decoder，后续 importer 只消费这个结果。"
+    },
+    {
+      "site": "electron/agentLane/laneLegacySources.ts::interface:LegacySource/property:status/type-union",
+      "members": [
+        "decoded",
+        "invalid",
+        "unsupported"
+      ],
+      "reason": "三来源文件的纯解包结果：decoded 表示容器能拆出原项，invalid 表示 JSON/编码不合法，unsupported 表示容器形状不支持。它不是任务执行状态或完整性授权结论，decoded 仍必须经过 checksum 与项目绑定校验才能导入。三种来源及 L2 reader 共用这一份结果契约。"
+    },
+    {
       "site": "src/workbench/observability/narrate.ts::type:GenerationFeedbackPhase/type-union",
       "members": [
         "failed",
@@ -23,23 +51,23 @@
       "reason": "用户批准的 C1 五段生成反馈唯一语义 owner；后端十阶段由 narrate 的穷举 Record 映射，所有媒体消费者共用。"
     },
     {
-      "site": "src/devlab/designLab/settingsSound/settingsSoundLabKit.tsx::function:SoundStage/parameter:0/property:state/type-union",
-      "members": ["custom", "off", "on", "playing"],
-      "reason": "提醒音实验室的四种视觉夹具：开/关通过持久化 enabled 驱动，自定义通过 custom 元数据驱动，试听中通过真实 preview handler 驱动。它是验收取景的场景选择，不是通知事件类别或生产任务生命周期；生产设置无平行状态机，也不复用其他业务的同名 on/off 状态。"
-    },
-    {
       "site": "src/workbench/creation/storyboard/StoryboardPlanStrategyPanel.tsx::function:StatusBar/parameter:0/property:stateKey/type-union",
-      "members": ["clear", "error", "loading", "stale"],
+      "members": [
+        "clear",
+        "error",
+        "loading",
+        "stale"
+      ],
       "reason": "执行计划审阅条（Generation Strategy Resolver GUI 面）对 resolve 结果的**呈现**状态机：loading 检查中 / stale 项目已切换 / error 检查失败 / clear 合规无需调整。它描述「主进程 resolve 对当前方案给出的呈现结论」，不是任务/审批/素材生命周期；无现有词表可复用（browserAssetData.status 是素材数据状态，语义不同）。注意「没有可用视频模型」与「能力核未就绪」不在这个词表里：前者是面板自己的一整块呈现（data-storyboard-strategy-state=\"no-video-model\"），后者按 R2 什么都不显示——状态机只登记真正会渲染成一行状态条的那几个。"
     },
     {
-        "site": "src/media/videoPlaybackTelemetry.ts::type:VideoPlaybackTelemetryInput/property:phase/type-union",
-        "members": [
-            "canplay",
-            "error",
-            "metadata"
-        ],
-        "reason": "HTML media element 的播放生命周期观测点（对应 onCanPlay / onError / onLoadedMetadata 三个原生事件），是 J09「全屏预览短暂无法播放」的取证埋点专用维度。它描述的是浏览器媒体元素状态，不是 Nomi 的业务阶段（generation stage / run status / gate status），故不复用任何既有业务词表；成员集由 HTML 规范的事件名决定，不由我们扩展。"
+      "site": "src/media/videoPlaybackTelemetry.ts::type:VideoPlaybackTelemetryInput/property:phase/type-union",
+      "members": [
+        "canplay",
+        "error",
+        "metadata"
+      ],
+      "reason": "HTML media element 的播放生命周期观测点（对应 onCanPlay / onError / onLoadedMetadata 三个原生事件），是 J09「全屏预览短暂无法播放」的取证埋点专用维度。它描述的是浏览器媒体元素状态，不是 Nomi 的业务阶段（generation stage / run status / gate status），故不复用任何既有业务词表；成员集由 HTML 规范的事件名决定，不由我们扩展。"
     },
     {
       "site": "electron/connectors/connectorDefinition.ts::type:UsageStatus/type-union",
@@ -170,7 +198,7 @@
       "reason": "GenerationOperationState 是语义生成计划从 draft、sealed 到 submitted 或 cancelled 的导出状态合同；GenerationOperationStore 以它为接口，ProductionGenerationPlan.state 只是持久化适配投影，必须复用该 named owner。"
     },
     {
-      "site": "electron/capabilityCore/mcpGenerationTools.ts::variable:GENERATION_RECONCILE_OUTCOMES/as-const",
+      "site": "electron/shared/agentCapabilities/generationPlanSchemas.ts::variable:GENERATION_RECONCILE_OUTCOMES/as-const",
       "members": [
         "found",
         "not_found"
@@ -243,15 +271,7 @@
       "reason": "seedModelIdentity 的 CatalogLifecycle 是主进程内置目录的产品分层标签：flagship、companion、legacy 与 value 决定种子发布和兼容策略，和 renderer 的排序投影保持边界分离。2026-09-07 从 seedBuiltins.ts 原样搬到这里（成员一个没改）：那个文件做的是对账，这里是一张随模型雷达增删的查找表，两者变更理由不同；唯一读取者仍是同文件的 curatedCatalogLifecycle。"
     },
     {
-      "site": "electron/harness/context/contextStore.ts::interface:StoredAgentContext/property:state/type-union",
-      "members": [
-        "cleared",
-        "ready"
-      ],
-      "reason": "StoredAgentContext.state 是 AgentContextStore 持久化记录的上游状态：ready 表示 context 可继续使用，cleared 表示用户已显式清空。contextService 单向导入 contextStore 并原样发布 record.state，因此服务 DTO 必须从 store owner derive。"
-    },
-    {
-      "site": "electron/harness/runtime/pi/snapshotSchema.mts::variable:message/property:stopReason/z.enum",
+      "site": "electron/shared/agentLane/legacyPiSnapshot.mts::variable:message/property:stopReason/z.enum",
       "members": [
         "aborted",
         "deferred",
@@ -280,15 +300,6 @@
         "ok"
       ],
       "reason": "RuntimeToolCallRecord.status 是 runtime port 的 tool 调用结果合同：ok、denied、cancelled、error 记录宿主审批与执行后的事实，并随 turn result 发布；Pi HostToolResult 的失败分支必须从该 owner 派生。"
-    },
-    {
-      "site": "electron/harness/runtime/runtimePort.ts::interface:RuntimeTurnResult/property:status/type-union",
-      "members": [
-        "cancelled",
-        "error",
-        "finished"
-      ],
-      "reason": "RuntimeTurnResult.status 是 runtime port 的 turn 终态合同：finished、cancelled、error 只描述一次 runtime turn 的结算；AgentChatStatus 与失败结果构造器应从它派生，不与消息 pending/streaming view state 混用。"
     },
     {
       "site": "electron/shared/agentCapabilities/transportContracts.ts::type:RuntimeFinishReason/type-union",
@@ -493,7 +504,7 @@
       "reason": "ProductionRunIntentStatus 是 append-only intent log 的耐久提交状态：prepared 先落意图，committed 记录事实已提交，aborted 允许受控终止；MAC、序号和重放逻辑依赖它，与 Run/Job 业务状态分离。"
     },
     {
-      "site": "electron/productionRun/productionRunReducer.ts::variable:ARTIFACT_REVIEW_DECISIONS/as-const",
+      "site": "electron/shared/agentCapabilities/productionRun.ts::variable:ARTIFACT_REVIEW_DECISIONS/as-const",
       "members": [
         "approved",
         "changes_requested",
@@ -616,31 +627,6 @@
         "validating_technical"
       ],
       "reason": "单镜运行生命周期里「未到终态、仍在推进」的 ProductionJob 内部状态集（authorized/submitting/submit_intent_persisted/provider_accepted/polling/downloading/reconciling/retry_wait/submission_unknown/validating_technical/validating_content）：它判定 run 内是否还有 job 在活跃、能否收尾。取值是本地生成流水线的细粒度内部态（含 reconciling/submission_unknown/submit_intent_persisted 等 UI 层没有的态），与 shotPlaceholderState 的 GENERATING_STATUSES（面向 UI 占位的粗粒度态）不同源，复用会把细粒度内部推进态漏判，故独立。"
-    },
-    {
-      "site": "electron/projectAgentHost/projectAgentApprovalHelpers.ts::function:executeProductionApproval/parameter:input/property:settle/parameter:status/type-union",
-      "members": [
-        "done",
-        "failed"
-      ],
-      "reason": "Project Agent Host 执行生产审批后回传给 coordinator 的二值结算信号（done 执行成功 / failed 执行失败）：settle 只把「这次已批准动作最终成/败」通知宿主以推进回合，是审批执行的收尾回执，不是 job 生命周期态也不是 UI 占位态；仅二值、与 ShotPlaceholderPhase 用途不同，故独立。"
-    },
-    {
-      "site": "electron/projectAgentHost/projectAgentExecutionCoordinatorTypes.ts::type:ProjectAgentExecutionCoordinatorDeps/property:reportInternalError/parameter:context/property:phase/type-union",
-      "members": [
-        "start",
-        "terminalize-runtime-failure"
-      ],
-      "reason": "Project Agent 执行协调器上报内部错误时标注「错误发生在回合的哪个阶段」（start 启动阶段 / terminalize-runtime-failure 终结化运行时失败阶段）：它只服务错误遥测的现场定位，是内部诊断维度，不是对外的任务/审批状态，取值专属于协调器内部编排，故独立。"
-    },
-    {
-      "site": "electron/projectAgentHost/projectAgentExecutionCoordinatorTypes.ts::type:SubscriptionDelivery/property:phase/type-union",
-      "members": [
-        "activating",
-        "live",
-        "pre-live"
-      ],
-      "reason": "Project Agent 订阅投递的三态（pre-live 订阅已建未开始推流 / activating 激活中 / live 已实时推流）：它管理 Host 向 UI 投影的订阅通道生命周期，保证快照订阅在 activating 窗口不漏帧，是订阅通道态而非业务任务态，与任何生成/审批词表无重叠，故独立。"
     },
     {
       "site": "electron/providerAdapter/types.ts::type:AdapterModeResult/property:stage/type-union",
@@ -766,29 +752,6 @@
         "pending"
       ],
       "reason": "INTEGRATION_START_RECEIPT_STATUSES 是接入认证 receipt 的两阶段持久化窗口；pending 先落 intent、consumed 才允许执行，保证崩溃恢复不重复花费。"
-    },
-    {
-      "site": "electron/shared/projectAgentContracts.ts::variable:PROJECT_AGENT_PROPOSAL_LIFECYCLES/as-const",
-      "members": [
-        "claimed",
-        "expired",
-        "pending"
-      ],
-      "reason": "Project Agent 提案（proposal）的领取生命周期规范单源（pending 待领取 / claimed 已领取 / expired 已过期）：描述一条 Agent 提案从产生到被 UI 领取或超时作废的所有权流转，是提案分发合同，与能力审批 challenge 的 ChallengeRecord.status（accepted/rejected/expired/pending，授权事实）虽有 pending/expired 重叠但语义不同（这里是「提案被谁领了」，那里是「授权被批没批」），复用会混淆分发态与授权态，故独立。"
-    },
-    {
-      "site": "electron/shared/projectAgentContracts.ts::variable:PROJECT_AGENT_STATUSES/as-const",
-      "members": [
-        "declined",
-        "done",
-        "drafting",
-        "failed",
-        "proposed",
-        "queued",
-        "running",
-        "stopped"
-      ],
-      "reason": "Project Agent 回合的对外状态规范单源（drafting 起草 / proposed 已提案待批 / declined 被拒 / queued 排队 / running 执行 / done 完成 / failed 失败 / stopped 用户中止）：这是 Agent 一次回合完整生命周期的权威词表，含 drafting/proposed/declined 这类审批协商态，与 ShotPlaceholderPhase（单镜画面占位态）语义与取值都不同，是 Agent 域的核心合同，故独立。"
     },
     {
       "site": "electron/shared/projectAgentProposalReceipt.ts::variable:PROJECT_AGENT_PROPOSAL_RECEIPT_LIFECYCLES/as-const",
@@ -1079,15 +1042,6 @@
         "uploading"
       ],
       "reason": "**附件上传**三态，生命周期归 composer 管，不进任务账本。"
-    },
-    {
-      "site": "src/workbench/ai/v4/agentPanelV4Projection.ts::type:V4PendingTool/property:state/type-union",
-      "members": [
-        "approved",
-        "denied",
-        "pending"
-      ],
-      "reason": "「活的工具调用」在渲染层的三态（pending 待用户裁决 / approved 已批 / denied 已拒）。它之所以必须存在于渲染层：宿主状态里根本没有「正在跑的工具调用」这条记录——ProjectAgentToolItem 只在回合结束时从 response.toolCalls 一次性生成，跑的过程中唯一的活记录是执行协调器内存里的 PendingToolDecision，而它从不进 ProjectAgentHostState（见 electron/projectAgentHost/projectAgentExecutionCoordinatorTypes.ts）。所以这是「宿主还没有话说」的那段时间里的本地视图词表，不是第二份真相：终态一到，agentPanelV4Projection.toolStatusOf 就以宿主快照为准（单测「宿主快照永远赢」钉死）。2026-09-06 v4 接线前它住在 ResidentUiPrimitives.tsx::ResidentApprovalState，随旧面板整件删除后原样迁到这里，成员与语义都没变。"
     },
     {
       "site": "src/workbench/ai/workbenchAiTypes.ts::type:WorkbenchAiMessage/property:status/type-union",
@@ -1521,6 +1475,16 @@
         "granted-session"
       ],
       "reason": "一次工具调用的审批**结局**（方案 2026-09-07-agent-rebuild-stage3-5-deep-plan §1.2）。它不是任务状态、不是工具七态、也不是 ProjectAgentStatus：那三个说的是「这件事做到哪一步了」，这一个说的是「用户对这一次调用给了什么答复，以及没给答复的话是被什么打断的」。不能复用现有 owner 的具体理由：projectAgentContracts 的 approvalScope/approvalPolicy 是**用户选的档位**不是**某一次的结局**；V4ToolStatus 只分得出 approval-requested / approval-responded，把「你说了不要」「你按了停」「你关了窗」「重启前没答完」四件事折成同一个词，而它们的用户文案必须不同（G6-④ 那族的成因）。等待态**故意不在这张表里**：它不是发生了的事，只活在 laneHost 内存与 LaneProjection.pending。"
+    },
+    {
+      "site": "src/devlab/designLab/settingsSound/settingsSoundLabKit.tsx::function:SoundStage/parameter:0/property:state/type-union",
+      "members": [
+        "custom",
+        "off",
+        "on",
+        "playing"
+      ],
+      "reason": "提醒音实验室的四种视觉夹具：开/关通过持久化 enabled 驱动，自定义通过 custom 元数据驱动，试听中通过真实 preview handler 驱动。它是验收取景的场景选择，不是通知事件类别或生产任务生命周期；生产设置无平行状态机，也不复用其他业务的同名 on/off 状态。"
     }
   ],
   "debt": [
@@ -1682,23 +1646,6 @@
         "finished"
       ],
       "reason": "AgentChatStatus 是 RuntimeTurnResult['status'] 原样穿过 IPC 的 wire 投影；应改为 RuntimeTurnResult['status'] 或共享 named alias，并删除 finished、cancelled、error 的第二份字面量。"
-    },
-    {
-      "site": "electron/harness/context/contextService.ts::interface:AgentContextInfo/property:state/type-union",
-      "members": [
-        "cleared",
-        "ready"
-      ],
-      "reason": "AgentContextInfo.state 是 StoredAgentContext.state 的只读服务投影；contextService 已导入 contextStore 并在 describe 中原样返回 record.state，不拥有独立成员。应改为 StoredAgentContext['state'] 后删除本地字面量。"
-    },
-    {
-      "site": "electron/harness/runtime/pi/tools.mts::type:HostToolResult/property:status/type-union",
-      "members": [
-        "cancelled",
-        "denied",
-        "error"
-      ],
-      "reason": "HostToolResult 的 denied、cancelled、error 是 RuntimeToolCallRecord['status'] 排除 ok 后的失败分支；应以 Exclude<RuntimeToolCallRecord['status'], 'ok'> 派生，并让成功分支也复用 ok 字面量 owner。"
     },
     {
       "site": "electron/preload.ts::property:onboarding/property:vendorHealth/property:state/type-union",

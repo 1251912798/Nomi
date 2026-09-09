@@ -3,7 +3,7 @@ import {
   ProjectAgentContextBindingError,
   assertProjectAgentContextBinding,
 } from '../../shared/contracts/projectAgentContextBinding';
-import type { ProjectAgentContextBinding } from '../../shared/projectAgentContracts';
+import type { ProjectAgentContextBinding } from '../../shared/contracts/projectAgentContextBinding';
 
 /**
  * One binding vocabulary for a Project Agent thread's durable context. The Host

@@ -124,9 +124,7 @@ export function laneToolFailureToRpc(failure: LaneToolFailureShape): Readonly<Re
 }
 
 /**
- * 示例块。渲染成 description 的尾巴，所以它和 schema 一起进每次请求——
- * 这是有意的取舍：#547 的数据说零示例的工具在复杂参数上就是填不对，
- * 而一个示例的 token 成本远低于一次失败的重试。
+ * 示例块进入稳定系统段；参数示例仍逐条通过 schema 验证。
  */
 export function renderLaneToolExamples(examples: readonly LaneToolExample[]): string {
   if (examples.length === 0) return "";
@@ -134,7 +132,7 @@ export function renderLaneToolExamples(examples: readonly LaneToolExample[]): st
   return `\nExample${examples.length > 1 ? "s" : ""}:\n${blocks.join("\n")}`;
 }
 
-/** 模型真正读到的 description = 说明 + 示例块。生成点只有这一个。 */
-export function laneToolModelDescription(spec: LaneToolSpec): string {
-  return `${spec.description}${renderLaneToolExamples(spec.examples)}`;
+/** Schema carries the selection sentence; the full description and examples live in the stable system prompt. */
+export function laneToolModelDescription(spec: Pick<LaneToolSpec, "description">): string {
+  return spec.description.split(/(?<=[.!?])\s+|(?<=。)/u)[0]!;
 }

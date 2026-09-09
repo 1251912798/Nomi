@@ -13,13 +13,14 @@ import { TIMELINE_WRITE_CAPABILITY } from "../shared/agentCapabilities/timelineW
 import { LAYOUT_READ_CAPABILITY, LAYOUT_WRITE_CAPABILITY, layoutReadInputSchema, layoutWriteInputSchema, layoutWriteTransportInputSchema, layoutResultSchema } from "../shared/agentCapabilities/layout";
 import {
   MCP_LEASE_FIELD_NAMES,
+  mcpToolDescription,
   mcpAnnotationsFor,
   prepareMcpArguments,
   resolveMcpSpec,
   toSemanticInput,
   type McpProfileTool,
 } from "../shared/agentCapabilities/modelFacingTools";
-import { mcpProfileToolFor } from "../shared/agentCapabilities/modelFacingToolRegistry";
+import { mcpProfileToolFor, modelFacingToolSpecs } from "../shared/agentCapabilities/modelFacingToolRegistry";
 import { findUnsupportedSchemaFeatures, type SchemaLike } from "./mcpArgValidation";
 import { transportSchemaFromZod } from "./mcpTransportSchemaFromZod";
 import { buildCanonicalMcpToolResult, type CanonicalMcpToolResult } from "./mcpCanonicalToolResult";
@@ -333,10 +334,11 @@ export function isMcpEditingMethod(method: string): boolean {
 }
 
 export function createMcpCapabilityResolver(registrations: readonly McpCapabilityAdapter[]): McpCapabilityResolver {
+  const specs = modelFacingToolSpecs("mcp");
   const tools = Object.freeze(
     registrations.filter(isMcpExposable).map((adapter): McpCapabilityTool => {
       const name = adapter.mcpName ?? adapter.contract.aliases.mcp;
-      const description = adapter.contract.projections.mcp?.description;
+      const description = mcpToolDescription(adapter.contract, specs.filter(spec => spec.contractId === adapter.contract.id));
       if (!name || !description) throw new Error(`Missing MCP projection metadata for ${adapter.contract.id}`);
       const annotations = readOnlyAnnotations(adapter);
       const inputSchema = immutableSchemaSnapshot(adapter.transportInputSchema);

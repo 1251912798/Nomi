@@ -18,13 +18,16 @@
 // 而格式在这里逐字镜像（`pi-coding-agent/dist/core/system-prompt.js:41-88`）——
 // 它是模型见过无数次的形状，改写它没有收益只有风险。
 import type { LaneToolSpec } from "../shared/agentLane/laneToolContract";
+import { renderLaneToolExamples } from '../shared/agentLane/laneToolContract';
+type PromptTool = Pick<LaneToolSpec, 'name' | 'promptSnippet' | 'promptGuidelines'>
+  & Partial<Pick<LaneToolSpec, 'description' | 'examples'>>;
 
 /**
  * 渲染两段。**顺序即合同**：菜单按目录顺序，纪律按首次出现顺序去重——
  * 与 `agentToolCatalog.ts:31-35` 的「`tools/list` 确定性顺序」同一条理由，
  * 系统提示词是 prompt cache 的前缀，抖一下就整段失效。
  */
-export function renderLanePromptSections(tools: readonly LaneToolSpec[]): string {
+export function renderLanePromptSections(tools: readonly PromptTool[]): string {
   const menu = tools.length > 0
     ? tools.map((tool) => `- ${tool.name}: ${tool.promptSnippet}`).join("\n")
     : "(none)";
@@ -47,6 +50,9 @@ export function renderLanePromptSections(tools: readonly LaneToolSpec[]): string
     "Available tools:",
     menu,
     "",
+    "Tool usage:",
+    ...tools.flatMap(tool => tool.description ? [`${tool.name}: ${tool.description}${renderLaneToolExamples(tool.examples ?? [])}`] : []),
+    "",
     "Guidelines:",
     guidelines.length > 0 ? guidelines.map((guideline) => `- ${guideline}`).join("\n") : "(none)",
   ].join("\n");
@@ -66,12 +72,16 @@ export function renderLanePromptSections(tools: readonly LaneToolSpec[]): string
  */
 export function composeLaneSystemPrompt(
   identityPrompt: string,
-  tools: readonly LaneToolSpec[],
+  tools: readonly PromptTool[],
   skillSection: string,
 ): string {
   const skills = skillSection.trim();
   const body = skills.length > 0
     ? `${renderLanePromptSections(tools)}\n\n${skills}`
     : renderLanePromptSections(tools);
-  return `${identityPrompt.trimEnd()}\n\n${body}\n`;
+  return `${identityPrompt.trimEnd()}\n\n${body}\n\n${[
+    '不向用户展示内部 id，用标题指代；后续编辑先读取当前对象获取引用。',
+    'Agent 不接收全局金额预算，文稿中的金额不是系统上限或付费授权。费用只引用报价卡/目录单价，答不出就说提交时会显示报价。',
+    '回答长度随问题：只读/收尾类 ≤3 行；不复述清单。',
+  ].join('\n')}\n`;
 }

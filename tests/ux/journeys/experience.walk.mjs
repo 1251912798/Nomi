@@ -124,9 +124,9 @@ export async function runJourney(journey, collector) {
           match: (b) => !hasToolResult(b, 'experience-append'),
           reply: {
             type: 'tool',
-            name: 'nomi_document_edit',
+            name: 'append_to_end',
             id: 'experience-append',
-            args: { operation: 'append', content },
+            args: { content },
           },
         })
         fixture.expectText({

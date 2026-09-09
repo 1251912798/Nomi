@@ -1,11 +1,11 @@
 import type { ZodTypeAny } from "zod";
-import type { RuntimeToolDescriptor } from "../runtime/runtimePort";
+import type { RuntimeToolDescriptor } from "../../shared/agentCapabilities/transportContracts";
 import {
   PRODUCTION_ARTIFACT_WRITE_CAPABILITY,
   PRODUCTION_RUN_READ_CAPABILITY,
   PRODUCTION_RUN_WRITE_CAPABILITY,
 } from "../../shared/agentCapabilities/productionRun";
-import { productionRunToolDescriptors } from "./productionRunDescriptors";
+import { productionRunToolDescriptors } from "../../shared/agentCapabilities/productionRunDescriptors";
 import { editingPiDescriptors } from "./editingPiDescriptors";
 import { skillToolDescriptors } from "./skillDescriptors";
 import { modelToolSurfaceManifest, type SemanticToolDescriptor } from "./modelToolSurfaceManifest";

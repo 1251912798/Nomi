@@ -12,35 +12,28 @@
 // 状态下是三件不同的事（方案 §1.3）。判据本身仍不在这里——它在中立契约层的
 // `laneComposerIntent`，与主进程侧的验收门共用同一份。这一层只是照着它发命令。
 //
-// ⚠️ **影子期这条通路是接不上的，这是刻意的。** `resolveLaneBridge()` 在今天恒返回
-// `undefined`：preload 没有暴露 `agentLane`，`main.ts` 也没注册那两条通道
-// （方案 §8.1 规则 O6「开发期不可达」）。用户走不到 = 回滚面积为零。
-// 桥以参数形式注入而不是在模块里直接摸 `window`，所以这一层今天就能被真正测到。
 import type {
-  LaneApprovalAction, LaneCommand, LaneCommandOutcome, LaneProjection, LaneSummary,
+  LaneApprovalAction, LaneProjection, LaneSummary,
   LaneWorkspaceProjection,
 } from '../../../../electron/shared/agentLane/laneContracts'
+import type { ProjectBinding } from '../../../../electron/shared/projectBinding'
+import type { LaneComposerContext, LaneDesktopCommand, LaneDesktopResult, LaneReceiptCommand, LaneSingleShotRequest } from '../../../../electron/shared/agentLane/laneDesktopContracts'
 import { LANE_IPC_CHANNELS } from '../../../../electron/shared/agentLane/laneContracts'
 import { laneComposerIntent, type LaneComposerIntent } from '../../../../electron/shared/agentLane/laneComposerIntent'
 
-export type LaneCommandResult =
-  | ({ ok: true } & LaneCommandOutcome)
-  | { ok: false; code: string; message: string }
+export type LaneCommandResult = LaneDesktopResult
 
 /** 桥的形状。渲染层只发得出**意图**——它发不出宿主记录，因为它造不出宿主记录。 */
 export interface LaneBridge {
   onProjection(listener: (projection: LaneWorkspaceProjection) => void): () => void
-  send(command: LaneCommand): Promise<LaneCommandResult>
+  send(command: LaneDesktopCommand): Promise<LaneCommandResult>
 }
 
 interface LaneBridgeHost {
   nomiDesktop?: { agentLane?: LaneBridge }
 }
 
-/**
- * 取桥。影子期恒 `undefined`——**这是状态，不是错误**，所以不抛。
- * 调用方据此渲染旧通路；切换 PR 里 preload 暴露 `agentLane` 之后它才开始返回东西。
- */
+/** Resolve the preload surface. Browser-only labs inject their own bridge. */
 export function resolveLaneBridge(host: LaneBridgeHost | undefined = globalThis as LaneBridgeHost): LaneBridge | undefined {
   return host?.nomiDesktop?.agentLane
 }
@@ -74,6 +67,14 @@ export const EMPTY_LANE_WORKSPACE: LaneWorkspaceProjection = Object.freeze({
 })
 
 export interface LaneClient {
+  connect(bridge: LaneBridge | undefined): void
+  open(binding: ProjectBinding, model?: LaneComposerContext['model']): Promise<LaneCommandResult>
+  close(): Promise<void>
+  setPolicy(policy: LaneComposerContext['approvalPolicy']): Promise<LaneCommandResult>
+  context(): Readonly<{ subscriptionId: string; binding: ProjectBinding }> | null
+  receipt(subscriptionId: string, command: LaneReceiptCommand): Promise<LaneCommandResult>
+  singleShot(request: LaneSingleShotRequest): Promise<LaneCommandResult>
+  abortSingleShot(requestId: string): Promise<LaneCommandResult>
   /** 当前打开的那条对话。等价于 `workspace().active`，留着是因为绝大多数消费者只要这一份。 */
   projection(): LaneProjection
   /** 这个项目的对话列表 + 当前那条。 */
@@ -87,7 +88,7 @@ export interface LaneClient {
    * 它不自己决定这句话是什么意思：判据在 `laneComposerIntent`（中立契约层，主进程侧的
    * 验收门用的是同一份）。composer 只负责把用户按的是回车还是那个明确的按钮告诉它。
    */
-  say(text: string, choice?: 'primary' | 'secondary'): Promise<LaneCommandResult>
+  say(text: string, choice?: 'primary' | 'secondary', context?: LaneComposerContext): Promise<LaneCommandResult>
   /** 这句话现在会走哪条路。面板用它渲染次选按钮，不用它做决定。 */
   intent(text: string): LaneComposerIntent
   /** 「等这一步做完就听我的」。 */
@@ -124,22 +125,61 @@ const NO_BRIDGE: LaneCommandResult = {
 
 export function createLaneClient(bridge: LaneBridge | undefined = resolveLaneBridge()): LaneClient {
   let latest: LaneWorkspaceProjection = EMPTY_LANE_WORKSPACE
+  let current: Readonly<{ subscriptionId: string; binding: ProjectBinding }> | null = null
+  let epoch = 0
   const listeners = new Set<(projection: LaneWorkspaceProjection) => void>()
   // `useSyncExternalStore` 的 getter 必须**引用稳定**：只在真收到新投影时换对象。
   // 这条不是风格问题——仓库里 6 个手写 store 之一因为每次 getter 新建对象，
   // 在「有待决工具」时把整页打成「工作台加载失败」（G6 判据②）。
-  const unsubscribe = bridge?.onProjection((projection) => {
+  const publish = (projection: LaneWorkspaceProjection) => {
     latest = projection
     for (const listener of listeners) listener(projection)
-  })
-
-  const send = async (command: LaneCommand): Promise<LaneCommandResult> =>
-    bridge ? bridge.send(command) : NO_BRIDGE
+  }
+  let unsubscribe: (() => void) | undefined
+  const connect = (next: LaneBridge | undefined) => {
+    unsubscribe?.()
+    bridge = next
+    current = null
+    epoch += 1
+    publish(EMPTY_LANE_WORKSPACE)
+    unsubscribe = bridge?.onProjection(publish)
+  }
+  connect(bridge)
+  const send = async (command: LaneDesktopCommand): Promise<LaneCommandResult> =>
+    bridge ? bridge.send({ ...command, ...(current ? { workspaceId: current.subscriptionId } : {}) }) : NO_BRIDGE
 
   const approval = (toolCallId: string, action: LaneApprovalAction, reason?: string) =>
     send({ kind: 'approval', toolCallId, action, ...(reason?.trim() ? { reason } : {}) })
 
   return {
+    connect,
+    open: async (binding, model) => {
+      const opening = ++epoch
+      current = null
+      publish(EMPTY_LANE_WORKSPACE)
+      const result = await send({ kind: 'workspace-open', binding, ...(model ? { model } : {}) })
+      if (opening === epoch && result.ok && result.workspaceId) {
+        current = Object.freeze({ subscriptionId: result.workspaceId, binding: Object.freeze({ ...binding }) })
+      }
+      return result
+    },
+    close: async () => {
+      const closing = ++epoch
+      const result = await send({ kind: 'workspace-close' })
+      if (!result.ok) throw new Error(result.message)
+      if (closing === epoch) {
+        current = null
+        publish(EMPTY_LANE_WORKSPACE)
+      }
+    },
+    setPolicy: (policy) => send({ kind: 'workspace-policy', policy }),
+    context: () => current,
+    singleShot: (request) => send({ kind: 'single-shot', ...request }),
+    abortSingleShot: (requestId) => send({ kind: 'single-shot-abort', requestId }),
+    receipt: (subscriptionId, command) => {
+      if (current?.subscriptionId !== subscriptionId) return Promise.resolve({ ok: false, code: 'agent_lane_workspace_stale', message: 'agent_lane_workspace_stale' })
+      return send(command)
+    },
     projection: () => latest.active,
     workspace: () => latest,
     lanes: () => latest.lanes,
@@ -149,12 +189,12 @@ export function createLaneClient(bridge: LaneBridge | undefined = resolveLaneBri
     },
     prompt: (text: string) => send({ kind: 'prompt', text }),
     intent: (text: string) => laneComposerIntent(latest.active, text),
-    say: (text: string, choice: 'primary' | 'secondary' = 'primary') => {
+    say: (text: string, choice: 'primary' | 'secondary' = 'primary', context?: LaneComposerContext) => {
       const intent = laneComposerIntent(latest.active, text)
       // 空闲态没有次选。用户在「新一轮」上按不到第二个按钮，所以这里回落到主动作而不是抛：
       // 抛会让一次正常的回车在极短的状态竞态里（刚跑完那一瞬）变成一个错误弹窗。
       const chosen = choice === 'secondary' ? intent.secondary ?? intent.primary : intent.primary
-      return send(chosen.command)
+      return send({ ...chosen.command, ...(context ? { context, expectedLane: latest.active.lane } : {}) })
     },
     steer: (text: string) => send({ kind: 'steer', text }),
     followUp: (text: string) => send({ kind: 'follow-up', text }),
@@ -175,3 +215,6 @@ export function createLaneClient(bridge: LaneBridge | undefined = resolveLaneBri
 
 /** 通道名从中立契约层来，两侧永远同一个字面量。 */
 export const LANE_CHANNELS = LANE_IPC_CHANNELS
+
+/** One subscription owner for the persistent panel and collapsed dock. */
+export const laneClient = createLaneClient()

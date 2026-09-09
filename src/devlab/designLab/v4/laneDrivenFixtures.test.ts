@@ -15,6 +15,8 @@ import {
 
 const labels: LaneViewModelLabels = {
   toolLabel: () => '读取时间轴',
+  toolSummary: () => undefined,
+  toolFailure: () => undefined,
   thinkingLabel: '正在想…',
   formatTokens: (value) => String(value),
   formatCost: (usd) => `$${usd.toFixed(2)}`,
@@ -42,7 +44,7 @@ describe('design-lab fixtures driven by a LaneSnapshot (probe P6)', () => {
 
   it('single tool, in flight: matches the approved input-streaming cell field for field', () => {
     const receipt = laneDrivenReceipt(laneSnapshotToolRunning(), labels)
-    expect(receipt).toEqual({ label: '读取时间轴', action: 'timeline', status: 'input-available', input: undefined })
+    expect(receipt).toEqual({ toolCallId: 'call-timeline-1', label: '读取时间轴', action: 'timeline', status: 'input-available', input: undefined })
   })
 
   it('approval denied: only the status word, no trailing reason, no expandable body', () => {

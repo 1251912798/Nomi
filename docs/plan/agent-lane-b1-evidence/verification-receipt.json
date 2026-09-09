@@ -1,0 +1,36 @@
+{
+  "branch": "feat/agent-lane-stage4-switch-20260908",
+  "existing_head": "298ef605516c0dc634d63e2548118ee475462c2d",
+  "task_changes": "uncommitted; unpushed",
+  "contracts": {
+    "log": "contracts-gates-final.log",
+    "exit_code": 0,
+    "session": 93551
+  },
+  "lane_suite": {
+    "log": "lane-suite-final.log",
+    "passed": 354,
+    "total": 354,
+    "exit_code": 0,
+    "session": 62867
+  },
+  "focused": {
+    "log": "contracts-green.log",
+    "passed": 45,
+    "total": 45,
+    "exit_code": 0
+  },
+  "budget_composer": {
+    "log": "budget-composer-green.log",
+    "passed": 34,
+    "total": 34,
+    "exit_code": 0
+  },
+  "full_gates": {
+    "command": "python3 scripts/with-gates-lock.py -- pnpm run gates",
+    "log": "gates.log",
+    "exit_code": 1,
+    "reason": "origin/main is not an ancestor of HEAD; task explicitly forbids main integration"
+  },
+  "remaining_delivery": "Parent session integrates main, runs full gates to exit 0, then normal hook-reviewed commit and push to existing PR #646."
+}

@@ -1,0 +1,148 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-09-agent-lane-context-budget",
+  "problem_type": "Unbounded repeated model context and skill access coupled to coding activation",
+  "symptom": "24 user turns repeat a 89-model catalog; no compaction; skills require a group switch.",
+  "direct_cause": "Desktop providerContent appends the catalog to every historic input, default compaction uses a 1M window and read is deferred.",
+  "class_root": "The lane assembly lacks distinct stable metadata, incremental task context, cost retention and file-read authority boundaries.",
+  "affected_population": [
+    "Desktop prompt, steering, queued inputs and restored sessions",
+    "All providers using the lane and all installed skill packages"
+  ],
+  "scope_paths": [
+    "electron/agentLane/laneDesktopInput.ts",
+    "electron/agentLane/laneHost.mts",
+    "electron/agentLane/laneRuntimePort.ts",
+    "electron/agentLane/laneCodingTools.mts",
+    "electron/agentLane/laneCodingPaths.mts",
+    "electron/agentLane/laneNativeAssembly.mts",
+    "electron/agentLane/laneToolGroups.mts",
+    "electron/shared/agentCapabilities/timelineModelTools.ts",
+    "electron/agentLane/laneModelContext.ts",
+    "electron/agentLane/laneContextBudget.mts",
+    "electron/agentLane/laneNativeDesktop.mts",
+    "electron/agentLane/laneModelRead.mts",
+    "scripts/check-model-schema.ts",
+    "electron/agentLane/laneExtendedTools.ts"
+  ],
+  "entry_points": [
+    "Desktop input projection",
+    "Native Skill read and project read"
+  ],
+  "external_sources": [
+    {
+      "kind": "source-code",
+      "url": "https://github.com/earendil-works/pi/blob/main/packages/agent/src/harness/compaction/compaction.ts",
+      "checked_at": "2026-09-09",
+      "purpose": "Use installed pi 0.85.1 compaction settings and public hook without a second history store."
+    }
+  ],
+  "invariants": [
+    "Stable catalog metadata appears once, while later user messages carry only differences.",
+    "Skill reads do not require coding, but project reads still do.",
+    "Compaction triggers at the configured token budget and preserves task references."
+  ],
+  "generality_proof": "All LaneInputMessage projections cross the host; all native reads cross realpath containment and the active-tool authority resolver, independent of model/vendor.",
+  "shared_boundaries": [
+    {
+      "path": "electron/agentLane/laneHost.mts",
+      "symbol": "openLane",
+      "responsibility": "Assemble stable context and configure native pi compaction."
+    },
+    {
+      "path": "electron/agentLane/laneCodingPaths.mts",
+      "symbol": "createLaneCodingPaths",
+      "responsibility": "Enforce trusted skill and project read roots."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "electron/agentLane/laneDesktopInput.ts",
+      "entry_point": "createDesktopLaneInput",
+      "disposition": "enforced",
+      "evidence": "Used for prompt/steer/follow-up and restored custom input projection."
+    },
+    {
+      "path": "electron/agentLane/laneCodingTools.mts",
+      "entry_point": "createLaneCodingTools",
+      "disposition": "enforced",
+      "evidence": "Read access/readFile both use canonical path checks before accessing file bytes."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Every subsequent turn repeats the same catalog and every installed skill requires a redundant group switch.",
+    "same_class_scan": [
+      "rg availableModels electron/agentLane: desktop projection and host context assembly",
+      "rg createReadTool electron/agentLane: native adapter read/access operations",
+      "rg compaction node_modules/@earendil-works/pi-agent-core/dist/harness: native threshold and summary hooks"
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "electron/agentLane/laneHost.mts",
+    "invariant": "Stable metadata is separate from per-turn differences and bounded native history.",
+    "failure_mode": "Invalid budgets and out-of-skill project reads without coding are rejected.",
+    "exception_policy": "none",
+    "strategy": "Single host projection and canonical read boundary for all entry paths.",
+    "artifacts": [
+      "electron/agentLane/laneDesktopInput.ts",
+      "electron/agentLane/laneHost.mts",
+      "electron/agentLane/laneRuntimePort.ts",
+      "electron/agentLane/laneCodingTools.mts",
+      "electron/agentLane/laneCodingPaths.mts",
+      "electron/agentLane/laneNativeAssembly.mts",
+      "electron/agentLane/laneToolGroups.mts",
+      "electron/shared/agentCapabilities/timelineModelTools.ts",
+      "electron/agentLane/laneModelContext.ts",
+      "electron/agentLane/laneContextBudget.mts",
+      "electron/agentLane/laneNativeDesktop.mts",
+      "electron/agentLane/laneModelRead.mts",
+      "scripts/check-model-schema.ts",
+      "electron/agentLane/laneExtendedTools.ts"
+    ]
+  },
+  "regression_tests": [
+    "tests/agent-runtime/lane-context-budget.test.mts",
+    "tests/agent-runtime/lane-models-block.test.mts",
+    "tests/agent-runtime/lane-native-assembly.test.mts",
+    "tests/agent-runtime/lane-native-desktop.test.mts",
+    "tests/agent-runtime/lane-coding-tools.test.mts",
+    "scripts/check-model-schema.node-test.mjs",
+    "tests/agent-runtime/lane-deferred-tools-placement.test.mts",
+    "tests/agent-runtime/lane-cost.test.mts"
+  ],
+  "class_regression_tests": [
+    "tests/agent-runtime/lane-context-budget.test.mts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "electron/agentLane/laneDesktopInput.ts",
+      "electron/agentLane/laneToolGroups.mts"
+    ],
+    "rationale": "Remove full per-turn catalog injection and the requirement to request coding for installed skills."
+  },
+  "dependency_lifecycle": {
+    "decision": "retain-with-exit",
+    "current": "pi SDK 0.85.1",
+    "target": "A supported pi release with an explicit cost-token compaction threshold",
+    "rationale": "Existing public compaction and read APIs suffice; no fork or runtime duplication.",
+    "exit_criteria": [
+      "When upstream offers a direct cost-token threshold, replace the reserveTokens configuration translation and rerun persisted compaction replay."
+    ]
+  },
+  "migration": "Old nomi.input catalog snapshots remain immutable; provider projection is rederived and existing lanes receive native compaction settings on open.",
+  "residual_risks": [
+    "C59 group-switch prefix strategy is assigned to B1c and excluded from B1b-finish; all groups still exceed 10k schema tokens.",
+    "Real DeepSeek three-turn sample completed two of three user tasks; trial-shot did not create a generation draft. Both storyboard writes have 8/8 requested model tiers; skill loaded on first turn and reused.",
+    "The original implementation gates stopped at vocabulary historical debt on d3fa25888. B1b-finish explicitly authorizes local main integration and requires full gates exit 0 before push; final delivery evidence is recorded in the context-budget plan."
+  ],
+  "invariant_owner_layer": {
+    "layer": "electron/agentLane/laneHost.mts",
+    "tests": [
+      "tests/agent-runtime/lane-context-budget.test.mts"
+    ],
+    "why": "The host is shared by new turns, queued turns and restored lane histories."
+  }
+}

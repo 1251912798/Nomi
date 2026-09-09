@@ -1,3 +1,4 @@
+import type { ProjectAgentAttachmentClaim, ProjectAgentAttachmentRef } from '../shared/workbenchInput'
 import fs from "node:fs";
 import crypto from "node:crypto";
 import os from "node:os";
@@ -26,10 +27,7 @@ import { validateGlbStructure } from "./model3dValidation";
 import { resolveFfmpegPath } from "../export/ffmpegRunner";
 import { MEDIA_DECODER_PROTOCOL_WHITELIST } from "../export/mediaProbe";
 import type { CertificationMediaEvidence } from "../providerAdapter/certificationMedia";
-import type {
-  ProjectAgentAttachmentClaim,
-  ProjectAgentAttachmentRef,
-} from "../shared/projectAgentContracts";
+
 import type { UsageStatus, IntendedRole } from "../connectors/connectorDefinition";
 import { ASSET_PROVENANCE_ALLOWED_USAGES, ASSET_PROVENANCE_ALLOWED_ROLES } from "../connectors/connectorDefinition";
 

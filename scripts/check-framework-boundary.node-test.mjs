@@ -4,6 +4,7 @@
 // 证明不了「明天新增一条会不会被拦」——而后者才是这道门岗存在的全部理由（R17：加规则先验它会红）。
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import fs from 'node:fs'
 import {
   REFERENCE_CONFORMANCE_LAYERS,
   advisoryCapabilityHits,
@@ -253,4 +254,17 @@ test('版本比较：只按数字段比大小，比不动就当没落后（宁�
   assert.equal(isVersionBehind('7.17.8', '7.18.0-beta.1'), true)
   assert.equal(isVersionBehind('next', '1.0.0'), false)
   assert.equal(isVersionBehind('1.0.0', undefined), false)
+})
+
+test('legacy envelope comparisons are readers; declarations remain forbidden', () => {
+  const real = JSON.parse(fs.readFileSync(new URL('../docs/engineering/framework-boundaries.json', import.meta.url), 'utf8'))
+  const file = 'electron/agentLane/fixture.ts'
+  for (const source of ["if (raw.format !== 'nomi.pi-work-context') return;", 'raw.format === "nomi.pi-work-context"']) {
+    const hits = scanSources(new Map([[file, source]]), real)
+    assert.equal([...hits.keys()].filter(key => key.includes('/private-session-snapshot-envelope::')).length, 0)
+  }
+  for (const source of ["return { format: 'nomi.pi-work-context' }", "const FORMAT = 'nomi.pi-work-context'", "format: z.literal('nomi.pi-work-context')"]) {
+    const hits = scanSources(new Map([[file, source]]), real)
+    assert.equal(evaluate({ hits, baseline: { debt: [] }, today: '2026-09-08' }).length, 1)
+  }
 })

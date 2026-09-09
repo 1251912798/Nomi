@@ -18,6 +18,7 @@ import {
   ActionIcon,
   IconAlertTriangle,
   IconCheck,
+  IconChevronRight,
   IconX,
   StatusSpinner,
 } from './AgentPanelV4Icons'
@@ -102,12 +103,14 @@ export function V4TaskCard({
           ) : null}
           {task.candidates?.length ? (
             <div className="flex gap-1.5">
-              {task.candidates.map((candidate, index) => (
-                <button
-                  type="button"
-                  key={candidate.tag}
-                  aria-label={`${labels.adopt} ${candidate.tag}`}
-                  onClick={() => onAdopt?.(candidate.tag, index)}
+              {task.candidates.map((candidate, index) => {
+                const canAdopt = Boolean(onAdopt && candidate.canAdopt && !candidate.adopted && !candidate.pending)
+                const Tile = canAdopt ? 'button' : 'div'
+                return <Tile
+                  {...(canAdopt ? { type: 'button' as const, 'aria-label': `${labels.adopt} ${candidate.tag}`,
+                    onClick: () => onAdopt?.(candidate.tag, index) } : {})}
+                  key={candidate.artifactId ?? candidate.tag}
+                  data-artifact-id={candidate.artifactId}
                   data-adopted={candidate.adopted ? 'true' : undefined}
                   className={cn(
                     'relative h-10 w-16 shrink-0 overflow-hidden rounded-nomi-sm border border-nomi-line',
@@ -116,13 +119,14 @@ export function V4TaskCard({
                     candidate.adopted && 'outline outline-2 outline-offset-1 outline-nomi-accent',
                   )}
                 >
+                  {candidate.thumbnailUrl ? <img src={candidate.thumbnailUrl} alt="" className="size-full object-cover" /> : null}
                   {/* 角标写的是**这一张是谁**（画布 Vocabulary 板是「采用」、FlowGeneration 板是「2 ✓」），
                       由数据给；`adopted` 只管那圈 accent 描边，不改写文字。 */}
                   <span className="absolute left-1 top-1 rounded-sm bg-nomi-overlay-chip px-1 text-micro leading-[15px] text-nomi-paper">
                     {candidate.tag}
                   </span>
-                </button>
-              ))}
+                </Tile>
+              })}
             </div>
           ) : null}
           {task.progress !== undefined ? (
@@ -237,18 +241,24 @@ export function V4Intervention({
         {data.plan?.length ? (
           <div className="flex flex-col gap-1">
             {data.plan.map((row, index) => (
-              <label key={`${index}-${row.label}`} className="flex items-center gap-2 py-[3px] text-caption text-nomi-ink-80">
+              <div key={`${index}-${row.label}`} className="flex items-start gap-2 py-[3px] text-caption text-nomi-ink-80">
                 <input
                   type="checkbox"
+                  aria-label={row.label}
                   checked={row.checked}
                   onChange={(event) => onPlanToggle?.(row.label, event.target.checked)}
-                  className="size-3.5 shrink-0 accent-nomi-accent"
+                  className="mt-0.5 size-3.5 shrink-0 accent-nomi-accent"
                 />
-                <div className="min-w-0 flex-1">
-                  <AgentPanelV4Markdown text={row.label} />
-                  {row.detail ? <AgentPanelV4Markdown text={row.detail} /> : null}
-                </div>
-              </label>
+                {row.technical ? (
+                  <details className="group min-w-0 flex-1" data-v4-block="plan-detail">
+                    <summary className="flex cursor-pointer list-none items-start gap-1">
+                      <div className="min-w-0 flex-1"><AgentPanelV4Markdown text={row.label} />{row.detail ? <AgentPanelV4Markdown text={row.detail} /> : null}</div>
+                      <IconChevronRight size={12} className="mt-0.5 shrink-0 group-open:rotate-90" aria-hidden="true" />
+                    </summary>
+                    <pre className="m-0 mt-1 whitespace-pre-wrap break-all font-nomi-mono text-micro text-nomi-ink-40">{row.technical}</pre>
+                  </details>
+                ) : <div className="min-w-0 flex-1"><AgentPanelV4Markdown text={row.label} />{row.detail ? <AgentPanelV4Markdown text={row.detail} /> : null}</div>}
+              </div>
             ))}
           </div>
         ) : null}

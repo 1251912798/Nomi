@@ -11,8 +11,48 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { pathToFileURL } from 'node:url'
 import path from 'node:path'
+import { laneToolCombinations } from './check-model-schema.ts'
+import { LANE_MODEL_TOOL_CATALOG, LANE_DEFERRED_TOOL_CATALOG, LANE_DEFERRED_TOOL_GROUPS } from '../electron/agentLane/laneToolCatalog.ts'
+import { LANE_CODING_TOOL_NAMES } from '../electron/agentLane/laneCodingTools.mts'
+import { evaluateLaneToolBudget, laneRequestToolDefinition, LANE_TOOL_REQUEST_TOOL_NAME } from '../electron/agentLane/laneToolGroups.mts'
 
 const repoRoot = path.resolve(import.meta.dirname, '..')
+
+test('the budget reports group contributions and enforces the complete resident catalog', async () => {
+  const combinations = await laneToolCombinations()
+  const alwaysOn = [...LANE_MODEL_TOOL_CATALOG.map(tool => tool.name), LANE_TOOL_REQUEST_TOOL_NAME, 'read']
+  assert.deepEqual(combinations[0].toolNames, alwaysOn)
+  // 每一个注册组都要有自己的一行，一个都不许漏——漏掉的那个组永远不会被量。
+  const judged = combinations
+  assert.deepEqual(judged.map(one => one.label),
+    ['always-on（含 request）', 'always-on + coding', 'always-on + models',
+      ...LANE_DEFERRED_TOOL_GROUPS.map(group => `always-on + ${group.name}`), '全部组常驻（实际最大组合）'])
+  for (const combination of judged.slice(1)) {
+    assert.deepEqual(combination.toolNames.slice(0, alwaysOn.length), alwaysOn,
+      '每个组合都是「常驻 + 一个组」，常驻那一段逐字相同')
+  }
+  // The complete resident catalog is now reachable and must be judged.
+  const all = combinations.at(-1)
+  assert.deepEqual(new Set(all.toolNames), new Set([
+    ...alwaysOn, ...LANE_CODING_TOOL_NAMES, 'nomi_read', ...LANE_DEFERRED_TOOL_CATALOG.map(tool => tool.name),
+  ]))
+  const request = laneRequestToolDefinition([{ name: 'coding' }, ...LANE_DEFERRED_TOOL_GROUPS])
+  assert.deepEqual(request.parameters.required, ['group'])
+  assert.equal(request.parameters.properties.groups, undefined, '一次只切一个组')
+  assert.equal(request.parameters.properties.query, undefined)
+})
+
+test('a newly enlarged domain fails both the group and complete residency budget', async () => {
+  const sample = LANE_DEFERRED_TOOL_CATALOG[0]
+  const combinations = await laneToolCombinations([
+    ...LANE_DEFERRED_TOOL_CATALOG, { ...sample, name: 'budget_probe', description: 'A'.repeat(48_000) },
+  ])
+  const failures = evaluateLaneToolBudget({ alwaysOnCount: combinations[0].toolNames.length, combinations })
+  const fat = combinations.find(one => one.toolNames.includes('budget_probe'))
+  assert.ok(fat, `胖掉的那个组必须有自己一行：${sample.internalGroup}`)
+  assert.ok(failures.some(failure => failure.includes(fat.label)))
+  assert.ok(failures.some(failure => failure.includes(combinations.at(-1).label)), '最终常驻组合必须判红')
+})
 
 // 本文件由 `pnpm exec tsx --test` 跑（见 package.json 的 `check:model-schema`）——
 // 规则本体是 TS，而仓库里其余 node-test 走的是 `.mjs` 库。与其为了迁就 runner 把规则
@@ -151,4 +191,37 @@ test('广播出去的 inputSchema 必须是共享描述符算出来的那份（�
   const tampered = JSON.parse(JSON.stringify(tool.inputSchema))
   tampered.properties.scope.enum = [...tampered.properties.scope.enum, 'outline']
   assert.match(facing.mcpProjectionDrift(contract, tool.specs, tampered) ?? '', /共享描述符重算的结果不同/)
+})
+
+
+test('显式单面别名不误报，未声明的缺失和广播漂移仍被拦住', async () => {
+  const registry = await import(pathToFileURL(path.join(repoRoot, 'electron/shared/agentCapabilities/modelFacingToolRegistry.ts')).href)
+  const tool = registry.mcpProfileTools().find(candidate => candidate.contractId === 'timeline.read')
+  const internal = registry.modelFacingToolSpecs('internal').filter(spec => spec.contractId === 'timeline.read')
+  assert.ok(internal.some(spec => spec.name === 'propose_edit_plan' && spec.profiles.includes('internal')))
+  assert.deepEqual(facing.declaredProfileDrift(internal, tool), [])
+  const missing = { ...tool, specs: tool.specs.slice(1) }
+  assert.match(facing.declaredProfileDrift(internal, missing)[0], /只在内部 profile 上存在/)
+  const malformed = structuredClone(tool.inputSchema)
+  delete malformed.properties.startFrame
+  assert.ok(facing.declaredProfileDrift(internal, { ...tool, inputSchema: malformed }).length > 0)
+})
+
+
+test('schema defaults and examples are data, while actual empty child schemas still fail', () => {
+  assert.deepEqual(structural({ type: 'object', properties: {}, additionalProperties: false, default: {}, examples: [{ a: {} }] }), [])
+  assert.equal(structural({ type: 'object', properties: { data: {} }, default: {} }).length, 1)
+  assert.deepEqual(vendor({ type: 'object', properties: {}, default: { const: 'data' } }), [])
+})
+
+test('the official recursive person example keeps its local reference and rejects erased children', async () => {
+  // Source: https://json-schema.org/understanding-json-schema/structuring#recursion
+  const { z } = await import('zod')
+  let person
+  person = z.object({ name: z.string().optional(), children: z.array(z.lazy(() => person)).optional() }).passthrough()
+  const published = rules.toPublishedJsonSchema(person)
+  assert.equal(published.properties.children.items.$ref, '#')
+  assert.deepEqual(structural(published), [])
+  assert.equal(structural({ ...published, properties: { ...published.properties, children: { type: 'array', items: {} } } }).length, 1)
+  assert.equal(person.safeParse({ name: 'Parent', children: [{ name: 'Child', children: [{ name: 'Leaf' }] }] }).success, true)
 })

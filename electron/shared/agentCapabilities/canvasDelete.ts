@@ -41,7 +41,7 @@ export function canvasDeleteInputForAlias(alias: string, value: unknown): Canvas
 
 export function canvasDeletePiDescriptionForAlias(alias: string): string | undefined {
   return alias === CANVAS_DELETE_ALIAS
-    ? "Delete exact unlocked Canvas nodes through one approved and reversible proposal transaction."
+    ? "Delete exact unlocked Canvas nodes after fresh explicit approval for each call. Undo is not guaranteed. Read their current node identifiers first; locked nodes and stale selections are rejected."
     : undefined;
 }
 

@@ -32,3 +32,16 @@ export function assertProjectAgentBinding(binding: ProjectBinding): void {
     throw new ProjectBindingValidationError();
   }
 }
+
+export function sameProjectAgentBinding(left: ProjectBinding, right: ProjectBinding): boolean {
+  return (
+    left.projectId === right.projectId &&
+    left.immutableProjectUuid === right.immutableProjectUuid &&
+    left.projectGeneration === right.projectGeneration
+  );
+}
+
+export function projectAgentPartitionKey(binding: ProjectBinding): string {
+  assertProjectAgentBinding(binding);
+  return `project-agent.${encodeURIComponent(binding.immutableProjectUuid)}.g${binding.projectGeneration}`;
+}

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { injectPdfPayload, type NativePdf } from '../../electron/harness/runtime/pi/attachments.mjs';
+import { injectPdfPayload, type NativePdf } from '../../electron/ai/nativePdfPayload.js';
 
 const pdf: NativePdf = {
   marker: '[nomi-pdf:1]', fileName: 'coffee.pdf',

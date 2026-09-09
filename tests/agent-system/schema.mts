@@ -214,19 +214,19 @@ export const agentSystemAuthorityAdapterOwners: z.infer<typeof agentSystemArchit
     status: 'current',
     kind: 'production-seam',
     surface: 'creation.agent',
-    owner: 'electron/harness/runtime/pi/session.mts',
+    owner: 'electron/agentLane/laneSession.mts',
   },
   {
     status: 'current',
     kind: 'production-seam',
     surface: 'creation.agent',
-    owner: 'electron/harness/runtime/pi/run.mts',
+    owner: 'electron/agentLane/laneHost.mts',
   },
   {
     status: 'current',
     kind: 'production-seam',
     surface: 'creation.agent',
-    owner: 'electron/harness/context/contextService.ts',
+    owner: 'electron/agentLane/laneDesktopRuntime.ts',
   },
   {
     status: 'current',

@@ -15,6 +15,7 @@ import { NomiBrand } from '../../../design/identity'
 // 记住哪个还没接——而「没接」和「接了但没反应」在界面上长得一模一样。一个对象，
 // 缺哪个键就是那件事这里做不了，TypeScript 看得见。
 import React from 'react'
+import type { LaneLegacyFacts } from '../../../../electron/shared/agentLane/laneLegacyNote'
 import { useTranslation } from 'react-i18next'
 import { cn } from '../../../utils/cn'
 import { AgentPanelV4Composer, type AgentPanelV4ComposerProps } from './AgentPanelV4Composer'
@@ -44,7 +45,7 @@ export type V4FlowHandlers = Readonly<{
   onCopy?: (text: string) => void
   onRetry?: (index: number) => void
   onContinue?: (index: number) => void
-  onUndoTool?: (index: number) => void
+  onUndoTool?: (toolCallId: string) => void
   onAdoptCandidate?: (index: number, tag: string, candidateIndex: number) => void
   onUndoTask?: (index: number) => void
   onErrorAction?: (index: number) => void
@@ -68,12 +69,16 @@ export type V4QueueHandlers = Readonly<{
 
 export type AgentPanelV4PanelProps = {
   flow: readonly V4FlowItem[]
+  legacy?: LaneLegacyFacts
+  /** Live domain feedback remains outside the conversation transcript. */
+  flowTail?: React.ReactNode
   /** 空态从这里派生它那三条起手（哪个面能做什么）。 */
   surface?: ResidentSurface
   /** 点空态起手 chip：把那句话填进 composer 并聚焦，**不发送**。 */
   onStarter?: (prompt: string) => void
   slot?: InterventionData
   queue?: readonly QueueRowData[]
+  queueHint?: string
   context: ContextUsage
   composer?: Omit<AgentPanelV4ComposerProps, 'panelHeight'> & {
     permission?: PermissionTier
@@ -123,7 +128,7 @@ export function V4FlowRow({
       />
     )
   }
-  if (item.kind === 'thinking') return <V4Thinking label={item.label} meta={item.meta} />
+  if (item.kind === 'thinking') return <V4Thinking label={item.label} meta={item.meta} text={item.text} streaming={item.streaming} />
   if (item.kind === 'suggestion') {
     return (
       <V4Suggestion
@@ -139,12 +144,12 @@ export function V4FlowRow({
         receipt={item.receipt}
         statusLabel={labels.toolStatus[item.receipt.status]}
         undoLabel={labels.task.undo}
-        onUndo={() => handlers?.onUndoTool?.(at)}
+        onUndo={() => { if (item.receipt.toolCallId) handlers?.onUndoTool?.(item.receipt.toolCallId) }}
       />
     )
   }
   if (item.kind === 'tool-group') {
-    return <V4ToolGroup group={item} statusLabel={labels.toolStatus[item.status]} />
+    return <V4ToolGroup group={item} statusLabel={labels.toolStatus[item.status]} undoLabel={labels.task.undo} onUndo={handlers?.onUndoTool} />
   }
   if (item.kind === 'process') return <V4Process {...item}>{item.details?.map((detail, position) => (
     <V4FlowRow key={position} item={detail.item} index={detail.index} darkMode={darkMode} handlers={handlers} />
@@ -154,7 +159,7 @@ export function V4FlowRow({
       <V4TaskCard
         task={item.task}
         labels={labels.task}
-        onAdopt={(tag, candidateIndex) => handlers?.onAdoptCandidate?.(at, tag, candidateIndex)}
+        onAdopt={handlers?.onAdoptCandidate ? (tag, candidateIndex) => handlers.onAdoptCandidate?.(at, tag, candidateIndex) : undefined}
         onUndo={() => handlers?.onUndoTask?.(at)}
         onErrorAction={() => handlers?.onErrorAction?.(at)}
       />
@@ -165,10 +170,13 @@ export function V4FlowRow({
 
 export function AgentPanelV4Panel({
   flow,
+  legacy,
+  flowTail,
   surface = 'creation',
   onStarter,
   slot,
   queue,
+  queueHint,
   context,
   composer,
   width = 390,
@@ -183,6 +191,12 @@ export function AgentPanelV4Panel({
 }: AgentPanelV4PanelProps): JSX.Element {
   const { t } = useTranslation()
   const labels = useV4Labels()
+  const legacyNotice = legacy ? [t('agentPanelV4.legacyNotice'),
+    ...(legacy.arrayOrder ? [t('agentPanelV4.legacyArrayOrder')] : []),
+    ...(legacy.summaries ? [t('agentPanelV4.legacySummaries')] : []),
+    ...(legacy.archivedItems ? [t('agentPanelV4.legacyArchived')] : []),
+    ...(legacy.missingToolArguments ? [t('agentPanelV4.legacyMissingArguments')] : []),
+  ].join(t('agentPanelV4.legacySeparator')) : undefined
   const scrollRef = React.useRef<HTMLDivElement>(null)
   // 跟到底：只有用户本来就在底部时才跟。他往上翻着看历史的时候把他拽回来，
   // 比不跟更糟——那是把「我在读」当成「我想看新的」。
@@ -226,7 +240,7 @@ export function AgentPanelV4Panel({
   React.useEffect(() => {
     const node = scrollRef.current
     if (node && atBottomRef.current) node.scrollTop = node.scrollHeight
-  }, [flow.length, slot?.title, queue?.length])
+  }, [flow.length, flowTail, slot?.title, queue?.length])
   return (
     <section
       // `overflow-clip` 而不是 `overflow-hidden`：hidden 仍然是一个**可以被程序滚动**的
@@ -250,7 +264,8 @@ export function AgentPanelV4Panel({
           </button>
         </span>
       </header>
-      <div ref={scrollRef} className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto px-3 py-2.5" data-v4-flow="true">
+      {legacyNotice ? <p className="shrink-0 truncate px-3 pt-2 text-micro text-nomi-ink-60" title={legacyNotice} data-v4-legacy="true">{legacyNotice}</p> : null}
+      <div ref={scrollRef} className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto px-3 py-2.5 [&>*]:shrink-0" data-v4-flow="true">
         {/* 空态只在**流为空**时占这块地方：来了第一条消息它就永远不再出现，
             所以它不是常驻件、不参与控件预算（设计系统 §1.5）。 */}
         {flow.length === 0 ? <V4EmptyState surface={surface} onStarter={onStarter} /> : null}
@@ -263,6 +278,7 @@ export function AgentPanelV4Panel({
             handlers={flowHandlers}
           />
         ))}
+        {flowTail}
       </div>
       {slot ? (
         <div className="shrink-0 px-2.5 pb-2">
@@ -272,6 +288,7 @@ export function AgentPanelV4Panel({
       {queue?.length ? (
         <div className="shrink-0 px-2.5 pb-2">
           <V4Queue rows={queue} labels={labels.queue} {...queueHandlers} />
+          {queueHint ? <p className="px-1 pt-1 text-micro text-nomi-ink-60">{queueHint}</p> : null}
         </div>
       ) : null}
       <div className={cn('shrink-0 px-2.5 pb-2.5', !slot && !queue?.length && 'pt-2')}>

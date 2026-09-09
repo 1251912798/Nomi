@@ -1,11 +1,9 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { requestQuote, reserve, assertAffordable, REAL_MODELS, BUDGET_CNY } from './c0-real-budget.mjs'
+import { requestQuote, reserve, assertAffordable, REAL_MODELS } from './c0-real-budget.mjs'
 const quote = { textRequestUsd: .01, maxOutputTokens: 16000, videoPerSecondUsd: .0714, imageUsd: .010625 }
-test('full H3 film fits the approved budget and over-budget estimates fail closed', () => {
-  assert.doesNotThrow(() => assertAffordable({ totalUpperCny: 64 * quote.videoPerSecondUsd * 7 }))
-  assert.doesNotThrow(() => assertAffordable({ totalUpperCny: BUDGET_CNY }))
-  assert.throws(() => assertAffordable({ totalUpperCny: BUDGET_CNY + .001 }), /BLOCKED_BUDGET/)
+test('current H3 64s cannot pass the eight yuan preflight', () => {
+  assert.throws(() => assertAffordable({ totalUpperCny: 64 * quote.videoPerSecondUsd * 7 }), /BLOCKED_BUDGET/)
   assert.throws(() => assertAffordable({ totalUpperCny: NaN }), /BLOCKED_BUDGET/)
 })
 test('unquoted models, paid routes, parameters and cross-origin destinations are refused', () => {
@@ -18,10 +16,10 @@ test('unquoted models, paid routes, parameters and cross-origin destinations are
 })
 test('in-flight requests and failures retain reservations; persistence fails before send', () => {
   const ledger = { reservedCny: 0, requests: [] }, written = []
-  for (let i = 0; i < BUDGET_CNY; i++) reserve(ledger, { upperUsd: 1 / 7 }, (l) => written.push(l.reservedCny))
-  assert.deepEqual(written, Array.from({ length: BUDGET_CNY }, (_, i) => i + 1))
+  for (let i = 0; i < 8; i++) reserve(ledger, { upperUsd: 1 / 7 }, (l) => written.push(l.reservedCny))
+  assert.deepEqual(written, [1, 2, 3, 4, 5, 6, 7, 8])
   assert.throws(() => reserve(ledger, { upperUsd: .001 }, () => {}), /BLOCKED_BUDGET/)
-  assert.equal(ledger.requests.length, BUDGET_CNY)
+  assert.equal(ledger.requests.length, 8)
   assert.throws(() => reserve({ reservedCny: 0, requests: [] }, { upperUsd: .1 }, () => { throw new Error('disk-full') }), /disk-full/)
 })
 
@@ -59,7 +57,7 @@ test('mixed dispatch caps each quoted text tier at 3 and never forwards media', 
     const file = path.join(dir, 'signal.mp4'); fs.writeFileSync(file, 'synthetic')
     for (const text of ['gpt-5-nano', 'deepseek-v4-pro']) {
       const ledger = { reservedCny: 0, requests: [] }; let sent = 0, persisted = false
-      const quote = { planOnly: true, mediaDryRun: true, models: { text, video: 'MiniMax-H3' }, rates: { input: .1, output: 1 }, maxOutputTokens: 8192, budgetCny: 3 }
+      const quote = { mediaDryRun: true, models: { text, video: 'MiniMax-H3' }, rates: { input: .1, output: 1 }, maxOutputTokens: 8192, budgetCny: 3 }
       const dispatch = createDispatchWrapper({ quote, ledger, persist: () => { persisted = true }, mediaFiles: [file], ledgerPath: path.join(dir, text) })(async (_url, init) => {
         assert.ok(persisted); sent++; assert.equal(JSON.parse(init.body).max_tokens, 8192); return new Response('native')
       })
@@ -80,7 +78,7 @@ test('transport evidence retains raw errors, HTTP prefixes and pre-dispatch budg
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'transport-evidence-'))
   try {
     const ledger = { reservedCny: 0, requests: [] }
-    const quote = { planOnly: true, mediaDryRun: true, models: { text: 'gpt-5-nano' }, rates: { input: .1, output: 1 }, maxOutputTokens: 8192, budgetCny: 3 }
+    const quote = { mediaDryRun: true, models: { text: 'gpt-5-nano' }, rates: { input: .1, output: 1 }, maxOutputTokens: 8192, budgetCny: 3 }
     const wrap = createDispatchWrapper({ quote, ledger, persist() {}, ledgerPath: path.join(dir, 'ledger.json') })
     const url = 'https://api.apimart.ai/v1/chat/completions'
     const post = () => ({ method: 'POST', body: JSON.stringify({ model: 'gpt-5-nano', stream: true }) })
@@ -192,4 +190,63 @@ test('export completion ignores decodable temporary files until atomic publicati
     fs.renameSync(temporary, final)
     assert.deepEqual(completedExports(dir), [path.join('exports', 'film.mp4')])
   } finally { fs.rmSync(dir, { recursive: true, force: true }) }
+})
+
+test('plan-only keeps its 2 CNY ceiling and rejects media even alongside mixed flags', async () => {
+  const { quotePlanSample } = await import('./c0-plan-sample-budget.mjs')
+  const { createDispatchWrapper } = await import('./c0-real-main.mjs')
+  const text = 'gpt-5-nano'
+  const prices = new Map([[text, { pricing: { unit: 'usd_per_million_tokens', tier_count: 1,
+    rates: { input: .1, output: 1 }, limits: { max_output_tokens: 16000 } } }]])
+  const quote = { ...quotePlanSample(prices, text, { planOnly: true }), mediaDryRun: true }
+  assert.equal(quote.budgetCny, 2)
+  const ledger = { reservedCny: 0, requests: [] }
+  let sent = 0
+  const dispatch = createDispatchWrapper({ quote, ledger, persist() {} })(async () => { sent++; return new Response('text') })
+  const post = body => ({ method: 'POST', body: JSON.stringify(body) })
+  await dispatch('https://api.apimart.ai/v1/chat/completions', post({ model: text }))
+  await assert.rejects(dispatch('https://api.apimart.ai/v1/videos/generations', post({ model: 'MiniMax-H3' })), /REFUSED/)
+  ledger.reservedCny = 2
+  await assert.rejects(dispatch('https://api.apimart.ai/v1/chat/completions', post({ model: text })), /BLOCKED_BUDGET/)
+  quote.budgetCny = 3
+  ledger.reservedCny = 0
+  await assert.rejects(dispatch('https://api.apimart.ai/v1/chat/completions', post({ model: text })), /BLOCKED_BUDGET/)
+  assert.equal(sent, 1)
+})
+
+test('official DeepSeek quote has dated source and accounts cache tokens at conservative peak rates', async () => {
+  const { officialPlannerPrice, textUsageCost } = await import('./c0-real-budget.mjs')
+  const price = officialPlannerPrice('deepseek-v4-pro')
+  assert.equal(price.source, 'https://api-docs.deepseek.com/quick_start/pricing')
+  assert.equal(price.checkedAt, '2026-09-10')
+  assert.equal(textUsageCost({ prompt_tokens: 1000000, prompt_cache_hit_tokens: 250000, prompt_cache_miss_tokens: 750000, completion_tokens: 100000 }, price), (750000 * 1.32 + 250000 * .044 + 100000 * 3.96) / 1e6 * 7)
+  assert.throws(() => textUsageCost({ prompt_tokens: 1, completion_tokens: 1, prompt_cache_hit_tokens: 2 }, price), /USAGE_INVALID/)
+  const q = { ...quote, models: { ...REAL_MODELS, text: 'deepseek-v4-pro' }, plannerVendor: 'deepseek-official', plannerPrice: price }
+  assert.equal(requestQuote('https://api.deepseek.com/v1/chat/completions', 'POST', { model: 'deepseek-v4-pro', max_tokens: 10 }, q).model, 'deepseek-v4-pro')
+  assert.throws(() => requestQuote('https://api.deepseek.com/v1/chat/completions', 'POST', { model: 'deepseek-v4-pro', max_tokens: 10 }, quote), /REFUSED/)
+})
+
+test('official streaming usage settles a reserved request without rewriting the model response', async () => {
+  const { budgetedFetch, officialPlannerPrice, drainTextUsage } = await import('./c0-real-budget.mjs')
+  const q = { ...quote, models: { ...REAL_MODELS, text: 'deepseek-v4-pro' }, plannerVendor: 'deepseek-official', plannerPrice: officialPlannerPrice('deepseek-v4-pro') }
+  const ledger = { requests: [], reservedCny: 0 }
+  const content = 'data: ' + JSON.stringify({ choices: [{ delta: { reasoning_content: 'original reasoning' } }], usage: { prompt_tokens: 10, prompt_cache_hit_tokens: 5, completion_tokens: 2 } }) + '\n\ndata: [DONE]\n\n'
+  const wrapped = budgetedFetch({ quote: q, ledger, persist() {}, send: async () => {
+    assert.equal(ledger.requests.length, 1)
+    assert.ok(ledger.reservedCny > 0)
+    return new Response(content)
+  } })
+  const result = await wrapped('https://api.deepseek.com/v1/chat/completions', { method: 'POST', body: JSON.stringify({ model: q.models.text, max_tokens: 10 }) })
+  assert.equal(await result.text(), content)
+  await drainTextUsage()
+  assert.equal(ledger.textRequests, 1)
+  assert.equal(ledger.requests[0].usage.prompt_cache_hit_tokens, 5)
+  assert.ok(Math.abs(ledger.reservedCny - ledger.requests[0].costCny) < 1e-10)
+})
+
+test('ninth media submission is refused even when earlier settled costs leave room', async () => {
+  const { budgetedFetch } = await import('./c0-real-budget.mjs')
+  const ledger = { requests: Array.from({ length: 8 }, () => ({ model: REAL_MODELS.video })), reservedCny: 0 }
+  const wrapped = budgetedFetch({ quote, ledger, persist() {}, send() { assert.fail('ninth shot must not dispatch') } })
+  await assert.rejects(wrapped('https://api.apimart.ai/v1/videos/generations', { method: 'POST', body: JSON.stringify({ model: REAL_MODELS.video, resolution: '768P', duration: 8, aspect_ratio: '16:9' }) }), /C0_SHOT_LIMIT/)
 })

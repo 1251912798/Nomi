@@ -1,4 +1,4 @@
-import type { ProjectAgentWorkMode } from "../shared/projectAgentContracts";
+import type { ProjectAgentWorkMode } from '../shared/agentCapabilities/capabilityApprovalPolicy';
 
 /** Stable, short instructions appended to the model-facing system prompt. */
 export function workModeInstruction(mode: ProjectAgentWorkMode | undefined): string {

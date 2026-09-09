@@ -1,0 +1,11 @@
+{
+  "basis": "Original prompt/tools retained; only append tool-result text and tool-call names. Excludes call IDs, JSON wrappers and any forwarded reasoning.",
+  "firstInputBytes": 61746,
+  "additionalToolResultBytes": 2131,
+  "additionalToolNameBytes": 30,
+  "nextRequestInputBytesLowerBound": 63907,
+  "nextReservationCnyLowerBound": 0.796346880378,
+  "existingReservedCny": 1.2037977846999999,
+  "totalReservationCnyLowerBound": 2.000144665078,
+  "limitCny": 2
+}

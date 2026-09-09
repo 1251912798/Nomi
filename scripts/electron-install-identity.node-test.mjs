@@ -224,10 +224,14 @@ test('Cloudflare Workers dependency install never launches the desktop Electron 
 
 test('all Electron entry points share the identity gate and install repair', () => {
   const packageJson = JSON.parse(fs.readFileSync(path.join(sourceRepoRoot, 'package.json'), 'utf8'))
-  for (const script of ['build', 'dist', 'dist:mac:dir', 'test:e2e', 'test:mcp-journey', 'test:journeys']) {
+  assert.equal(packageJson.scripts.build, 'node scripts/package-build-stamp.mjs build')
+  const buildWrapper = fs.readFileSync(path.join(sourceRepoRoot, 'scripts/package-build-stamp.mjs'), 'utf8')
+  assert.match(buildWrapper, /for \(const script of \['check:electron-install', 'build:renderer', 'build:electron'\]\)/,
+    'the full-build wrapper must verify Electron before either compiler')
+  for (const script of ['dist', 'dist:mac:dir', 'test:e2e', 'test:mcp-journey', 'test:journeys']) {
     assert.match(
       packageJson.scripts[script],
-      /^(?:python3 scripts\/with-gates-lock\.py --command ")?pnpm run check:electron-install && /,
+      /^(?:python3 scripts\/with-gates-lock\.py --command ")?(?:node scripts\/package-build-stamp\.mjs verify && )?pnpm run check:electron-install && /,
       `${script} must verify Electron before doing work`,
     )
   }

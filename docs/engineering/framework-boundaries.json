@@ -1,6 +1,7 @@
 {
   "_comment": [
     "框架边界登记表（R29）。每个框架回答一句话：「它已经提供了什么，仓库里出现什么就说明我们又自己写了一份」。",
+    "2026-09-08 #646：旧宿主与旧运行时删除，pi 债归零；at 已逐项验证无删除路径，旧 scope 保留以拦截重新引入。",
     "门岗 = pnpm run check:framework-boundary（scripts/check-framework-boundary.mjs），债基线 = scripts/framework-boundary-baseline.json。",
     "登记一个新框架的顺序：先出四列表（它提供 / 我们用了 / 我们另写了 / 我们拆散了，每格 file:line 或文档 URL）→",
     "把「我们另写了」那一列翻译成这里的 forbidden 规则 → 跑 --update-baseline 把存量登记成债 → 给每条债绑方案和到期日。",
@@ -224,10 +225,9 @@
                     "why": "阶段 3c（方案 §1.6 第三行）：显式传 LANE_RETRY_POLICY = {enabled:true, maxRetries:3, baseDelayMs:1000}——仍是 pi 自己的 RetryPolicy，不是自研重试；写死的原因是 harness 默认无 jitter、无上限（上游 #8826 open），3 次上限下最长 4s 让 #8826 对我们无感。改数字要先改 laneHost 里那一个常量。"
                   },
                   "compaction": {
-                    "verdict": "debt",
-                    "due": "2026-09-21",
-                    "owner": "阶段 3b · 上下文压缩",
-                    "why": "压缩阈值直接决定长会话的成本与「模型忘了前面」的体感，而 Nomi 现在一个数字都没给、也没量过默认阈值在我们的转录形状（画布产物 + 分镜表）下会在第几轮触发。没量过就写常量是把偏好当判据，所以记债。"
+                    "verdict": "derived",
+                    "at": "electron/agentLane/laneContextBudget.mts:13",
+                    "why": "B1b: 80k 成本预算派生 pi reserveTokens；原生 compact 保留分镜/画布引用并附最新目录。见 docs/plan/2026-09-09-agent-lane-context-budget.md。"
                   },
                   "steeringMode": {
                     "verdict": "constant",
@@ -245,8 +245,9 @@
                     "reason": "花钱与写盘的工具串行执行是审批闸的前提：before_tool 钩子逐次问用户「这一步允不允许」，并行执行会让两条待批的调用同时挂在同一个人面前，而其中一条可能已经改了另一条要读的文稿。这是领域约束（本地创作 + 花钱要审批），不是实现偏好。"
                   },
                   "toProviderMessages": {
-                    "verdict": "unused",
-                    "why": "出站报文的最后一次改写只允许有一个地方（laneModelProvider.mts 的 onPayload）。这一格是第二个入口，用了就会出现「payload 探针抓到的和实际发出去的不一致」——那正是 2026-08 那批「断言前先证明你在你以为的现场」的成因。"
+                    "verdict": "derived",
+                    "at": "electron/agentLane/laneHost.mts:199",
+                    "reason": "公开的消息适配钩子负责将 nomi.input 的已验证附件声明转成 provider 内容，再交 pi convertToLlm。转录仍存用户输入与声明，不存附件字节；onPayload 保留协议观测职责，不承担附件解析。"
                   },
                   "entryProjectors": {
                     "verdict": "derived",
@@ -297,10 +298,9 @@
                     "why": "工具结果的投影走 laneProjection 的转录投影一条路；在钩子里再改一次结果会让投影和真实转录分叉（同一语义两份定义）。"
                   },
                   "before_compaction": {
-                    "verdict": "debt",
-                    "due": "2026-09-21",
-                    "owner": "阶段 3b · 上下文压缩",
-                    "why": "和 AgentHarnessOptions.compaction 同一件事：压缩策略没定，这个拦截点该不该用就没法裁。两格必须一起下裁决。"
+                    "verdict": "derived",
+                    "at": "electron/agentLane/laneContextBudget.mts:25",
+                    "why": "B1b: 80k 成本预算派生 pi reserveTokens；原生 compact 保留分镜/画布引用并附最新目录。见 docs/plan/2026-09-09-agent-lane-context-budget.md。"
                   },
                   "before_navigation": {
                     "verdict": "unused",
@@ -417,8 +417,8 @@
             },
             {
               "id": "private-session-snapshot-envelope",
-              "pattern": "nomi\\.pi-work-context",
-              "why": "自研快照信封（版本锁 + sha256）在复刻 SessionManager 已有的会话序列化与版本迁移，pi 升版时要我们自己跟。"
+              "pattern": "(?<![!=]==\\s*[\"'])nomi\\.pi-work-context",
+              "why": "自研快照信封（版本锁 + sha256）在复刻 SessionManager 已有的会话序列化与版本迁移，pi 升版时要我们自己跟。阶段 4 的只读格式比较不定义新信封，允许 ===/!== 检查旧格式；信封声明、常量与 writer 仍阻断。"
             }
           ]
         },

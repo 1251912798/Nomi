@@ -3,7 +3,7 @@ import ffmpeg from '@ffmpeg-installer/ffmpeg'
 import path from 'node:path'
 import http from 'node:http'
 import { execFileSync } from 'node:child_process'
-import { flattenRequestText, createAgentRuntimeFixture, FIXTURE_VENDOR } from '../agent-runtime-fixture.mjs'
+import { flattenRequestText, createAgentRuntimeFixture, FIXTURE_VENDOR, projectAgentRuntimeModels } from '../agent-runtime-fixture.mjs'
 
 import { hasToolResult, recorded } from '../agent-runtime-walk-support.mjs'
 
@@ -106,7 +106,7 @@ export async function createC0Fixture(rootDir, settingsDir, mediaDir, { videoDel
         response_mapping: { task_id: 'data.id', status: 'data.status', video_url: 'data.result.videos.0.url.0' } },
       statusMapping: { queued: ['submitted'], running: ['processing'], succeeded: ['completed'], failed: ['failed'] } })
     fs.writeFileSync(catalogFile, JSON.stringify(catalog))
-    return { text, calls, async close() {
+    return { text, calls, availableModels: await projectAgentRuntimeModels(rootDir, catalog.models), async close() {
       await text.close()
       for (const socket of sockets) socket.destroy()
       await new Promise((resolve) => server.close(resolve))
@@ -137,8 +137,9 @@ export async function createDryScheduler(root, settingsDir, mediaDir, report) {
     async assertNoGeneration(expect) { expect(fixture.calls).toEqual([]) },
     preparePlan() {
     plan = fixture.text.expectText({ label: 'C0 full script -> plan',
-      match: (body) => flattenRequestText(body).includes('小禾') && !hasToolResult(body, planId),
-      reply: { type: 'tool', id: planId, name: 'nomi_canvas_plan', args: {
+      match: (body) => flattenRequestText(body).includes('小禾') && flattenRequestText(body).includes('可用模型')
+        && fixture.availableModels.every((entry) => flattenRequestText(body).includes(`modelKey=${entry.modelKey}`)) && !hasToolResult(body, planId),
+      reply: { type: 'tool', id: planId, name: 'nomi_storyboard_write', args: {
         operation: 'propose_storyboard_plan', title: '日落前的一分钟', anchors: [], shots,
       } },
     })

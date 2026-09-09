@@ -23,6 +23,7 @@ const BASELINE_ROOT = path.join(REPO_ROOT, 'tests/ux/design-lab/__baselines__')
  * 解析顺序 = 文件名排序，与汇总口的拼接顺序一一对应（文件名带数字前缀就是为了这个）。
  */
 export const LAB_SCREENS = {
+  'creation-columns': { registryDir: path.join(REPO_ROOT, 'src/devlab/designLab/creationColumns/states'), baselineDir: path.join(BASELINE_ROOT, 'creation-columns') },
   'process-feedback': { registryDir: path.join(REPO_ROOT, 'src/devlab/designLab/processFeedback/states'), baselineDir: path.join(BASELINE_ROOT, 'process-feedback') },
   'settings-sound': { registryDir: path.join(REPO_ROOT, 'src/devlab/designLab/settingsSound/states'), baselineDir: path.join(BASELINE_ROOT, 'settings-sound') },
   'catalog-liveness': { registryDir: path.join(REPO_ROOT, 'src/devlab/designLab/catalogLiveness/states'), baselineDir: path.join(BASELINE_ROOT, 'catalog-liveness') },

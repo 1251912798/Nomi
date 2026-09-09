@@ -1,0 +1,100 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-09-lane-surface-authority",
+  "problem_type": "Resident tool visibility mistaken for surface execution authority",
+  "symptom": "CI rejects resident delete schema; real creation Composer can delete persisted canvas nodes after confirmation.",
+  "direct_cause": "B1c made schemas resident while lane before_tool checked approval but never matched renderer mutation port against the consumed Composer target.",
+  "class_root": "Approval must not expand destructive renderer actions beyond the consumed Composer surface; schema residency cannot substitute for this execution check.",
+  "affected_population": [
+    "Resident creation, canvas and timeline turns, including queued and restored inputs"
+  ],
+  "scope_paths": [
+    "electron/agentLane/laneHost.mts"
+  ],
+  "entry_points": [
+    "Resident creation delete_canvas_nodes",
+    "Resident cross-surface canvas and timeline mutations"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "Internal application authority contract; existing pi before_tool block API already used in laneHost, no new external API or format.",
+  "invariants": [
+    "A destructive renderer capability requires the consumed Composer target kind to match its canonical targetKind.",
+    "Mismatch or missing target is denied before preparation, approval and execution; schemas remain resident.",
+    "Reversible workflows may intentionally cross surfaces, including creation-to-storyboard planning."
+  ],
+  "generality_proof": "Resolve operation-aware capability through the shared catalog and compare destructive renderer capability targetKind for all tool names/providers. Native coding retains its independent unlock. Reversible canvas/document/timeline writes retain their existing domain and approval authority, since creation-to-storyboard intentionally crosses surfaces.",
+  "shared_boundaries": [
+    {
+      "path": "electron/agentLane/laneHost.mts",
+      "symbol": "openLane before_tool",
+      "responsibility": "Check consumed input target before domain preparation and approval."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "tests/ux/resident-composer-receipt-fix.e2e.mjs",
+      "entry_point": "creation delete probe",
+      "disposition": "enforced",
+      "evidence": "Real HTTP loopback and durable lane tool result plus full canvas equality."
+    },
+    {
+      "path": "tests/agent-runtime/lane-surface-authority.test.mts",
+      "entry_point": "canvas.delete missing/document/canvas targets; reversible canvas.write, timeline.write, document.write controls",
+      "disposition": "enforced",
+      "evidence": "Missing/document targets deny canvas.delete before lifecycle prepare; canvas target executes. Reversible canvas.write/timeline.write/document.write retain existing cross-surface behavior."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Every resident model can call cross-surface mutations now that all schemas remain visible.",
+    "same_class_scan": [
+      "rg not.toContain and toolNames across repository found 3 stale surface/group assertions in two UX walks.",
+      "Read laneHost before_tool, laneDesktopTools, laneExtendedDesktopPorts and native assembly; canvas.delete and timeline.write share lifecycle entry.",
+      "Legacy agentChatPolicy tests concern the separate semantic MCP/Host alias catalog, not lane residency; retired tool absence checks remain valid."
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "electron/agentLane/laneHost.mts",
+    "invariant": "Destructive renderer capability targetKind matches consumed Composer target.",
+    "failure_mode": "pi before_tool block returns surface_authority_denied as an error tool result.",
+    "exception_policy": "none",
+    "strategy": "Derive authority from existing canonical capability execution port and immutable consumed input, never the newest queued draft or visible schema.",
+    "artifacts": [
+      "electron/agentLane/laneHost.mts"
+    ]
+  },
+  "regression_tests": [
+    "tests/agent-runtime/lane-surface-authority.test.mts",
+    "tests/ux/resident-composer-receipt-fix.e2e.mjs",
+    "tests/ux/agent-real-user-conversation.walk.mjs"
+  ],
+  "class_regression_tests": [
+    "tests/agent-runtime/lane-surface-authority.test.mts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "tests/ux/resident-composer-receipt-fix.e2e.mjs",
+      "tests/ux/agent-real-user-conversation.walk.mjs"
+    ],
+    "rationale": "Remove group-unlock-as-visibility assertions and redundant group request fixtures; retain execution approval checks."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "No dependency behavior change: use the existing pi before_tool block API and error-result persistence.",
+    "exit_criteria": []
+  },
+  "migration": "No storage migration. Old Composer inputs without target fail closed for destructive renderer writes. Reversible cross-surface workflows and separately authorized non-Composer domain harnesses retain existing behavior.",
+  "residual_risks": [
+    "Authority is scoped to the consumed Composer target; verified domain ports remain responsible for sender, revision, identifiers and current project binding."
+  ],
+  "invariant_owner_layer": {
+    "layer": "electron/agentLane/laneHost.mts",
+    "tests": [
+      "tests/agent-runtime/lane-surface-authority.test.mts",
+      "tests/ux/resident-composer-receipt-fix.e2e.mjs"
+    ],
+    "why": "The lane execution entrance sees the consumed Composer context and operation-aware canonical tool contract before any lifecycle effect."
+  }
+}

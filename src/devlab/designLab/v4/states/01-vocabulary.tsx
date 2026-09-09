@@ -101,6 +101,8 @@ function LaneReceiptCell({ lane }: { lane: (rejectReason: string) => LaneSnapsho
   const labels = useV4Labels()
   const receipt = laneDrivenReceipt(lane(fx.t('agentPanelV4.slotRejectSample')), {
     toolLabel: () => fx.t('agentPanelV4.fixtureReadTimeline'),
+    toolSummary: () => undefined,
+    toolFailure: () => undefined,
     thinkingLabel: fx.t('agentPanelV4.thinkingLabel'),
     formatTokens: (value) => String(value),
     formatCost: (usd) => `$${usd.toFixed(2)}`,

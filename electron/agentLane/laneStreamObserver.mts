@@ -69,11 +69,13 @@ export function observeNativeStream(
   const fail = (error: unknown) => {
     if (closed) return;
     closed = true;
+    // Snapshot fault evidence at the admission cutoff. Upstream return()/abort
+    // cleanup may synchronously mutate its shared partial accumulator.
+    try { options.onFault?.(error); } catch { /* fault delivery cannot reopen the stream */ }
     release();
     rejectFault(error);
     output.end();
     controller.abort(error);
-    try { options.onFault?.(error); } catch { /* fault delivery cannot reopen the stream */ }
   };
   const onAbort = () => fail(options.signal?.reason ?? new DOMException('Nomi model cancelled', 'AbortError'));
   const arm = (phase: StreamTimeoutPhase, milliseconds: number) => {

@@ -39,6 +39,7 @@ type AnyCapabilityContract = CapabilityContract<unknown, unknown>;
 
 /** 两个 profile。名字与 `check:model-schema` 的 profile 列、方案 §3.1 的表头逐字一致。 */
 export type ToolProfile = "internal" | "mcp";
+export type LaneDomainToolGroup = "timeline" | "production" | "generation" | "media" | "maintenance";
 
 /**
  * 一个工具**自己声明**它会造成什么后果（阶段 2 第 ⑨ 维）。
@@ -55,11 +56,23 @@ export interface ModelFacingToolEffects {
   readonly billable: boolean;
   /**
    * 改动怎么收回：
-   * - `none` —— 只读，没有要收回的东西；
+   * - `none` —— 不保证能撤回；只读没有改动，不可逆写入也不能承诺撤销；
    * - `proposal` —— 只是一份提案，用户还要点接受（画布这一族全是）；
    * - `undoable` —— 已经落进领域状态，但进了撤销栈（文稿写入这一族）。
    */
   readonly reversal: "none" | "proposal" | "undoable";
+}
+
+/** Deferred descriptors inherit risk from the capability owner, never from a mutates shortcut. */
+export function modelEffectsForCapability(
+  contract: Pick<AnyCapabilityContract, "effect" | "effectClass">,
+): ModelFacingToolEffects {
+  const mutates = contract.effect !== "read";
+  return {
+    mutates,
+    billable: contract.effect === "paid" || contract.effectClass === "spend",
+    reversal: mutates && contract.effectClass === "reversible_local" ? "undoable" : "none",
+  };
 }
 
 /**
@@ -117,6 +130,10 @@ export interface ModelFacingToolExample {
 export interface ModelFacingToolSpec {
   /** 归属契约。MCP profile 按它归并成一个对外工具。 */
   readonly contractId: string;
+  /** Deferred internal menu group. Undefined means initially visible. */
+  readonly internalGroup?: LaneDomainToolGroup;
+  /** Mixed read/write tools resolve approval against the actual domain operation. */
+  readonly operationCapabilityIds?: Readonly<Record<string, string>>;
   /** 别名 = internal profile 的工具名。一别名一工具。 */
   readonly name: string;
   /**
@@ -319,6 +336,13 @@ export function mcpAnnotationsFor(contract: AnyCapabilityContract): McpProfileTo
   return undefined;
 }
 
+/** Shared description for both descriptor profiles and the real MCP publication path. */
+export function mcpToolDescription(contract: AnyCapabilityContract, specs: readonly ModelFacingToolSpec[]): string {
+  const description = contract.projections.mcp?.description;
+  if (!description) throw new Error(`Missing MCP projection metadata for ${contract.id}`);
+  return [description, ...new Set(specs.flatMap(spec => spec.promptGuidelines ?? []))].join("\n");
+}
+
 /**
  * 一个契约的若干别名说明书 → 一个对外 MCP 工具。
  *
@@ -392,7 +416,7 @@ export function projectMcpTool(
   return Object.freeze({
     contractId: contract.id,
     name,
-    description,
+    description: mcpToolDescription(contract, specs),
     inputSchema: Object.freeze({
       type: "object",
       properties,
@@ -537,6 +561,17 @@ export function mcpFingerprintEntries(tool: McpProfileTool): Record<string, Json
   }));
 }
 
+/** Compare only aliases declared for both profiles; missing declared aliases still fail. */
+export function declaredProfileDrift(
+  internal: readonly ModelFacingToolSpec[],
+  mcp: McpProfileTool,
+): string[] {
+  return profileDriftBetween(
+    internalFingerprintEntries(internal.filter(spec => projectsToProfile(spec, "mcp"))),
+    mcpFingerprintEntries({ ...mcp, specs: mcp.specs.filter(spec => projectsToProfile(spec, "internal")) }),
+  );
+}
+
 function narrowEnum(published: JsonSchemaObject, own: JsonSchemaObject): JsonSchemaObject {
   const publishedEnum = published.enum;
   const ownEnum = own.enum;
@@ -644,4 +679,11 @@ export function prepareMcpArguments(
       ? prepared as Record<string, unknown>
       : {}),
   };
+}
+
+/** Invalid/missing operations retain the conservative base contract until schema validation rejects them. */
+export function modelToolCapabilityId(spec: ModelFacingToolSpec, args: unknown): string {
+  const operation = args && typeof args === "object" && !Array.isArray(args)
+    ? (args as Record<string, unknown>).operation : undefined;
+  return typeof operation === "string" ? spec.operationCapabilityIds?.[operation] ?? spec.contractId : spec.contractId;
 }

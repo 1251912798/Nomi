@@ -128,8 +128,6 @@ async function runProductionTextPlanner(input: {
     prompt,
     displayPrompt: input.instruction ? '修改制作稿件' : '生成制作剧本',
     ...(projectId ? { projectId } : {}),
-    skillKey: 'workbench.production.script-planner',
-    skillName: '剧本初稿规划',
   })
   const text = response.text?.trim()
   if (!text) throw new Error('剧本规划没有返回可审阅内容')

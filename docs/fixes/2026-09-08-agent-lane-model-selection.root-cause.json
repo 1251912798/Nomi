@@ -1,0 +1,122 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-08-agent-lane-model-selection",
+  "problem_type": "Explicit model selection lost behind restored SDK configuration",
+  "symptom": "Selecting another model or provider on an existing conversation reopens the lane but subsequent turns retain the old model identity and never reach the newly selected endpoint.",
+  "direct_cause": "AgentHarness options.model only seeds new lanes. Restored lane configuration wins, while openLane never calls the public setModel method for the explicit Nomi selection.",
+  "class_root": "The shared host does not distinguish a constructor seed, an explicit changed selection, and reopening the same persisted model identity.",
+  "affected_population": [
+    "Existing conversations selecting another model",
+    "Provider and protocol changes",
+    "Cold reopen with an explicit model selection",
+    "Conversations with previously unlocked tools"
+  ],
+  "scope_paths": [
+    "electron/agentLane/laneHost.mts"
+  ],
+  "entry_points": [
+    "Workspace configureModel",
+    "Direct host open of an existing lane",
+    "Cold workspace reopen"
+  ],
+  "external_sources": [
+    {
+      "kind": "source-code",
+      "url": "https://github.com/earendil-works/pi/blob/v0.85.1/packages/agent/src/harness/runtime/harness.ts",
+      "checked_at": "2026-09-08",
+      "purpose": "Installed 0.85.1 dist/harness/runtime/harness.js lines 87-113 and 278-291 confirm seed-only constructor model semantics and restoration of persisted lane configuration."
+    },
+    {
+      "kind": "source-code",
+      "url": "https://github.com/earendil-works/pi/blob/v0.85.1/packages/agent/src/harness/runtime/lane.ts",
+      "checked_at": "2026-09-08",
+      "purpose": "Installed public AgentLane.setModel declaration and runtime/lane.js lines 1282-1291 update the durable model identity while spreading the remaining configuration."
+    }
+  ],
+  "invariants": [
+    "Every executing lane binds the explicit Nomi-selected model through the SDK's public configuration API before exposing its projection or accepting input.",
+    "Model selection preserves transcript, session identity and SDK-persisted activeToolNames.",
+    "Model or provider replacement uses the selected endpoint and model on the actual request.",
+    "Reopening an unchanged provider/model identity performs no configuration write and preserves saved bytes, updatedAt and list ordering."
+  ],
+  "generality_proof": "Both workspace model replacement and direct or cold host openings converge on openLane, independent of provider, protocol or whether the session already exists.",
+  "shared_boundaries": [
+    {
+      "path": "electron/agentLane/laneHost.mts",
+      "symbol": "openLane",
+      "responsibility": "Bind the explicitly supplied model after acquiring the SDK lane and before publishing or executing it."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "electron/agentLane/laneWorkspace.mts",
+      "entry_point": "configureModel and switchTo",
+      "disposition": "enforced",
+      "evidence": "Workspace closes and reopens the same lane with the new selection; real HTTP regressions cover both same-provider model and cross-protocol provider changes."
+    },
+    {
+      "path": "electron/agentLane/laneHost.mts",
+      "entry_point": "openLane existing session",
+      "disposition": "enforced",
+      "evidence": "Direct host reopen must replace only the stored model identity while retaining tools actually added by a previous SDK tool result."
+    },
+    {
+      "path": "electron/agentLane/laneHistory.mts",
+      "entry_point": "openLaneHistory",
+      "disposition": "not-affected",
+      "evidence": "History has no configured model and does not execute turns; it remains available without credentials."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Every persisted lane can retain a stale constructor seed after an explicit selection, regardless of the selected provider or model.",
+    "same_class_scan": [
+      "Inspected configureModel -> switchTo -> openLane and cold workspace construction.",
+      "Searched production setModel/setActiveTools uses and checked SDK restoration versus constructor seed behavior.",
+      "Checked saved history opening and real addedToolNames restoration for state that must not be reset."
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "electron/agentLane/laneHost.mts",
+    "invariant": "The executing SDK lane model identity equals the explicit Nomi-selected provider and model.",
+    "failure_mode": "A rejected public model update rejects host construction before any user input is accepted, with existing cleanup releasing resources.",
+    "exception_policy": "none",
+    "strategy": "Read current model identity through the public SDK API and call setModel only when provider or modelId differs; leave persisted active-tool configuration untouched.",
+    "artifacts": [
+      "electron/agentLane/laneHost.mts"
+    ]
+  },
+  "regression_tests": [
+    "tests/agent-runtime/lane-model-selection.test.mts"
+  ],
+  "class_regression_tests": [
+    "tests/agent-runtime/lane-model-selection.test.mts"
+  ],
+  "legacy_paths": {
+    "status": "not-applicable",
+    "removed_paths": [],
+    "rationale": "The existing host attachment path is repaired in place; no fallback or alternate host is added."
+  },
+  "dependency_lifecycle": {
+    "decision": "retain-with-exit",
+    "current": "@earendil-works/pi-agent-core 0.85.1",
+    "target": "A supported pi release preserving explicit durable lane configuration APIs.",
+    "rationale": "Seed-only construction is deliberate SDK behavior. Nomi must explicitly apply the user's selected model through setModel.",
+    "exit_criteria": [
+      "Rerun actual HTTP selection, provider change, cold reopen and added-tool retention fixtures on any SDK configuration API upgrade.",
+      "Same-model reopen must preserve exact JSONL bytes and public session metadata including updatedAt."
+    ]
+  },
+  "migration": "No format migration. Existing lane model configuration is updated through the public API on normal execution attachment; transcript and tools remain intact.",
+  "residual_risks": [
+    "The parent owns the real Electron model-picker walkthrough; these tests prove the actual production workspace and host reach the selected HTTP model."
+  ],
+  "invariant_owner_layer": {
+    "layer": "electron/agentLane/laneHost.mts",
+    "tests": [
+      "tests/agent-runtime/lane-model-selection.test.mts"
+    ],
+    "why": "This is the first common owner receiving both a persisted SDK lane and the explicit current model selection."
+  }
+}

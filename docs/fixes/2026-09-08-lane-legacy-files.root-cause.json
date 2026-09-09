@@ -1,0 +1,101 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-08-lane-legacy-files",
+  "problem_type": "legacy_archive_file_identity_and_async_lock",
+  "symptom": "Legacy cutover releases its synchronous lock before async import settles and can read through replaced parent directories.",
+  "direct_cause": "The old lock returns a promise inside synchronous finally; source reads do not preserve opened file identity across filesystem operations.",
+  "class_root": "Migration IO needs one private directory/file boundary and a lock owner lasting through the whole asynchronous transaction.",
+  "affected_population": [
+    "v4 context records and direct pi envelopes",
+    "host snapshots",
+    "unbound AI SDK histories"
+  ],
+  "scope_paths": [
+    "electron/agentLane/laneLegacyFiles.ts"
+  ],
+  "entry_points": [
+    "createLegacyFileAccess",
+    "withLegacyMigrationLock"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "This preserves the approved local archive/cutover protocol using Node filesystem APIs and existing durability/jsonFile owners.",
+  "invariants": [
+    "Only regular single-link source files under captured directories may be read or removed.",
+    "Original bytes remain in verified archives before source unlink.",
+    "Live locks remain owned across await; release checks inode identity.",
+    "Archive publication never overwrites a different existing file."
+  ],
+  "generality_proof": "All source, archive, manifest and lock IO use captured directory identities and no-follow opened file identity checks.",
+  "shared_boundaries": [
+    {
+      "path": "electron/agentLane/laneLegacyFiles.ts",
+      "symbol": "createLegacyFileAccess",
+      "responsibility": "Protect migration source/archive file identity and exact bytes."
+    },
+    {
+      "path": "electron/agentLane/laneLegacyFiles.ts",
+      "symbol": "withLegacyMigrationLock",
+      "responsibility": "Keep exclusive migration ownership across await and verify release identity."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "electron/agentLane/laneLegacyMigration.mts",
+      "entry_point": "migrate",
+      "disposition": "enforced",
+      "evidence": "Production migration awaits withLegacyMigrationLock across archive, append, cold verification and source cleanup; old synchronous cutover caller was removed in step 4."
+    },
+    {
+      "path": "electron/agentLane/laneLegacyFiles.ts",
+      "entry_point": "createLegacyFileAccess",
+      "disposition": "enforced",
+      "evidence": "New transaction uses this boundary for all three sources and archive writes."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Any concurrent opener, interrupted archive publication or replaced source path can trigger this IO class.",
+    "same_class_scan": [
+      "Read projectAgentCutoverManifest lock finally and projectAgentMigration archive publication.",
+      "Read projectAgentRepository no-follow/fstat parent identity checks and jsonFile durability owner."
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "electron/agentLane/laneLegacyFiles.ts",
+    "invariant": "No file operation escapes captured roots and the lock survives every awaited transaction step.",
+    "failure_mode": "Content-free errors preserve source and conflicting archive/manifest files.",
+    "exception_policy": "none",
+    "strategy": "Private filesystem admission plus await in the exclusive lock lifecycle.",
+    "artifacts": [
+      "electron/agentLane/laneLegacyFiles.ts"
+    ]
+  },
+  "regression_tests": [
+    "tests/agent-runtime/lane-legacy-files.test.mts"
+  ],
+  "class_regression_tests": [
+    "tests/agent-runtime/lane-legacy-files.test.mts"
+  ],
+  "legacy_paths": {
+    "status": "not-applicable",
+    "removed_paths": [],
+    "rationale": "Old archive-only cutover is not called by the new migration and is deleted with the old host in step 4."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "Uses existing Node filesystem, durability and atomic JSON helpers; no dependency installed.",
+    "exit_criteria": []
+  },
+  "migration": "This subtask only provides tested private IO and locking; the following transaction binds it to fixed source paths.",
+  "residual_risks": [
+    "Production transaction and workspace admission are the next subtask; real project files remain untouched."
+  ],
+  "invariant_owner_layer": {
+    "layer": "electron/agentLane/laneLegacyFiles.ts",
+    "tests": [
+      "tests/agent-runtime/lane-legacy-files.test.mts"
+    ],
+    "why": "Earliest common boundary for every migration file and async lock operation."
+  }
+}

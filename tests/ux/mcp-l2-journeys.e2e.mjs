@@ -1,3 +1,4 @@
+import { require as tsxRequire } from 'tsx/cjs/api'
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import path from 'node:path'
@@ -8,7 +9,7 @@ import { startFakeApimartServer, writeFakeApimartCatalog } from './_mcpL2Fixture
 import { expectAbsent, expectHidden, expectVisible, proveProbe } from './_assert.mjs'
 // 断连取消那条诊断的事件名派生自真相源（两条启动路共用的常量），不手抄散文：
 // 手抄的那份在日志收口时静默漂成假红，正是本轨踩到的坑。
-const { MCP_CANCELLED_IN_FLIGHT_EVENT } = await import('../../dist-electron/capabilityCore/mcpStdioDiagnostics.js')
+const { MCP_CANCELLED_IN_FLIGHT_EVENT } = tsxRequire('../../electron/capabilityCore/mcpStdioDiagnostics.ts', import.meta.url)
 
 const dirs = makeIsolatedDirs('nomi-mcp-l2-')
 const packagedBundle = process.argv.includes('--packaged')

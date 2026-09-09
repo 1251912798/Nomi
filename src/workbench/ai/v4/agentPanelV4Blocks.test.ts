@@ -11,6 +11,8 @@ import { V4Intervention, V4Queue, V4TaskCard } from './AgentPanelV4Cards'
 import { V4ContextRing } from './AgentPanelV4Context'
 import { V4AssistantMessage, V4Thinking, V4UserBubble } from './AgentPanelV4Message'
 import { V4ToolReceipt } from './AgentPanelV4Receipt'
+import { AgentPanelV4Panel, V4FlowRow } from './AgentPanelV4Panel'
+import ReconcileDeviationCard from '../../generationCanvas/components/ReconcileDeviationCard'
 import { AgentPanelV4Composer } from './AgentPanelV4Composer'
 import type { InterventionData, ToolReceipt, V4InterventionKind, V4TaskStatus, V4ToolStatus } from './agentPanelV4Types'
 
@@ -113,12 +115,31 @@ describe('③ 一行收据 · 七态', () => {
     expect(withBody).toContain('<details')
   })
 
+  it('the collapsed tool group preserves the existing undo button on its exact receipt', () => {
+    const markup = html(el(V4FlowRow, { darkMode: false, item: {
+      kind: 'tool-group', label: 'Canvas', action: 'canvas', status: 'output-available', count: 2,
+      trailing: 'Done', receipts: [base, { ...base, toolCallId: 'c2', undoable: true }],
+    }, handlers: { onUndoTool: () => undefined } }))
+    expect(markup).toContain('撤销')
+    expect(markup.match(/<button/g)).toHaveLength(1)
+  })
+
   it('可撤销的行在行尾多一个撤销', () => {
     expect(html(el(V4ToolReceipt, { receipt: { ...base, undoable: true }, statusLabel: 'x', undoLabel: '撤销' }))).toContain('撤销')
   })
 })
 
 describe('④ 任务卡 · 五态', () => {
+  it('renders the real candidate thumbnail and cannot adopt an unreviewed candidate', () => {
+    const markup = html(el(V4TaskCard, {
+      task: { title: 'x', action: 'image', status: 'complete', candidates: [
+        { tag: '1', artifactId: 'image-1', thumbnailUrl: 'nomi-local://asset/project-a/image.png', canAdopt: false },
+      ] }, labels: taskLabels, onAdopt: () => undefined,
+    }))
+    expect(markup).toContain('<img')
+    expect(markup).toContain('src="nomi-local://asset/project-a/image.png"')
+    expect(markup).not.toContain('<button')
+  })
   it.each(TASK_STATUSES)('%s 渲得出且带状态词', (status) => {
     const markup = html(el(V4TaskCard, { task: { title: '生成 3 张图片', action: 'image', status }, labels: taskLabels }))
     expect(markup).toContain(`data-status="${status}"`)
@@ -127,8 +148,8 @@ describe('④ 任务卡 · 五态', () => {
 
   it('采用的候选是 accent 描边 + 角标，不是把整格填成 accent 底', () => {
     const markup = html(el(V4TaskCard, {
-      task: { title: 'x', action: 'image', status: 'complete', candidates: [{ tag: '1', adopted: true }, { tag: '2' }] },
-      labels: taskLabels,
+      task: { title: 'x', action: 'image', status: 'complete', candidates: [{ tag: '1', adopted: true }, { tag: '2', canAdopt: true }] },
+      labels: taskLabels, onAdopt: () => undefined,
     }))
     expect(markup).toContain('outline-nomi-accent')
     expect(markup).toContain('data-adopted="true"')
@@ -176,6 +197,18 @@ describe('⑤ 介入槽 · 八种内容体', () => {
     expect(hasEscalate('credential')).toBe(false)
     // 计划槽画布上没有「不再问」也没有「不要」：它是清单，不勾就是不做。
     expect(hasEscalate('plan')).toBe(false)
+  })
+
+  it.each(['汤先到，人后到', '镜头 2：端起汤碗'])('计划人话与技术详情分开且默认折叠：%s', (label) => {
+    const markup = html(el(V4Intervention, {
+      data: { kind: 'plan', title: '计划', plan: [{ label, technical: '{"kind":"text"}', detail: 'MiniMax-H3 · 768P · 8s · 16:9', checked: true }] },
+      labels: slotLabels,
+    }))
+    expect(markup).toContain(label)
+    expect(markup).toContain('MiniMax-H3 · 768P · 8s · 16:9')
+    expect(markup).toMatch(/<details[^>]*>/)
+    expect(markup).not.toMatch(/<details[^>]* open/)
+    expect(markup).not.toMatch(/<label[^>]*>[^]*?&quot;kind&quot;[^]*?<\/label>/)
   })
 
   it('计划槽底栏是「主动作 · 改一下 …… 收起 ▴」，不带「不要」', () => {
@@ -315,5 +348,32 @@ describe('⑧ composer 底栏逐件', () => {
   it('没有 onValueChange 时 textarea 只读——受控件不假装自己能编辑', () => {
     expect(html(el(AgentPanelV4Composer, { value: '只读' }))).toContain('readonly')
     expect(html(el(AgentPanelV4Composer, { value: '可编辑', onValueChange: () => undefined }))).not.toContain('readonly')
+  })
+})
+
+
+it('the real panel mounts the approved domain deviation card at the end of its flow', () => {
+  const markup = html(el(AgentPanelV4Panel, {
+    flow: [{ kind: 'assistant', text: 'Completed image', status: 'complete' }], context: usage,
+    flowTail: el(ReconcileDeviationCard, {
+      deviations: [{ kind: 'content', where: '镜头 1', field: '构图', expected: '杯子居中', actual: '偏左', reason: 'F_VERIFY_LOW' }],
+      onDismiss: () => undefined, onAiFix: () => undefined,
+    }),
+  }))
+  expect(markup).toContain('data-reconcile-deviation-card="true"')
+  expect(markup.indexOf('F_VERIFY_LOW')).toBeGreaterThan(markup.indexOf('Completed image'))
+  expect(markup.indexOf('F_VERIFY_LOW')).toBeLessThan(markup.indexOf('data-v4-block="composer"'))
+})
+
+
+describe('thinking disclosure boundary', () => {
+  it('keeps the long body outside the summary and closed by default', () => {
+    const text = 'reasoning body '.repeat(80)
+    const markup = html(el(V4Thinking, { label: 'Thinking', meta: '', text, streaming: false }))
+    expect(markup).toContain('<details')
+    expect(markup).not.toMatch(/<details[^>]* open/)
+    expect(markup.split('</summary>')[0]).not.toContain(text)
+    expect(markup.split('</summary>')[1]).toContain(text)
+    expect(markup).not.toContain('inline-flex h-7')
   })
 })

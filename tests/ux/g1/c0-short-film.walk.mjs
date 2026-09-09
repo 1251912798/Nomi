@@ -19,7 +19,8 @@ import { parseArgs } from 'node:util'
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..')
 const { values } = parseArgs({ options: {
   'dry-run': { type: 'boolean' }, real: { type: 'boolean' },
-  'planner-model': { type: 'string' }, packaged: { type: 'string' }, help: { type: 'boolean' },
+  'plan-only': { type: 'boolean' }, 'planner-model': { type: 'string' }, 'planner-vendor': { type: 'string' }, 'output-dir': { type: 'string' },
+  packaged: { type: 'string' }, help: { type: 'boolean' },
 }, allowPositionals: false })
 if (values.help) {
   console.log('node tests/ux/g1/c0-short-film.walk.mjs (--dry-run | --real) [--packaged /absolute/Nomi.app]')
@@ -28,7 +29,7 @@ if (values.help) {
 }
 if (Boolean(values['dry-run']) === Boolean(values.real)) throw new Error('Select exactly one of --dry-run / --real')
 if (values.packaged) values.packaged = path.resolve(root, values.packaged)
-const outputDir = path.join(root, 'tests/ux/shots/g1-c0')
+const outputDir = values['output-dir'] ? path.resolve(root, values['output-dir']) : path.join(root, 'tests/ux/shots/g1-c0')
 fs.mkdirSync(outputDir, { recursive: true })
 const attemptDir = process.env.NOMI_SWEEP_CASE_DIR || fs.mkdtempSync(path.join(outputDir, 'attempt-'))
 fs.mkdirSync(attemptDir, { recursive: true })
@@ -109,7 +110,7 @@ try {
   }
   if (executablePath) report.executableSha256 = hash(executablePath)
   scheduler = values.real
-    ? await (await import('./c0-real-scheduler.mjs')).createRealScheduler({ tempRoot, attemptDir, outputDir, report, plannerModel: values['planner-model'] })
+    ? await (await import('./c0-real-scheduler.mjs')).createRealScheduler({ tempRoot, attemptDir, outputDir, report, planOnly: values['plan-only'], plannerModel: values['planner-model'], plannerVendor: values['planner-vendor'] })
     : await createDryScheduler(root, settingsDir, path.join(attemptDir, 'fixture-media'), report)
   const MODEL = scheduler.model
   const launch = async () => {
@@ -144,6 +145,7 @@ try {
     await win.reload({ waitUntil: 'domcontentloaded' })
     await clickOrFail(win.getByRole('button', { name: /^新建空白项目/ }), '创建 C0 空项目')
     await expect(win.locator(DOCUMENT)).toBeVisible()
+    await scheduler.selectPlanner?.(win)
     const projects = await win.evaluate(() => window.nomiDesktop.projects.listAsync())
     expect(projects).toHaveLength(1)
     projectId = projects[0].id
@@ -186,6 +188,10 @@ try {
     await clickOrFail(win.locator('[data-storyboard-id]').first(), '进入可编辑分镜表')
     await expect(win.getByRole('textbox', { name: '方案标题', exact: true })).toHaveValue('日落前的一分钟')
   }, '分镜审批 1 次')
+  if (values['plan-only']) {
+    await scheduler.finish({ projectRoot })
+    report.result = `${report.mode}-plan-only-passed`
+  } else {
   let spendDialog, spendProof, readyNodeIds = []
   await step('03', '分镜物化到画布', '八个节点顺序、参数对应；生成前仍零媒体请求', async () => {
     await clickOrFail(win.locator('[data-storyboard-batch="true"]'), '生成未生成的八镜')
@@ -298,6 +304,7 @@ try {
     report.review = 'Pending human inspection: inspect story, identity, continuity, audio and all screenshots.'
   })
   report.result = collection?.walk.deviations.length ? 'collected-deviations' : `${report.mode}-assertions-passed-review-pending`
+  }
 } catch (error) {
   if (error.code === 'CREDENTIAL_BLOCKED') {
     recordBlocked(attemptDir, report, error.receipt, ['00','01','02','03','04','05','06','07'])
