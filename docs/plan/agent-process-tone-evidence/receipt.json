@@ -1,0 +1,419 @@
+{
+  "paidCalls": 0,
+  "toolCalls": 3,
+  "completedTurns": 2,
+  "evidence": {
+    "light": {
+      "hierarchy": {
+        "reference": {
+          "lightness": 0.5,
+          "weight": 400
+        },
+        "rows": [
+          {
+            "text": "用了 2 个工具",
+            "lightness": 0.5,
+            "weight": 400
+          },
+          {
+            "text": "读取文稿",
+            "lightness": 0.5,
+            "weight": 400
+          },
+          {
+            "text": "×2",
+            "lightness": 0.5,
+            "weight": 400
+          },
+          {
+            "text": "读取文稿",
+            "lightness": 0.5,
+            "weight": 400
+          },
+          {
+            "text": "只是看一眼，不改动任何东西",
+            "lightness": 0.5,
+            "weight": 400
+          },
+          {
+            "text": "输入",
+            "lightness": 0.5,
+            "weight": 400
+          },
+          {
+            "text": "{ \"scope\": \"full\" }",
+            "lightness": 0.5,
+            "weight": 400
+          },
+          {
+            "text": "输出",
+            "lightness": 0.5,
+            "weight": 400
+          },
+          {
+            "text": "清晨，女孩推开窗户，看见远处的山。",
+            "lightness": 0.5,
+            "weight": 400
+          },
+          {
+            "text": "读取文稿",
+            "lightness": 0.5,
+            "weight": 400
+          },
+          {
+            "text": "只是看一眼，不改动任何东西",
+            "lightness": 0.5,
+            "weight": 400
+          },
+          {
+            "text": "输入",
+            "lightness": 0.5,
+            "weight": 400
+          },
+          {
+            "text": "{ \"scope\": \"full\" }",
+            "lightness": 0.5,
+            "weight": 400
+          },
+          {
+            "text": "输出",
+            "lightness": 0.5,
+            "weight": 400
+          },
+          {
+            "text": "清晨，女孩推开窗户，看见远处的山。",
+            "lightness": 0.5,
+            "weight": 400
+          }
+        ],
+        "violations": []
+      },
+      "focuses": [
+        {
+          "mouse": {
+            "visible": false,
+            "color": "oklab(0.5 0.00173648 0.00984808)",
+            "style": "none"
+          },
+          "keyboard": {
+            "visible": true,
+            "width": "2px",
+            "color": "oklch(0.55 0.13 250)",
+            "accent": "oklch(0.55 0.13 250)"
+          }
+        },
+        {
+          "mouse": {
+            "visible": false,
+            "color": "oklab(0.5 0.00173648 0.00984808)",
+            "style": "none"
+          },
+          "keyboard": {
+            "visible": true,
+            "width": "2px",
+            "color": "oklch(0.55 0.13 250)",
+            "accent": "oklch(0.55 0.13 250)"
+          }
+        },
+        {
+          "mouse": {
+            "visible": false,
+            "color": "oklab(0.5 0.00173648 0.00984808)",
+            "style": "none"
+          },
+          "keyboard": {
+            "visible": true,
+            "width": "2px",
+            "color": "oklch(0.55 0.13 250)",
+            "accent": "oklch(0.55 0.13 250)"
+          }
+        }
+      ],
+      "formatted": {
+        "reference": {
+          "lightness": 0.5,
+          "weight": 400
+        },
+        "rows": [
+          {
+            "text": "用了 1 个工具",
+            "lightness": 0.5,
+            "weight": 400
+          },
+          {
+            "text": "读取文稿",
+            "lightness": 0.5,
+            "weight": 400
+          },
+          {
+            "text": "只是看一眼，不改动任何东西",
+            "lightness": 0.5,
+            "weight": 400
+          },
+          {
+            "text": "输入",
+            "lightness": 0.5,
+            "weight": 400
+          },
+          {
+            "text": "{ \"scope\": \"full\" }",
+            "lightness": 0.5,
+            "weight": 400
+          },
+          {
+            "text": "输出",
+            "lightness": 0.5,
+            "weight": 400
+          },
+          {
+            "text": "核对标题",
+            "lightness": 0.5,
+            "weight": 400
+          },
+          {
+            "text": "重点",
+            "lightness": 0.5,
+            "weight": 400
+          },
+          {
+            "text": "js",
+            "lightness": 0.5,
+            "weight": 400
+          },
+          {
+            "text": "const",
+            "lightness": 0.5,
+            "weight": 400
+          },
+          {
+            "text": "scene",
+            "lightness": 0.5,
+            "weight": 400
+          },
+          {
+            "text": "=",
+            "lightness": 0.5,
+            "weight": 400
+          },
+          {
+            "text": "\"山\"",
+            "lightness": 0.5,
+            "weight": 400
+          },
+          {
+            "text": "展开",
+            "lightness": 0.5,
+            "weight": 400
+          }
+        ],
+        "violations": []
+      }
+    },
+    "dark": {
+      "hierarchy": {
+        "reference": {
+          "lightness": 0.7,
+          "weight": 400
+        },
+        "rows": [
+          {
+            "text": "用了 2 个工具",
+            "lightness": 0.7,
+            "weight": 400
+          },
+          {
+            "text": "读取文稿",
+            "lightness": 0.7,
+            "weight": 400
+          },
+          {
+            "text": "×2",
+            "lightness": 0.7,
+            "weight": 400
+          },
+          {
+            "text": "读取文稿",
+            "lightness": 0.7,
+            "weight": 400
+          },
+          {
+            "text": "只是看一眼，不改动任何东西",
+            "lightness": 0.7,
+            "weight": 400
+          },
+          {
+            "text": "输入",
+            "lightness": 0.7,
+            "weight": 400
+          },
+          {
+            "text": "{ \"scope\": \"full\" }",
+            "lightness": 0.7,
+            "weight": 400
+          },
+          {
+            "text": "输出",
+            "lightness": 0.7,
+            "weight": 400
+          },
+          {
+            "text": "清晨，女孩推开窗户，看见远处的山。",
+            "lightness": 0.7,
+            "weight": 400
+          },
+          {
+            "text": "读取文稿",
+            "lightness": 0.7,
+            "weight": 400
+          },
+          {
+            "text": "只是看一眼，不改动任何东西",
+            "lightness": 0.7,
+            "weight": 400
+          },
+          {
+            "text": "输入",
+            "lightness": 0.7,
+            "weight": 400
+          },
+          {
+            "text": "{ \"scope\": \"full\" }",
+            "lightness": 0.7,
+            "weight": 400
+          },
+          {
+            "text": "输出",
+            "lightness": 0.7,
+            "weight": 400
+          },
+          {
+            "text": "清晨，女孩推开窗户，看见远处的山。",
+            "lightness": 0.7,
+            "weight": 400
+          }
+        ],
+        "violations": []
+      },
+      "focuses": [
+        {
+          "mouse": {
+            "visible": false,
+            "color": "oklab(0.7 0.000522935 0.00597717)",
+            "style": "none"
+          },
+          "keyboard": {
+            "visible": true,
+            "width": "2px",
+            "color": "oklch(0.7 0.13 250)",
+            "accent": "oklch(0.7 0.13 250)"
+          }
+        },
+        {
+          "mouse": {
+            "visible": false,
+            "color": "oklab(0.7 0.000522935 0.00597717)",
+            "style": "none"
+          },
+          "keyboard": {
+            "visible": true,
+            "width": "2px",
+            "color": "oklch(0.7 0.13 250)",
+            "accent": "oklch(0.7 0.13 250)"
+          }
+        },
+        {
+          "mouse": {
+            "visible": false,
+            "color": "oklab(0.7 0.000522935 0.00597717)",
+            "style": "none"
+          },
+          "keyboard": {
+            "visible": true,
+            "width": "2px",
+            "color": "oklch(0.7 0.13 250)",
+            "accent": "oklch(0.7 0.13 250)"
+          }
+        }
+      ],
+      "formatted": {
+        "reference": {
+          "lightness": 0.7,
+          "weight": 400
+        },
+        "rows": [
+          {
+            "text": "用了 1 个工具",
+            "lightness": 0.7,
+            "weight": 400
+          },
+          {
+            "text": "读取文稿",
+            "lightness": 0.7,
+            "weight": 400
+          },
+          {
+            "text": "只是看一眼，不改动任何东西",
+            "lightness": 0.7,
+            "weight": 400
+          },
+          {
+            "text": "输入",
+            "lightness": 0.7,
+            "weight": 400
+          },
+          {
+            "text": "{ \"scope\": \"full\" }",
+            "lightness": 0.7,
+            "weight": 400
+          },
+          {
+            "text": "输出",
+            "lightness": 0.7,
+            "weight": 400
+          },
+          {
+            "text": "核对标题",
+            "lightness": 0.7,
+            "weight": 400
+          },
+          {
+            "text": "重点",
+            "lightness": 0.7,
+            "weight": 400
+          },
+          {
+            "text": "js",
+            "lightness": 0.7,
+            "weight": 400
+          },
+          {
+            "text": "const",
+            "lightness": 0.7,
+            "weight": 400
+          },
+          {
+            "text": "scene",
+            "lightness": 0.7,
+            "weight": 400
+          },
+          {
+            "text": "=",
+            "lightness": 0.7,
+            "weight": 400
+          },
+          {
+            "text": "\"山\"",
+            "lightness": 0.7,
+            "weight": 400
+          },
+          {
+            "text": "展开",
+            "lightness": 0.7,
+            "weight": 400
+          }
+        ],
+        "violations": []
+      }
+    }
+  }
+}

@@ -104,7 +104,8 @@ export const zhAgentPanelV4 = {
   // 队列
   queueStatus: { queued: '排队', running: '进行中', complete: '完成' },
   queueJumpAhead: '插队',
-  processSummary: '用了 {{count}} 个工具 · {{retries}} 次重试',
+  processSummary: '用了 {{count}} 个工具',
+  processSummaryWithRetries: '用了 {{count}} 个工具 · {{retries}} 次重试',
   queueDelete: '取消这条指令',
   queueInterrupt: '立即中断',
 
@@ -433,7 +434,8 @@ export const enAgentPanelV4 = {
 
   queueStatus: { queued: 'Queued', running: 'Running', complete: 'Done' },
   queueJumpAhead: 'Move up',
-  processSummary: '{{count}} tools · {{retries}} retries',
+  processSummary: '{{count}} tools',
+  processSummaryWithRetries: '{{count}} tools · {{retries}} retries',
   queueDelete: 'Cancel this instruction',
   queueInterrupt: 'Interrupt now',
 

@@ -1,0 +1,14 @@
+command: python3 scripts/with-gates-lock.py -- pnpm run gates
+exitCode: 0
+baseline: 8a3136955736b734d21f526e5d17b510629c25d1
+contracts: all blocking checks passed; existing documentation advisories only
+vitest: 1329 files passed / 1 skipped; 12268 tests passed / 2 skipped
+agent-worktree-janitor: passed
+agent-runtime: passed
+build: passed; gates stamp written
+full local log: docs/fixes/canvas-acceptance-red-20260909/gates-final.log (ignored bulk artifact)
+group-baseline 1280x933: exit 0
+group-baseline --wide 1680x1050: exit 0
+canvas-batch-production: exit 0; fail-once vendor statuses 500,200
+focused invariant tests: 3 files / 46 tests passed
+versioned visual baselines changed: none

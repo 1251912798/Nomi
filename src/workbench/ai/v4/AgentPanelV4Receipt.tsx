@@ -14,6 +14,10 @@ import { cn } from '../../../utils/cn'
 import { ActionIcon, IconAlertTriangle, IconChevronRight, ToolStatusIcon } from './AgentPanelV4Icons'
 import type { ToolReceipt, V4FlowItem } from './agentPanelV4Types'
 
+// The base :root :focus-visible selector is more specific than a utility class.
+// Only these summaries use the requested full accent; keyboard focus stays native.
+const SUMMARY_FOCUS = 'outline-none focus-visible:outline-2 focus-visible:!outline-[var(--nomi-accent)] focus-visible:outline-offset-2'
+
 const STATUS_TONE: Record<string, string> = {
   'output-available': 'text-nomi-success',
   'output-error': 'text-nomi-danger',
@@ -89,7 +93,7 @@ export function V4ToolReceipt({
       <V4Row as="summary"
         className={cn(
           'min-h-7 cursor-pointer list-none rounded-nomi-sm px-2 text-caption text-nomi-ink-60 hover:bg-nomi-ink-05',
-          'group-open/receipt:bg-nomi-ink-05',
+          'group-open/receipt:bg-nomi-ink-05', SUMMARY_FOCUS,
         )}
       >
         {row}
@@ -140,7 +144,7 @@ export function V4ToolGroup({
       <V4Row as="summary"
         className={cn(
           'min-h-7 cursor-pointer list-none rounded-nomi-sm px-2 text-caption text-nomi-ink-60 hover:bg-nomi-ink-05',
-          'group-open/tool-group:bg-nomi-ink-05',
+          'group-open/tool-group:bg-nomi-ink-05', SUMMARY_FOCUS,
         )}
       >
         <span className="shrink-0 text-nomi-ink-60">
@@ -192,12 +196,19 @@ export function V4Process({ label, segments, running, elapsed, children }: {
     return () => observer.disconnect()
   }, [children, segments])
   return (
-    <details key={running ? "running" : "settled"} className="group/process" data-v4-block="process" data-running={Boolean(running)}>
-      <V4Row as="summary" className="min-h-7 cursor-pointer list-none rounded-nomi-sm px-2 text-caption text-nomi-ink-40 hover:bg-nomi-ink-05">
+    <details key={running ? "running" : "settled"} className={cn(
+      'group/process text-nomi-ink-60',
+      // Neutral text belongs to the process; status colors, icons and elapsed time do not.
+      '[&_:is(.text-nomi-ink,.text-nomi-ink-80,.text-nomi-ink-40):not(svg):not([data-process-elapsed])]:text-nomi-ink-60',
+      '[&_.font-medium]:font-normal [&_.font-semibold]:font-normal [&_.font-bold]:font-normal',
+      // Markdown emphasis and inline syntax colors cannot outrank their container either.
+      '[&_[data-v4-markdown]_*]:!text-nomi-ink-60 [&_[data-v4-markdown]_*]:!font-normal',
+    )} data-v4-block="process" data-running={Boolean(running)}>
+      <V4Row as="summary" className={cn("min-h-7 cursor-pointer list-none rounded-nomi-sm px-2 text-caption text-nomi-ink-60 hover:bg-nomi-ink-05 [&>svg]:text-nomi-ink-40", SUMMARY_FOCUS)}>
         <ActionIcon action={running ? 'think' : 'document'} />
         <>{running ? <V4Shimmer>{label}</V4Shimmer> : <span className="min-w-0 truncate">{label}</span>}</>
-        {elapsed ? <span className="shrink-0 font-nomi-mono text-micro">{elapsed}</span> : null}
-        <IconChevronRight size={12} className="shrink-0 transition-transform group-open/process:rotate-90" />
+        {elapsed ? <span data-process-elapsed className="shrink-0 font-nomi-mono text-micro text-nomi-ink-40">{elapsed}</span> : null}
+        <IconChevronRight size={12} className="shrink-0 text-nomi-ink-40 transition-transform group-open/process:rotate-90" />
       </V4Row>
       <div ref={bodyRef} className={cn("mt-1 flex flex-col gap-1.5 border-l border-nomi-line-soft py-1 pl-2.5 text-caption leading-relaxed", !expanded && "max-h-[12lh] overflow-hidden", long && !expanded && "[mask-image:linear-gradient(black_80%,transparent)]")} data-process-folded={long && !expanded}>
         {children ?? segments.map((segment, index) => <AgentPanelV4Markdown key={index} text={segment} />)}
