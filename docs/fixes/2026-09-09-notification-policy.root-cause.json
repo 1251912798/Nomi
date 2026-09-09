@@ -1,0 +1,281 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-09-notification-policy",
+  "problem_type": "Duplicate and out-of-context feedback interrupts the user",
+  "symptom": "Repeating one failure produces multiple toasts; inline results and visible object states are announced again.",
+  "direct_cause": "The shared entry creates random identities by default and lacks an object/reason repetition contract; callers send redundant success and progress messages.",
+  "class_root": "Feedback has no shared invariant connecting stable object identity, reason, action value and presentation context.",
+  "affected_population": [
+    "Repeated operations on the same object",
+    "Foreground settings and generation progress",
+    "Visible and queued notifications"
+  ],
+  "scope_paths": [
+    "src/devlab/designLab/editing/states/03-context-menu.tsx",
+    "src/devlab/designLab/videoDepth/states/01-depth-action.tsx",
+    "src/i18n/locales/assetLibrary.ts",
+    "src/i18n/locales/comfyuiWorkflowPage.ts",
+    "src/i18n/locales/creationAi.ts",
+    "src/i18n/locales/generationCommon.ts",
+    "src/i18n/locales/libraries.ts",
+    "src/i18n/locales/onboardingProviders.ts",
+    "src/i18n/locales/scene3d.ts",
+    "src/i18n/locales/scene3dJourney.ts",
+    "src/i18n/locales/storyboardEditor.ts",
+    "src/i18n/locales/timelineEditor.ts",
+    "src/i18n/locales/timelinePreview.ts",
+    "src/i18n/resources.ts",
+    "src/ui/app-shell/UpdaterDialog.tsx",
+    "src/ui/app-shell/useUpdater.ts",
+    "src/ui/browser/dialog/NomiBrowserDialog.tsx",
+    "src/ui/browser/dialog/NomiBrowserDialogView.tsx",
+    "src/ui/browser/dialog/useBrowserDialogActions.ts",
+    "src/ui/browser/popover/BrowserAssetPopoverView.tsx",
+    "src/ui/browser/popover/NomiBrowserAssetPopover.tsx",
+    "src/ui/browser/popover/useBrowserAssetActions.ts",
+    "src/ui/browser/prompt/browserPromptExtractionRunner.ts",
+    "src/ui/notificationPolicy.ts",
+    "src/ui/onboarding/AddComfyuiInstanceButton.tsx",
+    "src/ui/onboarding/CodexLocalImageCard.tsx",
+    "src/ui/onboarding/ComfyuiLocalCard.tsx",
+    "src/ui/onboarding/ComfyuiPresetSection.tsx",
+    "src/ui/onboarding/ComfyuiTemplateLibrary.tsx",
+    "src/ui/onboarding/ComfyuiWorkflowImportPanel.tsx",
+    "src/ui/onboarding/ConnectAssistantCard.tsx",
+    "src/ui/onboarding/DreaminaMemberCard.tsx",
+    "src/ui/onboarding/LocalModelCard.tsx",
+    "src/ui/onboarding/OnboardingDrawer.tsx",
+    "src/ui/onboarding/workflowPage/ComfyuiWorkflowSettingsPage.tsx",
+    "src/ui/toast.tsx",
+    "src/utils/showUndoToast.ts",
+    "src/workbench/NomiStudioApp.tsx",
+    "src/workbench/WorkbenchShell.tsx",
+    "src/workbench/adoption/adoptionReceipt.ts",
+    "src/workbench/assets/AssetLibraryPanel.tsx",
+    "src/workbench/assets/AssetPreviewDialog.tsx",
+    "src/workbench/assets/assetLibraryLocalImport.ts",
+    "src/workbench/assets/pasteShareLinkImport.ts",
+    "src/workbench/capability/mcpHostSurfaceOps.ts",
+    "src/workbench/creation/storyboard/StoryboardPlanEditor.tsx",
+    "src/workbench/creation/storyboard/shotRow/ShotReferenceZone.tsx",
+    "src/workbench/generationCanvas/adapters/clipboardImagePaste.ts",
+    "src/workbench/generationCanvas/components/CanvasAddPreferenceActions.tsx",
+    "src/workbench/generationCanvas/components/CanvasToolbar.tsx",
+    "src/workbench/generationCanvas/components/CommittedProposalCard.tsx",
+    "src/workbench/generationCanvas/components/MemoryFold.tsx",
+    "src/workbench/generationCanvas/components/SelectionPromptSaveController.tsx",
+    "src/workbench/generationCanvas/components/batchPlanPreview.ts",
+    "src/workbench/generationCanvas/components/canvasFeedback.ts",
+    "src/workbench/generationCanvas/components/canvasStageDrop.ts",
+    "src/workbench/generationCanvas/components/useCanvasFrameActions.ts",
+    "src/workbench/generationCanvas/components/useCanvasFrameTool.ts",
+    "src/workbench/generationCanvas/components/useCanvasGroupActions.ts",
+    "src/workbench/generationCanvas/components/useCanvasProductionActions.ts",
+    "src/workbench/generationCanvas/components/useCanvasScreenshotCapture.tsx",
+    "src/workbench/generationCanvas/components/useCanvasShortcuts.ts",
+    "src/workbench/generationCanvas/components/useTidyCanvas.ts",
+    "src/workbench/generationCanvas/fixation/buildFixationNode.ts",
+    "src/workbench/generationCanvas/nodes/BaseGenerationNode.tsx",
+    "src/workbench/generationCanvas/nodes/ClipNode.tsx",
+    "src/workbench/generationCanvas/nodes/DeconstructionPanelHost.tsx",
+    "src/workbench/generationCanvas/nodes/NodeCameraMoveControl.tsx",
+    "src/workbench/generationCanvas/nodes/NodeDeconstructionPanel.tsx",
+    "src/workbench/generationCanvas/nodes/NodeGeneratingOverlay.tsx",
+    "src/workbench/generationCanvas/nodes/NodeGenerationComposer.tsx",
+    "src/workbench/generationCanvas/nodes/NodeImageEditToolbar.tsx",
+    "src/workbench/generationCanvas/nodes/NodeParameterControls.tsx",
+    "src/workbench/generationCanvas/nodes/NodeResultDownloadButton.tsx",
+    "src/workbench/generationCanvas/nodes/NodeResultStack.tsx",
+    "src/workbench/generationCanvas/nodes/NodeShotCutPanel.tsx",
+    "src/workbench/generationCanvas/nodes/NodeVideoFrameToolbar.tsx",
+    "src/workbench/generationCanvas/nodes/PanoramaViewer.tsx",
+    "src/workbench/generationCanvas/nodes/ProductionShotOverlays.tsx",
+    "src/workbench/generationCanvas/nodes/ProductionShotPlaceholder.tsx",
+    "src/workbench/generationCanvas/nodes/Scene3DEditor.tsx",
+    "src/workbench/generationCanvas/nodes/artifact/ArtifactNodeToolbar.tsx",
+    "src/workbench/generationCanvas/nodes/artifact/artifactNodeSlots.tsx",
+    "src/workbench/generationCanvas/nodes/buildContactSheetNode.ts",
+    "src/workbench/generationCanvas/nodes/completeNodeConnection.ts",
+    "src/workbench/generationCanvas/nodes/decompose/useDecomposeLayers.ts",
+    "src/workbench/generationCanvas/nodes/extractDeconstructionShotsToNodes.ts",
+    "src/workbench/generationCanvas/nodes/extractShotCutsToNodes.ts",
+    "src/workbench/generationCanvas/nodes/extractVideoFrameToNode.ts",
+    "src/workbench/generationCanvas/nodes/render/AudioStripNode.tsx",
+    "src/workbench/generationCanvas/nodes/scene3d/CameraMoveCaptureHost.tsx",
+    "src/workbench/generationCanvas/nodes/scene3d/Scene3DFullscreen.tsx",
+    "src/workbench/generationCanvas/nodes/scene3d/scene3dEnvironmentPanel.tsx",
+    "src/workbench/generationCanvas/nodes/scene3d/useScene3DCaptureExport.ts",
+    "src/workbench/generationCanvas/nodes/scene3d/useScene3DFullscreenActions.ts",
+    "src/workbench/generationCanvas/nodes/scene3d/useScene3DTakeRecorder.ts",
+    "src/workbench/generationCanvas/nodes/scene3d/useScene3DTaskFlow.ts",
+    "src/workbench/generationCanvas/nodes/useNodeAssetDrop.ts",
+    "src/workbench/generationCanvas/nodes/useNodeDragResize.ts",
+    "src/workbench/generationCanvas/nodes/useNodeImageEditing.ts",
+    "src/workbench/generationCanvas/nodes/useNodeMediaPreview.tsx",
+    "src/workbench/generationCanvas/nodes/useNodeMentionSource.ts",
+    "src/workbench/generationCanvas/nodes/useNodePanoramaHandlers.ts",
+    "src/workbench/generationCanvas/nodes/useProductionNodeRetry.ts",
+    "src/workbench/generationCanvas/nodes/useResultDownload.ts",
+    "src/workbench/generationCanvas/nodes/whiteboard/WhiteboardDrawingTool.tsx",
+    "src/workbench/generationCanvas/nodes/whiteboard/WhiteboardModal.tsx",
+    "src/workbench/generationCanvas/runner/generationQueueStore.ts",
+    "src/workbench/generationCanvas/runner/generationRunController.ts",
+    "src/workbench/generationCanvas/runner/localTaskControl.ts",
+    "src/workbench/generationCanvas/textEdit/buildTextEditNode.ts",
+    "src/workbench/generationCanvas/videoDepth/NodeDepthActionButton.tsx",
+    "src/workbench/generationCanvas/videoDepth/startVideoDepthDerivation.ts",
+    "src/workbench/library/ProjectLibraryPage.tsx",
+    "src/workbench/library/WorkflowLibraryContent.tsx",
+    "src/workbench/preview/TimelinePreview.tsx",
+    "src/workbench/preview/previewExportFeedback.ts",
+    "src/workbench/production/ProductionCanvasLandingHost.tsx",
+    "src/workbench/production/ProductionRunTaskCard.tsx",
+    "src/workbench/production/productionShotActions.ts",
+    "src/workbench/production/useProductionStatus.ts",
+    "src/workbench/project/projectHydrationRecovery.ts",
+    "src/workbench/project/useProjectNotificationTarget.ts",
+    "src/workbench/settings/ProjectLocationSection.tsx",
+    "src/workbench/skillLibrary/SkillLibraryPanel.tsx",
+    "src/workbench/taskCenter/TaskCenterPanel.tsx",
+    "src/workbench/timeline/TimelineContextMenu.tsx",
+    "src/workbench/timeline/TimelinePanel.tsx",
+    "src/workbench/timeline/TimelineSecondaryAddRow.tsx",
+    "src/workbench/timeline/TimelineTrack.tsx",
+    "src/workbench/timeline/addAssetToTimeline.ts"
+  ],
+  "entry_points": [
+    "useToastStore.push",
+    "toast",
+    "notify"
+  ],
+  "external_sources": [
+    {
+      "kind": "source-code",
+      "url": "https://github.com/mantinedev/mantine/blob/8.3.18/packages/%40mantine/notifications/src/notifications.store.ts",
+      "checked_at": "2026-09-09",
+      "purpose": "Reuse atomic updateState over visible and queued notifications without a second queue."
+    }
+  ],
+  "invariants": [
+    "One active notification per identity; repeated reason increments count and updates message/action; a changed reason resets count.",
+    "Visible inline feedback must not also be emitted as a toast.",
+    "Success with no action is represented by the existing object state."
+  ],
+  "generality_proof": "All current toast producers converge on the existing shared toast entry; atomic upsert operates on both visible and queued Mantine items, so repeated effects and independent producers cannot stack the same identity.",
+  "shared_boundaries": [
+    {
+      "path": "src/ui/toast.tsx",
+      "symbol": "toastStore.push",
+      "responsibility": "Atomic identity upsert across the actual framework queue and visible items."
+    },
+    {
+      "path": "src/ui/notificationPolicy.ts",
+      "symbol": "notify",
+      "responsibility": "Resolve explicit local, visible-state, background-action and decision contexts without a second host."
+    },
+    {
+      "path": "src/workbench/production/useProductionStatus.ts",
+      "symbol": "useProductionStatus",
+      "responsibility": "Keep command failures owned by project/run and presented on its existing task card."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/utils/showInfoToast.ts",
+      "entry_point": "showInfoToast",
+      "disposition": "enforced",
+      "evidence": "Delegates to toast; stable id is preserved by shared upsert."
+    },
+    {
+      "path": "src/utils/showUndoToast.ts",
+      "entry_point": "showUndoToast",
+      "disposition": "enforced",
+      "evidence": "Delegates to toastStore; independent undo operations need distinct operation identities."
+    },
+    {
+      "path": "src/workbench/production/ProductionCanvasLandingHost.tsx",
+      "entry_point": "ProductionCanvasLandingHost",
+      "disposition": "enforced",
+      "evidence": "Polling already feeds local node states; remove duplicate persistent progress notification."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Any repeated call or already-visible result can reproduce the behavior on a later run.",
+    "same_class_scan": [
+      "AST audit of toast/confirm/alert/prompt imports and calls, role dialog/alert/status containers, native notifications and UI-note projection.",
+      "Inspect ProjectLocationSection checkFeedback plus toast, Dreamina copied state plus toast, and ProductionCanvasLandingHost polling plus node projections."
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "src/ui/toast.tsx",
+    "invariant": "One identity slot, latest payload, reason-sensitive occurrence counter in Mantine state.",
+    "failure_mode": "Duplicate events replace in place; obsolete reasons do not accumulate; local/status policy paths do not enqueue.",
+    "exception_policy": "none",
+    "strategy": "Use the framework atomic state updater and an explicit contextual notification API; remove redundant producers.",
+    "artifacts": [
+      "src/ui/toast.tsx",
+      "src/ui/notificationPolicy.ts"
+    ]
+  },
+  "regression_tests": [
+    "src/ui/app-shell/useUpdater.test.ts",
+    "src/ui/browser/prompt/browserPromptExtractionRunner.test.ts",
+    "src/ui/onboarding/codexDirectionSeparation.test.ts",
+    "src/ui/onboarding/modelSettingsWorkspaceStructure.test.ts",
+    "src/ui/toast.test.ts",
+    "src/ui/toastPolicy.test.ts",
+    "src/workbench/adoption/adoptionReceipt.test.ts",
+    "src/workbench/assets/pasteShareLinkImport.test.ts",
+    "src/workbench/capability/capabilityApplyHandler.integration.test.ts",
+    "src/workbench/generationCanvas/components/batchPlanPreview.test.ts",
+    "src/workbench/generationCanvas/nodes/completeNodeConnection.test.ts",
+    "src/workbench/generationCanvas/nodes/nodeActionFeedback.test.ts",
+    "src/workbench/generationCanvas/nodes/scene3d/scene3dLocalFeedback.test.ts",
+    "src/workbench/generationCanvas/nodes/whiteboard/localEditorFeedback.test.ts",
+    "src/workbench/generationCanvas/runner/localTaskControl.test.ts",
+    "src/workbench/generationCanvas/runner/notificationOwnership.test.ts",
+    "src/workbench/preview/previewExportFeedback.test.ts",
+    "src/workbench/production/ProductionRunTaskCard.test.ts",
+    "src/workbench/production/productionShotActions.test.ts",
+    "src/workbench/production/useProductionStatus.test.ts",
+    "src/workbench/project/useProjectNotificationTarget.test.ts",
+    "src/workbench/taskCenter/taskCenterEntries.test.ts",
+    "src/workbench/timeline/addAssetToTimeline.test.ts",
+    "tests/ux/notification-local-feedback.e2e.mjs",
+    "tests/ux/notification-policy.walk.mjs",
+    "tests/ux/notification-scene-feedback.e2e.mjs"
+  ],
+  "class_regression_tests": [
+    "src/ui/toastPolicy.test.ts",
+    "src/workbench/production/useProductionStatus.test.ts",
+    "src/workbench/assets/pasteShareLinkImport.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "src/ui/toast.tsx",
+      "src/workbench/production/ProductionCanvasLandingHost.tsx",
+      "src/workbench/production/useProductionStatus.ts",
+      "src/ui/onboarding/OnboardingDrawer.tsx"
+    ],
+    "rationale": "Replace random toast creation; remove progress echoes and non-decision alert producers; reuse existing local shells and modal host."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "Installed Mantine 8.3.18 already provides atomic updateState for visible/queued entries; no dependency defect or upgrade needed.",
+    "exit_criteria": []
+  },
+  "migration": "Notifications are ephemeral; no persisted format changes. Existing scalar toast callers retain source compatibility including frozen callers.",
+  "residual_risks": [
+    "Frozen ReactFlow and C50 trigger policy is unchanged by user instruction; their existing scalar notices receive shared deduplication only.",
+    "Frozen-host command adapters cannot gain an inline shell in this scope; preserve actionable object/project-bound feedback and enumerate this exception in the plan."
+  ],
+  "invariant_owner_layer": {
+    "layer": "src/ui",
+    "tests": [
+      "src/ui/toastPolicy.test.ts"
+    ]
+  }
+}
