@@ -107,3 +107,16 @@ localTaskControl 的取消结果必须回请求节点/任务行；productionShot
 冻结ReactFlow宿主禁止增加内联插槽，因此画框/编组/批量模型操作、拖放/粘贴、批次授权等适配器暂保留带实际项目/对象身份和定位动作的通知；这不是“已内联”。全局截图热键失败带设置入口，运镜后台附着警告带目标定位，队列刹车带任务中心动作。恢复/取消/结束撤回暂停通知；不同项目同节点ID批次不会合并。错误离开预览或浮条后仍能找到原项目，不把旧异步回执贴到新对象。
 
 [逐类真实前后截图及复现](notification-policy-evidence/README.md)。完整gates结果与准确交付身份记在TOAST-POLICY-LAST.md和PR；无完整exit0不推送。
+
+## 并线 f708568df
+
+仅整合 #682 与 #679 的既有实现，不扩通知策略或付费边界。冲突来自两条分支同时调整反馈入口；继续由共享通知身份边界负责去重，由报价/授权边界负责费用承诺，沿用两任务已有 recurring 合同与回归覆盖。
+
+- `src/ui/toast.tsx`：以 #679 的单行布局、身份/原因替换、计数与最新动作回调为骨架；保留动作显示名及完整 title，不退回随机身份或旧布局。
+- `StoryboardPlanEditor.tsx`：保留 #682 的生成/报价语义；执行阻断走 #679 的 reportFailure 原地反馈，busy 状态不重复弹通知。
+- `batchPlanPreview.ts`：保留 #682 的节点实参报价与 finally 复位；异常在 catch 交给 #679 的项目/批次身份反馈，失败不关闭预览，不在 finally 引用不存在的 error。
+- `generationRunController.ts`：保留 #682 的整批变体报价、quoteId 绑定与一次按 total 铸授权；授权/报价失败交 #679 的 reportAuthorizationFailure，生成失败仍由节点承担；单节点与原地重生成继续传递 quoteId。
+
+验收：正常 hooks 提交 merge；指定 toast/notification/generationRun/storyboard 测试通过；带锁完整 gates exit 0 后才正常 push 当前任务分支。回滚需显式 revert 此 merge（主父 #679），不重写远端历史。
+
+并线门岗补全：首轮完整 contracts 汇总仅 i18n/typecheck 阻断。删除已移除忙碌 toast 的双语 actionPending 词条；反馈身份与 #682 的实际 activeDesign 派生 designId 统一，移除旧 activeStoryboardId 引用，避免默认方案存在但选择 ID 为空时反馈归属错误。其余 71 个阻断门岗通过；后续完整重跑以最终 exit code 为准。
