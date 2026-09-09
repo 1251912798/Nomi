@@ -105,13 +105,11 @@ export function V4FlowRow({
   item,
   index,
   darkMode,
-  panelHeight,
   handlers,
 }: {
   item: V4FlowItem
   index?: number
   darkMode: boolean
-  panelHeight?: number
   handlers?: V4FlowHandlers
 }): JSX.Element {
   const labels = useV4Labels()
@@ -123,7 +121,6 @@ export function V4FlowRow({
         text={item.text}
         status={item.status}
         labels={labels.assistant}
-        panelHeight={panelHeight}
         onCopy={handlers?.onCopy}
         {...(handlers?.onRetry ? { onRetry: () => handlers.onRetry?.(at) } : {})}
         {...(handlers?.onContinue ? { onContinue: () => handlers.onContinue?.(at) } : {})}
@@ -136,7 +133,6 @@ export function V4FlowRow({
       <V4Suggestion
         text={item.text}
         options={item.options}
-        panelHeight={panelHeight}
         onSelect={(option) => handlers?.onSuggestion?.(at, option)}
       />
     )
@@ -282,7 +278,6 @@ export function AgentPanelV4Panel({
             item={item}
             index={index}
             darkMode={darkMode}
-            panelHeight={height}
             handlers={flowHandlers}
           />
         ))}

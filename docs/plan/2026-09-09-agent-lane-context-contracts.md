@@ -97,3 +97,16 @@ C42 次级入口：运行时 Alt+Enter 明确 follow-up，普通 Enter/发送为
 自动合并复核：`c0-real-budget.node-test.mjs` 中 mixed 夹具被 Git 混入 planOnly 键，移除该错误组合；另加明确 planOnly 回归，验证 ¥2 上限与同时出现 mixed 标记时仍拒绝媒体。上游原有 mixed 测试保持 ¥3 与合成媒体行为。生产 B1 九条代码无并线冲突、未改语义。
 
 验证：零额度预算/dispatch、mixed、视频等待与合成夹具初轮 32/32；新增 planOnly 回归后 33/33 通过。完整 gates 收据见本工作树 `.tmp/b1-finish/`；未重新打包，未新增真实模型调用。
+
+## 并线 13bd6a73a
+
+范围：原分支合入 #680，不恢复已删运行时，不打包、不新增 PR。回滚使用 merge revert，不改历史数据。验收为指定 ai/v4、ai/lane、resident 测试与完整 gates，再正常 hooks 推送。
+
+| 冲突 | 裁决 |
+|---|---|
+| agentPanelV4Projection.ts | 保持删除；实际上游差异是撤销能力判据及 token 格式化，迁到 laneViewModel / useAgentPanelV4Data；镜头标题/模型档位时长画幅已自动合入 residentExceptionProjections→shotPresentation，继续由现役介入槽消费。 |
+| agentPanelV4Projection.test.ts | 保持删除；新增 lane 层机制回归承接 token、撤销与 lane 待决→镜头审批链，保留 resident 的 C05 两类输入测试。 |
+| residentToolDisplay.ts | 同时保留主线分镜计划名称与 #680 operation 工具名称，计划写入判据先于通用 create_canvas_nodes。 |
+| AgentPanelV4Cards.tsx | 保留主线技术详情渐进展开；镜头参数副行按 #680 常显，技术详情与副行分别承载；保留 #680 队列取消图标与可访问名称、重复行 index key。 |
+
+根因分类 recurring：旧运行时删除后，上游展示不变量可能落在退役投影而漏入现役链。已分别检查 lane 收据、lane 待决审批和用量宿主入口，沿现役共享 owner 移植；更新 #680 v3 合同路径，不引入依赖或协议变化。
