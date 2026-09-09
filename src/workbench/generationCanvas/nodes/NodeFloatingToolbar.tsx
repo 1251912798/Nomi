@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { IconInfoCircle, IconChevronDown, IconCopy } from '@tabler/icons-react'
 import { cn } from '../../../utils/cn'
 import { useGenerationCanvasStore } from '../store/generationCanvasStore'
+import { useWorkbenchStore } from '../../workbenchStore'
 import { FOCUS_GENERATION_NODE_EVENT } from './nodeSizing'
 
 // 节点浮动工具栏的**单一共享实现**（P1 收口）：图片编辑 / 视频抽帧 / 全景 / 下载三+条以前是三份
@@ -15,7 +16,7 @@ const ICON = { size: 16, stroke: 1.6 } as const
 
 /** 浮条外壳：定位 + 反向缩放 + token 合规容器。 */
 export function FloatingToolbarShell({ ariaLabel, children }: { ariaLabel: string; children: React.ReactNode }): JSX.Element {
-  const canvasZoom = useGenerationCanvasStore((state) => state.canvasZoom)
+  const canvasZoom = useWorkbenchStore((state) => state.categoryViewports[state.activeCategoryId]?.zoom ?? 1)
   return (
     <div
       className={cn(

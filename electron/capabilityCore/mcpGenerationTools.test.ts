@@ -800,6 +800,13 @@ describe("semantic MCP generation tools", () => {
       expect(four.waitSecondsHigh).toBe(single.waitSecondsHigh * 4);
     });
 
+    it("uses scheduler concurrency as rounds instead of summing every task", () => {
+      const eta = coldstartEtaForGate(["video"], 8, 6);
+      expect(eta.waitSeconds).toBe(480);
+      expect(eta.waitSecondsHigh).toBe(1200);
+      expect(eta.waitSeconds).toBeLessThan(240 * 8);
+    });
+
     it("image kind is faster than video", () => {
       const videoEta = coldstartEtaForGate(["video"], 1);
       const imageEta = coldstartEtaForGate(["image"], 1);

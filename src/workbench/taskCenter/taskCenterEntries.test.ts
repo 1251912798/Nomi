@@ -143,3 +143,16 @@ describe('formatElapsed', () => {
     expect(formatElapsed(-1)).toBe('')
   })
 })
+
+describe('settled attempts retain their own outcome during regeneration', () => {
+  it.each(['success', 'error', 'cancelled'] as const)('%s never borrows the newer attempt narration', (state) => {
+    const view = buildTaskCenterView({
+      entries: [entry({ nodeId: 'n1', state, id: 'old', endedAt: 1500 }), entry({ nodeId: 'n1', state: 'running', id: 'new', enqueuedAt: 2000 })],
+      batches, nodes: [node('n1', { status: 'running', progress: { phase: 'generating', updatedAt: 2000 } })],
+      fallbackTitle: '图片', now: 22000,
+    })
+    expect(view.rows.find(row => row.id === 'old')?.phaseText).not.toContain('生成中')
+    expect(view.rows.find(row => row.id === 'new')?.phaseText).toContain('生成中')
+    if (state === 'success') expect(view.rows.find(row => row.id === 'old')?.phaseText).toBe('已保存到项目')
+  })
+})

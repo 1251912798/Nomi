@@ -453,6 +453,7 @@ export function classifyGenerationError(message: string): GenerationErrorReport 
   // 参与（请求从未发出），把它归成 network 会配上「稍等重试」，而重试是确定性再撞同一堵墙，
   // 且在生成语境下重试 = 再付一次钱。upstream 显式给 ''：抑制「服务商说：」框，别栽赃上游。
   const outboundCode = matchNomiErrorCode(cleanRaw)
+  if (outboundCode === 'model-config') return reportFor('model-config', cleanRaw, '')
   if (outboundCode === 'outbound-blocked') return reportFor('outbound-blocked', cleanRaw, '')
   // 提交侧的同族码：请求从未发出、没有计费。必须与上面一条分开，否则用户读到的是「钱已经付过、
   // 用重新拉取结果免费取回」——一句完全相反的假话，还会把他推向一颗根本不存在的按钮。

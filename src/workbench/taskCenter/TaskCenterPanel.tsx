@@ -3,6 +3,7 @@
 //
 // 只负责画；分组/排序/可取消性判定全在纯函数 taskCenterEntries.ts（可单测）。
 import React from 'react'
+import { useGenerationFeedbackClock } from '../observability/useGenerationFeedback'
 import { useTranslation } from 'react-i18next'
 import { Portal } from '@mantine/core'
 import { IconAlertTriangle, IconCheck, IconClock, IconProgress, IconLoader2, IconLock, IconX } from '@tabler/icons-react'
@@ -28,8 +29,6 @@ import { useProductionStatus } from '../production/useProductionStatus'
 
 const PANEL_WIDTH = 380
 const RIGHT_OFFSET = 12
-/** 进行中的已跑时长要走字，1s 一跳就够（别 rAF，白烧 CPU）。 */
-const TICK_MS = 1000
 
 type Props = {
   opened: boolean
@@ -53,16 +52,10 @@ export function TaskCenterPanel({ opened, onClose, productionRuns, exportJobs, o
   // → 位置稳定投影，拖动期这个常挂订阅者不再每帧重渲（suspect #1）。cancel/retry 处理器仍走
   // getState().nodes 拿真节点，不受投影影响。
   const nodes = useGenerationCanvasStore(selectStableCanvasNodes)
-  const [now, setNow] = React.useState(() => Date.now())
+  const now = useGenerationFeedbackClock(opened)
   // N1：制作任务的家搬到这里（原先在画布助手面板里，见 plan 2026-08-11-nomi-side-viewer-and-fallback）。
   // 只在面板打开时加载/轮询完整 run——关着时徽标由 TaskCenterButton 的 summary 轮询维持。
   const production = useProductionStatus({ enabled: opened })
-
-  React.useEffect(() => {
-    if (!opened) return
-    const id = window.setInterval(() => setNow(Date.now()), TICK_MS)
-    return () => window.clearInterval(id)
-  }, [opened])
 
   React.useEffect(() => {
     if (!opened) return
@@ -378,7 +371,7 @@ function SummaryAction({ label, onClick }: { label: string; onClick: () => void 
   )
 }
 
-function TaskRow({
+export function TaskRow({
   row,
   onReveal,
   onAction,
@@ -392,6 +385,9 @@ function TaskRow({
   const revealable = row.kind !== 'export_job' && Boolean(onReveal)
   return (
     <div
+      data-task-id={row.id}
+      data-task-node-id={row.kind === 'generation' ? row.nodeId : undefined}
+      data-task-group={row.group}
       role={revealable ? 'button' : undefined}
       tabIndex={revealable ? 0 : undefined}
       onClick={() => { if (revealable) onReveal?.(row) }}
@@ -403,25 +399,10 @@ function TaskRow({
       <div className="flex-1 min-w-0">
         <div className={['text-body-sm truncate', failed ? 'text-nomi-ink' : 'text-nomi-ink-80'].join(' ')}>{row.title}</div>
         <div className={['text-micro mt-0.5 truncate', failed ? 'text-nomi-danger' : 'text-nomi-ink-60'].join(' ')}>
-          {row.group === 'queued'
-            ? row.kind === 'generation'
-              ? row.waveIndex > 0
-                ? t('taskCenter.row.waitingWave', { wave: row.waveIndex + 1 })
-                : t('taskCenter.row.waitingSlot')
-              : row.phaseText
+          {row.kind === 'generation' ? <span data-generation-message>{row.phaseText}</span>
             : row.group === 'running'
-              ? [row.phaseText, row.elapsedMs !== undefined ? t('taskCenter.row.elapsed', { time: formatElapsed(row.elapsedMs) }) : '']
-                  .filter(Boolean)
-                  .join(' · ')
-              : row.kind !== 'generation'
-                ? row.phaseText
-              : row.outcome === 'cancelled'
-                ? t('taskCenter.row.cancelled')
-                : row.recoverable
-                  ? t('taskCenter.row.recoverable')
-                  : failed
-                    ? row.error || t('taskCenter.row.failed')
-                    : t('taskCenter.row.took', { time: formatElapsed(row.elapsedMs) })}
+              ? [row.phaseText, row.elapsedMs !== undefined ? t('taskCenter.row.elapsed', { time: formatElapsed(row.elapsedMs) }) : ''].filter(Boolean).join(' · ')
+              : row.phaseText}
         </div>
         {/* 只有真拿到百分比才画进度条。很多厂商不报进度，画一条永远空的槽会被读成分隔线（走查实锤），
             也是在假装知道进度。没数就不画，靠区段标题 + 已跑时长表达「在跑」。 */}

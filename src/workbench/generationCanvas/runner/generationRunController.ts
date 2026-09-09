@@ -291,7 +291,6 @@ export async function runGenerationNode(
     runId: run.id,
     phase: 'queued',
     message: narrateProgress('queued'),
-    percent: 0,
   })
 
   try {

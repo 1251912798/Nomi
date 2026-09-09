@@ -1,3 +1,4 @@
+import type { ProgressNarrationContext } from '../../observability/narrate'
 import type { GenerationNodeKind } from './generationNodeKinds'
 import type { NodeRenderKind } from '../../project/projectCategories'
 import type { GenerationNodeStatus as SharedGenerationNodeStatus } from '../../../../electron/shared/canvas/generationNodeStatus'
@@ -91,6 +92,7 @@ export type GenerationNodeResult = {
 }
 
 export type GenerationNodeProgress = {
+  narrationContext?: ProgressNarrationContext
   runId?: string
   taskId?: string
   taskKind?: GenerationNodeTaskKind

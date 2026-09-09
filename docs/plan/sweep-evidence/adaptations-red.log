@@ -1,0 +1,55 @@
+✔ full H3 film fits the approved budget and over-budget estimates fail closed (0.398167ms)
+✔ unquoted models, paid routes, parameters and cross-origin destinations are refused (0.371375ms)
+✔ in-flight requests and failures retain reservations; persistence fails before send (1.346958ms)
+✔ dispatch reserves before forwarding, preserves real responses and never retries a failed send (9.539291ms)
+✔ mixed dispatch caps each quoted text tier at 3 and never forwards media (34.091792ms)
+✖ transport evidence retains raw errors, HTTP prefixes and pre-dispatch budget refusals (0.994666ms)
+✖ transport cancellation records the original signal reason and lifecycle without replacing it (0.463792ms)
+✖ stage02 waits through reasoning and tool turns, but stops on approval or native terminal (1392.028166ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 5
+ℹ fail 3
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1476.316542
+
+✖ failing tests:
+
+test at tests/ux/g1/c0-real-budget.node-test.mjs:77:1
+✖ transport evidence retains raw errors, HTTP prefixes and pre-dispatch budget refusals (0.994666ms)
+  AssertionError [ERR_ASSERTION]: The validation function is expected to return "true". Received false
+
+  Caught error:
+
+  Error: C0_PROVIDER_REQUEST_FAILED
+      at async TestContext.<anonymous> (file:///Users/aoqimin/Desktop/Nomi-sweep-d/tests/ux/g1/c0-real-budget.node-test.mjs:88:5)
+      at async Test.run (node:internal/test_runner/test:1110:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:785:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: Error: C0_PROVIDER_REQUEST_FAILED
+        at file:///Users/aoqimin/Desktop/Nomi-sweep-d/tests/ux/g1/c0-plan-sample-budget.mjs:38:11
+        at async waitForActual (node:assert:646:5)
+        at async strict.rejects (node:assert:769:25)
+        at async TestContext.<anonymous> (file:///Users/aoqimin/Desktop/Nomi-sweep-d/tests/ux/g1/c0-real-budget.node-test.mjs:88:5)
+        at async Test.run (node:internal/test_runner/test:1110:7)
+        at async Test.processPendingSubtests (node:internal/test_runner/test:785:7),
+    operator: 'rejects',
+    diff: 'simple'
+  }
+
+test at tests/ux/g1/c0-real-budget.node-test.mjs:107:1
+✖ transport cancellation records the original signal reason and lifecycle without replacing it (0.463792ms)
+  TypeError: createTransportEvidence is not a function
+      at TestContext.<anonymous> (file:///Users/aoqimin/Desktop/Nomi-sweep-d/tests/ux/g1/c0-real-budget.node-test.mjs:113:21)
+      at async Test.run (node:internal/test_runner/test:1110:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:785:7)
+
+test at tests/ux/g1/c0-real-budget.node-test.mjs:135:1
+✖ stage02 waits through reasoning and tool turns, but stops on approval or native terminal (1392.028166ms)
+  TypeError: plannerObservation is not a function
+      at TestContext.<anonymous> (file:///Users/aoqimin/Desktop/Nomi-sweep-d/tests/ux/g1/c0-real-budget.node-test.mjs:137:16)
+      at async Test.run (node:internal/test_runner/test:1110:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:785:7)

@@ -1,3 +1,4 @@
+import { watchCredential } from './credential-precheck.mjs'
 import fs from 'node:fs'
 import path from 'node:path'
 import { prepareIsolation } from '../../../evals/lib/isoApp.mjs'
@@ -26,10 +27,10 @@ export async function attachRealText(launched, { profile, quote, ledgerPath, bud
   const bridge = path.join(profile, 'sweep-main.cjs')
   fs.writeFileSync(bridge, `module.exports = import(${JSON.stringify(new URL('./sweep-real-main.mjs', import.meta.url).href)});`)
   try {
-    await launched.app.evaluate(async (_main, options) => {
+    await watchCredential({ directory: path.dirname(profile), kill: () => launched.app.process().kill('SIGKILL'), run: credentialMarker => launched.app.evaluate(async (_main, options) => {
       const module = await process.mainModule.require(options.bridge)
       globalThis.__sweepDispatch = await module.attachSweepDispatch(options)
-    }, { bridge, quote, ledgerPath, budgetCny, requestsPath })
+    }, { bridge, quote, ledgerPath, budgetCny, requestsPath, credentialMarker }) })
   } finally {
     // The one-shot loader is executable scratch, not case evidence.
     fs.rmSync(bridge, { force: true })

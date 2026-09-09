@@ -24,7 +24,7 @@ import {
   verifyMcpClient,
   type AuthenticatedMcpClient,
 } from './security'
-import { profilesPath } from './mcpDetectedClients'
+import { isMcpClientAppInstalled, profilesPath } from './mcpDetectedClients'
 import { readAutomationPolicySettings } from '../settings/automationPolicySettings'
 import { getSettingsRoot } from '../settings/settingsRoot'
 
@@ -67,6 +67,8 @@ const CLIENTS: Record<string, ClientSpec> = {
   // 兼容导入层，"not additional normal setup choices"，且优先级更高——第三方应用往那里塞条目会盖住
   // 用户自己的覆盖层。我们只写标准共享文件，不碰用户的 ~/.pi。
   pi: { label: 'Pi', format: 'json', configPath: () => path.join(os.homedir(), '.config', 'mcp', 'mcp.json') },
+  // WorkBuddy 官方用户级配置；项目未知，不写项目级或内部 .mcp.json。
+  workbuddy: { label: 'WorkBuddy', format: 'json', configPath: () => path.join(os.homedir(), '.workbuddy', 'mcp.json') },
 }
 
 // ── 自定义 MCP 客户端 profile（方案 A：把客户端身份从三值泛化成可注册）──────────
@@ -401,6 +403,7 @@ function codexUninstall(target: string): void {
 
 export type McpClientInfo = {
   installed: boolean
+  appInstalled?: boolean
   configPath: string
   snippet: string
   configState: McpConfigState
@@ -441,7 +444,7 @@ function clientInfo(client: McpClientKey): McpClientInfo {
 
   const installed = configured !== null || (spec.format === 'toml' ? codexInstalled(target) : jsonInstalled(target))
   const snippet = spec.format === 'toml' ? codexBlock(server) : jsonSnippet(server)
-  return { installed, configPath: target, snippet, configState, launcherKind, migration, backupPath }
+  return { installed, appInstalled: isMcpClientAppInstalled(client), configPath: target, snippet, configState, launcherKind, migration, backupPath }
 }
 
 /** 读接入状态 + 各客户端配置片段。rpcPort 由调用方（appIntegration）传入。 */

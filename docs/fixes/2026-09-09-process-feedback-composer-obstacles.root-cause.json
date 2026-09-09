@@ -1,0 +1,118 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-09-process-feedback-composer-obstacles",
+  "problem_type": "Composer placement must preserve all neighboring node hit regions",
+  "symptom": "Selected composer intercepts clicks on neighboring image/video nodes in batch production and real process feedback.",
+  "direct_cause": "Viewport-only placement omits neighboring node rectangles and allows min-height overflow.",
+  "class_root": "Composer placement layer does not own collision-free geometry for all visible obstacles.",
+  "affected_population": [
+    "Selected generated nodes with timeline preview or other bottom docks"
+  ],
+  "scope_paths": [
+    "src/workbench/generationCanvas/nodes/useComposerViewportPlacement.ts",
+    "src/workbench/generationCanvas/nodes/composerObstaclePlacement.ts",
+    "src/workbench/generationCanvas/nodes/NodeGenerationComposer.tsx",
+    "src/workbench/generationCanvas/reactFlow/GenerationCanvasReactFlow.tsx",
+    "src/workbench/generationCanvas/nodes/nodeSizing.ts"
+  ],
+  "entry_points": [
+    "Timeline mini preview expanded/collapsed",
+    "Batch generation bottom dock"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "This extends the existing internal overlay-avoidance invariant as explicitly requested; no new framework or external protocol.",
+  "invariants": [
+    "Composer stays inside stage, outside all other media nodes, fixed docks, toolbars and connection hit regions; constrained content scrolls."
+  ],
+  "generality_proof": "All model and media kinds share one DOM measurement and rectangle placement owner; no provider-specific cases.",
+  "shared_boundaries": [
+    {
+      "path": "src/workbench/generationCanvas/nodes/useComposerViewportPlacement.ts",
+      "symbol": "useComposerViewportPlacement",
+      "responsibility": "Measure all workspace bottom docks and recompute on membership/size changes."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/workbench/timeline/TimelineMiniPreview.tsx",
+      "entry_point": "TimelineMiniPreview",
+      "disposition": "enforced",
+      "evidence": "Both expanded and collapsed preview expose data-canvas-bottom-dock."
+    },
+    {
+      "path": "src/workbench/generationCanvas/components/CanvasBatchGenerateDock.tsx",
+      "entry_point": "CanvasBatchGenerateDock",
+      "disposition": "enforced",
+      "evidence": "Batch dock exposes the same marker."
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/NodeGenerationComposer.tsx",
+      "entry_point": "NodeGenerationComposer image and video",
+      "disposition": "enforced",
+      "evidence": "Both use useComposerViewportPlacement, and neighboring article[data-node-id] rects are measured in screen coordinates."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "CI image-to-image and local image-to-video clicks reproduce the same obstruction.",
+    "same_class_scan": [
+      "Read TimelineMiniPreview.tsx and CanvasBatchGenerateDock.tsx; both use data-canvas-bottom-dock.",
+      "Read useComposerViewportPlacement; only timeline handle was measured and observed.",
+      "Read NodeGenerationComposer and BaseGenerationNode; all media composers share the hook and article marker.",
+      "Side placement also intersects the existing magnetic handle hit spans; read their DOM rectangles without editing reactFlow kernel.",
+      "Scanned src and tests for the old hook, event constant, event string and exported helpers; no remaining references after deletion."
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "src/workbench/generationCanvas/nodes/useComposerViewportPlacement.ts",
+    "invariant": "Composer stays inside stage, outside all other media nodes, fixed docks, toolbars and connection hit regions; constrained content scrolls.",
+    "failure_mode": "Constrain and scroll within free space, using the selected media interior only when external attachments cannot fit; other node rectangles remain hard obstacles.",
+    "exception_policy": "none",
+    "strategy": "Subtract measured obstacles from four attachment regions; replace forced viewport pan and colliding minimum height with panel-only placement and scrolling.",
+    "artifacts": [
+      "src/workbench/generationCanvas/nodes/useComposerViewportPlacement.ts",
+      "src/workbench/generationCanvas/nodes/composerObstaclePlacement.ts",
+      "src/workbench/generationCanvas/nodes/NodeGenerationComposer.tsx"
+    ]
+  },
+  "regression_tests": [
+    "tests/ux/canvas-card-stack.walk.mjs",
+    "src/workbench/generationCanvas/nodes/composerObstaclePlacement.test.ts",
+    "tests/ux/process-feedback-electron.e2e.mjs"
+  ],
+  "class_regression_tests": [
+    "tests/ux/canvas-card-stack.walk.mjs",
+    "src/workbench/generationCanvas/nodes/composerObstaclePlacement.test.ts",
+    "tests/ux/process-feedback-electron.e2e.mjs"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "src/workbench/generationCanvas/nodes/useComposerViewportPlacement.ts",
+      "src/workbench/generationCanvas/components/useComposerVisibilityPan.ts",
+      "src/workbench/generationCanvas/components/useComposerVisibilityPan.test.ts",
+      "src/workbench/generationCanvas/reactFlow/GenerationCanvasReactFlow.tsx",
+      "src/workbench/generationCanvas/nodes/nodeSizing.ts"
+    ],
+    "rationale": "Removed viewport-only flip/pan/minimum-height path; one obstacle-aware placement algorithm owns all forms. Deleted the obsolete pan hook, its tests, React Flow wiring and event constant; removed stale comments. customEventWiring.test.ts enforces absence of orphan event listeners."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "Screen-space DOM geometry and existing CSS only; no dependency or external API change.",
+    "exit_criteria": []
+  },
+  "migration": "No persisted changes.",
+  "residual_risks": [
+    "Linux CI verification remains necessary after local macOS full shards."
+  ],
+  "invariant_owner_layer": {
+    "layer": "src/workbench/generationCanvas/nodes/useComposerViewportPlacement.ts",
+    "tests": [
+      "tests/ux/canvas-card-stack.walk.mjs",
+      "src/workbench/generationCanvas/nodes/composerObstaclePlacement.test.ts",
+      "tests/ux/process-feedback-electron.e2e.mjs"
+    ],
+    "note": "composer 放置层，统一屏幕矩形测量和无碰撞裁决。"
+  }
+}

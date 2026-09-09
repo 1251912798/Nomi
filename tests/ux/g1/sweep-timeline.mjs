@@ -1,3 +1,4 @@
+import { stationTimeout } from '../_station-budget.mjs'
 import fs from 'node:fs'
 import path from 'node:path'
 import { execFileSync } from 'node:child_process'
@@ -6,6 +7,10 @@ import ffmpeg from '@ffmpeg-installer/ffmpeg'
 import { expect, clickOrFail } from '../_assert.mjs'
 import { writeJson } from './sweep-evidence.mjs'
 
+export function completedExports(root) {
+  return fs.readdirSync(root, { recursive: true }).filter(name => name.endsWith('.mp4') && !name.endsWith('.partial.mp4') && name.split(path.sep).includes('exports'))
+}
+
 export async function sweepTimeline({ station, win, input, directory, payload }) {
   const clips = p => p.timeline.tracks.flatMap(t => t.clips).filter(c => c.type === 'image')
   const count = input.scenario === 'two-images' ? 2 : input.scenario === 'single-image' ? 1 : 0
@@ -13,7 +18,7 @@ export async function sweepTimeline({ station, win, input, directory, payload })
     const file = path.resolve(directory, 'timeline-reference.jpg')
     fs.copyFileSync(new URL('../../../resources/onboarding-demo/shot-4.jpg', import.meta.url), file)
     await win.locator('.generation-canvas-v2__stage input[type="file"][accept="image/*,video/*"]').first().setInputFiles(file)
-    await expect.poll(async () => (await payload()).generationCanvas.nodes.some(n => n.result?.url?.startsWith('nomi-local://')), { timeout: 10000 }).toBe(true)
+    await expect.poll(async () => (await payload()).generationCanvas.nodes.some(n => n.result?.url?.startsWith('nomi-local://')), { timeout: stationTimeout({ operations: 1 }) }).toBe(true)
     const imported = (await payload()).generationCanvas.nodes.find(n => n.result?.url?.startsWith('nomi-local://'))
     const node = win.locator(`[data-node-id="${imported.id}"]`)
     for (let index = 0; index < count; index++) {
@@ -42,13 +47,13 @@ export async function sweepTimeline({ station, win, input, directory, payload })
     const profile = path.join(directory, 'profile')
     let file, probe
     await expect.poll(() => {
-      file = fs.readdirSync(profile, { recursive: true }).find(f => f.endsWith('.mp4') && f.split(path.sep).includes('exports'))
+      file = completedExports(profile)[0]
       if (!file) return false
       try {
         probe = JSON.parse(execFileSync(ffprobe.path, ['-v', 'error', '-show_streams', '-show_format', '-of', 'json', path.join(profile, file)], { encoding: 'utf8' }))
         return Boolean(probe.streams?.some(s => s.codec_type === 'video'))
       } catch { return false }
-    }, { timeout: 60000 }).toBe(true)
+    }, { timeout: stationTimeout({ operations: 4 }) }).toBe(true)
     const p = await payload(), duration = clips(p).at(-1).endFrame / p.timeline.fps
     expect(Number(probe.format.duration)).toBeCloseTo(duration, 0)
     execFileSync(ffmpeg.path, ['-v', 'error', '-xerror', '-i', path.join(profile, file), '-f', 'null', '-'], { stdio: 'pipe' })

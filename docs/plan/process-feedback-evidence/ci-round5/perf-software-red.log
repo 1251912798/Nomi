@@ -1,0 +1,12 @@
+
+▶ M / waiting-effects
+feel record: canvas-perf-benchmark/waitForFunction.png; findings=18; new-surfaces=2; evidence: /Users/aoqimin/Desktop/Nomi-process-feedback/artifacts/feel/canvas-perf-benchmark-fb7c1697-0d0d-4cec-a2b6-218ac8e8ace1
+  warmup ERROR Error: expect(locator).toHaveCount(expected) failed
+feel record: canvas-perf-benchmark/waitForFunction.png; findings=18; new-surfaces=2; evidence: /Users/aoqimin/Desktop/Nomi-process-feedback/artifacts/feel/canvas-perf-benchmark-31366652-83ec-4eff-afb4-0e698a6fb89b
+  sample 1 ERROR Error: expect(locator).toHaveCount(expected) failed
+
+✅ 画布性能 benchmark 完成：/Users/aoqimin/Desktop/Nomi-process-feedback/tests/ux/perf-results/canvas-round5-software-red.json
+⚠ warmup 失败 1 次（gating 场景），结果标记为不可靠
+❌ 画布性能 benchmark 未通过预算或可靠性门槛
+
+PROCESS_EXIT_CODE=1

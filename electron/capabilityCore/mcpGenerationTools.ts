@@ -59,11 +59,13 @@ const COLDSTART_ETA_BY_KIND: Record<string, { low: number; high: number }> = {
   video: { low: 240, high: 600 }, image: { low: 10, high: 60 },
   audio: { low: 15, high: 90 },  model3d: { low: 120, high: 300 },
 };
+const DEFAULT_BATCH_CONCURRENCY = 6;
 /** J06 — shotCount × kind → { waitSeconds, waitSecondsHigh, etaBasis }. */
-export function coldstartEtaForGate(outputKinds: readonly string[], shotCount: number): { waitSeconds: number; waitSecondsHigh: number; etaBasis: 'coldstart' } {
+export function coldstartEtaForGate(outputKinds: readonly string[], shotCount: number, concurrency = 1): { waitSeconds: number; waitSecondsHigh: number; etaBasis: 'coldstart' } {
   const primaryKind = outputKinds.find((k) => k === "video") ?? outputKinds[0] ?? "image";
   const { low, high } = COLDSTART_ETA_BY_KIND[primaryKind] ?? { low: 120, high: 360 };
-  return { waitSeconds: Math.round(low * shotCount), waitSecondsHigh: Math.round(high * shotCount), etaBasis: "coldstart" as const };
+  const rounds = Math.max(1, Math.ceil(Math.max(0, shotCount) / Math.max(1, Math.floor(concurrency))));
+  return { waitSeconds: Math.round(low * rounds), waitSecondsHigh: Math.round(high * rounds), etaBasis: "coldstart" as const };
 }
 
 /**
@@ -630,7 +632,7 @@ export function createGenerationPlanningHandler(deps: GenerationPlanningHandlerD
           // The full projection rides here → dispatcher threads it into the MAC-signed challenge display.shots.
           // hardLimit = the estimated plan total (the natural ceiling shown on the card); the scheduler
           // enforces the real cap = min(this, policy.maxSpend) at reserve time (§3.3).
-          shots: { ...multiShot, hardLimit: knownSubtotal, ...coldstartEtaForGate(gateResolved.outputKinds, multiShot.shots.length || 1), frozenItems: ["shots", "models", "references", "price"], expiresAt }, // J06 诚实 ETA
+          shots: { ...multiShot, hardLimit: knownSubtotal, ...coldstartEtaForGate(gateResolved.outputKinds, multiShot.shots.length || 1, DEFAULT_BATCH_CONCURRENCY), frozenItems: ["shots", "models", "references", "price"], expiresAt }, // J06 诚实 ETA
           providerReady: readiness.providerReady,
           providerCapabilityProfile: readiness.providerCapabilityProfile,
           recoveryNotice: readiness.recoveryNotice,

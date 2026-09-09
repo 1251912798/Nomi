@@ -11,6 +11,72 @@ const ratchetJourneys = new Set([...catalog.journeys.map((journey) => journey.id
 export const feelMode = (journey) => ratchetJourneys.has(journey) ? 'ratchet' : 'record'
 export const feelSurfaceKey = ({ journey, screenshotName, rule }) => JSON.stringify([journey, screenshotName, rule])
 const sameScreenshot = (entry, result) => entry.journey === result.journey && entry.screenshotName === result.screenshotName
+const recordOnlyRules = new Set(['repeated-rows'])
+
+/** Density candidates need human action-value review; never a product-specific selector. */
+async function scanRepeatedRows(page) {
+  return page.evaluate(() => {
+    const findings = []
+    const normalize = (text) => text
+      .replace(/\b\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})?)?\b/g, '')
+      .replace(/\b\d{1,2}:\d{2}(?::\d{2}(?:\.\d+)?)?\b/g, '')
+      .replace(/\p{N}+/gu, '').replace(/\s+/g, ' ').trim()
+    function painted(node) {
+      const range = document.createRange()
+      range.selectNodeContents(node)
+      return [...range.getClientRects()].some((rect) => {
+        let left = Math.max(0, rect.left), right = Math.min(innerWidth, rect.right)
+        let top = Math.max(0, rect.top), bottom = Math.min(innerHeight, rect.bottom)
+        for (let el = node.parentElement; el; el = el.parentElement) {
+          const style = getComputedStyle(el)
+          if (style.display === 'none' || style.visibility !== 'visible' || Number(style.opacity) === 0) return false
+          const box = el.getBoundingClientRect()
+          if (/auto|scroll|hidden|clip/.test(style.overflowX)) {
+            left = Math.max(left, box.left + el.clientLeft)
+            right = Math.min(right, box.left + el.clientLeft + el.clientWidth)
+          }
+          if (/auto|scroll|hidden|clip/.test(style.overflowY)) {
+            top = Math.max(top, box.top + el.clientTop)
+            bottom = Math.min(bottom, box.top + el.clientTop + el.clientHeight)
+          }
+        }
+        if (right <= left || bottom <= top) return false
+        const hit = document.elementFromPoint((left + right) / 2, (top + bottom) / 2)
+        return hit && (hit === node.parentElement || node.parentElement.contains(hit) || (getComputedStyle(node.parentElement).pointerEvents === 'none' && hit.contains(node.parentElement)))
+      })
+    }
+    const visibleText = new Map()
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT)
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      if (!node.textContent.trim() || !painted(node)) continue
+      for (let el = node.parentElement; el; el = el.parentElement) {
+        visibleText.set(el, (visibleText.get(el) || '') + node.textContent + ' ')
+      }
+    }
+    for (const container of document.querySelectorAll('*')) {
+      let run = [], previous = ''
+      const flush = () => {
+        if (run.length >= 3) findings.push({
+          rule: 'repeated-rows', mode: 'record',
+          target: run.map((el) => el.tagName.toLowerCase()),
+          text: run.map((el) => visibleText.get(el).trim().slice(0, 80)),
+          rects: run.map((el) => el.getBoundingClientRect().toJSON()),
+          fontSizes: run.map((el) => parseFloat(getComputedStyle(el).fontSize)),
+        })
+        run = []
+      }
+      for (const row of container.children) {
+        const text = normalize(visibleText.get(row) || '')
+        if (!text) continue
+        if (text !== previous) flush()
+        run.push(row)
+        previous = text
+      }
+      flush()
+    }
+    return findings
+  })
+}
 
 export function compareFeelBaseline(result, baseline) {
   if (feelMode(result.journey) === 'record') return []
@@ -19,6 +85,7 @@ export function compareFeelBaseline(result, baseline) {
   const expected = baseline.entries.filter((entry) => sameScreenshot(entry, result))
   const rules = new Set([...counts.keys(), ...expected.map((entry) => entry.rule)])
   return [...rules].flatMap((rule) => {
+    if (recordOnlyRules.has(rule)) return []
     const actual = counts.get(rule) || 0
     const entry = expected.find((entry) => entry.rule === rule)
     if (!entry) return []
@@ -30,7 +97,7 @@ export function compareFeelBaseline(result, baseline) {
 /** Missing registration is evidence to triage, never an implicit zero budget. */
 export function recordNewFeelSurfaces(result, baseline) {
   const rules = [...new Set(result.findings.map((finding) => finding.rule))]
-  return rules.filter((rule) => feelMode(result.journey) === 'record' || !baseline.entries.some((entry) => sameScreenshot(entry, result) && entry.rule === rule))
+  return rules.filter((rule) => recordOnlyRules.has(rule) || feelMode(result.journey) === 'record' || !baseline.entries.some((entry) => sameScreenshot(entry, result) && entry.rule === rule))
     .map((rule) => ({
       label: result.label, journey: result.journey, screenshotName: result.screenshotName, platform: process.platform, rule, mode: 'record',
       findings: result.findings.filter((finding) => finding.rule === rule),
@@ -69,6 +136,7 @@ export function installFeelObserver(page, {
   const recordedSurfaces = new Set()
   async function checkpoint(label, existingScreenshot, screenshotName = existingScreenshot ? path.basename(String(existingScreenshot)) : `${label}.png`) {
     const result = { ...await scanFeel(page, { label }), journey: name, screenshotName, platform: process.platform, mode: feelMode(name) }
+    result.findings.push(...await scanRepeatedRows(page))
     const reviewed = applyFeelExemptions(result, exemptions)
     const drift = compareFeelBaseline(reviewed.result, baseline)
     const file = existingScreenshot || path.join(outputDir, `${++sequence}.png`)

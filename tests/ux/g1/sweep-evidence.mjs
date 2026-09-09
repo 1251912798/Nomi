@@ -111,6 +111,10 @@ export function saveCase(directory, walk) {
 export function saveReport(directory, runs, skipped, budgetCny) {
   const lines = ['# Sweep 问题总账', '', `模式：记录并继续；预算上限 ¥${budgetCny}。费用取供应商余额增量，缺账单写未知；站点费用为保守预留增量。修补不算通过；各输入只证明登记的子任务，不能代替完整 G1 验收。`, '',
     '| case/input | surface | 站 | 现象 | 证据 | 初判层 | root_cause_cluster |', '|---|---|---|---|---|---|---|']
+  const status = runs.some(r => r.result === 'blocked') ? 'blocked' : 'collected'
+  const runFile = path.join(directory, 'run.json')
+  if (fs.existsSync(runFile)) writeJson(runFile, { ...JSON.parse(fs.readFileSync(runFile, 'utf8')), status })
+  lines.splice(3, 0, `运行状态：${status}`, ...runs.filter(r => r.result === 'blocked').map(r => `- ${r.id}：blocked (${r.credentialPrecheck?.reason})；[凭据收据](${r.id}/credential-precheck.json)，后续站未到达。`), '')
   const evidence = (r, d) => `[轨迹](${r.id}/${fs.existsSync(path.join(directory, r.id, 'trace.zip')) ? 'trace.zip' : 'trace-unavailable.md'}) / [断言](${r.id}/deviations.json)${d.screenshot ? ` / [截图](${r.id}/${d.screenshot})` : ''}`
   const feelGroups = new Map()
   for (const r of runs) for (const d of r.deviations) {
@@ -137,7 +141,7 @@ export function saveReport(directory, runs, skipped, budgetCny) {
     const stations = selected.flatMap(r => r.stations.filter(s => (s.surface ?? r.surface) === surface))
     const failures = selected.flatMap(r => r.deviations.filter(d => (d.surface ?? r.surface) === surface).map(d => ({ ...d, caseId: r.id })))
     const billed = runs.filter(r => r.surface === surface)
-    lines.push(`| ${surface} | ${selected.length} | ${stations.filter(s => s.status !== 'unreachable').length} | ${new Set(failures.filter(d => d.repaired).map(d => `${d.caseId}/${d.station}`)).size} | ${failures.length} | ${billed.some(r => r.costCny === null) ? '未知' : billed.reduce((n,r)=>n+(r.costCny ?? 0),0)} |`)
+    lines.push(`| ${surface} | ${selected.length} | ${stations.filter(s => !['unreachable', 'blocked'].includes(s.status)).length} | ${new Set(failures.filter(d => d.repaired).map(d => `${d.caseId}/${d.station}`)).size} | ${failures.length} | ${billed.some(r => r.costCny === null) ? '未知' : billed.reduce((n,r)=>n+(r.costCny ?? 0),0)} |`)
   }
   lines.push('', '跨页面 case 在触及的各 surface 分别计数；站点与问题按实际 surface 归属，费用只计入输入主 surface，避免重复记账。')
   lines.push('', '## 未跑输入', '', ...skipped.map(s => `- ${s.id}：${s.status}；${s.reason}`), '')

@@ -258,6 +258,7 @@
     "fflate": "0.8.3",
     "framer-motion": "^12.39.0",
     "i18next": "26.3.6",
+    "img-fx": "0.5.1",
     "immer": "^11.1.8",
     "js-yaml": "4.1.1",
     "leafer-ui": "^2.1.0",

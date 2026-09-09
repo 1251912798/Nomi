@@ -1,4 +1,5 @@
 import React from 'react'
+import type { ImageGenerationPreset } from 'img-fx'
 import { useTranslation } from 'react-i18next'
 import { IconCopy, IconDownload, IconMaximize, IconUpload } from '@tabler/icons-react'
 import ProvenancePanel from './ProvenancePanel'
@@ -35,10 +36,9 @@ import type { GenerationCanvasNode } from '../model/generationCanvasTypes'
 import type { ConnectionAnchorSide } from '../store/canvasStoreTypes'
 import { useGenerationCanvasStore } from '../store/generationCanvasStore'
 import { NodeGeneratingOverlay } from './NodeGeneratingOverlay'
-import { NodeQueuedBadge } from './NodeQueuedBadge'
+import { NodeGenerationStatus } from './NodeGenerationStatus'
 import { ProductionShotOverlays } from './ProductionShotOverlays'
 import { useProductionNodeRetry } from './useProductionNodeRetry'
-import { selectIsNodeQueued, useGenerationQueueStore } from '../runner/generationQueueStore'
 import { encodeTimelineGenerationNodeDragPayload, TIMELINE_GENERATION_NODE_DRAG_MIME } from '../../timeline/timelineDragPayload'
 import { addGenerationNodeToTimelineEnd } from '../../timeline/addNodeToTimelineEnd'
 import { canRunGenerationNode, confirmAndRunNode } from '../runner/generationRunController'
@@ -55,7 +55,6 @@ import { canDragGenerationNodeToTimeline } from '../model/timelineDragAffordance
 import { useResultDownload } from './useResultDownload'
 import { useArtifactNodeSlots } from './artifact/artifactNodeSlots'
 import {
-  STATUS_LABEL,
   RESIZE_DIRECTIONS,
   getNodeSizeBounds,
   FOCUS_GENERATION_NODE_EVENT,
@@ -73,6 +72,8 @@ export type BaseGenerationNodeProps = {
   readOnly?: boolean
   focusFlash?: boolean
   appear?: boolean
+  waitingMotion?: 'reduced'
+  waitingPreset?: ImageGenerationPreset
 }
 const Scene3DEditor = lazyWithChunkBoundary('3D 场景编辑器', () => import('./Scene3DEditor')) // A5：chunk 失败只降级本卡
 const Model3DViewer = lazyWithChunkBoundary('3D 模型预览', () => import('./model3d/Model3DViewer')) // 生成出的 .glb 卡内可旋转预览（R3F）
@@ -90,6 +91,8 @@ function BaseGenerationNodeImpl({
   readOnly = false,
   focusFlash = false,
   appear = false,
+  waitingMotion,
+  waitingPreset,
 }: BaseGenerationNodeProps): JSX.Element {
   const { t } = useTranslation()
   const productionRetry = useProductionNodeRetry(node) // P4 S6：多镜节点失败→返工链；非多镜/项目没开→null 退回本地重跑（回归门）
@@ -155,6 +158,7 @@ function BaseGenerationNodeImpl({
   const updateMediaDimensions = (width: number, height: number, durationSeconds?: number) => {
     const patch = computeMediaMetaPatch({
       resultType: node.result?.type,
+      preserveSize: Boolean(node.runs?.some((run) => run.resultId === node.result?.id)),
       meta: node.meta || {},
       currentSize: node.size,
       width,
@@ -215,9 +219,6 @@ function BaseGenerationNodeImpl({
     commitPersistedChange,
   })
   const isGenerating = status === 'queued' || status === 'running'
-  // 「已排队但还没轮到」的真相在队列 store（与 node.status 零重叠，见 generationQueueStore 头注释）：在此之前
-  // 后续波次的节点 status 还是 idle，画布上看着像压根没被选中——用户以为漏点了。
-  const isQueued = useGenerationQueueStore((state) => selectIsNodeQueued(state, node.id))
   const canGenerate =
     useGenerationCanvasStore((state) =>
       canRunGenerationNode(node, {
@@ -232,9 +233,6 @@ function BaseGenerationNodeImpl({
     (node.result?.type === 'image' || node.result?.type === 'video') &&
     !resultStackOpen
   const showSideTimelineDrag = canSendToTimeline && node.kind !== 'scene3d' && !showTimelineNotch
-  // 失败态不显文字徽标——错误已铺满节点正文（NodeErrorReport），顶部再写「生成失败」是重复噪音（2026-06-03 评审）。
-  const showStatusBadge = status === 'queued' || status === 'running'
-
   // 2026-09-05：这几条的 zh+en 词条一直都在，只是渲染处写死了中文（英文界面恒显中文），现接回词条。
   const sourceNodeLabel = sourceNodeTitle || (node.derivedFrom && !sourceNodeExists ? t('generationCommon.node.sourceMissing') : node.derivedFrom || '')
   const sourceCategoryName = sourceNodeCategoryId ? getBuiltinCategoryById(sourceNodeCategoryId)?.name : null
@@ -428,25 +426,12 @@ function BaseGenerationNodeImpl({
       <header
         className={cn(
           'generation-canvas-v2-node__header',
-          'absolute top-[10px] left-[10px] right-[10px] z-[2]',
+          'absolute top-[10px] left-[10px] right-[10px] z-[4]',
           'flex items-center justify-start gap-2 min-h-0 p-0',
           'pointer-events-auto cursor-grab',
         )}
       >
-        {showStatusBadge ? (
-          <span
-            className={cn(
-              'text-micro font-medium tracking-[0.06em] uppercase',
-              'py-[3px] px-2 rounded-nomi-sm backdrop-blur-[8px]',
-              'bg-nomi-paper/[0.82] text-nomi-ink-60',
-              'data-[status=success]:text-workbench-success-ink data-[status=success]:bg-workbench-success-soft',
-              'data-[status=error]:text-workbench-danger data-[status=error]:bg-workbench-danger-soft',
-            )}
-            data-status={status}
-          >
-            {(isGenerating && node.progress?.message) || STATUS_LABEL[status] || status}
-          </span>
-        ) : null}
+        <NodeGenerationStatus node={node} />
         <TechnicalReviewBadge meta={node.meta} />
         {/* 拆解收起态（视图 07）：视频节点有拆解结果且面板未占槽时，挂「已拆解 · N 镜」角标 + 可点回浮条。 */}
         <NodeDeconstructionBadge node={node} />
@@ -610,7 +595,6 @@ function BaseGenerationNodeImpl({
             prompt={displayPrompt}
           />
         )}
-        <ShotPreviewOverlays selected={selected} shotIndex={shotIndex} hasResult={hasResult} />
         {canOpenImagePreview && !isCardKind && !readOnly && !resultStackOpen && imageEditing.editGrid === null ? (
           <NodeInlineImageTitle nodeId={node.id} value={node.title || ''} selected={selected} />
         ) : null}
@@ -649,8 +633,9 @@ function BaseGenerationNodeImpl({
         />
       ) : null}
 
-      {isGenerating && !localImageOpPending ? <NodeGeneratingOverlay node={node} /> : null}
-      {isQueued && !isGenerating ? <NodeQueuedBadge /> : null}
+      {!localImageOpPending ? <NodeGeneratingOverlay node={node} motion={waitingMotion} preset={waitingPreset} /> : null}
+      <ShotPreviewOverlays shotIndex={shotIndex} />
+
       <ProductionShotOverlays node={node} selected={selected && !isMultiSelectActive} />{/* P4 S5+S6 多镜叠加：占位三态 + 版本条（非多镜早退零开销） */}
       {showSideTimelineDrag ? (
         <SideTimelineDragHandle onAddAtPlayhead={handleAddToTimelineAtPlayhead} onDragStart={handleTimelineDragStart} />

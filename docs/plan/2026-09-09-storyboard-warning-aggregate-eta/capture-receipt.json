@@ -1,0 +1,55 @@
+{
+  "baseline": "f0dc743cb8e015f2189adde313dfa8b4d7e39236",
+  "head": "2c36c19e64af4859c58534906868fc117884d48f",
+  "viewport": {
+    "width": 1440,
+    "height": 1100
+  },
+  "inputs": {
+    "shots": 8,
+    "outputKinds": [
+      "video"
+    ],
+    "concurrency": 6
+  },
+  "phases": {
+    "before": {
+      "eta": {
+        "waitSeconds": 1920,
+        "waitSecondsHigh": 4800,
+        "etaBasis": "coldstart"
+      },
+      "screenshots": {
+        "c04": {
+          "filename": "c04-before.png",
+          "text": "执行计划\n按真实模型档案核对每一镜的时长/参数上限，并给出合并或拆条建议（机器计算、方案免费可改）。\n需先处理，否则生成会截断或无法出片\n清单里没有模型「unavailable-video-model」，已改用 MiniMax H3。\n清单里没有模型「unavailable-video-model」，已改用 MiniMax H3。\n清单里没有模型「unavailable-video-model」，已改用 MiniMax H3。\n清单里没有模型「unavailable-video-model」，已改用 MiniMax H3。\n清单里没有模型「unavailable-video-model」，已改用 MiniMax H3。\n清单里没有模型「unavailable-video-model」，已改用 MiniMax H3。\n清单里没有模型「unavailable-video-model」，已改用 MiniMax H3。\n清单里没有模型「unavailable-video-model」，已改用 MiniMax H3。",
+          "blockerRows": 8
+        },
+        "c06": {
+          "filename": "c06-before.png",
+          "text": "允许 Nomi 生成这一批镜头？\n\n经 AI 助手驱动 · 需你确认花费\n\n雨夜天台 · 先出主角形象给你过目，点头后才开拍。\n\n总时长\n约 48 秒\n画幅\n16:9\n镜头数\n8\n预计等待\n约 32 分钟\n共 8 镜\n镜 1\n雨夜天台，第 1 镜\nMiniMax H3\n约 6 秒\n¥1\n镜 2\n雨夜天台，第 2 镜\nMiniMax H3\n约 6 秒\n¥1\n镜 3\n雨夜天台，第 3 镜\nMiniMax H3\n约 6 秒\n¥1\n镜 4\n雨夜天台，第 4 镜\nMiniMax H3\n约 6 秒\n¥1\n镜 5\n雨夜天台，第 5 镜\nMiniMax H3\n约 6 秒\n¥1\n镜 6\n雨夜天台，第 6 镜\nMiniMax H3\n约 6 秒\n¥1\n镜 7\n雨夜天台，第 7 镜\nMiniMax H3\n约 6 秒\n¥1\n镜 8\n雨夜天台，第 8 镜\nMiniMax H3\n约 6 秒\n¥1\n预估合计 ¥8\n个别镜头不满意，单镜重拍只花该镜费用。\n最多花费 ≤¥8\n确认后不可再改：镜头清单 · 模型 · 参考 · 价格\n已暂停 · 你正在查看\n返回修改\n先试拍第 1 镜（¥1）\n忽略\n确认生成 8 镜",
+          "blockerRows": 0
+        }
+      }
+    },
+    "after": {
+      "eta": {
+        "waitSeconds": 480,
+        "waitSecondsHigh": 1200,
+        "etaBasis": "coldstart"
+      },
+      "screenshots": {
+        "c04": {
+          "filename": "c04-after.png",
+          "text": "执行计划\n按真实模型档案核对每一镜的时长/参数上限，并给出合并或拆条建议（机器计算、方案免费可改）。\n需先处理，否则生成会截断或无法出片\n清单里没有模型「unavailable-video-model」，已改用 MiniMax H3。 · 8 镜：#1、#2、#3、#4、#5、#6、#7、#8",
+          "blockerRows": 1
+        },
+        "c06": {
+          "filename": "c06-after.png",
+          "text": "允许 Nomi 生成这一批镜头？\n\n经 AI 助手驱动 · 需你确认花费\n\n雨夜天台 · 先出主角形象给你过目，点头后才开拍。\n\n总时长\n约 48 秒\n画幅\n16:9\n镜头数\n8\n预计等待\n约 8 分钟\n共 8 镜\n镜 1\n雨夜天台，第 1 镜\nMiniMax H3\n约 6 秒\n¥1\n镜 2\n雨夜天台，第 2 镜\nMiniMax H3\n约 6 秒\n¥1\n镜 3\n雨夜天台，第 3 镜\nMiniMax H3\n约 6 秒\n¥1\n镜 4\n雨夜天台，第 4 镜\nMiniMax H3\n约 6 秒\n¥1\n镜 5\n雨夜天台，第 5 镜\nMiniMax H3\n约 6 秒\n¥1\n镜 6\n雨夜天台，第 6 镜\nMiniMax H3\n约 6 秒\n¥1\n镜 7\n雨夜天台，第 7 镜\nMiniMax H3\n约 6 秒\n¥1\n镜 8\n雨夜天台，第 8 镜\nMiniMax H3\n约 6 秒\n¥1\n预估合计 ¥8\n个别镜头不满意，单镜重拍只花该镜费用。\n最多花费 ≤¥8\n确认后不可再改：镜头清单 · 模型 · 参考 · 价格\n已暂停 · 你正在查看\n返回修改\n先试拍第 1 镜（¥1）\n忽略\n确认生成 8 镜",
+          "blockerRows": 0
+        }
+      }
+    }
+  }
+}

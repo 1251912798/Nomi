@@ -78,3 +78,25 @@ Ponytail 独立明细发现四项机制问题，推送前一并修正：timeline
 总账问题分类 recurring（测试报告，非生产修复）：症状是同一批小字逐站重复使总账不可读；直接原因 saveReport 把 captureIssues 全量逐条输出；类根因是原始证据粒度与阅读粒度没有区分。实扫 startEvidence.capture → _collect.record 和 C0 createC0Collection.capture → 同一 saveReport，两类入口共用报告边界。按原始 rule/text/target/surface 元组聚合，不用坐标或站点作身份；每组保留首次站、次数、证据链接。功能 deviation 仍逐条；原始 deviations/stations/feel JSON 保持完整。依赖生命周期 not-applicable，无旧实现并行保留。
 
 验收：三站同命中先红后绿；不同规则/文字/目标/面不误合、跨 case 可合、功能断言不合并。相关 Node 测试、完整 loopback sweep、完整带锁 gates（排锁上限 40 分钟），正常 hooks commit/push 到现有 PR #666，确认无冲突。SWEEP-LAST 顶部 ≤8 行记录本轮数字与 push 后 HEAD。回滚撤销本轮测试/报告改动，保留 main 合并。
+
+## 混合模式（2026-09-09）
+
+用途：簇 A 这类模型契约验收只花文本钱；显式 `sweep --case C0 --real-text --planner-model <档> --budget <元>` 让规划请求走真实文本模型，媒体生成和审片使用有标识的本地测试信号，不能称为真实成片验收。默认 loopback 不变，不改生产代码。
+
+根因分类 recurring（测试机制）：C0 子进程始终 dry-run，CLI 的 real-text 意图未传到调度器；付费开关把文本与媒体绑在一起。实扫 scripts/sweep.mjs 的 C0/非 C0 两个入口、c0-real-main.mjs 的 appFetch/global fetch 两个出口、c0-real-budget.mjs 与 sweep-real-main.mjs 的预留边界。修在测试调度/发送边界，所有混合媒体请求只能本地响应或拒绝，文本按所选公开报价、请求字节上界和强制输出上限预留后才能发送；缺凭据明确失败，不回退。依赖版本不变，无生产修复合同；迁入补丁缺少的测试侧预算模块，不引入框架或新协议。
+
+范围：仅 scripts/tests 与本文；保留 main #668 视频等待、原生转录观察器和真实 C0 原预算。nano 输出最高 16000、deepseek 8192，报价低于上限时取小值。撤回本任务提交即可回滚，无数据迁移。验收：参数/预算传递、零媒体出站、并发及超预算拒发先红后绿；无 key 明确报错；完整 loopback 复扫及完整 gates exit 0，正常 hooks 后 push/PR。
+
+Ponytail 复核：两种模式统一复用 `c0-fixture.mjs` 的 `createSyntheticC0Media`，删除调度器内重复的 FFmpeg 编码配方；真实文本和媒体隔离发送边界不变。参数/缺 key/并发及失败预留共新增 5 项测试，和原预算测试合计 12 项通过。全量 loopback 与最终完整 gates 的收据写入 SWEEPC-LAST.md；真模型 HTTP 400 及 repair 保留，不把本任务称为生产模型契约修复。
+
+## 凭据预检（C14）
+
+范围仅测试装配与脚本。recurring：sweep attachRealText 与 C0 scheduler.attach 都在付费装配前同步调用隔离应用的 catalog/secrets 解密，锁屏可令 Electron 主线程永久阻塞；缺少的是 Node 宿主拥有的限时边界，不是模型失败。统一在原解密调用旁写无秘密的完成标记，宿主以最多 9 秒看守；不额外解密、不缓存或绕过钥匙串。超时直接终止该隔离进程，原生错误不进报告。系统 IORegistry 锁屏探测有独立短期限，unknown 保留为 unknown，不能推断 locked。
+
+失败记录 credential-precheck.json（blocked，locked-screen/keychain-denied/no-key，系统探测证据）；依赖真实凭据的后续站 unreachable，本 run blocked，独立零额度输入继续。无 key 在准备隔离前拒绝并留相同收据。成功仍使用原应用解密函数与原 dispatch 闭包，不把 key 返回 Node。依赖不升级：本任务修测试宿主看守，不改变 Electron/safeStorage 行为。回滚撤回本节与测试脚本修改，无生产或用户数据迁移。
+
+验收先红后绿：模拟解密永不返回、抛错/空值、无 key、成功仅解密一次；验证期限、终止、blocked/未到达收据、无密钥输出。完整 gates exit 0 后正常 hooks 提交推送 PR。
+
+C14 定向收据：旧 attach 在模拟解密挂起时由外部 1 秒超时终止且没有 blocked 收据（artifacts/c14/red-baseline.log）。七项回归覆盖同步主线程挂起、解密拒绝、缺 key、一次解密、账单阶段独立期限、C0 八站未到达及 sweep 独立零额度结果。打包 /Applications/Nomi.app 的真实应用解密在本次 locked 系统状态下返回 ready（零请求）；不能声称复现了该签名实例的真实钥匙串挂死。另对同打包应用注入同步主线程阻塞，9,037ms 返回 blocked/locked-screen，收据 elapsedMs=9,005，后续八站未到达（artifacts/c14/packaged-timeout）。没有真实模型出站或费用。
+
+同类扫描另覆盖 c0-real-assembly.e2e.mjs：改为同一看守入口，用原余额请求内的合成凭据断言证明解密，删除此前多余的独立解密。已安装 Nomi.app 缺少本分支需要的 dist-electron/appFetch.js，完整 dispatch 装配不能用该旧包证明；该失败按装配失败保留，没有伪装成凭据 blocked。完整装配改用当前构建验证，打包实例仅证明上述应用解密与外部期限。

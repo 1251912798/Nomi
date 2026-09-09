@@ -1,0 +1,22 @@
+
+> nomi@0.21.0 check:test-waits /Users/aoqimin/Desktop/Nomi-sweep-d
+> node --test ./scripts/check-test-waits.node-test.mjs && node ./scripts/check-test-waits.mjs
+
+✔ lane cleanup rejects rm-first hooks and separate or unawaited close hooks (6.744084ms)
+✔ lane cleanup recognizes aliases, multiline callbacks and bracket access (6.065875ms)
+✔ lane cleanup leaves owner-managed teardown, completed evidence and ordinary directories alone (0.938958ms)
+✔ lane cleanup recognizes inferred test contexts instead of depending on the name t (1.246458ms)
+✔ rejects inline, multiline, commented and parenthesized async callbacks (1.293041ms)
+✔ ignores comments, strings, synchronous DOM predicates and awaited evaluate samples (0.480959ms)
+✔ discovers real walk/e2e/helper scripts and unit tests while skipping generated dependencies (5.788417ms)
+✔ station waits reject all three incidents, aliases and arithmetic, but accept budget helpers (1.462042ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 351.943042
+Station wait baseline: 877 occurrences; new/stale: 0
+✅ 测试等待门岗通过：0 处空等待/私有墙钟等待/无 owner 的 lane 清理（硬零），3 处墙钟预算断言（棘轮基线，只减不增）

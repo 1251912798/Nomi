@@ -1,0 +1,135 @@
+SHOT 00-image-idle
+confirmed generation
+SHOT selected-generating
+SHOT unselected-generating
+SHOT 01-image-generating
+SHOT 02-task-center-generating
+任务
+1 进行中
+进行中 1
+图片
+生成中 · 已等 21 秒
+此任务暂不支持中止
+SHOT 03-image-finalizing
+SHOT selected-complete
+SHOT unselected-complete
+SHOT 04-image-saved
+SHOT FAIL
+locator.click: Timeout 15000ms exceeded.
+Call log:
+[2m  - waiting for getByRole('button', { name: '重新生成', exact: true })[22m
+[2m    - locator resolved to <button type="button" aria-label="重新生成" class="inline-flex items-center justify-center shrink-0 w-[30px] h-[30px] p-0 border-0 rounded-full bg-nomi-ink text-nomi-paper text-body leading-none cursor-pointer transition-colors hover:enabled:bg-nomi-accent disabled:bg-nomi-ink-20 disabled:text-nomi-ink-40 disabled:cursor-not-allowed ml-auto">↑</button>[22m
+[2m  - attempting click action[22m
+[2m    2 × waiting for element to be visible, enabled and stable[22m
+[2m      - element is visible, enabled and stable[22m
+[2m      - scrolling into view if needed[22m
+[2m      - done scrolling[22m
+[2m      - <span data-side="left" data-home-x="calc(100% - 28px)" class="generation-canvas-react-flow__handle-hit">…</span> from <div data-side="left" data-handlepos="left" aria-label="从此节点开始连线" data-affordance="magnetic" data-handleid="source-left" data-nodeid="gen-v2-image-mtt11vi2-2dtr" data-id="1-gen-v2-image-mtt11vi2-2dtr-source-left-source" class="react-flow__handle react-flow__handle-left nodrag generation-canvas-react-flow__no-pan generation-canvas-react-flow__handle generation-canvas-react-flow__handle--source generation-canvas-react-flow__handle--magnetic source connectable connectablestart connectionindicator">…</div> subtree intercepts pointer events[22m
+[2m    - retrying click action[22m
+[2m    - waiting 20ms[22m
+[2m    2 × waiting for element to be visible, enabled and stable[22m
+[2m      - element is visible, enabled and stable[22m
+[2m      - scrolling into view if needed[22m
+[2m      - done scrolling[22m
+[2m      - <span data-side="left" data-home-x="calc(100% - 28px)" class="generation-canvas-react-flow__handle-hit">…</span> from <div data-side="left" data-handlepos="left" aria-label="从此节点开始连线" data-affordance="magnetic" data-handleid="source-left" data-nodeid="gen-v2-image-mtt11vi2-2dtr" data-id="1-gen-v2-image-mtt11vi2-2dtr-source-left-source" class="react-flow__handle react-flow__handle-left nodrag generation-canvas-react-flow__no-pan generation-canvas-react-flow__handle generation-canvas-react-flow__handle--source generation-canvas-react-flow__handle--magnetic source connectable connectablestart connectionindicator">…</div> subtree intercepts pointer events[22m
+[2m    - retrying click action[22m
+[2m      - waiting 100ms[22m
+[2m    27 × waiting for element to be visible, enabled and stable[22m
+[2m       - element is visible, enabled and stable[22m
+[2m       - scrolling into view if needed[22m
+[2m       - done scrolling[22m
+[2m       - <span data-side="left" data-home-x="calc(100% - 28px)" class="generation-canvas-react-flow__handle-hit">…</span> from <div data-side="left" data-handlepos="left" aria-label="从此节点开始连线" data-affordance="magnetic" data-handleid="source-left" data-nodeid="gen-v2-image-mtt11vi2-2dtr" data-id="1-gen-v2-image-mtt11vi2-2dtr-source-left-source" class="react-flow__handle react-flow__handle-left nodrag generation-canvas-react-flow__no-pan generation-canvas-react-flow__handle generation-canvas-react-flow__handle--source generation-canvas-react-flow__handle--magnetic source connectable connectablestart connectionindicator">…</div> subtree intercepts pointer events[22m
+[2m     - retrying click action[22m
+[2m       - waiting 500ms[22m
+[2m    - waiting for element to be visible, enabled and stable[22m
+[2m    - element is visible, enabled and stable[22m
+[2m    - scrolling into view if needed[22m
+[2m    - done scrolling[22m
+[2m    - <button type="button" aria-label="生成参数" title="1024x1024" aria-expanded="false" class="inline-flex items-center gap-1 h-7 pl-2.5 pr-2 rounded-pill border border-nomi-line bg-nomi-ink-05 shrink-0 justify-between text-caption text-nomi-ink-80 cursor-pointer min-w-0 hover:border-nomi-ink-20 focus:outline-none focus-visible:border-nomi-accent">…</button> from <div class="generation-canvas-v2-node__params--parameters min-w-0 flex items-center gap-2">…</div> subtree intercepts pointer events[22m
+[2m  - retrying click action[22m
+[2m    - waiting 500ms[22m
+[2m    - waiting for element to be visible, enabled and stable[22m
+[2m    - element is visible, enabled and stable[22m
+[2m    - scrolling into view if needed[22m
+[2m    - done scrolling[22m
+[2m    - <span data-side="left" data-home-x="calc(100% - 28px)" class="generation-canvas-react-flow__handle-hit">…</span> from <div data-side="left" data-handlepos="left" aria-label="从此节点开始连线" data-affordance="magnetic" data-handleid="source-left" data-nodeid="gen-v2-image-mtt11vi2-2dtr" data-id="1-gen-v2-image-mtt11vi2-2dtr-source-left-source" class="react-flow__handle react-flow__handle-left nodrag generation-canvas-react-flow__no-pan generation-canvas-react-flow__handle generation-canvas-react-flow__handle--source generation-canvas-react-flow__handle--magnetic source connectable connectablestart connectionindicator">…</div> subtree intercepts pointer events[22m
+[2m  - retrying click action[22m
+[2m    - waiting 500ms[22m
+
+    at /Users/aoqimin/Desktop/Nomi-process-feedback/tests/ux/process-feedback-electron.e2e.mjs:120:65 {
+  name: 'TimeoutError'
+}
+Nomi
+项目库
+›
+未命名项目 09/09 02:53
+创作
+生成
+预览
+2/4
+素材库
+分组
+提示词
+技能
+流程
+建参考卡
+AI 编辑
+裁剪
+抠图
+切图
+变换
+画板
+下载
+图片
+加入时间轴（点击贴尾 · 拖拽自选位置）
+镜头 1
+生成方式
+文生图
+改图
+纯文字生成图像
+提示词
+
+傍晚河边，一位女孩望向远处的桥，电影画面。
+
+Fixture 图片
+1024x1024
+优化
+1 张
+↑
+画面小窗
+0.0s
+N
+Nomi
+—
+Nomi 能看画布、排生成、拆一条参考片
+生成选中
+拆参考片
+检查画布
+选择模型
+Skill
+自动改
+这一段
+整片
+视图
+1243%
+?
+0:00
+0:01
+0:02
+0:03
+0:04
+0:05
+0:06
+0:07
+0:08
+0:09
+0:10
+图片轨
+1
+图片
+视频轨
+0
+从生成区拖入素材
+叠加层
+拖音频到此当配乐
+配乐

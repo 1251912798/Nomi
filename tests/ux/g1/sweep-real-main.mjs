@@ -1,3 +1,4 @@
+import { decryptForDispatch } from './credential-main.mjs'
 // Test-side main-process dispatch boundary; credentials never leave Electron.
 import fs from 'node:fs'
 import path from 'node:path'
@@ -5,7 +6,7 @@ import { createRequire } from 'node:module'
 import { CNY_PER_USD } from './c0-real-budget.mjs'
 import { reserveSweepRequest } from './sweep-budget.mjs'
 import { createResponseCapture } from './sweep-response.mjs'
-export async function attachSweepDispatch({ quote, ledgerPath, budgetCny, requestsPath }) {
+export async function attachSweepDispatch({ quote, ledgerPath, budgetCny, requestsPath, credentialMarker }) {
   const require = createRequire(import.meta.url), { app } = require('electron')
   const compiled = path.join(app.getAppPath(), 'dist-electron')
   const transport = require(path.join(compiled, 'appFetch.js'))
@@ -14,8 +15,7 @@ export async function attachSweepDispatch({ quote, ledgerPath, budgetCny, reques
   const persist = () => fs.writeFileSync(ledgerPath, JSON.stringify(ledger, null, 2), { mode: 0o600 })
   const { readCatalog } = require(path.join(compiled, 'catalog/catalogStore.js'))
   const { decryptApiKeyRecord } = require(path.join(compiled, 'catalog/secrets.js'))
-  const key = decryptApiKeyRecord(readCatalog().apiKeysByVendor.apimart)
-  if (!key) throw Error('SWEEP_CREDENTIAL_MISSING')
+  const key = decryptForDispatch({ record: readCatalog().apiKeysByVendor?.apimart, decrypt: decryptApiKeyRecord, credentialMarker })
   const balance = async () => {
     const response = await original('https://api.apimart.ai/v1/balance', { headers: { Authorization: `Bearer ${key}` }, signal: AbortSignal.timeout(20000), redirect: 'error' })
     const data = await response.json()

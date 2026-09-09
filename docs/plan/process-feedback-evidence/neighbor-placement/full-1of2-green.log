@@ -1,0 +1,158 @@
+
+[canvas:full 1/2] gestures
+  ✓ 每张新建的卡当场完整露出在 stage 内（不被常驻 Agent 面板遮住） — [{"kind":"image","id":"gen-v2-image-mtt37z5v-q9ru","inside":true,"overflowRight":-404,"overflowLeft":-456,"stage":{"w":1200,"h":787},"node":{"w":340,"h":340}},{"kind":"video","id":"gen-v2-video-mtt3809r-ti1w","inside":true,"overflowRight":-24,"overflowLeft":-756,"stage":{"w":1200,"h":787},"node":{"w":420,"h":236}}]
+  ✓ 画布上有两个节点 — [{"id":"gen-v2-image-mtt37z5v-q9ru","kind":"image"},{"id":"gen-v2-video-mtt3809r-ti1w","kind":"video"}]
+  ✓ 找得到一块画布空白 — {"x":804,"y":213}
+  ✓ 变换层已提升为合成层（will-change: transform） — transform
+  · 截图 01-panning.png
+  ✓ 拖动中光标是 grabbing — grabbing
+  ✓ 左键平移不写 data-panning（光标交给 CSS :active）
+  ✓ 平移期间画布进入拖动态
+  ✓ 平移期间浮层也收起来了 — {"cursor":"grabbing","panningAttr":null,"draggingAttr":"true","visibleOverlays":0,"marquee":0}
+  ✓ 空白左键拖不再拉出框选矩形
+  ✓ 画布确实跟着鼠标移动了 — Δ=(-140, -90)
+  ✓ 平移不改变缩放
+  ✓ 平移前后节点是同一批 DOM 实例（没有整层重建）
+  ✓ 第一张卡上找得到真正点得到的一点 — {"x":274.8,"y":267.1600006103516}
+  ✓ 点节点会选中它
+  ✓ 点一下空白就取消选中（没拖动=不算平移）
+  ✓ 空选区下点空白：连线层 / 标签层 / 画布外壳零 DOM 变更 — {"edges":0,"labels":0,"stage":0}
+  ✓ 框选前两张卡已缩到画布的六成以内（四角才够离开自动平移带） — {"widthRatio":0.459,"heightRatio":0.25}
+  ✓ 框选起手点与终点完整落在画布空白处 — {"start":{"x":1212,"y":795},"end":{"x":108,"y":104}}
+  · 截图 02-shift-marquee.png
+  ✓ Shift+左键拖会画出框选矩形
+  ✓ 实时框选使用 Nomi 中性色，不被 React Flow 蓝色或 accent 覆盖 — {"borderColor":"oklab(0.93 0.000522935 0.00597717 / 0.36)","backgroundColor":"oklab(0.93 0.000522935 0.00597717 / 0.07)","accentBorderColor":"oklch(0.7 0.13 250)"}
+  ✓ 框选把框内节点都选上了 — 2 个
+  ✓ 向上滚轮放大画布 — 1.00 → 1.39
+  ✓ 缩放锚在光标：光标下的那个画布坐标没有跑掉 — Δ=(0.00, 0.00)
+  ✓ 按住左键时滚轮照样缩放
+  ✓ 平移中缩放也锚在光标 — Δ=(-0.00, -0.00)
+  ✓ 缩放后继续拖：位移接着缩放后的位置走，不回跳（抖动的判据） — 位移 10.00px（应 ≈10）
+  ✓ 选中图片节点恢复左右两个 29px 磁吸 + — [{"side":"left","hasPlus":true,"cssWidth":"29px","cssHeight":"29px","screenWidth":32.65545654296875,"screenHeight":32.65545654296875,"opacity":"0.82"},{"side":"right","hasPlus":true,"cssWidth":"29px","cssHeight":"29px","screenWidth":32.65545654296875,"screenHeight":32.65545654296875,"opacity":"0.82"}]
+  ✓ 缩放命中区保留但不显示 React Flow 小球 — [{"backgroundColor":"rgba(0, 0, 0, 0)","borderTopWidth":"1px","borderTopColor":"rgba(0, 0, 0, 0)","boxShadow":"none"},{"backgroundColor":"rgba(0, 0, 0, 0)","borderTopWidth":"0px","borderTopColor":"rgba(0, 0, 0, 0)","boxShadow":"none"},{"backgroundColor":"rgba(0, 0, 0, 0)","borderTopWidth":"0px","borderTopColor":"rgba(0, 0, 0, 0)","boxShadow":"none"},{"backgroundColor":"rgba(0, 0, 0, 0)","borderTopWidth":"0px","borderTopColor":"rgba(0, 0, 0, 0)","boxShadow":"none"},{"backgroundColor":"rgba(0, 0, 0, 0)","borderTopWidth":"0px","borderTopColor":"oklab(0.93 0.000522935 0.00597717)","boxShadow":"none"},{"backgroundColor":"rgba(0, 0, 0, 0)","borderTopWidth":"0px","borderTopColor":"oklab(0.93 0.000522935 0.00597717)","boxShadow":"none"},{"backgroundColor":"rgba(0, 0, 0, 0)","borderTopWidth":"0px","borderTopColor":"oklab(0.93 0.000522935 0.00597717)","boxShadow":"none"},{"backgroundColor":"rgba(0, 0, 0, 0)","borderTopWidth":"0px","borderTopColor":"oklab(0.93 0.000522935 0.00597717)","boxShadow":"none"}]
+  ✓ 图片节点右侧握把可点 — {"magnetic":true,"label":"generation-canvas-react-flow__handle-hit"}
+  ✓ 图片节点连到了视频节点 — 1 条边
+  ✓ 连线起终点真实贴在两个节点的渲染边界 — {"sourceBoundaryError":0.5631569714169018,"targetBoundaryError":0.5629915483586956,"sourceWithinHeight":true,"targetWithinHeight":true,"stroke":"oklch(0.7 0.13 250)","accent":"oklch(0.7 0.13 250)"}
+  ✓ 连线恢复主题 accent 色 — {"sourceBoundaryError":0.5631569714169018,"targetBoundaryError":0.5629915483586956,"sourceWithinHeight":true,"targetWithinHeight":true,"stroke":"oklch(0.7 0.13 250)","accent":"oklch(0.7 0.13 250)"}
+  · 截图 03-edge-labels-hidden.png
+  ✓ 没选中任何节点时，画布上一个连线标签都没有
+  ✓ 视频卡上找得到真正点得到的一点 — {"x":816.81177734375,"y":463.758525390625}
+  · 截图 04-edge-labels-on-selection.png
+  ✓ 选中节点后其关联边点亮（data-incident）
+  ✓ 选中节点后其关联边的类型标签浮出 — {"labels":1,"incident":1,"fontSize":"12px","color":"oklch(0.7 0.13 250)","accent":"oklch(0.7 0.13 250)","hasChevron":true}
+  ✓ 连线标签恢复 12px accent 文字与下拉图标 — {"labels":1,"incident":1,"fontSize":"12px","color":"oklch(0.7 0.13 250)","accent":"oklch(0.7 0.13 250)","hasChevron":true}
+  · 截图 04a-edge-mode-changed.png
+  · 截图 04b-edge-mode-undone.png
+  · 截图 04c-edge-disconnected.png
+  · 截图 04d-edge-disconnect-undone.png
+  · 截图 04e-node-lock-undone.png
+  ✓ 改边模式、断线、锁定各按一次 Cmd+Z 还原，前一笔节点/连线保留
+  ✓ 选中节点时提示词面板可见
+  ✓ 视频卡上找得到可以起手拖动的一点 — {"x":816.81177734375,"y":463.758525390625}
+  · 截图 05-node-drag-clean.png
+  ✓ 拖动中画布发布 data-dragging（画布级，不是某张卡的私事）
+  ✓ 拖动中提示词面板隐身 — {"dragging":true,"composer":"hidden","toolbar":"hidden","visibleOverlays":0}
+  ✓ 拖动中浮动工具条不显示 — {"dragging":true,"composer":"hidden","toolbar":"hidden","visibleOverlays":0}
+  ✓ 拖动中全画布没有任何浮层露头 — {"dragging":true,"composer":"hidden","toolbar":"hidden","visibleOverlays":0}
+  ✓ 松手后提示词面板原样回来 — {"dragging":false,"composer":"visible"}
+  · 截图 06-drag-other-node.png
+  ✓ 拖另一个节点时画布同样进入拖动态 — {"probe":{"hit":"flex h-full w-full items-center justify-center gap-2 px-4 text-center flex-col py-5","nodeId":"gen-v2-image-mtt37z5v-q9ru","flowNodeId":"gen-v2-image-mtt37z5v-q9ru","transform":"matrix(1, 0, 0, 1, 456, 220.36)"},"crossDrag":{"dragging":"true","overlays":2,"visible":0,"selected":[{"id":"gen-v2-image-mtt37z5v-q9ru","transform":"matrix(1, 0, 0, 1, 391.172, 267.427)"}]},"imageMoveDistance":80.1122467104749}
+  ✓ 直接拖动未选中节点后，该节点成为当前选中节点
+  ✓ 直接拖动未选中节点时节点确实发生位移 — 位移 80.1px
+  ✓ 拖另一个节点时，画布上挂着的浮层一个都不显示 — {"dragging":"true","overlays":2,"visible":0,"selected":[{"id":"gen-v2-image-mtt37z5v-q9ru","transform":"matrix(1, 0, 0, 1, 391.172, 267.427)"}]}
+  · 一秒平移（60 次移动）期间布局重算 5 次
+  ✓ 平移是纯合成：整段拖动几乎不重算布局 — 5 次 / 60 帧
+  ✓ 空格+左键压在节点上仍然平移画布（不是拖节点） — Δx=-60
+  ✓ 全程无页面错误
+
+✅ 画布手势走查通过：51 项断言，截图在 /Users/aoqimin/Desktop/Nomi-process-feedback/tests/ux/shots/canvas-drag-pan-gestures
+
+[canvas:full 1/2] read-only-reload
+  ✓ 只读走查 Vite harness 已就绪
+  ✓ 只读画布仍渲染节点、边和编组 — {"nodes":[{"id":"readonly-source","position":{"x":140,"y":180}},{"id":"readonly-target","position":{"x":700,"y":260}}],"edges":["readonly-edge"],"groups":["readonly-group"],"selected":[]}
+  ✓ 只读画布不显示新增工具栏
+  ✓ 只读画布不暴露素材导入落点
+  ✓ React Flow 节点关闭拖动与连接 — {"className":"react-flow__node react-flow__node-generation generation-canvas-react-flow__node","handles":0}
+  ✓ 只读边不渲染可点击命中层
+  ✓ 真实鼠标与键盘操作不能改变只读图状态 — {"nodes":[{"id":"readonly-source","position":{"x":140,"y":180}},{"id":"readonly-target","position":{"x":700,"y":260}}],"edges":["readonly-edge"],"groups":["readonly-group"],"selected":[],"menus":0}
+  ✓ 只读点击不创建选择或右键菜单 — {"nodes":[{"id":"readonly-source","position":{"x":140,"y":180}},{"id":"readonly-target","position":{"x":700,"y":260}}],"edges":["readonly-edge"],"groups":["readonly-group"],"selected":[],"menus":0}
+  ✓ 刷新后只读投影完整恢复 — {"nodes":2,"edges":1,"groups":1}
+  ✓ 刷新后仍无编辑入口
+
+✅ React Flow 只读与刷新走查通过
+
+[canvas:full 1/2] blank-context-menu
+  · 截图 01-canvas.png
+  ✓ 找得到一块画布空白 — {"x":804,"y":213}
+  ✓ 右键空白后「添加节点」菜单弹出
+  · 截图 02-menu-open.png
+  · 截图 03-after-click.png
+  ✓ 点「图片」真的建出了节点（修复前这一步静默丢失） — 0 → 1
+  ✓ 动作完成后菜单收起
+  ✓ 新增节点后仍找得到画布空白 — {"x":1176,"y":213}
+  ✓ 菜单打开后仍找得到画布空白 — {"x":720,"y":213}
+  ✓ 左键点空白仍然收起菜单
+  · 截图 04-dismiss-on-blank.png
+
+✅ 走查通过：7 条判据
+
+[canvas:full 1/2] group-baseline
+  · shot 01-canvas-4-nodes
+  · shot 02-selection-toolbar-real
+  · shot 03-canvas-grouped
+  · shot 04-group-frame-real
+  · shot 05-group-label-real
+  · shot 06-canvas-node-selected
+  · shot 07-node-floating-toolbar-real
+  · shot 08-mention-popup-empty
+  → 组框实测: {
+  "groupBorder": "oklab(0.36 0.00121554 0.00689365)",
+  "groupBg": "oklab(0.235 0.00121554 0.00689365 / 0.32)",
+  "groupRadius": "16px",
+  "labelBg": "oklab(0.235 0.00121554 0.00689366 / 0.96)",
+  "labelColor": "oklab(0.93 0.000522935 0.00597717)",
+  "labelFont": "",
+  "labelText": "组 1加一句说明4",
+  "accent": "oklch(0.70 0.13 250)"
+}
+✅ 基线截图完成 → /Users/aoqimin/Desktop/Nomi-process-feedback/tests/ux/shots/group-baseline
+  ⚠️ composer 盒子没读到，改拍整窗下半
+
+[canvas:full 1/2] group-reference-direction
+  ✓ 新建并进入隔离项目 — http://127.0.0.1:5287/?step=create#/studio?projectId=project-1788897349793-s20l44
+  ✓ 隔离环境注入可用图片模型档案
+  ✓ 注入两张成图 + 文生图目标
+  ✓ 目标左输入端和编组框均可见
+  ✓ 编组内存在不压节点的真实落点
+  ✓ 左输入端待连提示说明“将编组作为输入” — 将「双图参考」作为输入 · 接入组内 2 个节点
+  ✓ 两根真边方向均为组成员 → 目标 — [{"source":"source-a","target":"target","order":0,"viaGroupId":"reference-group"},{"source":"source-b","target":"target","order":1,"viaGroupId":"reference-group"}]
+  ✓ 目标自动从文生图切到改图 — edit
+  ✓ 两个参考槽按组内顺序得到真实图片 — 2
+  ✓ 编组输出关系已持久声明 — [{"targetNodeId":"target"}]
+  ✓ 目标顶部真实显示两张参考缩略图 — 2
+  ✓ 界面模式同步显示“改图” — 改图
+  ✓ 编组内部的连线命中区不再被组框盖住
+  ✓ 边菜单选项是指针命中顶层 — {"edgeId":"edge-source-a::target::0","topTag":"SPAN","topRole":null,"topText":"风格","same":true}
+  ✓ 真实点标签可切换，且只改命中的一条边 — ["style_ref","reference"]
+  ✓ 断开编组连接会撤掉全部展开边 — {"edgeCount":0}
+  ✓ 断开同时清掉编组声明，不会后续复活
+  ✓ 目标顶部参考图随断开实时清空 — 0
+
+✅ 编组参考方向走查全部达标
+
+[canvas:full 1/2] canvas-reconcile
+  ✓ E2E 桥挂上
+  ✓ 补齐落 2 个节点（实得 2）
+  ✓ 建组收 2 个节点（实得 2）
+  ✓ 已完成镜 shot-1 的 result 被回填（补齐带 result）
+  ✓ shot-1 result id 正确
+  ✓ 幂等：第二次补齐仍 2 个节点（实得 2）
+  ✓ 幂等：只 1 个分镜组（不重复建组，实得 1）
+  ✓ 幂等：shot-1 result 不叠加历史（history≤1，实得 1）
+  ✓ 边界记录：不复活由主进程 reconcile 不投 detached shot 把关（reducer 单测覆盖 plan.detach-shot-nodes）
+  ✓ 截图 01-reconciled.png 落地且非空（424803 字节）
+
+S5 RECONCILE PASS: 10 断言；补齐落节点+组+回填 result，跑两次幂等，provider=0。
+  截图 → /Users/aoqimin/Desktop/Nomi-process-feedback/tests/ux/shots/p4-s5-canvas-reconcile
+
+canvas-full 1/2: PASS (6/6)

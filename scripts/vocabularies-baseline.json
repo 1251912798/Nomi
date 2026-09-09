@@ -40,6 +40,17 @@
       "reason": "三来源文件的纯解包结果：decoded 表示容器能拆出原项，invalid 表示 JSON/编码不合法，unsupported 表示容器形状不支持。它不是任务执行状态或完整性授权结论，decoded 仍必须经过 checksum 与项目绑定校验才能导入。三种来源及 L2 reader 共用这一份结果契约。"
     },
     {
+      "site": "src/workbench/observability/narrate.ts::type:GenerationFeedbackPhase/type-union",
+      "members": [
+        "failed",
+        "finalizing",
+        "generating",
+        "queued",
+        "submitting"
+      ],
+      "reason": "用户批准的 C1 五段生成反馈唯一语义 owner；后端十阶段由 narrate 的穷举 Record 映射，所有媒体消费者共用。"
+    },
+    {
       "site": "src/workbench/creation/storyboard/StoryboardPlanStrategyPanel.tsx::function:StatusBar/parameter:0/property:stateKey/type-union",
       "members": [
         "clear",

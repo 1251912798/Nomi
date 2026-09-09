@@ -1,0 +1,37 @@
+2026-09-08T23:22:45.3975041Z [canvas:full 2/2] card-stack-persistence
+2026-09-08T23:22:51.3444214Z feel record: canvas-card-stack/waitForFunction.png; findings=18; new-surfaces=2; evidence: /home/runner/work/Nomi/Nomi/artifacts/feel/canvas-card-stack-095bf5fc-60eb-4d95-80a1-fe9f225bd406
+2026-09-08T23:22:51.3445595Z feel record: canvas-card-stack/01-real-version-stacks-light.png; findings=18; new-surfaces=2; evidence: /home/runner/work/Nomi/Nomi/artifacts/feel/canvas-card-stack-095bf5fc-60eb-4d95-80a1-fe9f225bd406
+2026-09-08T23:22:51.3446518Z feel record: canvas-card-stack/waitForFunction.png; findings=23; new-surfaces=1; evidence: /home/runner/work/Nomi/Nomi/artifacts/feel/canvas-card-stack-095bf5fc-60eb-4d95-80a1-fe9f225bd406
+2026-09-08T23:22:51.3447445Z feel record: canvas-card-stack/02-real-version-tray-light.png; findings=23; new-surfaces=3; evidence: /home/runner/work/Nomi/Nomi/artifacts/feel/canvas-card-stack-095bf5fc-60eb-4d95-80a1-fe9f225bd406
+2026-09-08T23:22:51.3447999Z file:///home/runner/work/Nomi/Nomi/tests/ux/canvas-card-stack.walk.mjs:114
+2026-09-08T23:22:51.3448279Z   if (!ok) throw new Error(`${name}${detail ? `: ${detail}` : ''}`)
+2026-09-08T23:22:51.3448461Z                  ^
+2026-09-08T23:22:51.3448534Z
+2026-09-08T23:22:51.3449021Z Error: 第一版成为当前: [{"id":"image-v3"},{"id":"image-v2"},{"id":"image-v1","current":"true"}]
+2026-09-08T23:22:51.3449528Z     at check (file:///home/runner/work/Nomi/Nomi/tests/ux/canvas-card-stack.walk.mjs:114:18)
+2026-09-08T23:22:51.3450038Z     at file:///home/runner/work/Nomi/Nomi/tests/ux/canvas-card-stack.walk.mjs:196:3
+2026-09-08T23:22:51.3450301Z
+2026-09-08T23:22:51.3450378Z Node.js v24.20.0
+2026-09-08T23:24:50.8013918Z   screenshot: 03-spend-confirm-before-cancel.png
+2026-09-08T23:24:50.8014138Z   ok: 取消付费确认后 vendor 零调用
+2026-09-08T23:24:50.8014304Z node:internal/modules/run_main:107
+2026-09-08T23:24:50.8014469Z     triggerUncaughtException(
+2026-09-08T23:24:50.8014613Z     ^
+2026-09-08T23:24:50.8014682Z
+2026-09-08T23:24:50.8014769Z locator.click: Timeout 30000ms exceeded.
+2026-09-08T23:24:50.8014922Z Call log:
+2026-09-08T23:24:50.8015280Z   - waiting for locator('div.fixed.inset-0').filter({ hasText: /开始生成/ }).last().getByRole('button', { name: '生成', exact: true })
+2026-09-08T23:24:50.8016699Z     - locator resolved to <button type="button" class="inline-flex items-center justify-center gap-1.5 rounded-workbench-control font-medium whitespace-nowrap transition-[background,border-color,color,box-shadow] duration-150 ease-out disabled:opacity-50 disabled:cursor-not-allowed [&>svg]:size-4 [&>svg]:stroke-2 text-body-sm border active:bg-workbench-pressed h-8 px-4 cursor-pointer bg-nomi-ink text-nomi-paper border-nomi-ink hover:bg-nomi-accent hover:text-nomi-paper">生成</button>
+2026-09-08T23:24:50.8018385Z   - attempting click action
+2026-09-08T23:24:50.8018580Z     - waiting for element to be visible, enabled and stable
+2026-09-08T23:24:50.8018794Z     - element is visible, enabled and stable
+2026-09-08T23:24:50.8018979Z     - scrolling into view if needed
+2026-09-08T23:24:50.8019132Z     - done scrolling
+2026-09-08T23:24:50.8019434Z     - performing click action
+2026-09-08T23:24:50.8019579Z     - click action done
+2026-09-08T23:24:50.8019744Z     - waiting for scheduled navigations to finish
+2026-09-08T23:24:50.8019864Z
+2026-09-08T23:24:50.8020062Z     at /home/runner/work/Nomi/Nomi/tests/ux/canvas-batch-production.walk.mjs:322:65 {
+2026-09-08T23:24:50.8020297Z   name: 'TimeoutError'
+2026-09-08T23:24:50.8020426Z }
+2026-09-08T23:24:50.8020485Z

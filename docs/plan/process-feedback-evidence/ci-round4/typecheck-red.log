@@ -1,0 +1,10 @@
+
+> nomi@0.21.0 typecheck /Users/aoqimin/Desktop/Nomi-process-feedback
+> tsc -p tsconfig.app.json && tsc -p electron/tsconfig.json && tsc -p electron/tsconfig.pi.json --noEmit
+
+src/workbench/generationCanvas/nodes/useReducedProcessMotion.ts(10,20): error TS2339: Property 'getExtension' does not exist on type 'RenderingContext'.
+  Property 'getExtension' does not exist on type 'CanvasRenderingContext2D'.
+src/workbench/generationCanvas/nodes/useReducedProcessMotion.ts(11,38): error TS2339: Property 'getParameter' does not exist on type 'RenderingContext'.
+  Property 'getParameter' does not exist on type 'CanvasRenderingContext2D'.
+src/workbench/generationCanvas/nodes/useReducedProcessMotion.ts(12,75): error TS1005: ')' expected.
+ ELIFECYCLE  Command failed with exit code 2.

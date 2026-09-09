@@ -1,0 +1,60 @@
+{
+  "profile": "critical",
+  "shard": null,
+  "passed": 4,
+  "failed": 0,
+  "results": [
+    {
+      "id": "gestures",
+      "script": "tests/ux/canvas-drag-pan-gestures.walk.mjs",
+      "args": [],
+      "exitCode": 0,
+      "signal": null,
+      "timedOut": false,
+      "timeoutMs": 480000,
+      "error": null,
+      "logPath": "outputs/canvas-acceptance/critical/gestures.log",
+      "failureSummary": null,
+      "durationMs": 27991
+    },
+    {
+      "id": "group-ports",
+      "script": "tests/ux/group-ports.walk.mjs",
+      "args": [],
+      "exitCode": 0,
+      "signal": null,
+      "timedOut": false,
+      "timeoutMs": 480000,
+      "error": null,
+      "logPath": "outputs/canvas-acceptance/critical/group-ports.log",
+      "failureSummary": null,
+      "durationMs": 34636
+    },
+    {
+      "id": "card-stack-persistence",
+      "script": "tests/ux/canvas-card-stack.walk.mjs",
+      "args": [],
+      "exitCode": 0,
+      "signal": null,
+      "timedOut": false,
+      "timeoutMs": 480000,
+      "error": null,
+      "logPath": "outputs/canvas-acceptance/critical/card-stack-persistence.log",
+      "failureSummary": null,
+      "durationMs": 21342
+    },
+    {
+      "id": "read-only-reload",
+      "script": "tests/ux/react-flow-read-only.walk.mjs",
+      "args": [],
+      "exitCode": 0,
+      "signal": null,
+      "timedOut": false,
+      "timeoutMs": 480000,
+      "error": null,
+      "logPath": "outputs/canvas-acceptance/critical/read-only-reload.log",
+      "failureSummary": null,
+      "durationMs": 9622
+    }
+  ]
+}

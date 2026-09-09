@@ -23,22 +23,26 @@ export const shots = [
 
 // These are deliberately synthetic motion/audio test signals, NOT a pre-made film.
 // Each request selects its own shot; results enter the project only through generation.
-export async function createC0Fixture(rootDir, settingsDir, mediaDir, { videoDelayMs = {} } = {}) {
-  const text = await createAgentRuntimeFixture({ rootDir, settingsDir })
-  const calls = []
-  const sockets = new Set(), tasks = new Map()
-  let server
-  try {
-    fs.mkdirSync(mediaDir, { recursive: true })
-    const results = shots.map((shot) => {
+export function createSyntheticC0Media(mediaDir) {
+  fs.mkdirSync(mediaDir, { recursive: true })
+  return shots.map((shot) => {
       const file = path.join(mediaDir, `shot-${shot.index}.mp4`)
       execFileSync(ffmpeg.path, ['-v', 'error', '-y', '-f', 'lavfi', '-i',
         `testsrc2=size=640x360:rate=24,hue=h=${shot.index * 35}`,
         '-f', 'lavfi', '-i', `sine=frequency=${220 + shot.index * 55}:sample_rate=44100`,
         '-t', String(shot.durationSec), '-c:v', 'libx264', '-preset', 'ultrafast',
         '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-movflags', '+faststart', file], { stdio: 'pipe' })
-      return `data:video/mp4;base64,${fs.readFileSync(file).toString('base64')}`
+      return file
     })
+}
+
+export async function createC0Fixture(rootDir, settingsDir, mediaDir, { videoDelayMs = {} } = {}) {
+  const text = await createAgentRuntimeFixture({ rootDir, settingsDir })
+  const calls = []
+  const sockets = new Set(), tasks = new Map()
+  let server
+  try {
+    const results = createSyntheticC0Media(mediaDir).map(file => `data:video/mp4;base64,${fs.readFileSync(file).toString('base64')}`)
     server = http.createServer(async (req, res) => {
       try {
         if (req.method === 'GET' && req.url.startsWith('/v1/tasks/')) {

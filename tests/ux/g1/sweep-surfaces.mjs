@@ -1,3 +1,4 @@
+import { stationTimeout } from '../_station-budget.mjs'
 import fs from 'node:fs'
 import path from 'node:path'
 import { expect, clickOrFail } from '../_assert.mjs'
@@ -44,19 +45,19 @@ export async function runSurface({ walk, win, input, fixture, realText, director
         const failed = providerFailure(JSON.parse(fs.readFileSync(path.join(directory, 'model-requests.json'), 'utf8')))
         if (failed) throw Error(failed)
       }
-      await clickOrFail(win.locator(`${CREATION_PANEL} ${APPROVAL_CARD} ${INTERVENTION_CONFIRM}`), '批准测试分镜', { timeout: 8000 })
-      if (!realText) await expect(win.locator(CREATION_PANEL)).toContainText('SWEEP_DONE', { timeout: 8000 })
-      await expect(win.locator('[data-storyboard-id]').first()).toBeVisible({ timeout: 8000 })
+      await clickOrFail(win.locator(`${CREATION_PANEL} ${APPROVAL_CARD} ${INTERVENTION_CONFIRM}`), '批准测试分镜', { timeout: stationTimeout({ operations: 1 }) })
+      if (!realText) await expect(win.locator(CREATION_PANEL)).toContainText('SWEEP_DONE', { timeout: stationTimeout({ operations: 1 }) })
+      await expect(win.locator('[data-storyboard-id]').first()).toBeVisible({ timeout: stationTimeout({ operations: 1 }) })
     }, { name: 'explicit storyboard fixture after failed Agent turn',
       run: () => repairStoryboard(win, projectId, { title: 'Sweep 分镜', shots: shots.map(s => ({ ...s, modelKey: realText ? 'MiniMax-H3' : FIXTURE_IMAGE_MODEL, params: realText ? { duration: 8, resolution: '768P', size: '16:9' } : { size: '16:9' } })) }) })
     await station('storyboard', '分镜可编辑并保留输入约束', async () => {
       if (!input.text) return
-      await clickOrFail(win.locator('[data-storyboard-id]').first(), '打开分镜表', { timeout: 5000 })
+      await clickOrFail(win.locator('[data-storyboard-id]').first(), '打开分镜表', { timeout: stationTimeout({ operations: 1 }) })
       if (!realText) await expect(win.getByRole('textbox', { name: '方案标题', exact: true })).toHaveValue('Sweep 分镜')
       await expect.poll(async () => {
         const p = await payload()
         return p.storyboardDesignsByDocumentId?.[p.activeDocumentId]?.[0]?.plan?.shots?.length
-      }, { timeout: 8000 }).toBe(8)
+      }, { timeout: stationTimeout({ operations: 1 }) }).toBe(8)
       const p = await payload()
       const plan = p.storyboardDesignsByDocumentId?.[p.activeDocumentId]?.[0]?.plan
       expect(plan?.shots).toHaveLength(8)
@@ -67,7 +68,7 @@ export async function runSurface({ walk, win, input, fixture, realText, director
   }
   if (surface === 'settings' || surface === 'mcp' || surface === 'prompt-library') {
     await station('settings-open', '设置通过用户入口打开', async () => {
-      await clickOrFail(win.getByRole('button', { name: '设置', exact: true }).first(), '设置', { timeout: 5000 })
+      await clickOrFail(win.getByRole('button', { name: '设置', exact: true }).first(), '设置', { timeout: stationTimeout({ operations: 1 }) })
       await expect(win.locator('[data-settings-overlay]')).toBeVisible()
     })
     await station('settings-task', input.coverage, async () => {
@@ -121,19 +122,19 @@ export async function runSurface({ walk, win, input, fixture, realText, director
   if (surface === 'timeline' || surface === 'export') return sweepTimeline({ station, win, input, directory, payload })
   await station('surface-task', input.coverage, async () => {
     if (surface === 'canvas-node') {
-      await clickOrFail(win.getByRole('button', { name: '添加视频节点', exact: true }), '添加视频节点', { timeout: 5000 })
+      await clickOrFail(win.getByRole('button', { name: '添加视频节点', exact: true }), '添加视频节点', { timeout: stationTimeout({ operations: 1 }) })
       const node = win.locator('[data-node-id]').last()
       await expect(node).toBeVisible()
       const editor = win.locator('.generation-canvas-v2-node__composer [contenteditable="true"]').first()
       await editor.fill(input.text)
       await expect(editor).toHaveText(input.text)
       await editor.blur()
-      await expect.poll(async () => (await payload()).generationCanvas.nodes.some(n => n.prompt === input.text), { timeout: 8000 }).toBe(true)
+      await expect.poll(async () => (await payload()).generationCanvas.nodes.some(n => n.prompt === input.text), { timeout: stationTimeout({ operations: 1 }) }).toBe(true)
       if (input.boundary === 'attachment') {
         const file = path.resolve(directory, 'canvas-reference.jpg')
         fs.copyFileSync(new URL('../../../resources/onboarding-demo/shot-4.jpg', import.meta.url), file)
         await win.locator('.generation-canvas-v2__stage input[type="file"][accept="image/*,video/*"]').first().setInputFiles(file)
-        await expect.poll(async () => (await payload()).generationCanvas.nodes.some(n => n.result?.url?.startsWith('nomi-local://')), { timeout: 10000 }).toBe(true)
+        await expect.poll(async () => (await payload()).generationCanvas.nodes.some(n => n.result?.url?.startsWith('nomi-local://')), { timeout: stationTimeout({ operations: 1 }) }).toBe(true)
       }
     }
   })

@@ -1,6 +1,6 @@
 # B1 lane 契约批修
 
-状态：实施中。仅 feat/agent-lane-stage4-switch-20260908 / draft #646；用户授权沿用当前基线，不并 main。
+状态：B1 已按六簇提交；B1-finish 授权在原 feat/agent-lane-stage4-switch-20260908 分支合并 main，再过完整门岗并推送既有 PR #646。
 
 | 簇 | 根因 | 所有层 / 验证 |
 |---|---|---|

@@ -1,0 +1,28 @@
+{
+  "source_run": 34297944064,
+  "sample": {
+    "scale": "M",
+    "scenario": "waiting-effects",
+    "runIndex": 1,
+    "fixture": {
+      "scale": "M",
+      "imageNodes": 48,
+      "videoNodes": 48,
+      "nodes": 96,
+      "edges": 192,
+      "clips": 24,
+      "imageBytes": [
+        59059,
+        213553
+      ],
+      "videoBytes": [
+        391891,
+        390499
+      ]
+    },
+    "error": "Error: expect(locator).toHaveCount(expected) failed\n\nLocator:  locator('[data-process-static-band]')\nExpected: 8\nReceived: 6\nTimeout:  5000ms\n\nCall log:\n  - Expect \"to.have.count\" with timeout 5000ms\n  - waiting for locator('[data-process-static-band]')\n    14 \u00d7 locator resolved to 6 elements\n       - unexpected value \"6\"\n\n    at captureRawStack (/home/runner/work/Nomi/Nomi/node_modules/.pnpm/playwright-core@1.60.0/node_modules/playwright-core/lib/coreBundle.js:3130:17)\n    at callMatcherAsStep (/home/runner/work/Nomi/Nomi/node_modules/.pnpm/playwright@1.60.0/node_modules/playwright/lib/matchers/expect.js:12873:57)\n    at Object.toHaveCount (/home/runner/work/Nomi/Nomi/node_modules/.pnpm/playwright@1.60.0/node_modules/playwright/lib/matchers/expect.js:12863:23)\n    at Proxy.<anonymous> (/home/runner/work/Nomi/Nomi/tests/ux/_collect.mjs:18:32)\n    at prepareWaitingFx (/home/runner/work/Nomi/Nomi/tests/ux/canvas-perf/waitingFxScenario.mjs:33:60)\n    at async runScenario (/home/runner/work/Nomi/Nomi/tests/ux/canvas-performance-benchmark.e2e.mjs:1125:5)\n    at async file:///home/runner/work/Nomi/Nomi/tests/ux/canvas-performance-benchmark.e2e.mjs:1509:24",
+    "pageErrors": [],
+    "consoleErrors": [],
+    "elapsedMs": 24174
+  }
+}

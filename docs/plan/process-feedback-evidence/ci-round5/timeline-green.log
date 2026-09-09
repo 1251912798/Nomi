@@ -1,0 +1,86 @@
+GL_RENDERER ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (LLVM 10.0.0) (0x0000C0DE)), SwiftShader driver)
+  ok: 种子供应商 Batch Mock 已在模型设置里可见
+feel record: canvas-batch-production/waitForFunction.png; findings=69; new-surfaces=3; evidence: /Users/aoqimin/Desktop/Nomi-process-feedback/artifacts/feel/canvas-batch-production-9a0a0c0b-6027-45d0-a542-5d59f0d5c0bd
+feel record: canvas-batch-production/01-light-model-settings.png; findings=69; new-surfaces=3; evidence: /Users/aoqimin/Desktop/Nomi-process-feedback/artifacts/feel/canvas-batch-production-9a0a0c0b-6027-45d0-a542-5d59f0d5c0bd
+  screenshot: 01-light-model-settings.png
+CANVAS_CLICK_DIAGNOSTIC {"tag":"P","label":"AI 影像创作画布","nodeId":"gen-v2-image-mttdtfgq-y93i","x":716,"y":730}
+CANVAS_CLICK_DIAGNOSTIC {"tag":"P","label":"AI 影像创作画布","nodeId":"gen-v2-image-mttdth1z-oqa2","x":1089,"y":730}
+CANVAS_CLICK_DIAGNOSTIC {"tag":"DIV","label":"AI 影像创作画布","nodeId":"gen-v2-image-mttdtfgq-y93i","x":560,"y":354}
+  ok: 连接点和目标节点都有可点击区域
+  ok: 真实点击建立依赖边
+  ok: 无选择入口显示两个待生成节点
+  ok: 未框选时批量模型更新已触发项目持久化
+  ok: 未框选时图片节点统一切到图片 B
+  ok: 并发偏好写入本地存储
+feel record: canvas-batch-production/waitForFunction.png; findings=15; new-surfaces=0; evidence: /Users/aoqimin/Desktop/Nomi-process-feedback/artifacts/feel/canvas-batch-production-9a0a0c0b-6027-45d0-a542-5d59f0d5c0bd
+feel record: canvas-batch-production/02-light-generate-all.png; findings=15; new-surfaces=2; evidence: /Users/aoqimin/Desktop/Nomi-process-feedback/artifacts/feel/canvas-batch-production-9a0a0c0b-6027-45d0-a542-5d59f0d5c0bd
+  screenshot: 02-light-generate-all.png
+feel record: canvas-batch-production/waitForFunction.png; findings=60; new-surfaces=0; evidence: /Users/aoqimin/Desktop/Nomi-process-feedback/artifacts/feel/canvas-batch-production-9a0a0c0b-6027-45d0-a542-5d59f0d5c0bd
+feel record: canvas-batch-production/03-spend-confirm-before-cancel.png; findings=60; new-surfaces=3; evidence: /Users/aoqimin/Desktop/Nomi-process-feedback/artifacts/feel/canvas-batch-production-9a0a0c0b-6027-45d0-a542-5d59f0d5c0bd
+  screenshot: 03-spend-confirm-before-cancel.png
+  ok: 取消付费确认后 vendor 零调用
+CONFIRM_HIT {"x":983,"y":550.0625,"hit":"<button class=\"inline-flex items-center justify-center gap-1.5 rounded-workbench-control font-medium whitespace-nowrap transition-[background,border-color,color,box-shadow] duration-150 ease-out disabled:opacity-50 disabled:cursor-not-allowed [&amp;&gt;svg]:size-4 [&amp;&gt;svg]:stroke-2 text-body-sm border active:bg-workbench-pressed h-8 px-4 cursor-pointer bg-nomi-ink text-nomi-paper border-nomi-ink hover:bg-nomi-accent hover:text-nomi-paper\" type=\"button\">生成</button>","stack":[{"tag":"BUTTON","cls":"inline-flex items-center justify-center gap-1.5 rounded-workbench-control font-medium whitespace-nowrap transition-[background,border-color,color,box-shadow] duration-150 ease-out disabled:opacity-50 disabled:cursor-not-allowed [&>svg]:size-4 [&>svg]:stroke-2 text-body-sm border active:bg-workbench-pressed h-8 px-4 cursor-pointer bg-nomi-ink text-nomi-paper border-nomi-ink hover:bg-nomi-accent hover:text-nomi-paper","pointer":"auto"},{"tag":"DIV","cls":"flex items-center justify-end gap-2","pointer":"auto"},{"tag":"DIV","cls":"outline-none w-[380px] max-h-[88vh] max-w-[88%] rounded-nomi-lg border border-nomi-line bg-nomi-paper p-4 shadow-nomi-md overflow-y-auto","pointer":"auto"},{"tag":"DIV","cls":"fixed inset-0 flex items-center justify-center bg-nomi-ink/20 pointer-events-auto","pointer":"auto"},{"tag":"DIV","cls":"flex h-full w-full items-center justify-center gap-2 px-4 text-center flex-col py-5","pointer":"auto"},{"tag":"DIV","cls":"h-full w-full","pointer":"auto"},{"tag":"DIV","cls":"generation-canvas-v2-node__preview relative z-[2] w-full h-full min-h-0 overflow-hidden rounded-nomi shadow-nomi-md cursor-grab touch-none ring-1 ring-inset ring-nomi-line bg-[repeating-linear-gradient(45deg,var(--nomi-ink-05)_0_23px,var(--nomi-ink-20)_23px_24px)]","pointer":"auto"},{"tag":"ARTICLE","cls":"generation-canvas-v2-node relative p-0 border-0 rounded-none bg-transparent shadow-none cursor-grab select-none touch-none overflow-visible data-[selected=true]:z-[5] block isolate group/node","pointer":"auto"}]}
+feel record: canvas-batch-production/waitForFunction.png; findings=17; new-surfaces=1; evidence: /Users/aoqimin/Desktop/Nomi-process-feedback/artifacts/feel/canvas-batch-production-9a0a0c0b-6027-45d0-a542-5d59f0d5c0bd
+feel record: canvas-batch-production/waitForFunction.png; findings=17; new-surfaces=0; evidence: /Users/aoqimin/Desktop/Nomi-process-feedback/artifacts/feel/canvas-batch-production-9a0a0c0b-6027-45d0-a542-5d59f0d5c0bd
+feel record: canvas-batch-production/04-generate-all-completed.png; findings=17; new-surfaces=4; evidence: /Users/aoqimin/Desktop/Nomi-process-feedback/artifacts/feel/canvas-batch-production-9a0a0c0b-6027-45d0-a542-5d59f0d5c0bd
+  screenshot: 04-generate-all-completed.png
+  ok: 依赖波次两个请求都完成
+  ok: 下游在上游完成后才开始
+  ok: 下游请求收到上游图片参考
+CANVAS_CLICK_DIAGNOSTIC {"tag":"P","label":"AI 影像创作画布","nodeId":"gen-v2-image-mttdts54-ga9v","x":716,"y":186}
+CANVAS_CLICK_DIAGNOSTIC {"tag":"P","label":"AI 影像创作画布","nodeId":"gen-v2-video-mttdtton-xb6b","x":1106,"y":750}
+  ok: 真实点击新增图片和视频节点
+  ok: 混合选择只统计两个待生成节点
+  ok: 批量模型更新已触发项目持久化
+  ok: 三个图片节点统一切到图片 B
+  ok: 视频节点切到视频 B
+feel record: canvas-batch-production/waitForFunction.png; findings=26; new-surfaces=0; evidence: /Users/aoqimin/Desktop/Nomi-process-feedback/artifacts/feel/canvas-batch-production-9a0a0c0b-6027-45d0-a542-5d59f0d5c0bd
+feel record: canvas-batch-production/05-light-mixed-selection-models.png; findings=26; new-surfaces=4; evidence: /Users/aoqimin/Desktop/Nomi-process-feedback/artifacts/feel/canvas-batch-production-9a0a0c0b-6027-45d0-a542-5d59f0d5c0bd
+  screenshot: 05-light-mixed-selection-models.png
+feel record: canvas-batch-production/waitForFunction.png; findings=24; new-surfaces=0; evidence: /Users/aoqimin/Desktop/Nomi-process-feedback/artifacts/feel/canvas-batch-production-9a0a0c0b-6027-45d0-a542-5d59f0d5c0bd
+feel record: canvas-batch-production/06-dark-mixed-selection-models.png; findings=24; new-surfaces=4; evidence: /Users/aoqimin/Desktop/Nomi-process-feedback/artifacts/feel/canvas-batch-production-9a0a0c0b-6027-45d0-a542-5d59f0d5c0bd
+  screenshot: 06-dark-mixed-selection-models.png
+  ok: 暗色下模型设置仍列出 Batch Mock 供应商
+  ok: 模型切换反馈通知仍然可见
+  ok: 模型面板打开时通知不会遮挡面板
+feel record: canvas-batch-production/waitForFunction.png; findings=85; new-surfaces=0; evidence: /Users/aoqimin/Desktop/Nomi-process-feedback/artifacts/feel/canvas-batch-production-9a0a0c0b-6027-45d0-a542-5d59f0d5c0bd
+feel record: canvas-batch-production/07-dark-model-settings.png; findings=83; new-surfaces=4; evidence: /Users/aoqimin/Desktop/Nomi-process-feedback/artifacts/feel/canvas-batch-production-9a0a0c0b-6027-45d0-a542-5d59f0d5c0bd
+  screenshot: 07-dark-model-settings.png
+  ok: 混合选中生成取消后 vendor 零新增调用
+CANVAS_CLICK_DIAGNOSTIC {"tag":"DIV","label":"AI 影像创作画布","nodeId":"gen-v2-image-mttdts54-ga9v","x":534,"y":686}
+CANVAS_CLICK_DIAGNOSTIC {"tag":"DIV","label":"AI 影像创作画布","nodeId":"gen-v2-image-mttdtfgq-y93i","x":512,"y":294}
+  ok: 选中批量只生成一个失败待测节点
+  ok: 批量开始时只有一条对应通知
+  ok: 通知宽度为 344px
+  ok: 通知容器避开窗口栏和顶栏（top=68px）
+  ok: 堆叠通知不会越过通知容器顶部
+  ok: 开始到失败原位更新同一个通知 DOM
+  ok: 失败后没有堆叠第二条批量通知
+  ok: 失败通知提供独立的重试按钮
+feel record: canvas-batch-production/waitForFunction.png; findings=22; new-surfaces=0; evidence: /Users/aoqimin/Desktop/Nomi-process-feedback/artifacts/feel/canvas-batch-production-9a0a0c0b-6027-45d0-a542-5d59f0d5c0bd
+feel record: canvas-batch-production/08-failed-with-retry-action.png; findings=22; new-surfaces=3; evidence: /Users/aoqimin/Desktop/Nomi-process-feedback/artifacts/feel/canvas-batch-production-9a0a0c0b-6027-45d0-a542-5d59f0d5c0bd
+  screenshot: 08-failed-with-retry-action.png
+feel record: canvas-batch-production/waitForFunction.png; findings=20; new-surfaces=0; evidence: /Users/aoqimin/Desktop/Nomi-process-feedback/artifacts/feel/canvas-batch-production-9a0a0c0b-6027-45d0-a542-5d59f0d5c0bd
+  ok: 重试完成后仍只有一条对应通知
+  ok: 失败节点通过一键重试成功
+  ok: 重试后并发偏好仍为 2
+feel record: canvas-batch-production/waitForFunction.png; findings=20; new-surfaces=0; evidence: /Users/aoqimin/Desktop/Nomi-process-feedback/artifacts/feel/canvas-batch-production-9a0a0c0b-6027-45d0-a542-5d59f0d5c0bd
+feel record: canvas-batch-production/09-retry-completed-dark.png; findings=20; new-surfaces=3; evidence: /Users/aoqimin/Desktop/Nomi-process-feedback/artifacts/feel/canvas-batch-production-9a0a0c0b-6027-45d0-a542-5d59f0d5c0bd
+  screenshot: 09-retry-completed-dark.png
+TIMELINE_HANDLE_DIAGNOSTIC {"previousScenario":null,"count":1,"elements":["<button type=\"button\" class=\"workbench-generation__timeline-handle absolute bottom-3 left-1/2 -translate-x-1/2 z-[8] inline-flex items-center gap-2 rounded-full px-3 py-1.5 border border-[var(--workbench-border)] bg-nomi-paper shadow-workbench-pop text-body-sm font-medium text-nomi-ink transition-colors hover:bg-nomi-ink-05\" data-canvas-bottom-dock=\"true\" aria-label=\"展开生成时间轴\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"15\" height=\"15\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"tabler-icon tabler-icon-layout-list text-nomi-ink-60\"><path d=\"M4 6a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v2a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2l0 -2\"></path><path d=\"M4 16a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v2a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2l0 -2\"></path></svg><span>时间轴</span><span class=\"text-nomi-ink-60\">0 段 · 0:00</span><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"15\" height=\"15\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"tabler-icon tabler-icon-chevron-up text-nomi-ink-60\"><path d=\"M6 15l6 -6l6 6\"></path></svg></button>"],"document":{"viewport":{"width":1680,"height":993,"dpr":1},"handles":[{"html":"<button type=\"button\" class=\"workbench-generation__timeline-handle absolute bottom-3 left-1/2 -translate-x-1/2 z-[8] inline-flex items-center gap-2 rounded-full px-3 py-1.5 border border-[var(--workbench-border)] bg-nomi-paper shadow-workbench-pop text-body-sm font-medium text-nomi-ink transition-colors hover:bg-nomi-ink-05\" data-canvas-bottom-dock=\"true\" aria-label=\"展开生成时间轴\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"15\" height=\"15\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"tabler-icon tabler-icon-layout-list text-nomi-ink-60\"><path d=\"M4 6a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v2a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2l0 -2\"></path><path d=\"M4 16a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v2a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2l0 -2\"></path></svg><span>时间轴</span><span class=\"text-nomi-ink-60\">0 段 · 0:00</span><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"15\" height=\"15\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"tabler-icon tabler-icon-chevron-up text-nomi-ink-60\"><path d=\"M6 15l6 -6l6 6\"></path></svg></button>"}],"timelines":0,"timelineExpanded":false,"timelineState":"<section class=\"workbench-generation relative grid grid-cols-[minmax(0,1fr)] grid-rows-[minmax(0,1fr)_var(--workbench-timeline-height)] w-full h-full overflow-hidden bg-[var(--workbench-bg)]\" data-has-ai=\"true\" data-ai-layout=\"sidebar\" aria-label=\"生成区\" style=\"--generation-assistant-width: 340px; --generation-assistant-target-width: 340px; grid-template-columns: minmax(0,1fr) var(--generation-assistant-width); grid-template-rows: minmax(0px, 1fr) 0px; --workbench-timeline-height: 188px;\"><div class=\"workbench-generation__canvas min-w-0 min-h-0 overflow-hidden border-b border-[var(--workbench-border)] relative\"><div class=\"relative w-full h-ful","dialogs":[]}}
+  ok: 批量底栏没有盖住时间轴展开入口
+  ok: 批量底栏提供可识别的隐藏入口
+  ok: 隐藏批量底栏后不再遮挡画布底部
+  ok: 隐藏批量底栏后时间轴入口仍可用
+CANVAS_CLICK_DIAGNOSTIC {"tag":"SPAN","label":"展开生成时间轴","x":700,"y":963}
+  ok: 时间轴可从底部入口正常展开
+feel record: canvas-batch-production/waitForFunction.png; findings=32; new-surfaces=0; evidence: /Users/aoqimin/Desktop/Nomi-process-feedback/artifacts/feel/canvas-batch-production-9a0a0c0b-6027-45d0-a542-5d59f0d5c0bd
+feel record: canvas-batch-production/10-timeline-unblocked.png; findings=36; new-surfaces=4; evidence: /Users/aoqimin/Desktop/Nomi-process-feedback/artifacts/feel/canvas-batch-production-9a0a0c0b-6027-45d0-a542-5d59f0d5c0bd
+  screenshot: 10-timeline-unblocked.png
+  ok: 页面运行无 pageerror
+  ok: 控制台无意外 error
+  expected console errors from fail-once path: 0
+  screenshots: /Users/aoqimin/Desktop/Nomi-process-feedback/tests/ux/shots/canvas-batch-production
+CANVAS BATCH PRODUCTION WALK: PASS
+
+PROCESS_EXIT_CODE=0

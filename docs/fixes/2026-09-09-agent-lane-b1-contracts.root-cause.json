@@ -145,7 +145,7 @@
   "residual_risks": [
     "Real DeepSeek final sample: first-tool accuracy 1/3 requested turns (1/1 actual tool calls), task completion 2/3; paid generation remains outside this lane and belongs to B4.",
     "C47 prompt is present but the real read-only response still exceeds three lines. Earlier samples also overstepped read-only intent and claimed generation; a later passing interruption cannot prove those model behavior risks absent.",
-    "Full gates exits 1 at check:fresh-base: the user forbids integrating main in this task. No task commit or push is claimed."
+    "Original B1 gates stopped at check:fresh-base. B1-finish now authorizes integrating main; complete gates and push receipts are required before delivery."
   ],
   "invariant_owner_layer": {
     "layer": "electron/agentLane/laneHost.mts",
