@@ -93,6 +93,18 @@ test('C29 · 246KB context defaults to a useful <=4KB summary; full scope is exp
   assert.doesNotMatch(textOf(bounded), /showing the first 0/);
 });
 
+test('C27/C43 · auto-granted canvas write reports direct undoable application without ids in prose', async t => {
+  const f = await createLaneFixture(t, [{ type: 'tool', calls: [{ id: 'write', name: 'nomi_canvas_write', arguments: canvasArgs }] }, closing],
+    { hasUserInterface: true, policy: () => ({ mode: 'safe-auto', spend: 'confirm' }) });
+  const lane = await f.openLane({ ...f.options, tools: canvasTools() });
+  await lane.execute({ kind: 'prompt', text: '创建开场' });
+  const messages = f.http.requests.at(-1)!.body.messages as Array<{ role: string; content: unknown }>;
+  const result = messages.filter(m => m.role === 'tool').map(m => String(m.content)).join('\n');
+  assert.match(result, /Applied directly \(undoable\)/);
+  assert.doesNotMatch(result, /gen-v2-|op-/);
+  assert.match(JSON.stringify(messages), /不向用户展示内部 id/);
+});
+
 test('C27 · prompt approval projection follows current policy changes', async t => {
   let mode: 'safe-auto' | 'step' = 'safe-auto';
   const f = await createLaneFixture(t, [closing, closing], { hasUserInterface: true, policy: () => ({ mode, spend: 'confirm' }) });
@@ -144,6 +156,14 @@ test('C29 class · taskKind removes unrelated video modes; full scope retains de
   const tool = createLaneTools([{ ...desc, schema: z.object({}), execute: async () => ({ ok: true, text: '文'.repeat(100000) }) }])[0];
   const bounded = await tool.execute('ctx', {}, (() => undefined) as never, undefined, {} as never, BACKGROUND_CONTEXT);
   assert.doesNotMatch(textOf(bounded), /�/);
+});
+
+test('C43 class · ids remain in structured receipt for host reconciliation', async () => {
+  const result = await canvasTools().find(t => t.name === 'nomi_canvas_write')!.execute(canvasArgs,
+    { toolCallId: 'write', signal: new AbortController().signal });
+  assert.ok(result.ok);
+  assert.doesNotMatch(result.text, /gen-v2-|op-/);
+  assert.match(JSON.stringify(result.details), /gen-v2-image-opening/);
 });
 
 test('C27 class · read confirmation and trusted overrides use the execution decision', async t => {

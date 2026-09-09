@@ -34,7 +34,7 @@ const domain = (id: string, name: string, args: Record<string, unknown>, result:
 const canvas = (id: string, name: string, args: { operation: string; [key: string]: unknown }): L1Call => ({
   id, name, args, domainArgs: args,
   domainResult: { applied: true, proposalId: `receipt-${id}`, operation: args.operation },
-  resultText: `Applied ${args.operation}. Proposal receipt-${id}.`,
+  resultText: `Applied ${args.operation}.`,
 });
 const turn = (prompt: string, ...frames: L1Frame[]): L1Turn => ({ prompt, frames });
 const scenario = (id: string, family: L1Scenario['family'], title: string, turns: L1Turn[],

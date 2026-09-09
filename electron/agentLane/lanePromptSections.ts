@@ -74,5 +74,7 @@ export function composeLaneSystemPrompt(
   const body = skills.length > 0
     ? `${renderLanePromptSections(tools)}\n\n${skills}`
     : renderLanePromptSections(tools);
-  return `${identityPrompt.trimEnd()}\n\n${body}\n`;
+  return `${identityPrompt.trimEnd()}\n\n${body}\n\n${[
+    '不向用户展示内部 id，用标题指代；后续编辑先读取当前对象获取引用。',
+  ].join('\n')}\n`;
 }

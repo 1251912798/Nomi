@@ -47,19 +47,18 @@ export function createCanvasLaneTools(port: CanvasLanePort): LaneToolDescriptor[
 
 /**
  * 模型看到的是一张**收据**，不是被写进去的正文——正文它自己刚写的，回显一遍只是在烧上下文。
- * 收据里唯一必须有的是**下一步要引用的 id**：`clientIdToNodeId` 把这一轮的临时 id 换成
- * 真实节点 id，模型下一次连边、挂参考、改提示词全靠它（按 id join，永不复制）。
+ * 标识留在结构化 details 供宿主关联；后续编辑先读画布拿到当前对象，不把收据 id 当用户文案。
  */
 function canvasWriteReceiptText(input: CanvasWriteInput, receipt: CanvasWriteResult): string {
   if ("cancelled" in receipt) return `The user declined the ${input.operation} proposal. Nothing changed on the canvas.`;
-  const lines = [`Applied ${receipt.operation}. Proposal ${receipt.proposalId}.`];
+  const lines = [`Applied ${receipt.operation}.`];
   if ("clientIdToNodeId" in receipt) {
-    lines.push(`Real node ids: ${JSON.stringify(receipt.clientIdToNodeId)} — use these, not the clientIds, from now on.`);
+    lines.push(`Created ${Object.keys(receipt.clientIdToNodeId).length} node(s). Use canvas read to inspect them before further edits.`);
   }
   if ("skippedEdges" in receipt && receipt.skippedEdges.length > 0) {
     lines.push(
       `${receipt.skippedEdges.length} reference edge(s) were skipped because the target model does not support them: `
-      + receipt.skippedEdges.map((edge) => `${edge.source}→${edge.target} (${edge.reason})`).join("; "),
+      + [...new Set(receipt.skippedEdges.map((edge) => edge.reason))].join("; "),
     );
   }
   if ("changedShotIndexes" in receipt) {
