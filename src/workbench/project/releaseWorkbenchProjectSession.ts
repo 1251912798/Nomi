@@ -64,6 +64,7 @@ export function releaseWorkbenchProjectRuntimeState(): void {
     creationSelectionText: '',
     creationAiModeId: 'general',
     creationActiveSkill: null,
+    selectedLibraryPrompt: null,
     projectAgentDraft: '',
     projectAgentAttachments: [],
     projectAgentReferences: [],
