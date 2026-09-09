@@ -24,3 +24,13 @@ C09：概览保全景，既有聚焦/比例入口可以看清选中媒体，不�
 B4：先 git apply --check，再采用用户给定 patch，展示名与供应商身份分离。
 
 验证：改前/改后隔离真机截图、人眼审核；针对性红绿回归；基线仅按本次变化定向更新并在 PR 列全名；`python3 scripts/with-gates-lock.py -- pnpm run gates` 等待锁直至完成。正常 hooks commit/push；一个 PR。回滚按条目 revert，小提交无用户数据迁移。最终写 b5-density-LAST.md 并复制到指定 scratchpad。
+
+## 实现与真实验收收据
+
+七条均已有实现或合流验证；DC23沿用已合入通知政策。DC24 因版本化 Ponytail 审查含上下文diff超过150KB，按钩子要求拆为设置/分镜轨道两提交，未绕过钩子。
+
+截图与真实操作见 `docs/fixes/b5-density-evidence/README.md`；额外组件证据见 `docs/plan/2026-09-10-b5-density-evidence/component-evidence/provenance.json`（明确不替代真实旅程）。真实导入、冷重启后旧/新内容去重、3秒MP4导出与任务“查看成片”已跑通；失败原因与B4以真实组件+边界单测补证，不冒充付费模型验收。
+
+定向基线只有 `src/workbench/settings/settingsDialogStructure.test.ts` 中 `src/workbench/settings/AiModelsSection.tsx`、`src/workbench/settings/AutomationPermissionsSection.tsx`、`src/workbench/settings/CanvasGestureSection.tsx` 三个源码SHA。未放宽任何走查断言、等待或基线阈值。
+
+首轮完整 gates 排队后因 main 前进，被 check:fresh-base 阻止；同步最新 main 后重跑，最终状态另附。
