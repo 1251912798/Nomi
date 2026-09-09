@@ -15,6 +15,9 @@ export { normalizeDesktopLocale, getDesktopLocale, setDesktopLocale, type Deskto
 
 const translations = {
   "zh-CN": {
+    "credential.invalid": "密钥验证失败，请检查密钥和权限后重试。原密钥和连接已保留。",
+    "credential.validationUnavailable": "暂时无法验证密钥，请检查接口地址和网络后重试。原密钥和连接已保留。",
+    "credential.changed": "验证期间连接已更改，请重新保存。原密钥未覆盖。",
     "workspace.selectTitle": "选择 Nomi 项目文件夹",
     "workspace.openButton": "打开文件夹",
     "workspace.invalidFolder": "未选择有效的文件夹",
@@ -188,6 +191,9 @@ const translations = {
     "customCall.emptyScript": "脚本为空——先写点内容或让 AI 生成",
   },
   en: {
+    "credential.invalid": "Key validation failed. Check the key and permissions, then retry. Your previous key and connection are unchanged.",
+    "credential.validationUnavailable": "Cannot validate the key. Check the API address and network, then retry. Your previous key and connection are unchanged.",
+    "credential.changed": "The connection changed during validation. Save again. The previous key was not overwritten.",
     "workspace.selectTitle": "Choose a Nomi project folder",
     "workspace.openButton": "Open folder",
     "workspace.invalidFolder": "No valid folder was selected",

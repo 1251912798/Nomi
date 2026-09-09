@@ -234,7 +234,7 @@ export async function upsertModelCatalogVendorApiKey(
   vendorKey: string,
   payload: { apiKey: string; enabled?: boolean },
 ): Promise<ModelCatalogVendorApiKeyStatusDto> {
-  return requireDesktopRuntime('model catalog').modelCatalog.upsertVendorApiKey(vendorKey, payload) as ModelCatalogVendorApiKeyStatusDto
+  return await requireDesktopRuntime('model catalog').modelCatalog.upsertVendorApiKey(vendorKey, payload) as ModelCatalogVendorApiKeyStatusDto
 }
 
 export async function clearModelCatalogVendorApiKey(vendorKey: string): Promise<ModelCatalogVendorApiKeyStatusDto> {

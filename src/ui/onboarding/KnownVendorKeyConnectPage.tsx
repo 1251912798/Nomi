@@ -39,7 +39,7 @@ export function KnownVendorKeyConnectPage({
   const inputRef = React.useRef<HTMLInputElement>(null)
   const errorId = React.useId()
 
-  const save = React.useCallback(() => {
+  const save = React.useCallback(async () => {
     const cleanKey = apiKey.trim()
     if (!cleanKey) {
       setError(t('onboardingProviders.keyOnly.keyRequired'))
@@ -54,10 +54,7 @@ export function KnownVendorKeyConnectPage({
     setBusy(true)
     setError('')
     try {
-      // A credential edit invalidates the active certification. Keep the
-      // seeded vendor disabled until the canonical run promotes verified modes.
-      catalog.upsertVendor({ key: directory.vendorKey, enabled: false })
-      catalog.upsertVendorApiKey(directory.vendorKey, { apiKey: cleanKey, enabled: false })
+      await catalog.upsertVendorApiKey(directory.vendorKey, { apiKey: cleanKey, enabled: false })
       setSaved(true)
       setApiKey('')
       onSaved()
