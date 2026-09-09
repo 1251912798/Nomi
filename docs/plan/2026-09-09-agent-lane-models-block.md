@@ -303,3 +303,5 @@ Mac持续锁屏导致首个付费尝试约28分钟仍未离开凭据读取，现
 实现：完整构建前取 HEAD 与真实工作树 Git tree（临时 index，不改变暂存区，含非忽略的未跟踪文件），删除两份旧戳；构建成功且前后身份一致才在 dist/、dist-electron/ 写相同戳。两个打包入口共用校验，缺戳、坏戳、任一身份漂移均退出并提示先 pnpm build。戳记录 dirty，不以单一布尔值代替内容身份。构建过程失败不发戳。
 
 验收：Node 临时 Git 仓测试过期戳、HEAD 变化、staged/unstaged/untracked 变化、缺戳/坏戳、部分/失败构建；正确戳通过。红绿日志 package-stamp-{red,green}.log。完整 gates 必须 exit 0 后原分支正常 push。回滚 revert 打包修复提交；已有无戳产物必须重建，不迁写假戳。Mac 锁屏，nano×2 待钥匙串授权后补。
+
+收尾首次 contracts 全部 76 项汇总，仅 electron-install 的脚本开头正则阻断：检查未识别 build 包装器和打包前只读戳校验。保持 Electron 身份检查必须先于编译/打包的要求，将结构测试对齐真实入口；13/13 通过（.tmp/round4-close-electron-identity-green.log）。首次 gates exit 1 留档 .tmp/round4-close-gates-attempt1.log；之后必须重新完整 gates，不能引用先前收据推送。
