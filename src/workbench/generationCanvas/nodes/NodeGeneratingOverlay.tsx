@@ -11,7 +11,7 @@ import type { GenerationCanvasNode } from '../model/generationCanvasTypes'
 import { canInterruptGenerationTask } from '../model/taskCancellation'
 import { isVideoDepthProgressPhase } from '../videoDepth/videoDepthProgressPhase'
 
-export function NodeGeneratingOverlay({ node, motion, preset }: { node: GenerationCanvasNode; motion?: 'reduced'; preset?: ImageGenerationPreset }): JSX.Element | null {
+export function NodeGeneratingOverlay({ node, motion, preset, reportFeedback }: { reportFeedback: (message: string) => void; node: GenerationCanvasNode; motion?: 'reduced'; preset?: ImageGenerationPreset }): JSX.Element | null {
   const feedback = useGenerationFeedback(node)
   const previewUrl = useNodeLivePreviewStore((state) => state.byNode[node.id])
   const zoom = useWorkbenchStore((state) => state.categoryViewports[state.activeCategoryId]?.zoom ?? 1)
@@ -20,7 +20,7 @@ export function NodeGeneratingOverlay({ node, motion, preset }: { node: Generati
   React.useEffect(() => { if (feedback?.active) setWaiting(true) }, [feedback?.active])
   const completed = !feedback?.active && node.status === 'success'
   const finalUrl = node.result?.type === 'image' ? node.result.url : node.result?.thumbnailUrl || previewUrl
-  const handleCancel = React.useCallback(() => requestTaskCancel(node), [node])
+  const handleCancel = React.useCallback(() => requestTaskCancel(node, reportFeedback), [node, reportFeedback])
   // Local depth processing has its separately approved top bar; it is not a model generation stage.
   if (isVideoDepthProgressPhase(node.progress?.phase)) return <GeneratingOverlay
     percent={node.progress?.percent} message={node.progress?.message} previewUrl={previewUrl} onCancel={handleCancel} placement="top" />

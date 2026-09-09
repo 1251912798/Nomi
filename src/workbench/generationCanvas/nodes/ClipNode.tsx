@@ -1,3 +1,4 @@
+import { notify } from '../../../ui/notificationPolicy'
 import React from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
@@ -23,7 +24,6 @@ import { getNodeSizeBounds, resolveNodeVisualSize } from './nodeSizing'
 import { useNodeDragResize } from './useNodeDragResize'
 import { exportTimelineToMp4 } from '../../export/exportApi'
 import { getDesktopBridge } from '../../../desktop/bridge'
-import { toast } from '../../../ui/toast'
 import { buildWorkspaceFileUrl } from '../../explorer/workspaceFileDrag'
 import ClipNodePreview from './ClipNodePreview'
 import ClipNodeTimeline from './ClipNodeTimeline'
@@ -50,8 +50,13 @@ type ClipNodeExportDestination = 'canvas' | 'download'
 type ClipNodeExportAction = `${ClipNodeExportScope}-${ClipNodeExportDestination}`
 
 export default function ClipNode({ node: rawNode, selected, readOnly = false }: Props): JSX.Element {
-  const { t } = useTranslation()
   const node = rawNode as GenerationCanvasNode
+  const [feedback, setFeedback] = React.useState<string | null>(null)
+  const reportFeedback = React.useCallback((message: string) => {
+    notify({ identity: `ClipNode:${node.id}`, reason: 'interaction', message, level: 'inline', present: setFeedback })
+  }, [node.id])
+
+  const { t } = useTranslation()
   const canvasNodes = useGenerationCanvasStore((state) => state.nodes)
   const updateNode = useGenerationCanvasStore((state) => state.updateNode)
   const addNode = useGenerationCanvasStore((state) => state.addNode)
@@ -86,7 +91,7 @@ export default function ClipNode({ node: rawNode, selected, readOnly = false }: 
   const [anchorRect, setAnchorRect] = React.useState<DOMRect | null>(null)
   const visualSize = resolveNodeVisualSize(node)
   const sizeBounds = getNodeSizeBounds(node.kind)
-  const { handlePointerDown, handlePointerMove, handlePointerUp } = useNodeDragResize({
+  const { handlePointerDown, handlePointerMove, handlePointerUp } = useNodeDragResize({ reportFeedback,
     node,
     selected,
     readOnly,
@@ -391,11 +396,9 @@ export default function ClipNode({ node: rawNode, selected, readOnly = false }: 
         }
       }
       setExportMenuOpen(false)
-      toast(t(destination === 'canvas'
-        ? 'generationCommon.clipNode.exportCanvasComplete'
-        : 'generationCommon.clipNode.exportDownloadComplete', { count: completed.length }), 'success')
+      if (destination === 'download') reportFeedback(t('generationCommon.clipNode.exportDownloadComplete', { count: completed.length }))
     } catch (error) {
-      toast(error instanceof Error ? error.message : t('generationCommon.clipNode.exportFailed'), 'error')
+      reportFeedback(error instanceof Error ? error.message : t('generationCommon.clipNode.exportFailed'))
     } finally {
       setExporting(null)
     }
@@ -485,9 +488,10 @@ export default function ClipNode({ node: rawNode, selected, readOnly = false }: 
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
     >
+      {feedback ? <p role="status" className="m-0 px-2 py-1 text-caption text-nomi-ink-60">{feedback}</p> : null}
       {!readOnly ? <>
-        <MagneticConnectionHandle side="left" active={pendingSourceId === node.id || pendingSourceSide === 'left'} pendingTarget={Boolean(pendingSourceId && pendingSourceId !== node.id)} onStart={handleConnectionStart} onComplete={(event) => { event.stopPropagation(); completeNodeConnection(node.id) }} />
-        <MagneticConnectionHandle side="right" active={pendingSourceId === node.id || pendingSourceSide === 'right'} pendingTarget={Boolean(pendingSourceId && pendingSourceId !== node.id)} onStart={handleConnectionStart} onComplete={(event) => { event.stopPropagation(); completeNodeConnection(node.id) }} />
+        <MagneticConnectionHandle side="left" active={pendingSourceId === node.id || pendingSourceSide === 'left'} pendingTarget={Boolean(pendingSourceId && pendingSourceId !== node.id)} onStart={handleConnectionStart} onComplete={(event) => { event.stopPropagation(); completeNodeConnection(node.id, reportFeedback) }} />
+        <MagneticConnectionHandle side="right" active={pendingSourceId === node.id || pendingSourceSide === 'right'} pendingTarget={Boolean(pendingSourceId && pendingSourceId !== node.id)} onStart={handleConnectionStart} onComplete={(event) => { event.stopPropagation(); completeNodeConnection(node.id, reportFeedback) }} />
       </> : null}
 
       {visualMode === 'editing' && activeClip && floatingLayerStyle ? createPortal(
