@@ -163,7 +163,7 @@ export interface OpenLaneOptions {
    */
   watchdog?: { firstResponseMs?: number; idleMs?: number }
   /** 一个回合最多几次模型请求。缺省 `LANE_MAX_MODEL_REQUESTS`。 */
-  limits?: { maxModelRequests?: number }
+  limits?: { maxModelRequests?: number; contextTokenBudget?: number }
 }
 
 /** `productionRunId` → 领域投影出的那一份事实。解不出来返回 `undefined`，**不返回空对象**。 */

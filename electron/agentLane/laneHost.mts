@@ -14,6 +14,7 @@ import { findLaneReceiptAuthority } from './laneReceiptAuthority.mjs';
 // 「不重试」说的是不写重试循环：`LANE_RETRY_POLICY` 是**配置**，退避、事件、状态全是 pi 的。
 //
 // 对照今天的宿主：`electron/projectAgentHost/` 是 52 个生产文件、9 688 行。
+import { configureLaneContextBudget, laneCompactionSettings } from './laneContextBudget.mjs';
 import { formatLaneModelIndex } from './laneModelContext.js';
 import { convertToLlm } from '@earendil-works/pi-agent-core';
 import { draftInputFromMessage, isLaneInputMessage } from '../shared/agentLane/laneInputMessage.js';
@@ -201,6 +202,7 @@ export const openLane: OpenLane = async (options: OpenLaneOptions): Promise<Lane
   const systemPrompt = systemPromptFor(activeToolNames);
   const { harness } = await AgentHarness.create<undefined>({
     session, models, model, systemPrompt, tools,
+    compaction: laneCompactionSettings(model.contextWindow, options.limits?.contextTokenBudget),
     toProviderMessages: async (messages) => convertToLlm(await Promise.all(messages.map(async (message, index) => {
       // pi's AJV preparation failures are immediate results, before after_tool.
       // Enrich the model projection without revalidating or changing its recorded arguments.
@@ -230,6 +232,7 @@ export const openLane: OpenLane = async (options: OpenLaneOptions): Promise<Lane
     retry: { ...LANE_RETRY_POLICY },
     entryProjectors: uiOnlyProjectors(LANE_APPROVAL_NOTE_TYPE, LANE_TASK_NOTE_TYPE),
   }, context);
+  await configureLaneContextBudget({ harness, models, model, context, options });
   const lane: AgentLane = await harness.lane(laneName, context);
   // Constructor model only seeds new lanes; restored configuration still holds
   // the previous selection. Bind Nomi's explicit selection through the public
