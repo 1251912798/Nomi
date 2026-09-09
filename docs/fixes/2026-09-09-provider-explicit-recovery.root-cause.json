@@ -1,0 +1,97 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-09-provider-explicit-recovery",
+  "problem_type": "Provider availability cannot authorize changing a selected identity",
+  "symptom": "Disconnected provider silently changes node identity",
+  "direct_cause": "Auto-select effect writes replacement immediately; catalog resolver accepts lineage replacements",
+  "class_root": "Provider availability cannot authorize changing a selected identity",
+  "affected_population": [
+    "Existing nodes and persisted project drafts"
+  ],
+  "scope_paths": [
+    "src/workbench/generationCanvas/nodes/useNodeModelAutoSelect.ts",
+    "src/workbench/generationCanvas/runner/catalogTaskResolve.ts",
+    "src/i18n/locales/generationCommon.ts",
+    "src/ui/toast.tsx"
+  ],
+  "entry_points": [
+    "useNodeModelAutoSelect",
+    "resolveExecutableNodeFromCatalog"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "Internal selection and action boundaries, no external protocol changes.",
+  "invariants": [
+    "Provider availability cannot authorize changing a selected identity"
+  ],
+  "generality_proof": "The shared entry enforces the same rule for image/video nodes and single/batch actions.",
+  "shared_boundaries": [
+    {
+      "path": "src/workbench/generationCanvas/nodes/useNodeModelAutoSelect.ts",
+      "symbol": "useNodeModelAutoSelect",
+      "responsibility": "Provider availability cannot authorize changing a selected identity"
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/workbench/generationCanvas/nodes/useNodeModelAutoSelect.ts",
+      "entry_point": "useNodeModelAutoSelect",
+      "disposition": "enforced",
+      "evidence": "Entry reaches the shared selection/action boundary."
+    },
+    {
+      "path": "src/workbench/generationCanvas/runner/catalogTaskResolve.ts",
+      "entry_point": "resolveExecutableNodeFromCatalog",
+      "disposition": "enforced",
+      "evidence": "Entry reaches the shared selection/action boundary."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Other vendors and persisted projects can reach the same paths.",
+    "same_class_scan": [
+      "rg selectedModelOption / resolveExecutableNodeFromCatalog / runAction / activeStoryboardId across src"
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "src/workbench/generationCanvas/nodes/useNodeModelAutoSelect.ts",
+    "invariant": "Provider availability cannot authorize changing a selected identity",
+    "failure_mode": "Stop and show actionable feedback",
+    "exception_policy": "none",
+    "strategy": "Remove automatic mutation and silent return at the shared owner.",
+    "artifacts": [
+      "src/workbench/generationCanvas/nodes/useNodeModelAutoSelect.ts",
+      "src/workbench/generationCanvas/runner/catalogTaskResolve.ts",
+      "src/ui/toast.tsx"
+    ]
+  },
+  "regression_tests": [
+    "src/workbench/generationCanvas/runner/customCapabilityContract.integration.test.ts",
+    "src/workbench/generationCanvas/nodes/useNodeModelAutoSelect.test.ts"
+  ],
+  "class_regression_tests": [
+    "src/workbench/generationCanvas/runner/customCapabilityContract.integration.test.ts",
+    "src/workbench/generationCanvas/nodes/useNodeModelAutoSelect.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "src/workbench/generationCanvas/nodes/useNodeModelAutoSelect.ts"
+    ],
+    "rationale": "Automatic vendor replacement was removed; recovery writes only after the user activates the suggestion."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "Internal application invariant.",
+    "exit_criteria": []
+  },
+  "migration": "Retain saved selections and plans; derive current execution context without rewriting credentials.",
+  "residual_risks": [],
+  "invariant_owner_layer": {
+    "layer": "src/workbench/generationCanvas/nodes/useNodeModelAutoSelect.ts",
+    "tests": [
+      "src/workbench/generationCanvas/runner/customCapabilityContract.integration.test.ts",
+      "src/workbench/generationCanvas/nodes/useNodeModelAutoSelect.test.ts"
+    ]
+  }
+}
