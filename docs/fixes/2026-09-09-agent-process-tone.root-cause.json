@@ -1,0 +1,132 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-09-agent-process-tone",
+  "problem_type": "Disclosure presentation invariants",
+  "symptom": "Expanded process text is darker and bolder than its heading; mouse summary has UA focus; zero retries adds noise.",
+  "direct_cause": "Receipt/Markdown descendants independently set foreground and weight; summaries omit focus-visible; one translation always prints retries.",
+  "class_root": "Process container and summary projection do not own their presentation invariants.",
+  "affected_population": [
+    "All v4 process groups, receipts and both locales"
+  ],
+  "scope_paths": [
+    "src/workbench/ai/v4/AgentPanelV4Receipt.tsx",
+    "src/workbench/ai/v4/agentPanelV4Collapse.ts",
+    "src/i18n/locales/agentPanelV4.ts"
+  ],
+  "entry_points": [
+    "V4Process children and segments",
+    "V4ToolGroup and V4ToolReceipt summaries",
+    "collapseV4Flow completed turns"
+  ],
+  "external_sources": [
+    {
+      "kind": "official-doc",
+      "url": "https://developer.mozilla.org/en-US/docs/Web/CSS/:focus-visible",
+      "checked_at": "2026-09-09",
+      "purpose": "Preserve keyboard focus while removing pointer focus outline."
+    }
+  ],
+  "invariants": [
+    "Process ordinary text uses ink-60 and normal weight; semantic status/time/icon styling is preserved.",
+    "All three summaries retain keyboard-only accent outlines.",
+    "Zero retries is omitted; positive retry counts remain localized."
+  ],
+  "generality_proof": "Container-scoped descendant rules cover nested receipts and Markdown regardless of producer, without changing standalone receipts. All summaries share one focus class. All completed processes use the same count-based translation selection.",
+  "shared_boundaries": [
+    {
+      "path": "src/workbench/ai/v4/AgentPanelV4Receipt.tsx",
+      "symbol": "V4Process",
+      "responsibility": "Own nested process tone and weight"
+    },
+    {
+      "path": "src/workbench/ai/v4/AgentPanelV4Receipt.tsx",
+      "symbol": "SUMMARY_FOCUS",
+      "responsibility": "Own all three summary focus styles"
+    },
+    {
+      "path": "src/workbench/ai/v4/agentPanelV4Collapse.ts",
+      "symbol": "collapseV4Flow",
+      "responsibility": "Select complete localized summary according to retry count"
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/workbench/ai/v4/AgentPanelV4Receipt.tsx",
+      "entry_point": "V4ToolGroup",
+      "disposition": "enforced",
+      "evidence": "Nested groups render V4ToolReceipt within V4Process."
+    },
+    {
+      "path": "src/workbench/ai/v4/AgentPanelV4Receipt.tsx",
+      "entry_point": "V4ToolReceipt",
+      "disposition": "enforced",
+      "evidence": "Direct and nested receipt details converge on process-scoped styles; standalone receipt tone remains outside scope."
+    },
+    {
+      "path": "src/workbench/ai/v4/agentPanelV4Collapse.ts",
+      "entry_point": "collapseV4Flow",
+      "disposition": "enforced",
+      "evidence": "Every completed work stretch computes retries and chooses summary here."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Any repeated tool call or Markdown process can recreate the hierarchy inversion.",
+    "same_class_scan": [
+      "rg summary/font-medium/text-nomi-ink across AgentPanelV4Receipt.tsx: all three summary variants inspected.",
+      "Read NomiMarkdown.tsx: paragraphs, headings, strong, table cells and technical details override inherited ink.",
+      "rg processSummary across src: collapse projection plus both locales."
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "src/workbench/ai/v4/AgentPanelV4Receipt.tsx",
+    "invariant": "Process descendants cannot independently raise neutral text emphasis.",
+    "failure_mode": "Container selector specificity overrides nested neutral colors and bold weight; no producer can opt out.",
+    "exception_policy": "none",
+    "strategy": "Own the hierarchy at the process container, focus at a shared class and retries at the collapse projection.",
+    "artifacts": [
+      "src/workbench/ai/v4/AgentPanelV4Receipt.tsx",
+      "src/workbench/ai/v4/agentPanelV4Collapse.ts"
+    ]
+  },
+  "regression_tests": [
+    "src/workbench/ai/v4/agentPanelV4Collapse.test.ts",
+    "tests/ux/agent-process-tone.walk.mjs",
+    "tests/ux/_feel.browser.mjs"
+  ],
+  "class_regression_tests": [
+    "src/workbench/ai/v4/agentPanelV4Collapse.test.ts",
+    "tests/ux/agent-process-tone.walk.mjs",
+    "tests/ux/_feel.browser.mjs"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "src/workbench/ai/v4/AgentPanelV4Receipt.tsx",
+      "src/workbench/ai/v4/agentPanelV4Collapse.ts"
+    ],
+    "rationale": "Replace unscoped process emphasis and unconditional retry summary in place."
+  },
+  "dependency_lifecycle": {
+    "decision": "retain-with-exit",
+    "current": "Electron 43.4.1 native details/summary",
+    "target": "Native details/summary with CSS focus-visible",
+    "rationale": "No dependency change is needed for a CSS presentation invariant; preserve native keyboard behavior.",
+    "exit_criteria": [
+      "If a Chromium upgrade fails the mouse/Tab walkthrough, re-evaluate its focus heuristic before upgrading."
+    ]
+  },
+  "migration": "No persisted data or public protocol changes.",
+  "residual_risks": [
+    "Only the two requested themes and native Electron summary behavior are validated."
+  ],
+  "invariant_owner_layer": {
+    "layer": "src/workbench/ai/v4/AgentPanelV4Receipt.tsx",
+    "tests": [
+      "tests/ux/agent-process-tone.walk.mjs",
+      "tests/ux/_feel.browser.mjs"
+    ],
+    "why": "The container is the earliest common visual ancestor; computed-style tests exercise its actual rendered output."
+  }
+}

@@ -68,3 +68,18 @@ test('ordinary document scrolling is not an out-of-viewport defect', async () =>
     await browser.close()
   }
 })
+
+// C66 class regression: nested ordinary text, equal hierarchy and semantic exceptions.
+test('disclosure hierarchy compares computed lightness and weight', async () => {
+  const { measureDisclosureHierarchy } = await import('./_feel.mjs')
+  const browser = await chromium.launch({ headless: true })
+  try {
+    const page = await browser.newPage()
+    await page.setContent('<details open><summary style="color:oklch(.68 .01 80)">Process</summary><div style="color:oklch(.3 .01 80);font-weight:500">Read document</div></details>')
+    expect((await measureDisclosureHierarchy(page.locator('details'))).violations).toHaveLength(1)
+    await page.setContent('<details open style="color:oklch(.5 .01 80);font-weight:400"><summary>Process</summary><div><span>Read document</span></div><span data-status style="color:oklch(.3 .1 140)">Done</span></details>')
+    expect((await measureDisclosureHierarchy(page.locator('details'), { exclude: '[data-status]' })).violations).toEqual([])
+    await page.locator('details > div').evaluate(el => { el.style.fontWeight = '500' })
+    expect((await measureDisclosureHierarchy(page.locator('details'), { exclude: '[data-status]' })).violations).toHaveLength(1)
+  } finally { await browser.close() }
+})
