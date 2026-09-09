@@ -1,3 +1,4 @@
+import { notify } from '../../../ui/notificationPolicy'
 /**
  * 「按镜头拆」面板：检测 → 预览 → 勾选 → 才落画布。
  *
@@ -44,9 +45,18 @@ type DetectState =
       truncated: boolean
     }
 
-type Props = { node: GenerationCanvasNode; onClose: () => void }
+type Props = { onFeedback: (message: string) => void;  node: GenerationCanvasNode; onClose: () => void }
 
-export default function NodeShotCutPanel({ node, onClose }: Props): JSX.Element {
+export default function NodeShotCutPanel({ onFeedback, node, onClose }: Props): JSX.Element {
+  const feedbackOwnerRef = React.useRef<string | null>(node.id)
+  feedbackOwnerRef.current = node.id
+  React.useEffect(() => { feedbackOwnerRef.current = node.id; return () => { feedbackOwnerRef.current = null } }, [node.id])
+  const [feedback, setFeedback] = React.useState<string | null>(null)
+  const reportFeedback = React.useCallback((message: string) => {
+    if (feedbackOwnerRef.current !== node.id) { onFeedback(message); return }
+    notify({ identity: `NodeShotCutPanel:${node.id}`, reason: 'interaction', message, level: 'inline', present: setFeedback })
+  }, [node.id, onFeedback])
+
   const { t } = useTranslation()
   const [state, setState] = React.useState<DetectState>({ phase: 'detecting' })
   const [threshold, setThreshold] = React.useState(SHOT_SENSITIVITY_DEFAULT)
@@ -121,9 +131,9 @@ export default function NodeShotCutPanel({ node, onClose }: Props): JSX.Element 
   const commitSeconds = async (seconds: readonly number[]) => {
     if (!seconds.length || committing) return
     setCommitting({ done: 0, total: seconds.length })
-    await extractShotCutsToNodes({ node, seconds, onProgress: (progress) => setCommitting(progress) })
+    const outcome = await extractShotCutsToNodes({ reportFeedback, node, seconds, onProgress: (progress) => setCommitting(progress) })
     setCommitting(null)
-    onClose()
+    if (outcome.failed === 0 && outcome.created > 0) onClose()
   }
 
   const subtitle =
@@ -139,7 +149,8 @@ export default function NodeShotCutPanel({ node, onClose }: Props): JSX.Element 
 
   const canvasViewport =
     typeof document === 'undefined' ? null : document.querySelector<HTMLElement>('.workbench-generation__canvas')
-  if (!canvasViewport) return <></>
+  if (!canvasViewport) return <>
+{feedback ? <p role="status" className="m-0 px-2 py-1 text-caption text-nomi-ink-60">{feedback}</p> : null}</>
 
   return createPortal(
     <div
@@ -152,6 +163,7 @@ export default function NodeShotCutPanel({ node, onClose }: Props): JSX.Element 
         if (event.target === event.currentTarget && !committing) onClose()
       }}
     >
+{feedback ? <p role="status" className="m-0 px-2 py-1 text-caption text-nomi-ink-60">{feedback}</p> : null}
       <div
         className={cn(
           'flex max-h-full w-[min(760px,100%)] flex-col gap-3 rounded-nomi border border-nomi-line',

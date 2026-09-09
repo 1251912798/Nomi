@@ -1,3 +1,4 @@
+import { notify } from '../../../ui/notificationPolicy'
 import { normalizeConditionalParameters } from '../../../../electron/shared/videoCapabilities/crossFieldConstraints'
 import { nodeReferenceCapacity } from './controls/nodeCrossFieldConstraints'
 import React from 'react'
@@ -79,7 +80,6 @@ import AssetReference, { type AssetSlot } from '../../assets/AssetReference'
 import type { AssetRef } from '../../assets/assetTypes'
 import { moveArrayItem } from '../../assets/assetTypes'
 import { removeMention } from '../../assets/promptMentions'
-import { showInfoToast } from '../../../utils/showInfoToast'
 import InlineParameterBar from './InlineParameterBar'
 import { useNodeModelAutoSelect } from './useNodeModelAutoSelect'
 import { resolveArchetypeForOption, resolveRenderedControls } from './nodeModelArchetype'
@@ -113,6 +113,10 @@ export default function NodeParameterControls({
   onInsertMention,
   composerAttachmentSide = 'bottom',
 }: NodeParameterControlsProps): JSX.Element | null {
+  const reportFeedback = React.useCallback((message: string) => {
+    notify({ identity: `NodeParameterControls:${node.id}`, reason: 'interaction', message, level: 'inline', present: setUploadError })
+  }, [node.id])
+
   const { t } = useTranslation()
   const nodes = useGenerationCanvasStore((state) => state.nodes)
   const edges = useGenerationCanvasStore((state) => state.edges)
@@ -333,7 +337,7 @@ export default function NodeParameterControls({
     const state = useGenerationCanvasStore.getState()
     const latestNode = state.nodes.find(n => n.id === node.id) ?? node
     if (archMode && nodeReferenceCapacity(archMode, latestNode, state.nodes, state.edges) === 0) {
-      showInfoToast(t('generationCommon.parameters.referenceTotal', { max: archMode.maxTotalReferences }))
+      reportFeedback(t('generationCommon.parameters.referenceTotal', { max: archMode.maxTotalReferences }))
       return
     }
     // 容量先按**已占用位置**判（含连线 + pending 边，单源 resolveReferenceSlots），不能只看 meta 数组长度——
@@ -342,14 +346,14 @@ export default function NodeParameterControls({
       (rs) => referenceSlotStorage({ kind: rs.slotKind })?.metaKey === slot.metaKey,
     )?.fills.length
     if (occupied != null && slot.max !== undefined && occupied >= slot.max) {
-      showInfoToast(t('generationCommon.parameters.referenceFull', { max: slot.max }))
+      reportFeedback(t('generationCommon.parameters.referenceFull', { max: slot.max }))
       return
     }
     // 单源去重/上限：与拖入/连线共用 appendArchetypeArrayValue（规则 1：不另开写路径）。
     // 读最新 meta 计算追加（避免基于渲染快照算出过期数组 → 覆盖刚连边写入的项）。
     const result = appendArchetypeArrayValue(getLatestMeta(), slot, url)
     if (result.status === 'full') {
-      showInfoToast(t('generationCommon.parameters.maximum', { max: slot.max, label: slot.label }))
+      reportFeedback(t('generationCommon.parameters.maximum', { max: slot.max, label: slot.label }))
       return
     } // 到上限:明确告知(对抗评审:别静默丢)
     if (result.status !== 'added') return // empty / duplicate：静默
