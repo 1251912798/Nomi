@@ -364,6 +364,35 @@
           "reason": "Creators need one local record per prompt plus session totals; streamed model/tool events would obscure the user-turn boundary."
         }
       ]
+    },
+    {
+      "name": "mcp-skill-resources-prompts",
+      "kind": "external-standard",
+      "wire": true,
+      "files": [],
+      "wireContract": "MCP resources/list/read and prompts/list/get for content-addressed skill packages",
+      "spec": "https://modelcontextprotocol.io/specification/2025-11-25/server/prompts",
+      "upstreamVersion": "2025-11-25, official request example retrieved 2026-09-10",
+      "why": "External hosts discover complete skill text packages using standard resources and prompt arguments.",
+      "fixtures": [
+        "tests/fixtures/standard-formats/mcp/prompts-get.json"
+      ],
+      "readers": [
+        "electron/capabilityCore/mcpProtocol.ts"
+      ],
+      "writers": [
+        "electron/capabilityCore/mcpProtocol.ts"
+      ],
+      "deviations": [
+        {
+          "what": "Resources use the custom nomi-skill URI scheme and prompt _meta carries package identity.",
+          "reason": "Domain constraint: resources must remain bound to an authorized local skill package and its exact content hash, not arbitrary local files. These fields use standard MCP extension points."
+        },
+        {
+          "what": "Binary preview media is not exposed as a skill text resource.",
+          "reason": "Domain constraint: the canonical text skill package hash includes only supported text and script source files; this endpoint reads that package and never executes its scripts."
+        }
+      ]
     }
   ]
 }
