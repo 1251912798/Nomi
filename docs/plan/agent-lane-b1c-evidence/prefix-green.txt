@@ -1,0 +1,11 @@
+✔ B1c 24-turn loopback keeps the tool and system prefix after switching groups (1515.981084ms)
+ℹ 24 recorded user turns, 24 actual group requests, 48 real HTTP requests; tool and system prefixes identical.
+✔ B1c legacy coding menu restores file access without granting it to a locked history (121.339333ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2736.164833

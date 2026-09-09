@@ -1,0 +1,290 @@
+{
+  "model": "deepseek-v4-flash",
+  "provider": "apimart",
+  "metrics": {
+    "toolCorrect": 4,
+    "toolTotal": 4,
+    "successfulTurns": 3,
+    "totalTurns": 3,
+    "afterSwitch": [
+      {
+        "inputBytes": 76544,
+        "maxOutputTokens": 1024,
+        "upperCny": 0.23884776832,
+        "prefixStable": true,
+        "afterSwitch": true,
+        "inputTokens": 19900,
+        "cacheRead": 16384,
+        "outputTokens": 30,
+        "newInputTokens": 75
+      }
+    ],
+    "allPrefixesStable": true
+  },
+  "turns": [
+    {
+      "text": "调用 read_full_text 读文稿，告诉我地点。",
+      "result": {},
+      "requestStart": 0,
+      "requestEnd": 2,
+      "parts": [
+        {
+          "sequence": 0,
+          "entrySeq": 4,
+          "contentIndex": 0,
+          "kind": "user",
+          "text": "调用 read_full_text 读文稿，告诉我地点。"
+        },
+        {
+          "sequence": 1,
+          "entrySeq": 19,
+          "contentIndex": 0,
+          "kind": "assistant-text",
+          "text": "\n\n",
+          "streaming": false
+        },
+        {
+          "sequence": 2,
+          "entrySeq": 19,
+          "contentIndex": 1,
+          "kind": "tool-call",
+          "toolCallId": "call_5278e0f50c154858b32ec68f",
+          "toolName": "read_full_text",
+          "args": {},
+          "running": false
+        },
+        {
+          "sequence": 3,
+          "entrySeq": 29,
+          "contentIndex": 0,
+          "kind": "tool-result",
+          "toolCallId": "call_5278e0f50c154858b32ec68f",
+          "toolName": "read_full_text",
+          "text": "B1c 缓存验收文稿：海边日出，一位旅人走向灯塔。",
+          "isError": false
+        },
+        {
+          "sequence": 4,
+          "entrySeq": 47,
+          "contentIndex": 0,
+          "kind": "assistant-text",
+          "text": "地点是 **海边**（灯塔旁的海岸线）。",
+          "streaming": false
+        }
+      ]
+    },
+    {
+      "text": "先调用 nomi_request_tools，group=timeline；收到结果后调用 read_timeline，告诉我有没有片段。",
+      "result": {},
+      "requestStart": 2,
+      "requestEnd": 5,
+      "parts": [
+        {
+          "sequence": 5,
+          "entrySeq": 56,
+          "contentIndex": 0,
+          "kind": "user",
+          "text": "先调用 nomi_request_tools，group=timeline；收到结果后调用 read_timeline，告诉我有没有片段。"
+        },
+        {
+          "sequence": 6,
+          "entrySeq": 74,
+          "contentIndex": 0,
+          "kind": "assistant-text",
+          "text": "\n\n",
+          "streaming": false
+        },
+        {
+          "sequence": 7,
+          "entrySeq": 74,
+          "contentIndex": 1,
+          "kind": "tool-call",
+          "toolCallId": "call_f452df6b9eab492fa2e9c096",
+          "toolName": "nomi_request_tools",
+          "args": {
+            "group": "timeline"
+          },
+          "running": false
+        },
+        {
+          "sequence": 8,
+          "entrySeq": 84,
+          "contentIndex": 0,
+          "kind": "tool-result",
+          "toolCallId": "call_f452df6b9eab492fa2e9c096",
+          "toolName": "nomi_request_tools",
+          "text": "Selected timeline. All tool groups remain available; existing approval and file permissions still apply.",
+          "isError": false
+        },
+        {
+          "sequence": 9,
+          "entrySeq": 98,
+          "contentIndex": 0,
+          "kind": "assistant-text",
+          "text": "\n\n",
+          "streaming": false
+        },
+        {
+          "sequence": 10,
+          "entrySeq": 98,
+          "contentIndex": 1,
+          "kind": "tool-call",
+          "toolCallId": "call_24e454a92c1d45888a24c5ea",
+          "toolName": "read_timeline",
+          "args": {},
+          "running": false
+        },
+        {
+          "sequence": 11,
+          "entrySeq": 108,
+          "contentIndex": 0,
+          "kind": "tool-result",
+          "toolCallId": "call_24e454a92c1d45888a24c5ea",
+          "toolName": "read_timeline",
+          "text": "Timeline revision fixture-r1; no clips.",
+          "isError": false
+        },
+        {
+          "sequence": 12,
+          "entrySeq": 128,
+          "contentIndex": 0,
+          "kind": "assistant-text",
+          "text": "时间线上**没有任何片段**，是空的时间线。",
+          "streaming": false
+        }
+      ]
+    },
+    {
+      "text": "再次调用 read_full_text，告诉我人物要去哪里。",
+      "result": {},
+      "requestStart": 5,
+      "requestEnd": 7,
+      "parts": [
+        {
+          "sequence": 13,
+          "entrySeq": 137,
+          "contentIndex": 0,
+          "kind": "user",
+          "text": "再次调用 read_full_text，告诉我人物要去哪里。"
+        },
+        {
+          "sequence": 14,
+          "entrySeq": 152,
+          "contentIndex": 0,
+          "kind": "assistant-text",
+          "text": "\n\n",
+          "streaming": false
+        },
+        {
+          "sequence": 15,
+          "entrySeq": 152,
+          "contentIndex": 1,
+          "kind": "tool-call",
+          "toolCallId": "call_5fcbdb889884410280142fc1",
+          "toolName": "read_full_text",
+          "args": {},
+          "running": false
+        },
+        {
+          "sequence": 16,
+          "entrySeq": 162,
+          "contentIndex": 0,
+          "kind": "tool-result",
+          "toolCallId": "call_5fcbdb889884410280142fc1",
+          "toolName": "read_full_text",
+          "text": "B1c 缓存验收文稿：海边日出，一位旅人走向灯塔。",
+          "isError": false
+        },
+        {
+          "sequence": 17,
+          "entrySeq": 176,
+          "contentIndex": 0,
+          "kind": "assistant-text",
+          "text": "旅人正在**走向灯塔**。",
+          "streaming": false
+        }
+      ]
+    }
+  ],
+  "requests": [
+    {
+      "inputBytes": 75620,
+      "maxOutputTokens": 1024,
+      "upperCny": 0.236075771092,
+      "prefixStable": true,
+      "afterSwitch": false,
+      "inputTokens": 19727,
+      "cacheRead": 0,
+      "outputTokens": 29,
+      "newInputTokens": 19727
+    },
+    {
+      "inputBytes": 75925,
+      "maxOutputTokens": 1024,
+      "upperCny": 0.236990770177,
+      "prefixStable": true,
+      "afterSwitch": false,
+      "inputTokens": 19783,
+      "cacheRead": 16384,
+      "outputTokens": 13,
+      "newInputTokens": 56
+    },
+    {
+      "inputBytes": 76176,
+      "maxOutputTokens": 1024,
+      "upperCny": 0.237743769424,
+      "prefixStable": true,
+      "afterSwitch": false,
+      "inputTokens": 19825,
+      "cacheRead": 16384,
+      "outputTokens": 48,
+      "newInputTokens": 42
+    },
+    {
+      "inputBytes": 76544,
+      "maxOutputTokens": 1024,
+      "upperCny": 0.23884776832,
+      "prefixStable": true,
+      "afterSwitch": true,
+      "inputTokens": 19900,
+      "cacheRead": 16384,
+      "outputTokens": 30,
+      "newInputTokens": 75
+    },
+    {
+      "inputBytes": 76820,
+      "maxOutputTokens": 1024,
+      "upperCny": 0.23967576749199995,
+      "prefixStable": true,
+      "afterSwitch": false,
+      "inputTokens": 19950,
+      "cacheRead": 16384,
+      "outputTokens": 13,
+      "newInputTokens": 50
+    },
+    {
+      "inputBytes": 77026,
+      "maxOutputTokens": 1024,
+      "upperCny": 0.240293766874,
+      "prefixStable": true,
+      "afterSwitch": false,
+      "inputTokens": 19977,
+      "cacheRead": 16384,
+      "outputTokens": 29,
+      "newInputTokens": 27
+    },
+    {
+      "inputBytes": 77331,
+      "maxOutputTokens": 1024,
+      "upperCny": 0.24120876595899998,
+      "prefixStable": true,
+      "afterSwitch": false,
+      "inputTokens": 20033,
+      "cacheRead": 16384,
+      "outputTokens": 9,
+      "newInputTokens": 56
+    }
+  ],
+  "totalSpentCny": 0.5520332386660001,
+  "limitation": "Real model with isolated document/timeline domain; no paid media generation."
+}

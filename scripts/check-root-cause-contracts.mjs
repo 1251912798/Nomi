@@ -54,7 +54,7 @@ try {
   console.error(`✖ 根因合同门禁无法确定可信基线：${error instanceof Error ? error.message : String(error)}`);
   process.exit(1);
 }
-const changedFiles = new Set(gitPaths(["diff", "--name-only", baseRef, "--"], { cwd: repoRoot }));
+const changedFiles = new Set(gitPaths(["diff", "--no-renames", "--name-only", baseRef, "--"], { cwd: repoRoot }));
 for (const file of gitPaths(["ls-files", "--others", "--exclude-standard"], { cwd: repoRoot })) changedFiles.add(file);
 const existingFiles = new Set(gitPaths(["ls-files", "--cached", "--others", "--exclude-standard"], { cwd: repoRoot }));
 

@@ -49,6 +49,7 @@ test('P4 · a priced model yields a cost that equals the hand-computed per-milli
   const usage = { input: 12_000, output: 3_000, cacheRead: 8_000, cacheWrite: 0 };
   const fixture = await createLaneFixture(t, [{ type: 'text', text: 'Done.', usage }]);
   const lane = await fixture.openLane({ ...fixture.options,
+    limits: { contextTokenBudget: 110_000 },
     model: { ...fixture.options.model, tokenPricing: V4_FLASH } });
   await lane.execute({ kind: 'prompt', text: 'Say done.' });
 
@@ -66,7 +67,8 @@ test('P4 · a priced model yields a cost that equals the hand-computed per-milli
 });
 
 /**
- * 用量刻意压在 10 万以内：喂一个超过 `contextWindow` 的数字会让 pi 走溢出恢复 + 重试退避，
+ * 用量刻意压在 10 万以内，并显式将本计费夹具的成本压缩预算设为 11 万：计费断言不应触发摘要请求。
+ * 喂一个超过 `contextWindow` 的数字会让 pi 走溢出恢复 + 重试退避，
  * 一条本来 90ms 的测试要空等 7 秒 —— 而它证明的东西一个字都没多。
  */
 const CACHE_TOKENS = 100_000;
@@ -77,6 +79,7 @@ test('P4 · cache reads are billed at the cache rate, not the input rate', async
   const fixture = await createLaneFixture(t, [
     { type: 'text', text: 'Done.', usage: { input: 0, output: 0, cacheRead: CACHE_TOKENS, cacheWrite: 0 } }]);
   const lane = await fixture.openLane({ ...fixture.options,
+    limits: { contextTokenBudget: 110_000 },
     model: { ...fixture.options.model, tokenPricing: V4_FLASH } });
   await lane.execute({ kind: 'prompt', text: 'Say done.' });
 
@@ -92,7 +95,8 @@ test('P4 · an omitted cache rate falls back to the input rate, never to free', 
   // 那是一个我们没资格给用户的折扣。
   const fixture = await createLaneFixture(t, [
     { type: 'text', text: 'Done.', usage: { input: 0, output: 0, cacheRead: CACHE_TOKENS, cacheWrite: 0 } }]);
-  const lane = await fixture.openLane({ ...fixture.options, model: { ...fixture.options.model,
+  const lane = await fixture.openLane({ ...fixture.options,
+    limits: { contextTokenBudget: 110_000 }, model: { ...fixture.options.model,
     tokenPricing: { inputPerMTokUsd: V4_FLASH.inputPerMTokUsd, outputPerMTokUsd: V4_FLASH.outputPerMTokUsd } } });
   await lane.execute({ kind: 'prompt', text: 'Say done.' });
 
@@ -107,6 +111,7 @@ test('P4 · an omitted cache rate falls back to the input rate, never to free', 
 test('G3d · 首轮：一条回合都还没结算时，三行全部「不可知」，一个 0 都不画', async (t) => {
   const fixture = await createLaneFixture(t, SAY_HI);
   const lane = await fixture.openLane({ ...fixture.options,
+    limits: { contextTokenBudget: 110_000 },
     model: { ...fixture.options.model, tokenPricing: V4_FLASH, reasoning: true } });
 
   // 刻意**不发**任何提示词：这就是用户打开面板的第一眼。
@@ -133,7 +138,8 @@ test('G3d · 无价目模型：花费「不可知」，不是 $0.00；token 那�
 
 test('G3d · 免费模型：花费是「不适用」，和「不可知」不是同一句话', async (t) => {
   const fixture = await createLaneFixture(t, SAY_HI);
-  const lane = await fixture.openLane({ ...fixture.options, model: { ...fixture.options.model, free: true } });
+  const lane = await fixture.openLane({ ...fixture.options,
+    limits: { contextTokenBudget: 110_000 }, model: { ...fixture.options.model, free: true } });
   await lane.execute({ kind: 'prompt', text: 'Say done.' });
 
   assert.deepEqual(lane.projection().usage.cost, { state: 'not-applicable', reason: 'model-is-free' },
@@ -147,6 +153,7 @@ test('G3d · 刚压缩完：上下文「不可知」，因为旧数字描述的�
   // 放一条真类型的 `CompactionEntry` —— 合成的只有那一条标记，其余全是 pi 自己产的。
   const fixture = await createLaneFixture(t, SAY_HI);
   const lane = await fixture.openLane({ ...fixture.options,
+    limits: { contextTokenBudget: 110_000 },
     model: { ...fixture.options.model, tokenPricing: V4_FLASH } });
   await lane.execute({ kind: 'prompt', text: 'Say done.' });
 

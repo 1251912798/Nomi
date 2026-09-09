@@ -24,16 +24,16 @@ const projection = (overrides: Partial<LaneProjection> = {}): LaneProjection => 
 });
 
 describe("laneComposerIntent", () => {
-  it("有卡在等：那句话是**对这张卡的回答**，不是排给下一轮的指令", () => {
+  it("有卡在等：先记录 steer，宿主解除审批；次级手势才 follow-up", () => {
     // 这是整张表的重点。今天的系统把它排进队列：卡还在那儿等着，模型直到用户再点一次
     // 「不要」才知道他想说什么——用户的体感是「我说了它没听见」。
     const intent = laneComposerIntent(projection({ running: true, pending: PENDING }), "不对，横屏");
     expect(intent.state).toBe("awaiting-approval");
     expect(intent.primary.command).toEqual({
-      kind: "approval", toolCallId: "call-9", action: "deny", reason: "不对，横屏",
+      kind: "steer", text: "不对，横屏",
     });
-    // 次选不是「拒绝得温柔一点」，是「这句话跟这张卡无关」——卡仍然在等。
-    expect(intent.secondary?.command).toEqual({ kind: "steer", text: "不对，横屏" });
+    // 显式次选等整轮结束，审批卡仍然在等。
+    expect(intent.secondary?.command).toEqual({ kind: "follow-up", text: "不对，横屏" });
   });
 
   it("在跑、没卡：默认 steer（等这一步做完就听我的），次选 followUp", () => {
@@ -57,10 +57,10 @@ describe("laneComposerIntent", () => {
   });
 
   it("那句话一字不改地穿过去：不加前缀、不加引号、不加「用户说：」", () => {
-    // 在「有卡在等」那一支它会成为模型看到的拒收理由。替用户改口 = 模型按一句他没说过的话重新规划。
+    // 等待期也记录为原始用户消息。替用户改口 = 模型按一句他没说过的话重新规划。
     const raw = '  "横屏"，别竖着  ';
     expect(laneComposerIntent(projection({ running: true, pending: PENDING }), raw).primary.command)
-      .toMatchObject({ reason: raw });
+      .toMatchObject({ text: raw });
     expect(laneComposerIntent(projection({ running: true }), raw).primary.command).toMatchObject({ text: raw });
   });
 });

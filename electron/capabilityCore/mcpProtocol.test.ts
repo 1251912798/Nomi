@@ -2,9 +2,44 @@ import { describe, expect, it } from 'vitest'
 
 import { CANVAS_READ_MCP_ADAPTER, createMcpCapabilityResolver } from './mcpCapabilityProjection'
 import { createMcpProtocol, type McpTransport } from './mcpProtocol'
+import { mcpProfileTools } from '../shared/agentCapabilities/modelFacingToolRegistry'
+import { EXPORT_READ_CAPABILITY } from '../shared/agentCapabilities/exportCapabilities'
+import { CANVAS_NODE_PROMPT_GUIDELINES } from '../shared/agentCapabilities/canvasWrite'
+import { CANVAS_READ_CAPABILITY } from '../shared/agentCapabilities/canvasRead'
 import { registerProductionPlaybook } from '../productionRun/productionPlaybooks'
 
 describe('MCP L1 tools/list_changed notification', () => {
+  it('publishes every shared MCP guideline through the real tools/list, including the collapsed read tool', () => {
+    const frames: Array<Record<string, unknown>> = []
+    const protocol = createMcpProtocol({ send: frame => frames.push(frame as Record<string, unknown>),
+      invoke: async () => { throw new Error('tools/list must not execute a domain operation') }, isAppOpen: () => false })
+    try {
+      protocol.handleIncoming({ jsonrpc: '2.0', id: 1, method: 'tools/list', params: {} })
+      const listed = frames.find(frame => frame.id === 1)?.result as { tools: Array<{ name: string; description: string }> }
+      expect(listed.tools.length).toBeGreaterThan(0)
+      const sources = mcpProfileTools()
+      expect(sources.some(source => source.contractId === 'canvas.write')).toBe(true)
+      expect(sources.some(source => source.contractId === 'document.write')).toBe(true)
+      expect(sources.some(source => source.contractId === 'asset.read')).toBe(true)
+      for (const source of sources) {
+        const name = source.name === CANVAS_READ_CAPABILITY.aliases.mcp ? 'nomi_read' : source.name
+        const actual = listed.tools.find(tool => tool.name === name)
+        expect(actual, `${source.name} is retained directly or in its approved aggregate`).toBeDefined()
+        for (const guideline of new Set(source.specs.flatMap(spec => spec.promptGuidelines ?? []))) {
+          expect(actual?.description, `${name} retains its shared guideline`).toContain(guideline)
+        }
+      }
+      const canvas = listed.tools.find(tool => tool.name === 'nomi_canvas_edit')!
+      for (const guideline of CANVAS_NODE_PROMPT_GUIDELINES) {
+        expect(canvas.description.split(guideline)).toHaveLength(2)
+      }
+      const read = listed.tools.find(tool => tool.name === 'nomi_read')!
+      expect(read.description).toContain('For target=canvas only')
+      expect(listed.tools.find(tool => tool.name === EXPORT_READ_CAPABILITY.aliases.mcp)?.description)
+        .toBe(EXPORT_READ_CAPABILITY.projections.mcp?.description)
+    } finally { protocol.dispose() }
+  })
+
   it('projects semantic tool titles in the transport locale', async () => {
     const frames: Array<Record<string, unknown>> = []
     const transport: McpTransport = { send: (frame) => frames.push(frame as Record<string, unknown>), invoke: async () => ({}), isAppOpen: () => false, getLocale: () => 'en' }
@@ -12,7 +47,7 @@ describe('MCP L1 tools/list_changed notification', () => {
     protocol.handleIncoming({ jsonrpc: '2.0', id: 1, method: 'tools/list', params: {} })
     const listed = frames.find((frame) => frame.id === 1)?.result as { tools: Array<{ name: string; title?: string }> } | undefined
     expect(listed).toBeDefined()
-    expect(listed?.tools.find((tool) => tool.name === 'nomi_timeline_edit')?.title).toBe('Preview, apply, or undo a revision-guarded timeline edit.')
+    expect(listed?.tools.find((tool) => tool.name === 'nomi_timeline_edit')?.title).toBe('Preview, apply or undo timeline edits')
     protocol.dispose()
   })
 

@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { CANVAS_READ_CAPABILITY, canvasReadResultSchema } from "../shared/agentCapabilities/canvasRead";
-import { formatCanvasForAgent } from "../shared/agentCapabilities/canvasReadCompact";
 import { createMainCapabilityExecutorRegistry } from "./capabilityExecutorRegistry";
 import {
   createCapturedPiCanvasReadTransportAdapter,
@@ -143,7 +142,7 @@ describe("canvas.read transport adapters", () => {
       ),
     ).resolves.toEqual({
       ok: true,
-      result: formatCanvasForAgent(canvasReadResultSchema.parse(CAPTURED_SOURCE)),
+      result: canvasReadResultSchema.parse(CAPTURED_SOURCE),
       silent: true,
     });
     expect(readDisk).not.toHaveBeenCalled();
@@ -166,7 +165,7 @@ describe("canvas.read transport adapters", () => {
     });
   });
 
-  it("routes only the Pi canvas alias through the exact invocation and compact shared formatter", async () => {
+  it("routes only the Pi canvas alias through the exact invocation and canonical result", async () => {
     const test = await piHarness();
     const adapter = createPiCanvasReadTransportAdapter({
       registry: test.registry,
@@ -186,7 +185,7 @@ describe("canvas.read transport adapters", () => {
       ),
     ).resolves.toEqual({
       ok: true,
-      result: formatCanvasForAgent({
+      result: {
         nodes: [
           {
             id: "node-a",
@@ -204,7 +203,7 @@ describe("canvas.read transport adapters", () => {
         edges: [],
         groups: [],
         selectedNodeIds: ["node-a"],
-      }),
+      },
       silent: true,
     });
     await expect(

@@ -248,7 +248,8 @@ describe("B6 canvas.read transport acceptance", () => {
     expect(read).toHaveBeenCalledTimes(3);
     expect(mcpResult).toEqual(expected);
     expect(internalResult).toEqual(expected);
-    expect(piResult).toEqual({ ok: true, result: formatCanvasForAgent(expected), silent: true });
+    expect(piResult).toEqual({ ok: true, result: expected, silent: true });
+    if (piResult?.ok) expect(formatCanvasForAgent(piResult.result)).toBe(formatCanvasForAgent(expected));
 
     const mcpPresenter = MCP_CAPABILITY_RESOLVER.resolve(CANVAS_READ_CAPABILITY.aliases.mcp!)!.presentResult;
     const presented = mcpPresenter(mcpResult);

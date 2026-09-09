@@ -1,0 +1,122 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-08-switch-plan-presentation",
+  "problem_type": "plan_review_presentation_and_rename_evidence",
+  "symptom": "Timeline plan shows operation JSON in place of readable text and describes an absent stop-asking action; contracts falsely reject descriptor relocation.",
+  "direct_cause": "Non-shrinking detail span squeezes the readable flex item; scope projection ignores plan kind; name-only rename output omits the old path.",
+  "class_root": "Presentation does not separate human review from technical detail; changed-path evidence does not include both endpoints of relocation.",
+  "affected_population": [
+    "Timeline plan operations",
+    "Storyboard plan rows",
+    "Root-cause contracts declaring renamed legacy paths"
+  ],
+  "scope_paths": [
+    "src/workbench/ai/v4/AgentPanelV4Cards.tsx",
+    "src/workbench/ai/v4/agentPanelV4Intervention.ts",
+    "scripts/check-root-cause-contracts.mjs"
+  ],
+  "entry_points": [
+    "Timeline planLines",
+    "Storyboard residentPlanShots",
+    "Root-cause checker baseline diff"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "Existing v4 design and explicit 19:05 rulings control this presentation; Git rename behavior reproduced locally.",
+  "invariants": [
+    "Plan detail is collapsed by default and cannot squeeze readable labels.",
+    "Plan scope never promises an absent stop-asking action.",
+    "Changed-path inventory includes removed and added endpoints."
+  ],
+  "generality_proof": "Both plan producers converge on V4Intervention; every baseline diff uses the checker inventory with rename detection disabled.",
+  "shared_boundaries": [
+    {
+      "path": "src/workbench/ai/v4/AgentPanelV4Cards.tsx",
+      "symbol": "V4Intervention",
+      "responsibility": "Separate readable rows from folded technical detail."
+    },
+    {
+      "path": "src/workbench/ai/v4/agentPanelV4Intervention.ts",
+      "symbol": "projectV4Intervention",
+      "responsibility": "Omit stop-asking scope on plan cards."
+    },
+    {
+      "path": "scripts/check-root-cause-contracts.mjs",
+      "symbol": "changedFiles",
+      "responsibility": "Include both endpoints of moved legacy paths."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/workbench/ai/v4/agentPanelV4Intervention.ts",
+      "entry_point": "planRowsOf / planLines",
+      "disposition": "enforced",
+      "evidence": "TimelinePlanLines text and technical map to the shared PlanRow."
+    },
+    {
+      "path": "src/workbench/ai/v4/agentPanelV4Intervention.ts",
+      "entry_point": "planRowsOf / residentPlanShots",
+      "disposition": "enforced",
+      "evidence": "Storyboard title and description also map to PlanRow."
+    },
+    {
+      "path": "scripts/check-root-cause-contracts.mjs",
+      "entry_point": "baseline diff",
+      "disposition": "enforced",
+      "evidence": "Full diff reports R082 while path-filtered diff reports D for productionRunDescriptors."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Any long detail can obscure readable content; every renamed legacy path can fail the same checker.",
+    "same_class_scan": [
+      "rg planLines and residentPlanShots across workbench",
+      "Read timelinePlanSummary and V4Intervention",
+      "Compare full and path-filtered git diff for productionRunDescriptors"
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "src/workbench/ai/v4/AgentPanelV4Cards.tsx",
+    "invariant": "Human labels stay visible and raw detail is folded.",
+    "failure_mode": "Technical detail cannot consume the label row; plan scope is omitted.",
+    "exception_policy": "none",
+    "strategy": "Native details outside the checkbox label; projection conditions scope by actual plan kind; checker enumerates deletion and addition independently.",
+    "artifacts": [
+      "src/workbench/ai/v4/AgentPanelV4Cards.tsx",
+      "src/workbench/ai/v4/agentPanelV4Intervention.ts",
+      "scripts/check-root-cause-contracts.mjs"
+    ]
+  },
+  "regression_tests": [
+    "src/workbench/ai/v4/agentPanelV4Blocks.test.ts",
+    "src/workbench/ai/v4/agentPanelV4Intervention.test.ts",
+    "scripts/check-root-cause-contracts.node-test.mjs"
+  ],
+  "class_regression_tests": [
+    "src/workbench/ai/v4/agentPanelV4Blocks.test.ts",
+    "src/workbench/ai/v4/agentPanelV4Intervention.test.ts",
+    "scripts/check-root-cause-contracts.node-test.mjs"
+  ],
+  "legacy_paths": {
+    "status": "not-applicable",
+    "removed_paths": [],
+    "rationale": "Replace rendering and diff inventory in place; no parallel implementation."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "Existing React details and Git CLI; no package changes.",
+    "exit_criteria": []
+  },
+  "migration": "No persisted state changes.",
+  "residual_risks": [
+    "Full Electron walkthrough and gates must pass before step 2 completes."
+  ],
+  "invariant_owner_layer": {
+    "layer": "src/workbench/ai/v4/AgentPanelV4Cards.tsx",
+    "tests": [
+      "src/workbench/ai/v4/agentPanelV4Blocks.test.ts",
+      "src/workbench/ai/v4/agentPanelV4Intervention.test.ts"
+    ],
+    "why": "Both timeline and storyboard rows share this renderer and projection."
+  }
+}

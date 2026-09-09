@@ -1,32 +1,13 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const deps = vi.hoisted(() => ({
-  projection: {
-    binding: null as null | {
-      projectId: string
-      immutableProjectUuid: string
-      projectGeneration: number
-    },
-    subscriptionId: null as string | null,
-  },
   read: vi.fn(),
   write: vi.fn(),
   transition: vi.fn(),
-  clear: vi.fn(),
   activeProposal: null as null | CommittedProposalRecord,
 }))
 
-vi.mock('../../ai/projectAgentClient', () => ({
-  projectAgentClient: {
-    readProposalReceipt: deps.read,
-    writeProposalReceipt: deps.write,
-    transitionProposalReceipt: deps.transition,
-    clearProposalReceipt: deps.clear,
-  },
-}))
-vi.mock('../../ai/projectAgentProjectionStore', () => ({
-  projectAgentProjectionStore: { getState: () => deps.projection },
-}))
+import { laneClient } from '../../ai/lane/laneClient'
 
 import type { ProjectAgentProposalReceiptLifecycle } from '../../../../electron/shared/projectAgentProposalReceipt'
 import { useGenerationCanvasStore } from '../store/generationCanvasStore'
@@ -74,10 +55,9 @@ function receipt(
   return { binding: bindingA, revision, lifecycle, proposalId: proposal.proposalId, operationId, proposal }
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   abandonPendingCanvasWrite()
   clearCommittedProposal()
-  deps.projection = { binding: bindingA, subscriptionId: 'subscription-a' }
   deps.read.mockReset().mockResolvedValue(null)
   deps.activeProposal = record
   deps.write.mockReset().mockImplementation(async (_subscriptionId, input) =>
@@ -86,9 +66,21 @@ beforeEach(() => {
   deps.transition.mockReset().mockImplementation(async (_subscriptionId, input) =>
     receipt(input.lifecycle, input.expectedRevision + 1, deps.activeProposal ?? record, input.operationId),
   )
-  deps.clear.mockReset()
+  laneClient.connect({
+    onProjection: () => () => undefined,
+    send: async command => {
+      if (command.kind === 'workspace-open') return { ok: true, workspaceId: command.binding.projectId === bindingB.projectId ? 'subscription-b' : 'subscription-a' }
+      if (command.kind === 'receipt-read') return { ok: true, receipt: await deps.read(command.workspaceId) }
+      if (command.kind === 'receipt-write') return { ok: true, receipt: await deps.write(command.workspaceId, command.input) }
+      if (command.kind === 'receipt-transition') return { ok: true, receipt: await deps.transition(command.workspaceId, command.input) }
+      throw new Error(`Unexpected lane command: ${command.kind}`)
+    },
+  })
+  await laneClient.open(bindingA)
   useGenerationCanvasStore.getState().restoreSnapshot({ nodes: [], edges: [], selectedNodeIds: [], groups: [] })
 })
+
+afterEach(() => { laneClient.connect(undefined) })
 
 describe('committed proposal receipt renderer lifecycle', () => {
   it('persists an explicitly non-Canvas preparation with no restore snapshot', async () => {
@@ -147,9 +139,12 @@ describe('committed proposal receipt renderer lifecycle', () => {
 
   it('drops a late prepare response after project B supersedes project A', async () => {
     let finish!: (value: unknown) => void
-    deps.write.mockReturnValueOnce(new Promise((resolve) => { finish = resolve }))
+    let started!: () => void
+    const writeStarted = new Promise<void>(resolve => { started = resolve })
+    deps.write.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; started() }))
     const pending = prepareProposalReceipt(record)
-    deps.projection = { binding: bindingB, subscriptionId: 'subscription-b' }
+    await writeStarted
+    await laneClient.open(bindingB)
     finish(receipt('preparing', 1))
 
     await expect(pending).resolves.toBe(false)

@@ -145,8 +145,6 @@ export async function runDirectionPlanner(
     prompt: buildDirectionPlannerPrompt(input),
     displayPrompt: '构思创意方向',
     ...(projectId ? { projectId } : {}),
-    skillKey: 'workbench.production.direction-planner',
-    skillName: '方向候选规划',
   })
   const candidates = parseDirectionCandidates(response.text ?? '')
   return { candidates }

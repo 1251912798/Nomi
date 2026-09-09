@@ -1,0 +1,144 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-08-agent-lane-extended-domain-tools",
+  "problem_type": "Domain capability disappearance during runtime replacement",
+  "symptom": "The lane model cannot propose timeline edits, control production tasks, inspect media, export or delete canvas nodes that the old Agent exposes.",
+  "direct_cause": "The internal shared tool profile contains only the initial document/canvas/timeline-read slice.",
+  "class_root": "The tool profile did not distinguish initial tools from deferred domain tools, so its fixed budget silently became the capability ceiling.",
+  "affected_population": [
+    "Timeline editing requests",
+    "Production and generation planning requests",
+    "Media inspection, export and destructive canvas requests"
+  ],
+  "scope_paths": [
+    "electron/agentLane/laneExtendedDesktopPorts.ts",
+    "electron/agentLane/laneExtendedTools.ts",
+    "electron/agentLane/laneToolCatalog.ts",
+    "electron/shared/agentCapabilities/extendedModelTools.ts",
+    "electron/shared/agentCapabilities/productionModelTools.ts",
+    "electron/shared/agentCapabilities/generationPlanSchemas.ts",
+    "electron/shared/agentCapabilities/modelFacingTools.ts",
+    "electron/shared/agentCapabilities/modelFacingToolRegistry.ts",
+    "electron/shared/agentCapabilities/assetModelTools.ts",
+    "electron/shared/agentCapabilities/timelineRead.ts",
+    "electron/shared/agentCapabilities/timelineModelTools.ts",
+    "electron/shared/agentCapabilities/productionRunDescriptors.ts",
+    "electron/shared/agentCapabilities/productionRun.ts",
+    "electron/shared/agentCapabilities/modelVisibleJsonSchema.ts",
+    "electron/shared/agentCapabilities/flatModelInput.ts",
+    "electron/shared/agentCapabilities/canvasDelete.ts",
+    "electron/shared/agentCapabilities/exportCapabilities.ts",
+    "electron/shared/agentCapabilities/timelineWrite.ts",
+    "electron/capabilityCore/mcpGenerationTools.ts",
+    "electron/productionRun/productionRunReducer.ts",
+    "scripts/check-model-schema.ts",
+    "electron/shared/agentCapabilities/canvasModelShapes.ts",
+    "electron/shared/agentCapabilities/canvasModelTools.ts",
+    "electron/shared/agentCapabilities/canvasWrite.ts"
+  ],
+  "entry_points": [
+    "Shared internal tool profile",
+    "Deferred desktop tool execution"
+  ],
+  "external_sources": [
+    {
+      "kind": "official-doc",
+      "url": "https://json-schema.org/understanding-json-schema/structuring#recursion",
+      "checked_at": "2026-09-08",
+      "purpose": "The official recursive person schema demonstrates local $ref for recursive JSON values; keep this standard shape through the existing publisher."
+    }
+  ],
+  "invariants": [
+    "The initial tool budget remains twelve while retained domain tools are explicitly deferred.",
+    "Every mutation uses the existing domain adapter and approved action identity.",
+    "Destructive canvas and export success requires a correlated committed receipt."
+  ],
+  "generality_proof": "All deferred tools derive from capability-owned schemas and pass through one lifecycle dispatcher; all prepared writes require a durable approval before a single execution.",
+  "shared_boundaries": [
+    {
+      "path": "electron/shared/agentCapabilities/modelFacingToolRegistry.ts",
+      "symbol": "modelFacingToolSpecs",
+      "responsibility": "Collect capability-owned initial and deferred descriptors."
+    },
+    {
+      "path": "electron/agentLane/laneExtendedDesktopPorts.ts",
+      "symbol": "createLaneExtendedDesktopPorts",
+      "responsibility": "Bind existing domain adapters to durable approval and receipt verification."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "electron/capabilityCore/timelineTransportAdapters.ts",
+      "entry_point": "createPiTimelineWriteTransportAdapter",
+      "disposition": "enforced",
+      "evidence": "Prepared revision-bound writes are consumed through the shared lane lifecycle."
+    },
+    {
+      "path": "electron/capabilityCore/phase4SurfaceTransportAdapters.ts",
+      "entry_point": "createPiPhase4SurfaceTransportAdapter",
+      "disposition": "enforced",
+      "evidence": "Export writes use the same approval lifecycle and committed receipt correlation."
+    },
+    {
+      "path": "electron/shared/agentCapabilities/modelVisibleJsonSchema.ts",
+      "entry_point": "toPublishedJsonSchema",
+      "disposition": "enforced",
+      "evidence": "Preserve recursive local references via the existing converter override; official recursive person fixture and actual pi validation cover nested JSON."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Every request for a domain outside the initial slice loses its tools after cutover.",
+    "same_class_scan": [
+      "Compared agentToolCatalog groups and agentChatPolicy production projection with modelFacingToolRegistry.",
+      "Read timeline, production, generation, phase4 and canvas-delete transport adapters."
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "electron/agentLane/laneExtendedDesktopPorts.ts",
+    "invariant": "A prepared mutation cannot execute without a durable matching approval and cannot consume it twice.",
+    "failure_mode": "Missing, cancelled, stale or uncorrelated authority produces a tool failure before execution/success.",
+    "exception_policy": "none",
+    "strategy": "Keep all retained schemas in shared capability owners and route each deferred tool through the existing adapter.",
+    "artifacts": [
+      "electron/agentLane/laneExtendedDesktopPorts.ts",
+      "electron/shared/agentCapabilities/modelFacingToolRegistry.ts"
+    ]
+  },
+  "regression_tests": [
+    "electron/agentLane/laneExtendedTools.test.ts",
+    "electron/agentLane/laneExtendedDesktopPorts.test.ts",
+    "tests/agent-runtime/lane-extended-tool-schema.test.mts",
+    "scripts/check-model-schema.node-test.mjs"
+  ],
+  "class_regression_tests": [
+    "electron/agentLane/laneExtendedTools.test.ts",
+    "electron/agentLane/laneExtendedDesktopPorts.test.ts",
+    "tests/agent-runtime/lane-extended-tool-schema.test.mts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "electron/harness/tools/productionRunDescriptors.ts"
+    ],
+    "rationale": "Move descriptor ownership into shared capabilities and update all consumers directly; no re-export."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "The work reuses existing domain adapters and current pi deferred-tool integration; no dependency change.",
+    "exit_criteria": []
+  },
+  "migration": "No saved state is rewritten by tool registration; legacy conversation migration remains the separate stage 4 step.",
+  "residual_risks": [
+    "Root agent must wire the returned groups and adapters into the real Desktop lane and verify Electron journeys.",
+    "Full cumulative domain+coding+request schema budget remains above10000 after safe metadata compression; do not treat the initial+coding budget matrix as whole-menu proof."
+  ],
+  "invariant_owner_layer": {
+    "layer": "electron/agentLane/laneExtendedDesktopPorts.ts",
+    "tests": [
+      "electron/agentLane/laneExtendedDesktopPorts.test.ts"
+    ],
+    "why": "This is the common lane boundary immediately before existing domain executors."
+  }
+}

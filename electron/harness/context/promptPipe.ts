@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import type { RuntimeUsage } from "../runtime/runtimePort";
+import type { RuntimeUsage } from "../../shared/agentCapabilities/transportContracts";
 import {
   createProvenanceMark,
   normalizeProvenanceMark,

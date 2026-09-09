@@ -1,0 +1,29 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-08-agent-lane-input-admission",
+  "problem_type": "Input acknowledgment coupled to operation completion",
+  "symptom": "A submitted draft remains blocked until a tool approval or model turn completes even though its input is already durable.",
+  "direct_cause": "The host's single prompt await acknowledged only after the entire pi operation settled.",
+  "class_root": "The application does not expose the SDK's durable admission boundary separately from operation settlement.",
+  "affected_population": ["Inputs leading to tool approval", "Long-running accepted model turns"],
+  "scope_paths": ["electron/agentLane/laneHost.mts"],
+  "entry_points": ["Prompt admission callback", "Prompt execution settlement"],
+  "external_sources": [],
+  "internal_only_reason": "Installed pi 0.85.1 public accept and drive APIs expose distinct phases of the same operation; the test observes public run_start and run_end events without replacing execution.",
+  "invariants": ["onAccepted runs exactly once after the input is durable and before tool approval completes.", "The execute promise still settles the same pi operation and never starts a second run."],
+  "generality_proof": "A real loopback turn reaches an actual pending approval after its durable input ACK; public run IDs prove admission and final completion belong to one operation.",
+  "shared_boundaries": [{ "path": "electron/agentLane/laneHost.mts", "symbol": "openLane", "responsibility": "Expose public pi admission while retaining ownership of its drive promise." }],
+  "same_class_entry_points": [
+    { "path": "electron/agentLane/laneHost.mts", "entry_point": "execute prompt onAccepted", "disposition": "enforced", "evidence": "The callback sees the persisted user message and fires before the approval is answered." },
+    { "path": "electron/agentLane/laneHost.mts", "entry_point": "execute prompt completion", "disposition": "enforced", "evidence": "The same returned execute promise remains pending during approval; public start/end IDs match exactly once." }
+  ],
+  "recurrence": { "classification": "recurring", "reason": "Every slow turn or pending approval can delay operation completion after input has been accepted.", "same_class_scan": ["Inspected the public pi OperationRequest, accept and drive signatures.", "Compared Host prompt implementation at HEAD with the current accept/drive path using an isolated compiled copy."] },
+  "prevention": { "kind": "centralized-boundary", "enforcement_path": "electron/agentLane/laneHost.mts", "invariant": "Durable admission ACK and final settlement remain distinct observations of one pi operation.", "failure_mode": "Rejected admission does not acknowledge input; execution failure still rejects its operation promise.", "exception_policy": "none", "strategy": "Call the SDK accept API, invoke onAccepted, then drive its returned operationId to settlement.", "artifacts": ["electron/agentLane/laneHost.mts"] },
+  "regression_tests": ["tests/agent-runtime/lane-input-admission.test.mts"],
+  "class_regression_tests": ["tests/agent-runtime/lane-input-admission.test.mts"],
+  "legacy_paths": { "status": "removed", "removed_paths": ["electron/agentLane/laneHost.mts"], "rationale": "Replace the monolithic prompt await in the existing host; no second runner or acknowledgment timer exists." },
+  "dependency_lifecycle": { "decision": "retain-with-exit", "current": "@earendil-works/pi 0.85.1", "target": "A supported pi version preserving durable admission and operationId-driven execution.", "rationale": "The public SDK provides both boundaries; Nomi only forwards their lifecycle meaning.", "exit_criteria": ["Run the one-operation admission/approval fixture when pi changes accept or drive semantics."] },
+  "migration": "No stored format changes.",
+  "residual_risks": ["Renderer composer acknowledgment is exercised separately through the parent IPC/UI tests."],
+  "invariant_owner_layer": { "layer": "electron/agentLane/laneHost.mts", "tests": ["tests/agent-runtime/lane-input-admission.test.mts"], "why": "The host owns the SDK operation and is the first application boundary that can acknowledge durable admission honestly." }
+}

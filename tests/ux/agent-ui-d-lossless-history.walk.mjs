@@ -6,13 +6,13 @@
 // 这条走查在真实 HTTP 出站报文上逐轮断言工具调用与工具结果确实随对话一起走。
 //
 // 只有远端供应商是本地 loopback；渲染层、IPC、Host、pi SDK、磁盘持久化全走生产路径。
-import path from 'node:path'
 import { clickOrFail, expect } from './_assert.mjs'
-import { flattenRequestText } from './agent-runtime-fixture.mjs'
+import { FIXTURE_TEXT_MODEL_LABEL, flattenRequestText } from './agent-runtime-fixture.mjs'
 import {
   CREATION_PANEL, DOCUMENT, chooseAssistantModel, createRuntimeWalk,
-  hasToolResult, readDurableThreadContexts, readCurrentProjectAgentHostSnapshot, recorded, sendCreation,
+  hasToolResult, recorded, sendCreation, waitForV4TurnIdle,
 } from './agent-runtime-walk-support.mjs'
+import { laneDiskSnapshot, laneMessages, laneMessageText, readLaneTranscripts } from './agent-lane-observer.mjs'
 
 const STORY = 'F_SEG_A：她推开咖啡馆的门。F_SEG_B：她把红色杯子放在白色桌面上，调好相机，坐下来等自然光落到杯沿，这一段是全篇最长的一段。F_SEG_C：她按下录制键。'
 const READ_CALL = 'f-d-read-1'
@@ -37,8 +37,7 @@ try {
   let { win } = await walk.start({ first: true })
   const project = await walk.newProject()
   const { projectRoot } = project
-  const settingsRoot = path.join(walk.report.tempRoot, 'settings')
-  await chooseAssistantModel(win, 'agent-runtime-loopback/agent-runtime-text')
+  await chooseAssistantModel(win, FIXTURE_TEXT_MODEL_LABEL)
   await win.locator(DOCUMENT).fill(STORY)
   await expect(win.locator(DOCUMENT)).toHaveText(STORY)
 
@@ -46,7 +45,7 @@ try {
   const readRequest = walk.fixture.expectText({
     label: 'turn 1 asks the document read tool',
     match: (body) => flattenRequestText(body).includes(TURN1) && !hasToolResult(body, READ_CALL),
-    reply: { type: 'tool', id: READ_CALL, name: 'nomi_document_read', args: { scope: 'full' } },
+    reply: { type: 'tool', id: READ_CALL, name: 'read_full_text', args: {} },
   })
   const readFollowup = walk.fixture.expectText({
     label: 'turn 1 receives the real tool result',
@@ -94,22 +93,22 @@ try {
   await expect(win.locator(CREATION_PANEL)).toContainText('F_D3_DONE')
   await walk.snap('turn-3-still-has-turn-1')
 
-  // 线程 history 落在项目自己的目录里，键是 Host 的规范线程身份。
-  const hostSnapshot = readCurrentProjectAgentHostSnapshot(settingsRoot, projectRoot)
-  const activeThreadId = hostSnapshot?.activeThreadId
-  expect(typeof activeThreadId, 'Host 有一个当前线程').toBe('string')
-  await expect.poll(() => (readDurableThreadContexts(projectRoot) ?? []).length,
-    { message: '线程 history 必须落盘到项目目录', timeout: 30_000 }).toBeGreaterThan(0)
-  const durable = readDurableThreadContexts(projectRoot)
-  const record = durable.find((entry) => entry.threadId === activeThreadId)
-  expect(record, '落盘记录挂在当前线程上').toBeTruthy()
-  expect(record.sessionKey, '只有一种线程 session key 词表').toBe(
-    `nomi:project-agent:${record.project.immutableProjectUuid}:g${record.project.projectGeneration}`)
-  expect(typeof record.snapshot, '落盘的是真实 pi 快照').toBe('string')
+  await waitForV4TurnIdle(win, { panel: CREATION_PANEL,
+    settledBy: win.locator(CREATION_PANEL).getByText(TURN3_REPLY, { exact: true }) })
+  const sessions = readLaneTranscripts(projectRoot)
+  expect(sessions).toHaveLength(1)
+  const record = sessions[0]
+  expect(record.laneName).toBe('main')
+  expect(record.sessionId).toMatch(/^[a-f0-9-]{36}$/)
+  expect(laneMessages(record).filter((message) => message.role === 'nomi.input').map(laneMessageText))
+    .toEqual([TURN1, TURN2, TURN3])
+  expect(laneMessages(record).filter((message) => message.role === 'toolResult'))
+    .toEqual([expect.objectContaining({ toolName: 'read_full_text', toolCallId: READ_CALL, isError: false })])
 
   // 冷重启：同一条线程重开，第一轮的工具结果仍在。
   const requestsBeforeRestart = walk.fixture.requests.length
   await walk.stopApp()
+  const durable = laneDiskSnapshot(projectRoot)
   ;({ win } = await walk.start())
   const card = win.locator('[data-project-card="true"]').filter({ hasText: project.name }).first()
   await expect(card).toBeVisible()
@@ -122,6 +121,8 @@ try {
   await expect(win.locator(DOCUMENT)).toBeVisible({ timeout: 30_000 })
   await expect(win.locator(CREATION_PANEL)).toContainText('F_D3_DONE')
   expect(walk.fixture.requests, '冷启动本身不发任何模型请求').toHaveLength(requestsBeforeRestart)
+  expect(laneDiskSnapshot(projectRoot), '冷历史打开不改写原生记录').toEqual(durable)
+  expect(readLaneTranscripts(projectRoot)[0].sessionId).toBe(record.sessionId)
   const fourthTurn = walk.fixture.expectText({
     label: 'turn 4 after a cold restart still carries turn 1',
     match: (body) => flattenRequestText(body).includes(TURN4),
@@ -146,6 +147,7 @@ try {
   ]
 } catch (error) {
   failure = error
+  process.exitCode = 1
 } finally {
   await walk.finish(failure)
 }

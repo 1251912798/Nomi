@@ -40,3 +40,12 @@ export async function attachRealText(launched, { profile, quote, ledgerPath, bud
     window.dispatchEvent(new CustomEvent('nomi:assistant-model-changed'))
   }, REAL_MODELS.text)
 }
+
+// Model identity is selected through the same picker as a user, after opening a project.
+export async function selectPlannerInUi(win, model) {
+  await win.locator('[data-v4-control="model"]').click()
+  const row = win.locator('[data-v4-model-row]').filter({ has: win.getByRole('button', { name: '对话', exact: true }) })
+  await row.getByRole('button', { name: '对话', exact: true }).click()
+  await win.getByRole('option', { name: model, exact: true }).click()
+  await win.locator('[data-v4-control="model"]').click()
+}

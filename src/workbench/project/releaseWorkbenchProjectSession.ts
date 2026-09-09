@@ -12,7 +12,7 @@ import { createDefaultWorkbenchDocument } from '../workbenchTypes'
 import { useShotVerifyStore } from '../generationCanvas/agent/shotVerifyStore'
 import { abandonPendingCanvasWrite } from '../generationCanvas/events/canvasWriteBoundary'
 import { invalidateAgentTurnStates } from '../ai/agentTurnLifecycle'
-import { DEFAULT_PROJECT_AGENT_APPROVAL_POLICY } from '../../../electron/shared/projectAgentContracts'
+import { DEFAULT_PROJECT_AGENT_APPROVAL_POLICY } from '../../../electron/shared/agentCapabilities/capabilityApprovalPolicy';
 import { cloneEditingPanelLayout, EDITING_PANEL_DEFAULTS } from '../preview/panelLayout'
 
 /**

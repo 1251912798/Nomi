@@ -1,0 +1,52 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-08-agent-lane-receipt-authority",
+  "problem_type": "Receipt authority visibility across pi durable write boundaries",
+  "symptom": "An approved canvas write is rejected by the renderer receipt request while its tool is executing.",
+  "direct_cause": "appendCustomEntry persists the approval as a queued custom write during before_tool; the receipt lookup only sees the transcript projection until the tool finishes.",
+  "class_root": "Receipt authorization uses a presentation subset instead of the complete durable lane snapshot.",
+  "affected_population": ["Canvas writes during tool execution", "Authority notes while queued writes become transcript entries", "Cold reopened receipt authority"],
+  "scope_paths": ["electron/agentLane/laneReceiptAuthority.mts"],
+  "entry_points": ["before_tool approval record", "Renderer preparing or committed receipt request"],
+  "external_sources": [],
+  "internal_only_reason": "The installed pi 0.85.1 public LaneSnapshot exposes transcript and queues; an actual AgentHarness loopback fixture proves their ordering. Nomi owns receipt correlation.",
+  "invariants": [
+    "A receipt lookup reads transcript and queued custom writes from the same lane snapshot.",
+    "A persisted entry counts once by entry ID; conflicting duplicates or multiple authorities for one proposal fail closed.",
+    "Only validated authority fields authorize a receipt; the UI transcript remains ordered and unchanged."
+  ],
+  "generality_proof": "The same pure lookup handles pending, committed, replayed and duplicate representations of durable authority without a second authorization store.",
+  "shared_boundaries": [{ "path": "electron/agentLane/laneReceiptAuthority.mts", "symbol": "findLaneReceiptAuthority", "responsibility": "Validate and uniquely identify receipt authority in a complete pi snapshot." }],
+  "same_class_entry_points": [
+    { "path": "electron/agentLane/laneReceiptAuthority.mts", "entry_point": "LaneSnapshot.queues write/custom entries", "disposition": "enforced", "evidence": "before_tool writes are visible here before the real tool executor starts." },
+    { "path": "electron/agentLane/laneReceiptAuthority.mts", "entry_point": "LaneSnapshot.transcript custom entries", "disposition": "enforced", "evidence": "Completed and cold reopened authority uses the same validation and entry identity." },
+    { "path": "electron/shared/agentLane/laneProjection.ts", "entry_point": "projectLaneSnapshot parts", "disposition": "not-affected", "evidence": "Presentation keeps transcript order and deliberately excludes queued writes; it is no longer the authority lookup input." }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Every approved tool that requests a receipt before finishing crosses the same durable queue boundary.",
+    "same_class_scan": ["Traced laneDesktopTools approved through laneHost before_tool and renderer proposalUndo receipt preparation.", "Read pi LaneSnapshot, LaneQueuedItem and CustomEntry public types; probed before_tool, execute and post-run snapshots."]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "electron/agentLane/laneReceiptAuthority.mts",
+    "invariant": "Authorization is derived from one complete durable snapshot with strict uniqueness checks.",
+    "failure_mode": "Malformed or ambiguous authority throws; absent authority returns undefined for the receipt correlation guard to reject.",
+    "exception_policy": "none",
+    "strategy": "Read both pi-owned durable representations without changing projection or caching authorization.",
+    "artifacts": ["electron/agentLane/laneReceiptAuthority.mts"]
+  },
+  "regression_tests": ["tests/agent-runtime/lane-receipt-authority.test.mts"],
+  "class_regression_tests": ["tests/agent-runtime/lane-receipt-authority.test.mts"],
+  "legacy_paths": { "status": "not-applicable", "removed_paths": [], "rationale": "The pure query adds no persistence or execution path; its caller replaces the transcript-only authorization lookup." },
+  "dependency_lifecycle": {
+    "decision": "retain-with-exit",
+    "current": "@earendil-works/pi 0.85.1",
+    "target": "A supported pi release retaining durable queued custom writes in LaneSnapshot.",
+    "rationale": "Queueing during an operation is intended upstream behavior; Nomi must query the public durable state correctly.",
+    "exit_criteria": ["When pi changes LaneSnapshot or custom-write commit ordering, rerun the real before_tool-to-execute and cold-reopen fixtures before upgrading."]
+  },
+  "migration": "No format migration: existing custom authority notes remain readable through the same public pi snapshot.",
+  "residual_risks": ["The pure helper requires the host and receipt command to pass the current snapshot-derived authority; their forwarding is reviewed separately."],
+  "invariant_owner_layer": { "layer": "electron/agentLane/laneReceiptAuthority.mts", "tests": ["tests/agent-runtime/lane-receipt-authority.test.mts"], "why": "The snapshot query is the earliest shared boundary with both pi durable representations and the application receipt identity." }
+}

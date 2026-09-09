@@ -22,7 +22,9 @@
 // 是因为宿主那边的记录本来就没有可信顺序。那个 `sort` 在阶段 4 会被整个删掉。
 import type { LaneSnapshot } from '@earendil-works/pi-agent-core';
 import type { AssistantMessage, Usage } from '@earendil-works/pi-ai';
+import { draftInputFromMessage, isLaneInputMessage } from './laneInputMessage.js';
 import type { NomiPricingBasis } from './laneModelConfig.js';
+import { LANE_LEGACY_NOTE, LANE_LEGACY_COMPLETE_NOTE, LANE_LEGACY_TOOLS_NOTE, laneLegacyFacts } from './laneLegacyNote.js';
 import {
   LANE_TASK_NOTE_TYPE, isLaneTaskNote,
   type LaneMetric, type LanePart, type LanePendingApproval, type LaneProjection,
@@ -41,12 +43,14 @@ function textOf(content: unknown): string {
 
 function pushAssistantParts(
   message: AssistantMessage, entrySeq: number, streaming: boolean,
-  runningToolCallIds: ReadonlySet<string>, out: LanePart[],
+  runningToolCallIds: ReadonlySet<string>, out: LanePart[], entryId?: string,
 ): void {
   message.content.forEach((part, contentIndex) => {
     const identity = { sequence: out.length, entrySeq, contentIndex };
     if (part.type === 'text') {
-      out.push({ ...identity, kind: 'assistant-text', text: part.text, streaming });
+      out.push({ ...identity, kind: 'assistant-text', text: part.text, streaming,
+        ...(message.stopReason === 'aborted' ? { interrupted: true as const,
+          ...(entryId && part.text.trim() ? { continuationEntryId: entryId } : {}) } : {}) });
       return;
     }
     if (part.type === 'thinking') {
@@ -156,11 +160,8 @@ function projectQueues(snapshot: LaneSnapshot): LaneQueuedMessage[] {
   const queued: LaneQueuedMessage[] = [];
   for (const item of snapshot.queues) {
     if (item.kind === 'write') continue;
-    // `AgentMessage` 是个联合体，其中 `BranchSummaryMessage` 没有 `content`。
-    // 队里放的永远是用户那句话，但判据不能靠「永远」——按属性存在与否取，取不到就是空串。
-    const text = 'content' in item.message ? textOf(item.message.content) : '';
     // 拿不出文本的（纯图片插话）不编一个占位串：面板画一行空白，比画一句我们编的话诚实。
-    queued.push({ entryId: item.entryId, kind: QUEUE_KIND[item.kind], text });
+    queued.push({ entryId: item.entryId, kind: QUEUE_KIND[item.kind], ...draftInputFromMessage(item.message) });
   }
   return queued;
 }
@@ -201,10 +202,16 @@ export function projectLaneSnapshot(
   tasks?: (productionRunId: string) => LaneTaskFacts | undefined,
 ): LaneProjection {
   const parts: LanePart[] = [];
+  let legacy: ReturnType<typeof laneLegacyFacts>;
   const running = snapshot.operation?.runningTools ?? [];
   const runningToolCallIds = new Set(running.filter((tool) => tool.status === 'running').map((tool) => tool.toolCallId));
   for (const entry of snapshot.transcript) {
     if (entry.type === 'custom') {
+      if (entry.customType === LANE_LEGACY_NOTE) {
+        const facts = laneLegacyFacts(entry.data);
+        if (facts) { legacy = facts; continue; }
+      }
+      if (entry.customType === LANE_LEGACY_COMPLETE_NOTE || entry.customType === LANE_LEGACY_TOOLS_NOTE) continue;
       // 任务卡是**一种**宿主记录，但它在流里占一行（用户看得见的一张卡），所以它有自己的段。
       // 其余宿主记录仍是 `host-note`：它们不占行，只用来修正别的行的状态（审批那条）。
       if (entry.customType === LANE_TASK_NOTE_TYPE && isLaneTaskNote(entry.data)) {
@@ -221,13 +228,17 @@ export function projectLaneSnapshot(
     }
     if (entry.type !== 'message') continue;
     const message = entry.message;
-    if (message.role === 'user') {
+    if (message.role === 'user' || isLaneInputMessage(message)) {
       parts.push({ sequence: parts.length, entrySeq: entry.seq, contentIndex: 0,
-        kind: 'user', text: textOf(message.content) });
+        kind: 'user', text: isLaneInputMessage(message) ? message.context.displayText ?? message.content : textOf(message.content) });
       continue;
     }
     if (message.role === 'assistant') {
-      pushAssistantParts(message, entry.seq, false, runningToolCallIds, parts);
+      pushAssistantParts(message, entry.seq, false, runningToolCallIds, parts, entry.id);
+      if (message.stopReason === 'error' && message.errorMessage) {
+        parts.push({ kind: 'error', text: message.errorMessage, sequence: parts.length,
+          entrySeq: entry.seq, contentIndex: message.content.length });
+      }
       continue;
     }
     if (message.role === 'toolResult') {
@@ -249,7 +260,10 @@ export function projectLaneSnapshot(
   // 归宿（渲染层每帧自己算），在这里先算一遍就是第二个真相，而它会和屏幕差半秒。
   const retry = snapshot.operation?.retry;
   return {
+    ...(legacy ? { legacy } : {}),
     lane: snapshot.lane,
+    ...(snapshot.configuration.model.provider && snapshot.configuration.model.modelId
+      ? { model: { ...snapshot.configuration.model } } : {}),
     parts,
     running: snapshot.operation !== null,
     ...(retry ? { retry: { attempt: retry.attempt, maxAttempts: retry.maxAttempts,
@@ -270,4 +284,17 @@ export function projectLaneSnapshot(
     },
     thinking: projectThinking(snapshot, facts.supportedThinkingLevels),
   };
+}
+
+/** A one-shot response has no session. Reuse the same native-message projection and accounting. */
+export function projectSingleShotResponse(message: AssistantMessage, facts: LaneModelFacts): LaneProjection {
+  return projectLaneSnapshot({
+    lane: 'single-shot',
+    // This local ordinal is projection identity only; it is never saved or admitted to a user lane.
+    transcript: [{ type: 'message', id: 'single-shot', parentId: null, seq: 1,
+      timestamp: message.timestamp, message }],
+    tipId: null, operation: null, queues: [], faulted: false,
+    configuration: { model: { provider: message.provider, modelId: message.model }, thinkingLevel: 'off', activeToolNames: [] },
+    stats: { messageCount: 1, usage: message.usage },
+  }, facts);
 }

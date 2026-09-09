@@ -30,11 +30,11 @@ function fixture(main = 'dist-electron/main.js') {
   })
   write(root, 'electron/tsconfig.pi.json', {
     compilerOptions: { ...compilerOptions, module: 'NodeNext', moduleResolution: 'NodeNext' },
-    include: ['harness/runtime/pi/**/*.mts', 'harness/runtime/pi/**/*.cts'],
+    include: ['agentLane/**/*.mts', 'agentLane/**/*.cts'],
   })
   write(root, 'electron/main.ts', 'export const legacy = true;\n')
-  write(root, 'electron/harness/runtime/pi/session.mts', 'export const session = true;\n')
-  write(root, 'electron/harness/runtime/pi/nested/boundary.cts', 'export const boundary = true;\n')
+  write(root, 'electron/agentLane/session.mts', 'export const session = true;\n')
+  write(root, 'electron/agentLane/nested/boundary.cts', 'export const boundary = true;\n')
   return root
 }
 
@@ -45,7 +45,7 @@ async function artifactCheck() {
 }
 
 function build(root) {
-  for (const name of ['build-electron.mjs', 'electron-build-artifacts.mjs']) {
+  for (const name of ['build-electron.mjs', 'electron-build-artifacts.mjs', 'package-build-stamp.mjs']) {
     const file = path.join(repoRoot, 'scripts', name)
     expect(fs.existsSync(file), 'CJS and private NodeNext must share one build entry').toBe(true)
     fs.mkdirSync(path.join(root, 'scripts'), { recursive: true })
@@ -63,22 +63,22 @@ describe('complete Electron build artifacts', () => {
     const root = fixture()
     write(root, 'dist-electron/main.js', 'throw new Error("must not execute artifacts");\n')
     expect(() => check(root)).toThrow(/session\.mjs/)
-    write(root, 'dist-electron/harness/runtime/pi/session.mjs', 'throw new Error("must not load SDK");\n')
+    write(root, 'dist-electron/agentLane/session.mjs', 'throw new Error("must not load SDK");\n')
     expect(() => check(root)).toThrow(/boundary\.cjs/)
-    write(root, 'dist-electron/harness/runtime/pi/nested/boundary.cjs', 'throw new Error("must not execute");\n')
+    write(root, 'dist-electron/agentLane/nested/boundary.cjs', 'throw new Error("must not execute");\n')
     expect(() => check(root)).not.toThrow()
   })
 
   test('derives the main entry from package.json and ignores declarations and tests', async () => {
     const check = await artifactCheck()
     const root = fixture('dist-electron/custom-entry.cjs')
-    write(root, 'electron/harness/runtime/pi/contracts.d.mts', 'export type Contract = string;\n')
-    write(root, 'electron/harness/runtime/pi/host.d.cts', 'export type Host = string;\n')
-    write(root, 'electron/harness/runtime/pi/session.test.mts', 'export {};\n')
-    write(root, 'electron/harness/runtime/pi/host.test.cts', 'export {};\n')
+    write(root, 'electron/agentLane/contracts.d.mts', 'export type Contract = string;\n')
+    write(root, 'electron/agentLane/host.d.cts', 'export type Host = string;\n')
+    write(root, 'electron/agentLane/session.test.mts', 'export {};\n')
+    write(root, 'electron/agentLane/host.test.cts', 'export {};\n')
     write(root, 'dist-electron/main.js', '')
-    write(root, 'dist-electron/harness/runtime/pi/session.mjs', '')
-    write(root, 'dist-electron/harness/runtime/pi/nested/boundary.cjs', '')
+    write(root, 'dist-electron/agentLane/session.mjs', '')
+    write(root, 'dist-electron/agentLane/nested/boundary.cjs', '')
     expect(() => check(root)).toThrow(/custom-entry\.cjs/)
     write(root, 'dist-electron/custom-entry.cjs', '')
     expect(() => check(root)).not.toThrow()
@@ -98,16 +98,16 @@ describe('shared Electron compiler', () => {
     const result = build(root)
     expect(result.status, `${result.stdout}\n${result.stderr}`).toBe(0)
     expect(fs.readFileSync(path.join(root, 'dist-electron/main.js'), 'utf8')).toContain('exports.legacy')
-    expect(fs.readFileSync(path.join(root, 'dist-electron/harness/runtime/pi/session.mjs'), 'utf8'))
+    expect(fs.readFileSync(path.join(root, 'dist-electron/agentLane/session.mjs'), 'utf8'))
       .toContain('export const session')
-    expect(fs.readFileSync(path.join(root, 'dist-electron/harness/runtime/pi/nested/boundary.cjs'), 'utf8'))
+    expect(fs.readFileSync(path.join(root, 'dist-electron/agentLane/nested/boundary.cjs'), 'utf8'))
       .toContain('exports.boundary')
   })
 
   test('a private compiler failure stays nonzero even when stale artifacts exist', () => {
     const root = fixture()
-    write(root, 'electron/harness/runtime/pi/session.mts', 'export const session: number = "wrong";\n')
-    write(root, 'dist-electron/harness/runtime/pi/session.mjs', 'export const stale = true;\n')
+    write(root, 'electron/agentLane/session.mts', 'export const session: number = "wrong";\n')
+    write(root, 'dist-electron/agentLane/session.mjs', 'export const stale = true;\n')
     const result = build(root)
     expect(result.status).not.toBe(0)
     expect(`${result.stdout}\n${result.stderr}`).toContain('TS2322')

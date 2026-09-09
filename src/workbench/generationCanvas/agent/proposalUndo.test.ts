@@ -14,15 +14,7 @@ const receiptDeps = vi.hoisted(() => ({
   },
 }))
 
-vi.mock('../../ai/projectAgentClient', () => ({
-  projectAgentClient: {
-    readProposalReceipt: receiptDeps.read,
-    transitionProposalReceipt: receiptDeps.transition,
-  },
-}))
-vi.mock('../../ai/projectAgentProjectionStore', () => ({
-  projectAgentProjectionStore: { getState: () => receiptDeps.state },
-}))
+import { laneClient } from '../../ai/lane/laneClient'
 import { applyProposalBatch } from './proposalTxn'
 import {
   detectLostUserEdits,
@@ -42,7 +34,7 @@ function projection() {
 
 let captured: CanvasShadowEvent[] = []
 
-beforeEach(() => {
+beforeEach(async () => {
   useGenerationCanvasStore.getState().restoreSnapshot({ nodes: [], edges: [], selectedNodeIds: [], groups: [] })
   __resetCanvasUndoJournalForTests()
   captured = []
@@ -56,6 +48,16 @@ beforeEach(() => {
     operationId: input.operationId,
     proposal: receiptDeps.proposal,
   }))
+  laneClient.connect({
+    onProjection: () => () => undefined,
+    send: async command => {
+      if (command.kind === 'workspace-open') return { ok: true, workspaceId: receiptDeps.state.subscriptionId }
+      if (command.kind === 'receipt-read') return { ok: true, receipt: await receiptDeps.read(command.workspaceId) }
+      if (command.kind === 'receipt-transition') return { ok: true, receipt: await receiptDeps.transition(command.workspaceId, command.input) }
+      throw new Error(`Unexpected lane command: ${command.kind}`)
+    },
+  })
+  await laneClient.open(receiptDeps.state.binding)
 })
 
 function hydrate(record: CommittedProposalRecord, revision = 2): void {
@@ -71,6 +73,7 @@ function hydrate(record: CommittedProposalRecord, revision = 2): void {
 }
 
 afterEach(() => {
+  laneClient.connect(undefined)
   setCanvasEventSinkForTests(null)
 })
 

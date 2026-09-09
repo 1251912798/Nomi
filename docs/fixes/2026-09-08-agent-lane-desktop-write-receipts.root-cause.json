@@ -1,0 +1,33 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-08-agent-lane-desktop-write-receipts",
+  "problem_type": "Desktop tool success without durable write correlation",
+  "symptom": "A canvas renderer can return applied while omitting its committed receipt, causing the model to claim an unverified success.",
+  "direct_cause": "The primary desktop canvas bridge returned its verified adapter result without checking the existing G5 receipt service.",
+  "class_root": "Tool result success is not conditioned on durable receipt authority at the desktop write boundary.",
+  "affected_population": ["Primary canvas writes", "Document writes using host-created G5 receipts", "Renderer receipt writes during a tool operation"],
+  "scope_paths": ["electron/agentLane/laneDesktopTools.ts", "electron/agentLane/laneReceiptCommands.ts"],
+  "entry_points": ["Document prepare/approved/execute", "Canvas prepare/approved/execute", "Renderer preparing/committed receipt commands"],
+  "external_sources": [],
+  "internal_only_reason": "Nomi's existing verified Surface adapters, G5 receipt service and correlation helper define the authority. The fixture runs those implementations with the real pi harness and a zero-cost loopback endpoint.",
+  "invariants": ["Writes cannot execute without prepared and approved authority.", "Canvas success requires the exact approved G5 receipt to be committed.", "Renderer receipt preparation resolves queued durable lane authority before tool completion.", "Document write preparation and commitment use the same receipt and CAS revisions."],
+  "generality_proof": "One real desktop assembly fixture exercises both document and canvas paths through the existing verified invocation factories, executor, approval gate, receipt command and disk service. Failure cases retain the same chain.",
+  "shared_boundaries": [
+    { "path": "electron/agentLane/laneDesktopTools.ts", "symbol": "createDesktopLaneTools", "responsibility": "Bind successful model-facing writes to the approved durable receipt." },
+    { "path": "electron/agentLane/laneReceiptCommands.ts", "symbol": "executeLaneReceiptCommand", "responsibility": "Reject a renderer receipt whose approval correlation does not match lane authority." }
+  ],
+  "same_class_entry_points": [
+    { "path": "electron/agentLane/laneDesktopTools.ts", "entry_point": "DocumentLanePort.write", "disposition": "enforced", "evidence": "The temporary document stays unchanged before approval; preparing precedes the domain write and committed survives service recreation." },
+    { "path": "electron/agentLane/laneDesktopTools.ts", "entry_point": "CanvasLanePort.write", "disposition": "enforced", "evidence": "Missing committed receipt becomes an errored tool result; disabling only the G5 check in an isolated source copy makes this test fail." },
+    { "path": "electron/agentLane/laneReceiptCommands.ts", "entry_point": "receipt-write", "disposition": "enforced", "evidence": "The actual tool executor resolves a queued SDK note; mismatched approval fails before receipt or canvas mutation." }
+  ],
+  "recurrence": { "classification": "recurring", "reason": "Any renderer write that returns before or without committing its G5 receipt can produce the same false success.", "same_class_scan": ["Inspected primary and extended DesktopLaneTools write adapters.", "Traced document receipt preparation/commit and canvas renderer receipt command correlation."] },
+  "prevention": { "kind": "centralized-boundary", "enforcement_path": "electron/agentLane/laneDesktopTools.ts", "invariant": "Successful write results require exact approved durable receipt correlation.", "failure_mode": "Missing or mismatched correlation produces a tool failure instead of an applied success.", "exception_policy": "none", "strategy": "Use the existing committedProjectAgentReceiptMatchesApproval helper and G5 service at the final desktop bridge.", "artifacts": ["electron/agentLane/laneDesktopTools.ts", "electron/agentLane/laneReceiptCommands.ts"] },
+  "regression_tests": ["electron/agentLane/laneDesktopTools.test.ts"],
+  "class_regression_tests": ["electron/agentLane/laneDesktopTools.test.ts"],
+  "legacy_paths": { "status": "not-applicable", "removed_paths": [], "rationale": "The newly registered primary bridge is checked in place; no alternate receipt service or write executor is added." },
+  "dependency_lifecycle": { "decision": "retain-with-exit", "current": "@earendil-works/pi 0.85.1", "target": "A supported pi version preserving public queued custom entries and before_tool hooks.", "rationale": "The SDK already supplies durable authority visibility; Nomi must correlate its domain receipt before reporting success.", "exit_criteria": ["Rerun the actual before_tool-to-renderer-receipt fixture when the upstream custom entry or tool lifecycle contract changes."] },
+  "migration": "No receipt format changes; the existing G5 store remains the only receipt persistence owner.",
+  "residual_risks": ["The fixture substitutes temporary file ports for the final renderer editor/canvas mutation. Full Electron UI and real provider behavior are verified by the parent task."],
+  "invariant_owner_layer": { "layer": "electron/agentLane/laneDesktopTools.ts", "tests": ["electron/agentLane/laneDesktopTools.test.ts"], "why": "This bridge is the last owner able to inspect the domain receipt before returning a model-facing success." }
+}

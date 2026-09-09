@@ -3,7 +3,7 @@
 // 为什么单独一层：这三件事（高度上限、权限映射、Enter 语义）都是「随输入 derive」的规则，
 // 定稿 Composer 板把它们写成了表。规则住在组件里就只能靠截图证明；住在这里能单测。
 import React from 'react'
-import type { ProjectAgentApprovalPolicy } from '../../../../electron/shared/projectAgentContracts'
+import type { ProjectAgentApprovalPolicy } from '../../../../electron/shared/agentCapabilities/capabilityApprovalPolicy';
 import type { ComposerMode, PermissionTier } from './agentPanelV4Types'
 import { PERMISSION_POLICIES } from './agentPanelV4Types'
 

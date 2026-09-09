@@ -1,3 +1,4 @@
+import { anchorsConsumedBy } from '../../../../config/modelArchetypes/anchorPolicy'
 import { StoryboardOverrideBadge } from '../../../generationCanvas/nodes/StoryboardOverrideBadge'
 import { resolveStoryboardOverride } from '../exec/storyboardOverrideActions'
 import React from 'react'
@@ -321,7 +322,8 @@ export default function StoryboardShotRow(props: Props): JSX.Element {
       {exec?.node ? <StoryboardOverrideBadge node={exec.node} onResolve={(field, action) => resolveStoryboardOverride(exec.node!.id, field, action)} /> : null}
       {exec?.ignoredAnchors?.length ? (
         <span className="text-micro text-nomi-ink-40" data-storyboard-anchor-ignored={shot.index} title={exec.ignoredAnchors.map(anchor => `${anchor.name}: ${anchor.reason}`).join('\n')}>
-          {t('storyboardEditor.anchorPolicy.rowIgnored')}
+          {t(resolved?.archetype.modes.every(mode => anchorsConsumedBy(mode).includes('none'))
+            ? 'storyboardEditor.anchorPolicy.modelUnsupported' : 'storyboardEditor.anchorPolicy.rowIgnored')}
         </span>
       ) : null}
       {skipped ? (

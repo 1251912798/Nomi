@@ -1,0 +1,119 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-08-lane-receipt-undo-wiring",
+  "problem_type": "Exact durable receipt actions must survive projection and grouping",
+  "symptom": "Successful canvas write has no original receipt Undo button in real Electron.",
+  "direct_cause": "Lane projection omitted undoable correlation; grouped receipt rendering discarded the Undo handler.",
+  "class_root": "UI action availability was not derived from the existing domain receipt and precise current transcript identity.",
+  "affected_population": [
+    "Every reversible canvas write displayed through lane v4",
+    "Repeated tool groups and reopened conversations"
+  ],
+  "scope_paths": [
+    "src/workbench/ai/lane/laneReceiptUndo.ts",
+    "src/workbench/ai/lane/laneViewModel.ts",
+    "src/workbench/ai/v4/useAgentPanelV4Data.ts",
+    "src/workbench/ai/v4/useAgentPanelV4Actions.ts",
+    "src/workbench/ai/v4/AgentPanelV4Panel.tsx",
+    "src/workbench/ai/v4/AgentPanelV4Receipt.tsx",
+    "src/workbench/ai/v4/agentPanelV4Types.ts",
+    "src/workbench/ai/ProjectAgentResidentShell.tsx",
+    "electron/shared/agentLane/laneReceiptAuthority.ts",
+    "electron/agentLane/laneReceiptAuthority.mts",
+    "electron/agentLane/laneReceiptCommands.ts",
+    "electron/agentLane/laneDesktopTools.ts",
+    "electron/agentLane/laneExtendedDesktopPorts.ts"
+  ],
+  "entry_points": [
+    "Single tool receipt Undo",
+    "Collapsed repeated tool receipt Undo",
+    "Cold restart durable committed receipt hydrate"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "Existing internal store, approved UI component and lane admission API own this invariant; no external dependency behavior changes.",
+  "invariants": [
+    "Only the exact current successful call with matching receipt, approval and action hash exposes Undo.",
+    "Clicks reread the existing owner and retain main-process CAS; UI data grants no authority."
+  ],
+  "generality_proof": "One pure correlation join covers all domain tools and both single/group rendering; all clicks recheck current state then enter the existing compensation transaction.",
+  "shared_boundaries": [
+    {
+      "path": "src/workbench/ai/lane/laneReceiptUndo.ts",
+      "symbol": "undoableLaneToolCallId",
+      "responsibility": "Derive a display reference from exact current durable receipt correlation."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/workbench/ai/v4/AgentPanelV4Panel.tsx",
+      "entry_point": "V4FlowRow tool and tool-group",
+      "disposition": "enforced",
+      "evidence": "Both pass the exact tool call ID through the original receipt component."
+    },
+    {
+      "path": "src/workbench/ai/v4/useAgentPanelV4Actions.ts",
+      "entry_point": "undoTool",
+      "disposition": "enforced",
+      "evidence": "Rereads current lane and committed proposal before the original runProposalUndo CAS."
+    },
+    {
+      "path": "src/workbench/NomiStudioApp.tsx",
+      "entry_point": "hydrateCommittedProposalReceipt on open",
+      "disposition": "not-affected",
+      "evidence": "Existing open path already hydrates and recovers the durable G5 owner."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Every successful tool or repeated tool group may omit Undo with the same projection gap.",
+    "same_class_scan": [
+      "Searched undoable/onUndoTool/committedProposal across v4 and lane consumers.",
+      "Read proposalUndo hydrate/compensation/CAS and original projection approval join.",
+      "Read complete original V4ToolReceipt/V4ToolGroup and real failure screenshot."
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "src/workbench/ai/lane/laneReceiptUndo.ts",
+    "invariant": "Only the exact current successful call with matching receipt, approval and action hash exposes Undo.",
+    "failure_mode": "Missing, malformed, ambiguous, failed, denied or stale correlation exposes no action.",
+    "exception_policy": "none",
+    "strategy": "Derive display capability from the original owner and rerun the same join at click time.",
+    "artifacts": [
+      "src/workbench/ai/lane/laneReceiptUndo.ts",
+      "src/workbench/ai/v4/useAgentPanelV4Actions.ts",
+      "src/workbench/ai/v4/AgentPanelV4Receipt.tsx"
+    ]
+  },
+  "regression_tests": [
+    "src/workbench/ai/lane/laneViewModel.test.ts",
+    "src/workbench/ai/lane/laneReceiptUndo.test.ts",
+    "src/workbench/ai/v4/useAgentPanelV4Actions.test.ts",
+    "src/workbench/ai/v4/agentPanelV4Blocks.test.ts"
+  ],
+  "class_regression_tests": [
+    "src/workbench/ai/lane/laneReceiptUndo.test.ts",
+    "src/workbench/ai/v4/useAgentPanelV4Actions.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "not-applicable",
+    "removed_paths": [],
+    "rationale": "Replace stale captured last-proposal callback with exact clicked-call resolution. No parallel Undo implementation."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "No third-party runtime, schema or external format changes.",
+    "exit_criteria": []
+  },
+  "migration": "No format changes. Existing G5 hydrate restores the record; existing lane custom entries restore correlation.",
+  "residual_risks": [
+    "Real Electron click and compensation acceptance are owned by the independent runner."
+  ],
+  "invariant_owner_layer": {
+    "layer": "src/workbench/ai/lane/laneReceiptUndo.ts",
+    "tests": [
+      "src/workbench/ai/lane/laneReceiptUndo.test.ts"
+    ],
+    "why": "The shared display correlation owns exact identity; proposalUndo retains execution authority."
+  }
+}

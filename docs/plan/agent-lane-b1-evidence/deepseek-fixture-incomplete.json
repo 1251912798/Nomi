@@ -1,0 +1,54 @@
+{
+  "model": "deepseek-v4-flash",
+  "turns": [
+    {
+      "input": "画布上有什么",
+      "parts": [
+        {
+          "sequence": 0,
+          "entrySeq": 4,
+          "contentIndex": 0,
+          "kind": "user",
+          "text": "画布上有什么"
+        }
+      ]
+    },
+    {
+      "input": "第 1 镜试拍一下",
+      "parts": [
+        {
+          "sequence": 1,
+          "entrySeq": 16,
+          "contentIndex": 0,
+          "kind": "user",
+          "text": "第 1 镜试拍一下"
+        }
+      ]
+    }
+  ],
+  "inserted": false,
+  "writes": [],
+  "reservedCny": 0,
+  "requests": 0,
+  "groupSwitches": 0,
+  "idsInReply": false,
+  "usage": {
+    "inputTokens": 0,
+    "outputTokens": 0,
+    "cacheReadTokens": 0,
+    "cacheWriteTokens": 0,
+    "totalTokens": 0,
+    "cost": {
+      "state": "unknown",
+      "reason": "no-settled-turn"
+    },
+    "contextTokens": {
+      "state": "unknown",
+      "reason": "no-settled-turn"
+    },
+    "reasoningTokens": {
+      "state": "not-applicable",
+      "reason": "model-has-no-reasoning"
+    }
+  }
+}

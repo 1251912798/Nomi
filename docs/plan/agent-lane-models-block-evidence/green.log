@@ -1,0 +1,10 @@
+✔ C0 real desktop callsite sends catalog-projected available models in the user prompt on every turn (581.475583ms)
+✔ composer boundary accepts the real projection and rejects malformed model entries (392.516542ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1629.122292

@@ -1,0 +1,120 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-08-lane-task-media-candidates",
+  "problem_type": "Task projections misclassify domain artifacts as actionable media candidates",
+  "symptom": "A new production draft displays two empty grey candidate blocks for brief and direction text artifacts.",
+  "direct_cause": "All run artifact IDs were projected as candidates; renderer replaced identity with sequence labels and had no image or adoption handler.",
+  "class_root": "Task display facts did not preserve domain artifact kind, preview identity and adoption eligibility at the shared projection boundary.",
+  "affected_population": [
+    "Production runs with text artifacts, unavailable previews, unreviewed media or already adopted artifacts"
+  ],
+  "scope_paths": [
+    "electron/agentLane/laneDesktopTasks.ts",
+    "electron/shared/agentLane/laneContracts.ts",
+    "src/workbench/ai/lane/laneViewModel.ts",
+    "src/workbench/ai/v4/agentPanelV4Types.ts",
+    "src/workbench/ai/v4/AgentPanelV4Cards.tsx",
+    "src/workbench/ai/v4/AgentPanelV4Panel.tsx",
+    "src/workbench/ai/lane/laneTaskCandidateActions.ts",
+    "src/workbench/ai/ProjectAgentResidentShell.tsx"
+  ],
+  "entry_points": [
+    "Initial lane task domain resolve",
+    "ProductionRun change subscription",
+    "V4 candidate display and explicit user adoption"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "The invariant is owned by existing internal ProductionRun artifact projection and review/adoption APIs; no new third-party format or runtime is involved.",
+  "invariants": [
+    "Only existing media with a valid domain preview appears as a candidate.",
+    "Adoption availability derives from the domain review rule and execution rechecks the rule.",
+    "Task facts remain ephemeral joins; no candidate state is duplicated in transcripts."
+  ],
+  "generality_proof": "Both initial resolve and run-change events project through the same media/preview/eligibility function; v4 carries its identities unchanged and uses the existing domain command.",
+  "shared_boundaries": [
+    {
+      "path": "electron/agentLane/laneDesktopTasks.ts",
+      "symbol": "createDesktopLaneTasks",
+      "responsibility": "Converge initial and changed production runs into media-only, preview-backed task facts."
+    },
+    {
+      "path": "src/workbench/ai/lane/laneTaskCandidateActions.ts",
+      "symbol": "adoptLaneTaskCandidate",
+      "responsibility": "Map a displayed immutable artifact identity to the existing revision-bound domain adoption command."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "electron/agentLane/laneDesktopTasks.ts",
+      "entry_point": "resolve",
+      "disposition": "enforced",
+      "evidence": "Initial and reopened sessions resolve task facts by run identity."
+    },
+    {
+      "path": "electron/agentLane/laneDesktopTasks.ts",
+      "entry_point": "subscribeProductionRunChanges callback",
+      "disposition": "enforced",
+      "evidence": "Live artifact readiness and adoption changes use the same projection."
+    },
+    {
+      "path": "src/workbench/production/ProductionRunTaskCard.tsx",
+      "entry_point": "ProductionRunTaskCard",
+      "disposition": "not-affected",
+      "evidence": "Existing task-center previews already filter media and build project-local asset URLs; its review UI remains unchanged."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Every text-first run and any future run with missing, rejected or unreviewed media can reproduce the same empty or false action.",
+    "same_class_scan": [
+      "rg candidateIds across lane contracts, view model and runtime task fixtures",
+      "Read ProductionRunTaskCard media preview selection and productionRunReducer.canAdoptArtifact",
+      "Read productionRunIpc artifact.adopt and productionRunCommands revision recovery"
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "electron/agentLane/laneDesktopTasks.ts",
+    "invariant": "Media identity, verified preview and domain eligibility must travel together in task facts.",
+    "failure_mode": "Invalid or absent previews omit a candidate; unapproved media cannot invoke adoption; stale state is rejected by the domain command.",
+    "exception_policy": "none",
+    "strategy": "Replace untyped artifact ID projection with domain-derived candidate facts consumed without reconstructing authority in the renderer.",
+    "artifacts": [
+      "electron/agentLane/laneDesktopTasks.ts",
+      "electron/shared/agentLane/laneContracts.ts",
+      "src/workbench/ai/lane/laneViewModel.ts",
+      "src/workbench/ai/lane/laneTaskCandidateActions.ts"
+    ]
+  },
+  "regression_tests": [
+    "electron/agentLane/laneDesktopTasks.test.ts",
+    "src/workbench/ai/lane/laneViewModel.test.ts",
+    "src/workbench/ai/v4/agentPanelV4Blocks.test.ts",
+    "src/workbench/ai/lane/laneTaskCandidateActions.test.ts"
+  ],
+  "class_regression_tests": [
+    "electron/agentLane/laneDesktopTasks.test.ts",
+    "src/workbench/ai/lane/laneTaskCandidateActions.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "not-applicable",
+    "removed_paths": [],
+    "rationale": "The same projection and card implementation are corrected in place; obsolete candidateIds behavior is removed without a parallel code path."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "Existing application-owned artifact preview and adoption boundaries are reused; no SDK behavior is changed.",
+    "exit_criteria": []
+  },
+  "migration": "Task facts are ephemeral domain joins; persisted task identity stays unchanged. Update internal typed fixtures with the new projection shape; no user-data rewrite.",
+  "residual_risks": [
+    "Final Electron screenshot and media click must be verified by the shared production runner after integration."
+  ],
+  "invariant_owner_layer": {
+    "layer": "electron/agentLane/laneDesktopTasks.ts",
+    "tests": [
+      "electron/agentLane/laneDesktopTasks.test.ts"
+    ],
+    "why": "Initial and live domain task facts share the same media-preview-adoption projection."
+  }
+}

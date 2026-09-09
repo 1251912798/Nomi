@@ -1,0 +1,116 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-10-b1c-test-source-imports",
+  "problem_type": "Test module graph depends on local application build outputs",
+  "symptom": "Unit and walkthrough contracts fail ERR_MODULE_NOT_FOUND on clean CI checkout.",
+  "direct_cause": "agent-runtime-walk-support imported lane catalog and coding names from dist-electron.",
+  "class_root": "Test module declarations were not constrained to checked-in sources.",
+  "affected_population": [
+    "Clean CI checkout",
+    "Local checkout with stale or missing build outputs"
+  ],
+  "scope_paths": [
+    "scripts/check-test-waits.mjs",
+    "tests/ux/agent-runtime-walk-support.mjs",
+    "tests/ux/_mcpJourney.mjs",
+    "tests/ux/comfy-workflow-feedback.walk.mjs",
+    "tests/ux/mcp-l1-handshake.e2e.mjs",
+    "tests/ux/mcp-l2-journeys.e2e.mjs",
+    "tests/ux/packaged-mcp-smoke.e2e.mjs",
+    "tests/ux/_mcpL2Fixture.mjs",
+    "tests/ux/production-mcp-journey.e2e.mjs",
+    "tests/ux/mcp-generation-provider-degradation.e2e.mjs"
+  ],
+  "entry_points": [
+    "Agent runtime unit suites import walk support",
+    "MCP and Comfy journeys derive expectations from production catalogs"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "Repository-owned test module boundary. Reuse installed tsx 4.22.3 public cjs API (dist/cjs/api/index.d.cts); no runtime dependency upgrade or new loader.",
+  "invariants": [
+    "Test module declarations resolve from source without building the Electron application."
+  ],
+  "generality_proof": "The shared AST gate scans all tests code extensions, including support modules without a test suffix, and rejects static imports, re-exports, dynamic imports and literal require calls targeting repository build directories.",
+  "shared_boundaries": [
+    {
+      "path": "scripts/check-test-waits.mjs",
+      "symbol": "builtArtifactImportLines",
+      "responsibility": "Reject build-directory test module declarations before CI execution."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "tests/ux/agent-runtime-walk-support.mjs",
+      "entry_point": "lane catalog and coding names",
+      "disposition": "enforced",
+      "evidence": "Two direct imports reproduced failure in both importing unit suites after deleting dist-electron."
+    },
+    {
+      "path": "tests/ux/mcp-l1-handshake.e2e.mjs",
+      "entry_point": "MCP catalog and protocol constants",
+      "disposition": "enforced",
+      "evidence": "Four dynamic artifact imports detected by the red gate and replaced by scoped source require."
+    },
+    {
+      "path": "tests/ux/_mcpJourney.mjs",
+      "entry_point": "NODE_KIND_DEFAULT_SIZE",
+      "disposition": "enforced",
+      "evidence": "Resident imports this helper at load time; source require removes the hidden path.join artifact dependency."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Every fresh runner and stale local build can reproduce the missing or wrong module graph.",
+    "same_class_scan": [
+      "rg dist-electron tests: checked shared support plus MCP/Comfy direct module imports.",
+      "Separately inspected _mcpJourney top-level path.join require and actual Electron app.evaluate probes; application-internal probes observe the built target, not a test expectation module."
+    ]
+  },
+  "prevention": {
+    "kind": "static-gate",
+    "enforcement_path": "scripts/check-test-waits.mjs",
+    "invariant": "No repository build directory in a test module declaration.",
+    "failure_mode": "check:test-waits exits nonzero with file and line.",
+    "exception_policy": "none",
+    "strategy": "AST scan of import/export and loader call module specifiers, including non-unit support files.",
+    "artifacts": [
+      "scripts/check-test-waits.mjs"
+    ]
+  },
+  "regression_tests": [
+    "scripts/check-test-waits.node-test.mjs"
+  ],
+  "class_regression_tests": [
+    "scripts/check-test-waits.node-test.mjs"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "tests/ux/agent-runtime-walk-support.mjs",
+      "tests/ux/_mcpJourney.mjs",
+      "tests/ux/comfy-workflow-feedback.walk.mjs",
+      "tests/ux/mcp-l1-handshake.e2e.mjs",
+      "tests/ux/mcp-l2-journeys.e2e.mjs",
+      "tests/ux/packaged-mcp-smoke.e2e.mjs",
+      "tests/ux/_mcpL2Fixture.mjs",
+      "tests/ux/production-mcp-journey.e2e.mjs",
+      "tests/ux/mcp-generation-provider-degradation.e2e.mjs"
+    ],
+    "rationale": "Replaced build-based expectation imports with scoped tsx source loads; no fallback."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "Existing tsx source transformation API; no dependency change. Scoped cjs API supports the extensionless CJS source graph on Node 24, unlike scoped ESM tsImport in the local experiment.",
+    "exit_criteria": []
+  },
+  "migration": "No user data migration. E2E target application still needs its normal local build.",
+  "residual_risks": [
+    "Computed application-internal module paths are not test import declarations and remain outside this lexical module-specifier gate."
+  ],
+  "invariant_owner_layer": {
+    "layer": "scripts/check-test-waits.mjs",
+    "tests": [
+      "scripts/check-test-waits.node-test.mjs"
+    ]
+  }
+}

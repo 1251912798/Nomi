@@ -18,6 +18,7 @@
 import { assertMockupContract, clickOrFail, expect, expectAbsent, expectVisible, proveProbe } from './_assert.mjs'
 import artifactIntentContract from '../../docs/design/mockups/contracts/2026-09-06-agent-artifact-node.intent.mjs'
 import { findCanvasBlankPoint } from './_canvasHit.mjs'
+import { laneMessages, readLaneTranscripts } from './agent-lane-observer.mjs'
 import { FIXTURE_TEXT_MODEL_LABEL, flattenRequestText } from './agent-runtime-fixture.mjs'
 import {
   CANVAS_PANEL,
@@ -96,7 +97,7 @@ try {
     match: (body) => flattenRequestText(body).includes('构图线稿') && !hasToolResult(body, DELIVER_CALL),
     reply: {
       type: 'tool', id: DELIVER_CALL,
-      name: 'nomi_canvas_plan',
+      name: 'nomi_canvas_write',
       args: {
         operation: 'create_canvas_nodes',
         summary: '交付开场构图线稿（SVG）',
@@ -113,7 +114,7 @@ try {
   })
   // 第二轮：宿主把 deliver 执行结果（真实落盘后的回执）还给模型。
   const deliverFollowup = walk.fixture.expectText({
-    label: 'host returns the deliver receipt',
+    label: 'lane returns the deliver receipt',
     match: (body) => hasToolResult(body, DELIVER_CALL),
     reply: { type: 'text', text: '构图线稿已放到画布上。' },
   })
@@ -180,7 +181,7 @@ try {
     label: 'agent delivers the HTML artifact through create_canvas_nodes',
     match: (body) => flattenRequestText(body).includes('讲解卡') && !hasToolResult(body, HTML_CALL),
     reply: {
-      type: 'tool', id: HTML_CALL, name: 'nomi_canvas_plan',
+      type: 'tool', id: HTML_CALL, name: 'nomi_canvas_write',
       args: {
         operation: 'create_canvas_nodes', summary: '交付开场节奏讲解卡（HTML）',
         nodes: [{ clientId: 'art-2', kind: 'agent-artifact', title: HTML_TITLE, prompt: '', artifact: { fileType: 'html', content: HTML_BODY } }],
@@ -189,7 +190,7 @@ try {
     },
   })
   const htmlFollowup = walk.fixture.expectText({
-    label: 'host returns the html deliver receipt',
+    label: 'lane returns the html deliver receipt',
     match: (body) => hasToolResult(body, HTML_CALL),
     reply: { type: 'text', text: '开场节奏讲解卡已放到画布上。' },
   })
@@ -268,7 +269,7 @@ try {
     label: 'agent delivers markdown + table artifacts in one call',
     match: (body) => flattenRequestText(body).includes('分镜草表') && !hasToolResult(body, DOC_CALL),
     reply: {
-      type: 'tool', id: DOC_CALL, name: 'nomi_canvas_plan',
+      type: 'tool', id: DOC_CALL, name: 'nomi_canvas_write',
       args: {
         operation: 'create_canvas_nodes', summary: '交付导演备注与分镜草表',
         nodes: [
@@ -280,7 +281,7 @@ try {
     },
   })
   const docsFollowup = walk.fixture.expectText({
-    label: 'host returns the docs deliver receipt',
+    label: 'lane returns the docs deliver receipt',
     match: (body) => hasToolResult(body, DOC_CALL),
     reply: { type: 'text', text: '备注和草表都放上去了。' },
   })
@@ -363,6 +364,19 @@ try {
   const diskPngs = fs.readdirSync(pathMod.join(projectRoot, 'assets', 'imported')).flatMap((day) =>
     fs.readdirSync(pathMod.join(projectRoot, 'assets', 'imported', day)).filter((name) => name.endsWith('.png')))
   expect(diskPngs.length >= 1, '栅格化 PNG 真实落盘到项目 assets/imported').toBe(true)
+
+  // The actual SDK transcript must contain the same three writes that created these assets.
+  const sessions = readLaneTranscripts(projectRoot)
+  expect(sessions, '三次交付属于同一条 lane').toHaveLength(1)
+  const messages = laneMessages(sessions[0])
+  const delivered = messages.filter(message => message.role === 'toolResult'
+    && [DELIVER_CALL, HTML_CALL, DOC_CALL].includes(message.toolCallId))
+  expect(delivered.map(message => [message.toolCallId, message.toolName, message.isError]))
+    .toEqual([DELIVER_CALL, HTML_CALL, DOC_CALL].map(id => [id, 'nomi_canvas_write', false]))
+  const calls = messages.filter(message => message.role === 'assistant').flatMap(message => message.content)
+    .filter(part => part.type === 'toolCall' && [DELIVER_CALL, HTML_CALL, DOC_CALL].includes(part.id))
+  expect(calls.flatMap(call => call.arguments.nodes.map(node => node.artifact.content)))
+    .toEqual([SVG_BODY, HTML_BODY, MD_BODY, TABLE_BODY])
 
   // 面板有对话流痕迹（用户真的在对话里交付，不是旁路注入）。
   await expect(canvas.locator(USER_BUBBLE).last(), '交付指令出现在对话流').toContainText('分镜草表')

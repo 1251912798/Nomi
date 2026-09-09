@@ -206,12 +206,40 @@ export function V4Suggestion({
  * 思考行（Process 板时刻 2）。`brain` icon **只在这一行出现**，秒数与 esc 提示在同一行右端。
  * shimmer 走背景渐变裁字，不是骨架屏。
  */
-export function V4Thinking({ label, meta }: { label: string; meta: string }): JSX.Element {
+export function V4Thinking({ label, meta, text, streaming }: {
+  label: string
+  meta: string
+  text?: string
+  streaming?: boolean
+}): JSX.Element {
+  const { t } = useTranslation()
+  // Only measure the live interval we actually observed. Restored history has no duration.
+  const [seconds, setSeconds] = React.useState<number>()
+  React.useEffect(() => {
+    if (!streaming) return undefined
+    const started = performance.now()
+    setSeconds(0)
+    const timer = window.setInterval(() => setSeconds(Math.floor((performance.now() - started) / 1000)), 1000)
+    return () => window.clearInterval(timer)
+  }, [streaming])
+  const row = (
+    <>
+      <span className="shrink-0"><ActionIcon action="think" /></span>
+      {streaming === false ? <span className="min-w-0 truncate">{t('agentPanelV4.thinkingDone')}</span> : <V4Shimmer>{label}</V4Shimmer>}
+      <span className="shrink-0 whitespace-nowrap font-nomi-mono text-micro text-nomi-ink-40">
+        {seconds === undefined ? meta : t('agentPanelV4.thinkingSeconds', { count: seconds })}
+      </span>
+      {text ? <IconChevronRight size={12} className="shrink-0 transition-transform group-open:rotate-90" /> : null}
+    </>
+  )
   return (
-    <V4Row className="h-7 text-caption text-nomi-ink-60" data-v4-block="thinking">
-      <ActionIcon action="think" />
-      <V4Shimmer>{label}</V4Shimmer>
-      <span className="font-nomi-mono text-micro text-nomi-ink-40">{meta}</span>
-    </V4Row>
+    <div className="min-w-0 text-caption text-nomi-ink-60" data-v4-block="thinking" data-streaming={streaming}>
+      {text ? (
+        <details className="group">
+          <V4Row as="summary" className="min-h-7 cursor-pointer list-none [&::-webkit-details-marker]:hidden">{row}</V4Row>
+          <div className="whitespace-pre-wrap break-words py-2 text-body-sm [overflow-wrap:anywhere]" data-v4-thinking-body="true">{text}</div>
+        </details>
+      ) : <V4Row className="min-h-7">{row}</V4Row>}
+    </div>
   )
 }

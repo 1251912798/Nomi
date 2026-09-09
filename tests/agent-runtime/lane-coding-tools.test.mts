@@ -13,16 +13,17 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { test, type TestContext } from 'node:test';
 
+import { containPath, LaneCodingPathError } from '../../electron/agentLane/laneCodingPaths.mjs';
 import {
   classifyCommand,
 } from '../../electron/shared/agentCapabilities/codingCommandPolicy.js';
 import {
-  containPath, createLaneCodingTools, LaneCodingPathError, LANE_CODING_TOOL_EFFECTS,
+  createLaneCodingTools, LANE_CODING_TOOL_EFFECTS,
   LANE_CODING_TOOL_NAMES, laneBashSpawnHook, loadPiCodingToolFactories, sanitizeSpawnEnvironment,
   type LaneCodingToolName,
 } from '../../electron/agentLane/laneCodingTools.mjs';
 import {
-  addedToolNamesForUnlock, evaluateLaneToolBudget, laneToolMenu, LANE_TOOL_REQUEST_TOOL_NAME,
+  evaluateLaneToolBudget, laneToolMenu, LANE_TOOL_REQUEST_TOOL_NAME, LANE_CODING_TOOL_GROUP,
 } from '../../electron/agentLane/laneToolGroups.mjs';
 import { openLaneSandbox, sandboxPolicyFor, type LaneBashOperations, type SandboxManagerLike }
   from '../../electron/agentLane/laneCodingSandbox.mjs';
@@ -274,32 +275,48 @@ test('沙箱策略：allowWrite 只有项目目录与 /tmp；Nomi 设置目录�
 // ── 按需装载 ────────────────────────────────────────────────────────────
 
 test('按需装载：默认只有 always-on + 一个找工具的工具；coding 组不亮', () => {
-  const menu = laneToolMenu({ unlocked: [] });
+  const menu = laneToolMenu();
+  assert.equal(menu.activeGroup, null);
   assert.equal(menu.codingUnlocked, false);
   assert.ok(menu.activeToolNames.includes(LANE_TOOL_REQUEST_TOOL_NAME));
-  for (const name of LANE_CODING_TOOL_NAMES) {
+  assert.ok(menu.activeToolNames.includes('read'));
+  for (const name of LANE_CODING_TOOL_NAMES.filter(name => name !== 'read')) {
     assert.ok(!menu.activeToolNames.includes(name), `${name} 不该默认亮着`);
   }
 });
 
-test('按需装载：三个条件任一满足就整组亮，且亮了就保持亮', () => {
-  for (const reason of ['skill-requires-scripts', 'user-supplied-code', 'model-requested'] as const) {
-    const menu = laneToolMenu({ unlocked: [reason] });
-    assert.equal(menu.codingUnlocked, true, `${reason} 应当解锁 coding 组`);
-    for (const name of LANE_CODING_TOOL_NAMES) assert.ok(menu.activeToolNames.includes(name));
-  }
+test('按需装载：点亮 coding 组就整组亮', () => {
+  const menu = laneToolMenu({ activeGroup: LANE_CODING_TOOL_GROUP });
+  assert.equal(menu.codingUnlocked, true);
+  for (const name of LANE_CODING_TOOL_NAMES) assert.ok(menu.activeToolNames.includes(name));
 });
 
-test('按需装载：解锁时必须带 addedToolNames——它是给 pi 的 splitDeferredTools 看的信号', () => {
-  assert.deepEqual([...addedToolNamesForUnlock()], [...LANE_CODING_TOOL_NAMES]);
+test('B1c: registered schemas remain resident across group selection', () => {
+  const groups = [
+    { name: LANE_CODING_TOOL_GROUP, toolNames: LANE_CODING_TOOL_NAMES },
+    { name: 'timeline', toolNames: ['nomi_timeline_fixture'] },
+  ];
+  const coding = laneToolMenu({ groups, activeGroup: LANE_CODING_TOOL_GROUP });
+  const timeline = laneToolMenu({ groups, activeGroup: 'timeline' });
+  assert.equal(timeline.activeGroup, 'timeline');
+  assert.equal(timeline.codingUnlocked, false, 'group selection is not coding authorization');
+  for (const name of LANE_CODING_TOOL_NAMES) {
+    assert.ok(coding.activeToolNames.includes(name));
+    assert.ok(timeline.activeToolNames.includes(name), `${name} remains resident`);
+  }
+  // 常驻那一段两边逐字相同——换组只动尾巴，前缀不动。
+  const alwaysOn = laneToolMenu().activeToolNames;
+  assert.deepEqual(coding.activeToolNames.slice(0, alwaysOn.length), [...alwaysOn]);
+  assert.deepEqual(timeline.activeToolNames.slice(0, alwaysOn.length), [...alwaysOn]);
+  // 没注册的组不许被点亮：模型给的字符串不能凭空造出一个组。
+  assert.throws(() => laneToolMenu({ groups, activeGroup: 'nope' }), /Unknown lane tool group/);
 });
 
 test('按需装载：工具顺序是合同（前缀稳定才有缓存），两次算出来必须逐字相同', () => {
-  assert.deepEqual(laneToolMenu({ unlocked: [] }).activeToolNames, laneToolMenu({ unlocked: [] }).activeToolNames);
+  assert.deepEqual(laneToolMenu().activeToolNames, laneToolMenu().activeToolNames);
   assert.deepEqual(
-    laneToolMenu({ unlocked: ['model-requested'] }).activeToolNames,
-    laneToolMenu({ unlocked: ['skill-requires-scripts'] }).activeToolNames,
-    '解锁理由不同不该改变工具顺序——那会平白打一次缓存',
+    laneToolMenu({ activeGroup: LANE_CODING_TOOL_GROUP }).activeToolNames,
+    laneToolMenu({ activeGroup: LANE_CODING_TOOL_GROUP }).activeToolNames,
   );
 });
 
@@ -312,13 +329,19 @@ test('预算判定两条各挡各的（先证会红：R17）', () => {
     combinations: [{ label: 'always-on + coding', toolNames: [], estimatedTokens: 12_345 }],
   });
   assert.equal(fat.length, 1);
-  assert.match(fat[0] ?? '', /read-only.*write/, '超限的处置必须写在报错里，不然下一个人只会去抬上限');
+  assert.match(fat[0] ?? '', /read \/ write.*子组/, '超限的处置必须写在报错里，不然下一个人只会去抬上限');
   assert.match(fat[0] ?? '', /不是.*抬这个上限/);
   // 都没超 = 绿。**阳性对照的对照**：这一条恒绿才说明上面两条不是恒红。
   assert.deepEqual(evaluateLaneToolBudget({
     alwaysOnCount: 11,
     combinations: [{ label: 'ok', toolNames: [], estimatedTokens: 6_854 }],
   }), []);
+});
+
+test('B1c the full resident catalog has no report-only budget exemption', () => {
+  assert.equal(evaluateLaneToolBudget({ alwaysOnCount: 12,
+    combinations: [{ label: 'all resident', toolNames: [], estimatedTokens: 10001 }],
+  }).length, 1);
 });
 
 // ── effects 自洽（与 laneTools.mts 同一条装配期不变量）──────────────────

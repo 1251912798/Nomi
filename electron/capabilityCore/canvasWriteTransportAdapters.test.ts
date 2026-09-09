@@ -8,7 +8,6 @@ import type {
 import { createMainCapabilityExecutorRegistry, type CanvasWritePort } from "./capabilityExecutorRegistry";
 import { createCanvasReadSurfaceRegistry, createSurfaceOwnerAuthority } from "./canvasReadSurfaceRegistry";
 import { createPiCanvasWriteTransportAdapter } from "./canvasWriteTransportAdapters";
-import { reprepareEffectiveCall } from "../projectAgentHost/projectAgentApprovalHelpers";
 
 const RAW_EVIDENCE: CanvasWriteRawEvidence = {
   node: {
@@ -322,19 +321,10 @@ describe("canvas.write Pi transport", () => {
       ...originalCall.args,
       nodes: [{ ...originalCall.args.nodes[0], prompt: "edited prompt", variantId: "fast" }],
     };
-    const effective = await reprepareEffectiveCall(
-      originalCall,
-      { ok: true, effectiveArgs: editedArgs, overridesDelta: { nodes: editedArgs.nodes } },
-      prepared!,
-      (call) => test.adapter.prepare(call, signal),
-    );
-
-    expect(effective.ok).toBe(true);
-    if (!effective.ok) return;
-    expect(effective.call.args).toEqual(editedArgs);
-    expect(effective.prepared.invocation.input).toMatchObject({
-      operation: "create_canvas_nodes",
-      nodes: editedArgs.nodes,
+    const effective = await test.adapter.prepare({ ...originalCall, args: editedArgs }, signal);
+    expect(effective).not.toBeNull();
+    expect(effective!.invocation.input).toMatchObject({
+      operation: "create_canvas_nodes", nodes: editedArgs.nodes,
     });
     expect(test.capture).toHaveBeenCalledTimes(2);
   });

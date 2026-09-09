@@ -17,6 +17,7 @@ import { createLaneFixture } from './laneFixture.mjs';
 /** 段的身份 = 「这是哪一种段 + 它是谁」。**刻意不含 sequence**——否则断言就是在自证。 */
 function shape(part: LanePart): string {
   switch (part.kind) {
+    case 'error': return `error:${part.text}`;
     case 'user': return `user:${part.text}`;
     case 'assistant-text': return `text:${part.text}`;
     case 'thinking': return `thinking:${part.text}`;
@@ -45,7 +46,9 @@ test('G3 · a cold restart replays the same ordered parts the live lane produced
   // 因为它每次都从零开始，而「空 == 空」永远成立。
   const slugs = await readdir(laneSessionsRoot(fixture.projectDir));
   assert.equal(slugs.length, 1, 'one project keeps exactly one session slug directory');
-  const files = await readdir(join(laneSessionsRoot(fixture.projectDir), slugs[0]));
+  // Count native session files, not the adjacent rebuildable trace directory.
+  const files = (await readdir(join(laneSessionsRoot(fixture.projectDir), slugs[0]), { withFileTypes: true }))
+    .filter(entry => entry.isFile() && entry.name.endsWith('.jsonl'));
   assert.equal(files.length, 1, 'one lane keeps exactly one jsonl session file');
 
   const reopened = await fixture.openLane({ ...fixture.options, sessionId });

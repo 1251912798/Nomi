@@ -1,0 +1,17 @@
+{
+  "commands": [
+    {
+      "kind": "steer",
+      "text": "等等别动"
+    },
+    {
+      "kind": "follow-up",
+      "text": "等等别动"
+    },
+    {
+      "kind": "steer",
+      "text": "等等别动"
+    }
+  ],
+  "noQueueTextButton": true
+}

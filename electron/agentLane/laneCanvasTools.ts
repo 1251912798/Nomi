@@ -13,28 +13,29 @@ import {
   type CanvasWriteResult,
 } from "../shared/agentCapabilities/canvasWrite";
 import { canvasModelToolSpecs } from "../shared/agentCapabilities/canvasModelTools";
-import { bindLaneTool, type LaneToolDescriptor } from "./laneRuntimePort";
+import { formatCanvasForAgent } from "../shared/agentCapabilities/canvasReadCompact";
+import { bindLaneTool, type LaneToolDescriptor, type LaneToolExecutionContext } from "./laneRuntimePort";
 
 /** 领域侧。lane 不认识 React Flow，只认识「读一次画布」和「提一次可撤销的改动」。 */
 export interface CanvasLanePort {
-  read(): Promise<unknown>;
-  write(input: CanvasWriteInput): Promise<CanvasWriteResult>;
+  read(context: LaneToolExecutionContext): Promise<unknown>;
+  write(input: CanvasWriteInput, context: LaneToolExecutionContext): Promise<CanvasWriteResult>;
 }
 
 export function createCanvasLaneTools(port: CanvasLanePort): LaneToolDescriptor[] {
   return canvasModelToolSpecs().map((spec) => {
     if (spec.name === "nomi_canvas_read") {
-      return bindLaneTool(spec, async () => {
-        const result: CanvasReadResult = canvasReadResultSchema.parse(await port.read());
-        return { ok: true, text: JSON.stringify(result), details: { nodeCount: result.nodes.length } };
+      return bindLaneTool(spec, async (_args, context) => {
+        const result: CanvasReadResult = canvasReadResultSchema.parse(await port.read(context));
+        return { ok: true, text: formatCanvasForAgent(result), details: { nodeCount: result.nodes.length } };
       });
     }
-    return bindLaneTool(spec, async (args) => {
+    return bindLaneTool(spec, async (args, context) => {
       // `laneTools.mts` 在 pi 的 ajv 之后跑过契约自己的那一次 parse（扁平 schema 的
       // `transform` → union + 跨字段约束），所以这里拿到的已经是收窄的 `CanvasWriteInput`。
       // 这里**不再** parse——校验点只有那一个（G-08）。
       const input = args as CanvasWriteInput;
-      const receipt = await port.write(input);
+      const receipt = await port.write(input, context);
       return {
         ok: true,
         text: canvasWriteReceiptText(input, receipt),
@@ -46,19 +47,18 @@ export function createCanvasLaneTools(port: CanvasLanePort): LaneToolDescriptor[
 
 /**
  * 模型看到的是一张**收据**，不是被写进去的正文——正文它自己刚写的，回显一遍只是在烧上下文。
- * 收据里唯一必须有的是**下一步要引用的 id**：`clientIdToNodeId` 把这一轮的临时 id 换成
- * 真实节点 id，模型下一次连边、挂参考、改提示词全靠它（按 id join，永不复制）。
+ * 标识留在结构化 details 供宿主关联；后续编辑先读画布拿到当前对象，不把收据 id 当用户文案。
  */
 function canvasWriteReceiptText(input: CanvasWriteInput, receipt: CanvasWriteResult): string {
   if ("cancelled" in receipt) return `The user declined the ${input.operation} proposal. Nothing changed on the canvas.`;
-  const lines = [`Applied ${receipt.operation}. Proposal ${receipt.proposalId}.`];
+  const lines = [`Applied ${receipt.operation}.`];
   if ("clientIdToNodeId" in receipt) {
-    lines.push(`Real node ids: ${JSON.stringify(receipt.clientIdToNodeId)} — use these, not the clientIds, from now on.`);
+    lines.push(`Created ${Object.keys(receipt.clientIdToNodeId).length} node(s). Use canvas read to inspect them before further edits.`);
   }
   if ("skippedEdges" in receipt && receipt.skippedEdges.length > 0) {
     lines.push(
       `${receipt.skippedEdges.length} reference edge(s) were skipped because the target model does not support them: `
-      + receipt.skippedEdges.map((edge) => `${edge.source}→${edge.target} (${edge.reason})`).join("; "),
+      + [...new Set(receipt.skippedEdges.map((edge) => edge.reason))].join("; "),
     );
   }
   if ("changedShotIndexes" in receipt) {

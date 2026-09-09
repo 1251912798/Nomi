@@ -14,7 +14,7 @@
 //     这一类的特点是「本地全绿、真机静默失效」——没有门岗就只能靠花钱买教训。
 //   · **运输分支**：过渡补丁 T1 的「同一个值的 JSON 文本」那一支不进模型可见 schema。
 import { z, type ZodTypeAny } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
+import { zodToJsonSchema, ignoreOverride, type OverrideCallback } from "zod-to-json-schema";
 
 
 import { JSON_TEXT_BRANCH_MARKER } from "./jsonArgTolerance";
@@ -27,12 +27,32 @@ const convertToJsonSchema = zodToJsonSchema as unknown as (schema: unknown, opti
 
 export type JsonSchemaObject = Record<string, unknown>;
 
+/** Preserve ancestor cycles and explicitly lazy/recursive shared subtrees with local references.
+ * Ordinary non-recursive schemas stay inline, keeping existing published profiles stable.
+ * https://json-schema.org/understanding-json-schema/structuring#recursion
+ */
+function containsLocalReference(value: unknown): boolean {
+  if (!value || typeof value !== "object") return false;
+  if ("$ref" in value && typeof value.$ref === "string" && value.$ref.startsWith("#")) return true;
+  return Object.values(value).some(containsLocalReference);
+}
+
+const preserveRecursiveReference: OverrideCallback = (_def, refs, seen, forceResolution) => {
+  if (!forceResolution && seen && seen.path.join("/") !== refs.currentPath.join("/")) {
+    const recursiveAncestor = seen.path.length < refs.currentPath.length
+      && seen.path.every((part, index) => refs.currentPath[index] === part);
+    if (recursiveAncestor || seen.jsonSchema && ((_def as { typeName?: string }).typeName === "ZodLazy" || containsLocalReference(seen.jsonSchema))) return { $ref: seen.path.join("/") };
+  }
+  return ignoreOverride;
+};
+
 /**
  * 生成选项与真正发布出去的那几处**逐字相同**（`harness/runtime/pi/tools.mts:44-46`、
  * MCP 传输层）。门岗量的必须是模型真正收到的东西，不是我们希望它收到的东西。
  */
 const GENERATE_OPTIONS = {
   $refStrategy: "none",
+  override: preserveRecursiveReference,
   effectStrategy: "input",
   removeAdditionalStrategy: "strict",
 } as const;
@@ -118,7 +138,7 @@ export function collectStructuralFailures(node: unknown, pointer: string, out: s
     out.push(`${where} 是一个没有 items 的 array（元素长什么样一个字没说）`);
   }
   for (const [key, value] of Object.entries(record)) {
-    if (key === "enum" || key === "required" || key === "const") continue;
+    if (key === "enum" || key === "required" || key === "const" || key === "default" || key === "examples") continue;
     // `properties` / `$defs` 是**容器**不是 schema：空容器说的是「这个对象没有字段」，
     // 对一个不收参数的工具而言那是真话。把容器当 schema 检查，会把最严的那个判成最松的。
     if (key === "properties" || key === "patternProperties" || key === "$defs" || key === "definitions") {
@@ -171,7 +191,7 @@ function collectConstFailures(node: unknown, pointer: string, out: string[]): vo
     );
   }
   for (const [key, value] of Object.entries(record)) {
-    if (key === "enum" || key === "required") continue;
+    if (key === "enum" || key === "required" || key === "default" || key === "examples") continue;
     collectConstFailures(value, `${pointer}/${key}`, out);
   }
 }

@@ -9,7 +9,11 @@
 // 用户把项目文件夹改个名，同一个项目就会长出第二个 slug 目录——旧会话还在盘上，
 // 但 `list({cwd})` 按新 cwd 一条都查不到，用户看到的是「我的历史没了」。
 // 所以这里传一个**稳定的、与宿主路径无关的常量**，slug 就跟着稳定。
-import { join } from 'node:path';
+import { join, relative, sep } from 'node:path';
+import { readFile, rm } from 'node:fs/promises';
+import { BACKGROUND_CONTEXT } from '@earendil-works/pi-agent-core/harness/context';
+import { laneTraceDirectory, writeLaneTrace, writeTraceFile, type LaneTraceTurn } from './laneTrace.mjs';
+import { refreshLiveLaneTrace } from './laneTraceRecorder.mjs';
 import { JsonlSessionRepo, type JsonlSessionMetadata } from '@earendil-works/pi-agent-core/harness/session';
 import type { Context } from '@earendil-works/pi-agent-core/harness/context';
 import type { Session } from '@earendil-works/pi-agent-core';
@@ -144,7 +148,10 @@ export async function deleteLaneSession(projectDir: string, laneName: string, co
     const cwd = laneSessionCwd(laneName);
     const known = await repo.list({ cwd }, context);
     if (known.length === 0) return false;
-    for (const metadata of known) await repo.delete(metadata, context);
+    for (const metadata of known) {
+      await repo.delete(metadata, context);
+      await rm(laneTraceDirectory(metadata), { recursive: true, force: true });
+    }
     return true;
   } finally {
     await releaseRepo(projectDir, context);
@@ -161,13 +168,20 @@ export async function deleteLaneSession(projectDir: string, laneName: string, co
  *   对话列表里同一个名字会长出一串空壳，而用户以为他点开的是昨天那条。
  */
 export async function openLaneSession(
-  options: { projectDir: string; laneName?: string; sessionId?: string }, context: Context,
+  options: { projectDir: string; laneName?: string; sessionId?: string; createSessionId?: string }, context: Context,
 ): Promise<LaneSessionOpen> {
   const repo = await acquireRepo(options.projectDir);
   const release = (releaseContext: Context) => releaseRepo(options.projectDir, releaseContext);
   const cwd = laneSessionCwd(options.laneName ?? 'main');
   try {
     const known = await repo.list({ cwd }, context);
+    if (options.createSessionId !== undefined) {
+      if (options.sessionId !== undefined || known.length > 1
+        || (known.length === 1 && known[0].id !== options.createSessionId)) throw new Error('legacy-target-session-conflict');
+      const session = known[0] ? await repo.open(known[0], context)
+        : await repo.create({ cwd, id: options.createSessionId }, context);
+      return { session, sessionId: session.metadata.id, release };
+    }
     if (options.sessionId === undefined) {
       // 同一条 lane 下有多份时取最新的那份（见 `listLaneSessions` 的同一条裁决）。
       const newest = known.reduce<JsonlSessionMetadata | undefined>(
@@ -195,4 +209,36 @@ export async function openLaneSession(
     }
     throw cause;
   }
+}
+
+/** Resolve from pi metadata, never from a renderer-supplied filesystem path. */
+export async function openLaneTraceDirectory(projectDir: string, laneName?: string): Promise<string> {
+  const context = BACKGROUND_CONTEXT;
+  const repo = await acquireRepo(projectDir);
+  try {
+    const all = await repo.list(laneName === undefined ? undefined : { cwd: laneSessionCwd(laneName) }, context);
+    const known = all.filter(item => item.cwd.startsWith(CWD_PREFIX));
+    if (laneName !== undefined && !known.length) throw new Error('Agent conversation not found');
+    const summaries: string[] = [];
+    let selected: { createdAt: number; directory: string } | undefined;
+    for (const metadata of known) {
+      let directory = await refreshLiveLaneTrace(metadata.path);
+      if (!directory) {
+        const session = await repo.open(metadata, context);
+        try { directory = await writeLaneTrace(session); }
+        finally { await session.close(context); }
+      }
+      const rows = (await readFile(join(directory, 'trace.jsonl'), 'utf8')).trim().split('\n').filter(Boolean)
+        .map(line => JSON.parse(line) as LaneTraceTurn);
+      const total = rows.every(row => row.estimatedCostUsd !== null)
+        ? rows.reduce((sum, row) => sum + (row.estimatedCostUsd ?? 0), 0) : null;
+      const link = relative(laneSessionsRoot(projectDir), join(directory, 'trace.md')).split(sep).map(encodeURIComponent).join('/');
+      summaries.push(`- [${metadata.id}](${link}) · ${rows.length} turns · estimated USD ${total ?? 'unknown'}`);
+      if (!selected || metadata.createdAt > selected.createdAt) selected = { createdAt: metadata.createdAt, directory };
+    }
+    if (laneName !== undefined) return selected!.directory;
+    const root = laneSessionsRoot(projectDir);
+    await writeTraceFile(root, 'index.md', ['# Agent traces', '', 'Local pi sessions · costs are estimates, not a bill.', '', ...summaries, ''].join('\n'));
+    return root;
+  } finally { await releaseRepo(projectDir, context); }
 }

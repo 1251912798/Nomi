@@ -149,7 +149,7 @@ export function projectV4Intervention(
     reasonPlaceholder: t('agentPanelV4.rejectReasonPlaceholder'),
     // 范围那一行是**诚实交代**，不是装饰：可撤销的档才有「不再问」，
     // 所以这里写清楚它到底覆盖什么，别让用户以为按一下就全项目放行。
-    scope: canStopAskingFor(source.effectClass) ? labels.scopeCapability : labels.scopeOnce,
+    ...(kind === 'plan' ? {} : { scope: canStopAskingFor(source.effectClass) ? labels.scopeCapability : labels.scopeOnce }),
   }
   if (kind === 'credential') {
     return Object.freeze({ ...base, confirmLabel: labels.credentialConfirm, alternateLabel: labels.credentialAlternate })
@@ -162,7 +162,7 @@ function planRowsOf(source: V4InterventionSource): readonly PlanRow[] {
   if (source.planLines?.length) {
     return source.planLines.map((line) => ({
       label: line.text,
-      ...(line.technical ? { detail: line.technical } : {}),
+      ...(line.technical ? { technical: line.technical } : {}),
       checked: checked ? checked.has(line.text) : true,
     }))
   }

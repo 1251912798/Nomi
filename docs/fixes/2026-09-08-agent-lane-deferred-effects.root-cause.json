@@ -1,0 +1,121 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-08-agent-lane-deferred-effects",
+  "problem_type": "Deferred model effects drift from canonical capability risk",
+  "symptom": "Delete and export tools advertise reversible changes despite their canonical irreversible approval contract; the lane adapter rejects the truthful non-undoable write descriptor.",
+  "direct_cause": "The deferred descriptor factory maps every mutation to undoable and the lane adapter incorrectly requires every write to declare reversal.",
+  "class_root": "Model-facing effect metadata is copied independently from canonical capability effect and effectClass instead of being derived at the shared descriptor boundary.",
+  "affected_population": [
+    "delete_canvas_nodes",
+    "export_timeline and cancel_export",
+    "All deferred production, generation, timeline and media descriptors"
+  ],
+  "scope_paths": [
+    "electron/shared/agentCapabilities/modelFacingTools.ts",
+    "electron/shared/agentCapabilities/extendedModelTools.ts",
+    "electron/shared/agentCapabilities/productionModelTools.ts",
+    "electron/shared/agentCapabilities/canvasDelete.ts",
+    "electron/agentLane/laneTools.mts"
+  ],
+  "entry_points": [
+    "extendedModelToolSpecs",
+    "productionModelToolSpecs",
+    "createLaneTools"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "Nomi canonical capability contracts own reversibility and approval semantics. No third-party API change is involved.",
+  "invariants": [
+    "Deferred effects derive mutation, spending and guaranteed reversal from the canonical base contract; mixed-operation tools retain conservative replay metadata and operation-specific approval.",
+    "Irreversible mutations have reversal none and replay never; only readonly tools are forbidden from claiming reversal.",
+    "Deletion remains individually approved in safe-auto, never grants session reuse, and cannot report success without matching committed G5 authority."
+  ],
+  "generality_proof": "Both new deferred factories derive metadata through one shared capability projection, removing the mutates-to-undoable inference for every currently registered domain. Catalog-wide tests compare every descriptor and mixed-operation approval identity.",
+  "shared_boundaries": [
+    {
+      "path": "electron/shared/agentCapabilities/modelFacingTools.ts",
+      "symbol": "modelEffectsForCapability",
+      "responsibility": "Project canonical capability risk into model-facing effect facts."
+    },
+    {
+      "path": "electron/agentLane/laneTools.mts",
+      "symbol": "createLaneTools",
+      "responsibility": "Preserve non-replayable irreversible writes while rejecting readonly reversal claims."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "electron/shared/agentCapabilities/extendedModelTools.ts",
+      "entry_point": "Delete and export descriptors",
+      "disposition": "enforced",
+      "evidence": "All three canonical irreversible tools previously declared undoable; their descriptors now derive canonical effects."
+    },
+    {
+      "path": "electron/shared/agentCapabilities/productionModelTools.ts",
+      "entry_point": "Production tool descriptors",
+      "disposition": "enforced",
+      "evidence": "All production read and write descriptors use the same canonical derivation, without changing their current risk."
+    },
+    {
+      "path": "electron/agentLane/laneApprovalGate.ts",
+      "entry_point": "subjectOf",
+      "disposition": "not-affected",
+      "evidence": "The existing gate already derives effect and operation-specific effectClass from capabilityContractById; no actual approval bypass was observed or claimed."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Every new deferred mutating descriptor could otherwise repeat the incorrect undoable inference.",
+    "same_class_scan": [
+      "Compared all deferred descriptors with registry effect/effectClass and operationCapabilityIds.",
+      "Checked laneTools replay assembly, laneApprovalGate canonical resolution and native effects resolver.",
+      "Inspected actual canvas-delete prepare, verified invocation, approval, executor and G5 receipt matching."
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "electron/shared/agentCapabilities/modelFacingTools.ts",
+    "invariant": "Deferred descriptors derive effect facts from canonical contracts.",
+    "failure_mode": "Unknown canonical contracts reject descriptor assembly; read-only reversal claims remain rejected; non-read descriptors never enable SDK replay.",
+    "exception_policy": "none",
+    "strategy": "Replace hand-maintained mutation and reversal literals in both deferred factories with shared canonical derivation.",
+    "artifacts": [
+      "electron/shared/agentCapabilities/modelFacingTools.ts",
+      "electron/shared/agentCapabilities/extendedModelTools.ts",
+      "electron/shared/agentCapabilities/productionModelTools.ts",
+      "electron/agentLane/laneTools.mts"
+    ]
+  },
+  "regression_tests": [
+    "tests/agent-runtime/lane-deferred-effects.test.mts",
+    "electron/agentLane/laneDesktopTools.test.ts"
+  ],
+  "class_regression_tests": [
+    "tests/agent-runtime/lane-deferred-effects.test.mts",
+    "electron/agentLane/laneDesktopTools.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "electron/shared/agentCapabilities/extendedModelTools.ts",
+      "electron/shared/agentCapabilities/productionModelTools.ts"
+    ],
+    "rationale": "Removed manual mutates inputs and duplicated read/write reversal construction from deferred factories; no parallel path added."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "This is an internal descriptor invariant; existing public pi tools and replay APIs are unchanged.",
+    "exit_criteria": []
+  },
+  "migration": "No persisted state or canonical capability semantics change; descriptors rebuild from their existing owner.",
+  "residual_risks": [
+    "Real Electron irreversible-card layout and interactive deletion walkthrough remain owned by the root and runner; fixtures prove actual HTTP lane, verified executor and temporary on-disk G5 flow."
+  ],
+  "invariant_owner_layer": {
+    "layer": "electron/shared/agentCapabilities/modelFacingTools.ts",
+    "tests": [
+      "tests/agent-runtime/lane-deferred-effects.test.mts",
+      "electron/agentLane/laneDesktopTools.test.ts"
+    ],
+    "why": "The shared model descriptor is the first boundary projecting capability semantics to all tool consumers."
+  }
+}

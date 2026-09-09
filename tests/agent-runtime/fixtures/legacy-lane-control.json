@@ -1,0 +1,15 @@
+{
+  "beats": [
+    "call:read_full_text:{}",
+    "result:read_full_text:ok",
+    "call:append_to_end:{\"content\":\"\\n\\nThe end.\"}",
+    "result:append_to_end:ok",
+    "text:I read the document and appended the closing line."
+  ],
+  "promptTokens": 30,
+  "completionTokens": 12,
+  "text": "I read the document and appended the closing line.",
+  "documentText": "The opening scene.\n\nThe end.",
+  "capturedFromCommit": "13c56774c9d8",
+  "evidence": "Executed original old runtime against the same local scripted provider before deletion; four parity assertions passed, /tmp/nomi-switch-old-control-capture.log."
+}

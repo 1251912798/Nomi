@@ -12,7 +12,7 @@ import { assertTrustedSender } from "../ipcSenderGuard";
 import { logsDir } from "../logging/logFiles";
 import { logError, logInfo } from "../logging/logger";
 import { getSettingsRoot, getWorkspaceRepositoryDeps } from "../runtimePaths";
-import { projectAgentPartitionKey } from "../projectAgentHost/projectAgentIdentity";
+import { projectAgentPartitionKey } from "../shared/projectBinding";
 import { resolveWorkspaceProjectDir } from "../workspace/workspaceRepository";
 import { ensureWorkspaceProjectIdentity } from "../workspace/workspaceProjectIdentity";
 import { activeTaskProjectFallback } from "../tasks/activeProjectFallback";

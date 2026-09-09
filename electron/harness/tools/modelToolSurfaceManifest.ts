@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { ZodTypeAny } from "zod";
-import { GENERATION_RECONCILE_OUTCOMES } from "../../capabilityCore/mcpGenerationTools";
+import { generationPlanInputSchema, generationStatusInputSchema } from "../../shared/agentCapabilities/generationPlanSchemas";
 import { timelineEditPlanSchema } from "../../shared/agentCapabilities/timelineRead";
 import { canvasReadSemanticInputSchema, canvasReadResultSchema } from "../../shared/agentCapabilities/canvasRead";
 import { canvasWriteSemanticInputSchema, canvasWriteResultSchema } from "../../shared/agentCapabilities/canvasWrite";
@@ -22,78 +22,6 @@ export type SemanticToolDescriptor = Readonly<{
   disclosure: "eager" | "deferred";
   availability: Readonly<{ phases: readonly string[]; requiredScopes: readonly string[] }>;
 }>;
-
-
-const reference = z.object({
-  assetId: z.string().trim().min(1),
-  contentHash: z.string().trim().min(1),
-  version: z.number().int().min(1),
-  kind: z.enum(["image", "video", "audio"]).optional(),
-  role: z.enum(["character", "first_frame", "last_frame", "reference", "audio"]).optional(),
-}).strict();
-
-const candidatePatch = z.object({
-  prompt: z.string().optional(),
-  taskKind: z.enum(["text_to_image", "image_edit", "text_to_video", "image_to_video"]).optional(),
-  moduleId: z.string().optional(),
-  providerId: z.string().optional(),
-  modelId: z.string().optional(),
-  mode: z.string().optional(),
-  modeId: z.string().optional(),
-  variantId: z.string().optional(),
-  parameters: z.record(z.unknown()).optional(),
-  references: z.array(reference).optional(),
-}).strict();
-
-const createFields = {
-  prompt: z.string().trim().min(1).optional(),
-  taskKind: z.enum(["text_to_image", "image_edit", "text_to_video", "image_to_video"]).optional(),
-  moduleId: z.string().trim().min(1).optional(),
-  providerId: z.string().trim().min(1).optional(),
-  modelId: z.string().trim().min(1).optional(),
-  mode: z.string().trim().min(1).optional(),
-  modeId: z.string().trim().min(1).optional(),
-  variantId: z.string().trim().min(1).optional(),
-  parameters: z.record(z.unknown()).optional(),
-  references: z.array(reference).optional(),
-  candidate: z.record(z.unknown()).optional(),
-  shots: z.array(z.object({
-    shotId: z.string().trim().min(1).optional(),
-    role: z.enum(["anchor", "shot"]).optional(),
-    included: z.boolean().optional(),
-    candidate: z.record(z.unknown()).optional(),
-    prompt: z.string().trim().min(1).optional(),
-    taskKind: z.enum(["text_to_image", "image_edit", "text_to_video", "image_to_video"]).optional(),
-    modelId: z.string().trim().min(1).optional(),
-    mode: z.string().trim().min(1).optional(),
-    modeId: z.string().trim().min(1).optional(),
-    variantId: z.string().trim().min(1).optional(),
-    parameters: z.record(z.unknown()).optional(),
-    references: z.array(reference).optional(),
-  }).strict()).optional(),
-  scriptText: z.string().trim().min(1).optional(),
-} as const;
-
-const operationId = z.string().trim().min(1);
-
-export const generationPlanInputSchema = z.discriminatedUnion("operation", [
-  z.object({ operation: z.literal("context") }).strict(),
-  z.object({ operation: z.literal("create"), ...createFields }).strict(),
-  z.object({ operation: z.literal("patch"), operationId, patch: candidatePatch }).strict(),
-  z.object({ operation: z.literal("preview"), operationId }).strict(),
-  // NOTE: `resolve` deliberately does NOT live here. Its schema is the capability
-  // contract `GENERATION_RESOLVE_CAPABILITY.inputSchema`
-  // (electron/shared/agentCapabilities/generation.ts) — the single generation point
-  // required by the runtime rebuild (docs/plan/2026-09-07-agent-runtime-rebuild.md
-  // §1.1 B5 / §1.2 K1). The internal model-facing face is projected from the contract
-  // layer in stage 2; nothing new gets hand-written into this legacy manifest.
-]);
-
-export const generationStatusInputSchema = z.discriminatedUnion("operation", [
-  z.object({ operation: z.literal("read"), operationId }).strict(),
-  z.object({ operation: z.literal("cancel"), operationId }).strict(),
-  z.object({ operation: z.literal("reconcile"), operationId, outcome: z.enum(GENERATION_RECONCILE_OUTCOMES) }).strict(),
-]);
 
 const descriptorDefaults = {
   version: 1,
