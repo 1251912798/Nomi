@@ -20,7 +20,7 @@ export function FloatingToolbarShell({ ariaLabel, children }: { ariaLabel: strin
   return (
     <div
       className={cn(
-        'absolute left-1/2 bottom-[calc(100%+16px)] z-[12]',
+        'absolute left-1/2 bottom-[calc(100%+40px)] z-[12]',
         'inline-flex items-center gap-1 min-h-9 px-1.5 py-1',
         'border border-nomi-line rounded-nomi',
         'bg-nomi-paper shadow-nomi-md',
@@ -138,8 +138,8 @@ export function ToolbarMenu({ icon, label, items, disabled }: { icon: React.Reac
       {open ? (
         <div
           className={cn(
-            // 向下展开：工具栏浮在节点上方，向下就是节点本体（空间充足），避开「靠画布顶部时向上被视口裁掉」。
-            'absolute left-1/2 -translate-x-1/2 top-[calc(100%+6px)] z-[13]',
+            // 向上展开，避免菜单跨过框外标签行并遮住媒体。
+            'absolute left-1/2 -translate-x-1/2 bottom-[calc(100%+6px)] z-[13]',
             'inline-flex flex-col gap-0.5 min-w-max p-1',
             'border border-nomi-line rounded-nomi bg-nomi-paper shadow-nomi-md',
           )}

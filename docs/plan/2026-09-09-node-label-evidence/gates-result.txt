@@ -1,0 +1,33 @@
+Historical round 3 result before authorization of the 26 baseline updates; not the final delivery gate receipt.
+gates exit 1 on f708568dfc19 baseline.
+26 old visual snapshots conflict with approved outside-media layout; 128 visual tests passed, including new specimen.
+Other blocking walkthrough finding fixed and targeted check passed afterwards.
+
+  26 failed
+    tests/ux/design-lab/design-lab.visual.spec.mjs:37:7 › design lab · process-feedback › 状态 pf-fx-organic · 生成动效 · 有机像素对照
+    tests/ux/design-lab/design-lab.visual.spec.mjs:37:7 › design lab · process-feedback › 状态 pf-fx-generating · 生成动效 · 等待
+    tests/ux/design-lab/design-lab.visual.spec.mjs:37:7 › design lab · process-feedback › 状态 pf-fx-preview-reveal · 生成动效 · 真帧揭示
+    tests/ux/design-lab/design-lab.visual.spec.mjs:37:7 › design lab · process-feedback › 状态 pf-fx-final-reveal · 生成动效 · 最终揭示
+    tests/ux/design-lab/design-lab.visual.spec.mjs:37:7 › design lab · process-feedback › 状态 pf-fx-done-clean · 生成动效 · 完成零遮挡
+    tests/ux/design-lab/design-lab.visual.spec.mjs:37:7 › design lab · process-feedback › 状态 pf-fx-reduced · 生成动效 · 减弱动态
+    tests/ux/design-lab/design-lab.visual.spec.mjs:37:7 › design lab · process-feedback › 状态 pf-image-queued · 图片 · 排队
+    tests/ux/design-lab/design-lab.visual.spec.mjs:37:7 › design lab · process-feedback › 状态 pf-image-submitting · 图片 · 提交
+    tests/ux/design-lab/design-lab.visual.spec.mjs:37:7 › design lab · process-feedback › 状态 pf-image-generating · 图片 · 生成中
+    tests/ux/design-lab/design-lab.visual.spec.mjs:37:7 › design lab · process-feedback › 状态 pf-image-finalizing · 图片 · 落盘
+    tests/ux/design-lab/design-lab.visual.spec.mjs:37:7 › design lab · process-feedback › 状态 pf-image-failed · 图片 · 失败
+    tests/ux/design-lab/design-lab.visual.spec.mjs:37:7 › design lab · process-feedback › 状态 pf-video-queued · 视频 · 排队
+    tests/ux/design-lab/design-lab.visual.spec.mjs:37:7 › design lab · process-feedback › 状态 pf-video-submitting · 视频 · 提交
+    tests/ux/design-lab/design-lab.visual.spec.mjs:37:7 › design lab · process-feedback › 状态 pf-video-generating · 视频 · 生成中
+    tests/ux/design-lab/design-lab.visual.spec.mjs:37:7 › design lab · process-feedback › 状态 pf-video-finalizing · 视频 · 落盘
+    tests/ux/design-lab/design-lab.visual.spec.mjs:37:7 › design lab · process-feedback › 状态 pf-video-failed · 视频 · 失败
+    tests/ux/design-lab/design-lab.visual.spec.mjs:37:7 › design lab · process-feedback › 状态 pf-audio-queued · 音频 · 排队
+    tests/ux/design-lab/design-lab.visual.spec.mjs:37:7 › design lab · process-feedback › 状态 pf-audio-submitting · 音频 · 提交
+    tests/ux/design-lab/design-lab.visual.spec.mjs:37:7 › design lab · process-feedback › 状态 pf-audio-generating · 音频 · 生成中
+    tests/ux/design-lab/design-lab.visual.spec.mjs:37:7 › design lab · process-feedback › 状态 pf-audio-finalizing · 音频 · 落盘
+    tests/ux/design-lab/design-lab.visual.spec.mjs:37:7 › design lab · process-feedback › 状态 pf-preview · 真实预览帧
+    tests/ux/design-lab/design-lab.visual.spec.mjs:37:7 › design lab · process-feedback › 状态 pf-late · 软超时仍运行
+    tests/ux/design-lab/design-lab.visual.spec.mjs:37:7 › design lab · process-feedback › 状态 pf-zoom-60 · 60% 缩放可读
+    tests/ux/design-lab/design-lab.visual.spec.mjs:37:7 › design lab · process-feedback › 状态 pf-preview-dark · 暗色真实预览
+    tests/ux/design-lab/design-lab.visual.spec.mjs:37:7 › design lab · depth-action › 状态 depth-action-01-toolbar · 选中视频 · 浮条上多了「提取深度」
+    tests/ux/design-lab/design-lab.visual.spec.mjs:37:7 › design lab · depth-action › 状态 depth-action-01-toolbar-dark · 选中视频 · 浮条（暗色）
+  128 passed

@@ -32,6 +32,8 @@ export function NodeVideoPlaybackGuard({
   onClick,
   ...rest
 }: Props): JSX.Element {
+  const [pointerInside, setPointerInside] = React.useState(false)
+  const [focusInside, setFocusInside] = React.useState(false)
   const persistHealedUrl = React.useCallback(
     (healedUrl: string) => {
       const state = useGenerationCanvasStore.getState()
@@ -43,9 +45,17 @@ export function NodeVideoPlaybackGuard({
   const heal = useVideoPlaybackHeal({ rawUrl, onHealed: persistHealedUrl })
 
   return (
-    <div className={cn('relative h-full w-full min-h-0')}>
+    <div
+      className={cn('relative h-full w-full min-h-0')}
+      onPointerEnter={() => setPointerInside(true)}
+      onPointerLeave={() => setPointerInside(false)}
+      onFocus={() => setFocusInside(true)}
+      onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setFocusInside(false) }}
+    >
       <DeferredNodeVideo
         {...rest}
+        tabIndex={rest.controls ? 0 : rest.tabIndex}
+        controls={Boolean(rest.controls && (pointerInside || focusInside))}
         src={heal.playbackUrl}
         onError={(event) => {
           onError?.(event)
