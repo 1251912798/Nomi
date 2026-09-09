@@ -1,3 +1,4 @@
+import { LANE_CODING_TOOL_NAMES } from './laneCodingTools.mjs';
 import { LANE_LEGACY_NOTE, LANE_LEGACY_TOOLS_NOTE, laneLegacyFacts } from '../shared/agentLane/laneLegacyNote.js';
 import { findLaneReceiptAuthority } from './laneReceiptAuthority.mjs';
 // Agent lane · 主进程宿主（**薄**）
@@ -164,7 +165,9 @@ export const openLane: OpenLane = async (options: OpenLaneOptions): Promise<Lane
 
   async function assemble(): Promise<LaneHandleWithObservations> {
   if (options.native) native = await openLaneNativeDesktop({ projectDir: options.projectDir,
-    ...options.native, deferredGroups: LANE_DEFERRED_TOOL_GROUPS,
+    ...options.native, deferredGroups: LANE_DEFERRED_TOOL_GROUPS.map(group => ({ ...group,
+      toolNames: group.toolNames.filter(name => options.tools.some(tool => tool.name === name)),
+    })).filter(group => group.toolNames.length > 0),
     availableModels: () => snapshot.transcript.flatMap(entry => entry.type === 'message' && isLaneInputMessage(entry.message) ? [entry.message.context.availableModels ?? []] : []).at(-1) ?? [],
   });
   // 看门狗装在 provider 的流上，所以**每一次**模型请求都带着它——包括压缩与分支摘要那两次
@@ -197,9 +200,7 @@ export const openLane: OpenLane = async (options: OpenLaneOptions): Promise<Lane
     ? renderLaneSkillSection(await loadPiSkillFormatter(), skills)
     : '';
   const promptTools = [...options.tools, ...(native?.promptTools ?? [])];
-  const systemPromptFor = (names: readonly string[]) => composeLaneSystemPrompt(options.systemPrompt,
-    promptTools.filter((tool) => names.includes(tool.name)), skillSection);
-  const systemPrompt = systemPromptFor(activeToolNames);
+  const systemPrompt = composeLaneSystemPrompt(options.systemPrompt, promptTools, skillSection);
   const { harness } = await AgentHarness.create<undefined>({
     session, models, model, systemPrompt, tools,
     compaction: laneCompactionSettings(model.contextWindow, options.limits?.contextTokenBudget),
@@ -250,15 +251,17 @@ export const openLane: OpenLane = async (options: OpenLaneOptions): Promise<Lane
     await lane.setActiveTools([...activeToolNames], context);
     await lane.appendCustomEntry(LANE_LEGACY_TOOLS_NOTE, { version: 1 }, context);
   }
-  // 换组那支笔只有这里递得出去：装配层先于 harness 存在，而 lane 后于 harness 才有。
-  // `nomi_request_tools` 拿到它才能真的把上一组撤回去（`addedToolNames` 只增不减）。
+  // Upgrade old menus once, preserving explicit coding access before schemas become resident.
   if (native) {
     const resident = native.activeToolNames();
     const restored = await lane.getActiveTools(context);
+    native.bindActiveTools(lane);
+    if (resident.some(name => !restored.includes(name)) && LANE_CODING_TOOL_NAMES.every(name => restored.includes(name))) {
+      await native.unlockCoding(context);
+    }
     if (resident.some(name => !restored.includes(name))) {
       await lane.setActiveTools([...resident, ...restored.filter(name => !resident.includes(name))], context);
     }
-    native.bindActiveTools(lane);
   }
 
   // 投影先立起来，闸才挂得上去：「它在等你」这一段**不在 pi 的快照里**（停在预检里的
@@ -319,12 +322,11 @@ export const openLane: OpenLane = async (options: OpenLaneOptions): Promise<Lane
   harness.hooks.on('before_payload', (event) => options.input
     ? { payload: options.input.rewritePayload(event.payload, event.model.api) } : undefined);
 
-  harness.hooks.on('transform_context', async (event, hookContext) => {
+  harness.hooks.on('transform_context', async (event) => {
     const input = [...event.messages].reverse().find(isLaneInputMessage);
     if (input && options.input) options.input.activate(input.context);
     const catalogBase = event.messages.find(isLaneInputMessage);
-    const active = await lane.getActiveTools(hookContext);
-    const authority = gate ? tools.filter(tool => active.includes(tool.name) && options.tools.some(spec => spec.name === tool.name))
+    const authority = gate ? tools.filter(tool => options.tools.some(spec => spec.name === tool.name))
       .flatMap(tool => {
         const operation = (tool.parameters as unknown as { properties?: Record<string, { enum?: unknown[] }> }).properties?.operation;
         const operations = operation?.enum?.filter((value): value is string => typeof value === 'string') ?? [undefined];
@@ -332,7 +334,7 @@ export const openLane: OpenLane = async (options: OpenLaneOptions): Promise<Lane
           toolCallId: '', toolName: tool.name, args: value ? { operation: value } : {},
         })}`);
       }).join('\n') : '';
-    return { systemPrompt: [systemPromptFor(active), catalogBase ? formatLaneModelIndex(catalogBase.context) : '', input?.context.systemPrompt, authority].filter(Boolean).join('\n\n') };
+    return { systemPrompt: [systemPrompt, catalogBase ? formatLaneModelIndex(catalogBase.context) : '', input?.context.systemPrompt, authority].filter(Boolean).join('\n\n') };
   });
 
   harness.hooks.on('before_tool', async (event, hookContext) => {
@@ -477,13 +479,7 @@ export const openLane: OpenLane = async (options: OpenLaneOptions): Promise<Lane
         const message = inputMessage(command.text);
         const unlock = typeof message !== 'string' ? laneSkillUnlockReason(skills, [message.context.skillKey ?? '']) : null;
         if (native && unlock) {
-          // 切到 coding 组，**不是**并到现有菜单上：同一时刻只亮一个领域组
-          // （`laneToolGroups.mts` 的裁决段）。已经在 coding 组上就一个字都不写——
-          // 一次多余的提交会改动列表顺序，白打一次前缀缓存。
-          const next = [...native.menuForUnlock(unlock)];
-          const active = await lane.getActiveTools(context);
-          const same = active.length === next.length && next.every((name, index) => active[index] === name);
-          if (!same) await lane.setActiveTools(next, context);
+          await native.unlockCoding(context);
         }
         // pi's public admission boundary persists the input before acknowledging the composer.
         // The same accepted operation then drives to settlement for every caller, including tests.

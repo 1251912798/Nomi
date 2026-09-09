@@ -1,51 +1,6 @@
-// Agent lane · **按需装载**：哪一组工具这一刻亮着，以及为什么。
-//
-// ── 它在解决哪个真实摩擦（D6 ①）──
-//
-// B1b：read 常驻只读技能，coding 延迟开放其余六个工具与项目读取。`LANE_TOOL_BUDGET` 是 12，而
-// `laneToolCatalog.ts` 的注释早就写死了处置：**超预算先开延迟加载，不许抬预算**。
-// 用户那一刻的感受是：写小说的时候，模型的工具菜单里不该杵着 `bash` 和 `edit`——
-// 那不是「多了两行字」，那是每一轮都在花钱买一段与这次创作无关的说明书。
-//
-// ── 要权衡的那一个东西（D6 ②）──
-//
-// **每解锁一次，就打一次前缀缓存**——但打多少，取决于**传输**，不取决于我们。
-// pi 的 `splitDeferredTools`（`pi-ai/dist/utils/deferred-tools.js`）按传输决定
-// 新解锁的工具定义放在**前缀里**还是**转录里**：
-//   · `anthropic-messages`  → `compat.supportsToolReferences`（`dist/api/anthropic-messages.js:781`）启用，放转录 → **零缓存代价**
-//   · `openai-responses` / `openai-codex-responses` → `compat.supportsAdditionalTools`
-//     （`:215` / `:379`）启用，放转录 → **零缓存代价**
-//   · `openai-completions`（Chat Completions）→ **只有** `compat.deferredToolsMode === "kimi"`
-//     那一条路（`:611-612` / `:1129-1139`），而自动探测**从不**设它（`:1310` 恒 `undefined`）。
-//     所以在 DeepSeek / GLM 官方的 chat-completions 上，解锁 = 工具进 `tools` 数组 = 前缀变了 = 缓存失效一次。
-//
-// 用户 2026-09-07 纠正：**APIMart 是我们自己开发用的中转，不是核心设计**；真实用户接的是
-// 各家官方端点（国内 DeepSeek / GLM / Kimi 官方，国外 Anthropic / OpenAI 官方）。所以：
-//   ① **解锁策略与传输无关**（下面这三条条件，任何传输上都一样）；
-//   ② **放置交给 pi 的 compat 判定**，我们只保证模型档案的 `protocol.api` 声明正确
-//      （`electron/agentLane/laneModelProvider.mts:58-62` 的 `protocols` 表）；
-//   ③ 代码里**不许出现任何「默认走 chat-completions」的假设**——这个文件里一个传输判断都没有，
-//      这不是疏忽，是上面那条的落地。
-//
-// ── 为什么不做「常驻两个、全靠搜」──
-//
-// Anthropic 给的门槛是 **≥10 个工具或工具定义 >10k token** 才值得延迟，而工具选择准确率
-// 通常要到 30–50 个工具之后才开始掉
-// （`https://platform.claude.com/docs/en/agents-and-tools/tool-use/tool-search-tool`）。
-// 搜索式每用一个工具多一轮请求，而创作场景一轮里连做几步是常态，那一轮就是纯损耗。
-//
-// ── 为什么「同一时刻只亮一个领域组」（2026-09-08 主会话裁决）──
-//
-// 领域组接完之后一共 6 个（coding / media / timeline / maintenance / generation / production）。
-// 实测 token（`scripts/check-model-schema.ts` 每次跑都会打出来）：常驻含 request 4 622；
-// 常驻 + 任一单组最大 6 547（timeline）；**全部亮起 11 915**。上限 10 000 来自 Anthropic
-// 那条门槛，**不抬**——所以解法只能在运行时那一侧：任何一次请求里点亮的组合
-// 都是「常驻 + 至多一个领域组」，换组时上一组回到 deferred。
-//
-// 这不是「省 token 的小气」，是用户那一刻的事实：他在剪时间轴的时候，模型的菜单里
-// 不该同时杵着 `bash` 和生图工具。切换的代价是**至多一次前缀缓存失效**（见上面那段：
-// 只在 chat-completions 上真的失效，其余传输由 `addedToolNames` 放进转录，零代价），
-// 而收益是每一轮都不再为另外 5 个领域的说明书付钱。
+// B1c: all registered schemas are resident under the unchanged 10k ceiling.
+// Groups describe task intent; requesting them never retires another group.
+// Execution approval and coding file access remain separate from schema visibility.
 import { LANE_MODEL_TOOL_CATALOG, LANE_TOOL_BUDGET } from './laneToolCatalog.js';
 import { LANE_CODING_TOOL_NAMES } from './laneCodingTools.mjs';
 import { Type } from 'typebox';
@@ -65,17 +20,14 @@ export const LANE_TOOL_REQUEST_TOOL_NAME = 'nomi_request_tools';
 /**
  * The assembly and budget gate consume the exact same model-visible definition.
  *
- * 参数是**一个**组，不是一个数组：运行时同一时刻只亮一个领域组，让模型可以请求两个
- * 然后悄悄只给它一个，是拿一个假承诺换一行 schema。
+ * One group selection records task intent; schemas remain resident.
  */
 export function laneRequestToolDefinition(groups: readonly { name: string }[]) {
   return {
     name: LANE_TOOL_REQUEST_TOOL_NAME,
     label: 'Tools',
-    description: `Switch this conversation to one group of additional tools. Groups: ${groups.map(group => group.name).join(', ')}. `
-      + 'Core tools stay available in every group. One group is available at a time: requesting a group retires the previous one, and you can switch back later at any point. '
-      + 'Read installed Skills with the resident read tool. Request coding before reading or changing other project files. Activation does not approve any action.',
-    promptSnippet: 'Switch to another tool group when the current tools do not cover the task',
+    description: 'Select a tool group for this task without removing other tools or approving actions.',
+    promptSnippet: `Select a group: ${groups.map(group => group.name).join(', ')}. All tool schemas stay resident. Request coding before accessing project files; installed Skills remain readable. This does not approve actions.`,
     parameters: Type.Object({
       group: Type.String({ enum: groups.map(group => group.name) }),
     }, { additionalProperties: false }),
@@ -93,9 +45,9 @@ export type LaneCodingUnlockReason =
   | 'model-requested';
 
 export interface LaneToolMenuInput {
-  /** 已注册的领域组。缺省 = 只认 `coding` 那一组（单测与装配层默认）。 */
+  /** 宿主实际注册的领域组；不传时只计算核心工具。 */
   readonly groups?: readonly LaneToolGroupDefinition[]
-  /** 这一刻点亮的那**一个**领域组；`null` / 缺省 = 只有常驻。 */
+  /** 当前选择的任务组；不改变已注册 schema 的可见性。 */
   readonly activeGroup?: string | null
 }
 
@@ -104,28 +56,21 @@ export interface LaneToolMenu {
   readonly activeToolNames: readonly string[]
   /** 亮着的那个领域组的名字，没有就是 `null`。 */
   readonly activeGroup: string | null
-  /** coding 组亮着吗。投影给面板用（「它现在能跑脚本」是用户该看得见的一件事）。 */
+  /** 选择的是 coding；实际文件授权由 native assembly 的持久化记录判断。 */
   readonly codingUnlocked: boolean
 }
 
-/**
- * 菜单在换组的那一刻算一次，不在会话开头写死，也不按回合翻转。
- *
- * **这是唯一一份「这一刻该亮哪些工具」的算法**：装配层的 `nomi_request_tools`、
- * 宿主的技能解锁、`check:model-schema` 的预算组合，三处都调它。散出去第二份，
- * 门岗量的就不再是运行时真正发出去的那份菜单。
- */
+/** Stable catalog order; task selection never changes registered schema residency. */
 export function laneToolMenu(input: LaneToolMenuInput = {}): LaneToolMenu {
   const alwaysOn = [...LANE_MODEL_TOOL_CATALOG.map((tool) => tool.name), LANE_TOOL_REQUEST_TOOL_NAME, 'read'];
   const requested = input.activeGroup ?? null;
-  if (requested === null) return { activeToolNames: alwaysOn, activeGroup: null, codingUnlocked: false };
-  const groups = input.groups ?? [{ name: LANE_CODING_TOOL_GROUP, toolNames: LANE_CODING_TOOL_NAMES }];
+  const groups = input.groups ?? (requested ? [{ name: LANE_CODING_TOOL_GROUP, toolNames: LANE_CODING_TOOL_NAMES }] : []);
   const group = groups.find((candidate) => candidate.name === requested);
-  if (!group) throw new Error(`Unknown lane tool group: ${requested}. Registered: ${groups.map((one) => one.name).join(', ')}.`);
+  if (requested !== null && !group) throw new Error(`Unknown lane tool group: ${requested}. Registered: ${groups.map((one) => one.name).join(', ')}.`);
   return {
-    activeToolNames: [...new Set([...alwaysOn, ...group.toolNames])],
-    activeGroup: group.name,
-    codingUnlocked: group.name === LANE_CODING_TOOL_GROUP,
+    activeToolNames: [...new Set([...alwaysOn, ...groups.flatMap(group => group.toolNames)])],
+    activeGroup: requested,
+    codingUnlocked: requested === LANE_CODING_TOOL_GROUP,
   };
 }
 
@@ -146,14 +91,7 @@ export interface LaneToolCombination {
   readonly toolNames: readonly string[]
   /** 这个组合里所有工具的 description + JSON Schema 的 token 估计（用 pi 自己的估法）。 */
   readonly estimatedTokens: number
-  /**
-   * 只报告、不作判据。
-   *
-   * 唯一合法的用处是「全部组一起亮」那个数：`laneToolMenu` 结构上就发不出这份菜单
-   * （同一时刻至多一个领域组），拿一个发不出去的组合去判红，判的是一个不存在的运行时。
-   * 但它仍然要**打印**——它是「组数还能不能再涨」的那把尺子。
-   */
-  readonly reportOnly?: boolean
+
 }
 
 /**
@@ -175,7 +113,6 @@ export function evaluateLaneToolBudget(input: {
     );
   }
   for (const combination of input.combinations) {
-    if (combination.reportOnly) continue;
     if (combination.estimatedTokens > LANE_TOOL_SCHEMA_TOKEN_CEILING) {
       failures.push(
         `组合「${combination.label}」的 schema 约 ${combination.estimatedTokens} token > ${LANE_TOOL_SCHEMA_TOKEN_CEILING}。`

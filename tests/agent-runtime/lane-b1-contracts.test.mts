@@ -29,11 +29,6 @@ test('C19 · switching groups tells the model core tools remain callable', async
   ]);
   const native = await createLaneNativeAssembly({ projectDir: f.projectDir, sandbox, bashTimeoutMs: 5000 });
   const request = native.tools.find(tool => tool.name === 'nomi_request_tools')!;
-  const result = await request.execute('switch', { group: 'coding' } as never, (() => undefined) as never, undefined, {} as never, BACKGROUND_CONTEXT);
-  assert.match(textOf(result), /Always available:.*read_full_text/);
-  assert.match(textOf(result), /Added by coding:/);
-  assert.match(textOf(result), /Retired:/);
-  assert.match(request.description, /Core tools stay available in every group/);
   const configured = await createNomiProvider(f.options.model, globalThis.fetch);
   const models = createModels({ credentials: configured.credentials });
   models.setProvider(configured.provider);
@@ -49,6 +44,10 @@ test('C19 · switching groups tells the model core tools remain callable', async
   f.after(async () => { await harness.close(BACKGROUND_CONTEXT); await session.release(BACKGROUND_CONTEXT); });
   const lane = await harness.lane('main', BACKGROUND_CONTEXT);
   native.bindActiveTools(lane);
+  const result = await request.execute('switch', { group: 'coding' } as never, (() => undefined) as never, undefined, {} as never, BACKGROUND_CONTEXT);
+  assert.match(textOf(result), /All tool groups remain available/);
+  assert.equal(result.addedToolNames, undefined);
+  assert.match(request.description, /without removing other tools/);
   assert.equal((await lane.prompt('切组后读文稿', undefined, BACKGROUND_CONTEXT)).ok, true);
   assert.match(JSON.stringify(f.http.requests.at(-1)?.body), /The opening scene/);
 

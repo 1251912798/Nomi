@@ -18,22 +18,21 @@ import { evaluateLaneToolBudget, laneRequestToolDefinition, LANE_TOOL_REQUEST_TO
 
 const repoRoot = path.resolve(import.meta.dirname, '..')
 
-test('the budget enumerates every menu the runtime can actually send: always-on plus each single group', async () => {
+test('the budget reports group contributions and enforces the complete resident catalog', async () => {
   const combinations = await laneToolCombinations()
   const alwaysOn = [...LANE_MODEL_TOOL_CATALOG.map(tool => tool.name), LANE_TOOL_REQUEST_TOOL_NAME, 'read']
   assert.deepEqual(combinations[0].toolNames, alwaysOn)
   // 每一个注册组都要有自己的一行，一个都不许漏——漏掉的那个组永远不会被量。
-  const judged = combinations.filter(one => !one.reportOnly)
+  const judged = combinations
   assert.deepEqual(judged.map(one => one.label),
     ['always-on（含 request）', 'always-on + coding', 'always-on + models',
-      ...LANE_DEFERRED_TOOL_GROUPS.map(group => `always-on + ${group.name}`)])
+      ...LANE_DEFERRED_TOOL_GROUPS.map(group => `always-on + ${group.name}`), '全部组常驻（实际最大组合）'])
   for (const combination of judged.slice(1)) {
     assert.deepEqual(combination.toolNames.slice(0, alwaysOn.length), alwaysOn,
       '每个组合都是「常驻 + 一个组」，常驻那一段逐字相同')
   }
-  // 「全部一起亮」仍然要算出来打印，但它只作报告：运行时发不出这份菜单。
+  // The complete resident catalog is now reachable and must be judged.
   const all = combinations.at(-1)
-  assert.equal(all.reportOnly, true)
   assert.deepEqual(new Set(all.toolNames), new Set([
     ...alwaysOn, ...LANE_CODING_TOOL_NAMES, 'nomi_read', ...LANE_DEFERRED_TOOL_CATALOG.map(tool => tool.name),
   ]))
@@ -43,18 +42,16 @@ test('the budget enumerates every menu the runtime can actually send: always-on 
   assert.equal(request.parameters.properties.query, undefined)
 })
 
-test('a newly enlarged deferred domain fails on its own single-group menu, not only on the report-only total', async () => {
+test('a newly enlarged domain fails both the group and complete residency budget', async () => {
   const sample = LANE_DEFERRED_TOOL_CATALOG[0]
   const combinations = await laneToolCombinations([
     ...LANE_DEFERRED_TOOL_CATALOG, { ...sample, name: 'budget_probe', description: 'A'.repeat(48_000) },
   ])
   const failures = evaluateLaneToolBudget({ alwaysOnCount: combinations[0].toolNames.length, combinations })
-  // 红在「常驻 + 那个组」这一行上。**不是**红在「全部一起亮」上——那一行只报告，
-  // 所以这条断言同时证明新口径没有把门岗关掉。
-  const fat = combinations.find(one => !one.reportOnly && one.toolNames.includes('budget_probe'))
+  const fat = combinations.find(one => one.toolNames.includes('budget_probe'))
   assert.ok(fat, `胖掉的那个组必须有自己一行：${sample.internalGroup}`)
   assert.ok(failures.some(failure => failure.includes(fat.label)))
-  assert.ok(!failures.some(failure => failure.includes(combinations.at(-1).label)), '只报告的那一行不许判红')
+  assert.ok(failures.some(failure => failure.includes(combinations.at(-1).label)), '最终常驻组合必须判红')
 })
 
 // 本文件由 `pnpm exec tsx --test` 跑（见 package.json 的 `check:model-schema`）——

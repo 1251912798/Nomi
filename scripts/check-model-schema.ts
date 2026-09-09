@@ -34,7 +34,7 @@ import {
 import { LANE_MODEL_TOOL_CATALOG, LANE_DEFERRED_TOOL_CATALOG, LANE_TOOL_BUDGET } from "../electron/agentLane/laneToolCatalog";
 import { modelToolSurfaceManifest } from "../electron/harness/tools/modelToolSurfaceManifest";
 import {
-  evaluateLaneToolBudget, laneRequestToolDefinition, LANE_TOOL_SCHEMA_TOKEN_CEILING,
+  evaluateLaneToolBudget, laneToolMenu, laneRequestToolDefinition, LANE_TOOL_SCHEMA_TOKEN_CEILING,
   type LaneToolCombination,
 } from "../electron/agentLane/laneToolGroups.mjs";
 import { laneModelReadDefinition } from "../electron/agentLane/laneModelRead.mjs";
@@ -415,22 +415,24 @@ export async function laneToolCombinations(deferred: readonly LaneToolSpec[] = L
   }
   const codingChunks = LANE_CODING_TOOL_NAMES.filter(name => name !== 'read').map((name) => {
     const tool = codingByName.get(name)!;
-    return tool.description + JSON.stringify(tool.parameters);
+    return laneToolModelDescription(tool) + JSON.stringify(tool.parameters);
   });
   const domainGroupNames = [...new Set(deferred.map(tool => tool.internalGroup!))];
-  const groups = [{ name: "coding" }, { name: "models" }, ...domainGroupNames.map(name => ({ name }))];
+  const groups = [
+    { name: "coding", toolNames: LANE_CODING_TOOL_NAMES.filter(name => name !== "read") },
+    ...domainGroupNames.map(name => ({ name, toolNames: deferred.filter(tool => tool.internalGroup === name).map(tool => tool.name) })),
+    { name: "models", toolNames: [laneModelReadDefinition.name] },
+  ];
   const request = laneRequestToolDefinition(groups);
   const alwaysOnNames = [...LANE_MODEL_TOOL_CATALOG.map(tool => tool.name), request.name, "read"];
   const read = codingByName.get("read")!;
-  const alwaysOn = await estimateSchemaTokens([...alwaysOnChunks, request.description + JSON.stringify(request.parameters), read.description + JSON.stringify(read.parameters)]);
+  const alwaysOn = await estimateSchemaTokens([...alwaysOnChunks, request.description + JSON.stringify(request.parameters), laneToolModelDescription(read) + JSON.stringify(read.parameters)]);
   const modelReadTokens = await estimateSchemaTokens([laneModelReadDefinition.description + JSON.stringify(laneModelReadDefinition.parameters)]);
   const coding = await estimateSchemaTokens(codingChunks);
   const domainChunk = (tool: LaneToolSpec) =>
     laneToolModelDescription(tool) + JSON.stringify(toPublishedJsonSchema(tool.schema));
 
-  // 运行时**只发得出**「常驻 + 至多一个领域组」（`laneToolMenu`：同一时刻一个组）。
-  // 所以判据也只能是这些组合，逐一算。「全部亮起」那一行仍然打印，但它是一个
-  // 结构上发不出去的菜单——拿它判红，判的是一个不存在的运行时（2026-09-08 裁决）。
+  // Report each group contribution and enforce the complete resident catalog.
   const combinations: LaneToolCombination[] = [
     { label: "always-on（含 request）", toolNames: alwaysOnNames, estimatedTokens: alwaysOn },
     {
@@ -452,10 +454,9 @@ export async function laneToolCombinations(deferred: readonly LaneToolSpec[] = L
     });
   }
   combinations.push({
-    label: "全部组一起亮（运行时发不出，只作报告）",
-    toolNames: [...alwaysOnNames, ...LANE_CODING_TOOL_NAMES.filter(name => name !== "read"), laneModelReadDefinition.name, ...deferred.map(tool => tool.name)],
+    label: "全部组常驻（实际最大组合）",
+    toolNames: laneToolMenu({ groups }).activeToolNames,
     estimatedTokens: alwaysOn + coding + domainTokens,
-    reportOnly: true,
   });
   return combinations;
 }
@@ -463,8 +464,7 @@ export async function laneToolCombinations(deferred: readonly LaneToolSpec[] = L
 async function checkLaneToolBudget(): Promise<boolean> {
   const combinations = await laneToolCombinations();
   for (const combination of combinations) {
-    console.log(`  · ${combination.label}：${combination.toolNames.length} 个工具，约 ${combination.estimatedTokens} token`
-      + (combination.reportOnly ? "（仅报告，不作判据）" : ""));
+    console.log(`  · ${combination.label}：${combination.toolNames.length} 个工具，约 ${combination.estimatedTokens} token`);
   }
   const failures = evaluateLaneToolBudget({
     alwaysOnCount: combinations[0].toolNames.length,
@@ -472,7 +472,7 @@ async function checkLaneToolBudget(): Promise<boolean> {
   });
   if (failures.length === 0) {
     console.log(
-      `✅ lane 工具预算通过（always-on ≤ ${LANE_TOOL_BUDGET}，且「常驻 + 任一单组」逐一 ≤ ${LANE_TOOL_SCHEMA_TOKEN_CEILING} token）。`);
+      `✅ lane 工具预算通过（always-on ≤ ${LANE_TOOL_BUDGET}，全部常驻组合 ≤ ${LANE_TOOL_SCHEMA_TOKEN_CEILING} token）。`);
     return true;
   }
   console.error("\n✖ lane 工具预算超了：");

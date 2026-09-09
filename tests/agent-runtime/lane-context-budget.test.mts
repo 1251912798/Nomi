@@ -124,8 +124,8 @@ test('C59 the 24 recorded user turns reduce total input by 60 percent and add un
   }
   assert.equal(bodies.length, 24);
   assert.ok(after <= before * 0.4, `before=${before}, after=${after}`);
-  // Includes the first call's fixed fixture host prompt; production tool schemas are measured separately.
-  assert.ok(added.every(value => value < 2000), JSON.stringify(added));
+  // Fixed tool guidance is measured by schema/prefix probes, not charged as newly added user context.
+  assert.ok(added.slice(1).every(value => value < 2000), JSON.stringify(added));
   assert.ok(tokens(index + recorded.turns[0]) < 2000);
   t.diagnostic(JSON.stringify({ method: 'pi estimateTokens on real loopback request bodies; legacy catalog projection reconstructed',
     turns: 24, before, after, reduction: 1 - after / before, indexTokens: tokens(index), newInputTokens: added }));
@@ -217,8 +217,17 @@ test('C58 skill-only reads reject symlink escapes and allow project reads only a
   await symlink(path.join(fixture.projectDir, 'private.txt'), path.join(root, 'SKILL.md'));
   const native = await createLaneNativeAssembly({ projectDir: fixture.projectDir, trustedSkillRoots: [root], bashTimeoutMs: 5000,
     sandbox: { active: true, operations: { exec: async () => { throw new Error('not used'); } }, close: async () => {} } });
-  let active = [...native.activeToolNames()];
-  native.bindActiveTools({ getActiveTools: async () => active, setActiveTools: async names => { active = names; } });
+  const { openLaneSession } = await import('../../electron/agentLane/laneSession.mjs');
+  const { AgentHarness } = await import('@earendil-works/pi-agent-core');
+  const { createModels } = await import('@earendil-works/pi-ai');
+  const session = await openLaneSession({ projectDir: fixture.projectDir, laneName: 'main' }, BACKGROUND_CONTEXT);
+  const { createNomiProvider } = await import('../../electron/agentLane/laneModelProvider.mjs');
+  const configured = await createNomiProvider(fixture.options.model, globalThis.fetch);
+  const models = createModels({ credentials: configured.credentials });
+  models.setProvider(configured.provider);
+  const { harness } = await AgentHarness.create({ session: session.session, models, model: configured.model, tools: native.tools }, BACKGROUND_CONTEXT);
+  fixture.after(async () => { await harness.close(BACKGROUND_CONTEXT); await session.release(BACKGROUND_CONTEXT); });
+  native.bindActiveTools(await harness.lane('main', BACKGROUND_CONTEXT));
   const call = (name: string, args: unknown) => native.tools.find(tool => tool.name === name)!
     .execute('fixture', args as never, (() => {}) as never, undefined, {} as never, BACKGROUND_CONTEXT);
   await assert.rejects(call('read', { path: path.join(root, 'SKILL.md') }), /outside/);

@@ -291,7 +291,7 @@ test('按需装载：点亮 coding 组就整组亮', () => {
   for (const name of LANE_CODING_TOOL_NAMES) assert.ok(menu.activeToolNames.includes(name));
 });
 
-test('同一时刻只亮一个领域组：换组时上一组整组退回 deferred（2026-09-08 裁决）', () => {
+test('B1c: registered schemas remain resident across group selection', () => {
   const groups = [
     { name: LANE_CODING_TOOL_GROUP, toolNames: LANE_CODING_TOOL_NAMES },
     { name: 'timeline', toolNames: ['nomi_timeline_fixture'] },
@@ -299,10 +299,10 @@ test('同一时刻只亮一个领域组：换组时上一组整组退回 deferre
   const coding = laneToolMenu({ groups, activeGroup: LANE_CODING_TOOL_GROUP });
   const timeline = laneToolMenu({ groups, activeGroup: 'timeline' });
   assert.equal(timeline.activeGroup, 'timeline');
-  assert.equal(timeline.codingUnlocked, false, '换到别的组之后 coding 就不该还亮着');
+  assert.equal(timeline.codingUnlocked, false, 'group selection is not coding authorization');
   for (const name of LANE_CODING_TOOL_NAMES) {
     assert.ok(coding.activeToolNames.includes(name));
-    assert.equal(timeline.activeToolNames.includes(name), name === 'read', `${name} 换组后必须退回 deferred`);
+    assert.ok(timeline.activeToolNames.includes(name), `${name} remains resident`);
   }
   // 常驻那一段两边逐字相同——换组只动尾巴，前缀不动。
   const alwaysOn = laneToolMenu().activeToolNames;
@@ -338,17 +338,10 @@ test('预算判定两条各挡各的（先证会红：R17）', () => {
   }), []);
 });
 
-test('「全部组一起亮」只报告不判据，而真会发出去的组合照样判（先证会红：R17）', () => {
-  const over = { toolNames: [], estimatedTokens: 11_915 };
-  // 同一个数字：挂 reportOnly 就是绿，不挂就是红。差别只在这一个字段上，
-  // 所以这条测试同时证明「口径生效了」和「口径没有把门岗整个关掉」。
-  assert.deepEqual(evaluateLaneToolBudget({
-    alwaysOnCount: 11,
-    combinations: [{ label: '全部组一起亮（运行时发不出，只作报告）', ...over, reportOnly: true }],
-  }), []);
-  assert.equal(evaluateLaneToolBudget({
-    alwaysOnCount: 11, combinations: [{ label: 'always-on + timeline', ...over }],
-  }).length, 1, '常驻 + 单组超限必须红——这条红了才说明上面那条不是把检查删了');
+test('B1c the full resident catalog has no report-only budget exemption', () => {
+  assert.equal(evaluateLaneToolBudget({ alwaysOnCount: 12,
+    combinations: [{ label: 'all resident', toolNames: [], estimatedTokens: 10001 }],
+  }).length, 1);
 });
 
 // ── effects 自洽（与 laneTools.mts 同一条装配期不变量）──────────────────

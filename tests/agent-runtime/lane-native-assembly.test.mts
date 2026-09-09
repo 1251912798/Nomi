@@ -45,12 +45,15 @@ test('the real harness activates deferred native tools on a tool result and pres
     return { ...session, harness, lane };
   }
   const first = await open();
-  assert.equal((await first.lane.getActiveTools(ctx)).length, 12);
+  const grep = native.tools.find(tool => tool.name === 'grep')!;
+  await assert.rejects(grep.execute('locked-grep', { pattern: 'fixture' } as never,
+    (() => undefined) as never, undefined, {} as never, ctx), /Request coding/);
+  assert.equal((await first.lane.getActiveTools(ctx)).length, native.activeToolNames().length);
   const result = await first.lane.prompt('Read fixture.txt', undefined, ctx);
   assert.equal(result.ok, true);
-  assert.equal((await first.lane.getActiveTools(ctx)).length, 18);
+  assert.equal((await first.lane.getActiveTools(ctx)).length, native.activeToolNames().length);
   const bodies = fixture.http.requests.map((request) => request.body as { tools?: Array<{ function?: { name?: string } }>; messages?: unknown });
-  assert.equal(bodies[0]?.tools?.length, 12);
+  assert.equal(bodies[0]?.tools?.length, native.activeToolNames().length);
   assert.ok(bodies[0]?.tools?.some((tool) => tool.function?.name === 'read'));
   assert.ok(bodies[1]?.tools?.some((tool) => tool.function?.name === 'read'));
   assert.match(JSON.stringify(bodies[2]?.messages), /native fixture content/);
@@ -60,7 +63,14 @@ test('the real harness activates deferred native tools on a tool result and pres
   await first.release(ctx);
   const second = await open(sessionId);
   t.after(async () => { await second.harness.close(ctx); await second.session.close(ctx); await second.release(ctx); });
-  assert.equal((await second.lane.getActiveTools(ctx)).length, 18);
+  assert.equal((await second.lane.getActiveTools(ctx)).length, native.activeToolNames().length);
+  const request = native.tools.find(tool => tool.name === 'nomi_request_tools')!;
+  await request.execute('models', { group: 'models' } as never, (() => undefined) as never, undefined, {} as never, ctx);
+  const read = native.tools.find(tool => tool.name === 'read')!;
+  assert.match(JSON.stringify(await read.execute('restored-read', { path: 'fixture.txt' } as never,
+    (() => undefined) as never, undefined, {} as never, ctx)), /native fixture content/);
+  assert.equal((await second.lane.findEntries({ type: 'custom', customType: 'nomi.coding-access' }, ctx)).length, 1);
+
 });
 
 test('request tools only resolves registered groups and does not grant file write permissions', async (t) => {
@@ -73,9 +83,9 @@ test('request tools only resolves registered groups and does not grant file writ
   await assert.rejects(call({ groups: ['media'] }), /registered group/,
     '一次只切一个组：数组形状不再是合法参数');
   const result = await call({ group: 'media' });
-  assert.deepEqual(result.addedToolNames, ['nomi_media_fixture']);
+  assert.equal(result.addedToolNames, undefined);
   assert.equal(native.effects.write.mutates, true);
-  assert.equal(native.activeToolNames().length, 12, 'No local activation truth duplicates pi state.');
+  assert.equal(native.activeToolNames().length, 20, 'No local activation truth duplicates pi state.');
   await assert.rejects(createLaneNativeAssembly({ projectDir: fixture.projectDir, sandbox, bashTimeoutMs: 5_000,
     deferredGroups: [{ name: 'escape', toolNames: ['read'] }] }), /Duplicate deferred tool/);
 });
@@ -104,6 +114,14 @@ test('pi seconds are converted once to the Nomi millisecond execution budget', a
     sandbox: { active: true, close: async () => undefined, operations: { exec: async (_command, _cwd, options) => {
       observed.push(options.timeout); return { exitCode: 0 };
     } } } });
+  const configured = await createNomiProvider(fixture.options.model, globalThis.fetch);
+  const models = createModels({ credentials: configured.credentials });
+  models.setProvider(configured.provider);
+  const session = await openLaneSession({ projectDir: fixture.projectDir, laneName: 'main' }, BACKGROUND_CONTEXT);
+  const { harness } = await AgentHarness.create({ session: session.session, models, model: configured.model, tools: native.tools }, BACKGROUND_CONTEXT);
+  fixture.after(async () => { await harness.close(BACKGROUND_CONTEXT); await session.release(BACKGROUND_CONTEXT); });
+  native.bindActiveTools(await harness.lane('main', BACKGROUND_CONTEXT));
+  await native.unlockCoding(BACKGROUND_CONTEXT);
   const bash = native.tools.find((tool) => tool.name === 'bash')!;
   for (const timeout of [2, 100, undefined]) {
     await bash.execute('seconds', { command: 'echo fixture', ...(timeout === undefined ? {} : { timeout }) } as never,
