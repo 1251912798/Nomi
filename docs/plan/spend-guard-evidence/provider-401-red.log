@@ -1,0 +1,29 @@
+
+ RUN  v4.1.8 /Users/aoqimin/Desktop/Nomi-money-guard
+
+ ❯ src/workbench/generationCanvas/nodes/useNodeModelAutoSelect.test.ts (1 test | 1 failed) 3ms
+   × 401 preserves the chosen vendor and offers a switch that requires a click 3ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/workbench/generationCanvas/nodes/useNodeModelAutoSelect.test.ts > 401 preserves the chosen vendor and offers a switch that requires a click
+AssertionError: expected "vi.fn()" to be called with arguments: [ ObjectContaining{…} ]
+
+Number of calls: 0
+
+ ❯ src/workbench/generationCanvas/nodes/useNodeModelAutoSelect.test.ts:38:22
+     36|   expect(updateNode).not.toHaveBeenCalled()
+     37|   expect(node.meta?.modelVendor).toBe('apimart')
+     38|   expect(mocks.push).toHaveBeenCalledWith(expect.objectContaining({ ac…
+       |                      ^
+     39|   mocks.push.mock.calls[0][0].onAction()
+     40|   expect(updateNode).toHaveBeenCalledWith('image', expect.objectContai…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed (1)
+   Start at  16:25:50
+   Duration  797ms (transform 581ms, setup 24ms, import 693ms, tests 3ms, environment 0ms)
+

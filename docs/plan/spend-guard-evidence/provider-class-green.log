@@ -1,0 +1,9 @@
+
+ RUN  v4.1.8 /Users/aoqimin/Desktop/Nomi-money-guard
+
+
+ Test Files  1 passed (1)
+      Tests  262 passed (262)
+   Start at  16:10:46
+   Duration  1.90s (transform 851ms, setup 49ms, import 1.70s, tests 55ms, environment 0ms)
+

@@ -1,0 +1,40 @@
+
+ RUN  v4.1.8 /Users/aoqimin/Desktop/Nomi-money-guard
+
+ ❯ electron/catalog/rendererCatalogMutation.test.ts (7 tests | 1 failed) 7ms
+     × 401 never overwrites the previous credential or disables its vendor 3ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  electron/catalog/rendererCatalogMutation.test.ts > B4 candidate credentials > 401 never overwrites the previous credential or disables its vendor
+AssertionError: promise resolved "{ vendorKey: 'relay', …(1) }" instead of rejecting
+
+- Expected
++ Received
+
+- Error {
+-   "message": "rejected promise",
++ {
++   "payload": {
++     "apiKey": "invalid-test-key",
++     "enabled": false,
++   },
++   "vendorKey": "relay",
+  }
+
+ ❯ electron/catalog/rendererCatalogMutation.test.ts:179:122
+    177|     vi.mocked(store.readCatalog).mockReturnValue(catalog);
+    178|     vi.mocked(fetchModelList).mockResolvedValue({ ok: false, status: 4…
+    179|     await expect(Promise.resolve().then(() => upsertRendererCatalogVen…
+       |                                                                                                                          ^
+    180|     expect(store.upsertModelCatalogVendorApiKey).not.toHaveBeenCalled(…
+    181|     expect(store.upsertModelCatalogVendor).not.toHaveBeenCalled();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 6 passed (7)
+   Start at  15:41:27
+   Duration  811ms (transform 543ms, setup 30ms, import 694ms, tests 7ms, environment 0ms)
+

@@ -1,0 +1,39 @@
+
+ RUN  v4.1.8 /Users/aoqimin/Desktop/Nomi-money-guard
+
+ ❯ electron/spendGrant.test.ts (11 tests | 2 failed) 4ms
+     × asks again when a batch exceeds its confirmed quote and never spends after rejection 1ms
+     × requires quote confirmation for a legacy count-only grant 0ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  electron/spendGrant.test.ts > quote-bound paid submission > asks again when a batch exceeds its confirmed quote and never spends after rejection
+TypeError: assertAndConsumeQuotedSpend is not a function
+ ❯ electron/spendGrant.test.ts:77:11
+     75|     const grantId = mintSpendGrant({ nodeIds: ['a', 'b'], quote: { lin…
+     76|     const ask = vi.fn(async () => false);
+     77|     await assertAndConsumeQuotedSpend(grantId, 'a', { vendorKey: 'rela…
+       |           ^
+     78|     expect(ask).not.toHaveBeenCalled();
+     79|     await expect(assertAndConsumeQuotedSpend(grantId, 'b', { vendorKey…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  electron/spendGrant.test.ts > quote-bound paid submission > requires quote confirmation for a legacy count-only grant
+TypeError: assertAndConsumeQuotedSpend is not a function
+ ❯ electron/spendGrant.test.ts:86:11
+     84|     const grantId = mintSpendGrant({ nodeIds: ['a'] });
+     85|     const ask = vi.fn(async () => true);
+     86|     await assertAndConsumeQuotedSpend(grantId, 'a', { vendorKey: 'rela…
+       |           ^
+     87|     expect(ask).toHaveBeenCalledOnce();
+     88|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 9 passed (11)
+   Start at  15:57:01
+   Duration  114ms (transform 27ms, setup 24ms, import 13ms, tests 4ms, environment 0ms)
+

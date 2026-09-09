@@ -1,0 +1,41 @@
+
+ RUN  v4.1.8 /Users/aoqimin/Desktop/Nomi-money-guard
+
+ ❯ src/workbench/generationCanvas/spend/spendQuoteCard.test.ts (2 tests | 2 failed) 3ms
+     × shows a priced model amount and transfers only the confirmed quote id 2ms
+     × unknown price is explicit and rejection never transfers quote authorization 0ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/workbench/generationCanvas/spend/spendQuoteCard.test.ts > shared quote confirmation card > shows a priced model amount and transfers only the confirmed quote id
+AssertionError: the given combination of arguments (undefined and string) is invalid for this assertion. You can use an array, a map, an object, a set, a string, or a weakset instead of a string
+ ❯ src/workbench/generationCanvas/spend/spendQuoteCard.test.ts:17:57
+     15|       title: 'Generate', message: 'One image', onQuoteConfirmed: accep…
+     16|     })
+     17|     expect(confirm.mock.calls[0][0].details?.[0].value).toContain('0.3…
+       |                                                         ^
+     18|     expect(accepted).toHaveBeenCalledWith('quote-1')
+     19|   })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/workbench/generationCanvas/spend/spendQuoteCard.test.ts > shared quote confirmation card > unknown price is explicit and rejection never transfers quote authorization
+TypeError: .toMatch() expects to receive a string, but got undefined
+ ❯ src/workbench/generationCanvas/spend/spendQuoteCard.test.ts:27:57
+     25|       title: 'Generate', message: 'One image', onQuoteConfirmed: accep…
+     26|     })
+     27|     expect(confirm.mock.calls[0][0].details?.[0].value).toMatch(/目录未标价…
+       |                                                         ^
+     28|     expect(accepted).not.toHaveBeenCalled()
+     29|   })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed (2)
+   Start at  16:01:59
+   Duration  240ms (transform 133ms, setup 21ms, import 155ms, tests 3ms, environment 0ms)
+
+
+exit=1
