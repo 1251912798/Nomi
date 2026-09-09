@@ -1,3 +1,5 @@
+import { AssistantPane } from '../AssistantPane'
+import { assistantPaneWidth } from '../assistantWidthBounds'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Group, Panel, Separator, usePanelRef, type PanelImperativeHandle } from 'react-resizable-panels'
@@ -10,7 +12,7 @@ import TimelinePreview from './TimelinePreview'
 import PreviewSourcePanel from './PreviewSourcePanel'
 import PreviewInspector from './inspector/PreviewInspector'
 import { PanelRail } from './PanelRail'
-import { EDITING_PANEL_BOUNDS, EDITING_PANEL_MAIN_MIN, EDITING_PANEL_RAIL_WIDTH, type EditingPanelSizeKey } from './panelLayout'
+import { EDITING_PANEL_BOUNDS, EDITING_PANEL_RAIL_WIDTH, type EditingPanelSizeKey } from './panelLayout'
 import { useTimelinePlaybackClock } from '../timeline/useTimelinePlaybackClock'
 import { useResidentActivityStore } from '../ai/residentActivity'
 
@@ -137,10 +139,8 @@ export default function PreviewWorkspace({ aiCollapsed = false, agentDockRef }: 
   const undoEditingPanelLayout = useWorkbenchStore((state) => state.undoEditingPanelLayout)
   const sourcePanelRef = usePanelRef()
   const inspectorPanelRef = usePanelRef()
-  const assistantPanelRef = usePanelRef()
   const sourceElementRef = React.useRef<HTMLDivElement | null>(null)
   const inspectorElementRef = React.useRef<HTMLDivElement | null>(null)
-  const assistantElementRef = React.useRef<HTMLDivElement | null>(null)
   // defaultSize 是**挂载时**的初值，不是受控值。喂它实时 store 值的话，每次改布局都会在
   // 我们的同步循环之后再触发一次库内部的「默认尺寸变了 → 重排」，把刚定好的 300/240 顶成 383/307。
   // 之后的所有布局变更都只走 usePanelLayoutSync 的命令式通道。
@@ -155,7 +155,6 @@ export default function PreviewWorkspace({ aiCollapsed = false, agentDockRef }: 
 
   // 顺序即外层先于内层：Nomi 那一刀定了，舞台行的可用宽度才是最终值。
   const syncingRef = usePanelLayoutSync([
-    { ref: assistantPanelRef, element: assistantElementRef, orientation: 'width', visible: assistantVisible, size: layout.assistantWidth },
     { ref: sourcePanelRef, element: sourceElementRef, orientation: 'width', visible: layout.visibility.source, size: layout.sourceWidth },
     { ref: inspectorPanelRef, element: inspectorElementRef, orientation: 'width', visible: layout.visibility.inspector, size: layout.inspectorWidth },
   ])
@@ -187,8 +186,9 @@ export default function PreviewWorkspace({ aiCollapsed = false, agentDockRef }: 
       className="workbench-preview relative h-full w-full min-w-0 min-h-0 overflow-hidden bg-[var(--workbench-bg)]"
       aria-label={t('workspace.preview')}
     >
-      <Group orientation="horizontal" className="h-full w-full" id="editing-surface-root" onLayoutChanged={onUserLayout}>
-        <Panel id="editing-surface-main" minSize={EDITING_PANEL_MAIN_MIN}>
+      <div className="grid h-full w-full min-w-0" id="editing-surface-root"
+        style={{ gridTemplateColumns: `minmax(0,1fr) ${assistantVisible ? assistantPaneWidth(layout.assistantWidth) : EDITING_PANEL_RAIL_WIDTH}px` }}>
+        <div className="min-h-0 min-w-0" id="editing-surface-main">
           <Group orientation="vertical" className="h-full" id="editing-surface-left" onLayoutChanged={onUserLayout}>
             <Panel id="editing-surface-stage" minSize={EDITING_PANEL_BOUNDS.stage.min}>
               <Group orientation="horizontal" className="h-full" id="editing-surface-stage-row" onLayoutChanged={onUserLayout}>
@@ -265,26 +265,15 @@ export default function PreviewWorkspace({ aiCollapsed = false, agentDockRef }: 
               </div>
             </Panel>
           </Group>
-        </Panel>
-        <SplitHandle vertical />
-        <Panel
-          id="editing-surface-assistant"
-          panelRef={assistantPanelRef}
-          elementRef={assistantElementRef}
-          defaultSize={initialLayout.assistantWidth}
-          minSize={EDITING_PANEL_BOUNDS.assistant.min}
-          maxSize={EDITING_PANEL_BOUNDS.assistant.max}
-          collapsible
-          collapsedSize={EDITING_PANEL_RAIL_WIDTH}
-          groupResizeBehavior="preserve-pixel-size"
-          onResize={(size) => onPanelResized('assistantWidth', size.inPixels, assistantVisible)}
-        >
+        </div>
           <aside
-            className="relative h-full min-w-0 overflow-hidden border-l border-[var(--workbench-border)] bg-[var(--workbench-surface)]"
+            id="editing-surface-assistant"
+            data-testid="editing-surface-assistant"
+            className="relative h-full min-w-0"
             aria-label={t('timelinePreview.previewLayout.panels.assistant')}
           >
             {assistantVisible ? (
-              <div ref={agentDockRef} className="h-full w-full min-w-0" />
+              <AssistantPane dockRef={agentDockRef} />
             ) : (
               /* 收起后叫回 Nomi 的**唯一**入口。状态点让「它还在跑 / 在等我确认」在收起态也看得见，
                  这是删掉画面右上角那颗「叫回 Nomi」胶囊的前提——一功能一个家（合同 §1.5）。 */
@@ -299,8 +288,7 @@ export default function PreviewWorkspace({ aiCollapsed = false, agentDockRef }: 
               />
             )}
           </aside>
-        </Panel>
-      </Group>
+      </div>
     </section>
   )
 }

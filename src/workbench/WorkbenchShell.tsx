@@ -226,7 +226,7 @@ export default function WorkbenchShell({
         const clampToViewport = (): void => {
             const store = useWorkbenchStore.getState();
             const max = assistantWidthMaxFor(window.innerWidth);
-            if (store.assistantWidth > max) store.setAssistantWidth(max);
+            if (store.editingPanelLayout.assistantWidth > max) store.setAssistantWidth(max);
         };
         clampToViewport();
         window.addEventListener("resize", clampToViewport);

@@ -149,7 +149,7 @@ const workbenchBasePlugin = plugin(({ addBase, addUtilities }) => {
       '--nomi-duration-fast': '140ms',
       '--nomi-ease-fast': 'cubic-bezier(.2, .7, .3, 1)',
       '--nomi-font-sans': 'Inter, -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", system-ui, sans-serif',
-      '--nomi-font-display': 'Fraunces, Inter, serif',
+      '--nomi-font-display': '"Fraunces Variable", Fraunces, "Inter Variable", Inter, serif',
       '--nomi-font-mono': 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace',
       'color-scheme': 'light',
       // ── 工作区语义层（--workbench-*，设计系统 §2.1 ② 层）。定义在 :root 而非 .workbench-shell：
