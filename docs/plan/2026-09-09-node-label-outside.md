@@ -112,3 +112,36 @@ CI run 34347335160 的 Electron smoke 报 font-size 新增 1；本地 smoke 同�
 - 用户已看过 `/tmp/nomi-label-font-baseline-review/contact-sheet.png` 和 manifest，授权仅更新清单内 24 张 process-feedback 旧图；不运行全量更新，不改规则、容差或 reactFlow/**。
 - 合入 origin/main `d3fa258883c6db9cf6565be6699c0f92cf4fbe2b`。唯一冲突在 BaseGenerationNode.tsx：保留 main 新增的 NodeGeneratingOverlay.reportFeedback 及其余反馈接线；镜头号仍只在 NodeLabelRow 渲染，删除 main 冲突块中原媒体覆盖位置的重复 ShotPreviewOverlays，保住框外标签意图。
 - 从 manifest 生成精确 Playwright grep，重录 24 张后核对 Git 图片变更集合完全一致，再执行完整 with-gates-lock gates；exit 0 后正常 hooks 提交/推送。回滚以本次提交 revert 为边界，不回滚 main。
+
+本次字阶收尾的 24 张清单（与此前 26 张位置基线更新分开记录）：
+
+- `pf-preview-dark.png`
+- `pf-fx-generating.png`
+- `pf-video-generating.png`
+- `pf-fx-reduced.png`
+- `pf-fx-final-reveal.png`
+- `pf-fx-organic.png`
+- `pf-image-generating.png`
+- `pf-video-finalizing.png`
+- `pf-zoom-60.png`
+- `pf-fx-preview-reveal.png`
+- `pf-late.png`
+- `pf-image-failed.png`
+- `pf-video-submitting.png`
+- `pf-audio-submitting.png`
+- `pf-audio-finalizing.png`
+- `pf-preview.png`
+- `pf-image-finalizing.png`
+- `pf-audio-queued.png`
+- `pf-video-failed.png`
+- `pf-fx-done-clean.png`
+- `pf-audio-generating.png`
+- `pf-video-queued.png`
+- `pf-image-queued.png`
+- `pf-image-submitting.png`
+
+![用户已批准的 24 张字阶前后接触表](2026-09-09-node-label-evidence/font-baseline-contact-sheet.png)
+
+像素边界以随附 manifest 为准：23 张在 y=0–8，pf-zoom-60 在 y=8–14，均为顶部标签区，媒体区不变。
+
+定向重录 24/24 通过；逐像素对照发现 7 张动效帧采样与获批 actual 不同，因此最终仅复制审核目录中保存的 24 张获批 actual，未接纳重录产生的媒体变化。Git 旧基线变更集合与 manifest 完全一致，24 张均与获批 actual 字节一致；完整 gates 对最终获批图重新比对。
