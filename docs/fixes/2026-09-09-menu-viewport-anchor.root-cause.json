@@ -77,8 +77,7 @@
     ]
   },
   "regression_tests": [
-    "tests/ux/skill-library-cards.walk.mjs",
-    "tests/ux/design-lab/design-lab.visual.spec.mjs"
+    "tests/ux/skill-library-cards.walk.mjs"
   ],
   "class_regression_tests": [
     "tests/ux/skill-library-cards.walk.mjs"
