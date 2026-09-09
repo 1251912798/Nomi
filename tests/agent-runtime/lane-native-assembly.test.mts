@@ -41,16 +41,17 @@ test('the real harness activates deferred native tools on a tool result and pres
       tools: [...domain, ...native.tools], activeToolNames: [...native.activeToolNames()],
     }, ctx);
     const lane = await harness.lane('main', ctx);
+    native.bindActiveTools(lane);
     return { ...session, harness, lane };
   }
   const first = await open();
   assert.equal((await first.lane.getActiveTools(ctx)).length, 12);
   const result = await first.lane.prompt('Read fixture.txt', undefined, ctx);
   assert.equal(result.ok, true);
-  assert.equal((await first.lane.getActiveTools(ctx)).length, 19);
+  assert.equal((await first.lane.getActiveTools(ctx)).length, 18);
   const bodies = fixture.http.requests.map((request) => request.body as { tools?: Array<{ function?: { name?: string } }>; messages?: unknown });
   assert.equal(bodies[0]?.tools?.length, 12);
-  assert.ok(!bodies[0]?.tools?.some((tool) => tool.function?.name === 'read'));
+  assert.ok(bodies[0]?.tools?.some((tool) => tool.function?.name === 'read'));
   assert.ok(bodies[1]?.tools?.some((tool) => tool.function?.name === 'read'));
   assert.match(JSON.stringify(bodies[2]?.messages), /native fixture content/);
   const sessionId = first.sessionId;
@@ -59,7 +60,7 @@ test('the real harness activates deferred native tools on a tool result and pres
   await first.release(ctx);
   const second = await open(sessionId);
   t.after(async () => { await second.harness.close(ctx); await second.session.close(ctx); await second.release(ctx); });
-  assert.equal((await second.lane.getActiveTools(ctx)).length, 19);
+  assert.equal((await second.lane.getActiveTools(ctx)).length, 18);
 });
 
 test('request tools only resolves registered groups and does not grant file write permissions', async (t) => {

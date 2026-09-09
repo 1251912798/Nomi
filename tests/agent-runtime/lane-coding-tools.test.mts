@@ -279,7 +279,8 @@ test('按需装载：默认只有 always-on + 一个找工具的工具；coding 
   assert.equal(menu.activeGroup, null);
   assert.equal(menu.codingUnlocked, false);
   assert.ok(menu.activeToolNames.includes(LANE_TOOL_REQUEST_TOOL_NAME));
-  for (const name of LANE_CODING_TOOL_NAMES) {
+  assert.ok(menu.activeToolNames.includes('read'));
+  for (const name of LANE_CODING_TOOL_NAMES.filter(name => name !== 'read')) {
     assert.ok(!menu.activeToolNames.includes(name), `${name} 不该默认亮着`);
   }
 });
@@ -301,7 +302,7 @@ test('同一时刻只亮一个领域组：换组时上一组整组退回 deferre
   assert.equal(timeline.codingUnlocked, false, '换到别的组之后 coding 就不该还亮着');
   for (const name of LANE_CODING_TOOL_NAMES) {
     assert.ok(coding.activeToolNames.includes(name));
-    assert.ok(!timeline.activeToolNames.includes(name), `${name} 换组后必须退回 deferred`);
+    assert.equal(timeline.activeToolNames.includes(name), name === 'read', `${name} 换组后必须退回 deferred`);
   }
   // 常驻那一段两边逐字相同——换组只动尾巴，前缀不动。
   const alwaysOn = laneToolMenu().activeToolNames;

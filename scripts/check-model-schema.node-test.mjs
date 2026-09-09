@@ -20,12 +20,12 @@ const repoRoot = path.resolve(import.meta.dirname, '..')
 
 test('the budget enumerates every menu the runtime can actually send: always-on plus each single group', async () => {
   const combinations = await laneToolCombinations()
-  const alwaysOn = [...LANE_MODEL_TOOL_CATALOG.map(tool => tool.name), LANE_TOOL_REQUEST_TOOL_NAME]
+  const alwaysOn = [...LANE_MODEL_TOOL_CATALOG.map(tool => tool.name), LANE_TOOL_REQUEST_TOOL_NAME, 'read']
   assert.deepEqual(combinations[0].toolNames, alwaysOn)
   // 每一个注册组都要有自己的一行，一个都不许漏——漏掉的那个组永远不会被量。
   const judged = combinations.filter(one => !one.reportOnly)
   assert.deepEqual(judged.map(one => one.label),
-    ['always-on（含 request）', 'always-on + coding',
+    ['always-on（含 request）', 'always-on + coding', 'always-on + models',
       ...LANE_DEFERRED_TOOL_GROUPS.map(group => `always-on + ${group.name}`)])
   for (const combination of judged.slice(1)) {
     assert.deepEqual(combination.toolNames.slice(0, alwaysOn.length), alwaysOn,
@@ -35,7 +35,7 @@ test('the budget enumerates every menu the runtime can actually send: always-on 
   const all = combinations.at(-1)
   assert.equal(all.reportOnly, true)
   assert.deepEqual(new Set(all.toolNames), new Set([
-    ...alwaysOn, ...LANE_CODING_TOOL_NAMES, ...LANE_DEFERRED_TOOL_CATALOG.map(tool => tool.name),
+    ...alwaysOn, ...LANE_CODING_TOOL_NAMES, 'nomi_read', ...LANE_DEFERRED_TOOL_CATALOG.map(tool => tool.name),
   ]))
   const request = laneRequestToolDefinition([{ name: 'coding' }, ...LANE_DEFERRED_TOOL_GROUPS])
   assert.deepEqual(request.parameters.required, ['group'])

@@ -28,7 +28,7 @@ async function catalogProjection() {
 
 const policy = { mode: 'safe-auto', spend: 'confirm' } as const;
 
-test('C0 real desktop callsite sends catalog-projected available models in the user prompt on every turn', async (t) => {
+test('C0 real desktop callsite sends catalog-projected model discovery in stable system context and invalidations as user deltas', async (t) => {
   const { entries, listing } = await catalogProjection();
   assert.ok(entries.length > 0, 'Real archetype projection must retain the configured model');
   const fixture = await createLaneFixture(t, [{ type: 'text', text: 'First.' }, { type: 'text', text: 'Second.' }]);
@@ -45,13 +45,13 @@ test('C0 real desktop callsite sends catalog-projected available models in the u
   const lane = await fixture.openLane({ ...fixture.options, input });
   await lane.execute({ kind: 'prompt', text: '八镜用 MiniMax H3，768P。' });
   const users = (body: unknown) => (body as { messages: Array<{ role: string; content: unknown }> }).messages.filter((m) => m.role === 'user');
-  const prompt = JSON.stringify(users(fixture.http.requests[0].body).at(-1)?.content);
+  const prompt = JSON.stringify((fixture.http.requests[0].body as { messages: Array<{ role: string; content: unknown }> }).messages.filter(m => m.role === 'system'));
   assert.match(prompt, /可用模型/);
-  assert.ok(prompt.includes(`modelKey=${listing[0].modelKey}`));
-  assert.match(prompt, /resolution\[.*768P/);
+  assert.ok(prompt.includes(listing[0].modelKey));
+  assert.match(prompt, /768P/);
   context = { approvalPolicy: policy, ...{ availableModels: [] } };
   await lane.execute({ kind: 'prompt', text: '现在断开了模型。' });
-  assert.doesNotMatch(JSON.stringify(users(fixture.http.requests[1].body).at(-1)?.content), /可用模型/);
+  assert.match(JSON.stringify(users(fixture.http.requests[1].body).at(-1)?.content), /失效.*MiniMax-H3/);
 });
 
 test('composer boundary accepts the real projection and rejects malformed model entries', async () => {
