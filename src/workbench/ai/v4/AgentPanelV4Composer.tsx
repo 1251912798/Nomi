@@ -1,3 +1,5 @@
+import { LibraryGroup } from '../../library/LibraryGroup'
+import { groupLibraryItems, type LibraryCategory } from '../../library/libraryGroups'
 import { V4Row } from './AgentPanelV4Row'
 // Agent 面板 v4 · 积木 ⑧ composer（AI Elements PromptInput + MiniMax 底栏）
 //
@@ -357,6 +359,7 @@ export function V4ModelPopover({ rows, onOpenLibrary }: { rows: readonly V4Model
 }
 
 export type V4CommandRow = Readonly<{
+  group?: LibraryCategory
   id: string
   name: string
   /** `/命令`。提示词库那一段也有，它就是把提示词当命令用的那个名字。 */
@@ -401,7 +404,6 @@ export function V4SkillPopover({
   const [localCategory, setLocalCategory] = React.useState(categories[0])
   const selectedCategory = activeCategory ?? localCategory
   const visibleRows = rows.filter(row => selectedCategory === categories[0] || row.section === selectedCategory)
-  let lastSection = ''
   return (
     <aside
       className="w-[330px] overflow-hidden rounded-nomi border border-nomi-line bg-nomi-paper shadow-nomi-md"
@@ -434,14 +436,9 @@ export function V4SkillPopover({
         ))}
       </div>
       <div className="max-h-[260px] overflow-y-auto overscroll-contain">
-        {visibleRows.map((row) => {
-          const header = row.section !== lastSection ? row.section : ''
-          lastSection = row.section
-          return (
-            <TooltipProvider key={row.id} delayDuration={180}><Tooltip>
-              {header ? (
-                <div className="px-2.5 pb-0.5 pt-1.5 text-micro text-nomi-ink-40">{header}</div>
-              ) : null}
+        {groupLibraryItems(visibleRows, row => row.group ? { ...row.group, id: `${row.section}:${row.group.id}` } : undefined).map(group => (
+          <LibraryGroup key={group.id} group={group}>
+            {group.items.map(row => <TooltipProvider key={row.id} delayDuration={180}><Tooltip>
               <TooltipTrigger asChild><button
                 type="button"
                 onClick={() => onSelect?.(row)}
@@ -464,9 +461,9 @@ export function V4SkillPopover({
                   <p className="mt-2 whitespace-pre-wrap text-caption leading-relaxed text-nomi-ink-60">{row.desc}</p>
                 </div>
               </TooltipContent>
-            </Tooltip></TooltipProvider>
-          )
-        })}
+            </Tooltip></TooltipProvider>)}
+          </LibraryGroup>
+        ))}
       </div>
       <V4Row as="button"
         type="button"

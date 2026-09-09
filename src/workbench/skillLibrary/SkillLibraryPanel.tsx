@@ -1,3 +1,5 @@
+import { LibraryGroup } from '../library/LibraryGroup'
+import { groupLibraryItems } from '../library/libraryGroups'
 /**
  * 技能库面板。技能在 App 里唯一的「家」：浏览（我的技能 / Nomi 内置）、搜索、导入文件、用 AI 新建、
  * 导出、删除、一键在创作区使用。设计对齐提示词库（PromptLibraryPanel）：居中模态 + 来源标签 + 卡片网格。
@@ -384,7 +386,11 @@ export function SkillLibraryContent({
                   <span className={cn('text-caption')}>{t('libraries.skill.createOne')}</span>
                 </button>
               ) : null}
-              {visible.map((entry) => <SkillCard key={entry.id} entry={entry} onOpen={setSelected} />)}
+              {groupLibraryItems(visible, entry => entry.group).map(group => !group.label ? group.items.map(entry => <SkillCard key={entry.id} entry={entry} onOpen={setSelected} />) : <LibraryGroup key={group.id} group={group} className="col-span-full">
+                <div className="grid gap-3" style={{ gridTemplateColumns: compact ? 'repeat(2, minmax(0, 1fr))' : 'repeat(auto-fill, minmax(220px, 1fr))' }}>
+                  {group.items.map(entry => <SkillCard key={entry.id} entry={entry} onOpen={setSelected} />)}
+                </div>
+              </LibraryGroup>)}
             </div>
           )}
           {source === 'mine' && !query.trim() ? (

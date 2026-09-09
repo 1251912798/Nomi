@@ -1,3 +1,4 @@
+import { groupLibraryItems, libraryGroup } from '../../library/libraryGroups'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { WorkbenchMenu, type WorkbenchMenuNode } from '../../../design/menu'
@@ -13,19 +14,23 @@ export function NodeEffectChips({ empty, kind, disabled, onSelect }: {
   const { t, i18n } = useTranslation()
   const { items } = usePromptLibrary(true)
   const user = useUserPrompts(true)
+  const [expanded, setExpanded] = React.useState<ReadonlySet<string>>(new Set())
   const [point, setPoint] = React.useState<{ x: number; y: number } | null>(null)
   const locale = i18n.language.startsWith('zh') ? 'zh-CN' : 'en'
   const effects = items.filter(p => p.curation?.kind === 'effect' && p.curation.appliesTo.some(k => k === kind))
   const label = (p: LibraryPrompt): string => p.curation?.title[locale] ?? p.title
-  const groups = new Map<string, LibraryPrompt[]>()
-  for (const item of [...effects, ...user.items.filter(p => p.promptType === kind)]) {
-    const group = item.curation?.group[locale] ?? t('libraries.prompt.source.mine')
-    groups.set(group, [...(groups.get(group) ?? []), item])
-  }
-  const menu: WorkbenchMenuNode[] = [...groups].map(([group, entries]) => ({
-    kind: 'group', id: group, label: group,
-    items: entries.map(item => ({ id: item.id, label: label(item), onSelect: () => onSelect(item), disabled })),
-  }))
+  const groups = groupLibraryItems([...effects, ...user.items.filter(p => p.promptType === kind)], item => libraryGroup(item, i18n.language))
+  const menu: WorkbenchMenuNode[] = groups.map(group => {
+    const choices = group.items.map(item => ({ id: item.id, label: label(item), onSelect: () => onSelect(item), disabled }))
+    if (!group.collapsed) return { kind: 'group', id: group.id, label: group.label, items: choices }
+    const open = expanded.has(group.id)
+    return { kind: 'group', id: group.id, items: [
+      { id: `toggle:${group.id}`, label: t('libraries.gallery.groupCount', { name: group.label, count: group.items.length }),
+        shortcut: open ? '▾' : '▸', closeOnSelect: false,
+        onSelect: () => setExpanded(previous => { const next = new Set(previous); if (next.has(group.id)) next.delete(group.id); else next.add(group.id); return next }) },
+      ...(open ? choices : []),
+    ] }
+  })
   return <div className="flex shrink-0 flex-wrap items-center gap-1" data-node-effect-chips={empty ? 'empty' : 'filled'}>
     {empty && STARTER_EFFECTS.flatMap(id => {
       const item = effects.find(p => p.id === id)

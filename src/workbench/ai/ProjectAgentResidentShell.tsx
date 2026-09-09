@@ -1,3 +1,4 @@
+import { libraryGroup } from '../library/libraryGroups'
 // 常驻 Agent 面板的容器。
 //
 // 它现在只做三件事：把宿主接线（读侧 `useAgentPanelV4Data` / 写侧 `useAgentPanelV4Actions`）
@@ -63,7 +64,7 @@ function usePanelSize(): Readonly<{ width: number; height: number; measure: (nod
 }
 
 export default function ProjectAgentResidentShell({ surface }: { surface: ResidentSurface }): JSX.Element {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const labels = useV4Labels()
   const size = usePanelSize()
   const collapsed = useWorkbenchStore((state) => state.projectAgentDockCollapsed)
@@ -240,14 +241,16 @@ export default function ProjectAgentResidentShell({ surface }: { surface: Reside
 
   const commandRows: readonly V4CommandRow[] = React.useMemo(() => {
     const query = commandQuery.trim()
+    const locale = i18n.language.startsWith('zh') ? 'zh-CN' : 'en'
     const skillRows: V4CommandRow[] = data.skills
-      .filter((skill) => skill.curation?.kind !== 'effect' && (!query || `${skill.label} ${skill.name}`.toLowerCase().includes(query.toLowerCase())))
+      .filter((skill) => skill.curation?.kind !== 'effect' && (!query || `${skill.curation?.title[locale] ?? skill.label} ${skill.name}`.toLowerCase().includes(query.toLowerCase())))
       // 自己导进来的排在内置前面。用户刚把一个技能弄进 Nomi，下一秒来这里找它——
       // 让他先滚过四个他没装过的内置技能才看见自己那个，是把「我刚做的事」排在最后。
       .sort((a, b) => (a.origin === b.origin ? 0 : a.origin === 'user' ? -1 : 1))
       .map((skill) => ({
         id: `skill:${skill.name}`,
-        name: skill.label,
+        group: libraryGroup(skill, i18n.language),
+        name: skill.curation?.title[locale] ?? skill.label,
         command: `/${skill.name}`,
         desc: skill.description ?? skill.stageLabels.join(' · '),
         cover: skill.cover,
@@ -261,6 +264,7 @@ export default function ProjectAgentResidentShell({ surface }: { surface: Reside
       .filter((prompt) => filterPrompts([prompt], 'all', query).length > 0)
       .map((prompt) => ({
         id: `prompt:${prompt.id}`,
+        group: libraryGroup(prompt, i18n.language),
         name: promptDisplayTitle(prompt),
         command: `/${prompt.id}`,
         desc: prompt.prompt,
@@ -272,7 +276,7 @@ export default function ProjectAgentResidentShell({ surface }: { surface: Reside
         selected: actions.selectedLibraryPrompt?.id === prompt.id,
       }))
     return Object.freeze([...skillRows, ...promptRows])
-  }, [actions.selectedLibraryPrompt, activeSkill, commandQuery, data.skills, promptLibrary.items, t, userPromptLibrary.items])
+  }, [actions.selectedLibraryPrompt, activeSkill, commandQuery, data.skills, i18n.language, promptLibrary.items, t, userPromptLibrary.items])
 
   const composerPopover = popover === 'model'
     ? <V4ModelPopover rows={modelRows} onOpenLibrary={() => { window.dispatchEvent(new Event('nomi-open-model-catalog')); setPopover(null) }} />

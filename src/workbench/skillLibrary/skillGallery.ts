@@ -1,3 +1,4 @@
+import { libraryGroup, type LibraryCategory } from '../library/libraryGroups'
 import type { SkillListItemDto } from '../api/skillApi'
 import type { LibraryPrompt } from '../api/promptLibraryApi'
 import { promptDisplayTitle } from '../promptLibrary/promptDisplay'
@@ -5,6 +6,7 @@ import { matchesLibraryQuery } from '../library/libraryDiscovery'
 
 export type SkillGalleryEntry = {
   id: string
+  group?: LibraryCategory
   title: string
   description: string
   body: string
@@ -22,14 +24,14 @@ export function galleryEntries(skills: readonly SkillListItemDto[], prompts: rea
   const locale = language.startsWith('zh') ? 'zh-CN' : 'en'
   return [
     ...skills.filter(s => s.curation?.kind !== 'effect').map(skill => ({
-      id: `skill:${skill.name}`, title: skill.curation?.title[locale] ?? skill.label,
+      id: `skill:${skill.name}`, group: libraryGroup(skill, language), title: skill.curation?.title[locale] ?? skill.label,
       description: skill.curation?.summary[locale] ?? skill.description ?? '', body: skill.body ?? '', kind: 'skill' as const,
       cover: skill.cover, preview: skill.preview, source: skill.curation?.source.url,
       author: skill.curation?.source.author ?? skill.author ?? undefined, license: skill.curation?.license,
       upstream: skill.curation?.preview?.provenance === 'upstream-output', skill,
     })),
     ...prompts.map(prompt => ({
-      id: `prompt:${prompt.id}`, title: prompt.curation?.title[locale] ?? promptDisplayTitle(prompt),
+      id: `prompt:${prompt.id}`, group: libraryGroup(prompt, language), title: prompt.curation?.title[locale] ?? promptDisplayTitle(prompt),
       description: prompt.curation?.summary[locale] ?? prompt.prompt, body: prompt.prompt,
       kind: prompt.curation?.kind === 'effect' ? 'effect' as const : 'prompt' as const,
       cover: prompt.mediaType === 'image' ? prompt.mediaUrl : undefined,
