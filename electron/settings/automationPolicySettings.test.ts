@@ -62,13 +62,11 @@ describe("automation policy settings", () => {
   it("normalizes notification, automation, privacy, and spend values", () => {
     expect(normalizeAutomationPolicySettings({
       systemNotifications: false,
-      notificationSound: false,
       autoContinueWithinBudget: false,
       minimizeUploads: false,
       maxSpend: -2,
     })).toMatchObject({
       systemNotifications: false,
-      notificationSound: false,
       autoContinueWithinBudget: false,
       minimizeUploads: false,
       maxSpend: null,
@@ -88,7 +86,6 @@ describe("automation policy settings", () => {
       maxSpend: 25,
       maxAttemptsPerJob: 4,
       systemNotifications: true,
-      notificationSound: false,
       autoContinueWithinBudget: true,
       minimizeUploads: true,
     });

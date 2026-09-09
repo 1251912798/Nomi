@@ -104,6 +104,7 @@ export async function createDryScheduler(root, settingsDir, mediaDir, report) {
   const planId = 'c0-plan-1', reviews = []
   return {
     model: MODEL,
+    get requests() { return fixture.text.requests },
     async attach() {},
     async assertNoGeneration(expect) { expect(fixture.calls).toEqual([]) },
     preparePlan() {

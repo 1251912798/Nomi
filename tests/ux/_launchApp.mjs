@@ -23,6 +23,7 @@ import path from 'node:path'
 import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import { ensureElectronSignature } from '../../scripts/ensure-electron-signature.mjs'
+import { installFeelObserver } from './_feel-observer.mjs'
 import { assertElectronBuildArtifacts } from '../../scripts/electron-build-artifacts.mjs'
 
 const require = createRequire(import.meta.url)
@@ -194,6 +195,7 @@ export function withPackagedPlaywrightOrigin(args, isPackaged) {
  * @param {number} [options.timeout]        等窗口上限（ms）
  * @param {number} [options.settleMs=1500]  domcontentloaded 后再等一会儿（渲染层挂载）
  * @param {Record<string,string>} [options.initialLocalStorage] Existing product preferences for an isolated dev fixture; omitted for first-run tests.
+ * @param {(win: import('playwright').Page) => Promise<void>} [options.observeWindow] Optional measurement observer
  * @param {boolean} [options.syntheticCredentialStorage=false]  仅供隔离目录里的非秘密测试凭据；Linux CI 使用 basic 后端
  * @returns {Promise<{app: import('playwright').ElectronApplication, win: import('playwright').Page,
  *   tempRoot: string, userDataDir: string, settingsDir: string, projectsDir: string, close: () => Promise<void>}>}
@@ -303,6 +305,13 @@ export async function launchNomiApp(options = {}) {
       throw new Error(diagnoseLaunchFailure(`等了 ${timeout}ms 没等到窗口`, name, error, logTail))
     }
     await win.waitForLoadState('domcontentloaded')
+    // Optional test observer owns measurement; installed before caller setup/actions.
+    try {
+      if (options.observeWindow) await options.observeWindow(win)
+    } catch (error) {
+      await closeNomiApp(app)
+      throw error
+    }
     if (options.initialLocalStorage) {
       const missing = await win.evaluate((keys) => keys.filter((key) => localStorage.getItem(key) === null), Object.keys(options.initialLocalStorage))
       if (missing.length) {
@@ -311,6 +320,9 @@ export async function launchNomiApp(options = {}) {
       }
     }
     if (settleMs > 0) await win.waitForTimeout(settleMs)
+    installFeelObserver(win, { name })
+    let nextWindow = 1
+    app.on('window', (page) => installFeelObserver(page, { name: `${name}-window-${++nextWindow}` }))
   }
 
   try {

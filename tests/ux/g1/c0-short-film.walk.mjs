@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // C0: one UI journey, with either synthetic or budgeted real provider dispatch.
 import fs from 'node:fs'
+import { BUDGET_CNY } from './c0-real-budget.mjs'
 import ffmpeg from '@ffmpeg-installer/ffmpeg'
 import ffprobe from '@ffprobe-installer/ffprobe'
 import path from 'node:path'
@@ -18,14 +19,15 @@ const { values } = parseArgs({ options: {
 }, allowPositionals: false })
 if (values.help) {
   console.log('node tests/ux/g1/c0-short-film.walk.mjs (--dry-run | --real) [--packaged /absolute/Nomi.app]')
-  console.log('--real uses APIMart application settings; all-in budget CNY 8, current prices checked before dispatch.')
+  console.log(`--real uses APIMart application settings; all-in budget CNY ${BUDGET_CNY}, current prices checked before dispatch.`)
   process.exit(0)
 }
 if (Boolean(values['dry-run']) === Boolean(values.real)) throw new Error('Select exactly one of --dry-run / --real')
 if (values.packaged) values.packaged = path.resolve(root, values.packaged)
 const outputDir = values['output-dir'] ? path.resolve(root, values['output-dir']) : path.join(root, 'tests/ux/shots/g1-c0')
 fs.mkdirSync(outputDir, { recursive: true })
-const attemptDir = fs.mkdtempSync(path.join(outputDir, 'attempt-'))
+const attemptDir = process.env.NOMI_SWEEP_CASE_DIR || fs.mkdtempSync(path.join(outputDir, 'attempt-'))
+fs.mkdirSync(attemptDir, { recursive: true })
 const sha = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim()
 const hash = (file) => createHash('sha256').update(fs.readFileSync(file)).digest('hex')
 const scriptFile = path.join(root, 'tests/ux/g1/c0-script.md')
@@ -33,13 +35,14 @@ const script = fs.readFileSync(scriptFile, 'utf8')
 const report = {
   mode: values.real ? 'real' : 'dry-run', sourceSha: sha, sourceTree: execFileSync('git', ['rev-parse', 'HEAD^{tree}'], { cwd: root, encoding: 'utf8' }).trim(), platform: `${os.platform()} ${os.arch()}`,
   executor: 'Codex', reviewer: 'pending', attemptDir, inputSha256: hash(scriptFile),
-  paidCalls: 0, costCny: 0, budgetCny: values.real ? 8 : 0, c0Accepted: false,
+  paidCalls: 0, costCny: 0, budgetCny: values.real ? BUDGET_CNY : 0, c0Accepted: false,
   r30: { real: { firstTool: 'N/A (0/0)', turns: 'N/A (0/0)' }, simulated: { firstTool: 'N/A (0/0)', turns: 'N/A (0/0)' } },
   steps: [],
 }
 fs.copyFileSync(scriptFile, path.join(attemptDir, 'input.md'))
 function save() {
   fs.writeFileSync(path.join(attemptDir, 'report.json'), JSON.stringify(report, null, 2))
+  if (process.env.NOMI_WALK_MODE === 'collect') return // collect owns its complete station/emotion ledger
   const log = ['# C0 情绪摩擦日志', '', `模式：${report.mode}；源码：${sha}；证据：${attemptDir}`,
     '人眼复核尚未完成；自动断言成功不等于无摩擦，也不等于真实 C0 通过。', '',
     ...report.steps.flatMap((step) => [
@@ -51,7 +54,10 @@ function save() {
   fs.writeFileSync(path.join(outputDir, 'emotion-log.md'), log.join('\n'))
 }
 let app, win, scheduler, screenshotSettled, expect, stopRuntimeApp
+const collection = process.env.NOMI_WALK_MODE === 'collect'
+  ? (await import('./sweep-c0.mjs')).createC0Collection(attemptDir, report) : null
 async function step(id, action, expected, run, interruption = '无自动检测到的审批；待人眼核对') {
+  if (collection) return collection.step(id, action, expected, run, interruption)
   const began = performance.now()
   const entry = { id, action, expected, started: new Date().toISOString(), interruption }
   report.steps.push(entry)
@@ -108,7 +114,10 @@ try {
     env: { NOMI_CAPABILITY_DIR: path.join(tempRoot, 'capability'), NOMI_RENDERER_URL: '', VITE_DEV_SERVER_URL: '', NOMI_DESKTOP_DEV: '',
       NOMI_E2E_PRODUCTION_FIXTURE: '0', NOMI_DISABLE_AUTO_UPDATE: '1' }, args: ['--no-proxy-server'],
     })
-    try { await scheduler.attach(launched) } catch (error) { await launched.close(); throw error }
+    try {
+      await scheduler.attach(launched)
+      if (collection) await collection.attach(launched, payload, () => projectId)
+    } catch (error) { await launched.close(); throw error }
     return launched
   }
   let projectId, projectRoot, nodeIds, before, exportPath
@@ -260,6 +269,7 @@ try {
   await step('07', '冷重启检查资产和时间轴', '同一项目八个资产和八段剪辑均保留；完整看片仍须人眼签收', async () => {
     before = await payload()
     await scheduler.finish({ projectRoot })
+    if (collection) await collection.stop()
     await stopRuntimeApp(app)
     app = undefined
     ;({ app, win } = await launch())
@@ -273,7 +283,7 @@ try {
     await scheduler.finish({ projectRoot })
     report.review = 'Pending human inspection: inspect story, identity, continuity, audio and all screenshots.'
   })
-  report.result = `${report.mode}-assertions-passed-review-pending`
+  report.result = collection?.walk.deviations.length ? 'collected-deviations' : `${report.mode}-assertions-passed-review-pending`
   }
 } catch (error) {
   report.result = error.message === 'C0_BLOCKED_BUDGET' ? 'blocked-budget' : 'failed'
@@ -285,6 +295,10 @@ try {
   console.error(`C0 ${report.result}: ${report.blocker}`)
   process.exitCode = 1
 } finally {
+  if (collection) {
+    try { await collection.stop(); collection.finish(path.join(attemptDir, 'profile'), scheduler?.requests ?? []) }
+    catch (error) { report.collectionError = error.message; process.exitCode = 1 }
+  }
   try { if (scheduler) await scheduler.close() } catch { report.cleanupError = 'C0_SCHEDULER_CLEANUP_FAILED'; process.exitCode = 1 }
   try { if (app) await stopRuntimeApp(app) } catch { report.cleanupError = 'C0_APP_CLEANUP_FAILED'; process.exitCode = 1 }
   if (values.real) fs.rmSync(path.join(attemptDir, 'profile/settings'), { recursive: true, force: true })

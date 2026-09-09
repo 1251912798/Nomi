@@ -1463,6 +1463,120 @@
         "granted-session"
       ],
       "reason": "一次工具调用的审批**结局**（方案 2026-09-07-agent-rebuild-stage3-5-deep-plan §1.2）。它不是任务状态、不是工具七态、也不是 ProjectAgentStatus：那三个说的是「这件事做到哪一步了」，这一个说的是「用户对这一次调用给了什么答复，以及没给答复的话是被什么打断的」。不能复用现有 owner 的具体理由：projectAgentContracts 的 approvalScope/approvalPolicy 是**用户选的档位**不是**某一次的结局**；V4ToolStatus 只分得出 approval-requested / approval-responded，把「你说了不要」「你按了停」「你关了窗」「重启前没答完」四件事折成同一个词，而它们的用户文案必须不同（G6-④ 那族的成因）。等待态**故意不在这张表里**：它不是发生了的事，只活在 laneHost 内存与 LaneProjection.pending。"
+    },
+    {
+      "site": "src/devlab/designLab/settingsSound/settingsSoundLabKit.tsx::function:SoundStage/parameter:0/property:state/type-union",
+      "members": [
+        "custom",
+        "off",
+        "on",
+        "playing"
+      ],
+      "reason": "提醒音实验室的四种视觉夹具：开/关通过持久化 enabled 驱动，自定义通过 custom 元数据驱动，试听中通过真实 preview handler 驱动。它是验收取景的场景选择，不是通知事件类别或生产任务生命周期；生产设置无平行状态机，也不复用其他业务的同名 on/off 状态。"
+    },
+    {
+      "site": "electron/capabilityCore/mcpGenerationTools.ts::variable:GENERATION_RECONCILE_OUTCOMES/as-const",
+      "members": [
+        "found",
+        "not_found"
+      ],
+      "reason": "生成对账结果的规范单源（found / not_found），供 MCP 生成工具的 reconcile 入口 schema enum 与运行时判定共用。这是把同文件 GenerationPlanningHandlerDependencies.reconcile 的字面量 outcome 收敛成 as-const 元组的单一真相源（该 param 类型应从 (typeof GENERATION_RECONCILE_OUTCOMES)[number] derive）；语义是「拿这个 operationId 在供应商侧找到没有」的二值裁决，独立于任务生命周期态。"
+    },
+    {
+      "site": "electron/harness/context/contextStore.ts::interface:StoredAgentContext/property:state/type-union",
+      "members": [
+        "cleared",
+        "ready"
+      ],
+      "reason": "StoredAgentContext.state 是 AgentContextStore 持久化记录的上游状态：ready 表示 context 可继续使用，cleared 表示用户已显式清空。contextService 单向导入 contextStore 并原样发布 record.state，因此服务 DTO 必须从 store owner derive。"
+    },
+    {
+      "site": "electron/harness/runtime/pi/snapshotSchema.mts::variable:message/property:stopReason/z.enum",
+      "members": [
+        "aborted",
+        "deferred",
+        "error",
+        "length",
+        "pending",
+        "stop",
+        "toolUse"
+      ],
+      "reason": "Pi runtime 端口/快照协议的结果词表（aborted / deferred / error / length / pending / stop / toolUse），描述 turn、tool 或 stop reason 的协议语义。"
+    },
+    {
+      "site": "electron/harness/runtime/runtimePort.ts::interface:RuntimeTurnResult/property:status/type-union",
+      "members": [
+        "cancelled",
+        "error",
+        "finished"
+      ],
+      "reason": "RuntimeTurnResult.status 是 runtime port 的 turn 终态合同：finished、cancelled、error 只描述一次 runtime turn 的结算；AgentChatStatus 与失败结果构造器应从它派生，不与消息 pending/streaming view state 混用。"
+    },
+    {
+      "site": "electron/productionRun/productionRunReducer.ts::variable:ARTIFACT_REVIEW_DECISIONS/as-const",
+      "members": [
+        "approved",
+        "changes_requested",
+        "rejected"
+      ],
+      "reason": "ProductionRun 账本域的产物评审业务合同（approved / changes_requested / rejected），描述关卡产物的人工裁决，不等同于通用后台任务态。改为同文件 as-const 元组单源后 ArtifactReviewDecision 由它 derive。"
+    },
+    {
+      "site": "electron/projectAgentHost/projectAgentApprovalHelpers.ts::function:executeProductionApproval/parameter:input/property:settle/parameter:status/type-union",
+      "members": [
+        "done",
+        "failed"
+      ],
+      "reason": "Project Agent Host 执行生产审批后回传给 coordinator 的二值结算信号（done 执行成功 / failed 执行失败）：settle 只把「这次已批准动作最终成/败」通知宿主以推进回合，是审批执行的收尾回执，不是 job 生命周期态也不是 UI 占位态；仅二值、与 ShotPlaceholderPhase 用途不同，故独立。"
+    },
+    {
+      "site": "electron/projectAgentHost/projectAgentExecutionCoordinatorTypes.ts::type:ProjectAgentExecutionCoordinatorDeps/property:reportInternalError/parameter:context/property:phase/type-union",
+      "members": [
+        "start",
+        "terminalize-runtime-failure"
+      ],
+      "reason": "Project Agent 执行协调器上报内部错误时标注「错误发生在回合的哪个阶段」（start 启动阶段 / terminalize-runtime-failure 终结化运行时失败阶段）：它只服务错误遥测的现场定位，是内部诊断维度，不是对外的任务/审批状态，取值专属于协调器内部编排，故独立。"
+    },
+    {
+      "site": "electron/projectAgentHost/projectAgentExecutionCoordinatorTypes.ts::type:SubscriptionDelivery/property:phase/type-union",
+      "members": [
+        "activating",
+        "live",
+        "pre-live"
+      ],
+      "reason": "Project Agent 订阅投递的三态（pre-live 订阅已建未开始推流 / activating 激活中 / live 已实时推流）：它管理 Host 向 UI 投影的订阅通道生命周期，保证快照订阅在 activating 窗口不漏帧，是订阅通道态而非业务任务态，与任何生成/审批词表无重叠，故独立。"
+    },
+    {
+      "site": "electron/shared/projectAgentContracts.ts::variable:PROJECT_AGENT_PROPOSAL_LIFECYCLES/as-const",
+      "members": [
+        "claimed",
+        "expired",
+        "pending"
+      ],
+      "reason": "Project Agent 提案（proposal）的领取生命周期规范单源（pending 待领取 / claimed 已领取 / expired 已过期）：描述一条 Agent 提案从产生到被 UI 领取或超时作废的所有权流转，是提案分发合同，与能力审批 challenge 的 ChallengeRecord.status（accepted/rejected/expired/pending，授权事实）虽有 pending/expired 重叠但语义不同（这里是「提案被谁领了」，那里是「授权被批没批」），复用会混淆分发态与授权态，故独立。"
+    },
+    {
+      "site": "electron/shared/projectAgentContracts.ts::variable:PROJECT_AGENT_STATUSES/as-const",
+      "members": [
+        "declined",
+        "done",
+        "drafting",
+        "failed",
+        "proposed",
+        "queued",
+        "running",
+        "stopped"
+      ],
+      "reason": "Project Agent 回合的对外状态规范单源（drafting 起草 / proposed 已提案待批 / declined 被拒 / queued 排队 / running 执行 / done 完成 / failed 失败 / stopped 用户中止）：这是 Agent 一次回合完整生命周期的权威词表，含 drafting/proposed/declined 这类审批协商态，与 ShotPlaceholderPhase（单镜画面占位态）语义与取值都不同，是 Agent 域的核心合同，故独立。"
+    },
+    {
+      "site": "src/workbench/ai/v4/agentPanelV4Projection.ts::type:V4PendingTool/property:state/type-union",
+      "members": [
+        "approved",
+        "denied",
+        "pending"
+      ],
+      "reason": "「活的工具调用」在渲染层的三态（pending 待用户裁决 / approved 已批 / denied 已拒）。它之所以必须存在于渲染层：宿主状态里根本没有「正在跑的工具调用」这条记录——ProjectAgentToolItem 只在回合结束时从 response.toolCalls 一次性生成，跑的过程中唯一的活记录是执行协调器内存里的 PendingToolDecision，而它从不进 ProjectAgentHostState（见 electron/projectAgentHost/projectAgentExecutionCoordinatorTypes.ts）。所以这是「宿主还没有话说」的那段时间里的本地视图词表，不是第二份真相：终态一到，agentPanelV4Projection.toolStatusOf 就以宿主快照为准（单测「宿主快照永远赢」钉死）。2026-09-06 v4 接线前它住在 ResidentUiPrimitives.tsx::ResidentApprovalState，随旧面板整件删除后原样迁到这里，成员与语义都没变。"
     }
   ],
   "debt": [
