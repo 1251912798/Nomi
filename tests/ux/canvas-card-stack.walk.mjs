@@ -114,7 +114,7 @@ const check = (name, ok, detail = '') => {
   if (!ok) throw new Error(`${name}${detail ? `: ${detail}` : ''}`)
 }
 
-const launched = await launchNomiApp({ name: 'canvas-card-stack', settingsDir, projectsDir, settleMs: 1000 })
+const launched = await launchNomiApp({ name: 'canvas-card-stack', settingsDir, projectsDir, settleMs: 1000, args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader'] })
 const { win } = launched
 
 async function dismissOnboarding() {
@@ -192,8 +192,8 @@ try {
   await tray.locator('[data-result-stack-item="image-v1"] button').first().click()
   const afterOrder = await tray.locator('[data-result-stack-item]').evaluateAll((items) => items.map((item) => item.getAttribute('data-result-stack-item')))
   check('切换当前版不重排历史', afterOrder.join(',') === beforeOrder.join(','), afterOrder.join(','))
-  const firstVersionIsCurrent = await tray.locator('[data-result-stack-item="image-v1"]').getAttribute('data-current') === 'true'
-  check('第一版成为当前', firstVersionIsCurrent, firstVersionIsCurrent ? '' : JSON.stringify(await tray.locator('[data-result-stack-item]').evaluateAll(rows => rows.map(row => ({ id: row.dataset.resultStackItem, current: row.dataset.current })))) )
+  await expect(tray.locator('[data-result-stack-item="image-v1"]'), '第一版成为当前').toHaveAttribute('data-current', 'true')
+  check('第一版成为当前', true)
 
   const imagePreviewButton = tray.locator('[data-result-stack-item="image-v2"] button[aria-label="预览"]')
   await clickOrFail(imagePreviewButton, '打开历史图片预览')

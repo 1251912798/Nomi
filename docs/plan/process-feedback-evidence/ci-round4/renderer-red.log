@@ -1,0 +1,23 @@
+
+ RUN  v4.1.8 /Users/aoqimin/Desktop/Nomi-process-feedback
+
+ ❯ src/workbench/generationCanvas/nodes/useReducedProcessMotion.test.ts (0 test)
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/workbench/generationCanvas/nodes/useReducedProcessMotion.test.ts [ src/workbench/generationCanvas/nodes/useReducedProcessMotion.test.ts ]
+Error: Invalid regular expression: /swiftshader|llvmpipe|software|mesa.*llvmpipe|angle (.*software/i: Unterminated group
+ ❯ src/workbench/generationCanvas/nodes/useReducedProcessMotion.test.ts:2:1
+      1| import { afterEach, describe, expect, it, vi } from 'vitest'
+      2| import { hasSoftwareRenderer } from './useReducedProcessMotion'
+       | ^
+      3|
+      4| afterEach(() => vi.unstubAllGlobals())
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  no tests
+   Start at  07:47:20
+   Duration  90ms (transform 21ms, setup 24ms, import 0ms, tests 0ms, environment 0ms)

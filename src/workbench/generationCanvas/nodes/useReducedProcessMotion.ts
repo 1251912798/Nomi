@@ -1,15 +1,17 @@
 import React from 'react'
 
+const SOFTWARE_RENDERER_PATTERNS = [/swiftshader/i, /llvmpipe/i, /software/i] as const
+
 /** Software GL cannot sustain img-fx's animated WebGL path (SwiftShader/llvmpipe). */
 export function hasSoftwareRenderer(): boolean {
   if (typeof document === 'undefined') return false
   try {
     const canvas = document.createElement('canvas')
-    const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl')
+    const gl: WebGLRenderingContext | null = canvas.getContext('webgl')
     if (!gl) return true
     const ext = gl.getExtension('WEBGL_debug_renderer_info')
     const renderer = ext ? String(gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) ?? '') : ''
-    return /swiftshader|llvmpipe|software|mesa.*llvmpipe|angle (.*software/i.test(renderer)
+    return SOFTWARE_RENDERER_PATTERNS.some(pattern => pattern.test(renderer))
   } catch { return true }
 }
 

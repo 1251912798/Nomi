@@ -1,0 +1,209 @@
+feel record: canvas-card-stack/waitForFunction.png; findings=18; new-surfaces=2; evidence: /Users/aoqimin/Desktop/Nomi-process-feedback/artifacts/feel/canvas-card-stack-1bef1676-1ba4-4d29-a9f2-218ebe4206aa
+feel record: canvas-card-stack/01-real-version-stacks-light.png; findings=18; new-surfaces=2; evidence: /Users/aoqimin/Desktop/Nomi-process-feedback/artifacts/feel/canvas-card-stack-1bef1676-1ba4-4d29-a9f2-218ebe4206aa
+feel record: canvas-card-stack/waitForFunction.png; findings=23; new-surfaces=1; evidence: /Users/aoqimin/Desktop/Nomi-process-feedback/artifacts/feel/canvas-card-stack-1bef1676-1ba4-4d29-a9f2-218ebe4206aa
+feel record: canvas-card-stack/02-real-version-tray-light.png; findings=23; new-surfaces=3; evidence: /Users/aoqimin/Desktop/Nomi-process-feedback/artifacts/feel/canvas-card-stack-1bef1676-1ba4-4d29-a9f2-218ebe4206aa
+feel record: canvas-card-stack/waitForFunction.png; findings=25; new-surfaces=1; evidence: /Users/aoqimin/Desktop/Nomi-process-feedback/artifacts/feel/canvas-card-stack-1bef1676-1ba4-4d29-a9f2-218ebe4206aa
+feel record: canvas-card-stack/03-real-video-history-scrub-light.png; findings=25; new-surfaces=4; evidence: /Users/aoqimin/Desktop/Nomi-process-feedback/artifacts/feel/canvas-card-stack-1bef1676-1ba4-4d29-a9f2-218ebe4206aa
+feel record: canvas-card-stack/waitForFunction.png; findings=31; new-surfaces=0; evidence: /Users/aoqimin/Desktop/Nomi-process-feedback/artifacts/feel/canvas-card-stack-1bef1676-1ba4-4d29-a9f2-218ebe4206aa
+feel record: canvas-card-stack/04-real-collapsed-group-link-light.png; findings=31; new-surfaces=3; evidence: /Users/aoqimin/Desktop/Nomi-process-feedback/artifacts/feel/canvas-card-stack-1bef1676-1ba4-4d29-a9f2-218ebe4206aa
+feel record: canvas-card-stack/waitForFunction.png; findings=16; new-surfaces=0; evidence: /Users/aoqimin/Desktop/Nomi-process-feedback/artifacts/feel/canvas-card-stack-1bef1676-1ba4-4d29-a9f2-218ebe4206aa
+feel record: canvas-card-stack/waitForFunction.png; findings=16; new-surfaces=0; evidence: /Users/aoqimin/Desktop/Nomi-process-feedback/artifacts/feel/canvas-card-stack-1bef1676-1ba4-4d29-a9f2-218ebe4206aa
+feel record: canvas-card-stack/05-real-collapsed-group-dark.png; findings=16; new-surfaces=2; evidence: /Users/aoqimin/Desktop/Nomi-process-feedback/artifacts/feel/canvas-card-stack-1bef1676-1ba4-4d29-a9f2-218ebe4206aa
+feel record: canvas-card-stack/waitForFunction.png; findings=18; new-surfaces=0; evidence: /Users/aoqimin/Desktop/Nomi-process-feedback/artifacts/feel/canvas-card-stack-1bef1676-1ba4-4d29-a9f2-218ebe4206aa
+feel record: canvas-card-stack/06-real-project-switch-sidebar-collapsed.png; findings=18; new-surfaces=2; evidence: /Users/aoqimin/Desktop/Nomi-process-feedback/artifacts/feel/canvas-card-stack-1bef1676-1ba4-4d29-a9f2-218ebe4206aa
+{
+  "ok": true,
+  "checks": [
+    {
+      "name": "图片版本卡角可见",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "视频版本卡角可见",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "图片卡角最多两层",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "视频两版只有一层后卡",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "托盘列出三版",
+      "ok": true,
+      "detail": "image-v3,image-v2,image-v1"
+    },
+    {
+      "name": "切换当前版不重排历史",
+      "ok": true,
+      "detail": "image-v3,image-v2,image-v1"
+    },
+    {
+      "name": "第一版成为当前",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "历史图片预览载入原图",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "历史图片提供下载入口",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "历史图片下载文件非空",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "删除历史结果后其他版本保留",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "复制变体新增一个节点且用户立即看得到",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "复制变体可一次撤销",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "版本托盘避开画布视口边缘",
+      "ok": true,
+      "detail": "left"
+    },
+    {
+      "name": "悬停历史视频真实播放元素可见",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "历史视频默认静音",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "历史视频进度条可见",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "拖动进度条连续跳转",
+      "ok": true,
+      "detail": "45.072154"
+    },
+    {
+      "name": "键盘左键精确回退一秒",
+      "ok": true,
+      "detail": "45.072154 -> 44.087373"
+    },
+    {
+      "name": "离开历史视频后播放暂停并回到起点",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "历史视频预览挂载视频元素",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "历史视频预览提供原生控制条",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "收起后只剩一个组卡",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "三位成员已从画布投影隐藏",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "编组显示节点语义",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "收起编组保留可交互的左右悬浮加号",
+      "ok": true,
+      "detail": "[{\"side\":\"left\",\"rendered\":true,\"hasPlusIcon\":true},{\"side\":\"right\",\"rendered\":true,\"hasPlusIcon\":true}]"
+    },
+    {
+      "name": "三条成员输入聚合为一条编组线",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "聚合编组输入线上存在真的点得到的点",
+      "ok": true,
+      "detail": "{\"x\":397.5978456386729,\"y\":272.94725634454335}"
+    },
+    {
+      "name": "返回项目库仍能看到两个项目",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "重新打开后节点与聚合连接仍在",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "重新打开后历史结果仍保留",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "点击卡角恢复组内节点",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "展开后恢复三条真实成员输入线",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "聚合线一次断开整组关系",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "收起状态写入项目",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "断开的编组声明不再持久化",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "展开后素材库面板可见",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "切换项目后左侧栏自动收起",
+      "ok": true,
+      "detail": ""
+    }
+  ]
+}
+VERSION_SAMPLES [{"phase":"before","at":4201.400000035763,"store":"image-v3","dom":"image-v3"},{"phase":"store","at":4221.300000011921,"store":"image-v1","dom":"image-v3"},{"phase":"100ms","at":4301.699999988079,"store":"image-v1","dom":"image-v1"},{"phase":"100ms","at":4403,"store":"image-v1","dom":"image-v1"},{"phase":"100ms","at":4502.900000035763,"store":"image-v1","dom":"image-v1"},{"phase":"100ms","at":4602.699999988079,"store":"image-v1","dom":"image-v1"},{"phase":"100ms","at":4704,"store":"image-v1","dom":"image-v1"},{"phase":"100ms","at":4803,"store":"image-v1","dom":"image-v1"},{"phase":"100ms","at":4902.900000035763,"store":"image-v1","dom":"image-v1"},{"phase":"100ms","at":5004,"store":"image-v1","dom":"image-v1"},{"phase":"100ms","at":5103.800000011921,"store":"image-v1","dom":"image-v1"},{"phase":"100ms","at":5203.199999988079,"store":"image-v1","dom":"image-v1"}]

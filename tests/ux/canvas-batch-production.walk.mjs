@@ -226,6 +226,7 @@ const { app, win } = await launchNomiApp({
   settingsDir,
   projectsDir,
   settleMs: 0,
+  args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader'],
   initialLocalStorage: { 'nomi:splash:v1': 'seen', 'nomi:journey-tour:v1': 'seen' },
   env: {
     NOMI_RENDERER_URL: `file://${path.join(repoRoot, 'dist/index.html')}`,
@@ -233,6 +234,11 @@ const { app, win } = await launchNomiApp({
 })
 
 try {
+  console.log('GL_RENDERER', await win.evaluate(() => {
+    const gl = document.createElement('canvas').getContext('webgl')
+    const ext = gl?.getExtension('WEBGL_debug_renderer_info')
+    return ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : 'unavailable'
+  }))
   const browserWindow = await app.browserWindow(win)
   await browserWindow.evaluate((window) => window.setBounds({ x: 0, y: 0, width: 1680, height: 1020 }))
   win.on('pageerror', (error) => pageErrors.push(String(error)))
@@ -319,6 +325,11 @@ try {
 
   await generateAll.click()
   dialog = await spendDialog(win)
+  console.log('CONFIRM_HIT', JSON.stringify(await dialog.getByRole('button', { name: '生成', exact: true }).evaluate(button => {
+    const rect = button.getBoundingClientRect()
+    const x = rect.x + rect.width / 2, y = rect.y + rect.height / 2
+    return { x, y, hit: document.elementFromPoint(x, y)?.outerHTML.slice(0, 1500), stack: document.elementsFromPoint(x, y).map(el => ({ tag: el.tagName, cls: el.className, pointer: getComputedStyle(el).pointerEvents })).slice(0, 8) }
+  })))
   await dialog.getByRole('button', { name: '生成', exact: true }).click()
   await win.waitForFunction(() => document.querySelectorAll('[data-kind="image"][data-status="success"]').length >= 2, null, { timeout: 30000 })
   await snap(win, 'generate-all-completed')
@@ -476,6 +487,7 @@ try {
   console.log(`  screenshots: ${shotsDir}`)
   console.log('CANVAS BATCH PRODUCTION WALK: PASS')
 } catch (error) {
+  console.error('BATCH_FAILURE', error)
   const failureDir = path.join(repoRoot, 'outputs/canvas-batch-production')
   fs.mkdirSync(failureDir, { recursive: true })
   await win.screenshot({ path: path.join(failureDir, 'failure.png') }).catch(() => {})

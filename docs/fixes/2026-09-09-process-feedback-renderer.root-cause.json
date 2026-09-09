@@ -1,0 +1,97 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-09-process-feedback-renderer",
+  "problem_type": "Unvalidated renderer capability admission",
+  "symptom": "Typecheck and generationFeedback suite cannot parse the software-renderer detector. Prior software-rendered batch confirmation timed out after click action done.",
+  "direct_cause": "Unescaped opening parenthesis in regex; experimental-webgl expands the getContext return union. Without software-renderer admission, real SwiftShader batch confirmation blocks after the completed click; controlled built-bundle regression reproduces the exact 30s timeout.",
+  "class_root": "Shared motion admission lacks a typed and tested renderer classification boundary.",
+  "affected_population": [
+    "Software WebGL renderers",
+    "Unavailable WebGL contexts",
+    "Hardware WebGL renderers"
+  ],
+  "scope_paths": [
+    "src/workbench/generationCanvas/nodes/useReducedProcessMotion.ts"
+  ],
+  "entry_points": [
+    "GenerationWaitingSurface",
+    "GenerationStatusBar"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "Local TypeScript DOM overload and renderer string classification, no external protocol changes.",
+  "invariants": [
+    "Every renderer classification is executable and software rendering selects static motion."
+  ],
+  "generality_proof": "All waiting and status surfaces use the same tested detector; table covers renderer families instead of model/provider branches.",
+  "shared_boundaries": [
+    {
+      "path": "src/workbench/generationCanvas/nodes/useReducedProcessMotion.ts",
+      "symbol": "hasSoftwareRenderer",
+      "responsibility": "Classify WebGL capability before motion admission."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/workbench/generationCanvas/nodes/GenerationWaitingSurface.tsx",
+      "entry_point": "GenerationWaitingSurface",
+      "disposition": "enforced",
+      "evidence": "Imports useReducedProcessMotion, which invokes the shared detector."
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/GenerationStatusBar.tsx",
+      "entry_point": "GenerationStatusBar",
+      "disposition": "enforced",
+      "evidence": "Imports useReducedProcessMotion, which invokes the shared detector."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Every renderer and fresh mount enters the detector.",
+    "same_class_scan": [
+      "rg useReducedProcessMotion src identifies waiting surface and node status consumers.",
+      "Read getContext webgl overload in installed TypeScript lib.dom.d.ts; experimental-webgl is generic RenderingContext."
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "src/workbench/generationCanvas/nodes/useReducedProcessMotion.ts",
+    "invariant": "One typed WebGL probe and constant pattern table classify all renderer inputs.",
+    "failure_mode": "Missing or throwing context selects static surface.",
+    "exception_policy": "none",
+    "strategy": "Replace invalid composite regex with tested constant patterns and remove legacy experimental context branch.",
+    "artifacts": [
+      "src/workbench/generationCanvas/nodes/useReducedProcessMotion.ts"
+    ]
+  },
+  "regression_tests": [
+    "src/workbench/generationCanvas/nodes/useReducedProcessMotion.test.ts",
+    "tests/ux/canvas-batch-production.walk.mjs"
+  ],
+  "class_regression_tests": [
+    "src/workbench/generationCanvas/nodes/useReducedProcessMotion.test.ts",
+    "tests/ux/canvas-batch-production.walk.mjs"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "src/workbench/generationCanvas/nodes/useReducedProcessMotion.ts"
+    ],
+    "rationale": "Removed invalid monolithic regex and obsolete experimental-webgl context request."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "Application renderer admission and TypeScript overload use; no dependency API change.",
+    "exit_criteria": []
+  },
+  "migration": "No persisted data changes.",
+  "residual_risks": [
+    "A future software renderer with no software/SwiftShader/llvmpipe identity would require extending the same pattern table and fixtures."
+  ],
+  "invariant_owner_layer": {
+    "layer": "src/workbench/generationCanvas/nodes/useReducedProcessMotion.ts",
+    "tests": [
+      "src/workbench/generationCanvas/nodes/useReducedProcessMotion.test.ts"
+    ],
+    "note": "Shared process motion admission."
+  }
+}
