@@ -544,7 +544,8 @@ export type DesktopBridge = DesktopMediaBridge &
     result: (payload: unknown) => Promise<unknown>
     runComfyCandidateTest?: (payload: ComfyCandidateTestPayload) => Promise<ComfyCandidateTestResult>
     cancelComfyCandidateTest?: (payload: { revisionId: string; modelKey: string; taskKind: string }) => Promise<{ ok: boolean }>
-    grantSpend: (payload: { nodeIds: string[]; maxAttemptsPerNode?: number }) => Promise<{ grantId: string }>
+    quoteSpend: (inputs: import("../../electron/shared/contracts/spendQuote").SpendQuoteInput[]) => Promise<import("../../electron/shared/contracts/spendQuote").PreparedSpendQuote>
+    grantSpend: (payload: { nodeIds: string[]; maxAttemptsPerNode?: number; quoteId?: string }) => Promise<{ grantId: string }>
     runTextStream: (payload: unknown) => Promise<{ streamId: string }>
     cancelTextStream: (streamId: string) => Promise<unknown>
     onTextEvent: (streamId: string, callback: (event: unknown) => void) => () => void
@@ -628,7 +629,7 @@ export type DesktopBridge = DesktopMediaBridge &
     health: () => unknown
     upsertVendor: (payload: unknown) => unknown
     deleteVendor: (key: string) => void
-    upsertVendorApiKey: (vendorKey: string, payload: unknown) => unknown
+    upsertVendorApiKey: (vendorKey: string, payload: unknown) => Promise<unknown>
     clearVendorApiKey: (vendorKey: string) => unknown
     upsertModel: (payload: unknown) => unknown
     /**

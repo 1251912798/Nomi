@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { useWorkbenchStore } from '../../workbenchStore'
 import { createEmptyStoryboardPlan, type StoryboardPlan } from '../../generationCanvas/agent/storyboardPlan'
@@ -36,4 +37,12 @@ describe('分镜方案生命周期（单一 owner）', () => {
   it('异步结果按显式 storyboardId 回写', () => { const s = useWorkbenchStore.getState(); s.setStoryboardPlan(plan, DOC); const firstId = useWorkbenchStore.getState().activeStoryboardId!; s.setActiveStoryboardId(null); s.setStoryboardPlan({ ...plan, title: '第二版' }, DOC); const secondId = useWorkbenchStore.getState().activeStoryboardId!; s.setActiveStoryboardId(firstId, DOC); s.setStoryboardPlan({ ...plan, title: '第二版异步结果' }, DOC, secondId, true); const after = useWorkbenchStore.getState(); expect(after.activeStoryboardId).toBe(firstId); expect(after.storyboardDesignsByDocumentId[DOC]?.find((d) => d.id === firstId)?.plan.title).toBe('测试方案'); expect(after.storyboardDesignsByDocumentId[DOC]?.find((d) => d.id === secondId)?.plan.title).toBe('第二版异步结果') })
   it('显式目标被删除时不会复活', () => { const s = useWorkbenchStore.getState(); s.setStoryboardPlan(plan, DOC); const id = useWorkbenchStore.getState().activeStoryboardId!; s.deleteStoryboardDesign(id, DOC); s.setStoryboardPlan({ ...plan, title: '迟到' }, DOC, id, true); expect(useWorkbenchStore.getState().storyboardDesignsByDocumentId[DOC]).toEqual([]) })
   it('hydrate 恢复多设计', () => { const s = useWorkbenchStore.getState(); s.hydrateStoryboardDesigns({ [DOC]: [design(DOC, plan), design(DOC, { ...plan, title: '第二版' })] }); const after = useWorkbenchStore.getState(); expect(after.storyboardDesignsByDocumentId[DOC]).toHaveLength(2); expect(active()?.plan).toEqual(plan) })
+})
+
+// A displayed draft must remain actionable even before a selection has been persisted.
+it('waiting-to-start draft actions use the displayed design and catch the pre-submit gate', () => {
+  const source = readFileSync(new URL('./StoryboardPlanEditor.tsx', import.meta.url), 'utf8')
+  expect(source).not.toContain('if (busy || !activeStoryboardId) return')
+  expect(source).toContain('const designId = activeDesign?.id')
+  expect(source).toMatch(/await runAction\(async \(\) => \{[\s\S]*?resolveGeneratableGate/)
 })

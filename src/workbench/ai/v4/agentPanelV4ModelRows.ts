@@ -1,3 +1,4 @@
+import { orderByVendorPreference } from '../../../../electron/shared/contracts/vendorPreference'
 // composer 模型弹层的**行数据**。纯 derive，可单测。
 //
 // 2026-09-06 打包版实测：弹层里是 17 行，每一行的行首标签都写着「对话」，行尾一个下拉都没有。
@@ -30,12 +31,9 @@ export function dedupeByModelKey(
   models: readonly ModelCatalogModelDto[],
   orderedVendorKeys: readonly string[],
 ): readonly ModelCatalogModelDto[] {
-  const rank = new Map(orderedVendorKeys.map((key, index) => [key, index]))
-  const rankOf = (model: ModelCatalogModelDto): number => rank.get(model.vendorKey) ?? Number.MAX_SAFE_INTEGER
   const best = new Map<string, ModelCatalogModelDto>()
-  for (const model of models) {
-    const current = best.get(model.modelKey)
-    if (!current || rankOf(model) < rankOf(current)) best.set(model.modelKey, model)
+  for (const model of orderByVendorPreference(models, orderedVendorKeys, (row) => row.vendorKey)) {
+    if (!best.has(model.modelKey)) best.set(model.modelKey, model)
   }
   // 输出保持目录原序（按被选中的那一行的位置），避免弹层每次重排。
   return Object.freeze(models.filter((model) => best.get(model.modelKey) === model))

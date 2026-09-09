@@ -53,8 +53,8 @@ function ToastMessage({
   }
 
   return (
-    <span className="flex min-w-0 items-center gap-2">
-      <span className="min-w-0 flex-1 text-body-sm text-nomi-ink-80">{message}</span>
+    <span className="flex min-w-0 flex-wrap items-center gap-2">
+      <span className="min-w-0 basis-full text-body-sm text-nomi-ink-80">{message}</span>
       {actionLabel && onAction ? (
         <button
           type="button"

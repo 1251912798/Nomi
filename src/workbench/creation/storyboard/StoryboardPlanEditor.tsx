@@ -64,16 +64,16 @@ const EMPTY_STRATEGY_PLAN: StoryboardPlan = { title: '', anchors: [], shots: [] 
 
 export default function StoryboardPlanEditor({ projectId }: { projectId?: string | null }): JSX.Element | null {
   const { t } = useTranslation()
-  const plan = useWorkbenchStore((s) => {
+  const activeDesign = useWorkbenchStore((s) => {
     const designs = s.activeDocumentId ? s.storyboardDesignsByDocumentId[s.activeDocumentId] ?? [] : []
-    return (designs.find((design) => design.id === s.activeStoryboardId) ?? designs[0])?.plan ?? null
+    return designs.find((design) => design.id === s.activeStoryboardId) ?? designs[0] ?? null
   })
+  const plan = activeDesign?.plan ?? null
   const setStoryboardPlan = useWorkbenchStore((s) => s.setStoryboardPlan)
   const deleteStoryboardDesign = useWorkbenchStore((s) => s.deleteStoryboardDesign)
   const setWorkspaceMode = useWorkbenchStore((s) => s.setWorkspaceMode)
   const setActiveStoryboardId = useWorkbenchStore((s) => s.setActiveStoryboardId)
   const activeDocumentId = useWorkbenchStore((s) => s.activeDocumentId)
-  const activeStoryboardId = useWorkbenchStore((s) => s.activeStoryboardId)
   const setProjectAgentReferences = useWorkbenchStore((s) => s.setProjectAgentReferences)
   const setProjectAgentDraft = useWorkbenchStore((s) => s.setProjectAgentDraft)
   const setProjectAgentDockCollapsed = useWorkbenchStore((s) => s.setProjectAgentDockCollapsed)
@@ -111,7 +111,7 @@ export default function StoryboardPlanEditor({ projectId }: { projectId?: string
   }
 
   // 行执行态：plan × 画布节点的实时 derive（F2：组头/标题/footer 计数同一份，禁静态快照）。
-  const designId = activeStoryboardId ?? ''
+  const designId = activeDesign?.id ?? ''
   const rows = React.useMemo(
     () => (plan ? deriveStoryboardRowRuntimes({ plan, designId, imageModelOptions, videoModelOptions, nodes: canvasNodes }) : []),
     [plan, designId, imageModelOptions, videoModelOptions, canvasNodes],
@@ -225,7 +225,7 @@ export default function StoryboardPlanEditor({ projectId }: { projectId?: string
 
   const onDiscard = async () => {
     const targetDocumentId = activeDocumentId
-    const targetStoryboardId = activeStoryboardId
+    const targetStoryboardId = designId
     if (!targetStoryboardId) return
     const ok = await confirmDialog({
       title: t('storyboardEditor.discardTitle'),
@@ -238,7 +238,10 @@ export default function StoryboardPlanEditor({ projectId }: { projectId?: string
 
   // 动作统一包一层：失败人话 toast（生成失败本身落在节点卡片，这里只兜 materialize/确认前异常）。
   const runAction = async (action: () => Promise<void>): Promise<void> => {
-    if (busy || !activeStoryboardId) return
+    if (busy) {
+      toast(t('storyboardEditor.exec.actionPending'), 'info')
+      return
+    }
     setBusy(true)
     try {
       await action()
@@ -266,13 +269,15 @@ export default function StoryboardPlanEditor({ projectId }: { projectId?: string
     scope: readonly StoryboardRowRuntime[],
     action: () => Promise<void>,
   ): Promise<void> => {
-    const shotIds = scope.map((runtime) => storyboardShotId(runtime.shot))
-    const blocker = await resolveGeneratableGate(plan, projectId, resolveClient(), shotIds)
-    if (blocker) {
-      toast(describeBlocker(t, blocker), 'error')
-      return
-    }
-    await runAction(action)
+    await runAction(async () => {
+      const shotIds = scope.map((runtime) => storyboardShotId(runtime.shot))
+      const blocker = await resolveGeneratableGate(plan, projectId, resolveClient(), shotIds)
+      if (blocker) {
+        toast(describeBlocker(t, blocker), 'error')
+        return
+      }
+      await action()
+    })
   }
 
   const execCtx = { documentId: activeDocumentId, designId, plan }

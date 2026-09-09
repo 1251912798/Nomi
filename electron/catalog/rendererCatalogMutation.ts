@@ -2,6 +2,9 @@ import { importModelCatalogPackage, readCatalog, upsertModelCatalogMapping, upse
 import type { CatalogState, Model } from './types'
 import { derivePublishedExecution, modelHasPublishedExecution } from '../shared/modelPublication'
 
+import { validateCandidateCredential, candidateCredentialSnapshot } from './validateCandidateCredential'
+import { desktopT } from '../i18n'
+
 type Json = Record<string, unknown>
 
 function record(value: unknown): Json {
@@ -126,12 +129,19 @@ export function upsertRendererCatalogVendor(payload: unknown) {
  * a vendor; certification owns the later enabled transition.  The paired vendor
  * de-publish is inherited from the store, not done here — see
  * `credentialPublication.ts`. */
-export function upsertRendererCatalogVendorApiKey(vendorKey: string, payload: unknown) {
-  return upsertModelCatalogVendorApiKey(vendorKey, sanitizeRendererVendorApiKeyMutation(payload))
+export async function upsertRendererCatalogVendorApiKey(vendorKey: string, payload: unknown) {
+  const candidate = sanitizeRendererVendorApiKeyMutation(payload)
+  const vendor = readCatalog().vendors.find((item) => item.key === vendorKey)
+  if (!vendor) throw new Error(desktopT('credential.validationUnavailable'))
+  const snapshot = candidateCredentialSnapshot(vendorKey)
+  const verificationPending = await validateCandidateCredential(vendor, String(candidate.apiKey || '').trim())
+  if (snapshot !== candidateCredentialSnapshot(vendorKey)) throw new Error(desktopT('credential.changed'))
+  return upsertModelCatalogVendorApiKey(vendorKey, { ...candidate, ...(verificationPending ? { verificationPending: true } : {}) })
 }
 
 export function sanitizeRendererVendorApiKeyMutation(payload: unknown): Json {
-  return { ...record(payload), enabled: false }
+  const { verificationPending: _ignored, ...candidate } = record(payload)
+  return { ...candidate, enabled: false }
 }
 
 export function upsertRendererCatalogModel(payload: unknown) {

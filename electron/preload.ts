@@ -4,7 +4,7 @@ import { createCanvasReadSurfacePreloadBridge } from './surfacePortPreloadBridge
 import { LANE_IPC_CHANNELS, type LaneWorkspaceProjection } from './shared/agentLane/laneContracts';
 import type { LaneDesktopCommand } from './shared/agentLane/laneDesktopContracts';
 
-type SyncResult<T> = { ok: true; value: T } | { ok: false; error: string };
+type IpcResult<T> = { ok: true; value: T } | { ok: false; error: string };
 type ProductionDeepLinkPayload = { projectId: string; runId?: string; nodeId?: string; artifactId?: string };
 let queuedProductionDeepLink: ProductionDeepLinkPayload | null = null;
 const productionDeepLinkListeners = new Set<(payload: ProductionDeepLinkPayload) => void>();
@@ -15,7 +15,10 @@ ipcRenderer.on("nomi:production-deep-link", (_event, payload: ProductionDeepLink
 });
 
 function invokeSync<T>(channel: string, ...args: unknown[]): T {
-  const result = ipcRenderer.sendSync(channel, ...args) as SyncResult<T>;
+  return unwrapIpcResult(ipcRenderer.sendSync(channel, ...args) as IpcResult<T>, channel);
+}
+
+function unwrapIpcResult<T>(result: IpcResult<T>, channel: string): T {
   if (!result || result.ok !== true) {
     throw new Error(result?.error || `Desktop IPC failed: ${channel}`);
   }
@@ -422,6 +425,7 @@ contextBridge.exposeInMainWorld("nomiDesktop", {
     runComfyCandidateTest: (payload: unknown) => ipcRenderer.invoke("nomi:tasks:comfy-candidate-test", payload),
     cancelComfyCandidateTest: (payload: unknown) => ipcRenderer.invoke("nomi:tasks:comfy-candidate-cancel", payload),
     // 付费守卫：真人确认后铸一次性令牌（绑 nodeIds），返回不透明 grantId 随生成请求下传。
+    quoteSpend: (payload: unknown) => ipcRenderer.invoke("nomi:tasks:quote-spend", payload),
     grantSpend: (payload: unknown) =>
       ipcRenderer.invoke("nomi:tasks:grant-spend", payload) as Promise<{ grantId: string }>,
     // 文本任务流式（逐 token）：start 返回 streamId，onTextEvent 收 delta/done/error。
@@ -607,8 +611,10 @@ contextBridge.exposeInMainWorld("nomiDesktop", {
     health: () => invokeSync("nomi:model-catalog:health"),
     upsertVendor: (payload: unknown) => invokeSync("nomi:model-catalog:vendor:upsert", payload),
     deleteVendor: (key: string) => invokeSync("nomi:model-catalog:vendor:delete", key),
-    upsertVendorApiKey: (vendorKey: string, payload: unknown) =>
-      invokeSync("nomi:model-catalog:vendor-api-key:upsert", vendorKey, payload),
+    upsertVendorApiKey: async (vendorKey: string, payload: unknown) => {
+      const channel = "nomi:model-catalog:vendor-api-key:upsert";
+      return unwrapIpcResult(await ipcRenderer.invoke(channel, vendorKey, payload), channel);
+    },
     clearVendorApiKey: (vendorKey: string) => invokeSync("nomi:model-catalog:vendor-api-key:clear", vendorKey),
     upsertModel: (payload: unknown) => invokeSync("nomi:model-catalog:model:upsert", payload),
     /** 改类型 = 改 kind + 按新 kind 重建调用通道（单事务）。见 catalog/modelRetype.ts。 */

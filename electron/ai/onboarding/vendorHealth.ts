@@ -15,6 +15,7 @@
  * 代价是对「本就没有 /models」的家每轮多发一个必然 404 的请求：零额度（就是 GET /models）、
  * 有缓存、无害。换来的是新增供应商零维护（P4 通用第一）。
  */
+import { providerProxyUrl } from "../../providerNetwork";
 import { logWarn } from "../../logging/logger";
 import { BrowserWindow } from "electron";
 import { createHash } from "node:crypto";
@@ -64,6 +65,7 @@ type Target = {
   headers: Record<string, string>;
   query: Record<string, string>;
   fingerprint: string;
+  proxyUrl?: string;
 };
 
 /**
@@ -92,12 +94,13 @@ function resolveTarget(vendorKey: string): Target | null {
   const query = authQueryParams(authType, apiKey, vendor.authQueryParam ?? undefined);
   return {
     baseUrl,
+    proxyUrl: providerProxyUrl(vendor),
     providerKind,
     headers,
     query,
     fingerprint: createHash("sha256").update(JSON.stringify({
       baseUrl, updatedAt: record?.updatedAt, providerKind, authType,
-      authHeader: vendor.authHeader, authQueryParam: vendor.authQueryParam, headers, query,
+      authHeader: vendor.authHeader, authQueryParam: vendor.authQueryParam, headers, query, proxyUrl: providerProxyUrl(vendor),
     })).digest("hex"),
   };
 }
@@ -124,15 +127,18 @@ async function probe(vendorKey: string, target: Target): Promise<VendorHealth> {
     const entry = cache.get(vendorKey);
     const res = await fetchModelList(target.providerKind, target.baseUrl, target.headers, controller.signal, {
       query: target.query,
+      proxyUrl: target.proxyUrl,
       validator: entry?.fingerprint === target.fingerprint ? entry.validator : undefined,
     });
     // Re-read before writing: edits/removal during the request invalidate its evidence.
     if (resolveTarget(vendorKey)?.fingerprint === target.fingerprint && res.ok && !res.partial) {
       const current = cache.get(vendorKey);
       if (current?.fingerprint === target.fingerprint) current.validator = res.validator;
-      const patches = modelListReconciliation(readCatalog().models, vendorKey, res);
-      if (patches.length) {
+      const state = readCatalog();
+      const patches = modelListReconciliation(state.models, vendorKey, res);
+      if (patches.length || state.apiKeysByVendor[vendorKey]?.verificationPending) {
         mutateCatalog((tx, state) => {
+          if (state.apiKeysByVendor[vendorKey]) delete state.apiKeysByVendor[vendorKey].verificationPending;
           for (const patch of modelListReconciliation(state.models, vendorKey, res)) tx.upsertModel(patch);
         });
         for (const window of BrowserWindow.getAllWindows()) if (!window.isDestroyed()) window.webContents.send("nomi:model-catalog:changed");

@@ -19,3 +19,13 @@ export function normalizeVendorPreferenceSettings(value: unknown): VendorPrefere
   }
   return { schemaVersion: VENDOR_PREFERENCE_SCHEMA_VERSION, orderedVendorKeys }
 }
+
+/** Stable provider order for both visible choices and bare model-key resolution. */
+export function orderByVendorPreference<T>(
+  entries: readonly T[], orderedVendorKeys: readonly string[], vendorOf: (entry: T) => string | null | undefined,
+): T[] {
+  const rank = new Map(orderedVendorKeys.map((key, index) => [key, index]))
+  return [...entries].sort((left, right) =>
+    (rank.get(vendorOf(left) ?? '') ?? Number.MAX_SAFE_INTEGER)
+    - (rank.get(vendorOf(right) ?? '') ?? Number.MAX_SAFE_INTEGER))
+}

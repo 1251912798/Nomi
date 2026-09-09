@@ -6,6 +6,7 @@ import type { KnownVendor } from '../../config/knownVendors'
 import { DesignButton } from '../../design'
 import { getDesktopBridge } from '../../desktop/bridge'
 import { cn } from '../../utils/cn'
+import { useVendorHealth } from './useVendorHealth'
 import { ModelSettingsPageSurface } from './ModelSettingsPageSurface'
 
 export function KnownVendorKeyConnectPage({
@@ -13,6 +14,7 @@ export function KnownVendorKeyConnectPage({
   vendorName,
   modelCount,
   hasApiKey = false,
+  credentialVerificationPending = false,
   onBack,
   onSaved,
   onContinueVerification,
@@ -26,6 +28,7 @@ export function KnownVendorKeyConnectPage({
    * 避免用户在 availableKnown 点击卡片后看到一个要他重填 key 的表单。
    */
   hasApiKey?: boolean
+  credentialVerificationPending?: boolean
   onBack: () => void
   onSaved: () => void
   onContinueVerification: () => void
@@ -36,10 +39,18 @@ export function KnownVendorKeyConnectPage({
   // 已有 key = 直接进入「已保存」状态（跳过录入，避免要求用户重填已存 key）。
   const [saved, setSaved] = React.useState(hasApiKey)
   const [error, setError] = React.useState('')
+  const [verificationPending, setVerificationPending] = React.useState(credentialVerificationPending)
+  React.useEffect(() => setVerificationPending(credentialVerificationPending), [credentialVerificationPending])
   const inputRef = React.useRef<HTMLInputElement>(null)
   const errorId = React.useId()
+  const { connection } = useVendorHealth(directory.vendorKey, {
+    hasApiKey: saved, skipImplicitProbe: true,
+  })
+  React.useEffect(() => {
+    if (connection?.state === 'reachable') setVerificationPending(false)
+  }, [connection?.state])
 
-  const save = React.useCallback(() => {
+  const save = React.useCallback(async () => {
     const cleanKey = apiKey.trim()
     if (!cleanKey) {
       setError(t('onboardingProviders.keyOnly.keyRequired'))
@@ -54,10 +65,8 @@ export function KnownVendorKeyConnectPage({
     setBusy(true)
     setError('')
     try {
-      // A credential edit invalidates the active certification. Keep the
-      // seeded vendor disabled until the canonical run promotes verified modes.
-      catalog.upsertVendor({ key: directory.vendorKey, enabled: false })
-      catalog.upsertVendorApiKey(directory.vendorKey, { apiKey: cleanKey, enabled: false })
+      const result = await catalog.upsertVendorApiKey(directory.vendorKey, { apiKey: cleanKey, enabled: false }) as { verificationPending?: boolean }
+      setVerificationPending(result.verificationPending === true)
       setSaved(true)
       setApiKey('')
       onSaved()
@@ -166,12 +175,16 @@ export function KnownVendorKeyConnectPage({
               </span>
               <div className="min-w-0 flex-1">
                 <div className="text-body-sm font-semibold text-nomi-ink">
-                  {hasApiKey && apiKey === ''
+                  {verificationPending
+                    ? t('onboardingProviders.keyOnly.offlineTitle')
+                    : hasApiKey && apiKey === ''
                     ? t('onboardingProviders.keyOnly.pendingTitle', { name: vendorName })
                     : t('onboardingProviders.keyOnly.savedTitle', { name: vendorName })}
                 </div>
                 <p className="mt-1 text-caption leading-relaxed text-nomi-ink-60">
-                  {hasApiKey && apiKey === ''
+                  {verificationPending
+                    ? t('onboardingProviders.keyOnly.offlineHint')
+                    : hasApiKey && apiKey === ''
                     ? t('onboardingProviders.keyOnly.pendingHint')
                     : t('onboardingProviders.keyOnly.savedHint')}
                 </p>

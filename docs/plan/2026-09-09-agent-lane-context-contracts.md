@@ -117,3 +117,7 @@ C42 次级入口：运行时 Alt+Enter 明确 follow-up，普通 Enter/发送为
 完整门岗第二项发现：stage4 迁移改变了 10 处 E2E 等待的语义指纹，并留下 14 条退役等待登记。根因是等待仍内嵌常量而未走 main 的共享 station budget；仅把这 10 处接到 `stationTimeout({ operations: 2 })`（仍为 30 秒安全上限，完成仍由原状态断言判断），删除失效登记，不新增债、不扩大超时。
 
 交付粒度调整：pre-push 对每个尚未远达的 merge 使用 dense combined diff；原 `453c300b1` 为 182065 bytes、本次 `56a20db14` 为 224596 bytes，均超过 150000，单纯按原 merge SHA 分批仍无法过闸。保留本地 tip 备份和六簇 B1 原提交，把两笔未推送 merge 的部分合并结果延到紧邻小提交，所有 commit/push 正常 hooks；最终以 tree SHA 相等验明文件内容未变，远端只快进。完成后重新跑完整 gates。
+
+### 再并线 f708568df（#682）
+
+第三轮 fresh-base 检出 main 前进，按任务书再次合入。`electron/i18n.ts` 同时保留 lane 旧记录说明和 main 凭据验证四条文案（中英均保留）；`availableModels.ts` 保留 lane 的 text/chat、image、imageEdit、video、image_to_video 五路目录，汇总后使用 main 的供应商偏好排序。沿现有共享 owner，不恢复旧运行时、不丢模型模式。

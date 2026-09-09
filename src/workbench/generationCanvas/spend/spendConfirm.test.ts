@@ -14,6 +14,12 @@ vi.mock('../../../desktop/activeProject', () => ({
 }))
 
 describe('generation spend ETA copy', () => {
+  it('uses the selected concurrency within each serial dependency wave', () => {
+    const parallel = describeGenerationCost(6, 'video', { concurrency: 6, waveSizes: [6], etaStats: [] })
+    const dependent = describeGenerationCost(6, 'video', { concurrency: 6, waveSizes: [1, 5], etaStats: [] })
+    expect(parallel).toContain('5–20')
+    expect(dependent).toContain('10–40')
+  })
   it('uses historical P50/P90 as an interval', () => {
     const message = describeGenerationCost(2, 'video', {
       vendorKey: 'relay', modelKey: 'video-model',

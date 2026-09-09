@@ -1,0 +1,7 @@
+feel record: credential-offline/waitForFunction.png; findings=12; new-surfaces=3; evidence: /Users/aoqimin/Desktop/Nomi-money-guard/artifacts/feel/credential-offline-25d2b5bb-2dec-4fa9-b364-d13f4725062c
+feel record: credential-offline/01-offline-saved.png; findings=12; new-surfaces=3; evidence: /Users/aoqimin/Desktop/Nomi-money-guard/artifacts/feel/credential-offline-25d2b5bb-2dec-4fa9-b364-d13f4725062c
+feel record: credential-offline/waitForFunction.png; findings=12; new-surfaces=0; evidence: /Users/aoqimin/Desktop/Nomi-money-guard/artifacts/feel/credential-offline-25d2b5bb-2dec-4fa9-b364-d13f4725062c
+feel record: credential-offline/02-revalidated.png; findings=12; new-surfaces=3; evidence: /Users/aoqimin/Desktop/Nomi-money-guard/artifacts/feel/credential-offline-25d2b5bb-2dec-4fa9-b364-d13f4725062c
+feel record: credential-offline/waitForFunction.png; findings=12; new-surfaces=0; evidence: /Users/aoqimin/Desktop/Nomi-money-guard/artifacts/feel/credential-offline-25d2b5bb-2dec-4fa9-b364-d13f4725062c
+feel record: credential-offline/03-rejected-keeps-key.png; findings=12; new-surfaces=3; evidence: /Users/aoqimin/Desktop/Nomi-money-guard/artifacts/feel/credential-offline-25d2b5bb-2dec-4fa9-b364-d13f4725062c
+PASS: offline save + persistent badge, online automatic revalidation, 401 preserves old key; zero paid calls

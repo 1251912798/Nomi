@@ -1,0 +1,91 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-09-storyboard-visible-action",
+  "problem_type": "Display and execution share one resolved design and every action failure is visible",
+  "symptom": "Draft waiting-to-start row generation silently returns",
+  "direct_cause": "Displayed first design and execution active design diverge; resolver exceptions precede catch",
+  "class_root": "Display and execution share one resolved design and every action failure is visible",
+  "affected_population": [
+    "Existing nodes and persisted project drafts"
+  ],
+  "scope_paths": [
+    "src/workbench/creation/storyboard/StoryboardPlanEditor.tsx"
+  ],
+  "entry_points": [
+    "guardMaterialize",
+    "generateShotRow"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "Internal selection and action boundaries, no external protocol changes.",
+  "invariants": [
+    "Display and execution share one resolved design and every action failure is visible"
+  ],
+  "generality_proof": "The shared entry enforces the same rule for image/video nodes and single/batch actions.",
+  "shared_boundaries": [
+    {
+      "path": "src/workbench/creation/storyboard/StoryboardPlanEditor.tsx",
+      "symbol": "StoryboardPlanEditor",
+      "responsibility": "Display and execution share one resolved design and every action failure is visible"
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/workbench/creation/storyboard/StoryboardPlanEditor.tsx",
+      "entry_point": "guardMaterialize",
+      "disposition": "enforced",
+      "evidence": "Entry reaches the shared selection/action boundary."
+    },
+    {
+      "path": "src/workbench/creation/storyboard/exec/storyboardRowActions.ts",
+      "entry_point": "generateShotRow",
+      "disposition": "enforced",
+      "evidence": "Entry reaches the shared selection/action boundary."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Other vendors and persisted projects can reach the same paths.",
+    "same_class_scan": [
+      "rg selectedModelOption / resolveExecutableNodeFromCatalog / runAction / activeStoryboardId across src"
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "src/workbench/creation/storyboard/StoryboardPlanEditor.tsx",
+    "invariant": "Display and execution share one resolved design and every action failure is visible",
+    "failure_mode": "Stop and show actionable feedback",
+    "exception_policy": "none",
+    "strategy": "Remove automatic mutation and silent return at the shared owner.",
+    "artifacts": [
+      "src/workbench/creation/storyboard/StoryboardPlanEditor.tsx"
+    ]
+  },
+  "regression_tests": [
+    "src/workbench/creation/storyboard/storyboardPlanLifecycle.test.ts"
+  ],
+  "class_regression_tests": [
+    "src/workbench/creation/storyboard/storyboardPlanLifecycle.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "src/workbench/creation/storyboard/StoryboardPlanEditor.tsx"
+    ],
+    "rationale": "Remove automatic replacement or the mismatched active-design guard."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "Internal application invariant.",
+    "exit_criteria": []
+  },
+  "migration": "Retain saved selections and plans; derive current execution context without rewriting credentials.",
+  "residual_risks": [
+    "Persisted-draft walkthrough covers this reported state; provider-specific missing inputs are reported by the shared resolver rather than guaranteed generatable."
+  ],
+  "invariant_owner_layer": {
+    "layer": "src/workbench/creation/storyboard/StoryboardPlanEditor.tsx",
+    "tests": [
+      "src/workbench/creation/storyboard/storyboardPlanLifecycle.test.ts"
+    ]
+  }
+}
