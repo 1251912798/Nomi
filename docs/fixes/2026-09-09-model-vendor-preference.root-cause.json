@@ -85,7 +85,9 @@
     "exit_criteria": []
   },
   "migration": "No persisted data rewrite; affects new bare-key resolution only.",
-  "residual_risks": [],
+  "residual_risks": [
+    "Explicit vendor identities intentionally remain pinned; preference changes apply only to later bare-model resolution."
+  ],
   "invariant_owner_layer": {
     "layer": "electron/shared/contracts/vendorPreference.ts",
     "tests": [

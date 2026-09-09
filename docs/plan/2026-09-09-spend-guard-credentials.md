@@ -75,3 +75,6 @@
 - 批量 ETA 使用运行器同一 concurrency 归一化值，并将依赖波次串行等待计入估算。
 - 真人走查还发现长供应商名称把建议 toast 文案挤成竖排；在 src/ui/toast.tsx 共享组件允许换行，说明与动作独立成行，已重建并截图 human-10。
 - R30 真实模型回合：工具写对 1/1（全部工具 2/2 成功），用户任务完成 1/2。首轮 DeepSeek TLS 失败保留；GPT-5.5 成功新增 GPT Image 2 节点、未出图。输入 41,114 token、输出 465 token；无最终账单。小样本结果见 real-agent-metrics.json。
+
+## 最终门岗纠正
+完整 gates 发现 main 巨壳新增四行和三份合同空风险数组。凭据异步 IPC 注册归回现有 onboardingIpc，保持 sender guard 与结果 envelope，不新增注册器；补充本次验证的实际适用边界。credential-envelope-red → green 证明错误仍走统一结果格式。

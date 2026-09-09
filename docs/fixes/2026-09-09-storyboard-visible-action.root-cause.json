@@ -79,7 +79,9 @@
     "exit_criteria": []
   },
   "migration": "Retain saved selections and plans; derive current execution context without rewriting credentials.",
-  "residual_risks": [],
+  "residual_risks": [
+    "Persisted-draft walkthrough covers this reported state; provider-specific missing inputs are reported by the shared resolver rather than guaranteed generatable."
+  ],
   "invariant_owner_layer": {
     "layer": "src/workbench/creation/storyboard/StoryboardPlanEditor.tsx",
     "tests": [

@@ -19,7 +19,7 @@ import {
   listModelCatalogModels,
   listModelCatalogVendors,
 } from "./catalog/catalogStore";
-import { importRendererCatalogPackage, upsertRendererCatalogMapping, upsertRendererCatalogModel, upsertRendererCatalogVendor, upsertRendererCatalogVendorApiKey } from "./catalog/rendererCatalogMutation";
+import { importRendererCatalogPackage, upsertRendererCatalogMapping, upsertRendererCatalogModel, upsertRendererCatalogVendor } from "./catalog/rendererCatalogMutation";
 import { registerAssetTransportIpc } from "./assetTransportIpc";
 import { retypeModelCatalogModel } from "./catalog/modelRetype";
 import { registerTaskIpcHandlers } from "./tasks/taskIpcHandlers";
@@ -567,11 +567,6 @@ function registerIpc(): void {
   registerSyncIpc("nomi:model-catalog:health", getModelCatalogHealth);
   registerSyncIpc("nomi:model-catalog:vendor:upsert", upsertRendererCatalogVendor);
   registerSyncIpc("nomi:model-catalog:vendor:delete", deleteModelCatalogVendor);
-  ipcMain.handle("nomi:model-catalog:vendor-api-key:upsert", async (event, vendorKey: string, payload: unknown) => {
-    assertTrustedSender(event);
-    try { return { ok: true, value: await upsertRendererCatalogVendorApiKey(vendorKey, payload) }; }
-    catch (error) { return { ok: false, error: error instanceof Error ? error.message : String(error) }; }
-  });
   registerSyncIpc("nomi:model-catalog:vendor-api-key:clear", clearModelCatalogVendorApiKey);
   registerSyncIpc("nomi:model-catalog:model:upsert", upsertRendererCatalogModel);
   // 改类型是**领域操作**不是字段 upsert：改 kind 的同时要按新 kind 重建调用通道，否则只是把

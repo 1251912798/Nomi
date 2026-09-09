@@ -86,7 +86,9 @@
     "exit_criteria": []
   },
   "migration": "Retain saved selections and plans; derive current execution context without rewriting credentials.",
-  "residual_risks": [],
+  "residual_risks": [
+    "The suggested alternative may itself be unavailable; switching is explicit and its next submission remains subject to validation and spend confirmation."
+  ],
   "invariant_owner_layer": {
     "layer": "src/workbench/generationCanvas/nodes/useNodeModelAutoSelect.ts",
     "tests": [
