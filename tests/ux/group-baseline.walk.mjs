@@ -1,8 +1,8 @@
 // R8 前置：把「组 / 选择浮条 / 节点浮条 / 提示词 composer + @ 弹层」的**真实样子**拍下来，
 // 样张才能是「真实布局 + 改动」而不是脑补（CLAUDE.md 三闸①）。
 // 用法: node tests/ux/group-baseline.walk.mjs
-import { launchNomiApp } from './_launchApp.mjs'
-import { findCanvasBlankPoint } from './_canvasHit.mjs'
+import { launchNomiApp, ACCEPTANCE_WIDE_VIEWPORT } from './_launchApp.mjs'
+import { findCanvasBlankPoint, expectNodeInsideCanvas } from './_canvasHit.mjs'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -32,6 +32,7 @@ async function snapNear(win, name, locator, pad = 40) {
 
 const { app, win } = await launchNomiApp({
   name: 'group-baseline',
+  ...(process.argv.includes('--wide') ? { viewportSize: ACCEPTANCE_WIDE_VIEWPORT } : {}),
   args: ['--no-proxy-server'],
   settleMs: 0,
   initialLocalStorage: { 'nomi:splash:v1': 'seen', 'nomi:journey-tour:v1': 'seen' },
@@ -42,8 +43,17 @@ await win.getByRole('button', { name: '生成', exact: true }).click()
 const addImage = win.locator('[aria-label="添加图片节点"]').first()
 await expectVisible(addImage, '生成画布已可添加节点')
 if (!(await addImage.count())) { console.error('❌ 找不到「添加图片节点」'); await app.close(); process.exit(1) }
-for (let i = 0; i < 4; i += 1) { await addImage.click({ timeout: 4000 }); await win.waitForTimeout(280) }
+let firstCreatedId
+for (let i = 0; i < 4; i += 1) {
+  await addImage.click({ timeout: 4000 })
+  await win.waitForTimeout(280)
+  if (!firstCreatedId) {
+    firstCreatedId = await win.locator('.generation-canvas-v2-node[data-node-id]').first().getAttribute('data-node-id')
+    if (!firstCreatedId) throw new Error('第一张新卡必须有真实 ID，不能把后续可见卡当成首卡')
+  }
+}
 await win.waitForTimeout(900)
+await expectNodeInsideCanvas(win, win.locator(`.generation-canvas-v2-node[data-node-id="${firstCreatedId}"]`), '连续建完四张后首卡完整在舞台内')
 await snap(win, 'canvas-4-nodes')
 
 // 全选 → 选择浮条（真实样子：计数 + 生成 N + 编组 + 关闭）

@@ -1,0 +1,73 @@
+GL_RENDERER ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (LLVM 10.0.0) (0x0000C0DE)), SwiftShader driver)
+  ok: 种子供应商 Batch Mock 已在模型设置里可见
+feel record: canvas-batch-production/waitForFunction.png; findings=67; new-surfaces=3; evidence: /Users/aoqimin/Desktop/Nomi-canvas-red/artifacts/feel/canvas-batch-production-04f60060-937d-4f81-8908-db1c7c317ff9
+feel record: canvas-batch-production/01-light-model-settings.png; findings=67; new-surfaces=3; evidence: /Users/aoqimin/Desktop/Nomi-canvas-red/artifacts/feel/canvas-batch-production-04f60060-937d-4f81-8908-db1c7c317ff9
+  screenshot: 01-light-model-settings.png
+CANVAS_CLICK_DIAGNOSTIC {"tag":"P","label":"AI 影像创作画布","nodeId":"gen-v2-image-mtu6ppp4-nt9m","x":685,"y":730}
+CANVAS_CLICK_DIAGNOSTIC {"tag":"P","label":"AI 影像创作画布","nodeId":"gen-v2-image-mtu6pr99-rizq","x":1007,"y":730}
+CANVAS_CLICK_DIAGNOSTIC {"tag":"DIV","label":"AI 影像创作画布","nodeId":"gen-v2-image-mtu6ppp4-nt9m","x":478,"y":354}
+  ok: 连接点和目标节点都有可点击区域
+  ok: 真实点击建立依赖边
+  ok: 无选择入口显示两个待生成节点
+  ok: 未框选时批量模型更新已触发项目持久化
+  ok: 未框选时图片节点统一切到图片 B
+  ok: 并发偏好写入本地存储
+feel record: canvas-batch-production/waitForFunction.png; findings=15; new-surfaces=1; evidence: /Users/aoqimin/Desktop/Nomi-canvas-red/artifacts/feel/canvas-batch-production-04f60060-937d-4f81-8908-db1c7c317ff9
+feel record: canvas-batch-production/02-light-generate-all.png; findings=15; new-surfaces=4; evidence: /Users/aoqimin/Desktop/Nomi-canvas-red/artifacts/feel/canvas-batch-production-04f60060-937d-4f81-8908-db1c7c317ff9
+  screenshot: 02-light-generate-all.png
+feel record: canvas-batch-production/waitForFunction.png; findings=59; new-surfaces=0; evidence: /Users/aoqimin/Desktop/Nomi-canvas-red/artifacts/feel/canvas-batch-production-04f60060-937d-4f81-8908-db1c7c317ff9
+feel record: canvas-batch-production/03-spend-confirm-before-cancel.png; findings=59; new-surfaces=4; evidence: /Users/aoqimin/Desktop/Nomi-canvas-red/artifacts/feel/canvas-batch-production-04f60060-937d-4f81-8908-db1c7c317ff9
+  screenshot: 03-spend-confirm-before-cancel.png
+  ok: 取消付费确认后 vendor 零调用
+CONFIRM_HIT {"x":983,"y":555.0625,"hit":"<button class=\"inline-flex items-center justify-center gap-1.5 rounded-workbench-control font-medium whitespace-nowrap transition-[background,border-color,color,box-shadow] duration-150 ease-out disabled:opacity-50 disabled:cursor-not-allowed [&amp;&gt;svg]:size-4 [&amp;&gt;svg]:stroke-2 text-body-sm border active:bg-workbench-pressed h-8 px-4 cursor-pointer bg-nomi-ink text-nomi-paper border-nomi-ink hover:bg-nomi-accent hover:text-nomi-paper\" type=\"button\">生成</button>","stack":[{"tag":"BUTTON","cls":"inline-flex items-center justify-center gap-1.5 rounded-workbench-control font-medium whitespace-nowrap transition-[background,border-color,color,box-shadow] duration-150 ease-out disabled:opacity-50 disabled:cursor-not-allowed [&>svg]:size-4 [&>svg]:stroke-2 text-body-sm border active:bg-workbench-pressed h-8 px-4 cursor-pointer bg-nomi-ink text-nomi-paper border-nomi-ink hover:bg-nomi-accent hover:text-nomi-paper","pointer":"auto"},{"tag":"DIV","cls":"flex items-center justify-end gap-2","pointer":"auto"},{"tag":"DIV","cls":"outline-none w-[380px] max-h-[88vh] max-w-[88%] rounded-nomi-lg border border-nomi-line bg-nomi-paper p-4 shadow-nomi-md overflow-y-auto","pointer":"auto"},{"tag":"DIV","cls":"fixed inset-0 flex items-center justify-center bg-nomi-ink/20 pointer-events-auto","pointer":"auto"},{"tag":"DIV","cls":"flex h-full w-full items-center justify-center gap-2 px-4 text-center flex-col py-5","pointer":"auto"},{"tag":"DIV","cls":"h-full w-full","pointer":"auto"},{"tag":"DIV","cls":"generation-canvas-v2-node__preview relative z-[2] w-full h-full min-h-0 overflow-hidden rounded-nomi shadow-nomi-md cursor-grab touch-none ring-1 ring-inset ring-nomi-line bg-[repeating-linear-gradient(45deg,var(--nomi-ink-05)_0_23px,var(--nomi-ink-20)_23px_24px)]","pointer":"auto"},{"tag":"ARTICLE","cls":"generation-canvas-v2-node relative p-0 border-0 rounded-none bg-transparent shadow-none cursor-grab select-none touch-none overflow-visible data-[selected=true]:z-[5] block isolate group/node","pointer":"auto"}]}
+feel record: canvas-batch-production/waitForFunction.png; findings=13; new-surfaces=0; evidence: /Users/aoqimin/Desktop/Nomi-canvas-red/artifacts/feel/canvas-batch-production-04f60060-937d-4f81-8908-db1c7c317ff9
+feel record: canvas-batch-production/waitForFunction.png; findings=13; new-surfaces=0; evidence: /Users/aoqimin/Desktop/Nomi-canvas-red/artifacts/feel/canvas-batch-production-04f60060-937d-4f81-8908-db1c7c317ff9
+feel record: canvas-batch-production/04-generate-all-completed.png; findings=13; new-surfaces=2; evidence: /Users/aoqimin/Desktop/Nomi-canvas-red/artifacts/feel/canvas-batch-production-04f60060-937d-4f81-8908-db1c7c317ff9
+  screenshot: 04-generate-all-completed.png
+  ok: 依赖波次两个请求都完成
+  ok: 下游在上游完成后才开始
+  ok: 下游请求收到上游图片参考
+CANVAS_CLICK_DIAGNOSTIC {"tag":"P","label":"AI 影像创作画布","nodeId":"gen-v2-image-mtu6q2f8-me57","x":655,"y":186}
+CANVAS_CLICK_DIAGNOSTIC {"tag":"P","label":"AI 影像创作画布","nodeId":"gen-v2-video-mtu6q3y4-iz25","x":1024,"y":750}
+  ok: 真实点击新增图片和视频节点
+  ok: 混合选择只统计两个待生成节点
+  ok: 批量模型更新已触发项目持久化
+  ok: 三个图片节点统一切到图片 B
+  ok: 视频节点切到视频 B
+feel record: canvas-batch-production/waitForFunction.png; findings=25; new-surfaces=0; evidence: /Users/aoqimin/Desktop/Nomi-canvas-red/artifacts/feel/canvas-batch-production-04f60060-937d-4f81-8908-db1c7c317ff9
+feel record: canvas-batch-production/05-light-mixed-selection-models.png; findings=25; new-surfaces=4; evidence: /Users/aoqimin/Desktop/Nomi-canvas-red/artifacts/feel/canvas-batch-production-04f60060-937d-4f81-8908-db1c7c317ff9
+  screenshot: 05-light-mixed-selection-models.png
+feel record: canvas-batch-production/waitForFunction.png; findings=23; new-surfaces=0; evidence: /Users/aoqimin/Desktop/Nomi-canvas-red/artifacts/feel/canvas-batch-production-04f60060-937d-4f81-8908-db1c7c317ff9
+feel record: canvas-batch-production/06-dark-mixed-selection-models.png; findings=23; new-surfaces=4; evidence: /Users/aoqimin/Desktop/Nomi-canvas-red/artifacts/feel/canvas-batch-production-04f60060-937d-4f81-8908-db1c7c317ff9
+  screenshot: 06-dark-mixed-selection-models.png
+  ok: 暗色下模型设置仍列出 Batch Mock 供应商
+  ok: 模型切换反馈通知仍然可见
+  ok: 模型面板打开时通知不会遮挡面板
+feel record: canvas-batch-production/waitForFunction.png; findings=83; new-surfaces=0; evidence: /Users/aoqimin/Desktop/Nomi-canvas-red/artifacts/feel/canvas-batch-production-04f60060-937d-4f81-8908-db1c7c317ff9
+feel record: canvas-batch-production/07-dark-model-settings.png; findings=82; new-surfaces=4; evidence: /Users/aoqimin/Desktop/Nomi-canvas-red/artifacts/feel/canvas-batch-production-04f60060-937d-4f81-8908-db1c7c317ff9
+  screenshot: 07-dark-model-settings.png
+  ok: 混合选中生成取消后 vendor 零新增调用
+CANVAS_CLICK_DIAGNOSTIC {"tag":"DIV","label":"AI 影像创作画布","nodeId":"gen-v2-image-mtu6q2f8-me57","x":452,"y":686}
+CANVAS_CLICK_DIAGNOSTIC {"tag":"DIV","label":"AI 影像创作画布","nodeId":"gen-v2-image-mtu6ppp4-nt9m","x":379,"y":294}
+  ok: 选中批量只生成一个失败待测节点
+BATCH_FAILURE locator.waitFor: Timeout 5000ms exceeded.
+Call log:
+[2m  - waiting for locator('.mantine-Notifications-root[data-position="top-right"]').getByRole('alert').filter({ hasText: /开始生成/ }).first() to be visible[22m
+
+    at /Users/aoqimin/Desktop/Nomi-canvas-red/tests/ux/canvas-batch-production.walk.mjs:432:22 {
+  name: 'TimeoutError'
+}
+feel record: canvas-batch-production/failure.png; findings=19; new-surfaces=4; evidence: /Users/aoqimin/Desktop/Nomi-canvas-red/artifacts/feel/canvas-batch-production-04f60060-937d-4f81-8908-db1c7c317ff9
+node:internal/modules/run_main:123
+    triggerUncaughtException(
+    ^
+
+locator.waitFor: Timeout 5000ms exceeded.
+Call log:
+[2m  - waiting for locator('.mantine-Notifications-root[data-position="top-right"]').getByRole('alert').filter({ hasText: /开始生成/ }).first() to be visible[22m
+
+    at /Users/aoqimin/Desktop/Nomi-canvas-red/tests/ux/canvas-batch-production.walk.mjs:432:22 {
+  name: 'TimeoutError'
+}
+
+Node.js v22.22.0

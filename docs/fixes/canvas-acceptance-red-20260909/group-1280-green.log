@@ -1,0 +1,40 @@
+[walkthrough] content viewport {"width":1280,"height":933}
+CANVAS_NODE_VISIBILITY {"stage":{"x":60,"y":56,"width":798,"height":876,"top":56,"right":858,"bottom":932,"left":60},"card":{"x":83.99998474121094,"y":221.5939483642578,"width":234.6424102783203,"height":234.6424102783203,"top":221.5939483642578,"right":318.64239501953125,"bottom":456.2363586425781,"left":83.99998474121094}}
+feel record: group-baseline/waitForFunction.png; findings=19; new-surfaces=4; evidence: /Users/aoqimin/Desktop/Nomi-canvas-red/artifacts/feel/group-baseline-189a92a9-0e62-4ef8-aec1-cbce7f3974e0
+feel record: group-baseline/01-canvas-4-nodes.png; findings=19; new-surfaces=4; evidence: /Users/aoqimin/Desktop/Nomi-canvas-red/artifacts/feel/group-baseline-189a92a9-0e62-4ef8-aec1-cbce7f3974e0
+  · shot 01-canvas-4-nodes
+feel record: group-baseline/waitForFunction.png; findings=15; new-surfaces=1; evidence: /Users/aoqimin/Desktop/Nomi-canvas-red/artifacts/feel/group-baseline-189a92a9-0e62-4ef8-aec1-cbce7f3974e0
+feel record: group-baseline/02-selection-toolbar-real.png; findings=15; new-surfaces=4; evidence: /Users/aoqimin/Desktop/Nomi-canvas-red/artifacts/feel/group-baseline-189a92a9-0e62-4ef8-aec1-cbce7f3974e0
+  · shot 02-selection-toolbar-real
+feel record: group-baseline/waitForFunction.png; findings=20; new-surfaces=0; evidence: /Users/aoqimin/Desktop/Nomi-canvas-red/artifacts/feel/group-baseline-189a92a9-0e62-4ef8-aec1-cbce7f3974e0
+feel record: group-baseline/03-canvas-grouped.png; findings=20; new-surfaces=5; evidence: /Users/aoqimin/Desktop/Nomi-canvas-red/artifacts/feel/group-baseline-189a92a9-0e62-4ef8-aec1-cbce7f3974e0
+  · shot 03-canvas-grouped
+feel record: group-baseline/waitForFunction.png; findings=20; new-surfaces=0; evidence: /Users/aoqimin/Desktop/Nomi-canvas-red/artifacts/feel/group-baseline-189a92a9-0e62-4ef8-aec1-cbce7f3974e0
+feel record: group-baseline/04-group-frame-real.png; findings=20; new-surfaces=5; evidence: /Users/aoqimin/Desktop/Nomi-canvas-red/artifacts/feel/group-baseline-189a92a9-0e62-4ef8-aec1-cbce7f3974e0
+  · shot 04-group-frame-real
+feel record: group-baseline/waitForFunction.png; findings=20; new-surfaces=0; evidence: /Users/aoqimin/Desktop/Nomi-canvas-red/artifacts/feel/group-baseline-189a92a9-0e62-4ef8-aec1-cbce7f3974e0
+feel record: group-baseline/05-group-label-real.png; findings=20; new-surfaces=5; evidence: /Users/aoqimin/Desktop/Nomi-canvas-red/artifacts/feel/group-baseline-189a92a9-0e62-4ef8-aec1-cbce7f3974e0
+  · shot 05-group-label-real
+feel record: group-baseline/waitForFunction.png; findings=23; new-surfaces=0; evidence: /Users/aoqimin/Desktop/Nomi-canvas-red/artifacts/feel/group-baseline-189a92a9-0e62-4ef8-aec1-cbce7f3974e0
+feel record: group-baseline/06-canvas-node-selected.png; findings=23; new-surfaces=4; evidence: /Users/aoqimin/Desktop/Nomi-canvas-red/artifacts/feel/group-baseline-189a92a9-0e62-4ef8-aec1-cbce7f3974e0
+  · shot 06-canvas-node-selected
+feel record: group-baseline/waitForFunction.png; findings=23; new-surfaces=0; evidence: /Users/aoqimin/Desktop/Nomi-canvas-red/artifacts/feel/group-baseline-189a92a9-0e62-4ef8-aec1-cbce7f3974e0
+feel record: group-baseline/07-composer-real.png; findings=23; new-surfaces=4; evidence: /Users/aoqimin/Desktop/Nomi-canvas-red/artifacts/feel/group-baseline-189a92a9-0e62-4ef8-aec1-cbce7f3974e0
+  · shot 07-composer-real
+feel record: group-baseline/waitForFunction.png; findings=23; new-surfaces=0; evidence: /Users/aoqimin/Desktop/Nomi-canvas-red/artifacts/feel/group-baseline-189a92a9-0e62-4ef8-aec1-cbce7f3974e0
+feel record: group-baseline/08-node-floating-toolbar-real.png; findings=23; new-surfaces=4; evidence: /Users/aoqimin/Desktop/Nomi-canvas-red/artifacts/feel/group-baseline-189a92a9-0e62-4ef8-aec1-cbce7f3974e0
+  · shot 08-node-floating-toolbar-real
+feel record: group-baseline/waitForFunction.png; findings=23; new-surfaces=0; evidence: /Users/aoqimin/Desktop/Nomi-canvas-red/artifacts/feel/group-baseline-189a92a9-0e62-4ef8-aec1-cbce7f3974e0
+feel record: group-baseline/09-mention-popup-empty.png; findings=23; new-surfaces=4; evidence: /Users/aoqimin/Desktop/Nomi-canvas-red/artifacts/feel/group-baseline-189a92a9-0e62-4ef8-aec1-cbce7f3974e0
+  · shot 09-mention-popup-empty
+  → 组框实测: {
+  "groupBorder": "oklab(0.36 0.00121554 0.00689365)",
+  "groupBg": "oklab(0.235 0.00121554 0.00689365 / 0.32)",
+  "groupRadius": "16px",
+  "labelBg": "oklab(0.235 0.00121554 0.00689366 / 0.96)",
+  "labelColor": "oklab(0.93 0.000522935 0.00597717)",
+  "labelFont": "",
+  "labelText": "组 1加一句说明4",
+  "accent": "oklch(0.70 0.13 250)"
+}
+✅ 基线截图完成 → /Users/aoqimin/Desktop/Nomi-canvas-red/tests/ux/shots/group-baseline

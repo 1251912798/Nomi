@@ -1,4 +1,6 @@
 import React from 'react'
+import { getViewportForBounds } from '@xyflow/react'
+import { CANVAS_MIN_ZOOM, unionCanvasFitBounds } from '../model/canvasFitBounds'
 import type { GenerationCanvasNode } from '../model/generationCanvasTypes'
 import { getCanvasNodeVisualSize } from './generationCanvasGeometry'
 import type { ViewportAnimationSettlementOutcome } from './viewportAnimationSettlement'
@@ -29,12 +31,18 @@ export function revealPanDelta(
   margin = REVEAL_MARGIN_PX,
 ): Offset | null {
   if (!(rectWidth > 0) || !(rectHeight > 0)) return null
-  const z = zoom || 1
   const { width, height } = getCanvasNodeVisualSize(node)
-  const left = node.position.x * z + offset.x
-  const top = node.position.y * z + offset.y
-  const right = (node.position.x + width) * z + offset.x
-  const bottom = (node.position.y + height) * z + offset.y
+  return revealBoundsPanDelta({ x: node.position.x, y: node.position.y, width, height }, zoom || 1, offset, rectWidth, rectHeight, margin)
+}
+
+function revealBoundsPanDelta(
+  bounds: { x: number; y: number; width: number; height: number },
+  zoom: number, offset: Offset, rectWidth: number, rectHeight: number, margin: number,
+): Offset | null {
+  const left = bounds.x * zoom + offset.x
+  const top = bounds.y * zoom + offset.y
+  const right = (bounds.x + bounds.width) * zoom + offset.x
+  const bottom = (bounds.y + bounds.height) * zoom + offset.y
 
   const axis = (near: number, far: number, extent: number): number => {
     // 比视口还长 → 只保证起点可见（对齐左/上留白），不来回抖。
@@ -53,6 +61,33 @@ export function revealPanDelta(
 type Viewport = { zoom: number; offset: Offset }
 export type CreatedNodeRevealRecord = { id: string; before: Viewport }
 
+/** Preserve the current sequence, not the entire project. Fit only when translation cannot suffice. */
+export function revealCreatedSequenceViewport(
+  sequence: readonly GenerationCanvasNode[], newest: GenerationCanvasNode, target: Viewport,
+  width: number, height: number,
+): Viewport | null {
+  if (width <= REVEAL_MARGIN_PX * 2 || height <= REVEAL_MARGIN_PX * 2) return null
+  const bounds = unionCanvasFitBounds(sequence.map((node) => ({ ...node.position, ...getCanvasNodeVisualSize(node) })))
+  if (!bounds) return null
+  let next = target
+  if (bounds.width * target.zoom > width - REVEAL_MARGIN_PX * 2 || bounds.height * target.zoom > height - REVEAL_MARGIN_PX * 2) {
+    const fit = getViewportForBounds(bounds, width, height, CANVAS_MIN_ZOOM, target.zoom, `${REVEAL_MARGIN_PX}px`)
+    next = { zoom: fit.zoom, offset: { x: fit.x, y: fit.y } }
+  }
+  const fits = bounds.width * next.zoom <= width - REVEAL_MARGIN_PX * 2 + 1e-6
+    && bounds.height * next.zoom <= height - REVEAL_MARGIN_PX * 2 + 1e-6
+  const delta = fits
+    ? revealBoundsPanDelta(bounds, next.zoom, next.offset, width, height, REVEAL_MARGIN_PX)
+    : revealPanDelta(newest, next.zoom, next.offset, width, height)
+  if (delta) next = { zoom: next.zoom, offset: { x: next.offset.x + delta.x, y: next.offset.y + delta.y } }
+  return next.zoom === target.zoom && next.offset.x === target.offset.x && next.offset.y === target.offset.y ? null : next
+}
+
+export function sameCreatedSequenceViewport(a: Viewport, b: Viewport | null): boolean {
+  return Boolean(b && Math.abs(a.offset.x - b.offset.x) <= RESTORE_TOLERANCE_PX
+    && Math.abs(a.offset.y - b.offset.y) <= RESTORE_TOLERANCE_PX && Math.abs(a.zoom - b.zoom) < 1e-3)
+}
+
 const RESTORE_TOLERANCE_PX = 2
 
 /**
@@ -68,15 +103,11 @@ export function shouldRestoreAfterReveal(
   lastAutoTarget: Viewport | null,
 ): boolean {
   if (!record || currentIds.has(record.id) || !lastAutoTarget) return false
-  return (
-    Math.abs(live.offset.x - lastAutoTarget.offset.x) <= RESTORE_TOLERANCE_PX
-    && Math.abs(live.offset.y - lastAutoTarget.offset.y) <= RESTORE_TOLERANCE_PX
-    && Math.abs(live.zoom - lastAutoTarget.zoom) < 1e-3
-  )
+  return sameCreatedSequenceViewport(live, lastAutoTarget)
 }
 
 /**
- * 「新建即可见」不变量：交互式建出的那张卡，建完必须在视口里。
+ * 「连续新建可见」：先最小平移；同串放不下时 fit 到既有可读下限。
  *
  * 只认「单张新增」——项目加载、批量落节点、切分类都是多张一起进来，那些由
  * [[useAutoFitOnLoad]] / `canvasFitNonce` 负责，这里不抢视口（P1：不另造一套 fit）。
@@ -96,6 +127,10 @@ export function useCreatedNodeVisibilityPan(input: {
   stageRef: React.RefObject<HTMLDivElement | null>
 }): void {
   const { nodes, animateViewportTo, readViewportTarget, readLastAutoTarget, stageRef } = input
+  const latestNodesRef = React.useRef(nodes)
+  latestNodesRef.current = nodes
+  const sequenceRef = React.useRef<string[]>([])
+  const sequenceTargetRef = React.useRef<Viewport | null>(null)
   const knownIdsRef = React.useRef<ReadonlySet<string> | null>(null)
   // 待执行的露出：跨渲染保活。建卡后 store 会在几十毫秒内再改一次 nodes（量到尺寸后回写 size、
   // 选中态等），如果把定时器挂在 effect 的 cleanup 上，那一次重渲染就把露出取消了——
@@ -117,7 +152,20 @@ export function useCreatedNodeVisibilityPan(input: {
       }
     }
     const added = nodes.filter((node) => !known.has(node.id))
+    const removed = [...known].some((id) => !currentIds.has(id))
+    if (removed || added.length > 1) {
+      sequenceRef.current = []
+      sequenceTargetRef.current = null
+      if (pendingRef.current !== null) clearTimeout(pendingRef.current)
+      pendingRef.current = null
+    }
     if (added.length !== 1) return
+    const currentTarget = readViewportTarget()
+    if (!sameCreatedSequenceViewport(currentTarget, sequenceTargetRef.current) && !sameCreatedSequenceViewport(currentTarget, readLastAutoTarget())) {
+      sequenceRef.current = []
+    }
+    sequenceRef.current.push(added[0].id)
+    sequenceTargetRef.current = currentTarget
     const created = added[0]
     if (pendingRef.current !== null) clearTimeout(pendingRef.current)
     // 等 React Flow 把新卡量好一帧再算几何，否则读到的是上一帧的 offset。
@@ -126,10 +174,19 @@ export function useCreatedNodeVisibilityPan(input: {
       const rect = stageRef.current?.getBoundingClientRect()
       if (!rect) return
       const target = readViewportTarget()
-      const delta = revealPanDelta(created, target.zoom, target.offset, rect.width, rect.height)
-      if (!delta) return
+      // Never let a delayed callback move a deleted node or use its pre-measurement size.
+      const liveCreated = latestNodesRef.current.find((node) => node.id === created.id)
+      if (!liveCreated) return
+      if (!sameCreatedSequenceViewport(target, sequenceTargetRef.current) && !sameCreatedSequenceViewport(target, readLastAutoTarget())) {
+        sequenceRef.current = [created.id]
+      }
+      const ids = new Set(sequenceRef.current)
+      const sequence = latestNodesRef.current.filter((node) => ids.has(node.id))
+      const next = revealCreatedSequenceViewport(sequence, liveCreated, target, rect.width, rect.height)
+      sequenceTargetRef.current = next ?? target
+      if (!next) return
       lastRevealRef.current = { id: created.id, before: { zoom: target.zoom || 1, offset: { ...target.offset } } }
-      animateViewportTo(target.zoom || 1, { x: target.offset.x + delta.x, y: target.offset.y + delta.y }, 200)
+      animateViewportTo(next.zoom, next.offset, 200)
     }, 60)
   }, [nodes, animateViewportTo, readViewportTarget, readLastAutoTarget, stageRef])
 
