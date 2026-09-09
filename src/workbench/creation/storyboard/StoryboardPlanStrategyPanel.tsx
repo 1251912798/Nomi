@@ -1,6 +1,6 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { IconAlertTriangle, IconSparkles } from '@tabler/icons-react'
+import { IconAlertTriangle, IconCheck, IconSparkles } from '@tabler/icons-react'
 import type { StoryboardPlan } from '../../generationCanvas/agent/storyboardPlan'
 import {
   applyMergeSuggestion,

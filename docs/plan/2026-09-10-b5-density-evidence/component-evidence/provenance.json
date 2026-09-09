@@ -1,7 +1,7 @@
 {
   "kind": "component-evidence",
   "userJourney": false,
-  "baselineCommit": "6afb88ae85c62ab512d3a0c407f11b71aa073642",
+  "baselineCommit": "c6fe8c608c3f91adf6d01029b87ba174ffc9870d",
   "sourcePaths": [
     "src/workbench/taskCenter/TaskCenterPanel.tsx",
     "src/workbench/taskCenter/exportJobTaskCenter.ts",
@@ -10,6 +10,6 @@
     "src/workbench/creation/storyboard/StoryboardPlanStrategyPanel.tsx",
     "src/i18n/locales/storyboardEditor.ts"
   ],
-  "capturedAt": "2026-09-09T20:57:12.746Z",
+  "capturedAt": "2026-09-09T21:07:10.906Z",
   "note": "Production components rendered in isolated Electron; synthetic props, no canvas store injection, no paid actions. DC23 policy unchanged between before and after."
 }
