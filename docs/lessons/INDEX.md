@@ -37,6 +37,7 @@
 ## A. 走查与体验验证（Playwright / Electron 真机）
 
 - [打包成功不证明包来自当前源码](package-only-is-not-a-source-build.md) — 切分支、合并、修代码后打包验收，必须核验两份构建戳
+- [测 Agent 不用各种 prompt 打它、走查靠灌状态 = 测不出东西](agent-tests-must-be-prompt-driven-and-human-path.md) — 写验收走查/派走查任务书前先读；执行版在 `docs/engineering/acceptance-walkthrough-doctrine.md`
 
 - [UA 默认样式泄漏是一类问题，但蓝框未必来自 UA](ua-default-style-leaks-are-a-class.md) — 输入框点击厚环；先查计算样式，再按文本/非文本控件在全局边界治理
 
@@ -62,6 +63,8 @@
 - [断言前先证明你在你以为的现场](assert-you-are-in-the-situation-you-claim.md) — 注入的 meta 会被归一，两种假绿看起来都和真绿一样
 - [带状态的 UI 元素要立双层一致性合同](stateful-ui-needs-two-layer-conformance-contract.md) — 设计断言 + 功能承诺三层验证，专防装饰性 UI（`deviated` 恒 false 前科）
 - [弹层被祖先 overflow 裁掉时三样证据同时失明](overlay-clipped-by-ancestor-overflow.md) — 浮层走查必查：`toBeVisible` / rect / 「点得动」全绿也可能用户点不到，改用 `expectOverlayReachable`
+
+- [固定等待三连坑](fixed-station-waits-three-incidents.md) — 视频、审批、点击统一用状态判据与预算上限；R18 拦固定等待
 
 ## B. 测试与 CI 的红绿判读
 

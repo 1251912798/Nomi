@@ -1,6 +1,6 @@
 # B1 lane 上下文契约 · 先查别人（2026-09-09）
 
-状态：实施与验证中；完整 gates 被新鲜基线闸阻断，尚未交付。
+状态：B1 九条已按六簇提交；B1-finish 获准本地合并 main，完整 gates 与推送待验证。
 
 公开官方页面已实际读取；网页副本在 `/tmp/nomi-b1-public-research/`。未规定表示本次查到的一手材料没有该精确规则，不能标成产品已有行为，也不能算「有意不同」。API/Apps SDK 证据明确标明，不能偷换成封闭产品内部实现。
 
@@ -80,3 +80,20 @@ ChatGPT agent：
 当前 `HEAD...origin/main` 为 77/66，任务书禁并 main；完整 gates 新鲜基线闸可能阻断，必须如实保留，不伪造 CI=true、不改门岗。
 
 C42 次级入口：运行时 Alt+Enter 明确 follow-up，普通 Enter/发送为 steer；空闲仍新回合。不加文字按钮，不改布局。按设计系统 §1.5.2，快捷键是加速器不占控件层级。沿现有 textarea→resident submit→actions.send→laneClient.say 单链传递。
+
+## B1-finish 本地并线裁决（2026-09-09）
+
+用户本轮明确授权在原分支合并 main，取代上文旧任务的“不合 main”。接手 HEAD `298ef6055`；B1 六簇为 `62281739c` / `828cdf28c` / `c784e3916` / `e5d28cc56` / `06fcd8812` / `5f2c43b52`。并入 `origin/main` = `2baa00d5e6edb146f8dfe9dc48aca8f766c09444`，merge-base = `7f6d224bb86ba2da4fb350670aa1df9c2002eed4`；不根据两点删除视图恢复旧运行时。
+
+| 冲突文件 | 取舍与保留的不变量 |
+|---|---|
+| `docs/lessons/INDEX.md` | 两条新教训均保留，各指向原文件。 |
+| `scripts/vocabularies-baseline.json` | 合并独立新增登记；SoundStage 同一 owner 在两边不同位置重复新增，仅保留原有一条；保留 stage4 已收敛的 timeout owner 与 debtCap 71，不恢复已退役 owner。 |
+| `tests/ux/g1/c0-plan-sample-budget.mjs` | 复用同一报价/预留入口，显式 planOnly 保持 ¥2，mixed 保持上游 ¥3；保留上游有限正数/输出上限/失败不退预留校验及 Request headers/signal 转发。 |
+| `tests/ux/g1/c0-real-main.mjs` | 保留上游凭据保护、transport evidence 与统一 dispatch wrapper；planOnly 优先进入只准文本的预算边界，不能因 mixed 标记进入合成或真实媒体分支。 |
+| `tests/ux/g1/c0-real-scheduler.mjs` | 保留 planOnly 参数、累计实验账本、模型档位计数与原生转录评分；合入 mixed、credential watch、生命周期证据与视频等待报价；planOnly 不受 mixed 环境变量扩大权限。阶段 02 等待沿用上游 stationTimeout，未恢复退役 agent 事件读取器。 |
+| `tests/ux/g1/c0-short-film.walk.mjs` | 保留 plan-only/output-dir/模型参数及阶段 02 后结束的分支；合入上游 planner terminal 等待、视频 waitForVideos、导出完成信号、凭据阻塞处理。 |
+
+自动合并复核：`c0-real-budget.node-test.mjs` 中 mixed 夹具被 Git 混入 planOnly 键，移除该错误组合；另加明确 planOnly 回归，验证 ¥2 上限与同时出现 mixed 标记时仍拒绝媒体。上游原有 mixed 测试保持 ¥3 与合成媒体行为。生产 B1 九条代码无并线冲突、未改语义。
+
+验证：零额度预算/dispatch、mixed、视频等待与合成夹具初轮 32/32；新增 planOnly 回归后 33/33 通过。完整 gates 收据见本工作树 `.tmp/b1-finish/`；未重新打包，未新增真实模型调用。
