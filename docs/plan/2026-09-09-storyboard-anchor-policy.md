@@ -54,3 +54,5 @@
 集成基线：2026-09-09 开工后 origin/main 前进 3 提交，已无冲突 fast-forward 到 `2baa00d5e`，任务文件原样保留；最终 gates 在新基线上运行。
 
 补充验证：`red-orphan-variant.log`→`green-orphan-variant.log` 证明原节点缺失时变体不抢行身份（regeneratedFrom / derivedFrom 两路）；`final-generation-loopback.log` 证明真实行生成入口向 runner 交付夜景。`screenshots/03-canvas-badge.png` 为真实节点卡角标。
+
+全量套件补充：提示词入口保留 `canvas.node.prompt-changed` 与编辑突发撤销，只共用 `markStoryboardOverrides`，不把专用事件退化为通用 node.updated。全模块 mock 改为只 mock IPC 读取，真实模型档案纯函数参与投影。53 条定向回归转绿。

@@ -156,7 +156,17 @@ export const createCanvasNodeActions: CanvasSliceCreator<CanvasNodeActions> = (s
     )
   },
   updateNodePrompt: (nodeId, prompt) => {
-    get().updateNode(nodeId, { prompt })
+    const existing = get().nodes.find((candidate) => candidate.id === nodeId)
+    if (!existing) return
+    const patch = markStoryboardOverrides(existing, { prompt })
+    pushEditBurstBarrier(nodeId, get())
+    set((state) => {
+      const node = state.nodes.find((candidate) => candidate.id === nodeId)
+      if (!node) return
+      Object.assign(node, patch)
+      bumpPersistRevision(state)
+    })
+    emitCanvasGesture([{ type: 'canvas.node.prompt-changed', payload: { nodeId, prompt } }])
   },
   setNodeLocked: (nodeId, locked) => {
     const existing = get().nodes.find((candidate) => candidate.id === nodeId)
