@@ -183,19 +183,19 @@ describe("B4 candidate credentials", () => {
     await upsertRendererCatalogVendorApiKey("relay", { apiKey: "candidate-test" });
     expect(fetchModelList).toHaveBeenLastCalledWith(expect.anything(), expect.anything(), expect.anything(), expect.anything(), expect.objectContaining({ proxyUrl: "http://127.0.0.1:7897" }));
   });
-  it("network failure preserves the previous credential", async () => {
+  it("network failure saves the candidate with an unverified marker", async () => {
     const catalog = state();
     catalog.vendors[0].baseUrlHint = "https://relay.test/v1";
     vi.mocked(store.readCatalog).mockReturnValue(catalog);
     vi.mocked(fetchModelList).mockResolvedValue({ ok: false, statuses: [], failureKind: "network", error: "offline" });
-    await expect(Promise.resolve().then(() => upsertRendererCatalogVendorApiKey("relay", { apiKey: "candidate-test" }))).rejects.toThrow();
-    expect(store.upsertModelCatalogVendorApiKey).not.toHaveBeenCalled();
+    await upsertRendererCatalogVendorApiKey("relay", { apiKey: "candidate-test" });
+    expect(store.upsertModelCatalogVendorApiKey).toHaveBeenCalledWith("relay", { apiKey: "candidate-test", enabled: false, verificationPending: true });
   });
-  it("401 never overwrites the previous credential or disables its vendor", async () => {
+  it.each([401, 403])("%i never overwrites the previous credential or disables its vendor", async (status) => {
     const catalog = state();
     catalog.vendors[0] = { ...catalog.vendors[0], enabled: true, baseUrlHint: "https://relay.test/v1" };
     vi.mocked(store.readCatalog).mockReturnValue(catalog);
-    vi.mocked(fetchModelList).mockResolvedValue({ ok: false, status: 401, statuses: [401], failureKind: "auth", error: "HTTP 401" });
+    vi.mocked(fetchModelList).mockResolvedValue({ ok: false, status, statuses: [status], failureKind: "auth", error: `HTTP ${status}` });
     await expect(Promise.resolve().then(() => upsertRendererCatalogVendorApiKey("relay", { apiKey: "invalid-test-key" }))).rejects.toThrow();
     expect(store.upsertModelCatalogVendorApiKey).not.toHaveBeenCalled();
     expect(store.upsertModelCatalogVendor).not.toHaveBeenCalled();

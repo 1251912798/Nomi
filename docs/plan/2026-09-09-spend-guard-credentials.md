@@ -14,7 +14,7 @@
 |---|---|---|---|
 |C49|全局预算留空阻止付费制作，普通生成授权不绑定报价|全局设置混入制作就绪条件；spendGrant 只限制次数，light 会静默跳过确认|删除全局 maxSpend，保留本次报价授权；共享 vendor 出口必须消费本次授权，批内超额需重新确认|
 |C50|供应商失效后身份自动改变|useNodeModelAutoSelect effect 写回替代 vendor；catalogTaskResolve 同样自动迁移|显式选择与可用性恢复混为一谈；显示和执行都必须保留选择，仅给用户主动切换建议|
-|C56|401 后旧 key 丢失且显示已保存|KnownVendorKeyConnectPage.save 先停用 vendor，随后同步写 key；没有前置探针|候选凭据未经验证就进入持久化；主进程写入必须验证后提交，UI 等待结果|
+|C56|401 后旧 key 丢失且显示已保存|KnownVendorKeyConnectPage.save 先停用 vendor，随后同步写 key；没有前置探针|主进程区分明确无效与不可达；401 保留旧值，不可达加密保存为未验证，UI 等待结果|
 |C38|同名模型选到别家|dedupeByModelKey 按偏好选，buildModelEntryIndex 裸键只按目录首次出现|展示与落地缺少共享偏好序解析；显式 vendor 仍必须精确匹配|
 |C52|等待开始时分镜行点击无反应|候选：StoryboardPlanEditor 显示 designs[0]，runAction 却在 activeStoryboardId 空时静默 return；另有 resolve 闸在 try 外|展示对象与执行对象必须同源，每次点击失败都要可见；待夹具复现|
 |C05/C06|确认卡没有金额|confirmGenerationSpend 未传 pricing/details；describeGenerationCost 只算数量和 ETA|同一确认必须展示目录报价或目录未标价；人民币与积分不能偷换|
@@ -55,7 +55,7 @@
 - 关键金额事实：`catalog/types.ts` 把 pricing 定义成点数；tokenPricing 明确 USD/百万 token。普通卡显示目录点数或“目录未标价”，不造 CNY 换算。真实出图上限的货币依据仍待核实。
 
 ## 本轮证据
-- credential-red.log → credential-green.log：401/网络失败不写入候选 key；旧值和供应商状态保留。
+- 原 credential-red.log → credential-green.log：401/网络失败不写入；网络失败裁决已由 B4-fix 纠正（下节），旧证据仅保留历史。
 - provider-red.log → provider-green.log：断开后的 lineage 替代也必须由用户主动选择。
 - storyboard-red.log → storyboard-budget-green.log：可见草稿身份与执行身份一致，resolve 异常进入统一反馈。
 - spend-red.log → storyboard-budget-green.log：留空全局预算不再阻断制作就绪。
@@ -78,3 +78,17 @@
 
 ## 最终门岗纠正
 完整 gates 发现 main 巨壳新增四行和三份合同空风险数组。凭据异步 IPC 注册归回现有 onboardingIpc，保持 sender guard 与结果 envelope，不新增注册器；补充本次验证的实际适用边界。credential-envelope-red → green 证明错误仍走统一结果格式。
+
+
+## B4-fix：不可达不等于无效（主会话已裁决）
+范围：仅纠正凭据保存、未验证投影、下次调用前复验和离线走查；报价/偏好与冻结区不动。
+根因：把所有探针失败当作认证拒绝，导致本地优先配置受供应商在线状态绑架。401/403 拒绝且不写；不可达/超时保存加密候选并记录 verificationPending；联网复验成功仅清标记，不替代模型认证晋级。复用已有保存成功卡/状态徽标，文字为“已保存·未验证，联网后自动复验”，不新增控件。
+实现：共享 candidate probe 返回待验证标记；catalog 加密记录持久化并投影非敏感状态；异步调用入口复验后再解析执行模型。按凭据/配置快照去重并发，旧探针不得清掉新 key 的标记。
+验收：401 保留旧值、不可达保存带标、成功复验清标先红后绿；真实 Electron 无网络地址走保存；完整带锁 gates exit 0 后正常 commit/push，PR synchronize 复读已更新正文。
+回滚：仅 revert 本轮 scoped commit；不覆盖用户密钥。
+
+B4-fix 类型接线使 model-list 脱敏器进入 ES2020 编译面；等价改用 split/join 替换所有字面秘密，保留现有脱敏安全测试。供应商 DTO 新字段同时登记凭据分类表为非敏感。
+
+复验同类补扫：认证 stage/register 会复制密钥到候选连接；复制必须携带 pending 标记，pending 凭据即使内部写 enabled:true 也不能发布 vendor。异步 defaultCatalog.load 在真实模型请求前复验，失败统一进入 run 错误终态；新增实存储 stage→load 夹具验证，不依赖调用者记住保护。
+
+B4-fix 真人验收：隔离 Electron + 本地 HTTP 服务，先停服务保存、返回首页/重开确认持久徽标，再启动服务触发 online 自动探针；401 更换被拒后用旧 key 再探针成功。三张 b4-01/02/03 截图已逐项人眼对账：沿用真实保存卡与错误行，提示无截断；零付费请求。走查发现首页 available 分支漏传 pending，新增投影夹具先红后绿修齐。完整 gates 第一轮 contracts 73 通过/0 阻断，唯一单测失败是 key-only 页接口地址隔离断言；页面已只传 vendorKey，原断言保留且定向绿，最终完整门岗收据见 MONEY-LAST.md 顶部。

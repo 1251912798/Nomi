@@ -1,0 +1,42 @@
+
+ RUN  v4.1.8 /Users/aoqimin/Desktop/Nomi-money-guard
+
+ ❯ src/ui/onboarding/onboardingDrawerConnections.test.ts (4 tests | 1 failed) 5ms
+   × keeps a saved offline credential visible as pending in the available platform row 3ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/ui/onboarding/onboardingDrawerConnections.test.ts > keeps a saved offline credential visible as pending in the available platform row
+AssertionError: expected { vendorKey: 'apimart', …(6) } to match object { hasApiKey: true, …(1) }
+(7 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+-   "credentialVerificationPending": true,
+-   "hasApiKey": true,
++   "glyph": "A",
++   "kind": "api",
++   "logo": "file:///Users/aoqimin/Desktop/Nomi-money-guard/src/assets/vendor-logos/apimart.png",
++   "models": [],
++   "name": "APIMart",
++   "onOpen": [Function anonymous],
++   "vendorKey": "apimart",
+  }
+
+ ❯ src/ui/onboarding/onboardingDrawerConnections.test.ts:47:6
+     45|   expect(result.homeConnections).toEqual([])
+     46|   expect(result.availableHomeConnections.find(item => item.vendorKey =…
+     47|     .toMatchObject({ hasApiKey: true, credentialVerificationPending: t…
+       |      ^
+     48| })
+     49|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 3 passed (4)
+   Start at  18:27:21
+   Duration  833ms (transform 292ms, setup 21ms, import 745ms, tests 5ms, environment 0ms)

@@ -134,13 +134,14 @@ export async function upsertRendererCatalogVendorApiKey(vendorKey: string, paylo
   const vendor = readCatalog().vendors.find((item) => item.key === vendorKey)
   if (!vendor) throw new Error(desktopT('credential.validationUnavailable'))
   const snapshot = candidateCredentialSnapshot(vendorKey)
-  await validateCandidateCredential(vendor, String(candidate.apiKey || '').trim())
+  const verificationPending = await validateCandidateCredential(vendor, String(candidate.apiKey || '').trim())
   if (snapshot !== candidateCredentialSnapshot(vendorKey)) throw new Error(desktopT('credential.changed'))
-  return upsertModelCatalogVendorApiKey(vendorKey, candidate)
+  return upsertModelCatalogVendorApiKey(vendorKey, { ...candidate, ...(verificationPending ? { verificationPending: true } : {}) })
 }
 
 export function sanitizeRendererVendorApiKeyMutation(payload: unknown): Json {
-  return { ...record(payload), enabled: false }
+  const { verificationPending: _ignored, ...candidate } = record(payload)
+  return { ...candidate, enabled: false }
 }
 
 export function upsertRendererCatalogModel(payload: unknown) {
