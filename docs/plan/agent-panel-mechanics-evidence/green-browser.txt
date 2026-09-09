@@ -1,0 +1,9 @@
+{
+  inside: true,
+  queueDeleted: true,
+  nextStepExposed: true,
+  visibleChildren: 19,
+  inert: true,
+  narrow: { modelReadable: true, controlsInside: true },
+  errors: []
+}

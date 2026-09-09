@@ -20,6 +20,7 @@ export default function NodeMediaPreviewDialog({ mediaType, url, title, onClose 
   const { t } = useTranslation()
   // 此前这里的 <video> 连 onError 都没有：点开大图播不了 = 纯黑 + 零提示，用户无从判断也无从修。
   const heal = useVideoPlaybackHeal({ rawUrl: url })
+  const dialogRef = React.useRef<HTMLDivElement>(null)
   const closeButtonRef = React.useRef<HTMLButtonElement | null>(null)
   const canvasViewport =
     typeof document === 'undefined' ? null : document.querySelector<HTMLElement>('.workbench-generation__canvas')
@@ -29,6 +30,19 @@ export default function NodeMediaPreviewDialog({ mediaType, url, title, onClose 
     const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
     const previousPreviewState = generationWorkspace?.getAttribute('data-media-preview-open') ?? null
     generationWorkspace?.setAttribute('data-media-preview-open', 'true')
+    // The portal is a sibling of the covered canvas roots. Never inert its parent
+    // (that would disable the dialog too) or the uncovered Agent/sidebar region.
+    const previousInert = new Map<HTMLElement, boolean>()
+    const coverChildren = () => {
+      for (const child of Array.from(canvasViewport?.children ?? [])) {
+        if (!(child instanceof HTMLElement) || child === dialogRef.current) continue
+        if (!previousInert.has(child)) previousInert.set(child, child.inert)
+        child.inert = true
+      }
+    }
+    coverChildren()
+    const observer = new MutationObserver(coverChildren)
+    if (canvasViewport) observer.observe(canvasViewport, { childList: true })
     closeButtonRef.current?.focus()
 
     const handleKeyDown = (event: KeyboardEvent): void => {
@@ -37,13 +51,15 @@ export default function NodeMediaPreviewDialog({ mediaType, url, title, onClose 
     document.addEventListener('keydown', handleKeyDown)
     return () => {
       document.removeEventListener('keydown', handleKeyDown)
+      observer.disconnect()
+      for (const [child, inert] of previousInert) child.inert = inert
       if (generationWorkspace) {
         if (previousPreviewState === null) generationWorkspace.removeAttribute('data-media-preview-open')
         else generationWorkspace.setAttribute('data-media-preview-open', previousPreviewState)
       }
       previousFocus?.focus()
     }
-  }, [generationWorkspace, onClose])
+  }, [canvasViewport, generationWorkspace, onClose])
 
   const mediaTypeLabel =
     mediaType === 'video' ? t('generationCommon.imagePreview.video') : t('generationCommon.imagePreview.image')
@@ -53,13 +69,13 @@ export default function NodeMediaPreviewDialog({ mediaType, url, title, onClose 
 
   return createPortal(
     <div
+      ref={dialogRef}
       className={cn(
         // z-application-modal（9000）：接管画布工作区的预览层，仍在所有 dialog/confirmation 之下。
         'absolute inset-0 z-application-modal flex h-full w-full items-center justify-center overflow-hidden overscroll-contain p-6 pt-16',
         'bg-black/40',
       )}
       role="dialog"
-      aria-modal="true"
       aria-label={t('generationCommon.imagePreview.mediaAria', { title: dialogTitle })}
       onPointerDown={(event) => {
         event.stopPropagation()

@@ -7,6 +7,7 @@
 // 思考行是 Process 板时刻 2：shimmer 文字 +「4s · esc 打断」。刻意**不用转圈**——
 // 转圈没有时间感，秒数才告诉用户「没死」。它是助手文本的一个状态，不是第九个积木。
 import React from 'react'
+import { useTranslation } from 'react-i18next'
 import { cn } from '../../../utils/cn'
 import { AgentPanelV4Markdown } from './AgentPanelV4Markdown'
 import { ActionIcon, IconChevronRight, IconCopy, IconRefresh } from './AgentPanelV4Icons'
@@ -44,6 +45,8 @@ export function V4UserBubble({
   chips?: readonly V4Chip[]
   darkMode?: boolean
 }): JSX.Element {
+  const { t } = useTranslation()
+  const lines = text.split(/\r?\n/)
   return (
     <div
       className={cn(
@@ -60,7 +63,15 @@ export function V4UserBubble({
           ))}
         </div>
       ) : null}
-      <p className="m-0">{text}</p>
+      {lines.length >= 8 ? (
+        <details>
+          <summary className="cursor-pointer list-none">
+            <span className="block truncate">{lines[0]}</span>
+            <span className="text-micro">{t('agentPanelV4.expand')}</span>
+          </summary>
+          <p className="m-0 whitespace-pre-wrap">{text}</p>
+        </details>
+      ) : <p className="m-0 whitespace-pre-wrap">{text}</p>}
     </div>
   )
 }

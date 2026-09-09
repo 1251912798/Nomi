@@ -30,6 +30,12 @@ import { approvalPolicyForTier, maxComposerHeight, useComposerHeight, shouldSubm
 import type { ComposerMode, ComposerPopover, PermissionTier, V4Chip } from './agentPanelV4Types'
 import { DEFAULT_PERMISSION_TIER, PERMISSION_TIERS } from './agentPanelV4Types'
 
+const MODEL_TRIGGER_WIDTH = 164
+
+function compactModelLabel(label: string): string {
+  return label.replace(/\s+[·|]\s+[^·|]+$/, '')
+}
+
 function ComposerChip({ chip, removeLabel, onRemove }: { chip: V4Chip; removeLabel: string; onRemove?: () => void }): JSX.Element {
   return (
     <span
@@ -188,13 +194,13 @@ export function AgentPanelV4Composer({
           又允许浏览器把 scrollLeft 推到 17px 且用户拖不回来，助手正文、工具收据、
           头部头像左边全被**永久**裁掉。让模型钮成为那个会缩的（`min-w-0` + 名字 truncate），
           这一行就再也宽不过面板。 */}
-      <div className="flex h-10 min-w-0 shrink-0 items-center gap-1 px-2 pb-2 pt-1">
+      <div className="flex h-10 min-w-0 shrink-0 items-center gap-0 px-1 pb-2 pt-1">
         <button
           type="button"
           aria-label={t('agentPanelV4.addAnyFile')}
           onClick={onAddFile}
           data-v4-control="add-file"
-          className="grid size-7 shrink-0 place-items-center rounded-nomi-sm text-nomi-ink-80 hover:bg-nomi-ink-05"
+          className="grid size-6 shrink-0 place-items-center rounded-nomi-sm text-nomi-ink-80 hover:bg-nomi-ink-05"
         >
           <IconPlus size={16} />
         </button>
@@ -203,19 +209,20 @@ export function AgentPanelV4Composer({
           onClick={() => onTogglePopover?.('model')}
           aria-expanded={openPopover === 'model'}
           title={modelLabel ?? undefined}
-          className="inline-flex h-7 min-w-0 shrink items-center gap-[5px] whitespace-nowrap rounded-nomi-sm px-2 text-caption text-nomi-ink-80 hover:bg-nomi-ink-05"
+          style={{ maxWidth: MODEL_TRIGGER_WIDTH }}
+          className="inline-flex h-7 min-w-0 shrink items-center gap-[5px] whitespace-nowrap rounded-nomi-sm px-1 text-caption text-nomi-ink-80 hover:bg-nomi-ink-05"
           data-v4-control="model"
         >
-          <span className="min-w-0 truncate">{modelLabel ?? t('agentPanelV4.model')}</span>
+          <span className="min-w-0 truncate">{modelLabel ? compactModelLabel(modelLabel) : t('agentPanelV4.model')}</span>
           <IconChevronDown size={12} className="shrink-0" />
         </button>
-        <span className="mx-0.5 h-4 w-px shrink-0 bg-nomi-line" aria-hidden="true" />
+        <span className="h-4 w-px shrink-0 bg-nomi-line" aria-hidden="true" />
         <button
           type="button"
           onClick={() => onTogglePopover?.('skill')}
           aria-expanded={openPopover === 'skill'}
           className={cn(
-            'inline-flex h-7 shrink-0 items-center gap-[5px] whitespace-nowrap rounded-nomi-sm px-2 text-caption text-nomi-ink-80 hover:bg-nomi-ink-05',
+            'inline-flex h-7 shrink-0 items-center gap-[5px] whitespace-nowrap rounded-nomi-sm px-1 text-caption text-nomi-ink-80 hover:bg-nomi-ink-05',
             skillSelected && 'bg-nomi-ink-05',
           )}
           data-v4-control="skill"
@@ -230,7 +237,7 @@ export function AgentPanelV4Composer({
           type="button"
           onClick={() => onTogglePopover?.('permission')}
           aria-expanded={openPopover === 'permission'}
-          className="inline-flex h-7 shrink-0 items-center gap-[5px] whitespace-nowrap rounded-nomi-sm px-2 text-caption text-nomi-ink-80 hover:bg-nomi-ink-05"
+          className="inline-flex h-7 shrink-0 items-center gap-[5px] whitespace-nowrap rounded-nomi-sm px-1 text-caption text-nomi-ink-80 hover:bg-nomi-ink-05"
           data-v4-control="permission"
         >
           {t(`agentPanelV4.permission.${permission}`)}
@@ -300,7 +307,7 @@ export function V4ModelPopover({ rows, onOpenLibrary }: { rows: readonly V4Model
   const { t } = useTranslation()
   return (
     <aside
-      className="w-[300px] overflow-hidden rounded-nomi border border-nomi-line bg-nomi-paper shadow-nomi-md"
+      className="w-[340px] max-w-full overflow-hidden rounded-nomi border border-nomi-line bg-nomi-paper shadow-nomi-md"
       data-v4-popover="model"
     >
       <div className="flex items-center gap-1.5 px-2.5 pb-1.5 pt-2 text-micro text-nomi-ink-40">
@@ -314,24 +321,21 @@ export function V4ModelPopover({ rows, onOpenLibrary }: { rows: readonly V4Model
           className="flex min-h-9 w-full items-center gap-2 px-2.5 text-left text-caption text-nomi-ink"
           data-v4-model-row={row.slot}
         >
-          <span className="w-16 shrink-0 text-micro text-nomi-ink-60">{row.slot}</span>
-          <span className="truncate">{row.name}</span>
-          {row.cost ? <span className="shrink-0 text-micro text-nomi-ink-40">{row.cost}</span> : null}
-          <span className="ml-auto shrink-0">
+          <span className="shrink-0 text-micro text-nomi-ink-60">{row.slot}</span>
+          <span className="min-w-0 flex-1">
             {row.options?.length ? (
-              // 下拉走全仓统一的 `NomiSelect`（设计系统规则 1/5：一个来源，别散落原生 select）。
               <NomiSelect
                 size="xs"
                 value={row.selectedValue ?? ''}
-                options={[...row.options]}
+                options={row.options.map(option => ({ ...option, label: compactModelLabel(option.label) }))}
                 onChange={(value) => row.onChange?.(value)}
                 ariaLabel={row.slot}
-                triggerMaxWidth={116}
+                title={row.name}
+                triggerMaxWidth={MODEL_TRIGGER_WIDTH}
               />
-            ) : (
-              <span className="text-micro text-nomi-ink-40">{row.empty}</span>
-            )}
+            ) : <span className="text-micro text-nomi-ink-40">{row.empty || row.name}</span>}
           </span>
+          {row.cost ? <span className="shrink-0 text-micro text-nomi-ink-40">{row.cost}</span> : null}
         </div>
       ))}
       <button

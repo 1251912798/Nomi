@@ -1,0 +1,55 @@
+
+ RUN  v4.1.8 /Users/aoqimin/Desktop/Nomi-panel-mechanics
+
+ ❯ src/workbench/ai/resident/residentExceptionProjections.test.ts (4 tests | 2 failed) 5ms
+   × C05 derives a recognisable title from semantic shot content and preserves metadata 3ms
+   × C05 empty shots use human shot numbers, never hash identifiers 1ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/workbench/ai/resident/residentExceptionProjections.test.ts > C05 derives a recognisable title from semantic shot content and preserves metadata
+AssertionError: expected { id: 'one', title: '#1', …(1) } to match object { title: '小禾走到河边旧街', …(1) }
+(1 matching property omitted from actual)
+
+- Expected
++ Received
+
+  {
+-   "description": "MiniMax-H3 · 768P · 8s · 16:9",
+-   "title": "小禾走到河边旧街",
++   "description": "小禾走到河边旧街。她举起相机。",
++   "title": "#1",
+  }
+
+ ❯ src/workbench/ai/resident/residentExceptionProjections.test.ts:24:20
+     22| it('C05 derives a recognisable title from semantic shot content and pr…
+     23|   const shots = residentPlanShots({ shots: [{ shotId: 'one', prompt: '…
+     24|   expect(shots[0]).toMatchObject({ title: '小禾走到河边旧街', description: 'Mi…
+       |                    ^
+     25| })
+     26| it('C05 empty shots use human shot numbers, never hash identifiers', (…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/workbench/ai/resident/residentExceptionProjections.test.ts > C05 empty shots use human shot numbers, never hash identifiers
+AssertionError: expected '#1' to be '第 1 镜' // Object.is equality
+
+Expected: "第 1 镜"
+Received: "#1"
+
+ ❯ src/workbench/ai/resident/residentExceptionProjections.test.ts:27:88
+     25| })
+     26| it('C05 empty shots use human shot numbers, never hash identifiers', (…
+     27|   expect(residentPlanShots({ nodes: [{ clientId: 'one', kind: 'video' …
+       |                                                                                        ^
+     28| })
+     29|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 2 passed (4)
+   Start at  15:43:45
+   Duration  116ms (transform 29ms, setup 24ms, import 16ms, tests 5ms, environment 0ms)
+
