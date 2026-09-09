@@ -45,6 +45,8 @@ export function V4UserBubble({
   chips?: readonly V4Chip[]
   darkMode?: boolean
 }): JSX.Element {
+  const { t } = useTranslation()
+  const lines = text.split(/\r?\n/)
   return (
     <div
       className={cn(
@@ -61,7 +63,15 @@ export function V4UserBubble({
           ))}
         </div>
       ) : null}
-      <p className="m-0">{text}</p>
+      {lines.length >= 8 ? (
+        <details>
+          <summary className="cursor-pointer list-none">
+            <span className="block truncate">{lines[0]}</span>
+            <span className="text-micro">{t('agentPanelV4.expand')}</span>
+          </summary>
+          <p className="m-0 whitespace-pre-wrap">{text}</p>
+        </details>
+      ) : <p className="m-0 whitespace-pre-wrap">{text}</p>}
     </div>
   )
 }
@@ -70,7 +80,6 @@ export function V4AssistantMessage({
   text,
   status,
   labels,
-  panelHeight,
   onCopy,
   onRetry,
   onContinue,
@@ -78,8 +87,6 @@ export function V4AssistantMessage({
   text: string
   status: V4AssistantStatus
   labels: { copy: string; retry: string; continue: string }
-  /** 折叠阈值由它 derive（定稿：超过面板高 60% 折起来）。单件取景时不给 = 不折。 */
-  panelHeight?: number
   /** 三个动作都可缺：设计实验室单件取景时没有宿主可调，钮仍在，只是按下去没有去处。 */
   onCopy?: (text: string) => void
   onRetry?: () => void
@@ -93,7 +100,7 @@ export function V4AssistantMessage({
           {status === 'interrupted' ? (
             <p className="m-0 text-body-sm text-nomi-ink-60">{text}</p>
           ) : (
-            <AgentPanelV4Markdown text={text} panelHeight={panelHeight} streaming={status === 'streaming'} />
+            <AgentPanelV4Markdown text={text} />
           )}
         </MessageResponse>
         {/* 完成态才有动作，且 **hover 才显**——定稿 ②「hover 出复制/重来两个图标」。 */}
@@ -180,18 +187,16 @@ export function V4Suggestion({
   text,
   options,
   onSelect,
-  panelHeight,
 }: {
   text: string
   options: readonly string[]
   onSelect?: (option: string) => void
-  panelHeight?: number
 }): JSX.Element {
   return (
     <div className="flex flex-col gap-1.5" data-v4-block="suggestion">
       <Message role="assistant">
         <MessageResponse>
-          <AgentPanelV4Markdown text={text} panelHeight={panelHeight} />
+          <AgentPanelV4Markdown text={text} />
         </MessageResponse>
       </Message>
       <V4OptionChips options={options} onSelect={(option) => onSelect?.(option)} />

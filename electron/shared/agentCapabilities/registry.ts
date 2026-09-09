@@ -159,3 +159,9 @@ export function capabilityOperationAliasesFor(contractId: string, surface: strin
     }).map((entry) => entry.alias),
   );
 }
+
+/** Presentation capability, not permission to skip approval. Actual undo also needs a live receipt. */
+export function capabilitySupportsUndo(name: string, args?: unknown): boolean {
+  const contract: AnyCapabilityContract | undefined = resolveCapabilityAlias(name)?.contract ?? capabilityContractById(name);
+  return contract?.undoable ?? (contract?.effect === "reversible_write" && capabilityEffectClassOf(contract, args) === "reversible_local");
+}

@@ -126,7 +126,7 @@ export type TaskCardData = Readonly<{
   undoable?: boolean
 }>
 
-export type PlanRow = Readonly<{ label: string; detail?: string; checked: boolean }>
+export type PlanRow = Readonly<{ label: string; detail?: string; technical?: string; checked: boolean }>
 
 export type InterventionData = Readonly<{
   kind: V4InterventionKind

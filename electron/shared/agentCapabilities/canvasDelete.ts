@@ -52,6 +52,7 @@ export const CANVAS_DELETE_CAPABILITY = {
   inputSchema: canvasDeleteSemanticInputSchema,
   outputSchema: canvasDeleteResultSchema,
   effect: "destructive",
+  undoable: true,
   effectClass: "irreversible",
   operationEffectClasses: Object.freeze({ undo_canvas_delete: "reversible_local" }),
   execution: { port: "canvas", availability: "renderer_required" },

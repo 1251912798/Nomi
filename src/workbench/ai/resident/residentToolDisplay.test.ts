@@ -86,7 +86,7 @@ describe('resident tool display projection', () => {
     expect(readableToolPreview(translate, 'nomi_canvas_maintenance', del)).toBe('agentResident.toolTargetCount(count=2)')
 
     const create = { operation: 'create_canvas_nodes', nodes: [{ title: '镜头 1' }] }
-    expect(readableToolName(translate, 'nomi_canvas_edit', create)).toBe('agentResident.toolCanvasWrite')
+    expect(readableToolName(translate, 'nomi_canvas_edit', create)).toBe('agentResident.toolCanvasCreate')
     expect(readableToolPreview(translate, 'nomi_canvas_edit', create)).toContain('agentResident.toolShotCount(count=1)')
 
     // The pi-side aliases still carry the operation in the name; both halves keep working.
@@ -118,7 +118,7 @@ describe('resident tool display projection', () => {
       operation: 'create_canvas_nodes',
       nodes: [{ title: '镜头 1', kind: 'shot' }, { title: '线稿', kind: 'agent-artifact' }],
     }
-    expect(readableToolName(translate, 'nomi_canvas_edit', mixed)).toBe('agentResident.toolCanvasWrite')
+    expect(readableToolName(translate, 'nomi_canvas_edit', mixed)).toBe('agentResident.toolCanvasCreate')
     expect(readableToolPreview(translate, 'nomi_canvas_edit', mixed)).toContain('agentResident.toolShotCount(count=2)')
   })
 

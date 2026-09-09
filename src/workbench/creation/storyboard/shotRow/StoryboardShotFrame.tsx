@@ -1,3 +1,4 @@
+import { shotPresentation } from '../shotPresentation'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { IconClockSearch, IconLock } from '../../../../vendor/tablerIcons'
@@ -56,6 +57,7 @@ export default function StoryboardShotFrame({
   onSelect,
 }: Props): JSX.Element {
   const { t } = useTranslation()
+  const presentation = shotPresentation(shot, shot.index)
   const mediaStyle = { width: box.width, height: box.height }
 
   const indexBadge = (quiet: boolean): JSX.Element => (
@@ -63,6 +65,7 @@ export default function StoryboardShotFrame({
       type="button"
       onClick={onSelect}
       aria-label={t('storyboardEditor.row.selectAria', { index: shot.index })}
+      title={[presentation.title, presentation.description].filter(Boolean).join(' · ')}
       data-storyboard-select={shot.index}
       className={cn(
         'absolute top-1 left-1 z-[4] px-1 rounded-nomi-sm text-micro tabular-nums',

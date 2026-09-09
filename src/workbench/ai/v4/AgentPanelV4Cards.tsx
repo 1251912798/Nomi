@@ -238,8 +238,8 @@ export function V4Intervention({
         ) : null}
         {data.plan?.length ? (
           <div className="flex flex-col gap-1">
-            {data.plan.map((row) => (
-              <div key={row.label} className="flex items-start gap-2 py-[3px] text-caption text-nomi-ink-80">
+            {data.plan.map((row, index) => (
+              <div key={`${index}-${row.label}`} className="flex items-start gap-2 py-[3px] text-caption text-nomi-ink-80">
                 <input
                   type="checkbox"
                   aria-label={row.label}
@@ -247,15 +247,15 @@ export function V4Intervention({
                   onChange={(event) => onPlanToggle?.(row.label, event.target.checked)}
                   className="mt-0.5 size-3.5 shrink-0 accent-nomi-accent"
                 />
-                {row.detail ? (
+                {row.technical ? (
                   <details className="group min-w-0 flex-1" data-v4-block="plan-detail">
                     <summary className="flex cursor-pointer list-none items-start gap-1">
-                      <span className="min-w-0 flex-1 break-words">{row.label}</span>
+                      <span className="min-w-0 flex-1 break-words">{row.label}{row.detail ? <span className="block truncate text-micro text-nomi-ink-40">{row.detail}</span> : null}</span>
                       <IconChevronRight size={12} className="mt-0.5 shrink-0 group-open:rotate-90" aria-hidden="true" />
                     </summary>
-                    <pre className="m-0 mt-1 whitespace-pre-wrap break-all font-nomi-mono text-micro text-nomi-ink-40">{row.detail}</pre>
+                    <pre className="m-0 mt-1 whitespace-pre-wrap break-all font-nomi-mono text-micro text-nomi-ink-40">{row.technical}</pre>
                   </details>
-                ) : <span className="min-w-0 flex-1 break-words">{row.label}</span>}
+                ) : <span className="min-w-0 flex-1 break-words">{row.label}{row.detail ? <span className="block truncate text-micro text-nomi-ink-40">{row.detail}</span> : null}</span>}
               </div>
             ))}
           </div>
@@ -384,8 +384,8 @@ export function V4Queue({
               </button>
             ))}
             {row.destructiveAction ? (
-              <button type="button" className="font-medium text-nomi-danger" onClick={() => onDestructiveAction?.(rowIndex)}>
-                {row.destructiveAction}
+              <button type="button" aria-label={row.destructiveAction} className="grid size-[22px] place-items-center rounded-nomi-sm text-nomi-ink-60 hover:bg-nomi-ink-05 hover:text-nomi-danger" onClick={() => onDestructiveAction?.(rowIndex)}>
+                <IconX size={14} aria-hidden="true" />
               </button>
             ) : null}
             {row.actions?.length || row.destructiveAction ? null : labels[row.status]}
