@@ -145,7 +145,10 @@ export type GenerationCanvasNode = {
   runs?: GenerationNodeRunRecord[]
   status?: GenerationNodeStatus
   error?: string
-  meta?: Record<string, unknown>
+  meta?: Record<string, unknown> & {
+    /** Original storyboard node fields explicitly edited on canvas; duration is excluded. */
+    overriddenFields?: string[]
+  }
   /**
    * Phase E: category this node belongs to within the project's directory tree.
    * Legacy v0.4 nodes have no value here; the project loader normalizes them

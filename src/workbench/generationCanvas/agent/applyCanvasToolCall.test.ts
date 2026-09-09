@@ -1,9 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { CANVAS_READ_CAPABILITY } from '../../../../electron/shared/agentCapabilities/canvasRead'
 
-// availableModels 链路走 window.nomiDesktop IPC,node 测试环境不存在——mock 掉
-// (本测试的 case 不带 modelKey,真实代码路径也不会调它)。
-vi.mock('./availableModels', () => ({ listAvailableModelsForAgent: vi.fn(async () => []) }))
+// 仅替换需要桌面 IPC 的目录读取；方案投影继续使用真实档案纯函数。
+vi.mock('./availableModels', async (importOriginal) => ({
+  ...await importOriginal<typeof import('./availableModels')>(),
+  listAvailableModelsForAgent: vi.fn(async () => []),
+}))
 
 import {
   applyCanvasToolCall,

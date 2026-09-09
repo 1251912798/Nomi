@@ -83,7 +83,12 @@ function createDesign(documentId: string, plan: StoryboardPlan, sourceDocumentUp
   }
 }
 
-export const createWorkbenchDocumentSlice: WorkbenchSliceCreator<WorkbenchDocumentSlice> = (set, get) => ({
+export const createWorkbenchDocumentSlice = (
+  set: Parameters<WorkbenchSliceCreator<WorkbenchDocumentSlice>>[0],
+  get: Parameters<WorkbenchSliceCreator<WorkbenchDocumentSlice>>[1],
+  _store: Parameters<WorkbenchSliceCreator<WorkbenchDocumentSlice>>[2],
+  projectPlan: (design: StoryboardDesign) => void,
+): WorkbenchDocumentSlice => ({
   workbenchDocuments: [INITIAL_DOCUMENT],
   activeDocumentId: INITIAL_DOCUMENT.id,
   storyboardDesignsByDocumentId: {},
@@ -292,6 +297,7 @@ export const createWorkbenchDocumentSlice: WorkbenchSliceCreator<WorkbenchDocume
         persistRevision: state.persistRevision + 1,
       }
     })
+    if (appliedDesign) projectPlan(appliedDesign)
     return appliedDesign
   },
   commitStoryboardPlan: (documentId, storyboardId) => {
