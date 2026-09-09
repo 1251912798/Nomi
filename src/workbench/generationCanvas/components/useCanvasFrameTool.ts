@@ -20,7 +20,7 @@
  */
 import React from 'react'
 import i18n from '../../../i18n'
-import { showInfoToast } from '../../../utils/showInfoToast'
+import { reportCanvasFeedback } from './canvasFeedback'
 import { useGenerationCanvasStore } from '../store/generationCanvasStore'
 import {
   drawPreviewRect,
@@ -127,7 +127,7 @@ export function useCanvasFrameTool({
       frameRectsOverlap({ x: box.left, y: box.top, w: box.width, h: box.height }, bounds),
     )
     if (overlapped) {
-      showInfoToast(i18n.t('generationCommon.canvas.group.nestedNotSupported'))
+      reportCanvasFeedback(i18n.t('generationCommon.canvas.group.nestedNotSupported'), 'warning', { identity: `frame-tool:${activeCategoryId}`, reason: 'nested-frame' })
       return
     }
     const state = useGenerationCanvasStore.getState()

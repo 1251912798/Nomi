@@ -1,7 +1,9 @@
 // 批量执行计划预览态(harness S2b,样张方案 A:画布原位确认)。
 // 语义铁律:进入预览 ≠ 开始生成——确认前零 vendor 调用零扣费;取消即散,画布零变化。
 import { create } from 'zustand'
-import { toast, useToastStore } from '../../../ui/toast'
+import { reportCanvasFeedback } from './canvasFeedback'
+import { notify, revealNotificationTarget } from '../../../ui/notificationPolicy'
+import { getDesktopActiveProjectId } from '../../../desktop/activeProject'
 import { runGenerationNodesByPlan, spendCostKindForNodes } from '../runner/generationRunController'
 import { mintSpendGrant } from '../../api/taskApi'
 import { confirmAndMintGrant, confirmGenerationSpend, describeGenerationCost, generationCostContextForNodes } from '../spend/spendConfirm'
@@ -30,6 +32,7 @@ export const useBatchPlanPreviewStore = create<BatchPlanPreviewState>()((set, ge
   confirm: async () => {
     const { plan, running } = get()
     if (!plan || running) return
+    const projectId = getDesktopActiveProjectId()
     set({ running: true })
     // 计划 overlay 的「按计划生成」点击本身 = 真人手势 → 铸付费令牌（绑本批节点）。
     let grantId: string
@@ -37,11 +40,12 @@ export const useBatchPlanPreviewStore = create<BatchPlanPreviewState>()((set, ge
       grantId = await mintSpendGrant(plan.waves.flat())
     } catch (error) {
       set({ running: false })
-      toast(
+      reportCanvasFeedback(
         error instanceof Error && error.message
           ? error.message
           : i18n.t('generationCommon.batchPlan.authorizationFailed'),
         'error',
+        { projectId, identity: `batch-plan:${plan.waves.flat().slice().sort().join(':')}`, reason: 'authorization', nodeIds: plan.waves.flat() },
       )
       return
     }
@@ -178,7 +182,7 @@ export async function confirmAndRunPlan(
   })
 }
 
-/** 按计划真实生成 + 进度人话 toast。「全部生成」与 S6b agent 受理路径共用(单一执行口)。
+/** 按计划真实生成 + 可行动的失败反馈。「全部生成」与 S6b agent 受理路径共用(单一执行口)。
  * grantId：付费守卫令牌（确认后铸），随 plan 下到每个节点的 request.extras 供主进程核验。 */
 export async function runPlanWithToasts(
   plan: DependencyWavePlan,
@@ -186,38 +190,24 @@ export async function runPlanWithToasts(
   // 缺省会让 runner 无从判断「谁问的用户」，那正是 F16b 第二张卡的来源。
   options: { grantId?: string; concurrency?: number; assetUploadConsent: 'allow' | 'not-needed' },
 ): Promise<void> {
+  const projectId = getDesktopActiveProjectId()
   const waves = plan.waves
   const runnable = waves.flat().length
   const notice = describeBlockedNotice(plan)
   if (runnable === 0) {
     // 全被拦：别静默，说清原因
-    toast(
+    reportCanvasFeedback(
       notice
         ? i18n.t('generationCommon.batchPlan.unavailable', { notice })
         : i18n.t('generationCommon.batchPlan.noRunnableNodes'),
       'error',
+      { projectId, identity: `batch-plan:${plan.blocked.map((item) => item.nodeId).sort().join(':')}`, reason: 'unavailable', nodeIds: plan.blocked.map((item) => item.nodeId) },
     )
     return
   }
-  // 启动反馈（用户强调）：有依赖（多波）= 不是全并发，要先生成上游参考、再生成下游镜头。说清楚，
-  // 否则用户以为"只跑一个/卡住了"。单波则直接并发（并发上限 6）。
-  const firstWave = waves[0].length
-  const startMsg =
-    waves.length > 1
-      ? i18n.t('generationCommon.batchPlan.multiWaveStart', {
-          waves: waves.length,
-          count: runnable,
-          firstWave,
-          remaining: runnable - firstWave,
-        })
-      : i18n.t('generationCommon.batchPlan.start', { count: runnable })
-  useToastStore.getState().push({
-    id: BATCH_RUN_TOAST_ID,
-    message: startMsg,
-    type: 'info',
-    ttl: false,
-    dismissible: true,
-  })
+  // Progress is already projected by nodes and the task center. Each paid run owns
+  // its recovery action; unrelated batches must not overwrite one global slot.
+  const notificationId = `${BATCH_RUN_TOAST_ID}:${projectId}:${options.grantId ?? waves.flat().slice().sort().map(encodeURIComponent).join(':')}`
   try {
     const result = await runGenerationNodesByPlan(plan, {
       assetUploadConsent: options.assetUploadConsent,
@@ -229,10 +219,14 @@ export async function runPlanWithToasts(
     // 完成汇总：把「还有谁没跑、为什么」(notice) 并进同一条，不再跑完补弹第二条（消除连环弹，弹窗审计）。
     const tail = notice ? i18n.t('generationCommon.batchPlan.blockedTail', { notice }) : ''
     if (failCount === 0) {
-      useToastStore.getState().push({
-        id: BATCH_RUN_TOAST_ID,
+      if (notice) notify({
+        identity: notificationId,
+        reason: 'blocked-nodes',
+        level: 'background',
         message: i18n.t('generationCommon.batchPlan.completed', { count: okCount, tail }),
-        type: notice ? 'warning' : 'success',
+        type: 'warning',
+        actionLabel: i18n.t('taskCenter.title'),
+        onAction: () => { void revealNotificationTarget({ projectId, taskCenter: true }) },
       })
     } else {
       // 失败汇总挂「重试失败的 N 个」一键动作（样张拍板 2026-07-29）：只对失败节点重建依赖波次
@@ -243,13 +237,16 @@ export async function runPlanWithToasts(
         okCount === 0
           ? i18n.t('generationCommon.batchPlan.failed', { count: failCount, tail })
           : i18n.t('generationCommon.batchPlan.partiallyCompleted', { successes: okCount, failures: failCount, tail })
-      useToastStore.getState().push({
-        id: BATCH_RUN_TOAST_ID,
+      notify({
+        identity: notificationId,
+        reason: 'generation-failed',
+        level: 'background',
         message,
         type: okCount === 0 ? 'error' : 'warning',
-        ttl: 12_000,
         actionLabel: i18n.t('generationCommon.batchPlan.retryFailed', { count: failCount }),
-        onAction: () => {
+        onAction: async () => {
+          if (getDesktopActiveProjectId() !== projectId && !(await revealNotificationTarget({ projectId, workspaceMode: 'generation' }))) return
+          if (getDesktopActiveProjectId() !== projectId) return
           const state = useGenerationCanvasStore.getState()
           void confirmAndRunPlan(
             buildDependencyWaves(failureIds, { nodes: state.nodes, edges: state.edges }),
@@ -268,8 +265,12 @@ export async function runPlanWithToasts(
       if (shotIds.length > 0) void verifyShotsAndReport(shotIds)
     }
   } catch (error: unknown) {
-    useToastStore.getState().push({
-      id: BATCH_RUN_TOAST_ID,
+    notify({
+      identity: notificationId,
+      reason: 'runner-failed',
+      level: 'background',
+      actionLabel: i18n.t('taskCenter.title'),
+      onAction: () => { void revealNotificationTarget({ projectId, taskCenter: true }) },
       message: error instanceof Error && error.message ? error.message : i18n.t('generationCommon.batchPlan.exception'),
       type: 'error',
     })
