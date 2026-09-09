@@ -27,12 +27,6 @@ export const zhCreationAi = {
     toolbarAria: '文本工具栏',
     documentAria: '创作文档编辑区',
   },
-  attachmentRail: {
-  },
-  conversationHistory: {
-  },
-  assistantMessage: {
-  },
   selection: {
     bold: '加粗',
     italic: '斜体',
@@ -57,8 +51,6 @@ export const zhCreationAi = {
     blockquote: '引用',
     undo: '撤销',
     redo: '重做',
-  },
-  replyAction: {
   },
   writeTool: { insert: '插入到光标', replace: '替换选区', append: '追加到文末' },
   attachmentsUploading: '附件还在上传，请等上传完成再发送。',
@@ -152,12 +144,6 @@ export const enCreationAi = {
     toolbarAria: 'Text toolbar',
     documentAria: 'Creation document editor',
   },
-  attachmentRail: {
-  },
-  conversationHistory: {
-  },
-  assistantMessage: {
-  },
   selection: {
     bold: 'Bold',
     italic: 'Italic',
@@ -182,8 +168,6 @@ export const enCreationAi = {
     blockquote: 'Quote',
     undo: 'Undo',
     redo: 'Redo',
-  },
-  replyAction: {
   },
   writeTool: { insert: 'Insert at cursor', replace: 'Replace selection', append: 'Append to document' },
   attachmentsUploading: 'Attachments are still uploading. Wait for them to finish before sending.',

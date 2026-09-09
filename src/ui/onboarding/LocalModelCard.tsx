@@ -21,8 +21,7 @@ import {
 } from '@tabler/icons-react'
 import { cn } from '../../utils/cn'
 import { getDesktopBridge } from '../../desktop/bridge'
-import { toast } from '../toast'
-import { alertDialog } from '../../design'
+import { notify } from '../notificationPolicy'
 import { FoldableModelCard } from './FoldableModelCard'
 import { translateModelDisplayText } from '../../i18n/modelDisplayText'
 
@@ -60,6 +59,13 @@ export function LocalModelCard({ enabled, models, onChanged, onOpenDetails, deta
   const [hits, setHits] = React.useState<EndpointHit[] | null>(null)
   const [probing, setProbing] = React.useState(false)
   const [busyModel, setBusyModel] = React.useState<string | null>(null)
+  const [errors, setErrors] = React.useState<Record<string, string>>({})
+  const clearError = (identity: string) => setErrors((current) => ({ ...current, [identity]: '' }))
+  const reportError = (identity: string, reason: string, value: unknown) => notify({
+    identity: `local-model:${identity}`, reason, type: 'error', level: 'inline',
+    message: value instanceof Error ? value.message : String(value),
+    present: (message) => setErrors((current) => ({ ...current, [identity]: message })),
+  })
   // 能力预检结果按 modelKey 记（探针跑完存这里，卡里显示「支持 Agent / 仅对话」）。
   const [verdicts, setVerdicts] = React.useState<Record<string, CapabilityVerdict>>({})
 
@@ -97,6 +103,7 @@ export function LocalModelCard({ enabled, models, onChanged, onOpenDetails, deta
 
   /** 一键连某个探到的模型：把 vendor 指向这台端口 + authType none + enable，再建档该模型，并跑能力预检。 */
   const handleConnect = async (hit: EndpointHit, modelId: string) => {
+    clearError(`${hit.baseUrl}/${modelId}`)
     setBusyModel(modelId)
     try {
       // ① vendor 指向探到的端口（authType none = 本地无鉴权，运行时不发空 Authorization 头）。
@@ -105,17 +112,9 @@ export function LocalModelCard({ enabled, models, onChanged, onOpenDetails, deta
       catalog.upsertModel({ vendorKey: LOCAL_TEXT_VENDOR_KEY, modelKey: modelId, labelZh: modelId, kind: 'text', enabled: true })
       onChanged()
       // ③ 能力预检（诚实交付）：当场探这个模型带不带得动工具调用。
-      const verdict = await runCapabilityCheck(hit.baseUrl, modelId)
-      toast(
-        verdict === 'agent'
-          ? t('onboardingProviders.localModel.connectedAgent', { model: modelId })
-          : verdict === 'chat-only'
-            ? t('onboardingProviders.localModel.connectedChatOnly', { model: modelId })
-            : t('onboardingProviders.localModel.connectedUnknown', { model: modelId }),
-        verdict === 'chat-only' ? 'info' : 'success',
-      )
+      await runCapabilityCheck(hit.baseUrl, modelId)
     } catch (e) {
-      void alertDialog({ title: t('onboardingProviders.localModel.connectFailed'), message: e instanceof Error ? e.message : String(e) })
+      reportError(`${hit.baseUrl}/${modelId}`, 'connect', e)
     } finally {
       setBusyModel(null)
     }
@@ -123,15 +122,15 @@ export function LocalModelCard({ enabled, models, onChanged, onOpenDetails, deta
 
   /** 断开某个已建档模型（删模型；名下无模型时整卡回到未连态由父组件分桶决定）。 */
   const handleDisconnect = (modelKey: string) => {
+    clearError(modelKey)
     setBusyModel(modelKey)
     try {
       catalog.deleteModels([{ vendorKey: LOCAL_TEXT_VENDOR_KEY, modelKey }])
       // 名下已无模型 → 停用 vendor（回到「可接入」桶）。
       if (models.length <= 1) catalog.upsertVendor({ key: LOCAL_TEXT_VENDOR_KEY, enabled: false })
       onChanged()
-      toast(t('onboardingProviders.localModel.disconnected', { model: modelKey }), 'success')
     } catch (e) {
-      void alertDialog({ title: t('onboardingProviders.localModel.disconnectFailed'), message: e instanceof Error ? e.message : String(e) })
+      reportError(modelKey, 'disconnect', e)
     } finally {
       setBusyModel(null)
     }
@@ -207,6 +206,7 @@ export function LocalModelCard({ enabled, models, onChanged, onOpenDetails, deta
               <IconCircleCheck size={16} className="shrink-0 text-workbench-success" />
               <div className="flex-1 min-w-0">
                 <div className="text-body-sm text-nomi-ink truncate font-mono">{translateModelDisplayText(m.labelZh)}</div>
+                {errors[m.modelKey] ? <p role="alert" className="mt-1 text-caption text-workbench-danger">{errors[m.modelKey]}</p> : null}
               </div>
               {capabilityBadge(verdicts[m.modelKey] ?? m.capability)}
               <button
@@ -237,7 +237,9 @@ export function LocalModelCard({ enabled, models, onChanged, onOpenDetails, deta
                 {connectable.length > 0 ? (
                   connectable.map((modelId) => (
                     <div key={modelId} className="flex items-center gap-2 pl-6">
-                      <span className="flex-1 min-w-0 text-caption font-mono text-nomi-ink-60 truncate">{modelId}</span>
+                      <div className="flex-1 min-w-0"><span className="text-caption font-mono text-nomi-ink-60 truncate">{modelId}</span>
+                        {errors[`${hit.baseUrl}/${modelId}`] ? <p role="alert" className="mt-1 text-caption text-workbench-danger">{errors[`${hit.baseUrl}/${modelId}`]}</p> : null}
+                      </div>
                       <button
                         type="button"
                         onClick={() => handleConnect(hit, modelId)}

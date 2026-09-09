@@ -20,7 +20,6 @@ import {
   hydrateCommittedProposalReceipt,
   recoverPendingProposalReceipt,
 } from './generationCanvas/agent/proposalUndo'
-import { useGenerationCanvasStore } from './generationCanvas/store/generationCanvasStore'
 import { readGenerationCanvasSnapshot } from './generationCanvas/agent/generationCanvasTools'
 import {
   captureCanvasDeleteRawEvidence,
@@ -38,8 +37,6 @@ import {
   executeExportReadTarget,
   executeExportWriteTarget,
 } from './timeline/agent/phase4CapabilityTargets'
-import { FOCUS_GENERATION_NODE_EVENT } from './generationCanvas/nodes/nodeSizing'
-import { focusCanvasNodeWhenReady } from './deepLinkFocus'
 import { laneClient } from './ai/lane/laneClient'
 import { laneReceiptClient } from './ai/lane/laneReceiptClient'
 import { initReviewEventBridge } from './generationCanvas/reviewEventBridge'
@@ -48,7 +45,8 @@ import { initResultUrlRelocalizeBridge } from './generationCanvas/resultUrlReloc
 import { setCanvasEventProjectIdProvider } from './generationCanvas/events/canvasEventEmitter'
 import { handleCapabilityApply, registerCapabilityApplyHandler } from './capability/capabilityApplyHandler'
 import { cn } from '../utils/cn'
-import { toast } from '../ui/toast'
+import { notify } from '../ui/notificationPolicy'
+import { useProjectNotificationTarget } from './project/useProjectNotificationTarget'
 import { setDesktopActiveProjectId } from '../desktop/activeProject'
 import { getDesktopBridge } from '../desktop/bridge'
 import { useHasTextModel } from './library/useHasTextModel'
@@ -60,7 +58,6 @@ import { lazyWithChunkBoundary } from '../ui/chunkBoundary'
 import { releaseWorkbenchProjectRuntimeState } from './project/releaseWorkbenchProjectSession'
 import { useSpendConfirmStore } from './generationCanvas/spend/spendConfirm'
 import { runAssetSurfaceMigrations } from './assets/assetSurfaceMigration'
-import { useProductionRunStore } from './production/productionRunStore'
 import { ProductionCanvasLandingHost } from './production/ProductionCanvasLandingHost'
 import { ProjectHydrationSupersededError, createProjectCanvasReadSurfaceCoordinator, registerProjectCanvasReadSurface } from './project/projectCanvasReadSurface'
 import { hydrateWorkbenchProjectWithRecovery } from './project/projectHydrationRecovery'
@@ -136,6 +133,8 @@ export default function NomiStudioApp(): JSX.Element {
   const navigate = useNavigate()
   const location = useLocation()
   const [view, setView] = React.useState<AppView>('library')
+  const [feedback, setFeedback] = React.useState<{ projectId: string | null; message: string } | null>(null)
+  const report = React.useCallback((projectId: string | null, message: string) => notify({ identity: `project:${projectId ?? 'library'}`, reason: 'operation', level: 'inline', message, type: 'error', present: (value) => setFeedback({ projectId, message: value }) }), [])
   const { refreshProjects } = useLocalProjects()
   const [activeProject, setActiveProject] = React.useState<LocalProjectSummary | null>(null)
   const settingsDialogController = useSettingsDialogController()
@@ -379,6 +378,7 @@ export default function NomiStudioApp(): JSX.Element {
       // and receipt recovery. React unmounts the studio before the first await;
       // it is exposed again only after lane open + pending compensation finish.
       setView('library')
+      setFeedback(null)
       try {
         await surfaceEpoch.waitUntilSuspended()
         surfaceEpoch.assertCurrent()
@@ -387,7 +387,7 @@ export default function NomiStudioApp(): JSX.Element {
         clearCommittedProposal()
         const { module, service } = await ensureProjectPersistenceService()
         surfaceEpoch.assertCurrent()
-        const hydrated = await hydrateWorkbenchProjectWithRecovery({ projectId, service, guard: surfaceEpoch, t })
+        const hydrated = await hydrateWorkbenchProjectWithRecovery({ projectId, service, guard: surfaceEpoch, t, present: (message) => report(projectId, message) })
         if (!hydrated) {
           surfaceEpoch.assertCurrent()
           refreshProjects()
@@ -421,20 +421,18 @@ export default function NomiStudioApp(): JSX.Element {
         // Only start background repairs after main has acknowledged the exact
         // committed Surface; the guard prevents any late write after a switch.
         void runProjectAssetHealthCheck(hydrated.id, surfaceEpoch).catch(() => {})
-        const migrationDiag = module.consumeCategoryMigrationDiagnostic(surfaceEpoch)
-        if (migrationDiag && (migrationDiag.migratedNodes > 0 || migrationDiag.categoriesSeeded)) {
-          toast(t('studio.migrationComplete', { count: migrationDiag.migratedNodes }), 'success')
-        }
+        module.consumeCategoryMigrationDiagnostic(surfaceEpoch)
       } catch (error) {
         if (error instanceof ProjectHydrationSupersededError) throw error
         console.error('project Surface hydration failed', error)
+        report(projectId, error instanceof Error ? error.message : t('studio.projectRestoreFailed'))
         return false
       } finally {
         if (hydrationSequenceRef.current === hydrationSequence) hydratingProjectRef.current = false
       }
       return true
     },
-    [ensureProjectPersistenceService, navigate, projectSurface, refreshProjects, t],
+    [ensureProjectPersistenceService, navigate, projectSurface, refreshProjects, report, t],
   )
 
   const openProject = React.useCallback(
@@ -449,45 +447,10 @@ export default function NomiStudioApp(): JSX.Element {
     [hydrateProject],
   )
 
-  React.useEffect(() => {
-    const onDeepLink = getDesktopBridge()?.app?.onProductionDeepLink
-    if (!onDeepLink) return undefined
-    return onDeepLink((payload) => {
-      const projectId = typeof payload?.projectId === 'string' ? payload.projectId.trim() : ''
-      const runId = typeof payload?.runId === 'string' ? payload.runId.trim() : ''
-      const nodeId = typeof payload?.nodeId === 'string' ? payload.nodeId.trim() : ''
-      // 只要有 projectId 就该跳。**曾经这里要求必须有 runId**，于是工程级 `nomi://project/{id}`
-      // （每条生成结果都在给用户的那个链接）和节点级链接点了**毫无反应**——连窗口都不亮一下。
-      // 三种形状各自的归宿：run→任务中心、node→画布并选中那一镜、纯工程→打开项目即可。
-      if (!projectId) return
-      void (async () => {
-        useWorkbenchStore.getState().setWorkspaceMode('generation')
-        if (activeProjectIdRef.current !== projectId) {
-          const opened = await hydrateProject(projectId, { replaceUrl: true })
-          if (!opened) return
-        }
-        if (runId) {
-          // 深链落到制作任务的新家：任务中心（不再展开画布助手面板——制作已从那儿搬走）。
-          window.dispatchEvent(new CustomEvent('nomi-open-task-center'))
-          await useProductionRunStore.getState().navigateTo(projectId, runId, payload.artifactId)
-          return
-        }
-        if (nodeId) {
-          // 「指着看」：复用画布既有的聚焦通道（切到该节点所在分类页签 + 选中 + 平移到视野 + 闪一下），
-          // 不自造第二套选中逻辑（P1）。刚 hydrate 完节点可能还没进 store，等它出现再派。
-          await focusCanvasNodeWhenReady({
-            nodeId,
-            hasNode: () => useGenerationCanvasStore.getState().nodes.some((node) => node.id === nodeId),
-            dispatch: (id) =>
-              window.dispatchEvent(new CustomEvent(FOCUS_GENERATION_NODE_EVENT, { detail: { nodeId: id } })),
-            waitFrame: () => new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve())),
-          })
-        }
-      })().catch((error) => console.error('deep link navigation failed', error))
-    })
-  }, [hydrateProject])
+  useProjectNotificationTarget({ activeProjectId: activeProjectIdRef, isHydrating: hydratingProjectRef, hydrateProject })
 
   const openWorkspaceFolder = React.useCallback(async () => {
+    setFeedback(null)
     try {
       await openWorkspaceFromLibrary({
         bridge: getDesktopBridge(),
@@ -499,26 +462,27 @@ export default function NomiStudioApp(): JSX.Element {
             message: t('studio.initializeMessage', { path: rootPath }),
             confirmLabel: t('common.initialize'),
           }),
-        showMessage: (message, tone) => toast(message, tone || 'error'),
+        showMessage: (message) => report(null, message),
       })
     } catch (error: unknown) {
       if (!(error instanceof ProjectHydrationSupersededError)) throw error
     }
-  }, [hydrateProject, refreshProjects, t])
+  }, [hydrateProject, refreshProjects, report, t])
 
   const revealProjectFolder = React.useCallback(
     (projectId: string) => {
+      setFeedback(null)
       const bridge = getDesktopBridge()
       if (!bridge?.workspace?.revealProjectFolder) {
-        toast(t('studio.folderUnsupported'), 'error')
+        report(projectId, t('studio.folderUnsupported'))
         return
       }
       void bridge.workspace.revealProjectFolder({ projectId }).catch((error: unknown) => {
         const message = error instanceof Error && error.message ? error.message : t('studio.openFolderFailed')
-        toast(message, 'error')
+        report(projectId, message)
       })
     },
-    [t],
+    [report, t],
   )
 
   // 创建并打开项目的单一编排点（收口创建入口的重复拼装，P1）：
@@ -541,9 +505,9 @@ export default function NomiStudioApp(): JSX.Element {
     // 「新建项目」：默认位置建项目，落「创作」区（CTA「从一段文字或想法开始」）。
     void createAndOpenProject({ workspaceMode: 'creation' }).catch((error) => {
       console.error('new project error', error)
-      toast(t('studio.newProjectFailed'), 'error')
+      report(null, t('studio.newProjectFailed'))
     })
-  }, [createAndOpenProject, t])
+  }, [createAndOpenProject, report, t])
 
   // 引导旅途：建一个 seedKey 隔离的示例项目（永不 GC、不脏用户真项目）→ 进 studio →
   // 激活 tour，JourneyTourController 用预置数据回放整条流水线。
@@ -562,9 +526,9 @@ export default function NomiStudioApp(): JSX.Element {
       if (result.opened) useJourneyTourStore.getState().start()
     })().catch((error) => {
       console.error('journey tour project error', error)
-      toast(t('studio.demoProjectFailed'), 'error')
+      report(null, t('studio.demoProjectFailed'))
     })
-  }, [createAndOpenProject, t])
+  }, [createAndOpenProject, report, t])
 
   // 接完模型（目录变更广播）→ 状态重查，让缺模型状态条/弱入口即时翻面
   // （面板还开着时也更新，不必等用户关面板）。
@@ -593,6 +557,7 @@ export default function NomiStudioApp(): JSX.Element {
         danger: true,
       })
       if (!confirmed) return
+      setFeedback(null)
       try {
         if (activeProjectIdRef.current === project.id) {
           // Deleting the open project must first receive main's release ACK;
@@ -608,19 +573,20 @@ export default function NomiStudioApp(): JSX.Element {
           setView('library')
           navigate(buildStudioUrl(), { replace: true })
         }
-        toast(isExternal ? t('studio.projectRemoved') : t('studio.projectDeleted'), 'success')
+
       } catch (error: unknown) {
         const message = error instanceof Error && error.message ? error.message : t('studio.projectDeleteFailed')
         console.error(message)
-        toast(message, 'error')
+        report(project.id, message)
       }
     },
-    [navigate, projectSurface, t],
+    [navigate, projectSurface, report, t],
   )
 
   // 列表页「双击改名」：只改名不动内容；若改的正是当前打开的项目，同步顶栏显示名（activeProject）。
   const renameLibraryProject = React.useCallback(
     (projectId: string, name: string) => {
+      setFeedback(null)
       try {
         const record = renameLocalProject(projectId, name)
         if (record && activeProjectIdRef.current === projectId) {
@@ -628,10 +594,10 @@ export default function NomiStudioApp(): JSX.Element {
         }
       } catch (error: unknown) {
         console.error('project rename error', error)
-        toast(t('studio.renameFailed'), 'error')
+        report(projectId, t('studio.renameFailed'))
       }
     },
-    [t],
+    [report, t],
   )
 
   React.useEffect(() => {
@@ -676,6 +642,7 @@ export default function NomiStudioApp(): JSX.Element {
         isHydrating: () => hydratingProjectRef.current,
         canPersist: () => activeProjectIdRef.current === activeProject.id,
         onSaved: (saved) => {
+          setFeedback((previous) => previous?.projectId === saved.id ? null : previous)
           if (activeProjectIdRef.current === activeProject.id) {
             setActiveProject(saved)
           } else {
@@ -684,7 +651,7 @@ export default function NomiStudioApp(): JSX.Element {
         },
         onSaveError: (error) => {
           console.error('project save error', error)
-          toast(t('studio.projectSaveFailed'), 'error')
+          report(activeProject.id, t('studio.projectSaveFailed'))
         },
       })
       let unbound = false
@@ -702,7 +669,7 @@ export default function NomiStudioApp(): JSX.Element {
       }
       unbind?.()
     }
-  }, [activeProject, activeProjectPersistenceKey, ensureProjectPersistenceService, refreshProjects, t])
+  }, [activeProject, activeProjectPersistenceKey, ensureProjectPersistenceService, refreshProjects, report, t])
 
   useWorkspaceEvents(view === 'studio' ? activeProject?.id : null, (type) => {
     if (type === 'canvas.updated' || type === 'timeline.updated' || type === 'creation.updated') {
@@ -737,6 +704,7 @@ export default function NomiStudioApp(): JSX.Element {
       if (!activeProject) return
       const trimmed = newName.trim() || t('appBar.untitledProject')
       if (trimmed === activeProject.name) return
+      setFeedback(null)
       const renamed: LocalProjectSummary = {
         ...activeProject,
         name: trimmed,
@@ -754,10 +722,10 @@ export default function NomiStudioApp(): JSX.Element {
         })
         .catch((error: unknown) => {
           console.error('project rename save error', error)
-          toast(t('studio.renameFailed'), 'error')
+          report(renamed.id, t('studio.renameFailed'))
         })
     },
-    [activeProject, ensureProjectPersistenceService, t],
+    [activeProject, ensureProjectPersistenceService, report, t],
   )
 
   const globalBrowserDialog =
@@ -775,10 +743,12 @@ export default function NomiStudioApp(): JSX.Element {
       onReplaySplash={() => setSplashDone(false)}
     />
   ) : null
+  const projectFeedback = feedback?.message ? <p role="alert" className="m-0 px-4 py-2 text-caption text-nomi-danger">{feedback.message}</p> : null
   const viewContent =
     view === 'library' ? (
       <>
         <ProjectLibraryPage
+          projectFeedback={feedback}
           onOpenProject={openProject}
           onDeleteProject={deleteProject}
           onRenameProject={renameLibraryProject}
@@ -797,6 +767,7 @@ export default function NomiStudioApp(): JSX.Element {
     ) : (
       <div className={cn('nomi-studio-app w-full h-screen min-h-0 bg-nomi-bg')} aria-label={t('studio.aria')}>
         <WorkbenchShell
+          projectFeedback={feedback?.projectId === activeProject?.id ? projectFeedback : null}
           generation={
             <React.Suspense fallback={<GenerationCanvasLoading />}>
               {/* relative 包一层:S2b 计划 overlay 与画布同坐标系,且不喂巨壳 */}

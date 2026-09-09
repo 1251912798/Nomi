@@ -3,7 +3,6 @@
 // 行为 100% 等价于原内联实现，仅做位置迁移（无并行版 P1）。
 import React from 'react'
 import i18n from '../../../../i18n'
-import { toast, useToastStore } from '../../../../ui/toast'
 import { useGenerationCanvasStore } from '../../store/generationCanvasStore'
 import {
   type Scene3DCamera,
@@ -36,30 +35,32 @@ import { removeTrajectoryBindingsForNode } from './scene3dTrajectoryState'
 import { useScene3DTrajectoryEditing } from './useScene3DTrajectoryEditing'
 import { trajectoryPointTimeRatio } from './trajectory'
 import { applyCameraMovePreset, type CameraMovePresetSpec } from './cameraMovePreset'
-import { CAMERA_MOVE_LABEL } from './cameraMoveVocab'
 import { isCameraMoveReady } from './scene3dPlayback'
 import { makePropObject } from './scene3dPropSpecs'
-import { buildSceneTemplateObjects, SCENE_TEMPLATE_LABEL, type Scene3DSceneTemplate } from './scene3dSceneTemplates'
+import { buildSceneTemplateObjects, type Scene3DSceneTemplate } from './scene3dSceneTemplates'
 import { scene3dCameraDisplayName } from './scene3dObjectNames'
+
+export type Scene3DFeedback = { message: string; actionLabel?: string; onAction?: () => void }
+export type ReportScene3DFeedback = (feedback: Scene3DFeedback | null) => void
 
 // 对象上限文案单源（4 个加对象入口共用）；数字随 OBJECT_LIMIT derive，不各自硬编码。
 // 用函数取（不是模块级 const）——否则切换语言后旧值不更新。
 const objectLimitMessage = (): string => i18n.t('scene3d.fullscreen.sceneFull', { count: OBJECT_LIMIT })
 
 /** 「相机截图但没选相机」的一键跳转报错（顶栏截图与出片面板共用单源，P3-15） */
-export function toastPickCameraFirst(
+export function reportPickCameraFirst(
   firstCamera: Scene3DCamera | undefined,
   onPickCamera: (cameraId: string) => void,
+  reportFeedback: ReportScene3DFeedback,
 ): void {
   if (firstCamera) {
-    useToastStore.getState().push({
+    reportFeedback({
       message: i18n.t('scene3d.fullscreen.selectCameraForScreenshot'),
-      type: 'warning',
       actionLabel: i18n.t('scene3d.fullscreen.selectNamedCamera', { camera: scene3dCameraDisplayName(firstCamera, [firstCamera]) }),
       onAction: () => onPickCamera(firstCamera.id),
     })
   } else {
-    toast(i18n.t('scene3d.fullscreen.addCameraForScreenshot'), 'warning')
+    reportFeedback({ message: i18n.t('scene3d.fullscreen.addCameraForScreenshot') })
   }
 }
 
@@ -68,6 +69,7 @@ export type Scene3DClipboardItem =
   | { type: 'camera'; item: Scene3DCamera; pasteCount: number }
 
 type ClipboardActionsOptions = {
+  reportFeedback: ReportScene3DFeedback
   readOnly: boolean
   stateRef: React.MutableRefObject<Scene3DState>
   selectionRef: React.MutableRefObject<Scene3DSelection>
@@ -80,6 +82,7 @@ type ClipboardActionsOptions = {
 }
 
 export function useScene3DClipboardActions({
+  reportFeedback,
   readOnly,
   stateRef,
   selectionRef,
@@ -139,6 +142,7 @@ export function useScene3DClipboardActions({
   }, [selectionRef, stateRef, clipboardRef])
 
   const pasteClipboard = React.useCallback(() => {
+    reportFeedback(null)
     if (readOnly) return false
     const clipboard = clipboardRef.current
     if (!clipboard) return false
@@ -147,7 +151,7 @@ export function useScene3DClipboardActions({
     if (clipboard.type === 'object') {
       const current = stateRef.current
       if (current.objects.length >= OBJECT_LIMIT) {
-        toast(objectLimitMessage(), 'warning')
+        reportFeedback({ message: objectLimitMessage() })
         return true
       }
       const object = makePastedObject(clipboard.item, pasteCount)
@@ -175,7 +179,7 @@ export function useScene3DClipboardActions({
     setSelection({ type: 'camera', id: camera.id })
     setViewLocked(false)
     return true
-  }, [readOnly, clipboardRef, stateRef, setState, setSelection, setViewLocked])
+  }, [readOnly, clipboardRef, stateRef, setState, setSelection, setViewLocked, reportFeedback])
 
   return { startKeyboardNavigation, stopKeyboardNavigation, copySelection, pasteClipboard }
 }
@@ -183,6 +187,7 @@ export function useScene3DClipboardActions({
 type TrajectoryEditing = ReturnType<typeof useScene3DTrajectoryEditing>
 
 type TrajectoryModeActionsOptions = {
+  reportFeedback: ReportScene3DFeedback
   trajectory: TrajectoryEditing
   enterTrajectoryMode: (showTimeline?: boolean) => void
   trajectoryMode: boolean
@@ -193,6 +198,7 @@ type TrajectoryModeActionsOptions = {
 }
 
 export function useScene3DTrajectoryModeActions({
+  reportFeedback,
   trajectory,
   enterTrajectoryMode,
   trajectoryMode,
@@ -280,7 +286,7 @@ export function useScene3DTrajectoryModeActions({
       binding.objects.some((boundObject) => boundObject.objectId === targetId)
     ))
     if (alreadyBound) {
-      toast(i18n.t('scene3d.fullscreen.singleTrajectory'), 'warning')
+      reportFeedback({ message: i18n.t('scene3d.fullscreen.singleTrajectory') })
       return
     }
     const pointIndex = pointId ? targetTrajectory.points.findIndex((point) => point.id === pointId) : -1
@@ -291,22 +297,22 @@ export function useScene3DTrajectoryModeActions({
     trajectory.setTimelineOpen(true)
     enterTrajectoryMode(false)
     setSelection(cameraExists ? { type: 'camera', id: targetId } : { type: 'object', id: targetId })
-  }, [enterTrajectoryMode, readOnly, trajectory, stateRef, setSelection])
+  }, [enterTrajectoryMode, readOnly, trajectory, stateRef, setSelection, reportFeedback])
 
   const requestTrajectoryPlayChange = React.useCallback((playing: boolean) => {
+    reportFeedback(null)
     if (playing && !trajectory.hasPlayableBinding) {
-      // P3-15：错误提示带一键跳转——点 toast 直接进轨迹面板去绑定
-      useToastStore.getState().push({
+      // P3-15：错误提示带一键跳转——在编辑器中直接进轨迹面板去绑定
+      reportFeedback({
         message: i18n.t('scene3d.trajectory.bindBeforePlay'),
-        type: 'warning',
-        actionLabel: i18n.t('scene3d.trajectory.goBindTarget'),
+          actionLabel: i18n.t('scene3d.trajectory.goBindTarget'),
         onAction: () => enterTrajectoryMode(true),
       })
       return
     }
     trajectory.setIsPlaying(playing)
     if (playing) trajectory.setTimelineOpen(true)
-  }, [enterTrajectoryMode, trajectory])
+  }, [enterTrajectoryMode, trajectory, reportFeedback])
 
   return {
     selectTrajectoryForMode,
@@ -415,6 +421,7 @@ export function useScene3DKeyboardShortcuts({
 // 「添加对象/相机/群众」三个动作（从 Scene3DFullscreen 抽出，防巨壳 R9）。行为与原内联实现等价：
 // 容量门岗 + 选中新建项 + 退出轨迹模式 + 解锁视图。新建假人/群众落到避让后的可用空位。
 export function useScene3DAddActions({
+  reportFeedback,
   readOnly,
   stateRef,
   setState,
@@ -422,6 +429,7 @@ export function useScene3DAddActions({
   setViewLocked,
   exitTrajectoryMode,
 }: {
+  reportFeedback: ReportScene3DFeedback
   readOnly: boolean
   stateRef: React.MutableRefObject<Scene3DState>
   setState: React.Dispatch<React.SetStateAction<Scene3DState>>
@@ -437,9 +445,10 @@ export function useScene3DAddActions({
 } {
   // 语义道具：与 addObject 同结构（限流 + 避让摆位 + 选中），kind 走 spec 表。
   const addProp = React.useCallback((kind: Scene3DPropKind) => {
+    reportFeedback(null)
     if (readOnly) return
     if (stateRef.current.objects.length >= OBJECT_LIMIT) {
-      toast(objectLimitMessage(), 'warning')
+      reportFeedback({ message: objectLimitMessage() })
       return
     }
     const object = makePropObject(kind)
@@ -448,12 +457,13 @@ export function useScene3DAddActions({
     setSelection({ type: 'object', id: object.id })
     exitTrajectoryMode()
     setViewLocked(false)
-  }, [exitTrajectoryMode, readOnly, setSelection, setState, setViewLocked, stateRef])
+  }, [exitTrajectoryMode, readOnly, setSelection, setState, setViewLocked, stateRef, reportFeedback])
 
   const addObject = React.useCallback((kind: Scene3DGeometry | 'mannequin' | 'light') => {
+    reportFeedback(null)
     if (readOnly) return
     if (stateRef.current.objects.length >= OBJECT_LIMIT) {
-      toast(objectLimitMessage(), 'warning')
+      reportFeedback({ message: objectLimitMessage() })
       return
     }
     const roleIndex = kind === 'mannequin'
@@ -471,7 +481,7 @@ export function useScene3DAddActions({
     setSelection({ type: 'object', id: object.id })
     exitTrajectoryMode()
     setViewLocked(false)
-  }, [exitTrajectoryMode, readOnly, setSelection, setState, setViewLocked, stateRef])
+  }, [exitTrajectoryMode, readOnly, setSelection, setState, setViewLocked, stateRef, reportFeedback])
 
   const addCamera = React.useCallback(() => {
     if (readOnly) return
@@ -483,9 +493,10 @@ export function useScene3DAddActions({
   }, [exitTrajectoryMode, readOnly, setSelection, setState, setViewLocked])
 
   const addCrowd = React.useCallback((options: CrowdAddOptions) => {
+    reportFeedback(null)
     if (readOnly) return
     if (stateRef.current.objects.length >= OBJECT_LIMIT) {
-      toast(objectLimitMessage(), 'warning')
+      reportFeedback({ message: objectLimitMessage() })
       return
     }
     const crowd = makeCrowdObject(options)
@@ -494,22 +505,22 @@ export function useScene3DAddActions({
     setSelection({ type: 'object', id: crowd.id })
     exitTrajectoryMode()
     setViewLocked(false)
-  }, [exitTrajectoryMode, readOnly, setSelection, setState, setViewLocked, stateRef])
+  }, [exitTrajectoryMode, readOnly, setSelection, setState, setViewLocked, stateRef, reportFeedback])
 
   // 场景模板：一键搭灰模布景。**追加**进当前场景（绝不清用户已摆的东西），超容量整组拒绝。
   const applySceneTemplate = React.useCallback((template: Scene3DSceneTemplate) => {
+    reportFeedback(null)
     if (readOnly) return
     const additions = buildSceneTemplateObjects(template)
     if (stateRef.current.objects.length + additions.length > OBJECT_LIMIT) {
-      toast(i18n.t('scene3d.fullscreen.templateLimit', { count: OBJECT_LIMIT }), 'warning')
+      reportFeedback({ message: i18n.t('scene3d.fullscreen.templateLimit', { count: OBJECT_LIMIT }) })
       return
     }
     setState((current) => ({ ...current, objects: [...current.objects, ...additions] }))
     setSelection(null)
     exitTrajectoryMode()
     setViewLocked(false)
-    toast(i18n.t('scene3d.fullscreen.templateApplied', { template: SCENE_TEMPLATE_LABEL[template], count: additions.length }), 'success')
-  }, [exitTrajectoryMode, readOnly, setSelection, setState, setViewLocked, stateRef])
+  }, [exitTrajectoryMode, readOnly, setSelection, setState, setViewLocked, stateRef, reportFeedback])
 
   return { addObject, addProp, addCamera, addCrowd, applySceneTemplate }
 }
@@ -579,8 +590,6 @@ export function useScene3DCameraMoveAction({
     if (!result) return
     setState(result.state)
     trajectory.setTimelineOpen(true)
-    const duration = result.endTime - result.startTime
-    toast(i18n.t('scene3d.fullscreen.presetAppended', { move: CAMERA_MOVE_LABEL[spec.move], duration, start: result.startTime, end: result.endTime }), 'success')
   }, [readOnly, setState, stateRef, trajectory])
 }
 
@@ -597,12 +606,11 @@ export type Scene3DExportCard = {
 }
 
 // 出片动作（2026-07-20 出片旅程 → 2026-07-22 任务优先重构）：三个导出 handler、
-// 运镜就绪接力 toast（P0-5）、产物卡片（P0-4 生成中 → P3-14 完成态+去向）。
+// 产物卡片（P0-4 生成中 → P3-14 完成态+去向）。
 // 原出片面板已删（P1）：产物由任务 CTA 直达；trackTakeExport 供录 take 停止后接上同一张产物卡。
 export function useScene3DExportActions({
-  state,
+  reportFeedback,
   stateRef,
-  readOnly,
   selectedCamera,
   onRecordTake,
   onPickCamera,
@@ -610,9 +618,8 @@ export function useScene3DExportActions({
   captureSelectedCamera,
   setState,
 }: {
-  state: Scene3DState
+  reportFeedback: ReportScene3DFeedback
   stateRef: React.MutableRefObject<Scene3DState>
-  readOnly: boolean
   selectedCamera: Scene3DCamera | undefined
   onRecordTake?: (recordedState: Scene3DState) => string | void
   /** 报错「先选中相机」时的一键跳转（P3-15） */
@@ -683,26 +690,8 @@ export function useScene3DExportActions({
     }
   }, [])
 
-  // P0-5：运镜就绪接力 toast——轨迹+绑定就绪时提示用户去出片
-  // 用独立 ref 存 timer，不随 state 变化清理（否则拖点/调参 500ms 内会吞掉 toast）
-  const moveReadyRef = React.useRef(false)
-  const journeyToastTimerRef = React.useRef<number | null>(null)
-  React.useEffect(() => {
-    const ready = isCameraMoveReady(state)
-    const wasReady = moveReadyRef.current
-    moveReadyRef.current = ready
-    if (ready && !wasReady && !readOnly) {
-      if (journeyToastTimerRef.current) window.clearTimeout(journeyToastTimerRef.current)
-      journeyToastTimerRef.current = window.setTimeout(() => {
-        toast(i18n.t('scene3d.export.moveReady'), 'success')
-        journeyToastTimerRef.current = null
-      }, 500)
-    }
-  }, [state, readOnly])
-
   React.useEffect(() => () => {
     if (exportingTimerRef.current) window.clearTimeout(exportingTimerRef.current)
-    if (journeyToastTimerRef.current) window.clearTimeout(journeyToastTimerRef.current)
   }, [])
 
   // 产物卡进「渲染中」态并盯 take 节点等完成；60s 未出降级「渲染较慢」。
@@ -737,8 +726,9 @@ export function useScene3DExportActions({
   }, [setState, stateRef])
 
   const handleExportReferenceVideo = React.useCallback(() => {
+    reportFeedback(null)
     if (!onRecordTake) {
-      toast(i18n.t('scene3d.export.referenceVideoUnsupported'), 'warning')
+      reportFeedback({ message: i18n.t('scene3d.export.referenceVideoUnsupported') })
       return
     }
     const current = stateRef.current
@@ -748,11 +738,10 @@ export function useScene3DExportActions({
       const cameraIds = new Set(current.cameras.map((c) => c.id))
       const hasCameraBinding = current.trajectoryBindings.some((b) => b.objects.some((o) => cameraIds.has(o.objectId)))
       if (hasUsableTrajectory && !hasCameraBinding && current.cameras.length > 0) {
-        // 只差「把轨迹绑到相机」→ 一键补：可点 toast，点了就绑上相机 + 用绑定后 state 立即出片。
-        useToastStore.getState().push({
+        // 只差「把轨迹绑到相机」→ 一键补：原地动作，点了就绑上相机 + 用绑定后 state 立即出片。
+        reportFeedback({
           message: i18n.t('scene3d.export.bindCameraFirst'),
-          type: 'warning',
-          actionLabel: i18n.t('scene3d.export.bindAndGenerate'),
+              actionLabel: i18n.t('scene3d.export.bindAndGenerate'),
           onAction: () => {
             const bound = bindCameraForExport()
             if (bound && isCameraMoveReady(bound)) exportWithState(bound)
@@ -761,11 +750,11 @@ export function useScene3DExportActions({
         return
       }
       // 差轨迹 / 没相机 → 精确引导（指向真实入口）。
-      toast(i18n.t('scene3d.export.cameraMoveRequired'), 'warning')
+      reportFeedback({ message: i18n.t('scene3d.export.cameraMoveRequired') })
       return
     }
     exportWithState(current)
-  }, [bindCameraForExport, exportWithState, onRecordTake, stateRef])
+  }, [bindCameraForExport, exportWithState, onRecordTake, stateRef, reportFeedback])
 
   const handleExportScreenshotViewport = React.useCallback(() => {
     const captured = captureViewport()
@@ -773,14 +762,15 @@ export function useScene3DExportActions({
   }, [captureViewport, markScreenshotDone])
 
   const handleExportScreenshotCamera = React.useCallback(() => {
+    reportFeedback(null)
     if (!selectedCamera) {
-      if (onPickCamera) toastPickCameraFirst(stateRef.current.cameras[0], onPickCamera)
-      else toast(i18n.t('scene3d.fullscreen.selectCameraFirst'), 'warning')
+      if (onPickCamera) reportPickCameraFirst(stateRef.current.cameras[0], onPickCamera, reportFeedback)
+      else reportFeedback({ message: i18n.t('scene3d.fullscreen.selectCameraFirst') })
       return
     }
     const captured = captureSelectedCamera()
     if (captured) markScreenshotDone()
-  }, [captureSelectedCamera, markScreenshotDone, onPickCamera, selectedCamera, stateRef])
+  }, [captureSelectedCamera, markScreenshotDone, onPickCamera, selectedCamera, stateRef, reportFeedback])
 
   return {
     exportCard,

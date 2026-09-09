@@ -20,7 +20,7 @@ function node(id: string, patch: Partial<GenerationCanvasNode> = {}): Generation
 }
 
 const batches: Record<string, GenerationQueueBatch> = {
-  b1: { id: 'b1', createdAt: 0, total: 3, cancelRequested: false, paused: false, consecutiveFailures: 0 },
+  b1: { id: 'b1', projectId: 'project-test', createdAt: 0, total: 3, cancelRequested: false, paused: false, consecutiveFailures: 0 },
 }
 
 describe('buildTaskCenterView', () => {

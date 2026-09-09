@@ -218,11 +218,9 @@ export const zhGenerationCommon = {
       nestedNotSupported: '框里不能再画框——先解散外层',
       generateEmpty: '这个框里没有可生成的节点',
       timelineEmpty: '这个框里没有可进时间轴的视频或剪辑',
-      timelineDone: '已按框内顺序把 {{count}} 段排进时间轴',
       timelineDoneWithSkips: '已排进 {{count}} 段；{{skipped}} 个跳过（不是画面，或还没生成）',
     },
     minimapAria: '画布缩略导航',
-    tidied: '已整理 · ⌘Z 撤销',
   },
   observability: {
     // 错误卡的动作按钮。main = 当主按钮时的说法，alt = 降为次要小字时的说法。
@@ -418,7 +416,6 @@ export const zhGenerationCommon = {
     outputNodeTitle: '剪辑成片',
     outputClipTitle: '剪辑片段 {{index}}',
     exporting: '导出中…',
-    exportCanvasComplete: '已向画布导出 {{count}} 个视频节点。',
     exportDownloadComplete: '已导出 {{count}} 个视频文件。',
     exportFailed: '导出失败，请重试。',
     uploadFailed: '素材复制失败，请重试导入。',
@@ -443,6 +440,7 @@ export const zhGenerationCommon = {
     reupload: '重新上传',
     reuploadPanorama: '重新上传全景图',
     locateSource: '定位源节点：{{source}}',
+    locateNode: '定位节点',
     sourceNoLongerExists: '源节点已不存在',
     independentCopy: '独立副本',
     duplicateVariant: '复制为变体',
@@ -465,7 +463,6 @@ export const zhGenerationCommon = {
     },
     panoramaScreenshotTitle: '全景截图',
     panoramaScreenshotPrompt: '全景视口截图',
-    panoramaScreenshotCreated: '已创建全景截图节点',
     lock: {
       unlockAria: '解锁节点（AI 将恢复可修改）',
       lockAria: '锁定节点（AI 不能修改，仍可作为参考）',
@@ -666,7 +663,6 @@ export const zhGenerationCommon = {
     delete: '删除',
     deleteTitle: '删除这个结果？',
     deleteMessage: '它会从版本记录和本地项目中移除。',
-    deleted: '结果已删除',
     deleteFailed: '删除失败',
     deleteFileFailed: '记录已更新，但部分本地文件没能删除',
     assetUnavailable: '这个历史结果已无法定位到本地素材',
@@ -791,10 +787,8 @@ export const zhGenerationCommon = {
     title: '拆解元素',
     costSuffix: '（把这张图拆成可独立编辑的图层）',
     confirm: '拆解',
-    working: '拆解中…约 15 秒',
     desktopUnavailable: '桌面端不可用',
     noLayers: '拆解未返回图层',
-    completed: '已拆成图层，拖动元素后关闭画板即合成回图',
     failed: '拆解失败，请稍后重试',
   },
   assistant: {
@@ -947,8 +941,6 @@ export const zhGenerationCommon = {
     },
   },
   derivative: {
-    fixationReady: '检查提示词后点生成',
-    textEditReady: '填入原文与新文字后点生成',
     character: '角色',
     scene: '场景',
     image: '图片',
@@ -1035,9 +1027,6 @@ export const zhGenerationCommon = {
     confirmGenerate: '生成',
     unavailable: '还不能生成：{{notice}}',
     noRunnableNodes: '没有可生成的节点',
-    multiWaveStart:
-      '分 {{waves}} 波生成 {{count}} 个：先生成 {{firstWave}} 个上游参考，其余 {{remaining}} 个等参考完成后自动接力',
-    start: '开始生成 {{count}} 个…',
     blockedTail: '；{{notice}}',
     completed: '已完成 {{count}} 个{{tail}}',
     failed: '批量生成失败：{{count}} 个未完成{{tail}}',
@@ -1418,7 +1407,6 @@ export const zhGenerationCommon = {
       shotFallbackTitle: '镜头 {{shot}}',
       queued: '排队中',
       queuedNth: '排队中 · 第 {{index}}/{{total}}',
-      progressToast: '正在生成分镜 · 已完成 {{completed}}/{{total}}',
       stoppedBudget: '预算已用完，这镜还没开拍。提额后可继续拍剩下的。',
       stoppedManual: '已停止剩余镜头。想继续可从这里接着拍。',
       raiseBudget: '提额续拍',
@@ -1428,11 +1416,7 @@ export const zhGenerationCommon = {
       retry: '重拍这镜',
       // P4 S6 返工/续拍的人话反馈（按结构化结果 code 翻译，禁拼串穿透 i18n 门）。
       rework: {
-        reworked: '已生成新版本 · 完成后可切回旧版',
-        reworkDeclined: '已取消，没有扣费',
-        resumeDeclined: '已取消续拍，没有新增扣费',
         noPriorAttempt: '这一镜还没生成过，先让它正常开拍',
-        resumed: '已继续，接着拍剩下的镜头',
         unavailable: '暂时用不了，请稍后再试',
         failed: '操作没成功，请稍后再试',
       },
@@ -1443,7 +1427,6 @@ export const zhGenerationCommon = {
     },
   },
   savePrompt: {
-    saved: '已存入提示词库',
     saveFailed: '存入提示词库失败：{{message}}',
     imageType: '图片提示词',
     videoType: '视频提示词',
@@ -1724,11 +1707,9 @@ export const enGenerationCommon = {
       nestedNotSupported: 'A frame can’t hold another frame — dissolve the outer one first',
       generateEmpty: 'Nothing in this frame can be generated',
       timelineEmpty: 'No video or clip in this frame can go to the timeline',
-      timelineDone: 'Placed {{count}} shots on the timeline in frame order',
       timelineDoneWithSkips: 'Placed {{count}}; skipped {{skipped}} (not moving image, or not generated yet)',
     },
     minimapAria: 'Canvas minimap navigation',
-    tidied: 'Canvas tidied · Undo with ⌘Z',
   },
   observability: {
     action: {
@@ -1923,7 +1904,6 @@ export const enGenerationCommon = {
     outputNodeTitle: 'Edited video',
     outputClipTitle: 'Edited clip {{index}}',
     exporting: 'Exporting…',
-    exportCanvasComplete: 'Exported {{count}} video nodes to the canvas.',
     exportDownloadComplete: 'Exported {{count}} video files.',
     exportFailed: 'Export failed. Try again.',
     uploadFailed: 'The material could not be copied. Try importing it again.',
@@ -1948,6 +1928,7 @@ export const enGenerationCommon = {
     reupload: 'Upload again',
     reuploadPanorama: 'Upload panorama again',
     locateSource: 'Locate source node: {{source}}',
+    locateNode: 'Locate node',
     sourceNoLongerExists: 'Source node no longer exists',
     independentCopy: 'Independent copy',
     duplicateVariant: 'Duplicate as variant',
@@ -1970,7 +1951,6 @@ export const enGenerationCommon = {
     },
     panoramaScreenshotTitle: 'Panorama screenshot',
     panoramaScreenshotPrompt: 'Panorama viewport screenshot',
-    panoramaScreenshotCreated: 'Created a panorama screenshot node',
     lock: {
       unlockAria: 'Unlock node (AI can edit it again)',
       lockAria: 'Lock node (AI cannot edit it, but it can still be used as a reference)',
@@ -2170,7 +2150,6 @@ export const enGenerationCommon = {
     delete: 'Delete',
     deleteTitle: 'Delete this result?',
     deleteMessage: 'It will be removed from version history and the local project.',
-    deleted: 'Result deleted',
     deleteFailed: 'Delete failed',
     deleteFileFailed: 'History was updated, but some local files could not be deleted',
     assetUnavailable: 'This historical result can no longer be located locally',
@@ -2296,10 +2275,8 @@ export const enGenerationCommon = {
     title: 'Decompose elements',
     costSuffix: ' (split this image into independently editable layers)',
     confirm: 'Decompose',
-    working: 'Decomposing… about 15 seconds',
     desktopUnavailable: 'Desktop features are unavailable',
     noLayers: 'No layers were returned',
-    completed: 'Layers are ready. Move elements, then close the board to composite them back into the image.',
     failed: 'Decomposition failed. Try again later.',
   },
   assistant: {
@@ -2451,8 +2428,6 @@ export const enGenerationCommon = {
     },
   },
   derivative: {
-    fixationReady: 'Review the prompt, then generate',
-    textEditReady: 'Enter the original and replacement text, then generate',
     character: 'Character',
     scene: 'Scene',
     image: 'Image',
@@ -2540,9 +2515,6 @@ export const enGenerationCommon = {
     confirmGenerate: 'Generate',
     unavailable: 'Cannot generate yet: {{notice}}',
     noRunnableNodes: 'No nodes are ready to generate',
-    multiWaveStart:
-      'Generating {{count}} nodes in {{waves}} waves: {{firstWave}} upstream references run first, then the remaining {{remaining}} continue automatically',
-    start: 'Generating {{count}} nodes…',
     blockedTail: '. {{notice}}',
     completed: 'Completed {{count}}{{tail}}',
     failed: 'Batch generation failed: {{count}} unfinished{{tail}}',
@@ -2922,7 +2894,6 @@ export const enGenerationCommon = {
       shotFallbackTitle: 'Shot {{shot}}',
       queued: 'Queued',
       queuedNth: 'Queued · {{index}}/{{total}}',
-      progressToast: 'Generating shots · {{completed}}/{{total}} done',
       stoppedBudget: 'Budget ran out before this shot. Raise it to keep filming the rest.',
       stoppedManual: 'Remaining shots stopped. Continue filming from here.',
       raiseBudget: 'Raise budget',
@@ -2932,11 +2903,7 @@ export const enGenerationCommon = {
       retry: 'Re-film shot',
       // P4 S6 rework/resume plain-language feedback (translated by structured result code — never a raw string).
       rework: {
-        reworked: 'New version generated · switch back to the old one anytime',
-        reworkDeclined: 'Cancelled — nothing was charged',
-        resumeDeclined: 'Continuation cancelled — no additional charge',
         noPriorAttempt: 'This shot hasn\'t been generated yet — let it film first',
-        resumed: 'Resumed — filming the remaining shots',
         unavailable: 'Not available right now, please try again later',
         failed: 'That didn\'t work, please try again later',
       },
@@ -2947,7 +2914,6 @@ export const enGenerationCommon = {
     },
   },
   savePrompt: {
-    saved: 'Saved to prompt library',
     saveFailed: 'Failed to save to prompt library: {{message}}',
     imageType: 'Image prompt',
     videoType: 'Video prompt',

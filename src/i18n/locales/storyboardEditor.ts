@@ -57,7 +57,6 @@ export const zhStoryboardEditor = {
     generateRemaining: '生成未生成的 {{count}} 镜',
   },
   exec: {
-    actionPending: '已有操作正在处理，请先完成当前确认。',
     actionFailed: '操作没成功，请重试。',
   },
   row: {
@@ -97,7 +96,6 @@ export const zhStoryboardEditor = {
   playback: {
     start: '顺播',
     aria: '按镜序顺播已生成结果',
-    skipped: '已跳过 {{count}} 个未生成镜头',
     scene: '播放本场',
     sceneAria: '播放{{name}}',
     position: '镜 {{index}} / {{total}}',
@@ -224,7 +222,6 @@ export const zhStoryboardEditor = {
     row: '交给 Agent 改这一镜',
     selection: '交给 Agent',
     footer: '选中 {{count}} 镜 · 交给 Agent 改',
-    toast: '已把 {{count}} 镜交给 Agent——在右边说要改什么',
   },
   storyboardHeading: '分镜 · {{count}} 镜',
   addShot: '添加镜头',
@@ -407,7 +404,6 @@ export const enStoryboardEditor = {
     generateRemaining: 'Generate {{count}} remaining shots',
   },
   exec: {
-    actionPending: 'An action is in progress. Complete the current confirmation first.',
     actionFailed: 'The action did not go through. Try again.',
   },
   row: {
@@ -445,7 +441,6 @@ export const enStoryboardEditor = {
   playback: {
     start: 'Play sequence',
     aria: 'Play generated results in shot order',
-    skipped: 'Skipped {{count}} shots without results',
     scene: 'Play scene',
     sceneAria: 'Play {{name}}',
     position: 'Shot {{index}} / {{total}}',
@@ -572,7 +567,6 @@ export const enStoryboardEditor = {
     row: 'Ask Agent to edit this shot',
     selection: 'Ask Agent',
     footer: '{{count}} selected · ask Agent to edit',
-    toast: '{{count}} shots handed to the Agent — say what to change on the right',
   },
   storyboardHeading: 'Storyboard · {{count}} shots',
   addShot: 'Add shot',

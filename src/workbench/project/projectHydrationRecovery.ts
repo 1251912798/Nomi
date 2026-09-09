@@ -2,7 +2,6 @@ import type { TFunction } from 'i18next'
 
 import { confirmDialog } from '../../design'
 import { getDesktopBridge } from '../../desktop/bridge'
-import { toast } from '../../ui/toast'
 import type { ProjectHydrationGuard } from './projectCanvasReadSurface'
 import type { WorkbenchProjectPersistenceService } from './projectPersistenceService'
 
@@ -16,8 +15,9 @@ export async function hydrateWorkbenchProjectWithRecovery(input: Readonly<{
   service: WorkbenchProjectPersistenceService
   guard: ProjectHydrationGuard
   t: TFunction
+  present: (message: string) => void
 }>): Promise<Awaited<ReturnType<WorkbenchProjectPersistenceService['hydrateProject']>>> {
-  const { projectId, service, guard, t } = input
+  const { projectId, service, guard, t, present } = input
   let hydrateError: unknown = null
   let hydrated = await service.hydrateProject(projectId, guard).catch((error: unknown) => {
     guard.assertCurrent()
@@ -46,10 +46,9 @@ export async function hydrateWorkbenchProjectWithRecovery(input: Readonly<{
       guard.assertCurrent()
       hydrated = await service.hydrateProject(projectId, guard)
       guard.assertCurrent()
-      if (hydrated) toast(t('studio.projectRecoveryComplete'), 'success')
     }
   } else if (diagnostic?.status === 'missing-folder') {
-    toast(t('studio.projectFolderMissing'), 'error')
+    present(t('studio.projectFolderMissing'))
   } else if (diagnostic?.rootPath) {
     const reveal = await confirmDialog({
       title: t('studio.projectRepairTitle'),
@@ -64,7 +63,7 @@ export async function hydrateWorkbenchProjectWithRecovery(input: Readonly<{
       guard.assertCurrent()
     }
   } else {
-    toast(t('studio.projectNotFound'), 'error')
+    present(t('studio.projectNotFound'))
   }
   if (!hydrated && hydrateError) console.error('project hydrate failed', hydrateError)
   return hydrated

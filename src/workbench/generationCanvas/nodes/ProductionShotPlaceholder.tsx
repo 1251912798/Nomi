@@ -23,7 +23,7 @@ function productionRunIdOf(node: GenerationCanvasNode): string | null {
   return typeof meta?.productionRunId === 'string' && meta.productionRunId ? meta.productionRunId : null
 }
 
-export function ProductionShotPlaceholder({ node }: { node: GenerationCanvasNode }): JSX.Element | null {
+export function ProductionShotPlaceholder({ node, reportFeedback }: { reportFeedback: (message: string) => void; node: GenerationCanvasNode }): JSX.Element | null {
   const { t } = useTranslation()
   const runId = productionRunIdOf(node)
   // 只在这个 Run 是 store 当前缓存的那个时派生（避免读到别的项目/Run 的态）。
@@ -38,13 +38,13 @@ export function ProductionShotPlaceholder({ node }: { node: GenerationCanvasNode
   const runResume = React.useCallback(() => {
     if (!projectId || !runId || busy) return
     setBusy(true)
-    void resumeProductionBatch(projectId, runId, stoppedReason === 'budget' ? 'budget' : 'manual').finally(() => setBusy(false))
-  }, [busy, projectId, runId, stoppedReason])
+    void resumeProductionBatch(projectId, runId, stoppedReason === 'budget' ? 'budget' : 'manual', reportFeedback).finally(() => setBusy(false))
+  }, [busy, projectId, runId, stoppedReason, reportFeedback])
   const runRework = React.useCallback(() => {
     if (!projectId || !runId || busy) return
     setBusy(true)
-    void reworkProductionShot(projectId, runId, shotId).finally(() => setBusy(false))
-  }, [busy, projectId, runId, shotId])
+    void reworkProductionShot(projectId, runId, shotId, reportFeedback).finally(() => setBusy(false))
+  }, [busy, projectId, runId, shotId, reportFeedback])
 
   // 非占位节点 / 已回填 result（占位退场）/ 派生为 done → 不渲染任何占位（露出真片）。
   if (!runId || !state || state.phase === 'done') return null

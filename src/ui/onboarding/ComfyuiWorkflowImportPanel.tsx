@@ -19,7 +19,6 @@ import { IconFileImport, IconWand, IconAlertTriangle, IconMovie, IconPhoto, Icon
 import { cn } from '../../utils/cn'
 import { NomiSelect } from '../../design'
 import { getDesktopBridge } from '../../desktop/bridge'
-import { toast } from '../toast'
 import { cancelComfyCandidateTestRevision, type TaskKind } from '../../workbench/api/taskApi'
 import { paramCandidates } from './comfyuiParamCandidates'
 // 类型与参数塑形规则的单一真相源——整页（工作流设置）与这条导入路共用同一份，
@@ -218,7 +217,6 @@ export function ComfyuiWorkflowImportPanel({ onImported, onVerificationRequested
         ...(enumOptions ? { enumOptions } : {}),
         ...(uiWorkflowText ? { uiWorkflow: uiWorkflowText } : {}),
       })
-      toast(t('onboardingProviders.comfyWorkflow.awaitingVerification', { name }), 'success')
       reset()
       setOpen(false)
       onImported()

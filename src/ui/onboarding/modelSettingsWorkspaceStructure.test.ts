@@ -97,9 +97,25 @@ describe('model settings workspace structure', () => {
     expect(drawer).toContain('replaceModelSettingsPage(current, { type: \'verification\', runId: nextRun.id })')
     expect(drawer).not.toContain('wizardRunId')
     expect(drawer).not.toContain('handleWizardRunChange')
-    expect(drawer).toContain("alertDialog({ title: t('onboardingProviders.drawer.operationFailed')")
+    expect(drawer).not.toContain('alertDialog(')
+    expect(drawer).toContain("reportError('retry', error instanceof CertificationUiError")
+    expect(drawer).toContain('errors[feedbackOwner]')
+    expect(drawer).toContain('role="alert"')
     expect(read('src/ui/onboarding/AdapterTaskWorkspace.tsx')).toContain('onRetry={onRetry}')
     expect(read('src/ui/onboarding/AdapterVerificationScreen.tsx')).toContain('onRetry(model.modelKey)')
+  })
+
+  it.each([
+    'src/ui/onboarding/ComfyuiLocalCard.tsx',
+    'src/ui/onboarding/LocalModelCard.tsx',
+    'src/ui/onboarding/workflowPage/ComfyuiWorkflowSettingsPage.tsx',
+    'src/ui/onboarding/OnboardingDrawer.tsx',
+  ])('%s keeps operation failures in the owning settings surface', (file) => {
+    const text = read(file)
+    expect(text).not.toMatch(/\b(?:alertDialog|toast)\(/)
+    expect(text).toContain("level: 'inline'")
+    expect(text).toContain('present:')
+    expect(text).toMatch(/role=(?:"alert"|\{feedback.error)/)
   })
 
   it('refreshes the model catalog when a background adapter run reaches a terminal state', () => {

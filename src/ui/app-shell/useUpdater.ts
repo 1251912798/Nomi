@@ -49,12 +49,12 @@ export const UPDATER_INITIAL_STATE: State = { phase: 'idle', latestVersion: null
 
 export type UpdaterVisibilityInput = {
   phase: UpdaterPhase
-  hasRunningTask: boolean
+  requested: boolean
 }
 
-/** The update remains pending while production work is running; show only a quiet badge. */
-export function shouldShowUpdaterDialog({ phase, hasRunningTask }: UpdaterVisibilityInput): boolean {
-  if (hasRunningTask) return false
+/** Background update events never claim focus; only an explicit request opens details. */
+export function shouldShowUpdaterDialog({ phase, requested }: UpdaterVisibilityInput): boolean {
+  if (!requested) return false
   return phase === 'available' || phase === 'downloading' || phase === 'downloaded' || phase === 'error'
 }
 

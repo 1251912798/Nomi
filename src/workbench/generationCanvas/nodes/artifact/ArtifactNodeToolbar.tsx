@@ -7,12 +7,12 @@ import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { IconCopy, IconDownload, IconPhoto } from '@tabler/icons-react'
 import { getDesktopBridge } from '../../../../desktop/bridge'
-import { toast } from '../../../../ui/toast'
 import { canArtifactBecomeReference, type AgentArtifactMeta } from '../../model/artifactMeta'
 import { FloatingToolbarShell, TOOLBAR_ICON as I, ToolbarButton } from '../NodeFloatingToolbar'
 import { rasterizeArtifactToReferenceAsset } from './rasterizeArtifactToReferenceAsset'
 
 type Props = {
+  reportFeedback: (message: string) => void
   /** 源产物节点 id：固化出的参考图生在它旁边、跟它同一分类（真机走查修正的落点）。 */
   nodeId: string
   title: string
@@ -22,13 +22,15 @@ type Props = {
   canCopyText: boolean
 }
 
-export default function ArtifactNodeToolbar({ nodeId, title, artifact, onCopyText, canCopyText }: Props): JSX.Element | null {
+export default function ArtifactNodeToolbar({ reportFeedback, nodeId, title, artifact, onCopyText, canCopyText }: Props): JSX.Element | null {
+
   const { t } = useTranslation()
   const [downloading, setDownloading] = React.useState(false)
   const [copying, setCopying] = React.useState(false)
   const [rasterizing, setRasterizing] = React.useState(false)
 
   const download = React.useCallback(() => {
+    reportFeedback('')
     const bridge = getDesktopBridge()
     if (!bridge) return
     setDownloading(true)
@@ -36,35 +38,38 @@ export default function ArtifactNodeToolbar({ nodeId, title, artifact, onCopyTex
     void bridge.assets
       .download({ url: artifact.url, suggestedName: base })
       .then((result) => {
-        if (result.ok) toast(t('generationCommon.resultDownload.saved'), 'success')
-        else if (!result.canceled) toast(t('generationCommon.resultDownload.failed'), 'error')
+        if (result.ok) reportFeedback(t('generationCommon.resultDownload.saved'))
+        else if (!result.canceled) reportFeedback(t('generationCommon.resultDownload.failed'))
       })
-      .catch(() => toast(t('generationCommon.resultDownload.failed'), 'error'))
+      .catch(() => reportFeedback(t('generationCommon.resultDownload.failed')))
       .finally(() => setDownloading(false))
-  }, [artifact.url, title, t])
+  }, [title, t, artifact.url, reportFeedback])
 
   const copy = React.useCallback(() => {
+    reportFeedback('')
     if (!onCopyText) return
     setCopying(true)
     void onCopyText()
-      .then(() => toast(t('runtime.nodeRegistry.agent-artifact.copied'), 'success'))
-      .catch(() => toast(t('runtime.nodeRegistry.agent-artifact.copyFailed'), 'error'))
+      .then(() => reportFeedback(t('runtime.nodeRegistry.agent-artifact.copied')))
+      .catch(() => reportFeedback(t('runtime.nodeRegistry.agent-artifact.copyFailed')))
       .finally(() => setCopying(false))
-  }, [onCopyText, t])
+  }, [onCopyText, reportFeedback, t])
 
   const rasterizeReference = React.useCallback(() => {
+    reportFeedback('')
     setRasterizing(true)
     void rasterizeArtifactToReferenceAsset(artifact, undefined, nodeId)
       .then((result) => {
-        if (result.ok) toast(t('runtime.nodeRegistry.agent-artifact.referenceCreated'), 'success')
-        else toast(t('runtime.nodeRegistry.agent-artifact.referenceFailed'), 'error')
+        if (result.ok) reportFeedback(t('runtime.nodeRegistry.agent-artifact.referenceCreated'))
+        else reportFeedback(t('runtime.nodeRegistry.agent-artifact.referenceFailed'))
       })
-      .catch(() => toast(t('runtime.nodeRegistry.agent-artifact.referenceFailed'), 'error'))
+      .catch(() => reportFeedback(t('runtime.nodeRegistry.agent-artifact.referenceFailed')))
       .finally(() => setRasterizing(false))
-  }, [artifact, nodeId, t])
+  }, [artifact, nodeId, reportFeedback, t])
 
   return (
     <FloatingToolbarShell ariaLabel={t('runtime.nodeRegistry.agent-artifact.actions')}>
+
       {canArtifactBecomeReference(artifact.fileType) ? (
         <ToolbarButton
           icon={<IconPhoto size={I.size} stroke={I.stroke} />}

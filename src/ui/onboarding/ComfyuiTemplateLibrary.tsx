@@ -15,7 +15,7 @@ import { useTranslation } from 'react-i18next'
 import { IconBooks, IconCheck, IconX, IconExternalLink, IconRefresh, IconAlertTriangle, IconSearch } from '@tabler/icons-react'
 import { cn } from '../../utils/cn'
 import { getDesktopBridge } from '../../desktop/bridge'
-import { toast } from '../toast'
+import { notify } from '../notificationPolicy'
 import { resolvePrecheckGateAction } from './precheckGate'
 
 type TemplateEntry = {
@@ -44,6 +44,8 @@ const PAGE_SIZE = 12
 
 export function ComfyuiTemplateLibrary({ vendorKey, modelLabels, onImported, onVerificationRequested }: Props): JSX.Element | null {
   const { t } = useTranslation()
+  const currentVendor = React.useRef(vendorKey)
+  currentVendor.current = vendorKey
   const catalog = getDesktopBridge()?.modelCatalog
   const [list, setList] = React.useState<TemplateEntry[] | null | 'loading'>('loading')
   const [group, setGroup] = React.useState<string>('')
@@ -51,6 +53,8 @@ export function ComfyuiTemplateLibrary({ vendorKey, modelLabels, onImported, onV
   const [openName, setOpenName] = React.useState<string | null>(null)
   const [detail, setDetail] = React.useState<Detail | 'loading' | { error: string } | null>(null)
   const [busy, setBusy] = React.useState(false)
+  const [feedback, setFeedback] = React.useState<Record<string, string>>({})
+  const report = (name: string, message: string) => notify({ identity: `comfy-template:${vendorKey}:${name}`, reason: 'prepare', level: 'inline', message, present: (value) => setFeedback((old) => ({ ...old, [`${vendorKey}:${name}`]: value })) })
   const [limit, setLimit] = React.useState(PAGE_SIZE)
 
   const load = React.useCallback(() => {
@@ -99,18 +103,19 @@ export function ComfyuiTemplateLibrary({ vendorKey, modelLabels, onImported, onV
   const enable = async (entry: TemplateEntry, d: Detail) => {
     const prepare = getDesktopBridge()?.onboarding?.integrationSessionPrepareComfy
     if (!prepare) return
+    report(entry.name, '')
     setBusy(true)
     try {
       // 官方模板的绑定交给既有分析器推导（它已能认 86% 的提示词/90% 的输出）。
       const analyzed = catalog.analyzeComfyWorkflow?.(d.apiText)
-      if (!analyzed || !analyzed.ok) { toast(t('onboardingProviders.comfyTemplates.analyzeFailed'), 'error'); return }
+      if (!analyzed || !analyzed.ok) { report(entry.name, t('onboardingProviders.comfyTemplates.analyzeFailed')); return }
       const binding = (analyzed.analysis as { suggested?: unknown }).suggested
       await prepare({ vendorKey, name: entry.title, workflow: d.apiText, binding, enumOptions: d.enumOptions, uiWorkflow: d.uiWorkflowText })
-      toast(t('onboardingProviders.comfyWorkflow.awaitingVerification', { name: entry.title }), 'info')
+      if (currentVendor.current !== vendorKey) return
       onImported()
       onVerificationRequested?.()
     } catch (error) {
-      toast(error instanceof Error ? error.message : String(error), 'error')
+      report(entry.name, error instanceof Error ? error.message : String(error))
     } finally { setBusy(false) }
   }
 
@@ -174,6 +179,7 @@ export function ComfyuiTemplateLibrary({ vendorKey, modelLabels, onImported, onV
                       </span>
                     ) : null}
                   </button>
+                  {feedback[`${vendorKey}:${entry.name}`] ? <p role="alert" className="m-0 px-4 py-1 text-caption text-nomi-danger">{feedback[`${vendorKey}:${entry.name}`]}</p> : null}
                   {open ? <TemplateDetailBlock entry={entry} detail={detail} busy={busy} onEnable={enable} /> : null}
                 </React.Fragment>
               )

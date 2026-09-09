@@ -5,7 +5,7 @@ const { toastMock, dispatchEventMock } = vi.hoisted(() => ({
   dispatchEventMock: vi.fn(),
 }))
 
-vi.mock('../../ui/toast', () => ({ toast: toastMock }))
+vi.mock('../../ui/notificationPolicy', () => ({ notify: toastMock }))
 
 import { handleCapabilityApply } from './capabilityApplyHandler'
 
@@ -30,10 +30,10 @@ describe('MCP desktop effects', () => {
     await expect(handleCapabilityApply('host-config.repaired', { clients: ['Claude Code', 'Codex'] }))
       .resolves.toEqual({ notified: true })
     expect(toastMock).toHaveBeenCalledTimes(1)
-    expect(toastMock.mock.calls[0][1]).toBe('info')
+    expect(toastMock.mock.calls[0][0]).toMatchObject({ level: 'background', reason: 'repaired', onAction: expect.any(Function) })
     // 名单来自修复结果，不是这里写死的一个「Claude Code」——Cursor / Codex / 自建 profile
     // 走的是同一个修复函数，只提示其中一个等于对其余的用户什么都没说。
-    expect(String(toastMock.mock.calls[0][0])).toContain('Claude Code、Codex')
+    expect(String(toastMock.mock.calls[0][0].message)).toContain('Claude Code、Codex')
   })
 
   it('stays silent when the repair named nobody', async () => {

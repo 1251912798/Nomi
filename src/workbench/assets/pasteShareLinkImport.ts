@@ -5,7 +5,7 @@
 // 语义见 docs/plan/2026-09-01-tikhub-connector-v1.md。
 import type { TFunction } from 'i18next'
 import { getDesktopBridge } from '../../desktop/bridge'
-import type { toast as toastFn } from '../../ui/toast'
+import { notify } from '../../ui/notificationPolicy'
 import type { TikhubImportResult, TikhubKeyStatus } from '../../desktop/bridgeConnector'
 import { tikhubErrorKindOf, type TikhubErrorKind } from '../../../electron/shared/contracts/tikhubErrorKinds'
 
@@ -32,8 +32,8 @@ export function describeShareLinkError(error: unknown, t: TFunction): string {
 export type PasteShareLinkDeps = {
   /** 弹输入框拿分享链接（返回 null = 用户取消）。 */
   prompt: (options: { title: string; message?: string; placeholder?: string; confirmLabel?: string }) => Promise<string | null>
-  /** 复用全局 toast（ToastType 单一 owner 在 src/ui/toast.tsx，不另立词表）。 */
-  toast: typeof toastFn
+  /** The real library owns visible, persistent operation feedback. */
+  present: (message: string) => void
   t: TFunction
   /** 落素材成功后回流刷新 + 选中。 */
   onImported: (result: TikhubImportResult) => void
@@ -46,10 +46,14 @@ export type PasteShareLinkDeps = {
  * 没配 TikHub key 时先引导去设置，不弹链接输入（少一步空跑）。
  */
 export async function runPasteShareLinkImport(projectId: string | null, deps: PasteShareLinkDeps): Promise<void> {
-  const { t, toast } = deps
+  const { t, present } = deps
+  const report = (message: string, type: 'info' | 'warning' | 'error') => notify({
+    identity: `asset-link-import:${projectId ?? ''}`, reason: 'share-link', message, type, level: 'inline', present,
+  })
+  present('')
   const bridge = getDesktopBridge()
   if (!projectId || !bridge?.connector?.tikhub) {
-    toast(t('assetLibrary.pasteLink.needProject'), 'warning')
+    report(t('assetLibrary.pasteLink.needProject'), 'warning')
     return
   }
 
@@ -61,7 +65,7 @@ export async function runPasteShareLinkImport(projectId: string | null, deps: Pa
     /* 读态失败按未配置处理 */
   }
   if (keyStatus !== 'ok') {
-    toast(t('assetLibrary.pasteLink.errMissingKey'), 'warning')
+    report(t('assetLibrary.pasteLink.errMissingKey'), 'warning')
     deps.onNeedKey()
     return
   }
@@ -74,15 +78,16 @@ export async function runPasteShareLinkImport(projectId: string | null, deps: Pa
   })
   if (!shareUrl || !shareUrl.trim()) return
 
-  toast(t('assetLibrary.pasteLink.resolving'), 'info')
+  report(t('assetLibrary.pasteLink.resolving'), 'info')
   try {
     const result = (await bridge.connector.tikhub.importToProject({
       projectId,
       shareUrl: shareUrl.trim(),
     })) as TikhubImportResult
     deps.onImported(result)
-    toast(t('assetLibrary.pasteLink.done'), 'success')
+    present('')
   } catch (error) {
-    toast(describeShareLinkError(error, t), 'error')
+    present('')
+    report(describeShareLinkError(error, t), 'error')
   }
 }

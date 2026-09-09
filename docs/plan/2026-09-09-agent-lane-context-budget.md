@@ -60,3 +60,12 @@ Context7 `/earendil-works/pi` 已查询；实际安装版本 0.85.1 的 `harness
 2026-09-09 用户任务书覆盖原来的禁止并 main 限制：按簇正常 pre-commit 后，执行 `git fetch origin && git merge --no-edit origin/main`，冲突以 main 为准并保留 lane 意图；完整 `python3 scripts/with-gates-lock.py -- pnpm run gates` exit 0 才可正常 push 原分支。不使用 update-branch、不新建 PR、不绕 hook、不 force-push、不重新打包。C59 切组属于 B1c，排除在本批；真实模型试拍任务失败仍按原证据报告。
 
 首次 delivery:preflight 因本批既有未提交文件返回 dirty_worktree；按任务书明确顺序先提交，随后重新核对并线与干净身份。既有 19 个已修改文件及新模块/夹具/证据均按本批归档；原始红绿日志一并交付，避免 README 引用只存在本机的 ignored 文件。大夹具单独提交，以满足 Ponytail 每笔 150KB 上限。
+
+### 本地并线冲突裁决
+
+并线前 HEAD `1a1dc601e`；fetch 后 main 为 `d3fa258883c6db9cf6565be6699c0f92cf4fbe2b`，merge-base `f708568df`。
+
+- `scripts/vocabularies-baseline.json`：采用 main 删除 productionShotActions ToastKind 债的决定，保留 lane 的 registered/converged 变更；两边已消除的债均不复活，debtCap 按合并后实际 debt 条目数收紧为 70，未提高门槛。
+- `src/workbench/NomiStudioApp.tsx`：保留 main 新通知策略、project feedback 清理及展示；冲突 import 保留 laneClient/laneReceiptClient，不恢复已删除的 projectAgentClient/projectAgentProjectionStore；焦点事件随 main 归入 useProjectNotificationTarget，删除 App 已不使用的两个焦点 import（实扫 hook 保留节点聚焦路径）。
+
+正常 pre-commit 完成 merge 后运行完整 gates；日志 `.tmp/b1b-finish/gates.log`，最终提交/推送身份写入 ignored `SWITCH-LAST.md` 和指定 scratchpad 收据。
