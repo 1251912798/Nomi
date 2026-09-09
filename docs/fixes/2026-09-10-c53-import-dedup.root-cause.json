@@ -22,7 +22,9 @@
   "invariants": [
     "Equal upload bytes within one project resolve to the same stored URL",
     "Different bytes and different projects retain distinct identity",
-    "Generated outputs and captures keep their existing persistence semantics"
+    "Generated outputs and captures keep their existing persistence semantics",
+    "Parsed sidecars must be JSON records before their fields are consumed",
+    "Stored bytes are verified against size/mtime/ctime hash cache in both legacy and new content directories; changed files and invalid metadata are never overwritten"
   ],
   "generality_proof": "Bytes and native uploads await the same project/hash single-flight boundary. Legacy same-size uploads use streamed SHA256 and their original URLs; new uploads use a content directory. The existing renderer URL merge preserves intentional canvas reuse.",
   "shared_boundaries": [
@@ -72,7 +74,7 @@
     "invariant": "One stored URL for equal upload bytes in a project",
     "failure_mode": "Copy or publication errors propagate; no successful result before complete file publication",
     "exception_policy": "none",
-    "strategy": "Project/hash single-flight lookup covers legacy and new uploads; native copies publish only after snapshot hashing and preserve existing metadata.",
+    "strategy": "Project/hash single-flight lookup validates all imported candidates (including hash directories) with size-prefiltered streaming hashes and size/mtime/ctime cache. Invalid sidecars are skipped. Publication selects an unoccupied filename and never replaces externally changed content.",
     "artifacts": [
       "electron/assets/projectAssetStore.ts",
       "electron/assets/uploadContentStore.ts",
@@ -98,7 +100,7 @@
     "rationale": "Existing Node crypto and filesystem primitives own this internal persistence invariant.",
     "exit_criteria": []
   },
-  "migration": "On-demand legacy upload lookup prefilters file size, streams SHA256, and atomically caches hash plus size/mtime in the existing sidecar. Reimports preserve the original URL and metadata. Existing duplicate files are not deleted.",
+  "migration": "On-demand existing upload lookup covers legacy and hash directories, prefilters file size, streams SHA256, and atomically caches hash plus size/mtime/ctime in valid existing sidecars. Changed content and invalid sidecars remain untouched; reimports allocate another vacant filename when no valid match remains. No existing duplicates are deleted.",
   "residual_risks": [
     "True Electron import screenshots are owned by the parent task"
   ],
