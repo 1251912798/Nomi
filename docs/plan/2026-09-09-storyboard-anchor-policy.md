@@ -74,3 +74,5 @@
 裁决：保留两条 import。#679 的 `notify` 继续使用节点身份 `BaseGenerationNodeImpl:${node.id}`、`level: 'inline'` 和 `present: setFeedback` 更新原地反馈；失败重试、结果栈等入口继续接 `reportFeedback`。#681 的 `StoryboardOverrideBadge` 保留原挂载位置，从节点逐字段覆写派生「画布改的：夜景」角标。反馈与覆写信息同时保留，不重新引入 toast。
 这是既有独立实现的文本冲突，不新增行为或修复合同；已检查 `useProductionNodeRetry`、`NodeResultStack` 的反馈消费者及共享 `notificationPolicy` inline 分支，保留两侧既有边界与回归。范围不扩展，回滚本次 merge 使用第一父提交作为主线。
 验收顺序：正常 hooks 提交 merge → `pnpm run test -- BaseGenerationNode storyboard anchor notification` → 完整 `python3 scripts/with-gates-lock.py -- pnpm run gates` exit 0 → 正常 push 任务分支；fresh-base 若落后则再并入、重验。
+
+排锁后的 fresh-base 重验：指定测试命令 exit 0（12231 条单测通过），首次完整 gates 因 `origin/main` 已前进到 `ad95ab47e790` 而 exit 1，未推送。随后正常并入该基线（含 #683），无冲突；`BaseGenerationNode.tsx` 的上述裁决保持不变，在新 merge head 重跑指定测试与完整 gates。

@@ -653,7 +653,8 @@ describe('失败收据行内那一句：机器话必须先翻成人话', () => {
         effect: '', target: '', technicalDetails: '', input: '{}', output: PI_PROSE,
       }])),
     })), t)
-    const group = flow.find((item) => item.kind === 'tool-group')
+    const process = flow.find(item => item.kind === 'process')
+    const group = process?.kind === 'process' ? process.details?.find(detail => detail.item.kind === 'tool-group')?.item : undefined
     if (group?.kind !== 'tool-group') throw new Error('三次同名调用没折成一行')
     expect(group.count).toBe(3)
     expect(group.reason).toBe('agentResident.issueExpected(nodes,array)')

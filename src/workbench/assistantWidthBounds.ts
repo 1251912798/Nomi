@@ -1,3 +1,4 @@
+import { nomiDesignTokens } from '../theme/nomiTheme'
 // 常驻 Agent 面板的宽度界。单独成文件而不是留在 store 里：这几个数是**纯换算**，
 // 与 zustand 无关，而 `workbenchStore.ts` 已经贴着 800 行的巨壳门岗（R9/R12）。
 /**
@@ -27,3 +28,7 @@ export function clampAssistantWidth(width: number, viewportWidth: number): numbe
   if (!Number.isFinite(width)) return 340
   return Math.max(ASSISTANT_WIDTH_MIN, Math.min(assistantWidthMaxFor(viewportWidth), Math.round(width)))
 }
+
+/** p-4 on both sides, derived from the design spacing token for pixel-based panel APIs. */
+export const ASSISTANT_PANE_GUTTER = Number.parseFloat(nomiDesignTokens.spacing[4]) * 2
+export function assistantPaneWidth(width: number): number { return width + ASSISTANT_PANE_GUTTER }

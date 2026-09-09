@@ -151,3 +151,18 @@ describe('normalizeRecord — 老项目的分镜方案必须活着穿过读侧',
     expect(out.payload.storyboardDesignsByDocumentId?.[documentId]).toEqual([design])
   })
 })
+
+it('retains the shared assistant width and collapsed preference through project normalization', async () => {
+  const { EDITING_PANEL_DEFAULTS } = await import('../preview/panelLayout')
+  const layout = { ...EDITING_PANEL_DEFAULTS, assistantWidth: 310, visibility: { ...EDITING_PANEL_DEFAULTS.visibility, assistant: false } }
+  const saved = normalizePayload({ ...createDefaultWorkbenchProjectPayload(), editingPanelLayout: layout })
+  expect(saved.editingPanelLayout).toEqual(layout)
+  expect(normalizePayload(saved).editingPanelLayout).toEqual(layout)
+})
+
+it('rejects malformed persisted layouts before they reach workspace sizing', async () => {
+  const { EDITING_PANEL_DEFAULTS } = await import('../preview/panelLayout')
+  for (const assistantWidth of [NaN, Infinity, '310']) {
+    expect(() => normalizePayload({ ...createDefaultWorkbenchProjectPayload(), editingPanelLayout: { ...EDITING_PANEL_DEFAULTS, assistantWidth } })).toThrow()
+  }
+})

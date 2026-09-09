@@ -25,8 +25,9 @@ describe('③ 同一个工具连着调 N 次 → 一行', () => {
       ),
       t,
     )
-    expect(flow).toHaveLength(1)
-    const group = flow[0]!
+    expect(flow.map(item => item.kind)).toEqual(['process', 'error'])
+    const group = flow[0]?.kind === 'process' ? flow[0].details?.[0]?.item : undefined
+    if (!group) throw new Error('missing process detail')
     expect(group.kind).toBe('tool-group')
     if (group.kind !== 'tool-group') return
     expect(group.count).toBe(6)
@@ -37,9 +38,9 @@ describe('③ 同一个工具连着调 N 次 → 一行', () => {
     expect(group.receipts).toHaveLength(6)
   })
 
-  it('只调一次的工具一个字都不动——折一条只会让用户多点一下', () => {
+  it('单次工具也收进过程，回答始终展开', () => {
     const flow = collapseV4Flow([tool('修改文稿', 'output-available'), assistant('改好了')], t)
-    expect(flow.map((item) => item.kind)).toEqual(['tool', 'assistant'])
+    expect(flow.map((item) => item.kind)).toEqual(['process', 'assistant'])
   })
 
   it('不同工具不合并：相邻同名才是一段', () => {
@@ -47,7 +48,7 @@ describe('③ 同一个工具连着调 N 次 → 一行', () => {
       [tool('读取文稿', 'output-available'), tool('创建或修改镜头卡', 'output-error'), tool('创建或修改镜头卡', 'output-error')],
       t,
     )
-    expect(flow.map((item) => item.kind)).toEqual(['tool', 'tool-group'])
+    expect(flow.map((item) => item.kind)).toEqual(['process', 'error'])
   })
 
   it('有成功有失败时不写「全部失败」——那是两件事', () => {
@@ -55,7 +56,8 @@ describe('③ 同一个工具连着调 N 次 → 一行', () => {
       [tool('创建或修改镜头卡', 'output-error'), tool('创建或修改镜头卡', 'output-available')],
       t,
     )
-    const group = flow[0]!
+    const group = flow[0]?.kind === 'process' ? flow[0].details?.[0]?.item : undefined
+    if (!group) throw new Error('missing process detail')
     if (group.kind !== 'tool-group') throw new Error('应折成一组')
     expect(group.trailing).toBe('agentPanelV4.toolGroupSomeFailed(1)')
     expect(group.status).toBe('output-available')
@@ -75,8 +77,8 @@ describe('② 过程自述折起来，最终回答摊开', () => {
       ],
       t,
     )
-    expect(flow.map((item) => item.kind)).toEqual(['tool-group', 'assistant', 'assistant', 'assistant'])
-    const final = flow[3]!
+    expect(flow.map((item) => item.kind)).toEqual(['process', 'error', 'assistant', 'assistant', 'assistant'])
+    const final = flow[4]!
     if (final.kind !== 'assistant') throw new Error('最终回答必须留在流里')
     expect(final.text).toContain('直接把分镜写进文稿')
   })
@@ -92,7 +94,7 @@ describe('② 过程自述折起来，最终回答摊开', () => {
       ],
       t,
     )
-    expect(flow.map((item) => item.kind)).toEqual(['assistant', 'tool-group'])
+    expect(flow.map((item) => item.kind)).toEqual(['process', 'error', 'assistant'])
   })
 
   it('夹在两次调用之间的助手文本不按位置猜成过程', () => {
@@ -104,15 +106,15 @@ describe('② 过程自述折起来，最终回答摊开', () => {
       ],
       t,
     )
-    expect(flow.map((item) => item.kind)).toEqual(['tool-group', 'assistant'])
+    expect(flow.map((item) => item.kind)).toEqual(['process', 'error', 'assistant'])
   })
 
-  it('没有中间自述时不凭空造一条过程行', () => {
+  it('没有中间自述时仍用同一个过程摘要', () => {
     const flow = collapseV4Flow(
       [tool('创建或修改镜头卡', 'output-error'), tool('创建或修改镜头卡', 'output-error'), assistant('失败了')],
       t,
     )
-    expect(flow.map((item) => item.kind)).toEqual(['tool-group', 'assistant'])
+    expect(flow.map((item) => item.kind)).toEqual(['process', 'error', 'assistant'])
   })
 
   it('用户气泡截断一段：下一轮的收据不会被折进上一轮', () => {
@@ -125,10 +127,10 @@ describe('② 过程自述折起来，最终回答摊开', () => {
       ],
       t,
     )
-    expect(flow.map((item) => item.kind)).toEqual(['tool-group', 'user', 'tool'])
+    expect(flow.map((item) => item.kind)).toEqual(['process', 'error', 'user', 'process'])
   })
 
-  it('思考行接在流尾时不被算进过程段', () => {
+  it('思考行接在流尾时收入同一过程明细', () => {
     const flow = collapseV4Flow(
       [
         tool('创建或修改镜头卡', 'output-error'),
@@ -137,6 +139,6 @@ describe('② 过程自述折起来，最终回答摊开', () => {
       ],
       t,
     )
-    expect(flow.map((item) => item.kind)).toEqual(['tool-group', 'thinking'])
+    expect(flow.map((item) => item.kind)).toEqual(['process', 'error'])
   })
 })
