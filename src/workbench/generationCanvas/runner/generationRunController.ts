@@ -4,7 +4,8 @@ import { getGenerationNodeExecutionKind } from '../model/generationNodeKinds'
 import { persistActiveWorkbenchProjectNow } from '../../project/workbenchProjectSession'
 import { useGenerationCanvasStore } from '../store/generationCanvasStore'
 import { useWorkbenchStore } from '../../workbenchStore'
-import { toast } from '../../../ui/toast'
+import { reportCanvasFeedback } from '../components/canvasFeedback'
+import { getDesktopActiveProjectId } from '../../../desktop/activeProject'
 import { mintSpendGrant } from '../../api/taskApi'
 import { confirmGenerationSpend, describeGenerationCost, generationCostContextForNode, type GenerationCostKind } from '../spend/spendConfirm'
 import { generationNodeExecutor, type GenerationNodeExecutor } from './generationNodeExecutor'
@@ -48,6 +49,11 @@ import {
 import type { HostingDisclosure } from '../spend/spendConfirm'
 import { FOCUS_GENERATION_NODE_EVENT } from '../nodes/nodeSizing'
 import { buildDialoguePromptSuffix } from '../agent/storyboardDialogue'
+
+function reportAuthorizationFailure(error: unknown, projectId: string, nodeId: string): void {
+  const message = error instanceof Error && error.message ? error.message : i18n.t('generationCommon.batchPlan.authorizationFailed')
+  reportCanvasFeedback(message, 'error', { projectId, identity: `node:${nodeId}`, reason: 'authorization', nodeIds: [nodeId] })
+}
 
 /** 节点 kind → 付费预估用的产物口径，喂给 describeGenerationCost 报对名词与时长。 */
 function spendCostKind(kind: GenerationNodeKind): Exclude<GenerationCostKind, 'mixed'> {
@@ -574,6 +580,7 @@ export async function runGenerationNodesByPlan(
  * rerun=true 是「基于此生成变体」：先复制出新节点再绑令牌跑；普通重新生成走 regenerateNodeInPlace。
  */
 export async function confirmAndRunNode(nodeId: string, opts: { rerun?: boolean } = {}): Promise<void> {
+  const projectId = getDesktopActiveProjectId()
   const node = useGenerationCanvasStore.getState().nodes.find((n) => n.id === nodeId)
   const hosting = await resolveHostingDisclosure(node)
   if (!hosting.allowed) return
@@ -602,12 +609,7 @@ export async function confirmAndRunNode(nodeId: string, opts: { rerun?: boolean 
   try {
     grantId = await mintSpendGrant([runId])
   } catch (error) {
-    toast(
-      error instanceof Error && error.message
-        ? error.message
-        : i18n.t('generationCommon.batchPlan.authorizationFailed'),
-      'error',
-    )
+    reportAuthorizationFailure(error, projectId, runId)
     return
   }
   try {
@@ -629,6 +631,7 @@ export async function confirmAndRunNodeVariants(
   // 托管同意由本函数自己的花钱卡问出来（下方固定传 'allow'），调用方给不了也不该给。
   options: Omit<RunGenerationNodeOptions, 'assetUploadConsent'> = {},
 ): Promise<void> {
+  const projectId = getDesktopActiveProjectId()
   const id = String(nodeId || '').trim()
   if (!id) return
   const total = Math.max(1, Math.min(8, Math.floor(count)))
@@ -648,12 +651,7 @@ export async function confirmAndRunNodeVariants(
     try {
       grantId = await mintSpendGrant([id])
     } catch (error) {
-      toast(
-        error instanceof Error && error.message
-          ? error.message
-          : i18n.t('generationCommon.batchPlan.authorizationFailed'),
-        'error',
-      )
+      reportAuthorizationFailure(error, projectId, id)
       return
     }
     try {
@@ -680,6 +678,7 @@ export async function regenerateNodeInPlace(
   // 「到底用没用新图」）。缺省仍是「重新生成」，画布 composer 等既有调用方零变化。
   opts?: { title?: string; confirmLabel?: string },
 ): Promise<void> {
+  const projectId = getDesktopActiveProjectId()
   const id = String(nodeId || '').trim()
   if (!id) return
   const node = useGenerationCanvasStore.getState().nodes.find((n) => n.id === id)
@@ -697,12 +696,7 @@ export async function regenerateNodeInPlace(
   try {
     grantId = await mintSpendGrant([id])
   } catch (error) {
-    toast(
-      error instanceof Error && error.message
-        ? error.message
-        : i18n.t('generationCommon.batchPlan.authorizationFailed'),
-      'error',
-    )
+    reportAuthorizationFailure(error, projectId, id)
     return
   }
   try {
