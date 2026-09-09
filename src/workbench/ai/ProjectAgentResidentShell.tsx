@@ -200,10 +200,10 @@ export default function ProjectAgentResidentShell({ surface }: { surface: Reside
     setDraft(hint || t('agentResident.editPlanPrompt'))
   }, [actions, data.flow, setDraft, t])
 
-  const submit = React.useCallback(() => {
+  const submit = React.useCallback((choice: 'primary' | 'secondary' = 'primary') => {
     const text = draft.trim()
     if (!text) return
-    void actions.send(text)
+    void actions.send(text, { choice })
   }, [actions, draft])
 
   /**

@@ -106,6 +106,30 @@ test('C27 · prompt approval projection follows current policy changes', async t
   assert.notEqual(system(0), system(1));
 });
 
+test('C42 · steer immediately releases approval and precedes the next assistant request', async t => {
+  const f = await createLaneFixture(t, [{ type: 'tool', calls: [{ id: 'write', name: 'append_to_end', arguments: { content: 'BAD' } }] }, closing],
+    { hasUserInterface: true, policy: () => ({ mode: 'step', spend: 'confirm' }) });
+  const lane = await f.openLane(f.options);
+  let ready!: () => void;
+  const pending = new Promise<void>(r => { ready = r; });
+  const unsub = lane.subscribe(p => { if (p.pending) ready(); });
+  const run = lane.execute({ kind: 'prompt', text: '修改' });
+  await pending;
+  const admission = await lane.execute({ kind: 'prompt', text: '等等别动' }).then(() => true, () => false);
+  const stillWaiting = lane.projection().pending;
+  if (stillWaiting) await lane.execute({ kind: 'approval', toolCallId: stillWaiting.toolCallId, action: 'deny' });
+  await run;
+  unsub();
+  assert.equal(admission, true, 'Running prompt must be admitted as steer');
+  assert.equal(stillWaiting, undefined, 'Steer itself must wake the pending approval');
+  assert.doesNotMatch(f.document.text(), /BAD/);
+  assert.match(JSON.stringify(f.http.requests[1].body.messages), /等等别动/);
+  const parts = lane.projection().parts;
+  const userIndex = parts.findIndex(p => p.kind === 'user' && p.text === '等等别动');
+  const nextAssistant = parts.findIndex((p, i) => i > userIndex && p.kind === 'assistant-text');
+  assert.ok(userIndex >= 0 && nextAssistant > userIndex, 'Persisted steer precedes the next assistant entry');
+});
+
 test('C29 class · taskKind removes unrelated video modes; full scope retains detail and UTF-8 head is intact', async () => {
   const huge = { videoModels: [
     { modelId: 'text-model', modes: [{ id: 'text', transportTaskKind: 'text_to_video' }] },

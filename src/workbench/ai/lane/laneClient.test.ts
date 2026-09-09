@@ -137,7 +137,7 @@ describe('laneClient', () => {
     await client.say('横屏')
     await client.say('横屏', 'secondary')
 
-    // ③ 有卡在等：默认 = 「不要」+ 这句话当 reason（**不是**排队），次选才是排队。
+    // ③ 有卡在等：默认 steer 交宿主解除等待，次级选择才 follow-up。
     push(workspace({
       ...projection('waiting'), running: true,
       pending: { toolCallId: 'call-9', toolName: 'write_document', args: {}, grantable: false, pendingCount: 1 },
@@ -149,8 +149,8 @@ describe('laneClient', () => {
       { kind: 'prompt', text: '横屏' },
       { kind: 'steer', text: '横屏' },
       { kind: 'follow-up', text: '横屏' },
-      { kind: 'approval', toolCallId: 'call-9', action: 'deny', reason: '横屏' },
       { kind: 'steer', text: '横屏' },
+      { kind: 'follow-up', text: '横屏' },
     ])
   })
 

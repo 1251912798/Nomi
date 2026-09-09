@@ -74,7 +74,7 @@ export type AgentPanelV4Actions = Readonly<{
   error: string
   clearError: () => void
   /** True means the lane accepted the input, not that the model or generation succeeded. */
-  send: (text: string, options?: { skillKey?: string; displayText?: string; continueFromEntryId?: string }) => Promise<boolean>
+  send: (text: string, options?: { skillKey?: string; displayText?: string; continueFromEntryId?: string; choice?: 'primary' | 'secondary' }) => Promise<boolean>
   stop: () => void
   approve: () => void
   reject: (reason?: string) => void
@@ -120,7 +120,7 @@ export function useAgentPanelV4Actions(surface: ResidentSurface, data: AgentPane
     void command().catch((caught: unknown) => setError(friendlyError(caught, t)))
   }, [t])
 
-  const send = React.useCallback(async (rawText: string, options?: { skillKey?: string; displayText?: string; continueFromEntryId?: string }) => {
+  const send = React.useCallback(async (rawText: string, options?: { skillKey?: string; displayText?: string; continueFromEntryId?: string; choice?: 'primary' | 'secondary' }) => {
     const text = rawText.trim()
     if (!text) return false
     setError('')
@@ -147,7 +147,7 @@ export function useAgentPanelV4Actions(surface: ResidentSurface, data: AgentPane
       const surfacePrompt = surface === 'generation' ? buildStaticAgentSystemPrompt('agent')
         : surface === 'preview' ? buildStaticAgentSystemPrompt('agent', 'timeline')
           : !state.creationActiveSkill ? getCreationAiMode(state.creationAiModeId).prompt : undefined
-      await checked(laneClient.say(text, 'primary', {
+      await checked(laneClient.say(text, options?.choice ?? 'primary', {
         ...(data.selectedModel ? { model: { vendorKey: data.selectedModel.vendorKey, modelKey: data.selectedModel.modelKey } } : {}),
         approvalPolicy: state.projectAgentApprovalPolicy,
         documentId: captured.activeDocumentId,

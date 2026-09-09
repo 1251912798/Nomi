@@ -459,7 +459,7 @@ export const openLane: OpenLane = async (options: OpenLaneOptions): Promise<Lane
     // 想要的效果，代价就是需要有人来说这一句。
     refreshTasks: () => publish(),
     execute: async (command: LaneCommand, executionOptions): Promise<LaneCommandOutcome> => {
-      if (command.kind === 'prompt') {
+      if (command.kind === 'prompt' && !projection.running && !pending) {
         const message = inputMessage(command.text);
         const unlock = typeof message !== 'string' ? laneSkillUnlockReason(skills, [message.context.skillKey ?? '']) : null;
         if (native && unlock) {
@@ -484,13 +484,19 @@ export const openLane: OpenLane = async (options: OpenLaneOptions): Promise<Lane
       }
       // 插话两条。**回值带 pi 铸的 `entryId`**：没有它，用户点「撤回」时面板只能靠
       // 「队里最后那条」去猜，而队列随时会被消费——猜出来的那条可能是别人的话。
-      if (command.kind === 'steer' || command.kind === 'follow-up') {
-        const queued = command.kind === 'steer'
+      if (command.kind === 'steer' || command.kind === 'follow-up' || command.kind === 'prompt') {
+        const steering = command.kind !== 'follow-up';
+        const queued = steering
           ? await lane.steer(inputMessage(command.text), undefined, context)
           : await lane.followUp(inputMessage(command.text), undefined, context);
         // 错误只报 `_tag`（`Closed` / `InvalidMessage`），不报 `message`：那句话是 pi 写给
         // 开发者的，直接弹给用户等于把内部词表当文案用。人话在调用方按 `_tag` 选。
         if (!queued.ok) throw new Error(`This agent lane refused the message: ${queued.error._tag}`);
+        // Persist steering first: settling the card can immediately resume the drive.
+        if (steering) {
+          while (gate?.pending()) gate.answer(gate.pending()!.toolCallId, 'deny', 'The user interrupted this unapproved action. It did not run; follow the new user message.');
+        }
+        executionOptions?.onAccepted?.();
         return { queuedEntryId: queued.value.entryId };
       }
       // 撤回一条排队的话。**三态原样交出去**，不折成一个布尔：`already_consumed`
