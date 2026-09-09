@@ -1,0 +1,68 @@
+
+ RUN  v4.1.8 /Users/aoqimin/Desktop/Nomi-panel-mechanics
+
+stderr | src/workbench/ai/v4/agentPanelV4Mechanics.test.ts > B2a mechanics > C24 one model name per row
+react-i18next:: useTranslation: You will need to pass in an i18next instance by using initReactI18next or by passing it via props or context. In monorepo setups, make sure there is only one instance of react-i18next. { code: 'NO_I18NEXT_INSTANCE' }
+Warning: useLayoutEffect does nothing on the server, because its effect cannot be encoded into the server renderer's output format. This will lead to a mismatch between the initial, non-hydrated UI and the intended UI. To avoid this, useLayoutEffect should only be used in components that render exclusively on the client. See https://reactjs.org/link/uselayouteffect-ssr for common fixes.
+    at NomiSelect (/Users/aoqimin/Desktop/Nomi-panel-mechanics/src/design/NomiSelect.tsx:29:3)
+    at span
+    at div
+    at aside
+    at V4ModelPopover (/Users/aoqimin/Desktop/Nomi-panel-mechanics/src/workbench/ai/v4/AgentPanelV4Composer.tsx:356:27)
+    at MantineThemeProvider (file:///Users/aoqimin/Desktop/Nomi-panel-mechanics/node_modules/.pnpm/@mantine+core@8.3.18_@mantine+hooks@8.3.18_react@18.3.1__@types+react@18.3.29_react-dom_3fe860e55c8f1aaf9facc27a0471f454/node_modules/@mantine/core/esm/core/MantineProvider/MantineThemeProvider/MantineThemeProvider.mjs:19:3)
+    at MantineProvider (file:///Users/aoqimin/Desktop/Nomi-panel-mechanics/node_modules/.pnpm/@mantine+core@8.3.18_@mantine+hooks@8.3.18_react@18.3.1__@types+react@18.3.29_react-dom_3fe860e55c8f1aaf9facc27a0471f454/node_modules/@mantine/core/esm/core/MantineProvider/MantineProvider.mjs:15:3)
+
+ ❯ src/workbench/ai/v4/agentPanelV4Mechanics.test.ts (8 tests | 2 failed | 6 skipped) 13ms
+     × C24 one model name per row 10ms
+     × C21 million context uses M 2ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/workbench/ai/v4/agentPanelV4Mechanics.test.ts > B2a mechanics > C24 one model name per row
+AssertionError: expected 2 to be 1 // Object.is equality
+
+- Expected
++ Received
+
+- 1
++ 2
+
+ ❯ src/workbench/ai/v4/agentPanelV4Mechanics.test.ts:43:63
+     41|   it('C24 one model name per row', () => {
+     42|     const markup = html(React.createElement(V4ModelPopover, { rows: [{…
+     43|     expect((markup.match(/>DeepSeek V4 Pro</g) ?? []).length).toBe(1)
+       |                                                               ^
+     44|   })
+     45|   it('C21 million context uses M', () => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/workbench/ai/v4/agentPanelV4Mechanics.test.ts > B2a mechanics > C21 million context uses M
+AssertionError: expected '<style data-mantine-styles="true">\n\…' to contain '1M'
+
+- Expected
++ Received
+
+- 1M
++ <style data-mantine-styles="true">
++
++
++
++ </style><style data-mantine-styles="classes">@media (max-width: 35.99375em) {.mantine-visible-from-xs {display: none !important;}}@media (min-width: 36em) {.mantine-hidden-from-xs {display: none !important;}}@media (max-width: 47.99375em) {.mantine-visible-from-sm {display: none !important;}}@media (min-width: 48em) {.mantine-hidden-from-sm {display: none !important;}}@media (max-width: 61.99375em) {.mantine-visible-from-md {display: none !important;}}@media (min-width: 62em) {.mantine-hidden-from-md {display: none !important;}}@media (max-width: 74.99375em) {.mantine-visible-from-lg {display: none !important;}}@media (min-width: 75em) {.mantine-hidden-from-lg {display: none !important;}}@media (max-width: 87.99375em) {.mantine-visible-from-xl {display: none !important;}}@media (min-width: 88em) {.mantine-hidden-from-xl {display: none !important;}}</style><details class="relative" open="" data-v4-block="context" data-context-known="true"><summary class="inline-flex h-[22px] cursor-pointer list-none items-center gap-[5px] rounded-pill border border-nomi-line text-micro font-normal text-nomi-ink-60 pl-[5px] pr-2" aria-label="context"><span class="relative size-3 shrink-0 rounded-pill after:absolute after:inset-[2.5px] after:rounded-pill after:bg-nomi-paper after:content-[&#x27;&#x27;]" style="background:conic-gradient(var(--nomi-accent) 3%, var(--nomi-ink-10) 0)" aria-hidden="true"></span>3%<svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="tabler-icon tabler-icon-chevron-down "><path d="M6 9l6 6l6 -6"></path></svg></summary><div class="absolute right-0 top-full z-10 mt-1 w-[230px] overflow-hidden rounded-nomi border border-nomi-line bg-nomi-paper text-caption shadow-nomi-md"><div class="p-2.5 pb-0"><div class="flex items-center justify-between"><strong>3%</strong><span class="text-nomi-ink-60">33.2K / 1048.6K</span></div><div class="my-2 h-1 overflow-hidden rounded-sm bg-nomi-ink-10"><div class="h-full rounded-sm bg-nomi-accent" style="width:3%"></div></div></div></div></details>
+
+ ❯ src/workbench/ai/v4/agentPanelV4Mechanics.test.ts:48:20
+     46|     const labels = { context: 'context', input: 'input', output: 'outp…
+     47|     const markup = html(React.createElement(V4ContextRing, { usage: { …
+     48|     expect(markup).toContain('1M')
+       |                    ^
+     49|     expect(markup).not.toContain('1048.6K')
+     50|   })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 6 skipped (8)
+   Start at  15:49:52
+   Duration  692ms (transform 173ms, setup 19ms, import 599ms, tests 13ms, environment 0ms)
+

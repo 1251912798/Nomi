@@ -1,3 +1,4 @@
+import { shotPresentation } from '../../creation/storyboard/shotPresentation'
 import { asGenerationProposalArgs, asSemanticGenerationProposalArgs } from './generationProposalEditing'
 
 // 这三个形状原本住在 `ResidentExceptionStates.tsx` 里——那是旧面板的**长相**文件，
@@ -40,15 +41,13 @@ export function residentPlanShots(rawArgs: unknown): ResidentPlanShot[] {
   const canvas = asGenerationProposalArgs(rawArgs)
   if (canvas) return canvas.nodes.map((node, index) => ({
     id: typeof node.clientId === 'string' && node.clientId ? node.clientId : `shot-${index + 1}`,
-    title: typeof node.title === 'string' && node.title ? node.title : `#${index + 1}`,
-    description: typeof node.prompt === 'string' ? node.prompt : '',
+    ...shotPresentation(node, index + 1),
   }))
   const semantic = asSemanticGenerationProposalArgs(rawArgs)
   const shots = semantic?.shots?.filter((shot): shot is Record<string, unknown> => Boolean(shot && typeof shot === 'object' && !Array.isArray(shot))) ?? []
   return shots.map((shot, index) => ({
     id: typeof shot.shotId === 'string' && shot.shotId ? shot.shotId : `shot-${index + 1}`,
-    title: typeof shot.title === 'string' && shot.title ? shot.title : `#${index + 1}`,
-    description: typeof shot.prompt === 'string' ? shot.prompt : '',
+    ...shotPresentation(shot, index + 1),
   }))
 }
 
