@@ -6,6 +6,7 @@
 import { launchNomiApp } from "./_launchApp.mjs";
 import { checkComposerFixedFooter } from "./_composerFixedFooter.mjs";
 import { addCanvasNodeFromRail } from "./_canvasRail.mjs";
+import { stationTimeout } from "./_station-budget.mjs";
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -173,7 +174,7 @@ try {
     .catch(() => win.evaluate(() => document.querySelector('[data-testid="director-node-open"]')?.click()));
   // 全屏导演台唯一真标志：DirectorEditor 经 createPortal 挂到 body 的 [data-testid="director-editor"]
   const directorShell = win.locator('[data-testid="director-editor"]').first();
-  await directorShell.waitFor({ state: "visible", timeout: 30_000 });
+  await directorShell.waitFor({ state: "visible", timeout: stationTimeout({ operations: 2 }) });
   assert(await directorShell.count() > 0, "导演台节点「进入导演台」后全屏壳挂出（data-testid=director-editor）");
 
   console.log(`\nSMOKE PASS: ${passed} assertions`);

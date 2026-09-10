@@ -340,7 +340,10 @@ export function main() {
   const stationHits = []
   for (const file of collectTestFiles()) {
     const raw = fs.readFileSync(file, 'utf8')
-    stationHits.push(...stationWaitHits(raw, path.relative(repoRoot, file)).map(hit => ({ ...hit, file: path.relative(repoRoot, file) })))
+    // 键里的路径必须归一成正斜杠：基线在 Linux CI 生成，Windows 上 path.relative 给反斜杠会让 824 条全部对不上、整片报陈旧
+    // （同文件其余 path.relative 早已这样归一，这一行是新规则落下的）
+    const stationFile = path.relative(repoRoot, file).replaceAll(path.sep, '/')
+    stationHits.push(...stationWaitHits(raw, stationFile).map(hit => ({ ...hit, file: stationFile })))
     const source = stripComments(raw)
     const context = { clockDeltaNames: collectClockDeltaNames(source), spiesOnFsRead: FS_READ_SPY.test(source), asyncWaitLines: asyncWaitForFunctionLines(raw, file),
       builtArtifactImportLines: builtArtifactImportLines(raw, path.relative(repoRoot, file).replaceAll(path.sep, '/')),

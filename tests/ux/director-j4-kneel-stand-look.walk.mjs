@@ -6,6 +6,7 @@
 // 用法：node tests/ux/director-j4-kneel-stand-look.walk.mjs
 import { addCameraPreset, addTrack, clickOrFail, expectVisible, launchDirectorLab, placeCharacter, rowAddClipMenu } from './_directorLab.mjs'
 import { expect } from './_assert.mjs'
+import { stationTimeout } from './_station-budget.mjs'
 
 const lab = await launchDirectorLab({ name: 'j4-kneel-stand-look' })
 const { page, check } = lab
@@ -97,7 +98,7 @@ try {
   // 视线片段后继续到动作终点，只核对站起，不再用失效视线片段证明转头。
   await clickOrFail(timelineHeader.getByRole('button', { name: /^播放/ }), '继续播放至站起完成')
   await expectVisible(timelineHeader.getByRole('button', { name: /^暂停/ }), '继续播放未实际开始')
-  await expectVisible(timelineHeader.getByRole('button', { name: /^播放/ }), '未播放到内容末并暂停', 30_000)
+  await expectVisible(timelineHeader.getByRole('button', { name: /^播放/ }), '未播放到内容末并暂停', stationTimeout({ operations: 2 }))
   const endFrame = Math.round(Math.max(...clips.map(clip => clip.endTime)) * 30)
   await expect.poll(readFrame).toBe(endFrame)
   const standingHip = await lab.bridge('orientationByName', 'mixamorigHips', hero.id)

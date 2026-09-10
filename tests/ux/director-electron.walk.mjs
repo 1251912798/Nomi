@@ -20,6 +20,7 @@ import { applyColorSchemeForShot, clickOrFail, expect, expectAbsent, expectHidde
 import { addCameraPreset, addTrack, placeCharacter } from './_directorLab.mjs'
 import { addCanvasNodeFromRail } from './_canvasRail.mjs'
 import { createBlankProject, prepareIsolation, readProjectPayload } from '../../evals/lib/isoApp.mjs'
+import { stationTimeout } from './_station-budget.mjs'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const shotsDir = path.join(repoRoot, 'tests/ux/shots/director/electron')
@@ -85,7 +86,7 @@ await win.evaluate(() => {
   window.localStorage.setItem('__nomiE2E', '1')
 })
 await win.reload()
-await expectVisible(win.getByText('新建空白项目', { exact: false }).first(), '项目库没起来', 60_000)
+await expectVisible(win.getByText('新建空白项目', { exact: false }).first(), '项目库没起来', stationTimeout({ operations: 4 }))
 const libraryEntry = win.getByText('新建空白项目', { exact: false }).first()
 const libraryProof = await proveProbe(libraryEntry, '项目库的新建入口')
 await snap('library')
@@ -95,10 +96,10 @@ projectDir = await createBlankProject(win, iso.projectsDir)
 console.log(`  · project ${path.relative(repoRoot, projectDir)}`)
 // createBlankProject 在项目目录落盘那一刻就返回，工作台可能还没渲染：先等「生成」页签真出现再点，别把点击吞掉
 const generateTab = win.getByRole('button', { name: '生成', exact: true }).first()
-await expectVisible(generateTab, '新建项目后工作台没打开（没有「生成」页签）', 60_000)
+await expectVisible(generateTab, '新建项目后工作台没打开（没有「生成」页签）', stationTimeout({ operations: 4 }))
 await clickOrFail(generateTab, '顶栏·生成页签')
 const boardCta = win.locator('button[aria-label^="新建一个"][aria-label$="节点"]').first()
-if (await boardCta.count()) await boardCta.click({ timeout: 5000 }).catch(() => {})
+if (await boardCta.count()) await boardCta.click({ timeout: stationTimeout() }).catch(() => {})
 await win.keyboard.press('Escape').catch(() => {})
 await win.mouse.click(60, 520).catch(() => {}) // 收起「上手 4 步」浮层
 // 点法收口在 _canvasRail：加号自 2026-09-06「第三档」起 5 常驻 + 「更多」，导演台住「更多」里；找不到当场抛（不再按 aria-label 直点）
@@ -113,7 +114,7 @@ let seeded = []
 await expect.poll(() => {
   seeded = readCanvas().nodes
   return [...new Set(seeded.map((node) => node.kind))].sort()
-}, { timeout: 30_000, intervals: [1000] }).toEqual(['director', 'image', 'video'])
+}, { timeout: stationTimeout({ operations: 2 }), intervals: [1000] }).toEqual(['director', 'image', 'video'])
 const IMAGE_ID = seeded.find((node) => node.kind === 'image')?.id ?? null
 const VIDEO_ID = seeded.find((node) => node.kind === 'video')?.id ?? null
 const DIRECTOR_ID = seeded.find((node) => node.kind === 'director')?.id ?? null
@@ -123,9 +124,9 @@ await snap('canvas')
 // 进导演台
 await clickOrFail(win.locator('[data-testid="director-node-open"]').first(), '节点卡·进入导演台')
 const editor = win.locator('[data-testid="director-editor"]')
-await expectVisible(editor, '全屏导演台没打开', 30_000)
-await win.waitForFunction(() => Boolean(window.__nomiDirectorE2E), null, { timeout: 60_000 })
-await expectVisible(win.getByTestId('director-pip'), '导演台画中画没渲染出来', 60_000)
+await expectVisible(editor, '全屏导演台没打开', stationTimeout({ operations: 2 }))
+await win.waitForFunction(() => Boolean(window.__nomiDirectorE2E), null, { timeout: stationTimeout({ operations: 4 }) })
+await expectVisible(win.getByTestId('director-pip'), '导演台画中画没渲染出来', stationTimeout({ operations: 4 }))
 check('① 进入全屏导演台', true)
 await snap('editor-open')
 
@@ -142,14 +143,14 @@ await win.waitForFunction(() => {
   const bridge = window.__nomiDirectorE2E
   const point = bridge && typeof bridge.projectPoint === 'function' ? bridge.projectPoint(0, 0, 0) : null
   return Boolean(point && Number.isFinite(point.x) && Number.isFinite(point.y))
-}, null, { timeout: 30_000 })
+}, null, { timeout: stationTimeout({ operations: 2 }) })
 await placeCharacter(lab, 'female', 0, 0)
 const characterRow = win.locator('[data-testid="director-outliner-row"]', { hasText: '角色' }).first()
 await expectVisible(characterRow, '大纲里没出现放下的角色')
 await clickOrFail(characterRow, '大纲·角色行（机位预设相对选中主体）')
 await addCameraPreset(lab, '正面中景')
 await expectVisible(win.locator('[data-testid="director-outliner-row"]', { hasText: '正面中景' }).first(), '大纲里没出现机位（预设机位叫预设名）')
-await expect.poll(() => countPipCharacterPixels(win), { timeout: 10_000 }).toBeGreaterThan(100)
+await expect.poll(() => countPipCharacterPixels(win), { timeout: stationTimeout() }).toBeGreaterThan(100)
 await snap('scene-built')
 // 本次生成的真实 Electron renderer：新建路径片段后检查双主题下的选中配色，避免只在 devlab 验样式。
 const characterName = (await characterRow.innerText()).trim()
@@ -188,7 +189,7 @@ for (const theme of ['light', 'dark']) {
 await applyColorSchemeForShot(win, originalTheme)
 await win.keyboard.press('Control+Shift+P')
 const screenshotToast = win.locator('[role="alert"], [role="status"]', { hasText: '已截图' }).first()
-await expectVisible(screenshotToast, '按 Ctrl+Shift+P 后没有「已截图」提示（桌面落盘桥没工作？）', 30_000)
+await expectVisible(screenshotToast, '按 Ctrl+Shift+P 后没有「已截图」提示（桌面落盘桥没工作？）', stationTimeout({ operations: 2 }))
 check('② 截图经桌面桥落盘', true)
 await clickOrFail(win.getByRole('button', { name: /^产出 1$/ }), '时间轴·产出 1')
 await snap('outputs-open')
@@ -204,7 +205,7 @@ const sent = await expect.poll(() => {
   const { nodes, edges } = readCanvas()
   const shot = nodes.find((node) => node.kind === 'image' && node.meta?.source === 'director')
   return Boolean(shot && shot.result?.url && hasEdge(edges, DIRECTOR_ID, shot.id, 'reference'))
-}, { timeout: 30_000, intervals: [1000] }).toBe(true).then(() => true, () => false)
+}, { timeout: stationTimeout({ operations: 2 }), intervals: [1000] }).toBe(true).then(() => true, () => false)
 check('② 截图落成画布 image 节点 + reference 边（磁盘）', sent)
 
 // ③ 视频镜头 → 运镜芯片 → 应用 → 常驻 Host 出 mp4 + 喂目标镜头
@@ -214,7 +215,7 @@ await clickOrFail(win.locator(`[data-node-id="${VIDEO_ID}"]`).first(), '画布·
 await clickOrFail(win.locator('[aria-label="运镜"]').first(), '视频 composer·运镜芯片')
 await clickOrFail(win.locator('button', { hasText: /^应用$/ }).first(), '运镜弹层·应用')
 // 新节点由 layoutPlannedNodes 排到既有节点旁，常在视口外（React Flow 只渲染视口内节点）→ 以磁盘为准
-const applied = await expect.poll(() => readCanvas().nodes.filter((node) => node.kind === 'director').length >= 2, { timeout: 30_000, intervals: [1000] }).toBe(true).then(() => true, () => false)
+const applied = await expect.poll(() => readCanvas().nodes.filter((node) => node.kind === 'director').length >= 2, { timeout: stationTimeout({ operations: 2 }), intervals: [1000] }).toBe(true).then(() => true, () => false)
 check('③ 应用后多出一个「运镜参考」director 节点（磁盘）', applied)
 await snap('camera-move-applied')
 const moved = await expect.poll(() => {
@@ -224,7 +225,7 @@ const moved = await expect.poll(() => {
   // 目标有 video_ref 槽（Seedance 全能参考）→ 填 referenceVideoUrls；工具栏默认模型没有槽 → 降级成提示词地板「镜头运动：」
   const fed = (Array.isArray(target?.meta?.referenceVideoUrls) && target.meta.referenceVideoUrls.length > 0) || /镜头运动/.test(target?.prompt ?? '')
   return Boolean(reference && !reference.meta?.cameraMoveAutoCapture && fed)
-}, { timeout: 240_000, intervals: [3000] }).toBe(true).then(() => true, () => false)
+}, { timeout: stationTimeout({ operations: 16 }), intervals: [3000] }).toBe(true).then(() => true, () => false)
 check('③ 运镜小片离屏出片 → mp4 落盘 → 喂进视频镜头（磁盘）', moved, moved ? '' : JSON.stringify(readCanvas().nodes.map((node) => [node.kind, Object.keys(node.meta || {})])))
 await snap('camera-move-done')
 
@@ -251,7 +252,7 @@ const staged = stagingNodeId
     const shot = nodes.find((node) => node.kind === 'image' && node.meta?.stagingComposition === true)
     const staging = nodes.find((node) => node.id === stagingNodeId)
     return Boolean(shot && staging && !staging.meta?.stagingAutoCapture && hasEdge(edges, stagingNodeId, shot.id, 'reference') && hasEdge(edges, shot.id, IMAGE_ID, 'composition_ref'))
-  }, { timeout: 120_000, intervals: [2000] }).toBe(true).then(() => true, () => false)
+  }, { timeout: stationTimeout({ operations: 8 }), intervals: [2000] }).toBe(true).then(() => true, () => false)
   : false
 check('④ 站位参考离屏出图 → image 节点 + reference / composition_ref 边（磁盘）', staged)
 await snap('staging-done')
@@ -269,7 +270,7 @@ try {
 } finally {
   releaseWorkspaceManifestLock(heldLease)
 }
-await expectVisible(libraryEntry, '锁释放且保存完成后没有返回项目库', 30_000)
+await expectVisible(libraryEntry, '锁释放且保存完成后没有返回项目库', stationTimeout({ operations: 2 }))
 const afterLeave = readCanvas()
 expect(afterLeave.nodes).toHaveLength(beforeLeaveIds.length + 1)
 expect(afterLeave.nodes.map((node) => node.id)).toEqual(expect.arrayContaining(beforeLeaveIds))
@@ -284,7 +285,7 @@ try {
   reopened.on('console', (message) => { if (message.type() === 'error') consoleErrors.push(message.text()) })
   reopened.on('pageerror', (error) => consoleErrors.push(`pageerror: ${error.stack || error.message}`))
   const projectCard = reopened.locator('[data-project-card="true"]')
-  await expect(projectCard).toHaveCount(1, { timeout: 30_000 })
+  await expect(projectCard).toHaveCount(1, { timeout: stationTimeout({ operations: 2 }) })
   await projectCard.press('Enter')
   await clickOrFail(reopened.getByRole('button', { name: '生成', exact: true }), '冷启动重开生成区')
   const expectedNodes = savedCanvas.nodes.map((node) => expect.objectContaining({
@@ -303,7 +304,7 @@ try {
       return { nodes: state?.nodes ?? [], edges: state?.edges ?? [] }
     })
     return restored
-  }, { timeout: 30_000 }).toEqual({ nodes: expect.arrayContaining(expectedNodes), edges: savedCanvas.edges })
+  }, { timeout: stationTimeout({ operations: 2 }) }).toEqual({ nodes: expect.arrayContaining(expectedNodes), edges: savedCanvas.edges })
   expect(restored.nodes).toHaveLength(savedCanvas.nodes.length)
   await clickOrFail(reopened.getByRole('button', { name: '适应视图' }).first(), '冷启动画布适应视图')
   const sentImageId = savedCanvas.nodes.find((node) => node.meta?.source === 'director' && node.kind === 'image').id
@@ -320,7 +321,7 @@ try {
     const extent = window.__nomiDirectorE2E?.boneExtentByEntity(id)
     return extent && extent.maxY - extent.minY > 1
   }, savedCharacter.id)
-  await expect.poll(() => countPipCharacterPixels(reopened), { timeout: 10_000 }).toBeGreaterThan(100)
+  await expect.poll(() => countPipCharacterPixels(reopened), { timeout: stationTimeout() }).toBeGreaterThan(100)
   await screenshotSettled(reopened, { path: path.join(shotsDir, '14-director-reopened.png') })
   check('⑤ 冷启动重开保留导演场景、PNG/MP4引用与连边', true)
 } finally {

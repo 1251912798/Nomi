@@ -13,6 +13,7 @@ import { fileURLToPath } from 'node:url'
 import { chromium } from 'playwright'
 import { startDevRendererServer } from './canvas-perf/devRendererServer.mjs'
 import { clickOrFail, expectVisible, screenshotSettled } from './_assert.mjs'
+import { stationTimeout } from './_station-budget.mjs'
 
 export const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 
@@ -52,7 +53,7 @@ export async function launchDirectorLab({ name, viewport = { width: 1440, height
     return chromium.launch({ headless: true, channel: 'chrome' })
   })
   const page = await browser.newPage({ viewport, deviceScaleFactor: 1 })
-  page.setDefaultTimeout(15_000)
+  page.setDefaultTimeout(stationTimeout())
   const pageErrors = []
   page.on('pageerror', (error) => pageErrors.push(String(error)))
   await page.addInitScript((key) => {
@@ -76,10 +77,10 @@ export async function launchDirectorLab({ name, viewport = { width: 1440, height
   })
   const shotsDir = path.join(repoRoot, 'tests/ux/shots/director', name)
   fs.mkdirSync(shotsDir, { recursive: true })
-  await page.goto(`${base}/director-lab.html`, { timeout: 60_000, waitUntil: 'commit' })
+  await page.goto(`${base}/director-lab.html`, { timeout: stationTimeout({ operations: 4 }), waitUntil: 'commit' })
   try {
-    await expectVisible(page.getByTestId('director-pip'), '导演台壳没起来（devlab 页面没挂出画中画）', 480_000)
-    await page.waitForFunction(() => Boolean(window.__nomiDirectorE2E), null, { timeout: 60_000 })
+    await expectVisible(page.getByTestId('director-pip'), '导演台壳没起来（devlab 页面没挂出画中画）', stationTimeout({ operations: 32 }))
+    await page.waitForFunction(() => Boolean(window.__nomiDirectorE2E), null, { timeout: stationTimeout({ operations: 4 }) })
   } catch (error) {
     // 首屏没起来：把页面错误 / 控制台错误 / 截图一起吐出来，别让人对着「元素没找到」猜
     await page.screenshot({ path: path.join(shotsDir, '00-boot-failed.png') }).catch(() => {})

@@ -7,6 +7,7 @@ import { launchNomiApp, repoRoot } from './_launchApp.mjs'
 import { expect, clickOrFail, expectVisible, proveProbe, expectAbsent, screenshotSettled } from './_assert.mjs'
 import { addCameraPreset, placeCharacter } from './_directorLab.mjs'
 import { createBlankProject, prepareIsolation } from '../../evals/lib/isoApp.mjs'
+import { stationTimeout } from './_station-budget.mjs'
 
 const shots = path.join(repoRoot, 'tests/ux/shots/director/mobile')
 fs.mkdirSync(shots, { recursive: true })
@@ -21,18 +22,18 @@ try {
     localStorage.setItem('__nomiE2E', '1')
   })
   await win.reload()
-  await expectVisible(win.getByText('新建空白项目', { exact: false }).first(), '项目库未打开', 60_000)
+  await expectVisible(win.getByText('新建空白项目', { exact: false }).first(), '项目库未打开', stationTimeout({ operations: 4 }))
   await createBlankProject(win, iso.projectsDir)
-  await expectVisible(win.getByRole('button', { name: '生成', exact: true }).first(), '工作台未打开', 60_000)
+  await expectVisible(win.getByRole('button', { name: '生成', exact: true }).first(), '工作台未打开', stationTimeout({ operations: 4 }))
   await clickOrFail(win.getByRole('button', { name: '生成', exact: true }).first(), '生成区')
   const board = win.locator('button[aria-label^="新建一个"][aria-label$="节点"]').first()
   if (await board.count()) await board.click()
-  await expectVisible(win.locator('[data-node-kind="director"]').first(), '导演台入口未出现', 60_000)
+  await expectVisible(win.locator('[data-node-kind="director"]').first(), '导演台入口未出现', stationTimeout({ operations: 4 }))
   await win.keyboard.press('Escape')
   await win.mouse.click(60, 520)
   await clickOrFail(win.locator('[data-node-kind="director"]').first(), '添加导演台')
   await clickOrFail(win.getByTestId('director-node-open').first(), '进入导演台')
-  await expectVisible(win.getByTestId('director-pip'), '导演台未渲染', 60_000)
+  await expectVisible(win.getByTestId('director-pip'), '导演台未渲染', stationTimeout({ operations: 4 }))
   await win.waitForFunction(() => {
     const point = window.__nomiDirectorE2E?.projectPoint(0, 0, 0)
     return point && Number.isFinite(point.x) && Number.isFinite(point.y)
@@ -43,7 +44,7 @@ try {
   await addCameraPreset(lab, '正面中景')
   await clickOrFail(win.getByTestId('director-pip').getByRole('button', { name: '进入视角' }), '进入机位')
   await clickOrFail(win.getByRole('button', { name: '连接手机虚拟相机' }), '连接手机')
-  await expectVisible(win.getByTestId('director-mobile-dialog').locator('code'), '局域网二维码未生成', 60_000)
+  await expectVisible(win.getByTestId('director-mobile-dialog').locator('code'), '局域网二维码未生成', stationTimeout({ operations: 4 }))
   const status = await win.evaluate(() => window.nomiDesktop.director.mobile.status())
   const url = new URL(status.urls[0])
   url.hostname = '127.0.0.1'
@@ -55,7 +56,7 @@ try {
   await phone.waitForFunction(() => {
     const image = document.getElementById('preview')
     return image instanceof HTMLImageElement && image.complete && image.naturalWidth > 0
-  }, null, { timeout: 30_000 })
+  }, null, { timeout: stationTimeout({ operations: 2 }) })
   const previewProof = await proveProbe(phone.locator('#preview:visible'), '手机监视器已显示有效机位帧')
   const frame = await phone.locator('#preview').evaluate((image) => {
     const canvas = document.createElement('canvas')

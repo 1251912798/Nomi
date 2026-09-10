@@ -4,6 +4,7 @@
 // 用法：node tests/ux/director-j2-walk-to-b.walk.mjs
 import { expectHidden } from './_assert.mjs'
 import { clickOrFail, dragGround, expectVisible, launchDirectorLab, placeCharacter } from './_directorLab.mjs'
+import { stationTimeout } from './_station-budget.mjs'
 
 const lab = await launchDirectorLab({ name: 'j2-walk-to-b' })
 const { page, check } = lab
@@ -46,7 +47,7 @@ try {
       return Boolean(box) && (box.min[0] + box.max[0]) / 2 > targetX
     },
     { id: a.id, targetX: b.position.x - 1.6 },
-    { timeout: 20_000 },
+    { timeout: stationTimeout({ operations: 2 }) },
   )
   const after = await lab.bridge('boundsByEntity', a.id)
   const centerBefore = (before.min[0] + before.max[0]) / 2

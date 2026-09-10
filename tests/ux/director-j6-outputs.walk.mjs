@@ -4,6 +4,7 @@
 // 证据：产物落进工程（只存句柄）、弹层文案、两句诚实的降级提示、录制进度按钮出现过、截图。
 // 用法：node tests/ux/director-j6-outputs.walk.mjs
 import { addCameraPreset, clickOrFail, expectVisible, launchDirectorLab, placeCharacter } from './_directorLab.mjs'
+import { stationTimeout } from './_station-budget.mjs'
 
 const lab = await launchDirectorLab({ name: 'j6-outputs' })
 const { page, check } = lab
@@ -61,7 +62,7 @@ try {
   await expectVisible(page.getByTestId('director-timeline-header').getByText(/录制中 \d+ \/ \d+ 帧/), '录制进度按钮没出现')
   await lab.snap('recording-progress')
   // headless 走 SwiftShader，1080p 逐帧离屏渲染比真机慢一个量级：上限给到 5 分钟
-  await expectVisible(page.getByText(/采到 \d+ 帧但无法编码/), '无桌面运行时应明说无法编码 MP4', 300_000)
+  await expectVisible(page.getByText(/采到 \d+ 帧但无法编码/), '无桌面运行时应明说无法编码 MP4', stationTimeout({ operations: 20 }))
   const videos = (await lab.project()).outputs.videos || []
   check('没有假装生成视频（videos 仍为空）', Array.isArray(videos) && videos.length < 1, `${videos.length} 条`)
   check('截图产物仍在', ((await lab.project()).outputs.screenshots || []).length === 1)

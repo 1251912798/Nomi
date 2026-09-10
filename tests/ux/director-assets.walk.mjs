@@ -3,6 +3,7 @@
 import path from 'node:path'
 import { expect } from './_assert.mjs'
 import { addCameraPreset, clickOrFail, launchDirectorLab, repoRoot, writeValleyPly } from './_directorLab.mjs'
+import { stationTimeout } from './_station-budget.mjs'
 
 const lab = await launchDirectorLab({ name: 'asset-tree' })
 const { page } = lab
@@ -55,7 +56,7 @@ try {
   await page.waitForFunction((id) => {
     const info = window.__nomiDirectorE2E?.splatInfo(id)
     return info?.initialized && info.count > 0 && !info.revealing
-  }, splat.id, { timeout: 60_000 })
+  }, splat.id, { timeout: stationTimeout({ operations: 4 }) })
   const info = await lab.bridge('splatInfo', splat.id)
   lab.check('上传的 PLY 山谷已解码且完成显现', info.initialized && info.count > 0 && !info.revealing, `${info.count} splats`)
   lab.check('泼溅添加按源轴约定绕X翻转180度', splat.rotation.x === 180)

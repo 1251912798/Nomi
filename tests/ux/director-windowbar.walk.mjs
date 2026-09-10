@@ -15,6 +15,7 @@ import { launchNomiApp } from './_launchApp.mjs'
 import { clickOrFail, expect, expectVisible, screenshotSettled } from './_assert.mjs'
 import { addCanvasNodeFromRail } from './_canvasRail.mjs'
 import { createBlankProject, prepareIsolation } from '../../evals/lib/isoApp.mjs'
+import { stationTimeout } from './_station-budget.mjs'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const shotsDir = path.join(repoRoot, 'tests/ux/shots/director/windowbar')
@@ -51,14 +52,14 @@ await win.evaluate(() => {
   window.localStorage.setItem('__nomiE2E', '1')
 })
 await win.reload()
-await expectVisible(win.getByText('新建空白项目', { exact: false }).first(), '项目库没起来', 60_000)
+await expectVisible(win.getByText('新建空白项目', { exact: false }).first(), '项目库没起来', stationTimeout({ operations: 4 }))
 
 await createBlankProject(win, iso.projectsDir)
 const generateTab = win.getByRole('button', { name: '生成', exact: true }).first()
-await expectVisible(generateTab, '新建项目后工作台没打开（没有「生成」页签）', 60_000)
+await expectVisible(generateTab, '新建项目后工作台没打开（没有「生成」页签）', stationTimeout({ operations: 4 }))
 await clickOrFail(generateTab, '顶栏·生成页签')
 const boardCta = win.locator('button[aria-label^="新建一个"][aria-label$="节点"]').first()
-if (await boardCta.count()) await boardCta.click({ timeout: 5000 }).catch(() => {})
+if (await boardCta.count()) await boardCta.click({ timeout: stationTimeout() }).catch(() => {})
 await win.keyboard.press('Escape').catch(() => {})
 await win.mouse.click(60, 520).catch(() => {})
 // 点法收口在 _canvasRail：加号自 2026-09-06「第三档」起 5 常驻 + 「更多」，导演台住「更多」里
@@ -67,8 +68,8 @@ await expectVisible(win.locator('[data-testid="director-node"]').first(), '画�
 await snap('canvas')
 
 await clickOrFail(win.locator('[data-testid="director-node-open"]').first(), '节点卡·进入导演台')
-await expectVisible(win.locator('[data-testid="director-editor"]'), '全屏导演台没打开', 30_000)
-await win.waitForFunction(() => Boolean(window.__nomiDirectorE2E), null, { timeout: 60_000 })
+await expectVisible(win.locator('[data-testid="director-editor"]'), '全屏导演台没打开', stationTimeout({ operations: 2 }))
+await win.waitForFunction(() => Boolean(window.__nomiDirectorE2E), null, { timeout: stationTimeout({ operations: 4 }) })
 await snap('editor-open')
 
 // ── 量几何：窗口栏 / 全屏壳 / 顶栏按钮 / 窗口控件 四者的真实矩形 ──
