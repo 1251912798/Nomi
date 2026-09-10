@@ -137,9 +137,6 @@
   "legacy_paths": {
     "status": "removed",
     "removed_paths": [
-      "electron/projectAgentHost/projectAgentRepository.ts",
-      "electron/projectAgentHost/projectAgentMigration.ts",
-      "electron/projectAgentHost/projectAgentCutoverManifest.ts",
       "electron/capabilityCore/projectLeaseStore.ts",
       "electron/workspace/workspaceManifestLock.ts",
       "electron/productionRun/productionRunIntentLog.ts",
