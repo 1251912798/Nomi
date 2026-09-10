@@ -84,6 +84,9 @@ export type DirectorStoreState = {
   isSkeletonEditing: boolean
   // 泼溅 / 全景显现中的黑幕计数（>0 时天空盖黑），瞬态不入工程
   revealBackdropCount: number
+  // 当前全景贴图的真实像素尺寸（由 PanoramaSphere 载入贴图时量出），瞬态不入工程；
+  // 检查器据它常驻显示「非 2:1 可能拉伸」，提示与全景本身同生共死，不做一次性通知
+  panoramaDimensions: { width: number; height: number } | null
   // MP4 录制进度（null = 没在录），瞬态不入工程
   videoRecording: VideoRecordingProgress | null
   evaluatedPoses: Record<string, EvaluatedPose>
@@ -135,6 +138,7 @@ export type DirectorStoreState = {
   setSkeletonEditing: (editing: boolean) => void
   beginRevealBackdrop: () => void
   endRevealBackdrop: () => void
+  setPanoramaDimensions: (dimensions: { width: number; height: number } | null) => void
   // ── 时间轴上下文 ──
   setTimelineContext: (patch: Partial<TimelineEditContext>) => void
   ensureDuration: (seconds: number, margin?: number) => void
@@ -269,6 +273,7 @@ export function createDirectorStore(options: CreateDirectorStoreOptions): Direct
       ikModeEnabled: true,
       isSkeletonEditing: false,
       revealBackdropCount: 0,
+      panoramaDimensions: null,
       videoRecording: null,
       evaluatedPoses: {},
       activeTrajectoryClipIds: {},
@@ -379,6 +384,7 @@ export function createDirectorStore(options: CreateDirectorStoreOptions): Direct
           snapEnabled: true,
           ikModeEnabled: true,
           revealBackdropCount: 0,
+          panoramaDimensions: null,
           showLeftPanel: true,
           showRightPanel: true,
           showCameraPreview: true,
@@ -476,6 +482,7 @@ export function createDirectorStore(options: CreateDirectorStoreOptions): Direct
       setSkeletonEditing: (editing) => set({ isSkeletonEditing: editing }),
       beginRevealBackdrop: () => set((state) => ({ revealBackdropCount: state.revealBackdropCount + 1 })),
       endRevealBackdrop: () => set((state) => ({ revealBackdropCount: Math.max(0, state.revealBackdropCount - 1) })),
+      setPanoramaDimensions: (panoramaDimensions) => set({ panoramaDimensions }),
 
       setTimelineContext: (patch) => set((state) => ({ timeline: { ...state.timeline, ...patch } })),
       ensureDuration: (seconds, margin) =>

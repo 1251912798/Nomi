@@ -34,7 +34,7 @@ export function AddObjectMenu(): JSX.Element {
   const [open, setOpen] = React.useState(false)
   const [sub, setSub] = React.useState<Sub>(null)
   const subject = useDirectorStore((state) => state.findObject(state.selection.objectId) ?? null)
-  const { importPanoramaFile } = usePanoramaImport()
+  const { importPanoramaFile, status: panoramaStatus } = usePanoramaImport()
   const panoramaInputRef = React.useRef<HTMLInputElement | null>(null)
 
   const close = () => {
@@ -168,6 +168,7 @@ export function AddObjectMenu(): JSX.Element {
           </>
         ) : null}
       </Popover>
+      {panoramaStatus}
       <input
         ref={panoramaInputRef}
         type="file"

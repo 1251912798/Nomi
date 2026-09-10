@@ -30,6 +30,7 @@ export function PanoramaSphere(): JSX.Element | null {
   React.useEffect(() => {
     if (!config.url) {
       setTexture(null)
+      store.getState().setPanoramaDimensions(null)
       return
     }
     const url = config.url
@@ -55,11 +56,20 @@ export function PanoramaSphere(): JSX.Element | null {
         loaded.minFilter = THREE.LinearFilter
         loaded.magFilter = THREE.LinearFilter
         fadeRef.current = { elapsed: 0, done: false }
+        // 贴图真实像素是「非 2:1 可能拉伸」提示的唯一来源：重开工程也照样量得到，
+        // 所以提示常驻在检查器的全景卡里，而不是导入那一刻弹一次就没了
+        const image = loaded.image as { width?: number; height?: number } | null
+        const width = Number(image?.width) || 0
+        const height = Number(image?.height) || 0
+        store.getState().setPanoramaDimensions(width > 0 && height > 0 ? { width, height } : null)
         setTexture(loaded)
       },
       undefined,
       () => {
-        if (!cancelled) toast(t('director.environment.panoramaLoadFailed'), 'error')
+        if (!cancelled) {
+          store.getState().setPanoramaDimensions(null)
+          toast(t('director.environment.panoramaLoadFailed'), 'error')
+        }
         closeBackdrop()
       },
     )

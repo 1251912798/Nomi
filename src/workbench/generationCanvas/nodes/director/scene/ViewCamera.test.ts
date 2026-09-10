@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import * as THREE from 'three'
 import { createDirectorStore, type DirectorStore } from '../model/directorStore'
 import { DEFAULT_VIEW_SETTINGS, FREE_CAMERA_HOME } from './viewSettings'
-import { matchesHotkey, DIRECTOR_HOTKEYS } from '../model/hotkeys'
+import { matchesHotkey, isMacPlatform, DIRECTOR_HOTKEYS } from '../model/hotkeys'
 import { buildCameraFromPreset, CAMERA_PRESETS } from '../model/cameraPresets'
 
 const runtime = vi.hoisted(() => ({ store: null as unknown as DirectorStore, effects: [] as (() => (() => void) | void)[], frames: [] as ((state: unknown, delta: number) => void)[], three: {} as Record<string, unknown>, api: { current: null as unknown }, registry: {}, capture: vi.fn(), labels: vi.fn() }))
@@ -36,6 +36,10 @@ let handlers: Map<string, Set<(event: KeyboardEvent) => void>>
 let cleanups: (() => void)[]
 let overlay = false
 let documentState: { activeElement: { tagName: string; type?: string } | null; querySelector: () => object | null }
+
+// 生产键位里的 meta 在 macOS 是 ⌘、其它平台是 Ctrl，所以按 meta 的快捷键必须随平台派生修饰键；
+// 写死 ctrlKey 会在 macOS 上恒不命中（Linux CI 照样绿，本机开发者却看到两条红）
+const META: Partial<KeyboardEvent> = isMacPlatform() ? { metaKey: true } : { ctrlKey: true }
 
 function key(code: string, fields: Partial<KeyboardEvent> = {}) {
   const event = { code, key: code.startsWith('Key') ? code.slice(3).toLowerCase() : code, target: documentState.activeElement, ctrlKey: false, metaKey: false, altKey: false, shiftKey: false, preventDefault: vi.fn(), stopImmediatePropagation: vi.fn(), ...fields } as unknown as KeyboardEvent
@@ -237,13 +241,13 @@ describe('multi-entity shortcut undo boundaries', () => {
     const groupA = state.groupObjects([object('a'), object('b')], 'A')!
     const groupB = state.groupObjects([object('c'), object('d')], 'B')!
     state.select({ objectId: groupA, multiObjectIds: [groupA, groupB] }); HotkeyHarness()
-    key('KeyG', { ctrlKey: true, shiftKey: true })
+    key('KeyG', { ...META, shiftKey: true })
     expect(runtime.store.getState().activeScene().objects.filter((item) => item.type === 'group')).toHaveLength(0)
     state.undo(); expect(runtime.store.getState().activeScene().objects.filter((item) => item.type === 'group')).toHaveLength(2)
   })
   it('clones all selected roots as one undo operation', () => {
     const a = object('a'), b = object('b'); runtime.store.getState().select({ objectId: a, multiObjectIds: [a, b] }); HotkeyHarness()
-    key('KeyD', { ctrlKey: true }); expect(runtime.store.getState().activeScene().objects).toHaveLength(4)
+    key('KeyD', { ...META }); expect(runtime.store.getState().activeScene().objects).toHaveLength(4)
     runtime.store.getState().undo(); expect(runtime.store.getState().activeScene().objects).toHaveLength(2)
   })
 })

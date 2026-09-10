@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 react、react-i18next、../../DirectorEditorContext、../../model/directorProject 的 DEFAULT_SCENE_CONFIG、../fields/*
  * [OUTPUT]: 对外提供 SceneLayerInspector：基础环境（天空色、角色标签）、地面与网格（显示/高度/透明度/吸附）、全局变换（缩放/平移）、
- *           720 全景（半径/旋转/清除，S5 接入源）
+ *           720 全景（非 2:1 常驻提示 / 半径/旋转/清除，S5 接入源）
  * [POS]: director/panels/inspector 的图层配置（清单 §4.9 I13）：无选中时显示。
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
@@ -9,6 +9,7 @@ import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDirectorStore, useDirectorStoreApi } from '../../DirectorEditorContext'
 import { DEFAULT_SCENE_CONFIG } from '../../model/directorProject'
+import { isStandardPanoramaDimensions } from '../panoramaImport'
 import { ColorField, InspectorCard, SectionHeader, ToggleField, Vec3Fields } from '../fields/FieldPrimitives'
 import { SliderNumberField } from '../fields/SliderNumberField'
 
@@ -16,6 +17,9 @@ export function SceneLayerInspector(): JSX.Element {
   const { t } = useTranslation()
   const store = useDirectorStoreApi()
   const scene = useDirectorStore((state) => state.activeScene())
+  // 「非 2:1 可能拉伸」跟着全景本身走：尺寸由 PanoramaSphere 载贴图时量出，重开工程照样量得到，
+  // 所以提示常驻在全景卡里，而不是导入那一刻弹一次（docs/plan/2026-09-09-notification-policy.md）
+  const panoramaDimensions = useDirectorStore((state) => state.panoramaDimensions)
   const config = scene.sceneConfig
   const patch = (next: Partial<typeof config>) => store.getState().patchSceneConfig(next)
   const save = () => store.getState().saveState()
@@ -43,6 +47,11 @@ export function SceneLayerInspector(): JSX.Element {
       {scene.panoramaConfig.url ? (
         <InspectorCard>
           <SectionHeader title={t('director.inspector.panorama')} />
+          {panoramaDimensions && !isStandardPanoramaDimensions(panoramaDimensions) ? (
+            <p className="text-micro text-nomi-ink-60">
+              {t('director.environment.nonStandardHint', { width: panoramaDimensions.width, height: panoramaDimensions.height })}
+            </p>
+          ) : null}
           <SliderNumberField label={t('director.inspector.panoramaRadius')} value={scene.panoramaConfig.radius} min={10} max={1000} step={10} unit="m" onChangeStart={save} onChange={(radius) => store.getState().patchPanoramaConfig({ radius })} />
           <SliderNumberField label={t('director.inspector.panoramaRotation')} value={scene.panoramaConfig.rotationY} min={-180} max={180} step={1} unit="°" onChangeStart={save} onChange={(rotationY) => store.getState().patchPanoramaConfig({ rotationY })} />
           <button type="button" className="mt-1 rounded-nomi-sm border border-nomi-line px-2 py-0.5 text-micro text-nomi-ink-80 hover:bg-workbench-hover" onClick={() => { save(); store.getState().patchPanoramaConfig({ url: '' }) }}>
