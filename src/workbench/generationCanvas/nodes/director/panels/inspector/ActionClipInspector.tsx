@@ -2,7 +2,7 @@
  * [INPUT]: 依赖 react、react-i18next、../../../../../../design（WorkbenchButton / NomiSelect）、../../DirectorEditorContext、../../model/directorTypes（DirectorObject / ActionClip）、
  *          ../../model/actionLibrary 的 ACTION_LIBRARY、../../model/timeGrid 的 secondsToFrame、../../timeline/timelineCommands 的 cutSelectedClip、../fields/FieldPrimitives、../fields/SliderNumberField
  * [OUTPUT]: 对外提供 ActionClipInspector：副轨禁用横幅（一键启用）→ 卡「片段属性」（骨骼姿态片段：片段类型「骨骼姿态 N 帧」；
- *           内置动作：动作姿态下拉换动作并把名字改成「动作·X」）+ 开始 / 结束 滑条（步 0.1、带 F 帧读数）+ 持续时长 → 卡「播放头时间裁剪」（裁前 / 裁后）→ 「删除该动作片段」
+ *           内置动作：动作姿态下拉换动作并把名字改成「动作·X」）+ 开始 / 结束 滑条（步 0.1、带 F 帧读数）+ 持续时长 → 卡「播放头时间裁剪」（裁前 / 裁后）→ 「删除片段」
  * [POS]: director/panels/inspector 的动作片段卡：开始 / 结束经 store.updateClipTime（同副轨争位置，失败保持原值）；裁剪打到命令层；分割在时间轴。
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */

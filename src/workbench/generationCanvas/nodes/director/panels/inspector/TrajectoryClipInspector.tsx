@@ -2,7 +2,7 @@
  * [INPUT]: 依赖 react、react-i18next、../../../../../../design 的 WorkbenchButton、../../../../../../ui/toast、../../DirectorEditorContext、
  *          ../../model/directorTypes（TimelineEntity / TrajectoryClip）、../../model/hotkeys（DIRECTOR_HOTKEYS / formatHotkey）、../../model/timeGrid 的 FRAME_SECONDS、
  *          ../../timeline/timelineCommands（cutSelectedClip / splitSelectedAtPlayhead）、../fields/FieldPrimitives、../fields/SliderNumberField
- * [OUTPUT]: 对外提供 TrajectoryClipInspector（清单 §4.6 I7：所属实体、开始/结束/时长、裁前/裁后到播放头、分割、删除）
+ * [OUTPUT]: 对外提供 TrajectoryClipInspector（清单 §4.6 I7：所属实体、开始/结束/时长、裁掉前段/裁掉后段、分割、删除）
  * [POS]: director/panels/inspector 的路径片段卡：改时间走 updateClipTime（重叠即拒绝并 toast），裁切/分割复用时间轴命令层。
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
@@ -61,7 +61,7 @@ export function TrajectoryClipInspector({ entity, clip }: { entity: TimelineEnti
           {t('director.timelineInspector.split')}
           <Kbd>{formatHotkey(DIRECTOR_HOTKEYS.splitClip)}</Kbd>
         </WorkbenchButton>
-        <WorkbenchButton size="sm" className="text-nomi-danger" onClick={() => store.getState().deleteTrajectoryClip(entity.id, clip.id)}>
+        <WorkbenchButton size="sm" className="text-nomi-danger" title={t('director.timelineInspector.deleteClipHint')} onClick={() => store.getState().deleteTrajectoryClip(entity.id, clip.id)}>
           {t('director.timelineInspector.deleteClip')}
         </WorkbenchButton>
       </div>

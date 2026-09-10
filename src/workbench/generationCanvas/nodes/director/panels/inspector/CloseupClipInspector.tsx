@@ -4,7 +4,7 @@
  *          ../../model/timeGrid 的 secondsToFrame、../../timeline/timelineCommands 的 cutSelectedClip、../fields/FieldPrimitives、../fields/SliderNumberField
  * [OUTPUT]: 对外提供 CloseupClipInspector：「特写片段属性」所属机位 / 跟踪目标 / 锚点 / 开始·结束滑条（右下 F 帧号）/ 持续时长 →
  *           「取景」朝向 / 方位 / 水平角 ±180 / 俯仰角 ±89 → 「机位运动」距离 0.3–20 / 高度 −2–5 / [自定义锚点 X −3–3 · Y −1–3 · Z −3–3] / 运镜预设 →
- *           「播放头时间裁剪」裁前 / 裁后 → 转为路径片段 · 删除该特写片段（确认弹窗）
+ *           「播放头时间裁剪」裁前 / 裁后 → 转为路径 · 删除片段（确认弹窗）
  * [POS]: director/panels/inspector 的特写片段卡：字段改动经 updateCloseupClip（改动前快照），开始 / 结束经 updateClipTime（与本机位其它片段重叠即拒绝），
  *        机位位姿由播放循环每帧按 closeupRig 求值；不提供「分割」按钮，custom 方位没有角度输入。
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md

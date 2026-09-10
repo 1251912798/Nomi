@@ -233,7 +233,7 @@ function DirectorNode({ node: rawNode, selected, readOnly = false }: Props): JSX
                 setOpen(true)
               }}
             >
-              {t('director.node.open')}
+              {t('director.node.openShort')}
             </WorkbenchButton>
           ) : null}
         </div>

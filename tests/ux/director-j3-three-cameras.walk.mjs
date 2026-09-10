@@ -98,7 +98,7 @@ try {
   await lab.snap('grouped-closeup-before-bake')
   await screenshotSettled(preview, { path: `${lab.shotsDir}/closeup-before-bake-pip.png` })
   const closeupProof = await proveProbe(closeupBar, '转换前真实特写条存在')
-  await inspector.getByRole('button', { name: '转为路径片段', exact: true }).click()
+  await inspector.getByRole('button', { name: '转为路径', exact: true }).click()
   await lab.waitScene(`s.cameras.some(c => c.id === '${closeupCamera.id}' && !c.closeupClips?.length && c.trajectoryClips?.length === 1)`, '特写已转换为路径')
   await expectAbsent(closeupBar, { provenBy: closeupProof, message: '转换后原特写条持续退出时间轴' })
   const baked = (await lab.scene()).cameras.find((item) => item.id === closeupCamera.id)

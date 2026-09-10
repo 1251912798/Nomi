@@ -3,8 +3,8 @@
  *          ../../model/ikChains 的 IkHandleKey、../../model/rigs（boneName / jointAxisLabelKey / SemanticBone）、../../scene/ViewportApiContext、
  *          ../fields/FieldPrimitives、../fields/SliderNumberField、./PuppetFigure
  * [OUTPUT]: 对外提供 SkeletonTab：卡头「姿态动力学与骨骼 ｜ 全部复位」→ 分段「IK 动力学手柄 / FK 骨骼微调」→
- *           人偶（状态行 + W / E 芯片 + 右(R)/左(L) 角标）→ IK：「双脚吸附地面 / 左右姿态镜像」两键 + 已选中手柄卡（复位此肢体）或提示；
- *           FK：已选关节卡（重置此关节 / 快选 −90 −45 0 45 90 / 三轴 ±180 语义滑条）或提示
+ *           人偶（状态行 + W / E 芯片 + 右(R)/左(L) 角标）→ IK：「双脚落地 / 镜像姿态」两键 + 已选中手柄卡（复位肢体）或提示；
+ *           FK：已选关节卡（重置关节 / 快选 −90 −45 0 45 90 / 三轴 ±180 语义滑条）或提示
  * [POS]: director/panels/inspector 的角色骨骼页：分段即 IK 开关（切 IK 无靶点默认骨盆、切 FK 清靶点）；镜像方向按所选靶点的侧；
  *        滑条 / 快选写 setBoneRotation（写入落点由 store 决定）；双脚吸附走 ViewportApi 到 scene 侧两骨 IK。
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
@@ -62,7 +62,7 @@ export function SkeletonTab({ object }: { object: DirectorObject }): JSX.Element
     if (next === 'ik') state.select({ objectId: object.id, boneKey: null, ikTarget: ikTarget ?? 'pelvis' })
     else state.select({ objectId: object.id, ikTarget: null })
   }
-  // 重置此关节 = 该骨偏移写成 0（不是删键）
+  // 重置关节 = 该骨偏移写成 0（不是删键）
   const resetJoint = () => {
     if (!boneKey) return
     store.getState().saveState()

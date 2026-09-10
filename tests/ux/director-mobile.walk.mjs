@@ -90,7 +90,7 @@ try {
   await screenshotSettled(phone, { path: path.join(shots, '02-recording-complete.png') })
   await screenshotSettled(win, { path: path.join(shots, '03-desktop-connected.png') })
   console.log('✓ Remote start/stop follows desktop state and creates a motion clip')
-  await win.getByTestId('director-mobile-dialog').getByRole('button', { name: '断开并关闭服务' }).click()
+  await win.getByTestId('director-mobile-dialog').getByRole('button', { name: '断开连接' }).click()
   await expect(phone.locator('#dot')).toHaveClass('dot')
   await expect(phone.locator('#record')).toBeDisabled()
   await expect(phone.locator('#preview')).not.toHaveAttribute('src', /.+/)
