@@ -1,0 +1,108 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-10-storyboard-projection-receipt-composition",
+  "problem_type": "Derived storyboard projections must respect durable canvas write ownership",
+  "symptom": "Original storyboard receipt preparation race integration test returns capability_receipt_unresolved instead of capability_target_stale.",
+  "direct_cause": "Adding a design updates the canonical store then synchronously creates its shot table while another proposal owns the durable receipt. addNode throws AbortError before target revalidation.",
+  "class_root": "Derived canvas projection is treated as an independent synchronous user write rather than following its owner and current canvas lifetime.",
+  "affected_population": [
+    "Design create, duplicate and explicit plan edits during receipt preparation or commit"
+  ],
+  "scope_paths": [
+    "src/workbench/creation/storyboard/exec/ensureStoryboardShotTable.ts",
+    "src/workbench/generationCanvas/events/canvasWriteBoundary.ts",
+    "src/workbench/workbenchStore.ts"
+  ],
+  "entry_points": [
+    "addStoryboardDesign / duplicateStoryboardDesign",
+    "setStoryboardPlan / patchStoryboardShots"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "Internal store and durable receipt composition; no external API or framework change.",
+  "invariants": [
+    "Same-owner projection stays synchronous; foreign derived projection waits without interrupting durable receipt.",
+    "Deferred projection reads current design and canvas and never crosses undo journal generation.",
+    "Existing admission error codes remain unchanged."
+  ],
+  "generality_proof": "Every explicit design write enters the composition callback; table creation and shot updates share the same ownership-aware scheduler and live reads.",
+  "shared_boundaries": [
+    {
+      "path": "src/workbench/generationCanvas/events/canvasWriteBoundary.ts",
+      "symbol": "runWhenCanvasWriteBoundarySettled",
+      "responsibility": "Run same-owner derived writes synchronously and defer foreign writes through the existing settlement queue."
+    },
+    {
+      "path": "src/workbench/creation/storyboard/exec/ensureStoryboardShotTable.ts",
+      "symbol": "applyStoryboardPlanProjection",
+      "responsibility": "Bind deferred projection to current canvas generation and reread the source."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/workbench/workbenchDocumentSlice.ts",
+      "entry_point": "addStoryboardDesign",
+      "disposition": "enforced",
+      "evidence": "Create and duplicate invoke projectPlan after canonical source update."
+    },
+    {
+      "path": "src/workbench/workbenchDocumentSlice.ts",
+      "entry_point": "setStoryboardPlan",
+      "disposition": "enforced",
+      "evidence": "Explicit edits use the same projectPlan composition callback."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Any explicit edit while a durable receipt is pending reaches this race.",
+    "same_class_scan": [
+      "rg projectPlan in workbenchDocumentSlice.ts checked creation, duplication, replacement and patch.",
+      "rg whenCanvasWriteBoundarySettled checked factBridge and model-default derived updates."
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "src/workbench/generationCanvas/events/canvasWriteBoundary.ts",
+    "invariant": "Foreign derived writes wait for ownership settlement, then validate lifetime and reread current state.",
+    "failure_mode": "Stale generation or deleted source produces no canvas mutation; admission rejects stale approval normally.",
+    "exception_policy": "none",
+    "strategy": "Reuse existing settledWaiters, preserve current-owner context and recheck ownership after each wait.",
+    "artifacts": [
+      "src/workbench/generationCanvas/events/canvasWriteBoundary.ts",
+      "src/workbench/creation/storyboard/exec/ensureStoryboardShotTable.ts",
+      "src/workbench/workbenchStore.ts"
+    ]
+  },
+  "regression_tests": [
+    "src/workbench/creation/storyboard/exec/shotTableProjection.integration.test.ts",
+    "src/workbench/generationCanvas/agent/canvasWriteTarget.integration.test.ts",
+    "src/workbench/generationCanvas/events/canvasWriteBoundary.test.ts"
+  ],
+  "class_regression_tests": [
+    "src/workbench/creation/storyboard/exec/shotTableProjection.integration.test.ts",
+    "src/workbench/generationCanvas/events/canvasWriteBoundary.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "src/workbench/creation/storyboard/exec/ensureStoryboardShotTable.ts"
+    ],
+    "rationale": "Replace unconditional synchronous projection with one ownership-aware path."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "No dependency version controls internal transaction ownership.",
+    "exit_criteria": []
+  },
+  "migration": "No persisted schema change; existing designs are reread from their canonical store.",
+  "residual_risks": [
+    "Linux performance verification is separate from this receipt invariant."
+  ],
+  "invariant_owner_layer": {
+    "layer": "src/workbench/creation/storyboard/exec/ensureStoryboardShotTable.ts",
+    "tests": [
+      "src/workbench/creation/storyboard/exec/shotTableProjection.integration.test.ts",
+      "src/workbench/generationCanvas/events/canvasWriteBoundary.test.ts"
+    ],
+    "why": "All explicit plan projections converge here before touching the canvas."
+  }
+}

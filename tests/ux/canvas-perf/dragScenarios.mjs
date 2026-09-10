@@ -1,3 +1,5 @@
+import { findNodeHitPoint } from '../_canvasHit.mjs'
+
 // New drag scenarios for eval v2 (U1). These are action runners layered on the
 // existing benchmark harness: they reuse its mouse-driven drag mechanic but add
 // the coverage the 2026-09-01 investigation showed was missing —
@@ -121,10 +123,10 @@ function isSafelyClickable(box, stage) {
 /**
  * multi-node-drag: shift-click N safely-clickable nodes to select them, then
  * drag the primary. React Flow emits a position change per selected node each
- * tick → N store writes/tick (leg-b §9 "multi-select path"). Uses the proven
- * selection coordinates (x*0.45, y+14) that the click-select scenario relies on,
- * and skips nodes off the stage edge / under the minimap that would silently not
- * select. Returns actionDetails with the realized selection count and move count.
+ * tick → N store writes/tick (leg-b §9 "multi-select path"). Each requested
+ * card is hit-tested immediately before the click, so newly visible controls
+ * cannot turn selection into a different action. Returns actionDetails with
+ * the realized selection count and move count.
  * @param {import('playwright').Page} page
  */
 export async function runMultiNodeDrag(page) {
@@ -143,9 +145,10 @@ export async function runMultiNodeDrag(page) {
   await page.keyboard.down('Shift')
   try {
     for (const pick of picks) {
-      // x*0.45,y+14 = the click-select scenario's proven selection target;
-      // shiftKey propagates to the card pointerdown → additive selection.
-      await page.mouse.click(pick.box.x + pick.box.width * 0.45, pick.box.y + 14)
+      const nodeId = await pick.locator.getAttribute('data-node-id')
+      const hit = await findNodeHitPoint(page, { nodeSelector: `.generation-canvas-v2-node[data-node-id=${JSON.stringify(nodeId)}]` })
+      if (!hit) throw new Error(`multi-node-drag: no selectable point for ${nodeId}`)
+      await page.mouse.click(hit.x, hit.y)
       await sleep(page, 40)
     }
   } finally {
@@ -155,7 +158,9 @@ export async function runMultiNodeDrag(page) {
   const selected = await page.locator('.generation-canvas-v2-node[data-selected="true"]').count()
   // Drag the primary (first pick) with a variable-speed gesture; the rest follow.
   const primary = picks[0]
-  const start = { x: primary.box.x + primary.box.width * 0.45, y: primary.box.y + 14 }
+  const primaryId = await primary.locator.getAttribute('data-node-id')
+  const start = await findNodeHitPoint(page, { nodeSelector: `.generation-canvas-v2-node[data-node-id=${JSON.stringify(primaryId)}]` })
+  if (!start) throw new Error(`multi-node-drag: no draggable point for ${primaryId}`)
   const moves = await variableSpeedDragPath(page, start, { x: start.x + 150, y: start.y + 80 })
   return {
     selected,

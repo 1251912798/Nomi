@@ -5,7 +5,7 @@ import type { StoryboardPlan } from '../../../generationCanvas/agent/storyboardP
 import { readShotTable } from '../../../../../electron/shared/canvas/shotTable'
 import { openShotTableRow } from '../openShotTableRow'
 import { applyProposalBatch } from '../../../generationCanvas/agent/proposalTxn'
-import { abandonPendingCanvasWrite } from '../../../generationCanvas/events/canvasWriteBoundary'
+import { abandonPendingCanvasWrite, ownPendingCanvasWrite, whenCanvasWriteBoundarySettled } from '../../../generationCanvas/events/canvasWriteBoundary'
 
 const plan: StoryboardPlan = { title: '稿件分镜', anchors: [], shots: [{ shotId: 'third', index: 3, durationSec: 5, anchorIds: [], prompt: '日出' }] }
 const canvas = () => useGenerationCanvasStore.getState()
@@ -17,6 +17,35 @@ beforeEach(() => {
 })
 afterEach(abandonPendingCanvasWrite)
 describe('storyboard canvas table wiring', () => {
+  it('defers foreign create and duplicate projections, then uses the latest source', async () => {
+    const release = await ownPendingCanvasWrite('foreign-receipt', () => false)
+    const store = useWorkbenchStore.getState()
+    const design = store.setStoryboardPlan(plan)!
+    store.duplicateStoryboardDesign(design.id)
+    store.setStoryboardPlan({ ...plan, title: '最新稿' })
+    expect(tables()).toHaveLength(0)
+    release()
+    await whenCanvasWriteBoundarySettled()
+    expect(tables()).toHaveLength(2)
+    expect(tables().map(node => node.title)).toContain('最新稿')
+  })
+  it('does not project a source deleted before its receipt owner releases', async () => {
+    const release = await ownPendingCanvasWrite('foreign-receipt', () => false)
+    useWorkbenchStore.getState().setStoryboardPlan(plan)
+    useWorkbenchStore.getState().hydrateStoryboardDesigns({})
+    release()
+    await whenCanvasWriteBoundarySettled()
+    expect(tables()).toHaveLength(0)
+  })
+  it('does not project queued designs into a replacement canvas', async () => {
+    const release = await ownPendingCanvasWrite('foreign-receipt', () => false)
+    useWorkbenchStore.getState().setStoryboardPlan(plan)
+    abandonPendingCanvasWrite()
+    canvas().restoreSnapshot({ nodes: [], edges: [], groups: [], selectedNodeIds: [] })
+    release()
+    await whenCanvasWriteBoundarySettled()
+    expect(tables()).toHaveLength(0)
+  })
   it.each(['propose_storyboard_plan', 'patch_shots'])('keeps %s inside the owning proposal while creating its table', async operation => {
     if (operation === 'patch_shots') useWorkbenchStore.getState().hydrateStoryboardDesigns({ doc: [{ id: 'design', documentId: 'doc', title: plan.title, plan, committed: false, status: 'draft', sourceDocumentUpdatedAt: 1, createdAt: 1, updatedAt: 1 }] })
     const outcome = await applyProposalBatch([{ toolCallId: 'table-write', toolName: operation === 'patch_shots' ? 'nomi_canvas_plan' : operation, effectiveArgs: operation === 'patch_shots' ? { operation, select: { kind: 'all' }, patch: { promptAppend: '月光' } } : { ...plan } }])

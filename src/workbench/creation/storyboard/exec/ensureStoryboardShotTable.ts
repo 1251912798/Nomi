@@ -1,3 +1,5 @@
+import { runWhenCanvasWriteBoundarySettled } from '../../../generationCanvas/events/canvasWriteBoundary'
+import { getUndoJournalGeneration } from '../../../generationCanvas/events/canvasUndoJournal'
 import { projectStoryboardDesign } from './storyboardProjection'
 import { createStoryboardShotTable, readShotTable } from '../../../../../electron/shared/canvas/shotTable'
 import type { StoryboardDesign } from '../../../workbenchTypes'
@@ -15,8 +17,19 @@ export function ensureStoryboardShotTable(design: StoryboardDesign, canvas: Retu
   } })
 }
 
-/** Composition of the existing owner projection and its canvas table view. */
-export function applyStoryboardPlanProjection(design: StoryboardDesign, canvas: ReturnType<typeof useGenerationCanvasStore.getState>): void {
-  ensureStoryboardShotTable(design, canvas)
-  projectStoryboardDesign(design, canvas)
+/** Explicit source edits own the design; their derived canvas view follows the
+ * durable write boundary and is discarded if that canvas lifetime has ended. */
+export function applyStoryboardPlanProjection(
+  readDesign: () => StoryboardDesign | undefined,
+  readCanvas: typeof useGenerationCanvasStore.getState,
+): void {
+  const generation = getUndoJournalGeneration()
+  runWhenCanvasWriteBoundarySettled(() => {
+    if (getUndoJournalGeneration() !== generation) return
+    const design = readDesign()
+    if (!design) return
+    const canvas = readCanvas()
+    ensureStoryboardShotTable(design, canvas)
+    projectStoryboardDesign(design, canvas)
+  })
 }

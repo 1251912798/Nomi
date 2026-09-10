@@ -249,7 +249,10 @@ export function isWorkspaceMode(value: unknown): value is WorkspaceMode {
 }
 
 export const useWorkbenchStore = create<WorkbenchState>()(subscribeWithSelector((set, get, store) => ({
-  ...createWorkbenchDocumentSlice(set, get, store, design => applyStoryboardPlanProjection(design, useGenerationCanvasStore.getState())),
+  ...createWorkbenchDocumentSlice(set, get, store, design => applyStoryboardPlanProjection(
+    () => get().storyboardDesignsByDocumentId[design.documentId]?.find(current => current.id === design.id),
+    useGenerationCanvasStore.getState,
+  )),
   persistRevision: 0,
   workspaceMode: 'generation',
   projectSidebarWidth: null,
