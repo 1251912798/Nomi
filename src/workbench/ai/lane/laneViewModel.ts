@@ -105,6 +105,12 @@ export interface LaneViewModelLabels {
    * 凭空隐藏那颗 chip 才是把用户做过的操作抹掉）。
    */
   skillLabel(skillKey: string): string
+  /**
+   * 技能 key → 它的封面 / 预览。和 `skillLabel` 同一份目录、同一个查不到的处置：
+   * 没有就不给，chip 落到 `SkillMedia` 自己的图标占位，**不画一个假的色块**。
+   * 这一层同样不持有技能目录，所以由调用方喂。缺席（设计实验室、单测）= 没有封面。
+   */
+  skillMedia?(skillKey: string): { cover?: string; preview?: { url: string; type: 'image' | 'video' } } | undefined
 }
 
 /**
@@ -327,7 +333,7 @@ export function laneViewModel(projection: LaneProjection, labels: LaneViewModelL
       turn += 1
       if (part.skillKey) skillOfTurn.set(turn, part.skillKey)
       const chip: V4Chip | undefined = part.skillKey
-        ? { kind: 'skill', label: labels.skillLabel(part.skillKey) } : undefined
+        ? { kind: 'skill', label: labels.skillLabel(part.skillKey), ...labels.skillMedia?.(part.skillKey) } : undefined
       push({ kind: 'user', text: part.text, ...(chip ? { chips: [chip] } : {}) })
       continue
     }

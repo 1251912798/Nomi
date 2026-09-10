@@ -189,6 +189,12 @@ export function useAgentPanelV4Data(surface: ResidentSurface): AgentPanelV4Data 
       const found = skills.find((skill) => skill.name === key)
       return found ? skillDisplayTitle(found, i18n.language) : key
     },
+    // 封面与名字同一份目录、同一次查：气泡里那颗 chip 和 composer 上那颗（`liveChips`）
+    // 因此长得一样，用户挂上去看见什么、发出去还是什么。
+    skillMedia: (key) => {
+      const found = skills.find((skill) => skill.name === key)
+      return found ? { cover: found.cover, preview: found.preview } : undefined
+    },
   }, undoableToolCallId), [snapshot.active, i18n.language, skills, t, undoableToolCallId])
   const flow = React.useMemo(() => {
     const items = [...view.items]

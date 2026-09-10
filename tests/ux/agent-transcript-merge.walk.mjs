@@ -113,6 +113,14 @@ try {
   await expect(composerChip).toBeVisible()
   const skillName = (await composerChip.innerText()).trim()
   expect(skillName.length, '技能 chip 上没有名字').toBeGreaterThan(0)
+  // 挂着的时候这颗 chip 在 —— 下面「发完就没了」那条断言因此是测得到的，不是恒真的空话。
+  const chipProof = await proveProbe(composerChip, '挂上技能后 composer 顶上有那颗 chip')
+  // Skill 钮上不再点第二次名（2026-09-10 用户反馈 #2）：钮里只剩图标 + 文字，
+  // 那颗 accent 小点是多出来的一个 span，所以这条等式红了就是它复活了。
+  expect(
+    await panel.locator(COMPOSER_SKILL).evaluate(el => [...el.children].map(child => child.tagName.toLowerCase())),
+    'Skill 钮上多了一件东西（那颗小点已删，反馈在 chip 上）',
+  ).toEqual(['svg'])
 
   const answered = walk.fixture.expectText({
     label: 'skill turn', match: body => flattenRequestText(body).includes(SKILL_ASK),
@@ -130,10 +138,24 @@ try {
   // ② 回复头上那一行凭据：「它确实进了这一轮」。
   await expect(bubbles).toHaveCount(2)
   await expect(bubbles.nth(1).locator(SKILL_RECEIPT), '回复头上没有「已使用技能」凭据').toContainText(skillName)
+  // ③ 那颗 chip 上印的是技能**自己的封面**，不是一个灰方块（2026-09-10 用户反馈 #3：
+  //    「是不是缩略图显示不了」）。`workbench-storyboard-planner` 有 assets/cover.png，
+  //    所以这里该是一张真加载出来的图——只断言 `<img>` 在不够，src 404 时它也在。
+  const chipMedia = userBubbles.nth(1).locator(`${SKILL_CHIP} [data-skill-media]`).first()
+  await expect(chipMedia, '气泡里的技能 chip 没有封面（退回了占位方块）').toHaveAttribute('data-skill-media', 'image')
+  const coverPainted = await chipMedia.evaluate(img => img.complete && img.naturalWidth > 0)
+  expect(coverPainted, '技能封面挂上了但一个像素都没画出来（src 取不到）').toBe(true)
+  // ④ 技能是随这条消息发出去的引用：发送成功后 composer 上不该还挂着它
+  //    （2026-09-10 用户反馈 #1：「难道让我一直用这个 Skill？」）。
+  await expectAbsent(panel.locator(`${COMPOSER} ${SKILL_CHIP}`), {
+    provenBy: chipProof, message: '消息发出去了，技能 chip 还赖在 composer 上（用户会以为以后每条都得挂着它）',
+  })
   walk.report.skillEvidence = {
     skillName,
     chip: (await userBubbles.nth(1).locator(SKILL_CHIP).innerText()).trim(),
     receipt: (await bubbles.nth(1).locator(SKILL_RECEIPT).innerText()).trim(),
+    chipCover: await chipMedia.getAttribute('src'),
+    composerCleared: await panel.locator(`${COMPOSER} ${SKILL_CHIP}`).count(),
   }
   await walk.snap('skill-chip-and-receipt')
 

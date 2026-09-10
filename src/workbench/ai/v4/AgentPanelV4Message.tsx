@@ -13,9 +13,17 @@ import { cn } from '../../../utils/cn'
 import { AgentPanelV4Markdown } from './AgentPanelV4Markdown'
 import { ActionIcon, IconChevronRight, IconCopy, IconRefresh } from './AgentPanelV4Icons'
 import { Message, MessageActions, MessageResponse } from './vendor/aiElementsPrimitives'
+import { SkillMedia } from '../../skillLibrary/SkillMedia'
 import type { V4AssistantStatus, V4Chip } from './agentPanelV4Types'
 
-/** 附件 / 技能 / 选中片段三种 chip **同一形态**（定稿 Composer 板批注）。 */
+/**
+ * 附件 / 技能 / 选中片段三种 chip **同一形态**（定稿 Composer 板批注）。
+ *
+ * 技能那颗印它自己的封面——和 composer 上那颗是**同一个渲染件**（`SkillMedia`）。
+ * 从前这里对三种 kind 一律画一个灰方块，用户问的是「是不是缩略图显示不了」
+ * （2026-09-10）：他挂技能时在 composer 上看见的是封面，发出去就变成一个色块，
+ * 同一颗 chip 长成两副样子。没封面的技能仍落到 `SkillMedia` 自己的图标占位。
+ */
 function BubbleChip({ chip, onDark }: { chip: V4Chip; onDark: boolean }): JSX.Element {
   return (
     <span
@@ -25,13 +33,17 @@ function BubbleChip({ chip, onDark }: { chip: V4Chip; onDark: boolean }): JSX.El
       )}
       data-v4-chip={chip.kind}
     >
-      <span
-        className={cn(
-          'h-3 w-4 shrink-0 rounded-sm',
-          chip.kind === 'clip' ? 'bg-nomi-track-video' : onDark ? 'bg-nomi-paper/40' : 'bg-nomi-ink-20',
-        )}
-        aria-hidden="true"
-      />
+      {chip.kind === 'skill' ? (
+        <SkillMedia cover={chip.cover} preview={chip.preview} iconSize={12} className="size-4 shrink-0 rounded-sm object-cover" />
+      ) : (
+        <span
+          className={cn(
+            'h-3 w-4 shrink-0 rounded-sm',
+            chip.kind === 'clip' ? 'bg-nomi-track-video' : onDark ? 'bg-nomi-paper/40' : 'bg-nomi-ink-20',
+          )}
+          aria-hidden="true"
+        />
+      )}
       <span className="truncate">{chip.label}</span>
     </span>
   )
