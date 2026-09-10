@@ -12,15 +12,13 @@
   "scope_paths": [
     "electron/durability.ts",
     "electron/durability.test.ts",
-    "electron/projectAgentHost/projectAgentRepository.ts",
-    "electron/projectAgentHost/projectAgentMigration.ts",
-    "electron/projectAgentHost/projectAgentCutoverManifest.ts",
     "electron/capabilityCore/projectAgentProposalReceiptStore.ts",
     "electron/capabilityCore/projectLeaseStore.ts",
     "electron/productionRun/productionRunLock.ts",
     "electron/productionRun/productionRunIntentLog.ts",
     "electron/workspace/workspaceManifestLock.ts",
-    "electron/integrationCertification/certificationPersistence.ts"
+    "electron/integrationCertification/certificationPersistence.ts",
+    "electron/agentLane/laneLegacyFiles.ts"
   ],
   "entry_points": [
     "nomi:projectAgent:open IPC (project agent host initialize + legacy migration)",
@@ -59,24 +57,6 @@
     }
   ],
   "same_class_entry_points": [
-    {
-      "path": "electron/projectAgentHost/projectAgentRepository.ts",
-      "entry_point": "ensurePartitionDirectory / fsyncPublishedMain / command ledger fsyncDirectory dep",
-      "disposition": "enforced",
-      "evidence": "Local fsyncDirectory removed; all call sites and the ledger dependency use fsyncDirectoryIfDurable."
-    },
-    {
-      "path": "electron/projectAgentHost/projectAgentMigration.ts",
-      "entry_point": "archiveLegacySources / removeArchivedLegacyAgentSources",
-      "disposition": "enforced",
-      "evidence": "Local fsyncDirectory (open + fsyncIfDurable, no platform guard) removed; this was the copy that broke Windows project open."
-    },
-    {
-      "path": "electron/projectAgentHost/projectAgentCutoverManifest.ts",
-      "entry_point": "fsyncNomiDirectory",
-      "disposition": "enforced",
-      "evidence": "Replaced by fsyncDirectoryIfDurable(nomiDir(projectRoot))."
-    },
     {
       "path": "electron/capabilityCore/projectAgentProposalReceiptStore.ts",
       "entry_point": "fsyncReceiptDirectory",
@@ -118,6 +98,12 @@
       "entry_point": "writeJsonFileAtomic",
       "disposition": "not-affected",
       "evidence": "Only fsyncs the temp file fd through fsyncIfDurable; it never opens a directory fd."
+    },
+    {
+      "path": "electron/agentLane/laneLegacyFiles.ts",
+      "entry_point": "syncDirectory (atomic publish / unlink / lock release, 4 call sites)",
+      "disposition": "enforced",
+      "evidence": "2026-09-10 merging origin/main: main retired projectAgentHost (agentLane refactor) and the ninth local copy reappeared here as syncDirectory (read-only openSync + fsyncIfDurable). electron/durability.test.ts class test failed on the merged tree; the local copy was removed and all four call sites now use fsyncDirectoryIfDurable."
     }
   ],
   "recurrence": {
@@ -126,7 +112,8 @@
     "same_class_scan": [
       "grep -rn 'function fsync' electron --include=*.ts (excluding tests) → 8 local copies, all migrated.",
       "grep -rln fsyncIfDurable electron | xargs grep -l 'O_RDONLY\\|, \"r\")' → certificationPersistence, projectAgentCommandLedger (file fd only, not affected), projectAgentProposalReceiptStore.",
-      "check:heavy-path unguarded-fsync = 0 after the change (raw fsyncSync only inside durability.ts)."
+      "check:heavy-path unguarded-fsync = 0 after the change (raw fsyncSync only inside durability.ts).",
+      "2026-09-10 recurrence confirmed: after merging origin/main the class test flagged electron/agentLane/laneLegacyFiles.ts (a fresh syncDirectory copy in code that never saw this contract). Routed through fsyncDirectoryIfDurable; the class test is what caught it, not review."
     ]
   },
   "prevention": {
