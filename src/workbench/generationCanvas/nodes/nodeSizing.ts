@@ -1,14 +1,9 @@
 // BaseGenerationNode 的纯工具/常量：状态文案、尺寸边界、媒体尺寸推算、时间轴落点命中。
 // 从 BaseGenerationNode.tsx 抽出（纯函数 + 常量，无 React 依赖）。
 import type { GenerationCanvasNode } from "../model/generationCanvasTypes";
+import { GENERATION_NODE_PLUGIN_BY_KIND } from "./registry";
 import { readNodeAspectRatio } from "./aspectRatio";
 import { isCardRenderKind, resolveNodeRenderKind } from "./resolveRenderKind";
-
-export const STATUS_LABEL: Record<string, string> = {
-    queued: "排队中",
-    running: "生成中",
-    error: "生成失败",
-};
 
 export type ResizeDirection = "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw";
 
@@ -114,6 +109,9 @@ export function shouldAllowComposerAttachmentRecompute(input: {
 // 非媒体节点（含 text）自由缩放时的 min/max。媒体（图/视频）走比例锁定分支，
 // 仍用上面的 MIN/MAX_NODE_*，故此处只为「自由拉伸」路径按 kind 取边界。
 export function getNodeSizeBounds(kind: GenerationCanvasNode["kind"]): NodeSizeBounds {
+    if (kind === "shot_table") {
+        return { minWidth: 560, maxWidth: 1400, minHeight: 160, maxHeight: 900 };
+    }
     if (kind === "clip") {
         return {
             minWidth: CLIP_NODE_MIN_WIDTH,
@@ -140,7 +138,6 @@ export function getNodeSizeBounds(kind: GenerationCanvasNode["kind"]): NodeSizeB
 export const TIMELINE_TRACK_CLIPS_SELECTOR = ".workbench-timeline-track__clips";
 
 export const FOCUS_GENERATION_NODE_EVENT = "nomi-focus-generation-node";
-export const ENSURE_COMPOSER_VISIBLE_EVENT = "nomi-ensure-composer-visible";
 
 /**
  * composer 的「最小可用高度」：提示词 3 行(72) + 底栏 + 内边距/间距。
@@ -272,6 +269,7 @@ export const MEDIA_DIMENSION_UPDATE_OPTIONS = {
  * 保持壳瘦身（R9）+ 可裸测。视频回填 meta.videoDuration 是「拖入视频一律 5 秒」的 catch-all 修复键。
  */
 export function computeMediaMetaPatch(params: {
+  preserveSize?: boolean;
   resultType: string | undefined;
   meta: Record<string, unknown>;
   currentSize: { width?: number; height?: number } | undefined;
@@ -300,7 +298,7 @@ export function computeMediaMetaPatch(params: {
       }
     : { imageWidth: width, imageHeight: height, imageAspectRatio: width / height };
   const shouldPatchSize =
-    !userResized &&
+    !params.preserveSize && !userResized &&
     (currentSize?.width !== nextSize.width || currentSize?.height !== nextSize.height);
   if (
     previousWidth === width &&
@@ -311,7 +309,7 @@ export function computeMediaMetaPatch(params: {
     return null;
   return {
     ...(shouldPatchSize ? { size: { width: nextSize.width, height: nextSize.height } } : {}),
-    meta: { ...meta, ...mediaPatch, previewHeight: nextSize.previewHeight },
+    meta: { ...meta, ...mediaPatch, previewHeight: params.preserveSize ? currentSize?.height ?? nextSize.previewHeight : nextSize.previewHeight },
   };
 }
 
@@ -395,6 +393,14 @@ const DEFAULT_VISUAL_SIZE = { width: 320, height: 360 };
 export function resolveNodeVisualSize(
     node: Pick<GenerationCanvasNode, "kind" | "size" | "renderKind" | "categoryId" | "meta" | "result">,
 ): { width: number; height: number } {
+    if (node.kind === "shot_table") {
+        const size = node.size ?? GENERATION_NODE_PLUGIN_BY_KIND.shot_table.defaultSize;
+        const bounds = getNodeSizeBounds(node.kind);
+        return {
+            width: clampNumber(size.width, bounds.minWidth, bounds.maxWidth),
+            height: clampNumber(size.height, bounds.minHeight, bounds.maxHeight),
+        };
+    }
     const size = node.size || DEFAULT_VISUAL_SIZE;
     if (node.kind === "clip") {
         const bounds = getNodeSizeBounds("clip");

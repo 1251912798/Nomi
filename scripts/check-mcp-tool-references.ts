@@ -10,13 +10,18 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { MCP_TOOL_RESOLVER } from '../electron/capabilityCore/mcpToolCatalog'
-import { agentToolNames } from '../electron/harness/tools/agentToolCatalog'
+import { LANE_MODEL_TOOL_CATALOG, LANE_DEFERRED_TOOL_CATALOG } from '../electron/agentLane/laneToolCatalog'
+import { LANE_TOOL_REQUEST_TOOL_NAME } from '../electron/agentLane/laneToolGroups.mts'
 import { collectFiles, scanFile } from './check-mcp-tool-references-lib.mjs'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const INTENTIONAL_UNKNOWN = 'unknown-tool-probe'
 const declared = new Set(MCP_TOOL_RESOLVER.list().map((tool) => tool.name))
-const hostDeclared = new Set(Object.values(agentToolNames).flatMap((names) => [...names]))
+const hostDeclared = new Set([
+  ...LANE_MODEL_TOOL_CATALOG.map(tool => tool.name),
+  ...LANE_DEFERRED_TOOL_CATALOG.map(tool => tool.name),
+  LANE_TOOL_REQUEST_TOOL_NAME,
+])
 const offenders: string[] = []
 let referenceCount = 0
 

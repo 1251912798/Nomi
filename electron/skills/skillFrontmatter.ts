@@ -1,4 +1,5 @@
 import yaml from "js-yaml";
+import { readSkillCuration } from "../shared/skillCuration";
 
 /**
  * SKILL.md 的 YAML frontmatter —— 技能清单的**唯一** owner（2026-09-07 起）。
@@ -32,7 +33,13 @@ export function parseSkillFrontmatter(markdown: string): SkillFrontmatter {
     return { values: {}, error: `SKILL.md 的 frontmatter 不是合法 YAML：${(error as Error).message.split("\n")[0]}` };
   }
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return { values: {} };
-  return { values: parsed as Record<string, unknown> };
+  const values = parsed as Record<string, unknown>;
+  try {
+    readSkillCuration(values);
+  } catch {
+    return { values, error: "Invalid curated Skill license or metadata" };
+  }
+  return { values };
 }
 
 export function frontmatterString(front: SkillFrontmatter, key: string): string {

@@ -47,15 +47,20 @@ const settingsDirectory = path.join(process.cwd(), 'src/workbench/settings')
 //             **这次只有这一行变**，
 //             对应正向断言见下方 uses the split motion tokens on the gesture options——锁住它不许
 //             退回打包写法（退回=按钮 hover 又变回硬切，而所有快照仍然全绿）。
-const MAIN_NON_MODEL_SECTION_SHA256 = {
+// 2026-09-10 DC24: remove repeated teaching; retain actionable upload/privacy and gesture details.
+// Positive cross-surface coverage: quietDefaults.test.ts.
+const APPROVED_NON_MODEL_SECTION_SHA256 = {
   // 2026-09-04：检查反馈 tone 改为从公共 toast 函数参数推导，避免重复词表 owner。
-  'ProjectLocationSection.tsx': 'c0b2350bda45c5126b69296a0b526fda521feb210a1f6908c5d8ac187a7a0c3a',
+  // 2026-09-09：目录操作错误回现有status；保留共享tone类型，正向回归见下方local feedback。
+  'ProjectLocationSection.tsx': '6fdcf159d9a0e32e72637049fce6d0f9acaeee43369d0c8d2be46d3f7ec81c10',
   // 2026-09-02: AiModelsSection 按渲染边界收口供应商/模型展示名（translateModelDisplayText）。
-  'AiModelsSection.tsx': '991aed2910a81b3cedd005c230f5585efa7cbdc5cd4cb1e309c818b183d42504',
+  // B4: user explicitly removed the global budget setting; the positive absence assertion is below.
+  'AiModelsSection.tsx': '8fee6e8299842d0b52892766a4e94c88a37fb69e0fa9900095f00a4a299e3c7c',
   // 2026-09-03：toggleHost 参数类型从 SettingsHostKey（四值联合）泛化为 string（支持自定义 profile key）；
   // 新增 CustomMcpClientCard UI TODO 注释（底层能力已就绪，UI 面另排样张拍板）。
-  'AutomationPermissionsSection.tsx': '07b3790752d0a64fffdf814e4febcfc5eadebf469332d797c1754a5bce1851ff',
-  'CanvasGestureSection.tsx': '9968732470ea89e6b0f123cf7442cb969385361dbaafea29189e5ceb62cd18bd',
+  // 2026-09-09：声音归通用设置的单一入口，移除这里的旧开关；下方断言保留系统通知策略。
+  'AutomationPermissionsSection.tsx': '5eaf11a9f41fb95a0d6873de082de9e8e5fe62eded8282304c0cd6298a357c40',
+  'CanvasGestureSection.tsx': '6f6fbf6802c6daae381c83838b387623a78ac7de49ffb1e47ee6101db312c95d',
   'AboutSection.tsx': 'b38e0e2265f29ca56da53595e4bb5886bd14799ea3a7f7f36797b33d46eda57f',
 } as const
 
@@ -78,13 +83,21 @@ describe('settings dialog structure', () => {
     expect(settingsSource).toContain('data-settings-tab-id={id}')
     expect(settingsSource).toContain('active.offsetLeft - (nav.clientWidth - active.offsetWidth) / 2')
     expect(settingsSource).toContain("'production-policy'")
-    expect(aiModelsSource).toContain('data-settings-field="hard-budget"')
+    expect(aiModelsSource).not.toContain('data-settings-field="hard-budget"')
   })
 
   it('keeps notification policy in settings instead of duplicating it in task center', () => {
     expect(taskCenterSource).not.toContain('PrefToggle')
     expect(taskCenterSource).not.toContain('writeTaskCenterPrefs')
     expect(settingsSource).toContain('automationPolicy')
+  })
+
+  it('places sound preferences next to telemetry without a second sound control in automation', () => {
+    const automation = readCode(path.join(settingsDirectory, 'AutomationPermissionsSection.tsx'))
+    expect(automation).not.toContain('notificationSound')
+    expect(automation).toContain('settings.systemNotifications')
+    expect(settingsSource).toContain('<AttentionSoundSection />')
+    expect(settingsSource.indexOf('<AttentionSoundSection />')).toBeLessThan(settingsSource.indexOf('<TelemetrySection />'))
   })
 
   it('keeps cross-device folder setup inside File & saving', () => {
@@ -97,12 +110,40 @@ describe('settings dialog structure', () => {
     expect(projectLocationSource).toContain('aria-expanded={showSyncSteps}')
     expect(projectLocationSource).toContain('data-project-location-check-feedback')
     expect(projectLocationSource).toContain('data-feedback-tone')
-    expect(projectLocationSource).toContain('NonNullable<Parameters<typeof toast>[1]>')
+    expect(projectLocationSource).toContain("import type { ToastType } from '../../ui/toast'")
+    expect(projectLocationSource).toContain('tone: ToastType')
     expect(projectLocationSource).toContain('role="status"')
     expect(projectLocationSource).toContain('aria-live="polite"')
     expect(projectLocationSource).toContain('https://www.verysync.com/')
     expect(projectLocationSource).toContain('https://www.jianguoyun.com/s/downloads')
     expect(settingsSource).not.toContain('settings.file.autoSave')
+  })
+
+  it('keeps directory failures in the visible status beside retry controls', () => {
+    expect(projectLocationSource).not.toMatch(/\b(?:toast|showInfoToast|alertDialog)\(/)
+    expect(projectLocationSource).toContain("setCheckFeedback({ tone: 'error', messageKey: ERROR_KEY[result.error] })")
+    expect(projectLocationSource).toContain("setCheckFeedback({ tone: 'error', messageKey: 'settings.file.projectLocationErrorUnknown' })")
+    expect(projectLocationSource).toContain('setCheckFeedback(null)')
+    expect(projectLocationSource).toContain('t(checkFeedback.messageKey)')
+    expect(projectLocationSource).toContain('void checkDirectory()')
+    for (const action of ['pick', 'reveal', 'reset']) expect(projectLocationSource).toContain(`void run(api.${action})`)
+    expect(projectLocationSource).toContain('disabled={unavailable || managed}')
+    expect(projectLocationSource).toContain('if (!result.canceled) setLocation(result.location)')
+  })
+
+  it('keeps each of the five non-model sections in its own settings tab', () => {
+    const sections = {
+      file: 'ProjectLocationSection', ai: 'AiModelsSection', automation: 'AutomationPermissionsSection',
+      general: 'CanvasGestureSection', about: 'AboutSection',
+    }
+    for (const [tab, section] of Object.entries(sections)) {
+      const start = settingsSource.indexOf(`tab === '${tab}' ? (`)
+      expect(start, tab).toBeGreaterThan(-1)
+      const next = settingsSource.indexOf(") : tab === '", start + 1)
+      const content = settingsSource.slice(start, next === -1 ? undefined : next)
+      expect(content, `${section} belongs to ${tab}`).toContain(`<${section}`)
+      expect(settingsSource.match(new RegExp(`<${section}\\b`, 'g')), section).toHaveLength(1)
+    }
   })
 
   it('keeps model management in one settings host', () => {
@@ -220,8 +261,8 @@ describe('settings dialog structure', () => {
     expect(gestureSource, '打包成一个值的旧 token 会让 transition-duration 非法、计算值 0s').not.toContain('--nomi-transition-fast')
   })
 
-  it('keeps all five non-model sections byte-for-byte at the origin/main baseline', () => {
-    for (const [fileName, expectedHash] of Object.entries(MAIN_NON_MODEL_SECTION_SHA256)) {
+  it('keeps all five non-model sections at their explicitly approved content baseline', () => {
+    for (const [fileName, expectedHash] of Object.entries(APPROVED_NON_MODEL_SECTION_SHA256)) {
       const source = fs.readFileSync(path.join(settingsDirectory, fileName), 'utf8').replaceAll('\r\n', '\n')
       expect(createHash('sha256').update(source).digest('hex'), fileName).toBe(expectedHash)
     }

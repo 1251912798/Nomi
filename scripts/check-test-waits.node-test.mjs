@@ -3,7 +3,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
-import { asyncWaitForFunctionLines, collectTestFiles, unownedLaneCleanupLines } from './check-test-waits.mjs'
+import { builtArtifactImportLines, asyncWaitForFunctionLines, collectTestFiles, unownedLaneCleanupLines } from './check-test-waits.mjs'
 
 test('lane cleanup rejects rm-first hooks and separate or unawaited close hooks', () => {
   const source = [
@@ -86,4 +86,45 @@ test('discovers real walk/e2e/helper scripts and unit tests while skipping gener
   } finally {
     fs.rmSync(root, { recursive: true, force: true })
   }
+})
+
+test('station waits reject all three incidents, aliases and arithmetic, but accept budget helpers', async () => {
+  const { stationWaitHits } = await import('./check-test-waits.mjs')
+  const source = [
+    'await page.waitForFunction(() => ready, null, { timeout: 180_000 })',
+    'await approval.toBeVisible({ timeout: 15_000 })',
+    'await button.click({ timeout: 30_000 })',
+    'const limit = 30 * 1000; await expect.poll(sample, { timeout: limit }).toBe(true)',
+    'await page.waitForFunction(sample, null, { timeout: stationTimeout(budget) })',
+    'await approval.toBeVisible({ timeout: 4999 })',
+    '// await approval.toBeVisible({ timeout: 9000 })',
+  ].join('\n')
+  assert.deepEqual(stationWaitHits(source, 'tests/ux/example.walk.mjs').map(h => h.line), [1, 2, 3, 4])
+  assert.deepEqual(stationWaitHits(source, 'src/example.ts'), [])
+})
+
+
+test('test module imports reject build output in static, re-export, dynamic and require forms', () => {
+  const source = [
+    "import { tools } from '../../dist-electron/agentLane/laneToolCatalog.js'",
+    "export * from '../dist/index.js'",
+    "const tools = await import(\n '../../dist-electron/tools.mjs')",
+    "const tools = require('../../dist/tools.cjs')",
+    "const tools = await tsImport('../../dist/tools.js', import.meta.url)",
+    "const tools = tsxRequire('../../nested/../dist-electron/tools.js', import.meta.url)",
+    "import '/checkout/dist/index.js'",
+  ].join('\n')
+  assert.deepEqual([...builtArtifactImportLines(source, 'tests/ux/support.mjs')], [0, 1, 2, 4, 5, 6, 7])
+})
+
+test('source imports, upstream package dist, comments and quoted examples are not build dependencies', () => {
+  const source = [
+    "import { tools } from '../../electron/agentLane/laneToolCatalog.ts'",
+    "import { tools } from '@vendor/sdk/dist/index.js'",
+    "// import '../../dist/index.js'",
+    'const example = "import(\\\"../../dist/index.js\\\")"',
+    "const tools = await tsImport('../../electron/agentLane/laneCodingTools.mts', import.meta.url)",
+  ].join('\n')
+  assert.equal(builtArtifactImportLines(source, 'tests/ux/support.mjs').size, 0)
+  assert.equal(builtArtifactImportLines("import '../dist/index.js'", 'scripts/build.mjs').size, 0)
 })

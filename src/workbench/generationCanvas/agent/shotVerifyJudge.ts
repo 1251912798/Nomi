@@ -59,8 +59,6 @@ export function makeShotVerifyDeps(projectIdInput?: string): ShotVerifyDeps {
         prompt,
         displayPrompt: prompt.slice(0, 40),
         ...(projectId ? { projectId } : {}),
-        skillKey: 'workbench.shot-verify',
-        skillName: '镜级画面校验',
         attachments: [{ url: frameImageUrl, contentType: 'image/png', fileName: 'shot-frame.png', kind: 'image' }],
         ...(attachmentClaim ? { attachmentClaims: [{ ...attachmentClaim, version: 1 }] } : {}),
       })

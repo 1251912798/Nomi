@@ -261,6 +261,43 @@ describe('capabilityCore/mcpConfig', () => {
     expect(verifyMcpClient('claude', piEntry.env[MCP_CLIENT_PROOF_ENV])).toBeNull()
   })
 
+  it('workbuddy preserves existing servers and official fields through install and uninstall', () => {
+    const fixture = JSON.parse(fs.readFileSync('tests/fixtures/standard-formats/mcp/workbuddy.json', 'utf8'))
+    const configPath = path.join(homeDir, '.workbuddy', 'mcp.json')
+    const internalPath = path.join(homeDir, '.workbuddy', '.mcp.json')
+    expect(readMcpInfo(0).clients.workbuddy.appInstalled).toBe(false)
+    fs.mkdirSync(path.dirname(configPath), { recursive: true })
+    const before = {
+      ...fixture,
+      preferences: { keep: true },
+      mcpServers: {
+        ...fixture.mcpServers,
+        chatcut_desktop: { command: '/fixture/chatcut', env: { CHATCUT_FIXTURE: 'preserve-me' } },
+      },
+    }
+    fs.writeFileSync(configPath, JSON.stringify(before))
+    fs.writeFileSync(internalPath, '{"internal":"do-not-touch"}')
+    expect(readMcpInfo(0).clients.workbuddy.appInstalled).toBe(true)
+    expect(readMcpInfo(0).clients.workbuddy.installed).toBe(false)
+    installMcp('workbuddy')
+    const after = JSON.parse(fs.readFileSync(configPath, 'utf8'))
+    const { nomi, ...others } = after.mcpServers
+    expect(others).toEqual(before.mcpServers)
+    expect(after.preferences).toEqual(before.preferences)
+    expect(JSON.parse(fs.readFileSync(`${configPath}.nomi-backup`, 'utf8'))).toEqual(before)
+    const info = readMcpInfo(0).clients.workbuddy
+    expect(info.installed).toBe(true)
+    expect(info.configPath).toBe(configPath)
+    expect(nomi).toEqual(JSON.parse(info.snippet).mcpServers.nomi)
+    expect(verifyMcpClient(nomi.env[MCP_CLIENT_ENV], nomi.env[MCP_CLIENT_PROOF_ENV])).toBe('workbuddy')
+    expect(verifyMcpClient('claude', nomi.env[MCP_CLIENT_PROOF_ENV])).toBeNull()
+    expect(readMcpInfo(0).clients.claude.installed).toBe(false)
+    uninstallMcp('workbuddy')
+    expect(JSON.parse(fs.readFileSync(configPath, 'utf8'))).toEqual(before)
+    expect(fs.readFileSync(internalPath, 'utf8')).toBe('{"internal":"do-not-touch"}')
+    expect(readMcpInfo(0).clients.workbuddy.installed).toBe(false)
+  })
+
   it('binds each installed entry to its client instead of trusting a renamed label', () => {
     installMcp('cursor')
     const cursorPath = path.join(homeDir, '.cursor', 'mcp.json')
@@ -440,13 +477,13 @@ describe('capabilityCore/mcpConfig', () => {
 
 describe('custom MCP client profiles', () => {
   it('registers a new custom profile and lists it', () => {
-    const configuredPath = path.join(homeDir, 'workbuddy', 'mcp.json')
+    const configuredPath = path.join(homeDir, 'sample-assistant', 'mcp.json')
     fs.mkdirSync(path.dirname(configuredPath), { recursive: true })
-    const result = registerCustomMcpProfile({ key: 'workbuddy', label: 'WorkBuddy', format: 'json', configPath: configuredPath })
-    expect(result).toMatchObject({ key: 'workbuddy', label: 'WorkBuddy', isBuiltin: false, detected: false })
+    const result = registerCustomMcpProfile({ key: 'sample-assistant', label: 'Sample Assistant', format: 'json', configPath: configuredPath })
+    expect(result).toMatchObject({ key: 'sample-assistant', label: 'Sample Assistant', isBuiltin: false, detected: false })
     const profiles = listCustomMcpProfiles()
     expect(profiles).toHaveLength(1)
-    expect(profiles[0]).toMatchObject({ key: 'workbuddy', label: 'WorkBuddy' })
+    expect(profiles[0]).toMatchObject({ key: 'sample-assistant', label: 'Sample Assistant' })
   })
 
   it('rejects registration of a builtin key', () => {
@@ -457,9 +494,9 @@ describe('custom MCP client profiles', () => {
 
   it('removes a registered custom profile', () => {
     const configuredPath = path.join(homeDir, 'wb.json')
-    registerCustomMcpProfile({ key: 'workbuddy', label: 'WorkBuddy', format: 'json', configPath: configuredPath })
+    registerCustomMcpProfile({ key: 'sample-assistant', label: 'Sample Assistant', format: 'json', configPath: configuredPath })
     expect(listCustomMcpProfiles()).toHaveLength(1)
-    const removed = removeCustomMcpProfile('workbuddy')
+    const removed = removeCustomMcpProfile('sample-assistant')
     expect(removed).toBe(true)
     expect(listCustomMcpProfiles()).toHaveLength(0)
   })
@@ -470,22 +507,22 @@ describe('custom MCP client profiles', () => {
   })
 
   it('records a detected external client with a derived key and empty path', () => {
-    recordDetectedMcpClient('WorkBuddy')
+    recordDetectedMcpClient('Sample Assistant')
     const profiles = listCustomMcpProfiles()
     expect(profiles).toHaveLength(1)
-    expect(profiles[0]).toMatchObject({ key: 'workbuddy', label: 'WorkBuddy', detected: true, configPath: '' })
+    expect(profiles[0]).toMatchObject({ key: 'sample-assistant', label: 'Sample Assistant', detected: true, configPath: '' })
   })
 
   it('is idempotent for repeated detection of the same name', () => {
-    recordDetectedMcpClient('WorkBuddy')
-    recordDetectedMcpClient('WorkBuddy')
+    recordDetectedMcpClient('Sample Assistant')
+    recordDetectedMcpClient('Sample Assistant')
     expect(listCustomMcpProfiles()).toHaveLength(1)
   })
 
   it('does not overwrite an already-registered profile with the same key on re-detection', () => {
     const configuredPath = path.join(homeDir, 'wb.json')
-    registerCustomMcpProfile({ key: 'workbuddy', label: 'WorkBuddy', format: 'json', configPath: configuredPath })
-    recordDetectedMcpClient('WorkBuddy')
+    registerCustomMcpProfile({ key: 'sample-assistant', label: 'Sample Assistant', format: 'json', configPath: configuredPath })
+    recordDetectedMcpClient('Sample Assistant')
     const profiles = listCustomMcpProfiles()
     expect(profiles).toHaveLength(1)
     expect(profiles[0]).toMatchObject({ detected: false, configPath: configuredPath })
@@ -493,18 +530,18 @@ describe('custom MCP client profiles', () => {
 
   it('signs and verifies a custom client via HMAC (HMAC 安全模型未放松)', () => {
     // 自定义客户端通过 signMcpClient 签名，proof 绑定到该 key，不能冒用其他 key。
-    const proof = signMcpClient('workbuddy')
+    const proof = signMcpClient('sample-assistant')
     expect(proof).toBeTruthy()
-    expect(verifyMcpClient('workbuddy', proof)).toBe('workbuddy')
+    expect(verifyMcpClient('sample-assistant', proof)).toBe('sample-assistant')
     expect(verifyMcpClient('claude', proof)).toBeNull()
     expect(verifyMcpClient('cursor', proof)).toBeNull()
   })
 
   it('rejects a detected client from registering over an existing profile', () => {
     const configuredPath = path.join(homeDir, 'wb.json')
-    registerCustomMcpProfile({ key: 'workbuddy', label: 'WorkBuddy', format: 'json', configPath: configuredPath })
+    registerCustomMcpProfile({ key: 'sample-assistant', label: 'Sample Assistant', format: 'json', configPath: configuredPath })
     // 再次检测同名工具，现有注册的 profile 应被保留，不被 detected=true 条目覆盖。
-    recordDetectedMcpClient('WorkBuddy')
+    recordDetectedMcpClient('Sample Assistant')
     const profiles = listCustomMcpProfiles()
     expect(profiles).toHaveLength(1)
     expect(profiles[0].detected).toBe(false)

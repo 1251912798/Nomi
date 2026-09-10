@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { resolvePendingCanvasFocus, type PendingCanvasFocus } from './focusViewportRecovery'
+import { resolveCanvasFocusZoom, resolvePendingCanvasFocus, type PendingCanvasFocus } from './focusViewportRecovery'
 
 const node = (id: string, categoryId = 'shots') => ({
   id,
@@ -34,5 +34,18 @@ describe('resolvePendingCanvasFocus', () => {
 
   it('does not restore during a category transition', () => {
     expect(resolvePendingCanvasFocus(pending, 'assets', [], [])).toEqual({ type: 'wait' })
+  })
+})
+
+describe('readable node focus after overview', () => {
+  it('raises a 20% overview to actual size for an ordinary node', () => {
+    expect(resolveCanvasFocusZoom({ width: 300, height: 180 }, { width: 900, height: 700 }, 0.2)).toBe(1)
+  })
+  it('fits oversized and portrait nodes rather than cutting their aspect ratio', () => {
+    expect(resolveCanvasFocusZoom({ width: 300, height: 1200 }, { width: 900, height: 700 }, 0.2)).toBeCloseTo(560 / 1200)
+    expect(resolveCanvasFocusZoom({ width: 1800, height: 200 }, { width: 900, height: 700 }, 2)).toBeCloseTo(0.4)
+  })
+  it('keeps an already readable zoom when the node still fits', () => {
+    expect(resolveCanvasFocusZoom({ width: 200, height: 150 }, { width: 900, height: 700 }, 2)).toBe(2)
   })
 })

@@ -13,6 +13,8 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import ts from 'typescript'
+import { execFileSync } from 'node:child_process'
+import { createHash } from 'node:crypto'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 
@@ -24,7 +26,7 @@ export function collectTestFiles(root = repoRoot) {
       if (entry.name === 'node_modules' || entry.name === 'dist' || entry.name === 'dist-electron') continue
       const full = path.join(dir, entry.name)
       if (entry.isDirectory()) walk(full)
-      else if (/\.(?:[cm]?[jt]sx?)$/.test(entry.name) && (full.startsWith(path.join(root, 'tests') + path.sep) || /\.(?:test|spec|node-test|walk|e2e)\./.test(entry.name))) files.push(full)
+      else if (/\.(?:[cm]?[jt]sx?)$/.test(entry.name) && (full.startsWith(path.join(root, 'tests') + path.sep) || /\.(?:test|spec|node-test|walk|e2e)\./.test(entry.name) || /sweep/.test(entry.name))) files.push(full)
     }
   }
   for (const dir of ['src', 'electron', 'evals', 'scripts', 'tests']) walk(path.join(root, dir))
@@ -147,7 +149,33 @@ export function unownedLaneCleanupLines(source, file) {
   return lines
 }
 
+// Test module declarations must resolve from a clean checkout, before any app build.
+export function builtArtifactImportLines(source, file) {
+  const lines = new Set()
+  if (!file.replaceAll('\\', '/').startsWith('tests/')) return lines
+  const parsed = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true)
+  const visit = (node) => {
+    let specifier
+    if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) specifier = node.moduleSpecifier
+    if (ts.isCallExpression(node) && (node.expression.kind === ts.SyntaxKind.ImportKeyword ||
+        (ts.isIdentifier(node.expression) && ['require', 'tsImport', 'tsxRequire'].includes(node.expression.text)))) specifier = node.arguments[0]
+    if (specifier && (ts.isStringLiteral(specifier) || ts.isNoSubstitutionTemplateLiteral(specifier)) &&
+        /^(?:\.\.?[/\\]|[/\\]|file:)/.test(specifier.text) &&
+        /(?:^|[/\\])dist(?:-electron)?[/\\]/.test(specifier.text)) {
+      lines.add(parsed.getLineAndCharacterOfPosition(node.getStart(parsed)).line)
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(parsed)
+  return lines
+}
+
 const RULES = [
+  {
+    id: 'built-artifact-test-import',
+    label: '测试模块必须从源码加载，禁止 import dist/ 或 dist-electron/',
+    test: (_line, context) => context.builtArtifactImportLines.has(context.lineIndex),
+  },
   {
     id: 'unowned-lane-directory-cleanup',
     label: 'lane 目录清理必须由共享 fixture owner 等待全部资源 close 后执行，禁止独立 after/afterEach 删除',
@@ -243,23 +271,109 @@ const WALLCLOCK_BUDGET_BASELINE = new Map([
   ['electron/capabilityCore/shotVerifyOrchestrate.test.ts', 2],
 ])
 
+// Station waits share the existing R18 gate. AST parsing excludes prose and comments.
+export function stationWaitHits(source, file) {
+  if (!/^(?:tests\/ux\/|scripts\/.*sweep|evals\/.*(?:walk|sweep))/.test(file)) return []
+  if (/\.(?:node-test|test|spec)\./.test(file)) return []
+  const parsed = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true)
+  const definitions = new Map(), hits = []
+  const collect = node => {
+    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer) definitions.set(node.name.text, node.initializer)
+    ts.forEachChild(node, collect)
+  }
+  collect(parsed)
+  const number = (node, seen = new Set()) => {
+    if (!node) return NaN
+    if (ts.isNumericLiteral(node)) return Number(node.text)
+    if (ts.isParenthesizedExpression(node)) return number(node.expression, seen)
+    if (ts.isIdentifier(node) && definitions.has(node.text) && !seen.has(node.text)) {
+      return number(definitions.get(node.text), new Set([...seen, node.text]))
+    }
+    if (ts.isBinaryExpression(node)) {
+      const a = number(node.left, seen), b = number(node.right, seen)
+      switch (node.operatorToken.kind) {
+        case ts.SyntaxKind.AsteriskToken: return a * b
+        case ts.SyntaxKind.PlusToken: return a + b
+        case ts.SyntaxKind.SlashToken: return a / b
+        case ts.SyntaxKind.MinusToken: return a - b
+      }
+    }
+    return NaN
+  }
+  const nameOf = node => ts.isIdentifier(node) || ts.isStringLiteral(node) ? node.text
+    : ts.isPropertyAccessExpression(node) ? node.name.text
+    : ts.isElementAccessExpression(node) && ts.isStringLiteral(node.argumentExpression) ? node.argumentExpression.text : ''
+  const visit = node => {
+    if (ts.isCallExpression(node)) {
+      const name = nameOf(node.expression)
+      const waits = /^(?:waitFor|toBe|toHave|toContain|poll$|click$|dblclick$|fill$|press$|selectText$|setDefaultTimeout$|clickOrFail$|proveProbe$|expectVisible$|expectHidden$|expectCount$|expectText$|expectAbsent$)/.test(name)
+      if (waits) {
+        const values = []
+        for (const argument of node.arguments) {
+          if (ts.isObjectLiteralExpression(argument)) {
+            for (const prop of argument.properties) {
+              if (ts.isPropertyAssignment(prop) && nameOf(prop.name) === 'timeout') values.push(prop.initializer)
+              if (ts.isShorthandPropertyAssignment(prop) && prop.name.text === 'timeout') values.push(prop.name)
+            }
+          } else if (['waitForTimeout', 'setDefaultTimeout', 'proveProbe', 'expectVisible', 'expectHidden', 'expectCount', 'expectText', 'expectAbsent'].includes(name)) values.push(argument)
+        }
+        if (values.some(value => number(value) >= 5000)) hits.push({
+          line: parsed.getLineAndCharacterOfPosition(node.getStart(parsed)).line + 1,
+          text: node.getText(parsed).replace(/\s+/g, ' '),
+        })
+      }
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(parsed)
+  return hits
+}
+
+// Keep debt identity stable without copying whole callbacks into the baseline.
+const stationKey = (file, text) => JSON.stringify([file, createHash('sha256').update(text).digest('hex')])
+const flattenStationBaseline = baseline => Object.fromEntries(Object.entries(baseline).flatMap(([file, entries]) =>
+  Object.entries(entries).map(([fingerprint, count]) => [JSON.stringify([file, fingerprint]), count])))
+
 export function main() {
   const hits = []
+  const baseline = flattenStationBaseline(JSON.parse(fs.readFileSync(path.join(repoRoot, 'scripts/station-waits-baseline.json'), 'utf8')))
+  const stationHits = []
   for (const file of collectTestFiles()) {
     const raw = fs.readFileSync(file, 'utf8')
+    stationHits.push(...stationWaitHits(raw, path.relative(repoRoot, file)).map(hit => ({ ...hit, file: path.relative(repoRoot, file) })))
     const source = stripComments(raw)
     const context = { clockDeltaNames: collectClockDeltaNames(source), spiesOnFsRead: FS_READ_SPY.test(source), asyncWaitLines: asyncWaitForFunctionLines(raw, file),
+      builtArtifactImportLines: builtArtifactImportLines(raw, path.relative(repoRoot, file).replaceAll(path.sep, '/')),
       unownedLaneCleanupLines: unownedLaneCleanupLines(raw, path.relative(repoRoot, file).replaceAll(path.sep, '/')) }
     const unitTest = /\.test\.(tsx?|mts|cts|mjs)$/.test(file)
     source.split('\n').forEach((line, i) => {
       context.lineIndex = i
       for (const rule of RULES) {
-        if (!unitTest && !['async-waitforfunction-predicate', 'unowned-lane-directory-cleanup'].includes(rule.id)) continue
+        if (!unitTest && !['async-waitforfunction-predicate', 'unowned-lane-directory-cleanup', 'built-artifact-test-import'].includes(rule.id)) continue
         if (rule.test(line, context)) hits.push({ rule, file, line: i + 1, text: line.trim().slice(0, 120) })
       }
     })
   }
 
+  const actual = new Map()
+  for (const hit of stationHits) {
+    const key = stationKey(hit.file, hit.text)
+    actual.set(key, (actual.get(key) ?? 0) + 1)
+  }
+  const stationErrors = []
+  // A future PR cannot add or enlarge debt entries, even while deleting other debt.
+  const base = execFileSync('git', ['merge-base', 'HEAD', 'origin/main'], { cwd: repoRoot, encoding: 'utf8' }).trim()
+  const baseFiles = execFileSync('git', ['ls-tree', '-z', '--name-only', base, 'scripts/station-waits-baseline.json'], { cwd: repoRoot, encoding: 'utf8' }).trim()
+  if (baseFiles) {
+    const previous = flattenStationBaseline(JSON.parse(execFileSync('git', ['show', `${base}:scripts/station-waits-baseline.json`], { cwd: repoRoot, encoding: 'utf8' })))
+    for (const [key, count] of Object.entries(baseline)) if (count > (previous[key] ?? 0)) stationErrors.push(`station baseline growth: ${key}`)
+  }
+  for (const [key, count] of actual) if (count > (baseline[key] ?? 0)) stationErrors.push(`${key}: ${count} > baseline ${baseline[key] ?? 0}`)
+  for (const [key, count] of Object.entries(baseline)) if ((actual.get(key) ?? 0) !== count) stationErrors.push(`stale station baseline: ${key}`)
+  for (const error of stationErrors) console.log(`[station-fixed-timeout] ${error}`)
+  for (const hit of stationHits) if ((actual.get(stationKey(hit.file, hit.text)) ?? 0) > (baseline[stationKey(hit.file, hit.text)] ?? 0))
+    console.log(`  ${hit.file}:${hit.line} ${hit.text}`)
+  console.log(`Station wait baseline: ${Object.values(baseline).reduce((a, b) => a + b, 0)} occurrences; new/stale: ${stationErrors.length}`)
   const budgetHits = hits.filter((hit) => hit.rule.id === 'wallclock-budget-assertion')
   const hardHits = hits.filter((hit) => hit.rule.id !== 'wallclock-budget-assertion')
   const budgetByFile = new Map()
@@ -277,7 +391,7 @@ export function main() {
     ([relative, allowed]) => (budgetByFile.get(relative)?.length ?? 0) < allowed,
   )
 
-  if (hardHits.length > 0 || budgetViolations.length > 0 || staleBaseline.length > 0) {
+  if (stationErrors.length > 0 || hardHits.length > 0 || budgetViolations.length > 0 || staleBaseline.length > 0) {
     console.log('✖ 测试等待门岗未通过：测试不许空等待、私有墙钟等待、墙钟判分或无 owner 的 lane 清理')
     for (const hit of hardHits.slice(0, 20)) {
       console.log(`    ${path.relative(repoRoot, hit.file).replaceAll(path.sep, '/')}:${hit.line}  [${hit.rule.id}]  ${hit.text}`)
@@ -291,7 +405,7 @@ export function main() {
       console.log(`    ${relative}  [wallclock-budget-assertion]  基线陈旧：登记 ${allowed} 处、实际 ${actual} 处`)
       console.log('        → 好事，把 WALLCLOCK_BUDGET_BASELINE 里的数字降到实际值（棘轮只减不增）')
     }
-    if (hardHits.some((hit) => !['fs-read-spy-path-filter', 'async-waitforfunction-predicate', 'unowned-lane-directory-cleanup'].includes(hit.rule.id))) {
+    if (hardHits.some((hit) => !['fs-read-spy-path-filter', 'async-waitforfunction-predicate', 'unowned-lane-directory-cleanup', 'built-artifact-test-import'].includes(hit.rule.id))) {
       console.log('  → 等后台编排链请 import electron/productionRun/productionRunTestHelpers 的 waitForProduction')
       console.log('    （60s 安全网只拦真死锁/真回归，不给磁盘排队计时；来龙去脉见 docs/plan/2026-08-25-fix-flaky-production-run-tests.md）')
     }

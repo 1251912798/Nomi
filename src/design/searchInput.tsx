@@ -20,6 +20,11 @@ export type DesignSearchInputProps = {
   ariaLabel?: string
   /** 'sm'(h-[30px] 紧凑面板) | 'md'(h-9 宽松页面)。默认 sm。 */
   size?: 'sm' | 'md'
+  /**
+   * 按键透传——给「回车即执行」这类用法（素材库找参考的回车搜索）。
+   * 加在共享组件上而不是让调用方手搓一个输入框（否则就是又长一份并行版，违 P1）。
+   */
+  onKeyDown?: React.KeyboardEventHandler<HTMLInputElement>
   className?: string
 }
 
@@ -29,15 +34,14 @@ export function DesignSearchInput({
   placeholder,
   ariaLabel,
   size = 'sm',
+  onKeyDown,
   className,
 }: DesignSearchInputProps): JSX.Element {
   return (
     <div
       className={cn(
         'inline-flex items-center gap-1.5 rounded-full border border-nomi-line bg-nomi-paper text-nomi-ink-40',
-        'transition-[border-color,box-shadow] duration-150',
-        'focus-within:border-[color-mix(in_oklch,var(--nomi-accent)_55%,transparent)]',
-        'focus-within:shadow-[0_0_0_3px_color-mix(in_oklch,var(--nomi-accent)_10%,transparent)]',
+        'transition-colors duration-150',
         size === 'md' ? 'h-9 px-3' : 'h-[30px] px-2.5',
         className,
       )}
@@ -49,6 +53,7 @@ export function DesignSearchInput({
         placeholder={placeholder}
         aria-label={ariaLabel ?? placeholder}
         onChange={(event) => onChange(event.currentTarget.value)}
+        onKeyDown={onKeyDown}
         className="flex-1 min-w-0 border-0 bg-transparent outline-none text-body-sm text-nomi-ink placeholder:text-nomi-ink-30 [&::-webkit-search-cancel-button]:hidden"
       />
     </div>

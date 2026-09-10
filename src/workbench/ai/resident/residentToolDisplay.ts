@@ -1,7 +1,5 @@
-import { resolveCapabilityAlias } from '../../../../electron/shared/agentCapabilities/registry'
+import { resolveModelToolCapabilityId } from '../../../../electron/shared/agentCapabilities/modelFacingToolRegistry'
 import type { TranslationKey } from '../../../i18n/translationKey'
-import type { ProjectAgentStatus } from '../../../../electron/shared/projectAgentContracts'
-import { normalizeResidentToolProjection, redactToolArguments, type ResidentToolProjection } from './residentToolProjection'
 import type { ResidentApprovalDetail, ResidentProposalData } from './residentProposalDisplay'
 
 type Translate = (key: string, options?: Record<string, unknown>) => string
@@ -47,17 +45,21 @@ function toolIdentity(name: string, args?: unknown): string {
   // MCP says `nomi_timeline_edit` / `nomi_document_edit` — and matching those by hand is how the
   // recognisers drifted in the first place. The canonical contract id (`timeline.write`,
   // `document.write`, …) is the one name that does not move.
-  return `${canonicalCapabilityId(name)} ${name} ${operation}`.toLowerCase()
+  return `${canonicalCapabilityId(name, args)} ${name} ${operation}`.toLowerCase()
 }
 
-function canonicalCapabilityId(name: string): string {
-  return resolveCapabilityAlias(name)?.contract.id ?? ''
+function canonicalCapabilityId(name: string, args?: unknown): string {
+  return resolveModelToolCapabilityId(name, args) ?? ''
+}
+
+function isStoryboardPlanWrite(name: string, args?: unknown): boolean {
+  return /(?:^|\s)(?:propose_storyboard_plan|patch_shots)(?:$|\s)/.test(toolIdentity(name, args))
 }
 
 /** True for canvas *creation* only. A delete is not a write here — it has its own, louder treatment. */
 export function isCanvasWriteToolName(name: string, args?: unknown): boolean {
   const normalized = toolIdentity(name, args)
-  if (isCanvasDeleteToolName(name, args)) return false
+  if (isCanvasDeleteToolName(name, args) || isStoryboardPlanWrite(name, args)) return false
   return normalized.includes('create_canvas_nodes') || normalized.includes('canvas.write') || normalized.includes('canvas_nodes')
 }
 
@@ -67,9 +69,10 @@ export function isCanvasWriteToolName(name: string, args?: unknown): boolean {
  * the row for a tool nobody could identify. A read's honest effect line is that nothing changes.
  */
 export function isReadOnlyToolName(name: string, args?: unknown): boolean {
+  if (name === 'read' || name === 'ls' || name === 'grep' || name === 'find') return true
   // When the registry owns this name its contract id is authoritative: `propose_edit_plan` is a
   // `timeline.read` despite the word "edit" in the alias, and no word-matching gets that right.
-  const canonical = canonicalCapabilityId(name)
+  const canonical = canonicalCapabilityId(name, args)
   if (canonical) return canonical.endsWith('.read')
   const normalized = toolIdentity(name, args)
   if (/write|edit|delete|create|apply|maintenance/.test(normalized)) return false
@@ -211,7 +214,15 @@ function isAllArtifactDelivery(args: unknown): boolean {
 }
 
 export function readableToolName(t: Translate, name: string, args?: unknown): string {
+  if (name === 'nomi_request_tools') return t('agentResident.toolPrepareTools')
+  if (name === 'read' || name === 'ls') return t('agentResident.toolFileRead')
+  if (name === 'grep' || name === 'find') return t('agentResident.toolFileSearch')
+  if (name === 'edit' || name === 'write') return t('agentResident.toolFileWrite')
+  if (name === 'bash') return t('agentResident.toolShell')
   const normalized = toolIdentity(name, args)
+  if (isStoryboardPlanWrite(name, args)) return t('agentResident.toolStoryboardWrite')
+  if (normalized.includes('arrange_storyboard_to_timeline')) return t('agentResident.toolTimelineAdd')
+  if (normalized.includes('create_canvas_nodes') && !isAllArtifactDelivery(args)) return t('agentResident.toolCanvasCreate')
   if (isCanvasDeleteToolName(name, args)) return t('agentResident.toolCanvasDelete')
   if (normalized.includes('append_to_end') || normalized.includes('document_append')) return t('agentResident.toolDocumentWrite')
   if (isCanvasWriteToolName(name, args) && isAllArtifactDelivery(args)) return t('agentResident.toolCanvasWriteArtifact')
@@ -238,6 +249,8 @@ export function readableToolName(t: Translate, name: string, args?: unknown): st
 }
 
 export function readableToolSummary(t: Translate, name: string, args?: unknown): string {
+  if (isStoryboardPlanWrite(name, args)) return t('agentResident.toolStoryboardWriteSummary')
+  if (isReadOnlyToolName(name, args)) return t('agentResident.toolReadNoChange')
   const normalized = toolIdentity(name, args)
   const record = args && typeof args === 'object' ? args as Record<string, unknown> : {}
   const patch = asRecord(record.patch) ?? {}
@@ -280,6 +293,8 @@ export function readableToolSummary(t: Translate, name: string, args?: unknown):
 export function readableToolPreview(t: Translate, name: string, args?: unknown): string {
   const normalized = toolIdentity(name, args)
   const record = args && typeof args === 'object' ? args as Record<string, unknown> : {}
+  if (isStoryboardPlanWrite(name, args)) return Array.isArray(record.shots) && record.shots.length
+    ? t('agentResident.toolShotCount', { count: record.shots.length }) : t('agentResident.toolStoryboardWriteSummary')
   if (normalized.includes('append_to_end') || normalized.includes('document.write') || normalized.includes('document_edit') || normalized.includes('document_append')) return typeof record.content === 'string' && record.content.trim() ? t('agentResident.toolContentCount', { count: 1 }) : t('agentResident.toolDocumentWriteSummary')
   if (isCanvasDeleteToolName(name, args)) {
     const count = Array.isArray(record.nodeIds) ? record.nodeIds.length : 0
@@ -348,7 +363,8 @@ function readableProposalParameters(t: Translate, record: Record<string, unknown
 
 export function proposalForTool(t: Translate, name: string, args?: unknown): ResidentProposalData | undefined {
   const record = args && typeof args === 'object' && !Array.isArray(args) ? args as Record<string, unknown> : {}
-  const generationLike = isGenerationToolName(name) || isCanvasWriteToolName(name, record)
+  const storyboardPlan = isStoryboardPlanWrite(name, record)
+  const generationLike = isGenerationToolName(name) || isCanvasWriteToolName(name, record) || storyboardPlan
   if (!generationLike) return undefined
   const nodes = Array.isArray(record.nodes) ? record.nodes.filter((node): node is Record<string, unknown> => Boolean(node && typeof node === 'object' && !Array.isArray(node))) : []
   const shots = Array.isArray(record.shots) ? record.shots.map(asRecord).filter((shot): shot is Record<string, unknown> => Boolean(shot)) : []
@@ -401,7 +417,7 @@ export function proposalForTool(t: Translate, name: string, args?: unknown): Res
   fields.push({ label: t('agentResident.proposalEstimate'), value: readableEstimate(t, record), kind: 'estimate' })
   fields.push({ label: t('agentResident.proposalTarget'), value: readableToolTarget(t, name, record), kind: 'target' })
   if (referenceCount) fields.push({ label: t('agentResident.referencesLabel'), value: t('agentResident.proposalReferences', { count: referenceCount }), kind: 'references' })
-  fields.push({ label: t('agentResident.proposalBoundary'), value: isCanvasWriteToolName(name, record) ? t('agentResident.boundaryCanvasOnly') : t('agentResident.boundaryGeneration'), kind: 'boundary' })
+  fields.push({ label: t('agentResident.proposalBoundary'), value: storyboardPlan ? t('agentResident.toolStoryboardWriteSummary') : isCanvasWriteToolName(name, record) ? t('agentResident.boundaryCanvasOnly') : t('agentResident.boundaryGeneration'), kind: 'boundary' })
   return { fields }
 }
 
@@ -456,25 +472,6 @@ export function readableToolDetailRows(t: Translate, name: string, args?: unknow
   if (!rows.length) rows.push({ label: t('agentResident.toolDetailLabel'), value: readableToolSummary(t, name, args), kind: 'technical' })
   return rows
 }
-
-export function readableToolResult(t: Translate, status: ProjectAgentStatus): string {
-  if (status === 'done') return t('agentResident.toolCompleted')
-  if (status === 'failed') return t('agentResident.toolFailed')
-  if (status === 'declined') return t('agentResident.toolDeclined')
-  if (status === 'stopped') return t('agentResident.toolStopped')
-  if (status === 'proposed') return t('agentResident.waitingApproval')
-  if (status === 'running') return t('agentResident.toolRunning')
-  return t('agentResident.toolPendingSummary')
-}
-
-/**
- * 一次调用的**结果**，由运行时终态回执给出（`AgentsChatResponseDto.toolCalls[]`）。
- *
- * 这两个字段此前在 `useAgentPanelV4Actions` 里被整包丢掉：缓存投影只按「工具名 + 入参」
- * 重算一遍描述串，于是收据的「输出」栏印的是**这次调用打算做什么**，而不是它做成了没有。
- * 失败那一路后果更重——用户连着看到六条「⚠ <1s」，一个字的原因都没有。
- */
-export type ResidentToolOutcome = Readonly<{ result?: unknown; error?: string }>
 
 /**
  * 校验回执（一串 zod issue 的 JSON）→ 人话。
@@ -578,41 +575,4 @@ export function humanizeToolFailure(t: Translate, text: string | undefined): str
   const trimmed = (text ?? '').trim()
   if (!trimmed) return undefined
   return humanizeSchemaIssues(t, trimmed) ?? humanizeValidationProse(t, trimmed)
-}
-
-/**
- * 结果 → 一行人话。对象/数组走 JSON（同一套脱敏），字符串原样，空的退回状态词。
- *
- * 失败正文在这里**一字不改**：这一段是收据展开区的「输出」，也就是「详情」。
- * 英文原文只住在这里；行内那句由 `humanizeToolFailure` 翻（见 `agentPanelV4Projection`）。
- * 两边分工反过来的后果 2026-09-06 见过：行内是英文机器话，详情里反而是被压过的摘要，
- * 想照着改的人两处都拿不到原文。
- */
-function readableToolOutcome(t: Translate, status: ProjectAgentStatus, outcome?: ResidentToolOutcome): string {
-  if (outcome?.error?.trim()) return outcome.error.trim()
-  const value = outcome?.result
-  if (typeof value === 'string' && value.trim()) return value.trim()
-  if (value !== undefined && value !== null) {
-    const text = redactToolArguments(value)
-    if (text) return text
-  }
-  return readableToolResult(t, status)
-}
-
-export function residentToolProjectionForCall(
-  t: Translate,
-  name: string,
-  args: unknown,
-  status: ProjectAgentStatus,
-  outcome?: ResidentToolOutcome,
-): ResidentToolProjection {
-  return normalizeResidentToolProjection({
-    label: readableToolName(t, name, args),
-    effect: readableToolPreview(t, name, args) || readableToolResult(t, status),
-    target: readableToolTarget(t, name, args),
-    technicalDetails: readableToolSummary(t, name, args) || readableToolResult(t, status),
-    // 收据展开后的两段读的是**这一次调用**的入参与结果，不是工具描述（拍板基线 v4-tool-expanded）。
-    input: redactToolArguments(args),
-    output: readableToolOutcome(t, status, outcome),
-  })
 }

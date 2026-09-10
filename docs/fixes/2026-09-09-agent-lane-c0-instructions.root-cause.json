@@ -1,0 +1,111 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-09-agent-lane-c0-instructions",
+  "problem_type": "Conflicting planner instructions and model-facing contracts",
+  "symptom": "C0 omitted operation, translated an explicitly preserved title and omitted requested generation settings.",
+  "direct_cause": "The loaded skill taught the obsolete operation-free tool alias and mandated English while the shared schema requires operation and the user required the original title.",
+  "class_root": "Planner instruction entry points did not agree with the shared language and model-facing contract owners.",
+  "affected_population": [
+    "Every model using the bundled storyboard skill or JSON planner"
+  ],
+  "scope_paths": [
+    "electron/shared/agentCapabilities/canvasModelTools.ts",
+    "electron/shared/agentCapabilities/canvasModelShapes.ts",
+    "electron/harness/context/agentContext.ts",
+    "skills/workbench-storyboard-planner/SKILL.md",
+    "src/workbench/generationCanvas/agent/storyboardLauncher.ts"
+  ],
+  "entry_points": [
+    "Bundled storyboard skill",
+    "JSON storyboard launcher"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "Internal prompt and schema agreement; no external protocol or SDK API is changed.",
+  "invariants": [
+    "All planner instructions preserve user-authored fields and follow requested language.",
+    "The lane skill names the active tool and its required operation.",
+    "Optional catalog settings derive only when unspecified; explicit user choices must be retained."
+  ],
+  "generality_proof": "Correct both discovered planner entry points and the shared tool descriptions without model-specific branches; inspect the actual loopback request and preserve native validation feedback.",
+  "shared_boundaries": [
+    {
+      "path": "electron/shared/agentCapabilities/canvasModelTools.ts",
+      "symbol": "canvasModelToolSpecs",
+      "responsibility": "Publish unambiguous operation and examples to all model profiles."
+    },
+    {
+      "path": "electron/harness/context/agentContext.ts",
+      "symbol": "buildLanguageRule",
+      "responsibility": "Preserve user fields regardless of interface language."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "skills/workbench-storyboard-planner/SKILL.md",
+      "entry_point": "workbench-storyboard-planner",
+      "disposition": "enforced",
+      "evidence": "Native session line 3 embeds this exact obsolete English-only instruction."
+    },
+    {
+      "path": "src/workbench/generationCanvas/agent/storyboardLauncher.ts",
+      "entry_point": "buildStoryboardPlanningMessage",
+      "disposition": "enforced",
+      "evidence": "Independent JSON planner also mandates English at line 72."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Bundled instructions are reused across users and models.",
+    "same_class_scan": [
+      "rg English/英文/propose_storyboard_plan in skills/workbench-storyboard-planner and storyboardLauncher",
+      "Read canvasModelShapes optional settings and storyboardPlan.ts default materialization"
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "electron/shared/agentCapabilities/canvasModelTools.ts",
+    "invariant": "Shared tool instructions identify required operation; planner prompts contain no competing output language mandate.",
+    "failure_mode": "Missing operation remains an AJV error; the native retry channel is retained. Prompt compliance remains model-evaluated.",
+    "exception_policy": "none",
+    "strategy": "Remove obsolete alias and English mandate in both entry points, clarify shared schema descriptions and preserve authored fields.",
+    "artifacts": [
+      "electron/shared/agentCapabilities/canvasModelTools.ts",
+      "electron/shared/agentCapabilities/canvasModelShapes.ts",
+      "electron/harness/context/agentContext.ts",
+      "skills/workbench-storyboard-planner/SKILL.md",
+      "src/workbench/generationCanvas/agent/storyboardLauncher.ts"
+    ]
+  },
+  "regression_tests": [
+    "tests/agent-runtime/lane-c0-instructions.test.mts",
+    "electron/harness/context/agentContext.test.ts",
+    "src/workbench/generationCanvas/agent/storyboardLauncher.test.ts"
+  ],
+  "class_regression_tests": [
+    "tests/agent-runtime/lane-c0-instructions.test.mts",
+    "electron/harness/context/agentContext.test.ts",
+    "src/workbench/generationCanvas/agent/storyboardLauncher.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "not-applicable",
+    "removed_paths": [],
+    "rationale": "Obsolete instructions are replaced in place; no parallel implementation or stored data migration."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "No SDK behavior is changed; native AJV rejection and retry already work.",
+    "exit_criteria": []
+  },
+  "migration": "Reload bundled skill on next request; do not translate or rewrite existing project data.",
+  "residual_risks": [
+    "Loopback proves request assembly and validation, not real-model instruction following. Third-round model comparison remains unrun under no-paid-model instruction."
+  ],
+  "invariant_owner_layer": {
+    "layer": "electron/shared/agentCapabilities/canvasModelTools.ts",
+    "tests": [
+      "tests/agent-runtime/lane-c0-instructions.test.mts",
+      "electron/harness/context/agentContext.test.ts"
+    ],
+    "why": "Tool descriptions and schemas are shared across lane and MCP; tests inspect the actual lane wire request."
+  }
+}

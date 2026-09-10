@@ -72,6 +72,18 @@
           }
         ]
       }
+    ],
+    "Notification": [
+      {
+        "matcher": "^(permission_prompt|idle_prompt|elicitation_dialog|elicitation_url_dialog|agent_needs_input)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh -c 'h=\"$CLAUDE_PROJECT_DIR/scripts/claude-hooks/attention-cue.sh\"; [ -f \"$h\" ] || { echo \"[nomi-hooks] 提示型 hook 缺失（本次不阻断，但你少了一层提醒）：scripts/claude-hooks/attention-cue.sh（分支停在没有它的旧提交？先并上 origin/main）\" >&2; exit 1; }; exec bash \"$h\"'",
+            "timeout": 10
+          }
+        ]
+      }
     ]
   }
 }

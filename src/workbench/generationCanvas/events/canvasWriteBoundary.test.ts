@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useGenerationCanvasStore } from '../store/generationCanvasStore'
 import { getHistoryFlags, pushUndoSnapshot } from './canvasUndoJournal'
 import { withCanvasGestureContext } from './canvasGestureContext'
-import { interruptPendingCanvasWrite, ownPendingCanvasWrite } from './canvasWriteBoundary'
+import { interruptPendingCanvasWrite, ownPendingCanvasWrite, runWhenCanvasWriteBoundarySettled, whenCanvasWriteBoundarySettled } from './canvasWriteBoundary'
 
 function synchronousRelease(value: ReturnType<typeof ownPendingCanvasWrite>): () => void {
   if (typeof value !== 'function') throw new Error('Expected an uncontended canvas write claim')
@@ -16,6 +16,32 @@ beforeEach(() => {
 afterEach(() => interruptPendingCanvasWrite())
 
 describe('document write handoff', () => {
+  it('rechecks a new receipt owner before running a queued derived write', async () => {
+    const releaseOld = synchronousRelease(ownPendingCanvasWrite('old', () => false))
+    const write = vi.fn()
+    runWhenCanvasWriteBoundarySettled(write)
+    releaseOld()
+    const releaseNext = synchronousRelease(ownPendingCanvasWrite('next', () => false))
+    // This microtask is the queue wake-up, not a wall-clock wait.
+    await Promise.resolve()
+    expect(write).not.toHaveBeenCalled()
+    releaseNext()
+    await whenCanvasWriteBoundarySettled()
+    expect(write).toHaveBeenCalledTimes(1)
+  })
+
+  it('runs same-owner projections synchronously without cancelling their receipt', () => {
+    const cancel = vi.fn(() => false as const)
+    const release = synchronousRelease(ownPendingCanvasWrite('same', cancel))
+    const write = vi.fn()
+    withCanvasGestureContext({ source: 'agent', txnId: 't', proposalId: 'same' }, () => {
+      runWhenCanvasWriteBoundarySettled(write)
+      expect(write).toHaveBeenCalledTimes(1)
+    })
+    expect(cancel).not.toHaveBeenCalled()
+    release()
+  })
+
   it('settles before a new action reads its source node, not merely before its final set', () => {
     const cancel = vi.fn(() => withCanvasGestureContext({
       source: 'agent', txnId: 'old-cleanup', proposalId: 'old', allowDuringCleanup: true,

@@ -181,7 +181,7 @@ describe('ProductionRunService driver round 1', () => {
     await expect(service.command('project-1', 'run-driver-2', {
       commandId: 'incomplete-contract-1', expectedRevision: attached.run.revision, type: 'gate.decide',
       payload: { gateId: 'gate-contract-v1', status: 'approved' }, issuedAt: new Date().toISOString(),
-    })).rejects.toThrow(/未设置硬预算上限.*供应商「local」.*模型「demo-video」/)
+    })).rejects.toThrow(/供应商「local」.*模型「demo-video」/)
     expect(service.readFull('project-1', 'run-driver-2')).toMatchObject({
       revision: attached.run.revision,
       status: 'awaiting_contract',

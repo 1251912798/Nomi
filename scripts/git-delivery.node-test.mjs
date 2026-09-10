@@ -22,6 +22,17 @@ import {
 
 const repoRoot = path.resolve(import.meta.dirname, '..')
 
+test('worker handoff reports are ignored only at the repository root', () => {
+  const reports = ['SL-LAST.md', 'GOAL-MODE-LAST.md', 'PF-LAST.md', 'CLEAN-LAST.md', 'FUTURE-LAST.md', 'PF-RULINGS.md', 'FUTURE-RULINGS.md']
+  const paths = [...reports, ...reports.map((name) => `docs/${name}`), ...reports.map((name) => `scripts/${name}`)]
+  const ignored = execFileSync('git', ['check-ignore', '--no-index', '--stdin'], {
+    cwd: repoRoot,
+    encoding: 'utf8',
+    input: `${paths.join('\n')}\n`,
+  }).trim().split('\n')
+  assert.deepEqual(ignored, reports)
+})
+
 function git(cwd, args, options = {}) {
   return execFileSync('git', args, { cwd, encoding: 'utf8', ...options }).trim()
 }

@@ -1,0 +1,46 @@
+
+ RUN  v4.1.8 /Users/aoqimin/Desktop/Nomi-anchor-policy
+
+ ❯ src/workbench/creation/storyboard/exec/storyboardExec.test.ts (27 tests | 1 failed) 14ms
+     × 变体复制（regeneratedFrom）不抢行身份：优先原节点 4ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/workbench/creation/storyboard/exec/storyboardExec.test.ts > storyboardNodeBinding（表 ↔ 节点） > 变体复制（regeneratedFrom）不抢行身份：优先原节点
+AssertionError: expected { kind: 'video', title: '', …(4) } to be null
+
+- Expected:
+null
+
++ Received:
+{
+  "id": "n-dup",
+  "kind": "video",
+  "meta": {
+    "shotId": "shot-a",
+    "storyboardDesignId": "design-1",
+  },
+  "position": {
+    "x": 0,
+    "y": 0,
+  },
+  "regeneratedFrom": "n-shot",
+  "title": "",
+}
+
+ ❯ src/workbench/creation/storyboard/exec/storyboardExec.test.ts:130:51
+    128|     const dup = nodeOf({ id: 'n-dup', regeneratedFrom: 'n-shot', meta:…
+    129|     expect(findShotNode([dup, shotNode], DESIGN, shotOf())?.id).toBe('…
+    130|     expect(findShotNode([dup], DESIGN, shotOf())).toBeNull()
+       |                                                   ^
+    131|     expect(findShotNode([{ ...dup, regeneratedFrom: undefined, derived…
+    132|   })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 26 passed (27)
+   Start at  16:19:47
+   Duration  1.44s (transform 997ms, setup 55ms, import 1.18s, tests 14ms, environment 0ms)
+

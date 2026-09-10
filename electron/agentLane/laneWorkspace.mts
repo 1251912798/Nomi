@@ -19,38 +19,82 @@
 //   · 删除 = `repo.delete(metadata)`
 // 四条命令里只有「切换」是我们的活，而它就是「关掉这条、打开那条」。**没有第二份对话索引**：
 // 索引文件会和盘上的真相分叉（用户手动删掉一个会话文件之后，索引仍然说它在），表头不会。
+// 项目只另存当前选择的 laneName/sessionId 指针；恢复时必须重新对上 pi 的真实会话列表。
 import { BACKGROUND_CONTEXT, type Context } from '@earendil-works/pi-agent-core/harness/context';
 
 import type {
   LaneCommand, LaneCommandOutcome, LaneHandle, LaneSummary, LaneWorkspaceHandle, LaneWorkspaceProjection,
 } from '../shared/agentLane/laneContracts.js';
+import { openLaneHistory } from './laneHistory.mjs';
 import { openLane } from './laneHost.mjs';
 import { deleteLaneSession, listLaneSessions } from './laneSession.mjs';
 import type { OpenLaneOptions } from './laneRuntimePort.js';
+import { readLaneWorkspaceSelection, writeLaneWorkspaceSelection } from './laneWorkspaceSelection.js';
 
-/** 打开一个项目的对话工作区。`laneName` = 一开始停在哪一条（缺省 `main`）。 */
-export type LaneWorkspaceOptions = Omit<OpenLaneOptions, 'sessionId'>;
+/** 打开一个项目的对话工作区。缺省恢复上次选择；只有没有会话的新项目才创建 `main`。 */
+export type LaneWorkspaceOptions = Omit<OpenLaneOptions, 'sessionId' | 'model'> & { model?: OpenLaneOptions['model'] };
 
 /** 换 lane 时怎么造那条 lane 的宿主。测试用它注入一个假宿主；生产恒 `openLane`。 */
-export type LaneOpener = (options: OpenLaneOptions) => Promise<LaneHandle>;
+export type LaneOpener = (options: LaneWorkspaceOptions) => Promise<LaneHandle>;
 
 const DEFAULT_LANE = 'main';
 
 export async function openLaneWorkspace(
   options: LaneWorkspaceOptions,
-  openOne: LaneOpener = openLane,
+  openOne: LaneOpener = (next) => next.model ? openLane({ ...next, model: next.model }) : openLaneHistory(next),
 ): Promise<LaneWorkspaceHandle> {
   const context: Context = BACKGROUND_CONTEXT;
   const listeners = new Set<(projection: LaneWorkspaceProjection) => void>();
-
-  let active: LaneHandle = await openOne({ ...options, laneName: options.laneName ?? DEFAULT_LANE });
-  let unsubscribeActive = active.subscribe(() => publish());
+  let closed = false;
+  let structuralPending = 0;
+  let structure = Promise.resolve();
   let lanes: readonly LaneSummary[] = await readLanes();
+  let selection = readLaneWorkspaceSelection(options.projectDir);
+  const selected = lanes.find(lane => lane.laneName === selection?.laneName && lane.sessionId === selection.sessionId);
+  const explicit = options.laneName === undefined ? undefined : lanes.find(lane => lane.laneName === options.laneName);
+  if (options.laneName !== undefined && lanes.length && !explicit) {
+    throw new Error(`This project has no conversation named "${options.laneName}"`);
+  }
+  const initialLane = explicit?.laneName ?? selected?.laneName ?? lanes[0]?.laneName ?? options.laneName ?? DEFAULT_LANE;
+  let active: LaneHandle = await openOne({ ...options, laneName: initialLane });
+  try { rememberSelection(); lanes = await readLanes(); }
+  catch (error) { await active.close(); throw error; }
   let projection: LaneWorkspaceProjection = { lanes, active: active.projection() };
+  let unsubscribeActive = active.subscribe(() => publish());
+
+  function rememberSelection(): void {
+    if (selection?.laneName === active.laneName && selection.sessionId === active.sessionId) return;
+    const next = { laneName: active.laneName, sessionId: active.sessionId };
+    writeLaneWorkspaceSelection(options.projectDir, next);
+    selection = next;
+  }
 
   function publish(): void {
+    if (closed || structuralPending) return;
     projection = { lanes, active: active.projection() };
     for (const listener of listeners) listener(projection);
+  }
+
+  function assertOpen(): void {
+    if (closed) throw new Error('The agent workspace is closed.');
+  }
+
+  function assertReady(): void {
+    assertOpen();
+    if (structuralPending) throw new Error('The agent is opening a conversation. Try again after it opens.');
+  }
+
+  // Only resource changes hold this queue. Model turns, approvals and abort never
+  // enter it; commands during replacement fail before touching the closing handle.
+  function changeStructure(change: () => Promise<void>): Promise<void> {
+    if (closed) return Promise.reject(new Error('The agent workspace is closed.'));
+    structuralPending += 1;
+    const next = structure.then(async () => { assertOpen(); await change(); }).finally(() => {
+      structuralPending -= 1;
+      publish();
+    });
+    structure = next.catch(() => undefined);
+    return next;
   }
 
   /**
@@ -73,11 +117,26 @@ export async function openLaneWorkspace(
    * 已经离开了。关掉这一条同时也让等待中的审批卡以 `window-closed` 收尾（`laneHost.close`），
    * 那正是「我切走了，那个动作不该背着我执行」的正确语义。
    */
-  async function switchTo(laneName: string): Promise<void> {
+  async function switchTo(laneName: string, nextOptions = options): Promise<void> {
     unsubscribeActive();
-    await active.close();
-    active = await openOne({ ...options, laneName });
-    unsubscribeActive = active.subscribe(() => publish());
+    try {
+      await active.close();
+      assertOpen();
+      const opened = await openOne({ ...nextOptions, laneName });
+      // close marks admission before waiting for this opener. Its late result
+      // cannot become visible or retain a session owner after the window leaves.
+      if (closed) { await opened.close(); assertOpen(); }
+      active = opened;
+      options = nextOptions;
+      rememberSelection();
+      unsubscribeActive = active.subscribe(() => publish());
+    } catch (error) {
+      // The previous handle has already been closed. It is not a usable fallback.
+      closed = true;
+      listeners.clear();
+      await active.close();
+      throw error;
+    }
   }
 
   async function handleLaneCommand(command: Extract<LaneCommand, { laneName: string }>): Promise<void> {
@@ -115,27 +174,38 @@ export async function openLaneWorkspace(
 
   let closing: Promise<void> | undefined;
   return {
+    configureModel: (model) => changeStructure(async () => {
+      if (active.projection().running) throw new Error('Stop the current turn before changing its model.');
+      await switchTo(active.laneName, { ...options, model });
+      lanes = await readLanes();
+    }),
+    receiptAuthority: (proposalId) => closed || structuralPending ? undefined : active.receiptAuthority(proposalId),
     projection: () => projection,
     subscribe: (listener) => {
+      assertOpen();
       listeners.add(listener);
       return () => { listeners.delete(listener); };
     },
-    execute: async (command: LaneCommand): Promise<LaneCommandOutcome> => {
+    execute: async (command: LaneCommand, executionOptions): Promise<LaneCommandOutcome> => {
       if (command.kind === 'lane-select' || command.kind === 'lane-create' || command.kind === 'lane-delete') {
-        await handleLaneCommand(command);
-        publish();
+        await changeStructure(() => handleLaneCommand(command));
         return {};
       }
-      const outcome = await active.execute(command);
+      assertReady();
+      const outcome = await active.execute(command, executionOptions);
       publish();
       return outcome;
     },
-    appendTaskNote: (note) => active.appendTaskNote(note),
-    refreshTasks: () => active.refreshTasks(),
-    close: () => closing ??= (async () => {
+    appendTaskNote: async (note) => { assertReady(); await active.appendTaskNote(note); },
+    refreshTasks: () => { if (!closed && !structuralPending) active.refreshTasks(); },
+    close: () => {
+      closed = true;
       unsubscribeActive();
       listeners.clear();
-      await active.close();
-    })(),
+      return closing ??= (async () => {
+        await structure;
+        await active.close();
+      })();
+    },
   };
 }

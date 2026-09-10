@@ -148,3 +148,12 @@ describe("Nomi agent context ownership", () => {
     expect(context.NOMI_AGENT_IDENTITY).not.toContain("回复语言铁律");
   });
 });
+
+it("preserves user-authored fields in both response languages", async () => {
+    const { setDesktopLocale } = await import("../../desktopLocale");
+    for (const locale of ["en", "zh-CN"] as const) {
+      setDesktopLocale(locale);
+      expect(context.buildLanguageRule()).toMatch(/保持原文|verbatim/);
+    }
+    setDesktopLocale("zh-CN");
+  });

@@ -1,0 +1,9 @@
+
+> nomi@0.21.0 check:i18n /Users/aoqimin/Desktop/Nomi-money-guard
+> node ./scripts/check-i18n-visible-text.mjs && tsx ./scripts/check-i18n-key-parity.ts && tsx ./scripts/check-i18n-key-refs.ts && tsx ./scripts/check-i18n-dead-keys.ts && node ./scripts/check-i18n-fragile-match.mjs
+
+i18n visible-text gate passed (src hard-zero; electron baseline 84 occurrences in 28 files, shrink-only)
+i18n key-parity gate passed (5257 keys, zh-CN ↔ en in lockstep)
+i18n key-ref gate passed (1245 files scanned, 5257 keys, 72 dynamic prefixes; every reference resolves)
+i18n dead-key gate passed (5257 keys, 0 known-dead within baseline; 49 dynamic-unreached suspects)
+✅ 语言脆弱匹配门岗通过:43 处存量(6 文件),棘轮只减不增。

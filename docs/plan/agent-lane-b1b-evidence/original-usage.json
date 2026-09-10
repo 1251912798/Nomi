@@ -1,0 +1,224 @@
+{
+  "source": "read-only human-20260909-R71mJo lane main JSONL",
+  "usageCount": 63,
+  "turnCount": 24,
+  "method": "First request input+cacheRead+cacheWrite minus prior turn final request input; netNewContextTokens additionally subtracts prior output.",
+  "turns": [
+    {
+      "turn": 1,
+      "input": "把这份文稿拆成分镜",
+      "previousTotal": 0,
+      "firstInputTokens": 18969,
+      "newInputTokens": 18969,
+      "cacheRead": 4096,
+      "netNewContextTokens": 18969
+    },
+    {
+      "turn": 2,
+      "input": "画布上现在有什么？",
+      "previousTotal": 33778,
+      "firstInputTokens": 42608,
+      "newInputTokens": 9417,
+      "cacheRead": 0,
+      "netNewContextTokens": 8830
+    },
+    {
+      "turn": 3,
+      "input": "你能帮我做哪些事？",
+      "previousTotal": 44344,
+      "firstInputTokens": 52958,
+      "newInputTokens": 9339,
+      "cacheRead": 43008,
+      "netNewContextTokens": 8614
+    },
+    {
+      "turn": 4,
+      "input": "第 3 镜改成夜景，其他别动",
+      "previousTotal": 53429,
+      "firstInputTokens": 61876,
+      "newInputTokens": 8918,
+      "cacheRead": 52224,
+      "netNewContextTokens": 8447
+    },
+    {
+      "turn": 5,
+      "input": "把第 2 镜和第 5 镜调换顺序",
+      "previousTotal": 63008,
+      "firstInputTokens": 71444,
+      "newInputTokens": 8576,
+      "cacheRead": 32768,
+      "netNewContextTokens": 8436
+    },
+    {
+      "turn": 6,
+      "input": "把所有镜头改成 9:16 竖屏",
+      "previousTotal": 74016,
+      "firstInputTokens": 82664,
+      "newInputTokens": 8965,
+      "cacheRead": 72704,
+      "netNewContextTokens": 8648
+    },
+    {
+      "turn": 7,
+      "input": "文稿里把「修鞋师傅」统一改成「老周」",
+      "previousTotal": 84161,
+      "firstInputTokens": 91432,
+      "newInputTokens": 8768,
+      "cacheRead": 81920,
+      "netNewContextTokens": 7271
+    },
+    {
+      "turn": 8,
+      "input": "给小禾写一段 100 字人物小传，加到文稿末尾",
+      "previousTotal": 93376,
+      "firstInputTokens": 102029,
+      "newInputTokens": 9250,
+      "cacheRead": 92160,
+      "netNewContextTokens": 8653
+    },
+    {
+      "turn": 9,
+      "input": "帮我在画布上加一个小禾定妆图的图片节点，用 gpt-image-2 1K，先别生成",
+      "previousTotal": 102339,
+      "firstInputTokens": 111005,
+      "newInputTokens": 8708,
+      "cacheRead": 101376,
+      "netNewContextTokens": 8666
+    },
+    {
+      "turn": 10,
+      "input": "把刚才那张定妆图生成出来",
+      "previousTotal": 111781,
+      "firstInputTokens": 120712,
+      "newInputTokens": 9113,
+      "cacheRead": 62464,
+      "netNewContextTokens": 8931
+    },
+    {
+      "turn": 11,
+      "input": "第 1 镜用 MiniMax-H3 试拍一下",
+      "previousTotal": 124715,
+      "firstInputTokens": 133436,
+      "newInputTokens": 9016,
+      "cacheRead": 123904,
+      "netNewContextTokens": 8721
+    },
+    {
+      "turn": 12,
+      "input": "这个片子大概要花多少钱、多久？",
+      "previousTotal": 134494,
+      "firstInputTokens": 142926,
+      "newInputTokens": 8656,
+      "cacheRead": 4096,
+      "netNewContextTokens": 8432
+    },
+    {
+      "turn": 13,
+      "input": "帮我把视频导出成 MP4",
+      "previousTotal": 143523,
+      "firstInputTokens": 151838,
+      "newInputTokens": 8912,
+      "cacheRead": 142336,
+      "netNewContextTokens": 8315
+    },
+    {
+      "turn": 14,
+      "input": "给第 4 镜加一张参考图，用素材库里那张",
+      "previousTotal": 152004,
+      "firstInputTokens": 160596,
+      "newInputTokens": 8758,
+      "cacheRead": 151552,
+      "netNewContextTokens": 8592
+    },
+    {
+      "turn": 15,
+      "input": "Summarize the storyboard in English",
+      "previousTotal": 161174,
+      "firstInputTokens": 169821,
+      "newInputTokens": 8999,
+      "cacheRead": 160768,
+      "netNewContextTokens": 8647
+    },
+    {
+      "turn": 16,
+      "input": "感觉不太对",
+      "previousTotal": 170650,
+      "firstInputTokens": 178938,
+      "newInputTokens": 9117,
+      "cacheRead": 168960,
+      "netNewContextTokens": 8288
+    },
+    {
+      "turn": 17,
+      "input": "# 日落前的一分钟\n\n授权：本剧本为 C0 验收原创，可自由用于测试、改编和生成；无私人素材。\n\n下午五点，小禾背着相机走到河边旧街，想在日落前完成自己的第一条短片。她举起相机，却发现宽阔街景里没有故事。风吹动修鞋摊前的蓝布，她蹲下，看见师傅用磨旧的手掌抚平一只小鞋。一个孩子站在旁边，踮脚望着桌面。小禾先拍针线穿过皮面",
+      "previousTotal": 179264,
+      "firstInputTokens": 188192,
+      "newInputTokens": 9254,
+      "cacheRead": 178176,
+      "netNewContextTokens": 8928
+    },
+    {
+      "turn": 18,
+      "input": "等等，第 8 镜别动",
+      "previousTotal": 190423,
+      "firstInputTokens": 199109,
+      "newInputTokens": 10917,
+      "cacheRead": 187392,
+      "netNewContextTokens": 8686
+    },
+    {
+      "turn": 19,
+      "input": "删掉画布上那两个空节点",
+      "previousTotal": 199511,
+      "firstInputTokens": 207845,
+      "newInputTokens": 8736,
+      "cacheRead": 198656,
+      "netNewContextTokens": 8334
+    },
+    {
+      "turn": 20,
+      "input": "把第 1 镜的片段放进时间轴",
+      "previousTotal": 208246,
+      "firstInputTokens": 216897,
+      "newInputTokens": 8707,
+      "cacheRead": 207872,
+      "netNewContextTokens": 8651
+    },
+    {
+      "turn": 21,
+      "input": "谢谢，今天先到这",
+      "previousTotal": 217319,
+      "firstInputTokens": 225964,
+      "newInputTokens": 8745,
+      "cacheRead": 217088,
+      "netNewContextTokens": 8645
+    },
+    {
+      "turn": 22,
+      "input": "第 3 镜改成夜景，其余别动",
+      "previousTotal": 226111,
+      "firstInputTokens": 234727,
+      "newInputTokens": 8763,
+      "cacheRead": 225280,
+      "netNewContextTokens": 8616
+    },
+    {
+      "turn": 23,
+      "input": "检查画布",
+      "previousTotal": 235143,
+      "firstInputTokens": 244075,
+      "newInputTokens": 8989,
+      "cacheRead": 4096,
+      "netNewContextTokens": 8932
+    },
+    {
+      "turn": 24,
+      "input": "生成选中，只生成这一个节点，上限2元，先给我审批。",
+      "previousTotal": 246464,
+      "firstInputTokens": 260467,
+      "newInputTokens": 15109,
+      "cacheRead": 0,
+      "netNewContextTokens": 14003
+    }
+  ]
+}

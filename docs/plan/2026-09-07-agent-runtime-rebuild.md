@@ -525,7 +525,6 @@ toolProjection(registry, profile: "internal" | "mcp") → ModelFacingTool[]
 | **O3** | 用量→花费换算与上下文窗口 | `calculateCost`（`models.js:527`）、`Model.contextWindow` | 第二处把 token 乘价、或手写 contextWindow 表 | 🔴 **会**：`run.mts:12-32` `nomiUsage()`、`agentUsageStore`、`agentPanelV4Projection.ts:421` 各汇总一遍（**3 条身份**）；`4bf23ecac` 若合入再加一条 |
 | **O4** | 队列 / steering | `steer` `followUp` `nextRun` `cancelQueued` `queues` | `agentLane` 之外的 agent 队列状态机 | 🔴 **会**：`projectAgentHost` 的 `ProjectAgentQueueItem` reducer |
 | **O5** | 重试与退避 | `RetryPolicy` + `retry_*` 事件 | agent 供应商调用外面手写重试/退避循环 | 🟢 今天不红（我们把重试**整个关了**，没有替代品）。**这条是防复发**：阶段 3 打开 pi 重试后，任何人再手写一个就红 |
-| **O6** | 开发期不可达 | — | 新目录符号出现在 `main.ts` 的 IPC 注册表（手法同 `projectAgentCutoverStructure.test.ts:40`） | 🟢 今天不红（新目录还不存在）。**切换 PR 时这条规则删除** |
 
 - **基线**：`scripts/pi-boundary-baseline.json`，身份式（`{ruleId: [identity…]}`）。
 - **纪律**：基线**只减不增**；**到阶段 4 切换 PR 时必须归零**（G7）。基线不归零 = 重做没做完。

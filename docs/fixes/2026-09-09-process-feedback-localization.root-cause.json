@@ -1,0 +1,112 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-09-process-feedback-localization",
+  "problem_type": "Generation phase emitted after the operation it describes",
+  "symptom": "Real App remains generating during main-process asset localization; finalizing appears only after save.",
+  "direct_cause": "runCatalogGenerationTask reports finalizing after awaiting task IPC; buildProfileTaskResult localizes before resolving that IPC.",
+  "class_root": "Localization ownership has no progress signal to the renderer before the actual write boundary.",
+  "affected_population": [
+    "Synchronous and polled image/video/audio/model3d catalog outputs"
+  ],
+  "scope_paths": [
+    "electron/runtime.ts",
+    "electron/assets/assetEvents.ts",
+    "electron/preload.ts",
+    "src/desktop/bridge.ts",
+    "src/workbench/generationCanvas/runner/catalogTaskActions.ts",
+    "src/workbench/generationCanvas/runner/assetLocalizationFeedback.ts",
+    "electron/assets/localizeTaskAsset.ts",
+    "src/desktop/bridgeMedia.ts"
+  ],
+  "entry_points": [
+    "buildProfileTaskResult synchronous creation and polled result materialization",
+    "localizeTaskAsset late result recovery"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "Internal Electron event and generation lifecycle; no third-party contract or new dependency.",
+  "invariants": [
+    "The active node enters finalizing before its generated asset import starts; unrelated project/node events cannot change it."
+  ],
+  "generality_proof": "All catalog media materialization calls localizeTaskAsset; the scoped runner listener reports via the existing shared narration callback.",
+  "shared_boundaries": [
+    {
+      "path": "electron/assets/localizeTaskAsset.ts",
+      "symbol": "localizeTaskAsset",
+      "responsibility": "Publish the real start before importing generated media."
+    },
+    {
+      "path": "src/workbench/generationCanvas/runner/assetLocalizationFeedback.ts",
+      "symbol": "withAssetLocalizationFeedback",
+      "responsibility": "Scope events by project and node, detach on every settlement."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "electron/runtime.ts",
+      "entry_point": "buildProfileTaskResult",
+      "disposition": "enforced",
+      "evidence": "All normalized media uses localizeTaskAsset."
+    },
+    {
+      "path": "electron/tasks/taskResultQuery.ts",
+      "entry_point": "queryTaskResult",
+      "disposition": "enforced",
+      "evidence": "Late result direct localization also uses localizeTaskAsset."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Any nontrivial download/write can expose the gap, across vendors and media.",
+    "same_class_scan": [
+      "rg localizeTaskAsset electron/runtime.ts electron/tasks/taskResultQuery.ts",
+      "Read runCatalogGenerationTask and waitForCatalogTaskResult; both await IPC before reporting finalizing."
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "electron/assets/localizeTaskAsset.ts",
+    "invariant": "Emit localization start before generated asset import.",
+    "failure_mode": "No matching active listener means no node mutation; failed imports still reject normally.",
+    "exception_policy": "none",
+    "strategy": "Signal from the real shared import boundary rather than guessing from renderer polling time.",
+    "artifacts": [
+      "electron/runtime.ts",
+      "electron/assets/assetEvents.ts",
+      "src/workbench/generationCanvas/runner/assetLocalizationFeedback.ts",
+      "electron/assets/localizeTaskAsset.ts"
+    ]
+  },
+  "regression_tests": [
+    "electron/runtime.assets.test.ts",
+    "src/workbench/generationCanvas/runner/assetLocalizationFeedback.test.ts",
+    "tests/ux/process-feedback-electron.e2e.mjs"
+  ],
+  "class_regression_tests": [
+    "electron/runtime.assets.test.ts",
+    "src/workbench/generationCanvas/runner/assetLocalizationFeedback.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "electron/runtime.ts",
+      "src/desktop/bridge.ts"
+    ],
+    "rationale": "Move localization out of runtime and asset DTOs to the existing media bridge module; reexports preserve callers without duplicate implementations."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "Existing Electron IPC and runtime; no package change.",
+    "exit_criteria": []
+  },
+  "migration": "No persisted format changes; same phase vocabulary.",
+  "residual_risks": [
+    "Initial generation timeline ghost is outside existing C1 scope; pending user clarification."
+  ],
+  "invariant_owner_layer": {
+    "layer": "electron/assets/localizeTaskAsset.ts",
+    "tests": [
+      "electron/runtime.assets.test.ts"
+    ],
+    "note": "Media localization owns its start signal."
+  }
+}

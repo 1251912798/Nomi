@@ -1,0 +1,43 @@
+
+ RUN  v4.1.8 /Users/aoqimin/Desktop/Nomi-panel-form
+
+ ❯ src/workbench/project/projectNormalize.test.ts (12 tests | 1 failed) 440ms
+   × retains the shared assistant width and collapsed preference through project normalization 434ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/workbench/project/projectNormalize.test.ts > retains the shared assistant width and collapsed preference through project normalization
+AssertionError: expected undefined to deeply equal { sourceWidth: 300, …(5) }
+
+- Expected:
+{
+  "assistantWidth": 310,
+  "inspectorWidth": 240,
+  "preset": "default",
+  "sourceWidth": 300,
+  "timelineHeight": 260,
+  "visibility": {
+    "assistant": false,
+    "inspector": true,
+    "source": true,
+  },
+}
+
++ Received:
+undefined
+
+ ❯ src/workbench/project/projectNormalize.test.ts:159:36
+    157|   const layout = { ...EDITING_PANEL_DEFAULTS, assistantWidth: 310, vis…
+    158|   const saved = normalizePayload({ ...createDefaultWorkbenchProjectPay…
+    159|   expect(saved.editingPanelLayout).toEqual(layout)
+       |                                    ^
+    160|   expect(normalizePayload(saved).editingPanelLayout).toEqual(layout)
+    161| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 11 passed (12)
+   Start at  17:41:17
+   Duration  782ms (transform 203ms, setup 23ms, import 232ms, tests 440ms, environment 0ms)

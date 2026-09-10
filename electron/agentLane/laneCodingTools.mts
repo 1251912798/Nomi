@@ -1,3 +1,4 @@
+import { laneToolModelDescription } from '../shared/agentLane/laneToolContract.js';
 // Agent lane · **把 pi 自带的 coding 工具接进来**，一个执行器都不自研。
 //
 // 用户 2026-09-07 原话：「pi Agent 不本来就是个 coding Agent 吗？我们是不是能够直接把那些
@@ -19,6 +20,7 @@
 // 与 pi 的 `description` 原样进请求，我们只在旁边挂一份 `LaneToolEffects`（审批闸与崩溃恢复
 // 要读它，而 pi 没有这个概念——**加一层注解不是重写一份实现**）。
 import path from 'node:path';
+import { createLaneCodingPaths } from './laneCodingPaths.mjs';
 
 import type { AgentHarnessTool } from '@earendil-works/pi-agent-core';
 
@@ -46,37 +48,6 @@ export const LANE_CODING_TOOL_EFFECTS: Readonly<Record<LaneCodingToolName, LaneT
   write: { mutates: true, billable: false, reversal: 'undoable' },
   bash: { mutates: true, billable: false, reversal: 'undoable' },
 };
-
-/**
- * 越界的工具错误。**它是抛出去的那个 Error 的正文**（G-02：return 一个失败对象，pi 会记
- * `isError:false`），所以这句话是模型自纠的唯一输入——只说「拒绝访问」等于什么都没说。
- */
-export class LaneCodingPathError extends Error {
-  constructor(attempted: string, projectDir: string) {
-    super(
-      `${attempted} is outside this project. The coding tools can only reach files under ${projectDir}. `
-      + 'Use a path relative to the project root, or ask the user to bring the file into the project first.',
-    );
-    this.name = 'LaneCodingPathError';
-  }
-}
-
-/**
- * 路径包容。**用 `path.relative` 而不是 `startsWith`**——`/proj-evil` 以 `/proj` 开头，
- * 但它不在 `/proj` 里（G-07 那一族最经典的洞）。pi 的每个 operations 方法收的都是
- * **绝对路径**（`core/tools/{read,edit,write,grep,find,ls}.d.ts` 逐个实核），所以这一道
- * 加在 operations 上就覆盖了这一族的全部入口——加在每个工具自己的 execute 里，
- * 漏掉的那个不会报错（R28：防线建在最早能拦住的那层）。
- */
-export function containPath(absolutePath: string, projectDir: string): string {
-  const root = path.resolve(projectDir);
-  const target = path.resolve(absolutePath);
-  const relative = path.relative(root, target);
-  if (relative !== '' && (relative.startsWith('..') || path.isAbsolute(relative))) {
-    throw new LaneCodingPathError(absolutePath, root);
-  }
-  return target;
-}
 
 /**
  * 子进程拿到的环境变量。
@@ -150,8 +121,18 @@ export interface PiAgentTool {
 }
 
 export async function loadPiCodingToolFactories(): Promise<PiCodingToolFactories> {
-  const pi = (await import('@earendil-works/pi-coding-agent')) as unknown as PiCodingToolFactories;
-  return pi;
+  const pi = await import('@earendil-works/pi-coding-agent');
+  // AgentTool wrappers discard promptSnippet/promptGuidelines. Use upstream definitions so
+  // the harness adapter and system-prompt contribution consume the same public tool object.
+  return {
+    createReadTool: pi.createReadToolDefinition,
+    createGrepTool: pi.createGrepToolDefinition,
+    createFindTool: pi.createFindToolDefinition,
+    createLsTool: pi.createLsToolDefinition,
+    createEditTool: pi.createEditToolDefinition,
+    createWriteTool: pi.createWriteToolDefinition,
+    createBashTool: pi.createBashToolDefinition,
+  } as unknown as PiCodingToolFactories;
 }
 
 // ── 组装 ─────────────────────────────────────────────────────────────────
@@ -159,7 +140,10 @@ export async function loadPiCodingToolFactories(): Promise<PiCodingToolFactories
 export interface LaneCodingToolsInput {
   /** 项目根。**同时**是工具的 cwd、包容的边界、沙箱的 allowWrite。三者是同一个值，不许各传各的。 */
   readonly projectDir: string
+  /** Main-process installed package roots. Read-only; never inferred from model arguments. */
+  readonly trustedSkillRoots?: readonly string[]
   /** bash 用的沙箱（`openLaneSandbox` 的产物）。`active:false` 时策略层会把自动放行整档摘掉。 */
+  readonly canReadProject?: () => Promise<boolean>
   readonly sandbox: LaneSandbox
   /** 逐工具超时（3c 契约的 `execution.timeoutMs`）。bash 传给 pi；其余工具由 harness 的中止信号管。 */
   readonly bashTimeoutMs: number
@@ -195,7 +179,7 @@ async function defaultFileSystem(): Promise<LaneCodingFileSystem> {
 /**
  * pi 的 7 个 coding 工具 → `AgentHarnessTool`。
  *
- * 每个 operations 方法都先过 `containPath`，所以「越界」这件事在**一个地方**判，
+ * 每个 operations 方法都先过 `createLaneCodingPaths` 的 realpath 包容，所以「越界」这件事在**一个地方**判，
  * 7 个工具、以后再加的工具都自动带着它。
  */
 export async function createLaneCodingTools(
@@ -203,31 +187,34 @@ export async function createLaneCodingTools(
 ): Promise<AgentHarnessTool<undefined>[]> {
   const projectDir = path.resolve(input.projectDir);
   const fileSystem = input.fileSystem ?? (await defaultFileSystem());
-  const contain = (absolutePath: string) => containPath(absolutePath, projectDir);
+  const paths = await createLaneCodingPaths(projectDir, input.trustedSkillRoots);
   const { factories } = input;
+  const readPath = async (target: string) => input.canReadProject && !(await input.canReadProject())
+    ? paths.readSkill(target) : paths.read(target);
 
   const tools: PiAgentTool[] = [
     factories.createReadTool(projectDir, {
       operations: {
-        readFile: (absolutePath: string) => fileSystem.readFile(contain(absolutePath)),
-        access: (absolutePath: string) => fileSystem.access(contain(absolutePath)),
+        readFile: async (absolutePath: string) => fileSystem.readFile(await readPath(absolutePath)),
+        access: async (absolutePath: string) => fileSystem.access(await readPath(absolutePath)),
       },
     }),
     factories.createGrepTool(projectDir, {
       operations: {
-        isDirectory: async (absolutePath: string) => (await fileSystem.stat(contain(absolutePath))).isDirectory(),
-        readFile: async (absolutePath: string) => (await fileSystem.readFile(contain(absolutePath))).toString('utf8'),
+        isDirectory: async (absolutePath: string) => (await fileSystem.stat(await paths.read(absolutePath))).isDirectory(),
+        readFile: async (absolutePath: string) => (await fileSystem.readFile(await paths.read(absolutePath))).toString('utf8'),
       },
     }),
     factories.createFindTool(projectDir, {
       operations: {
-        exists: (absolutePath: string) => fileSystem.exists(contain(absolutePath)),
+        exists: (absolutePath: string) => paths.readExists(absolutePath),
         // glob 的 cwd 也要过包容：`find` 的 `path` 参数最终落在这里。
         glob: async (pattern: string, cwd: string, options: { ignore: string[]; limit: number }) => {
           const { glob } = await import('node:fs/promises');
-          const root = contain(cwd);
+          const root = await paths.read(cwd);
           const out: string[] = [];
           for await (const entry of glob(pattern, { cwd: root, exclude: options.ignore })) {
+            await paths.read(path.resolve(root, String(entry)));
             out.push(String(entry));
             if (out.length >= options.limit) break;
           }
@@ -237,22 +224,22 @@ export async function createLaneCodingTools(
     }),
     factories.createLsTool(projectDir, {
       operations: {
-        exists: (absolutePath: string) => fileSystem.exists(contain(absolutePath)),
-        stat: (absolutePath: string) => fileSystem.stat(contain(absolutePath)),
-        readdir: (absolutePath: string) => fileSystem.readdir(contain(absolutePath)),
+        exists: (absolutePath: string) => paths.readExists(absolutePath),
+        stat: async (absolutePath: string) => fileSystem.stat(await paths.read(absolutePath)),
+        readdir: async (absolutePath: string) => fileSystem.readdir(await paths.read(absolutePath)),
       },
     }),
     factories.createEditTool(projectDir, {
       operations: {
-        readFile: (absolutePath: string) => fileSystem.readFile(contain(absolutePath)),
-        writeFile: (absolutePath: string, content: string) => fileSystem.writeFile(contain(absolutePath), content),
-        access: (absolutePath: string) => fileSystem.access(contain(absolutePath)),
+        readFile: async (absolutePath: string) => fileSystem.readFile(await paths.write(absolutePath)),
+        writeFile: async (absolutePath: string, content: string) => fileSystem.writeFile(await paths.write(absolutePath), content),
+        access: async (absolutePath: string) => fileSystem.access(await paths.write(absolutePath)),
       },
     }),
     factories.createWriteTool(projectDir, {
       operations: {
-        writeFile: (absolutePath: string, content: string) => fileSystem.writeFile(contain(absolutePath), content),
-        mkdir: (dir: string) => fileSystem.mkdir(contain(dir)),
+        writeFile: async (absolutePath: string, content: string) => fileSystem.writeFile(await paths.write(absolutePath), content),
+        mkdir: async (dir: string) => fileSystem.mkdir(await paths.write(dir)),
       },
     }),
     factories.createBashTool(projectDir, {
@@ -264,7 +251,17 @@ export async function createLaneCodingTools(
     }),
   ];
 
-  return tools.map(adaptPiTool);
+  return tools.map(tool => {
+    const adapted = adaptPiTool(tool);
+    if (tool.name !== 'read') return adapted;
+    return { ...adapted, execute: async (...args: Parameters<typeof adapted.execute>) => {
+      const result = await adapted.execute(...args);
+      const target = (args[1] as { path: string }).path;
+      const skillPath = await paths.readSkill(path.resolve(projectDir, target)).catch(() => undefined);
+      if (!skillPath || path.basename(skillPath) !== 'SKILL.md') return result;
+      return { ...result, details: { ...(result.details && typeof result.details === 'object' ? result.details : {}), skill: { name: path.basename(path.dirname(skillPath)), path: skillPath } } };
+    } };
+  });
 }
 
 /**
@@ -273,10 +270,15 @@ export async function createLaneCodingTools(
  */
 function withBashTimeout(operations: LaneBashOperations, ceilingMs: number): LaneBashOperations {
   return {
-    exec: (command, cwd, options) => operations.exec(command, cwd, {
-      ...options,
-      timeout: Math.min(options.timeout ?? ceilingMs, ceilingMs),
-    }),
+    exec: (command, cwd, options) => {
+      if (options.timeout !== undefined && (!Number.isFinite(options.timeout) || options.timeout <= 0)) {
+        return Promise.reject(new Error('Timeout must be a positive number of seconds.'));
+      }
+      return operations.exec(command, cwd, {
+        ...options,
+        timeout: Math.min(options.timeout === undefined ? ceilingMs : options.timeout * 1_000, ceilingMs),
+      });
+    },
   };
 }
 
@@ -292,6 +294,8 @@ function adaptPiTool(tool: PiAgentTool): AgentHarnessTool<undefined> {
   const effects = LANE_CODING_TOOL_EFFECTS[tool.name as LaneCodingToolName];
   const adapted = {
     ...tool,
+    description: laneToolModelDescription(tool),
+    promptGuidelines: [tool.description, ...(tool.promptGuidelines ?? [])],
     // 崩溃恢复敢不敢替我们再跑一次——与 `laneTools.mts` 同一个派生点、同一条判据。
     replay: effects && !effects.mutates ? 'safe' : 'never',
     execute: async (

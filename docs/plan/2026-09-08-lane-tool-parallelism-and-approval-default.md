@@ -263,3 +263,7 @@ Second reproduction: block the first write in a deferred before_tool hook. In 0.
 Request: support or document per-tool executionMode on AgentHarness. Please clarify whether “sequential” means a full read/write barrier or only mutual exclusion among sequential tools; Nomi currently plans a small lane-local FIFO write guard, not a second agent loop. This reproduction uses Nomi session/provider fixtures and is not a standalone upstream test. Before publishing we will adapt it to the upstream test fixture, preserving the same barrier and recorded trace.
 
 本轮已执行上述精确复现，退出 0：`{ peakWrites: 2, requests: 2 }`；两个请求均为回环 HTTP，费用 ¥0，临时会话已清理。此脚本专用于锁定 0.85.1 的缺陷，屏障需两个写进入才释放；上游修好后可能等待，不能原样常驻回归套件。正式验收用 §7 的可控释放器、受测试运行器超时保护，预期写峰值改为 1。
+
+### 阶段 4 待办（19:05 裁决）
+
+- 计划卡是否允许对单能力「不再问」留待本方案统一裁决；#646 不改审批策略，plan 保持无抬档按钮，并删除该卡对应的作用域说明。

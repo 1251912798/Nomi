@@ -51,7 +51,7 @@ export function BrowserAssetPopoverView(props: BrowserAssetPopoverViewProps): JS
     promptExtractionSettings, promptExtractionSettingsProjectAvailable, savePromptExtractionSettings, activeResizeEdges, startResize,
     assetContextMenu, assetContextMenuRef, canImportSelectedAssetsToCanvas, importSelectedAssetsToCanvas, deleteSelectedAssets,
     showCanvasImportAction, canvasImportedFeedback, canvasImportSelectedCount,
-    promptExtractionFeedback,
+    actionFeedback,
     captureTransients, retryCaptureImport, dismissCaptureTransient,
   } = props
 
@@ -156,26 +156,7 @@ export function BrowserAssetPopoverView(props: BrowserAssetPopoverViewProps): JS
               </button>
             </div>
 
-            {/* 提示词提取就地反馈条：提取 fire-and-forget 且全局 toast 被原生网页层盖住，
-                结果落点在这里明示（成功=已存入提示词库；失败=原因），4 秒自清。 */}
-            {promptExtractionFeedback ? (
-              <div
-                role="status"
-                className={cn(
-                  'flex shrink-0 items-center gap-1.5 border-b border-nomi-line-soft px-4 py-2 text-caption font-medium',
-                  promptExtractionFeedback.ok
-                    ? 'bg-nomi-accent-soft/50 text-nomi-accent'
-                    : 'bg-workbench-danger-soft/60 text-workbench-danger',
-                )}
-              >
-                {promptExtractionFeedback.ok ? <IconCheck size={15} stroke={2} aria-hidden="true" className="shrink-0" /> : null}
-                <span className="min-w-0 flex-1 truncate">
-                  {promptExtractionFeedback.ok
-                    ? t('browserAssets.savedToPromptLibraryNamed', { name: promptExtractionFeedback.title || '' })
-                    : t('browserAssets.promptExtractionFailedToast', { error: promptExtractionFeedback.error || '' })}
-                </span>
-              </div>
-            ) : null}
+            {actionFeedback ? <div role="status" data-browser-asset-feedback className="border-b border-nomi-line-soft px-4 py-2 text-caption text-workbench-danger">{actionFeedback}</div> : null}
 
             <div className={cn('relative grid shrink-0 items-center gap-2.5 border-b border-nomi-line-soft/60 bg-nomi-bg/45 px-4 py-3', compactToolbar ? 'grid-cols-1 px-3.5' : 'grid-cols-[minmax(0,1fr)_auto]')}>
               <DesignSearchInput value={query} onChange={setQuery} placeholder={t('browserAssets.searchAssets')} ariaLabel={t('browserAssets.searchAssets')} size="sm" className="min-w-0 w-full bg-nomi-paper" />

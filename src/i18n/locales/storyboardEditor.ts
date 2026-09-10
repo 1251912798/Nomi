@@ -1,4 +1,21 @@
 export const zhStoryboardEditor = {
+  anchorPolicy: {
+    ignoredReason: '模式 {{mode}} 没有图片参考槽，参考图不会被使用',
+    switchMode: '第 {{index}} 镜按 {{mode}} 生成，「{{anchors}}」参考图不会被使用；要使用它们，请换同模型的 {{alternative}} 模式，或去掉该镜视觉锚。',
+    removeAnchors: '第 {{index}} 镜的 {{mode}} 模式不会使用「{{anchors}}」参考图；请去掉该镜视觉锚，或选择支持图片参考的模型。',
+    countWarning: '{{total}} 镜引用了它，其中 {{ignored}} 镜的模型不吃参考图，这张参考图在那 {{ignored}} 镜里不会被使用',
+    rowIgnored: '参考图不会被使用',
+    modelUnsupported: '该模型不吃参考',
+    catalogMissing: '第 {{index}} 镜的模型不在可用目录中，无法绑定角色参考图。请选择可用模型后重试。',
+    capacityExceeded: '第 {{index}} 镜的参考槽无法容纳角色图或缺少必填输入。请调整参考或模型后重试。',
+  },
+  overrides: {
+    badge: '画布改的：{{value}}',
+    effective: '按画布上的「{{value}}」生成',
+    adopt: '采纳到方案',
+    discard: '丢弃',
+  },
+
   empty: {
     title: '还没有分镜方案',
     description: '先在创作页写一段故事，让 AI 拆成镜头，再回到这里审阅、落画布。',
@@ -66,7 +83,6 @@ export const zhStoryboardEditor = {
     missingRequired: '缺{{slot}}参考',
     missingRequiredHint: '这一镜的模型必须给参考图才能生成——换模型/模式，或给这一镜挂上参考卡',
     // 主语是**模式**，不是模型：同一个模型的图生视频档往往就能挂首帧。
-    noRefAccepted: '{{mode}} 不吃参考',
     noRefAcceptedSwitch: '{{mode}} 不吃参考 · 切「{{other}}」可挂{{slot}}',
     noRefAcceptedSwitchSame: '{{mode}} 不吃参考 · 切「{{other}}」模式可挂参考',
     slotAccepts: {
@@ -96,7 +112,6 @@ export const zhStoryboardEditor = {
   playback: {
     start: '顺播',
     aria: '按镜序顺播已生成结果',
-    skipped: '已跳过 {{count}} 个未生成镜头',
     scene: '播放本场',
     sceneAria: '播放{{name}}',
     position: '镜 {{index}} / {{total}}',
@@ -223,7 +238,6 @@ export const zhStoryboardEditor = {
     row: '交给 Agent 改这一镜',
     selection: '交给 Agent',
     footer: '选中 {{count}} 镜 · 交给 Agent 改',
-    toast: '已把 {{count}} 镜交给 Agent——在右边说要改什么',
   },
   storyboardHeading: '分镜 · {{count}} 镜',
   addShot: '添加镜头',
@@ -310,8 +324,9 @@ export const zhStoryboardEditor = {
     adopt: '采纳',
     why: '为什么',
     shotTag: '镜 {{index}}（{{seconds}}s）',
+    shotTagShort: '#{{index}}',
+    affectedShots: '{{count}} 镜：{{shots}}',
     blockersHeading: '需先处理，否则生成会截断或无法出片',
-    noIssues: '时长与参数都在各模型合法范围内，无需调整。',
     error: '执行计划检查失败，稍后再试。',
     rowOverflow: '超模型单条上限',
     rowUnderflow: '低于模型单条下限',
@@ -348,6 +363,23 @@ type TranslationShape<T> = {
 }
 
 export const enStoryboardEditor = {
+  anchorPolicy: {
+    modelUnsupported: 'This model does not accept references',
+    catalogMissing: 'Shot {{index}} has no matching available model for character references. Choose an available model and retry.',
+    capacityExceeded: 'Shot {{index}} cannot fit the character references or is missing required inputs. Adjust the references or model and retry.',
+    ignoredReason: 'Mode {{mode}} has no image input; reference images will not be used',
+    switchMode: 'Shot {{index}} uses {{mode}} and will ignore reference images {{anchors}}. Switch to {{alternative}} on the same model, or remove this shot’s visual anchors.',
+    removeAnchors: 'Shot {{index}} mode {{mode}} will ignore reference images {{anchors}}. Remove its visual anchors or select a model that accepts images.',
+    countWarning: '{{total}} shots reference it; {{ignored}} use models without image inputs and will not use this reference image',
+    rowIgnored: 'Reference images will not be used',
+  },
+  overrides: {
+    badge: 'Canvas edit: {{value}}',
+    effective: 'Generate using canvas value “{{value}}”',
+    adopt: 'Adopt into plan',
+    discard: 'Discard',
+  },
+
   empty: {
     title: 'No storyboard plan yet',
     description: 'Write a story in the Creation workspace and let AI split it into shots, then review and add it to the canvas here.',
@@ -412,7 +444,6 @@ export const enStoryboardEditor = {
     rerunFreshRefs: 'Rerun with new refs',
     missingRequired: 'Missing {{slot}}',
     missingRequiredHint: 'This model needs a reference image to generate. Switch the model/mode, or attach a reference card to this shot.',
-    noRefAccepted: '{{mode}} takes no references',
     noRefAcceptedSwitch: '{{mode}} takes no references — switch to "{{other}}" to attach a {{slot}}',
     noRefAcceptedSwitchSame: '{{mode}} takes no references — switch to the "{{other}}" mode to attach one',
     slotAccepts: {
@@ -441,7 +472,6 @@ export const enStoryboardEditor = {
   playback: {
     start: 'Play sequence',
     aria: 'Play generated results in shot order',
-    skipped: 'Skipped {{count}} shots without results',
     scene: 'Play scene',
     sceneAria: 'Play {{name}}',
     position: 'Shot {{index}} / {{total}}',
@@ -568,7 +598,6 @@ export const enStoryboardEditor = {
     row: 'Ask Agent to edit this shot',
     selection: 'Ask Agent',
     footer: '{{count}} selected · ask Agent to edit',
-    toast: '{{count}} shots handed to the Agent — say what to change on the right',
   },
   storyboardHeading: 'Storyboard · {{count}} shots',
   addShot: 'Add shot',
@@ -659,8 +688,9 @@ export const enStoryboardEditor = {
     adopt: 'Adopt',
     why: 'Why',
     shotTag: 'Shot {{index}} ({{seconds}}s)',
+    shotTagShort: '#{{index}}',
+    affectedShots: '{{count}} shots: {{shots}}',
     blockersHeading: 'Resolve these first, otherwise generation would truncate or fail',
-    noIssues: 'Durations and parameters are within every model limit — no adjustment needed.',
     error: 'Execution plan check failed. Try again in a moment.',
     rowOverflow: 'Longer than the model allows in one shot',
     rowUnderflow: 'Shorter than the model allows in one shot',

@@ -10,6 +10,7 @@ export function useNodeMediaPreview(
   resultActionsSelected: boolean,
   /** 打开生成记录——原先住卡片右上角常驻压在图上，2026-08-04 迁进浮条（§1.5 动作不许压在内容上）。 */
   onOpenProvenance: () => void,
+  reportFeedback: (message: string) => void,
 ): {
   openMediaPreview: () => void
   mediaPreviewControls: JSX.Element
@@ -41,7 +42,7 @@ export function useNodeMediaPreview(
     mediaPreviewDoubleClick,
     mediaPreviewControls: (
       <>
-        <NodeResultDownloadButton node={node} selected={resultActionsSelected} onPreview={openMediaPreview} onOpenProvenance={onOpenProvenance} />
+        <NodeResultDownloadButton reportFeedback={reportFeedback} node={node} selected={resultActionsSelected} onPreview={openMediaPreview} onOpenProvenance={onOpenProvenance} />
         {open && result?.url && (result.type === 'image' || result.type === 'video') ? (
           <NodeMediaPreviewDialog
             mediaType={result.type}

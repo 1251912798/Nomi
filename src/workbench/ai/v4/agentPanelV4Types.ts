@@ -8,8 +8,8 @@
 // `ProjectAgentApprovalPolicy.mode` 的三个值，spend 由 mode derive（定稿表 §2）。
 // 早先那版把三档做成中文字面量 union（'每步问' | '自动改' | '全自动'），
 // 既违反 R15（可见文字必须走 i18n），又凭空多了一份要和合同对齐的词表。
-import type { ProjectAgentApprovalPolicy } from '../../../../electron/shared/projectAgentContracts'
-import type { LaneTaskStatus } from '../../../../electron/shared/agentLane/laneContracts'
+import type { ProjectAgentApprovalPolicy } from '../../../../electron/shared/agentCapabilities/capabilityApprovalPolicy';
+import type { LaneTaskCandidate, LaneTaskStatus } from '../../../../electron/shared/agentLane/laneContracts'
 
 /** AI Elements Tool 的七态协议（vendor/aiElementsContract.ts 是它的外部参照）。 */
 export type V4ToolStatus =
@@ -81,9 +81,13 @@ export type PermissionTier = ProjectAgentApprovalPolicy['mode']
 export type ComposerPopover = 'model' | 'skill' | 'permission'
 
 export type V4ChipKind = 'file' | 'skill' | 'clip'
-export type V4Chip = Readonly<{ kind: V4ChipKind; label: string }>
+export type V4Chip = Readonly<{ kind: V4ChipKind; label: string; description?: string; cover?: string; preview?: { url: string; type: 'image' | 'video' } }>
 
 export type ToolReceipt = Readonly<{
+  /** Exact call identity for row actions; never an authorization record. */
+  toolCallId?: string
+  /** Host identity for turn timing; never displayed. */
+  turnId?: string
   /** 人话动词 + 对象，例如「读取时间轴」。 */
   label: string
   action: V4ActionFamily
@@ -100,7 +104,7 @@ export type ToolReceipt = Readonly<{
   undoable?: boolean
 }>
 
-export type TaskCandidate = Readonly<{ tag: string; adopted?: boolean; pending?: boolean }>
+export type TaskCandidate = Readonly<{ tag: string; pending?: boolean } & Partial<LaneTaskCandidate>>
 
 export type TaskCardData = Readonly<{
   title: string
@@ -124,7 +128,7 @@ export type TaskCardData = Readonly<{
   undoable?: boolean
 }>
 
-export type PlanRow = Readonly<{ label: string; detail?: string; checked: boolean }>
+export type PlanRow = Readonly<{ label: string; detail?: string; technical?: string; checked: boolean }>
 
 export type InterventionData = Readonly<{
   kind: V4InterventionKind
@@ -154,8 +158,8 @@ export type InterventionData = Readonly<{
  */
 export type V4FlowItem =
   | { kind: 'user'; text: string; chips?: readonly V4Chip[] }
-  | { kind: 'assistant'; text: string; status: V4AssistantStatus }
-  | { kind: 'thinking'; label: string; meta: string }
+  | { kind: 'assistant'; text: string; status: V4AssistantStatus; continuationEntryId?: string }
+  | { kind: 'thinking'; label: string; meta: string; text?: string; streaming?: boolean }
   | { kind: 'tool'; receipt: ToolReceipt }
   // 同一个工具连着调 N 次时，N 行收据折成的那一行（`agentPanelV4Collapse.ts` 是唯一产地）。
   // 它**不是**第九个积木：展开体里逐条渲染的就是普通的一行收据。
@@ -172,7 +176,7 @@ export type V4FlowItem =
       receipts: readonly ToolReceipt[]
     }
   // 反复试的过程里，模型说给自己听的那几段。收起态就是助手文本的一个状态。
-  | { kind: 'process'; label: string; segments: readonly string[] }
+  | { kind: 'process'; label: string; segments: readonly string[]; running?: boolean; toolCount?: number; retries?: number; elapsed?: string; details?: readonly { item: V4FlowItem; index: number }[] }
   | { kind: 'task'; task: TaskCardData }
   | { kind: 'suggestion'; text: string; options: readonly string[] }
   | { kind: 'error'; reason: string; action?: string }

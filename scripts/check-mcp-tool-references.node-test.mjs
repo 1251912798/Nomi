@@ -43,6 +43,16 @@ const hostDeclared = new Set(['nomi_canvas_plan'])
 const catalogs = { declared, hostDeclared }
 const valid = (source) => scanSource(source, catalogs).map((ref) => ref.catalog.has(ref.name))
 
+test('native lane tool calls use their own catalog without changing MCP payload checks', () => {
+  assert.deepEqual(valid(`
+    { type: 'toolCall', id: 'call-1', name: 'nomi_canvas_plan', arguments: {} },
+    { name: 'nomi_canvas_plan', arguments: {}, id: 'call-2', type: 'toolCall' },
+    { type: 'toolCall', id: 'call-3', name: 'nomi_unknown_tool', arguments: {} },
+    { method: 'tools/call', params: { name: 'nomi_canvas_plan', arguments: {} } },
+    { type: 'toolCall', arguments: { name: 'nomi_canvas_plan' }, name: 'nomi_canvas_plan', id: 'call-4' }
+  `), [true, true, false, false, false, true])
+})
+
 test('accepts agent manifest excerpts independently of field order and distance', () => {
   assert.deepEqual(
     valid(`

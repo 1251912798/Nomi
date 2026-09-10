@@ -1,4 +1,15 @@
 export const zhSettings = {
+  sound: {
+    title: '提醒与声音', brand: 'Nomi 提醒音', description: '需要你决定的时候，轻轻响一声',
+    preview: '试听', stop: '停止', enabled: '需要我时响一声', events: '响哪些',
+    decision: '需要你决定（审批、要花钱、失败要处理）', completed: '生成完成', slow: '比平时久',
+    custom: '用自己的声音', replace: '换一个…', reset: '恢复默认', duration: '{{seconds}} 秒',
+    formats: 'WAV / MP3 / AIFF / M4A · 最长 10 秒 · 最大 2 MB',
+    enableFirst: '开启提醒音后可选择', unavailable: '正在连接桌面声音设置',
+    invalid: '请选择不超过 10 秒、2 MB 的有效音频文件', saveError: '未能保存，请重试',
+    previewError: '未能播放，请检查本机音频设备',
+  },
+
   title: '设置',
   close: '关闭',
   unsaved: {
@@ -34,7 +45,6 @@ export const zhSettings = {
       minimizeHint: '项目文件、历史记录和未采用素材默认不上传；外部模型仍会收到完成任务所必需的数据。',
       channel: {
         title: '素材上传通道',
-        hint: '本机素材要先换成公网地址，模型才取得到。现在实际走的是：',
         kind: { image: '图片', video: '视频', audio: '音频' },
         privateLease: '私有链接 · {{lease}}',
         publicLease: '任何人可访问 · {{lease}}',
@@ -75,8 +85,6 @@ export const zhSettings = {
       requiredForRun: '本次必需',
       requiredUnavailable: '本次需要的连接已停用或不存在',
       openModelCatalog: '检查模型',
-      hardBudget: '制作硬预算上限（CNY）',
-      hardBudgetHint: '批准生成和付费必须有明确上限；留空会阻止付费制作。',
       providers: '允许的供应商',
       providersHint: '只允许在这里勾选的供应商提交生成任务。',
       models: '允许的模型',
@@ -175,22 +183,31 @@ export const zhSettings = {
     hosts: {
       title: '可信发起方',
       local: '本机',
+      sharedHint: '外部发起方只可发起草稿、查看状态和打开安全深链。',
       nomi: { name: 'Nomi', hint: '本机工作台，负责编辑、批准、采用与导出。' },
-      claude: { name: 'Claude Code', hint: '只可发起草稿、查看状态和打开安全深链。' },
-      codex: { name: 'Codex', hint: '只可发起草稿、查看状态和打开安全深链。' },
-      cursor: { name: 'Cursor', hint: '只可发起草稿、查看状态和打开安全深链。' },
-      pi: { name: 'Pi', hint: '只可发起草稿、查看状态和打开安全深链。' },
+      claude: { name: 'Claude Code' },
+      codex: { name: 'Codex' },
+      cursor: { name: 'Cursor' },
+      pi: { name: 'Pi' },
+      workbuddy: { name: 'WorkBuddy' },
     },
     notifications: {
       title: '任务通知',
       system: '需要确认、失败和完成时系统通知',
       systemHint: '通知只显示状态与安全深链，不显示本地绝对路径。',
-      sound: '任务完成提示音',
-      soundHint: '系统通知开启时使用系统提示音；关闭时仅播放一声本地提示。',
     },
   },
   general: {
     title: '通用',
+    trace: {
+      title: '日志',
+      description: '当前项目的 Agent 会话轨迹，仅保存在本机。',
+      open: '打开目录',
+      opening: '正在打开…',
+      noProject: '请先打开一个项目，再查看日志。',
+      projectChanged: '项目已切换，请重新打开日志。',
+      failed: '无法打开日志目录，请重试。',
+    },
     screenshot: '全局截图热键',
     screenshotHint:
       '默认关。开启后按一下热键就能把屏幕抓进画布——Nomi 没在前台也管用（找参考时很顺手）。macOS 需要「屏幕录制」权限。',
@@ -200,12 +217,10 @@ export const zhSettings = {
       'macOS 还没给 Nomi「屏幕录制」权限，现在按热键抓不到画面。这项权限没法由应用自己申请，得去系统设置里勾上，勾完要重开 Nomi 才生效。',
     screenshotOpenSettings: '打开系统设置',
     canvasGesture: '画布滚轮',
-    canvasGestureHint:
-      '生成画布和 ComfyUI 工作流设置共用此滚轮/双指手势。在生成画布中，空白处左键拖动为平移，Shift+左键拖动为框选（加进当前选区），点击空白取消选中。',
     canvasGestureZoom: '缩放',
-    canvasGestureZoomHint: '滚轮直接缩放，以光标位置为中心。多数节点编辑器（ComfyUI 等）的习惯。',
+    canvasGestureZoomHint: '滚轮以光标为中心缩放。',
     canvasGesturePan: '平移',
-    canvasGesturePanHint: '滚轮/双指滑平移画布，捏合或 ⌘/Ctrl+滚轮缩放。触控板用户通常选这档（Figma 等的习惯）。',
+    canvasGesturePanHint: '滚轮/双指滑平移；捏合或 ⌘/Ctrl+滚轮缩放。',
     telemetry: {
       title: '隐私与诊断',
       description: '可选的匿名频率数据，只统计功能使用次数和耗时区间，不发送提示词、项目名、文件路径或用户标识。默认关闭，随时可以关闭并删除本机记录。',
@@ -264,6 +279,17 @@ export const zhSettings = {
 }
 
 export const enSettings = {
+  sound: {
+    title: 'Alerts & sound', brand: 'Nomi attention sound', description: 'A gentle note when a decision needs you',
+    preview: 'Preview', stop: 'Stop', enabled: 'Play a sound when I’m needed', events: 'Play for',
+    decision: 'Your decision (approval, spending, or a failure)', completed: 'Generation complete', slow: 'Taking longer than usual',
+    custom: 'Use your own sound', replace: 'Choose…', reset: 'Restore default', duration: '{{seconds}} sec',
+    formats: 'WAV / MP3 / AIFF / M4A · Up to 10 seconds · Up to 2 MB',
+    enableFirst: 'Enable sound to choose events', unavailable: 'Connecting to desktop sound settings',
+    invalid: 'Choose a valid audio file up to 10 seconds and 2 MB', saveError: 'Could not save. Please retry.',
+    previewError: 'Could not play. Check your audio device.',
+  },
+
   title: 'Settings',
   close: 'Close',
   unsaved: {
@@ -299,7 +325,6 @@ export const enSettings = {
       minimizeHint: 'Project files, history, and unused assets stay local by default. External models still receive data required to complete the task.',
       channel: {
         title: 'Asset upload channel',
-        hint: 'Local files need a public address before a model can fetch them. Right now they go through:',
         kind: { image: 'Images', video: 'Video', audio: 'Audio' },
         privateLease: 'Private link · {{lease}}',
         publicLease: 'Anyone can open it · {{lease}}',
@@ -340,8 +365,6 @@ export const enSettings = {
       requiredForRun: 'Required now',
       requiredUnavailable: 'A required connection is disabled or unavailable',
       openModelCatalog: 'Check models',
-      hardBudget: 'Hard production budget (CNY)',
-      hardBudgetHint: 'Approving generation and paying require a hard ceiling; leaving this empty blocks paid production.',
       providers: 'Allowed providers',
       providersHint: 'Only checked providers may submit generation jobs.',
       models: 'Allowed models',
@@ -439,22 +462,31 @@ export const enSettings = {
     hosts: {
       title: 'Trusted initiators',
       local: 'Local',
+      sharedHint: 'External hosts may only start drafts, read status, and open safe deep links.',
       nomi: { name: 'Nomi', hint: 'The local workbench owns editing, approval, adoption, and export.' },
-      claude: { name: 'Claude Code', hint: 'May only start drafts, read status, and open safe deep links.' },
-      codex: { name: 'Codex', hint: 'May only start drafts, read status, and open safe deep links.' },
-      cursor: { name: 'Cursor', hint: 'May only start drafts, read status, and open safe deep links.' },
-      pi: { name: 'Pi', hint: 'May only start drafts, read status, and open safe deep links.' },
+      claude: { name: 'Claude Code' },
+      codex: { name: 'Codex' },
+      cursor: { name: 'Cursor' },
+      pi: { name: 'Pi' },
+      workbuddy: { name: 'WorkBuddy' },
     },
     notifications: {
       title: 'Task notifications',
       system: 'System notifications for approval, failure, and completion',
       systemHint: 'Notifications show status and safe deep links, never absolute local paths.',
-      sound: 'Completion sound',
-      soundHint: 'Use the OS sound with system notifications; otherwise play one local chime.',
     },
   },
   general: {
     title: 'General',
+    trace: {
+      title: 'Logs',
+      description: 'Agent conversation traces for this project, stored locally.',
+      open: 'Open folder',
+      opening: 'Opening…',
+      noProject: 'Open a project to view its logs.',
+      projectChanged: 'The project changed. Open the logs again.',
+      failed: 'Could not open the log folder. Try again.',
+    },
     screenshot: 'Global screenshot hotkey',
     screenshotHint:
       'Off by default. When on, one keypress grabs the screen into the canvas — even when Nomi is not in front (handy while hunting references). macOS needs Screen Recording permission.',
@@ -464,12 +496,10 @@ export const enSettings = {
       'macOS has not granted Nomi Screen Recording permission, so the hotkey cannot capture anything yet. Apps cannot request this permission themselves — enable it in System Settings, then restart Nomi.',
     screenshotOpenSettings: 'Open System Settings',
     canvasGesture: 'Canvas wheel',
-    canvasGestureHint:
-      'The generation canvas and ComfyUI workflow settings share this wheel/two-finger gesture. On the generation canvas, left-drag empty space to pan, Shift+left-drag to add a box selection, or click empty space to clear the selection.',
     canvasGestureZoom: 'Zoom',
-    canvasGestureZoomHint: 'The wheel zooms directly, centered on the cursor. What most node editors (ComfyUI and friends) do.',
+    canvasGestureZoomHint: 'Wheel zooms around the cursor.',
     canvasGesturePan: 'Pan',
-    canvasGesturePanHint: 'Wheel/two-finger swipe pans the canvas; pinch or ⌘/Ctrl+wheel zooms. Usually what trackpad users want (the Figma convention).',
+    canvasGesturePanHint: 'Wheel/two-finger swipe pans; pinch or ⌘/Ctrl+wheel zooms.',
     telemetry: {
       title: 'Privacy & diagnostics',
       description: 'Optional anonymous frequency data counts feature use and duration buckets only. Prompts, project names, file paths, and user identifiers are never sent. Off by default; you can turn it off and delete local records anytime.',

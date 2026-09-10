@@ -12,12 +12,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
  * 只把最外层的 @mantine/notifications 换成 spy——不给生产代码开测试专用后门。
  */
 
-const notificationMocks = vi.hoisted(() => ({
-  show: vi.fn(),
-  update: vi.fn(),
-  hide: vi.fn(),
-}))
-vi.mock('@mantine/notifications', () => ({ notifications: notificationMocks }))
+import { notifications, notificationsStore } from '@mantine/notifications'
 
 import i18n from '../../i18n'
 import { createDefaultTimeline } from '../timeline/timelineMath'
@@ -31,16 +26,16 @@ type ToastActionProps = { actionLabel?: string; onAction?: () => void }
 
 /** 取最后一张 toast 的可见文字。 */
 function lastToastMessage(): string {
-  const call = notificationMocks.show.mock.calls.at(-1)
-  const notification = call?.[0] as NotificationData | undefined
+  const state = notificationsStore.getState()
+  const notification = [...state.notifications, ...state.queue].at(-1) as NotificationData | undefined
   const element = notification?.message as { props?: { message?: unknown } } | undefined
   return String(element?.props?.message ?? '')
 }
 
 /** 取最后一张 toast 的动作（撤销按钮）。 */
 function lastToastAction(): ToastActionProps {
-  const call = notificationMocks.show.mock.calls.at(-1)
-  const notification = call?.[0] as NotificationData | undefined
+  const state = notificationsStore.getState()
+  const notification = [...state.notifications, ...state.queue].at(-1) as NotificationData | undefined
   const element = notification?.message as { props?: ToastActionProps } | undefined
   return element?.props ?? {}
 }
@@ -83,13 +78,30 @@ const storePorts = {
 
 describe('P5 E1 采纳回执', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.restoreAllMocks()
+    notifications.clean()
+    vi.spyOn(notifications, 'hide')
     resetAdoptionRegistry()
     useWorkbenchStore.setState({
       timeline: createDefaultTimeline(),
       timelineUndoStack: [],
       timelineRedoStack: [],
     })
+  })
+
+  it('routes on-timeline failure to the supplied host without a toast', () => {
+    const present = vi.fn()
+    reportAdoptionOutcome({ status: 'nothing_to_adopt', skipped: [] }, { level: 'inline', present })
+    expect(present).toHaveBeenCalledWith(i18n.t('generationCommon.node.generateFirst'))
+    expect(notificationsStore.getState().notifications).toHaveLength(0)
+  })
+
+  it('keeps cross-surface information actionable by revealing the timeline', () => {
+    useWorkbenchStore.setState({ timelinePanelCollapsed: true })
+    reportAdoptionOutcome({ status: 'nothing_to_adopt', skipped: [] })
+    expect(lastToastAction().actionLabel).toBe(i18n.t('timelineEditor.adoption.openTimeline'))
+    lastToastAction().onAction?.()
+    expect(useWorkbenchStore.getState().timelinePanelCollapsed).toBe(false)
   })
 
   // ── 缺陷 1 ──────────────────────────────────────────────────────
@@ -151,7 +163,7 @@ describe('P5 E1 采纳回执', () => {
       useWorkbenchStore.getState().timeline.tracks.find((track) => track.type === 'video')?.clips.map((item) => item.id),
     ).toEqual(['unrelated-edit'])
     // 而且这张失效的回执应该被收掉，不留哑巴按钮。
-    expect(notificationMocks.hide).toHaveBeenCalled()
+    expect(notifications.hide).toHaveBeenCalled()
   })
 
   // 走查截图里正是**两张**回执叠着，各带一个可点的撤销 = 两次无关撤销的机会。

@@ -82,4 +82,4 @@
 | **metadata / meta** | planned node 上叫 `metadata` | 真实 canvas node 上叫 **`meta`**（`applyCanvasToolCall.ts:308` 做的转换） |
 | **transition** | `TimelineTransition` **数据**（已实现） | 转场**渲染效果**（**未实现**，见 `docs/ARCHITECTURE-NOW.md`） |
 | **plans 目录** | `docs/plan/`（397 篇，功能级方案） | `docs/superpowers/plans/`（35 篇，**跨阶段总纲住这**） |
-| **表格 / table** | **产物表格** = `agent-artifact` 的一个 `fileType`（`ARTIFACT_FILE_TYPES` 里的 `'table'`）：Agent 手写的一段**静态只读 HTML 片段**，落盘成文件、只用来看，没有行模型、不可编辑、不投影任何东西 | **分镜表**（storyboard shot table）= 创作面的**可编辑行编辑器**，行是 StoryboardPlan 的镜头、每行绑模型与参考槽、双向投影回画布节点 |
+| **表格 / table** | **产物表格** = `agent-artifact` 的一个 `fileType`（`ARTIFACT_FILE_TYPES` 里的 `'table'`）：Agent 手写的一段**静态只读 HTML 片段**，落盘成文件、只用来看，没有行模型、不可编辑、不投影任何东西 | **分镜表**（storyboard shot table）= 创作面的**可编辑行编辑器**，行是 StoryboardPlan 的镜头、每行绑模型与参考槽；方案是内容正本，节点派生并可逐字段覆写，行内采纳/丢弃覆写；执行状态从节点投影 |

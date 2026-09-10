@@ -1,0 +1,740 @@
+{
+  "retrievedAt": "2026-09-08",
+  "repositories": [
+    {
+      "repo": "YouMind-OpenLab/awesome-seedance-2-prompts",
+      "stars": 1962,
+      "pushedAt": "2026-09-08T08:57:00Z",
+      "revision": "eed3de80ef10faecbd89e7df6cc6fed6ab908247",
+      "licenseUrl": "https://github.com/YouMind-OpenLab/awesome-seedance-2-prompts/blob/eed3de80ef10faecbd89e7df6cc6fed6ab908247/LICENSE"
+    },
+    {
+      "repo": "LichAmnesia/awesome-ad-video-prompts",
+      "stars": 159,
+      "pushedAt": "2026-06-16T04:36:23Z",
+      "revision": "ac5b61177a81343e958f63212c4df7f25dc4c265",
+      "licenseUrl": "https://github.com/LichAmnesia/awesome-ad-video-prompts/blob/ac5b61177a81343e958f63212c4df7f25dc4c265/LICENSE"
+    },
+    {
+      "repo": "jnMetaCode/ai-shortfilm-prompts",
+      "stars": 399,
+      "pushedAt": "2026-08-25T05:06:45Z",
+      "revision": "f21500e5946973949c6bbf02e67e0c21b2e63a35",
+      "licenseUrl": "https://github.com/jnMetaCode/ai-shortfilm-prompts/blob/f21500e5946973949c6bbf02e67e0c21b2e63a35/LICENSE"
+    },
+    {
+      "repo": "YouMind-OpenLab/awesome-nano-banana-pro-prompts",
+      "stars": 13383,
+      "pushedAt": "2026-09-08T12:06:15Z",
+      "revision": "3ccf3756ec221f2d07b272a10ad5d8a6058692da",
+      "licenseUrl": "https://github.com/YouMind-OpenLab/awesome-nano-banana-pro-prompts/blob/3ccf3756ec221f2d07b272a10ad5d8a6058692da/LICENSE"
+    },
+    {
+      "repo": "PicoTrex/Awesome-Nano-Banana-images",
+      "stars": 23660,
+      "pushedAt": "2026-09-03T10:48:55Z",
+      "revision": "2558bf0bb825be150c5d1aeab918cd90004882d3",
+      "licenseUrl": "https://github.com/PicoTrex/Awesome-Nano-Banana-images/blob/2558bf0bb825be150c5d1aeab918cd90004882d3/LICENSE"
+    },
+    {
+      "repo": "songguoxs/gpt4o-image-prompts",
+      "stars": 3798,
+      "pushedAt": "2026-01-08T13:39:25Z",
+      "revision": "c282b673debc8ddb31258c0474228774a628069d",
+      "licenseUrl": "https://github.com/songguoxs/gpt4o-image-prompts/blob/c282b673debc8ddb31258c0474228774a628069d/LICENSE"
+    },
+    {
+      "repo": "jamez-bondos/awesome-gpt4o-images",
+      "stars": 8144,
+      "pushedAt": "2025-05-26T02:32:13Z",
+      "revision": "3ed4dbb0f1ae6f7385c81e1fcea48d9eefd2e596",
+      "licenseUrl": "https://github.com/jamez-bondos/awesome-gpt4o-images/blob/3ed4dbb0f1ae6f7385c81e1fcea48d9eefd2e596/LICENSE"
+    },
+    {
+      "repo": "f/awesome-chatgpt-prompts",
+      "stars": 169661,
+      "pushedAt": "2026-09-06T03:17:52Z",
+      "revision": "eaab6b14a085f3b9e4461be90367fcd9a16d3204",
+      "licenseUrl": "https://github.com/f/awesome-chatgpt-prompts/blob/eaab6b14a085f3b9e4461be90367fcd9a16d3204/LICENSE"
+    },
+    {
+      "repo": "anthropics/skills",
+      "stars": 175181,
+      "pushedAt": "2026-09-03T16:37:14Z",
+      "revision": "41bbe19d1a1a7eaab5e7bb9050a417e5c6cffc8f",
+      "licenseUrl": "https://github.com/anthropics/skills/blob/41bbe19d1a1a7eaab5e7bb9050a417e5c6cffc8f/LICENSE"
+    },
+    {
+      "repo": "google-gemini/cookbook",
+      "stars": 17752,
+      "pushedAt": "2026-09-07T21:15:16Z",
+      "revision": "7dfae6b39b2d631faa23138dcf833fea3551692b",
+      "licenseUrl": "https://github.com/google-gemini/cookbook/blob/7dfae6b39b2d631faa23138dcf833fea3551692b/LICENSE"
+    },
+    {
+      "repo": "davila7/claude-code-templates",
+      "stars": 30570,
+      "pushedAt": "2026-09-08T14:15:24Z",
+      "revision": "f43c5d9b598d6054f08d550acc8f2e8958cef081",
+      "licenseUrl": "https://github.com/davila7/claude-code-templates/blob/f43c5d9b598d6054f08d550acc8f2e8958cef081/LICENSE"
+    },
+    {
+      "repo": "FooyuFun/awesome-nano-banana-prompts",
+      "stars": null,
+      "pushedAt": null,
+      "revision": null,
+      "licenseUrl": "https://github.com/FooyuFun/awesome-nano-banana-prompts/blob/main/LICENSE"
+    }
+  ],
+  "candidates": [
+    {
+      "id": 1,
+      "repo": "LichAmnesia/awesome-ad-video-prompts",
+      "title": "Frost-Glass Serum, Condensation Macro",
+      "license": "CC-BY-4.0",
+      "task": "广告·运镜",
+      "change": "轻：商品/品牌参数化；保留节拍和镜头；去导流",
+      "status": "收",
+      "path": "README.md",
+      "media": [
+        "https://raw.githubusercontent.com/LichAmnesia/awesome-ad-video-prompts/main/images/frost-glass-serum-condensation-macro.png"
+      ],
+      "evidence_urls": [],
+      "stars": 159,
+      "pushed_at": "2026-06-16T04:36:23Z",
+      "source_url": "https://github.com/LichAmnesia/awesome-ad-video-prompts/blob/main/README.md"
+    },
+    {
+      "id": 2,
+      "repo": "LichAmnesia/awesome-ad-video-prompts",
+      "title": "Sneaker, 360 Turntable Studio",
+      "license": "CC-BY-4.0",
+      "task": "广告·运镜",
+      "change": "轻：商品/品牌参数化；保留节拍和镜头；去导流",
+      "status": "收",
+      "path": "README.md",
+      "media": [
+        "https://raw.githubusercontent.com/LichAmnesia/awesome-ad-video-prompts/main/images/sneaker-360-turntable-studio.png"
+      ],
+      "evidence_urls": [],
+      "stars": 159,
+      "pushed_at": "2026-06-16T04:36:23Z",
+      "source_url": "https://github.com/LichAmnesia/awesome-ad-video-prompts/blob/main/README.md"
+    },
+    {
+      "id": 3,
+      "repo": "LichAmnesia/awesome-ad-video-prompts",
+      "title": "Espresso Pour, Crema Physics",
+      "license": "CC-BY-4.0",
+      "task": "广告·运镜",
+      "change": "轻：商品/品牌参数化；保留节拍和镜头；去导流",
+      "status": "收",
+      "path": "README.md",
+      "media": [
+        "https://raw.githubusercontent.com/LichAmnesia/awesome-ad-video-prompts/main/images/espresso-pour-crema-physics.png"
+      ],
+      "evidence_urls": [],
+      "stars": 159,
+      "pushed_at": "2026-06-16T04:36:23Z",
+      "source_url": "https://github.com/LichAmnesia/awesome-ad-video-prompts/blob/main/README.md"
+    },
+    {
+      "id": 4,
+      "repo": "LichAmnesia/awesome-ad-video-prompts",
+      "title": "Earbuds, Exploded-View Levitation",
+      "license": "CC-BY-4.0",
+      "task": "广告·运镜",
+      "change": "轻：商品/品牌参数化；保留节拍和镜头；去导流",
+      "status": "收",
+      "path": "README.md",
+      "media": [
+        "https://raw.githubusercontent.com/LichAmnesia/awesome-ad-video-prompts/main/images/earbuds-exploded-view-levitation.png"
+      ],
+      "evidence_urls": [],
+      "stars": 159,
+      "pushed_at": "2026-06-16T04:36:23Z",
+      "source_url": "https://github.com/LichAmnesia/awesome-ad-video-prompts/blob/main/README.md"
+    },
+    {
+      "id": 5,
+      "repo": "LichAmnesia/awesome-ad-video-prompts",
+      "title": "Candle, Ambient Slow Ignite",
+      "license": "CC-BY-4.0",
+      "task": "广告·运镜",
+      "change": "轻：商品/品牌参数化；保留节拍和镜头；去导流",
+      "status": "收",
+      "path": "README.md",
+      "media": [
+        "https://raw.githubusercontent.com/LichAmnesia/awesome-ad-video-prompts/main/images/candle-ambient-slow-ignite.png"
+      ],
+      "evidence_urls": [],
+      "stars": 159,
+      "pushed_at": "2026-06-16T04:36:23Z",
+      "source_url": "https://github.com/LichAmnesia/awesome-ad-video-prompts/blob/main/README.md"
+    },
+    {
+      "id": 6,
+      "repo": "LichAmnesia/awesome-ad-video-prompts",
+      "title": "Eyewear, Motion-Control Light Streaks",
+      "license": "CC-BY-4.0",
+      "task": "广告·运镜",
+      "change": "轻：商品/品牌参数化；保留节拍和镜头；去导流",
+      "status": "收",
+      "path": "README.md",
+      "media": [
+        "https://raw.githubusercontent.com/LichAmnesia/awesome-ad-video-prompts/main/images/eyewear-motion-control-light-streaks.png"
+      ],
+      "evidence_urls": [],
+      "stars": 159,
+      "pushed_at": "2026-06-16T04:36:23Z",
+      "source_url": "https://github.com/LichAmnesia/awesome-ad-video-prompts/blob/main/README.md"
+    },
+    {
+      "id": 7,
+      "repo": "LichAmnesia/awesome-ad-video-prompts",
+      "title": "Sneaker Out Of Mud",
+      "license": "CC-BY-4.0",
+      "task": "广告·运镜",
+      "change": "轻：商品/品牌参数化；保留节拍和镜头；去导流",
+      "status": "收",
+      "path": "README.md",
+      "media": [
+        "https://raw.githubusercontent.com/LichAmnesia/awesome-ad-video-prompts/main/images/sneaker-out-of-mud.png"
+      ],
+      "evidence_urls": [],
+      "stars": 159,
+      "pushed_at": "2026-06-16T04:36:23Z",
+      "source_url": "https://github.com/LichAmnesia/awesome-ad-video-prompts/blob/main/README.md"
+    },
+    {
+      "id": 8,
+      "repo": "LichAmnesia/awesome-ad-video-prompts",
+      "title": "Glass Serum Unbox",
+      "license": "CC-BY-4.0",
+      "task": "广告·运镜",
+      "change": "轻：商品/品牌参数化；保留节拍和镜头；去导流",
+      "status": "收",
+      "path": "README.md",
+      "media": [
+        "https://raw.githubusercontent.com/LichAmnesia/awesome-ad-video-prompts/main/images/glass-serum-unbox.png"
+      ],
+      "evidence_urls": [],
+      "stars": 159,
+      "pushed_at": "2026-06-16T04:36:23Z",
+      "source_url": "https://github.com/LichAmnesia/awesome-ad-video-prompts/blob/main/README.md"
+    },
+    {
+      "id": 9,
+      "repo": "PicoTrex/Awesome-Nano-Banana-images",
+      "title": "跨视角图像生成",
+      "license": "LICENSE: Apache-2.0；README badge: CC-BY-4.0（冲突）",
+      "task": "分镜·生图公式·修图",
+      "change": "轻：保留参考槽；把专名/数量改槽；分镜用用户脚本；保留作者署名",
+      "status": "条件候选：许可声明冲突需记录",
+      "path": "README.md",
+      "media": [
+        "https://raw.githubusercontent.com/PicoTrex/Awesome-Nano-Banana-images/main/images/case9/input.jpg",
+        "https://raw.githubusercontent.com/PicoTrex/Awesome-Nano-Banana-images/main/images/case9/output.jpg"
+      ],
+      "evidence_urls": [
+        "https://x.com/op7418/status/1960896630586310656",
+        "https://x.com/op7418"
+      ],
+      "stars": 23660,
+      "pushed_at": "2026-09-03T10:48:55Z",
+      "source_url": "https://github.com/PicoTrex/Awesome-Nano-Banana-images/blob/main/README.md",
+      "license_note": "两者均属用户允许类；必须保留两份声明及作者来源，不可隐藏差异或断言明确单许可。"
+    },
+    {
+      "id": 10,
+      "repo": "PicoTrex/Awesome-Nano-Banana-images",
+      "title": "多视图结果生成",
+      "license": "LICENSE: Apache-2.0；README badge: CC-BY-4.0（冲突）",
+      "task": "分镜·生图公式·修图",
+      "change": "轻：保留参考槽；把专名/数量改槽；分镜用用户脚本；保留作者署名",
+      "status": "条件候选：许可声明冲突需记录",
+      "path": "README.md",
+      "media": [
+        "https://raw.githubusercontent.com/PicoTrex/Awesome-Nano-Banana-images/main/images/case23/input.jpg",
+        "https://raw.githubusercontent.com/PicoTrex/Awesome-Nano-Banana-images/main/images/case23/output.jpg"
+      ],
+      "evidence_urls": [
+        "https://x.com/Error_HTTP_404/status/1960405116701303294",
+        "https://x.com/Error_HTTP_404"
+      ],
+      "stars": 23660,
+      "pushed_at": "2026-09-03T10:48:55Z",
+      "source_url": "https://github.com/PicoTrex/Awesome-Nano-Banana-images/blob/main/README.md",
+      "license_note": "两者均属用户允许类；必须保留两份声明及作者来源，不可隐藏差异或断言明确单许可。"
+    },
+    {
+      "id": 11,
+      "repo": "PicoTrex/Awesome-Nano-Banana-images",
+      "title": "参考图控制人物表情",
+      "license": "LICENSE: Apache-2.0；README badge: CC-BY-4.0（冲突）",
+      "task": "分镜·生图公式·修图",
+      "change": "轻：保留参考槽；把专名/数量改槽；分镜用用户脚本；保留作者署名",
+      "status": "条件候选：许可声明冲突需记录",
+      "path": "README.md",
+      "media": [
+        "https://raw.githubusercontent.com/PicoTrex/Awesome-Nano-Banana-images/main/images/case34/case.jpg"
+      ],
+      "evidence_urls": [
+        "https://x.com/ZHO_ZHO_ZHO/status/1963156830458085674",
+        "https://x.com/ZHO_ZHO_ZHO"
+      ],
+      "stars": 23660,
+      "pushed_at": "2026-09-03T10:48:55Z",
+      "source_url": "https://github.com/PicoTrex/Awesome-Nano-Banana-images/blob/main/README.md",
+      "license_note": "两者均属用户允许类；必须保留两份声明及作者来源，不可隐藏差异或断言明确单许可。"
+    },
+    {
+      "id": 12,
+      "repo": "PicoTrex/Awesome-Nano-Banana-images",
+      "title": "图像外扩修复",
+      "license": "LICENSE: Apache-2.0；README badge: CC-BY-4.0（冲突）",
+      "task": "分镜·生图公式·修图",
+      "change": "轻：保留参考槽；把专名/数量改槽；分镜用用户脚本；保留作者署名",
+      "status": "条件候选：许可声明冲突需记录",
+      "path": "README.md",
+      "media": [
+        "https://raw.githubusercontent.com/PicoTrex/Awesome-Nano-Banana-images/main/images/case50/input.jpg",
+        "https://raw.githubusercontent.com/PicoTrex/Awesome-Nano-Banana-images/main/images/case50/output.jpg"
+      ],
+      "evidence_urls": [
+        "https://x.com/bwabbage/status/1962903212937130450",
+        "https://x.com/bwabbage"
+      ],
+      "stars": 23660,
+      "pushed_at": "2026-09-03T10:48:55Z",
+      "source_url": "https://github.com/PicoTrex/Awesome-Nano-Banana-images/blob/main/README.md",
+      "license_note": "两者均属用户允许类；必须保留两份声明及作者来源，不可隐藏差异或断言明确单许可。"
+    },
+    {
+      "id": 13,
+      "repo": "PicoTrex/Awesome-Nano-Banana-images",
+      "title": "图像高清修复",
+      "license": "LICENSE: Apache-2.0；README badge: CC-BY-4.0（冲突）",
+      "task": "分镜·生图公式·修图",
+      "change": "轻：保留参考槽；把专名/数量改槽；分镜用用户脚本；保留作者署名",
+      "status": "条件候选：许可声明冲突需记录",
+      "path": "README.md",
+      "media": [
+        "https://raw.githubusercontent.com/PicoTrex/Awesome-Nano-Banana-images/main/images/case74/input.png",
+        "https://raw.githubusercontent.com/PicoTrex/Awesome-Nano-Banana-images/main/images/case74/output.png"
+      ],
+      "evidence_urls": [
+        "https://x.com/op7418/status/1960540798573011209",
+        "https://x.com/op7418"
+      ],
+      "stars": 23660,
+      "pushed_at": "2026-09-03T10:48:55Z",
+      "source_url": "https://github.com/PicoTrex/Awesome-Nano-Banana-images/blob/main/README.md",
+      "license_note": "两者均属用户允许类；必须保留两份声明及作者来源，不可隐藏差异或断言明确单许可。"
+    },
+    {
+      "id": 14,
+      "repo": "PicoTrex/Awesome-Nano-Banana-images",
+      "title": "自定义人物的表情包生成",
+      "license": "LICENSE: Apache-2.0；README badge: CC-BY-4.0（冲突）",
+      "task": "分镜·生图公式·修图",
+      "change": "轻：保留参考槽；把专名/数量改槽；分镜用用户脚本；保留作者署名",
+      "status": "条件候选：许可声明冲突需记录",
+      "path": "README.md",
+      "media": [
+        "https://raw.githubusercontent.com/PicoTrex/Awesome-Nano-Banana-images/main/images/case77/input.png",
+        "https://raw.githubusercontent.com/PicoTrex/Awesome-Nano-Banana-images/main/images/case77/output.png"
+      ],
+      "evidence_urls": [
+        "https://x.com/vista8/status/1966164427243458977",
+        "https://x.com/vista8"
+      ],
+      "stars": 23660,
+      "pushed_at": "2026-09-03T10:48:55Z",
+      "source_url": "https://github.com/PicoTrex/Awesome-Nano-Banana-images/blob/main/README.md",
+      "license_note": "两者均属用户允许类；必须保留两份声明及作者来源，不可隐藏差异或断言明确单许可。"
+    },
+    {
+      "id": 15,
+      "repo": "PicoTrex/Awesome-Nano-Banana-images",
+      "title": "电影分镜制作",
+      "license": "LICENSE: Apache-2.0；README badge: CC-BY-4.0（冲突）",
+      "task": "分镜·生图公式·修图",
+      "change": "轻：保留参考槽；把专名/数量改槽；分镜用用户脚本；保留作者署名",
+      "status": "条件候选：许可声明冲突需记录",
+      "path": "README.md",
+      "media": [
+        "https://raw.githubusercontent.com/PicoTrex/Awesome-Nano-Banana-images/main/images/pro_case27/output.jpg"
+      ],
+      "evidence_urls": [
+        "https://x.com/jamesyeung18/status/1992597408128045462?s=20",
+        "https://x.com/jamesyeung18"
+      ],
+      "stars": 23660,
+      "pushed_at": "2026-09-03T10:48:55Z",
+      "source_url": "https://github.com/PicoTrex/Awesome-Nano-Banana-images/blob/main/README.md",
+      "license_note": "两者均属用户允许类；必须保留两份声明及作者来源，不可隐藏差异或断言明确单许可。"
+    },
+    {
+      "id": 16,
+      "repo": "PicoTrex/Awesome-Nano-Banana-images",
+      "title": "四季场景",
+      "license": "LICENSE: Apache-2.0；README badge: CC-BY-4.0（冲突）",
+      "task": "场景·角色设定",
+      "change": "轻：主题参数化；不带原作品专名",
+      "status": "条件候选：许可声明冲突需记录",
+      "path": "README.md",
+      "media": [
+        "https://raw.githubusercontent.com/PicoTrex/Awesome-Nano-Banana-images/main/images/pro_case50/output.jpg"
+      ],
+      "evidence_urls": [
+        "https://x.com/dotey/status/1997787952110239874?s=20",
+        "https://x.com/dotey"
+      ],
+      "stars": 23660,
+      "pushed_at": "2026-09-03T10:48:55Z",
+      "source_url": "https://github.com/PicoTrex/Awesome-Nano-Banana-images/blob/main/README.md",
+      "license_note": "两者均属用户允许类；必须保留两份声明及作者来源，不可隐藏差异或断言明确单许可。"
+    },
+    {
+      "id": 17,
+      "repo": "PicoTrex/Awesome-Nano-Banana-images",
+      "title": "人物拆解",
+      "license": "LICENSE: Apache-2.0；README badge: CC-BY-4.0（冲突）",
+      "task": "场景·角色设定",
+      "change": "轻：主题参数化；不带原作品专名",
+      "status": "条件候选：许可声明冲突需记录",
+      "path": "README.md",
+      "media": [
+        "https://raw.githubusercontent.com/PicoTrex/Awesome-Nano-Banana-images/main/images/pro_case6/output.jpg"
+      ],
+      "evidence_urls": [
+        "https://x.com/cheerselflin/status/1992877077570453712?s=20",
+        "https://x.com/cheerselflin"
+      ],
+      "stars": 23660,
+      "pushed_at": "2026-09-03T10:48:55Z",
+      "source_url": "https://github.com/PicoTrex/Awesome-Nano-Banana-images/blob/main/README.md",
+      "license_note": "两者均属用户允许类；必须保留两份声明及作者来源，不可隐藏差异或断言明确单许可。"
+    },
+    {
+      "id": 18,
+      "repo": "PicoTrex/Awesome-Nano-Banana-images",
+      "title": "生成材质贴图",
+      "license": "LICENSE: Apache-2.0；README badge: CC-BY-4.0（冲突）",
+      "task": "场景·角色设定",
+      "change": "轻：主题参数化；不带原作品专名",
+      "status": "条件候选：许可声明冲突需记录",
+      "path": "README.md",
+      "media": [
+        "https://raw.githubusercontent.com/PicoTrex/Awesome-Nano-Banana-images/main/images/pro_case9/case.jpg"
+      ],
+      "evidence_urls": [
+        "https://x.com/someidesign/status/1992633404186316906?s=20",
+        "https://x.com/someidesign"
+      ],
+      "stars": 23660,
+      "pushed_at": "2026-09-03T10:48:55Z",
+      "source_url": "https://github.com/PicoTrex/Awesome-Nano-Banana-images/blob/main/README.md",
+      "license_note": "两者均属用户允许类；必须保留两份声明及作者来源，不可隐藏差异或断言明确单许可。"
+    },
+    {
+      "id": 19,
+      "repo": "PicoTrex/Awesome-Nano-Banana-images",
+      "title": "手绘等距图",
+      "license": "LICENSE: Apache-2.0；README badge: CC-BY-4.0（冲突）",
+      "task": "场景·角色设定",
+      "change": "轻：主题参数化；不带原作品专名",
+      "status": "条件候选：许可声明冲突需记录",
+      "path": "README.md",
+      "media": [
+        "https://raw.githubusercontent.com/PicoTrex/Awesome-Nano-Banana-images/main/images/pro_case15/input.jpg",
+        "https://raw.githubusercontent.com/PicoTrex/Awesome-Nano-Banana-images/main/images/pro_case15/output.jpg"
+      ],
+      "evidence_urls": [
+        "https://x.com/AmirMushich/status/1992704354990907793?s=20",
+        "https://x.com/AmirMushich"
+      ],
+      "stars": 23660,
+      "pushed_at": "2026-09-03T10:48:55Z",
+      "source_url": "https://github.com/PicoTrex/Awesome-Nano-Banana-images/blob/main/README.md",
+      "license_note": "两者均属用户允许类；必须保留两份声明及作者来源，不可隐藏差异或断言明确单许可。"
+    },
+    {
+      "id": 20,
+      "repo": "YouMind-OpenLab/awesome-seedance-2-prompts",
+      "title": "No. 1: Seedance 2.0: 15-Second Cinematic Japanese Romance Short Film",
+      "license": "CC-BY-4.0",
+      "task": "分镜·运镜",
+      "change": "中：删固定人物/地点；时长匹配节点；保留作者/更改说明",
+      "status": "收",
+      "path": "README.md",
+      "media": [
+        "https://customer-qs6wnyfuv0gcybzj.cloudflarestream.com/7f63ad253175a9ad1dac53de490efac8/thumbnails/thumbnail.jpg"
+      ],
+      "evidence_urls": [
+        "https://youmind.com/en-US/seedance-2-0-prompts?id=1402",
+        "https://x.com/JiahaoYang_art",
+        "https://x.com/JiahaoYang_art/status/2033119940216344616"
+      ],
+      "stars": 1962,
+      "pushed_at": "2026-09-08T08:57:00Z",
+      "source_url": "https://github.com/YouMind-OpenLab/awesome-seedance-2-prompts/blob/main/README.md"
+    },
+    {
+      "id": 21,
+      "repo": "YouMind-OpenLab/awesome-seedance-2-prompts",
+      "title": "No. 2: Hollywood Haute Couture Fantasy Video Prompt",
+      "license": "CC-BY-4.0",
+      "task": "分镜·运镜",
+      "change": "中：删固定人物/地点；时长匹配节点；保留作者/更改说明",
+      "status": "收",
+      "path": "README.md",
+      "media": [
+        "https://customer-qs6wnyfuv0gcybzj.cloudflarestream.com/e066fab457509bc6809ea212ae5d6a51/thumbnails/thumbnail.jpg"
+      ],
+      "evidence_urls": [
+        "https://youmind.com/en-US/seedance-2-0-prompts?id=594",
+        "https://x.com/johnAGI168",
+        "https://x.com/johnAGI168/status/2025849650654122348"
+      ],
+      "stars": 1962,
+      "pushed_at": "2026-09-08T08:57:00Z",
+      "source_url": "https://github.com/YouMind-OpenLab/awesome-seedance-2-prompts/blob/main/README.md"
+    },
+    {
+      "id": 22,
+      "repo": "YouMind-OpenLab/awesome-seedance-2-prompts",
+      "title": "No. 3: Modern Rural Aesthetics Healing Short Film Video Prompt",
+      "license": "CC-BY-4.0",
+      "task": "分镜·运镜",
+      "change": "中：删固定人物/地点；时长匹配节点；保留作者/更改说明",
+      "status": "收",
+      "path": "README.md",
+      "media": [
+        "https://customer-qs6wnyfuv0gcybzj.cloudflarestream.com/ce508b28e505ffce07247e2ab036d6f1/thumbnails/thumbnail.jpg"
+      ],
+      "evidence_urls": [
+        "https://youmind.com/en-US/seedance-2-0-prompts?id=288",
+        "https://x.com/johnAGI168",
+        "https://x.com/johnAGI168/status/2021818021354848258"
+      ],
+      "stars": 1962,
+      "pushed_at": "2026-09-08T08:57:00Z",
+      "source_url": "https://github.com/YouMind-OpenLab/awesome-seedance-2-prompts/blob/main/README.md"
+    },
+    {
+      "id": 23,
+      "repo": "YouMind-OpenLab/awesome-nano-banana-pro-prompts",
+      "title": "No. 3: Hand-drawn style header image prompt from photo",
+      "license": "CC-BY-4.0",
+      "task": "生图公式",
+      "change": "轻：照片/主题参数化；标题改UI叠字",
+      "status": "收",
+      "path": "README.md",
+      "media": [
+        "https://cms-assets.youmind.com/media/1763885651870_4szbai_G6VZiROagAAqsIh.jpg",
+        "https://cms-assets.youmind.com/media/1763885654537_qf6h9o_G6VZiRWaIAA_9x5.jpg"
+      ],
+      "evidence_urls": [
+        "https://x.com/akirakudo_ai",
+        "https://x.com/akirakudo_ai/status/1992096860765561190",
+        "https://youmind.com/en-US/nano-banana-pro-prompts?id=498"
+      ],
+      "stars": 13383,
+      "pushed_at": "2026-09-08T12:06:15Z",
+      "source_url": "https://github.com/YouMind-OpenLab/awesome-nano-banana-pro-prompts/blob/main/README.md"
+    },
+    {
+      "id": 24,
+      "repo": "YouMind-OpenLab/awesome-nano-banana-pro-prompts",
+      "title": "No. 6: Vintage Patent Document for an Invention",
+      "license": "CC-BY-4.0",
+      "task": "生图公式",
+      "change": "轻：照片/主题参数化；标题改UI叠字",
+      "status": "收",
+      "path": "README.md",
+      "media": [
+        "https://cms-assets.youmind.com/media/1766940094520_1mg5pd_G8_m2ZVWEAAMG7y.jpg",
+        "https://cms-assets.youmind.com/media/1766940095035_8t8iil_G8_mW4FWwAEwERE.jpg",
+        "https://cms-assets.youmind.com/media/1766940095188_kt8ksq_G8_m_7hWoAAw19u.jpg",
+        "https://cms-assets.youmind.com/media/1766940096864_fhv4oo_G8_nePrXUAAHvgn.jpg"
+      ],
+      "evidence_urls": [
+        "https://x.com/AllaAisling",
+        "https://x.com/AllaAisling/status/2004212035333365763",
+        "https://youmind.com/en-US/nano-banana-pro-prompts?id=3438"
+      ],
+      "stars": 13383,
+      "pushed_at": "2026-09-08T12:06:15Z",
+      "source_url": "https://github.com/YouMind-OpenLab/awesome-nano-banana-pro-prompts/blob/main/README.md"
+    },
+    {
+      "id": 25,
+      "repo": "jnMetaCode/ai-shortfilm-prompts",
+      "title": "templates/camera-move-library.md",
+      "license": "MIT",
+      "task": "运镜·氛围",
+      "change": "中：只收作者泛化模板；过滤引语；模型能力声明由档案驱动",
+      "status": "候选：原仓无对应成片",
+      "path": "templates/camera-move-library.md",
+      "media": [],
+      "evidence_urls": [],
+      "stars": 399,
+      "pushed_at": "2026-08-25T05:06:45Z",
+      "source_url": "https://github.com/jnMetaCode/ai-shortfilm-prompts/blob/main/templates/camera-move-library.md"
+    },
+    {
+      "id": 26,
+      "repo": "jnMetaCode/ai-shortfilm-prompts",
+      "title": "templates/atmosphere-prefabs.md",
+      "license": "MIT目录声明 / Mx-Shell原文来源冲突",
+      "task": "运镜·氛围",
+      "change": "不改造，改用camera/negative/genre的作者原创片段",
+      "status": "暂不收：文件自述来源Mx-Shell，和目录MIT声明冲突",
+      "path": "templates/atmosphere-prefabs.md",
+      "media": [],
+      "evidence_urls": [],
+      "stars": 399,
+      "pushed_at": "2026-08-25T05:06:45Z",
+      "source_url": "https://github.com/jnMetaCode/ai-shortfilm-prompts/blob/main/templates/atmosphere-prefabs.md"
+    },
+    {
+      "id": 27,
+      "repo": "jnMetaCode/ai-shortfilm-prompts",
+      "title": "templates/negative-prompts.md",
+      "license": "MIT",
+      "task": "运镜·氛围",
+      "change": "中：只收作者泛化模板；过滤引语；模型能力声明由档案驱动",
+      "status": "候选：原仓无对应成片",
+      "path": "templates/negative-prompts.md",
+      "media": [],
+      "evidence_urls": [],
+      "stars": 399,
+      "pushed_at": "2026-08-25T05:06:45Z",
+      "source_url": "https://github.com/jnMetaCode/ai-shortfilm-prompts/blob/main/templates/negative-prompts.md"
+    },
+    {
+      "id": 28,
+      "repo": "jnMetaCode/ai-shortfilm-prompts",
+      "title": "templates/genre-camera-sop.md",
+      "license": "MIT",
+      "task": "运镜·氛围",
+      "change": "中：只收作者泛化模板；过滤引语；模型能力声明由档案驱动",
+      "status": "候选：原仓无对应成片",
+      "path": "templates/genre-camera-sop.md",
+      "media": [],
+      "evidence_urls": [],
+      "stars": 399,
+      "pushed_at": "2026-08-25T05:06:45Z",
+      "source_url": "https://github.com/jnMetaCode/ai-shortfilm-prompts/blob/main/templates/genre-camera-sop.md"
+    },
+    {
+      "id": 29,
+      "repo": "anthropics/skills",
+      "title": "skills/algorithmic-art/SKILL.md",
+      "license": "Apache-2.0",
+      "task": "视觉创作",
+      "change": "中：原技能含本地工具执行；需适配Nomi能力；不得许诺未接工具",
+      "status": "候选：官方技能，无本次真产物",
+      "path": "skills/algorithmic-art/SKILL.md",
+      "media": [],
+      "evidence_urls": [],
+      "stars": 175181,
+      "pushed_at": "2026-09-03T16:37:14Z",
+      "source_url": "https://github.com/anthropics/skills/blob/main/skills/algorithmic-art/SKILL.md"
+    },
+    {
+      "id": 30,
+      "repo": "anthropics/skills",
+      "title": "skills/canvas-design/SKILL.md",
+      "license": "Apache-2.0",
+      "task": "视觉创作",
+      "change": "中：原技能含本地工具执行；需适配Nomi能力；不得许诺未接工具",
+      "status": "候选：官方技能，无本次真产物",
+      "path": "skills/canvas-design/SKILL.md",
+      "media": [],
+      "evidence_urls": [],
+      "stars": 175181,
+      "pushed_at": "2026-09-03T16:37:14Z",
+      "source_url": "https://github.com/anthropics/skills/blob/main/skills/canvas-design/SKILL.md"
+    },
+    {
+      "id": 31,
+      "repo": "songguoxs/gpt4o-image-prompts",
+      "title": "高端极简护肤品摄影",
+      "license": "不收（无许可证）",
+      "task": "不收",
+      "change": "不改造",
+      "status": "不收",
+      "path": "README.md",
+      "media": [],
+      "evidence_urls": [],
+      "stars": 3798,
+      "pushed_at": "2026-01-08T13:39:25Z",
+      "source_url": "https://github.com/songguoxs/gpt4o-image-prompts/blob/master/README.md"
+    },
+    {
+      "id": 32,
+      "repo": "jnMetaCode/ai-shortfilm-prompts",
+      "title": "prompts/zombie-scavenger.md",
+      "license": "不收（© Mx-Shell all rights reserved；NOTICE明示排除）",
+      "task": "不收",
+      "change": "不改造",
+      "status": "不收",
+      "path": "README.md",
+      "media": [],
+      "evidence_urls": [],
+      "stars": 399,
+      "pushed_at": "2026-08-25T05:06:45Z",
+      "source_url": "https://github.com/jnMetaCode/ai-shortfilm-prompts/blob/main/README.md"
+    },
+    {
+      "id": 33,
+      "repo": "davila7/claude-code-templates",
+      "title": "开发模板集合",
+      "license": "不收（MIT但本期不收代码类；第三方技能需逐项许可）",
+      "task": "不收",
+      "change": "不改造",
+      "status": "不收",
+      "path": "README.md",
+      "media": [],
+      "evidence_urls": [],
+      "stars": 30570,
+      "pushed_at": "2026-09-08T14:15:24Z",
+      "source_url": "https://github.com/davila7/claude-code-templates/blob/main/README.md"
+    },
+    {
+      "id": 34,
+      "repo": "jamez-bondos/awesome-gpt4o-images",
+      "title": "案例100实物与涂鸦广告",
+      "license": "不收（CC-BY总许可有ATTRIBUTION.yml及NOTICE-openai例外；未完成逐文件许可对账）",
+      "task": "不收",
+      "change": "不改造",
+      "status": "不收",
+      "path": "README.md",
+      "media": [],
+      "evidence_urls": [],
+      "stars": 8144,
+      "pushed_at": "2025-05-26T02:32:13Z",
+      "source_url": "https://github.com/jamez-bondos/awesome-gpt4o-images/blob/main/README.md"
+    }
+  ],
+  "top15": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15
+  ]
+}

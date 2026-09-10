@@ -33,6 +33,9 @@ export type DynamicPrefix =
 export const OVERBROAD_NAMESPACE_DEBT: readonly string[] = []
 
 export const DYNAMIC_KEY_PREFIXES: DynamicPrefix[] = [
+  { prefix: 'shotTable.columns', members: ['index', 'thumbnail', 'duration'], why: '动态：表头紧凑/完整档遍历固定 leading 列；枚举来源 ShotTableGrid.tsx 的 leading 字面量元组，其余表头用完整键。' },
+  { prefix: 'shotTable.facts', members: ['shotSize', 'motion', 'visual', 'dialogue', 'onScreenText', 'mood'], why: '动态：事实表按持久列顺序展示内置列；枚举来源 shotTableFacts.ts 的事实列集，自定义列直接显示用户标签。' },
+  { prefix: 'shotTable.status', members: ['ready', 'anchor-ignored', 'waiting-refs', 'missing-required', 'generating', 'failed', 'recoverable', 'done', 'locked'], why: '动态：表投影现役执行状态；枚举来源 storyboardRowStatus.ts 的 ShotRowExec.status，未另建状态机。' },
   // ── creationAi ──
   // ── agentPanelV4 ──
   { prefix: 'agentPanelV4.permission', why: "动态: Agent 面板 v4 的权限三档;枚举来源: PermissionTier = ProjectAgentApprovalPolicy['mode'] 的 step/safe-auto/project(permission.* 词条)" },
@@ -171,4 +174,7 @@ export const DYNAMIC_KEY_PREFIXES: DynamicPrefix[] = [
   { prefix: 'libraries.sidebar.nodeKindShort', why: '动态: 节点类型短名;枚举来源: 节点 kind(nodeKindShort.* 词条)' },
   { prefix: 'libraries.skill.importReason', why: '动态: 技能导入失败原因;枚举来源: skill import reason 联合(skill.importReason.* 词条)' },
   { prefix: 'libraries.workflow', why: '动态: 流程库字段;枚举来源: WorkflowLibraryContent 的 value(workflow.* 词条)' },
+  // ── assetLibrary.findReference ──
+  { prefix: 'assetLibrary.findReference.platform', why: '动态: 参考平台名;枚举来源: electron/shared/contracts/referenceSearch.ts 的 REFERENCE_PLATFORMS(douyin/xhs/tiktok),UI 按平台 id 取名而不是让主进程回传中文文案(主进程不产出用户可见文字)' },
+  { prefix: 'assetLibrary.findReference.reason', why: "动态: 关键词转译原因;枚举来源: ReferenceSearchResult.translationReason 的语义 token('english-index'),同上——主进程只回 token,文案归 UI" },
 ]

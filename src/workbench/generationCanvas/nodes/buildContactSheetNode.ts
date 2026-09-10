@@ -7,7 +7,6 @@
 // 落盘走 persistNodeImageBlob，避免 PNG base64 挂进 store（图多即卡，见 useNodeImageEditing 头注释）。
 import { useGenerationCanvasStore } from '../store/generationCanvasStore'
 import { persistNodeImageBlob } from '../adapters/persistNodeImage'
-import { toast } from '../../../ui/toast'
 import { CONTACT_SHEET_DEFAULTS, computeContactSheetLayout, containRect } from './contactSheetLayout'
 import type { GenerationCanvasNode } from '../model/generationCanvasTypes'
 import i18n from '../../../i18n'
@@ -85,17 +84,17 @@ export async function renderContactSheet(
 }
 
 /** 选中的成图 → 一张联系表图片节点。返回是否成功。 */
-export async function buildContactSheetNode(selectedNodeIds: readonly string[]): Promise<boolean> {
+export async function buildContactSheetNode(selectedNodeIds: readonly string[], reportFeedback: (message: string) => void): Promise<boolean> {
   const store = useGenerationCanvasStore.getState()
   const sources = contactSheetSources(selectedNodeIds, store.nodes)
   if (sources.length < 2) {
-    toast(i18n.t('generationCommon.contactSheet.needTwo'), 'error')
+    reportFeedback(i18n.t('generationCommon.contactSheet.needTwo'))
     return false
   }
 
   const rendered = await renderContactSheet(sources)
   if (!rendered) {
-    toast(i18n.t('generationCommon.contactSheet.failed'), 'error')
+    reportFeedback(i18n.t('generationCommon.contactSheet.failed'))
     return false
   }
 
@@ -121,7 +120,7 @@ export async function buildContactSheetNode(selectedNodeIds: readonly string[]):
   })
 
   if (rendered.failed > 0) {
-    toast(i18n.t('generationCommon.contactSheet.someMissing', { count: rendered.failed }), 'error')
+    reportFeedback(i18n.t('generationCommon.contactSheet.someMissing', { count: rendered.failed }))
   }
   return true
 }

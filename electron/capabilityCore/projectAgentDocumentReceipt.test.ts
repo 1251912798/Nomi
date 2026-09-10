@@ -1,13 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
 
-import type { ProposalApprovalRef } from "../shared/projectAgentContracts";
+import type { CanvasWriteApprovalAuthority } from "../shared/agentCapabilities/transportContracts";
 import type {
   ProjectAgentCommittedProposalRecord,
   ProjectAgentProposalReceiptTransition,
   ProjectAgentProposalReceiptView,
   ProjectAgentProposalReceiptWrite,
 } from "../shared/projectAgentProposalReceipt";
-import type { ProjectAgentProposalReceiptWriter } from "../projectAgentHost/projectAgentExecutionCoordinatorTypes";
+type ProjectAgentProposalReceiptWriter = Parameters<typeof prepareDocumentProposalReceipt>[0];
 import {
   abandonDocumentProposalReceipt,
   commitDocumentProposalReceipt,
@@ -20,18 +20,8 @@ const receiptBinding = {
   immutableProjectUuid: "6b0f4a39-1ae4-4e1e-8b2e-0b9460a67a51",
   projectGeneration: 1,
 } as const;
-const persisted: ProposalApprovalRef = {
-  receiptProposalId: "receipt-id",
-  approvalId: "approval-id",
-  threadId: "thread-id",
-  turnId: "turn-id",
-  toolCallId: "tool-call-id",
-  policyRevision: 1,
-  inputHash: "input-hash",
-  actionHash: "action-hash",
-  target: { kind: "document", documentId: "document-id", anchor: { kind: "whole-document" } },
-  preconditions: { document: { revision: 1, contentHash: "document-hash" } },
-  expiresAt: "2099-01-01T00:00:00.000Z",
+const persisted: CanvasWriteApprovalAuthority = {
+  receiptProposalId: "receipt-id", approvalId: "approval-id", actionHash: "action-hash",
 };
 const prepared = { invocation: { input: { operation: "append" as const } } };
 

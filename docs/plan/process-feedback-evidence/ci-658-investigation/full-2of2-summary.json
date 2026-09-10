@@ -1,0 +1,99 @@
+{
+  "profile": "full",
+  "shard": "2/2",
+  "passed": 6,
+  "failed": 1,
+  "results": [
+    {
+      "id": "group-ports",
+      "script": "tests/ux/group-ports.walk.mjs",
+      "args": [],
+      "exitCode": 0,
+      "signal": null,
+      "timedOut": false,
+      "timeoutMs": 480000,
+      "error": null,
+      "logPath": "outputs/canvas-acceptance/full-2of2/group-ports.log",
+      "failureSummary": null,
+      "durationMs": 34950
+    },
+    {
+      "id": "card-stack-persistence",
+      "script": "tests/ux/canvas-card-stack.walk.mjs",
+      "args": [],
+      "exitCode": 1,
+      "signal": null,
+      "timedOut": false,
+      "timeoutMs": 480000,
+      "error": null,
+      "logPath": "outputs/canvas-acceptance/full-2of2/card-stack-persistence.log",
+      "failureSummary": "      - waiting 100ms\n    58 × waiting for element to be visible, enabled and stable\n       - element is visible, enabled and stable\n       - scrolling into view if needed\n       - done scrolling\n       - element is outside of the viewport\n     - retrying click action\n       - waiting 500ms\n    at /Users/aoqimin/Desktop/Nomi-process-feedback/tests/ux/canvas-card-stack.walk.mjs:223:56 {\n  name: 'TimeoutError'\n}\nNode.js v24.13.1",
+      "durationMs": 38606
+    },
+    {
+      "id": "shortcuts",
+      "script": "tests/ux/canvas-shortcuts.walk.mjs",
+      "args": [],
+      "exitCode": 0,
+      "signal": null,
+      "timedOut": false,
+      "timeoutMs": 480000,
+      "error": null,
+      "logPath": "outputs/canvas-acceptance/full-2of2/shortcuts.log",
+      "failureSummary": null,
+      "durationMs": 25748
+    },
+    {
+      "id": "node-context-menu",
+      "script": "tests/ux/canvas-node-context-menu.walk.mjs",
+      "args": [],
+      "exitCode": 0,
+      "signal": null,
+      "timedOut": false,
+      "timeoutMs": 480000,
+      "error": null,
+      "logPath": "outputs/canvas-acceptance/full-2of2/node-context-menu.log",
+      "failureSummary": null,
+      "durationMs": 13552
+    },
+    {
+      "id": "batch-production",
+      "script": "tests/ux/canvas-batch-production.walk.mjs",
+      "args": [],
+      "exitCode": 0,
+      "signal": null,
+      "timedOut": false,
+      "timeoutMs": 480000,
+      "error": null,
+      "logPath": "outputs/canvas-acceptance/full-2of2/batch-production.log",
+      "failureSummary": null,
+      "durationMs": 44235
+    },
+    {
+      "id": "selection-toolbar",
+      "script": "tests/ux/selection-toolbar-vendor.walk.mjs",
+      "args": [],
+      "exitCode": 0,
+      "signal": null,
+      "timedOut": false,
+      "timeoutMs": 480000,
+      "error": null,
+      "logPath": "outputs/canvas-acceptance/full-2of2/selection-toolbar.log",
+      "failureSummary": null,
+      "durationMs": 14830
+    },
+    {
+      "id": "canvas-landing",
+      "script": "tests/ux/p4-s5-canvas-landing.e2e.mjs",
+      "args": [],
+      "exitCode": 0,
+      "signal": null,
+      "timedOut": false,
+      "timeoutMs": 480000,
+      "error": null,
+      "logPath": "outputs/canvas-acceptance/full-2of2/canvas-landing.log",
+      "failureSummary": null,
+      "durationMs": 4387
+    }
+  ]
+}

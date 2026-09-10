@@ -1,7 +1,5 @@
 import { readAudioDurationSeconds } from '../../media/audioDurationProbe'
 import { readVideoDurationSeconds } from '../../media/videoDurationProbe'
-import i18n from '../../i18n'
-import { toast } from '../../ui/toast'
 import { parseAssetLibraryDrag, type AssetLibraryDragPayload } from '../assets/assetLibraryDrag'
 import { assetBelongsToProject } from '../assets/assetLibraryUsage'
 import type { AssetKind, AssetRef } from '../assets/assetTypes'
@@ -104,14 +102,13 @@ export async function addAssetToTimelineEnd(asset: AssetRef): Promise<boolean> {
   const startFrame = findAssetAppendFrame(store.timeline, clip.type)
   store.addTimelineClipAtFrame(clip, clip.type, startFrame)
   store.setTimelinePanelCollapsed(false)
-  toast(i18n.t('timelineEditor.addedToEnd'), 'success')
   return true
 }
 
 /** Parse and route an asset-library drop without duplicating media-kind logic in track components. */
 export function tryAddAssetFromDragData(
   raw: string | null | undefined,
-  options: { fps: number; startFrame: number; targetTrackType: TimelineTrackType; activeProjectId: string | null },
+  options: { fps: number; startFrame: number; targetTrackType: TimelineTrackType; activeProjectId: string | null; onFailure: (error: unknown) => void },
 ): ({ status: 'accept'; kind: AssetKind } | { status: 'reject'; expectedTrack: TimelineTrackType } | { status: 'reject-external' }) | null {
   const payload = parseAssetLibraryDrag(raw)
   if (!payload) return null
@@ -120,5 +117,7 @@ export function tryAddAssetFromDragData(
   if (resolution.status === 'reject') return resolution
   if (resolution.status === 'reject-external') return resolution
   void addAssetToTimeline(resolution.asset, options)
+    .then((clip) => { if (!clip) options.onFailure(null) })
+    .catch(options.onFailure)
   return { status: 'accept', kind: resolution.asset.kind }
 }

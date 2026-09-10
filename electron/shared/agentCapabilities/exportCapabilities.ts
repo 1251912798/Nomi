@@ -160,14 +160,14 @@ export function exportWriteInputForAlias(alias: string, value: unknown): ExportW
 }
 
 export function exportReadPiDescriptionForAlias(alias: string): string | undefined {
-  if (alias === EXPORT_READ_ALIASES.inspect) return "Inspect one active-project export job through a path-free receipt.";
-  if (alias === EXPORT_READ_ALIASES.verify) return "Verify one non-empty export receipt without claiming decoded media inspection.";
+  if (alias === EXPORT_READ_ALIASES.inspect) return "Inspect one active-project export job through a path-free receipt. Use the jobId returned by export_timeline; includes current status, progress and whether cancellation is still available.";
+  if (alias === EXPORT_READ_ALIASES.verify) return "Verify one non-empty export receipt without claiming decoded media inspection. This checks the persisted export receipt and output size; it does not inspect frames or confirm visual quality.";
   return undefined;
 }
 
 export function exportWritePiDescriptionForAlias(alias: string): string | undefined {
-  if (alias === EXPORT_WRITE_ALIASES.start) return "Start an approved export at one exact canonical Timeline revision.";
-  if (alias === EXPORT_WRITE_ALIASES.cancel) return "Cancel one active-project export job after explicit approval.";
+  if (alias === EXPORT_WRITE_ALIASES.start) return "Start an approved export at one exact canonical Timeline revision. Read the current revision first; stale revisions and empty timelines are rejected. Follow the returned jobId for completion.";
+  if (alias === EXPORT_WRITE_ALIASES.cancel) return "Cancel one active-project export job after explicit approval. Use the exact returned jobId; completed or otherwise non-cancellable jobs return their current status without starting new work.";
   return undefined;
 }
 

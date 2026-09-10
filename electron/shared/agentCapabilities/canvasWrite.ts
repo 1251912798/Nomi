@@ -36,13 +36,7 @@ export const plannedNodeSchema = z
     prompt: z
       .string()
       .max(CANVAS_WRITE_MAX_PROMPT_CHARS)
-      .describe(
-        "High-quality generation prompt, in the SAME language as the user (Chinese user → Chinese prompt). Write it as a STRUCTURED skeleton, not a run-on sentence:\n" +
-          "- character/scene reference card: stable appearance/environment description + unified style keywords (neutral full-body pose for a character, empty wide establishing shot for a scene; no plot action).\n" +
-          "- image / keyframe shot: scene·time·light → subject·action·expression → shot language (wide / close-up / low-angle…) → style keywords.\n" +
-          "- video shot: camera move (push / pull / pan / track…) → on-screen action progression → rhythm & duration feel; do NOT restate the static keyframe description.\n" +
-          "Keep the same subject's appearance description consistent across shots. agent-artifact nodes carry no prompt: send an empty string.",
-      ),
+      .describe("Generation prompt in the user's language; empty for agent-artifact."),
     position: z.object({ x: z.number().finite(), y: z.number().finite() }).optional(),
     categoryId: z.string().trim().min(1).optional(),
     modelKey: z.string().trim().min(1).optional(),
@@ -433,10 +427,10 @@ export const CANVAS_WRITE_OPERATIONS: readonly CanvasWriteOperation[] = Object.f
  * agree on the same canonical operation set.
  */
 export function isRendererOwnedStoryboardProposal(toolName: string, args: unknown): boolean {
-  if (toolName === "propose_storyboard_plan") return true;
-  if (toolName !== "nomi_canvas_plan" || !args || typeof args !== "object" || Array.isArray(args)) return false;
-  const operation = (args as Record<string, unknown>).operation;
-  return operation === "propose_storyboard_plan" || operation === "patch_shots";
+  const operation = canvasWriteOperationForAlias(toolName)
+    ?? (toolName === "nomi_canvas_plan" && args && typeof args === "object" && !Array.isArray(args)
+      ? (args as Record<string, unknown>).operation : undefined);
+  return typeof operation === "string" && Object.prototype.hasOwnProperty.call(CANVAS_WRITE_CAPABILITY.operationPlanReview, operation);
 }
 
 export function canvasWritePiInputSchemaForAlias(alias: string): z.ZodTypeAny | undefined {
@@ -647,6 +641,10 @@ export const CANVAS_WRITE_CAPABILITY = {
     create_camera_move: "reversible_local",
     set_node_prompt: "reversible_local",
   }),
+  operationPlanReview: Object.freeze({
+    propose_storyboard_plan: Object.freeze({ allowReuse: false }),
+    patch_shots: Object.freeze({ allowReuse: false }),
+  }),
   execution: {
     port: "canvas",
     availability: "renderer_required",
@@ -663,3 +661,6 @@ export const CANVAS_WRITE_CAPABILITY = {
     },
   },
 } as const satisfies CapabilityContract<CanvasWriteInput, CanvasWriteResult>;
+
+/** Node-authoring workflow, published once per active tool instead of in every node field. */
+export const CANVAS_NODE_PROMPT_GUIDELINES = Object.freeze(["High-quality generation prompt, in the SAME language as the user (Chinese user → Chinese prompt). Write it as a STRUCTURED skeleton, not a run-on sentence:\n- character/scene reference card: stable appearance/environment description + unified style keywords (neutral full-body pose for a character, empty wide establishing shot for a scene; no plot action).\n- image / keyframe shot: scene·time·light → subject·action·expression → shot language (wide / close-up / low-angle…) → style keywords.\n- video shot: camera move (push / pull / pan / track…) → on-screen action progression → rhythm & duration feel; do NOT restate the static keyframe description.\nKeep the same subject's appearance description consistent across shots. agent-artifact nodes carry no prompt: send an empty string."]);

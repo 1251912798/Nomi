@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { flattenDiscriminatedUnion } from "./flatModelInput";
 
 import type { CapabilityContract } from "./capabilityContract";
 
@@ -140,6 +141,12 @@ export const timelineEditPlanSchema = z
     operations: z.array(timelineOperationSchema).min(1).max(128),
   })
   .strict();
+
+/** Preserve the canonical array bounds while publishing object-shaped operations. */
+export const timelineEditPlanModelSchema = timelineEditPlanSchema.extend({
+  operations: new z.ZodArray({ ...timelineEditPlanSchema.shape.operations._def,
+    type: flattenDiscriminatedUnion(timelineOperationSchema, { name: "timeline operation", mergeEnumFields: ["action"] }) }),
+});
 
 const timelineRangeFields = {
   startFrame: nonNegativeFrameSchema,

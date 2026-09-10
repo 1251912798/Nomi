@@ -1,6 +1,12 @@
 #!/usr/bin/env node
+import { stationTimeout } from '../_station-budget.mjs'
+import { completedExports } from './sweep-timeline.mjs'
+import { requireCredential, recordBlocked } from './credential-precheck.mjs'
+import { realCatalogPath } from '../../../evals/lib/isoApp.mjs'
 // C0: one UI journey, with either synthetic or budgeted real provider dispatch.
 import fs from 'node:fs'
+import { videoWaitBudget, waitForVideos } from './c0-video-wait.mjs'
+import { BUDGET_CNY } from './c0-real-budget.mjs'
 import ffmpeg from '@ffmpeg-installer/ffmpeg'
 import ffprobe from '@ffprobe-installer/ffprobe'
 import path from 'node:path'
@@ -13,18 +19,20 @@ import { parseArgs } from 'node:util'
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..')
 const { values } = parseArgs({ options: {
   'dry-run': { type: 'boolean' }, real: { type: 'boolean' },
+  'plan-only': { type: 'boolean' }, 'planner-model': { type: 'string' }, 'planner-vendor': { type: 'string' }, 'output-dir': { type: 'string' },
   packaged: { type: 'string' }, help: { type: 'boolean' },
 }, allowPositionals: false })
 if (values.help) {
   console.log('node tests/ux/g1/c0-short-film.walk.mjs (--dry-run | --real) [--packaged /absolute/Nomi.app]')
-  console.log('--real uses APIMart application settings; all-in budget CNY 8, current prices checked before dispatch.')
+  console.log(`--real uses APIMart application settings; all-in budget CNY ${BUDGET_CNY}, current prices checked before dispatch.`)
   process.exit(0)
 }
 if (Boolean(values['dry-run']) === Boolean(values.real)) throw new Error('Select exactly one of --dry-run / --real')
 if (values.packaged) values.packaged = path.resolve(root, values.packaged)
-const outputDir = path.join(root, 'tests/ux/shots/g1-c0')
+const outputDir = values['output-dir'] ? path.resolve(root, values['output-dir']) : path.join(root, 'tests/ux/shots/g1-c0')
 fs.mkdirSync(outputDir, { recursive: true })
-const attemptDir = fs.mkdtempSync(path.join(outputDir, 'attempt-'))
+const attemptDir = process.env.NOMI_SWEEP_CASE_DIR || fs.mkdtempSync(path.join(outputDir, 'attempt-'))
+fs.mkdirSync(attemptDir, { recursive: true })
 const sha = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim()
 const hash = (file) => createHash('sha256').update(fs.readFileSync(file)).digest('hex')
 const scriptFile = path.join(root, 'tests/ux/g1/c0-script.md')
@@ -32,13 +40,14 @@ const script = fs.readFileSync(scriptFile, 'utf8')
 const report = {
   mode: values.real ? 'real' : 'dry-run', sourceSha: sha, sourceTree: execFileSync('git', ['rev-parse', 'HEAD^{tree}'], { cwd: root, encoding: 'utf8' }).trim(), platform: `${os.platform()} ${os.arch()}`,
   executor: 'Codex', reviewer: 'pending', attemptDir, inputSha256: hash(scriptFile),
-  paidCalls: 0, costCny: 0, budgetCny: values.real ? 8 : 0, c0Accepted: false,
+  paidCalls: 0, costCny: 0, budgetCny: values.real ? BUDGET_CNY : 0, c0Accepted: false,
   r30: { real: { firstTool: 'N/A (0/0)', turns: 'N/A (0/0)' }, simulated: { firstTool: 'N/A (0/0)', turns: 'N/A (0/0)' } },
   steps: [],
 }
 fs.copyFileSync(scriptFile, path.join(attemptDir, 'input.md'))
 function save() {
   fs.writeFileSync(path.join(attemptDir, 'report.json'), JSON.stringify(report, null, 2))
+  if (process.env.NOMI_WALK_MODE === 'collect') return // collect owns its complete station/emotion ledger
   const log = ['# C0 情绪摩擦日志', '', `模式：${report.mode}；源码：${sha}；证据：${attemptDir}`,
     '人眼复核尚未完成；自动断言成功不等于无摩擦，也不等于真实 C0 通过。', '',
     ...report.steps.flatMap((step) => [
@@ -50,7 +59,10 @@ function save() {
   fs.writeFileSync(path.join(outputDir, 'emotion-log.md'), log.join('\n'))
 }
 let app, win, scheduler, screenshotSettled, expect, stopRuntimeApp
+const collection = process.env.NOMI_WALK_MODE === 'collect'
+  ? (await import('./sweep-c0.mjs')).createC0Collection(attemptDir, report) : null
 async function step(id, action, expected, run, interruption = '无自动检测到的审批；待人眼核对') {
+  if (collection) return collection.step(id, action, expected, run, interruption)
   const began = performance.now()
   const entry = { id, action, expected, started: new Date().toISOString(), interruption }
   report.steps.push(entry)
@@ -74,6 +86,7 @@ async function step(id, action, expected, run, interruption = '无自动检测�
   }
 }
 try {
+  if (values.real) requireCredential(realCatalogPath(), attemptDir)
   // Check before importing Playwright so a missing development environment leaves a report.
   const missing = ['node_modules', ...(!values.packaged ? ['dist/index.html', 'dist-electron/main.js'] : [])]
     .filter((name) => !fs.existsSync(path.join(root, name)))
@@ -97,7 +110,7 @@ try {
   }
   if (executablePath) report.executableSha256 = hash(executablePath)
   scheduler = values.real
-    ? await (await import('./c0-real-scheduler.mjs')).createRealScheduler({ tempRoot, attemptDir, outputDir, report })
+    ? await (await import('./c0-real-scheduler.mjs')).createRealScheduler({ tempRoot, attemptDir, outputDir, report, planOnly: values['plan-only'], plannerModel: values['planner-model'], plannerVendor: values['planner-vendor'] })
     : await createDryScheduler(root, settingsDir, path.join(attemptDir, 'fixture-media'), report)
   const MODEL = scheduler.model
   const launch = async () => {
@@ -107,14 +120,18 @@ try {
     env: { NOMI_CAPABILITY_DIR: path.join(tempRoot, 'capability'), NOMI_RENDERER_URL: '', VITE_DEV_SERVER_URL: '', NOMI_DESKTOP_DEV: '',
       NOMI_E2E_PRODUCTION_FIXTURE: '0', NOMI_DISABLE_AUTO_UPDATE: '1' }, args: ['--no-proxy-server'],
     })
-    try { await scheduler.attach(launched) } catch (error) { await launched.close(); throw error }
+    try {
+      await scheduler.attach(launched)
+      if (collection) await collection.attach(launched, payload, () => projectId)
+    } catch (error) { if (error.code !== 'CREDENTIAL_BLOCKED') await launched.close(); throw error }
     return launched
   }
   let projectId, projectRoot, nodeIds, before, exportPath
   const payload = async () => (await readProject(win, projectId)).payload
   const videoClips = (p) => p.timeline.tracks.flatMap((t) => t.clips).filter((c) => c.type === 'video').sort((a, b) => a.startFrame - b.startFrame)
+  const initialLaunch = await launch()
   await step('00', '准备隔离空项目', '独立 profile、版本可核对、项目库为空', async () => {
-    const launched = await launch()
+    const launched = initialLaunch
     ;({ app, win } = launched)
     win.setDefaultTimeout(30_000)
     report.build = await app.evaluate(({ app: main }) => ({ version: main.getVersion(), packaged: main.isPackaged, appPath: main.getAppPath(), userData: main.getPath('userData') }))
@@ -128,6 +145,7 @@ try {
     await win.reload({ waitUntil: 'domcontentloaded' })
     await clickOrFail(win.getByRole('button', { name: /^新建空白项目/ }), '创建 C0 空项目')
     await expect(win.locator(DOCUMENT)).toBeVisible()
+    await scheduler.selectPlanner?.(win)
     const projects = await win.evaluate(() => window.nomiDesktop.projects.listAsync())
     expect(projects).toHaveLength(1)
     projectId = projects[0].id
@@ -140,7 +158,7 @@ try {
   await step('01', '导入原创剧本和五约束', '全文在编辑区可编辑，落盘保留人物地点结局和占位说明', async () => {
     await win.locator(DOCUMENT).fill(script)
     await expect(win.locator(DOCUMENT)).toContainText('五约束')
-    await expect.poll(async () => JSON.stringify(support.requireCurrentPersistedWorkbenchDocument(await readProject(win, projectId))), { timeout: 30_000 }).toContain('今天没有拍下整座城市')
+    await expect.poll(async () => JSON.stringify(support.requireCurrentPersistedWorkbenchDocument(await readProject(win, projectId))), { timeout: stationTimeout({ operations: 2 }) }).toContain('今天没有拍下整座城市')
     for (const constraint of ['16:9', '64 秒', '小禾', '修鞋摊', '合上电脑']) await expect(win.locator(DOCUMENT)).toContainText(constraint)
   })
   await step('02', '拆分并审阅八镜分镜', '真实提案审批，八镜共64秒，尚无媒体生成调用', async () => {
@@ -152,6 +170,7 @@ try {
     await scheduler.planRequested()
     report.r30[values.real ? 'real' : 'simulated'].firstTool = '0/1 (0%; result not yet verified)'
     const approval = win.locator(`${CREATION_PANEL} ${APPROVAL_CARD}`)
+    if (values.real) await (await import('./sweep-c0.mjs')).waitForPlannerTerminal({ approval, projectRoot, win, directory: attemptDir })
     const proof = await proveProbe(approval, '真实分镜审批已出现')
     await screenshotSettled(win, { path: path.join(attemptDir, `C0-${sha.slice(0, 8)}-02-approval.png`) })
     await clickOrFail(approval.locator(INTERVENTION_CONFIRM), '批准分镜')
@@ -169,7 +188,11 @@ try {
     await clickOrFail(win.locator('[data-storyboard-id]').first(), '进入可编辑分镜表')
     await expect(win.getByRole('textbox', { name: '方案标题', exact: true })).toHaveValue('日落前的一分钟')
   }, '分镜审批 1 次')
-  let spendDialog, spendProof
+  if (values['plan-only']) {
+    await scheduler.finish({ projectRoot })
+    report.result = `${report.mode}-plan-only-passed`
+  } else {
+  let spendDialog, spendProof, readyNodeIds = []
   await step('03', '分镜物化到画布', '八个节点顺序、参数对应；生成前仍零媒体请求', async () => {
     await clickOrFail(win.locator('[data-storyboard-batch="true"]'), '生成未生成的八镜')
     await expect.poll(async () => (await payload()).generationCanvas.nodes.length).toBe(8)
@@ -189,20 +212,32 @@ try {
     await clickOrFail(spendDialog.getByRole('button', { name: '生成', exact: true }), values.real ? '批准预算内生成' : '批准零额度生成')
     await expectAbsent(spendDialog, { provenBy: spendProof, message: '生成确认已消费' })
     await screenshotSettled(win, { path: path.join(attemptDir, `C0-${sha.slice(0, 8)}-04-submitted.png`) })
-    await expect.poll(async () => {
-      const nodes = (await payload()).generationCanvas.nodes
-      const failed = nodes.find((n) => n.status === 'error')
-      if (failed) throw new Error(`Generation failed: ${failed.error}`)
-      return nodes.filter((n) => n.result?.type === 'video' && n.result.url.startsWith('nomi-local://')).length
-    }, { timeout: 180_000 }).toBe(8)
+    const waitQuote = await scheduler.videoWaitQuote()
+    const budget = videoWaitBudget(waitQuote)
+    report.videoWaitQuote = waitQuote
+    const observations = await waitForVideos({ nodeIds, budget,
+      readNodes: async () => (await payload()).generationCanvas.nodes,
+      progress: row => {
+        fs.appendFileSync(path.join(attemptDir, 'video-progress.jsonl'), JSON.stringify(row) + '\n')
+        console.log('C0_VIDEO_PROGRESS', JSON.stringify(row))
+      },
+      deviation: row => {
+        const error = Error(`视频未就绪：${JSON.stringify(row)}`)
+        if (collection) collection.walk.record(error, collection.walk.stations.at(-1),
+          { assertion: 'video-terminal-result', ...row })
+        else { report.videoDeviations ??= []; report.videoDeviations.push(row) }
+      },
+    })
+    readyNodeIds = observations.filter(row => row.ready).map(row => row.nodeId)
+    expect(readyNodeIds).toHaveLength(8)
     expect((await payload()).generationCanvas.nodes.every((n) => n.meta.modelKey === MODEL)).toBe(true)
-    await scheduler.generationCompleted({ expect })
+    await scheduler.generationCompleted({ expect, readyNodeIds, complete: readyNodeIds.length === nodeIds.length })
     await openCanvas(win)
     await clickOrFail(win.getByLabel('适应视图').first(), '检查画布全貌')
-    expect((await payload()).generationCanvas.nodes.every((n) => Boolean(n.result.url))).toBe(true)
+    expect(observations.every(row => row.ready)).toBe(true)
   }, values.real ? '预算内生成确认 1 次' : '零额度生成确认 1 次')
   await step('05', '按叙事加入时间轴并预览', '八段引用对应节点、无空隙、64秒；预览真实推进', async () => {
-    for (const [i, id] of nodeIds.entries()) {
+    for (const [i, id] of readyNodeIds.entries()) {
       const node = win.locator(`[data-node-id="${id}"]`)
       // The minimum zoom can leave the last row below the viewport after the timeline opens.
       if (await node.count() === 0) {
@@ -220,7 +255,7 @@ try {
     const clips = videoClips(p)
     expect(clips.map((c) => c.sourceNodeId)).toEqual(nodeIds)
     for (const [i, clip] of clips.entries()) expect(clip.startFrame).toBe(i ? clips[i - 1].endFrame : 0)
-    expect(clips.at(-1).endFrame / p.timeline.fps).toBeCloseTo(64, 1)
+    expect((clips.at(-1)?.endFrame ?? 0) / p.timeline.fps).toBeCloseTo(64, 1)
     await clickOrFail(win.locator('[aria-label="工作区切换"]').getByText('预览', { exact: true }), '预览成片')
     const video = win.locator('.workbench-preview-player__video').first()
     await expect(video).toBeVisible()
@@ -230,14 +265,14 @@ try {
   await step('06', '通过 Nomi 导出 MP4', '实际导出可完整解码，16:9、60–120秒、含音轨', async () => {
     await clickOrFail(win.locator('[aria-label="导出 MP4"]').first(), '导出 MP4')
     const findExport = () => {
-      const candidates = fs.readdirSync(projectRoot, { recursive: true }).filter((name) => name.endsWith('.mp4') && name.split(path.sep).includes('exports'))
+      const candidates = completedExports(projectRoot)
       return candidates.length === 1 ? path.join(projectRoot, candidates[0]) : undefined
     }
     await expect.poll(() => {
       const file = findExport()
       if (!file) return false
       try { execFileSync(ffprobe.path, ['-v', 'error', '-show_format', file], { stdio: 'pipe' }); return true } catch { return false }
-    }, { timeout: 180_000 }).toBe(true)
+    }, { timeout: stationTimeout({ turns: 1, operations: 0 }) }).toBe(true)
     exportPath = findExport()
     const probe = JSON.parse(execFileSync(ffprobe.path, ['-v', 'error', '-show_streams', '-show_format', '-of', 'json', exportPath], { encoding: 'utf8' }))
     const video = probe.streams.find((s) => s.codec_type === 'video')
@@ -254,6 +289,7 @@ try {
   await step('07', '冷重启检查资产和时间轴', '同一项目八个资产和八段剪辑均保留；完整看片仍须人眼签收', async () => {
     before = await payload()
     await scheduler.finish({ projectRoot })
+    if (collection) await collection.stop()
     await stopRuntimeApp(app)
     app = undefined
     ;({ app, win } = await launch())
@@ -267,19 +303,29 @@ try {
     await scheduler.finish({ projectRoot })
     report.review = 'Pending human inspection: inspect story, identity, continuity, audio and all screenshots.'
   })
-  report.result = `${report.mode}-assertions-passed-review-pending`
-} catch (error) {
-  report.result = error.message === 'C0_BLOCKED_BUDGET' ? 'blocked-budget' : 'failed'
-  report.blocker = values.real ? (String(error.message).match(/C0_[A-Z_]+/)?.[0] ?? 'C0_WALK_FAILED_RAW_ERROR_SUPPRESSED') : error.message
-  if (win) {
-    try { await win.screenshot({ path: path.join(attemptDir, 'FAIL.png') }) }
-    catch { report.failureScreenshot = 'unavailable' }
+  report.result = collection?.walk.deviations.length ? 'collected-deviations' : `${report.mode}-assertions-passed-review-pending`
   }
-  console.error(`C0 ${report.result}: ${report.blocker}`)
-  process.exitCode = 1
+} catch (error) {
+  if (error.code === 'CREDENTIAL_BLOCKED') {
+    recordBlocked(attemptDir, report, error.receipt, ['00','01','02','03','04','05','06','07'])
+    report.blocker = error.receipt.reason
+  } else {
+    report.result = error.message === 'C0_BLOCKED_BUDGET' ? 'blocked-budget' : 'failed'
+    report.blocker = values.real ? (String(error.message).match(/C0_[A-Z_]+/)?.[0] ?? 'C0_WALK_FAILED_RAW_ERROR_SUPPRESSED') : error.message
+    if (win) {
+      try { await win.screenshot({ path: path.join(attemptDir, 'FAIL.png') }) }
+      catch { report.failureScreenshot = 'unavailable' }
+    }
+    console.error(`C0 ${report.result}: ${report.blocker}`)
+    process.exitCode = 1
+  }
 } finally {
+  if (collection && report.result !== 'blocked') {
+    try { await collection.stop(); collection.finish(path.join(attemptDir, 'profile'), scheduler?.requests ?? []) }
+    catch (error) { report.collectionError = error.message; process.exitCode = 1 }
+  }
   try { if (scheduler) await scheduler.close() } catch { report.cleanupError = 'C0_SCHEDULER_CLEANUP_FAILED'; process.exitCode = 1 }
-  try { if (app) await stopRuntimeApp(app) } catch { report.cleanupError = 'C0_APP_CLEANUP_FAILED'; process.exitCode = 1 }
+  try { if (app && report.result !== 'blocked') await stopRuntimeApp(app) } catch { report.cleanupError = 'C0_APP_CLEANUP_FAILED'; process.exitCode = 1 }
   if (values.real) fs.rmSync(path.join(attemptDir, 'profile/settings'), { recursive: true, force: true })
   save()
   console.log(`C0 ${report.result}; evidence: ${attemptDir}; paid calls: ${report.paidCalls}`)

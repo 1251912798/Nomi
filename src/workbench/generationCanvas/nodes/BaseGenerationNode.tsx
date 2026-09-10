@@ -1,11 +1,13 @@
+import { StoryboardOverrideBadge } from './StoryboardOverrideBadge'
+import { notify } from '../../../ui/notificationPolicy'
 import React from 'react'
+import type { ImageGenerationPreset } from 'img-fx'
 import { useTranslation } from 'react-i18next'
 import { IconCopy, IconDownload, IconMaximize, IconUpload } from '@tabler/icons-react'
 import ProvenancePanel from './ProvenancePanel'
 import { ShotPreviewOverlays } from './ConvertShotToVideoButton'
 import { resolveNodeRenderKind, isCardRenderKind, nodeHasGenerationComposer } from './resolveRenderKind'
 import ShotMountBadges from './render/ShotMountBadges'
-import NodeDeconstructionBadge from './NodeDeconstructionBadge'
 import { getBuiltinCategoryById } from '../../project/projectCategories'
 import { NodeCardBody } from './render/NodeCardBody'
 import ImageCropGridOverlay from './render/ImageCropGridOverlay'
@@ -34,10 +36,9 @@ import type { GenerationCanvasNode } from '../model/generationCanvasTypes'
 import type { ConnectionAnchorSide } from '../store/canvasStoreTypes'
 import { useGenerationCanvasStore } from '../store/generationCanvasStore'
 import { NodeGeneratingOverlay } from './NodeGeneratingOverlay'
-import { NodeQueuedBadge } from './NodeQueuedBadge'
+import { NodeGenerationStatus } from './NodeGenerationStatus'
 import { ProductionShotOverlays } from './ProductionShotOverlays'
 import { useProductionNodeRetry } from './useProductionNodeRetry'
-import { selectIsNodeQueued, useGenerationQueueStore } from '../runner/generationQueueStore'
 import { encodeTimelineGenerationNodeDragPayload, TIMELINE_GENERATION_NODE_DRAG_MIME } from '../../timeline/timelineDragPayload'
 import { addGenerationNodeToTimelineEnd } from '../../timeline/addNodeToTimelineEnd'
 import { canRunGenerationNode, confirmAndRunNode } from '../runner/generationRunController'
@@ -54,7 +55,6 @@ import { canDragGenerationNodeToTimeline } from '../model/timelineDragAffordance
 import { useResultDownload } from './useResultDownload'
 import { useArtifactNodeSlots } from './artifact/artifactNodeSlots'
 import {
-  STATUS_LABEL,
   RESIZE_DIRECTIONS,
   getNodeSizeBounds,
   FOCUS_GENERATION_NODE_EVENT,
@@ -63,6 +63,7 @@ import {
   resolveNodeVisualSize,
 } from './nodeSizing'
 import { useNodeVideoHoverPreview } from './useNodeVideoHoverPreview'
+import { NodeLabelRow } from './NodeLabelRow'
 import { NodeInlineImageTitle } from './NodeImagePreviewActions'
 import { useNodeDisplayPrompt } from './useNodeDisplayPrompt'
 import { useNodeMediaPreview } from './useNodeMediaPreview'
@@ -72,6 +73,8 @@ export type BaseGenerationNodeProps = {
   readOnly?: boolean
   focusFlash?: boolean
   appear?: boolean
+  waitingMotion?: 'reduced'
+  waitingPreset?: ImageGenerationPreset
 }
 const Model3DViewer = lazyWithChunkBoundary('3D 模型预览', () => import('./model3d/Model3DViewer')) // 生成出的 .glb 卡内可旋转预览（R3F）
 const TextDocumentNode = lazyWithChunkBoundary('文本节点编辑器', () => import('./render/TextDocumentNode'))
@@ -88,9 +91,16 @@ function BaseGenerationNodeImpl({
   readOnly = false,
   focusFlash = false,
   appear = false,
+  waitingMotion,
+  waitingPreset,
 }: BaseGenerationNodeProps): JSX.Element {
+  const [feedback, setFeedback] = React.useState<string | null>(null)
+  const reportFeedback = React.useCallback((message: string) => {
+    notify({ identity: `BaseGenerationNodeImpl:${node.id}`, reason: 'interaction', message, level: 'inline', present: setFeedback })
+  }, [node.id])
+
   const { t } = useTranslation()
-  const productionRetry = useProductionNodeRetry(node) // P4 S6：多镜节点失败→返工链；非多镜/项目没开→null 退回本地重跑（回归门）
+  const productionRetry = useProductionNodeRetry(node, reportFeedback) // P4 S6：多镜节点失败→返工链；非多镜/项目没开→null 退回本地重跑（回归门）
   const selectNode = useGenerationCanvasStore((state) => state.selectNode)
   const captureHistory = useGenerationCanvasStore((state) => state.captureHistory)
   const commitPersistedChange = useGenerationCanvasStore((state) => state.commitPersistedChange)
@@ -122,7 +132,7 @@ function BaseGenerationNodeImpl({
   const panoramaUploadInputRef = React.useRef<HTMLInputElement | null>(null)
   const [provenanceOpen, setProvenanceOpen] = React.useState(false)
   const [resultStackOpen, setResultStackOpen] = React.useState(false)
-  const { openMediaPreview, mediaPreviewControls, mediaPreviewDoubleClick } = useNodeMediaPreview(node, selected && !isMultiSelectActive && !resultStackOpen, () => setProvenanceOpen(true))
+  const { openMediaPreview, mediaPreviewControls, mediaPreviewDoubleClick } = useNodeMediaPreview(node, selected && !isMultiSelectActive && !resultStackOpen, () => setProvenanceOpen(true), reportFeedback)
   const sizeBounds = getNodeSizeBounds(node.kind)
 
   const handleTimelineDragStart = (event: React.DragEvent<HTMLElement>) => {
@@ -153,6 +163,7 @@ function BaseGenerationNodeImpl({
   const updateMediaDimensions = (width: number, height: number, durationSeconds?: number) => {
     const patch = computeMediaMetaPatch({
       resultType: node.result?.type,
+      preserveSize: Boolean(node.runs?.some((run) => run.resultId === node.result?.id)),
       meta: node.meta || {},
       currentSize: node.size,
       width,
@@ -188,17 +199,13 @@ function BaseGenerationNodeImpl({
   // C5: 文本节点走专属可编辑 body（TextDocumentNode），像 card 那样脱离图片预览。
   const isTextKind = node.kind === 'text'
   const hasResult = Boolean(node.result?.url)
-  const imagePreviewUrl = node.kind !== 'panorama' && node.result?.type === 'image'
-    ? (node.result.url || '').trim()
-    : ''
-  const canOpenImagePreview = Boolean(imagePreviewUrl)
   const mediaPreviewPriority = selected || focusFlash
   const localImageOpPending = isLocalImageOpPending(node)
   // 可视尺寸（卡片固定宽 / 动态高）的单一真相源 resolveNodeVisualSize——连线锚点 / 最小地图 /
   // fitView 与本外壳共用同一函数，避免名义 size 与渲染尺寸两套真相源（连线起笔飘在节点外的根因）。
   const visualSize = resolveNodeVisualSize(node)
   const previewHeight = visualSize.height
-  const { flowManagedDrag: flowManagedLayout, handlePointerDown, handlePointerMove, handlePointerUp, handleResizePointerDown } = useNodeDragResize({
+  const { flowManagedDrag: flowManagedLayout, handlePointerDown, handlePointerMove, handlePointerUp, handleResizePointerDown } = useNodeDragResize({ reportFeedback,
     node,
     selected,
     readOnly,
@@ -213,9 +220,6 @@ function BaseGenerationNodeImpl({
     commitPersistedChange,
   })
   const isGenerating = status === 'queued' || status === 'running'
-  // 「已排队但还没轮到」的真相在队列 store（与 node.status 零重叠，见 generationQueueStore 头注释）：在此之前
-  // 后续波次的节点 status 还是 idle，画布上看着像压根没被选中——用户以为漏点了。
-  const isQueued = useGenerationQueueStore((state) => selectIsNodeQueued(state, node.id))
   const canGenerate =
     useGenerationCanvasStore((state) =>
       canRunGenerationNode(node, {
@@ -229,9 +233,6 @@ function BaseGenerationNodeImpl({
     (node.result?.type === 'image' || node.result?.type === 'video') &&
     !resultStackOpen
   const showSideTimelineDrag = canSendToTimeline && !showTimelineNotch
-  // 失败态不显文字徽标——错误已铺满节点正文（NodeErrorReport），顶部再写「生成失败」是重复噪音（2026-06-03 评审）。
-  const showStatusBadge = status === 'queued' || status === 'running'
-
   // 2026-09-05：这几条的 zh+en 词条一直都在，只是渲染处写死了中文（英文界面恒显中文），现接回词条。
   const sourceNodeLabel = sourceNodeTitle || (node.derivedFrom && !sourceNodeExists ? t('generationCommon.node.sourceMissing') : node.derivedFrom || '')
   const sourceCategoryName = sourceNodeCategoryId ? getBuiltinCategoryById(sourceNodeCategoryId)?.name : null
@@ -249,13 +250,13 @@ function BaseGenerationNodeImpl({
   const displayPrompt = useNodeDisplayPrompt(node)
   const hasFrameSourceEdge = useHasFrameSourceEdge(node.id, nodeExecutionKind === 'video') // A15：已连上游边时占位不再喊「拖图」
   const needsFirstFrame = nodeExecutionKind === 'video' && !canGenerate && !isGenerating
-  const { handlePanoramaFileChange, handlePanoramaScreenshot } = useNodePanoramaHandlers(node, visualSize)
-  const artifactSlots = useArtifactNodeSlots(node, { selected, isMultiSelectActive, readOnly }) // 手艺产物的正文/浮条归 artifact 目录
+  const { handlePanoramaFileChange, handlePanoramaScreenshot } = useNodePanoramaHandlers(node, visualSize, reportFeedback)
+  const artifactSlots = useArtifactNodeSlots(node, { reportFeedback, selected, isMultiSelectActive, readOnly }) // 手艺产物的正文/浮条归 artifact 目录
 
   // 图片本地编辑（切图 / 裁剪 / 旋转翻转）—— A1.5 抽进 useNodeImageEditing。
   // 图片类与素材类共用；编辑产物进入当前节点历史堆叠，并切换为主图。
-  const imageEditing = useNodeImageEditing(node, visualSize)
-  const { downloading: panoramaDownloading, download: downloadPanorama } = useResultDownload(node)
+  const imageEditing = useNodeImageEditing(node, visualSize, reportFeedback)
+  const { downloading: panoramaDownloading, download: downloadPanorama } = useResultDownload(node, reportFeedback)
   const showNodeResultStack =
     !isCardKind &&
     !isTextKind &&
@@ -272,7 +273,7 @@ function BaseGenerationNodeImpl({
         flowManagedLayout ? 'relative' : 'absolute', 'p-0 border-0 rounded-none bg-transparent shadow-none',
         'cursor-grab select-none touch-none overflow-visible',
         'data-[selected=true]:z-[5]',
-        'block isolate group/node',
+        'block isolate group/node [&_[data-generation-message]]:min-w-0 [&_[data-generation-message]]:[overflow-wrap:anywhere]',
       )}
       data-node-id={node.id}
       data-kind={node.kind}
@@ -292,6 +293,7 @@ function BaseGenerationNodeImpl({
       onPointerEnter={handleVideoNodePointerEnter}
       onPointerLeave={handleVideoNodePointerLeave}
     >
+{feedback ? <p role="status" className="absolute inset-x-0 bottom-0 z-[15] m-0 bg-nomi-paper px-2 py-1 text-caption text-nomi-ink-60">{feedback}</p> : null}
       {!flowManagedLayout && !readOnly && node.kind !== 'panorama' ? (
         selected && useMagneticConnectionHandles && !isPendingConnectionSource ? (
           <>
@@ -302,7 +304,7 @@ function BaseGenerationNodeImpl({
               onStart={handleConnectionDragStart}
               onComplete={(event) => {
                 event.stopPropagation()
-                completeNodeConnection(node.id)
+                completeNodeConnection(node.id, reportFeedback)
               }}
             />
             <MagneticConnectionHandle
@@ -312,7 +314,7 @@ function BaseGenerationNodeImpl({
               onStart={handleConnectionDragStart}
               onComplete={(event) => {
                 event.stopPropagation()
-                completeNodeConnection(node.id)
+                completeNodeConnection(node.id, reportFeedback)
               }}
             />
           </>
@@ -342,7 +344,7 @@ function BaseGenerationNodeImpl({
               onClick={(event) => {
                 event.stopPropagation()
                 if (!isPendingConnectionTarget) return
-                completeNodeConnection(node.id)
+                completeNodeConnection(node.id, reportFeedback)
               }}
             >
               <span className="generation-canvas-v2-node__handle-dot" aria-hidden="true" />
@@ -408,6 +410,7 @@ function BaseGenerationNodeImpl({
       node.result?.type === 'image' &&
       node.result.url ? (
         <NodeImageEditToolbar
+          reportFeedback={reportFeedback}
           node={node}
           editGrid={imageEditing.editGrid}
           imageOpBusy={imageEditing.imageOpBusy}
@@ -422,31 +425,12 @@ function BaseGenerationNodeImpl({
         />
       ) : null}
       {mediaPreviewControls}
-      <header
-        className={cn(
-          'generation-canvas-v2-node__header',
-          'absolute top-[10px] left-[10px] right-[10px] z-[2]',
-          'flex items-center justify-start gap-2 min-h-0 p-0',
-          'pointer-events-auto cursor-grab',
-        )}
-      >
-        {showStatusBadge ? (
-          <span
-            className={cn(
-              'text-micro font-medium tracking-[0.06em] uppercase',
-              'py-[3px] px-2 rounded-nomi-sm backdrop-blur-[8px]',
-              'bg-nomi-paper/[0.82] text-nomi-ink-60',
-              'data-[status=success]:text-workbench-success-ink data-[status=success]:bg-workbench-success-soft',
-              'data-[status=error]:text-workbench-danger data-[status=error]:bg-workbench-danger-soft',
-            )}
-            data-status={status}
-          >
-            {(isGenerating && node.progress?.message) || STATUS_LABEL[status] || status}
-          </span>
-        ) : null}
+      <NodeLabelRow>
+        <ShotPreviewOverlays shotIndex={shotIndex} />
+        {!isCardKind && !isTextKind ? <NodeInlineImageTitle nodeId={node.id} value={node.title || ''} readOnly={readOnly} /> : null}
+        {!isCardKind ? <ShotMountBadges cards={mountedCards} /> : null}
         <TechnicalReviewBadge meta={node.meta} />
         {/* 拆解收起态（视图 07）：视频节点有拆解结果且面板未占槽时，挂「已拆解 · N 镜」角标 + 可点回浮条。 */}
-        <NodeDeconstructionBadge node={node} />
         {/* 锁徽标已移到 NodeGenerationComposer 底栏（编辑面板），卡片预览保持干净（用户反馈②）。 */}
         {/* E.2C-25 副本角标：跨分类独立副本永久显示（derivedFrom 仅承载此语义；同分类重生成在 regeneratedFrom）。 */}
         {node.derivedFrom ? (
@@ -468,16 +452,16 @@ function BaseGenerationNodeImpl({
           </button>
         ) : null}
         {/* 2026-08-04 撤离卡片右上两颗常驻按钮（放大＝浮条「全屏」去重；生成记录迁进浮动工具栏，门是 selected 非 hover）——动作不压内容（§1.5）。 */}
-      </header>
-
-      {/* 切片2：镜头挂载的设定卡徽章——不选中也能一眼看「挂了谁」（卡节点不显，组件空挂载自返 null）。 */}
-      {!isCardKind ? <ShotMountBadges cards={mountedCards} /> : null}
+      </NodeLabelRow>
+      <div data-node-inline-status className="pointer-events-none absolute inset-x-0 bottom-[calc(100%+40px)] z-[4] flex h-7 items-center [&_[data-generation-message]]:truncate [&_[data-generation-status]]:bg-nomi-paper/90">
+        <NodeGenerationStatus node={node} />
+      </div>
 
       <ProvenancePanel node={node} open={provenanceOpen} onClose={() => setProvenanceOpen(false)} />
 
       {/* 失败态：错误卡铺满节点正文（absolute inset-0 z-[5]），盖占位底纹但不挡 composer/resize/handles。 */}
       {status === 'error' && node.error ? (
-        <NodeErrorReport
+        <NodeErrorReport summaryVisible={false}
           message={node.error} meta={node.meta}
           onDismiss={() => useGenerationCanvasStore.getState().dismissNodeError(node.id)}
           onRetry={
@@ -598,15 +582,8 @@ function BaseGenerationNodeImpl({
             kind={node.kind}
             selected={selected} needsFirstFrame={needsFirstFrame}
             waitingUpstream={hasFrameSourceEdge}
-            shotIndex={shotIndex}
-            title={node.title}
-            prompt={displayPrompt}
           />
         )}
-        <ShotPreviewOverlays selected={selected} shotIndex={shotIndex} hasResult={hasResult} />
-        {canOpenImagePreview && !isCardKind && !readOnly && !resultStackOpen && imageEditing.editGrid === null ? (
-          <NodeInlineImageTitle nodeId={node.id} value={node.title || ''} selected={selected} />
-        ) : null}
         {imageEditing.editGrid !== null &&
         (node.kind === 'image' || isAssetKind) &&
         node.result?.type === 'image' &&
@@ -626,6 +603,7 @@ function BaseGenerationNodeImpl({
       </div>
       {showNodeResultStack ? (
         <NodeResultStack
+          onFeedback={reportFeedback}
           node={node}
           readOnly={readOnly}
           selected={selected && !isMultiSelectActive}
@@ -633,6 +611,7 @@ function BaseGenerationNodeImpl({
         />
       ) : null}
 
+      <div className="absolute left-0 top-full max-w-full pt-1"><StoryboardOverrideBadge node={node} /></div>
       {artifactSlots.toolbar}
 
       {showTimelineNotch ? (
@@ -642,9 +621,9 @@ function BaseGenerationNodeImpl({
         />
       ) : null}
 
-      {isGenerating && !localImageOpPending ? <NodeGeneratingOverlay node={node} /> : null}
-      {isQueued && !isGenerating ? <NodeQueuedBadge /> : null}
-      <ProductionShotOverlays node={node} selected={selected && !isMultiSelectActive} />{/* P4 S5+S6 多镜叠加：占位三态 + 版本条（非多镜早退零开销） */}
+      {!localImageOpPending ? <NodeGeneratingOverlay reportFeedback={reportFeedback} node={node} motion={waitingMotion} preset={waitingPreset} /> : null}
+
+      <ProductionShotOverlays reportFeedback={reportFeedback} node={node} selected={selected && !isMultiSelectActive} />{/* P4 S5+S6 多镜叠加：占位三态 + 版本条（非多镜早退零开销） */}
       {showSideTimelineDrag ? (
         <SideTimelineDragHandle onAddAtPlayhead={handleAddToTimelineAtPlayhead} onDragStart={handleTimelineDragStart} />
       ) : null}
@@ -652,7 +631,7 @@ function BaseGenerationNodeImpl({
           大 composer 层叠糊成一片(用户反馈 bug，根因收口此唯一挂载入口)。批量生成走选中浮条。 */}
       {selected && !isMultiSelectActive && !readOnly && !resultStackOpen && nodeHasGenerationComposer(node.kind) ? (
         <React.Suspense fallback={null}>
-          <NodeGenerationComposer node={node} visualSize={visualSize} />
+          <NodeGenerationComposer onFeedback={reportFeedback} node={node} visualSize={visualSize} />
         </React.Suspense>
       ) : null}
       {selected && !readOnly && !flowManagedLayout

@@ -1,6 +1,6 @@
 import type { AgentContextScope } from './context/contextBinding';
-import type { LegacyAgentBubble } from './context/legacyBubbles';
-import type { RuntimeActivityEvent, RuntimeFinishReason, RuntimeToolCallRecord, RuntimeToolDecision, RuntimeUsage } from './runtime/runtimePort';
+interface LegacyAgentBubble { role?: string; content?: string }
+import type { RuntimeActivityEvent, RuntimeFinishReason, RuntimeToolCallRecord, RuntimeToolDecision, RuntimeUsage } from '../shared/agentCapabilities/transportContracts';
 import type { PromptCacheTelemetry } from './context/promptPipe';
 import type { ProvenanceProjection } from './context/provenance';
 import type { SkillLedgerItem } from './context/promptPipe';
@@ -9,9 +9,9 @@ import type {
   SurfacePortBindingWire,
 } from '../shared/surfacePortBinding';
 import type { AgentContextSnapshot } from '../shared/agentContextSnapshot';
-import type { ProjectAgentWorkMode } from '../shared/projectAgentContracts';
-import type { AgentToolProfile } from '../shared/projectAgentContracts';
-export { AGENT_TOOL_PROFILES, type AgentToolProfile } from '../shared/projectAgentContracts';
+import type { ProjectAgentWorkMode } from '../shared/agentCapabilities/capabilityApprovalPolicy';
+import type { AgentToolProfile } from '../shared/agentCapabilities/transportContracts';
+export { AGENT_TOOL_PROFILES, type AgentToolProfile } from '../shared/agentCapabilities/transportContracts';
 
 /** One SDK-free wire contract shared by main, preload and renderer. */
 export const AGENT_CHAT_CAPABILITIES = [
@@ -70,8 +70,6 @@ export interface AgentChatResponse {
   usage: AgentChatUsage;
   finishReason: RuntimeFinishReason;
   promptCache?: PromptCacheTelemetry;
-  /** Runtime-owned Pi context accounting, committed only with a terminal turn. */
-  context?: import('./runtime/runtimePort').RuntimeContextMetadata;
   promptBudgetWarning?: string;
   promptWarnings?: readonly string[];
   provenance?: readonly ProvenanceProjection[];

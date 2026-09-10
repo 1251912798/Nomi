@@ -4,6 +4,6 @@ import React from 'react'
 import type { GenerationCanvasNode } from '../model/generationCanvasTypes'
 import { ProductionShotPlaceholder } from './ProductionShotPlaceholder'
 
-export function ProductionShotOverlays({ node }: { node: GenerationCanvasNode; selected: boolean }): JSX.Element {
-  return <ProductionShotPlaceholder node={node} />
+export function ProductionShotOverlays({ node, reportFeedback }: { reportFeedback: (message: string) => void; node: GenerationCanvasNode; selected: boolean }): JSX.Element {
+  return <ProductionShotPlaceholder reportFeedback={reportFeedback} node={node} />
 }

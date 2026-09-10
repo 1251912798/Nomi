@@ -1,5 +1,6 @@
 {
   "appFetchImporters": [
+    "electron/agentLane/laneDesktopRuntime.ts",
     "electron/ai/buildAiSdkModel.ts",
     "electron/ai/onboarding/modelListProbe.ts",
     "electron/ai/onboarding/onboardingIpc.ts",
@@ -16,7 +17,6 @@
     "electron/comfyuiProbe.ts",
     "electron/comfyuiProgressSocket.ts",
     "electron/comfyuiTemplates.ts",
-    "electron/harness/context/agentContextHost.ts",
     "electron/localRuntime/localTextCapabilityProbe.ts",
     "electron/localRuntime/localTextEndpoints.ts",
     "electron/proxyProbe.ts",

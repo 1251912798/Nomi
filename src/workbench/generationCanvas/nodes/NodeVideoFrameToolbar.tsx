@@ -13,7 +13,7 @@ import {
 import { extractVideoFrameToNode } from './extractVideoFrameToNode'
 import NodeShotCutPanel from './NodeShotCutPanel'
 import NodeDepthActionButton from '../videoDepth/NodeDepthActionButton'
-import { useGenerationCanvasStore } from '../store/generationCanvasStore'
+import { deconstructToShotTable } from './shotTable/factBridge'
 import type { GenerationCanvasNode } from '../model/generationCanvasTypes'
 
 // 视频节点浮条（按「创作优先级」排左→右，与图片工具栏一致）：左·创作：抽首帧 / 抽尾帧 ｜ 右·工具：全屏 · 下载。
@@ -27,6 +27,7 @@ import type { GenerationCanvasNode } from '../model/generationCanvasTypes'
 // 「一功能一个家」——深度提取从此只有这一个入口，独立节点与加号菜单里的那份同 commit 删掉。
 
 type Props = {
+  reportFeedback: (message: string) => void
   node: GenerationCanvasNode
   downloading: boolean
   onDownload: (event: React.MouseEvent) => void
@@ -35,20 +36,20 @@ type Props = {
   onOpenProvenance: () => void
 }
 
-export default function NodeVideoFrameToolbar({ node, downloading, onDownload, onPreview, onOpenProvenance }: Props): JSX.Element {
+export default function NodeVideoFrameToolbar({ reportFeedback, node, downloading, onDownload, onPreview, onOpenProvenance }: Props): JSX.Element {
+
   const { t } = useTranslation()
   const [busy, setBusy] = React.useState<'first' | 'last' | null>(null)
   const [shotCutOpen, setShotCutOpen] = React.useState(false)
-  const openDeconstruction = useGenerationCanvasStore((state) => state.openVideoDeconstruction)
-  const deconstructOpen = useGenerationCanvasStore((state) => state.videoDeconstructionOpenNodeId === node.id)
   const extract = (which: 'first' | 'last') => {
     if (busy) return
     setBusy(which)
-    void extractVideoFrameToNode(node, which).finally(() => setBusy(null))
+    void extractVideoFrameToNode(node, which, reportFeedback).finally(() => setBusy(null))
   }
   return (
     <>
-    {shotCutOpen ? <NodeShotCutPanel node={node} onClose={() => setShotCutOpen(false)} /> : null}
+
+    {shotCutOpen ? <NodeShotCutPanel onFeedback={reportFeedback} node={node} onClose={() => setShotCutOpen(false)} /> : null}
     <FloatingToolbarShell ariaLabel={t('generationCommon.videoToolbar.aria')}>
       <ToolbarButton
         icon={<IconPlayerTrackPrev size={I.size} stroke={I.stroke} />}
@@ -81,11 +82,10 @@ export default function NodeVideoFrameToolbar({ node, downloading, onDownload, o
         icon={<IconScissors size={I.size} stroke={I.stroke} />}
         label={t('generationCommon.videoToolbar.deconstruct')}
         title={t('generationCommon.videoToolbar.deconstructHint')}
-        accent={deconstructOpen}
         disabled={busy !== null}
-        onClick={() => openDeconstruction(node.id, { title: node.title || '', videoUrl: node.result?.url || '' })}
+        onClick={() => { void deconstructToShotTable(node.id).catch((error: unknown) => reportFeedback(error instanceof Error ? error.message : String(error))) }}
       />
-      <NodeDepthActionButton node={node} disabled={busy !== null} />
+      <NodeDepthActionButton reportFeedback={reportFeedback} node={node} disabled={busy !== null} />
       <ToolbarDuplicateVariantButton nodeId={node.id} />
       <ToolbarDivider />
       <ToolbarIconButton

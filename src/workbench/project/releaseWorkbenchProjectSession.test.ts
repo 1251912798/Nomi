@@ -10,9 +10,8 @@ import {
   getCommittedProposal,
   hydrateCommittedProposalReceipt,
 } from '../generationCanvas/agent/proposalUndo'
-import { projectAgentProjectionStore } from '../ai/projectAgentProjectionStore'
-import { createInitialProjectAgentState } from '../../../electron/projectAgentHost/projectAgentState'
-import { DEFAULT_PROJECT_AGENT_APPROVAL_POLICY } from '../../../electron/shared/projectAgentContracts'
+import { laneClient } from '../ai/lane/laneClient'
+import { DEFAULT_PROJECT_AGENT_APPROVAL_POLICY } from '../../../electron/shared/agentCapabilities/capabilityApprovalPolicy';
 
 function node(id: string): GenerationCanvasNode {
   return {
@@ -26,6 +25,7 @@ function node(id: string): GenerationCanvasNode {
 
 describe('releaseWorkbenchProjectRuntimeState', () => {
   afterEach(() => {
+    laneClient.connect(undefined)
     clearActiveWorkbenchProjectSaveTarget()
     releaseWorkbenchProjectRuntimeState()
   })
@@ -87,6 +87,19 @@ describe('releaseWorkbenchProjectRuntimeState', () => {
     expect(verify.requestId).toBeGreaterThan(verifyRequest.requestId)
   })
 
+  it('keeps prompt and Skill references mutually exclusive and clears them across projects', () => {
+    const prompt = { id: 'private-recipe', title: 'Recipe', prompt: 'Project A private direction', mediaUrl: '', mediaType: 'image' as const, promptType: 'image' as const, tags: [], source: '', sourceId: '', sourceUrl: '', origin: 'user' as const }
+    useWorkbenchStore.getState().setCreationActiveSkill({ key: 'skill-a', name: 'Skill A' })
+    useWorkbenchStore.getState().setSelectedLibraryPrompt(prompt)
+    expect(useWorkbenchStore.getState().creationActiveSkill).toBeNull()
+    expect(useWorkbenchStore.getState().selectedLibraryPrompt).toEqual(prompt)
+    useWorkbenchStore.getState().setCreationActiveSkill({ key: 'skill-b', name: 'Skill B' })
+    expect(useWorkbenchStore.getState().selectedLibraryPrompt).toBeNull()
+    useWorkbenchStore.getState().setSelectedLibraryPrompt(prompt)
+    releaseWorkbenchProjectRuntimeState()
+    expect(useWorkbenchStore.getState().selectedLibraryPrompt).toBeNull()
+  })
+
   it('resets the resident approval and spend policy when switching projects', () => {
     useWorkbenchStore.getState().setProjectAgentApprovalPolicy({ mode: 'project', spend: 'within-budget' })
 
@@ -95,13 +108,20 @@ describe('releaseWorkbenchProjectRuntimeState', () => {
     expect(useWorkbenchStore.getState().projectAgentApprovalPolicy).toEqual(DEFAULT_PROJECT_AGENT_APPROVAL_POLICY)
   })
 
-  it('clears only the in-memory proposal receipt view on project release', () => {
+  it('clears only the in-memory proposal receipt view on project release', async () => {
     const binding = {
       projectId: 'project-A',
       immutableProjectUuid: '11111111-1111-4111-8111-111111111111',
       projectGeneration: 1,
     } as const
-    projectAgentProjectionStore.install('subscription-a', 1, createInitialProjectAgentState(binding))
+    laneClient.connect({
+      onProjection: () => () => undefined,
+      send: async command => {
+        if (command.kind === 'workspace-open') return { ok: true, workspaceId: 'subscription-a' }
+        throw new Error(`Project release must not mutate durable receipts: ${command.kind}`)
+      },
+    })
+    await laneClient.open(binding)
     hydrateCommittedProposalReceipt({
       binding,
       revision: 2,

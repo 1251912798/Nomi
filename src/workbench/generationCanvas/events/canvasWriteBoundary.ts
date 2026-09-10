@@ -13,8 +13,6 @@ const documentActions = {
   markReady: false, captureHistory: true, setCanvasTransform: false, setCanvasZoom: false,
   setGenerationAiDraft: false, setGenerationAiMessages: false, setGenerationAiCollapsed: false,
   resetGenerationAiConversation: false, copySelectedNodes: false, cutSelectedNodes: true,
-  openVideoDeconstruction: false, closeVideoDeconstruction: false,
-  setVideoDeconstructionEntry: false, toggleVideoDeconstructionShot: false,
   duplicateNodesForDrag: true, pasteNodes: true, undo: true, redo: true, readSnapshot: false, readDocumentSnapshot: false,
   restoreSnapshot: true, applyEventTail: true, applyExternalGraph: true,
   addNode: true, commitPersistedChange: false, updateNode: true, updateNodes: true,
@@ -57,6 +55,17 @@ function waitUntilSettled(): Promise<void> {
  */
 export function whenCanvasWriteBoundarySettled(): Promise<void> {
   return pending || cancelling ? waitUntilSettled() : Promise.resolve()
+}
+
+/** Derived projections share their owning transaction, but wait behind foreign
+ * durable writes. Recheck on wake-up because another owner may have claimed it. */
+export function runWhenCanvasWriteBoundarySettled(write: () => void): void {
+  const context = getActiveCanvasGestureContext()
+  if ((!pending && !cancelling) || (pending && context?.proposalId === pending.proposalId)) {
+    write()
+    return
+  }
+  void whenCanvasWriteBoundarySettled().then(() => runWhenCanvasWriteBoundarySettled(write))
 }
 
 function cancelPending(): boolean {

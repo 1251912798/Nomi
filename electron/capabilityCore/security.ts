@@ -32,7 +32,7 @@ const MCP_CLIENT_KEY_PATTERN = /^[a-z0-9][a-z0-9-]{0,63}$/
  * 注意 `mcpProtocol.ts` 里那条按自报名字猜宿主的 substring 兜底**故意不跟着这份名单走**：真身份来自
  * 配置里的签名 proof，而 'pi' 两个字母会命中 'copilot'/'api-client'，把无关客户端误标成可信宿主。
  */
-export const BUILTIN_MCP_CLIENTS = ['claude', 'codex', 'cursor', 'pi'] as const
+export const BUILTIN_MCP_CLIENTS = ['claude', 'codex', 'cursor', 'pi', 'workbuddy'] as const
 export type BuiltinMcpClient = (typeof BUILTIN_MCP_CLIENTS)[number]
 
 /** 任意 Nomi 签名过的 MCP 客户端身份（内置 + 用户自定义）。语义 = 过 isValidMcpClientKey 校验的 key 字符串。 */

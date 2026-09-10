@@ -1,10 +1,12 @@
+import type { CanvasWriteApprovalAuthority } from '../shared/agentCapabilities/transportContracts'
 import { documentWriteOperationForAlias } from '../shared/agentCapabilities/documentWrite'
-import type { ProposalApprovalRef } from '../shared/projectAgentContracts'
+
 import type {
   ProjectAgentCommittedProposalRecord,
   ProjectAgentProposalReceiptView,
 } from '../shared/projectAgentProposalReceipt'
-import type { ProjectAgentProposalReceiptWriter } from '../projectAgentHost/projectAgentExecutionCoordinatorTypes'
+import type { ProjectAgentProposalReceiptService } from './projectAgentProposalReceiptStore'
+type ProjectAgentProposalReceiptWriter = Pick<ProjectAgentProposalReceiptService, 'read' | 'write' | 'transition'>
 
 type ProjectAgentDocumentReceiptCall = Readonly<{ toolName: string; args: unknown }>
 type PreparedDocumentReceipt = Readonly<{
@@ -13,7 +15,7 @@ type PreparedDocumentReceipt = Readonly<{
 
 export function documentProposalReceiptFor(
   call: ProjectAgentDocumentReceiptCall,
-  persisted: ProposalApprovalRef,
+  persisted: CanvasWriteApprovalAuthority,
   prepared: PreparedDocumentReceipt,
 ): ProjectAgentCommittedProposalRecord {
   const operation = prepared.invocation.input?.operation

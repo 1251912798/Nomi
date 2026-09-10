@@ -155,6 +155,10 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Build selected desktop surfaces once
         run: pnpm run build
+      - name: Install Chromium for browser mechanism tests
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Browser feel mechanism
+        run: pnpm run test:feel:browser
       - name: Electron smoke
         if: needs.scope.outputs.desktop == 'true'
         run: xvfb-run -a pnpm run test:e2e
@@ -183,6 +187,7 @@ jobs:
         with:
           name: linux-walkthrough-evidence
           path: |
+            artifacts/feel/**
             evals/runs/**/screenshots/**
             evals/runs/**/output.jsonl
             outputs/canvas-acceptance/**
@@ -232,6 +237,7 @@ jobs:
         with:
           name: canvas-acceptance-evidence-${{ matrix.shard }}
           path: |
+            artifacts/feel/**
             evals/runs/**/screenshots/**
             evals/runs/**/output.jsonl
             outputs/canvas-acceptance/**
@@ -276,6 +282,7 @@ jobs:
         with:
           name: canvas-performance-evidence
           path: |
+            artifacts/feel/**
             evals/runs/**/screenshots/**
             evals/runs/**/output.jsonl
             outputs/canvas-acceptance/**

@@ -1,0 +1,131 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-08-agent-lane-native-tools",
+  "problem_type": "Native coding tool scope and approval authority",
+  "symptom": "Installed skills cannot be read from the new lane, while project symlinks bypass the old lexical containment check.",
+  "direct_cause": "Coding operations validate only lexical project paths and native tools have no capability registry identity for the lane approval gate.",
+  "class_root": "The native assembly lacks a shared real-path boundary and a native effects-to-approval adapter.",
+  "affected_population": [
+    "Installed skill packages outside projects",
+    "Project and package symlinks",
+    "Native shell calls under every approval mode"
+  ],
+  "scope_paths": [
+    "electron/agentLane/laneCodingTools.mts",
+    "electron/agentLane/laneCodingPaths.mts",
+    "electron/agentLane/laneNativeAssembly.mts",
+    "electron/agentLane/laneInstalledSkills.mts",
+    "electron/agentLane/laneNativeApproval.ts",
+    "electron/agentLane/laneApprovalGate.ts",
+    "electron/shared/agentLane/laneApproval.ts",
+    "electron/agentLane/laneNativeDesktop.mts"
+  ],
+  "entry_points": [
+    "Pi read/grep/find/ls operations",
+    "Pi edit/write/mkdir operations",
+    "Native tool before_tool approval"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "Installed pi 0.85.1 source exposes operations, addedToolNames and before_tool; Nomi owns the project/package read boundaries and approval effects.",
+  "invariants": [
+    "Read paths remain inside the project or a trusted installed package after normalization and realpath resolution.",
+    "Write/edit/mkdir paths remain inside the project after realpath resolution.",
+    "Unlocking tools never grants permission to execute them.",
+    "Shell hard-deny and mandatory-confirmation rules remain effective in every mode.",
+    "Pi timeout seconds convert once to Nomi milliseconds and back only at the local pi backend."
+  ],
+  "generality_proof": "All coding file operations share the same pinned root boundary. Every native approval subject is derived from trusted effects and the existing shell classifier before the shared gate.",
+  "shared_boundaries": [
+    {
+      "path": "electron/agentLane/laneCodingPaths.mts",
+      "symbol": "createLaneCodingPaths",
+      "responsibility": "Pin trusted roots and check lexical plus canonical containment at every operation."
+    },
+    {
+      "path": "electron/agentLane/laneNativeApproval.ts",
+      "symbol": "createLaneNativeApprovalResolver",
+      "responsibility": "Derive native approval facts and mandatory shell constraints from the existing policy."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "electron/agentLane/laneCodingTools.mts",
+      "entry_point": "createReadTool/createGrepTool/createFindTool/createLsTool operations",
+      "disposition": "enforced",
+      "evidence": "Every read path passes the shared realpath checker; installed skill roots grant read access only."
+    },
+    {
+      "path": "electron/agentLane/laneCodingTools.mts",
+      "entry_point": "createEditTool/createWriteTool operations",
+      "disposition": "enforced",
+      "evidence": "Writes use only the project root, including nonexistent paths resolved through their existing ancestor."
+    },
+    {
+      "path": "electron/agentLane/laneApprovalGate.ts",
+      "entry_point": "preflight",
+      "disposition": "enforced",
+      "evidence": "Trusted native resolver may require confirmation or deny; tool visibility does not affect the gate."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Any installed skill, project symlink or deferred native call can reach the mechanism again.",
+    "same_class_scan": [
+      "Inspected all seven pi operations factories and installed grep implementation.",
+      "Inspected laneApprovalGate subjectOf and codingCommandPolicy classification.",
+      "Inspected SkillRecord discovery and skillPackage symlink exclusion."
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "electron/agentLane/laneCodingPaths.mts",
+    "invariant": "Only pinned canonical project/package roots authorize file operations; native shell restrictions cannot be reduced by menu changes.",
+    "failure_mode": "Throw before filesystem execution or return a denied/awaiting-user approval outcome.",
+    "exception_policy": "none",
+    "strategy": "Use one operations-level boundary and one trusted native approval resolver.",
+    "artifacts": [
+      "electron/agentLane/laneCodingPaths.mts",
+      "electron/agentLane/laneCodingTools.mts",
+      "electron/agentLane/laneNativeApproval.ts",
+      "electron/agentLane/laneApprovalGate.ts",
+      "electron/agentLane/laneNativeDesktop.mts"
+    ]
+  },
+  "regression_tests": [
+    "tests/agent-runtime/lane-native-paths.test.mts",
+    "tests/agent-runtime/lane-native-assembly.test.mts",
+    "tests/agent-runtime/lane-native-approval.test.mts",
+    "tests/agent-runtime/lane-native-desktop.test.mts"
+  ],
+  "class_regression_tests": [
+    "tests/agent-runtime/lane-native-paths.test.mts",
+    "tests/agent-runtime/lane-native-approval.test.mts"
+  ],
+  "legacy_paths": {
+    "status": "not-applicable",
+    "removed_paths": [],
+    "rationale": "The existing pi operations adapter is replaced in place; no alternate file executor or skill loader is introduced."
+  },
+  "dependency_lifecycle": {
+    "decision": "retain-with-exit",
+    "current": "@earendil-works/pi 0.85.1",
+    "target": "A supported pi version preserving operations and durable addedToolNames contracts.",
+    "rationale": "Keep upstream tool schemas and executors; application scope policy belongs at the provided operations boundary.",
+    "exit_criteria": [
+      "Upgrade when pi changes the operations or deferred tool contract and rerun temporary-fixture containment and deferred replay tests."
+    ]
+  },
+  "migration": "No stored format changes. Existing installed SkillRecord entries feed the lane index; existing lane active tools remain pi-owned.",
+  "residual_risks": [
+    "OS sandbox still denies the settings root, including installed scripts within it; no bash read exception is added.",
+    "Canonical checks do not provide a kernel file-descriptor transaction against hostile concurrent filesystem swaps."
+  ],
+  "invariant_owner_layer": {
+    "layer": "electron/agentLane/laneCodingPaths.mts",
+    "tests": [
+      "tests/agent-runtime/lane-native-paths.test.mts",
+      "tests/agent-runtime/lane-native-approval.test.mts"
+    ],
+    "why": "Coding operations are the first shared boundary with trusted project/package roots; the native approval resolver gives the shared gate trusted effects without changing upstream schemas."
+  }
+}

@@ -123,39 +123,27 @@ export function VariantChip({ count }: { count: number }): JSX.Element | null {
   )
 }
 
-/**
- * L3: 生成节点的"待生成"占位卡。未选中时不再只显斜纹 + "等待生成"，而是给
- * 镜头序号徽标 + 标题 + 提示词首行预览，让用户一眼分清哪个镜头（J3 走查）。
- * - selected：参数面板会盖上来，这里不渲染
- * - needsFirstFrame：video 节点缺首帧 → 提示拖图进来
- * - shotIndex：仅 shots 分类有，非 shots 传 null（不显徽标）
- */
+/** 空媒体只提示下一步操作；镜头号和标题属于共同框外标签行。 */
 export function PendingGenerationPlaceholder({
   selected,
   needsFirstFrame,
   waitingUpstream = false,
-  shotIndex,
-  title,
-  prompt,
   kind,
 }: {
   selected: boolean
   needsFirstFrame: boolean
   waitingUpstream?: boolean
-  shotIndex: number | null
-  title?: string
-  prompt?: string
   kind: string
 }): JSX.Element {
   const { t } = useTranslation()
   const isVideo = kind === 'video'
   // 3D 模型节点也走这条通用占位（无专属卡 body）。不按 kind 分就会拿图片文案自称「图片节点」。
   const isModel3d = kind === 'model3d'
-  const titleText = title || (isVideo
+  const titleText = isVideo
     ? t('generationCommon.nodeEmpty.video.title')
     : isModel3d
       ? t('generationCommon.nodeEmpty.model3d.title')
-      : t('generationCommon.nodeEmpty.image.title'))
+      : t('generationCommon.nodeEmpty.image.title')
   const description = waitingUpstream
     ? t('generationCommon.nodeEmpty.waiting')
     : needsFirstFrame
@@ -169,8 +157,8 @@ export function PendingGenerationPlaceholder({
     <div data-selected-placeholder={selected ? 'true' : 'false'} className="h-full w-full">
       <NodeEmptyState
         icon={isVideo ? <IconVideo size={20} stroke={1.6} /> : isModel3d ? <Icon3dCubeSphere size={20} stroke={1.6} /> : <IconPhoto size={20} stroke={1.6} />}
-        title={shotIndex != null ? `${t('generationCommon.card.shot', { index: shotIndex })} · ${titleText}` : titleText}
-        description={prompt ? `${description} ${prompt}` : description}
+        title={titleText}
+        description={description}
       />
     </div>
   )
@@ -281,7 +269,7 @@ export function LocalImageOpPendingStatus({
 }
 
 /** 遮罩里那颗取消按钮。两档摆法共用一颗，别各写一份（两份总有一份会先漂）。 */
-function GeneratingCancelButton({ onCancel, compact }: { onCancel: () => void; compact?: boolean }): JSX.Element {
+export function GeneratingCancelButton({ onCancel, compact }: { onCancel: () => void; compact?: boolean }): JSX.Element {
   const { t } = useTranslation()
   return (
     <button

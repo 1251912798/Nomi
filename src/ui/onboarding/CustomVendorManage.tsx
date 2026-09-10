@@ -75,7 +75,7 @@ export function CustomVendorManage({
     })
   }, [focus])
 
-  const handleSaveKey = React.useCallback(() => {
+  const handleSaveKey = React.useCallback(async () => {
     const apiKey = keyDraft.trim()
     if (!apiKey) {
       setError(t('onboardingProviders.vendorCard.pasteApiKeyFirst'))
@@ -86,9 +86,7 @@ export function CustomVendorManage({
     setBusy(true)
     setError('')
     try {
-      // Credential changes invalidate the active certification revision.
-      bridge.modelCatalog.upsertVendor({ key: vendorKey, enabled: false })
-      bridge.modelCatalog.upsertVendorApiKey(vendorKey, { apiKey, enabled: false })
+      await bridge.modelCatalog.upsertVendorApiKey(vendorKey, { apiKey, enabled: false })
       setKeyDraft('')
       setKeyEditing(false)
       onChanged()

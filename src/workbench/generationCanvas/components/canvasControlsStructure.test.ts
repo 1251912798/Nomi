@@ -138,16 +138,16 @@ describe('generation canvas control structure', () => {
     expect(canvasStyles).not.toContain('generation-canvas-v2__gesture-hint')
   })
 
-  it('keeps settings copy aligned with drag-pans-first gestures', () => {
+  it('keeps settings copy focused on the selected wheel gesture', () => {
     const settings = source('../../../i18n/locales/settings.ts')
 
     // 08-07 的 selection-first 文案已被 08-08 用户拍板推翻，不许回潮。
     expect(settings).not.toContain('空白处左键拖动直接框选')
     expect(settings).not.toContain('left-drag empty space directly box-selects')
-    expect(settings).toContain('生成画布和 ComfyUI 工作流设置共用此滚轮/双指手势')
-    expect(settings).toContain('The generation canvas and ComfyUI workflow settings share this wheel/two-finger gesture')
-    expect(settings).toContain('在生成画布中，空白处左键拖动为平移，Shift+左键拖动为框选')
-    expect(settings).toContain('On the generation canvas, left-drag empty space to pan, Shift+left-drag to add a box selection')
+    expect(settings).toContain('滚轮以光标为中心缩放。')
+    expect(settings).toContain('Wheel zooms around the cursor.')
+    expect(settings).toContain('滚轮/双指滑平移；捏合或 ⌘/Ctrl+滚轮缩放。')
+    expect(settings).toContain('Wheel/two-finger swipe pans; pinch or ⌘/Ctrl+wheel zooms.')
   })
 
   it('keeps Space available to focused controls and gives disabled tooltip triggers a name', () => {
@@ -374,12 +374,12 @@ describe('generation canvas control structure', () => {
     expect(helpPopover).toContain('text-caption font-medium leading-none whitespace-nowrap text-nomi-ink')
   })
 
-  it('keeps the C-02 deconstruction node anchors canonical', () => {
-    const badge = source('../nodes/NodeDeconstructionBadge.tsx')
-
-    expect(badge).toContain('data-decon-node-stub={nodeId}')
-    expect(badge).toContain('data-decon-node-badge={nodeId}')
-    expect(badge).not.toContain('data-deconstruct-stub')
-    expect(badge).not.toContain('data-deconstruct-result-badge')
+  it('keeps the shot table as the sole deconstruction result surface', () => {
+    const table = source('../nodes/shotTable/ShotTableNode.tsx')
+    const toolbar = source('../nodes/NodeVideoFrameToolbar.tsx')
+    expect(table).toContain('data-testid="shot-table-node"')
+    expect(table).toContain('data-kind="shot_table"')
+    expect(toolbar).toContain('deconstructToShotTable')
+    expect(toolbar).not.toContain('openVideoDeconstruction')
   })
 })

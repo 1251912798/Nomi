@@ -9,6 +9,7 @@
 // 这样「外部 agent 驱动生成」无论 app 开没开都走同一套 core 逻辑，只换网关——不存在并行版。
 import { readProject, saveProject } from '../projects/repository'
 import { mintSpendGrant } from '../spendGrant'
+import { prepareSpendQuote, takeSpendQuote } from '../spendQuote'
 import { normalizeSnapshot, type CanvasSnapshot } from './canvasGraph'
 import { requestRenderer } from './rendererBridge'
 
@@ -22,6 +23,7 @@ export type SpendConfirmInfo = {
   vendor: string
   modelKey: string
   prompt: string
+  parameters?: Record<string, unknown>
   /** Legacy renderer card metadata. Canonical paid generation never grants session-wide trust. */
   grantsSessionTrust?: boolean
 }
@@ -162,9 +164,10 @@ export function createRendererGateway(projectId: string): ProjectGateway {
     },
     async confirmSpend(info) {
       try {
-        const reply = (await requestRenderer('spend.confirm', info, RENDERER_SPEND_TIMEOUT_MS)) as { confirmed?: boolean } | null
+        const quote = prepareSpendQuote([{ vendorKey: info.vendor, modelKey: info.modelKey, parameters: info.parameters }])
+        const reply = (await requestRenderer('spend.confirm', { ...info, quote }, RENDERER_SPEND_TIMEOUT_MS)) as { confirmed?: boolean } | null
         // 真人点确认才到这里；铸令牌发生在主进程、消费仍在 runTask 硬闸（信任边界不破）。
-        return reply?.confirmed ? mintSpendGrant({ nodeIds: [info.nodeId] }) : null
+        return reply?.confirmed ? mintSpendGrant({ nodeIds: [info.nodeId], quote: takeSpendQuote(quote.quoteId) }) : null
       } catch {
         // 超时/渲染层不可用 → 当作未确认（不死等，把干净错误透传给 agent）。
         return null

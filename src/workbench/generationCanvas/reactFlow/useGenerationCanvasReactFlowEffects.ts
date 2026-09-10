@@ -13,7 +13,7 @@ import type { GenerationCanvasNode } from '../model/generationCanvasTypes'
 import { FOCUS_GENERATION_NODE_EVENT, resolveNodeVisualSize } from '../nodes/nodeSizing'
 import { useGenerationCanvasStore } from '../store/generationCanvasStore'
 import type { GenerationFlowEdge, GenerationFlowNode } from './generationCanvasReactFlowAdapter'
-import { resolvePendingCanvasFocus, type PendingCanvasFocus } from './focusViewportRecovery'
+import { resolveCanvasFocusZoom, resolvePendingCanvasFocus, type PendingCanvasFocus } from './focusViewportRecovery'
 
 type HostEffectsArgs = {
   animateViewportTo: (zoom: number, offset: { x: number; y: number }, duration?: number) => void
@@ -101,8 +101,8 @@ export function useGenerationCanvasReactFlowHostEffects({
     // 聚焦跳转也走我们自己的调度器：React Flow 的 setCenter({ duration }) 同样是 d3 过渡，
     // 撞上 pane 那一帧 0×0 的 extent 缓存就会算出 NaN 视口，被打断时 promise 也永不结算。
     const stage = hostRef.current?.getBoundingClientRect()
-    const focusZoom = zoomRef.current || 1
     if (stage) {
+      const focusZoom = resolveCanvasFocusZoom(size, stage, zoomRef.current || 1)
       animateViewportTo(
         focusZoom,
         {

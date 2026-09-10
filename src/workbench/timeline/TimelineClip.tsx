@@ -1,4 +1,5 @@
 import React from 'react'
+import { TimelineGenerationFeedback } from './TimelineGenerationFeedback'
 import { useTranslation } from 'react-i18next'
 import { IconCrop } from '@tabler/icons-react'
 import { cn } from '../../utils/cn'
@@ -425,6 +426,7 @@ function TimelineClip({ clip, transitionLaneRows = 0 }: TimelineClipProps): JSX.
           />
         ) : null}
         <span className="min-w-0 overflow-hidden text-ellipsis">{title}</span>
+        <TimelineGenerationFeedback nodeId={clip.sourceNodeId} />
       </span>
       {/* 剪刀模式切点线：橙色虚线 + 剪刀图标，跟随光标 */}
       {splitMode && cutPx !== null ? (

@@ -22,7 +22,7 @@ import {
   type CapturedCanvasReadSnapshotPort,
   type CapturedCanvasReadSnapshotRegistry,
 } from "./canvasReadCapturedSnapshotRegistry";
-import type { ProjectBinding } from "../shared/projectAgentContracts";
+import type { ProjectBinding } from '../shared/projectBinding';
 
 export const SURFACE_SUSPEND_CHANNEL = "nomi:surface:suspend";
 export const SURFACE_COMMIT_CANVAS_READ_CHANNEL = "nomi:surface:commitCanvasRead";

@@ -1,0 +1,42 @@
+import React from 'react'
+import { getDesktopActiveProjectId, subscribeDesktopActiveProjectIdChange } from '../../../desktop/activeProject'
+import ReconcileDeviationCard from '../../generationCanvas/components/ReconcileDeviationCard'
+import { buildContentFixMessage, useShotVerifyStore } from '../../generationCanvas/agent/shotVerifyStore'
+import { canStartRound } from '../../generationCanvas/agent/storyboardLoopBudget'
+import type { ResidentSurface } from './residentShellDisplay'
+
+type SendRepair = (text: string) => Promise<boolean>
+const inFlight = new Set<string>()
+
+/** Admission is the commit point; the existing store remains the only feedback/budget owner. */
+export async function requestShotVerifyFix(projectId: string, send: SendRepair): Promise<boolean> {
+  const before = useShotVerifyStore.getState()
+  if (!projectId || getDesktopActiveProjectId() !== projectId || before.projectId !== projectId
+    || before.status !== 'ready' || !before.deviations.length || !canStartRound(before.budget) || inFlight.has(projectId)) return false
+  inFlight.add(projectId)
+  try {
+    if (!await send(buildContentFixMessage(before.deviations))) return false
+    const current = useShotVerifyStore.getState()
+    if (!current.isVerifyCurrent({ projectId, requestId: before.requestId }, getDesktopActiveProjectId())
+      || current.deviations !== before.deviations || !current.consumeRound()) return false
+    current.markFixing()
+    return true
+  } catch { return false } finally { inFlight.delete(projectId) }
+}
+
+/** The approved domain card joins live findings; no transcript entry or second deviation state. */
+export function useShotVerifyFeedback(surface: ResidentSurface, send: SendRepair): React.ReactNode {
+  const projectId = React.useSyncExternalStore(subscribeDesktopActiveProjectIdChange, getDesktopActiveProjectId, getDesktopActiveProjectId)
+  const state = React.useSyncExternalStore(useShotVerifyStore.subscribe, useShotVerifyStore.getState, useShotVerifyStore.getState)
+  return React.useMemo(() => {
+    if (surface !== 'generation' || !projectId || state.projectId !== projectId || !state.deviations.length) return null
+    const current = () => {
+      const latest = useShotVerifyStore.getState()
+      return latest.isVerifyCurrent({ projectId, requestId: state.requestId }, getDesktopActiveProjectId())
+        && latest.deviations === state.deviations ? latest : undefined
+    }
+    return <ReconcileDeviationCard deviations={state.deviations} exhausted={state.exhausted}
+      onDismiss={() => current()?.setDeviations([])}
+      onAiFix={() => { if (current()) void requestShotVerifyFix(projectId, send) }} />
+  }, [projectId, send, state, surface])
+}

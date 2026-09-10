@@ -1,0 +1,110 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-08-agent-lane-network-route",
+  "problem_type": "Model transport bypasses the application route",
+  "symptom": "Electron lane request through a configured proxy never reaches the local HTTP fixture and returns Connection error.",
+  "direct_cause": "Provider options did not supply appFetch; pi used global fetch instead.",
+  "class_root": "The shared model assembly did not require a transport dependency, so all lane entry points could bypass application routing.",
+  "affected_population": [
+    "Persistent lanes, single shots and all supported model protocols on configured proxies"
+  ],
+  "scope_paths": [
+    "electron/agentLane/laneModelProvider.mts",
+    "electron/agentLane/laneHost.mts",
+    "electron/agentLane/laneRuntimePort.ts",
+    "electron/agentLane/laneSingleShot.mts",
+    "electron/agentLane/laneDesktopRuntime.ts"
+  ],
+  "entry_points": [
+    "Desktop persistent workspace",
+    "Desktop single-shot request"
+  ],
+  "external_sources": [
+    {
+      "kind": "source-code",
+      "url": "https://github.com/earendil-works/pi/tree/main/packages/ai",
+      "checked_at": "2026-09-08",
+      "purpose": "Installed pi 0.85.1 StreamOptions exposes fetch for every provider stream."
+    }
+  ],
+  "invariants": [
+    "Every model request uses the explicitly supplied transport; desktop supplies appFetch."
+  ],
+  "generality_proof": "Both stream and streamSimple options are assembled in createNomiProvider, spanning turns, summaries and single shots.",
+  "shared_boundaries": [
+    {
+      "path": "electron/agentLane/laneModelProvider.mts",
+      "symbol": "createNomiProvider",
+      "responsibility": "Require fetch and install it for every protocol and stream."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "electron/agentLane/laneHost.mts",
+      "entry_point": "openLane",
+      "disposition": "enforced",
+      "evidence": "Calls the shared provider with the required options.fetch dependency."
+    },
+    {
+      "path": "electron/agentLane/laneSingleShot.mts",
+      "entry_point": "runLaneSingleShot",
+      "disposition": "enforced",
+      "evidence": "Calls the shared provider with the required options.fetch dependency."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Both entry points and all protocols can miss the same configured route.",
+    "same_class_scan": [
+      "rg createNomiProvider: laneHost, laneSingleShot and synthetic fixtures",
+      "rg appFetch: desktop assembly did not inject it; old runtime did."
+    ]
+  },
+  "prevention": {
+    "kind": "type-system",
+    "enforcement_path": "electron/agentLane/laneModelProvider.mts",
+    "invariant": "Required fetch is passed by every caller and cannot be overridden by SDK defaults.",
+    "failure_mode": "Missing transport is rejected by TypeScript; provider rejects a nonfunction at runtime.",
+    "exception_policy": "none",
+    "strategy": "One required dependency at the shared request assembler.",
+    "artifacts": [
+      "electron/agentLane/laneModelProvider.mts",
+      "electron/agentLane/laneRuntimePort.ts"
+    ]
+  },
+  "regression_tests": [
+    "tests/network/proxy-cold-main.cjs",
+    "tests/agent-runtime/lane-single-shot.test.mts"
+  ],
+  "class_regression_tests": [
+    "tests/network/proxy-cold-main.cjs",
+    "tests/agent-runtime/lane-single-shot.test.mts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "electron/agentLane/laneModelProvider.mts"
+    ],
+    "rationale": "Remove the implicit globalThis.fetch fallback from provider assembly."
+  },
+  "dependency_lifecycle": {
+    "decision": "retain-with-exit",
+    "current": "pi 0.85.1",
+    "target": "pi public fetch injection retained",
+    "rationale": "The existing SDK already exposes the required fetch option; application injection was missing.",
+    "exit_criteria": [
+      "Reassess on pi protocol changes; real Electron route suite must remain green."
+    ]
+  },
+  "migration": "No persisted data changes. Desktop supplies appFetch and synthetic callers supply globalThis.fetch explicitly.",
+  "residual_risks": [
+    "Real Electron three-protocol single/persistent matrix passed through a local CONNECT proxy; this does not certify remote provider availability."
+  ],
+  "invariant_owner_layer": {
+    "layer": "electron/agentLane/laneModelProvider.mts",
+    "tests": [
+      "tests/network/proxy-cold-main.cjs",
+      "tests/agent-runtime/lane-single-shot.test.mts"
+    ]
+  }
+}

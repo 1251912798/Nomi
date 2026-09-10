@@ -1,0 +1,97 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-08-agent-lane-error-projection",
+  "problem_type": "error-projection",
+  "symptom": "A provider error with no assistant content leaves an empty, apparently idle conversation.",
+  "direct_cause": "Projection walks content blocks but drops the settled assistant errorMessage.",
+  "class_root": "A settled provider error remains visible at its transcript position.",
+  "affected_population": [
+    "Live prompts",
+    "Queued instructions",
+    "Reopened conversation display"
+  ],
+  "scope_paths": [
+    "electron/shared/agentLane/laneProjection.ts",
+    "electron/shared/agentLane/laneContracts.ts",
+    "src/workbench/ai/lane/laneViewModel.ts"
+  ],
+  "entry_points": [
+    "Lane transcript projection",
+    "Lane execution"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "The mapping of Nomi user input and failure visibility is a domain invariant; installed pi 0.85.1 public APIs are inspected in the stage 4 plan.",
+  "invariants": [
+    "A settled provider error remains visible at its transcript position."
+  ],
+  "generality_proof": "Every live or replayed entry crosses electron/shared/agentLane/laneProjection.ts; the same rule is applied independent of provider.",
+  "shared_boundaries": [
+    {
+      "path": "electron/shared/agentLane/laneProjection.ts",
+      "symbol": "projectLaneSnapshot",
+      "responsibility": "A settled provider error remains visible at its transcript position."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "electron/shared/agentLane/laneProjection.ts",
+      "entry_point": "projectLaneSnapshot",
+      "disposition": "enforced",
+      "evidence": "The regression fixture observes real lane or projection output, without a parallel production runner."
+    },
+    {
+      "path": "src/workbench/ai/lane/laneViewModel.ts",
+      "entry_point": "laneViewModel error branch",
+      "disposition": "enforced",
+      "evidence": "Lane error parts are rendered by the existing v4 inline error component."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "The same omission affects every provider and subsequent user turn.",
+    "same_class_scan": [
+      "Inspected laneHost message/queue admission and projection traversal",
+      "Inspected v4 data/action hooks and native pi message conversion"
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "electron/shared/agentLane/laneProjection.ts",
+    "invariant": "A settled provider error remains visible at its transcript position.",
+    "failure_mode": "Preserve the source fact; do not substitute current composer state or an empty successful display.",
+    "exception_policy": "none",
+    "strategy": "A settled provider error remains visible at its transcript position.",
+    "artifacts": [
+      "electron/shared/agentLane/laneProjection.ts"
+    ]
+  },
+  "regression_tests": [
+    "electron/shared/agentLane/laneProjection.test.ts"
+  ],
+  "class_regression_tests": [
+    "electron/shared/agentLane/laneProjection.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "electron/shared/agentLane/laneProjection.ts"
+    ],
+    "rationale": "Replace the omission in the existing owner; no second projection or input store."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "No dependency change is needed to bind Nomi workspace ownership.",
+    "exit_criteria": []
+  },
+  "migration": "Projection is derived when reopening; no stored files are rewritten.",
+  "residual_risks": [
+    "Desktop main/preload assembly and real Electron journey are not yet verified."
+  ],
+  "invariant_owner_layer": {
+    "layer": "electron/shared/agentLane/laneProjection.ts",
+    "tests": [
+      "electron/shared/agentLane/laneProjection.test.ts"
+    ],
+    "why": "A settled provider error remains visible at its transcript position."
+  }
+}

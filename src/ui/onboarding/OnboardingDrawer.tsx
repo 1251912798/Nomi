@@ -23,7 +23,8 @@ import { ANTIGRAVITY_VENDOR_KEY } from '../../../electron/shared/antigravity'
 import { projectOnboardingConnections } from './onboardingDrawerConnections'
 import { getDesktopBridge } from '../../desktop/bridge'
 import type { DesktopHttpCertificationRun, IntegrationHandoff } from '../../desktop/onboardingBridgeTypes'
-import { alertDialog, confirmDialog } from '../../design'
+import { confirmDialog } from '../../design'
+import { notify } from '../notificationPolicy'
 import {
   ConnectionWorkspacePage,
   ModelSettingsDetailBoundary,
@@ -75,6 +76,13 @@ export function OnboardingDrawer({ pageRequest = null }: { pageRequest?: ModelPa
   const openedIntegrationHandoff = React.useRef<string | null>(null)
   const verificationRefreshTimer = React.useRef<number | null>(null)
   const page = currentModelSettingsPage(navigation)
+  const feedbackOwner = JSON.stringify(page)
+  const [errors, setErrors] = React.useState<Record<string, string>>({})
+  const reportError = React.useCallback((reason: string, message: string) => {
+    notify({ identity: `model-settings:${feedbackOwner}`, reason, message, type: 'error', level: 'inline',
+      present: (text) => setErrors((current) => ({ ...current, [feedbackOwner]: text })) })
+  }, [feedbackOwner])
+  const feedback = errors[feedbackOwner] ? <p role="alert" className="px-3 py-2 text-caption leading-relaxed text-workbench-danger">{errors[feedbackOwner]}</p> : null
   const detailDialogOwner = modelSettingsDialogOwner(navigation)
   const openPage = React.useCallback((next: Exclude<ModelSettingsPage, { type: 'home' }>) => {
     setNavigation((current) => openModelSettingsPage(current, next))
@@ -231,6 +239,7 @@ export function OnboardingDrawer({ pageRequest = null }: { pageRequest?: ModelPa
 
   const startModelAdaptation = React.useCallback(
     async (model: ChipModel): Promise<void> => {
+      reportError('adaptation', '')
       const alreadyRunning = adapterRuns.find(
         (run) =>
           run.vendorKey === model.vendorKey &&
@@ -243,10 +252,7 @@ export function OnboardingDrawer({ pageRequest = null }: { pageRequest?: ModelPa
       }
       const adapt = getDesktopBridge()?.onboarding?.httpCertificationStartExisting
       if (!adapt) {
-        void alertDialog({
-          title: t('onboardingProviders.workspace.adapter.startFailedTitle'),
-          message: t('onboardingProviders.workspace.adapter.unavailable'),
-        })
+        reportError('adaptation', t('onboardingProviders.workspace.adapter.unavailable'))
         return
       }
       const confirmed = await confirmDialog({
@@ -283,18 +289,13 @@ export function OnboardingDrawer({ pageRequest = null }: { pageRequest?: ModelPa
         refresh()
         openPage({ type: 'verification', runId: result.run.id })
       } catch (error) {
-        void alertDialog({
-          title: t('onboardingProviders.workspace.adapter.startFailedTitle'),
-          message:
-            error instanceof CertificationUiError
-              ? certificationFailureMessage(t, error.code)
-              : t('modelSetup.saveFailedHint'),
-        })
+        reportError('adaptation', error instanceof CertificationUiError
+          ? certificationFailureMessage(t, error.code) : t('modelSetup.saveFailedHint'))
       } finally {
         setAdaptStartingModel((current) => (current === identity ? null : current))
       }
     },
-    [adapterRuns, openPage, recordAdapterRun, refresh, t],
+    [adapterRuns, openPage, recordAdapterRun, refresh, reportError, t],
   )
 
   const handleDelete = React.useCallback(
@@ -313,36 +314,32 @@ export function OnboardingDrawer({ pageRequest = null }: { pageRequest?: ModelPa
         danger: true,
       })
       if (!ok) return
+      reportError('delete', '')
       try {
         bridge.modelCatalog.deleteModels(rows.map((r) => ({ vendorKey: r.vendorKey, modelKey: r.modelKey })))
         refresh()
       } catch (e) {
-        void alertDialog({
-          title: t('onboardingProviders.drawer.deleteFailed'),
-          message: e instanceof Error ? e.message : String(e),
-        })
+        reportError('delete', e instanceof Error ? e.message : String(e))
       }
     },
-    [refresh, t],
+    [refresh, reportError, t],
   )
 
   const handleSetEnabled = React.useCallback(
     (rows: ChipModel[], enabled: boolean) => {
       const bridge = getDesktopBridge()
       if (!bridge || rows.length === 0) return
+      reportError('operation', '')
       try {
         for (const row of rows) {
           bridge.modelCatalog.upsertModel({ vendorKey: row.vendorKey, modelKey: row.modelKey, enabled })
         }
         refresh()
       } catch (e) {
-        void alertDialog({
-          title: t('onboardingProviders.drawer.operationFailed'),
-          message: e instanceof Error ? e.message : String(e),
-        })
+        reportError('operation', e instanceof Error ? e.message : String(e))
       }
     },
-    [refresh, t],
+    [refresh, reportError],
   )
 
   const handleRetype = React.useCallback(
@@ -350,17 +347,15 @@ export function OnboardingDrawer({ pageRequest = null }: { pageRequest?: ModelPa
       const bridge = getDesktopBridge()
       const retype = bridge?.modelCatalog.retypeModel
       if (!retype) return
+      reportError('operation', '')
       try {
         retype({ vendorKey: row.vendorKey, modelKey: row.modelKey, kind })
         refresh()
       } catch (e) {
-        void alertDialog({
-          title: t('onboardingProviders.drawer.operationFailed'),
-          message: e instanceof Error ? e.message : String(e),
-        })
+        reportError('operation', e instanceof Error ? e.message : String(e))
       }
     },
-    [refresh, t],
+    [refresh, reportError],
   )
 
   const {
@@ -464,7 +459,7 @@ export function OnboardingDrawer({ pageRequest = null }: { pageRequest?: ModelPa
       <KnownVendorKeyConnectPage
         directory={card.directory}
         vendorName={translateModelDisplayText(card.meta.name)}
-        modelCount={card.vendorModels.length} hasApiKey={card.meta.hasApiKey}
+        modelCount={card.vendorModels.length} hasApiKey={card.meta.hasApiKey} credentialVerificationPending={card.meta.credentialVerificationPending}
         onBack={goBack}
         onSaved={refresh}
         onContinueVerification={() => openWizard(undefined, card.directory.vendorKey)}
@@ -525,7 +520,7 @@ export function OnboardingDrawer({ pageRequest = null }: { pageRequest?: ModelPa
       <ConnectionWorkspacePage
         vendorKey={vendorKey}
         title={connectionTitle(vendorKey)}
-        details={renderConnectionDetails(vendorKey, focus)}
+        details={<>{page.type === 'connection' ? feedback : null}{renderConnectionDetails(vendorKey, focus)}</>}
         canAddModels={canAddModelsToConnection(vendorKey, vendorMeta)}
         onAddModels={() => openWizard(undefined, vendorKey)}
         onBack={goBack}
@@ -534,7 +529,7 @@ export function OnboardingDrawer({ pageRequest = null }: { pageRequest?: ModelPa
   }
 
   const renderInModelDialog = (content: JSX.Element): JSX.Element => {
-    if (!detailDialogOwner) return content
+    if (!detailDialogOwner) return <>{feedback}{content}</>
     return (
       <>
         {renderConnectionWorkspace(detailDialogOwner.vendorKey)}
@@ -543,7 +538,7 @@ export function OnboardingDrawer({ pageRequest = null }: { pageRequest?: ModelPa
           onClose={closeModelDialog}
           escapeAction={modelSettingsDialogEscapeAction(navigation)}
         >
-          {content}
+          {feedback}{content}
         </ModelSettingsDetailDialog>
       </>
     )
@@ -597,18 +592,15 @@ export function OnboardingDrawer({ pageRequest = null }: { pageRequest?: ModelPa
         }}
         onRetry={(modelKey) => {
           if (!run) return
+          reportError('retry', '')
           void retryAdapterRun(run, modelKey)
             .then((nextRun) => {
               setNavigation((current) => replaceModelSettingsPage(current, { type: 'verification', runId: nextRun.id }))
             })
             .catch(
               (error) =>
-                void alertDialog({ title: t('onboardingProviders.drawer.operationFailed'),
-                  message:
-                    error instanceof CertificationUiError
-                      ? certificationFailureMessage(t, error.code)
-                      : t('modelSetup.saveFailedHint'),
-                }),
+                reportError('retry', error instanceof CertificationUiError
+                  ? certificationFailureMessage(t, error.code) : t('modelSetup.saveFailedHint')),
             )
         }}
         onSelfConnect={(modelKey) => {

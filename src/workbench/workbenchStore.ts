@@ -1,3 +1,5 @@
+import type { LibraryPrompt } from './api/promptLibraryApi'
+import { applyStoryboardPlanProjection } from './creation/storyboard/exec/ensureStoryboardShotTable'
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
 import { clampAssistantWidth } from './assistantWidthBounds'
@@ -47,10 +49,7 @@ import {
 } from './project/projectCategories'
 import { useGenerationCanvasStore } from './generationCanvas/store/generationCanvasStore'
 import type { AgentContextHandle } from '../../electron/shared/agentContextSnapshot'
-import {
-  DEFAULT_PROJECT_AGENT_APPROVAL_POLICY,
-  type ProjectAgentApprovalPolicy,
-} from '../../electron/shared/projectAgentContracts'
+import { DEFAULT_PROJECT_AGENT_APPROVAL_POLICY, type ProjectAgentApprovalPolicy } from '../../electron/shared/agentCapabilities/capabilityApprovalPolicy';
 import { createEditingPanelLayoutSlice, type EditingPanelLayoutSlice } from './preview/editingPanelLayoutSlice'
 import { createTimelineClipWritesSlice, type TimelineClipWritesSlice } from './timeline/timelineClipWritesSlice'
 import type { ExportQuality } from './export/exportTypes'
@@ -101,7 +100,6 @@ type WorkbenchState = WorkbenchDocumentSlice & EditingPanelLayoutSlice & Timelin
   persistRevision: number
   workspaceMode: WorkspaceMode
   /** 生成/预览区右侧助手侧栏宽度（px，可拖宽）。 */
-  assistantWidth: number
   /** 左侧项目/素材侧栏展开态宽度覆盖值（px，可拖宽；null = 跟随 tab 默认：库 500 / 分组 300）。
       2026-08-08 飞书反馈「素材库宽度锁死不能拖拽」。 */
   projectSidebarWidth: number | null
@@ -180,6 +178,8 @@ type WorkbenchState = WorkbenchDocumentSlice & EditingPanelLayoutSlice & Timelin
   /** 请生成画布平滑 fit 一次；可显式切到并绑定目标分类。 */
   requestCanvasFit: (categoryId?: string) => void
   /** Resident ProjectAgent composer state. Draft/attachments are ephemeral UI state, not Host history. */
+  selectedLibraryPrompt: LibraryPrompt | null
+  setSelectedLibraryPrompt: (prompt: LibraryPrompt | null) => void
   projectAgentDraft: string
   projectAgentAttachments: ComposerAttachment[]
   /** Composer-only references. Host remains the sole owner of durable context/history. */
@@ -252,10 +252,12 @@ export function isWorkspaceMode(value: unknown): value is WorkspaceMode {
 }
 
 export const useWorkbenchStore = create<WorkbenchState>()(subscribeWithSelector((set, get, store) => ({
-  ...createWorkbenchDocumentSlice(set, get, store),
+  ...createWorkbenchDocumentSlice(set, get, store, design => applyStoryboardPlanProjection(
+    () => get().storyboardDesignsByDocumentId[design.documentId]?.find(current => current.id === design.id),
+    useGenerationCanvasStore.getState,
+  )),
   persistRevision: 0,
   workspaceMode: 'generation',
-  assistantWidth: 340,
   projectSidebarWidth: null,
   activeCategoryId: 'shots',
   categories: cloneBuiltinCategories(),
@@ -328,6 +330,8 @@ export const useWorkbenchStore = create<WorkbenchState>()(subscribeWithSelector(
   creationActiveSkill: null,
   canvasFitNonce: 0,
   canvasFitCategoryId: null,
+  selectedLibraryPrompt: null,
+  setSelectedLibraryPrompt: (selectedLibraryPrompt) => set({ selectedLibraryPrompt, creationActiveSkill: null }),
   projectAgentDraft: '',
   projectAgentAttachments: [],
   projectAgentReferences: [],
@@ -365,7 +369,7 @@ export const useWorkbenchStore = create<WorkbenchState>()(subscribeWithSelector(
   },
   // 上限按**当下的视口**算，不是一个写死的 600（定稿 §11.2 窄窗态）。视口从 store 里读不到，
   // 只能问 window；非 DOM 环境（单测、node）落回 0 → `assistantWidthMaxFor` 报满上限。
-  setAssistantWidth: (width) => set({
+  setAssistantWidth: (width) => get().syncEditingPanelSize({
     assistantWidth: clampAssistantWidth(width, typeof window === 'undefined' ? 0 : window.innerWidth),
   }),
   setProjectSidebarWidth: (width) => set({ projectSidebarWidth: Math.max(240, Math.min(720, Math.round(width))) }),
@@ -380,7 +384,7 @@ export const useWorkbenchStore = create<WorkbenchState>()(subscribeWithSelector(
     set({ creationAiModeId })
   },
   setCreationActiveSkill: (creationActiveSkill) => {
-    set({ creationActiveSkill })
+    set({ creationActiveSkill, selectedLibraryPrompt: null })
   },
   requestCanvasFit: (categoryId) => {
     // 一次性信号：目标分类与 nonce 原子更新。显式目标立即切过去，延迟消费时若用户又手动切走则跳过。

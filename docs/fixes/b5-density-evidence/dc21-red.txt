@@ -1,0 +1,64 @@
+
+ RUN  v4.1.8 /Users/aoqimin/Desktop/Nomi-b5-density
+
+ ❯ src/workbench/generationCanvas/nodes/render/CardCommon.test.ts (4 tests | 3 failed) 11ms
+     × image does not duplicate author content 6ms
+     × video does not duplicate author content 2ms
+     × model3d does not duplicate author content 2ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/workbench/generationCanvas/nodes/render/CardCommon.test.ts > pending media action > image does not duplicate author content
+AssertionError: expected '<div data-selected-placeholder="true"…' not to contain 'PRIVATE FULL PROMPT'
+
+Expected: "PRIVATE FULL PROMPT"
+Received: "<div data-selected-placeholder="true" class="h-full w-full"><div data-node-empty-state="true" class="flex h-full w-full items-center justify-center gap-2 px-4 text-center flex-col py-5"><span class="grid size-10 shrink-0 place-items-center rounded-full bg-nomi-ink text-nomi-paper" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" class="tabler-icon tabler-icon-photo "><path d="M15 8h.01"></path><path d="M3 6a3 3 0 0 1 3 -3h12a3 3 0 0 1 3 3v12a3 3 0 0 1 -3 3h-12a3 3 0 0 1 -3 -3v-12"></path><path d="M3 16l5 -5c.928 -.893 2.072 -.893 3 0l5 5"></path><path d="M14 14l1 -1c.928 -.893 2.072 -.893 3 0l3 3"></path></svg></span><span class="flex min-w-0 flex-col gap-1"><span class="text-body-sm font-semibold text-nomi-ink-80">generationCommon.nodeEmpty.image.title</span><span class="max-w-[22rem] text-caption leading-relaxed text-nomi-ink-60">generationCommon.nodeEmpty.image.description PRIVATE FULL PROMPT</span></span></div></div>"
+
+ ❯ src/workbench/generationCanvas/nodes/render/CardCommon.test.ts:10:22
+      8|     const props = { kind, selected: true, needsFirstFrame: false, prom…
+      9|     const html = renderToStaticMarkup(React.createElement(PendingGener…
+     10|     expect(html).not.toContain('PRIVATE FULL PROMPT')
+       |                      ^
+     11|     expect(html).toContain(`nodeEmpty.${kind}.description`)
+     12|   })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  src/workbench/generationCanvas/nodes/render/CardCommon.test.ts > pending media action > video does not duplicate author content
+AssertionError: expected '<div data-selected-placeholder="true"…' not to contain 'PRIVATE FULL PROMPT'
+
+Expected: "PRIVATE FULL PROMPT"
+Received: "<div data-selected-placeholder="true" class="h-full w-full"><div data-node-empty-state="true" class="flex h-full w-full items-center justify-center gap-2 px-4 text-center flex-col py-5"><span class="grid size-10 shrink-0 place-items-center rounded-full bg-nomi-ink text-nomi-paper" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" class="tabler-icon tabler-icon-video "><path d="M15 10l4.553 -2.276a1 1 0 0 1 1.447 .894v6.764a1 1 0 0 1 -1.447 .894l-4.553 -2.276v-4"></path><path d="M3 8a2 2 0 0 1 2 -2h8a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-8a2 2 0 0 1 -2 -2l0 -8"></path></svg></span><span class="flex min-w-0 flex-col gap-1"><span class="text-body-sm font-semibold text-nomi-ink-80">generationCommon.nodeEmpty.video.title</span><span class="max-w-[22rem] text-caption leading-relaxed text-nomi-ink-60">generationCommon.nodeEmpty.video.description PRIVATE FULL PROMPT</span></span></div></div>"
+
+ ❯ src/workbench/generationCanvas/nodes/render/CardCommon.test.ts:10:22
+      8|     const props = { kind, selected: true, needsFirstFrame: false, prom…
+      9|     const html = renderToStaticMarkup(React.createElement(PendingGener…
+     10|     expect(html).not.toContain('PRIVATE FULL PROMPT')
+       |                      ^
+     11|     expect(html).toContain(`nodeEmpty.${kind}.description`)
+     12|   })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  src/workbench/generationCanvas/nodes/render/CardCommon.test.ts > pending media action > model3d does not duplicate author content
+AssertionError: expected '<div data-selected-placeholder="true"…' not to contain 'PRIVATE FULL PROMPT'
+
+Expected: "PRIVATE FULL PROMPT"
+Received: "<div data-selected-placeholder="true" class="h-full w-full"><div data-node-empty-state="true" class="flex h-full w-full items-center justify-center gap-2 px-4 text-center flex-col py-5"><span class="grid size-10 shrink-0 place-items-center rounded-full bg-nomi-ink text-nomi-paper" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" class="tabler-icon tabler-icon-cube-3d-sphere "><path d="M6 17.6l-2 -1.1v-2.5"></path><path d="M4 10v-2.5l2 -1.1"></path><path d="M10 4.1l2 -1.1l2 1.1"></path><path d="M18 6.4l2 1.1v2.5"></path><path d="M20 14v2.5l-2 1.12"></path><path d="M14 19.9l-2 1.1l-2 -1.1"></path><path d="M12 12l2 -1.1"></path><path d="M18 8.6l2 -1.1"></path><path d="M12 12l0 2.5"></path><path d="M12 18.5l0 2.5"></path><path d="M12 12l-2 -1.12"></path><path d="M6 8.6l-2 -1.1"></path></svg></span><span class="flex min-w-0 flex-col gap-1"><span class="text-body-sm font-semibold text-nomi-ink-80">generationCommon.nodeEmpty.model3d.title</span><span class="max-w-[22rem] text-caption leading-relaxed text-nomi-ink-60">generationCommon.nodeEmpty.model3d.description PRIVATE FULL PROMPT</span></span></div></div>"
+
+ ❯ src/workbench/generationCanvas/nodes/render/CardCommon.test.ts:10:22
+      8|     const props = { kind, selected: true, needsFirstFrame: false, prom…
+      9|     const html = renderToStaticMarkup(React.createElement(PendingGener…
+     10|     expect(html).not.toContain('PRIVATE FULL PROMPT')
+       |                      ^
+     11|     expect(html).toContain(`nodeEmpty.${kind}.description`)
+     12|   })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  3 failed | 1 passed (4)
+   Start at  04:42:03
+   Duration  1.97s (transform 499ms, setup 45ms, import 1.59s, tests 11ms, environment 0ms)
+

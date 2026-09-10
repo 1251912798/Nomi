@@ -5,7 +5,8 @@
  */
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { showInfoToast } from '../../../utils/showInfoToast'
+import { reportCanvasFeedback } from './canvasFeedback'
+import { getDesktopActiveProjectId } from '../../../desktop/activeProject'
 import { useGenerationCanvasStore } from '../store/generationCanvasStore'
 import { buildContactSheetNode, contactSheetSources } from '../nodes/buildContactSheetNode'
 
@@ -39,10 +40,11 @@ export function useCanvasGroupActions(params: {
 
   // 连到组：给组内每个成员各连一根真边（图结构不变）。被能力校验跳过的必须说清，不许静默丢。
   const handleConnectToGroup = React.useCallback((groupId: string) => {
+    const report = (message: string) => reportCanvasFeedback(message, 'warning', { identity: `group:${groupId}`, reason: 'connect', nodeIds: useGenerationCanvasStore.getState().groups.find((group) => group.id === groupId)?.nodeIds })
     const result = useGenerationCanvasStore.getState().connectToGroup(groupId)
     if (result.ok) {
       if (result.skipped > 0) {
-        showInfoToast(t('generationCommon.canvas.group.connectedWithSkips', {
+        report(t('generationCommon.canvas.group.connectedWithSkips', {
           connected: result.connected,
           skipped: result.skipped,
         }))
@@ -50,9 +52,9 @@ export function useCanvasGroupActions(params: {
       return
     }
     if (result.reason === 'all_skipped') {
-      showInfoToast(t('generationCommon.canvas.group.connectAllSkipped', { count: result.skipped }))
+      report(t('generationCommon.canvas.group.connectAllSkipped', { count: result.skipped }))
     } else if (result.reason === 'group_empty') {
-      showInfoToast(t('generationCommon.canvas.group.connectEmpty'))
+      report(t('generationCommon.canvas.group.connectEmpty'))
     }
   }, [t])
 
@@ -63,7 +65,8 @@ export function useCanvasGroupActions(params: {
     [selectedNodeIds, nodes],
   )
   const handleBuildContactSheet = React.useCallback(() => {
-    void buildContactSheetNode(selectedNodeIds)
+    const projectId = getDesktopActiveProjectId()
+    void buildContactSheetNode(selectedNodeIds, (message) => reportCanvasFeedback(message, 'error', { projectId, identity: `contact-sheet:${selectedNodeIds.slice().sort().join(':')}`, reason: 'build', nodeIds: selectedNodeIds }))
   }, [selectedNodeIds])
 
   return {

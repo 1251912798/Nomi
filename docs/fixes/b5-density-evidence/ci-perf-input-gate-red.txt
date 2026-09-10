@@ -1,0 +1,11 @@
+✗ 画布手势确定性门岗：2 处违规
+
+  [coordinate-only-node-click] 节点点击只按外接盒偏移计算，未核对实际命中目标
+    浮层或卡片按钮可能接住点击并执行别的操作。复用 _canvasHit.mjs 的 findNodeHitPoint，再传入命中点。
+      tests/ux/canvas-perf/dragScenarios.mjs:148  mouse.click(pick.box.x + pick.box.width * 0.45, pick.box.y + 14)
+        mouse.click(pick.box.x + pick.box.width * 0.45, pick.box.y + 14)
+      tests/ux/canvas-performance-benchmark.e2e.mjs:743  mouse.click(box.x + box.width * 0.45, box.y + 14)
+        mouse.click(box.x + box.width * 0.45, box.y + 14)
+
+这些是硬零规则：没有棘轮基线，也不接受「先记一笔欠账」——
+它们拦的是「本机绿、别的机器红，而且每次都得有人重查一遍才敢说不是回归」那一族。

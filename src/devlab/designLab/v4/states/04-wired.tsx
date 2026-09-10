@@ -88,9 +88,9 @@ function RunningCell(): JSX.Element {
       surface="generation"
       draft={fx.t('agentPanelV4.queueTwo')}
       snapshot={labHostState({
-        turnStatus: 'running',
+        running: true,
         items: [labUserItem('u1', fx.t('agentPanelV4.queueOne'))],
-        queue: [labQueueItem('q1', 'turn-lab', 'running')],
+        queue: [labQueueItem('q1', fx.t('agentPanelV4.queueTwo'))],
       })}
     />
   )
@@ -103,10 +103,9 @@ function FailureCell(): JSX.Element {
     <ShellStage
       surface="generation"
       snapshot={labHostState({
-        turnStatus: 'failed',
         items: [
           labUserItem('u1', fx.t('agentPanelV4.fixtureUserToVideo')),
-          labToolItem('t1', 'generation.control', 'failed'),
+          labToolItem('t1', 'generation.control', true),
           labFailureItem('f1', fx.t('agentPanelV4.fixtureVendorFailure'), fx.t('agentPanelV4.fixtureRetryOtherModel')),
         ],
       })}
@@ -114,7 +113,41 @@ function FailureCell(): JSX.Element {
   )
 }
 
+/** Real native part shape: unbounded reasoning must stay out of the one-line metadata. */
+function ThinkingFlowCell({ complete = false }: { complete?: boolean }): JSX.Element {
+  const fx = useV4Fixtures()
+  const snapshot = React.useMemo(() => labHostState({
+    running: !complete,
+    items: [
+      labUserItem('u-think', fx.t('agentPanelV4.fixtureUserRead')),
+      [{ sequence: 0, entrySeq: 0, contentIndex: 0, kind: 'thinking',
+        text: `${fx.t('agentPanelV4.fixtureAssistantThinking')}`.repeat(30), streaming: false }],
+      labToolItem('t-canvas', 'canvas.read'),
+      labToolItem('t-timeline', 'timeline.read'),
+      [{ sequence: 0, entrySeq: 0, contentIndex: 0, kind: 'assistant-text',
+        text: fx.t('agentPanelV4.fixtureAssistantLongest'), streaming: !complete }],
+    ],
+  }), [complete, fx.t])
+  return <ShellStage snapshot={snapshot} />
+}
+
 export const V4_WIRED_STATES: readonly LabState[] = [
+  {
+    id: 'v4-wired-thinking-streaming',
+    name: '接线 · 长思考收起 → 两条收据 → 正文流式',
+    source: '2026-09-06-agent-panel-v4.md · 第7条；#646 思考层叠回归',
+    coverage: 'shell',
+    span: 2,
+    render: () => <ThinkingFlowCell />,
+  },
+  {
+    id: 'v4-wired-thinking-complete',
+    name: '接线 · 长思考收起 → 两条收据 → 正文完成',
+    source: '2026-09-06-agent-panel-v4.md · 第7条；#646 思考层叠回归',
+    coverage: 'shell',
+    span: 2,
+    render: () => <ThinkingFlowCell complete />,
+  },
   {
     id: 'v4-wired-creation',
     name: '接线 · 创作面（真 shell + 真投影）',

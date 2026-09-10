@@ -1,0 +1,9 @@
+{
+  "runtime": "isolated Electron",
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "errors": [],
+  "paidCalls": 0
+}

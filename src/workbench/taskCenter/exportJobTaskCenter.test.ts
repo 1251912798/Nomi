@@ -37,7 +37,8 @@ function snapshot(overrides: Partial<ExportJobSnapshot> = {}): ExportJobSnapshot
 
 const labels = {
   title: 'Export',
-  failed: 'Export failed',
+  failed: 'Reason unavailable. Return to export and retry.',
+  missingFile: 'Source file missing', diskFull: 'Disk full', permissionDenied: 'Access denied', mediaUnreadable: 'Media cannot be read',
   statuses: {
     queued: 'Queued', preparing: 'Preparing', planning: 'Planning', rendering: 'Rendering', encoding: 'Encoding',
     muxing: 'Muxing', finalizing: 'Finalizing', succeeded: 'Exported', failed: 'Failed', cancelled: 'Cancelled',
@@ -76,9 +77,25 @@ describe('ExportJob TaskCenter projection', () => {
 
     expect(rows.map((row) => ({ id: row.jobId, group: row.group, outcome: row.outcome, action: row.action, error: row.error }))).toEqual([
       { id: 'queued', group: 'queued', outcome: undefined, action: { kind: 'cancel_export_job', jobId: 'queued' }, error: undefined },
-      { id: 'done', group: 'done', outcome: 'success', action: null, error: undefined },
-      { id: 'failed', group: 'done', outcome: 'error', action: null, error: 'Export failed' },
-      { id: 'cancelled', group: 'done', outcome: 'cancelled', action: null, error: undefined },
+      { id: 'done', group: 'done', outcome: 'success', action: { kind: 'return_to_export', projectId: 'project-a' }, error: undefined },
+      { id: 'failed', group: 'done', outcome: 'error', action: { kind: 'return_to_export', projectId: 'project-a' }, error: labels.failed },
+      { id: 'cancelled', group: 'done', outcome: 'cancelled', action: { kind: 'return_to_export', projectId: 'project-a' }, error: undefined },
     ])
   })
+})
+
+it('projects known safe causes without copying private messages, across current and legacy jobs', () => {
+  for (const [code, reason] of [['ENOSPC', labels.diskFull], ['EACCES', labels.permissionDenied], ['ENOENT', labels.missingFile], ['missing_file', labels.missingFile], ['probe_failed', labels.mediaUnreadable], ['unknown', labels.failed]]) {
+    const [row] = buildExportJobTaskRows([snapshot({ status: 'failed', error: { code, message: '/private/input secret-provider-response' } })], labels)
+    expect(row.error).toBe(reason)
+    expect(row.action).toEqual({ kind: 'return_to_export', projectId: 'project-a' })
+    expect(JSON.stringify(row)).not.toContain('/private')
+    expect(JSON.stringify(row)).not.toContain('secret-provider-response')
+  }
+})
+
+it('offers the verified relative output as a real file action', () => {
+  const [row] = buildExportJobTaskRows([snapshot({ status: 'succeeded', result: { outputPath: '/private/project-a/exports/final.mp4', relativeOutputPath: 'exports/final.mp4', execution: { auditManifestDigest: 'audit', correlationDigest: 'correlation', input: { kind: 'filtergraph' } } } })], labels)
+  expect(row.action).toEqual({ kind: 'reveal_export_output', projectId: 'project-a', relativePath: 'exports/final.mp4' })
+  expect(JSON.stringify(row)).not.toContain('/private')
 })

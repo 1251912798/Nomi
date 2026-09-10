@@ -98,6 +98,7 @@ function CanvasAddSectionList({
 }): JSX.Element {
   const { t } = useTranslation()
   const [editing, setEditing] = React.useState<CanvasAddIntentId | null>(null)
+  const [feedback, setFeedback] = React.useState('')
   return (
     <>
       {sections.map((section) => (
@@ -129,13 +130,14 @@ function CanvasAddSectionList({
                   <Icon size={14} stroke={1.6} />
                   <span>{intentLabel(intent, t)}</span>
                 </button>
-                {editing === intent.id && <CanvasAddPreferenceActions intentId={intent.id} previousIntentId={section.intents[index - 1]?.id} onDone={() => setEditing(null)} />}
+                {editing === intent.id && <CanvasAddPreferenceActions intentId={intent.id} previousIntentId={section.intents[index - 1]?.id} onFeedback={setFeedback} onDone={() => setEditing((current) => current === intent.id ? null : current)} />}
               </React.Fragment>
             )
           })}
         </div>
       ))}
-      <CanvasAddPreferenceActions />
+      <CanvasAddPreferenceActions onFeedback={setFeedback} />
+      {feedback ? <p role="status" className="m-0 px-2 text-micro text-nomi-danger">{feedback}</p> : null}
     </>
   )
 }

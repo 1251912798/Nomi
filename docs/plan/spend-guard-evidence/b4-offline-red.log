@@ -1,0 +1,56 @@
+
+ RUN  v4.1.8 /Users/aoqimin/Desktop/Nomi-money-guard
+
+ ❯ electron/catalog/rendererCatalogMutation.test.ts (9 tests | 1 failed) 5ms
+     × network failure saves the candidate with an unverified marker 1ms
+ ❯ electron/catalog/credentialPublication.test.ts (7 tests | 1 failed) 3546ms
+     × persists unverified state, then clears it after a successful pre-call probe 514ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  electron/catalog/credentialPublication.test.ts > B4 offline credential lifecycle > persists unverified state, then clears it after a successful pre-call probe
+AssertionError: expected { vendorKey: 'relay', …(5) } to match object { verificationPending: true }
+(6 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+-   "verificationPending": true,
++   "apiKey": "c2stb2ZmbGluZQ==",
++   "createdAt": "2026-09-09T10:05:18.924Z",
++   "enabled": false,
++   "enc": "safeStorage",
++   "updatedAt": "2026-09-09T10:05:18.924Z",
++   "vendorKey": "relay",
+  }
+
+ ❯ electron/catalog/credentialPublication.test.ts:159:55
+    157|     const probe = await import("./validateCandidateCredential");
+    158|     store.upsertModelCatalogVendorApiKey("relay", { apiKey: "sk-offlin…
+    159|     expect(store.readCatalog().apiKeysByVendor.relay).toMatchObject({ …
+       |                                                       ^
+    160|     expect(store.listModelCatalogVendors().find(v => v.key === "relay"…
+    161|     const fetch = vi.spyOn(await import("../ai/onboarding/modelListPro…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  electron/catalog/rendererCatalogMutation.test.ts > B4 candidate credentials > network failure saves the candidate with an unverified marker
+Error: 暂时无法验证密钥，请检查接口地址和网络后重试。原密钥和连接已保留。
+ ❯ validateCandidateCredential electron/catalog/validateCandidateCredential.ts:25:25
+     23|     proxyUrl: providerProxyUrl(vendor),
+     24|   })
+     25|   if (!result.ok) throw new Error(desktopT(result.failureKind === 'aut…
+       |                         ^
+     26| }
+     27|
+ ❯ Module.upsertRendererCatalogVendorApiKey electron/catalog/rendererCatalogMutation.ts:137:3
+ ❯ electron/catalog/rendererCatalogMutation.test.ts:191:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  2 failed (2)
+      Tests  2 failed | 14 passed (16)
+   Start at  18:05:15
+   Duration  3.80s (transform 712ms, setup 333ms, import 523ms, tests 3.55s, environment 0ms)

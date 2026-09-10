@@ -21,7 +21,8 @@ import { resolveArchetypeForModel } from '../../../config/modelArchetypes'
 import { currentArchetypeMode } from '../nodes/controls/archetypeMeta'
 
 /** 源节点产出的可参考资产类型;text/shot/output 等无产出 → null(不能作参考源)。 */
-export type ReferenceAssetKind = 'image' | 'video'
+import { SLOT_ACCEPTS, type ReferenceAssetKind } from '../../../config/modelArchetypes/anchorPolicy'
+export { SLOT_ACCEPTS, type ReferenceAssetKind } from '../../../config/modelArchetypes/anchorPolicy'
 
 export type EdgeSkipReason = 'dangling' | 'source_not_referenceable' | 'unsupported_reference'
 
@@ -61,14 +62,7 @@ export function isTextPromptEdge(
 }
 
 /** 每种参考槽能被哪种源资产喂。first_frame 收视频=尾帧接力(resolver 抽帧),故收 image+video。 */
-export const SLOT_ACCEPTS: Record<ArchetypeReferenceSlotKind, readonly ReferenceAssetKind[]> = {
-  first_frame: ['image', 'video'],
-  last_frame: ['image'],
-  image_ref: ['image'],
-  video_ref: ['video'],
-  source_video: ['video'],
-  audio_ref: [], // 当前无音频源节点种类;音频参考只能手动上传到槽,不经画布边
-}
+
 
 /**
  * 边语义 → 它要落到目标模型的哪些参考槽(任一满足即可)。通用 reference 接受任意槽。

@@ -1,0 +1,111 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-10-canvas-perf-selection-hit-ownership",
+  "problem_type": "Benchmark pointer inputs must reach the intended card rather than an overlapping action",
+  "symptom": "Linux M/click-select exceeds 53ms at 59.4ms while selecting only 3 of 6 mounted nodes and opening the timeline.",
+  "direct_cause": "The benchmark clicks raw box-relative coordinates without checking the topmost element. CI evidence contains timeline clip thumbnails and a stage shortened from 876 to 688 pixels; the measured workload includes an unintended timeline edit.",
+  "class_root": "Two selection workload constructors bypass the existing canvas hit owner, so layout and overlay changes silently change the measured action.",
+  "affected_population": [
+    "click-select and multi-node-drag on any viewport or overlay layout"
+  ],
+  "scope_paths": [
+    "tests/ux/canvas-performance-benchmark.e2e.mjs",
+    "tests/ux/canvas-perf/dragScenarios.mjs",
+    "scripts/check-canvas-gesture-determinism.mjs",
+    "scripts/check-canvas-gesture-determinism.test.mjs",
+    "tests/ux/_canvasHit.mjs",
+    "tests/ux/canvas-perf/selectionHits.browser.mjs"
+  ],
+  "entry_points": [
+    "runAction click-select",
+    "runMultiNodeDrag"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "The repository already owns hit testing in tests/ux/_canvasHit.mjs:234. No third-party API change or performance budget recalibration is needed.",
+  "invariants": [
+    "Select exactly the same requested cards by real mouse input, using a verified hit point for each card.",
+    "Fail when a requested card has no selectable point; never silently click another action.",
+    "All existing timing budgets and scenario verdict assertions remain unchanged."
+  ],
+  "generality_proof": "Both selection input paths use the same current DOM hit owner already used by ordinary canvas walkthroughs; they recheck per click as overlays change.",
+  "shared_boundaries": [
+    {
+      "path": "tests/ux/_canvasHit.mjs",
+      "symbol": "findNodeHitPoint",
+      "responsibility": "Existing shared DOM hit owner rejects foreign overlays and interactive card controls."
+    },
+    {
+      "path": "scripts/check-canvas-gesture-determinism.mjs",
+      "symbol": "findCoordinateOnlyClicks",
+      "responsibility": "Reject direct arithmetic mouse.click coordinates in all scanned canvas performance runners."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "tests/ux/canvas-performance-benchmark.e2e.mjs",
+      "entry_point": "runAction click-select",
+      "disposition": "enforced",
+      "evidence": "Former raw box.x + width * 0.45 / box.y + 14 site detected by the new gate before migration."
+    },
+    {
+      "path": "tests/ux/canvas-perf/dragScenarios.mjs",
+      "entry_point": "runMultiNodeDrag",
+      "disposition": "enforced",
+      "evidence": "Independent pick.box arithmetic site also fails the new gate; selection and primary drag reuse live hit testing."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Any new overlay or viewport clipping can change the recipient of an unchecked screen coordinate.",
+    "same_class_scan": [
+      "rg mouse.click in benchmark and canvas-perf found both raw box-relative sites and the already-safe blank.x/blank.y caller.",
+      "CI main and B5 sample actionDetails compared: 6/6 versus 3/6 selected; timeline media only in B5; zoom remains 1 in both.",
+      "rg findNodeHitPoint in tests/ux found existing frame and three-gesture walkthroughs using the shared owner."
+    ]
+  },
+  "prevention": {
+    "kind": "static-gate",
+    "enforcement_path": "scripts/check-canvas-gesture-determinism.mjs",
+    "invariant": "Canvas performance mouse.click calls may not compute raw coordinate arithmetic inline.",
+    "failure_mode": "Gate exits nonzero for each direct raw coordinate click; runtime hit lookup fails closed when the intended card is not hittable.",
+    "exception_policy": "none",
+    "strategy": "Reuse existing hit testing at both measured selection inputs and extend the existing gesture gate; no second geometry implementation.",
+    "artifacts": [
+      "scripts/check-canvas-gesture-determinism.mjs"
+    ]
+  },
+  "regression_tests": [
+    "scripts/check-canvas-gesture-determinism.test.mjs",
+    "tests/ux/canvas-perf/selectionHits.browser.mjs"
+  ],
+  "class_regression_tests": [
+    "scripts/check-canvas-gesture-determinism.test.mjs",
+    "tests/ux/canvas-perf/selectionHits.browser.mjs"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "tests/ux/canvas-performance-benchmark.e2e.mjs",
+      "tests/ux/canvas-perf/dragScenarios.mjs"
+    ],
+    "rationale": "Both raw click sites are replaced; no raw-coordinate fallback is retained."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "Use existing Playwright/DOM calls and existing repository hit helper; dependencies unchanged.",
+    "exit_criteria": []
+  },
+  "migration": "No production or persisted schema change; performance budgets remain byte-for-byte unchanged.",
+  "residual_risks": [
+    "The static rule covers direct arithmetic clicks, not arbitrary data flow through precomputed variables.",
+    "Local macOS metrics do not replace the Linux job; report the pushed revision CI separately."
+  ],
+  "invariant_owner_layer": {
+    "layer": "tests/ux/_canvasHit.mjs",
+    "tests": [
+      "scripts/check-canvas-gesture-determinism.test.mjs",
+      "tests/ux/canvas-perf/selectionHits.browser.mjs"
+    ],
+    "why": "Shared hit owner determines gesture recipient; gate fixtures enforce adoption at benchmark call sites."
+  }
+}

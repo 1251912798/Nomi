@@ -31,6 +31,7 @@ type Props = {
   playbookName: string
   artifacts?: ProductionArtifact[]
   focusedArtifactId?: string | null
+  actionError?: string | null
   onPrimaryAction: (action: Exclude<ProductionRunPrimaryAction, null>) => void
   onControl: (action: 'pause' | 'cancel') => void
   /** 点预览 = 跳到该产物（画布节点 / 预览页）。 */
@@ -76,6 +77,7 @@ export function ProductionRunTaskCard({
   playbookName,
   artifacts = [],
   focusedArtifactId = null,
+  actionError = null,
   onPrimaryAction,
   onControl,
   onOpenPreview,
@@ -336,6 +338,10 @@ export function ProductionRunTaskCard({
           )
         ) : null}
       </div>
+
+      {actionError ? (
+        <p role="status" data-production-action-error className="text-caption text-workbench-danger">{actionError}</p>
+      ) : null}
 
       <details className={cn('group')}>
         <summary

@@ -1,0 +1,129 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-08-curated-media-boundary",
+  "problem_type": "Curated skill media loses its binding across projection and package transport",
+  "symptom": "Packaged prompt previews resolve under dist/skills; text packages omit declared preview bytes but pass validation.",
+  "direct_cause": "Projection constructs a renderer-relative disk path and text package validation checks frontmatter syntax without media completeness.",
+  "class_root": "Media declarations need a shared serving boundary and transport must reject representations it cannot preserve.",
+  "affected_population": [
+    "Built-in curated skills and future generated effect covers",
+    "Skills imported through JSON, folder or ZIP text maps"
+  ],
+  "scope_paths": [
+    "electron/skills/skillStore.ts",
+    "electron/skills/skillPackage.ts",
+    "electron/skills/skillCuration.ts",
+    "electron/skills/skillFrontmatter.ts",
+    "electron/skills/skillPreview.ts",
+    "electron/promptLibrary/curatedPrompts.ts",
+    "electron/protocol/localProtocol.ts"
+  ],
+  "entry_points": [
+    "getCuratedPrompts",
+    "validateSkillPackage",
+    "exportSkillPackageByName"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "Internal disk layout and existing text-only import envelope; no dependency upgrade or external binary format is introduced.",
+  "invariants": [
+    "Only a validated built-in preview declaration may resolve to bytes within its real skill directory.",
+    "Text-only packages cannot successfully import or export a binary preview declaration.",
+    "Curated intake has one license and applicability schema shared by discovery and imports."
+  ],
+  "generality_proof": "Protocol requests select a built-in record by identity, never arbitrary file paths; realpath containment blocks symlinks. Import and export share package validation before transport.",
+  "shared_boundaries": [
+    {
+      "path": "electron/skills/skillPreview.ts",
+      "symbol": "resolveSkillPreview",
+      "responsibility": "Select only declared built-in media and enforce real directory containment."
+    },
+    {
+      "path": "electron/skills/skillPackage.ts",
+      "symbol": "validateSkillPackage",
+      "responsibility": "Reject binary preview declarations in the text-only envelope."
+    },
+    {
+      "path": "electron/skills/skillCuration.ts",
+      "symbol": "readSkillCuration",
+      "responsibility": "Validate redistribution metadata once for both discovery and transport."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "electron/promptLibrary/curatedPrompts.ts",
+      "entry_point": "getCuratedPrompts",
+      "disposition": "enforced",
+      "evidence": "Projects the shared preview URL, independent of dist/index.html or dev HTTP origin."
+    },
+    {
+      "path": "electron/skills/skillPackage.ts",
+      "entry_point": "exportSkillPackageByName",
+      "disposition": "enforced",
+      "evidence": "Export validates through the same boundary as imports and returns no broken package."
+    },
+    {
+      "path": "electron/skills/skillStore.ts",
+      "entry_point": "discoverSkillRecordsFromRoots",
+      "disposition": "enforced",
+      "evidence": "Reads validated curation through the shared frontmatter parser."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Every later effect cover and every media-bearing skill export can reproduce this.",
+    "same_class_scan": [
+      "rg mediaUrl electron/promptLibrary; inspected builtinPacks and userPromptStore",
+      "Inspected readSkillDirFiles, validateSkillPackage, exportSkillPackageByName and ZIP import text map",
+      "Inspected localProtocol and localRuntimeAssets; reused existing protocol streaming"
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "electron/skills/skillPreview.ts",
+    "invariant": "Media identity resolves only to a declared file within its built-in skill; incomplete text transport fails closed.",
+    "failure_mode": "404 for unknown or escaping media; package validation error or null export for unsupported binary preview.",
+    "exception_policy": "none",
+    "strategy": "Use record identity and realpath containment, with one validation boundary for import/export.",
+    "artifacts": [
+      "electron/skills/skillPreview.ts",
+      "electron/skills/skillPackage.ts",
+      "electron/protocol/localProtocol.ts"
+    ]
+  },
+  "regression_tests": [
+    "electron/skills/skillCuration.test.ts",
+    "electron/protocol/localProtocol.test.ts"
+  ],
+  "class_regression_tests": [
+    "electron/skills/skillCuration.test.ts",
+    "electron/protocol/localProtocol.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "electron/promptLibrary/curatedPrompts.ts"
+    ],
+    "rationale": "Removed relative skills/ media address construction."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "Reuses the existing local protocol and filesystem; no library version change.",
+    "exit_criteria": []
+  },
+  "migration": "No user data migration. Existing plain skills remain importable. Media-bearing curated packages now reject unsupported text-only sharing instead of silently dropping preview bytes.",
+  "residual_risks": [
+    "Binary media transfer through the existing text-only skill sharing envelope remains unsupported; this is explicitly rejected.",
+    "Real Electron packaged archive walkthrough is not performed; production streaming and packaged directory layout are tested."
+  ],
+  "invariant_owner_layer": {
+    "layer": "electron/skills",
+    "owner_paths": [
+      "electron/skills/skillCuration.ts",
+      "electron/skills/skillPackage.ts",
+      "electron/skills/skillPreview.ts"
+    ],
+    "tests": [
+      "electron/skills/skillCuration.test.ts"
+    ]
+  }
+}

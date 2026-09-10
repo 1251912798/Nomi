@@ -1,0 +1,100 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-08-agent-panel-flow-shrink",
+  "problem_type": "Conversation flow geometry",
+  "symptom": "In a long conversation, task cards are compressed below their content height and clipped.",
+  "direct_cause": "A bounded flex-column scroll container permits its direct children to shrink; overflow-hidden cards discard their content.",
+  "class_root": "The scroll flow must own the non-shrinking row invariant for every card.",
+  "affected_population": [
+    "Task cards",
+    "Approval and tool cards",
+    "Long conversations"
+  ],
+  "scope_paths": [
+    "src/workbench/ai/v4/AgentPanelV4Panel.tsx"
+  ],
+  "entry_points": [
+    "V4 conversation flow"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "The existing approved panel already owns scroll geometry; this fixes its flex sizing without adding a component or framework.",
+  "invariants": [
+    "Flow rows retain their content height and overflow is handled by the conversation scrollbar."
+  ],
+  "generality_proof": "A single direct-child shrink-0 rule applies to every row emitted by V4FlowRow.",
+  "shared_boundaries": [
+    {
+      "path": "src/workbench/ai/v4/AgentPanelV4Panel.tsx",
+      "symbol": "data-v4-flow",
+      "responsibility": "Own scroll containment and direct-child sizing."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/workbench/ai/v4/AgentPanelV4Panel.tsx",
+      "entry_point": "flow.map",
+      "disposition": "enforced",
+      "evidence": "All card kinds share the direct-child rule. Real Electron geometry compares clientHeight and scrollHeight after task/queue messages."
+    },
+    {
+      "path": "src/workbench/ai/v4/AgentPanelV4Cards.tsx",
+      "entry_point": "V4TaskCard",
+      "disposition": "enforced",
+      "evidence": "Observed overflow-hidden task card under long flow; the parent rule retains its entire content height."
+    },
+    {
+      "path": "src/workbench/ai/v4/AgentPanelV4Panel.tsx",
+      "entry_point": "V4FlowRow",
+      "disposition": "enforced",
+      "evidence": "All user, assistant, tool and task row DOM elements are direct children of the corrected flow."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Any long conversation can exhaust the available height.",
+    "same_class_scan": [
+      "Read V4FlowRow and task/approval/tool wrappers",
+      "Observed live task geometry 116px content versus 39px client height"
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "src/workbench/ai/v4/AgentPanelV4Panel.tsx",
+    "invariant": "Conversation rows never flex-shrink below content.",
+    "failure_mode": "Long content scrolls in the flow.",
+    "exception_policy": "none",
+    "strategy": "Apply shrink-0 at the shared direct-child boundary.",
+    "artifacts": [
+      "src/workbench/ai/v4/AgentPanelV4Panel.tsx"
+    ]
+  },
+  "regression_tests": [
+    "tests/ux/stage4-switch.walk.mjs"
+  ],
+  "class_regression_tests": [
+    "tests/ux/stage4-switch.walk.mjs"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "src/workbench/ai/v4/AgentPanelV4Panel.tsx"
+    ],
+    "rationale": "Replace default flex shrink at the existing scroll owner."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "No dependency change is needed to bind Nomi workspace ownership.",
+    "exit_criteria": []
+  },
+  "migration": "No stored data changes.",
+  "residual_risks": [
+    "Geometry proof covers the existing card shapes; future row renderers must preserve the same scroll ownership."
+  ],
+  "invariant_owner_layer": {
+    "layer": "src/workbench/ai/v4/AgentPanelV4Panel.tsx",
+    "tests": [
+      "tests/ux/stage4-switch.walk.mjs"
+    ],
+    "why": "The layout owner knows available height and all direct row types."
+  }
+}

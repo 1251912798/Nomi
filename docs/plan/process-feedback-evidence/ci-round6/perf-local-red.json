@@ -1,0 +1,56 @@
+{
+  "message": "expect(locator).toHaveCount(expected) failed\n\nLocator:  locator('[data-generation-waiting]')\nExpected: 8\nReceived: 6\nTimeout:  5000ms\n\nCall log:\n  - Expect \"to.have.count\" with timeout 5000ms\n  - waiting for locator('[data-generation-waiting]')\n    12 × locator resolved to 6 elements\n       - unexpected value \"6\"\n",
+  "counts": {
+    "fx": 0,
+    "fxCanvas": 0,
+    "staticShells": 6,
+    "waiting": 6,
+    "nodes": 6,
+    "surfaces": [
+      {
+        "nodeId": "waiting-perf-0",
+        "motion": "reduced",
+        "zoom": "1",
+        "fx": 0,
+        "staticShells": 1
+      },
+      {
+        "nodeId": "waiting-perf-1",
+        "motion": "reduced",
+        "zoom": "1",
+        "fx": 0,
+        "staticShells": 1
+      },
+      {
+        "nodeId": "waiting-perf-2",
+        "motion": "reduced",
+        "zoom": "1",
+        "fx": 0,
+        "staticShells": 1
+      },
+      {
+        "nodeId": "waiting-perf-4",
+        "motion": "reduced",
+        "zoom": "1",
+        "fx": 0,
+        "staticShells": 1
+      },
+      {
+        "nodeId": "waiting-perf-5",
+        "motion": "reduced",
+        "zoom": "1",
+        "fx": 0,
+        "staticShells": 1
+      },
+      {
+        "nodeId": "waiting-perf-6",
+        "motion": "reduced",
+        "zoom": "1",
+        "fx": 0,
+        "staticShells": 1
+      }
+    ]
+  },
+  "captureErrors": [],
+  "screenshot": "/Users/aoqimin/Desktop/Nomi-process-feedback/outputs/canvas-acceptance/performance/failures/round6-small/M-waiting-effects-1.png"
+}

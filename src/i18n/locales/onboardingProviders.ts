@@ -146,7 +146,6 @@ export const zhOnboardingProviders = {
         '这通常需要几分钟。Nomi 可能读取公开 API 文档、调用你已配置的文本模型，并向当前上游发送真实测试请求，因此可能消耗额度。开始后可以转到后台、查看当前步骤或随时停止。',
       consentConfirm: '开始适配',
       unavailable: '当前桌面版本没有提供后台自动适配，请重启应用后再试；模型和现有配置不会丢失。',
-      startFailedTitle: '没能开始自动适配',
     },
     capability: {
       summaryAria: '模型输入与请求摘要',
@@ -372,13 +371,14 @@ export const zhOnboardingProviders = {
     deleteModels: '删除 {{count}} 个模型',
     deleteSingleMessage: '删除「{{name}}」？此操作不可恢复，之后要用需重新拉取。',
     deleteMultipleMessage: '删除选中的 {{count}} 个模型？此操作不可恢复，之后要用需重新拉取。',
-    deleteFailed: '删除失败',
     operationFailed: '操作失败',
     loading: '加载中…',
     bridgeMissingTitle: '暂时连不上 Nomi 后台',
     bridgeMissingBody: '应用后台可能还在启动。点下面重试；若多次无效，请重启 Nomi。',
   },
   keyOnly: {
+    offlineTitle: '已保存 · 未验证',
+    offlineHint: '密钥已加密保存。联网后会自动复验，下次调用前也会先检查一次。',
     title: '接入 {{name}}',
     subtitle: '已适配平台 · 只需填写 API Key',
     catalogManaged: 'Nomi 已维护 {{count}} 个预置模型及其请求方式',
@@ -525,15 +525,8 @@ export const zhOnboardingProviders = {
   },
   assistant: {
     example: '在 Nomi 新建项目「咖啡广告」，拆 3 个镜头加到画布，用我的图模型把第一个生成出来。',
-    connectedToast: '已接入 {{client}}，重启后生效',
-    cursorConnectedToast:
-      '已写入 Cursor 配置。下一步先在 Nomi 允许 Cursor；首次调用时 Cursor 也可能提示批准 Nomi MCP。',
-    cursorConnectedTrustedToast:
-      '已更新 Cursor 配置。Nomi 已允许 Cursor；现在回到 Cursor 试一次，首次调用时可能提示批准 Nomi MCP。',
     connectFailed: '接入失败：{{message}}',
-    disconnectedToast: '已撤销接入',
     disconnectFailed: '撤销失败：{{message}}',
-    copiedToast: '配置已复制',
     status: {
       connected: '已接入',
       ready: '就绪',
@@ -575,7 +568,7 @@ export const zhOnboardingProviders = {
       clientAuthMissing: '这份旧配置缺少当前版本的客户端身份凭据，能列工具但不能安全推进制作。重新接入即可升级。',
     },
     name: 'AI 助手',
-    subtitle: '让 Claude Code / Codex / Cursor / Pi 帮你建项目、出图',
+    subtitle: '让 Claude Code / Codex / Cursor / Pi / WorkBuddy 帮你建项目、出图',
     credentialPending: '凭证还没生成——重启 Nomi 一次即可（启动时自动生成）。',
     configWritten: '已写入 {{client}} 配置',
     restartClient: '重启 {{client}} 后生效。',
@@ -601,8 +594,6 @@ export const zhOnboardingProviders = {
     notTheSame: '这张卡和上面的「接入 AI 编程助手」是两回事：那张是让助手来用 Nomi，这张是 Nomi 去用 Codex 出图。',
     turnOn: '开启 Codex 本地生图',
     turnOff: '关闭',
-    enabledToast: '已开启 Codex 本地生图',
-    disabledToast: '已关闭 Codex 本地生图',
   },
   localModel: {
     cardName: '本地模型',
@@ -627,12 +618,6 @@ export const zhOnboardingProviders = {
       chatOnly: '仅对话',
       unknown: '能力未知',
     },
-    connectedAgent: '已连「{{model}}」，支持 Agent 编排',
-    connectedChatOnly: '已连「{{model}}」，仅能对话（此模型带不动 Agent 工具调用）',
-    connectedUnknown: '已连「{{model}}」，能力预检没跑通（稍后可在卡里重试）',
-    connectFailed: '连接失败',
-    disconnected: '已断开「{{model}}」',
-    disconnectFailed: '断开失败',
   },
   customVendor: {
     newKeyPlaceholder: '粘贴新的 API Key（sk-…）',
@@ -790,11 +775,6 @@ export const zhOnboardingProviders = {
       notPremium: '非高级会员',
       loggedIn: '已登录',
     },
-    installComplete: '即梦本机组件安装完成',
-    loginComplete: '即梦登录成功',
-    alreadyLoggedIn: '即梦已登录',
-    loggedOut: '已退出即梦登录',
-    linkCopied: '授权链接已复制',
     loginTimeout: '登录超时，请重新发起。',
     installDescription: '即梦用官方命令行工具接入。一键装好后，扫码登录就能用你的会员积分在 Nomi 里出视频。',
     installing: '安装中…',
@@ -913,12 +893,10 @@ export const zhOnboardingProviders = {
     addrLabel: '接入地址（本机 / 局域网 / 云端）',
     confirm: '接入并检测',
     hint: '工作流按机器各管各的——每台装的模型不同，缺件也各报各的。画布上选模型时能看出是哪台。',
-    added: '已接入「{{name}}」',
     remove: '移除这台',
     removeTitle: '移除这台 ComfyUI',
     removeMessage:
       '将移除「{{name}}」以及它名下的 {{count}} 个工作流（那些工作流指向这台的地址，留着也用不了）。本机那台不受影响。',
-    removed: '已移除「{{name}}」',
   },
   comfyTemplates: {
     sectionTitle: '你的 ComfyUI 自带 {{count}} 个官方模板',
@@ -950,9 +928,7 @@ export const zhOnboardingProviders = {
     unsupportedProbe: '当前版本不支持探测',
     enabledWithoutConnection: '已启用，但没探测到 ComfyUI（确认已在该地址启动）',
     enableFailed: '启用失败',
-    disabled: '已停用本地 ComfyUI',
     disableFailed: '停用失败',
-    addressUpdated: '接入地址已更新',
     status: {
       notEnabled: '未启用',
       checking: '检测中',
@@ -986,7 +962,6 @@ export const zhOnboardingProviders = {
     deleteWorkflowActionTitle: '删除该工作流',
     deleteWorkflowTitle: '删除工作流',
     deleteWorkflowMessage: '删除「{{name}}」？此操作不可恢复，之后要用需重新导入。',
-    workflowDeleted: '已删除「{{name}}」',
   },
   customCall: {
     rowAria: '自定义调用：{{name}}',
@@ -1289,7 +1264,6 @@ export const enOnboardingProviders = {
         'This usually takes a few minutes. Nomi may read public API docs, call a configured text model, and send real test requests to this upstream, so it may use credit. You can move it to the background, inspect the current step, or stop it at any time.',
       consentConfirm: 'Start adaptation',
       unavailable: 'Background auto-adaptation is unavailable in this desktop build. Restart and try again; the model and current configuration are preserved.',
-      startFailedTitle: 'Could not start auto-adaptation',
     },
     capability: {
       summaryAria: 'Model input and request summary',
@@ -1523,13 +1497,14 @@ export const enOnboardingProviders = {
     deleteSingleMessage: 'Delete “{{name}}”? This cannot be undone. You will need to fetch it again to use it later.',
     deleteMultipleMessage:
       'Delete the selected {{count}} models? This cannot be undone. You will need to fetch them again to use them later.',
-    deleteFailed: 'Delete failed',
     operationFailed: 'Operation failed',
     loading: 'Loading…',
     bridgeMissingTitle: 'Cannot reach the Nomi backend yet',
     bridgeMissingBody: 'The app backend may still be starting. Retry below; if it keeps failing, restart Nomi.',
   },
   keyOnly: {
+    offlineTitle: 'Saved · Not verified',
+    offlineHint: 'Your key is saved securely. It will be checked again when connected, and before the next call.',
     title: 'Connect {{name}}',
     subtitle: 'Adapted platform · Only an API key is required',
     catalogManaged: 'Nomi maintains {{count}} preset models and their request behavior',
@@ -1680,15 +1655,8 @@ export const enOnboardingProviders = {
   assistant: {
     example:
       'Create a “Coffee Ad” project in Nomi, split it into three shots, add them to the canvas, and generate the first one with my image model.',
-    connectedToast: 'Connected to {{client}}. Restart it to apply the change.',
-    cursorConnectedToast:
-      'Cursor configuration updated. Next, allow Cursor in Nomi. Cursor may also ask you to approve Nomi MCP on first use.',
-    cursorConnectedTrustedToast:
-      'Cursor configuration updated. Nomi already allows Cursor; try it in Cursor now. Cursor may ask you to approve Nomi MCP on first use.',
     connectFailed: 'Connection failed: {{message}}',
-    disconnectedToast: 'Connection removed',
     disconnectFailed: 'Failed to remove connection: {{message}}',
-    copiedToast: 'Configuration copied',
     status: {
       connected: 'Connected',
       ready: 'Ready',
@@ -1732,7 +1700,7 @@ export const enOnboardingProviders = {
         'This older configuration lacks the client identity proof required for safe production. Reconnect to upgrade it.',
     },
     name: 'AI agents',
-    subtitle: 'Let Claude Code, Codex, Cursor, or Pi create projects and generate images',
+    subtitle: 'Let Claude Code, Codex, Cursor, Pi, or WorkBuddy create projects and generate images',
     credentialPending: 'Credentials have not been created yet. Restart Nomi once to generate them automatically.',
     configWritten: '{{client}} configuration updated',
     restartClient: 'Restart {{client}} to apply the change.',
@@ -1759,8 +1727,6 @@ export const enOnboardingProviders = {
       'This is separate from “Connect an AI coding assistant” above: that one lets an assistant drive Nomi, this one lets Nomi generate images through Codex.',
     turnOn: 'Turn on Codex image generation',
     turnOff: 'Turn off',
-    enabledToast: 'Codex image generation is on',
-    disabledToast: 'Codex image generation is off',
   },
   localModel: {
     cardName: 'Local models',
@@ -1785,12 +1751,6 @@ export const enOnboardingProviders = {
       chatOnly: 'Chat only',
       unknown: 'Capability unknown',
     },
-    connectedAgent: 'Connected “{{model}}” — supports Agent orchestration',
-    connectedChatOnly: 'Connected “{{model}}” — chat only (this model can’t drive Agent tool calls)',
-    connectedUnknown: 'Connected “{{model}}” — capability precheck didn’t complete (retry later in the card)',
-    connectFailed: 'Connection failed',
-    disconnected: 'Disconnected “{{model}}”',
-    disconnectFailed: 'Disconnect failed',
   },
   customVendor: {
     newKeyPlaceholder: 'Paste a new API key (sk-…)',
@@ -1957,11 +1917,6 @@ export const enOnboardingProviders = {
       notPremium: 'Not Premium',
       loggedIn: 'Logged in',
     },
-    installComplete: 'Dreamina local component installed',
-    loginComplete: 'Dreamina login successful',
-    alreadyLoggedIn: 'Already logged in to Dreamina',
-    loggedOut: 'Logged out of Dreamina',
-    linkCopied: 'Authorization link copied',
     loginTimeout: 'Login timed out. Start again.',
     installDescription:
       'Dreamina connects through its official command-line tool. Install it, then scan the code to use your membership credits in Nomi.',
@@ -2086,12 +2041,10 @@ export const enOnboardingProviders = {
     addrLabel: 'Address (local / LAN / cloud)',
     confirm: 'Connect and check',
     hint: 'Workflows belong to each machine — different models installed, separate missing-file checks. You can tell which machine a model runs on from the canvas.',
-    added: '"{{name}}" connected',
     remove: 'Remove this machine',
     removeTitle: 'Remove this ComfyUI',
     removeMessage:
       'This removes "{{name}}" and its {{count}} workflow(s) (they point at this machine’s address and would not work anyway). Your local one is unaffected.',
-    removed: '"{{name}}" removed',
   },
   comfyTemplates: {
     sectionTitle: 'Your ComfyUI ships with {{count}} official templates',
@@ -2125,9 +2078,7 @@ export const enOnboardingProviders = {
     unsupportedProbe: 'Connection checks are unavailable in this version',
     enabledWithoutConnection: 'Enabled, but ComfyUI was not detected. Make sure it is running at this address.',
     enableFailed: 'Failed to enable',
-    disabled: 'Local ComfyUI disabled',
     disableFailed: 'Failed to disable',
-    addressUpdated: 'Connection address updated',
     status: {
       notEnabled: 'Not enabled',
       checking: 'Checking',
@@ -2163,7 +2114,6 @@ export const enOnboardingProviders = {
     deleteWorkflowTitle: 'Delete workflow',
     deleteWorkflowMessage:
       'Delete “{{name}}”? This cannot be undone; you will need to import it again to use it later.',
-    workflowDeleted: 'Deleted “{{name}}”',
   },
   customCall: {
     rowAria: 'Custom call: {{name}}',

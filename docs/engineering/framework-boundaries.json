@@ -1,6 +1,7 @@
 {
   "_comment": [
     "框架边界登记表（R29）。每个框架回答一句话：「它已经提供了什么，仓库里出现什么就说明我们又自己写了一份」。",
+    "2026-09-08 #646：旧宿主与旧运行时删除，pi 债归零；at 已逐项验证无删除路径，旧 scope 保留以拦截重新引入。",
     "门岗 = pnpm run check:framework-boundary（scripts/check-framework-boundary.mjs），债基线 = scripts/framework-boundary-baseline.json。",
     "登记一个新框架的顺序：先出四列表（它提供 / 我们用了 / 我们另写了 / 我们拆散了，每格 file:line 或文档 URL）→",
     "把「我们另写了」那一列翻译成这里的 forbidden 规则 → 跑 --update-baseline 把存量登记成债 → 给每条债绑方案和到期日。",
@@ -23,7 +24,8 @@
       "@xyflow/react",
       "ai",
       "@mantine/core",
-      "@anthropic-ai/sandbox-runtime"
+      "@anthropic-ai/sandbox-runtime",
+      "img-fx"
     ]
   },
   "advisory": {
@@ -223,10 +225,9 @@
                     "why": "阶段 3c（方案 §1.6 第三行）：显式传 LANE_RETRY_POLICY = {enabled:true, maxRetries:3, baseDelayMs:1000}——仍是 pi 自己的 RetryPolicy，不是自研重试；写死的原因是 harness 默认无 jitter、无上限（上游 #8826 open），3 次上限下最长 4s 让 #8826 对我们无感。改数字要先改 laneHost 里那一个常量。"
                   },
                   "compaction": {
-                    "verdict": "debt",
-                    "due": "2026-09-21",
-                    "owner": "阶段 3b · 上下文压缩",
-                    "why": "压缩阈值直接决定长会话的成本与「模型忘了前面」的体感，而 Nomi 现在一个数字都没给、也没量过默认阈值在我们的转录形状（画布产物 + 分镜表）下会在第几轮触发。没量过就写常量是把偏好当判据，所以记债。"
+                    "verdict": "derived",
+                    "at": "electron/agentLane/laneContextBudget.mts:13",
+                    "why": "B1b: 80k 成本预算派生 pi reserveTokens；原生 compact 保留分镜/画布引用并附最新目录。见 docs/plan/2026-09-09-agent-lane-context-budget.md。"
                   },
                   "steeringMode": {
                     "verdict": "constant",
@@ -244,8 +245,9 @@
                     "reason": "花钱与写盘的工具串行执行是审批闸的前提：before_tool 钩子逐次问用户「这一步允不允许」，并行执行会让两条待批的调用同时挂在同一个人面前，而其中一条可能已经改了另一条要读的文稿。这是领域约束（本地创作 + 花钱要审批），不是实现偏好。"
                   },
                   "toProviderMessages": {
-                    "verdict": "unused",
-                    "why": "出站报文的最后一次改写只允许有一个地方（laneModelProvider.mts 的 onPayload）。这一格是第二个入口，用了就会出现「payload 探针抓到的和实际发出去的不一致」——那正是 2026-08 那批「断言前先证明你在你以为的现场」的成因。"
+                    "verdict": "derived",
+                    "at": "electron/agentLane/laneHost.mts:199",
+                    "reason": "公开的消息适配钩子负责将 nomi.input 的已验证附件声明转成 provider 内容，再交 pi convertToLlm。转录仍存用户输入与声明，不存附件字节；onPayload 保留协议观测职责，不承担附件解析。"
                   },
                   "entryProjectors": {
                     "verdict": "derived",
@@ -296,10 +298,9 @@
                     "why": "工具结果的投影走 laneProjection 的转录投影一条路；在钩子里再改一次结果会让投影和真实转录分叉（同一语义两份定义）。"
                   },
                   "before_compaction": {
-                    "verdict": "debt",
-                    "due": "2026-09-21",
-                    "owner": "阶段 3b · 上下文压缩",
-                    "why": "和 AgentHarnessOptions.compaction 同一件事：压缩策略没定，这个拦截点该不该用就没法裁。两格必须一起下裁决。"
+                    "verdict": "derived",
+                    "at": "electron/agentLane/laneContextBudget.mts:25",
+                    "why": "B1b: 80k 成本预算派生 pi reserveTokens；原生 compact 保留分镜/画布引用并附最新目录。见 docs/plan/2026-09-09-agent-lane-context-budget.md。"
                   },
                   "before_navigation": {
                     "verdict": "unused",
@@ -416,8 +417,8 @@
             },
             {
               "id": "private-session-snapshot-envelope",
-              "pattern": "nomi\\.pi-work-context",
-              "why": "自研快照信封（版本锁 + sha256）在复刻 SessionManager 已有的会话序列化与版本迁移，pi 升版时要我们自己跟。"
+              "pattern": "(?<![!=]==\\s*[\"'])nomi\\.pi-work-context",
+              "why": "自研快照信封（版本锁 + sha256）在复刻 SessionManager 已有的会话序列化与版本迁移，pi 升版时要我们自己跟。阶段 4 的只读格式比较不定义新信封，允许 ===/!== 检查旧格式；信封声明、常量与 writer 仍阻断。"
             }
           ]
         },
@@ -885,16 +886,16 @@
                     "at": "src/workbench/generationCanvas/reactFlow/GenerationCanvasReactFlowViewport.tsx:181"
                   },
                   "minZoom": {
-                    "verdict": "debt",
-                    "due": "2026-09-14",
-                    "owner": "画布交互 · 缩放上下限单一真相源",
-                    "why": "**门岗自己扫出来的第二条**：GenerationCanvasReactFlow.tsx:353 手写 Math.max(0.2, …) 钳缩放，而内核这颗没设、默认 0.5。结果是按钮缩放能到 0.2、滚轮缩放只到 0.5——同一条上下限两个值（R14.1）。修法是把 0.2/3 传给内核，删掉手钳，但那要连着走查一起做，不塞进这个门岗 PR。"
+                    "verdict": "derived",
+                    "reason": "创作画布需在既定 20–300% 范围查看节点概览与细节；表节点低于 40% 展示卡片，所有缩放入口必须保持同一范围。",
+                    "why": "Existing shared canvas range is passed to React Flow kernel, fit and slider; no independent zoom clamp.",
+                    "at": "src/workbench/generationCanvas/reactFlow/GenerationCanvasReactFlowViewport.tsx:176"
                   },
                   "maxZoom": {
-                    "verdict": "debt",
-                    "due": "2026-09-14",
-                    "owner": "画布交互 · 缩放上下限单一真相源",
-                    "why": "同 minZoom：手写上限 3，内核默认 2。"
+                    "verdict": "derived",
+                    "reason": "创作画布需在既定 20–300% 范围查看节点概览与细节；表节点低于 40% 展示卡片，所有缩放入口必须保持同一范围。",
+                    "why": "Existing shared canvas range is passed to React Flow kernel, fit and slider; no independent zoom clamp.",
+                    "at": "src/workbench/generationCanvas/reactFlow/GenerationCanvasReactFlowViewport.tsx:176"
                   },
                   "viewport": {
                     "verdict": "unused",
@@ -1210,6 +1211,489 @@
           ]
         }
       ]
+    },
+    {
+      "id": "img-fx",
+      "packages": [
+        "img-fx"
+      ],
+      "version": "0.5.1",
+      "fourColumnTable": "docs/plan/2026-09-09-process-feedback-imgfx.md",
+      "why": "用户批准的等待视觉：购买 shader 与揭示生命周期，只映射真实生成信号。",
+      "referenceConformance": {
+        "doc": "docs/plan/2026-09-09-process-feedback-imgfx.md",
+        "upstreamVersion": "0.5.1",
+        "verifiedAt": "2026-09-09",
+        "layers": [
+          "控制流",
+          "观测与测试"
+        ],
+        "note": "官方 React ImageGeneration props/ref 示例与发布源码对照；agent 专属层不适用视觉组件。"
+      },
+      "capabilities": [
+        {
+          "id": "generation-shader-reveal",
+          "provides": "ImageGeneration 的 shader、揭示与资源释放；业务只给真实图片与挂载门控。",
+          "evidence": "node_modules/img-fx/dist/index.d.ts:157 ImageGeneration; https://github.com/Jakubantalik/img-fx",
+          "scope": [
+            "src/workbench/generationCanvas/nodes/"
+          ],
+          "forbidden": [
+            {
+              "id": "custom-generation-shader",
+              "pattern": "(?:waiting|generation)(?:Shader|Renderer)|(?:Shader|Renderer)(?:Waiting|Generation)",
+              "why": "等待效果由 img-fx 提供，不能另造 shader 或 GPU renderer。"
+            }
+          ]
+        }
+      ],
+      "surface": {
+        "scope": [
+          "src/workbench/generationCanvas/nodes/"
+        ],
+        "sources": [
+          {
+            "package": "img-fx",
+            "dtsPath": "node_modules/img-fx/dist/index.d.ts",
+            "types": [
+              {
+                "name": "ImageGenerationProps",
+                "why": "逐项核对公开 React 配置、ref 句柄和真实 phase 回调，升级漂移必须重审。",
+                "declaredIn": [
+                  "img-fx/"
+                ],
+                "anchors": [
+                  {
+                    "kind": "jsxElement",
+                    "name": "ImageGeneration"
+                  }
+                ],
+                "fields": {
+                  "children": {
+                    "verdict": "derived",
+                    "at": "src/workbench/generationCanvas/nodes/GenerationWaitingSurface.tsx:82"
+                  },
+                  "preset": {
+                    "verdict": "derived",
+                    "at": "src/workbench/generationCanvas/nodes/GenerationWaitingSurface.tsx:82"
+                  },
+                  "theme": {
+                    "verdict": "constant",
+                    "value": "\"auto\"",
+                    "reason": "随宿主主题。"
+                  },
+                  "strength": {
+                    "verdict": "upstream-default",
+                    "default": "1",
+                    "why": "手动揭示/默认强度，性能验收后再决定是否调整。"
+                  },
+                  "pixelScale": {
+                    "verdict": "upstream-default",
+                    "default": "1",
+                    "why": "手动揭示/默认强度，性能验收后再决定是否调整。"
+                  },
+                  "cardBg": {
+                    "verdict": "derived",
+                    "at": "src/workbench/generationCanvas/nodes/GenerationWaitingSurface.tsx:82"
+                  },
+                  "colors": {
+                    "verdict": "derived",
+                    "at": "src/workbench/generationCanvas/nodes/GenerationWaitingSurface.tsx:82"
+                  },
+                  "images": {
+                    "verdict": "derived",
+                    "at": "src/workbench/generationCanvas/nodes/GenerationWaitingSurface.tsx:82"
+                  },
+                  "autoReveal": {
+                    "verdict": "constant",
+                    "value": "false",
+                    "reason": "没有真实帧不允许自动揭示。"
+                  },
+                  "revealDelayRange": {
+                    "verdict": "upstream-default",
+                    "default": "[2,4]",
+                    "why": "手动揭示/默认强度，性能验收后再决定是否调整。"
+                  },
+                  "revealInitialDelay": {
+                    "verdict": "upstream-default",
+                    "default": "undefined",
+                    "why": "手动揭示/默认强度，性能验收后再决定是否调整。"
+                  },
+                  "revealHoldMs": {
+                    "verdict": "upstream-default",
+                    "default": "2000",
+                    "why": "手动揭示/默认强度，性能验收后再决定是否调整。"
+                  },
+                  "revealFadeOutMs": {
+                    "verdict": "upstream-default",
+                    "default": "300",
+                    "why": "手动揭示/默认强度，性能验收后再决定是否调整。"
+                  },
+                  "borderRadius": {
+                    "verdict": "upstream-default",
+                    "default": "undefined",
+                    "why": "从 rounded-nomi 容器自动探测。"
+                  },
+                  "paused": {
+                    "verdict": "derived",
+                    "at": "src/workbench/generationCanvas/nodes/GenerationWaitingSurface.tsx:82"
+                  },
+                  "onCycle": {
+                    "verdict": "derived",
+                    "at": "src/workbench/generationCanvas/nodes/GenerationWaitingSurface.tsx:82"
+                  },
+                  "excludeSrcs": {
+                    "verdict": "unused",
+                    "why": "此等待层不需要该公开字段；能力由 img-fx 自身管理。"
+                  },
+                  "className": {
+                    "verdict": "constant",
+                    "value": "\"!absolute inset-0 size-full rounded-nomi\"",
+                    "reason": "等待效果铺满已有媒体区，不改节点几何。"
+                  },
+                  "style": {
+                    "verdict": "unused",
+                    "why": "此等待层不需要该公开字段；能力由 img-fx 自身管理。"
+                  }
+                }
+              },
+              {
+                "name": "ImageGenerationHandle",
+                "why": "逐项核对公开 React 配置、ref 句柄和真实 phase 回调，升级漂移必须重审。",
+                "declaredIn": [
+                  "img-fx/"
+                ],
+                "anchors": [],
+                "fields": {
+                  "element": {
+                    "verdict": "unused",
+                    "why": "此等待层不需要该公开字段；能力由 img-fx 自身管理。"
+                  },
+                  "triggerReveal": {
+                    "verdict": "derived",
+                    "at": "src/workbench/generationCanvas/nodes/GenerationWaitingSurface.tsx:53"
+                  },
+                  "triggerHide": {
+                    "verdict": "unused",
+                    "why": "此等待层不需要该公开字段；能力由 img-fx 自身管理。"
+                  },
+                  "triggerRegenerate": {
+                    "verdict": "derived",
+                    "at": "src/workbench/generationCanvas/nodes/GenerationWaitingSurface.tsx:53"
+                  },
+                  "isImageActive": {
+                    "verdict": "derived",
+                    "at": "src/workbench/generationCanvas/nodes/GenerationWaitingSurface.tsx:53"
+                  }
+                }
+              },
+              {
+                "name": "ImageGenerationCycleEvent",
+                "why": "逐项核对公开 React 配置、ref 句柄和真实 phase 回调，升级漂移必须重审。",
+                "declaredIn": [
+                  "img-fx/"
+                ],
+                "anchors": [],
+                "fields": {
+                  "phase": {
+                    "verdict": "derived",
+                    "at": "src/workbench/generationCanvas/nodes/GenerationWaitingSurface.tsx:53"
+                  },
+                  "src": {
+                    "verdict": "derived",
+                    "at": "src/workbench/generationCanvas/nodes/GenerationWaitingSurface.tsx:53"
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "streamdown",
+      "packages": [
+        "streamdown",
+        "@streamdown/code",
+        "@streamdown/cjk"
+      ],
+      "version": "2.6.0",
+      "fourColumnTable": "docs/plan/2026-09-09-b2e-streamdown.md",
+      "why": "One Markdown kernel for all model prose; remove duplicate code extraction and lifecycle renderers.",
+      "referenceConformance": {
+        "doc": "docs/plan/2026-09-09-b2e-streamdown.md",
+        "upstreamVersion": "2.6.0",
+        "verifiedAt": "2026-09-09",
+        "layers": [
+          "控制流",
+          "观测与测试"
+        ],
+        "note": "Official Message rendering and code/cjk plugins; agent execution layers remain outside renderer."
+      },
+      "capabilities": [
+        {
+          "id": "markdown-kernel",
+          "provides": "GFM, streaming blocks, CJK and source-owned code highlighting/copy",
+          "evidence": "https://github.com/vercel/streamdown; node_modules/streamdown/dist/index.d.ts:526",
+          "scope": [
+            "src/workbench/common/",
+            "src/workbench/ai/v4/",
+            "src/workbench/promptLibrary/"
+          ],
+          "forbidden": [
+            {
+              "id": "duplicate-markdown-parser",
+              "pattern": "(?:from|import)\\s*[\"'](?:react-markdown|remark-gfm)[\"']|function AgentV4Code",
+              "why": "Rendering and source extraction belong to Streamdown."
+            }
+          ]
+        }
+      ],
+      "surface": {
+        "scope": [
+          "src/workbench/common/"
+        ],
+        "sources": [
+          {
+            "package": "streamdown",
+            "dtsPath": "node_modules/streamdown/dist/index.d.ts",
+            "types": [
+              {
+                "name": "StreamdownProps",
+                "why": "Public renderer props including inherited Options are version drift contract.",
+                "declaredIn": [
+                  "streamdown/"
+                ],
+                "anchors": [
+                  {
+                    "kind": "jsxElement",
+                    "name": "Streamdown"
+                  }
+                ],
+                "fields": {
+                  "allowElement": {
+                    "verdict": "unused",
+                    "why": "No domain override: retain upstream behavior; no new custom rendering pipeline."
+                  },
+                  "allowedElements": {
+                    "verdict": "unused",
+                    "why": "No domain override: retain upstream behavior; no new custom rendering pipeline."
+                  },
+                  "children": {
+                    "verdict": "unused",
+                    "why": "No domain override: retain upstream behavior; no new custom rendering pipeline."
+                  },
+                  "components": {
+                    "verdict": "derived",
+                    "at": "src/workbench/common/NomiMarkdown.tsx:99"
+                  },
+                  "disallowedElements": {
+                    "verdict": "unused",
+                    "why": "No domain override: retain upstream behavior; no new custom rendering pipeline."
+                  },
+                  "rehypePlugins": {
+                    "verdict": "unused",
+                    "why": "Use upstream raw/sanitize/harden pipeline without replacing it."
+                  },
+                  "remarkPlugins": {
+                    "verdict": "unused",
+                    "why": "Use upstream GFM and installed CJK plugin without replacing it."
+                  },
+                  "remarkRehypeOptions": {
+                    "verdict": "derived",
+                    "at": "src/workbench/common/NomiMarkdown.tsx:101"
+                  },
+                  "skipHtml": {
+                    "verdict": "constant",
+                    "value": "true",
+                    "reason": "Model prose must not introduce executable or raw HTML UI."
+                  },
+                  "unwrapDisallowed": {
+                    "verdict": "unused",
+                    "why": "No domain override: retain upstream behavior; no new custom rendering pipeline."
+                  },
+                  "urlTransform": {
+                    "verdict": "unused",
+                    "why": "No domain override: retain upstream behavior; no new custom rendering pipeline."
+                  },
+                  "mode": {
+                    "verdict": "constant",
+                    "value": "\"streaming\"",
+                    "reason": "All lifecycle states keep the same block parser and footnote semantics."
+                  },
+                  "dir": {
+                    "verdict": "unused",
+                    "why": "No domain override: retain upstream behavior; no new custom rendering pipeline."
+                  },
+                  "BlockComponent": {
+                    "verdict": "unused",
+                    "why": "No domain override: retain upstream behavior; no new custom rendering pipeline."
+                  },
+                  "parseMarkdownIntoBlocksFn": {
+                    "verdict": "unused",
+                    "why": "No domain override: retain upstream behavior; no new custom rendering pipeline."
+                  },
+                  "parseIncompleteMarkdown": {
+                    "verdict": "constant",
+                    "value": "false",
+                    "reason": "09-06 contract preserves incomplete source without speculative syntax completion."
+                  },
+                  "normalizeHtmlIndentation": {
+                    "verdict": "unused",
+                    "why": "No domain override: retain upstream behavior; no new custom rendering pipeline."
+                  },
+                  "className": {
+                    "verdict": "constant",
+                    "value": "\"space-y-1 [&_[data-streamdown=code-block]]:my-2 [&_[data-streamdown=code-block]]:round…",
+                    "reason": "Nomi token skin and Tailwind3-compatible overflow utilities."
+                  },
+                  "shikiTheme": {
+                    "verdict": "unused",
+                    "why": "Theme is configured on code plugin once using Nomi tokens."
+                  },
+                  "mermaid": {
+                    "verdict": "unused",
+                    "why": "09-06 explicitly excludes Mermaid."
+                  },
+                  "codeBlockMaxHeight": {
+                    "verdict": "constant",
+                    "value": "0",
+                    "reason": "Answers including code never fold under C25/B2a."
+                  },
+                  "controls": {
+                    "verdict": "derived",
+                    "at": "src/workbench/common/NomiMarkdown.tsx:99"
+                  },
+                  "isAnimating": {
+                    "verdict": "derived",
+                    "at": "src/workbench/common/NomiMarkdown.tsx:100"
+                  },
+                  "tableMaxHeight": {
+                    "verdict": "constant",
+                    "value": "0",
+                    "reason": "Answers including tables never fold under C25/B2a."
+                  },
+                  "animated": {
+                    "verdict": "unused",
+                    "why": "No extra word animation; streaming state and caret suffice."
+                  },
+                  "caret": {
+                    "verdict": "constant",
+                    "value": "\"block\"",
+                    "reason": "The approved streaming cursor is a block; kernel owns its position."
+                  },
+                  "plugins": {
+                    "verdict": "derived",
+                    "at": "src/workbench/common/NomiMarkdown.tsx:99"
+                  },
+                  "remend": {
+                    "verdict": "unused",
+                    "why": "No domain override: retain upstream behavior; no new custom rendering pipeline."
+                  },
+                  "linkSafety": {
+                    "verdict": "unused",
+                    "why": "Custom link adapter delegates HTTP links to the existing Electron boundary; internal anchors stay in document."
+                  },
+                  "allowedTags": {
+                    "verdict": "unused",
+                    "why": "No domain override: retain upstream behavior; no new custom rendering pipeline."
+                  },
+                  "literalTagContent": {
+                    "verdict": "unused",
+                    "why": "No domain override: retain upstream behavior; no new custom rendering pipeline."
+                  },
+                  "translations": {
+                    "verdict": "derived",
+                    "at": "src/workbench/common/NomiMarkdown.tsx:103"
+                  },
+                  "icons": {
+                    "verdict": "unused",
+                    "why": "No domain override: retain upstream behavior; no new custom rendering pipeline."
+                  },
+                  "prefix": {
+                    "verdict": "unused",
+                    "why": "No domain override: retain upstream behavior; no new custom rendering pipeline."
+                  },
+                  "lineNumbers": {
+                    "verdict": "constant",
+                    "value": "false",
+                    "reason": "Narrow conversation code is source prose, not an editor with gutters."
+                  },
+                  "onAnimationStart": {
+                    "verdict": "unused",
+                    "why": "No domain override: retain upstream behavior; no new custom rendering pipeline."
+                  },
+                  "onAnimationEnd": {
+                    "verdict": "unused",
+                    "why": "No domain override: retain upstream behavior; no new custom rendering pipeline."
+                  }
+                }
+              },
+              {
+                "name": "PluginConfig",
+                "why": "Every plugin slot is explicitly chosen; math/Mermaid cannot appear through a hidden parallel renderer.",
+                "declaredIn": [
+                  "streamdown/"
+                ],
+                "anchors": [
+                  {
+                    "kind": "typeAnnotation",
+                    "name": "PluginConfig"
+                  }
+                ],
+                "fields": {
+                  "code": {
+                    "verdict": "derived",
+                    "at": "src/workbench/common/NomiMarkdown.tsx:81"
+                  },
+                  "cjk": {
+                    "verdict": "derived",
+                    "at": "src/workbench/common/NomiMarkdown.tsx:81"
+                  },
+                  "math": {
+                    "verdict": "unused",
+                    "why": "09-06 product decision excludes math."
+                  },
+                  "mermaid": {
+                    "verdict": "unused",
+                    "why": "09-06 product decision excludes Mermaid."
+                  },
+                  "renderers": {
+                    "verdict": "unused",
+                    "why": "No custom language renderer; preserve source-owned code path."
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "package": "@streamdown/code",
+            "dtsPath": "node_modules/@streamdown/code/dist/index.d.ts",
+            "types": [
+              {
+                "name": "createCodePlugin",
+                "kind": "callParameter",
+                "why": "Public code plugin options are mapped to Nomi tokens; language/tokenization/cache remain upstream.",
+                "declaredIn": [
+                  "@streamdown/code/"
+                ],
+                "anchors": [
+                  {
+                    "kind": "callArgument",
+                    "name": "createCodePlugin"
+                  }
+                ],
+                "fields": {
+                  "themes": {
+                    "verdict": "derived",
+                    "at": "src/workbench/common/NomiMarkdown.tsx:81"
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
     }
   ]
 }

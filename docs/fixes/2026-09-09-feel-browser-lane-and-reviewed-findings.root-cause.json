@@ -1,0 +1,126 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-09-feel-browser-lane-and-reviewed-findings",
+  "problem_type": "测试能力分道与发现裁决未建立共享边界",
+  "symptom": "PR #662 Unit 缺少 Chromium；Electron smoke font-size 13/0 红",
+  "direct_cause": "两份启动 Chromium 的测试被 tests/**/*.test.mjs 收入 Unit；12px 扫描阈值将 13 个现有 11px micro 元素当新缺陷",
+  "class_root": "运行环境能力与已核验发现没有在测试收集/策略边界表达",
+  "affected_population": [
+    "无 Chromium 缓存的 CI Unit",
+    "Linux 和 macOS smoke"
+  ],
+  "scope_paths": [
+    ".github/workflows/quality-gate.yml",
+    "scripts/check-feel.mjs",
+    "tests/ux/_feel-observer.mjs",
+    "tests/ux/_feel.mjs",
+    "package.json"
+  ],
+  "entry_points": [
+    "Unit Vitest include",
+    "Linux desktop browser mechanism",
+    "smoke waitForFunction and screenshot"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "本地 Playwright 启动已成功；问题是仓库内测试分道与设计系统 micro=11px 的策略，外部升级不能修正这两个内部不变量。",
+  "invariants": [
+    "Chromium 测试由配有 Chromium 的车道显式执行，Unit 不装浏览器",
+    "只有精确登记的发现可豁免一次；额外元素、字号变化与其他规则仍拦截"
+  ],
+  "generality_proof": "独立后缀排除全部已查明 Chromium 单测入口，并由 CI 接线测试锁定安装先于执行；共享 observer 对所有 checkpoint 使用同一逐条证据消费规则。",
+  "shared_boundaries": [
+    {
+      "path": ".github/workflows/quality-gate.yml",
+      "symbol": "desktop-linux",
+      "responsibility": "浏览器测试依赖安装与执行同车道"
+    },
+    {
+      "path": "tests/ux/_feel-observer.mjs",
+      "symbol": "applyFeelExemptions",
+      "responsibility": "所有页面 checkpoint 精确过滤已核验发现，其余仍按基线判红"
+    },
+    {
+      "path": "scripts/check-feel.mjs",
+      "symbol": "merge-base exemption ratchet",
+      "responsibility": "已提交豁免内容只减不增"
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "tests/ux/_feel.browser.mjs",
+      "entry_point": "scanner fixtures",
+      "disposition": "enforced",
+      "evidence": "从 .test.mjs 移到 .browser.mjs；由 test:feel:browser 显式运行"
+    },
+    {
+      "path": "tests/ux/_feel-observer.browser.mjs",
+      "entry_point": "observer fixtures",
+      "disposition": "enforced",
+      "evidence": "同为真实 Chromium，使用相同独立执行命令"
+    },
+    {
+      "path": "tests/ux/design-lab/playwright.config.mjs",
+      "entry_point": "visual specs",
+      "disposition": "not-affected",
+      "evidence": "已有 .visual.spec.mjs 与独立 Playwright 配置，不落入 Vitest include"
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "任何无浏览器缓存机器都会复发；宽泛 checkpoint 豁免会掩盖同页新问题",
+    "same_class_scan": [
+      "rg chromium/playwright tests --glob *.test.mjs 仅两份启动 Chromium",
+      "核查 .github/workflows 全部 job：此前没有 playwright install；design-lab 独立后缀且未校准平台不做像素比对",
+      "macOS smoke 同样检出 13 个元素，逐项实际字号均为 11px"
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": ".github/workflows/quality-gate.yml",
+    "invariant": "需要 Chromium 的机制测试在有浏览器的 desktop job 显式执行",
+    "failure_mode": "浏览器缺失或用例失败则 desktop job 失败；接线回归使 contracts 失败",
+    "exception_policy": "none",
+    "strategy": "独立 .browser.mjs 后缀配显式 node:test runner、安装与执行有序，Unit 保持无浏览器",
+    "artifacts": [
+      ".github/workflows/quality-gate.yml",
+      "package.json",
+      "scripts/check-feel.mjs",
+      "tests/ux/_feel-observer.mjs"
+    ]
+  },
+  "regression_tests": [
+    "scripts/check-quality-gate-workflow.node-test.mjs",
+    "tests/ux/feel-policy.test.mjs"
+  ],
+  "class_regression_tests": [
+    "scripts/check-quality-gate-workflow.node-test.mjs",
+    "tests/ux/feel-policy.test.mjs"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "tests/ux/_feel-observer.mjs"
+    ],
+    "rationale": "同 diff 删除 observer 整个 checkpoint 的宽豁免；两份 .test.mjs 也已迁为 .browser.mjs，但旧文件是本 PR 新增、并不存在 merge-base，不能列作相对 main 删除路径。"
+  },
+  "dependency_lifecycle": {
+    "decision": "retain-with-exit",
+    "current": "Playwright 1.60.0",
+    "target": "仓库统一升级的下一个 Playwright 版本",
+    "rationale": "当前公开 API 可用且浏览器夹具通过；失败是未安装浏览器及内部策略，无需引入新版本。",
+    "exit_criteria": [
+      "仓库升级 Playwright 时安装配套 Chromium 并通过独立 browser 夹具与 smoke"
+    ]
+  },
+  "migration": "两份测试改名且切 node:test；初始空豁免表替换为用户授权 B 的精确发现登记，无生产数据迁移。",
+  "residual_risks": [
+    "旧 CI 未上传 feel DOM JSON，13 个元素由 macOS 同阶段复现取证；Linux 新执行结果需由推送后 CI 证明。"
+  ],
+  "invariant_owner_layer": {
+    "layer": ".github/workflows/quality-gate.yml",
+    "tests": [
+      "scripts/check-quality-gate-workflow.node-test.mjs"
+    ],
+    "why": "运行能力属于测试车道编排边界；精确发现裁决另由 observer 及 feel-policy 测试约束。"
+  }
+}

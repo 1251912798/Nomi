@@ -1,0 +1,218 @@
+[
+  {
+    "id": "pf-preview-dark",
+    "changed_bounds": [
+      26,
+      0,
+      354,
+      8
+    ]
+  },
+  {
+    "id": "pf-fx-generating",
+    "changed_bounds": [
+      25,
+      0,
+      353,
+      8
+    ]
+  },
+  {
+    "id": "pf-video-generating",
+    "changed_bounds": [
+      25,
+      0,
+      353,
+      8
+    ]
+  },
+  {
+    "id": "pf-fx-reduced",
+    "changed_bounds": [
+      25,
+      0,
+      353,
+      8
+    ]
+  },
+  {
+    "id": "pf-fx-final-reveal",
+    "changed_bounds": [
+      25,
+      0,
+      43,
+      8
+    ]
+  },
+  {
+    "id": "pf-fx-organic",
+    "changed_bounds": [
+      25,
+      0,
+      353,
+      8
+    ]
+  },
+  {
+    "id": "pf-image-generating",
+    "changed_bounds": [
+      25,
+      0,
+      353,
+      8
+    ]
+  },
+  {
+    "id": "pf-video-finalizing",
+    "changed_bounds": [
+      25,
+      0,
+      353,
+      8
+    ]
+  },
+  {
+    "id": "pf-zoom-60",
+    "changed_bounds": [
+      34,
+      8,
+      218,
+      14
+    ]
+  },
+  {
+    "id": "pf-fx-preview-reveal",
+    "changed_bounds": [
+      25,
+      0,
+      353,
+      8
+    ]
+  },
+  {
+    "id": "pf-late",
+    "changed_bounds": [
+      25,
+      0,
+      353,
+      8
+    ]
+  },
+  {
+    "id": "pf-image-failed",
+    "changed_bounds": [
+      25,
+      0,
+      43,
+      8
+    ]
+  },
+  {
+    "id": "pf-video-submitting",
+    "changed_bounds": [
+      25,
+      0,
+      353,
+      8
+    ]
+  },
+  {
+    "id": "pf-audio-submitting",
+    "changed_bounds": [
+      47,
+      0,
+      80,
+      8
+    ]
+  },
+  {
+    "id": "pf-audio-finalizing",
+    "changed_bounds": [
+      51,
+      0,
+      140,
+      8
+    ]
+  },
+  {
+    "id": "pf-preview",
+    "changed_bounds": [
+      25,
+      0,
+      354,
+      8
+    ]
+  },
+  {
+    "id": "pf-image-finalizing",
+    "changed_bounds": [
+      25,
+      0,
+      353,
+      8
+    ]
+  },
+  {
+    "id": "pf-audio-queued",
+    "changed_bounds": [
+      47,
+      0,
+      80,
+      8
+    ]
+  },
+  {
+    "id": "pf-video-failed",
+    "changed_bounds": [
+      25,
+      0,
+      43,
+      8
+    ]
+  },
+  {
+    "id": "pf-fx-done-clean",
+    "changed_bounds": [
+      25,
+      0,
+      43,
+      8
+    ]
+  },
+  {
+    "id": "pf-audio-generating",
+    "changed_bounds": [
+      48,
+      0,
+      148,
+      8
+    ]
+  },
+  {
+    "id": "pf-video-queued",
+    "changed_bounds": [
+      25,
+      0,
+      353,
+      8
+    ]
+  },
+  {
+    "id": "pf-image-queued",
+    "changed_bounds": [
+      25,
+      0,
+      353,
+      8
+    ]
+  },
+  {
+    "id": "pf-image-submitting",
+    "changed_bounds": [
+      25,
+      0,
+      353,
+      8
+    ]
+  }
+]

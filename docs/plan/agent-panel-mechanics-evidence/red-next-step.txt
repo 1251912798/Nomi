@@ -1,0 +1,8 @@
+{
+  inside: true,
+  queueDeleted: true,
+  nextStepExposed: false,
+  visibleChildren: 19,
+  inert: true,
+  errors: []
+}

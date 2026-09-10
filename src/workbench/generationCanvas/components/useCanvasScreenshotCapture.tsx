@@ -9,7 +9,7 @@
  */
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { toast } from '../../../ui/toast'
+import { notify } from '../../../ui/notificationPolicy'
 import { getDesktopBridge } from '../../../desktop/bridge'
 import { getActiveWorkbenchProjectId } from '../../project/workbenchProjectSession'
 import { ScreenshotCropOverlay } from './ScreenshotCropOverlay'
@@ -37,15 +37,15 @@ export function useCanvasScreenshotCapture(params: {
       if (payload?.url) setScreenshotCapture(payload)
     })
     const offDenied = bridge.onDenied?.(() => {
-      toast(t('generationCommon.screenshot.denied'), 'error')
+      notify({ identity: 'global-screenshot', reason: 'permission', level: 'background', type: 'error', message: t('generationCommon.screenshot.denied'), actionLabel: t('settings.tab.general'), onAction: () => { window.dispatchEvent(new CustomEvent('nomi-open-settings', { detail: { tab: 'general' } })) } })
     })
     const offFailed = bridge.onFailed?.((payload) => {
-      toast(
-        payload?.reason === 'no-project'
-          ? t('generationCommon.screenshot.noProject')
-          : t('generationCommon.screenshot.failed'),
-        'error',
-      )
+      notify({
+        identity: 'global-screenshot', reason: payload?.reason ?? 'capture', level: 'background', type: 'error',
+        message: payload?.reason === 'no-project' ? t('generationCommon.screenshot.noProject') : t('generationCommon.screenshot.failed'),
+        actionLabel: t('settings.tab.general'),
+        onAction: () => { window.dispatchEvent(new CustomEvent('nomi-open-settings', { detail: { tab: 'general' } })) },
+      })
     })
     return () => { offCaptured?.(); offDenied?.(); offFailed?.() }
   }, [t])

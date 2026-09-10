@@ -1,3 +1,4 @@
+import { capabilitySupportsUndo } from '../../../../electron/shared/agentCapabilities/registry'
 // Agent 面板 v4 · 积木 ⑤ 介入槽的投影。
 //
 // 这个槽今天的数据**不来自宿主状态**：它来自渲染层的待决登记表，而那份记录的 `kind`
@@ -74,20 +75,17 @@ export function missingParamSuggestion(args: unknown, t: Translate): Readonly<{ 
 }
 
 /**
- * 这次操作**要写进去的那段话**，截断成一行。
+ * 这次操作**要写进去的那段话**，保留 Markdown 源码。
  * 字段名按常见顺序找：文稿写 `content`、时间轴/画布的提案写 `text` 或 `prompt`。
  * 一个都没有就返回 `undefined`——不编，也不用「（无内容）」占位。
  */
 const EXCERPT_FIELDS = ['content', 'text', 'prompt'] as const
-const EXCERPT_MAX = 60
 
-function contentExcerpt(record: Readonly<Record<string, unknown>>): string | undefined {
+function proposalContent(record: Readonly<Record<string, unknown>>): string | undefined {
   for (const field of EXCERPT_FIELDS) {
     const value = record[field]
     if (typeof value !== 'string') continue
-    const normalized = value.replace(/\s+/g, ' ').trim()
-    if (!normalized) continue
-    return normalized.length > EXCERPT_MAX ? `${normalized.slice(0, EXCERPT_MAX)}…` : normalized
+    if (value.trim()) return value
   }
   return undefined
 }
@@ -129,9 +127,8 @@ export function projectV4Intervention(
   const summaryParts = [
     kind === 'question' ? stringField(record, 'question') : readableToolPreview(t, source.toolName, source.args),
     // 「1 条内容」不足以让人决定要不要——用户在这一刻要判断的是**那句话该不该进文稿**。
-    // 摘一段真正要写的内容出来。摘录不是全文：槽在 composer 上方那一格里，
-    // 长文会把它撑成一堵墙；要看全文去对象自己的家（§1.5.2 一功能一个家）。
-    contentExcerpt(record),
+    // B2e：完整保留列表、表格和换行；滚动由现有槽外壳管理。
+    proposalContent(record),
     kind === 'credential' ? t('agentPanelV4.credentialSummary') : '',
     stringField(record, 'reason'),
     more,
@@ -139,11 +136,12 @@ export function projectV4Intervention(
   const params = residentProposalParameters(source.args)
   const plan: readonly PlanRow[] = planRowsOf(source)
   const options = residentQuestionOptions(source.args).map((option) => option.label)
+  const badge = capabilitySupportsUndo(source.toolName, source.args) && (kind === 'approval-irreversible' || kind === 'approval-reversible') ? labels.reversible : badgeOf(kind, labels)
   const base = {
     kind,
     title: titleOf(kind, source, labels, t),
-    ...(badgeOf(kind, labels) ? { badge: badgeOf(kind, labels) } : {}),
-    ...(summaryParts.length ? { summary: summaryParts.join(' · ') } : {}),
+    ...(badge ? { badge } : {}),
+    ...(summaryParts.length ? { summary: summaryParts.join('\n\n') } : {}),
     ...(params.length ? { params } : {}),
     ...(options.length ? { options } : {}),
     ...(plan.length ? { plan } : {}),
@@ -151,7 +149,7 @@ export function projectV4Intervention(
     reasonPlaceholder: t('agentPanelV4.rejectReasonPlaceholder'),
     // 范围那一行是**诚实交代**，不是装饰：可撤销的档才有「不再问」，
     // 所以这里写清楚它到底覆盖什么，别让用户以为按一下就全项目放行。
-    scope: canStopAskingFor(source.effectClass) ? labels.scopeCapability : labels.scopeOnce,
+    ...(kind === 'plan' ? {} : { scope: canStopAskingFor(source.effectClass) ? labels.scopeCapability : labels.scopeOnce }),
   }
   if (kind === 'credential') {
     return Object.freeze({ ...base, confirmLabel: labels.credentialConfirm, alternateLabel: labels.credentialAlternate })
@@ -164,7 +162,7 @@ function planRowsOf(source: V4InterventionSource): readonly PlanRow[] {
   if (source.planLines?.length) {
     return source.planLines.map((line) => ({
       label: line.text,
-      ...(line.technical ? { detail: line.technical } : {}),
+      ...(line.technical ? { technical: line.technical } : {}),
       checked: checked ? checked.has(line.text) : true,
     }))
   }

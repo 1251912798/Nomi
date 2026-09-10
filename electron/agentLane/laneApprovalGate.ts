@@ -18,10 +18,12 @@ import {
   laneApprovalGrantable,
   preflightLaneApproval,
   type LaneApprovalSubject,
+  type LaneApprovalSubjectResolver,
 } from "../shared/agentLane/laneApproval";
 import {
   capabilityContractById,
   capabilityEffectClassOf,
+  capabilityPlanReviewOf,
 } from "../shared/agentCapabilities/registry";
 import type {
   LaneApprovalAction,
@@ -30,11 +32,9 @@ import type {
   LaneApprovalNote,
   LanePendingApproval,
 } from "../shared/agentLane/laneContracts";
+import { modelToolCapabilityId } from "../shared/agentCapabilities/modelFacingTools";
 import type { LaneToolSpec } from "../shared/agentLane/laneToolContract";
-import type {
-  ProjectAgentApprovalPolicy,
-  ProjectAgentWorkMode,
-} from "../shared/projectAgentContracts";
+import type { ProjectAgentApprovalPolicy, ProjectAgentWorkMode } from '../shared/agentCapabilities/capabilityApprovalPolicy';
 
 export type LaneApprovalRequest = Readonly<{
   toolCallId: string;
@@ -49,11 +49,14 @@ export type LaneApprovalOutcome = Readonly<{
   /** 拒绝/取消时给模型看的那句可行动的话。`granted` 那几支没有。 */
   reason?: string;
   cause?: LaneApprovalCancelCause;
+  undoable?: boolean;
 }>;
 
 export interface LaneApprovalGateOptions {
   /** 这条 lane 装了哪些工具的说明书。用来把工具名换成它投影的那个能力契约 id（`contractId`）。 */
   readonly specs: readonly LaneToolSpec[];
+  /** Trusted native effects may require more confirmation, never originate in renderer input. */
+  readonly resolveSubject?: LaneApprovalSubjectResolver;
   /** 用户当前的档位。给函数不给快照——用户在等待期改档位是允许的。 */
   policy?(): ProjectAgentApprovalPolicy | undefined;
   workMode?(): ProjectAgentWorkMode | undefined;
@@ -81,6 +84,7 @@ export interface LaneApprovalGate {
   /** 用户在卡上点了什么。答的不是当前那张卡就返回 `false`（卡已经翻篇了，别把答案落到新的一张上）。 */
   answer(toolCallId: string, action: LaneApprovalAction, reason?: string): boolean;
   pending(): LanePendingApproval | undefined;
+  describe(request: LaneApprovalRequest): string;
   /** 关窗 / 切项目 / 按停止：等待中的卡一律以 `cancelled` 收尾。 */
   cancelAll(cause: LaneApprovalCancelCause): void;
   /** 还没落盘的结局记录（只有 `cancelled` 会走这里，理由见文件头 ③）。取走即清空。 */
@@ -109,7 +113,7 @@ interface WaitingCard {
 }
 
 export function createLaneApprovalGate(options: LaneApprovalGateOptions): LaneApprovalGate {
-  const capabilityByTool = new Map(options.specs.map((spec) => [spec.name, spec.contractId]));
+  const specByTool = new Map(options.specs.map((spec) => [spec.name, spec]));
   /** 本会话的「这类不用再问」。**内存表，不落盘**——关 app 即忘，「本会话」是字面意思。 */
   const sessionGrants = new Set<string>();
   const restored = new Set<string>(options.restoredToolCallIds ?? []);
@@ -140,7 +144,8 @@ export function createLaneApprovalGate(options: LaneApprovalGateOptions): LaneAp
   }
 
   function subjectOf(request: LaneApprovalRequest): LaneApprovalSubject {
-    const capabilityId = capabilityByTool.get(request.toolName);
+    const spec = specByTool.get(request.toolName);
+    const capabilityId = spec ? modelToolCapabilityId(spec, request.args) : undefined;
     const contract = capabilityId === undefined ? undefined : capabilityContractById(capabilityId);
     return {
       toolName: request.toolName,
@@ -149,11 +154,26 @@ export function createLaneApprovalGate(options: LaneApprovalGateOptions): LaneAp
       capabilityId: capabilityId ?? `unknown:${request.toolName}`,
       effect: contract?.effect,
       effectClass: capabilityEffectClassOf(contract, request.args),
-      requiresPlanReview: contract?.requiresPlanReview === true,
+      ...capabilityPlanReviewOf(contract, request.args),
       // 原生 lane 工具没有外部服务器的 hint。MCP 工具进 lane 是阶段 5 的事，
       // 那时它从工具声明上读，且**只能抬高摩擦**（`CapabilityApprovalSubject` 的注释）。
       destructiveHint: false,
     };
+  }
+
+  /** Projection and execution share subject resolution, grants and the canonical policy. */
+  function decisionOf(request: LaneApprovalRequest) {
+    const resolved = options.resolveSubject?.(request);
+    const subject = resolved?.subject ?? subjectOf(request);
+    const policy = options.policy?.();
+    const reusableNativeGrant = resolved?.grantable === true && sessionGrants.has(subject.capabilityId);
+    const decided = resolved?.denialReason
+      ? { state: 'denied-by-policy' as const, grantable: false as const, reason: resolved.denialReason }
+      : preflightLaneApproval(subject, {
+          policy: resolved?.forceConfirmation && !reusableNativeGrant ? { mode: 'step', spend: 'confirm' } : policy,
+          workMode: options.workMode?.(), hasUserInterface: options.hasUserInterface, sessionGrants,
+        });
+    return { resolved, subject, policy, decided };
   }
 
   function settleWaiting(toolCallId: string, outcome: LaneApprovalOutcome): boolean {
@@ -167,6 +187,12 @@ export function createLaneApprovalGate(options: LaneApprovalGateOptions): LaneAp
 
   return {
     pending: currentPending,
+    describe: (request) => {
+      const { subject, decided } = decisionOf(request);
+      if (decided.state === 'denied-by-policy') return '当前策略禁止此动作';
+      if (decided.state === 'awaiting-user') return '此动作会向用户确认';
+      return subject.effect === 'read' ? '只读，不修改项目' : '此动作直接生效并可撤销';
+    },
 
     drainNotes: () => undrained.splice(0, undrained.length),
 
@@ -214,15 +240,9 @@ export function createLaneApprovalGate(options: LaneApprovalGateOptions): LaneAp
         // （文件头 ③ 只管被 abort 打断的那两支）。
         return { allow: false, decision: "cancelled", cause: "restart", reason: RESTART_REASON };
       }
-      const subject = subjectOf(request);
-      const policy = options.policy?.();
-      const decided = preflightLaneApproval(subject, {
-        policy,
-        workMode: options.workMode?.(),
-        hasUserInterface: options.hasUserInterface,
-        sessionGrants,
-      });
-      if (decided.state === "auto-granted") return { allow: true, decision: "auto-granted" };
+      const { resolved, subject, policy, decided } = decisionOf(request);
+      if (decided.state === "auto-granted") return { allow: true, decision: "auto-granted",
+        undoable: subject.effect !== 'read' && subject.effectClass === 'reversible_local' };
       if (decided.state === "denied-by-policy") {
         return { allow: false, decision: "denied-by-policy", reason: decided.reason };
       }
@@ -237,7 +257,7 @@ export function createLaneApprovalGate(options: LaneApprovalGateOptions): LaneAp
           toolName: request.toolName,
           args: request.args,
           ...(subject.effectClass ? { effectClass: subject.effectClass } : {}),
-          grantable: laneApprovalGrantable(subject, policy),
+          grantable: laneApprovalGrantable(subject, policy) && resolved?.grantable !== false,
           pendingCount: waiting.size + 1,
         }),
       });

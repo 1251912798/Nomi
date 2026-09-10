@@ -7,10 +7,11 @@ import {
   readableToolName,
   readableToolPreview,
   readableToolSummary,
-  residentToolProjectionForCall,
 } from './residentToolDisplay'
+import { redactToolArguments } from './residentToolText'
 import { partitionResidentProposalFields } from './residentProposalDisplay'
 import { CAPABILITY_ALIAS_ENTRIES, CAPABILITY_CONTRACTS } from '../../../../electron/shared/agentCapabilities/registry'
+import { modelFacingToolSpecs } from '../../../../electron/shared/agentCapabilities/modelFacingToolRegistry'
 
 const translate = (key: string, options?: Record<string, unknown>): string => {
   if (!options) return key
@@ -18,11 +19,34 @@ const translate = (key: string, options?: Record<string, unknown>): string => {
 }
 
 describe('resident tool display projection', () => {
+  it('names every current lane tool and preserves operation-specific effects', () => {
+    expect(modelFacingToolSpecs('internal').filter(spec => readableToolName(translate, spec.name) === 'agentResident.toolGeneric')
+      .map(spec => spec.name)).toEqual([])
+    expect(readableToolName(translate, 'nomi_canvas_write', { operation: 'create_canvas_nodes' })).toBe('agentResident.toolCanvasCreate')
+    expect(readableToolName(translate, 'nomi_storyboard_write', { operation: 'patch_shots' })).toBe('agentResident.toolStoryboardWrite')
+    expect(readableToolSummary(translate, 'nomi_canvas_write', { operation: 'create_canvas_nodes' })).toContain('agentResident.toolNoGeneration')
+    expect(isReadOnlyToolName('read_full_text')).toBe(true)
+    expect(readableToolName(translate, 'nomi_request_tools')).toBe('agentResident.toolPrepareTools')
+  })
+
   it('keeps the first layer compact while retaining generation intent', () => {
     const args = { prompt: 'a small cat avatar', modelId: 'provider/image-fast', parameters: { aspectRatio: '1:1', quality: 'standard' } }
     expect(readableToolPreview(translate, 'nomi_start_generation', args)).toBe('agentResident.toolGenerationSummary')
     expect(readableToolSummary(translate, 'nomi_start_generation', args)).toContain('a small cat avatar')
     expect(readableToolSummary(translate, 'nomi_start_generation', args)).toContain('provider/image-fast')
+  })
+
+  it('describes read-only calls and storyboard proposals without claiming canvas changes', () => {
+    expect(readableToolSummary(translate, 'read_full_text', {})).toBe('agentResident.toolReadNoChange')
+    for (const operation of ['propose_storyboard_plan', 'patch_shots']) {
+      const args = { operation, shots: [{ index: 1, prompt: 'Opening' }] }
+      expect(readableToolName(translate, 'nomi_storyboard_write', args)).toBe('agentResident.toolStoryboardWrite')
+      expect(readableToolSummary(translate, 'nomi_storyboard_write', args)).toBe('agentResident.toolStoryboardWriteSummary')
+      expect(readableToolPreview(translate, 'nomi_storyboard_write', args)).toBe('agentResident.toolShotCount(count=1)')
+      const proposal = proposalForTool(translate, 'nomi_storyboard_write', args)
+      expect(proposal?.fields.find(field => field.kind === 'boundary')?.value).toBe('agentResident.toolStoryboardWriteSummary')
+      expect(proposal?.fields.find(field => field.kind === 'prompt')?.value).toBe('Opening')
+    }
   })
 
   it('names every registered capability and every surface alias of it, derived from the registry', () => {
@@ -62,7 +86,7 @@ describe('resident tool display projection', () => {
     expect(readableToolPreview(translate, 'nomi_canvas_maintenance', del)).toBe('agentResident.toolTargetCount(count=2)')
 
     const create = { operation: 'create_canvas_nodes', nodes: [{ title: '镜头 1' }] }
-    expect(readableToolName(translate, 'nomi_canvas_edit', create)).toBe('agentResident.toolCanvasWrite')
+    expect(readableToolName(translate, 'nomi_canvas_edit', create)).toBe('agentResident.toolCanvasCreate')
     expect(readableToolPreview(translate, 'nomi_canvas_edit', create)).toContain('agentResident.toolShotCount(count=1)')
 
     // The pi-side aliases still carry the operation in the name; both halves keep working.
@@ -94,7 +118,7 @@ describe('resident tool display projection', () => {
       operation: 'create_canvas_nodes',
       nodes: [{ title: '镜头 1', kind: 'shot' }, { title: '线稿', kind: 'agent-artifact' }],
     }
-    expect(readableToolName(translate, 'nomi_canvas_edit', mixed)).toBe('agentResident.toolCanvasWrite')
+    expect(readableToolName(translate, 'nomi_canvas_edit', mixed)).toBe('agentResident.toolCanvasCreate')
     expect(readableToolPreview(translate, 'nomi_canvas_edit', mixed)).toContain('agentResident.toolShotCount(count=2)')
   })
 
@@ -139,16 +163,13 @@ describe('resident tool display projection', () => {
     ]))
   })
 
-  it('projects safe display strings for persisted completed tool receipts', () => {
-    const projection = residentToolProjectionForCall(translate, 'nomi_start_generation', {
-      prompt: 'cat avatar',
-      modelId: 'provider/image-fast',
-      apiKey: 'sk-secret-value',
-    }, 'done')
-    expect(projection.effect).toBe('agentResident.toolGenerationSummary')
-    expect(projection.target).toBe('agentResident.targetCanvas')
-    expect(projection.technicalDetails).not.toContain('sk-secret-value')
+  it('keeps secret arguments out of visible summaries and technical details', () => {
+    const args = { prompt: 'cat avatar', modelId: 'provider/image-fast', apiKey: 'sk-secret-value' }
+    expect(readableToolSummary(translate, 'nomi_start_generation', args)).toContain('cat avatar')
+    expect(readableToolSummary(translate, 'nomi_start_generation', args)).not.toContain('sk-secret-value')
+    expect(redactToolArguments(args)).not.toContain('sk-secret-value')
   })
+
 })
 
 describe('失败正文 → 人话：只有这一条门', () => {
@@ -191,8 +212,5 @@ describe('失败正文 → 人话：只有这一条门', () => {
     expect(humanizeToolFailure(translate, '')).toBeUndefined()
   })
 
-  it('展开区的「输出」留原文：行内说人话，详情给英文', () => {
-    const projection = residentToolProjectionForCall(translate, 'nomi_canvas_edit', { operation: 'create_canvas_nodes' }, 'failed', { error: PI_PROSE })
-    expect(projection.output).toBe(PI_PROSE)
-  })
+
 })

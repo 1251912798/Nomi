@@ -134,7 +134,7 @@ async function runTask(config: NomiModelConfig, task: TaskSpec, tools: LaneToolD
     return undefined;
   };
   try {
-    const probe = await openProbeLane(scope, {
+    const probe = await openProbeLane(scope, { fetch: globalThis.fetch,
       projectDir: join(app.getPath('temp'), `nomi-p5-${task.id}-${Date.now()}`),
       systemPrompt: composeLaneSystemPrompt(IDENTITY_PROMPT, canvasModelToolSpecs(), NO_SKILL_SECTION),
       model: config, tools,
@@ -164,7 +164,7 @@ async function runTask(config: NomiModelConfig, task: TaskSpec, tools: LaneToolD
 async function measurePromptTokens(config: NomiModelConfig, tools: LaneToolDescriptor[]): Promise<number> {
   const scope = cleanup();
   try {
-    const probe = await openProbeLane(scope, {
+    const probe = await openProbeLane(scope, { fetch: globalThis.fetch,
       projectDir: join(app.getPath('temp'), `nomi-p5-measure-${tools.length}-${Date.now()}`),
       systemPrompt: composeLaneSystemPrompt(IDENTITY_PROMPT, tools, NO_SKILL_SECTION), model: config, tools,
     });

@@ -25,7 +25,7 @@ import { getActiveWorkbenchProjectId } from '../../project/workbenchProjectSessi
 import { useGenerationCanvasStore } from '../store/generationCanvasStore'
 import { useStableCategoryNodes } from './useStableCategoryNodes'
 import { getCanvasGroupBoxes, getSelectedBounds } from '../components/generationCanvasGeometry'
-import { unionCanvasFitBounds } from '../model/canvasFitBounds'
+import { CANVAS_MIN_ZOOM, CANVAS_MAX_ZOOM, unionCanvasFitBounds } from '../model/canvasFitBounds'
 import { useCollapsedGroupConnectionSource } from '../components/useCollapsedGroupConnectionSource'
 import { projectCollapsedGroups } from '../model/canvasCardStackModel'
 import { useCanvasSelectionDrag } from '../components/useCanvasSelectionDrag'
@@ -43,7 +43,6 @@ import { useCanvasFitSignal } from '../components/useCanvasFitSignal'
 import { useTidyCanvas } from '../components/useTidyCanvas'
 import { useNodeAppearTracking } from '../components/useNodeAppearTracking'
 import { useAutoFitOnLoad } from '../components/useAutoFitOnLoad'
-import { useComposerVisibilityPan } from '../components/useComposerVisibilityPan'
 import { useCreatedNodeVisibilityPan } from '../components/useCreatedNodeVisibilityPan'
 import { useReactFlowViewportAnimation } from './useReactFlowViewportAnimation'
 import { useBatchPlanPreviewStore } from '../components/batchPlanPreview'
@@ -236,7 +235,6 @@ function GenerationCanvasReactFlowInner({ readOnly = false }: GenerationCanvasRe
     animateViewportTo,
     readViewportTarget,
     readLastAutoTarget,
-    readLiveViewport,
     cancelViewportAnimation,
     healViewport,
   } = useReactFlowViewportAnimation({ flow, zoomRef, offsetRef })
@@ -344,7 +342,7 @@ function GenerationCanvasReactFlowInner({ readOnly = false }: GenerationCanvasRe
       ...groupBoxes.map((box) => ({ x: box.left, y: box.top, width: box.width, height: box.height })),
     ])
     if (!bounds) return
-    const next = getViewportForBounds(bounds, stage.width, stage.height, 0.2, 3, 0.12)
+    const next = getViewportForBounds(bounds, stage.width, stage.height, CANVAS_MIN_ZOOM, CANVAS_MAX_ZOOM, 0.12)
     if (![next.x, next.y, next.zoom].every((value) => Number.isFinite(value))) return
     if (animate) {
       animateViewportTo(next.zoom, { x: next.x, y: next.y }, 200)
@@ -355,7 +353,7 @@ function GenerationCanvasReactFlowInner({ readOnly = false }: GenerationCanvasRe
     void flow.setViewport(next, { duration: 0 })
   }, [animateViewportTo, cancelViewportAnimation, flow, flowStore, groupBoxes, hostRef, nodes.length])
   const zoomTo = React.useCallback((nextZoom: number) => {
-    void flow.zoomTo(Math.min(3, Math.max(0.2, nextZoom)), { duration: 120 })
+    void flow.zoomTo(nextZoom, { duration: 120 })
   }, [flow])
   const handleMinimapJump = React.useCallback((point: { x: number; y: number }) => {
     void flow.setCenter(point.x, point.y, { zoom: zoomRef.current, duration: 0 })
@@ -421,13 +419,6 @@ function GenerationCanvasReactFlowInner({ readOnly = false }: GenerationCanvasRe
     offsetRef,
   })
   useCanvasFitSignal(fitView)
-  // 「让位平移」：节点上下都塞不下 composer 时，useComposerViewportPlacement 会派
-  // ENSURE_COMPOSER_VISIBLE 事件请求把画布推开一点（见 docs/plan/2026-08-26-win32-composer-collapse.md §4.1）。
-  // 本次 React Flow 迁移掏空旧 GenerationCanvas 时，把它的监听（origin/main 该文件 :235）一并删了，
-  // 事件从此无人接收 → 画布不再让位 → composer 只能溢出 stage（j5 composer-usable-at-min-window
-  // 因此确定性变红：spaceAbove 140 / spaceBelow 132 都 < 150，卡片仍按 150 渲染，捅出底边 32px）。
-  // 复用原 hook 而不是在这里另写一份监听：事件契约、delta 校验和 onSettled 回执它都已经处理好（P1）。
-  useComposerVisibilityPan({ animateViewportTo, readLiveViewport, readViewportTarget })
   // 「新建即可见」：避让把新卡推出视口时最小平移露出它（见 useCreatedNodeVisibilityPan 的头注释）。
   useCreatedNodeVisibilityPan({ nodes, animateViewportTo, readViewportTarget, readLastAutoTarget, stageRef: hostRef })
   const { isTidying, tidy } = useTidyCanvas(activeCategoryId)

@@ -7,7 +7,6 @@ const root = fileURLToPath(new URL('../', import.meta.url));
 // These are execution boundaries, not a grandfathered list of app callers.
 const EXPLICIT_BOUNDARIES = new Set([
   'electron/appFetch.ts', // injects the app-owned dispatcher into native fetch
-  'electron/harness/runtime/pi/run.mts', // isolated SDK adapter; host always injects appFetch
   'electron/agentLane/laneModelProvider.mts', // standalone SDK model tests; normal runtime injects fetch
   'electron/capabilityCore/mcpNodeLauncher.ts', // pure Node CLI -> authenticated localhost RPC only
 ]);

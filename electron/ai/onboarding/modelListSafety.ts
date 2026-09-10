@@ -68,7 +68,7 @@ export function modelListErrorRedactor(
   return (message) => {
     let safe = message;
     // Remove complete secrets before punctuation/quotes or the length limit can split them.
-    for (const value of ordered) safe = safe.replaceAll(value, "[REDACTED]");
+    for (const value of ordered) safe = safe.split(value).join("[REDACTED]");
     // Known values can destroy a URL scheme (e.g. X-Forwarded-Proto:https) or private-part
     // delimiter. Fail closed so unknown credentials cannot turn into a public URL/path.
     const urlStructure = /https?:\/\/|[?@#]/gi;

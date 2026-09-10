@@ -2,7 +2,7 @@ import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { IconAlertTriangle, IconMovie, IconLockOpen, IconPlayerPlay, IconPlus, IconRobot, IconWand, IconX } from '@tabler/icons-react'
 import { confirmDialog, WorkbenchButton } from '../../../design'
-import { toast } from '../../../ui/toast'
+import { notify } from '../../../ui/notificationPolicy'
 import { useWorkbenchStore } from '../../workbenchStore'
 import { useGenerationCanvasStore } from '../../generationCanvas/store/generationCanvasStore'
 import { useModelOptionsState } from '../../../config/useModelOptions'
@@ -64,16 +64,17 @@ const EMPTY_STRATEGY_PLAN: StoryboardPlan = { title: '', anchors: [], shots: [] 
 
 export default function StoryboardPlanEditor({ projectId }: { projectId?: string | null }): JSX.Element | null {
   const { t } = useTranslation()
-  const plan = useWorkbenchStore((s) => {
+  const activeDesign = useWorkbenchStore((s) => {
     const designs = s.activeDocumentId ? s.storyboardDesignsByDocumentId[s.activeDocumentId] ?? [] : []
-    return (designs.find((design) => design.id === s.activeStoryboardId) ?? designs[0])?.plan ?? null
+    return designs.find((design) => design.id === s.activeStoryboardId) ?? designs[0] ?? null
   })
+  const plan = activeDesign?.plan ?? null
+  const designId = activeDesign?.id ?? ''
   const setStoryboardPlan = useWorkbenchStore((s) => s.setStoryboardPlan)
   const deleteStoryboardDesign = useWorkbenchStore((s) => s.deleteStoryboardDesign)
   const setWorkspaceMode = useWorkbenchStore((s) => s.setWorkspaceMode)
   const setActiveStoryboardId = useWorkbenchStore((s) => s.setActiveStoryboardId)
   const activeDocumentId = useWorkbenchStore((s) => s.activeDocumentId)
-  const activeStoryboardId = useWorkbenchStore((s) => s.activeStoryboardId)
   const setProjectAgentReferences = useWorkbenchStore((s) => s.setProjectAgentReferences)
   const setProjectAgentDraft = useWorkbenchStore((s) => s.setProjectAgentDraft)
   const setProjectAgentDockCollapsed = useWorkbenchStore((s) => s.setProjectAgentDockCollapsed)
@@ -83,9 +84,19 @@ export default function StoryboardPlanEditor({ projectId }: { projectId?: string
   const imageModelOptions = useModelOptionsState('image').options
   // 行内/批量生成的重入闸（生成本身异步、确认卡在别处；按钮点两下不重复 materialize）。
   const [busy, setBusy] = React.useState(false)
+  const [actionFeedback, setActionFeedback] = React.useState<{ designId: string | null; message: string } | null>(null)
+  const reportFailure = (message: string): void => {
+    notify({ identity: `storyboard:${activeDocumentId}:${designId}`, reason: 'edit-action', level: 'inline', type: 'error', message,
+      present: (value) => setActionFeedback({ designId, message: value }),
+    })
+  }
   // 放大预览：存 nodeId（不存快照），渲染时从画布节点现取结果——重生成后再开永远是最新图。
   const [previewNodeId, setPreviewNodeId] = React.useState<string | null>(null)
   const [filterAnchorId, setFilterAnchorId] = React.useState<string | null>(null)
+  const storyboardRowFocus = useWorkbenchStore((state) => state.storyboardRowFocus)
+  React.useEffect(() => {
+    if (storyboardRowFocus?.designId === designId) setFilterAnchorId(null)
+  }, [storyboardRowFocus, designId])
   const [playbackOpen, setPlaybackOpen] = React.useState(false)
   const [playbackRows, setPlaybackRows] = React.useState<StoryboardRowRuntime[] | null>(null)
   const [mentionPreviewAsset, setMentionPreviewAsset] = React.useState<AssetRef | null>(null)
@@ -102,6 +113,7 @@ export default function StoryboardPlanEditor({ projectId }: { projectId?: string
   const deletedPlanUndoRef = React.useRef<{ plan: NonNullable<typeof plan>; canvasSteps: number } | null>(null)
 
   const firstIssueLabel = (issue: PlanIssue): string => {
+    if (issue.kind === 'anchor-not-consumable') return issue.correction
     switch (issue.kind) {
       case 'no-shots': return t('storyboardEditor.issue.noShots')
       case 'empty-shot-prompt': return t('storyboardEditor.issue.emptyPrompt', { index: issue.shotIndex })
@@ -111,7 +123,6 @@ export default function StoryboardPlanEditor({ projectId }: { projectId?: string
   }
 
   // 行执行态：plan × 画布节点的实时 derive（F2：组头/标题/footer 计数同一份，禁静态快照）。
-  const designId = activeStoryboardId ?? ''
   const rows = React.useMemo(
     () => (plan ? deriveStoryboardRowRuntimes({ plan, designId, imageModelOptions, videoModelOptions, nodes: canvasNodes }) : []),
     [plan, designId, imageModelOptions, videoModelOptions, canvasNodes],
@@ -219,13 +230,13 @@ export default function StoryboardPlanEditor({ projectId }: { projectId?: string
 
   if (!plan) return null
 
-  const issues = validatePlan(plan)
+  const issues = validatePlan(plan).filter(issue => issue.kind !== 'anchor-not-consumable')
   const emptyPromptShots = new Set(issues.filter((i) => i.kind === 'empty-shot-prompt').map((i) => i.shotIndex))
   const noNameAnchorIds = new Set(issues.filter((i) => i.kind === 'anchor-no-name').map((i) => i.anchorId))
 
   const onDiscard = async () => {
     const targetDocumentId = activeDocumentId
-    const targetStoryboardId = activeStoryboardId
+    const targetStoryboardId = designId
     if (!targetStoryboardId) return
     const ok = await confirmDialog({
       title: t('storyboardEditor.discardTitle'),
@@ -236,14 +247,17 @@ export default function StoryboardPlanEditor({ projectId }: { projectId?: string
     if (ok) deleteStoryboardDesign(targetStoryboardId, targetDocumentId)
   }
 
-  // 动作统一包一层：失败人话 toast（生成失败本身落在节点卡片，这里只兜 materialize/确认前异常）。
+  // 动作统一包一层：失败原因回当前方案（生成失败本身落在节点卡片，这里只兜 materialize/确认前异常）。
   const runAction = async (action: () => Promise<void>): Promise<void> => {
-    if (busy || !activeStoryboardId) return
+    if (busy) {
+      return
+    }
     setBusy(true)
+    setActionFeedback(null)
     try {
       await action()
     } catch (error: unknown) {
-      toast(error instanceof Error && error.message ? error.message : t('storyboardEditor.exec.actionFailed'), 'error')
+      reportFailure(error instanceof Error && error.message ? error.message : t('storyboardEditor.exec.actionFailed'))
     } finally {
       setBusy(false)
     }
@@ -266,13 +280,15 @@ export default function StoryboardPlanEditor({ projectId }: { projectId?: string
     scope: readonly StoryboardRowRuntime[],
     action: () => Promise<void>,
   ): Promise<void> => {
-    const shotIds = scope.map((runtime) => storyboardShotId(runtime.shot))
-    const blocker = await resolveGeneratableGate(plan, projectId, resolveClient(), shotIds)
-    if (blocker) {
-      toast(describeBlocker(t, blocker), 'error')
-      return
-    }
-    await runAction(action)
+    await runAction(async () => {
+      const shotIds = scope.map((runtime) => storyboardShotId(runtime.shot))
+      const blocker = await resolveGeneratableGate(plan, projectId, resolveClient(), shotIds)
+      if (blocker) {
+        reportFailure(describeBlocker(t, blocker))
+        return
+      }
+      await action()
+    })
   }
 
   const execCtx = { documentId: activeDocumentId, designId, plan }
@@ -321,7 +337,6 @@ export default function StoryboardPlanEditor({ projectId }: { projectId?: string
         'agent handoff',
       )),
     ])
-    toast(t('storyboardEditor.agentHandoff.toast', { count: runtimes.length }), 'info')
   }
   const onLockSelected = (runtimes: StoryboardRowRuntime[]): void => {
     for (const runtime of runtimes) if (runtime.exec.node) toggleNodeLock(runtime.exec.node.id)
@@ -337,7 +352,7 @@ export default function StoryboardPlanEditor({ projectId }: { projectId?: string
   }
   /**
    * 可找回行的**免费**续查：走画布同一条 `recoverNodeResult`（query IPC，不铸付费令牌、不弹花费确认）。
-   * 刻意**不**包进 `runAction`——那一层是给付费执行用的（busy 闸 + 失败 toast），而找回要轮询到十分钟，
+   * 刻意**不**包进 `runAction`——那一层是给付费执行用的（busy 闸 + 原地错误），而找回要轮询到十分钟，
    * 把整张表锁住十分钟是另一个 bug；节点自己会翻 running / 出片 / 退回可找回，行状态跟着 derive 回来。
    */
   const onRecoverRow = (runtime: StoryboardRowRuntime): void => {
@@ -404,9 +419,6 @@ export default function StoryboardPlanEditor({ projectId }: { projectId?: string
   }
   const onStartPlayback = (selectedRows: StoryboardRowRuntime[] = rows): void => {
     if (selectedRows.length === 0) return
-    const selectedQueue = buildStoryboardPlaybackQueue(selectedRows)
-    const skipped = selectedQueue.filter((item) => !item.playable).length
-    if (skipped > 0) toast(t('storyboardEditor.playback.skipped', { count: skipped }), 'info')
     setPlaybackRows(selectedRows)
     setPreviewNodeId(null)
     setPlaybackOpen(true)
@@ -628,6 +640,8 @@ export default function StoryboardPlanEditor({ projectId }: { projectId?: string
           </WorkbenchButton>
         </div>
       </footer>
+
+      {actionFeedback?.designId === designId ? <p role="status" data-storyboard-action-feedback className="px-3 py-2 text-caption text-workbench-danger">{actionFeedback.message}</p> : null}
 
       {/* 放大预览：素材库同一 body-portal lightbox（NodeMediaPreviewDialog 挂画布容器在分镜页不可见）。 */}
       {playbackOpen && playbackSequence.length > 0 ? (

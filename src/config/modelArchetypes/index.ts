@@ -1,3 +1,4 @@
+import { anchorsConsumedBy } from './anchorPolicy';
 import type { ModelParameterControl } from "../modelCatalogMeta";
 // Video archetypes are defined in electron/shared/videoCapabilities (canonical home,
 // shared with main-process planning). The renderer takes the whole video set from that
@@ -169,7 +170,9 @@ function readArchetypeIdFromMeta(meta: unknown): string | null {
 export function resolveArchetypeForModel(model: ArchetypeModelLike | null | undefined): ModelArchetype | null {
   if (!model) return null;
   const base = resolveBaseArchetype(model);
-  return base ? specializeArchetypeForVendor(base, model.vendorKey) : null;
+  if (!base) return null;
+  const resolved = specializeArchetypeForVendor(base, model.vendorKey);
+  return { ...resolved, modes: resolved.modes.map((mode) => ({ ...mode, consumesAnchors: anchorsConsumedBy(mode) })) };
 }
 
 /** 解析「基础」档案（供应商无关，未特化）：显式 archetypeId 优先，否则按身份匹配 pattern。 */

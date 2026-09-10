@@ -1,0 +1,93 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-10-b4-display-names",
+  "problem_type": "Switch action displays the configured vendor name while preserving its internal vendor identity.",
+  "symptom": "Switch action displays the configured vendor name while preserving its internal vendor identity.",
+  "direct_cause": "Switch action displays the configured vendor name while preserving its internal vendor identity.",
+  "class_root": "The shared presentation boundary does not enforce task-oriented, readable output.",
+  "affected_population": [
+    "Existing and new projects, zh-CN and en"
+  ],
+  "scope_paths": [
+    "src/workbench/generationCanvas/nodes/useNodeModelAutoSelect.ts"
+  ],
+  "entry_points": [
+    "src/workbench/generationCanvas/nodes/useNodeModelAutoSelect.ts",
+    "src/config/models.ts"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "Application presentation policy; no dependency or external protocol change.",
+  "invariants": [
+    "Switch action displays the configured vendor name while preserving its internal vendor identity."
+  ],
+  "generality_proof": "All checked consumers converge on the declared shared presentation boundary.",
+  "shared_boundaries": [
+    {
+      "path": "src/workbench/generationCanvas/nodes/useNodeModelAutoSelect.ts",
+      "symbol": "useNodeModelAutoSelect",
+      "responsibility": "Switch action displays the configured vendor name while preserving its internal vendor identity."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/workbench/generationCanvas/nodes/useNodeModelAutoSelect.ts",
+      "entry_point": "useNodeModelAutoSelect",
+      "disposition": "enforced",
+      "evidence": "Repository scan confirms the shared presentation policy applies here."
+    },
+    {
+      "path": "src/config/models.ts",
+      "entry_point": "consumer",
+      "disposition": "not-affected",
+      "evidence": "ModelOption already separates vendor and vendorName; no change to model identity resolver required."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Every new or restored project can reach this presentation.",
+    "same_class_scan": [
+      "src/workbench/generationCanvas/nodes/useNodeModelAutoSelect.ts",
+      "src/config/models.ts"
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "src/workbench/generationCanvas/nodes/useNodeModelAutoSelect.ts",
+    "invariant": "Switch action displays the configured vendor name while preserving its internal vendor identity.",
+    "failure_mode": "Keep actionable constraints visible; omit redundant presentation.",
+    "exception_policy": "none",
+    "strategy": "Switch action displays the configured vendor name while preserving its internal vendor identity.",
+    "artifacts": [
+      "src/workbench/generationCanvas/nodes/useNodeModelAutoSelect.ts"
+    ]
+  },
+  "regression_tests": [
+    "src/workbench/generationCanvas/nodes/useNodeModelAutoSelect.test.ts"
+  ],
+  "class_regression_tests": [
+    "src/workbench/generationCanvas/nodes/useNodeModelAutoSelect.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "src/workbench/generationCanvas/nodes/useNodeModelAutoSelect.ts"
+    ],
+    "rationale": "Replace old presentation in place; no parallel path."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "Internal presentation invariant; dependencies unchanged.",
+    "exit_criteria": []
+  },
+  "migration": "No persisted schema changes. Existing projects render with the same rule.",
+  "residual_risks": [
+    "Real Electron before/after verification pending."
+  ],
+  "invariant_owner_layer": {
+    "layer": "src/workbench/generationCanvas/nodes/useNodeModelAutoSelect.ts",
+    "tests": [
+      "src/workbench/generationCanvas/nodes/useNodeModelAutoSelect.test.ts"
+    ],
+    "why": "Switch action displays the configured vendor name while preserving its internal vendor identity."
+  }
+}

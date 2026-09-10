@@ -1,3 +1,5 @@
+import { contentHashForFile, isContentAddressedUpload, persistUploadBytes, persistUploadFile, storedAssetRecord } from './uploadContentStore';
+import type { ProjectAgentAttachmentClaim, ProjectAgentAttachmentRef } from '../shared/workbenchInput'
 import fs from "node:fs";
 import crypto from "node:crypto";
 import os from "node:os";
@@ -12,6 +14,7 @@ import { broadcastAssetsUpdated } from "./assetEvents";
 import { collectFilesRecursively, parseDataUrl } from "./assetBytes";
 import {
   assetBucketFromMeta,
+  type AssetBucket,
   canonicalAssetFileName,
   assetKindFromContentType,
   contentTypeFromPath,
@@ -26,10 +29,7 @@ import { validateGlbStructure } from "./model3dValidation";
 import { resolveFfmpegPath } from "../export/ffmpegRunner";
 import { MEDIA_DECODER_PROTOCOL_WHITELIST } from "../export/mediaProbe";
 import type { CertificationMediaEvidence } from "../providerAdapter/certificationMedia";
-import type {
-  ProjectAgentAttachmentClaim,
-  ProjectAgentAttachmentRef,
-} from "../shared/projectAgentContracts";
+
 import type { UsageStatus, IntendedRole } from "../connectors/connectorDefinition";
 import { ASSET_PROVENANCE_ALLOWED_USAGES, ASSET_PROVENANCE_ALLOWED_ROLES } from "../connectors/connectorDefinition";
 
@@ -205,7 +205,7 @@ async function writeAssetSidecarMetaAsync(absolutePath: string, meta: JsonRecord
 function uniqueAssetPath(
   projectId: string,
   fileName: string,
-  bucket: "generated" | "imported" = "generated",
+  bucket: AssetBucket = "generated",
 ): { absolutePath: string; relativePath: string } {
   const projectDir = projectDirById(projectId);
   if (!projectDir) throw new Error("Project not found");
@@ -239,12 +239,6 @@ function stableLocalReferenceId(projectId: string, url: string): string {
   return stableStoredAssetId(projectId, url);
 }
 
-async function contentHashForFile(filePath: string): Promise<string> {
-  const hash = crypto.createHash("sha256");
-  for await (const chunk of fs.createReadStream(filePath)) hash.update(chunk as Buffer);
-  return hash.digest("hex");
-}
-
 export function writeAsset(
   projectId: string,
   bytes: Buffer,
@@ -257,30 +251,13 @@ export function writeAsset(
   const actualContentType = effectiveContentType(fileName, contentType, bytes);
   validateStructuredAsset(actualContentType, bytes);
   const storageFileName = canonicalAssetFileName(fileName, actualContentType);
-  const { absolutePath, relativePath } = uniqueAssetPath(projectId, storageFileName, assetBucketFromMeta(meta));
+  if (isContentAddressedUpload(meta)) return persistUploadBytes(projectId, bytes, storageFileName, actualContentType, meta);
+  const { absolutePath } = uniqueAssetPath(projectId, storageFileName, assetBucketFromMeta(meta));
   fs.writeFileSync(absolutePath, bytes);
   writeAssetSidecarMeta(absolutePath, meta);
   broadcastAssetsUpdated(projectId);
-  const url = localAssetUrl(projectId, relativePath);
   const contentHash = crypto.createHash("sha256").update(bytes).digest("hex");
-  const t = nowIso();
-  return {
-    id: stableStoredAssetId(projectId, relativePath),
-    name: sanitizeName(fileName, "asset"),
-    userId: "local",
-    projectId,
-    createdAt: t,
-    updatedAt: t,
-    data: {
-      ...meta,
-      url,
-      relativePath,
-      absolutePath,
-      contentType: actualContentType,
-      size: bytes.byteLength,
-      contentHash,
-    },
-  };
+  return storedAssetRecord(projectId, absolutePath, sanitizeName(fileName, "asset"), actualContentType, meta, contentHash);
 }
 
 /**
@@ -363,31 +340,13 @@ export async function copyAssetFile(
   if (String(meta.kind || "").toLowerCase() === "generated") meta = validatedGeneratedMeta(meta, contentType, await fs.promises.readFile(sourcePath), sourcePath);
   if (actualContentType === "model/gltf-binary") validateStructuredAsset(actualContentType, await fs.promises.readFile(sourcePath));
   const storageFileName = canonicalAssetFileName(fileName, actualContentType);
-  const { absolutePath, relativePath } = uniqueAssetPath(projectId, storageFileName, assetBucketFromMeta(meta));
+  if (isContentAddressedUpload(meta)) return persistUploadFile(projectId, sourcePath, storageFileName, actualContentType, meta);
+  const { absolutePath } = uniqueAssetPath(projectId, storageFileName, assetBucketFromMeta(meta));
   await fs.promises.copyFile(sourcePath, absolutePath);
-  const stat = await fs.promises.stat(absolutePath);
   const contentHash = await contentHashForFile(absolutePath);
   await writeAssetSidecarMetaAsync(absolutePath, meta);
   broadcastAssetsUpdated(projectId);
-  const url = localAssetUrl(projectId, relativePath);
-  const t = nowIso();
-  return {
-    id: stableStoredAssetId(projectId, relativePath),
-    name: sanitizeName(fileName, "asset"),
-    userId: "local",
-    projectId,
-    createdAt: t,
-    updatedAt: t,
-    data: {
-      ...meta,
-      url,
-      relativePath,
-      absolutePath,
-      contentType: actualContentType,
-      size: stat.size,
-      contentHash,
-    },
-  };
+  return storedAssetRecord(projectId, absolutePath, sanitizeName(fileName, "asset"), actualContentType, meta, contentHash);
 }
 
 /**

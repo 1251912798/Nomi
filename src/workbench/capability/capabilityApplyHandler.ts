@@ -1,3 +1,4 @@
+import type { SpendQuoteLine } from '../../../electron/shared/contracts/spendQuote'
 import { useGenerationCanvasStore } from '../generationCanvas/store/generationCanvasStore'
 import { getActiveWorkbenchProjectId } from '../project/workbenchProjectSession'
 import {
@@ -5,7 +6,7 @@ import {
   MCP_REALTIME_SURFACE_CAPABILITY_OPS,
   capabilityProjectBindingError,
 } from './capabilityProjectBinding'
-import { useSpendConfirmStore } from '../generationCanvas/spend/spendConfirm'
+import { spendQuoteDetail, useSpendConfirmStore } from '../generationCanvas/spend/spendConfirm'
 import { buildMultiShotContractView, type MultiShotGatePayload } from '../generationCanvas/spend/productionContractView'
 import { getDesktopBridge } from '../../desktop/bridge'
 import i18n from '../../i18n'
@@ -54,7 +55,7 @@ type SpendConfirmPayload = {
   modelKey?: string
   prompt?: string
   /** 主进程带上：这次确认还会换来「本会话该项目后续生成免问」→ 卡上多写一句授权范围。 */
-  grantsSessionTrust?: boolean
+  quote?: SpendQuoteLine
 }
 
 // 方案门（Phase B）：外部 agent 批量落节点前的确认。projectId 由主进程网关带上（可能非当前项目）。
@@ -127,8 +128,6 @@ async function runProductionTextPlanner(input: {
     prompt,
     displayPrompt: input.instruction ? '修改制作稿件' : '生成制作剧本',
     ...(projectId ? { projectId } : {}),
-    skillKey: 'workbench.production.script-planner',
-    skillName: '剧本初稿规划',
   })
   const text = response.text?.trim()
   if (!text) throw new Error('剧本规划没有返回可审阅内容')
@@ -153,19 +152,18 @@ async function confirmSpendForAgent(info: SpendConfirmPayload): Promise<{ confir
     title: isReference
       ? i18n.t('runtime.capability.referenceTitle')
       : i18n.t('runtime.capability.spendTitle', { intent: describeIntent(info.intent) }),
-    // 授权范围写在脸上：这一点下去还会换来「本会话该项目后续生成免问」，不写明就是骗同意（D4）。
     message: [
       promptPreview
         ? i18n.t('runtime.capability.spendMessageWithPrompt', {
             prompt: `${promptPreview}${info.prompt && info.prompt.length > 60 ? '…' : ''}`,
           })
         : i18n.t('runtime.capability.spendMessage'),
-      ...(info.grantsSessionTrust ? [i18n.t('runtime.capability.spendGrantsSessionTrust')] : []),
     ].join('\n'),
     confirmLabel: i18n.t('runtime.capability.confirmGenerate'),
     source: 'agent',
     countdownMs: 60_000,
     details: [
+      spendQuoteDetail(info.quote ?? { amount: null }),
       // 项目行放第一位：用户可能不在这个项目里，先让他知道花在哪个项目。
       ...(projectName ? [{ label: i18n.t('runtime.capability.project'), value: projectName }] : []),
       { label: i18n.t('runtime.capability.node'), value: nodeLabel },

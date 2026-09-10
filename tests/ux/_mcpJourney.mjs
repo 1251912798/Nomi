@@ -1,3 +1,4 @@
+import { require as tsxRequire } from 'tsx/cjs/api'
 // Shared infra for real-process MCP journeys — the ONE spawn/framing/teardown/mock-vendor implementation
 // (P1: no copy-paste) driven by the L1/L2 MCP journeys and production-mcp-journey.e2e.mjs, plus
 // any future real-transport MCP test. Client-specific differences (initialize capabilities, clientInfo,
@@ -32,12 +33,8 @@ export { packagedMcpRuntime } from './_packagedMcpRuntime.mjs'
 const require = createRequire(import.meta.url)
 export const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 
-// Per-kind default node sizes, imported from the BUILT production table (compiled CommonJS) rather than
-// hand-copied — so the AABB-overlap check in mcp-journey automatically covers whatever kinds production
-// defines, and can never silently drift from electron/capabilityCore/nodeKindDomain.ts. The harness
-// already requires a fresh dist-electron (assertBuilt), so this compiled module is guaranteed present.
-export const NODE_KIND_DEFAULT_SIZE =
-  require(path.join(repoRoot, 'dist-electron/capabilityCore/nodeKindDomain.js')).NODE_KIND_DEFAULT_SIZE
+// Derive expected geometry from source, independently of the app process build.
+export const { NODE_KIND_DEFAULT_SIZE } = tsxRequire('../../electron/capabilityCore/nodeKindDomain.ts', import.meta.url)
 // Extreme fallback size (theoretically unreachable; only guards an illegal kind slipping in). Mirrors the
 // FALLBACK_SIZE the built module falls back to for unknown kinds.
 export const NODE_KIND_FALLBACK_SIZE = { width: 340, height: 280 }

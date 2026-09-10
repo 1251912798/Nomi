@@ -1,0 +1,132 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-09-agent-panel-mechanics",
+  "problem_type": "Panel presentation invariants must follow the active lane owner",
+  "symptom": "Retired projection fixes do not reach lane receipts or usage, and technical details can hide shot parameters.",
+  "direct_cause": "Main fixed the retired V4 projection while stage4 uses laneViewModel; both technical data and shot parameters used PlanRow.detail.",
+  "class_root": "Shared presentation invariants must be enforced at active receipt, usage and approval boundaries.",
+  "affected_population": [
+    "All lane tools, usage values and canvas/semantic shot approvals"
+  ],
+  "scope_paths": [
+    "src/workbench/ai/lane/laneViewModel.ts",
+    "src/workbench/ai/v4/useAgentPanelV4Data.ts",
+    "src/workbench/ai/v4/AgentPanelV4Cards.tsx",
+    "src/workbench/ai/v4/agentPanelV4Intervention.ts",
+    "src/workbench/ai/v4/agentPanelV4Types.ts",
+    "src/workbench/ai/resident/residentToolDisplay.ts"
+  ],
+  "entry_points": [
+    "Lane tool receipts",
+    "Lane usage host",
+    "Lane pending approval"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "Restoring approved internal component behavior without a dependency or protocol change.",
+  "invariants": [
+    "Undo requires successful matched receipt and declared capability support.",
+    "Context and cumulative token values use the shared compact formatter.",
+    "Semantic shot metadata stays visible while technical plan details remain collapsed."
+  ],
+  "generality_proof": "Resolve model-facing tool identity before using the capability registry; both canvas nodes and semantic shots use the existing resident shot projection; lane host injects the shared token formatter.",
+  "shared_boundaries": [
+    {
+      "path": "src/workbench/ai/lane/laneViewModel.ts",
+      "symbol": "laneViewModel",
+      "responsibility": "Check capability support for every matched successful undo receipt."
+    },
+    {
+      "path": "src/workbench/ai/v4/useAgentPanelV4Data.ts",
+      "symbol": "useAgentPanelV4Data",
+      "responsibility": "Supply shared token formatting to every lane usage value."
+    },
+    {
+      "path": "src/workbench/ai/v4/agentPanelV4Intervention.ts",
+      "symbol": "projectV4Intervention",
+      "responsibility": "Keep technical plan data separate from semantic shot metadata."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/workbench/ai/lane/laneViewModel.ts",
+      "entry_point": "laneViewModel tool-result",
+      "disposition": "enforced",
+      "evidence": "Tests reject undo for read-only and unknown tools even with a supplied receipt id; existing matched success stays undoable."
+    },
+    {
+      "path": "src/workbench/ai/v4/useAgentPanelV4Data.ts",
+      "entry_point": "useAgentPanelV4Data",
+      "disposition": "enforced",
+      "evidence": "Host passes formatV4Tokens; migrated lane regression covers 500, 4K and 1.2M."
+    },
+    {
+      "path": "src/workbench/ai/v4/agentPanelV4Intervention.ts",
+      "entry_point": "planRowsOf",
+      "disposition": "enforced",
+      "evidence": "Lane pending regressions cover both nodes and shots; component regressions distinguish technical and metadata fields."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Any subsequent tool receipt or shot plan would hit the owner mismatch.",
+    "same_class_scan": [
+      "Read lane receiptFor/tool-result and undoableLaneToolCallId to separate capability from durable receipt authority.",
+      "Read useAgentPanelV4Data labels and V4 context formatter.",
+      "Read residentPlanShots nodes and shots branches, planRowsOf technical lines and V4Intervention consumers."
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "src/workbench/ai/lane/laneViewModel.ts",
+    "invariant": "Active lane owners enforce capability-aware undo and shared semantic presentation.",
+    "failure_mode": "Unsupported tools never advertise undo; unavailable usage remains unknown.",
+    "exception_policy": "none",
+    "strategy": "Reuse capabilitySupportsUndo and formatV4Tokens; split technical details from visible metadata at PlanRow.",
+    "artifacts": [
+      "src/workbench/ai/lane/laneViewModel.ts",
+      "src/workbench/ai/v4/useAgentPanelV4Data.ts",
+      "src/workbench/ai/v4/AgentPanelV4Cards.tsx",
+      "src/workbench/ai/v4/agentPanelV4Intervention.ts",
+      "src/workbench/ai/v4/agentPanelV4Types.ts",
+      "src/workbench/ai/resident/residentToolDisplay.ts"
+    ]
+  },
+  "regression_tests": [
+    "src/workbench/ai/lane/lanePanelMechanics.test.ts",
+    "src/workbench/ai/lane/laneViewModel.test.ts",
+    "src/workbench/ai/resident/residentToolDisplay.test.ts",
+    "src/workbench/ai/v4/agentPanelV4Intervention.test.ts",
+    "src/workbench/ai/v4/agentPanelV4Blocks.test.ts"
+  ],
+  "class_regression_tests": [
+    "src/workbench/ai/lane/lanePanelMechanics.test.ts",
+    "src/workbench/ai/lane/laneViewModel.test.ts",
+    "src/workbench/ai/resident/residentToolDisplay.test.ts",
+    "src/workbench/ai/v4/agentPanelV4Intervention.test.ts",
+    "src/workbench/ai/v4/agentPanelV4Blocks.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "src/workbench/ai/v4/agentPanelV4Projection.ts",
+      "src/workbench/ai/v4/agentPanelV4Projection.test.ts"
+    ],
+    "rationale": "Keep the retired projection deleted; carry its shared invariants into the active lane."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "Internal presentation invariants; existing dependencies retained unchanged.",
+    "exit_criteria": []
+  },
+  "migration": "No persisted data change; old transcripts with ambiguous boundaries stay visible.",
+  "residual_risks": [
+    "Verification covers deterministic lane data and the current worktree browser fixture, not a newly packaged desktop application."
+  ],
+  "invariant_owner_layer": {
+    "layer": "src/workbench/ai/lane/laneViewModel.ts",
+    "tests": [
+      "src/workbench/ai/lane/lanePanelMechanics.test.ts",
+      "src/workbench/ai/lane/laneViewModel.test.ts"
+    ]
+  }
+}

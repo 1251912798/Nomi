@@ -24,8 +24,8 @@ import {
   capabilityWorkModeDecision,
   type CapabilityApprovalSubject,
 } from "../agentCapabilities/capabilityApprovalPolicy";
-import type { ProjectAgentApprovalPolicy, ProjectAgentWorkMode } from "../projectAgentContracts";
-import { projectAgentApprovalPolicyOf } from "../projectAgentContracts";
+import type { ProjectAgentApprovalPolicy, ProjectAgentWorkMode } from '../agentCapabilities/capabilityApprovalPolicy';
+import { projectAgentApprovalPolicyOf } from '../agentCapabilities/capabilityApprovalPolicy';
 
 /** 一次 lane 上的调用，在审批眼里的全部事实。前两个是身份，后四个来自能力契约。 */
 export type LaneApprovalSubject = CapabilityApprovalSubject & Readonly<{
@@ -34,6 +34,17 @@ export type LaneApprovalSubject = CapabilityApprovalSubject & Readonly<{
   /** 它投影的那个能力契约 id（`canvas.write`）。**「本会话允许这类」按它记**，不按工具名。 */
   capabilityId: string;
 }>;
+
+/** Native tools keep upstream schemas; the trusted host supplies approval facts separately. */
+export type LaneApprovalSubjectResolver = (request: Readonly<{
+  toolName: string;
+  args: unknown;
+}>) => Readonly<{
+  subject: LaneApprovalSubject;
+  forceConfirmation?: boolean;
+  denialReason?: string;
+  grantable?: boolean;
+}> | undefined;
 
 export type LaneApprovalContext = Readonly<{
   policy: ProjectAgentApprovalPolicy | undefined;

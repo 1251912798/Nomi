@@ -9,6 +9,9 @@
 // logo——两版共同的毛病是**落点跟着面板走**：切一个面就换一个地方，用户每次都得重新找它。
 // 顶栏是唯一跨创作/分镜/生成/预览四个面常驻的 chrome，所以收起角标的家在那儿。
 import React from 'react'
+import { useTranslation } from 'react-i18next'
+import { IconX } from './AgentPanelV4Icons'
+import { WorkbenchIconButton } from '../../../design'
 import { TRANSPORT_BAR_SELECTOR, transportClearanceFrom } from './agentPanelV4DockClearance'
 
 /**
@@ -56,10 +59,11 @@ function useTransportClearance(dockRef: React.RefObject<HTMLDivElement | null>):
  * 介入槽跟着它一起——这样一份编辑计划仍然读得到、批得下，不必把整列还给面板。
  *
  * 这里**没有**「叫回 Nomi」按钮：收起后叫回它的入口只有一个，就是右上角那枚 logo 钮
- * （`V4CollapsedLogoDock`）。再更早的一版两个入口并存——rail 上写「展开 Nomi」、画面右上角
+ * （`CollapsedAiChip`）。再更早的一版两个入口并存——rail 上写「展开 Nomi」、画面右上角
  * 又浮一颗「叫回 Nomi」胶囊——同一个动作两个名字两个位置。
  */
-export function V4CollapsedDock({ children }: { children: React.ReactNode }): JSX.Element {
+export function V4CollapsedDock({ children, onClose }: { children: React.ReactNode; onClose: () => void }): JSX.Element {
+  const { t } = useTranslation()
   const dockRef = React.useRef<HTMLDivElement>(null)
   const transportClearance = useTransportClearance(dockRef)
   return (
@@ -69,6 +73,13 @@ export function V4CollapsedDock({ children }: { children: React.ReactNode }): JS
       style={{ bottom: transportClearance }}
     >
       <div className="pointer-events-auto grid w-full max-w-[560px] gap-1.5" data-agent-collapsed-dock="true">
+        <WorkbenchIconButton
+          className="justify-self-end"
+          size="sm"
+          icon={<IconX size={16} />}
+          label={t('agentPanelV4.dockClose')}
+          onClick={onClose}
+        />
         {children}
       </div>
     </div>

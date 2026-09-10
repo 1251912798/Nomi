@@ -1,8 +1,9 @@
+import { revalidatePendingCredential } from './catalog/validateCandidateCredential';
 import crypto from "node:crypto";
-import { assertLocalAssetTransportReady, localizeAssetsForVendor, trustedLocalOutputOrigin } from "./catalog/assetLocalization";
+import { assertLocalAssetTransportReady, localizeAssetsForVendor } from "./catalog/assetLocalization";
 import { assetIngestionResolver, assetLocalizationOptions } from "./catalog/assetTransportRuntime";
 import { readNomiLocalAsset, postJsonForAssetUpload, postMultipartForAssetUpload, putBinaryForAssetUpload } from "./assets/localAssetFile";
-import { importRemoteAsset, writeAsset, writeDeterministicAsset } from "./assets/projectAssetStore";
+import { writeAsset, writeDeterministicAsset } from "./assets/projectAssetStore";
 import { endpoint } from "./vendorEndpoint";
 import { requestJson, requestMultipart, vendorResponseLimitForKind } from "./vendor/vendorHttp";
 import { runMultipartProfileOperation } from "./catalog/multipartOperation";
@@ -11,8 +12,9 @@ import { chatImageFallbackOperation } from "./catalog/imageRouteFallback";
 import { buildNormalizedRecipe, buildTaskProvenance } from "./vendor/provenance";
 import { extractProviderCostActual, type ProviderCostActual } from "./vendor/cost";
 import { traceVendorCompleted, traceVendorRequested } from "./events/vendorCallTrace";
-import { scheduleTechnicalReview } from "./review/reviewTrace";
-import { localizedTaskAssetFileName, probeLocalizedDurationSeconds } from "./assets/localizedAsset";
+import { localizeTaskAsset } from "./assets/localizeTaskAsset";
+export { localizeTaskAsset };
+import { localizedTaskAssetFileName } from "./assets/localizedAsset";
 import { type AuthType, authHeaders as buildAuthHeaders, extractTaskId as extractTaskIdShared } from "./ai/requestPipeline";
 import { assertCanonicalAntigravityOperation, executeProcessOperation, prepareAntigravityCreateOperation } from "./catalog/processOperation"; import type { AntigravityProcessStage } from "./catalog/antigravityCatalog";
 import { executeTextTask } from "./textTaskRunner";
@@ -49,7 +51,7 @@ import { modelModeBodies } from "./catalog/modelCatalogListing";
 import { runCustomCallTask } from "./catalog/customCallDispatch";
 import { resolveCustomCallExecution } from "./catalog/customCallMode";
 import { certifyTaskOutputAndSettleComfyCandidate, materializeCertifiedComfyAssets, resolveComfyCandidateExecution } from "./catalog/comfyuiCandidateLifecycle";
-import { assertAndConsumeSpendGrant } from "./spendGrant";
+import { consumeTaskSpend } from "./tasks/taskSpend";
 import { desktopT } from "./i18n";
 export type {
   AiSdkProviderKind,
@@ -184,44 +186,6 @@ function authHeaders(vendor: Vendor, apiKey: string): Record<string, string> {
 export { billingKindForTaskKind } from "./catalog/types";
 export { extractAssetUrl } from "./tasks/assetUrlExtract";
 
-export async function localizeTaskAsset(
-  projectId: string,
-  assetUrl: string,
-  type: "image" | "video" | "audio" | "model3d",
-  nodeId?: string, vendor?: Pick<Vendor, "key" | "baseUrlHint" | "network">,
-  certificationEvidence?: import("./providerAdapter/certificationMedia").CertificationMediaEvidence,
-): Promise<TaskResult["assets"][number]> {
-  const imported = (await importRemoteAsset({
-    projectId,
-    url: assetUrl,
-    kind: "generated",
-    ownerNodeId: nodeId || null,
-    fileName: localizedTaskAssetFileName(type, assetUrl),
-  }, {
-    trustedPrivateOrigin: trustedLocalOutputOrigin(vendor) || undefined,
-    ...(certificationEvidence ? { certificationEvidence } : {}), ...(vendor?.network ? { providerNetwork: vendor.network } : {}),
-  })) as { id?: string; name?: string; data?: { url?: string; absolutePath?: string } };
-  const durationSeconds = await probeLocalizedDurationSeconds(type, imported.data?.absolutePath);
-  if (type === "image" || type === "video")
-    scheduleTechnicalReview({
-      projectId,
-      nodeId,
-      absolutePath: String(imported.data?.absolutePath || ""),
-      assetUrl: String(imported.data?.url || assetUrl),
-      type,
-    }); // S4-2b:落地技术自检,仅图像/视频（3D 模型不送 VLM）
-  return {
-    type,
-    url: String(imported.data?.url || assetUrl),
-    thumbnailUrl: type === "image" ? String(imported.data?.url || assetUrl) : null,
-    assetId: imported.id || null,
-    assetName: imported.name || null,
-    ...(durationSeconds !== undefined ? { durationSeconds } : {}),
-    // 原始 CDN URL 留存：任何 vendor 都能直接使用，不需要再上传或转 base64。
-    providerUrl: /^https?:\/\//i.test(assetUrl) ? assetUrl : null,
-  };
-}
-
 export function findTaskMapping(vendorKey: string, taskKind: ProfileKind, modelKey?: string, modeId?: string): Mapping | null {
   // 按 (vendor, taskKind, modelKey) 选——同 vendor 下两模型共用一个 taskKind 但请求形状不同时（如 HappyHorse 与 Kling 都 text_to_video），靠 modelKey 精确路由，不再「第一个赢、另一个套错模板」。
   return selectTaskMapping(readCatalog().mappings, vendorKey, taskKind, modelKey, modeId);
@@ -349,6 +313,7 @@ export async function runTask(payload: unknown): Promise<TaskResult> {
   const modelKey = firstString(request.extras?.modelKey, request.extras?.modelAlias);
   const archetypeMeta = request.extras?.archetype;
   const modeId = archetypeMeta && typeof archetypeMeta === "object" ? firstString((archetypeMeta as JsonRecord).modeId) : firstString(request.extras?.modeId);
+  await revalidatePendingCredential(vendorKey);
   const stagedCandidate = resolveComfyCandidateExecution(request);
   const { vendor, model, apiKey, customConfig } = stagedCandidate || findExecutableModel(vendorKey, modelKey, wantedKind);
   const projectId = trim(request.extras?.projectId) || activeTaskProjectFallback();
@@ -365,7 +330,7 @@ export async function runTask(payload: unknown): Promise<TaskResult> {
   if (customCallScript)
     return runCustomCallTask({ vendor, model, apiKey, customConfig, script: customCallScript, taskKind: customCall!.taskKind, modeId: customCall!.modeId, request, kind, wantedKind, projectId, nodeId, grantId, taskId, localizeTaskAsset, writeAsset });
   if (usesSynchronousAudioRunner(wantedKind, mapping)) {
-    assertAndConsumeSpendGrant(grantId, nodeId);
+    await consumeTaskSpend({ grantId, nodeId, projectId, vendorKey: vendor.key, modelKey: model.modelKey, parameters: request.extras });
     return runAudioTask({ vendor, model, apiKey, request, kind, taskId, projectId, nodeId, mapping });
   }
   if (mapping) {
@@ -389,7 +354,7 @@ export async function runTask(payload: unknown): Promise<TaskResult> {
     const cachedHit = readCachedTaskResult({ projectId, fingerprint, nodeId, extras: request.extras });
     if (cachedHit) return cachedHit as TaskResult;
     const antigravityPreflight = await prepareAntigravityCreateOperation({ vendorKey: effectiveVendorKey, modelKey: model.modelKey, taskKind: kind, operation: mapping.create, request });
-    assertAndConsumeSpendGrant(grantId, nodeId); // 付费守卫：缓存未命中=真发 vendor，发前校验消费令牌
+    await consumeTaskSpend({ grantId, nodeId, projectId, vendorKey: vendor.key, modelKey: model.modelKey, parameters: request.extras }); // 付费守卫：缓存未命中=真发 vendor，发前校验消费令牌
     let createOperation = mapping.create; let executed;
     try {
       executed = await executeProfileOperation({ vendor, model, apiKey, request, operation: createOperation, stage: "create", antigravityPreflight });
@@ -445,7 +410,10 @@ export async function runTask(payload: unknown): Promise<TaskResult> {
     return normalized.result;
   }
 
-  if (wantedKind === "text") return executeTextTask({ vendor, model, apiKey, kind, request, taskId });
+  if (wantedKind === "text") {
+    await consumeTaskSpend({ grantId, nodeId, projectId, vendorKey: vendor.key, modelKey: model.modelKey, parameters: request.extras });
+    return executeTextTask({ vendor, model, apiKey, kind, request, taskId });
+  }
 
   const suffix = wantedKind === "video" ? "/v1/videos/generations" : "/v1/images/generations";
   const fallbackRecipe = buildNormalizedRecipe({ vendor, model, request });
@@ -457,7 +425,7 @@ export async function runTask(payload: unknown): Promise<TaskResult> {
     extras: request.extras,
   });
   if (fallbackHit) return fallbackHit as TaskResult;
-  assertAndConsumeSpendGrant(grantId, nodeId);
+  await consumeTaskSpend({ grantId, nodeId, projectId, vendorKey: vendor.key, modelKey: model.modelKey, parameters: request.extras });
   const fallbackExtraHeaders = extractVendorExtraHeaders(vendor);
   const fallbackHeaders: Record<string, string> = {
     "Content-Type": "application/json",

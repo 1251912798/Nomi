@@ -17,6 +17,28 @@ import type { ResolveBlocker } from '../../generationCanvas/agent/storyboardStra
 
 export type StrategyTranslate = (key: string, options?: Record<string, unknown>) => string
 
+export type AggregatedIssue = {
+  issue: PlanIssue
+  shotIds: string[]
+}
+
+/** Collapse identical issue/model corrections while preserving shot targeting. */
+export function aggregateIssues(issues: readonly PlanIssue[]): AggregatedIssue[] {
+  const groups = new Map<string, AggregatedIssue>()
+  for (const issue of issues) {
+    const requested = issue.params.requested ?? ''
+    const modelLabel = issue.params.modelLabel ?? ''
+    const key = `${issue.code}\u0000${requested}\u0000${modelLabel}`
+    const current = groups.get(key)
+    if (current) {
+      if (issue.shotId) current.shotIds.push(issue.shotId)
+      continue
+    }
+    groups.set(key, { issue: { ...issue }, shotIds: issue.shotId ? [issue.shotId] : [] })
+  }
+  return [...groups.values()]
+}
+
 /**
  * 引擎 code → i18n 键。写成显式字面量表而不是 `code.replace('.', '')`：
  * `check:i18n-key-refs` / `check:i18n-dead-keys` 只认得出字面量键，拼出来的键在门岗眼里是死词条。

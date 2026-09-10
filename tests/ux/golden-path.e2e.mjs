@@ -11,7 +11,7 @@
 //   ③ 显式拆成 3 镜（走现役分镜规划链路：选中正文 →「拆成镜头」→ Agent 提议 → 人批准）
 //   ④ 选中第 2 镜
 //   ⑤ 改第 2 镜的一句提示词——经 Agent 的 canonical
-//      `nomi_canvas_plan(operation=patch_shots)` 提议并批准
+//      `nomi_storyboard_write(operation=patch_shots)` 提议并批准
 //   ⑥ 第 2 镜生成一张图片（loopback fixture 供应商，零额度）
 //   ⑦ 结果回到该行
 //   ⑧ 关闭 Nomi 重启
@@ -38,6 +38,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 
 import { clickOrFail, expect, expectAbsent, expectVisible, proveProbe, screenshotSettled } from './_assert.mjs'
+import { laneMessages, readLaneTranscripts } from './agent-lane-observer.mjs'
 import { FIXTURE_IMAGE_MODEL, flattenRequestText } from './agent-runtime-fixture.mjs'
 import {
   APPROVAL_CARD, COMPOSER_INPUT, COMPOSER_SEND, CREATION_PANEL, DOCUMENT, INTERVENTION_CONFIRM,
@@ -187,7 +188,7 @@ async function stepSplitIntoThreeShots(win, projectId) {
     label: '划词拆镜头触发真实规划请求',
     match: (body) => flattenRequestText(body).includes('GOLDEN_SCRIPT') && !hasToolResult(body, PLAN_CALL_ID),
     reply: {
-      type: 'tool', id: PLAN_CALL_ID, name: 'nomi_canvas_plan',
+      type: 'tool', id: PLAN_CALL_ID, name: 'nomi_storyboard_write',
       args: {
         operation: 'propose_storyboard_plan', title: PLAN_TITLE, anchors: [],
         shots: SHOT_PROMPTS.map((prompt, position) => ({
@@ -257,7 +258,7 @@ async function stepSelectShot2(win) {
 
 /**
  * ⑤ 改第 2 镜的一句提示词 —— 经 Agent 的 canonical
- * `nomi_canvas_plan(operation=patch_shots)` 提议、人批准后才落。
+ * `nomi_storyboard_write(operation=patch_shots)` 提议、人批准后才落。
  * 断言分三层：工具确实是 canonical 那一个 / 只有第 2 行变 / 1、3 行逐字未变。
  */
 async function stepAgentPatchShot2(win, projectId) {
@@ -265,7 +266,7 @@ async function stepAgentPatchShot2(win, projectId) {
     label: 'Agent 把改提示词表达成 canonical patch_shots 提议',
     match: (body) => flattenRequestText(body).includes(PATCH_INSTRUCTION) && !hasToolResult(body, PATCH_CALL_ID),
     reply: {
-      type: 'tool', id: PATCH_CALL_ID, name: 'nomi_canvas_plan',
+      type: 'tool', id: PATCH_CALL_ID, name: 'nomi_storyboard_write',
       args: {
         operation: 'patch_shots',
         select: { kind: 'indexes', indexes: [2] },
@@ -348,6 +349,15 @@ async function stepGenerateShot2Image(win, projectId) {
  * 那是走查独有的死法，不是用户路径（docs/lessons/walkthrough-no-win-reload.md）。
  */
 async function stepRestartAndVerify(projectRoot, projectId, { shotId, resultUrl }) {
+  const sessionsBeforeRestart = readLaneTranscripts(projectRoot)
+  expect(sessionsBeforeRestart, '分镜规划和选中镜头修改必须留在同一 lane').toHaveLength(1)
+  const sessionBeforeRestart = sessionsBeforeRestart[0]
+  const messagesBeforeRestart = laneMessages(sessionBeforeRestart)
+  const storyboardResults = messagesBeforeRestart.filter(message => message.role === 'toolResult'
+    && [PLAN_CALL_ID, PATCH_CALL_ID].includes(message.toolCallId))
+  expect(storyboardResults.map(message => [message.toolCallId, message.toolName, message.isError]))
+    .toEqual([[PLAN_CALL_ID, 'nomi_storyboard_write', false], [PATCH_CALL_ID, 'nomi_storyboard_write', false]])
+  const modelRequestsBeforeRestart = walk.fixture.requests.length
   await walk.stopApp()
   say('Nomi 已真正退出')
 
@@ -417,6 +427,10 @@ async function stepRestartAndVerify(projectRoot, projectId, { shotId, resultUrl 
   console.log('  · 重启后画面格 img：', JSON.stringify(restored))
   expect(restored.src, '重启后第 2 行画面格的图不是本地资产').toContain('nomi-local://')
   expect(restored.w, '重启后第 2 行的画面格有 img 标签但图没解码出来（宽 0）').toBeGreaterThan(0)
+  const restoredSession = readLaneTranscripts(projectRoot).find(session => session.sessionId === sessionBeforeRestart.sessionId)
+  expect(restoredSession, '重启后的分镜面必须仍用原 SDK session').toBeTruthy()
+  expect(laneMessages(restoredSession), '冷重启不能补造旧工具结果或重跑分镜').toEqual(messagesBeforeRestart)
+  expect(walk.fixture.requests, '恢复历史不能调用模型').toHaveLength(modelRequestsBeforeRestart)
   say('重启后：第 2 镜的修改和图片都还在')
   await shot('restart-changes-persist')
 }

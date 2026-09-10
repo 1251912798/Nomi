@@ -63,8 +63,8 @@ beforeEach(() => {
 afterAll(() => fs.rmSync(projectRoot, { recursive: true, force: true }));
 
 describe("writeAsset canonical media filename", () => {
-  it("accepts only the exact self-contained GLB media type after shared structural validation", () => {
-    const stored = writeAsset("project-1", validGlb(), "scene.bin", "model/gltf-binary", { kind: "imported" }) as {
+  it("accepts only the exact self-contained GLB media type after shared structural validation", async () => {
+    const stored = await writeAsset("project-1", validGlb(), "scene.bin", "model/gltf-binary", { kind: "imported" }) as {
       data?: { relativePath?: string; contentType?: string };
     };
     expect(stored.data?.relativePath).toMatch(/scene\.glb$/);
@@ -75,26 +75,26 @@ describe("writeAsset canonical media filename", () => {
     expect(() => writeAsset("project-1", validGlb(), "bad.model", "model/x-vendor-scene", { kind: "imported" }))
       .toThrow(/Unsupported 3D asset content type/);
   });
-  it("does not persist a video as .bin when the upload had no usable extension", () => {
-    const result = writeAsset("project-1", Buffer.from("video"), "upload.bin", "video/mp4", { kind: "imported" }) as {
+  it("does not persist a video as .bin when the upload had no usable extension", async () => {
+    const result = await writeAsset("project-1", Buffer.from("video"), "upload.bin", "video/mp4", { kind: "imported" }) as {
       data?: { relativePath?: string; url?: string; contentType?: string };
     };
 
-    expect(result.data?.relativePath).toMatch(/assets\/imported\/\d{4}-\d{2}-\d{2}\/upload\.mp4$/);
+    expect(result.data?.relativePath).toMatch(/assets\/imported\/sha256\/[a-f0-9]{64}\/upload\.mp4$/);
     expect(result.data?.url).toContain("upload.mp4");
     expect(result.data?.contentType).toBe("video/mp4");
     expect(fs.existsSync(path.join(projectRoot, result.data?.relativePath || ""))).toBe(true);
   });
 
-  it("keeps a known matching extension", () => {
-    const result = writeAsset("project-1", Buffer.from("image"), "poster.png", "image/png", { kind: "imported" }) as {
+  it("keeps a known matching extension", async () => {
+    const result = await writeAsset("project-1", Buffer.from("image"), "poster.png", "image/png", { kind: "imported" }) as {
       data?: { relativePath?: string };
     };
     expect(result.data?.relativePath).toMatch(/poster\.png$/);
   });
 
-  it("returns the same stable identity that a later project listing reads", () => {
-    const result = writeAsset("project-1", Buffer.from("stable-image"), "stable.png", "image/png", { kind: "imported" }) as {
+  it("returns the same stable identity that a later project listing reads", async () => {
+    const result = await writeAsset("project-1", Buffer.from("stable-image"), "stable.png", "image/png", { kind: "imported" }) as {
       id?: string;
       data?: { relativePath?: string };
     };
@@ -103,9 +103,9 @@ describe("writeAsset canonical media filename", () => {
     expect(listed?.id).toBe(result.id);
   });
 
-  it("sniffs an octet-stream video before selecting its stored extension", () => {
+  it("sniffs an octet-stream video before selecting its stored extension", async () => {
     const bytes = Buffer.concat([Buffer.from([0, 0, 0, 0x10]), Buffer.from("ftypisom", "ascii"), Buffer.alloc(4)]);
-    const result = writeAsset("project-1", bytes, "upload", "application/octet-stream", { kind: "imported" }) as {
+    const result = await writeAsset("project-1", bytes, "upload", "application/octet-stream", { kind: "imported" }) as {
       data?: { relativePath?: string; contentType?: string };
     };
     expect(result.data?.relativePath).toMatch(/upload\.mp4$/);

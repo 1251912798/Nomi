@@ -112,15 +112,15 @@ describe('要写进去的那段话，摘一行给用户看', () => {
     expect(slot?.summary).toContain('她按下录制键，画面定格。')
   })
 
-  it('长文截断，不把槽撑成一堵墙', () => {
+  it('长文保留完整源码，显示高度归宿主滚动', () => {
     const long = '一'.repeat(200)
     const slot = projectV4Intervention(
       { toolName: 'nomi_document_edit', args: { content: long }, effectClass: 'reversible_local', pendingCount: 1 },
       labels,
       t,
     )
-    expect(slot?.summary).toContain('…')
-    expect(slot!.summary!.length).toBeLessThan(long.length)
+    expect(slot?.summary).toContain(long)
+    expect(slot?.summary).not.toContain('…')
   })
 
   it('没有内容字段就不摘——不编，也不留占位', () => {
@@ -147,7 +147,8 @@ describe('③ 槽里没有可编辑的东西', () => {
       t,
     )
     expect(slot?.kind).toBe('plan')
-    expect(slot?.plan).toEqual([{ label: '镜头 2 尾部裁 0.4s', detail: '{"op":"trim"}', checked: true }])
+    expect(slot?.scope).toBeUndefined()
+    expect(slot?.plan).toEqual([{ label: '镜头 2 尾部裁 0.4s', technical: '{"op":"trim"}', checked: true }])
     expect(slot?.params).toEqual(['kling-o1'])
     // 视图模型里没有任何「可编辑」的字段——编辑器整件删了，这条防止它以后从别处回来。
     expect(Object.keys(slot ?? {})).not.toContain('editable')

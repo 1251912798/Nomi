@@ -17,6 +17,8 @@ export type WorkbenchDocumentSlice = {
   /** 每篇原稿的分镜设计（唯一领域真相源，按 documentId 索引）。随项目持久化。 */
   storyboardDesignsByDocumentId: Record<string, StoryboardDesign[]>
   activeStoryboardId: string | null
+  storyboardRowFocus: { designId: string; rowId: string } | null
+  setStoryboardRowFocus: (focus: { designId: string; rowId: string } | null) => void
   /** 更新某篇文档（按 id 定位），并 bump 持久化。 */
   setWorkbenchDocument: (document: WorkbenchDocument) => void
   /** 新增一篇原稿（默认空白），返回新文档并设为激活。 */
@@ -83,11 +85,18 @@ function createDesign(documentId: string, plan: StoryboardPlan, sourceDocumentUp
   }
 }
 
-export const createWorkbenchDocumentSlice: WorkbenchSliceCreator<WorkbenchDocumentSlice> = (set, get) => ({
+export const createWorkbenchDocumentSlice = (
+  set: Parameters<WorkbenchSliceCreator<WorkbenchDocumentSlice>>[0],
+  get: Parameters<WorkbenchSliceCreator<WorkbenchDocumentSlice>>[1],
+  _store: Parameters<WorkbenchSliceCreator<WorkbenchDocumentSlice>>[2],
+  projectPlan: (design: StoryboardDesign) => void,
+): WorkbenchDocumentSlice => ({
   workbenchDocuments: [INITIAL_DOCUMENT],
   activeDocumentId: INITIAL_DOCUMENT.id,
   storyboardDesignsByDocumentId: {},
   activeStoryboardId: null,
+  storyboardRowFocus: null,
+  setStoryboardRowFocus: (storyboardRowFocus) => set({ storyboardRowFocus }),
   setWorkbenchDocument: (workbenchDocument) => {
     const normalized = normalizeWorkbenchDocument(workbenchDocument)
     set((state) => {
@@ -155,7 +164,7 @@ export const createWorkbenchDocumentSlice: WorkbenchSliceCreator<WorkbenchDocume
     const normalized = documents.map(normalizeWorkbenchDocument)
     const safe = normalized.length ? normalized : [createDefaultWorkbenchDocument()]
     const active = safe.some((d) => d.id === activeId) ? (activeId as string) : safe[0].id
-    set({ workbenchDocuments: safe, activeDocumentId: active, activeStoryboardId: null })
+    set({ workbenchDocuments: safe, activeDocumentId: active, activeStoryboardId: null, storyboardRowFocus: null })
   },
   setActiveStoryboardId: (id, documentId) => {
     if (id === null) {
@@ -193,6 +202,7 @@ export const createWorkbenchDocumentSlice: WorkbenchSliceCreator<WorkbenchDocume
       activeStoryboardId: design.id,
       persistRevision: current.persistRevision + 1,
     }))
+    projectPlan(design)
     return design
   },
   duplicateStoryboardDesign: (id, documentId) => {
@@ -292,6 +302,7 @@ export const createWorkbenchDocumentSlice: WorkbenchSliceCreator<WorkbenchDocume
         persistRevision: state.persistRevision + 1,
       }
     })
+    if (appliedDesign) projectPlan(appliedDesign)
     return appliedDesign
   },
   commitStoryboardPlan: (documentId, storyboardId) => {

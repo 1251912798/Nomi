@@ -1,3 +1,6 @@
+import { LibraryGroup } from '../../library/LibraryGroup'
+import { groupLibraryItems, type LibraryCategory } from '../../library/libraryGroups'
+import { V4Row } from './AgentPanelV4Row'
 // Agent 面板 v4 · 积木 ⑧ composer（AI Elements PromptInput + MiniMax 底栏）
 //
 // 底栏**逐件**照定稿 Composer 板：`[+] [模型名 ▾] ｜ [Skill] …… [权限 ▾] [↑/■]`
@@ -17,7 +20,7 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '../../../utils/cn'
-import { NomiSelect, type NomiSelectOption } from '../../../design'
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider, NomiSelect, type NomiSelectOption } from '../../../design'
 import {
   IconArrowUp,
   IconChevronDown,
@@ -30,8 +33,16 @@ import { approvalPolicyForTier, maxComposerHeight, useComposerHeight, shouldSubm
 import type { ComposerMode, ComposerPopover, PermissionTier, V4Chip } from './agentPanelV4Types'
 import { DEFAULT_PERMISSION_TIER, PERMISSION_TIERS } from './agentPanelV4Types'
 
+import { SkillMedia } from '../../skillLibrary/SkillMedia'
+
+const MODEL_TRIGGER_WIDTH = 164
+
+function compactModelLabel(label: string): string {
+  return label.replace(/\s+[·|]\s+[^·|]+$/, '')
+}
+
 function ComposerChip({ chip, removeLabel, onRemove }: { chip: V4Chip; removeLabel: string; onRemove?: () => void }): JSX.Element {
-  return (
+  const content = (
     <span
       className={cn(
         'inline-flex h-6 shrink-0 items-center gap-[5px] rounded-nomi-sm border pl-1 pr-2 text-micro',
@@ -42,7 +53,7 @@ function ComposerChip({ chip, removeLabel, onRemove }: { chip: V4Chip; removeLab
       data-v4-chip={chip.kind}
     >
       {chip.kind === 'skill' ? (
-        <IconPackage size={12} aria-hidden="true" />
+        <SkillMedia cover={chip.cover} preview={chip.preview} className="size-4 rounded-nomi-sm object-cover" />
       ) : (
         <span
           className={cn('h-3.5 w-[18px] shrink-0 rounded-sm', chip.kind === 'clip' ? 'bg-nomi-track-video' : 'bg-nomi-ink-20')}
@@ -55,6 +66,13 @@ function ComposerChip({ chip, removeLabel, onRemove }: { chip: V4Chip; removeLab
       </button>
     </span>
   )
+  if (chip.kind !== 'skill') return content
+  return <TooltipProvider delayDuration={180}><Tooltip><TooltipTrigger asChild>{content}</TooltipTrigger>
+    <TooltipContent side="top" className="z-popover w-80 whitespace-normal bg-nomi-paper p-3 text-nomi-ink">
+      <SkillMedia cover={chip.cover} preview={chip.preview} play className="mb-2 max-h-60 w-full object-contain" />
+      <strong>{chip.label}</strong><p className="mt-2 max-h-48 overflow-y-auto whitespace-pre-wrap text-caption leading-relaxed">{chip.description}</p>
+    </TooltipContent>
+  </Tooltip></TooltipProvider>
 }
 
 export type AgentPanelV4ComposerProps = {
@@ -65,7 +83,7 @@ export type AgentPanelV4ComposerProps = {
   /** 受控文本。没有 `onValueChange` 时框是只读的展示件（设计实验室取景用）。 */
   value?: string
   onValueChange?: (value: string) => void
-  onSubmit?: () => void
+  onSubmit?: (choice?: 'primary' | 'secondary') => void
   onStop?: () => void
   onRemoveChip?: (chip: V4Chip, index: number) => void
   onAddFile?: () => void
@@ -170,7 +188,7 @@ export function AgentPanelV4Composer({
             })
           ) {
             event.preventDefault()
-            if (canSend) onSubmit?.()
+            if (canSend) onSubmit?.(event.altKey ? 'secondary' : 'primary')
           }
         }}
         placeholder={running ? t('agentPanelV4.placeholderRunning') : t('agentPanelV4.placeholder')}
@@ -188,34 +206,35 @@ export function AgentPanelV4Composer({
           又允许浏览器把 scrollLeft 推到 17px 且用户拖不回来，助手正文、工具收据、
           头部头像左边全被**永久**裁掉。让模型钮成为那个会缩的（`min-w-0` + 名字 truncate），
           这一行就再也宽不过面板。 */}
-      <div className="flex h-10 min-w-0 shrink-0 items-center gap-1 px-2 pb-2 pt-1">
+      <V4Row as="div" className="h-10 min-w-0 shrink-0 px-1 pb-2 pt-1">
         <button
           type="button"
           aria-label={t('agentPanelV4.addAnyFile')}
           onClick={onAddFile}
           data-v4-control="add-file"
-          className="grid size-7 shrink-0 place-items-center rounded-nomi-sm text-nomi-ink-80 hover:bg-nomi-ink-05"
+          className="grid size-6 shrink-0 place-items-center rounded-nomi-sm text-nomi-ink-80 hover:bg-nomi-ink-05"
         >
           <IconPlus size={16} />
         </button>
-        <button
+        <V4Row as="button"
           type="button"
           onClick={() => onTogglePopover?.('model')}
           aria-expanded={openPopover === 'model'}
           title={modelLabel ?? undefined}
-          className="inline-flex h-7 min-w-0 shrink items-center gap-[5px] whitespace-nowrap rounded-nomi-sm px-2 text-caption text-nomi-ink-80 hover:bg-nomi-ink-05"
+          style={{ maxWidth: MODEL_TRIGGER_WIDTH }}
+          className="h-7 min-w-0 shrink whitespace-nowrap rounded-nomi-sm px-1 text-caption text-nomi-ink-80 hover:bg-nomi-ink-05"
           data-v4-control="model"
         >
-          <span className="min-w-0 truncate">{modelLabel ?? t('agentPanelV4.model')}</span>
+          <span className="min-w-0 truncate">{modelLabel ? compactModelLabel(modelLabel) : t('agentPanelV4.model')}</span>
           <IconChevronDown size={12} className="shrink-0" />
-        </button>
-        <span className="mx-0.5 h-4 w-px shrink-0 bg-nomi-line" aria-hidden="true" />
-        <button
+        </V4Row>
+        <span className="h-4 w-px shrink-0 bg-nomi-line" aria-hidden="true" />
+        <V4Row as="button"
           type="button"
           onClick={() => onTogglePopover?.('skill')}
           aria-expanded={openPopover === 'skill'}
           className={cn(
-            'inline-flex h-7 shrink-0 items-center gap-[5px] whitespace-nowrap rounded-nomi-sm px-2 text-caption text-nomi-ink-80 hover:bg-nomi-ink-05',
+            'h-7 shrink-0 whitespace-nowrap rounded-nomi-sm px-1 text-caption text-nomi-ink-80 hover:bg-nomi-ink-05',
             skillSelected && 'bg-nomi-ink-05',
           )}
           data-v4-control="skill"
@@ -224,18 +243,18 @@ export function AgentPanelV4Composer({
           <IconPackage size={14} />
           {t('agentPanelV4.skill')}
           {skillSelected ? <span className="size-1.5 rounded-pill bg-nomi-accent" aria-hidden="true" /> : null}
-        </button>
-        <span className="flex-1" />
-        <button
+        </V4Row>
+
+        <V4Row as="button"
           type="button"
           onClick={() => onTogglePopover?.('permission')}
           aria-expanded={openPopover === 'permission'}
-          className="inline-flex h-7 shrink-0 items-center gap-[5px] whitespace-nowrap rounded-nomi-sm px-2 text-caption text-nomi-ink-80 hover:bg-nomi-ink-05"
+          className="h-7 shrink-0 whitespace-nowrap rounded-nomi-sm px-1 text-caption text-nomi-ink-80 hover:bg-nomi-ink-05"
           data-v4-control="permission"
         >
           {t(`agentPanelV4.permission.${permission}`)}
           <IconChevronDown size={12} />
-        </button>
+        </V4Row>
         {/* 有东西可发才点亮（文本或已挂 chip）。画布自己两种画法都出现过——
             高度① 那格（专门讲空框）画的是灰钮，Flow 三板画的是深钮。
             取「空框不该假装能发」这一条：它是那格的**论点**，另两处只是背景。
@@ -263,7 +282,7 @@ export function AgentPanelV4Composer({
             <IconArrowUp size={15} />
           )}
         </button>
-      </div>
+      </V4Row>
     </form>
   )
 }
@@ -300,54 +319,47 @@ export function V4ModelPopover({ rows, onOpenLibrary }: { rows: readonly V4Model
   const { t } = useTranslation()
   return (
     <aside
-      className="w-[300px] overflow-hidden rounded-nomi border border-nomi-line bg-nomi-paper shadow-nomi-md"
+      className="w-max max-w-full overflow-hidden rounded-nomi border border-nomi-line bg-nomi-paper shadow-nomi-md"
       data-v4-popover="model"
     >
-      <div className="flex items-center gap-1.5 px-2.5 pb-1.5 pt-2 text-micro text-nomi-ink-40">
-        <span>{t('agentPanelV4.modelDialog')}</span>
-        <span className="flex-1" />
-        <span>{t('agentPanelV4.modelHint')}</span>
-      </div>
       {rows.map((row) => (
-        <div
+        <V4Row as="div"
           key={row.slot}
-          className="flex min-h-9 w-full items-center gap-2 px-2.5 text-left text-caption text-nomi-ink"
+          className="min-h-9 w-full px-2.5 text-left text-caption text-nomi-ink"
           data-v4-model-row={row.slot}
         >
-          <span className="w-16 shrink-0 text-micro text-nomi-ink-60">{row.slot}</span>
-          <span className="truncate">{row.name}</span>
-          {row.cost ? <span className="shrink-0 text-micro text-nomi-ink-40">{row.cost}</span> : null}
-          <span className="ml-auto shrink-0">
+          <span className="shrink-0 text-micro text-nomi-ink-60">{row.slot}</span>
+          <span className="min-w-0">
             {row.options?.length ? (
-              // 下拉走全仓统一的 `NomiSelect`（设计系统规则 1/5：一个来源，别散落原生 select）。
               <NomiSelect
                 size="xs"
                 value={row.selectedValue ?? ''}
-                options={[...row.options]}
+                options={row.options.map(option => ({ ...option, label: compactModelLabel(option.label) }))}
                 onChange={(value) => row.onChange?.(value)}
                 ariaLabel={row.slot}
-                triggerMaxWidth={116}
+                title={row.name}
+                triggerMaxWidth={MODEL_TRIGGER_WIDTH}
               />
-            ) : (
-              <span className="text-micro text-nomi-ink-40">{row.empty}</span>
-            )}
+            ) : <span className="text-micro text-nomi-ink-40">{row.empty || row.name}</span>}
           </span>
-        </div>
+          {row.cost ? <span className="shrink-0 text-micro text-nomi-ink-40">{row.cost}</span> : null}
+        </V4Row>
       ))}
-      <button
+      <V4Row as="button"
         type="button"
         onClick={onOpenLibrary}
-        className="flex w-full items-center gap-2 border-t border-nomi-line-soft px-2.5 py-2 text-left text-caption text-nomi-ink-60 hover:bg-nomi-ink-05"
+        className="w-full border-t border-nomi-line-soft px-2.5 py-2 text-left text-caption text-nomi-ink-60 hover:bg-nomi-ink-05"
       >
         <span>{t('agentPanelV4.modelLibrary')}</span>
-        <span className="flex-1" />
+
         <IconChevronRight size={12} />
-      </button>
+      </V4Row>
     </aside>
   )
 }
 
 export type V4CommandRow = Readonly<{
+  group?: LibraryCategory
   id: string
   name: string
   /** `/命令`。提示词库那一段也有，它就是把提示词当命令用的那个名字。 */
@@ -355,49 +367,11 @@ export type V4CommandRow = Readonly<{
   desc: string
   /** 分段名：技能 / 提示词。同一个菜单两段，各自有名字（2026-09-06 拍板 ⑤）。 */
   section: string
-  /** 封面。提示词库有 `mediaUrl`；技能今天没有封面字段，所以多数行不会有。 */
+  /** 来自技能或提示词标准元数据的封面与预览。 */
   cover?: string
+  preview?: { url: string; type: 'image' | 'video' }
   selected?: boolean
 }>
-
-/**
- * 行首那一格。
- *
- * 2026-09-06 用户在打包版上看到的是**一排白块**：这一格原本是一个纯色 `<span>`，
- * 为「hover 换预览视频」预留的位置，但那个功能没做、`SkillListItemDto` 里也从来没有封面字段。
- * 于是每一行都画一个 36×56 的白方块——它不承载任何信息，只是在告诉用户「这里有东西没加载出来」。
- *
- * 现在：**有图才画图，没图画图标**。提示词库那一段本来就带 `mediaUrl`（此前被整包丢掉），
- * 技能那一段没有封面就落到图标格。图挂了（404 / 文件没了）也退回图标，不留破图。
- */
-function CommandRowCover({ row }: { row: V4CommandRow }): JSX.Element {
-  const [broken, setBroken] = React.useState(false)
-  React.useEffect(() => setBroken(false), [row.cover])
-  if (row.cover && !broken) {
-    return (
-      <img
-        src={row.cover}
-        alt=""
-        loading="lazy"
-        onError={() => setBroken(true)}
-        className="h-9 w-14 shrink-0 rounded-sm object-cover"
-        data-v4-command-cover="image"
-      />
-    )
-  }
-  return (
-    <span
-      className={cn(
-        'grid h-9 w-14 shrink-0 place-items-center rounded-sm border',
-        row.selected ? 'border-nomi-accent-soft text-nomi-accent' : 'border-nomi-line-soft text-nomi-ink-30',
-      )}
-      data-v4-command-cover="icon"
-      aria-hidden="true"
-    >
-      <IconPackage size={15} />
-    </span>
-  )
-}
 
 /**
  * `/` 命令弹层：搜索 + 分类 chip + 列表（名称 + /命令 + 一句描述）。
@@ -427,7 +401,9 @@ export function V4SkillPopover({
   onManage?: () => void
 }): JSX.Element {
   const { t } = useTranslation()
-  let lastSection = ''
+  const [localCategory, setLocalCategory] = React.useState(categories[0])
+  const selectedCategory = activeCategory ?? localCategory
+  const visibleRows = rows.filter(row => selectedCategory === categories[0] || row.section === selectedCategory)
   return (
     <aside
       className="w-[330px] overflow-hidden rounded-nomi border border-nomi-line bg-nomi-paper shadow-nomi-md"
@@ -443,38 +419,33 @@ export function V4SkillPopover({
         className="mx-2.5 mb-1.5 mt-2 flex h-7 w-[calc(100%-20px)] items-center gap-1.5 rounded-nomi-sm border border-nomi-line bg-transparent px-2 text-caption text-nomi-ink outline-none placeholder:text-nomi-ink-40"
       />
       <div className="flex gap-1 overflow-hidden px-2.5 pb-1.5">
-        {categories.map((category, index) => (
-          <button
+        {categories.map((category) => (
+          <V4Row as="button"
             type="button"
             key={category}
-            onClick={() => onSelectCategory?.(category)}
+            onClick={() => { setLocalCategory(category); onSelectCategory?.(category) }}
             className={cn(
-              'inline-flex h-[22px] shrink-0 items-center whitespace-nowrap rounded-pill px-2 text-micro',
-              (activeCategory ?? categories[0]) === category || (activeCategory === undefined && index === 0)
+              'h-[22px] shrink-0 whitespace-nowrap rounded-pill px-2 text-micro',
+              selectedCategory === category
                 ? 'bg-nomi-ink text-nomi-paper'
                 : 'bg-nomi-ink-05 text-nomi-ink-60',
             )}
           >
             {category}
-          </button>
+          </V4Row>
         ))}
       </div>
       <div className="max-h-[260px] overflow-y-auto overscroll-contain">
-        {rows.map((row) => {
-          const header = row.section !== lastSection ? row.section : ''
-          lastSection = row.section
-          return (
-            <React.Fragment key={row.id}>
-              {header ? (
-                <div className="px-2.5 pb-0.5 pt-1.5 text-micro text-nomi-ink-40">{header}</div>
-              ) : null}
-              <button
+        {groupLibraryItems(visibleRows, row => row.group ? { ...row.group, id: `${row.section}:${row.group.id}` } : undefined).map(group => (
+          <LibraryGroup key={group.id} group={group}>
+            {group.items.map(row => <TooltipProvider key={row.id} delayDuration={180}><Tooltip>
+              <TooltipTrigger asChild><button
                 type="button"
                 onClick={() => onSelect?.(row)}
                 data-v4-command={row.id}
                 className={cn('flex w-full items-start gap-2.5 px-2.5 py-2 text-left', row.selected && 'bg-nomi-ink-05')}
               >
-                <CommandRowCover row={row} />
+                <SkillMedia cover={row.cover} preview={row.preview} className="h-9 w-14 shrink-0 rounded-nomi-sm object-cover" />
                 <span className="min-w-0">
                   <span className="block truncate text-caption font-medium text-nomi-ink">
                     {row.name}
@@ -482,21 +453,28 @@ export function V4SkillPopover({
                   </span>
                   <span className="block truncate text-micro text-nomi-ink-60">{row.desc}</span>
                 </span>
-              </button>
-            </React.Fragment>
-          )
-        })}
+              </button></TooltipTrigger>
+              <TooltipContent side="right" className="z-popover whitespace-normal w-80 max-w-[80vw] bg-nomi-paper p-3 text-nomi-ink shadow-nomi-lg">
+                <div data-skill-hover={row.id} className="max-h-[60vh] overflow-y-auto">
+                  <SkillMedia cover={row.cover} preview={row.preview} play className="mb-3 max-h-60 w-full rounded-nomi-sm object-contain" />
+                  <strong className="text-title">{row.name}</strong>
+                  <p className="mt-2 whitespace-pre-wrap text-caption leading-relaxed text-nomi-ink-60">{row.desc}</p>
+                </div>
+              </TooltipContent>
+            </Tooltip></TooltipProvider>)}
+          </LibraryGroup>
+        ))}
       </div>
-      <button
+      <V4Row as="button"
         type="button"
         onClick={onManage}
-        className="flex w-full items-center gap-2 border-t border-nomi-line-soft px-2.5 py-2 text-left text-caption text-nomi-ink-60 hover:bg-nomi-ink-05"
+        className="w-full border-t border-nomi-line-soft px-2.5 py-2 text-left text-caption text-nomi-ink-60 hover:bg-nomi-ink-05"
       >
         <span>{t('agentPanelV4.skillExplore')}</span>
-        <span className="flex-1" />
+
         <IconPlus size={12} />
         {t('agentPanelV4.skillManage')}
-      </button>
+      </V4Row>
     </aside>
   )
 }
@@ -517,21 +495,21 @@ export function V4PermissionPopover({
     >
       <div className="inline-flex gap-0.5 rounded-nomi-sm bg-nomi-ink-05 p-0.5">
         {PERMISSION_TIERS.map((tier) => (
-          <button
+          <V4Row as="button"
             type="button"
             key={tier}
             data-tier={tier}
             data-active={tier === permission ? 'true' : undefined}
             onClick={() => onSelect?.(tier)}
             className={cn(
-              'inline-flex min-h-6 items-center whitespace-nowrap rounded-nomi-sm px-2.5 text-caption',
+              'min-h-6 whitespace-nowrap rounded-nomi-sm px-2.5 text-caption',
               tier === permission
                 ? 'bg-nomi-paper font-semibold text-nomi-ink shadow-nomi-sm'
                 : 'text-nomi-ink-60',
             )}
           >
             {t(`agentPanelV4.permission.${tier}`)}
-          </button>
+          </V4Row>
         ))}
       </div>
       <p className="mb-0 mt-2 text-micro leading-relaxed text-nomi-ink-60">

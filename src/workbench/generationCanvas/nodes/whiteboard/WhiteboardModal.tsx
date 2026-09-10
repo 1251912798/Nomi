@@ -15,7 +15,7 @@ import { useTranslation } from 'react-i18next'
 import { IconBrush } from '@tabler/icons-react'
 import { cn } from '../../../../utils/cn'
 import { WorkbenchButton } from '../../../../design'
-import { toast } from '../../../../ui/toast'
+import { notify } from '../../../../ui/notificationPolicy'
 import { currentFullscreenOverlayTopOffset } from '../../../../ui/app-shell/windowChrome'
 import { FULLSCREEN_Z_INDEX } from '../fullscreenZIndex'
 import type {
@@ -89,6 +89,10 @@ export default function WhiteboardModal({
   onClose,
 }: WhiteboardModalProps): JSX.Element | null {
   const { t } = useTranslation()
+  const [feedback, setFeedback] = React.useState<string | null>(null)
+  const reportFeedback = React.useCallback((message: string) => {
+    notify({ identity: `whiteboard:${nodeId}`, reason: 'save', message, level: 'inline', present: setFeedback })
+  }, [nodeId])
   const drawingRef = React.useRef<WhiteboardDrawingToolHandle | null>(null)
   const [screenshotBusy, setScreenshotBusy] = React.useState(false)
   const addNode = useGenerationCanvasStore((state) => state.addNode)
@@ -195,6 +199,7 @@ export default function WhiteboardModal({
 
   const handleClose = React.useCallback(() => {
     if (savingRef.current) return
+    setFeedback(null)
     const currentWhiteboardState = drawingRef.current?.getState() || null
     if (sourceKind !== 'image') {
       persistWhiteboardState(currentWhiteboardState)
@@ -206,20 +211,19 @@ export default function WhiteboardModal({
     setScreenshotBusy(true)
     void (async () => {
       try {
-        const saved = await saveImageWhiteboardSnapshot(currentWhiteboardState, { skipIfUnchanged: true })
-        if (saved) toast(t('generationCommon.whiteboard.savedPrimary'), 'success')
+        await saveImageWhiteboardSnapshot(currentWhiteboardState, { skipIfUnchanged: true })
+
         exitFullscreenIfNeeded()
         onClose()
       } catch (error) {
         savingRef.current = false
         setScreenshotBusy(false)
-        toast(
+        reportFeedback(
           error instanceof Error && error.message ? error.message : t('generationCommon.whiteboard.saveFailed'),
-          'error',
         )
       }
     })()
-  }, [exitFullscreenIfNeeded, onClose, persistWhiteboardState, saveImageWhiteboardSnapshot, sourceKind, t])
+  }, [exitFullscreenIfNeeded, onClose, persistWhiteboardState, saveImageWhiteboardSnapshot, sourceKind, t, reportFeedback])
 
   React.useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -235,11 +239,12 @@ export default function WhiteboardModal({
   const handleCreateScreenshotNode = React.useCallback(async () => {
     if (screenshotBusy) return
     setScreenshotBusy(true)
+    setFeedback(null)
     try {
       const currentWhiteboardState = drawingRef.current?.getState() || null
       if (sourceKind === 'image') {
         await saveImageWhiteboardSnapshot(currentWhiteboardState)
-        toast(t('generationCommon.whiteboard.savedPrimary'), 'success')
+
         return
       }
 
@@ -294,11 +299,10 @@ export default function WhiteboardModal({
         })
       }
       connectNodes(nodeId, created.id, 'reference')
-      toast(t('generationCommon.whiteboard.screenshotCreated'), 'success')
+
     } catch (error) {
-      toast(
+      reportFeedback(
         error instanceof Error && error.message ? error.message : t('generationCommon.whiteboard.screenshotFailed'),
-        'error',
       )
     } finally {
       setScreenshotBusy(false)
@@ -311,6 +315,7 @@ export default function WhiteboardModal({
     persistWhiteboardState,
     saveImageWhiteboardSnapshot,
     screenshotBusy,
+    reportFeedback,
     sourceKind,
     t,
     updateNode,
@@ -353,6 +358,7 @@ export default function WhiteboardModal({
         </WorkbenchButton>
       </header>
 
+      {feedback ? <p role="status" className="m-0 shrink-0 px-4 py-2 text-caption text-[var(--workbench-danger)]">{feedback}</p> : null}
       <main className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[var(--workbench-bg)]">
         <div className="min-h-0 flex-1 overflow-hidden">
           <WhiteboardDrawingTool

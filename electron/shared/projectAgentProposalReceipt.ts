@@ -3,7 +3,7 @@ import type { ProjectBinding } from "./projectBinding";
 export type ProjectAgentProposalCompensation =
   | Readonly<{ kind: "delete-nodes"; nodeIds: readonly string[] }>
   | Readonly<{ kind: "disconnect-edges"; pairs: readonly Readonly<{ source: string; target: string }>[] }>
-  | Readonly<{ kind: "restore-prompt"; nodeId: string; prompt: string }>
+  | Readonly<{ kind: "restore-prompt"; nodeId: string; prompt: string; promptOverridden?: boolean }>
   | Readonly<{ kind: "restore-graph"; nodes: readonly unknown[]; edges: readonly unknown[] }>
   | Readonly<{
       kind: "restore-snapshot";
@@ -174,11 +174,12 @@ function parseCompensation(value: unknown): ProjectAgentProposalCompensation | n
     return Object.freeze({ kind: "disconnect-edges" as const, pairs: Object.freeze(pairs) });
   }
   if (source.kind === "restore-prompt") {
-    if (!exactKeys(source, ["kind", "nodeId", "prompt"])) return null;
+    if (!exactKeys(source, ["kind", "nodeId", "prompt", "promptOverridden"])) return null;
     const nodeId = safeString(source.nodeId);
     const prompt = safeString(source.prompt, true);
+    if (source.promptOverridden !== undefined && typeof source.promptOverridden !== "boolean") return null;
     return nodeId !== null && prompt !== null
-      ? Object.freeze({ kind: "restore-prompt" as const, nodeId, prompt })
+      ? Object.freeze({ kind: "restore-prompt" as const, nodeId, prompt, ...(source.promptOverridden !== undefined ? { promptOverridden: source.promptOverridden } : {}) })
       : null;
   }
   if (source.kind === "restore-graph") {

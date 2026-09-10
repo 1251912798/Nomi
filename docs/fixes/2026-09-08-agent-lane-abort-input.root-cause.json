@@ -1,0 +1,29 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-08-agent-lane-abort-input",
+  "problem_type": "Incomplete restoration of cancelled queued input",
+  "symptom": "Stopping a run loses follow-up instructions and the attachments on unconsumed desktop messages.",
+  "direct_cause": "The host reads only AbortResult.steer text; queue projection also discards nomi.input attachment claims.",
+  "class_root": "The adapter converts queued input into text before the user can restore the complete draft.",
+  "affected_population": ["Queued steer input", "Queued follow-up input", "Desktop input carrying attachment claims"],
+  "scope_paths": ["electron/agentLane/laneHost.mts", "electron/shared/agentLane/laneInputMessage.ts", "electron/shared/agentLane/laneContracts.ts", "electron/shared/agentLane/laneProjection.ts"],
+  "entry_points": ["AbortResult restoration", "Queue projection for cancellation and resend"],
+  "external_sources": [],
+  "internal_only_reason": "Installed pi 0.85.1 AbortResult and runtime/lane.js return both original message arrays; Nomi owns the custom message attachment claims and draft projection.",
+  "invariants": ["Every unconsumed steer and follow-up message returns once as draft data after stop.", "Queue projection and abort restoration retain the captured attachment identities without inventing display metadata."],
+  "generality_proof": "One pure adapter extracts draft text and attachment claims from the original pi messages for both cancellation paths.",
+  "shared_boundaries": [{ "path": "electron/shared/agentLane/laneInputMessage.ts", "symbol": "draftInputFromMessage", "responsibility": "Project persisted input into restorable draft data." }],
+  "same_class_entry_points": [
+    { "path": "electron/agentLane/laneHost.mts", "entry_point": "execute abort", "disposition": "enforced", "evidence": "Both public AbortResult message arrays use the shared input adapter." },
+    { "path": "electron/shared/agentLane/laneProjection.ts", "entry_point": "projectQueues", "disposition": "enforced", "evidence": "Queue cancellation receives the same captured attachment identities." }
+  ],
+  "recurrence": { "classification": "recurring", "reason": "Every queued follow-up or attachment-bearing desktop input can lose the same data.", "same_class_scan": ["Inspected pi AbortResult and requestOperationAbort queue removal.", "Traced Host inputMessage, abort, projectQueues and panel stop/cancel restoration."] },
+  "prevention": { "kind": "centralized-boundary", "enforcement_path": "electron/shared/agentLane/laneInputMessage.ts", "invariant": "Unconsumed input is projected as draft data before either cancellation consumer sees it.", "failure_mode": "Absent text stays empty; absent attachments stay absent; no fabricated content or authorization is returned.", "exception_policy": "none", "strategy": "Keep the pi-owned message arrays and share the pure application projection.", "artifacts": ["electron/shared/agentLane/laneInputMessage.ts", "electron/agentLane/laneHost.mts", "electron/shared/agentLane/laneProjection.ts"] },
+  "regression_tests": ["tests/agent-runtime/lane-abort-input.test.mts", "tests/agent-runtime/lane-queue.test.mts"],
+  "class_regression_tests": ["tests/agent-runtime/lane-abort-input.test.mts"],
+  "legacy_paths": { "status": "removed", "removed_paths": ["electron/agentLane/laneHost.mts"], "rationale": "The old textOfMessage abort adapter is deleted from this modified file; no alternate outcome representation remains." },
+  "dependency_lifecycle": { "decision": "retain-with-exit", "current": "@earendil-works/pi 0.85.1", "target": "A supported pi version retaining original messages in both abort result queues.", "rationale": "Pi already preserves the required input; the application adapter discarded it.", "exit_criteria": ["Run real queue/abort restoration fixtures before adopting any changed AbortResult contract."] },
+  "migration": "No stored format changes; persisted nomi.input attachment claims are projected directly.",
+  "residual_risks": ["Display references and composer chip restoration remain desktop boundary responsibilities, validated by the parent task."],
+  "invariant_owner_layer": { "layer": "electron/shared/agentLane/laneInputMessage.ts", "tests": ["tests/agent-runtime/lane-abort-input.test.mts"], "why": "This pure custom-message adapter is shared by queue display and cancelled-input restoration." }
+}

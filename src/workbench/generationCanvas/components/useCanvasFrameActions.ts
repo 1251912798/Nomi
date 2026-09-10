@@ -10,7 +10,8 @@
  */
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { showInfoToast } from '../../../utils/showInfoToast'
+import { reportCanvasFeedback } from './canvasFeedback'
+import { getDesktopActiveProjectId } from '../../../desktop/activeProject'
 import { useGenerationCanvasStore } from '../store/generationCanvasStore'
 import { buildDependencyWaves } from '../runner/dependencyWaves'
 import { frameHasTimelineUnits, sendFrameToTimeline } from '../agent/sendFrameToTimeline'
@@ -81,6 +82,8 @@ export function useCanvasFrameActions({
     setFrameMenu(null)
     if (!menu || readOnly) return
     const state = useGenerationCanvasStore.getState()
+    const projectId = getDesktopActiveProjectId()
+    const report = (message: string) => reportCanvasFeedback(message, 'warning', { projectId, identity: `frame:${menu.groupId}`, reason: action, nodeIds: state.groups.find((group) => group.id === menu.groupId)?.nodeIds })
     if (action === 'edit') {
       setEditingFrameId(menu.groupId)
       return
@@ -97,7 +100,7 @@ export function useCanvasFrameActions({
     if (action === 'generate') {
       const eligibleIds = frameEligibleIds(menu.groupId)
       if (!eligibleIds.length) {
-        showInfoToast(t('generationCommon.canvas.group.generateEmpty'))
+        report(t('generationCommon.canvas.group.generateEmpty'))
         return
       }
       const live = useGenerationCanvasStore.getState()
@@ -110,14 +113,10 @@ export function useCanvasFrameActions({
     }
     void sendFrameToTimeline(menu.groupId).then((result) => {
       if (!result.ok) {
-        showInfoToast(t('generationCommon.canvas.group.timelineEmpty'))
+        report(t('generationCommon.canvas.group.timelineEmpty'))
         return
       }
-      showInfoToast(
-        result.skipped > 0
-          ? t('generationCommon.canvas.group.timelineDoneWithSkips', { count: result.placed, skipped: result.skipped })
-          : t('generationCommon.canvas.group.timelineDone', { count: result.placed }),
-      )
+      if (result.skipped > 0) report(t('generationCommon.canvas.group.timelineDoneWithSkips', { count: result.placed, skipped: result.skipped }))
     })
   }, [frameMenu, readOnly, t])
 

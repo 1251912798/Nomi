@@ -1,0 +1,50 @@
+{
+  "cases": {
+    "perf-software-red.log": {
+      "exit_code": 1,
+      "command": "node tests/ux/canvas-performance-benchmark.e2e.mjs round5-software-red --scale M --scenario waiting-effects --runs 1 --use-gl=swiftshader --enable-unsafe-swiftshader"
+    },
+    "perf-software.log": {
+      "exit_code": 0,
+      "command": "node tests/ux/canvas-performance-benchmark.e2e.mjs round5-software --scale M --scenario waiting-effects --runs 1 --use-gl=swiftshader --enable-unsafe-swiftshader"
+    },
+    "perf-hardware.log": {
+      "exit_code": 0,
+      "command": "node tests/ux/canvas-performance-benchmark.e2e.mjs round5-hardware --scale M --scenario waiting-effects --runs 1"
+    },
+    "timeline-red.log": {
+      "exit_code": 1,
+      "command": "node tests/ux/canvas-batch-production.walk.mjs",
+      "viewport": [
+        1680,
+        993
+      ],
+      "mechanism": "fixed stage (900,100) hits add-to-timeline; timeline expanded, handle absent"
+    },
+    "timeline-green.log": {
+      "exit_code": 0,
+      "command": "node tests/ux/canvas-batch-production.walk.mjs",
+      "viewport": [
+        1680,
+        993
+      ]
+    },
+    "timeline-sequence-red.log": {
+      "exit_code": 0,
+      "command": "node tests/ux/canvas-real-suite.mjs full -- --shard 2/2",
+      "note": "Pre-fix sequential control passed; actual macOS viewport 1680x840. Not red evidence."
+    },
+    "timeline-sequence-green.log": {
+      "exit_code": 0,
+      "command": "node tests/ux/canvas-real-suite.mjs full -- --shard 2/2",
+      "passed": 7,
+      "failed": 0
+    },
+    "focused-green.log": {
+      "exit_code": 0,
+      "tests_passed": 22
+    }
+  },
+  "models_cost": 0,
+  "reactFlow_changes": 0
+}

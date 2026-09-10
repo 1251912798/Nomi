@@ -11,12 +11,57 @@
 //   · **名字解析**（各宿主）——旧宿主按 pi 别名查（`resolveCapabilityAlias`），
 //     lane 按契约 id 查（lane 的工具名 `nomi_storyboard_write` 不是别名，是这个面自己的名字）。
 //     这一半**本来就该**各写各的：不同的面对同一个能力有不同的名字，那是投影不是分歧。
-import type { ProjectAgentApprovalPolicy, ProjectAgentWorkMode } from "../projectAgentContracts";
-import {
-  projectAgentApprovalPolicyOf,
-  projectAgentWorkModeOf,
-} from "../projectAgentContracts";
 import type { CapabilityEffect, CapabilityEffectClass } from "./capabilityContract";
+
+/**
+ * User-facing execution posture (#194 §14.1 三档：Ask / 编辑选中 / Agent). This
+ * axis describes what surface of the project the Agent may touch while shaping a
+ * task — read-only advice, only the frozen selection, or cross-object planning —
+ * and is intentionally independent from approval/spend policy, which remains an
+ * explicit Host-owned snapshot. Changing the work mode never widens approval.
+ *   - `ask`           解释/比较/建议，不写项目
+ *   - `editSelection` 只对当前冻结的选中范围提修改（受选区约束的编辑模式）
+ *   - `agent`         跨对象规划并执行允许的多步任务
+ */
+export const PROJECT_AGENT_WORK_MODES = ["ask", "editSelection", "agent"] as const;
+export type ProjectAgentWorkMode = (typeof PROJECT_AGENT_WORK_MODES)[number];
+
+/** Safe default for legacy turns that predate the resident work-mode picker. */
+export const DEFAULT_PROJECT_AGENT_WORK_MODE: ProjectAgentWorkMode = "agent";
+
+export function projectAgentWorkModeOf(value: ProjectAgentWorkMode | undefined): ProjectAgentWorkMode {
+  return value ?? DEFAULT_PROJECT_AGENT_WORK_MODE;
+}
+
+/**
+ * Host-owned approval choices for a queued turn.  The two axes are kept
+ * independent deliberately: `mode` controls how much of the workflow pauses
+ * for review, while `spend` controls whether a known in-budget cost may pass
+ * without another spend prompt.  This is a snapshot of the user's choice,
+ * not an authority grant; the domain/ProductionRun gate remains authoritative.
+ */
+export const PROJECT_AGENT_APPROVAL_MODES = ["step", "safe-auto", "project"] as const;
+export type ProjectAgentApprovalMode = (typeof PROJECT_AGENT_APPROVAL_MODES)[number];
+
+export const PROJECT_AGENT_SPEND_POLICIES = ["confirm", "within-budget"] as const;
+export type ProjectAgentSpendPolicy = (typeof PROJECT_AGENT_SPEND_POLICIES)[number];
+
+export type ProjectAgentApprovalPolicy = Readonly<{
+  mode: ProjectAgentApprovalMode;
+  spend: ProjectAgentSpendPolicy;
+}>;
+
+/** Safe, backwards-compatible default for records written before this field existed. */
+export const DEFAULT_PROJECT_AGENT_APPROVAL_POLICY: ProjectAgentApprovalPolicy = Object.freeze({
+  mode: "safe-auto",
+  spend: "confirm",
+});
+
+export function projectAgentApprovalPolicyOf(
+  value: ProjectAgentApprovalPolicy | undefined,
+): ProjectAgentApprovalPolicy {
+  return value ?? DEFAULT_PROJECT_AGENT_APPROVAL_POLICY;
+}
 
 /**
  * 一次调用在**审批**眼里的全部事实。
@@ -32,6 +77,8 @@ export type CapabilityApprovalSubject = Readonly<{
   effectClass: CapabilityEffectClass | undefined;
   /** 契约自己说「这份载荷是一份用户必须先读的计划」。 */
   requiresPlanReview: boolean;
+  /** False means this specific plan must be reviewed each time, even with a session grant. */
+  planReviewAllowsReuse?: boolean;
   /**
    * 外部 MCP 服务器在工具声明上打的 `destructiveHint`。
    *
@@ -53,9 +100,11 @@ export type CapabilityWorkModeDecision = Readonly<{ allowed: boolean; reason?: s
  *   ② 不可逆（`irreversible`）：`canvas.delete` / `export.write` 这一族；
  *   ③ 外部工具的 `destructiveHint`（只抬不降，见上）。
  * 外加 ④ **解不出效果类**：未登记的别名，我们证明不了它安全。
+ * 以及 ⑤ 契约声明的逐次计划审阅：这一次的载荷必须当次确认，不能借用别的计划的授权。
  */
 export function capabilityIsHardGated(subject: CapabilityApprovalSubject): boolean {
   if (subject.destructiveHint) return true;
+  if (subject.requiresPlanReview && subject.planReviewAllowsReuse === false) return true;
   return subject.effectClass !== "reversible_local";
 }
 

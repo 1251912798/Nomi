@@ -1,0 +1,19 @@
+{
+  "paidCalls": 0,
+  "screenshots": [
+    "pf-fx-generating",
+    "pf-fx-preview-reveal",
+    "pf-fx-final-reveal",
+    "pf-fx-done-clean"
+  ],
+  "checks": [
+    {
+      "criterion": "real-task-final-clean",
+      "result": "green",
+      "terminalAt": 7792.199999988079,
+      "removedAt": 8968,
+      "overlayDurationMs": 1175.800000011921
+    }
+  ],
+  "errors": []
+}

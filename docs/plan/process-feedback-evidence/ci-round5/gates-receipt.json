@@ -1,0 +1,29 @@
+{
+  "command": "python3 scripts/with-gates-lock.py -- pnpm run gates",
+  "exit_code": 0,
+  "head_at_run": "2d8f2a7c8eb4f800c779c6e484da67cbb0312ddb",
+  "worktree": "/Users/aoqimin/Desktop/Nomi-process-feedback",
+  "log": "docs/plan/process-feedback-evidence/ci-round5/gates.log",
+  "log_sha256": "e36843af0ac9c5a3ecc1fb221a8753b1c0973f7f4238a59f35a9fc9479b1c52c",
+  "contracts": {
+    "total": 76,
+    "passed": 73,
+    "blocking_failures": 0,
+    "advisory_failures": 3
+  },
+  "visual_passed": 153,
+  "vitest": {
+    "passed": 12110,
+    "skipped": 2
+  },
+  "build": "passed",
+  "tested_file_sha256": {
+    "src/workbench/generationCanvas/nodes/processMotionCapability.ts": "710d723fe17ba7eaaa459ad41cf7d95cb2cc62e8c5466b31a93e9c80b1cbddd3",
+    "src/workbench/generationCanvas/nodes/useReducedProcessMotion.ts": "0e2de8cf758b4da14407a5aa9cc148ec1ab184d2da1e11d49ff0f0b02f880c3c",
+    "src/workbench/generationCanvas/nodes/useReducedProcessMotion.test.ts": "7e90ea8b72adc8d406f12296164d92422fb956653bdcd5dffbd001e22630d65d",
+    "tests/ux/canvas-perf/waitingFxScenario.mjs": "dd3e656bab3685fea37e6f9c7011718e90a32937866f104365500620faeb210f",
+    "tests/ux/canvas-performance-benchmark.e2e.mjs": "1a7b8fd88c2d377558a09b79d1e94129378c0738ec51566e7f2dd8db54c1f567",
+    "tests/ux/canvas-batch-production.walk.mjs": "ef70f2179928d97bd08a5b8a2f5540a1924e0903dbf2d1860c5b90bdd77e8792",
+    "tests/ux/canvas-real-suite.mjs": "a9194c1d68630335710d3b6dd3d2e8e8899142962b09e76af07f525fd7b348dc"
+  }
+}

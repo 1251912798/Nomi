@@ -6,11 +6,11 @@ import { useProductionCanvasLandingStore } from '../../production/productionCanv
 import { reworkProductionShot } from '../../production/productionShotActions'
 
 /** 多镜物化节点走返工链的 onRetry；非多镜/项目没开 → null（调用方兜底本地重跑）。 */
-export function useProductionNodeRetry(node: GenerationCanvasNode): (() => void) | null {
+export function useProductionNodeRetry(node: GenerationCanvasNode, reportFeedback: (message: string) => void): (() => void) | null {
   const meta = node.meta as Record<string, unknown> | undefined
   const runId = typeof meta?.productionRunId === 'string' && meta.productionRunId ? meta.productionRunId : ''
   const shotId = typeof meta?.productionShotId === 'string' && meta.productionShotId ? meta.productionShotId : undefined
   const projectId = useProductionCanvasLandingStore((store) => store.projectId)
   if (!runId || !projectId) return null
-  return () => { void reworkProductionShot(projectId, runId, shotId) }
+  return () => { void reworkProductionShot(projectId, runId, shotId, reportFeedback) }
 }

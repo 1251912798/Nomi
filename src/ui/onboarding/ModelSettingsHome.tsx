@@ -47,6 +47,7 @@ export type ModelSettingsHomeConnection = {
   /** 连接健康探测要的两个入参；缺省（本地/会员类连接）则这一行不探。 */
   baseUrl?: string
   hasApiKey?: boolean
+  credentialVerificationPending?: boolean
   /** direct-script 那类家没有可预检的通用接口，别白探（与卡片侧同一套策略）。 */
   skipHealthProbe?: boolean
   onOpen: () => void
@@ -162,6 +163,8 @@ function AvailableConnectionRow({
   end?: string
 }): JSX.Element {
   const displayName = translateModelDisplayText(connection.name)
+  const { t } = useTranslation()
+  const statusBadge = connection.credentialVerificationPending ? t('onboardingProviders.keyOnly.offlineTitle') : badge
   return (
     <button
       type="button"
@@ -173,9 +176,9 @@ function AvailableConnectionRow({
       <span className="min-w-0 flex-1">
         <span className="flex flex-wrap items-center gap-2">
           <span className="text-caption font-semibold text-nomi-ink">{title ?? displayName}</span>
-          {badge ? (
+          {statusBadge ? (
             <span className="rounded-full bg-nomi-accent-soft px-2 py-0.5 text-micro font-semibold text-nomi-accent">
-              {badge}
+              {statusBadge}
             </span>
           ) : null}
         </span>
@@ -222,7 +225,9 @@ function ConnectedRow({
     onHealthChange(connection.vendorKey, unreachable)
   }, [connection.vendorKey, unreachable, onHealthChange])
   const state: ModelHomeConnectionState = unreachable ? 'attention' : summary.state
-  const statusLabel = unreachable && pill
+  const statusLabel = connection.credentialVerificationPending
+    ? t('onboardingProviders.keyOnly.offlineTitle')
+    : unreachable && pill
     ? t(pill.labelKey)
     : summary.state === 'attention'
       ? t('onboardingProviders.drawer.home.needsSetupCount', { count: summary.needsSetup })

@@ -5,6 +5,8 @@ export type CanvasMutationOptions = {
   persist?: boolean
   emit?: boolean
   history?: boolean
+  /** Plan projection / runtime normalization is not a canvas content edit. */
+  origin?: 'storyboard-projection'
 }
 
 export function shouldPersistCanvasMutation(options?: CanvasMutationOptions): boolean {

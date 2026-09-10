@@ -25,3 +25,9 @@ describe("ProjectAgent committed proposal contract", () => {
     expect(parseProjectAgentCommittedProposal({ ...legacyProposal, hostActionHash: "a".repeat(64) })).toBeNull();
   });
 });
+
+it("retains prompt ownership in compensation while accepting old receipts", () => {
+  const parsed = parseProjectAgentCommittedProposal({ ...legacyProposal, compensation: [{ kind: "restore-prompt", nodeId: "node-a", prompt: "old", promptOverridden: false }] });
+  expect(parsed?.compensation[0]).toEqual({ kind: "restore-prompt", nodeId: "node-a", prompt: "old", promptOverridden: false });
+  expect(parseProjectAgentCommittedProposal({ ...legacyProposal, compensation: [{ kind: "restore-prompt", nodeId: "node-a", prompt: "old", promptOverridden: "false" }] })).toBeNull();
+});

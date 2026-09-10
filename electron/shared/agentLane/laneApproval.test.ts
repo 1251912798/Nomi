@@ -6,7 +6,7 @@
 import { describe, expect, it } from "vitest";
 
 import { laneApprovalGrantable, preflightLaneApproval, type LaneApprovalSubject } from "./laneApproval";
-import type { ProjectAgentApprovalPolicy } from "../projectAgentContracts";
+import type { ProjectAgentApprovalPolicy } from '../agentCapabilities/capabilityApprovalPolicy';
 
 const READ: LaneApprovalSubject = {
   toolName: "nomi_canvas_read", capabilityId: "canvas.read",
@@ -66,6 +66,18 @@ describe("档位", () => {
 });
 
 describe("硬清单：档位管不着的那一族", () => {
+  it("逐次计划审阅不会被 project 档或同能力的 session grant 跳过", () => {
+    const storyboard = { ...PLAN, capabilityId: "canvas.write", planReviewAllowsReuse: false };
+    for (const policy of [SAFE_AUTO, STEP, PROJECT]) {
+      expect(preflight(storyboard, { policy, sessionGrants: new Set(["canvas.write"]) }))
+        .toEqual({ state: "awaiting-user", grantable: false });
+      expect(laneApprovalGrantable(storyboard, policy)).toBe(false);
+      expect(preflight(storyboard, { policy, sessionGrants: new Set(["canvas.write"]), hasUserInterface: false }).state)
+        .toBe("denied-by-policy");
+    }
+    expect(preflight(WRITE, { sessionGrants: new Set(["canvas.write"]) }).state).toBe("auto-granted");
+  });
+
   it.each([
     ["花钱", PAID],
     ["不可逆", DESTRUCTIVE],

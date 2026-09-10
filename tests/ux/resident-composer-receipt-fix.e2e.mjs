@@ -1,18 +1,20 @@
 #!/usr/bin/env node
-// Real user task: visible Resident Composer -> real Agent/Host proposal -> user approval or
+import { stationTimeout } from './_station-budget.mjs'
+// Real user task: visible Resident Composer -> real lane proposal -> user approval or
 // refusal -> durable proposal receipt -> real MCP stdio document write -> cold restart readback.
 // The model is deterministic only at the external provider boundary. This file never injects
-// Host items, reducer state, conversation results, receipt files, or the final project state.
+// lane messages, reducer state, conversation results, receipt files, or the final project state.
 import fs from 'node:fs'
 import path from 'node:path'
 
 import { clickOrFail, expect, expectAbsent, proveProbe } from './_assert.mjs'
 import { parseToolResult, spawnMcpStdioClient } from './_mcpJourney.mjs'
+import { laneMessages, laneMessageText, readLaneTranscripts } from './agent-lane-observer.mjs'
 import { flattenRequestText } from './agent-runtime-fixture.mjs'
 import {
   APPROVAL_CARD, DOCUMENT, INTERVENTION_CONFIRM, INTERVENTION_CONFIRM_REJECT, INTERVENTION_ESCALATE,
   INTERVENTION_REJECT, INTERVENTION_REJECT_REASON, createRuntimeWalk, hasToolResult, openCanvas,
-  readProject, recorded,
+  readProject, recorded, toolNames,
 } from './agent-runtime-walk-support.mjs'
 
 const ORIGINAL = '真实用户任务基线：创作者准备在文末补充收尾。'
@@ -46,7 +48,7 @@ function recordBlocker(code, message) {
 
 try {
   // Use the deterministic loopback provider only at the provider HTTP boundary. The Agent,
-  // Host, approval UI, project repository, and MCP stdio process remain production paths.
+  // lane, approval UI, project repository, and MCP stdio process remain production paths.
   const catalogPath = path.join(walk.report.tempRoot, 'settings', 'model-catalog.json')
   const catalog = JSON.parse(fs.readFileSync(catalogPath, 'utf8'))
   catalog.version = 12
@@ -72,15 +74,15 @@ try {
   await clickOrFail(win.getByRole('button', { name: '创作', exact: true }), '进入创作工作区')
 
   // Matchers key on this turn's own tool_call_id, never on "no tool message at all":
-  // the Host owns one lossless resident thread, so every later request carries the
+  // the lane owns one lossless resident thread, so every later request carries the
   // earlier turns' tool calls and results.
   const proposalRequest = walk.fixture.expectText({
     label: 'Resident Composer plans a real document write',
     match: (body) => flattenRequestText(body).includes(RESIDENT_INTENT)
       && !hasToolResult(body, 'resident-receipt-fix-1'),
     reply: {
-      type: 'tool', id: 'resident-receipt-fix-1', name: 'nomi_document_edit',
-      args: { operation: 'append', content: RESIDENT_APPEND },
+      type: 'tool', id: 'resident-receipt-fix-1', name: 'append_to_end',
+      args: { content: RESIDENT_APPEND },
     },
   })
   const approvedFollowup = walk.fixture.expectText({
@@ -109,14 +111,14 @@ try {
   if (!beforeMcp) {
     walk.report.matrix.H.status = 'blocked'
     walk.report.matrix.H.evidence.push('project persistence succeeded but durable receipt file was absent')
-    recordBlocker('resident-host-document-receipt-missing',
-      'Host approval changed the project but did not persist a durable proposal receipt')
+    recordBlocker('resident-lane-document-receipt-missing',
+      'Lane approval changed the project but did not persist a durable proposal receipt')
   } else {
     expect(beforeMcp.lifecycle).toBe('committed')
     expect(beforeMcp.revision).toBeGreaterThan(0)
     expect(beforeMcp.proposal?.stepLabels?.[0]).toMatch(/^append:/)
     walk.report.matrix.H.status = 'passed'
-    walk.report.persistence = { receiptPath, hostReceipt: beforeMcp }
+    walk.report.persistence = { receiptPath, laneReceipt: beforeMcp }
   }
 
   // B: the real Composer rejects empty input and preserves Unicode through the same UI path.
@@ -136,7 +138,7 @@ try {
     match: (body) => flattenRequestText(body).includes('请创建一个临时图片节点')
       && !hasToolResult(body, 'resident-receipt-fix-canvas-create'),
     reply: {
-      type: 'tool', id: 'resident-receipt-fix-canvas-create', name: 'nomi_canvas_edit',
+      type: 'tool', id: 'resident-receipt-fix-canvas-create', name: 'nomi_canvas_write',
       args: {
         operation: 'create_canvas_nodes', summary: 'resident receipt approval fixture',
         nodes: [{ clientId: 'resident-receipt-fix-node', kind: 'image', title: 'Resident approval fixture', prompt: 'temporary approval fixture', modelKey: 'agent-runtime-image', modeId: 't2i', params: { size: '1024x1024' } }],
@@ -174,8 +176,8 @@ try {
     match: (body) => flattenRequestText(body).includes('请提出一个需要拒绝的删除动作')
       && !hasToolResult(body, 'resident-receipt-fix-rejected'),
     reply: {
-      type: 'tool', id: 'resident-receipt-fix-rejected', name: 'nomi_canvas_maintenance',
-      args: { operation: 'delete_canvas_nodes', nodeIds: [fixtureNodeId], reason: 'journey approval gate' },
+      type: 'tool', id: 'resident-receipt-fix-rejected', name: 'delete_canvas_nodes',
+      args: { nodeIds: [fixtureNodeId], reason: 'journey approval gate' },
     },
   })
   const rejectedFollowup = walk.fixture.expectText({
@@ -184,7 +186,8 @@ try {
     reply: { type: 'text', text: '已记录拒绝，本次没有删除画布内容。' },
   })
   await sendResidentIntent(win, '请提出一个需要拒绝的删除动作，不要自行删除。')
-  await recorded(rejectedRequest.received, 'the real gated-action proposal')
+  const deletionWire = await recorded(rejectedRequest.received, 'the real gated-action proposal')
+  expect(toolNames(deletionWire.body), 'Resident tools remain visible before any group request').toContain('delete_canvas_nodes')
   const rejectedApprovalCard = win.locator(`${CREATION_PANEL} ${APPROVAL_CARD}`).last()
   // 删节点是不可逆的：v4 把这件事写在槽的 data-kind 上（fail-closed 到 irreversible）。
   await expect(rejectedApprovalCard).toHaveAttribute('data-kind', 'approval-irreversible')
@@ -204,8 +207,62 @@ try {
   await expect(win.locator(`${CREATION_PANEL} ${APPROVAL_CARD}`)).toHaveCount(0)
   await walk.snap('irreversible-rejection-receipt')
   expect((await readProject(win, projectId)).payload.generationCanvas.nodes.map((node) => node.id)).toContain(fixtureNodeId)
+  await expect.poll(() => readLaneTranscripts(projectRoot).flatMap(laneMessages)
+    .some(message => message.role === 'toolResult' && message.toolCallId === 'resident-receipt-fix-rejected'),
+  { message: '拒绝结果必须落在真实 lane JSONL', timeout: stationTimeout({ operations: 2 }) }).toBe(true)
+  const laneResults = readLaneTranscripts(projectRoot).flatMap(laneMessages)
+    .filter(message => message.role === 'toolResult')
+  expect(laneResults.find(message => message.toolCallId === 'resident-receipt-fix-1')?.isError).toBe(false)
+  const refusedResult = laneResults.find(message => message.toolCallId === 'resident-receipt-fix-rejected')
+  expect(refusedResult?.isError).toBe(true)
+  expect(laneMessageText(refusedResult)).toContain('这次先不删')
   walk.report.matrix.E = { status: 'passed', evidence: ['irreversible action -> real approval card -> refusal -> no project mutation'] }
   await clickOrFail(win.getByRole('button', { name: '创作', exact: true }), '返回创作工作区')
+
+  // Exercise visible tools on the real creation surface, before any coding unlock.
+  const creationProof = await proveProbe(win.locator(`${CREATION_PANEL}[data-agent-surface="creation"]`),
+    'Permission probes run in the mounted creation Composer')
+  const shellMarker = path.join(projectRoot, 'b1c-shell-must-not-run.txt')
+  fs.writeFileSync(shellMarker, 'not executed\n')
+  const nodesBeforeProbes = (await readProject(win, projectId)).payload.generationCanvas.nodes
+  const denials = []
+  for (const probe of [
+    { name: 'delete_canvas_nodes', args: { nodeIds: [fixtureNodeId], reason: 'creation surface authority probe' } },
+    { name: 'bash', args: { command: 'printf executed > b1c-shell-must-not-run.txt' } },
+  ]) {
+    const id = `resident-creation-denied-${probe.name}`
+    const intent = `权限回归探针 ${id}`
+    const request = walk.fixture.expectText({
+      label: `${probe.name} is actually called from creation`,
+      match: body => flattenRequestText(body).includes(intent) && !hasToolResult(body, id),
+      reply: { type: 'tool', id, name: probe.name, args: probe.args },
+    })
+    const followup = walk.fixture.expectText({
+      label: `${probe.name} returns its execution denial to the model`,
+      match: body => hasToolResult(body, id),
+      reply: { type: 'text', text: `权限探针完成 ${id}` },
+    })
+    await sendResidentIntent(win, intent)
+    const wire = await recorded(request.received, `${probe.name} request`)
+    expect(toolNames(wire.body)).toContain(probe.name)
+    const resultWire = await recorded(followup.received, `${probe.name} execution denial`)
+    const wireResult = resultWire.body.messages.find(message => message.role === 'tool' && message.tool_call_id === id)
+    await expect.poll(() => readLaneTranscripts(projectRoot).flatMap(laneMessages)
+      .find(message => message.role === 'toolResult' && message.toolCallId === id),
+    { message: 'The real execution result must be durable', timeout: stationTimeout({ operations: 2 }) }).toBeTruthy()
+    const result = readLaneTranscripts(projectRoot).flatMap(laneMessages)
+      .find(message => message.role === 'toolResult' && message.toolCallId === id)
+    denials.push({ tool: probe.name, wire: wireResult, result })
+    walk.report.executionDenials = denials
+    expect(result.isError, `${probe.name} must be refused by execution authority`).toBe(true)
+    if (probe.name === 'delete_canvas_nodes') expect(laneMessageText(result)).toContain('surface_authority_denied: This action requires the canvas surface.')
+    if (probe.name === 'bash') expect(laneMessageText(result)).toContain('Request coding before accessing project files.')
+    await expectAbsent(win.locator(`${CREATION_PANEL} ${APPROVAL_CARD}`), {
+      provenBy: creationProof, message: 'Unauthorized tools must be refused before requesting user approval',
+    })
+    expect((await readProject(win, projectId)).payload.generationCanvas.nodes).toEqual(nodesBeforeProbes)
+    expect(fs.readFileSync(shellMarker, 'utf8'), 'A real writable canary must remain unchanged').toBe('not executed\n')
+  }
 
   // N: use a separately spawned production MCP stdio Electron process. Elicitation accepts the
   // user's confirmation, then the GUI RPC boundary owns the same project-bound receipt service.
@@ -261,7 +318,8 @@ try {
   walk.report.paidCalls = 0
   walk.report.coverage = {
     changedProductionScope: [
-      'electron/projectAgentHost/projectAgentTurnExecution.ts',
+      'electron/agentLane/laneDesktopTools.ts',
+      'electron/capabilityCore/projectAgentDocumentReceipt.ts',
       'electron/capabilityCore/mcpDocumentWriteReceipt.ts',
       'electron/capabilityCore/mcpProtocol.ts',
       'electron/capabilityCore/rpcServer.ts',

@@ -1,0 +1,25 @@
+SHOT 00-image-idle
+confirmed generation
+SHOT selected-generating
+SHOT unselected-generating
+SHOT 01-image-generating
+SHOT 02-task-center-generating
+任务
+1 进行中
+进行中 1
+图片
+生成中 · 已等 21 秒
+此任务暂不支持中止
+SHOT 03-image-finalizing
+SHOT selected-complete
+SHOT unselected-complete
+SHOT 04-image-saved
+SHOT 10-three-real-surfaces-generating
+SHOT 11-preview-timeline-regenerating
+SHOT 05-image-queued
+SHOT 06-task-center-queued
+SHOT 07-video-generating-no-history
+SHOT 08-video-generating-reduced-motion
+SHOT 09-video-generating-zoom-60
+SHOT 12-image-failed-vendor-disabled
+SHOT 13-task-center-failed-vendor-disabled

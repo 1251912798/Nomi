@@ -1,3 +1,4 @@
+import { revalidatePendingCredential } from './catalog/validateCandidateCredential';
 // 文本任务执行引擎（从 runtime.ts 抽出——规则 12 巨壳门岗：runtime.ts 已逼近 800 行硬上限，
 // 文本任务这块自成一单元）。方案 A：路径 B 文本生成统一走 AI SDK streamTextTask。
 //
@@ -63,6 +64,7 @@ export async function runTextTaskStream(
   const wantedKind = billingKindForTaskKind(kind);
   if (wantedKind !== "text") throw new Error(`runTextTaskStream 只处理文本任务，收到 kind=${kind}`);
   const modelKey = firstString(request.extras?.modelKey, request.extras?.modelAlias);
+  await revalidatePendingCredential(vendorKey);
   const { vendor, model, apiKey } = findExecutableModelForTask(vendorKey, modelKey, wantedKind);
   const taskId = `task-${crypto.randomUUID()}`;
   return executeTextTask({

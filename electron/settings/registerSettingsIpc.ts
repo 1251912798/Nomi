@@ -8,6 +8,9 @@ import { hydrateAssetRelayRuntime } from "./assetRelaySettings";
 import { registerAssetRelaySettingsIpc } from "./assetRelaySettingsIpc";
 import { registerTelemetryIpc } from "./telemetryIpc";
 import { registerDiagnosticsIpc } from "../diagnostics/diagnosticsIpc";
+import { registerAgentTraceIpc } from "../diagnostics/agentTraceIpc";
+
+import { registerAttentionSoundIpc } from "./attentionSoundIpc";
 
 export function registerSettingsIpc(): void {
   hydrateAssetRelayRuntime();
@@ -19,7 +22,9 @@ export function registerSettingsIpc(): void {
   registerVendorPreferenceIpc();
   registerCanvasMenuPreferenceIpc();
   registerTelemetryIpc();
+  registerAttentionSoundIpc();
   // 「隐私与诊断」那一格的另一半：遥测是「发不发出去」，诊断包是「出事时怎么把证据交出来」。
   // 两者同住一个设置区块，接线也放在一起。
   registerDiagnosticsIpc();
+  registerAgentTraceIpc();
 }

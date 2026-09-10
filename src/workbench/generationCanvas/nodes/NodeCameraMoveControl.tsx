@@ -20,7 +20,6 @@ import {
   type Icon,
 } from '@tabler/icons-react'
 import { cn } from '../../../utils/cn'
-import { toast } from '../../../ui/toast'
 import type { GenerationCanvasNode } from '../model/generationCanvasTypes'
 import { useGenerationCanvasStore } from '../store/generationCanvasStore'
 import {
@@ -165,14 +164,6 @@ export default function NodeCameraMoveControl({ node }: { node: GenerationCanvas
       spec: { move: draft.move, speed: draft.speed, shot: draft.shot },
       targetNodeId: node.id,
     })
-    toast(
-      t('generationCommon.cameraMove.created', {
-        move: moveLabel(draft.move),
-        speed: speedLabel(draft.speed),
-        duration,
-      }),
-      'success',
-    )
     setOpen(false)
   }
 

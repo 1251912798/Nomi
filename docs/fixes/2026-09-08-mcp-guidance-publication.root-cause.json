@@ -1,0 +1,106 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-08-mcp-guidance-publication",
+  "problem_type": "Shared tool guidance must survive every external publication path",
+  "symptom": "Actual tools/list canvas description omits prompt-writing guidance after field-description compaction.",
+  "direct_cause": "Capability resolver rereads the contract short description instead of publishing the shared description with guidelines; the collapsed read tool discards its source description.",
+  "class_root": "The metadata projection boundary did not preserve the model-visible guidance contract through adapter and aggregate publication.",
+  "affected_population": [
+    "External MCP callers of all six shared model-facing profiles",
+    "Canvas read through the approved nomi_read aggregate"
+  ],
+  "scope_paths": [
+    "electron/shared/agentCapabilities/modelFacingTools.ts",
+    "electron/capabilityCore/mcpCapabilityProjection.ts",
+    "electron/capabilityCore/mcpToolCatalog.ts"
+  ],
+  "entry_points": [
+    "Derived semantic MCP capability tools",
+    "Canvas read aggregate nomi_read target=canvas"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "The MCP description wire field and protocol are unchanged; the failure is an internal string projection ignoring existing shared metadata.",
+  "invariants": [
+    "Each externally published shared tool retains all its applicable promptGuidelines.",
+    "Aggregated canvas read guidance remains scoped to target=canvas.",
+    "Tools without descriptors retain their own contract description, with no invented descriptors."
+  ],
+  "generality_proof": "One shared description formatter is used by profile projection and real capability resolver; aggregate read incorporates only its actual canvas read source description.",
+  "shared_boundaries": [
+    {
+      "path": "electron/shared/agentCapabilities/modelFacingTools.ts",
+      "symbol": "mcpToolDescription",
+      "responsibility": "Derive the contract description plus deduplicated shared guideline text."
+    },
+    {
+      "path": "electron/capabilityCore/mcpToolCatalog.ts",
+      "symbol": "READ_TOOL",
+      "responsibility": "Keep source guidance in the approved aggregate with explicit target scope."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "electron/capabilityCore/mcpCapabilityProjection.ts",
+      "entry_point": "createMcpCapabilityResolver",
+      "disposition": "enforced",
+      "evidence": "Actual semantic tools use the shared description formatter and MCP-profile specs."
+    },
+    {
+      "path": "electron/capabilityCore/mcpToolCatalog.ts",
+      "entry_point": "READ_TOOL target=canvas",
+      "disposition": "enforced",
+      "evidence": "The single collapsed canvas read tool carries the actual source description under target=canvas."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Any shared descriptor guideline could disappear at either publication edge independently of tool domain.",
+    "same_class_scan": [
+      "Searched mcpProfileTools/MCP_TOOL_RESOLVER/promptGuidelines/description across shared registry, adapter, catalog and protocol.",
+      "Enumerated actual shared MCP profiles: asset.read, canvas.read/write, document.read/write, timeline.read.",
+      "Read actual tools/list protocol dispatch and approved canvas read aggregation."
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "electron/shared/agentCapabilities/modelFacingTools.ts",
+    "invariant": "Each externally published shared tool retains all its applicable promptGuidelines.",
+    "failure_mode": "Shared missing projection metadata still throws; applicable guidance is always derived at publication.",
+    "exception_policy": "none",
+    "strategy": "Use the existing shared formatter at both publication boundaries and preserve aggregate provenance scope.",
+    "artifacts": [
+      "electron/shared/agentCapabilities/modelFacingTools.ts",
+      "electron/capabilityCore/mcpCapabilityProjection.ts",
+      "electron/capabilityCore/mcpToolCatalog.ts"
+    ]
+  },
+  "regression_tests": [
+    "electron/capabilityCore/mcpProtocol.test.ts",
+    "electron/capabilityCore/mcpTransportSchemaFromZod.test.ts"
+  ],
+  "class_regression_tests": [
+    "electron/capabilityCore/mcpProtocol.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "not-applicable",
+    "removed_paths": [],
+    "rationale": "Replace existing short-only derivation in place; no parallel metadata publisher or new runtime path."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "No dependency or external format change; only internal metadata propagation.",
+    "exit_criteria": []
+  },
+  "migration": "No persisted data or wire shape changes. New tools/list responses retain the existing guideline text.",
+  "residual_risks": [
+    "Live third-party host model behavior is not exercised; tests verify the real deterministic tools/list wire response."
+  ],
+  "invariant_owner_layer": {
+    "layer": "electron/shared/agentCapabilities/modelFacingTools.ts",
+    "tests": [
+      "electron/capabilityCore/mcpProtocol.test.ts",
+      "electron/capabilityCore/mcpTransportSchemaFromZod.test.ts"
+    ],
+    "why": "The shared description owner must serve both internal MCP profile projection and actual external publication."
+  }
+}

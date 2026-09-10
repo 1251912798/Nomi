@@ -233,6 +233,7 @@ export type Vendor = {
   name: string;
   enabled: boolean;
   hasApiKey?: boolean;
+  credentialVerificationPending?: boolean;
   baseUrlHint?: string | null;
   authType?: VendorAuthType;
   authHeader?: string | null;

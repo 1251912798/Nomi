@@ -1,4 +1,4 @@
-import type { ProjectAgentContextBinding, ProjectBinding } from "../projectAgentContracts";
+import type { ProjectBinding } from "../projectBinding";
 import { assertProjectAgentBinding } from "../projectBinding";
 
 export class ProjectAgentContextBindingError extends Error {
@@ -65,3 +65,9 @@ export function assertProjectAgentContextBinding(value: unknown): ProjectAgentCo
     sessionKey: expectedSessionKey,
   });
 }
+
+export type ProjectAgentContextBinding = Readonly<{
+  project: ProjectBinding;
+  threadId: string;
+  sessionKey: `nomi:project-agent:${string}:g${number}`;
+}>;

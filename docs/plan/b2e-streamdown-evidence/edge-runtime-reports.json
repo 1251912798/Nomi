@@ -1,0 +1,50 @@
+[
+  {
+    "name": "markdown-edge-light",
+    "mode": "development",
+    "tempRoot": "/var/folders/f4/vz86j5nd0_sf56qdhzrmbbvw0000gn/T/nomi-pi-markdown-edge-light-2F7Jlx",
+    "outputDir": "/Users/aoqimin/Desktop/Nomi-panel-form/.tmp/pi-markdown-edge-light-development-1788959970752",
+    "launches": [
+      {
+        "packaged": false,
+        "appPath": "/Users/aoqimin/Desktop/Nomi-panel-form",
+        "userData": "/var/folders/f4/vz86j5nd0_sf56qdhzrmbbvw0000gn/T/nomi-pi-markdown-edge-light-2F7Jlx/user-data",
+        "node": "24.18.1",
+        "electron": "43.4.1",
+        "pid": 10090
+      }
+    ],
+    "screenshots": [],
+    "paidCalls": 0,
+    "projectId": "project-1788959971956-wiceib",
+    "projectRoot": "/var/folders/f4/vz86j5nd0_sf56qdhzrmbbvw0000gn/T/nomi-pi-markdown-edge-light-2F7Jlx/projects/未命名项目 09_09 21_19-mtu4ksqj-b921aaa1",
+    "textRequests": 7,
+    "imageRequests": 0,
+    "unexpected": [],
+    "result": "passed"
+  },
+  {
+    "name": "markdown-edge-dark",
+    "mode": "development",
+    "tempRoot": "/var/folders/f4/vz86j5nd0_sf56qdhzrmbbvw0000gn/T/nomi-pi-markdown-edge-dark-6XLY43",
+    "outputDir": "/Users/aoqimin/Desktop/Nomi-panel-form/.tmp/pi-markdown-edge-dark-development-1788959977252",
+    "launches": [
+      {
+        "packaged": false,
+        "appPath": "/Users/aoqimin/Desktop/Nomi-panel-form",
+        "userData": "/var/folders/f4/vz86j5nd0_sf56qdhzrmbbvw0000gn/T/nomi-pi-markdown-edge-dark-6XLY43/user-data",
+        "node": "24.18.1",
+        "electron": "43.4.1",
+        "pid": 10117
+      }
+    ],
+    "screenshots": [],
+    "paidCalls": 0,
+    "projectId": "project-1788959978126-qh09lm",
+    "projectRoot": "/var/folders/f4/vz86j5nd0_sf56qdhzrmbbvw0000gn/T/nomi-pi-markdown-edge-dark-6XLY43/projects/未命名项目 09_09 21_19-mtu4kxhv-224a8a9d",
+    "textRequests": 7,
+    "imageRequests": 0,
+    "unexpected": [],
+    "result": "passed"
+  }
+]

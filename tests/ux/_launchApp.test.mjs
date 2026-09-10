@@ -2,6 +2,8 @@
 // 这条不变量就是本次修复的根因：漏掉这两个 env，窗口起不来且**毫无提示**，只会干等到超时。
 import fs from 'node:fs'
 import path from 'node:path'
+import os from 'node:os'
+import vm from 'node:vm'
 import { describe, expect, test } from 'vitest'
 import {
   buildNomiLaunchEnv,
@@ -9,6 +11,8 @@ import {
   currentCatalogVersion,
   diagnoseLaunchFailure,
   prepareIsolatedCatalog,
+  prepareLocalStorageSeed,
+  launchNomiApp,
   repoRoot,
   withLinuxNoSandbox,
   withLinuxSyntheticCredentialStorage,
@@ -16,6 +20,47 @@ import {
 } from './_launchApp.mjs'
 
 const dirs = { userDataDir: '/tmp/case/user-data', settingsDir: '/tmp/case/settings', projectsDir: '/tmp/case/projects' }
+
+describe('initial local storage fixture', () => {
+  test('seeds missing preferences while preserving explicit values and excluding subframes', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'nomi-storage-seed-'))
+    try {
+      const args = prepareLocalStorageSeed(root, { 'nomi:splash:v1': 'seen', 'nomi-color-scheme': 'light' })
+      let listener
+      let registration
+      vm.runInNewContext(fs.readFileSync(args[1], 'utf8'), {
+        require: () => ({ app: { once: (event, callback) => {
+          expect(event).toBe('session-created')
+          listener = callback
+        } } }),
+      })
+      listener({ registerPreloadScript: (value) => { registration = value } })
+      expect(args[0]).toBe('-r')
+      expect(registration.type).toBe('frame')
+      const values = new Map([['nomi-color-scheme', 'dark']])
+      const context = {
+        process: { isMainFrame: false },
+        window: { localStorage: {
+          getItem: (key) => values.get(key) ?? null,
+          setItem: (key, value) => values.set(key, value),
+        } },
+      }
+      const script = fs.readFileSync(registration.filePath, 'utf8')
+      vm.runInNewContext(script, context)
+      expect(values.has('nomi:splash:v1')).toBe(false)
+      context.process.isMainFrame = true
+      vm.runInNewContext(script, context)
+      expect(Object.fromEntries(values)).toEqual({ 'nomi-color-scheme': 'dark', 'nomi:splash:v1': 'seen' })
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  test('refuses to seed a real profile before launching Electron', async () => {
+    await expect(launchNomiApp({ executablePath: 'unused-by-isolation-guard', isolate: false, initialLocalStorage: { 'nomi:splash:v1': 'seen' } }))
+      .rejects.toThrow('requires an isolated Nomi profile')
+  })
+})
 
 describe('prepareIsolatedCatalog', () => {
   test('quarantines a seed newer than the tested app instead of letting it enter Electron', () => {

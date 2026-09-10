@@ -1,3 +1,4 @@
+import { enShotTable, zhShotTable } from './locales/shotTable'
 import { enAntigravity, zhAntigravity } from './locales/antigravity'
 import { enModelSetup, zhModelSetup } from './locales/modelSetup'
 import { enBrowserAssets, zhBrowserAssets } from './locales/browserAssets'
@@ -20,6 +21,7 @@ import { enCommunity, zhCommunity } from './locales/community'
 import { enAgentPanelV4, zhAgentPanelV4 } from './locales/agentPanelV4'
 
 export const zhCN = {
+  shotTable: zhShotTable,
   common: {
     language: '语言',
     chinese: '简体中文',
@@ -95,7 +97,6 @@ export const zhCN = {
     version: '版本 {{version}}',
     progress: '下载进度 {{percent}}%',
     errorBody: '暂时无法完成更新，请重试。',
-    updateAndRestart: '更新并重启',
     restartInstall: '重启并安装',
     badge: '更新待处理',
     runningHint: '当前有任务运行，完成后再更新',
@@ -104,7 +105,6 @@ export const zhCN = {
     title: '任务',
     close: '关闭任务面板',
     untitledShot: '未命名镜头',
-    nodeQueued: '排队中',
     freeToCancel: '取消不产生费用',
     cancelQueued: '取消排队的 {{count}} 个',
     retryFailed: '重试失败的 {{count}} 个',
@@ -120,14 +120,11 @@ export const zhCN = {
       failed: '{{count}} 失败',
     },
     row: {
-      waitingWave: '第 {{wave}} 波 · 等上游参考',
-      waitingSlot: '等空位',
       elapsed: '已跑 {{time}}',
-      took: '用时 {{time}}',
       cancelled: '已取消（未提交，无费用）',
       recoverable: '等待超时 · 上游可能仍在跑，可重新拉取',
       failed: '生成失败',
-      submittedNoStop: '已提交厂商，无法中止（费用已产生）',
+      submittedNoStop: '此任务暂不支持中止',
       cancel: '取消',
       interrupt: '中断',
       retry: '重试',
@@ -143,7 +140,13 @@ export const zhCN = {
     },
     exportJob: {
       title: '导出成片',
-      failed: '导出失败',
+      failed: '未提供可确认的失败原因，请返回导出重试。',
+      missingFile: '素材文件不存在，请重新导入后导出。',
+      diskFull: '磁盘空间不足，请腾出空间后重新导出。',
+      permissionDenied: '无法访问导出所需文件，请检查文件权限。',
+      mediaUnreadable: '无法读取素材，请检查素材能否播放后重新导出。',
+      revealOutput: '查看成片',
+      returnToExport: '返回导出',
       statuses: {
         queued: '等待导出', preparing: '准备素材', planning: '规划导出', rendering: '渲染画面', encoding: '编码成片',
         muxing: '合成音视频', finalizing: '完成导出', succeeded: '导出完成', failed: '导出失败', cancelled: '已取消',
@@ -181,9 +184,6 @@ export const zhCN = {
     openModelAccess: '打开模型设置',
     windowTitleBar: '窗口标题栏',
     projectQuickActions: '项目快捷操作',
-    generationCollapsedChip: '生成',
-    generationCollapsedRestore: '展开生成 AI 栏（拆解占用右栏时暂收于此）',
-    generationCollapsedUpdates: '有 {{count}} 条 Agent 新动静',
     // 收起角标钮上那个词（窄窗隐藏，只剩 logo）。09-01 定稿 §11.2 收起态。
     agentChip: 'Nomi',
   },
@@ -310,12 +310,10 @@ export const zhCN = {
     projectRecoveryTitle: '检测到项目清单损坏',
     projectRecoveryMessage: '可以从最近一次有效自动备份恢复。当前损坏文件会保留为副本，不会被覆盖丢失。',
     projectRecoveryConfirm: '恢复上次备份',
-    projectRecoveryComplete: '项目已从自动备份恢复',
     projectFolderMissing: '项目文件夹不存在或磁盘未连接，请恢复文件夹后重试',
     projectRepairTitle: '项目暂时无法打开',
     projectRepairMessage: '未找到可用的自动备份。可以打开项目文件夹检查 .nomi/project.json：{{path}}',
     openProjectFolder: '打开项目文件夹',
-    migrationComplete: '项目已升级到目录树：{{count}} 个节点已归类',
     hostConfigRepaired: '已修复 {{clients}} 的 Nomi 接入配置，重启 {{clients}} 后生效',
     initializeTitle: '初始化为 Nomi 项目',
     initializeMessage: '{{path}}\n\nNomi 会创建 .nomi/，并把生成的图片、视频保存到 assets/ 和 exports/。',
@@ -328,8 +326,6 @@ export const zhCN = {
     removeProjectMessage: '确定从项目库移除「{{name}}」吗？这只解除绑定，你的原始文件夹和文件不会被删除。',
     deleteProjectMessage: '确定删除「{{name}}」吗？项目文件夹和本地资源会从磁盘永久删除，无法恢复。',
     removeProject: '从库移除',
-    projectRemoved: '已从库移除',
-    projectDeleted: '项目已删除',
     projectDeleteFailed: '项目删除失败',
     projectRestoreFailed: '项目恢复失败',
     renameFailed: '项目重命名保存失败',
@@ -432,6 +428,7 @@ type TranslationShape<T> = {
 }
 
 export const en = {
+  shotTable: enShotTable,
   common: {
     language: 'Language',
     chinese: '简体中文',
@@ -508,7 +505,6 @@ export const en = {
     version: 'Version {{version}}',
     progress: 'Download progress {{percent}}%',
     errorBody: 'The update could not be completed. Try again.',
-    updateAndRestart: 'Update and restart',
     restartInstall: 'Restart and install',
     badge: 'Update pending',
     runningHint: 'A task is running. The update will wait until it finishes.',
@@ -517,7 +513,6 @@ export const en = {
     title: 'Tasks',
     close: 'Close task panel',
     untitledShot: 'Untitled shot',
-    nodeQueued: 'Queued',
     freeToCancel: 'free to cancel',
     cancelQueued: 'Cancel {{count}} queued',
     retryFailed: 'Retry {{count}} failed',
@@ -533,14 +528,11 @@ export const en = {
       failed: '{{count}} failed',
     },
     row: {
-      waitingWave: 'Wave {{wave}} · waiting for upstream reference',
-      waitingSlot: 'Waiting for a slot',
       elapsed: 'running {{time}}',
-      took: 'took {{time}}',
       cancelled: 'Cancelled (never submitted, no charge)',
       recoverable: 'Timed out · may still be running upstream, can re-fetch',
       failed: 'Generation failed',
-      submittedNoStop: 'Submitted to provider, cannot be stopped (already charged)',
+      submittedNoStop: 'This task cannot be stopped',
       cancel: 'Cancel',
       interrupt: 'Interrupt',
       retry: 'Retry',
@@ -556,7 +548,13 @@ export const en = {
     },
     exportJob: {
       title: 'Export',
-      failed: 'Export failed',
+      failed: 'The failure reason is unavailable. Return to export and retry.',
+      missingFile: 'A source file is missing. Import it again before exporting.',
+      diskFull: 'Not enough disk space. Free up space and export again.',
+      permissionDenied: 'Export cannot access a required file. Check file permissions.',
+      mediaUnreadable: 'A source cannot be read. Check that it plays, then export again.',
+      revealOutput: 'Show exported video',
+      returnToExport: 'Return to export',
       statuses: {
         queued: 'Queued', preparing: 'Preparing media', planning: 'Planning export', rendering: 'Rendering', encoding: 'Encoding',
         muxing: 'Muxing audio and video', finalizing: 'Finalizing', succeeded: 'Export complete', failed: 'Export failed', cancelled: 'Cancelled',
@@ -594,9 +592,6 @@ export const en = {
     openModelAccess: 'Open model setup',
     windowTitleBar: 'Window title bar',
     projectQuickActions: 'Project quick actions',
-    generationCollapsedChip: 'Generate',
-    generationCollapsedRestore: 'Reopen the generation AI panel (tucked here while deconstruction uses the right dock)',
-    generationCollapsedUpdates: '{{count}} new Agent updates',
     agentChip: 'Nomi',
   },
   window: {
@@ -721,12 +716,10 @@ export const en = {
     projectRecoveryTitle: 'The project manifest is damaged',
     projectRecoveryMessage: 'Nomi can restore the most recent valid automatic backup. The damaged file will be preserved as a separate copy.',
     projectRecoveryConfirm: 'Restore last backup',
-    projectRecoveryComplete: 'Project restored from the automatic backup',
     projectFolderMissing: 'The project folder is missing or its drive is disconnected. Restore the folder and try again.',
     projectRepairTitle: 'The project cannot be opened',
     projectRepairMessage: 'No valid automatic backup was found. Open the project folder and inspect .nomi/project.json: {{path}}',
     openProjectFolder: 'Open project folder',
-    migrationComplete: 'Project folder tree upgraded: {{count}} nodes categorized',
     hostConfigRepaired: 'Repaired the Nomi connection for {{clients}}. Restart {{clients}} to apply it.',
     initializeTitle: 'Initialize as a Nomi project',
     initializeMessage:
@@ -742,8 +735,6 @@ export const en = {
     deleteProjectMessage:
       'Delete “{{name}}”? Its project folder and local assets will be permanently deleted from disk and cannot be recovered.',
     removeProject: 'Remove from library',
-    projectRemoved: 'Removed from library',
-    projectDeleted: 'Project deleted',
     projectDeleteFailed: 'Could not delete the project',
     projectRestoreFailed: 'Could not restore the project',
     renameFailed: 'Could not save the renamed project',

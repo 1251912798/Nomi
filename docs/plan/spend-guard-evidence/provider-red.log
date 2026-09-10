@@ -1,0 +1,123 @@
+
+ RUN  v4.1.8 /Users/aoqimin/Desktop/Nomi-money-guard
+
+ ❯ src/workbench/generationCanvas/runner/customCapabilityContract.integration.test.ts (3 tests | 1 failed) 11ms
+     × keeps the disconnected provider until the user chooses its successor 5ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/workbench/generationCanvas/runner/customCapabilityContract.integration.test.ts > custom capability contract catalog -> canvas -> request > keeps the disconnected provider until the user chooses its successor
+AssertionError: promise resolved "{ id: 'migrate-node', …(9) }" instead of rejecting
+
+- Expected
++ Received
+
+- Error {
+-   "message": "rejected promise",
++ {
++   "history": [],
++   "id": "migrate-node",
++   "kind": "video",
++   "meta": {
++     "archetype": {
++       "id": "custom-capability:future-video-v1",
++       "modeId": "references",
++     },
++     "customCapabilityContract": {
++       "defaultModeId": "references",
++       "kind": "video",
++       "modes": [
++         {
++           "hint": "Ordered reference images",
++           "id": "references",
++           "intent": "character",
++           "params": [],
++           "promptRequired": true,
++           "slots": [
++             {
++               "asArray": true,
++               "characterIndexed": true,
++               "inputKey": "reference_images",
++               "kind": "image_ref",
++               "label": "Reference images",
++               "max": 4,
++               "min": 1,
++             },
++           ],
++           "transportTaskKind": "image_to_video",
++           "vendorTerm": "Multi reference",
++         },
++         {
++           "combineSlotsInto": {
++             "flat": true,
++             "key": "frame_images",
++           },
++           "fixedParams": {
++             "generation_mode": "frames",
++           },
++           "hint": "",
++           "id": "frames",
++           "intent": "firstlast",
++           "params": [],
++           "promptRequired": true,
++           "slots": [
++             {
++               "inputKey": "first_image",
++               "kind": "first_frame",
++               "label": "First frame",
++               "max": 1,
++               "min": 1,
++             },
++             {
++               "inputKey": "last_image",
++               "kind": "last_frame",
++               "label": "Last frame",
++               "max": 1,
++               "min": 0,
++             },
++           ],
++           "transportTaskKind": "image_to_video",
++           "vendorTerm": "First and last frame",
++         },
++       ],
++       "transportTaskKind": "image_to_video",
++       "version": 1,
++     },
++     "modelAlias": "future-video-v1",
++     "modelKey": "future-video-v1",
++     "modelLabel": "Future Video V1",
++     "modelVendor": "replacement-relay",
++     "vendor": "replacement-relay",
++     "videoModel": "future-video-v1",
++     "videoModelVendor": "replacement-relay",
++   },
++   "position": {
++     "x": 120,
++     "y": 120,
++   },
++   "prompt": "",
++   "references": [],
++   "size": {
++     "height": 340,
++     "width": 420,
++   },
++   "status": "idle",
++   "title": "视频",
+  }
+
+ ❯ src/workbench/generationCanvas/runner/customCapabilityContract.integration.test.ts:182:7
+    180|       listCatalogVendors: async () => vendors,
+    181|       listCatalogModels: async () => models,
+    182|     })).rejects.toThrow(/disconnected-relay/)
+       |       ^
+    183|     expect(node.meta?.modelVendor).toBe('disconnected-relay')
+    184|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 2 passed (3)
+   Start at  15:50:50
+   Duration  1.52s (transform 750ms, setup 25ms, import 1.42s, tests 11ms, environment 0ms)
+

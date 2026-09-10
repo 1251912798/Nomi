@@ -12,7 +12,7 @@
 // 结果是 main 上不碰画布的提交也能红（run 33967545326 / 33956782546），
 // 每次都要有人重新查一遍才敢说「这不是回归」。
 //
-// 两条规矩，都是硬零（没有棘轮基线，新增当场红）：
+// 规矩都是硬零（没有棘轮基线，新增当场红）：
 //   ① 拖拽手势的坐标不许自己贴着 stage 边缘算，必须过 clampIntoAutoPanSafeArea；
 //   ② 框选这种「扫过一片区域」的判据不许和数字字面量比，必须和从那块区域 derive 出来的期望值比。
 // 缺一不可：只做 ② 的话扫过的区域还在随帧率变，derive 出来的期望值一样在跳。
@@ -133,7 +133,21 @@ function findLiteralMarqueeSelection(lines) {
   return hits
 }
 
+// A box offset proves geometry, not the topmost hit target. In particular,
+// selection controls can cover that point and turn multi-select into an edit.
+export function findCoordinateOnlyClicks(source) {
+  return [...source.matchAll(/\bmouse\.click\s*\(([^)]*)\)/g)]
+    .filter(match => /[+*/-]/.test(match[1]))
+    .map(match => ({ line: lineNumberAt(source, match.index), hit: match[0], source: match[0].trim() }))
+}
+
 const RULES = [
+  {
+    id: 'coordinate-only-node-click',
+    label: '节点点击只按外接盒偏移计算，未核对实际命中目标',
+    why: '浮层或卡片按钮可能接住点击并执行别的操作。复用 _canvasHit.mjs 的 findNodeHitPoint，再传入命中点。',
+    find: source => findCoordinateOnlyClicks(source),
+  },
   {
     id: 'edge-hugging-drag-endpoint',
     label: `拖拽手势坐标自己贴着 stage 边缘算，退的距离小于自动平移安全边距 ${AUTO_PAN_SAFE_MARGIN_PX}px`,
@@ -180,9 +194,9 @@ function main() {
     }
     console.error('')
   }
-  console.error('这两条是硬零规则：没有棘轮基线，也不接受「先记一笔欠账」——')
+  console.error('这些是硬零规则：没有棘轮基线，也不接受「先记一笔欠账」——')
   console.error('它们拦的是「本机绿、别的机器红，而且每次都得有人重查一遍才敢说不是回归」那一族。')
   process.exit(1)
 }
 
-main()
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main()

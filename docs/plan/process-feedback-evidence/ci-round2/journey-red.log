@@ -1,0 +1,13 @@
+real-user-test-gates FAILED: 5 passed, 2 failed, 0 blocked
+report: tests/system/runs/2026-09-08T22-46-34.452Z-real-user-journeys/report.md
+
+Single-variable regression: built serializer restored to pre-#661 behavior; assertions unchanged.
+[nomi:main] session-start version=0.21.0 electron=43.4.1 platform=darwin-arm64
+Error: PRODUCTION MCP E2E FAIL: document MCP gap is explicit for a newly created project without a creation document; actual={"content":[{"type":"text","text":"✗ Creation document not found"}],"isError":true,"structuredContent":{"nomiOutcome":{"kind":"error","tool":"nomi_document_read","errorCode":null,"message":"Creation document not found","recoveryActions":[]}}}
+    at check (file:///Users/aoqimin/Desktop/Nomi-process-feedback/tests/ux/production-mcp-journey.e2e.mjs:49:25)
+    at file:///Users/aoqimin/Desktop/Nomi-process-feedback/tests/ux/production-mcp-journey.e2e.mjs:205:3
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+AssertionError [ERR_ASSERTION]: C7 T14 start 无可信收据不可绕过 confirm; actual={"content":[{"type":"text","text":"✗ Signed approval value is malformed"}],"isError":true,"structuredContent":{"nomiOutcome":{"kind":"error","tool":"nomi_integration","errorCode":null,"message":"Signed approval value is malformed","recoveryActions":[]}}}
+    at check (file:///Users/aoqimin/Desktop/Nomi-process-feedback/tests/ux/mcp-l2-journeys.e2e.mjs:55:48)
+    at file:///Users/aoqimin/Desktop/Nomi-process-feedback/tests/ux/mcp-l2-journeys.e2e.mjs:190:3
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)

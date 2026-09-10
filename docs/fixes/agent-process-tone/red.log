@@ -1,0 +1,32 @@
+feel record: pi-agent-process-tone/waitForFunction.png; findings=20; new-surfaces=2; evidence: /Users/aoqimin/Desktop/Nomi-process-tone/artifacts/feel/pi-agent-process-tone-7f0df72a-60aa-4b58-adbc-636b3cebd29d
+feel record: pi-agent-process-tone/waitForFunction.png; findings=20; new-surfaces=0; evidence: /Users/aoqimin/Desktop/Nomi-process-tone/artifacts/feel/pi-agent-process-tone-7f0df72a-60aa-4b58-adbc-636b3cebd29d
+feel record: pi-agent-process-tone/light-collapsed.png; findings=20; new-surfaces=2; evidence: /Users/aoqimin/Desktop/Nomi-process-tone/artifacts/feel/pi-agent-process-tone-7f0df72a-60aa-4b58-adbc-636b3cebd29d
+feel record: pi-agent-process-tone/waitForFunction.png; findings=20; new-surfaces=0; evidence: /Users/aoqimin/Desktop/Nomi-process-tone/artifacts/feel/pi-agent-process-tone-7f0df72a-60aa-4b58-adbc-636b3cebd29d
+feel record: pi-agent-process-tone/light-expanded.png; findings=20; new-surfaces=2; evidence: /Users/aoqimin/Desktop/Nomi-process-tone/artifacts/feel/pi-agent-process-tone-7f0df72a-60aa-4b58-adbc-636b3cebd29d
+light hierarchy {"reference":{"lightness":0.68,"weight":400},"rows":[{"text":"用了 2 个工具 · 0 次重试","lightness":0.68,"weight":400},{"text":"读取文稿","lightness":0.32,"weight":500},{"text":"读取文稿","lightness":0.32,"weight":500},{"text":"只是看一眼，不改动任何东西","lightness":0.32,"weight":400},{"text":"输入","lightness":0.68,"weight":400},{"text":"{ \"scope\": \"full\" }","lightness":0.32,"weight":400},{"text":"输出","lightness":0.68,"weight":400},{"text":"清晨，女孩推开窗户，看见远处的山。","lightness":0.32,"weight":400},{"text":"读取文稿","lightness":0.32,"weight":500},{"text":"只是看一眼，不改动任何东西","lightness":0.32,"weight":400},{"text":"输入","lightness":0.68,"weight":400},{"text":"{ \"scope\": \"full\" }","lightness":0.32,"weight":400},{"text":"输出","lightness":0.68,"weight":400},{"text":"清晨，女孩推开窗户，看见远处的山。","lightness":0.32,"weight":400}],"violations":[{"text":"读取文稿","lightness":0.32,"weight":500},{"text":"读取文稿","lightness":0.32,"weight":500},{"text":"只是看一眼，不改动任何东西","lightness":0.32,"weight":400},{"text":"{ \"scope\": \"full\" }","lightness":0.32,"weight":400},{"text":"清晨，女孩推开窗户，看见远处的山。","lightness":0.32,"weight":400},{"text":"读取文稿","lightness":0.32,"weight":500},{"text":"只是看一眼，不改动任何东西","lightness":0.32,"weight":400},{"text":"{ \"scope\": \"full\" }","lightness":0.32,"weight":400},{"text":"清晨，女孩推开窗户，看见远处的山。","lightness":0.32,"weight":400}]}
+feel record: pi-agent-process-tone/FAIL.png; findings=20; new-surfaces=2; evidence: /Users/aoqimin/Desktop/Nomi-process-tone/artifacts/feel/pi-agent-process-tone-7f0df72a-60aa-4b58-adbc-636b3cebd29d
+{
+  "name": "agent-process-tone",
+  "mode": "development",
+  "tempRoot": "/var/folders/f4/vz86j5nd0_sf56qdhzrmbbvw0000gn/T/nomi-pi-agent-process-tone-ECR9ri",
+  "outputDir": "/Users/aoqimin/Desktop/Nomi-process-tone/.tmp/pi-agent-process-tone-development-1788964178003",
+  "launches": [
+    {
+      "packaged": false,
+      "appPath": "/Users/aoqimin/Desktop/Nomi-process-tone",
+      "userData": "/var/folders/f4/vz86j5nd0_sf56qdhzrmbbvw0000gn/T/nomi-pi-agent-process-tone-ECR9ri/user-data",
+      "node": "24.18.1",
+      "electron": "43.4.1",
+      "pid": 88751
+    }
+  ],
+  "screenshots": [],
+  "paidCalls": 0,
+  "projectId": "project-1788964179292-kywfpr",
+  "projectRoot": "/var/folders/f4/vz86j5nd0_sf56qdhzrmbbvw0000gn/T/nomi-pi-agent-process-tone-ECR9ri/projects/未命名项目 09_09 22_29-mtu72z4z-40f6e4da",
+  "textRequests": 3,
+  "imageRequests": 0,
+  "unexpected": [],
+  "result": "failed",
+  "error": "Error: C66: children must not be darker or bolder than summary\n\nexpect(received).toEqual(expected) // deep equality\n\n- Expected  -  1\n+ Received  + 47\n\n- Array []\n+ Array [\n+   Object {\n+     \"lightness\": 0.32,\n+     \"text\": \"读取文稿\",\n+     \"weight\": 500,\n+   },\n+   Object {\n+     \"lightness\": 0.32,\n+     \"text\": \"读取文稿\",\n+     \"weight\": 500,\n+   },\n+   Object {\n+     \"lightness\": 0.32,\n+     \"text\": \"只是看一眼，不改动任何东西\",\n+     \"weight\": 400,\n+   },\n+   Object {\n+     \"lightness\": 0.32,\n+     \"text\": \"{ \\\"scope\\\": \\\"full\\\" }\",\n+     \"weight\": 400,\n+   },\n+   Object {\n+     \"lightness\": 0.32,\n+     \"text\": \"清晨，女孩推开窗户，看见远处的山。\",\n+     \"weight\": 400,\n+   },\n+   Object {\n+     \"lightness\": 0.32,\n+     \"text\": \"读取文稿\",\n+     \"weight\": 500,\n+   },\n+   Object {\n+     \"lightness\": 0.32,\n+     \"text\": \"只是看一眼，不改动任何东西\",\n+     \"weight\": 400,\n+   },\n+   Object {\n+     \"lightness\": 0.32,\n+     \"text\": \"{ \\\"scope\\\": \\\"full\\\" }\",\n+     \"weight\": 400,\n+   },\n+   Object {\n+     \"lightness\": 0.32,\n+     \"text\": \"清晨，女孩推开窗户，看见远处的山。\",\n+     \"weight\": 400,\n+   },\n+ ]\n    at captureRawStack (/Users/aoqimin/Desktop/Nomi-process-tone/node_modules/.pnpm/playwright-core@1.60.0/node_modules/playwright-core/lib/coreBundle.js:3130:17)\n    at callMatcherAsStep (/Users/aoqimin/Desktop/Nomi-process-tone/node_modules/.pnpm/playwright@1.60.0/node_modules/playwright/lib/matchers/expect.js:12873:57)\n    at Object.toEqual (/Users/aoqimin/Desktop/Nomi-process-tone/node_modules/.pnpm/playwright@1.60.0/node_modules/playwright/lib/matchers/expect.js:12863:23)\n    at Proxy.<anonymous> (/Users/aoqimin/Desktop/Nomi-process-tone/tests/ux/_collect.mjs:18:32)\n    at /Users/aoqimin/Desktop/Nomi-process-tone/tests/ux/agent-process-tone.walk.mjs:42:93"
+}

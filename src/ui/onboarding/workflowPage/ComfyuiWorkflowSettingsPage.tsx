@@ -20,11 +20,11 @@ import { useTranslation } from 'react-i18next'
 import { Portal } from '@mantine/core'
 import { IconAlertTriangle, IconArrowLeft, IconTrash, IconX } from '@tabler/icons-react'
 import { cn } from '../../../utils/cn'
-import { alertDialog, confirmDialog, NOMI_OVERLAY_Z_INDEX } from '../../../design'
+import { confirmDialog, NOMI_OVERLAY_Z_INDEX } from '../../../design'
 import { currentFullscreenOverlayTopOffset } from '../../app-shell/windowChrome'
 import { getDesktopBridge } from '../../../desktop/bridge'
 import { cancelComfyCandidateTestRevision, type TaskKind } from '../../../workbench/api/taskApi'
-import { toast } from '../../toast'
+import { notify } from '../../notificationPolicy'
 import { buildWorkflowGraphView, type GraphInput } from '../comfyuiWorkflowGraphView'
 import { buildCanvasPreview } from '../comfyuiCanvasPreview'
 import {
@@ -74,7 +74,18 @@ export function ComfyuiWorkflowSettingsPage({
   const [uiWorkflowText, setUiWorkflowText] = React.useState('')
   const [name, setName] = React.useState('')
   const [dirty, setDirty] = React.useState(false)
-  const [error, setError] = React.useState('')
+  const [errors, setErrors] = React.useState<Record<string, string>>({})
+  const feedbackOwner = `${vendorKey}/${selectedModelKey ?? ''}`
+  const error = errors[feedbackOwner] ?? ''
+  const setError = React.useCallback((message: string) => {
+    notify({ identity: `workflow:${feedbackOwner}`, reason: 'operation', message, type: 'error', level: 'inline',
+      present: (text) => setErrors((current) => ({ ...current, [feedbackOwner]: text })) })
+  }, [feedbackOwner])
+  const [backendErrors, setBackendErrors] = React.useState<Record<string, string>>({})
+  const reportBackend = React.useCallback((key: string, message: string) => {
+    notify({ identity: `workflow-backend:${key}`, reason: 'operation', message, type: 'error', level: 'inline',
+      present: (text) => setBackendErrors((current) => ({ ...current, [key]: text })) })
+  }, [])
   const [busy, setBusy] = React.useState(false)
   const [running, setRunning] = React.useState(false)
   const [previewValues, setPreviewValues] = React.useState<Record<string, string>>({})
@@ -224,6 +235,7 @@ export function ComfyuiWorkflowSettingsPage({
     const prepare = getDesktopBridge()?.onboarding?.integrationSessionPrepareComfy
     if (!prepare) { setError(t('comfyuiWorkflowPage.errors.unsupported')); return false }
     const label = name.trim() || labelOf(selectedModelKey)
+    setError('')
     setBusy(true)
     try {
       await prepare({
@@ -238,7 +250,6 @@ export function ComfyuiWorkflowSettingsPage({
       setDirty(false)
       setVerificationPending(true)
       setError('')
-      toast(t('onboardingProviders.comfyWorkflow.awaitingVerification', { name: label }), 'success')
       return true
     } catch (value) {
       setError(t('comfyuiWorkflowPage.errors.saveFailed', {
@@ -248,7 +259,7 @@ export function ComfyuiWorkflowSettingsPage({
     } finally {
       setBusy(false)
     }
-  }, [selectedModelKey, binding, verificationPending, dirty, name, labelOf, vendorKey, graphText, reconcile?.enumOptions, uiWorkflowText, t])
+  }, [selectedModelKey, binding, verificationPending, dirty, name, labelOf, vendorKey, graphText, reconcile?.enumOptions, uiWorkflowText, setError, t])
 
   const remove = React.useCallback(async () => {
     if (!selectedModelKey) return
@@ -260,18 +271,15 @@ export function ComfyuiWorkflowSettingsPage({
       danger: true,
     })
     if (!ok) return
+    setError('')
     try {
       getDesktopBridge()?.modelCatalog?.deleteModels([{ vendorKey, modelKey: selectedModelKey }])
       setSelectedModelKey(null)
-      toast(t('comfyuiWorkflowPage.header.deleted', { name: label }), 'success')
       bumpAll()
     } catch (e) {
-      void alertDialog({
-        title: t('comfyuiWorkflowPage.errors.deleteFailed', { error: '' }),
-        message: e instanceof Error ? e.message : String(e),
-      })
+      setError(t('comfyuiWorkflowPage.errors.deleteFailed', { error: e instanceof Error ? e.message : String(e) }))
     }
-  }, [selectedModelKey, vendorKey, labelOf, bumpAll, t])
+  }, [selectedModelKey, vendorKey, labelOf, bumpAll, setError, t])
 
   const removeBackend = React.useCallback(async (backend: BackendRow) => {
     const ok = await confirmDialog({
@@ -283,6 +291,7 @@ export function ComfyuiWorkflowSettingsPage({
     if (!ok) return
     const bridge = getDesktopBridge()?.modelCatalog
     if (!bridge) return
+    reportBackend(backend.vendorKey, '')
     try {
       // 整台移除连它名下的工作流一起删——那些工作流指向的是这台的地址，留着是死的（同 ComfyuiLocalCard）。
       const owned = (bridge.listModels() as Array<Record<string, unknown>>)
@@ -291,22 +300,21 @@ export function ComfyuiWorkflowSettingsPage({
       if (owned.length > 0) bridge.deleteModels(owned)
       bridge.deleteVendor?.(backend.vendorKey)
       if (backend.vendorKey === vendorKey) setVendorKey(initialVendorKey)
-      toast(t('comfyuiWorkflowPage.backends.removed', { name: backend.name }), 'success')
       bumpAll()
     } catch (e) {
-      void alertDialog({ title: t('comfyuiWorkflowPage.backends.remove'), message: e instanceof Error ? e.message : String(e) })
+      reportBackend(backend.vendorKey, e instanceof Error ? e.message : String(e))
     }
-  }, [vendorKey, initialVendorKey, bumpAll, t])
+  }, [vendorKey, initialVendorKey, bumpAll, reportBackend, t])
 
   const saveAddress = React.useCallback((key: string, address: string) => {
+    reportBackend(key, '')
     try {
       getDesktopBridge()?.modelCatalog?.upsertVendor({ key, baseUrlHint: address })
-      toast(t('comfyuiWorkflowPage.backends.saved'), 'success')
       bumpAll()
     } catch (e) {
-      void alertDialog({ title: t('comfyuiWorkflowPage.backends.edit'), message: e instanceof Error ? e.message : String(e) })
+      reportBackend(key, e instanceof Error ? e.message : String(e))
     }
-  }, [bumpAll, t])
+  }, [bumpAll, reportBackend])
 
   // 试跑挡门（§1.6 C1：挡住就 disabled + title 说清为什么，不做沟通死路）。
   //
@@ -333,11 +341,11 @@ export function ComfyuiWorkflowSettingsPage({
     if (!selectedModelKey || !binding) return
     setRunning(true)
     try {
-      if (!(await save())) setError(t('comfyuiWorkflowPage.preview.runNeedsSave'))
+      await save()
     } finally {
       setRunning(false)
     }
-  }, [selectedModelKey, binding, save, t])
+  }, [selectedModelKey, binding, save])
 
   const nodeCount = view.nodes.length
 
@@ -385,6 +393,9 @@ export function ComfyuiWorkflowSettingsPage({
               selectedModelKey={selectedModelKey}
               onSelectWorkflow={selectWorkflow}
             />
+            {catalog.backends.filter((backend) => backendErrors[backend.vendorKey]).map((backend) => (
+              <p key={backend.vendorKey} role="alert" className="text-caption text-workbench-danger">{backend.name}: {backendErrors[backend.vendorKey]}</p>
+            ))}
             {selectedModelKey && binding ? (
               <WorkflowCanvasPreview
                 fields={preview.fields}
@@ -450,8 +461,9 @@ export function ComfyuiWorkflowSettingsPage({
               </span>
             </div>
 
+            {verificationPending ? <p role="status" className="px-2.5 py-2 text-caption text-nomi-ink-60">{t('onboardingProviders.comfyWorkflow.awaitingVerification', { name })}</p> : null}
             {error ? (
-              <div className="flex flex-none items-start gap-2 border-b border-nomi-line bg-nomi-ink-05 px-2.5 py-2">
+              <div role="alert" className="flex flex-none items-start gap-2 border-b border-nomi-line bg-nomi-ink-05 px-2.5 py-2">
                 <IconAlertTriangle size={14} className="mt-0.5 shrink-0 text-nomi-danger" aria-hidden="true" />
                 <span className="text-caption leading-relaxed text-nomi-ink">{error}</span>
               </div>

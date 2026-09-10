@@ -33,3 +33,16 @@ describe('model settings connection projection', () => {
     expect(entry.skipHealthProbe).toBe(true)
   })
 })
+
+
+it('keeps a saved offline credential visible as pending in the available platform row', () => {
+  const result = projectOnboardingConnections({
+    models: [], dreaminaStatus: null, openPage: vi.fn(),
+    localNames: { dreamina: 'Dreamina', codex: 'Codex', antigravity: 'Antigravity' },
+    vendorMeta: new Map([['apimart', { name: 'APIMart', hasApiKey: true, enabled: false,
+      credentialVerificationPending: true, baseUrl: 'http://127.0.0.1:1', authType: 'bearer', customCallOnly: false }]]),
+  })
+  expect(result.homeConnections).toEqual([])
+  expect(result.availableHomeConnections.find(item => item.vendorKey === 'apimart'))
+    .toMatchObject({ hasApiKey: true, credentialVerificationPending: true })
+})

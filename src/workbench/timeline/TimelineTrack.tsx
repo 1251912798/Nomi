@@ -14,7 +14,7 @@ import { buildTimelineDropPreview, type TimelineDropPreview } from './timelineDr
 import { decodeTimelineGenerationNodeDragPayload, TIMELINE_GENERATION_NODE_DRAG_MIME } from './timelineDragPayload'
 import TimelineClip from './TimelineClip'
 import type { TimelineTrack as TimelineTrackData } from './timelineTypes'
-import { toast } from '../../ui/toast'
+import { notify } from '../../ui/notificationPolicy'
 import TimelineTransitionMarker from './TimelineTransitionMarker'
 import TimelineSeamHandle from './TimelineSeamHandle'
 import type { TimelineTransitionFeedback } from './timelineVisualFeedback'
@@ -55,6 +55,10 @@ function TimelineTrack({ track, transitionFeedback = [], variant = 'primary' }: 
   const setTimelinePlayhead = useWorkbenchStore((state) => state.setTimelinePlayhead)
   const setTimelineSelection = useWorkbenchStore((state) => state.setTimelineSelection)
   const clipsRef = React.useRef<HTMLDivElement | null>(null)
+  const [feedback, setFeedback] = React.useState('')
+  const presentFeedback = React.useCallback((message: string) => {
+    notify({ identity: `timeline-track:${track.id}`, reason: 'drop', level: 'inline', type: 'error', message, present: setFeedback })
+  }, [track.id])
   const [dragPreview, setDragPreview] = React.useState<TimelineDropPreview | null>(null)
   // v0.7.4: dragenter/over 期间无法 getData → 用单独的 hover state 提供视觉反馈
   const [isDragHovering, setIsDragHovering] = React.useState(false)
@@ -123,6 +127,7 @@ function TimelineTrack({ track, transitionFeedback = [], variant = 'primary' }: 
         startFrame: resolveFrame(event.clientX),
         targetTrackType: track.type,
         activeProjectId: getActiveWorkbenchProjectId(),
+        onFailure: (error) => presentFeedback(error instanceof Error ? error.message : t('timelineEditor.adoption.failedRecovered')),
       })
       if (!result) return false
       event.preventDefault()
@@ -130,22 +135,23 @@ function TimelineTrack({ track, transitionFeedback = [], variant = 'primary' }: 
       setIsDragHovering(false)
       setDropCaretFrame(null)
       if (result.status === 'reject-external') {
-        toast(t('assetLibrary.externalAssetHint'), 'info')
+        presentFeedback(t('assetLibrary.externalAssetHint'))
       } else if (result.status === 'reject') {
         const expectedTrack = result.expectedTrack === 'image'
           ? t('timelineEditor.track.imageLabel')
           : result.expectedTrack === 'video'
             ? t('timelineEditor.track.videoLabel')
             : t('timelineEditor.track.audioLabel')
-        toast(t('timelineEditor.track.wrongType', { track: expectedTrack }), 'warning')
+        presentFeedback(t('timelineEditor.track.wrongType', { track: expectedTrack }))
       }
       return true
     },
-    [track.type, resolveFrame, fps, t],
+    [track.type, resolveFrame, fps, presentFeedback, t],
   )
 
   const handleDrop = React.useCallback(
     (event: React.DragEvent<HTMLDivElement>) => {
+      setFeedback('')
       if (handleAssetDrop(event)) return
       const preview = resolveDropPreview(event) || dragPreview
       if (!preview) return
@@ -153,7 +159,7 @@ function TimelineTrack({ track, transitionFeedback = [], variant = 'primary' }: 
       setDragPreview(null)
       setDropCaretFrame(null)
       if (!preview.canPlace) {
-        toast(preview.reason || t('timelineEditor.track.unavailable'), 'warning')
+        presentFeedback(preview.reason || t('timelineEditor.track.unavailable'))
         return
       }
       const generationNodePayload = decodeTimelineGenerationNodeDragPayload(
@@ -173,10 +179,10 @@ function TimelineTrack({ track, transitionFeedback = [], variant = 'primary' }: 
         placement: { kind: 'frame', startFrame: preview.startFrame },
       }).then((outcome) => {
         // 拖放时用户已经在看着轴了，回执不再展开面板（与画布拖拽路径一致）。
-        reportAdoptionOutcome(outcome, { revealTimeline: false })
-      })
+        reportAdoptionOutcome(outcome, { revealTimeline: false, level: 'inline', present: setFeedback })
+      }).catch((error: unknown) => presentFeedback(error instanceof Error ? error.message : t('timelineEditor.adoption.failedRecovered')))
     },
-    [handleAssetDrop, dragPreview, resolveDropPreview, t],
+    [handleAssetDrop, dragPreview, resolveDropPreview, presentFeedback, t],
   )
 
   return (
@@ -316,7 +322,6 @@ function TimelineTrack({ track, transitionFeedback = [], variant = 'primary' }: 
               'text-[var(--nomi-ink-40)] leading-none text-micro font-medium pointer-events-none',
             )}
           >
-            {track.type === 'audio' ? t('timelineEditor.track.emptyAudio') : t('timelineEditor.track.emptyVisual')}
           </div>
         ) : null}
         {dropCaretFrame != null ? (
@@ -373,6 +378,7 @@ function TimelineTrack({ track, transitionFeedback = [], variant = 'primary' }: 
           />
         ))}
       </div>
+      {feedback ? <p role="status" data-timeline-track-feedback className="col-start-2 py-1 text-caption text-workbench-danger">{feedback}</p> : null}
     </div>
   )
 }

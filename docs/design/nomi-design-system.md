@@ -101,6 +101,10 @@ Script → Generate → Edit → Preview → Export
 
 ---
 
+## 行布局：附属信息跟随内容流
+
+一行里的耗时、状态、展开箭头和次级动作紧跟说明文字，用 `gap-1.5` 小间距排列；只有主动作（确认/发送）和危险动作允许贴右边缘。Agent 面板统一复用 `V4Row`，不在消费者另写 `ml-auto` / `justify-between` 或给标签加伸展来推远附属。用户气泡的整体靠右不属于附属行，使用 `self-end` 保持对话布局。`check:tokens` 对 AI 目录行尾类硬零，其余生产路径按文件登记存量只减不增。
+
 ## 1.5 控件层级规则（强制 · 画图前必过）
 
 > **这份文档过去只管「长什么样」，不管「住哪一层」。** 2026-08-02 全 App 控件盘点（10 个界面、约 620 个可点位）发现：十个界面各自发明了十套摆法——画布左缘 8 个平铺竖条、剪辑页一条 toolbar 横铺 15 个跨 4 类心智、3D 四面包围、节点四面包围再叠 hover 浮条。
@@ -153,7 +157,30 @@ Script → Generate → Edit → Preview → Export
 
 > **改任何 UI 前先 grep 该组件的注释找「用户拍板」记录。** 写着拍板的形态默认不动，要动必须先说清为什么它不再成立。
 
+### 1.5.5 画**新面**时：上面整节自动失效，改走三件产物（2026-09-07 补）
+
+§1.5.1 的判定问题（「10 次里有几次会用它」）和 §1.5.2 的预算规则，前提都是**这个面已经存在**（有既有常驻条可对照）。
+**画一个全新面板时没有 before，整节失效**——而新功能恰恰全是新面。这是「规则写在这儿、界面还是越长越杂」的机械原因。
+
+新面必出这三件，缺一件 = 样张不完整、不进拍板：
+
+1. **任务卡**（开画前一行字）：「<谁> 在 <什么时刻>，做完 <哪一件事> 就走。」← 这行就是这张样张的验收标准，替代缺失的 before。一张卡只描述一个时刻。
+2. **三版减法梯度**（不是风格梯度）：**v1 只有一件事**（刻意「少得让人不安」）／ v2 +1 ／ v3 全都要。**默认推荐 v1，让用户往上加**（2026-09-07 用户拍板）。
+   > 底层逻辑：**把举证责任翻过来**——从「想删的人得说服我」变成「想加的人得说服我」。人对着满图做不了减法，因为每个按钮都有它的理由。
+3. **删除清单**跟着样张走：`我没放上去的 / 为什么 / 用户要它时怎么找到`。样张只展示「放了什么」、看不见「没放什么」，这张表让不可见的决策变可见。
+4. **卡点表**（2026-09-07 补）：前三件管**构图**（一屏上有多少东西），这件管**路径**（用户走一条路会卡在哪）。四问 —— ① 他怎么知道有这个功能？② 动手前知不知道要付出什么（配置/花钱/等待/不可逆）？③ 空了/错了他看到什么？④ 凭什么信结果是对的、错了怎么回头？
+   底部必答：**这条路几步、能不能砍掉一步**（步骤数由结构决定，实现完就改不动了）。每行要有证据（`file:line` 或「没做，因为 X」），留空不算。
+   > **减法本身会制造路径问题**：把选项收起来构图赢了，但用户想用时找不到入口。所以删除清单第三列的每一句承诺，都要在卡点①里被验证。
+
+**详解与代价说明在 `docs/design/page-design-process.md` §2.5（真相源，本节是它的索引）。**
+
 ---
+
+### 1.5.5 列表与卡片分组：C20 同类条目折叠
+
+同类别变体超过 4 个时，默认仅显示「类别 · N 项 ▸」，展开才展示全部选择。卡片按类别成组，列表折叠为一行；≤4 项直接展示。数量来自当前筛选结果，搜索不能丢掉匹配项。原生 disclosure 支持键盘展开/收起，不把摘要做成无法点击的标签。
+
+类别来自条目已声明的 `curation.group` 或公开包 `sourceId/source`，不靠标题猜测、不将未分类的用户内容混成一包。共享规则与阈值唯一 owner：`src/workbench/library/libraryGroups.ts`；普通列表/卡片复用 `LibraryGroup.tsx`，虚拟列表和现有菜单同用分组投影。C20 在发现列表的这一表现与 [信息密度审计](../plan/2026-09-09-info-density-audit.md) 同属「同类条目收束」，不混用 Agent 事件协议。
 
 ## 1.6 控件交互契约（强制 · 有门岗）
 
@@ -258,6 +285,8 @@ DaVinci Resolve 确实有「选中跟随播放头」，但它是 **opt-in 且默
 | 几何/排版（TS）| `src/theme/nomiTheme.ts` 中的 `nomiDesignTokens` | `radius` / `spacing` / `fontSize` / `lineHeight` / `shadow` | Tailwind config 引用 |
 
 ### 2.0 浮层层级（z-index）—— 只有这一份刻度，禁止硬写数字
+
+**工作区浮层必须可关闭**：任何浮在工作区上的元素都必须能关掉；关闭后完全消失，不留残余高度或占位。还原入口在常驻 chrome，关闭选择按用户记住；新消息或待确认不得擅自弹回。避让只是次选，不能代替关闭权。Agent 输入坞的还原是顶栏角标展开面板，之后再收起仍尊重关闭选择。
 
 真相源 `src/design/overlayLayers.ts` 的 `NOMI_OVERLAY_Z_INDEX`，六档（低→高）：
 `floatingPanel 4000` < `applicationModal 9000` < `dialog 9100` < `popover 9200` < `confirmation 9300` < `feedback`。
@@ -648,24 +677,13 @@ mark 是 **28×28 viewBox 的圆角方块**：深色底（`oklch(0.22 0.01 80)` 
 
 ## 4. 工作区专属组件（v0.6 增）
 
-### 4.1 `TitlePill`（节点标题胶囊）
+### 4.1 节点框外标签行
 
-文件：`src/workbench/generationCanvas/nodes/TitlePill.tsx`
+用户 2026-09-09 02:05 / 02:20 / 22:45 裁决为准：镜头号、标题、参考与状态放在图片**左上角上方**，生成前后位置相同，不占媒体区。03:00 的媒体内左上状态、左下编号方案作废。
 
-视觉：节点左上角浮动的深色圆角 pill。
+共同 owner：`src/workbench/generationCanvas/nodes/NodeLabelRow.tsx`。镜头编号与标题继承标签行的 `text-caption`（12px 可读下限），使用 `font-normal text-nomi-ink-60`，淡化靠次级墨色；单行高 28px，底边在节点上沿外 6px，长内容截断。标签随节点移动和缩放；缩放低于 40% 隐藏整行，20% 全景不逆向放大占邻图。
 
-规格：
-
-| 属性 | 值 |
-|---|---|
-| 背景 | `bg-nomi-ink` |
-| 文字 | `text-nomi-paper` |
-| 字号 | 11px (`text-[11px]`) |
-| 字重 | `font-medium` |
-| Padding | `px-2 py-[3px]` |
-| 圆角 | `rounded-md` |
-| 行为 | `pointer-events-none select-none`，不阻挡节点拖动 |
-| 内容算法 | shots + shotIndex → "分镜 NN" \| shots → "分镜" \| 其它 → 分类名 \| 无 → node.title |
+`FloatingToolbarShell` 的底边在节点上沿外 40px，严格位于标签行上方；菜单向上展开，不跨标签行或媒体。动作选中时出现，常驻信息不得另在媒体内设置定位。自动化证据：`tests/ux/node-label-outside.e2e.mjs`（空、图、视频、选择、缩放、放大预览）。
 
 ### 4.2 `CategoryItem` 图标系统
 
@@ -720,30 +738,27 @@ mark 是 **28×28 viewBox 的圆角方块**：深色底（`oklch(0.22 0.01 80)` 
 - 强调色只允许出现在共享的瞬时交互反馈（键盘焦点、连接握把），不能成为编组常驻底色或描边
 - 可拖动整组
 
-### 4.5 Notification / `showUndoToast`
+### 4.5 通知：原地 → 状态 → toast → 必须决定
 
-文件：`src/ui/toast.tsx`、`src/utils/showUndoToast.ts`
+文件：`src/ui/notificationPolicy.ts`、`src/ui/toast.tsx`、`src/utils/showUndoToast.ts`。依据与全量清单：[通知策略](../plan/2026-09-09-notification-policy.md)。
 
-API：
+**先问有没有行动价值，再问用户正在看哪里。**
+
+- 当前对象发生的事在对象上说：节点卡、任务行、按钮旁的原地文字。已有结果/状态时不重复播报。失败保留原因与下一步，用户重试时清旧错误；不要让自动消失的 toast 成为错误唯一记录。
+- 成功默认不弹；状态徽标、列表变化、复制按钮回声承担反馈。纯进度不占 toast；持续影响当前工作面的障碍用当前面 banner。不能把“已保存”换成需要点“知道了”的模态。
+- toast 用于视线之外且需要知道的变化，提供一个真实动作（去看对象/重试/恢复）。撤销有时限的真实行动，即使结果在眼前也可保留；不能为了凑动作加“知道了”。
+- **通知/确认模态**只用于必须暂停决定的风险（花费、不可撤回、只读/信任边界），继续 09-08 已批审批档。用户主动打开的设置、编辑器、预览属于工作面，不受“只准风险模态”误删。
+- DC23：调用方提供稳定对象身份及原因码。同身份保留最新内容和最新动作；同原因显示累计次数，新原因重置次数；关闭后再次发生从 1 开始。可见和排队项都去重；独立撤销操作不得合并。
+
+`notify` 接受 `identity/reason/message` 和明确上下文：`inline` 必填真实 `present` 落点；`status` 由现有对象状态承担；`background` 必填动作；`decision` 复用既有确认宿主。禁止全局入口猜 DOM、给错误补虚假动作、或删通知却没接原地失败状态。冻结的旧标量入口经同一容器去重，不得在本任务擅改其领域触发逻辑。
+
+视觉：沿用唯一 Mantine 容器，右上顶栏下 12px、宽 344px、最多同时 2 条、间距 8px，语义色只作用于图标，整卡不铺色。有动作默认 8 秒；warning 5 秒/error 6 秒，关闭由 Mantine 管。动作右侧按钮，整张不可点击；动作最多占行宽 40%，长标签截断但 title/可访问名称完整。重复次数在正文旁显示 `×N`；同 id 更新内容不承诺重置上游倒计时。
 
 ```typescript
-showUndoToast({
-  message: '已复制到 角色',
-  onUndo: () => deleteNode(copied.id),
-  durationMs: 5000,  // optional, default 5s
-})
+notify({ identity: `task:${taskId}`, reason: 'download-failed',
+  message, type: 'error', level: 'inline', present: setError })
+showUndoToast({ message, onUndo, isUndoable, watchUndoable })
 ```
-
-视觉与行为：
-
-- 全仓只挂一套 `@mantine/notifications` 容器；右上角位于 56px 顶栏下 12px。
-- 宽 344px，最多同时显示 2 条，间距 8px；表面统一用 `--nomi-paper`、`--nomi-line`、`--nomi-shadow-md` 和 10px 圆角。
-- info / success / warning / error 只用语义图标区分，不给整张通知铺语义色。
-- 普通 info 3 秒、success 2.6 秒、warning 5 秒、error 6 秒；有动作时默认 8 秒。
-- 动作用右侧明确的文字按钮承载；整张通知不可点击，避免用户不知道点哪里会发生什么。
-- 长任务使用稳定 `id` 原位更新。画布批量生成从开始、失败、重试到完成始终使用 `canvas-batch-run`，不堆历史通知。
-
-**使用场景**：跨分类拖拽完成、跨分类 Cmd+V 粘贴等"用户可能误操作"的写入。
 
 ---
 
@@ -894,13 +909,34 @@ showUndoToast({
 
 **禁止：** size 13.5 / 17 这种非标准；`strokeWidth` prop（Tabler 用 `stroke`）。（stroke-2 仅工作区按钮图标的认可值，见上；其它场景仍按表，别滥用粗笔。）
 
-### 语义图标登记（同一语义全仓复用同一图标，不漂移）
+### 语义图标登记（同一语义全仓复用同一图标，不漂移）· **有门岗 `check:icon-semantics`**
+
+> **2026-09-07 起这条不再靠自觉。** 用户长期反馈「icon 和用户心智不一致」——根因是这一节过去
+> 只管**形制**（唯一库 / size / stroke），语义那一半只有下面三行登记 + 一句「跨场景复用同一个图标」。
+> 自觉记不住，于是同一个动作在不同界面长出不同图标，用户每换一个面就得重新学一遍。
+>
+> **门岗判据**：把「动作」定义为 i18n key（`aria-label={t('assetLibrary.pasteLink.button')}` 里那个 key），
+> 把「图标」定义为该**控件**子树里渲染的 Tabler 组件。同一个 key 被配了 ≥2 个不同图标 = 红。
+> 存量 3 条在 `scripts/icon-semantics-baseline.json`，棘轮只减不增。
+>
+> **它刻意不查的三类**（不是漏，是防假红）：容器 `<div role="dialog" aria-label>` 上的标签不算动作身份 ·
+> 同一三元里的两个图标是状态切换（`busy ? Loader : Download`）· Chevron/Caret/Selector/Loader 是结构示能不是语义。
+>
+> **它查不到、只能靠人的那一条 —— 盲测**：遮住旁边的文字，这个图标说得出是干嘛的吗？
+> 说不出 → 配文字标签，或换图标。（现状：素材库 toolbar 上 `IconLink`/`IconFilter`/`IconFolderPlus`
+> 三个纯图标按钮无文字，全靠 `title` 悬停解释。）
+>
+> **待清的存量 3 条**（都是同一动作两个入口配了不同图标，改法要先看真实 3D 工具栏再定）：
+> `scene3d.character.exitCameraControl` → IconVideo/IconX ·
+> `scene3d.character.exitControl` → IconManFilled/IconX ·
+> `scene3d.fullscreen.openEditor` → IconCube/IconMaximize
 
 | 语义 | 图标 | 用在哪 |
 |---|---|---|
 | 付费 / 消耗额度（用户直发或 agent 受理）| `IconCoin` | `SpendConfirmDialog`（§3.5）|
 | 外部 AI 助手 / MCP 驱动（agent 身份）| `IconRobot` | `SpendConfirmDialog` 的 `source: 'agent'` 头部（§3.5）|
 | 主角形象确认（锚定妆照检查点·免费质量门）| `IconUser` | `SpendConfirmDialog` 的 `kind: 'anchorCheckpoint'` 头部（§3.5，与 cast 分类同图标）|
+| 正在放量（广告花费档高，仅 TikTok 广告库有此数据）| `IconTrendingUp` | `FindReferencePanel` 参考卡的「放量」角标。**选趋势上升不选火苗**：隐喻要诚实——它表达的是「投放在加码」，不是「热门」|
 
 ### 选图规则
 
@@ -965,11 +1001,12 @@ showUndoToast({
 
 ### 焦点环（全局，别再 per-component 加）
 
-所有交互控件的键盘焦点环由**一条全局规则**统一供给（`tailwind.config.ts` 的 `addBase`）：
-- `:focus-visible { outline: none }` 先全局杀掉浏览器默认 `outline:auto`——它在 macOS 上**跟系统强调色**，用户设了橙/黄就冒橙环。
-- `button / [role=button] / a / input / select / textarea / summary` 的 `:focus-visible` 统一给 `2px solid var(--nomi-focus)` + `outline-offset:2px`。`--nomi-focus` = accent 42%（`:root` 全局 token）。
+焦点指示由 **`tailwind.config.ts` 的 `addBase` 单一基础边界**统一供给：
+- `:root :focus { outline: none }` 接管浏览器默认 outline；不能把 `:focus-visible` 误解成“只有 Tab”——Chromium 鼠标点击文本编辑控件也会匹配它。
+- **文本编辑类**：文本/数字 input、textarea、contenteditable（空值/true/plaintext-only）鼠标与键盘聚焦一致，不出外圈 outline。已有边框改为 `var(--nomi-accent)`，不加宽、不改布局；组合输入的直接容器、以及富文本编辑器最近的 `.border` 容器通过 `:has(文本控件:focus)` 同步高亮已有边框（嵌套编辑器只高亮最近一层），保留整体形状。无边框编辑器保留插入光标，不强行添加卡片外框。错误态（aria-invalid/data-error）保留错误边框；只读字段仍可聚焦复制。
+- **非文本类**：button/link/select/summary、非文本 input 及自定义可聚焦元素的 `:focus-visible` 用 `2px solid var(--nomi-focus)` + `outline-offset:2px`；鼠标点击不画环。`--nomi-focus` 为 accent 派生 token（浅色 42%、深色 50%）。
 
-**纪律**：新按钮**不要**再手写 `focus-visible:outline-*` className——全局规则已覆盖，手写=回到「漏一个就冒橙环」的症状层（2026-06-23 已根治，删了散在 6 文件的 13 处旧写法）。需要无焦点环的特例（如 contenteditable 编辑器）才显式 `outline:none` 覆盖。
+**纪律**：不要在组件单独加 `focus:outline-none` 或另一份焦点环/外扩阴影；新增控件由基础边界接管。组合输入复用现有边框，不给内部 textarea 再造矩形。回归运行 `node tests/ux/focus-indication.e2e.mjs`；真实 Electron 另查鼠标/Tab 与四个主要页面截图。
 
 ---
 
@@ -1155,3 +1192,13 @@ CSS 不会报错、不会回退到默认值，而是**静默作废整条声明**
 - 重大重构（如颜色系统重设、清理 §14.1 暗色层）bump 主版本（v3）
 - 文档过时时优先更新本文档，不依赖代码注释作为 source of truth
 - §14 是活清单：每修掉一条，从表里删一条
+
+### 过程反馈状态条（C1，2026-09-08）
+
+`src/workbench/generationCanvas/nodes/GenerationStatusBar.tsx`：图、视频、音频共用纸白胶囊，6px 状态点、正文 token 人话、等宽真实数字。压媒体时使用 overlay-chip 底与固定白字 token。排队 ink-30、进行 accent、完成 success、软超时 warning、失败 danger。状态不参与节点几何布局；点 1.6s 呼吸，reduced-motion 常亮；完成停 2s 后 240ms 淡出，减弱动态时停 4s 直接消失。失败动作沿用节点现役错误卡，不复制操作入口。
+
+重复 warning/error 第二次起转为可关闭持久提示，直到用户关闭或原地恢复回执撤回；不靠抖动 TTL 伪造续时，避免最新失败只剩上一次倒计时的几毫秒。普通单次通知仍沿用 Mantine 原生时长。
+
+### 画布分镜表节点（B1，2026-09-10）
+
+`src/workbench/generationCanvas/nodes/shotTable/ShotTableNode.tsx` 消费已拍板 TableNode 画板：纸面节点、40px 标题/底栏、32px 表行、24px 高关键帧、sticky 表头、内部横纵滚动。≥80% 全表，40–80% 镜号/关键帧/状态，<40% 摘要卡；尺寸仍由画布 NodeResizer 单源持久化。生产表只读，双击回 v6 全页；参考片自定义列操作复用 WorkbenchMenu/promptDialog。两套列集共用 token 与表壳，状态沿现役行执行 derive。详见 [三组设计合同](2026-09-08-left-sidebar-canvas-nodes-process-feedback.md)。

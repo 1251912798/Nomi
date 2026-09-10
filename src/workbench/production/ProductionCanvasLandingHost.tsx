@@ -1,21 +1,18 @@
 // P4 S5 — 画布落地 host（全程挂在工作区，跟着画布）。三件事：
 //   ① 当画布上存在多镜占位节点时，周期拉取该项目最活跃的多镜 Run 全量 → landing store（供占位派生三态）；
-//   ② 进度通知「已完成 3/7」用**稳定 id 原位更新**（不堆 toast，§3.4）；
+//   ② 进度由节点和任务中心原地显示，不再叠加常驻 toast；
 //   ③ 观察占位节点被删（整批 Cmd+Z / 手动删）→ 发 plan.detach-shot-nodes 让 Run 记 detached（撤销事实优先）。
 //
 // 真相源仍是主进程 Run；host 只是它的只读投影缓存 + 用户删节点的忠实上报。逐镜 result 回填由主进程 push
 // （见 appIntegration.pushShotResultToRenderer → attach-shot-result），不在此 poll。
 import React from 'react'
-import { useTranslation } from 'react-i18next'
 
 import type { ProductionRun, ProductionRunSummary } from '../../../electron/productionRun/productionRunTypes'
 import { productionRunApi } from './productionRunApi'
 import { useProductionCanvasLandingStore } from './productionCanvasLandingStore'
-import { deriveBatchProgress } from './shotPlaceholderState'
 import { useGenerationCanvasStore } from '../generationCanvas/store/generationCanvasStore'
 import { buildDependencyWaves } from '../generationCanvas/runner/dependencyWaves'
 import { confirmAndRunPlan } from '../generationCanvas/components/batchPlanPreview'
-import { useToastStore } from '../../ui/toast'
 
 const POLL_INTERVAL_MS = 1500
 
@@ -34,7 +31,6 @@ function productionRunIdsOnCanvas(): Set<string> {
 }
 
 export function ProductionCanvasLandingHost({ projectId }: { projectId: string | null }): null {
-  const { t } = useTranslation()
   // E2E 专用桥（同 CameraMoveCaptureHost/TaskCenterButton 既有写法）：仅当 localStorage['__nomiE2E']==='1' 时把
   // landing store + 画布 store 挂到 window，供零额度走查直接注入构造好的 Run（各态并存的批次）验三态占位、
   // 读画布落地结果、触发撤销，无需跑真后端。本 host 跟着画布常驻（不像 CameraMoveCaptureHost 仅按需挂），是稳的宿主。
@@ -68,15 +64,13 @@ export function ProductionCanvasLandingHost({ projectId }: { projectId: string |
     }),
   )
 
-  // ① + ②：poll 活跃多镜 Run → store + 进度通知（稳定 id）。
+  // ① + ②：poll 活跃多镜 Run → store → 节点原地状态。
   React.useEffect(() => {
     if (!projectId || !hasProductionNodes) {
       useProductionCanvasLandingStore.getState().reset()
       return
     }
     let cancelled = false
-    const progressToastId = `production-batch-progress:${projectId}`
-    let lastProgressKey = ''
 
     const readActiveRun = async (): Promise<ProductionRun | null> => {
       // 画布上出现的 Run 优先（正在盯的批次）；否则退回列表里最活跃的一个。
@@ -101,25 +95,7 @@ export function ProductionCanvasLandingHost({ projectId }: { projectId: string |
       if (cancelled) return
       useProductionCanvasLandingStore.getState().setRun(projectId, run)
 
-      // 进度通知：只在有多镜批次、且尚未全完成时显示；稳定 id 原位更新，不堆 toast。
-      const progress = deriveBatchProgress(run)
-      if (progress && progress.total > 0 && progress.completed < progress.total) {
-        const key = `${progress.completed}/${progress.total}`
-        if (key !== lastProgressKey) {
-          lastProgressKey = key
-          useToastStore.getState().push({
-            id: progressToastId,
-            message: t('generationCommon.production.canvasLanding.progressToast', { completed: progress.completed, total: progress.total }),
-            type: 'info',
-            ttl: false, // 常驻到全部完成才撤（原位更新，不自动消失）
-            dismissible: false,
-          })
-        }
-      } else if (progress && progress.completed >= progress.total && progress.total > 0) {
-        // 全部完成 → 撤掉常驻进度条（完成的成就感交给节点本身逐个填充的画面）。
-        useToastStore.getState().remove(progressToastId)
-        lastProgressKey = ''
-      }
+
     }
 
     void tick()
@@ -127,9 +103,8 @@ export function ProductionCanvasLandingHost({ projectId }: { projectId: string |
     return () => {
       cancelled = true
       window.clearInterval(interval)
-      useToastStore.getState().remove(progressToastId)
     }
-  }, [projectId, hasProductionNodes, t])
+  }, [projectId, hasProductionNodes])
 
   // ③：观察占位节点被删 → 上报 detach。订阅画布节点集合，删掉的属某 Run 的占位就发 plan.detach-shot-nodes。
   React.useEffect(() => {

@@ -10,9 +10,9 @@
 走查 harness（`evals/lib/journeyRunner.mjs` 的 `resizeForEvidence`）对所有平台都 `setBounds({ width: 1680, height: 1050 })`，但 GH `windows-latest` runner 夹住了它：
 
 - 2026-08-26 实测 win32 上 `stage {top: 88, right: 1100, bottom: 719, left: 60}`，反推窗口内容 ≈ **1100×720** —— 恰好是 `electron/main.ts` 里 BrowserWindow 的 `minWidth`/`minHeight`；
-- Linux 的 `xvfb-run -a` 则给足 **1680×1050**。
+- **2026-09-09 更正**：Linux 不能保证 1680×1050。`quality-gate.yml` 的 Canvas Acceptance（ubuntu-latest，`xvfb-run -a`）在 run `34356010506` 的 group-baseline PNG 实测内容区 **1280×933**；证据 `docs/fixes/canvas-acceptance-red-20260909/ci-group-1280.png` 与 `REPORT.md`、`latest-main-group-ci1280.log`。`journeyRunner.resizeForEvidence` 的请求尺寸不能当成另一个入口 `_launchApp` 的实测。现在后者使用共享 ACCEPTANCE_VIEWPORT，设置并核验内容区尺寸。
 
-后果：**win32 恒定在最小窗口布局下跑，Linux 恒定在宽松布局下跑。** 任何「垂直/水平空间紧才犯」的布局 bug 都会表现成「只有 Windows 红」。
+后果：**不能从 OS 名称推出可用视口，必须看对应 workflow 的实测内容区。** 任何「垂直/水平空间紧才犯」的布局 bug 都会表现成「只有 Windows 红」。
 
 ## 排查「Windows-only 布局失败」的顺序
 

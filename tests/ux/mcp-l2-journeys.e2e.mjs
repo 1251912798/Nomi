@@ -1,3 +1,4 @@
+import { require as tsxRequire } from 'tsx/cjs/api'
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import path from 'node:path'
@@ -8,7 +9,7 @@ import { startFakeApimartServer, writeFakeApimartCatalog } from './_mcpL2Fixture
 import { expectAbsent, expectHidden, expectVisible, proveProbe } from './_assert.mjs'
 // 断连取消那条诊断的事件名派生自真相源（两条启动路共用的常量），不手抄散文：
 // 手抄的那份在日志收口时静默漂成假红，正是本轨踩到的坑。
-const { MCP_CANCELLED_IN_FLIGHT_EVENT } = await import('../../dist-electron/capabilityCore/mcpStdioDiagnostics.js')
+const { MCP_CANCELLED_IN_FLIGHT_EVENT } = tsxRequire('../../electron/capabilityCore/mcpStdioDiagnostics.ts', import.meta.url)
 
 const dirs = makeIsolatedDirs('nomi-mcp-l2-')
 const packagedBundle = process.argv.includes('--packaged')
@@ -186,7 +187,8 @@ try {
     action: 'start', sessionId: integrationSessionId, expectedRevision: afterConfirmData.revision,
     idempotencyKey: 'c7-t14-paid-phase', receipt: 'not-a-trusted-receipt',
   })
-  check(bypassStart.isError && /receipt|approval|收据|确认|invalid/i.test(parseToolResult(bypassStart).text), 'C7 T14 start 无可信收据不可绕过 confirm')
+  // Authorization is a machine contract; translated recovery prose is not an error code.
+  check(bypassStart.isError === true && resultData(bypassStart).errorCode === 'receipt_invalid', `C7 T14 start 无可信收据不可绕过 confirm; actual=${JSON.stringify(bypassStart)}`)
   check(provider.hits.filter((hit) => /^\/v1\/(images|videos)\/generations$/.test(hit.url || '')).length === 0, 'C7 T14 付费绕过失败且未提交供应商任务')
   const proxyOff = await call(mcp, 'nomi_integration_manage', { action: 'set_proxy', vendorKey: 'apimart', enabled: false })
   check(resultTextJson(proxyOff).enabled === false, 'C7 管理动词可关闭单连接代理')

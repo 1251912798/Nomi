@@ -10,12 +10,16 @@
 // 「先说什么后做什么」在数据里就不存在了；这道门送出去的是 `LaneProjection`，
 // 一串**有序的段**，顺序是记下来的不是推出来的。
 import type {
-  LaneHandle, LanePendingApproval, LaneProjection, LaneSkillIndexEntry, LaneTaskFacts,
+  LaneHandle, LanePendingApproval, LaneProjection, LaneSkillIndexEntry, LaneTaskFacts, LaneWorkspaceHandle,
 } from '../shared/agentLane/laneContracts'
 import { LaneDomainFailure } from '../shared/agentLane/laneToolContract'
 import type { LaneToolEffects, LaneToolFailureShape, LaneToolSpec } from '../shared/agentLane/laneToolContract'
+import type { RuntimeToolCall } from '../shared/agentCapabilities/transportContracts'
+import type { LaneComposerContext, LaneInputMessage } from '../shared/agentLane/laneDesktopContracts'
 import type { NomiModelConfig } from '../shared/agentLane/laneModelConfig'
-import type { ProjectAgentApprovalPolicy, ProjectAgentWorkMode } from '../shared/projectAgentContracts'
+import type { ProjectAgentApprovalPolicy, ProjectAgentWorkMode } from '../shared/agentCapabilities/capabilityApprovalPolicy';
+import type { LaneApprovalSubjectResolver } from '../shared/agentLane/laneApproval'
+import type { SkillRecord } from '../skills/skillStore'
 
 export type { LaneHandle, LaneProjection }
 export type { LaneToolEffects, LaneToolFailureShape, LaneToolSpec }
@@ -44,8 +48,10 @@ export type LaneToolOutcome =
  * 活着的领域 port。焊在一起的结果就是想扫一眼「模型看到了什么」都得先起半个 App——
  * 于是没人扫，于是 `z.record(z.unknown())` 活了半年。
  */
+export type LaneToolExecutionContext = { toolCallId: string; signal: AbortSignal }
+
 export type LaneToolDescriptor = LaneToolSpec & {
-  execute(args: unknown, context: { toolCallId: string; signal: AbortSignal }): Promise<LaneToolOutcome>
+  execute(args: unknown, context: LaneToolExecutionContext): Promise<LaneToolOutcome>
 }
 
 /**
@@ -93,6 +99,7 @@ export function bindLaneTool(
  * 「自动改」是允许的，下一次预检就该按新档位走。传快照等于把用户刚做的选择冻在开 lane 那一刻。
  */
 export interface LaneApprovalOptions {
+  resolveSubject?: LaneApprovalSubjectResolver
   policy?(): ProjectAgentApprovalPolicy | undefined
   workMode?(): ProjectAgentWorkMode | undefined
   /**
@@ -105,6 +112,8 @@ export interface LaneApprovalOptions {
 }
 
 export interface OpenLaneOptions {
+  fetch: typeof globalThis.fetch
+  native?: { settingsRoot: string; skills: readonly SkillRecord[] }
   /** 项目目录。会话落在 `<project>/.nomi/agent-sessions/` 下。 */
   projectDir: string
   /** 一条 lane = 一条独立的对话轨。默认 `main`。 */
@@ -114,7 +123,20 @@ export interface OpenLaneOptions {
   model: NomiModelConfig
   /** 宿主的身份提示词。`Available tools` / `Guidelines` 两段由 `openLane` 按 `tools` 自己拼，别在这里手写。 */
   systemPrompt: string
+  /** Snapshot the composer per message; activate only after pi consumes that message. */
+  input?: {
+    capture(): LaneComposerContext
+    activate(context: LaneComposerContext): void
+    rewritePayload(payload: unknown, api: string): unknown
+    providerContent(message: LaneInputMessage, previous?: LaneComposerContext): Promise<string | Array<{ type: 'text'; text: string } | { type: 'image'; data: string; mimeType: string }>>
+  }
   tools: readonly LaneToolDescriptor[]
+  /** Domain ports prepare before confirmation, then persist the accepted authority in the lane. */
+  toolLifecycle?: {
+    prepare(call: RuntimeToolCall, signal: AbortSignal): Promise<void>
+    approved(call: RuntimeToolCall, record: (type: string, data: Record<string, string | number>) => Promise<void>): Promise<void>
+    settled(call: RuntimeToolCall): void
+  }
   /**
    * 这条 lane 看得见的技能索引（name + description + SKILL.md 绝对路径）。
    * 正文**不在这里**——模型按 description 自己决定去 `read` 哪一条（方案 §3.4 的「自动触发就是 description」）。
@@ -141,10 +163,25 @@ export interface OpenLaneOptions {
    */
   watchdog?: { firstResponseMs?: number; idleMs?: number }
   /** 一个回合最多几次模型请求。缺省 `LANE_MAX_MODEL_REQUESTS`。 */
-  limits?: { maxModelRequests?: number }
+  limits?: { maxModelRequests?: number; contextTokenBudget?: number }
 }
 
 /** `productionRunId` → 领域投影出的那一份事实。解不出来返回 `undefined`，**不返回空对象**。 */
 export type LaneTaskFactsResolver = (productionRunId: string) => LaneTaskFacts | undefined
 
 export type OpenLane = (options: OpenLaneOptions) => Promise<LaneHandle>
+
+export type OpenDesktopLaneWorkspace = (options: Omit<OpenLaneOptions, 'model'> & {
+  model?: NomiModelConfig
+  approval: LaneApprovalOptions
+  toolLifecycle: NonNullable<OpenLaneOptions['toolLifecycle']>
+}) => Promise<LaneWorkspaceHandle>
+
+export type RunLaneSingleShot = (options: {
+  fetch: typeof globalThis.fetch
+  model: NomiModelConfig
+  systemPrompt?: string
+  prompt: string
+  input?: OpenLaneOptions['input']
+  signal?: AbortSignal
+}) => Promise<LaneProjection>

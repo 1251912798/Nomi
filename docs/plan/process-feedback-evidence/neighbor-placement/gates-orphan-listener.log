@@ -1,0 +1,32 @@
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/customEventWiring.test.ts > 自定义事件接线不变量 > 每个 nomi-* 事件都有派发方——有监听没派发＝这个入口永远打不开
+AssertionError: 这些事件只有监听、没人派发（对应的 UI 打不开，删掉死码或补上入口）：
+nomi-ensure-composer-visible（workbench/generationCanvas/components/useComposerVisibilityPan.ts）: expected [ Array(1) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "nomi-ensure-composer-visible（workbench/generationCanvas/components/useComposerVisibilityPan.ts）",
++ ]
+
+ ❯ src/customEventWiring.test.ts:99:84
+     97|       .filter((event) => !dispatchers.has(event) && !EXTERNALLY_DRIVEN…
+     98|       .map((event) => describeWiring(event, listeners))
+     99|     expect(orphans, `这些事件只有监听、没人派发（对应的 UI 打不开，删掉死码或补上入口）：\n${orphans.j…
+       |                                                                                    ^
+    100|   })
+    101|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 1295 passed | 1 skipped (1297)
+      Tests  1 failed | 12076 passed | 2 skipped (12079)
+   Start at  04:16:11
+   Duration  47.17s (transform 24.57s, setup 12.53s, import 180.71s, tests 117.28s, environment 79ms)
+
+ ELIFECYCLE  Test failed. See above for more details.
+ ELIFECYCLE  Command failed with exit code 1.

@@ -38,7 +38,7 @@ function SettingRow({
   children,
 }: {
   title: string
-  hint: string
+  hint?: string
   section?: string
   children: React.ReactNode
 }): JSX.Element {
@@ -46,7 +46,7 @@ function SettingRow({
     <div data-settings-section={section} className="flex min-h-12 items-center justify-between gap-4 py-2">
       <div className="min-w-0">
         <div className="text-body-sm text-nomi-ink">{title}</div>
-        <div className="mt-0.5 text-caption leading-relaxed text-nomi-ink-40">{hint}</div>
+        {hint ? <div className="mt-0.5 text-caption leading-relaxed text-nomi-ink-40">{hint}</div> : null}
       </div>
       <div className="shrink-0">{children}</div>
     </div>
@@ -243,12 +243,13 @@ export function AutomationPermissionsSection({ settings, onChange }: Props): JSX
         <h3 id="settings-hosts-title" className="mb-1 text-caption font-medium text-nomi-ink-60">
           {t('settings.automation.hosts.title')}
         </h3>
+        <p className="mb-2 text-caption leading-relaxed text-nomi-ink-40">{t('settings.automation.hosts.sharedHint')}</p>
         {view.hosts.map((host) => (
           <SettingRow
             key={host.key}
             section={host.key === 'cursor' ? 'cursor-host' : undefined}
             title={t(`settings.automation.hosts.${host.key}.name`)}
-            hint={t(`settings.automation.hosts.${host.key}.hint`)}
+            hint={host.key === 'nomi' ? t('settings.automation.hosts.nomi.hint') : undefined}
           >
             {host.locked ? (
               <span className="text-caption text-nomi-success">{t('settings.automation.hosts.local')}</span>
@@ -272,13 +273,6 @@ export function AutomationPermissionsSection({ settings, onChange }: Props): JSX
             checked={settings.systemNotifications}
             onChange={(event) => onChange({ systemNotifications: event.currentTarget.checked })}
             aria-label={t('settings.automation.notifications.system')}
-          />
-        </SettingRow>
-        <SettingRow title={t('settings.automation.notifications.sound')} hint={t('settings.automation.notifications.soundHint')}>
-          <DesignSwitch
-            checked={settings.notificationSound}
-            onChange={(event) => onChange({ notificationSound: event.currentTarget.checked })}
-            aria-label={t('settings.automation.notifications.sound')}
           />
         </SettingRow>
       </section>

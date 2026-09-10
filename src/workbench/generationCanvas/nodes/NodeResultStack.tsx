@@ -1,3 +1,4 @@
+import { notify } from '../../../ui/notificationPolicy'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -11,7 +12,6 @@ import {
 import { AnimatePresence, motion } from 'framer-motion'
 import { cn } from '../../../utils/cn'
 import { confirmDialog } from '../../../design'
-import { toast } from '../../../ui/toast'
 import type { GenerationCanvasNode, GenerationNodeResult } from '../model/generationCanvasTypes'
 import { listStableNodeMediaResults, resultIdentity } from '../model/nodeResultLifecycle'
 import { useGenerationCanvasStore } from '../store/generationCanvasStore'
@@ -196,9 +196,9 @@ function ResultThumb({
   )
 }
 
-function ResultDownloadButton({ node, result }: { node: GenerationCanvasNode; result: GenerationNodeResult }): JSX.Element {
+function ResultDownloadButton({ node, result, reportFeedback }: { node: GenerationCanvasNode; result: GenerationNodeResult; reportFeedback: (message: string) => void }): JSX.Element {
   const { t } = useTranslation()
-  const download = useResultDownload(node, result)
+  const download = useResultDownload(node, reportFeedback, result)
   return (
     <button
       type="button"
@@ -217,16 +217,27 @@ function ResultDownloadButton({ node, result }: { node: GenerationCanvasNode; re
 }
 
 export function NodeResultStack({
+  onFeedback,
   node,
   readOnly,
   selected,
   onOpenChange,
 }: {
+  onFeedback: (message: string) => void
   node: GenerationCanvasNode
   readOnly: boolean
   selected: boolean
   onOpenChange?: (open: boolean) => void
 }): JSX.Element | null {
+  const feedbackOwnerRef = React.useRef<string | null>(node.id)
+  feedbackOwnerRef.current = node.id
+  React.useEffect(() => { feedbackOwnerRef.current = node.id; return () => { feedbackOwnerRef.current = null } }, [node.id])
+  const [feedback, setFeedback] = React.useState<string | null>(null)
+  const reportFeedback = React.useCallback((message: string) => {
+    if (feedbackOwnerRef.current !== node.id) { onFeedback(message); return }
+    notify({ identity: `NodeResultStack:${node.id}`, reason: 'interaction', message, level: 'inline', present: setFeedback })
+  }, [node.id, onFeedback])
+
   const { t } = useTranslation()
   const updateNode = useGenerationCanvasStore((state) => state.updateNode)
   const [open, setOpen] = React.useState(false)
@@ -301,20 +312,15 @@ export function NodeResultStack({
       ? canvasNodeToAssetRefs(latest).find((candidate) => candidate.ownerResultId === identity)
       : undefined
     if (!asset) {
-      toast(t('generationCommon.resultStack.assetUnavailable'), 'warning')
+      reportFeedback(t('generationCommon.resultStack.assetUnavailable'))
       return
     }
     try {
       const outcome = await deleteAssetResult(asset)
-      toast(
-        outcome.failedFileCount > 0
-          ? t('generationCommon.resultStack.deleteFileFailed')
-          : t('generationCommon.resultStack.deleted'),
-        outcome.failedFileCount > 0 ? 'warning' : 'success',
-      )
+      if (outcome.failedFileCount > 0) reportFeedback(t('generationCommon.resultStack.deleteFileFailed'))
     } catch (error) {
       console.error('delete node result failed', error)
-      toast(t('generationCommon.resultStack.deleteFailed'), 'error')
+      reportFeedback(t('generationCommon.resultStack.deleteFailed'))
     }
   }
 
@@ -322,11 +328,12 @@ export function NodeResultStack({
     const projectId = getActiveWorkbenchProjectId()
     if (!production || !projectId || rerunBusy) return
     setRerunBusy(true)
-    void reworkProductionShot(projectId, production.runId, production.shotId).finally(() => setRerunBusy(false))
+    void reworkProductionShot(projectId, production.runId, production.shotId, reportFeedback).finally(() => setRerunBusy(false))
   }
 
   return (
     <>
+      {feedback ? <p role="status" className="m-0 px-2 py-1 text-caption text-nomi-ink-60">{feedback}</p> : null}
       <CardStackPeeks
         count={entries.length}
         label={t('generationCommon.resultStack.versionCount', { count: entries.length })}
@@ -453,7 +460,7 @@ export function NodeResultStack({
                       >
                         <IconEye size={14} stroke={1.8} />
                       </button>
-                      <ResultDownloadButton node={node} result={entry} />
+                      <ResultDownloadButton reportFeedback={reportFeedback} node={node} result={entry} />
                       {!readOnly ? (
                         <button
                           type="button"

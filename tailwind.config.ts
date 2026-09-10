@@ -27,6 +27,11 @@ import {
 const tokenColor = (cssVar: string): string =>
   `color-mix(in oklab, var(${cssVar}) calc(<alpha-value> * 100%), transparent)`
 
+// Editing controls match :focus-visible even after a pointer click in Chromium.
+// One semantic selector owns both their reset and the non-text ring exclusion.
+const textFocusControl = ':is(input:not([type="hidden"], [type="button"], [type="submit"], [type="reset"], [type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="file"], [type="image"], [type="date"], [type="time"], [type="datetime-local"], [type="month"], [type="week"]), textarea, [contenteditable=""], [contenteditable="true"], [contenteditable="plaintext-only"])'
+const validTextFocus = `${textFocusControl}:focus:not([aria-invalid="true"], [data-error])`
+
 const workbenchBasePlugin = plugin(({ addBase, addUtilities }) => {
   // 无边框窗口拖拽区（Windows 自绘标题栏）。.app-drag 整块可拖窗，内部交互元素自动 no-drag（否则按钮拖不动窗也点不动）。
   addUtilities({
@@ -156,6 +161,7 @@ const workbenchBasePlugin = plugin(({ addBase, addUtilities }) => {
       // 图上徽章/标题遮罩承载白字，压在任意亮度媒体上（暗色卡底常是白衬衫等亮区）——opacity 提到稳定托住白字。
       // 2026-09-01 用户反馈「徽标黑底黑字 / 标题融背景」；镜像见 src/theme/nomi-tokens.css。
       '--nomi-overlay-chip': 'oklch(0.18 0.01 80 / 0.64)',
+      '--nomi-media-ink': 'oklch(1 0 0)',
       '--nomi-overlay-chip-strong': 'oklch(0.16 0.01 80 / 0.82)',
       '--nomi-media-veil': 'oklch(0.12 0.01 80 / 0.74)',
       '--nomi-shadow-sm': '0 1px 2px oklch(0 0 0 / 0.04), 0 1px 1px oklch(0 0 0 / 0.03)',
@@ -167,7 +173,7 @@ const workbenchBasePlugin = plugin(({ addBase, addUtilities }) => {
       '--nomi-duration-fast': '140ms',
       '--nomi-ease-fast': 'cubic-bezier(.2, .7, .3, 1)',
       '--nomi-font-sans': 'Inter, -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", system-ui, sans-serif',
-      '--nomi-font-display': 'Fraunces, Inter, serif',
+      '--nomi-font-display': '"Fraunces Variable", Fraunces, "Inter Variable", Inter, serif',
       '--nomi-font-mono': 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace',
       'color-scheme': 'light',
       // ── 工作区语义层（--workbench-*，设计系统 §2.1 ② 层）。定义在 :root 而非 .workbench-shell：
@@ -422,15 +428,16 @@ const workbenchBasePlugin = plugin(({ addBase, addUtilities }) => {
     '*::-webkit-scrollbar-corner': {
       background: 'transparent',
     },
-    // 全局焦点环根治（P2）：默认杀掉浏览器 :focus-visible 的 outline:auto（macOS 跟系统强调色＝橙环），
-    // 交互控件统一用 accent 环。没人需要再往按钮上记着加 className——漏一个就冒橙环的问题从根上没了。
-    // 编辑器（contenteditable，非 button）不吃 ring；其 workbench.css 的 outline:none 仍是防御性覆盖。
-    ':focus-visible': {
-      outline: 'none',
-    },
-    'button:focus-visible, [role="button"]:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, summary:focus-visible': {
+    // The base owns focus for portals and future controls too; no per-composer patch.
+    ':root :focus': { outline: 'none' },
+    [`:root :focus-visible:not(${textFocusControl})`]: {
       outline: '2px solid var(--nomi-focus)',
       'outline-offset': '2px',
+    },
+    // Preserve border widths/layout and error colors. Borderless inner fields pass
+    // the indication to their direct or nearest bordered container, including editors.
+    [`:root ${validTextFocus}, :root :not([aria-invalid="true"], [data-error]):has(> ${validTextFocus}), :root .border:has(${validTextFocus}[contenteditable]):not(:has(.border ${validTextFocus}[contenteditable])):not([aria-invalid="true"], [data-error], .border-workbench-danger, .border-nomi-danger)`]: {
+      'border-color': 'var(--nomi-accent)',
     },
     'html, body, #root': {
       width: '100%',
@@ -654,6 +661,8 @@ export default {
    * `docs/lessons/tailwind-content-ts-classnames-silently-dropped.md`。
    */
   content: [
+    './node_modules/streamdown/dist/*.js',
+    './node_modules/@streamdown/code/dist/*.js',
     './index.html',
     './src/**/*.tsx',
     // 纯 .ts 也扫：片段配色（director/timeline/clipTone.ts）这类「类名住在零 React 的 .ts 里」的写法不扫就静默透明（2026-09-02 栽过）
@@ -701,6 +710,7 @@ export default {
         nomi: {
           bg: tokenColor('--nomi-bg'),
           paper: tokenColor('--nomi-paper'),
+          'media-ink': tokenColor('--nomi-media-ink'),
           ink: tokenColor('--nomi-ink'),
           'ink-80': tokenColor('--nomi-ink-80'),
           'ink-60': tokenColor('--nomi-ink-60'),

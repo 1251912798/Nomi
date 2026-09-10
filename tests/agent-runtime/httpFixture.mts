@@ -1,10 +1,5 @@
 import { createServer, type IncomingHttpHeaders } from 'node:http';
 import { once } from 'node:events';
-import { mkdtemp, mkdir, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import type { TestContext } from 'node:test';
-import type { RuntimeTurnRequest } from '../../electron/harness/runtime/runtimePort.js';
 
 export interface CapturedRequest {
   path: string;
@@ -201,23 +196,4 @@ export async function createHttpFixture(initialReplies: FixtureReply[] = []) {
       server.close((error) => error ? reject(error) : resolve());
     }),
   };
-}
-
-export async function createRuntimeFixture(t: TestContext, replies: FixtureReply[]) {
-  const root = await mkdtemp(join(tmpdir(), 'nomi-runtime-port-'));
-  const cwd = join(root, 'project');
-  const agentDir = join(root, 'agent');
-  const tempRoot = join(root, 'scratch');
-  await Promise.all([mkdir(cwd), mkdir(agentDir), mkdir(tempRoot)]);
-  t.after(() => rm(root, { recursive: true, force: true }));
-  const http = await createHttpFixture(replies);
-  t.after(http.close);
-  const request: RuntimeTurnRequest = {
-    cwd, agentDir, tempRoot, systemPrompt: 'NOMI_RUNTIME_SYSTEM',
-    model: { kind: 'openai-compatible', providerId: 'nomi-runtime', modelId: 'chosen-model',
-      baseURL: http.baseURL, authType: 'api-key', apiKey: 'fixture-key' },
-    user: { durableText: 'Read the current shot.' }, tools: [],
-    capability: { maxSteps: 8 }, compaction: { enabled: false },
-  };
-  return { request, http };
 }

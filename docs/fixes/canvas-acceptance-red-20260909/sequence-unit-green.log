@@ -1,0 +1,8 @@
+
+ RUN  v4.1.8 /Users/aoqimin/Desktop/Nomi-canvas-red
+
+
+ Test Files  1 passed (1)
+      Tests  18 passed (18)
+   Start at  22:39:08
+   Duration  202ms (transform 49ms, setup 24ms, import 111ms, tests 3ms, environment 0ms)

@@ -1,0 +1,114 @@
+{
+  "platform": "darwin",
+  "arch": "arm64",
+  "commit": "ffdf023a3900a317b02dbba3b69418cf7b7f5177",
+  "dirty": true,
+  "pass": true,
+  "warmupFailures": [],
+  "scenarios": {
+    "click-select": {
+      "frameGapP95Ms": 13.7,
+      "action": {
+        "domainSelected": 6,
+        "flowSelected": 6,
+        "lightweight": 6,
+        "mounted": 6
+      }
+    },
+    "multi-node-drag": {
+      "frameGapP95Ms": 14.7,
+      "action": {
+        "selected": 6,
+        "requested": 6
+      }
+    }
+  },
+  "verdicts": {
+    "M/click-select": {
+      "pass": true,
+      "advisoryOnly": false,
+      "budgetsAdvisory": false,
+      "hardFailures": [],
+      "budgetChecks": [
+        {
+          "metric": "frameGapP95Ms",
+          "actualP95": 13.7,
+          "max": 33,
+          "pass": true,
+          "advisory": false
+        },
+        {
+          "metric": "maxFrameGapMs",
+          "actualP95": 39,
+          "max": 100,
+          "pass": true,
+          "advisory": true
+        },
+        {
+          "metric": "maxLoadingImages",
+          "actualP95": 3,
+          "max": 4,
+          "pass": true,
+          "advisory": false
+        },
+        {
+          "metric": "maxLoadingVideos",
+          "actualP95": 0,
+          "max": 1,
+          "pass": true,
+          "advisory": false
+        },
+        {
+          "metric": "maxActiveVideos",
+          "actualP95": 0,
+          "max": 1,
+          "pass": true,
+          "advisory": false
+        }
+      ]
+    },
+    "M/multi-node-drag": {
+      "pass": true,
+      "advisoryOnly": true,
+      "budgetsAdvisory": false,
+      "hardFailures": [],
+      "budgetChecks": [
+        {
+          "metric": "frameGapP95Ms",
+          "actualP95": 14.7,
+          "max": 33,
+          "pass": true,
+          "advisory": false
+        },
+        {
+          "metric": "maxFrameGapMs",
+          "actualP95": 38.3,
+          "max": 100,
+          "pass": true,
+          "advisory": true
+        },
+        {
+          "metric": "maxLoadingImages",
+          "actualP95": 3,
+          "max": 4,
+          "pass": true,
+          "advisory": false
+        },
+        {
+          "metric": "maxLoadingVideos",
+          "actualP95": 0,
+          "max": 1,
+          "pass": true,
+          "advisory": false
+        },
+        {
+          "metric": "maxActiveVideos",
+          "actualP95": 0,
+          "max": 1,
+          "pass": true,
+          "advisory": false
+        }
+      ]
+    }
+  }
+}

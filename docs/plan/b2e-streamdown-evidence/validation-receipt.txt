@@ -1,0 +1,13 @@
+B2e final local validation
+Integrated baseline: 77b8d4c07812
+Command: pnpm run gates
+Exit: 0
+Contracts: 76 checks, all blocking checks passed; documentation advisory warnings retained
+Vitest: 1324 files passed / 1 skipped; 12246 tests passed / 2 skipped
+Agent runtime: 306 passed, 0 failed
+Janitor: 13 passed, 0 failed
+Vite and Electron build: passed
+Electron: 36 screenshots, light/dark; accepted replay 34 loopback requests; paid calls 0
+Clipboard: 766 characters including final newline, identical in both themes
+Original audit: 28 before screenshots preserved
+Logs: /tmp/b2e-gates2.log and /tmp/b2e-gates-integrated.log

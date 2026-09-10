@@ -1,0 +1,101 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-10-dc21-actionable-placeholder",
+  "problem_type": "Pending media shows the next action, never a duplicate of the full prompt.",
+  "symptom": "Pending media shows the next action, never a duplicate of the full prompt.",
+  "direct_cause": "Pending media shows the next action, never a duplicate of the full prompt.",
+  "class_root": "The shared presentation boundary does not enforce task-oriented, readable output.",
+  "affected_population": [
+    "Existing and new projects, zh-CN and en"
+  ],
+  "scope_paths": [
+    "src/workbench/generationCanvas/nodes/render/CardCommon.tsx",
+    "src/workbench/generationCanvas/nodes/BaseGenerationNode.tsx",
+    "src/i18n/locales/generationCommon.ts"
+  ],
+  "entry_points": [
+    "src/workbench/generationCanvas/nodes/render/CardCommon.tsx",
+    "src/workbench/generationCanvas/nodes/BaseGenerationNode.tsx",
+    "src/i18n/locales/generationCommon.ts"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "Application presentation policy; no dependency or external protocol change.",
+  "invariants": [
+    "Pending media shows the next action, never a duplicate of the full prompt."
+  ],
+  "generality_proof": "All checked consumers converge on the declared shared presentation boundary.",
+  "shared_boundaries": [
+    {
+      "path": "src/workbench/generationCanvas/nodes/render/CardCommon.tsx",
+      "symbol": "PendingGenerationPlaceholder",
+      "responsibility": "Pending media shows the next action, never a duplicate of the full prompt."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/workbench/generationCanvas/nodes/render/CardCommon.tsx",
+      "entry_point": "PendingGenerationPlaceholder",
+      "disposition": "enforced",
+      "evidence": "Repository scan confirms the shared presentation policy applies here."
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/BaseGenerationNode.tsx",
+      "entry_point": "consumer",
+      "disposition": "enforced",
+      "evidence": "Repository scan confirms the shared presentation policy applies here."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Every new or restored project can reach this presentation.",
+    "same_class_scan": [
+      "src/workbench/generationCanvas/nodes/render/CardCommon.tsx",
+      "src/workbench/generationCanvas/nodes/BaseGenerationNode.tsx",
+      "src/i18n/locales/generationCommon.ts"
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "src/workbench/generationCanvas/nodes/render/CardCommon.tsx",
+    "invariant": "Pending media shows the next action, never a duplicate of the full prompt.",
+    "failure_mode": "Keep actionable constraints visible; omit redundant presentation.",
+    "exception_policy": "none",
+    "strategy": "Pending media shows the next action, never a duplicate of the full prompt.",
+    "artifacts": [
+      "src/workbench/generationCanvas/nodes/render/CardCommon.tsx",
+      "src/workbench/generationCanvas/nodes/BaseGenerationNode.tsx",
+      "src/i18n/locales/generationCommon.ts"
+    ]
+  },
+  "regression_tests": [
+    "src/workbench/generationCanvas/nodes/render/CardCommon.test.ts"
+  ],
+  "class_regression_tests": [
+    "src/workbench/generationCanvas/nodes/render/CardCommon.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "src/workbench/generationCanvas/nodes/render/CardCommon.tsx",
+      "src/workbench/generationCanvas/nodes/BaseGenerationNode.tsx",
+      "src/i18n/locales/generationCommon.ts"
+    ],
+    "rationale": "Replace old presentation in place; no parallel path."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "Internal presentation invariant; dependencies unchanged.",
+    "exit_criteria": []
+  },
+  "migration": "No persisted schema changes. Existing projects render with the same rule.",
+  "residual_risks": [
+    "Real Electron before/after verification pending."
+  ],
+  "invariant_owner_layer": {
+    "layer": "src/workbench/generationCanvas/nodes/render/CardCommon.tsx",
+    "tests": [
+      "src/workbench/generationCanvas/nodes/render/CardCommon.test.ts"
+    ],
+    "why": "Pending media shows the next action, never a duplicate of the full prompt."
+  }
+}

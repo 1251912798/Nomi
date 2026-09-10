@@ -1,0 +1,118 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-08-lane-tool-display",
+  "problem_type": "Current model tool display identity",
+  "symptom": "A successful native lane canvas write is shown as a generic operation with no user-facing effect summary.",
+  "direct_cause": "The display resolves only legacy aliases, and the lane view model drops tool arguments before choosing labels and never supplies the existing summary field.",
+  "class_root": "Tool display must derive capability identity and effect text from the current model descriptor plus actual arguments.",
+  "affected_population": [
+    "Native lane canvas and storyboard tools",
+    "Read-only document tools",
+    "Failure and refusal receipts",
+    "Upstream file tools"
+  ],
+  "scope_paths": [
+    "electron/shared/agentCapabilities/modelFacingToolRegistry.ts",
+    "src/workbench/ai/resident/residentToolDisplay.ts",
+    "src/workbench/ai/lane/laneViewModel.ts",
+    "src/workbench/ai/v4/useAgentPanelV4Data.ts"
+  ],
+  "entry_points": [
+    "Model tool identity resolution",
+    "Tool receipt labels",
+    "Tool receipt summary"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "The mapping of Nomi user input and failure visibility is a domain invariant; installed pi 0.85.1 public APIs are inspected in the stage 4 plan.",
+  "invariants": [
+    "Current model descriptors and operation arguments determine labels and action icons.",
+    "Successful calls retain their intended effect summary; failures show failure information and refusals do not claim a successful effect."
+  ],
+  "generality_proof": "The shared model descriptor resolver covers every internal tool and falls back only to separately registered external surface aliases; UI text is localized at the existing display owner.",
+  "shared_boundaries": [
+    {
+      "path": "electron/shared/agentCapabilities/modelFacingToolRegistry.ts",
+      "symbol": "resolveModelToolCapabilityId",
+      "responsibility": "Resolve tool names and operation-specific capability from the existing registration."
+    },
+    {
+      "path": "src/workbench/ai/lane/laneViewModel.ts",
+      "symbol": "receiptFor",
+      "responsibility": "Pass actual arguments to the existing label/summary owner and preserve failure/refusal semantics."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/workbench/ai/resident/residentToolDisplay.ts",
+      "entry_point": "readableToolName",
+      "disposition": "enforced",
+      "evidence": "Registry-derived test lists every internal tool and rejects generic labels."
+    },
+    {
+      "path": "src/workbench/ai/lane/laneViewModel.ts",
+      "entry_point": "receiptFor",
+      "disposition": "enforced",
+      "evidence": "Actual arguments choose canvas/read/delete labels and summaries; failure and refusal replace effect text."
+    },
+    {
+      "path": "src/workbench/ai/resident/residentToolDisplay.ts",
+      "entry_point": "isReadOnlyToolName",
+      "disposition": "enforced",
+      "evidence": "read_full_text uses the current document.read capability rather than substring heuristics."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Every current or future model name can diverge from its external alias.",
+    "same_class_scan": [
+      "Scanned the full modelFacingToolSpecs internal list",
+      "Read label, summary, preview and action-family consumers",
+      "Real Electron editing walk reproduced missing canvas effect text"
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "electron/shared/agentCapabilities/modelFacingToolRegistry.ts",
+    "invariant": "Display identity derives from actual capability descriptors.",
+    "failure_mode": "A newly unlabelled tool fails the registry-derived display test.",
+    "exception_policy": "none",
+    "strategy": "Use one resolver for actual model names and registered external aliases.",
+    "artifacts": [
+      "electron/shared/agentCapabilities/modelFacingToolRegistry.ts",
+      "src/workbench/ai/resident/residentToolDisplay.test.ts"
+    ]
+  },
+  "regression_tests": [
+    "src/workbench/ai/resident/residentToolDisplay.test.ts",
+    "src/workbench/ai/lane/laneViewModel.test.ts",
+    "tests/ux/agent-runtime-editing.walk.mjs"
+  ],
+  "class_regression_tests": [
+    "src/workbench/ai/resident/residentToolDisplay.test.ts",
+    "src/workbench/ai/lane/laneViewModel.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "src/workbench/ai/resident/residentToolDisplay.ts",
+      "src/workbench/ai/lane/laneViewModel.ts"
+    ],
+    "rationale": "Replace legacy-only lookup and name-only label dispatch; no second display store."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "No dependency change is needed to bind Nomi workspace ownership.",
+    "exit_criteria": []
+  },
+  "migration": "Existing transcripts are projected through the corrected display; no history files are rewritten.",
+  "residual_risks": [
+    "Editing and real-user Electron walks must revalidate the displayed effects and unchanged write authority."
+  ],
+  "invariant_owner_layer": {
+    "layer": "src/workbench/ai/lane/laneViewModel.ts",
+    "tests": [
+      "src/workbench/ai/lane/laneViewModel.test.ts"
+    ],
+    "why": "This is the shared mapping from ordered lane facts to existing v4 tool receipts."
+  }
+}

@@ -78,3 +78,13 @@ export type RuntimeActivityEvent =
   | { type: 'tool-error'; toolCallId: string; toolName: string; message: string; denied?: boolean; cancelled?: boolean }
   | { type: 'step-finish'; step: number; finishReason: RuntimeFinishReason; usage: RuntimeUsage }
   | { type: 'warning'; error: RuntimeErrorFacts }
+
+/** Approval correlation carried unchanged through domain adapters and receipt persistence. */
+export type CanvasWriteApprovalAuthority = Readonly<{
+  receiptProposalId: string;
+  approvalId: string;
+  actionHash: string;
+}>;
+
+export const AGENT_TOOL_PROFILES = ["creation", "generation", "storyboard", "timeline", "production"] as const;
+export type AgentToolProfile = (typeof AGENT_TOOL_PROFILES)[number];

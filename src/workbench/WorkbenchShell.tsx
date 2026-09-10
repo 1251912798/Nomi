@@ -1,4 +1,5 @@
 import React from "react";
+import { WorkspacePanelFrameContext } from "./WorkspacePanelFrame";
 import { createPortal } from 'react-dom';
 import { useTranslation } from "react-i18next";
 import "./workbench.css";
@@ -43,6 +44,7 @@ const GenerationWorkspace = lazyWithChunkBoundary(
 const PreviewWorkspace = lazyWithChunkBoundary("预览区", () => import("./preview/PreviewWorkspace"));
 
 type WorkbenchShellProps = {
+    projectFeedback?: React.ReactNode;
     generation: React.ReactNode;
     projectId?: string | null;
     projectName?: string;
@@ -138,6 +140,7 @@ function openBrowser(): void {
 }
 
 export default function WorkbenchShell({
+    projectFeedback,
     generation,
     projectId,
     projectName,
@@ -226,7 +229,7 @@ export default function WorkbenchShell({
         const clampToViewport = (): void => {
             const store = useWorkbenchStore.getState();
             const max = assistantWidthMaxFor(window.innerWidth);
-            if (store.assistantWidth > max) store.setAssistantWidth(max);
+            if (store.editingPanelLayout.assistantWidth > max) store.setAssistantWidth(max);
         };
         clampToViewport();
         window.addEventListener("resize", clampToViewport);
@@ -268,6 +271,7 @@ export default function WorkbenchShell({
     );
 
     return (
+        <WorkspacePanelFrameContext.Provider value={workspaceMode === "creation"}>
         <div
             className={cn(
                 "workbench-shell",
@@ -342,6 +346,7 @@ export default function WorkbenchShell({
                 onOpenSettings={onOpenSettings}
                 onRenameProject={onRenameProject}
             />
+            {projectFeedback}
             <UpdaterDialog updater={updater} hasRunningTask={hasRunningTask} />
 
             {/* 左侧面板重做: 分类导航 + 文件树统一收进 ProjectExplorerSidebar 的双 Tab。
@@ -350,6 +355,7 @@ export default function WorkbenchShell({
                 className={cn(
                     "workbench-shell__body",
                     "relative min-w-0 min-h-0 overflow-hidden flex flex-1",
+                    workspaceMode === "creation" && "p-4 gap-4",
                 )}>
                 {/* 文件树只在生成区显示：创作是纯文稿、预览/剪辑是回看时间轴，都不需要左侧资源树。 */}
                 {workspaceMode === "generation" ? (
@@ -399,5 +405,6 @@ export default function WorkbenchShell({
                 {agentDock ? createPortal(<ProjectAgentResidentShell surface={agentSurface} />, agentDock) : null}
             </main>
         </div>
+        </WorkspacePanelFrameContext.Provider>
     );
 }

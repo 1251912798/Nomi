@@ -1,3 +1,4 @@
+import { V4Row } from './AgentPanelV4Row'
 // Agent 面板 v4 · 积木 ④ 任务卡 · ⑤ 介入槽 · ⑥ 队列行
 //
 // ④ 任务卡（定稿 Vocabulary 板）：卡头 = 类型 icon + 标题 + 状态 + 右侧计数/用时/**花费**，
@@ -11,11 +12,13 @@
 //
 // ⑥ 队列行：只在「运行中还继续输入」时出现在 composer 顶上；完成的划掉；空队列不渲染。
 import React from 'react'
+import { AgentPanelV4Markdown } from './AgentPanelV4Markdown'
 import { cn } from '../../../utils/cn'
 import {
   ActionIcon,
   IconAlertTriangle,
   IconCheck,
+  IconChevronRight,
   IconX,
   StatusSpinner,
 } from './AgentPanelV4Icons'
@@ -63,23 +66,23 @@ export function V4TaskCard({
       data-v4-block="task"
       data-status={task.status}
     >
-      <header className="flex items-center gap-[7px] px-2.5 py-2 text-caption font-medium text-nomi-ink">
+      <V4Row as="header" className="px-2.5 py-2 text-caption font-medium text-nomi-ink">
         <ActionIcon action={task.action} />
-        <span className="truncate">{task.title}</span>
+        <div className="min-w-0 line-clamp-1"><AgentPanelV4Markdown text={task.title} /></div>
         <span className={cn('flex shrink-0 items-center gap-1 font-normal', TASK_TONE[task.status])}>
           <TaskStatusIcon status={task.status} />
           {labels.status[task.status]}
         </span>
         {task.trailing ? (
-          <span className="ml-auto shrink-0 text-micro font-normal text-nomi-ink-40">{task.trailing}</span>
+          <span className="shrink-0 text-micro font-normal text-nomi-ink-40">{task.trailing}</span>
         ) : null}
-      </header>
+      </V4Row>
       {/* 卡体只要**有东西可放**就开：首版漏了 footnote / undoable 两项，于是
         「2 处改动 · 同一个 ⌘Z + 撤销」那一行整条不见了，卡片看起来只剩一个标题。 */}
       {task.excerpt || task.params || task.candidates || task.error || task.footnote || task.undoable || task.progress !== undefined ? (
         <div className="flex flex-col gap-1.5 px-2.5 pb-2.5">
           {task.excerpt ? (
-            <p className="m-0 line-clamp-2 text-caption text-nomi-ink-60">{task.excerpt}</p>
+            <AgentPanelV4Markdown text={task.excerpt} />
           ) : null}
           {task.params?.length ? (
             <div className="flex flex-wrap gap-1">
@@ -100,12 +103,14 @@ export function V4TaskCard({
           ) : null}
           {task.candidates?.length ? (
             <div className="flex gap-1.5">
-              {task.candidates.map((candidate, index) => (
-                <button
-                  type="button"
-                  key={candidate.tag}
-                  aria-label={`${labels.adopt} ${candidate.tag}`}
-                  onClick={() => onAdopt?.(candidate.tag, index)}
+              {task.candidates.map((candidate, index) => {
+                const canAdopt = Boolean(onAdopt && candidate.canAdopt && !candidate.adopted && !candidate.pending)
+                const Tile = canAdopt ? 'button' : 'div'
+                return <Tile
+                  {...(canAdopt ? { type: 'button' as const, 'aria-label': `${labels.adopt} ${candidate.tag}`,
+                    onClick: () => onAdopt?.(candidate.tag, index) } : {})}
+                  key={candidate.artifactId ?? candidate.tag}
+                  data-artifact-id={candidate.artifactId}
                   data-adopted={candidate.adopted ? 'true' : undefined}
                   className={cn(
                     'relative h-10 w-16 shrink-0 overflow-hidden rounded-nomi-sm border border-nomi-line',
@@ -114,13 +119,14 @@ export function V4TaskCard({
                     candidate.adopted && 'outline outline-2 outline-offset-1 outline-nomi-accent',
                   )}
                 >
+                  {candidate.thumbnailUrl ? <img src={candidate.thumbnailUrl} alt="" className="size-full object-cover" /> : null}
                   {/* 角标写的是**这一张是谁**（画布 Vocabulary 板是「采用」、FlowGeneration 板是「2 ✓」），
                       由数据给；`adopted` 只管那圈 accent 描边，不改写文字。 */}
                   <span className="absolute left-1 top-1 rounded-sm bg-nomi-overlay-chip px-1 text-micro leading-[15px] text-nomi-paper">
                     {candidate.tag}
                   </span>
-                </button>
-              ))}
+                </Tile>
+              })}
             </div>
           ) : null}
           {task.progress !== undefined ? (
@@ -130,15 +136,15 @@ export function V4TaskCard({
           ) : null}
           {task.error ? <V4ErrorBar reason={task.error} action={task.errorAction} onAction={onErrorAction} /> : null}
           {task.footnote || task.footnoteTrailing || task.undoable ? (
-            <div className="flex items-center gap-2 text-micro text-nomi-ink-40">
-              <span className="flex-1 truncate">{task.footnote ?? ''}</span>
+            <V4Row as="div" className="text-micro text-nomi-ink-40">
+              <AgentPanelV4Markdown text={task.footnote ?? ''} />
               {task.footnoteTrailing ? <span className="shrink-0">{task.footnoteTrailing}</span> : null}
               {task.undoable ? (
                 <button type="button" className="font-medium text-nomi-accent" onClick={onUndo}>
                   {labels.undo}
                 </button>
               ) : null}
-            </div>
+            </V4Row>
           ) : null}
         </div>
       ) : null}
@@ -210,13 +216,13 @@ export function V4Intervention({
       data-v4-block="intervention"
       data-kind={data.kind}
     >
-      <header className="flex items-center gap-1.5 bg-nomi-accent-soft px-2.5 py-2 text-caption font-semibold text-nomi-accent">
+      <V4Row as="header" className="bg-nomi-accent-soft px-2.5 py-2 text-caption font-semibold text-nomi-accent">
         <SlotIcon kind={data.kind} />
-        <span className="min-w-0 flex-1">{data.title}</span>
+        <AgentPanelV4Markdown text={data.title} />
         {data.badge ? <span className="shrink-0 font-normal opacity-85">{data.badge}</span> : null}
-      </header>
+      </V4Row>
       <div className="flex flex-col gap-1.5 px-2.5 py-2 text-caption text-nomi-ink">
-        {data.summary ? <p className="m-0">{data.summary}</p> : null}
+        {data.summary ? <AgentPanelV4Markdown text={data.summary} /> : null}
         {data.params?.length ? (
           <div className="flex flex-wrap gap-1">
             {data.params.map((param) => (
@@ -234,19 +240,25 @@ export function V4Intervention({
         ) : null}
         {data.plan?.length ? (
           <div className="flex flex-col gap-1">
-            {data.plan.map((row) => (
-              <label key={row.label} className="flex items-center gap-2 py-[3px] text-caption text-nomi-ink-80">
+            {data.plan.map((row, index) => (
+              <div key={`${index}-${row.label}`} className="flex items-start gap-2 py-[3px] text-caption text-nomi-ink-80">
                 <input
                   type="checkbox"
+                  aria-label={row.label}
                   checked={row.checked}
                   onChange={(event) => onPlanToggle?.(row.label, event.target.checked)}
-                  className="size-3.5 shrink-0 accent-nomi-accent"
+                  className="mt-0.5 size-3.5 shrink-0 accent-nomi-accent"
                 />
-                <span className="min-w-0 flex-1 truncate">{row.label}</span>
-                {row.detail ? (
-                  <span className="shrink-0 font-nomi-mono text-micro text-nomi-ink-40">{row.detail}</span>
-                ) : null}
-              </label>
+                {row.technical ? (
+                  <details className="group min-w-0 flex-1" data-v4-block="plan-detail">
+                    <summary className="flex cursor-pointer list-none items-start gap-1">
+                      <div className="min-w-0 flex-1"><AgentPanelV4Markdown text={row.label} />{row.detail ? <AgentPanelV4Markdown text={row.detail} /> : null}</div>
+                      <IconChevronRight size={12} className="mt-0.5 shrink-0 group-open:rotate-90" aria-hidden="true" />
+                    </summary>
+                    <pre className="m-0 mt-1 whitespace-pre-wrap break-all font-nomi-mono text-micro text-nomi-ink-40">{row.technical}</pre>
+                  </details>
+                ) : <div className="min-w-0 flex-1"><AgentPanelV4Markdown text={row.label} />{row.detail ? <AgentPanelV4Markdown text={row.detail} /> : null}</div>}
+              </div>
             ))}
           </div>
         ) : null}
@@ -264,7 +276,7 @@ export function V4Intervention({
         {data.scope ? <p className="m-0 text-micro text-nomi-ink-60">{data.scope}</p> : null}
       </div>
       {hasActions ? (
-        <footer className="flex items-center gap-1.5 border-t border-nomi-line-soft px-2.5 py-2 text-caption">
+        <V4Row as="footer" className="border-t border-nomi-line-soft px-2.5 py-2 text-caption">
           {rejecting || data.kind === 'reject-reason' ? (
             <>
               <span className="flex-1" />
@@ -287,17 +299,17 @@ export function V4Intervention({
             </>
           ) : (
             <>
-              <button
+              <V4Row as="button"
                 type="button"
                 onClick={onConfirm}
                 data-v4-control="confirm"
-                className="inline-flex h-7 items-center gap-1 rounded-nomi-sm border border-nomi-ink bg-nomi-ink px-2.5 text-nomi-paper"
+                className="h-7 rounded-nomi-sm border border-nomi-ink bg-nomi-ink px-2.5 text-nomi-paper"
               >
                 {data.kind === 'approval-irreversible' || data.kind === 'spend' ? (
                   <IconCheck size={12} aria-hidden="true" />
                 ) : null}
                 {data.confirmLabel ?? labels.confirm}
-              </button>
+              </V4Row>
               {canEscalate ? (
                 <button type="button" className="text-micro text-nomi-ink-40" onClick={onEscalate} data-v4-control="escalate">
                   {labels.escalate}
@@ -328,7 +340,7 @@ export function V4Intervention({
               )}
             </>
           )}
-        </footer>
+        </V4Row>
       ) : null}
     </aside>
   )
@@ -356,7 +368,7 @@ export function V4Queue({
       {rows.map((row, rowIndex) => (
         // key 用行序而不是标题：两条一模一样的排队消息是完全合法的（「再来一张」×2），
         // 用标题当 key 时 React 会把它们当成同一行，删掉第一条后第二条会跟着消失。
-        <div key={`${rowIndex}-${row.title}`} className="flex h-6 items-center gap-2 text-caption text-nomi-ink-80" data-status={row.status}>
+        <V4Row as="div" key={`${rowIndex}-${row.title}`} className="h-6 text-caption text-nomi-ink-80" data-status={row.status}>
           <span
             className={cn(
               'size-1.5 shrink-0 rounded-pill',
@@ -364,23 +376,23 @@ export function V4Queue({
             )}
             aria-hidden="true"
           />
-          <span className={cn('min-w-0 flex-1 truncate', row.status === 'complete' && 'text-nomi-ink-40 line-through')}>
+          <span className={cn('min-w-0 truncate', row.status === 'complete' && 'text-nomi-ink-40 line-through')}>
             {row.title}
           </span>
-          <span className="ml-auto flex shrink-0 items-center gap-1.5 text-micro text-nomi-ink-40">
+          <span className="flex shrink-0 items-center gap-1.5 text-micro text-nomi-ink-40">
             {row.actions?.map((action) => (
               <button type="button" key={action} className="font-medium text-nomi-ink-80" onClick={() => onAction?.(rowIndex, action)}>
                 {action}
               </button>
             ))}
             {row.destructiveAction ? (
-              <button type="button" className="font-medium text-nomi-danger" onClick={() => onDestructiveAction?.(rowIndex)}>
-                {row.destructiveAction}
+              <button type="button" aria-label={row.destructiveAction} className="grid size-[22px] place-items-center rounded-nomi-sm text-nomi-ink-60 hover:bg-nomi-ink-05 hover:text-nomi-danger" onClick={() => onDestructiveAction?.(rowIndex)}>
+                <IconX size={14} aria-hidden="true" />
               </button>
             ) : null}
             {row.actions?.length || row.destructiveAction ? null : labels[row.status]}
           </span>
-        </div>
+        </V4Row>
       ))}
     </section>
   )

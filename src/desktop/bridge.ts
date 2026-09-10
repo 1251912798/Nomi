@@ -2,7 +2,7 @@ import type { ExportJobEvent, ExportJobSnapshot, ExportJobVerification } from '.
 import type { WorkspaceFileListResult } from '../../electron/workspace/workspaceFileIndex'
 import type { WorkspaceSyncInspection } from '../../electron/shared/workspaceSyncContracts'
 import type { ProviderKind } from './providerKind'
-import type { DesktopMediaBridge, DesktopVideoDepthBridge } from './bridgeMedia'
+import type { DesktopMediaBridge, DesktopVideoDepthBridge, DesktopAssetDto, DesktopAssetFoldersState } from './bridgeMedia'
 import type { DesktopConnectorBridge } from './bridgeConnector'
 import type { McpClientProfile, McpInfo, McpVerifyResult } from './mcpBridgeTypes'
 import type { DesktopSettingsBridge } from './settingsBridge'
@@ -11,12 +11,11 @@ import type { DesktopProductionRunBridge } from './productionRunBridgeTypes'
 import type { CustomCallBridge } from './modelCatalogBridgeTypes'
 import type { ComfyCandidateTestPayload, ComfyCandidateTestResult, ComfyWorkflowMutationResult } from './comfyCandidateContracts'
 import type { CanvasReadSurfaceBridge } from '../../electron/shared/surfacePortBinding'
-import type { ProjectAgentBridge } from './projectAgentBridgeTypes'
+import type { LaneBridge } from '../workbench/ai/lane/laneClient'
 import type { GenerationResolvePlanEnvelope, GenerationResolvePlanRequest } from '../../electron/shared/videoCapabilities/planResolutionContracts'
-export type { ProjectAgentBridge, ProjectAgentCommandWire } from './projectAgentBridgeTypes'
 export type { ProviderKind }
 export type { DesktopAdapterModeResult, DesktopProviderAdapterRun, DesktopProviderRegistration } from './onboardingBridgeTypes'
-export type { ScreenshotHotkeyStatus } from './bridgeMedia'
+export type { ScreenshotHotkeyStatus, DesktopAssetDto, DesktopAssetFolder, DesktopAssetFoldersState } from './bridgeMedia'
 export type { DesktopDirectorBridge, DesktopDirectorMobileEvent, DesktopDirectorMobileStatus } from './directorBridgeTypes'
 import type { DesktopDirectorBridge } from './directorBridgeTypes'
 
@@ -85,29 +84,6 @@ export type DesktopProxyProbe = {
   target: string
   error: string
   tried: DesktopProxyProbeAttempt[]
-}
-
-export type DesktopAssetDto = {
-  id: string
-  name: string
-  userId: string
-  projectId?: string | null
-  createdAt: string
-  updatedAt: string
-  data: Record<string, unknown>
-}
-
-export type DesktopAssetFolder = {
-  id: string
-  label: string
-  order: number
-}
-
-export type DesktopAssetFoldersState = {
-  version: 1
-  folders: DesktopAssetFolder[]
-  /** 素材 renderUrl → folderId。 */
-  assignments: Record<string, string>
 }
 
 export type DesktopMp4ExportResult = {
@@ -376,9 +352,9 @@ export type DesktopBridge = DesktopMediaBridge &
     syncReveal?: (projectId: string) => Promise<{ ok: boolean }>
     syncCopyConflict?: (payload: { projectId: string; source?: 'local' | 'remote' }) => Promise<{ path: string }>
   }
-  /** 系统通知（任务中心：跑完且窗口失焦才发）。可选 —— 老 preload / 测试环境没有时调用端降级到自制提示音。 */
+  /** 系统通知（任务中心：跑完且窗口失焦才发）。声音与系统通知偏好由主进程统一判定。 */
   notifications?: {
-    show: (payload: { title: string; body?: string; silent?: boolean }) => Promise<{ ok: boolean; reason?: string }>
+    show: (payload: { title: string; body?: string; event?: import("../../electron/shared/contracts/attentionSound").AttentionSoundEvent }) => Promise<{ ok: boolean; reason?: string }>
   }
   projects: {
     list: () => unknown[]
@@ -403,6 +379,7 @@ export type DesktopBridge = DesktopMediaBridge &
     foldersSave?: (payload: { projectId: string; state: DesktopAssetFoldersState }) => Promise<{ ok: boolean; state: DesktopAssetFoldersState; error?: string }>
     /** 写入层落盘广播（nomi:assets:updated）——素材库面板/素材盒徽章的统一回流信号。 */
     onUpdated?: (cb: (payload: { projectId: string }) => void) => () => void
+    onLocalizationStarted?: (cb: (payload: { projectId: string; nodeId: string }) => void) => () => void
     importRemoteUrl: (payload: {
       projectId: string
       url: string
@@ -560,7 +537,8 @@ export type DesktopBridge = DesktopMediaBridge &
     result: (payload: unknown) => Promise<unknown>
     runComfyCandidateTest?: (payload: ComfyCandidateTestPayload) => Promise<ComfyCandidateTestResult>
     cancelComfyCandidateTest?: (payload: { revisionId: string; modelKey: string; taskKind: string }) => Promise<{ ok: boolean }>
-    grantSpend: (payload: { nodeIds: string[]; maxAttemptsPerNode?: number }) => Promise<{ grantId: string }>
+    quoteSpend: (inputs: import("../../electron/shared/contracts/spendQuote").SpendQuoteInput[]) => Promise<import("../../electron/shared/contracts/spendQuote").PreparedSpendQuote>
+    grantSpend: (payload: { nodeIds: string[]; maxAttemptsPerNode?: number; quoteId?: string }) => Promise<{ grantId: string }>
     runTextStream: (payload: unknown) => Promise<{ streamId: string }>
     cancelTextStream: (streamId: string) => Promise<unknown>
     onTextEvent: (streamId: string, callback: (event: unknown) => void) => () => void
@@ -644,7 +622,7 @@ export type DesktopBridge = DesktopMediaBridge &
     health: () => unknown
     upsertVendor: (payload: unknown) => unknown
     deleteVendor: (key: string) => void
-    upsertVendorApiKey: (vendorKey: string, payload: unknown) => unknown
+    upsertVendorApiKey: (vendorKey: string, payload: unknown) => Promise<unknown>
     clearVendorApiKey: (vendorKey: string) => unknown
     upsertModel: (payload: unknown) => unknown
     /**
@@ -773,8 +751,8 @@ export type DesktopBridge = DesktopMediaBridge &
   }
   /** Main-issued read-only project Surface lifecycle; independent from capability.onApply. */
   surface?: CanvasReadSurfaceBridge
-  /** The sole renderer transport for the app-process ProjectAgentHost. */
-  projectAgent?: ProjectAgentBridge
+  /** The desktop conversation transport. */
+  agentLane?: LaneBridge
 }
 
 declare global {

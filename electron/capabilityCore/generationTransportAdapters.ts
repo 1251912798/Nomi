@@ -1,11 +1,7 @@
 import { z } from "zod";
 import type { RuntimeToolCall, RuntimeToolDecision } from "../shared/agentCapabilities/transportContracts";
-import {
-  generationPlanInputSchema,
-  generationStatusInputSchema,
-  modelToolSurfaceManifest,
-} from "../harness/tools/modelToolSurfaceManifest";
-import { GENERATION_RECONCILE_OUTCOMES } from "./mcpGenerationTools";
+import { modelFacingToolSpecs } from "../shared/agentCapabilities/modelFacingToolRegistry";
+import { generationPlanInputSchema, generationStatusInputSchema, GENERATION_RECONCILE_OUTCOMES } from "../shared/agentCapabilities/generationPlanSchemas";
 import type { ProjectBinding } from "../shared/projectBinding";
 import type { ProjectLeaseV2 } from "./projectLease";
 import type { DispatchContext } from "./dispatcher";
@@ -36,7 +32,7 @@ export type GenerationTransportAdapterDependencies = Readonly<{
   leaseFor: GenerationLeaseFactory;
 }>;
 
-const MODEL_GENERATION_TOOL_NAMES = new Set(modelToolSurfaceManifest.generation.map(({ name }) => name));
+const MODEL_GENERATION_TOOL_NAMES = new Set(modelFacingToolSpecs("internal").filter(spec => spec.internalGroup === "generation").map(spec => spec.name));
 const INTERNAL_GENERATION_TOOL_NAMES = new Set([
   "nomi_get_generation_context",
   "nomi_operation_create",

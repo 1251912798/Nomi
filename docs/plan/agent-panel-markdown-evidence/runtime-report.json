@@ -1,0 +1,50 @@
+{
+  "name": "markdown-audit",
+  "mode": "development",
+  "tempRoot": "/var/folders/f4/vz86j5nd0_sf56qdhzrmbbvw0000gn/T/nomi-pi-markdown-audit-PoSkbq",
+  "outputDir": "/Users/aoqimin/Desktop/Nomi-agent-markdown/.tmp/pi-markdown-audit-development-1788893979729",
+  "launches": [
+    {
+      "packaged": false,
+      "appPath": "/Users/aoqimin/Desktop/Nomi-agent-markdown",
+      "userData": "/var/folders/f4/vz86j5nd0_sf56qdhzrmbbvw0000gn/T/nomi-pi-markdown-audit-PoSkbq/user-data",
+      "node": "24.18.1",
+      "electron": "43.4.1",
+      "pid": 15972
+    }
+  ],
+  "screenshots": [],
+  "paidCalls": 0,
+  "projectId": "project-1788893981028-lsd75z",
+  "projectRoot": "/var/folders/f4/vz86j5nd0_sf56qdhzrmbbvw0000gn/T/nomi-pi-markdown-audit-PoSkbq/projects/未命名项目 09_09 02_59-mtt1adt2-cef1af35",
+  "evidence": [
+    "01-table-light.png",
+    "02-code-light.png",
+    "03-nested-light.png",
+    "04-tasks-light.png",
+    "05-inline-light.png",
+    "06-storyboard-light.png",
+    "06-storyboard-expanded-light.png",
+    "07-receipt-light.png",
+    "08-approval-light.png",
+    "01-table-dark.png",
+    "02-code-dark.png",
+    "03-nested-dark.png",
+    "04-tasks-dark.png",
+    "05-inline-dark.png",
+    "06-storyboard-dark.png",
+    "06-storyboard-expanded-dark.png",
+    "07-receipt-dark.png",
+    "08-approval-dark.png"
+  ],
+  "verified": [
+    "6 markdown response forms in both themes",
+    "native document read tool result",
+    "native pending approval",
+    "real code copy action"
+  ],
+  "textRequests": 20,
+  "imageRequests": 0,
+  "unexpected": [],
+  "result": "passed"
+}

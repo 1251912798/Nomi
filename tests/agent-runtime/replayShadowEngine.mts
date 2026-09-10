@@ -77,6 +77,7 @@ export function installOutboundGuard(): () => void {
  * 按什么顺序说」——正是切换后用户会看到的东西。
  */
 export type ComparableStep =
+  | { readonly kind: 'error'; readonly text: string }
   | { readonly kind: 'user'; readonly text: string }
   | { readonly kind: 'assistant-text'; readonly text: string }
   | { readonly kind: 'thinking'; readonly text: string }
@@ -129,6 +130,7 @@ export function stepsOfRecorded(messages: readonly RecordedMessage[]): Comparabl
 export function stepsOfProjection(projection: LaneProjection): ComparableStep[] {
   return projection.parts.map((part): ComparableStep => {
     switch (part.kind) {
+      case 'error': return { kind: 'error', text: part.text };
       case 'user': return { kind: 'user', text: part.text };
       case 'assistant-text': return { kind: 'assistant-text', text: part.text };
       case 'thinking': return { kind: 'thinking', text: part.text };
@@ -328,6 +330,7 @@ export async function replayTurn(ref: ReplayTurnRef, options: ReplayOptions = {}
     const http = await createHttpFixture([fixtureReplyOf(replayParts), { type: 'text', text: SETTLE_TEXT }]);
     cleanup.after(http.close);
     const laneOptions: OpenLaneOptions = {
+      fetch: globalThis.fetch,
       projectDir, systemPrompt: LANE_SYSTEM_PROMPT,
       model: { kind: 'openai-compatible', providerId: 'nomi-lane', modelId: 'chosen-model',
         baseURL: http.baseURL, authType: 'api-key', apiKey: 'fixture-key' },

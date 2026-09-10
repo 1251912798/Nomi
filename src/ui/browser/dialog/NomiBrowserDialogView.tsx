@@ -84,6 +84,7 @@ export function NomiBrowserDialogView({
   removeBookmark,
   removeCaptureFlyout,
   renameBookmark,
+  editingBookmark, setEditingBookmark, commitBookmarkRename, browserFeedback,
   runBrowserScreenshotPrompt,
   saveBookmark,
   setActiveTabId,
@@ -342,7 +343,17 @@ export function NomiBrowserDialogView({
 
           <div className="flex min-h-9 shrink-0 items-center gap-1 overflow-hidden border-b border-nomi-line-soft bg-nomi-paper px-3">
             {bookmarks.slice(0, 10).map((bookmark: BrowserBookmark) => (
-              <button
+              editingBookmark?.id === bookmark.id ? <input
+                key={bookmark.id} autoFocus value={editingBookmark.title}
+                aria-label={t('browserAssets.renameBookmark')}
+                className="h-7 min-w-0 rounded-nomi-sm border border-nomi-line bg-nomi-paper px-2 text-caption text-nomi-ink"
+                onChange={(event) => setEditingBookmark({ id: bookmark.id, title: event.target.value })}
+                onBlur={commitBookmarkRename}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') { event.preventDefault(); commitBookmarkRename() }
+                  if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); setEditingBookmark(null) }
+                }}
+              /> : <button
                 key={bookmark.id}
                 type="button"
                 className="group inline-flex h-7 min-w-0 max-w-[180px] items-center gap-1.5 rounded-nomi-sm border-0 bg-transparent px-2 text-caption text-nomi-ink-60 hover:bg-nomi-ink-05 hover:text-nomi-ink"
@@ -366,6 +377,7 @@ export function NomiBrowserDialogView({
             <span className="ml-auto shrink-0 text-micro text-nomi-ink-30">{t('browserAssets.contextMenuHint')}</span>
           </div>
 
+          {lastError || browserFeedback ? <div role="status" data-browser-action-feedback className={cn('shrink-0 border-b border-nomi-line-soft px-3 py-2 text-caption', lastError ? 'text-workbench-danger' : 'text-nomi-ink-60')}>{lastError || browserFeedback}</div> : null}
           <main
             ref={webContainerRef}
             className={cn(
@@ -457,11 +469,6 @@ export function NomiBrowserDialogView({
                     </div>
                   </div>
                 </div>
-              </div>
-            ) : null}
-            {lastError ? (
-              <div className="absolute left-1/2 top-4 z-[2] -translate-x-1/2 rounded-pill border border-nomi-line bg-nomi-paper px-3 py-1.5 text-caption text-workbench-danger shadow-nomi-sm">
-                {lastError}
               </div>
             ) : null}
             </div>

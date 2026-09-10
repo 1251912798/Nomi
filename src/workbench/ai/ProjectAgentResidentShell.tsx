@@ -1,3 +1,4 @@
+import { libraryGroup } from '../library/libraryGroups'
 // 常驻 Agent 面板的容器。
 //
 // 它现在只做三件事：把宿主接线（读侧 `useAgentPanelV4Data` / 写侧 `useAgentPanelV4Actions`）
@@ -10,7 +11,7 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '../../utils/cn'
-import type { AgentToolProfile } from '../../../electron/shared/projectAgentContracts'
+import { STORYBOARD_PLANNER_SKILL } from '../generationCanvas/agent/storyboardLauncher'
 import { useWorkbenchStore } from '../workbenchStore'
 import { useComposerAttachments, COMPOSER_ATTACHMENT_ACCEPT } from './composer/useComposerAttachments'
 import { useResidentActivityStore } from './residentActivity'
@@ -22,18 +23,19 @@ import { flowScrollMemoryFor } from './v4/agentPanelV4ScrollMemory'
 import { V4Intervention } from './v4/AgentPanelV4Cards'
 import { V4CollapsedDock } from './v4/AgentPanelV4Dock'
 import { useV4DockStatus } from './v4/agentPanelV4DockStatus'
-import { AgentPanelV4Composer, V4ModelPopover, V4PermissionPopover, V4SkillPopover, type V4CommandRow, type V4ModelRow } from './v4/AgentPanelV4Composer'
+import { AgentPanelV4Composer, V4ModelPopover, V4PermissionPopover, V4SkillPopover, type V4CommandRow } from './v4/AgentPanelV4Composer'
 import { useAgentPanelV4Data } from './v4/useAgentPanelV4Data'
 import { useAgentPanelV4Actions } from './v4/useAgentPanelV4Actions'
+import { useShotVerifyFeedback } from './resident/useShotVerifyFeedback'
+import { adoptLaneTaskCandidate } from './lane/laneTaskCandidateActions'
 import { useV4Labels } from './v4/agentPanelV4Labels'
 import { usePromptLibrary } from '../promptLibrary/usePromptLibrary'
 import { useUserPrompts } from '../promptLibrary/useUserPrompts'
 import { promptDisplayTitle } from '../promptLibrary/promptDisplay'
 import { filterPrompts } from '../api/promptLibraryApi'
 import type { ComposerPopover } from './v4/agentPanelV4Types'
-import { chatModelChoices } from './v4/agentPanelV4ModelRows'
-import { encodeModelIdentity } from './assistantModelIdentity'
-import { buildDefaultModelOptions } from '../settings/defaultGenerationModelOptions'
+import { buildV4ModelRows } from './v4/agentPanelV4ModelRows'
+import { useAgentTraceDirectory } from '../../desktop/useAgentTraceDirectory'
 
 /**
  * 面板尺寸只有真实 DOM 知道。v4 的积木按面板高度 derive composer 上限，所以必须量。
@@ -50,30 +52,28 @@ import { buildDefaultModelOptions } from '../settings/defaultGenerationModelOpti
  */
 function usePanelSize(): Readonly<{ width: number; height: number; measure: (node: HTMLElement | null) => void }> {
   const [size, setSize] = React.useState({ width: 390, height: 620 })
-  const observerRef = React.useRef<ResizeObserver | null>(null)
-  const measure = React.useCallback((node: HTMLElement | null) => {
-    observerRef.current?.disconnect()
-    observerRef.current = null
-    if (!node || typeof ResizeObserver !== 'function') return
+  const [node, measure] = React.useState<HTMLElement | null>(null)
+  React.useLayoutEffect(() => {
+    if (!node) return
     const observer = new ResizeObserver((entries) => {
       const box = entries[0]?.contentRect
       if (!box || box.width === 0 || box.height === 0) return
-      // 面板宽度是用户拖出来的，高度跟着工作区。两个数都取整：小数宽度会让
-      // `data-height` 每一帧都不同，视觉基线因此随机翻红。
       setSize({ width: Math.round(box.width), height: Math.round(box.height) })
     })
     observer.observe(node)
-    observerRef.current = observer
-  }, [])
-  React.useEffect(() => () => observerRef.current?.disconnect(), [])
+    return () => observer.disconnect()
+  }, [node])
   return { ...size, measure }
 }
 
 export default function ProjectAgentResidentShell({ surface }: { surface: ResidentSurface }): JSX.Element {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const labels = useV4Labels()
+  const trace = useAgentTraceDirectory()
   const size = usePanelSize()
   const collapsed = useWorkbenchStore((state) => state.projectAgentDockCollapsed)
+  const dockHidden = useWorkbenchStore((state) => state.agentDockHidden)
+  const setDockHidden = useWorkbenchStore((state) => state.setAgentDockHidden)
   const setCollapsed = useWorkbenchStore((state) => state.setProjectAgentDockCollapsed)
   const draft = useWorkbenchStore((state) => state.projectAgentDraft)
   const setDraft = useWorkbenchStore((state) => state.setProjectAgentDraft)
@@ -86,6 +86,7 @@ export default function ProjectAgentResidentShell({ surface }: { surface: Reside
 
   const data = useAgentPanelV4Data(surface)
   const actions = useAgentPanelV4Actions(surface, data)
+  const shotVerifyFeedback = useShotVerifyFeedback(surface, actions.send)
   /**
    * 「他读到哪儿了」得活在这棵子树之外（定稿 §11.2：点角标 = 原宽**原状态**还原）。
    *
@@ -112,8 +113,8 @@ export default function ProjectAgentResidentShell({ surface }: { surface: Reside
   React.useEffect(() => {
     if (surface !== 'creation') return
     const launch = (displayPrompt?: string): void => {
-      void actions.send(t('agentResident.storyboardRequest'), {
-        toolProfile: 'storyboard' as AgentToolProfile,
+      void actions.send([t('agentResident.storyboardRequest'), displayPrompt].filter(Boolean).join('\n\n'), {
+        skillKey: STORYBOARD_PLANNER_SKILL.key,
         ...(displayPrompt ? { displayText: displayPrompt } : {}),
       })
     }
@@ -141,7 +142,7 @@ export default function ProjectAgentResidentShell({ surface }: { surface: Reside
    * 失败看「最后一件事是不是坏的」——面板级错误带，或者流末尾那条 error。翻历史找旧失败
    * 会让一个早就被绕过去的错误永远在 logo 上挂着，那是假报警。
    */
-  const dockPendingCount = data.pendingRecords.filter((record) => record.state === 'pending').length
+  const dockPendingCount = data.primaryPending?.pendingCount ?? 0
   const dockStatus = useV4DockStatus({
     running: data.running,
     pendingCount: dockPendingCount,
@@ -197,12 +198,11 @@ export default function ProjectAgentResidentShell({ surface }: { surface: Reside
     setDraft(hint || t('agentResident.editPlanPrompt'))
   }, [actions, data.flow, setDraft, t])
 
-  const submit = React.useCallback(() => {
+  const submit = React.useCallback((choice: 'primary' | 'secondary' = 'primary') => {
     const text = draft.trim()
     if (!text) return
-    setDraft('')
-    void actions.send(text)
-  }, [actions, draft, setDraft])
+    void actions.send(text, { choice })
+  }, [actions, draft])
 
   /**
    * 空态起手 chip：把那句话填进 composer 并把光标交给用户——**不发送**。
@@ -241,80 +241,24 @@ export default function ProjectAgentResidentShell({ surface }: { surface: Reside
    * 也没有任何 audio 生成节点或解析器。画一个存不下去的下拉，比少画一行更糟——
    * 这一格待用户拍板（PR 正文里单独标出）。
    */
-  const generationOptions = React.useMemo(
-    () => buildDefaultModelOptions(
-      data.generationModels,
-      (vendorKey) => data.vendors[vendorKey] ?? vendorKey,
-      t('agentPanelV4.modelAuto'),
-    ),
-    [data.generationModels, data.vendors, t],
-  )
-
-  const modelRows: readonly V4ModelRow[] = React.useMemo(() => {
-    const rows: V4ModelRow[] = []
-    const chatChoices = chatModelChoices(
-      data.models,
-      data.vendors,
-      data.orderedVendorKeys,
-      encodeModelIdentity,
-      (cost) => t('agentPanelV4.modelCredits', { cost }),
-    )
-    const selectedChat = data.selectedModel ? encodeModelIdentity(data.selectedModel) : ''
-    rows.push({
-      slot: t('agentPanelV4.modelChat'),
-      name: data.modelLabel,
-      ...(chatChoices.length
-        ? {
-            options: chatChoices.map((choice) => ({
-              value: choice.value,
-              label: choice.label,
-              ...(choice.trailing ? { trailing: choice.trailing } : {}),
-            })),
-            selectedValue: selectedChat,
-            onChange: (value: string) => {
-              const model = data.models.find((candidate) => encodeModelIdentity(candidate) === value)
-              if (model) data.selectModel(model)
-            },
-          }
-        : { empty: t('agentPanelV4.modelNone') }),
-    })
-    for (const [slot, taskKind] of [
-      [t('agentPanelV4.imageDefault'), 'text_to_image'],
-      [t('agentPanelV4.videoDefault'), 'text_to_video'],
-    ] as const) {
-      const options = generationOptions.optionsByKind[taskKind]
-      const current = data.generationDefaults[taskKind]
-      const selectedValue = current ? generationOptions.encode(current) : ''
-      const label = options.find((option) => option.value === selectedValue)?.label
-      rows.push({
-        slot,
-        // 目录里已经没有这个模型了：说「已不可用」，别继续印一个按不动的名字。
-        name: label ?? (current ? t('agentPanelV4.modelGone') : t('agentPanelV4.modelAuto')),
-        // options[0] 恒为「自动选」那一条，所以 >1 才叫「有得选」。
-        ...(options.length > 1
-          ? {
-              options,
-              selectedValue: selectedValue ?? '',
-              onChange: (value: string) => data.setGenerationDefault(taskKind, generationOptions.decode(value)),
-            }
-          : { empty: t('agentPanelV4.modelNone') }),
-      })
-    }
-    return Object.freeze(rows)
-  }, [data, generationOptions, t])
+  const modelRows = React.useMemo(() => buildV4ModelRows(data, t), [data, t])
 
   const commandRows: readonly V4CommandRow[] = React.useMemo(() => {
     const query = commandQuery.trim()
+    const locale = i18n.language.startsWith('zh') ? 'zh-CN' : 'en'
     const skillRows: V4CommandRow[] = data.skills
-      .filter((skill) => !query || `${skill.label} ${skill.name}`.toLowerCase().includes(query.toLowerCase()))
+      .filter((skill) => skill.curation?.kind !== 'effect' && (!query || `${skill.curation?.title[locale] ?? skill.label} ${skill.name}`.toLowerCase().includes(query.toLowerCase())))
       // 自己导进来的排在内置前面。用户刚把一个技能弄进 Nomi，下一秒来这里找它——
       // 让他先滚过四个他没装过的内置技能才看见自己那个，是把「我刚做的事」排在最后。
       .sort((a, b) => (a.origin === b.origin ? 0 : a.origin === 'user' ? -1 : 1))
       .map((skill) => ({
         id: `skill:${skill.name}`,
-        name: skill.label,
+        group: libraryGroup(skill, i18n.language),
+        name: skill.curation?.title[locale] ?? skill.label,
         command: `/${skill.name}`,
-        desc: skill.description ?? skill.stageLabels.join(' · '),
+        desc: skill.curation?.summary[locale] ?? skill.description ?? skill.stageLabels.join(' · '),
+        cover: skill.cover,
+        preview: skill.preview,
         section: t('agentPanelV4.sectionSkills'),
         selected: activeSkill?.key === skill.name,
       }))
@@ -324,17 +268,19 @@ export default function ProjectAgentResidentShell({ surface }: { surface: Reside
       .filter((prompt) => filterPrompts([prompt], 'all', query).length > 0)
       .map((prompt) => ({
         id: `prompt:${prompt.id}`,
+        group: libraryGroup(prompt, i18n.language),
         name: promptDisplayTitle(prompt),
         command: `/${prompt.id}`,
-        desc: prompt.prompt.slice(0, 60),
-        section: t('agentPanelV4.sectionPrompts'),
+        desc: prompt.prompt,
+        section: prompt.curation?.kind === 'effect' ? t('libraries.gallery.effect') : t('agentPanelV4.sectionPrompts'),
+        preview: prompt.mediaUrl ? { url: prompt.mediaUrl, type: prompt.mediaType } : undefined,
         // 提示词库本来就有封面（`mediaUrl` = 首图），此前在这里被整包丢掉，
         // 于是每一行都退化成同一个白块。有图就把图给它。
-        ...(prompt.mediaUrl ? { cover: prompt.mediaUrl } : {}),
+        ...(prompt.mediaType === 'image' && prompt.mediaUrl ? { cover: prompt.mediaUrl } : {}),
         selected: actions.selectedLibraryPrompt?.id === prompt.id,
       }))
     return Object.freeze([...skillRows, ...promptRows])
-  }, [actions.selectedLibraryPrompt, activeSkill, commandQuery, data.skills, promptLibrary.items, t, userPromptLibrary.items])
+  }, [actions.selectedLibraryPrompt, activeSkill, commandQuery, data.skills, i18n.language, promptLibrary.items, t, userPromptLibrary.items])
 
   const composerPopover = popover === 'model'
     ? <V4ModelPopover rows={modelRows} onOpenLibrary={() => { window.dispatchEvent(new Event('nomi-open-model-catalog')); setPopover(null) }} />
@@ -342,7 +288,7 @@ export default function ProjectAgentResidentShell({ surface }: { surface: Reside
       ? (
         <V4SkillPopover
           rows={commandRows}
-          categories={[t('agentPanelV4.skillAll'), t('agentPanelV4.sectionSkills'), t('agentPanelV4.sectionPrompts')]}
+          categories={[t('agentPanelV4.skillAll'), t('agentPanelV4.sectionSkills'), t('agentPanelV4.sectionPrompts'), t('libraries.gallery.effect')]}
           query={commandQuery}
           onQueryChange={setCommandQuery}
           onSelect={(row) => {
@@ -355,7 +301,6 @@ export default function ProjectAgentResidentShell({ surface }: { surface: Reside
             } else {
               const id = row.id.slice('prompt:'.length)
               const prompt = [...promptLibrary.items, ...userPromptLibrary.items].find((item) => item.id === id)
-              setActiveSkill(null)
               actions.setSelectedLibraryPrompt(prompt ?? null)
             }
             setPopover(null)
@@ -369,7 +314,7 @@ export default function ProjectAgentResidentShell({ surface }: { surface: Reside
 
   // 收起 = 藏起**对话流**，不是藏起对话（定稿 Collapsed 板）。同一个 composer 掉到画面下沿
   // 居中，介入槽跟着它——这样一份编辑计划仍然读得到、批得下，不必把整列还给面板。
-  // 把 composer 也收走，才是真的把对话中断了。
+  // 用户可独立关闭这条坞；关闭选择跨项目记住，提醒仍由顶栏角标承担。
   //
   // 叫回它的入口只有一个，而且**不在这里**：顶栏右簇「浏览器」与「设置」之间那一格
   // （`src/ui/app-shell/CollapsedAiChip.tsx`，09-01 定稿 §11.2）。收起态的家跟着 chrome 走、
@@ -386,7 +331,7 @@ export default function ProjectAgentResidentShell({ surface }: { surface: Reside
       >
         <TimelineAgentReceiptEffect />
         {timelinePlanPreviewPortal}
-        <V4CollapsedDock>
+        {!dockHidden && <V4CollapsedDock onClose={() => setDockHidden(true)}>
           {data.slot ? (
             <V4Intervention
               data={data.slot}
@@ -411,7 +356,7 @@ export default function ProjectAgentResidentShell({ surface }: { surface: Reside
             modelLabel={data.modelLabel}
             skillSelected={Boolean(activeSkill || actions.selectedLibraryPrompt)}
           />
-        </V4CollapsedDock>
+        </V4CollapsedDock>}
       </section>
     )
   }
@@ -420,7 +365,7 @@ export default function ProjectAgentResidentShell({ surface }: { surface: Reside
     <div
       ref={size.measure}
       id="project-agent-resident"
-      className="relative isolate flex h-full min-h-0 w-full min-w-0 flex-col bg-[var(--workbench-ai-panel-bg)] text-nomi-ink"
+      className="relative isolate flex h-full min-h-0 w-full min-w-0 flex-col text-nomi-ink"
       aria-label={t('agentResident.aria')}
       data-agent-resident="true"
       data-agent-panel="true"
@@ -454,19 +399,26 @@ export default function ProjectAgentResidentShell({ surface }: { surface: Reside
         scrollMemory={flowScroll}
         width={size.width}
         height={actions.error ? size.height - 20 : size.height}
+        legacy={data.snapshot.active.legacy}
         flow={data.flow}
+        flowTail={shotVerifyFeedback}
         surface={surface}
         onStarter={startFromStarter}
         slot={data.slot}
         queue={data.queue}
+        queueHint={t('agentPanelV4.queueHint')}
         context={data.context}
         onHistory={() => setThreadsOpen((value) => !value)}
         onCollapse={() => setCollapsed(true)}
         flowHandlers={{
           onCopy: (text) => { void navigator.clipboard?.writeText(text) },
-          onContinue: () => actions.steer(draft.trim() || t('agentResident.editPlanPrompt')),
-          onUndoTool: actions.undoLastProposal,
-          onUndoTask: actions.undoLastProposal,
+          onContinue: (index) => {
+            const item = data.flow[index]
+            if (item?.kind !== 'assistant' || !item.continuationEntryId) return
+            void actions.send(draft.trim() || t('agentPanelV4.continue'), { continueFromEntryId: item.continuationEntryId })
+          },
+          onUndoTool: actions.undoTool,
+          onAdoptCandidate: (index, _tag, candidateIndex) => adoptLaneTaskCandidate(data.flow, index, candidateIndex, t),
           onErrorAction: recoverFromFailure,
           onSuggestion: (_index, option) => actions.answerOption(option),
         }}
@@ -513,34 +465,49 @@ export default function ProjectAgentResidentShell({ surface }: { surface: Reside
           data-agent-thread-menu="true"
           role="menu"
         >
-          <div className="flex items-center justify-between px-2 py-1 text-micro text-nomi-ink-60">
+          <div className="flex items-center gap-1.5 px-2 py-1 text-micro text-nomi-ink-60">
             <span>{t('agentResident.threads')}</span>
             <button type="button" className="text-nomi-accent" onClick={() => { actions.newThread(); setThreadsOpen(false) }}>
               {t('agentResident.newThread')}
             </button>
           </div>
-          {(data.snapshot?.threads ?? []).map((thread) => (
+          {data.snapshot.lanes.map((thread) => (
             <div
-              key={thread.threadId}
-              className={cn('flex items-center gap-1 rounded-nomi-sm px-2 py-1', thread.threadId === data.activeThreadId && 'bg-nomi-accent-soft')}
+              key={thread.laneName}
+              className={cn('flex items-center gap-1 rounded-nomi-sm px-2 py-1', thread.laneName === data.snapshot.active.lane && 'bg-nomi-accent-soft')}
             >
               <button
                 type="button"
                 className="min-w-0 flex-1 truncate text-left text-caption"
-                onClick={() => { actions.activateThread(thread.threadId); setThreadsOpen(false) }}
+                onClick={() => { actions.activateThread(thread.laneName); setThreadsOpen(false) }}
               >
-                {thread.title || t('agentResident.untitledThread')}
+                {thread.laneName === 'main' ? t('agentResident.untitledThread') : thread.laneName}
               </button>
               <button
                 type="button"
                 className="grid size-7 place-items-center rounded-nomi-sm hover:bg-nomi-ink-10"
                 aria-label={t('agentResident.removeThread')}
-                onClick={() => actions.removeThread(thread.threadId)}
+                onClick={() => actions.removeThread(thread.laneName)}
               >
                 ×
               </button>
             </div>
           ))}
+          {trace.available ? (
+            <div className="mt-1 border-t border-nomi-line pt-1">
+              <button
+                type="button"
+                role="menuitem"
+                data-agent-trace-open="session"
+                disabled={trace.busy}
+                className="w-full rounded-nomi-sm px-2 py-2 text-left text-caption text-nomi-ink-60 hover:bg-nomi-ink-05 disabled:opacity-50"
+                onClick={() => { void trace.open(data.snapshot.active.lane) }}
+              >
+                {t(trace.busy ? 'settings.general.trace.opening' : 'agentResident.viewTrace')}
+              </button>
+              {trace.message ? <p role="alert" className="px-2 py-1 text-caption text-nomi-ink-60">{trace.message}</p> : null}
+            </div>
+          ) : null}
         </div>
       ) : null}
     </div>

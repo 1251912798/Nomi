@@ -36,13 +36,13 @@ function registerFixtureCleanup(t: TestContext, close: () => Promise<void>): voi
 export const LANE_SYSTEM_PROMPT = 'NOMI_LANE_SYSTEM';
 
 /** 一个最小但**真**的文稿端口：写进去的东西读得回来，revision 会涨。 */
-export function createDocumentPort(initial = 'The opening scene.'): DocumentLanePort & { text(): string } {
+export function createDocumentPort(initial = 'The opening scene.') {
   let text = initial;
   let selection = '';
   let revision = 0;
   return {
     text: () => text,
-    read: async (scope) => (scope === 'full' ? { text } : { text: selection }),
+    read: async (scope: Parameters<DocumentLanePort['read']>[0]) => (scope === 'full' ? { text } : { text: selection }),
     write: async (input: DocumentWriteInput): Promise<DocumentWriteResult> => {
       if (input.operation === 'append') text = `${text}${input.content}`;
       else if (input.operation === 'insert') text = `${input.content}${text}`;
@@ -86,6 +86,7 @@ export async function createLaneFixture(
   after(http.close);
   const document = createDocumentPort();
   const options: OpenLaneOptions = {
+    fetch: globalThis.fetch,
     projectDir,
     systemPrompt: LANE_SYSTEM_PROMPT,
     model: {

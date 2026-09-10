@@ -176,3 +176,20 @@ describe("handleNomiLocalRequest", () => {
     expect(forged.status).toBe(404);
   });
 });
+
+describe("curated media protocol", () => {
+  it("streams the actual declared media bytes independently of the renderer base URL", async () => {
+    const store = await import("../skills/skillStore");
+    const records = store.discoverSkillRecordsFromRoots([{ path: path.resolve(__dirname, "../../skills"), origin: "builtin" }]).records;
+    const record = records.find((item) => item.directoryName === "curated-multi-view")!;
+    const spy = vi.spyOn(store, "readSkillRecords").mockReturnValue(records);
+    try {
+      const response = await handleNomiLocalRequest(new Request("nomi-local://skill-preview/curated-multi-view"));
+      expect(response.status).toBe(200);
+      expect(Buffer.from(await response.arrayBuffer())).toEqual(fs.readFileSync(path.join(path.dirname(record.filePath), record.curation!.preview!.path)));
+      for (const name of ["unknown", "curated-multi-view/assets/preview.jpg", "%2e%2e%2fprivate"]) {
+        expect((await handleNomiLocalRequest(new Request(`nomi-local://skill-preview/${name}`))).status).toBe(404);
+      }
+    } finally { spy.mockRestore(); }
+  });
+});

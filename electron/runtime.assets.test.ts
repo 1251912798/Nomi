@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { createHash } from "node:crypto";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
@@ -15,6 +16,9 @@ vi.mock("./export/mediaProbe", () => ({
 vi.mock("./review/reviewTrace", () => ({
   scheduleTechnicalReview: vi.fn(),
 }));
+
+const localizationStarted = vi.hoisted(() => vi.fn());
+vi.mock("./assets/assetEvents", () => ({ broadcastAssetsUpdated: vi.fn(), broadcastAssetLocalizationStarted: localizationStarted }));
 
 const hardenedFetchMock = vi.hoisted(() => vi.fn());
 vi.mock("./hardenedFetch", async (importOriginal) => ({
@@ -228,7 +232,7 @@ describe("runtime workspace asset storage", () => {
     expect(asset.data.url).toBe(`nomi-local://asset/${encodeURIComponent(workspace.id)}/assets/generated/2026-05-31/render.png`);
   });
 
-  it("writes imported user files under assets/imported/YYYY-MM-DD", async () => {
+  it("writes imported user files under their content identity", async () => {
     const workspace = createWorkspace();
 
     const asset = (await importLocalFile({
@@ -238,8 +242,9 @@ describe("runtime workspace asset storage", () => {
       fileName: "photo.png",
     })) as AssetRecord;
 
-    expect(asset.data.relativePath).toBe("assets/imported/2026-05-31/photo.png");
-    expect(asset.data.absolutePath).toBe(path.join(workspace.rootPath, "assets", "imported", "2026-05-31", "photo.png"));
+    const hash = createHash("sha256").update(Buffer.from([1, 2, 3])).digest("hex");
+    expect(asset.data.relativePath).toBe(`assets/imported/sha256/${hash}/photo.png`);
+    expect(asset.data.absolutePath).toBe(path.join(workspace.rootPath, "assets", "imported", "sha256", hash, "photo.png"));
     expect([...fs.readFileSync(asset.data.absolutePath)]).toEqual([1, 2, 3]);
   });
 
@@ -253,7 +258,8 @@ describe("runtime workspace asset storage", () => {
       fileName: "clip",
     })) as AssetRecord;
 
-    expect(asset.data.relativePath).toMatch(/assets\/imported\/2026-05-31\/clip\.mp4$/);
+    const hash = createHash("sha256").update(bytes).digest("hex");
+    expect(asset.data.relativePath).toBe(`assets/imported/sha256/${hash}/clip.mp4`);
     expect(asset.data.contentType).toBe("video/mp4");
   });
 
@@ -271,7 +277,8 @@ describe("runtime workspace asset storage", () => {
       fileName: "large-image.png",
     }, { allowSourcePath: true })) as AssetRecord;
 
-    expect(asset.data.relativePath).toBe("assets/imported/2026-05-31/large-image.png");
+    const hash = createHash("sha256").update(Buffer.from([4, 5, 6, 7])).digest("hex");
+    expect(asset.data.relativePath).toBe(`assets/imported/sha256/${hash}/large-image.png`);
     expect([...fs.readFileSync(asset.data.absolutePath)]).toEqual([4, 5, 6, 7]);
     expect(readFileSync).not.toHaveBeenCalledWith(sourcePath);
     readFileSync.mockRestore();
@@ -320,4 +327,25 @@ describe("runtime workspace asset storage", () => {
     expect(second.data.relativePath).toBe("assets/generated/2026-05-31/render-2.png");
     expect(fs.readFileSync(second.data.absolutePath)).toEqual(PNG_BYTES);
   });
+});
+
+ it.each([["image", "image/jpeg", JPEG_BYTES], ["video", "video/mp4", MP4_BYTES]] as const)("signals %s localization before download resolves", async (kind, contentType, bytes) => {
+  const workspace = createWorkspace();
+  let release!: () => void;
+  let begin!: () => void;
+  const begun = new Promise<void>(resolve => { begin = resolve; });
+  hardenedFetchMock.mockImplementationOnce(() => new Promise(resolve => {
+    release = () => resolve({ bytes, contentType, status: 200, finalUrl: "https://cdn.example.com/result", truncated: false });
+    begin();
+  }));
+  localizationStarted.mockClear();
+  const pending = localizeTaskAsset(workspace.id, "https://cdn.example.com/result", kind, "node-progress");
+  try {
+    expect(localizationStarted).toHaveBeenCalledWith({ projectId: workspace.id, nodeId: "node-progress" });
+  } finally {
+    // Let the real importer finish before test-directory teardown, even in the red run.
+    await begun;
+    release();
+    await pending;
+  }
 });

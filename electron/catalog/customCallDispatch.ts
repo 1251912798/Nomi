@@ -5,7 +5,7 @@
 import crypto from "node:crypto";
 import { buildNormalizedRecipe, buildTaskProvenance } from "../vendor/provenance";
 import { readCachedTaskResult, recipeFingerprint, rememberTaskResult } from "../vendor/fingerprintCache";
-import { assertAndConsumeSpendGrant } from "../spendGrant";
+import { consumeTaskSpend } from "../tasks/taskSpend";
 import { traceVendorCompleted, traceVendorRequested } from "../events/vendorCallTrace";
 import { assertLocalAssetTransportReady, localizeAssetsForVendor, resolveAssetIngestionWithFallback } from "./assetLocalization";
 import { decryptApiKeyRecord } from "./secrets";
@@ -71,7 +71,7 @@ export async function runCustomCallTask(input: CustomCallDispatchInput): Promise
     readNomiLocalAsset,
     localizationOptions,
   );
-  assertAndConsumeSpendGrant(grantId, nodeId); // 付费守卫：本地资产/上传策略预检通过后才消费
+  await consumeTaskSpend({ grantId, nodeId, projectId, vendorKey: vendor.key, modelKey: model.modelKey, parameters: request.extras }); // 付费守卫：本地资产/上传策略预检通过后才消费
   traceVendorRequested(projectId, { runId: taskId, nodeId, recipe });
   const localized = await localizeAssetsForVendor(
     request.extras,

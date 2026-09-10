@@ -1,3 +1,7 @@
+import { anchorsConsumedBy } from '../../../../config/modelArchetypes/anchorPolicy'
+import { NodeGenerationStatus } from '../../../generationCanvas/nodes/NodeGenerationStatus'
+import { StoryboardOverrideBadge } from '../../../generationCanvas/nodes/StoryboardOverrideBadge'
+import { resolveStoryboardOverride } from '../exec/storyboardOverrideActions'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -281,6 +285,7 @@ export default function StoryboardShotRow(props: Props): JSX.Element {
         selected={props.selected}
         onSelect={props.onSelect}
       />
+      <NodeGenerationStatus node={exec.node} keyframeNode={exec.keyframeNode} />
       <StoryboardFrameActions
         shot={shot}
         exec={exec}
@@ -316,6 +321,13 @@ export default function StoryboardShotRow(props: Props): JSX.Element {
 
   const prompt = (
     <div className="flex min-w-0 flex-col gap-1.5" data-storyboard-prompt-block="true">
+      {exec?.node ? <StoryboardOverrideBadge node={exec.node} onResolve={(field, action) => resolveStoryboardOverride(exec.node!.id, field, action)} /> : null}
+      {exec?.ignoredAnchors?.length ? (
+        <span className="text-micro text-nomi-ink-40" data-storyboard-anchor-ignored={shot.index} title={exec.ignoredAnchors.map(anchor => `${anchor.name}: ${anchor.reason}`).join('\n')}>
+          {t(resolved?.archetype.modes.every(mode => anchorsConsumedBy(mode).includes('none'))
+            ? 'storyboardEditor.anchorPolicy.modelUnsupported' : 'storyboardEditor.anchorPolicy.rowIgnored')}
+        </span>
+      ) : null}
       {skipped ? (
         <span className="self-start rounded-pill bg-nomi-ink-10 px-2 py-0.5 text-micro text-nomi-ink-60">
           {t('storyboardEditor.skip.tag')}

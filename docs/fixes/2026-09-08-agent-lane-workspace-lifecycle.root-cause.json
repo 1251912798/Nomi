@@ -1,0 +1,98 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-08-agent-lane-workspace-lifecycle",
+  "problem_type": "workspace-host-lifetime",
+  "symptom": "Switching conversations or configuring a model while the window closes can leave an invisible live lane holding its JSONL session; concurrent create/delete commands fail against an open session.",
+  "direct_cause": "configureModel and lane commands independently close/open the mutable active handle. close neither marks the workspace closed nor waits for a pending opener, so the late handle escapes cleanup.",
+  "class_root": "The workspace lacks one admission and ownership boundary for structural changes and closure.",
+  "affected_population": [
+    "Concurrent model configuration and conversation switching",
+    "Window close during host opening",
+    "Duplicate creation and deletion while a new lane is opening"
+  ],
+  "scope_paths": [
+    "electron/agentLane/laneWorkspace.mts"
+  ],
+  "entry_points": [
+    "LaneWorkspaceHandle.configureModel",
+    "LaneWorkspaceHandle.execute structural commands",
+    "LaneWorkspaceHandle.close"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "Nomi owns the workspace lifecycle above pi. Existing pi session exclusivity is used unchanged and the real JSONL fixture exposes orphan ownership; no upstream behavior or protocol is changed.",
+  "invariants": [
+    "At most one structural operation may replace or delete the active workspace resources at a time.",
+    "Once close is called no new operation is admitted and every late opened handle is closed before close resolves.",
+    "A running prompt never holds approvals or abort behind its model/tool turn."
+  ],
+  "generality_proof": "Every configure/create/select/delete shares the workspace structural queue; closure synchronously shuts admission before draining that queue. Direct commands never join the queue and cannot target a changing or closed handle.",
+  "shared_boundaries": [
+    {
+      "path": "electron/agentLane/laneWorkspace.mts",
+      "symbol": "openLaneWorkspace",
+      "responsibility": "Own admission, serialization and final disposal of every workspace lane handle."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "electron/agentLane/laneIpc.ts",
+      "entry_point": "configure then workspace.execute",
+      "disposition": "enforced",
+      "evidence": "Input preparation can replace the configured host while a separate lane-create/select/delete IPC request arrives."
+    },
+    {
+      "path": "electron/agentLane/laneIpc.ts",
+      "entry_point": "close and dispose",
+      "disposition": "enforced",
+      "evidence": "Window destruction and workspace-close call workspace.close while an earlier host replacement is in flight."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Any repeated UI input or window close may interleave at each asynchronous host close/open boundary.",
+    "same_class_scan": [
+      "rg configureModel electron/agentLane tests/agent-runtime identifies IPC configuration and history-resume callers.",
+      "rg workspace.execute and workspace.close electron/agentLane/laneIpc.ts identifies structure commands, window destruction and registration disposal."
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "electron/agentLane/laneWorkspace.mts",
+    "invariant": "Structure changes serialize and close synchronously denies admission before draining and disposing all opened handles.",
+    "failure_mode": "Closed or changing workspaces reject direct commands immediately; a failed replacement permanently closes that workspace rather than reusing an already closed handle.",
+    "exception_policy": "none",
+    "strategy": "Queue only structural work; guard late open results and use an immediate closed flag. Leave live prompt/approval/abort dispatch outside the queue.",
+    "artifacts": [
+      "electron/agentLane/laneWorkspace.mts"
+    ]
+  },
+  "regression_tests": [
+    "tests/agent-runtime/lane-workspace-lifecycle.test.mts"
+  ],
+  "class_regression_tests": [
+    "tests/agent-runtime/lane-workspace-lifecycle.test.mts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "electron/agentLane/laneWorkspace.mts"
+    ],
+    "rationale": "Replace independent structural mutations and asynchronous-only close in their existing owner; no parallel lock or fallback remains."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "This fixes Nomi workspace ownership above the existing pi lane close and session exclusivity APIs without changing dependency behavior.",
+    "exit_criteria": []
+  },
+  "migration": "No persisted format or session identity changes; existing lanes open through the same pi session repository.",
+  "residual_risks": [
+    "IPC sender identity and input preparation are separately owned and verified by the cutover IPC change."
+  ],
+  "invariant_owner_layer": {
+    "layer": "electron/agentLane/laneWorkspace.mts",
+    "tests": [
+      "tests/agent-runtime/lane-workspace-lifecycle.test.mts"
+    ],
+    "why": "Only the workspace can coordinate active-handle replacement across model configuration, conversation commands and closure."
+  }
+}
