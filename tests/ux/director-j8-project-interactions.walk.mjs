@@ -1,6 +1,6 @@
 // 真实 UI：分组→跨层复制→单步撤销/重做→搜索/解组→多删撤销→保存重开。
 import { expect, expectAbsent, proveProbe } from './_assert.mjs'
-import { launchDirectorLab, placeCharacter } from './_directorLab.mjs'
+import { launchDirectorLab, openAddMenu, placeCharacter } from './_directorLab.mjs'
 
 const lab = await launchDirectorLab({ name: 'j8-project-interactions' })
 const { page, check } = lab
@@ -18,7 +18,7 @@ try {
   await page.keyboard.press('Escape')
   await expectAbsent(creationMode, { provenBy: drawingProof, message: 'Esc 后画笔创建模式持续退出' })
   check('Esc先取消画笔并保留选择', (await lab.outlinerRow(names[0]).getAttribute('class')).includes('bg-nomi-accent-soft'))
-  await page.getByTestId('director-creation-bar').getByRole('button', { name: '方块', exact: true }).click()
+  await openAddMenu({ page }, '方块')
   await expect(creationMode).toBeVisible()
   const boxProof = await proveProbe(creationMode, '方块创建模式已经进入')
   await page.keyboard.press('Escape')

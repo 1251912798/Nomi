@@ -51,6 +51,11 @@ function lookAtTargetName(scene: DirectorScene, clip: LookAtClip, t: Translate):
   return scene.cameras.find((camera) => camera.id === clip.targetId)?.name ?? scene.objects.find((object) => object.id === clip.targetId)?.name ?? '—'
 }
 
+/** 折叠时只留头部（h-9）。壳按它把第二栏钉成固定像素。 */
+export const TIMELINE_COLLAPSED_PX = 36
+/** 空态留「头部 + 一条（轨道列头 h-[26px]）」：省地方，但保住「+ 添加轨道」这条主路径。 */
+export const TIMELINE_EMPTY_PX = 62
+
 export function DirectorTimeline({
   collapsed,
   onToggleCollapsed,
@@ -77,6 +82,7 @@ export function DirectorTimeline({
   )
   const tracks = React.useMemo(() => buildTimelineTracks(scene, labeler), [labeler, scene])
   const rows = React.useMemo(() => buildTimelineRows(tracks), [tracks])
+  const isEmpty = tracks.length === 0
   const viewport = useTimelineViewport()
   const trackListRef = React.useRef<HTMLDivElement>(null)
   const [menu, setMenu] = React.useState<{ x: number; y: number; items: TimelineMenuItem[] } | null>(null)
@@ -250,7 +256,20 @@ export function DirectorTimeline({
       }}
     >
       <TimelineHeader viewport={viewport} collapsed={collapsed} onToggleCollapsed={onToggleCollapsed} onReject={reject} />
-      {collapsed ? null : (
+      {/* 空态只留一条：轨道区没内容时不值得占掉五分之一屏（2026-09-09 第 3 期）。
+          但「+ 添加轨道」必须跟着留下来 —— 它是把实体放上时间轴的主路径，收掉就成了死胡同。 */}
+      {!collapsed && isEmpty ? (
+        <div className="flex min-h-0 flex-1 items-stretch" data-testid="director-timeline-empty">
+          <div className="flex flex-1 items-center gap-2 px-3 text-caption text-nomi-ink-40">
+            <span className="text-nomi-ink-60">{t('director.timeline.emptyTitle')}</span>
+            <span className="min-w-0 truncate text-micro">{t('director.timeline.emptyHint')}</span>
+          </div>
+          <div className="w-[220px] shrink-0 border-l border-nomi-line-soft">
+            <TrackListHeader trackCount={0} />
+          </div>
+        </div>
+      ) : null}
+      {collapsed || isEmpty ? null : (
         <div className="grid min-h-0 flex-1" style={{ gridTemplateColumns: `${TRACK_COLUMN_PX}px minmax(0, 1fr)` }}>
           <div ref={trackListRef} className="flex min-h-0 flex-col overflow-hidden border-r border-nomi-line-soft">
             <TrackListHeader trackCount={tracks.length} />
@@ -295,13 +314,6 @@ export function DirectorTimeline({
               <TrackLanes rows={rows} viewport={viewport} totalDuration={totalDuration} onContextMenu={rowMenu} onReject={reject} onAppendTrajectory={(row) => appendTrajectory(row.track)} />
               <TimelinePlayhead viewport={viewport} />
             </div>
-            {tracks.length === 0 ? (
-              // 空态挂在滚动容器上而不是泳道宽容器里：泳道按总时长铺很宽，居中会把提示推到视野外（sticky 左 0 保证不随横向滚动跑掉）
-              <div className="pointer-events-none sticky left-0 top-0 flex h-full w-full flex-col items-center justify-center gap-1 text-center text-caption text-nomi-ink-40" data-testid="director-timeline-empty">
-                <span className="text-nomi-ink-60">{t('director.timeline.emptyTitle')}</span>
-                <span className="text-micro">{t('director.timeline.emptyHint')}</span>
-              </div>
-            ) : null}
           </div>
         </div>
       )}

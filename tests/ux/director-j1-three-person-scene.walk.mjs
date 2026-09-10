@@ -3,7 +3,7 @@
 // 证据：工程落盘的实体数与名字、画中画有机位画面、空态文案在空工程里真的出现、截图人眼核对。
 // 用法：node tests/ux/director-j1-three-person-scene.walk.mjs
 import { expectHidden } from './_assert.mjs'
-import { addCameraPreset, clickOrFail, dragGround, expectVisible, launchDirectorLab, placeCharacter } from './_directorLab.mjs'
+import { addCameraPreset, clickOrFail, dragGround, expectVisible, launchDirectorLab, openAddMenu, placeCharacter } from './_directorLab.mjs'
 
 const lab = await launchDirectorLab({ name: 'j1-three-person-scene' })
 const { page, check } = lab
@@ -39,12 +39,12 @@ try {
   check('画中画显示机位画面（不再是「还没有机位」）', true)
 
   // 主光
-  await clickOrFail(page.getByTestId('director-creation-bar').getByRole('button', { name: '灯光' }), '创建栏·灯光')
+  await openAddMenu({ page }, '灯光')
   await clickOrFail(page.getByRole('button', { name: '主光（平行光）' }), '灯光·主光')
   await lab.waitScene("s.lights.some(l => l.type === 'directional')", '主光入场')
 
   // 方块：拖底面 → 松开拉高 → 点击确认
-  await clickOrFail(page.getByTestId('director-creation-bar').getByRole('button', { name: '方块' }), '创建栏·方块')
+  await openAddMenu({ page }, '方块')
   const drag = await dragGround(lab, [2.5, 2], [3.5, 3])
   await page.mouse.move(drag.to.x, drag.to.y - 90, { steps: 6 })
   await page.mouse.click(drag.to.x, drag.to.y - 90)

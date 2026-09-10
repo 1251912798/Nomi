@@ -41,11 +41,11 @@ export function SliderNumberField({ label, value, min, max, step = 1, unit, digi
   const changing = React.useRef(false)
 
   return (
-    <label className={cn('grid grid-cols-[72px_1fr_64px] items-center gap-2 py-1 text-caption text-nomi-ink-80', disabled ? 'pointer-events-none opacity-50' : '', className)} title={tip}>
-      <span className="truncate">{label}</span>
+    <label className={cn('mb-2 grid grid-cols-[52px_1fr_64px] items-center gap-2 text-caption', disabled ? 'pointer-events-none opacity-50' : '', className)} title={tip}>
+      <span className="truncate text-nomi-ink-60">{label}</span>
       <input
         type="range"
-        className="h-1 w-full cursor-pointer accent-nomi-accent"
+        className="h-1 w-full cursor-pointer rounded-full accent-nomi-accent"
         min={min}
         max={max}
         step={step}

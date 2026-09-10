@@ -7,7 +7,7 @@
 > 成员清单
 > useMobilePreview.ts: 复用 captureFrame 与认证手机桥发送最长480px监视帧；单帧在途/大小上限/迟到帧丢弃，录制状态只回桌面真相
 > DirectorNode.tsx: 画布节点卡片（顶层节点组件，注册于 nodes/registry.ts）：统计/入连摘要 + 连线引用列表（全景节点 → 全景；资产节点按后缀分泼溅/模型）+ 打开按钮 + 「发送到画布」落成 Image / Video 节点并连 reference 边；节点 meta.directorProject 的唯一读写点；关闭即落盘
-> DirectorEditor.tsx: 全屏壳（portal + role=dialog + FULLSCREEN_Z_INDEX + Windows 让开自绘窗口栏，顶偏移取 ui/app-shell/windowChrome 的 currentFullscreenOverlayTopOffset —— 那条 32px 是系统拖拽带，盖住它顶部工具条整条点不动、窗口控件也埋在下面，见 docs/fixes/2026-09-04-fullscreen-overlay-windows-windowbar.root-cause.json）：创建/注入 store、注入连线引用（LinkedAssetsContext）/ 画布图片（CanvasImagesContext）与产物动作（OutputsContext）、一整行统一标题栏（工具条居中：重置视角 ｜ 选择 / 移动 / 旋转 / 缩放 ｜ 画线 / 逐点 ｜ 退出）+ 视口 / 时间轴 / 右栏嵌套分栏、退出确认、2s 空闲自动保存、Esc 归属（捕获期监听，壳根节点会 stopPropagation：模式 → 清工具 + 清全部选中→ 退 POV → 退出确认）；本机偏好（scene/viewSettings 读写）喂给视口，设置 / 帮助对话框挂在壳上
+> DirectorEditor.tsx: 全屏壳（portal + role=dialog + FULLSCREEN_Z_INDEX + Windows 让开自绘窗口栏，顶偏移取 ui/app-shell/windowChrome 的 currentFullscreenOverlayTopOffset —— 那条 32px 是系统拖拽带，盖住它顶部控件整条点不动、窗口控件也埋在下面，见 docs/fixes/2026-09-04-fullscreen-overlay-windows-windowbar.root-cause.json）：创建/注入 store、注入连线引用（LinkedAssetsContext）/ 画布图片（CanvasImagesContext）与产物动作（OutputsContext）、持有角色放置与画框两个创建模式并经 CreationModeContext 下发（视口要指针路由与 ghost、顶栏「＋添加」要发起，只调一次 hook）、悬浮顶栏五簇（panels/topbar）压在视口 / 时间轴 / 右栏嵌套分栏之上、退出确认、2s 空闲自动保存、Esc 归属（捕获期监听，壳根节点会 stopPropagation：模式 → 清工具 + 清全部选中→ 退 POV → 退出确认）；本机偏好（scene/viewSettings 读写）喂给视口，设置 / 帮助对话框挂在壳上
 > DirectorEditorContext.ts: DirectorStoreContext + useDirectorStore(selector) / useDirectorStoreApi()
 > useDirectorHotkeys.ts: 区域感知快捷键分发；isDirectorKeyboardBlocked 与持续漫游共用文本/浮层/IME/已消费输入守卫；工具、历史、分组/解组/删除/克隆和骨骼 W/E，处理器 false 让位；多选命令一次事务，克隆只处理 selectedRoots
 > useCameraMotionRecorder.ts: 录制运镜（DOM 侧 rAF 采样世界位姿，转图层局部样本；ghost 保持世界坐标；推进播放头并自动延长时间轴，停止交 store 简化成关键帧）
@@ -22,7 +22,7 @@
 > useAiSceneBuilder.ts: AI 搭场景编排：描述 + ≤3参考图经文本大脑生成 JSON；请求身份贯穿模型/存库 await，发起时固定目标图层，取消/reset/卸载拒绝迟到响应；先存场景资源，再由 store 将几何和资产句柄一次物化/撤销；无桥时用 E2E fixture 或明示缺模型
 > model/: 纯层（schema、时间格、片段几何、编辑层、路径求值、特写运镜、节目机位、镜头、预设、灯光、快捷键、rig、IK 链、store），见 model/CLAUDE.md
 > scene/: three / R3F 世界（画布、相机、实体、gizmo、描边、拾取、创建模式、标签、播放求值），见 scene/CLAUDE.md
-> panels/: DOM 面板（视口四条浮层：顶中工具条 / 左缘创建栏 / 底中底栏 / 右下显示模式；右栏大纲/资产库/检查器、字段原语、分栏、浮层；外壳逐区对账见 docs/plan/2026-09-03-director-chrome-parity.md），见 panels/CLAUDE.md
+> panels/: DOM 面板（顶栏五簇 topbar/ 是唯一常驻控件条，2026-09-09 收掉了视口左缘创建栏 / 底中底栏 / 右下显示模式三条，见 docs/plan/2026-09-09-director-chrome-five-clusters.md；右栏大纲/资产库/检查器、字段原语、分栏、浮层），见 panels/CLAUDE.md
 > timeline/: 片段时间轴，见 timeline/CLAUDE.md
 > 开发入口: 仓库根 director-lab.html → src/devlab/directorLab.tsx（仅 dev，脱离画布挂全屏壳）
 > 法则: 成员完整·一行一文件·父级链接·技术词前置

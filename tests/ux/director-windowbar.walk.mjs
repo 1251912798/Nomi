@@ -13,6 +13,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { launchNomiApp } from './_launchApp.mjs'
 import { clickOrFail, expect, expectVisible, screenshotSettled } from './_assert.mjs'
+import { addCanvasNodeFromRail } from './_canvasRail.mjs'
 import { createBlankProject, prepareIsolation } from '../../evals/lib/isoApp.mjs'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
@@ -60,9 +61,8 @@ const boardCta = win.locator('button[aria-label^="新建一个"][aria-label$="�
 if (await boardCta.count()) await boardCta.click({ timeout: 5000 }).catch(() => {})
 await win.keyboard.press('Escape').catch(() => {})
 await win.mouse.click(60, 520).catch(() => {})
-const addDirector = win.locator('[data-node-kind="director"]').first()
-await expectVisible(addDirector, '生成区工具栏没有「添加导演台节点」按钮', 60_000)
-await clickOrFail(addDirector, '工具栏·添加导演台节点')
+// 点法收口在 _canvasRail：加号自 2026-09-06「第三档」起 5 常驻 + 「更多」，导演台住「更多」里
+await addCanvasNodeFromRail(win, 'director')
 await expectVisible(win.locator('[data-testid="director-node"]').first(), '画布上没出 director 节点卡')
 await snap('canvas')
 
@@ -80,7 +80,8 @@ const geometry = await win.evaluate(() => {
   }
   const windowbar = document.querySelector('.workbench-windowbar')
   const editor = document.querySelector('[data-testid="director-editor"]')
-  const header = document.querySelector('[data-testid="director-header"]')
+  // 2026-09-09 五簇重排：整行 director-header 没了，常驻控件全在悬浮顶栏 director-topbar 里
+  const header = document.querySelector('[data-testid="director-topbar"]')
   const headerControls = header ? Array.from(header.querySelectorAll('button')) : []
   const windowControlLabels = ['最小化', '最大化', '还原', '关闭']
   const windowControls = windowbar
@@ -121,7 +122,7 @@ check(
 )
 
 // 顶栏工具真的还能用（渲染层行为回归；证不了原生命中测试，只证没把交互改坏）
-await clickOrFail(win.locator('[data-testid="director-viewport-toolbar"] button').first(), '顶栏·重置视角')
+await clickOrFail(win.locator('[data-testid="director-view-cluster"] button').first(), '顶栏·重置视角')
 await snap('toolbar-clicked')
 
 expect(consoleErrors, '④ 渲染层无 console error').toEqual([])

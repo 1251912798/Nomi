@@ -48,8 +48,12 @@ export function ContextInspector(): JSX.Element {
 
   return (
     <div className="flex h-full min-h-0 flex-col" data-testid="director-inspector">
-      <div className="border-b border-nomi-line-soft px-3 py-2 text-body-sm font-medium text-nomi-ink">{title}</div>
-      <div className="min-h-0 flex-1 space-y-2 overflow-auto p-2">
+      {/* 卡头与上卡的页签行等高（2026-09-09 右栏改双卡后，两张卡的头部要对齐，否则并排看像错层） */}
+      <div className="flex h-[46px] shrink-0 items-center border-b border-nomi-line-soft px-3 text-body-sm font-medium text-nomi-ink">
+        <span className="min-w-0 truncate">{title}</span>
+      </div>
+      {/* 分区无边框，靠分隔线断句（样张规格）：卡里再套一圈描边卡会把 306px 宽的密度压垮 */}
+      <div className="min-h-0 flex-1 divide-y divide-nomi-line-soft overflow-auto">
         {body}
       </div>
     </div>

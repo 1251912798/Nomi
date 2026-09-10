@@ -25,7 +25,7 @@ try {
   check('截图命名「自由漫游·全景-截图1」', /自由漫游.*截图1/.test(shot.name), shot.name)
   check('产物只存句柄，不存 base64', typeof shot.assetUrl === 'string' && !shot.assetUrl.startsWith('data:'), shot.assetUrl.slice(0, 40))
   check('无桌面运行时明说截图未落盘', (await lab.toasts()).some((text) => /未落盘|仅本次会话/.test(text)))
-  const outputsButton = page.getByTestId('director-bottom-bar').getByRole('button', { name: /^产出 1$/ })
+  const outputsButton = page.getByTestId('director-deliver-cluster').getByRole('button', { name: /^产出 1$/ })
   await clickOrFail(outputsButton, '底栏·产出 1')
   const popover = page.locator('[data-nomi-escape-layer="director-popover"]').first()
   await expectVisible(popover, '产出弹层没打开')

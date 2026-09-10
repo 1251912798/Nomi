@@ -14,6 +14,7 @@ import { cn } from '../../../../../../utils/cn'
 import { useDirectorStore, useDirectorStoreApi } from '../../DirectorEditorContext'
 import { exportAspectRatio } from '../../model/cameraLens'
 import { pipCameraIdOf, type PipRect } from '../../scene/pipCamera'
+import { DIRECTOR_TOP_CHROME_PX } from '../topbar/topChrome'
 
 const STORAGE_KEY = 'nomi:director:pip:v2'
 const MIN_WIDTH = 160
@@ -21,7 +22,8 @@ const MAX_WIDTH = 520
 const EDGE = 8
 
 type PipLayout = { left: number; top: number; width: number; collapsed: boolean }
-const DEFAULT_LAYOUT: PipLayout = { left: 14, top: 14, width: 280, collapsed: false }
+// 顶是悬浮顶栏之下（DIRECTOR_TOP_CHROME_PX），不是视口边缘：顶栏不占布局流，谁让开它由那个常量说了算
+const DEFAULT_LAYOUT: PipLayout = { left: 14, top: DIRECTOR_TOP_CHROME_PX, width: 280, collapsed: false }
 
 function readLayout(): PipLayout {
   try {
@@ -30,7 +32,8 @@ function readLayout(): PipLayout {
     const parsed = JSON.parse(raw) as Partial<PipLayout>
     return {
       left: Number.isFinite(parsed.left) ? Number(parsed.left) : DEFAULT_LAYOUT.left,
-      top: Number.isFinite(parsed.top) ? Number(parsed.top) : DEFAULT_LAYOUT.top,
+      // 旧布局可能存着 14（顶栏改悬浮之前的边距），读回来夹到顶栏之下，老用户自愈
+      top: Math.max(DIRECTOR_TOP_CHROME_PX, Number.isFinite(parsed.top) ? Number(parsed.top) : DEFAULT_LAYOUT.top),
       width: Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, Number(parsed.width) || DEFAULT_LAYOUT.width)),
       collapsed: Boolean(parsed.collapsed),
     }
@@ -118,7 +121,7 @@ export function PipViewport({ rectRef, canvasHostRef }: { rectRef: React.Mutable
       commitLayout({
         ...origin,
         left: Math.max(EDGE, Math.min(width - rootWidth - EDGE, origin.left + (up.clientX - startX))),
-        top: Math.max(EDGE, Math.min(height - rootHeight - EDGE, origin.top + (up.clientY - startY))),
+        top: Math.max(DIRECTOR_TOP_CHROME_PX, Math.min(height - rootHeight - EDGE, origin.top + (up.clientY - startY))),
       })
     }
     target.addEventListener('pointermove', onMove)

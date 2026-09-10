@@ -21,7 +21,7 @@
     "outputs.takeScreenshot"
   ],
   "external_sources": [],
-  "internal_only_reason": "Audited useDirectorOutputs, timeline/TimelineHeader, panels/BottomBar and bridge/persistOutputs. The desktop IPC has no cancellation API, so late results must be discarded by the application task owner.",
+  "internal_only_reason": "Audited useDirectorOutputs, timeline/TimelineHeader, the top-bar deliver cluster and bridge/persistOutputs. The desktop IPC has no cancellation API, so late results must be discarded by the application task owner.",
   "invariants": [
     "Only one output recording owns the timeline until capture and encoding settle",
     "Cancelled or unmounted tasks never register outputs or show success",
@@ -50,10 +50,10 @@
       "evidence": "Timeline command consumes OutputsContext from the same hook"
     },
     {
-      "path": "src/workbench/generationCanvas/nodes/director/panels/BottomBar.tsx",
+      "path": "src/workbench/generationCanvas/nodes/director/panels/topbar/DirectorTopBar.tsx",
       "entry_point": "outputs.takeScreenshot",
       "disposition": "enforced",
-      "evidence": "Bottom screenshot command shares the output hook and persistence lifetime guard"
+      "evidence": "Top-bar deliver cluster screenshot command shares the same output hook and persistence lifetime guard (2026-09-09: moved from the deleted panels/BottomBar.tsx)"
     },
     {
       "path": "src/workbench/generationCanvas/nodes/director/useDirectorOutputs.ts",

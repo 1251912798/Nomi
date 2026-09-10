@@ -20,8 +20,9 @@ import { TooltipProvider, confirmDialog } from '../../../../design'
 import { FULLSCREEN_Z_INDEX } from '../fullscreenZIndex'
 import { toast } from '../../../../ui/toast'
 import { currentFullscreenOverlayTopOffset } from '../../../../ui/app-shell/windowChrome'
+import { NomiColorSchemeContext } from '../../../../theme/colorScheme'
 import { CameraRecorderContext } from './CameraRecorderContext'
-import { DirectorStoreContext, useDirectorStoreApi } from './DirectorEditorContext'
+import { DirectorStoreContext, useDirectorStore, useDirectorStoreApi } from './DirectorEditorContext'
 import { MobileCameraContext } from './MobileCameraContext'
 import { useCameraMotionRecorder } from './useCameraMotionRecorder'
 import { useMobileCamera } from './useMobileCamera'
@@ -37,14 +38,18 @@ import { HelpDialog } from './panels/dialogs/HelpDialog'
 import { MobileConnectDialog } from './panels/dialogs/MobileConnectDialog'
 import { SettingsDialog } from './panels/dialogs/SettingsDialog'
 import { SidePanels } from './panels/side/SidePanels'
-import { ViewportToolbar } from './panels/viewport/ViewportToolbar'
+import { CreationModeContext } from './panels/CreationModeContext'
+import { DirectorTopBar } from './panels/topbar/DirectorTopBar'
+import { useBoxDraw } from './scene/creation/useBoxDraw'
+import { useCharacterPlacement } from './scene/creation/useCharacterPlacement'
 import { DirectorViewport } from './panels/viewport/DirectorViewport'
 import { readDirectorPreferences, writeDirectorPreferences, type DirectorPreferences } from './scene/viewSettings'
-import { DirectorTimeline } from './timeline/DirectorTimeline'
+import { DirectorTimeline, TIMELINE_COLLAPSED_PX, TIMELINE_EMPTY_PX } from './timeline/DirectorTimeline'
 import { ViewportApiContext, type ViewportApi } from './scene/ViewportApiContext'
 import { isTextTarget, useDirectorHotkeys } from './useDirectorHotkeys'
 import { transformCameraPose } from './model/cameraCoordinateSpace'
 import { invertFrame, sceneFrame } from './model/sceneObjectGraph'
+import { orderedTimelineEntities } from './model/timelineTracks'
 
 export type DirectorEditorProps = {
   rawProject: unknown
@@ -64,7 +69,6 @@ export type DirectorEditorProps = {
 const AUTOSAVE_IDLE_MS = 2000
 
 const TIMELINE_COLLAPSED_KEY = 'nomi:director:timelineCollapsed'
-const TIMELINE_COLLAPSED_PX = 36
 
 function readTimelineCollapsed(): boolean {
   try {
@@ -81,6 +85,70 @@ type EditorBodyProps = {
   onChangePreferences: (next: DirectorPreferences) => void
   nodeId?: string
   onSendToCanvas?: (output: DirectorOutput) => void
+}
+
+type EditorStageProps = {
+  scopeRef: React.MutableRefObject<DirectorHotkeyScope>
+  preferences: DirectorPreferences
+  cancelCreationRef: React.MutableRefObject<(() => void) | null>
+  timelineCollapsed: boolean
+  onToggleTimeline: () => void
+  onResetView: () => void
+  onExit: () => void
+  onOpenSettings: () => void
+  onOpenHelp: () => void
+}
+
+/**
+ * 区域装配层。必须是 EditorBody 之下的独立组件：两个创建模式 hook 要读 ViewportApiContext，
+ * 而那个 Provider 是 EditorBody 渲染的 —— 在 EditorBody 自己的函数体里调，拿到的是 provider 之外的空值，
+ * useViewportApi() 当场抛错、整块懒加载壳落到「加载失败」（2026-09-09 真机走查抓到）。
+ */
+function EditorStage({ scopeRef, preferences, cancelCreationRef, timelineCollapsed, onToggleTimeline, onResetView, onExit, onOpenSettings, onOpenHelp }: EditorStageProps): JSX.Element {
+  const { t } = useTranslation()
+  // 创建模式只调一次 hook，经 CreationModeContext 下发：视口要指针路由与 ghost ref，顶栏「＋添加」要能发起。
+  // 两处各调一次 = 两份互不知情的模式状态（P1 的并行版）。
+  const placement = useCharacterPlacement({ characterName: (index) => t('director.creation.characterName', { index }) })
+  const boxDraw = useBoxDraw({ boxName: (index) => t('director.creation.boxName', { index }) })
+  const creationMode = React.useMemo(() => ({ placement, boxDraw }), [placement, boxDraw])
+  // 时间轴上一个实体都没有时把它钉成一条：比例记忆不动，加了轨道立刻回到用户自己的分栏
+  const timelineEmpty = useDirectorStore((state) => orderedTimelineEntities(state.activeScene()).length === 0)
+  return (
+    <CreationModeContext.Provider value={creationMode}>
+      <div className="relative min-h-0 flex-1">
+        {/* 右栏是压在视口上的浮窗（2026-09-09 第 2 期，获批样张形态）：3D 画面在卡片下连贯铺满。
+            暗区靠指针穿透消掉——只有卡片本身挡指针，卡间空隙与留白点得到视口，判据见 SidePanels 的 POS。 */}
+        <EditorSplit
+          direction="vertical"
+          storageKey="director.center"
+          defaultRatio={0.8}
+          minRatio={0.35}
+          maxRatio={0.94}
+          collapsedSecondPx={timelineCollapsed ? TIMELINE_COLLAPSED_PX : timelineEmpty ? TIMELINE_EMPTY_PX : undefined}
+        >
+          <div className="relative h-full w-full">
+            <DirectorViewport
+              theme={preferences.theme}
+              viewSettings={preferences.view}
+              scopeRef={scopeRef}
+              placement={placement}
+              boxDraw={boxDraw}
+              cancelCreationRef={cancelCreationRef}
+            />
+            <SidePanels />
+          </div>
+          <DirectorTimeline collapsed={timelineCollapsed} onToggleCollapsed={onToggleTimeline} scopeRef={scopeRef} />
+        </EditorSplit>
+        <DirectorTopBar
+          onResetView={onResetView}
+          onExit={onExit}
+          onCancelCreation={() => cancelCreationRef.current?.()}
+          onOpenSettings={onOpenSettings}
+          onOpenHelp={onOpenHelp}
+        />
+      </div>
+    </CreationModeContext.Provider>
+  )
 }
 
 function EditorBody({ scopeRef, onExit, preferences, onChangePreferences, nodeId, onSendToCanvas }: EditorBodyProps): JSX.Element {
@@ -141,26 +209,19 @@ function EditorBody({ scopeRef, onExit, preferences, onChangePreferences, nodeId
     <OutputsContext.Provider value={outputs}>
       <CameraRecorderContext.Provider value={recorder}>
       <MobileCameraContext.Provider value={mobile}>
-      {/* 统一标题栏（2026-09-04 用户拍板）：工具条不再悬浮在视口上挡点击，占一整行 */}
-      <header className="flex h-11 shrink-0 items-center justify-center border-b border-nomi-line bg-nomi-paper px-3" data-testid="director-header">
-        <ViewportToolbar onResetView={() => apiRef.current?.resetView()} onExit={onExit} onCancelCreation={() => cancelCreationRef.current?.()} />
-      </header>
-      <div className="min-h-0 flex-1">
-        <EditorSplit direction="horizontal" storageKey="director.main" defaultRatio={0.72} minRatio={0.45} maxRatio={0.82}>
-          <EditorSplit
-            direction="vertical"
-            storageKey="director.center"
-            defaultRatio={0.8}
-            minRatio={0.35}
-            maxRatio={0.94}
-            collapsedSecondPx={timelineCollapsed ? TIMELINE_COLLAPSED_PX : undefined}
-          >
-            <DirectorViewport theme={preferences.theme} viewSettings={preferences.view} scopeRef={scopeRef} onOpenSettings={() => setSettingsOpen(true)} onOpenHelp={() => setHelpOpen(true)} cancelCreationRef={cancelCreationRef} />
-            <DirectorTimeline collapsed={timelineCollapsed} onToggleCollapsed={toggleTimeline} scopeRef={scopeRef} />
-          </EditorSplit>
-          <SidePanels />
-        </EditorSplit>
-      </div>
+      {/* 五个功能簇一条悬浮顶栏（2026-09-09 用户拍板，方案 docs/plan/2026-09-09-director-chrome-five-clusters.md）：
+          2026-09-04 那条整行标题栏连同视口左缘 / 底中 / 右下三条浮层一起收进这里，视口四边不再有控件带。 */}
+      <EditorStage
+        scopeRef={scopeRef}
+        preferences={preferences}
+        cancelCreationRef={cancelCreationRef}
+        timelineCollapsed={timelineCollapsed}
+        onToggleTimeline={toggleTimeline}
+        onResetView={() => apiRef.current?.resetView()}
+        onExit={onExit}
+        onOpenSettings={() => setSettingsOpen(true)}
+        onOpenHelp={() => setHelpOpen(true)}
+      />
       <MobileConnectDialog />
       <SettingsDialog
         open={settingsOpen}
@@ -180,8 +241,22 @@ function EditorBody({ scopeRef, onExit, preferences, onChangePreferences, nodeId
   )
 }
 
+/**
+ * 导演台永远是暗的（2026-09-09 用户拍板：这个面默认深色）。和剪辑 / 调色台同理 —— 判断画面明暗的地方
+ * 不能让外壳底色跟着白天变。经 provider 的暗色锁声明，不自己写 DOM：那样会被「天黑自动暗」的定时器改回去。
+ */
+function useDirectorForcedDark(): void {
+  const scheme = React.useContext(NomiColorSchemeContext)
+  const acquire = scheme?.acquireForcedDark
+  React.useEffect(() => {
+    if (!acquire) return
+    return acquire()
+  }, [acquire])
+}
+
 export default function DirectorEditor({ rawProject, nodeTitle, readOnly = false, linkedAssets = EMPTY_LINKED_ASSETS, canvasImages = EMPTY_CANVAS_IMAGES, nodeId, onSendToCanvas, onClose, onProjectChange }: DirectorEditorProps): JSX.Element {
   const { t } = useTranslation()
+  useDirectorForcedDark()
   const storeRef = React.useRef<DirectorStore | null>(null)
   if (!storeRef.current) {
     storeRef.current = createDirectorStore({ rawProject, defaultSceneName: t('director.node.sceneDefaultName') })

@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 react、react-i18next、../../../../../../design（NomiSegmented / WorkbenchButton / WorkbenchIconButton）、../../../../../../vendor/tablerIcons、
  *          ../../../../../../ui/toast、../../useAiSceneBuilder、../../model/storeAiSceneActions 的 AiSceneTarget、../CanvasImagesContext、../imageFile 的 readFileAsDataUrl、../Popover
- * [OUTPUT]: 对外提供 AiSceneBar（open / onClose）
+ * [OUTPUT]: 对外提供 AiSceneBar（open / onOpen / onClose）：折叠态是视口底部中央的常驻胶囊入口，展开态是浮条
  * [POS]: director/panels/ai 的 AI 搭场景浮条（清单 §2.3 V8）：描述框（Enter 提交、Shift+Enter 换行、粘贴图片）+ 参考图 ≤3（本地上传 / 从画布选）+ 目标（当前图层 / 新图层）
  *        + 运行 / 取消 + 状态与秒表。只组合设计原语，编排在 useAiSceneBuilder。
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
@@ -19,7 +19,7 @@ import { Popover, PopoverItem } from '../Popover'
 
 const MAX_REFERENCE_IMAGES = 3
 
-export function AiSceneBar({ open, onClose }: { open: boolean; onClose: () => void }): JSX.Element | null {
+export function AiSceneBar({ open, onOpen, onClose }: { open: boolean; onOpen: () => void; onClose: () => void }): JSX.Element | null {
   const { t } = useTranslation()
   const builder = useAiSceneBuilder()
   const canvasImages = useCanvasImages()
@@ -58,7 +58,25 @@ export function AiSceneBar({ open, onClose }: { open: boolean; onClose: () => vo
     void builder.run(description, images, target)
   }, [builder, description, images, target])
 
-  if (!open) return null
+  // 折叠态是视口底部中央的常驻入口：2026-09-09 五簇重排后底栏那条胶囊没了，
+  // AI 搭场景不再靠别处的开关，自己就是入口（一功能一个家）。
+  if (!open) {
+    return (
+      <button
+        type="button"
+        className="pointer-events-auto flex h-12 w-[440px] max-w-[calc(100%-24px)] items-center gap-3 rounded-full border border-nomi-line bg-nomi-paper/95 pl-4 pr-1.5 text-left shadow-nomi-lg backdrop-blur transition-colors duration-nomi-fast ease-nomi-fast hover:border-nomi-ink-30"
+        aria-label={t('director.ai.toggle')}
+        title={t('director.ai.toggleHint')}
+        data-testid="director-ai-pill"
+        onClick={onOpen}
+      >
+        <span className="flex-1 truncate text-body-sm text-nomi-ink-40">{t('director.ai.placeholderShort')}</span>
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-nomi-accent text-nomi-paper">
+          <IconSparkles size={18} stroke={1.9} />
+        </span>
+      </button>
+    )
+  }
 
   return (
     <div className="pointer-events-auto w-[560px] max-w-[calc(100%-24px)] rounded-nomi-lg border border-nomi-line bg-nomi-paper/95 p-3 shadow-nomi-lg backdrop-blur" role="dialog" aria-label={t('director.ai.title')} data-testid="director-ai-bar">

@@ -1,16 +1,17 @@
 /**
- * [INPUT]: 依赖 react、react-i18next、../../../../../../design 的 NomiSegmented / WorkbenchIconButton、../../../../../../vendor/tablerIcons、
+ * [INPUT]: 依赖 react、react-i18next、../../../../../../design 的 NomiSegmented、../../../../../../vendor/tablerIcons、
  *          ../../DirectorEditorContext、../../model/hotkeys（DIRECTOR_HOTKEYS / formatHotkey）、../../model/directorStore 的 TransformMode
  *          onCancelCreation 回调：点击任意工具前取消角色/方块/路径创建模式
- * [OUTPUT]: 对外提供 ViewportToolbar：统一标题栏里居中的纯图标工具条——重置视角 ｜ 选择 / 移动 / 旋转 / 缩放 ｜ 手绘画线 / 逐点 ｜ 退出导演台
- * [POS]: director/panels/viewport 的顶部工具条（图标 + tooltip 带快捷键，2026-09-04 用户拍板改进 DirectorEditor 的一整行标题栏，不再悬浮压视口）；
- *        画线 / 逐点是模式不是 gizmo 工具，进模式时关 gizmo。编辑模式提示不在这里，住检查器「空间变换」卡。
+ * [OUTPUT]: 对外提供 ViewportToolbar：顶栏第三簇「工具」——选择 / 移动 / 旋转 / 缩放 ｜ 手绘画线 / 逐点
+ * [POS]: director/panels/viewport 的工具簇，由 topbar/DirectorTopBar 装配（2026-09-09 五簇重排：重置视角归「视图」簇、
+ *        退出归「交付」簇，本组件只剩工具本身）。画线 / 逐点是模式不是 gizmo 工具，进模式时关 gizmo；
+ *        编辑模式提示不在这里，住检查器「空间变换」卡。
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { NomiSegmented, WorkbenchIconButton } from '../../../../../../design'
-import { IconArrowsMove, IconPencil, IconPointer, IconRefresh, IconResize, IconRotate, IconRoute, IconX } from '../../../../../../vendor/tablerIcons'
+import { NomiSegmented } from '../../../../../../design'
+import { IconArrowsMove, IconPencil, IconPointer, IconResize, IconRotate, IconRoute } from '../../../../../../vendor/tablerIcons'
 import { useDirectorStore } from '../../DirectorEditorContext'
 import type { TransformMode } from '../../model/directorStore'
 import { DIRECTOR_HOTKEYS, formatHotkey } from '../../model/hotkeys'
@@ -27,7 +28,7 @@ const TOOL_ICONS: Record<ToolKey, React.ReactNode> = {
 }
 const TOOL_ORDER: ToolKey[] = ['select', 'translate', 'rotate', 'scale', 'drawPencil', 'waypoint']
 
-export function ViewportToolbar({ onResetView, onExit, onCancelCreation }: { onResetView: () => void; onExit: () => void; onCancelCreation?: () => void }): JSX.Element {
+export function ViewportToolbar({ onCancelCreation }: { onCancelCreation?: () => void }): JSX.Element {
   const { t } = useTranslation()
   const transformMode = useDirectorStore((state) => state.transformMode)
   const drawMode = useDirectorStore((state) => state.drawMode)
@@ -53,8 +54,6 @@ export function ViewportToolbar({ onResetView, onExit, onCancelCreation }: { onR
       aria-label={t('director.topbar.toolsAria')}
       data-testid="director-viewport-toolbar"
     >
-      <WorkbenchIconButton size="sm" icon={<IconRefresh size={16} stroke={1.9} />} label={`${t('director.topbar.resetCamera')} (${formatHotkey(DIRECTOR_HOTKEYS.resetCamera)})`} onClick={onResetView} />
-      <span className="mx-0.5 h-4 w-px bg-nomi-line" aria-hidden />
       <NomiSegmented
         ariaLabel={t('director.topbar.toolsAria')}
         density="compact"
@@ -67,8 +66,6 @@ export function ViewportToolbar({ onResetView, onExit, onCancelCreation }: { onR
         }))}
         onChange={onToolChange}
       />
-      <span className="mx-0.5 h-4 w-px bg-nomi-line" aria-hidden />
-      <WorkbenchIconButton size="sm" icon={<IconX size={16} stroke={1.9} />} label={t('director.editor.exit')} data-testid="director-exit" onClick={onExit} />
     </div>
   )
 }

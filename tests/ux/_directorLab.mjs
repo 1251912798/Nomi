@@ -160,20 +160,30 @@ export async function launchDirectorLab({ name, viewport = { width: 1440, height
   return lab
 }
 
-/** 创建栏「角色」→ 女人/男人 → 点地面落点（世界坐标 x,z）。 */
+/** 顶栏「＋添加」→ 角色 → 女人/男人 → 点地面落点（世界坐标 x,z）。 */
 export async function placeCharacter(lab, gender, x, z) {
   const { page } = lab
-  await clickOrFail(page.getByTestId('director-creation-bar').getByRole('button', { name: '角色' }), '创建栏·角色')
+  await openAddMenu(lab, '角色')
   await clickOrFail(page.getByRole('button', { name: gender === 'female' ? '女人' : '男人' }), `角色下拉·${gender}`)
   const point = await lab.bridge('projectPoint', x, 0, z)
   await page.mouse.click(point.x, point.y)
 }
 
-/** 创建栏「机位」→ 预设名（相对当前选中主体）。 */
+/** 顶栏「＋添加」→ 机位 → 预设名（相对当前选中主体）。 */
 export async function addCameraPreset(lab, presetLabel) {
   const { page } = lab
-  await clickOrFail(page.getByTestId('director-creation-bar').getByRole('button', { name: /^机位/ }), '创建栏·机位')
+  await openAddMenu(lab, '机位')
   await clickOrFail(page.getByRole('button', { name: presetLabel, exact: true }), `机位预设·${presetLabel}`)
+}
+
+/**
+ * 顶栏「＋添加」菜单：先开菜单，再进二级项。
+ * 2026-09-09 五簇重排：视口左缘那条竖排创建栏没了，四个创建入口都住这个菜单（一功能一个家）。
+ */
+export async function openAddMenu(lab, itemLabel) {
+  const { page } = lab
+  await clickOrFail(page.getByTestId('director-add-menu'), '顶栏·添加')
+  if (itemLabel) await clickOrFail(page.getByRole('button', { name: itemLabel, exact: true }), `添加菜单·${itemLabel}`)
 }
 
 /** 轨道列头「+ 添加轨道 ▾」→ 实体名（加进来自动带一段 4s 空路径片段）。 */
