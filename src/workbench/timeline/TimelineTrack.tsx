@@ -322,7 +322,6 @@ function TimelineTrack({ track, transitionFeedback = [], variant = 'primary' }: 
               'text-[var(--nomi-ink-40)] leading-none text-micro font-medium pointer-events-none',
             )}
           >
-            {track.type === 'audio' ? t('timelineEditor.track.emptyAudio') : t('timelineEditor.track.emptyVisual')}
           </div>
         ) : null}
         {dropCaretFrame != null ? (

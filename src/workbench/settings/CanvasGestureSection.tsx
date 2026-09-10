@@ -28,7 +28,6 @@ export function CanvasGestureSection(): JSX.Element {
   return (
     <div className="mt-5 border-t border-nomi-line pt-4">
       <div className="mb-1.5 text-body-sm text-nomi-ink">{t('settings.general.canvasGesture')}</div>
-      <div className="mb-3 text-caption leading-relaxed text-nomi-ink-40">{t('settings.general.canvasGestureHint')}</div>
 
       <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label={t('settings.general.canvasGesture')}>
         {OPTIONS.map((option) => (

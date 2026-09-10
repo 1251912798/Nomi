@@ -1,0 +1,58 @@
+{
+  "run": "https://github.com/aqm857886159/Nomi/actions/runs/34414428313",
+  "pass": false,
+  "warmupFailures": [],
+  "failed": {
+    "M/click-select": {
+      "pass": false,
+      "advisoryOnly": false,
+      "budgetsAdvisory": false,
+      "hardFailures": [],
+      "budgetChecks": [
+        {
+          "metric": "frameGapP95Ms",
+          "actualP95": 59.4,
+          "max": 53,
+          "pass": false,
+          "advisory": false
+        },
+        {
+          "metric": "maxFrameGapMs",
+          "actualP95": 94.1,
+          "max": 160,
+          "pass": true,
+          "advisory": true
+        },
+        {
+          "metric": "longTaskP95Ms",
+          "actualP95": 77,
+          "max": 128,
+          "pass": true,
+          "advisory": false
+        },
+        {
+          "metric": "maxLoadingImages",
+          "actualP95": 3,
+          "max": 4,
+          "pass": true,
+          "advisory": false
+        },
+        {
+          "metric": "maxLoadingVideos",
+          "actualP95": 0,
+          "max": 1,
+          "pass": true,
+          "advisory": false
+        },
+        {
+          "metric": "maxActiveVideos",
+          "actualP95": 0,
+          "max": 1,
+          "pass": true,
+          "advisory": false
+        }
+      ]
+    }
+  },
+  "otherScenariosPassed": 17
+}

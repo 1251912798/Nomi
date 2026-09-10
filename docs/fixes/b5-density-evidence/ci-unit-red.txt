@@ -1,0 +1,37 @@
+
+ RUN  v4.1.8 /Users/aoqimin/Desktop/Nomi-b5-density
+
+ ❯ src/workbench/generationCanvas/agent/canvasWriteTarget.integration.test.ts (12 tests | 1 failed) 28ms
+     × does not apply an approved replacement after selection changes while preparing its receipt 3ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/workbench/generationCanvas/agent/canvasWriteTarget.integration.test.ts > storyboard receipt preparation race > does not apply an approved replacement after selection changes while preparing its receipt
+AssertionError: expected SurfacePortWireError: capability_receipt_… { code: '…' } to match object { code: 'capability_target_stale' }
+(1 matching property omitted from actual)
+
+- Expected
++ Received
+
+- {
+-   "code": "capability_target_stale",
++ SurfacePortWireError {
++   "code": "capability_receipt_unresolved",
+  }
+
+ ❯ src/workbench/generationCanvas/agent/canvasWriteTarget.integration.test.ts:328:81
+    326|     const request = buildRequest({ operation: 'propose_storyboard_plan…
+    327|     receiptHarness.onPrepare = () => { useWorkbenchStore.getState().ad…
+    328|     await expect(executeCanvasWriteTarget(request, readGenerationCanva…
+       |                                                                                 ^
+    329|     expect(useWorkbenchStore.getState().storyboardDesignsByDocumentId[…
+    330|     expect(receiptHarness.commits).toEqual([])
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 11 passed (12)
+   Start at  07:16:28
+   Duration  1.64s (transform 893ms, setup 29ms, import 1.52s, tests 28ms, environment 0ms)
+

@@ -1,0 +1,10 @@
+Command: python3 scripts/with-gates-lock.py -- pnpm run gates
+Result: exit 0 (subsequent && performance command started)
+HEAD during validation: ffdf023a3900a317b02dbba3b69418cf7b7f5177
+Working tree: scoped B5 CI repair present; committed after validation.
+Contracts: 77 total, 74 pass, 0 blocking failures, 3 existing advisory failures.
+Design baselines: 173 passed.
+Vitest: 1326 files passed, 1 skipped; 12086 tests passed, 2 skipped.
+Agent runtime: 425 passed, 0 failed.
+Build: renderer and Electron passed.
+Log: /tmp/b5-cifix-delivery-gates.log

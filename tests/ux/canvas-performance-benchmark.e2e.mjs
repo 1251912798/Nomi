@@ -1,7 +1,7 @@
 import { captureScenarioFailure } from './canvas-perf/failureDiagnostics.mjs'
 import { prepareWaitingFx, sampleWaitingFx, cleanupWaitingFx } from './canvas-perf/waitingFxScenario.mjs'
 import { launchNomiApp } from './_launchApp.mjs'
-import { findCanvasBlankPoint } from './_canvasHit.mjs'
+import { findCanvasBlankPoint, findNodeHitPoint } from './_canvasHit.mjs'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -735,12 +735,10 @@ async function runAction(page, scenario, fixture) {
     await page.keyboard.down('Shift')
     try {
       for (let index = 0; index < count; index += 1) {
-        const box = await nodes
-          .nth(index)
-          .boundingBox()
-          .catch(() => null)
-        if (!box) continue
-        await page.mouse.click(box.x + box.width * 0.45, box.y + 14)
+        const nodeId = await nodes.nth(index).getAttribute('data-node-id')
+        const hit = await findNodeHitPoint(page, { nodeSelector: `.generation-canvas-v2-node[data-node-id=${JSON.stringify(nodeId)}]` })
+        if (!hit) throw new Error(`click-select: no selectable point for ${nodeId}`)
+        await page.mouse.click(hit.x, hit.y)
         await sleep(page, 20)
       }
     } finally {

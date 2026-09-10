@@ -334,5 +334,22 @@ describe('storyboard receipt preparation race', () => {
     await expect(executeCanvasWriteTarget(request, readGenerationCanvasSnapshot)).rejects.toMatchObject({ code: 'capability_target_stale' })
     expect(useWorkbenchStore.getState().storyboardDesignsByDocumentId['race-doc'].map(d => d.plan.shots[0].prompt)).toEqual(['Original', 'Original'])
     expect(receiptHarness.commits).toEqual([])
+    expect(receiptHarness.aborts).toEqual([RECEIPT_ID])
+  })
+  it('does not apply an approved replacement after a design is created while preparing its receipt', async () => {
+    const plan: StoryboardPlan = { title: 'Before', anchors: [], shots: [
+      { index: 1, shotKind: 'image', durationSec: 0, anchorIds: [], prompt: 'Original' },
+    ] }
+    useWorkbenchStore.getState().hydrateWorkbenchDocuments([
+      { id: 'race-doc', version: 1, title: 'Race', contentJson: { type: 'doc', content: [] }, updatedAt: 1 },
+    ], 'race-doc')
+    useWorkbenchStore.getState().hydrateStoryboardDesigns({})
+    useWorkbenchStore.getState().setStoryboardPlan(plan, 'race-doc')
+    const request = buildRequest({ operation: 'propose_storyboard_plan', ...plan, title: 'Replacement' })
+    receiptHarness.onPrepare = () => { useWorkbenchStore.getState().addStoryboardDesign('race-doc', { ...plan, title: 'Other' }) }
+    await expect(executeCanvasWriteTarget(request, readGenerationCanvasSnapshot)).rejects.toMatchObject({ code: 'capability_target_stale' })
+    expect(useWorkbenchStore.getState().storyboardDesignsByDocumentId['race-doc'].map(d => d.plan.shots[0].prompt)).toEqual(['Original', 'Original'])
+    expect(receiptHarness.commits).toEqual([])
+    expect(receiptHarness.aborts).toEqual([RECEIPT_ID])
   })
 })

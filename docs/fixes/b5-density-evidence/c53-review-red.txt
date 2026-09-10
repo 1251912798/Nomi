@@ -1,0 +1,9 @@
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  electron/assets/projectAssetImportDedup.test.ts > project upload content identity > ignores non-record legacy sidecar null without blocking unrelated imports
+ FAIL  electron/assets/projectAssetImportDedup.test.ts > project upload content identity > preserves externally changed content in a new hash directory and restores original content separately
+AssertionError: expected 'asset-2f4de24caf0935a701c3' not to be 'asset-2f4de24caf0935a701c3' // Object.is equality
+ FAIL  electron/assets/projectAssetImportDedup.test.ts > project upload content identity > preserves invalid new sidecars and creates a usable import without treating them as records
+ Test Files  1 failed (1)
+      Tests  3 failed | 11 passed (14)
+   Start at  05:05:09
+   Duration  510ms (transform 168ms, setup 24ms, import 233ms, tests 83ms, environment 0ms)

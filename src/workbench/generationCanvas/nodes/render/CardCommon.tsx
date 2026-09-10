@@ -128,13 +128,11 @@ export function PendingGenerationPlaceholder({
   selected,
   needsFirstFrame,
   waitingUpstream = false,
-  prompt,
   kind,
 }: {
   selected: boolean
   needsFirstFrame: boolean
   waitingUpstream?: boolean
-  prompt?: string
   kind: string
 }): JSX.Element {
   const { t } = useTranslation()
@@ -160,7 +158,7 @@ export function PendingGenerationPlaceholder({
       <NodeEmptyState
         icon={isVideo ? <IconVideo size={20} stroke={1.6} /> : isModel3d ? <Icon3dCubeSphere size={20} stroke={1.6} /> : <IconPhoto size={20} stroke={1.6} />}
         title={titleText}
-        description={prompt ? `${description} ${prompt}` : description}
+        description={description}
       />
     </div>
   )

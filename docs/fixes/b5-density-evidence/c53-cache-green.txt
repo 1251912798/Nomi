@@ -1,0 +1,9 @@
+
+ RUN  v4.1.8 /Users/aoqimin/Desktop/Nomi-b5-density
+
+
+ Test Files  1 passed (1)
+      Tests  8 passed (8)
+   Start at  04:51:01
+   Duration  1.17s (transform 537ms, setup 61ms, import 617ms, tests 247ms, environment 0ms)
+

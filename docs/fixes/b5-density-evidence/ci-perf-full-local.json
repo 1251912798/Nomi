@@ -1,0 +1,767 @@
+{
+  "platform": "darwin",
+  "arch": "arm64",
+  "commit": "8ab54b2ecb324b7859b6b316e6542ba92c8f9819",
+  "dirty": true,
+  "leg": {
+    "devServer": false,
+    "cpuThrottleRate": 1,
+    "kind": "prod"
+  },
+  "pass": true,
+  "warmupFailures": [],
+  "verdicts": {
+    "M/waiting-effects": {
+      "pass": true,
+      "advisoryOnly": false,
+      "budgetsAdvisory": false,
+      "hardFailures": [],
+      "budgetChecks": [
+        {
+          "metric": "frameGapP95Ms",
+          "actualP95": 10.4,
+          "max": 33,
+          "pass": true,
+          "advisory": false
+        },
+        {
+          "metric": "maxFrameGapMs",
+          "actualP95": 13.1,
+          "max": 100,
+          "pass": true,
+          "advisory": true
+        },
+        {
+          "metric": "maxLoadingImages",
+          "actualP95": 0,
+          "max": 4,
+          "pass": true,
+          "advisory": false
+        },
+        {
+          "metric": "maxLoadingVideos",
+          "actualP95": 0,
+          "max": 1,
+          "pass": true,
+          "advisory": false
+        },
+        {
+          "metric": "maxActiveVideos",
+          "actualP95": 0,
+          "max": 1,
+          "pass": true,
+          "advisory": false
+        }
+      ]
+    },
+    "M/cold-open": {
+      "pass": true,
+      "advisoryOnly": false,
+      "budgetsAdvisory": false,
+      "hardFailures": [],
+      "budgetChecks": []
+    },
+    "M/blank-pan": {
+      "pass": true,
+      "advisoryOnly": false,
+      "budgetsAdvisory": false,
+      "hardFailures": [],
+      "budgetChecks": [
+        {
+          "metric": "frameGapP95Ms",
+          "actualP95": 12.3,
+          "max": 33,
+          "pass": true,
+          "advisory": false
+        },
+        {
+          "metric": "maxFrameGapMs",
+          "actualP95": 36.2,
+          "max": 100,
+          "pass": true,
+          "advisory": true
+        },
+        {
+          "metric": "maxLoadingImages",
+          "actualP95": 0,
+          "max": 4,
+          "pass": true,
+          "advisory": false
+        },
+        {
+          "metric": "maxLoadingVideos",
+          "actualP95": 0,
+          "max": 1,
+          "pass": true,
+          "advisory": false
+        },
+        {
+          "metric": "maxActiveVideos",
+          "actualP95": 0,
+          "max": 1,
+          "pass": true,
+          "advisory": false
+        }
+      ]
+    },
+    "M/node-drag-image": {
+      "pass": true,
+      "advisoryOnly": false,
+      "budgetsAdvisory": false,
+      "hardFailures": [],
+      "budgetChecks": [
+        {
+          "metric": "frameGapP95Ms",
+          "actualP95": 11.5,
+          "max": 33,
+          "pass": true,
+          "advisory": false
+        },
+        {
+          "metric": "maxFrameGapMs",
+          "actualP95": 19.6,
+          "max": 100,
+          "pass": true,
+          "advisory": true
+        },
+        {
+          "metric": "maxLoadingImages",
+          "actualP95": 1,
+          "max": 4,
+          "pass": true,
+          "advisory": false
+        },
+        {
+          "metric": "maxLoadingVideos",
+          "actualP95": 0,
+          "max": 1,
+          "pass": true,
+          "advisory": false
+        },
+        {
+          "metric": "maxActiveVideos",
+          "actualP95": 0,
+          "max": 1,
+          "pass": true,
+          "advisory": false
+        }
+      ]
+    },
+    "M/node-drag-video": {
+      "pass": true,
+      "advisoryOnly": false,
+      "budgetsAdvisory": false,
+      "hardFailures": [],
+      "budgetChecks": [
+        {
+          "metric": "frameGapP95Ms",
+          "actualP95": 11.6,
+          "max": 33,
+          "pass": true,
+          "advisory": false
+        },
+        {
+          "metric": "maxFrameGapMs",
+          "actualP95": 27,
+          "max": 100,
+          "pass": true,
+          "advisory": true
+        },
+        {
+          "metric": "maxLoadingImages",
+          "actualP95": 3,
+          "max": 4,
+          "pass": true,
+          "advisory": false
+        },
+        {
+          "metric": "maxLoadingVideos",
+          "actualP95": 1,
+          "max": 1,
+          "pass": true,
+          "advisory": false
+        },
+        {
+          "metric": "maxActiveVideos",
+          "actualP95": 1,
+          "max": 1,
+          "pass": true,
+          "advisory": false
+        }
+      ]
+    },
+    "M/multi-node-drag": {
+      "pass": true,
+      "advisoryOnly": true,
+      "budgetsAdvisory": false,
+      "hardFailures": [],
+      "budgetChecks": [
+        {
+          "metric": "frameGapP95Ms",
+          "actualP95": 14.9,
+          "max": 33,
+          "pass": true,
+          "advisory": false
+        },
+        {
+          "metric": "maxFrameGapMs",
+          "actualP95": 34.6,
+          "max": 100,
+          "pass": true,
+          "advisory": true
+        },
+        {
+          "metric": "maxLoadingImages",
+          "actualP95": 3,
+          "max": 4,
+          "pass": true,
+          "advisory": false
+        },
+        {
+          "metric": "maxLoadingVideos",
+          "actualP95": 0,
+          "max": 1,
+          "pass": true,
+          "advisory": false
+        },
+        {
+          "metric": "maxActiveVideos",
+          "actualP95": 0,
+          "max": 1,
+          "pass": true,
+          "advisory": false
+        }
+      ]
+    },
+    "M/drag-at-low-zoom": {
+      "pass": true,
+      "advisoryOnly": true,
+      "budgetsAdvisory": false,
+      "hardFailures": [],
+      "budgetChecks": [
+        {
+          "metric": "frameGapP95Ms",
+          "actualP95": 10.7,
+          "max": 33,
+          "pass": true,
+          "advisory": false
+        },
+        {
+          "metric": "maxFrameGapMs",
+          "actualP95": 62,
+          "max": 100,
+          "pass": true,
+          "advisory": true
+        },
+        {
+          "metric": "longTaskP95Ms",
+          "actualP95": 59,
+          "max": 80,
+          "pass": true,
+          "advisory": false
+        },
+        {
+          "metric": "maxLoadingImages",
+          "actualP95": 4,
+          "max": 4,
+          "pass": true,
+          "advisory": false
+        },
+        {
+          "metric": "maxLoadingVideos",
+          "actualP95": 0,
+          "max": 1,
+          "pass": true,
+          "advisory": false
+        },
+        {
+          "metric": "maxActiveVideos",
+          "actualP95": 0,
+          "max": 1,
+          "pass": true,
+          "advisory": false
+        }
+      ]
+    },
+    "M/drag-over-dense-edges": {
+      "pass": true,
+      "advisoryOnly": true,
+      "budgetsAdvisory": false,
+      "hardFailures": [],
+      "budgetChecks": [
+        {
+          "metric": "frameGapP95Ms",
+          "actualP95": 12.2,
+          "max": 33,
+          "pass": true,
+          "advisory": false
+        },
+        {
+          "metric": "maxFrameGapMs",
+          "actualP95": 26.4,
+          "max": 100,
+          "pass": true,
+          "advisory": true
+        },
+        {
+          "metric": "maxLoadingImages",
+          "actualP95": 0,
+          "max": 4,
+          "pass": true,
+          "advisory": false
+        },
+        {
+          "metric": "maxLoadingVideos",
+          "actualP95": 0,
+          "max": 1,
+          "pass": true,
+          "advisory": false
+        },
+        {
+          "metric": "maxActiveVideos",
+          "actualP95": 1,
+          "max": 1,
+          "pass": true,
+          "advisory": false
+        }
+      ]
+    },
+    "M/marquee-select": {
+      "pass": true,
+      "advisoryOnly": false,
+      "budgetsAdvisory": false,
+      "hardFailures": [],
+      "budgetChecks": [
+        {
+          "metric": "frameGapP95Ms",
+          "actualP95": 10.6,
+          "max": 33,
+          "pass": true,
+          "advisory": false
+        },
+        {
+          "metric": "maxFrameGapMs",
+          "actualP95": 48.5,
+          "max": 100,
+          "pass": true,
+          "advisory": true
+        },
+        {
+          "metric": "maxLoadingImages",
+          "actualP95": 1,
+          "max": 4,
+          "pass": true,
+          "advisory": false
+        },
+        {
+          "metric": "maxLoadingVideos",
+          "actualP95": 0,
+          "max": 1,
+          "pass": true,
+          "advisory": false
+        },
+        {
+          "metric": "maxActiveVideos",
+          "actualP95": 0,
+          "max": 1,
+          "pass": true,
+          "advisory": false
+        }
+      ]
+    },
+    "M/click-select": {
+      "pass": true,
+      "advisoryOnly": false,
+      "budgetsAdvisory": false,
+      "hardFailures": [],
+      "budgetChecks": [
+        {
+          "metric": "frameGapP95Ms",
+          "actualP95": 15.1,
+          "max": 33,
+          "pass": true,
+          "advisory": false
+        },
+        {
+          "metric": "maxFrameGapMs",
+          "actualP95": 40.3,
+          "max": 100,
+          "pass": true,
+          "advisory": true
+        },
+        {
+          "metric": "maxLoadingImages",
+          "actualP95": 3,
+          "max": 4,
+          "pass": true,
+          "advisory": false
+        },
+        {
+          "metric": "maxLoadingVideos",
+          "actualP95": 0,
+          "max": 1,
+          "pass": true,
+          "advisory": false
+        },
+        {
+          "metric": "maxActiveVideos",
+          "actualP95": 0,
+          "max": 1,
+          "pass": true,
+          "advisory": false
+        }
+      ]
+    },
+    "M/wheel-zoom": {
+      "pass": true,
+      "advisoryOnly": false,
+      "budgetsAdvisory": false,
+      "hardFailures": [],
+      "budgetChecks": [
+        {
+          "metric": "frameGapP95Ms",
+          "actualP95": 12.2,
+          "max": 33,
+          "pass": true,
+          "advisory": false
+        },
+        {
+          "metric": "maxFrameGapMs",
+          "actualP95": 15.3,
+          "max": 100,
+          "pass": true,
+          "advisory": true
+        },
+        {
+          "metric": "maxLoadingImages",
+          "actualP95": 0,
+          "max": 4,
+          "pass": true,
+          "advisory": false
+        },
+        {
+          "metric": "maxLoadingVideos",
+          "actualP95": 0,
+          "max": 1,
+          "pass": true,
+          "advisory": false
+        },
+        {
+          "metric": "maxActiveVideos",
+          "actualP95": 0,
+          "max": 1,
+          "pass": true,
+          "advisory": false
+        }
+      ]
+    },
+    "M/pan-zoom-mix": {
+      "pass": true,
+      "advisoryOnly": false,
+      "budgetsAdvisory": false,
+      "hardFailures": [],
+      "budgetChecks": [
+        {
+          "metric": "frameGapP95Ms",
+          "actualP95": 11.8,
+          "max": 33,
+          "pass": true,
+          "advisory": false
+        },
+        {
+          "metric": "maxFrameGapMs",
+          "actualP95": 33.2,
+          "max": 100,
+          "pass": true,
+          "advisory": true
+        },
+        {
+          "metric": "maxLoadingImages",
+          "actualP95": 0,
+          "max": 4,
+          "pass": true,
+          "advisory": false
+        },
+        {
+          "metric": "maxLoadingVideos",
+          "actualP95": 0,
+          "max": 1,
+          "pass": true,
+          "advisory": false
+        },
+        {
+          "metric": "maxActiveVideos",
+          "actualP95": 0,
+          "max": 1,
+          "pass": true,
+          "advisory": false
+        }
+      ]
+    },
+    "M/resize": {
+      "pass": true,
+      "advisoryOnly": false,
+      "budgetsAdvisory": false,
+      "hardFailures": [],
+      "budgetChecks": [
+        {
+          "metric": "frameGapP95Ms",
+          "actualP95": 14.3,
+          "max": 33,
+          "pass": true,
+          "advisory": false
+        },
+        {
+          "metric": "maxFrameGapMs",
+          "actualP95": 21.9,
+          "max": 100,
+          "pass": true,
+          "advisory": true
+        },
+        {
+          "metric": "maxLoadingImages",
+          "actualP95": 0,
+          "max": 4,
+          "pass": true,
+          "advisory": false
+        },
+        {
+          "metric": "maxLoadingVideos",
+          "actualP95": 0,
+          "max": 1,
+          "pass": true,
+          "advisory": false
+        },
+        {
+          "metric": "maxActiveVideos",
+          "actualP95": 0,
+          "max": 1,
+          "pass": true,
+          "advisory": false
+        }
+      ]
+    },
+    "M/media-reveal": {
+      "pass": true,
+      "advisoryOnly": false,
+      "budgetsAdvisory": false,
+      "hardFailures": [],
+      "budgetChecks": [
+        {
+          "metric": "frameGapP95Ms",
+          "actualP95": 12.8,
+          "max": 33,
+          "pass": true,
+          "advisory": false
+        },
+        {
+          "metric": "maxFrameGapMs",
+          "actualP95": 33.1,
+          "max": 100,
+          "pass": true,
+          "advisory": true
+        },
+        {
+          "metric": "maxLoadingImages",
+          "actualP95": 0,
+          "max": 4,
+          "pass": true,
+          "advisory": false
+        },
+        {
+          "metric": "maxLoadingVideos",
+          "actualP95": 0,
+          "max": 1,
+          "pass": true,
+          "advisory": false
+        },
+        {
+          "metric": "maxActiveVideos",
+          "actualP95": 0,
+          "max": 1,
+          "pass": true,
+          "advisory": false
+        }
+      ]
+    },
+    "M/low-zoom-preview": {
+      "pass": true,
+      "advisoryOnly": false,
+      "budgetsAdvisory": false,
+      "hardFailures": [],
+      "budgetChecks": [
+        {
+          "metric": "frameGapP95Ms",
+          "actualP95": 10.3,
+          "max": 33,
+          "pass": true,
+          "advisory": false
+        },
+        {
+          "metric": "maxFrameGapMs",
+          "actualP95": 10.5,
+          "max": 100,
+          "pass": true,
+          "advisory": true
+        },
+        {
+          "metric": "maxLoadingImages",
+          "actualP95": 0,
+          "max": 4,
+          "pass": true,
+          "advisory": false
+        },
+        {
+          "metric": "maxLoadingVideos",
+          "actualP95": 0,
+          "max": 1,
+          "pass": true,
+          "advisory": false
+        },
+        {
+          "metric": "maxActiveVideos",
+          "actualP95": 0,
+          "max": 1,
+          "pass": true,
+          "advisory": false
+        }
+      ]
+    },
+    "M/media-error": {
+      "pass": true,
+      "advisoryOnly": false,
+      "budgetsAdvisory": false,
+      "hardFailures": [],
+      "budgetChecks": [
+        {
+          "metric": "frameGapP95Ms",
+          "actualP95": 10.4,
+          "max": 33,
+          "pass": true,
+          "advisory": false
+        },
+        {
+          "metric": "maxFrameGapMs",
+          "actualP95": 12.8,
+          "max": 100,
+          "pass": true,
+          "advisory": true
+        },
+        {
+          "metric": "maxLoadingImages",
+          "actualP95": 0,
+          "max": 4,
+          "pass": true,
+          "advisory": false
+        },
+        {
+          "metric": "maxLoadingVideos",
+          "actualP95": 0,
+          "max": 1,
+          "pass": true,
+          "advisory": false
+        },
+        {
+          "metric": "maxActiveVideos",
+          "actualP95": 0,
+          "max": 1,
+          "pass": true,
+          "advisory": false
+        }
+      ]
+    },
+    "M/video-hover": {
+      "pass": true,
+      "advisoryOnly": false,
+      "budgetsAdvisory": false,
+      "hardFailures": [],
+      "budgetChecks": [
+        {
+          "metric": "frameGapP95Ms",
+          "actualP95": 10.3,
+          "max": 33,
+          "pass": true,
+          "advisory": false
+        },
+        {
+          "metric": "maxFrameGapMs",
+          "actualP95": 14.8,
+          "max": 100,
+          "pass": true,
+          "advisory": true
+        },
+        {
+          "metric": "maxLoadingImages",
+          "actualP95": 0,
+          "max": 4,
+          "pass": true,
+          "advisory": false
+        },
+        {
+          "metric": "maxLoadingVideos",
+          "actualP95": 0,
+          "max": 1,
+          "pass": true,
+          "advisory": false
+        },
+        {
+          "metric": "maxActiveVideos",
+          "actualP95": 1,
+          "max": 1,
+          "pass": true,
+          "advisory": false
+        }
+      ]
+    },
+    "M/reload-heavy": {
+      "pass": true,
+      "advisoryOnly": false,
+      "budgetsAdvisory": false,
+      "hardFailures": [],
+      "budgetChecks": [
+        {
+          "metric": "frameGapP95Ms",
+          "actualP95": 10.3,
+          "max": 33,
+          "pass": true,
+          "advisory": false
+        },
+        {
+          "metric": "maxFrameGapMs",
+          "actualP95": 10.4,
+          "max": 100,
+          "pass": true,
+          "advisory": true
+        },
+        {
+          "metric": "maxLoadingImages",
+          "actualP95": 0,
+          "max": 4,
+          "pass": true,
+          "advisory": false
+        },
+        {
+          "metric": "maxLoadingVideos",
+          "actualP95": 0,
+          "max": 1,
+          "pass": true,
+          "advisory": false
+        },
+        {
+          "metric": "maxActiveVideos",
+          "actualP95": 0,
+          "max": 1,
+          "pass": true,
+          "advisory": false
+        },
+        {
+          "metric": "reloadHeapDeltaMB",
+          "actualP95": 0,
+          "max": 10,
+          "pass": true,
+          "advisory": false
+        }
+      ]
+    }
+  }
+}

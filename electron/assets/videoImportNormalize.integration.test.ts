@@ -142,11 +142,11 @@ describe("懒自愈（ensurePlayableAsset）", () => {
     expect(second.data.url).toBe(first.data.url);
     expect(third.data.url).toBe(first.data.url);
 
-    // 磁盘上只落了一份产物：同名前缀的 mp4 不该因为多次自愈而变成 N 份。
+    // 内容身份目录里只落一份 MP4；原名可能来自先前导入的相同内容。
     const producedDir = path.dirname(first.data.absolutePath);
     const copies = fs
       .readdirSync(producedDir)
-      .filter((name) => name.startsWith("shared-across-surfaces") && name.endsWith(".mp4"));
+      .filter((name) => name.endsWith(".mp4"));
     expect(copies).toHaveLength(1);
 
     // 产物被删（用户清理/同步冲突）→ 标记失效，下次自愈重新转出来，不能死在缓存上。

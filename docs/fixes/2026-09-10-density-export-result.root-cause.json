@@ -1,0 +1,115 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-10-density-export-result",
+  "problem_type": "Terminal export result loses safe explanation and executable next action",
+  "symptom": "Task center export failures show only failed and no way back; successful exports have no file action.",
+  "direct_cause": "ExportJobManager drops error codes; export projection drops terminal actions and TaskRow hides the safe error.",
+  "class_root": "Export result projection has no terminal explanation and action invariant.",
+  "affected_population": [
+    "All export jobs, including persisted terminal jobs"
+  ],
+  "scope_paths": [
+    "src/workbench/taskCenter/exportJobTaskCenter.ts",
+    "src/workbench/taskCenter/TaskCenterPanel.tsx",
+    "src/workbench/taskCenter/taskCenterProjection.ts",
+    "src/i18n/resources.ts",
+    "electron/export/exportJobManager.ts",
+    "src/workbench/taskCenter/exportJobTaskAction.ts",
+    "src/workbench/taskCenter/TaskCenterButton.tsx"
+  ],
+  "entry_points": [
+    "Live export errors",
+    "Persisted export terminal rows"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "Internal task projections and existing desktop navigation API define this invariant.",
+  "invariants": [
+    "Known error codes become localized explanations, raw diagnostics never become task row text.",
+    "Terminal jobs have an actionable file or preview destination."
+  ],
+  "generality_proof": "All live and restored exports pass through the same snapshot serializer and task projection. Known code mapping and explicit unknown explanation apply regardless of encoder or caller.",
+  "shared_boundaries": [
+    {
+      "path": "electron/export/exportJobManager.ts",
+      "symbol": "toErrorDetails",
+      "responsibility": "Preserve structured error identity."
+    },
+    {
+      "path": "src/workbench/taskCenter/exportJobTaskCenter.ts",
+      "symbol": "buildExportJobTaskRows",
+      "responsibility": "Project safe reasons and real terminal actions for all jobs."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/workbench/taskCenter/exportJobTaskCenter.ts",
+      "entry_point": "buildExportJobTaskRows",
+      "disposition": "enforced",
+      "evidence": "Both live and historical snapshots are mapped here."
+    },
+    {
+      "path": "src/workbench/adoption/adoptionReceipt.ts",
+      "entry_point": "adoptionReceipt",
+      "disposition": "not-affected",
+      "evidence": "Already uses localized reason and real timeline action."
+    },
+    {
+      "path": "src/workbench/generationCanvas/adapters/assetImportAdapter.ts",
+      "entry_point": "retryLocalAssetImport",
+      "disposition": "not-affected",
+      "evidence": "Import failure nodes already explain local copy failure and expose retry import."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Every export failure and persisted terminal job can reproduce.",
+    "same_class_scan": [
+      "rg showInFolder and error in exportJobManager/taskCenter",
+      "Read adoptionReceipt failure actions and assetImportAdapter retryLocalAssetImport"
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "src/workbench/taskCenter/exportJobTaskCenter.ts",
+    "invariant": "Terminal export rows carry safe reasons and executable recovery or result action.",
+    "failure_mode": "Unknown or missing code has an honest localized unknown explanation; missing results return to preview.",
+    "exception_policy": "none",
+    "strategy": "Preserve error code upstream and derive all terminal actions at projection boundary.",
+    "artifacts": [
+      "src/workbench/taskCenter/exportJobTaskCenter.ts",
+      "src/workbench/taskCenter/exportJobTaskAction.ts",
+      "electron/export/exportJobManager.ts"
+    ]
+  },
+  "regression_tests": [
+    "src/workbench/taskCenter/exportJobTaskCenter.test.ts",
+    "src/workbench/taskCenter/exportJobTaskAction.test.ts",
+    "electron/export/exportJobManager.test.ts"
+  ],
+  "class_regression_tests": [
+    "src/workbench/taskCenter/exportJobTaskCenter.test.ts",
+    "electron/export/exportJobManager.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "src/workbench/taskCenter/exportJobTaskCenter.ts"
+    ],
+    "rationale": "Remove unconditional terminal null action and bare failed explanation."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "Uses existing desktop bridge and internal projections; no dependency behavior changes.",
+    "exit_criteria": []
+  },
+  "migration": "No persisted migration; legacy errors without code retain honest unknown reason and return action.",
+  "residual_risks": [
+    "Real Electron file reveal and project hydration must be verified by the parent agent."
+  ],
+  "invariant_owner_layer": {
+    "layer": "src/workbench/taskCenter/exportJobTaskCenter.ts",
+    "tests": [
+      "src/workbench/taskCenter/exportJobTaskCenter.test.ts"
+    ]
+  }
+}

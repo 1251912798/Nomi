@@ -149,7 +149,7 @@ export async function ensurePlayableAsset(payload: unknown): Promise<unknown> {
   if (!transcoded) return null;
   try {
     const outputBytes = fs.readFileSync(transcoded.outputPath);
-    const asset = writeAsset(projectId, outputBytes, playableMp4FileName(sourceName), "video/mp4", {
+    const asset = await writeAsset(projectId, outputBytes, playableMp4FileName(sourceName), "video/mp4", {
       kind: "upload",
       originalName: sourceName,
       playbackNormalizedFrom: transcoded.reason,

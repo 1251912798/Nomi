@@ -57,6 +57,17 @@ export function whenCanvasWriteBoundarySettled(): Promise<void> {
   return pending || cancelling ? waitUntilSettled() : Promise.resolve()
 }
 
+/** Derived projections share their owning transaction, but wait behind foreign
+ * durable writes. Recheck on wake-up because another owner may have claimed it. */
+export function runWhenCanvasWriteBoundarySettled(write: () => void): void {
+  const context = getActiveCanvasGestureContext()
+  if ((!pending && !cancelling) || (pending && context?.proposalId === pending.proposalId)) {
+    write()
+    return
+  }
+  void whenCanvasWriteBoundarySettled().then(() => runWhenCanvasWriteBoundarySettled(write))
+}
+
 function cancelPending(): boolean {
   const previous = pending
   if (!previous) return true

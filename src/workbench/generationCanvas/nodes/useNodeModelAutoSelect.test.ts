@@ -28,14 +28,16 @@ it('401 preserves the chosen vendor and offers a switch that requires a click', 
   } as GenerationCanvasNode
   mocks.nodes = [node]
   const current = { value: 'gpt-image-2', modelKey: 'gpt-image-2', vendor: 'apimart', label: 'GPT Image 2' } as ModelOption
-  const alternative = { ...current, vendor: 'kie' }
+  const alternative = { ...current, vendor: 'code-newcli-com', vendorName: '我的中转', label: 'GPT Image 2' }
   const updateNode = vi.fn()
   useNodeModelAutoSelect({ node, modelOptions: [current, alternative], selectedModelValue: 'gpt-image-2',
     selectedModelOption: current, archetype: null, isGenerationNode: true, isImageLike: true, isVideoLike: false, updateNode })
   for (const effect of mocks.effects) effect()
   expect(updateNode).not.toHaveBeenCalled()
   expect(node.meta?.modelVendor).toBe('apimart')
-  expect(mocks.push).toHaveBeenCalledWith(expect.objectContaining({ actionLabel: expect.stringContaining('kie'), onAction: expect.any(Function) }))
+  expect(mocks.push).toHaveBeenCalledWith(expect.objectContaining({ actionLabel: expect.stringContaining('我的中转'), onAction: expect.any(Function) }))
+  expect(mocks.push.mock.calls[0][0].actionLabel).toContain('GPT Image 2')
+  expect(mocks.push.mock.calls[0][0].actionLabel).not.toContain('code-newcli-com')
   mocks.push.mock.calls[0][0].onAction()
-  expect(updateNode).toHaveBeenCalledWith('image', expect.objectContaining({ meta: expect.objectContaining({ modelVendor: 'kie' }) }))
+  expect(updateNode).toHaveBeenCalledWith('image', expect.objectContaining({ meta: expect.objectContaining({ modelVendor: 'code-newcli-com' }) }))
 })

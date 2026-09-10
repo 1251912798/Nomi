@@ -141,7 +141,13 @@ export const zhCN = {
     },
     exportJob: {
       title: '导出成片',
-      failed: '导出失败',
+      failed: '未提供可确认的失败原因，请返回导出重试。',
+      missingFile: '素材文件不存在，请重新导入后导出。',
+      diskFull: '磁盘空间不足，请腾出空间后重新导出。',
+      permissionDenied: '无法访问导出所需文件，请检查文件权限。',
+      mediaUnreadable: '无法读取素材，请检查素材能否播放后重新导出。',
+      revealOutput: '查看成片',
+      returnToExport: '返回导出',
       statuses: {
         queued: '等待导出', preparing: '准备素材', planning: '规划导出', rendering: '渲染画面', encoding: '编码成片',
         muxing: '合成音视频', finalizing: '完成导出', succeeded: '导出完成', failed: '导出失败', cancelled: '已取消',
@@ -550,7 +556,13 @@ export const en = {
     },
     exportJob: {
       title: 'Export',
-      failed: 'Export failed',
+      failed: 'The failure reason is unavailable. Return to export and retry.',
+      missingFile: 'A source file is missing. Import it again before exporting.',
+      diskFull: 'Not enough disk space. Free up space and export again.',
+      permissionDenied: 'Export cannot access a required file. Check file permissions.',
+      mediaUnreadable: 'A source cannot be read. Check that it plays, then export again.',
+      revealOutput: 'Show exported video',
+      returnToExport: 'Return to export',
       statuses: {
         queued: 'Queued', preparing: 'Preparing media', planning: 'Planning export', rendering: 'Rendering', encoding: 'Encoding',
         muxing: 'Muxing audio and video', finalizing: 'Finalizing', succeeded: 'Export complete', failed: 'Export failed', cancelled: 'Cancelled',

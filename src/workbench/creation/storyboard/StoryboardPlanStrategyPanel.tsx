@@ -70,16 +70,7 @@ export default function StoryboardPlanStrategyPanel({ plan, state, onChange }: S
 
   const aggregatedBlockers = aggregateIssues(view.blockers)
   const total = view.requiredMerges.length + view.mergeSuggestions.length + view.splits.length + aggregatedBlockers.length
-  if (total === 0) {
-    return (
-      <StatusBar stateKey="clear">
-        <span className="inline-flex items-center gap-1">
-          <IconCheck size={12} stroke={2} />
-          {t('storyboardEditor.strategy.noIssues')}
-        </span>
-      </StatusBar>
-    )
-  }
+  if (total === 0) return null
 
   const shotTag = (shotId: string): string => {
     const shot = plan.shots.find((candidate) => storyboardShotId(candidate) === shotId)

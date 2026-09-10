@@ -134,6 +134,10 @@ export function TaskCenterButton({ projectId, onRevealNode }: Props): JSX.Elemen
     const exports = buildExportJobTaskRows(resolvedExportJobs, {
       title: t('taskCenter.exportJob.title'),
       failed: t('taskCenter.exportJob.failed'),
+      missingFile: t('taskCenter.exportJob.missingFile'),
+      diskFull: t('taskCenter.exportJob.diskFull'),
+      permissionDenied: t('taskCenter.exportJob.permissionDenied'),
+      mediaUnreadable: t('taskCenter.exportJob.mediaUnreadable'),
       statuses: {
         queued: t('taskCenter.exportJob.statuses.queued'),
         preparing: t('taskCenter.exportJob.statuses.preparing'),

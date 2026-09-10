@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { createHash } from "node:crypto";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
@@ -231,7 +232,7 @@ describe("runtime workspace asset storage", () => {
     expect(asset.data.url).toBe(`nomi-local://asset/${encodeURIComponent(workspace.id)}/assets/generated/2026-05-31/render.png`);
   });
 
-  it("writes imported user files under assets/imported/YYYY-MM-DD", async () => {
+  it("writes imported user files under their content identity", async () => {
     const workspace = createWorkspace();
 
     const asset = (await importLocalFile({
@@ -241,8 +242,9 @@ describe("runtime workspace asset storage", () => {
       fileName: "photo.png",
     })) as AssetRecord;
 
-    expect(asset.data.relativePath).toBe("assets/imported/2026-05-31/photo.png");
-    expect(asset.data.absolutePath).toBe(path.join(workspace.rootPath, "assets", "imported", "2026-05-31", "photo.png"));
+    const hash = createHash("sha256").update(Buffer.from([1, 2, 3])).digest("hex");
+    expect(asset.data.relativePath).toBe(`assets/imported/sha256/${hash}/photo.png`);
+    expect(asset.data.absolutePath).toBe(path.join(workspace.rootPath, "assets", "imported", "sha256", hash, "photo.png"));
     expect([...fs.readFileSync(asset.data.absolutePath)]).toEqual([1, 2, 3]);
   });
 
@@ -256,7 +258,8 @@ describe("runtime workspace asset storage", () => {
       fileName: "clip",
     })) as AssetRecord;
 
-    expect(asset.data.relativePath).toMatch(/assets\/imported\/2026-05-31\/clip\.mp4$/);
+    const hash = createHash("sha256").update(bytes).digest("hex");
+    expect(asset.data.relativePath).toBe(`assets/imported/sha256/${hash}/clip.mp4`);
     expect(asset.data.contentType).toBe("video/mp4");
   });
 
@@ -274,7 +277,8 @@ describe("runtime workspace asset storage", () => {
       fileName: "large-image.png",
     }, { allowSourcePath: true })) as AssetRecord;
 
-    expect(asset.data.relativePath).toBe("assets/imported/2026-05-31/large-image.png");
+    const hash = createHash("sha256").update(Buffer.from([4, 5, 6, 7])).digest("hex");
+    expect(asset.data.relativePath).toBe(`assets/imported/sha256/${hash}/large-image.png`);
     expect([...fs.readFileSync(asset.data.absolutePath)]).toEqual([4, 5, 6, 7]);
     expect(readFileSync).not.toHaveBeenCalledWith(sourcePath);
     readFileSync.mockRestore();

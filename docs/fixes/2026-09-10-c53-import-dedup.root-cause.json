@@ -1,0 +1,115 @@
+{
+  "schema_version": 3,
+  "id": "2026-09-10-c53-import-dedup",
+  "problem_type": "Repeated local uploads create duplicate project assets",
+  "symptom": "Importing the same local file twice shows duplicate library entries",
+  "direct_cause": "Both byte and native import writers allocate a unique filename on every invocation",
+  "class_root": "The shared upload persistence boundary lacks project-scoped content identity",
+  "affected_population": [
+    "Repeated and concurrent local media uploads via bytes and native file paths"
+  ],
+  "scope_paths": [
+    "electron/assets/projectAssetStore.ts",
+    "electron/assets/uploadContentStore.ts",
+    "electron/assets/localFileImport.ts"
+  ],
+  "entry_points": [
+    "writeAsset byte upload",
+    "copyAssetFile native upload"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "Internal project upload identity uses existing Node SHA256 and filesystem primitives; no external format changes.",
+  "invariants": [
+    "Equal upload bytes within one project resolve to the same stored URL",
+    "Different bytes and different projects retain distinct identity",
+    "Generated outputs and captures keep their existing persistence semantics",
+    "Parsed sidecars must be JSON records before their fields are consumed",
+    "Stored bytes are verified against size/mtime/ctime hash cache in both legacy and new content directories; changed files and invalid metadata are never overwritten"
+  ],
+  "generality_proof": "Bytes and native uploads await the same project/hash single-flight boundary. Legacy same-size uploads use streamed SHA256 and their original URLs; new uploads use a content directory. The existing renderer URL merge preserves intentional canvas reuse.",
+  "shared_boundaries": [
+    {
+      "path": "electron/assets/uploadContentStore.ts",
+      "symbol": "persistUploadBytes",
+      "responsibility": "Resolve bytes by project-scoped SHA256"
+    },
+    {
+      "path": "electron/assets/uploadContentStore.ts",
+      "symbol": "persistUploadFile",
+      "responsibility": "Hash and publish native copies through the same content identity"
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "electron/assets/projectAssetStore.ts",
+      "entry_point": "writeAsset",
+      "disposition": "enforced",
+      "evidence": "Byte imports delegate upload persistence after media validation"
+    },
+    {
+      "path": "electron/assets/projectAssetStore.ts",
+      "entry_point": "copyAssetFile",
+      "disposition": "enforced",
+      "evidence": "Native copies delegate upload persistence after media validation"
+    },
+    {
+      "path": "electron/assets/projectAssetStore.ts",
+      "entry_point": "writeDeterministicAsset",
+      "disposition": "not-affected",
+      "evidence": "Generated materialization has its own identity and is unchanged"
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Every new import invocation previously allocated another path",
+    "same_class_scan": [
+      "assetUploadApi.ts importNativeFile and importFile converge on projectAssetStore",
+      "importAudioToLibrary.ts and assetImportAdapter.ts both use assetUploadApi",
+      "useAssetPool.ts composeAssetPoolSources deduplicates stored render URLs"
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "electron/assets/uploadContentStore.ts",
+    "invariant": "One stored URL for equal upload bytes in a project",
+    "failure_mode": "Copy or publication errors propagate; no successful result before complete file publication",
+    "exception_policy": "none",
+    "strategy": "Project/hash single-flight lookup validates all imported candidates (including hash directories) with size-prefiltered streaming hashes and size/mtime/ctime cache. Invalid sidecars are skipped. Publication selects an unoccupied filename and never replaces externally changed content.",
+    "artifacts": [
+      "electron/assets/projectAssetStore.ts",
+      "electron/assets/uploadContentStore.ts",
+      "electron/assets/localFileImport.ts"
+    ]
+  },
+  "regression_tests": [
+    "electron/assets/projectAssetImportDedup.test.ts",
+    "electron/assets/projectAssetStore.test.ts",
+    "electron/assets/localFileCopy.test.ts",
+    "electron/assets/videoImportNormalize.integration.test.ts"
+  ],
+  "class_regression_tests": [
+    "electron/assets/projectAssetImportDedup.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "not-applicable",
+    "removed_paths": [],
+    "rationale": "Existing non-upload paths remain semantically separate; no alternate upload persistence path remains for new imports."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "Existing Node crypto and filesystem primitives own this internal persistence invariant.",
+    "exit_criteria": []
+  },
+  "migration": "On-demand existing upload lookup covers legacy and hash directories, prefilters file size, streams SHA256, and atomically caches hash plus size/mtime/ctime in valid existing sidecars. Changed content and invalid sidecars remain untouched; reimports allocate another vacant filename when no valid match remains. No existing duplicates are deleted.",
+  "residual_risks": [
+    "True Electron import screenshots are owned by the parent task"
+  ],
+  "invariant_owner_layer": {
+    "layer": "electron/assets/uploadContentStore.ts",
+    "path": "electron/assets/uploadContentStore.ts",
+    "why_here": "Both local bytes and native uploads converge before writing project assets",
+    "tests": [
+      "electron/assets/projectAssetImportDedup.test.ts"
+    ]
+  }
+}

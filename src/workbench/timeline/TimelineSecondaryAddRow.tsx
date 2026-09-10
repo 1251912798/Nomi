@@ -14,7 +14,7 @@ import { getActiveWorkbenchProjectId } from '../project/workbenchProjectSession'
 /**
  * 叠加层收起条（方案 B 的空态 + 方案 A 的视觉，用户拍板）。
  * 配乐/字幕为空时不占整条副轨，收成这一条细行，**沿用空轨「浅虚线 lane + 淡灰提示」语言**(不再手写彩色 pill)：
- *  - 配乐：整条虚线 lane = 拖放区(拖素材库音频直接落,落到播放头)，居中淡提示。
+ *  - 配乐：整条虚线 lane = 拖放区(拖素材库音频直接落,落到播放头)，保留落点与配乐按钮。
  *  - 字幕：右侧一个 WorkbenchButton 极简钮(点击在播放头加字幕)。只在预览(showText)给。
  * 只空音频(生成画布)→只虚线拖放 lane;只空字幕(音频已有 clip)→只一个「+ 字幕」钮。
  */
@@ -165,14 +165,6 @@ export function TimelineSecondaryAddRow({
           }}
           onDrop={onDrop}
         >
-          <span
-            className={cn(
-              'flex items-center gap-1.5 text-micro font-medium text-[var(--nomi-ink-40)] pointer-events-none',
-            )}
-          >
-            <IconMusic size={12} stroke={1.8} />
-            {t('timelineEditor.secondary.dropAudio')}
-          </span>
           <span className="absolute right-1 inline-flex items-center gap-1">
             {musicBtn}
             {subtitleBtn}
