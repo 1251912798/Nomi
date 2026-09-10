@@ -47,3 +47,7 @@ main run 34414378679：M/click-select 35.5ms，6/6 selected，stage 798×876；B
 首轮完整 performance profile：18/18 场景通过，warmupFailures=[]，click-select=13.3ms、6/6、stageHeight=876。随后完整 gates 的新鲜基线闸发现 main 前进到 6e68cbcf5425，正常保存工作后合并，无冲突。新 main 的 0ca1816fa 将原测试夹具收窄为纯 selection race；本分支保留它，并另加原 design creation race，不让新建分镜时的真实投影冲突消失在覆盖之外。在合并树上重新运行完整 gates 和 performance profile。
 
 完整 gates 在 8ab54b2ecb32 上 exit 0：77 contracts 中 74 通过、0 阻断失败、3 既有 advisory；173 设计基线通过；Vitest 12073 通过/2 跳过；Agent runtime 425/425；前端和 Electron 构建通过。新合并树完整 performance profile 正在复验，最终结果随交接与 PR 更新。
+
+第二轮完整 performance profile（已并 #619）18/18 通过，预热失败 0，click-select=15.1ms、6/6、stageHeight=876。推送前刷新发现 #685 已入 main，正常合入为 ffdf023a，无冲突；其变更为技能/提示词库与节点 composer，不改 React Flow 手势/缩放内核。再次完整 gates + click-select/multi-node-drag 定向性能复验，最终收据见 B5-LAST.md 与 PR。
+
+最终合并树 ffdf023a3900 完整 gates exit 0：12086 Vitest 通过/2 跳过、425 Agent runtime 通过、173 设计基线通过、contracts 0 阻断失败、前端/Electron 构建通过。click-select 和 multi-node-drag 在同树 production build 上均通过，预热失败 0，原预算/原结果断言未改。最终摘要见 ci-perf-final-merged.json；日志 /tmp/b5-cifix-delivery-gates.log。

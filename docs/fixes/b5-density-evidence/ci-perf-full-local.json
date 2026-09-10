@@ -1,7 +1,7 @@
 {
   "platform": "darwin",
   "arch": "arm64",
-  "commit": "d5223179a0067a6bd7718786b4e23076ad8ef442",
+  "commit": "8ab54b2ecb324b7859b6b316e6542ba92c8f9819",
   "dirty": true,
   "leg": {
     "devServer": false,
@@ -19,14 +19,14 @@
       "budgetChecks": [
         {
           "metric": "frameGapP95Ms",
-          "actualP95": 10.2,
+          "actualP95": 10.4,
           "max": 33,
           "pass": true,
           "advisory": false
         },
         {
           "metric": "maxFrameGapMs",
-          "actualP95": 10.7,
+          "actualP95": 13.1,
           "max": 100,
           "pass": true,
           "advisory": true
@@ -69,14 +69,14 @@
       "budgetChecks": [
         {
           "metric": "frameGapP95Ms",
-          "actualP95": 12.8,
+          "actualP95": 12.3,
           "max": 33,
           "pass": true,
           "advisory": false
         },
         {
           "metric": "maxFrameGapMs",
-          "actualP95": 35.6,
+          "actualP95": 36.2,
           "max": 100,
           "pass": true,
           "advisory": true
@@ -112,14 +112,14 @@
       "budgetChecks": [
         {
           "metric": "frameGapP95Ms",
-          "actualP95": 10.9,
+          "actualP95": 11.5,
           "max": 33,
           "pass": true,
           "advisory": false
         },
         {
           "metric": "maxFrameGapMs",
-          "actualP95": 22.2,
+          "actualP95": 19.6,
           "max": 100,
           "pass": true,
           "advisory": true
@@ -155,21 +155,21 @@
       "budgetChecks": [
         {
           "metric": "frameGapP95Ms",
-          "actualP95": 12.5,
+          "actualP95": 11.6,
           "max": 33,
           "pass": true,
           "advisory": false
         },
         {
           "metric": "maxFrameGapMs",
-          "actualP95": 22.4,
+          "actualP95": 27,
           "max": 100,
           "pass": true,
           "advisory": true
         },
         {
           "metric": "maxLoadingImages",
-          "actualP95": 0,
+          "actualP95": 3,
           "max": 4,
           "pass": true,
           "advisory": false
@@ -198,14 +198,14 @@
       "budgetChecks": [
         {
           "metric": "frameGapP95Ms",
-          "actualP95": 13.3,
+          "actualP95": 14.9,
           "max": 33,
           "pass": true,
           "advisory": false
         },
         {
           "metric": "maxFrameGapMs",
-          "actualP95": 38.9,
+          "actualP95": 34.6,
           "max": 100,
           "pass": true,
           "advisory": true
@@ -241,21 +241,21 @@
       "budgetChecks": [
         {
           "metric": "frameGapP95Ms",
-          "actualP95": 11.5,
+          "actualP95": 10.7,
           "max": 33,
           "pass": true,
           "advisory": false
         },
         {
           "metric": "maxFrameGapMs",
-          "actualP95": 65.4,
+          "actualP95": 62,
           "max": 100,
           "pass": true,
           "advisory": true
         },
         {
           "metric": "longTaskP95Ms",
-          "actualP95": 66,
+          "actualP95": 59,
           "max": 80,
           "pass": true,
           "advisory": false
@@ -291,21 +291,21 @@
       "budgetChecks": [
         {
           "metric": "frameGapP95Ms",
-          "actualP95": 11.9,
+          "actualP95": 12.2,
           "max": 33,
           "pass": true,
           "advisory": false
         },
         {
           "metric": "maxFrameGapMs",
-          "actualP95": 21.8,
+          "actualP95": 26.4,
           "max": 100,
           "pass": true,
           "advisory": true
         },
         {
           "metric": "maxLoadingImages",
-          "actualP95": 2,
+          "actualP95": 0,
           "max": 4,
           "pass": true,
           "advisory": false
@@ -334,21 +334,21 @@
       "budgetChecks": [
         {
           "metric": "frameGapP95Ms",
-          "actualP95": 10.3,
+          "actualP95": 10.6,
           "max": 33,
           "pass": true,
           "advisory": false
         },
         {
           "metric": "maxFrameGapMs",
-          "actualP95": 46,
+          "actualP95": 48.5,
           "max": 100,
           "pass": true,
           "advisory": true
         },
         {
           "metric": "maxLoadingImages",
-          "actualP95": 0,
+          "actualP95": 1,
           "max": 4,
           "pass": true,
           "advisory": false
@@ -377,14 +377,14 @@
       "budgetChecks": [
         {
           "metric": "frameGapP95Ms",
-          "actualP95": 13.3,
+          "actualP95": 15.1,
           "max": 33,
           "pass": true,
           "advisory": false
         },
         {
           "metric": "maxFrameGapMs",
-          "actualP95": 35.6,
+          "actualP95": 40.3,
           "max": 100,
           "pass": true,
           "advisory": true
@@ -427,7 +427,7 @@
         },
         {
           "metric": "maxFrameGapMs",
-          "actualP95": 13.6,
+          "actualP95": 15.3,
           "max": 100,
           "pass": true,
           "advisory": true
@@ -463,14 +463,14 @@
       "budgetChecks": [
         {
           "metric": "frameGapP95Ms",
-          "actualP95": 10.7,
+          "actualP95": 11.8,
           "max": 33,
           "pass": true,
           "advisory": false
         },
         {
           "metric": "maxFrameGapMs",
-          "actualP95": 25.7,
+          "actualP95": 33.2,
           "max": 100,
           "pass": true,
           "advisory": true
@@ -506,21 +506,21 @@
       "budgetChecks": [
         {
           "metric": "frameGapP95Ms",
-          "actualP95": 14.9,
+          "actualP95": 14.3,
           "max": 33,
           "pass": true,
           "advisory": false
         },
         {
           "metric": "maxFrameGapMs",
-          "actualP95": 21.5,
+          "actualP95": 21.9,
           "max": 100,
           "pass": true,
           "advisory": true
         },
         {
           "metric": "maxLoadingImages",
-          "actualP95": 1,
+          "actualP95": 0,
           "max": 4,
           "pass": true,
           "advisory": false
@@ -556,7 +556,7 @@
         },
         {
           "metric": "maxFrameGapMs",
-          "actualP95": 34.3,
+          "actualP95": 33.1,
           "max": 100,
           "pass": true,
           "advisory": true
@@ -599,7 +599,7 @@
         },
         {
           "metric": "maxFrameGapMs",
-          "actualP95": 10.9,
+          "actualP95": 10.5,
           "max": 100,
           "pass": true,
           "advisory": true
@@ -642,14 +642,14 @@
         },
         {
           "metric": "maxFrameGapMs",
-          "actualP95": 12.3,
+          "actualP95": 12.8,
           "max": 100,
           "pass": true,
           "advisory": true
         },
         {
           "metric": "maxLoadingImages",
-          "actualP95": 1,
+          "actualP95": 0,
           "max": 4,
           "pass": true,
           "advisory": false
@@ -678,14 +678,14 @@
       "budgetChecks": [
         {
           "metric": "frameGapP95Ms",
-          "actualP95": 9.9,
+          "actualP95": 10.3,
           "max": 33,
           "pass": true,
           "advisory": false
         },
         {
           "metric": "maxFrameGapMs",
-          "actualP95": 19.6,
+          "actualP95": 14.8,
           "max": 100,
           "pass": true,
           "advisory": true
