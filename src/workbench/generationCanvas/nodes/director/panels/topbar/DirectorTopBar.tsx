@@ -12,6 +12,7 @@
  */
 import React from 'react'
 import { useTranslation } from 'react-i18next'
+import { cn } from '../../../../../../utils/cn'
 import { WorkbenchIconButton } from '../../../../../../design'
 import { IconArrowBackUp, IconArrowForwardUp, IconCamera, IconChevronDown, IconRefresh, IconStack2, IconX } from '../../../../../../vendor/tablerIcons'
 import { useDirectorStore, useDirectorStoreApi } from '../../DirectorEditorContext'
@@ -24,10 +25,10 @@ import { AddObjectMenu } from './AddObjectMenu'
 import { ViewMenu } from './ViewMenu'
 
 /** 一个功能簇 = 一枚浮起的胶囊。边界靠间距和描边，不靠分隔线（§1.5.3）。 */
-function Cluster({ label, children, testId }: { label: string; children: React.ReactNode; testId?: string }): JSX.Element {
+function Cluster({ label, children, testId, className }: { label: string; children: React.ReactNode; testId?: string; className?: string }): JSX.Element {
   return (
     <div
-      className="pointer-events-auto flex items-center gap-1 rounded-nomi-lg border border-nomi-line bg-nomi-paper/95 p-1 shadow-nomi-md backdrop-blur"
+      className={cn('pointer-events-auto flex items-center gap-1 rounded-nomi-lg border border-nomi-line bg-nomi-paper/95 p-1 shadow-nomi-md backdrop-blur', className)}
       role="group"
       aria-label={label}
       data-testid={testId}
@@ -57,9 +58,11 @@ export function DirectorTopBar({ onResetView, onExit, onCancelCreation, onOpenSe
   const [sceneMenuOpen, setSceneMenuOpen] = React.useState(false)
 
   return (
-    <div className="pointer-events-none absolute inset-x-3 top-3 z-10 flex items-start justify-between gap-3" data-testid="director-topbar">
+    // 三列网格而非两端撑开：两端撑开只在左右两簇等宽时让中间居中，「场景」宽「交付」窄时工具簇会偏；
+    // 中列 auto 才真正落在视口正中（与获批样张一致）。左右两簇各自 justify-self 贴边。
+    <div className="pointer-events-none absolute inset-x-3 top-3 z-10 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start gap-3" data-testid="director-topbar">
       {/* ① 场景：图层切换。只有一层时禁用并说明为什么（控件契约 C1：可点即有效）。 */}
-      <Cluster label={t('director.topbar.sceneAria')} testId="director-scene-cluster">
+      <Cluster label={t('director.topbar.sceneAria')} testId="director-scene-cluster" className="justify-self-start">
         <span className="flex items-center gap-1.5 px-2 text-body-sm font-semibold text-nomi-ink">
           <IconStack2 size={16} stroke={1.9} className="text-nomi-ink-40" />
           <span className="max-w-[160px] truncate">{sceneName}</span>
@@ -116,7 +119,7 @@ export function DirectorTopBar({ onResetView, onExit, onCancelCreation, onOpenSe
       </div>
 
       {/* ⑤ 交付 */}
-      <Cluster label={t('director.topbar.deliverAria')} testId="director-deliver-cluster">
+      <Cluster label={t('director.topbar.deliverAria')} testId="director-deliver-cluster" className="justify-self-end">
         <WorkbenchIconButton
           size="sm"
           icon={<IconCamera size={16} stroke={1.9} />}
