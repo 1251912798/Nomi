@@ -227,5 +227,7 @@ console.log(
   `✓ 设计 token 门岗通过：${RULES.length} 类棘轮（只减不增，目标清零）。当前 ${counts.join("/")}（${RULES.map((r) => r.baseline).join("/")}）。` +
     `\n✓ color-mix 色相漂移零容忍：扫 ${mixFiles.length} 文件 / ${tokenDefs.size} 个 token 定义，无 in oklch 跨色相混合。` +
     `\n✓ color-mix(in oklch, …, transparent) 零容忍：无一处（混 transparent 一律 in oklab）。` +
+    `
+✓ 强调色描边棘轮：${accentTotal} 处（白名单 ${Object.keys(accentBaseline).length} 个文件，只减不增）；--nomi-focus / --nomi-info 不别名到强调色。` +
     `\n✓ 语义 token 作用域零容忍：--nomi-*/--workbench-* 定义全部在 :root 层（portal/浮层任意挂载点都解析得到）。`,
 );

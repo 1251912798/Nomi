@@ -1,1 +1,70 @@
-{}
+{
+  "src/ui/app-shell/shell/AgentBallFace.tsx": {
+    "count": 2,
+    "reason": "保留：Agent 球的运行环与转圈是「正在发生」的进度反馈（用户拍板：蓝色只留进度）"
+  },
+  "src/ui/browser/popover/BrowserAssetPopoverParts.tsx": {
+    "count": 2,
+    "reason": "保留：两个下载转圈（border-t 强调色）是进度反馈"
+  },
+  "src/workbench/generationCanvas/nodes/BaseGenerationNode.tsx": {
+    "count": 1,
+    "reason": "保留：剪贴板导入 / 抠图处理中的脉冲环是进度反馈"
+  },
+  "src/workbench/generationCanvas/nodes/ClipNodeTimeline.tsx": {
+    "count": 1,
+    "reason": "保留（协调拍板）：片段按类型的色边是颜色编码信息，不是强调描边"
+  },
+  "src/workbench/generationCanvas/nodes/controls/ParameterControlBody.tsx": {
+    "count": 1,
+    "reason": "保留（协调拍板）：滑块拇指色边是控件本体"
+  },
+  "src/workbench/generationCanvas/nodes/director/DirectorViewShell.tsx": {
+    "count": 1,
+    "reason": "保留：主按钮（强调色底 + 同色边）"
+  },
+  "src/workbench/library/WorkflowLibraryContent.tsx": {
+    "count": 1,
+    "reason": "保留：主按钮（强调色底 + 同色边）"
+  },
+  "src/workbench/onboarding/OnboardingChecklist.tsx": {
+    "count": 1,
+    "reason": "保留：清单里「下一步」的进度圈，是进度指示"
+  },
+  "src/workbench/onboarding/OnboardingSpotlight.tsx": {
+    "count": 2,
+    "reason": "保留（协调拍板）：新手引导聚光框是有意的引导，用强调色框住被讲解的控件"
+  },
+  "src/workbench/timeline/agent/TimelinePlanPreviewLayer.tsx": {
+    "count": 2,
+    "reason": "保留（协调拍板）：AI 计划预览的新增 / 修改色带是颜色编码信息，不是强调描边"
+  },
+  "src/workbench/generationCanvas/reactFlow/generationCanvasReactFlow.css": {
+    "count": 1,
+    "reason": "保留：连线握把磁吸悬停 / 激活时的边（用户拍板：连线握把保留强调色）"
+  },
+  "src/workbench/generationCanvas/styles/generationCanvas.css": {
+    "count": 1,
+    "reason": "保留：定位节点时的 1.35 秒脉冲外圈，一次性动画反馈，不是常驻描边"
+  },
+  "src/workbench/generationCanvas/reactFlow/GenerationCanvasReactFlowNodes.tsx": {
+    "count": 2,
+    "reason": "待补：选参考图时「可拾取」目标高亮，等生成框探索线（L5）定挑选状态手感后再改"
+  },
+  "src/workbench/generationCanvas/components/GroupFrame.tsx": {
+    "count": 2,
+    "reason": "待补：分组框选中样式由分组框头线（fix/group-header-board-parity）在改，合入后清零"
+  },
+  "src/workbench/generationCanvas/components/CollapsedGroupCard.tsx": {
+    "count": 1,
+    "reason": "待补：折叠分组卡选中样式属分组框头线，合入后清零"
+  },
+  "src/workbench/generationCanvas/nodes/NodeGenerationComposer.tsx": {
+    "count": 1,
+    "reason": "待补：生成框拖入高亮，文件在分组框头线的改动面内，合入后改灰线"
+  },
+  "src/workbench/creation/DocumentListSidebar.tsx": {
+    "count": 2,
+    "reason": "待补：文稿行重命名输入框，文稿行动作线（fix/script-row-actions）在改这个组件，合入后改 border-nomi-ink-40"
+  }
+}
