@@ -11,7 +11,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { clickOrFail, expect, expectAbsent, expectVisible, proveProbe, screenshotSettled } from './_assert.mjs'
-import { canvasFitViewButton, newProjectEntry } from './_shell.mjs'
+import { canvasFitViewButton, newProjectEntry, revealCanvasDock } from './_shell.mjs'
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const shotsDir = path.join(repoRoot, 'tests/ux/shots/group-baseline')
 fs.rmSync(shotsDir, { recursive: true, force: true })
@@ -56,6 +56,7 @@ const viewportBeforeCreates = await waitForCanvasViewportSettled(win)
 let firstCreatedId
 let arrivals = null
 for (let i = 0; i < 4; i += 1) {
+  await revealCanvasDock(win, addImage, `连建第 ${i + 1} 张前露出加节点条`)
   await addImage.click({ timeout: 4000 })
   arrivals = await expectArrivalsReachable(win, {
     knownIds: [], expectedCount: i + 1, viewportBefore: viewportBeforeCreates, label: `连建第 ${i + 1} 张图片卡`, followHint: false,

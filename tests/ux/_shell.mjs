@@ -20,6 +20,7 @@
 //     「+」里是空间一组）；左下缩放簇「⛶ | − 100% + | ⋯」（`.generation-canvas-v2__zoom-bar`），重置视图 / 画框 / 整理 / 小地图 / 操作帮助 / 缩放滑块都收在 ⋯ 里。
 //   · 新建项目：空库是三张动作卡里的「新建空白项目」；库里有项目时是右上角的「新建项目」钮。
 import { clickOrFail, expect } from './_assert.mjs'
+import { findCanvasBlankPoint } from './_canvasHit.mjs'
 import { uiText } from './full-walk/invariants.mjs'
 
 // 文案一律按词典键取（不抄词典原文——check:test-copy-literals），中英两种语言都认。
@@ -140,6 +141,27 @@ export function canvasAddBar(win) {
 }
 
 /**
+ * 把画布底部的外框控件（加节点条 / 缩放簇）露出来再点。
+ * 选中节点后它的生成框盖在这两块控件之上（用户 2026-10-10 验收规则：生成框层级更高，见
+ * src/workbench/generationCanvas/components/canvasChromeLayers.ts）；真人要用被盖住的钮，先点画布空白处取消选择。
+ * 走查照做：目标中心的最顶层不是它自己，就点一下空白处，再等它露出来。点空白不动视口、不建节点。
+ */
+export async function revealCanvasDock(win, target, label = 'canvas dock control') {
+  const box = await target.boundingBox()
+  if (!box) throw new Error(`${label}：不在页面上，没法露出来`)
+  const topmost = () => target.evaluate((el) => {
+    const r = el.getBoundingClientRect()
+    const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)
+    return !!hit && (hit === el || el.contains(hit))
+  })
+  if (await topmost()) return
+  const blank = await findCanvasBlankPoint(win)
+  if (!blank) throw new Error(`${label}：被生成框盖住，且画布上找不到可以点的空白处来取消选择`)
+  await win.mouse.click(blank.x, blank.y)
+  await expect.poll(topmost, { message: `${label}：点空白取消选择后仍被别的东西盖住` }).toBe(true)
+}
+
+/**
  * 从加节点条新建一个节点：常驻位的直接点；收在「+」里的（导演台 / 3D 模型 / 全景 / 白板）先开「+」再点。
  * 找不到就抛，不返回 false（软守卫会让后面每一步在空画布上「通过」）。
  * @returns {Promise<'resident'|'more'>}
@@ -149,11 +171,13 @@ export async function addCanvasNode(win, kind, { timeout = 5000 } = {}) {
   await bar.waitFor({ timeout })
   const resident = bar.locator(`[data-add-intent="${kind}"]`).first()
   if ((await resident.count()) > 0) {
+    await revealCanvasDock(win, resident, `add ${kind}`)
     await resident.click()
     return 'resident'
   }
   const more = bar.locator('[data-canvas-add-more="true"]').first()
   await more.waitFor({ timeout })
+  await revealCanvasDock(win, more, 'add more')
   await more.click()
   const item = win.locator(`${CANVAS_ADD_MORE_MENU} [data-node-kind="${kind}"]`).first()
   await item.waitFor({ timeout })
@@ -167,6 +191,7 @@ export function canvasFitViewButton(win) {
 }
 
 export async function canvasFitView(win, label = 'fit view') {
+  await revealCanvasDock(win, canvasFitViewButton(win), label)
   await clickOrFail(canvasFitViewButton(win), label)
 }
 
@@ -180,13 +205,17 @@ export async function canvasZoomPercent(win) {
 
 /** 点 − / + 一下（direction = 'in' | 'out'）。 */
 export async function canvasZoomStep(win, direction, label = `zoom ${direction}`) {
-  await clickOrFail(win.locator(CANVAS_ZOOM_BAR).getByRole('button', { name: navAny(direction === 'in' ? 'zoomIn' : 'zoomOut') }), label)
+  const stepButton = win.locator(CANVAS_ZOOM_BAR).getByRole('button', { name: navAny(direction === 'in' ? 'zoomIn' : 'zoomOut') })
+  await revealCanvasDock(win, stepButton, label)
+  await clickOrFail(stepButton, label)
 }
 
 /** 开 ⋯（视图选项）。已经开着就不动。 */
 export async function openCanvasViewOptions(win, label = 'open view options') {
   if (await win.locator(CANVAS_VIEW_OPTIONS).first().isVisible().catch(() => false)) return
-  await clickOrFail(win.locator(CANVAS_ZOOM_BAR).getByRole('button', { name: navAny('viewOptions') }), label)
+  const optionsButton = win.locator(CANVAS_ZOOM_BAR).getByRole('button', { name: navAny('viewOptions') })
+  await revealCanvasDock(win, optionsButton, label)
+  await clickOrFail(optionsButton, label)
   await expect(win.locator(CANVAS_VIEW_OPTIONS).first(), `${label}：点完面板没出来`).toBeVisible()
 }
 
