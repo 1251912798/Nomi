@@ -1,0 +1,48 @@
+import type { TFunction } from 'i18next'
+import { isWorkspaceBusyError } from '../../../electron/shared/contracts/workspaceBusy'
+import { LaneCommandFailure, laneFailureText } from '../ai/lane/laneCommandFailure'
+
+/**
+ * 项目表面（项目库 / 外壳）上「一句话告诉用户出了什么事」的单一出口。
+ *
+ * 类根因：以前 `report(projectId, message: string)` 收任意字符串，于是任何调用点都能把主进程报错原文
+ * （比如外部工具给子进程加的 `[safe-delete][…] {"count":80}`）直接糊到界面顶上。
+ * 现在界面只收 `UserText`——这个品牌类型只有本文件两个函数能铸造：`projectNotice`（词典取词）和
+ * `projectOperationFailureText`（按操作 + 错误取词）。原文在类型上传不进来，只能进 `logRendererError`。
+ */
+declare const userTextBrand: unique symbol
+export type UserText = string & { readonly [userTextBrand]: true }
+
+/** 项目表面可以直接说的固定文案（词典键）。新增键必须在这里登记，才铸得出 `UserText`。 */
+export type ProjectNoticeKey =
+  | 'studio.folderUnsupported'
+  | 'studio.newProjectFailed'
+  | 'studio.demoProjectFailed'
+  | 'studio.renameFailed'
+  | 'studio.projectFolderMissing'
+  | 'studio.projectNotFound'
+  | 'studio.workspaceUnsupported'
+  | 'studio.workspaceNoProject'
+
+export function projectNotice(t: TFunction, key: ProjectNoticeKey): UserText {
+  return t(key) as UserText
+}
+
+export type ProjectOperation = 'save' | 'delete' | 'revealFolder' | 'openWorkspace' | 'restore'
+
+/**
+ * 操作失败时给用户看哪一句——按操作取人话，说清哪个操作没成、可以怎么办；原文由调用方记日志，不进这里。
+ * 锁被别处占着（另一个 Nomi 窗口 / 另一台电脑经同步盘）不是磁盘权限问题，任何操作都先认它。
+ */
+export function projectOperationFailureText(operation: ProjectOperation, error: unknown, t: TFunction): UserText {
+  if (isWorkspaceBusyError(error)) return t('studio.projectInUseElsewhere') as UserText
+  if (operation === 'restore' && error instanceof LaneCommandFailure) return laneFailureText(error, t) as UserText
+  const key = {
+    save: 'studio.projectSaveFailed',
+    delete: 'studio.projectDeleteFailed',
+    revealFolder: 'studio.openFolderFailed',
+    openWorkspace: 'studio.openWorkspaceFailed',
+    restore: 'studio.projectRestoreFailed',
+  }[operation]
+  return t(key) as UserText
+}

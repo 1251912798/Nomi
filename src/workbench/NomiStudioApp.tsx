@@ -43,7 +43,6 @@ import {
   executeExportWriteTarget,
 } from './timeline/agent/phase4CapabilityTargets'
 import { laneClient } from './ai/lane/laneClient'
-import { LaneCommandFailure, laneFailureText } from './ai/lane/laneCommandFailure'
 import { laneReceiptClient } from './ai/lane/laneReceiptClient'
 import { initReviewEventBridge } from './generationCanvas/reviewEventBridge'
 import { initComfyuiProgressBridge } from './generationCanvas/comfyuiProgressBridge'
@@ -56,7 +55,7 @@ import { notify } from '../ui/notificationPolicy'
 import { useProjectNotificationTarget } from './project/useProjectNotificationTarget'
 import { getDesktopBridge } from '../desktop/bridge'
 import { logRendererError } from '../desktop/rendererLog'
-import { projectSaveFailureText } from './project/projectSaveFailureText'
+import { projectNotice, projectOperationFailureText, type UserText } from './project/projectOperationFailureText'
 import { useHasTextModel } from './library/useHasTextModel'
 import { SplashIntro } from './onboarding/SplashIntro'
 import { hasSeenSplash, markSplashSeen, hasSeenJourneyTour } from './onboarding/onboardingState'
@@ -145,7 +144,7 @@ export default function NomiStudioApp(): JSX.Element {
   const location = useLocation()
   const [view, setView] = React.useState<AppView>('library')
   const [feedback, setFeedback] = React.useState<{ projectId: string | null; message: string } | null>(null)
-  const report = React.useCallback((projectId: string | null, message: string) => notify({ identity: `project:${projectId ?? 'library'}`, reason: 'operation', level: 'inline', message, type: 'error', present: (value) => setFeedback({ projectId, message: value }) }), [])
+  const report = React.useCallback((projectId: string | null, message: UserText) => notify({ identity: `project:${projectId ?? 'library'}`, reason: 'operation', level: 'inline', message, type: 'error', present: (value) => setFeedback({ projectId, message: value }) }), [])
   const { refreshProjects } = useLocalProjects()
   const [activeProject, setActiveProject] = React.useState<LocalProjectSummary | null>(null)
   const settingsDialogController = useSettingsDialogController()
@@ -376,8 +375,7 @@ export default function NomiStudioApp(): JSX.Element {
         logRendererError('project-restore-failed', error)
         // 主进程的原始串不进这条横幅：它可能是一句内部断言（2026-09-11 面板顶部那行红色英文
         // 就是这么来的）。lane 失败按码取文案，其余一律走这句本地化兜底。
-        report(projectId, error instanceof LaneCommandFailure
-          ? laneFailureText(error, t) : t('studio.projectRestoreFailed'))
+        report(projectId, projectOperationFailureText('restore', error, t))
         return false
       } finally {
         if (hydrationSequenceRef.current === hydrationSequence) hydratingProjectRef.current = false
@@ -415,6 +413,7 @@ export default function NomiStudioApp(): JSX.Element {
             confirmLabel: t('common.initialize'),
           }),
         showMessage: (message) => report(null, message),
+        t,
       })
     } catch (error: unknown) {
       if (!(error instanceof ProjectHydrationSupersededError)) throw error
@@ -426,12 +425,12 @@ export default function NomiStudioApp(): JSX.Element {
       setFeedback(null)
       const bridge = getDesktopBridge()
       if (!bridge?.workspace?.revealProjectFolder) {
-        report(projectId, t('studio.folderUnsupported'))
+        report(projectId, projectNotice(t, 'studio.folderUnsupported'))
         return
       }
       void bridge.workspace.revealProjectFolder({ projectId }).catch((error: unknown) => {
-        const message = error instanceof Error && error.message ? error.message : t('studio.openFolderFailed')
-        report(projectId, message)
+        logRendererError('project-reveal-folder-failed', error)
+        report(projectId, projectOperationFailureText('revealFolder', error, t))
       })
     },
     [report, t],
@@ -460,7 +459,7 @@ export default function NomiStudioApp(): JSX.Element {
     // 「新建项目」：默认位置建项目，落「创作」区（CTA「从一段文字或想法开始」）。
     void createAndOpenProject({ workspaceMode: 'creation' }).catch((error) => {
       logRendererError('project-create-failed', error)
-      report(null, t('studio.newProjectFailed'))
+      report(null, projectNotice(t, 'studio.newProjectFailed'))
     })
   }, [createAndOpenProject, report, t])
 
@@ -481,7 +480,7 @@ export default function NomiStudioApp(): JSX.Element {
       if (result.opened) useJourneyTourStore.getState().start()
     })().catch((error) => {
       logRendererError('project-create-failed', error, { seed: 'journey-tour' })
-      report(null, t('studio.demoProjectFailed'))
+      report(null, projectNotice(t, 'studio.demoProjectFailed'))
     })
   }, [createAndOpenProject, report, t])
 
@@ -529,9 +528,8 @@ export default function NomiStudioApp(): JSX.Element {
         }
 
       } catch (error: unknown) {
-        const message = error instanceof Error && error.message ? error.message : t('studio.projectDeleteFailed')
         logRendererError('project-delete-failed', error)
-        report(project.id, message)
+        report(project.id, projectOperationFailureText('delete', error, t))
       }
     },
     [navigate, projectSurface, report, t],
@@ -548,7 +546,7 @@ export default function NomiStudioApp(): JSX.Element {
         }
       } catch (error: unknown) {
         logRendererError('project-rename-failed', error)
-        report(projectId, t('studio.renameFailed'))
+        report(projectId, projectNotice(t, 'studio.renameFailed'))
       }
     },
     [report, t],
@@ -604,7 +602,7 @@ export default function NomiStudioApp(): JSX.Element {
         },
         onSaveError: (error) => {
           logRendererError('project-save-failed', error, { trigger: 'autosave' })
-          report(activeProject.id, projectSaveFailureText(error, t))
+          report(activeProject.id, projectOperationFailureText('save', error, t))
         },
       })
       let unbound: Promise<void> | undefined
@@ -680,7 +678,7 @@ export default function NomiStudioApp(): JSX.Element {
         })
         .catch((error: unknown) => {
           logRendererError('project-save-failed', error, { trigger: 'rename' })
-          report(renamed.id, t('studio.renameFailed'))
+          report(renamed.id, projectNotice(t, 'studio.renameFailed'))
         })
     },
     [activeProject, ensureProjectPersistenceService, report, t],
