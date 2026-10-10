@@ -349,7 +349,7 @@ export default function InlineParameterBar({
       <button
         type="button"
         className={cn(
-          'inline-flex items-center gap-1.5 h-7 px-3 rounded-full border border-nomi-accent/30',
+          'inline-flex items-center gap-1.5 h-7 px-3 rounded-full border border-nomi-line',
           'bg-nomi-accent-soft text-nomi-accent font-medium text-caption',
           'hover:bg-nomi-accent hover:text-nomi-paper transition-colors cursor-pointer',
         )}

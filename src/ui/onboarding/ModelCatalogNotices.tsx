@@ -41,7 +41,7 @@ export function CatalogNoticeBanner({
     <div
       className={cn(
         'mt-4 border-l-2 bg-nomi-ink-05 px-3 py-3',
-        tone === 'warning' ? 'border-nomi-warning' : 'border-nomi-accent',
+        tone === 'warning' ? 'border-nomi-warning' : 'border-nomi-line',
       )}
       data-catalog-notice={marker}
       role="status"

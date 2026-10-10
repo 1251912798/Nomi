@@ -71,7 +71,7 @@ export function AddComfyuiInstanceButton({ onAdded }: { onAdded: () => void }): 
   }
 
   return (
-    <div className="flex flex-col gap-2 rounded-nomi border border-nomi-accent/40 bg-nomi-paper p-3">
+    <div className="flex flex-col gap-2 rounded-nomi border border-nomi-line bg-nomi-paper p-3">
       <div className="flex items-center gap-2">
         <IconServerBolt size={15} stroke={1.7} className="text-nomi-ink-60" />
         <span className="text-body-sm font-semibold text-nomi-ink flex-1">{t('onboardingProviders.comfyInstance.title')}</span>

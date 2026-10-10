@@ -538,7 +538,7 @@ export function NomiBrowserDialogView({
             <motion.div
               key={flyout.id}
               data-browser-capture-flyout=""
-              className="pointer-events-none fixed left-0 top-0 z-[570] overflow-hidden rounded-nomi border border-nomi-accent bg-nomi-paper shadow-nomi-lg ring-2 ring-nomi-accent ring-offset-2 ring-offset-nomi-paper"
+              className="pointer-events-none fixed left-0 top-0 z-[570] overflow-hidden rounded-nomi border border-nomi-line bg-nomi-paper shadow-nomi-lg"
               initial={{
                 x: flyout.sourceRect.left,
                 y: flyout.sourceRect.top,

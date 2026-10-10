@@ -47,7 +47,7 @@ function ComposerChip({ chip, removeLabel, onRemove }: { chip: V4Chip; removeLab
       className={cn(
         'inline-flex h-6 shrink-0 items-center gap-[5px] rounded-nomi-sm border pl-1 pr-2 text-micro',
         chip.kind === 'skill'
-          ? 'border-nomi-accent bg-nomi-accent-soft text-nomi-accent'
+          ? 'border-transparent bg-nomi-accent-soft text-nomi-accent'
           : 'border-nomi-line text-nomi-ink-80',
       )}
       data-v4-chip={chip.kind}
@@ -186,8 +186,7 @@ export function AgentPanelV4Composer({
         'relative flex shrink-0 flex-col overflow-visible rounded-nomi border border-nomi-line bg-nomi-paper',
         // 降一档只改**注意力**，不改能力：边框与文字淡下去，聚焦（用户真的点进来了）就复原。
         awaitingAnswer && !focused && 'border-nomi-line-soft opacity-60',
-        focused && 'border-nomi-accent shadow-[0_0_0_3px_var(--nomi-accent-soft)]',
-        running && 'shadow-[0_0_0_1px_var(--nomi-accent-soft)]',
+        focused && 'border-nomi-ink-40',
         dock && 'shadow-nomi-lg',
       )}
       style={{ minHeight: height, maxHeight: cap }}

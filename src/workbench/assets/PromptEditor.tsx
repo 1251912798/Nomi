@@ -238,7 +238,7 @@ export default function PromptEditor({ value, onChange, placeholder, ariaLabel, 
       editor={editor}
       onBlur={onBlur}
       data-prompt-box="true"
-      className={cn('text-nomi-ink text-body-sm leading-[1.7] [&_.ProseMirror]:outline-0 [&_.ProseMirror]:min-h-[38px] [&_.ProseMirror_p]:m-0', TIPTAP_PLACEHOLDER_CLASSES, '[&_.storyboard-prompt-segment]:border-b [&_.storyboard-prompt-segment]:border-dashed [&_.storyboard-prompt-segment]:border-nomi-ink-30 [&_.storyboard-prompt-segment]:cursor-pointer [&_.storyboard-prompt-segment:hover]:border-nomi-accent [&_.storyboard-prompt-segment:hover]:text-nomi-ink', className)}
+      className={cn('text-nomi-ink text-body-sm leading-[1.7] [&_.ProseMirror]:outline-0 [&_.ProseMirror]:min-h-[38px] [&_.ProseMirror_p]:m-0', TIPTAP_PLACEHOLDER_CLASSES, '[&_.storyboard-prompt-segment]:border-b [&_.storyboard-prompt-segment]:border-dashed [&_.storyboard-prompt-segment]:border-nomi-ink-30 [&_.storyboard-prompt-segment]:cursor-pointer [&_.storyboard-prompt-segment:hover]:border-nomi-ink-60 [&_.storyboard-prompt-segment:hover]:text-nomi-ink', className)}
     />
   )
 }

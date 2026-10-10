@@ -359,7 +359,7 @@ function NodeList({
                   aria-expanded={selected}
                   className={cn(
                     'flex w-full items-center gap-2 rounded-nomi-sm border px-2 py-1.5 text-left',
-                    selected ? 'border-nomi-accent bg-nomi-accent-soft' : 'border-nomi-line bg-nomi-paper hover:border-nomi-ink-30',
+                    selected ? 'border-transparent bg-nomi-accent-soft' : 'border-nomi-line bg-nomi-paper hover:border-nomi-ink-30',
                   )}
                 >
                   {row}

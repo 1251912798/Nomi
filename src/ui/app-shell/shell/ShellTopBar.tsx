@@ -104,7 +104,7 @@ function ProjectMenu({
     }
     return (
       <input
-        className="app-no-drag h-7 w-[220px] min-w-0 rounded-nomi-sm border border-nomi-accent bg-nomi-paper px-2 text-body-sm text-nomi-ink outline-none"
+        className="app-no-drag h-7 w-[220px] min-w-0 rounded-nomi-sm border border-nomi-ink-40 bg-nomi-paper px-2 text-body-sm text-nomi-ink outline-none"
         // 项目名是用户内容（按创建那刻的语言存的），不是 UI 文案：EN-DOM 断言网整棵豁免。
         data-user-content
         autoFocus

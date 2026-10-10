@@ -91,7 +91,7 @@ export const BrowserAssetTile = React.memo(function BrowserAssetTile({
           'group relative flex h-11 min-w-0 items-center gap-2 rounded-nomi-sm border px-2 outline-none',
           'cursor-pointer select-none transition-[background,border-color,box-shadow,color] duration-nomi-fast ease-nomi-fast',
           selected
-            ? 'border-nomi-accent-soft bg-nomi-accent-soft text-nomi-ink shadow-nomi-sm'
+            ? 'border-transparent bg-nomi-accent-soft text-nomi-ink shadow-nomi-sm'
             : 'border-transparent text-nomi-ink-80 hover:border-nomi-line-soft hover:bg-nomi-ink-05 focus-visible:border-nomi-ink-40 focus-visible:bg-nomi-ink-05',
           failed && 'text-workbench-danger',
         )}
@@ -102,7 +102,7 @@ export const BrowserAssetTile = React.memo(function BrowserAssetTile({
         <span
           className={cn(
             'relative grid size-8 place-items-center overflow-hidden rounded-nomi-sm border bg-nomi-ink-05 text-nomi-ink-40',
-            selected ? 'border-nomi-accent-soft bg-nomi-paper text-nomi-accent' : 'border-nomi-line-soft',
+            selected ? 'border-transparent bg-nomi-paper text-nomi-accent' : 'border-nomi-line-soft',
           )}
           aria-hidden="true"
         >
@@ -115,7 +115,7 @@ export const BrowserAssetTile = React.memo(function BrowserAssetTile({
             </span>
           ) : null}
           {selected ? (
-            <span className="absolute right-0.5 top-0.5 grid size-3.5 place-items-center rounded-pill bg-nomi-accent text-nomi-paper">
+            <span className="absolute right-0.5 top-0.5 grid size-3.5 place-items-center rounded-pill bg-nomi-ink text-nomi-paper">
               <IconCheck size={9} stroke={2.3} />
             </span>
           ) : null}
@@ -166,7 +166,7 @@ export const BrowserAssetTile = React.memo(function BrowserAssetTile({
         className={cn(
           'relative aspect-video overflow-hidden rounded-nomi border bg-nomi-ink-05',
           selected
-            ? 'border-nomi-accent ring-2 ring-nomi-accent ring-offset-1 ring-offset-nomi-paper'
+            ? 'border-nomi-line'
             : 'border-nomi-line group-hover:border-nomi-ink-20',
         )}
       >
@@ -213,7 +213,7 @@ export const BrowserAssetTile = React.memo(function BrowserAssetTile({
           </span>
         ) : null}
         {selected ? (
-          <span className="absolute left-1 top-1 grid size-5 place-items-center rounded-pill bg-nomi-accent text-nomi-paper shadow-nomi-sm">
+          <span className="absolute left-1 top-1 grid size-5 place-items-center rounded-pill bg-nomi-ink text-nomi-paper shadow-nomi-sm">
             <IconCheck size={13} stroke={2.2} aria-hidden="true" />
           </span>
         ) : null}

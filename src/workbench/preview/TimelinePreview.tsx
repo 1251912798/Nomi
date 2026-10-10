@@ -508,7 +508,7 @@ export default function TimelinePreview({ activeClips, aspectRatio, fps, playhea
                   <textarea
                     key={clip.id}
                     className="workbench-preview-player__text-edit absolute pointer-events-auto resize-none outline-none overflow-hidden"
-                    style={{ ...centerStyle, ...contentStyle, boxShadow: '0 0 0 2px var(--nomi-accent)' }}
+                    style={{ ...centerStyle, ...contentStyle, boxShadow: '0 0 0 1px var(--nomi-ink-40)' }}
                     value={editingDraft}
                     placeholder={clip.text}
                     autoFocus

@@ -143,7 +143,7 @@ export function BrowserPromptExtractionSettingsModal({
               {templates.map((template) => {
                 const active = template.id === selectedTemplate.id
                 return (
-                  <button key={template.id} type="button" className={cn('min-h-10 rounded-nomi border px-3 py-2 text-left text-caption font-semibold', 'cursor-pointer transition-colors duration-nomi-fast ease-nomi-fast', active ? 'border-nomi-accent bg-nomi-accent-soft text-nomi-accent' : 'border-nomi-line bg-nomi-paper text-nomi-ink-60 hover:bg-nomi-ink-05 hover:text-nomi-ink')} onClick={() => selectTemplate(template.id)}>
+                  <button key={template.id} type="button" className={cn('min-h-10 rounded-nomi border px-3 py-2 text-left text-caption font-semibold', 'cursor-pointer transition-colors duration-nomi-fast ease-nomi-fast', active ? 'border-transparent bg-nomi-accent-soft text-nomi-accent' : 'border-nomi-line bg-nomi-paper text-nomi-ink-60 hover:bg-nomi-ink-05 hover:text-nomi-ink')} onClick={() => selectTemplate(template.id)}>
                     <span className="block truncate">{template.title}</span>
                     {template.builtin ? <span className="mt-0.5 block text-micro text-nomi-ink-40">{t('browserAssets.extraction.default')}</span> : null}
                   </button>

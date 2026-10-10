@@ -20,7 +20,7 @@ try {
   const measure = (target) => target.evaluate(e => {
     const s = getComputedStyle(e)
     const probe = document.createElement('span'); document.body.append(probe)
-    probe.style.color='var(--nomi-accent)'; const accent=getComputedStyle(probe).color
+    probe.style.color='var(--nomi-ink-40)'; const accent=getComputedStyle(probe).color // 文本框聚焦线（深一档灰，非强调色）
     probe.style.color='var(--nomi-focus)'; const token=getComputedStyle(probe).color
     probe.remove()
     return { focused:document.activeElement===e, visible:e.matches(':focus-visible'), outlineStyle:s.outlineStyle, outlineWidth:s.outlineWidth, outlineColor:s.outlineColor, borderColor:s.borderColor, borderWidth:s.borderWidth, accent, token }

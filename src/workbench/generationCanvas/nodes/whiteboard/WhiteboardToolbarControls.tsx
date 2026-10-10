@@ -50,7 +50,7 @@ export function AspectRatioPopover({ value, onChange }: AspectRatioPopoverProps)
         className={cn(
           'inline-flex h-9 min-w-[98px] items-center gap-1.5 rounded-nomi-sm border border-nomi-line bg-nomi-ink-05 pl-3 pr-2',
           'text-caption font-medium text-nomi-ink transition-colors hover:border-nomi-ink-20 hover:bg-nomi-paper',
-          open && 'border-nomi-accent bg-nomi-paper',
+          open && 'border-nomi-ink-30 bg-nomi-paper',
         )}
         aria-haspopup="listbox"
         aria-expanded={open}
@@ -94,7 +94,7 @@ export function AspectRatioPopover({ value, onChange }: AspectRatioPopoverProps)
                 <span
                   className={cn(
                     'grid h-4 w-6 place-items-center rounded-sm border border-nomi-line bg-nomi-ink-05',
-                    active && 'border-nomi-accent',
+                    active && 'border-nomi-ink',
                   )}
                   aria-hidden
                 >

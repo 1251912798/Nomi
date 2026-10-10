@@ -129,7 +129,7 @@
 .workbench-editor__content blockquote {
   margin: 0 0 14px;
   padding: 8px 12px;
-  border-left: 3px solid color-mix(in srgb, var(--workbench-accent) 34%, transparent);
+  border-left: 3px solid var(--nomi-line);
   background: var(--workbench-surface-soft);
   color: var(--workbench-ink);
 }

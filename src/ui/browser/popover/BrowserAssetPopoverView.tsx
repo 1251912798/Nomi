@@ -115,7 +115,7 @@ export function BrowserAssetPopoverView(props: BrowserAssetPopoverViewProps): JS
               (splitDocked || edgeDocked) && 'shadow-none',
               splitDocked && 'border-0',
               dropActive
-                ? 'border-nomi-accent ring-2 ring-nomi-accent ring-offset-1 ring-offset-nomi-paper'
+                ? 'border-nomi-ink-40'
                 : 'border-nomi-line',
             )}
           >
@@ -220,7 +220,7 @@ export function BrowserAssetPopoverView(props: BrowserAssetPopoverViewProps): JS
                 )}
               </div>
 
-              {marquee ? <div className="pointer-events-none absolute z-[2] rounded-nomi-sm border border-nomi-accent bg-nomi-accent-soft/70" style={normalizeMarqueeRect(marquee)} aria-hidden="true" /> : null}
+              {marquee ? <div className="pointer-events-none absolute z-[2] rounded-nomi-sm border border-nomi-ink bg-nomi-ink-10" style={normalizeMarqueeRect(marquee)} aria-hidden="true" /> : null}
             </ScrollArea>
             {/* ready 素材的可见主动作「放到画布」（不再只藏右键菜单）——contained/应用内共用同一真实导入动作。 */}
             {showCanvasImportAction ? (
@@ -245,7 +245,7 @@ export function BrowserAssetPopoverView(props: BrowserAssetPopoverViewProps): JS
                 </DesignButton>
               </div>
             ) : null}
-            {dropActive ? <div className="pointer-events-none absolute inset-2 z-[8] grid place-items-center rounded-nomi border border-dashed border-nomi-accent bg-nomi-accent-soft/75 text-caption font-semibold text-nomi-accent">{t('browserAssets.dropToSave')}</div> : null}
+            {dropActive ? <div className="pointer-events-none absolute inset-2 z-[8] grid place-items-center rounded-nomi border border-dashed border-nomi-ink-40 bg-nomi-accent-soft/75 text-caption font-semibold text-nomi-accent">{t('browserAssets.dropToSave')}</div> : null}
             {promptExtractionSettingsOpen ? <BrowserPromptExtractionSettingsModal settings={promptExtractionSettings} projectAvailable={promptExtractionSettingsProjectAvailable} onSave={savePromptExtractionSettings} onClose={() => setPromptExtractionSettingsOpen(false)} /> : null}
           </div>
           {(activeResizeEdges as readonly FloatingWindowResizeEdge[]).map((edge) => (

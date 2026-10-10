@@ -452,7 +452,7 @@ export default function StoryboardShotTable({ plan, projectId, rows, anchorCards
                             onClick={() => onChange(insertShotAt(plan, pos))}
                             aria-label={t('storyboardEditor.selection.insert')}
                             // 也在 focus-within 时现身：只靠 hover 的话键盘用户永远看不见这个入口。
-                            className="absolute inset-x-2 top-1/2 z-[2] hidden h-5 -translate-y-1/2 items-center justify-center rounded-full border border-nomi-accent bg-nomi-paper text-nomi-accent group-hover/insert:flex group-focus-within/insert:flex focus:flex"
+                            className="absolute inset-x-2 top-1/2 z-[2] hidden h-5 -translate-y-1/2 items-center justify-center rounded-full border border-nomi-ink-30 bg-nomi-paper text-nomi-accent group-hover/insert:flex group-focus-within/insert:flex focus:flex"
                           >
                             <IconPlus size={13} stroke={1.8} />
                           </button>

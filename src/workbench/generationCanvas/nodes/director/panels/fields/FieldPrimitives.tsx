@@ -148,7 +148,7 @@ export function ColorField({ label, value, onChange, onChangeStart, presets, all
             type="button"
             title={t(`director.colorPreset.${swatch.id}`)}
             aria-label={t(`director.colorPreset.${swatch.id}`)}
-            className={cn('size-[22px] rounded-full border border-nomi-line', value.toLowerCase() === swatch.value.toLowerCase() ? 'outline outline-2 outline-offset-2 outline-nomi-accent' : '')}
+            className={cn('size-[22px] rounded-full border border-nomi-line', value.toLowerCase() === swatch.value.toLowerCase() ? 'outline outline-2 outline-offset-2 outline-nomi-ink' : '')}
             style={{ backgroundColor: swatch.value }}
             onClick={() => commit(swatch.value)}
           />

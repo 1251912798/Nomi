@@ -30,7 +30,7 @@ export const UserPromptCard = React.memo(function UserPromptCard({
         <div
           className={cn(
             'group relative flex flex-col w-full aspect-[4/3] overflow-hidden text-left cursor-pointer',
-            'rounded-nomi border border-nomi-accent/40 bg-nomi-paper p-2.5',
+            'rounded-nomi border border-nomi-line bg-nomi-paper p-2.5',
             'transition-[transform,box-shadow] duration-nomi-fast ease-nomi-fast hover:-translate-y-0.5 hover:shadow-nomi-md',
           )}
           role="button"

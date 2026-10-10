@@ -182,7 +182,7 @@ export default function AssetTile({ asset, index, tag, onRemove, onClick, dragPr
         className={cn(
           'relative w-14 h-14 rounded-nomi-sm border border-nomi-line bg-nomi-ink-05 overflow-hidden flex items-center justify-center',
           clickable && 'cursor-pointer hover:outline hover:outline-2 hover:outline-offset-1 hover:outline-nomi-ink-30',
-          dragProps?.draggable && 'data-[dragover=true]:outline data-[dragover=true]:outline-2 data-[dragover=true]:outline-nomi-accent',
+          dragProps?.draggable && 'data-[dragover=true]:outline data-[dragover=true]:outline-2 data-[dragover=true]:outline-nomi-ink-40',
           className,
         )}
         // 稳定走查锚点（同 AssetAddTile 的理由）：按 kind 数 tile 才能验「视频进视频桶、没污染图片桶」。
@@ -219,7 +219,7 @@ export function AssetAddTile({ onClick, selected, label, className }: { onClick:
       onClick={onClick}
       className={cn(
         'w-14 h-14 rounded-nomi-sm border border-dashed border-nomi-ink-20 bg-nomi-ink-05 text-nomi-ink-40 flex items-center justify-center cursor-pointer hover:border-nomi-ink-30 hover:text-nomi-accent',
-        selected && 'outline outline-2 outline-offset-1 outline-nomi-accent',
+        selected && 'border-nomi-ink-40 bg-nomi-ink-10',
         className,
       )}
     >

@@ -26,7 +26,7 @@ function FlowShotTable(props: NodeProps): JSX.Element {
   const density = useStore(state => shotTableDensityForZoom(selectFlowZoom(state)))
   return <ShotTableContent {...props} flowDensity={density} />
 }
-function ShotTableContent({ node: rawNode, selected, readOnly = false, flowDensity }: NodeProps & { flowDensity?: 'full' | 'compact' | 'card' }): JSX.Element {
+function ShotTableContent({ node: rawNode, readOnly = false, flowDensity }: NodeProps & { flowDensity?: 'full' | 'compact' | 'card' }): JSX.Element {
   const node = rawNode as GenerationCanvasNode
   const { t } = useTranslation()
   const table = React.useMemo(() => readShotTable(node.meta), [node.meta])
@@ -71,7 +71,7 @@ function ShotTableContent({ node: rawNode, selected, readOnly = false, flowDensi
     finally { setBusy(false) }
   }
   return <article data-node-id={node.id} data-kind="shot_table" data-testid="shot-table-node" data-density={density}
-    className={cn('generation-canvas-v2-node flex h-full w-full flex-col overflow-hidden rounded-nomi border bg-nomi-paper text-nomi-ink shadow-nomi-md', selected ? 'border-nomi-accent' : 'border-nomi-line')}>
+    className={cn('generation-canvas-v2-node flex h-full w-full flex-col overflow-hidden rounded-nomi border bg-nomi-paper text-nomi-ink shadow-nomi-md', 'border-nomi-line')}>
     <header className="flex h-10 shrink-0 cursor-grab items-center gap-2 border-b border-nomi-line-soft px-3">
       <IconTable size={16} stroke={1.5} className="shrink-0 text-nomi-ink-60" />
       <span className="min-w-0 truncate text-body-sm font-medium">{node.title ?? t('shotTable.title')}</span>

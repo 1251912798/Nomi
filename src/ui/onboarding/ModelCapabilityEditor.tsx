@@ -287,7 +287,7 @@ export function ModelCapabilityEditor({
         ) : (
           <>
             {activeMode ? null : (
-              <div className="mb-4 border-l-2 border-nomi-accent bg-nomi-accent-soft px-3 py-2 text-caption leading-relaxed text-nomi-ink-60">
+              <div className="mb-4 border-l-2 border-nomi-line bg-nomi-accent-soft px-3 py-2 text-caption leading-relaxed text-nomi-ink-60">
                 {t('onboardingProviders.workspace.capability.editor.intro')}
               </div>
             )}

@@ -434,7 +434,7 @@ export function SkillLibraryContent({
           <div
             className={cn(
               'pointer-events-none absolute inset-2 z-20 grid place-items-center gap-1 rounded-nomi',
-              'border-2 border-dashed border-nomi-accent bg-nomi-paper/90 text-center',
+              'border-2 border-dashed border-nomi-ink-40 bg-nomi-paper/90 text-center',
             )}
             aria-hidden="true"
           >

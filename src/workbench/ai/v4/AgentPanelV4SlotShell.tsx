@@ -127,7 +127,7 @@ export function V4SlotShell({
       className={cn(
         'relative overflow-hidden rounded-nomi border bg-nomi-paper',
         waiting
-          ? 'border-nomi-accent shadow-[0_0_0_1px_var(--nomi-accent-soft)]'
+          ? 'border-nomi-ink-40'
           : 'border-nomi-line',
         rest.className,
       )}

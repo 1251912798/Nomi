@@ -53,7 +53,7 @@ export function NodeVersionCountBadge({
     'absolute right-2 top-2 z-[4] inline-flex h-5 min-w-5 items-center justify-center rounded-pill border px-1.5',
     'text-micro font-semibold leading-none tabular-nums shadow-nomi-sm',
     // 压在画面上的东西用不随明暗翻转的媒体色（白底深字），暗色主题里也是同一枚浅色角标——和卡上「第 N 版」小字同一条规矩。
-    expanded ? 'border-nomi-accent bg-nomi-accent text-nomi-media-ink' : 'border-nomi-overlay-chip/25 bg-nomi-media-ink/[0.88] text-nomi-overlay-chip-strong',
+    expanded ? 'border-transparent bg-nomi-accent text-nomi-media-ink' : 'border-nomi-overlay-chip/25 bg-nomi-media-ink/[0.88] text-nomi-overlay-chip-strong',
   )
   if (readOnly && !expanded) {
     return <span className={look} data-version-badge aria-label={label}>{count}</span>

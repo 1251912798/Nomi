@@ -277,7 +277,7 @@ export default function ProjectLibraryPage({
   // ── 缺文本模型 → 提示条（模型接入在项目库的唯一入口形态；生成失败卡仍可直达设置 › 模型接入） ──
   const modelBanner = textModelMissing && onOpenModelCatalog ? (
     <section
-      className="flex min-h-11 items-center gap-2.5 rounded-panel bg-nomi-info-soft py-1.5 pl-3.5 pr-2 text-body-sm text-nomi-info-ink ring-1 ring-inset ring-nomi-info-edge"
+      className="flex min-h-11 items-center gap-2.5 rounded-panel bg-nomi-info-soft py-1.5 pl-3.5 pr-2 text-body-sm text-nomi-info-ink ring-1 ring-inset ring-nomi-line"
       aria-label={t('library.modelStatus')}
       data-model-banner="true"
     >
@@ -290,7 +290,7 @@ export default function ProjectLibraryPage({
         type="button"
         onClick={onOpenModelCatalog}
         data-testid="open-model-settings"
-        className="h-7 shrink-0 rounded-pill border-0 bg-nomi-paper px-3 text-caption font-medium text-nomi-info-ink ring-1 ring-nomi-info-edge transition-colors hover:bg-nomi-info-soft focus-visible:outline focus-visible:outline-2 focus-visible:outline-nomi-ink"
+        className="h-7 shrink-0 rounded-pill border-0 bg-nomi-paper px-3 text-caption font-medium text-nomi-info-ink ring-1 ring-nomi-line transition-colors hover:bg-nomi-info-soft focus-visible:outline focus-visible:outline-2 focus-visible:outline-nomi-ink"
       >
         {t('library.connectTextModel')}
       </button>
@@ -572,7 +572,7 @@ export default function ProjectLibraryPage({
                           type="text"
                           className={cn(
                             'w-full text-body-sm font-medium text-nomi-ink mb-0.5 outline-none',
-                            'bg-nomi-paper border border-nomi-accent rounded-nomi-sm px-1.5 py-0.5',
+                            'bg-nomi-paper border border-nomi-ink-40 rounded-nomi-sm px-1.5 py-0.5',
                           )}
                           value={editValue}
                           autoFocus
