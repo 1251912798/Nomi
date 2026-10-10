@@ -1181,10 +1181,19 @@ showUndoToast({ message, onUndo, isUndoable, watchUndoable })
 
 焦点指示由 **`tailwind.config.ts` 的 `addBase` 单一基础边界**统一供给：
 - `:root :focus { outline: none }` 接管浏览器默认 outline；不能把 `:focus-visible` 误解成“只有 Tab”——Chromium 鼠标点击文本编辑控件也会匹配它。
-- **文本编辑类**：文本/数字 input、textarea、contenteditable（空值/true/plaintext-only）鼠标与键盘聚焦一致，不出外圈 outline。已有边框改为 `var(--nomi-accent)`，不加宽、不改布局；组合输入的直接容器、以及富文本编辑器最近的 `.border` 容器通过 `:has(文本控件:focus)` 同步高亮已有边框（嵌套编辑器只高亮最近一层），保留整体形状。无边框编辑器保留插入光标，不强行添加卡片外框。错误态（aria-invalid/data-error）保留错误边框；只读字段仍可聚焦复制。
+- **文本编辑类**：文本/数字 input、textarea、contenteditable（空值/true/plaintext-only）鼠标与键盘聚焦一致，不出外圈 outline。已有边框改为 `var(--nomi-ink-40)`（深一档灰线，非强调色），不加宽、不改布局；组合输入的直接容器、以及富文本编辑器最近的 `.border` 容器通过 `:has(文本控件:focus)` 同步高亮已有边框（嵌套编辑器只高亮最近一层），保留整体形状。无边框编辑器保留插入光标，不强行添加卡片外框。错误态（aria-invalid/data-error）保留错误边框；只读字段仍可聚焦复制。
 - **非文本类**：button/link/select/summary、非文本 input 及自定义可聚焦元素的 `:focus-visible` 用 `2px solid var(--nomi-focus)` + `outline-offset:2px`；鼠标点击不画环。`--nomi-focus` 为深色（ink）派生 token（浅色 70%、深色 85%；2026-10-10 用户拍板去蓝色描边，焦点环不再用强调色）。
 
 **纪律**：不要在组件单独加 `focus:outline-none` 或另一份焦点环/外扩阴影；新增控件由基础边界接管。组合输入复用现有边框，不给内部 textarea 再造矩形。回归运行 `node tests/ux/focus-indication.e2e.mjs`；真实 Electron 另查鼠标/Tab 与四个主要页面截图。
+
+### 描边颜色（用户 2026-10-10 拍板：蓝色描边不需要，都删掉）
+
+蓝色（强调色 / info 族）**只留主按钮、链接、进度、连线握把**，不再用来画 border / outline / ring / box-shadow。分类规则：
+- **单选不加框**：节点、分组、片段选中靠工具条 / 生成框 / 拉环说明，不画外框。
+- **多选**：深色细线（`border-nomi-ink`）。**素材选中**：图不框，右上角深色小勾。**当前项**：淡底色，边线透明。
+- **键盘焦点环保留**，用深色（`outline-nomi-ink` / `--nomi-focus`）；鼠标操作看不到。
+- **装饰 / 悬停 / 输入框**：灰线（`border-nomi-line`、悬停 `border-nomi-ink-30`、输入框聚焦 `border-nomi-ink-40`）。
+- 门岗：`check:tokens` 第 7 类棘轮（`scripts/lib/accentOutlineScan.mjs`），存量白名单在 `scripts/accent-outline-baseline.json`，每条带理由，只减不增；`--nomi-focus` / `--nomi-info` 不许别名到强调色。
 
 ---
 

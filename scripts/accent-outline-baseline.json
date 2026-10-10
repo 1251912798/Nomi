@@ -66,5 +66,9 @@
   "src/workbench/creation/DocumentListSidebar.tsx": {
     "count": 2,
     "reason": "待补：文稿行重命名输入框，文稿行动作线（fix/script-row-actions）在改这个组件，合入后改 border-nomi-ink-40"
+  },
+  "src/workbench/timeline/TimelinePanel.tsx": {
+    "count": 1,
+    "reason": "保留（协调拍板）：播放头是握把，保留强调色；原硬编码 rgba(0,122,255) 已换成 --workbench-accent-soft token"
   }
 }
