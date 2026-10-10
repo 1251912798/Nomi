@@ -97,7 +97,7 @@ export function ShotGrid(): JSX.Element {
           className={cn(
             'group relative aspect-video overflow-hidden rounded-nomi-sm border border-nomi-line bg-nomi-ink-05',
             'cursor-grab p-0 text-left active:cursor-grabbing',
-            'hover:border-nomi-accent',
+            'hover:border-nomi-ink-30',
           )}
           title={t('previewSource.shots.itemHint', { name: source.label })}
           aria-label={t('previewSource.shots.itemHint', { name: source.label })}

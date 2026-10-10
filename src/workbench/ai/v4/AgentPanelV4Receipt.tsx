@@ -16,7 +16,7 @@ import type { ToolReceipt, V4FlowItem } from './agentPanelV4Types'
 
 // The base :root :focus-visible selector is more specific than a utility class.
 // Only these summaries use the requested full accent; keyboard focus stays native.
-const SUMMARY_FOCUS = 'outline-none focus-visible:outline-2 focus-visible:!outline-[var(--nomi-accent)] focus-visible:outline-offset-2'
+const SUMMARY_FOCUS = 'outline-none focus-visible:outline-2 focus-visible:!outline-nomi-ink focus-visible:outline-offset-2'
 
 const STATUS_TONE: Record<string, string> = {
   'output-available': 'text-nomi-success',

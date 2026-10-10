@@ -19,7 +19,7 @@ const ARBITRARY = new RegExp(String.raw`(?<![\w-])${EDGE}-\[[^\]\s]*var\(--${COL
 const SHADOW = new RegExp(String.raw`(?<![\w-])shadow-\[[^\]\s]*var\(--${COLOR}(?![\w-])`, 'g')
 /** CSS / 行内样式声明：border-left: 3px solid color-mix(…var(--workbench-accent)…)、boxShadow: '0 0 0 2px var(--nomi-accent)' */
 const DECLARATION = new RegExp(
-  String.raw`(?:^|[\s{;,])(?:border[\w-]*|outline[\w-]*|box-shadow|boxShadow)['"]?\s*:[^;]*var\(--${COLOR}(?![\w-])`,
+  String.raw`(?:^|[\s{;,'"])(?:border[\w-]*|outline[\w-]*|box-shadow|boxShadow)['"]?\s*:[^;]*var\(--${COLOR}(?![\w-])`,
   'g',
 )
 

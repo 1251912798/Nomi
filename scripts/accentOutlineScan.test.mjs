@@ -31,6 +31,7 @@ describe('countAccentOutlineInLine', () => {
     expect(countAccentOutlineInLine('  border-left: 3px solid color-mix(in srgb, var(--workbench-accent) 34%, transparent);')).toBe(1)
     expect(countAccentOutlineInLine("style={{ boxShadow: '0 0 0 2px var(--nomi-accent)' }}")).toBe(1)
     expect(countAccentOutlineInLine('  outline: 3px solid var(--nomi-accent);')).toBe(1)
+    expect(countAccentOutlineInLine("      'border-color': 'var(--nomi-accent)',")).toBe(1)
   })
 
   it('不误伤：文字色 / 底色 / 连线握把 stroke / 灰线 / 深色焦点环 / info 文字', () => {

@@ -17,7 +17,7 @@ const twMerge = extendTailwindMerge({
     classGroups: {
       'font-size': [{ text: ['micro', 'caption', 'body', 'body-sm', 'title', 'h2', 'h1', 'display'] }],
       rounded: [{ rounded: ['sharp', 'field', 'panel', 'modal', 'pill', 'nomi', 'nomi-sm', 'nomi-lg', 'workbench', 'workbench-control'] }],
-      'outline-color': [{ outline: ['nomi-accent', 'nomi-line', 'nomi-ink', 'workbench-danger'] }],
+      'outline-color': [{ outline: ['nomi-accent', 'nomi-line', 'nomi-ink', 'nomi-ink-20', 'nomi-ink-30', 'nomi-ink-40', 'workbench-danger'] }],
     },
   },
 })

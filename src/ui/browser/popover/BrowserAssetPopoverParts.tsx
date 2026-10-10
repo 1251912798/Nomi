@@ -92,7 +92,7 @@ export const BrowserAssetTile = React.memo(function BrowserAssetTile({
           'cursor-pointer select-none transition-[background,border-color,box-shadow,color] duration-nomi-fast ease-nomi-fast',
           selected
             ? 'border-nomi-accent-soft bg-nomi-accent-soft text-nomi-ink shadow-nomi-sm'
-            : 'border-transparent text-nomi-ink-80 hover:border-nomi-line-soft hover:bg-nomi-ink-05 focus-visible:border-nomi-accent focus-visible:bg-nomi-ink-05',
+            : 'border-transparent text-nomi-ink-80 hover:border-nomi-line-soft hover:bg-nomi-ink-05 focus-visible:border-nomi-ink-40 focus-visible:bg-nomi-ink-05',
           failed && 'text-workbench-danger',
         )}
       >

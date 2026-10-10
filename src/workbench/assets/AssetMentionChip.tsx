@@ -51,7 +51,7 @@ export default function AssetMentionChip({ node }: NodeViewProps): JSX.Element {
       data-asset-mention=""
       data-storyboard-mention-chip="true"
       aria-label={label}
-      className={cn('relative inline-flex align-[-5px] h-[22px] items-center gap-[4px] mx-[2px] pr-[6px] rounded-nomi-sm border border-nomi-line bg-nomi-ink-05 overflow-hidden cursor-pointer hover:outline hover:outline-2 hover:outline-offset-1 hover:outline-nomi-accent')}
+      className={cn('relative inline-flex align-[-5px] h-[22px] items-center gap-[4px] mx-[2px] pr-[6px] rounded-nomi-sm border border-nomi-line bg-nomi-ink-05 overflow-hidden cursor-pointer hover:outline hover:outline-2 hover:outline-offset-1 hover:outline-nomi-ink-30')}
       contentEditable={false}
       onMouseEnter={onEnter}
       onMouseLeave={onLeave}

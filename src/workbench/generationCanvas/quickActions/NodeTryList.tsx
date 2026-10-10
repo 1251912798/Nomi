@@ -10,7 +10,7 @@ const stopCanvasGesture = (event: React.PointerEvent) => event.stopPropagation()
 const TRY_ACTION_CLASS = [
   'inline-flex h-6 cursor-pointer items-center whitespace-nowrap rounded-nomi-sm border-0 bg-transparent px-1.5 font-[inherit] text-caption text-nomi-ink-80',
   'transition-colors hover:bg-nomi-ink-05 active:bg-nomi-ink-10',
-  'focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-nomi-accent',
+  'focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-nomi-ink',
 ].join(' ')
 
 /** 纯文字动作之间的「·」（Claude Design 拍板稿：不套胶囊框，悬停才出浅底）。 */

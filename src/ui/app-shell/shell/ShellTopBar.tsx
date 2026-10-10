@@ -41,7 +41,7 @@ import { SHELL_MAC_TRAFFIC_WIDTH, SHELL_TOPBAR_HEIGHT, shellChromePlatform } fro
 const BAR_ICON_BUTTON = cn(
   'app-no-drag relative grid size-7 shrink-0 place-items-center rounded-nomi-sm border-0 bg-transparent p-0',
   'text-nomi-ink-60 transition-[background,color] duration-nomi-fast ease-nomi-fast',
-  'hover:bg-nomi-ink-05 hover:text-nomi-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-nomi-accent',
+  'hover:bg-nomi-ink-05 hover:text-nomi-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-nomi-ink',
   'disabled:cursor-not-allowed disabled:opacity-50',
 )
 
@@ -128,7 +128,7 @@ function ProjectMenu({
         className={cn(
           'app-no-drag inline-flex h-7 min-w-0 max-w-[260px] items-center gap-1 rounded-nomi-sm border-0 bg-transparent pl-2 pr-1.5',
           'text-body-sm font-medium text-nomi-ink transition-colors hover:bg-nomi-ink-05',
-          'focus-visible:outline focus-visible:outline-2 focus-visible:outline-nomi-accent',
+          'focus-visible:outline focus-visible:outline-2 focus-visible:outline-nomi-ink',
           open && 'bg-nomi-ink-10',
         )}
         aria-label={t('appShell.topbar.projectMenu', { name: projectName })}

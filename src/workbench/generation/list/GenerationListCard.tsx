@@ -96,7 +96,7 @@ function ToolCard({ card, node, onOpenInCanvas }: { card: GenerationListCard; no
       data-list-card={card.key}
       data-list-card-kind={node?.kind ?? 'tool'}
       data-list-tool-card
-      className="flex w-[256px] min-w-0 cursor-pointer items-center gap-3 self-start rounded-panel border border-nomi-line bg-nomi-paper p-2.5 transition-colors hover:border-nomi-ink-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nomi-accent"
+      className="flex w-[256px] min-w-0 cursor-pointer items-center gap-3 self-start rounded-panel border border-nomi-line bg-nomi-paper p-2.5 transition-colors hover:border-nomi-ink-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nomi-ink"
       onClick={onOpenInCanvas}
       onKeyDown={(event) => {
         if (event.key === 'Enter' || event.key === ' ') {
@@ -174,7 +174,7 @@ export function GenerationListCardView({
       role="button"
       tabIndex={0}
     >
-      <div className="relative rounded-panel transition-shadow group-hover:ring-1 group-hover:ring-nomi-ink-20 group-focus-visible:ring-2 group-focus-visible:ring-nomi-accent">
+      <div className="relative rounded-panel transition-shadow group-hover:ring-1 group-hover:ring-nomi-ink-20 group-focus-visible:ring-2 group-focus-visible:ring-nomi-ink">
         {draft ? (
           <div className="flex flex-col overflow-hidden rounded-panel bg-nomi-ink-05 px-4 py-3.5 ring-1 ring-inset ring-nomi-line-soft" style={{ height: CARD_MEDIA_HEIGHT }} data-list-draft-card>
             {node ? <CardPrompt node={node} lines={3} /> : null}

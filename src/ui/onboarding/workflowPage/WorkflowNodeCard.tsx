@@ -81,7 +81,7 @@ function WorkflowNodeCard({ node, bindable, selected, onSelect }: WorkflowNodeCa
   return (
     <button
       type="button"
-      className={cn(shared, 'cursor-pointer hover:border-nomi-accent')}
+      className={cn(shared, 'cursor-pointer hover:border-nomi-ink-30')}
       style={style}
       data-node-id={node.nodeId}
       aria-label={ariaLabel}

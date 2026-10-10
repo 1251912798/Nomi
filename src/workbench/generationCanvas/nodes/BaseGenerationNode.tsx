@@ -505,7 +505,7 @@ function BaseGenerationNodeImpl({
                 'generation-canvas-v2-node__resize-zone',
                 `generation-canvas-v2-node__resize-zone--${direction}`,
                 'absolute z-[6] p-0 border-0 bg-transparent',
-                'focus-visible:outline-2 focus-visible:outline-nomi-accent focus-visible:outline-offset-2',
+                'focus-visible:outline-2 focus-visible:outline-nomi-ink focus-visible:outline-offset-2',
                 (direction === 'n' || direction === 's') && 'left-[10px] w-[calc(100%-20px)] h-[10px] cursor-ns-resize',
                 direction === 'n' && 'top-[-5px]',
                 direction === 's' && 'bottom-[-5px]',

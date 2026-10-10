@@ -337,7 +337,7 @@ export const AssetGridCell = React.memo(function AssetGridCell({
   const check = !selectable ? null : onToggleSelect ? (
     <button
       type="button"
-      className={cn(checkClassName, 'z-[2] cursor-pointer hover:border-nomi-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nomi-accent/40')}
+      className={cn(checkClassName, 'z-[2] cursor-pointer hover:border-nomi-ink-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nomi-ink')}
       data-asset-select-toggle={asset.name}
       aria-pressed={selected}
       aria-label={t('assetLibrary.toggleSelectNamed', { name: asset.name })}

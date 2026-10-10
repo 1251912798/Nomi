@@ -158,11 +158,11 @@ export function BrowserPromptExtractionSettingsModal({
           <section className="flex min-h-0 flex-col gap-3">
             <label className="grid gap-1.5">
               <span className="text-caption font-semibold text-nomi-ink-60">{t('browserAssets.extraction.name')}</span>
-              <input value={selectedTemplate.title} className="h-9 rounded-nomi border border-nomi-line bg-nomi-bg px-3 text-body-sm text-nomi-ink outline-none focus:border-nomi-accent" onChange={(event) => updateTemplate({ title: event.target.value })} />
+              <input value={selectedTemplate.title} className="h-9 rounded-nomi border border-nomi-line bg-nomi-bg px-3 text-body-sm text-nomi-ink outline-none focus:border-nomi-ink-40" onChange={(event) => updateTemplate({ title: event.target.value })} />
             </label>
             <label className="flex min-h-0 flex-1 flex-col gap-1.5">
               <span className="text-caption font-semibold text-nomi-ink-60">{t('browserAssets.extraction.prompt')}</span>
-              <textarea value={selectedTemplate.prompt} className="min-h-[340px] flex-1 resize-none rounded-nomi border border-nomi-line bg-nomi-bg p-3 text-body-sm leading-relaxed text-nomi-ink outline-none focus:border-nomi-accent" onChange={(event) => updateTemplate({ prompt: event.target.value })} />
+              <textarea value={selectedTemplate.prompt} className="min-h-[340px] flex-1 resize-none rounded-nomi border border-nomi-line bg-nomi-bg p-3 text-body-sm leading-relaxed text-nomi-ink outline-none focus:border-nomi-ink-40" onChange={(event) => updateTemplate({ prompt: event.target.value })} />
             </label>
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="text-caption text-nomi-ink-40">{projectAvailable ? t('browserAssets.extraction.projectPortable') : t('browserAssets.extraction.projectUnavailable')}</div>

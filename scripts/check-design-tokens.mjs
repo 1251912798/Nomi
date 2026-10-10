@@ -183,6 +183,7 @@ const accentFiles = gitPaths(["ls-files", "--cached", "--others", "--exclude-sta
   .filter((f) => /\.(tsx?|css)$/.test(f))
   .filter((f) => !/\.test\.tsx?$/.test(f))
   .filter((f) => !f.startsWith("src/devlab/"))
+  .concat(["tailwind.config.ts"]) // 全局 addBase 里也有 border-color 写法（输入框聚焦线）
   .filter((f) => fs.existsSync(path.join(ROOT, f)));
 let accentTotal = 0;
 const accentSeen = new Set();

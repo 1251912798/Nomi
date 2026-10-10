@@ -355,7 +355,7 @@ export function PromptLibraryContent({
                   <button
                     type="button"
                     onClick={handleNew}
-                    className={cn('flex flex-col items-center justify-center gap-1.5 w-full aspect-[4/3] cursor-pointer', 'rounded-nomi border border-dashed border-nomi-line bg-transparent text-nomi-ink-40', 'hover:border-nomi-accent hover:text-nomi-accent transition-colors')}
+                    className={cn('flex flex-col items-center justify-center gap-1.5 w-full aspect-[4/3] cursor-pointer', 'rounded-nomi border border-dashed border-nomi-line bg-transparent text-nomi-ink-40', 'hover:border-nomi-ink-30 hover:text-nomi-accent transition-colors')}
                   >
                     <IconPlus size={22} stroke={1.6} />
                     <span className={cn('text-caption')}>{t('libraries.prompt.create')}</span>

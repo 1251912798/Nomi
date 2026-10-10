@@ -38,7 +38,7 @@ export function TimelineNotchDragHandle({ onAddAtPlayhead, onDragStart }: Timeli
         'hover:bg-nomi-paper hover:text-nomi-ink hover:opacity-100 hover:shadow-nomi-md',
         'focus-visible:bg-nomi-paper focus-visible:text-nomi-ink focus-visible:shadow-nomi-md',
         'active:translate-y-0 active:scale-[0.98]',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--workbench-accent)] focus-visible:ring-offset-2',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nomi-ink focus-visible:ring-offset-2',
       )}
       aria-label={label}
       title={t('timelineEditor.dragToTimelineHold', { label })}

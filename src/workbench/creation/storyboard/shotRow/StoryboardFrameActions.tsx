@@ -122,7 +122,7 @@ export default function StoryboardFrameActions({
           title={t(recoverableHintKey(exec.recoverableNode))}
           aria-label={t('generationCommon.production.runAction.retry-retrieval')}
           data-storyboard-recover="true"
-          className="h-6 px-2 rounded-nomi-sm border border-nomi-line text-micro text-nomi-ink-80 inline-flex items-center gap-1 hover:border-nomi-accent hover:text-nomi-accent disabled:opacity-50"
+          className="h-6 px-2 rounded-nomi-sm border border-nomi-line text-micro text-nomi-ink-80 inline-flex items-center gap-1 hover:border-nomi-ink-30 hover:text-nomi-accent disabled:opacity-50"
         >
           <IconRefresh size={12} stroke={1.8} className={cn(recovering && 'animate-spin')} />
           {recovering ? t('storyboardEditor.frame.recoverableRefetching') : t('generationCommon.production.runAction.retry-retrieval')}

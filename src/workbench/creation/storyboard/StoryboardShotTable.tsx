@@ -339,7 +339,7 @@ export default function StoryboardShotTable({ plan, projectId, rows, anchorCards
                     onClick={() => onPlayGroup(groupRows)}
                     disabled={groupRows.length === 0}
                     data-storyboard-play-scene={foldKeyOf(group)}
-                    className="inline-flex shrink-0 items-center gap-1 rounded-full border border-nomi-line px-2 py-0.5 text-micro text-nomi-ink-60 hover:border-nomi-accent hover:text-nomi-accent disabled:cursor-not-allowed disabled:opacity-40"
+                    className="inline-flex shrink-0 items-center gap-1 rounded-full border border-nomi-line px-2 py-0.5 text-micro text-nomi-ink-60 hover:border-nomi-ink-30 hover:text-nomi-accent disabled:cursor-not-allowed disabled:opacity-40"
                     aria-label={t('storyboardEditor.playback.sceneAria', { name: headTitleOf(group, groupIndex) })}
                   >
                     <IconPlayerPlay size={11} stroke={1.8} />

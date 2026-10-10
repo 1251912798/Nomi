@@ -414,7 +414,7 @@ export function NomiBrowserDialogView({
                       navigateActiveTab()
                     }}
                   >
-                    <div className="flex items-center gap-2 rounded-pill border border-nomi-line bg-nomi-paper p-1.5 pl-5 shadow-nomi-sm transition-[border-color,box-shadow] focus-within:border-nomi-accent focus-within:shadow-nomi-md">
+                    <div className="flex items-center gap-2 rounded-pill border border-nomi-line bg-nomi-paper p-1.5 pl-5 shadow-nomi-sm transition-[border-color,box-shadow] focus-within:border-nomi-ink-40 focus-within:shadow-nomi-md">
                       <IconSearch size={19} stroke={1.7} className="shrink-0 text-nomi-ink-40" aria-hidden="true" />
                       <input
                         value={addressValue}
@@ -451,7 +451,7 @@ export function NomiBrowserDialogView({
                             className={cn(
                               'group flex items-center gap-2.5 rounded-nomi border border-nomi-line bg-nomi-paper p-2.5 text-left',
                               'cursor-pointer transition-[background,border-color,transform,box-shadow] duration-nomi-fast ease-nomi-fast',
-                              'hover:-translate-y-px hover:border-nomi-accent hover:shadow-nomi-md',
+                              'hover:-translate-y-px hover:border-nomi-ink-30 hover:shadow-nomi-md',
                             )}
                             onClick={() => {
                               void createTab(site.url)

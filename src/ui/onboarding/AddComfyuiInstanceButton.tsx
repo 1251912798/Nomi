@@ -63,7 +63,7 @@ export function AddComfyuiInstanceButton({ onAdded }: { onAdded: () => void }): 
         onClick={() => setOpen(true)}
         className={cn('flex items-center justify-center gap-1.5 h-9 w-full rounded-nomi',
           'border border-dashed border-nomi-line text-caption text-nomi-ink-60',
-          'hover:border-nomi-accent hover:text-nomi-accent')}
+          'hover:border-nomi-ink-30 hover:text-nomi-accent')}
       >
         <IconPlus size={14} stroke={1.8} />{t('onboardingProviders.comfyInstance.addButton')}
       </button>
@@ -81,13 +81,13 @@ export function AddComfyuiInstanceButton({ onAdded }: { onAdded: () => void }): 
         value={name} onChange={(e) => setName(e.target.value)} autoFocus
         placeholder={t('onboardingProviders.comfyInstance.namePlaceholder')}
         aria-label={t('onboardingProviders.comfyInstance.nameLabel')}
-        className="h-8 px-2.5 rounded-nomi-sm border border-nomi-line bg-nomi-paper text-caption text-nomi-ink placeholder:text-nomi-ink-30 focus:border-nomi-accent outline-none"
+        className="h-8 px-2.5 rounded-nomi-sm border border-nomi-line bg-nomi-paper text-caption text-nomi-ink placeholder:text-nomi-ink-30 focus:border-nomi-ink-40 outline-none"
       />
       <label className="text-micro text-nomi-ink-40">{t('onboardingProviders.comfyInstance.addrLabel')}</label>
       <input
         value={addr} onChange={(e) => setAddr(e.target.value)} spellCheck={false}
         aria-label={t('onboardingProviders.comfyInstance.addrLabel')}
-        className="h-8 px-2.5 rounded-nomi-sm border border-nomi-line bg-nomi-paper font-mono text-caption text-nomi-ink focus:border-nomi-accent outline-none"
+        className="h-8 px-2.5 rounded-nomi-sm border border-nomi-line bg-nomi-paper font-mono text-caption text-nomi-ink focus:border-nomi-ink-40 outline-none"
       />
       {error ? <p role="alert" className="m-0 text-caption text-nomi-danger">{error}</p> : null}
       <DecisionBar

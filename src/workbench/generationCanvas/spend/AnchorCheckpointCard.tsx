@@ -131,7 +131,7 @@ export function AnchorCheckpointCard({ model, onApprove, onDefer, onRework }: Pr
                         'ml-auto shrink-0 rounded-full border px-2.5 py-1 text-micro transition-colors',
                         isSelected
                           ? 'border-nomi-accent text-nomi-accent'
-                          : 'border-dashed border-nomi-line text-nomi-ink-60 hover:border-nomi-accent hover:text-nomi-accent',
+                          : 'border-dashed border-nomi-line text-nomi-ink-60 hover:border-nomi-ink-30 hover:text-nomi-accent',
                       )}
                     >
                       {t('generationCommon.production.checkpoint.reworkThis')}

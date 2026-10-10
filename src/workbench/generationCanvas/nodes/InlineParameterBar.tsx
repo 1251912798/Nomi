@@ -624,7 +624,7 @@ export default function InlineParameterBar({
         // 不把右端的「生成」挤出卡外（2026-10-06 #1042）。定宽的画布节点照旧不收。
         summaryMaxWidth !== undefined ? 'shrink' : 'shrink-0',
         'justify-between text-caption text-nomi-ink-80 cursor-pointer min-w-0',
-        'hover:border-nomi-ink-20 focus:outline-none focus-visible:border-nomi-accent',
+        'hover:border-nomi-ink-20 focus:outline-none focus-visible:border-nomi-ink-40',
         stacked && 'w-full',
       )}
       style={stacked ? { width: '100%' } : summaryMaxWidth !== undefined ? { maxWidth: summaryMaxWidth } : { width: resolvedSummaryWidth }}

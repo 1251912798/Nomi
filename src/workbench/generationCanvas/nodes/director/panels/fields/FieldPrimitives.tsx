@@ -47,7 +47,7 @@ function NumberInput({ value, onCommit, digits = 2, className }: { value: number
     <input
       type="text"
       inputMode="decimal"
-      className={cn('h-7 w-full rounded-nomi-sm border border-nomi-line bg-nomi-ink-05 px-2 text-right text-body-sm tabular-nums text-nomi-ink focus:border-nomi-accent', className)}
+      className={cn('h-7 w-full rounded-nomi-sm border border-nomi-line bg-nomi-ink-05 px-2 text-right text-body-sm tabular-nums text-nomi-ink focus:border-nomi-ink-40', className)}
       {...draft}
       onWheel={(event) => {
         event.preventDefault()
@@ -89,7 +89,7 @@ export function TextField({ label, value, onCommit }: { label: string; value: st
       <span className="w-16 shrink-0 truncate text-nomi-ink-60">{label}</span>
       <input
         type="text"
-        className="h-7 min-w-0 flex-1 rounded-nomi-sm border border-nomi-line bg-nomi-ink-05 px-2 text-body-sm text-nomi-ink focus:border-nomi-accent"
+        className="h-7 min-w-0 flex-1 rounded-nomi-sm border border-nomi-line bg-nomi-ink-05 px-2 text-body-sm text-nomi-ink focus:border-nomi-ink-40"
         value={draft ?? value}
         onFocus={() => setDraft(value)}
         onChange={(event) => setDraft(event.target.value)}

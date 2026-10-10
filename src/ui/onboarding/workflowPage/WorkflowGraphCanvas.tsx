@@ -251,7 +251,7 @@ export function WorkflowGraphCanvas({
             onClick={() => { setSelectedNodeId(null); setAsList((v) => !v) }}
             className={cn(
               'pointer-events-auto inline-flex h-7 items-center gap-1.5 rounded-full border border-nomi-line bg-nomi-paper px-2.5',
-              'text-micro text-nomi-ink-60 hover:border-nomi-accent hover:text-nomi-accent',
+              'text-micro text-nomi-ink-60 hover:border-nomi-ink-30 hover:text-nomi-accent',
             )}
           >
             {asList
@@ -359,7 +359,7 @@ function NodeList({
                   aria-expanded={selected}
                   className={cn(
                     'flex w-full items-center gap-2 rounded-nomi-sm border px-2 py-1.5 text-left',
-                    selected ? 'border-nomi-accent bg-nomi-accent-soft' : 'border-nomi-line bg-nomi-paper hover:border-nomi-accent',
+                    selected ? 'border-nomi-accent bg-nomi-accent-soft' : 'border-nomi-line bg-nomi-paper hover:border-nomi-ink-30',
                   )}
                 >
                   {row}
