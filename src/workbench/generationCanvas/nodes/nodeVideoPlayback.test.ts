@@ -58,17 +58,25 @@ describe('node video hover preview', () => {
     clearNodeVideoUserPlayback(video)
   })
 
-  it('allows a later hover preview after user playback is paused', () => {
+  it('a video the user paused keeps its playhead through hover in and out', () => {
     const video = fakeVideo(false)
 
     markNodeVideoUserPlayback(video)
-    expect(consumeNodeVideoHoverPreviewPlay(video)).toBe(false)
     clearNodeVideoUserPlayback(video)
+    video.currentTime = 7.2
     startNodeVideoHoverPreview(video)
     stopNodeVideoHoverPreview(video)
 
-    expect(video.pause).toHaveBeenCalledOnce()
-    expect(video.currentTime).toBe(0)
+    expect(video.play).not.toHaveBeenCalled()
+    expect(video.pause).not.toHaveBeenCalled()
+    expect(video.currentTime).toBe(7.2)
+  })
+
+  it('leaving never rewinds a video whose preview this hover did not start', () => {
+    const video = fakeVideo(false)
+    video.currentTime = 7.2
+    stopNodeVideoHoverPreview(video)
+    expect(video.currentTime).toBe(7.2)
   })
 
   it('the unmute that restores a stopped preview is not a user takeover', () => {

@@ -92,6 +92,12 @@ test('walkthrough scripts are included in the static scan', () => {
 const repoWriteScopePattern = /\.(?:node-test|test)\.(?:m?js|cjs|ts)$/
 const repoWriteExtraFiles = ['scripts/gate-mutation-harness.mjs']
 
+// 允许往仓库里写的少数例外：只写「不入库的新文件」，从不改写、删除被跟踪文件，没有“写坏再还原”的窗口。
+const REPO_WRITE_ALLOWLIST = {
+  'scripts/check-source-nul-bytes.test.ts': '门岗扫的就是仓库，探针只能放在仓内；文件名带 pid、未入库，finally 里删除，不覆盖任何被跟踪文件',
+  'tests/experience-laws/parameterReachability.test.mjs': '写 gitignore 的 artifacts/ 下的覆盖表（证据产物，非源码）',
+}
+
 function repoWriteScopeFiles() {
   const out = []
   const walk = (dir) => {
@@ -110,6 +116,7 @@ function repoWriteScopeFiles() {
 test('测试与门岗自检装置不往真实仓库路径写文件（写 repoRoot 下非 .tmp 的路径就红）', () => {
   const violations = []
   for (const file of repoWriteScopeFiles()) {
+    if (Object.hasOwn(REPO_WRITE_ALLOWLIST, path.relative(repoRoot, file).split(path.sep).join('/'))) continue
     for (const hit of repoWriteViolations(file, fs.readFileSync(file, 'utf8'))) {
       violations.push(`${path.relative(repoRoot, file).split(path.sep).join('/')}:${hit.line} ${hit.call}`)
     }
@@ -143,4 +150,24 @@ test('放行：写临时目录、写 .tmp 草稿区、只把真实仓库当拷�
     "fs.readFileSync(path.join(repoRoot, 'package.json'), 'utf8')",
   ]
   for (const source of green) assert.deepEqual(repoWriteViolations('x.test.mjs', source), [], source)
+})
+
+test('变量别名也算：先把真仓库路径赋给变量、再写该变量（check-ipc-sender-binding 事故原型）→ 红；别处同名的临时目录变量不受牵连', () => {
+  const red = `
+    const target = path.join(process.cwd(), 'electron', 'main.ts')
+    fs.writeFileSync(target, 'x')`
+  assert.ok(repoWriteViolations('x.test.mjs', red).length > 0)
+  const redViaChain = `
+    const base = path.join(repoRoot, 'electron')
+    const target = path.join(base, 'main.ts')
+    fs.rmSync(target)`
+  assert.ok(repoWriteViolations('x.test.mjs', redViaChain).length > 0)
+  const greenOtherScope = `
+    function a() { const root = path.join(repoRoot, 'x'); return fs.readFileSync(root) }
+    function b() { const root = makeTempDir('x-'); fs.writeFileSync(path.join(root, 'a'), '1') }`
+  assert.deepEqual(repoWriteViolations('x.test.mjs', greenOtherScope), [])
+  const greenTmp = `
+    const scratch = path.join(repoRoot, '.tmp', 'x')
+    fs.writeFileSync(scratch, '1')`
+  assert.deepEqual(repoWriteViolations('x.test.mjs', greenTmp), [])
 })

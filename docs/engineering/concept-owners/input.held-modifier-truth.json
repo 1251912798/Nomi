@@ -1,0 +1,28 @@
+{
+  "name": "修饰键现在按着没（Shift / ⌘ / Ctrl / Alt 的按住状态以输入事件自带的修饰位为准）",
+  "subject": "input.held-modifier-truth",
+  "lifecycle": "live-interaction",
+  "authority_kind": "decision",
+  "trust_domain": "renderer",
+  "fact_kind": "rule",
+  "migration_status": "converged",
+  "owner": {
+    "path": "src/ui/input/heldModifierReconciler.ts",
+    "symbol": "installHeldModifierReconciler"
+  },
+  "write_api": [
+    {
+      "path": "src/ui/input/heldModifierReconciler.ts",
+      "symbol": "installHeldModifierReconciler"
+    }
+  ],
+  "forbidden_derivations": [],
+  "parity_test": "src/ui/input/heldModifierReconciler.test.ts",
+  "allowed_consumers": [
+    "src/main.tsx",
+    "src/workbench/generationCanvas/reactFlow/GenerationCanvasReactFlowViewport.tsx",
+    "src/workbench/generationCanvas/nodes/versionCards/NodeVersionCardsHost.tsx"
+  ],
+  "since": "2026-10-10",
+  "notes": "按 keydown / keyup 配对记「按着没」的监听（React Flow 的 selectionKeyCode / multiSelectionKeyCode / zoomActivationKeyCode、版本卡 useAltHeld）在松开被系统截图快捷键、输入法或 stopPropagation 的编辑区吞掉时会永久卡在按着。真相是每个输入事件自带的修饰位：installHeldModifierReconciler 在 window 捕获阶段对账，补发一次 document keyup（flushSync），全 App 只在 main.tsx 装一处。新加按键状态时直接按 keyup 记账即可，丢失的松开由这里补；不要自己再写一套 blur / 修饰位对账。非修饰键（空格）不在本概念内，仍只靠 window blur 清零。根因合同：docs/fixes/2026-10-10-stuck-modifier-key.root-cause.json。"
+}

@@ -81,3 +81,25 @@ describe("text image selection identity", () => {
     expect(mocks.streamTextTask.mock.calls[0]?.[0]).not.toHaveProperty("imageUrls");
   });
 });
+
+describe("重试次数只由显式调用方给定（拆解路径传 0，其它保持 SDK 默认）", () => {
+  beforeEach(() => { mocks.streamTextTask.mockReset().mockResolvedValue({ text: "t", raw: { ok: true } }); });
+  const run = (extras: Record<string, unknown>) => executeTextTask({
+    vendor: { key: "v" } as Vendor, model: { modelKey: "m" } as Model, apiKey: "k", kind: "image_to_prompt", taskId: "t",
+    request: { kind: "image_to_prompt", prompt: "p", extras } as TaskRequest,
+  });
+  it("extras.maxRetries = 0 → 传给 streamTextTask", async () => {
+    await run({ maxRetries: 0 });
+    expect(mocks.streamTextTask.mock.calls[0][0].maxRetries).toBe(0);
+  });
+  it("没给 → 不传", async () => {
+    await run({});
+    expect(mocks.streamTextTask.mock.calls[0][0]).not.toHaveProperty("maxRetries");
+  });
+  it("越界 / 非整数 → 当没给", async () => {
+    await run({ maxRetries: 99 });
+    await run({ maxRetries: -1 });
+    await run({ maxRetries: "0" });
+    for (const call of mocks.streamTextTask.mock.calls) expect(call[0]).not.toHaveProperty("maxRetries");
+  });
+});

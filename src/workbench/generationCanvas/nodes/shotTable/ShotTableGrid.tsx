@@ -39,9 +39,10 @@ export function ShotTableGrid({ rows, compact, selectedIds, onSelect, factColumn
         <td className="px-2 font-mono text-micro text-nomi-ink-60">{String(row.index).padStart(2, '0')}</td>
         <td className="px-2">{row.thumbnail ? <img src={row.thumbnail} alt="" className="h-6 w-10 rounded-nomi-sm object-cover" /> : <div className="h-6 w-10 rounded-nomi-sm bg-nomi-ink-05" />}</td>
         {!compact && <><td className="px-2 font-mono text-micro">{row.start != null && row.end != null ? t('shotTable.timeRange', { start: row.start, end: row.end }) : row.duration != null ? t('shotTable.duration', { duration: row.duration }) : '—'}</td>
-          {facts.map(column => <td key={column.columnId} className="px-2" onDoubleClick={event => { event.stopPropagation(); onEditCell?.(row.id, column.columnId, row.cells?.[column.columnId] ?? '') }}><span className="block truncate" title={row.cells?.[column.columnId]}>{row.visionFailed && !row.cells?.[column.columnId] ? t('shotTable.unread') : row.cells?.[column.columnId] || '—'}</span></td>)}
+          {facts.map(column => <td key={column.columnId} className="px-2" onDoubleClick={event => { event.stopPropagation(); onEditCell?.(row.id, column.columnId, row.cells?.[column.columnId] ?? '') }}><span className="block truncate" title={row.visionFailed && !row.cells?.[column.columnId] ? row.failureReason ?? undefined : row.cells?.[column.columnId]}>{row.visionFailed && !row.cells?.[column.columnId] ? t('shotTable.unread') : row.cells?.[column.columnId] || '—'}</span></td>)}
         </>}
         <td className="px-2 text-micro"><span className={cn('inline-flex items-center gap-1.5', row.visionFailed ? 'text-nomi-danger' : 'text-nomi-ink-60')}><span className="h-1.5 w-1.5 shrink-0 rounded-full bg-current" />{row.visionFailed ? t('shotTable.unread') : '—'}</span>
+          {row.visionFailed && row.failureReason && <span data-testid="shot-table-row-failure-reason" title={row.failureReason} className="block truncate text-nomi-ink-60">{row.failureReason}</span>}
           {row.visionFailed && onRetry && <WorkbenchButton size="sm" variant="default" onClick={() => onRetry(row.id)}>{t('shotTable.retry')}</WorkbenchButton>}
         </td>
       </tr>)}</tbody>

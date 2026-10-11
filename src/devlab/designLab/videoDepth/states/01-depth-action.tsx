@@ -1,3 +1,4 @@
+import { NodeVideoSessionProvider } from '../../../../workbench/generationCanvas/nodes/NodeVideoSession'
 // 设计实验室 · 「提取深度」四态（2026-09-07 用户两次拍板后的形态）。
 //
 // 拍板一：深度视频**不是一种节点**，是视频节点浮条上的一个动作。
@@ -69,14 +70,14 @@ function SoloStage(): JSX.Element {
           frame={SOURCE_FRAME}
           selected
           toolbar={
-            <NodeVideoFrameToolbar
+            <NodeVideoSessionProvider node={SOURCE_NODE} writable={false}><NodeVideoFrameToolbar
               reportFeedback={setFeedback}
               node={SOURCE_NODE}
               downloading={false}
               onDownload={NOOP}
               onPreview={NOOP}
               onOpenProvenance={NOOP}
-            />
+            /></NodeVideoSessionProvider>
           }
         />
       </div>

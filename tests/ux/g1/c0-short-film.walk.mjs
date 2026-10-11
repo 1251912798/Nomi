@@ -1,11 +1,9 @@
 #!/usr/bin/env node
 import { stationTimeout } from '../_station-budget.mjs'
-import { completedExports } from './sweep-timeline.mjs'
 import { requireCredential, recordBlocked } from './credential-precheck.mjs'
 import { realNomiProfile } from '../_realProfile.mjs'
 // C0: one UI journey, with either synthetic or budgeted real provider dispatch.
 import fs from 'node:fs'
-import { videoWaitBudget, waitForVideos } from './c0-video-wait.mjs'
 import { BUDGET_CNY } from './c0-real-budget.mjs'
 import ffmpeg from '@ffmpeg-installer/ffmpeg'
 import ffprobe from '@ffprobe-installer/ffprobe'
@@ -15,8 +13,6 @@ import { fileURLToPath } from 'node:url'
 import { execFileSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { parseArgs } from 'node:util'
-import { openStoryboardEditor } from '../_creationResourceTree.mjs'
-import { newProjectEntry } from '../_shell.mjs'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..')
 const { values } = parseArgs({ options: {
@@ -61,8 +57,7 @@ function save() {
   fs.writeFileSync(path.join(outputDir, 'emotion-log.md'), log.join('\n'))
 }
 let app, win, scheduler, screenshotSettled, expect, stopRuntimeApp
-const collection = process.env.NOMI_WALK_MODE === 'collect'
-  ? (await import('./sweep-c0.mjs')).createC0Collection(attemptDir, report) : null
+let collection = null // collect 模式的记账器：凭证检查通过后才加载（它带进 playwright / 证据库等重模块）
 async function step(id, action, expected, run, interruption = '无自动检测到的审批；待人眼核对') {
   if (collection) return collection.step(id, action, expected, run, interruption)
   const began = performance.now()
@@ -89,6 +84,7 @@ async function step(id, action, expected, run, interruption = '无自动检测�
 }
 try {
   if (values.real) requireCredential(realNomiProfile().catalogPath, attemptDir)
+  if (process.env.NOMI_WALK_MODE === 'collect') collection = (await import('./sweep-c0.mjs')).createC0Collection(attemptDir, report)
   // Check before importing Playwright so a missing development environment leaves a report.
   const missing = ['node_modules', ...(!values.packaged ? ['dist/index.html', 'dist-electron/main.js'] : [])]
     .filter((name) => !fs.existsSync(path.join(root, name)))
@@ -97,6 +93,11 @@ try {
   ;({ expect, screenshotSettled } = assertions)
   const { clickOrFail, proveProbe, expectAbsent } = assertions
   const { launchNomiApp } = await import('../_launchApp.mjs')
+  // 重模块（playwright 经 _shell / _creationResourceTree / sweep-timeline / c0-video-wait 带进来）放在凭证检查之后再加载：没有密钥的路径不该为它们付几秒启动时间。
+  const { openStoryboardEditor } = await import('../_creationResourceTree.mjs')
+  const { canvasFitViewButton, newProjectEntry } = await import('../_shell.mjs')
+  const { completedExports } = await import('./sweep-timeline.mjs')
+  const { videoWaitBudget, waitForVideos } = await import('./c0-video-wait.mjs')
   const support = await import('../agent-runtime-walk-support.mjs')
   const { DOCUMENT, CREATION_PANEL, APPROVAL_CARD, INTERVENTION_CONFIRM,
     readProject, openCanvas } = support
@@ -235,7 +236,7 @@ try {
     expect((await payload()).generationCanvas.nodes.every((n) => n.meta.modelKey === MODEL)).toBe(true)
     await scheduler.generationCompleted({ expect, readyNodeIds, complete: readyNodeIds.length === nodeIds.length })
     await openCanvas(win)
-    await clickOrFail(win.getByLabel('适应视图').first(), '检查画布全貌')
+    await clickOrFail(canvasFitViewButton(win), '检查画布全貌')
     expect(observations.every(row => row.ready)).toBe(true)
   }, values.real ? '预算内生成确认 1 次' : '零额度生成确认 1 次')
   await step('05', '按叙事加入时间轴并预览', '八段引用对应节点、无空隙、64秒；预览真实推进', async () => {

@@ -1,7 +1,6 @@
 import React, { type JSX } from 'react'
-import { useTranslation } from 'react-i18next'
-import { DecisionBar } from '../../../../design'
 import { cn } from '../../../../utils/cn'
+import { containedImageBox, defaultCropRect, type DisplayBox } from './cropGridGeometry'
 
 export type CropRect = { x: number; y: number; w: number; h: number }
 export type CropGridResult = { rect: CropRect; cols: number[]; rows: number[] }
@@ -52,29 +51,42 @@ function equalCuts(parts: number): number[] {
  * 非破坏式可调取景框：裁剪与切图共用一个组件（P1，不留两套）。
  * gridSize {1,1} = 纯裁剪（无内线）；其余 = cols-1 条竖线 + rows-1 条横线（可拖），默认等分。
  * 内线坐标 = 框内归一化分数（随外框缩放自动跟随）。确认时把 { rect, cols, rows } 交回父级，
- * 由父级按 cell 裁出新节点（原图零改动）。坐标约定：overlay 盒子 == 图片显示区（无 letterbox）。
+ * 由父级按 cell 裁出新节点（原图零改动）。坐标约定：取景框的 0~1 == 图片**真实显示矩形**（stage，已去掉 letterbox）。
  */
 export default function ImageCropGridOverlay({
   imageUrl,
   gridSize,
-  onConfirm,
-  onCancel,
+  onDraftChange,
 }: {
   imageUrl: string
   gridSize: CropGridSize
-  onConfirm: (result: CropGridResult) => void
-  onCancel: () => void
+  /** 把当前取景框报给宿主：确认/取消由宿主在图片区**之外**渲染，避免按钮压住要切的格子（2026-10-11）。 */
+  onDraftChange?: (draft: CropGridResult) => void
 }): JSX.Element {
-  const { t } = useTranslation()
-  const cropOnly = gridSize.rows === 1 && gridSize.cols === 1
+  const outerRef = React.useRef<HTMLDivElement>(null)
   const boxRef = React.useRef<HTMLDivElement>(null)
   const dragRef = React.useRef<ActiveDrag | null>(null)
-  // 切图默认框接近整图（通常要切整张）；纯裁剪沿用原来的居中八分。
-  const [rect, setRect] = React.useState<CropRect>(
-    cropOnly ? { x: 0.1, y: 0.1, w: 0.8, h: 0.8 } : { x: 0.04, y: 0.04, w: 0.92, h: 0.92 },
-  )
+  // 默认取景框归 cropGridGeometry.defaultCropRect（切图 = 整图，裁剪 = 居中八分）。
+  // 取景框的坐标系 = 图片真实显示矩形（object-contain 后），不是整个卡片：stage 就是那块矩形。
+  const [stage, setStage] = React.useState<DisplayBox | null>(null)
+  const [natural, setNatural] = React.useState<{ width: number; height: number } | null>(null)
+  React.useLayoutEffect(() => {
+    const outer = outerRef.current
+    if (!outer) return
+    const measure = () => setStage(containedImageBox({ width: outer.clientWidth, height: outer.clientHeight }, natural))
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(outer)
+    return () => observer.disconnect()
+  }, [natural])
+  const [rect, setRect] = React.useState<CropRect>(() => defaultCropRect(gridSize))
   const [cols, setCols] = React.useState<number[]>(() => equalCuts(gridSize.cols))
   const [rows, setRows] = React.useState<number[]>(() => equalCuts(gridSize.rows))
+
+  // 确认/取消已经移到图片区之外（宿主渲染），这里只把取景框状态报上去。
+  React.useEffect(() => {
+    onDraftChange?.({ rect, cols, rows })
+  }, [rect, cols, rows, onDraftChange])
 
   const beginDrag = (target: DragTarget) => (event: React.PointerEvent) => {
     event.stopPropagation()
@@ -178,14 +190,29 @@ export default function ImageCropGridOverlay({
 
   return (
     <div
-      ref={boxRef}
+      ref={outerRef}
       className="absolute inset-0 z-[14] select-none touch-none"
       onPointerDown={(event) => event.stopPropagation()}
       onPointerMove={handlePointerMove}
       onPointerUp={endDrag}
       onPointerCancel={endDrag}
     >
-      <img src={imageUrl} alt="" className="w-full h-full object-fill pointer-events-none" draggable={false} />
+      <div
+        ref={boxRef}
+        data-crop-stage="true"
+        className="absolute"
+        style={stage ? { left: stage.left, top: stage.top, width: stage.width, height: stage.height } : { inset: 0 }}
+      >
+      <img
+        src={imageUrl}
+        alt=""
+        className="w-full h-full object-fill pointer-events-none"
+        draggable={false}
+        onLoad={(event) => {
+          const img = event.currentTarget
+          if (img.naturalWidth > 0 && img.naturalHeight > 0) setNatural({ width: img.naturalWidth, height: img.naturalHeight })
+        }}
+      />
       {/* 框外压暗：上/下/左/右四块 */}
       <div
         className="absolute left-0 right-0 top-0 bg-nomi-ink/[0.55] pointer-events-none"
@@ -233,37 +260,25 @@ export default function ImageCropGridOverlay({
             <span className={cn(gripClass, 'left-1/2 top-1/2 pointer-events-none')} />
           </div>
         ))}
-        {/* 外框四角 */}
+        {/* 外框四角：抓点内缩 6px（left-1.5/top-1.5 抵消 -m-1.5 的半格外移）——
+            默认框现在贴整图，抓点若仍压在角上会被 preview 的 overflow-hidden 裁掉、点不到。 */}
         <span
-          className={cn(handleClass, 'left-0 top-0 cursor-nwse-resize')}
+          className={cn(handleClass, 'left-1.5 top-1.5 cursor-nwse-resize')}
           onPointerDown={beginDrag({ kind: 'corner', corner: 'nw' })}
         />
         <span
-          className={cn(handleClass, 'right-0 top-0 cursor-nesw-resize')}
+          className={cn(handleClass, 'right-1.5 top-1.5 cursor-nesw-resize')}
           onPointerDown={beginDrag({ kind: 'corner', corner: 'ne' })}
         />
         <span
-          className={cn(handleClass, 'left-0 bottom-0 cursor-nesw-resize')}
+          className={cn(handleClass, 'left-1.5 bottom-1.5 cursor-nesw-resize')}
           onPointerDown={beginDrag({ kind: 'corner', corner: 'sw' })}
         />
         <span
-          className={cn(handleClass, 'right-0 bottom-0 cursor-nwse-resize')}
+          className={cn(handleClass, 'right-1.5 bottom-1.5 cursor-nwse-resize')}
           onPointerDown={beginDrag({ kind: 'corner', corner: 'se' })}
         />
       </div>
-      {/* 确认 / 取消 */}
-      <div
-        className="absolute right-2 top-2 rounded-nomi bg-nomi-paper p-1 shadow-nomi-md"
-        onPointerDown={(event) => event.stopPropagation()}
-        onClick={(event) => event.stopPropagation()}
-      >
-        <DecisionBar
-          inline
-          cancelLabel={t('generationCommon.cropGrid.cancel')}
-          onCancel={onCancel}
-          primaryLabel={cropOnly ? t('generationCommon.cropGrid.confirmCrop') : t('generationCommon.cropGrid.confirmSplit')}
-          onPrimary={() => onConfirm({ rect, cols, rows })}
-        />
       </div>
     </div>
   )

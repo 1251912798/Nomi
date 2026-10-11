@@ -29,7 +29,11 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
+// 默认扫本脚本所在仓库；`--root <dir>` 让自测指向临时夹具，测试不必改写真源码（2026-10-11 竞态误报）。
+const rootFlag = process.argv.indexOf('--root')
+const repoRoot = rootFlag >= 0 && process.argv[rootFlag + 1]
+  ? path.resolve(process.argv[rootFlag + 1])
+  : path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const electronRoot = path.join(repoRoot, 'electron')
 const baselinePath = path.join(repoRoot, 'scripts', 'ipc-sender-binding-baseline.json')
 
