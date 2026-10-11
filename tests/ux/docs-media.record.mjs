@@ -164,7 +164,8 @@ async function recordLocale(locale) {
         const badge = document.createElement('div')
         badge.textContent = String(box.n)
         const nearTop = box.y < 20
-        badge.style.cssText = `position:absolute;left:${nearTop ? 6 : -12}px;top:${nearTop ? 6 : -12}px;width:22px;height:22px;border-radius:999px;background:#2e6cb4;color:#fff;font:700 12px/22px Inter,system-ui,sans-serif;text-align:center;box-shadow:0 0 0 2px #fff`
+        const nearLeft = box.x < 20
+        badge.style.cssText = `position:absolute;left:${nearLeft ? 2 : -12}px;top:${nearTop ? 2 : -12}px;width:22px;height:22px;border-radius:999px;background:#2e6cb4;color:#fff;font:700 12px/22px Inter,system-ui,sans-serif;text-align:center;box-shadow:0 0 0 2px #fff`
         ring.appendChild(badge)
         layer.appendChild(ring)
       }
