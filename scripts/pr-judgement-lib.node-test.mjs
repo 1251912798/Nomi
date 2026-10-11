@@ -41,7 +41,7 @@ test('路由表自身：每个类别有证据、证据 id 全局唯一、tool �
       if (isMissingTool(item.tool)) assert.match(item.toolRef, /计划/, `${item.id} 是 (planned)，toolRef 必须写「计划接什么」`)
     }
   }
-  for (const rule of table.pathRules) assert.ok(table.categories[rule.category], `pathRules 指向不存在的类别 ${rule.category}`)
+  for (const rule of table.pathRules) for (const category of [].concat(rule.category)) assert.ok(table.categories[category], `pathRules 指向不存在的类别 ${category}`)
 })
 
 test('路径推类别：四类沿用旧判定（花钱 / 长跑 / 可打断 / 新界面），并推出其余类别；测试 / 文档 / json 不推', () => {
@@ -58,7 +58,7 @@ test('路径推类别：四类沿用旧判定（花钱 / 长跑 / 可打断 / �
   assert.ok(ids([M('electron/projectMigration.ts')]).includes('data-format'))
   // 改交互（改已有 tsx）推 ui，但不算四类
   const modifiedTsx = classify([M('src/workbench/Panel.tsx')])
-  assert.deepEqual(modifiedTsx.categories.map((c) => c.id), ['ui'])
+  assert.deepEqual(modifiedTsx.categories.map((c) => c.id), ['ui', 'perf'], '改交互同时落进「新增功能 / 性能」类（perf-scenario 证据）')
   assert.equal(modifiedTsx.fourClass, false)
   // 多选：一个 PR 同时落在几类
   assert.ok(ids([M('src/workbench/generationCanvas/spendCard.tsx', 'A')]).length >= 3)
@@ -70,13 +70,13 @@ const CARD = (boxes) => `## 设计卡\n\n### 功能分类\n${boxes}\n`
 test('设计卡「功能分类」：路径推出的必须都勾，勾的只能更多；缺这一节红', () => {
   const inferred = inferRoutes([M('src/workbench/generationCanvas/spendCard.tsx', 'A')], '', table)
   const need = inferred.categories.map((category) => category.id)
-  assert.ok(need.includes('ui') && need.includes('spend') && need.includes('scale'))
+  assert.ok(need.includes('ui') && need.includes('spend') && need.includes('scale') && need.includes('perf'))
   assert.match(checkRoutingCard('## 设计卡\nx', inferred, table).lines.join('\n'), /缺 `## 功能分类`/)
   const partial = checkRoutingCard(CARD('- [x] 新界面 / 改交互\n- [ ] 花钱'), inferred, table)
   assert.equal(partial.ok, false)
   assert.match(partial.lines.join('\n'), /花钱/)
   assert.match(partial.lines.join('\n'), /大数据量/)
-  const full = checkRoutingCard(CARD('- [x] 新界面 / 改交互\n- [x] 花钱\n- [x] 大数据量 / 画布 / 长列表\n- [x] Agent 行为'), inferred, table)
+  const full = checkRoutingCard(CARD('- [x] 新界面 / 改交互\n- [x] 花钱\n- [x] 大数据量 / 画布 / 长列表\n- [x] 新增功能 / 性能\n- [x] Agent 行为'), inferred, table)
   assert.equal(full.ok, true)
   assert.ok(full.union.includes('agent'), '多勾的类别并进必交证据')
   // 推不出类别（纯文档改动）：不要求这一节
@@ -161,11 +161,12 @@ test('规则与门岗改动范围：移到判据库后行为不变；旧 PR 也�
 
 test('体检：路由表里的缺工具清单（tool: missing 的证据 + 层级缺口）', () => {
   const ids = toolGaps(table).map((gap) => gap.id)
-  for (const expected of ['ui-click-census', 'ui-ai-walk', 'perf-real-scale', 'gen-eval-set', 'layer-health']) assert.ok(ids.includes(expected), expected)
+  for (const expected of ['ui-click-census', 'ui-ai-walk', 'gen-eval-set', 'layer-health']) assert.ok(ids.includes(expected), expected)
   const run = spawnSync(process.execPath, [path.join(here, 'check-pr-judgement.mjs'), '--gaps'], { encoding: 'utf8' })
   assert.equal(run.status, 0)
   assert.match(run.stdout, /工具缺口/)
-  assert.match(run.stdout, /perf-real-scale/)
+  assert.match(run.stdout, /ui-click-census/)
+  assert.ok(!ids.includes('perf-real-scale'), 'perf-real-scale 的工具（perf:scenarios）已建')
 })
 
 // 推送前 / CI 与合并前扫描同一口径后（2026-10-08），端到端正文里也要有设计卡 ★ 格（四类 9 格）与独立验收
@@ -309,7 +310,7 @@ test('端到端：真实 committed reviewed 逃逸只准首次 push 警告；CI/
 
 test('exclude：设计实验室（src/devlab）的 tsx 不算「改交互」；真界面照算', () => {
   assert.deepEqual(inferRoutes([M('src/devlab/designLab/Kit.tsx')], '', table).categories, [])
-  assert.deepEqual(inferRoutes([M('src/workbench/Panel.tsx')], '', table).categories.map((c) => c.id), ['ui'])
+  assert.deepEqual(inferRoutes([M('src/workbench/Panel.tsx')], '', table).categories.map((c) => c.id), ['ui', 'perf'])
 })
 
 test('可打断：AbortController 只在非测试文件的新增行里认；只出现在测试里不算四类（#1038 误判）', () => {
@@ -423,4 +424,28 @@ test('按钮预期表字段集：七个字段、catalogField 都落在 ⑫ catal
   }
   const census = table.categories.ui.evidence.find((item) => item.id === 'ui-click-census')
   for (const field of fields) assert.ok(census.label.includes(field.label.split(' / ')[0].split('（')[0]), `ui-click-census 的要求里没写到「${field.label}」`)
+})
+
+test('性能场景证据（2026-10-11）：界面 / 画布 / 长跑改动必交 perf-scenario；未验证红、id 不在登记表红、不适用要有理由', () => {
+  const perfFiles = [M('src/workbench/Panel.tsx'), M('src/workbench/generationCanvas/canvasStore.ts'), M('electron/projectExportTask.ts')]
+  for (const file of perfFiles) assert.ok(inferRoutes([file], '', table).categories.some((category) => category.id === 'perf'), file.path)
+  assert.deepEqual(inferRoutes([M('docs/x.md'), M('scripts/check-x.mjs')], '', table).categories, [])
+  assert.deepEqual(requiredEvidence(['perf'], table).map((item) => item.id), ['perf-scenario'])
+  const check = (line) => checkRoutingEvidence(`## 验收证据\n${line}`, ['perf'], table)
+  const good = check('- perf-scenario：canvas-drag-20-nodes 中位数 20 / p95 24 / 预算 33')
+  assert.equal(good.ok, true, good.lines.join('\n'))
+  assert.equal(checkRoutingEvidence('随便', ['perf'], table).ok, false, '没有这一行红')
+  const unverified = check('- perf-scenario：未验证：工具未建')
+  assert.equal(unverified.ok, false, '性能证据不接受「未验证」')
+  assert.match(unverified.lines.join('\n'), /不接受「未验证」/)
+  const ghost = check('- perf-scenario：ghost-scenario 中位数 1 / p95 2 / 预算 3')
+  assert.equal(ghost.ok, false)
+  assert.match(ghost.lines.join('\n'), /不在登记表/)
+  assert.equal(check('- perf-scenario：不适用：只改了一行文案，没有新增交互').ok, true)
+  assert.equal(check('- perf-scenario：不适用：无').ok, false)
+  // 生效日之前开的 PR 不要求（创建时间未知 = 要求，fail-closed）
+  assert.deepEqual(requiredEvidence(['perf'], table, '2026-10-05T00:00:00Z'), [])
+  assert.equal(requiredEvidence(['perf'], table, '2026-10-12T00:00:00Z').length, 1)
+  assert.equal(requiredEvidence(['perf'], table, null).length, 1)
+  assert.equal(evaluatePrJudgement({ body: '## 设计卡\n### 功能分类\n- [x] 新增功能 / 性能', files: [M('src/workbench/generationCanvas/canvasStore.ts')], createdAt: '2026-10-12T00:00:00Z', table }).routing.ok, false)
 })

@@ -91,6 +91,8 @@ export const PRE_PUSH_GATES = Object.freeze([
   { name: 'check:symlinks', when: null },
   { name: 'check:supply-chain-pins', when: null },
   { name: 'check:escape-ledger', when: null },
+  // 2026-10-11：性能场景登记表结构（纯 node，亚秒级）
+  { name: 'check:perf-scenarios', when: null },
   { name: 'check:adoption-bridge', when: null },
   { name: 'check:skill-ipc-coverage', when: null },
   { name: 'check:skills-format', when: null },
