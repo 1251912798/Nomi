@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url'
 import { makeTempDir } from '../../scripts/_test-temp.mjs'
 import { launchNomiApp } from './_launchApp.mjs'
 import { createCanvasPerformanceFixture } from './fixtures/canvas-performance-fixture.mjs'
-import { applyColorSchemeForShot, clickOrFail, expect, waitForVisualQuiescence } from './_assert.mjs'
+import { applyColorSchemeForShot, clickOrFail, expect, expectAbsent, proveProbe, waitForVisualQuiescence } from './_assert.mjs'
 import { GROUP_TOOLBAR } from './_groupGenerate.mjs'
 import { uiText } from './full-walk/invariants.mjs'
 import { frameBlankPosition, groupFrameCount, groupFrameHeader, groupFrameTitle, groupToolbarAction, groupToolbarTitle, openFrameMenuByRightClick } from './_groupFrame.mjs'
@@ -147,8 +147,10 @@ try {
     delete: uiText(config.locale, 'generationCommon.canvas.group.menuDelete'),
   }
   check('三个图标各带 hover 名字（title = 无障碍名 = 词典文案）', Object.entries(iconNames).every(([action, names]) => names.title === expectedNames[action] && names.aria === expectedNames[action]), JSON.stringify(iconNames))
-  const hasDots = await toolbar.getByRole('button', { name: /更多操作|More actions/ }).count()
-  check('工具条上不再有「⋯」更多操作钮', hasDots === 0, `dots=${hasDots}`)
+  // 基线：同一套「工具条里按名字找按钮」的探针，找「删除」必须找得到；再断言「更多操作」持续不存在。
+  const toolbarProbeProof = await proveProbe(toolbar.getByRole('button', { name: expectedNames.delete }), '工具条里按名字找得到「删除」按钮')
+  await expectAbsent(toolbar.getByRole('button', { name: /更多操作|More actions/ }), { provenBy: toolbarProbeProof, message: '工具条上不再有「⋯」更多操作钮' })
+  check('工具条上不再有「⋯」更多操作钮', true)
   await groupToolbarAction(win, 'delete').hover()
   await win.screenshot({ path: path.join(outDir, '03-toolbar-icons.png') })
   // 右键仍是完整框菜单（六项），与工具条图标同一个执行口。
