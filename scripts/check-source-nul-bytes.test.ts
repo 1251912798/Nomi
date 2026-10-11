@@ -82,14 +82,8 @@ function writeProbe(root: string, name: string, contents: string): string {
 }
 
 describe('裸 NUL 字节门岗', () => {
-  // 阳性对照：真仓库现状必须是绿的（只读，不写任何文件）。没有它，下面的「红」证明不了是探针触发的
-  // （门岗要是恒红，负例照样全过）。
-  it('阳性对照：仓库现状无裸 NUL', () => {
-    const { code, output } = runGate()
-    expect(code, output).toBe(0)
-    expect(output).toContain('无一含裸 NUL')
-  })
-
+  // 阳性对照在夹具仓上做（下一条）：真仓库全量扫描本身就是 check:nul-bytes 门岗，推送前和 CI 都会跑；
+  // 自测里再扫一遍真仓库只会在推送前钩子满载时撞子进程超时，不多证明任何东西。
   it('夹具仓里只有干净文件 → 绿（对照：下面的红例确是探针触发的）', () => {
     const root = makeFixtureRepo()
     fs.writeFileSync(path.join(root, 'clean.mjs'), 'export const ok = 1\n')
