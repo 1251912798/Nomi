@@ -77,7 +77,7 @@
       "label": "大数据量 / 画布 / 长列表",
       "fourClass": false,
       "evidence": [
-        { "id": "perf-real-scale", "when": "manual-full", "paid": false, "label": "真实规模性能：p95 和最长卡顿，只许变好", "aliases": ["性能", "真实规模", "p95", "perf"], "tool": "playwright-electron+contentTracing (planned)", "toolRef": "现有：pnpm run test:canvas:performance 是合成规模基准。计划接：Playwright _electron 真实规模场景 + Electron contentTracing + app.getAppMetrics() + User Timing 打点 + React Profiler，预算进 CI；不用 Lighthouse CI" }
+        { "id": "perf-real-scale", "when": "manual-full", "paid": false, "label": "真实规模性能：登记表全量跑，p95 和最长卡顿对照预算和基线，只许变好", "aliases": ["真实规模", "p95", "perf-real"], "tool": "exists", "toolRef": "pnpm run perf:scenarios（全量跑 tests/perf/scenarios/ 登记表；单个新功能的数字走 perf-scenario 证据）；夜跑接法见 docs/engineering/perf-scenarios.md" }
       ]
     },
     "gen-quality": {
@@ -92,6 +92,13 @@
       "fourClass": false,
       "evidence": [
         { "id": "upgrade-path", "when": "pr", "paid": false, "label": "升级路径：老项目能打开、能继续", "aliases": ["升级路径", "老项目", "旧项目", "upgrade"], "tool": "exists", "toolRef": "tests/ux/core-a-old-project.packaged.mjs" }
+      ]
+    },
+    "perf": {
+      "label": "新增功能 / 性能",
+      "fourClass": false,
+      "evidence": [
+        { "id": "perf-scenario", "when": "pr", "since": "2026-10-11", "paid": false, "label": "性能场景：新功能的每个新交互都登记进 tests/perf/scenarios/ 并跑出数字（中位数 / p95 / 预算）；碰到老场景的改动交这个场景的新数字。确实与性能无关的写「不适用：理由」", "aliases": ["性能场景", "perf:scenarios"], "tool": "exists", "toolRef": "pnpm run perf:scenarios（登记表 tests/perf/scenarios/，规矩 docs/engineering/perf-scenarios.md，设计卡 ★7）；格式：perf-scenario：<场景 id> 中位数 X / p95 Y / 预算 Z；不接受「未验证」" }
       ]
     }
   },
@@ -109,17 +116,17 @@
   },
   "pathRules": [
     { "category": "spend", "legacy": "花钱", "pattern": "(?:^|/)(?:[^/]*spend[^/]*|[^/]*pricing[^/]*|[^/]*variant[^/]*|[^/]*credits[^/]*|[^/]*charge[^/]*|generationScheduler[^/]*)$", "scope": "^(?:src|electron)/" },
-    { "category": "long-run", "legacy": "长跑", "pattern": "(?:^|/)[^/]*(?:task|queue|production|retriev|export|import)[^/]*$", "scope": "^(?:src|electron)/" },
-    { "category": "long-run", "legacy": "可打断", "pattern": "(?:^|/)[^/]*(?:cancel|resume|stop|abort)[^/]*$", "scope": "^(?:src|electron)/" },
-    { "category": "ui", "legacy": "新界面", "pattern": "^src/design/" },
-    { "category": "ui", "legacy": "新界面", "pattern": "^src/.*\\.tsx$", "added": true },
-    { "category": "ui", "pattern": "^src/.*\\.tsx$", "exclude": "^src/devlab/" },
+    { "category": ["long-run", "perf"], "legacy": "长跑", "pattern": "(?:^|/)[^/]*(?:task|queue|production|retriev|export|import)[^/]*$", "scope": "^(?:src|electron)/" },
+    { "category": ["long-run", "perf"], "legacy": "可打断", "pattern": "(?:^|/)[^/]*(?:cancel|resume|stop|abort)[^/]*$", "scope": "^(?:src|electron)/" },
+    { "category": ["ui", "perf"], "legacy": "新界面", "pattern": "^src/design/" },
+    { "category": ["ui", "perf"], "legacy": "新界面", "pattern": "^src/.*\\.tsx$", "added": true },
+    { "category": ["ui", "perf"], "pattern": "^src/.*\\.tsx$", "exclude": "^src/devlab/" },
     { "category": "agent", "pattern": "^(?:electron/agentLane/|electron/agentHost/|src/workbench/ai/|evals/)" },
-    { "category": "scale", "pattern": "^src/workbench/(?:generationCanvas|timeline)/" },
+    { "category": ["scale", "perf"], "pattern": "^src/workbench/(?:generationCanvas|timeline)/" },
     { "category": "gen-quality", "pattern": "^(?:electron/shared/storyboard/|src/workbench/generationCanvas/nodes/director/|electron/capabilityCore/semanticGeneration|evals/director/)" },
     { "category": "data-format", "pattern": "(?:^|/)[^/]*(?:schema|migrat|persist|projectFile|projectStore|projectVersion)[^/]*\\.(?:ts|tsx|mts|cts|mjs)$", "scope": "^(?:src|electron)/" }
   ],
-  "abortSignal": { "category": "long-run", "legacy": "可打断", "pattern": "\\bnew\\s+AbortController\\b|\\bAbortSignal\\b", "scope": "^(?:src|electron)/" },
+  "abortSignal": { "category": ["long-run", "perf"], "legacy": "可打断", "pattern": "\\bnew\\s+AbortController\\b|\\bAbortSignal\\b", "scope": "^(?:src|electron)/" },
   "fullRun": {
     "trigger": "workflow_dispatch",
     "workflow": ".github/workflows/full-experience-run.yml",
