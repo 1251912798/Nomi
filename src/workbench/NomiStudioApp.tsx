@@ -55,6 +55,7 @@ import { notify } from '../ui/notificationPolicy'
 import { useProjectNotificationTarget } from './project/useProjectNotificationTarget'
 import { getDesktopBridge } from '../desktop/bridge'
 import { logRendererError } from '../desktop/rendererLog'
+import { LaneCommandFailure, laneFailureText } from './ai/lane/laneCommandFailure'
 import { projectNotice, projectOperationFailureText, type UserText } from './project/projectOperationFailureText'
 import { useHasTextModel } from './library/useHasTextModel'
 import { SplashIntro } from './onboarding/SplashIntro'
@@ -375,7 +376,8 @@ export default function NomiStudioApp(): JSX.Element {
         logRendererError('project-restore-failed', error)
         // 主进程的原始串不进这条横幅：它可能是一句内部断言（2026-09-11 面板顶部那行红色英文
         // 就是这么来的）。lane 失败按码取文案，其余一律走这句本地化兜底。
-        report(projectId, projectOperationFailureText('restore', error, t))
+        report(projectId, error instanceof LaneCommandFailure
+          ? laneFailureText(error, t) : projectOperationFailureText('restore', error, t))
         return false
       } finally {
         if (hydrationSequenceRef.current === hydrationSequence) hydratingProjectRef.current = false

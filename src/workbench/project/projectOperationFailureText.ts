@@ -1,6 +1,5 @@
 import type { TFunction } from 'i18next'
 import { isWorkspaceBusyError } from '../../../electron/shared/contracts/workspaceBusy'
-import { LaneCommandFailure, laneFailureText } from '../ai/lane/laneCommandFailure'
 
 /**
  * 项目表面（项目库 / 外壳）上「一句话告诉用户出了什么事」的单一出口。
@@ -32,11 +31,11 @@ export type ProjectOperation = 'save' | 'delete' | 'revealFolder' | 'openWorkspa
 
 /**
  * 操作失败时给用户看哪一句——按操作取人话，说清哪个操作没成、可以怎么办；原文由调用方记日志，不进这里。
+ * 本文件刻意不 import 重模块（lane / i18n 初始化）：保存路径的轻量单测靠它保持隔离。lane 失败自己在 `laneFailureText` 里取词（已是 UserText）。
  * 锁被别处占着（另一个 Nomi 窗口 / 另一台电脑经同步盘）不是磁盘权限问题，任何操作都先认它。
  */
 export function projectOperationFailureText(operation: ProjectOperation, error: unknown, t: TFunction): UserText {
   if (isWorkspaceBusyError(error)) return t('studio.projectInUseElsewhere') as UserText
-  if (operation === 'restore' && error instanceof LaneCommandFailure) return laneFailureText(error, t) as UserText
   const key = {
     save: 'studio.projectSaveFailed',
     delete: 'studio.projectDeleteFailed',
