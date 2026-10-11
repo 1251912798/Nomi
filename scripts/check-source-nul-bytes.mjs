@@ -26,7 +26,12 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
+// 默认扫本脚本所在仓库；`--root <dir>` 让自测指向临时夹具仓库，探针不必写进真仓库
+// （2026-10-11：探针落在 scripts/ 下，与并发的其它门岗撞车，误报 / ENOENT 拦了无关分支的推送）。
+const rootFlag = process.argv.indexOf('--root')
+const repoRoot = rootFlag >= 0 && process.argv[rootFlag + 1]
+  ? path.resolve(process.argv[rootFlag + 1])
+  : path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 
 // 真二进制资产：它们本来就该含 NUL，不在本门岗管辖范围。
 const BINARY_ASSET_EXT = /\.(png|jpe?g|gif|ico|icns|webp|avif|woff2?|ttf|otf|eot|mp4|mov|webm|mp3|wav|m4a|flac|zip|gz|tgz|bz2|7z|pdf|node|dylib|so|dll|exe|asar|bin|wasm|glb|gltf|fbx|spz|ply|splat|ksplat|sog|hdr|exr|psd|sketch|db|sqlite3?|keystore|jks)$/i
