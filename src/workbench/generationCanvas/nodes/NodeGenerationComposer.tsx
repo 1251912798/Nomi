@@ -1,4 +1,3 @@
-import { CANVAS_CHROME_LAYERS } from '../components/canvasChromeLayers'
 import { notify } from '../../../ui/notificationPolicy'
 import React, { type JSX } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -59,6 +58,7 @@ import { productionMetaOf } from '../model/productionMeta'
 import { decideShotClaim } from '../../../../electron/shared/decideShotClaim'
 import { shotClaimCopy } from '../../observability/shotClaimCopy'
 import { useNodePromptFocusRequest } from './nodePromptFocus'
+import { CANVAS_LAYER } from '../reactFlow/canvasLayerOrder'
 
 // 生成节点的浮动 composer：references + 提示词 + 参数 + 生成/重新生成按钮。
 // 从 BaseGenerationNode 抽出（A1.5 接缝）：只有「生成类」节点挂它，素材节点不挂。
@@ -358,7 +358,7 @@ function GenericNodeGenerationComposer({ onFeedback, node, visualSize, host = 'c
         !inFlow && 'group-data-[dragging=true]/canvas:invisible',
       )}
       data-composer-host={host}
-      style={{ cursor: 'default', userSelect: 'auto', touchAction: 'auto', ...(inFlow ? null : { zIndex: CANVAS_CHROME_LAYERS.composer }) }}
+      style={{ cursor: 'default', userSelect: 'auto', touchAction: 'auto', ...(inFlow ? null : { zIndex: CANVAS_LAYER.nodeComposer }) }}
       onPointerDown={(event) => event.stopPropagation()}
       onWheel={(event) => event.stopPropagation()}
       {...(acceptsDrop ? dropHandlers : {})}

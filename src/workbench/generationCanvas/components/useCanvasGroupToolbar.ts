@@ -54,6 +54,10 @@ export function useCanvasGroupToolbar({
       onDissolve: () => runFrameAction(selectedGroup.id, 'dissolve'),
       onArrange: (mode: GroupArrangeMode) => arrangeGroup(selectedGroup.id, mode),
       onColor: (color: string) => setGroupColor(selectedGroup.id, color),
+      // 改名 / 说明、折叠成卡、删除：≤3 个动作直接摆图标，不藏进「⋯」（10-10 拍板）；与右键菜单同一个执行口。
+      onEdit: () => runFrameAction(selectedGroup.id, 'edit'),
+      onCollapse: () => runFrameAction(selectedGroup.id, 'collapse'),
+      onDelete: () => runFrameAction(selectedGroup.id, 'delete'),
       onDownload: () => {
         void downloadGroupResults(targets, selectedGroup.name || 'group', (count) => toast(t('generationCommon.canvas.group.toolbarDownloadSaved', { count }), 'success'))
       },
