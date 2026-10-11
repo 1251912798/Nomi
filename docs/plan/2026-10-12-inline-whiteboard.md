@@ -17,6 +17,7 @@ Implementation line: inline-whiteboard-editor. Independent line: whiteboard-inde
 
 ## Functional classification
 - [x] 新界面 / 改交互
+- [x] 新增功能 / 性能
 - [x] 长跑 / 可打断
 - [x] 大数据量 / 画布 / 长列表
 - [x] 数据格式
