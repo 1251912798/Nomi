@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createTempWorkspace } from "../tests/setup/tempWorkspace";
 
 describe("Vitest temp workspace", () => {
@@ -20,5 +20,24 @@ describe("Vitest temp workspace", () => {
     expect(fs.existsSync(workspace.root)).toBe(false);
     expect(env).toEqual({ TMPDIR: "before-tmpdir", TEMP: "before-temp", TMP: "before-tmp" });
     workspace.teardown();
+  });
+});
+
+describe("temp workspace teardown on a locked file", () => {
+  it("restores the host temp env even when deleting the scratch dir fails", async () => {
+    const fsModule = await import("node:fs");
+    const env: NodeJS.ProcessEnv = { TMPDIR: "/host-tmp" };
+    const workspace = createTempWorkspace(env);
+    const rm = vi.spyOn(fsModule.default, "rmSync").mockImplementation(() => {
+      throw Object.assign(new Error("EBUSY: resource busy or locked"), { code: "EBUSY" });
+    });
+    try {
+      expect(() => workspace.teardown()).toThrow(/EBUSY/);
+      expect(env.TMPDIR).toBe("/host-tmp");
+      expect(rm).toHaveBeenCalledWith(workspace.root, expect.objectContaining({ maxRetries: expect.any(Number) }));
+    } finally {
+      rm.mockRestore();
+      fsModule.default.rmSync(workspace.root, { recursive: true, force: true });
+    }
   });
 });
