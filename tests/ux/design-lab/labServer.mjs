@@ -38,6 +38,26 @@ const PORT_BLOCK_BASE = 5300
 const PORT_BLOCK_COUNT = 64
 const PORT_BLOCK_SIZE = LAB_ROLES.length
 
+/**
+ * 浏览器 / Node fetch 一律拒连的端口（WHATWG Fetch 规范的 bad ports 清单里落在本仓端口段 5300 起一带的那些）。
+ * 端口按「路径哈希 × 角色下标」派生，**加一个角色整张端口图都会平移**——曾经因此让 popup-geometry 在 CI 上落到 6667，
+ * fetch 报 bad port、实验室「起不来」。派生时直接跳过这些口，加角色再也不会踩到。
+ */
+export const LAB_BLOCKED_PORTS = Object.freeze([6000, 6566, 6665, 6666, 6667, 6668, 6669, 6679, 6697])
+
+/** 第 n 个可用端口（从 PORT_BLOCK_BASE 数起，跳过 LAB_BLOCKED_PORTS）。 */
+function nthUsablePort(n) {
+  let port = PORT_BLOCK_BASE
+  let remaining = n
+  for (;;) {
+    if (!LAB_BLOCKED_PORTS.includes(port)) {
+      if (remaining === 0) return port
+      remaining -= 1
+    }
+    port += 1
+  }
+}
+
 /** 路径归一：/tmp 与 /private/tmp、软链 worktree 都会让字符串比较得出错误结论。 */
 function canonicalPath(target) {
   try {
@@ -56,7 +76,7 @@ export function labPortFor(role, repoRoot = REPO_ROOT) {
   if (index < 0) throw new Error(`未知的实验室角色：${role}（已登记：${LAB_ROLES.join(', ')}）`)
   const digest = crypto.createHash('sha256').update(canonicalPath(repoRoot)).digest()
   const block = digest.readUInt16BE(0) % PORT_BLOCK_COUNT
-  return PORT_BLOCK_BASE + block * PORT_BLOCK_SIZE + index
+  return nthUsablePort(block * PORT_BLOCK_SIZE + index)
 }
 
 export function labOriginFor(role, repoRoot = REPO_ROOT) {

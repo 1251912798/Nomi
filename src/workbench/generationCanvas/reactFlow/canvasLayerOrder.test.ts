@@ -14,13 +14,11 @@ function source(relative: string): string {
 }
 
 describe('canvas layer order (single owner: canvasLayerOrder.ts)', () => {
-  it('group body < group header < node layer: group chrome never paints over nodes', () => {
-    expect(CANVAS_LAYER.groupBody).toBeLessThan(CANVAS_LAYER.groupHeader)
-    expect(CANVAS_LAYER.groupHeader).toBeLessThan(CANVAS_LAYER.nodes)
+  it('group body (the header lives inside it) < node layer: group chrome never paints over nodes', () => {
+    expect(CANVAS_LAYER.groupBody).toBeLessThan(CANVAS_LAYER.nodes)
   })
 
-  it('generation composer sits above the group header of any group (the 10-10 bug)', () => {
-    expect(CANVAS_LAYER.nodeComposer).toBeGreaterThan(CANVAS_LAYER.groupHeader)
+  it('generation composer sits above the group frame of any group (the 10-10 bug)', () => {
     expect(CANVAS_LAYER.nodeComposer).toBeGreaterThan(CANVAS_LAYER.groupBody)
   })
 

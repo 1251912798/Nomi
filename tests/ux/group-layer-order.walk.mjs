@@ -5,6 +5,7 @@
 // 层级数字来自 generationCanvas/reactFlow/canvasLayerOrder.ts（唯一 owner）。
 //
 // 用法：node tests/ux/group-layer-order.walk.mjs   产出：tests/ux/shots/group-layer-order/*.png
+import { canvasResetView } from './_shell.mjs'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -12,7 +13,6 @@ import { makeTempDir } from '../../scripts/_test-temp.mjs'
 import { launchNomiApp } from './_launchApp.mjs'
 import { createCanvasPerformanceFixture } from './fixtures/canvas-performance-fixture.mjs'
 import { expect, waitForVisualQuiescence } from './_assert.mjs'
-import { uiText } from './full-walk/invariants.mjs'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const shots = path.join(root, 'tests/ux/shots/group-layer-order')
@@ -57,7 +57,7 @@ try {
   expect(win, '项目窗口打开').toBeTruthy()
   await win.locator('.generation-canvas-v2__stage').waitFor()
   await waitForVisualQuiescence(win)
-  await win.getByRole('button', { name: uiText('zh-CN', 'generationCommon.navigation.resetView'), exact: true }).first().click()
+  await canvasResetView(win, '重置视图')
   await waitForVisualQuiescence(win)
   await expect(win.locator('.generation-canvas-v2__group-box[data-group-id="gB"]'), '分组 B 已渲染').toBeVisible()
 
@@ -82,7 +82,8 @@ try {
       selectedNodeId: nodeA0?.getAttribute('data-id') ?? null,
       selectedNodeZ: nodeA0 ? getComputedStyle(nodeA0).zIndex : null,
       nodesLayerZ: nodesLayer ? getComputedStyle(nodesLayer).zIndex : null,
-      headerZ: headerB ? getComputedStyle(headerB).zIndex : null,
+      headerInsideBody: Boolean(headerB && gB && gB.contains(headerB)),
+      bodyZ: gB ? getComputedStyle(gB).zIndex : null,
       composer: cr,
       headerB: hr,
       intersect: null,
@@ -115,7 +116,8 @@ try {
   expect(probe.topAtIntersect?.inComposer, '相交区最上层是生成框').toBe(true)
   expect(probe.topAtIntersect?.inGroupHeader, '相交区最上层不是分组框头').toBe(false)
   expect(Number(probe.nodesLayerZ), '节点层 z 来自层级表').toBe(2)
-  expect(Number(probe.headerZ), '分组框头 z 来自层级表').toBe(1)
+  expect(probe.headerInsideBody, '分组框头在分组框体里面（随框体同层，不另占层级）').toBe(true)
+  expect(Number(probe.bodyZ), '分组框体 z 来自层级表').toBe(0)
 
   await win.screenshot({ path: path.join(shots, 'z-order-composer-over-group-header.png') })
   console.log('[group-layer-order] PASS')

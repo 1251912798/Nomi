@@ -12,6 +12,7 @@ import { launchNomiApp } from './_launchApp.mjs'
 import { createCanvasPerformanceFixture } from './fixtures/canvas-performance-fixture.mjs'
 import { applyColorSchemeForShot, clickOrFail, expect, expectAbsent, proveProbe, waitForVisualQuiescence } from './_assert.mjs'
 import { GROUP_TOOLBAR } from './_groupGenerate.mjs'
+import { canvasResetView } from './_shell.mjs'
 import { uiText } from './full-walk/invariants.mjs'
 import { frameBlankPosition, groupFrameCount, groupFrameHeader, groupFrameTitle, groupToolbarAction, groupToolbarTitle, openFrameMenuByRightClick } from './_groupFrame.mjs'
 
@@ -88,7 +89,7 @@ try {
   await win.locator('.generation-canvas-v2__stage').waitFor()
   await applyColorSchemeForShot(win, config.scheme)
   await waitForVisualQuiescence(win)
-  await win.getByRole('button', { name: /重置视图|Reset view/ }).first().click()
+  await canvasResetView(win, '重置视图')
   await waitForVisualQuiescence(win)
 
   const storyFrame = win.locator('.generation-canvas-v2__group-box[data-group-id="g-story"]')
