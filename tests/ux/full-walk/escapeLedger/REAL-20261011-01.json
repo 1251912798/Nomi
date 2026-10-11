@@ -15,7 +15,7 @@
   ],
   "completionCommits": ["5c57f29e2"],
   "rootCauseContract": "docs/fixes/2026-10-11-document-format-persistence.root-cause.json",
-  "fixedInPr": 9999,
+  "fixedInPr": 1187,
   "classCheck": {
     "kind": "matrix",
     "file": "src/workbench/workbenchTypes.schemaRoundTrip.test.ts"
