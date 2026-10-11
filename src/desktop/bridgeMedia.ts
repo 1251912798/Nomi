@@ -81,6 +81,10 @@ export type DesktopMediaBridge = {
        * `'cloud'` 是本地那条挂了之后用户点「改用云端重试」传进来的显式动作。
        */
       transcribe?: { vendorKey: string; modelKey: string } | 'cloud'
+      /** 这次读图用哪个模型：用户在分镜表底栏选的（显式，解不出就整次拒绝，不悄悄换别家）。缺省走软偏好 / 自动。 */
+      vision?: { vendorKey: string; modelKey: string }
+      /** 软偏好：Agent 面板里选的脑；主进程判它能读图且可用才采用，否则回自动。 */
+      visionPreferred?: { vendorKey: string; modelKey: string }
       threshold?: number
       framesPerShot?: number
       customColumns?: { name: string; hint?: string }[]

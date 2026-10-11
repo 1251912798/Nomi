@@ -56,6 +56,8 @@ export const shotTableFactRowSchema = z.object({
   durationSeconds: z.number().finite().nonnegative(),
   carriedOver: z.boolean(),
   visionFailed: z.boolean().optional(),
+  /** 这一镜为什么没读出来（供应商原话 / 抽帧失败 / 模型回了非 JSON）。空格子背后总有一句能说的话（2026-10-11）。 */
+  failureReason: z.string().optional(),
   keyframeRef: z.string().startsWith('nomi-local://').optional(),
   cells: z.record(z.string()),
   imagePrompt: z.string().optional(),
@@ -104,6 +106,11 @@ export const deconstructionShotTableSchema = z.object({
      * 「给不给『改用云端』这个出口」这件事绑在字符串比对上——那正是最容易静默失效的那种判据。
      */
     failureKind: z.literal('local-speech').optional(),
+    /**
+     * 用户在分镜表底栏给**读图腿**选的模型（与转写腿的显式身份同形）。缺席 = 自动挑。
+     * 整表重拆与单镜重试都带它——换了模型的人重试不会悄悄退回默认。身份必须是双段 (vendorKey, modelKey)。
+     */
+    visionModel: z.object({ vendorKey: z.string().min(1), modelKey: z.string().min(1) }).strict().optional(),
     /**
      * 这张表是不是整条片子（切点超上限时自动抬了阈值）。
      *

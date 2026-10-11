@@ -27,7 +27,7 @@ import type { ShotCutCoverage } from "../shared/canvas/shotTable";
 import { firstString, isJsonRecord, parseLooseJsonObject, trim } from "../jsonUtils";
 // main 上 chooseTextModel/resolveTextBrainKeys 已从 agentChatV2 抽到 textBrainResolver（1040 commit 间的重构）；
 // 旧分支从 agentChatV2 import 已失效，port 时改指真源（docs/ARCHITECTURE-NOW 的「文本大脑」判据同一处）。
-import { resolveTextBrainKeys } from "../ai/textBrainResolver";
+import { resolveVisionLeg, type VisionLegIdentity } from "./deconstructVisionLeg";
 import { runTask } from "../runtime";
 import { findExecutableModel, findExecutableModelAnyVendor } from "../catalog/executableModel";
 import { readVendorPreferenceSettings } from "../settings/vendorPreferenceSettings";
@@ -86,6 +86,13 @@ export type DeconstructVideoPayload = {
    * 不能由代码在失败时自己切，那样用户会在不知情的情况下花钱，也就再没人知道本地那条坏了）。
    */
   transcribe?: { vendorKey: string; modelKey: string } | "cloud";
+  /**
+   * 这次**读图**用哪个模型（与 `transcribe` 同形，2026-10-11）。显式给定 = 用户在分镜表底栏选的：
+   * 解不出（停用 / 被删）就整次拒绝，不悄悄换别家。缺省 = 先看 `visionPreferred`，再自动挑。
+   */
+  vision?: VisionLegIdentity;
+  /** 软偏好（渲染层带来的「用户在 Agent 面板选的脑」）：它此刻可用且能读图才采用，否则当没给。 */
+  visionPreferred?: VisionLegIdentity;
 };
 
 /** 本次拆解会真正发出的付费调用之一。一行一次——报价、令牌预算、真实调用三者同一个计数。 */
@@ -387,8 +394,14 @@ export async function deconstructVideo(payload: DeconstructVideoPayload, options
     coveredSeconds: cutSeconds.at(-1) ?? 0,
   };
 
-  const brain = resolveTextBrainKeys({ preferImageInput: true });
-  if (!brain) throw new DeconstructError("还没有能读图的文本模型。去「接入模型」启用一个（如 Gemini 3.5 Flash）。");
+  const visionLeg = resolveVisionLeg({ requested: payload.vision, preferred: payload.visionPreferred });
+  if (!visionLeg.ok) {
+    if (visionLeg.reason === "requested-unavailable") {
+      throw new DeconstructError(desktopT("deconstruct.visionModelUnavailable", { model: visionLeg.requested.modelKey, detail: visionLeg.detail }));
+    }
+    throw new DeconstructError("还没有能读图的文本模型。去「接入模型」启用一个（如 Gemini 3.5 Flash）。");
+  }
+  const brain = { vendor: visionLeg.vendor, modelKey: visionLeg.modelKey };
 
   const targets = payload.shotIndexes ? boundaries.filter((shot) => payload.shotIndexes!.includes(shot.index)) : boundaries;
   if (!targets.length) throw new DeconstructError("没能切出任何镜头");
@@ -464,7 +477,9 @@ export async function deconstructVideo(payload: DeconstructVideoPayload, options
           },
         },
       });
-      return { shot, frameUrls, parsed: parseLooseJsonObject(textFromTaskResult((result as { raw?: unknown }).raw)) };
+      const parsed = parseLooseJsonObject(textFromTaskResult((result as { raw?: unknown }).raw));
+      // 模型回了但不是可解析的 JSON：也要留一句话，不让这一镜只剩空白。
+      return { shot, frameUrls, parsed, ...(parsed ? {} : { failureReason: desktopT("deconstruct.visionUnparseable") }) };
     } catch (error) {
       if (isSpendAuthorizationError(error)) {
         gateFailure = messageOf(error);

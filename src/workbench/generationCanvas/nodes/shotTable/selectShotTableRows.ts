@@ -11,6 +11,8 @@ export type ShotTableRowView = {
   thumbnail?: string
   cells?: Record<string, string>
   visionFailed?: boolean
+  /** 没读出来的原因（供应商原话），格子 tooltip 与状态列显示。 */
+  failureReason?: string
 }
 
 /** 拆解事实表的行视图（只读）。分镜表 / Agent 分镜表已退役，镜头的行在生成页「列表」里。 */
@@ -18,6 +20,6 @@ export function selectShotTableRows(table: ShotTableDocument): ShotTableRowView[
   return table.rows.map(row => ({
     id: row.rowId, index: row.order, duration: row.durationSeconds, start: row.startSeconds, end: row.endSeconds,
     prompt: row.cells.visual ?? '', thumbnail: row.keyframeRef,
-    cells: row.cells, visionFailed: row.visionFailed,
+    cells: row.cells, visionFailed: row.visionFailed, failureReason: row.failureReason,
   }))
 }

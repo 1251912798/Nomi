@@ -47,7 +47,8 @@ const okReply = { raw: { choices: [{ message: { content: '{"shotSize":"特写","
 
 async function run(payloadExtra: Record<string, unknown>) {
   const { deconstructVideo } = await import("./deconstructVideo");
-  const authorizeSpend = vi.fn(async () => "grant-1");
+  type DeconstructSpendPlan = import("./deconstructVideo").DeconstructSpendPlan;
+  const authorizeSpend = vi.fn(async (_plan: DeconstructSpendPlan) => "grant-1" as string | null);
   const result = await deconstructVideo(
     { videoUrl: "nomi-local://asset/p/v.mp4", projectId: "p", framesPerShot: 1, ...payloadExtra } as never,
     { authorizeSpend },
@@ -127,5 +128,16 @@ describe("拆解失败原话落进结果", () => {
       expect(shot.visionFailed).toBe(true);
       expect(shot.failureReason).toBeTruthy();
     }
+  });
+});
+
+// 类检查（结构）：读图腿的模型身份只有 resolveVisionLeg 一个出口——编排里不许再直接调 resolveTextBrainKeys 自己挑，
+// 否则「付费腿身份由代码隐式挑、用户选不了」这一类会从下一条腿原样回来。
+describe("读图腿身份的唯一出口", () => {
+  it("deconstructVideo.ts 不直接 import resolveTextBrainKeys（只经 resolveVisionLeg）", async () => {
+    const fs = await import("node:fs");
+    const source = fs.readFileSync(new URL("./deconstructVideo.ts", import.meta.url), "utf8");
+    expect(source).not.toMatch(/import\s*\{[^}]*resolveTextBrainKeys[^}]*\}/);
+    expect(source).toContain("resolveVisionLeg(");
   });
 });

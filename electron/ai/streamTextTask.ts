@@ -144,6 +144,9 @@ export async function streamTextTask(
     temperature: typeof input.temperature === "number" ? input.temperature : 0.7,
     ...(typeof input.maxTokens === "number" && input.maxTokens > 0 ? { maxTokens: input.maxTokens } : {}),
     abortSignal: controller.signal,
+    // 不靠 SDK 默认（默认 2 次重试 =「Failed after 3 attempts」）：对限流（429）重试只会放大失败与耗时，
+    // 失败的请求不计费；要重来由用户点「重试」，那是一次新的报价确认。（2026-10-11 走查 §1）
+    maxRetries: 0,
   });
 
   // ⚠️ 这两个 promise **必须在这里就挂上 handler**（不是等成功路径末尾才 await）。
