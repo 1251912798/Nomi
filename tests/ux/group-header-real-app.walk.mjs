@@ -89,7 +89,7 @@ try {
   await win.locator('.generation-canvas-v2__stage').waitFor()
   await applyColorSchemeForShot(win, config.scheme)
   await waitForVisualQuiescence(win)
-  await canvasResetView(win, '重置视图')
+  await canvasResetView(win)
   await waitForVisualQuiescence(win)
 
   const storyFrame = win.locator('.generation-canvas-v2__group-box[data-group-id="g-story"]')

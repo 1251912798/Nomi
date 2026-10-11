@@ -57,7 +57,7 @@ try {
   expect(win, '项目窗口打开').toBeTruthy()
   await win.locator('.generation-canvas-v2__stage').waitFor()
   await waitForVisualQuiescence(win)
-  await canvasResetView(win, '重置视图')
+  await canvasResetView(win)
   await waitForVisualQuiescence(win)
   await expect(win.locator('.generation-canvas-v2__group-box[data-group-id="gB"]'), '分组 B 已渲染').toBeVisible()
 
