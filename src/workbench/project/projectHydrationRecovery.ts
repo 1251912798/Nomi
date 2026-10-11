@@ -5,6 +5,7 @@ import { getDesktopBridge } from '../../desktop/bridge'
 import type { ProjectHydrationGuard } from './projectCanvasReadSurface'
 import type { WorkbenchProjectPersistenceService } from './projectPersistenceService'
 import { logRendererError } from '../../desktop/rendererLog'
+import { projectNotice, type UserText } from './projectOperationFailureText'
 
 /**
  * Hydrates one guarded project and owns the existing repair UX. Every async
@@ -16,7 +17,7 @@ export async function hydrateWorkbenchProjectWithRecovery(input: Readonly<{
   service: WorkbenchProjectPersistenceService
   guard: ProjectHydrationGuard
   t: TFunction
-  present: (message: string) => void
+  present: (message: UserText) => void
 }>): Promise<Awaited<ReturnType<WorkbenchProjectPersistenceService['hydrateProject']>>> {
   const { projectId, service, guard, t, present } = input
   let hydrateError: unknown = null
@@ -49,7 +50,7 @@ export async function hydrateWorkbenchProjectWithRecovery(input: Readonly<{
       guard.assertCurrent()
     }
   } else if (diagnostic?.status === 'missing-folder') {
-    present(t('studio.projectFolderMissing'))
+    present(projectNotice(t, 'studio.projectFolderMissing'))
   } else if (diagnostic?.rootPath) {
     const reveal = await confirmDialog({
       title: t('studio.projectRepairTitle'),
@@ -64,7 +65,7 @@ export async function hydrateWorkbenchProjectWithRecovery(input: Readonly<{
       guard.assertCurrent()
     }
   } else {
-    present(t('studio.projectNotFound'))
+    present(projectNotice(t, 'studio.projectNotFound'))
   }
   if (!hydrated && hydrateError) logRendererError('project-hydrate-failed', hydrateError)
   return hydrated

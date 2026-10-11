@@ -1,0 +1,32 @@
+{
+  "name": "项目库 / 外壳上操作失败给用户看的那一句（原文只进日志）",
+  "subject": "project.operation-failure-text",
+  "lifecycle": "projection",
+  "authority_kind": "decision",
+  "trust_domain": "renderer",
+  "fact_kind": "rule",
+  "migration_status": "converged",
+  "owner": {
+    "path": "src/workbench/project/projectOperationFailureText.ts",
+    "symbol": "projectOperationFailureText"
+  },
+  "write_api": [
+    {
+      "path": "src/workbench/project/projectOperationFailureText.ts",
+      "symbol": "projectOperationFailureText"
+    },
+    {
+      "path": "src/workbench/project/projectOperationFailureText.ts",
+      "symbol": "projectNotice"
+    }
+  ],
+  "forbidden_derivations": [],
+  "allowed_consumers": [
+    "src/workbench/NomiStudioApp.tsx",
+    "src/workbench/library/openWorkspaceFlow.ts",
+    "src/workbench/project/projectHydrationRecovery.ts",
+    "src/workbench/project/useProjectWindowLifecycle.ts"
+  ],
+  "since": "2026-10-10",
+  "notes": "复盘 docs/engineering/direction-checks/2026-10-10-library-actions-and-errors.md。项目表面的 report / showMessage / present 只收 UserText 品牌类型，只有本文件的 projectOperationFailureText / projectNotice 能铸造，主进程原文（如外部工具给子进程加的删除保护串）在类型上传不进界面，只能进 logRendererError。"
+}

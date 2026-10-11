@@ -1,4 +1,7 @@
+import type { TFunction } from 'i18next'
 import type { DesktopBridge } from '../../desktop/bridge'
+import { logRendererError } from '../../desktop/rendererLog'
+import { projectNotice, projectOperationFailureText, type UserText } from '../project/projectOperationFailureText'
 
 type WorkspaceOpenResult = { id?: unknown }
 
@@ -7,22 +10,21 @@ type OpenWorkspaceFromLibraryOptions = {
   hydrateProject: (projectId: string) => Promise<boolean> | boolean
   refreshProjects: () => void
   confirmInitialize: (rootPath: string) => Promise<boolean> | boolean
-  showMessage: (message: string, tone?: 'success' | 'error') => void
+  showMessage: (message: UserText, tone?: 'success' | 'error') => void
+  t: TFunction
 }
 
 type OpenWorkspaceProjectFromPickerOptions = {
   bridge: DesktopBridge | null
   confirmInitialize: (rootPath: string) => Promise<boolean> | boolean
-  showMessage: (message: string, tone?: 'success' | 'error') => void
+  showMessage: (message: UserText, tone?: 'success' | 'error') => void
+  t: TFunction
   name?: string
 }
 
-function errorMessage(error: unknown): string {
-  return error instanceof Error && error.message ? error.message : String(error || '打开文件夹失败')
-}
-
+/** 只用来认「文件夹还没初始化」这一种可恢复情形，结果不进界面。 */
 function isUninitializedWorkspaceError(error: unknown): boolean {
-  return /not initialized|未初始化/i.test(errorMessage(error))
+  return /not initialized|未初始化/i.test(error instanceof Error ? error.message : String(error ?? ''))
 }
 
 function projectIdFromResult(result: unknown): string | null {
@@ -31,9 +33,9 @@ function projectIdFromResult(result: unknown): string | null {
 }
 
 export async function openWorkspaceProjectFromPicker(options: OpenWorkspaceProjectFromPickerOptions): Promise<string | null> {
-  const { bridge, confirmInitialize, showMessage, name } = options
+  const { bridge, confirmInitialize, showMessage, name, t } = options
   if (!bridge?.workspace) {
-    showMessage('当前运行环境不支持打开本地文件夹', 'error')
+    showMessage(projectNotice(t, 'studio.workspaceUnsupported'), 'error')
     return null
   }
 
@@ -47,7 +49,8 @@ export async function openWorkspaceProjectFromPicker(options: OpenWorkspaceProje
     opened = await bridge.workspace.openFolder(openPayload(false))
   } catch (error) {
     if (!isUninitializedWorkspaceError(error)) {
-      showMessage(errorMessage(error), 'error')
+      logRendererError('workspace-open-failed', error)
+      showMessage(projectOperationFailureText('openWorkspace', error, t), 'error')
       return null
     }
     const confirmed = await confirmInitialize(rootPath)
@@ -55,22 +58,23 @@ export async function openWorkspaceProjectFromPicker(options: OpenWorkspaceProje
     try {
       opened = await bridge.workspace.openFolder(openPayload(true))
     } catch (initializeError) {
-      showMessage(errorMessage(initializeError), 'error')
+      logRendererError('workspace-initialize-failed', initializeError)
+      showMessage(projectOperationFailureText('openWorkspace', initializeError, t), 'error')
       return null
     }
   }
 
   const projectId = projectIdFromResult(opened)
   if (!projectId) {
-    showMessage('打开的文件夹没有返回有效项目 ID', 'error')
+    showMessage(projectNotice(t, 'studio.workspaceNoProject'), 'error')
     return null
   }
   return projectId
 }
 
 export async function openWorkspaceFromLibrary(options: OpenWorkspaceFromLibraryOptions): Promise<void> {
-  const { bridge, hydrateProject, refreshProjects, confirmInitialize, showMessage } = options
-  const projectId = await openWorkspaceProjectFromPicker({ bridge, confirmInitialize, showMessage })
+  const { bridge, hydrateProject, refreshProjects, confirmInitialize, showMessage, t } = options
+  const projectId = await openWorkspaceProjectFromPicker({ bridge, confirmInitialize, showMessage, t })
   if (!projectId) return
   refreshProjects()
   await hydrateProject(projectId)
