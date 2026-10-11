@@ -32,3 +32,17 @@ describe('shot table read-through view', () => {
     }
   })
 })
+
+import { shotTableTotalSeconds } from './selectShotTableRows'
+
+// 2026-10-11 真付费走查：表头显示「3 镜 1.9000000000000001s」。几个 0.1 秒格子点上的数相加会长出浮点尾数。
+describe('shotTableTotalSeconds（表头总时长的唯一出口）', () => {
+  it('0.1 + 0.2 + 1.6 直接相加是 1.9000000000000001，出口量化后是 1.9', () => {
+    expect(0.1 + 0.2 + 1.6).toBe(1.9000000000000001) // 前提：直接相加确实有尾数（真付费走查那条表头）
+    expect(shotTableTotalSeconds([{ duration: 0.1 }, { duration: 0.2 }, { duration: 1.6 }])).toBe(1.9)
+  })
+  it('没有任何行带时长 → undefined（不是 0）', () => {
+    expect(shotTableTotalSeconds([{}, { duration: undefined }])).toBeUndefined()
+    expect(shotTableTotalSeconds([])).toBeUndefined()
+  })
+})

@@ -111,9 +111,7 @@ try {
   }, b64)
   const nodeImage = getWin().locator('[data-node-id] img').first()
   await expectVisible(nodeImage, '大图没落进画布（投放失败）', 60_000)
-  await expect
-    .poll(() => nodeImage.evaluate((img) => img.naturalWidth), { message: '节点图没解码到原始尺寸', timeout: 60_000 })
-    .toBe(SIDE)
+  // 画布节点只挂落盘派生的预览图（不是 4K 原图）；原图尺寸由取景框浮层（读 result.url）承担，所以这里不再按 4096 等解码。
   await snap('00-seeded.png')
 
   // —— 探针：心跳漏拍 = 主线程被同步任务霸占的时长；另数同步 PNG 编码次数 ——
@@ -145,6 +143,25 @@ try {
   const confirmSplit = getWin().getByRole('button', { name: GRID === 1 ? '确认裁剪' : '确认切图' })
   await expectVisible(confirmSplit.first(), `${GRID_LABEL}取景框没打开`)
   await snap('02-grid-overlay.png')
+  // 2026-10-11 走查 §5：取景框默认 = 图片真实显示矩形的整幅（九格拼回原图），确认条不压图片区。
+  if (GRID !== 1) {
+    const geo = await getWin().evaluate(() => {
+      const stage = document.querySelector('[data-crop-stage]')
+      const img = stage?.querySelector('img')
+      const confirm = [...document.querySelectorAll('button')].find((b) => /确认切图/.test(b.textContent || ''))
+      if (!stage || !img || !confirm) return null
+      const sr = stage.getBoundingClientRect()
+      const cr = confirm.getBoundingClientRect()
+      return { stage: { x: sr.x, y: sr.y, w: sr.width, h: sr.height, bottom: sr.bottom }, nat: { w: img.naturalWidth, h: img.naturalHeight }, confirmTop: cr.top }
+    })
+    check('取景框舞台存在', !!geo)
+    if (geo) {
+      const stageRatio = geo.stage.w / geo.stage.h
+      const natRatio = geo.nat.w / geo.nat.h
+      check('取景框宽高比 = 原图（无 letterbox 空白）', Math.abs(stageRatio - natRatio) < 0.02, `舞台 ${stageRatio.toFixed(3)} / 原图 ${natRatio.toFixed(3)}`)
+      check('确认条在图片区之外，不压任何一格', geo.confirmTop >= geo.stage.bottom - 0.5, `确认条顶 ${geo.confirmTop.toFixed(1)} / 图片底 ${geo.stage.bottom.toFixed(1)}`)
+    }
+  }
   // 切图前的视口与「已有的卡」：切完画布不许自己动（2026-09-25 拍板，以前这里会自己适应视图），
   // 新到的切片从原图之外数。
   const sourceIds = await getWin().locator(CANVAS_CARD_SELECTOR).evaluateAll((cards) => cards.map((card) => card.getAttribute('data-node-id')))

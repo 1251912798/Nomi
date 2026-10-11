@@ -10,12 +10,13 @@ import { cn } from '../../../../utils/cn'
 import { useGenerationCanvasStore } from '../../store/generationCanvasStore'
 import type { GenerationCanvasNode } from '../../model/generationCanvasTypes'
 import { readShotTable, type ShotTableColumn } from '../../../../../electron/shared/canvas/shotTable'
-import { selectShotTableRows } from './selectShotTableRows'
+import { selectShotTableRows, shotTableTotalSeconds } from './selectShotTableRows'
 import { editShotTableFacts, generateSelectedTableRows } from './shotTableActions'
 import { cancelDeconstruction, deconstructToShotTable, retryShot } from './factBridge'
 import { canRestartDeconstruction, deconstructionNoticeKey } from './deconstructionLifecycle'
 import { withProjectAction } from '../../../project/projectCanvasReadSurface'
 import { ShotTableGrid } from './ShotTableGrid'
+import { VisionModelPicker } from './VisionModelPicker'
 
 type NodeProps = { node: unknown; selected: boolean; readOnly?: boolean }
 export default function ShotTableNode(props: NodeProps): JSX.Element {
@@ -38,6 +39,11 @@ function ShotTableContent({ node: rawNode, selected, readOnly = false, flowDensi
   const videoModelOptions = useModelOptionsState('video').options
   const rows = React.useMemo(() => table ? selectShotTableRows(table) : [], [table])
   const source = table?.source
+  const totalSeconds = React.useMemo(() => shotTableTotalSeconds(rows), [rows])
+  const visionFailureSummary = React.useMemo(() => {
+    const failed = rows.filter(row => row.visionFailed && row.failureReason)
+    return failed.length ? { count: failed.length, reason: failed[0].failureReason ?? '' } : undefined
+  }, [rows])
   const density = table?.view.density === 'auto' ? flowDensity ?? zoomDensity : table?.view.density ?? zoomDensity
   const [columnMenu, setColumnMenu] = React.useState<{ column: ShotTableColumn; point: { x: number; y: number } } | null>(null)
   const [busy, setBusy] = React.useState(false)
@@ -76,12 +82,15 @@ function ShotTableContent({ node: rawNode, selected, readOnly = false, flowDensi
       <IconTable size={16} stroke={1.5} className="shrink-0 text-nomi-ink-60" />
       <span className="min-w-0 truncate text-body-sm font-medium">{node.title ?? t('shotTable.title')}</span>
       <span className="shrink-0 text-micro text-nomi-ink-40">{t('shotTable.count', { count: rows.length })}</span>
-      {rows.some(row => row.duration != null) && <span className="shrink-0 font-mono text-micro text-nomi-ink-40">{t('shotTable.duration', { duration: rows.reduce((sum, row) => sum + (row.duration ?? 0), 0) })}</span>}
+      {totalSeconds !== undefined && <span className="shrink-0 font-mono text-micro text-nomi-ink-40">{t('shotTable.duration', { duration: totalSeconds })}</span>}
     </header>
     {/* 拆解失败/半成的原因**只在顶上说一次**（B10：不要每格一句「没读出」）。
         rows 为空时下面的空状态也会显示它，这里保证「表里已有行」时同样看得到。 */}
     {density !== 'card' && facts?.source.errorMessage && rows.length > 0 && !noticeKey
       && <div role="alert" data-testid="shot-table-failure-reason" className="shrink-0 border-b border-nomi-line-soft px-3 py-1 text-micro text-nomi-danger">{facts.source.errorMessage}</div>}
+    {/* 读图没成的镜：原话在顶上说一次（哪怕只有几镜），不让用户对着空格子猜（2026-10-11 走查 §1）。 */}
+    {density !== 'card' && !noticeKey && visionFailureSummary
+      && <div role="status" data-testid="shot-table-vision-failure-summary" title={visionFailureSummary.reason} className="shrink-0 truncate border-b border-nomi-line-soft px-3 py-1 text-micro text-nomi-danger">{t('shotTable.visionFailedSummary', visionFailureSummary)}</div>}
     {/* 中断 / 取消**不是失败**：没有供应商原话可抄，也不该红着报警——但必须有一句话，
         否则一张空表和「还没拆过」长得一模一样（2026-09-17 走查 §6.5 的那一屏）。 */}
     {density !== 'card' && noticeKey
@@ -98,6 +107,7 @@ function ShotTableContent({ node: rawNode, selected, readOnly = false, flowDensi
     {error && <div role="alert" className="px-3 text-micro text-nomi-danger">{error}</div>}
     {density !== 'card' && <footer className="nodrag generation-canvas-react-flow__no-pan flex h-10 shrink-0 items-center gap-2 border-t border-nomi-line-soft px-3" onPointerDown={event => event.stopPropagation()} onClick={event => event.stopPropagation()} onDoubleClick={event => event.stopPropagation()}>
       <span className="text-micro text-nomi-ink-40" title={t('shotTable.viewOnly')}>{t('shotTable.selected', { count: selectedIds.length })}</span>
+      {facts && !readOnly && <VisionModelPicker nodeId={node.id} table={facts} disabled={facts.source.status === 'running'} />}
       {facts && !readOnly && <WorkbenchButton size="sm" variant="default" disabled={facts.source.status === 'running'} onClick={() => { void addColumn() }}>{t('shotTable.addColumn')}</WorkbenchButton>}
       {/* 找回入口。判据是终态 owner 的 canRestartDeconstruction，不是在这里再列一遍状态词——
           中断（关 app / 切项目）和取消都是可以再起的终态，它们**必须**能走到这一颗按钮上，

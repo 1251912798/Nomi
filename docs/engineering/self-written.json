@@ -1864,6 +1864,34 @@
       "revisitWhen": "生产原卡播放器拥有可直接复用的局部时钟订阅接口时，删除useNodeVideoClock并改用该接口；每源会话消费仍归节点session。"
     },
     {
+      "id": "held-modifier-reconciler",
+      "capability": "修饰键「按着没」的对账：window 捕获阶段拿每个输入事件自带的修饰位核对，见过按下、没见过松开完整送达的修饰键，在下一次带修饰位说「没按着」的输入时补发一次 keyup（约 70 行）",
+      "status": "justified",
+      "paths": [
+        "src/ui/input/heldModifierReconciler.ts"
+      ],
+      "alternativesChecked": [
+        {
+          "name": "升级 @xyflow/react（装的 12.11.5，最新 12.12.0）：useKeyPress 仍只靠 keydown / keyup 配对、只在 window blur / contextmenu 清零，变更记录里没有修饰位对账，也没有对外的 reset API",
+          "source": "https://github.com/xyflow/xyflow/blob/main/packages/react/src/hooks/useKeyPress.ts"
+        },
+        {
+          "name": "React Flow 自带的按键开关置空（selectionKeyCode / multiSelectionKeyCode = null）后自己按指针修饰位驱动：会丢掉「Shift 起手在卡上拉框选」的现有行为，且 selectionKeyPressed 是内核私有 state，外部写不进去",
+          "source": "node_modules/@xyflow/react/dist/esm/index.mjs（FlowRenderer 的 useKeyPress(selectionKeyCode) 与 Pane 的 onPointerDownCapture）"
+        },
+        {
+          "name": "react-hotkeys-hook / tinykeys 一类快捷键库：只管「按下某组合触发回调」，自己的按住状态同样靠 keydown / keyup 配对，也替代不了 React Flow 内核里那份记账",
+          "source": "https://github.com/JohannesKlauss/react-hotkeys-hook"
+        },
+        {
+          "name": "浏览器原生事件修饰位（接入：对账的真相就是 MouseEvent / KeyboardEvent 的 shiftKey 等，补发用原生 KeyboardEvent + react-dom flushSync）",
+          "source": "https://developer.mozilla.org/en-US/docs/Web/API/MouseEvent/shiftKey"
+        }
+      ],
+      "whyNotIntegrated": "领域约束：要对齐的状态住在画布内核（React Flow）的私有按键记账里——多选 / 框选语义由它持有、框架里删不掉，没有任何现成库能替另一个库的私有状态补发丢失的松开；能接入的部分（事件修饰位、原生 KeyboardEvent、flushSync）已全部接入，自写的只是「何时补发」这一条约 70 行的规则。",
+      "revisitWhen": "React Flow 的 useKeyPress 自己按事件修饰位对账或开放 reset API 时，删掉本模块"
+    },
+    {
       "id": "canvas-chrome-occlusion",
       "capability": "画布外框控件（加节点条、缩放簇）被节点生成框压住的那一块自动裁掉，让生成框在视觉和命中上都盖在外框控件之上（用户 2026-10-10 验收规则：生成框是正在操作的东西，任何画布外框控件不得盖住它）。",
       "status": "justified",
