@@ -12,7 +12,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { launchNomiApp } from './_launchApp.mjs'
-import { expect, screenshotSettled, waitForVisualQuiescence } from './_assert.mjs'
+import { expect, expectAbsent, proveProbe, screenshotSettled, waitForVisualQuiescence } from './_assert.mjs'
 import { waitForCanvasViewportSettled } from './_canvasHit.mjs'
 import { stationTimeout } from './_station-budget.mjs'
 import { uiText } from './full-walk/invariants.mjs'
@@ -98,7 +98,9 @@ try {
     const reasons = node.locator('[data-testid="shot-table-row-failure-reason"]')
     await expect(reasons).toHaveCount(2)
     await expect(reasons.first()).toContainText('rate limit')
-    await expect(node.locator('[data-shot-table-row="fact-1"] [data-testid="shot-table-row-failure-reason"]')).toHaveCount(0)
+    // 先证明探针测得到东西（没读出的那行里确实有原话），再断言读出来的那行没有。
+    const proof = await proveProbe(node.locator('[data-shot-table-row="fact-2"] [data-testid="shot-table-row-failure-reason"]'), '没读出的那行里有原话')
+    await expectAbsent(node.locator('[data-shot-table-row="fact-1"] [data-testid="shot-table-row-failure-reason"]'), { provenBy: proof, message: '读出来的那行不该有失败原话' })
   })
   await task('03-footer-has-vision-model-picker-default-auto', async () => {
     const label = uiText(locale, 'shotTable.visionModel')

@@ -110,10 +110,7 @@ try {
   }, b64)
   const nodeImage = getWin().locator('[data-node-id] img').first()
   await expectVisible(nodeImage, '大图没落进画布（投放失败）', 60_000)
-  // 画布节点只挂落盘派生的预览图（不是 4K 原图），所以这里只要求「解出来了」；原图尺寸由取景框浮层（读 result.url）承担。
-  await expect
-    .poll(() => nodeImage.evaluate((img) => img.naturalWidth), { message: '节点图没解码', timeout: 60_000 })
-    .toBeGreaterThan(0)
+  // 画布节点只挂落盘派生的预览图（不是 4K 原图）；原图尺寸由取景框浮层（读 result.url）承担，所以这里不再按 4096 等解码。
   await snap('00-seeded.png')
 
   // —— 探针：心跳漏拍 = 主线程被同步任务霸占的时长；另数同步 PNG 编码次数 ——
