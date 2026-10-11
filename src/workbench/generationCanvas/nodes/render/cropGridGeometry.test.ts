@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { computeGridCells, computeSplitLayout } from './cropGridGeometry'
+import { computeGridCells, computeSplitLayout, containedImageBox, defaultCropRect, CROP_ONLY } from './cropGridGeometry'
 
 const FULL = { x: 0, y: 0, w: 1, h: 1 }
 
@@ -114,5 +114,56 @@ describe('computeSplitLayout（排布：行列对齐 + 绝不重叠）', () => {
 
   it('空输入不炸', () => {
     expect(computeSplitLayout([], [])).toEqual([])
+  })
+})
+
+// 2026-10-11 走查 §5：「九宫格不是完整切图，外侧还有另外的空间」。
+// 不变量：不动取景框直接确认，N×M 个 cell 必须无缝、无重叠地拼回整张原图。
+describe('切图默认取景框：九格拼回原图（不变量）', () => {
+  const equalCuts = (n: number) => Array.from({ length: n - 1 }, (_, i) => (i + 1) / n)
+  const grids = [[2, 2], [3, 3], [2, 3], [4, 4], [1, 3]] as const
+
+  for (const [rows, cols] of grids) {
+    it(`${rows}×${cols}：默认框 = 整图，cell 面积和 = 1 且覆盖到四边`, () => {
+      const rect = defaultCropRect({ rows, cols })
+      expect(rect).toEqual({ x: 0, y: 0, w: 1, h: 1 })
+      const cells = computeGridCells(rect, equalCuts(cols), equalCuts(rows))
+      expect(cells).toHaveLength(rows * cols)
+      expect(cells.reduce((sum, c) => sum + c.w * c.h, 0)).toBeCloseTo(1, 10)
+      expect(Math.min(...cells.map((c) => c.x))).toBe(0)
+      expect(Math.min(...cells.map((c) => c.y))).toBe(0)
+      expect(Math.max(...cells.map((c) => c.x + c.w))).toBeCloseTo(1, 10)
+      expect(Math.max(...cells.map((c) => c.y + c.h))).toBeCloseTo(1, 10)
+      // 无重叠：相邻 cell 边对边咬合
+      for (const a of cells) {
+        for (const b of cells) {
+          if (a === b) continue
+          const overlapW = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x)
+          const overlapH = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y)
+          expect(overlapW > 1e-9 && overlapH > 1e-9).toBe(false)
+        }
+      }
+    })
+  }
+
+  it('纯裁剪仍是居中八分（不是整图）', () => {
+    expect(defaultCropRect(CROP_ONLY)).toEqual({ x: 0.1, y: 0.1, w: 0.8, h: 0.8 })
+  })
+})
+
+describe('containedImageBox：取景框按真实显示矩形算', () => {
+  it('宽图放进方容器 → 上下留 letterbox，框只覆盖图', () => {
+    const box = containedImageBox({ width: 200, height: 200 }, { width: 400, height: 200 })
+    expect(box).toEqual({ left: 0, top: 50, width: 200, height: 100 })
+  })
+  it('竖图放进方容器 → 左右留 letterbox', () => {
+    const box = containedImageBox({ width: 200, height: 200 }, { width: 100, height: 200 })
+    expect(box).toEqual({ left: 50, top: 0, width: 100, height: 200 })
+  })
+  it('比例一致 → 整个容器', () => {
+    expect(containedImageBox({ width: 300, height: 200 }, { width: 600, height: 400 })).toEqual({ left: 0, top: 0, width: 300, height: 200 })
+  })
+  it('自然尺寸未知 → 整个容器（加载前不抖）', () => {
+    expect(containedImageBox({ width: 300, height: 200 }, null)).toEqual({ left: 0, top: 0, width: 300, height: 200 })
   })
 })

@@ -1,5 +1,6 @@
 import React, { type JSX } from 'react'
 import { cn } from '../../../../utils/cn'
+import { containedImageBox, defaultCropRect, type DisplayBox } from './cropGridGeometry'
 
 export type CropRect = { x: number; y: number; w: number; h: number }
 export type CropGridResult = { rect: CropRect; cols: number[]; rows: number[] }
@@ -50,7 +51,7 @@ function equalCuts(parts: number): number[] {
  * 非破坏式可调取景框：裁剪与切图共用一个组件（P1，不留两套）。
  * gridSize {1,1} = 纯裁剪（无内线）；其余 = cols-1 条竖线 + rows-1 条横线（可拖），默认等分。
  * 内线坐标 = 框内归一化分数（随外框缩放自动跟随）。确认时把 { rect, cols, rows } 交回父级，
- * 由父级按 cell 裁出新节点（原图零改动）。坐标约定：overlay 盒子 == 图片显示区（无 letterbox）。
+ * 由父级按 cell 裁出新节点（原图零改动）。坐标约定：取景框的 0~1 == 图片**真实显示矩形**（stage，已去掉 letterbox）。
  */
 export default function ImageCropGridOverlay({
   imageUrl,
@@ -62,14 +63,23 @@ export default function ImageCropGridOverlay({
   /** 把当前取景框报给宿主：确认/取消由宿主在图片区**之外**渲染，避免按钮压住要切的格子（2026-10-11）。 */
   onDraftChange?: (draft: CropGridResult) => void
 }): JSX.Element {
-  const cropOnly = gridSize.rows === 1 && gridSize.cols === 1
+  const outerRef = React.useRef<HTMLDivElement>(null)
   const boxRef = React.useRef<HTMLDivElement>(null)
   const dragRef = React.useRef<ActiveDrag | null>(null)
-  // 切图默认框 = 整图（2026-10-11：用户走查「九宫格不是完整切图、外侧还有空间」的根因就是这里曾内缩 4%）；
-  // 纯裁剪沿用原来的居中八分。设计依据：docs/plan/2026-06-16-adjustable-grid-crop.md:4「默认不动确认＝旧的等分效果」。
-  const [rect, setRect] = React.useState<CropRect>(
-    cropOnly ? { x: 0.1, y: 0.1, w: 0.8, h: 0.8 } : { x: 0, y: 0, w: 1, h: 1 },
-  )
+  // 默认取景框归 cropGridGeometry.defaultCropRect（切图 = 整图，裁剪 = 居中八分）。
+  // 取景框的坐标系 = 图片真实显示矩形（object-contain 后），不是整个卡片：stage 就是那块矩形。
+  const [stage, setStage] = React.useState<DisplayBox | null>(null)
+  const [natural, setNatural] = React.useState<{ width: number; height: number } | null>(null)
+  React.useLayoutEffect(() => {
+    const outer = outerRef.current
+    if (!outer) return
+    const measure = () => setStage(containedImageBox({ width: outer.clientWidth, height: outer.clientHeight }, natural))
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(outer)
+    return () => observer.disconnect()
+  }, [natural])
+  const [rect, setRect] = React.useState<CropRect>(() => defaultCropRect(gridSize))
   const [cols, setCols] = React.useState<number[]>(() => equalCuts(gridSize.cols))
   const [rows, setRows] = React.useState<number[]>(() => equalCuts(gridSize.rows))
 
@@ -180,14 +190,29 @@ export default function ImageCropGridOverlay({
 
   return (
     <div
-      ref={boxRef}
+      ref={outerRef}
       className="absolute inset-0 z-[14] select-none touch-none"
       onPointerDown={(event) => event.stopPropagation()}
       onPointerMove={handlePointerMove}
       onPointerUp={endDrag}
       onPointerCancel={endDrag}
     >
-      <img src={imageUrl} alt="" className="w-full h-full object-fill pointer-events-none" draggable={false} />
+      <div
+        ref={boxRef}
+        data-crop-stage="true"
+        className="absolute"
+        style={stage ? { left: stage.left, top: stage.top, width: stage.width, height: stage.height } : { inset: 0 }}
+      >
+      <img
+        src={imageUrl}
+        alt=""
+        className="w-full h-full object-fill pointer-events-none"
+        draggable={false}
+        onLoad={(event) => {
+          const img = event.currentTarget
+          if (img.naturalWidth > 0 && img.naturalHeight > 0) setNatural({ width: img.naturalWidth, height: img.naturalHeight })
+        }}
+      />
       {/* 框外压暗：上/下/左/右四块 */}
       <div
         className="absolute left-0 right-0 top-0 bg-nomi-ink/[0.55] pointer-events-none"
@@ -253,6 +278,7 @@ export default function ImageCropGridOverlay({
           className={cn(handleClass, 'right-1.5 bottom-1.5 cursor-nwse-resize')}
           onPointerDown={beginDrag({ kind: 'corner', corner: 'se' })}
         />
+      </div>
       </div>
     </div>
   )
