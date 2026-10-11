@@ -1,0 +1,26 @@
+{
+  "id": "canvas-drag-20-nodes",
+  "feature": "画布多选 20 个左右的节点一起拖动（拖动期间的帧间隔和长任务）",
+  "script": "tests/perf/canvas-scale-bench.mjs",
+  "args": [
+    "--scales",
+    "I150",
+    "--scenarios",
+    "drag-nodes-20"
+  ],
+  "scale": "150 个图片节点 / 75 条边，多选其中 20 个左右（实测选中 24 个）",
+  "metrics": [
+    "frameGapP95",
+    "longTasks"
+  ],
+  "budget": 33,
+  "baseline": {
+    "median": 9.5,
+    "p95": 10.2,
+    "runs": 5,
+    "machine": "win32 x64 13th Gen Intel(R) Core(TM) i9-13900H x20 / 64GB",
+    "date": "2026-10-11",
+    "commit": "0929dfc0a",
+    "noisy": true
+  }
+}
