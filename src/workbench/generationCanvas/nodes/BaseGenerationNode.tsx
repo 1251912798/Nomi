@@ -26,7 +26,6 @@ import { lazyWithChunkBoundary } from '../../../ui/chunkBoundary'
 import { PendingGenerationPlaceholder, LocalImageOpPendingStatus, RemoveBackgroundPendingPlaceholder } from './render/CardCommon'
 import { previewBackgroundClass } from './render/previewBackground'
 import PanoramaUploadFallback from './PanoramaUploadFallback'
-import { TimelineNotchDragHandle } from './NodeTimelineDragHandles'
 import { cn } from '../../../utils/cn'
 import { DeferredNodeImage } from './DeferredNodeMedia'
 import { NodeVideoSessionProvider } from './NodeVideoSession'
@@ -38,8 +37,6 @@ import { NodeGeneratingOverlay } from './NodeGeneratingOverlay'
 import { NodeGenerationStatus } from './NodeGenerationStatus'
 import { ProductionShotOverlays } from './ProductionShotOverlays'
 import { useProductionNodeRetry } from './useProductionNodeRetry'
-import { encodeTimelineGenerationNodeDragPayload, TIMELINE_GENERATION_NODE_DRAG_MIME } from '../../timeline/timelineDragPayload'
-import { addGenerationNodeToTimelineEnd } from '../../timeline/addNodeToTimelineEnd'
 import { confirmAndRunNode } from '../runner/generationRunController'
 import { selectCanvasNodeById, selectCanvasNodeExists } from '../store/canvasNodeGenerationIndex'
 import { localStepRedoOf } from './localStepRedo'
@@ -49,12 +46,11 @@ import { NodeRecoverableReport } from './NodeRecoverableReport'
 import { dismissRecoverableNode, recoverNodeResult } from '../runner/recoverTaskActions'
 import { withProjectAction } from '../../project/projectCanvasReadSurface'
 import { WorkbenchButton } from '../../../design'
-import { getGenerationNodeExecutionKind, isImageLikeGenerationNodeKind } from '../model/generationNodeKinds'
+import { getGenerationNodeExecutionKind } from '../model/generationNodeKinds'
 import { anchorFreezeToolbarProps } from '../fixation/freezeAnchor'
 import { TechnicalReviewBadge } from './TechnicalReviewBadge'
 import { DerivedReadyBadge } from '../quickActions/DerivedReadyBadge'
 import { isDerivedPromptReady } from '../quickActions/deriveFromNode'
-import { canDragGenerationNodeToTimeline } from '../model/timelineDragAffordance'
 import { useArtifactNodeSlots } from './artifact/artifactNodeSlots'
 import { RESIZE_DIRECTIONS, getNodeSizeBounds, FOCUS_GENERATION_NODE_EVENT, resolveNodeVisualSize } from './nodeSizing'
 import { NodeLabelRow } from './NodeLabelRow'
@@ -121,19 +117,6 @@ function BaseGenerationNodeImpl({
   const { openMediaPreview, mediaPreviewControls, mediaPreviewDoubleClick } = useNodeMediaPreview(node, selected && !isMultiSelectActive && !readOnly, () => setProvenanceOpen(true), reportFeedback)
   const sizeBounds = getNodeSizeBounds(node.kind)
 
-  const handleTimelineDragStart = (event: React.DragEvent<HTMLElement>) => {
-    event.stopPropagation()
-    event.dataTransfer.effectAllowed = 'copy'
-    event.dataTransfer.setData(TIMELINE_GENERATION_NODE_DRAG_MIME, encodeTimelineGenerationNodeDragPayload(node))
-  }
-
-  const handleAddToTimelineAtPlayhead = (event: React.MouseEvent<HTMLElement> | React.KeyboardEvent<HTMLElement>) => {
-    event.preventDefault()
-    event.stopPropagation()
-    const liveNode = useGenerationCanvasStore.getState().nodes.find((candidate) => candidate.id === node.id) || node
-    void addGenerationNodeToTimelineEnd(liveNode)
-  }
-
   const mediaMeasurement = useNodeMediaMeasurement(node)
 
   const videoPreview = useNodeVideoPreviewIntent(node.result?.type === 'video')
@@ -183,11 +166,6 @@ function BaseGenerationNodeImpl({
     commitPersistedChange,
   })
   const isGenerating = status === 'queued' || status === 'running'
-  const canSendToTimeline = canDragGenerationNodeToTimeline(node, { readOnly })
-  // 「拖进时间轴」只有顶部这一个把手。卡片左右两侧归连线「+」圈（generationCanvasReactFlowVisualContract.ts）；
-  // 2026-09-24 用户反馈「多结果卡片拉环不见了」：旧的侧边拖柄就住在右侧「+」圈的位置上、层级还更高，把圈整个盖住，
-  // 于是删掉那一个。版本卡片铺开是持久的（10-06），铺着也要能拖进时间轴、能接着生成，所以这里不再看铺没铺开。
-  const showTimelineNotch = canSendToTimeline
   // 2026-09-05：这几条的 zh+en 词条一直都在，只是渲染处写死了中文（英文界面恒显中文），现接回词条。
   const sourceNodeLabel = sourceNodeTitle || (node.derivedFrom && !sourceNodeExists ? t('generationCommon.node.sourceMissing') : node.derivedFrom || '')
   const sourceCategoryName = sourceNodeCategoryId ? getBuiltinCategoryById(sourceNodeCategoryId)?.name : null
@@ -262,7 +240,6 @@ function BaseGenerationNodeImpl({
         />
       ) : null}
       {node.kind !== 'panorama' &&
-      (node.kind === 'image' || isAssetKind || isImageLikeGenerationNodeKind(node.kind)) &&
       selected &&
       !isMultiSelectActive &&
       !readOnly &&
@@ -455,13 +432,6 @@ function BaseGenerationNodeImpl({
       ) : null}
 
       {artifactSlots.toolbar}
-
-      {showTimelineNotch ? (
-        <TimelineNotchDragHandle
-          onAddAtPlayhead={handleAddToTimelineAtPlayhead}
-          onDragStart={handleTimelineDragStart}
-        />
-      ) : null}
 
       {!localImageOpPending && !isTextKind ? <NodeGeneratingOverlay reportFeedback={reportFeedback} node={node} motion={waitingMotion} preset={waitingPreset} /> : null}
 

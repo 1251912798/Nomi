@@ -1,6 +1,6 @@
 import React, { type JSX } from 'react'
 import { useTranslation } from 'react-i18next'
-import { IconInfoCircle, IconCopy } from '@tabler/icons-react'
+import { IconInfoCircle, IconCopy, IconTimelineEventPlus } from '@tabler/icons-react'
 import { cn } from '../../../utils/cn'
 import { toolbarButtonClass } from './toolbarButtonClass'
 import { useGenerationCanvasStore } from '../store/generationCanvasStore'
@@ -8,6 +8,9 @@ import { NodeLockBadge } from './NodeLockBadge'
 import { nextFloatingToolbarPlacement, type FloatingToolbarPlacement } from './floatingToolbarClamp'
 import { useViewport } from '@xyflow/react'
 import { logRendererCrash } from '../../../desktop/rendererLog'
+import { canDragGenerationNodeToTimeline } from '../model/timelineDragAffordance'
+import { addGenerationNodeToTimelineEnd } from '../../timeline/addNodeToTimelineEnd'
+import { encodeTimelineGenerationNodeDragPayload, TIMELINE_GENERATION_NODE_DRAG_MIME } from '../../timeline/timelineDragPayload'
 
 // 节点浮动工具栏的**单一共享实现**（P1 收口）：图片编辑 / 视频抽帧 / 全景 / 下载三+条以前是三份
 // 几乎一字不差的拷贝、且各自带一堆 token 违规（rgba 硬编码 / gap-[7px] / 图标 16/1.8…）。这里一次性
@@ -124,6 +127,7 @@ function FloatingToolbarFrame({ ariaLabel, lockNodeId, children }: { ariaLabel: 
         </>
       ) : null}
       {children}
+      {lockNodeId ? <ToolbarTimelineButton nodeId={lockNodeId} /> : null}
     </div>
   )
 }
@@ -140,6 +144,8 @@ type ToolbarButtonProps = {
   /** 走查 / 单测按它找这颗钮（`data-toolbar-action`），不靠文案。 */
   actionId?: string
   onClick?: (event: React.MouseEvent) => void
+  draggable?: boolean
+  onDragStart?: (event: React.DragEvent<HTMLButtonElement>) => void
 }
 
 /** 带文字的工具栏按钮（定妆 / 裁剪 / 下载 / 抽首帧…）。 */
@@ -162,7 +168,7 @@ export function ToolbarButton({ icon, label, accent, disabled, ariaBusy, title, 
 }
 
 /** 仅图标的工具栏按钮（方形）。 */
-export function ToolbarIconButton({ icon, disabled, title, ariaLabel, actionId, onClick }: Omit<ToolbarButtonProps, 'label' | 'accent'>): JSX.Element {
+export function ToolbarIconButton({ icon, disabled, title, ariaLabel, actionId, onClick, draggable, onDragStart }: Omit<ToolbarButtonProps, 'label' | 'accent'>): JSX.Element {
   return (
     <button
       type="button"
@@ -172,10 +178,44 @@ export function ToolbarIconButton({ icon, disabled, title, ariaLabel, actionId, 
       aria-label={ariaLabel}
       disabled={disabled}
       onClick={onClick}
+      draggable={draggable}
+      onDragStart={onDragStart}
     >
       {icon}
     </button>
   )
+}
+
+/** 媒体工具栏共用一个入口；动作触发时重读主结果，不沿用渲染时的旧版本。 */
+export function ToolbarTimelineButton({ nodeId }: { nodeId: string }): JSX.Element | null {
+  const { t } = useTranslation()
+  const node = useGenerationCanvasStore((state) => state.nodes.find((candidate) => candidate.id === nodeId))
+  if (!node || !canDragGenerationNodeToTimeline(node)) return null
+  const liveNode = () => {
+    const current = useGenerationCanvasStore.getState().nodes.find((candidate) => candidate.id === nodeId)
+    return current && canDragGenerationNodeToTimeline(current) ? current : null
+  }
+  const label = t('timelineEditor.dragToTimeline')
+  return <ToolbarIconButton
+    icon={<IconTimelineEventPlus size={ICON.size} stroke={ICON.stroke} />}
+    actionId="add-to-timeline"
+    ariaLabel={label}
+    title={label}
+    draggable
+    onClick={(event) => {
+      event.preventDefault()
+      event.stopPropagation()
+      const current = liveNode()
+      if (current) void addGenerationNodeToTimelineEnd(current)
+    }}
+    onDragStart={(event) => {
+      event.stopPropagation()
+      const current = liveNode()
+      if (!current) { event.preventDefault(); return }
+      event.dataTransfer.effectAllowed = 'copy'
+      event.dataTransfer.setData(TIMELINE_GENERATION_NODE_DRAG_MIME, encodeTimelineGenerationNodeDragPayload(current))
+    }}
+  />
 }
 
 /** 竖分隔线。 */
