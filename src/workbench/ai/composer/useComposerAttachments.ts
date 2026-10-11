@@ -1,6 +1,10 @@
 import React from 'react'
 import i18n from '../../../i18n'
-import { importWorkbenchLocalAssetFile } from '../../api/assetUploadApi'
+import type { AssetRef } from '../../assets/assetTypes'
+import { canvasNodeToAssetRefs } from '../../assets/assetTypes'
+import { listNodeMediaResults, resultIdentity } from '../../generationCanvas/model/nodeResultLifecycle'
+import { useGenerationCanvasStore } from '../../generationCanvas/store/generationCanvasStore'
+import { importWorkbenchLocalAssetFile, importWorkbenchRemoteAssetUrl } from '../../api/assetUploadApi'
 import { isProjectExecutionContextCurrent, isProjectImportCancellation, withProjectAction, type ProjectExecutionContext } from '../../project/projectCanvasReadSurface'
 import {
   COMPOSER_ATTACHMENT_MAX_BYTES,
@@ -37,6 +41,7 @@ export type UseComposerAttachments = {
   openFilePicker: () => void
   inputRef: React.RefObject<HTMLInputElement | null>
   onInputChange: (event: React.ChangeEvent<HTMLInputElement>) => void
+  addAsset: (asset: AssetRef) => Promise<{ url: string } | null>
   addFiles: (files: FileList | File[] | null | undefined) => void
   removeAttachment: (id: string) => void
   clearAttachments: () => void
@@ -59,11 +64,14 @@ export function useComposerAttachments(opts: {
 }): UseComposerAttachments {
   const { setAttachments, settleAttachment, onError } = opts
   const inputRef = React.useRef<HTMLInputElement>(null)
+  const attachmentsRef = React.useRef(opts.attachments)
+  attachmentsRef.current = opts.attachments
   const [dragDepth, setDragDepth] = React.useState(0)
+  const referenceImports = React.useRef(new Map<string, Promise<{ url: string } | null>>())
   const onErrorRef = React.useRef(onError)
   onErrorRef.current = onError
 
-  const uploadOne = React.useCallback(async (id: string, file: File, context: ProjectExecutionContext) => {
+  const uploadOne = React.useCallback(async (id: string, file: File | AssetRef, context: ProjectExecutionContext) => {
     const settle = (update: (item: ComposerAttachment) => ComposerAttachment) => {
       if (settleAttachment) settleAttachment(context, id, update)
       else setAttachments(prev => !isProjectExecutionContextCurrent(context) ? prev
@@ -71,17 +79,23 @@ export function useComposerAttachments(opts: {
     }
     try {
       context.assertCurrent()
-      const asset = await importWorkbenchLocalAssetFile(file, file.name, { projectBinding: context.binding, assertCurrent: context.assertCurrent })
+      const meta = { projectBinding: context.binding, assertCurrent: context.assertCurrent }
+      const asset = 'origin' in file
+        ? await importWorkbenchRemoteAssetUrl(file.renderUrl, file.name, meta)
+        : await importWorkbenchLocalAssetFile(file, file.name, meta)
       context.assertCurrent()
       const url = readAssetUrl(asset)
       const contentHash = readAssetContentHash(asset)
       if (!asset.id || !url || !contentHash) throw new Error(i18n.t('runtime.attachments.uploadNoUrl'))
+      const size = typeof asset.data.size === 'number' ? asset.data.size : undefined
+      if (size !== undefined && size > COMPOSER_ATTACHMENT_MAX_BYTES) throw new Error(i18n.t('runtime.attachments.tooLarge', { name: file.name, limit: formatAttachmentSize(COMPOSER_ATTACHMENT_MAX_BYTES) }))
       settle(item => {
         if (item.previewUrl) {
-          try { URL.revokeObjectURL(item.previewUrl) } catch { /* noop */ }
+          try { if (item.previewUrl.startsWith('blob:')) URL.revokeObjectURL(item.previewUrl) } catch { /* noop */ }
         }
-        return { ...item, status: 'ready', assetId: asset.id, contentHash, url, previewUrl: undefined }
+        return { ...item, status: 'ready', assetId: asset.id, contentHash, version: 1, url, previewUrl: undefined, ...(size !== undefined ? { sizeBytes: size } : {}), ...(typeof asset.data.contentType === 'string' ? { contentType: asset.data.contentType, kind: attachmentKindFromContentType(asset.data.contentType) } : {}) }
       })
+      return { url }
     } catch (caught: unknown) {
       if (!isProjectExecutionContextCurrent(context) || isProjectImportCancellation(caught)) {
         // The active composer belongs to another project now. Only its resident
@@ -90,13 +104,62 @@ export function useComposerAttachments(opts: {
           if (item.previewUrl) { try { URL.revokeObjectURL(item.previewUrl) } catch { /* noop */ } }
           return { ...item, status: 'error', previewUrl: undefined, error: i18n.t('runtime.attachments.uploadFailed') }
         })
-        return
+        return null
       }
       const message = caught instanceof Error ? caught.message : i18n.t('runtime.attachments.uploadFailed')
       settle(item => ({ ...item, status: 'error', error: message }))
       onErrorRef.current?.(i18n.t('runtime.attachments.uploadFailedWithName', { name: file.name, message }))
+      return null
     }
   }, [setAttachments, settleAttachment])
+
+  const addAsset = React.useCallback((selected: AssetRef) => {
+    return withProjectAction(context => {
+      context.assertCurrent()
+      let asset = selected
+      if (selected.origin.source === 'project') {
+        if (selected.origin.projectId !== context.binding.projectId) throw new Error('project_agent_attachment_invalid')
+      } else {
+        const origin = selected.origin
+        const node = useGenerationCanvasStore.getState().nodes.find(item => item.id === origin.nodeId)
+        const current = node && canvasNodeToAssetRefs(node).find(item => item.origin.source === 'canvas' && item.origin.resultId === origin.resultId)
+        const original = node && listNodeMediaResults(node).find(result => resultIdentity(result) === origin.resultId)
+        if (!current || !original?.url || original.url !== selected.renderUrl || current.renderUrl !== selected.renderUrl) throw new Error('project_agent_attachment_invalid')
+        asset = current
+      }
+      const source = `${context.binding.projectId}:${asset.renderUrl}`
+      const referenceNode = asset.origin.source === 'canvas' && asset.origin.resultId
+        ? { nodeId:asset.origin.nodeId, resultId:asset.origin.resultId, originalUrl:asset.renderUrl } : undefined
+      const existing = attachmentsRef.current.find(item => item.referenceSource === source || item.url === asset.renderUrl)
+      if (existing) {
+        if (referenceNode) {
+          const origins=existing.referenceNodes ?? (existing.referenceNode ? [existing.referenceNode] : [])
+          if (!origins.some(origin=>origin.nodeId===referenceNode.nodeId && origin.resultId===referenceNode.resultId)) {
+            const update=(items:ComposerAttachment[])=>items.map(item=>item.id===existing.id
+              ? { ...item, referenceNode:item.referenceNode ?? referenceNode, referenceNodes:[...origins,referenceNode] } : item)
+            attachmentsRef.current=update(attachmentsRef.current)
+            setAttachments(update)
+          }
+        }
+        return existing.status === 'ready' && existing.url ? Promise.resolve({ url: existing.url }) : referenceImports.current.get(existing.id) ?? Promise.resolve(null)
+      }
+      const id = nextAttachmentId()
+      const attachment: ComposerAttachment = { id, referenceSource: source, fileName: asset.name,
+        ...(referenceNode ? { referenceNode } : {}),
+        contentType: `${asset.kind}/${asset.kind === 'image' ? 'png' : 'octet-stream'}`, sizeBytes: 0,
+        kind: asset.kind === 'image' ? 'image' : 'file', status: 'uploading',
+        previewUrl: asset.kind === 'image' ? asset.renderUrl : undefined }
+      // Reserve synchronously: two picks before the next render must start one I/O.
+      // Each new admission has its own id, so late I/O cannot settle a replacement.
+      attachmentsRef.current = [...attachmentsRef.current, attachment]
+      setAttachments(prev => isProjectExecutionContextCurrent(context) ? [...prev, attachment] : prev)
+      const imported = uploadOne(id, asset, context).then(ready =>
+        ready && isProjectExecutionContextCurrent(context) && attachmentsRef.current.some(item => item.id === id) ? ready : null)
+        .finally(() => referenceImports.current.delete(id))
+      referenceImports.current.set(id, imported)
+      return imported
+    }, () => Promise.resolve(null))
+  }, [setAttachments, uploadOne])
 
   const addFiles = React.useCallback((files: FileList | File[] | null | undefined) => {
     const list = files ? Array.from(files) : []
@@ -135,6 +198,7 @@ export function useComposerAttachments(opts: {
   }, [setAttachments, uploadOne])
 
   const removeAttachment = React.useCallback((id: string) => {
+    attachmentsRef.current = attachmentsRef.current.filter(item => item.id !== id)
     setAttachments((prev) => {
       const target = prev.find((item) => item.id === id)
       if (target?.previewUrl) {
@@ -145,10 +209,11 @@ export function useComposerAttachments(opts: {
   }, [setAttachments])
 
   const clearAttachments = React.useCallback(() => {
+    attachmentsRef.current = []
     setAttachments((prev) => {
       for (const item of prev) {
         if (item.previewUrl) {
-          try { URL.revokeObjectURL(item.previewUrl) } catch { /* noop */ }
+          try { if (item.previewUrl.startsWith('blob:')) URL.revokeObjectURL(item.previewUrl) } catch { /* noop */ }
         }
       }
       return []
@@ -204,6 +269,7 @@ export function useComposerAttachments(opts: {
     inputRef,
     onInputChange,
     addFiles,
+    addAsset,
     removeAttachment,
     clearAttachments,
     handlePaste,

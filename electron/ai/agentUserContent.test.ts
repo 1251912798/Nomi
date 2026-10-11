@@ -1,6 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { encodeMention } from '../shared/storyboard/promptMentions'
+import { describe, expect, it, vi } from "vitest";
 import {
   buildAgentUserContent,
+  projectAgentPromptForSend,
   modelSupportsImageInput,
   modelSupportsPdfInput,
 } from "./agentUserContent";
@@ -136,3 +138,49 @@ describe("buildAgentUserContent", () => {
     expect(content as string).toContain("未能读取");
   });
 });
+
+
+describe('original media reference identity', () => {
+  it('carries video/audio ids for generation reuse without claiming to analyze their content', async () => {
+    const extractText = vi.fn(async () => null)
+    const content = await buildAgentUserContent({ prompt: 'Use these references', supportsImageInput: true, supportsPdfInput: true, resolveBytes: bytes, extractText, attachments: [
+      { assetId: 'asset-video', url: 'nomi-local://v', contentType: 'video/mp4', fileName: 'take.mp4', kind: 'file' },
+      { assetId: 'asset-audio', url: 'nomi-local://a', contentType: 'audio/wav', fileName: 'rain.wav', kind: 'file' },
+    ] })
+    expect(content).toContain('asset-video')
+    expect(content).toContain('asset-audio')
+    expect(content).toContain('not been watched or listened to')
+    expect(extractText).not.toHaveBeenCalled()
+  })
+  it('retains an executable image identity even for a text-only model', async () => {
+    const content = await buildAgentUserContent({ prompt: 'Use this identity', supportsImageInput: false, supportsPdfInput: false, resolveBytes: bytes, extractText: async () => null, attachments: [
+      { assetId: 'asset-image', url: 'nomi-local://i', contentType: 'image/png', fileName: 'portrait.png', kind: 'image' },
+    ] })
+    expect(content).toContain('asset-image')
+  })
+})
+
+describe('Agent inline reference projection', () => {
+  const attachments = [
+    { assetId:'image-a', url:'nomi-local://p/a.png', fileName:'a.png', contentType:'image/png', kind:'image' as const },
+    { assetId:'video-v', url:'nomi-local://p/v.mp4', fileName:'v.mp4', contentType:'video/mp4', kind:'file' as const },
+    { assetId:'image-b', url:'nomi-local://p/b.png', fileName:'b.png', contentType:'image/png', kind:'image' as const },
+    { assetId:'audio-s', url:'nomi-local://p/s.wav', fileName:'s.wav', contentType:'audio/wav', kind:'file' as const },
+  ]
+  it('binds each clause to its original while keeping per-kind numbering and repeated mentions', async () => {
+    const raw = `${encodeMention(attachments[2].url)} change background; ${encodeMention(attachments[0].url)} keep the face.\n${encodeMention(attachments[1].url)} animate to ${encodeMention(attachments[3].url)}; keep ${encodeMention(attachments[2].url)}.`
+    const prompt = projectAgentPromptForSend(raw,attachments)
+    expect(prompt).toBe('@image2 change background; @image1 keep the face.\n@video1 animate to @audio1; keep @image2.')
+    const content = await buildAgentUserContent({ prompt,attachments,supportsImageInput:true,supportsPdfInput:false,resolveBytes:bytes,extractText:async()=>null })
+    const text = (content as {type:string;text:string}[])[0].text
+    const manifest = JSON.parse(text.split('[Selected original media references]\n')[1].split('\n')[0])
+    expect(manifest.map((item:{reference:string;assetId:string})=>[item.reference,item.assetId])).toEqual([
+      ['@image1','image-a'],['@video1','video-v'],['@image2','image-b'],['@audio1','audio-s'],
+    ])
+    expect((content as {type:string}[]).filter(item=>item.type==='image')).toHaveLength(2)
+  })
+  it('refuses a pasted marker without a canonical attachment instead of silently dropping it', () => {
+    expect(()=>projectAgentPromptForSend(encodeMention('nomi-local://p/missing.png'),attachments)).toThrow('project_agent_attachment_invalid')
+    expect(()=>projectAgentPromptForSend(encodeMention(attachments[0].url),[{...attachments[0],assetId:undefined}])).toThrow('project_agent_attachment_invalid')
+  })
+})

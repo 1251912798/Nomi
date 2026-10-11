@@ -1,0 +1,490 @@
+{
+  "board": "ReferenceEntry",
+  "extractor": "board-extract@1",
+  "source": "preview/ReferenceEntry.html",
+  "sourceSha256": "5388ffcc7949fa964068aba8cb509212be48c0aade38c888f49f2356177354d2",
+  "viewport": {
+    "width": 1280,
+    "height": 800
+  },
+  "candidates": [
+    {
+      "id": "001-h1-参考入口生产组件快照",
+      "kind": "text",
+      "tag": "h1",
+      "text": "参考入口 · 生产组件快照",
+      "bbox": [
+        32,
+        49,
+        1216,
+        39
+      ],
+      "region": "root"
+    },
+    {
+      "id": "002-p-真实Electron走查",
+      "kind": "text",
+      "tag": "p",
+      "text": "真实 Electron 走查捕获的 DOM 和样式摘录；用于核对已确认的改动，非交互原型。完整布局见验收截图。",
+      "bbox": [
+        32,
+        106,
+        1216,
+        20
+      ],
+      "region": "root"
+    },
+    {
+      "id": "003-h2-Agent原小鼠标",
+      "kind": "text",
+      "tag": "h2",
+      "text": "Agent · 原小鼠标",
+      "bbox": [
+        32,
+        141,
+        560,
+        29
+      ],
+      "region": "root"
+    },
+    {
+      "id": "004-button-加参考",
+      "kind": "text",
+      "tag": "button",
+      "text": "加参考",
+      "bbox": [
+        32,
+        187,
+        24,
+        24
+      ],
+      "region": "root"
+    },
+    {
+      "id": "005-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        32,
+        191,
+        16,
+        16
+      ],
+      "region": "root",
+      "iconOf": "004-button-加参考"
+    },
+    {
+      "id": "006-h2-Agent句中引用",
+      "kind": "text",
+      "tag": "h2",
+      "text": "Agent · 句中引用",
+      "bbox": [
+        32,
+        243,
+        560,
+        29
+      ],
+      "region": "root"
+    },
+    {
+      "id": "007-div-给Nomi的消息",
+      "kind": "text",
+      "tag": "div",
+      "role": "textbox",
+      "text": "给 Nomi 的消息",
+      "bbox": [
+        32,
+        288,
+        344,
+        68
+      ],
+      "region": "canvas"
+    },
+    {
+      "id": "008-p-changethebac",
+      "kind": "text",
+      "tag": "p",
+      "text": "change the background animate the movement REFERENCE_ENTRY_E",
+      "bbox": [
+        32,
+        288,
+        344,
+        68
+      ],
+      "region": "canvas"
+    },
+    {
+      "id": "009-span",
+      "kind": "box",
+      "tag": "span",
+      "text": "",
+      "bbox": [
+        32,
+        292,
+        61,
+        16
+      ],
+      "region": "node"
+    },
+    {
+      "id": "010-span-图片1",
+      "kind": "text",
+      "tag": "span",
+      "text": "图片1",
+      "bbox": [
+        32,
+        288,
+        61,
+        22
+      ],
+      "region": "node"
+    },
+    {
+      "id": "011-span-图片1",
+      "kind": "text",
+      "tag": "span",
+      "text": "图片1",
+      "bbox": [
+        59,
+        294,
+        27,
+        11
+      ],
+      "region": "node"
+    },
+    {
+      "id": "012-span",
+      "kind": "box",
+      "tag": "span",
+      "text": "",
+      "bbox": [
+        32,
+        315,
+        61,
+        16
+      ],
+      "region": "node"
+    },
+    {
+      "id": "013-span-视频1",
+      "kind": "text",
+      "tag": "span",
+      "text": "视频1",
+      "bbox": [
+        32,
+        311,
+        61,
+        22
+      ],
+      "region": "node"
+    },
+    {
+      "id": "014-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        48,
+        317,
+        7,
+        10
+      ],
+      "region": "node",
+      "iconOf": "013-span-视频1"
+    },
+    {
+      "id": "015-span-视频1",
+      "kind": "text",
+      "tag": "span",
+      "text": "视频1",
+      "bbox": [
+        59,
+        317,
+        27,
+        11
+      ],
+      "region": "node"
+    },
+    {
+      "id": "016-h2-image原参考入口",
+      "kind": "text",
+      "tag": "h2",
+      "text": "image · 原参考入口",
+      "bbox": [
+        32,
+        389,
+        560,
+        29
+      ],
+      "region": "root"
+    },
+    {
+      "id": "017-button-参考",
+      "kind": "text",
+      "tag": "button",
+      "text": "参考",
+      "bbox": [
+        32,
+        434,
+        61,
+        30
+      ],
+      "region": "root"
+    },
+    {
+      "id": "018-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        41,
+        442,
+        15,
+        15
+      ],
+      "region": "root",
+      "iconOf": "017-button-参考"
+    },
+    {
+      "id": "019-button-加参考",
+      "kind": "text",
+      "tag": "button",
+      "text": "加参考",
+      "bbox": [
+        97,
+        434,
+        30,
+        30
+      ],
+      "region": "root"
+    },
+    {
+      "id": "020-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        97,
+        441,
+        16,
+        16
+      ],
+      "region": "root",
+      "iconOf": "019-button-加参考"
+    },
+    {
+      "id": "021-h2-video原参考入口",
+      "kind": "text",
+      "tag": "h2",
+      "text": "video · 原参考入口",
+      "bbox": [
+        32,
+        496,
+        560,
+        29
+      ],
+      "region": "root"
+    },
+    {
+      "id": "022-button-参考",
+      "kind": "text",
+      "tag": "button",
+      "text": "参考",
+      "bbox": [
+        32,
+        541,
+        61,
+        30
+      ],
+      "region": "root"
+    },
+    {
+      "id": "023-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        41,
+        549,
+        15,
+        15
+      ],
+      "region": "root",
+      "iconOf": "022-button-参考"
+    },
+    {
+      "id": "024-button-加参考",
+      "kind": "text",
+      "tag": "button",
+      "text": "加参考",
+      "bbox": [
+        97,
+        541,
+        30,
+        30
+      ],
+      "region": "root"
+    },
+    {
+      "id": "025-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        97,
+        548,
+        16,
+        16
+      ],
+      "region": "root",
+      "iconOf": "024-button-加参考"
+    },
+    {
+      "id": "026-h2-text原参考入口",
+      "kind": "text",
+      "tag": "h2",
+      "text": "text · 原参考入口",
+      "bbox": [
+        32,
+        603,
+        560,
+        29
+      ],
+      "region": "root"
+    },
+    {
+      "id": "027-button-参考",
+      "kind": "text",
+      "tag": "button",
+      "text": "参考",
+      "bbox": [
+        32,
+        649,
+        61,
+        30
+      ],
+      "region": "root"
+    },
+    {
+      "id": "028-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        41,
+        656,
+        15,
+        15
+      ],
+      "region": "root",
+      "iconOf": "027-button-参考"
+    },
+    {
+      "id": "029-button-加参考",
+      "kind": "text",
+      "tag": "button",
+      "text": "加参考",
+      "bbox": [
+        97,
+        649,
+        30,
+        30
+      ],
+      "region": "root"
+    },
+    {
+      "id": "030-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        97,
+        656,
+        16,
+        16
+      ],
+      "region": "root",
+      "iconOf": "029-button-加参考"
+    },
+    {
+      "id": "031-h2-Agent素材候选英文暗",
+      "kind": "text",
+      "tag": "h2",
+      "text": "Agent · @ 素材候选（英文暗色）",
+      "bbox": [
+        32,
+        711,
+        560,
+        29
+      ],
+      "region": "root"
+    },
+    {
+      "id": "032-div-Canvas",
+      "kind": "text",
+      "tag": "div",
+      "text": "Canvas",
+      "bbox": [
+        38,
+        762,
+        308,
+        25
+      ],
+      "region": "root"
+    },
+    {
+      "id": "033-button-framecurrent",
+      "kind": "text",
+      "tag": "button",
+      "text": "frame-current",
+      "bbox": [
+        38,
+        788,
+        308,
+        34
+      ],
+      "region": "left"
+    },
+    {
+      "id": "034-span-framecurrent",
+      "kind": "text",
+      "tag": "span",
+      "text": "frame-current",
+      "bbox": [
+        78,
+        799,
+        186,
+        11
+      ],
+      "region": "left"
+    },
+    {
+      "id": "035-span-Connect",
+      "kind": "text",
+      "tag": "span",
+      "text": "Connect",
+      "bbox": [
+        272,
+        795,
+        68,
+        21
+      ],
+      "region": "left"
+    },
+    {
+      "id": "036-svg",
+      "kind": "icon",
+      "tag": "svg",
+      "text": "",
+      "bbox": [
+        277,
+        799,
+        11,
+        11
+      ],
+      "region": "left",
+      "iconOf": "035-span-Connect"
+    }
+  ]
+}

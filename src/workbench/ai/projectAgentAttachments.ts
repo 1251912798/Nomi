@@ -1,3 +1,4 @@
+import { numberPromptReferences } from '../assets/promptMentions'
 import type { ProjectAgentAttachmentClaim, ProjectAgentAttachmentRef } from '../../../electron/shared/workbenchInput'
 import i18n from '../../i18n'
 
@@ -20,7 +21,7 @@ export function projectAgentAttachmentClaims(
         assetId: attachment.assetId,
         version: attachment.version ?? 1,
       })
-    }),
+    }).filter((claim, index, claims) => claims.findIndex(other => other.assetId === claim.assetId && other.version === claim.version) === index),
   )
 }
 
@@ -48,4 +49,16 @@ export function composerAttachmentsFromProjectAgentRefs(
           error: i18n.t('agentLaneError.agent_lane_original_media_unavailable'),
         },
   )
+}
+
+/** UI numbering follows the same canonical identity/order as main attachment claims. */
+export function composerMediaReferences(attachments: readonly ComposerAttachment[]) {
+  const seen = new Set<string>()
+  return numberPromptReferences(attachments.flatMap(item => {
+    if (item.status !== 'ready' || !item.url || !item.assetId || !/^(image|video|audio)\//.test(item.contentType)) return []
+    const key=`${item.assetId}:${item.version ?? 1}`
+    if (seen.has(key)) return []
+    seen.add(key)
+    return [{ url:item.url, kind:item.contentType.startsWith('video/') ? 'video' as const : item.contentType.startsWith('audio/') ? 'audio' as const : 'image' as const }]
+  }))
 }

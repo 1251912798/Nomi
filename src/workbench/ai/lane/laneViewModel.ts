@@ -1,3 +1,4 @@
+import { numberPromptReferences } from '../../assets/promptMentions'
 import { capabilitySupportsUndo } from '../../../../electron/shared/agentCapabilities/registry'
 import { redactResidentSensitiveText } from '../resident/residentToolText'
 import { parseQuestionSheet } from '../v4/agentPanelV4Question'
@@ -399,8 +400,16 @@ export function laneViewModel(projection: LaneProjection, labels: LaneViewModelL
         ? { kind: 'skill', label: skillName, ...labels.skillMedia?.(part.skillKey) } : undefined
       // 附件签只读这条消息自己的 claim 投影（主进程 join 好的文件名）；解不出来的照样画一颗「附件不可用」，
       // 不让它从历史里消失。
+      const mediaReferences = numberPromptReferences((part.attachments ?? []).flatMap(attachment => {
+        const display=attachment.display
+        if (!display || !/^(image|video|audio)\//.test(display.contentType)) return []
+        return [{ url:display.url, kind:display.contentType.startsWith('video/') ? 'video' as const : display.contentType.startsWith('audio/') ? 'audio' as const : 'image' as const }]
+      }))
       const fileChips: V4Chip[] = (part.attachments ?? []).map(attachment => ({
-        id: attachment.assetId, kind: 'file' as const, label: attachment.display?.fileName ?? labels.attachmentUnavailable }))
+        id: attachment.assetId, kind: 'file' as const, label: attachment.display?.fileName ?? labels.attachmentUnavailable,
+        ...(mediaReferences.some(reference=>reference.url===attachment.display?.url)
+          ? { reference:mediaReferences.find(reference=>reference.url===attachment.display?.url) } : {}),
+      }))
       const chips = [...fileChips, ...(skillChip ? [skillChip] : [])]
       push({ kind: 'user', text: part.text, ...(chips.length ? { chips } : {}) })
       continue

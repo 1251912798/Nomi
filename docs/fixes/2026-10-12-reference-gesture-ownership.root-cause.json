@@ -1,0 +1,126 @@
+{
+  "schema_version": 3,
+  "id": "2026-10-12-reference-gesture-ownership",
+  "problem_type": "Reference controls and pointer gestures must retain their existing single owner",
+  "symptom": "Declared reference slots gained a duplicate header plus; Agent canvas picking changed the edit target to the source node.",
+  "direct_cause": "AssetReference added onAdd beside existing single-slot plus buttons; pick ended on pointerdown and the effect removed its native gesture guard before compatibility click events.",
+  "class_root": "Reference entry reused rendering but did not preserve the ownership boundary through complete slots and complete native pointer gestures.",
+  "affected_population": [
+    "Image and multi-media array slots",
+    "Video first/last frame and source-video slots",
+    "All canvas point-pick callers including Agent"
+  ],
+  "scope_paths": [
+    "src/workbench/assets/AssetReference.tsx",
+    "src/workbench/generationCanvas/components/CanvasPickModeLayer.tsx"
+  ],
+  "entry_points": [
+    "Node model-declared reference controls",
+    "Agent and existing node canvas pick mode"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "Nomi-owned event lifetime and slot controls; no new API or dependency.",
+  "invariants": [
+    "Declared slots retain their original add buttons; the shared reference header has no second plus.",
+    "A reference pointer gesture is consumed through click before leaving pick mode; selecting a source does not select it as the edit target."
+  ],
+  "doors": [
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/NodeParameterControls.tsx",
+      "symbol": "AssetReference"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/components/CanvasPickModeLayer.tsx",
+      "symbol": "pickCanvasNode"
+    }
+  ],
+  "door_reduction": {
+    "before": 2,
+    "after": 2,
+    "why_not": "The declared-slot renderer and native canvas gesture layer own separate existing responsibilities; no additional library entry or pick implementation survives."
+  },
+  "generality_proof": "AssetReference renders all declared slot kinds from one schema; all canvas pick callers share one gesture layer. Removing header onAdd and keeping the capture listener alive through click covers images, videos, audio and old left-handle entry.",
+  "shared_boundaries": [
+    {
+      "path": "src/workbench/assets/AssetReference.tsx",
+      "symbol": "AssetReference",
+      "responsibility": "Reuse original slot add controls without a duplicate header plus."
+    },
+    {
+      "path": "src/workbench/generationCanvas/components/CanvasPickModeLayer.tsx",
+      "symbol": "CanvasPickModeLayer",
+      "responsibility": "Consume the complete native pointer gesture before ending pick mode."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/workbench/generationCanvas/nodes/NodeParameterControls.tsx",
+      "entry_point": "AssetReference",
+      "disposition": "enforced",
+      "evidence": "All model-declared single/array media slots use this component."
+    },
+    {
+      "path": "src/workbench/generationCanvas/quickActions/nodeInputActions.ts",
+      "entry_point": "pickCanvasInputFor",
+      "disposition": "enforced",
+      "evidence": "Original left-handle point mode and new inline entry share the same canvasPickMode and native gesture layer."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Duplicate plus repeats across any declared slots; premature gesture release repeats for every point-pick caller.",
+    "same_class_scan": [
+      "node scripts/door-map.mjs AssetReference",
+      "node scripts/door-map.mjs pickCanvasNode",
+      "Read AssetReference, NodeParameterControls, nodeInputActions, CanvasPickModeLayer and actual Electron failed target.preserved assertion."
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "src/workbench/generationCanvas/components/CanvasPickModeLayer.tsx",
+    "invariant": "The reference interaction owns its full gesture and existing slot add controls.",
+    "failure_mode": "Ineligible nodes remain unpicked; empty-canvas click cancels without selection; original capacity gates control the add tiles.",
+    "exception_policy": "none",
+    "strategy": "Remove duplicate header add and defer ending pointer mode until captured click has been consumed.",
+    "artifacts": [
+      "src/workbench/assets/AssetReference.tsx",
+      "src/workbench/generationCanvas/components/CanvasPickModeLayer.tsx"
+    ]
+  },
+  "regression_tests": [
+    "src/workbench/assets/AssetReference.test.ts",
+    "tests/ux/reference-entry.walk.mjs"
+  ],
+  "class_regression_tests": [
+    "src/workbench/assets/AssetReference.test.ts",
+    "tests/ux/reference-entry.walk.mjs"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "src/workbench/assets/AssetReference.tsx",
+      "src/workbench/generationCanvas/components/CanvasPickModeLayer.tsx"
+    ],
+    "rationale": "Delete added header onAdd for declared slots and immediate pointerdown termination; retain original slot add tiles and shared picker."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "Application-owned capture listener lifecycle; no dependency change.",
+    "exit_criteria": []
+  },
+  "migration": "No stored schema change.",
+  "residual_risks": [
+    "Native pointer sequence requires actual Electron walk; Windows and paid providers remain unverified."
+  ],
+  "detected_by": "user",
+  "recurrence_check_on": "2026-10-19",
+  "invariant_owner_layer": {
+    "layer": "src/workbench/generationCanvas",
+    "tests": [
+      "src/workbench/assets/AssetReference.test.ts",
+      "tests/ux/reference-entry.walk.mjs"
+    ]
+  }
+}

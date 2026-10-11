@@ -1,3 +1,4 @@
+import NodeInputReferenceEntry from './NodeInputReferenceEntry'
 import { notify } from '../../../ui/notificationPolicy'
 import { normalizeConditionalParameters } from '../../../../electron/shared/videoCapabilities/crossFieldConstraints'
 import { nodeReferenceCapacity } from './controls/nodeCrossFieldConstraints'
@@ -77,7 +78,8 @@ import { translateModelDisplayText } from '../../../i18n/modelDisplayText'
 import { modeTransportFor, specializeArchetypeForVariant } from '../../../../electron/shared/modelArchetypes'
 import ModeBar from './controls/ModeBar'
 import AssetReference, { type AssetSlot } from '../../assets/AssetReference'
-import type { AssetRef } from '../../assets/assetTypes'
+import type { AssetRef, AssetKind } from '../../assets/assetTypes'
+import { pickNodeSlotReference } from './nodeSlotReferencePick'
 import { moveArrayItem } from '../../assets/assetTypes'
 import { removeMention } from '../../assets/promptMentions'
 import InlineParameterBar, { type InlineParameterBarParameterLayout } from './InlineParameterBar'
@@ -143,6 +145,7 @@ export default function NodeParameterControls({
   const meta = React.useMemo<Record<string, unknown>>(() => node.meta || {}, [node.meta])
   const [uploadingSlotKey, setUploadingSlotKey] = React.useState('')
   const [uploadError, setUploadError] = React.useState('')
+  const cancelReferencePick = React.useRef<(() => void) | undefined>(undefined)
   const [openSlotKey, setOpenSlotKey] = React.useState('')
   const [uploadingArrayKey, setUploadingArrayKey] = React.useState('')
   const isImageLike = isImageLikeGenerationNodeKind(node.kind)
@@ -163,6 +166,8 @@ export default function NodeParameterControls({
   const activeVariantId = archetype ? currentArchetypeVariant(archetype, meta)?.id || '' : ''
   const effectiveArchetype = archetype ? specializeArchetypeForVariant(archetype, activeVariantId) : null
   const archMode = effectiveArchetype ? currentArchetypeMode(effectiveArchetype, meta) : null
+  // A point-pick belongs to the slot configuration that opened it.
+  React.useEffect(() => () => cancelReferencePick.current?.(), [node.id, openProjectId, archMode?.id, node.meta, edges])
   const imageCatalogConfig = archetype ? null : buildEffectiveImageCatalogConfig(selectedModelOption?.meta)
   const renderedControls = resolveRenderedControls(selectedModelOption, meta, isImageLike, isVideoLike)
 
@@ -600,7 +605,9 @@ export default function NodeParameterControls({
       const img = imageUrlSlots.find((i) => i.key === slot.key)
       if (!img) return
       // 连边是改画布，只有握着连边权能的宿主（画布）才建边；付费确认卡只写它自己的参考槽（见 nodeWriteAccess）。
-      if (asset.source === 'canvas' && asset.origin.source === 'canvas' && canConnect) handleSlotAssignment(img, asset.origin.nodeId)
+      const sourceNodeId = asset.origin.source === 'canvas' ? asset.origin.nodeId : undefined
+      if (sourceNodeId && canConnect
+        && resultPreviewUrl(nodes.find(candidate => candidate.id === sourceNodeId)) === asset.renderUrl) handleSlotAssignment(img, sourceNodeId)
       else setSingleFrameUrlMeta(img, asset.renderUrl)
       return
     }
@@ -697,7 +704,6 @@ export default function NodeParameterControls({
   }
 
   // 模式分段切换要常驻（即便当前模式无参考槽，如纯文生）——有 modeBar / 数组槽 / 源视频槽都不空返回。
-  // 变体（型号）已从这里挪到底栏 InlineParameterBar 的小下拉（用户拍板：和模型并排在最下面），不再占顶部一排。
   // 处理类 ComfyUI 工作流（去背景/超分/补帧）图里没有提示词槽——诚实说一句，
   // 否则用户在下面的提示词框里打了字却毫无作用，只会以为是我们坏了（D4 缺口明着标）。
   const comfyTakesPrompt = comfyWorkflowTakesPrompt(selectedModelOption?.meta)
@@ -706,6 +712,13 @@ export default function NodeParameterControls({
   // 那时用户什么都看不到。它若跟着模式栏一起消失，最需要说话的场合反而哑了，所以它单独进空返回判据。
   const showModeGuidance = showReferences && Boolean(modeGuidance)
 
+  const potentialReferenceKinds = Array.from(new Set(effectiveArchetype?.modes.flatMap(mode => [
+    ...archetypeModeSlots(mode).map(() => 'image' as AssetKind),
+    ...archetypeModeArraySlots(mode).map(slot => slot.accept),
+    ...(archetypeModeSourceVideoSlot(mode) ? ['video' as AssetKind] : []),
+  ]) ?? (isImageLike ? ['image' as AssetKind] : [])))
+  const inputReferenceEntry = !assetSlots.length && canConnect && potentialReferenceKinds.length
+    ? <NodeInputReferenceEntry nodeId={node.id} accept={potentialReferenceKinds} /> : null
   if (
     section === 'references' &&
     referencesSectionIsEmpty({
@@ -717,10 +730,8 @@ export default function NodeParameterControls({
       hasModeGuidance: showModeGuidance,
     })
   )
-    return null
+    return inputReferenceEntry
 
-  // 走到这里只剩 section="references"（parameters/settings 已提前 return；旧的 all/model/controls 网格
-  // 渲染随设置弹层落地而删除——参数现在进设置弹层，模型进底栏芯片，不再有这套裸值网格，Rule 1/12）。
   const rootClassName = cn('generation-canvas-v2-node__ref-section', 'flex flex-col gap-1')
 
   return (
@@ -740,6 +751,7 @@ export default function NodeParameterControls({
         />
       ) : null}
 
+      {showReferences ? inputReferenceEntry : null}
       {showReferences && assetSlots.length > 0 ? (
         <AssetReference
           slots={assetSlots}
@@ -751,6 +763,14 @@ export default function NodeParameterControls({
           openSlotKey={openSlotKey}
           uploadingSlotKey={uploadingSlotKey || uploadingArrayKey}
           onTogglePicker={(key) => setOpenSlotKey((prev) => (prev === key ? '' : key))}
+          onPickOnCanvas={(slots) => {
+            setOpenSlotKey('')
+            cancelReferencePick.current = pickNodeSlotReference({
+              nodeId: node.id, slots, valuesByKey: assetValuesByKey, occupiedByKey: arrayOccupiedByKey,
+              remainingCapacity: archMode ? nodeReferenceCapacity(archMode, node, nodes, edges) : Infinity,
+              onPick: handleAssetPick,
+            })
+          }}
           onPick={handleAssetPick}
           onUpload={(slot, file) => {
             void handleAssetUpload(slot, file)
