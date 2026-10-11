@@ -1,5 +1,5 @@
 {
-  "id": "REAL-20261011-01",
+  "id": "REAL-20261011-02",
   "since": "2026-10-11",
   "source": "2026-10-11 real-device performance programme",
   "category": "deletion-integrity",
@@ -16,7 +16,7 @@
   ],
   "completionCommits": [],
   "rootCauseContract": "docs/fixes/2026-10-11-node-delete-undo-timeline-clips.root-cause.json",
-  "fixedInPr": 9999,
+  "fixedInPr": 1187,
   "classCheck": {
     "kind": "matrix",
     "file": "src/workbench/creation/storyboard/storyboardDeleteUndoClips.test.ts"
