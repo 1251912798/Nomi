@@ -37,15 +37,23 @@ describe("text task local image input", () => {
 });
 
 describe("重试策略", () => {
-  // 2026-10-11：AI SDK 默认 maxRetries=2（「Failed after 3 attempts」）。对限流（429）重试只会放大失败与耗时，
-  // 失败请求不计费；要重来由用户点「重试」（每次重试是新的一次报价确认）。所以这里显式给 0，不靠 SDK 默认。
-  it("streamText 以 maxRetries: 0 调用", async () => {
+  // 2026-10-11：AI SDK 默认 maxRetries=2（「Failed after 3 attempts」）。拆解路径对限流（429）重试只会放大失败与耗时，
+  // 失败请求不计费，要重来由用户点「重试」；其它文本任务保持 SDK 默认（SDK 不区分 429 与 5xx，所以按路径关）。
+  const streamed = () => {
     mocks.read.mockReturnValue(null);
     mocks.stream.mockClear();
     mocks.stream.mockReturnValue({ textStream: (async function* () { yield "ok"; })(),
       finishReason: Promise.resolve("stop"), reasoning: Promise.resolve(undefined) });
-    await streamTextTask({ vendor: {} as Vendor, model: {} as Model, apiKey: "test", prompt: "Describe" });
+  };
+  it("拆解路径传 maxRetries: 0 → streamText 收到 0", async () => {
+    streamed();
+    await streamTextTask({ vendor: {} as Vendor, model: {} as Model, apiKey: "test", prompt: "Describe", maxRetries: 0 });
     expect(mocks.stream.mock.calls.at(-1)?.[0].maxRetries).toBe(0);
+  });
+  it("其它文本任务不传 → streamText 调用里没有 maxRetries（SDK 默认）", async () => {
+    streamed();
+    await streamTextTask({ vendor: {} as Vendor, model: {} as Model, apiKey: "test", prompt: "Describe" });
+    expect(mocks.stream.mock.calls.at(-1)?.[0]).not.toHaveProperty("maxRetries");
   });
 });
 

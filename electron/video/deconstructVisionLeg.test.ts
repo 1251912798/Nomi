@@ -120,6 +120,13 @@ describe("拆解失败原话落进结果", () => {
     }
   });
 
+  it("拆解的每次读图调用都带 maxRetries: 0（限流不重试）", async () => {
+    runTask.mockResolvedValue(okReply);
+    await run({});
+    expect(runTask).toHaveBeenCalled();
+    for (const [call] of runTask.mock.calls) expect(call.request.extras.maxRetries).toBe(0);
+  });
+
   it("模型回了非 JSON：也要说一句人话原因，不是空白", async () => {
     runTask.mockResolvedValue({ raw: { choices: [{ message: { content: "我不想说话" } }] } });
     const { result } = await run({});

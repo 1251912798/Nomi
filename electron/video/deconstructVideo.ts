@@ -474,6 +474,8 @@ export async function deconstructVideo(payload: DeconstructVideoPayload, options
             // 付费闸的授权：这颗令牌在开跑前由用户确认过，覆盖本次全部镜头。
             grantId,
             nodeId,
+            // 拆解逐镜并发读图：限流（429）不自动重试（只会放大失败与耗时），失败原话落表，由用户点重试。
+            maxRetries: 0,
           },
         },
       });

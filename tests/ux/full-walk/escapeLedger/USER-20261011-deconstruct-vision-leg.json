@@ -17,7 +17,7 @@
   ],
   "completionCommits": [],
   "rootCauseContract": "docs/fixes/2026-10-11-deconstruct-vision-leg.root-cause.json",
-  "fixedInPr": 9999,
+  "fixedInPr": 1171,
   "classCheck": {
     "kind": "matrix",
     "file": "electron/video/deconstructVisionLeg.test.ts"

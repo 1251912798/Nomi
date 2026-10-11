@@ -164,7 +164,7 @@
 | ★3 一致与复用 | 选择器复用 `findExecutableModel` / `modelSupportsImageInput` / `useModelOptionsState('text')`；模型下拉复用 `NomiSelect`；不新增机制，音频腿已有 `transcribe?: {vendorKey, modelKey}`，视觉腿照同形。重试策略复用 AI SDK 的 `maxRetries` 参数（不自写重试）。P0：见方向检查文档 | `docs/engineering/direction-check-2026-10-11-deconstruct-vision-leg.md` |
 | ★4 全状态 | 空（没有读图模型）：DeconstructError「还没有能读图的文本模型」+ 底栏选择为空态 · 加载：既有阶段文案 · 成功 · 部分成功：失败镜格子写原话、其余照常 · 失败：整次失败顶部一行原话 · 取消中：既有取消态（结果作废） · 过期：选的模型被停用 → 明确报「你选的读图模型当前不可用」，**不悄悄换别家** · 能力不可用：同上，下一步 = 底栏换一个 | 单测 + 走查截图 |
 | 5 中途表 | 见下表 | 单测 + 人工 |
-| 6 外部数据与失败 | 供应商 429 / 5xx / 超时：原话落到该镜 `failureReason`；`maxRetries: 0`（AI SDK 默认会重试 2 次=「Failed after 3 attempts」，对 429 只会放大失败与耗时；失败请求不计费）；解析失败（模型回了非 JSON）→ 该镜 `failureReason` 写「模型没有返回可解析的结果」 | `streamTextTask.test.ts` |
+| 6 外部数据与失败 | 供应商 429 / 5xx / 超时：原话落到该镜 `failureReason`；拆解路径传 `maxRetries: 0`（`StreamTextTaskInput.maxRetries` 可选，只有拆解显式给；其它文本任务保持 SDK 默认——AI SDK 默认重试 2 次=「Failed after 3 attempts」，对 429 只会放大失败与耗时，失败请求不计费；协调 10-11 拍板按路径关）；解析失败（模型回了非 JSON）→ 该镜 `failureReason` 写「模型没有返回可解析的结果」 | `streamTextTask.test.ts` |
 | 7 性能预算 | 不新增调用；`maxRetries: 0` 只会更快失败。未测真规模 | 未验证：真规模 |
 | 8 真实条件 | 本机 Windows；中英文界面；真付费（最小量）由协调做。**本线只做到：单测 + 无付费走查**，真付费记 `unverified` | 报告 |
 | ★9 验收与回滚 | 验收：另一条线对着本卡逐格核；必红测试先提交（红 → 绿）；真付费最小量：1 条 ≥3 镜短视频、读图模型选一个**非免费**的能读图模型、framesPerShot=1，约 3 次读图调用 + 1 次转写；点确认前核对报价卡模型行。回滚：revert 本分支 §1 的实现提交（新增字段全是可选，旧存档照读） | 报告 |
@@ -181,6 +181,6 @@
 ### 必红测试清单（先提交，红）
 
 1. `deconstructVideo`：`payload.vision` 显式给定 → 报价卡与 `runTask` 都用它；给的不可用 → 抛 DeconstructError、**不弹报价、不发调用**；`visionPreferred` 能读图则用、不能读图则回到自动。
-2. `streamTextTask`：`streamText` 以 `maxRetries: 0` 调用。
+2. `streamTextTask`：拆解传 0 → `streamText` 收到 0；其它不传 → 没有 `maxRetries`（`textTaskRunner` 同理）。
 3. 表：`shotTableFacts` 保留 per-shot `failureReason`；`ShotTableGrid` 渲染它。
 4. 底栏：读图模型选择存在，选择写进 `table.source.visionModel`，重试带它。
