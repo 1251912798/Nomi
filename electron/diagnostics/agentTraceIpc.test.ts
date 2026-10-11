@@ -71,10 +71,11 @@ it('opens the native-derived current project directory, or the requested validat
   expect(await invoke({})).toEqual({ ok: true });
   expect(deps.projectDirectory).toHaveBeenCalledWith('isolated-project');
   expect(deps.traceDirectory).toHaveBeenLastCalledWith('/isolated/project', undefined);
-  expect(deps.revealFile).toHaveBeenLastCalledWith('/isolated/project/.nomi/agent-sessions/session.trace/index.md');
+  // 落点由宿主平台的 path.join 拼（Windows 上是反斜杠，showItemInFolder 要的就是本机路径），期望值同样按本机拼，别写死 POSIX 分隔符。
+  expect(deps.revealFile).toHaveBeenLastCalledWith(path.join('/isolated/project/.nomi/agent-sessions/session.trace', 'index.md'));
   expect(await invoke({}, '新对话 2')).toEqual({ ok: true });
   expect(deps.traceDirectory).toHaveBeenLastCalledWith('/isolated/project', '新对话 2');
-  expect(deps.revealFile).toHaveBeenLastCalledWith('/isolated/project/.nomi/agent-sessions/session.trace/trace.md');
+  expect(deps.revealFile).toHaveBeenLastCalledWith(path.join('/isolated/project/.nomi/agent-sessions/session.trace', 'trace.md'));
 });
 
 it('returns no-project without touching native sessions', async () => {

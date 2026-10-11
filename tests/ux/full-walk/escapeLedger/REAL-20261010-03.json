@@ -1,0 +1,28 @@
+{
+  "id": "REAL-20261010-03",
+  "since": "2026-10-10",
+  "source": "2026-10-10 user report (Mac dev build)",
+  "category": "interaction-semantics",
+  "problem": "点一张卡再点第二张，变成「已选 2 个 · 编组」，点卡拖不动（修饰键 Shift 的松开被系统 / 输入法 / 拦 keyup 的编辑区吞掉后画布以为它一直按着）",
+  "existingInvariants": [],
+  "ironLaws": [
+    "⑫"
+  ],
+  "useCases": [],
+  "fullWalkJourneys": [],
+  "status": "fixed",
+  "manualReview": "reviewed",
+  "evidence": [
+    "2026-10-10 user screenshot: 已选 2 个 · 编组 / 存流程 浮条压在两张空图片卡上",
+    "tests/ux/canvas-stuck-modifier.walk.mjs：去掉入口装载时选中 2 张 + 编组浮条 + 拖动 0px，装上后只选中第二张、无浮条、拖动 128px"
+  ],
+  "completionCommits": [
+    "bab330529"
+  ],
+  "rootCauseContract": "docs/fixes/2026-10-10-stuck-modifier-key.root-cause.json",
+  "fixedInPr": 1178,
+  "classCheck": {
+    "kind": "matrix",
+    "file": "src/ui/input/heldModifierReconciler.test.ts"
+  }
+}
