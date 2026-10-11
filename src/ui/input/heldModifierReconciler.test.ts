@@ -51,12 +51,12 @@ function harness() {
     makeKeyup: (key) => Object.assign(new Event('keyup'), { key }),
   })
   // 真实键盘：window 捕获 → （没人拦就）document → window 冒泡。stoppedInApp = 焦点里的编辑区 stopPropagation 了。
-  const key = (type: 'keydown' | 'keyup', name: string, { stoppedInApp = false, swallowedByOs = false } = {}) => {
+  const key = (type: 'keydown' | 'keyup', name: string, { stoppedInApp = false, swallowedByOs = false, held = {} as Flags } = {}) => {
     if (swallowedByOs) return
     const flags: Flags = type === 'keydown'
       ? { shiftKey: name === 'Shift', metaKey: name === 'Meta', ctrlKey: name === 'Control', altKey: name === 'Alt' }
       : {}
-    const event = inputEvent(type, { key: name, ...flags })
+    const event = inputEvent(type, { key: name, ...flags, ...held })
     windowTarget.fire(event, 'capture')
     if (stoppedInApp) return
     documentTarget.dispatchEvent(event)
@@ -87,12 +87,26 @@ describe('installHeldModifierReconciler', () => {
     h.dispose()
   })
 
-  it.each(RECONCILED_MODIFIERS)('四个修饰键一个规矩：%s', (modifier) => {
+  // 类级矩阵：登记的每个修饰键（RECONCILED_MODIFIERS 清单）× 两种丢法 × 每一种带修饰位的后续输入，全都得对上账；
+  // 同一格里真按着的那一下（修饰位 true）必须什么都不发。
+  const LOSS_MODES = ['swallowedByOs', 'stoppedInApp'] as const
+  const FOLLOW_UPS = ['pointermove', 'pointerdown', 'mousedown', 'wheel', 'keydown'] as const
+  const MATRIX = RECONCILED_MODIFIERS.flatMap((modifier) => LOSS_MODES.flatMap((loss) => FOLLOW_UPS.map((followUp) => ({ modifier, loss, followUp }))))
+  it.each(MATRIX)('矩阵：$modifier 松开被 $loss 吞掉，下一次 $followUp 对账', ({ modifier, loss, followUp }) => {
     const h = harness()
+    const flag = { Shift: 'shiftKey', Meta: 'metaKey', Control: 'ctrlKey', Alt: 'altKey' }[modifier]
     h.key('keydown', modifier)
-    h.key('keyup', modifier, { swallowedByOs: true })
-    h.pointer('mousedown')
+    // 真按着：同一种输入带着修饰位 true，不能补发。
+    if (followUp === 'keydown') h.key('keydown', 'x', { held: { [flag]: true } })
+    else h.pointer(followUp, { [flag]: true })
+    expect(h.believedDown.has(modifier)).toBe(true)
+    expect(h.flushes()).toBe(0)
+    h.key('keyup', modifier, { [loss]: true })
+    expect(h.believedDown.has(modifier)).toBe(true)
+    if (followUp === 'keydown') h.key('keydown', 'a')
+    else h.pointer(followUp)
     expect(h.believedDown.has(modifier)).toBe(false)
+    expect(h.flushes()).toBe(1)
     h.dispose()
   })
 
