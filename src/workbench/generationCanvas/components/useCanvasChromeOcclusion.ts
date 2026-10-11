@@ -1,6 +1,6 @@
 import React from 'react'
 import { useGenerationCanvasStore } from '../store/generationCanvasStore'
-import { COMPOSER_ROOT_SELECTOR } from './canvasChromeLayers'
+import { COMPOSER_ROOT_SELECTOR } from '../reactFlow/canvasLayerOrder'
 
 const SHADOW_MARGIN = 24
 type Rect = { left: number; top: number; right: number; bottom: number }
@@ -52,7 +52,7 @@ export function createFrameCoalescer(measure: () => void, requestFrame: (cb: () 
 
 /**
  * 加节点条 / 缩放簇不许盖在节点生成框上（用户 2026-10-10 验收规则）。
- * 层级做不到（见 canvasChromeLayers.ts 顶部说明），所以把外框控件被生成框压住的那一块用 clip-path 裁掉：
+ * 层级做不到（见 canvasLayerOrder.ts 里 chromeDock 的说明），所以把外框控件被生成框压住的那一块用 clip-path 裁掉：
  * 视觉与命中都等同于「生成框在上」。
  * 只在「可能变了」的事件上量一次（合并到一帧）：选中变化、视口平移 / 缩放（react-flow__viewport 的 style）、节点被挪（生成框所在节点的 style）、
  * 拖动状态翻转（stage 的 data-dragging；拖动期间暂停测量，松手那一下量一次）、生成框挂上 / 卸下（stage 子树 childList，生成框是懒加载的）、生成框或外框控件自己变大小（ResizeObserver）、窗口缩放。
