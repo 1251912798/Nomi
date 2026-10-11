@@ -14,6 +14,7 @@ import { fileURLToPath } from 'node:url'
 import { launchNomiApp } from './_launchApp.mjs'
 import { expect, expectAbsent, proveProbe, screenshotSettled, waitForVisualQuiescence } from './_assert.mjs'
 import { waitForCanvasViewportSettled } from './_canvasHit.mjs'
+import { canvasFitView } from './_shell.mjs'
 import { stationTimeout } from './_station-budget.mjs'
 import { uiText } from './full-walk/invariants.mjs'
 
@@ -82,7 +83,7 @@ try {
   win.setDefaultTimeout(stationTimeout({ operations: 2 }))
   await win.locator('.generation-canvas-v2__stage').waitFor()
   await waitForCanvasViewportSettled(win)
-  await win.getByRole('button', { name: uiText(locale, 'generationCommon.navigation.resetView'), exact: true }).first().click()
+  await canvasFitView(win, 'fit view before reading the shot table')
   await waitForCanvasViewportSettled(win)
   await waitForVisualQuiescence(win)
   const node = win.locator('[data-testid="shot-table-node"]').first()
