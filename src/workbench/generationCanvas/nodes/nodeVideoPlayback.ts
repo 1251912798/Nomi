@@ -6,6 +6,10 @@
 const mutedBeforeHover = new WeakMap<HTMLVideoElement, boolean>()
 const userPlaybackVideos = new WeakSet<HTMLVideoElement>()
 const pendingHoverPreviewPlay = new WeakSet<HTMLVideoElement>()
+/** 悬停试播确实发起过、还没收尾的视频：只有它离开时才归零（用户摆过的播放头不碰）。 */
+const hoverPreviewStarted = new WeakSet<HTMLVideoElement>()
+/** 用户操作过（播放 / 暂停 / 拖动定位）的视频：悬停不再试播，播放头归用户。 */
+const userTouchedVideos = new WeakSet<HTMLVideoElement>()
 /** 当前在播的那一个节点视频；新的一个开始播时，上一个被暂停。 */
 let playingVideo: HTMLVideoElement | null = null
 
@@ -19,10 +23,11 @@ function userIsWatching(video: HTMLVideoElement | null): boolean {
  * 用户正在看（带声、主动播放）另一个视频时，悬停试播不抢它。
  */
 export function startNodeVideoHoverPreview(video: HTMLVideoElement): void {
-  if (userPlaybackVideos.has(video)) return
+  if (userPlaybackVideos.has(video) || userTouchedVideos.has(video)) return
   if (playingVideo !== video && userIsWatching(playingVideo)) return
   if (!mutedBeforeHover.has(video)) mutedBeforeHover.set(video, video.muted)
   video.muted = true
+  hoverPreviewStarted.add(video)
   pendingHoverPreviewPlay.add(video)
   const playPromise = video.play()
   if (playPromise && typeof playPromise.catch === 'function') {
@@ -35,6 +40,8 @@ export function startNodeVideoHoverPreview(video: HTMLVideoElement): void {
 /** Mark an explicit media interaction so pointer-leave does not stop it. */
 export function markNodeVideoUserPlayback(video: HTMLVideoElement): void {
   pendingHoverPreviewPlay.delete(video)
+  hoverPreviewStarted.delete(video)
+  userTouchedVideos.add(video)
   const previousMuted = mutedBeforeHover.get(video)
   if (previousMuted !== undefined) {
     video.muted = previousMuted
@@ -67,7 +74,8 @@ export function consumeNodeVideoHoverPreviewPlay(video: HTMLVideoElement): boole
 
 export function stopNodeVideoHoverPreview(video: HTMLVideoElement): void {
   pendingHoverPreviewPlay.delete(video)
-  if (userPlaybackVideos.has(video)) return
+  if (userPlaybackVideos.has(video) || !hoverPreviewStarted.has(video)) return
+  hoverPreviewStarted.delete(video)
   video.pause()
   try {
     video.currentTime = 0

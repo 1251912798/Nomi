@@ -71,6 +71,8 @@ const tr = (key) => uiText(locale, key)
 const L = {
   capture: tr('generationCommon.videoToolbar.captureFrame'),
   current: tr('generationCommon.videoToolbar.currentFrame'),
+  play: tr('generationCommon.videoTrim.play'),
+  pause: tr('generationCommon.videoTrim.pause'),
   first: tr('generationCommon.videoToolbar.firstFrame'),
   last: tr('generationCommon.videoToolbar.lastFrame'),
   retry: tr('generationCommon.observability.action.retry.main'),
@@ -301,6 +303,43 @@ try {
     expect(card.status).toBe('success')
     const seconds = timeOfFrame(card.resultUrl)
     if (seconds < DURATION - 0.3 || seconds > DURATION) throw new Error(`end-of-video frame reads ${seconds.toFixed(2)}s`)
+  })
+  await task('09-user-pause-then-pointer-roundtrip-keeps-the-playhead', async () => {
+    // 用户真播放再暂停 → 点空白处取消选中、悬停进出 → 再选回这张卡：播放头不归零、不漂，相机截到的就是暂停的那一帧。
+    await select('src-video')
+    const controls = win.locator('.react-flow__node.selected [data-node-video-controls]')
+    const video = win.locator(`${nodeSel('src-video')} video`)
+    const playBox = await controls.getByRole('button', { name: L.play, exact: true }).boundingBox()
+    if (!playBox) throw new Error('play button is not visible')
+    await win.mouse.click(playBox.x + playBox.width / 2, playBox.y + playBox.height / 2)
+    await expect.poll(() => video.evaluate((v) => v.currentTime), { timeout: stationTimeout({ operations: 4 }) }).toBeGreaterThan(1)
+    await controls.getByRole('button', { name: L.pause, exact: true }).click()
+    await expect.poll(() => video.evaluate((v) => v.paused)).toBe(true)
+    const parked = await video.evaluate((v) => v.currentTime)
+    const videoBox = await video.boundingBox()
+    if (!videoBox) throw new Error('video is not visible')
+    // 点画布空白处（取消选中、鼠标彻底离开这张卡），再回到视频上悬停，再离开，最后点回这张卡。
+    const away = { x: videoBox.x + videoBox.width + 260, y: videoBox.y + videoBox.height + 220 }
+    await win.mouse.click(away.x, away.y)
+    await waitForVisualQuiescence(win)
+    await win.mouse.move(videoBox.x + videoBox.width / 2, videoBox.y + videoBox.height / 3, { steps: 8 })
+    await waitForVisualQuiescence(win)
+    await win.mouse.move(away.x, away.y, { steps: 8 })
+    await waitForVisualQuiescence(win)
+    await select('src-video')
+    const after = await video.evaluate((v) => ({ time: v.currentTime, paused: v.paused }))
+    expect(after.paused).toBe(true)
+    if (Math.abs(after.time - parked) > 0.02) throw new Error(`playhead moved from ${parked.toFixed(2)}s to ${after.time.toFixed(2)}s`)
+    const before = (await snapshot()).nodes.length
+    const reshown = await video.boundingBox()
+    if (!reshown) throw new Error('video is not visible after reselect')
+    await win.mouse.move(reshown.x + reshown.width / 2, reshown.y + reshown.height / 3)
+    await controls.getByRole('button', { name: L.current, exact: true }).click()
+    await expect.poll(async () => (await snapshot()).nodes.length, { timeout: stationTimeout({ operations: 3 }) }).toBe(before + 1)
+    const card = (await snapshot()).nodes.find((node) => node.meta?.sourceVideoNodeId === 'src-video' && Math.abs(node.meta.sourceTime - parked) < 0.12)
+    if (!card) throw new Error(`no frame card at the paused ${parked.toFixed(2)}s`)
+    const seconds = timeOfFrame(card.resultUrl)
+    if (Math.abs(seconds - parked) > 0.15) throw new Error(`the captured pixels say ${seconds.toFixed(2)}s, paused at ${parked.toFixed(2)}s`)
   })
 } finally {
   await app.close().catch(() => {})
