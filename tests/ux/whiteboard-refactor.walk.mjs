@@ -21,12 +21,25 @@ expect(checkBoardManifest({ board: 'InlineWhiteboard', manifest: boardManifest, 
 const locale = process.argv.includes('--en') ? 'en' : 'zh-CN'
 const dark = process.argv.includes('--dark')
 const performanceRun = process.argv.includes('--performance')
+const argValue = name => { const index = process.argv.indexOf(name); return index >= 0 ? process.argv[index + 1] : undefined }
+const repetitions = Number(argValue('--runs') ?? 1)
+const label = argValue('--label')
+if (!Number.isInteger(repetitions) || repetitions < 1 || repetitions > 20) throw new Error('--runs must be an integer from 1 to 20')
+if (label && !/^[a-z0-9-]+$/.test(label)) throw new Error('--label must use lowercase letters, numbers and hyphens')
+const outputRoot = path.resolve('tests/ux/shots/whiteboard-refactor')
+const samples = []
+for (let iteration = 0; iteration < repetitions; iteration++) {
+  const output = label ? path.join(outputRoot, label, `run-${iteration + 1}`) : path.join(outputRoot, `${locale}-${dark ? 'dark' : 'light'}${performanceRun ? '-perf' : ''}`)
+  samples.push(await runJourney(output))
+}
+if (label) fs.writeFileSync(path.join(outputRoot, label, 'report.json'), JSON.stringify({ samples }, null, 2))
+
+async function runJourney(output) {
 const root = makeTempDir('nomi-inline-whiteboard-')
 const projectsDir = path.join(root, 'projects')
 const projectId = 'inline-whiteboard'
 const projectRoot = path.join(projectsDir, projectId)
 const assetsDir = path.join(projectRoot, 'assets/imported')
-const output = path.resolve('tests/ux/shots/whiteboard-refactor', `${locale}-${dark ? 'dark' : 'light'}${performanceRun ? '-perf' : ''}`)
 fs.mkdirSync(assetsDir, { recursive: true })
 fs.mkdirSync(path.join(projectRoot, '.nomi'), { recursive: true })
 fs.mkdirSync(output, { recursive: true })
@@ -180,6 +193,8 @@ try {
     }
     evidence.performance = await page.evaluate(() => { const value = window.__whiteboardPerf; value.active = false; window.__whiteboardLongTasks.disconnect(); const sorted = value.frames.slice(2).sort((a,b) => a-b); return { frames: sorted.length, frameP50Ms: sorted[Math.floor(sorted.length*.5)], frameP95Ms: sorted[Math.floor(sorted.length*.95)], maxFrameMs: sorted.at(-1), longTasks: value.longTasks } })
     check('drag sampling collects actual animation frames', evidence.performance.frames >= 30 && Number.isFinite(evidence.performance.frameP95Ms))
+    check('drag frame gap p95 remains within 33ms budget', evidence.performance.frameP95Ms <= 33)
+    check('drag sampling has no long tasks above 50ms', evidence.performance.longTasks.length === 0)
     check('inactive nodes do not create extra editor instances', await page.locator('.leafer-app-view').count() === 1)
   }
   const sceneBeforeResize = readNode('image').meta.whiteboardState
@@ -282,4 +297,7 @@ try {
 } finally {
   fs.writeFileSync(path.join(output, 'report.json'), JSON.stringify({ ...evidence, rendererErrors: errors, generationInvokedByWalk: false }, null, 2))
   await run.close()
+}
+
+return { ...evidence, rendererErrors: errors }
 }

@@ -117,3 +117,18 @@ test('PR 证据行：格式、未验证不算通过、不适用要有理由、id
   assert.equal(parsePerfEvidence('- perf-scenario：不适用：无', known).ok, false)
   assert.deepEqual(scenarioIds([{ data: { id: 'a' } }, { data: null }]), ['a'])
 })
+
+
+test('whiteboard driver rejects failed and incomplete journeys even when frame samples exist', () => {
+  const driver = DRIVERS['tests/ux/whiteboard-refactor.walk.mjs']
+  const complete = { rendererErrors: [], checks: ['no renderer exceptions'], performance: { frames: 368, frameP95Ms: 10, longTasks: [] } }
+  assert.deepEqual(driver.readRuns({ samples: [
+    complete,
+    { ...complete, error: 'capture toolbar clipped' },
+    { ...complete, rendererErrors: ['renderer exception'] },
+    { ...complete, checks: [] },
+    { ...complete, performance: { ...complete.performance, frames: 2 } },
+    { ...complete, performance: { ...complete.performance, frameP95Ms: null } },
+  ] }), { frameGapP95: [10], longTasks: [0] })
+  assert.deepEqual(driver.readRuns({}), { frameGapP95: [], longTasks: [] })
+})

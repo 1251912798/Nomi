@@ -36,6 +36,16 @@ export const DRIVERS = Object.freeze({
       return { frameGapP95: row.samples.map((sample) => sample.frameP95Ms), longTasks: row.samples.map((sample) => sample.longTasks) }
     },
   },
+  // Inline board: the existing real-media production journey, one fresh project per repetition.
+  'tests/ux/whiteboard-refactor.walk.mjs': {
+    supports: ['frameGapP95', 'longTasks'],
+    buildArgs: (script, args, { runs, label }) => [script, ...args, '--performance', '--runs', String(runs), '--label', label],
+    resultFile: (label) => `tests/ux/shots/whiteboard-refactor/${label}/report.json`,
+    readRuns(payload) {
+      const complete = (payload.samples ?? []).filter((sample) => !sample.error && Array.isArray(sample.rendererErrors) && sample.rendererErrors.length === 0 && sample.performance?.frames >= 30 && sample.checks?.includes('no renderer exceptions') && Number.isFinite(sample.performance.frameP95Ms) && Array.isArray(sample.performance.longTasks))
+      return { frameGapP95: complete.map((sample) => sample.performance.frameP95Ms), longTasks: complete.map((sample) => sample.performance.longTasks.length) }
+    },
+  },
   // 打开项目到能操作（分阶段计时，用户每天早上那一下 = cold）
   'tests/ux/project-open-stages.e2e.mjs': {
     supports: ['openToInteractive', 'longTasks'],
