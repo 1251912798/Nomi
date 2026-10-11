@@ -1,0 +1,157 @@
+{
+  "schema_version": 3,
+  "id": "2026-10-11-node-delete-undo-timeline-clips",
+  "problem_type": "Cascade deletion without a symmetric restore",
+  "symptom": "Delete a storyboard row bound to a video node already used on the timeline, then undo: the shot and node come back but the node's timeline clips do not, also after reopening the project (4 clips -> 2 after delete -> 2 after undo; heavy 160 -> 159 -> 159). Found in the real-Mac performance programme.",
+  "direct_cause": "Deleting a canvas node strips every timeline clip that references it (reconcileTimelineForDeletedNodes) but the stripped clips and their transitions were thrown away; every restore path (storyboard compensation via restoreGraph, canvas undo/redo rewind, external graph write) put only nodes/edges/groups back and never told the timeline.",
+  "class_root": "The canvas-node to timeline-clip cascade was wired per deletion door (2 of 4 doors; cut and delete-group left dangling clips) and had no inverse at all. Any cascade that deletes dependent data without recording it for the restore path loses data on undo, whichever door the delete or the undo came through.",
+  "migration": "No persisted format change. The old removeClipsBySourceNodeIds (drop only) is replaced in the same change by detachClipsBySourceNodeIds (drop and return what was dropped) plus reattachClips; the per-file private helper in canvasNodeActions is replaced by canvasTimelineBridge.",
+  "affected_population": [
+    "Every user who deletes a canvas node or storyboard row whose output is on the timeline and then presses undo (Cmd+Z, the storyboard undo toast, or an agent proposal undo)",
+    "Cut selection and delete group with members left dangling clips pointing at removed nodes"
+  ],
+  "scope_paths": [
+    "src/workbench/generationCanvas/store/",
+    "src/workbench/timeline/timelineEdit.ts",
+    "src/workbench/workbenchStore.ts",
+    "src/workbench/workbenchStoreLifetime.ts",
+    "src/workbench/creation/storyboard/"
+  ],
+  "entry_points": [
+    "canvasNodeActions.ts deleteNode / deleteSelectedNodes",
+    "generationCanvasStore.ts cutSelectedNodes",
+    "canvasGraphActions.ts deleteGroup(deleteNodes)",
+    "canvasDocumentCommit.ts rewind / external / put-back"
+  ],
+  "invariants": [
+    "Every change of the canvas node set goes through canvasTimelineBridge; removed nodes lose their clips, restored nodes get them back at the same track and frame (nearest free slot if taken)",
+    "Undo of a delete restores the node and everything the delete removed in one step, and redo removes them again",
+    "The detached-clip stash is project-scoped state and is cleared when the project is released"
+  ],
+  "doors": [
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/store/canvasNodeActions.ts",
+      "symbol": "reconcileTimelineForDeletedNodes"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/store/generationCanvasStore.ts",
+      "symbol": "reconcileTimelineForDeletedNodes"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/store/canvasGraphActions.ts",
+      "symbol": "reconcileTimelineForDeletedNodes"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/store/canvasTimelineBridge.ts",
+      "symbol": "reconcileTimelineForDeletedNodes"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/store/canvasDocumentCommit.ts",
+      "symbol": "reconcileTimelineForRestoredNodes"
+    }
+  ],
+  "door_reduction": {
+    "before": 5,
+    "after": 5,
+    "why_not": "The four deletion doors (delete one, delete selection, cut, delete group) are distinct user gestures on different store slices with different undo payloads and clipboard side effects; they must each remain. What is merged is the cascade behind them: all of them and the three restore/rewind doors now call one bridge (canvasTimelineBridge) instead of a private per-file helper that two of them skipped."
+  },
+  "regression_tests": [
+    "src/workbench/creation/storyboard/storyboardDeleteUndoClips.test.ts",
+    "src/workbench/timeline/timelineEdit.test.ts",
+    "src/workbench/timeline/timelineGroupEdit.test.ts"
+  ],
+  "residual_risks": [
+    "The stash is session memory: deleting, closing the project and reopening it, then undoing is not possible by design (undo history is session-only too).",
+    "Transitions detached with a clip are restored only when both clips are present again; a transition whose other clip was deleted in between stays dropped.",
+    "Not yet confirmed in the packaged native app on macOS; verified in the real stores plus project-file round trip."
+  ],
+  "external_sources": [],
+  "internal_only_reason": "Application data-model symmetry between two in-house stores; no third-party behaviour involved.",
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Any new way to delete or restore canvas nodes (new gesture, agent tool, import) can bypass the per-door cascade, and any new dependent data hung off a node (transitions, text overlays) can be dropped on undo the same way.",
+    "same_class_scan": [
+      "door-map reconcileTimelineForDeletedNodes: 4 deletion doors, now all via canvasTimelineBridge",
+      "door-map reconcileTimelineForRestoredNodes: put-back and rewind/external via the bridge",
+      "rg canvas.node.removed in src: deleteNode, deleteSelectedNodes, cutSelectedNodes, deleteGroup only"
+    ]
+  },
+  "generality_proof": "The bridge is the only function that tells the timeline about node-set changes, and it works on a before/after diff of node ids for whole-graph replacements (undo, redo, external write) and on explicit ids for the four deletion gestures and put-back. A new door that changes the node set through any of these commit paths inherits both directions; the stash lives in the project-scoped workbench state so it is released with the project.",
+  "shared_boundaries": [
+    {
+      "path": "src/workbench/generationCanvas/store/canvasTimelineBridge.ts",
+      "symbol": "reconcileTimelineForNodeSetChange",
+      "responsibility": "Single place where a canvas node-set change becomes a timeline change, in both directions."
+    },
+    {
+      "path": "src/workbench/timeline/timelineEdit.ts",
+      "symbol": "detachClipsBySourceNodeIds",
+      "responsibility": "Removal hands back exactly what it removed so restore can be its inverse; reattachClips places it back."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/workbench/generationCanvas/store/generationCanvasStore.ts",
+      "entry_point": "cutSelectedNodes",
+      "disposition": "enforced",
+      "evidence": "Left dangling clips before; now reconciles and its undo restores them (storyboardDeleteUndoClips.test.ts cut case)."
+    },
+    {
+      "path": "src/workbench/generationCanvas/store/canvasGraphActions.ts",
+      "entry_point": "deleteGroup",
+      "disposition": "enforced",
+      "evidence": "deleteNodes branch left dangling clips before; now reconciles through the bridge."
+    },
+    {
+      "path": "src/workbench/generationCanvas/store/canvasDocumentCommit.ts",
+      "entry_point": "rewind",
+      "disposition": "enforced",
+      "evidence": "Cmd+Z / redo restore and re-strip clips (storyboardDeleteUndoClips.test.ts undo and redo case)."
+    },
+    {
+      "path": "src/workbench/generationCanvas/agent/proposalUndo.ts",
+      "entry_point": "deleteNode / restoreGraph",
+      "disposition": "not-affected",
+      "evidence": "Calls the store deleteNode and restoreGraph, which now carry the cascade in both directions."
+    }
+  ],
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "src/workbench/generationCanvas/store/canvasTimelineBridge.ts",
+    "invariant": "A node-set change on the canvas is mirrored on the timeline in both directions through one bridge.",
+    "failure_mode": "A path that changes nodes without the bridge shows up as a dangling or lost clip in storyboardDeleteUndoClips.test.ts or in the full-walk project round trip.",
+    "exception_policy": "none",
+    "strategy": "Detach returns what it removed, a project-scoped stash keeps it, every restore path replays it through the bridge.",
+    "artifacts": [
+      "src/workbench/generationCanvas/store/canvasTimelineBridge.ts",
+      "src/workbench/timeline/timelineEdit.ts",
+      "src/workbench/workbenchStore.ts"
+    ]
+  },
+  "class_regression_tests": [
+    "src/workbench/creation/storyboard/storyboardDeleteUndoClips.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "not-applicable",
+    "removed_paths": [],
+    "rationale": "removeClipsBySourceNodeIds and the private reconcile helper in canvasNodeActions were replaced inside their own files in this change (no file left behind, no parallel version)."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "No third-party dependency is involved.",
+    "exit_criteria": []
+  },
+  "detected_by": "walkthrough",
+  "recurrence_check_on": "2026-10-25",
+  "invariant_owner_layer": {
+    "layer": "src/workbench/generationCanvas/store/canvasTimelineBridge.ts",
+    "tests": [
+      "src/workbench/creation/storyboard/storyboardDeleteUndoClips.test.ts"
+    ]
+  }
+}
