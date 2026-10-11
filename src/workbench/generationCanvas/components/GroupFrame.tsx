@@ -20,6 +20,7 @@ import type { ConnectionAnchorSide } from '../store/canvasStoreTypes'
 import { GROUP_VISUAL_CLASS } from './groupVisualContract'
 import { groupColorClass } from '../model/groupColor'
 import { GroupFrameHeader, type FrameMembershipPreview } from './GroupFrameHeader'
+import { CANVAS_LAYER } from '../reactFlow/canvasLayerOrder'
 
 export type CanvasGroupBox = {
   group: NodeGroup
@@ -46,6 +47,8 @@ export type CanvasFrameInteraction = {
   onRename: (groupId: string, name: string) => void
   onDescribe: (groupId: string, description: string) => void
   onOpenMenu: (groupId: string, point: { x: number; y: number }) => void
+  /** 框头「生成全部」：与工具条「生成整组」同一执行口（runFrameAction generate）。 */
+  onGenerate?: (groupId: string) => void
   /** 单独选中的空框（有成员的框靠成员的选中态表达，不走这里）。 */
   selectedGroupId?: string | null
 }
@@ -61,7 +64,6 @@ export type GroupFrameProps = {
   pendingConnectionSide?: ConnectionAnchorSide
   onConnectToGroup?: (groupId: string) => void
   readOnly?: boolean
-  onCollapse?: (groupId: string) => void
   frame?: CanvasFrameInteraction
 }
 
@@ -76,7 +78,6 @@ export default function GroupFrame({
   pendingConnectionSide,
   onConnectToGroup,
   readOnly = false,
-  onCollapse,
   frame,
 }: GroupFrameProps): JSX.Element {
   const { t } = useTranslation()
@@ -87,12 +88,11 @@ export default function GroupFrame({
     : t('generationCommon.canvas.group.connectHere', { name: box.group.name, count: box.memberCount })
   const preview = frame?.membershipPreview?.groupId === box.group.id ? frame.membershipPreview : null
   const previewCount = preview ? preview.nextCount : null
-  // 拖动中的临时反馈：进框亮 accent、出框变虚线。这是 groupVisualContract 允许强调色出现的
-  // 唯一场景（「强调色只留给临时交互反馈」），常驻装饰仍然中性。
+  // 拖动中的临时反馈（10-10 拍板：不用蓝色）：进框底色加深一档（中性 ink-10），出框变虚线。
   const membershipClass = preview
     ? preview.change === 'join'
-      ? 'border-workbench-accent bg-workbench-accent/[0.06]'
-      : 'border-dashed border-nomi-ink-40'
+      ? 'bg-nomi-ink-10'
+      : 'border-dashed border-nomi-ink-40 bg-transparent'
     : null
   const membershipLabel = preview
     ? preview.change === 'join'
@@ -100,6 +100,8 @@ export default function GroupFrame({
       : t('generationCommon.canvas.group.leavePreview', { name: box.group.name, count: preview.nextCount })
     : null
   const colorClass = groupColorClass(box.group.colorToken)
+  // 底色随组色（10-10 拍板）：默认中性灰 soft，选了颜色换该色 soft；无边框。
+  const surfaceClass = membershipClass ? null : colorClass.soft
 
   return (
     <div
@@ -107,15 +109,15 @@ export default function GroupFrame({
         'generation-canvas-v2__group-box',
         'absolute select-none rounded-nomi-lg',
         readOnly ? 'pointer-events-none' : 'pointer-events-auto',
-        GROUP_VISUAL_CLASS.frame,
-        colorClass.border,
+        surfaceClass,
         // 空框先画虚线：它还没圈住任何东西，实线会让人以为里面本来有内容而没渲染出来。
         box.empty && !connectable && !membershipClass ? 'border-dashed border-nomi-ink-30' : null,
         connectable
           ? cn('cursor-copy', GROUP_VISUAL_CLASS.dropTarget)
           : readOnly ? 'cursor-default' : 'cursor-grab active:cursor-grabbing',
         membershipClass,
-        frame?.selectedGroupId === box.group.id ? 'border-solid border-nomi-accent' : null,
+        // 选中分组不加任何描边（10-10 拍板）：选中态靠分组工具条出现来表示。键盘焦点环用深色。
+        'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-nomi-ink/60',
       )}
       data-frame-selected={frame?.selectedGroupId === box.group.id ? 'true' : undefined}
       style={{
@@ -123,6 +125,7 @@ export default function GroupFrame({
         top: box.top,
         width: box.width,
         height: box.height,
+        zIndex: CANVAS_LAYER.groupBody,
       }}
       role={readOnly ? undefined : 'button'}
       tabIndex={readOnly ? undefined : 0}
@@ -170,6 +173,7 @@ export default function GroupFrame({
         groupId={box.group.id}
         name={box.group.name}
         description={box.group.description}
+        storyboard={Boolean(box.group.materializationOperationId)}
         memberCount={box.memberCount}
         previewCount={previewCount}
         readOnly={readOnly}
@@ -178,10 +182,7 @@ export default function GroupFrame({
         onEditingChange={(editing) => frame?.onEditingChange(editing ? box.group.id : null)}
         onRename={frame?.onRename ?? noop}
         onDescribe={frame?.onDescribe ?? noop}
-        onCollapse={onCollapse}
-        onOpenMenu={frame?.onOpenMenu}
-        colorToken={box.group.colorToken}
-        outside
+        onGenerate={frame?.onGenerate}
       />
     </div>
   )
@@ -196,7 +197,6 @@ export type GroupFrameListProps = {
   pendingConnectionSide?: ConnectionAnchorSide
   onConnectToGroup?: (groupId: string) => void
   readOnly?: boolean
-  onCollapse?: (groupId: string) => void
   frame?: CanvasFrameInteraction
 }
 
@@ -207,7 +207,6 @@ export function GroupFrameList({
   pendingConnectionSide,
   onConnectToGroup,
   readOnly,
-  onCollapse,
   frame,
 }: GroupFrameListProps): JSX.Element {
   return (
@@ -221,7 +220,6 @@ export function GroupFrameList({
           pendingConnectionSide={pendingConnectionSide}
           onConnectToGroup={onConnectToGroup}
           readOnly={readOnly}
-          onCollapse={onCollapse}
           frame={frame}
         />
       ))}

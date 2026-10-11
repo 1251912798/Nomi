@@ -94,7 +94,6 @@ const repoWriteExtraFiles = ['scripts/gate-mutation-harness.mjs']
 
 // 允许往仓库里写的少数例外：只写「不入库的新文件」，从不改写、删除被跟踪文件，没有“写坏再还原”的窗口。
 const REPO_WRITE_ALLOWLIST = {
-  'scripts/check-source-nul-bytes.test.ts': '门岗扫的就是仓库，探针只能放在仓内；文件名带 pid、未入库，finally 里删除，不覆盖任何被跟踪文件',
   'tests/experience-laws/parameterReachability.test.mjs': '写 gitignore 的 artifacts/ 下的覆盖表（证据产物，非源码）',
 }
 
