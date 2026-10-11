@@ -5,8 +5,7 @@ import { cn } from '../../../../utils/cn'
 import type { GenerationCanvasNode } from '../../model/generationCanvasTypes'
 import { useGenerationCanvasStore } from '../../store/generationCanvasStore'
 import { NodeBodyHeader, EmptyStateLauncher } from '../render/CardCommon'
-import WhiteboardModal from './WhiteboardModal'
-import { readWhiteboardState } from './whiteboardState'
+import { openWhiteboard } from './whiteboardSession'
 import { resolveNodeVisualSize } from '../nodeSizing'
 
 /**
@@ -15,7 +14,7 @@ import { resolveNodeVisualSize } from '../nodeSizing'
  * 删了旧 WhiteboardCardNode 那 270 行平行外壳(双描边/无 header/重复把手)，根治「画板和别的节点不一致」。
  *
  * 「点击打开」做成显式按钮：外壳拖拽在 article 上 setPointerCapture(useNodeDragResize)，子元素收不到
- * pointerup，故不能靠「卡片点击+位移守卫」开 modal；按钮 onPointerDown stopPropagation 不触发拖拽，
+ * pointerup，故不能靠「卡片点击+位移守卫」开启原地会话；按钮 onPointerDown stopPropagation 不触发拖拽，
  * 卡片其余区域照常可拖。
  */
 function WhiteboardCardBodyImpl({
@@ -26,13 +25,12 @@ function WhiteboardCardBodyImpl({
   readOnly?: boolean
 }): JSX.Element {
   const { t } = useTranslation()
-  const [open, setOpen] = React.useState(false)
   const selectNode = useGenerationCanvasStore((state) => state.selectNode)
 
   const handleOpen = React.useCallback(() => {
     if (readOnly) return
     selectNode(node.id)
-    setOpen(true)
+    void openWhiteboard(node.id)
   }, [node.id, readOnly, selectNode])
 
   return (
@@ -53,15 +51,7 @@ function WhiteboardCardBodyImpl({
           onActivate={handleOpen}
         />
       </div>
-      {open ? (
-        <WhiteboardModal
-          nodeId={node.id}
-          sourceKind="whiteboard"
-          nodeTitle={node.title || t('generationCommon.whiteboard.title')}
-          initialState={readWhiteboardState(node)}
-          onClose={() => setOpen(false)}
-        />
-      ) : null}
+
     </div>
   )
 }

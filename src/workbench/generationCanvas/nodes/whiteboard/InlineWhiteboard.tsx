@@ -1,24 +1,6 @@
-/**
- * [INPUT]: 依赖 react-dom 的 createPortal、../fullscreenZIndex 的 FULLSCREEN_Z_INDEX、
- *          ../../../../ui/app-shell/windowChrome 的 currentFullscreenOverlayTopOffset、
- *          ../../store/generationCanvasStore（节点读写）、../../adapters/persistNodeImage（绑定项目落盘）、
- *          ../../../project/projectCanvasReadSurface（跨页面稳定、换项目取消的执行上下文）、
- *          ./WhiteboardDrawingTool（画板本体）、./whiteboardState（序列化）
- * [OUTPUT]: 对外提供 WhiteboardModal：白板全屏壳
- * [POS]: whiteboard 的页面根：把画板工具撑成一张整窗工作面，负责「打开/关闭/存回节点」这条生命周期；
- *        壳从 Windows 自绘窗口栏之下起画（不是 inset-0 铺满）——那条 32px 是系统拖拽带，盖住它自己
- *        顶部一条的点击会被当成拖窗口吃掉、窗口控件也埋在下面（与 issue #58 同根，见 windowChrome）。
- * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
- */
 import React, { type JSX } from 'react'
-import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
-import { IconBrush } from '@tabler/icons-react'
-import { cn } from '../../../../utils/cn'
-import { WorkbenchButton } from '../../../../design'
 import { notify } from '../../../../ui/notificationPolicy'
-import { currentFullscreenOverlayTopOffset } from '../../../../ui/app-shell/windowChrome'
-import { FULLSCREEN_Z_INDEX } from '../fullscreenZIndex'
 import type {
   GenerationCanvasEdge,
   GenerationCanvasNode,
@@ -33,14 +15,17 @@ import WhiteboardDrawingTool, { type WhiteboardDrawingToolHandle } from './White
 import type { WhiteboardResultLibraryItem } from './whiteboardTypes'
 import type { WhiteboardInitialImage, WhiteboardState } from './whiteboardTypes'
 import { readWhiteboardState, serializeWhiteboardState } from './whiteboardState'
+import { whiteboardRasterStateKey } from './whiteboardRasterState'
 import { getCanvasDimensions } from './lib/canvas'
-import { computeMediaMetaPatch, mediaNodeSize } from '../nodeSizing'
+import { useNodeAttachedPanel } from '../nodeAttachedPanel'
+import { closeWhiteboard, registerWhiteboardFinish } from './whiteboardSession'
+import { readWhiteboardAnnotations, whiteboardAnnotationResultId } from './whiteboardAnnotations'
+import { computeMediaMetaPatch, mediaNodeSize, resolveNodeVisualSize } from '../nodeSizing'
 import i18n from '../../../../i18n'
 
-type WhiteboardModalProps = {
+type InlineWhiteboardProps = {
   nodeId: string
   sourceKind: 'whiteboard' | 'image'
-  nodeTitle?: string
   initialState?: WhiteboardState
   initialImage?: WhiteboardInitialImage
   onClose: () => void
@@ -56,22 +41,21 @@ function makeWhiteboardSnapshotResult(nodeId: string, url: string): GenerationNo
 }
 
 function dimensionsForWhiteboardState(state: WhiteboardState | null): ReturnType<typeof getCanvasDimensions> | null {
-  return state ? getCanvasDimensions(state.activeRatio, 1280) : null
+  return state ? state.canvasDimensions ?? getCanvasDimensions(state.activeRatio, 1280) : null
 }
 
 function isSameWhiteboardState(a: WhiteboardState | undefined, b: WhiteboardState | null): boolean {
   if (!a || !b) return false
-  return JSON.stringify(a) === JSON.stringify(b)
+  return whiteboardRasterStateKey(a) === whiteboardRasterStateKey(b)
 }
 
-export default function WhiteboardModal({
+export default function InlineWhiteboard({
   nodeId,
   sourceKind,
-  nodeTitle,
   initialState,
   initialImage,
   onClose,
-}: WhiteboardModalProps): JSX.Element | null {
+}: InlineWhiteboardProps): JSX.Element | null {
   const { t } = useTranslation()
   const [feedback, setFeedback] = React.useState<string | null>(null)
   const reportFeedback = React.useCallback((message: string) => {
@@ -85,42 +69,68 @@ export default function WhiteboardModal({
   const canvasImageItems = useGenerationCanvasStore((state) => getAllCanvasImageResults(state.nodes, nodeId))
   const resultItems = useGenerationCanvasStore((state) => getConnectedImageResults(state.nodes, state.edges, nodeId))
   const savingRef = React.useRef(false)
+  const [projectLifetime] = React.useState(() => withProjectAction(project => project))
+  const [savedStateRef] = React.useState(() => ({ current: sourceNode?.meta?.whiteboardHasUnsavedChanges === true
+    ? readWhiteboardState({ meta: { whiteboardState: (sourceNode.result?.raw && typeof sourceNode.result.raw === 'object' ? (sourceNode.result.raw as Record<string, unknown>).whiteboardState : undefined) } }) ?? null
+    : initialState ? serializeWhiteboardState(initialState) : null }))
+  const draftIdentityRef = React.useRef(sourceNode ? whiteboardAnnotationResultId(sourceNode) : `board:${nodeId}`)
+  const lastDraftRef = React.useRef('')
+  const draftTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [initialDimensions] = React.useState(() => initialState?.canvasDimensions ?? getCanvasDimensions(initialState?.activeRatio ?? initialImage?.aspectRatio ?? '16:9', 1280))
+  const hostScaleRef = React.useRef(sourceNode ? resolveNodeVisualSize(sourceNode).width / initialDimensions.width : 1)
 
   React.useEffect(() => {
-    if (typeof document === 'undefined') return undefined
-    const { body } = document
-    const previousOverflow = body.style.overflow
-    const previousOverscroll = body.style.overscrollBehavior
-    body.style.overflow = 'hidden'
-    body.style.overscrollBehavior = 'none'
-    return () => {
-      body.style.overflow = previousOverflow
-      body.style.overscrollBehavior = previousOverscroll
-    }
-  }, [])
+    const latest = useGenerationCanvasStore.getState().nodes.find(node => node.id === nodeId)
+    if (!latest) return
+    const size = { width: initialDimensions.width * hostScaleRef.current, height: initialDimensions.height * hostScaleRef.current }
+    updateNode(nodeId, { size, meta: { ...latest.meta, previewHeight: size.height, whiteboardFrameScale: hostScaleRef.current, whiteboardResultIdentity: draftIdentityRef.current } }, { history: false, persist: false, emit: false })
+  }, [initialDimensions, nodeId, updateNode])
 
+  useNodeAttachedPanel(nodeId)
+  const annotationResultId = React.useRef(sourceNode ? whiteboardAnnotationResultId(sourceNode) : `board:${nodeId}`).current
+  const initialAnnotations = React.useRef(sourceNode ? readWhiteboardAnnotations(sourceNode) : []).current
   const persistWhiteboardState = React.useCallback(
     (stateOverride?: WhiteboardState | null) => {
-      const nextState = drawingRef.current?.getState()
-      const serializedState = stateOverride || nextState
+      if (projectLifetime?.signal.aborted) return null
+      const serializedState = stateOverride ? serializeWhiteboardState(stateOverride) : drawingRef.current?.getState()
       if (!serializedState) return null
+      const annotations = drawingRef.current?.getAnnotations() ?? initialAnnotations
+      const signature = JSON.stringify([serializedState, annotations, draftIdentityRef.current])
+      if (lastDraftRef.current === signature) return serializedState
+      lastDraftRef.current = signature
       const latest = useGenerationCanvasStore.getState().nodes.find((node) => node.id === nodeId)
       updateNode(nodeId, {
         meta: {
           ...(latest?.meta || {}),
-          whiteboardState: serializeWhiteboardState(serializedState),
+          whiteboardState: serializedState,
+          whiteboardHasUnsavedChanges: !isSameWhiteboardState(savedStateRef.current ?? undefined, serializedState),
+          whiteboardResultIdentity: draftIdentityRef.current,
+          whiteboardAnnotations: annotations,
         },
-      })
-      return serializeWhiteboardState(serializedState)
+      }, { history: false })
+      return serializedState
     },
-    [nodeId, updateNode],
+    [initialAnnotations, initialImage, initialState, nodeId, projectLifetime, savedStateRef, updateNode],
   )
 
-  const exitFullscreenIfNeeded = React.useCallback(() => {
-    if (typeof document !== 'undefined' && document.fullscreenElement) {
-      void document.exitFullscreen()
-    }
-  }, [])
+  const scheduleDraft = React.useCallback(() => {
+    if (draftTimerRef.current) clearTimeout(draftTimerRef.current)
+    draftTimerRef.current = setTimeout(() => { draftTimerRef.current = null; persistWhiteboardState() }, 250)
+  }, [persistWhiteboardState])
+  React.useEffect(() => () => {
+    if (draftTimerRef.current) { clearTimeout(draftTimerRef.current); persistWhiteboardState() }
+  }, [persistWhiteboardState])
+
+  const resizeBoard = React.useCallback((dimensions: { width: number; height: number }) => {
+    if (projectLifetime?.signal.aborted) return
+    const latest = useGenerationCanvasStore.getState().nodes.find(node => node.id === nodeId)
+    if (!latest) return
+    const width = dimensions.width * hostScaleRef.current
+    const height = dimensions.height * hostScaleRef.current
+    updateNode(nodeId, { size: { width, height }, meta: { ...latest.meta, userResized: true, previewHeight: height } })
+  }, [nodeId, projectLifetime, updateNode])
+
+  const setRasterBaseline = React.useCallback((state: WhiteboardState) => { savedStateRef.current = state }, [savedStateRef])
 
   const captureFile = React.useCallback(() => {
     const filename = `nomi-whiteboard-${new Date().toISOString().replace(/[:.]/g, '-')}.png`
@@ -131,14 +141,15 @@ export default function WhiteboardModal({
   const saveImageWhiteboardSnapshot = React.useCallback(
     async (whiteboardState: WhiteboardState | null, project: ProjectExecutionContext, options?: { skipIfUnchanged?: boolean }) => {
       project.assertCurrent()
-      const latestSource = useGenerationCanvasStore.getState().nodes.find((node) => node.id === nodeId)
-      if (!latestSource) throw new Error(t('generationCommon.whiteboard.imageNodeMissing'))
+      const sourceAtStart = useGenerationCanvasStore.getState().nodes.find((node) => node.id === nodeId)
+      if (!sourceAtStart) throw new Error(t('generationCommon.whiteboard.imageNodeMissing'))
       const serializedState = whiteboardState ? serializeWhiteboardState(whiteboardState) : null
       if (
         options?.skipIfUnchanged &&
         serializedState &&
-        isSameWhiteboardState(readWhiteboardState(latestSource), serializedState)
+        isSameWhiteboardState(savedStateRef.current ?? undefined, serializedState)
       ) {
+        persistWhiteboardState(serializedState)
         return false
       }
 
@@ -147,9 +158,11 @@ export default function WhiteboardModal({
       const snapshotUrl = await persistNodeImageFile(file, nodeId, project)
       project.assertCurrent()
       if (!snapshotUrl) throw new Error(t('generationCommon.whiteboard.snapshotSaveFailed'))
+      const latestSource = useGenerationCanvasStore.getState().nodes.find(node => node.id === nodeId)
+      if (!latestSource) throw new Error(t('generationCommon.whiteboard.imageNodeMissing'))
 
       const dimensions = dimensionsForWhiteboardState(serializedState)
-      const snapshotResult = makeWhiteboardSnapshotResult(nodeId, snapshotUrl)
+      const snapshotResult = { ...makeWhiteboardSnapshotResult(nodeId, snapshotUrl), raw: { whiteboardState: serializedState } }
       const mediaMeta = dimensions
         ? computeMediaMetaPatch({ resultType: snapshotResult.type, meta: latestSource.meta || {}, width: dimensions.width, height: dimensions.height })?.meta
         : undefined
@@ -170,59 +183,57 @@ export default function WhiteboardModal({
           localOnly: false,
           uploadStatus: 'uploaded',
           ...(serializedState ? { whiteboardState: serializedState } : {}),
+          whiteboardResultIdentity: snapshotResult.id,
+          whiteboardHasUnsavedChanges: false,
+          whiteboardAnnotations: drawingRef.current?.getAnnotations() ?? initialAnnotations,
           ...(mediaMeta || {}),
           ...(dimensions ? { previewHeight: snapshotSize?.previewHeight ?? latestSource.meta?.previewHeight } : {}),
         },
       })
+      savedStateRef.current = serializedState
+      draftIdentityRef.current = snapshotResult.id
       return true
     },
-    [captureFile, nodeId, t, updateNode],
+    [captureFile, initialAnnotations, nodeId, persistWhiteboardState, savedStateRef, t, updateNode],
   )
 
-  const handleClose = React.useCallback(() => {
-    if (savingRef.current) return
+  const handleClose = React.useCallback(async (): Promise<boolean> => {
+    if (savingRef.current) return false
+    if (drawingRef.current?.isBusy()) { reportFeedback(t('generationCommon.whiteboard.operationInProgress')); return false }
     setFeedback(null)
     const currentWhiteboardState = drawingRef.current?.getState() || null
     if (sourceKind !== 'image') {
       persistWhiteboardState(currentWhiteboardState)
-      exitFullscreenIfNeeded()
       onClose()
-      return
+      return true
     }
-    void withProjectAction(async (project) => {
-      savingRef.current = true
-      setScreenshotBusy(true)
+    savingRef.current = true
+    setScreenshotBusy(true)
+    let closed = false
+    await withProjectAction(async (project) => {
       try {
         await saveImageWhiteboardSnapshot(currentWhiteboardState, project, { skipIfUnchanged: true })
         project.assertCurrent()
-
-        exitFullscreenIfNeeded()
         onClose()
+        closed = true
       } catch (error) {
         if (project.signal.aborted || isProjectImportCancellation(error)) return
+        reportFeedback(error instanceof Error && error.message ? error.message : t('generationCommon.whiteboard.saveFailed'))
+      } finally {
         savingRef.current = false
-        setScreenshotBusy(false)
-        reportFeedback(
-          error instanceof Error && error.message ? error.message : t('generationCommon.whiteboard.saveFailed'),
-        )
+        if (!project.signal.aborted) setScreenshotBusy(false)
       }
     })
-  }, [exitFullscreenIfNeeded, onClose, persistWhiteboardState, saveImageWhiteboardSnapshot, sourceKind, t, reportFeedback])
+    return closed
+  }, [onClose, persistWhiteboardState, reportFeedback, saveImageWhiteboardSnapshot, sourceKind, t])
 
-  React.useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return
-      event.preventDefault()
-      event.stopPropagation()
-      handleClose()
-    }
-    window.addEventListener('keydown', onKeyDown, { capture: true })
-    return () => window.removeEventListener('keydown', onKeyDown, { capture: true })
-  }, [handleClose])
+  React.useEffect(() => registerWhiteboardFinish(handleClose), [handleClose])
+  React.useEffect(() => () => closeWhiteboard(nodeId), [nodeId])
 
   const handleCreateScreenshotNode = React.useCallback(async () => {
-    if (screenshotBusy) return
-    await withProjectAction(async (project) => {
+    if (screenshotBusy) return null
+    if (drawingRef.current?.isBusy()) { reportFeedback(t('generationCommon.whiteboard.operationInProgress')); return null }
+    return await withProjectAction(async (project) => {
       setScreenshotBusy(true)
       setFeedback(null)
       try {
@@ -231,8 +242,7 @@ export default function WhiteboardModal({
         if (sourceKind === 'image') {
           await saveImageWhiteboardSnapshot(currentWhiteboardState, project)
           project.assertCurrent()
-
-          return
+          return nodeId
         }
 
         persistWhiteboardState(currentWhiteboardState)
@@ -274,7 +284,7 @@ export default function WhiteboardModal({
           },
         })
         if (!created) throw new Error(t('generationCommon.whiteboard.screenshotFailed'))
-        const snapshotResult = makeWhiteboardSnapshotResult(created.id, snapshotUrl)
+        const snapshotResult = { ...makeWhiteboardSnapshotResult(created.id, snapshotUrl), raw: { whiteboardState: currentWhiteboardState } }
         updateNode(created.id, {
           result: snapshotResult,
           history: [snapshotResult],
@@ -294,14 +304,17 @@ export default function WhiteboardModal({
           updateNode(nodeId, {
             ...appendNodeResultVersion(latestSourceAfterCreate ?? {}, snapshotResult),
             status: 'success',
-            ...(sourceMeta ? { meta: sourceMeta } : {}),
+            meta: { ...latestSourceAfterCreate?.meta, ...sourceMeta, whiteboardResultIdentity: snapshotResult.id },
           })
+          draftIdentityRef.current = snapshotResult.id
         }
+        return created.id
       } catch (error) {
-        if (project.signal.aborted || isProjectImportCancellation(error)) return
+        if (project.signal.aborted || isProjectImportCancellation(error)) return null
         reportFeedback(
           error instanceof Error && error.message ? error.message : t('generationCommon.whiteboard.screenshotFailed'),
         )
+        return null
       } finally {
         if (!project.signal.aborted) setScreenshotBusy(false)
       }
@@ -319,70 +332,29 @@ export default function WhiteboardModal({
     updateNode,
   ])
 
-  const shell = (
-    <div
-      data-nomi-whiteboard-modal="true"
-      className={cn(
-        'workbench-shell fixed inset-x-0 bottom-0 isolate flex flex-col overflow-hidden',
-        'bg-[var(--workbench-bg)] text-[var(--workbench-ink)] font-[var(--nomi-font-sans)]',
-      )}
-      style={{ top: currentFullscreenOverlayTopOffset(), zIndex: FULLSCREEN_Z_INDEX }}
-      role="dialog"
-      aria-modal="true"
-      aria-label={t('generationCommon.whiteboard.title')}
-      onContextMenu={(event) => event.preventDefault()}
-      onKeyDown={(event) => event.stopPropagation()}
-      onKeyUp={(event) => event.stopPropagation()}
-      onPointerDown={(event) => event.stopPropagation()}
-      onWheel={(event) => event.stopPropagation()}
-    >
-      <header className="relative z-[2] flex min-h-[52px] shrink-0 items-center gap-3 border-b border-[var(--workbench-border)] bg-[var(--workbench-surface-solid)] px-4 shadow-nomi-sm">
-        <div className="flex min-w-0 flex-1 items-center gap-2">
-          <IconBrush size={18} className="shrink-0 text-[var(--workbench-muted)]" />
-          <div className="min-w-0 truncate text-body-sm font-medium text-[var(--workbench-ink)]">
-            {nodeTitle || sourceNode?.title || t('generationCommon.whiteboard.title')}
-          </div>
-        </div>
-        {/* 「完成」而非裸 X：关闭即自动保存（handleClose），用户反馈「编辑之后不知道怎么办」——
-            文字明示出口语义（2026-08-07 飞书反馈）。 */}
-        <WorkbenchButton
-          variant="primary"
-          className="h-8 min-h-8 rounded-nomi-sm px-3"
-          title={t('generationCommon.whiteboard.doneAria')}
-          aria-label={t('generationCommon.whiteboard.doneAria')}
-          onClick={handleClose}
-        >
-          {t('generationCommon.whiteboard.done')}
-        </WorkbenchButton>
-      </header>
-
-      {feedback ? <p role="status" className="m-0 shrink-0 px-4 py-2 text-caption text-[var(--workbench-danger)]">{feedback}</p> : null}
-      <main className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[var(--workbench-bg)]">
-        <div className="min-h-0 flex-1 overflow-hidden">
-          <WhiteboardDrawingTool
-            ref={drawingRef}
-            ownerNodeId={nodeId}
-            initialState={initialState}
-            initialImage={initialImage}
-            canvasImageItems={canvasImageItems}
-            resultItems={resultItems}
-            screenshotBusy={screenshotBusy}
-            screenshotLabel={
-              sourceKind === 'image'
-                ? t('generationCommon.whiteboard.savePrimary')
-                : t('generationCommon.whiteboard.screenshotAndCreateNode')
-            }
-            focusResultsOnScreenshot={sourceKind !== 'image'}
-            onScreenshot={() => {
-              void handleCreateScreenshotNode()
-            }}
-          />
-        </div>
-      </main>
+  return (
+    <div data-nomi-inline-whiteboard="true" className="nodrag nopan nokey nowheel absolute inset-0 z-[8] cursor-default rounded-nomi bg-nomi-paper text-nomi-ink"
+      onPointerDown={(event) => event.stopPropagation()} onDoubleClick={(event) => event.stopPropagation()} onWheel={(event) => event.stopPropagation()}>
+      <WhiteboardDrawingTool
+        ref={drawingRef} ownerNodeId={nodeId} initialState={initialState} initialImage={initialImage}
+        initialAnnotations={initialAnnotations} annotationResultId={annotationResultId}
+        canvasImageItems={canvasImageItems} resultItems={resultItems} screenshotBusy={screenshotBusy}
+        screenshotLabel={sourceKind === 'image' ? t('generationCommon.whiteboard.savePrimary') : t('generationCommon.whiteboard.screenshotAndCreateNode')}
+        focusResultsOnScreenshot={sourceKind !== 'image'} onScreenshot={() => void handleCreateScreenshotNode()}
+        onDone={() => void handleClose()} onAbort={onClose} feedback={feedback}
+        onRasterBaseline={setRasterBaseline}
+        onDraftChange={scheduleDraft}
+        onBoardDimensionsChange={resizeBoard}
+        onPrepare={async (prompt) => {
+          const targetId = sourceKind === 'whiteboard' ? await handleCreateScreenshotNode() : nodeId
+          if (projectLifetime?.signal.aborted || !targetId || !await handleClose() || projectLifetime?.signal.aborted) return
+          const store = useGenerationCanvasStore.getState()
+          const latest = store.nodes.find((item) => item.id === targetId)
+          if (latest) { store.updateNodePrompt(targetId, [latest.prompt, prompt].filter(Boolean).join('\n\n')); store.selectNode(targetId) }
+        }}
+      />
     </div>
   )
-
-  return typeof document === 'undefined' ? shell : createPortal(shell, document.body)
 }
 
 function getConnectedImageResults(

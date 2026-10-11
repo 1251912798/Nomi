@@ -1,0 +1,22 @@
+{
+  "id": "FB-20261012-inline-whiteboard-popup-overlap",
+  "since": "2026-10-12",
+  "source": "2026-10-12 当前任务用户截图，由协调会话转交独立审查线；以下为截图现象和复核机制描述，不冒充用户逐字原话。",
+  "category": "interaction-semantics",
+  "problem": "画板尺寸浮层打开时调整画板尺寸，画板及工具栏移动，浮层停在旧位置并盖住工具栏操作。此前真实截图/DOM可见性检查没有动态锚点变化与命中可达断言。",
+  "existingInvariants": [],
+  "ironLaws": [
+    "⑫"
+  ],
+  "useCases": [],
+  "fullWalkJourneys": [],
+  "status": "reviewed",
+  "manualReview": "reviewed",
+  "evidence": [
+    "协调会话按用户截图复核：AnchoredPopover 只监听自身 resize 和 scroll，没有覆盖 anchor 位置变化。",
+    "docs/fixes/2026-10-12-inline-whiteboard.root-cause.json：共享浮层 watcher 改用 @floating-ui/dom autoUpdate，原手写 watcher 删除；trackTransforms 仅在画板 panel 挂载时启用。",
+    "tests/ux/whiteboard-refactor.walk.mjs：动态 resize 后浮层与 toolbar 不相交、elementFromPoint 命中与实际操作的证据仍待最终运行与独立查看。"
+  ],
+  "completionCommits": [],
+  "rootCauseContract": "docs/fixes/2026-10-12-inline-whiteboard.root-cause.json"
+}

@@ -282,6 +282,7 @@
     "@earendil-works/pi-coding-agent": "0.85.1",
     "@ffmpeg-installer/ffmpeg": "^1.1.0",
     "@ffprobe-installer/ffprobe": "^2.1.2",
+    "@floating-ui/dom": "1.8.0",
     "@modelcontextprotocol/client": "2.3.0",
     "@modelcontextprotocol/node": "2.1.1",
     "@modelcontextprotocol/server": "2.3.0",

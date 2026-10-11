@@ -25,6 +25,7 @@ import { useToastStore } from '../../../../ui/toast'
 import { NodeVersionCountBadge, NodeVersionGrid, type VersionCardEntry } from './NodeVersionCards'
 import { chooseVersionGridPlacement, layoutVersionGrid, versionGridItems, type VersionGridPlacement } from './versionGridLayout'
 import { escapeBelongsToVersionGrid, lastOpenedVersionGrid, publishVersionGridCoverage, registerOpenVersionGrid } from './versionGridCoverage'
+import { finishWhiteboard } from '../whiteboard/whiteboardSession'
 import { nodeVersionEntries } from './nodeVersionEntries'
 
 function useAltHeld(enabled: boolean): boolean {
@@ -155,7 +156,7 @@ export function NodeVersionCardsHost({ node, readOnly, nodeSize, onFeedback, ent
   }, [expanded, node.id])
 
   const setPrimary = React.useCallback(async (entry: VersionCardEntry) => {
-    if (readOnly) return
+    if (readOnly || !await finishWhiteboard(node.id)) return
     const live = useGenerationCanvasStore.getState().nodes.find((candidate) => candidate.id === node.id)
     const target = live ? listNodeResultVersions(live).find((candidate) => resultIdentity(candidate) === entry.identity) : undefined
     if (!live || !target) return
@@ -188,7 +189,7 @@ export function NodeVersionCardsHost({ node, readOnly, nodeSize, onFeedback, ent
   }, [node.id, readOnly, t])
 
   const remove = React.useCallback(async (entry: VersionCardEntry) => {
-    if (readOnly) return
+    if (readOnly || !await finishWhiteboard(node.id)) return
     const loaded = withProjectAction((project) => project)
     if (!loaded) return
     const latest = useGenerationCanvasStore.getState().nodes.find((candidate) => candidate.id === node.id)

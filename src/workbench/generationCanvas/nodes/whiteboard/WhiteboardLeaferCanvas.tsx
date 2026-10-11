@@ -3,7 +3,6 @@ import {
   forwardRef,
   useCallback,
   useEffect,
-  useImperativeHandle,
   useLayoutEffect,
   useRef,
   useState,
@@ -11,14 +10,13 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import type { AspectRatioKey, CanvasAsset, CanvasDimensions, LayerItem, ToolKey } from './lib/canvas'
+import type { AspectRatioKey, CanvasAsset, CanvasText, CanvasDimensions, LayerItem, ToolKey } from './lib/canvas'
 import { getCanvasPointFromClient } from './lib/pointer'
 import type { PointerPoint } from './lib/stroke'
+import { useWhiteboardCanvasDocument, useWhiteboardCanvasViewport } from './useWhiteboardCanvasDocument'
 import type {
-  CanvasAssetTransform,
+  SceneTransforms,
   CanvasNodeInteractionState,
-  CanvasObjectFlipState,
-  CanvasObjectOffset,
   CanvasObjectTarget,
   CanvasPoint,
   CanvasStroke,
@@ -30,10 +28,8 @@ import type {
   SnapGuide,
 } from './whiteboardCanvasTypes'
 import {
-  createViewportScreenshotFilename,
-  exportViewportFileWithoutEditorOverlays,
-  exportViewportWithoutEditorOverlays,
   fitLeaferCanvasToHost,
+  getWhiteboardPreviewPixelRatio,
 } from './whiteboardCanvasExport'
 import {
   shouldBlockErasedSelection,
@@ -58,10 +54,16 @@ export type { CanvasObjectTarget, CanvasStroke } from './whiteboardCanvasTypes'
 type LeaferCanvasProps = {
   ratio: AspectRatioKey
   dimensions: CanvasDimensions
-  fitMode?: 'bounded' | 'natural'
+  fitMode?: 'bounded' | 'natural' | 'inline'
   activeTool: ToolKey
   activeLayerId: string
   layers: LayerItem[]
+  texts?: CanvasText[]
+  sceneTransforms?: SceneTransforms
+  onSceneTransformsChange?: (value: SceneTransforms) => void
+  onSelectionChange?: (targets: CanvasObjectTarget[]) => void
+  onTextPlace?: (point: CanvasPoint) => void
+  onNotePlace?: (point: CanvasPoint) => void
   assets: CanvasAsset[]
   color: string
   brushSize: number
@@ -78,6 +80,11 @@ type LeaferCanvasProps = {
 }
 
 export type LeaferCanvasHandle = {
+  getSceneTransforms: () => SceneTransforms
+  handleKeyDown: (event: KeyboardEvent) => boolean
+  flipSelection: (axis: 'x' | 'y') => void
+  groupSelection: () => void
+  deleteSelection: () => boolean
   captureViewport: (filename?: string) => Promise<void>
   captureViewportFile: (filename?: string) => Promise<File>
   clientPointToCanvasPoint: (clientX: number, clientY: number) => { x: number; y: number } | null
@@ -101,12 +108,18 @@ export const LeaferCanvas = forwardRef<LeaferCanvasHandle, LeaferCanvasProps>(fu
   activeLayerId,
   layers,
   assets,
+  texts = [],
+  sceneTransforms,
+  onSceneTransformsChange,
+  onSelectionChange,
+  onTextPlace,
+  onNotePlace,
   color,
   brushSize,
   strokes,
   activeObjectTarget,
   removingBackgroundTargetId,
-  removingBackgroundProgress,
+  removingBackgroundProgress: _removingBackgroundProgress,
   onStrokeCommit,
   onLayerSelect,
   onObjectSelect,
@@ -123,6 +136,7 @@ export const LeaferCanvas = forwardRef<LeaferCanvasHandle, LeaferCanvasProps>(fu
   const activePointerRef = useRef<number | null>(null)
   const pointsRef = useRef<PointerPoint[]>([])
   const strokesRef = useRef(strokes)
+  const textsRef = useRef(texts)
   const assetsRef = useRef(assets)
   const layersRef = useRef(layers)
   const dimensionsRef = useRef(dimensions)
@@ -130,10 +144,9 @@ export const LeaferCanvas = forwardRef<LeaferCanvasHandle, LeaferCanvasProps>(fu
   const activeObjectTargetRef = useRef(activeObjectTarget)
   const onLayerSelectRef = useRef(onLayerSelect)
   const onObjectSelectRef = useRef(onObjectSelect)
+  const onSelectionChangeRef = useRef(onSelectionChange)
   const onObjectsGroupRef = useRef(onObjectsGroup)
   const onObjectDeleteRef = useRef(onObjectDelete)
-  const objectOffsetsRef = useRef<Map<string, CanvasObjectOffset>>(new Map())
-  const assetTransformsRef = useRef<Map<string, CanvasAssetTransform>>(new Map())
   const layerGroupsRef = useRef<Map<string, LeaferGroup>>(new Map())
   const canvasObjectNodesRef = useRef<Map<string, LeaferBox>>(new Map())
   const layerObjectTargetsRef = useRef<Map<string, CanvasObjectTarget>>(new Map())
@@ -156,7 +169,6 @@ export const LeaferCanvas = forwardRef<LeaferCanvasHandle, LeaferCanvasProps>(fu
   } | null>(null)
   const shouldBlockSelectionRef = useRef<(target: unknown) => boolean>(() => false)
   const strokeLayerIdRef = useRef(activeLayerId)
-  const objectFlipStatesRef = useRef<Map<string, CanvasObjectFlipState>>(new Map())
   const draftFrameRef = useRef<number | null>(null)
   const pendingDraftPointsRef = useRef<PointerPoint[]>([])
   const draftPathRef = useRef<SVGPathElement | null>(null)
@@ -172,49 +184,23 @@ export const LeaferCanvas = forwardRef<LeaferCanvasHandle, LeaferCanvasProps>(fu
   const [selectionBox, setSelectionBox] = useState<CanvasSelectionBox | null>(null)
   const [selectedObjectTargets, setSelectedObjectTargets] = useState<CanvasObjectTarget[]>([])
 
-  useImperativeHandle(
-    ref,
-    () => ({
-      async captureViewport(filename = createViewportScreenshotFilename()) {
-        const app = appRef.current
-        if (!app) {
-          throw new Error(t('generationCommon.whiteboard.canvasNotReady'))
-        }
+  const { objectOffsetsRef, assetTransformsRef, objectFlipStatesRef, actionHandlesRef, commitSceneTransforms } =
+    useWhiteboardCanvasDocument(ref, appRef, stageRef, dimensionsRef, sceneTransforms, onSceneTransformsChange, t)
 
-        const result = await exportViewportWithoutEditorOverlays(app, filename)
-
-        if (result.error) {
-          throw result.error instanceof Error ? result.error : new Error(t('generationCommon.whiteboard.screenshotFailed'))
-        }
-      },
-      async captureViewportFile(filename = createViewportScreenshotFilename()) {
-        const app = appRef.current
-        if (!app) {
-          throw new Error(t('generationCommon.whiteboard.canvasNotReady'))
-        }
-
-        return exportViewportFileWithoutEditorOverlays(app, filename)
-      },
-      clientPointToCanvasPoint(clientX: number, clientY: number) {
-        const stage = stageRef.current
-        if (!stage) return null
-        const point = getCanvasPointFromClient(clientX, clientY, stage.getBoundingClientRect(), dimensionsRef.current)
-        return { x: point[0], y: point[1] }
-      }
-    }),
-    [t]
-  )
+  const inlineScale = useWhiteboardCanvasViewport(appRef, hostRef, layerGroupsRef, dimensions, fitMode, renderReadyVersion)
 
   const updateSelectedObjectTargets = useCallback((targets: CanvasObjectTarget[]) => {
     if (targets.length > 1) {
       multiSelectedObjectTargetsRef.current = targets
     }
+    if (!areCanvasTargetArraysEqual(selectedObjectTargetsRef.current, targets)) onSelectionChangeRef.current?.(targets)
     selectedObjectTargetsRef.current = targets
     setSelectedObjectTargets((currentTargets) =>
       areCanvasTargetArraysEqual(currentTargets, targets) ? currentTargets : targets
     )
   }, [])
 
+  textsRef.current = texts
   strokesRef.current = strokes
   assetsRef.current = assets
   layersRef.current = layers
@@ -224,6 +210,7 @@ export const LeaferCanvas = forwardRef<LeaferCanvasHandle, LeaferCanvasProps>(fu
   strokeLayerIdRef.current = activeLayerId
   onLayerSelectRef.current = onLayerSelect
   onObjectSelectRef.current = onObjectSelect
+  onSelectionChangeRef.current = onSelectionChange
   onObjectsGroupRef.current = onObjectsGroup
   onObjectDeleteRef.current = onObjectDelete
   selectedObjectTargetsRef.current = selectedObjectTargets
@@ -313,6 +300,7 @@ export const LeaferCanvas = forwardRef<LeaferCanvasHandle, LeaferCanvasProps>(fu
         width: dimensions.width,
         height: dimensions.height,
         fill: paperColor,
+        pixelRatio: getWhiteboardPreviewPixelRatio(dimensions.width, dimensions.height),
         tree: { type: 'draw' },
         wheel: {
           disabled: true,
@@ -357,7 +345,8 @@ export const LeaferCanvas = forwardRef<LeaferCanvasHandle, LeaferCanvasProps>(fu
               target,
               x,
               y,
-              dimensions,
+              dimensions: dimensionsRef.current,
+              texts: textsRef.current,
               layers: layersRef.current,
               assets: assetsRef.current,
               strokes: strokesRef.current,
@@ -404,6 +393,7 @@ export const LeaferCanvas = forwardRef<LeaferCanvasHandle, LeaferCanvasProps>(fu
         PathConvert: module.PathConvert,
         PathNumberCommandLengthMap: module.PathNumberCommandLengthMap,
         Rect: module.Rect,
+        Text: module.Text,
         rootGroup
       }
       setRenderReadyVersion((version) => version + 1)
@@ -421,7 +411,7 @@ export const LeaferCanvas = forwardRef<LeaferCanvasHandle, LeaferCanvasProps>(fu
       appRef.current = null
       host.replaceChildren()
     }
-  }, [dimensions.height, dimensions.width])
+  }, [])
 
   useLayoutEffect(() => {
     const context = renderContextRef.current
@@ -432,6 +422,7 @@ export const LeaferCanvas = forwardRef<LeaferCanvasHandle, LeaferCanvasProps>(fu
     renderWhiteboardScene({
       context,
       assets,
+      texts,
       strokes,
       layers,
       dimensions,
@@ -443,7 +434,7 @@ export const LeaferCanvas = forwardRef<LeaferCanvasHandle, LeaferCanvasProps>(fu
       layerObjectTargetsRef,
       draftEraserPathRef,
     })
-  }, [assets, dimensions.height, dimensions.width, layers, renderReadyVersion, strokes])
+  }, [assets, layers, renderReadyVersion, strokes, texts, sceneTransforms])
 
   useWhiteboardSceneSync(
     {
@@ -458,6 +449,7 @@ export const LeaferCanvas = forwardRef<LeaferCanvasHandle, LeaferCanvasProps>(fu
       multiSelectionDragRef,
       objectOffsetsRef,
       assetsRef,
+      textsRef,
       assetTransformsRef,
       strokesRef,
       onLayerSelectRef,
@@ -470,9 +462,11 @@ export const LeaferCanvas = forwardRef<LeaferCanvasHandle, LeaferCanvasProps>(fu
       contextMenu,
       selectedObjectTargets,
       renderReadyVersion,
+      sceneTransforms,
       assets,
       layers,
       strokes,
+      texts,
       updateSelectedObjectTargets,
       setContextMenu,
       setSelectionBox,
@@ -482,6 +476,9 @@ export const LeaferCanvas = forwardRef<LeaferCanvasHandle, LeaferCanvasProps>(fu
 
   const {
     flipSelectedTarget,
+    groupSelectedTargets,
+    deleteSelectedTarget,
+    handleKeyDown,
     handleGroupMenuPointerDown,
     handleGroupMenuPointerUp,
     handleGroupMenuMouseDown,
@@ -491,6 +488,7 @@ export const LeaferCanvas = forwardRef<LeaferCanvasHandle, LeaferCanvasProps>(fu
     {
       activeObjectTargetRef,
       assetsRef,
+      textsRef,
       strokesRef,
       layersRef,
       objectFlipStatesRef,
@@ -508,8 +506,10 @@ export const LeaferCanvas = forwardRef<LeaferCanvasHandle, LeaferCanvasProps>(fu
       onLayerSelectRef,
       onObjectSelectRef,
     },
-    { activeTool, dimensions, contextMenu, updateSelectedObjectTargets, setContextMenu, setRenderReadyVersion },
+    { commitSceneTransforms, activeTool, dimensions, contextMenu, updateSelectedObjectTargets, setContextMenu, setRenderReadyVersion },
   )
+
+  actionHandlesRef.current = { handleKeyDown, flipSelection: flipSelectedTarget, groupSelection: () => { groupMenuActionHandledRef.current = false; groupSelectedTargets() }, deleteSelection: deleteSelectedTarget }
 
   useEffect(() => {
     const stage = stageRef.current
@@ -583,6 +583,7 @@ export const LeaferCanvas = forwardRef<LeaferCanvasHandle, LeaferCanvasProps>(fu
     '--stage-width': `${dimensions.width}px`,
     '--stage-aspect': aspect,
     '--stage-ratio': String(aspectValue),
+    ...(fitMode === 'inline' && inlineScale !== null ? { width: dimensions.width * inlineScale, height: dimensions.height * inlineScale, flexShrink: 0 } : {}),
     ...(fitMode === 'bounded'
       ? {
           width: `min(100cqw, calc(100cqh * ${aspectValue}))`,
@@ -609,6 +610,7 @@ export const LeaferCanvas = forwardRef<LeaferCanvasHandle, LeaferCanvasProps>(fu
         assetTransformsRef,
         canvasObjectNodesRef,
         assetsRef,
+        textsRef,
         strokesRef,
         layersRef,
         renderContextRef,
@@ -622,7 +624,7 @@ export const LeaferCanvas = forwardRef<LeaferCanvasHandle, LeaferCanvasProps>(fu
     <div
       className={[
         'touch-none overflow-hidden border border-nomi-line bg-[var(--canvas)] shadow-nomi-lg [aspect-ratio:var(--stage-aspect)]',
-        fitMode === 'bounded'
+        fitMode === 'bounded' || fitMode === 'inline'
           ? 'rounded-nomi'
           : 'rounded-nomi [width:min(100%,var(--stage-width),calc(100cqh_*_var(--stage-ratio)))]',
       ].join(' ')}
@@ -630,12 +632,19 @@ export const LeaferCanvas = forwardRef<LeaferCanvasHandle, LeaferCanvasProps>(fu
     >
       <div
         ref={stageRef}
+        tabIndex={0}
+        onKeyDown={(event) => { if (handleKeyDown(event.nativeEvent)) { event.preventDefault(); event.stopPropagation() } }}
         className="relative h-full w-full"
         onContextMenu={showContextMenu}
-        onPointerDownCapture={handleStagePointerDownCapture}
+        onPointerDownCapture={(event) => {
+          if (!(event.target instanceof HTMLElement && event.target.closest('button,input,textarea,[contenteditable=true]'))) stageRef.current?.focus({ preventScroll: true })
+          handleStagePointerDownCapture(event)
+        }}
         onPointerMoveCapture={handleStagePointerMoveCapture}
         onPointerUpCapture={handleStagePointerUpCapture}
         onPointerCancelCapture={handleStagePointerUpCapture}
+        onPointerUp={commitSceneTransforms}
+        onPointerCancel={commitSceneTransforms}
       >
         <div
           ref={hostRef}
@@ -671,7 +680,8 @@ export const LeaferCanvas = forwardRef<LeaferCanvasHandle, LeaferCanvasProps>(fu
                   assets,
                   strokes,
                   objectOffsetsRef.current,
-                  assetTransformsRef.current
+                  assetTransformsRef.current,
+                  texts
                 ) ?? { x: 0, y: 0, width: 1, height: 1 }
               )}
             />
@@ -718,7 +728,19 @@ export const LeaferCanvas = forwardRef<LeaferCanvasHandle, LeaferCanvasProps>(fu
           } ${activeTool === 'eraser' ? 'cursor-none' : ''}`}
           role="application"
           aria-label={t('generationCommon.whiteboard.drawingLayerAria')}
-          onPointerDown={handlePointerDown}
+          onPointerDown={(event) => {
+            if (activeTool === 'text' || activeTool === 'note') {
+              event.preventDefault()
+              event.stopPropagation()
+              const stage = stageRef.current
+              if (!stage) return
+              const point = getCanvasPointFromClient(event.clientX, event.clientY, stage.getBoundingClientRect(), dimensionsRef.current)
+              const place = activeTool === 'text' ? onTextPlace : onNotePlace
+              place?.({ x: point[0], y: point[1] })
+              return
+            }
+            handlePointerDown(event)
+          }}
           onPointerEnter={updateToolCursor}
           onPointerLeave={hideToolCursor}
           onPointerMove={handlePointerMove}

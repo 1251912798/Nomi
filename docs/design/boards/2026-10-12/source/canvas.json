@@ -1,0 +1,8 @@
+{
+  "kind": "exploration-reference",
+  "productionOwners": [
+    "src/workbench/generationCanvas/nodes/whiteboard/InlineWhiteboard.tsx",
+    "src/workbench/generationCanvas/nodes/whiteboard/WhiteboardEditingToolbar.tsx"
+  ],
+  "source": "approved desktop compact exploration; production validation uses real Electron component host"
+}

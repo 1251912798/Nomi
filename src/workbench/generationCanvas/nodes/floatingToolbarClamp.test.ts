@@ -132,3 +132,19 @@ describe('nextFloatingToolbarPlacement：一次测量就是不动点（React #18
     })).toBeNull()
   })
 })
+
+it('node-centred editing bars do not drift horizontally when the node is near a viewport edge', () => {
+  expect(nextFloatingToolbarPlacement({
+    rect: { left: -80, right: 640, top: 300, bottom: 340, width: 720 }, layoutWidth: 720,
+    stage: { left: 60, right: 860, top: 48, bottom: 900, width: 800 },
+    applied: { shiftX: 0, shiftY: 0, maxWidth: 424 }, centerOnNode: true,
+  })).toBeNull()
+})
+
+it('centred bars constrain width symmetrically at the right edge, preserving both alignment and access', () => {
+  expect(nextFloatingToolbarPlacement({
+    rect: { left: 620, right: 1340, top: 300, bottom: 340, width: 720 }, layoutWidth: 720,
+    stage: { left: 60, right: 1260, top: 48, bottom: 900, width: 1200 },
+    applied: { shiftX: 0, shiftY: 0, maxWidth: undefined }, centerOnNode: true,
+  })).toEqual({ shiftX: 0, shiftY: 0, maxWidth: 544 })
+})

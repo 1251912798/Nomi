@@ -108,7 +108,9 @@ export function tabBelongsToCanvas(activeElement: Element | null): boolean {
 }
 
 function shouldIgnoreCanvasShortcut(target: EventTarget | null, stageRef: React.RefObject<HTMLDivElement | null>): boolean {
-  if (document.querySelector('[data-nomi-whiteboard-modal="true"]')) return true
+  const candidate = target as unknown as ClosestTarget | null
+  const element = typeof candidate?.closest === 'function' ? candidate : candidate?.parentElement
+  if (element?.closest?.('[data-nomi-inline-whiteboard], [data-whiteboard-panel]')) return true
   if (isCanvasTextEditingContext(target, document.activeElement)) return true
   // 画布藏起来了、或者同屏的另一面（时间轴）刚被按过：这一下不归画布（shortcutSurface.ts 唯一 owner）。
   if (!shortcutSurfaceMayHandle(stageRef.current)) return true

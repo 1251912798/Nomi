@@ -48,6 +48,9 @@ importers:
       '@ffprobe-installer/ffprobe':
         specifier: ^2.1.2
         version: 2.1.2
+      '@floating-ui/dom':
+        specifier: 1.8.0
+        version: 1.8.0
       '@modelcontextprotocol/client':
         specifier: 2.3.0
         version: 2.3.0

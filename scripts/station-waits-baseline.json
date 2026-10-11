@@ -719,9 +719,6 @@
   "tests/ux/reference-url-scheme-boot.walk.mjs": {
     "df3fd0b95aba636ea8f51da32ff8cf0c895fe7125e00e0b3f95e50af15d9f121": 1
   },
-  "tests/ux/remove-background.walk.mjs": {
-    "a2cfa760fe101fb3398860ef1ab2d144dba6263e9b6cf7460382f6946f0a6058": 1
-  },
   "tests/ux/resident-composer-receipt-fix.e2e.mjs": {
     "26964bad4dd2ec80e6ef112077feff3fcafcccfdfe6ef21420ecf3b53e1a6726": 1,
     "4210463bae4b67076b5b62446371ba43854ce88f4cb003b43a03ffb7757db9b2": 1,
@@ -910,9 +907,6 @@
     "66ab769581ad33c913d7c5f9665a525192502edc682bac573c3c0f3c1fddb5ce": 1,
     "0427e886a013ebf0cee8a412d4376a26b1bd78cf8c8f114a37481bcaad55a9ee": 1,
     "7fa6f42971773a77cf43539da612e7ad35548c7e18305273d9c9cfa410015422": 1
-  },
-  "tests/ux/whiteboard-refactor.walk.mjs": {
-    "a2cfa760fe101fb3398860ef1ab2d144dba6263e9b6cf7460382f6946f0a6058": 1
   },
   "tests/ux/window-drag.e2e.mjs": {
     "69c28189ae941444fdc28178a83997665b95ab72c1fe02981ac192b8ec5aa217": 1

@@ -1,4 +1,4 @@
-import type { CanvasAsset, CanvasDimensions, LayerItem } from './lib/canvas'
+import type { CanvasAsset, CanvasText, CanvasDimensions, LayerItem } from './lib/canvas'
 import type {
   CanvasAssetTransform,
   CanvasObjectFlipState,
@@ -32,6 +32,7 @@ type RefLike<T> = { current: T }
 export type RenderWhiteboardSceneParams = {
   context: LeaferRenderContext
   assets: CanvasAsset[]
+  texts?: CanvasText[]
   strokes: CanvasStroke[]
   layers: LayerItem[]
   dimensions: CanvasDimensions
@@ -49,6 +50,7 @@ export function renderWhiteboardScene(params: RenderWhiteboardSceneParams): void
     context,
     assets,
     strokes,
+    texts = [],
     layers,
     dimensions,
     objectOffsets,
@@ -59,7 +61,7 @@ export function renderWhiteboardScene(params: RenderWhiteboardSceneParams): void
     layerObjectTargetsRef,
     draftEraserPathRef,
   } = params
-    const { Box, Group, Image, Path, PathCommandMap, PathConvert, PathNumberCommandLengthMap, Rect, rootGroup } =
+    const { Box, Group, Image, Path, PathCommandMap, PathConvert, PathNumberCommandLengthMap, Rect, Text, rootGroup } =
       context
     const pathTools = { PathCommandMap, PathConvert, PathNumberCommandLengthMap }
     rootGroup.clear()
@@ -71,6 +73,23 @@ export function renderWhiteboardScene(params: RenderWhiteboardSceneParams): void
     const assetsByLayer = groupItemsByLayer(assets)
     const strokesByLayer = groupItemsByLayer(strokes)
     const layerGroups = new Map<string, LeaferGroup>()
+    const addText = (text: CanvasText, parent: LeaferGroup, editable: boolean, origin = { x: 0, y: 0 }) => {
+      const offset = getObjectOffset(objectOffsets, 'text', text.id)
+      const bounds = { x: text.x + offset.x, y: text.y + offset.y, width: text.width, height: text.height }
+      const box = new Box({ x: bounds.x - origin.x, y: bounds.y - origin.y, width: bounds.width, height: bounds.height,
+        fill: 'rgba(0,0,0,0)', editable, draggable: editable, hittable: editable, hitFill: editable ? 'all' : 'none',
+        hitChildren: false, editConfig: { resizeable: false, flipable: false, rotateable: false, skewable: false },
+        canvasObjectKind: 'text', canvasObjectId: text.id })
+      const content = new Group(getFlippedContentGroupProps(bounds, getObjectFlipState(objectFlipStates, { kind: 'text', id: text.id })))
+      content.add(new Text({ text: text.text, width: text.width, height: text.height, fontSize: text.fontSize, fill: text.color, hittable: false }))
+      box.add(content)
+      parent.add(box)
+      if (editable) {
+        canvasObjectNodesRef.current.set(getObjectKey('text', text.id), box)
+        layerObjectTargetsRef.current.set(text.layerId, { kind: 'text', id: text.id })
+      }
+    }
+
 
     for (const layer of layers) {
       const layerCanEdit = layer.kind !== 'background' && layer.visible && !layer.locked
@@ -96,7 +115,7 @@ export function renderWhiteboardScene(params: RenderWhiteboardSceneParams): void
       const layerIsGroup = isCanvasGroupLayer(layer)
 
       if (layerIsGroup) {
-        const groupBaseBounds = getLayerBaseBounds(layer.id, assetsByLayer, strokesByLayer, objectOffsets, assetTransforms)
+        const groupBaseBounds = getLayerBaseBounds(layer.id, assetsByLayer, strokesByLayer, objectOffsets, assetTransforms, texts)
 
         if (groupBaseBounds) {
           const groupOffset = getObjectOffset(objectOffsets, 'group', layer.id)
@@ -223,6 +242,8 @@ export function renderWhiteboardScene(params: RenderWhiteboardSceneParams): void
               pathTools
             )
           }
+
+          for (const text of texts.filter((item) => item.layerId === layer.id)) addText(text, groupContent, false, groupBaseBounds)
 
           groupBox.add(groupContent)
           layerGroup.add(groupBox)
@@ -356,6 +377,8 @@ export function renderWhiteboardScene(params: RenderWhiteboardSceneParams): void
         canvasObjectNodesRef.current.set(getObjectKey('stroke', stroke.id), strokeGroup)
         layerObjectTargetsRef.current.set(layer.id, { kind: 'stroke', id: stroke.id })
       }
+
+      for (const text of texts.filter((item) => item.layerId === layer.id)) addText(text, layerGroup, layerCanEdit)
 
       rootGroup.add(layerGroup)
       layerGroups.set(layer.id, layerGroup)

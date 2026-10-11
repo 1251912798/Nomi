@@ -74,13 +74,18 @@ export function nextFloatingToolbarPlacement(input: {
   layoutWidth: number
   stage: ScreenRect
   applied: FloatingToolbarPlacement
+  centerOnNode?: boolean
 }): FloatingToolbarPlacement | null {
   const { rect, layoutWidth, stage, applied } = input
   if (!(rect.width > 0) || !(layoutWidth > 0)) return null
   const scale = rect.width / layoutWidth
-  const limit = Math.max(FLOATING_TOOLBAR_MIN_WIDTH, Math.floor(stage.width - 2 * FLOATING_TOOLBAR_EDGE)) / scale
+  const naturalCenter = (rect.left + rect.right) / 2 - applied.shiftX * scale
+  const availableWidth = input.centerOnNode
+    ? 2 * Math.min(naturalCenter - stage.left, stage.right - naturalCenter)
+    : stage.width
+  const limit = Math.max(FLOATING_TOOLBAR_MIN_WIDTH, Math.floor(availableWidth - 2 * FLOATING_TOOLBAR_EDGE)) / scale
   if (applied.maxWidth === undefined || Math.abs(limit - applied.maxWidth) * scale > SETTLE_PX) return { ...applied, maxWidth: limit }
-  const shiftX = floatingToolbarShift({ rectLeft: rect.left, rectRight: rect.right, appliedShift: applied.shiftX, scale, min: stage.left + FLOATING_TOOLBAR_EDGE, max: stage.right - FLOATING_TOOLBAR_EDGE })
+  const shiftX = input.centerOnNode ? 0 : floatingToolbarShift({ rectLeft: rect.left, rectRight: rect.right, appliedShift: applied.shiftX, scale, min: stage.left + FLOATING_TOOLBAR_EDGE, max: stage.right - FLOATING_TOOLBAR_EDGE })
   const shiftY = floatingToolbarShift({ rectLeft: rect.top, rectRight: rect.bottom, appliedShift: applied.shiftY, scale, min: stage.top + FLOATING_TOOLBAR_EDGE, max: stage.bottom - FLOATING_TOOLBAR_EDGE })
   if (Math.abs(shiftX - applied.shiftX) * scale <= SETTLE_PX && Math.abs(shiftY - applied.shiftY) * scale <= SETTLE_PX) return null
   return { ...applied, shiftX, shiftY }

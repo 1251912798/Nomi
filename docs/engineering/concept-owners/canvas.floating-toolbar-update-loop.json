@@ -23,5 +23,5 @@
   "forbidden_derivations": [],
   "allowed_consumers": [],
   "since": "2026-10-06",
-  "notes": "浮动工具栏位置计算与宿主外壳共享同一帧更新边界。"
+  "notes": "浮动工具栏位置计算与宿主外壳共享同一帧更新边界。 2026-10-12：白板 opt-in avoidBottomDocks，外壳复用 useCanvasBottomDockRects + workspaceBottomDocks.resolveUsableBottomAboveDocks，不另建 dock owner。"
 }
