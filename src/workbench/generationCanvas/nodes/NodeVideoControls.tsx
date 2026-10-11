@@ -15,9 +15,15 @@ export function NodeVideoControls({ reportFeedback }: { reportFeedback: (message
   const session = useNodeVideoSession()
   const { player } = session
   const clock = useNodeVideoClock(player)
-  const label = (key: string) => t(`generationCommon.videoTrim.${key}`)
+  const labels = {
+    play: t('generationCommon.videoTrim.play'),
+    pause: t('generationCommon.videoTrim.pause'),
+    seek: t('generationCommon.videoTrim.seek'),
+    mute: t('generationCommon.videoTrim.mute'),
+    unmute: t('generationCommon.videoTrim.unmute'),
+  }
   return <div data-node-video-controls style={{ width: `${zoom * 100}%`, transform: `scale(${1 / zoom})`, transformOrigin: 'bottom left' }} className="nodrag nowheel absolute inset-x-0 bottom-0 flex items-center gap-1 bg-nomi-media-veil/80 px-2 py-1 text-nomi-media-ink" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => event.stopPropagation()} onDoubleClick={(event) => event.stopPropagation()} onKeyDown={(event) => { if (event.key !== 'Escape') event.stopPropagation() }}>
-    <WorkbenchIconButton size="sm" className={BUTTON} disabled={!player || clock.duration <= 0} label={label(clock.playing ? 'pause' : 'play')} onClick={() => {
+    <WorkbenchIconButton size="sm" className={BUTTON} disabled={!player || clock.duration <= 0} label={clock.playing ? labels.pause : labels.play} onClick={() => {
       if (!player) return
       session.positioned.current = true
       if (!player.paused) player.pause()
@@ -28,14 +34,14 @@ export function NodeVideoControls({ reportFeedback }: { reportFeedback: (message
         void player.play().catch(() => undefined)
       }
     }} icon={clock.playing ? <IconPlayerPause size={16} /> : <IconPlayerPlay size={16} />} />
-    <input type="range" aria-label={label('seek')} min={0} max={clock.duration || 1} step={0.01} value={clock.time} disabled={clock.duration <= 0} className="h-5 min-w-0 flex-1 cursor-pointer accent-nomi-media-ink" onChange={(event) => {
+    <input type="range" aria-label={labels.seek} min={0} max={clock.duration || 1} step={0.01} value={clock.time} disabled={clock.duration <= 0} className="h-5 min-w-0 flex-1 cursor-pointer accent-nomi-media-ink" onChange={(event) => {
       const range = session.selection.current
       const time = Number(event.target.value)
       session.seek(range ? Math.max(range.start, Math.min(range.end - 0.001, time)) : time)
       clock.refresh()
     }} />
     {zoom >= 0.75 && <span className="pointer-events-none font-mono text-micro tabular-nums" data-node-video-time>{frameTimecode(clock.time)}</span>}
-    <WorkbenchIconButton size="sm" className={BUTTON} disabled={!player} label={label(clock.muted ? 'unmute' : 'mute')} onClick={() => { if (player) player.muted = !player.muted }} icon={clock.muted ? <IconVolumeOff size={16} /> : <IconVolume size={16} />} />
+    <WorkbenchIconButton size="sm" className={BUTTON} disabled={!player} label={clock.muted ? labels.unmute : labels.mute} onClick={() => { if (player) player.muted = !player.muted }} icon={clock.muted ? <IconVolumeOff size={16} /> : <IconVolume size={16} />} />
     {session.writable && <WorkbenchIconButton size="sm" className={BUTTON} disabled={!clock.ready || session.busy} label={t('generationCommon.videoToolbar.currentFrame')} title={t('generationCommon.videoToolbar.currentFrame')} onClick={() => {
       if (!player || player.readyState < 2 || player.seeking || session.busy) return
       const atSeconds = player.currentTime
