@@ -14,6 +14,7 @@ import { findNodeHitPoint } from './_canvasHit.mjs'
 import { stationTimeout } from './_station-budget.mjs'
 import { waitForVisualQuiescence, proveProbe, expectAbsent } from './_assert.mjs'
 import { createAgentRuntimeFixture, FIXTURE_VENDOR, FIXTURE_IMAGE_MODEL } from './agent-runtime-fixture.mjs'
+import { openStoryboardEditor } from './_creationResourceTree.mjs'
 import { canvasFitViewButton } from './_shell.mjs'
 const { createWorkspaceProject } = tsxRequire('../../electron/workspace/workspaceRepository.ts', import.meta.url)
 const { createProductionRunRepository } = tsxRequire('../../electron/productionRun/productionRunRepository.ts', import.meta.url)
@@ -75,7 +76,7 @@ async function openEditor() {
   await expect(win.locator('[data-shell-rail-item="docs"]')).toBeVisible()
   const expand = win.locator('[data-shell-rail-item="docs"][aria-pressed="false"]')
   if (await expand.isVisible()) await expand.click()
-  await win.locator(`button[data-storyboard-id="${legacyId}"]`).click()
+  await openStoryboardEditor(win, legacyId)
   await expect(editor()).toBeVisible()
 }
 async function snap(name) { const file = path.join(outputDir, `${name}.png`); await win.screenshot({ path: file }); report.screenshots.push(file) }
