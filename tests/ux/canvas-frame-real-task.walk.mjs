@@ -46,6 +46,7 @@ import {
 } from './_assert.mjs'
 import { newProjectEntry } from './_shell.mjs'
 import { GROUP_FRAME_COUNT_SELECTOR, GROUP_FRAME_HEADER_SELECTOR, GROUP_FRAME_TITLE_SELECTOR, groupFrameHeader, groupFrameTitle } from './_groupFrame.mjs'
+import { GROUP_TOOLBAR } from './_groupGenerate.mjs'
 import { stationTimeout } from './_station-budget.mjs'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
@@ -92,7 +93,8 @@ async function fitView(win) {
 }
 
 /** 底部停靠区自己挂的标记（真相在 reactFlow/useCanvasBottomDockRects.ts，这里不另抄一份名单）。 */
-const BOTTOM_DOCK_SELECTOR = '[data-canvas-bottom-dock]'
+// 外壳重设计后时间轴胶囊是壳底一整条（TimelineStrip，自带 data-timeline-strip），不再挂 dock 标记：两种都要量。
+const BOTTOM_DOCK_SELECTOR = '[data-canvas-bottom-dock], [data-timeline-strip]'
 const TIMELINE_CAPSULE_SELECTOR = '[data-timeline-strip]'
 
 /**
@@ -102,14 +104,14 @@ const TIMELINE_CAPSULE_SELECTOR = '[data-timeline-strip]'
  * 判不出来说明相交判据本身写错了——那么后面那句「它们没相交」就是一句空话
  * （`_assert.mjs` 里 expectAbsent 要 provenBy 是同一个道理）。
  */
-async function measureToolbarDockOverlap(win, dockSelector, capsuleSelector) {
-  return win.evaluate(({ dock, capsule }) => {
+async function measureToolbarDockOverlap(win, dockSelector, capsuleSelector, toolbarSelector) {
+  return win.evaluate(({ dock, capsule, toolbarSelector }) => {
     const intersects = (a, b) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom
     const box = (element) => {
       const rect = element.getBoundingClientRect()
       return { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom, w: rect.width, h: rect.height }
     }
-    const toolbarElement = document.querySelector('.generation-canvas-v2__selection-toolbar')
+    const toolbarElement = document.querySelector(toolbarSelector)
     if (!toolbarElement) return null
     const toolbar = box(toolbarElement)
     const docks = Array.from(document.querySelectorAll(dock))
@@ -125,7 +127,7 @@ async function measureToolbarDockOverlap(win, dockSelector, capsuleSelector) {
       overlaps: docks.filter((entry) => intersects(toolbar, entry)),
       selfCheck: intersects(toolbar, toolbar),
     }
-  }, { dock: dockSelector, capsule: capsuleSelector })
+  }, { dock: dockSelector, capsule: capsuleSelector, toolbarSelector })
 }
 
 /**
@@ -494,7 +496,8 @@ try {
     x: Math.round(Math.min(150, stageForMove.x + stageForMove.width - 16 - (frameBeforeMove.x + frameBeforeMove.width))),
     y: Math.round(Math.min(90, stageForMove.y + stageForMove.height - 16 - (frameBeforeMove.y + frameBeforeMove.height))),
   }
-  if (moveDelta.x < 60 || moveDelta.y < 40) {
+  // 判据是「位移够大、和 6px 容差分得开」：看总位移，不要求两个方向各自 ≥ 阈值——适应视图后框横向只剩 ~48px 余地（取决于舞台宽，与框头无关）。
+  if (moveDelta.x < 0 || moveDelta.y < 0 || Math.hypot(moveDelta.x, moveDelta.y) < 60) {
     throw new Error(`这一屏右下角没地方把框整个挪过去（fail-closed）：delta=${JSON.stringify(moveDelta)}`)
   }
   await win.mouse.move(grab.x, grab.y)
@@ -546,13 +549,14 @@ try {
   check(membersFollowed, '框里的东西跟着框一起搬走了（拖框 = 搬这一块，不是只搬那层皮）')
 
   // ⑥b 抓完框，它的**名字还看得见**吗？
-  // 抓框 = 选中框里全部成员（既有行为），选择浮条随即出现在成员外接盒上方 16px；
+  // 抓框 = 选中这个组，分组工具条随即出现（上 / 下 / 框内贴顶，由 groupToolbarPlacement 定）；
   // 而框的名字/说明/计数就写在比成员外接盒还高 52px 的那条标签带上——浮条不偏不倚正好盖住。
   // 真机实拍（2026-09-07 修前的 10-frame-moved.png）里「第三幕 · 雨夜」只从「已选 3 个」
   // 左边露出一点点。用户刚起完名，手一搭上去名字就没了，而那正是他确认「抓的是不是这一个」
   // 唯一的凭据。这两条断言钉的就是这处遮挡。
-  const selectionToolbar = win.locator('.generation-canvas-v2__selection-toolbar').first()
-  await expectVisible(selectionToolbar, '抓完框，选择浮条确实在这一屏（不然下一条就是句空话）')
+  // 选中框弹出的是分组工具条（多选浮条只在多选节点时出，选中组不再出它）。
+  const groupToolbar = win.locator(GROUP_TOOLBAR).first()
+  await expectVisible(groupToolbar, '抓完框，分组工具条确实在这一屏（不然下一条就是句空话）')
   await expectOverlayReachable(
     groupFrameHeader(frameLocator(win)),
     '框的名字与计数（选择浮条不该盖住你刚抓住的那个框的身份牌）',
@@ -563,7 +567,7 @@ try {
   // 10-frame-moved.png）里正好压在底部居中的「时间轴 0 段 · 0:00」胶囊上，
   // 「生成选中 3 个」被挡掉半截：用户点下去要么点到时间轴、要么点了个看不全的按钮。
   // 判据就是最朴素的那条——**浮条矩形不许和任何一块停靠区矩形相交**。
-  const overlap = await measureToolbarDockOverlap(win, BOTTOM_DOCK_SELECTOR, TIMELINE_CAPSULE_SELECTOR)
+  const overlap = await measureToolbarDockOverlap(win, BOTTOM_DOCK_SELECTOR, TIMELINE_CAPSULE_SELECTOR, GROUP_TOOLBAR)
   if (!overlap) throw new Error('量不到选择浮条（fail-closed，不把「量不到」说成「没叠压」）')
   check(overlap.selfCheck === true, '相交判据本身是活的（拿浮条和它自己比必须判成相交）')
   // 这一屏里必须真的有那个时间轴胶囊，否则「没和它相交」是句废话。

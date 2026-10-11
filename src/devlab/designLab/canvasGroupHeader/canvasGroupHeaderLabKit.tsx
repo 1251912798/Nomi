@@ -128,7 +128,9 @@ export function CanvasGroupHeaderStage({
                   onArrange={NOOP}
                   onColor={NOOP}
                   onDownload={NOOP}
-                  onOpenMenu={NOOP}
+                  onEdit={NOOP}
+                  onCollapse={NOOP}
+                  onDelete={NOOP}
                 />
               </div>
             </div>

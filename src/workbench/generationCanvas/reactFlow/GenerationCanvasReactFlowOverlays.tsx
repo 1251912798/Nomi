@@ -152,7 +152,6 @@ export function GenerationCanvasReactFlowOverlays({
           frameName={frameMenu.frameName}
           canGenerate={frameMenu.canGenerate}
           canSendToTimeline={frameMenu.canSendToTimeline}
-          exclude={frameMenu.exclude}
           onPointerDown={(event) => event.stopPropagation()}
           onContextMenu={(event) => event.preventDefault()}
           onAction={onFrameMenuAction}

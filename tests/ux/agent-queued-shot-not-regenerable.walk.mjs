@@ -2,7 +2,7 @@
 // 真实用户任务（R13）：**Agent 起草两镜、用户点了确认之后，还没轮到的那一镜不能从画布再发一次。**
 //
 // 2026-09-25（T-AG-24 / #875）：确认之后，排队中的那一镜在节点上是闲着的（排队只住在制作流程里，节点自己的状态还是 idle），
-// 于是框菜单「生成整框」照样把它算进去，选中它时节点的生成钮也能按——再按一次就是同一镜重复生成、重复扣费。
+// 于是框菜单「生成整组」照样把它算进去，选中它时节点的生成钮也能按——再按一次就是同一镜重复生成、重复扣费。
 // #875 让画布的生成入口（框菜单 / 组工具条 / 节点生成钮）都读制作流程对这一镜的归属。
 //
 // 怎么造出「真的在排队」：制作流程逐镜**顺序**派发（multiShotBatchScheduler：`await dispatchUnit` 一镜一镜来），
@@ -20,7 +20,8 @@ import {
   APPROVAL_CARD, CANVAS_PANEL, INTERVENTION_CONFIRM,
   chooseAssistantModel, createRuntimeWalk, openCanvas, readProject, recorded, sendCanvas,
 } from './agent-runtime-walk-support.mjs'
-import { openFrameMenuFromToolbar } from './_groupFrame.mjs'
+import { openFrameMenuByRightClick } from './_groupFrame.mjs'
+import { uiText } from './full-walk/invariants.mjs'
 
 // 付费卡逐镜（2026-09-30）：第 1 页点「生成这张」（供应商受理被夹具压着），卡翻到第 2 页再点一次——第 2 镜批过、还没轮到，就是排队。
 
@@ -73,7 +74,7 @@ async function zoomOntoFrame(win, frame) {
 }
 
 /**
- * 排队那一镜在屏上的全部证据：节点挂着排队小标；框菜单「生成整框」按不下去（两镜一在跑一在排，框里没有能再发的）；
+ * 排队那一镜在屏上的全部证据：节点挂着排队小标；框菜单「生成整组」按不下去（两镜一在跑一在排，框里没有能再发的）；
  * 选中它时节点生成钮按不下去。先拍后判，修前修后都有图。
  * 两镜落在同一个框里，批量生成入口（组的「生成整组」）这时不出现——框里的镜走框菜单这个入口，底栏那个入口由单镜走查（报价卡在等）覆盖。
  */
@@ -83,9 +84,9 @@ async function expectQueuedShotLocked(win, walk, { queuedNodeId, groupId, locale
   await zoomOntoFrame(win, frame)
   await snapCloseUp(win, await walk.snap(`queued-canvas-${locale}`), [frame])
 
-  await openFrameMenuFromToolbar(win, frame)
-  const generateFrame = win.locator('[data-frame-menu="true"] [role="menuitem"]').filter({ hasText: locale === 'zh' ? '生成整框' : 'Generate the whole frame' })
-  await proveProbe(generateFrame, `${locale}：框菜单里有「生成整框」`)
+  await openFrameMenuByRightClick(frame)
+  const generateFrame = win.locator('[data-frame-menu="true"] [role="menuitem"]').filter({ hasText: uiText(locale === 'zh' ? 'zh-CN' : 'en', 'generationCommon.canvas.group.menuGenerate') })
+  await proveProbe(generateFrame, `${locale}：框菜单里有「生成整组」`)
   await snapCloseUp(win, await walk.snap(`queued-frame-menu-${locale}`), [frame, win.locator('[data-frame-menu="true"]')])
   const frameGenerateDisabled = await generateFrame.isDisabled()
   await win.keyboard.press('Escape')
@@ -94,7 +95,7 @@ async function expectQueuedShotLocked(win, walk, { queuedNodeId, groupId, locale
   const button = win.locator(GENERATE_BUTTON).first()
   await proveProbe(button, `${locale}：选中后节点生成钮出现`)
   await snapCloseUp(win, await walk.snap(`queued-selected-${locale}`), [win.locator(`[data-node-id="${queuedNodeId}"]`).first(), button])
-  expect(frameGenerateDisabled, `${locale}：「生成整框」按不下去`).toBe(true)
+  expect(frameGenerateDisabled, `${locale}：「生成整组」按不下去`).toBe(true)
   await expect(button, `${locale}：排队中的这一镜，生成钮按不下去`).toBeDisabled()
   await win.keyboard.press('Escape')
 }

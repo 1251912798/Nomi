@@ -18,8 +18,6 @@ import { withProjectAction } from '../../project/projectCanvasReadSurface'
 
 export type CanvasFrameMenuState = {
   groupId: string
-  /** 这次打开不显示的动作（工具条「⋯」传入；右键为空）。 */
-  exclude: readonly FrameContextMenuAction[]
   frameName: string
   stageX: number
   stageY: number
@@ -45,7 +43,7 @@ export function useCanvasFrameActions({
 }): {
   frameMenu: CanvasFrameMenuState | null
   closeFrameMenu: () => void
-  openFrameMenu: (groupId: string, point: { x: number; y: number }, exclude?: readonly FrameContextMenuAction[]) => void
+  openFrameMenu: (groupId: string, point: { x: number; y: number }) => void
   editingFrameId: string | null
   setEditingFrameId: (groupId: string | null) => void
   handleFrameMenuAction: (action: FrameContextMenuAction) => void
@@ -73,7 +71,7 @@ export function useCanvasFrameActions({
 
   const closeFrameMenu = React.useCallback(() => setFrameMenu(null), [])
 
-  const openFrameMenu = React.useCallback((groupId: string, point: { x: number; y: number }, exclude: readonly FrameContextMenuAction[] = []) => {
+  const openFrameMenu = React.useCallback((groupId: string, point: { x: number; y: number }) => {
     if (readOnly) return
     const rect = stageRef.current?.getBoundingClientRect()
     if (!rect) return
@@ -82,7 +80,6 @@ export function useCanvasFrameActions({
     if (!group) return
     setFrameMenu({
       groupId,
-      exclude,
       frameName: group.name,
       // 贴边时夹回视口内：框可能画在画布最右下角，菜单原样弹出会被切掉一半。
       stageX: Math.max(MENU_EDGE_GAP, Math.min(point.x - rect.left, rect.width - MENU_WIDTH - MENU_EDGE_GAP)),

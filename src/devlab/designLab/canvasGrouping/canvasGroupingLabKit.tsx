@@ -229,7 +229,9 @@ export function CanvasGroupingStage(): JSX.Element {
                       setStatus(`编组颜色已切换为 ${color}。`)
                     }}
                     onDownload={() => setStatus('下载编组结果。')}
-                    onOpenMenu={() => setStatus('打开框菜单。')}
+                    onEdit={() => setStatus('改名 / 说明。')}
+                    onCollapse={() => setStatus('折叠成卡。')}
+                    onDelete={() => setStatus('删除编组。')}
                   />
               </div>
             </div>

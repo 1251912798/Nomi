@@ -10,6 +10,7 @@ const read = (name: string) => fs.readFileSync(path.join(here, name), 'utf8')
 const header = read('GroupFrameHeader.tsx')
 const frame = read('GroupFrame.tsx')
 const toolbar = read('CanvasGroupToolbar.tsx')
+const toolbarHook = read('useCanvasGroupToolbar.ts')
 const menu = read('FrameContextMenu.tsx')
 const actions = read('useCanvasFrameActions.ts')
 const wiring = fs.readFileSync(path.join(here, '../reactFlow/GenerationCanvasReactFlow.tsx'), 'utf8')
@@ -50,14 +51,15 @@ const CENSUS: ReadonlyArray<readonly [string, () => void]> = [
       expect(header).not.toContain('onCollapse')
       expect(menu).toContain("'collapse'")
   }],
-  ['F9 框头 ⋯ 按钮已删；工具条末尾「⋯」打开同一份菜单', () => {
+  ['F9 框头 ⋯ 按钮已删；工具条上没有「⋯」，改名 / 折叠 / 删除直接摆三个图标', () => {
       expect(header).not.toContain('data-frame-more')
       expect(header).not.toContain('onOpenMenu')
-      expect(toolbar).toContain('IconDots')
-      expect(toolbar).toContain('onOpenMenu({ x: rect?.right')
-      expect(wiring).toContain('openFrameMenu: frameActions.openFrameMenu')
+      expect(toolbar).not.toContain('IconDots')
+      expect(toolbar).not.toContain('onOpenMenu')
+      for (const id of ['group-edit', 'group-collapse', 'group-delete']) expect(toolbar).toContain(`actionId="${id}"`)
+      expect(toolbarHook).toContain("runFrameAction(selectedGroup.id, 'collapse')")
   }],
-  ['F10 菜单「编辑」（改名 / 说明）在右键 / 工具条 ⋯ 菜单里', () => {
+  ['F10 菜单「编辑」（改名 / 说明）在右键菜单里，工具条有同一动作的图标', () => {
       expect(menu).toContain("action: 'edit'")
   }],
   ['F11 菜单「生成整框」与框头「生成全部」同一执行口（runFrameAction generate）', () => {

@@ -1,4 +1,4 @@
-// 真实 Electron 屏外走查：分组框头 / 颜色 / 选中 / 工具条「⋯」（2026-10-10 拍板，对应 D1–D4、P1–P3）。
+// 真实 Electron 屏外走查：分组框头 / 颜色 / 选中 / 工具条图标动作（2026-10-10 拍板，对应 D1–D4、P1–P3）。
 //
 // 用法：node tests/ux/group-header-real-app.walk.mjs zh-light   |   node tests/ux/group-header-real-app.walk.mjs en-dark
 // 产出：docs/evidence/2026-10-10-group-header/<case>/*.png（每张截图由调用方亲眼 Read 过）。
@@ -12,7 +12,8 @@ import { launchNomiApp } from './_launchApp.mjs'
 import { createCanvasPerformanceFixture } from './fixtures/canvas-performance-fixture.mjs'
 import { applyColorSchemeForShot, clickOrFail, expect, waitForVisualQuiescence } from './_assert.mjs'
 import { GROUP_TOOLBAR } from './_groupGenerate.mjs'
-import { frameBlankPosition, groupFrameCount, groupFrameHeader, groupFrameTitle, groupToolbarTitle, openFrameMenuFromToolbar } from './_groupFrame.mjs'
+import { uiText } from './full-walk/invariants.mjs'
+import { frameBlankPosition, groupFrameCount, groupFrameHeader, groupFrameTitle, groupToolbarAction, groupToolbarTitle, openFrameMenuByRightClick } from './_groupFrame.mjs'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const CASES = {
@@ -132,13 +133,29 @@ try {
   check('选中后框体没有描边', selectedOutline.border === '0px' && selectedOutline.outline === 'none' && selectedOutline.boxShadow === 'none', JSON.stringify(selectedOutline))
   await win.screenshot({ path: path.join(outDir, '02-selected-toolbar-no-outline.png') })
 
-  // ── 3. 工具条末尾「⋯」展开同一份框菜单 ──
-  await openFrameMenuFromToolbar(win, storyFrame)
+  // ── 3. 工具条末尾：改名 / 折叠 / 删除三个图标直接摆出来，没有「⋯」（10-10 拍板：动作 ≤3 个不藏） ──
+  const toolbar = win.locator(GROUP_TOOLBAR)
+  const iconNames = {}
+  for (const action of ['edit', 'collapse', 'delete']) {
+    const button = groupToolbarAction(win, action)
+    await expect(button, `工具条直接摆着「${action}」图标`).toBeVisible()
+    iconNames[action] = { title: await button.getAttribute('title'), aria: await button.getAttribute('aria-label') }
+  }
+  const expectedNames = {
+    edit: uiText(config.locale, 'generationCommon.canvas.group.menuEdit'),
+    collapse: uiText(config.locale, 'generationCommon.canvas.group.menuCollapse'),
+    delete: uiText(config.locale, 'generationCommon.canvas.group.menuDelete'),
+  }
+  check('三个图标各带 hover 名字（title = 无障碍名 = 词典文案）', Object.entries(iconNames).every(([action, names]) => names.title === expectedNames[action] && names.aria === expectedNames[action]), JSON.stringify(iconNames))
+  const hasDots = await toolbar.getByRole('button', { name: /更多操作|More actions/ }).count()
+  check('工具条上不再有「⋯」更多操作钮', hasDots === 0, `dots=${hasDots}`)
+  await groupToolbarAction(win, 'delete').hover()
+  await win.screenshot({ path: path.join(outDir, '03-toolbar-icons.png') })
+  // 右键仍是完整框菜单（六项），与工具条图标同一个执行口。
+  await openFrameMenuByRightClick(storyFrame)
   const menu = win.locator('[data-frame-menu="true"]').first()
-  await expect(menu, '工具条「⋯」打开框菜单').toBeVisible()
-  // 「⋯」只留 改名 / 说明、折叠成卡、删除（生成整组、进时间轴、解组已在工具条上，不重复）。
-  check('工具条「⋯」只剩三项：改名 / 折叠 / 删除', (await menu.locator('button').count()) === 3, `items=${await menu.locator('button').count()}`)
-  await win.screenshot({ path: path.join(outDir, '03-toolbar-more-menu.png') })
+  await expect(menu, '右键打开框菜单').toBeVisible()
+  check('右键框菜单保留完整六项', (await menu.locator('button').count()) === 6, `items=${await menu.locator('button').count()}`)
   await win.keyboard.press('Escape')
   await waitForVisualQuiescence(win)
 

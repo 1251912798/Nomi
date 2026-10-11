@@ -3,7 +3,6 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { groupFrameLabel, isStoryboardGroup } from './groupFrameLabel'
-import { FRAME_MENU_TOOLBAR_DUPLICATES } from './frameMenuExclusions'
 
 // 10-10 拍板：框头与分组工具条的组名 / 计数只有一个显示函数；分镜组「分镜 · 名 · N 镜」，普通组「名 · N 个」。
 // 这里的 t 只回显「键 + 参数」，不抄文案：文案由词典决定，这里只验结构（哪个键、哪些参数）。
@@ -46,13 +45,14 @@ describe('group frame label (10-10: 框头与工具条同一显示函数)', () =
   })
 })
 
-describe('工具条「⋯」只留改名 / 折叠 / 删除（10-10 拍板）', () => {
-  it('排除清单就是工具条已有的三个动作：生成整组、进时间轴、解组', () => {
-    expect([...FRAME_MENU_TOOLBAR_DUPLICATES].sort()).toEqual(['dissolve', 'generate', 'timeline'])
+describe('工具条动作直接摆图标，不藏进「⋯」（10-10 拍板：动作 ≤3 个不藏）', () => {
+  it('改名 / 折叠 / 删除三个图标走右键菜单同一个执行口（runFrameAction）', () => {
+    for (const action of ['edit', 'collapse', 'delete']) expect(toolbarHook).toContain(`runFrameAction(selectedGroup.id, '${action}')`)
   })
 
-  it('工具条「⋯」传入这份排除清单，且不再复制一份菜单', () => {
-    expect(toolbarHook).toContain('FRAME_MENU_TOOLBAR_DUPLICATES')
-    expect(toolbar).toContain('onOpenMenu({ x: rect?.right')
+  it('工具条里没有「⋯」，也没有框菜单的排除清单（右键菜单永远完整）', () => {
+    expect(toolbar).not.toContain('IconDots')
+    expect(toolbar).not.toContain('onOpenMenu')
+    expect(toolbarHook).not.toContain('openFrameMenu')
   })
 })

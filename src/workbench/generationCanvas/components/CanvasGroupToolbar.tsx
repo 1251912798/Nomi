@@ -3,13 +3,15 @@ import { useTranslation } from 'react-i18next'
 import {
   IconArrowsHorizontal,
   IconArrowsVertical,
-  IconDots,
   IconDownload,
   IconFolderMinus,
+  IconLayersSubtract,
   IconLayoutGrid,
+  IconPencil,
   IconPlayerPlay,
   IconStack2,
   IconTimeline,
+  IconTrash,
 } from '../../../vendor/tablerIcons'
 import { cn } from '../../../utils/cn'
 import type { WorkbenchMenuIcon, WorkbenchMenuNode } from '../../../design/menu'
@@ -39,8 +41,10 @@ export type CanvasGroupToolbarProps = {
   onArrange: (mode: GroupArrangeMode) => void
   onColor: (color: GroupColorId) => void
   onDownload: () => void
-  /** 工具条末尾「⋯」：打开与框边右键同一份 FrameContextMenu（折叠 / 编辑 / 删除）。 */
-  onOpenMenu: (point: { x: number; y: number }) => void
+  /** 改名 / 说明、折叠成卡、删除：直接摆图标，与框边右键菜单同一个执行口。 */
+  onEdit: () => void
+  onCollapse: () => void
+  onDelete: () => void
 }
 
 export type GroupToolbarHorizontal = { frameLeft: number; frameWidth: number; offsetX: number; stageWidth: number }
@@ -72,7 +76,9 @@ export function CanvasGroupToolbar({
   onArrange,
   onColor,
   onDownload,
-  onOpenMenu,
+  onEdit,
+  onCollapse,
+  onDelete,
 }: CanvasGroupToolbarProps): JSX.Element {
   const { t } = useTranslation()
   const rootRef = React.useRef<HTMLDivElement | null>(null)
@@ -201,7 +207,21 @@ export function CanvasGroupToolbar({
         disabled={!canDownload}
         onClick={onDownload}
       />
-      {/* 解散是这一排里最「重」的动作：常用的在前，它放最右并用分隔线隔开，免得手滑。 */}
+      <ToolbarIconButton
+        icon={<IconPencil {...iconProps} />}
+        title={t('generationCommon.canvas.group.menuEdit')}
+        ariaLabel={t('generationCommon.canvas.group.menuEdit')}
+        actionId="group-edit"
+        onClick={onEdit}
+      />
+      <ToolbarIconButton
+        icon={<IconLayersSubtract {...iconProps} />}
+        title={t('generationCommon.canvas.group.menuCollapse')}
+        ariaLabel={t('generationCommon.canvas.group.menuCollapse')}
+        actionId="group-collapse"
+        onClick={onCollapse}
+      />
+      {/* 解散、删除是这一排里最「重」的动作：常用的在前，它们放最右并用分隔线隔开，免得手滑。 */}
       <ToolbarDivider />
       <ToolbarButton
         icon={<IconFolderMinus {...iconProps} />}
@@ -210,13 +230,11 @@ export function CanvasGroupToolbar({
         onClick={onDissolve}
       />
       <ToolbarIconButton
-        icon={<IconDots {...iconProps} />}
-        title={t('generationCommon.canvas.group.toolbarMore')}
-        ariaLabel={t('generationCommon.canvas.group.moreActions', { name: group.name })}
-        onClick={() => {
-          const rect = rootRef.current?.getBoundingClientRect()
-          onOpenMenu({ x: rect?.right ?? 0, y: rect?.bottom ?? 0 })
-        }}
+        icon={<IconTrash {...iconProps} />}
+        title={t('generationCommon.canvas.group.menuDelete')}
+        ariaLabel={t('generationCommon.canvas.group.menuDelete')}
+        actionId="group-delete"
+        onClick={onDelete}
       />
     </div>
   )

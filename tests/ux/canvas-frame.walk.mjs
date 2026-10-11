@@ -22,7 +22,7 @@ import { findCanvasBlankPoint, findCanvasBlankRect, findNodeHitPoint } from './_
 import { expectAbsent, expectCount, expectVisible, proveProbe, screenshotSettled } from './_assert.mjs'
 import { newProjectEntry } from './_shell.mjs'
 import { stationTimeout } from './_station-budget.mjs'
-import { frameBlankPosition, openFrameMenuFromToolbar } from './_groupFrame.mjs'
+import { clickFrameToolbarAction, frameBlankPosition, selectFrameByBlankClick } from './_groupFrame.mjs'
 import { GROUP_TOOLBAR } from './_groupGenerate.mjs'
 import { uiText } from './full-walk/invariants.mjs'
 
@@ -554,9 +554,8 @@ try {
   check(restored?.count === '2', '夹具验完复位：框里回到 2 个，后面的断言接着说真话', `count=${restored?.count}`)
 
   // ── ⑥ 折叠腾地方，再展开 ──
-  // 折叠入口 = 框边右键菜单「折叠成卡」（框头上的折叠钮已删，10-10 拍板）。
-  await openFrameMenuFromToolbar(win, frameLocator(win).first())
-  await win.locator('[data-frame-menu="true"]').getByRole('menuitem', { name: uiText('zh-CN', 'generationCommon.canvas.group.menuCollapse') }).first().click()
+  // 折叠入口 = 分组工具条上的「折叠成卡」图标（框头上的折叠钮已删，工具条动作直接摆图标，10-10 拍板）。
+  await clickFrameToolbarAction(win, frameLocator(win).first(), 'collapse')
   await win.waitForTimeout(900)
   await expectCount(win.locator('[data-collapsed-group-id]'), 1, '折叠成一张卡')
   await snap(win, 'collapsed')
@@ -637,10 +636,10 @@ try {
   check(clipCount === 2, '框里那 2 个镜头按框内顺序排进了时间轴（第三个已经挪出框，不该进来）', `clips=${clipCount}`)
   await snap(win, 'frame-to-timeline')
 
-  // ── ⑩ ⋯ 菜单：解散（节点和连线都留着） ──
+  // ── ⑩ 工具条：解散（节点和连线都留着） ──
   const edgesBefore = await win.evaluate(() => document.querySelectorAll('.react-flow__edge').length)
   const nodesBefore = await win.evaluate(() => document.querySelectorAll('.react-flow__node[data-id]').length)
-  await openFrameMenuFromToolbar(win, frameLocator(win).first())
+  await selectFrameByBlankClick(frameLocator(win).first())
   await win.waitForTimeout(500)
   await win.locator(GROUP_TOOLBAR).getByRole('button', { name: uiText('zh-CN', 'generationCommon.canvas.group.toolbarDissolve') }).first().click()
   await win.waitForTimeout(900)

@@ -20,7 +20,7 @@ import { stationTimeout } from './_station-budget.mjs'
 import { uiText } from './full-walk/invariants.mjs'
 import { expectArrivalsReachable, expectCanvasViewportHeld, expectToolbarInsideStageEverywhere, findCanvasBlankPoint, findEdgeHitPoint, waitForCanvasViewportSettled } from './_canvasHit.mjs'
 import { backToLibrary } from './_shell.mjs'
-import { openFrameMenuFromToolbar } from './_groupFrame.mjs'
+import { clickFrameToolbarAction } from './_groupFrame.mjs'
 
 const root = makeTempDir('nomi-card-stack-walk-')
 const settingsDir = path.join(root, 'settings')
@@ -416,11 +416,10 @@ try {
   await clickOrFail(videoNode.locator('[data-version-badge]'), '再点角标收起视频版本')
   await expectHidden(videoGrid, '视频版本卡片应收起')
 
-  // 折叠入口 = 框边右键菜单「折叠成卡」（框头上的折叠钮已删，10-10 拍板）。
+  // 折叠入口 = 分组工具条上的「折叠成卡」图标（框头上的折叠钮已删，工具条动作直接摆图标，10-10 拍板）。
   const referenceFrame = win.locator('.generation-canvas-v2__group-box[data-group-id="reference-group"]').first()
   await referenceFrame.scrollIntoViewIfNeeded()
-  await openFrameMenuFromToolbar(win, referenceFrame)
-  await clickOrFail(win.locator('[data-frame-menu="true"]').getByRole('menuitem', { name: uiText('zh-CN', 'generationCommon.canvas.group.menuCollapse') }).first(), '把雨夜参考组收成节点卡组')
+  await clickFrameToolbarAction(win, referenceFrame, 'collapse')
   const collapsed = win.locator('[data-collapsed-group-id="reference-group"]')
   await expectVisible(collapsed, '收起后应显示一张编组卡')
   await expectCount(collapsed, 1, '收起后只保留一张编组卡')
@@ -509,8 +508,7 @@ try {
   await expect.poll(() => win.locator('g[data-edge-id^="group-input-"]').count(), { message: '展开后真实成员输入线应完成投影' }).toBe(3)
   check('展开后恢复三条真实成员输入线', true)
 
-  await openFrameMenuFromToolbar(win, referenceFrame)
-  await clickOrFail(win.locator('[data-frame-menu="true"]').getByRole('menuitem', { name: uiText('zh-CN', 'generationCommon.canvas.group.menuCollapse') }).first(), '再次收起雨夜参考组')
+  await clickFrameToolbarAction(win, referenceFrame, 'collapse')
   await expectVisible(collapsed, '再次收起后应恢复编组卡')
   await applyColorSchemeForShot(win, 'dark')
   await screenshotSettled(win, { path: path.join(outputDir, '05-real-collapsed-group-dark.png') })

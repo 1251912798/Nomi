@@ -1,5 +1,5 @@
 /**
- * 框的操作菜单——头部那颗 ⋯ 和**框边右键**打开的是**同一份**。
+ * 框的操作菜单——**框边右键**打开。工具条上的改名 / 折叠 / 删除是直接摆的图标，走同一个执行口（runFrameAction）。
  *
  * 为什么必须同一份：2026-09-06 之前框上右键弹的是「添加节点」（落点被反向定义吞成空白，
  * 见 canvasPointerGestureModel 的四分表），框的改名/解散/整框动作在画布上一个都不可达。
@@ -30,8 +30,6 @@ type FrameContextMenuProps = {
   canGenerate: boolean
   /** 框里一段可进时间轴的画面都没有 → 同上。 */
   canSendToTimeline: boolean
-  /** 不显示的动作（同一份菜单，按入口排除）；右键菜单不传，保持完整。 */
-  exclude?: readonly FrameContextMenuAction[]
   onAction: (action: FrameContextMenuAction) => void
   onPointerDown?: (event: React.PointerEvent<HTMLDivElement>) => void
   onContextMenu?: (event: React.MouseEvent<HTMLDivElement>) => void
@@ -43,7 +41,6 @@ export default function FrameContextMenu({
   frameName,
   canGenerate,
   canSendToTimeline,
-  exclude,
   onAction,
   onPointerDown,
   onContextMenu,
@@ -89,9 +86,6 @@ export default function FrameContextMenu({
     },
   ]
 
-  const visibleItems = items.filter((item) => !exclude?.includes(item.action))
-  // 分隔线放在「解散」前；工具条「⋯」排除了解散时，改放在「删除」前。
-  const dividerAction = visibleItems.some((item) => item.action === 'dissolve') ? 'dissolve' : 'delete'
   return (
     <div
       className={cn(
@@ -108,12 +102,12 @@ export default function FrameContextMenu({
       onContextMenu={onContextMenu}
       onPointerDown={onPointerDown}
     >
-      {visibleItems.map((item) => {
+      {items.map((item) => {
         const Icon = item.icon
         return (
           <React.Fragment key={item.action}>
             {/* 「拆掉 / 删掉框」那一段从解散起，前面画一条分隔线。 */}
-            {item.action === dividerAction ? (
+            {item.action === 'dissolve' ? (
               <div className={cn('h-px my-1 mx-2 bg-nomi-line')} aria-hidden="true" />
             ) : null}
             {/* 禁用的 <button> 自己不触发 title（浏览器行为）→ 外层包一层承载它（§1.6 C1）。 */}

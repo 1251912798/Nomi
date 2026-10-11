@@ -436,7 +436,7 @@ function GenerationCanvasReactFlowInner({ readOnly = false }: GenerationCanvasRe
   const arrival = useCanvasArrivalHint({ ready: isReady, allNodes, activeCategoryId, liveViewport, stageSize, animateViewportTo })
   const { isTidying, tidy } = useTidyCanvas(activeCategoryId)
   const selectedGroup = React.useMemo(() => visibleGroups.find((group) => group.id === selectedGroupId) ?? null, [selectedGroupId, visibleGroups])
-  const groupToolbar = useCanvasGroupToolbar({ selectedGroup, allNodes, visibleNodeIds, canvasZoom: liveViewport.zoom, canvasOffsetX: liveViewport.x, canvasOffsetY: liveViewport.y, stageWidth: stageSize.width, stageHeight: stageSize.height, readOnly, runFrameAction: frameActions.runFrameAction, openFrameMenu: frameActions.openFrameMenu })
+  const groupToolbar = useCanvasGroupToolbar({ selectedGroup, allNodes, visibleNodeIds, canvasZoom: liveViewport.zoom, canvasOffsetX: liveViewport.x, canvasOffsetY: liveViewport.y, stageWidth: stageSize.width, stageHeight: stageSize.height, readOnly, runFrameAction: frameActions.runFrameAction })
   const { runFrameAction } = frameActions
   const frameInteraction: CanvasFrameInteraction = React.useMemo(() => ({
     membershipPreview: frameMembership.membershipPreview,

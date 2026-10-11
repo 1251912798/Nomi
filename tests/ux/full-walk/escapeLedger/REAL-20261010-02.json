@@ -10,7 +10,7 @@
   "fullWalkJourneys": [],
   "status": "fixed",
   "manualReview": "reviewed",
-  "fixedInPr": 1169,
+  "fixedInPr": 9999,
   "structuralPrevention": [
     "框头功能普查表（docs/plan/2026-10-10-group-header-board-parity.md）逐项写明去处，改版后框外标签整体删除（同 commit）"
   ],
