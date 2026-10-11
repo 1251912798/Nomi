@@ -24,7 +24,7 @@
 - [x] 大数据量 / 画布 / 长列表
 - [ ] 花钱
 - [ ] 长跑 / 可打断
-- [ ] Agent 行为
+- [x] Agent 行为
 - [ ] 生成效果
 - [ ] 数据格式
 
@@ -46,7 +46,7 @@
 
 真实 Electron 验证先证明 baseline 存在，点击确实从60帧贴尾，但自动适应宽度改变 scale 后，既有内容 revision 将视图变化误认为编辑，导致成功/Undo回执立即失效。新增根因合同 `docs/fixes/2026-10-12-timeline-content-revision.root-cause.json`；在唯一 kernel revision 边界区分内容与顶层 scale/playheadFrame，所有媒体、批量采纳与 Agent 共用。先红3项（内容revision两项、真实采纳Undo一项），后绿；不删除回执安全检查，真实编辑仍令旧Undo失效。
 
-用户另要求审查是否新增卡顿。新按钮读取复用现有节点索引，避免每次状态通知全表find；按钮仅随选中工具栏挂载，旧每节点hover刘海删除。撤销回执订阅同一content投影，以zustand shallow阻断视图tick：先红测试证明100次播放头更新触发100次整轴有效性检查，优化后实测0次，同时点击Undo仍回到真实baseline。Agent回执另外订阅Undo栈引用，完整保留顶部token失效条件。拖拽仍仅dragstart序列化一次既有载荷，不改协议、不在hover/render重复编码。最终生产代码的真实大画布采样见[性能报告](../evidence/2026-10-12-node-timeline-performance.md)：60/300节点、各3次，约120FPS，P95 10.4–10.9ms，长任务0；无改动前A/B，Windows和不同高分辨率素材压力未验证。
+用户另要求审查是否新增卡顿。新按钮读取复用现有节点索引，避免每次状态通知全表find；按钮仅随选中工具栏挂载，旧每节点hover刘海删除。撤销回执订阅同一content投影，以zustand shallow阻断视图tick：先红测试证明100次播放头更新触发100次整轴有效性检查，优化后实测0次，同时点击Undo仍回到真实baseline。Agent回执另外订阅Undo栈引用，完整保留顶部token失效条件。拖拽仍仅dragstart序列化一次既有载荷，不改协议、不在hover/render重复编码。最终生产代码的真实大画布采样见[性能报告](../evidence/2026-10-12-node-timeline-performance.md)：60/300节点、各3次，约120FPS，P95 9.9–10.6ms，长任务0；无改动前A/B，Windows和不同高分辨率素材压力未验证。
 
 原生拖拽通道诊断证明：只有pointer/mouse事件、stage dragging=true、无dragstart/drop，实际执行canvasDragWriteback并从200px/16落到帧12而碰撞。共同浮条缺少框架native mousedown过滤；复用版本宫格既有nodrag/no-pan类，先红共享壳守卫再修复。验收必须证明生产MIME原生事件、默认贴尾、Alt指定帧75、源节点不动；不能只凭落轴结果当成按钮原生拖拽。
 

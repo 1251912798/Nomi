@@ -17,10 +17,10 @@
 
 | 项目节点 / 边 | 操作 | 视口挂载节点 | FPS | 帧 P95(ms) | 长任务 |
 | --- | --- | --- | --- | --- | --- |
-| 60 / 30 | 拖动 1 个选中节点 | 60 | 120.1 | 10.4 | 0 |
-| 300 / 150 | 拖动 1 个选中节点 | 180 | 119.9 | 10.9 | 0 |
-| 300 / 150 | 整体平移 | 180 | 119.7 | 10.4 | 0 |
+| 60 / 30 | 拖动 1 个选中节点 | 60 | 120.0 | 10.0 | 0 |
+| 300 / 150 | 拖动 1 个选中节点 | 180 | 120.1 | 10.6 | 0 |
+| 300 / 150 | 整体平移 | 180 | 119.8 | 9.9 | 0 |
 
-原始样本：[60节点拖动](../../tests/perf/results/canvas-scale-node-timeline-i60-drag.json)、[300节点拖动](../../tests/perf/results/canvas-scale-node-timeline-i300-drag.json)、[300节点平移](../../tests/perf/results/canvas-scale-node-timeline-i300-pan.json)。三项使用同一成功构建：HEAD `6da9dc1d78d321bfd9328c960e8900d30c5c1a52`，含本任务未提交改动的构建树 `eb7dc6eb02ac5c078aeaad5657a209cd78a3cdd0`。该构建已包含共享浮条 nodrag/no-pan 修复；后续改动仅为验收事件观测时序和文档证据，生产代码冻结。平移单次样本的最大帧耗时曾为25.8ms，主机 loadAvg1 为10.7–11.8；不将中位数解释为每帧都达标。
+原始样本：[60节点拖动](../../tests/perf/results/canvas-scale-node-timeline-i60-drag.json)、[300节点拖动](../../tests/perf/results/canvas-scale-node-timeline-i300-drag.json)、[300节点平移](../../tests/perf/results/canvas-scale-node-timeline-i300-pan.json)。三项使用同一成功构建：HEAD `288c60482c4887f1a292a5728e0a74fea6b356fb`，含本任务未提交改动的构建树 `f02a4c29792fa3f5e1468a82d13f970a8d3b8295`。该构建已包含共享浮条 nodrag/no-pan 修复及整合 main fdb0b15438；后续改动仅为探索页冗余展开箭头、验收和文档证据，生产代码冻结。平移单次样本的最大帧耗时曾为21.5ms，主机 loadAvg1 为18.3–24.7；不将中位数解释为每帧都达标。
 
 可复跑示例：`NOMI_CANVAS_PERF_REAL_ASSET_DIR=<真实素材目录> node tests/perf/canvas-scale-bench.mjs --scales I300 --scenarios drag-nodes-1 --runs 3 --label <新标签>`。不同场景应串行，避免并发 Electron 干扰采样。

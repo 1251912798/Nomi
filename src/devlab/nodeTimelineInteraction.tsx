@@ -2,7 +2,7 @@
 // This entry is separate from index.html and does not participate in the application build.
 import React, { useEffect, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
-import { IconArrowBackUp, IconChevronDown, IconChevronUp, IconMoonStars, IconPhoto, IconSun, IconTimeline, IconVideo } from '@tabler/icons-react'
+import { IconArrowBackUp, IconMoonStars, IconPhoto, IconSun, IconTimeline, IconVideo } from '@tabler/icons-react'
 import '@fontsource-variable/inter/wght.css'
 import '@fontsource-variable/fraunces/wght.css'
 import '../styles/index.css'
@@ -96,7 +96,7 @@ function App() {
       {message ? <div role="status" className="pointer-events-none absolute bottom-6 left-1/2 -translate-x-1/2 rounded-nomi border border-nomi-line bg-nomi-paper px-4 py-2 text-body-sm shadow-nomi-md">{message}</div> : null}
     </main>
     <section className="shrink-0 border-t border-nomi-line bg-nomi-paper" onDragOver={(event) => { if (dragging) { event.preventDefault(); setOpen(true) } }}>
-      <div className="flex h-12 items-center justify-between px-5"><button className="flex items-center gap-2 text-body-sm" onClick={() => setOpen((value) => !value)}><IconTimeline {...icon} /><span>{en('时间轴', 'Timeline')}</span><span className="text-nomi-ink-40">{clips.length} {en('段', 'clips')} · {Math.max(0, ...clips.map((clip) => clip.start + clip.duration))}s</span>{open ? <IconChevronDown {...icon} /> : <IconChevronUp {...icon} />}</button><div className="flex items-center gap-2"><button aria-label={en('撤销', 'Undo')} title={en('撤销', 'Undo')} disabled={!history.length} className="rounded-nomi-sm p-2 hover:bg-nomi-ink-05 disabled:opacity-30" onClick={undo}><IconArrowBackUp {...icon} /></button><button className="px-2 text-body-sm text-nomi-ink-60 hover:text-nomi-ink" onClick={() => { setHistory([]); setClips([]); setOpen(false); setMessage('') }}>{en('重试', 'Reset')}</button></div></div>
+      <div className="flex h-12 items-center justify-between px-5"><button aria-expanded={open} className="flex items-center gap-2 text-body-sm" onClick={() => setOpen((value) => !value)}><IconTimeline {...icon} /><span>{en('时间轴', 'Timeline')}</span><span className="text-nomi-ink-40">{clips.length} {en('段', 'clips')} · {Math.max(0, ...clips.map((clip) => clip.start + clip.duration))}s</span></button><div className="flex items-center gap-2"><button aria-label={en('撤销', 'Undo')} title={en('撤销', 'Undo')} disabled={!history.length} className="rounded-nomi-sm p-2 hover:bg-nomi-ink-05 disabled:opacity-30" onClick={undo}><IconArrowBackUp {...icon} /></button><button className="px-2 text-body-sm text-nomi-ink-60 hover:text-nomi-ink" onClick={() => { setHistory([]); setClips([]); setOpen(false); setMessage('') }}>{en('重试', 'Reset')}</button></div></div>
       {open ? <div ref={tracks} data-preview-timeline className={cn('relative h-[190px] overflow-x-auto border-t border-nomi-line', dragging && 'bg-nomi-accent-soft')}
         onDragOver={(event) => { if (!dragging) return; event.preventDefault(); event.dataTransfer.dropEffect = 'copy'; setDropTime(timeAt(event.clientX)) }}
         onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node)) setDropTime(null) }}
