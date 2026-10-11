@@ -29,6 +29,8 @@ export const FULL_CANVAS_SCENARIOS = [
   { id: 'magnetic-handle', script: 'tests/ux/canvas-magnetic-handle.walk.mjs' },
   // 打开时适应一次：冷开 + 从项目库重开两条路（2026-09-26 重开那条曾不摆全貌）。
   { id: 'open-fit', script: 'tests/ux/canvas-open-fit.walk.mjs' },
+  // 修饰键松开丢了（截图快捷键 / 输入法 / 拦 keyup 的编辑区）画布不许以为它还按着：点第二张不变多选、卡拖得动（2026-10-10）。
+  { id: 'stuck-modifier', script: 'tests/ux/canvas-stuck-modifier.walk.mjs' },
 ]
 
 const VERSION_GRID_PERF_SCENARIOS = Object.freeze(['blank-pan', 'node-drag-image', 'wheel-zoom'])
@@ -60,7 +62,7 @@ export const PERFORMANCE_CANVAS_SCENARIOS = [
 // 每个 shard 启动即 fail-closed 抛错（见 assertFullCanvasShardPartition），场景不可能被静默漏跑。
 export const FULL_CANVAS_SHARDS = Object.freeze([
   Object.freeze(['gestures', 'read-only-reload', 'blank-context-menu', 'group-baseline', 'group-reference-direction', 'canvas-reconcile', 'magnetic-handle', 'open-fit']),
-  Object.freeze(['group-ports', 'card-stack-persistence', 'shortcuts', 'node-context-menu', 'batch-production', 'canvas-landing']),
+  Object.freeze(['group-ports', 'card-stack-persistence', 'shortcuts', 'node-context-menu', 'batch-production', 'canvas-landing', 'stuck-modifier']),
 ])
 
 export function assertFullCanvasShardPartition(scenarios = FULL_CANVAS_SCENARIOS, shards = FULL_CANVAS_SHARDS) {

@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 import { installHeldModifierReconciler, RECONCILED_MODIFIERS } from './heldModifierReconciler'
 
 // 「按着的修饰键」以下一次真实输入事件自带的修饰位为准（2026-10-10 用户报：点第二张卡变「已选 2 个 · 编组」、卡拖不动）。
-// 这里的 window / document 是两只普通 EventTarget：
+// 这里的 window（分阶段的假目标）/ document（普通 EventTarget）：
 //   · 键盘事件先过 window 捕获（install 挂在那），再按「有没有被谁 stopPropagation」决定会不会送到 window 冒泡；
 //   · document 上那只监听扮演 React Flow 的 useKeyPress——它只能靠收到 keyup 才知道键松了。
 type Flags = { shiftKey?: boolean; metaKey?: boolean; ctrlKey?: boolean; altKey?: boolean }
@@ -13,16 +13,39 @@ function inputEvent(type: string, init: Flags & { key?: string } = {}): Event {
   return Object.assign(new Event(type), { shiftKey: false, metaKey: false, ctrlKey: false, altKey: false, ...init })
 }
 
+/** 只够用的一只「window」：分得清捕获 / 冒泡两个阶段（Node 的 EventTarget 在目标上不分阶段）。 */
+class PhasedTarget {
+  private listeners: Array<{ type: string; listener: (event: Event) => void; capture: boolean }> = []
+  addEventListener(type: string, listener: (event: Event) => void, options?: boolean | AddEventListenerOptions): void {
+    this.listeners.push({ type, listener, capture: typeof options === 'boolean' ? options : Boolean(options?.capture) })
+  }
+  removeEventListener(type: string, listener: (event: Event) => void, options?: boolean | EventListenerOptions): void {
+    const capture = typeof options === 'boolean' ? options : Boolean(options?.capture)
+    this.listeners = this.listeners.filter((entry) => !(entry.type === type && entry.listener === listener && entry.capture === capture))
+  }
+  dispatchEvent(event: Event): boolean {
+    this.fire(event, 'capture')
+    this.fire(event, 'bubble')
+    return true
+  }
+  fire(event: Event, phase: 'capture' | 'bubble'): void {
+    for (const entry of [...this.listeners]) if (entry.type === event.type && entry.capture === (phase === 'capture')) entry.listener(event)
+  }
+}
+
 function harness() {
-  const windowTarget = new EventTarget()
+  const windowTarget = new PhasedTarget()
   const documentTarget = new EventTarget()
-  // React Flow 视角：按 keydown / keyup 成对记「按着没」。
+  // React Flow 视角：按 keydown / keyup 成对记「按着没」。真 DOM 里送到 document 的 keyup 会接着冒泡到 window，这里照做。
   const believedDown = new Set<string>()
   documentTarget.addEventListener('keydown', (event) => believedDown.add((event as KeyboardEvent).key))
-  documentTarget.addEventListener('keyup', (event) => believedDown.delete((event as KeyboardEvent).key))
+  documentTarget.addEventListener('keyup', (event) => {
+    believedDown.delete((event as KeyboardEvent).key)
+    windowTarget.fire(event, 'bubble')
+  })
   let flushes = 0
   const dispose = installHeldModifierReconciler({
-    windowTarget,
+    windowTarget: windowTarget as unknown as EventTarget,
     documentTarget,
     flush: (run) => { flushes += 1; run() },
     makeKeyup: (key) => Object.assign(new Event('keyup'), { key }),
@@ -33,12 +56,13 @@ function harness() {
     const flags: Flags = type === 'keydown'
       ? { shiftKey: name === 'Shift', metaKey: name === 'Meta', ctrlKey: name === 'Control', altKey: name === 'Alt' }
       : {}
-    windowTarget.dispatchEvent(inputEvent(type, { key: name, ...flags }))
+    const event = inputEvent(type, { key: name, ...flags })
+    windowTarget.fire(event, 'capture')
     if (stoppedInApp) return
-    documentTarget.dispatchEvent(inputEvent(type, { key: name, ...flags }))
-    windowTarget.dispatchEvent(inputEvent(type, { key: name, ...flags }))
+    documentTarget.dispatchEvent(event)
+    if (type === 'keydown') windowTarget.fire(event, 'bubble')
   }
-  const pointer = (type: 'pointerdown' | 'mousedown' | 'wheel', flags: Flags = {}) => windowTarget.dispatchEvent(inputEvent(type, flags))
+  const pointer = (type: 'pointermove' | 'pointerdown' | 'mousedown' | 'wheel', flags: Flags = {}) => windowTarget.fire(inputEvent(type, flags), 'capture')
   return { believedDown, key, pointer, dispose, flushes: () => flushes }
 }
 
@@ -69,6 +93,15 @@ describe('installHeldModifierReconciler', () => {
     h.key('keyup', modifier, { swallowedByOs: true })
     h.pointer('mousedown')
     expect(h.believedDown.has(modifier)).toBe(false)
+    h.dispose()
+  })
+
+  it('鼠标一挪就对账：界面在用户点下去之前就回到「没按着」的样子', () => {
+    const h = harness()
+    h.key('keydown', 'Shift')
+    h.key('keyup', 'Shift', { swallowedByOs: true })
+    h.pointer('pointermove')
+    expect(h.believedDown.has('Shift')).toBe(false)
     h.dispose()
   })
 

@@ -16,10 +16,12 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { launchNomiApp, closeNomiApp } from './_launchApp.mjs'
-import { expect } from './_assert.mjs'
+import { expect, expectAbsent, proveProbe } from './_assert.mjs'
+import { stationTimeout } from './_station-budget.mjs'
 import { findNodeHitPoint, findCanvasBlankPoint } from './_canvasHit.mjs'
 import { createCanvasPerformanceFixture } from './fixtures/canvas-performance-fixture.mjs'
 import { makeTempDir } from '../../scripts/_test-temp.mjs'
+import { fileURLToPath } from 'node:url'
 
 const FIRST_RUN_SEEN = Object.freeze({
   'nomi:splash:v1': 'seen',
@@ -27,6 +29,7 @@ const FIRST_RUN_SEEN = Object.freeze({
   'nomi:canvas-gesture-hint:v1': 'seen',
 })
 const SELECTED = '.generation-canvas-v2-node[data-selected="true"]'
+const SELECTION_TOOLBAR = '.generation-canvas-v2__selection-toolbar'
 const nodeSelector = (id) => `.generation-canvas-v2-node[data-node-id=${JSON.stringify(id)}]`
 
 const tempRoot = makeTempDir('nomi-stuck-modifier-')
@@ -49,64 +52,81 @@ try {
     userDataDir,
     settingsDir: userDataDir,
     projectsDir,
-    args: ['--no-proxy-server'],
+    // 窗口挂屏幕外、不抢焦点（在用户正在用的电脑上跑）；Windows 会把屏幕外窗口判成被遮挡而停帧，一并关掉遮挡判定。
+    args: ['--no-proxy-server', '--disable-features=CalculateNativeWinOcclusion'],
+    mainRequire: [path.join(path.dirname(fileURLToPath(import.meta.url)), '_offscreenWindows.cjs')],
     initialLocalStorage: FIRST_RUN_SEEN,
     settleMs: 900,
     env: { NOMI_DISABLE_CAPABILITY_CORE: '1' },
   }))
   const browserWindow = await app.browserWindow(page)
-  await browserWindow.evaluate((target) => target.setBounds({ x: 0, y: 0, width: 1600, height: 1000 }))
+  await browserWindow.evaluate((target) => target.setSize(1600, 1000))
   const card = page.locator(`[data-project-card][data-project-id="${fixture.record.id}"]`).first()
-  await card.waitFor({ timeout: 20_000 })
+  await card.waitFor({ timeout: stationTimeout() })
   await card.click()
   await expect.poll(() => {
     page = app.windows().find((candidate) => /projectId=/.test(candidate.url())) || page
     return page.url()
-  }, { timeout: 30_000 }).toContain('projectId=')
-  await page.locator('.generation-canvas-v2-node').first().waitFor({ timeout: 30_000 })
-  await page.waitForTimeout(800)
+  }, { timeout: stationTimeout({ operations: 2 }) }).toContain('projectId=')
+  await expect.poll(() => page.locator('.generation-canvas-v2-node').count(), { timeout: stationTimeout({ operations: 2 }) }).toBeGreaterThanOrEqual(3)
 
   const ids = await page.locator('.generation-canvas-v2-node').evaluateAll((nodes) => nodes.map((node) => node.getAttribute('data-node-id')))
-  if (ids.length < 3) throw new Error(`夹具至少要 3 张卡，实际 ${ids.length}`)
   const [idA, idB, idC] = ids
   const hit = async (id) => {
     const point = await findNodeHitPoint(page, { nodeSelector: nodeSelector(id) })
     if (!point) throw new Error(`卡 ${id} 上找不到可点的点`)
     return point
   }
-  const selectedIds = () => page.locator(SELECTED).evaluateAll((nodes) => nodes.map((node) => node.getAttribute('data-node-id')))
-  const clearSelection = async () => {
-    const blank = await findCanvasBlankPoint(page)
-    if (!blank) throw new Error('找不到画布空白点')
-    await page.mouse.click(blank.x, blank.y)
-    await expect.poll(() => page.locator(SELECTED).count(), { timeout: 5_000 }).toBe(0)
-  }
+  const selected = page.locator(SELECTED)
+  const selectionToolbar = page.locator(SELECTION_TOOLBAR)
+  const selectedIds = () => selected.evaluateAll((nodes) => nodes.map((node) => node.getAttribute('data-node-id')))
+  const nodeSelected = (id) => page.locator(`${nodeSelector(id)}[data-selected="true"]`)
+  // 等两帧：React 提交 + 一次绘制之后再读屏幕上的样子。
+  const settleFrames = () => page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))))
   const cdp = await app.context().newCDPSession(page)
   // 可信的 Shift 按下，不跟松开：等于「松开那一下被系统 / 输入法 / 别的监听吞掉了」。
   const pressShiftWithoutRelease = () => cdp.send('Input.dispatchKeyEvent', {
     type: 'rawKeyDown', key: 'Shift', code: 'ShiftLeft', windowsVirtualKeyCode: 16, nativeVirtualKeyCode: 16, modifiers: 8,
   })
 
-  // ① 阳性对照：真按着 Shift 点两张 → 两张都选中（多选本身得在）。
-  await clearSelection()
+  // ① 阳性对照：真按着 Shift 点两张 → 两张都选中、出多选浮条（多选本身得在；同时证明下面「不出浮条」的探针看得见浮条）。
   await page.keyboard.down('Shift')
   for (const id of [idA, idB]) { const point = await hit(id); await page.mouse.click(point.x, point.y) }
   await page.keyboard.up('Shift')
-  await page.waitForTimeout(300)
-  const positive = await selectedIds()
-  check(positive.length === 2, '阳性对照：按着 Shift 点两张 = 两张都选中', JSON.stringify(positive))
+  const selectionProof = await proveProbe(selected, '按着 Shift 点两张后画布上有选中的卡')
+  const toolbarProof = await proveProbe(selectionToolbar, '按着 Shift 点两张后出「已选 N 个」多选浮条')
+  await expect.poll(selectedIds).toEqual([idA, idB])
+  check(true, '阳性对照：按着 Shift 点两张 = 两张都选中，多选浮条出现')
+  const clearSelection = async () => {
+    const blank = await findCanvasBlankPoint(page)
+    if (!blank) throw new Error('找不到画布空白点')
+    await page.mouse.click(blank.x, blank.y)
+    await expectAbsent(selected, { provenBy: selectionProof, message: '点空白清掉选择' })
+  }
 
   // ② 松开丢了：点 A，再「按下 Shift 不松」，再用不带修饰键的鼠标点 B → 只能选中 B。
   await clearSelection()
   { const point = await hit(idA); await page.mouse.click(point.x, point.y) }
-  await page.waitForTimeout(200)
+  await expect(nodeSelected(idA)).toHaveCount(1)
   await pressShiftWithoutRelease()
-  { const point = await hit(idB); await page.mouse.click(point.x, point.y) }
-  await page.waitForTimeout(400)
+  // 用户截完图回来：先挪鼠标，看着画布去点第二张。点哪儿要按挪过鼠标之后屏幕上的样子找（选中卡的连接把手会伸到邻卡上）。
+  {
+    const blank = await findCanvasBlankPoint(page)
+    if (blank) await page.mouse.move(blank.x, blank.y, { steps: 4 })
+    await settleFrames()
+    const point = await hit(idB)
+    await page.mouse.click(point.x, point.y)
+  }
+  await expect(nodeSelected(idB)).toHaveCount(1)
+  await settleFrames()
   const afterStuck = await selectedIds()
   check(afterStuck.length === 1 && afterStuck[0] === idB, 'Shift 松开丢失后，不带修饰键点第二张只选中它', JSON.stringify(afterStuck))
-  const toolbar = await page.getByText(/已选\s*2|2 selected/i).count()
-  check(toolbar === 0, '不出现「已选 2 个 · 编组」浮条', `count=${toolbar}`)
+  try {
+    await expectAbsent(selectionToolbar, { provenBy: toolbarProof, message: '不出现「已选 2 个 · 编组」浮条' })
+    check(true, '不出现「已选 2 个 · 编组」浮条')
+  } catch (error) {
+    check(false, '不出现「已选 2 个 · 编组」浮条', String(error?.message || error).split('\n')[0])
+  }
 
   // ③ 松开丢了还要拖得动：按下 Shift 不松，再用不带修饰键的鼠标拖 C → C 跟着走。
   await clearSelection()
@@ -117,10 +137,10 @@ try {
   await page.mouse.down()
   for (let step = 1; step <= 12; step += 1) {
     await page.mouse.move(start.x + step * 10, start.y + step * 6)
-    await page.waitForTimeout(16)
+    await settleFrames()
   }
   await page.mouse.up()
-  await page.waitForTimeout(400)
+  await settleFrames()
   const after = await page.locator(nodeSelector(idC)).boundingBox()
   const moved = before && after ? Math.hypot(after.x - before.x, after.y - before.y) : 0
   check(moved > 60, 'Shift 松开丢失后，不带修饰键拖卡 = 卡跟着走（不是拉出框选）', `moved=${Math.round(moved)}px`)
