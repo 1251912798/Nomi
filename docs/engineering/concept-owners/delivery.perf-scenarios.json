@@ -1,0 +1,28 @@
+{
+  "name": "性能场景登记表（每个新功能的性能预算、基线、可重跑的量具）",
+  "subject": "delivery.perf-scenarios",
+  "lifecycle": "delivery",
+  "authority_kind": "decision",
+  "trust_domain": "tooling",
+  "fact_kind": "rule",
+  "migration_status": "converged",
+  "owner": {
+    "path": "scripts/perf-scenarios-lib.mjs",
+    "symbol": "validateScenarios"
+  },
+  "write_api": [
+    {
+      "path": "scripts/perf-scenarios-lib.mjs",
+      "symbol": "validateScenarios"
+    }
+  ],
+  "parity_test": "scripts/check-perf-scenarios.node-test.mjs",
+  "forbidden_derivations": [],
+  "allowed_consumers": [
+    "scripts/perf-scenarios.mjs",
+    "scripts/check-perf-scenarios.mjs",
+    "scripts/pr-judgement-lib.mjs"
+  ],
+  "since": "2026-10-11",
+  "notes": "登记表在 tests/perf/scenarios/（一条一个文件），只经 perf-scenarios-lib 读写：统一跑法、结构门岗、PR 正文 perf-scenario 证据三处共用同一份读取与判据，不许另起第二份场景清单。量具只用现有的（DRIVERS 里列的），不自写剖析器。"
+}
