@@ -8,16 +8,21 @@
   "ironLaws": [],
   "useCases": [],
   "fullWalkJourneys": [],
-  "status": "candidate",
+  "status": "fixed",
   "manualReview": "reviewed",
   "evidence": [
     "docs/design/boards/2026-10-11/ContextualEmptyNodes.board.json",
-    "docs/evidence/2026-10-11-node-guidance/independent-census.md"
+    "docs/evidence/2026-10-11-node-guidance/independent-census.md",
+    "docs/evidence/2026-10-11-node-guidance/acceptance.md",
+    "docs/evidence/2026-10-11-node-guidance/independent-review.md"
   ],
-  "completionCommits": [],
+  "completionCommits": [
+    "ed77bae9228987d4eae1877cd17e53fb6b3d338b"
+  ],
   "rootCauseContract": "docs/fixes/2026-10-11-contextual-node-guidance.root-cause.json",
   "classCheck": {
     "kind": "matrix",
     "file": "src/workbench/generationCanvas/nodes/render/NodeEmptyState.test.tsx"
-  }
+  },
+  "fixedInPr": 1181
 }

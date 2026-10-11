@@ -56,3 +56,7 @@ React Flow 唯一宿主将 primarySelection/readOnly 传到共享 Context。Node
 Windows、安装包、付费生成未验证；本次未请求生成，供应商花费为 0。pointercancel/readOnly 中途切换有源码及单测层证据，未宣称所有原生设备事件已点验。未改的错误/进度/派生状态通过定向测试和源码保留检查，Clip 拖放、Director 已有内容重试等未重新执行。没有新增性能基准，81 节点只是 LOD 功能收据。
 
 逃逸项：USER-20261011-node-guidance；根因合同：docs/fixes/2026-10-11-contextual-node-guidance.root-cause.json。合入及 merge SHA 原入口验收不在此报告范围内。
+
+## 分支交付
+
+实现提交：`ed77bae9228987d4eae1877cd17e53fb6b3d338b`；草稿 [PR #1181](https://github.com/aqm857886159/Nomi/pull/1181)。状态：已推送待合入。普通 pre-push 门岗通过（37.0s），没有绕过钩子。逃逸项在这份待审 PR diff 中结账并指向本 PR，不表示主线已合入或取得 merge SHA 收据。
