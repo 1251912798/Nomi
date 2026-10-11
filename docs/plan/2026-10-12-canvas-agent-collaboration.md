@@ -456,7 +456,7 @@ macOS/Windows、中文/英文、最小窗口、键盘操作、干净安装分别
 
 - [研究备忘录](../research/2026-10-12-canvas-agent-collaboration/research-notes.md)：第一轮横向结论与 Nomi 入口。
 - [Onlook 源码笔记](../research/2026-10-12-canvas-agent-collaboration/onlook.md)、[AFFiNE 源码笔记](../research/2026-10-12-canvas-agent-collaboration/affine.md)、[OpenCanvas / HugAgentOS 源码笔记](../research/2026-10-12-canvas-agent-collaboration/opencanvas-hugagentos.md)。
-- [源码版本台账](docs/research/2026-10-12-canvas-agent-collaboration/source-ledger.json)：固定 commit 与仓库来源。
+- [源码版本台账](../research/2026-10-12-canvas-agent-collaboration/source-ledger.json)：固定 commit 与仓库来源。
 - [批注与修改组件核验](../research/2026-10-12-canvas-agent-collaboration/annotation-components.md)：版本、许可、ProseMirror/Tiptap、Hypothesis、Annotorious 与标准边界。
 - [文件与展示组件核验](../research/2026-10-12-canvas-agent-collaboration/office-components.md)：OfficeCLI 的选择桥、Univer/SheetJS 边界、文件保真与运行依赖。
 - [OpenDesign 源码笔记](../research/2026-10-12-canvas-agent-collaboration/opendesign.md)：持久评论、局部编辑、PPT 导出及可摘取模块；演示稿选型以该新增核验和本方案为准，文件组件报告保留早期原生生成路线作为条件选项。
