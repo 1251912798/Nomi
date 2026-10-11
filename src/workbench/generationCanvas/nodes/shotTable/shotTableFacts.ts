@@ -34,6 +34,7 @@ export function deconstructionResultToShotTable(
       rowId: `fact-${shot.index}`, order: shot.index,
       startSeconds: shot.startSeconds, endSeconds: shot.endSeconds, durationSeconds: shot.durationSeconds,
       carriedOver: shot.carriedOver, visionFailed: shot.visionFailed,
+      ...(shot.failureReason ? { failureReason: shot.failureReason } : {}),
       ...(shot.sourceFrameUrl.startsWith('nomi-local://') ? { keyframeRef: shot.sourceFrameUrl } : {}),
       cells: {
         shotSize: shot.shotSize, motion: shot.motionPrompt, visual: shot.visual,

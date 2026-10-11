@@ -1,0 +1,302 @@
+{
+  "machine": {
+    "platform": "win32",
+    "arch": "x64",
+    "cpus": "13th Gen Intel(R) Core(TM) i9-13900H",
+    "memory": 68429930496
+  },
+  "fixture": "real camera-derived 1080p15, four source nodes, three rounds",
+  "observations": [
+    {
+      "round": 0,
+      "frameGapP50": 6.099999997764826,
+      "frameGapP95": 9.900000002235174,
+      "inputToFrameP95": 13.5,
+      "longtasks": [],
+      "video": {
+        "maxMounted": 1,
+        "maxPlaying": 0
+      },
+      "renders": {
+        "commits": 87,
+        "rendered": 2585,
+        "byRegion": {
+          "focusNode": 1397,
+          "app-other": 924,
+          "nohost": 264
+        },
+        "otherNodesRerendered": 0,
+        "top": [
+          [
+            "T#37@focusNode",
+            132
+          ],
+          [
+            "rh#0@focusNode",
+            86
+          ],
+          [
+            "oh#1@focusNode",
+            86
+          ],
+          [
+            "h7#2@focusNode",
+            86
+          ],
+          [
+            "tag11#44@focusNode",
+            78
+          ],
+          [
+            "W#9@focusNode",
+            66
+          ],
+          [
+            "Me#10@focusNode",
+            66
+          ],
+          [
+            "ChevronDown#12@focusNode",
+            66
+          ],
+          [
+            "bG#13@app-other",
+            66
+          ],
+          [
+            "DropdownMenu#14@app-other",
+            66
+          ],
+          [
+            "DropdownMenuProvider#15@app-other",
+            66
+          ],
+          [
+            "Menu#16@app-other",
+            66
+          ],
+          [
+            "Popper#17@app-other",
+            66
+          ],
+          [
+            "PopperProvider#18@app-other",
+            66
+          ],
+          [
+            "MenuProvider#19@app-other",
+            66
+          ]
+        ],
+        "roots": [
+          [
+            "rh@focusNode",
+            53
+          ],
+          [
+            "Ih@focusNode",
+            33
+          ],
+          [
+            "nf@focusNode",
+            26
+          ]
+        ]
+      }
+    },
+    {
+      "round": 1,
+      "frameGapP50": 6.099999997764826,
+      "frameGapP95": 8,
+      "inputToFrameP95": 8.3,
+      "longtasks": [],
+      "video": {
+        "maxMounted": 1,
+        "maxPlaying": 0
+      },
+      "renders": {
+        "commits": 75,
+        "rendered": 2069,
+        "byRegion": {
+          "focusNode": 1133,
+          "app-other": 728,
+          "nohost": 208
+        },
+        "otherNodesRerendered": 0,
+        "top": [
+          [
+            "T#37@focusNode",
+            104
+          ],
+          [
+            "rh#0@focusNode",
+            75
+          ],
+          [
+            "oh#1@focusNode",
+            75
+          ],
+          [
+            "h7#2@focusNode",
+            75
+          ],
+          [
+            "tag11#44@focusNode",
+            66
+          ],
+          [
+            "W#9@focusNode",
+            52
+          ],
+          [
+            "Me#10@focusNode",
+            52
+          ],
+          [
+            "ChevronDown#12@focusNode",
+            52
+          ],
+          [
+            "bG#13@app-other",
+            52
+          ],
+          [
+            "DropdownMenu#14@app-other",
+            52
+          ],
+          [
+            "DropdownMenuProvider#15@app-other",
+            52
+          ],
+          [
+            "Menu#16@app-other",
+            52
+          ],
+          [
+            "Popper#17@app-other",
+            52
+          ],
+          [
+            "PopperProvider#18@app-other",
+            52
+          ],
+          [
+            "MenuProvider#19@app-other",
+            52
+          ]
+        ],
+        "roots": [
+          [
+            "rh@focusNode",
+            49
+          ],
+          [
+            "Ih@focusNode",
+            26
+          ],
+          [
+            "nf@focusNode",
+            22
+          ]
+        ]
+      }
+    },
+    {
+      "round": 2,
+      "frameGapP50": 6.099999997764826,
+      "frameGapP95": 9.300000000745058,
+      "inputToFrameP95": 23.3,
+      "longtasks": [],
+      "video": {
+        "maxMounted": 1,
+        "maxPlaying": 0
+      },
+      "renders": {
+        "commits": 77,
+        "rendered": 2147,
+        "byRegion": {
+          "focusNode": 1175,
+          "app-other": 756,
+          "nohost": 216
+        },
+        "otherNodesRerendered": 0,
+        "top": [
+          [
+            "T#37@focusNode",
+            108
+          ],
+          [
+            "rh#0@focusNode",
+            77
+          ],
+          [
+            "oh#1@focusNode",
+            77
+          ],
+          [
+            "h7#2@focusNode",
+            77
+          ],
+          [
+            "tag11#44@focusNode",
+            69
+          ],
+          [
+            "W#9@focusNode",
+            54
+          ],
+          [
+            "Me#10@focusNode",
+            54
+          ],
+          [
+            "ChevronDown#12@focusNode",
+            54
+          ],
+          [
+            "bG#13@app-other",
+            54
+          ],
+          [
+            "DropdownMenu#14@app-other",
+            54
+          ],
+          [
+            "DropdownMenuProvider#15@app-other",
+            54
+          ],
+          [
+            "Menu#16@app-other",
+            54
+          ],
+          [
+            "Popper#17@app-other",
+            54
+          ],
+          [
+            "PopperProvider#18@app-other",
+            54
+          ],
+          [
+            "MenuProvider#19@app-other",
+            54
+          ]
+        ],
+        "roots": [
+          [
+            "rh@focusNode",
+            50
+          ],
+          [
+            "Ih@focusNode",
+            27
+          ],
+          [
+            "nf@focusNode",
+            23
+          ]
+        ]
+      }
+    }
+  ]
+}

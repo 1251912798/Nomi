@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
 import { openWorkspaceFromLibrary, openWorkspaceProjectFromPicker } from './openWorkspaceFlow'
 import type { DesktopBridge } from '../../desktop/bridge'
+import type { TFunction } from 'i18next'
+
+const t = ((key: string) => `«${key}»`) as unknown as TFunction
 
 function desktopBridge(overrides: Partial<DesktopBridge['workspace']>): DesktopBridge {
   return {
@@ -26,7 +29,7 @@ describe('openWorkspaceFromLibrary', () => {
     const bridge = desktopBridge({ selectFolder: vi.fn(async () => ({ canceled: true as const })) })
     const hydrateProject = vi.fn()
 
-    await openWorkspaceFromLibrary({ bridge, hydrateProject, confirmInitialize: vi.fn(), refreshProjects: vi.fn(), showMessage: vi.fn() })
+    await openWorkspaceFromLibrary({ bridge, hydrateProject, confirmInitialize: vi.fn(), refreshProjects: vi.fn(), showMessage: vi.fn(), t })
 
     expect(bridge.workspace.openFolder).not.toHaveBeenCalled()
     expect(hydrateProject).not.toHaveBeenCalled()
@@ -40,7 +43,7 @@ describe('openWorkspaceFromLibrary', () => {
     const hydrateProject = vi.fn(async () => true)
     const refreshProjects = vi.fn()
 
-    await openWorkspaceFromLibrary({ bridge, hydrateProject, confirmInitialize: vi.fn(), refreshProjects, showMessage: vi.fn() })
+    await openWorkspaceFromLibrary({ bridge, hydrateProject, confirmInitialize: vi.fn(), refreshProjects, showMessage: vi.fn(), t })
 
     expect(bridge.workspace.openFolder).toHaveBeenCalledWith({ rootPath: '/tmp/existing', initialize: false })
     expect(refreshProjects).toHaveBeenCalled()
@@ -58,7 +61,7 @@ describe('openWorkspaceFromLibrary', () => {
     const hydrateProject = vi.fn(async () => true)
     const confirmInitialize = vi.fn(async () => true)
 
-    await openWorkspaceFromLibrary({ bridge, hydrateProject, confirmInitialize, refreshProjects: vi.fn(), showMessage: vi.fn() })
+    await openWorkspaceFromLibrary({ bridge, hydrateProject, confirmInitialize, refreshProjects: vi.fn(), showMessage: vi.fn(), t })
 
     expect(confirmInitialize).toHaveBeenCalledWith('/tmp/new-folder')
     expect(bridge.workspace.openFolder).toHaveBeenLastCalledWith({ rootPath: '/tmp/new-folder', initialize: true })
@@ -72,9 +75,10 @@ describe('openWorkspaceFromLibrary', () => {
     })
     const showMessage = vi.fn()
 
-    await openWorkspaceFromLibrary({ bridge, hydrateProject: vi.fn(), confirmInitialize: vi.fn(), refreshProjects: vi.fn(), showMessage })
+    await openWorkspaceFromLibrary({ bridge, hydrateProject: vi.fn(), confirmInitialize: vi.fn(), refreshProjects: vi.fn(), showMessage, t })
 
-    expect(showMessage).toHaveBeenCalledWith('EACCES: permission denied', 'error')
+    // 原文（EACCES…）不进界面，只给词典里的一句人话
+    expect(showMessage).toHaveBeenCalledWith('«studio.openWorkspaceFailed»', 'error')
   })
 
   it('passes a suggested project name when initializing from Try Now style flows', async () => {
@@ -91,6 +95,7 @@ describe('openWorkspaceFromLibrary', () => {
       name: 'Example Story',
       confirmInitialize: vi.fn(async () => true),
       showMessage: vi.fn(),
+      t,
     })
 
     expect(projectId).toBe('try-now-id')

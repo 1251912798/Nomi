@@ -1,0 +1,420 @@
+{
+  "board": "VideoNodeEdit",
+  "approvedOn": "2026-10-11",
+  "stage": "built",
+  "scope": "Production source-card capture and manual trim implemented; automatic video splitting remains a design-lab proposal.",
+  "userDecision": {
+    "quote": "对 全部做完",
+    "date": "2026-10-11"
+  },
+  "source": "source/VideoNodeEdit.json",
+  "elements": [
+    {
+      "id": "source.preview",
+      "label": "原卡唯一视频预览",
+      "candidates": [
+        "001-source.preview"
+      ],
+      "status": "implemented",
+      "states": [
+        "loading",
+        "error",
+        "disabled",
+        "narrow",
+        "zh-en",
+        "dark"
+      ],
+      "note": "macOS Electron zh/en-dark real-media walk passed; see docs/evidence/2026-10-11-video-edit-independent.md.",
+      "assertion": "02-drag-handles-readouts-follow-and-tag-is-not-red"
+    },
+    {
+      "id": "capture.camera",
+      "label": "卡内当前帧相机",
+      "candidates": [
+        "002-capture.camera"
+      ],
+      "status": "implemented",
+      "states": [
+        "loading",
+        "error",
+        "disabled",
+        "hover",
+        "narrow",
+        "zh-en",
+        "dark"
+      ],
+      "note": "macOS Electron zh/en-dark real-media walk passed; see docs/evidence/2026-10-11-video-edit-independent.md.",
+      "assertion": "02-current-frame-lands-beside-with-edge-and-is-the-7.2s-frame"
+    },
+    {
+      "id": "capture.boundary",
+      "label": "浮条首帧/尾帧",
+      "candidates": [
+        "003-capture.boundary"
+      ],
+      "status": "implemented",
+      "states": [
+        "disabled",
+        "hover",
+        "zh-en",
+        "dark"
+      ],
+      "note": "macOS Electron zh/en-dark real-media walk passed; see docs/evidence/2026-10-11-video-edit-independent.md.",
+      "assertion": "04-first-and-last-frame-unchanged-and-probe-discriminates"
+    },
+    {
+      "id": "edit.entry",
+      "label": "浮条剪辑与拆镜入口",
+      "candidates": [
+        "004-edit.entry"
+      ],
+      "status": "in-progress",
+      "owner": "D-video-edit-production",
+      "states": [
+        "selected",
+        "disabled",
+        "hover",
+        "zh-en",
+        "dark"
+      ],
+      "note": "生产手动剪辑已接线；原有拆解菜单保留，自动视频分段提案未接生产。"
+    },
+    {
+      "id": "edit.strip",
+      "label": "原卡下方真实缩略图胶片条",
+      "candidates": [
+        "005-edit.strip"
+      ],
+      "status": "implemented",
+      "states": [
+        "loading",
+        "selected",
+        "disabled",
+        "narrow",
+        "zh-en",
+        "dark"
+      ],
+      "note": "macOS Electron zh/en-dark real-media walk passed; see docs/evidence/2026-10-11-video-edit-independent.md.",
+      "assertion": "09-real-1080p-performance-and-keyboard"
+    },
+    {
+      "id": "edit.handles",
+      "label": "两端手柄与选区",
+      "candidates": [
+        "006-edit.handles"
+      ],
+      "status": "implemented",
+      "states": [
+        "selected",
+        "disabled",
+        "hover",
+        "narrow",
+        "zh-en",
+        "dark"
+      ],
+      "note": "macOS Electron zh/en-dark real-media walk passed; see docs/evidence/2026-10-11-video-edit-independent.md.",
+      "assertion": "02-drag-handles-readouts-follow-and-tag-is-not-red"
+    },
+    {
+      "id": "edit.timing",
+      "label": "选区时长（纯读数）",
+      "candidates": [
+        "007-edit.timing"
+      ],
+      "status": "implemented",
+      "states": [
+        "selected",
+        "disabled",
+        "narrow",
+        "zh-en",
+        "dark"
+      ],
+      "note": "macOS Electron zh/en-dark real-media walk passed; see docs/evidence/2026-10-11-video-edit-independent.md.",
+      "userDecision": {
+        "quote": "我是说入点和出点没啥用",
+        "date": "2026-10-11"
+      },
+      "assertion": "02-drag-handles-readouts-follow-and-tag-is-not-red"
+    },
+    {
+      "id": "edit.confirm",
+      "label": "上方剪辑片段执行；Esc/空白处退出",
+      "candidates": [
+        "008-edit.confirm"
+      ],
+      "status": "implemented",
+      "states": [
+        "disabled",
+        "hover",
+        "narrow",
+        "zh-en",
+        "dark"
+      ],
+      "note": "复用顶部剪辑入口执行；下方无确认按钮。Esc 已实测，空白退出沿画布取消选择。",
+      "userDecision": {
+        "quote": "不是生成片段 名称不对 剪辑片段 另外就是有没有一个优雅的位置 现在我觉得节点右下角多个东西 很丑",
+        "date": "2026-10-11"
+      },
+      "assertion": "04-confirm-makes-a-connected-card-with-the-kept-range"
+    },
+    {
+      "id": "smart.entry",
+      "label": "浮条拆解 → 按镜头拆（唯一入口）",
+      "candidates": [
+        "009-smart.entry"
+      ],
+      "status": "in-progress",
+      "owner": "D-video-edit-production",
+      "states": [
+        "loading",
+        "disabled",
+        "hover",
+        "narrow",
+        "zh-en",
+        "dark"
+      ],
+      "note": "用户确认删除胶片条下方智能剪辑按钮，自动拆镜头从浮条进入。",
+      "userDecision": {
+        "quote": "对 删掉",
+        "date": "2026-10-11"
+      }
+    },
+    {
+      "id": "smart.progress",
+      "label": "分析/处理进度与取消",
+      "candidates": [
+        "010-smart.progress"
+      ],
+      "status": "in-progress",
+      "owner": "D-video-edit-production",
+      "states": [
+        "loading",
+        "zh-en",
+        "dark"
+      ],
+      "note": "实验室可见/可操作，正式产品尚未按此样张接线；不得标 implemented。"
+    },
+    {
+      "id": "smart.review",
+      "label": "镜头选择/全选",
+      "candidates": [
+        "011-smart.review"
+      ],
+      "status": "in-progress",
+      "owner": "D-video-edit-production",
+      "states": [
+        "empty",
+        "selected",
+        "disabled",
+        "narrow",
+        "zh-en",
+        "dark"
+      ],
+      "note": "实验室可见/可操作，正式产品尚未按此样张接线；不得标 implemented。"
+    },
+    {
+      "id": "smart.mode",
+      "label": "图片/视频输出",
+      "candidates": [
+        "012-smart.mode"
+      ],
+      "status": "in-progress",
+      "owner": "D-video-edit-production",
+      "states": [
+        "selected",
+        "zh-en",
+        "dark"
+      ],
+      "note": "实验室可见/可操作，正式产品尚未按此样张接线；不得标 implemented。"
+    },
+    {
+      "id": "smart.settings",
+      "label": "检测灵敏度与空结果恢复",
+      "candidates": [
+        "013-smart.settings"
+      ],
+      "status": "in-progress",
+      "owner": "D-video-edit-production",
+      "states": [
+        "empty",
+        "selected",
+        "zh-en",
+        "dark"
+      ],
+      "note": "实验室可见/可操作，正式产品尚未按此样张接线；不得标 implemented。"
+    },
+    {
+      "id": "recovery.errors",
+      "label": "失败/部分成功/不可用恢复",
+      "candidates": [
+        "014-recovery.errors"
+      ],
+      "status": "in-progress",
+      "owner": "D-video-edit-production",
+      "states": [
+        "error",
+        "disabled",
+        "zh-en",
+        "dark"
+      ],
+      "note": "实验室可见/可操作，正式产品尚未按此样张接线；不得标 implemented。"
+    },
+    {
+      "id": "output.cards",
+      "label": "右侧结果卡",
+      "candidates": [
+        "015-output.cards"
+      ],
+      "status": "implemented",
+      "states": [
+        "loading",
+        "error",
+        "long-text",
+        "zh-en",
+        "dark"
+      ],
+      "note": "macOS Electron zh/en-dark real-media walk passed; see docs/evidence/2026-10-11-video-edit-independent.md.",
+      "assertion": "04-confirm-makes-a-connected-card-with-the-kept-range"
+    },
+    {
+      "id": "output.edges",
+      "label": "来源连线与结果集合",
+      "candidates": [
+        "016-output.edges"
+      ],
+      "status": "implemented",
+      "states": [
+        "selected",
+        "zh-en",
+        "dark"
+      ],
+      "note": "macOS Electron zh/en-dark real-media walk passed; see docs/evidence/2026-10-11-video-edit-independent.md.",
+      "assertion": "04-confirm-makes-a-connected-card-with-the-kept-range"
+    },
+    {
+      "id": "output.undo",
+      "label": "撤销本次结果",
+      "candidates": [
+        "017-output.undo"
+      ],
+      "status": "implemented",
+      "states": [
+        "disabled",
+        "hover",
+        "zh-en",
+        "dark"
+      ],
+      "note": "macOS Electron zh/en-dark real-media walk passed; see docs/evidence/2026-10-11-video-edit-independent.md.",
+      "assertion": "05-one-undo-removes-card-and-edge"
+    },
+    {
+      "id": "toolbar.retained",
+      "label": "其余浮条功能原位保留",
+      "candidates": [
+        "018-toolbar.retained"
+      ],
+      "status": "in-progress",
+      "owner": "D-video-edit-production",
+      "states": [
+        "disabled",
+        "hover",
+        "zh-en",
+        "dark"
+      ],
+      "note": "实验室可见/可操作，正式产品尚未按此样张接线；不得标 implemented。"
+    }
+  ],
+  "decor": [],
+  "functionCensus": [
+    {
+      "function": "playback/metadata/mute/seek",
+      "before": "见 docs/plan/2026-10-11-clip-reference.md 独立功能普查",
+      "after": "source.preview"
+    },
+    {
+      "function": "current frame capture",
+      "before": "见 docs/plan/2026-10-11-clip-reference.md 独立功能普查",
+      "after": "capture.camera"
+    },
+    {
+      "function": "first/last capture",
+      "before": "见 docs/plan/2026-10-11-clip-reference.md 独立功能普查",
+      "after": "capture.boundary"
+    },
+    {
+      "function": "trim/shot cut mutually exclusive",
+      "before": "见 docs/plan/2026-10-11-clip-reference.md 独立功能普查",
+      "after": "edit.entry"
+    },
+    {
+      "function": "seek/playhead",
+      "before": "见 docs/plan/2026-10-11-clip-reference.md 独立功能普查",
+      "after": "edit.strip"
+    },
+    {
+      "function": "in/out native range keyboard/pointer",
+      "before": "见 docs/plan/2026-10-11-clip-reference.md 独立功能普查",
+      "after": "edit.handles"
+    },
+    {
+      "function": "minimum duration and selected duration; numeric inputs explicitly removed by user",
+      "before": "见 docs/plan/2026-10-11-clip-reference.md 独立功能普查",
+      "after": "edit.timing"
+    },
+    {
+      "function": "confirm/cancel/Escape",
+      "before": "见 docs/plan/2026-10-11-clip-reference.md 独立功能普查",
+      "after": "edit.confirm"
+    },
+    {
+      "function": "analyze",
+      "before": "见 docs/plan/2026-10-11-clip-reference.md 独立功能普查",
+      "after": "smart.entry"
+    },
+    {
+      "function": "cancel without late results",
+      "before": "见 docs/plan/2026-10-11-clip-reference.md 独立功能普查",
+      "after": "smart.progress"
+    },
+    {
+      "function": "selection count and first segment",
+      "before": "见 docs/plan/2026-10-11-clip-reference.md 独立功能普查",
+      "after": "smart.review"
+    },
+    {
+      "function": "preserve existing image extraction",
+      "before": "见 docs/plan/2026-10-11-clip-reference.md 独立功能普查",
+      "after": "smart.mode"
+    },
+    {
+      "function": "sensitivity/broaden/uniform sampling",
+      "before": "见 docs/plan/2026-10-11-clip-reference.md 独立功能普查",
+      "after": "smart.settings"
+    },
+    {
+      "function": "retry remaining/reload",
+      "before": "见 docs/plan/2026-10-11-clip-reference.md 独立功能普查",
+      "after": "recovery.errors"
+    },
+    {
+      "function": "video bounded preview / still images",
+      "before": "见 docs/plan/2026-10-11-clip-reference.md 独立功能普查",
+      "after": "output.cards"
+    },
+    {
+      "function": "provenance/grouping",
+      "before": "见 docs/plan/2026-10-11-clip-reference.md 独立功能普查",
+      "after": "output.edges"
+    },
+    {
+      "function": "remove last output batch",
+      "before": "见 docs/plan/2026-10-11-clip-reference.md 独立功能普查",
+      "after": "output.undo"
+    },
+    {
+      "function": "shot table/depth/duplicate/lock/fullscreen/download/provenance",
+      "before": "见 docs/plan/2026-10-11-clip-reference.md 独立功能普查",
+      "after": "toolbar.retained"
+    }
+  ]
+}

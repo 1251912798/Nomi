@@ -15,12 +15,34 @@ const mocks = vi.hoisted(() => ({
   sent: [] as Array<{ type?: string; delta?: string }>,
   providerSignal: undefined as AbortSignal | undefined,
   mode: "endless" as "endless" | "finite",
+  // 事件一到就叫醒等待者：按事件等，不按墙钟轮询（满载时 vi.waitFor 默认 1 秒会误红）。
+  listeners: new Set<() => void>(),
 }));
+
+function untilSent(type: string): Promise<void> {
+  return new Promise((resolve) => {
+    const check = () => {
+      if (!mocks.sent.some((event) => event.type === type)) return;
+      mocks.listeners.delete(check);
+      resolve();
+    };
+    mocks.listeners.add(check);
+    check();
+  });
+}
+
+function untilAborted(signal: AbortSignal | undefined): Promise<void> {
+  if (!signal) throw new Error("供应商还没收到 abortSignal");
+  return signal.aborted ? Promise.resolve() : new Promise((resolve) => signal.addEventListener("abort", () => resolve(), { once: true }));
+}
 
 vi.mock("electron", () => ({
   ipcMain: { handle: (name: string, fn: Handler) => mocks.handlers.set(name, fn) },
   webContents: {
-    fromId: () => ({ isDestroyed: () => false, send: (_channel: string, payload: { event: { type?: string; delta?: string } }) => mocks.sent.push(payload.event) }),
+    fromId: () => ({ isDestroyed: () => false, send: (_channel: string, payload: { event: { type?: string; delta?: string } }) => {
+      mocks.sent.push(payload.event);
+      for (const listener of [...mocks.listeners]) listener();
+    } }),
   },
 }));
 vi.mock("../ipcSenderGuard", () => ({ assertTrustedSender: () => undefined }));
@@ -65,15 +87,17 @@ describe("文本流取消（主进程）", () => {
     mocks.sent.length = 0;
     mocks.providerSignal = undefined;
     mocks.mode = "endless";
+    mocks.listeners.clear();
     registerTextStreamIpc();
   });
 
   it("点停止：供应商那一侧的 abortSignal 真的触发，事件里有过 delta 但没有 done", async () => {
     const streamId = await start();
-    await vi.waitFor(() => expect(mocks.sent.some((event) => event.type === "delta")).toBe(true));
+    await untilSent("delta");
     const reply = await mocks.handlers.get("nomi:tasks:text:cancel")!({ sender: owner }, { streamId });
     expect(reply).toEqual({ ok: true });
-    await vi.waitFor(() => expect(mocks.providerSignal?.aborted).toBe(true));
+    await untilAborted(mocks.providerSignal);
+    expect(mocks.providerSignal?.aborted).toBe(true);
     // 给被掐断的流一点时间收尾，再确认它没有补发成功事件。
     await new Promise((resolve) => setTimeout(resolve, 80));
     expect(mocks.sent.filter((event) => event.type === "done")).toEqual([]);
@@ -83,7 +107,7 @@ describe("文本流取消（主进程）", () => {
   it("没点停止的流照常发 done（不误伤）", async () => {
     mocks.mode = "finite";
     await start();
-    await vi.waitFor(() => expect(mocks.sent.some((event) => event.type === "done")).toBe(true));
+    await untilSent("done");
     expect(mocks.providerSignal?.aborted).toBe(false);
   });
 });

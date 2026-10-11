@@ -1,0 +1,137 @@
+{
+  "schema_version": 3,
+  "id": "2026-10-10-project-library-error-outlet",
+  "detected_by": "user",
+  "recurrence_check_on": "2026-11-10",
+  "invariant_owner_layer": {
+    "layer": "src/workbench/project/projectOperationFailureText.ts",
+    "tests": ["src/workbench/library/projectErrorSurface.test.ts"]
+  },
+  "problem_type": "主进程报错原文未经转译直接进界面",
+  "symptom": "删除项目失败时，项目库顶上显示一整串外部工具给子进程加的删除保护原文（[safe-delete][SAFE_DELETE_BULK_CONFIRM_REQUIRED] {\"count\":80,...}），用户看不懂也不知道怎么办",
+  "direct_cause": "NomiStudioApp 删除项目的 catch 里写了「error.message 有就用原文，没有才用本地化兜底」，原文直接传给 report 进横幅",
+  "class_root": "项目表面的 report / showMessage / present 收的是任意 string，类型上分不出本地化文案和主进程原文，每个调用点都能把 error.message 塞进去；项目库的四个操作入口（删除、打开项目文件夹、选文件夹打开、初始化）和加载失败原因行都没接上已有的人话出口",
+  "affected_population": [
+    "所有会让主进程 IPC 抛错的项目库操作的用户",
+    "从外部工具 / 沙箱里起开发版的用户（子进程被注入额外保护）",
+    "中英文两轨界面"
+  ],
+  "scope_paths": [
+    "src/workbench/project/projectOperationFailureText.ts",
+    "src/workbench/NomiStudioApp.tsx",
+    "src/workbench/library/openWorkspaceFlow.ts",
+    "src/workbench/library/ProjectLibraryPage.tsx",
+    "src/workbench/project/projectHydrationRecovery.ts",
+    "src/workbench/project/useProjectWindowLifecycle.ts"
+  ],
+  "entry_points": [
+    "删除项目 NomiStudioApp.deleteProject",
+    "打开项目文件夹 NomiStudioApp.revealProjectFolder",
+    "选文件夹打开 / 初始化 openWorkspaceFlow.openWorkspaceProjectFromPicker",
+    "项目库加载失败原因行 ProjectLibraryPage",
+    "恢复失败 / 保存失败（已在出口内，归并）"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "这是 Nomi 渲染层自己的呈现边界（错误如何进界面），没有第三方文档能决定；Electron ipcRenderer.invoke 只带回「名字: 信息」文本是既有事实，见 workspaceBusy.ts 注释",
+  "invariants": [
+    "项目表面的 report / showMessage / present 的参数类型是 UserText，只有 projectOperationFailureText 与 projectNotice 能铸造",
+    "主进程报错原文只进 logRendererError 或折叠的「技术详情」，不进正文"
+  ],
+  "doors": [
+    { "kind": "write", "path": "src/workbench/NomiStudioApp.tsx", "symbol": "projectOperationFailureText" },
+    { "kind": "write", "path": "src/workbench/library/openWorkspaceFlow.ts", "symbol": "projectOperationFailureText" },
+    { "kind": "write", "path": "src/workbench/project/useProjectWindowLifecycle.ts", "symbol": "projectOperationFailureText" }
+  ],
+  "door_reduction": {
+    "before": 4,
+    "after": 3,
+    "why_not": "三扇门是三处不同的呈现面（外壳横幅、选文件夹流程的消息、关窗 / 刷新时的 toast），各自要在自己的上下文显示，但现在全部只能收出口铸造的 UserText；原来绕开出口的四处 error.message 句式已删除"
+  },
+  "generality_proof": "report / showMessage / present 的形参改成品牌类型 UserText 后，任何新调用点传裸字符串（包括 error.message）都编译不过；唯一能铸造它的是 projectOperationFailureText（按操作 + 错误取词典）和 projectNotice（只接受登记过的词典键）。所以任何入口、任何新操作、任何版本的主进程报错文案变化都进不了界面正文。",
+  "shared_boundaries": [
+    {
+      "path": "src/workbench/project/projectOperationFailureText.ts",
+      "symbol": "projectOperationFailureText",
+      "responsibility": "按操作取一句人话（锁忙先认），原文不进返回值"
+    },
+    {
+      "path": "src/workbench/project/projectOperationFailureText.ts",
+      "symbol": "UserText",
+      "responsibility": "品牌类型：界面形参只收它，原文在类型上传不进去"
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/workbench/NomiStudioApp.tsx",
+      "entry_point": "revealProjectFolder",
+      "disposition": "enforced",
+      "evidence": "同一句式 error.message ? 原文 : 兜底，已改走出口并记日志"
+    },
+    {
+      "path": "src/workbench/library/openWorkspaceFlow.ts",
+      "entry_point": "openWorkspaceProjectFromPicker",
+      "disposition": "enforced",
+      "evidence": "两处 errorMessage(error) 直送 showMessage 已改走出口；硬编码中文进词典"
+    },
+    {
+      "path": "src/workbench/library/ProjectLibraryPage.tsx",
+      "entry_point": "library-load-error",
+      "disposition": "enforced",
+      "evidence": "projectsError.message 原样进「原因」行，已折叠进「技术详情」"
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/NodeErrorReport.tsx",
+      "entry_point": "NodeErrorReport",
+      "disposition": "not-affected",
+      "evidence": "已有原因 + 提示 + 折叠「技术详情」，是本次折叠做法的参照"
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "同一类（原文糊界面）在保存失败、更新失败、节点错误卡已各修过一次，项目库操作是剩下的存量；下一个新操作（复制、导入）同样会写出 error.message ? 原文 : 兜底",
+    "same_class_scan": [
+      "grep error.message src/workbench/NomiStudioApp.tsx src/workbench/library：删除、打开项目文件夹各一处，openWorkspaceFlow 两处，加载失败一处",
+      "对照 a4db9d337（保存）、1780f4e24（更新）、NodeErrorReport（节点卡）：同类三处已有人话出口，本次把项目库操作并入"
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "src/workbench/project/projectOperationFailureText.ts",
+    "invariant": "界面只收 UserText，UserText 只能由出口铸造",
+    "failure_mode": "传裸字符串（含 error.message）在 tsc 阶段报错，测试里 @ts-expect-error 钉住",
+    "exception_policy": "none",
+    "strategy": "把形参类型收成品牌类型，原文在类型上传不进来；比源码扫描门岗强一档（结构上做不出来）",
+    "artifacts": [
+      "src/workbench/project/projectOperationFailureText.ts",
+      "src/workbench/NomiStudioApp.tsx",
+      "src/workbench/library/openWorkspaceFlow.ts",
+      "src/workbench/project/projectHydrationRecovery.ts"
+    ]
+  },
+  "regression_tests": [
+    "src/workbench/library/projectErrorSurface.test.ts",
+    "src/workbench/library/openWorkspaceFlow.test.ts"
+  ],
+  "class_regression_tests": [
+    "src/workbench/library/projectErrorSurface.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "src/workbench/NomiStudioApp.tsx",
+      "src/workbench/library/openWorkspaceFlow.ts",
+      "src/workbench/library/ProjectLibraryPage.tsx"
+    ],
+    "rationale": "删掉三处 error.message 直送界面的句式、openWorkspaceFlow 的 errorMessage 显示用途和 library.loadFailedReason 词条；projectSaveFailureText 改名并扩成 projectOperationFailureText，不留旧名"
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "不涉及第三方运行时；折叠做法沿用仓库已有的 NodeErrorReport / UpdateDialog",
+    "exit_criteria": []
+  },
+  "migration": "无存量数据；仅渲染层文案与类型收紧，老调用点已全部改完",
+  "residual_risks": [
+    "notify() 本身仍收 string（全仓 108 处调用，范围超出本类），项目表面之外的面（画布、素材库）是否有同类原文直送未逐个确认",
+    "NomiStudioApp 没有可注入单测 harness，删除 / 打开项目文件夹两处用源码形状 + 类型钉住，未做真 Electron 注入失败走查（截图用设计实验室式夹具）"
+  ]
+}

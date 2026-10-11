@@ -434,9 +434,11 @@ export default function ProjectLibraryPage({
                 <>
                   <div>{t('library.loadFailedDescription')}</div>
                   {projectsError.message ? (
-                    <div className="mt-1 text-micro text-nomi-ink-30 break-words">
-                      {t('library.loadFailedReason', { reason: projectsError.message })}
-                    </div>
+                    // 原文是内部技术串，不当正文：折叠在「技术详情」里（和节点错误卡 / 更新弹窗同一个做法）。
+                    <details className="mt-1 text-micro text-nomi-ink-40" data-library-load-error-details>
+                      <summary className="cursor-pointer hover:text-nomi-ink-60">{t('generationCommon.error.technicalDetails')}</summary>
+                      <pre className="mb-0 mt-1.5 max-h-[88px] select-text overflow-auto whitespace-pre-wrap break-all rounded-nomi-sm bg-nomi-ink-05 p-2 text-left font-nomi-mono text-micro text-nomi-ink-60">{projectsError.message}</pre>
+                    </details>
                   ) : null}
                 </>
               }

@@ -1,0 +1,503 @@
+{
+ "tool": "canvas-follow-hand.perf",
+ "mode": "structural",
+ "label": "video-edit-20261011",
+ "repo": "/Users/aoqimin/.codex/worktrees/f37f/Nomi",
+ "commit": "4e1eecdad",
+ "worktreeHead": "4e1eecdad8",
+ "buildStamp": {
+  "version": 1,
+  "head": "4e1eecdad8c3ab6a3d44d38065faeb769c613be4",
+  "tree": "225ba60f2faf68fe741b45475c3fdbad514d73c8",
+  "dirty": true
+ },
+ "platform": "darwin-25.5.0",
+ "cpu": "Apple M5",
+ "startedAt": "2026-10-11T10:02:03.383Z",
+ "media": {
+  "video": "canvas-follow-hand-1080p15.mp4",
+  "width": 1920,
+  "height": 1080,
+  "durationSeconds": 15.02,
+  "bytes": 6135884,
+  "images": 7
+ },
+ "budgetsMs": {
+  "perFrame": 50,
+  "popup": 100
+ },
+ "scenarios": {
+  "settle": {
+   "settledMs": 3030,
+   "how": "posters",
+   "census": {
+    "videos": 0,
+    "playing": 0,
+    "preload": "",
+    "buffered": 0,
+    "posters": 32,
+    "videoNodes": 32,
+    "videoNodesWithThumbnail": 32,
+    "renderedNodes": 76
+   }
+  },
+  "idle": {
+   "samples": [
+    {
+     "videos": 0,
+     "playing": 0,
+     "preload": "",
+     "buffered": 0,
+     "posters": 32,
+     "videoNodes": 32,
+     "videoNodesWithThumbnail": 32,
+     "renderedNodes": 76,
+     "gpuPrivMB": 0,
+     "gpuWsMB": 119,
+     "tabPrivMB": 0,
+     "tabWsMB": 534,
+     "tabs": 1,
+     "rendererPid": null
+    },
+    {
+     "videos": 0,
+     "playing": 0,
+     "preload": "",
+     "buffered": 0,
+     "posters": 32,
+     "videoNodes": 32,
+     "videoNodesWithThumbnail": 32,
+     "renderedNodes": 76,
+     "gpuPrivMB": 0,
+     "gpuWsMB": 114,
+     "tabPrivMB": 0,
+     "tabWsMB": 530,
+     "tabs": 1,
+     "rendererPid": null
+    },
+    {
+     "videos": 0,
+     "playing": 0,
+     "preload": "",
+     "buffered": 0,
+     "posters": 32,
+     "videoNodes": 32,
+     "videoNodesWithThumbnail": 32,
+     "renderedNodes": 76,
+     "gpuPrivMB": 0,
+     "gpuWsMB": 114,
+     "tabPrivMB": 0,
+     "tabWsMB": 530,
+     "tabs": 1,
+     "rendererPid": null
+    }
+   ],
+   "videosMounted": 0,
+   "playing": 0,
+   "gpuPrivMB": 0,
+   "gpuWsMB": 114,
+   "tabPrivMB": 0,
+   "tabWsMB": 530
+  },
+  "hoverToPlay": {
+   "runs": [
+    {
+     "id": "gen-v2-video-020",
+     "startMs": 182.1,
+     "played": true,
+     "maxPlaying": 1,
+     "maxVideosMounted": 1
+    }
+   ],
+   "startMs": 182.1,
+   "playedAll": true,
+   "pair": {
+    "maxPlaying": 1,
+    "plays": [
+     "gen-v2-video-023",
+     "gen-v2-video-024"
+    ]
+   },
+   "maxPlaying": 1,
+   "videosLeftAfterLeave": 0,
+   "replayed": true
+  },
+  "typingOneKey": {
+   "commits": 9,
+   "rendered": 1976,
+   "byRegion": {
+    "app-other": 852,
+    "nohost": 409,
+    "canvas-other": 544,
+    "composer": 123,
+    "focusNode": 48
+   },
+   "otherNodesRerendered": 0,
+   "top": [
+    [
+     "TooltipPortal#40@nohost",
+     70
+    ],
+    [
+     "TooltipPortalProvider#41@nohost",
+     70
+    ],
+    [
+     "Presence#42@nohost",
+     70
+    ],
+    [
+     "TooltipContent#39@nohost",
+     69
+    ],
+    [
+     "@mantine/core/Box#89@app-other",
+     55
+    ],
+    [
+     "Tooltip#27@canvas-other",
+     39
+    ],
+    [
+     "Popper#28@canvas-other",
+     39
+    ],
+    [
+     "PopperProvider#29@canvas-other",
+     39
+    ],
+    [
+     "TooltipProvider#30@canvas-other",
+     39
+    ],
+    [
+     "TooltipTrigger#31@canvas-other",
+     39
+    ],
+    [
+     "PopperAnchor#32@canvas-other",
+     39
+    ],
+    [
+     "Primitive.div#33@canvas-other",
+     39
+    ],
+    [
+     "Primitive.div.Slot#34@canvas-other",
+     39
+    ],
+    [
+     "Primitive.button#35@canvas-other",
+     39
+    ],
+    [
+     "Primitive.button.Slot#36@canvas-other",
+     39
+    ]
+   ],
+   "roots": [
+    [
+     "ct@composer",
+     3
+    ],
+    [
+     "Yf@focusNode",
+     2
+    ],
+    [
+     "uZ@app-other",
+     2
+    ],
+    [
+     "Sce@app-other",
+     2
+    ],
+    [
+     "BZ@app-other",
+     1
+    ],
+    [
+     "Od@canvas-other",
+     1
+    ],
+    [
+     "Iv@app-other",
+     1
+    ],
+    [
+     "df@canvas-other",
+     1
+    ],
+    [
+     "Tooltip@composer",
+     1
+    ],
+    [
+     "TooltipPortal@nohost",
+     1
+    ]
+   ],
+   "otherNodeSample": [],
+   "composerOrFocus": 171
+  },
+  "create": {
+   "runs": [],
+   "clickToNode": null,
+   "clickToEditor": null,
+   "maxFrame": null,
+   "createdEach": true,
+   "renders": {
+    "commits": 24,
+    "rendered": 4472,
+    "byRegion": {
+     "app-other": 1526,
+     "nohost": 902,
+     "canvas-other": 1249,
+     "otherNodes": 245,
+     "composer": 550
+    },
+    "otherNodesRerendered": 0,
+    "top": [
+     [
+      "TooltipContent#39@nohost",
+      153
+     ],
+     [
+      "TooltipPortal#40@nohost",
+      153
+     ],
+     [
+      "TooltipPortalProvider#41@nohost",
+      153
+     ],
+     [
+      "Presence#42@nohost",
+      153
+     ],
+     [
+      "@mantine/core/Box#89@app-other",
+      117
+     ],
+     [
+      "Tooltip#27@canvas-other",
+      91
+     ],
+     [
+      "Popper#28@canvas-other",
+      91
+     ],
+     [
+      "PopperProvider#29@canvas-other",
+      91
+     ],
+     [
+      "TooltipProvider#30@canvas-other",
+      91
+     ],
+     [
+      "TooltipTrigger#31@canvas-other",
+      91
+     ],
+     [
+      "PopperAnchor#32@canvas-other",
+      91
+     ],
+     [
+      "Primitive.div#33@canvas-other",
+      91
+     ],
+     [
+      "Primitive.div.Slot#34@canvas-other",
+      91
+     ],
+     [
+      "Primitive.button#35@canvas-other",
+      91
+     ],
+     [
+      "Primitive.button.Slot#36@canvas-other",
+      91
+     ]
+    ],
+    "roots": [
+     [
+      "Yf@otherNodes",
+      7
+     ],
+     [
+      "Od@canvas-other",
+      5
+     ],
+     [
+      "df@canvas-other",
+      5
+     ],
+     [
+      "ct@composer",
+      5
+     ],
+     [
+      "kf@otherNodes",
+      4
+     ],
+     [
+      "D@otherNodes",
+      3
+     ],
+     [
+      "Iv@app-other",
+      3
+     ],
+     [
+      "ns@composer",
+      2
+     ],
+     [
+      "BZ@app-other",
+      2
+     ],
+     [
+      "@mantine/core/Popover@composer",
+      2
+     ],
+     [
+      "@mantine/core/PopoverTarget@composer",
+      2
+     ],
+     [
+      "@mantine/core/PopoverDropdown@app-other",
+      2
+     ],
+     [
+      "Sce@app-other",
+      2
+     ],
+     [
+      "uZ@app-other",
+      2
+     ],
+     [
+      "pw@app-other",
+      1
+     ]
+    ],
+    "otherNodeSample": []
+   }
+  },
+  "arrowKeys": {
+   "deltas": [
+    {
+     "dx": 5,
+     "dy": 0
+    },
+    {
+     "dx": 5,
+     "dy": 0
+    },
+    {
+     "dx": 5,
+     "dy": 0
+    }
+   ],
+   "moved": true,
+   "step": 5,
+   "focusInEditor": false
+  },
+  "stackDragOut": {
+   "error": "TypeError: Cannot read properties of undefined (reading 'press')\n    at dragOne (file:///Users/aoqimin/.codex/worktrees/f37f/Nomi/tests/ux/canvas-follow-hand/scenarios-canvas.mjs:307:21)\n    at async stackDragOut (file:///Users/aoqimin/.codex/worktrees/f37f/Nomi/tests/ux/canvas-follow-hand/scenarios-canvas.mjs:354:9)\n    at async run (file:///Users/aoqimin/.codex/worktrees/f37f/Nomi/tests/ux/canvas-follow-hand.perf.mjs:87:34)\n    at async file:///Users/aoqimin/.codex/worktrees/f37f/Nomi/tests/ux/canvas-follow-hand.perf.mjs:114:3"
+  }
+ },
+ "checks": [
+  {
+   "name": "空闲时挂着的 <video>",
+   "value": 0,
+   "max": 0,
+   "provenBy": "悬停一张卡能起播",
+   "proven": true,
+   "ok": true
+  },
+  {
+   "name": "同时在播的视频",
+   "value": 1,
+   "max": 1,
+   "provenBy": "至少有一个在播",
+   "proven": true,
+   "ok": true
+  },
+  {
+   "name": "悬停过再离开：仍挂着的 <video>",
+   "value": 0,
+   "max": 0,
+   "provenBy": "悬停一张卡能起播",
+   "proven": true,
+   "ok": true
+  },
+  {
+   "name": "同一张卡再悬停：不起播",
+   "value": 0,
+   "max": 0,
+   "provenBy": "第一次悬停起播了",
+   "proven": true,
+   "ok": true
+  },
+  {
+   "name": "打字：别的节点重渲",
+   "value": 0,
+   "max": 0,
+   "provenBy": "本卡编辑器有重渲",
+   "proven": true,
+   "ok": true
+  },
+  {
+   "name": "新建节点：别的节点重渲",
+   "value": 0,
+   "max": 0,
+   "provenBy": "新节点真的建出来了",
+   "proven": true,
+   "ok": true
+  },
+  {
+   "name": "叠放拖出：松手后仍粘着",
+   "max": 0,
+   "provenBy": "八成以上的拖动真的挪动了节点",
+   "proven": false,
+   "ok": false
+  },
+  {
+   "name": "叠放拖出：松手事件丢了仍粘着",
+   "max": 0,
+   "provenBy": "这几次拖动确实把节点拖动了",
+   "proven": false,
+   "ok": false
+  },
+  {
+   "name": "方向键：没挪或步长不一",
+   "value": 0,
+   "max": 0,
+   "provenBy": "选中了一张卡",
+   "proven": true,
+   "ok": true
+  }
+ ],
+ "budgets": [],
+ "fixture": {
+  "nodes": 76,
+  "projDir": "/var/folders/f4/vz86j5nd0_sf56qdhzrmbbvw0000gn/T/cfh-video-edit-20261011-1791712923383/projects/cfh-cfh-canvas-0001",
+  "viewport": {
+   "width": 1280,
+   "height": 933,
+   "dpr": 1
+  },
+  "cursor": {
+   "parked": "not-needed"
+  }
+ },
+ "openTransform": "translate(162.417px, 27.8204px) scale(0.227246)",
+ "fitTransform": "translate(162.417px, 27.8204px) scale(0.227246)",
+ "failures": [
+  "stackDragOut 没跑完：Cannot read properties of undefined (reading 'press')",
+  "叠放拖出：松手后仍粘着: 实测 undefined（上限 0）；阳性对照不成立：八成以上的拖动真的挪动了节点",
+  "叠放拖出：松手事件丢了仍粘着: 实测 undefined（上限 0）；阳性对照不成立：这几次拖动确实把节点拖动了"
+ ],
+ "finishedAt": "2026-10-11T10:02:48.371Z"
+}
