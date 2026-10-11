@@ -31,13 +31,15 @@ export function clipPathForHoles(width: number, height: number, holes: readonly 
  * 「事件触发、合并到一帧」的调度器：schedule() 在同一帧里被叫多少次，下一帧只量一次；没人叫就一次都不量。
  * 纯逻辑（帧函数注入），单测用假帧钉住「静止时零开销」。
  */
-export function createFrameCoalescer(measure: () => void, requestFrame: (cb: () => void) => number, cancelFrame: (id: number) => void) {
+export function createFrameCoalescer(measure: () => void, requestFrame: (cb: () => void) => number, cancelFrame: (id: number) => void, isPaused: () => boolean = () => false) {
   let pending = 0
   return {
     schedule() {
-      if (pending) return
+      // 暂停期间（画布拖动中）不排帧；恢复时由翻转事件再 schedule 一次。
+      if (pending || isPaused()) return
       pending = requestFrame(() => {
         pending = 0
+        if (isPaused()) return
         measure()
       })
     },
@@ -53,7 +55,7 @@ export function createFrameCoalescer(measure: () => void, requestFrame: (cb: () 
  * 层级做不到（见 canvasChromeLayers.ts 顶部说明），所以把外框控件被生成框压住的那一块用 clip-path 裁掉：
  * 视觉与命中都等同于「生成框在上」。
  * 只在「可能变了」的事件上量一次（合并到一帧）：选中变化、视口平移 / 缩放（react-flow__viewport 的 style）、节点被挪（生成框所在节点的 style）、
- * 拖动状态翻转（stage 的 data-dragging）、生成框挂上 / 卸下（stage 子树 childList，生成框是懒加载的）、生成框或外框控件自己变大小（ResizeObserver）、窗口缩放。
+ * 拖动状态翻转（stage 的 data-dragging；拖动期间暂停测量，松手那一下量一次）、生成框挂上 / 卸下（stage 子树 childList，生成框是懒加载的）、生成框或外框控件自己变大小（ResizeObserver）、窗口缩放。
  * 静止时零开销——不再每帧强制读布局。值没变不写 DOM。
  */
 export function useCanvasChromeOcclusion(ref: React.RefObject<HTMLElement | null>): void {
@@ -91,7 +93,7 @@ export function useCanvasChromeOcclusion(ref: React.RefObject<HTMLElement | null
       const box = el.getBoundingClientRect()
       apply(clipPathForHoles(box.width, box.height, occludedHoles(box, composers)))
     }
-    const coalescer = createFrameCoalescer(measure, requestAnimationFrame, cancelAnimationFrame)
+    const coalescer = createFrameCoalescer(measure, requestAnimationFrame, cancelAnimationFrame, () => stage.getAttribute('data-dragging') === 'true')
     resizeObserver.observe(el)
     watch(stage.querySelector('.react-flow__viewport'))
     // 生成框挂 / 卸、视口元素本身挂上来：只看 childList，不看属性。

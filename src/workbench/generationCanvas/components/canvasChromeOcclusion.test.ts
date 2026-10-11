@@ -26,7 +26,7 @@ describe('外框控件被生成框压住的那一块', () => {
 })
 
 describe('量一次的时机：事件触发、合并到一帧，静止时零开销', () => {
-  function harness() {
+  function harness(isPaused: () => boolean = () => false) {
     let measures = 0
     let nextId = 0
     const frames = new Map<number, () => void>()
@@ -34,6 +34,7 @@ describe('量一次的时机：事件触发、合并到一帧，静止时零开�
       () => { measures += 1 },
       (cb) => { nextId += 1; frames.set(nextId, cb); return nextId },
       (id) => { frames.delete(id) },
+      isPaused,
     )
     const flushFrame = () => { const batch = [...frames.values()]; frames.clear(); batch.forEach((cb) => cb()) }
     return { coalescer, flushFrame, measures: () => measures, pendingFrames: () => frames.size }
@@ -62,6 +63,17 @@ describe('量一次的时机：事件触发、合并到一帧，静止时零开�
     h.coalescer.schedule(); h.flushFrame()
     h.coalescer.schedule(); h.flushFrame()
     expect(h.measures()).toBe(2)
+  })
+
+  it('拖动期间暂停：120 帧里每帧都有节点位移事件也量 0 次，松手翻回 false 量 1 次', () => {
+    let dragging = true
+    const h = harness(() => dragging)
+    for (let i = 0; i < 120; i += 1) { h.coalescer.schedule(); h.flushFrame() }
+    expect(h.measures()).toBe(0)
+    expect(h.pendingFrames()).toBe(0)
+    dragging = false
+    h.coalescer.schedule(); h.flushFrame()
+    expect(h.measures()).toBe(1)
   })
 
   it('卸载时取消还没跑的那一帧', () => {
