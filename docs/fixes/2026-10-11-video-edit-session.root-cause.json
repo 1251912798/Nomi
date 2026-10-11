@@ -1,0 +1,144 @@
+{
+  "schema_version": 3,
+  "id": "2026-10-11-video-edit-session",
+  "problem_type": "Source-video editing session ownership",
+  "symptom": "New feature pre-delivery Electron walk: first continuous trim movement stops at 0.4s instead of 3s; independent review also identified keyboard, readonly and source identity gaps.",
+  "direct_cause": "Seeking temporarily lowers readyState. The new panel used frame readiness to disable native handles during an active pointer drag.",
+  "class_root": "Editing intent, source identity and decoded-frame readiness need separate owners and lifetimes.",
+  "affected_population": [
+    "All source-card trim handle drags and source video switches in this new feature"
+  ],
+  "scope_paths": [
+    "src/workbench/generationCanvas/nodes/BaseGenerationNode.tsx",
+    "src/workbench/generationCanvas/nodes/NodeVideoClipPanel.tsx",
+    "src/workbench/generationCanvas/nodes/NodeVideoControls.tsx",
+    "src/workbench/generationCanvas/nodes/NodeVideoFrameToolbar.tsx",
+    "src/workbench/generationCanvas/nodes/NodeVideoPlaybackGuard.tsx",
+    "src/workbench/generationCanvas/nodes/NodeVideoSession.tsx",
+    "src/workbench/generationCanvas/nodes/useNodeVideoSession.ts",
+    "src/workbench/generationCanvas/nodes/VideoTrimFilmstrip.tsx"
+  ],
+  "entry_points": [
+    "Card playback/seek/capture controls",
+    "Toolbar trim submission",
+    "Trim filmstrip pointer and keyboard"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "Application session ownership; no dependency change. Native media readiness is used as observed in real Electron.",
+  "invariants": [
+    "A seek never disables the gesture that requested it.",
+    "Confirm waits for frame readiness; selection editing only requires metadata.",
+    "Readonly session cannot capture; source identity change replaces the session.",
+    "Only the original guarded source video renders during trimming."
+  ],
+  "doors": [
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/NodeVideoClipPanel.tsx",
+      "symbol": "useNodeVideoSession"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/NodeVideoControls.tsx",
+      "symbol": "useNodeVideoSession"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/NodeVideoFrameToolbar.tsx",
+      "symbol": "useNodeVideoSession"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/NodeVideoPlaybackGuard.tsx",
+      "symbol": "useNodeVideoSession"
+    }
+  ],
+  "door_reduction": {
+    "before": 4,
+    "after": 4,
+    "why_not": "Four surfaces have distinct input/render jobs but share one per-source session; merging the surfaces would reintroduce duplicate preview or unrelated canvas updates."
+  },
+  "generality_proof": "All original-card edit controls share the keyed session; selection changes synchronously update its range reference and seek the guarded source. Frame readiness only gates frame capture and final trim submission.",
+  "shared_boundaries": [
+    {
+      "path": "src/workbench/generationCanvas/nodes/NodeVideoSession.tsx",
+      "symbol": "NodeVideoSessionProvider",
+      "responsibility": "Per-source editing ownership, readonly capture authorization and synchronous seek intent."
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/NodeVideoClipPanel.tsx",
+      "symbol": "NodeVideoClipPanel",
+      "responsibility": "Metadata-backed selection edits remain enabled through seeks; no second preview."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/workbench/generationCanvas/nodes/NodeVideoClipPanel.tsx",
+      "entry_point": "change",
+      "disposition": "enforced",
+      "evidence": "Continuous pointer drag and keyboard in real Electron walks."
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/NodeVideoControls.tsx",
+      "entry_point": "NodeVideoControls",
+      "disposition": "enforced",
+      "evidence": "Seek slider stays metadata-enabled; exact frame capture walks exercise the source player."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Every video seek may lower decoded readiness on another input/device.",
+    "same_class_scan": [
+      "door-map useNodeVideoSession: four consumers",
+      "rg readyState and disabled in NodeVideoClipPanel/NodeVideoControls/NodeVideoFrameToolbar"
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "src/workbench/generationCanvas/nodes/NodeVideoSession.tsx",
+    "invariant": "Each editable source owns one session; edit intent is independent of decode readiness.",
+    "failure_mode": "No media metadata means no editing; unavailable current frame blocks capture and submission, not ongoing seeks.",
+    "exception_policy": "none",
+    "strategy": "Key the provider to node/source identity, gate writes by explicit writable capability, keep selection in the session, and distinguish metadata from frame readiness.",
+    "artifacts": [
+      "src/workbench/generationCanvas/nodes/NodeVideoSession.tsx",
+      "src/workbench/generationCanvas/nodes/NodeVideoClipPanel.tsx",
+      "src/workbench/generationCanvas/nodes/NodeVideoControls.tsx",
+      "src/workbench/generationCanvas/nodes/BaseGenerationNode.tsx"
+    ]
+  },
+  "regression_tests": [
+    "tests/ux/video-clip-direct.walk.mjs",
+    "tests/ux/video-frame-capture.walk.mjs",
+    "src/workbench/generationCanvas/nodes/NodeVideoSession.test.tsx"
+  ],
+  "class_regression_tests": [
+    "tests/ux/video-clip-direct.walk.mjs",
+    "tests/ux/video-frame-capture.walk.mjs"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "src/workbench/generationCanvas/nodes/videoTrimModel.ts"
+    ],
+    "rationale": "Delete duplicate-preview timeline adapter; all edit preview uses the original card."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "No third-party upgrade controls application session/readiness policy.",
+    "exit_criteria": []
+  },
+  "migration": "No persisted data format changes; sessions are transient and dispose on source change.",
+  "residual_risks": [
+    "Windows and packaged release unverified. macOS production walks: trim 9/9 per locale; frame capture 8/8 per locale. Generic stack-drag scenario aborted from an undefined destination in its harness."
+  ],
+  "detected_by": "walkthrough",
+  "recurrence_check_on": "2026-10-25",
+  "invariant_owner_layer": {
+    "layer": "src/workbench/generationCanvas/nodes/NodeVideoSession.tsx",
+    "tests": [
+      "tests/ux/video-clip-direct.walk.mjs",
+      "tests/ux/video-frame-capture.walk.mjs"
+    ]
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "id": "REAL-20261010-04",
+  "since": "2026-10-10",
+  "source": "2026-10-10 real test",
+  "category": "claims-and-outcomes",
+  "problem": "删除项目失败时，项目库顶上直接显示主进程报错原文（一串内部删除保护字串），用户不知道哪个操作没成、能怎么办（用户原话：删除项目直接报错）",
+  "existingInvariants": [],
+  "ironLaws": [
+    "⑫"
+  ],
+  "useCases": [],
+  "fullWalkJourneys": [],
+  "status": "fixed",
+  "manualReview": "reviewed",
+  "evidence": [
+    "2026-10-10 user screenshots: library banner showing raw delete-protection string",
+    "src/workbench/library/projectErrorSurface.test.ts"
+  ],
+  "completionCommits": [],
+  "rootCauseContract": "docs/fixes/2026-10-10-project-library-error-outlet.root-cause.json",
+  "fixedInPr": 1175,
+  "classCheck": {
+    "kind": "matrix",
+    "file": "src/workbench/library/projectErrorSurface.test.ts"
+  }
+}

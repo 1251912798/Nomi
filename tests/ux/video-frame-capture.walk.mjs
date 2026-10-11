@@ -13,7 +13,7 @@ import { makeTempDir } from '../../scripts/_test-temp.mjs'
 //   ⑤ 本机失败（视频文件坏了）：新卡是错误卡，**没有「换个模型」**，只有「重试」；一次 Ctrl+Z 撤干净；
 //   ⑥ 首帧 / 尾帧照旧（像素 ≈ 0 秒 / 最后一刻），同时证明 ② 的像素探针真的在区分时间。
 // 用法：node tests/ux/video-frame-capture.walk.mjs [--locale en] [--scheme dark]
-// 截图：docs/evidence/2026-10-10-video-frame-capture/<序号>-<状态>-<zh|en>[-dark].png
+// 截图：docs/evidence/2026-10-11-video-frame-production/<序号>-<状态>-<zh|en>[-dark].png
 import fs from 'node:fs'
 import path from 'node:path'
 import { execFileSync } from 'node:child_process'
@@ -32,7 +32,7 @@ const locale = argValue('--locale', 'zh-CN')
 const scheme = argValue('--scheme', 'light')
 const tag = `${locale === 'en' ? 'en' : 'zh'}${scheme === 'dark' ? '-dark' : ''}`
 const zh = locale !== 'en'
-const evidence = path.join(repoRoot, 'docs/evidence/2026-10-10-video-frame-capture')
+const evidence = path.join(repoRoot, 'docs/evidence/2026-10-11-video-frame-production')
 const failShotDir = path.join(repoRoot, '.tmp/walk-fail')
 const offscreen = path.join(repoRoot, 'tests/ux/full-walk/offscreenWindow.cjs')
 const only = argValue('--shots', 'yes') !== 'no'
@@ -72,6 +72,8 @@ const tr = (key) => uiText(locale, key)
 const L = {
   capture: tr('generationCommon.videoToolbar.captureFrame'),
   current: tr('generationCommon.videoToolbar.currentFrame'),
+  play: tr('generationCommon.videoTrim.play'),
+  pause: tr('generationCommon.videoTrim.pause'),
   first: tr('generationCommon.videoToolbar.firstFrame'),
   last: tr('generationCommon.videoToolbar.lastFrame'),
   retry: tr('generationCommon.observability.action.retry.main'),
@@ -131,12 +133,16 @@ async function undo() {
 }
 /** 把卡里那个 <video> 的播放头停到 `seconds`，等 seeked（和用户拖进度条停下是同一个可观察状态）。 */
 async function parkPlayhead(id, seconds) {
-  await expect.poll(() => win.evaluate((nodeId) => document.querySelector(`[data-node-id="${nodeId}"] video`)?.readyState ?? 0, id), { message: 'video mounted' }).toBeGreaterThanOrEqual(1)
-  await win.evaluate(async ({ nodeId, seconds: target }) => {
-    const element = /** @type {HTMLVideoElement} */ (document.querySelector(`[data-node-id="${nodeId}"] video`))
-    element.pause()
-    await new Promise((resolve) => { element.addEventListener('seeked', resolve, { once: true }); element.currentTime = target })
-  }, { nodeId: id, seconds })
+  const seek = win.locator(`${nodeSel(id)} [data-node-video-controls] input[type="range"]`)
+  await expect(seek).toBeEnabled()
+  await seek.focus()
+  await win.keyboard.press('Home')
+  if (seconds === DURATION) await win.keyboard.press('End')
+  else {
+    for (let index = 0; index < 6; index++) await win.keyboard.press('PageUp')
+  }
+  await expect.poll(() => win.locator(`${nodeSel(id)} video`).evaluate((v) => v.seeking)).toBe(false)
+  await expect.poll(() => seek.inputValue()).toBe(String(seconds))
 }
 /** 一张截出来的图的「时间」：从像素反推（R 给整秒的粗值，G 给小数秒）。 */
 function timeOfFrame(imageUrl) {
@@ -162,19 +168,20 @@ try {
   await resetView()
 
   let capturedUrl = ''
-  await task('01-menu-shows-playhead-time', async () => {
+  await task('01-camera-in-source-card-menu-only-first-last', async () => {
     await select('src-video')
     await parkPlayhead('src-video', 7.2)
     await captureButton().click()
-    await expect(menuItem(L.current)).toBeVisible()
-    await expect(menuItem(L.current)).toContainText('0:07.2')
+    await expect(menuItem(L.current)).toHaveCount(0)
+    await expect(win.locator('.react-flow__node.selected [data-node-video-controls]').getByRole('button', { name: L.current, exact: true })).toBeVisible()
     await expect(menuItem(L.first)).toBeVisible()
     await expect(menuItem(L.last)).toBeVisible()
     await shot('01-frame-menu')
+    await win.keyboard.press('Escape')
   })
 
   await task('02-current-frame-lands-beside-with-edge-and-is-the-7.2s-frame', async () => {
-    await menuItem(L.current).click()
+    await win.locator('.react-flow__node.selected [data-node-video-controls]').getByRole('button', { name: L.current, exact: true }).click()
     await expect.poll(async () => (await snapshot()).nodes.length, { message: 'new card appears' }).toBe(nodes.length + 1)
     const state = await snapshot()
     const card = state.nodes.find((node) => !nodes.some((seed) => seed.id === node.id))
@@ -238,8 +245,7 @@ try {
     await select('moved-video')
     await parkPlayhead('moved-video', 7.2)
     if (fs.existsSync(movedFile)) fs.renameSync(movedFile, hiddenFile)
-    await captureButton().click()
-    await menuItem(L.current).click()
+    await win.locator('.react-flow__node.selected [data-node-video-controls]').getByRole('button', { name: L.current, exact: true }).click()
     await expect.poll(async () => (await snapshot()).nodes.length, { timeout: stationTimeout({ operations: 3 }) }).toBe(nodes.length + 1)
     const state = await snapshot()
     return { state, card: state.nodes.find((node) => !nodes.some((seed) => seed.id === node.id)) }
@@ -289,9 +295,8 @@ try {
     await select('src-video')
     await parkPlayhead('src-video', DURATION)
     const before = (await snapshot()).nodes.length
-    await captureButton().click()
-    await expect(menuItem(L.current)).toContainText('0:12.0')
-    await menuItem(L.current).click()
+    await expect(win.locator(`${nodeSel('src-video')} [data-node-video-time]`)).toContainText('0:12.0')
+    await win.locator('.react-flow__node.selected [data-node-video-controls]').getByRole('button', { name: L.current, exact: true }).click()
     await expect.poll(async () => (await snapshot()).nodes.length, { timeout: stationTimeout({ operations: 3 }) }).toBe(before + 1)
     const state = await snapshot()
     const card = state.nodes.find((node) => node.title.includes('0:12.0'))
@@ -299,6 +304,43 @@ try {
     expect(card.status).toBe('success')
     const seconds = timeOfFrame(card.resultUrl)
     if (seconds < DURATION - 0.3 || seconds > DURATION) throw new Error(`end-of-video frame reads ${seconds.toFixed(2)}s`)
+  })
+  await task('09-user-pause-then-pointer-roundtrip-keeps-the-playhead', async () => {
+    // 用户真播放再暂停 → 点空白处取消选中、悬停进出 → 再选回这张卡：播放头不归零、不漂，相机截到的就是暂停的那一帧。
+    await select('src-video')
+    const controls = win.locator('.react-flow__node.selected [data-node-video-controls]')
+    const video = win.locator(`${nodeSel('src-video')} video`)
+    const playBox = await controls.getByRole('button', { name: L.play, exact: true }).boundingBox()
+    if (!playBox) throw new Error('play button is not visible')
+    await win.mouse.click(playBox.x + playBox.width / 2, playBox.y + playBox.height / 2)
+    await expect.poll(() => video.evaluate((v) => v.currentTime), { timeout: stationTimeout({ operations: 4 }) }).toBeGreaterThan(1)
+    await controls.getByRole('button', { name: L.pause, exact: true }).click()
+    await expect.poll(() => video.evaluate((v) => v.paused)).toBe(true)
+    const parked = await video.evaluate((v) => v.currentTime)
+    const videoBox = await video.boundingBox()
+    if (!videoBox) throw new Error('video is not visible')
+    // 点画布空白处（取消选中、鼠标彻底离开这张卡），再回到视频上悬停，再离开，最后点回这张卡。
+    const away = { x: videoBox.x + videoBox.width + 260, y: videoBox.y + videoBox.height + 220 }
+    await win.mouse.click(away.x, away.y)
+    await waitForVisualQuiescence(win)
+    await win.mouse.move(videoBox.x + videoBox.width / 2, videoBox.y + videoBox.height / 3, { steps: 8 })
+    await waitForVisualQuiescence(win)
+    await win.mouse.move(away.x, away.y, { steps: 8 })
+    await waitForVisualQuiescence(win)
+    await select('src-video')
+    const after = await video.evaluate((v) => ({ time: v.currentTime, paused: v.paused }))
+    expect(after.paused).toBe(true)
+    if (Math.abs(after.time - parked) > 0.02) throw new Error(`playhead moved from ${parked.toFixed(2)}s to ${after.time.toFixed(2)}s`)
+    const before = (await snapshot()).nodes.length
+    const reshown = await video.boundingBox()
+    if (!reshown) throw new Error('video is not visible after reselect')
+    await win.mouse.move(reshown.x + reshown.width / 2, reshown.y + reshown.height / 3)
+    await controls.getByRole('button', { name: L.current, exact: true }).click()
+    await expect.poll(async () => (await snapshot()).nodes.length, { timeout: stationTimeout({ operations: 3 }) }).toBe(before + 1)
+    const card = (await snapshot()).nodes.find((node) => node.meta?.sourceVideoNodeId === 'src-video' && Math.abs(node.meta.sourceTime - parked) < 0.12)
+    if (!card) throw new Error(`no frame card at the paused ${parked.toFixed(2)}s`)
+    const seconds = timeOfFrame(card.resultUrl)
+    if (Math.abs(seconds - parked) > 0.15) throw new Error(`the captured pixels say ${seconds.toFixed(2)}s, paused at ${parked.toFixed(2)}s`)
   })
 } finally {
   await app.close().catch(() => {})
