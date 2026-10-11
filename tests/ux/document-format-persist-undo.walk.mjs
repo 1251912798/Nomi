@@ -6,7 +6,7 @@ import { makeTempDir } from '../../scripts/_test-temp.mjs'
 // 红灯语义：落盘文稿缺 mark / 撤销一次后加粗还在，都是真 bug，不是走查脾气。
 // 用法：pnpm run build && node tests/ux/document-format-persist-undo.walk.mjs
 import { launchNomiApp } from './_launchApp.mjs'
-import { expectVisible, screenshotSettled } from './_assert.mjs'
+import { expectVisible, expectAbsent, proveProbe, screenshotSettled } from './_assert.mjs'
 import { leaveProjectIfOpen } from './_shell.mjs'
 import { uiText } from './full-walk/invariants.mjs'
 import fs from 'node:fs'
@@ -92,7 +92,7 @@ async function openCreation(win) {
   const card = win.locator('[data-project-card]', { hasText: projectName }).first()
   await expectVisible(card, `项目库里找不到项目卡「${projectName}」`)
   await card.hover()
-  const continueButton = card.getByText('继续创作', { exact: false }).first()
+  const continueButton = card.getByText(label('library.continueCreating')).first()
   if (await continueButton.isVisible().catch(() => false)) await continueButton.click()
   else await card.dblclick()
   await win.getByRole('button', { name: '创作', exact: true }).click()
@@ -119,10 +119,11 @@ try {
   // B：加粗后只按一次撤销。放在最前，免得别的格式把历史栈弄乱。
   const undoLine = win.locator('.workbench-editor__content p', { hasText: '撤销行' }).first()
   await formatLine(win, '撤销行', 'creationAi.selection.bold')
-  const boldNow = await undoLine.locator('strong').count()
+  const strong = undoLine.locator('strong')
+  const proof = await proveProbe(strong, '加粗后该行有 <strong>')
   await win.locator('.workbench-editor-toolbar').getByRole('button', { name: label('creationAi.selection.undo') }).click()
-  const boldAfterUndo = await undoLine.locator('strong').count()
-  record('B 加粗后一次撤销', boldNow > 0 && boldAfterUndo === 0, `加粗后 strong=${boldNow}；撤销一次后 strong=${boldAfterUndo}（应为 0）`)
+  const goneAfterUndo = await expectAbsent(strong, { provenBy: proof, message: '撤销一次后加粗应没了' }, 5_000).then(() => true, () => false)
+  record('B 加粗后一次撤销', goneAfterUndo, `撤销一次后 strong=${await strong.count()}（应为 0）`)
 
   // A：逐个点工具条，落盘后核对。
   const toolbarKey = {
