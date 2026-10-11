@@ -1,0 +1,261 @@
+#!/usr/bin/env node
+// 分镜表「读图腿」真实任务验证（2026-10-11 走查 §1）——底栏选读图模型 → 报价卡上的模型行 = 所选 → 确认后逐镜读图，失败原话看得见。
+//
+// 用法（三种模式，从便宜到贵）：
+//
+//   1) 零花费（夹具回环供应商，不碰任何真实资料）——任何人随时可跑，验流程本身：
+//        node tests/ux/shot-table-vision-leg.paid.mjs --fixture [--rate-limit-probe]
+//      读图模型 = 夹具那一个；`--rate-limit-probe` 让夹具对每次读图回 429 原话（验顶上一行是原话）。
+//
+//   2) 真实资料副本，**停在报价卡**（不发任何付费请求）：
+//        NOMI_SPEND_OK=1 node tests/ux/shot-table-vision-leg.paid.mjs --vision-model <id>
+//      会拷一份带凭据的隔离副本（_realProfile.mjs：断开副本里指向真实项目的登记；跑前跑后对用户资料目录做指纹比对，
+//      有差异立刻红），走生产构建，窗口在屏幕外。流程走到报价卡：截图、打印卡上的模型行并断言 = 所选，然后点「取消」退出。
+//
+//   3) 真付费（只有显式 NOMI_PAID_CONFIRM=1 才点「确认」）：
+//        NOMI_SPEND_OK=1 NOMI_PAID_CONFIRM=1 node tests/ux/shot-table-vision-leg.paid.mjs --vision-model <id> [--rate-limit-probe]
+//      `--rate-limit-probe`：<id> 选一个免费限流的读图模型，验证顶上一行是 429 原话（而不是空白或笼统的「没读出」）。
+//
+//   列出能选的读图模型（只打 id，不打任何密钥；读真实目录文件，只在你自己的机器上跑）：
+//        node tests/ux/shot-table-vision-leg.paid.mjs --list-models
+//
+// 最坏花费（模式 3）：从仓库夹具 canvas-follow-hand-1080p15.mp4 截一小段（--clip-start / --clip-seconds，默认 4.3s 起 1.8s、去音轨，
+// 所以没有转写）；每镜 1 次读图调用（一镜 3 帧同一次请求）。**镜数以第二张报价卡的「调用次数」为准**——超过 4 次脚本在点确认之前直接取消退出；
+// 脚本还在主进程 fetch 上装了计数器，读图调用要超过 4 次时**在请求发出前**拒掉并停走查。拆解逐镜 `maxRetries: 0`，限流不会重试放大。
+// 未确认（没设 NOMI_PAID_CONFIRM）一分钱不花：报价卡点「取消」，供应商一个请求都没有。
+import fs from 'node:fs'
+import os from 'node:os'
+import { spawnSync } from 'node:child_process'
+import { createRequire } from 'node:module'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { clickOrFail, expect, expectAbsent, proveProbe, waitForVisualQuiescence } from './_assert.mjs'
+import { SPEND_DIALOG, openPaidWalk } from './_paidRun.mjs'
+import { readRealCatalog } from './_realProfile.mjs'
+import { createRuntimeWalk } from './agent-runtime-walk-support.mjs'
+import { FIXTURE_TEXT_MODEL, FIXTURE_TEXT_MODEL_LABEL, FIXTURE_VENDOR } from './agent-runtime-fixture.mjs'
+import { stationTimeout } from './_station-budget.mjs'
+import { uiText } from './full-walk/invariants.mjs'
+
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
+const VIDEO_FIXTURE = path.join(repoRoot, 'tests/ux/fixtures/canvas-follow-hand-1080p15.mp4')
+const EVIDENCE_DIR = path.join(repoRoot, 'docs/evidence/2026-10-11-canvas-ux-8/paid')
+const VISION_CAP = 4
+const RATE_LIMIT_TEXT = "You've reached the API rate limit for free users"
+
+// ── 参数：先取走自己的开关，剩下的交给走查入口（它只认 --packaged）──
+const argv = process.argv.slice(2)
+const flag = (name) => { const i = argv.indexOf(name); if (i < 0) return false; argv.splice(i, 1); return true }
+const valueOf = (name) => { const i = argv.indexOf(name); if (i < 0) return null; const [, value] = argv.splice(i, 2); return value ?? null }
+const LIST_MODELS = flag('--list-models')
+const FIXTURE = flag('--fixture')
+const RATE_PROBE = flag('--rate-limit-probe')
+const VISION_ARG = valueOf('--vision-model')
+// 从夹具里截一小段（默认 4.3s 起 1.8s、去音轨）：整段 15 秒在默认低阈值下会切出 7 镜，最坏花费不可控；截小段 = 镜数少、没有转写。
+const CLIP_START = Number(valueOf('--clip-start') ?? 4.3)
+const CLIP_SECONDS = Number(valueOf('--clip-seconds') ?? 1.8)
+process.argv.splice(2, process.argv.length - 2, ...argv)
+const CONFIRM = FIXTURE || process.env.NOMI_PAID_CONFIRM === '1'
+
+/** 目录里「启用、能读图」的文本模型。免费 / 限流没有可靠的目录信号，所以只做排除启发（key / 名字里带 free / agnes），最终由你判断。 */
+function visionCandidates(catalog) {
+  const vendors = new Map((catalog.vendors ?? []).map((vendor) => [vendor.key, vendor]))
+  return (catalog.models ?? [])
+    .filter((model) => model.kind === 'text' && model.enabled && vendors.get(model.vendorKey)?.enabled)
+    .filter((model) => model.meta?.supportsImageInput === true || /gemini|gpt-4o|gpt-4\.1|claude|qwen.*vl|vision/i.test(`${model.modelKey} ${model.modelAlias ?? ''}`))
+    .map((model) => ({
+      id: `${model.vendorKey}/${model.modelKey}`,
+      likelyFree: /free|agnes/i.test(`${model.vendorKey} ${model.modelKey} ${model.labelZh ?? ''}`) || /免费/.test(model.labelZh ?? ''),
+    }))
+}
+
+if (LIST_MODELS) {
+  const rows = visionCandidates(readRealCatalog())
+  console.log('能读图的文本模型（id = 供应商/模型；likelyFree 只是按名字的猜测，不是价格事实）：')
+  for (const row of rows) console.log(`  ${row.id}${row.likelyFree ? '   [likelyFree]' : ''}`)
+  console.log(`共 ${rows.length} 个。${rows.some((row) => !row.likelyFree) ? '用 --vision-model <id> 传非 likelyFree 的那个。' : ''}`)
+  process.exit(0)
+}
+
+// ── 选定读图模型 ──
+let model
+let paid = null
+let walk
+if (FIXTURE) {
+  if (VISION_ARG) console.log('[note] --fixture 忽略 --vision-model：读图模型固定为夹具那一个')
+  model = { vendorKey: FIXTURE_VENDOR, modelKey: FIXTURE_TEXT_MODEL, labelZh: FIXTURE_TEXT_MODEL_LABEL }
+  walk = await createRuntimeWalk('shot-table-vision-leg-fixture')
+} else {
+  if (!VISION_ARG) throw new Error('缺 --vision-model <id>（用 --list-models 看能选的；或 --fixture 走零花费）')
+  const wanted = VISION_ARG.includes('/') ? VISION_ARG : null
+  const rows = (readRealCatalog().models ?? []).filter((row) => row.kind === 'text' && row.enabled
+    && (wanted ? `${row.vendorKey}/${row.modelKey}` === wanted : row.modelKey === VISION_ARG))
+  if (rows.length !== 1) throw new Error(rows.length === 0 ? `目录里没有启用的文本模型 ${VISION_ARG}` : `${VISION_ARG} 在多家都有，请用 供应商/模型 的写法`)
+  model = { vendorKey: rows[0].vendorKey, modelKey: rows[0].modelKey, labelZh: rows[0].labelZh ?? rows[0].modelKey }
+  paid = await openPaidWalk('shot-table-vision-leg.paid.mjs', 'shot-table-vision-leg', [model])
+  walk = paid.walk
+}
+const modelLine = `${model.vendorKey} · ${model.modelKey}`
+const L = (key) => uiText('zh-CN', key)
+const report = walk.report
+report.mode = FIXTURE ? 'fixture' : CONFIRM ? 'paid-confirmed' : 'paid-stop-at-quote'
+report.rateLimitProbe = RATE_PROBE
+report.visionModel = `${model.vendorKey}/${model.modelKey}`
+
+if (FIXTURE) {
+  const okJson = JSON.stringify({ shotSize: '特写', mood: '平静', visual: '夹具回的画面描述', onScreenText: '', imagePrompt: 'p', motionPrompt: 'm' })
+  walk.fixture.respond({
+    label: 'deconstruct-vision',
+    match: (body) => JSON.stringify(body?.messages ?? []).includes('拆解'),
+    reply: RATE_PROBE
+      ? { type: 'http-error', status: 429, json: { error: { message: RATE_LIMIT_TEXT, type: 'rate_limit_error' } } }
+      : { type: 'text', text: okJson },
+  })
+}
+
+let failure
+try {
+  const { win, app } = await walk.start({ first: true })
+  if (paid) await paid.lockToAuthorizedModels(win)
+  fs.mkdirSync(EVIDENCE_DIR, { recursive: true })
+  const snap = async (label) => {
+    const file = await walk.snap(label)
+    fs.copyFileSync(file, path.join(EVIDENCE_DIR, `${FIXTURE ? 'fixture' : 'paid'}-${path.basename(file)}`))
+    return file
+  }
+
+  // ① 新建项目 + 导入真实短视频（走真 IPC，和用户拖进来同一条路）
+  await win.evaluate(() => localStorage.setItem('__nomiE2E', '1'))
+  await walk.newProject()
+  await clickOrFail(win.locator('[data-mode="generation"]'), '生成 tab')
+  await win.waitForFunction(() => Boolean(window.__nomiCanvasStore), undefined, { timeout: stationTimeout() })
+  if (!fs.existsSync(VIDEO_FIXTURE)) throw new Error(`仓库里没有现成的真实短视频夹具：${VIDEO_FIXTURE}`)
+  const clipFile = path.join(os.tmpdir(), `nomi-vision-leg-clip-${process.pid}.mp4`)
+  const ffmpegPath = createRequire(import.meta.url)('@ffmpeg-installer/ffmpeg').path
+  const cut = spawnSync(ffmpegPath, ['-v', 'error', '-y', '-ss', String(CLIP_START), '-t', String(CLIP_SECONDS), '-i', VIDEO_FIXTURE, '-an', '-vf', 'scale=640:-2', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', clipFile])
+  if (cut.status !== 0) throw new Error(`截夹具小段失败：${String(cut.stderr)}`)
+  const seeded = await win.evaluate(async ({ b64 }) => {
+    const projectId = /projectId=([^&]+)/.exec(location.href)?.[1]
+    if (!projectId) return { error: 'no projectId in url' }
+    const binary = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))
+    const saved = await window.nomiDesktop.assets.importFile({ projectId, bytes: binary.buffer, contentType: 'video/mp4', fileName: 'reference.mp4', kind: 'upload' })
+    if (!saved.ok) return { error: saved.failure.reason }
+    const url = saved.asset.data?.url || ''
+    if (!url) return { error: 'asset import failed' }
+    const store = window.__nomiCanvasStore.getState()
+    const video = store.addNode({ kind: 'video', title: '参考片', position: { x: 120, y: 160 } })
+    store.updateNode(video.id, { result: { id: `seed-${Date.now()}`, type: 'video', url, createdAt: Date.now(), durationSeconds: 2 } })
+    return { videoId: video.id }
+  }, { b64: fs.readFileSync(clipFile).toString('base64') })
+  if (!seeded.videoId) throw new Error(`导入视频失败：${JSON.stringify(seeded)}`)
+  const videoNode = win.locator(`[data-node-id="${seeded.videoId}"]`)
+  await expect(videoNode).toBeVisible({ timeout: stationTimeout() })
+  await waitForVisualQuiescence(win)
+
+  // ② 读图调用计数器（真付费才需要：夹具模式直接数夹具收到的请求）。上限 4：超了在请求发出前拒掉。
+  if (!FIXTURE) {
+    await app.evaluate((_electron, cap) => {
+      const counts = { vision: 0, transcribe: 0, other: 0 }
+      globalThis.__paidCounts = counts
+      const inner = globalThis.fetch
+      globalThis.fetch = function countedFetch(input, init) {
+        const url = String(typeof input === 'string' ? input : input?.url ?? input)
+        if (/\/audio\/transcriptions/.test(url)) counts.transcribe += 1
+        else if (/\/chat\/completions|\/v1\/messages|generateContent/.test(url)) {
+          if (counts.vision >= cap) return Promise.reject(new Error(`paid cap：读图调用要超过上限 ${cap}，已在发出前拦下`))
+          counts.vision += 1
+        } else counts.other += 1
+        return inner.call(this, input, init)
+      }
+    }, VISION_CAP)
+  }
+  const callCounts = async () => FIXTURE
+    ? { vision: walk.fixture.requests.length, transcribe: 0, other: 0 }
+    : app.evaluate(() => ({ ...globalThis.__paidCounts }))
+
+  // ③ 选中视频 → 浮条「拆解 ▾ → 拆成镜头表」→ 第一张报价卡（自动挑的模型）→ 取消（零花费，只为让分镜表节点出现）
+  await videoNode.click()
+  await clickOrFail(win.getByRole('button', { name: L('generationCommon.videoToolbar.breakDown'), exact: true }).first(), '浮条「拆解」')
+  await clickOrFail(win.getByRole('menuitem', { name: new RegExp(`^${L('generationCommon.videoToolbar.shotTable')}`) }), '菜单「拆成镜头表」')
+  const dialog = win.locator(SPEND_DIALOG)
+  const dialogProof = await proveProbe(dialog, '拆解的报价卡出现', stationTimeout({ operations: 4 }))
+  const readRows = () => dialog.evaluate((root) => [...root.querySelectorAll('div.justify-between')].map((row) => [...row.children].map((cell) => cell.textContent?.trim() ?? '')))
+  const firstRows = await readRows()
+  const autoModel = firstRows.find(([label]) => label === L('runtime.capability.model'))?.[1]
+  console.log(`[quote#1] 自动挑的读图模型行：${autoModel ?? '(没找到模型行)'}`)
+  report.autoPickedModelLine = autoModel ?? null
+  await clickOrFail(dialog.locator('[data-spend-confirm-action="cancel"]'), '第一张报价卡「取消」')
+  await expectAbsent(dialog, { provenBy: dialogProof, message: '取消后报价卡退场' })
+  expect((await callCounts()).vision, '取消 = 一次读图调用都没发').toBe(0)
+
+  // ④ 底栏「读图模型」选所选模型
+  const table = win.locator('[data-testid="shot-table-node"]').first()
+  await expect(table).toBeVisible({ timeout: stationTimeout() })
+  await waitForVisualQuiescence(win)
+  const picker = table.getByRole('button', { name: L('shotTable.visionModel') }).or(table.getByRole('combobox', { name: L('shotTable.visionModel') })).first()
+  await clickOrFail(picker, '底栏「读图模型」')
+  await clickOrFail(win.getByRole('option', { name: new RegExp(model.labelZh.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) }).first(), `选读图模型「${model.labelZh}」`)
+  await expect(picker).toContainText(model.labelZh)
+
+  // ⑤ 「重新拆解」→ 第二张报价卡：模型行必须 = 所选
+  await clickOrFail(table.locator('[data-testid="shot-table-restart-deconstruction"]'), '底栏「重新拆解」')
+  const dialog2Proof = await proveProbe(dialog, '第二张报价卡出现', stationTimeout({ operations: 4 }))
+  const quoteRows = await readRows()
+  const quoteModel = quoteRows.find(([label]) => label === L('runtime.capability.model'))?.[1]
+  const quoteCalls = quoteRows.find(([label]) => label === L('runtime.capability.callCount'))?.[1]
+  console.log(`[quote#2] 报价卡模型行：${quoteModel}  ·  调用次数：${quoteCalls ?? '(无)'}`)
+  report.quoteModelLine = quoteModel
+  report.quoteCallCount = quoteCalls ?? null
+  await snap('quote-card')
+  expect(quoteModel, '报价卡上的模型行 = 底栏所选').toBe(modelLine)
+  const quoted = Number(quoteCalls ?? '0')
+  const overCap = quoted > VISION_CAP
+  if (overCap) console.log(`[stop] 报价 ${quoted} 次调用 > 读图上限 ${VISION_CAP}：不点确认。换个小段重试（--clip-start / --clip-seconds）。`)
+
+  if (!CONFIRM || overCap) {
+    await clickOrFail(dialog.locator('[data-spend-confirm-action="cancel"]'), '第二张报价卡「取消」')
+    await expectAbsent(dialog, { provenBy: dialog2Proof, message: '取消后报价卡退场' })
+    expect((await callCounts()).vision, '停在报价卡：供应商一个读图请求都没有').toBe(0)
+    if (!overCap) console.log('[stop] 未设 NOMI_PAID_CONFIRM=1：停在报价卡，已取消，零花费。')
+    if (overCap) process.exitCode = 2
+    report.verified = ['picker-sets-model', 'quote-model-line-equals-selection', 'cancel-sends-nothing']
+  } else {
+    // ⑥ 确认 → 等结果 → 打印每镜状态 / 顶上一行原话 / 实际调用次数
+    await clickOrFail(dialog.locator('[data-spend-confirm-action="confirm"]'), '报价卡「确认」', { noWaitAfter: true })
+    const tableState = () => win.evaluate(() => {
+      const node = window.__nomiCanvasStore.getState().nodes.find((candidate) => candidate.kind === 'shot_table')
+      const doc = node?.meta?.shotTable
+      return doc ? { status: doc.source.status, error: doc.source.errorMessage ?? null, rows: doc.rows.map((row) => ({ order: row.order, visionFailed: Boolean(row.visionFailed), failureReason: row.failureReason ?? null, shotSize: row.cells?.shotSize ?? '' })) } : null
+    })
+    await expect.poll(async () => {
+      const counts = await callCounts()
+      if (counts.vision > VISION_CAP) throw new Error(`读图调用 ${counts.vision} 次，超过上限 ${VISION_CAP}，立刻停`)
+      return (await tableState())?.status ?? 'none'
+    }, { message: '拆解跑完（ready / failed）', timeout: stationTimeout({ turns: 2 }) }).toMatch(/^(ready|failed)$/)
+    await waitForVisualQuiescence(win)
+    const finalState = await tableState()
+    const counts = await callCounts()
+    const summary = table.locator('[data-testid="shot-table-vision-failure-summary"]')
+    const summaryText = (await summary.isVisible().catch(() => false)) ? (await summary.textContent())?.trim() : null
+    console.log(`[result] 表状态：${finalState.status} · 顶栏原话：${summaryText ?? '(无失败行)'}${finalState.error ? ` · 整次错误：${finalState.error}` : ''}`)
+    for (const row of finalState.rows) console.log(`  镜 ${row.order}：${row.visionFailed ? `没读出（${row.failureReason ?? '无原因'}）` : `读出 · 景别「${row.shotSize}」`}`)
+    console.log(`[calls] 实际调用：读图 ${counts.vision} 次 · 转写 ${counts.transcribe} 次${FIXTURE ? '（夹具收到的请求数）' : '（主进程 fetch 计数；若与镜数对不上，以供应商账单为准）'}`)
+    Object.assign(report, { finalTableStatus: finalState.status, rows: finalState.rows, summaryLine: summaryText, calls: counts })
+    expect(counts.vision, `读图调用 ≤ ${VISION_CAP}`).toBeLessThanOrEqual(VISION_CAP)
+    await snap(RATE_PROBE ? 'result-rate-limit' : 'result')
+    if (RATE_PROBE) {
+      expect(finalState.rows.every((row) => row.visionFailed), '限流探针：每一镜都没读出').toBe(true)
+      expect(summaryText ?? '', '限流探针：顶上一行是供应商原话（429 / 限流）').toMatch(/rate limit|429|限流/i)
+      report.verified = ['rate-limit-reason-on-top-line']
+    } else {
+      expect(finalState.rows.some((row) => !row.visionFailed && row.shotSize), '至少有一镜读出了景别').toBe(true)
+      report.verified = ['picker-sets-model', 'quote-model-line-equals-selection', 'shots-read', 'calls-within-cap']
+    }
+  }
+} catch (error) {
+  failure = error
+  process.exitCode = 1
+} finally {
+  if (paid) await paid.finish(failure)
+  else await walk.finish(failure, { unscriptedFixture: true })
+}
