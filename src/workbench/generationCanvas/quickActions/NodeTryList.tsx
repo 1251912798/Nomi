@@ -3,6 +3,9 @@ import { useTranslation } from 'react-i18next'
 import type { GenerationCanvasNode } from '../model/generationCanvasTypes'
 import { nodeTryRecipes, runNodeTryRecipe } from './nodeTryRecipes'
 import { pickCanvasInputFor } from './nodeInputActions'
+import { NodeEmptyState } from '../nodes/render/NodeEmptyState'
+import { useNodeEmptyStateContext } from '../nodes/render/NodeEmptyStateContext'
+import { getGenerationNodeIcon } from '../nodes/renderRegistry'
 
 /** 卡内的点击不能变成拖卡 / 框选：按下就截住（同 NodeEmptyAction）。 */
 const stopCanvasGesture = (event: React.PointerEvent) => event.stopPropagation()
@@ -63,10 +66,15 @@ export function NodeTryList({ node }: { node: GenerationCanvasNode }): JSX.Eleme
  */
 export function ClipEmptyTry({ nodeId, readOnly = false, onAddMaterial }: { nodeId: string; readOnly?: boolean; onAddMaterial?: () => void }): JSX.Element {
   const { t } = useTranslation()
+  const { engaged, readOnly: hostReadOnly } = useNodeEmptyStateContext()
+  if (!engaged) {
+    const Icon = getGenerationNodeIcon('clip')
+    return <NodeEmptyState compact icon={<Icon size={18} stroke={1.5} />} />
+  }
   return (
     <span className="pointer-events-auto inline-flex flex-nowrap items-center justify-center gap-x-1" data-node-try="clip">
       <span className="text-caption text-nomi-ink-40">{t('generationCommon.nodeTry.status.clip')}</span>
-      {readOnly ? null : (
+      {readOnly || hostReadOnly ? null : (
         <>
           <TrySeparator />
           <button
