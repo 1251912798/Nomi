@@ -1,0 +1,27 @@
+{
+  "name": "原视频卡播放、选段与截帧会话",
+  "subject": "canvas.source-video-session",
+  "lifecycle": "live-interaction",
+  "authority_kind": "writer",
+  "trust_domain": "renderer",
+  "fact_kind": "state-machine",
+  "migration_status": "converged",
+  "owner": {
+    "path": "src/workbench/generationCanvas/nodes/NodeVideoSession.tsx",
+    "symbol": "NodeVideoSessionProvider"
+  },
+  "write_api": [
+    {
+      "path": "src/workbench/generationCanvas/nodes/NodeVideoSession.tsx",
+      "symbol": "NodeVideoSessionProvider"
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/NodeVideoClipPanel.tsx",
+      "symbol": "NodeVideoClipPanel"
+    }
+  ],
+  "forbidden_derivations": [],
+  "allowed_consumers": [],
+  "since": "2026-10-11",
+  "notes": "节点与源URL共同限定瞬时会话；原卡控件与选区操作复用播放器、只读授权及重复截帧判据。媒体解码就绪不决定选区手势生命周期。"
+}
