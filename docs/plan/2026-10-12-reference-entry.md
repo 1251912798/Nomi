@@ -13,7 +13,7 @@
 | 4 全状态 | 空入口常显；上传中附件不可发送；成功现有缩略图；失败保留可移除并重选；部分成功各附件独立；取消点选不写；失效main拒绝且保留草稿；槽满显示原因且可移除；没有参考槽的纯文本生成不捏造槽。zh/en i18n。 |
 | 5 中途 | picker Esc/外点关而保留草稿；点选Esc/空白取消；上传关窗不自动发送；断网失败可移除重选；切项目由project context阻止跨项目落入；重启不恢复未持久化临时picker。所有准备过程不发起生成；发送ACK才清对应附件。 |
 | 6 外部数据 | 现有main导入与项目绑定验证原件，renderer只声明身份；图片vision按原模型能力发送；视频/音频以可执行assetId素材引用进入prompt，用于生成参考和技术事实读取，不能声称模型已经理解画面/声音。原生视频/音频语义分析不在现有lane能力内。 |
-| 7 性能 | 现有素材池；Agent选择按已有导入/列表边界，不复制本地原件；分页原件查找。1000素材与最大画布性能unverified。 |
+| 7 性能 | 复用现有素材池与导入边界；输入按引用数重复解析、句中图片未传缩略图、点选重复查全画布、主进程同步原件哈希均有优化空间，尚未优化。隔离探针仅证明子路径成本，不代表 Electron 输入/帧耗时；1000素材、最大画布、真实编辑器 p95/long-task/内存峰值 unverified。 |
 | 8 条件 | macOS真Electron、中英/暗色/窄窗/键盘已走查（loopback文本supplier，0付费）；Windows/打包版/真实provider unverified，测试fixture不能替代。 |
 | 9 验收 | red→green同类传输回归，入口原路径Electron截图，独立reference_census复核；提交前风险gates；PR不合并。回滚revert本任务commit，不改用户数据schema。 |
 
@@ -48,3 +48,11 @@ motion-contract：复用现有AnchoredPopover入退场、AssetTile450ms预览；
 7. 核心权衡：保持原小鼠标、原加号与句中缩略图，并让它们真的携带所选原件。没有新增用户配置或界面。
 
 特征与类检查：electron/ai/agentUserContent.test.ts（全媒体 × vision 能力矩阵）、src/workbench/ai/composer/useComposerAttachments.behavior.test.tsx（延迟 echo 删除）、AssetReference.test.ts（原加号容量）、tests/ux/reference-entry.walk.mjs（持续消失、首击、目标和 wire）。逃逸条目 USER-20261012-reference-entry。
+
+## 先查别人
+
+- [共享 PromptEditor](../../src/workbench/assets/PromptEditor.tsx)：已接入现有 TipTap 编辑器与 AssetMentionSuggestion；不再实现 Agent 专属编辑器或 @ 弹层。
+- [mapped bookmark 插入](../../src/workbench/assets/insertAssetMentionWhenReady.ts)：已接入现有 ProseMirror 映射边界；在途原件准入沿同一插入 owner 保持句中位置。
+- [项目附件准入](../../src/workbench/ai/composer/useComposerAttachments.ts)：已接入现有原件导入、去重、项目动作绑定与 canonical claim；媒体数据不落第二套参考 store。
+
+登记 `agent-inline-reference-admission` 仅声明 `useAgentReferenceMentions.ts` 这一领域接线文件的约束与删除条件。React hook 文件即使位于 resident 领域目录仍受 genericZones 管理，因此登记具体文件，不扩大 domainRoots、不放宽检查。性能审查本轮只记录，未实施优化或改动已确认的界面。

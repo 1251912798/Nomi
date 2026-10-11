@@ -1914,6 +1914,30 @@
       ],
       "whyNotIntegrated": "Domain constraint：生成框与外框控件的相交关系只有画布自己知道（哪个节点被选中、生成框此刻的屏幕矩形、控件是否上抬），通用的 z-index / 层叠机制在 React Flow 的层叠上下文边界处做不到；没有现成库做「画布外框控件让位于节点浮层」这件事。量的时机用浏览器现成的 MutationObserver / ResizeObserver 触发、合并到一帧（createFrameCoalescer 十几行），选中变化、视口平移缩放、节点被挪、生成框挂卸与变大小才量一次，静止时不读布局。",
       "revisitWhen": "生成框挪出节点层单独渲染后删除（2026-11-15 复查一次：画布层级表合入、生成框能直接用层级值盖住外框控件时，删本文件与 canvasChromeLayers 里的说明）"
+    },
+    {
+      "id": "agent-inline-reference-admission",
+      "capability": "常驻 Agent 的句中媒体引用：把共享 PromptEditor 的原件缩略图与现有项目附件准入、会话寿命和 canonical claim 对齐",
+      "status": "justified",
+      "paths": [
+        "src/workbench/ai/resident/useAgentReferenceMentions.ts"
+      ],
+      "alternativesChecked": [
+        {
+          "name": "现有 PromptEditor / AssetMentionSuggestion：已接入 TipTap 与共享 mention 原子，继续作为唯一编辑器与 @ 候选交互",
+          "source": "src/workbench/assets/PromptEditor.tsx"
+        },
+        {
+          "name": "现有 mapped bookmark 插入 owner：已接入 ProseMirror 映射，异步原件准入期间仍保留指令内插入位置，没有自写光标映射",
+          "source": "src/workbench/assets/insertAssetMentionWhenReady.ts"
+        },
+        {
+          "name": "现有 useComposerAttachments / projectAgentAttachments：已接入项目动作绑定、原件导入、去重与 canonical claim，继续作为唯一附件 owner",
+          "source": "src/workbench/ai/composer/useComposerAttachments.ts"
+        }
+      ],
+      "whyNotIntegrated": "领域约束：Nomi 的节点来源 resultId、项目原件 claim 与指令句中引用必须一一对应；删除最后一处引用才释放附件，项目/会话切换及在途准入不得把原件插入另一个草稿。编辑、@ 弹层、光标映射、文件导入和身份校验已全部复用现有 owner；该 hook 只连接这些 Nomi 领域身份与寿命，没有新增通用编辑器、上传器、选择器或参考 store。方案查证：docs/plan/2026-10-12-reference-entry.md。",
+      "revisitWhen": "现有项目附件 owner 原生拥有句中引用的准入/删除/会话寿命接口时，把本 hook 的接线收回该 owner 并删除此登记；不得并存第二套引用身份。"
     }
   ]
 }
