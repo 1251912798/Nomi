@@ -4,6 +4,9 @@ import { IconDownload, IconMaximize, IconUpload } from '@tabler/icons-react'
 import { FloatingToolbarShell, TOOLBAR_ICON as TBI, ToolbarButton, ToolbarDivider, ToolbarVariantProvenanceActions } from '../NodeFloatingToolbar'
 import { useResultDownload } from '../useResultDownload'
 import type { GenerationCanvasNode } from '../../model/generationCanvasTypes'
+import { acceptAttrForSurface } from '../../../../../electron/shared/contracts/mediaImportPolicy'
+
+const PANORAMA_UPLOAD_ACCEPT = acceptAttrForSurface('panorama')
 
 /**
  * 全景节点的浮条（预览 / 重新上传 / 下载 / 出处）。从 BaseGenerationNode 原样搬出：宿主是登记在案的巨壳
@@ -43,7 +46,7 @@ export default function PanoramaNodeToolbar({ node, reportFeedback, fullscreenRe
         onClick={download}
       />
       <ToolbarVariantProvenanceActions nodeId={node.id} onOpenProvenance={onOpenProvenance} />
-      <input ref={uploadInputRef} className="hidden" type="file" accept="image/*" onChange={onFileChange} />
+      <input ref={uploadInputRef} className="hidden" type="file" accept={PANORAMA_UPLOAD_ACCEPT} onChange={onFileChange} />
     </FloatingToolbarShell>
   )
 }
