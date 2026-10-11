@@ -36,3 +36,38 @@
 
 - `scripts/check-test-temp-static.node-test.mjs`
 - `scripts/_test-temp.node-test.mjs`
+
+## 2026-10-11 追加：测试改写被跟踪源文件
+
+### 0. 一句话根因
+测试对真实仓库里被跟踪的文件有写权，「写坏再还原」在并发和被杀时兜不住；门岗只认 `repoRoot` 等几个名字、且不跟变量别名，所以漏检。
+
+### 1. 归类
+| 问题 | 直接原因 | 类 |
+|---|---|---|
+| 推送前钩子并发跑两个门岗，`check-ipc-sender-binding` 误报「electron/main.ts:411」，单跑却绿 | 其自测原地改写 `electron/main.ts` 再写回，另一个进程读到被改坏的瞬间 | 测试写被跟踪文件 |
+| `check-source-nul-bytes.test.ts` 往仓内写探针 | 门岗扫的就是仓库 | 同类，但只新建不入库文件，登记例外 |
+| `parameterReachability.test.mjs` 写 `artifacts/` 覆盖表 | 证据产物 | 同类，gitignore 目录，登记例外 |
+| 早上的 `gate-mutation-harness` 原地改生产文件 | 同上 | 同类（已先修） |
+
+### 2. 为什么一直冒
+扫描只认 `repoRoot` / `REPO_ROOT` / `repositoryRoot` / `process.cwd()` 直接写在调用里的写法；`const target = path.join(process.cwd(),…)` 再写 `target` 就看不见。本次已补变量别名（按函数作用域）。
+
+### 3. 预测
+- 路径由 `root` / `ROOT` 之类别的名字拼出的测试（粗筛约 17 个文件）里，仍可能有写被跟踪文件的，门岗目前看不到。验证：逐个核对，或把根名字识别改为「由 `import.meta.url` / `__dirname` / `cwd` 推出的路径变量」。
+- 新增测试若用别的写法（`fs.promises`、子进程里写）仍可能漏过。
+
+### 4. P0 / 现成方案
+测试隔离不是领域能力。成熟做法是「在临时副本上跑」，已有 `makeTempDir`；扫描用现成的 TypeScript 语法树，不再自写解析。
+
+### 5. 方案对比
+| 方案 | 说明 | 代价 |
+|---|---|---|
+| 接入 | 测试进程用只读挂载 / 沙箱文件系统 | Windows 上没有现成轻量方案，成本高 |
+| 补（推荐） | 扫描补别名 + 被扫门岗加 `--root` 让自测用临时夹具 | 改动小，语法层拦截，不是沙箱 |
+| 删 | 删掉这些自测 | 失去「门岗真会红」的证明，不可取 |
+
+### 6. 结构性结论
+测试一律不许写被跟踪文件，只许写临时副本；`check:test-temp-static` 管住（含别名）。
+
+**用户 2026-10-11 拍板：同意。**
