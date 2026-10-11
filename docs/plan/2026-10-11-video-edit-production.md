@@ -32,3 +32,9 @@
 - 用户不接受右下角多挂动作：下方仅胶片，提交复用上方已有剪辑入口；开启前「剪辑」，开启后「剪辑片段」点击执行。退出只走Esc/空白/切卡，重按入口改为执行，不再是退出。
 - 自动拆镜上方入口继续保留现有图片抽取/成组/镜头表能力；实验室视频智能分段仍属提案，不宣称已接真实视频自动分段。
 - 首轮真实Electron连续拖动暴露元数据/帧就绪混用：第一步seek使readyState短暂下降，disabled切换中断拖动。改为元数据门只管编辑、当前帧就绪门只管相机/提交。红灯记录 `.tmp/video-clip-walk.log` 首轮（拖3s实际0.4s；50%拖2s实际0.2s），更改的是共享就绪判据，不放宽像素与时长断言。
+
+## 先查别人
+
+- [现有播放守卫](../../src/workbench/generationCanvas/nodes/NodeVideoPlaybackGuard.tsx)：继续复用播放器挂载、自愈与唯一播放权；第二播放器会破坏本轮原卡唯一预览合同。
+- [现有胶片接口](../../src/media/useFilmstrip.ts)：继续复用缩略图缓存与并发限制；它提供胶片产物，不拥有原卡精确播放头。
+- [React节点会话宿主](../../src/workbench/generationCanvas/nodes/NodeVideoSession.tsx)：使用React context/ref与原生HTMLVideoElement事件，hook仅做相机/选区/提交的领域装配，禁止每次播放tick写全局画布状态。
