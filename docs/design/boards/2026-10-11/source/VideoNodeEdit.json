@@ -1,0 +1,22 @@
+{
+  "sources": [
+    {
+      "path": "src/devlab/designLab/videoNodeNext/VideoEditStage.tsx",
+      "sha256": "2de007991b861ff9eba74b4466552640be808b8554f03ec33eb1fe98d7ac4947"
+    },
+    {
+      "path": "src/devlab/designLab/videoNodeNext/videoEditFilmstrip.tsx",
+      "sha256": "884138270e232dd1a26edcd335870417d6c4d3f92d76ed06138e0b3dcab60d13"
+    },
+    {
+      "path": "src/devlab/designLab/videoNodeNext/videoNodeNextToolbarKit.tsx",
+      "sha256": "9fada513f1913a69fc8e1674a9d15e7c6e50601b768d72efff645e3d33cc46fa"
+    },
+    {
+      "path": "src/devlab/designLab/videoNodeNext/videoNodeNextFixtures.ts",
+      "sha256": "a3efb4ede35456139ed38170818887b0558d44cd5b9023ae99ec11f34dd90aa7"
+    }
+  ],
+  "preview": "http://127.0.0.1:5186/design-lab.html?screen=video-node-next&frame=1&state=vn-03-clip-open-zh",
+  "evidence": "docs/evidence/2026-10-11-clip-design"
+}

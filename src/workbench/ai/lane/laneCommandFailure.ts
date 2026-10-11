@@ -16,6 +16,7 @@ import type { LaneAssistantFault } from '../../../../electron/shared/agentLane/l
 import type { TranslationKey } from '../../../i18n/translationKey'
 import { classifyGenerationError } from '../../observability/classifyError'
 import { logRendererError } from '../../../desktop/rendererLog'
+import type { UserText } from '../../project/projectOperationFailureText'
 import { leaksInternals, stripClassificationMarkers } from '../resident/residentToolText'
 
 type Translate = (key: string, options?: Record<string, unknown>) => string
@@ -119,7 +120,12 @@ function showableRaw(raw: string): boolean {
  *   ③ 分类器也不认（`unknown`）且原始串是拉丁散句 → 一句通用的本地化提示，原始串进 console。
  *      这一档就是这次泄漏的落点，现在 fail-closed。
  */
-export function laneFailureText(error: unknown, t: Translate): string {
+export function laneFailureText(error: unknown, t: Translate): UserText {
+  // fail-closed 取词（见上面注释）：返回值只来自词典键或分类后的本地化句，不含原文，可以当界面文案。
+  return laneFailureTextOf(error, t) as UserText
+}
+
+function laneFailureTextOf(error: unknown, t: Translate): string {
   const code: LaneErrorCode | null = error instanceof LaneCommandFailure && isLaneErrorCode(error.laneCode) ? error.laneCode
     : isLaneErrorCode(error instanceof Error ? asText(error.message).trim() : '') ? asText((error as Error).message).trim() as LaneErrorCode
       : null

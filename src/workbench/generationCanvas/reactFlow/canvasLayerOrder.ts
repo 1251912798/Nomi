@@ -15,6 +15,8 @@
 import type { CSSProperties } from 'react'
 
 export const CANVAS_LAYER = {
+  /** React Flow 渲染层（视口 + 节点 + 生成框都在里面）：xyflow 自带 style.css 的 .react-flow__renderer。 */
+  flowRenderer: 4,
   /** 分组框体（拖动把手）。 */
   groupBody: 0,
   /** 分组框头（组名 / 计数 / 生成全部）：压框体，压在节点层之下。 */
@@ -29,11 +31,20 @@ export const CANVAS_LAYER = {
   nodeSelected: 5,
   /** 节点内的生成框（提示词框）与文本节点编辑框：节点局部坐标，整体仍在节点层里。 */
   nodeComposer: 8,
+  /**
+   * 加节点条、缩放簇：舞台直接子元素，压在渲染层（flowRenderer）之上。
+   * 生成框（nodeComposer）被关在渲染层的层叠上下文里，数字盖不过它们——「生成框永远在外框控件之上」
+   * 靠 useCanvasChromeOcclusion 把外框控件被生成框压住的那一块裁掉（命中一起没了），效果与「层级更高」逐像素一致。
+   */
+  chromeDock: 8,
   /** 框选浮条：视口层，压节点层。 */
   selectionToolbar: 11,
   /** 分组工具条：视口层，压节点层。 */
   groupToolbar: 12,
 } as const
+
+/** 生成框根节点的类名：占用检测靠它找生成框（NodeGenerationComposer / TextNodeComposer 的根都带它）。 */
+export const COMPOSER_ROOT_SELECTOR = '.generation-canvas-v2-node__composer'
 
 export const CANVAS_LAYER_CSS_VARS = {
   '--canvas-z-nodes': String(CANVAS_LAYER.nodes),

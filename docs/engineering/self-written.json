@@ -1840,6 +1840,82 @@
       "revisitWhen": "Vitest 提供按用例的「自定义在途资源」钩子，或导出任务表改成按项目实例化、不再是模块级单例时"
     },
     {
+      "id": "canvas-source-video-session-hooks",
+      "capability": "原视频卡共享会话的React消费接口和播放器时钟投影",
+      "status": "justified",
+      "paths": [
+        "src/workbench/generationCanvas/nodes/useNodeVideoSession.ts"
+      ],
+      "alternativesChecked": [
+        {
+          "name": "现有NodeVideoPlaybackGuard保持唯一播放器挂载与播放权；复用其播放器，而不引入第二个通用播放器",
+          "source": "src/workbench/generationCanvas/nodes/NodeVideoPlaybackGuard.tsx"
+        },
+        {
+          "name": "现有useFilmstrip复用缓存与缩略图并发，时钟不能用其异步胶片状态替代",
+          "source": "src/media/useFilmstrip.ts"
+        },
+        {
+          "name": "NodeVideoSessionProvider使用React context/ref作为每个来源的会话边界；订阅原生HTMLVideoElement事件，无自写事件总线",
+          "source": "src/workbench/generationCanvas/nodes/NodeVideoSession.tsx"
+        }
+      ],
+      "whyNotIntegrated": "领域约束：同一原视频节点的相机、剪辑条与顶部提交要共享精确播放头和只读能力；播放时间更新必须停留在原卡局部，不能通过画布store驱动其他节点。该hook只把现有播放器与React会话接给这些领域控制面，没有新增播放器、队列或缓存实现。",
+      "revisitWhen": "生产原卡播放器拥有可直接复用的局部时钟订阅接口时，删除useNodeVideoClock并改用该接口；每源会话消费仍归节点session。"
+    },
+    {
+      "id": "held-modifier-reconciler",
+      "capability": "修饰键「按着没」的对账：window 捕获阶段拿每个输入事件自带的修饰位核对，见过按下、没见过松开完整送达的修饰键，在下一次带修饰位说「没按着」的输入时补发一次 keyup（约 70 行）",
+      "status": "justified",
+      "paths": [
+        "src/ui/input/heldModifierReconciler.ts"
+      ],
+      "alternativesChecked": [
+        {
+          "name": "升级 @xyflow/react（装的 12.11.5，最新 12.12.0）：useKeyPress 仍只靠 keydown / keyup 配对、只在 window blur / contextmenu 清零，变更记录里没有修饰位对账，也没有对外的 reset API",
+          "source": "https://github.com/xyflow/xyflow/blob/main/packages/react/src/hooks/useKeyPress.ts"
+        },
+        {
+          "name": "React Flow 自带的按键开关置空（selectionKeyCode / multiSelectionKeyCode = null）后自己按指针修饰位驱动：会丢掉「Shift 起手在卡上拉框选」的现有行为，且 selectionKeyPressed 是内核私有 state，外部写不进去",
+          "source": "node_modules/@xyflow/react/dist/esm/index.mjs（FlowRenderer 的 useKeyPress(selectionKeyCode) 与 Pane 的 onPointerDownCapture）"
+        },
+        {
+          "name": "react-hotkeys-hook / tinykeys 一类快捷键库：只管「按下某组合触发回调」，自己的按住状态同样靠 keydown / keyup 配对，也替代不了 React Flow 内核里那份记账",
+          "source": "https://github.com/JohannesKlauss/react-hotkeys-hook"
+        },
+        {
+          "name": "浏览器原生事件修饰位（接入：对账的真相就是 MouseEvent / KeyboardEvent 的 shiftKey 等，补发用原生 KeyboardEvent + react-dom flushSync）",
+          "source": "https://developer.mozilla.org/en-US/docs/Web/API/MouseEvent/shiftKey"
+        }
+      ],
+      "whyNotIntegrated": "领域约束：要对齐的状态住在画布内核（React Flow）的私有按键记账里——多选 / 框选语义由它持有、框架里删不掉，没有任何现成库能替另一个库的私有状态补发丢失的松开；能接入的部分（事件修饰位、原生 KeyboardEvent、flushSync）已全部接入，自写的只是「何时补发」这一条约 70 行的规则。",
+      "revisitWhen": "React Flow 的 useKeyPress 自己按事件修饰位对账或开放 reset API 时，删掉本模块"
+    },
+    {
+      "id": "canvas-chrome-occlusion",
+      "capability": "画布外框控件（加节点条、缩放簇）被节点生成框压住的那一块自动裁掉，让生成框在视觉和命中上都盖在外框控件之上（用户 2026-10-10 验收规则：生成框是正在操作的东西，任何画布外框控件不得盖住它）。",
+      "status": "justified",
+      "paths": [
+        "src/workbench/generationCanvas/components/useCanvasChromeOcclusion.ts"
+      ],
+      "alternativesChecked": [
+        {
+          "name": "调 z-index：生成框在 React Flow 渲染层（z-4）的层叠上下文里，节点视口自带 transform 又是一层，生成框对外只有「渲染层」这一个层级；加节点条 / 缩放簇是舞台的直接子元素，生成框写多大 z 都盖不过。实测定位（走查 elementFromPoint）也证实。",
+          "source": "node_modules/@xyflow/react/dist/style.css（.react-flow__renderer z-index:4、.react-flow__viewport transform）；src/workbench/generationCanvas/reactFlow/canvasLayerOrder.ts 里 chromeDock 的说明"
+        },
+        {
+          "name": "把生成框 portal 出节点层、单独渲染在舞台级图层：能让层级值真正生效，但生成框是 59 个走查 / 单测按「在节点 DOM 里」定位的（.generation-canvas-v2-node__composer），位置要改成按屏幕坐标换算，TipTap 编辑器还要保持挂载不丢输入，blast radius 太大，这一刀不走。",
+          "source": "tests/ux、src 内对 generation-canvas-v2-node__composer / data-composer-host 的引用共 59 个文件（git grep）"
+        },
+        {
+          "name": "CSS clip-path 本身是浏览器标准能力，已直接用，没有再造裁剪；自写的只有「量生成框与控件的相交矩形」这一小段几何。",
+          "source": "https://developer.mozilla.org/docs/Web/CSS/clip-path"
+        }
+      ],
+      "whyNotIntegrated": "Domain constraint：生成框与外框控件的相交关系只有画布自己知道（哪个节点被选中、生成框此刻的屏幕矩形、控件是否上抬），通用的 z-index / 层叠机制在 React Flow 的层叠上下文边界处做不到；没有现成库做「画布外框控件让位于节点浮层」这件事。量的时机用浏览器现成的 MutationObserver / ResizeObserver 触发、合并到一帧（createFrameCoalescer 十几行），选中变化、视口平移缩放、节点被挪、生成框挂卸与变大小才量一次，静止时不读布局。",
+      "revisitWhen": "生成框挪出节点层单独渲染后删除（2026-11-15 复查一次：画布层级表合入、生成框能直接用层级值盖住外框控件时，删 canvasLayerOrder 里 chromeDock 的说明）"
+    },
+    {
       "id": "canvas-layer-order",
       "capability": "画布叠层 z 值表：分组框体、框头、节点层、选中节点、生成框、工具条的先后顺序（唯一 owner）",
       "status": "justified",

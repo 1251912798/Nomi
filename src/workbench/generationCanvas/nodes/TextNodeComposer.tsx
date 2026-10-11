@@ -219,7 +219,7 @@ export default function TextNodeComposer({ onFeedback, node, visualSize, readOnl
         // 画布拖动期间隐身（拖节点、拖选区、拖画布平移）：用 visibility 而不是卸载，输入框里没发出去的字不丢。
         !inFlow && 'group-data-[dragging=true]/canvas:invisible',
       )}
-      style={{ cursor: 'default', userSelect: 'auto', touchAction: 'auto', zIndex: inFlow ? undefined : CANVAS_LAYER.nodeComposer }}
+      style={{ cursor: 'default', userSelect: 'auto', touchAction: 'auto', ...(inFlow ? null : { zIndex: CANVAS_LAYER.nodeComposer }) }}
       onPointerDown={(event) => event.stopPropagation()}
       onWheel={(event) => event.stopPropagation()}
     >

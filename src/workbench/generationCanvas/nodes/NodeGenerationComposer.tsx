@@ -358,7 +358,7 @@ function GenericNodeGenerationComposer({ onFeedback, node, visualSize, host = 'c
         !inFlow && 'group-data-[dragging=true]/canvas:invisible',
       )}
       data-composer-host={host}
-      style={{ cursor: 'default', userSelect: 'auto', touchAction: 'auto', zIndex: inFlow ? undefined : CANVAS_LAYER.nodeComposer }}
+      style={{ cursor: 'default', userSelect: 'auto', touchAction: 'auto', ...(inFlow ? null : { zIndex: CANVAS_LAYER.nodeComposer }) }}
       onPointerDown={(event) => event.stopPropagation()}
       onWheel={(event) => event.stopPropagation()}
       {...(acceptsDrop ? dropHandlers : {})}

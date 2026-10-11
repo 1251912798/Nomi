@@ -2015,12 +2015,74 @@
       "site": "src/ui/app-shell/UpdatePill.tsx::type:UpdatePillPhase/type-union"
     },
     {
-        "members": [
-            "compact",
-            "full"
-        ],
-        "reason": "空节点占位按渲染卡高收成两档（完整 / 紧凑），由 nodeEmptyStateLayout.ts 的 emptyStateTier 算出，唯一读者是 NodeEmptyState。「只留第一行」档已删：用到的节点渲染高度下限是 120（resolveNodeVisualSize 钳高），高于紧凑阈值 108，那一档进不去。没有复用 ShotTableZoomDensity（full / compact / card）：那是分镜表缩放档，轴不同。",
-        "site": "src/workbench/generationCanvas/nodes/render/nodeEmptyStateLayout.ts::type:EmptyStateTier/type-union"
+      "members": [
+        "compact",
+        "full"
+      ],
+      "reason": "空节点占位按渲染卡高收成两档（完整 / 紧凑），由 nodeEmptyStateLayout.ts 的 emptyStateTier 算出，唯一读者是 NodeEmptyState。「只留第一行」档已删：用到的节点渲染高度下限是 120（resolveNodeVisualSize 钳高），高于紧凑阈值 108，那一档进不去。没有复用 ShotTableZoomDensity（full / compact / card）：那是分镜表缩放档，轴不同。",
+      "site": "src/workbench/generationCanvas/nodes/render/nodeEmptyStateLayout.ts::type:EmptyStateTier/type-union"
+    },
+    {
+      "members": [
+        "done",
+        "error",
+        "ready"
+      ],
+      "reason": "Frame-capture fixture presets map ready, output and error scenes into the shared video edit lab; these are screenshot presets rather than browser asset network status.",
+      "site": "src/devlab/designLab/videoNodeNext/FrameCaptureStage.tsx::function:FrameCaptureStage/parameter:0/property:initial/type-union"
+    },
+    {
+      "members": [
+        "image",
+        "video"
+      ],
+      "reason": "This lab output selector contrasts frame extraction with a proposed video split output; it is local presentation state and does not add a production generation kind.",
+      "site": "src/devlab/designLab/videoNodeNext/VideoEditStage.tsx::function:VideoEditStage/type-union"
+    },
+    {
+      "members": [
+        "analyzing",
+        "running"
+      ],
+      "reason": "The design-lab timer can enter only simulated analysis or processing; no real task lifecycle is represented by this animation helper.",
+      "site": "src/devlab/designLab/videoNodeNext/VideoEditStage.tsx::function:VideoEditStage/variable:run/parameter:nextPhase/type-union"
+    },
+    {
+      "members": [
+        "analyzing",
+        "capped",
+        "capture",
+        "capture-done",
+        "capture-error",
+        "done",
+        "empty",
+        "error",
+        "loading",
+        "open",
+        "partial",
+        "preview",
+        "review",
+        "running",
+        "selected",
+        "split-done",
+        "unavailable"
+      ],
+      "reason": "Video edit lab entry presets select concrete reviewable interaction scenes including capture, trimming and split proposals; they are not persisted execution states.",
+      "site": "src/devlab/designLab/videoNodeNext/VideoEditStage.tsx::type:EditInitial/type-union"
+    },
+    {
+      "members": [
+        "analyzing",
+        "empty",
+        "error",
+        "idle",
+        "partial",
+        "review",
+        "running",
+        "unavailable"
+      ],
+      "reason": "Video edit design-lab simulation phases cover review and recoverable outputs in the approved prototypes; production trimming continues to use the existing real processing lifecycle.",
+      "site": "src/devlab/designLab/videoNodeNext/VideoEditStage.tsx::type:Phase/type-union"
     }
   ],
   "debt": [

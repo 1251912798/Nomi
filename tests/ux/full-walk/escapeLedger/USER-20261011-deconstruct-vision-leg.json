@@ -1,0 +1,25 @@
+{
+  "id": "USER-20261011-deconstruct-vision-leg",
+  "since": "2026-10-11",
+  "source": "2026-10-11 user report",
+  "category": "claims-and-outcomes",
+  "problem": "拆解表无法拆解出画面、景别等等，都出错，而且无法选择模型；以前设计过，后来不知道为什么没有做（用户原话）",
+  "existingInvariants": [],
+  "ironLaws": [],
+  "useCases": [],
+  "fullWalkJourneys": [],
+  "status": "fixed",
+  "manualReview": "reviewed",
+  "evidence": [
+    "电脑端日志：deconstruct.model-failed … AI_RetryError: Failed after 3 attempts（供应商限流）",
+    "docs/evidence/2026-10-11-canvas-ux-8/s1-shot-table-vision-zh.png",
+    "docs/evidence/2026-10-11-canvas-ux-8/s1-shot-table-vision-en-dark.png"
+  ],
+  "completionCommits": [],
+  "rootCauseContract": "docs/fixes/2026-10-11-deconstruct-vision-leg.root-cause.json",
+  "fixedInPr": 1171,
+  "classCheck": {
+    "kind": "matrix",
+    "file": "electron/video/deconstructVisionLeg.test.ts"
+  }
+}

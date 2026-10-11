@@ -1,4 +1,6 @@
 import React, { type JSX } from 'react'
+import { NodeVideoControls } from './NodeVideoControls'
+import { useNodeVideoSession } from './useNodeVideoSession'
 import { cn } from '../../../utils/cn'
 import { useVideoPlaybackHeal } from '../../../media/useVideoPlaybackHeal'
 import { VideoPlaybackStatusOverlay } from '../../../media/VideoPlaybackStatusOverlay'
@@ -35,6 +37,7 @@ type Props = Omit<DeferredNodeVideoProps, 'src' | 'poster' | 'preload'> & {
   previewRequested: boolean
   /** 卡片是唯一主选中：挂播放器（控件可用），不自动播。 */
   engaged: boolean
+  reportFeedback: (message: string) => void
 }
 
 const PLAYER_ENTER_DWELL_MS = 120
@@ -60,6 +63,7 @@ export function NodeVideoPlaybackGuard({
   node,
   previewRequested,
   engaged,
+  reportFeedback,
   onError,
   onLoadedMetadata,
   onLoadedData,
@@ -71,6 +75,8 @@ export function NodeVideoPlaybackGuard({
   onClick,
   ...rest
 }: Props): JSX.Element {
+  const session = useNodeVideoSession()
+  const { editing, positioned, setPlayer } = session
   const [pointerInside, setPointerInside] = React.useState(false)
   const [focusInside, setFocusInside] = React.useState(false)
   const [userPlaying, setUserPlaying] = React.useState(false)
@@ -94,26 +100,28 @@ export function NodeVideoPlaybackGuard({
   const posterUrl = node.result?.thumbnailUrl?.trim() || ''
   // 没量过尺寸就先挂一次只读元数据的播放器（尺寸 owner 仍是 useNodeMediaMeasurement）。
   const measured = Boolean(node.meta?.videoWidth && node.meta?.videoHeight)
-  const interacting = useSettledIntent(previewRequested || engaged, hostRef)
-  const wantsPlayer = !posterUrl || !measured || interacting || focusInside || userPlaying
+  const interacting = useSettledIntent(previewRequested || engaged || editing, hostRef)
+  const wantsPlayer = !posterUrl || !measured || interacting || focusInside || userPlaying || editing
 
   // 悬停意图变了：离开 → 停掉试播并复位（用户主动播放的不停），播放器是否卸载由 wantsPlayer 决定；
   // 回来 → 播放器还在宽限期里、已有画面就直接试播（没画面的由 onLoadedData 起播），否则再悬停不会播。
   React.useEffect(() => {
     const video = videoRef.current
-    if (!video) return
+    if (!video || editing || positioned.current) return
     if (!previewRequested) stopNodeVideoHoverPreview(video)
     else if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) startNodeVideoHoverPreview(video)
-  }, [previewRequested])
+  }, [previewRequested, editing, positioned])
+  React.useEffect(() => { if (!engaged && !editing && !userPlaying) positioned.current = false }, [engaged, editing, userPlaying, positioned])
 
   // 卸载（或换了元素）时让出「唯一在播者」。
   React.useEffect(() => {
     if (wantsPlayer) return undefined
     const video = videoRef.current
     videoRef.current = null
+    setPlayer(null)
     if (video) releaseNodeVideoPlayback(video)
     return undefined
-  }, [wantsPlayer])
+  }, [wantsPlayer, setPlayer])
   React.useEffect(() => () => {
     if (videoRef.current) releaseNodeVideoPlayback(videoRef.current)
   }, [])
@@ -157,7 +165,7 @@ export function NodeVideoPlaybackGuard({
             priority={Boolean(rest.priority || previewRequested || engaged)}
             placeholderClassName={cn(rest.placeholderClassName, posterUrl && 'opacity-0')}
             tabIndex={rest.controls ? 0 : rest.tabIndex}
-            controls={Boolean(rest.controls && (pointerInside || focusInside))}
+            controls={false}
             src={heal.playbackUrl}
             onError={(event) => {
               onError?.(event)
@@ -165,12 +173,13 @@ export function NodeVideoPlaybackGuard({
             }}
             onLoadedMetadata={(event) => {
               videoRef.current = event.currentTarget
+              setPlayer(event.currentTarget)
               heal.onLoadedMetadata(event)
               onLoadedMetadata?.(event)
             }}
             onLoadedData={(event) => {
               videoRef.current = event.currentTarget
-              if (previewRequestedRef.current) startNodeVideoHoverPreview(event.currentTarget)
+              if (previewRequestedRef.current && !editing && !positioned.current) startNodeVideoHoverPreview(event.currentTarget)
               onLoadedData?.(event)
             }}
             onPointerDown={(event) => {
@@ -202,6 +211,7 @@ export function NodeVideoPlaybackGuard({
           />
         </div>
       ) : null}
+      {wantsPlayer && (pointerInside || focusInside || engaged || editing) ? <NodeVideoControls reportFeedback={reportFeedback} /> : null}
       <VideoPlaybackStatusOverlay healingText={heal.healingText} failureText={heal.failureText} />
     </div>
   )
