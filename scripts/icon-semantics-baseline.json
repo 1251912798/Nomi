@@ -1,6 +1,10 @@
 {
   "note": "同一动作配了多个图标的存量冲突；棘轮只减不增。清掉后跑 --update-baseline 重拍。",
   "dictionaryNote": "dictionary = 立项时全仓在用的 Tabler 图标词典（设计系统 §1.8 规则 5）。新图标不许往这里加，要先登记进 docs/design/nomi-design-system.md §6「语义图标登记」表；不再用的图标从这里删。",
+  "unnamedIconButtonsNote": "存量「纯图标、没名字」的原生 button，按文件计数；只减不增（规则三）。新按钮请用 WorkbenchIconButton 或自己补 aria-label + title。",
+  "unnamedIconButtons": {
+    "src/workbench/generationCanvas/components/SelectionPromptSaveController.tsx": 1
+  },
   "conflicts": [],
   "dictionary": [
     "Icon360",
