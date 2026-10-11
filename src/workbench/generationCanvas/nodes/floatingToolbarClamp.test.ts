@@ -148,3 +148,27 @@ it('centred bars constrain width symmetrically at the right edge, preserving bot
     applied: { shiftX: 0, shiftY: 0, maxWidth: undefined }, centerOnNode: true,
   })).toEqual({ shiftX: 0, shiftY: 0, maxWidth: 544 })
 })
+
+it('centred minimum-width bars remain reachable and converge at both extreme edges across scales', () => {
+  const stage = { left: 60, right: 1272, width: 1212, top: 40, bottom: 889 }
+  for (const scale of [.1, .82, 1, 2.1, 3]) for (const center of [40, 100, 680, 1220, 1320]) for (const priorShift of [0, 73, -73]) {
+    let applied: FloatingToolbarPlacement = { shiftX: priorShift / scale, shiftY: 0, maxWidth: undefined }
+    let settled = false
+    for (let iteration = 0; iteration < 4; iteration++) {
+      const layoutWidth = Math.min(720, applied.maxWidth ?? Infinity)
+      const width = layoutWidth * scale
+      const left = center - width / 2 + applied.shiftX * scale
+      const rect = { left, right: left + width, width, top: 300, bottom: 340 }
+      const next = nextFloatingToolbarPlacement({ rect, layoutWidth, stage, applied, centerOnNode: true })
+      if (!next) {
+        expect(rect.left, `scale ${scale}, center ${center}`).toBeGreaterThanOrEqual(stage.left + 8 - 2)
+        expect(rect.right, `scale ${scale}, center ${center}`).toBeLessThanOrEqual(stage.right - 8 + 2)
+        if (center === 680) expect(applied.shiftX).toBe(0)
+        settled = true
+        break
+      }
+      applied = next
+    }
+    expect(settled, `scale ${scale}, center ${center}`).toBe(true)
+  }
+})

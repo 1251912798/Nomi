@@ -8,7 +8,7 @@ import { launchNomiApp } from './_launchApp.mjs'
 import { expect, screenshotSettled, proveProbe, expectAbsent, expectOverlayReachable } from './_assert.mjs'
 import { requireRealMediaAssets } from './fixtures/realMedia.mjs'
 import { uiText } from './full-walk/invariants.mjs'
-import { collapseAgentPanel, canvasSetZoomPercent } from './_shell.mjs'
+import { collapseAgentPanel, canvasSetZoomPercent, canvasResetView, canvasZoomPercent } from './_shell.mjs'
 import { checkBoardManifest } from '../../scripts/check-board-parity.mjs'
 import { hashBoardSource } from '../../scripts/board-source-hash.mjs'
 
@@ -50,7 +50,7 @@ const run = await launchNomiApp({ name: `inline-whiteboard-${locale}`, projectsD
 const page = run.win
 const errors = []
 page.on('pageerror', error => errors.push(error.message))
-const evidence = { locale, dark, workload: `${nodes.length} nodes (${performanceRun ? 30 : 0} offscreen), one active editor; 4K photograph`, checks: [], performance: null }
+const evidence = { locale, dark, sampledWorkload: { nodes: nodes.length, offscreenNodes: performanceRun ? 30 : 0, activeEditors: 1, uniqueSourceImages: 1, sourceWidth: 3840, sourceHeight: 2160 }, workload: `${nodes.length} nodes (${performanceRun ? 30 : 0} offscreen), one active editor; 4K photograph`, checks: [], performance: null }
 const check = (name, value) => { expect(value, name).toBeTruthy(); evidence.checks.push(name); console.log(`✓ ${name}`) }
 const action = name => page.locator(`[data-toolbar-action="whiteboard-${name}"]`)
 const editor = page.locator('[data-nomi-inline-whiteboard="true"]')
@@ -76,13 +76,20 @@ async function openImage() {
 try {
   await page.locator('[data-project-card]', { hasText: record.name }).dblclick()
   await collapseAgentPanel(page)
+  if (performanceRun) {
+    await canvasResetView(page)
+    await expect.poll(() => canvasZoomPercent(page)).toBe(100)
+    await canvasSetZoomPercent(page, 85)
+  }
   const titleBox = await page.getByText('Photograph', { exact: true }).boundingBox()
   await page.mouse.move(titleBox.x + titleBox.width / 2, titleBox.y + titleBox.height / 2)
   await page.mouse.down()
   await page.mouse.move(titleBox.x + titleBox.width / 2 + 210, titleBox.y + titleBox.height / 2, { steps: 16 })
   await page.mouse.up()
+  const firstOpenStarted = performance.now()
   await openImage()
   await expect.poll(() => readNode('image').meta.whiteboardState?.canvasAssets.length ?? 0).toBe(1)
+  evidence.openToPersistedInitialImageMs = performance.now() - firstOpenStarted
   check('inline editor replaces the image preview; only one Leafer instance', await page.locator('.leafer-app-view').count() === 1)
   const editorProbe = await proveProbe(editor, 'inline editor is actually mounted')
   const toolbar = editor.getByRole('toolbar')
@@ -128,7 +135,7 @@ try {
   await expect.poll(() => readNode('image').meta.whiteboardState.strokes.filter(item => item.tool==='eraser').length).toBe(1)
   await action('undo').click()
   await expect.poll(() => readNode('image').meta.whiteboardState.strokes.filter(item => item.tool==='eraser').length).toBe(0)
-  check('local eraser and its undo retain the original document semantics',true)
+  check('eraser path persists and undo removes it (pixel erasure not asserted)',true)
   await action('text').click()
   let frame = await editor.boundingBox()
   await page.mouse.click(frame.x + frame.width * .3, frame.y + frame.height * .72)
@@ -137,6 +144,12 @@ try {
   await textInput.press('ArrowLeft')
   await expect.poll(() => readNode('image').meta.whiteboardState.texts?.[0]?.text).toBe('Revised title')
   check('text editing keeps native input keyboard behavior', true)
+  const fontInput = toolbar.getByLabel(t('generationCommon.whiteboard.fontSize'), { exact: true })
+  await fontInput.focus()
+  await fontInput.press('ControlOrMeta+A')
+  await fontInput.pressSequentially('36')
+  await expect.poll(() => readNode('image').meta.whiteboardState.texts?.[0]?.fontSize).toBe(36)
+  check('text size accepts ordinary sequential keyboard input', true)
   await action('note').click()
   await page.mouse.move(frame.x + frame.width * .6, frame.y + frame.height * .2)
   await page.mouse.down()
@@ -166,12 +179,18 @@ try {
       await page.mouse.up()
     }
     evidence.performance = await page.evaluate(() => { const value = window.__whiteboardPerf; value.active = false; window.__whiteboardLongTasks.disconnect(); const sorted = value.frames.slice(2).sort((a,b) => a-b); return { frames: sorted.length, frameP50Ms: sorted[Math.floor(sorted.length*.5)], frameP95Ms: sorted[Math.floor(sorted.length*.95)], maxFrameMs: sorted.at(-1), longTasks: value.longTasks } })
+    check('drag sampling collects actual animation frames', evidence.performance.frames >= 30 && Number.isFinite(evidence.performance.frameP95Ms))
     check('inactive nodes do not create extra editor instances', await page.locator('.leafer-app-view').count() === 1)
   }
   const sceneBeforeResize = readNode('image').meta.whiteboardState
   await action('ratio').click()
   const sizePanel = page.locator('[data-whiteboard-panel="ratio"]')
-  await sizePanel.getByRole('spinbutton', { name: t('generationCommon.whiteboard.height'), exact: true }).fill('900')
+  const heightInput = sizePanel.getByLabel(t('generationCommon.whiteboard.height'), { exact: true })
+  await heightInput.focus()
+  await heightInput.press('ControlOrMeta+A')
+  await heightInput.pressSequentially('900')
+  await expect(heightInput).toHaveValue('900')
+  check('canvas dimensions accept ordinary sequential keyboard input', true)
   await expect.poll(() => readNode('image').meta.whiteboardState.canvasDimensions.height).toBe(900)
   const resizedFrame = await editor.boundingBox()
   check('custom frame height changes independently of source image aspect', Math.abs(resizedFrame.height / resizedFrame.width - 900 / 1280) < .01)
@@ -186,7 +205,7 @@ try {
     check(label, true)
   }
   for (const [axis,value] of [['width',1536],['height',640],['width',1280],['height',1100],['height',900]]) {
-    await sizePanel.getByRole('spinbutton', { name: t(axis === 'width' ? 'generationCommon.whiteboard.width' : 'generationCommon.whiteboard.height'), exact: true }).fill(String(value))
+    await sizePanel.getByLabel(t(axis === 'width' ? 'generationCommon.whiteboard.width' : 'generationCommon.whiteboard.height'), { exact: true }).fill(String(value))
     await expect.poll(() => readNode('image').meta.whiteboardState.canvasDimensions[axis]).toBe(value)
     await assertMovingPanel(`live ${axis}=${value}: centered, disjoint and reachable`)
   }

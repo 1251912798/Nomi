@@ -282,7 +282,6 @@
     "@earendil-works/pi-coding-agent": "0.85.1",
     "@ffmpeg-installer/ffmpeg": "^1.1.0",
     "@ffprobe-installer/ffprobe": "^2.1.2",
-    "@floating-ui/dom": "1.8.0",
     "@modelcontextprotocol/client": "2.3.0",
     "@modelcontextprotocol/node": "2.1.1",
     "@modelcontextprotocol/server": "2.3.0",
@@ -310,6 +309,7 @@
   "devDependencies": {
     "@electron/asar": "3.4.1",
     "@eslint/js": "^10.0.1",
+    "@floating-ui/dom": "1.8.0",
     "@fontsource-variable/fraunces": "^5.2.9",
     "@fontsource-variable/inter": "^5.2.8",
     "@imgly/background-removal": "^1.7.0",

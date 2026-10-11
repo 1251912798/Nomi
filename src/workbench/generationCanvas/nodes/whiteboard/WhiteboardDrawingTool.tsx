@@ -165,7 +165,6 @@ const WhiteboardDrawingTool = React.forwardRef<WhiteboardDrawingToolHandle, Whit
     const viewScaleRef = React.useRef<number | null>(null)
     const [activeCanvasObject, setActiveCanvasObject] = React.useState<CanvasObjectTarget | null>(null)
     const [initialImageStatus, setInitialImageStatus] = React.useState<WhiteboardInitialImageStatus>(initialImage?.url && !initialState ? 'loading' : 'ready')
-    const loadingInitial = initialImageStatus === 'loading'
     const [initialImportAttempt, setInitialImportAttempt] = React.useState(0)
     const [uploading, setUploading] = React.useState(false)
     const [removeBgBusy, setRemoveBgBusy] = React.useState(false)
@@ -204,7 +203,7 @@ const WhiteboardDrawingTool = React.forwardRef<WhiteboardDrawingToolHandle, Whit
         getState: () => serializeWhiteboardState({ ...documentRef.current.state, canvasDimensions, activeLayerId, sceneTransforms: leaferCanvasRef.current?.getSceneTransforms() ?? documentRef.current.state.sceneTransforms }),
         getAnnotations: () => documentRef.current.annotations.map((note) => ({ ...note })),
       }),
-      [canvasDimensions, activeLayerId, initialImageStatus, loadingInitial, uploading, removeBgBusy, t],
+      [canvasDimensions, activeLayerId, initialImageStatus, uploading, removeBgBusy, t],
     )
 
     const setActiveRatio = React.useCallback((activeRatio: AspectRatioKey) => {
@@ -606,7 +605,7 @@ const WhiteboardDrawingTool = React.forwardRef<WhiteboardDrawingToolHandle, Whit
           onSelectAsset={selectAssetPanelItem} onToggleLayerVisibility={toggleLayerVisibility} />
       </div>
     ) : panel === 'layers' ? (
-      <div className="max-h-[320px] w-[300px] overflow-y-auto p-1">
+      <div className="max-h-[320px] w-[300px] nowheel overflow-y-auto p-1">
         {[...state.layers].reverse().map((layer) => {
           const target: CanvasObjectTarget | undefined = layer.kind === 'group' ? { kind: 'group', id: layer.id }
             : state.canvasAssets.find((item) => item.layerId === layer.id) ? { kind: 'asset', id: state.canvasAssets.find((item) => item.layerId === layer.id)!.id }
@@ -622,7 +621,7 @@ const WhiteboardDrawingTool = React.forwardRef<WhiteboardDrawingToolHandle, Whit
     ) : panel === 'note' ? (
       <div className="grid w-[320px] gap-2 p-2">
         {noteDraft ? <>
-          <textarea autoFocus className="min-h-16 w-full resize-none rounded-nomi-sm border border-nomi-line bg-nomi-paper p-2 text-body-sm" value={noteDraft.text} placeholder={t('generationCommon.whiteboard.notePlaceholder')} aria-label={t('generationCommon.whiteboard.notePlaceholder')} onChange={(event) => setNoteDraft({ ...noteDraft, text: event.currentTarget.value })} />
+          <textarea autoFocus className="nowheel min-h-16 w-full resize-none rounded-nomi-sm border border-nomi-line bg-nomi-paper p-2 text-body-sm" value={noteDraft.text} placeholder={t('generationCommon.whiteboard.notePlaceholder')} aria-label={t('generationCommon.whiteboard.notePlaceholder')} onChange={(event) => setNoteDraft({ ...noteDraft, text: event.currentTarget.value })} />
           <div className="flex justify-end gap-1"><button type="button" className="grid size-7 place-items-center text-nomi-ink-60" aria-label={t('common.cancel')} onClick={() => setNoteDraft(null)}><IconX size={15} /></button><button type="button" className="rounded-nomi-sm bg-nomi-accent px-3 py-1 text-caption text-nomi-paper disabled:opacity-40" disabled={!noteDraft.text.trim()} onClick={commitNote}>{t('generationCommon.whiteboard.addNote')}</button></div>
         </> : null}
         {currentNotes.map((note, index) => <div key={note.id} className="flex items-start gap-2 rounded-nomi-sm bg-nomi-ink-05 p-2 text-caption">

@@ -85,7 +85,7 @@ export function nextFloatingToolbarPlacement(input: {
     : stage.width
   const limit = Math.max(FLOATING_TOOLBAR_MIN_WIDTH, Math.floor(availableWidth - 2 * FLOATING_TOOLBAR_EDGE)) / scale
   if (applied.maxWidth === undefined || Math.abs(limit - applied.maxWidth) * scale > SETTLE_PX) return { ...applied, maxWidth: limit }
-  const shiftX = input.centerOnNode ? 0 : floatingToolbarShift({ rectLeft: rect.left, rectRight: rect.right, appliedShift: applied.shiftX, scale, min: stage.left + FLOATING_TOOLBAR_EDGE, max: stage.right - FLOATING_TOOLBAR_EDGE })
+  const shiftX = input.centerOnNode && availableWidth - 2 * FLOATING_TOOLBAR_EDGE >= FLOATING_TOOLBAR_MIN_WIDTH ? 0 : floatingToolbarShift({ rectLeft: rect.left, rectRight: rect.right, appliedShift: applied.shiftX, scale, min: stage.left + FLOATING_TOOLBAR_EDGE, max: stage.right - FLOATING_TOOLBAR_EDGE })
   const shiftY = floatingToolbarShift({ rectLeft: rect.top, rectRight: rect.bottom, appliedShift: applied.shiftY, scale, min: stage.top + FLOATING_TOOLBAR_EDGE, max: stage.bottom - FLOATING_TOOLBAR_EDGE })
   if (Math.abs(shiftX - applied.shiftX) * scale <= SETTLE_PX && Math.abs(shiftY - applied.shiftY) * scale <= SETTLE_PX) return null
   return { ...applied, shiftX, shiftY }

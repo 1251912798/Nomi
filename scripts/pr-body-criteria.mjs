@@ -3,7 +3,7 @@
 // 与合并前扫描（scripts/merge-preflight.mjs）都调这一份——#1094 的形状：设计卡不是 ★ 格式、detected_by 写错，
 // 推送时放行、合并时才红，是因为两边各有一套口径。判据只此一处，两边同标准。
 // 路由 / 规则与门岗范围仍在 scripts/pr-judgement-lib.mjs（本模块在它之上叠设计卡等判据，并给一个总入口 evaluatePrBody）。
-import { escapeIdOfPath, fixedTransitions } from './escape-ledger-lib.mjs'
+import { classCheckErrors, contractErrors, escapeIdOfPath, fixedTransitions } from './escape-ledger-lib.mjs'
 import { evaluatePrJudgement, extractSection, inferRoutes } from './pr-judgement-lib.mjs'
 
 /** 四类（花钱 / 长跑 / 可打断 / 新界面）——路由表里 pathRules.legacy 的那部分；files: [{ path, status }]，status 'A' = 新增。 */
@@ -140,7 +140,24 @@ export function settledContracts(baseLedger) {
   return (baseLedger?.entries ?? []).filter((entry) => entry.status === 'fixed' && entry.rootCauseContract).map((entry) => entry.rootCauseContract)
 }
 
-export function checkEscapeContract(body, contracts, transitions = [], ledgerIds = [], settled = []) {
+/** Only changed, committed reviewed entries with real structural/class evidence can prepare a first push. */
+export function reviewedContracts(files, fetchHead, { hasCommit = () => false } = {}) {
+  const read = (file) => fetchHead(file)
+  const exists = (file) => typeof read(file) === 'string'
+  return files.flatMap((file) => {
+    const id = escapeIdOfPath(file.path)
+    if (!id || ['D', 'removed'].includes(file.status)) return []
+    let entry
+    try { entry = JSON.parse(read(file.path)) } catch { return [] }
+    if (!entry || entry.id !== id || entry.status !== 'reviewed' || entry.manualReview !== 'reviewed') return []
+    if (!Array.isArray(entry.evidence) || !entry.evidence.some((value) => typeof value === 'string' && value.trim())) return []
+    if (!Array.isArray(entry.completionCommits) || !entry.completionCommits.some((commit) => typeof commit === 'string' && /^[a-f0-9]{7,40}$/.test(commit) && hasCommit(commit))) return []
+    if (contractErrors(entry, { exists, read }).length || classCheckErrors(entry, { exists, read }).length) return []
+    return [entry.rootCauseContract]
+  })
+}
+
+export function checkEscapeContract(body, contracts, transitions = [], ledgerIds = [], settled = [], { stage = 'merge', reviewed = [] } = {}) {
   const withField = contracts.filter((contract) => ['user', 'post-release', 'walkthrough', 'ci', 'review'].includes(contract.detected_by))
   const userFound = contracts.filter((contract) => ['user', 'post-release'].includes(contract.detected_by))
   const mentioned = ledgerIds.filter((id) => String(body || '').includes(id) && !transitions.includes(id))
@@ -154,6 +171,9 @@ export function checkEscapeContract(body, contracts, transitions = [], ledgerIds
     const unsettled = userFound.filter((contract) => contract.added || !settled.includes(contract.file))
     if (unsettled.length === 0) {
       return { applicable: true, ok: true, lines: [`· 修订已结账的根因合同（${userFound.map((contract) => contract.file).join('、')}）：对应逃逸账本条目在 base 已是 fixed，不要求再转换`, ...hint] }
+    }
+    if (stage === 'push' && unsettled.every((contract) => contract.added && reviewed.includes(contract.file))) {
+      return { applicable: true, ok: true, lines: [`⚠ 新增用户根因合同已有 reviewed 账本、真实提交和类级检查（${unsettled.map((contract) => contract.file).join('、')}）：首次推送允许待结账；CI / 合并前仍要求 fixed 与真实 PR 号`, ...hint] }
     }
     return { applicable: true, ok: false, lines: [`✖ 根因合同声明 detected_by 为用户 / 发版后发现（${unsettled.map((contract) => contract.file).join('、')}），但本 PR 没有把对应的逃逸账本条目（tests/ux/full-walk/escapeLedger/）转成 fixed——用户发现的问题要进账本并带类级检查结账`] }
   }
@@ -260,7 +280,7 @@ export function evaluatePrBody({ body, files, addedLines = '', addedByFile = nul
     classification,
     design: checkDesignCard(body, classification),
     acceptance: checkIndependentAcceptance(body, { stage }),
-    escape: checkEscapeContract(body, contracts, ledger.transitions ?? [], ledger.ids ?? [], ledger.settledContracts ?? []),
+    escape: checkEscapeContract(body, contracts, ledger.transitions ?? [], ledger.ids ?? [], ledger.settledContracts ?? [], { stage, reviewed: ledger.preparedContracts ?? [] }),
     promises: checkDeferredPromises(body, { stage, createdAt, enforce }),
     scope: judgement.scope,
     routing: judgement.routing,

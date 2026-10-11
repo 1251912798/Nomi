@@ -31,3 +31,39 @@ No new tokens or global styles. Use existing WorkbenchButton/ToolIconButton, Flo
 ## Census
 
 Independent census: image and standalone entrances; save/no-op close; screenshot export and derived-node transaction; brush pressure/smoothing/colors/size; true local eraser and cursor; selection/multiselect/group; image move/scale/snap/flip; delete/locked/background protection; background-removal phases; import busy/type/read/error; five ratios; board/result library counts/thumbnails/dimensions/select/visibility/delete/empty/scroll; asset/result drag/drop; keyboard move/delete/native input; all existing version operations; node geometry persistence. Each is mapped in InlineWhiteboard.board.json functionCensus and the UX acceptance report.
+
+## Direction check: recurring shared boundaries
+
+### 0. Class root
+Generic placement, editing ownership and delivery-stage policy were treated as local caller details; each caller could violate the same invariant again. This PR is reviewable preparation, not approval to merge a policy change.
+
+### 1. Classification
+| Symptom | Direct cause | Class |
+|---|---|---|
+| Size popup covers toolbar after resize | Anchor movement was not observed | Shared placement lifecycle |
+| Extreme-edge toolbar clips buttons | Minimum width conflicts with unconditional centering | Shared screen-space constraints |
+| Version action targets a later project | Context issued after waiting for editor | Action ownership at entry |
+| First push cannot create its PR | Push requires merged settlement evidence | Delivery-stage ownership (`gate-family`) |
+
+### 2. Why recurrence occurs
+The same shared boundaries serve multiple callers. Fixing only the whiteboard cannot protect existing menus, version cards or future first PRs. Experience law ⑫ applies: visible controls must remain reachable and actions must affect their initiating project. Delivery policy itself is not a product interaction; it must distinguish preparation from settlement without pretending reviewed means fixed.
+
+### 3. Falsifiable predictions
+Without shared anchor observation, resizing/zooming an open panel leaves stale placement; the real walk's seven resize/wheel steps detect it. Without minimum-width admission, extreme left/right centering clips buttons; the clamp matrix tests both edges, five scales and three prior shifts. Without a shared stage decision, every new user contract repeats the first-push deadlock; subprocess node tests exercise a real temporary Git repository.
+
+### 4. Independent target
+Implementation-line tests are not independent acceptance. The separate whiteboard-independent-review line read sources, failure logs and actual zh/en screenshots. The 51-row census remains partial; no screenshot baselines or test expectations were relaxed to make the failure disappear. First performance journey failure is retained.
+
+### 5. P0 and replacement boundary
+Use installed Floating UI 1.8.0 `autoUpdate` for generic placement observation, Mantine for input/history, and Git for commit identity/ancestry. Nomi's inverse-scaled node toolbar and result/project ownership remain domain adapters. `gate-family` is the existing self-written registration: GitHub's PR/branch protection can enforce remote checks, but cannot express this repository's root-cause-contract ↔ reviewed escape ledger ↔ class-check relationship before a PR exists. Keep that policy in the existing single evaluator; do not create another gate. Re-evaluate the registration on 2026-10-19 with the contract recurrence check; replace the local policy when an adopted declarative policy engine can represent these committed links and stage semantics without a duplicate source of truth. This PR does not claim the entire gate family is replaced.
+
+### 6. Options
+| Option | Change and tradeoff | Decision |
+|---|---|---|
+| Adopt established mechanisms | Floating UI observation; Mantine inputs/history; Git ancestry; existing evaluator remains domain-policy owner | Recommended and used; references: `node_modules/@floating-ui/dom`, `src/design/forms.tsx`, `scripts/pr-body-criteria.mjs` |
+| Patch each caller | More local watchers, clamps or evidence exemptions | Reject: repeats the class root |
+| Rewrite gate/toolbar frameworks | Replace all existing callers during this feature | Defer: broader migration needs its own reviewed contract; no second framework here |
+| Delete constraints/checks | Hide tools or skip ledger validation | Reject: loses existing capability or settlement assurance |
+
+### 7. Core tradeoff and prevention
+Keep ordinary editing centered and compact, but prefer reachable buttons when an extreme edge cannot fit the minimum width; keep first-push evidence reviewable while CI/merge requires real settlement. Structural regressions: `floatingToolbarClamp.test.ts`, `anchoredPopoverPlacement.test.ts`, `whiteboard-refactor.walk.mjs`, `pr-body-criteria.node-test.mjs`, `pr-judgement-lib.node-test.mjs`. Escape ledger `FB-20261012-inline-whiteboard-popup-overlap` binds the real walk as its class check; it remains reviewed, not fixed.

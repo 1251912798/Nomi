@@ -110,7 +110,7 @@ export default function InlineWhiteboard({
       }, { history: false })
       return serializedState
     },
-    [initialAnnotations, initialImage, initialState, nodeId, projectLifetime, savedStateRef, updateNode],
+    [initialAnnotations, nodeId, projectLifetime, savedStateRef, updateNode],
   )
 
   const scheduleDraft = React.useCallback(() => {

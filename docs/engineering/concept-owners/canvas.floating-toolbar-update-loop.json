@@ -23,5 +23,5 @@
   "forbidden_derivations": [],
   "allowed_consumers": [],
   "since": "2026-10-06",
-  "notes": "浮动工具栏位置计算与宿主外壳共享同一帧更新边界。 2026-10-12：白板 opt-in avoidBottomDocks，外壳复用 useCanvasBottomDockRects + workspaceBottomDocks.resolveUsableBottomAboveDocks，不另建 dock owner。"
+  "notes": "浮动工具栏位置计算与宿主外壳共享同一帧更新边界。 2026-10-12：白板 opt-in avoidBottomDocks，外壳复用 useCanvasBottomDockRects + workspaceBottomDocks.resolveUsableBottomAboveDocks，不另建 dock owner。 极端边缘对称空间不足最小屏幕宽度时，仍由同一 nextFloatingToolbarPlacement 复用 floatingToolbarShift 保可达；有空间时恢复精确居中，不新增另一定位器。"
 }

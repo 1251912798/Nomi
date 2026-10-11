@@ -1,3 +1,4 @@
+import { resultIdentity } from '../../model/nodeResultLifecycle'
 import { captureSceneTransforms, restoreSceneTransforms } from './whiteboardCanvasTypes'
 import type { GenerationCanvasNode } from '../../model/generationCanvasTypes'
 import type { WhiteboardState } from './whiteboardTypes'
@@ -35,6 +36,14 @@ export function readWhiteboardState(node: Pick<GenerationCanvasNode, 'meta'>): W
     activeLayerId: typeof record.activeLayerId === 'string' && record.activeLayerId ? record.activeLayerId : 'drawing-layer-1',
     activeRatio: isAspectRatioKey(record.activeRatio) ? record.activeRatio : '16:9',
   }
+}
+
+export function readWhiteboardEditingState(node: GenerationCanvasNode) {
+  if (node.kind === 'whiteboard') return readWhiteboardState(node)
+  const identity = node.result ? resultIdentity(node.result) : null
+  if (!identity || !node.meta?.whiteboardResultIdentity || node.meta.whiteboardResultIdentity === identity) return readWhiteboardState(node)
+  const raw = node.result?.raw
+  return raw && typeof raw === 'object' ? readWhiteboardState({ meta: { whiteboardState: (raw as Record<string, unknown>).whiteboardState } }) : undefined
 }
 
 export function inferWhiteboardAspectRatio(width: unknown, height: unknown): AspectRatioKey {

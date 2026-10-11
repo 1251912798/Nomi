@@ -2,7 +2,8 @@ import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { IconArrowBackUp, IconArrowForwardUp, IconBrush, IconCamera, IconCheck, IconEraser, IconFlipHorizontal, IconFlipVertical, IconLayersSubtract, IconMessage, IconPhoto, IconPhotoPlus, IconPointer, IconStack2, IconTrash, IconTypography, IconWand } from '@tabler/icons-react'
 import { resolveAnchoredPopoverPlacement } from '../../../../design/anchoredPopoverPlacement'
-import { AnchoredPopover } from '../../../../design/AnchoredPopover'
+import { DesignNumberInput } from '../../../../design/forms'
+import { ToolbarActionPanel } from '../ToolbarActionMenu'
 import { FloatingToolbarShell, ToolbarButton, ToolbarDivider, ToolbarIconButton } from '../NodeFloatingToolbar'
 import { collectBottomDockRects, resolveUsableBottomAboveDocks } from '../../../generation/workspaceBottomDocks'
 import { ASPECT_RATIOS, COMMON_COLORS, type AspectRatioKey, type ToolKey } from './lib/canvas'
@@ -23,6 +24,15 @@ export type WhiteboardEditingToolbarProps = {
   ratio: AspectRatioKey; onRatioChange: (ratio: AspectRatioKey) => void
   dimensions: { width: number; height: number }; onDimensionsChange: (value: { width: number; height: number }) => void
   onScreenshot?: () => void; screenshotBusy: boolean; screenshotLabel: string; onDone?: () => void; feedback?: string | null
+}
+
+function WhiteboardNumberInput({ value, min, max, onChange, label, className }: { value: number; min: number; max: number; onChange: (value: number) => void; label: string; className: string }): React.JSX.Element {
+  const [draft, setDraft] = React.useState<string | number>(value)
+  React.useEffect(() => setDraft(value), [value])
+  return <DesignNumberInput value={draft} min={min} max={max} clampBehavior="blur" hideControls size="xs" aria-label={label} className={className} onChange={next => {
+    setDraft(next)
+    if (typeof next === 'number' && next >= min && next <= max) onChange(next)
+  }} />
 }
 
 /** Shared node toolbar and shared rich-content popover; every panel uses the whole bar's centre. */
@@ -87,7 +97,7 @@ export function WhiteboardEditingToolbar(p: WhiteboardEditingToolbarProps): Reac
       {(p.activeTool === 'brush' || p.activeTool === 'eraser') && <><input className="w-16 accent-nomi-accent" type="range" min={4} max={96} value={p.brushSize} aria-label={label('brushSize')} onChange={event => p.onBrushSizeChange(Number(event.target.value))} /><output className="w-5 text-center text-caption tabular-nums text-nomi-ink-60">{p.brushSize}</output></>}
       {p.textValue !== undefined && <>
         <input className="h-7 w-24 rounded-nomi-sm border border-nomi-line bg-nomi-bg px-2 text-caption" value={p.textValue} aria-label={label('text')} onChange={event => p.onTextValueChange(event.target.value)} />
-        <input className="h-7 w-12 rounded-nomi-sm border border-nomi-line bg-nomi-bg px-1 text-caption" type="number" min={8} max={160} value={p.textSize} aria-label={label('fontSize')} onChange={event => p.onTextSizeChange(Number(event.target.value))} />
+        <WhiteboardNumberInput className="w-12" min={8} max={160} value={p.textSize ?? 24} label={label('fontSize')} onChange={p.onTextSizeChange} />
       </>}
       <ToolbarDivider />
       {iconButton('undo', <IconArrowBackUp {...icon} />, p.onUndo, !p.canUndo)}
@@ -108,17 +118,17 @@ export function WhiteboardEditingToolbar(p: WhiteboardEditingToolbarProps): Reac
       {p.onScreenshot && <ToolbarIconButton actionId="whiteboard-capture" icon={<IconCamera {...icon} />} title={p.screenshotLabel} ariaLabel={p.screenshotLabel} onClick={p.onScreenshot} disabled={p.screenshotBusy} />}
       <ToolbarButton actionId="whiteboard-done" icon={<IconCheck {...icon} />} label={label('done')} accent disabled={p.screenshotBusy || p.uploading || p.removeBgBusy} onClick={p.onDone} />
     </FloatingToolbarShell>
-    {p.panel && <AnchoredPopover trackTransforms anchorRef={anchorRef} boundaryRect={boundaryRect} align="center" side="bottom" gap={8} onClose={close}>
+    {p.panel && <ToolbarActionPanel trackTransforms anchorRef={anchorRef} boundaryRect={boundaryRect} align="center" side="bottom" gap={8} onClose={close}>
       <div data-whiteboard-panel={p.panel} className="nodrag nopan nokey nowheel w-max max-w-[560px] overflow-hidden rounded-nomi border border-nomi-line bg-nomi-paper text-nomi-ink shadow-nomi-md" onPointerDown={event => event.stopPropagation()} onKeyDown={event => event.stopPropagation()}>
         {p.panel === 'colors' ? <div className="flex items-center gap-2 p-2">
           {COMMON_COLORS.map(color => <button type="button" key={color} aria-label={t('generationCommon.whiteboard.colorAria', { color })} aria-pressed={color === p.color} className="size-6 rounded-full border border-nomi-line focus-visible:outline-nomi-accent" style={{ backgroundColor: color }} onClick={() => p.onColorChange(color)} />)}
           <input type="color" value={p.color} aria-label={label('customBrushColor')} onChange={event => p.onColorChange(event.target.value)} className="size-7 cursor-pointer border-0 bg-transparent p-0" />
         </div> : p.panel === 'ratio' ? <div className="grid gap-2 p-3">
           <div className="flex items-center justify-center gap-1">{ASPECT_RATIOS.map(ratio => <button type="button" key={ratio.label} aria-pressed={ratio.label === p.ratio} className="h-7 rounded-nomi-sm px-2 text-caption hover:bg-nomi-ink-05" onClick={() => p.onRatioChange(ratio.label)}>{ratio.label}</button>)}</div>
-          <div className="flex items-center justify-center gap-2">{(['width', 'height'] as const).map(key => <label key={key} className="flex items-center gap-1 text-caption text-nomi-ink-60">{label(key)}<input type="number" min={64} max={4096} value={p.dimensions[key]} className="h-7 w-20 rounded-nomi-sm border border-nomi-line bg-nomi-bg px-2 text-caption text-nomi-ink" onChange={event => { const value = Number(event.target.value); if (value >= 64 && value <= 4096) p.onDimensionsChange({ ...p.dimensions, [key]: value }) }} /></label>)}</div>
+          <div className="flex items-center justify-center gap-2">{(['width', 'height'] as const).map(key => <label key={key} className="flex items-center gap-1 text-caption text-nomi-ink-60">{label(key)}<WhiteboardNumberInput min={64} max={4096} value={p.dimensions[key]} label={label(key)} className="w-20" onChange={value => p.onDimensionsChange({ ...p.dimensions, [key]: value })} /></label>)}</div>
         </div> : p.panelContent}
       </div>
-    </AnchoredPopover>}
+    </ToolbarActionPanel>}
     {p.feedback && <div role="status" className="pointer-events-none absolute bottom-2 left-1/2 max-w-full -translate-x-1/2 rounded-nomi-sm bg-nomi-paper px-2 py-1 text-caption text-workbench-danger shadow-nomi-sm">{p.feedback}</div>}
   </>
 }
