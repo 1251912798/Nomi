@@ -12,12 +12,13 @@ import { launchNomiApp } from './_launchApp.mjs'
 import { clickOrFail, expect, expectAbsent, proveProbe, DEFAULT_TIMEOUT_MS, screenshotSettled } from './_assert.mjs'
 import { stationTimeout } from './_station-budget.mjs'
 import { addCanvasNodeFromRail } from './_canvasRail.mjs'
+import { findCanvasBlankPoint } from './_canvasHit.mjs'
 import { uiText } from './full-walk/invariants.mjs'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
-  CANVAS_ADD_BAR, CANVAS_ADD_MORE_MENU, CANVAS_ZOOM_BAR, canvasAddMoreMenu, canvasZoomSlider,
+  CANVAS_ADD_BAR, CANVAS_NAV_STACK, CANVAS_ADD_MORE_MENU, CANVAS_ZOOM_BAR, canvasAddMoreMenu, canvasZoomSlider,
   AGENT_PANEL, backToLibrary, canvasAddBar, canvasFitViewButton, canvasToggleFrameTool, canvasViewOption, canvasZoomPercent, canvasZoomStep,
   closeCanvasViewOptions, openCanvasViewOptions, canvasResetView, canvasSetZoomPercent,
 } from './_shell.mjs'
@@ -310,6 +311,29 @@ try {
     expect(overlaps.some((o) => o.area > 0), `生成框没有和任何外框控件相交，断言空转：${JSON.stringify(overlaps)}`).toBe(true)
     for (const o of overlaps.filter((x) => x.area > 0)) expect(o.inComposer, `生成框与 ${o.sel} 相交处（${o.x},${o.y}）最顶层是 ${o.hit}，不是生成框`).toBe(true)
     await shoot(win, 'check-composer-over-docks')
+    // 静止时不再每帧量：给两块外框控件的 getBoundingClientRect 装计数器，选中状态下静置 600ms 必须是 0 次；
+    // 然后平移一下视口，必须量到（证明计数器和触发都是活的），且平移后相交处仍是生成框。
+    await win.evaluate(({ sels }) => {
+      const original = Element.prototype.getBoundingClientRect
+      window.__dockRectCalls = 0
+      Element.prototype.getBoundingClientRect = function patched(...args) {
+        if (sels.some((sel) => this.matches(sel))) window.__dockRectCalls += 1
+        return original.apply(this, args)
+      }
+      window.__restoreRect = () => { Element.prototype.getBoundingClientRect = original }
+    }, { sels: [CANVAS_ADD_BAR, CANVAS_NAV_STACK] })
+    await win.waitForTimeout(150)
+    await win.evaluate(() => { window.__dockRectCalls = 0 })
+    await win.waitForTimeout(600)
+    const idleCalls = await win.evaluate(() => window.__dockRectCalls)
+    expect(idleCalls, `选中节点静置 600ms，外框控件仍被量了 ${idleCalls} 次（应为 0：只在事件触发时量）`).toBe(0)
+    const blank = await findCanvasBlankPoint(win)
+    expect(blank, '找不到画布空白处，没法平移验证触发').not.toBeNull()
+    await win.mouse.move(blank.x, blank.y)
+    await win.mouse.wheel(0, 40)
+    await expect.poll(() => win.evaluate(() => window.__dockRectCalls), { message: '平移视口后外框控件没被重新量（触发断了）', timeout: DEFAULT_TIMEOUT_MS }).toBeGreaterThan(0)
+    await win.evaluate(() => window.__restoreRect())
+    await expect.poll(async () => (await measureOverlaps()).every((o) => o.area === 0 || o.inComposer), { message: '平移后生成框与外框控件相交处最顶层不是生成框', timeout: DEFAULT_TIMEOUT_MS }).toBe(true)
     measures.canvasChrome = { ...measures.canvasChrome, composerOverlaps: overlaps }
     measures.canvasChrome = { ...measures.canvasChrome, stepperCenter: stepperBefore.cx, windowCenter: windowWidth / 2, addBar, zoomBar, stage }
   }

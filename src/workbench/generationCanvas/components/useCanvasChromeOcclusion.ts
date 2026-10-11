@@ -28,18 +28,41 @@ export function clipPathForHoles(width: number, height: number, holes: readonly 
 }
 
 /**
+ * 「事件触发、合并到一帧」的调度器：schedule() 在同一帧里被叫多少次，下一帧只量一次；没人叫就一次都不量。
+ * 纯逻辑（帧函数注入），单测用假帧钉住「静止时零开销」。
+ */
+export function createFrameCoalescer(measure: () => void, requestFrame: (cb: () => void) => number, cancelFrame: (id: number) => void) {
+  let pending = 0
+  return {
+    schedule() {
+      if (pending) return
+      pending = requestFrame(() => {
+        pending = 0
+        measure()
+      })
+    },
+    dispose() {
+      if (pending) cancelFrame(pending)
+      pending = 0
+    },
+  }
+}
+
+/**
  * 加节点条 / 缩放簇不许盖在节点生成框上（用户 2026-10-10 验收规则）。
  * 层级做不到（见 canvasChromeLayers.ts 顶部说明），所以把外框控件被生成框压住的那一块用 clip-path 裁掉：
- * 视觉与命中都等同于「生成框在上」。只在有节点被选中（才会有生成框）时跑，选中期间每帧量一次（生成框懒加载，挂上的时刻不定），值没变不写 DOM。
+ * 视觉与命中都等同于「生成框在上」。
+ * 只在「可能变了」的事件上量一次（合并到一帧）：选中变化、视口平移 / 缩放（react-flow__viewport 的 style）、节点被挪（生成框所在节点的 style）、
+ * 拖动状态翻转（stage 的 data-dragging）、生成框挂上 / 卸下（stage 子树 childList，生成框是懒加载的）、生成框或外框控件自己变大小（ResizeObserver）、窗口缩放。
+ * 静止时零开销——不再每帧强制读布局。值没变不写 DOM。
  */
 export function useCanvasChromeOcclusion(ref: React.RefObject<HTMLElement | null>): void {
-  const selectedCount = useGenerationCanvasStore((state) => state.selectedNodeIds.length)
+  const selectionKey = useGenerationCanvasStore((state) => state.selectedNodeIds.join('|'))
   React.useEffect(() => {
     const el = ref.current
     const stage = el?.closest<HTMLElement>('[data-shortcut-surface="canvas"]')
-    // 没有节点被选中就没有生成框，不用跑；生成框是懒加载的，选中之后多久挂上来不定，所以选中期间一直每帧量。
-    if (!el || !stage || selectedCount === 0) return undefined
-    let raf = 0
+    // 没有节点被选中就没有生成框，不用跑。
+    if (!el || !stage || selectionKey === '') return undefined
     let applied: string | undefined
     const apply = (value: string | undefined) => {
       if (value === applied) return
@@ -47,19 +70,49 @@ export function useCanvasChromeOcclusion(ref: React.RefObject<HTMLElement | null
       if (value === undefined) el.style.removeProperty('clip-path')
       else el.style.clipPath = value
     }
-    const tick = () => {
-      const composers = [...stage.querySelectorAll<HTMLElement>(COMPOSER_ROOT_SELECTOR)]
+    const resizeObserver = new ResizeObserver(() => coalescer.schedule())
+    const styleObserver = new MutationObserver(() => coalescer.schedule())
+    const observedNodes = new Set<Element>()
+    const watch = (target: Element | null) => {
+      if (!target || observedNodes.has(target)) return
+      observedNodes.add(target)
+      styleObserver.observe(target, { attributes: true, attributeFilter: ['style'] })
+    }
+    const measure = () => {
+      const roots = [...stage.querySelectorAll<HTMLElement>(COMPOSER_ROOT_SELECTOR)]
+      // 生成框挂上来之后，盯住它自己的尺寸和它所在节点的位置（节点被挪 = 生成框跟着挪）。
+      for (const root of roots) {
+        resizeObserver.observe(root)
+        watch(root.closest('.react-flow__node'))
+      }
+      const composers = roots
         .filter((node) => getComputedStyle(node).visibility !== 'hidden')
         .map((node) => node.getBoundingClientRect())
       const box = el.getBoundingClientRect()
-      const holes = occludedHoles(box, composers)
-      apply(clipPathForHoles(box.width, box.height, holes))
-      raf = requestAnimationFrame(tick)
+      apply(clipPathForHoles(box.width, box.height, occludedHoles(box, composers)))
     }
-    raf = requestAnimationFrame(tick)
+    const coalescer = createFrameCoalescer(measure, requestAnimationFrame, cancelAnimationFrame)
+    resizeObserver.observe(el)
+    watch(stage.querySelector('.react-flow__viewport'))
+    // 生成框挂 / 卸、视口元素本身挂上来：只看 childList，不看属性。
+    const mountObserver = new MutationObserver(() => {
+      watch(stage.querySelector('.react-flow__viewport'))
+      coalescer.schedule()
+    })
+    mountObserver.observe(stage, { childList: true, subtree: true })
+    // 拖动开始 / 结束翻转 data-dragging（生成框拖动中隐身，结束后重新露出）。
+    const dragObserver = new MutationObserver(() => coalescer.schedule())
+    dragObserver.observe(stage, { attributes: true, attributeFilter: ['data-dragging'] })
+    window.addEventListener('resize', coalescer.schedule)
+    coalescer.schedule()
     return () => {
-      cancelAnimationFrame(raf)
+      coalescer.dispose()
+      resizeObserver.disconnect()
+      styleObserver.disconnect()
+      mountObserver.disconnect()
+      dragObserver.disconnect()
+      window.removeEventListener('resize', coalescer.schedule)
       apply(undefined)
     }
-  }, [ref, selectedCount])
+  }, [ref, selectionKey])
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { clipPathForHoles, occludedHoles } from './useCanvasChromeOcclusion'
+import { clipPathForHoles, createFrameCoalescer, occludedHoles } from './useCanvasChromeOcclusion'
 
 const dock = { left: 100, top: 700, right: 300, bottom: 740 }
 
@@ -22,5 +22,53 @@ describe('外框控件被生成框压住的那一块', () => {
 
   it('只擦边（不足半像素）不算压住', () => {
     expect(occludedHoles(dock, [{ left: 300.2, top: 700, right: 400, bottom: 740 }])).toEqual([])
+  })
+})
+
+describe('量一次的时机：事件触发、合并到一帧，静止时零开销', () => {
+  function harness() {
+    let measures = 0
+    let nextId = 0
+    const frames = new Map<number, () => void>()
+    const coalescer = createFrameCoalescer(
+      () => { measures += 1 },
+      (cb) => { nextId += 1; frames.set(nextId, cb); return nextId },
+      (id) => { frames.delete(id) },
+    )
+    const flushFrame = () => { const batch = [...frames.values()]; frames.clear(); batch.forEach((cb) => cb()) }
+    return { coalescer, flushFrame, measures: () => measures, pendingFrames: () => frames.size }
+  }
+
+  it('没有事件就一帧也不排：连续 120 帧过去，量的次数不变', () => {
+    const h = harness()
+    h.coalescer.schedule()
+    h.flushFrame()
+    expect(h.measures()).toBe(1)
+    for (let i = 0; i < 120; i += 1) h.flushFrame()
+    expect(h.measures()).toBe(1)
+    expect(h.pendingFrames()).toBe(0)
+  })
+
+  it('同一帧里来 50 个事件（拖动 / 平移一连串变动）只量一次', () => {
+    const h = harness()
+    for (let i = 0; i < 50; i += 1) h.coalescer.schedule()
+    expect(h.pendingFrames()).toBe(1)
+    h.flushFrame()
+    expect(h.measures()).toBe(1)
+  })
+
+  it('量完之后再来事件，下一帧再量一次', () => {
+    const h = harness()
+    h.coalescer.schedule(); h.flushFrame()
+    h.coalescer.schedule(); h.flushFrame()
+    expect(h.measures()).toBe(2)
+  })
+
+  it('卸载时取消还没跑的那一帧', () => {
+    const h = harness()
+    h.coalescer.schedule()
+    h.coalescer.dispose()
+    h.flushFrame()
+    expect(h.measures()).toBe(0)
   })
 })

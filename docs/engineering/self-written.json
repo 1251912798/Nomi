@@ -1834,7 +1834,7 @@
           "source": "https://developer.mozilla.org/docs/Web/CSS/clip-path"
         }
       ],
-      "whyNotIntegrated": "Domain constraint：生成框与外框控件的相交关系只有画布自己知道（哪个节点被选中、生成框此刻的屏幕矩形、控件是否上抬），通用的 z-index / 层叠机制在 React Flow 的层叠上下文边界处做不到；没有现成库做「画布外框控件让位于节点浮层」这件事。",
+      "whyNotIntegrated": "Domain constraint：生成框与外框控件的相交关系只有画布自己知道（哪个节点被选中、生成框此刻的屏幕矩形、控件是否上抬），通用的 z-index / 层叠机制在 React Flow 的层叠上下文边界处做不到；没有现成库做「画布外框控件让位于节点浮层」这件事。量的时机用浏览器现成的 MutationObserver / ResizeObserver 触发、合并到一帧（createFrameCoalescer 十几行），选中变化、视口平移缩放、节点被挪、生成框挂卸与变大小才量一次，静止时不读布局。",
       "revisitWhen": "生成框挪出节点层单独渲染后删除（2026-11-15 复查一次：画布层级表合入、生成框能直接用层级值盖住外框控件时，删本文件与 canvasChromeLayers 里的说明）"
     }
   ]
