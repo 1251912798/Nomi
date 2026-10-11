@@ -21,7 +21,7 @@
 //
 // 最坏花费（模式 3）：从仓库夹具 canvas-follow-hand-1080p15.mp4 截一小段（--clip-start / --clip-seconds，默认 4.3s 起 1.8s、去音轨，
 // 所以没有转写）；每镜 1 次读图调用（一镜 3 帧同一次请求）。**镜数以第二张报价卡的「调用次数」为准**——超过 4 次脚本在点确认之前直接取消退出；
-// 脚本还在主进程 fetch 上装了计数器，读图调用要超过 4 次时**在请求发出前**拒掉并停走查。拆解逐镜 `maxRetries: 0`，限流不会重试放大。
+// 脚本在主进程订阅 undici 出站（diagnostics_channel）计数，读图调用超过 4 次立刻停走查；令牌本身只覆盖报价里那几次。拆解逐镜 `maxRetries: 0`，限流不会重试放大。
 // 未确认（没设 NOMI_PAID_CONFIRM）一分钱不花：报价卡点「取消」，供应商一个请求都没有。
 import fs from 'node:fs'
 import os from 'node:os'
@@ -152,26 +152,23 @@ try {
   await expect(videoNode).toBeVisible({ timeout: stationTimeout() })
   await waitForVisualQuiescence(win)
 
-  // ② 读图调用计数器（真付费才需要：夹具模式直接数夹具收到的请求）。上限 4：超了在请求发出前拒掉。
-  if (!FIXTURE) {
-    await app.evaluate((_electron, cap) => {
-      const counts = { vision: 0, transcribe: 0, other: 0 }
-      globalThis.__paidCounts = counts
-      const inner = globalThis.fetch
-      globalThis.fetch = function countedFetch(input, init) {
-        const url = String(typeof input === 'string' ? input : input?.url ?? input)
-        if (/\/audio\/transcriptions/.test(url)) counts.transcribe += 1
-        else if (/\/chat\/completions|\/v1\/messages|generateContent/.test(url)) {
-          if (counts.vision >= cap) return Promise.reject(new Error(`paid cap：读图调用要超过上限 ${cap}，已在发出前拦下`))
-          counts.vision += 1
-        } else counts.other += 1
-        return inner.call(this, input, init)
-      }
-    }, VISION_CAP)
-  }
-  const callCounts = async () => FIXTURE
-    ? { vision: walk.fixture.requests.length, transcribe: 0, other: 0 }
-    : app.evaluate(() => ({ ...globalThis.__paidCounts }))
+  // ② 调用计数器：订阅 undici 的 diagnostics_channel（App 唯一出站入口 appFetch 在模块加载时抓了原生 fetch，
+  //    补丁 globalThis.fetch 是拦不到它的——2026-10-11 真付费实测计数全 0 就是这个）。只计数、不拦截：
+  //    上限由两处守住——报价卡的调用次数 > 上限就不点确认；令牌只覆盖报价里那几次（spendGrant 的 maxAttemptsPerNode）。
+  //    夹具模式下同时数夹具收到的请求，两个数必须相等——用地面真值证明计数器本身是对的。
+  await app.evaluate(() => {
+    const counts = { vision: 0, transcribe: 0, other: 0 }
+    globalThis.__paidCounts = counts
+    const channels = process.getBuiltinModule('node:diagnostics_channel')
+    channels.subscribe('undici:request:create', ({ request }) => {
+      if (request?.method !== 'POST') return
+      const target = String(request.path ?? '')
+      if (/\/audio\/transcriptions/.test(target)) counts.transcribe += 1
+      else if (/\/chat\/completions|\/v1\/messages|generateContent/.test(target)) counts.vision += 1
+      else counts.other += 1
+    })
+  })
+  const callCounts = async () => app.evaluate(() => ({ ...globalThis.__paidCounts }))
 
   // ③ 选中视频 → 浮条「拆解 ▾ → 拆成镜头表」→ 第一张报价卡（自动挑的模型）→ 取消（零花费，只为让分镜表节点出现）
   await videoNode.click()
@@ -239,9 +236,11 @@ try {
     const summaryText = (await summary.isVisible().catch(() => false)) ? (await summary.textContent())?.trim() : null
     console.log(`[result] 表状态：${finalState.status} · 顶栏原话：${summaryText ?? '(无失败行)'}${finalState.error ? ` · 整次错误：${finalState.error}` : ''}`)
     for (const row of finalState.rows) console.log(`  镜 ${row.order}：${row.visionFailed ? `没读出（${row.failureReason ?? '无原因'}）` : `读出 · 景别「${row.shotSize}」`}`)
-    console.log(`[calls] 实际调用：读图 ${counts.vision} 次 · 转写 ${counts.transcribe} 次${FIXTURE ? '（夹具收到的请求数）' : '（主进程 fetch 计数；若与镜数对不上，以供应商账单为准）'}`)
+    console.log(`[calls] 实际调用：读图 ${counts.vision} 次 · 转写 ${counts.transcribe} 次${FIXTURE ? '（undici 出站计数，夹具模式已与夹具收到的请求对账）' : '（undici 出站计数）'}`)
     Object.assign(report, { finalTableStatus: finalState.status, rows: finalState.rows, summaryLine: summaryText, calls: counts })
     expect(counts.vision, `读图调用 ≤ ${VISION_CAP}`).toBeLessThanOrEqual(VISION_CAP)
+    if (FIXTURE) expect(counts.vision, '计数器 = 夹具实际收到的请求数（地面真值）').toBe(walk.fixture.requests.length)
+    else expect(counts.vision, '计数器看到了读图请求（不是 0）').toBeGreaterThan(0)
     await snap(RATE_PROBE ? 'result-rate-limit' : 'result')
     if (RATE_PROBE) {
       expect(finalState.rows.every((row) => row.visionFailed), '限流探针：每一镜都没读出').toBe(true)
