@@ -22,6 +22,9 @@ import { findCanvasBlankPoint, findCanvasBlankRect, findNodeHitPoint } from './_
 import { expectAbsent, expectCount, expectVisible, proveProbe, screenshotSettled } from './_assert.mjs'
 import { canvasAddBar, canvasFitViewButton, canvasFrameToolButton, canvasFrameToolPressed, closeCanvasViewOptions, newProjectEntry } from './_shell.mjs'
 import { stationTimeout } from './_station-budget.mjs'
+import { clickFrameToolbarAction, frameBlankPosition, selectFrameByBlankClick } from './_groupFrame.mjs'
+import { GROUP_TOOLBAR } from './_groupGenerate.mjs'
+import { uiText } from './full-walk/invariants.mjs'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const shotsDir = path.join(repoRoot, 'tests/ux/shots/canvas-frame')
@@ -145,7 +148,9 @@ async function readFrameState(win) {
       groupId: frame.getAttribute('data-group-id'),
       empty: frame.getAttribute('data-frame-empty') === 'true',
       membership: frame.getAttribute('data-frame-membership'),
-      count: frame.querySelector('[data-frame-count="true"]')?.textContent?.trim() ?? '',
+      // 计数带单位（「3 个」「3 镜」）：只取数字，断言对的是人数。
+      // 静止时只取数字（「3 个」→「3」）；拖动预览「3 → 4」原样保留。
+      count: (frame.querySelector('[data-frame-count="true"]')?.textContent ?? '').trim().includes('→') ? (frame.querySelector('[data-frame-count="true"]')?.textContent ?? '').trim() : ((frame.querySelector('[data-frame-count="true"]')?.textContent ?? '').match(/\d+/)?.[0] ?? ''),
       title: frame.querySelector('[data-frame-title="true"]')?.textContent?.trim() ?? '',
       dashed: getComputedStyle(frame).borderStyle,
     }
@@ -419,7 +424,7 @@ try {
   const title = frameLocator(win).locator('[data-frame-title="true"]').first()
   await title.dblclick({ timeout: 6000 })
   await win.waitForTimeout(300)
-  const nameInput = frameLocator(win).locator('input[aria-label^="重命名框"]').first()
+  const nameInput = frameLocator(win).locator('input[aria-label^="重命名组"]').first()
   await expectVisible(nameInput, '双击标题进了编辑态（不是弹「添加节点」菜单）')
   await nameInput.fill('第二幕 · 咖啡馆')
   await win.keyboard.press('Enter')
@@ -549,9 +554,8 @@ try {
   check(restored?.count === '2', '夹具验完复位：框里回到 2 个，后面的断言接着说真话', `count=${restored?.count}`)
 
   // ── ⑥ 折叠腾地方，再展开 ──
-  const collapseButton = frameLocator(win).locator('button[aria-label^="收起分组"]').first()
-  await expectVisible(collapseButton, '框头部有折叠钮')
-  await collapseButton.click({ timeout: 6000 })
+  // 折叠入口 = 分组工具条上的「折叠成卡」图标（框头上的折叠钮已删，工具条动作直接摆图标，10-10 拍板）。
+  await clickFrameToolbarAction(win, frameLocator(win).first(), 'collapse')
   await win.waitForTimeout(900)
   await expectCount(win.locator('[data-collapsed-group-id]'), 1, '折叠成一张卡')
   await snap(win, 'collapsed')
@@ -578,17 +582,15 @@ try {
   await win.mouse.click(clearPoint.x, clearPoint.y)
   await win.waitForTimeout(500)
 
-  // ── ⑧ ⋯ 菜单：整框生成（loopback 真出片） ──
-  const moreButton = frameLocator(win).locator('button[data-frame-more="true"]').first()
-  await moreButton.click({ timeout: 6000 })
+  // ── ⑧ 工具条「生成整组」：整框生成（loopback 真出片）。框头「生成全部」与它是同一执行口 ──
+  await frameLocator(win).first().click({ position: await frameBlankPosition(frameLocator(win).first()) })
   await win.waitForTimeout(500)
-  const menu = win.locator('[data-frame-menu="true"]').first()
-  await expectVisible(menu, '⋯ 打开了框自己的菜单')
-  await snap(win, 'frame-menu')
-  const timelineItemDisabled = await menu.locator('button', { hasText: '整框进时间轴' }).first().isDisabled()
-  check(timelineItemDisabled === true, '还没出片时「整框进时间轴」是禁用的（可点即有效，否则禁用+解释）')
+  await expectVisible(win.locator(GROUP_TOOLBAR), '选中框后工具条出现')
+  const timelineButton = win.locator(GROUP_TOOLBAR).getByRole('button', { name: uiText('zh-CN', 'generationCommon.canvas.group.toolbarTimeline') }).first()
+  const timelineItemDisabled = await timelineButton.isDisabled()
+  check(timelineItemDisabled === true, '还没出片时「进时间轴」是禁用的（可点即有效，否则禁用+解释）')
 
-  await menu.locator('button', { hasText: '生成整框' }).first().click({ timeout: 6000 })
+  await win.locator(GROUP_TOOLBAR).getByRole('button', { name: uiText('zh-CN', 'generationCommon.canvas.group.toolbarGenerate') }).first().click()
   await win.waitForTimeout(900)
   const spendDialog = win.locator('div.fixed.inset-0').filter({ hasText: /开始生成/ }).last()
   await spendDialog.waitFor({ timeout: 10_000 })
@@ -617,13 +619,9 @@ try {
   check(generated >= 1, '整框生成真的出了片（loopback 供应商 → 落盘 → 节点上放得出来）', `videos=${generated}`)
   await snap(win, 'frame-generated')
 
-  // ── ⑨ ⋯ 菜单：整框进时间轴 ──
-  await moreButton.click({ timeout: 6000 })
-  await win.waitForTimeout(500)
-  const menu2 = win.locator('[data-frame-menu="true"]').first()
-  await expectVisible(menu2, '⋯ 菜单再次打开')
-  const timelineItem = menu2.locator('button', { hasText: '整框进时间轴' }).first()
-  check(await timelineItem.isDisabled() === false, '出片之后「整框进时间轴」可用了')
+  // ── ⑨ 工具条「进时间轴」：整框进时间轴 ──
+  const timelineItem = win.locator(GROUP_TOOLBAR).getByRole('button', { name: uiText('zh-CN', 'generationCommon.canvas.group.toolbarTimeline') }).first()
+  check(await timelineItem.isDisabled() === false, '出片之后「进时间轴」可用了')
   await timelineItem.click({ timeout: 6000 })
   // 时间轴面板默认是收起的，收起时轨道里连 DOM 都没有——先展开再数，否则读到的 0
   // 说的是「面板没展开」，不是「没排进去」（那正是 dead-selector 那一族的假红）。
@@ -638,12 +636,12 @@ try {
   check(clipCount === 2, '框里那 2 个镜头按框内顺序排进了时间轴（第三个已经挪出框，不该进来）', `clips=${clipCount}`)
   await snap(win, 'frame-to-timeline')
 
-  // ── ⑩ ⋯ 菜单：解散（节点和连线都留着） ──
+  // ── ⑩ 工具条：解散（节点和连线都留着） ──
   const edgesBefore = await win.evaluate(() => document.querySelectorAll('.react-flow__edge').length)
   const nodesBefore = await win.evaluate(() => document.querySelectorAll('.react-flow__node[data-id]').length)
-  await moreButton.click({ timeout: 6000 })
+  await selectFrameByBlankClick(frameLocator(win).first())
   await win.waitForTimeout(500)
-  await win.locator('[data-frame-menu="true"] button', { hasText: '解散' }).first().click({ timeout: 6000 })
+  await win.locator(GROUP_TOOLBAR).getByRole('button', { name: uiText('zh-CN', 'generationCommon.canvas.group.toolbarDissolve') }).first().click()
   await win.waitForTimeout(900)
   await expectAbsent(frameLocator(win), {
     provenBy: frameProof,

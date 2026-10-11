@@ -1,4 +1,4 @@
-import { CANVAS_CHROME_LAYERS } from './canvasChromeLayers'
+import { CANVAS_LAYER } from '../reactFlow/canvasLayerOrder'
 import { useCanvasChromeOcclusion } from './useCanvasChromeOcclusion'
 import { CanvasAddPreferenceActions } from './CanvasAddPreferenceActions'
 import { useCanvasMenuPreferenceStore } from '../store/canvasMenuPreferenceStore'
@@ -231,7 +231,7 @@ export default function CanvasToolbar({ getInsertionPosition, categoryId, stageW
   return (
     <div
       ref={dockRef}
-      style={{ zIndex: CANVAS_CHROME_LAYERS.chromeDock }}
+      style={{ zIndex: CANVAS_LAYER.chromeDock }}
       className={cn(
         'generation-canvas-v2-toolbar',
         // 拍板稿 Main 板：加节点条是内容区底部正中的一条横排（图片 视频 声音 文字 剪辑 | 导入 +），贴着时间轴窄条上沿。
