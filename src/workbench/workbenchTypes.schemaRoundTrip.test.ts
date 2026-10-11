@@ -9,6 +9,7 @@ import { normalizeWorkbenchContentJson } from './workbenchTypes'
 // 2026-10-11 真机性能专项发现：工具条点「链接」后 DOM 有 <a>，落盘的文稿里没有——归一化的 mark 白名单
 // 是手写的一份，漏了编辑器 schema 里的 link / underline。白名单与 schema 是两份事实，所以这里让 schema 当考官：
 // 新接一个扩展而没教会归一化，这条测试红，而不是等用户重开文稿才发现内容没了。
+// 矩阵测试：遍历下面按 schema 清单登记的全部 mark / node 样例，逐个往返。
 const REAL_EDITOR_EXTENSIONS: AnyExtension[] = [StarterKit, ...RICH_TEXT_FEATURE_EXTENSIONS]
 const schema = getSchema(REAL_EDITOR_EXTENSIONS)
 

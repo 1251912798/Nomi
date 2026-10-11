@@ -13,7 +13,7 @@
   "evidence": [
     "tests/ux/document-format-persist-undo.walk.mjs：改前 link 落盘 marks=[]、重开 <a> 0 个；改后均通过"
   ],
-  "completionCommits": [],
+  "completionCommits": ["5c57f29e2"],
   "rootCauseContract": "docs/fixes/2026-10-11-document-format-persistence.root-cause.json",
   "fixedInPr": 9999,
   "classCheck": {

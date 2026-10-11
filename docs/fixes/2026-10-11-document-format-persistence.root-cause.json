@@ -1,5 +1,5 @@
 {
-  "detected_by": "perf-lab",
+  "detected_by": "walkthrough",
   "symptom": "工具条点「链接」后编辑器里有 <a>，落盘的文稿里没有 link，重开就没了；同时加粗 / 斜体后要按两次撤销",
   "direct_cause": "①归一化的 mark 白名单手写，漏了编辑器 schema 里的 link / underline，节点属性（有序列表起始号、代码块语言、表格单元格合并 / 列宽）也一律不带；②受控内容回流用 JSON 字符串比较，同一文档的另一种写法被当成外部改写，setContent 压进一条等价撤销记录",
   "class_root_cause": "编辑器 schema 与文稿归一化白名单是两份手写事实，没有让 schema 当考官；受控内容的相等判据（字符串）与载体（文档结构）不对齐",
