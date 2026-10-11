@@ -49,3 +49,7 @@
 ## 特征测试清单
 
 已有：`deconstructLegResolution.test.ts`（转写腿解析）、`deconstructVideo.test.ts`（prompt）、`deconstructionTerminalState.test.ts`、`factBridge.test.ts`。没有的（读图腿身份 / 失败落表 / maxRetries）本次作为必红测试补，见方案卡 §11。
+
+## 补记（2026-10-11 真付费走查后）：表头总时长的浮点尾数
+
+真付费走查发现表头显示「3 镜 1.9000000000000001s」。同一类根因的另一个实例：**派生量在显示层现算**——每行时长已落在 0.1 秒格子上（`shotTime` 是精度 owner），但几个格子点上的数相加会重新长出浮点尾数，而表头（`ShotTableNode`）自己 reduce 后直接插值。类：「精度 owner 只管存储的量，不管由它们派生的量」。补法（结构）：总时长收成 `shotTableTotalSeconds` 唯一出口，产出时按 `quantizeShotSeconds` 量化，表头只读它，不写 round、不自己 reduce；单测钉住 0.1 + 0.2 + 1.6。数门：其余秒数显示读 schema 已量化的值，storyboard 合计是整秒 `Math.round`，没有别处直接拼浮点秒。
