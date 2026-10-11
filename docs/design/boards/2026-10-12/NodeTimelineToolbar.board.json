@@ -14,7 +14,7 @@
       "candidates": [
         "001-timeline.action"
       ],
-      "status": "in-progress",
+      "status": "implemented",
       "owner": "T-node-timeline",
       "states": [
         "empty",
@@ -36,7 +36,7 @@
       "candidates": [
         "002-timeline.commit"
       ],
-      "status": "in-progress",
+      "status": "implemented",
       "owner": "T-node-timeline",
       "states": [
         "empty",
@@ -50,7 +50,7 @@
         "zh-en",
         "dark"
       ],
-      "assertion": "click appends on correct track, truthful receipt, one UI Undo restores baseline"
+      "assertion": "appends on correct track, truthful receipt, one UI Undo restores baseline"
     },
     {
       "id": "timeline.drag",
@@ -58,7 +58,7 @@
       "candidates": [
         "003-timeline.drag"
       ],
-      "status": "in-progress",
+      "status": "implemented",
       "owner": "T-node-timeline",
       "states": [
         "empty",
@@ -72,7 +72,7 @@
         "zh-en",
         "dark"
       ],
-      "assertion": "Latest main result: native icon drag reaches global timeline and one UI Undo restores baseline"
+      "assertion": "Latest main result: Alt native icon drag reaches frame 75, source stays still, one UI Undo restores baseline"
     },
     {
       "id": "toolbar.retained",
@@ -80,7 +80,7 @@
       "candidates": [
         "004-toolbar.retained"
       ],
-      "status": "in-progress",
+      "status": "implemented",
       "owner": "T-node-timeline",
       "states": [
         "empty",

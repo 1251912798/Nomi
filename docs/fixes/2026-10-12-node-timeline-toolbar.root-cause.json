@@ -2,9 +2,9 @@
   "schema_version": 3,
   "id": "2026-10-12-node-timeline-toolbar",
   "problem_type": "Media timeline action ownership and executable capability",
-  "symptom": "User requested removal of the hover notch; pre-implementation regression also proves queued/running old results and non-media URLs advertise a timeline action.",
-  "direct_cause": "BaseGenerationNode owns a separate hover handle; the affordance predicate only checks URL/error while clip construction separately rejects active generation.",
-  "class_root": "Timeline action installation and executable-media eligibility lack a common boundary shared by media toolbars.",
+  "symptom": "User requested removal of the hover notch; pre-implementation regression also proves queued/running old results and non-media URLs advertise a timeline action. Real Electron native-drag acceptance observed no dragstart/drop: XYFlow moved the whole node and attempted overlapping frame 12 on baseline [0,60].",
+  "direct_cause": "BaseGenerationNode owns a separate hover handle; the affordance predicate only checks URL/error while clip construction separately rejects active generation. FloatingToolbarFrame only stops React pointerdown; XYFlow owns native mousedown and requires its existing nodrag/no-pan classes.",
+  "class_root": "Timeline action installation and executable-media eligibility lack a common boundary shared by media toolbars. Shared toolbar controls did not explicitly own native gestures independently of their parent canvas node.",
   "affected_population": [
     "Generated/imported/derived images and videos, audio results and primary-version switches"
   ],
@@ -24,7 +24,8 @@
     "Each eligible selected media node has one timeline toolbar icon and no hover notch.",
     "Click and drag consume a live eligible primary result.",
     "All media toolbar variants install the same action; unsupported and active-generation results cannot advertise it.",
-    "Image result toolbar routing depends on media type rather than a node-kind whitelist, preserving legacy image results."
+    "Image result toolbar routing depends on media type rather than a node-kind whitelist, preserving legacy image results.",
+    "Every shared node toolbar excludes XYFlow node-drag and canvas-pan; the timeline icon emits native MIME dragstart/drop without moving its source node."
   ],
   "doors": [
     {
@@ -71,12 +72,47 @@
       "kind": "write",
       "path": "src/workbench/timeline/TimelineTrack.tsx",
       "symbol": "buildClipFromGenerationNode"
+    },
+    {
+      "kind": "read",
+      "path": "src/devlab/designLab/videoNodeNext/videoNodeNextToolbarKit.tsx",
+      "symbol": "FloatingToolbarShell"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/artifact/ArtifactNodeToolbar.tsx",
+      "symbol": "FloatingToolbarShell"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/NodeFloatingToolbar.tsx",
+      "symbol": "FloatingToolbarShell"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/NodeResultDownloadButton.tsx",
+      "symbol": "FloatingToolbarShell"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/NodeVideoFrameToolbar.tsx",
+      "symbol": "FloatingToolbarShell"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/render/PanoramaNodeToolbar.tsx",
+      "symbol": "FloatingToolbarShell"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/quickActions/ImageQuickActionsToolbar.tsx",
+      "symbol": "FloatingToolbarShell"
     }
   ],
   "door_reduction": {
     "before": 5,
-    "after": 9,
-    "why_not": "Initial gesture scan counted 5 doors; expanded ownership scan also includes the image-toolbar host, executable clip construction predicate and existing timeline builders (9 total). Preview cards and global track drops are distinct existing surfaces; they retain the shared adoption/clip construction boundaries. Node image presentation and click/drag need distinct calls, all installed in the one toolbar shell."
+    "after": 16,
+    "why_not": "Initial gesture scan counted 5 doors; expanded ownership scan also includes the image-toolbar host, executable clip construction predicate and existing timeline builders (9 total). Preview cards and global track drops are distinct existing surfaces; they retain the shared adoption/clip construction boundaries. Node image presentation and click/drag need distinct calls, all installed in the one toolbar shell. Native gesture ownership census adds 7 toolbar consumers (16 combined doors). All share the same FloatingToolbarFrame filter; distinct toolbar content remains separate."
   },
   "generality_proof": "FloatingToolbarShell is shared by image/video/audio result toolbars. A single node-owned action reads live state and gates both gestures through the common predicate, which reuses clip construction.",
   "shared_boundaries": [
@@ -129,10 +165,10 @@
   "prevention": {
     "kind": "centralized-boundary",
     "enforcement_path": "src/workbench/generationCanvas/nodes/NodeFloatingToolbar.tsx",
-    "invariant": "One node-owned media toolbar action; every gesture rechecks the live executable-media predicate.",
+    "invariant": "One node-owned media toolbar action; every gesture rechecks the live executable-media predicate. The common toolbar shell uses the existing XYFlow nodrag/no-pan filters for every control.",
     "failure_mode": "Missing or ineligible live result produces no action and cancels stale drag/click.",
     "exception_policy": "none",
-    "strategy": "Delete the standalone hover path; automatically compose the action into existing common toolbar ownership and reuse clip construction for eligibility.",
+    "strategy": "Delete the standalone hover path; automatically compose the action into existing common toolbar ownership and reuse clip construction for eligibility. Reuse existing framework filters at the common shell; native acceptance proves the actual drag channel and unchanged source position.",
     "artifacts": [
       "src/workbench/generationCanvas/nodes/NodeFloatingToolbar.tsx",
       "src/workbench/generationCanvas/model/timelineDragAffordance.ts"
@@ -141,11 +177,13 @@
   "regression_tests": [
     "src/workbench/generationCanvas/model/timelineDragAffordance.test.ts",
     "src/workbench/generationCanvas/nodes/ToolbarTimelineButton.test.ts",
-    "tests/ux/node-timeline-toolbar.walk.mjs"
+    "tests/ux/node-timeline-toolbar.walk.mjs",
+    "src/workbench/generationCanvas/nodes/NodeFloatingToolbar.test.ts"
   ],
   "class_regression_tests": [
     "src/workbench/generationCanvas/model/timelineDragAffordance.test.ts",
-    "src/workbench/generationCanvas/nodes/ToolbarTimelineButton.test.ts"
+    "src/workbench/generationCanvas/nodes/ToolbarTimelineButton.test.ts",
+    "src/workbench/generationCanvas/nodes/NodeFloatingToolbar.test.ts"
   ],
   "legacy_paths": {
     "status": "removed",
@@ -161,9 +199,9 @@
   },
   "migration": "No persisted state changes. Existing node/result identities and timeline drag payload format are retained.",
   "residual_risks": [
-    "Real Electron acceptance pending; Windows and packaged application unverified."
+    "Real macOS Electron zh/en acceptance passed (40 cases); Windows and packaged application unverified."
   ],
-  "detected_by": "review",
+  "detected_by": "walkthrough",
   "recurrence_check_on": "2026-11-12",
   "invariant_owner_layer": {
     "layer": "src/workbench/generationCanvas/nodes/NodeFloatingToolbar.tsx",

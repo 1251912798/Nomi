@@ -1,9 +1,10 @@
 import React, { type JSX } from 'react'
 import { useTranslation } from 'react-i18next'
-import { IconInfoCircle, IconCopy, IconTimelineEventPlus } from '@tabler/icons-react'
+import { IconInfoCircle, IconCopy, IconTimeline } from '@tabler/icons-react'
 import { cn } from '../../../utils/cn'
 import { toolbarButtonClass } from './toolbarButtonClass'
 import { useGenerationCanvasStore } from '../store/generationCanvasStore'
+import { selectCanvasNodeById } from '../store/canvasNodeGenerationIndex'
 import { NodeLockBadge } from './NodeLockBadge'
 import { nextFloatingToolbarPlacement, type FloatingToolbarPlacement } from './floatingToolbarClamp'
 import { useViewport } from '@xyflow/react'
@@ -105,6 +106,7 @@ function FloatingToolbarFrame({ ariaLabel, lockNodeId, children }: { ariaLabel: 
     <div
       ref={shellRef}
       className={cn(
+        'nodrag generation-canvas-react-flow__no-pan',
         'absolute left-1/2 bottom-[calc(100%+40px)] group-has-[[data-node-inline-status]_[data-generation-status]]/node:bottom-[calc(100%+72px)] z-[12]',
         'inline-flex w-max flex-wrap items-center justify-center gap-1 min-h-9 px-1.5 py-1',
         'border border-nomi-line rounded-nomi',
@@ -189,15 +191,15 @@ export function ToolbarIconButton({ icon, disabled, title, ariaLabel, actionId, 
 /** 媒体工具栏共用一个入口；动作触发时重读主结果，不沿用渲染时的旧版本。 */
 export function ToolbarTimelineButton({ nodeId }: { nodeId: string }): JSX.Element | null {
   const { t } = useTranslation()
-  const node = useGenerationCanvasStore((state) => state.nodes.find((candidate) => candidate.id === nodeId))
+  const node = useGenerationCanvasStore((state) => selectCanvasNodeById(state, nodeId))
   if (!node || !canDragGenerationNodeToTimeline(node)) return null
   const liveNode = () => {
-    const current = useGenerationCanvasStore.getState().nodes.find((candidate) => candidate.id === nodeId)
+    const current = selectCanvasNodeById(useGenerationCanvasStore.getState(), nodeId)
     return current && canDragGenerationNodeToTimeline(current) ? current : null
   }
   const label = t('timelineEditor.dragToTimeline')
   return <ToolbarIconButton
-    icon={<IconTimelineEventPlus size={ICON.size} stroke={ICON.stroke} />}
+    icon={<IconTimeline size={ICON.size} stroke={ICON.stroke} />}
     actionId="add-to-timeline"
     ariaLabel={label}
     title={label}

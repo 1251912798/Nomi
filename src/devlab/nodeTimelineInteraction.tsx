@@ -14,7 +14,9 @@ import i18n from '../i18n'
 import { LabCanvasViewport } from './designLab/labCanvasViewport'
 import ImageQuickActionsToolbar from '../workbench/generationCanvas/quickActions/ImageQuickActionsToolbar'
 import { TOOLBAR_ICON } from '../workbench/generationCanvas/nodes/NodeFloatingToolbar'
-import { NextVideoToolbar } from './designLab/videoNodeNext/videoNodeNextToolbarKit'
+import NodeResultDownloadButton from '../workbench/generationCanvas/nodes/NodeResultDownloadButton'
+import { NodeVideoSessionProvider } from '../workbench/generationCanvas/nodes/NodeVideoSession'
+import { useNodeVideoSession } from '../workbench/generationCanvas/nodes/useNodeVideoSession'
 import { installCatalogBridge } from './designLab/nodeComposerBar/nodeComposerBarLabKit'
 import { useGenerationCanvasStore } from '../workbench/generationCanvas/store/generationCanvasStore'
 import type { GenerationCanvasNode } from '../workbench/generationCanvas/model/generationCanvasTypes'
@@ -32,9 +34,14 @@ const nodes: Record<Kind, GenerationCanvasNode> = {
 const noop = () => undefined
 const icon = { size: TOOLBAR_ICON.size, stroke: TOOLBAR_ICON.stroke }
 
+function VideoPreview({ select }: { select: () => void }) {
+  const session = useNodeVideoSession()
+  return <video ref={session.setPlayer} src={VIDEO} poster={IMAGE} controls playsInline className="h-full w-full object-cover" onPointerDown={(event) => { event.stopPropagation(); select() }} onFocus={select} />
+}
+
 function MediaCard({ kind, selected, select, append, onDragging }: { kind: Kind; selected: boolean; select: () => void; append: (kind: Kind) => void; onDragging: (kind: Kind | null) => void }) {
   const node = nodes[kind]
-  return <div data-preview-node={kind} className="group/node relative w-[340px] max-w-[calc(100vw-48px)] shrink-0" onPointerDown={select}
+  const card = <div data-preview-node={kind} className="group/node relative w-[340px] max-w-[calc(100vw-48px)] shrink-0" onPointerDown={select}
     onClickCapture={(event) => {
       if (!(event.target as Element).closest('[data-toolbar-action="add-to-timeline"]')) return
       event.preventDefault(); event.stopPropagation(); append(kind)
@@ -44,12 +51,13 @@ function MediaCard({ kind, selected, select, append, onDragging }: { kind: Kind;
       event.stopPropagation(); event.dataTransfer.effectAllowed = 'copy'; event.dataTransfer.setData(MIME, kind); onDragging(kind)
     }}
     onDragEnd={() => onDragging(null)}>
-    {selected ? kind === 'image' ? <ImageQuickActionsToolbar reportFeedback={noop} node={node} editGrid={null} imageOpBusy={false} onGridSplit={noop} onCrop={noop} onTransform={noop} onRemoveBackground={noop} onPreview={noop} onOpenProvenance={noop} onQuickAction={noop} /> : <NextVideoToolbar node={node} locale={i18n.language === 'en' ? 'en' : 'zh-CN'} /> : null}
+    {selected ? kind === 'image' ? <ImageQuickActionsToolbar reportFeedback={noop} node={node} editGrid={null} imageOpBusy={false} onGridSplit={noop} onCrop={noop} onTransform={noop} onRemoveBackground={noop} onPreview={noop} onOpenProvenance={noop} onQuickAction={noop} /> : <NodeResultDownloadButton reportFeedback={noop} node={node} selected onPreview={noop} onOpenProvenance={noop} /> : null}
     <div className={cn('relative aspect-video overflow-hidden rounded-nomi bg-nomi-ink-05 shadow-nomi-md ring-1 transition-shadow', selected ? 'ring-nomi-accent' : 'ring-nomi-line')}>
-      {kind === 'image' ? <img src={IMAGE} draggable={false} alt="图片节点" className="h-full w-full object-cover" /> : <video src={VIDEO} poster={IMAGE} controls playsInline className="h-full w-full object-cover" onPointerDown={(event) => { event.stopPropagation(); select() }} onFocus={select} />}
+      {kind === 'image' ? <img src={IMAGE} draggable={false} alt="图片节点" className="h-full w-full object-cover" /> : <VideoPreview select={select} />}
     </div>
     <div className="mt-2 flex items-center gap-1.5 text-body-sm text-nomi-ink-60">{kind === 'image' ? <IconPhoto {...icon} /> : <IconVideo {...icon} />}<span>{node.title}</span></div>
   </div>
+  return kind === 'video' ? <NodeVideoSessionProvider node={node} writable>{card}</NodeVideoSessionProvider> : card
 }
 
 function App() {

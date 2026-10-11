@@ -20,7 +20,8 @@ import type { TimelineClip, TimelineState } from '../timeline/timelineTypes'
 import { useWorkbenchStore } from '../workbenchStore'
 import { adoptGenerationNode } from './adoptGenerationNode'
 import { reportAdoptionOutcome } from './adoptionReceipt'
-import { resetAdoptionRegistry } from './adoptionProposalRegistry'
+import { proposalIsLanded, resetAdoptionRegistry } from './adoptionProposalRegistry'
+import * as proposalRegistry from './adoptionProposalRegistry'
 
 type ToastActionProps = { actionLabel?: string; onAction?: () => void }
 
@@ -116,6 +117,25 @@ describe('P5 E1 采纳回执', () => {
     reportAdoptionOutcome(outcome, { revealTimeline: false })
     expect(lastToastMessage()).toBe(i18n.t('timelineEditor.addedAtPosition'))
     expect(lastToastMessage()).not.toBe(i18n.t('timelineEditor.addedToEnd'))
+  })
+
+  it('keeps adoption Undo valid through timeline auto-fit and playback', async () => {
+    const baseline = useWorkbenchStore.getState().timeline
+    const outcome = await adoptGenerationNode(imageNode('node-refit', 'artifact-refit'), {
+      placement: { kind: 'append' }, ports: storePorts,
+    })
+    expect(outcome.status).toBe('applied')
+    if (outcome.status !== 'applied') throw new Error('Adoption must precede view-state regression')
+    const landedCheck = vi.spyOn(proposalRegistry, 'proposalIsLanded')
+    reportAdoptionOutcome(outcome)
+    const initialChecks = landedCheck.mock.calls.length
+    for (let frame = 1; frame <= 100; frame++) {
+      useWorkbenchStore.setState((state) => ({ timeline: { ...state.timeline, scale: 8.88, playheadFrame: frame } }))
+    }
+    expect(landedCheck.mock.calls).toHaveLength(initialChecks)
+    expect(proposalIsLanded(outcome.proposal, useWorkbenchStore.getState().timeline)).toBe(true)
+    lastToastAction().onAction?.()
+    expect(useWorkbenchStore.getState().timeline).toEqual(baseline)
   })
 
   it('点击贴尾的回执仍然说「末尾」', async () => {

@@ -8,7 +8,7 @@
     "NodeVideoFrameToolbar",
     "NodeResultDownloadButton"
   ],
-  "decision": "末尾IconTimelineEventPlus，删除旧刘海，工具栏定位与原按钮保留",
+  "decision": "末尾IconTimeline，删除旧刘海，工具栏定位与原按钮保留",
   "approval": {
     "quote": "看到了 没啥问题",
     "date": "2026-10-12"

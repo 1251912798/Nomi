@@ -28,7 +28,7 @@
 
 **删除旧刘海，在共享 FloatingToolbarShell 末尾安装唯一的 ToolbarTimelineButton。** 每个节点工具栏已显式提供 nodeId；按钮由当前 nodeId 读取最新主结果，统一复用 canDragGenerationNodeToTimeline、addGenerationNodeToTimelineEnd 与既有拖拽 MIME。产物工具栏传 null，全景由能力门排除。时间轴事实仍由采纳桥唯一拥有。
 
-界面顺序为：现有工具栏所有按钮 → 「加入时间轴」纯图标。使用已登记的 IconTimelineEventPlus、现有方形 ToolbarIconButton 尺寸与配色。图片 / 视频保持一致；选中时随浮条出现，hover / focus 提示现有中英文含义；Enter / Space 点击；拖同一图标可选落点。顶部刘海整块删除。
+界面顺序为：现有工具栏所有按钮 → 「加入时间轴」纯图标。使用已登记的 IconTimeline、现有方形 ToolbarIconButton 尺寸与配色。图片 / 视频保持一致；选中时随浮条出现，hover / focus 提示现有中英文含义；Enter / Space 点击；拖同一图标可选落点。顶部刘海整块删除。
 
 可用性与执行条件收口：无主结果 / 无 URL / error / queued / running / readonly / panorama / 非媒体不广告落轴；有效图片 / 视频 / 音频沿用原采纳语义。事件触发时再次读 live node，避免换主图或状态变化后仍使用陈旧值。
 
@@ -38,7 +38,7 @@
 
 完整清单见 [设计卡](2026-10-12-node-timeline-toolbar.md)。独立普查确认：图片生成、上传图、角色 / 场景 / 关键帧 / 画板图、编辑派生、截帧、全景截图、SVG 固化 → 图片工具栏；生成 / 上传视频、裁切、深度视频、导演台录像、剪辑导出 → 视频工具栏；音频 → 通用下载工具栏。版本宫格保留设主图 / 下载 / 删除 / Alt 拖出，落轴消费主结果。剪辑卡本体保留原卡内动作，继续接受同一拖拽 MIME。
 
-## 5. 验收门与当前证据
+## 5. 开工时的验收门与证据（历史记录）
 
 - 开工前特征测试：原可用性测试 3 项通过；新增状态 / 媒体类型测试 2 项按预期失败。新组件测试 5 项因尚未实现而红，不能宣称功能已通过。
 - 将跑真 Electron：真实本地图片 / 视频 / 音频，点击贴尾 → 回执 → Undo；拖到全局时间轴与剪辑卡；换主结果后落轴；中英 / 明暗 / 窄窗；工具栏唯一入口、无旧刘海、既有按钮保留。
@@ -52,3 +52,7 @@
 ## 7. 拍板项
 
 用户已确认上述唯一结构决定：**共用工具栏末尾放一个可点击 / 可拖拽的时间轴 icon，删除刘海，保留所有既有媒体入口。** 无需重写工具栏几何系统。
+
+## 8. 最终证据
+
+独立真实Electron zh/en走查40项通过，38张截图，包括原生MIME默认贴尾、Alt落帧75、剪辑卡与源节点不移；见[独立报告](../evidence/2026-10-12-node-timeline-toolbar-independent.md)。共享浮条复用已有框架nodrag/no-pan过滤，不改几何算法。最终[性能采样](../evidence/2026-10-12-node-timeline-performance.md)覆盖60/300节点，各3次。完整gates视觉比对仍有73项红，证据边界在PR明示，不更新基线。

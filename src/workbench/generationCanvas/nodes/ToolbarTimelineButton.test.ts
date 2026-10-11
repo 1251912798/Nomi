@@ -19,7 +19,7 @@ vi.mock('react-i18next', async (importOriginal) => ({
 }))
 
 const media = (type: 'image' | 'video' | 'audio' = 'image'): GenerationCanvasNode => ({
-  id: 'media', kind: 'asset', position: { x: 0, y: 0 }, status: 'success',
+  id: 'media', title: 'Media', kind: 'asset', categoryId: type === 'audio' ? 'audio' : 'shots', position: { x: 0, y: 0 }, status: 'success',
   result: { id: type, type, url: `file:///${type}`, createdAt: 1 },
 })
 
@@ -32,7 +32,7 @@ describe('shared timeline toolbar action', () => {
     expect(html).toContain('data-toolbar-action="add-to-timeline"')
     expect(html).toContain('draggable="true"')
     expect(html).toContain('aria-label="timelineEditor.dragToTimeline"')
-    expect(html).toContain('tabler-icon-timeline-event-plus')
+    expect(html).toContain('tabler-icon-timeline')
     expect(html).not.toContain('<span')
   })
 
