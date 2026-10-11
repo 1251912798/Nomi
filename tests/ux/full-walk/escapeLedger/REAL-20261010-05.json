@@ -1,5 +1,5 @@
 {
-  "id": "REAL-20261010-02",
+  "id": "REAL-20261010-05",
   "since": "2026-10-10",
   "source": "2026-10-10 real test",
   "category": "interaction-semantics",
@@ -18,7 +18,7 @@
   ],
   "completionCommits": [],
   "rootCauseContract": "docs/fixes/2026-10-10-row-actions-direct-icons.root-cause.json",
-  "fixedInPr": 9999,
+  "fixedInPr": 1177,
   "classCheck": {
     "kind": "matrix",
     "file": "scripts/check-icon-semantics.node-test.mjs"
