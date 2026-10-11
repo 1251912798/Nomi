@@ -27,7 +27,7 @@ vi.mock('../../project/projectCanvasReadSurface', () => ({
 }))
 
 import { useComposerAttachments, type UseComposerAttachments } from './useComposerAttachments'
-import { useAgentReferenceMentions } from './useAgentReferenceMentions'
+import { useAgentReferenceMentions } from '../resident/useAgentReferenceMentions'
 
 type Receipt = { id: string; data: { url: string; contentHash: string; contentType: string; size: number } }
 function deferred() {
@@ -237,6 +237,18 @@ describe('inline reference recovery visibility', () => {
     await act(async()=>{update(previous=>({...previous,attachments:[{...ready}]}))})
     expect(inserted).toHaveBeenCalledTimes(1)
     expect(liveDraft).toBe(`A draft ${encodeMention(original.renderUrl)}`)
+  })
+
+  it('releases deleted live references before the owner has echoed their insertion',async()=>{
+    holdEcho=true
+    await act(async()=>{update(previous=>({...previous,attachments:[ready]}))})
+    expect(buffer.draft).toBe('A draft ')
+    const previous = liveDraft
+    liveDraft=''
+    await act(async()=>{mentions.onChange('',previous)})
+    expect(buffer.attachments).toEqual([])
+    expect(liveDraft).toBe('')
+    expect(inserted).toHaveBeenCalledTimes(1)
   })
 
   it('waits for explicit insertion when canonical upload dedup has no referenceSource',async()=>{

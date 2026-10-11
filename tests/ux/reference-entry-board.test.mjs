@@ -9,7 +9,7 @@ const dir=path.join(root,'docs/design/boards/2026-10-12')
 const board='ReferenceEntry'
 const read=name=>JSON.parse(fs.readFileSync(path.join(dir,name),'utf8'))
 
-describe('approved reference-entry production snapshot',()=>{
+describe('reference-entry production snapshot',()=>{
   it('accounts for every visible candidate with actual walk assertions',()=>{
     const manifest=read(`${board}.board.json`)
     const doc=read(`${board}.candidates.json`)

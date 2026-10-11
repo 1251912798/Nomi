@@ -90,7 +90,7 @@ export type AgentPanelV4ComposerProps = {
   focusTag?: React.ReactNode
   /** 受控文本。没有 `onValueChange` 时框是只读的展示件（设计实验室取景用）。 */
   value?: string
-  onValueChange?: (value: string) => void
+  onValueChange?: (value: string, previous?: string) => void
   onSubmit?: (choice?: 'primary' | 'secondary') => void
   onStop?: () => void
   onRemoveChip?: (chip: V4Chip, index: number) => void

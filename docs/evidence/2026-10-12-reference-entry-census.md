@@ -304,3 +304,16 @@ R13（P2，新，当前待修）：已有上传附件canonical URL与显式canva
 ## 最终范围收窄与手势复查（实现线转录）
 
 独立线 reference_census 最终只读消息确认：声明槽恢复原加号数量与位置，小鼠标继续共用点选；捕获拦截器保留到 click 完成再退出，关闭提前卸载导致选择泄漏的窗口。无新增 must-fix，该线没有扩大 UI 或修改生产文件。随后实现线真实 Electron target.preserved / target.sent 均通过；该事实由实现线提供，详见 [实证记录](2026-10-12-reference-entry/acceptance.md)，不能当作独立线亲自操作。
+
+
+### 最终边界复审（2026-10-12）
+
+独立线 reference_census 只读复核：resident hook 迁移删旧；renderer/main 媒体类型沿原 owner；generation ball→float 使用既有 form owner，未另写 collapsed；PromptEditor 从 transaction.before 透传 previous，删除不读滞后 props。无新 must-fix，无额外 UI 或身份 owner。测试宿主补 mutation 接口、外显异常，DOM-less 性能 adapter 隔离范围明确。该线未写本附记、未执行此次新 Electron；以上为实现线记录其返回的独立结论，真实闭环见 acceptance.md。
+
+### 原加号框独立复核
+
+reference_census 只读核对三个 AssetReferenceButton 调用者：onAdd/open/IconPlus 已删除；AssetReference 声明槽空/已有素材/满额语义保持；NodeInputReferenceEntry 空/已有媒体行均复用未改的 AssetAddTile；Agent 原文件加号仍走 onAddFile。git diff --check 通过，未发现新的 UI 越界或 must-fix。该线未执行真实 Electron，截图和 21 项测试来自实现线。
+
+### 用户授权的同框 icon 设计复核
+
+reference_census 只读复核：原 + 和节点 pointer 共用原 56px 虚线 AssetActionTile，无第二套框样式；原 + 的锚点/label/onClick/selected/className/IconPlus 透传保持，Agent 24px 控件及 16px icon 保持。未发现 must-fix，diff --check 通过。真实 Electron 同框/同排/无文字和交互结果由实现线报告。

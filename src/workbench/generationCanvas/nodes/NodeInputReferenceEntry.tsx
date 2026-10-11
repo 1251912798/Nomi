@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import AssetPicker from '../../assets/AssetPicker'
 import AssetPickerPopover from '../../assets/AssetPickerPopover'
 import AssetReferenceButton from '../../assets/AssetReferenceButton'
-import AssetTile from '../../assets/AssetTile'
+import AssetTile, { AssetAddTile } from '../../assets/AssetTile'
 import { canvasNodeToAssetRefs, type AssetKind } from '../../assets/assetTypes'
 import { useOpenProjectId } from '../../project/useOpenProjectId'
 import { addAssetInput, addUploadedInput, pickCanvasInputFor } from '../quickActions/nodeInputActions'
@@ -28,8 +28,12 @@ export default function NodeInputReferenceEntry({ nodeId, disabled, accept = ['i
     return asset ? [{ edge, asset }] : []
   })
   return <div className="flex flex-col gap-2">
-    <div className="relative self-start">
-      <AssetReferenceButton open={open} disabled={disabled || uploading} onClick={() => { setOpen(false); cancelPick.current = pickCanvasInputFor(nodeId) }} onAdd={() => setOpen(value => !value)} />
+    <div className="flex flex-wrap items-center gap-2">
+      <AssetReferenceButton disabled={disabled || uploading} onClick={() => { setOpen(false); cancelPick.current = pickCanvasInputFor(nodeId) }} />
+      {inputs.map(({ edge, asset }, index) => <AssetTile key={edge.id} asset={asset} index={index + 1}
+        onRemove={disabled ? undefined : () => useGenerationCanvasStore.getState().disconnectEdge(edge.id)} />)}
+      <fieldset disabled={disabled || uploading} className="relative m-0 min-w-0 border-0 p-0 disabled:opacity-50">
+        <AssetAddTile selected={open} onClick={() => setOpen(value => !value)} />
       {open ? <AssetPickerPopover onClose={() => setOpen(false)}><AssetPicker projectId={projectId} accept={accept} uploading={uploading}
         onPick={asset => {
           setOpen(false)
@@ -42,9 +46,8 @@ export default function NodeInputReferenceEntry({ nodeId, disabled, accept = ['i
         }}
         onBrowseAll={() => { setOpen(false); window.dispatchEvent(new CustomEvent('nomi-open-files-panel')) }} />
       </AssetPickerPopover> : null}
+      </fieldset>
     </div>
-    {inputs.length ? <div className="flex flex-wrap gap-2">{inputs.map(({ edge, asset }, index) => <AssetTile key={edge.id} asset={asset} index={index + 1}
-      onRemove={disabled ? undefined : () => useGenerationCanvasStore.getState().disconnectEdge(edge.id)} />)}</div> : null}
     {error ? <span role="alert" className="text-micro text-workbench-danger">{error}</span> : null}
   </div>
 }

@@ -101,9 +101,9 @@ export default function AssetReference({
   const routeByKind = (kind: AssetKind): AssetSlot => arraySlots.find((s) => s.accept === kind) ?? arraySlots[0]
 
   return (
-    <div className={cn('flex flex-col gap-[8px]')}>
-      <div className="relative self-start">
-        <AssetReferenceButton open={Boolean(openSlotKey)} disabled={Boolean(uploadingSlotKey)}
+    <div className={cn('flex flex-wrap items-center gap-[8px]')}>
+      <div className="relative shrink-0">
+        <AssetReferenceButton disabled={Boolean(uploadingSlotKey)}
           title={totalFull ? capacityMessage : undefined}
           onClick={() => onPickOnCanvas?.(slots)} />
       </div>

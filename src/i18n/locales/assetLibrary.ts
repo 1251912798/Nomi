@@ -15,7 +15,6 @@ export const zhAssetLibrary = {
   expiredReference: '图已失效',
   expiredReferenceDetail: '参考图已失效（源文件缺失或链接过期）：{{url}}。点「×」移除后重新添加，或重新生成源节点。',
   addReference: '加参考',
-  referenceAction: '参考',
   filePicker: '素材文件选择器',
   search: '搜索素材名…',
   searchAria: '搜索素材名',
@@ -196,7 +195,6 @@ export const enAssetLibrary = {
   expiredReference: 'Image unavailable',
   expiredReferenceDetail:
     'This reference image is unavailable because its source file is missing or its link expired: {{url}}. Remove it with “×”, then add it again or regenerate the source node.',
-  referenceAction: 'Reference',
   addReference: 'Add reference',
   filePicker: 'Asset file picker',
   search: 'Search asset names…',

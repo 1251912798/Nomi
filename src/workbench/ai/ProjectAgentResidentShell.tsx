@@ -11,6 +11,7 @@ import { libraryGroup } from '../library/libraryGroups'
 import { useOpenProjectId } from '../project/useOpenProjectId'
 import { canvasNodeToAssetRefs } from '../assets/assetTypes'
 import { listNodeMediaResults } from '../generationCanvas/model/nodeResultLifecycle'
+import { useAgentFormStore } from '../../ui/app-shell/shell/agentFormStore'
 import { enterCanvasPickMode } from '../generationCanvas/store/canvasPickMode'
 import { useGenerationCanvasStore } from '../generationCanvas/store/generationCanvasStore'
 import React, { type JSX } from 'react'
@@ -22,7 +23,7 @@ import { DesignModal } from '../../design'
 import { SystemPromptSection } from './systemPrompt/SystemPromptSection'
 import { STORYBOARD_PLANNER_SKILL } from '../generationCanvas/agent/storyboardLauncher'
 import { useWorkbenchStore } from '../workbenchStore'
-import { useAgentReferenceMentions } from './composer/useAgentReferenceMentions'
+import { useAgentReferenceMentions } from './resident/useAgentReferenceMentions'
 import { useComposerAttachments, COMPOSER_ATTACHMENT_ACCEPT } from './composer/useComposerAttachments'
 import { useResidentActivityStore } from './residentActivity'
 import { TimelineAgentReceiptEffect } from './resident/TimelineAgentReceiptEffect'
@@ -296,6 +297,8 @@ export default function ProjectAgentResidentShell({ surface }: { surface: Reside
   const pickReferenceOnCanvas = () => {
     setPopover(null)
     setPendingReferencePick({ projectId:openProjectId, threadId:data.activeThreadId })
+    const forms = useAgentFormStore.getState()
+    if (forms.bySurface.generation.form === 'ball') forms.setForm('generation', 'float')
     useWorkbenchStore.getState().setWorkspaceMode('generation')
   }
   React.useEffect(() => {

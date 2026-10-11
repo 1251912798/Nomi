@@ -179,6 +179,17 @@ describe('Agent inline reference projection', () => {
     ])
     expect((content as {type:string}[]).filter(item=>item.type==='image')).toHaveLength(2)
   })
+  const MEDIA_REFERENCE_MATRIX = attachments.flatMap(attachment => [true, false].map(supportsImageInput => ({ attachment, supportsImageInput })))
+  it.each(MEDIA_REFERENCE_MATRIX)('keeps $attachment.fileName canonical identity with vision=$supportsImageInput', async ({attachment,supportsImageInput}) => {
+    const prompt = projectAgentPromptForSend(encodeMention(attachment.url), [attachment])
+    const content = await buildAgentUserContent({ prompt, attachments:[attachment], supportsImageInput, supportsPdfInput:false, resolveBytes:bytes, extractText:async()=>null })
+    const text = typeof content === 'string' ? content : (content[0] as {text:string}).text
+    const manifest = JSON.parse(text.split('[Selected original media references]\n')[1].split('\n')[0])
+    expect(manifest).toHaveLength(1)
+    expect(manifest[0]).toMatchObject({assetId:attachment.assetId,name:attachment.fileName,contentType:attachment.contentType})
+    if (attachment.kind === 'image' && supportsImageInput) expect((content as {type:string}[]).some(part=>part.type==='image')).toBe(true)
+    if (attachment.contentType.startsWith('video/') || attachment.contentType.startsWith('audio/')) expect(text).toContain('have not been watched or listened to')
+  })
   it('refuses a pasted marker without a canonical attachment instead of silently dropping it', () => {
     expect(()=>projectAgentPromptForSend(encodeMention('nomi-local://p/missing.png'),attachments)).toThrow('project_agent_attachment_invalid')
     expect(()=>projectAgentPromptForSend(encodeMention(attachments[0].url),[{...attachments[0],assetId:undefined}])).toThrow('project_agent_attachment_invalid')

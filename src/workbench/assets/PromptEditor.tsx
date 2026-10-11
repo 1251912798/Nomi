@@ -24,7 +24,7 @@ export type PromptEditorProps = {
   onKeyDownCapture?: React.KeyboardEventHandler<HTMLDivElement>
   onFocus?: () => void
   value: string
-  onChange: (next: string) => void
+  onChange: (next: string, previous?: string) => void
   placeholder?: string
   /** 可编辑区的可访问名（提示词框是主输入面，读屏必须报得出它属于哪一镜）。 */
   ariaLabel?: string
@@ -161,7 +161,7 @@ export default function PromptEditor({ value, onChange, placeholder, ariaLabel, 
     onUpdate: ({ editor: current, transaction }) => {
       if (!transaction.docChanged) return
       const next = contentToPrompt(current.getJSON())
-      if (sync.emit(next)) onChangeRef.current(next)
+      if (sync.emit(next)) onChangeRef.current(next, contentToPrompt(transaction.before.toJSON()))
     },
   })
 

@@ -2,8 +2,8 @@
 // Asset ids are observed through main and on the actual outbound request, never seeded.
 import fs from 'node:fs'
 import path from 'node:path'
-import { expect, clickOrFail } from './_assert.mjs'
-import { canvasAddBar, canvasAddMoreMenu, canvasFitView, collapseAgentPanel, ensureAgentPanelOpen } from './_shell.mjs'
+import { expect, clickOrFail, proveProbe, expectAbsent, waitForVisualQuiescence } from './_assert.mjs'
+import { canvasAddBar, canvasAddMoreMenu, canvasFitView, canvasZoomPercent, canvasZoomStep, collapseAgentPanel, ensureAgentPanelOpen } from './_shell.mjs'
 import { createRuntimeWalk, CREATION_PANEL, CANVAS_PANEL, COMPOSER, COMPOSER_INPUT, openCanvas,
   recorded, waitForV4TurnIdle, chooseAssistantModel, readProject } from './agent-runtime-walk-support.mjs'
 import { readLaneTranscripts } from './agent-lane-observer.mjs'
@@ -34,18 +34,27 @@ try {
   const panel = win.locator(CREATION_PANEL)
   await chooseAssistantModel(win, FIXTURE_TEXT_MODEL_LABEL)
   const files = [path.resolve('src/devlab/designLab/videoNodeNext/fixtures/frame-current.jpg'), path.resolve('public/fixtures/node-label-video.mp4')]
+  const note = path.join(walk.report.tempRoot, 'reference-probe.txt')
+  fs.writeFileSync(note, 'A real document establishes the original file-chip probe.')
+  await panel.locator('input[type="file"]').setInputFiles(note)
+  const fileChips = panel.locator('[data-v4-chip="file"]')
+  const fileChipProof = await proveProbe(fileChips, 'original document upload renders a file chip')
+  await fileChips.getByRole('button').click()
+  await expectAbsent(fileChips, { provenBy:fileChipProof })
   await panel.locator('input[type="file"]').setInputFiles(files)
-  await expect.poll(() => win.evaluate(async id => (await window.nomiDesktop.assets.list({ projectId:id, limit:100 })).items.length, projectId)).toBe(2)
+  await expect.poll(() => win.evaluate(async id => (await window.nomiDesktop.assets.list({ projectId:id, limit:100 })).items.filter(item => /^(image|video)\//.test(item.data.contentType)).length, projectId)).toBe(2)
   const input = panel.locator(COMPOSER_INPUT)
   await expect(panel.locator('[data-reference-entry]')).toHaveText('')
   await expect(panel.locator('[data-reference-entry] svg')).toBeVisible()
   await input.click()
   const atoms = input.locator('[data-storyboard-mention-chip]')
   await expect(atoms).toHaveCount(2)
-  await expect(panel.locator('[data-v4-chip="file"]')).toHaveCount(0)
+  await expectAbsent(fileChips, { provenBy:fileChipProof, message:'ready media are inline rather than duplicated above the sentence' })
+  const atomProof = await proveProbe(atoms, 'both imported media are visible inline atoms')
   // Delete the references from the sentence; their originals remain in the asset library.
-  await input.fill('')
-  await expect(atoms).toHaveCount(0)
+  await input.press('ControlOrMeta+A')
+  await input.press('Backspace')
+  await expectAbsent(atoms, { provenBy:atomProof, message:'deleting the sentence releases its inline references' })
   const composer=panel.locator(COMPOSER)
   const small=await composer.evaluate(el=>el.getBoundingClientRect().height)
   await input.fill(Array.from({length:35},(_,i)=>`Line ${i}: a real paragraph`).join('\n'))
@@ -67,13 +76,13 @@ try {
   await input.press('End')
   const marker = 'REFERENCE_ENTRY_EXACT_ORIGINALS'
   await input.pressSequentially(` animate the movement ${marker}`)
-  await expect(panel.locator('[data-v4-chip="file"]')).toHaveCount(0)
+  await expectAbsent(fileChips, { provenBy:fileChipProof, message:'ready media are inline rather than duplicated above the sentence' })
   const answer = walk.fixture.expectText({ label:'inline references with separate instructions', match:body=>flattenRequestText(body).includes(marker), reply:{type:'text',text:'REFERENCE_ENTRY_DONE'} })
   await walk.snap('agent-inline-references-zh')
   await capture(win, 'agent-inline-reference', `${CREATION_PANEL} ${COMPOSER}`)
   await input.press('Enter')
   const wire = await recorded(answer.received,'real Agent inline reference request')
-  const assets = await win.evaluate(async id => (await window.nomiDesktop.assets.list({ projectId:id, limit:100 })).items, projectId)
+  const assets = await win.evaluate(async id => (await window.nomiDesktop.assets.list({ projectId:id, limit:100 })).items.filter(item=>/^(image|video)\//.test(item.data.contentType)), projectId)
   const latest = wire.body.messages.filter(message => message.role === 'user').at(-1)
   const requestText = flattenRequestText({ messages:[latest] })
   for (const asset of assets) expect(requestText).toContain(asset.id)
@@ -91,24 +100,60 @@ try {
     video: { visible: 'board:ReferenceEntry/node.video.visible', direct: 'board:ReferenceEntry/node.video.direct' },
     text: { visible: 'board:ReferenceEntry/node.text.visible', direct: 'board:ReferenceEntry/node.text.direct' },
   }
+  let pickerProof
   for (const kind of ['image','video','text']) {
+    await win.locator('.react-flow__pane').first().click({ position: { x: 24, y: 24 } })
+    await expect(win.locator('.react-flow__node.selected')).toHaveCount(0)
     const direct = toolbar.locator(`[data-node-kind="${kind}"]`).first()
     if (await direct.isVisible()) await direct.click()
     else { await toolbar.locator('[data-canvas-add-more="true"]').click(); await canvasAddMoreMenu(win).locator(`[data-node-kind="${kind}"]`).click() }
     await canvasFitView(win, `show ${kind} node and its reference entry`)
+    await waitForVisualQuiescence(win)
+    const maxZoom = kind === 'image' ? 100 : 75
+    for (let step=0; step<12 && await canvasZoomPercent(win)>maxZoom; step++) {
+      const previous=await canvasZoomPercent(win)
+      await canvasZoomStep(win,'out',`keep ${kind} composer on screen`)
+      await waitForVisualQuiescence(win)
+      await expect.poll(()=>canvasZoomPercent(win)).toBeLessThan(previous)
+    }
+    await expect.poll(()=>canvasZoomPercent(win)).toBeLessThanOrEqual(maxZoom)
     const composer = win.locator('.generation-canvas-v2-node__composer').last()
     await expect(composer.locator('[data-reference-entry]'), nodeAssertions[kind].visible).toBeVisible()
+    await expect(composer.locator('[data-reference-entry]')).toBeInViewport({ratio:0.9999})
+    const addBox = composer.locator('[data-asset-add-tile]').first()
+    // Fractional canvas zoom can report 0.99999946 for a fully visible 56px tile.
+    await expect(addBox).toBeInViewport({ratio:0.9999})
+    const boxStyle = await addBox.evaluate(button => {
+      const style=getComputedStyle(button)
+      return {width:style.width,height:style.height,border:style.borderTopStyle}
+    })
+    expect(boxStyle).toEqual({width:'56px',height:'56px',border:'dashed'})
+    const pointerStyle=await composer.locator('[data-reference-entry]').evaluate(button => {
+      const style=getComputedStyle(button)
+      return {width:style.width,height:style.height,border:style.borderTopStyle}
+    })
+    expect(pointerStyle, 'node pointer reuses the original add frame').toEqual(boxStyle)
+    await expect(composer.locator('[data-reference-entry]')).toHaveText('')
+    const pointerRect=await composer.locator('[data-reference-entry]').boundingBox()
+    const addRect=await addBox.boundingBox()
+    expect(Math.abs(pointerRect.y+pointerRect.height/2-addRect.y-addRect.height/2), 'pointer and original reference box share a row').toBeLessThan(1)
+    expect(pointerRect.x+pointerRect.width).toBeLessThan(addRect.x)
     await walk.snap(`${kind}-reference-first-open-zh`)
     await capture(win, `node-${kind}`, '.generation-canvas-v2-node__composer')
+    if (!pickerProof) {
+      await composer.locator('[data-asset-add-tile]').click()
+      pickerProof = await proveProbe(win.getByTestId('asset-picker'), 'original plus opens the existing asset picker')
+      await win.keyboard.press('Escape')
+    }
     await composer.locator('[data-reference-entry]').click()
     await expect(win.locator('[data-canvas-pick-bar]'), nodeAssertions[kind].direct).toBeVisible()
-    await expect(win.getByTestId('asset-picker')).toHaveCount(0)
+    await expectAbsent(win.getByTestId('asset-picker'), { provenBy:pickerProof, message:'pointer enters the shared canvas pick immediately' })
     await walk.snap(`${kind}-direct-canvas-pick-zh`)
     await win.keyboard.press('Escape')
     if (kind === 'text') {
       const targetId = await composer.locator('[data-reference-entry]').evaluate(button => button.closest('[data-node-id]').getAttribute('data-node-id'))
       textTargetId=targetId
-      await composer.locator('[data-reference-add]').click()
+      await composer.locator('[data-asset-add-tile]').click()
       await expect(win.getByTestId('asset-picker')).toBeVisible()
       await capture(win,'node-plus-picker','[data-testid="asset-picker"]')
       await win.getByTestId('asset-picker').getByRole('button', { name:path.basename(files[0]), exact:true }).click()
@@ -128,7 +173,7 @@ try {
   await ensureAgentPanelOpen(win)
   await panel.locator('[data-reference-entry]').click()
   await expect(win.locator('[data-canvas-pick-bar]'), 'board:ReferenceEntry/agent.creation.direct').toBeVisible()
-  await expect(win.getByTestId('asset-picker')).toHaveCount(0)
+  await expectAbsent(win.getByTestId('asset-picker'), { provenBy:pickerProof, message:'pointer enters the shared canvas pick immediately' })
   await win.locator(`.react-flow__node[data-id="${sourceId}"]`).click()
   const canvasInput=canvasPanel.locator(COMPOSER_INPUT)
   await expect(canvasInput.locator('[data-storyboard-mention-chip]')).toHaveCount(1)

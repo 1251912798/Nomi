@@ -1,27 +1,37 @@
 {
   "name": "reference-entry",
   "mode": "development",
+  "tempRoot": "/var/folders/f4/vz86j5nd0_sf56qdhzrmbbvw0000gn/T/nomi-pi-reference-entry-7DBUCd",
+  "outputDir": "/Users/aoqimin/.codex/worktrees/reference-entry/Nomi/.tmp/pi-reference-entry-development-1791744428854",
   "launches": [
     {
       "packaged": false,
+      "appPath": "/Users/aoqimin/.codex/worktrees/reference-entry/Nomi",
+      "userData": "/var/folders/f4/vz86j5nd0_sf56qdhzrmbbvw0000gn/T/nomi-pi-reference-entry-7DBUCd/user-data",
       "node": "24.18.1",
-      "electron": "43.4.1"
+      "electron": "43.4.1",
+      "pid": 11559
     }
   ],
   "screenshots": [
-    "10-agent-at-picker-en-dark-narrow.png",
-    "06-text-reference-first-open-zh.png",
-    "02-image-reference-first-open-zh.png",
-    "09-agent-direct-pick-en-dark-narrow.png",
-    "08-agent-direct-inline-reference-zh.png",
-    "01-agent-inline-references-zh.png"
+    "/Users/aoqimin/.codex/worktrees/reference-entry/Nomi/.tmp/pi-reference-entry-development-1791744428854/01-agent-inline-references-zh.png",
+    "/Users/aoqimin/.codex/worktrees/reference-entry/Nomi/.tmp/pi-reference-entry-development-1791744428854/02-image-reference-first-open-zh.png",
+    "/Users/aoqimin/.codex/worktrees/reference-entry/Nomi/.tmp/pi-reference-entry-development-1791744428854/03-image-direct-canvas-pick-zh.png",
+    "/Users/aoqimin/.codex/worktrees/reference-entry/Nomi/.tmp/pi-reference-entry-development-1791744428854/04-video-reference-first-open-zh.png",
+    "/Users/aoqimin/.codex/worktrees/reference-entry/Nomi/.tmp/pi-reference-entry-development-1791744428854/05-video-direct-canvas-pick-zh.png",
+    "/Users/aoqimin/.codex/worktrees/reference-entry/Nomi/.tmp/pi-reference-entry-development-1791744428854/06-text-reference-first-open-zh.png",
+    "/Users/aoqimin/.codex/worktrees/reference-entry/Nomi/.tmp/pi-reference-entry-development-1791744428854/07-text-direct-canvas-pick-zh.png",
+    "/Users/aoqimin/.codex/worktrees/reference-entry/Nomi/.tmp/pi-reference-entry-development-1791744428854/08-agent-direct-inline-reference-zh.png",
+    "/Users/aoqimin/.codex/worktrees/reference-entry/Nomi/.tmp/pi-reference-entry-development-1791744428854/09-agent-direct-pick-en-dark-narrow.png",
+    "/Users/aoqimin/.codex/worktrees/reference-entry/Nomi/.tmp/pi-reference-entry-development-1791744428854/10-agent-at-picker-en-dark-narrow.png"
   ],
   "paidCalls": 0,
-  "projectId": "project-1791741849209-btui4e",
+  "projectId": "project-1791744433842-70ey47",
+  "projectRoot": "/var/folders/f4/vz86j5nd0_sf56qdhzrmbbvw0000gn/T/nomi-pi-reference-entry-7DBUCd/projects/未命名项目 10_12 02_47-mv46dha1-471f09fc",
   "wire": {
     "canonicalAssetIds": [
-      "asset-c4374dfb63b648e19900",
-      "asset-655d41756b746f84748b"
+      "asset-aa1fca990e2c47838ced",
+      "asset-7858b9fd3b79bac53b84"
     ],
     "imageBytes": true,
     "videoOriginalIdentity": true,
@@ -30,12 +40,12 @@
   "textReferenceEdge": true,
   "targetedEdit": {
     "nodeIds": [
-      "gen-v2-text-mv44u76o-jxrj"
+      "gen-v2-text-mv46drb9-x5bq"
     ],
-    "sourceNodeId": "gen-v2-asset-mv44u84c-snz1",
+    "sourceNodeId": "gen-v2-asset-mv46dtbr-cr9s",
     "canonicalAttachments": [
       {
-        "assetId": "asset-655d41756b746f84748b",
+        "assetId": "asset-7858b9fd3b79bac53b84",
         "version": 1
       }
     ]
@@ -44,7 +54,5 @@
   "textRequests": 2,
   "imageRequests": 0,
   "unexpected": [],
-  "result": "passed",
-  "sourceWalk": ".tmp/pi-reference-entry-development-1791741845614",
-  "subsequentScreenshotAttempt": "Blocked by real no-disk-space admission; not a passing rerun. Production functionality unchanged."
+  "result": "passed"
 }

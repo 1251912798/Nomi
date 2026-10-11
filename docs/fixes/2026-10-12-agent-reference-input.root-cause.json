@@ -3,7 +3,7 @@
   "id": "2026-10-12-agent-reference-input",
   "problem_type": "Selected media references must resolve to original project asset identity at the Agent input boundary",
   "symptom": "Video/audio accepted by Agent upload are treated as unreadable documents; local asset import receipts cannot form ready attachment claims",
-  "direct_cause": "buildAgentUserContent routes non-images to document extraction; nomi-local import returns a synthetic identity without size/hash; attachment resolution only checks the first 500 assets; ready attachment effects checked lagging draft props and reinserted live atoms; onReady preceded view mounting; permanently mounted @ pool did not refresh after admission.",
+  "direct_cause": "buildAgentUserContent routes non-images to document extraction; nomi-local import returns a synthetic identity without size/hash; attachment resolution only checks the first 500 assets; ready attachment effects checked lagging draft props and reinserted live atoms; onReady preceded view mounting; permanently mounted @ pool did not refresh after admission. Deletion diff also compared lagging draft props: clearing immediately after upload could leave the canonical claim and recovery reinserted the deleted atoms.",
   "class_root": "Presentation/reference selectors and provider input lack one complete canonical asset identity contract across media kinds and project size; admission and editor lifecycle require the live editor to own insertion presence, not asynchronously echoed draft props.",
   "affected_population": [
     "Agent uploads and newly selected canvas/project references",
@@ -15,7 +15,7 @@
     "electron/agentLane/laneDesktopInput.ts",
     "src/workbench/ai/composer/useComposerAttachments.ts",
     "src/workbench/ai/projectAgentAttachments.ts",
-    "src/workbench/ai/composer/useAgentReferenceMentions.ts",
+    "src/workbench/ai/resident/useAgentReferenceMentions.ts",
     "src/workbench/assets/PromptEditor.tsx"
   ],
   "entry_points": [
@@ -31,7 +31,8 @@
     "All attachment claims resolve across every project asset page",
     "Every inline reference remains bound to a visible canonical claim across draft restore, deletion and ACK-time edits",
     "Inline numbering and send manifests use the same canonical claim identity/order; exact canvas source locators remain read-only context",
-    "Recovery reads the current editor document, not lagging owner echoes; mounted editor readiness and original asset pool refresh precede use."
+    "Recovery reads the current editor document, not lagging owner echoes; mounted editor readiness and original asset pool refresh precede use.",
+    "Deletion uses the previous ProseMirror transaction document, so canonical claims are released even before the owner echoes an insertion."
   ],
   "doors": [
     {
@@ -123,7 +124,7 @@
       "responsibility": "Preserve executable original asset identities for all media; never treat video/audio as failed documents."
     },
     {
-      "path": "src/workbench/ai/composer/useAgentReferenceMentions.ts",
+      "path": "src/workbench/ai/resident/useAgentReferenceMentions.ts",
       "symbol": "useAgentReferenceMentions",
       "responsibility": "All Agent media admissions recover against the live editor document and refresh the existing source pool after canonical readiness."
     }
@@ -156,12 +157,12 @@
     "invariant": "Accepted original media identities cannot disappear into the document fallback.",
     "failure_mode": "Missing identity or missing original is rejected by main; unsupported semantic media is explicitly described as reference-only.",
     "exception_policy": "none",
-    "strategy": "Keep one canonical attachment owner and emit exact asset ids into provider content independently of direct vision support.",
+    "strategy": "Keep one canonical attachment owner and emit exact asset ids into provider content independently of direct vision support. PromptEditor reports transaction.before to the same reference owner, removing props-lag from both insertion recovery and deletion.",
     "artifacts": [
       "electron/ai/agentUserContent.ts",
       "electron/assets/projectAssetStore.ts",
       "src/workbench/ai/composer/useComposerAttachments.ts",
-      "src/workbench/ai/composer/useAgentReferenceMentions.ts",
+      "src/workbench/ai/resident/useAgentReferenceMentions.ts",
       "src/workbench/ai/projectAgentAttachments.ts",
       "src/workbench/ai/v4/useAgentPanelV4Actions.ts",
       "src/workbench/assets/PromptEditor.tsx"

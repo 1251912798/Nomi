@@ -1,3 +1,4 @@
+import { mediaKindFromContentType } from '../assets/mediaTypes'
 import { mentionUrlsInOrder, numberPromptReferences, projectPromptForSend } from '../shared/storyboard/promptMentions'
 // 把「文字 prompt + 待发附件」拼成 Vercel AI SDK 的 user message content。
 // 纯函数（字节读取由 resolveBytes 回调注入），便于单测。
@@ -49,10 +50,17 @@ function isPdf(attachment: AgentUserAttachment): boolean {
   return attachment.contentType.toLowerCase().includes('pdf') || attachment.fileName.toLowerCase().endsWith('.pdf')
 }
 
+function mediaReferences(attachments: readonly AgentUserAttachment[]) {
+  return attachments.flatMap(attachment => {
+    const kind = mediaKindFromContentType(attachment.contentType)
+    return attachment.assetId && (kind === 'image' || kind === 'video' || kind === 'audio')
+      ? [{attachment, url:attachment.url, kind}] : []
+  })
+}
+
 /** Canonical main-resolved URLs bind each inline instruction to its exact original. */
 export function projectAgentPromptForSend(prompt: string, attachments: readonly AgentUserAttachment[]): string {
-  const references = numberPromptReferences(attachments.filter(att=>att.assetId && /^(image|video|audio)\//.test(att.contentType))
-    .map(att=>({ url:att.url, kind:att.contentType.startsWith('video/') ? 'video' as const : att.contentType.startsWith('audio/') ? 'audio' as const : 'image' as const })))
+  const references = numberPromptReferences(mediaReferences(attachments))
   if (mentionUrlsInOrder(prompt).some(url=>!references.some(reference=>reference.url===url))) throw new Error('project_agent_attachment_invalid')
   return projectPromptForSend(prompt,references)
 }
@@ -69,10 +77,9 @@ export async function buildAgentUserContent(params: {
   const { prompt, attachments = [], supportsImageInput, supportsPdfInput, resolveBytes, extractText } = params
   if (!attachments.length) return prompt
 
-  const mediaAttachments = attachments.filter(att => att.assetId && /^(image|video|audio)\//.test(att.contentType))
-  const ordered = numberPromptReferences(mediaAttachments.map(att=>({ url:att.url,
-    kind:att.contentType.startsWith('video/') ? 'video' as const : att.contentType.startsWith('audio/') ? 'audio' as const : 'image' as const })))
-  const references = mediaAttachments.map((att,index) => ({ reference:`@${ordered[index].kind}${ordered[index].index}`, assetId: att.assetId, name: att.fileName, contentType: att.contentType }))
+  const mediaAttachments = mediaReferences(attachments)
+  const ordered = numberPromptReferences(mediaAttachments)
+  const references = mediaAttachments.map(({attachment:att},index) => ({ reference:`@${ordered[index].kind}${ordered[index].index}`, assetId: att.assetId, name: att.fileName, contentType: att.contentType }))
   const referenceBlock = references.length ? `\n\n[Selected original media references]\n${JSON.stringify(references)}\nThese assetIds identify the exact user-selected originals. Reuse them as generation references when requested. Video/audio have not been watched or listened to: look_at_media reads technical facts only; do not invent their visible or audible content.` : ''
   const mediaParts: Array<ImagePart | FilePart> = []
   const docBlocks: string[] = []

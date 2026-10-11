@@ -21,7 +21,7 @@
   "rootCauseContract": "docs/fixes/2026-10-12-agent-reference-input.root-cause.json",
   "classCheck": {
     "kind": "matrix",
-    "file": "src/workbench/generationCanvas/nodes/nodeSlotReferencePick.test.ts"
+    "file": "electron/ai/agentUserContent.test.ts"
   },
   "fixedInPr": 1183
 }

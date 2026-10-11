@@ -1,3 +1,4 @@
+import { dropKindFromFile } from '../../generationCanvas/model/nodeAssetDrop'
 import { numberPromptReferences } from '../../assets/promptMentions'
 import { capabilitySupportsUndo } from '../../../../electron/shared/agentCapabilities/registry'
 import { redactResidentSensitiveText } from '../resident/residentToolText'
@@ -402,8 +403,9 @@ export function laneViewModel(projection: LaneProjection, labels: LaneViewModelL
       // 不让它从历史里消失。
       const mediaReferences = numberPromptReferences((part.attachments ?? []).flatMap(attachment => {
         const display=attachment.display
-        if (!display || !/^(image|video|audio)\//.test(display.contentType)) return []
-        return [{ url:display.url, kind:display.contentType.startsWith('video/') ? 'video' as const : display.contentType.startsWith('audio/') ? 'audio' as const : 'image' as const }]
+        if (!display) return []
+        const kind = dropKindFromFile({ type:display.contentType, name:display.fileName })
+        return kind ? [{ url:display.url, kind }] : []
       }))
       const fileChips: V4Chip[] = (part.attachments ?? []).map(attachment => ({
         id: attachment.assetId, kind: 'file' as const, label: attachment.display?.fileName ?? labels.attachmentUnavailable,

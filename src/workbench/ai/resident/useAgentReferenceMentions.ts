@@ -1,4 +1,5 @@
 import React from 'react'
+import { dropKindFromFile } from '../../generationCanvas/model/nodeAssetDrop'
 import type { Editor } from '@tiptap/react'
 import { useAssetPool } from '../../assets/useAssetPool'
 import { droppedMentionUrls, mentionUrlsInOrder } from '../../assets/promptMentions'
@@ -7,11 +8,11 @@ import type { AssetRef } from '../../assets/assetTypes'
 import type { MentionSuggestionItem } from '../../assets/AssetMentionSuggestionList'
 import { composerMediaReferences } from '../projectAgentAttachments'
 import { contentToPrompt } from '../../assets/promptEditorContent'
-import type { ComposerAttachment } from './composerAttachmentTypes'
-import type { UseComposerAttachments } from './useComposerAttachments'
+import type { ComposerAttachment } from '../composer/composerAttachmentTypes'
+import type { UseComposerAttachments } from '../composer/useComposerAttachments'
 
-const isMedia = (item: ComposerAttachment) => /^(image|video|audio)\//.test(item.contentType)
-const kindOf = (item: ComposerAttachment): 'image' | 'video' | 'audio' => item.contentType.startsWith('video/') ? 'video' : item.contentType.startsWith('audio/') ? 'audio' : 'image'
+const kindOf = (item: ComposerAttachment) => dropKindFromFile({ type: item.contentType, name: item.fileName })
+const isMedia = (item: ComposerAttachment) => kindOf(item) !== null
 
 /** Agent owns draft/attachments; node PromptEditor owns the shared inline interaction. */
 export function useAgentReferenceMentions({ projectId, conversationKey, attachments, api, draft, setDraft, onError }: {
@@ -54,10 +55,12 @@ export function useAgentReferenceMentions({ projectId, conversationKey, attachme
     if (editor && !editor.isDestroyed && asset.kind!=='model3d') insertAssetMentionWhenReady(editor, select(asset), asset.kind)
   }, [select])
   const mentionSearch = React.useCallback((query:string):MentionSuggestionItem[] => {
-    const current: MentionSuggestionItem[] = attachments.filter(item=>item.status==='ready' && item.url && isMedia(item)).map(item=>({
-      key:item.id, url:item.url!, label:item.fileName, kind:kindOf(item), group:'current',
-      index:(references.find(reference=>reference.url===item.url)?.index ?? 1)-1,
-    }))
+    const current: MentionSuggestionItem[] = attachments.flatMap(item=>{
+      const kind = kindOf(item)
+      if (item.status!=='ready' || !item.url || !kind) return []
+      return [{ key:item.id, url:item.url, label:item.fileName, kind, group:'current' as const,
+        index:(references.find(reference=>reference.url===item.url)?.index ?? 1)-1 }]
+    })
     const urls = new Set(current.map(item=>item.url))
     const available: MentionSuggestionItem[] = assets.filter(asset=>asset.kind!=='model3d' && !urls.has(asset.renderUrl)).map(asset=>({
       key:asset.id, url:asset.renderUrl, label:asset.name, kind:asset.kind as 'image'|'video'|'audio', thumbnailUrl:asset.thumbUrl,
@@ -71,8 +74,8 @@ export function useAgentReferenceMentions({ projectId, conversationKey, attachme
     const asset=assets.find(candidate=>candidate.id===item.key)
     return asset ? select(asset) : null
   }, [assets, select])
-  const onChange = React.useCallback((next:string) => {
-    for (const url of droppedMentionUrls(draft,next)) {
+  const onChange = React.useCallback((next:string, previous = draft) => {
+    for (const url of droppedMentionUrls(previous,next)) {
       for (const attachment of attachments) if (attachment.url===url && isMedia(attachment)) api.removeAttachment(attachment.id)
     }
     setDraft(next)
@@ -82,10 +85,11 @@ export function useAgentReferenceMentions({ projectId, conversationKey, attachme
     const editor=editorRef.current
     if (!editor || editor.isDestroyed) return
     for (const item of attachments) {
-      if ((item.referenceSource && pendingSources.current.has(item.referenceSource)) || pendingSources.current.has(`${projectId}:${item.url}`) || item.status!=='ready' || !item.url || !isMedia(item)) continue
+      const kind = kindOf(item)
+      if ((item.referenceSource && pendingSources.current.has(item.referenceSource)) || pendingSources.current.has(`${projectId}:${item.url}`) || item.status!=='ready' || !item.url || !kind) continue
       // Draft props can lag an async insertion. The mounted editor owns presence.
       if (mentionUrlsInOrder(contentToPrompt(editor.getJSON())).includes(item.url)) continue
-      editor.commands.insertAssetMention(item.url, references.find(reference=>reference.url===item.url)?.index, kindOf(item))
+      editor.commands.insertAssetMention(item.url, references.find(reference=>reference.url===item.url)?.index, kind)
     }
   }, [attachments, references, draft, admissionRevision, conversationKey, projectId])
   return { editorRef, addReference, mentionSearch, onMentionSelect, references, onChange,

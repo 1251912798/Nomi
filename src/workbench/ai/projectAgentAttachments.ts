@@ -1,3 +1,4 @@
+import { dropKindFromFile } from '../generationCanvas/model/nodeAssetDrop'
 import { numberPromptReferences } from '../assets/promptMentions'
 import type { ProjectAgentAttachmentClaim, ProjectAgentAttachmentRef } from '../../../electron/shared/workbenchInput'
 import i18n from '../../i18n'
@@ -55,10 +56,11 @@ export function composerAttachmentsFromProjectAgentRefs(
 export function composerMediaReferences(attachments: readonly ComposerAttachment[]) {
   const seen = new Set<string>()
   return numberPromptReferences(attachments.flatMap(item => {
-    if (item.status !== 'ready' || !item.url || !item.assetId || !/^(image|video|audio)\//.test(item.contentType)) return []
+    const kind = dropKindFromFile({ type:item.contentType, name:item.fileName })
+    if (item.status !== 'ready' || !item.url || !item.assetId || !kind) return []
     const key=`${item.assetId}:${item.version ?? 1}`
     if (seen.has(key)) return []
     seen.add(key)
-    return [{ url:item.url, kind:item.contentType.startsWith('video/') ? 'video' as const : item.contentType.startsWith('audio/') ? 'audio' as const : 'image' as const }]
+    return [{ url:item.url, kind }]
   }))
 }
