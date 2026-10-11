@@ -20,7 +20,7 @@
     "bab330529"
   ],
   "rootCauseContract": "docs/fixes/2026-10-10-stuck-modifier-key.root-cause.json",
-  "fixedInPr": 1175,
+  "fixedInPr": 1178,
   "classCheck": {
     "kind": "matrix",
     "file": "src/ui/input/heldModifierReconciler.test.ts"
