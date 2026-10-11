@@ -17,6 +17,18 @@ import {
   releaseDeconstructionRun,
 } from './deconstructionLifecycle'
 import i18n from '../../../../i18n'
+import { getAssistantModelPref } from '../../../ai/assistantModelPref'
+
+/**
+ * 读图腿用哪个模型，随这张表走（整表重拆与单镜重试同一份）：表上记着用户选的 `visionModel` 就是显式身份；
+ * 没选过才带「用户在 Agent 面板选的脑」作**软偏好**（主进程判它能不能读图、此刻可不可用，用不了就回自动）。
+ */
+function visionLegPayload(table: DeconstructionShotTableDocument): { vision: { vendorKey: string; modelKey: string } } | { visionPreferred: { vendorKey: string; modelKey: string } } | Record<string, never> {
+  const chosen = table.source.visionModel
+  if (chosen) return { vision: chosen }
+  const preferred = getAssistantModelPref()
+  return preferred?.vendorKey ? { visionPreferred: preferred } : {}
+}
 
 async function writeTable(
   tableNodeId: string,
@@ -114,7 +126,7 @@ export async function deconstructToShotTable(
   try {
     const result = await deconstruct({
       // nodeId：这次拆解的付费令牌按它记预算，主进程的一次报价卡也按它显示是哪张表。
-      videoUrl: source.result.url, projectId, requestId, nodeId: id, ...(transcribe ? { transcribe } : {}),
+      videoUrl: source.result.url, projectId, requestId, nodeId: id, ...(transcribe ? { transcribe } : {}), ...visionLegPayload(table),
       customColumns: table.columns.filter((column) => column.kind === 'custom').map((column) => ({ name: column.columnId, hint: column.hint || column.labelKey })),
     })
     // A completion from a departed project must never write into its successor.
@@ -191,7 +203,7 @@ export async function retryShot(tableNodeId: string, rowId: string, project: Pro
   const source = canvas.nodes.find(node => node.id === table.source.sourceNodeId)
   const deconstruct = getDesktopBridge()?.video?.deconstruct
   if (!row || !source?.result?.url || !deconstruct) return
-  const result = await deconstruct({ videoUrl: source.result.url, projectId, shotIndexes: [row.order], nodeId: tableNodeId,
+  const result = await deconstruct({ videoUrl: source.result.url, projectId, shotIndexes: [row.order], nodeId: tableNodeId, ...visionLegPayload(table),
     customColumns: table.columns.filter(column => column.kind === 'custom').map(column => ({ name: column.columnId, hint: column.hint || column.labelKey })),
   })
   const canWrite = () => getUndoJournalGeneration() === generation && isProjectExecutionContextCurrent(project)

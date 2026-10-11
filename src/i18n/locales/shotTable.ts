@@ -12,6 +12,8 @@ export const zhShotTable = {
   viewOnly: '删除此节点只移除这张表，参考片不受影响',
   columns: { index: '镜', thumbnail: '关键帧', duration: '时长', visual: '画面', status: '状态' },
   unread: '没读出',
+  visionModel: '读图模型', visionAuto: '自动选择', visionHint: '换一个读图模型后点「重新拆解」或某一镜的「重新拆解」；每次拆解开始前都会先报价确认。',
+  visionFailedSummary: '{{count}} 镜没读出：{{reason}}',
   status: { ready: '未生成', 'anchor-ignored': '参考未使用', 'missing-required': '缺必填参考', generating: '生成中', failed: '生成失败', recoverable: '可找回', done: '已生成', locked: '已锁定' },
 }
 export const enShotTable = {
@@ -27,5 +29,7 @@ export const enShotTable = {
   viewOnly: 'Deleting this node only removes this table; the reference clip is untouched',
   columns: { index: 'Shot', thumbnail: 'Keyframe', duration: 'Duration', visual: 'Visual', status: 'Status' },
   unread: 'Not read',
+  visionModel: 'Vision model', visionAuto: 'Automatic', visionHint: 'Pick another vision model, then deconstruct again (whole table or one shot). Each run asks you to confirm the quote first.',
+  visionFailedSummary: '{{count}} shots not read: {{reason}}',
   status: { ready: 'Not generated', 'anchor-ignored': 'Reference unused', 'missing-required': 'Required reference missing', generating: 'Generating', failed: 'Generation failed', recoverable: 'Recoverable', done: 'Generated', locked: 'Locked' },
 }

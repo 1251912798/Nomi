@@ -1,0 +1,150 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+// 2026-10-11 走查 §1：拆解表拆不出画面 / 景别。读图腿由代码自动挑模型（免费限流的那家排第一），
+// 用户既选不了也看不到失败原话。这份测试走**编排本体**（deconstructVideo），把读图腿的三件事钉住：
+//   ① 显式 `vision` 就是报价卡与真实调用用的那一个；给的不可用 → 零调用、零报价、不悄悄换别家；
+//   ② 软偏好 `visionPreferred`：能读图才采用，否则回到自动；
+//   ③ 每镜失败的供应商原话落进结果的 `failureReason`（不是只写日志）。
+// 方案卡：docs/plan/2026-10-11-canvas-ux-8-issues.md §11。
+
+const runTask = vi.hoisted(() => vi.fn());
+vi.mock("../runtime", () => ({ runTask }));
+vi.mock("./detectShotCuts", () => ({
+  detectShotCuts: vi.fn(async () => ({
+    cuts: [{ seconds: 3, score: 0.9 }],
+    coverage: { capped: false, totalCuts: 1, keptCuts: 1, coveredSeconds: 3, durationSeconds: 6 },
+  })),
+}));
+vi.mock("./extractAudioTrack", () => ({ extractAudioTrack: vi.fn(async () => ({ hasAudio: false })) }));
+vi.mock("./extractVideoFrame", () => ({
+  resolveVideoLocalPath: vi.fn(async () => ({ filePath: "x.mp4", cleanup: () => undefined })),
+  extractVideoFrameToAsset: vi.fn(async () => ({ url: "nomi-local://asset/p/frame.png" })),
+}));
+vi.mock("../export/mediaProbe", () => ({ probeMediaMetadata: vi.fn(async () => ({ durationSeconds: 6, hasAudio: false })) }));
+vi.mock("../settings/vendorPreferenceSettings", () => ({ readVendorPreferenceSettings: () => ({ orderedVendorKeys: [] }) }));
+
+const catalog = {
+  vendors: [
+    { key: "agnes", enabled: true, authType: "bearer" },
+    { key: "gem", enabled: true, authType: "bearer" },
+    { key: "ds", enabled: true, authType: "bearer" },
+  ],
+  models: [
+    { vendorKey: "agnes", modelKey: "agnes-flash", kind: "text", enabled: true, published: true, updatedAt: "1", meta: { supportsImageInput: true } },
+    { vendorKey: "gem", modelKey: "gem-flash", kind: "text", enabled: true, published: true, updatedAt: "1", meta: { supportsImageInput: true } },
+    { vendorKey: "ds", modelKey: "ds-chat", kind: "text", enabled: true, published: true, updatedAt: "1", meta: { supportsImageInput: false } },
+  ] as Array<Record<string, unknown>>,
+  apiKeysByVendor: { agnes: { enabled: true }, gem: { enabled: true }, ds: { enabled: true } },
+};
+vi.mock("../catalog/catalogStore", () => ({ readCatalog: () => catalog, normalizeProviderKind: (v: string) => v, mutateCatalog: vi.fn() }));
+vi.mock("../catalog/secrets", () => ({ decryptApiKeyRecord: () => "k", decryptCustomConfigWithLegacy: () => ({}), apiKeyDecryptStatus: () => "ok" }));
+vi.mock("../catalog/catalogModelAvailability", () => ({
+  catalogModelAvailability: () => ({ usable: true, reason: null }),
+  createCatalogAvailability: () => ({ of: () => ({ usable: true, reason: null }) }),
+}));
+
+const okReply = { raw: { choices: [{ message: { content: '{"shotSize":"特写","visual":"一只狗"}' } }] } };
+
+async function run(payloadExtra: Record<string, unknown>) {
+  const { deconstructVideo } = await import("./deconstructVideo");
+  type DeconstructSpendPlan = import("./deconstructVideo").DeconstructSpendPlan;
+  const authorizeSpend = vi.fn(async (_plan: DeconstructSpendPlan) => "grant-1" as string | null);
+  const result = await deconstructVideo(
+    { videoUrl: "nomi-local://asset/p/v.mp4", projectId: "p", framesPerShot: 1, ...payloadExtra } as never,
+    { authorizeSpend },
+  ).catch((error: unknown) => error as Error);
+  return { result, authorizeSpend };
+}
+
+describe("拆解读图腿的模型身份", () => {
+  beforeEach(() => {
+    runTask.mockReset();
+    runTask.mockResolvedValue(okReply);
+  });
+
+  it("默认（不给 vision）：沿用自动挑——目录序第一个能读图的（旧行为，不是回归）", async () => {
+    const { authorizeSpend } = await run({});
+    expect(authorizeSpend.mock.calls[0]?.[0].vision).toEqual({ vendorKey: "agnes", modelKey: "agnes-flash" });
+  });
+
+  it("显式 vision：报价卡与每一次真实调用都用它，不用自动挑的那个", async () => {
+    const { authorizeSpend } = await run({ vision: { vendorKey: "gem", modelKey: "gem-flash" } });
+    expect(authorizeSpend.mock.calls[0]?.[0].vision).toEqual({ vendorKey: "gem", modelKey: "gem-flash" });
+    expect(runTask).toHaveBeenCalled();
+    for (const [call] of runTask.mock.calls) {
+      expect(call.vendor).toBe("gem");
+      expect(call.request.extras.modelKey).toBe("gem-flash");
+    }
+  });
+
+  it("显式 vision 不可用（已停用 / 不存在）：整次拒绝，零报价、零付费调用，不悄悄换别家", async () => {
+    const { result, authorizeSpend } = await run({ vision: { vendorKey: "gem", modelKey: "no-such-model" } });
+    expect(result).toBeInstanceOf(Error);
+    expect((result as Error).name).toBe("DeconstructError");
+    expect((result as Error).message).toContain("no-such-model");
+    expect(authorizeSpend).not.toHaveBeenCalled();
+    expect(runTask).not.toHaveBeenCalled();
+  });
+
+  it("软偏好 visionPreferred：它能读图就用它（复用用户在 Agent 面板选的脑）", async () => {
+    const { authorizeSpend } = await run({ visionPreferred: { vendorKey: "gem", modelKey: "gem-flash" } });
+    expect(authorizeSpend.mock.calls[0]?.[0].vision).toEqual({ vendorKey: "gem", modelKey: "gem-flash" });
+  });
+
+  it("软偏好不能读图（纯文本脑）：回到自动挑，不报错也不用它", async () => {
+    const { authorizeSpend } = await run({ visionPreferred: { vendorKey: "ds", modelKey: "ds-chat" } });
+    expect(authorizeSpend.mock.calls[0]?.[0].vision).toEqual({ vendorKey: "agnes", modelKey: "agnes-flash" });
+  });
+
+  it("显式 vision 优先于软偏好", async () => {
+    const { authorizeSpend } = await run({
+      vision: { vendorKey: "agnes", modelKey: "agnes-flash" },
+      visionPreferred: { vendorKey: "gem", modelKey: "gem-flash" },
+    });
+    expect(authorizeSpend.mock.calls[0]?.[0].vision).toEqual({ vendorKey: "agnes", modelKey: "agnes-flash" });
+  });
+});
+
+describe("拆解失败原话落进结果", () => {
+  beforeEach(() => { runTask.mockReset(); });
+
+  it("供应商限流：该镜 visionFailed + failureReason 是供应商原话（画面 / 景别为空，但说得出为什么）", async () => {
+    runTask.mockRejectedValue(new Error("You've reached the API rate limit for free users"));
+    const { result } = await run({});
+    const shots = (result as { shots: Array<{ visionFailed?: boolean; failureReason?: string; shotSize: string }> }).shots;
+    expect(shots.length).toBeGreaterThan(0);
+    for (const shot of shots) {
+      expect(shot.visionFailed).toBe(true);
+      expect(shot.shotSize).toBe("");
+      expect(shot.failureReason).toContain("rate limit");
+    }
+  });
+
+  it("拆解的每次读图调用都带 maxRetries: 0（限流不重试）", async () => {
+    runTask.mockResolvedValue(okReply);
+    await run({});
+    expect(runTask).toHaveBeenCalled();
+    for (const [call] of runTask.mock.calls) expect(call.request.extras.maxRetries).toBe(0);
+  });
+
+  it("模型回了非 JSON：也要说一句人话原因，不是空白", async () => {
+    runTask.mockResolvedValue({ raw: { choices: [{ message: { content: "我不想说话" } }] } });
+    const { result } = await run({});
+    const shots = (result as { shots: Array<{ visionFailed?: boolean; failureReason?: string }> }).shots;
+    for (const shot of shots) {
+      expect(shot.visionFailed).toBe(true);
+      expect(shot.failureReason).toBeTruthy();
+    }
+  });
+});
+
+// 类检查（结构）：读图腿的模型身份只有 resolveVisionLeg 一个出口——编排里不许再直接调 resolveTextBrainKeys 自己挑，
+// 否则「付费腿身份由代码隐式挑、用户选不了」这一类会从下一条腿原样回来。
+describe("读图腿身份的唯一出口", () => {
+  it("deconstructVideo.ts 不直接 import resolveTextBrainKeys（只经 resolveVisionLeg）", async () => {
+    const fs = await import("node:fs");
+    const source = fs.readFileSync(new URL("./deconstructVideo.ts", import.meta.url), "utf8");
+    expect(source).not.toMatch(/import\s*\{[^}]*resolveTextBrainKeys[^}]*\}/);
+    expect(source).toContain("resolveVisionLeg(");
+  });
+});
