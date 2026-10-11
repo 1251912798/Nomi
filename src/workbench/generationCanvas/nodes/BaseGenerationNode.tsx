@@ -28,6 +28,7 @@ import PanoramaUploadFallback from './PanoramaUploadFallback'
 import { TimelineNotchDragHandle } from './NodeTimelineDragHandles'
 import { cn } from '../../../utils/cn'
 import { DeferredNodeImage } from './DeferredNodeMedia'
+import { NodeVideoSessionProvider } from './NodeVideoSession'
 import { NodeVideoPlaybackGuard } from './NodeVideoPlaybackGuard'
 import { useNodePanoramaHandlers } from './useNodePanoramaHandlers'
 import type { GenerationCanvasNode } from '../model/generationCanvasTypes'
@@ -117,7 +118,7 @@ function BaseGenerationNodeImpl({
   const panoramaUploadInputRef = React.useRef<HTMLInputElement | null>(null)
   const [provenanceOpen, setProvenanceOpen] = React.useState(false)
   const showVersionCards = React.useMemo(() => nodeHasVersionCards(node), [node])
-  const { openMediaPreview, mediaPreviewControls, mediaPreviewDoubleClick } = useNodeMediaPreview(node, selected && !isMultiSelectActive, () => setProvenanceOpen(true), reportFeedback)
+  const { openMediaPreview, mediaPreviewControls, mediaPreviewDoubleClick } = useNodeMediaPreview(node, selected && !isMultiSelectActive && !readOnly, () => setProvenanceOpen(true), reportFeedback)
   const sizeBounds = getNodeSizeBounds(node.kind)
 
   const handleTimelineDragStart = (event: React.DragEvent<HTMLElement>) => {
@@ -421,6 +422,7 @@ function BaseGenerationNodeImpl({
             // 播放守卫：decode 失败自动转码自愈一次（HEVC 存量/供应商 HEVC 产物），修不了给人话原因。
             <NodeVideoPlaybackGuard
               node={node}
+              reportFeedback={reportFeedback}
               previewRequested={videoPreview.requested}
               engaged={selected && !isMultiSelectActive}
               data-node-preview-video="true"
@@ -532,7 +534,9 @@ function BaseGenerationNodeImpl({
 // v0.7.1 perf: memo wrap — node 引用稳定时跳过 rerender。
 // 父级 GenerationCanvas 须保证 node 是 zustand store 里同一引用（zustand immer 默认就是）。
 const BaseGenerationNode = React.memo(
-  BaseGenerationNodeImpl,
+  (props: BaseGenerationNodeProps) => props.node.result?.type === 'video'
+    ? <NodeVideoSessionProvider key={`${props.node.id}:${props.node.result?.url}`} node={props.node} writable={!props.readOnly}><BaseGenerationNodeImpl {...props} /></NodeVideoSessionProvider>
+    : <BaseGenerationNodeImpl {...props} />,
   (prev, next) =>
     prev.node === next.node &&
     prev.selected === next.selected &&
