@@ -1,4 +1,4 @@
-import { CANVAS_CHROME_LAYERS } from './canvasChromeLayers'
+import { CANVAS_LAYER } from '../reactFlow/canvasLayerOrder'
 import { useCanvasChromeOcclusion } from './useCanvasChromeOcclusion'
 import { CANVAS_MIN_ZOOM, CANVAS_MAX_ZOOM } from '../model/canvasFitBounds'
 // 画布左下角导航竖列（navigation-stack）：小地图 + 紧凑缩放条（⛶ | − 100% + | ⋯），从 GenerationCanvas 抽出
@@ -76,7 +76,7 @@ export function CanvasNavigationStack({
   return (
     <div
       ref={dockRef}
-      style={{ zIndex: CANVAS_CHROME_LAYERS.chromeDock }}
+      style={{ zIndex: CANVAS_LAYER.chromeDock }}
       className={cn(
         'generation-canvas-v2__navigation-stack',
         'absolute left-4 bottom-4 flex flex-col items-start gap-2 pointer-events-none',

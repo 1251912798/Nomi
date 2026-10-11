@@ -143,7 +143,7 @@ export function canvasAddBar(win) {
 /**
  * 把画布底部的外框控件（加节点条 / 缩放簇）露出来再点。
  * 选中节点后它的生成框盖在这两块控件之上（用户 2026-10-10 验收规则：生成框层级更高，见
- * src/workbench/generationCanvas/components/canvasChromeLayers.ts）；真人要用被盖住的钮，先点画布空白处取消选择。
+ * src/workbench/generationCanvas/reactFlow/canvasLayerOrder.ts）；真人要用被盖住的钮，先点画布空白处取消选择。
  * 走查照做：目标中心的最顶层不是它自己，就点一下空白处，再等它露出来。点空白不动视口、不建节点。
  */
 export async function revealCanvasDock(win, target, label = 'canvas dock control') {
