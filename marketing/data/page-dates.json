@@ -3,9 +3,57 @@
     "hash": "b1eb7dec514d32e6",
     "date": "2026-10-09"
   },
+  "/docs": {
+    "hash": "3fb12bca897b151d",
+    "date": "2026-10-11"
+  },
+  "/docs/mcp/before-you-connect": {
+    "hash": "0efc53778626bb8f",
+    "date": "2026-10-11"
+  },
+  "/docs/mcp/connect-clients": {
+    "hash": "e2b7b2291a9cfb3d",
+    "date": "2026-10-11"
+  },
+  "/docs/mcp/verify-and-troubleshoot": {
+    "hash": "229bbc5194fb376d",
+    "date": "2026-10-11"
+  },
+  "/docs/start/first-project": {
+    "hash": "b8642e63d0dd1af7",
+    "date": "2026-10-11"
+  },
+  "/docs/start/what-is-nomi": {
+    "hash": "5ab162cd73e63f30",
+    "date": "2026-10-11"
+  },
   "/en/": {
     "hash": "7ae8eebe4d909784",
     "date": "2026-10-09"
+  },
+  "/en/docs": {
+    "hash": "7739445b0610c8d3",
+    "date": "2026-10-11"
+  },
+  "/en/docs/mcp/before-you-connect": {
+    "hash": "5e67b2a13cd109d5",
+    "date": "2026-10-11"
+  },
+  "/en/docs/mcp/connect-clients": {
+    "hash": "9fc79c93fe8dfd4f",
+    "date": "2026-10-11"
+  },
+  "/en/docs/mcp/verify-and-troubleshoot": {
+    "hash": "83c3c47079453fa5",
+    "date": "2026-10-11"
+  },
+  "/en/docs/start/first-project": {
+    "hash": "fc7cf88b048f0f9b",
+    "date": "2026-10-11"
+  },
+  "/en/docs/start/what-is-nomi": {
+    "hash": "5a50013bfcd6eeb6",
+    "date": "2026-10-11"
   },
   "/en/features": {
     "hash": "a6a0dac9a8c40700",

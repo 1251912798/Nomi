@@ -1,0 +1,14 @@
+{
+  "name": "nomi-marketing-docs",
+  "private": true,
+  "type": "module",
+  "description": "Nomi 中英文教程站（Astro Starlight），产物由 scripts/build-marketing-docs.mjs 拷进 marketing/。独立子项目，不进根依赖。",
+  "scripts": {
+    "build": "astro build"
+  },
+  "dependencies": {
+    "@astrojs/starlight": "0.42.6",
+    "astro": "7.3.8"
+  },
+  "packageManager": "pnpm@10.8.1"
+}

@@ -1,0 +1,12 @@
+---
+// 官网同款语言切换：一个到另一种语言同一页的链接。每页中英都有（check:site 的中英对应门岗保证），
+// 所以直接换 /en 前缀；不用 Starlight 自带的下拉框，因为它在 file 格式下会生成带 .html 的地址。
+import { contentByLocale } from '../../../scripts/marketing/content.mjs'
+
+const english = Astro.locals.starlightRoute.lang === 'en'
+const pathname = Astro.url.pathname.replace(/\.html$/, '')
+const target = english ? pathname.replace(/^\/en(?=\/|$)/, '') || '/' : `/en${pathname}`
+const nav = contentByLocale[english ? 'en' : 'zh-CN'].nav
+---
+
+<a class="nomi-locale" href={target} aria-label={nav.localeLabel}>{nav.locale}</a>
