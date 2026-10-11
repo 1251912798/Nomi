@@ -1,5 +1,5 @@
 {
-  "id": "REAL-20261010-01",
+  "id": "REAL-20261010-04",
   "since": "2026-10-10",
   "source": "2026-10-10 real test",
   "category": "claims-and-outcomes",
@@ -18,7 +18,7 @@
   ],
   "completionCommits": [],
   "rootCauseContract": "docs/fixes/2026-10-10-project-library-error-outlet.root-cause.json",
-  "fixedInPr": 9999,
+  "fixedInPr": 1176,
   "classCheck": {
     "kind": "matrix",
     "file": "src/workbench/library/projectErrorSurface.test.ts"
