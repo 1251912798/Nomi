@@ -927,7 +927,7 @@
     "after": 165,
     "why_not": "The identical symbol set includes existing shared node dimensions, canvas shortcut admission and floating-toolbar placement readers, in addition to document/engine/session consumers. The feature makes previously implicit transform state explicit and adds result-bound annotation/text readers. Both launchers converge on one node-owned editor; version mutations finish that same session. Legitimate read projections remain separate because their node/media responsibilities differ; the old modal and obsolete controls are deleted instead of retaining a parallel editor. src/dev/optimizeDepsEntry.ts is a changed side-effect-only import entry for @floating-ui/dom: no identifier occurrence exists for door-map; it remains scoped with vite.config.ts/package manifests as dependency lifecycle evidence, not fabricated as a symbol door."
   },
-  "generality_proof": "captureSceneTransforms/restoreSceneTransforms detach all three geometry populations; serializeWhiteboardState carries them for any node and legacy data gains empty transforms. LeaferCanvas exposes local selection actions to the shared editor host instead of installing a competing window listener. Both launchers request the same session; node-level mounting survives deselection. Two real Electron tracks verify the exercised closed loops; the independent report explicitly preserves every unverified original interaction.",
+  "generality_proof": "captureSceneTransforms/restoreSceneTransforms detach all three geometry populations; serializeWhiteboardState carries them for any node and legacy data gains empty transforms. LeaferCanvas exposes local selection actions to the shared editor host instead of installing a competing window listener. Both launchers request the same session; node-level mounting survives deselection. Two real Electron tracks verify the exercised closed loops; the independent report explicitly preserves every unverified original interaction. Registered inline-whiteboard-drag uses the existing unified DRIVERS/runner with five successful fresh-project repetitions of the same complete real-media walk; failed/incomplete journeys are rejected rather than accepting their frame samples.",
   "shared_boundaries": [
     {
       "path": "src/workbench/generationCanvas/nodes/whiteboard/whiteboardCanvasTypes.ts",
@@ -1057,7 +1057,8 @@
       "rg -n \"WhiteboardModal|openWhiteboard|useWhiteboardSession\" src/workbench/generationCanvas",
       "rg -n \"keydown|isComposing|Delete|ArrowRight\" src/workbench/generationCanvas/components/useCanvasShortcuts.ts src/workbench/generationCanvas/nodes/whiteboard",
       "Baseline generated from integrated HEAD fdb0b154388b2a4ab839ffa95365aa61ccfa29cb using mapDoors over git grep candidate inventory and git show HEAD:<path>, identical current symbol set. Before 114, after 165.",
-      "Existing structural guard verification (unchanged tests): pnpm exec vitest run scripts/viteOptimizeDeps.test.mjs src/workbench/generationCanvas/nodes/ToolbarActionMenu.structure.test.ts src/workbench/generationCanvas/nodes/nodeInnerScrollNoWheel.test.ts src/workbench/project/projectActionIssuance.contract.test.ts"
+      "Existing structural guard verification (unchanged tests): pnpm exec vitest run scripts/viteOptimizeDeps.test.mjs src/workbench/generationCanvas/nodes/ToolbarActionMenu.structure.test.ts src/workbench/generationCanvas/nodes/nodeInnerScrollNoWheel.test.ts src/workbench/project/projectActionIssuance.contract.test.ts",
+      "pnpm run perf:scenarios -- --id inline-whiteboard-drag --runs 5 --out .tmp/whiteboard-scenario-repeat.json (existing unified DRIVERS runner; baseline is five successful complete journeys, not partial failed samples)"
     ]
   },
   "prevention": {
@@ -1133,12 +1134,13 @@
   "migration": "Additive optional texts, canvasDimensions and sceneTransforms read missing legacy fields as empty/default values. Legacy results without an editable snapshot must not claim fully editable old layers. Annotation result identities remain explicit; do not migrate one version’s annotations to another by guessing.",
   "residual_risks": [
     "Partial real-app retention census remains explicit; source reuse and focused green tests do not prove every original subfunction.",
-    "Escape ledger popup overlap has two inspected 46-check real Electron core reports and a complete 48-check performance journey, but remains reviewed until real PR settlement satisfies the unchanged fixedInPr rule.",
+    "Escape ledger popup overlap has two inspected 46-check real Electron core reports and the earlier complete 48-check performance journey plus five registered 50-check journeys, but remains reviewed until real PR settlement satisfies the unchanged fixedInPr rule.",
     "DesignNumberInput font36/height900 and shared ToolbarActionPanel are exercised in both real core tracks. First performance journey failed on extreme-edge clipping; the shared clamp repair passes 75 geometry combinations and the complete same-fixture rerun. Final committed-HEAD build/delivery is still pending.",
-    "One local performance sample has 32 nodes, 30 offscreen, one active editor and one unique 4K image: 368 frames, p50 8.3/p95 10/max10.4ms, no long tasks. No matched baseline, dense all-visible workload or platform-wide performance claim.",
+    "Unified inline-whiteboard-drag baseline: five complete 50-check runs at 696bf56ae5, 371/372/372/373/373 frames, per-run frame p95 all9.6ms; across-run median/p95=9.6/9.6ms vs33ms and zero >50ms long tasks. Registry records M5/24GB and noisy=true. The sample remains 32 nodes, 30 offscreen, one active editor, one shared 4K image; no dense all-visible or platform-wide performance claim.",
     "Toolbar exact centering yields to reachability only when the minimum screen width cannot fit symmetrically; extreme-edge screenshot wraps four rows. Automated feel records retain 14 core/17 performance findings and are not a zero-finding pass.",
     "Full gates/test are not green: one older settings baseline specimen and generatedMediaDecode encoder failure independently reproduce on fdb0b15438; all remaining failures require their own attribution, never blanket baseline classification.",
-    "Windows, clean packaged install, restart recovery, image-pixel eraser hit and actual background-removal model download remain unverified."
+    "Windows, clean packaged install, restart recovery, image-pixel eraser hit and actual background-removal model download remain unverified.",
+    "P5★7 drag timing has a reusable registered baseline, but opening/input/popup/save individual response latencies, openToInteractive, worst visible asset scale and the user full project remain unverified; openToPersistedInitialImage is not openToInteractive."
   ],
   "detected_by": "user",
   "recurrence_check_on": "2026-10-19",

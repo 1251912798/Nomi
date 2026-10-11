@@ -8,5 +8,14 @@
     "frameGapP95",
     "longTasks"
   ],
-  "budget": 33
+  "budget": 33,
+  "baseline": {
+    "median": 9.6,
+    "p95": 9.6,
+    "runs": 5,
+    "machine": "darwin arm64 Apple M5 x10 / 24GB",
+    "date": "2026-10-11",
+    "commit": "696bf56ae5",
+    "noisy": true
+  }
 }

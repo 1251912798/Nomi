@@ -18,6 +18,7 @@
     "2026-10-12 两轨真实 Electron：tests/ux/shots/whiteboard-refactor/{zh-CN-light,en-dark}/report.json 各 46 checks，包含 width/height/wheel 七组动态 anchor 的居中、不盖 bar、不交 dock、elementFromPoint 可达断言；独立线亲眼读取两轨 size-panel-after-resize.png 与 standalone.png。",
     "src/design/anchoredPopoverPlacement.test.ts：14/14 独立执行通过，含 offset stage、tall dock 及 near-left wide panel 使用真实 clamped span 后交共享 dock owner 的反例。",
     "最终同 fixture 性能旅程 report.json 48 checks 通过，独立亲眼读取四张实际 PNG；首轮极右工具条裁切失败保留，R21 在共享 clamp 修复 minimum-width 与强制居中冲突，75 组合回归通过。普通轨 feel 14 / 性能轨 17 findings 均未冒充零 finding。",
+    "统一 perf:scenarios 的 inline-whiteboard-drag 在696bf56ae5真实5轮各50 checks；每轮全旅程含动态anchor和极右动作可达，独立读取5份JSON及run5尺寸/独立板PNG。帧p95五轮皆9.6ms、longTasks皆0，噪声基线与未覆盖规模如独立报告所列。",
     "本地遮挡回归已有真实证据；status 仍 reviewed，因为 escape-ledger-lib.mjs fixed 强制真实 fixedInPr，当前 PR 尚未创建，commit 不能替代 PR 字段。"
   ],
   "completionCommits": [
