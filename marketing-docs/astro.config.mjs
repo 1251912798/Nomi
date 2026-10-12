@@ -10,6 +10,9 @@ const section = (label, en, slugs) => ({ label, translations: { en }, items: slu
 
 export default defineConfig({
   site: shared.siteUrl,
+  // 产物必须只由 marketing-docs 自己的源码和锁文件决定：Vite 会从项目目录往上找 PostCSS 配置，不挡住的话会吃到仓库根
+  // 那份 App 用的 postcss.config.js（autoprefixer，给 CSS 加 -moz- 前缀），哈希就随「根目录有没有它」而变（见 docs/plan/2026-10-10-docs-site.md）。
+  vite: { css: { postcss: { plugins: [] } } },
   trailingSlash: 'never',
   build: { format: 'file' },
   integrations: [

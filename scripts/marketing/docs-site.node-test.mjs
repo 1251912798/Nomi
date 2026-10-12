@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { cleanInternalLinks, isDocsHtml, manifestFromHtmlPaths } from './docs-site.mjs'
+import { cleanInternalLinks, isDocsHtml, manifestFromHtmlPaths, normalizeBundlerHashes } from './docs-site.mjs'
 
 test('cleanInternalLinks strips .html from internal links only, keeping anchors', () => {
   const html = '<a href="/docs/start/first-project.html#steps">a</a><a href="/en/docs.html">b</a><a href="https://example.com/x.html">c</a><a href="#top">d</a><a href="/index.html">e</a>'
@@ -25,4 +25,11 @@ test('manifestFromHtmlPaths pairs zh and en pages and refuses an unpaired page',
   )
   assert.throws(() => manifestFromHtmlPaths(['docs.html', 'en/docs.html', 'docs/a.html']), /成对/)
   assert.throws(() => manifestFromHtmlPaths(['docs.html', 'en/docs.html', 'en/docs/b.html']), /成对/)
+})
+
+test('normalizeBundlerHashes erases bundler hashes but keeps page content', () => {
+  const a = '<link href="/_astro/common.KRJgqbup.css"><div class="astro-2xfzmn55 x">文字</div><script src="/_astro/ui-core.Clh5jUUO.js">'
+  const b = '<link href="/_astro/common.y1p1JTPO.css"><div class="astro-ofbg3qve x">文字</div><script src="/_astro/ui-core.AAAAAAAA.js">'
+  assert.equal(normalizeBundlerHashes(a), normalizeBundlerHashes(b))
+  assert.notEqual(normalizeBundlerHashes(a), normalizeBundlerHashes(b.replace('文字', '别的字')))
 })

@@ -88,6 +88,9 @@ export default tseslint.config(
   {
     ignores: [
       'dist/**',
+      // 教程站（marketing-docs，Astro）的构建产物与生成类型：check:site 先构建、lint:ci 后扫，顺序依赖会误扫到它们。
+      'marketing-docs/.astro/**',
+      'marketing-docs/dist/**',
       'dist-electron/**',
       'release/**',
       // R0 历史兼容探针产物保留；正式 pi 源码在 electron/harness/runtime/pi 参加 lint。

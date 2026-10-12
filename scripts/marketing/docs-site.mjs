@@ -71,3 +71,15 @@ export function docsPages(root = repoRoot) {
     },
   }))
 }
+
+/**
+ * 比对「重建出来的页面」和「入库的页面」时，抹掉打包器自己算的哈希：`_astro/<名>.<8 位哈希>.css|js` 的文件名哈希，
+ * 以及 Astro 组件样式作用域类 `astro-<8 位哈希>`。它们是构建工具的内部产物，会随平台 / 依赖布局变化（2026-10-12 CI 在
+ * Linux 上重建，文件名哈希和入库的对不上），不是页面内容。页面文字、结构、链接、元数据仍然逐字比对；
+ * 入库产物自己内部引用得上（文件在不在）由 check-site-links 守。
+ */
+export function normalizeBundlerHashes(html) {
+  return html
+    .replace(/(\/_astro\/[^"'\s]*?)\.[A-Za-z0-9_-]{8}\.(css|js)/g, '$1.HASH.$2')
+    .replace(/astro-[a-z0-9]{8}/g, 'astro-HASH')
+}

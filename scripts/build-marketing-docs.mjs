@@ -19,6 +19,7 @@ import {
   formatManifest,
   isDocsHtml,
   manifestFromHtmlPaths,
+  normalizeBundlerHashes,
 } from './marketing/docs-site.mjs'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
@@ -90,7 +91,11 @@ function checkOutputs(outputs) {
   for (const [relativePath, contents] of outputs) {
     const target = path.join(marketing, relativePath)
     if (!fs.existsSync(target)) { stale.push(`${relativePath}（磁盘上没有）`); continue }
-    if (isDocsHtml(relativePath) && fs.readFileSync(target, 'utf8').replaceAll('\r\n', '\n') !== contents) stale.push(relativePath)
+    if (isDocsHtml(relativePath)) {
+      const onDisk = fs.readFileSync(target, 'utf8').replaceAll('\r\n', '\n')
+      // 打包器的哈希（文件名哈希、样式作用域类）不比，其余逐字比（见 normalizeBundlerHashes）。
+      if (normalizeBundlerHashes(onDisk) !== normalizeBundlerHashes(contents)) stale.push(relativePath)
+    }
   }
   const expectedHtml = new Set([...outputs.keys()].filter(isDocsHtml))
   for (const relativePath of docsHtmlOnDisk()) if (!expectedHtml.has(relativePath)) stale.push(`${relativePath}（源码里已经没有这一页）`)
