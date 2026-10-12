@@ -1,0 +1,23 @@
+{
+  "id": "REAL-20261011-01",
+  "since": "2026-10-11",
+  "source": "2026-10-11 真机性能专项（document-link-mark-not-persisted）",
+  "category": "claims-and-outcomes",
+  "problem": "文稿工具条点「链接」后界面有链接，保存后的文稿里没有，重开即丢；同源的还有有序列表起始号、代码块语言、表格合并 / 列宽落盘即丢",
+  "existingInvariants": [],
+  "ironLaws": [],
+  "useCases": [],
+  "fullWalkJourneys": [],
+  "status": "fixed",
+  "manualReview": "reviewed",
+  "evidence": [
+    "tests/ux/document-format-persist-undo.walk.mjs：改前 link 落盘 marks=[]、重开 <a> 0 个；改后均通过"
+  ],
+  "completionCommits": ["5c57f29e2"],
+  "rootCauseContract": "docs/fixes/2026-10-11-document-format-persistence.root-cause.json",
+  "fixedInPr": 1190,
+  "classCheck": {
+    "kind": "matrix",
+    "file": "src/workbench/workbenchTypes.schemaRoundTrip.test.ts"
+  }
+}
