@@ -3,7 +3,7 @@ import { makeTempDir } from '../../scripts/_test-temp.mjs'
 // 一串名字作为按钮很蠢」）。这条走查像真人一样用鼠标做完整件事，不灌 store、不调 IPC。
 //
 // 三条腿，每一条都答「用户怎么知道它成了 / 没成」：
-//   A 探头 + 点删除图标 → 行没了、底部出撤销条 → **点撤销** → 它回到**原来的位置**；
+//   A hover 露出行内图标 + 点删除图标 → 行没了、底部出撤销条 → **点撤销** → 它回到**原来的位置**；
 //   B 再删一次 → **不点撤销**，等到撤销条自己消失 → 它是真的没了（重开面板也不回来）；
 //   C 行聚焦时按 Delete → 同样删得掉（键盘那条路）。
 //
@@ -108,29 +108,30 @@ try {
    * 所以：同一个 `[role="dialog"]` 选择器，在原稿那条路上找得到（基线成立），
    * 在方案那条路上找不到（这次的改动）。开局先把这个基线做出来再取消掉。
    */
-  await clickOrFail(win.locator('[data-document-row="doc-a"] [data-resource-menu-trigger="document"]'), '打开原稿行的 ⋮ 菜单（只为立阳性对照）')
-  await clickOrFail(win.locator('[data-resource-action="delete"]'), '点原稿菜单里的删除')
+  await win.locator('[data-document-row="doc-a"]').hover()
+  await clickOrFail(win.locator('[data-document-row="doc-a"] [data-resource-action="delete"]'), '点原稿行上的删除图标（只为立阳性对照）')
   const dialogProof = await proveProbe(win.locator('[role="dialog"]'), '删原稿仍然会弹确认对话框')
   await clickOrFail(win.getByRole('button', { name: '取消', exact: false }).first(), '取消掉这次原稿删除——基线立完就撤，不动数据')
   await win.waitForTimeout(400)
   measured.push({ step: '阳性对照', dialogProbe: dialogProof.label })
 
-  // ───────── 腿 A：hover 探头 → 点删除图标 → 撤销 ─────────
-  const row = win.locator('[data-swipe-row="true"]').filter({ has: win.locator('[data-storyboard-row="d-2"]') }).first()
-  await expectVisible(row, '找不到「方案二」那一行的手势壳')
-
-  // 探头：hover 之前删除区是被行盖住的，hover 之后它露出来一截。**量位移**，
-  // 不是量「按钮存在不存在」——按钮一直都在，用户能不能点到它靠的是行让开没让开。
-  const closedX = await row.locator('[data-storyboard-row="d-2"]').evaluate((node) => node.getBoundingClientRect().x)
+  // ───────── 腿 A：hover 露出行内图标 → 点删除图标 → 撤销 ─────────
+  // 行内动作 ≤3 个直接摆图标（设计系统 §1.8 规则 2 补充）：不再有「⋯」菜单、也不再有 hover 探头的红底删除区。
+  const row = win.locator('[data-storyboard-row="d-2"]')
+  await expectVisible(row, '找不到「方案二」那一行')
+  const actions = row.locator('[data-resource-actions="storyboard"]')
+  const hiddenOpacity = await actions.evaluate((node) => Number(getComputedStyle(node).opacity))
   await row.hover()
-  await win.waitForTimeout(450)
-  const peekedX = await row.locator('[data-storyboard-row="d-2"]').evaluate((node) => node.getBoundingClientRect().x)
-  const nudge = Math.round(closedX - peekedX)
-  measured.push({ step: 'hover 探头位移', nudge })
-  if (nudge < 20) failures.push(`hover 时行只让开了 ${nudge}px——删除区没露出来，用户点不到它`)
-  await snap('02-hover-peek.png')
+  await win.waitForTimeout(300)
+  const shownOpacity = await actions.evaluate((node) => Number(getComputedStyle(node).opacity))
+  measured.push({ step: 'hover 露出行内图标', hiddenOpacity, shownOpacity })
+  if (!(hiddenOpacity < 0.1 && shownOpacity > 0.9)) failures.push(`hover 前后行内图标透明度应为 0 → 1，实际 ${hiddenOpacity} → ${shownOpacity}`)
+  const iconNames = await actions.locator('button').evaluateAll((nodes) => nodes.map((node) => node.getAttribute('data-resource-action')))
+  measured.push({ step: '方案行图标', iconNames })
+  if (iconNames.join(',') !== 'rename,duplicate,delete') failures.push(`方案行应直接摆 重命名/复制/删除 三个图标，实际：${iconNames.join(',')}`)
+  await snap('02-hover-icons.png')
 
-  await clickOrFail(row.locator('[data-swipe-delete="true"]'), '点「方案二」行上的删除图标')
+  await clickOrFail(row.locator('[data-resource-action="delete"]'), '点「方案二」行上的删除图标')
 
   // 反向基线：不许弹确认。这正是这次要拿掉的东西，所以它必须被断言，而不是「没看见」。
   await expectAbsent(win.locator('[role="dialog"]'), { provenBy: dialogProof, message: '点了删除却弹出了确认对话框——删除该是一个手势，不是一道题' })
@@ -166,10 +167,10 @@ try {
   await snap('04-after-undo.png')
 
   // ───────── 腿 B：再删一次，**不撤销**，等它到时真提交 ─────────
-  const row2 = win.locator('[data-swipe-row="true"]').filter({ has: win.locator('[data-storyboard-row="d-2"]') }).first()
+  const row2 = win.locator('[data-storyboard-row="d-2"]')
   await row2.hover()
   await win.waitForTimeout(400)
-  await clickOrFail(row2.locator('[data-swipe-delete="true"]'), '再次点「方案二」的删除图标')
+  await clickOrFail(row2.locator('[data-resource-action="delete"]'), '再次点「方案二」的删除图标')
   await win.waitForTimeout(900)
   // 撤销条自己消失之后才算「真的提交了」。这里等的是它的存续时间（5s）+ 一点余量。
   const undoProof = await proveProbe(win.locator('[data-notification-reason="undo-operation"]'), '删完确实会出现一条撤销')
@@ -181,7 +182,7 @@ try {
   await snap('05-expired-committed.png')
 
   // ───────── 腿 C：键盘那条路（行聚焦 → Delete）─────────
-  const row3 = win.locator('[data-swipe-row="true"]').filter({ has: win.locator('[data-storyboard-row="d-3"]') }).first()
+  const row3 = win.locator('[data-storyboard-row="d-3"] [data-storyboard-id]')
   await row3.focus()
   await win.waitForTimeout(400)
   await row3.press('Delete')
@@ -192,10 +193,10 @@ try {
   await expectAbsent(win.locator('[role="dialog"]'), { provenBy: dialogProof, message: '键盘删也不许弹确认' })
   await snap('06-keyboard-delete.png')
 
-  // ───────── ⋮ 菜单里的删除走的是同一条路（不留第二条）─────────
+  // ───────── 图标、右键菜单、键盘三个入口走的是同一条路（不留第二条）─────────
   const undo3 = win.locator('[data-notification-reason="undo-operation"]')
   if (!(await undo3.isVisible().catch(() => false))) {
-    failures.push('键盘删之后没有撤销——⋮ 菜单、图标、键盘三个入口必须落到同一条删除+撤销路径上')
+    failures.push('键盘删之后没有撤销——图标、右键菜单、键盘三个入口必须落到同一条删除+撤销路径上')
   }
 } catch (error) {
   failures.push(`走查中断：${error?.message || error}`)

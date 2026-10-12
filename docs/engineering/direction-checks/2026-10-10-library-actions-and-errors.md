@@ -65,6 +65,10 @@
 - 行动作：`WorkbenchIconButton`（`src/design/actions.tsx:124`，自带 `aria-label` + `title`）。
 - 不属于自写登记（`self-written.json` 的领域目录里没有这几项）。
 
+### 5a. 自写登记命中：gate-family
+
+`check-icon-semantics.mjs` 属于自写登记 `gate-family`（status: under-review，reviewBy 2026-10-31，paths: scripts/check-*.mjs）。本轮在这条已有门岗上加一条规则（规则三：纯图标按钮必须带名字），不另起新门岗。**为什么现在换不了现成方案**：eslint 的 `jsx-a11y/control-has-associated-label` 能查「控件有没有名字」，但它不认 Tabler 图标组件是「没有文字的内容」、也不能按文件计数做只减不增的棘轮基线，而这道门岗的存量扫描、基线和 §6 图标词典登记都已经集中在这一个脚本里；把一条规则拆到另一套工具里，会多出第二份「谁算控件」的判据（`scripts/lib/jsxControls.mjs` 已是两道门岗共用的）。**哪天换**：gate-family 在 2026-10-31 前的合并 / 删除清单落地时，一并评估把规则三迁成 eslint-plugin-jsx-a11y 规则 + 基线文件；那时本规则随脚本一起迁，不留两份。
+
 ### 6. 接入 / 补 / 重写 / 删 对比表 + 推荐
 
 | 选项 | 做什么 | 代价 | 风险 | 推荐 |

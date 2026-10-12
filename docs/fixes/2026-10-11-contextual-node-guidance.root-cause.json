@@ -1,0 +1,275 @@
+{
+  "schema_version": 3,
+  "id": "2026-10-11-contextual-node-guidance",
+  "problem_type": "Canvas instructional guidance without interaction context",
+  "symptom": "Every empty node in a group repeats its type, status and next-step actions.",
+  "direct_cause": "PendingGenerationPlaceholder only records selected as a data attribute; other empty renderers have no selection input.",
+  "class_root": "The shared empty-state boundary has no distinction between instructional guidance and operational state, nor a host-owned single-selection gate.",
+  "affected_population": [
+    "Creators browsing dense groups and mixed node types",
+    "Unselected, multiselected, and read-only canvas nodes"
+  ],
+  "scope_paths": [
+    "src/workbench/generationCanvas/",
+    "src/devlab/"
+  ],
+  "entry_points": [
+    "GenerationCanvasReactFlowNodes -> all built-in renderers",
+    "NodeEmptyState -> media, upload, text, audio, panorama, whiteboard",
+    "ClipEmptyTry and DirectorNode -> specialized bodies",
+    "LightweightGenerationNode -> LOD and lazy fallback"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "This is Nomi internal canvas interaction and approved visual behavior; installed React/XYFlow APIs are unchanged.",
+  "invariants": [
+    "Only the host primary selection expands instructional guidance.",
+    "Operational state and authored/result content remain visible independent of selection; added empty-card titles apply only to idle nodes without results.",
+    "Upload/launcher activation requires permission at pointerdown, not only at click.",
+    "Node type icons use the existing registry; legacy prop renderKind keeps its semantic box.",
+    "LOD icon bounds must fit the actual media body; short bodies use the existing compact vertical center."
+  ],
+  "doors": [
+    {
+      "kind": "read",
+      "path": "src/devlab/designLab/emptyNodeRatios/emptyNodeRatiosLabKit.tsx",
+      "symbol": "NodeEmptyStateProvider"
+    },
+    {
+      "kind": "read",
+      "path": "src/devlab/designLab/emptyNodeRatios/emptyNodeRatiosLabKit.tsx",
+      "symbol": "PendingGenerationPlaceholder"
+    },
+    {
+      "kind": "read",
+      "path": "src/devlab/uiShellLab.tsx",
+      "symbol": "NodeEmptyStateProvider"
+    },
+    {
+      "kind": "read",
+      "path": "src/devlab/uiShellLab.tsx",
+      "symbol": "NodeEmptyState"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/components/LightweightGenerationNode.tsx",
+      "symbol": "NodeEmptyStateProvider"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/components/LightweightGenerationNode.tsx",
+      "symbol": "NodeEmptyState"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/BaseGenerationNode.tsx",
+      "symbol": "PendingGenerationPlaceholder"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/director/DirectorNode.tsx",
+      "symbol": "NodeEmptyState"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/PanoramaUploadFallback.tsx",
+      "symbol": "NodeEmptyState"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/render/AudioStripNode.tsx",
+      "symbol": "NodeEmptyState"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/render/CardCommon.tsx",
+      "symbol": "NodeEmptyState"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/render/NodeEmptyStateContext.ts",
+      "symbol": "NodeEmptyStateContext"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/render/NodeEmptyStateProvider.tsx",
+      "symbol": "NodeEmptyStateContext"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/render/TextDocumentNode.tsx",
+      "symbol": "NodeEmptyState"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/WhiteboardCardBody.tsx",
+      "symbol": "EmptyStateLauncher"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/quickActions/NodeTryList.tsx",
+      "symbol": "NodeEmptyState"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/reactFlow/GenerationCanvasReactFlowNodes.tsx",
+      "symbol": "NodeEmptyStateProvider"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/director/DirectorNode.tsx",
+      "symbol": "useNodeEmptyStateContext"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/PanoramaUploadFallback.tsx",
+      "symbol": "useEmptyNodeActivation"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/render/AudioStripNode.tsx",
+      "symbol": "useEmptyNodeActivation"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/render/CardCommon.tsx",
+      "symbol": "useEmptyNodeActivation"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/render/NodeEmptyState.tsx",
+      "symbol": "useNodeEmptyStateContext"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/render/NodeEmptyStateContext.ts",
+      "symbol": "useNodeEmptyStateContext"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/render/TextDocumentNode.tsx",
+      "symbol": "useNodeEmptyStateContext"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/quickActions/NodeTryList.tsx",
+      "symbol": "useNodeEmptyStateContext"
+    }
+  ],
+  "door_reduction": {
+    "before": 5,
+    "after": 25,
+    "why_not": "All five prior visual consumer doors remain for distinct media/editor bodies; new doors connect specialized director/clip/LOD and host context. No caller owns its own guidance visibility. Launcher and Pending wrappers are included to count the extra hop to Base/whiteboard/lab. Context value/provider wiring is counted explicitly."
+  },
+  "generality_proof": "A context provided around every React Flow node carries the existing primarySelection verdict. NodeEmptyState removes instructional text/actions when it is false; explicit status purpose bypasses only that presentation rule. Upload and launcher consumers admit activation from the same context at gesture start.",
+  "shared_boundaries": [
+    {
+      "path": "src/workbench/generationCanvas/nodes/render/NodeEmptyStateProvider.tsx",
+      "symbol": "NodeEmptyStateProvider",
+      "responsibility": "Carry the host selection and read-only verdict without renderer-specific inference."
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/render/NodeEmptyState.tsx",
+      "symbol": "NodeEmptyState",
+      "responsibility": "Project instructional content into icon-only or full guidance; preserve explicit operational status."
+    },
+    {
+      "path": "src/workbench/generationCanvas/reactFlow/GenerationCanvasReactFlowNodes.tsx",
+      "symbol": "GenerationFlowNodeView",
+      "responsibility": "Provide authoritative primary selection and read-only context to every built-in renderer."
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/render/NodeEmptyStateContext.ts",
+      "symbol": "useEmptyNodeActivation",
+      "responsibility": "Admit at pointerdown; preserve that verdict through label-to-input forwarded clicks; cancel and read-only fail closed."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/workbench/generationCanvas/nodes/render/CardCommon.tsx",
+      "entry_point": "PendingGenerationPlaceholder",
+      "disposition": "enforced",
+      "evidence": "Media placeholders converge on NodeEmptyState; waiting/derivedReady become explicit status."
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/render/TextDocumentNode.tsx",
+      "entry_point": "TextDocumentNode",
+      "disposition": "enforced",
+      "evidence": "Empty text overlay consumes NodeEmptyState while EditorContent and processing footer remain intact."
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/render/AudioStripNode.tsx",
+      "entry_point": "AudioStripNode",
+      "disposition": "enforced",
+      "evidence": "Empty upload label consumes shared presentation and activation gate; playback/subtitles unchanged."
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/shotTable/ShotTableNode.tsx",
+      "entry_point": "ShotTableNode",
+      "disposition": "not-affected",
+      "evidence": "No-source, breakdown progress and failure are operational facts, not instructional placeholders."
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/artifact/artifactNodeSlots.tsx",
+      "entry_point": "useArtifactNodeSlots",
+      "disposition": "not-affected",
+      "evidence": "Missing artifact metadata is diagnostic content, not an ordinary empty node."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Every new node kind and group can repeat the same instructional block without a common interaction contract.",
+    "same_class_scan": [
+      "node scripts/door-map.mjs NodeEmptyState (5 direct consumers, 9 call sites)",
+      "Independent V-node-guidance census traversed all registry kinds, specialized hosts, LOD and selection adapters."
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "src/workbench/generationCanvas/nodes/render/NodeEmptyState.tsx",
+    "invariant": "Instructional text and actions are absent outside primary selection; status content is explicitly classified.",
+    "failure_mode": "No host selection context defaults to icon-only, read-only presentation; changed regression matrix fails if text/actions leak.",
+    "exception_policy": "none",
+    "strategy": "Converge every ordinary empty body on host-owned context and one presentation boundary.",
+    "artifacts": [
+      "src/workbench/generationCanvas/nodes/render/NodeEmptyState.tsx",
+      "src/workbench/generationCanvas/reactFlow/GenerationCanvasReactFlowNodes.tsx",
+      "src/workbench/generationCanvas/nodes/render/NodeEmptyStateContext.ts"
+    ]
+  },
+  "regression_tests": [
+    "src/workbench/generationCanvas/nodes/render/CardCommon.test.ts",
+    "src/workbench/generationCanvas/nodes/render/NodeEmptyState.test.tsx",
+    "tests/ux/contextual-node-guidance.walk.mjs"
+  ],
+  "class_regression_tests": [
+    "src/workbench/generationCanvas/nodes/render/CardCommon.test.ts",
+    "src/workbench/generationCanvas/nodes/render/NodeEmptyState.test.tsx",
+    "tests/ux/contextual-node-guidance.walk.mjs"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "src/workbench/generationCanvas/nodes/render/CardCommon.tsx"
+    ],
+    "rationale": "Remove unconditional per-card guidance and hand-written generic-media icon fallback in the same change."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "No third-party defect or dependency transition; this is an internal presentation invariant using existing React context and XYFlow selection.",
+    "exit_criteria": []
+  },
+  "migration": "No persistent schema/state change; existing projects derive the new presentation from current selection.",
+  "residual_risks": [
+    "Windows native upload dialogs and paid generation are not exercised by this presentation-only change; operational generation code remains unchanged."
+  ],
+  "detected_by": "user",
+  "recurrence_check_on": "2026-10-25",
+  "invariant_owner_layer": {
+    "layer": "src/workbench/generationCanvas/nodes/render",
+    "tests": [
+      "src/workbench/generationCanvas/nodes/render/CardCommon.test.ts",
+      "src/workbench/generationCanvas/nodes/render/NodeEmptyState.test.tsx",
+      "tests/ux/contextual-node-guidance.walk.mjs"
+    ]
+  }
+}

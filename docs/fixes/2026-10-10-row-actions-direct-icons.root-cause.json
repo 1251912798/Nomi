@@ -1,0 +1,117 @@
+{
+  "schema_version": 3,
+  "id": "2026-10-10-row-actions-direct-icons",
+  "detected_by": "user",
+  "recurrence_check_on": "2026-11-10",
+  "invariant_owner_layer": {
+    "layer": "scripts/check-icon-semantics.mjs",
+    "tests": ["scripts/check-icon-semantics.node-test.mjs"]
+  },
+  "problem_type": "行内动作的呈现没有成文规矩：重复的删除入口、藏在「⋯」里的少量动作、说不清是什么的纯图标入口",
+  "symptom": "文稿方案行同时有红底垃圾桶和「⋯」菜单（删除重复、三个点不容易看）；项目库的小播放按钮只有图标，hover 无明显反馈，点了才知道是新手引导",
+  "direct_cause": "方案删除改成手势（2026-09-21）时「⋯」菜单里的删除没跟着收；控件文案契约 §1.8 把次动作一刀切成纯图标，新手引导入口收成图标钮后没人说得清它是什么",
+  "class_root": "「行内 / 工具条的动作 ≤3 个直接摆图标、超过才收进⋯」和「纯图标按钮必须带名字」都只是自觉，设计系统里没有这条规矩，门岗也不查纯图标按钮有没有名字，所以每个面各自决定收不收、写不写名字",
+  "affected_population": [
+    "所有带行内动作或工具条图标的面（文稿侧栏、项目库、素材库等）",
+    "中英文两轨界面",
+    "键盘与读屏用户（纯图标按钮没名字读不到）"
+  ],
+  "scope_paths": [
+    "src/workbench/creation/DocumentListSidebar.tsx",
+    "src/workbench/library/ProjectLibraryPage.tsx",
+    "scripts/check-icon-semantics.mjs",
+    "docs/design/nomi-design-system.md"
+  ],
+  "entry_points": [
+    "文稿行 / 方案行动作 DocumentListSidebar.RowActions",
+    "项目库引导入口 ProjectLibraryPage data-library-tour",
+    "纯图标按钮名字 check-icon-semantics 规则三"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "这是 Nomi 自己的设计系统规矩与门岗；无第三方文档决定「几个动作直接摆出来」。纯图标按钮需要可访问名字的依据（WCAG 1.4.13 / 4.1.2）已写进设计系统 §1.8 规则 2 补充",
+  "invariants": [
+    "行内 / 工具条的动作 ≤3 个就直接摆图标（带 hover 名字），超过 3 个才用「⋯」",
+    "原生 button 里只有图标时必须带 aria-label 或 title"
+  ],
+  "doors": [
+    { "kind": "write", "path": "src/workbench/creation/DocumentListSidebar.tsx", "symbol": "onDeleteStoryboard" },
+    { "kind": "write", "path": "src/workbench/creation/DocumentListSidebar.tsx", "symbol": "onDeleteDocument" }
+  ],
+  "door_reduction": {
+    "before": 4,
+    "after": 2,
+    "why_not": "删除现在只有图标 / 右键菜单 / 键盘三个触发，全部落到 onDeleteStoryboard 或 onDeleteDocument 两个函数；原来的 ⋯ 菜单触发与 SwipeToDeleteRow 的红底删除区已删除。两个函数分管方案（撤销 toast）与文稿（确认框），语义不同不能合并"
+  },
+  "generality_proof": "纯图标按钮没名字由 check-icon-semantics 规则三机器拦（存量按文件计数只减不增），新增的行内动作用 WorkbenchIconButton 天然带 aria-label + title；「≤3 个直接摆」是构图判断，写进设计系统 §1.8，由样张 / 评审人看。",
+  "shared_boundaries": [
+    {
+      "path": "scripts/check-icon-semantics.mjs",
+      "symbol": "scanUnnamedIconButtons",
+      "responsibility": "原生 button 全是图标且没有 aria-label / title / aria-labelledby / 展开 props 即红"
+    },
+    {
+      "path": "src/workbench/creation/DocumentListSidebar.tsx",
+      "symbol": "RowActions",
+      "responsibility": "行内动作直接摆图标，文稿行 2 个、方案行 3 个，名字走 WorkbenchIconButton"
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/workbench/library/ProjectLibraryPage.tsx",
+      "entry_point": "data-library-tour",
+      "disposition": "enforced",
+      "evidence": "新手引导入口图标旁加可见文字「新手引导」，并保留 hover 名字"
+    },
+    {
+      "path": "src/workbench/generationCanvas/components/SelectionPromptSaveController.tsx",
+      "entry_point": "SelectionPromptSaveController button",
+      "disposition": "not-affected",
+      "evidence": "门岗扫出的唯一存量纯图标无名按钮，已进基线（只减不增），不在本 PR 改"
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "任何新的行内动作或工具条都可能再长出自己的 ⋯ 或没有名字的图标钮",
+    "same_class_scan": [
+      "node scripts/check-icon-semantics.mjs：全仓纯图标无名原生 button 只有 1 个存量",
+      "grep IconDotsVertical：外壳、生成列表分组头、画布分组头仍各有「⋯」，动作数是否 ≤3 需逐个判（本 PR 只改文稿行）"
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "scripts/check-icon-semantics.mjs",
+    "invariant": "纯图标原生 button 必须带名字",
+    "failure_mode": "新增无名纯图标按钮时 check:icon-semantics 红",
+    "exception_policy": "none",
+    "strategy": "在已有的图标门岗上加规则三（补，不另起门岗）；构图规矩进设计系统",
+    "artifacts": [
+      "scripts/check-icon-semantics.mjs",
+      "scripts/icon-semantics-baseline.json"
+    ]
+  },
+  "regression_tests": [
+    "scripts/check-icon-semantics.node-test.mjs",
+    "tests/ux/creation-sidebar-delete.test.mjs"
+  ],
+  "class_regression_tests": [
+    "scripts/check-icon-semantics.node-test.mjs"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "src/workbench/creation/DocumentListSidebar.tsx",
+      "src/design/SwipeToDeleteRow.tsx"
+    ],
+    "rationale": "删掉「⋯」菜单触发钮和 SwipeToDeleteRow 组件（只有这一个使用方）；右键菜单保留给习惯右键的人，与图标走同一组处理函数；方案行 Delete / Backspace 键盘删除改挂在行上"
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "不涉及第三方运行时；用仓库已有的 WorkbenchIconButton 与 Tabler 图标",
+    "exit_criteria": []
+  },
+  "migration": "无存量数据；仅渲染层交互与词条变化",
+  "residual_risks": [
+    "其它面的「⋯」是否超过 3 个动作未逐个判",
+    "文稿行 / 方案行的 Electron 走查（creation-plan-delete-undo、creation-work-surfaces）已改选择器但没在真 Electron 里跑，记 unverified"
+  ]
+}
