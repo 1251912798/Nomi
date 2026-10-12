@@ -2,7 +2,7 @@ import React from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { GenerationCanvasNode } from '../model/generationCanvasTypes'
-import { ToolbarTimelineButton, ToolbarIconButton } from './NodeFloatingToolbar'
+import { ToolbarTimelineButton, ToolbarIconButton, NodeHoverTimelineHandle } from './NodeFloatingToolbar'
 import { TIMELINE_GENERATION_NODE_DRAG_MIME, decodeTimelineGenerationNodeDragPayload } from '../../timeline/timelineDragPayload'
 
 const fixture = vi.hoisted(() => ({ nodes: [] as GenerationCanvasNode[], append: vi.fn() }))
@@ -63,5 +63,23 @@ describe('shared timeline toolbar action', () => {
       fixture.nodes = node ? [node] : []
       expect(ToolbarTimelineButton({ nodeId: 'media' })).toBeNull()
     }
+  })
+  it('renders nothing and refuses to act on a read-only canvas', () => {
+    expect(ToolbarTimelineButton({ nodeId: 'media', readOnly: true })).toBeNull()
+    expect(renderToStaticMarkup(React.createElement(ToolbarTimelineButton, { nodeId: 'media', readOnly: true }))).toBe('')
+    expect(ToolbarTimelineButton({ nodeId: 'media' })).not.toBeNull()
+  })
+
+  it('hover handle: draggable timeline action that stays out of the way until hovered, hidden when the toolbar is present', () => {
+    const html = renderToStaticMarkup(React.createElement(NodeHoverTimelineHandle, { nodeId: 'media' }))
+    expect(html).toContain('data-node-timeline-hover-handle="true"')
+    expect(html).toContain('data-toolbar-action="add-to-timeline"')
+    expect(html).toContain('draggable="true"')
+    expect(html).toContain('opacity-0')
+    expect(html).toContain('group-hover/node:opacity-100')
+    expect(html).toContain('group-has-[[data-node-floating-toolbar]]/node:hidden')
+    expect(renderToStaticMarkup(React.createElement(NodeHoverTimelineHandle, { nodeId: 'media', readOnly: true }))).toBe('')
+    fixture.nodes = [{ ...media(), status: 'running' }]
+    expect(renderToStaticMarkup(React.createElement(NodeHoverTimelineHandle, { nodeId: 'media' }))).toBe('')
   })
 })

@@ -16,7 +16,7 @@ import { ImageQuickActionsToolbarHost } from '../quickActions/ImageQuickActionsT
 import { NodeVersionCardsHost } from './versionCards/NodeVersionCardsHost'
 import { nodeHasVersionCards } from './versionCards/nodeVersionEntries'
 import { useLabelCoveredByVersionGrid } from './versionCards/versionGridCoverage'
-import { EmptyNodeVariantToolbar } from './NodeFloatingToolbar'
+import { EmptyNodeVariantToolbar, NodeHoverTimelineHandle } from './NodeFloatingToolbar'
 import PanoramaNodeToolbar from './render/PanoramaNodeToolbar'
 import { useNodeImageEditing } from './useNodeImageEditing'
 import { isLocalImageOpPending, isRemoveBackgroundPending, isRemoveBackgroundResult } from './localImageOpPhase'
@@ -46,7 +46,7 @@ import { NodeRecoverableReport } from './NodeRecoverableReport'
 import { dismissRecoverableNode, recoverNodeResult } from '../runner/recoverTaskActions'
 import { withProjectAction } from '../../project/projectCanvasReadSurface'
 import { WorkbenchButton } from '../../../design'
-import { getGenerationNodeExecutionKind } from '../model/generationNodeKinds'
+import { getGenerationNodeExecutionKind, isImageLikeGenerationNodeKind } from '../model/generationNodeKinds'
 import { anchorFreezeToolbarProps } from '../fixation/freezeAnchor'
 import { TechnicalReviewBadge } from './TechnicalReviewBadge'
 import { DerivedReadyBadge } from '../quickActions/DerivedReadyBadge'
@@ -240,6 +240,7 @@ function BaseGenerationNodeImpl({
         />
       ) : null}
       {node.kind !== 'panorama' &&
+      (node.kind === 'image' || isAssetKind || isImageLikeGenerationNodeKind(node.kind)) &&
       selected &&
       !isMultiSelectActive &&
       !readOnly &&
@@ -432,6 +433,8 @@ function BaseGenerationNodeImpl({
       ) : null}
 
       {artifactSlots.toolbar}
+
+      {!readOnly ? <NodeHoverTimelineHandle nodeId={node.id} readOnly={readOnly} /> : null}
 
       {!localImageOpPending && !isTextKind ? <NodeGeneratingOverlay reportFeedback={reportFeedback} node={node} motion={waitingMotion} preset={waitingPreset} /> : null}
 

@@ -189,13 +189,13 @@ export function ToolbarIconButton({ icon, disabled, title, ariaLabel, actionId, 
 }
 
 /** 媒体工具栏共用一个入口；动作触发时重读主结果，不沿用渲染时的旧版本。 */
-export function ToolbarTimelineButton({ nodeId }: { nodeId: string }): JSX.Element | null {
+export function ToolbarTimelineButton({ nodeId, readOnly = false }: { nodeId: string; readOnly?: boolean }): JSX.Element | null {
   const { t } = useTranslation()
   const node = useGenerationCanvasStore((state) => selectCanvasNodeById(state, nodeId))
-  if (!node || !canDragGenerationNodeToTimeline(node)) return null
+  if (!node || !canDragGenerationNodeToTimeline(node, { readOnly })) return null
   const liveNode = () => {
     const current = selectCanvasNodeById(useGenerationCanvasStore.getState(), nodeId)
-    return current && canDragGenerationNodeToTimeline(current) ? current : null
+    return current && canDragGenerationNodeToTimeline(current, { readOnly }) ? current : null
   }
   const label = t('timelineEditor.dragToTimeline')
   return <ToolbarIconButton
@@ -218,6 +218,33 @@ export function ToolbarTimelineButton({ nodeId }: { nodeId: string }): JSX.Eleme
       event.dataTransfer.setData(TIMELINE_GENERATION_NODE_DRAG_MIME, encodeTimelineGenerationNodeDragPayload(current))
     }}
   />
+}
+
+/**
+ * 悬停 / 多选时的拖入把手（用户 2026-10-12 拍板「悬停也能拖」）：浮条只在单选时出现，未选中和多选的节点
+ * 靠它直接拖进时间轴；不常驻，悬停或聚焦节点才显出来。复用 ToolbarTimelineButton（同一个拖拽载荷与点击入口，
+ * 不另写一套）。单选且浮条在场时由 `group-has` 藏掉，免得同一动作出现两处。
+ * 隐藏时 pointer-events-none：不挡节点上方的画布框选；悬停节点后开启，把手跨在节点上边缘，指针从节点滑上去仍在节点子树内。
+ */
+export function NodeHoverTimelineHandle({ nodeId, readOnly = false }: { nodeId: string; readOnly?: boolean }): JSX.Element | null {
+  const node = useGenerationCanvasStore((state) => selectCanvasNodeById(state, nodeId))
+  if (!node || !canDragGenerationNodeToTimeline(node, { readOnly })) return null
+  return (
+    <div
+      className={cn(
+        'nodrag generation-canvas-react-flow__no-pan',
+        'absolute left-1/2 top-0 z-[9] inline-flex -translate-x-1/2 -translate-y-1/2 items-center',
+        'rounded-nomi border border-nomi-line bg-nomi-paper shadow-nomi-sm',
+        'pointer-events-none opacity-0 transition-opacity duration-nomi-fast ease-nomi-fast',
+        'group-hover/node:pointer-events-auto group-hover/node:opacity-100 group-focus-within/node:pointer-events-auto group-focus-within/node:opacity-100',
+        'group-has-[[data-node-floating-toolbar]]/node:hidden group-data-[dragging=true]/canvas:invisible',
+      )}
+      data-node-timeline-hover-handle="true"
+      onPointerDown={(event) => event.stopPropagation()}
+    >
+      <ToolbarTimelineButton nodeId={nodeId} readOnly={readOnly} />
+    </div>
+  )
 }
 
 /** 竖分隔线。 */
