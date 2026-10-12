@@ -80,7 +80,7 @@ async function armTimer(win, predicateSource, arg) {
       document.addEventListener('click', () => {
         const t0 = performance.now()
         const tick = () => {
-          let ok = false
+          let ok
           try { ok = predicate(arg) } catch { ok = false }
           if (!ok) { requestAnimationFrame(tick); return }
           requestAnimationFrame(() => requestAnimationFrame(() => { observer.disconnect(); resolve({ ms: performance.now() - t0, longTasks }) }))
