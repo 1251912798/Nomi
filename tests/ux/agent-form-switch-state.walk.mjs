@@ -19,8 +19,7 @@ import { dirOfMetaUrl } from '../../scripts/lib/repoPaths.mjs'
 import { createAgentRuntimeFixture, FIXTURE_TEXT_MODEL_LABEL, flattenRequestText } from './agent-runtime-fixture.mjs'
 import {
   APPROVAL_CARD, COLLAPSED_DOCK, COMPOSER_INPUT, COMPOSER_SEND, PREVIEW_PANEL, TOOL_RECEIPT, USER_BUBBLE,
-  ASSISTANT_MESSAGE, chooseAssistantModel, hasToolResult, recorded,
-} from './agent-runtime-walk-support.mjs'
+  ASSISTANT_MESSAGE, chooseAssistantModel, hasToolResult, recorded, expectComposerText } from './agent-runtime-walk-support.mjs'
 
 const here = dirOfMetaUrl(import.meta.url)
 const shotsDir = path.join(repoRoot, 'tests/ux/shots/agent-form-switch-state')
@@ -88,7 +87,7 @@ const snap = (name) => screenshotSettled(win, { path: path.join(shotsDir, `${nam
 async function expectPanelStateKept(where) {
   const panel = win.locator(PREVIEW_PANEL)
   await expect(panel, `${where}：面板不在`).toBeVisible({ timeout: stationTimeout() })
-  await expect(panel.locator(COMPOSER_INPUT), `${where}：草稿丢了`).toHaveValue(DRAFT)
+  await expectComposerText(panel.locator(COMPOSER_INPUT), DRAFT, `${where}：草稿丢了`)
   await expect(panel.locator(USER_BUBBLE).filter({ hasText: GREETING }), `${where}：已有对话丢了`).toHaveCount(1)
   await expect(panel.locator(ASSISTANT_MESSAGE).filter({ hasText: 'WALK_HELLO' }), `${where}：助手回复丢了`).toHaveCount(1)
   expect(await panel.locator(TOOL_RECEIPT).count(), `${where}：工具回执丢了`).toBeGreaterThan(0)

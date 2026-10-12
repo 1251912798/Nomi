@@ -3,8 +3,7 @@
 import { clickOrFail, expect, proveProbe, expectAbsent } from './_assert.mjs'
 import { flattenRequestText } from './agent-runtime-fixture.mjs'
 import { ASSISTANT_MESSAGE, COMPOSER, COMPOSER_INPUT, COMPOSER_SKILL, CREATION_PANEL,
-  QUEUE_ROW, SKILL_POPOVER, recorded, sendCreation, waitForV4TurnIdle,
-} from './agent-runtime-walk-support.mjs'
+  QUEUE_ROW, SKILL_POPOVER, recorded, sendCreation, waitForV4TurnIdle, expectComposerText } from './agent-runtime-walk-support.mjs'
 import { readLaneTranscripts } from './agent-lane-observer.mjs'
 
 export async function checkOriginalInputJourney(walk, win, { projectId, projectRoot }) {
@@ -55,10 +54,10 @@ export async function checkOriginalInputJourney(walk, win, { projectId, projectR
   const queued = panel.locator(QUEUE_ROW).filter({ hasText: 'CJ3_ORIGINAL' })
   await expect(queued).toBeVisible()
   const queuedProof = await proveProbe(queued, 'The original file and skill message is queued before cancellation')
-  await expect(input).toHaveValue('')
+  await expectComposerText(input, '', '发出去的指令清空了输入框')
   await clickOrFail(queued.getByRole('button', { name: '取消这条指令', exact: true }), '取消尚未消费的附件消息')
   await expectAbsent(queued, { provenBy: queuedProof, message: 'Cancellation removes the previously visible queued message' })
-  await expect(input).toHaveValue(originalText)
+  await expectComposerText(input, originalText, '取消后原文回到输入框')
   await expect(composer.locator('[data-v4-chip="file"]')).toContainText(originalFile)
   await expect(composer.locator('[data-v4-chip="skill"]')).toBeVisible()
   await walk.snap('cj3-cancel-restores-text-skill-file')
@@ -109,7 +108,7 @@ export async function checkOriginalInputJourney(walk, win, { projectId, projectR
   expect(replay.message.context.skillSnapshot).toEqual(original.message.context.skillSnapshot)
   expect(replay.message.context.attachments).toEqual(original.message.context.attachments)
   expect(replay.message.context.storyboardTarget).toEqual(original.message.context.storyboardTarget)
-  await expect(input).toHaveValue(newText)
+  await expectComposerText(input, newText, '输入框里是新文字')
   expect(await composer.locator('[data-v4-chip]').allTextContents()).toEqual(draftChips)
   await walk.snap('cj3-retry-keeps-new-draft-skill-file')
   walk.report.originalInputJourney = { originalEntryId: original.id, replayEntryId: replay.id,
