@@ -60,6 +60,7 @@ import { RESIZE_DIRECTIONS, getNodeSizeBounds, FOCUS_GENERATION_NODE_EVENT, reso
 import { NodeLabelRow } from './NodeLabelRow'
 import { NodeShotLabel } from '../../generation/list/CanvasListLinks'
 import { NodeInlineImageTitle } from './NodeImagePreviewActions'
+import { hasEmptyCardLabel } from './render/emptyCardLabel'
 import { useNodeMediaMeasurement } from './useNodeMediaMeasurement'
 import { useNodeVideoPreviewIntent } from './useNodeVideoPreviewIntent'
 import { useNodeMediaPreview } from './useNodeMediaPreview'
@@ -284,7 +285,7 @@ function BaseGenerationNodeImpl({
       ) : null}
       {mediaPreviewControls}
       <NodeLabelRow>
-        <NodeShotLabel node={node} shotRole={shotIdentity.shotRole}>{!isCardKind && !isTextKind ? <NodeInlineImageTitle nodeId={node.id} value={node.title || ''} readOnly={readOnly} /> : null}</NodeShotLabel>
+        <NodeShotLabel node={node} shotRole={shotIdentity.shotRole}>{(!isCardKind && !isTextKind) || hasEmptyCardLabel({ isCardKind, isTextKind, hasResult, contentJson: node.contentJson }) ? <NodeInlineImageTitle nodeId={node.id} value={node.title || ''} readOnly={readOnly} /> : null}</NodeShotLabel>
         {!isCardKind ? <ShotMountBadges cards={mountedCards} /> : null}
         <TechnicalReviewBadge meta={node.meta} /><DerivedReadyBadge node={node} />
         {/* 拆解收起态（视图 07）：视频节点有拆解结果且面板未占槽时，挂「已拆解 · N 镜」角标 + 可点回浮条。 */}
@@ -431,7 +432,6 @@ function BaseGenerationNodeImpl({
           // 卡片 / 文本卡的空态在它们自己的 body 里（上面），这块预览是隐藏的，不再重复挂一份空态。
           <PendingGenerationPlaceholder
             node={node}
-            selected={selected}
             waitingUpstream={hasFrameSourceEdge} derivedReady={isDerivedPromptReady(node)}
           />
         )}

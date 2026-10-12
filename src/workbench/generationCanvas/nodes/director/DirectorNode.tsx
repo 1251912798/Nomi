@@ -19,6 +19,9 @@ import { persistActiveWorkbenchProjectNow } from '../../../project/workbenchProj
 import type { GenerationCanvasNode } from '../../model/generationCanvasTypes'
 import { useGenerationCanvasStore } from '../../store/generationCanvasStore'
 import { resolveNodeVisualSize } from '../nodeSizing'
+import { NodeEmptyState } from '../render/NodeEmptyState'
+import { useNodeEmptyStateContext } from '../render/NodeEmptyStateContext'
+import { getGenerationNodeIcon } from '../renderRegistry'
 import { assetKindOfFileName } from './model/assetKinds'
 import { DIRECTOR_PREVIEW_META_KEY, DIRECTOR_PROJECT_META_KEY } from './model/directorNodeMeta'
 import { DIRECTOR_PREVIEW_MAX_SECONDS, readDirectorPreview } from './model/directorPreviewState'
@@ -40,6 +43,8 @@ const DirectorEditor = lazyWithChunkBoundary('i18n:director.editor.loading', loa
 type Props = { node: unknown; selected: boolean; readOnly?: boolean }
 
 function DirectorNode({ node: rawNode, selected, readOnly = false }: Props): JSX.Element {
+  const { engaged } = useNodeEmptyStateContext()
+  const EmptyIcon = getGenerationNodeIcon('director')
   const { t } = useTranslation()
   const node = rawNode as GenerationCanvasNode
   const updateNode = useGenerationCanvasStore((state) => state.updateNode)
@@ -174,7 +179,7 @@ function DirectorNode({ node: rawNode, selected, readOnly = false }: Props): JSX
           <IconMovie size={16} stroke={1.9} className="text-nomi-ink-60" />
           <span className="truncate font-medium">{node.title || t('director.node.title')}</span>
           <div className="flex-1" />
-          {!readOnly ? (
+          {!readOnly && (hasContent || engaged) ? (
             <button
               type="button"
               className="inline-flex h-6 w-6 items-center justify-center rounded-nomi-sm text-nomi-ink-60 hover:bg-workbench-hover hover:text-nomi-ink"
@@ -198,10 +203,9 @@ function DirectorNode({ node: rawNode, selected, readOnly = false }: Props): JSX
               <span className="text-body-sm text-nomi-ink">{t('director.node.stats', { objects: stats.objectCount, cameras: stats.cameraCount })}</span>
             </>
           ) : (
-            <>
-              <IconMovie size={30} stroke={1.5} className="text-nomi-ink-30" />
-              <span className="text-caption text-nomi-ink-60">{t('director.node.empty')}</span>
-            </>
+            <div className="min-h-0 w-full flex-1">
+              <NodeEmptyState compact icon={<EmptyIcon size={18} stroke={1.5} />} description={t('director.node.empty')} />
+            </div>
           )}
           {incomingSummary ? <span className="text-micro text-nomi-ink-40">{incomingSummary}</span> : null}
           {preview?.status === 'rendering' ? (
@@ -226,7 +230,7 @@ function DirectorNode({ node: rawNode, selected, readOnly = false }: Props): JSX
               ) : null}
             </span>
           ) : null}
-          {!readOnly ? (
+          {!readOnly && (hasContent || engaged) ? (
             <WorkbenchButton
               size="sm"
               variant="primary"
