@@ -16,7 +16,7 @@ import {
   parseRunTotals,
   triageLabRun,
 } from './failureTriage.mjs'
-import { LAB_ROLES, classifyPortHolder, labPortFor, portHolder } from './labServer.mjs'
+import { LAB_BLOCKED_PORTS, LAB_ROLES, classifyPortHolder, labPortFor, portHolder } from './labServer.mjs'
 import { REPO_ROOT } from './labStates.mjs'
 import { FAILURE_TAIL_LINES } from '../../../scripts/run-gates-contracts.mjs'
 
@@ -193,13 +193,18 @@ describe('实验室端口的 worktree 归属', () => {
       expect(labPortFor(role, here)).toBe(labPortFor(role, here))
       expect(labPortFor(role, here)).not.toBe(labPortFor(role, there))
       expect(labPortFor(role, here)).toBeGreaterThanOrEqual(5300)
-      expect(labPortFor(role, here)).toBeLessThan(5300 + 64 * LAB_ROLES.length)
+      expect(labPortFor(role, here)).toBeLessThan(5300 + 64 * LAB_ROLES.length + LAB_BLOCKED_PORTS.length)
+      expect(LAB_BLOCKED_PORTS, '端口不能落在 fetch 拒连的口上').not.toContain(labPortFor(role, here))
     }
     const ports = new Set(LAB_ROLES.map((role) => labPortFor(role, here)))
     expect(ports.size).toBe(LAB_ROLES.length)
   })
 
   it('没登记的角色当场抛，不静默给一个端口', () => {
+    // 不论路径哈希落在哪一段，任何角色都不许派到 fetch 拒连的口（6667 事故）。
+    for (let seed = 0; seed < 400; seed += 1) {
+      for (const role of LAB_ROLES) expect(LAB_BLOCKED_PORTS).not.toContain(labPortFor(role, `/seed/${seed}`))
+    }
     expect(() => labPortFor('walk-nonexistent')).toThrow(/未知的实验室角色/)
   })
 

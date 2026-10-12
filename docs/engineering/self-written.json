@@ -1901,7 +1901,7 @@
       "alternativesChecked": [
         {
           "name": "调 z-index：生成框在 React Flow 渲染层（z-4）的层叠上下文里，节点视口自带 transform 又是一层，生成框对外只有「渲染层」这一个层级；加节点条 / 缩放簇是舞台的直接子元素，生成框写多大 z 都盖不过。实测定位（走查 elementFromPoint）也证实。",
-          "source": "node_modules/@xyflow/react/dist/style.css（.react-flow__renderer z-index:4、.react-flow__viewport transform）；src/workbench/generationCanvas/components/canvasChromeLayers.ts 顶部说明"
+          "source": "node_modules/@xyflow/react/dist/style.css（.react-flow__renderer z-index:4、.react-flow__viewport transform）；src/workbench/generationCanvas/reactFlow/canvasLayerOrder.ts 里 chromeDock 的说明"
         },
         {
           "name": "把生成框 portal 出节点层、单独渲染在舞台级图层：能让层级值真正生效，但生成框是 59 个走查 / 单测按「在节点 DOM 里」定位的（.generation-canvas-v2-node__composer），位置要改成按屏幕坐标换算，TipTap 编辑器还要保持挂载不丢输入，blast radius 太大，这一刀不走。",
@@ -1913,7 +1913,23 @@
         }
       ],
       "whyNotIntegrated": "Domain constraint：生成框与外框控件的相交关系只有画布自己知道（哪个节点被选中、生成框此刻的屏幕矩形、控件是否上抬），通用的 z-index / 层叠机制在 React Flow 的层叠上下文边界处做不到；没有现成库做「画布外框控件让位于节点浮层」这件事。量的时机用浏览器现成的 MutationObserver / ResizeObserver 触发、合并到一帧（createFrameCoalescer 十几行），选中变化、视口平移缩放、节点被挪、生成框挂卸与变大小才量一次，静止时不读布局。",
-      "revisitWhen": "生成框挪出节点层单独渲染后删除（2026-11-15 复查一次：画布层级表合入、生成框能直接用层级值盖住外框控件时，删本文件与 canvasChromeLayers 里的说明）"
+      "revisitWhen": "生成框挪出节点层单独渲染后删除（2026-11-15 复查一次：画布层级表合入、生成框能直接用层级值盖住外框控件时，删 canvasLayerOrder 里 chromeDock 的说明）"
+    },
+    {
+      "id": "canvas-layer-order",
+      "capability": "画布叠层 z 值表：分组框体、框头、节点层、选中节点、生成框、工具条的先后顺序（唯一 owner）",
+      "status": "justified",
+      "paths": [
+        "src/workbench/generationCanvas/reactFlow/canvasLayerOrder.ts"
+      ],
+      "alternativesChecked": [
+        {
+          "name": "React Flow 官方 zIndex / ViewportPortal（框架只给层叠上下文，没有跨 ViewportPortal 与节点层的统一 z 接口）",
+          "source": "node_modules/@xyflow/react/dist/style.css（.react-flow__viewport z-index 2、.react-flow__nodes 无 z、.react-flow__viewport-portal 无 z）"
+        }
+      ],
+      "whyNotIntegrated": "领域约束：分组框头、框体、节点层与生成框的先后顺序是 Nomi 画布的约定（框头不压节点的生成框，选中节点在节点层内抬起），框架只给出层叠上下文，不知道谁压谁。表本身只是几十个数字，不含通用逻辑。",
+      "revisitWhen": "React Flow 提供跨 ViewportPortal 的统一 z 管理接口时复查"
     },
     {
       "id": "agent-inline-reference-admission",
