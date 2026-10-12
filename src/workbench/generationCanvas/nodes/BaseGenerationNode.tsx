@@ -60,6 +60,7 @@ import { RESIZE_DIRECTIONS, getNodeSizeBounds, FOCUS_GENERATION_NODE_EVENT, reso
 import { NodeLabelRow } from './NodeLabelRow'
 import { NodeShotLabel } from '../../generation/list/CanvasListLinks'
 import { NodeInlineImageTitle } from './NodeImagePreviewActions'
+import { hasEmptyCardLabel } from './render/emptyCardLabel'
 import { useNodeMediaMeasurement } from './useNodeMediaMeasurement'
 import { useNodeVideoPreviewIntent } from './useNodeVideoPreviewIntent'
 import { useNodeMediaPreview } from './useNodeMediaPreview'
@@ -162,6 +163,7 @@ function BaseGenerationNodeImpl({
   // C5: 文本节点走专属可编辑 body（TextDocumentNode），像 card 那样脱离图片预览。
   const isTextKind = node.kind === 'text'
   const hasResult = Boolean(node.result?.url)
+  const isEmptyLabelledKind = hasEmptyCardLabel({ isCardKind, isTextKind, hasResult, contentJson: node.contentJson })
   const mediaPreviewPriority = selected || focusFlash
   const localImageOpPending = isLocalImageOpPending(node)
   // 可视尺寸（卡片固定宽 / 动态高）的单一真相源 resolveNodeVisualSize——连线锚点 / 最小地图 /
@@ -284,7 +286,7 @@ function BaseGenerationNodeImpl({
       ) : null}
       {mediaPreviewControls}
       <NodeLabelRow>
-        <NodeShotLabel node={node} shotRole={shotIdentity.shotRole}>{(!isCardKind && !isTextKind) || (!hasResult && status === 'idle') ? <NodeInlineImageTitle nodeId={node.id} value={node.title || ''} readOnly={readOnly} /> : null}</NodeShotLabel>
+        <NodeShotLabel node={node} shotRole={shotIdentity.shotRole}>{(!isCardKind && !isTextKind) || isEmptyLabelledKind ? <NodeInlineImageTitle nodeId={node.id} value={node.title || ''} readOnly={readOnly} /> : null}</NodeShotLabel>
         {!isCardKind ? <ShotMountBadges cards={mountedCards} /> : null}
         <TechnicalReviewBadge meta={node.meta} /><DerivedReadyBadge node={node} />
         {/* 拆解收起态（视图 07）：视频节点有拆解结果且面板未占槽时，挂「已拆解 · N 镜」角标 + 可点回浮条。 */}

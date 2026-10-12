@@ -22,7 +22,7 @@ import { useNomiRichTextEditor } from '../../../common/useNomiRichTextEditor'
 import { NODE_SCROLL_REGION_CLASS_NAME } from '../nodeScrollRegionClassName'
 import { buildRichTextActions } from '../../../common/richTextActions'
 import { NodeEmptyState } from './NodeEmptyState'
-import { useNodeEmptyStateContext } from './NodeEmptyStateContext'
+import { isDocEmpty } from './emptyCardLabel'
 import { toast } from '../../../../ui/toast'
 import { requestTaskCancel } from '../../runner/localTaskControl'
 import { presetBlockHint, runTextPreset, useTextPresetBlocks } from '../textProcessRun'
@@ -43,18 +43,7 @@ type Props = {
   node: GenerationCanvasNode
 }
 
-/** 文档是否为空（无内容，或只有一个空段落）——用于显示占位提示。 */
-function isDocEmpty(doc?: TiptapDocJson): boolean {
-  const content = doc?.content
-  if (!content || content.length === 0) return true
-  return content.every((entry) => {
-    const block = entry as { type?: string; content?: unknown[] }
-    return block.type === 'paragraph' && (!block.content || block.content.length === 0)
-  })
-}
-
 function TextDocumentNodeImpl({ node }: Props): JSX.Element {
-  const { engaged } = useNodeEmptyStateContext()
   const { t } = useTranslation()
   const writeNodeBody = useGenerationCanvasStore((state) => state.writeNodeBody)
   const commitPersistedChange = useGenerationCanvasStore((state) => state.commitPersistedChange)
@@ -166,7 +155,7 @@ function TextDocumentNodeImpl({ node }: Props): JSX.Element {
 
       <div className="flex h-full w-full flex-col overflow-hidden rounded-nomi bg-nomi-paper shadow-nomi-md ring-1 ring-inset ring-nomi-line">
         {/* 拖拽手柄：非 contenteditable，pointerdown 冒泡到 BaseGenerationNode 触发拖动。 */}
-        {(!showPlaceholder || engaged || isFocused) ? <header
+        <header
           className={cn(
             'shrink-0 flex items-center gap-1 h-7 px-2',
             'border-b border-nomi-line-soft text-nomi-ink-40',
@@ -176,7 +165,7 @@ function TextDocumentNodeImpl({ node }: Props): JSX.Element {
         >
           <IconGripVertical size={13} stroke={1.8} aria-hidden="true" />
           <span className="text-micro font-medium tracking-[0.04em]">{t('generationCommon.textDocument.label')}</span>
-        </header> : null}
+        </header>
 
         {/* 正文：ProseMirror 编辑区。stopPropagation 挡画布快捷键；select-text/touch-auto 覆盖
             外层 article 的 select-none/touch-none；[&_.ProseMirror]:outline-none 去掉 contenteditable
