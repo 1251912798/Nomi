@@ -1,0 +1,57 @@
+[
+  {
+    "project": "doop",
+    "repository": "https://github.com/kgoedecke/doop",
+    "ref": "main",
+    "sha": "1e9136dc0a837452821c837c0ea6cd7c9d140fb8",
+    "observed_date": "2026-10-12",
+    "evidence": "official repository source and documentation; no runtime verification",
+    "source_url": "https://github.com/kgoedecke/doop/tree/1e9136dc0a837452821c837c0ea6cd7c9d140fb8"
+  },
+  {
+    "project": "onlook",
+    "repository": "https://github.com/onlook-dev/onlook",
+    "ref": "main",
+    "sha": "423e2e924366419e418ee049093872d535eea41a",
+    "observed_date": "2026-10-12",
+    "evidence": "official repository source and documentation; no runtime verification",
+    "source_url": "https://github.com/onlook-dev/onlook/tree/423e2e924366419e418ee049093872d535eea41a"
+  },
+  {
+    "project": "affine",
+    "repository": "https://github.com/toeverything/AFFiNE",
+    "ref": "canary",
+    "sha": "0b69a6da21e8fd35beb85667bb8496d9b3852238",
+    "observed_date": "2026-10-12",
+    "evidence": "official repository source and documentation; no runtime verification",
+    "source_url": "https://github.com/toeverything/AFFiNE/tree/0b69a6da21e8fd35beb85667bb8496d9b3852238"
+  },
+  {
+    "project": "opencanvas",
+    "repository": "https://github.com/ashark-ai-05/opencanvas",
+    "ref": "main",
+    "sha": "8e50f7fc3d0de047c531ac9be5e37255aa9615ec",
+    "observed_date": "2026-10-12",
+    "evidence": "official repository source and documentation; no runtime verification",
+    "source_url": "https://github.com/ashark-ai-05/opencanvas/tree/8e50f7fc3d0de047c531ac9be5e37255aa9615ec"
+  },
+  {
+    "project": "hugagentos",
+    "repository": "https://github.com/ZJU-REAL/HugAgentOS",
+    "ref": "main",
+    "sha": "a07b9f74919f518ea907112bb78c50dc37e99349",
+    "observed_date": "2026-10-12",
+    "evidence": "official repository source and documentation; no runtime verification",
+    "source_url": "https://github.com/ZJU-REAL/HugAgentOS/tree/a07b9f74919f518ea907112bb78c50dc37e99349"
+  },
+  {
+    "project": "opendesign",
+    "repository": "https://github.com/nexu-io/open-design",
+    "ref": "main",
+    "sha": "17e255959703a3fad7c8eb7f7b70dcafccc5629a",
+    "observed_date": "2026-10-12",
+    "evidence": "official repository source and documentation; no runtime verification",
+    "canonical_source": "https://open-design.ai/official/",
+    "source_url": "https://github.com/nexu-io/open-design/tree/17e255959703a3fad7c8eb7f7b70dcafccc5629a"
+  }
+]
