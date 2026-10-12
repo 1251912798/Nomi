@@ -37,6 +37,11 @@
  *     那不是漂移；硬做会产生几百条永远修不掉的基线，然后没人再看这道门岗。
  *   · 不查图标隐喻对不对 —— 那是 §6 的盲测，人工。
  *
+ * 规则三（2026-10-10 加）：**纯图标按钮必须带名字**（用户拍板：行内动作直接摆图标，名字放 hover + 读屏）。
+ *   判据：原生 `<button>`，子节点全是 Tabler 图标（三元的两支也是图标），且没有 aria-label / title /
+ *   aria-labelledby、也没有 `{...spread}`（展开的 props 里可能带名字，判不了就不判）= 红。
+ *   `WorkbenchIconButton` 自带 label→aria-label+title，不在此列。存量按**文件计数**进基线 `unnamedIconButtons`，只减不增。
+ *
  * 棘轮：`scripts/icon-semantics-baseline.json` 记录存量冲突（`conflicts`）与存量词典（`dictionary`），**只减不增**。
  *   `--update-baseline` 重拍快照（只在真的清掉了冲突之后用）。
  *   `--report` 只列出全部 动作→图标 映射，不判红。
@@ -216,6 +221,67 @@ export function loadRegisteredIcons(root = ROOT) {
   return registered
 }
 
+/* ───────────────────────── 规则三：纯图标按钮必须带名字 ───────────────────────── */
+
+const NAME_ATTRS = new Set(['aria-label', 'ariaLabel', 'title', 'aria-labelledby'])
+
+/** 全仓「纯图标、没名字」的原生 button → { 文件: [行号] }。 */
+export function scanUnnamedIconButtons(root = ROOT, scanRoots = SCAN_ROOTS) {
+  const found = {}
+  for (const scanRoot of scanRoots) {
+    for (const file of collectFiles(path.join(root, scanRoot), root, [], DICTIONARY_EXCLUDED_PREFIXES)) {
+      const text = fs.readFileSync(file, 'utf8')
+      if (!text.includes('@tabler/icons-react')) continue
+      const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
+      const tablerIcons = new Set()
+      source.forEachChild((node) => {
+        if (!ts.isImportDeclaration(node)) return
+        if (!ts.isStringLiteral(node.moduleSpecifier) || node.moduleSpecifier.text !== '@tabler/icons-react') return
+        const named = node.importClause?.namedBindings
+        if (named && ts.isNamedImports(named)) for (const el of named.elements) tablerIcons.add(el.name.text)
+      })
+      if (tablerIcons.size === 0) continue
+      const rel = path.relative(root, file).split(path.sep).join('/')
+      const isIconNode = (node) => {
+        if (ts.isJsxSelfClosingElement(node)) return tablerIcons.has(jsxTagOf(node))
+        if (ts.isJsxElement(node)) return tablerIcons.has(jsxTagOf(node))
+        return false
+      }
+      const isIconChild = (child) => {
+        if (ts.isJsxText(child)) return child.getText().trim() === ''
+        if (isIconNode(child)) return true
+        if (ts.isJsxExpression(child) && child.expression) {
+          const expr = child.expression
+          if (ts.isConditionalExpression(expr)) return [expr.whenTrue, expr.whenFalse].every((b) => {
+            const inner = ts.isParenthesizedExpression(b) ? b.expression : b
+            return isIconNode(inner)
+          })
+          const inner = ts.isParenthesizedExpression(expr) ? expr.expression : expr
+          return isIconNode(inner)
+        }
+        return false
+      }
+      const visit = (node) => {
+        if (ts.isJsxElement(node) && jsxTagOf(node) === 'button') {
+          const children = node.children
+          const hasIcon = children.some((c) => !ts.isJsxText(c))
+          if (hasIcon && children.every(isIconChild)) {
+            const attrs = node.openingElement.attributes.properties
+            const named = attrs.some((a) => ts.isJsxSpreadAttribute(a) || (ts.isJsxAttribute(a) && NAME_ATTRS.has(a.name.getText())))
+            if (!named) {
+              const line = source.getLineAndCharacterOfPosition(node.getStart()).line + 1
+              ;(found[rel] ??= []).push(line)
+            }
+          }
+        }
+        node.forEachChild(visit)
+      }
+      visit(source)
+    }
+  }
+  return found
+}
+
 /** 冲突 = 同一动作被配了 ≥2 个不同图标（已折叠状态切换）。 */
 export function findConflicts(pairs) {
   const conflicts = []
@@ -262,6 +328,8 @@ if (REPORT) {
 }
 
 const conflictIds = conflicts.map(conflictId).sort()
+const unnamed = scanUnnamedIconButtons()
+const unnamedCounts = Object.fromEntries(Object.entries(unnamed).map(([f, lines]) => [f, lines.length]).sort(([a], [b]) => a.localeCompare(b)))
 
 const savedRaw = fs.existsSync(BASELINE_FILE) ? JSON.parse(fs.readFileSync(BASELINE_FILE, 'utf8')) : {}
 
@@ -273,6 +341,8 @@ if (UPDATE_BASELINE) {
       dictionaryNote:
         'dictionary = 立项时全仓在用的 Tabler 图标词典（设计系统 §1.8 规则 5）。新图标不许往这里加，'
         + '要先登记进 docs/design/nomi-design-system.md §6「语义图标登记」表；不再用的图标从这里删。',
+      unnamedIconButtonsNote: '存量「纯图标、没名字」的原生 button，按文件计数；只减不增（规则三）。新按钮请用 WorkbenchIconButton 或自己补 aria-label + title。',
+      unnamedIconButtons: unnamedCounts,
       conflicts: conflictIds,
       dictionary: icons,
     }, null, 2)}\n`,
@@ -300,6 +370,18 @@ if (added.length > 0) {
 同一个动作在全仓只能有一个图标（设计系统 §1.5.2「一功能一个家」的图标实例）。
 修法：挑定一个图标，其余改成它；并登记进 docs/design/nomi-design-system.md §6「语义图标登记」。
 （存量 ${baseline.length} 个已在基线里，棘轮只减不增；真清掉了跑 --update-baseline。）`)
+  process.exit(1)
+}
+
+const unnamedBaseline = savedRaw.unnamedIconButtons ?? {}
+const unnamedOver = Object.entries(unnamed).filter(([file, lines]) => lines.length > (unnamedBaseline[file] ?? 0))
+if (unnamedOver.length > 0) {
+  console.error(`❌ check:icon-semantics 规则三 —— ${unnamedOver.length} 个文件新增了没有名字的纯图标按钮：
+`)
+  for (const [file, lines] of unnamedOver) console.error(`  ✗ ${file}:${lines.join(', ')}（基线 ${unnamedBaseline[file] ?? 0} 个，现 ${lines.length} 个）`)
+  console.error(`
+纯图标按钮必须带名字（设计系统 §1.8 规则 2 补充）：读屏和键盘聚焦读不到悬停提示。
+修法：用 WorkbenchIconButton（label 同时写进 aria-label 与 title），或给 <button> 补 aria-label={t(...)} 与 title={t(...)}。`)
   process.exit(1)
 }
 

@@ -24,12 +24,15 @@ export function createTempWorkspace(
     teardown() {
       if (tornDown) return;
       tornDown = true;
-      fs.rmSync(root, { recursive: true, force: true });
+      // 先还原宿主环境，再删目录：删除失败也不能把临时目录的环境变量漏给后续进程。
       for (const key of TEMP_KEYS) {
         const value = previous.get(key);
         if (value === undefined) delete env[key];
         else env[key] = value;
       }
+      // Windows 上 Chromium 关窗后还会短暂锁住 profile 里的日志文件（EBUSY / EPERM）；
+      // 交给 Node 自带的重试处理这类瞬时锁，不在测试里自己写等待。
+      fs.rmSync(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
     },
   };
 }
