@@ -37,7 +37,7 @@ import {
   softenTimeout,
 } from './pre-push-contracts.mjs'
 import { NOT_SOURCE_SCANS, SCAN_GUARDS, SCAN_GUARD_CI_ONLY, SCAN_GUARD_COVERED_BY_GATE, SCAN_GUARDS_GATE, gateImplementation, scanGuardProblems, touchesScanGuard } from './pre-push-scan-guards.mjs'
-import { MAX_RELATED_FILES, NODE_TEST_ARGV_PREFIX, RELATED_TESTS_GATE, SLOW_TEST_FILES, relatedTests, runRelatedTests, stemOf } from './pre-push-related-tests.mjs'
+import { MAX_RELATED_FILES, NODE_TEST_ARGV_PREFIX, RELATED_TESTS_GATE, SLOW_TEST_FILES, relatedTests, runRelatedTests, startsBrowser, stemOf, tokenReferences } from './pre-push-related-tests.mjs'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const read = (file) => fs.readFileSync(path.join(repoRoot, file), 'utf8')
@@ -335,8 +335,45 @@ test('必红：造一个改了 build 脚本的改动集 → 选中 scripts/elect
   }
 })
 
+test('必红：起浏览器 / 页面服务的测试不进推送前（只在 CI 跑），列入 browser 计数；识别靠 import playwright 的结构信号', async () => {
+  // 改动的就是这个浏览器测试：不进 vitest 车道，进 browser 清单
+  const own = relatedTests(['tests/ux/creation-sidebar-delete.test.mjs'], { root: repoRoot })
+  assert.ok(!own.vitest.includes('tests/ux/creation-sidebar-delete.test.mjs'), JSON.stringify(own))
+  assert.ok(own.browser.includes('tests/ux/creation-sidebar-delete.test.mjs'), JSON.stringify(own))
+  // 识别信号：静态 / 动态 import / require playwright(-core)；只在字符串里提到不算
+  assert.equal(startsBrowser("import { chromium } from 'playwright'\n"), true)
+  assert.equal(startsBrowser("const { _electron } = await import('playwright-core')\n"), true)
+  assert.equal(startsBrowser("const { chromium } = require('playwright')\n"), true)
+  assert.equal(startsBrowser("const text = 'see playwright docs'\n"), false)
+  assert.equal(startsBrowser("import { createServer } from 'vite'\n"), false)
+  assert.equal(startsBrowser("import {\n  chromium,\n} from 'playwright'\n"), true)
+  // 钩子输出：点名「交给 CI」并给数量
+  const done = await runRelatedTests({ vitest: [], node: [], browser: ['tests/ux/a.test.mjs', 'tests/ux/b.test.mjs'], skipped: [], truncated: 0 }, isolatedRun)
+  assert.match(done.note, /2 个起浏览器的测试交给 CI/)
+  assert.match(done.note, /tests\/ux\/a\.test\.mjs/)
+})
+
+test('必红：按真正的模块引用匹配，裸词 main 不再命中 origin/main（改 src/main.tsx 不连带选中一片测试）', () => {
+  assert.equal(tokenReferences('origin/main', 'scripts/x.test.mjs', 'src/main.tsx'), false)
+  assert.equal(tokenReferences('main', 'scripts/x.test.mjs', 'src/main.tsx'), false)
+  assert.equal(tokenReferences('./main', 'src/main.test.tsx', 'src/main.tsx'), true)
+  assert.equal(tokenReferences('../main', 'src/ui/a.test.tsx', 'src/main.tsx'), true)
+  assert.equal(tokenReferences('../main', 'electron/a.test.ts', 'src/main.tsx'), false)
+  assert.equal(tokenReferences('src/main', 'tests/a.test.mjs', 'src/main.tsx'), true)
+  assert.equal(tokenReferences('@/main', 'src/ui/a.test.tsx', 'src/main.tsx'), true)
+  assert.equal(tokenReferences('main.tsx', 'tests/a.test.mjs', 'src/main.tsx'), true)
+  assert.equal(tokenReferences('build-electron.mjs', 'scripts/electron-build.test.mjs', 'scripts/build-electron.mjs'), true)
+  assert.equal(tokenReferences('./Foo', 'src/a.test.tsx', 'src/Foo/index.ts'), true)
+  assert.equal(tokenReferences('../Foo/index', 'src/x/a.test.tsx', 'src/Foo/index.ts'), true)
+  const selection = relatedTests(['src/main.tsx'], { root: repoRoot })
+  const all = [...selection.vitest, ...selection.node]
+  for (const file of ['scripts/merge-preflight.node-test.mjs', 'scripts/git-delivery.node-test.mjs', 'electron/logging/logger.test.ts', 'electron/quitLifecycleGuard.test.ts']) {
+    assert.ok(!all.includes(file), `${file} 只写了 'origin/main' 之类字样，不该被 src/main.tsx 选中`)
+  }
+})
+
 test('选择规则：改动的测试自己、同名测试、按引号提到它的测试都选中；纯文档 / 配置不触发；node:test 与 vitest 分路', () => {
-  assert.deepEqual(relatedTests(['docs/engineering/x.md', 'package.json'], { root: repoRoot }), { vitest: [], node: [], skipped: [], truncated: 0 })
+  assert.deepEqual(relatedTests(['docs/engineering/x.md', 'package.json'], { root: repoRoot }), { vitest: [], node: [], browser: [], skipped: [], truncated: 0 })
   // 改动的测试文件本身
   assert.deepEqual(relatedTests(['scripts/electron-build.test.mjs'], { root: repoRoot }).vitest, ['scripts/electron-build.test.mjs'])
   // 同名约定：foo.mjs ↔ foo.node-test.mjs
@@ -367,13 +404,13 @@ test('必红：假慢测试（永不退出）→ 到上限被终止、不算红�
   fs.writeFileSync(slow, ["import test from 'node:test'", "test('hang', () => new Promise(() => setInterval(() => {}, 1000)))", ''].join('\n'))
   fs.writeFileSync(red, ["import test from 'node:test'", "import assert from 'node:assert/strict'", "test('red', () => assert.equal(1, 2))", ''].join('\n'))
   const started = Date.now()
-  const timedOut = await runRelatedTests({ vitest: [], node: [slow], skipped: [], truncated: 0 }, isolatedRun, { budgetMs: 1500 })
+  const timedOut = await runRelatedTests({ vitest: [], node: [slow], browser: [], skipped: [], truncated: 0 }, isolatedRun, { budgetMs: 1500 })
   assert.ok(Date.now() - started < 30_000, '超时上限没生效')
   assert.equal(timedOut.status, 0, '超时不算红')
   assert.match(timedOut.note, /相关单测没跑完/)
   assert.match(timedOut.note, /CI 会跑/)
   assert.ok(timedOut.note.includes(slow), '要点名没跑的文件')
-  const failed = await runRelatedTests({ vitest: [], node: [red], skipped: [], truncated: 0 }, isolatedRun, { budgetMs: 60_000 })
+  const failed = await runRelatedTests({ vitest: [], node: [red], browser: [], skipped: [], truncated: 0 }, isolatedRun, { budgetMs: 60_000 })
   assert.notEqual(failed.status, 0, '上限内真红必须拦')
 })
 
@@ -383,7 +420,7 @@ test('必红：被选中的 node:test 要加载 .mts / .ts（CI 里是 tsx --tes
   const needsTsx = path.join(dir, 'needs-tsx.node-test.mjs')
   fs.writeFileSync(helper, 'export const answer: number = 42')
   fs.writeFileSync(needsTsx, ["import test from 'node:test'", "import assert from 'node:assert/strict'", "import { pathToFileURL } from 'node:url'", "test('加载 .mts', async () => {", `  const mod = await import(pathToFileURL(${JSON.stringify(helper)}).href)`, '  assert.equal(mod.answer, 42)', '})', ''].join(String.fromCharCode(10)))
-  const result = await runRelatedTests({ vitest: [], node: [needsTsx], skipped: [], truncated: 0 }, isolatedRun, { budgetMs: 60_000 })
+  const result = await runRelatedTests({ vitest: [], node: [needsTsx], browser: [], skipped: [], truncated: 0 }, isolatedRun, { budgetMs: 60_000 })
   assert.equal(result.status, 0, result.output)
   assert.match(result.note, /node:test 1 个文件通过/)
   assert.deepEqual([...NODE_TEST_ARGV_PREFIX], ['--import', 'tsx', '--test'])

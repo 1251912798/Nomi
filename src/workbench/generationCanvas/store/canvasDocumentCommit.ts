@@ -26,6 +26,7 @@ import type { GenerationCanvasEdge, GenerationCanvasNode, NodeGroup } from '../m
 import { bumpPersistRevision } from './canvasGuards'
 import { clearClipboard } from './canvasClipboard'
 import { reportSkippedEdges } from './canvasEdgeWrite'
+import { reconcileTimelineForNodeSetChange, reconcileTimelineForRestoredNodes } from './canvasTimelineBridge'
 import { convergeStuckMidFlightNodes, normalizeStoreSnapshot } from './canvasSnapshotNormalizer'
 import { nodeRunOutcomePatch, reapplyLandedOutcomes, type HeldNodeOutcome } from './nodeRunOutcome'
 import type { CanvasDocumentActions, CanvasSliceCreator, GenerationCanvasState, HeldNodeOutcomes } from './canvasStoreTypes'
@@ -218,6 +219,7 @@ export const createCanvasDocumentActions: CanvasSliceCreator<CanvasDocumentActio
         emitCanvasGesture([{ type: 'canvas.snapshot.restored', payload: { snapshot: { nodes: next.nodes, edges: next.edges, groups: next.groups } } }])
         emitReturnedLandings(next.returned)
         replayProductionCanvasIntent(write.restore, write.direction)
+        reconcileTimelineForNodeSetChange(live.nodes, next.nodes)
         return
       }
       case 'external': {
@@ -243,6 +245,7 @@ export const createCanvasDocumentActions: CanvasSliceCreator<CanvasDocumentActio
         emitCanvasGesture([{ type: 'canvas.snapshot.restored', payload: { snapshot: next } }])
         emitReturnedLandings(settled.returned)
         emitProductionSignalsForDocumentChange(live.projectId, live.nodes, next.nodes)
+        reconcileTimelineForNodeSetChange(live.nodes, next.nodes)
         return
       }
       case 'put-back': {
@@ -269,6 +272,7 @@ export const createCanvasDocumentActions: CanvasSliceCreator<CanvasDocumentActio
         ])
         emitProductionCanvasSignal({ kind: 'reattach', projectId: live.projectId, nodes: incoming })
         emitReturnedLandings(settled.returned)
+        reconcileTimelineForRestoredNodes(incoming.map((node) => node.id))
         return
       }
       case 'node-fields': {
