@@ -51,3 +51,9 @@
 原生拖拽通道诊断证明：只有pointer/mouse事件、stage dragging=true、无dragstart/drop，实际执行canvasDragWriteback并从200px/16落到帧12而碰撞。共同浮条缺少框架native mousedown过滤；复用版本宫格既有nodrag/no-pan类，先红共享壳守卫再修复。验收必须证明生产MIME原生事件、默认贴尾、Alt指定帧75、源节点不动；不能只凭落轴结果当成按钮原生拖拽。
 
 最终独立验收线 V-20261012-TIMELINE：真实 Electron zh/en 全40项通过，38张截图；主实现线亲眼核对中文指定位置成功/Undo和英文窄窗视频工具栏截图，确认复用折线四点图形、无刘海、原按钮保留。见[独立报告](../evidence/2026-10-12-node-timeline-toolbar-independent.md)。
+
+## 审查修订（协调 10-12）
+
+- 用户拍板「悬停也能拖」：浮条只在单选时出现，所以未选中 / 多选的节点悬停时在节点内左上角显出同一个时间轴按钮（`NodeHoverTimelineHandle`，复用 `ToolbarTimelineButton` 与同一拖拽载荷，不常驻、单选且浮条在场时隐藏）。
+- 图片快捷工具条恢复原来的 kind 条件（image / asset / 图片类）；旧版 shot / output 节点没有浮条，入口走悬停把手（点击贴尾、拖拽自选落点、键盘 Enter / Space 同前）。
+- 时间轴按钮两处可用性判断补回 `{ readOnly }`。
