@@ -104,10 +104,12 @@ export type LookupResult =
  * 用户重提一次就会**静默把 V2 落进去**——而他看的缩略图可能还是 V1。
  * 所以「换版」必须比「轴动过」更早被截住。
  */
-export function lookupAdoptionProposal(key: AdoptionProposalKey): LookupResult {
+export function lookupAdoptionProposal(key: AdoptionProposalKey, timeline: TimelineState): LookupResult {
   const keyId = proposalKeyId(key)
   const exact = entries.get(keyId)
-  if (exact && exact.proposal.status === 'applied') {
+  // 全等键意味着 baseRevision 与上次采纳前完全相同，即轴被还原成了采纳前的样子（撤销）。
+  // 成果不在轴上就不是重放，必须放行重新采纳，否则用户撤销后再拖一次只会得到「已在时间轴上」。
+  if (exact && exact.proposal.status === 'applied' && proposalIsLanded(exact.proposal, timeline)) {
     return { kind: 'replay', proposal: exact.proposal }
   }
 
