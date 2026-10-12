@@ -12,6 +12,7 @@ const html = ({ selected, ...props }: Record<string, unknown>) => renderToStatic
 )
 
 describe('pending media action', () => {
+  // 依据：2026-10-12 用户拍板「浏览态只留图标」，取代 10-08 拍板 ③「浏览态也显示试试」；下面被翻转的断言（selected: false → 无「试试」）是有意的。
   it.each(['image', 'video', 'model3d', 'keyframe', 'shot', 'output'] as const)('browsing an empty %s keeps only its type icon', (kind) => {
     const out = html({ node: node(kind), selected: false })
     expect(out).toContain('data-empty-tier="icon"')

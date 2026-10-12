@@ -15,6 +15,7 @@ import { cn } from '../../../../utils/cn'
 import i18n from '../../../../i18n'
 import { NodeEmptyState } from './NodeEmptyState'
 import type { GenerationCanvasNode } from '../../model/generationCanvasTypes'
+import { getGenerationNodeLabel } from '../../model/generationNodeKinds'
 import { NodeTryList } from '../../quickActions/NodeTryList'
 import { nodeTryRecipes } from '../../quickActions/nodeTryRecipes'
 import { resolveNodeVisualSize } from '../nodeSizing'
@@ -140,7 +141,8 @@ export function VariantChip({ count }: { count: number }): JSX.Element | null {
 
 /**
  * 空媒体只给下一步；镜头号和标题属于共同框外标签行。
- * 2026-10-08 拍板 ③：图片 / 视频空卡用「试试」（2–3 个只搭结构的创作任务）**替换**那一句操作说明——
+ * 2026-10-08 拍板 ③：图片 / 视频空卡用「试试」（2–3 个只搭结构的创作任务）**替换**那一句操作说明；
+ * 2026-10-12 用户改：浏览态（没选中）只留类型图标，选中单选才出「试试」——
  * 标题和说明都不再出现（种类已由图标和框外标签行说了）。派生好待生成、已连上游等产出两种状态仍是一句话：
  * 那是在告诉用户此刻的状态，不是教他怎么用。3D 模型还没有配方，保留原说明。
  */
@@ -179,7 +181,7 @@ export function PendingGenerationPlaceholder({
     ? t('generationCommon.nodeEmpty.video.title')
     : isModel3d
       ? t('generationCommon.nodeEmpty.model3d.title')
-      : t(`runtime.nodeRegistry.${node.kind}.menu` as 'runtime.nodeRegistry.image.menu')
+      : getGenerationNodeLabel(node.kind)
   const description = derivedReady
     ? t('generationCommon.nodeEmpty.derivedReady.description')
     : waitingUpstream
