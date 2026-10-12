@@ -10,6 +10,8 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import { loadScenarios, parsePerfEvidence, scenarioIds } from './perf-scenarios-lib.mjs'
+
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 
 export const ROUTING_FILE = 'docs/engineering/test-routing.json'
@@ -63,6 +65,8 @@ export function inferRoutes(files, addedLines = '', table = loadRoutingTable()) 
     byCategory.set(category, [...(byCategory.get(category) ?? []), file])
     if (legacy) hits.push({ cls: legacy, path: file })
   }
+  // category 可以是数组（2026-10-11：界面 / 画布 / 长跑改动同时落进「新增功能 / 性能」类，性能证据只在 perf 类定义一份）；四类的 legacy 标签只记一次
+  const addAll = (category, legacy, file) => [].concat(category).forEach((id, index) => add(id, index === 0 ? legacy : undefined, file))
   const rules = (table.pathRules ?? []).map((rule) => ({
     ...rule,
     re: new RegExp(rule.pattern, 'i'),
@@ -76,7 +80,7 @@ export function inferRoutes(files, addedLines = '', table = loadRoutingTable()) 
       if (rule.scopeRe && !rule.scopeRe.test(p)) continue
       if (rule.excludeRe && rule.excludeRe.test(p)) continue
       if (rule.added && file.status !== 'A') continue
-      if (rule.re.test(p)) add(rule.category, rule.legacy, p)
+      if (rule.re.test(p)) addAll(rule.category, rule.legacy, p)
     }
   }
   const abort = table.abortSignal
@@ -86,7 +90,7 @@ export function inferRoutes(files, addedLines = '', table = loadRoutingTable()) 
   const scanned = perFile
     ? files.filter((file) => typeof file.added === 'string' && !TEST_FILE.test(norm(file.path)) && (!abortScope || abortScope.test(norm(file.path)))).map((file) => file.added).join('\n')
     : addedLines
-  if (abort && new RegExp(abort.pattern).test(scanned)) add(abort.category, abort.legacy, '(diff 新增 AbortController)')
+  if (abort && new RegExp(abort.pattern).test(scanned)) addAll(abort.category, abort.legacy, '(diff 新增 AbortController)')
   const classes = [...new Set(hits.map((hit) => hit.cls))]
   const categories = [...byCategory.entries()].map(([id, paths]) => ({ id, label: table.categories[id]?.label ?? id, paths: [...new Set(paths)] }))
   return { fourClass: classes.length > 0, classes, hits, categories }
@@ -140,6 +144,10 @@ const EVIDENCE_TOKEN = [
   /#\d{2,}/,
 ]
 
+/** 性能场景证据的 id（2026-10-11）：不走通用的「有链接就算」，要有数字、id 在登记表里，「未验证」不算通过（docs/engineering/perf-scenarios.md）。 */
+export const PERF_EVIDENCE_ID = 'perf-scenario'
+const perfVerdict = (line) => parsePerfEvidence(line, scenarioIds(loadScenarios(repoRoot)))
+
 /** 一行证据条目算不算数：有报告链接 / 路径 / 截图 / 运行号 / PR 号，或明写「未验证：原因」。 */
 export function evidenceLineVerdict(line) {
   const unverified = UNVERIFIED.exec(line)
@@ -155,8 +163,9 @@ export function evidenceLineVerdict(line) {
 /** 工具还没建：tool 写 missing，或写计划接的工具名加 (planned)（例：stagehand (planned)）。 */
 export const isMissingTool = (tool) => tool === 'missing' || /\(planned\)$/.test(String(tool || ''))
 
-export function requiredEvidence(categoryIds, table = loadRoutingTable()) {
-  return collectEvidence(categoryIds, table).filter((item) => item.when !== 'manual-full')
+export function requiredEvidence(categoryIds, table = loadRoutingTable(), createdAt = null) {
+  // since：这条证据的生效日（ISO 日期）；更早开的 PR 没机会照新模板写，不要求（创建时间未知 = 要求，fail-closed）
+  return collectEvidence(categoryIds, table).filter((item) => item.when !== 'manual-full' && !(item.since && createdAt && new Date(createdAt) < new Date(`${item.since}T00:00:00Z`)))
 }
 
 export function manualFullEvidence(categoryIds, table = loadRoutingTable()) {
@@ -172,8 +181,8 @@ function collectEvidence(categoryIds, table) {
 }
 
 /** `## 验收证据`：逐项对账。返回 { ok, lines, gaps }；gaps = 被「未验证」带过、且工具还没建的缺口。 */
-export function checkRoutingEvidence(body, categoryIds, table = loadRoutingTable()) {
-  const required = requiredEvidence(categoryIds, table)
+export function checkRoutingEvidence(body, categoryIds, table = loadRoutingTable(), createdAt = null) {
+  const required = requiredEvidence(categoryIds, table, createdAt)
   const manualFull = manualFullEvidence(categoryIds, table)
   const manualNote = manualFull.length ? [`· 手动全量跑覆盖（PR 正文不要求）：${manualFull.map((item) => item.id).join('、')}`] : []
   if (required.length === 0) return { ok: true, lines: ['· 验收证据：没有类别要求证据', ...manualNote], gaps: [] }
@@ -182,15 +191,20 @@ export function checkRoutingEvidence(body, categoryIds, table = loadRoutingTable
   const missing = []
   const bad = []
   const gaps = []
+  const perfReasons = []
   let provided = 0
   let unverifiedCount = 0
   for (const item of required) {
     const tokens = [item.id, ...(item.aliases ?? [])]
     const mine = sectionLines.filter((line) => tokens.some((token) => line.toLowerCase().includes(token.toLowerCase())))
     if (!mine.length) { missing.push(item); continue }
-    const verdicts = mine.map(evidenceLineVerdict)
+    const verdicts = mine.map(item.id === PERF_EVIDENCE_ID ? perfVerdict : evidenceLineVerdict)
     const good = verdicts.find((verdict) => verdict.ok)
-    if (!good) { bad.push(item); continue }
+    if (!good) {
+      bad.push(item)
+      if (item.id === PERF_EVIDENCE_ID) perfReasons.push(...verdicts.map((verdict) => verdict.reason).filter(Boolean))
+      continue
+    }
     provided += 1
     if (good.unverified) {
       unverifiedCount += 1
@@ -203,6 +217,7 @@ export function checkRoutingEvidence(body, categoryIds, table = loadRoutingTable
     ok = false
     if (missing.length) lines.push(`✖ \`## ${EVIDENCE_SECTION}\` 缺这些证据条目：${missing.map((item) => `${item.id}（${item.label}）`).join('；')}`)
     if (bad.length) lines.push(`✖ 这些证据条目没有报告链接 / 运行号 / 截图路径，也没写「未验证：原因」：${bad.map((item) => item.id).join('、')}`)
+    for (const reason of new Set(perfReasons)) lines.push(`  → ${PERF_EVIDENCE_ID}：${reason}`)
     lines.push(`  → 每项一行：\`- <证据 id>：<链接 / 运行号 / 截图路径>\` 或 \`- <证据 id>：未验证：原因\`；工具还没建的证据写「未验证：工具未建」`)
   } else {
     lines.push(`✅ 验收证据：${required.length} 项都有条目（实证 ${provided - unverifiedCount}，未验证 ${unverifiedCount}）`)
@@ -213,9 +228,9 @@ export function checkRoutingEvidence(body, categoryIds, table = loadRoutingTable
 }
 
 /** 整个路由判据：card + evidence。 */
-export function checkRouting(body, inferred, table = loadRoutingTable()) {
+export function checkRouting(body, inferred, table = loadRoutingTable(), createdAt = null) {
   const card = checkRoutingCard(body, inferred, table)
-  const evidence = checkRoutingEvidence(body, card.union, table)
+  const evidence = checkRoutingEvidence(body, card.union, table, createdAt)
   return { ok: card.ok && evidence.ok, lines: [...card.lines, ...evidence.lines], gaps: evidence.gaps, categories: card.union }
 }
 
@@ -291,7 +306,7 @@ export function checkProtectedScope(body, files, { packageRemovedLines = [], led
 export function evaluatePrJudgement({ body, files: rawFiles, addedLines = '', addedByFile = null, packageRemovedLines = [], ledgerRemovedIds = [], createdAt = null, table = loadRoutingTable() }) {
   const files = addedByFile ? rawFiles.map((file) => ({ ...file, added: addedByFile.get(file.path) ?? '' })) : rawFiles
   const inferred = inferRoutes(files, addedLines, table)
-  const routing = checkRouting(body, inferred, table)
+  const routing = checkRouting(body, inferred, table, createdAt)
   const enforced = routingEnforced(createdAt, table)
   const softened = enforced ? routing.lines : routing.lines.map((line) => line.replace(/^✖/, '⚠'))
   if (!enforced) softened.push(`· 这个 PR 在路由规则生效（${table.effectiveFrom}）之前开的：缺项只给警告，不判红`)

@@ -1,0 +1,26 @@
+{
+  "id": "project-open-100-nodes",
+  "feature": "冷启动后点项目卡：到画布节点挂载且第一张图解码完（打开到能操作）",
+  "script": "tests/ux/project-open-stages.e2e.mjs",
+  "args": [
+    "--scale",
+    "MIMG",
+    "--warmup",
+    "1"
+  ],
+  "scale": "96 个图片节点（约 100 节点）",
+  "metrics": [
+    "openToInteractive",
+    "longTasks"
+  ],
+  "budget": 1000,
+  "baseline": {
+    "median": 2383,
+    "p95": 2806.4,
+    "runs": 5,
+    "machine": "win32 x64 13th Gen Intel(R) Core(TM) i9-13900H x20 / 64GB",
+    "date": "2026-10-11",
+    "commit": "0929dfc0a",
+    "noisy": true
+  }
+}

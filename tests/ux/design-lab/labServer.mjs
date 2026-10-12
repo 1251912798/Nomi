@@ -28,7 +28,7 @@ import { REPO_ROOT } from './labStates.mjs'
  * 实验室要占端口的角色。**加角色就在这里加**——端口段的宽度随它走，
  * 不许在别处再写一个裸端口号（那就又造出一个全局单例）。
  */
-export const LAB_ROLES = ['visual', 'walk-agent-panel-v4', 'walk-editing', 'walk-storyboard', 'walk-host-config', 'walk-vendor-order', 'walk-canvas-add-menu', 'walk-settings', 'walk-canvas-frame', 'walk-depth-action', 'walk-catalog-liveness', 'walk-primitives-actions', 'walk-primitives-forms', 'walk-primitives-menu', 'walk-primitives-surfaces', 'walk-settings-sound', 'walk-shot-table', 'walk-node-composer-bar', 'walk-ask-card-in-panel', 'walk-question-card', 'walk-node-quick-actions', 'walk-director-3dbox', 'popup-geometry', 'walk-version-cards', 'walk-update-reminder', 'walk-video-node-next', 'walk-generation-list']
+export const LAB_ROLES = ['visual', 'walk-agent-panel-v4', 'walk-editing', 'walk-storyboard', 'walk-host-config', 'walk-vendor-order', 'walk-canvas-add-menu', 'walk-settings', 'walk-canvas-frame', 'walk-canvas-group-header', 'walk-depth-action', 'walk-catalog-liveness', 'walk-primitives-actions', 'walk-primitives-forms', 'walk-primitives-menu', 'walk-primitives-surfaces', 'walk-settings-sound', 'walk-shot-table', 'walk-node-composer-bar', 'walk-ask-card-in-panel', 'walk-question-card', 'walk-node-quick-actions', 'walk-director-3dbox', 'popup-geometry', 'walk-version-cards', 'walk-update-reminder', 'walk-video-node-next', 'walk-generation-list']
 
 // 每棵 worktree 分到一段连续端口，段内按角色的下标取一口。
 // 起点 5300：避开 vite 默认的 5173、以及本仓历史上写死过的 5197/5198/5200。
@@ -37,6 +37,26 @@ export const LAB_ROLES = ['visual', 'walk-agent-panel-v4', 'walk-editing', 'walk
 const PORT_BLOCK_BASE = 5300
 const PORT_BLOCK_COUNT = 64
 const PORT_BLOCK_SIZE = LAB_ROLES.length
+
+/**
+ * 浏览器 / Node fetch 一律拒连的端口（WHATWG Fetch 规范的 bad ports 清单里落在本仓端口段 5300 起一带的那些）。
+ * 端口按「路径哈希 × 角色下标」派生，**加一个角色整张端口图都会平移**——曾经因此让 popup-geometry 在 CI 上落到 6667，
+ * fetch 报 bad port、实验室「起不来」。派生时直接跳过这些口，加角色再也不会踩到。
+ */
+export const LAB_BLOCKED_PORTS = Object.freeze([6000, 6566, 6665, 6666, 6667, 6668, 6669, 6679, 6697])
+
+/** 第 n 个可用端口（从 PORT_BLOCK_BASE 数起，跳过 LAB_BLOCKED_PORTS）。 */
+function nthUsablePort(n) {
+  let port = PORT_BLOCK_BASE
+  let remaining = n
+  for (;;) {
+    if (!LAB_BLOCKED_PORTS.includes(port)) {
+      if (remaining === 0) return port
+      remaining -= 1
+    }
+    port += 1
+  }
+}
 
 /** 路径归一：/tmp 与 /private/tmp、软链 worktree 都会让字符串比较得出错误结论。 */
 function canonicalPath(target) {
@@ -56,7 +76,7 @@ export function labPortFor(role, repoRoot = REPO_ROOT) {
   if (index < 0) throw new Error(`未知的实验室角色：${role}（已登记：${LAB_ROLES.join(', ')}）`)
   const digest = crypto.createHash('sha256').update(canonicalPath(repoRoot)).digest()
   const block = digest.readUInt16BE(0) % PORT_BLOCK_COUNT
-  return PORT_BLOCK_BASE + block * PORT_BLOCK_SIZE + index
+  return nthUsablePort(block * PORT_BLOCK_SIZE + index)
 }
 
 export function labOriginFor(role, repoRoot = REPO_ROOT) {

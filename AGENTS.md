@@ -22,7 +22,7 @@ Nomi：本地优先 AI 视频创作工作台。Electron + React 18 + Tailwind 3 
 
 **P3 全绿不等于完成** — 用户可见改动报完成前：和获批样张逐项对账，真截图自己亲眼 Read 过（zh/en 两轨）；功能交付要有真实任务闭环；没有真实资源记 `unverified`，不许 mock 绿灯顶替。
 
-**P5 想清楚再动手** — 动手前先写设计卡（`docs/engineering/design-card.md`）：所有改动都填 ★ 5 格（1、2、3、4、9），碰花钱 / 长跑 / 可打断 / 新界面这四类 9 格全填；写进任务书或 `docs/plan`，PR 正文 `## 设计卡` 放链接或全文；四类合并前还要另一条线独立验收，PR 正文 `## 独立验收` 带报告链接和验收线编号（不得与实现线相同）。新增或改动用户可见界面走 `docs/engineering/design-pipeline.md`：探索图可以手画（HTML / widget 只准标 `exploration`，不能当实现合同），拍板即出清单（`docs/design/boards/`），第 2 步用生产组件搭建，清单是实现合同（`check:board-parity` 守）；改现有 UI 先看它真实样子；重要改动先一轮批量 grill（每题带默认答案，连带面单独成题），纯 bug 修复不问。
+**P5 想清楚再动手** — 动手前先写设计卡（`docs/engineering/design-card.md`）：所有改动都填 ★ 5 格（1、2、3、4、9），碰花钱 / 长跑 / 可打断 / 新界面这四类 9 格全填；**新增功能再填 ★7 性能**（新增的操作、最坏规模、预算，登记进 `tests/perf/scenarios/` 并用 `pnpm run perf:scenarios` 跑出基线，PR 交 `perf-scenario` 数字，超预算不合并，`docs/engineering/perf-scenarios.md`）；写进任务书或 `docs/plan`，PR 正文 `## 设计卡` 放链接或全文；四类合并前还要另一条线独立验收，PR 正文 `## 独立验收` 带报告链接和验收线编号（不得与实现线相同）。新增或改动用户可见界面走 `docs/engineering/design-pipeline.md`：探索图可以手画（HTML / widget 只准标 `exploration`，不能当实现合同），拍板即出清单（`docs/design/boards/`），第 2 步用生产组件搭建，清单是实现合同（`check:board-parity` 守）；改现有 UI 先看它真实样子；重要改动先一轮批量 grill（每题带默认答案，连带面单独成题），纯 bug 修复不问。
 
 ## 规则
 

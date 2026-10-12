@@ -5,10 +5,13 @@ import {
   IconArrowsVertical,
   IconDownload,
   IconFolderMinus,
+  IconLayersSubtract,
   IconLayoutGrid,
+  IconPencil,
   IconPlayerPlay,
   IconStack2,
   IconTimeline,
+  IconTrash,
 } from '../../../vendor/tablerIcons'
 import { cn } from '../../../utils/cn'
 import type { WorkbenchMenuIcon, WorkbenchMenuNode } from '../../../design/menu'
@@ -18,6 +21,8 @@ import { GROUP_COLOR_IDS, resolveGroupColor, groupColorClass, type GroupColorId 
 import { resolveGroupToolbarShiftX, type GroupToolbarPlacement } from './groupToolbarPlacement'
 import { ToolbarActionMenu } from '../nodes/ToolbarActionMenu'
 import { ToolbarButton, ToolbarDivider, ToolbarIconButton, TOOLBAR_ICON } from '../nodes/NodeFloatingToolbar'
+import { CANVAS_LAYER } from '../reactFlow/canvasLayerOrder'
+import { groupFrameLabel, isStoryboardGroup } from './groupFrameLabel'
 
 export type CanvasGroupToolbarProps = {
   group: NodeGroup
@@ -36,6 +41,10 @@ export type CanvasGroupToolbarProps = {
   onArrange: (mode: GroupArrangeMode) => void
   onColor: (color: GroupColorId) => void
   onDownload: () => void
+  /** 改名 / 说明、折叠成卡、删除：直接摆图标，与框边右键菜单同一个执行口。 */
+  onEdit: () => void
+  onCollapse: () => void
+  onDelete: () => void
 }
 
 export type GroupToolbarHorizontal = { frameLeft: number; frameWidth: number; offsetX: number; stageWidth: number }
@@ -67,9 +76,13 @@ export function CanvasGroupToolbar({
   onArrange,
   onColor,
   onDownload,
+  onEdit,
+  onCollapse,
+  onDelete,
 }: CanvasGroupToolbarProps): JSX.Element {
   const { t } = useTranslation()
   const rootRef = React.useRef<HTMLDivElement | null>(null)
+  const groupLabel = groupFrameLabel(t, { name: group.name, storyboard: isStoryboardGroup(group), memberCount, previewCount: null })
   const [toolbarWidth, setToolbarWidth] = React.useState(0)
   React.useLayoutEffect(() => {
     const element = rootRef.current
@@ -126,7 +139,7 @@ export function CanvasGroupToolbar({
     <div
       ref={rootRef}
       className={cn(
-        'generation-canvas-v2__group-toolbar absolute left-1/2 z-[12] -translate-x-1/2',
+        'generation-canvas-v2__group-toolbar absolute left-1/2 -translate-x-1/2',
         'inline-flex w-max flex-wrap items-center justify-center gap-1 min-h-9 px-1.5 py-1',
         'rounded-nomi border border-nomi-line bg-nomi-paper shadow-nomi-md',
       )}
@@ -135,6 +148,7 @@ export function CanvasGroupToolbar({
       role="toolbar"
       data-group-toolbar-side={placement.side}
       style={{
+        zIndex: CANVAS_LAYER.groupToolbar,
         left: `calc(50% + ${shiftX}px)`,
         transform: `translateX(-50%) scale(${1 / (canvasZoom || 1)})`,
         // 外壳（投影层里和组框同大的锚点）：above 从框上沿往上抬，below 从框下沿往下放，inside 从框上沿往下放。
@@ -151,8 +165,9 @@ export function CanvasGroupToolbar({
         data-group-toolbar-count="true"
       >
         <IconStack2 {...iconProps} aria-hidden="true" />
-        <span>{group.name}</span>
-        <span className="text-nomi-ink-60 tabular-nums">· {memberCount}</span>
+        {/* 与框头同一显示函数：分镜组「分镜 · 名 · N 镜」，普通组「名 · N 个」。 */}
+        <span>{groupLabel.title}</span>
+        <span className="text-nomi-ink-60 tabular-nums">· {groupLabel.count}</span>
       </span>
       <ToolbarActionMenu
         id="group-color"
@@ -192,13 +207,34 @@ export function CanvasGroupToolbar({
         disabled={!canDownload}
         onClick={onDownload}
       />
-      {/* 解散是这一排里最「重」的动作：常用的在前，它放最右并用分隔线隔开，免得手滑。 */}
+      <ToolbarIconButton
+        icon={<IconPencil {...iconProps} />}
+        title={t('generationCommon.canvas.group.menuEdit')}
+        ariaLabel={t('generationCommon.canvas.group.menuEdit')}
+        actionId="group-edit"
+        onClick={onEdit}
+      />
+      <ToolbarIconButton
+        icon={<IconLayersSubtract {...iconProps} />}
+        title={t('generationCommon.canvas.group.menuCollapse')}
+        ariaLabel={t('generationCommon.canvas.group.menuCollapse')}
+        actionId="group-collapse"
+        onClick={onCollapse}
+      />
+      {/* 解散、删除是这一排里最「重」的动作：常用的在前，它们放最右并用分隔线隔开，免得手滑。 */}
       <ToolbarDivider />
       <ToolbarButton
         icon={<IconFolderMinus {...iconProps} />}
         label={t('generationCommon.canvas.group.toolbarDissolve')}
         title={t('generationCommon.canvas.group.toolbarDissolve')}
         onClick={onDissolve}
+      />
+      <ToolbarIconButton
+        icon={<IconTrash {...iconProps} />}
+        title={t('generationCommon.canvas.group.menuDelete')}
+        ariaLabel={t('generationCommon.canvas.group.menuDelete')}
+        actionId="group-delete"
+        onClick={onDelete}
       />
     </div>
   )
