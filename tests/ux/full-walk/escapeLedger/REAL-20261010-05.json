@@ -18,7 +18,7 @@
   ],
   "completionCommits": [],
   "rootCauseContract": "docs/fixes/2026-10-10-row-actions-direct-icons.root-cause.json",
-  "fixedInPr": 1177,
+  "fixedInPr": 1192,
   "classCheck": {
     "kind": "matrix",
     "file": "scripts/check-icon-semantics.node-test.mjs"
