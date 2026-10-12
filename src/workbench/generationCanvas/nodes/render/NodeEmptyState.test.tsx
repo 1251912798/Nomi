@@ -41,6 +41,15 @@ describe('host-owned empty guidance across the node registry', () => {
     expect(out).not.toMatch(/GUIDANCE|WRITE/)
   })
 
+  it.each([[120, 44], [240, 84], [462, 184]])('icon-only at card height %s: disc top is %spx (45%% centre, >= 44px from top)', (height, top) => {
+    const out = render(<NodeEmptyState height={height} icon={<svg />} />, false)
+    expect(out).toContain(`top:${top}px`)
+  })
+
+  it('compact (audio strip / director inline) is the documented exception: centred in its own container', () => {
+    expect(render(<NodeEmptyState compact icon={<svg />} />, false)).toContain('top:calc(50% - 24px)')
+  })
+
   it.each([120, 169, 462])('icon-only stays a single 48px type mark at height %s', (height) => {
     const out = render(<NodeEmptyState height={height} icon={<svg />} title="TITLE" />, false)
     expect(out).toContain('size-12')

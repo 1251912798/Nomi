@@ -1,7 +1,7 @@
 import React, { type JSX } from 'react'
 import { cn } from '../../../../utils/cn'
 import { useNodeEmptyStateContext } from './NodeEmptyStateContext'
-import { EMPTY_STATE_BLOCK_HEIGHT, EMPTY_STATE_TOP_CLEARANCE, EMPTY_STATE_CENTER_RATIO, emptyStateBlockTop, emptyStateTier } from './nodeEmptyStateLayout'
+import { EMPTY_STATE_BLOCK_HEIGHT, EMPTY_STATE_TOP_CLEARANCE, EMPTY_STATE_CENTER_RATIO, emptyStateBlockTop, emptyStateIconTop, emptyStateTier } from './nodeEmptyStateLayout'
 
 export type NodeEmptyStateProps = {
   icon: React.ReactNode
@@ -22,7 +22,7 @@ export type NodeEmptyStateProps = {
  * 内容块中心放在卡高 45%、离顶至少 44px、水平居中，
  * 左上角状态小标永远碰不到图标。矮卡分档（纯函数 `emptyStateTier`，见 nodeEmptyStateLayout.ts）：
  * 完整 → 图标 / 类型名 / 状态 / 动作；紧凑 → 图标 + 「类型 · 状态」一行 + 动作。height 必须是渲染用的有效卡高（resolveNodeVisualSize），见 nodeEmptyStateLayout.ts。
- * compact（音频条）是一行的横向变体，不走档位。
+ * compact（音频条 / 导演节点内嵌）是装在更小容器里的变体，容器不等于卡高，圆盘按容器正中，不走 45% / 44px 规则（10-10 拍板 B 的例外）；其余一律走 nodeEmptyStateLayout 同一套算法。
  */
 export function NodeEmptyState({ icon, title, description, action: requestedAction, className, compact = false, height, purpose = 'guidance' }: NodeEmptyStateProps): JSX.Element {
   const { engaged, readOnly } = useNodeEmptyStateContext()
@@ -30,7 +30,7 @@ export function NodeEmptyState({ icon, title, description, action: requestedActi
   if (purpose === 'guidance' && !engaged) {
     return (
       <div data-node-empty-state="true" data-empty-tier="icon" className={cn('relative h-full w-full text-center', className)}>
-        <div className="absolute inset-x-0 flex justify-center" style={{ top: compact ? 'calc(50% - 24px)' : `max(${EMPTY_STATE_TOP_CLEARANCE}px, calc(${EMPTY_STATE_CENTER_RATIO * 100}% - 24px))` }}>
+        <div className="absolute inset-x-0 flex justify-center" style={{ top: compact ? 'calc(50% - 24px)' : emptyStateIconTop(height) }}>
           <span className="grid size-12 shrink-0 place-items-center rounded-full bg-nomi-ink-05 text-nomi-ink-80 ring-1 ring-inset ring-nomi-line [&>svg]:size-6" aria-hidden="true">{icon}</span>
         </div>
       </div>
