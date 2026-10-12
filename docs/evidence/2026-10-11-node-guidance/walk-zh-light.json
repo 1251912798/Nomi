@@ -1,0 +1,151 @@
+{
+  "locale": "zh-CN",
+  "scheme": "light",
+  "mode": "full-journey",
+  "boundary": "built macOS Electron; isolated fixture matrix; full mode additionally uses original toolbar/text/upload/whiteboard journeys; no generation requested",
+  "checks": [
+    {
+      "id": "guidance.group.icon-only",
+      "pass": true,
+      "detail": "six empty nodes have type marks and external names; zero instructional rows"
+    },
+    {
+      "id": "guidance.single.next-step",
+      "pass": true,
+      "detail": "only the current node expands its original guidance and composer"
+    },
+    {
+      "id": "guidance.group.selection",
+      "pass": true,
+      "detail": "selecting the entire real group keeps all six members icon-only"
+    },
+    {
+      "id": "guidance.kind.image",
+      "pass": true,
+      "detail": "browsing and multi-selection icon-only; single-selection guidance; nonzero icon geometry"
+    },
+    {
+      "id": "guidance.kind.video",
+      "pass": true,
+      "detail": "browsing and multi-selection icon-only; single-selection guidance; nonzero icon geometry"
+    },
+    {
+      "id": "guidance.kind.text",
+      "pass": true,
+      "detail": "browsing and multi-selection icon-only; single-selection guidance; nonzero icon geometry"
+    },
+    {
+      "id": "guidance.kind.character",
+      "pass": true,
+      "detail": "browsing and multi-selection icon-only; single-selection guidance; nonzero icon geometry"
+    },
+    {
+      "id": "guidance.kind.scene",
+      "pass": true,
+      "detail": "browsing and multi-selection icon-only; single-selection guidance; nonzero icon geometry"
+    },
+    {
+      "id": "guidance.kind.audio",
+      "pass": true,
+      "detail": "browsing and multi-selection icon-only; single-selection guidance; nonzero icon geometry"
+    },
+    {
+      "id": "guidance.kind.whiteboard",
+      "pass": true,
+      "detail": "browsing and multi-selection icon-only; single-selection guidance; nonzero icon geometry"
+    },
+    {
+      "id": "guidance.kind.panorama",
+      "pass": true,
+      "detail": "browsing and multi-selection icon-only; single-selection guidance; nonzero icon geometry"
+    },
+    {
+      "id": "guidance.kind.model3d",
+      "pass": true,
+      "detail": "browsing and multi-selection icon-only; single-selection guidance; nonzero icon geometry"
+    },
+    {
+      "id": "guidance.kind.keyframe",
+      "pass": true,
+      "detail": "browsing and multi-selection icon-only; single-selection guidance; nonzero icon geometry"
+    },
+    {
+      "id": "guidance.kind.shot",
+      "pass": true,
+      "detail": "browsing and multi-selection icon-only; single-selection guidance; nonzero icon geometry"
+    },
+    {
+      "id": "guidance.kind.output",
+      "pass": true,
+      "detail": "browsing and multi-selection icon-only; single-selection guidance; nonzero icon geometry"
+    },
+    {
+      "id": "guidance.kind.clip",
+      "pass": true,
+      "detail": "browsing and multi-selection icon-only; single-selection guidance; nonzero icon geometry"
+    },
+    {
+      "id": "guidance.kind.director",
+      "pass": true,
+      "detail": "browsing and multi-selection icon-only; single-selection guidance; nonzero icon geometry"
+    },
+    {
+      "id": "guidance.kind.prop",
+      "pass": true,
+      "detail": "browsing and multi-selection icon-only; single-selection guidance; nonzero icon geometry"
+    },
+    {
+      "id": "guidance.created.auto-expand",
+      "pass": true,
+      "detail": "original toolbar creates a selected node with next steps; deselect restores type mark"
+    },
+    {
+      "id": "guidance.text.content",
+      "pass": true,
+      "detail": "original toolbar and editor accept authored text; deselection preserves the content"
+    },
+    {
+      "id": "guidance.upload.character",
+      "pass": true,
+      "detail": "first click selects; second opens native chooser; genuine local media remains after deselection"
+    },
+    {
+      "id": "guidance.upload.scene",
+      "pass": true,
+      "detail": "first click selects; second opens native chooser; genuine local media remains after deselection"
+    },
+    {
+      "id": "guidance.upload.prop",
+      "pass": true,
+      "detail": "first click selects; second opens native chooser; genuine local media remains after deselection"
+    },
+    {
+      "id": "guidance.upload.audio",
+      "pass": true,
+      "detail": "first click selects; second opens native chooser; genuine local media remains after deselection"
+    },
+    {
+      "id": "guidance.upload.panorama",
+      "pass": true,
+      "detail": "first click selects; second opens native chooser; genuine local media remains after deselection"
+    },
+    {
+      "id": "guidance.whiteboard.activation",
+      "pass": true,
+      "detail": "first click selects; explicit second action opens the existing whiteboard editor"
+    }
+  ],
+  "screenshots": [
+    "docs\\evidence\\2026-10-11-node-guidance\\01-group-browsing-zh-light.png",
+    "docs\\evidence\\2026-10-11-node-guidance\\02-single-selected-zh-light.png",
+    "docs\\evidence\\2026-10-11-node-guidance\\matrix-text-zh-light.png",
+    "docs\\evidence\\2026-10-11-node-guidance\\matrix-whiteboard-zh-light.png",
+    "docs\\evidence\\2026-10-11-node-guidance\\matrix-panorama-zh-light.png",
+    "docs\\evidence\\2026-10-11-node-guidance\\matrix-clip-zh-light.png",
+    "docs\\evidence\\2026-10-11-node-guidance\\matrix-director-zh-light.png"
+  ],
+  "limitations": [
+    "Windows, installed package and paid generation unverified"
+  ],
+  "status": "passed"
+}
