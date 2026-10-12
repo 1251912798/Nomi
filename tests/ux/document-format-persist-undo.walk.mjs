@@ -122,7 +122,7 @@ try {
   const strong = undoLine.locator('strong')
   const proof = await proveProbe(strong, '加粗后该行有 <strong>')
   await win.locator('.workbench-editor-toolbar').getByRole('button', { name: label('creationAi.selection.undo') }).click()
-  const goneAfterUndo = await expectAbsent(strong, { provenBy: proof, message: '撤销一次后加粗应没了' }, 5_000).then(() => true, () => false)
+  const goneAfterUndo = await expectAbsent(strong, { provenBy: proof, message: '撤销一次后加粗应没了' }).then(() => true, () => false)
   record('B 加粗后一次撤销', goneAfterUndo, `撤销一次后 strong=${await strong.count()}（应为 0）`)
 
   // A：逐个点工具条，落盘后核对。
