@@ -1,0 +1,170 @@
+<div id="nomi-native-empty-nodes">
+<style>
+#nomi-native-empty-nodes {
+  --nomi-font-sans: "Inter Variable", Inter, -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", system-ui, sans-serif;
+  --nomi-ink: light-dark(oklch(0.22 0.01 80), oklch(0.93 0.006 85));
+  --nomi-line: light-dark(oklch(0.91 0.004 80), oklch(0.36 0.007 80));
+  --nomi-radius-sm: 6px;
+  --nomi-paper: light-dark(oklch(1 0 0), oklch(0.235 0.007 80));
+  --nomi-ink-60: light-dark(oklch(0.50 0.01 80), oklch(0.70 0.006 85));
+  --nomi-chrome: light-dark(oklch(0.97 0.003 80), oklch(0.155 0.006 80));
+  --nomi-radius-lg: 16px;
+  --nomi-ink-05: light-dark(oklch(0.97 0.003 80), oklch(0.30 0.006 85));
+  --nomi-shadow-sm: 0 1px 2px light-dark(oklch(0 0 0 / 0.04), oklch(0 0 0 / 0.32)), 0 1px 1px light-dark(oklch(0 0 0 / 0.03), oklch(0 0 0 / 0.22));
+  --nomi-radius: 10px;
+  --nomi-bg: light-dark(oklch(0.985 0.003 90), oklch(0.18 0.006 80));
+  --nomi-line-soft: light-dark(oklch(0.95 0.003 80), oklch(0.31 0.007 80));
+  --nomi-ink-20: light-dark(oklch(0.88 0.005 80), oklch(0.42 0.006 85));
+  --nomi-group-neutral: light-dark(oklch(0.68 0.01 80), oklch(0.62 0.006 85));
+  --nomi-shadow-md: 0 2px 4px light-dark(oklch(0 0 0 / 0.04), oklch(0 0 0 / 0.30)), 0 8px 24px light-dark(oklch(0 0 0 / 0.06), oklch(0 0 0 / 0.32));
+  --nomi-accent: light-dark(oklch(0.55 0.13 250), oklch(0.70 0.13 250));
+  --nomi-ink-80: light-dark(oklch(0.32 0.01 80), oklch(0.84 0.006 85));
+  --nomi-ink-30: light-dark(oklch(0.78 0.01 80), oklch(0.50 0.006 85));
+  --nomi-ink-40: light-dark(oklch(0.68 0.01 80), oklch(0.62 0.006 85));
+}
+#nomi-native-empty-nodes{font-family:var(--nomi-font-sans);font-size:13px;line-height:18px;color:var(--nomi-ink);color-scheme:light dark}
+#nomi-native-empty-nodes *{box-sizing:border-box}
+#nomi-native-empty-nodes button,#nomi-native-empty-nodes textarea{font:inherit;color:inherit}
+#nomi-native-empty-nodes button{cursor:default}
+#nomi-native-empty-nodes [hidden]{display:none!important}
+#nomi-native-empty-nodes .nn-scenes{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:16px;padding-right:90px}
+#nomi-native-empty-nodes .nn-scene{border:1px solid var(--nomi-line);border-radius:var(--nomi-radius-sm);background:var(--nomi-paper);padding:6px 12px;font-size:12px;line-height:16px}
+#nomi-native-empty-nodes .nn-scene[aria-pressed="true"]{background:var(--nomi-ink);border-color:var(--nomi-ink);color:var(--nomi-paper)}
+#nomi-native-empty-nodes .nn-exploration{font-size:12px;color:var(--nomi-ink-60)}
+#nomi-native-empty-nodes .nn-app{background:var(--nomi-chrome);border-radius:var(--nomi-radius-lg);padding:0 8px 8px}
+#nomi-native-empty-nodes .nn-topbar{height:40px;display:flex;align-items:center;gap:12px;padding:0 16px}
+#nomi-native-empty-nodes .nn-project{font-weight:500;display:flex;align-items:center;gap:8px;min-width:0;white-space:nowrap}
+#nomi-native-empty-nodes .nn-stages{margin:auto;display:flex;align-items:center;padding:3px;background:var(--nomi-ink-05);border-radius:999px;gap:4px;color:var(--nomi-ink-60);white-space:nowrap}
+#nomi-native-empty-nodes .nn-stages span{padding:3px 14px}
+#nomi-native-empty-nodes .nn-stages .nn-current{background:var(--nomi-paper);color:var(--nomi-ink);border-radius:999px;box-shadow:var(--nomi-shadow-sm)}
+#nomi-native-empty-nodes .nn-global{display:flex;gap:16px;color:var(--nomi-ink-60)}
+#nomi-native-empty-nodes svg{display:block;flex-shrink:0}
+#nomi-native-empty-nodes .nn-body{display:flex}
+#nomi-native-empty-nodes .nn-rail{flex:0 0 52px;display:flex;flex-direction:column;align-items:center;gap:20px;padding:16px 0;color:var(--nomi-ink-60)}
+#nomi-native-empty-nodes .nn-railitem{display:flex;flex-direction:column;gap:4px;align-items:center;font-size:11px;line-height:14px}
+#nomi-native-empty-nodes .nn-railbreak{height:1px;width:24px;background:var(--nomi-line);margin:4px 0}
+#nomi-native-empty-nodes .nn-work{position:relative;flex:1;min-width:0;border-radius:var(--nomi-radius);background:var(--nomi-bg);box-shadow:inset 0 0 0 1px var(--nomi-line-soft)}
+#nomi-native-empty-nodes .nn-canvas{position:relative;min-height:608px;padding:64px 28px 180px 72px;background-image:radial-gradient(var(--nomi-ink-20) 1px,transparent 1px);background-size:24px 24px;border-radius:var(--nomi-radius)}
+#nomi-native-empty-nodes .nn-group{position:relative;border:1.5px solid var(--nomi-group-neutral);border-radius:var(--nomi-radius-lg);padding:36px 20px 20px;background:color-mix(in srgb,var(--nomi-paper) 32%,transparent);box-shadow:var(--nomi-shadow-sm)}
+#nomi-native-empty-nodes .nn-grouphead{position:absolute;top:-30px;left:0;display:flex;align-items:center;gap:8px;max-width:100%;height:24px;white-space:nowrap;font-size:13px;font-weight:500}
+#nomi-native-empty-nodes .nn-groupdot{width:8px;height:8px;border-radius:50%;background:var(--nomi-group-neutral)}
+#nomi-native-empty-nodes .nn-groupcount{background:var(--nomi-ink-05);color:var(--nomi-ink-60);font-size:12px;line-height:16px;padding:2px 6px;border-radius:999px;font-weight:400}
+#nomi-native-empty-nodes .nn-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:64px 32px}
+#nomi-native-empty-nodes .nn-slot{position:relative;min-width:0}
+#nomi-native-empty-nodes .nn-label{position:absolute;left:0;right:0;bottom:calc(100% + 6px);height:28px;display:flex;align-items:center;gap:8px;overflow:hidden;white-space:nowrap;font-size:12px;line-height:16px;font-weight:400;color:var(--nomi-ink-60)}
+#nomi-native-empty-nodes .nn-card{position:relative;width:100%;aspect-ratio:16/9;min-height:120px;border-radius:var(--nomi-radius);background:var(--nomi-paper);box-shadow:var(--nomi-shadow-md),inset 0 0 0 1px var(--nomi-line)}
+#nomi-native-empty-nodes .nn-card[data-selected="true"]{outline:1.5px solid var(--nomi-accent)}
+#nomi-native-empty-nodes .nn-quiet{position:absolute;inset:0;width:100%;height:100%;border:0;border-radius:inherit;background:transparent;display:grid;place-items:center}
+#nomi-native-empty-nodes .nn-quiet:hover .nn-badge{color:var(--nomi-ink-80)}
+#nomi-native-empty-nodes .nn-badge{width:36px;height:36px;display:grid;place-items:center;flex-shrink:0;border-radius:50%;color:var(--nomi-ink-60);background:var(--nomi-ink-05);box-shadow:inset 0 0 0 1px var(--nomi-line)}
+#nomi-native-empty-nodes .nn-guidance{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:12px}
+#nomi-native-empty-nodes .nn-identity{display:flex;align-items:center;gap:6px;font-size:12px;line-height:16px;color:var(--nomi-ink-80);white-space:nowrap}
+#nomi-native-empty-nodes .nn-identity .nn-badge{width:24px;height:24px}
+#nomi-native-empty-nodes .nn-identity svg{width:14px;height:14px}
+#nomi-native-empty-nodes .nn-actions{display:flex;align-items:center;justify-content:center;gap:2px;white-space:nowrap;color:var(--nomi-ink-30)}
+#nomi-native-empty-nodes .nn-try{display:inline-flex;align-items:center;height:24px;padding:0 6px;border:0;border-radius:var(--nomi-radius-sm);background:transparent;font-size:12px;line-height:16px;color:var(--nomi-ink-80)}
+#nomi-native-empty-nodes .nn-try:hover{background:var(--nomi-ink-05)}
+#nomi-native-empty-nodes .nn-handle{position:absolute;top:50%;width:8px;height:8px;border-radius:50%;background:var(--nomi-ink-40);border:2px solid var(--nomi-paper);pointer-events:none;transform:translateY(-50%)}
+#nomi-native-empty-nodes .nn-handle.left{left:-4px}#nomi-native-empty-nodes .nn-handle.right{right:-4px}
+#nomi-native-empty-nodes .nn-nodetoolbar{position:absolute;left:50%;bottom:calc(100% + 40px);transform:translateX(-50%);height:32px;padding:2px 4px;display:flex;align-items:center;gap:4px;border:1px solid var(--nomi-line);border-radius:var(--nomi-radius);background:var(--nomi-paper);box-shadow:var(--nomi-shadow-md);z-index:2;color:var(--nomi-ink-60)}
+#nomi-native-empty-nodes .nn-toolitem{width:28px;height:28px;display:grid;place-items:center}
+#nomi-native-empty-nodes .nn-addtools{position:absolute;left:16px;top:160px;display:flex;flex-direction:column;gap:8px;padding:8px;border:1px solid var(--nomi-line);border-radius:var(--nomi-radius);background:var(--nomi-paper);box-shadow:var(--nomi-shadow-md);color:var(--nomi-ink-80)}
+#nomi-native-empty-nodes .nn-addtools span{width:24px;height:24px;display:grid;place-items:center}
+#nomi-native-empty-nodes .nn-composer{position:absolute;width:560px;max-width:calc(100% - 24px);padding:12px;background:var(--nomi-paper);border:1px solid var(--nomi-line);border-radius:var(--nomi-radius);box-shadow:var(--nomi-shadow-md);z-index:4;min-height:154px}
+#nomi-native-empty-nodes .nn-modebar{display:flex;gap:8px;align-items:center;font-size:12px;line-height:16px;color:var(--nomi-ink-60)}
+#nomi-native-empty-nodes .nn-modes{display:flex;gap:2px;padding:2px;background:var(--nomi-ink-05);border-radius:var(--nomi-radius-sm)}
+#nomi-native-empty-nodes .nn-mode{padding:3px 8px;background:transparent;border:0;border-radius:var(--nomi-radius-sm);font-size:12px;line-height:16px}
+#nomi-native-empty-nodes .nn-mode[aria-pressed="true"]{background:var(--nomi-paper);box-shadow:var(--nomi-shadow-sm);color:var(--nomi-ink)}
+#nomi-native-empty-nodes textarea{display:block;width:100%;min-height:72px;resize:vertical;border:0;background:transparent;padding:10px 0;outline-offset:2px;font-size:13px;line-height:18px}
+#nomi-native-empty-nodes textarea::placeholder{color:var(--nomi-ink-40)}
+#nomi-native-empty-nodes .nn-composerfoot{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;line-height:16px;color:var(--nomi-ink-60)}
+#nomi-native-empty-nodes .nn-model{display:flex;align-items:center;gap:4px;padding:4px 8px;border-radius:999px;background:var(--nomi-ink-05);color:var(--nomi-ink-80)}
+#nomi-native-empty-nodes .nn-sep{width:1px;height:18px;background:var(--nomi-line);margin:0 4px}
+#nomi-native-empty-nodes .nn-prompttools{display:flex;align-items:center;gap:12px}
+#nomi-native-empty-nodes .nn-generate{margin-left:auto;width:30px;height:30px;border:0;border-radius:50%;background:var(--nomi-ink-20);color:var(--nomi-ink-40);display:grid;place-items:center}
+#nomi-native-empty-nodes .nn-timeline{height:36px;display:flex;align-items:center;gap:8px;padding:0 16px;border-top:1px solid var(--nomi-line-soft);border-radius:0 0 var(--nomi-radius) var(--nomi-radius);background:var(--nomi-paper);font-size:12px;line-height:16px;color:var(--nomi-ink-60)}
+#nomi-native-empty-nodes .nn-timeline strong{font-weight:500;color:var(--nomi-ink-80)}
+#nomi-native-empty-nodes .nn-single .nn-group{max-width:300px;margin:40px auto;background:transparent;border:0;box-shadow:none;padding:0}
+#nomi-native-empty-nodes .nn-single .nn-grouphead{display:none}
+#nomi-native-empty-nodes .nn-single .nn-grid{grid-template-columns:1fr}
+#nomi-native-empty-nodes .nn-single .nn-card{min-height:169px}
+@media(max-width:800px){#nomi-native-empty-nodes .nn-grid{grid-template-columns:repeat(2,minmax(0,1fr))}#nomi-native-empty-nodes .nn-global{display:none}#nomi-native-empty-nodes .nn-canvas{padding-right:20px;padding-left:64px;min-height:740px}#nomi-native-empty-nodes .nn-topbar{gap:8px}#nomi-native-empty-nodes .nn-stages span{padding:3px 8px}}
+@media(max-width:560px){#nomi-native-empty-nodes .nn-rail{display:none}#nomi-native-empty-nodes .nn-addtools{display:none}#nomi-native-empty-nodes .nn-canvas{padding-left:12px;padding-right:12px}#nomi-native-empty-nodes .nn-group{padding-left:12px;padding-right:12px}#nomi-native-empty-nodes .nn-grid{gap:64px 16px}#nomi-native-empty-nodes .nn-topbar{height:auto;min-height:40px;padding:8px;flex-wrap:wrap}#nomi-native-empty-nodes .nn-stages{margin:0}#nomi-native-empty-nodes .nn-scenes{padding-right:0}#nomi-native-empty-nodes .nn-actions{flex-wrap:wrap;white-space:normal;gap:0}#nomi-native-empty-nodes .nn-guidance{padding:4px}#nomi-native-empty-nodes .nn-identity{font-size:11px;gap:4px}}
+@media(max-width:390px){#nomi-native-empty-nodes .nn-grid{grid-template-columns:1fr}#nomi-native-empty-nodes .nn-card{min-height:135px}}
+</style>
+<nav class="nn-scenes" aria-label="探索场景">
+  <button class="nn-scene" type="button" data-scene="overview" aria-pressed="true">整组浏览</button>
+  <button class="nn-scene" type="button" data-scene="selected" aria-pressed="false">选中节点</button>
+  <button class="nn-scene" type="button" data-scene="new" aria-pressed="false">刚创建</button>
+  <span class="nn-exploration">探索稿 · 沿用 Nomi 视觉规范</span>
+</nav>
+<div class="nn-app">
+  <header class="nn-topbar"><div class="nn-project">雨夜便利店 <span data-icon="IconChevronDown"></span></div><div class="nn-stages"><span>创作</span><span class="nn-current">生成</span><span>预览</span></div><div class="nn-global" aria-hidden="true"><span data-icon="IconListCheck"></span><span data-icon="IconBrowser"></span><span data-icon="IconSettings"></span></div></header>
+  <div class="nn-body">
+    <aside class="nn-rail" aria-label="原有左栏"><div class="nn-railitem"><span data-icon="IconFileText"></span>文稿</div><div class="nn-railitem"><span data-icon="IconListTree"></span>目录</div><div class="nn-railitem"><span data-icon="IconFolder"></span>素材</div><div class="nn-railitem"><span data-icon="IconRoute"></span>流程</div><div class="nn-railbreak"></div><div class="nn-railitem"><span data-icon="IconBooks"></span>Skill</div><div class="nn-railitem"><span data-icon="IconBulb"></span>提示词</div></aside>
+    <main class="nn-work">
+      <div class="nn-canvas" id="nn-canvas">
+        <div class="nn-addtools" aria-label="原有加节点工具栏"><span data-icon="IconPhoto"></span><span data-icon="IconVideo"></span><span data-icon="IconWaveSine"></span><span data-icon="IconTextSize"></span><span data-icon="IconScissors"></span><span data-icon="IconUpload"></span><span data-icon="IconPlus"></span></div>
+        <section class="nn-group" aria-label="分镜组">
+          <header class="nn-grouphead"><span class="nn-groupdot"></span><span data-icon="IconStack2"></span><span>分镜 · 雨夜便利店</span><span class="nn-groupcount">6</span></header>
+          <div class="nn-grid" id="nn-grid"></div>
+        </section>
+        <section class="nn-composer" id="nn-composer" aria-label="选中节点的生成框示意" hidden>
+          <div class="nn-modebar"><span>生成方式</span><div class="nn-modes"><button class="nn-mode" type="button" data-mode="text" aria-pressed="true">文生图</button><button class="nn-mode" type="button" data-mode="reference" aria-pressed="false">改图</button></div></div>
+          <textarea id="nn-prompt" aria-label="当前节点提示词" placeholder="描述画面，或输入 @ 引用参考素材"></textarea>
+          <footer class="nn-composerfoot"><span class="nn-model">选择模型 <span data-icon="IconChevronDown"></span></span><span>16:9 · 1 张</span><span class="nn-sep"></span><div class="nn-prompttools" aria-label="原有提示词工具示意"><span data-icon="IconBook"></span><span data-icon="IconLanguage"></span><span data-icon="IconSparkles"></span></div><span class="nn-sep"></span><button class="nn-generate" type="button" disabled aria-label="生成，示意稿未接入模型" data-tooltip="示意稿未接入模型">↑</button></footer>
+        </section>
+      </div>
+      <footer class="nn-timeline"><span data-icon="IconLayoutRows"></span><strong>时间轴</strong><span>尚无片段</span></footer>
+    </main>
+  </div>
+</div>
+<script type="application/json" id="nn-icons-data">{"IconChevronDown":"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"tabler-icon tabler-icon-chevron-down \" aria-hidden=\"true\"><path d=\"M6 9l6 6l6 -6\"></path></svg>","IconListCheck":"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"tabler-icon tabler-icon-list-check \" aria-hidden=\"true\"><path d=\"M3.5 5.5l1.5 1.5l2.5 -2.5\"></path><path d=\"M3.5 11.5l1.5 1.5l2.5 -2.5\"></path><path d=\"M3.5 17.5l1.5 1.5l2.5 -2.5\"></path><path d=\"M11 6l9 0\"></path><path d=\"M11 12l9 0\"></path><path d=\"M11 18l9 0\"></path></svg>","IconBrowser":"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"tabler-icon tabler-icon-browser \" aria-hidden=\"true\"><path d=\"M4 8h16\"></path><path d=\"M4 6a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2l0 -12\"></path><path d=\"M8 4v4\"></path></svg>","IconSettings":"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"tabler-icon tabler-icon-settings \" aria-hidden=\"true\"><path d=\"M10.325 4.317c.426 -1.756 2.924 -1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543 -.94 3.31 .826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756 .426 1.756 2.924 0 3.35a1.724 1.724 0 0 0 -1.066 2.573c.94 1.543 -.826 3.31 -2.37 2.37a1.724 1.724 0 0 0 -2.572 1.065c-.426 1.756 -2.924 1.756 -3.35 0a1.724 1.724 0 0 0 -2.573 -1.066c-1.543 .94 -3.31 -.826 -2.37 -2.37a1.724 1.724 0 0 0 -1.065 -2.572c-1.756 -.426 -1.756 -2.924 0 -3.35a1.724 1.724 0 0 0 1.066 -2.573c-.94 -1.543 .826 -3.31 2.37 -2.37c1 .608 2.296 .07 2.572 -1.065\"></path><path d=\"M9 12a3 3 0 1 0 6 0a3 3 0 0 0 -6 0\"></path></svg>","IconFileText":"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"tabler-icon tabler-icon-file-text \" aria-hidden=\"true\"><path d=\"M14 3v4a1 1 0 0 0 1 1h4\"></path><path d=\"M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2\"></path><path d=\"M9 9l1 0\"></path><path d=\"M9 13l6 0\"></path><path d=\"M9 17l6 0\"></path></svg>","IconListTree":"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"tabler-icon tabler-icon-list-tree \" aria-hidden=\"true\"><path d=\"M9 6h11\"></path><path d=\"M12 12h8\"></path><path d=\"M15 18h5\"></path><path d=\"M5 6v.01\"></path><path d=\"M8 12v.01\"></path><path d=\"M11 18v.01\"></path></svg>","IconFolder":"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"tabler-icon tabler-icon-folder \" aria-hidden=\"true\"><path d=\"M5 4h4l3 3h7a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-11a2 2 0 0 1 2 -2\"></path></svg>","IconRoute":"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"tabler-icon tabler-icon-route \" aria-hidden=\"true\"><path d=\"M3 19a2 2 0 1 0 4 0a2 2 0 0 0 -4 0\"></path><path d=\"M19 7a2 2 0 1 0 0 -4a2 2 0 0 0 0 4\"></path><path d=\"M11 19h5.5a3.5 3.5 0 0 0 0 -7h-8a3.5 3.5 0 0 1 0 -7h4.5\"></path></svg>","IconBooks":"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"tabler-icon tabler-icon-books \" aria-hidden=\"true\"><path d=\"M5 5a1 1 0 0 1 1 -1h2a1 1 0 0 1 1 1v14a1 1 0 0 1 -1 1h-2a1 1 0 0 1 -1 -1l0 -14\"></path><path d=\"M9 5a1 1 0 0 1 1 -1h2a1 1 0 0 1 1 1v14a1 1 0 0 1 -1 1h-2a1 1 0 0 1 -1 -1l0 -14\"></path><path d=\"M5 8h4\"></path><path d=\"M9 16h4\"></path><path d=\"M13.803 4.56l2.184 -.53c.562 -.135 1.133 .19 1.282 .732l3.695 13.418a1.02 1.02 0 0 1 -.634 1.219l-.133 .041l-2.184 .53c-.562 .135 -1.133 -.19 -1.282 -.732l-3.695 -13.418a1.02 1.02 0 0 1 .634 -1.219l.133 -.041\"></path><path d=\"M14 9l4 -1\"></path><path d=\"M16 16l3.923 -.98\"></path></svg>","IconBulb":"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"tabler-icon tabler-icon-bulb \" aria-hidden=\"true\"><path d=\"M3 12h1m8 -9v1m8 8h1m-15.4 -6.4l.7 .7m12.1 -.7l-.7 .7\"></path><path d=\"M9 16a5 5 0 1 1 6 0a3.5 3.5 0 0 0 -1 3a2 2 0 0 1 -4 0a3.5 3.5 0 0 0 -1 -3\"></path><path d=\"M9.7 17l4.6 0\"></path></svg>","IconPhoto":"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"tabler-icon tabler-icon-photo \" aria-hidden=\"true\"><path d=\"M15 8h.01\"></path><path d=\"M3 6a3 3 0 0 1 3 -3h12a3 3 0 0 1 3 3v12a3 3 0 0 1 -3 3h-12a3 3 0 0 1 -3 -3v-12\"></path><path d=\"M3 16l5 -5c.928 -.893 2.072 -.893 3 0l5 5\"></path><path d=\"M14 14l1 -1c.928 -.893 2.072 -.893 3 0l3 3\"></path></svg>","IconVideo":"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"tabler-icon tabler-icon-video \" aria-hidden=\"true\"><path d=\"M15 10l4.553 -2.276a1 1 0 0 1 1.447 .894v6.764a1 1 0 0 1 -1.447 .894l-4.553 -2.276v-4\"></path><path d=\"M3 8a2 2 0 0 1 2 -2h8a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-8a2 2 0 0 1 -2 -2l0 -8\"></path></svg>","IconWaveSine":"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"tabler-icon tabler-icon-wave-sine \" aria-hidden=\"true\"><path d=\"M21 12h-2c-.894 0 -1.662 -.857 -1.761 -2c-.296 -3.45 -.749 -6 -2.749 -6s-2.5 3.582 -2.5 8s-.5 8 -2.5 8s-2.452 -2.547 -2.749 -6c-.1 -1.147 -.867 -2 -1.763 -2h-2\"></path></svg>","IconTextSize":"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"tabler-icon tabler-icon-text-size \" aria-hidden=\"true\"><path d=\"M3 7v-2h13v2\"></path><path d=\"M10 5v14\"></path><path d=\"M12 19h-4\"></path><path d=\"M15 13v-1h6v1\"></path><path d=\"M18 12v7\"></path><path d=\"M17 19h2\"></path></svg>","IconScissors":"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"tabler-icon tabler-icon-scissors \" aria-hidden=\"true\"><path d=\"M3 7a3 3 0 1 0 6 0a3 3 0 1 0 -6 0\"></path><path d=\"M3 17a3 3 0 1 0 6 0a3 3 0 1 0 -6 0\"></path><path d=\"M8.6 8.6l10.4 10.4\"></path><path d=\"M8.6 15.4l10.4 -10.4\"></path></svg>","IconUpload":"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"tabler-icon tabler-icon-upload \" aria-hidden=\"true\"><path d=\"M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2\"></path><path d=\"M7 9l5 -5l5 5\"></path><path d=\"M12 4l0 12\"></path></svg>","IconPlus":"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"tabler-icon tabler-icon-plus \" aria-hidden=\"true\"><path d=\"M12 5l0 14\"></path><path d=\"M5 12l14 0\"></path></svg>","IconStack2":"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"tabler-icon tabler-icon-stack-2 \" aria-hidden=\"true\"><path d=\"M12 4l-8 4l8 4l8 -4l-8 -4\"></path><path d=\"M4 12l8 4l8 -4\"></path><path d=\"M4 16l8 4l8 -4\"></path></svg>","IconBook":"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"tabler-icon tabler-icon-book \" aria-hidden=\"true\"><path d=\"M3 19a9 9 0 0 1 9 0a9 9 0 0 1 9 0\"></path><path d=\"M3 6a9 9 0 0 1 9 0a9 9 0 0 1 9 0\"></path><path d=\"M3 6l0 13\"></path><path d=\"M12 6l0 13\"></path><path d=\"M21 6l0 13\"></path></svg>","IconLanguage":"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"tabler-icon tabler-icon-language \" aria-hidden=\"true\"><path d=\"M9 6.371c0 4.418 -2.239 6.629 -5 6.629\"></path><path d=\"M4 6.371h7\"></path><path d=\"M5 9c0 2.144 2.252 3.908 6 4\"></path><path d=\"M12 20l4 -9l4 9\"></path><path d=\"M19.1 18h-6.2\"></path><path d=\"M6.694 3l.793 .582\"></path></svg>","IconSparkles":"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"tabler-icon tabler-icon-sparkles \" aria-hidden=\"true\"><path d=\"M16 18a2 2 0 0 1 2 2a2 2 0 0 1 2 -2a2 2 0 0 1 -2 -2a2 2 0 0 1 -2 2m0 -12a2 2 0 0 1 2 2a2 2 0 0 1 2 -2a2 2 0 0 1 -2 -2a2 2 0 0 1 -2 2m-7 12a6 6 0 0 1 6 -6a6 6 0 0 1 -6 -6a6 6 0 0 1 -6 6a6 6 0 0 1 6 6\"></path></svg>","IconLayoutRows":"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"tabler-icon tabler-icon-layout-rows \" aria-hidden=\"true\"><path d=\"M4 6a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2l0 -12\"></path><path d=\"M4 12l16 0\"></path></svg>","IconLock":"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"tabler-icon tabler-icon-lock \" aria-hidden=\"true\"><path d=\"M5 13a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v6a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2v-6\"></path><path d=\"M11 16a1 1 0 1 0 2 0a1 1 0 0 0 -2 0\"></path><path d=\"M8 11v-4a4 4 0 1 1 8 0v4\"></path></svg>","IconCopy":"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"tabler-icon tabler-icon-copy \" aria-hidden=\"true\"><path d=\"M7 9.667a2.667 2.667 0 0 1 2.667 -2.667h8.666a2.667 2.667 0 0 1 2.667 2.667v8.666a2.667 2.667 0 0 1 -2.667 2.667h-8.666a2.667 2.667 0 0 1 -2.667 -2.667l0 -8.666\"></path><path d=\"M4.012 16.737a2.005 2.005 0 0 1 -1.012 -1.737v-10c0 -1.1 .9 -2 2 -2h10c.75 0 1.158 .385 1.5 1\"></path></svg>"}</script>
+<script>
+(()=>{
+const root=document.getElementById('nomi-native-empty-nodes');
+const icons=JSON.parse(root.querySelector('#nn-icons-data').textContent);
+const grid=root.querySelector('#nn-grid'),canvas=root.querySelector('#nn-canvas'),composer=root.querySelector('#nn-composer'),prompt=root.querySelector('#nn-prompt');
+const names=['雨棚','侧脸','怀表','车道','转身','表链'];
+let scene='overview',selected=-1,mode='text',drafts={};
+function icon(name){return icons[name]||'';}
+function paintIcons(){root.querySelectorAll('[data-icon]').forEach(el=>{el.innerHTML=icon(el.dataset.icon)});}
+function applySaved(s){if(s?.revision!=='nomi-native-v1')return;scene=['overview','selected','new'].includes(s.scene)?s.scene:'overview';selected=Number.isInteger(s.selected)&&s.selected>=0&&s.selected<6?s.selected:-1;mode=s.mode==='reference'?'reference':'text';drafts=s.drafts||{};if(scene==='new')selected=0;}
+applySaved(window.openai?.widgetState?.privateContent);
+function saveState(){window.openai?.setWidgetState?.({modelContent:{proposal:'沿用 Nomi 节点、标签、工具条与生成框；未选中空节点只显示原有类型图标',scene,selectedNode:selected<0?null:names[selected]},privateContent:{revision:'nomi-native-v1',scene,selected,mode,drafts}})?.catch(()=>{});}
+function placeComposer(){
+ if(selected<0)return;
+ const target=grid.querySelector('[data-node="'+selected+'"]');if(!target)return;
+ const c=canvas.getBoundingClientRect(),r=target.getBoundingClientRect();
+ const width=Math.min(560,Math.max(0,c.width-24));
+ composer.style.left=Math.max(12,Math.min(r.left-c.left+r.width/2-width/2,c.width-width-12))+'px';
+ composer.style.top=(r.bottom-c.top+14)+'px';
+ canvas.style.minHeight=Math.max(scene==='new'?480:608,r.bottom-c.top+14+composer.offsetHeight+48)+'px';
+}
+function render(){
+ canvas.style.minHeight='';canvas.classList.toggle('nn-single',scene==='new');
+ root.querySelectorAll('[data-scene]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.scene===scene)));
+ root.querySelectorAll('[data-mode]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.mode===mode)));
+ grid.innerHTML=Array.from({length:scene==='new'?1:6},(_,i)=>{
+  const active=i===selected,label=scene==='new'?'图片 1':'镜 '+String(i+1).padStart(2,'0')+' · '+names[i];
+  const badge='<span class="nn-badge">'+icon('IconPhoto')+'</span>';
+  const body=active?'<div class="nn-guidance"><div class="nn-identity">'+badge+'<span>图片 · 还没生成</span></div><div class="nn-actions"><button class="nn-try" type="button" data-recipe="text">文字生图</button><span aria-hidden="true">·</span><button class="nn-try" type="button" data-recipe="reference">参考图生图</button></div></div>':'<button class="nn-quiet" type="button" data-pick="'+i+'" aria-label="选中图片节点：'+label+'">'+badge+'</button>';
+  const tools=active?'<div class="nn-nodetoolbar" aria-label="原有节点工具条示意"><span class="nn-toolitem">'+icon('IconLock')+'</span><span class="nn-toolitem">'+icon('IconCopy')+'</span></div>':'';
+  return '<div class="nn-slot">'+tools+'<div class="nn-label">'+label+'</div><div class="nn-card" data-node="'+i+'" data-selected="'+active+'">'+body+'<span class="nn-handle left"></span><span class="nn-handle right"></span></div></div>';
+ }).join('');
+ composer.hidden=selected<0;prompt.value=selected<0?'':drafts[selected]||'';
+ prompt.placeholder=mode==='reference'?'添加参考素材，再描述希望改变的内容':'描述画面，或输入 @ 引用参考素材';
+ paintIcons();placeComposer();
+}
+root.addEventListener('click',e=>{
+ const s=e.target.closest('[data-scene]');if(s){scene=s.dataset.scene;selected=scene==='overview'?-1:scene==='new'?0:4;render();saveState();return;}
+ const pick=e.target.closest('[data-pick]');if(pick){selected=Number(pick.dataset.pick);scene='selected';render();saveState();return;}
+ const m=e.target.closest('[data-mode]')||e.target.closest('[data-recipe]');if(m){mode=m.dataset.mode||m.dataset.recipe;render();prompt.focus();saveState();return;}
+});
+prompt.addEventListener('input',()=>{if(selected>=0){drafts[selected]=prompt.value;saveState();}});
+window.addEventListener('openai:set_globals',e=>{applySaved(e.detail?.globals?.widgetState?.privateContent);render();});
+window.addEventListener('resize',placeComposer);
+render();
+})();
+</script>
+</div>

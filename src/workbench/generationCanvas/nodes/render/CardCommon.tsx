@@ -10,14 +10,17 @@
 import React, { type JSX } from 'react'
 import { isProjectExecutionContextCurrent, withProjectAction, type ProjectExecutionContext } from '../../../project/projectCanvasReadSurface'
 import { useTranslation } from 'react-i18next'
-import { Icon3dCubeSphere, IconBox, IconPhoto, IconPlayerStop, IconUpload, IconUser, IconVideo, IconMap } from '../../../../vendor/tablerIcons'
+import { IconBox, IconPlayerStop, IconUpload } from '../../../../vendor/tablerIcons'
 import { cn } from '../../../../utils/cn'
 import i18n from '../../../../i18n'
 import { NodeEmptyState } from './NodeEmptyState'
 import type { GenerationCanvasNode } from '../../model/generationCanvasTypes'
+import { getGenerationNodeLabel } from '../../model/generationNodeKinds'
 import { NodeTryList } from '../../quickActions/NodeTryList'
 import { nodeTryRecipes } from '../../quickActions/nodeTryRecipes'
 import { resolveNodeVisualSize } from '../nodeSizing'
+import { getGenerationNodeIcon } from '../renderRegistry'
+import { useEmptyNodeActivation } from './NodeEmptyStateContext'
 
 /** 没出图 / 没放素材的卡面：纸白底（Claude Design 拍板稿 EmptyStates：去掉斜线底纹，卡的描边由外壳给）。 */
 export const EMPTY_SURFACE_CLASS =
@@ -77,6 +80,7 @@ export function EmptyStateLauncher({
   height?: number
 }): JSX.Element {
   const { t } = useTranslation()
+  const activation = useEmptyNodeActivation()
   const cluster = <NodeEmptyState icon={icon} title={label || ''} description={hint || ''} height={height} />
   if (!onActivate) {
     return <div className="h-full w-full">{cluster}</div>
@@ -86,18 +90,23 @@ export function EmptyStateLauncher({
       type="button"
       data-testid={testId}
       aria-label={activateAriaLabel || label || t('generationCommon.card.open')}
+      tabIndex={activation.canActivate ? 0 : -1}
+      onPointerDownCapture={activation.onPointerDownCapture}
+      onPointerCancelCapture={activation.onPointerCancelCapture}
+      onClickCapture={activation.onClickCapture}
       className={cn(
         'flex h-full w-full flex-col items-center justify-center gap-2 text-center rounded-nomi px-4 py-3 bg-transparent border-0 cursor-pointer',
         'transition-[background] duration-nomi-fast ease-nomi-fast hover:bg-nomi-ink-05',
         'focus-visible:outline-2 focus-visible:outline-nomi-accent focus-visible:outline-offset-2',
       )}
       onClick={(event) => {
+        if (event.defaultPrevented) return
         event.stopPropagation()
         onActivate()
       }}
-      onPointerDown={(event) => event.stopPropagation()}
-      onPointerEnter={onPreload}
-      onFocus={onPreload}
+      onPointerDown={(event) => { if (activation.canActivate) event.stopPropagation() }}
+      onPointerEnter={activation.canActivate ? onPreload : undefined}
+      onFocus={activation.canActivate ? onPreload : undefined}
     >
       {cluster}
     </button>
@@ -132,18 +141,17 @@ export function VariantChip({ count }: { count: number }): JSX.Element | null {
 
 /**
  * 空媒体只给下一步；镜头号和标题属于共同框外标签行。
- * 2026-10-08 拍板 ③：图片 / 视频空卡用「试试」（2–3 个只搭结构的创作任务）**替换**那一句操作说明——
+ * 2026-10-08 拍板 ③：图片 / 视频空卡用「试试」（2–3 个只搭结构的创作任务）**替换**那一句操作说明；
+ * 2026-10-12 用户改：浏览态（没选中）只留类型图标，选中单选才出「试试」——
  * 标题和说明都不再出现（种类已由图标和框外标签行说了）。派生好待生成、已连上游等产出两种状态仍是一句话：
  * 那是在告诉用户此刻的状态，不是教他怎么用。3D 模型还没有配方，保留原说明。
  */
 export function PendingGenerationPlaceholder({
   node,
-  selected,
   waitingUpstream = false,
   derivedReady = false,
 }: {
   node: GenerationCanvasNode
-  selected: boolean
   waitingUpstream?: boolean
   /** 派生出来、提示词已填好、还没生成（`isDerivedPromptReady`）。 */
   derivedReady?: boolean
@@ -152,10 +160,11 @@ export function PendingGenerationPlaceholder({
   const isVideo = node.kind === 'video'
   // 3D 模型节点也走这条通用占位（无专属卡 body）。不按 kind 分就会拿图片文案自称「图片节点」。
   const isModel3d = node.kind === 'model3d'
-  const icon = isVideo ? <IconVideo size={20} stroke={1.6} /> : isModel3d ? <Icon3dCubeSphere size={20} stroke={1.6} /> : <IconPhoto size={20} stroke={1.6} />
+  const Icon = getGenerationNodeIcon(node.kind)
+  const icon = <Icon size={20} stroke={1.5} />
   if (!derivedReady && !waitingUpstream && nodeTryRecipes(node).length) {
     return (
-      <div data-selected-placeholder={selected ? 'true' : 'false'} className="h-full w-full">
+      <div className="h-full w-full">
         <NodeEmptyState
           height={resolveNodeVisualSize(node).height}
           icon={icon}
@@ -172,7 +181,7 @@ export function PendingGenerationPlaceholder({
     ? t('generationCommon.nodeEmpty.video.title')
     : isModel3d
       ? t('generationCommon.nodeEmpty.model3d.title')
-      : t('generationCommon.nodeEmpty.image.title')
+      : getGenerationNodeLabel(node.kind)
   const description = derivedReady
     ? t('generationCommon.nodeEmpty.derivedReady.description')
     : waitingUpstream
@@ -181,8 +190,8 @@ export function PendingGenerationPlaceholder({
       ? t('generationCommon.nodeEmpty.model3d.description')
       : undefined
   return (
-    <div data-selected-placeholder={selected ? 'true' : 'false'} className="h-full w-full">
-      <NodeEmptyState height={resolveNodeVisualSize(node).height} icon={icon} title={titleText} description={description} />
+    <div className="h-full w-full">
+      <NodeEmptyState purpose={derivedReady || waitingUpstream ? 'status' : 'guidance'} height={resolveNodeVisualSize(node).height} icon={icon} title={titleText} description={description} />
     </div>
   )
 }
@@ -393,6 +402,7 @@ export function UploadFallback({
   height?: number
 }): JSX.Element {
   const { t } = useTranslation()
+  const activation = useEmptyNodeActivation()
   const handleChange = React.useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
       const file = event.currentTarget.files?.[0]
@@ -413,7 +423,8 @@ export function UploadFallback({
   // v0.7.3 fix: 不 stopPropagation onPointerDown — 否则空卡片没法拖动。
   // 「短按弹文件框、长按拖动」由外壳 useNodeDragResize 保证：pointer capture 推迟到拖拽
   // 阈值(2px)跨过才抢——按下就抢会把 click 重定向到外壳，label 弹文件框整类失效（2026-08-03 群反馈）。
-  const icon = kind === 'character' ? <IconUser size={20} stroke={1.6} /> : kind === 'scene' ? <IconMap size={20} stroke={1.6} /> : <IconBox size={20} stroke={1.6} />
+  const Icon = kind === 'prop' ? IconBox : getGenerationNodeIcon(kind)
+  const icon = <Icon size={20} stroke={1.5} />
   const action = t('generationCommon.card.upload', { label })
   const nodeCopy = kind === 'character'
     ? { title: t('generationCommon.nodeEmpty.character.title'), description: t('generationCommon.nodeEmpty.character.description') }
@@ -421,7 +432,7 @@ export function UploadFallback({
       ? { title: t('generationCommon.nodeEmpty.scene.title'), description: t('generationCommon.nodeEmpty.scene.description') }
       : { title: t('generationCommon.nodeEmpty.prop.title'), description: t('generationCommon.nodeEmpty.prop.description') }
   return (
-    <label className="block h-full w-full cursor-pointer text-nomi-ink-60 transition-colors hover:text-nomi-ink hover:bg-nomi-ink-05/50">
+    <label onPointerDownCapture={activation.onPointerDownCapture} onPointerCancelCapture={activation.onPointerCancelCapture} onClickCapture={activation.onClickCapture} className="block h-full w-full cursor-pointer text-nomi-ink-60 transition-colors hover:text-nomi-ink hover:bg-nomi-ink-05/50">
       <NodeEmptyState
         height={height}
         icon={icon}
@@ -429,7 +440,7 @@ export function UploadFallback({
         description={nodeCopy.description}
         action={<span className="inline-flex items-center gap-1.5 rounded-nomi-sm bg-nomi-ink px-3 py-1.5 text-caption font-medium text-nomi-paper"><IconUpload size={14} stroke={1.8} />{action}</span>}
       />
-      <input className="hidden" type="file" accept={accept} onChange={handleChange} />
+      <input disabled={!activation.canActivate} className="hidden" type="file" accept={accept} onChange={handleChange} />
     </label>
   )
 }

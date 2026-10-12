@@ -11,7 +11,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
-import { conflictId, findConflicts, loadRegisteredIcons, scanIconDictionary, scanIconSemantics } from './check-icon-semantics.mjs'
+import { conflictId, findConflicts, loadRegisteredIcons, scanIconDictionary, scanIconSemantics, scanUnnamedIconButtons } from './check-icon-semantics.mjs'
 
 function fixture(files) {
   const dir = makeTempDir('icon-semantics-')
@@ -120,4 +120,34 @@ export type Props = { icon: Icon }`,
     }),
     [],
   )
+})
+
+test('规则三 会红：原生 button 里只有图标、没有任何名字', () => {
+  const found = scanUnnamedIconButtons(fixture({
+    'src/A.tsx': `import { IconTrash } from '@tabler/icons-react'
+export const A = () => <button type="button" onClick={go}><IconTrash size={14} /></button>`,
+  }), ['src'])
+  assert.deepEqual(Object.keys(found), ['src/A.tsx'])
+})
+
+test('规则三 不乱红：有 aria-label / title / 展开 props / 可见文字 / 三元图标带名字', () => {
+  const found = scanUnnamedIconButtons(fixture({
+    'src/A.tsx': `import { IconTrash, IconPlus, IconX } from '@tabler/icons-react'
+export const A = (props) => <>
+  <button aria-label={t('a.b')}><IconTrash /></button>
+  <button title={t('a.b')}><IconTrash /></button>
+  <button {...props}><IconTrash /></button>
+  <button><IconPlus /> {t('a.add')}</button>
+  <button aria-label="x">{open ? <IconX /> : <IconPlus />}</button>
+</>`,
+  }), ['src'])
+  assert.deepEqual(found, {})
+})
+
+test('规则三 会红：三元两支都是图标也不豁免', () => {
+  const found = scanUnnamedIconButtons(fixture({
+    'src/A.tsx': `import { IconX, IconPlus } from '@tabler/icons-react'
+export const A = () => <button>{open ? <IconX /> : <IconPlus />}</button>`,
+  }), ['src'])
+  assert.deepEqual(Object.keys(found), ['src/A.tsx'])
 })

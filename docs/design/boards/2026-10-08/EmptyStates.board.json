@@ -215,6 +215,49 @@
         "empty"
       ],
       "note": "空节点排版在做（#1164）"
+    },
+    {
+      "id": "empty.node.contextual-guidance",
+      "label": "浏览/多选只显示类型图标，单选展开原指导",
+      "candidates": [],
+      "status": "implemented",
+      "assertion": "guidance.group.icon-only",
+      "states": [
+        "empty",
+        "selected",
+        "zh-en",
+        "dark",
+        "narrow"
+      ],
+      "note": "2026-10-11 approved amendment; all prior type/status/action candidates remain in the single-selected state. Source and production checklist: docs/design/boards/2026-10-11/ContextualEmptyNodes.board.json"
+    },
+    {
+      "id": "empty.node.type-mark",
+      "label": "未选中类型图标 24px / 圆底 48px，外部名称保留",
+      "candidates": [],
+      "status": "implemented",
+      "assertion": "guidance.kind.image",
+      "states": [
+        "empty",
+        "zh-en",
+        "dark",
+        "narrow"
+      ],
+      "note": "用户 2026-10-12 反馈 Icon 太小；沿用系统标记放大一档。"
+    },
+    {
+      "id": "empty.node.activation",
+      "label": "上传/画板首次点击先选择，原入口继续可用",
+      "candidates": [],
+      "status": "implemented",
+      "assertion": "guidance.whiteboard.activation",
+      "states": [
+        "empty",
+        "selected",
+        "disabled",
+        "zh-en",
+        "dark"
+      ]
     }
   ],
   "decor": [
@@ -242,6 +285,16 @@
       "function": "加节点菜单",
       "before": "「+」菜单",
       "after": "canvas.add-menu.common"
+    },
+    {
+      "function": "上下文收口前的完整节点引导与配方",
+      "before": "所有普通空卡常驻类型/说明/动作",
+      "after": "empty.node.contextual-guidance"
+    },
+    {
+      "function": "空卡上传与画板打开",
+      "before": "整卡 label/launcher 直接激活",
+      "after": "empty.node.activation"
     }
   ]
 }
