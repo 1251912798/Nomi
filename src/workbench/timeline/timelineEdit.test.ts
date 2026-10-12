@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { TimelineClip, TimelineState, TimelineTransition } from './timelineTypes'
 import { createDefaultTimeline } from './timelineMath'
-import { duplicateClipById, nudgeClipById, removeClipById, removeClipsByIds, removeClipsBySourceNodeIds } from './timelineEdit'
+import { duplicateClipById, nudgeClipById, removeClipById, removeClipsByIds, detachClipsBySourceNodeIds } from './timelineEdit'
 
 function clip(id: string, startFrame: number, endFrame: number): TimelineClip {
   return {
@@ -46,10 +46,10 @@ describe('remove clip drops transitions referencing the removed clip', () => {
     expect(after.transitions).toEqual([])
   })
 
-  it('removeClipsBySourceNodeIds clears transitions of the clips it removed (canvas-node reconciliation path)', () => {
+  it('detachClipsBySourceNodeIds clears transitions of the clips it removed (canvas-node reconciliation path)', () => {
     const base = timeline([clip('a', 0, 90), clip('b', 90, 180), clip('c', 180, 270)])
     base.transitions = [transition('a', 'b'), transition('b', 'c')]
-    const after = removeClipsBySourceNodeIds(base, ['a'])
+    const after = detachClipsBySourceNodeIds(base, ['a']).timeline
     expect(after.transitions).toEqual([transition('b', 'c')])
   })
 })
