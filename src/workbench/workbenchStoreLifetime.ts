@@ -72,6 +72,7 @@ export const workbenchStoreLifetime = declareStoreLifetime({
     timelineSplitMode: 'project',
     timelineUndoStack: 'project',
     timelineRedoStack: 'project',
+    detachedTimelineClips: 'project',
     editingPanelLayout: 'project',
     editingPanelUndoStack: 'project',
   },
@@ -110,6 +111,7 @@ export const workbenchStoreLifetime = declareStoreLifetime({
       timelineSplitMode: false,
       timelineUndoStack: [],
       timelineRedoStack: [],
+      detachedTimelineClips: {},
       editingPanelLayout: cloneEditingPanelLayout(EDITING_PANEL_DEFAULTS),
       editingPanelUndoStack: [],
     })

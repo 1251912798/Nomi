@@ -1,0 +1,24 @@
+{
+  "id": "REAL-20261011-02",
+  "since": "2026-10-11",
+  "source": "2026-10-11 real-device performance programme",
+  "category": "deletion-integrity",
+  "problem": "删除绑定了视频节点的分镜行后撤销：镜头和节点回来了，时间轴上随节点被摘掉的片段没回来，重开项目也回不来（小档 4 片段 -> 删后 2 -> 撤销后仍 2；重档 160 -> 159 -> 159）",
+  "existingInvariants": [],
+  "ironLaws": [],
+  "useCases": [],
+  "fullWalkJourneys": [],
+  "status": "fixed",
+  "manualReview": "reviewed",
+  "evidence": [
+    "docs/evidence/2026-10-11-product-performance/confirmed-findings-register.json: storyboard-bound-delete-undo-loses-clips",
+    "src/workbench/creation/storyboard/storyboardDeleteUndoClips.test.ts"
+  ],
+  "completionCommits": [],
+  "rootCauseContract": "docs/fixes/2026-10-11-node-delete-undo-timeline-clips.root-cause.json",
+  "fixedInPr": 1188,
+  "classCheck": {
+    "kind": "matrix",
+    "file": "src/workbench/creation/storyboard/storyboardDeleteUndoClips.test.ts"
+  }
+}
