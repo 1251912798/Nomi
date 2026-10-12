@@ -60,6 +60,7 @@ import { createTimelineClipWritesSlice, type TimelineClipWritesSlice } from './t
 import { readDockCollapsed, writeDockCollapsed } from './generation/dockCollapsePrefs'
 import { TIMELINE_PANEL_DEFAULT, clampTimelinePanelHeight } from './timeline/timelinePanelBounds'
 import type { ExportQuality } from './export/exportTypes'
+import { registerTimelineReconciler } from './generationCanvas/store/canvasTimelineBridge'
 
 /** 拖动中临时吸附辅助线（非持久化）。 */
 export type TimelineSnapGuide = { frame: number; label: string }
@@ -794,3 +795,5 @@ export const useWorkbenchStore = create<WorkbenchState>()(subscribeWithSelector(
     })
   },
 })))
+
+registerTimelineReconciler(useWorkbenchStore)

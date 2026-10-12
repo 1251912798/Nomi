@@ -1,4 +1,17 @@
-import { useWorkbenchStore } from '../../workbenchStore'
+type TimelineReconciler = {
+  getState(): {
+    reconcileTimelineForDeletedNodes(nodeIds: readonly string[]): void
+    reconcileTimelineForRestoredNodes(nodeIds: readonly string[]): void
+  }
+}
+
+// 时间轴所在的工作台 store 建好后把自己登记进来（见 workbenchStore.ts 末尾）。桥不 import 工作台 store：
+// 那会形成 canvasTimelineBridge → workbenchStore → generationCanvasStore → … → canvasTimelineBridge 静态循环。
+let reconciler: TimelineReconciler | null = null
+
+export function registerTimelineReconciler(next: TimelineReconciler): void {
+  reconciler = next
+}
 
 // 画布节点集合变了 → 时间轴对账(数据一致性)。clip 创建时把节点产物 url 快照冻结、无 node→clip 同步:
 // 节点被删,时间轴要摘掉引用它的 clip;节点被放回(撤销 / 重做 / 补偿),要把当初摘下的 clip 放回原位。
@@ -7,11 +20,11 @@ import { useWorkbenchStore } from '../../workbenchStore'
 // workbenchStore→genStore→canvasNodeActions→workbenchStore 循环初始化)。无命中是 no-op,绝不影响画布本身。
 
 export function reconcileTimelineForDeletedNodes(nodeIds: readonly string[]): void {
-  if (nodeIds.length) useWorkbenchStore.getState().reconcileTimelineForDeletedNodes(nodeIds)
+  if (nodeIds.length) reconciler?.getState().reconcileTimelineForDeletedNodes(nodeIds)
 }
 
 export function reconcileTimelineForRestoredNodes(nodeIds: readonly string[]): void {
-  if (nodeIds.length) useWorkbenchStore.getState().reconcileTimelineForRestoredNodes(nodeIds)
+  if (nodeIds.length) reconciler?.getState().reconcileTimelineForRestoredNodes(nodeIds)
 }
 
 /** 整张图被换掉(撤销 / 重做 / 外部写)时按前后节点差分:消失的摘 clip,出现的放回。 */
