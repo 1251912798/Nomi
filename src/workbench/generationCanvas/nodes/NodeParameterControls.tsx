@@ -716,7 +716,7 @@ export default function NodeParameterControls({
     ...archetypeModeSlots(mode).map(() => 'image' as AssetKind),
     ...archetypeModeArraySlots(mode).map(slot => slot.accept),
     ...(archetypeModeSourceVideoSlot(mode) ? ['video' as AssetKind] : []),
-  ]) ?? (isImageLike ? ['image' as AssetKind] : [])))
+  ]) ?? (isImageLike || isVideoLike ? ['image' as AssetKind] : [])))
   const inputReferenceEntry = !assetSlots.length && canConnect && potentialReferenceKinds.length
     ? <NodeInputReferenceEntry nodeId={node.id} accept={potentialReferenceKinds} /> : null
   if (
