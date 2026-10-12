@@ -362,7 +362,10 @@ try {
       await expect(node(win, 'image').locator('[data-node-floating-toolbar]')).toHaveCount(0)
       const hoverSource = hoverWrap.locator('[data-toolbar-action="add-to-timeline"]')
       await expect(hoverSource).toHaveCount(1)
-      await shot(win, `${locale}-hover-handle-unselected`)
+      // screenshotSettled 会把鼠标挪开，把手随之收起；这里要拍到悬停态，直接截当前画面。
+      const hoverShot = path.join(output, `${locale}-hover-handle-unselected.png`)
+      await win.screenshot({ path: hoverShot })
+      receipt.screenshots.push(hoverShot)
       const hoverDrop = await freeImageTrackPoint(win, imageTrack)
       // 截图与量落点之间鼠标可能被挪开；真实用户是先悬停节点再抓把手，这里同样先回到节点上。
       await node(win, 'image').hover({ position: { x: hoverRect.width / 2, y: hoverRect.height / 2 } })
