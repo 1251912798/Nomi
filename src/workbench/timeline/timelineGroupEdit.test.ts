@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import type { TimelineClip, TimelineState } from './timelineTypes'
-import { clampGroupDelta, applyClipStartFrames, removeClipsByIds, removeClipsBySourceNodeIds, type ClipOrigin } from './timelineEdit'
+import { clampGroupDelta, applyClipStartFrames, removeClipsByIds, detachClipsBySourceNodeIds, type ClipOrigin } from './timelineEdit'
 
 function clip(id: string, start: number, end: number, type: TimelineClip['type'] = 'image'): TimelineClip {
   return {
@@ -86,7 +86,7 @@ describe('removeClipsByIds', () => {
   })
 })
 
-describe('removeClipsBySourceNodeIds', () => {
+describe('detachClipsBySourceNodeIds', () => {
   // clip() 的 sourceNodeId = node-<id>，据此构造删节点对账场景
   it('删画布节点 → 移除时间轴上所有引用该 sourceNodeId 的 clip（跨轨、含同节点多产物）', () => {
     const keep = clip('keep', 0, 30) // sourceNodeId=node-keep
@@ -94,7 +94,7 @@ describe('removeClipsBySourceNodeIds', () => {
     const xImg = { ...clip('x-img', 40, 70), sourceNodeId: 'node-x' }
     const xVid = { ...clip('x-vid', 0, 50, 'video'), sourceNodeId: 'node-x' }
     const t = timeline([keep, xImg], [xVid])
-    const next = removeClipsBySourceNodeIds(t, ['node-x'])
+    const next = detachClipsBySourceNodeIds(t, ['node-x']).timeline
     expect(next.tracks[0].clips.map((c) => c.id)).toEqual(['keep'])
     expect(next.tracks[1].clips.map((c) => c.id)).toEqual([])
   })
@@ -104,17 +104,17 @@ describe('removeClipsBySourceNodeIds', () => {
     const b = { ...clip('b', 40, 70), sourceNodeId: 'node-b' }
     const c = { ...clip('c', 80, 110), sourceNodeId: 'node-c' }
     const t = timeline([a, b, c])
-    const next = removeClipsBySourceNodeIds(t, ['node-a', 'node-c'])
+    const next = detachClipsBySourceNodeIds(t, ['node-a', 'node-c']).timeline
     expect(next.tracks[0].clips.map((cl) => cl.id)).toEqual(['b'])
   })
 
   it('无匹配节点时原样返回（引用不变，store 据此跳过 persistRevision 自增）', () => {
     const t = timeline([clip('a', 0, 30)])
-    expect(removeClipsBySourceNodeIds(t, ['node-missing'])).toBe(t)
+    expect(detachClipsBySourceNodeIds(t, ['node-missing']).timeline).toBe(t)
   })
 
   it('空 nodeIds 原样返回（引用不变）', () => {
     const t = timeline([clip('a', 0, 30)])
-    expect(removeClipsBySourceNodeIds(t, [])).toBe(t)
+    expect(detachClipsBySourceNodeIds(t, []).timeline).toBe(t)
   })
 })
