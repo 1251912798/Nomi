@@ -136,13 +136,13 @@
     }
   ],
   "screenshots": [
-    "docs/evidence/2026-10-11-node-guidance/01-group-browsing-zh-light.png",
-    "docs/evidence/2026-10-11-node-guidance/02-single-selected-zh-light.png",
-    "docs/evidence/2026-10-11-node-guidance/matrix-text-zh-light.png",
-    "docs/evidence/2026-10-11-node-guidance/matrix-whiteboard-zh-light.png",
-    "docs/evidence/2026-10-11-node-guidance/matrix-panorama-zh-light.png",
-    "docs/evidence/2026-10-11-node-guidance/matrix-clip-zh-light.png",
-    "docs/evidence/2026-10-11-node-guidance/matrix-director-zh-light.png"
+    "docs\\evidence\\2026-10-11-node-guidance\\01-group-browsing-zh-light.png",
+    "docs\\evidence\\2026-10-11-node-guidance\\02-single-selected-zh-light.png",
+    "docs\\evidence\\2026-10-11-node-guidance\\matrix-text-zh-light.png",
+    "docs\\evidence\\2026-10-11-node-guidance\\matrix-whiteboard-zh-light.png",
+    "docs\\evidence\\2026-10-11-node-guidance\\matrix-panorama-zh-light.png",
+    "docs\\evidence\\2026-10-11-node-guidance\\matrix-clip-zh-light.png",
+    "docs\\evidence\\2026-10-11-node-guidance\\matrix-director-zh-light.png"
   ],
   "limitations": [
     "Windows, installed package and paid generation unverified"

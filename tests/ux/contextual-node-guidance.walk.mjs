@@ -110,6 +110,11 @@ try {
     const box = await empty(kind).locator('svg').boundingBox()
     expect(box?.width, `${kind} type mark has visible geometry`).toBeGreaterThan(0)
     expect(await empty(kind).locator('svg').evaluate(el => getComputedStyle(el).width)).toBe('24px')
+    if (kind === 'text') await expect(node('text').locator('header[aria-label]'), 'empty unselected text card keeps its drag handle header').toBeVisible()
+    if (['image', 'video', 'character', 'scene', 'prop', 'keyframe', 'shot', 'output', 'model3d'].includes(kind)) {
+      const holder = await empty(kind).boundingBox(), disc = await empty(kind).locator('span[aria-hidden="true"]').boundingBox()
+      expect(disc.y - holder.y, `${kind} icon disc sits >= 44px below the card body top (10-10 board B)`).toBeGreaterThanOrEqual(43.5)
+    }
     if (['clip', 'director', 'text', 'panorama', 'whiteboard'].includes(kind)) await shot(`matrix-${kind}`)
     check(kind === 'image' ? 'guidance.kind.image' : `guidance.kind.${kind}`, 'browsing and multi-selection icon-only; single-selection guidance; nonzero icon geometry')
   }
@@ -134,14 +139,15 @@ try {
     await shot('03-dense-zoomed-out')
     check('guidance.lod.type-marks', '81-node canvas at 51% via original zoom controls retains canonical type marks across all fourteen kinds')
     await put([fixture('audio', 'audio-idle')])
-    const idleNameProbe = await proveProbe(node('audio-idle').locator('[data-node-inline-title]'), 'idle audio has its external name')
+    await proveProbe(node('audio-idle').locator('[data-node-inline-title]'), 'idle audio has its external name')
     for (const status of ['queued', 'running', 'error']) {
       const current = fixture('audio', `audio-${status}`, undefined, { status, error: status === 'error' ? 'model not enabled' : undefined })
       await put([current])
       await expect(node(current.id)).toHaveAttribute('data-status', status)
-      await expectAbsent(node(current.id).locator('[data-node-inline-title]'), { provenBy: idleNameProbe })
+      // 10-12 协调拍板：空卡在任何生成状态都显示框外标签行（标题不随状态消失）。
+      await expect(node(current.id).locator('[data-node-inline-title]')).toHaveText(current.title)
       await expect(node(current.id).locator('[data-node-inline-status] [data-generation-status]')).toBeVisible()
-      check(`guidance.operational.audio.${status}`, 'original operational status remains visible without adding an empty-card title')
+      check(`guidance.operational.audio.${status}`, 'original operational status remains visible and the empty card keeps its external name')
     }
     const legacyEmpty = fixture('whiteboard', 'legacy-empty')
     delete legacyEmpty.status

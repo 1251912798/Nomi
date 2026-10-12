@@ -1,7 +1,8 @@
 {
   "locale": "en",
   "scheme": "dark",
-  "boundary": "built macOS Electron; isolated fixture matrix + original toolbar/text/upload/whiteboard journeys; no generation requested",
+  "mode": "full-journey",
+  "boundary": "built macOS Electron; isolated fixture matrix; full mode additionally uses original toolbar/text/upload/whiteboard journeys; no generation requested",
   "checks": [
     {
       "id": "guidance.group.icon-only",
@@ -135,13 +136,13 @@
     }
   ],
   "screenshots": [
-    "docs/evidence/2026-10-11-node-guidance/01-group-browsing-en-dark.png",
-    "docs/evidence/2026-10-11-node-guidance/02-single-selected-en-dark.png",
-    "docs/evidence/2026-10-11-node-guidance/matrix-text-en-dark.png",
-    "docs/evidence/2026-10-11-node-guidance/matrix-whiteboard-en-dark.png",
-    "docs/evidence/2026-10-11-node-guidance/matrix-panorama-en-dark.png",
-    "docs/evidence/2026-10-11-node-guidance/matrix-clip-en-dark.png",
-    "docs/evidence/2026-10-11-node-guidance/matrix-director-en-dark.png"
+    "docs\\evidence\\2026-10-11-node-guidance\\01-group-browsing-en-dark.png",
+    "docs\\evidence\\2026-10-11-node-guidance\\02-single-selected-en-dark.png",
+    "docs\\evidence\\2026-10-11-node-guidance\\matrix-text-en-dark.png",
+    "docs\\evidence\\2026-10-11-node-guidance\\matrix-whiteboard-en-dark.png",
+    "docs\\evidence\\2026-10-11-node-guidance\\matrix-panorama-en-dark.png",
+    "docs\\evidence\\2026-10-11-node-guidance\\matrix-clip-en-dark.png",
+    "docs\\evidence\\2026-10-11-node-guidance\\matrix-director-en-dark.png"
   ],
   "limitations": [
     "Windows, installed package and paid generation unverified"
