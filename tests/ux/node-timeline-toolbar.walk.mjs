@@ -109,7 +109,11 @@ async function openProject(app, library, name, locale) {
 }
 
 const node = (win, id) => win.locator(`article.generation-canvas-v2-node[data-node-id="${id}"]`)
-const action = (win, id) => node(win, id).locator('[data-node-floating-toolbar] [data-toolbar-action="add-to-timeline"]')
+// 旧版镜头 / 输出节点没有图片浮条（恢复原显示条件），入口是悬停把手；其余节点入口在浮条里。
+const hasToolbar = (id) => !id.startsWith('legacy-')
+const action = (win, id) => node(win, id).locator(hasToolbar(id)
+  ? '[data-node-floating-toolbar] [data-toolbar-action="add-to-timeline"]'
+  : '[data-node-timeline-hover-handle] [data-toolbar-action="add-to-timeline"]')
 const timeline = (win) => win.locator('.workbench-generation__timeline')
 const timelineMime = 'application/x-tapcanvas-generation-node'
 async function nativeToolbarDrag(win, source, target, { targetPosition, alt = false }) {
@@ -179,16 +183,7 @@ async function fit(win) {
   await revealCanvasDock(win, fitButton, 'fit persisted real-media canvas')
   await fitButton.click()
 }
-async function select(win, id) {
-  if (await node(win, id).count() === 0) {
-    await openRailDrawer(win, 'catalog')
-    const category = win.locator(`[data-category-id="${id === 'audio' ? 'audio' : 'shots'}"]`)
-    for (let attempt = 0; attempt < 2 && await category.getAttribute('data-active') !== 'true'; attempt++) await category.click()
-    await expect(category).toHaveAttribute('data-active', 'true')
-    await win.keyboard.press('Escape')
-    await expect(node(win, id)).toBeAttached()
-    await fit(win)
-  }
+async function clearSelection(win) {
   // Category changes preserve selection outside the visible category. Clear it through
   // the real pane before selecting one media node; a multi-selection hides its toolbar.
   const pane = win.locator('.generation-canvas-v2__stage .react-flow__pane')
@@ -201,6 +196,18 @@ async function select(win, id) {
   })
   assert.ok(blank, 'Selection requires a genuinely empty, hittable canvas pane')
   await pane.click({ position: blank })
+}
+async function select(win, id) {
+  if (await node(win, id).count() === 0) {
+    await openRailDrawer(win, 'catalog')
+    const category = win.locator(`[data-category-id="${id === 'audio' ? 'audio' : 'shots'}"]`)
+    for (let attempt = 0; attempt < 2 && await category.getAttribute('data-active') !== 'true'; attempt++) await category.click()
+    await expect(category).toHaveAttribute('data-active', 'true')
+    await win.keyboard.press('Escape')
+    await expect(node(win, id)).toBeAttached()
+    await fit(win)
+  }
+  await clearSelection(win)
   const rect = await node(win, id).boundingBox()
   assert.ok(rect, `${id}: node must be rendered before selection`)
   // The sides belong to reference handles; video controls belong to its lower edge.
@@ -344,6 +351,29 @@ try {
       await undo(win, locale)
       await expectAbsent(latest, { provenBy: draggedProof, message: 'One UI Undo removes the native dragged clip' })
       record(`${locale} Latest main result: Alt native icon drag reaches frame 75, source stays still, one UI Undo restores baseline`, { nativeEvents: positionEvents })
+      // 用户 10-12 拍板「悬停也能拖」：未选中（浮条不在）的节点，悬停就能把它拖进时间轴。
+      await clearSelection(win)
+      await expect(win.locator('article.generation-canvas-v2-node[data-selected="true"]')).toHaveCount(0)
+      const hoverRect = await node(win, 'image').boundingBox()
+      assert.ok(hoverRect, 'image node must be rendered for the hover-drag step')
+      await node(win, 'image').hover({ position: { x: hoverRect.width / 2, y: hoverRect.height / 2 } })
+      const hoverWrap = node(win, 'image').locator('[data-node-timeline-hover-handle]')
+      await expect(hoverWrap).toHaveCSS('opacity', '1')
+      await expect(node(win, 'image').locator('[data-node-floating-toolbar]')).toHaveCount(0)
+      const hoverSource = hoverWrap.locator('[data-toolbar-action="add-to-timeline"]')
+      await expect(hoverSource).toHaveCount(1)
+      await shot(win, `${locale}-hover-handle-unselected`)
+      const hoverDrop = await freeImageTrackPoint(win, imageTrack)
+      // 截图与量落点之间鼠标可能被挪开；真实用户是先悬停节点再抓把手，这里同样先回到节点上。
+      await node(win, 'image').hover({ position: { x: hoverRect.width / 2, y: hoverRect.height / 2 } })
+      const hoverEvents = await nativeToolbarDrag(win, hoverSource, imageTrack, hoverDrop)
+      await expect(latest).toHaveCount(1)
+      assert.ok((await latest.getAttribute('data-clip-id')).endsWith('-60'), 'Hover native drag must use track-tail placement')
+      const hoverProof = await proveProbe(latest, 'hover native drag produced the latest-result timeline clip')
+      await shot(win, `${locale}-hover-drag-global-timeline`)
+      await undo(win, locale)
+      await expectAbsent(latest, { provenBy: hoverProof, message: 'One UI Undo removes the hover-dragged clip' })
+      record(`${locale} Unselected node: hover shows the drag handle, native drag appends, source stays still, one UI Undo restores baseline`, { nativeEvents: hoverEvents })
       await collapseTimeline(win)
       const clipTarget = node(win, 'clip').locator('[data-testid="clip-node-axis-content"]')
       const clipEvents = await nativeToolbarDrag(win, await select(win, 'image'), clipTarget, { targetPosition: { x: 120, y: 70 } })
