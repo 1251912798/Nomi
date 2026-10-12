@@ -45,7 +45,7 @@
 | 花钱 | 最小量真付费抽检 + 三方对账 · 故障注入（断网、供应商报错、超时） | 已有 `_paidRun` harness（发版最小抽检，平时走零额度回环）、`pb07` 故障类走查 |
 | 长跑 / 可打断 | 端到端任务链（关窗、重启、断网后续上，且不重复扣费） | 已有 J05 暂停 / 恢复、pb05 |
 | Agent 行为 | 意图评测（⑩ 说的=摆的、建了几份方案、首次做对率） | 已有 `evals/` + ⑩ 铁律测试 |
-| 大数据量 / 画布 / 长列表 | 真实规模性能（p95 和最长卡顿，只许变好） | **missing**（现有 `test:canvas:performance` 是合成规模；计划 Playwright `_electron` 真实规模 + `contentTracing` + `app.getAppMetrics()` + User Timing + React Profiler，预算进 CI；不用 Lighthouse CI） |
+| 大数据量 / 画布 / 长列表 | 真实规模性能（p95 和最长卡顿，只许变好） | **exists**：`pnpm run perf:scenarios` 跑性能场景登记表（`tests/perf/scenarios/`，复用 Playwright + CDP + PerformanceObserver 的现有量具，规矩见 `docs/engineering/perf-scenarios.md`）；每个 PR 另交 `perf-scenario` 数字证据；不用 Lighthouse CI |
 | 生成效果 | 效果评测题集（跨镜一致、参考有没有用上） | **missing**（计划照 OpenAI 图片评测 cookbook 的 LLM 成对比较评一致性，照 DreamBench++ 评「参考图有没有用上」；VBench 以后再说） |
 | 数据格式 | 升级路径（老项目能打开、能继续） | 已有 `core-a-old-project.packaged.mjs` |
 
@@ -62,7 +62,7 @@
 | when | 什么时候跑 | 做法 |
 |---|---|---|
 | `pr` | 每个 PR 按功能分类推出的那几层（主力） | 零花费、能在 CI 跑的由 CI 自动跑（现有的 Contracts / Unit / E2E Walkthroughs / 画布验收 / Tool Face 等，按改动范围选）；`paid: true` 的（真付费抽检、AI 用户走查、Agent 意图评测、效果评测——花钱或要真模型）在 PR 上**只要求正文 `## 验收证据` 交证据**，不在 CI 自动跑 |
-| `manual-full` | 只在用户手动触发的全量跑里跑，PR 正文不要求 | 目前只有真实规模性能（`perf-real-scale`：耗时长） |
+| `manual-full` | 只在用户手动触发的全量跑里跑，PR 正文不要求 | 目前只有真实规模性能（`perf-real-scale`：登记表全量跑，耗时长） |
 
 - **全量入口**：GitHub Actions 的「Full Experience Run」（`.github/workflows/full-experience-run.yml`，只有 `workflow_dispatch`，**没有 `schedule`**）。它调 `pnpm run test:experience:full`（`scripts/experience-full-run.mjs`），把路由表 `fullRun.commands` 里所有零花费层串起来跑，每层独立计结果（一层红了后面照跑），出一份汇总报告（job summary + artifact）；报告末尾列出「没有覆盖的」——付费层和工具还没建的层，免得「没跑」被读成「通过」。本地可 `pnpm run test:experience:full -- --list` 看会跑什么、`--only catalog,laws` 只跑几层。
 - **发版时**：全部层都跑（手动触发一次全量跑），再加真付费抽检（由协调会话亲自跑，先算最小量）和用户亲手用 30 分钟。
