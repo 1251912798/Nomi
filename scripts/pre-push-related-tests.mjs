@@ -3,8 +3,12 @@
 // 选法（不自己写 import 图，只用现成的三样东西）：
 //   1. 改动文件本身就是测试 → 跑它；
 //   2. 同目录、同名的测试（foo.mjs ↔ foo.test.mjs / foo.node-test.mjs，Foo.tsx ↔ Foo.test.tsx）——文件名约定；
-//   3. git grep：哪些测试文件里「按引号包起来的路径 / 模块名」提到了改动文件的主名（import './foo'、'build-electron.mjs'、
+//   3. git grep：哪些测试文件里「按引号包起来的路径 / 模块名」提到了改动文件（import './foo'、'build-electron.mjs'、
 //      'scripts/build-electron.mjs'）——能看见 vitest 依赖图看不见的「按文本读被测文件 / 计算路径动态 import / 拷贝文件名清单」。
+//      git grep 只做粗筛（含主名的引号串），随后逐个引号串按「真正的模块引用」核对（tokenReferences）：相对路径按测试所在目录解析、
+//      带斜杠的路径要对上改动文件的路径尾巴、不带斜杠的裸名必须带扩展名；裸词 main 不再命中 'origin/main'（2026-10-11）。
+//   4. 起浏览器 / 页面服务的测试（import playwright）不进推送前：它们在 vitest 里冷启动 vite + chromium，和 typecheck 等并发时撞 30 秒超时
+//      （2026-10-11 连续 5 次拦住无关的推送）；推送前只是加速器，这类只在 CI 跑，钩子输出里点名「交给 CI」并给数量。
 //
 // 为什么不用 vitest 自带的 `vitest related`（2026-10-09 在本机 Windows 实测，写给下一个想接它的人）：
 //   · 它先给全部约 2000 个测试文件做 vite 转换、建好依赖图再挑，与改了几个文件无关：`related scripts/build-electron.mjs` 空转 110–140 秒；
@@ -47,7 +51,50 @@ export const SLOW_TEST_FILES = Object.freeze({
   'scripts/pre-push-contracts.node-test.mjs': '真入口 / tsc 探针 / 超时用例整份 > 90 秒；其中的契约 / 结构用例已拆到 scripts/pre-push-structure.node-test.mjs（推送前门岗 test:pre-push-structure）',
 })
 
-const REFERENCE_EXT = '(\\.[cm]?[jt]sx?)?'
+/**
+ * 这个测试文件是否起浏览器：静态 import / 动态 import() / require 了 playwright 或 playwright-core。
+ * 结构信号而不是文件名猜；只在字符串里提到 playwright 不算。（tests/ux 下 createServer 起 vite 的测试全都同时 import playwright。）
+ */
+export function startsBrowser(source) {
+  // 语句必须从行首起：测试里拿字符串举例的 "import … from 'playwright'" 不算（行首是 assert / const x = '…'）
+  return /^\s*(?:import\b[^\n'"]*from\s*|import\s*|\}\s*from\s*|(?:const|let|var)\s[^\n=]*=\s*(?:await\s+)?(?:import|require)\s*\(\s*)(['"])(?:playwright|playwright-core)\1/m.test(source)
+}
+
+const MODULE_EXT = /\.[cm]?[jt]sx?$|\.json$/
+
+/**
+ * 测试里的一个路径串 token 是否指向 changedFile（都是仓库相对 posix 路径）。规则：
+ *   · './x' '../x'：按测试文件所在目录解析，与改动文件（去扩展名；index 文件也认它所在目录）比；
+ *   · 含斜杠的（'src/main'、'@/main'、模板前缀 ${root}/scripts/a.mjs）：去掉别名与模板前缀后，要等于改动文件路径或是它的路径尾巴；
+ *   · 不含斜杠的裸名：必须带扩展名且主名相同（'build-electron.mjs'）；裸词 'main' 不算——'origin/main' 之类字样不是文件引用。
+ */
+export function tokenReferences(token, testFile, changedFile) {
+  const cleaned = token.replace(/\$\{[^}]*\}/g, '').trim()
+  if (!cleaned) return false
+  const hasExt = MODULE_EXT.test(cleaned)
+  const bare = cleaned.replace(MODULE_EXT, '')
+  const changedNoExt = changedFile.replace(MODULE_EXT, '')
+  const isIndex = path.posix.basename(changedNoExt) === 'index'
+  const targets = isIndex ? [changedNoExt, path.posix.dirname(changedNoExt)] : [changedNoExt]
+  const withoutIndex = (value) => (value.endsWith('/index') ? [value, value.slice(0, -'/index'.length)] : [value])
+  if (bare.startsWith('.')) {
+    return withoutIndex(bare).some((variant) => targets.includes(path.posix.normalize(path.posix.join(path.posix.dirname(testFile), variant))))
+  }
+  const anchored = bare.replace(/^@\//, 'src/').replace(/^\/+/, '')
+  if (anchored.includes('/')) {
+    return withoutIndex(anchored).some((variant) => targets.some((target) => target === variant || target.endsWith(`/${variant}`)))
+  }
+  return hasExt && !isIndex && anchored === path.posix.basename(changedNoExt)
+}
+
+/** 一行文本里的所有路径串：引号串再按空白 / 常见分隔符切开。 */
+function pathTokens(line) {
+  const tokens = []
+  for (const match of line.matchAll(/(['"`])([^'"`\n]+)\1/g)) tokens.push(...match[2].split(/[\s,;:=()]+/).filter(Boolean))
+  return tokens
+}
+
+const REFERENCE_EXT ='(\\.[cm]?[jt]sx?)?'
 const escapeRegex = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
 /** 文件主名：去掉目录、扩展名、以及 .test / .node-test 后缀。 */
@@ -79,7 +126,7 @@ const isTestFile = (file) => NODE_TEST_FILE.test(file) || VITEST_TEST_FILE.test(
  * 仓库根下 git 命令失败时抛错（调用方当「算不出」处理，不当通过）。
  */
 export function relatedTests(files, { root, exclude = new Set(), maxFiles = MAX_RELATED_FILES } = {}) {
-  const empty = { vitest: [], node: [], skipped: [], truncated: 0 }
+  const empty = { vitest: [], node: [], browser: [], skipped: [], truncated: 0 }
   const sources = files.filter((file) => SOURCE_FILE.test(file))
   if (sources.length === 0) return empty
   const tracked = new Set(gitLines(root, ['ls-files', '--', '*.test.ts', '*.test.tsx', '*.test.mjs', '*.test.js', '*.test.cjs', '*.node-test.mjs']).filter(isTestFile))
@@ -98,27 +145,42 @@ export function relatedTests(files, { root, exclude = new Set(), maxFiles = MAX_
   // 按文本提到：一次 git grep 带上所有改动文件的模式（-l 只要文件名）。没有命中时 git grep 退出码为 1 → 当空。
   const patterns = sources.filter((file) => !isTestFile(file)).map(referencePattern)
   if (patterns.length > 0) {
-    let hits = []
+    let lines = []
     try {
-      hits = gitLines(root, ['grep', '-l', '-E', ...patterns.flatMap((pattern) => ['-e', pattern]), '--', '*.test.ts', '*.test.tsx', '*.test.mjs', '*.test.js', '*.test.cjs', '*.node-test.mjs'])
+      lines = gitLines(root, ['grep', '-n', '-E', ...patterns.flatMap((pattern) => ['-e', pattern]), '--', '*.test.ts', '*.test.tsx', '*.test.mjs', '*.test.js', '*.test.cjs', '*.node-test.mjs'])
     } catch (error) {
       if (error.status !== 1) throw error
     }
-    for (const hit of hits.sort()) add(hit, changedDirs.has(path.posix.dirname(hit)) ? 2 : 3)
+    // 粗筛命中的行，逐个路径串按真正的模块引用核对（裸词 main 不会命中 'origin/main'）
+    const changedSources = sources.filter((file) => !isTestFile(file))
+    const hits = new Set()
+    for (const line of lines) {
+      const first = line.indexOf(':')
+      const second = line.indexOf(':', first + 1)
+      if (first < 0 || second < 0) continue
+      const hit = line.slice(0, first)
+      if (hits.has(hit)) continue
+      const tokens = pathTokens(line.slice(second + 1))
+      if (changedSources.some((file) => tokens.some((token) => tokenReferences(token, hit, file)))) hits.add(hit)
+    }
+    for (const hit of [...hits].sort()) add(hit, changedDirs.has(path.posix.dirname(hit)) ? 2 : 3)
   }
 
   const skipped = []
+  const browser = []
   const picked = []
   for (const [file] of [...ordered.entries()].sort((a, b) => a[1] - b[1] || a[0].localeCompare(b[0]))) {
     if (exclude.has(file)) continue
     if (file in SLOW_TEST_FILES) { skipped.push({ file, reason: SLOW_TEST_FILES[file] }); continue }
     if (!fs.existsSync(path.join(root, file))) continue // 改动里被删掉的测试
+    if (startsBrowser(fs.readFileSync(path.join(root, file), 'utf8'))) { browser.push(file); continue } // 起浏览器的只在 CI 跑
     picked.push(file)
   }
   const kept = picked.slice(0, maxFiles)
   return {
     vitest: kept.filter((file) => VITEST_TEST_FILE.test(file)),
     node: kept.filter((file) => NODE_TEST_FILE.test(file)),
+    browser,
     skipped,
     truncated: picked.length - kept.length,
   }
@@ -157,11 +219,17 @@ export async function runRelatedTests(selection, run, { budgetMs = RELATED_BUDGE
   }
   if (selection.truncated > 0) notes.push(`另有 ${selection.truncated} 个相关单测超出单次上限（${MAX_RELATED_FILES} 个）没挑进来，CI 会跑`)
   for (const item of selection.skipped) notes.push(`${item.file} 太慢没跑，CI 会跑（${item.reason}）`)
+  if (selection.browser.length > 0) notes.push(browserNote(selection.browser))
   return { name: RELATED_TESTS_GATE.name, status, output, ms: Date.now() - started, note: notes.join('；') }
+}
+
+function browserNote(files) {
+  return `${files.length} 个起浏览器的测试交给 CI（推送前并发时冷启动 vite + chromium 会撞超时）：${files.join('、')}`
 }
 
 function describeEmpty(selection) {
   const notes = ['没有找到相关单测（改动文件没有同名测试，也没有测试文件提到它）']
   for (const item of selection.skipped) notes.push(`${item.file} 太慢没跑，CI 会跑（${item.reason}）`)
+  if (selection.browser.length > 0) notes.push(browserNote(selection.browser))
   return notes.join('；')
 }
