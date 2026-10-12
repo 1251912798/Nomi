@@ -52,7 +52,7 @@ function MediaCard({ kind, selected, select, append, onDragging }: { kind: Kind;
     }}
     onDragEnd={() => onDragging(null)}>
     {selected ? kind === 'image' ? <ImageQuickActionsToolbar reportFeedback={noop} node={node} editGrid={null} imageOpBusy={false} onGridSplit={noop} onCrop={noop} onTransform={noop} onRemoveBackground={noop} onPreview={noop} onOpenProvenance={noop} onQuickAction={noop} /> : <NodeResultDownloadButton reportFeedback={noop} node={node} selected onPreview={noop} onOpenProvenance={noop} /> : null}
-    <div className={cn('relative aspect-video overflow-hidden rounded-nomi bg-nomi-ink-05 shadow-nomi-md ring-1 transition-shadow', selected ? 'ring-nomi-accent' : 'ring-nomi-line')}>
+    <div className={cn('relative aspect-video overflow-hidden rounded-nomi bg-nomi-ink-05 shadow-nomi-md ring-1 ring-nomi-line')}>
       {kind === 'image' ? <img src={IMAGE} draggable={false} alt="图片节点" className="h-full w-full object-cover" /> : <VideoPreview select={select} />}
     </div>
     <div className="mt-2 flex items-center gap-1.5 text-body-sm text-nomi-ink-60">{kind === 'image' ? <IconPhoto {...icon} /> : <IconVideo {...icon} />}<span>{node.title}</span></div>
