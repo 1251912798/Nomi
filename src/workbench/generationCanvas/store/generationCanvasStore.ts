@@ -23,6 +23,7 @@ import { createCanvasNodeActions, removeGroupsEmptiedByNodeDeletion } from './ca
 import { createCanvasGraphActions } from './canvasGraphActions'
 import { createCanvasRunActions } from './canvasRunActions'
 import { createCanvasDocumentActions } from './canvasDocumentCommit'
+import { reconcileTimelineForDeletedNodes } from './canvasTimelineBridge'
 import { appendAdmittedEdges, reportSkippedEdges, type AppendedEdges } from './canvasEdgeWrite'
 import { assertProductionCanvasProjectIdentity, emitProductionCanvasSignal } from '../../production/productionCanvasSignals'
 
@@ -127,6 +128,7 @@ export const useGenerationCanvasStore = create<GenerationCanvasState>()(subscrib
       ...removedIds.map((nodeId) => ({ type: 'canvas.node.removed' as const, payload: { nodeId } })),
     ])
     emitProductionCanvasSignal({ kind: 'detach', projectId: currentState.projectId, nodes: removedNodes })
+    reconcileTimelineForDeletedNodes(removedIds)
   },
   pasteNodes: (basePosition, anchor) => {
     const currentState = get()

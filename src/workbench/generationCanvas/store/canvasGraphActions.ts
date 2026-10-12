@@ -17,6 +17,7 @@ import i18n from '../../../i18n'
 import { normalizeGroupColorToken } from '../model/groupColor'
 import { bumpPersistRevision, isCategoryId } from './canvasGuards'
 import { getHistoryFlags, pushUndoSnapshot } from '../events/canvasUndoJournal'
+import { reconcileTimelineForDeletedNodes } from './canvasTimelineBridge'
 import { emitCanvasGesture } from '../events/canvasEventEmitter'
 import type { CanvasGraphActions, CanvasSliceCreator } from './canvasStoreTypes'
 
@@ -661,6 +662,7 @@ export const createCanvasGraphActions: CanvasSliceCreator<CanvasGraphActions> = 
           ]
         : [{ type: 'canvas.group.removed', payload: { groupId, releasedNodeIds: memberIds } }],
     )
+    if (deleteNodes) reconcileTimelineForDeletedNodes(memberIds)
   },
   moveNodeToGroup: (nodeId, groupId) => {
     const id = String(groupId || '').trim()

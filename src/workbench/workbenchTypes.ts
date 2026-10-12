@@ -23,9 +23,11 @@ export type StoryboardDesign = {
   updatedAt: number
 }
 
-// 行内 mark 白名单：StarterKit 基础 4 个 + 创作编辑器新增的 highlight。
+// 行内 mark 白名单：StarterKit 的 6 个（含 underline、link）+ 创作编辑器新增的 highlight。
 // 不在名单里的 mark 读盘时丢弃，防止未知/过期 mark 污染文档结构。
-const STARTER_KIT_MARK_TYPES = new Set(['bold', 'italic', 'strike', 'code', 'highlight'])
+// 这份名单必须与编辑器 schema 同步：workbenchTypes.schemaRoundTrip.test.ts 拿真 schema 当考官，
+// 漏一个就红（链接曾因漏在这里，保存后整条丢失）。
+const STARTER_KIT_MARK_TYPES = new Set(['bold', 'italic', 'strike', 'code', 'underline', 'link', 'highlight'])
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
@@ -74,6 +76,12 @@ function normalizeInlineContent(value: unknown): Array<Record<string, unknown>> 
   return value.content.flatMap(normalizeInlineNodes)
 }
 
+/** 节点自带的属性（orderedList.start、codeBlock.language、单元格 colspan / colwidth ……）原样带上，没有就不加。 */
+function attrsOf(value: unknown): { attrs: Record<string, unknown> } | Record<string, never> {
+  const attrs = isRecord(value) ? clonePlainRecord(value.attrs) : undefined
+  return attrs ? { attrs } : {}
+}
+
 function normalizeCodeBlockContent(value: unknown): Array<Record<string, unknown>> {
   return normalizeInlineContent(value).flatMap((node): Array<Record<string, unknown>> => (
     node.type === 'text' ? [{ type: 'text', text: node.text }] : []
@@ -116,7 +124,7 @@ function normalizeTaskItems(value: unknown): Array<Record<string, unknown>> {
 function normalizeTableCell(value: unknown, type: 'tableCell' | 'tableHeader'): Array<Record<string, unknown>> {
   if (!isRecord(value) || !Array.isArray(value.content)) return []
   const blocks = normalizeBlockContent(value)
-  return [{ type, content: blocks.length ? blocks : [{ type: 'paragraph' }] }]
+  return [{ type, ...attrsOf(value), content: blocks.length ? blocks : [{ type: 'paragraph' }] }]
 }
 
 function normalizeTableRows(value: unknown): Array<Record<string, unknown>> {
@@ -144,14 +152,14 @@ function normalizeBlockNodes(value: unknown): Array<Record<string, unknown>> {
   if (value.type === 'heading') {
     return [{ type: 'heading', attrs: normalizeHeadingAttrs(value.attrs), content: normalizeInlineContent(value) }]
   }
-  if (value.type === 'codeBlock') return [{ type: 'codeBlock', content: normalizeCodeBlockContent(value) }]
+  if (value.type === 'codeBlock') return [{ type: 'codeBlock', ...attrsOf(value), content: normalizeCodeBlockContent(value) }]
   if (value.type === 'blockquote') {
     const content = normalizeBlockContent(value)
     return [{ type: 'blockquote', content: content.length ? content : [{ type: 'paragraph' }] }]
   }
   if (value.type === 'bulletList' || value.type === 'orderedList') {
     const content = normalizeListItems(value)
-    return content.length ? [{ type: value.type, content }] : []
+    return content.length ? [{ type: value.type, ...attrsOf(value), content }] : []
   }
   if (value.type === 'taskList') {
     const content = normalizeTaskItems(value)
