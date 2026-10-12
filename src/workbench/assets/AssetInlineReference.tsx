@@ -48,7 +48,7 @@ export default function AssetInlineReference({ url, index: suppliedIndex, kind: 
     <span
       data-storyboard-mention-chip="true"
       aria-label={label}
-      className={cn('relative inline-flex align-[-5px] h-[22px] items-center gap-[4px] mx-[2px] pr-[6px] rounded-nomi-sm border border-nomi-line bg-nomi-ink-05 overflow-hidden cursor-pointer hover:outline hover:outline-2 hover:outline-offset-1 hover:outline-nomi-accent')}
+      className={cn('relative inline-flex align-[-5px] h-[22px] items-center gap-[4px] mx-[2px] pr-[6px] rounded-nomi-sm border border-nomi-line bg-nomi-ink-05 overflow-hidden cursor-pointer hover:bg-nomi-ink-10')}
       contentEditable={false}
       onMouseEnter={onEnter}
       onMouseLeave={onLeave}
