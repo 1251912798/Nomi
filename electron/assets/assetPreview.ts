@@ -7,6 +7,7 @@ import type { JsonRecord } from "../jsonUtils";
 import { localAssetUrl } from "./assetPaths";
 import { mediaKindFromContentType } from "./mediaTypes";
 import { mergeAssetSidecarMeta, readAssetSidecarMeta } from "./assetSidecar";
+import { CANVAS_PREVIEW_LONG_EDGE_PX, type CanvasPreviewState } from "../shared/contracts/canvasMediaPreview";
 
 /**
  * 落盘素材的画布预览（source / preview 分离的唯一 owner）。
@@ -21,9 +22,10 @@ import { mergeAssetSidecarMeta, readAssetSidecarMeta } from "./assetSidecar";
  *   否则 `.preview.jpg`。长边不超过阈值的源本身就是预览尺寸，不复制一份。
  * - 视频：抽首帧做 poster（`.preview.jpg`），画布首屏只挂 `<img>`，交互后才创建 `<video>`。
  * - 预览文件与源同目录同名前缀，素材库列表按 isStoredAssetPreviewPath 过滤，不冒充用户素材。
- * - 任何一步失败都只是「没有预览」：源 URL 仍是唯一真相，调用方回落到源。
+ * - 任何一步失败都只是「没有预览」：源 URL 仍是唯一真相；但回执上必须写明 previewState = 'missing'，
+ *   画布据此走显式的「预览缺失」分支（被计数），而不是把源地址填进 thumbnailUrl 冒充预览。
  */
-export const PREVIEW_LONG_EDGE_PX = 1024;
+export const PREVIEW_LONG_EDGE_PX = CANVAS_PREVIEW_LONG_EDGE_PX;
 
 const PREVIEW_MARKER = ".preview.";
 const FFMPEG_PREVIEW_TIMEOUT_MS = 60_000;
@@ -129,10 +131,14 @@ type StoredRecordLike = {
   data?: JsonRecord & { absolutePath?: unknown; relativePath?: unknown; contentType?: unknown };
 };
 
-/** attach 之后记录 `data` 上多出来的字段（都可选：没派生出预览就没有）。 */
+/**
+ * attach 之后记录 `data` 上多出来的字段。图 / 视频一定带 previewState（落盘回执的预览事实，见
+ * shared/contracts/canvasMediaPreview）；其余字段可选：没派生出预览就没有小图地址。
+ */
 export type StoredAssetPreviewFields = {
   thumbnailRelativePath?: string;
   thumbnailUrl?: string;
+  previewState?: CanvasPreviewState;
   width?: number;
   height?: number;
   durationSeconds?: number;
@@ -151,13 +157,19 @@ export async function attachStoredAssetPreview<T>(record: T, prepared?: StoredAs
   const projectId = typeof stored?.projectId === "string" ? stored.projectId : "";
   const contentType = typeof stored?.data?.contentType === "string" ? stored.data.contentType : "";
   if (!absolutePath || !relativePath || !projectId || !contentType) return record as WithStoredAssetPreview<T>;
+  const mediaKind = mediaKindFromContentType(contentType);
+  const visual = mediaKind === "image" || mediaKind === "video";
   const sidecar = readAssetSidecarMeta(absolutePath);
   const cachedThumbnail = typeof sidecar.thumbnailRelativePath === "string" ? sidecar.thumbnailRelativePath : "";
   const cachedWidth = typeof sidecar.width === "number" ? sidecar.width : undefined;
   const cachedHeight = typeof sidecar.height === "number" ? sidecar.height : undefined;
   // 预览永远与源同目录：只认「源旁边那份」，不信 sidecar 里可能过期的目录。
   if (cachedThumbnail && fs.existsSync(path.join(path.dirname(absolutePath), path.basename(cachedThumbnail)))) {
-    return withPreviewFields(record, projectId, cachedThumbnail, cachedWidth, cachedHeight);
+    return withPreviewFields(record, projectId, { thumbnailRelativePath: cachedThumbnail, width: cachedWidth, height: cachedHeight, ...(visual ? { previewState: "ready" as const } : {}) });
+  }
+  // 源本身就有界（上次探测过的尺寸 ≤ 上限，或是矢量图）：不必再起一次 ffprobe。
+  if (mediaKind === "image" && (isVectorImage(contentType) || isBoundedImage(cachedWidth, cachedHeight))) {
+    return withPreviewFields(record, projectId, { width: cachedWidth, height: cachedHeight, previewState: "source" });
   }
   const preview = adoptPreparedPreview(absolutePath, prepared) ?? await createStoredAssetPreview(absolutePath, contentType);
   const thumbnailRelativePath = preview.previewPath
@@ -170,7 +182,26 @@ export async function attachStoredAssetPreview<T>(record: T, prepared?: StoredAs
     ...(preview.durationSeconds ? { durationSeconds: preview.durationSeconds } : {}),
   };
   if (Object.keys(patch).length > 0) mergeAssetSidecarMeta(absolutePath, patch);
-  return withPreviewFields(record, projectId, thumbnailRelativePath, preview.width, preview.height, preview.durationSeconds);
+  const previewState: CanvasPreviewState | undefined = !visual
+    ? undefined
+    : thumbnailRelativePath
+      ? "ready"
+      : mediaKind === "image" && isBoundedImage(preview.width, preview.height) ? "source" : "missing";
+  return withPreviewFields(record, projectId, {
+    thumbnailRelativePath,
+    width: preview.width,
+    height: preview.height,
+    durationSeconds: preview.durationSeconds,
+    ...(previewState ? { previewState } : {}),
+  });
+}
+
+function isVectorImage(contentType: string): boolean {
+  return contentType.toLowerCase().split(";")[0]?.trim() === "image/svg+xml";
+}
+
+function isBoundedImage(width: number | undefined, height: number | undefined): boolean {
+  return Boolean(width && height && Math.max(width, height) <= PREVIEW_LONG_EDGE_PX);
 }
 
 /**
@@ -198,8 +229,17 @@ export function discardPreparedPreview(prepared?: StoredAssetPreview): void {
   try { fs.rmSync(prepared.previewPath, { force: true }); } catch { /* non-fatal */ }
 }
 
-function withPreviewFields<T>(record: T, projectId: string, thumbnailRelativePath: string, width?: number, height?: number, durationSeconds?: number): WithStoredAssetPreview<T> {
+type AttachedPreview = {
+  thumbnailRelativePath?: string;
+  width?: number;
+  height?: number;
+  durationSeconds?: number;
+  previewState?: CanvasPreviewState;
+};
+
+function withPreviewFields<T>(record: T, projectId: string, attached: AttachedPreview): WithStoredAssetPreview<T> {
   const stored = record as StoredRecordLike;
+  const { thumbnailRelativePath, width, height, durationSeconds, previewState } = attached;
   return {
     ...record,
     data: {
@@ -208,6 +248,7 @@ function withPreviewFields<T>(record: T, projectId: string, thumbnailRelativePat
       ...(width ? { width } : {}),
       ...(height ? { height } : {}),
       ...(durationSeconds ? { durationSeconds } : {}),
+      ...(previewState ? { previewState } : {}),
     },
   } as WithStoredAssetPreview<T>;
 }
