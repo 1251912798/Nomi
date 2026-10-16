@@ -6,7 +6,8 @@
  * 量法（同一套，不自写剖析器：Playwright + 页面内 performance.now + rAF）：
  *   点击（捕获阶段）→ 目标界面在 DOM 里到位 → 再过两帧（样式重算 + 布局 + 绘制算进去）= 响应毫秒。
  *   document-switch：先「访问过分镜页」（打开方案再回创作页），之后在文稿下拉里交替切到最后一份 / 第一份。
- *   plan-open：每个样本冷启一次 App，从创作页点开方案，量到 320 行可见。
+ *   plan-open：每个样本冷启一次 App，从创作页点开方案，量到「首屏可编辑」：行区报出逻辑总数 320、视口里的行带着可编辑的提示词框。
+ *     分镜表窗口化后只挂视口里的行（2026-10-16），「320 个行盒子都可见」不再成立也不该成立；停表后另验末镜够得着（滚到底、第 320 镜挂上）。
  *
  * 用法（先 pnpm run build）：
  *   node tests/perf/document-switch-bench.mjs --scenario document-switch|plan-open|document-switch-unvisited [--runs 5] [--label x] [--docs 160] [--shots 320]
@@ -94,9 +95,26 @@ const collect = (win) => win.evaluate(() => window.__perfDone)
 
 async function openPlan(win) {
   await win.locator('[data-creation-document-switcher]').first().click()
-  await armTimer(win, `(n) => [...document.querySelectorAll('[data-storyboard-row]')].filter((el) => el.getClientRects().length > 0).length >= n`, shotCount)
+  await armTimer(win, `(n) => { const box = document.querySelector('[data-storyboard-rows][data-storyboard-row-count="' + n + '"]'); return !!box && [...box.querySelectorAll('[data-storyboard-row]')].some((el) => el.getClientRects().length > 0 && !!el.querySelector('[data-prompt-box] [contenteditable="true"]')) }`, shotCount)
   await win.getByRole('menuitem', { name: plan.title }).first().click()
-  return collect(win)
+  const result = await collect(win)
+  await assertLastShotReachable(win)
+  return result
+}
+/** 停表之后（不计时）：滚到底，最后一镜必须挂上——窗口化不许把末镜弄丢。 */
+async function assertLastShotReachable(win) {
+  const reached = await win.evaluate(async (n) => {
+    const scroll = document.querySelector('[data-storyboard-scroll]')
+    if (!scroll) return false
+    for (let i = 0; i < 60; i += 1) {
+      scroll.scrollTop = scroll.scrollHeight
+      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+      if (document.querySelector(`[data-storyboard-row="${n}"] [data-prompt-box]`)) return true
+    }
+    return false
+  }, shotCount)
+  if (!reached) throw new Error(`滚到底也没挂上第 ${shotCount} 镜：窗口化丢了末镜`)
+  await win.evaluate(() => { const scroll = document.querySelector('[data-storyboard-scroll]'); if (scroll) scroll.scrollTop = 0 })
 }
 async function backToCreation(win) {
   await win.locator('.nomi-stepper__step[data-mode="creation"]').first().click()

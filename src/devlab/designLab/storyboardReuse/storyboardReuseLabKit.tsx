@@ -1,5 +1,6 @@
 import React, { type JSX } from 'react'
 import StoryboardShotRow from '../../../workbench/creation/storyboard/shotRow/StoryboardShotRow'
+import { StoryboardRowsBox } from '../../../workbench/creation/storyboard/shotRow/storyboardRowDensity'
 import StoryboardAnchorZone from '../../../workbench/creation/storyboard/anchorZone/StoryboardAnchorZone'
 import type { AnchorCardRuntime } from '../../../workbench/creation/storyboard/exec/storyboardRowStatus'
 import { missingRequiredSlots, resolveShotArchetypeMode } from '../../../workbench/creation/storyboard/shotRow/shotRowModel'
@@ -31,13 +32,13 @@ export const REUSE_NARROW = 664
 
 export function ReuseStage({ width, children }: { width: number; children: React.ReactNode }): JSX.Element {
   return (
-    <div
+    <StoryboardRowsBox
       className="rounded-nomi border border-nomi-line bg-nomi-paper"
       style={{ width }}
       data-design-lab-stage="storyboard-reuse"
     >
       {children}
-    </div>
+    </StoryboardRowsBox>
   )
 }
 
