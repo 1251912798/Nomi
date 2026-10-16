@@ -27,7 +27,8 @@
     "src/workbench/generationCanvas/adapters/assetImportAdapter.ts",
     "src/workbench/generationCanvas/resultMediaBackfillBridge.ts",
     "src/workbench/generationCanvas/runner/catalogTaskResultParse.ts",
-    "src/workbench/generationCanvas/nodes/canvasImageSource.ts"
+    "src/workbench/generationCanvas/nodes/canvasImageSource.ts",
+    "src/workbench/generationCanvas/nodes/deferredNodeMediaQueue.ts"
   ],
   "entry_points": [
     "普通生成：runtime / customCallDispatch / taskResultQuery -> localizeTaskAsset -> importRemoteAsset -> attachStoredAssetPreview -> catalogTaskResultParse",
@@ -107,6 +108,11 @@
     },
     {
       "kind": "read",
+      "path": "electron/tasks/unlocalizedTaskAsset.ts",
+      "symbol": "CanvasPreviewState"
+    },
+    {
+      "kind": "read",
       "path": "src/workbench/generationCanvas/components/canvasNodeLevelOfDetail.ts",
       "symbol": "canvasImageSourceOf"
     },
@@ -129,6 +135,11 @@
       "kind": "read",
       "path": "src/workbench/generationCanvas/model/generationCanvasTypes.ts",
       "symbol": "CanvasPreviewState"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/BaseGenerationNode.tsx",
+      "symbol": "canvasImageSourceOf"
     },
     {
       "kind": "read",
@@ -164,6 +175,11 @@
       "kind": "read",
       "path": "src/workbench/generationCanvas/nodes/versionCards/nodeVersionEntries.ts",
       "symbol": "canvasVideoPosterOf"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/resultMediaBackfillBridge.ts",
+      "symbol": "deferredNodeMediaQuietForMs"
     },
     {
       "kind": "write",
@@ -243,7 +259,7 @@
     {
       "kind": "write",
       "path": "src/workbench/generationCanvas/components/ScreenshotCropOverlay.tsx",
-      "symbol": "persistNodeMediaFile"
+      "symbol": "persistNodeImageFile"
     },
     {
       "kind": "write",
@@ -298,8 +314,8 @@
   ],
   "door_reduction": {
     "before": 34,
-    "after": 47,
-    "why_not": "每扇门是一个不同的用户动作（生成、导入、上传、编辑、制作流程落地、补齐）或一处画图位置，必须各自存在；本刀不合并入口，而是让它们全部经过三个共享边界：主进程落盘回执 attachStoredAssetPreview（写 previewState）、两侧共用投影 canvasPreviewFieldsFromReceipt（回执到结果两栏）、渲染层 resolveCanvasImageSource（画布只吃预览）。白板 4 扇门暂留旧包装 persistNodeImageFile（白板目录归草稿 #1189），其结果由补预览边界兜住。"
+    "after": 50,
+    "why_not": "每扇门是一个不同的用户动作（生成、导入、上传、编辑、制作流程落地、补齐）或一处画图位置，必须各自存在；本刀不合并入口，而是让它们全部经过三个共享边界：主进程落盘回执 attachStoredAssetPreview（写 previewState）、两侧共用投影 canvasPreviewFieldsFromReceipt（回执到结果两栏）、渲染层 resolveCanvasImageSource（画布只吃预览）。白板 4 扇门与截图裁剪 1 扇门暂留旧包装 persistNodeImageFile（它们的契约测试在白板目录，归草稿 #1189），其结果由补预览边界兜住。"
   },
   "generality_proof": "新入口无论来自哪个调用者、供应商、版本或旧数据，进画布都要过三道：(1) 落盘回执：attachStoredAssetPreview 对任何图 / 视频记录都写出 previewState；(2) 回执到结果只有 canvasPreviewFieldsFromReceipt 一个投影，它在没有与源不同的小图时只会给 source / missing 或不写，结构上写不出 thumbnailUrl = url；(3) 画图组件经 resolveCanvasImageSource，原图只能走被计数的缺失分支。只交 URL（不带事实）的入口由补预览桥在项目打开或结果变更时补齐；入口普查测试钉住「thumbnailUrl 写成源地址」「DeferredNodeImage 直接挂 .url」「只回 url 的包装」三种写法。",
   "shared_boundaries": [
