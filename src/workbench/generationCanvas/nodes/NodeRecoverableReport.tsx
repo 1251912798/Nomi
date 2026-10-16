@@ -97,7 +97,7 @@ export function NodeRecoverableReport({
         <div className="min-w-0 flex-1" />
         {report ? <TechnicalDetailsToggle open={showRaw} onToggle={() => setShowRaw((value) => !value)} /> : null}
         {onDismiss ? (
-          <button type="button" onClick={handleDismiss} className="ml-auto shrink-0 whitespace-nowrap text-caption text-nomi-ink-40 hover:text-nomi-ink">
+          <button type="button" onClick={handleDismiss} className="shrink-0 whitespace-nowrap text-caption text-nomi-ink-40 hover:text-nomi-ink">
             {t('generationCommon.recoverable.dismiss')}
           </button>
         ) : null}
