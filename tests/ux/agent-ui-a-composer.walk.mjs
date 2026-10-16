@@ -19,6 +19,7 @@ import {
 
 import { fileURLToPath } from 'node:url'
 import { newProjectEntry } from './_shell.mjs'
+import { openStoryboardEditor } from './_creationResourceTree.mjs'
 const root = path.resolve(fileURLToPath(new URL('../..', import.meta.url)))
 const outputDir = path.join(root, '.tmp', 'agent-ui-a')
 fs.mkdirSync(outputDir, { recursive: true })
@@ -109,10 +110,8 @@ try {
   await page.screenshot({ path: path.join(outputDir, '05-composer-settled.png') })
 
   await expectAbsent(page.locator('[data-storyboard-card]'), { provenBy: composerProof, message: '编辑器下方没有 StoryboardPlanCard' })
-  const storyboardEntry = page.locator('[data-storyboard-id]').first()
-  await storyboardEntry.waitFor({ state: 'visible', timeout: 5000 })
-  await storyboardEntry.click()
-  await page.locator('.workbench-storyboard').waitFor({ state: 'visible', timeout: 10000 })
+  // 方案行住在左栏「文稿」抽屉里（选中后抽屉自己收起）：经 _creationResourceTree.mjs 打开抽屉、点方案行、等分镜页。
+  await openStoryboardEditor(page, { pick: 'first' }, '左侧分镜条目打开分镜页')
   check(true, '左侧分镜条目直接打开分镜页')
   await page.waitForTimeout(1200)
   await page.screenshot({ path: path.join(outputDir, '06-storyboard-row-open.png') })

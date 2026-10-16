@@ -26,6 +26,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { zipSync, strToU8 } from 'fflate'
 import { clickOrFail, expect, proveProbe, screenshotSettled } from './_assert.mjs'
+import { openRailDrawer } from './_shell.mjs'
 import { FIXTURE_TEXT_MODEL_LABEL, flattenRequestText } from './agent-runtime-fixture.mjs'
 import {
   ASSISTANT_MESSAGE, CANVAS_PANEL, COMPOSER_CHIP, COMPOSER_SKILL, SKILL_POPOVER,
@@ -138,7 +139,7 @@ try {
   await chooseAssistantModel(win, FIXTURE_TEXT_MODEL_LABEL, CANVAS_PANEL)
 
   // ── 用户第一步：找到技能住在哪 ─────────────────────────────────────────────
-  await clickOrFail(win.getByRole('button', { name: '技能库', exact: true }).first(), '侧栏「技能库」')
+  await openRailDrawer(win, 'skills', '侧栏「技能库」')
   const panel = win.locator('[data-skill-drop-zone]')
   await expect(panel, '技能库面板没渲染').toBeVisible()
   // 面板默认停在「Nomi 内置」那一栏（`SkillLibraryPanel.tsx:55`）。找自己导进来的东西要先切到
