@@ -775,11 +775,16 @@ try {
     await clickOrFail(win.locator('[data-shell-rail-item="docs"]'), '#22 打开文稿抽屉')
     const docs = win.locator('[data-shell-drawer="docs"]')
     const docRows = docs.locator('[data-document-row]')
+    // 抽屉「选中即收」：新建 / 复制 / 删除会换当前文稿或方案，抽屉随之让开；要继续点里面的东西就再开一次（走真左栏钮）。
+    const reopenDocs = async (label) => { if (!(await docs.isVisible().catch(() => false))) await clickOrFail(win.locator('[data-shell-rail-item="docs"]'), label) }
     const docs0 = await docRows.count()
     await clickOrFail(docs.getByRole('button', { name: uiText('zh-CN', 'creationAi.documentList.newDocumentAria') }), '#22 新建文稿')
+    await reopenDocs('#22 新建文稿后重开文稿抽屉')
     await expect.poll(() => docRows.count(), { message: '#22 新建文稿没多一行', timeout: stationTimeout() }).toBe(docs0 + 1)
     const newDoc = docRows.last()
-    await newDoc.locator('[data-document-id] [data-document-title]').dblclick()
+    // 抽屉「选中即收」：双击行标题的第一下就是选中，抽屉会让开、改名框出不来；走查改用行菜单的「重命名」（现役的另一条改名入口）。
+    await newDoc.locator('[data-document-id]').first().click({ button: 'right' })
+    await clickOrFail(win.locator('[data-creation-resource-menu="document"] [data-resource-action="rename"]'), '#22 右键 · 重命名文稿')
     const docRename = docs.locator('input[aria-label="原稿标题"]').first()
     await docRename.fill('走查文稿')
     await docRename.press('Enter')
@@ -787,11 +792,13 @@ try {
     await newDoc.locator('[data-document-id]').first().click({ button: 'right' })
     await clickOrFail(win.locator('[data-creation-resource-menu="document"] [data-resource-action="delete"]'), '#22 右键 · 删除文稿')
     await clickOrFail(win.locator('[data-confirm-dialog-confirm]').first(), '#22 确认删除文稿')
+    await reopenDocs('#22 删除文稿后重开文稿抽屉')
     await expect.poll(() => docRows.count(), { message: '#22 删除文稿没少一行', timeout: stationTimeout() }).toBe(docs0)
     const plans = docs.locator('[data-storyboard-row]')
     const plans0 = await plans.count()
     await docs.locator('[data-storyboard-id="design-rain"]').click({ button: 'right' })
     await clickOrFail(win.locator('[data-creation-resource-menu="storyboard"] [data-resource-action="duplicate"]'), '#23 右键 · 复制方案')
+    await reopenDocs('#23 复制方案后重开文稿抽屉')
     await expect.poll(() => plans.count(), { message: '#23 复制方案没多一行', timeout: stationTimeout() }).toBe(plans0 + 1)
     const copy = plans.last()
     await copy.locator('[data-storyboard-id]').click({ button: 'right' })
@@ -805,8 +812,10 @@ try {
     // 删方案走「撤销 toast」不弹确认卡（现役行为）；万一弹了也点掉——下面的行数断言才是判据。
     const planConfirm = win.locator('[data-confirm-dialog-confirm]').first()
     if (await planConfirm.isVisible().catch(() => false)) await clickOrFail(planConfirm, '#23 确认删除方案')
+    await reopenDocs('#23 删除方案后重开文稿抽屉')
     await expect.poll(() => plans.count(), { message: '#23 删除方案没少一行', timeout: stationTimeout() }).toBe(plans0)
     await clickOrFail(docs.locator('[data-add-storyboard]').first(), '#23 从文稿新建方案')
+    await reopenDocs('#23 从文稿新建方案后重开文稿抽屉')
     await expect.poll(() => plans.count(), { message: '#23 从文稿新建方案没多一行', timeout: stationTimeout() }).toBe(plans0 + 1)
     await shoot(win, 'check-parity2-docs')
     parity2.docs = { newDoc: true, renameDoc: true, deleteDoc: true, duplicatePlan: true, renamePlan: true, deletePlan: true, newPlan: true }
