@@ -1,0 +1,285 @@
+{
+  "schema_version": 3,
+  "id": "2026-10-16-main-process-sync-decode-wait",
+  "change_kind": "corrective",
+  "detected_by": "user",
+  "recurrence_check_on": "2026-11-16",
+  "problem_type": "Main-process event loop parked on a synchronous child-process wait",
+  "symptom": "0.23.1: while results land, the app stops responding — clicks do nothing and Settings does not open right away; v0.22.5 does not do this.",
+  "direct_cause": "electron/assets/generatedMediaDecode.ts ran ffmpeg with spawnSync in the main process to verify every generated output before it was written (wait ceiling 12–120 s by size). Every sync IPC from the renderer, every async IPC reply and window event waited behind it.",
+  "class_root": "Nothing structurally stops main-process code from waiting synchronously on an external process: spawnSync / execFileSync / execSync are as easy to write as their async forms, finish in tens of milliseconds on small fixtures, and the only existing registry for child processes (offLedgerEgress) asks whether a process may spend money, not whether it blocks the main loop.",
+  "affected_population": [
+    "Every generated image / video / audio written through writeAsset, writeDeterministicAsset, moveAssetFile or copyAssetFile with meta.kind=generated (provider results, MCP materialization, Codex / Antigravity / Dreamina local results, custom calls, screenshots, frame extraction, trim, depth video, camera-move)",
+    "All platforms; worst on large videos, slow disks and machines with real-time antivirus scanning"
+  ],
+  "scope_paths": [
+    "electron/assets/generatedMediaDecode.ts",
+    "electron/assets/projectAssetStore.ts",
+    "electron/tasks/localTaskJobs.ts",
+    "electron/catalog/antigravityImageOperation.ts",
+    "electron/catalog/codexCli.ts",
+    "electron/catalog/customCallDispatch.ts",
+    "electron/catalog/processOperation.ts",
+    "electron/capabilityCore/generationOutputMaterializer.ts",
+    "electron/onboarding/demoAssetSeed.ts",
+    "electron/screenshot/screenshotHotkey.ts",
+    "electron/video/depthVideoJob.ts",
+    "electron/video/extractVideoFrame.ts",
+    "electron/video/framesToVideo.ts",
+    "electron/video/trimVideo.ts",
+    "scripts/check-heavy-path.mjs"
+  ],
+  "entry_points": [
+    "projectAssetStore.validatedGeneratedMeta — the one caller of verifyGeneratedMediaDecodes",
+    "writeAsset / writeDeterministicAsset / moveAssetFile / copyAssetFile — the four writers that call validatedGeneratedMeta",
+    "LocalTaskJobs.query — the synchronous import commit used by the Antigravity local provider"
+  ],
+  "external_sources": [
+    {
+      "kind": "official-doc",
+      "url": "https://raw.githubusercontent.com/electron/electron/v43.4.1/docs/tutorial/performance.md",
+      "checked_at": "2026-10-16",
+      "purpose": "Electron performance guide: the main process must not block on I/O or long work; use asynchronous child processes."
+    },
+    {
+      "kind": "official-doc",
+      "url": "https://nodejs.org/api/child_process.html#child_processexecfilefile-args-options-callback",
+      "checked_at": "2026-10-16",
+      "purpose": "execFile timeout / maxBuffer / killed semantics used to map the asynchronous run back onto the existing verdict facts (also verified empirically with a real child for timeout, maxBuffer, non-zero exit and ENOENT)."
+    }
+  ],
+  "invariants": [
+    "Main-process production code under electron/ never waits synchronously on an external process (spawnSync / execFileSync / execSync count is zero outside one path-listed E2E fixture).",
+    "A generated output is verified before it is published; the verdict kinds, timeout ceiling and fail-closed behavior are unchanged.",
+    "After verification, choosing the path, writing bytes, writing the sidecar and broadcasting is one synchronous critical section with no await, so concurrent writes of one deterministic asset cannot interleave.",
+    "A local task's import is single-flight: overlapping queries share one import and cancellation waits for it to settle."
+  ],
+  "invariant_owner_layer": {
+    "layer": "electron/assets/projectAssetStore.ts",
+    "tests": [
+      "electron/assets/projectAssetStore.test.ts",
+      "electron/assets/generatedMediaDecode.test.ts",
+      "electron/tasks/localTaskJobs.test.ts"
+    ]
+  },
+  "doors": [
+    {
+      "kind": "read",
+      "path": "electron/capabilityCore/generationOutputMaterializer.ts",
+      "symbol": "writeAsset"
+    },
+    {
+      "kind": "read",
+      "path": "electron/catalog/antigravityImageOperation.ts",
+      "symbol": "writeAsset"
+    },
+    {
+      "kind": "read",
+      "path": "electron/catalog/processOperation.ts",
+      "symbol": "writeAsset"
+    },
+    {
+      "kind": "read",
+      "path": "electron/runtime.ts",
+      "symbol": "writeAsset"
+    },
+    {
+      "kind": "write",
+      "path": "electron/assets/localFileImport.ts",
+      "symbol": "writeAsset"
+    },
+    {
+      "kind": "write",
+      "path": "electron/assets/projectAssetStore.ts",
+      "symbol": "writeAsset"
+    },
+    {
+      "kind": "write",
+      "path": "electron/catalog/antigravityImageOperation.ts",
+      "symbol": "writeAsset"
+    },
+    {
+      "kind": "write",
+      "path": "electron/catalog/codexCli.ts",
+      "symbol": "writeAsset"
+    },
+    {
+      "kind": "write",
+      "path": "electron/catalog/customCallDispatch.ts",
+      "symbol": "writeAsset"
+    },
+    {
+      "kind": "write",
+      "path": "electron/catalog/processOperation.ts",
+      "symbol": "writeAsset"
+    },
+    {
+      "kind": "write",
+      "path": "electron/onboarding/demoAssetSeed.ts",
+      "symbol": "writeAsset"
+    },
+    {
+      "kind": "write",
+      "path": "electron/screenshot/screenshotHotkey.ts",
+      "symbol": "writeAsset"
+    },
+    {
+      "kind": "write",
+      "path": "electron/video/depthVideoJob.ts",
+      "symbol": "writeAsset"
+    },
+    {
+      "kind": "write",
+      "path": "electron/video/extractVideoFrame.ts",
+      "symbol": "writeAsset"
+    },
+    {
+      "kind": "write",
+      "path": "electron/video/framesToVideo.ts",
+      "symbol": "writeAsset"
+    },
+    {
+      "kind": "write",
+      "path": "electron/video/trimVideo.ts",
+      "symbol": "writeAsset"
+    },
+    {
+      "kind": "read",
+      "path": "electron/capabilityCore/generationOutputMaterializer.ts",
+      "symbol": "writeDeterministicAsset"
+    },
+    {
+      "kind": "read",
+      "path": "electron/catalog/antigravityImageOperation.ts",
+      "symbol": "writeDeterministicAsset"
+    },
+    {
+      "kind": "read",
+      "path": "electron/runtime.ts",
+      "symbol": "writeDeterministicAsset"
+    },
+    {
+      "kind": "write",
+      "path": "electron/browser/media/browserViewMedia.ts",
+      "symbol": "moveAssetFile"
+    },
+    {
+      "kind": "write",
+      "path": "electron/assets/projectAssetStore.ts",
+      "symbol": "validatedGeneratedMeta"
+    },
+    {
+      "kind": "write",
+      "path": "electron/assets/projectAssetStore.ts",
+      "symbol": "verifyGeneratedMediaDecodes"
+    }
+  ],
+  "door_reduction": {
+    "before": 22,
+    "after": 22,
+    "why_not": "The doors are the callers of the asset writers (provider results, local providers, screenshots, frame tools, onboarding seed, browser capture). Each is a distinct product entry that legitimately writes assets; the fix does not merge them because they already converge on one verification boundary (validatedGeneratedMeta → verifyGeneratedMediaDecodes), which is the one that became asynchronous. Every door now awaits it; tsc plus the test-type gate reject an un-awaited caller."
+  },
+  "generality_proof": "The decode verdict has exactly one caller (door-map: verifyGeneratedMediaDecodes → projectAssetStore.validatedGeneratedMeta) and validatedGeneratedMeta is the only gate all four writers pass through; making the verifier asynchronous makes every one of the 16 writeAsset doors, 3 writeDeterministicAsset doors and 2 moveAssetFile doors asynchronous at once. The class (any synchronous child wait in the main process) is closed by the new check-heavy-path rule, which scans every electron/ production file, not only the reported one.",
+  "shared_boundaries": [
+    {
+      "path": "electron/assets/generatedMediaDecode.ts",
+      "symbol": "runDecoder",
+      "responsibility": "The only way the decode check runs ffmpeg: an asynchronous child with timeout kill and output cap, translated into the same facts the verdict always read."
+    },
+    {
+      "path": "electron/assets/projectAssetStore.ts",
+      "symbol": "validatedGeneratedMeta",
+      "responsibility": "Awaited by every writer before its synchronous publish section; fails closed before disk."
+    },
+    {
+      "path": "electron/tasks/localTaskJobs.ts",
+      "symbol": "LocalTaskJobs.query",
+      "responsibility": "Single-flight import so the now-asynchronous commit cannot interleave with a second query or a cancellation."
+    },
+    {
+      "path": "scripts/check-heavy-path.mjs",
+      "symbol": "main-sync-child-process",
+      "responsibility": "Static gate: no synchronous child-process wait anywhere in electron/ production code."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "electron/assets/projectAssetStore.ts",
+      "entry_point": "writeAsset",
+      "disposition": "enforced",
+      "evidence": "async; awaits validatedGeneratedMeta; projectAssetStore.test.ts 'writeAsset verifies a generated video without parking the main loop' was red before."
+    },
+    {
+      "path": "electron/assets/projectAssetStore.ts",
+      "entry_point": "writeDeterministicAsset",
+      "disposition": "enforced",
+      "evidence": "async; same main-loop test plus concurrent same-key writes test."
+    },
+    {
+      "path": "electron/assets/projectAssetStore.ts",
+      "entry_point": "moveAssetFile",
+      "disposition": "enforced",
+      "evidence": "async; source bytes read with fs.promises; main-loop test red before."
+    },
+    {
+      "path": "electron/assets/projectAssetStore.ts",
+      "entry_point": "copyAssetFile",
+      "disposition": "enforced",
+      "evidence": "Already async; now awaits the asynchronous verifier."
+    },
+    {
+      "path": "electron/productionRun/productionRunE2eFixture.ts",
+      "entry_point": "runFfmpeg",
+      "disposition": "not-affected",
+      "evidence": "E2E fixture renderer; only constructed when isProductionRunE2eFixtureEnabled (NOMI_E2E and NOMI_E2E_PRODUCTION_FIXTURE, plus NOMI_E2E_PACKAGED_FIXTURE in packaged builds). Listed by exact path in the gate's exemption with that reason."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Any future local media step (transcode, probe, extract) can reach for a synchronous child-process call; it passes every test on small fixtures and only freezes on user machines.",
+    "same_class_scan": [
+      "rg -n '\\b(spawnSync|execFileSync|execSync)\\b' electron --type ts: 2 production files (generatedMediaDecode.ts — fixed; productionRunE2eFixture.ts — gated fixture, exempted by path)",
+      "electron/offLedgerEgress.structure.test.ts AST scan of child-process-sync primitives: same two files",
+      "node scripts/door-map.mjs verifyGeneratedMediaDecodes / validatedGeneratedMeta / writeAsset / writeDeterministicAsset / moveAssetFile"
+    ]
+  },
+  "prevention": {
+    "kind": "static-gate",
+    "enforcement_path": "scripts/check-heavy-path.mjs",
+    "invariant": "electron/ production code contains no spawnSync / execFileSync / execSync outside the path-listed E2E fixture.",
+    "failure_mode": "check:heavy-path exits 1 and prints file:line with the asynchronous replacement.",
+    "exception_policy": "none",
+    "strategy": "Gate by presence, not by count (baseline 0), like unguarded-fsync: deleting one allowed call and adding a new one cannot keep the gate green. The verifier itself only exists in asynchronous form, so no writer can call it synchronously.",
+    "artifacts": [
+      "scripts/check-heavy-path.mjs",
+      "electron/assets/generatedMediaDecode.ts",
+      "electron/tasks/localTaskJobs.ts"
+    ]
+  },
+  "regression_tests": [
+    "electron/assets/generatedMediaDecode.test.ts",
+    "electron/assets/projectAssetStore.test.ts",
+    "electron/tasks/localTaskJobs.test.ts"
+  ],
+  "class_regression_tests": [
+    "electron/assets/projectAssetStore.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "electron/assets/generatedMediaDecode.ts"
+    ],
+    "rationale": "The spawnSync defaultRun is deleted in the same change; there is no synchronous fallback. The offLedgerEgress registry entry for the synchronous decode is removed with it."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "Node's built-in child_process.execFile replaces spawnSync; no third-party runtime is involved and the bundled ffmpeg and its invocation are unchanged.",
+    "exit_criteria": []
+  },
+  "migration": "No stored data changes. Writers became async; every production caller was updated to await (tsc and the test-type gate reject a synchronous fake or an un-awaited Promise used as a record).",
+  "residual_risks": [
+    "Other synchronous fs work on large files in the main process (readFileSync of a whole video in writeDeterministicAsset's existing-file hash, sha256 of large buffers) still runs on the main loop; it is CPU / disk work, not a child wait, and needs measurement before a fix (C-perfguide M02).",
+    "An asynchronous decode spawned inside a paid dispatch is now visible to the dispatch ledger's child_process channel, which can only make a failed dispatch read as 'unknown' rather than 'never sent' — the conservative direction.",
+    "If the app quits while a decode child is running, the child is bounded by its timeout but is not killed on quit; the scratch file it reads is left for the OS temp cleaner."
+  ]
+}

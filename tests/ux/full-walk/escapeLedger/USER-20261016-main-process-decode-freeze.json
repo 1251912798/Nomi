@@ -1,0 +1,24 @@
+{
+  "id": "USER-20261016-main-process-decode-freeze",
+  "since": "2026-10-16",
+  "source": "User report on 0.23.1: the app freezes, nothing responds to clicks, settings do not open right away; other versions do not",
+  "category": "performance-coverage",
+  "problem": "生成产物落盘前的解码校验在主进程里用 spawnSync 同步跑 ffmpeg（等待上限 12–120 秒，v0.23.0 起才有）；等待期间同步 IPC 把渲染层一起卡住、窗口不动。验收没有「校验进行中主进程往返」的计数，也没有禁止主进程同步子进程的门岗，所以只在用户手里被发现。",
+  "existingInvariants": [],
+  "ironLaws": [],
+  "useCases": [],
+  "fullWalkJourneys": [],
+  "status": "candidate",
+  "manualReview": "pending",
+  "evidence": [
+    "docs/engineering/direction-checks/2026-10-16-main-process-sync-child-wait.md",
+    "docs/fixes/2026-10-16-main-process-sync-decode-wait.root-cause.json"
+  ],
+  "completionCommits": [],
+  "rootCauseContract": "docs/fixes/2026-10-16-main-process-sync-decode-wait.root-cause.json",
+  "classCheck": {
+    "kind": "matrix",
+    "file": "electron/assets/projectAssetStore.test.ts"
+  },
+  "fixedInPr": 9999
+}
