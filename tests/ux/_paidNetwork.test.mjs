@@ -77,7 +77,7 @@ describe('openPaidWalk wiring', () => {
       },
     }))
     vi.doMock('./_realProfile.mjs', () => ({
-      readRealCatalog: () => catalog, realNomiIsRunning: () => false, realProfileFingerprint: () => ({}),
+      readRealCatalog: () => catalog, realNomiIsRunning: () => false, realNomiProfile: () => ({}), realProfileFingerprint: () => ({}),
       removeRealCredentials: () => true, seedRealModels: () => [{ vendorKey: 'apimart', modelKey: 'm', labelZh: 'm' }],
     }))
     const { openPaidWalk } = await import('./_paidRun.mjs')
