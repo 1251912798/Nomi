@@ -451,7 +451,7 @@ export function createProductionRunRepository(deps: ProductionRunRepositoryDeps 
           presentationId: `${operationId}:presentation:1`,
           presentationEpoch: 1,
           policySnapshot: structuredClone(input.policySnapshot ?? DEFAULT_PROJECT_AGENT_APPROVAL_POLICY),
-          ...(input.policySnapshot?.mode === "project" ? {
+          ...(input.policySnapshot?.mode === "direct" ? {
             policyDecisionState: "pending" as const,
             ...(projectPolicyDecisionDeadlineFromOwnerClock(timestamp) ? { policyDecisionDeadlineAt: projectPolicyDecisionDeadlineFromOwnerClock(timestamp) } : {}),
           } : {}),

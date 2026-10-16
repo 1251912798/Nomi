@@ -13,6 +13,7 @@
 //  R6 functionCensus 每项的 after 必须是存在的元素 id（旧功能必须有去处）
 //  R7 states 非空，取值只能来自状态词表
 //  R8 PR 正文 `## 拍板图` 认领的元素：在 PR 头上必须是 implemented，或带 userDecision 的 deferred / dropped
+//     （认领可以指向任何日期目录里的板；发现到的每张新日期板都跑完整规则：抽取候选核哈希、人工普查须声明）
 //
 // 用法：node scripts/check-board-parity.mjs            （重抽候选 + 全部规则）
 import fs from 'node:fs'
@@ -136,6 +137,10 @@ export function checkPrBoardClaims(body, manifests) {
       errors.push(`拍板图 ${board} 不存在（认领了一个没有清单的板）`)
       continue
     }
+    if (manifest.ambiguous) {
+      errors.push(`拍板图 ${board} 重名（不止一个日期目录有这张板），按板名认领有歧义：先改名`)
+      continue
+    }
     for (const id of ids) {
       const el = (manifest.elements ?? []).find((e) => e.id === id)
       if (!el) {
@@ -166,11 +171,39 @@ export function loadAssertionCorpus(root = REPO_ROOT) {
   return chunks.join('\n')
 }
 
-export function loadManifests(dir = BOARDS_DIR) {
+/**
+ * 其它日期目录里的板（`docs/design/boards/<日期>/<板名>.board.json`，不在 BOARD_NAMES 那 12 张里）。
+ * 2026-10-16：新板（例如只有文字拍板、没有画布的板）原来对门岗和合并前扫描都不可见——
+ * 门岗不查它，PR 正文 `## 拍板图` 认领它时合并前扫描只会报「不存在」。
+ * 返回 [{ board, dir, manifestOnly }]；身份 = 日期目录 + 板名（同名板各算一张，V-1203 复验 R1）；
+ * manifestOnly = 同目录没有 `<板名>.candidates.json`（没有画布可抽候选）。
+ */
+export function findDatedBoards(root = path.dirname(BOARDS_DIR), skipDir = BOARDS_DIR) {
+  const out = []
+  if (!fs.existsSync(root)) return out
+  for (const day of fs.readdirSync(root, { withFileTypes: true })) {
+    if (!day.isDirectory()) continue
+    const dir = path.join(root, day.name)
+    if (path.resolve(dir) === path.resolve(skipDir)) continue
+    for (const name of fs.readdirSync(dir)) {
+      if (!name.endsWith('.board.json')) continue
+      const board = name.slice(0, -'.board.json'.length)
+      out.push({ board, dir, manifestOnly: !fs.existsSync(path.join(dir, `${board}.candidates.json`)) })
+    }
+  }
+  return out
+}
+
+export function loadManifests(dir = BOARDS_DIR, root = path.dirname(dir)) {
   const out = {}
   for (const board of BOARD_NAMES) {
     const file = path.join(dir, `${board}.board.json`)
     out[board] = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : null
+  }
+  // 其它日期目录的板也能被 `## 拍板图` 认领到。重名（与固定 12 张或彼此）不挑第一份：标成有歧义，认领就红。
+  for (const { board, dir: boardDir } of findDatedBoards(root, dir)) {
+    if (out[board] === undefined) out[board] = JSON.parse(fs.readFileSync(path.join(boardDir, `${board}.board.json`), 'utf8'))
+    else out[board] = { ambiguous: true }
   }
   return out
 }
@@ -193,10 +226,34 @@ export function checkSourceHash({ board, candidatesDoc, currentHash }) {
  * 默认模式：只看哈希与清单，不起浏览器（CI 的 Contracts job 没有 Playwright 浏览器）。
  * reextract = true（显式 --reextract，只在本机或装了浏览器的环境）：再真抽一遍，比对候选文件全文。
  */
-export async function runBoardParity({ dir = BOARDS_DIR, reextract = false } = {}) {
+export async function runBoardParity({ dir = BOARDS_DIR, root = path.dirname(dir), reextract = false } = {}) {
   const errors = []
-  const manifests = loadManifests(dir)
+  const manifests = loadManifests(dir, root)
   const corpus = loadAssertionCorpus()
+  // 其它日期目录里**发现到的每一张板**都跑完整规则（V-1203 F2：原来只查「只有清单」的那一种，带候选文件的新板落在两个循环之外）。
+  // 发现集合与校验集合是同一份：findDatedBoards 找到什么就查什么。
+  for (const { board, dir: boardDir, manifestOnly } of findDatedBoards(root, dir)) {
+    let candidates = []
+    if (!manifestOnly) {
+      const doc = JSON.parse(fs.readFileSync(path.join(boardDir, `${board}.candidates.json`), 'utf8'))
+      const extractor = typeof doc.extractor === 'string' ? doc.extractor : ''
+      // 抽取出来的候选核板源哈希；人工普查（没有可抽取的板源）明写 extractor=manual-*，免哈希但照认领规则查；
+      // 两样都不是 = 不声不响地免掉了哈希核对 → 红。
+      if (extractor.startsWith('board-extract')) errors.push(...checkSourceHash({ board, candidatesDoc: doc, currentHash: hashBoardSource(boardDir, board) }))
+      else if (!extractor.startsWith('manual')) errors.push(`[${board}] 候选文件既不是 board-extract 抽取的（核板源哈希），也没声明人工普查（extractor: manual-*）`)
+      candidates = Array.isArray(doc.candidates) ? doc.candidates : []
+    }
+    // 读这张板自己目录里的清单，不按板名查表——同名板不能互相顶替（V-1203 复验 R1）。
+    const manifest = JSON.parse(fs.readFileSync(path.join(boardDir, `${board}.board.json`), 'utf8'))
+    errors.push(...checkBoardManifest({ board, manifest, candidates, assertionCorpus: corpus }))
+  }
+  // 重名本身就红：PR 正文按板名认领，重名就分不清认的是哪一张。
+  const dated = findDatedBoards(root, dir)
+  for (const name of new Set(dated.map((entry) => entry.board))) {
+    const places = dated.filter((entry) => entry.board === name).map((entry) => path.basename(entry.dir))
+    if (BOARD_NAMES.includes(name)) places.unshift(path.basename(dir))
+    if (places.length > 1) errors.push(`[${name}] 同名板出现在多个日期目录（${places.join('、')}）：按板名认领有歧义，改名`)
+  }
   for (const board of BOARD_NAMES) {
     const file = path.join(dir, `${board}.candidates.json`)
     const committed = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : ''
@@ -234,7 +291,8 @@ async function main() {
     for (const e of errors) console.error(`  ✗ ${e}`)
     process.exit(1)
   }
-  console.log(`拍板图对账通过：${BOARD_NAMES.length} 张板，候选全部认领。`)
+  const dated = findDatedBoards()
+  console.log(`拍板图对账通过：${BOARD_NAMES.length} 张板，候选全部认领；其它日期目录 ${dated.length} 张板全部按完整规则查过（其中 ${dated.filter((entry) => entry.manifestOnly).length} 张只有清单）。`)
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

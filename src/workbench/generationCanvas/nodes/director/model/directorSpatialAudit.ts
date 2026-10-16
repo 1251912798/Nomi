@@ -61,9 +61,14 @@ function worldBoxes(scene: DirectorScene, time: number): Map<string, Box> {
   return boxes
 }
 
+/** 采样步长（秒）：人走 1.4m/s 时一步约 0.35m，小于一个人的身宽，穿身而过一定落在某个采样上。 */
+const SAMPLE_STEP = 0.25
+/** 全片按固定步长采样，外加每个片段的起止时刻（走位的拐点）；按片长等分若干份会让长片的采样稀到量不到穿身而过。 */
 const sampleTimes = (scene: DirectorScene): number[] => {
-  const end = Math.max(0, ...[...scene.objects, ...scene.cameras].flatMap((entity) => (entity.trajectoryClips ?? []).map((clip) => clip.endTime)))
-  return Array.from({ length: 9 }, (_, index) => (end * index) / 8)
+  const clips = [...scene.objects, ...scene.cameras].flatMap((entity) => entity.trajectoryClips ?? [])
+  const end = Math.max(0, ...clips.map((clip) => clip.endTime))
+  const steps = Array.from({ length: Math.floor(end / SAMPLE_STEP) + 1 }, (_, index) => index * SAMPLE_STEP)
+  return [...new Set([...steps, end, ...clips.flatMap((clip) => [clip.startTime, clip.endTime])])].sort((a, b) => a - b)
 }
 
 /** 不悬空：静止时每个实心物件的底要么贴地（或在地面以下，陷地另量），要么贴在另一个实心物件的顶上；被拿着的（有父级）由父级承托。 */

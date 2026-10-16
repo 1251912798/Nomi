@@ -333,7 +333,7 @@ export const useWorkbenchStore = create<WorkbenchState>()(subscribeWithSelector(
     projectAgentDraftRevision: state.projectAgentDraftRevision + 1,
     projectAgentReferences: typeof references === 'function' ? references(state.projectAgentReferences) : references,
   })),
-  setProjectAgentApprovalPolicy: (projectAgentApprovalPolicy) => set({ projectAgentApprovalPolicy: Object.freeze({ mode: projectAgentApprovalPolicy.mode, spend: projectAgentApprovalPolicy.spend }) }),
+  setProjectAgentApprovalPolicy: (projectAgentApprovalPolicy) => set({ projectAgentApprovalPolicy: Object.freeze({ mode: projectAgentApprovalPolicy.mode }) }),
   timeline: createDefaultTimeline(),
   timelinePlaying: false,
   previewAspectRatio: '16:9',

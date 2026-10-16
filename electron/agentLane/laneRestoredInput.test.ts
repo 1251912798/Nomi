@@ -17,7 +17,7 @@ describe('cancelled input desktop restoration', () => {
   it('keeps the original target and template without restoring old authorization', () => {
     const intent = { documentId: 'old-document', target: { kind: 'document' as const, documentId: 'old-document', anchor: { kind: 'whole-document' as const } }, systemPrompt: 'original template' }
     const restored = draftInputFromMessage({ role: 'nomi.input', content: 'Original input', timestamp: 1,
-      context: { ...intent, approvalPolicy: { mode: 'step', spend: 'confirm' } } })
+      context: { ...intent, approvalPolicy: { mode: 'request' } } })
     expect(restored).toMatchObject({ text: 'Original input', intent })
     expect(restored).not.toHaveProperty('approvalPolicy')
     expect(restored).not.toHaveProperty('intent.approvalPolicy')

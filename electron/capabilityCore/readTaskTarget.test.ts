@@ -136,7 +136,7 @@ describe("nomi_read target=task", () => {
   async function submitPending(): Promise<string> {
     const tried = await tryModel({
       runTask, fetchTaskResult, pollIntervalMs: 10, pollTimeoutMs: 2_000, // 这一格同时是「提交那一步」的预算：200ms 在满载下装不下一次本地提交，会回 submission_unknown 而不是 still_processing
-      approvalPolicy: () => ({ mode: "project", spend: "confirm" }),
+      approvalPolicy: () => ({ mode: "direct" }),
     }, { vendorKey, modelKey: "readtask-paint", prompt: "apple" }) as { code?: string; taskId?: string; nextAction?: string };
     expect(tried.code).toBe("still_processing");
     expect(tried.nextAction).toContain(`nomi_read target=task taskId=${tried.taskId}`);

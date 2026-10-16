@@ -268,7 +268,7 @@ describe("「生成剩下 N 张」= 卡上还没决定的每一张各点一次�
     type Outcome = ReturnType<typeof generationPresentationOutcome>;
     /** 回合在账本里这一次出价关掉那一刻就去读结局，读法和 lane 同一个（`readPresentationOutcome`）。卡摆出来之后才开始看。 */
     const listen = (built: ReturnType<typeof buildActions>, base: ReturnType<typeof harness>, heard: Promise<Outcome | undefined>[]) =>
-      watchCardForTurn(base, () => { heard.push(built.transport("step").readPresentationOutcome(OPERATION_ID)); });
+      watchCardForTurn(base, () => { heard.push(built.transport("request").readPresentationOutcome(OPERATION_ID)); });
 
     it("「生成剩下 4 张」批第 2 张时点 ×：第 2 张不再批；回合听到的结局、× 回的张数、供应商收到的三处一致", async () => {
       const vendor = await startLoopbackVendor();
@@ -353,7 +353,7 @@ describe("「生成剩下 N 张」= 卡上还没决定的每一张各点一次�
         // lane 的那条路（`laneExtendedDesktopPorts` 的 redirected）：先收回出价，再立刻读结局——不排卡上的队。
         beforeGate: async () => {
           if (reading) return;
-          const lane = built.transport("step");
+          const lane = built.transport("request");
           await lane.withdrawPresentation(OPERATION_ID, "user_wrote");
           reading = lane.readPresentationOutcome(OPERATION_ID);
         },
