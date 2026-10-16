@@ -404,10 +404,9 @@ export function main() {
   }
   try {
     const viBase = execFileSync('git', ['merge-base', 'HEAD', 'origin/main'], { cwd: repoRoot, encoding: 'utf8' }).trim()
-    if (execFileSync('git', ['ls-tree', '--name-only', viBase, viBaselinePath], { cwd: repoRoot, encoding: 'utf8' }).trim()) {
-      const previous = JSON.parse(execFileSync('git', ['show', `${viBase}:${viBaselinePath}`], { cwd: repoRoot, encoding: 'utf8' }))
-      for (const [relative, count] of Object.entries(viBaseline)) if (count > (previous[relative] ?? 0)) viErrors.push(`vi.waitFor 基线不许增长：${relative}`)
-    }
+    let previous = null
+    try { previous = JSON.parse(execFileSync('git', ['show', `${viBase}:${viBaselinePath}`], { cwd: repoRoot, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })) } catch { /* merge-base 上还没有这份基线：首次引入 */ }
+    if (previous) for (const [relative, count] of Object.entries(viBaseline)) if (count > (previous[relative] ?? 0)) viErrors.push(`vi.waitFor 基线不许增长：${relative}`)
   } catch { /* 无 origin/main 时只核当前基线 */ }
   for (const error of viErrors) console.log(`[vi-waitfor-literal-timeout] ${error}`)
   if (viErrors.length > 0) console.log(`  → ${VI_WAITFOR_FIX_HINT}`)
