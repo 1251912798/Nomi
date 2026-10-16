@@ -1,0 +1,85 @@
+---
+title: "Connect Claude Code, Codex and Cursor"
+description: "Connect Nomi to Claude Code, Codex or Cursor in one click from Settings, restart the assistant, and work in conversation. Other clients can paste a config."
+---
+
+import { Steps, Aside } from '@astrojs/starlight/components';
+
+You connect once: click in Nomi, Nomi writes its own entry into the assistant's MCP configuration, and it takes effect after you restart the assistant. Before you start, make sure Nomi is open and the assistant is installed on this computer.
+
+## Find the entry
+
+<Steps>
+
+1. Click the gear at the top right of Nomi to open Settings, then choose **Automation & permissions**.
+2. On the **AI agent connections (MCP)** row, click **Manage connections**.
+
+   ![Settings, Automation & permissions: AI agent connections (MCP)](/docs-media/en/mcp-automation.png)
+
+3. The switcher at the top of the card only lists the assistants detected on this computer. Click the one you want to connect.
+
+   ![The AI agent connection card: switch assistant, connect, copy configuration](/docs-media/en/mcp-card.png)
+
+</Steps>
+
+<video src="/docs-media/en/mcp-open-card.webm" autoplay loop muted playsinline controls aria-label="Opening the AI agent connection card from Settings and switching assistants"></video>
+
+:::note
+If the card lists no assistant at all, Nomi did not detect Claude Code, Claude Desktop, Codex, Cursor or WorkBuddy on this computer. Install one and come back, or use the generic configuration under **Other clients** at the bottom.
+:::
+
+## Claude Code
+
+1. Pick Claude Code in the switcher and click **Connect to Claude Code**.
+2. Nomi merges its `nomi` entry into `~/.claude.json`, leaves your other MCP servers as they are, and keeps a backup before rewriting.
+3. When the card says the configuration was updated, restart Claude Code.
+4. After the restart, say a sentence to it, for example the sample sentence shown on the card.
+
+## Codex
+
+1. Pick Codex in the switcher and click **Connect to Codex**.
+2. Nomi writes its `nomi` entry into `~/.codex/config.toml` and leaves the rest of your configuration alone.
+3. Restart Codex.
+
+![Codex selected: connect and copy configuration](/docs-media/en/mcp-codex.png)
+
+## Cursor
+
+1. Pick Cursor in the switcher and click **Connect to Cursor**. Nomi writes `~/.cursor/mcp.json`.
+2. Restart Cursor. The first time Cursor calls Nomi it may ask you to approve it once more. That is Cursor's own approval, and Nomi does not approve it for you.
+3. Cursor is not a trusted starter by default: the switch "Let Cursor start production on its own" on the card is off, so at first it can only start drafts and read status. Turn that switch on yourself if you want it to start production directly.
+
+![Cursor selected: connect and copy configuration](/docs-media/en/mcp-cursor.png)
+
+:::note
+Claude Desktop and WorkBuddy are on the same card and work the same way: pick it, click connect, restart it.
+:::
+
+## Other clients
+
+For Cline, Windsurf or another MCP client, click **Copy config** under **Other clients** at the bottom of the card and paste it into that client's MCP settings.
+
+The shape of the configuration is below, but the launch command and arguments differ from computer to computer, so **always copy the one Nomi gives you and never type it from this example**:
+
+```json
+{
+  "mcpServers": {
+    "nomi": {
+      "command": "…",
+      "args": ["…"]
+    }
+  }
+}
+```
+
+This generic configuration carries no assistant identity, so Nomi treats it as an external client: it works, but it is not a trusted starter, so generation still asks you every time.
+
+## Undo
+
+On the same card, select the assistant and click **Remove connection**.
+
+<Aside type="caution">
+Always restart the assistant after changing its configuration. Until you do, it still reads the old one.
+</Aside>
+
+**Next:** [Is it connected? Verify and troubleshoot](/en/docs/mcp/verify-and-troubleshoot)

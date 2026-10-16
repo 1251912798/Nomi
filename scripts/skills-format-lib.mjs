@@ -68,6 +68,11 @@ export function checkSkillDirectory(dirName, files) {
     }
   }
 
+  // F7：技能包里任何文本都不许写公开仓的竞品输出路径。
+  for (const [name, text] of Object.entries(files)) {
+    for (const error of checkRadarTextHasNoPublicOutput(`${dirName}/${name}`, text)) errors.push({ ...error, dirName })
+  }
+
   const body = files['SKILL.md']
   if (typeof body !== 'string') {
     fail('F2', '缺少 SKILL.md')
@@ -135,7 +140,7 @@ export function readSkillDirectory(absDir) {
         continue
       }
       if (!entry.isFile()) continue
-      if (entry.name === 'SKILL.md' || entry.name === 'skill.json') {
+      if (entry.name === 'SKILL.md' || entry.name === 'skill.json' || entry.name.endsWith('.md')) {
         files[rel] = fs.readFileSync(path.join(dir, entry.name), 'utf8')
       } else {
         files[rel] = ''
@@ -190,4 +195,34 @@ export async function checkPiLoader(skillsRoot, repoRoot) {
     })
   }
   return { skipped: false, errors, loaded: result.skills.length, expected }
+}
+
+// ── F7 / F8：竞品雷达的产出只落私有仓（用户 2026-10-15 拍板；#1169 把一份竞品报告提交进了公开主仓）──
+// 删掉公开仓里的输出位置，比写规则文字强：技能与规程里不许再出现这两个路径（出现 = 有人要往公开仓写），
+// 公开仓 docs/research/competitive/ 除指路 README 外不许有任何文件（出现 = 已经写进来了）。
+// 判据在 lib 里，才喂得进假仓库验「它会不会红」。
+export const PUBLIC_RADAR_OUTPUT_PATTERN = /docs\/research\/competitive|outputs\/competitive-radar/
+export const PUBLIC_COMPETITIVE_DIR = 'docs/research/competitive'
+export const PUBLIC_COMPETITIVE_ALLOWED = Object.freeze(['README.md'])
+
+/** F7：一段文本（技能文件、规程、hook 脚本）里出现公开仓输出路径就红。 */
+export function checkRadarTextHasNoPublicOutput(label, text) {
+  if (!PUBLIC_RADAR_OUTPUT_PATTERN.test(String(text))) return []
+  return [{ rule: 'F7', dirName: label, message: '出现了公开主仓的竞品雷达输出路径——产出只能落私有仓 Nomi-service 的 research/competitive/<日期>/' }]
+}
+
+/** F8：`relativePaths` 是公开仓 docs/research/competitive/ 下的全部文件（相对该目录），除 README.md 外出现任何一个就红。 */
+export function checkPublicCompetitiveDir(relativePaths) {
+  return relativePaths
+    .filter((rel) => !PUBLIC_COMPETITIVE_ALLOWED.includes(rel))
+    .map((rel) => ({ rule: 'F8', dirName: `${PUBLIC_COMPETITIVE_DIR}/${rel}`, message: '公开主仓不放竞品报告与资料——挪到私有仓 Nomi-service 的 research/competitive/' }))
+}
+
+/** 递归列出一个目录下的全部文件（相对路径，正斜杠）；目录不存在 = 空。 */
+export function listFilesRecursive(absDir, prefix = '') {
+  if (!fs.existsSync(absDir)) return []
+  return fs.readdirSync(absDir, { withFileTypes: true }).flatMap((entry) => {
+    const rel = prefix ? `${prefix}/${entry.name}` : entry.name
+    return entry.isDirectory() ? listFilesRecursive(path.join(absDir, entry.name), rel) : [rel]
+  })
 }
