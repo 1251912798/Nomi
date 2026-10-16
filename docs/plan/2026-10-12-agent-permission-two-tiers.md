@@ -19,6 +19,20 @@
 1. 任务书说「三档 spend 恒 confirm」。代码里 2026-09-12 起「全自动」已经由档位代答付费（`spendDecidedByPolicy`，收据 `decidedBy: policy:full_auto`）；`agentPanelV4Types.ts` 里「三档 spend 恒 confirm」的注释是过期的，随旧三档一并删。所以这次其实是：「自动改」→「请求批准」、「全自动」→「直接生成」并加刹车、删「每步问」和没有读者的 `spend` 轴。设计记录里被改的时间点是 09-12 和 10-12 两次。
 2. 灰字原来只显示选中的那一档；现在每档标题下各一行。
 
+## 先查别人
+
+> 诚实前提：第一轮设计卡在动手前没写这一节，这是第二轮推送前按门岗补的检索；它没有推翻任何决定，但把「哪些是通用的、哪些是我们独有的」写清楚了。
+
+- **依赖里已有？** 工具调用的拦截点用的是 lane 运行时自带的钩子：`beforeToolCall` 返回 `{ block, reason }` 就能挡住一次调用（[`node_modules/@earendil-works/pi-agent-core/dist/types.d.ts:35`](../../node_modules/@earendil-works/pi-agent-core/dist/types.d.ts)），审批闸 `laneApprovalGate` 就挂在它上面，这次没有另造拦截层。依赖里**没有**「按挡位决定要不要问」或「连续失败停下」的现成件：`ai@4.3.19`（`node_modules/ai/package.json:3`）的工具定义里没有审批字段，pi 的钩子只给「挡 / 不挡」这一个原语。
+- **仓库里已有？** 全接，没有另写：档位判据 [`capabilityApprovalPolicy.ts:139`](../../electron/shared/agentCapabilities/capabilityApprovalPolicy.ts)（`spendDecidedByPolicy`）、镜 ↔ job [`productionShotJobs.ts:47`](../../electron/shared/productionShotJobs.ts)（`jobsForShot`）、「可能到过供应商」判据 [`productionShotJobs.ts:24`](../../electron/shared/productionShotJobs.ts)（`jobMayHaveReachedProvider`）、把出价标成要人工决定的既有路 `markGenerationPolicyDecisionFailed`（[`productionGenerationPresentationEdits.ts:115`](../../electron/productionRun/productionGenerationPresentationEdits.ts)）、切档确认与提醒条 `useAgentPanelAutoMode` / `V4AutoModeBanner`。刹车判定是这几样的组合，没有第二份计划、没有计数器。
+- **生态里已有？**（只引通用规范与官方文档）
+  - 工具调用要有人在回路里、并能逐次确认：MCP 规范的工具一章明写客户端应当给人确认敏感调用的机会（<https://modelcontextprotocol.io/specification/2025-06-18/server/tools>）——对应「请求批准」默认档、不可逆操作两档都问。
+  - Agent 宿主协议把权限请求做成「这一次允许 / 一直允许 / 拒绝」的选项，由宿主问人（Agent Client Protocol 的工具调用一章，<https://agentclientprotocol.com/protocol/tool-calls>）——编码类 Agent 的审批模式普遍就是「逐次确认 / 自动批准」两态，不是三档；但它们的对象是文件 / 终端操作，没有「按镜头花钱」与计划、连续失败这些事实。
+  - 「先给计划、按计划自动执行、计划外要再批」：基础设施工具的 plan / apply 与 `-auto-approve`（<https://developer.hashicorp.com/terraform/cli/commands/apply>）——对应刹车 2「超出说好的计划就停」。
+  - 「同一目标连续失败就熔断、不再自动重试」：断路器模式（<https://learn.microsoft.com/en-us/azure/architecture/patterns/circuit-breaker>）——对应刹车 1；我们只取「连续失败满 N 次就停下交给人」这一半，不做自动半开重试（用户拍板：停下问）。
+- **TikHub 自媒体里怎么说？** 未查：TikHub 密钥按约定用时由用户临时提供、本线不碰任何密钥；这一项不影响结论（挡位语义由用户 10-12 直接拍板）。
+- **结论**：拦截原语、档位判据、计划与失败事实全用已有；「直接生成档在什么事实上替用户停下」——按镜头的连续失败、Run 上已批的计划、停止——是按镜头花钱的领域语义，生态里没有可接的现成件，自研（`directGenerationBrakes.ts`，登记 `agent.direct-generation-brakes`）。
+
 ## 2. 目标设计
 
 | 挡位 | 能撤销的本地改动 | 要生成的 | 撤销不了的操作 | 灰字（zh） |

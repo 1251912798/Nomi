@@ -27,8 +27,18 @@ describe('切档确认：只有切进「直接生成」才弹', () => {
 })
 
 describe('文案：每档一行灰字，说清会发生什么；不出现价格 / 预算 / 额度', () => {
-  const zh = zhAgentPanelV4 as unknown as Record<string, any>
-  const en = enAgentPanelV4 as unknown as Record<string, any>
+  // 词典的形状按「可能还没有这些键」来读（第一轮必红时它们不存在），所以先抹成这份最小形状再断言。
+  type TierCopy = Readonly<{
+    permission: Readonly<Record<string, string>>
+    permissionWhy: Readonly<Record<string, string>>
+    autoModeConfirmTitle: string
+    autoModeConfirmBody: string
+    brakeRetry?: Readonly<{ title?: unknown }>
+    brakeOutOfPlan?: Readonly<{ title?: unknown }>
+    brakeStopped?: Readonly<{ title?: unknown }>
+  }>
+  const zh = zhAgentPanelV4 as unknown as TierCopy
+  const en = enAgentPanelV4 as unknown as TierCopy
   // 不抄整句：check:test-copy-literals 禁止测试一字不差地复制词典文案（两份真相）；这里钉的是拍板的每一个事实。
   it('zh 每档一行灰字，说的是拍板的事实', () => {
     expect(Object.keys(zh.permission)).toEqual(['request', 'direct'])
@@ -56,7 +66,7 @@ describe('文案：每档一行灰字，说清会发生什么；不出现价格 
   })
   it('刹车触发时报价卡多一行说明（zh + en）：连续失败 / 计划外 / 已停止各一条', () => {
     for (const bag of [zh, en]) {
-      for (const key of ['brakeRetry', 'brakeOutOfPlan', 'brakeStopped']) expect(typeof bag[key]?.title).toBe('string')
+      for (const key of ['brakeRetry', 'brakeOutOfPlan', 'brakeStopped'] as const) expect(typeof bag[key]?.title).toBe('string')
     }
   })
 })

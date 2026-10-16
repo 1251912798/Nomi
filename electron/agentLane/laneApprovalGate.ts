@@ -278,7 +278,7 @@ export function createLaneApprovalGate(options: LaneApprovalGateOptions): LaneAp
       // （文件头 ③ 只管被 abort 打断的那两支）。
       return { allow: false, decision: "cancelled", cause: "restart", reason: RESTART_REASON };
     }
-    const { resolved, subject, policy, decided } = decisionOf(request);
+    const { resolved, subject, decided } = decisionOf(request);
     if (decided.state === "auto-granted") return { allow: true, decision: "auto-granted",
       undoable: subject.effect !== 'read' && subject.effectClass === 'reversible_local' };
     if (decided.state === "denied-by-policy") {
