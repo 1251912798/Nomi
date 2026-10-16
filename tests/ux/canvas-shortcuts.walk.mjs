@@ -156,7 +156,7 @@ async function resize(w, h) {
 
 const countNodes = () => getWin().evaluate(() => document.querySelectorAll('.generation-canvas-v2-node').length)
 const countSelected = () => getWin().evaluate(() => Array.from(document.querySelectorAll('.generation-canvas-v2-node'))
-  .filter((n) => n.getAttribute('data-selected') === 'true' || n.getAttribute('aria-selected') === 'true' || /selected|ring-nomi-accent/.test(n.className)).length)
+  .filter((n) => n.getAttribute('data-selected') === 'true' || n.getAttribute('aria-selected') === 'true' || /selected/.test(n.className)).length)
 
 // 空白点判据住在 `_canvasHit.mjs`（单一 owner）：最顶层元素就是 React Flow pane。
 async function findBlankPoint() {

@@ -46,7 +46,7 @@ export function ProviderPresetGroups({
                       'inline-flex items-center gap-1 px-3 py-1 rounded-full text-body-sm border',
                       'transition-[background,color,border-color] duration-150',
                       active
-                        ? 'bg-nomi-accent-soft text-nomi-accent border-nomi-accent'
+                        ? 'bg-nomi-accent-soft text-nomi-accent border-transparent'
                         : 'bg-nomi-paper text-nomi-ink-80 border-nomi-line hover:bg-nomi-ink-05',
                     )}
                   >

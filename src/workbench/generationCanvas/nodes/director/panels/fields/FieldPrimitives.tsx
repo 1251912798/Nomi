@@ -47,7 +47,7 @@ function NumberInput({ value, onCommit, digits = 2, className }: { value: number
     <input
       type="text"
       inputMode="decimal"
-      className={cn('h-7 w-full rounded-nomi-sm border border-nomi-line bg-nomi-ink-05 px-2 text-right text-body-sm tabular-nums text-nomi-ink focus:border-nomi-accent', className)}
+      className={cn('h-7 w-full rounded-nomi-sm border border-nomi-line bg-nomi-ink-05 px-2 text-right text-body-sm tabular-nums text-nomi-ink focus:border-nomi-ink-40', className)}
       {...draft}
       onWheel={(event) => {
         event.preventDefault()
@@ -89,7 +89,7 @@ export function TextField({ label, value, onCommit }: { label: string; value: st
       <span className="w-16 shrink-0 truncate text-nomi-ink-60">{label}</span>
       <input
         type="text"
-        className="h-7 min-w-0 flex-1 rounded-nomi-sm border border-nomi-line bg-nomi-ink-05 px-2 text-body-sm text-nomi-ink focus:border-nomi-accent"
+        className="h-7 min-w-0 flex-1 rounded-nomi-sm border border-nomi-line bg-nomi-ink-05 px-2 text-body-sm text-nomi-ink focus:border-nomi-ink-40"
         value={draft ?? value}
         onFocus={() => setDraft(value)}
         onChange={(event) => setDraft(event.target.value)}
@@ -119,7 +119,7 @@ export function ToggleField({ label, checked, onChange, hint }: { label: string;
         aria-label={label}
         className={cn(
           'h-6 shrink-0 rounded-nomi-sm px-2.5 text-caption transition-colors',
-          checked ? 'bg-nomi-accent-soft font-semibold text-nomi-accent' : 'border border-nomi-line bg-nomi-ink-05 text-nomi-ink-60 hover:text-nomi-ink',
+          checked ? 'bg-nomi-accent-soft font-semibold text-nomi-ink' : 'border border-nomi-line bg-nomi-ink-05 text-nomi-ink-60 hover:text-nomi-ink',
         )}
         onClick={() => onChange(!checked)}
       >
@@ -148,7 +148,7 @@ export function ColorField({ label, value, onChange, onChangeStart, presets, all
             type="button"
             title={t(`director.colorPreset.${swatch.id}`)}
             aria-label={t(`director.colorPreset.${swatch.id}`)}
-            className={cn('size-[22px] rounded-full border border-nomi-line', value.toLowerCase() === swatch.value.toLowerCase() ? 'outline outline-2 outline-offset-2 outline-nomi-accent' : '')}
+            className={cn('size-[22px] rounded-full border border-nomi-line', value.toLowerCase() === swatch.value.toLowerCase() ? 'outline outline-2 outline-offset-2 outline-nomi-ink' : '')}
             style={{ backgroundColor: swatch.value }}
             onClick={() => commit(swatch.value)}
           />

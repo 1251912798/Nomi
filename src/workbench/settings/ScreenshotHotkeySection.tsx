@@ -71,7 +71,7 @@ export function ScreenshotHotkeySection(): JSX.Element {
                 'rounded-nomi-sm border px-2.5 py-1.5 font-mono text-caption cursor-pointer',
                 'transition-colors duration-nomi-fast ease-nomi-fast',
                 option === accelerator
-                  ? 'border-nomi-accent bg-nomi-accent-soft text-nomi-accent'
+                  ? 'border-transparent bg-nomi-accent-soft text-nomi-ink'
                   : 'border-nomi-line bg-nomi-paper text-nomi-ink-60 hover:bg-nomi-ink-05',
               )}
             >

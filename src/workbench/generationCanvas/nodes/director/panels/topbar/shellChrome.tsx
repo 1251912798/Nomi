@@ -49,7 +49,7 @@ export function ViewModeSwitch({ mode, onChange, testId }: { mode: ViewModeValue
   const option = (value: ViewModeValue, label: string) => (
     <button
       type="button"
-      className={cn('rounded-nomi-sm px-3 py-1 text-caption', mode === value ? 'bg-nomi-accent-soft text-nomi-accent' : 'text-nomi-ink-60 hover:text-nomi-ink')}
+      className={cn('rounded-nomi-sm px-3 py-1 text-caption', mode === value ? 'bg-nomi-accent-soft text-nomi-ink' : 'text-nomi-ink-60 hover:text-nomi-ink')}
       aria-pressed={mode === value}
       onClick={mode === value ? undefined : () => onChange(value)}
     >

@@ -121,7 +121,7 @@ export function V4TaskCard({
                     'relative h-10 w-16 shrink-0 overflow-hidden rounded-nomi-sm border border-nomi-line',
                     candidate.pending ? 'bg-nomi-ink-05' : 'bg-nomi-ink-10',
                     // 采用 = accent 描边（outline 不占位，缩略图不缩水）+ 左上角标。
-                    candidate.adopted && 'outline outline-2 outline-offset-1 outline-nomi-accent',
+                    candidate.adopted && 'outline outline-1 outline-offset-1 outline-nomi-ink-40',
                   )}
                 >
                   {candidate.thumbnailUrl ? <img src={candidate.thumbnailUrl} alt="" className="size-full object-cover" /> : null}

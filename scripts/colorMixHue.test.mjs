@@ -120,13 +120,12 @@ describe('两个 token 真相源不许漂移（运行时真源 = tailwind addBas
       // 收成一份后，镜像若漏抄就又是两份，这条断言是那次收口的锁。
       // 明暗两块都要写全四档 —— soft/edge 是色阶上独立的一档（不是 base 的 alpha），
       // 暗色不会靠 var() 自动翻，漏抄一档就是「浅色近白底漏进暗色」的刺眼白块。
-      // 唯一例外：`--nomi-info` 的 base 是 `var(--nomi-accent)` 的别名，只在浅色块定义一次。
-      const statusTokens = ['danger', 'warning', 'success', 'info'].flatMap((s) => [
-        ...(mode === 'dark' && s === 'info' ? [] : [`--nomi-${s}`]),
-        `--nomi-${s}-ink`,
-        `--nomi-${s}-soft`,
-        `--nomi-${s}-edge`,
-      ])
+      // 唯一例外：info 只剩 ink / soft 两档（2026-10-10 去蓝色描边：base 与 edge 已删）。
+      const statusTokens = ['danger', 'warning', 'success', 'info'].flatMap((s) =>
+        s === 'info'
+          ? [`--nomi-${s}-ink`, `--nomi-${s}-soft`]
+          : [`--nomi-${s}`, `--nomi-${s}-ink`, `--nomi-${s}-soft`, `--nomi-${s}-edge`],
+      )
       for (const token of ['--nomi-accent', '--nomi-paper', '--nomi-accent-soft', ...statusTokens]) {
         const mirrored = mirror.get(token)
         expect(mirrored, `nomi-tokens.css 的 ${mode} 块缺 ${token}`).toBeTruthy()

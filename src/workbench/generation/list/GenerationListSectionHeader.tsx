@@ -76,7 +76,7 @@ export function GenerationListSectionHeader({
       <button
         type="button"
         onClick={onToggle}
-        className="group inline-flex max-w-[45%] shrink-0 items-center gap-1.5 rounded-nomi-sm text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nomi-accent"
+        className="group inline-flex max-w-[45%] shrink-0 items-center gap-1.5 rounded-nomi-sm text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nomi-ink"
         aria-label={collapsed ? t('generationList.expandSection') : t('generationList.collapseSection')}
         aria-expanded={!collapsed}
       >

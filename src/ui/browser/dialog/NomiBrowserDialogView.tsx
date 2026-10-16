@@ -254,7 +254,7 @@ export function NomiBrowserDialogView({
                 className={cn(
                   'grid size-6 shrink-0 place-items-center rounded-pill border-0 bg-transparent',
                   'cursor-pointer text-nomi-ink-40 transition-colors duration-nomi-fast ease-nomi-fast hover:bg-nomi-ink-05 hover:text-nomi-ink',
-                  activeBookmarked && 'text-nomi-accent hover:text-nomi-accent',
+                  activeBookmarked && 'text-nomi-ink hover:text-nomi-accent',
                   (!activeTab?.url || activeBookmarked) && 'cursor-default',
                 )}
                 aria-label={t('browserAssets.saveBookmark')}
@@ -414,7 +414,7 @@ export function NomiBrowserDialogView({
                       navigateActiveTab()
                     }}
                   >
-                    <div className="flex items-center gap-2 rounded-pill border border-nomi-line bg-nomi-paper p-1.5 pl-5 shadow-nomi-sm transition-[border-color,box-shadow] focus-within:border-nomi-accent focus-within:shadow-nomi-md">
+                    <div className="flex items-center gap-2 rounded-pill border border-nomi-line bg-nomi-paper p-1.5 pl-5 shadow-nomi-sm transition-[border-color,box-shadow] focus-within:border-nomi-ink-40 focus-within:shadow-nomi-md">
                       <IconSearch size={19} stroke={1.7} className="shrink-0 text-nomi-ink-40" aria-hidden="true" />
                       <input
                         value={addressValue}
@@ -451,7 +451,7 @@ export function NomiBrowserDialogView({
                             className={cn(
                               'group flex items-center gap-2.5 rounded-nomi border border-nomi-line bg-nomi-paper p-2.5 text-left',
                               'cursor-pointer transition-[background,border-color,transform,box-shadow] duration-nomi-fast ease-nomi-fast',
-                              'hover:-translate-y-px hover:border-nomi-accent hover:shadow-nomi-md',
+                              'hover:-translate-y-px hover:border-nomi-ink-30 hover:shadow-nomi-md',
                             )}
                             onClick={() => {
                               void createTab(site.url)
@@ -538,7 +538,7 @@ export function NomiBrowserDialogView({
             <motion.div
               key={flyout.id}
               data-browser-capture-flyout=""
-              className="pointer-events-none fixed left-0 top-0 z-[570] overflow-hidden rounded-nomi border border-nomi-accent bg-nomi-paper shadow-nomi-lg ring-2 ring-nomi-accent ring-offset-2 ring-offset-nomi-paper"
+              className="pointer-events-none fixed left-0 top-0 z-[570] overflow-hidden rounded-nomi border border-nomi-line bg-nomi-paper shadow-nomi-lg"
               initial={{
                 x: flyout.sourceRect.left,
                 y: flyout.sourceRect.top,

@@ -215,7 +215,7 @@ export default function ShotReferenceStrip({
             aria-expanded={overflowOpen}
             aria-label={t('storyboardEditor.slot.moreAria', { count: hidden })}
             data-storyboard-ref-more={hidden}
-            className="grid place-items-center rounded-nomi-sm border border-nomi-line bg-nomi-ink-05 text-micro tabular-nums text-nomi-ink-80 hover:border-nomi-accent"
+            className="grid place-items-center rounded-nomi-sm border border-nomi-line bg-nomi-ink-05 text-micro tabular-nums text-nomi-ink-80 hover:border-nomi-ink-30"
             style={{ width: size, height: size }}
           >
             +{hidden}

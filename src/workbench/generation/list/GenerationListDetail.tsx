@@ -51,7 +51,7 @@ function RailRow({ card, active, onSelect }: { card: GenerationListCard; active:
       data-list-detail-row={card.key}
       aria-current={active ? 'true' : undefined}
       className={cn(
-        'flex w-full items-center gap-2.5 rounded-panel px-2 py-1.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nomi-accent',
+        'flex w-full items-center gap-2.5 rounded-panel px-2 py-1.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nomi-ink',
         active ? 'bg-nomi-accent-soft' : 'hover:bg-nomi-ink-05',
       )}
     >

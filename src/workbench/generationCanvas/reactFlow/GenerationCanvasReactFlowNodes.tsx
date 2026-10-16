@@ -232,7 +232,7 @@ export function GenerationFlowNodeView({ data, selected }: NodeProps<GenerationF
     <div
       className={cn(
         'generation-canvas-react-flow__node-shell',
-        pickable === true && 'cursor-pointer rounded-nomi ring-2 ring-nomi-accent/60 ring-offset-2 ring-offset-workbench-bg hover:ring-[3px] hover:ring-nomi-accent',
+        pickable === true && 'cursor-pointer rounded-nomi ring-1 ring-nomi-ink-40 ring-offset-2 ring-offset-workbench-bg hover:ring-nomi-ink',
         pickable === false && 'opacity-40 grayscale',
       )}
       data-pick={pickable === null ? undefined : pickable ? 'eligible' : 'ineligible'}
@@ -310,6 +310,7 @@ export function GenerationFlowNodeView({ data, selected }: NodeProps<GenerationF
                   appear={data.appear}
                   selected={selected}
                   readOnly={data.readOnly}
+                  loading
                 />
               }
             >

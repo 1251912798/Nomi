@@ -56,7 +56,7 @@ function CanvasAddSectionList({
                     'inline-flex items-center justify-start gap-1.5',
                     'w-full h-8 min-h-8 px-2 border-0 rounded-nomi',
                     'bg-transparent text-nomi-ink-80 font-[inherit] text-body-sm cursor-pointer',
-                    'hover:bg-nomi-ink-05 active:bg-nomi-ink-10 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-nomi-accent',
+                    'hover:bg-nomi-ink-05 active:bg-nomi-ink-10 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-nomi-ink',
                     '[&>svg]:size-4 [&>svg]:shrink-0 [&>svg]:text-nomi-ink-60 [&>svg]:stroke-[1.5]',
                   )}
                   role="menuitem"
@@ -202,7 +202,7 @@ export const ADD_BAR_SHARES_BOTTOM_ROW_MIN_STAGE_WIDTH = 820
 const TOOLBAR_BUTTON_CLASS = cn(
   'grid size-8 min-h-8 shrink-0 place-items-center rounded-nomi-sm border-0 bg-transparent p-0 text-nomi-ink-80 cursor-pointer',
   'transition-colors hover:bg-nomi-ink-05 hover:text-nomi-ink active:bg-nomi-ink-10',
-  'focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-nomi-accent',
+  'focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-nomi-ink',
   'disabled:cursor-not-allowed disabled:opacity-40',
   '[&>svg]:size-[18px]',
 )

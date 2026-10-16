@@ -285,7 +285,7 @@ export function LocalModelCard({ enabled, models, onChanged, onOpenDetails, deta
           type="button"
           onClick={() => void probe()}
           disabled={probing}
-          className="inline-flex items-center gap-1 h-8 px-2.5 text-caption text-nomi-ink-60 rounded-nomi-sm border border-nomi-line hover:border-nomi-accent hover:text-nomi-accent disabled:opacity-50"
+          className="inline-flex items-center gap-1 h-8 px-2.5 text-caption text-nomi-ink-60 rounded-nomi-sm border border-nomi-line hover:border-nomi-ink-30 hover:text-nomi-accent disabled:opacity-50"
         >
           <IconRefresh size={13} stroke={1.7} className={probing ? 'animate-spin' : undefined} />
           {probing ? t('onboardingProviders.localModel.detectingInline') : t('onboardingProviders.localModel.redetect')}

@@ -1,0 +1,114 @@
+{
+  "schema_version": 3,
+  "id": "2026-10-16-node-render-swap-eats-click",
+  "detected_by": "ci",
+  "recurrence_check_on": "2026-11-16",
+  "problem_type": "节点渲染树被换掉时，按下去还没抬起的点击丢失",
+  "symptom": "Canvas Acceptance 第 2 桶 stuck-modifier 间歇红（main 收据，本机约 7%）：Shift 点两张卡后没出「已选 N 个」多选浮条；失败时两次 pointerdown 的目标都对，但其中一张卡没有产生 click、也没有选中变化",
+  "direct_cause": "GenerationCanvasReactFlowNodes.tsx:308 的 Suspense 兜底（LightweightGenerationNode）在该种类渲染器 chunk 到达时被整棵换成正式节点；节点 DOM 变更记录显示换树发生在 pointerdown 与 pointerup 之间，浏览器不给被摘掉的元素发 click，React Flow 的点选没有触发。走查点卡前只等 .generation-canvas-v2-node 出现，兜底也满足它",
+  "class_root": "兜底与正式节点是两棵不同的 DOM 树，且兜底与真正的轻量档共用 data-render-mode=lightweight，外部（走查、工具）分不出「这张卡马上要被换掉」；「节点出现」被当成「节点就绪」",
+  "migration": "无迁移：兜底态新增 data-node-loading 标记，走查共享命中点入口按它条件等待；没有旧实现要删",
+  "affected_population": [
+    "所有在项目刚打开、卡还在加载渲染器时去点卡的走查（33 个走查用 findNodeHitPoint）",
+    "真人在卡刚出现的极短窗口里点它（丢一次点击，会再点；产品侧预加载另行排期）"
+  ],
+  "scope_paths": [
+    "src/workbench/generationCanvas/components/LightweightGenerationNode.tsx",
+    "src/workbench/generationCanvas/reactFlow/GenerationCanvasReactFlowNodes.tsx",
+    "tests/ux/_canvasHit.mjs"
+  ],
+  "entry_points": [
+    "src/workbench/generationCanvas/reactFlow/GenerationCanvasReactFlowNodes.tsx:308 Suspense fallback",
+    "tests/ux/_canvasHit.mjs findNodeHitPoint"
+  ],
+  "invariants": [
+    "Suspense 兜底态的节点带 data-node-loading，正式轻量档不带",
+    "走查经 findNodeHitPoint 取点前，目标卡已不是兜底态"
+  ],
+  "doors": [
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/reactFlow/GenerationCanvasReactFlowNodes.tsx",
+      "symbol": "LightweightGenerationNode"
+    }
+  ],
+  "regression_tests": [
+    "src/workbench/generationCanvas/components/LightweightGenerationNode.test.ts",
+    "src/workbench/generationCanvas/components/lightweightFallbackCensus.test.ts"
+  ],
+  "residual_risks": [
+    "真人在 chunk 到达那一瞬间点卡仍会丢一次点击；根治是预加载或兜底与正式共用外壳，见方向检查文档，需用户 / 协调排期"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "React Suspense 换树是通用库行为；这里要解决的是我们自己节点外壳与走查就绪判据的契约，没有外部文档决定它",
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "任何新增节点种类或新走查，只要在卡加载完之前点它，都会再次间歇丢点击",
+    "same_class_scan": [
+      "grep findNodeHitPoint tests/ux：33 个走查都走这一个共享入口，修在入口",
+      "grep -n Suspense src/workbench/generationCanvas/reactFlow/GenerationCanvasReactFlowNodes.tsx：节点兜底只有 308 一处"
+    ]
+  },
+  "generality_proof": "走查取点只有 findNodeHitPoint / findElementHitPoint 两个共享入口，节点兜底只有一处；兜底带标记、入口按标记等，之后任何走查经该入口点卡都不会点到将被换掉的元素",
+  "shared_boundaries": [
+    {
+      "path": "src/workbench/generationCanvas/components/LightweightGenerationNode.tsx",
+      "symbol": "LightweightGenerationNode",
+      "responsibility": "兜底态对外声明自己是「加载中」，不再和真正的轻量档无法区分"
+    },
+    {
+      "path": "tests/ux/_canvasHit.mjs",
+      "symbol": "findNodeHitPoint",
+      "responsibility": "走查点卡的唯一取点入口：目标卡仍是兜底时条件等待"
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/workbench/generationCanvas/reactFlow/GenerationCanvasReactFlowNodes.tsx",
+      "entry_point": "Suspense fallback",
+      "disposition": "enforced",
+      "evidence": "兜底处传 loading，标记在 DOM 上"
+    },
+    {
+      "path": "tests/ux/_canvasHit.mjs",
+      "entry_point": "findElementHitPoint",
+      "disposition": "not-affected",
+      "evidence": "通用元素取点，不限于节点；节点取点已经经 findNodeHitPoint 先等就绪"
+    }
+  ],
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "tests/ux/_canvasHit.mjs",
+    "invariant": "走查点卡前卡已就绪",
+    "failure_mode": "卡一直停在兜底态时 findNodeHitPoint 等到超时，走查红并指出是哪张卡",
+    "exception_policy": "none",
+    "strategy": "在已有的共享取点入口加就绪等待，产品侧只加一个标记（补，不另起并行入口）",
+    "artifacts": [
+      "tests/ux/_canvasHit.mjs",
+      "src/workbench/generationCanvas/components/LightweightGenerationNode.tsx"
+    ]
+  },
+  "class_regression_tests": [
+    "src/workbench/generationCanvas/components/lightweightFallbackCensus.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "not-applicable",
+    "removed_paths": [],
+    "rationale": "只加标记与等待，没有旧实现可删"
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "不涉及依赖升级或保留",
+    "exit_criteria": []
+  },
+  "invariant_owner_layer": {
+    "layer": "tests/ux/_canvasHit.mjs",
+    "tests": [
+      "src/workbench/generationCanvas/components/LightweightGenerationNode.test.ts"
+    ]
+  },
+  "door_reduction": {
+    "before": 1,
+    "after": 1
+  }
+}

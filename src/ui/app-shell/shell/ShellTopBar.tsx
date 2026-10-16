@@ -41,7 +41,7 @@ import { SHELL_MAC_TRAFFIC_WIDTH, SHELL_TOPBAR_HEIGHT, shellChromePlatform } fro
 const BAR_ICON_BUTTON = cn(
   'app-no-drag relative grid size-7 shrink-0 place-items-center rounded-nomi-sm border-0 bg-transparent p-0',
   'text-nomi-ink-60 transition-[background,color] duration-nomi-fast ease-nomi-fast',
-  'hover:bg-nomi-ink-05 hover:text-nomi-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-nomi-accent',
+  'hover:bg-nomi-ink-05 hover:text-nomi-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-nomi-ink',
   'disabled:cursor-not-allowed disabled:opacity-50',
 )
 
@@ -104,7 +104,7 @@ function ProjectMenu({
     }
     return (
       <input
-        className="app-no-drag h-7 w-[220px] min-w-0 rounded-nomi-sm border border-nomi-accent bg-nomi-paper px-2 text-body-sm text-nomi-ink outline-none"
+        className="app-no-drag h-7 w-[220px] min-w-0 rounded-nomi-sm border border-nomi-ink-40 bg-nomi-paper px-2 text-body-sm text-nomi-ink outline-none"
         // 项目名是用户内容（按创建那刻的语言存的），不是 UI 文案：EN-DOM 断言网整棵豁免。
         data-user-content
         autoFocus
@@ -128,7 +128,7 @@ function ProjectMenu({
         className={cn(
           'app-no-drag inline-flex h-7 min-w-0 max-w-[260px] items-center gap-1 rounded-nomi-sm border-0 bg-transparent pl-2 pr-1.5',
           'text-body-sm font-medium text-nomi-ink transition-colors hover:bg-nomi-ink-05',
-          'focus-visible:outline focus-visible:outline-2 focus-visible:outline-nomi-accent',
+          'focus-visible:outline focus-visible:outline-2 focus-visible:outline-nomi-ink',
           open && 'bg-nomi-ink-10',
         )}
         aria-label={t('appShell.topbar.projectMenu', { name: projectName })}
