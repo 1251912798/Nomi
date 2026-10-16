@@ -1,6 +1,7 @@
 import path from "node:path";
 
 import type { GenerationProviderOutput } from "./generationRuntimeAdapter";
+import { mediaKindOf, type ExpectedMediaKind } from "../tasks/taskResultReading";
 
 type JsonRecord = Record<string, unknown>;
 
@@ -54,7 +55,12 @@ function outputThumbnailUrl(value: unknown): string | undefined {
   return undefined;
 }
 
-export function extractMaterializationOutputs(raw: unknown): GenerationProviderOutput[] {
+/**
+ * 产物的**附带信息**（文件名 / 封面 / 供应商产物号），按 APIMart 式 `data.result.{images,videos,audios}` 结构读。
+ * 它**不再是「结果地址在哪」的来源**（#1213）：地址只由 tasks/taskResultReading 读（先合同、再通用规则），
+ * 这里只按地址把附带信息配上去，见 materializationOutputs。
+ */
+function materializationMetadata(raw: unknown): GenerationProviderOutput[] {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return [];
   const payload = raw as JsonRecord;
   const data = payload.data && typeof payload.data === "object" && !Array.isArray(payload.data) ? payload.data as JsonRecord : payload;
@@ -87,4 +93,22 @@ export function extractMaterializationOutputs(raw: unknown): GenerationProviderO
     break;
   }
   return outputs;
+}
+
+/**
+ * 引擎 B 的产物：地址来自唯一读法（readTaskResponse 给的 assetUrls），种类按地址自身的媒体类型、
+ * 认不出时按这条任务期望的种类；文件名 / 封面 / 产物号按地址从附带信息里配。
+ */
+export function materializationOutputs(raw: unknown, assetUrls: readonly string[], wantedKind: ExpectedMediaKind | null): GenerationProviderOutput[] {
+  const metadata = materializationMetadata(raw);
+  return assetUrls.map((url, index) => {
+    const known = metadata.find((item) => item.url === url);
+    const kind = mediaKindOf(url) ?? wantedKind ?? known?.kind ?? "image";
+    return {
+      ...(known ?? {}),
+      kind,
+      url,
+      providerOutputId: known?.providerOutputId ?? `${kind}-${index + 1}`,
+    };
+  });
 }

@@ -8,12 +8,14 @@
  * 那是一次应该自己被审的机械改名，不该混在这刀行为变更里。
  */
 import type { GenerationProvider, GenerationProviderRequestInputV1 } from "./generationRuntimeAdapter";
+import { classifyUpstreamTaskStatus } from "../shared/taskStatusVocabulary";
 import { appFetch } from "../appFetch";
 import { createFreshConnectionDispatcher } from "../systemProxy";
 import { vendorHttpTimeoutMs } from "../vendor/vendorHttp";
 import type { Dispatcher } from "undici";
 import { describeOutboundFailure } from "../outboundDispatchEvidence";
-import { extractMaterializationOutputs } from "./apimartGenerationOutputs";
+import { materializationOutputs } from "./apimartGenerationOutputs";
+import { expectedMediaKind, readTaskResponse } from "../tasks/taskResultReading";
 import { productionGenerationPayloadHash } from "../productionRun/productionGenerationAuthorization";
 import { readCatalog } from "../catalog/catalogStore";
 import { builtinVendorScopeMatches, isBuiltinDirectKeyVendor } from "../catalog/builtinVendorSeeds";
@@ -619,7 +621,10 @@ export function createCatalogGenerationProvider(options: CatalogGenerationProvid
       payload.status,
     );
     const resolved = resolveTaskStatus(payload, responseMapping, target.mapping.statusMapping, []);
-    return { status: rawStatus || resolved.status, raw: payload };
+    // 原话在共享词表里认得、或谁都认不得 → 记原话（Run 的账本记真话）；只有通道自己的 statusMapping
+    // 认得的方言词（共享词表里没有）才交归一后的判词——否则下游那张唯一词表会把它当「认不出」。
+    const keepRaw = Boolean(rawStatus) && (classifyUpstreamTaskStatus(rawStatus) !== "unknown" || Boolean(resolved.unrecognizedStatus));
+    return { status: keepRaw ? rawStatus : resolved.status, raw: payload };
   };
 
   const submitForSelection = async (
@@ -775,7 +780,25 @@ export function createCatalogGenerationProvider(options: CatalogGenerationProvid
     },
     query: queryTask,
     async materialize(input) {
-      return { outputs: extractMaterializationOutputs(input.raw), raw: input.raw };
+      // 地址只有一种读法（tasks/taskResultReading，与引擎 A 共用）：先按这条任务的 query 合同，读不到再走通用规则。
+      // 认不出是哪条任务（重启后没有上下文、这家又有多条不同的 query）就只用通用规则——不猜合同。
+      let target: ReturnType<typeof queryTargetFor> | null = null;
+      try {
+        target = queryTargetFor(input.providerTaskId.trim());
+      } catch {
+        target = null;
+      }
+      // 期望的媒体类型只信「确实知道是哪条任务」的那份记录：③「这家每条 query 都一样」选出来的
+      // 只是随便一条 mapping，它的 taskKind 说明不了这笔任务要图还是要视频。
+      const remembered = selectionByTaskId.get(input.providerTaskId.trim());
+      const wantedKind = remembered ? expectedMediaKind(billingKindForTaskKind(remembered.taskKind)) : null;
+      const reading = readTaskResponse({
+        response: input.raw,
+        responseMapping: target && isJsonRecord(target.operation.response_mapping) ? target.operation.response_mapping : null,
+        statusMapping: target?.mapping.statusMapping,
+        wantedKind,
+      });
+      return { outputs: materializationOutputs(input.raw, reading.assetUrls, wantedKind), raw: input.raw };
     },
     async reconcile(input) {
       if (!input.providerTaskId?.trim()) return { disposition: "indeterminate" };
@@ -785,13 +808,8 @@ export function createCatalogGenerationProvider(options: CatalogGenerationProvid
       // reconciliation (indeterminate): callers must not materialize outputs or
       // resubmit from an ambiguous provider receipt. A recognised status proves
       // the task exists → found.
-      const status = result.status.trim().toLowerCase();
-      const knownStatuses = new Set([
-        "submitted", "queued", "pending", "processing", "running",
-        "completed", "succeeded", "success", "failed", "error",
-        "cancelled", "canceled", "rejected",
-      ]);
-      return knownStatuses.has(status)
+      // 认不认得这个状态：问全仓唯一那张词表（shared/taskStatusVocabulary，#1213），不再自带一份。
+      return classifyUpstreamTaskStatus(result.status) !== "unknown"
         ? { disposition: "found", providerTaskId: input.providerTaskId, raw: result.raw }
         : { disposition: "indeterminate", providerTaskId: input.providerTaskId, raw: result.raw };
     },

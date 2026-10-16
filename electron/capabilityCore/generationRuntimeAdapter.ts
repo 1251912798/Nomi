@@ -1,4 +1,5 @@
 import type { ProductionExecutionBinding } from "../productionRun/productionExecutionBinding";
+import { classifyUpstreamTaskStatus } from "../shared/taskStatusVocabulary";
 import {
   assertProductionGenerationPayloadHash,
   productionGenerationPayloadHash,
@@ -157,31 +158,9 @@ export class GenerationProviderObservationError extends Error {
   }
 }
 
-const PROVIDER_TASK_STATE_BY_STATUS: Readonly<Record<string, GenerationProviderTaskState>> = {
-  queued: "queued",
-  pending: "queued",
-  submitted: "queued",
-  created: "queued",
-  waiting: "queued",
-  processing: "running",
-  running: "running",
-  in_progress: "running",
-  "in-progress": "running",
-  generating: "running",
-  succeeded: "succeeded",
-  success: "succeeded",
-  completed: "succeeded",
-  complete: "succeeded",
-  done: "succeeded",
-  failed: "failed",
-  error: "failed",
-  rejected: "failed",
-  cancelled: "cancelled",
-  canceled: "cancelled",
-};
-
+/** 上游状态词 → 任务态：问全仓唯一那张词表（shared/taskStatusVocabulary，#1213 收口），不在这里另存一份。 */
 export function normalizeGenerationProviderTaskState(providerStatus: string): GenerationProviderTaskState {
-  return PROVIDER_TASK_STATE_BY_STATUS[providerStatus.trim().toLowerCase()] ?? "unknown";
+  return classifyUpstreamTaskStatus(providerStatus);
 }
 
 export function assertGenerationProviderCapabilities(provider: GenerationProvider): void {
