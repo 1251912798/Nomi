@@ -10,6 +10,7 @@
 import { generationShotKind, type GenerationShotKind } from "../shared/generationShotKind";
 import { resolveOwnedArtifactFile, safeProjectRelativePath } from "./artifactProjection";
 import { localAssetUrl } from "../assets/assetPaths";
+import { canvasPreviewFieldsFromReceipt, type CanvasPreviewState } from "../shared/contracts/canvasMediaPreview";
 import type { ProductionRun, ProductionGenerationShot } from "./productionRunTypes";
 import { logInfo, logWarn } from "../logging/logger";
 import { deriveProductionShotState, productionRunRecordId } from "../shared/productionShotPhase";
@@ -73,7 +74,7 @@ export type MaterializeShotWire = {
   title?: string;
   prompt?: string;
   candidate?: MaterializeShotCandidateWire;
-  result?: { id: string; type: "image" | "video"; url: string; createdAt: number; thumbnailUrl?: string; providerUrl?: string; model?: string };
+  result?: { id: string; type: "image" | "video"; url: string; createdAt: number; thumbnailUrl?: string; previewState?: CanvasPreviewState; providerUrl?: string; model?: string };
   mediaDimensions?: { width: number; height: number };
   /** 没有 result 时，这一镜在节点上的运行状态（见 MaterializeShotGenerationWire）。 */
   generation?: MaterializeShotGenerationWire;
@@ -254,14 +255,21 @@ export function buildMaterializeShotsPayload(
         resolveOwnedArtifactFile(deps.projectRoot, mediaPath);
         const posterPath = safeProjectRelativePath(artifact.thumbnailRelativePath);
         const createdAt = Date.parse(artifact.createdAt);
+        const type = artifact.kind === "image" ? "image" : "video";
+        // 节点结果用素材库那条**永久**地址（与普通生成落地的 nomi-local://asset 同一种）。
+        // 以前这里用的是 production-preview 签名链：5 分钟过期，而且优先指向缩略图——
+        // 视频节点的 result.url 是一张封面图，过 5 分钟连封面也打不开。
+        const url = localAssetUrl(run.projectId, mediaPath);
+        // 预览两栏只走落盘回执的那一个投影：小图 + 事实；旧产物没有事实时只带独立小图（由打开后补预览补齐）。
+        const preview = canvasPreviewFieldsFromReceipt(type, {
+          thumbnailUrl: posterPath ? localAssetUrl(run.projectId, posterPath) : undefined,
+          previewState: artifact.previewState,
+        }, url);
         resultByShot.set(shotId, {
           id: productionRunRecordId(jobId),
-          type: artifact.kind === "image" ? "image" : "video",
-          // 节点结果用素材库那条**永久**地址（与普通生成落地的 nomi-local://asset 同一种）。
-          // 以前这里用的是 production-preview 签名链：5 分钟过期，而且优先指向缩略图——
-          // 视频节点的 result.url 是一张封面图，过 5 分钟连封面也打不开。
-          url: localAssetUrl(run.projectId, mediaPath),
-          ...(posterPath ? { thumbnailUrl: localAssetUrl(run.projectId, posterPath) } : {}),
+          type,
+          url,
+          ...preview,
           // 用产物自己的时刻：同一份产物每次投影都是同一个结果（幂等），「已保存」回执也不会在重开项目时再冒一次。
           createdAt: Number.isFinite(createdAt) ? createdAt : 0,
         });

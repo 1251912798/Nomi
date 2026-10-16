@@ -13,11 +13,13 @@ import type { Vendor } from "../catalog/types";
 import { readCatalog } from "../catalog/catalogStore";
 import { trustedRetrievalOrigin } from "../vendor/vendorOutboundGuard";
 import { parseDataUrl } from "../assets/assetBytes";
+import { attachStoredAssetPreview } from "../assets/assetPreview";
+import { isCanvasPreviewState, type CanvasPreviewState } from "../shared/contracts/canvasMediaPreview";
 import type { GenerationProviderOutput } from "./generationRuntimeAdapter";
 
 type StoredAsset = {
   id?: unknown;
-  data?: { relativePath?: unknown; thumbnailRelativePath?: unknown; contentType?: unknown; width?: unknown; height?: unknown };
+  data?: { relativePath?: unknown; thumbnailRelativePath?: unknown; previewState?: unknown; contentType?: unknown; width?: unknown; height?: unknown };
 };
 
 export type GenerationOutputMaterializerDependencies = {
@@ -28,6 +30,12 @@ export type GenerationOutputMaterializerDependencies = {
    */
   fetchOutput?: (url: string, options: ProviderMediaFetchOptions) => Promise<HardenedFetchResult>;
   writeAsset?: typeof writeDeterministicAsset;
+  /**
+   * 落盘回执的预览 owner（缺省就是 assetPreview.attachStoredAssetPreview，与普通生成本地化同一个）。
+   * 字节提交（writeDeterministicAsset）是同步的、不派生预览；交给画布 / 制作流程的回执必须过这一道，
+   * 拿到小图或明确的预览事实（2026-10-15 C-dense：制作流程产物一直没有预览，画布挂 2048×3072 原图）。
+   */
+  attachPreview?: (record: unknown) => Promise<unknown>;
   /** 仅 E2E 回环夹具：主进程装配点给的精确 origin（`fetchProviderMedia` 的 trustedPrivateOrigin）。 */
   trustedPrivateOrigin?: string;
   /**
@@ -89,6 +97,8 @@ export type GenerationOutputMaterializationReceipt = {
   contentHash: string;
   projectRelativePath: string;
   thumbnailRelativePath?: string;
+  /** 画布预览事实（图 / 视频必有）：ready = thumbnailRelativePath 是独立小图；source = 源已有界；missing = 派生不出来。 */
+  previewState?: CanvasPreviewState;
   width?: number;
   height?: number;
 };
@@ -129,6 +139,7 @@ function contentHash(bytes: Buffer): string {
 export function createGenerationOutputMaterializer(deps: GenerationOutputMaterializerDependencies = {}) {
   const fetchOutput = deps.fetchOutput ?? fetchProviderMedia;
   const storeAsset = deps.writeAsset ?? writeDeterministicAsset;
+  const attachPreview = deps.attachPreview ?? attachStoredAssetPreview;
 
   async function materialize(input: {
     projectId: string;
@@ -169,26 +180,32 @@ export function createGenerationOutputMaterializer(deps: GenerationOutputMateria
       throw new GenerationOutputRetrievalError(`Generation output content type does not match ${input.output.kind}`, true);
     }
     const materializationKey = `${input.providerTaskId}:${input.output.providerOutputId || input.output.url}`;
-    let stored: StoredAsset;
+    let committed: unknown;
     try {
-      stored = storeAsset(input.projectId, bytes, fileNameFor(input.output), normalizedType, {
+      committed = storeAsset(input.projectId, bytes, fileNameFor(input.output), normalizedType, {
         kind: "generated",
         source: "external-mcp",
         providerTaskId: input.providerTaskId,
         ...(input.output.providerOutputId ? { providerOutputId: input.output.providerOutputId } : {}),
-      }, materializationKey) as StoredAsset;
+      }, materializationKey);
     } catch (error) {
       // 落盘校验（字节认不出、解码不了、类型对不上）也是取回这一步的确定性失败；别的落盘错误（磁盘满等）原样抛。
       if (error instanceof GeneratedMediaValidationError) throw retrievalError(error);
       throw error;
     }
+    // 回执 = 字节提交 + 预览事实。预览派生永不抛（失败就是 previewState: 'missing'），不影响这一镜已经落盘。
+    const stored = await attachPreview(committed) as StoredAsset;
     const artifactId = typeof stored.id === "string" ? stored.id.trim() : "";
     const projectRelativePath = typeof stored.data?.relativePath === "string" ? stored.data.relativePath.trim() : "";
     const thumbnailRelativePath = typeof stored.data?.thumbnailRelativePath === "string" ? stored.data.thumbnailRelativePath.trim() : "";
+    const storedPreviewState = isCanvasPreviewState(stored.data?.previewState) ? stored.data.previewState : undefined;
     const width = typeof stored.data?.width === "number" && Number.isFinite(stored.data.width) ? stored.data.width : undefined;
     const height = typeof stored.data?.height === "number" && Number.isFinite(stored.data.height) ? stored.data.height : undefined;
     if (!artifactId || !projectRelativePath) throw new Error("Asset store returned an incomplete generation receipt");
     let posterPath = thumbnailRelativePath;
+    let previewState: CanvasPreviewState | undefined = input.output.kind === "image" || input.output.kind === "video"
+      ? storedPreviewState ?? "missing"
+      : undefined;
     if (!posterPath && input.output.kind === "video" && input.output.thumbnailUrl) {
       // 海报是供应商顺手给的一张图，成片已经落盘了：它取不回来（另一个地址、类型不对、断网）不许把这一镜判成
       // 「取回失败」——那会让用户对着一段已经在项目里的视频反复点「重新取回」（#975 A2）。取不到就不要海报。
@@ -196,11 +213,15 @@ export function createGenerationOutputMaterializer(deps: GenerationOutputMateria
         const poster = await fetchOutput(input.output.thumbnailUrl, { ...(await routeFor(input.output.thumbnailUrl)), allowContentTypes: ["image/", "application/octet-stream"] });
         const posterType = (poster.contentType || "image/png").toLowerCase().split(";")[0]?.trim() || "image/png";
         if (!posterType.startsWith("image/")) throw new Error("Generation poster content type does not match image");
-        const posterStored = storeAsset(input.projectId, poster.bytes, `${path.parse(fileNameFor(input.output)).name}-poster.png`, posterType, {
+        const posterStored = await attachPreview(storeAsset(input.projectId, poster.bytes, `${path.parse(fileNameFor(input.output)).name}-poster.png`, posterType, {
           kind: "generated", source: "external-mcp", providerTaskId: input.providerTaskId,
           providerOutputId: `${input.output.providerOutputId || input.output.url}:poster`,
-        }, `${materializationKey}:poster`) as StoredAsset;
-        posterPath = typeof posterStored.data?.relativePath === "string" ? posterStored.data.relativePath.trim() : "";
+        }, `${materializationKey}:poster`)) as StoredAsset;
+        // 供应商给的海报自己也可能是全尺寸大图：画布只挂它的小图；它本身已有界才直接用它。
+        const posterOriginal = typeof posterStored.data?.relativePath === "string" ? posterStored.data.relativePath.trim() : "";
+        const posterPreview = typeof posterStored.data?.thumbnailRelativePath === "string" ? posterStored.data.thumbnailRelativePath.trim() : "";
+        posterPath = posterPreview || (posterStored.data?.previewState === "source" ? posterOriginal : "");
+        if (posterPath) previewState = "ready";
       } catch (error) {
         logWarn("production-run", "generation-poster-retrieval-failed", { providerTaskId: input.providerTaskId }, error);
       }
@@ -211,6 +232,7 @@ export function createGenerationOutputMaterializer(deps: GenerationOutputMateria
       contentHash: contentHash(bytes),
       projectRelativePath,
       ...(posterPath ? { thumbnailRelativePath: posterPath } : {}),
+      ...(previewState ? { previewState } : {}),
       ...(width && height ? { width, height } : {}),
     };
   }

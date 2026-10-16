@@ -426,6 +426,8 @@ export type ProductionArtifact = {
   skillEvidence?: Array<{ name: string; version: string; stageId: string }>;
   projectRelativePath?: string;
   thumbnailRelativePath?: string;
+  /** 画布预览事实（落盘回执给的，见 shared/contracts/canvasMediaPreview）。旧产物没有这一栏 = 未知。 */
+  previewState?: import("../shared/contracts/canvasMediaPreview").CanvasPreviewState;
   width?: number;
   height?: number;
   createdAt: string;
