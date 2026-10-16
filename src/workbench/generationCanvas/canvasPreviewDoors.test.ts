@@ -53,12 +53,13 @@ describe('画布预览不变式 · 入口普查', () => {
     expect(offenders.filter((line) => !line.startsWith('src/workbench/generationCanvas/nodes/BaseGenerationNode.tsx'))).toEqual([])
   })
 
-  it('只回门牌号的 persistNodeImageFile 只剩白板（归草稿 #1189）在用；其余入口都拿带预览两栏的媒体字段', () => {
+  it('只回门牌号的 persistNodeImageFile 只剩白板与截图裁剪（二者的契约测试都在白板目录，归草稿 #1189）在用；其余入口都拿带预览两栏的媒体字段', () => {
     const callers = productionFiles('src').filter((file) => !file.endsWith(path.join('adapters', 'persistNodeImage.ts')))
       .filter((file) => /\bpersistNodeImageFile\s*\(/.test(fs.readFileSync(file, 'utf8')))
       .map(rel)
       .sort()
     expect(callers).toEqual([
+      'src/workbench/generationCanvas/components/ScreenshotCropOverlay.tsx',
       'src/workbench/generationCanvas/nodes/whiteboard/WhiteboardDrawingTool.tsx',
       'src/workbench/generationCanvas/nodes/whiteboard/WhiteboardModal.tsx',
     ])

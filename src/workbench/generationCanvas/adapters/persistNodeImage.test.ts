@@ -140,10 +140,13 @@ describe('persistNodeImageBlob / persistNodeMediaFile 带回落盘回执的预�
     await expect(persistNodeMediaFile(dataUrlToFile(PNG_DATA_URL, 'small.png')!, 'node-1', projectContext().context))
       .resolves.toEqual({ url: 'nomi-local://asset/p/assets/upload/small.png', previewState: 'source' })
     upload.mockRejectedValueOnce(new Error('disk full'))
+    // 单测环境（node）没有 FileReader：给 base64 兜底一个最小替身。
+    vi.stubGlobal('FileReader', class { result = 'data:image/png;base64,AA'; onload: (() => void) | null = null; readAsDataURL() { this.onload?.() } })
     const fallback = await persistNodeImageBlob(dataUrlToFile(PNG_DATA_URL, 'tile.png')!, 'node-1', 'tile.png', projectContext().context)
     expect(fallback.localOnly).toBe(true)
     expect(fallback.media.previewState).toBe('missing')
     expect(fallback.media).not.toHaveProperty('thumbnailUrl')
+    vi.unstubAllGlobals()
     vi.doUnmock('../../api/assetUploadApi')
   })
 })

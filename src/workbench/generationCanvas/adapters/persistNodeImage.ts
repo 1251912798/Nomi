@@ -51,9 +51,9 @@ export async function persistNodeMediaFile(
 }
 
 /**
- * 只要门牌号的旧形状。**只剩白板还在用**（白板目录归草稿 #1189，本刀不碰）：它拿到的 URL 不带预览事实，
+ * 只要门牌号的旧形状。**只剩白板和截图裁剪还在用**（二者的契约测试都在白板目录，归草稿 #1189，本刀不碰）：拿到的 URL 不带预览事实，
  * 画布结果因此是「未知」，由打开 / 变更后补预览那道共享边界（resultMediaBackfillBridge）补齐，期间走被计数的缺失分支。
- * #1189 合入后白板改用 persistNodeMediaFile，并删掉本函数（入口普查测试 persistNodeImage.doors.test 钉着这份名单）。
+ * #1189 合入后二者改用 persistNodeMediaFile，并删掉本函数（入口普查测试 canvasPreviewDoors.test 钉着这份名单）。
  */
 export async function persistNodeImageFile(
   file: File, ownerNodeId: string, context: ProjectExecutionContext,

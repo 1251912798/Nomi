@@ -14,7 +14,7 @@ import { useTranslation } from 'react-i18next'
 import { IconX } from '@tabler/icons-react'
 import { cn } from '../../../utils/cn'
 import { useGenerationCanvasStore } from '../store/generationCanvasStore'
-import { dataUrlToFile, persistNodeMediaFile } from '../adapters/persistNodeImage'
+import { dataUrlToFile, persistNodeImageFile } from '../adapters/persistNodeImage'
 import { isProjectImportCancellation } from '../adapters/assetImportAdapter'
 import type { ProjectExecutionContext } from '../../project/projectCanvasReadSurface'
 import { cropScreenshotRegion, normalizeSelectionRect, type SelectionRect } from './screenshotCropGeometry'
@@ -84,13 +84,13 @@ export function ScreenshotCropOverlay({ capture, project, basePosition, category
       if (cropped) {
         const file = dataUrlToFile(cropped.dataUrl, `screenshot-${createdAt}.png`)
         if (file) {
-          const media = await persistNodeMediaFile(file, created.id, project)
+          // 只拿门牌号（它的契约测试住在白板目录，归草稿 #1189）：结果没有预览事实，由打开 / 变更后补预览补齐。
+          const localUrl = await persistNodeImageFile(file, created.id, project)
           project.assertCurrent()
           const latest = useGenerationCanvasStore.getState()
           const node = latest.nodes.find((candidate) => candidate.id === created.id)
-          if (media && node?.result?.id === resultId) {
-            const { thumbnailUrl: _staleThumbnail, previewState: _stalePreviewState, ...rest } = node.result
-            latest.updateNode(created.id, { result: { ...rest, ...media } })
+          if (localUrl && node?.result?.id === resultId) {
+            latest.updateNode(created.id, { result: { ...node.result, url: localUrl } })
           }
         }
       }
