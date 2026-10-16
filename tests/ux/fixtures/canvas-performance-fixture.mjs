@@ -182,14 +182,17 @@ function buildNode(template, { id, kind, title, index, projectId, relativePath, 
   const width = 320
   const height = 180
   const url = localAssetUrl(projectId, relativePath)
+  // 稳定态项目的结果形状（2026-10-16 画布预览契约）：有小图就带小图 + ready，没有就明确 missing。
+  // 不再写 thumbnailUrl = url 的旧形状——那是「旧数据」，打开后会触发一次性补预览，量不出稳定态的打开。
   const result = {
     id: `${id}-result`,
     type: kind,
     url,
-    thumbnailUrl: thumbnailPath ? localAssetUrl(projectId, thumbnailPath) : kind === 'image' ? url : undefined,
+    ...(thumbnailPath
+      ? { thumbnailUrl: localAssetUrl(projectId, thumbnailPath), previewState: 'ready' }
+      : kind === 'image' || kind === 'video' ? { previewState: 'missing' } : {}),
     createdAt: 1,
   }
-  if (result.thumbnailUrl === undefined) delete result.thumbnailUrl
   return {
     ...node,
     id,
