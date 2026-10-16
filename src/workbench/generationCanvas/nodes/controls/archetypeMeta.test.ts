@@ -576,17 +576,17 @@ describe('变体轴 — currentArchetypeVariant 回落', () => {
   })
 })
 
-describe('变体轴 — 发出的 model（buildArchetypeInputParams out.model）', () => {
+describe('变体轴 — 发出的 model（线上 model 由 wireModelIdentity 解出）', () => {
   // 钉死：三模式各发对自己的 modelKey。
   it.each([
     ['standard', 'doubao-seedance-2.0'],
     ['fast', 'doubao-seedance-2.0-fast'],
     ['mini', 'doubao-seedance-2.0-mini'],
-  ])('变体 %s → out.model = %s', (variantId, expected) => {
+  ])('变体 %s → 线上 model = %s', (variantId, expected) => {
     const meta = { archetype: { id: 'seedance-2-apimart', modeId: 't2v', variantId } }
     expect(wireModelOf(meta, SEEDANCE_APIMART)).toBe(expected)
   })
-  it('无 variantId → out.model 取默认变体 modelKey（绝不缺 model 键，否则 apimart body 丢 model）', () => {
+  it('无 variantId → 线上 model 取默认变体 modelKey（绝不缺 model 键，否则 apimart body 丢 model）', () => {
     const meta = { archetype: { id: 'seedance-2-apimart', modeId: 't2v' } }
     expect(wireModelOf(meta, SEEDANCE_APIMART)).toBe('doubao-seedance-2.0-fast')
   })
@@ -770,7 +770,7 @@ describe('apimart 参数补全 — fixedParams / flat 合并 / 变体 model', ()
   })
 
   // Sora 2 已于 2026-09-28 退役（上游关停），档案随之删除；变体 model 串由下面三家继续覆盖。
-  it('变体 model 串：选 Pro/quality/Fast → out.model = 变体 modelKey', () => {
+  it('变体 model 串：选 Pro/quality/Fast → 线上 model = 变体 modelKey', () => {
     expect(wireModelOf({ archetype: { id: 'veo-3.1', modeId: 't2v', variantId: 'quality' } }, VEO)).toBe('veo3.1-quality')
     expect(wireModelOf({ archetype: { id: 'hailuo-2.3', modeId: 't2v', variantId: 'fast' } }, HAILUO)).toBe('MiniMax-Hailuo-2.3-Fast')
     expect(wireModelOf({ archetype: { id: 'qwen-image', modeId: 't2i', variantId: 'pro' } }, QWEN)).toBe('qwen-image-2.0-pro')
@@ -814,12 +814,12 @@ describe('火山方舟 Seedance — 档案投影', () => {
     expect(VOLC.modes[0].params.map((p) => p.key)).toEqual(['ratio', 'resolution', 'duration', 'generate_audio'])
   })
 
-  it('fast 变体：out.model 发 fast Model ID', () => {
+  it('fast 变体：线上 model 发 fast Model ID', () => {
     const meta = { archetype: { id: 'volcengine-seedance-2', modeId: 't2v', variantId: 'fast' } }
     expect(wireModelOf(meta, VOLC)).toBe('doubao-seedance-2-0-fast-260128')
   })
 
-  it('mini 变体：out.model 发 mini Model ID', () => {
+  it('mini 变体：线上 model 发 mini Model ID', () => {
     const meta = { archetype: { id: 'volcengine-seedance-2', modeId: 't2v', variantId: 'mini' } }
     expect(wireModelOf(meta, VOLC)).toBe('doubao-seedance-2-0-mini-260615')
   })

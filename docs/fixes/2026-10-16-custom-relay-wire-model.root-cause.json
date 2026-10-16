@@ -51,7 +51,9 @@
     "electron/catalog/archetypeWireDefaults.audio.generated.ts",
     "electron/catalog/archetypeWireDefaults.image.generated.ts",
     "electron/catalog/archetypeWireDefaults.video.generated.ts",
-    "electron/catalog/archetypeWireDefaults.model3d.generated.ts"
+    "electron/catalog/archetypeWireDefaults.model3d.generated.ts",
+    "electron/catalog/customCallRunner.ts",
+    "electron/catalog/customCallIpc.ts"
   ],
   "entry_points": [
     "画布 UI：buildCatalogTaskRequest → runtime.runTask → buildProfileHttpRequest / runMultipartProfileOperation / executeProcessOperation",
@@ -105,12 +107,32 @@
       "kind": "read",
       "path": "electron/catalog/taskParams.ts",
       "symbol": "resolveWireModel"
+    },
+    {
+      "kind": "read",
+      "path": "electron/runtime.ts",
+      "symbol": "resolveWireModel"
+    },
+    {
+      "kind": "write",
+      "path": "electron/catalog/customCallIpc.ts",
+      "symbol": "connectionWireModel"
+    },
+    {
+      "kind": "write",
+      "path": "electron/catalog/customCallRunner.ts",
+      "symbol": "connectionWireModel"
+    },
+    {
+      "kind": "write",
+      "path": "electron/catalog/profileHttpRequest.ts",
+      "symbol": "connectionWireModel"
     }
   ],
   "door_reduction": {
-    "before": 10,
-    "after": 6,
-    "why_not": "删掉了四处自己决定 model 的写口（archetypeMeta.buildArchetypeInputParams 的 model、headless 默认表的 model、引擎 B 的 transportModelId / 兜底、mcpGenerationVideoResolve.videoTransportModelIdForPlan）。剩下五个 taskTemplateParams 调用点是五种不同的执行形状（JSON / multipart / process 经 profileHttpRequest、配音 / 转写、自定义脚本、antigravity 预检只读参考图、taskParams 内部），各自需要一份参数表；它们都不再自己算 model，只把连接与 op 交给同一个 resolveWireModel。"
+    "before": 13,
+    "after": 10,
+    "why_not": "删掉了四处自己决定 model 的写口（archetypeMeta.buildArchetypeInputParams 的 model、headless 默认表的 model、引擎 B 的 transportModelId / 兜底、mcpGenerationVideoResolve.videoTransportModelIdForPlan）。剩下五个 taskTemplateParams 调用点是五种不同的执行形状（JSON / multipart / process 经 profileHttpRequest、配音 / 转写、自定义脚本、antigravity 预检只读参考图、taskParams 内部），各自需要一份参数表；它们都不再自己算 model，只把连接与 op 交给同一个 resolveWireModel。 独立验收 V-1207 补抓的两处（runtime.ts 无 mapping 兜底报文、customCallRunner 顶层 model）原来各自用 modelAlias || modelKey 拼名字，现在分别问 resolveWireModel / connectionWireModel（顶层 model 取 params.model），customCallIpc 给 AI 写脚本的说明同样改用 connectionWireModel；全仓静态普查只允许 owner 与登记过的非出站文件出现这种拼法。"
   },
   "generality_proof": "所有出站报文的 params 都出自 taskTemplateParams（door-map 5 扇门），它在最后一步只写 resolveWireModel 的结果，于是任何入口、任何档案、任何连接都无法让一个未声明的 op 收到档案线上名；新增入口只要用 taskTemplateParams 就自动受约束，不用它的入口拿不到 params.model。",
   "shared_boundaries": [
@@ -167,6 +189,18 @@
       "entry_point": "normalizeApimartCanonicalModelId",
       "disposition": "not-affected",
       "evidence": "APIMart 自家目录键 → 公开 id 的请求变换，只挂在 APIMart curated op 上，作用于 owner 产出之后"
+    },
+    {
+      "path": "electron/runtime.ts",
+      "entry_point": "runTask（无 mapping 的图片 / 视频兜底报文）",
+      "disposition": "enforced",
+      "evidence": "兜底 body.model 改问 resolveWireModel（无声明 → 连接名）；runtime.fallback-path.test.ts 断言撞档案身份 + 别名 + extras.model 时报文仍是别名"
+    },
+    {
+      "path": "electron/catalog/customCallRunner.ts",
+      "entry_point": "runCustomCallScript（脚本顶层 model）",
+      "disposition": "enforced",
+      "evidence": "顶层 model 取 params.model（owner 产出），无参数层时回到 connectionWireModel；customCallRunner.test.ts 断言 model === params.model"
     }
   ],
   "recurrence": {
@@ -194,7 +228,11 @@
     ]
   },
   "regression_tests": [
-    "electron/catalog/customRelayWireModel.test.ts"
+    "electron/catalog/customRelayWireModel.test.ts",
+    "electron/runtime.fallback-path.test.ts",
+    "electron/catalog/customCallRunner.test.ts",
+    "electron/shared/modelArchetypes/wan30.test.ts",
+    "scripts/gen-archetype-wire-defaults.test.ts"
   ],
   "class_regression_tests": [
     "electron/catalog/customRelayWireModel.test.ts"

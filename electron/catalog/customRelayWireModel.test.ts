@@ -40,6 +40,8 @@ import { wireReferencedParamKeys } from "./paramTranslate";
 import { operationSelectsArchetypeWireModel } from "../shared/modelArchetypes/wireModelIdentity";
 import { builtinVendorSeed } from "./builtinVendorSeeds";
 import { getArchetypeById } from "../shared/modelArchetypes";
+import fs from "node:fs";
+import path from "node:path";
 
 const RELAY_KEY = "gw-relay-example-com";
 const PNG_DATA_URL = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
@@ -235,5 +237,45 @@ describe("类检查：谁有资格收档案线上名（普查真实内置目录 
     ["POST /v1/video/generations", NEWAPI_VIDEO_CREATE_OP],
   ] as const)("通用中转报文（%s）没有声明", (_label, operation) => {
     expect(operationSelectsArchetypeWireModel(operation)).toBe(false);
+  });
+});
+
+/**
+ * 类检查（静态普查）：生产代码里「自己用 modelAlias || modelKey 算一个模型名」的地方，只许出现在 owner
+ * 和下面逐个登记、写明为什么不是出站报文的文件里。2026-10-16 独立验收（V-1207）抓到两处漏门：无 mapping
+ * 兜底报文与自定义脚本的顶层 model 各算一份——新增任何出站构造都会在这里红，逼它改问 owner。
+ */
+describe("类检查：出站模型名不许绕过 owner 自己算（全仓普查 electron/ 生产代码）", () => {
+  const ALLOWED: Record<string, string> = {
+    "electron/shared/modelArchetypes/wireModelIdentity.ts": "owner 本身（connectionWireModel）",
+    "electron/ai/vendorModelConnection.ts": "文本对话模型（AI SDK）连接，不经生成报文、不涉及档案线上名",
+    "electron/agentLane/laneDesktopInput.ts": "按模型名查请求体 profile，不写出站 model 字段",
+    "electron/capabilityCore/appIntegrationCanvasShot.ts": "日志 / 回执里的模型标识，不出站",
+    "electron/catalog/catalogCommit.ts": "冒烟请求的 extras 身份；出站 model 仍经 templateContext → owner",
+    "electron/catalog/modelListReconcile.ts": "与供应商模型列表对账，不出站",
+    "electron/catalog/parameterReferenceContract.ts": "节点 meta 的目录身份，不出站",
+    "electron/providerAdapter/serviceCatalog.ts": "接入登记时别名的默认值（写目录，不是出站报文）",
+    "electron/vendor/provenance.ts": "产物出处记录，不出站",
+  };
+  const PATTERN = /modelAlias\s*\)?\s*\|\|\s*[\w.?()]*modelKey/;
+  function productionFiles(dir: string): string[] {
+    return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) return entry.name === "node_modules" ? [] : productionFiles(full);
+      return /\.(ts|mts)$/.test(entry.name) && !/\.(test|spec)\.|\.d\.ts$/.test(entry.name) ? [full] : [];
+    });
+  }
+
+  it("直接拼模型名的生产代码只在 owner 与登记过的非出站文件里", () => {
+    const root = path.resolve(__dirname, "../..");
+    const offenders = productionFiles(path.join(root, "electron")).flatMap((file) => {
+      const rel = path.relative(root, file).split(path.sep).join("/");
+      if (ALLOWED[rel]) return [];
+      return fs.readFileSync(file, "utf8").split(/\r?\n/)
+        .map((line, index) => ({ line: line.trim(), index }))
+        .filter(({ line }) => !line.startsWith("//") && !line.startsWith("*") && !line.startsWith("/*") && PATTERN.test(line))
+        .map(({ index }) => `${rel}:${index + 1}`);
+    });
+    expect(offenders, "出站模型名改问 wireModelIdentity（resolveWireModel / connectionWireModel）；确实不出站就登记进 ALLOWED 写明理由").toEqual([]);
   });
 });

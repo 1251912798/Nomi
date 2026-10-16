@@ -88,6 +88,37 @@ async function seedFallbackImageVendor(): Promise<void> {
   });
 }
 
+describe("runTask fallback 路径 — 线上模型名（2026-10-16）", () => {
+  it("无 mapping 的兜底报文：model 是连接名（别名优先），extras 里带的 model / 档案选择都盖不掉", async () => {
+    const store = await import("./catalog/catalogStore");
+    await seedFallbackImageVendor();
+    // 撞档案身份的模型名 + 别名：档案里有 kie 拆分线上名，兜底报文也不许发它。
+    store.upsertModelCatalogModel({
+      vendorKey: "relay", modelKey: "gpt-image-2", modelAlias: "relay-gpt-image-2", kind: "image", enabled: true,
+      meta: { adapter: { state: "verified", activeRevision: "fallback-certified", modes: [{ taskKind: "text_to_image", state: "verified" }] } },
+    });
+    const fetchFn = stubFetch(() =>
+      new Response(JSON.stringify({ data: [{ url: "https://cdn.example.com/out.png" }] }), { status: 200 }),
+    );
+    const { runTask } = await import("./runtime");
+    const { mintSpendGrant } = await import("./spendGrant");
+    const result = await runTask({
+      vendor: "relay",
+      request: {
+        kind: "text_to_image", prompt: "a cat",
+        extras: {
+          modelKey: "gpt-image-2", model: "gpt-image-2-text-to-image", archetype: { id: "gpt-image-2", modeId: "t2i" },
+          grantId: mintSpendGrant({ nodeIds: [] }),
+        },
+      },
+    });
+    expect(result.status).toBe("succeeded");
+    const call = fetchFn.mock.calls[0] as unknown as [RequestInfo, RequestInit | undefined];
+    const body = JSON.parse(String(call[1]?.body)) as Record<string, unknown>;
+    expect(body.model).toBe("relay-gpt-image-2");
+  });
+});
+
 describe("runTask fallback 路径 — 结构化错误 + extraHeaders", () => {
   it("#2 fallback 请求带上 vendor.meta.extraHeaders（网关头到达图片路径）", async () => {
     await seedFallbackImageVendor();
