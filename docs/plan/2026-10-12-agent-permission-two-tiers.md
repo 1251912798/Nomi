@@ -1,10 +1,10 @@
-# Agent 权限挡位改两档 + 两个刹车 · 设计卡（2026-10-12 · 第一轮）
+# Agent 权限挡位改两档 + 两个刹车 · 设计卡（2026-10-12）
+
+> 状态：🚧 第二轮实现已本地提交（D-L19）；独立验收、真付费验收由协调会话安排
 
 ```
 改动名：Agent 权限挡位 三档 → 两档（请求批准 / 直接生成）+ 刹车   线/负责人：L19   类别：[花钱][长跑][可打断][新界面]
 ```
-
-状态：第一轮（设计卡 + 必红测试）。实现、走查、截图、真付费验收是第二轮，由协调会话另行通知。
 
 ## 0. 用户拍板（10-12，原话摘）
 
@@ -12,110 +12,102 @@
 - 刹车：「不设固定次数，只在同一镜头连续失败重试超过 2 次、或超出它说好的计划时才停。ok」
 - 升级默认：「全部落在『请求批准』」。
 
-## 1. 现状核对（和任务书有两处出入，先写明）
+协调会话对第一轮五个问题的拍板（10-12，第二轮依据）：①刹车 1 = 连续失败满 3 次、第 3 次重试前停，点「继续」后从这次确认重新数；②只计可能已到过供应商的失败（用既有判据）；③刹车放在「策略代批」那一个点，退回「请求批准」的正常确认卡，不新建派发闸、不加第二道兜底；④旧「全自动」用户升级不弹窗，全部落「请求批准」；⑤刹车 2 点「继续」= 这一镜追加进本轮计划并放行，记人为手势收据。
 
-1. 任务书说「三档 spend 轴恒 confirm、钱的闸 = 每次看报价」。**代码里这句只对了一半**：`agentPanelV4Types.ts` 的 `PERMISSION_POLICIES` 三档 `spend` 确是 `confirm`，但 2026-09-12 用户已经拍板「档位本身就是授权」，`capabilityApprovalPolicy.ts#spendDecidedByPolicy` 现在对 `mode === 'project'`（全自动）返回 `true`，主进程 `generationDispatcher.ts` / `generationTransportAdapters.ts` / `tryModel.ts` 已经在全自动下由策略代答付费（收据 `decidedBy: policy:full_auto`）。所以今天的「全自动」**已经**会直接花钱；`agentPanelV4Types.ts` 里「三档 spend 恒 confirm」的注释是过期的，第二轮顺手随旧三档一起删。09-10 那条「钱的闸 = 每次提交看报价确认」的**真正被改**的时间点是 09-12，10-12 是第二次改口，设计记录两处都标注（见 §7）。
-2. 「请求批准 / 直接生成」不是新能力，而是**把今天的三档收成两档并加刹车**：「自动改」(safe-auto) → 请求批准；「全自动」(project) → 直接生成（刹车是新增的）；「每步问」(step) 删。用户抱怨「相当于没有挡位」的根因就是「每步问」与「自动改」在花钱 / 不可逆上行为完全一样，只差可撤销的本地改动。
-3. 灰字今天有，但**只显示选中那一档**（`V4PermissionPopover` 只渲染 `permissionWhy[permission]`）。用户要的是「每个挡位下面写个灰字」，第二轮改成每档按钮下各一行。
+## 1. 现状核对（和第一轮任务书有两处出入，已按代码为准）
+
+1. 任务书说「三档 spend 恒 confirm」。代码里 2026-09-12 起「全自动」已经由档位代答付费（`spendDecidedByPolicy`，收据 `decidedBy: policy:full_auto`）；`agentPanelV4Types.ts` 里「三档 spend 恒 confirm」的注释是过期的，随旧三档一并删。所以这次其实是：「自动改」→「请求批准」、「全自动」→「直接生成」并加刹车、删「每步问」和没有读者的 `spend` 轴。设计记录里被改的时间点是 09-12 和 10-12 两次。
+2. 灰字原来只显示选中的那一档；现在每档标题下各一行。
 
 ## 2. 目标设计
 
-| 挡位 | 能撤销的本地改动 | 花钱的生成 | 撤销不了的操作 | 灰字 |
+| 挡位 | 能撤销的本地改动 | 要生成的 | 撤销不了的操作 | 灰字（zh） |
 |---|---|---|---|---|
-| 请求批准（默认） | 直接做 | 每次先看报价，确认才跑 | 每次问 | 改文案、摆节点这类能撤销的直接做；要花钱生成，或做撤销不了的事，先停下来等你确认。 |
+| 请求批准（默认） | 直接做 | 每次先看确认卡，确认才跑 | 每次问 | 改文案、摆节点这类能撤销的直接做；要生成，或做撤销不了的事，先停下来等你确认。 |
 | 直接生成 | 直接做 | 不再逐次问，直接开跑 | 每次问 | 要生成就直接开跑，不用一次次确认；同一个镜头连续失败、或要做计划外的生成时会停下来问你，随时可以点停止。 |
 
-English gray text（第二轮落进 `agentPanelV4.permissionWhy`）：
-- request：`Undoable edits like rewriting text or placing nodes happen directly. Anything that spends on generation, or can't be undone, waits for your confirmation first.`
-- direct：`Generation starts right away, with no confirmation each time. If one shot keeps failing, or a generation falls outside the plan, it stops and asks you. You can press Stop at any time.`
+en 灰字：`Undoable edits like rewriting text or placing nodes happen directly. Anything that generates, or cannot be undone, waits for your confirmation first.` / `Generation starts right away, with no confirmation each time. If one shot keeps failing, or a generation falls outside the plan, it stops and asks you. You can press Stop at any time.`
 
-刹车（只在「直接生成」档生效；「请求批准」档每次本来就问，不重复打断）：
-1. 同一镜头连续失败：重试超过 2 次 → 停下问。判定：最近连续失败的 attempt 数 **>= 3**（失败 1 → 可重试，失败 2 → 可重试，失败 3 → 第 3 次重试前停）。任务书写「第 3 次失败重试前停」，按这个读；请协调确认（§9 Q1）。
-2. 超出这一轮开头说好的计划 → 停下问。基线与 owner 见 §3。
+**文案偏差，需要你知道**：用户原话和第一轮的灰字里有「要花钱生成」「自动花钱」。`check:i18n` 的「界面不谈钱」门岗（`POSITIVE_SPEND_CLAIMS` 含「花钱」）会拦这个词，该规矩来自用户 09-26 / 10-02 的拍板（现在走中转，界面不谈钱）。两条用户意思冲突，我按「文案只说事实、不出现价格 / 预算 / 额度 / 花钱」取了更窄的一条：把「花钱生成」写成「生成」，切档确认写「直接开跑、不再逐次问你」。如果要保留「花钱」二字，需要在 `NOT_MONEY` 登记并给出理由，这是产品措辞取舍，请协调确认。
 
-其它：停止键随时有效；切到「直接生成」弹一次确认（复用 `useAgentPanelAutoMode` 那套，文案改成说清会自动花钱）；升级迁移——旧三档全部落到「请求批准」（包括旧的「全自动」，用户要自己重新点出来）；文案只说事实，不出现价格 / 预算 / 额度字样。
+刹车（只在「直接生成」档；「请求批准」档每次本来就问，不重复打断）：
+1. **连续失败**：同一镜头最近连续失败满 3 次（失败 1、2 次后各自动重试一次），第 3 次重试之前停。只计「可能已到过供应商」的失败（`jobMayHaveReachedProvider`，既有判据）；提交前断网这类没写出去的不计也不重置；成功清零。
+2. **计划外**：这个 Run 里已经有镜被批过（= 说好的计划），而这一次要代批的是还没有 job 的新镜 → 停。第一次代批时 Run 里还没有 job，不存在计划外。
+
+两个刹车都**只判这一次出价摆出来的镜**（`currentPresentation().shotIds`，出价的唯一 owner）：一个早就被晾在一边的失败镜，不让之后每一次不相干的出价都停下来问。
+3. 同一处也判：**已停止**（Run 处于暂停 / 需要处理 / 已取消）——用户点过停止就不替他续跑。
+
+刹车成立 = 这一次决定退回「请求批准」的正常确认路径：不请求付费门、不铸收据、不开跑，把这份出价标成「要人工决定」，报价卡立刻摆出来，卡上多一行说明为什么停（`PendingSpendConfirm.brake`，由 Run 现派生，不落盘）。用户在卡上点的是正常的人为手势确认。
+
+其它：停止键随时有效；切到「直接生成」弹一次确认（复用 `useAgentPanelAutoMode`，判断收成 `tierSwitchNeedsConfirm`）；升级迁移——旧值全部落「请求批准」，不弹窗；文案只说事实。
 
 ## 3. 概念占用表（★2 谁说了算）
 
-| 概念 | 唯一 owner（文件:符号） | 今天 | 第二轮 | 允许的消费者 |
-|---|---|---|---|---|
-| 挡位（用户选的档） | `electron/shared/agentCapabilities/capabilityApprovalPolicy.ts` 的 `PROJECT_AGENT_APPROVAL_MODES` / `ProjectAgentApprovalPolicy`（词表）；落盘 `electron/settings/agentApprovalPolicySettings.ts#readAgentApprovalPolicy / writeAgentApprovalPolicy`（唯一读写口，`agentApprovalPolicyContract.ts#normalize...` 是形状） | `step / safe-auto / project` + `spend` 轴 | 词表改为 `request / direct`；`spend` 轴（`PROJECT_AGENT_SPEND_POLICIES`、`within-budget`）整根删（没有任何读者在认它，见 §1 第 1 条）；schemaVersion 1→2；`normalize` 是迁移唯一发生处 | 面板（`agentPanelV4Types.ts` 的 `PERMISSION_POLICIES`/`PERMISSION_TIERS` 只做词 → 合同映射，不另判）、lane（`laneDesktopRuntime`）、外部 MCP（`generationTransportAdapters`） |
-| 花钱放行（宿主面「代答还是问」） | 同文件 `spendDecidedByPolicy` | `mode === 'project'` | `mode === 'direct'`；仍只有它一个回答者 | `generationDispatcher.ts`、`generationTransportAdapters.ts`、`modelOnboarding/tryModel.ts`（照旧，不新增） |
-| 放行矩阵（可撤销 / 花钱 / 不可逆 × 档） | 同文件 `capabilityMayReuseSafeApproval` + `capabilityIsHardGated`；第二轮新增 `capabilityApprovalDecision` 作为矩阵的单一可读出口，**内部调用前两者，不复制判据** | 判据分散在两函数 + `spendDecidedByPolicy` | 矩阵测试钉死；硬闸（花钱 / 不可逆 / 解不出 / destructiveHint）一字不松 | `laneApprovalGate.ts`、`dispatcher.ts` |
-| 「本轮计划」（说好要生成哪几镜） | **已有 owner，不自造**：制作流程的 Run 计划 `ProductionRun.generationPlan.shots`（`electron/productionRun/productionRunTypes.ts#ProductionGenerationPlan`），一次请求一份方案由 `electron/capabilityCore/generationDocumentPlan.ts#createDocumentPlanAuthoring` 保证（概念 `storyboard.plan-per-request`）。「**说好**」的基线 = 本 Run 第一次被放行的 `Approval.jobIds`（`productionRunTypes.ts#Approval`，同一个 Run 上的批准记录），刹车 2 由这条派生，**不另存第二份计划** | 无「计划外」判据；同一 Run 靠 `planHash` 绑定（`approvalPolicy.ts#authorizeSubmission` 的 `plan-changed` / `job-not-approved`）；请求外的镜头根本进不了这个 Run（admission 找不到） | 新增只读派生 `plannedJobIdsFromApprovals(run)`（`electron/shared/agentCapabilities/directGenerationBrakes.ts`）；允许的消费者只有派发闸一处 | `electron/productionRun/directGenerationDispatchGuard.ts`（新增，挂在既有 `productionShotDispatchGuard` 旁） |
-| 「同一镜头」 | `electron/shared/productionShotJobs.ts#jobsForShot / currentShotAttempt`（概念 `production.shot-jobs`）；镜头归属判据 `electron/shared/decideShotClaim.ts` | 同 | 连续失败数 `consecutiveFailedAttempts(run, shotId)` 只读 `jobsForShot` + `productionJobPhase`，不自己数 | 同上 |
-| 刹车判定 | 新增 `directGenerationBrakes.ts#directGenerationBrake`（纯函数：档位 + 计划 + 停止态 + 连续失败数 → 放 / 停 + 原因） | 不存在 | 新概念，登记 `docs/engineering/concept-owners/agent.direct-generation-brakes.json`（第二轮同提交） | 只有 `directGenerationDispatchGuard` |
-| 停止 | 既有：`electron/productionRun/productionRunControl.ts#applyRunControl`（暂停 / 急停）+ `decideShotClaim` 的 `run_stopped` | 同 | 不新增停止通道；刹车 `stopped` 输入由派发闸读 Run 状态 | 同上 |
-| 切档确认 | `src/workbench/ai/v4/useAgentPanelAutoMode.ts` | 切到 `project` 时问 | 判定抽成纯函数 `tierSwitchNeedsConfirm(from, to)`（`agentPanelV4Logic.ts`）；文案改 | 面板 |
+| 概念 | 唯一 owner（文件:符号） | 说明 |
+|---|---|---|
+| 挡位（词表） | `electron/shared/agentCapabilities/capabilityApprovalPolicy.ts` 的 `PROJECT_AGENT_APPROVAL_MODES = [request, direct]` / `ProjectAgentApprovalPolicy` | `spend` 轴、`step / safe-auto / project` 同提交删 |
+| 挡位（落盘与迁移） | `electron/settings/agentApprovalPolicySettings.ts#readAgentApprovalPolicy / writeAgentApprovalPolicy`；形状与**迁移唯一发生处** `agentApprovalPolicyContract.ts#normalizeAgentApprovalPolicySettings`（schemaVersion 2；旧词与新词表无交集，认不出一律落 `request`），登记 `docs/engineering/concept-owners/agent.approval-tier.json` | 渲染层 `projectAgentApprovalPolicy` 是投影 |
+| 花钱放行（带 Run 的入口） | **`electron/shared/agentCapabilities/directGenerationBrakes.ts#spendDecisionByPolicy`**（档位 + 三个刹车事实），登记 `docs/engineering/concept-owners/agent.direct-generation-brakes.json` | 档位那一半仍是 `spendDecidedByPolicy`（只剩它自己和 `tryModel` 这类没有 Run 的调用用） |
+| 「本轮计划」 | Run 上已有 job 的镜（`production.shot-jobs` 的 `jobsForShot`），不另存第二份计划；每次派生 | 点「继续」→ 走正常确认卡 → 这一镜有了 job → 自然进计划（拍板 5），无基线要维护 |
+| 「同一镜头」与连续失败 | `electron/shared/productionShotJobs.ts#jobsForShot`（镜 ↔ job）+ `productionShotPhase.ts#productionJobPhase`（失败判定）+ `jobMayHaveReachedProvider`（计不计）；数法 `directGenerationBrakes.ts#consecutiveFailedAttempts` | 点「继续」之后「从这次确认重新数」用取模表达（3 的倍数才停），不存计数器 / 标记位 |
+| 停止 | 既有 `productionRunControl.ts#applyRunControl` + `isStoppedRunStatus` | 不新增停止通道 |
+| 放行矩阵 | `capabilityApprovalPolicy.ts#capabilityApprovalDecision`（内部调用 `capabilityMayReuseSafeApproval` / `spendDecidedByPolicy`，不复制判据） | 硬闸（花钱 / 不可逆 / 解不出效果类 / destructiveHint / 逐次计划审阅）两档都问，一字不松 |
+| 切档确认 | `agentPanelV4Logic.ts#tierSwitchNeedsConfirm` + `useAgentPanelAutoMode.ts` | |
 
-同一份事实存几份：挡位 1 份（盘上文件，渲染层 `projectAgentApprovalPolicy` 是投影）、计划 1 份（Run）、失败数 0 份（每次从 jobs 派生）。没有靠「东西不见了 / 状态变了」去猜用户意图：刹车触发后用户的「继续」是显式事件（见 §5）。
-
-门表：`node scripts/door-map.mjs spendDecidedByPolicy`（第二轮开工时贴结果；本轮读码确认入口为 `generationDispatcher.ts:273`、`generationTransportAdapters.ts:407/557`、`tryModel.ts:158`、`laneApprovalGate.ts`）。
+**door-map 结论（`node scripts/door-map.mjs spendDecidedByPolicy`，改前 → 改后）**：改前 3 个文件 4 处直接调用（`generationDispatcher.ts:273`、`generationTransportAdapters.ts:407 / 557`、`tryModel.ts:158`）；改后带 Run 的入口收成 **2 扇**（`generationTransportAdapters.ts` 一处 `policyVerdict`，`generationDispatcher.ts` 一处）都问 `spendDecisionByPolicy`，`spendDecidedByPolicy` 只剩 `spendDecisionByPolicy` 自己和 `tryModel`。`generationDispatcher` 那一扇是没有 `requestGenerationGate` 的旧挑战路，不落任何 Run，刹车看的 job 事实根本不存在，所以只剩档位那一问（应用内与 MCP stdio 两个宿主都递了 `requestGenerationGate`，不走这里）。
 
 ## 4. 九格
 
 | 格 | 结论 | 证据 |
 |---|---|---|
-| ★1 用户怎么用 | 当我让 Agent 一口气做完一组镜头时，我想选「直接生成」，以便不用每个镜头点一次确认；想谨慎时留在「请求批准」。步骤：①点输入框权限入口 → ②看到两档各一行灰字 → ③选「直接生成」→ ④弹一次确认，说清会自动花钱 → ⑤让 Agent 生成 → ⑥一路跑，中途点停止可随时收手 → ⑦某镜连续失败 3 次或要生成计划外的镜头，停下问我 → ⑧点继续 / 放弃。**不做**：不设固定次数 / 张数上限；不显示价格 / 预算 / 额度；不让不可逆操作自动放行；不做「本会话不再问花钱」。已知坑：旧「全自动」用户升级后回到请求批准，需要自己重新选一次（用户拍板）。真实任务（第二轮走查）：①6 镜分镜「直接生成」跑完；②其中 1 镜让上游连续失败 3 次（测试供应商）看刹车；③跑到一半点停止再重启。主指标：直接生成档下每镜头平均需要用户点击次数 = 0；护栏：重复扣费 0、停止后新增提交 0；基线 / 目标 / 样本在第二轮真付费验收填 | 测试 `capabilityApprovalTwoTiers.test.ts`；走查脚本第二轮 |
-| ★1b 连带界面 | ①权限弹层两档 + 各一行灰字（zh / en）；②切档确认卡（`autoModeConfirm*`）：标题改「切到『直接生成』？」，正文说清「生成会直接开跑并自动花钱，不再逐次确认；不可逆的操作仍然每次问；随时可以点停止」；③常驻提醒条 `V4AutoModeBanner`：`直接生成 · 不可逆仍会问 [回到请求批准] ×`；④刹车卡（介入槽 `approval-reversible` 之外新一种「已停下」提示，复用介入槽原子）：标题「这一镜连续失败了 3 次，先停下」/「这次要生成的不在刚才说好的计划里，先停下」，按钮「继续」「放弃」（文案键 `brakeRetry` / `brakeOutOfPlan`）；⑤Agent 回执 / 任务列表对停下的镜写「已停下，等你决定」，不写「失败」；⑥设置里没有这个档位的第二处入口（已核：档位只在 composer 权限弹层）。以上全部不出现价格 / 预算 / 额度 | `agentPanelV4TwoTiers.test.ts`；截图第二轮 |
-| ★2 谁说了算 | 见 §3，碰 6 个概念，5 个沿用既有 owner、1 个新登记（刹车判定） | `node scripts/door-map.mjs` |
-| ★3 一致与复用 | 复用：`spendDecidedByPolicy`、`approvalReceipt` 的 `policy:full_auto` 收据路径、`productionShotDispatchGuard`、`useAgentPanelAutoMode`、`V4AutoModeBanner`、介入槽。不复用的只有刹车判定，因为现有 `maxAttemptsPerJob`（每个 job 的批准次数上限）是**批准记录里的上限**，语义是「这份批准最多能提交几次」，用户拍板明说「不设固定次数」，所以不能拿它当刹车；两者并存但职责分开，刹车是纯函数 + 一个派发闸，不是第二套调度。无第二份定义 | `check:self-written`；`git grep` 第二轮 |
-| ★4 全状态 | 空：没有生成任务时挡位只是设置，无额外状态。加载 / 成功：与现状一致。失败：同一镜失败 1、2 次 → 直接重试，面板显示该镜「重试中（第 n 次）」；第 3 次失败 → 刹车 1。部分成功：计划内成功的镜保留，停下的镜标「已停下」。**取消中**：点停止后该镜已交出去的保持「生成中·不再续派」，未派的标「已停止」。过期：同意（`productionDispatchConsent`）过期仍走现有「需要处理」，不因直接生成而放宽。能力不可用：没有可用生成模型时「直接生成」档不改变现状（走现有「去接入模型」路径，不新增状态）。文案走 i18n zh / en；不写免费 / 不计费 / 没扣费 | `check:i18n`；`agentPanelV4TwoTiers.test.ts` |
-| 5 中途表 | 见 §5 | `directGenerationStop.e2e.test.ts` + 第二轮真付费 |
-| 6 外部数据与失败 | 外部来源：供应商提交 / 查询 / 取回；用户盘上 `agent-approval-policy.json`。偏差：盘上文件被手改或写坏 → `readConfigFileOrDefault` 改名留底并按默认「请求批准」（更常问，不会更少问）；认不出的 `mode` 一律落 `request`；旧 `schemaVersion 1` 一律落 `request`。供应商失败文案沿用 `production.shot-action-failure` 一条路，不新造；未知失败不甩给用户的 key | `agentApprovalPolicyTwoTiers.test.ts` |
-| ★7 性能 | ①新增操作：打开权限弹层、切档、切档确认、刹车卡出现（点停止 / 继续）；②最坏规模：1000 镜头一个 Run、200 节点画布；③预算：弹层与切档反馈 ≤100ms（p95 ≤150ms）；刹车判定每次派发 O(该镜 job 数)，不扫全 Run（`jobsForShot` 已按镜过滤），1000 镜下单次 <1ms；打开到可操作不变；④场景：不新增画布节点渲染路径；复用 `perf:scenarios` 现有 agent 面板打开场景（第二轮执行并交 `perf-scenario：<id> 中位数 X / p95 Y / 预算 Z`），刹车判定写一个纯函数微基准加入 `tests/perf/scenarios/`（第二轮）。本轮：未验证（无实现） | 第二轮 |
-| 8 真实条件 | Windows / 英文界面 / 最小窗口 / 真付费 / 键盘全程：本轮全部 `unverified`（无实现）；第二轮真付费走协调会话（花钱路径合并前真 App 验收，最小量） | 第二轮 |
-| ★9 验收与回滚 | 验收：另一条线（≠ L19）用本卡 §6 测试表逐条核，红灯命令原样 `pnpm vitest run <四个文件>`；第二轮加 zh 亮 / en 暗两档截图自己 Read、真付费最小量验证（直接生成档 2 镜，其中停止一次）、硬门 ⑩⑪⑫ 逐项对账。回滚：revert 实现提交即回三档；盘上 `schemaVersion 2` 文件被旧版读到时 `normalize` 对未知 `mode` 落旧默认「自动改」，不会越权。独立验收报告链接：第二轮填 | `## 独立验收` |
+| ★1 用户怎么用 | 当我让 Agent 一口气做完一组镜头时，我想选「直接生成」以便不用每个镜头点一次确认；想谨慎时留在「请求批准」。步骤：点输入框权限入口 → 看到两档各一行灰字 → 选「直接生成」→ 弹一次确认 → 让 Agent 生成 → 一路跑，随时点停止 → 某镜连续失败 3 次或要生成计划外的镜头，报价卡立刻出现、卡上一行说明为什么停 → 点确认继续 / 去掉。**不做**：不设固定次数 / 张数上限；不显示价格 / 预算 / 额度；不让不可逆操作自动放行。已知坑：旧「全自动」用户升级后回到「请求批准」，要自己重新选；Agent 在首次代批之后再往同一份草稿里加镜头，每个新镜都会停一次（刹车 2 的设计后果）。真实任务（协调会话真付费验收）：①6 镜分镜「直接生成」跑完；②其中 1 镜让上游连续失败 3 次；③跑到一半点停止再重启。主指标：直接生成档下每镜头平均需要用户点击次数 = 0；护栏：重复扣费 0、停止后新增提交 0 | 走查 `tests/ux/agent-permission-two-tiers.walk.mjs`；真付费验收（协调会话） |
+| ★1b 连带界面 | ①权限弹层两档 + 各一行灰字（zh / en）；②切档确认卡（`autoModeConfirm*`）：「切到『直接生成』？」，正文说清「直接开跑、不再逐次问你；连续失败 / 计划外会停；不可逆仍每次问；随时可停止」；③常驻提醒条：`直接生成 · 撤销不了的仍会问 [回到请求批准] ×`；④刹车触发时报价卡多一行说明（`brakeRetry / brakeOutOfPlan / brakeStopped`，zh + en，介入槽 `summary`）；⑤设置里没有档位的第二处入口（已核）。全部不出现价格 / 预算 / 额度 / 花钱 | 截图；`check:i18n` |
+| ★2 谁说了算 | 见 §3，碰 7 个概念：5 个沿用既有 owner，2 个新登记（`agent.direct-generation-brakes`、`agent.approval-tier`） | `node scripts/door-map.mjs`；`check:concept-owners` |
+| ★3 一致与复用 | 复用 `spendDecidedByPolicy`、`approvalReceipt` 的策略收据路径、`useAgentPanelAutoMode`、`V4AutoModeBanner`、介入槽 / 报价卡、`jobsForShot`、`jobMayHaveReachedProvider`、`markPolicyDecisionFailed`（把出价标成要人工决定的既有路）。刹车判定是新概念（纯函数，无第二份定义）；现有 `maxAttemptsPerJob`（批准记录里的上限）语义不同，不拿来当刹车 | `check:concept-owners`；`git grep` |
+| ★4 全状态 | 空：没有生成任务时挡位只是设置。成功 / 失败：同现状。失败 1、2 次：自动重试；第 3 次失败 → 刹车 1，报价卡出现并说明。部分成功：计划内成功的镜保留。**取消中**：点停止后已交出的保持生成中、不再续派；停止后再有草稿被代批时退回报价卡（说明「你点过停止」）。过期：同意过期仍走现有「需要处理」，不因直接生成放宽。能力不可用：没有可用模型时与现状同路径。文案 zh + en；不写免费 / 不计费 / 没扣费 | `check:i18n` |
+| 5 中途表 | 见 §5 | `directGenerationStop.e2e.test.ts` + 协调会话真付费 |
+| 6 外部数据与失败 | 外部来源：供应商提交 / 查询；用户盘上 `agent-approval-policy.json`。盘上文件被手改或写坏 → `readConfigFileOrDefault` 改名留底并按默认「请求批准」；旧词表（step / safe-auto / project）与新词表无交集，一律落 `request`；认不出的值落 `request`。供应商失败文案沿用既有路径，不新造；提交前断网不计入刹车 | `agentApprovalPolicyTwoTiers.test.ts`、`agentApprovalPolicySettings.test.ts` |
+| ★7 性能 | ①新增操作：打开权限弹层、切档、切档确认、刹车卡出现；②最坏规模：1000 镜头一个 Run、每镜 3 次失败（3000 个 job）；③预算：弹层 / 切档反馈 ≤100ms；刹车判定一次 ≤50ms；④量具：`electron/shared/agentCapabilities/directGenerationBrakes.perf.test.ts`（`NOMI_PERF=1` 才计时，与 `canvasShotLatency.perf.test.ts` 同一约定；常规套件只跑「请求批准档不读 Run」那条正确性断言）。数字**待协调给安静窗口后重测**：第一轮那组 16ms / 33ms 是机器忙时量的，作废；第二轮只验了量具能跑通（预算 50ms，一次代批只判一次、同步在草稿落盘之后封印之前）。判定对每镜走 `jobsForShot` 过滤（O(镜 × job)），1000 镜内可接受；超过几千镜时再换成按镜分组（那需要先改 `jobsForShot` 这个唯一 owner）。页面交互只渲染两行文字，不依赖 Run 规模，不登记画布性能场景：`perf-scenario：不适用：新增交互只是弹层里两行文字 + 一次确认卡，渲染量与项目规模无关；规模相关的只有刹车判定，量具 directGenerationBrakes.perf.test.ts（NOMI_PERF=1），预算 p95 ≤ 50ms，数字待安静窗口重测` | `NOMI_PERF=1 pnpm exec vitest run electron/shared/agentCapabilities/directGenerationBrakes.perf.test.ts --silent=false` |
+| 8 真实条件 | Windows 开发态真 Electron 走查已跑（见 PR 正文截图）；英文界面、暗色已覆盖；真付费、最小窗口、干净安装：`unverified`，由协调会话做真付费验收 | 截图路径；走查报告 |
+| ★9 验收与回滚 | 验收：另一条线用本卡 §6 测试表逐条核；`## 独立验收` 待验收线填。回滚：revert 实现提交即回三档；盘上 `schemaVersion 2` 文件被旧版读到时，旧 `normalize` 对未知 `mode` 落旧默认，不会越权。逃逸账本 `REAL-20261012-01`（`fixedInPr` 占位 9999，开 PR 后换真号） | `## 独立验收`；`tests/ux/full-walk/escapeLedger/REAL-20261012-01.json` |
 
 ## 5. 中途表（格 5）：「直接生成」档，生成进行中
 
-事实基础（读码确认）：派发闸 `productionShotDispatchGuard` 在提交 outbox 第一笔耐久写（预留 / 提交意向）**之前**按盘上最新 Run 再判一次；停止后 `decideShotClaim` 返回 `run_stopped` 拒绝；同一镜的 jobId 由 `runId + contractHash + attempt + shotId` 派生，重复交同一镜只会命中同一个 job（幂等键同一个）；收据一次性消费。刹车在这条派发闸上叠加，不新增通道。
+事实基础（读码确认）：派发闸 `productionShotDispatchGuard` 在提交 outbox 第一笔耐久写之前按盘上最新 Run 再判一次，停止后 `decideShotClaim` 返回 `run_stopped`；同一镜的 jobId 由 `runId + contractHash + attempt + shotId` 派生，重复交同一镜只命中同一个 job；收据一次性消费。**刹车不新增通道**，只在「策略代批」那一点把这一次决定退回报价卡。
 
-| 状态 × 打断 | 点停止 | 关窗 | 断网 | 重启 | 连点（重复提交 / 重复点继续） |
+| 状态 × 打断 | 点停止 | 关窗 | 断网 | 重启 | 连点 |
 |---|---|---|---|---|---|
-| 已交出、供应商生成中 | 看到：该镜保持「生成中」，后续镜标「已停止」；花费：该镜**照常扣一次**（已受理，撤不回；若供应商支持撤单则走既有撤单 / 核对，不在本卡新增）；回执：任务列表该镜「生成中·不再续派」 | 主进程继续跑已交出的，未交出的按 Run 当前态继续派发直到调度器停；**关窗不是停止**，不会因此多花或少花 | 已交出的镜靠轮询恢复，不重发；未交出的镜提交失败 → 记为失败 attempt，计入刹车 1 | 新调度器从 Run 的 `jobs[]` 重新派生，已有 job 的镜不重发（`needsDispatch` 为假）；不扣第二次 | 同一镜并发交两次 → 同 jobId，供应商只收一次（测试：连点 / 重启） |
-| 排队、尚未交出 | 派发闸 `run_stopped`：一个字节不发，没有预留、没有提交意向，**不扣费** | 同上（继续按 Run 态派） | 提交前断网 → 失败 attempt（未到供应商，`provider_not_reached`，不扣费，也**不计入**刹车 1 的失败数——只有可能到过供应商的失败才计？见 §9 Q2） | 重启后继续派发剩余镜，已停的不派 | 连点停止：幂等，二次无副作用 |
-| 刹车 1 已触发（某镜连续失败 3 次） | 点停止 = 整轮停；该镜不再重试 | 弹出的刹车卡在重开面板时从 Run 状态重建（卡不是独立状态，是 Run 上「该镜已停下·连续失败」的投影），不丢 | 同上 | 同关窗：重启后卡仍在，需用户点「继续」才再派 | 连点「继续」：第一次放行 1 次重试，该镜 attempt+1，计数从 0 重新开始；第二次点击见 job 已存在 → 无副作用 |
-| 刹车 2 已触发（计划外的镜） | 点停止 = 整轮停 | 同上，卡重建 | 无外部调用 | 同上 | 连点「继续」：只放行这一镜一次；计划基线（首次批准的 jobIds）不变，所以下一个计划外镜仍会再停 |
+| 已交出、供应商生成中 | 该镜保持「生成中」，后续镜标「已停止」；该镜照常扣一次（已受理，撤不回），回执在任务列表 | 主进程继续跑已交出的，关窗不是停止 | 已交出的靠轮询恢复不重发；未交出的提交失败 → 记为失败 attempt（到过供应商才计入刹车 1） | 新调度器从 Run 的 `jobs[]` 重新派生，已有 job 的镜不重发，不扣第二次 | 同镜并发交两次 → 同 jobId，供应商只收一次（e2e 护栏） |
+| 排队、尚未交出 | 派发闸 `run_stopped`：一个字节不发、无预留、不扣费 | 继续按 Run 当前态派 | 提交前断网 → 失败但未到供应商（`provider_not_reached`），不扣费，**不计入**刹车 1 | 重启后继续派剩余镜，已停的不派 | 连点停止：幂等 |
+| 刹车已触发（连续失败 / 计划外 / 已停止） | 报价卡还开着：点停止 = 整轮停，这笔出价收回 | 报价卡是 Run 的投影（`brake` 由 Run 现派生），重开面板从 Run 重建，不丢 | 无外部调用 | 重启后卡仍在（出价没被收回），需用户点才再派；`stalePresentationSweep` 对要人工决定的出价照旧处理 | 连点确认：第一次放行，之后同一镜已有 job → 幂等无副作用 |
 
-刹车触发时界面显示：介入槽出现一张「已停下」卡，主文案说明原因（连续失败 3 次 / 超出刚才说好的计划），主按钮「继续」、次按钮「放弃」（× 规则：否定动作用 ×）。继续的含义：刹车 1 = 对这一镜再放行一次尝试；刹车 2 = 把这一镜加入计划并放行（等于用户当次批准了计划外的这一镜，走正常收据路径，`decidedBy` 记人为手势，不记策略）。放弃 = 这一镜标「已放弃」，其余计划内的镜继续跑。**不会因为用户没点而自动继续**。
+刹车触发时界面：报价卡原样（标题 / 参数 / 按钮与「请求批准」下一模一样），正文多一行「这一镜连续失败了，先停下问你 / 这次要生成的镜头不在刚才说好的计划里，先停下问你 / 你点过停止，这一次先不自动开跑」。继续 = 点卡上的确认（走正常人为手势收据）；放弃 = 点卡上的「去掉」。不会因为没点而自动继续。
 
-## 6. 测试对照表（必红，一个提交，只有测试）
+## 6. 测试对照表
 
-运行：`pnpm vitest run electron/shared/agentCapabilities/capabilityApprovalTwoTiers.test.ts electron/settings/agentApprovalPolicyTwoTiers.test.ts src/workbench/ai/v4/agentPanelV4TwoTiers.test.ts electron/productionRun/directGenerationStop.e2e.test.ts`
+必红测试（第一轮已提交，第二轮实现后转绿）：`capabilityApprovalTwoTiers.test.ts`、`agentApprovalPolicyTwoTiers.test.ts`、`agentPanelV4TwoTiers.test.ts`。第二轮按协调拍板调整了两处**断言形状**（不是削弱）：①连续失败按 job 状态派生，并加「点继续后从这次确认重新数」「提交前没写出去的不计」；②计划基线取自 Run 上已有 job 的镜（原稿读 `approvals`）。另新增 `spendDecisionByPolicy` 一组（档位 + 刹车一起问）。
 
-| 测试 | 对应格 | 现在红的原因 |
-|---|---|---|
-| 词表只有 request / direct；默认 request（`capabilityApprovalTwoTiers`） | ★2 / ★4 | 整个文件红：导入的 `directGenerationBrakes` 模块不存在（实现后还需 `PROJECT_AGENT_APPROVAL_MODES` 改词） |
-| 放行矩阵 可撤销 / 花钱 / 不可逆 × 两档；未登记别名与 destructiveHint 两档都问；`spendDecidedByPolicy` 只有 direct 为真；模型面硬闸不变 | ★1 / ★2 | 同上（`capabilityApprovalDecision` 未实现；旧词表无 request / direct） |
-| 刹车 1：连续失败 0/1/2 放行，3 → `retry-limit`；按镜头独立；请求批准档不触发；从 jobs 数连续失败、中间成功清零 | 格 5 / ★4 | 同上（`directGenerationBrake` / `consecutiveFailedAttempts` 未实现） |
-| 刹车 2：计划内 6 镜放行，第 7 个 → `out-of-plan`；计划内重试不算计划外；计划基线取自 `approvals[].jobIds` 不另存 | 格 5 / ★4 / §3 | 同上（`plannedJobIdsFromApprovals` 未实现） |
-| 停止 → `stopped`，优先于其它判断，两档都生效 | 格 5 | 同上 |
-| 迁移：旧 step / safe-auto / project / within-budget → request；裸形状同；direct 保留；未知与缺省 → request；schemaVersion → 2（`agentApprovalPolicyTwoTiers`） | 格 6 / ★9 | 旧 `normalize` 保留 `project`，且版本号恒 1；`request` 词表未知 |
-| 面板：`PERMISSION_TIERS`=[request, direct]、默认 request；合同映射（`agentPanelV4TwoTiers`） | ★1 | 旧三档 |
-| 切档确认：request→direct 弹，direct→request / 同档不弹 | ★1b | `tierSwitchNeedsConfirm` 不存在 |
-| 文案：zh 灰字与拍板原文逐字一致；en 只有两档；确认文案含「花钱」；全部文案无价格 / 预算 / 额度字样；刹车卡文案 zh + en 存在 | ★1b / ★4 | 旧三档文案；`brakeRetry` / `brakeOutOfPlan` 键不存在 |
-| 真实边界·停止：已交出的镜不重发、未开始的镜一个字节不发、无预留（`directGenerationStop.e2e`） | 格 5 | `directGenerationDispatchGuard` 不存在（夹具已验证：用一个只委托既有派发闸的临时桩跑过，三条断言本身成立） |
-| 真实边界·连点：同一镜并发交两次供应商只收一次 | 格 5 | 同上 |
-| 真实边界·重启：新仓库实例 + 新提交出口再交已交出的镜，不重发 | 格 5 | 同上 |
+回归护栏（**不是必红**，本来就绿）：`electron/productionRun/directGenerationStop.e2e.test.ts`——「直接生成」档下停止 / 连点 / 重启不重复扣费，走现有派发路径。第一轮写成必红时假设了一个新的派发闸，拍板后撤销（「派发闸不加第二道兜底」）。
 
-未覆盖、第二轮补：刹车 2 的真实边界用例（在同一 Run 上经「补镜头」路径追加第 7 镜并被策略代批时被派发闸拒）。本轮读码发现：计划外的镜头今天**进不了**一个已封的 Run（admission 找不到，`landedAdmission` 抛 `did not land`），真正能超计划的只有「带 operationId 的新镜头补到同一份方案」（`storyboard.plan-per-request`）加上「全自动代答整份草稿」这条路，所以刹车 2 应该落在**策略代批的那一刻**（拿首次批准的 `jobIds` 对比这次要批的 job），而不是只在派发闸；第二轮开工时先用 door-map 确认补镜头路径的全部入口再接线（§9 Q3）。
+新增：`generationTransportAdapters.test.ts` 的「direct 档刹车」五条（真实适配器边界：连续失败 → 不请求门不铸收据且出价标成要人工决定；计划外同；不成立照旧代答；标记写失败不改结论、草稿结果照常返回；请求批准档连 Run 都不读）、`capabilityApprovalTwoTiers.test.ts`「只判这一次出价摆出来的镜」（带阳性对照）、`productionPendingSpend.test.ts`（卡带 brake）、`agentPanelSpendCard.test.ts`（多一行说明）、`directGenerationBrakes.perf.test.ts`。
 
-## 7. 设计记录改动（本提交一并做）
+lane 夹具：原来靠「每步问」制造等待点的 lane 测试（审批闸、排队、停止、重启、L1 拒绝场景、R30 审批臂等）改用 `tests/agent-runtime/laneFixture.mts#mustConfirm`——宿主「这一次必须当场确认」的事实（`forceConfirmation`），被测的等待语义不变，不依赖某个能力恰好是硬闸。
 
-- `docs/design/2026-10-08-approved-designs.md` 加 §⑦「10-12 用户：挡位改两档」。
-- `docs/design/2026-09-10-spend-card-node-params-and-full-auto.md` 里 09-10 / 09-09「钱的闸 = 每次提交看报价确认」「花钱永远逐次问」三处旁各标注：「被 09-12 改为全自动档代答；被 10-12 改为两档，见 approved-designs §⑦」。不删原文。
+## 7. 设计记录改动（已做）
 
-## 8. 删什么（P1 加新必删旧，第二轮同提交）
+- `docs/design/2026-10-08-approved-designs.md` §⑦「10-12 用户：挡位改两档」。
+- `docs/design/2026-09-10-spend-card-node-params-and-full-auto.md` 顶部标注被改，原文保留。
 
-- 删：`step` 档及全部词典（`permission.step`、`permissionWhy.step`）、`PROJECT_AGENT_SPEND_POLICIES` / `within-budget` / `spend` 轴、`approvalPolicyRank` 的三档分级（改两档）、`agentPanelV4Types.ts` 里过期的「三档 spend 恒 confirm」注释、`tests/ux/agent-spend-full-auto.walk.mjs` 与旧三档单测里的旧词（改写，不削弱）。
-- 不留：旧词 → 新词的运行时别名；迁移只在 `normalize` 一处，读到旧值落 `request` 并以 v2 写回。
-- 选「换」而不是「补」：在三档上加第四档或给「全自动」加刹车都会保留「每步问」这根没人要的档，并保留 `spend` 这根没有读者的轴（用户的原话就是「相当于没有挡位」）。
+## 8. 删什么（P1，已同提交做）
 
-## 9. 需要协调拍板（各带推荐项）
+删 `step` 档与全部词典、`PROJECT_AGENT_SPEND_POLICIES` / `within-budget` / `spend` 轴、`approvalPolicyRank` / `isNoWiderThan`、`agentPanelV4Types.ts` 里过期的「三档 spend 恒 confirm」注释、`laneApprovalGrantable` 里的 `step` 分支、`trustLevelFromApprovalPolicy` 里的 `confirm_all` 映射、适配器与分发器里各自直接调用的 `spendDecidedByPolicy`、设计实验室三个旧档位状态与基线图。不留旧词的运行时别名；迁移只在 `normalize` 一处。选「换」不是「补」：加第四档或给「全自动」加说明会保留没人要的「每步问」和没有读者的 `spend` 轴。
 
-1. **刹车 1 的计数口径**。A（推荐）：最近连续失败 attempt >= 3 时，第 3 次重试前停（失败 1、2 次后各自动重试一次）；B：失败 >= 2 次就停（「超过 2 次」读成「第 3 次失败起算」之外的更严读法）。A 和任务书「第 3 次失败重试前停」一致；B 会让用户永远只看到一次自动重试。
-2. **哪种失败计入**。A（推荐）：只计「可能已到过供应商」的失败（`jobMayHaveReachedProvider` 为真），提交前断网（`provider_not_reached` / `provider_rejected`）不计——它们没烧钱，计入会让断网把无辜的镜头停下；B：全部失败都计，更简单但会被断网误触发。代价：A 要多读一个既有判据（已有 owner，不新增）。
-3. **刹车 2 的拦截点**。A（推荐）：落在「策略代批」那一刻（`generationDispatcher` 铸 `policy_decision` 收据之前，拿首次批准 `jobIds` 对比），再在派发闸做兜底；B：只放派发闸。B 更小，但此时策略收据已经铸好、钱的预留已冻结，拦在后面多一步回滚；A 要碰 `generationDispatcher.ts` / `generationTransportAdapters.ts` 两处入口。
-4. **旧「全自动」用户升级后降到「请求批准」要不要告知**。推荐：不弹窗，只在权限弹层里「直接生成」下的灰字保持可见（用户拍板「全部落在请求批准」，没有要求告知；多一个弹窗违背「少打扰」）。代价：习惯全自动的人第一次生成时会多点一次确认，才发现档位变了。
-5. **刹车 2「继续」的含义**。推荐：把该镜追加进计划并当次放行（记人为手势收据）。备选：只放行这一次、不改基线（下一个计划外镜还会再停，等于每个计划外镜都要点一次）。前者更省事，后者更严；用户原话「超出说好的计划时停」没有说继续后基线是否更新。
+## 9. 已知缺口（诚实标注）
+
+1. 刹车 2 在 Agent 分多次往同一份草稿里加镜头时会逐个停（设计后果，不是 bug）。
+2. 旧挑战路（`generationDispatcher` 无 `requestGenerationGate` 时）没有 Run 可读，刹车不适用；两个生产宿主都不走它。
+3. 三条真机走查（`agent-v4-short-film`、`stage4-switch`、`agent-runtime-provider`）原来靠「每步问」让可撤销的文稿写入也弹确认卡；第二轮改成「请求批准下直接做」并用因果证据钉住（工具结果回到模型之前没有任何点击）。短片走查里「带着待确认收起 → 胶囊『等你确认 1』」和「拒绝并写原因 → 冷重启后原因仍在」两段因此没有了触发点：前者由 `shell-redesign` 走查覆盖，后者在真 Electron 里暂时没有覆盖（lane 层由 `lane-approval-gate` / L1 F3 覆盖）。要补回真机覆盖需要一个在创作面上必然要确认的真实动作，见报告里的待拍板项。
+3b. 用户点停止时被撤下的那次尝试（`needs_attention` 无错因 / `cancelled_remote` / `too_late`）目前也计入「连续失败」——偏保守（多问一次），不会少问。
+3c. 收据账本里的策略签名字段沿用历史字面量（`policyMode: "project"`、`decidedBy: "policy:full_auto"`）：它们是已落盘收据的审计词表、带 MAC，不是用户看得见的档位；这次不改，改要另开一刀迁移收据。
+4. 真 Electron 里「刹车报价卡」一张未走（需要真供应商连续失败三次的夹具）；该卡的多一行说明由真生产投影函数的单测钉住，截图用设计实验室里的生产组件出，真 App 走查留给协调会话的真付费验收。
+5. 设计实验室的视觉基线是 darwin 渲染，本平台没有重录。
