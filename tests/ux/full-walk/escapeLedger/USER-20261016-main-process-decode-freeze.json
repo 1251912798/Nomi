@@ -8,7 +8,7 @@
   "ironLaws": [],
   "useCases": [],
   "fullWalkJourneys": [],
-  "status": "candidate",
+  "status": "fixed",
   "manualReview": "pending",
   "evidence": [
     "docs/engineering/direction-checks/2026-10-16-main-process-sync-child-wait.md",
