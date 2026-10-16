@@ -13,7 +13,7 @@
 //  R6 functionCensus 每项的 after 必须是存在的元素 id（旧功能必须有去处）
 //  R7 states 非空，取值只能来自状态词表
 //  R8 PR 正文 `## 拍板图` 认领的元素：在 PR 头上必须是 implemented，或带 userDecision 的 deferred / dropped
-//     （认领可以指向任何日期目录里的板；只有清单、没有画布的板也按 R2–R7 查）
+//     （认领可以指向任何日期目录里的板；发现到的每张新日期板都跑完整规则：抽取候选核哈希、人工普查须声明）
 //
 // 用法：node scripts/check-board-parity.mjs            （重抽候选 + 全部规则）
 import fs from 'node:fs'
@@ -225,9 +225,20 @@ export async function runBoardParity({ dir = BOARDS_DIR, root = path.dirname(dir
   const errors = []
   const manifests = loadManifests(dir, root)
   const corpus = loadAssertionCorpus()
-  // 只有清单、没有画布的板（文字拍板 + 看图确认）：没有候选可认领，但元素状态、断言、旧功能去处照 R2–R7 查。
-  for (const { board } of findDatedBoards(root, dir).filter((entry) => entry.manifestOnly)) {
-    errors.push(...checkBoardManifest({ board, manifest: manifests[board], candidates: [], assertionCorpus: corpus }))
+  // 其它日期目录里**发现到的每一张板**都跑完整规则（V-1203 F2：原来只查「只有清单」的那一种，带候选文件的新板落在两个循环之外）。
+  // 发现集合与校验集合是同一份：findDatedBoards 找到什么就查什么。
+  for (const { board, dir: boardDir, manifestOnly } of findDatedBoards(root, dir)) {
+    let candidates = []
+    if (!manifestOnly) {
+      const doc = JSON.parse(fs.readFileSync(path.join(boardDir, `${board}.candidates.json`), 'utf8'))
+      const extractor = typeof doc.extractor === 'string' ? doc.extractor : ''
+      // 抽取出来的候选核板源哈希；人工普查（没有可抽取的板源）明写 extractor=manual-*，免哈希但照认领规则查；
+      // 两样都不是 = 不声不响地免掉了哈希核对 → 红。
+      if (extractor.startsWith('board-extract')) errors.push(...checkSourceHash({ board, candidatesDoc: doc, currentHash: hashBoardSource(boardDir, board) }))
+      else if (!extractor.startsWith('manual')) errors.push(`[${board}] 候选文件既不是 board-extract 抽取的（核板源哈希），也没声明人工普查（extractor: manual-*）`)
+      candidates = Array.isArray(doc.candidates) ? doc.candidates : []
+    }
+    errors.push(...checkBoardManifest({ board, manifest: manifests[board], candidates, assertionCorpus: corpus }))
   }
   for (const board of BOARD_NAMES) {
     const file = path.join(dir, `${board}.candidates.json`)
@@ -266,8 +277,8 @@ async function main() {
     for (const e of errors) console.error(`  ✗ ${e}`)
     process.exit(1)
   }
-  const manifestOnly = findDatedBoards().filter((entry) => entry.manifestOnly).length
-  console.log(`拍板图对账通过：${BOARD_NAMES.length} 张板，候选全部认领；另 ${manifestOnly} 张只有清单的板按 R2–R7 查过。`)
+  const dated = findDatedBoards()
+  console.log(`拍板图对账通过：${BOARD_NAMES.length} 张板，候选全部认领；其它日期目录 ${dated.length} 张板全部按完整规则查过（其中 ${dated.filter((entry) => entry.manifestOnly).length} 张只有清单）。`)
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
