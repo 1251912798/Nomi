@@ -37,7 +37,6 @@ function isDragTargetCurrent(drag: DragRecord): boolean {
 
 type CanvasSelectionDragOptions = {
   readOnly: boolean
-  selectedNodeCount: number
   zoomRef: React.MutableRefObject<number>
   captureHistory: GenerationCanvasState['captureHistory']
   commitPersistedChange: GenerationCanvasState['commitPersistedChange']
@@ -50,7 +49,6 @@ type CanvasSelectionDragOptions = {
 
 export function useCanvasSelectionDrag({
   readOnly,
-  selectedNodeCount,
   zoomRef,
   captureHistory,
   commitPersistedChange,
@@ -414,7 +412,7 @@ export function useCanvasSelectionDrag({
 
   const handleSelectionBoundsPointerDown = React.useCallback(
     (event: React.PointerEvent<HTMLDivElement>) => {
-      if (readOnly || event.button !== 0 || selectedNodeCount < 2) return
+      if (readOnly || event.button !== 0 || useGenerationCanvasStore.getState().selectedNodeIds.length < 2) return
       const project = withProjectAction((project) => project)
       if (!project) return
       event.preventDefault()
@@ -443,7 +441,7 @@ export function useCanvasSelectionDrag({
         previewNodeIds: [...useGenerationCanvasStore.getState().selectedNodeIds],
       }
     },
-    [settleDrag, readOnly, selectedNodeCount],
+    [settleDrag, readOnly],
   )
 
   return { handleGroupFramePointerDown, handleSelectionBoundsPointerDown }

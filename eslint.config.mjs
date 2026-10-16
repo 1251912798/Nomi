@@ -9,6 +9,12 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import globals from 'globals'
 import prettier from 'eslint-config-prettier'
 import fs from 'node:fs'
+import {
+  CANVAS_SHELL_FILE,
+  SHELL_SELECTION_SELECTORS,
+  WHOLE_TABLE_SUBSCRIPTION_BASELINE,
+  WHOLE_TABLE_SUBSCRIPTION_SELECTORS,
+} from './scripts/canvas-store-subscriptions.mjs'
 
 // 用例 / 钩子不许单独设比 vitest 全局更短的超时（全局值见 vitest.config.ts 的 testTimeout / hookTimeout，都是 30_000；
 // 两处同值由 scripts/vitest-timeout-floor.test.mjs 核对）。超时被放弃的用例仍在后台跑完，把任务或半初始化模块留给下一个用例
@@ -273,6 +279,17 @@ export default tseslint.config(
     files: ['**/*.test.{ts,tsx}'],
     ignores: coldImportBaselineFiles,
     rules: { 'no-restricted-syntax': ['error', ...testFileRestrictedSyntax, ...coldImportSelectors] },
+  },
+  {
+    // 画布 nodes / edges 整表订阅：名单外的文件一处都不许有；名单内的处数由 scripts/canvas-store-subscriptions.test.mjs 卡死（只减不增）。
+    files: ['src/**/*.{ts,tsx}'],
+    ignores: ['src/**/*.test.{ts,tsx}', 'src/**/__tests__/**', ...Object.keys(WHOLE_TABLE_SUBSCRIPTION_BASELINE)],
+    rules: { 'no-restricted-syntax': ['error', ...windowsPathSelectors, ...WHOLE_TABLE_SUBSCRIPTION_SELECTORS] },
+  },
+  {
+    // 画布壳不订阅选区：选中一张卡，壳 0 次重渲（方向检查 2026-10-16-canvas-shell-subscriptions）。
+    files: [CANVAS_SHELL_FILE],
+    rules: { 'no-restricted-syntax': ['error', ...windowsPathSelectors, ...SHELL_SELECTION_SELECTORS] },
   },
   {
     // 渲染层失败证据只有一个出口：src/desktop/rendererLog.ts（→ 主进程日志 → 诊断包）。
