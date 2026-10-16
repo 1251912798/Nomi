@@ -20,6 +20,7 @@ import { applyBuiltinSeeds } from "./seedBuiltins";
 import { nativeWireProfileForArchetype } from "./nativeWireProfiles";
 import { newapiTransportFor } from "./newapiTransport";
 import { readTaskResponse } from "../tasks/taskResultReading";
+import { resolveTaskStatus } from "../tasks/responseParsing";
 import { isJsonRecord, type JsonRecord } from "../jsonUtils";
 import higgsfieldDopTerminal from "./fixtures/higgsfield/dop-terminal.json";
 import type { CatalogState, Mapping } from "./types";
@@ -173,6 +174,9 @@ describe.each(all.map((mapping) => [`${mapping.vendorKey} · ${mapping.modelKey 
     it("成功：判成功，并取到那个结果地址", () => {
       const queried = read(fixture.success, mapping.query);
       expect(queried.status).toBe("succeeded");
+      // 「成功」必须是**状态词本身**认出来的（通道 statusMapping 或共享词表），不能只靠「有产物」这条硬证据兜着：
+      // 不然词表漏了这家的「成功」写法，有地址时看不出来，没地址时就成了「认不出」。
+      expect(resolveTaskStatus(fixture.success, responseMappingOf(mapping.query), mapping.statusMapping, [])).toEqual({ status: "succeeded", unrecognizedStatus: "" });
       if (mapping.result) {
         const fetched = read(fixture.result, mapping.result);
         expect(fetched.assetUrls).toEqual([fixture.url ?? MP4]);
