@@ -16,7 +16,7 @@ import path from "node:path";
 import { getSettingsRoot, ensureDir } from "../runtimePaths";
 import { readConfigFileOrDefault, writeConfigFileAtomic } from "../configFileStore";
 import { getMainWindow } from "../appWindowRegistry";
-import { writeAsset } from "../runtime";
+import { writeGeneratedAsset } from "../runtime";
 import { logError } from "../logging/logger";
 import type { AssetWriteContext } from "../assets/assetWriteContext";
 import { captureIssuedProjectWrite, issueWindowProject } from "../assets/windowProjectCapture";
@@ -238,7 +238,7 @@ export async function captureScreenToCanvas(): Promise<void> {
     }
 
     const size = source.thumbnail.getSize();
-    const record = await writeAsset(
+    const record = await writeGeneratedAsset(
       project.write.projectId,
       source.thumbnail.toPNG(),
       `screenshot-${Date.now()}.png`,

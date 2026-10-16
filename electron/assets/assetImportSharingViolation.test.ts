@@ -60,7 +60,7 @@ describe('asset import under Windows sharing violations', () => {
     expect(fs.readFileSync(asset.data.absolutePath)).toEqual(bytes)
   })
 
-  it('retries moving a freshly written file that antivirus briefly holds open', async () => {
+  it('retries moving a freshly written file that antivirus briefly holds open', () => {
     const source = path.join(root, 'download.png'); fs.writeFileSync(source, bytes)
     const realRename = fs.renameSync.bind(fs)
     let failures = 2
@@ -69,7 +69,7 @@ describe('asset import under Windows sharing violations', () => {
       return realRename(from, to)
     }) as typeof fs.renameSync)
 
-    const asset = await moveAssetFile('one', source, 'download.png', 'image/png', { kind: 'upload' }) as Asset
+    const asset = moveAssetFile('one', source, 'download.png', 'image/png', { kind: 'upload' }) as Asset
     expect(failures).toBe(0)
     expect(fs.readFileSync(asset.data.absolutePath)).toEqual(bytes)
     expect(fs.existsSync(source)).toBe(false)

@@ -46,8 +46,15 @@ beforeAll(() => {
   webp = encode("base.webp");
 });
 
+/** 解码器只校验暂存件（文件）：测试把字节落成一个文件再交给它，形状与 generatedAssetStaging 一致。 */
+let staged = 0;
+function stage(bytes: Buffer): { stagedPath: string; byteLength: number } {
+  const stagedPath = path.join(work, `staged-${staged += 1}.media`);
+  fs.writeFileSync(stagedPath, bytes);
+  return { stagedPath, byteLength: bytes.byteLength };
+}
 const decodes = (kind: "image" | "video" | "audio", bytes: Buffer, contentType: string) =>
-  verifyGeneratedMediaDecodes({ kind, bytes, contentType });
+  verifyGeneratedMediaDecodes({ kind, ...stage(bytes), contentType });
 
 function insertAfterSoi(jpegBytes: Buffer, segment: Buffer): Buffer {
   return Buffer.concat([jpegBytes.subarray(0, 2), segment, jpegBytes.subarray(2)]);
@@ -146,7 +153,7 @@ describe("the timeout scales with the file instead of being one fixed wall", () 
       let thrown: unknown;
       try {
         await verifyGeneratedMediaDecodes(
-          { kind: "image", bytes: Buffer.alloc(size, 1), contentType: "image/png" },
+          { kind: "image", stagedPath: path.join(work, "never-read.png"), byteLength: size, contentType: "image/png" },
           { run: async (_command, _args, options) => { seen.push(options.timeout); return timedOut; }, resolveFfmpeg: () => "ffmpeg" },
         );
       } catch (error) { thrown = error; }
@@ -162,7 +169,7 @@ describe("the timeout scales with the file instead of being one fixed wall", () 
   });
 
   it("a missing decoder is 'not verified' too", async () => {
-    await expect(verifyGeneratedMediaDecodes({ kind: "image", bytes: png, contentType: "image/png" }, { resolveFfmpeg: () => "" }))
+    await expect(verifyGeneratedMediaDecodes({ kind: "image", ...stage(png), contentType: "image/png" }, { resolveFfmpeg: () => "" }))
       .rejects.toThrow(/decode_unverified/);
   });
 });
@@ -184,7 +191,7 @@ describe("the main process keeps answering while the decoder runs", () => {
   it("an event queued while a real video is being verified is served before the verdict", async () => {
     const order: string[] = [];
     setImmediate(() => order.push("main-loop-turned"));
-    const pending = verifyGeneratedMediaDecodes({ kind: "video", bytes: mp4, contentType: "video/mp4" });
+    const pending = verifyGeneratedMediaDecodes({ kind: "video", ...stage(mp4), contentType: "video/mp4" });
     order.push("call-returned");
     const verdict = await pending;
     order.push("verdict");
@@ -199,7 +206,7 @@ describe("the main process keeps answering while the decoder runs", () => {
     const garbage = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(4000, 7)]);
     let thrown: unknown;
     try {
-      const pending = verifyGeneratedMediaDecodes({ kind: "image", bytes: garbage, contentType: "image/jpeg" });
+      const pending = verifyGeneratedMediaDecodes({ kind: "image", ...stage(garbage), contentType: "image/jpeg" });
       order.push("call-returned");
       await pending;
     } catch (error) { thrown = error; }
@@ -228,7 +235,7 @@ describe("ffmpeg's own words are recorded, not judged", () => {
   it("a picture that decoded with complaints is accepted and the raw message lands in the log", async () => {
     const stdout = "#format: frame checksums\n#dimensions 0: 512x512\n0, 0, 0, 1, 786432, 0a1b2c3d\n";
     const verdict = await verifyGeneratedMediaDecodes(
-      { kind: "image", bytes: png, contentType: "image/png" },
+      { kind: "image", ...stage(png), contentType: "image/png" },
       { run: async () => ({ status: 0, signal: null, stdout, stderr: "[mjpeg @ 0x1] overread 8\n[mjpeg @ 0x1] unable to decode APP fields" }), resolveFfmpeg: () => "ffmpeg" },
     );
     expect(verdict.verdict).toBe("decodable");

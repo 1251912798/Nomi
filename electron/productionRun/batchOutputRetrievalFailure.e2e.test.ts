@@ -42,7 +42,7 @@ import { createProductionShotDispatchGuard } from "./productionShotDispatchGuard
 import { registerBatchSchedulerKicker } from "./batchSchedulerKick";
 import { createProductionRunService } from "./productionRunService";
 import { matchNomiErrorCode } from "../shared/nomiErrorCodes";
-import { writeDeterministicAsset } from "../assets/projectAssetStore";
+import { writeGeneratedDeterministicAsset } from "../assets/projectAssetStore";
 import { deriveProductionShotState } from "../shared/productionShotPhase";
 import { buildMaterializeShotsPayload } from "./multiShotCanvasLanding";
 import type { ProductionGenerationShot } from "./productionRunTypes";
@@ -137,7 +137,7 @@ function wire(input: {
     resolveVendor: () => ({ baseUrlHint: input.vendorBase() }),
     fetchOutput: (url, options) => { input.fetchCalls.count += 1; return fetchProviderMedia(url, options); },
     writeAsset: input.realAssetStore
-      ? writeDeterministicAsset
+      ? writeGeneratedDeterministicAsset
       : ((_projectId: string, bytes: Buffer) => ({ id: `asset-${bytes.length}`, data: { relativePath: "assets/generated/out.mp4" } })) as never,
   });
   const submission = createProductionGenerationSubmission({

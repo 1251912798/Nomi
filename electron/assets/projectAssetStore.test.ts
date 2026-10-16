@@ -17,8 +17,10 @@ vi.mock("../projects/repository", async (importOriginal) => ({
   resolveProjectRelativePath: (_projectId: string, relativePath: string) => path.join(projectRoot, relativePath),
 }));
 
-const { resolveProjectAssetReferenceIdentity, resolveProjectAgentAttachmentClaims, importRemoteAsset, copyAssetFile, listProjectAssets, moveAssetFile, writeAsset, writeDeterministicAsset } = await import("./projectAssetStore");
+const { resolveProjectAssetReferenceIdentity, resolveProjectAgentAttachmentClaims, importRemoteAsset, copyAssetFile, listProjectAssets, moveAssetFile, writeAsset, writeGeneratedAsset, writeGeneratedDeterministicAsset } = await import("./projectAssetStore");
 type Stored = { id?: string; data?: { relativePath?: string; contentType?: string } };
+/** 生成产物的私有暂存（.nomi-upload-*）在成功、失败后都要被收掉。 */
+const stagingLeftovers = () => fs.readdirSync(projectRoot).filter((name) => name.startsWith(".nomi-upload-"));
 const mediaFixture = (name: string) => fs.readFileSync(path.join(__dirname, "../providerAdapter/__fixtures__/certification-media", name));
 
 function validGlb(): Buffer {
@@ -78,10 +80,10 @@ describe("writeAsset canonical media filename", () => {
     expect(stored.data?.relativePath).toMatch(/scene\.glb$/);
     expect(stored.data?.contentType).toBe("model/gltf-binary");
 
-    await expect(writeAsset("project-1", Buffer.from("glTFbad"), "bad.glb", "model/gltf-binary", { kind: "imported" }))
-      .rejects.toThrow(/3D model validation failed/);
-    await expect(writeAsset("project-1", validGlb(), "bad.model", "model/x-vendor-scene", { kind: "imported" }))
-      .rejects.toThrow(/Unsupported 3D asset content type/);
+    expect(() => writeAsset("project-1", Buffer.from("glTFbad"), "bad.glb", "model/gltf-binary", { kind: "imported" }))
+      .toThrow(/3D model validation failed/);
+    expect(() => writeAsset("project-1", validGlb(), "bad.model", "model/x-vendor-scene", { kind: "imported" }))
+      .toThrow(/Unsupported 3D asset content type/);
   });
   it("does not persist a video as .bin when the upload had no usable extension", async () => {
     const result = await writeAsset("project-1", Buffer.from("video"), "upload.bin", "video/mp4", { kind: "imported" }) as {
@@ -150,8 +152,8 @@ describe("writeAsset canonical media filename", () => {
     it.each([
       ["120 chars + .mp4, declared video/mp4", longWithExtension, "video/mp4"],
       ["120 chars, no extension, declared octet-stream", longWithoutExtension, "application/octet-stream"],
-    ])("writeDeterministicAsset: %s → .mp4", async (_label, fileName, contentType) => {
-      const stored = await writeDeterministicAsset("project-1", mediaFixture("valid.mp4"), fileName, contentType, { kind: "generated" }, `task-long:${fileName.length}:${contentType}`) as Stored;
+    ])("writeGeneratedDeterministicAsset: %s → .mp4", async (_label, fileName, contentType) => {
+      const stored = await writeGeneratedDeterministicAsset("project-1", mediaFixture("valid.mp4"), fileName, contentType, { kind: "generated" }, `task-long:${fileName.length}:${contentType}`) as Stored;
       expect(stored.data?.relativePath).toMatch(/\.mp4$/);
       expect(stored.data?.contentType).toBe("video/mp4");
       expect(fs.existsSync(path.join(projectRoot, stored.data?.relativePath || ""))).toBe(true);
@@ -160,8 +162,8 @@ describe("writeAsset canonical media filename", () => {
     it.each([
       ["120 chars + .mp4, declared video/mp4", longWithExtension, "video/mp4"],
       ["120 chars, no extension, declared octet-stream", longWithoutExtension, "application/octet-stream"],
-    ])("writeAsset: %s → .mp4, name stays within the sanitized budget", async (_label, fileName, contentType) => {
-      const stored = await writeAsset("project-1", mediaFixture("valid.mp4"), fileName, contentType, { kind: "generated" }) as Stored;
+    ])("writeGeneratedAsset: %s → .mp4, name stays within the sanitized budget", async (_label, fileName, contentType) => {
+      const stored = await writeGeneratedAsset("project-1", mediaFixture("valid.mp4"), fileName, contentType, { kind: "generated" }) as Stored;
       const relativePath = stored.data?.relativePath || "";
       expect(relativePath).toMatch(/\.mp4$/);
       expect(path.posix.basename(relativePath).length).toBeLessThanOrEqual(90);
@@ -174,25 +176,25 @@ describe("writeAsset canonical media filename", () => {
       fs.writeFileSync(source, mediaFixture("valid.mp4"));
       const stored = (entry === "copyAssetFile"
         ? await copyAssetFile("project-1", source, longWithoutExtension, "application/octet-stream", { kind: "reference" })
-        : await moveAssetFile("project-1", source, longWithoutExtension, "application/octet-stream", { kind: "reference" })) as Stored;
+        : moveAssetFile("project-1", source, longWithoutExtension, "application/octet-stream", { kind: "reference" })) as Stored;
       expect(stored.data?.relativePath).toMatch(/\.mp4$/);
       expect(path.posix.basename(stored.data?.relativePath || "").length).toBeLessThanOrEqual(90);
     });
 
-    it("a name whose only suffix is not a real extension keeps its text and gets .bin", async () => {
-      const stored = await writeAsset("project-1", Buffer.from("opaque bytes"), `${"c".repeat(20)}.not-an-extension`, "application/octet-stream", { kind: "reference" }) as Stored;
+    it("a name whose only suffix is not a real extension keeps its text and gets .bin", () => {
+      const stored = writeAsset("project-1", Buffer.from("opaque bytes"), `${"c".repeat(20)}.not-an-extension`, "application/octet-stream", { kind: "reference" }) as Stored;
       expect(path.posix.basename(stored.data?.relativePath || "")).toBe(`${"c".repeat(20)}.not-an-extension.bin`);
     });
   });
 
   it("reuses one deterministic asset path when materialization is retried", async () => {
-    const first = await writeDeterministicAsset("project-1", mediaFixture("valid.mp4"), "result.mp4", "video/mp4", { kind: "generated" }, "task-1:output-1") as { id?: string; data?: { relativePath?: string } };
-    const second = await writeDeterministicAsset("project-1", mediaFixture("valid.mp4"), "result.mp4", "video/mp4", { kind: "generated" }, "task-1:output-1") as { id?: string; data?: { relativePath?: string } };
+    const first = await writeGeneratedDeterministicAsset("project-1", mediaFixture("valid.mp4"), "result.mp4", "video/mp4", { kind: "generated" }, "task-1:output-1") as { id?: string; data?: { relativePath?: string } };
+    const second = await writeGeneratedDeterministicAsset("project-1", mediaFixture("valid.mp4"), "result.mp4", "video/mp4", { kind: "generated" }, "task-1:output-1") as { id?: string; data?: { relativePath?: string } };
     expect(second).toMatchObject({ id: first.id, data: { relativePath: first.data?.relativePath } });
     expect(fs.readdirSync(path.join(projectRoot, first.data?.relativePath ? path.dirname(first.data.relativePath) : "assets"))).toHaveLength(2);
   });
   it("accepts a generated MP4 whose moov index is at the end of the file", async () => {
-    const result = await writeAsset("project-1", trailingMoovMp4(), "runway.mp4", "video/mp4", { kind: "generated" }) as {
+    const result = await writeGeneratedAsset("project-1", trailingMoovMp4(), "runway.mp4", "video/mp4", { kind: "generated" }) as {
       data?: { relativePath?: string; contentType?: string };
     };
     expect(result.data?.relativePath).toMatch(/runway\.mp4$/);
@@ -200,10 +202,10 @@ describe("writeAsset canonical media filename", () => {
   });
   it.each(["missing", "truncated"])("repairs a %s deterministic asset sidecar on retry", async (failure) => {
     const args = ["project-1", mediaFixture("valid.jpg"), "result.jpg", "image/jpeg", { kind: "generated", localTaskId: "local-task" }, "task-1:output-1"] as const;
-    const first = await writeDeterministicAsset(...args) as { data: { absolutePath: string } };
+    const first = await writeGeneratedDeterministicAsset(...args) as { data: { absolutePath: string } };
     const sidecar = `${first.data.absolutePath}.meta`;
     if (failure === "missing") fs.unlinkSync(sidecar); else fs.writeFileSync(sidecar, "{");
-    await writeDeterministicAsset(...args);
+    await writeGeneratedDeterministicAsset(...args);
     expect(JSON.parse(fs.readFileSync(sidecar, "utf8"))).toMatchObject({ kind: "generated", localTaskId: "local-task" });
     expect(fs.readdirSync(path.dirname(sidecar))).toHaveLength(2);
   });
@@ -214,7 +216,7 @@ describe("writeAsset canonical media filename", () => {
       return original(...args);
     });
     try {
-      await expect(writeDeterministicAsset("project-1", mediaFixture("valid.jpg"), "result.jpg", "image/jpeg", { kind: "generated" }, "task-2")).rejects.toThrow("sidecar unavailable");
+      await expect(writeGeneratedDeterministicAsset("project-1", mediaFixture("valid.jpg"), "result.jpg", "image/jpeg", { kind: "generated" }, "task-2")).rejects.toThrow("sidecar unavailable");
     } finally { write.mockRestore(); }
   });
 
@@ -223,17 +225,18 @@ describe("writeAsset canonical media filename", () => {
     ["declared image containing MP4", mediaFixture("valid.mp4"), "image/png", "kind_mismatch"],
     ["unknown bytes", Buffer.from("not-media"), "video/mp4", "unknown_bytes"],
   ])("fails closed before persisting generated %s", async (_label, bytes, contentType, reason) => {
-    await expect(writeAsset("project-1", bytes, "output.bin", contentType, { kind: "generated" })).rejects.toThrow(reason);
+    await expect(writeGeneratedAsset("project-1", bytes, "output.bin", contentType, { kind: "generated" })).rejects.toThrow(reason);
     expect(fs.existsSync(path.join(projectRoot, "assets", "generated"))).toBe(false);
+    expect(stagingLeftovers()).toEqual([]);
   });
 
   // 边界处的同一件事（判定本身的类级用例在 generatedMediaDecode.test.ts）：一张完整的图，IEND 之后带了尾数据，
   // 供应商已经出图——旧判定（-xerror 一有解码抱怨就退 1）把它当失败、什么都没落盘。
-  it.each(["writeAsset", "writeDeterministicAsset"] as const)("%s keeps a generated PNG that carries bytes after its IEND chunk", async (entry) => {
+  it.each(["writeGeneratedAsset", "writeGeneratedDeterministicAsset"] as const)("%s keeps a generated PNG that carries bytes after its IEND chunk", async (entry) => {
     const bytes = Buffer.concat([mediaFixture("valid.png"), Buffer.alloc(100, 0x41)]);
-    const stored = (entry === "writeAsset"
-      ? await writeAsset("project-1", bytes, "output.png", "image/png", { kind: "generated" })
-      : await writeDeterministicAsset("project-1", bytes, "output.png", "image/png", { kind: "generated" }, "task-trailing:output-1")) as {
+    const stored = (entry === "writeGeneratedAsset"
+      ? await writeGeneratedAsset("project-1", bytes, "output.png", "image/png", { kind: "generated" })
+      : await writeGeneratedDeterministicAsset("project-1", bytes, "output.png", "image/png", { kind: "generated" }, "task-trailing:output-1")) as {
       data?: { relativePath?: string; contentType?: string };
     };
     expect(stored.data?.contentType).toBe("image/png");
@@ -243,36 +246,48 @@ describe("writeAsset canonical media filename", () => {
   it("an undecodable generated image is refused with the machine code (so the UI says 'unreadable', not 'provider failed')", async () => {
     const garbage = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.from(Array.from({ length: 4000 }, (_, index) => (index * 131 + 7) & 255))]);
     let thrown: unknown;
-    try { await writeAsset("project-1", garbage, "output.jpg", "image/jpeg", { kind: "generated" }); } catch (error) { thrown = error; }
+    try { await writeGeneratedAsset("project-1", garbage, "output.jpg", "image/jpeg", { kind: "generated" }); } catch (error) { thrown = error; }
     expect((thrown as Error).message).toContain("decode_failed");
     expect(matchNomiErrorCode((thrown as Error).message)).toBe("output-unreadable");
     expect(fs.existsSync(path.join(projectRoot, "assets", "generated"))).toBe(false);
   });
 
+  // 方向 B：同步写入边界不写生成产物。绕过「异步准备 → 同步发布」直接写，拒写——字节一个都不落。
+  it.each(["writeAsset", "moveAssetFile"] as const)("%s refuses a generated output that did not go through verified publish", (entry) => {
+    const source = path.join(projectRoot, "incoming-unverified.mp4");
+    fs.writeFileSync(source, mediaFixture("valid.mp4"));
+    expect(() => entry === "writeAsset"
+      ? writeAsset("project-1", mediaFixture("valid.mp4"), "result.mp4", "video/mp4", { kind: "generated" })
+      : moveAssetFile("project-1", source, "result.mp4", "video/mp4", { kind: "generated" })).toThrow("generated_output_requires_verified_publish");
+    expect(fs.existsSync(path.join(projectRoot, "assets", "generated"))).toBe(false);
+    expect(fs.existsSync(source)).toBe(true);
+  });
+
   // 0.23.1「卡到点什么都没反应」在落盘边界上的样子：生成产物落盘前的解码校验占住主进程。
-  // 每个写入入口都要让事件循环在校验期间照转（入口名单与 door-map 对齐：三个同步落盘函数 + 已经异步的拷贝）。
-  it.each(["writeAsset", "writeDeterministicAsset", "moveAssetFile"] as const)("%s verifies a generated video without parking the main loop", async (entry) => {
+  // 三个生成产物入口（字节 / 确定性物化 / 原生路径拷贝）都要让事件循环在校验期间照转。
+  it.each(["writeGeneratedAsset", "writeGeneratedDeterministicAsset", "copyAssetFile"] as const)("%s verifies a generated video without parking the main loop", async (entry) => {
     const order: string[] = [];
     setImmediate(() => order.push("main-loop-turned"));
     const source = path.join(projectRoot, `incoming-${entry}.mp4`);
-    if (entry === "moveAssetFile") fs.writeFileSync(source, mediaFixture("valid.mp4"));
-    const pending = entry === "writeAsset"
-      ? writeAsset("project-1", mediaFixture("valid.mp4"), "result.mp4", "video/mp4", { kind: "generated" })
-      : entry === "writeDeterministicAsset"
-        ? writeDeterministicAsset("project-1", mediaFixture("valid.mp4"), "result.mp4", "video/mp4", { kind: "generated" }, `task-loop:${entry}`)
-        : moveAssetFile("project-1", source, "result.mp4", "video/mp4", { kind: "generated" });
+    if (entry === "copyAssetFile") fs.writeFileSync(source, mediaFixture("valid.mp4"));
+    const pending = entry === "writeGeneratedAsset"
+      ? writeGeneratedAsset("project-1", mediaFixture("valid.mp4"), "result.mp4", "video/mp4", { kind: "generated" })
+      : entry === "writeGeneratedDeterministicAsset"
+        ? writeGeneratedDeterministicAsset("project-1", mediaFixture("valid.mp4"), "result.mp4", "video/mp4", { kind: "generated" }, `task-loop:${entry}`)
+        : copyAssetFile("project-1", source, "result.mp4", "video/mp4", { kind: "generated" });
     order.push("call-returned");
     const stored = await pending as Stored;
     order.push("published");
     expect(fs.existsSync(path.join(projectRoot, stored.data?.relativePath || ""))).toBe(true);
     expect(order).toEqual(["call-returned", "main-loop-turned", "published"]);
+    expect(stagingLeftovers()).toEqual([]);
   });
 
-  // 异步化以后的交错风险：同一个确定性资产被并发写两次。校验可以并行，但「查在不在 → 写字节 → 写 sidecar」必须是
-  // 一段不让出的临界区——否则一个看见「不在」、另一个已经写了一半，就会出半成品或把别人的字节盖掉。
+  // 校验可以并行，但「查在不在 → rename → 写 sidecar」是同步发布里一段不让出的临界区：
+  // 同一确定性资产被并发写，不出半成品，也不会被不同字节覆盖。
   it("concurrent writes of the same deterministic asset publish one whole file and one whole sidecar", async () => {
     const bytes = mediaFixture("valid.mp4");
-    const writes = Array.from({ length: 4 }, (_, index) => writeDeterministicAsset("project-1", bytes, "result.mp4", "video/mp4",
+    const writes = Array.from({ length: 4 }, (_, index) => writeGeneratedDeterministicAsset("project-1", bytes, "result.mp4", "video/mp4",
       { kind: "generated", attempt: index }, "task-race:output-1"));
     const stored = await Promise.all(writes) as Stored[];
     const relativePath = stored[0].data?.relativePath || "";
@@ -281,14 +296,15 @@ describe("writeAsset canonical media filename", () => {
     expect(Buffer.compare(fs.readFileSync(absolutePath), bytes)).toBe(0);
     expect(JSON.parse(fs.readFileSync(`${absolutePath}.meta`, "utf8"))).toMatchObject({ kind: "generated" });
     expect(fs.readdirSync(path.dirname(absolutePath)).sort()).toEqual([path.basename(absolutePath), `${path.basename(absolutePath)}.meta`].sort());
+    expect(stagingLeftovers()).toEqual([]);
   });
 
   it("a concurrent write of different bytes under the same key is refused and never overwrites the published file", async () => {
     const video = mediaFixture("valid.mp4");
     const other = trailingMoovMp4();
     const results = await Promise.allSettled([
-      writeDeterministicAsset("project-1", video, "result.mp4", "video/mp4", { kind: "generated" }, "task-race:output-2"),
-      writeDeterministicAsset("project-1", other, "result.mp4", "video/mp4", { kind: "generated" }, "task-race:output-2"),
+      writeGeneratedDeterministicAsset("project-1", video, "result.mp4", "video/mp4", { kind: "generated" }, "task-race:output-2"),
+      writeGeneratedDeterministicAsset("project-1", other, "result.mp4", "video/mp4", { kind: "generated" }, "task-race:output-2"),
     ]);
     const fulfilled = results.filter((result) => result.status === "fulfilled") as PromiseFulfilledResult<Stored>[];
     const rejected = results.filter((result) => result.status === "rejected") as PromiseRejectedResult[];
@@ -296,11 +312,12 @@ describe("writeAsset canonical media filename", () => {
     expect(String(rejected[0]?.reason?.message)).toContain("maps to different bytes");
     const published = fs.readFileSync(path.join(projectRoot, fulfilled[0].value.data?.relativePath || ""));
     expect([video, other].some((candidate) => Buffer.compare(candidate, published) === 0)).toBe(true);
+    expect(stagingLeftovers()).toEqual([]);
   });
 
   it("rejects changed bytes when trusted certification evidence no longer matches", async () => {
     const bytes = mediaFixture("valid.png");
-    await expect(writeAsset("project-1", bytes, "output.png", "image/png", {
+    await expect(writeGeneratedAsset("project-1", bytes, "output.png", "image/png", {
       kind: "generated",
       certificationEvidence: {
         kind: "image", contentType: "image/png", byteLength: bytes.byteLength,

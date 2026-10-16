@@ -25,16 +25,15 @@
 // 校验是**异步**的（2026-10-16，0.23.1 用户反馈「卡的时候点什么都没反应，点设置也不立即响应」）：以前用 spawnSync，
 // 主进程在等 ffmpeg 的整段时间里一个事件都处理不了——同步 IPC 把渲染层一起卡住，窗口不动。Electron 官方性能指南
 // 要求主进程不做阻塞的子进程等待。现在 ffmpeg 是受控的异步子进程（execFile：自带超时击杀与输出上限），
-// 判决、超时上限、「先校验、通过才发布」都不变；调用方 await 它，通过之后才落盘。
+// 判决、超时上限、「先校验、通过才发布」都不变。
+//
+// 它校验的是**暂存件**（2026-10-16 方向 B）：生成产物先由 generatedAssetStaging 异步写进本项目根下的私有暂存，
+// 在那份文件上校验，通过后同步 rename 发布——校验的就是发布的那一份。这里不收调用方的字节、也不另拷临时文件。
 import { execFile } from "node:child_process";
-import fs from "node:fs";
-import os from "node:os";
-import path from "node:path";
 import { resolveFfmpegPath } from "../export/ffmpegRunner";
 import { MEDIA_DECODER_PROTOCOL_WHITELIST } from "../export/mediaProbe";
 import { logInfo, logWarn } from "../logging/logger";
 import { tagNomiError } from "../shared/nomiErrorCodes";
-import { removeScratchAfterUse } from "./scratchCleanup";
 
 export type GeneratedMediaKind = "image" | "video" | "audio";
 
@@ -127,10 +126,11 @@ export function generatedMediaValidationError(reason: string): GeneratedMediaVal
 export type GeneratedMediaDecodeInput = {
   kind: GeneratedMediaKind;
   /**
-   * 要校验的字节。校验永远读这份字节自己的私有副本（0600 临时文件），不收调用方的路径：
-   * 校验是异步的，调用方的文件在等待期间可能被改写，读它就不能保证「校验的就是要发布的」（V-1208-1）。
+   * 要校验的文件：只能是 generatedAssetStaging 的私有暂存件（MP4 的 moov 常在尾部，管道读不了，必须是可 seek 的文件）。
+   * 不收调用方自己的路径——校验是异步的，调用方的文件在等待期间可能被改写（V-1208-1）。
    */
-  bytes: Uint8Array;
+  stagedPath: string;
+  byteLength: number;
   contentType: string;
 };
 
@@ -176,7 +176,7 @@ function recordDecode(input: GeneratedMediaDecodeInput, verdict: DecodeVerdict, 
   const fields = {
     kind: input.kind,
     contentType: input.contentType,
-    bytes: input.bytes.byteLength,
+    bytes: input.byteLength,
     verdict: verdict.verdict,
     ms: elapsedMs,
     timeoutMs,
@@ -196,25 +196,16 @@ function recordDecode(input: GeneratedMediaDecodeInput, verdict: DecodeVerdict, 
  * 不说「服务商失败了」、不劝换一家）。能 → 静默返回。
  */
 export async function verifyGeneratedMediaDecodes(input: GeneratedMediaDecodeInput, deps: GeneratedMediaDecodeDeps = {}): Promise<DecodeVerdict> {
-  // MP4/MOV 的索引（moov）常在文件尾：走管道的话 ffmpeg 会报 partial file（管道不能 seek）。
-  // 所以字节要落在一个 0600 的临时文件里再读。
-  const validationDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "nomi-generated-validation-"));
-  const validationPath = path.join(validationDir, "artifact.media");
-  try {
-    await fs.promises.writeFile(validationPath, input.bytes, { mode: 0o600, flag: "wx" });
-    const timeoutMs = decodeTimeoutMs(input.bytes.byteLength);
-    const ffmpeg = (deps.resolveFfmpeg ?? resolveFfmpegPath)();
-    const startedAt = Date.now();
-    const run = ffmpeg
-      ? await (deps.run ?? runDecoder)(ffmpeg, decodeInvocation(input.kind, validationPath), { timeout: timeoutMs })
-      : ({ status: null, signal: null, stdout: "", stderr: "", error: { code: "ENOENT", message: "ffmpeg not found" } } satisfies DecodeRun);
-    const verdict = interpretDecodeRun(input.kind, run);
-    recordDecode(input, verdict, timeoutMs, Date.now() - startedAt);
-    if (verdict.verdict !== "decodable") {
-      throw generatedMediaValidationError(verdict.verdict === "unverified" ? "decode_unverified" : "decode_failed");
-    }
-    return verdict;
-  } finally {
-    await removeScratchAfterUse(validationDir);
+  const timeoutMs = decodeTimeoutMs(input.byteLength);
+  const ffmpeg = (deps.resolveFfmpeg ?? resolveFfmpegPath)();
+  const startedAt = Date.now();
+  const run = ffmpeg
+    ? await (deps.run ?? runDecoder)(ffmpeg, decodeInvocation(input.kind, input.stagedPath), { timeout: timeoutMs })
+    : ({ status: null, signal: null, stdout: "", stderr: "", error: { code: "ENOENT", message: "ffmpeg not found" } } satisfies DecodeRun);
+  const verdict = interpretDecodeRun(input.kind, run);
+  recordDecode(input, verdict, timeoutMs, Date.now() - startedAt);
+  if (verdict.verdict !== "decodable") {
+    throw generatedMediaValidationError(verdict.verdict === "unverified" ? "decode_unverified" : "decode_failed");
   }
+  return verdict;
 }

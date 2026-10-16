@@ -12,7 +12,7 @@ import crypto from "node:crypto";
 import { spawn } from "node:child_process";
 import { resolveFfmpegPath } from "../export/ffmpegRunner";
 import { ensureExecutable } from "../export/ensureExecutable";
-import { writeAsset } from "../runtime";
+import { writeGeneratedAsset } from "../runtime";
 import { captureAssetWriteContext } from "../assets/assetWriteContext";
 import type { ProjectBinding } from "../shared/projectBinding";
 import { buildFramesToVideoArgs } from "./framesToVideoArgs";
@@ -95,7 +95,7 @@ export async function framesToVideoAsset(payload: FramesToVideoPayload, options:
     const bytes = fs.readFileSync(outPath);
     const baseName = fileSafePart(payload.fileName || "camera-move");
     const fileName = baseName.endsWith(".mp4") ? baseName : `${baseName}-${crypto.randomUUID().slice(0, 8)}.mp4`;
-    const record = await writeAsset(projectId, bytes, fileName, "video/mp4", {
+    const record = await writeGeneratedAsset(projectId, bytes, fileName, "video/mp4", {
       kind: "generated",
       source: "camera-move",
       ownerNodeId: payload.ownerNodeId || null,

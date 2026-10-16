@@ -37,7 +37,7 @@ function existingDemoAssets(projectId: string): Map<string, string> {
  * 资产也是这个形状，见 electron/workspace/workspaceManifest.ts）。
  * 单张读盘/落盘失败不阻断整条引导——该 clientId 缺席，画布上那个节点保持空态（诚实，不裂图）。
  */
-export async function seedOnboardingDemoAssets(payload: unknown): Promise<Record<string, string>> {
+export function seedOnboardingDemoAssets(payload: unknown): Record<string, string> {
   const raw = payload as JsonRecord | undefined;
   const projectId = String(raw?.projectId || "").trim();
   if (!projectId) throw new Error("projectId is required");
@@ -58,7 +58,7 @@ export async function seedOnboardingDemoAssets(payload: unknown): Promise<Record
       const bytes = readOnboardingDemoAssetBytes(fileName);
       if (!bytes) throw new Error(`onboarding demo asset is not readable: ${fileName}`);
       const url = assetUrlOf(
-        await writeAsset(projectId, bytes, fileName, "image/jpeg", {
+        writeAsset(projectId, bytes, fileName, "image/jpeg", {
           kind: DEMO_ASSET_KIND,
           originalName: fileName,
         }),

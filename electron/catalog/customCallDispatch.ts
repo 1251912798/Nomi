@@ -39,7 +39,7 @@ export type CustomCallDispatchInput = {
   /** 发出去之前的付费闸（令牌路核销令牌；Run 路批准已在 Run 的门上）。由 runtime 注入，这里不自己选。 */
   spendGate: typeof consumeTaskSpend;
   /** 把脚本产出的二进制写成项目资产（注入避免循环依赖，同 localizeTaskAsset）。 */
-  writeAsset: (projectId: string, bytes: Buffer, fileName: string, contentType: string, meta: Record<string, unknown>) => Promise<unknown>;
+  writeAsset: (projectId: string, bytes: Buffer, fileName: string, contentType: string, meta: Record<string, unknown>) => unknown;
   /** runtime 内部的资产落地（注入避免循环依赖）。 */
   localizeTaskAsset: (
     projectId: string,
@@ -108,7 +108,7 @@ export async function runCustomCallTask(input: CustomCallDispatchInput): Promise
       // 上游只给字节流时的落地口。写进本项目资产库，脚本拿回一个能用的本地 URL——
       // 比拼 data URL 靠谱（几十 MB 的视频拼成 base64 会把整条链路撑爆）。
       saveFile: async (bytes, ext, contentType) => {
-        const written = await input.writeAsset(projectId, bytes, `custom-call-${taskId}.${ext}`, contentType, {
+        const written = input.writeAsset(projectId, bytes, `custom-call-${taskId}.${ext}`, contentType, {
           kind: wantedKind,
           source: "custom-call",
           modelKey: model.modelKey,

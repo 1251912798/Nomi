@@ -7,7 +7,7 @@ import { logWarn } from "../logging/logger";
 import { OUTPUT_RETRIEVAL_FAILED } from "../productionRun/productionRunTypes";
 import { GeneratedMediaValidationError } from "../assets/generatedMediaDecode";
 import { stripNomiErrorCode } from "../shared/nomiErrorCodes";
-import { writeDeterministicAsset } from "../assets/projectAssetStore";
+import { writeGeneratedDeterministicAsset } from "../assets/projectAssetStore";
 import { exceedsProviderMediaCap, fetchProviderMedia, type ProviderMediaFetchOptions } from "../assets/providerMediaFetch";
 import type { Vendor } from "../catalog/types";
 import { readCatalog } from "../catalog/catalogStore";
@@ -27,7 +27,7 @@ export type GenerationOutputMaterializerDependencies = {
    * 的缺省 20 秒，于是一段 15 秒的成片普通生成落得下来、付费卡这条路永远下载超时，节点一直转圈。
    */
   fetchOutput?: (url: string, options: ProviderMediaFetchOptions) => Promise<HardenedFetchResult>;
-  writeAsset?: typeof writeDeterministicAsset;
+  writeAsset?: typeof writeGeneratedDeterministicAsset;
   /** 仅 E2E 回环夹具：主进程装配点给的精确 origin（`fetchProviderMedia` 的 trustedPrivateOrigin）。 */
   trustedPrivateOrigin?: string;
   /**
@@ -128,7 +128,7 @@ function contentHash(bytes: Buffer): string {
 
 export function createGenerationOutputMaterializer(deps: GenerationOutputMaterializerDependencies = {}) {
   const fetchOutput = deps.fetchOutput ?? fetchProviderMedia;
-  const storeAsset = deps.writeAsset ?? writeDeterministicAsset;
+  const storeAsset = deps.writeAsset ?? writeGeneratedDeterministicAsset;
 
   async function materialize(input: {
     projectId: string;
