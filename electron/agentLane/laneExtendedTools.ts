@@ -66,7 +66,18 @@ function startedGenerationAction(result: unknown): LaneToolNextAction {
  */
 function draftSavedAction(result: unknown): LaneToolNextAction {
   const canvas = describeDraftCanvasLanding(draftCanvasLandingOf(result))
-  return { kind: 'none', userSees: canvas ?? 'Draft changes are saved in the project. Nothing was generated and nothing was spent. This host did not report whether the draft is on the canvas, so do not state what the canvas shows.' }
+  const saved = canvas ?? 'Draft changes are saved in the project. Nothing was generated and nothing was spent. This host did not report whether the draft is on the canvas, so do not state what the canvas shows.'
+  return { kind: 'none', userSees: `${saved} ${draftNextStep(operationIdOf(result))}` }
+}
+
+/**
+ * 草稿回执的「下一步」——**只此一处**（模型原先读到「没生成、没花钱」就收尾，用户要的图一张也没出）。
+ * 它不替用户决定要不要生成：要不要由用户这一轮的原话定；回执只把「要生成时下一步是哪个工具、带哪个 id」说全。
+ * 不改花钱闸：`generate` 照旧按审批档位出报价卡 / 代答。
+ */
+function draftNextStep(operationId: string | undefined): string {
+  const id = operationId ? ` with operationId=${operationId}` : ''
+  return `Next step depends on what the user asked this turn: if they asked to generate or produce the images or video, a draft alone gives them nothing, so your next tool call is generate${id}; do not end your turn on the draft. If they only asked for a draft or plan, stop here and do not call generate.`
 }
 
 /**
