@@ -83,6 +83,7 @@ export const SCAN_GUARDS = Object.freeze([
   { file: 'src/workbench/generationCanvas/quickActions/deriveFromNode.noMoneyDoor.test.ts', roots: ['src/workbench/generationCanvas/quickActions'] },
   { file: 'src/workbench/generationCanvas/nodes/director/model/planOverrides.guard.test.ts', roots: ['src/workbench/generationCanvas/nodes/director/model'] },
   { file: 'src/workbench/generationCanvas/nodes/director/panels/inspector/crowdEntry.structure.test.ts', roots: ['src/workbench/generationCanvas/nodes/director/panels/inspector'] },
+  { file: 'src/workbench/creation/storyboard/StoryboardShotTable.windowing.test.ts', roots: ['src/workbench/creation/storyboard'] }, // 分镜表窗口化结构：遍历分镜目录找 useElementWidth / useAssetPool 调用点（19 秒）
   { file: 'src/workbench/creation/storyboard/storyboardTableReach.structure.test.ts', roots: ['src/workbench/creation/storyboard'] },
   { file: 'src/workbench/timeline/timelineGesture.structure.test.ts', roots: ['src/workbench/timeline', 'src/workbench/generationCanvas/nodes', 'src/workbench/preview'] },
   // ── 脚本 / 走查 / 站点 / 测试清单 ──
