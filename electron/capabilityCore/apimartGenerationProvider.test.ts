@@ -428,11 +428,17 @@ describe("APIMart observe-only generation provider", () => {
   it("extracts provider-specific image/video output shapes without making a second request", async () => {
     const fetchImpl = vi.fn();
     const provider = createApimartGenerationProvider({ resolveConnection: () => ({ apiKey: "test-key" }), fetchImpl });
+    // 一笔任务一种产物（#1213 起地址只有一种读法：先合同、再通用规则，不再把响应里出现的每种地址都捞走）。
     await expect(provider.materialize?.({
       providerTaskId: "task-1",
-      raw: { code: 200, data: { status: "completed", result: { images: [{ url: "https://cdn.example/image.png" }], videos: [{ url: "https://cdn.example/video.mp4" }] } } },
+      raw: { code: 200, data: { status: "completed", result: { images: [{ url: "https://cdn.example/image.png" }] } } },
     })).resolves.toMatchObject({ outputs: [
-      { kind: "image", url: "https://cdn.example/image.png" },
+      { kind: "image", url: "https://cdn.example/image.png", providerOutputId: "image-1" },
+    ] });
+    await expect(provider.materialize?.({
+      providerTaskId: "task-2",
+      raw: { code: 200, data: { status: "completed", result: { videos: [{ url: "https://cdn.example/video.mp4" }] } } },
+    })).resolves.toMatchObject({ outputs: [
       { kind: "video", url: "https://cdn.example/video.mp4", providerOutputId: "video-1" },
     ] });
     expect(fetchImpl).not.toHaveBeenCalled();
@@ -484,7 +490,7 @@ describe("APIMart observe-only generation provider", () => {
       providerTaskId: "task-direct",
       raw: { data: { result: { video_url: ["data:video/mp4;base64,AAAA"], fileName: "direct.mp4" } } },
     });
-    expect(result?.outputs).toEqual([{ kind: "video", url: "data:video/mp4;base64,AAAA", fileName: "direct.mp4" }]);
+    expect(result?.outputs).toEqual([{ kind: "video", url: "data:video/mp4;base64,AAAA", fileName: "direct.mp4", providerOutputId: "video-1" }]);
   });
 
   it("maps a semantic text-to-video contract to APIMart's flat video body", () => {

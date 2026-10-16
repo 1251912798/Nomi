@@ -20,7 +20,9 @@ import { assertCanonicalAntigravityOperation, executeProcessOperation, prepareAn
 import { executeTextTask } from "./textTaskRunner";
 import { runAudioTask } from "./audioTaskRunner";
 import { firstString, isJsonRecord, trim, type JsonRecord } from "./jsonUtils";
-import { collectAssetUrls, firstMappedString, providerMetaFromResponse, resolveTaskStatus, taskFailureMessageFromResponse, valuesFromMapping } from "./tasks/responseParsing";
+import { firstMappedString, providerMetaFromResponse, taskFailureMessageFromResponse } from "./tasks/responseParsing";
+import { expectedMediaKind, readTaskResponse, requestEchoUrls } from "./tasks/taskResultReading";
+import { logInfo } from "./logging/logger";
 import { extractAssetUrl } from "./tasks/assetUrlExtract";
 import { applyResponseTransform } from "./tasks/responseTransforms";
 import { applyRequestTransform } from "./tasks/requestTransforms";
@@ -270,11 +272,20 @@ export async function buildProfileTaskResult(input: {
     providerMeta.query_id = providerMeta.query_id || providerTaskId;
   }
   const taskId = firstString(providerTaskId, input.taskIdFallback);
-  const mappedAssetValues = ["assets", "image_url", "video_url", "audio_url", "model_url"].flatMap((key) => valuesFromMapping(response, responseMapping, key));
-  const assetUrls = Array.from(new Set([...mappedAssetValues.flatMap(collectAssetUrls), ...collectAssetUrls(extractAssetUrl(response))]));
-  const { status, unrecognizedStatus } = resolveTaskStatus(response, responseMapping, input.mapping.statusMapping, assetUrls);
   const type: "image" | "video" | "audio" | "model3d" =
     input.wantedKind === "video" ? "video" : input.wantedKind === "audio" ? "audio" : input.wantedKind === "model3d" ? "model3d" : "image";
+  // 「成没成、结果在哪」只有一种读法（tasks/taskResultReading，两台引擎共用）：先合同、再通用规则。
+  const reading = readTaskResponse({
+    response,
+    responseMapping,
+    statusMapping: input.mapping.statusMapping,
+    wantedKind: expectedMediaKind(input.wantedKind),
+    echoUrls: requestEchoUrls(input.request.extras),
+  });
+  const { status, unrecognizedStatus, assetUrls } = reading;
+  if (reading.rule.startsWith("generic:")) {
+    logInfo("tasks", "result-read-generic-rule", { vendor: input.vendor?.key || "?", model: input.model?.modelKey || "?", rule: reading.rule });
+  }
   const certification = await certifyTaskOutputAndSettleComfyCandidate({ request: input.request, modelKey: input.model?.modelKey, status, urls: assetUrls, kind: type, vendorBaseUrl: String(input.vendor?.baseUrlHint || "") });
   const assets = await materializeCertifiedComfyAssets({ certification, status, urls: assetUrls,
     materialize: (url, index) => input.projectId
