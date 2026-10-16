@@ -337,15 +337,15 @@ const LEDGER = 'tests/ux/full-walk/escapeLedger/FB-x.json'
 const CONTRACT = 'docs/fixes/x.root-cause.json'
 const b64 = (value) => Buffer.from(JSON.stringify(value)).toString('base64')
 
-function fakeGh({ failFiles = false, failDiff = false, failContract = false } = {}) {
-  const fileRows = [...Array.from({ length: 120 }, (_, i) => `src/f${i}.ts\tmodified\t1\t0\t`), `${CONTRACT}\tadded\t9\t0\t`, `${LEDGER}\tmodified\t2\t1\t`]
+function fakeGh({ failFiles = false, failDiff = false, failContract = false, body = '## 设计卡\n', extraRows = [] } = {}) {
+  const fileRows = [...Array.from({ length: 120 }, (_, i) => `src/f${i}.ts\tmodified\t1\t0\t`), `${CONTRACT}\tadded\t9\t0\t`, `${LEDGER}\tmodified\t2\t1\t`, ...extraRows]
   const calls = []
   const exec = (args) => {
     const line = args.join(' ')
     calls.push(line)
     if (line.startsWith('pr view')) {
       // 真 gh：files 字段最多 100 个。这里故意带上，证明实现不再读它。
-      return JSON.stringify({ body: '## 设计卡\n', headRefOid: 'a'.repeat(40), baseRefName: 'main', headRepository: { name: 'r' }, headRepositoryOwner: { login: 'o' }, createdAt: '2026-10-10T00:00:00Z', files: fileRows.slice(0, 100).map((row) => ({ path: row.split('\t')[0], additions: 1, deletions: 0 })) })
+      return JSON.stringify({ body, headRefOid: 'a'.repeat(40), baseRefName: 'main', headRepository: { name: 'r' }, headRepositoryOwner: { login: 'o' }, createdAt: '2026-10-10T00:00:00Z', files: fileRows.slice(0, 100).map((row) => ({ path: row.split('\t')[0], additions: 1, deletions: 0 })) })
     }
     if (line.includes('/pulls/7/files')) {
       if (failFiles) throw new Error('HTTP 502 retried 3 times')
@@ -401,4 +401,41 @@ test('diff / 合同内容任何一项取不到都是「结论：✖ 取不到」
     assert.equal(result.code, 1, JSON.stringify(options))
     assert.match(result.out, /结论：✖ 有项没过，先别合（取数失败/, JSON.stringify(options))
   }
+})
+
+// ── 花钱类合并前要有真付费证据（2026-10-16，#1203 写「未验证」被合进来）：端到端走一遍 main()，只看真付费那一行 ──
+const SPEND_FILE = 'electron/capabilityCore/generationSpendDecision.ts'
+const spendBody = (paidLine) => [
+  '## 设计卡', '### 功能分类', '- [x] 花钱', '',
+  '## 验收证据',
+  '- spend-walks：tests/ux/agent-spend-card.walk.mjs',
+  ...(paidLine ? [paidLine] : []),
+  '- spend-fault-injection：tests/ux/full-walk/playbooks/pb07-failure-kinds.walk.mjs',
+].join('\n')
+const runSpend = (paidLine) => runPreflight({ body: spendBody(paidLine), extraRows: [`${SPEND_FILE}\tmodified\t3\t1\t`] })
+
+test('花钱类 PR：正文缺 spend-paid-sample 行 → 扫描红并点名；写「未验证」→ 红；写裸 PR 号 → 红', () => {
+  for (const line of [null, '- spend-paid-sample：未验证：待协调真付费', '- spend-paid-sample：#1203']) {
+    const result = runSpend(line)
+    assert.equal(result.code, 1, String(line))
+    assert.match(result.out, /spend-paid-sample/, String(line))
+    assert.match(result.out, /✖ [^\n]*spend-paid-sample|→ spend-paid-sample/, String(line))
+    assert.match(result.out, /结论：✖/, String(line))
+  }
+})
+
+test('花钱类 PR：补上运行号 / 报告链接 → 真付费那一项不再红；协调豁免 → 不红且醒目打出理由', () => {
+  for (const line of ['- spend-paid-sample：run 20261016', '- spend-paid-sample：https://example.com/paid-report']) {
+    const result = runSpend(line)
+    assert.doesNotMatch(result.out, /→ spend-paid-sample/, line)
+    assert.doesNotMatch(result.out, /缺这些证据条目：[^\n]*spend-paid-sample/, line)
+  }
+  const waived = runSpend('- spend-paid-sample：协调豁免：只改日志文案，不碰供应商')
+  assert.doesNotMatch(waived.out, /→ spend-paid-sample/)
+  assert.match(waived.out, /⚠ spend-paid-sample：协调豁免——只改日志文案/)
+})
+
+test('不是花钱类的 PR 不被要求这一行', () => {
+  const result = runPreflight({ body: '## 设计卡\n', extraRows: [] })
+  assert.doesNotMatch(result.out, /spend-paid-sample/)
 })

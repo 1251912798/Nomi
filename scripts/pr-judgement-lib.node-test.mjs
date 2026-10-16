@@ -20,6 +20,7 @@ import {
   inferRoutes,
   isMissingTool,
   loadRoutingTable,
+  paidSampleVerdict,
   requiredEvidence,
   routingEnforced,
   toolGaps,
@@ -119,6 +120,66 @@ test('验收证据：必交证据取并集；缺条目红；条目没证据红�
   const exists = checkRoutingEvidence('## 验收证据\n- ui-mockup：未验证：本次没有新界面\n- ui-click-census：未验证：工具未建\n- ui-capability-unavailable：未验证：本次没有要模型的动作\n- ui-ai-walk：未验证：工具未建\n- ui-screens：未验证：无窄窗', ['ui'], table)
   assert.equal(exists.ok, true)
   assert.deepEqual(exists.gaps.map((gap) => gap.id), ['ui-click-census', 'ui-ai-walk'])
+})
+
+test('真付费抽检严格判据（合并前扫描）：运行号 / 报告链接 / 协调豁免过；未验证、裸 PR 号、别名行、缺条目都红（#1203 就是写「未验证」被合进来的）', () => {
+  for (const line of [
+    '- spend-paid-sample：run 987654',
+    '- spend-paid-sample：运行号 20261016',
+    '- spend-paid-sample：https://github.com/o/r/actions/runs/12345',
+    '- spend-paid-sample：报告 reports/G-paidkey.md',
+    '- **spend-paid-sample**：D:/Nomi-coord-state/reports/H-paid-1203.md',
+    '- spend-paid-sample：协调豁免：只改了文案，不碰供应商',
+  ]) assert.equal(paidSampleVerdict(line).ok, true, line)
+  assert.equal(paidSampleVerdict('- spend-paid-sample：协调豁免：只改了文案').waived, true)
+  for (const line of [
+    '- spend-paid-sample：未验证：待协调',
+    '- spend-paid-sample：未验证：真付费还没跑 https://example.com/x',
+    '- spend-paid-sample：#1203',
+    '- spend-paid-sample：跑过了',
+    '- spend-paid-sample：协调豁免：',
+    '- spend-paid-sample：协调豁免：无',
+    '- 真付费：https://example.com/report',
+    '- paid：run 987654',
+  ]) assert.equal(paidSampleVerdict(line).ok, false, line)
+
+  const rest = '- spend-walks：tests/ux/agent-spend-card.walk.mjs\n- spend-fault-injection：tests/ux/full-walk/playbooks/pb07-failure-kinds.walk.mjs\n'
+  const evidence = (paidLines) => `## 验收证据\n${rest}${paidLines}`
+  const strict = (body) => checkRoutingEvidence(body, ['spend'], table, null, null, { paidStrict: true })
+  const lenient = (body) => checkRoutingEvidence(body, ['spend'], table)
+
+  // 现状（#1203 的写法）：宽口径放行，严格口径红
+  const unverified = evidence('- spend-paid-sample：未验证：待协调真付费验收\n')
+  assert.equal(lenient(unverified).ok, true, 'CI / 推送前的口径不变')
+  const hit = strict(unverified)
+  assert.equal(hit.ok, false)
+  assert.match(hit.lines.join('\n'), /spend-paid-sample：花钱类 PR 不接受「未验证」/)
+  // 缺条目：两种口径都红，严格口径多一句格式提示
+  assert.equal(lenient(evidence('')).ok, false)
+  assert.match(strict(evidence('')).lines.join('\n'), /spend-paid-sample：合并前扫描要求/)
+  // 补上运行号 → 绿；协调豁免 → 绿且醒目打出理由
+  assert.equal(strict(evidence('- spend-paid-sample：run 987654\n')).ok, true)
+  const waived = strict(evidence('- spend-paid-sample：协调豁免：只改文案不碰供应商\n'))
+  assert.equal(waived.ok, true)
+  assert.match(waived.lines.join('\n'), /⚠ spend-paid-sample：协调豁免——只改文案不碰供应商/)
+  // 别名行 / 别处提到 paid 的行不能顶替这一行
+  assert.equal(strict(evidence('- 真付费：run 987654\n- ui-screens：paid https://example.com/x\n')).ok, false)
+  // 裸 PR 号不算
+  assert.equal(strict(evidence('- spend-paid-sample：#1203\n')).ok, false)
+  // 不是花钱类（没有 spend 类别）时严格口径不要求这一行
+  assert.equal(checkRoutingEvidence('## 验收证据\n', ['long-run'], table, null, null, { paidStrict: true }).lines.join('\n').includes('spend-paid-sample'), false)
+})
+
+test('整体：花钱类 PR 过 evaluatePrJudgement：paidStrict 才把「未验证」判红，CI / 推送前（不传）行为不变', () => {
+  const files = [M('electron/capabilityCore/generationSpendDecision.ts')]
+  const body = '## 设计卡\nx\n### 功能分类\n- [x] 花钱\n\n## 验收证据\n- spend-walks：tests/ux/agent-spend-card.walk.mjs\n- spend-paid-sample：未验证：待协调\n- spend-fault-injection：tests/ux/full-walk/playbooks/pb07-failure-kinds.walk.mjs\n'
+  assert.equal(evaluatePrJudgement({ body, files, createdAt: '2026-10-16T00:00:00Z', table }).blocked, false)
+  const strict = evaluatePrJudgement({ body, files, createdAt: '2026-10-16T00:00:00Z', table, paidStrict: true })
+  assert.equal(strict.blocked, true)
+  assert.match(strict.routing.lines.join('\n'), /不接受「未验证」/)
+  // 补上运行号就过
+  const fixed = body.replace('未验证：待协调', 'run 987654')
+  assert.equal(evaluatePrJudgement({ body: fixed, files, createdAt: '2026-10-16T00:00:00Z', table, paidStrict: true }).blocked, false)
 })
 
 test('整体：路径推出的类别没勾 → 红；勾全且证据齐 → 绿；规则生效日之前开的 PR 路由只警告', () => {
