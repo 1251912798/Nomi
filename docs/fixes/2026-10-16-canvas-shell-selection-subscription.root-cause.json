@@ -188,7 +188,8 @@
   "residual_risks": [
     "A write to any node still re-renders the canvas shell and re-runs its projection chain (cards themselves do not re-render); removing that needs cards to read their node by id (direction check section 6), not done here.",
     "Composer mount writes (model default, parameter normalization) still follow a select and re-render the shell; owned by the P-compose line.",
-    "23 frozen whole-table subscriptions remain; per-card ones (ClipNode, ShotTableNode, NodeInputReferenceEntry, NodeParameterControls) re-render those cards on every node write."
+    "23 frozen whole-table subscriptions remain; per-card ones (ClipNode, ShotTableNode, NodeInputReferenceEntry, NodeParameterControls) re-render those cards on every node write.",
+    "The whole-table gate reads the selector's result slots in the syntax tree (expression body, any return, member by dot or bracket, as/!/satisfies/??/ternary branches, destructured parameter). A selector first stored as a named function and then passed by name is not visible to the syntax tree; today that form is only used for registered stable projections and per-id indexes."
   ],
   "invariant_owner_layer": {
     "layer": "src/workbench/generationCanvas/reactFlow/generationCanvasReactFlowAdapter.ts",

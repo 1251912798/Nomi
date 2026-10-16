@@ -24,7 +24,7 @@
 同一个结构缺口同时造成「改动扎堆」和「整层重渲」：
 
 1. **没有「各取所需」这一层**。React Flow 官方性能指南点名的反模式是在组件或视口层直接取整个 `nodes`（「Avoid accessing nodes in components」，https://reactflow.dev/learn/advanced-use/performance ，@xyflow/react 12.11.5），推荐把派生状态单独放、让组件只在自己那份变了时重渲；Zustand（4.5.7）的做法是选择器只取用到的那一片、事件回调里用 `getState()` 读最新值、高频值用 `subscribe` 不进渲染（https://github.com/pmndrs/zustand/blob/v4.3.3/readme.md 「Transient updates」「Selecting multiple state slices」）。我们的壳反着来：功能 hook 不自己订阅，由壳订阅后当参数递——功能一改，壳就改（churn）；功能要的东西一多，壳订阅的并集就大（重渲）。
-2. **上一次修同类时只写了文字，没有门**。2026-10-05 的根因合同（`docs/fixes/2026-10-05-canvas-high-frequency-projection.root-cause.json`）已写下不变式「读者不订阅整张 nodes / edges，能用稳定标量就用标量」，但没有任何门岗：之后新挂的读者照样 `useGenerationCanvasStore((s) => s.nodes)`。普查今天全仓还有 26 处整表订阅（见本线报告），其中一处是没人引用的死 hook（`useNodeDisplayPrompt`）。
+2. **上一次修同类时只写了文字，没有门**。2026-10-05 的根因合同（`docs/fixes/2026-10-05-canvas-high-frequency-projection.root-cause.json`）已写下不变式「读者不订阅整张 nodes / edges，能用稳定标量就用标量」，但没有任何门岗：之后新挂的读者照样 `useGenerationCanvasStore((s) => s.nodes)`。普查今天全仓还有 25 处 nodes / edges 整表订阅（见本线报告；本刀删 2 处后冻结在 23 处），其中一处是没人引用的死 hook（`useNodeDisplayPrompt`）。
 3. **投影没有把「选区」当成一层**。选区和节点结构混在同一个 memo 里：选区一变，节点投影 O(N) 全走、边投影 O(E) 全走（虽然对没变的会交回旧对象，但工作量跟 N、E 走，不跟选区走）。
 
 铁律 ⑩ ⑪ ⑫：不适用——这是渲染层的工作量问题，不涉及意图抽取、模型参数清单或可点目标的预期。
@@ -33,7 +33,7 @@
 
 | 预测 | 怎么验证 |
 |---|---|
-| 下一个画布功能（例如 #1189 白板就地编辑）又往壳里加一个整表订阅或一个依赖选区的参数 | `pnpm exec vitest run src/workbench/generationCanvas/store/canvasWholeTableSubscriptions.test.ts` 与 `pnpm run lint:ci`：本刀之后这两道会红 |
+| 下一个画布功能（例如 #1189 白板就地编辑）又往壳里加一个整表订阅或一个依赖选区的参数 | `pnpm exec vitest run scripts/canvas-store-subscriptions.test.mjs` 与 `pnpm run lint:ci`：本刀之后这两道会红 |
 | 生成中的卡越多，平移 / 拖动越卡：每次进度写入都让壳重走投影链 | `canvas-pan-while-generating` 场景的帧间隔与长任务数（D-perf 量具） |
 | 选中生成框的冷启动里，壳的重渲占一大块 | `canvas-select-composer-*` 场景；壳渲染次数（本刀之后选区写入为 0） |
 
@@ -65,4 +65,4 @@
 - `src/workbench/generationCanvas/reactFlow/canvasFlowSelectionProjection.test.ts`：选中只动变了的卡和挨着的边、对象身份、读下标计数（修前红）。
 - `src/workbench/generationCanvas/reactFlow/generationCanvasReactFlowAdapter.test.ts`：原有投影复用测试，未改。
 - `src/workbench/generationCanvas/components/canvasControlsStructure.test.ts`：拖动草稿、投影同步进非受控内核，未改。
-- `src/workbench/generationCanvas/store/canvasWholeTableSubscriptions.test.ts`：整表订阅存量冻结（修前对新基线红）。
+- `scripts/canvas-store-subscriptions.test.mjs`：整表订阅存量冻结（修前对新基线红）。
