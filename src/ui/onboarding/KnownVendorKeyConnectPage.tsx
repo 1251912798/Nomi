@@ -215,7 +215,7 @@ export function KnownVendorKeyConnectPage({
             }}
             className={cn(
               'mt-2 h-10 w-full rounded-nomi-sm border bg-nomi-paper px-3 text-body-sm text-nomi-ink outline-none',
-              'placeholder:text-nomi-ink-40 focus:border-nomi-accent disabled:text-nomi-ink-40 disabled:opacity-100',
+              'placeholder:text-nomi-ink-40 focus:border-nomi-ink-40 disabled:text-nomi-ink-40 disabled:opacity-100',
               error ? 'border-workbench-danger' : 'border-nomi-line',
             )}
           />

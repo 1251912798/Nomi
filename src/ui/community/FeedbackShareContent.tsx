@@ -35,7 +35,7 @@ function ActionRow({
     <button
       type="button"
       onClick={onClick}
-      className="group flex w-full items-center gap-3 rounded-nomi border border-nomi-line bg-nomi-paper p-3.5 text-left transition-colors hover:border-nomi-accent hover:bg-nomi-accent-soft"
+      className="group flex w-full items-center gap-3 rounded-nomi border border-nomi-line bg-nomi-paper p-3.5 text-left transition-colors hover:border-nomi-ink-30 hover:bg-nomi-accent-soft"
     >
       <span className="grid size-9 shrink-0 place-items-center rounded-nomi-sm bg-nomi-accent-soft text-nomi-accent">{icon}</span>
       <span className="min-w-0 flex-1">

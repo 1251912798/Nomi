@@ -193,12 +193,12 @@ describe('④ 任务卡 · 五态', () => {
     expect(markup).toContain(taskLabels.status[status])
   })
 
-  it('采用的候选是 accent 描边 + 角标，不是把整格填成 accent 底', () => {
+  it('采用的候选是深色细线描边 + 角标，不是把整格填成 accent 底', () => {
     const markup = html(el(V4TaskCard, {
       task: { title: 'x', action: 'image', status: 'complete', candidates: [{ tag: '1', adopted: true }, { tag: '2', canAdopt: true }] },
       labels: taskLabels, onAdopt: () => undefined,
     }))
-    expect(markup).toContain('outline-nomi-accent')
+    expect(markup).toContain('outline-nomi-ink-40')
     expect(markup).toContain('data-adopted="true"')
     // 缩略图格本身仍是灰底占位，没有被 accent-soft 盖掉。
     expect(markup).not.toContain('bg-nomi-accent-soft')
@@ -381,12 +381,12 @@ describe('⑤ 介入槽 · 八种内容体', () => {
     expect(waiting).toContain('data-waiting="true"')
     expect(resolved).toContain('data-waiting="false"')
 
-    // ② 待答 = accent 描边 + 同色描边光；两样都在同一只 `<aside>` 上，不是套了一层新盒子。
+    // ② 待答 = 深一档的灰线（2026-10-10 用户拍板去蓝色描边，与同屏 composer 聚焦同一句 `border-nomi-ink-40`）；
+    //    在同一只 `<aside>` 上，不是套了一层新盒子。暗色由 token 自己翻，这里没有第二份 `dark:` 覆写。
     const waitingShell = shellClassOf(waiting)
-    expect(waitingShell).toContain('border-nomi-accent')
-    expect(waitingShell).toContain('shadow-[0_0_0_1px_var(--nomi-accent-soft)]')
-    // 描边光用的是 composer 现役那一句的低透明变体（`--nomi-accent-soft`），不是新 token，
-    // 也不是手写色——暗色由 token 自己翻，这里没有第二份 `dark:` 覆写。
+    expect(waitingShell).toContain('border-nomi-ink-40')
+    expect(waitingShell).not.toContain('border-nomi-accent')
+    expect(waitingShell).not.toContain('shadow-')
     expect(waitingShell).not.toMatch(/dark:/)
 
     // ③ 回到普通纸面 = composer 那条发丝线，accent 一点不剩，描边光也收掉。
@@ -400,8 +400,7 @@ describe('⑤ 介入槽 · 八种内容体', () => {
     //    底色 / 圆角 / overflow / 定位这些一个字都不许动。
     const strip = (classes: string): string => classes
       .split(/\s+/)
-      .filter((token) => token !== 'border-nomi-line' && token !== 'border-nomi-accent'
-        && token !== 'shadow-[0_0_0_1px_var(--nomi-accent-soft)]')
+      .filter((token) => token !== 'border-nomi-line' && token !== 'border-nomi-ink-40')
       .join(' ')
     expect(strip(waitingShell)).toBe(strip(resolvedShell))
 
@@ -642,9 +641,9 @@ describe('⑧ composer 底栏逐件', () => {
     expect(html(el(AgentPanelV4Composer, { panelHeight: 900, value: 'a\nb\nc\nd\ne\nf\ng\nh' }))).toContain('data-height="218"')
   })
 
-  it('没有 onValueChange 时 textarea 只读——受控件不假装自己能编辑', () => {
-    expect(html(el(AgentPanelV4Composer, { value: '只读' }))).toContain('readOnly=""')
-    expect(html(el(AgentPanelV4Composer, { value: '可编辑', onValueChange: () => undefined }))).not.toContain('readOnly')
+  it('没有 onValueChange 时共享提示词编辑器只读——受控件不假装自己能编辑', () => {
+    expect(html(el(AgentPanelV4Composer, { value: '只读' }))).toContain('aria-readonly="true"')
+    expect(html(el(AgentPanelV4Composer, { value: '可编辑', onValueChange: () => undefined }))).toContain('aria-readonly="false"')
   })
 })
 

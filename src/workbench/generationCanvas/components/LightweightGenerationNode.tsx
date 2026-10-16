@@ -75,7 +75,7 @@ export function LightweightGenerationNode({
       <div
         className={cn(
           'w-full h-full overflow-hidden rounded-nomi ring-1 ring-inset',
-          selected ? 'ring-2 ring-nomi-accent' : 'ring-nomi-line',
+          'ring-nomi-line',
           'bg-nomi-paper/90 shadow-nomi-sm',
           'grid',
         )}

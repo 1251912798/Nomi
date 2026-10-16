@@ -54,6 +54,16 @@ export const DRIVERS = Object.freeze({
       }
     },
   },
+  // 大文稿项目切文稿 / 打开分镜方案的响应（tests/perf/document-switch-bench.mjs：点击到目标界面到位再过两帧）
+  'tests/perf/document-switch-bench.mjs': {
+    supports: ['response', 'longTasks'],
+    buildArgs: (script, args, { runs, label }) => [script, ...args, '--runs', String(runs), '--label', label],
+    resultFile: (label) => `tests/perf/results/document-switch-${label}.json`,
+    readRuns(payload) {
+      const samples = payload.samples ?? []
+      return { response: samples.map((sample) => sample.responseMs), longTasks: samples.map((sample) => sample.longTasks) }
+    },
+  },
 })
 
 // ── 登记表读取与校验 ───────────────────────────────────────────────────────────────────────────────────────────
@@ -71,6 +81,56 @@ export function loadScenarios(root) {
 }
 
 export const scenarioIds = (entries) => entries.map((entry) => entry.data?.id).filter(Boolean)
+
+/** 同 loadScenarios，但内容由调用方给（readText(文件名) → 文本，取不到 null）：CI 读 base 与 HEAD 的 git 版本，合并前扫描走 gh api，不碰检出。 */
+export function scenarioEntriesFromReader(names, readText) {
+  return names.filter((name) => name.endsWith('.json')).sort().map((name) => {
+    const file = `${SCENARIO_DIR}/${name}`
+    const text = readText(name)
+    if (text === null || text === undefined) return { file, data: null, parseError: '内容取不到' }
+    try {
+      return { file, data: JSON.parse(text) }
+    } catch (error) {
+      return { file, data: null, parseError: error instanceof Error ? error.message : String(error) }
+    }
+  })
+}
+
+/**
+ * 证据行里的场景 id 算不算「已知」（G-perfreg，2026-10-15）：已知 = (基线登记表 − 本 PR 删掉的) ∪ 本 PR 新增 / 改动的文件里能解析出 id 的。
+ * 全仓只这一个算法：CI（check:pr-judgement）与合并前扫描（merge-preflight）都调它，只是取数方式不同。
+ *
+ * 分工（判据政策 vs 可扩充数据）：
+ *   · 判据代码与政策表（路由表 test-routing.json 等）一律取 main，PR 不能放宽自己的要求；
+ *   · PR 可以扩充的数据（逃逸账本、性能场景登记）从 PR 头读；
+ *   · 场景文件的结构合格以 CI 的 check:perf-scenarios（合并引用上，带 PR 自己的 DRIVERS）为准，这里不再用 main 的 DRIVERS 校验 PR 文件。
+ *
+ *   baseEntries：基线登记表（scenarioEntriesFromReader / loadScenarios 的结果）；
+ *   prFiles：本 PR 新增 / 改动的场景文件 [{ file, content }]，content 是 PR 头上的文本，取不到传 null；
+ *   removedFiles：本 PR 删掉的场景文件路径，它们的基线 id 不再算认得。
+ * 返回 { ids, problems }。problems 非空 = fail-closed：PR 头文件取不到、JSON 解析不了，判据必须红并说人话。
+ */
+export function knownScenarios({ baseEntries = [], prFiles = [], removedFiles = [] }) {
+  const removed = new Set(removedFiles)
+  const problems = []
+  const prEntries = []
+  for (const { file, content } of prFiles) {
+    if (content === null || content === undefined) {
+      problems.push(`${file} 的 PR 头内容取不到，没法核对它的场景 id（重跑一次；反复失败查 gh 登录）`)
+      continue
+    }
+    try {
+      prEntries.push({ file, data: JSON.parse(content) })
+    } catch {
+      problems.push(`${file} 的 JSON 读不了（PR 头上的内容坏了）`)
+    }
+  }
+  const ids = new Set([
+    ...scenarioIds(baseEntries.filter((entry) => !removed.has(entry.file))),
+    ...scenarioIds(prEntries),
+  ])
+  return { ids: [...ids], problems }
+}
 
 /**
  * 登记表结构校验（门岗判据，纯函数）：

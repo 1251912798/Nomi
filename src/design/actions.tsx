@@ -195,7 +195,7 @@ export const ActionCard = forwardRef<HTMLButtonElement, ActionCardProps>(functio
         'hover:-translate-y-0.5 hover:shadow-nomi-md active:translate-y-0 active:shadow-nomi-sm',
         'disabled:opacity-50 disabled:cursor-not-allowed',
         isPrimary
-          ? 'border-nomi-ink bg-nomi-ink text-nomi-paper hover:bg-nomi-accent hover:border-nomi-accent'
+          ? 'border-nomi-ink bg-nomi-ink text-nomi-paper hover:bg-nomi-accent hover:border-nomi-ink-30'
           : 'border-nomi-line bg-nomi-paper text-nomi-ink hover:border-nomi-ink-20',
         className,
       )}

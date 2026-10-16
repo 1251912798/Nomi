@@ -3,6 +3,7 @@
 // 之前手写的 scripts/marketing/site-manifest.mjs 只列了 5 个页面（首页/快速上手/手册），
 // 模型库、提示词库、技能库这些后来加的页面从没进过它——这道口子现在补上（方案 §6）。
 import { locales } from './content.mjs'
+import { docsPages } from './docs-site.mjs'
 import { featurePages } from './features.mjs'
 import { modelPages } from './library/models-pages.mjs'
 import { promptPages } from './library/prompts-pages.mjs'
@@ -14,6 +15,7 @@ import { renderHomepage, renderQuickstart } from './template.mjs'
 
 /**
  * 官网全部页面：每项 `{ render(locale, runtimeFacts), output: { 'zh-CN': path, en: path } }`。
+ * `prebuilt: true` 的条目（教程站）内容不是本生成器渲染的：只参与 sitemap 与孤儿清理，生成器不重写它。
  * `output` 已经是相对仓库根的落盘路径（如 `marketing/models/kling-3-0.html`）——
  * 干净地址（sitemap、hreflang、内链用的那种）从这个路径机械推出（routes.mjs），不需要另外声明一遍。
  */
@@ -25,6 +27,8 @@ export function sitePages(siteData) {
     ...modelPages(siteData),
     ...promptPages(siteData),
     ...skillPages(siteData),
+    // 教程站（Astro Starlight）：内容由 build-marketing-docs.mjs 落盘，这里只把它们并进清单（见 docs-site.mjs）。
+    ...docsPages(),
   ]
 }
 
@@ -34,18 +38,18 @@ export function sitePages(siteData) {
  */
 export function renderSiteOutputs(siteData, runtimeFacts, localeList = locales) {
   const pages = sitePages(siteData)
-  return pages.flatMap(({ render, output }) => {
+  return pages.flatMap(({ render, output, prebuilt = false }) => {
     const alternates = Object.fromEntries(localeList.map((locale) => {
       if (!output[locale]) throw new Error(`No output path for locale: ${locale}`)
       return [locale, routeFromOutputPath(output[locale])]
     }))
-    return localeList.map((locale) => ({ relativePath: output[locale], route: alternates[locale], locale, alternates, contents: render(locale, runtimeFacts) }))
+    return localeList.map((locale) => ({ relativePath: output[locale], route: alternates[locale], locale, alternates, prebuilt, contents: render(locale, runtimeFacts) }))
   })
 }
 
 const HOME_ROUTES = new Set(['/', '/en/'])
 const SECOND_TIER_ROUTES = new Set(['/quickstart', '/en/quickstart'])
-const LIBRARY_INDEX_ROUTES = new Set(['/features', '/en/features', '/models', '/en/models', '/prompts', '/en/prompts', '/skills', '/en/skills'])
+const LIBRARY_INDEX_ROUTES = new Set(['/docs', '/en/docs', '/features', '/en/features', '/models', '/en/models', '/prompts', '/en/prompts', '/skills', '/en/skills'])
 
 /** sitemap 的 changefreq/priority：首页最高，库首页/上手次之，其余详情页最低——按路由形状分档，不逐页手写。 */
 export function classifyRoute(route) {

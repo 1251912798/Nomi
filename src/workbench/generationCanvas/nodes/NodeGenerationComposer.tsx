@@ -374,7 +374,7 @@ function GenericNodeGenerationComposer({ onFeedback, node, visualSize, host = 'c
           // 内容流里（列表详情）：卡宽恒定、在所在列里水平居中，和上面的预览同一条竖直中线（画布上由定位锚负责，不走这里）。
           inFlow && 'mx-auto',
           'transition-[outline-color] duration-150',
-          isDragOver && 'outline-2 outline-dashed outline-nomi-accent outline-offset-[-2px]',
+          isDragOver && 'outline-2 outline-dashed outline-nomi-ink-40 outline-offset-[-2px]',
         )}
         style={inPanel ? { cursor: 'default', userSelect: 'auto', touchAction: 'auto' } : {
           width: NODE_COMPOSER_WIDTH,

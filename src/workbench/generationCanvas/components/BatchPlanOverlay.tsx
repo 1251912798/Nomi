@@ -98,10 +98,10 @@ export function BatchPlanOverlay() {
               blockedInfo
                 ? waiting
                   // 等待类：不穿红衣——中性 accent-soft，可点（去处理那张卡）。
-                  ? 'bg-nomi-accent-soft text-nomi-accent border-nomi-accent cursor-pointer pointer-events-auto'
+                  ? 'bg-nomi-accent-soft text-nomi-accent border-transparent cursor-pointer pointer-events-auto'
                   // 真失败/环：danger。
                   : 'bg-workbench-danger-soft text-workbench-danger border-workbench-danger cursor-pointer pointer-events-auto'
-                : 'bg-nomi-accent-soft text-nomi-accent border-nomi-accent',
+                : 'bg-nomi-accent-soft text-nomi-accent border-transparent',
             )}
             style={{ left, top }}
             title={blockedInfo ? blockedInfo.detail : t('generationCommon.batchPlan.waveTitle', { wave })}

@@ -6,7 +6,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { once } from 'node:events'
 import { launchNomiApp, repoRoot } from './_launchApp.mjs'
-import { clickOrFail, expect, screenshotSettled } from './_assert.mjs'
+import { clickOrFail, DEFAULT_TIMEOUT_MS, expect, screenshotSettled } from './_assert.mjs'
 import { AGENT_PANEL, COLLAPSED_SHELL, COLLAPSE_BUTTON, ensureAgentPanelOpen, newProjectEntry } from './_shell.mjs'
 import { createAgentRuntimeFixture, FIXTURE_APIMART_API_KEY, FIXTURE_NON_APIMART_VENDOR, FIXTURE_TEXT_MODEL, FIXTURE_VENDOR, flattenRequestText } from './agent-runtime-fixture.mjs'
 import { require as tsxRequire } from 'tsx/cjs/api'
@@ -97,6 +97,19 @@ export const INTERVENTION_REJECT_REASON = '[data-v4-control="reject-reason"]'
 export const COMPOSER = '[data-v4-block="composer"]'
 export const COMPOSER_INPUT = '[data-v4-control="input"]'
 export const COMPOSER_SEND = '[data-v4-control="send"]'
+
+/**
+ * 读 / 断言 Agent 输入框里的字。输入框是富文本编辑器（PromptEditor，句中能插参考缩略图），不是 input / textarea：
+ * toHaveValue / inputValue 会报 "Not an input element"。走查读它的字只走这两个出口（check:walkthroughs 的
+ * composer-input-read 规则拦直接读）；写字用 locator.fill / pressSequentially（编辑器上照常可用）。
+ */
+export async function composerText(input) {
+  const raw = await input.evaluate((el) => ('value' in el && typeof el.value === 'string' ? el.value : el.innerText))
+  return raw.replace(/\n$/, '')
+}
+export async function expectComposerText(input, text, message) {
+  await expect.poll(() => composerText(input), { message, timeout: DEFAULT_TIMEOUT_MS }).toBe(text)
+}
 /** 运行中那颗钮就是 `send`：`data-mode="running"` 时它是停止。别再找第二个 `stop` 挂点。 */
 export const COMPOSER_STOP = `${COMPOSER}[data-mode="running"] ${COMPOSER_SEND}`
 export const COMPOSER_ADD_FILE = '[data-v4-control="add-file"]'

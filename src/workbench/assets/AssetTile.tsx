@@ -181,8 +181,8 @@ export default function AssetTile({ asset, index, tag, onRemove, onClick, dragPr
       <div
         className={cn(
           'relative w-14 h-14 rounded-nomi-sm border border-nomi-line bg-nomi-ink-05 overflow-hidden flex items-center justify-center',
-          clickable && 'cursor-pointer hover:outline hover:outline-2 hover:outline-offset-1 hover:outline-nomi-accent',
-          dragProps?.draggable && 'data-[dragover=true]:outline data-[dragover=true]:outline-2 data-[dragover=true]:outline-nomi-accent',
+          clickable && 'cursor-pointer hover:outline hover:outline-2 hover:outline-offset-1 hover:outline-nomi-ink-30',
+          dragProps?.draggable && 'data-[dragover=true]:outline data-[dragover=true]:outline-2 data-[dragover=true]:outline-nomi-ink-40',
           className,
         )}
         // 稳定走查锚点（同 AssetAddTile 的理由）：按 kind 数 tile 才能验「视频进视频桶、没污染图片桶」。
@@ -206,24 +206,20 @@ export default function AssetTile({ asset, index, tag, onRemove, onClick, dragPr
   )
 }
 
+/** Original asset action frame; pointer and plus vary only the icon and action. */
+export function AssetActionTile({ selected, className, children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement> & { selected?: boolean }): JSX.Element {
+  return <button type="button" {...props} className={cn(
+    'w-14 h-14 rounded-nomi-sm border border-dashed border-nomi-ink-20 bg-nomi-ink-05 text-nomi-ink-40 flex items-center justify-center cursor-pointer hover:border-nomi-ink-30 hover:text-nomi-accent',
+    selected && 'border-nomi-ink-40 bg-nomi-ink-10',
+    className,
+  )}>{children}</button>
+}
+
 // 空态/添加块:虚线「+」,点开统一选择器(样张 v4 的 .tile.add)。
 export function AssetAddTile({ onClick, selected, label, className }: { onClick: () => void; selected?: boolean; label?: string; className?: string }): JSX.Element {
   const { t } = useTranslation()
-  return (
-    <button
-      type="button"
-      // 稳定走查锚点：两处空槽入口的 aria-label 不同（具名槽是「添加{label}」、合并数组槽是「加参考」），
-      // 靠文案选元素会在改文案时静默失效（死选择器既造假红也造假绿）。
-      data-asset-add-tile="true"
-      aria-label={label ?? t('assetLibrary.addReference')}
-      onClick={onClick}
-      className={cn(
-        'w-14 h-14 rounded-nomi-sm border border-dashed border-nomi-ink-20 bg-nomi-ink-05 text-nomi-ink-40 flex items-center justify-center cursor-pointer hover:border-nomi-accent hover:text-nomi-accent',
-        selected && 'outline outline-2 outline-offset-1 outline-nomi-accent',
-        className,
-      )}
-    >
-      <IconPlus size={18} stroke={2} />
-    </button>
-  )
+  return <AssetActionTile data-asset-add-tile="true" aria-label={label ?? t('assetLibrary.addReference')}
+    onClick={onClick} selected={selected} className={className}>
+    <IconPlus size={18} stroke={2} />
+  </AssetActionTile>
 }

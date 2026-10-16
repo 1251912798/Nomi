@@ -226,7 +226,7 @@ export function ComfyuiLocalCard({ vendorKey, instanceName, enabled, baseUrl, mo
             value={addrDraft} onChange={(e) => setAddrDraft(e.target.value)} spellCheck={false}
             aria-label={t('onboardingProviders.comfyLocal.addressLabelCloud')}
             autoFocus
-            className="min-w-[10rem] flex-[1_1_10rem] h-8 px-2 rounded-nomi-sm border border-nomi-line bg-nomi-paper text-caption font-mono text-nomi-ink focus:border-nomi-accent outline-none"
+            className="min-w-[10rem] flex-[1_1_10rem] h-8 px-2 rounded-nomi-sm border border-nomi-line bg-nomi-paper text-caption font-mono text-nomi-ink focus:border-nomi-ink-40 outline-none"
           />
           <DecisionBar
             inline
@@ -397,7 +397,7 @@ export function ComfyuiLocalCard({ vendorKey, instanceName, enabled, baseUrl, mo
             type="button"
             onClick={() => setWorkflowPageKey('')}
             className={cn('self-start inline-flex items-center gap-1.5 h-8 px-3 rounded-nomi-sm border border-nomi-line',
-              'text-caption text-nomi-ink-60 hover:text-nomi-accent hover:border-nomi-accent')}
+              'text-caption text-nomi-ink-60 hover:text-nomi-accent hover:border-nomi-ink-30')}
           >
             {t('comfyuiWorkflowPage.open')}<IconChevronRight size={13} stroke={1.8} />
           </button>
@@ -405,7 +405,7 @@ export function ComfyuiLocalCard({ vendorKey, instanceName, enabled, baseUrl, mo
           {addrRow}
 
           <div className="flex items-center gap-2">
-            <button type="button" onClick={() => void probe()} disabled={checking} className="inline-flex items-center gap-1 h-8 px-2.5 text-caption text-nomi-ink-60 rounded-nomi-sm border border-nomi-line hover:border-nomi-accent hover:text-nomi-accent disabled:opacity-50">
+            <button type="button" onClick={() => void probe()} disabled={checking} className="inline-flex items-center gap-1 h-8 px-2.5 text-caption text-nomi-ink-60 rounded-nomi-sm border border-nomi-line hover:border-nomi-ink-30 hover:text-nomi-accent disabled:opacity-50">
               <IconRefresh size={13} stroke={1.7} className={checking ? 'animate-spin' : undefined} />{checking ? t('onboardingProviders.comfyLocal.checkingInline') : t('onboardingProviders.comfyLocal.recheck')}
             </button>
             <span className="flex-1" />

@@ -85,7 +85,7 @@ export default function StoryboardSelectionToolbar({
           type="button"
           onClick={onAgentHandoff}
           data-storyboard-agent-handoff="selection"
-          className="inline-flex h-7 shrink-0 items-center gap-1 rounded-full border border-nomi-line px-2 text-micro text-nomi-ink-80 hover:border-nomi-accent hover:text-nomi-accent"
+          className="inline-flex h-7 shrink-0 items-center gap-1 rounded-full border border-nomi-line px-2 text-micro text-nomi-ink-80 hover:border-nomi-ink-30 hover:text-nomi-accent"
         >
           <IconRobot size={13} stroke={1.8} />
           {t('storyboardEditor.agentHandoff.selection')}
@@ -122,7 +122,7 @@ export default function StoryboardSelectionToolbar({
           type="button"
           onClick={onSkip}
           data-storyboard-selection-skip={allSkipped ? 'on' : 'off'}
-          className="inline-flex h-7 shrink-0 items-center gap-1 rounded-full border border-nomi-line px-2 text-micro text-nomi-ink-80 hover:border-nomi-accent hover:text-nomi-accent"
+          className="inline-flex h-7 shrink-0 items-center gap-1 rounded-full border border-nomi-line px-2 text-micro text-nomi-ink-80 hover:border-nomi-ink-30 hover:text-nomi-accent"
         >
           <IconPlayerSkipForward size={13} stroke={1.8} />
           {allSkipped ? t('storyboardEditor.selection.unskip') : t('storyboardEditor.selection.skip')}

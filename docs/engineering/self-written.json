@@ -1840,6 +1840,31 @@
       "revisitWhen": "Vitest 提供按用例的「自定义在途资源」钩子，或导出任务表改成按项目实例化、不再是模块级单例时"
     },
     {
+      "id": "docs-site-glue",
+      "capability": "教程站接入胶水：把 Astro Starlight 的产物搬进官网目录、去掉站内链接的 .html、写页面清单并入 sitePages",
+      "status": "justified",
+      "paths": [
+        "scripts/build-marketing-docs.mjs",
+        "scripts/marketing/docs-site.mjs"
+      ],
+      "alternativesChecked": [
+        {
+          "name": "Astro Starlight（接入：侧边栏、页内目录、Pagefind 搜索、提示框、步骤、代码复制、hreflang 都用它自带的，不自写）",
+          "source": "https://starlight.astro.build/"
+        },
+        {
+          "name": "沿用自写的官网页面生成器再写一套文档页（侧边栏、搜索、提示框都要自写，等于第二个生成器）",
+          "source": "docs/plan/2026-10-10-docs-site.md"
+        },
+        {
+          "name": "Starlight 的 build.format: directory（站内链接天然无 .html，但产物是 docs/x/index.html，Cloudflare 的 auto-trailing-slash 会把 /docs/x 301 到 /docs/x/，和官网无结尾斜杠的规范地址冲突）",
+          "source": "https://docs.astro.build/en/reference/configuration-reference/#buildformat"
+        }
+      ],
+      "whyNotIntegrated": "Domain constraint: 只有胶水，没有通用能力在自写——框架本身全部接入；这两个文件只做官网独有的三件事：产物落进官网既有的目录与干净地址规范、页面清单并进 sitePages 这个唯一 owner（sitemap / hreflang / 门岗一视同仁）、孤儿清理不误删。没有现成工具认识官网的 sitePages。",
+      "revisitWhen": "Starlight 提供无 .html 的 file 格式链接，或官网整体迁到 Astro 时，胶水可以删"
+    },
+    {
       "id": "canvas-source-video-session-hooks",
       "capability": "原视频卡共享会话的React消费接口和播放器时钟投影",
       "status": "justified",
@@ -1930,6 +1955,30 @@
       ],
       "whyNotIntegrated": "领域约束：分组框头、框体、节点层与生成框的先后顺序是 Nomi 画布的约定（框头不压节点的生成框，选中节点在节点层内抬起），框架只给出层叠上下文，不知道谁压谁。表本身只是几十个数字，不含通用逻辑。",
       "revisitWhen": "React Flow 提供跨 ViewportPortal 的统一 z 管理接口时复查"
+    },
+    {
+      "id": "agent-inline-reference-admission",
+      "capability": "常驻 Agent 的句中媒体引用：把共享 PromptEditor 的原件缩略图与现有项目附件准入、会话寿命和 canonical claim 对齐",
+      "status": "justified",
+      "paths": [
+        "src/workbench/ai/resident/useAgentReferenceMentions.ts"
+      ],
+      "alternativesChecked": [
+        {
+          "name": "现有 PromptEditor / AssetMentionSuggestion：已接入 TipTap 与共享 mention 原子，继续作为唯一编辑器与 @ 候选交互",
+          "source": "src/workbench/assets/PromptEditor.tsx"
+        },
+        {
+          "name": "现有 mapped bookmark 插入 owner：已接入 ProseMirror 映射，异步原件准入期间仍保留指令内插入位置，没有自写光标映射",
+          "source": "src/workbench/assets/insertAssetMentionWhenReady.ts"
+        },
+        {
+          "name": "现有 useComposerAttachments / projectAgentAttachments：已接入项目动作绑定、原件导入、去重与 canonical claim，继续作为唯一附件 owner",
+          "source": "src/workbench/ai/composer/useComposerAttachments.ts"
+        }
+      ],
+      "whyNotIntegrated": "领域约束：Nomi 的节点来源 resultId、项目原件 claim 与指令句中引用必须一一对应；删除最后一处引用才释放附件，项目/会话切换及在途准入不得把原件插入另一个草稿。编辑、@ 弹层、光标映射、文件导入和身份校验已全部复用现有 owner；该 hook 只连接这些 Nomi 领域身份与寿命，没有新增通用编辑器、上传器、选择器或参考 store。方案查证：docs/plan/2026-10-12-reference-entry.md。",
+      "revisitWhen": "现有项目附件 owner 原生拥有句中引用的准入/删除/会话寿命接口时，把本 hook 的接线收回该 owner 并删除此登记；不得并存第二套引用身份。"
     }
   ]
 }

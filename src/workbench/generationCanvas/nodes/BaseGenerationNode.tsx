@@ -16,7 +16,7 @@ import { ImageQuickActionsToolbarHost } from '../quickActions/ImageQuickActionsT
 import { NodeVersionCardsHost } from './versionCards/NodeVersionCardsHost'
 import { nodeHasVersionCards } from './versionCards/nodeVersionEntries'
 import { useLabelCoveredByVersionGrid } from './versionCards/versionGridCoverage'
-import { EmptyNodeVariantToolbar } from './NodeFloatingToolbar'
+import { EmptyNodeVariantToolbar, NodeHoverTimelineHandle } from './NodeFloatingToolbar'
 import PanoramaNodeToolbar from './render/PanoramaNodeToolbar'
 import { useNodeImageEditing } from './useNodeImageEditing'
 import { isLocalImageOpPending, isRemoveBackgroundPending, isRemoveBackgroundResult } from './localImageOpPhase'
@@ -26,7 +26,6 @@ import { lazyWithChunkBoundary } from '../../../ui/chunkBoundary'
 import { PendingGenerationPlaceholder, LocalImageOpPendingStatus, RemoveBackgroundPendingPlaceholder } from './render/CardCommon'
 import { previewBackgroundClass } from './render/previewBackground'
 import PanoramaUploadFallback from './PanoramaUploadFallback'
-import { TimelineNotchDragHandle } from './NodeTimelineDragHandles'
 import { cn } from '../../../utils/cn'
 import { DeferredNodeImage } from './DeferredNodeMedia'
 import { NodeVideoSessionProvider } from './NodeVideoSession'
@@ -38,8 +37,6 @@ import { NodeGeneratingOverlay } from './NodeGeneratingOverlay'
 import { NodeGenerationStatus } from './NodeGenerationStatus'
 import { ProductionShotOverlays } from './ProductionShotOverlays'
 import { useProductionNodeRetry } from './useProductionNodeRetry'
-import { encodeTimelineGenerationNodeDragPayload, TIMELINE_GENERATION_NODE_DRAG_MIME } from '../../timeline/timelineDragPayload'
-import { addGenerationNodeToTimelineEnd } from '../../timeline/addNodeToTimelineEnd'
 import { confirmAndRunNode } from '../runner/generationRunController'
 import { selectCanvasNodeById, selectCanvasNodeExists } from '../store/canvasNodeGenerationIndex'
 import { localStepRedoOf } from './localStepRedo'
@@ -54,7 +51,6 @@ import { anchorFreezeToolbarProps } from '../fixation/freezeAnchor'
 import { TechnicalReviewBadge } from './TechnicalReviewBadge'
 import { DerivedReadyBadge } from '../quickActions/DerivedReadyBadge'
 import { isDerivedPromptReady } from '../quickActions/deriveFromNode'
-import { canDragGenerationNodeToTimeline } from '../model/timelineDragAffordance'
 import { useArtifactNodeSlots } from './artifact/artifactNodeSlots'
 import { RESIZE_DIRECTIONS, getNodeSizeBounds, FOCUS_GENERATION_NODE_EVENT, resolveNodeVisualSize } from './nodeSizing'
 import { NodeLabelRow } from './NodeLabelRow'
@@ -122,19 +118,6 @@ function BaseGenerationNodeImpl({
   const { openMediaPreview, mediaPreviewControls, mediaPreviewDoubleClick } = useNodeMediaPreview(node, selected && !isMultiSelectActive && !readOnly, () => setProvenanceOpen(true), reportFeedback)
   const sizeBounds = getNodeSizeBounds(node.kind)
 
-  const handleTimelineDragStart = (event: React.DragEvent<HTMLElement>) => {
-    event.stopPropagation()
-    event.dataTransfer.effectAllowed = 'copy'
-    event.dataTransfer.setData(TIMELINE_GENERATION_NODE_DRAG_MIME, encodeTimelineGenerationNodeDragPayload(node))
-  }
-
-  const handleAddToTimelineAtPlayhead = (event: React.MouseEvent<HTMLElement> | React.KeyboardEvent<HTMLElement>) => {
-    event.preventDefault()
-    event.stopPropagation()
-    const liveNode = useGenerationCanvasStore.getState().nodes.find((candidate) => candidate.id === node.id) || node
-    void addGenerationNodeToTimelineEnd(liveNode)
-  }
-
   const mediaMeasurement = useNodeMediaMeasurement(node)
 
   const videoPreview = useNodeVideoPreviewIntent(node.result?.type === 'video')
@@ -184,11 +167,6 @@ function BaseGenerationNodeImpl({
     commitPersistedChange,
   })
   const isGenerating = status === 'queued' || status === 'running'
-  const canSendToTimeline = canDragGenerationNodeToTimeline(node, { readOnly })
-  // 「拖进时间轴」只有顶部这一个把手。卡片左右两侧归连线「+」圈（generationCanvasReactFlowVisualContract.ts）；
-  // 2026-09-24 用户反馈「多结果卡片拉环不见了」：旧的侧边拖柄就住在右侧「+」圈的位置上、层级还更高，把圈整个盖住，
-  // 于是删掉那一个。版本卡片铺开是持久的（10-06），铺着也要能拖进时间轴、能接着生成，所以这里不再看铺没铺开。
-  const showTimelineNotch = canSendToTimeline
   // 2026-09-05：这几条的 zh+en 词条一直都在，只是渲染处写死了中文（英文界面恒显中文），现接回词条。
   const sourceNodeLabel = sourceNodeTitle || (node.derivedFrom && !sourceNodeExists ? t('generationCommon.node.sourceMissing') : node.derivedFrom || '')
   const sourceCategoryName = sourceNodeCategoryId ? getBuiltinCategoryById(sourceNodeCategoryId)?.name : null
@@ -456,12 +434,7 @@ function BaseGenerationNodeImpl({
 
       {artifactSlots.toolbar}
 
-      {showTimelineNotch ? (
-        <TimelineNotchDragHandle
-          onAddAtPlayhead={handleAddToTimelineAtPlayhead}
-          onDragStart={handleTimelineDragStart}
-        />
-      ) : null}
+      {!readOnly ? <NodeHoverTimelineHandle nodeId={node.id} readOnly={readOnly} /> : null}
 
       {!localImageOpPending && !isTextKind ? <NodeGeneratingOverlay reportFeedback={reportFeedback} node={node} motion={waitingMotion} preset={waitingPreset} /> : null}
 
@@ -482,7 +455,7 @@ function BaseGenerationNodeImpl({
                 'generation-canvas-v2-node__resize-zone',
                 `generation-canvas-v2-node__resize-zone--${direction}`,
                 'absolute z-[6] p-0 border-0 bg-transparent',
-                'focus-visible:outline-2 focus-visible:outline-nomi-accent focus-visible:outline-offset-2',
+                'focus-visible:outline-2 focus-visible:outline-nomi-ink focus-visible:outline-offset-2',
                 (direction === 'n' || direction === 's') && 'left-[10px] w-[calc(100%-20px)] h-[10px] cursor-ns-resize',
                 direction === 'n' && 'top-[-5px]',
                 direction === 's' && 'bottom-[-5px]',

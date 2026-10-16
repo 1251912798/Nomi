@@ -143,7 +143,7 @@ export function WhiteboardLibraryPanel({
                       'group overflow-hidden rounded-nomi-sm border bg-nomi-paper text-caption shadow-nomi-sm',
                       'cursor-grab active:cursor-grabbing',
                       active
-                        ? 'border-nomi-accent bg-nomi-accent-soft text-nomi-accent'
+                        ? 'border-transparent bg-nomi-accent-soft text-nomi-accent'
                         : 'border-nomi-line-soft text-nomi-ink-80 hover:border-nomi-line hover:bg-nomi-ink-05',
                     )}
                     title={t('generationCommon.whiteboard.library.dragBoard')}
