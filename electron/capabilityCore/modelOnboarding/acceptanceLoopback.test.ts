@@ -21,6 +21,12 @@ import os from "node:os";
 import path from "node:path";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { MCP_TOOL_RESOLVER } from "../mcpToolCatalog";
+import { validateToolArguments } from "../mcpProtocol";
+import { dispatch } from "../dispatcher";
+import { setRendererTarget, CAPABILITY_APPLY_REPLY_CHANNEL } from "../rendererBridge";
+import { runTask } from "../../runtime";
+
 const ipcListeners = vi.hoisted(() => ({ handlers: new Map<string, (event: unknown, payload: unknown) => void>() }));
 
 vi.mock("electron", async (importOriginal) => {
@@ -90,11 +96,6 @@ describe("验收 · 接一家 Higgsfield 形状的供应商要几跳（基线 14
   });
 
   it("读套件 → 交整份卡 → 填 key → 试跑，四跳走到产物", async () => {
-    const { MCP_TOOL_RESOLVER } = await import("../mcpToolCatalog");
-    const { validateToolArguments } = await import("../mcpProtocol");
-    const { dispatch } = await import("../dispatcher");
-    const { setRendererTarget, CAPABILITY_APPLY_REPLY_CHANNEL } = await import("../rendererBridge");
-    const { runTask } = await import("../../runtime");
 
     const ctx = { origin: { host: "claude" }, runTask } as never;
     async function call(name: string, args: Record<string, unknown>): Promise<Record<string, unknown>> {
@@ -201,9 +202,6 @@ describe("验收 · 接一家 Higgsfield 形状的供应商要几跳（基线 14
    * 判据全部来自同一个函数 `spendDecidedByPolicy`——试跑不自己再答一遍。
    */
   it("全自动档：不弹卡、直接跑，账本上写着是策略代答的", async () => {
-    const { dispatch } = await import("../dispatcher");
-    const { setRendererTarget } = await import("../rendererBridge");
-    const { runTask } = await import("../../runtime");
     // 窗口**根本不存在**：全自动档下这一跳也必须跑得完，否则「不弹卡」就是假的。
     setRendererTarget(null);
     const tried = await dispatch("model.onboarding.try", {
@@ -219,9 +217,6 @@ describe("验收 · 接一家 Higgsfield 形状的供应商要几跳（基线 14
   });
 
   it("非全自动档 + 没有 Nomi 窗口：诚实失败，不偷偷放行", async () => {
-    const { dispatch } = await import("../dispatcher");
-    const { setRendererTarget } = await import("../rendererBridge");
-    const { runTask } = await import("../../runtime");
     setRendererTarget(null);
     const refused = await dispatch("model.onboarding.try", {
       vendorKey, modelKey: "relay-paint", prompt: "a third apple",
@@ -236,8 +231,6 @@ describe("验收 · 接一家 Higgsfield 形状的供应商要几跳（基线 14
   });
 
   it("模型永远拿不到「替用户批准」的参数：任何 approve/confirm/trust 字段都进不了这张 schema", async () => {
-    const { MCP_TOOL_RESOLVER } = await import("../mcpToolCatalog");
-    const { validateToolArguments } = await import("../mcpProtocol");
     const tool = MCP_TOOL_RESOLVER.resolve("nomi_try_model")!;
     for (const field of ["approved", "approve", "confirmed", "confirm", "trusted", "trust", "grantId", "receipt", "autoApprove", "skipConfirmation"]) {
       const invalid = validateToolArguments(tool.name, tool.inputSchema, {
