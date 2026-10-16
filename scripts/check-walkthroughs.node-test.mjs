@@ -19,6 +19,7 @@ import { fileURLToPath } from 'node:url'
 import { cleanupTestTemp, makeTempDir } from './_test-temp.mjs'
 import { judgeBaselineGrowth, judgeBaseUnavailable } from './lib/walkthroughBaselineGuard.mjs'
 import { findRawShellAnchors, RAW_SHELL_EXEMPT } from './lib/rawShellAnchors.mjs'
+import { findComposerInputReads } from './lib/composerInputReads.mjs'
 
 const SRC = `
   const a = <button aria-label="打开设置" />
@@ -261,5 +262,20 @@ describe('raw-shell-anchor：外壳位置只准经 _shell.mjs（#1136 CI 全红�
   it('豁免表每一条都写了原因，且出口文件在里面', () => {
     assert.ok(RAW_SHELL_EXEMPT.has('tests/ux/_shell.mjs'))
     for (const [file, reason] of RAW_SHELL_EXEMPT) assert.ok(reason.length >= 6, `${file} 的豁免原因太短`)
+  })
+})
+
+describe('composer-input-read：Agent 输入框是富文本编辑器，不能当 input 读（#1183 CI 红的类根因）', () => {
+  it('直接读 / 经变量读 / 旧 textarea 选择器都抓', () => {
+    assert.equal(findComposerInputReads("await expect(panel.locator(COMPOSER_INPUT)).toHaveValue('x')").length, 1)
+    assert.equal(findComposerInputReads("const d = await win.locator(`${P} ${COMPOSER_INPUT}`).inputValue()").length, 1)
+    assert.equal(findComposerInputReads("const box = canvas.locator(COMPOSER_INPUT)\nawait expect(box, 'm').toHaveValue('x')").length, 1)
+    assert.equal(findComposerInputReads("const box = canvas.locator(COMPOSER_INPUT)\nconst v = await box.inputValue()").length, 1)
+    assert.equal(findComposerInputReads("win.locator('textarea[data-v4-control=\"input\"]').fill('x')").length, 1)
+  })
+  it('统一出口、写字、别的输入框不误伤', () => {
+    assert.deepEqual(findComposerInputReads("await expectComposerText(panel.locator(COMPOSER_INPUT), 'x', 'm')"), [])
+    assert.deepEqual(findComposerInputReads("await panel.locator(COMPOSER_INPUT).fill('x')"), [])
+    assert.deepEqual(findComposerInputReads("const search = win.locator('#q')\nawait expect(search).toHaveValue('x')"), [])
   })
 })

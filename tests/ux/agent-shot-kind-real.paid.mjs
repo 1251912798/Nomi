@@ -27,8 +27,7 @@ import { stationTimeout } from './_station-budget.mjs'
 import { laneMessages, readLaneTranscripts } from './agent-lane-observer.mjs'
 import {
   APPROVAL_CARD, CANVAS_PANEL, COMPOSER, COMPOSER_INPUT,
-  chooseAssistantModel, closeSpendCard, newConversation, openCanvas, sendCanvas, waitForV4TurnIdle,
-} from './agent-runtime-walk-support.mjs'
+  chooseAssistantModel, closeSpendCard, newConversation, openCanvas, sendCanvas, waitForV4TurnIdle, composerText } from './agent-runtime-walk-support.mjs'
 
 const LABEL = process.env.NOMI_REAL_LABEL || 'run'
 const IMAGE = { vendorKey: 'apimart', modelKey: 'gemini-3.1-flash-image-preview' }
@@ -73,7 +72,7 @@ function cardKindOf(title) {
 async function sendAccepted(win, text) {
   const input = win.locator(`${CANVAS_PANEL} ${COMPOSER_INPUT}`)
   const running = win.locator(`${CANVAS_PANEL} ${COMPOSER}[data-mode="running"]`)
-  const accepted = async () => (await running.count()) > 0 || ((await input.innerText().catch(() => '')) || (await input.inputValue().catch(() => ''))).trim() === ''
+  const accepted = async () => (await running.count()) > 0 || (await composerText(input).catch(() => '')).trim() === ''
   for (let attempt = 1; attempt <= 3; attempt += 1) {
     await sendCanvas(win, text)
     const ok = await expect.poll(accepted, { timeout: DEFAULT_TIMEOUT_MS }).toBe(true).then(() => true, () => false)

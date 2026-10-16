@@ -12,6 +12,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { collectAriaLabelLiterals, extractInterpolatedValues, isAriaLabelAlive } from './lib/ariaLabelLiterals.mjs'
 import { findRawShellAnchors, RAW_SHELL_EXEMPT } from './lib/rawShellAnchors.mjs'
+import { findComposerInputReads } from './lib/composerInputReads.mjs'
 import { findPositionalProjectOpens } from './lib/positionalProjectOpen.mjs'
 import { collectRenderText, countDeadDataAttributesAtRevision, findDeadDataAttributes } from './lib/deadDataAttributes.mjs'
 import { judgeBaselineGrowth, judgeBaseUnavailable, readJsonAtRevision, resolveMergeBase } from './lib/walkthroughBaselineGuard.mjs'
@@ -237,6 +238,15 @@ const RULES = [
     // 2026-10-09 #1136 外壳重设计 CI 全红的类根因：位置抄了很多份。判定逻辑住 scripts/lib/rawShellAnchors.mjs（可单测）。
     scan(code, file) {
       return findRawShellAnchors(code).map((hit) => ({ ...hit, text: `${hit.text} —— 改调 ${hit.use}`, file }))
+    },
+  },
+  {
+    id: 'composer-input-read',
+    label: '走查把 Agent 输入框当 input / textarea 读（toHaveValue / inputValue），输入框是富文本编辑器，会报 Not an input element——读文字走 agent-runtime-walk-support.mjs 的 composerText / expectComposerText',
+    appliesTo: (file) => file.includes(`${path.sep}tests${path.sep}ux${path.sep}`) || file.includes(`${path.sep}evals${path.sep}`),
+    // 2026-10-12 #1183 CI 红的类根因：读输入框文字的写法抄了十几份。判定逻辑住 scripts/lib/composerInputReads.mjs（可单测）。
+    scan(code, file) {
+      return findComposerInputReads(code).map((hit) => ({ ...hit, text: `${hit.text} —— ${hit.use}`, file }))
     },
   },
 ]

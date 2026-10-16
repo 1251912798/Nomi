@@ -1930,6 +1930,30 @@
       ],
       "whyNotIntegrated": "领域约束：分组框头、框体、节点层与生成框的先后顺序是 Nomi 画布的约定（框头不压节点的生成框，选中节点在节点层内抬起），框架只给出层叠上下文，不知道谁压谁。表本身只是几十个数字，不含通用逻辑。",
       "revisitWhen": "React Flow 提供跨 ViewportPortal 的统一 z 管理接口时复查"
+    },
+    {
+      "id": "agent-inline-reference-admission",
+      "capability": "常驻 Agent 的句中媒体引用：把共享 PromptEditor 的原件缩略图与现有项目附件准入、会话寿命和 canonical claim 对齐",
+      "status": "justified",
+      "paths": [
+        "src/workbench/ai/resident/useAgentReferenceMentions.ts"
+      ],
+      "alternativesChecked": [
+        {
+          "name": "现有 PromptEditor / AssetMentionSuggestion：已接入 TipTap 与共享 mention 原子，继续作为唯一编辑器与 @ 候选交互",
+          "source": "src/workbench/assets/PromptEditor.tsx"
+        },
+        {
+          "name": "现有 mapped bookmark 插入 owner：已接入 ProseMirror 映射，异步原件准入期间仍保留指令内插入位置，没有自写光标映射",
+          "source": "src/workbench/assets/insertAssetMentionWhenReady.ts"
+        },
+        {
+          "name": "现有 useComposerAttachments / projectAgentAttachments：已接入项目动作绑定、原件导入、去重与 canonical claim，继续作为唯一附件 owner",
+          "source": "src/workbench/ai/composer/useComposerAttachments.ts"
+        }
+      ],
+      "whyNotIntegrated": "领域约束：Nomi 的节点来源 resultId、项目原件 claim 与指令句中引用必须一一对应；删除最后一处引用才释放附件，项目/会话切换及在途准入不得把原件插入另一个草稿。编辑、@ 弹层、光标映射、文件导入和身份校验已全部复用现有 owner；该 hook 只连接这些 Nomi 领域身份与寿命，没有新增通用编辑器、上传器、选择器或参考 store。方案查证：docs/plan/2026-10-12-reference-entry.md。",
+      "revisitWhen": "现有项目附件 owner 原生拥有句中引用的准入/删除/会话寿命接口时，把本 hook 的接线收回该 owner 并删除此登记；不得并存第二套引用身份。"
     }
   ]
 }

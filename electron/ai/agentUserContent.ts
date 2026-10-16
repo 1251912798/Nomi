@@ -1,8 +1,12 @@
+import { mediaKindFromContentType } from '../assets/mediaTypes'
+import { mentionUrlsInOrder, numberPromptReferences, projectPromptForSend } from '../shared/storyboard/promptMentions'
 // 把「文字 prompt + 待发附件」拼成 Vercel AI SDK 的 user message content。
 // 纯函数（字节读取由 resolveBytes 回调注入），便于单测。
 // 图片 → image part；PDF → file part（按模型能力门控）；其它文档 → 计数提示（S4 抽文本接手）。
 
 export type AgentUserAttachment = {
+  /** Main-resolved original identity; never accept renderer URLs as references. */
+  assetId?: string
   url: string
   contentType: string
   fileName: string
@@ -46,6 +50,21 @@ function isPdf(attachment: AgentUserAttachment): boolean {
   return attachment.contentType.toLowerCase().includes('pdf') || attachment.fileName.toLowerCase().endsWith('.pdf')
 }
 
+function mediaReferences(attachments: readonly AgentUserAttachment[]) {
+  return attachments.flatMap(attachment => {
+    const kind = mediaKindFromContentType(attachment.contentType)
+    return attachment.assetId && (kind === 'image' || kind === 'video' || kind === 'audio')
+      ? [{attachment, url:attachment.url, kind}] : []
+  })
+}
+
+/** Canonical main-resolved URLs bind each inline instruction to its exact original. */
+export function projectAgentPromptForSend(prompt: string, attachments: readonly AgentUserAttachment[]): string {
+  const references = numberPromptReferences(mediaReferences(attachments))
+  if (mentionUrlsInOrder(prompt).some(url=>!references.some(reference=>reference.url===url))) throw new Error('project_agent_attachment_invalid')
+  return projectPromptForSend(prompt,references)
+}
+
 export async function buildAgentUserContent(params: {
   prompt: string
   attachments?: AgentUserAttachment[]
@@ -58,6 +77,10 @@ export async function buildAgentUserContent(params: {
   const { prompt, attachments = [], supportsImageInput, supportsPdfInput, resolveBytes, extractText } = params
   if (!attachments.length) return prompt
 
+  const mediaAttachments = mediaReferences(attachments)
+  const ordered = numberPromptReferences(mediaAttachments)
+  const references = mediaAttachments.map(({attachment:att},index) => ({ reference:`@${ordered[index].kind}${ordered[index].index}`, assetId: att.assetId, name: att.fileName, contentType: att.contentType }))
+  const referenceBlock = references.length ? `\n\n[Selected original media references]\n${JSON.stringify(references)}\nThese assetIds identify the exact user-selected originals. Reuse them as generation references when requested. Video/audio have not been watched or listened to: look_at_media reads technical facts only; do not invent their visible or audible content.` : ''
   const mediaParts: Array<ImagePart | FilePart> = []
   const docBlocks: string[] = []
   let droppedImages = 0
@@ -65,6 +88,12 @@ export async function buildAgentUserContent(params: {
   let failedDocs = 0
 
   for (const att of attachments) {
+    if (/^(video|audio)\//.test(att.contentType)) {
+      // Lane supports text/images. Preserve executable original references rather
+      // than silently trying to extract an audiovisual file as a document.
+      if (!att.assetId) throw new Error('project_agent_attachment_invalid')
+      continue
+    }
     if (att.kind === 'image') {
       if (!supportsImageInput) { droppedImages += 1; continue }
       const bytes = resolveBytes(att.url)
@@ -94,7 +123,7 @@ export async function buildAgentUserContent(params: {
   }
 
   const docSection = docBlocks.length > 0 ? `\n\n[附件文档内容]\n${docBlocks.join('\n\n')}` : ''
-  const text = `${[prompt, ...notes].filter(Boolean).join('\n\n')}${docSection}`
+  const text = `${[prompt, ...notes].filter(Boolean).join('\n\n')}${docSection}${referenceBlock}`
   if (!mediaParts.length) return text
   return [{ type: 'text', text }, ...mediaParts]
 }

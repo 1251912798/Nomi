@@ -73,6 +73,8 @@ const MODE_BY_STEP_PARAM: Record<string, WorkspaceMode> = {
 
 type WorkspaceSlotProps = {
     active: boolean;
+    /** 藏起来时冻结子树（React <Activity>）：不再跟 store 重渲染、effect 全卸。只给渲染贵又不需要在后台保持最新的工作区用。 */
+    freezeWhenHidden?: boolean;
     children: React.ReactNode;
     label: string;
 };
@@ -96,6 +98,7 @@ function WorkspaceLoading({ label }: { label: string }): JSX.Element {
 
 function WorkspaceSlot({
     active,
+    freezeWhenHidden = false,
     children,
     label,
 }: WorkspaceSlotProps): JSX.Element {
@@ -119,7 +122,7 @@ function WorkspaceSlot({
             hidden={!active}>
             <React.Suspense
                 fallback={active ? <WorkspaceLoading label={label} /> : null}>
-                {children}
+                {freezeWhenHidden ? <React.Activity mode={active ? "visible" : "hidden"}>{children}</React.Activity> : children}
             </React.Suspense>
         </div>
     );
@@ -316,7 +319,7 @@ export default function WorkbenchShell({
                 </WorkspaceSlot>
             ) : null}
             {mountedWorkspaceModes.includes("storyboard") ? (
-                <WorkspaceSlot active={workspaceMode === "storyboard"} label={t("workspace.storyboard")}>
+                <WorkspaceSlot active={workspaceMode === "storyboard"} freezeWhenHidden label={t("workspace.storyboard")}>
                     <StoryboardWorkspace projectId={projectId} aiCollapsed={workspaceAiCollapsed} agentDockRef={agentDockRefs.storyboard} />
                 </WorkspaceSlot>
             ) : null}
