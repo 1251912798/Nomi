@@ -13,9 +13,14 @@
 //   · Agent 三形态：小球（`data-agent-ball`）/ 浮窗 / 停靠；面板头部的三选一钮是 `data-agent-form-to="ball|float|dock"`。
 //     生成页默认是小球，创作 / 分镜 / 预览默认停靠。面板在小球形态下仍挂着，但在 hidden 容器里——「在不在」用 attached、
 //     「看得见」用 visible，别混。
-//   · 模型设置 = 顶栏齿轮（`data-shell-settings`）→ 设置弹窗里的「模型」页签（项目库右上那颗直达模型页的钮没有了）。
-//   · 左栏抽屉：左栏的 `data-shell-rail-item="docs|catalog|assets|flows|skills|prompts"`，点一下开、再点收；
-//     画布分组 / 分类目录在「目录」（catalog）里。
+//   · 设置 = 顶栏齿轮（`data-shell-settings`）→ 设置弹窗（`data-settings-dialog`，页签 `data-settings-tab-id=file|models|ai|automation|general|about`，关闭钮 `data-settings-close`）。
+//     模型设置 = 其中的「模型」页签（项目库右上那颗直达模型页的钮没有了）；语言 = 「通用」页签里的 `data-settings-locale=zh-CN|en` 分段（顶栏没有语言控件了）。
+//   · 三个工作区 = 顶栏正中的分段（`data-shell-stage-center`）里 `data-mode=creation|generation|preview` 三颗（读 `aria-current="page"` 判当前在哪）。
+//     只有打开了项目才有；项目库里没有。
+//   · 左栏抽屉：左栏的 `data-shell-rail-item="docs|catalog|assets|flows|skills|prompts"`，点一下开、再点收；抽屉本体 `data-shell-drawer=<项>`，
+//     抽屉里的内容区是它下面的 `section[aria-label]`。画布分组 / 分类目录在「目录」（catalog）里；文稿 / 方案行在「文稿」（docs）里。
+//     抽屉是浮层：点空白、再点同一项、Esc、**选中别的文稿 / 方案**、切项目都会把它收起——走查读完抽屉里的东西要重开，别假设它常驻。
+//     左栏本身可以收起（只剩顶栏里一颗 `data-shell-rail-expand`）；项目库页没有左栏。
 //   · 画布底部（拍板稿 Main 板）：加节点条在内容区底部正中（横排，`.generation-canvas-v2-toolbar`：图片 视频 声音 文字 剪辑 | 导入 +，
 //     「+」里是空间一组）；左下缩放簇「⛶ | − 100% + | ⋯」（`.generation-canvas-v2__zoom-bar`），重置视图 / 画框 / 整理 / 小地图 / 操作帮助 / 缩放滑块都收在 ⋯ 里。
 //   · 新建项目：空库是三张动作卡里的「新建空白项目」；库里有项目时是右上角的「新建项目」钮。
@@ -45,7 +50,9 @@ const DOCK_LAYER = '[data-shell-agent-layer][data-agent-form="dock"]'
 const PROJECT_MENU = '[data-shell-project-menu]'
 const BACK_TO_LIBRARY_ITEM = new RegExp(`^(${alternatives(['appShell.topbar.backToLibrary'])})$`)
 const SETTINGS_BUTTON = '[data-shell-settings]'
-const MODELS_TAB = '[data-settings-tab-id="models"]'
+const SETTINGS_DIALOG = '[data-settings-dialog]'
+const STAGE_CENTER = '[data-shell-stage-center]'
+const RAIL_EXPAND = '[data-shell-rail-expand]'
 const RAIL_ITEM = (item) => `[data-shell-rail-item="${item}"]`
 const NEW_PROJECT_ENTRY = new RegExp(`^(${alternatives(['library.newBlankProject', 'appShell.library.newProject'])})`)
 
@@ -98,11 +105,94 @@ export function modelSettingsEntry(win, { where = 'any' } = {}) {
   return win.locator(SETTINGS_BUTTON).first()
 }
 
+/**
+ * 打开设置弹窗（可选直接落到某个页签）。已经开着就不再点齿轮；页签已经是当前页就不再点。
+ * 项目库与项目里是同一条顶栏，所以哪都能用。弹窗没出来就抛，不静默。
+ * @param {'file'|'models'|'ai'|'automation'|'general'|'about'} [tab]
+ */
+export async function openSettings(win, { tab, label = 'open settings', timeout } = {}) {
+  const budget = timeout === undefined ? {} : { timeout }
+  const dialog = win.locator(SETTINGS_DIALOG).first()
+  if (!(await dialog.isVisible().catch(() => false))) {
+    await clickOrFail(modelSettingsEntry(win), `${label}（顶栏齿轮）`, budget)
+    await expect(dialog, `${label}：点了顶栏齿轮，设置弹窗没出来`).toBeVisible(budget)
+  }
+  if (tab) {
+    const tabButton = dialog.locator(`[data-settings-tab-id="${tab}"]`)
+    if ((await dialog.getAttribute('data-settings-tab')) !== tab) await clickOrFail(tabButton, `${label}（设置里的「${tab}」页签）`, budget)
+    await expect(dialog, `${label}：点完设置仍不在「${tab}」页签`).toHaveAttribute('data-settings-tab', tab, budget)
+  }
+  return dialog
+}
+
+/** 设置弹窗（只返回定位器：判它在不在 / 在里面找东西用）。 */
+export function settingsDialog(win) {
+  return win.locator(SETTINGS_DIALOG).first()
+}
+
+/** 关设置弹窗（点它的关闭钮）。没开就什么也不做。 */
+export async function closeSettings(win, label = 'close settings') {
+  const dialog = win.locator(SETTINGS_DIALOG).first()
+  if (!(await dialog.isVisible().catch(() => false))) return
+  await clickOrFail(dialog.locator('[data-settings-close]'), label)
+  await expect(dialog, `${label}：点了关闭，设置弹窗还在`).toBeHidden()
+}
+
 /** 打开设置里的模型区：点顶栏齿轮、再点设置弹窗里的「模型」页签。 */
 export async function openModelSettings(win, { label = 'open model settings', timeout } = {}) {
+  return openSettings(win, { tab: 'models', label, timeout })
+}
+
+/**
+ * 模型设置首页 →「自定义 API / 中转站」接入向导（弹出「添加一个 AI 模型」）。
+ * 没有已接入项时这一行直接摆在首页；有已接入项时它收在「其他接入方式」折叠里，先展开。点完等向导出现。
+ */
+export async function openCustomApiWizard(win, { label = 'open custom API wizard', timeout } = {}) {
   const budget = timeout === undefined ? {} : { timeout }
-  await clickOrFail(modelSettingsEntry(win), `${label}（顶栏齿轮）`, budget)
-  await clickOrFail(win.locator(`[data-settings-dialog] ${MODELS_TAB}`), `${label}（设置里的「模型」页签）`, budget)
+  await openModelSettings(win, { label, timeout })
+  const customApi = win.locator('[data-model-home-action="custom-api"]').first()
+  await expect(customApi.or(win.locator('[data-model-home-action="other-ways"]').first()).first(), `${label}：模型设置首页上既没有「自定义 API」也没有「其他接入方式」`).toBeVisible(budget)
+  if (!(await customApi.isVisible().catch(() => false))) await clickOrFail(win.locator('[data-model-home-action="other-ways"]').first(), `${label}（展开「其他接入方式」）`, budget)
+  await clickOrFail(customApi, `${label}（点「自定义 API / 中转站」）`, budget)
+}
+
+/**
+ * 切应用语言：开设置 →「通用」→ 点语言分段里的那一项 → 关设置。外壳顶栏已经没有语言控件，语言只住设置「通用」里。
+ * 已经是该语言就只确认、不重复点。切完等分段的按下态跟上（语言是同步生效的，不加等待）。
+ * @param {'zh-CN'|'en'} locale
+ */
+export async function setAppLanguage(win, locale, label = `switch language to ${locale}`) {
+  const dialog = await openSettings(win, { tab: 'general', label })
+  const option = dialog.locator(`[data-settings-locale="${locale}"]`)
+  if ((await option.getAttribute('aria-pressed')) !== 'true') await clickOrFail(option, label)
+  await expect(option, `${label}：点完语言分段没有按下`).toHaveAttribute('aria-pressed', 'true')
+  await closeSettings(win, `${label}（关设置）`)
+}
+
+/**
+ * 读当前应用语言（设置「通用」里语言分段的按下项），读完关设置。外壳没有别处显示当前语言。
+ * @returns {Promise<'zh-CN'|'en'>}
+ */
+export async function readAppLanguage(win, label = 'read app language') {
+  const dialog = await openSettings(win, { tab: 'general', label })
+  const pressed = dialog.locator('[data-settings-locale][aria-pressed="true"]')
+  await expect(pressed, `${label}：语言分段里没有任何一项按下`).toHaveCount(1)
+  const locale = await pressed.getAttribute('data-settings-locale')
+  await closeSettings(win, `${label}（关设置）`)
+  return locale
+}
+
+/**
+ * 切工作区（创作 / 生成 / 预览）：点顶栏正中分段里的那一颗。已经在目标工作区就什么也不做。
+ * 只有打开了项目才有这个分段——在项目库里调用会明确报错，不静默。
+ * @param {'creation'|'generation'|'preview'} mode
+ */
+export async function switchWorkspace(win, mode, label = `switch to ${mode} workspace`) {
+  const step = win.locator(`${STAGE_CENTER} [data-mode="${mode}"]`).first()
+  await expect(step, `${label}：顶栏里没有工作区分段（只有打开了项目才有；这里还在项目库？）`).toBeVisible()
+  if ((await step.getAttribute('aria-current')) === 'page') return
+  await clickOrFail(step, label)
+  await expect(step, `${label}：点完还没切过去`).toHaveAttribute('aria-current', 'page')
 }
 
 /**
@@ -113,16 +203,53 @@ export function newProjectEntry(win) {
   return win.getByRole('button', { name: NEW_PROJECT_ENTRY }).first()
 }
 
+/** 左栏抽屉的项（与 ShellRail 的 `data-shell-rail-item` 一一对应）。 */
+export const RAIL_DRAWER_ITEMS = ['docs', 'catalog', 'assets', 'flows', 'skills', 'prompts']
+const assertRailItem = (item) => {
+  if (!RAIL_DRAWER_ITEMS.includes(item)) throw new Error(`没有这个左栏抽屉项「${item}」（可选：${RAIL_DRAWER_ITEMS.join(' / ')}）`)
+}
+
+/** 左栏上的某一颗（只返回定位器：判它在不在 / 按下态用）。 */
+export function railItem(win, item) {
+  assertRailItem(item)
+  return win.locator(RAIL_ITEM(item)).first()
+}
+
+/** 抽屉本体（`data-shell-drawer=<项>`，开着才存在）。 */
+export function railDrawer(win, item) {
+  assertRailItem(item)
+  return win.locator(`[data-shell-drawer="${item}"]`).first()
+}
+
+/** 抽屉里的内容区（各库沿用原来的面板名当 aria-label：素材库 / 技能库…；走查在里面找东西要钉在这里，别全页找）。 */
+export function railDrawerPanel(win, item) {
+  return railDrawer(win, item).locator('section[aria-label]').first()
+}
+
 /**
- * 打开左栏抽屉里的某一项（走查为了找分组 / 目录等去的）。目前只登记了走查用到的：
- * 'catalog'（画布分组 / 分类目录）。别处要用别的项，在这里加映射，不要在走查里抄钮。
- * 已经开着（按下态）就什么也不做。
+ * 打开左栏抽屉里的某一项（'docs' | 'catalog' | 'assets' | 'flows' | 'skills' | 'prompts'）。
+ * 已经开着就什么也不做；左栏被收起就先展开；项目库页没有左栏（报错，不静默）。
+ * 点完等抽屉本体出现（等的是元素，不是时长）。
  */
 export async function openRailDrawer(win, item, label = `open ${item} drawer`) {
-  if (item !== 'catalog') throw new Error(`openRailDrawer 还没登记「${item}」`)
-  const closed = win.locator(`${RAIL_ITEM(item)}[aria-pressed="false"]`)
-  if (await closed.first().isVisible().catch(() => false)) await clickOrFail(closed, label)
-  await expect(win.locator(`${RAIL_ITEM(item)}[aria-pressed="true"]`).first(), `${label}：点完抽屉仍没开`).toBeVisible()
+  assertRailItem(item)
+  const button = railItem(win, item)
+  const expand = win.locator(RAIL_EXPAND).first()
+  // 左栏 / 「展开左栏」二者必有其一（项目刚打开时要等它挂上来——等的是元素，不是时长）；都没有 = 还在项目库。
+  await expect(button.or(expand).first(), `${label}：左栏上没有「${item}」，也没有「展开左栏」——还在项目库？`).toBeVisible()
+  if (!(await button.isVisible().catch(() => false))) await clickOrFail(expand, `${label}（先展开左栏）`)
+  if ((await button.getAttribute('aria-pressed')) !== 'true') await clickOrFail(button, label)
+  await expect(button, `${label}：点完左栏按钮没有按下`).toHaveAttribute('aria-pressed', 'true')
+  await expect(railDrawer(win, item), `${label}：点完抽屉仍没开`).toBeVisible()
+  return railDrawerPanel(win, item)
+}
+
+/** 收起左栏抽屉（再点一下当前开着的那一项）。没开就什么也不做。 */
+export async function closeRailDrawer(win, item, label = `close ${item} drawer`) {
+  assertRailItem(item)
+  if (!(await railDrawer(win, item).isVisible().catch(() => false))) return
+  await clickOrFail(railItem(win, item), label)
+  await expect(railDrawer(win, item), `${label}：再点一下仍没收起`).toBeHidden()
 }
 
 // ── 画布底部：加节点条 + 缩放簇 ───────────────────────────────────────────────────────────────
