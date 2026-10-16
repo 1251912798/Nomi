@@ -59,8 +59,15 @@ export function useCanvasFrameActions({
   const [editingFrameId, setEditingFrameId] = React.useState<string | null>(null)
   const [selectedFrameId, setSelectedFrameId] = React.useState<string | null>(null)
   // 框选区与节点选区互斥：一旦又选中了节点（点卡、框选、Agent 选中……），空框的选中态就退场。
-  const hasNodeSelection = useGenerationCanvasStore((state) => state.selectedNodeIds.length > 0)
-  React.useEffect(() => { if (hasNodeSelection) setSelectedFrameId(null) }, [hasNodeSelection])
+  // 只在「从没选中到选中了」那一刻收（store 订阅，不进渲染）：订成渲染里的布尔，第一次点卡就会让整个画布壳重渲。
+  // 没有选中的空框时一次 setState 都不发（连「同值」也不发），第一次点卡不让壳多渲一次。
+  const selectedFrameIdRef = React.useRef(selectedFrameId)
+  React.useEffect(() => { selectedFrameIdRef.current = selectedFrameId }, [selectedFrameId])
+  React.useEffect(() => useGenerationCanvasStore.subscribe((state, previous) => {
+    if (state.selectedNodeIds.length === 0 || previous.selectedNodeIds.length > 0 || selectedFrameIdRef.current === null) return
+    selectedFrameIdRef.current = null
+    setSelectedFrameId(null)
+  }), [])
   const deleteSelectedFrame = React.useCallback(() => {
     if (!selectedFrameId) return false
     setSelectedFrameId(null)

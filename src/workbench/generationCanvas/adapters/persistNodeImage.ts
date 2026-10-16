@@ -1,6 +1,7 @@
-import { hostedAssetUrl, importWorkbenchLocalAssetFile } from '../../api/assetUploadApi'
+import { hostedAssetCanvasPreview, hostedAssetUrl, importWorkbenchLocalAssetFile } from '../../api/assetUploadApi'
 import type { ProjectExecutionContext } from '../../project/projectCanvasReadSurface'
 import { surfacePortFailure } from '../../../../electron/shared/surfacePortBinding'
+import type { CanvasPreviewFields } from '../../../../electron/shared/canvas/canvasMediaPreview'
 
 /**
  * 节点图片落盘统一入口。
@@ -13,25 +14,35 @@ import { surfacePortFailure } from '../../../../electron/shared/surfacePortBindi
  * 落盘 → nomi-local:// URL），让所有「图进节点」的路径都收敛到本地文件 URL，store
  * 只存门牌号。绝不造并行版（P1）。
  *
+ * 2026-10-16：落盘回执里的**预览两栏**（独立小图 + 预览事实）以前在这一层被丢掉——只回了 url，
+ * 于是上传 / 裁剪 / 切图 / 抠图出来的 4K 图在画布上一律挂原图（C-dense）。现在回的是「可以整段
+ * 展开进画布结果的媒体字段」：调用方写 `{ id, type: 'image', ...stored.media, createdAt }`，
+ * 没法只拿 url 而把预览丢在半路。
+ *
  * 持久化约束（见 projectMediaMigration.assertWorkbenchProjectMediaUrlsPersistable）：
  * result.url 只能是 nomi-local:// 或 base64，不能是 blob:（保存会抛错）。因此这里
  * 直接 await 落盘换 nomi-local；只有落盘失败才退回 base64 兜底（可持久化、不丢图）。
  */
 
+/** 能整段展开进画布结果的媒体字段：门牌号 + 预览两栏。 */
+export type PersistedNodeMedia = { url: string } & CanvasPreviewFields
+
 /**
- * File → 本地资产文件，返回可持久化 nomi-local:// URL；失败返回 null（调用方退回 base64 兜底）。
+ * File → 本地资产文件，返回可持久化 nomi-local:// 媒体字段（带落盘回执的预览两栏）；失败返回 null（调用方退回 base64 兜底）。
  * context 必传：由发起动作在第一个 await 之前捕获。这里不再「忘了传就现取当前项目」——那正是晚绑定漏门。
  */
-export async function persistNodeImageFile(
+export async function persistNodeMediaFile(
   file: File, ownerNodeId: string, context: ProjectExecutionContext,
-): Promise<string | null> {
+): Promise<PersistedNodeMedia | null> {
   context.assertCurrent()
   try {
     const asset = await importWorkbenchLocalAssetFile(file, file.name || 'asset', {
       ownerNodeId, projectBinding: context.binding, assertCurrent: context.assertCurrent,
     })
     context.assertCurrent()
-    return hostedAssetUrl(asset) || null
+    const url = hostedAssetUrl(asset)
+    if (!url) return null
+    return { url, ...hostedAssetCanvasPreview(asset, mediaTypeOf(file)) }
   } catch (error) {
     context.assertCurrent()
     if (surfacePortFailure(error).code !== 'capability_execution_failed') throw error
@@ -40,10 +51,27 @@ export async function persistNodeImageFile(
 }
 
 /**
- * 本地画出来的 PNG（切图 / 裁剪 / 旋转 / 联系表）→ **可写进 store 的 URL**，一条路。
+ * 只要门牌号的旧形状。**只剩白板和截图裁剪还在用**（二者的契约测试都在白板目录，归草稿 #1189，本刀不碰）：拿到的 URL 不带预览事实，
+ * 画布结果因此是「未知」，由打开 / 变更后补预览那道共享边界（resultMediaBackfillBridge）补齐，期间走被计数的缺失分支。
+ * #1189 合入后二者改用 persistNodeMediaFile，并删掉本函数（入口普查测试 canvasPreviewDoors.test 钉着这份名单）。
+ */
+export async function persistNodeImageFile(
+  file: File, ownerNodeId: string, context: ProjectExecutionContext,
+): Promise<string | null> {
+  return (await persistNodeMediaFile(file, ownerNodeId, context))?.url ?? null
+}
+
+function mediaTypeOf(file: File): 'image' | 'video' | 'audio' | undefined {
+  const type = String(file.type || '').toLowerCase()
+  return type.startsWith('image/') ? 'image' : type.startsWith('video/') ? 'video' : type.startsWith('audio/') ? 'audio' : undefined
+}
+
+/**
+ * 本地画出来的 PNG（切图 / 裁剪 / 旋转 / 联系表）→ **可写进 store 的媒体字段**，一条路。
  *
- * 语义：优先落盘换 nomi-local:// 门牌号；只有落盘失败才退回 base64（可持久化、不丢图）。
- * 调用方拿到 url 之后**只写一次 store**——别再走「先塞 base64 给预览、落盘后再换掉」那套：
+ * 语义：优先落盘换 nomi-local:// 门牌号 + 预览两栏；只有落盘失败才退回 base64（可持久化、不丢图），
+ * 此时预览事实明确是 'missing'（没落盘就派生不了小图）。
+ * 调用方拿到之后**只写一次 store**——别再走「先塞 base64 给预览、落盘后再换掉」那套：
  * 那套每次 updateNode 都被 emitCanvasGesture 做一遍 JSON 深拷贝，九宫格切图时 60MB 走 JSON、
  * 主线程冻 1.6s（2026-08-20 用户报「九宫格直接卡死」的根因，见 docs/plan/2026-08-20-grid-split-freeze.md）。
  */
@@ -52,15 +80,15 @@ export async function persistNodeImageBlob(
   ownerNodeId: string,
   fileName: string,
   context: ProjectExecutionContext,
-): Promise<{ url: string; localOnly: boolean }> {
+): Promise<{ media: PersistedNodeMedia; localOnly: boolean }> {
   context.assertCurrent()
   const type = blob.type || 'image/png'
-  const localUrl = await persistNodeImageFile(new File([blob], fileName, { type }), ownerNodeId, context)
+  const persisted = await persistNodeMediaFile(new File([blob], fileName, { type }), ownerNodeId, context)
   context.assertCurrent()
-  if (localUrl) return { url: localUrl, localOnly: false }
+  if (persisted) return { media: persisted, localOnly: false }
   const url = await blobToBase64Url(blob)
   context.assertCurrent()
-  return { url, localOnly: true }
+  return { media: { url, previewState: 'missing' }, localOnly: true }
 }
 
 function blobToBase64Url(blob: Blob): Promise<string> {

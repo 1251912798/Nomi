@@ -30,48 +30,42 @@ const UNKNOWN: LaneApprovalSubject = {
   effect: undefined, effectClass: undefined, requiresPlanReview: false, destructiveHint: false,
 };
 
-const SAFE_AUTO: ProjectAgentApprovalPolicy = { mode: "safe-auto", spend: "confirm" };
-const STEP: ProjectAgentApprovalPolicy = { mode: "step", spend: "confirm" };
-const PROJECT: ProjectAgentApprovalPolicy = { mode: "project", spend: "confirm" };
+const REQUEST: ProjectAgentApprovalPolicy = { mode: "request" };
+const DIRECT: ProjectAgentApprovalPolicy = { mode: "direct" };
 
 function preflight(
   subject: LaneApprovalSubject,
   overrides: Partial<Parameters<typeof preflightLaneApproval>[1]> = {},
 ) {
   return preflightLaneApproval(subject, {
-    policy: SAFE_AUTO, workMode: "agent", hasUserInterface: true, sessionGrants: new Set<string>(),
+    policy: REQUEST, workMode: "agent", hasUserInterface: true, sessionGrants: new Set<string>(),
     ...overrides,
   });
 }
 
 describe("档位", () => {
-  it("safe-auto 放行本地可撤销的改动，不弹卡", () => {
+  it("request 放行本地可撤销的改动，不弹卡", () => {
     expect(preflight(WRITE).state).toBe("auto-granted");
     expect(preflight(READ).state).toBe("auto-granted");
   });
 
-  it("step 档每一步都问——连读也问，那正是「每步问」这三个字的意思", () => {
-    expect(preflight(WRITE, { policy: STEP }).state).toBe("awaiting-user");
-    expect(preflight(READ, { policy: STEP }).state).toBe("awaiting-user");
+  it("direct 档连需要先读一遍计划的能力也放行", () => {
+    expect(preflight(PLAN, { policy: DIRECT }).state).toBe("auto-granted");
   });
 
-  it("project 档连需要先读一遍计划的能力也放行", () => {
-    expect(preflight(PLAN, { policy: PROJECT }).state).toBe("auto-granted");
-  });
-
-  it("safe-auto 下 requiresPlanReview 的能力首次必弹，答过之后才复用", () => {
+  it("request 下 requiresPlanReview 的能力首次必弹，答过之后才复用", () => {
     expect(preflight(PLAN).state).toBe("awaiting-user");
     expect(preflight(PLAN, { sessionGrants: new Set(["timeline.write"]) }).state).toBe("auto-granted");
   });
 });
 
 describe("硬清单：档位管不着的那一族", () => {
-  it("逐次计划审阅不会被 project 档或同能力的 session grant 跳过", () => {
+  it("逐次计划审阅不会被 direct 档或同能力的 session grant 跳过", () => {
     const storyboard = { ...PLAN, capabilityId: "canvas.write", planReviewAllowsReuse: false };
-    for (const policy of [SAFE_AUTO, STEP, PROJECT]) {
+    for (const policy of [REQUEST, DIRECT]) {
       expect(preflight(storyboard, { policy, sessionGrants: new Set(["canvas.write"]) }))
         .toEqual({ state: "awaiting-user", grantable: false });
-      expect(laneApprovalGrantable(storyboard, policy)).toBe(false);
+      expect(laneApprovalGrantable(storyboard)).toBe(false);
       expect(preflight(storyboard, { policy, sessionGrants: new Set(["canvas.write"]), hasUserInterface: false }).state)
         .toBe("denied-by-policy");
     }
@@ -83,21 +77,21 @@ describe("硬清单：档位管不着的那一族", () => {
     ["不可逆", DESTRUCTIVE],
     ["解不出效果类的（fail-closed）", UNKNOWN],
   ])("%s 在每一档下都逐次问，包括全自动", (_label, subject) => {
-    for (const policy of [SAFE_AUTO, STEP, PROJECT]) {
+    for (const policy of [REQUEST, DIRECT]) {
       expect(preflight(subject, { policy }).state).toBe("awaiting-user");
     }
   });
 
   it("这一族拿不到「本会话允许这类」的按钮，答过一次也不会被复用", () => {
     for (const subject of [PAID, DESTRUCTIVE, UNKNOWN]) {
-      expect(laneApprovalGrantable(subject, SAFE_AUTO)).toBe(false);
+      expect(laneApprovalGrantable(subject)).toBe(false);
       expect(preflight(subject, { sessionGrants: new Set([subject.capabilityId]) }).state).toBe("awaiting-user");
     }
   });
 
   it("MCP 的 destructiveHint 只能抬高摩擦：true 抬进硬闸，false 不给任何人减一次确认", () => {
     expect(preflight({ ...WRITE, destructiveHint: true }).state).toBe("awaiting-user");
-    expect(laneApprovalGrantable({ ...WRITE, destructiveHint: true }, SAFE_AUTO)).toBe(false);
+    expect(laneApprovalGrantable({ ...WRITE, destructiveHint: true })).toBe(false);
     // false 什么都不做——一个自称无害的外部工具不会因此绕开它本来的那一档。
     expect(preflight({ ...PAID, destructiveHint: false }).state).toBe("awaiting-user");
   });
@@ -106,7 +100,7 @@ describe("硬清单：档位管不着的那一族", () => {
 describe("工作模式先于档位", () => {
   it("ask 只放 read，写入被策略拒且带可行动的下一步", () => {
     expect(preflight(READ, { workMode: "ask" }).state).toBe("auto-granted");
-    const denied = preflight(WRITE, { workMode: "ask", policy: PROJECT });
+    const denied = preflight(WRITE, { workMode: "ask", policy: DIRECT });
     expect(denied.state).toBe("denied-by-policy");
     if (denied.state !== "denied-by-policy") throw new Error("unreachable");
     expect(denied.reason).toMatch(/read-only/i);
@@ -137,10 +131,8 @@ describe("没有人可问的时候（MCP stdio / 走查 / 后台批）", () => {
 });
 
 describe("「本会话允许这类」的门槛", () => {
-  it("只有本地可撤销的改动有这个按钮，step 档下谁都没有", () => {
-    expect(laneApprovalGrantable(PLAN, SAFE_AUTO)).toBe(true);
-    // step 的字面意思就是每一步都问；给它一个会话级放行等于把用户刚选的档位偷偷改掉。
-    expect(laneApprovalGrantable(PLAN, STEP)).toBe(false);
-    expect(laneApprovalGrantable(WRITE, STEP)).toBe(false);
+  it("只有本地可撤销的改动有这个按钮（`step` 档已删，不再有「谁都没有」的一档）", () => {
+    expect(laneApprovalGrantable(PLAN)).toBe(true);
+    expect(laneApprovalGrantable(WRITE)).toBe(true);
   });
 });

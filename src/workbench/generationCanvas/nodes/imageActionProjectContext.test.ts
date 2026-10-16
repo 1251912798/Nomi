@@ -49,7 +49,7 @@ beforeEach(() => {
   fixture.grid = null
   fixture.nodes = [node, { ...node, id: 'second' }]
   fixture.add.mockReturnValue({ ...node, id: 'created' })
-  fixture.persist.mockResolvedValue({ url: 'nomi-local://stored', localOnly: false })
+  fixture.persist.mockResolvedValue({ media: { url: 'nomi-local://stored' }, localOnly: false })
   vi.stubGlobal('document', {})
   vi.stubGlobal('Image', class { onload?: () => void; naturalWidth = 100; naturalHeight = 100; set src(_url: string) { this.onload?.() } })
   vi.stubGlobal('OffscreenCanvas', class {
@@ -96,7 +96,7 @@ it('ignores background-removal progress and completion after project replacement
 })
 
 it('does not attach a panorama screenshot when storage completes after project replacement', async () => {
-  fixture.persist.mockImplementation(async () => { replaceProject(); return { url: 'nomi-local://stored', localOnly: false } })
+  fixture.persist.mockImplementation(async () => { replaceProject(); return { media: { url: 'nomi-local://stored' }, localOnly: false } })
   const feedback = vi.fn()
   await useNodePanoramaHandlers(node, { width: 300, height: 200 }, feedback).handlePanoramaScreenshot({
     blob: new Blob(['png']), dimensions: { width: 100, height: 100 },
@@ -116,7 +116,7 @@ it('preserves a same-project image transform and passes the original identity to
 it.each([1, 2] as const)('does not apply crop grid %s or restore old progress after storage crosses project replacement', async grid => {
   fixture.grid = grid
   vi.stubGlobal('createImageBitmap', async () => ({ width: 100, height: 100, close: vi.fn() }))
-  fixture.persist.mockImplementation(async () => { replaceProject(); return { url: 'nomi-local://stored', localOnly: false } })
+  fixture.persist.mockImplementation(async () => { replaceProject(); return { media: { url: 'nomi-local://stored' }, localOnly: false } })
   const feedback = vi.fn()
   await useNodeImageEditing(node, { width: 300, height: 200 }, feedback).handleEditConfirm({
     rect: { x: 0, y: 0, w: 1, h: 1 }, cols: grid === 2 ? [0.5] : [], rows: [],

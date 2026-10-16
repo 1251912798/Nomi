@@ -102,7 +102,7 @@ describe('releaseWorkbenchProjectRuntimeState', () => {
   })
 
   it('resets the resident approval and spend policy when switching projects', () => {
-    useWorkbenchStore.getState().setProjectAgentApprovalPolicy({ mode: 'project', spend: 'within-budget' })
+    useWorkbenchStore.getState().setProjectAgentApprovalPolicy({ mode: 'direct' })
 
     releaseWorkbenchProjectRuntimeState()
 

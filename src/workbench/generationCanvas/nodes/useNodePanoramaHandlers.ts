@@ -1,6 +1,6 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { persistNodeImageBlob, persistNodeImageFile } from '../adapters/persistNodeImage'
+import { persistNodeImageBlob, persistNodeMediaFile } from '../adapters/persistNodeImage'
 import { isProjectImportCancellation } from '../adapters/assetImportAdapter'
 import { withProjectAction, type ProjectExecutionContext } from '../../project/projectCanvasReadSurface'
 import { useGenerationCanvasStore } from '../store/generationCanvasStore'
@@ -34,10 +34,10 @@ export function useNodePanoramaHandlers(
       // （旧写法「先塞 base64 给即时预览、落盘后再换掉」正是「九宫格卡死」那条病的同款入口。）
       void withProjectAction(async (project) => {
         try {
-          const localUrl = await persistNodeImageFile(file, node.id, project)
+          const media = await persistNodeMediaFile(file, node.id, project)
           project.assertCurrent()
-          if (!localUrl) return
-          updateNode(node.id, { result: { id: `panorama-asset-${createdAt}`, type: 'image', url: localUrl, createdAt } })
+          if (!media) return
+          updateNode(node.id, { result: { id: `panorama-asset-${createdAt}`, type: 'image', ...media, createdAt } })
         } catch (error) {
           if (!project.signal.aborted && !isProjectImportCancellation(error)) reportFeedback(t('generationCommon.panorama.captureFailed'))
         }
@@ -77,7 +77,7 @@ export function useNodePanoramaHandlers(
         const result = {
           id: `panorama-shot-${screenshotNode.id}-${createdAt}`,
           type: 'image' as const,
-          url: stored.url,
+          ...stored.media,
           createdAt,
         }
         const screenshotSize = mediaNodeSize(dimensions.width, dimensions.height)

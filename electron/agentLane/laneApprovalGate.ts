@@ -236,7 +236,7 @@ export function createLaneApprovalGate(options: LaneApprovalGateOptions): LaneAp
   /**
    * Projection and execution share subject resolution, grants and the canonical policy.
    *
-   * 2026-09-12：这里原来把 `forceConfirmation` 实现成 `{ mode: 'step', spend: 'confirm' }`——
+   * 2026-09-12：这里原来把 `forceConfirmation` 实现成一份伪造的「每步问」档位（当时的 `step`，该档 2026-10-12 已删）——
    * 一个调用点**伪造一份用户从没选过的档位**交给下游。档位是用户此刻选的那一档，而且是
    * 「全自动下付费不再逐笔问」的唯一依据（`spendDecidedByPolicy`），它不能有第二个答案。
    * 现在这条事实作为 `hostMustConfirm` 挂在 subject 上（只抬不降），由那一份判据去裁决；
@@ -278,7 +278,7 @@ export function createLaneApprovalGate(options: LaneApprovalGateOptions): LaneAp
       // （文件头 ③ 只管被 abort 打断的那两支）。
       return { allow: false, decision: "cancelled", cause: "restart", reason: RESTART_REASON };
     }
-    const { resolved, subject, policy, decided } = decisionOf(request);
+    const { resolved, subject, decided } = decisionOf(request);
     if (decided.state === "auto-granted") return { allow: true, decision: "auto-granted",
       undoable: subject.effect !== 'read' && subject.effectClass === 'reversible_local' };
     if (decided.state === "denied-by-policy") {
@@ -295,7 +295,7 @@ export function createLaneApprovalGate(options: LaneApprovalGateOptions): LaneAp
         toolName: request.toolName,
         args: request.args,
         ...(subject.effectClass ? { effectClass: subject.effectClass } : {}),
-        grantable: laneApprovalGrantable(subject, policy) && resolved?.grantable !== false,
+        grantable: laneApprovalGrantable(subject) && resolved?.grantable !== false,
         pendingCount: waiting.size + 1,
       }),
     });

@@ -65,8 +65,13 @@ export type DesktopAssetsSurface = {
   copyProjectAsset?: (payload: { sourceProjectId: string; targetProjectId: string; relativePath: string }) => Promise<DesktopAssetDto>
   /** 播放懒自愈：nomi-local 视频解不了（HEVC 存量/供应商 HEVC 产物）→ 转码出新 MP4 资产；不适用 → null。 */
   ensurePlayable?: (payload: { url: string }) => Promise<DesktopAssetDto | null>
-  /** 老节点补封面：按 nomi-local URL 取（必要时派生）落盘边界的预览。 */
-  ensurePreview?: (payload: { url: string }) => Promise<{ thumbnailUrl?: string } | null>
+  /**
+   * 补预览：按 nomi-local URL 取（必要时派生）落盘边界的预览与预览事实；不是本项目落盘文件 / 被取消 → null。
+   * 带 projectBinding 时，发起项目关了 / 换了主进程就杀掉在途派生；requestId 让渲染层能用 cancelPreview 撤回。
+   */
+  ensurePreview?: (payload: { url: string; projectBinding?: import('../../electron/shared/projectBinding').ProjectBinding; requestId?: string }) => Promise<{ thumbnailUrl?: string; previewState?: string } | null>
+  /** 撤回一个在途的补预览（同一窗口发起的 requestId）：主进程杀子进程、删产物。 */
+  cancelPreview?: (payload: { requestId: string }) => Promise<boolean>
   /**
    * 引导示例项目的预置成图 → 项目资产，回 clientId → nomi-local URL。
    * 必须走主进程：渲染侧只有构建产物 URL（dev 是 dev-server 地址、打包版是带哈希的 file://），

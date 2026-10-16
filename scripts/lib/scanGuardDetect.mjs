@@ -165,9 +165,23 @@ function resolveRelative(fromFile, spec, root) {
   const ext = path.posix.extname(base)
   const swapped = (JS_TO_TS[ext] ?? []).map((replacement) => `${base.slice(0, -ext.length)}${replacement}`)
   for (const candidate of [...RESOLVE_EXTS.map((suffix) => `${base}${suffix}`), ...swapped]) {
-    try { if (fs.statSync(path.join(root, candidate)).isFile()) return candidate } catch { /* 下一个候选 */ }
+    if (isFileCached(root, candidate)) return candidate
   }
   return null
+}
+
+/** 目录清单缓存：一个目录只 readdir 一次，候选路径是不是文件查清单，不再对每个候选各 stat 一次（2000+ 个测试文件的 import 候选 stat 在 Windows 上占了核对耗时的一半以上）。 */
+const dirListings = new Map()
+function isFileCached(root, relative) {
+  const dir = path.posix.dirname(relative)
+  const key = `${root}|${dir}`
+  let listing = dirListings.get(key)
+  if (!listing) {
+    listing = new Map()
+    try { for (const entry of fs.readdirSync(path.join(root, dir), { withFileTypes: true })) listing.set(entry.name, entry.isFile()) } catch { /* 目录不存在 = 空清单 */ }
+    dirListings.set(key, listing)
+  }
+  return listing.get(path.posix.basename(relative)) === true
 }
 
 /** 间接扫描只顺着 src / electron 以外的模块找（scripts、tests、evals、根目录配置里的扫描器）：src / electron 的生产代码里有的是对用户目录的 readdir（scratchCleanup 之类），不是对仓库的扫描。 */

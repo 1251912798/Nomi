@@ -3,8 +3,8 @@ import React from 'react'
 /**
  * 量**某一个元素自己**有多宽（一条 ResizeObserver）。
  *
- * 两个调用方，同一条纪律：底栏量自己决定哪几枚胶囊进 ⋯（`ShotComposerBar`），
- * 行外壳量自己决定参考列走宽档还是窄档（`StoryboardRowShell`）。
+ * 调用方：分镜**行容器**量一次决定整组行走宽档还是窄档（`storyboardRowDensity.useStoryboardRowsDensity`，
+ * 表格行区 / 参考卡行区各一次——不是每行一次）；导演台顶栏量自己决定收起哪些按钮（`RefineTopBar`）。
  *
  * 为什么是量、而不是一个容器查询断点：同一个容器宽度下，中文那行装得下、英文那行装不下
  * （`改图` vs `Text-to-image`），一个 CSS 常数表达不了这件事。判据必须带上这一行真正要渲染的

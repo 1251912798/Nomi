@@ -459,7 +459,7 @@
     },
     {
       "path": "src/workbench/ai/v4/AgentPanelV4AutoMode*",
-      "reason": "Agent 审批档位（自动改 / 逐步确认）的界面"
+      "reason": "Agent 审批档位（请求批准 / 直接生成）的界面"
     },
     {
       "path": "src/workbench/ai/v4/agentPanelV4ModelRows*",

@@ -3,13 +3,14 @@
  * 大文稿项目的「切文稿」与「打开分镜方案」响应量具（性能场景 document-switch-after-storyboard / storyboard-plan-open）。
  *
  * 规模：160 份文稿、挂在第一份文稿下的一份 320 镜头方案。隔离资料目录、零花费、窗口在屏幕外。
- * 量法（同一套，不自写剖析器：Playwright + 页面内 performance.now + rAF）：
+ * 量法（同一套，不自写剖析器：tests/perf/canvas-scale/responseTimer.mjs，所有 response 类场景共用）：
  *   点击（捕获阶段）→ 目标界面在 DOM 里到位 → 再过两帧（样式重算 + 布局 + 绘制算进去）= 响应毫秒。
  *   document-switch：先「访问过分镜页」（打开方案再回创作页），之后在文稿下拉里交替切到最后一份 / 第一份。
- *   plan-open：每个样本冷启一次 App，从创作页点开方案，量到 320 行可见。
+ *   plan-open：每个样本冷启一次 App，从创作页点开方案，量到「首屏可编辑」：行区报出逻辑总数 320、视口里的行带着可编辑的提示词框。
+ *     分镜表窗口化后只挂视口里的行（2026-10-16），「320 个行盒子都可见」不再成立也不该成立；停表后另验末镜够得着（滚到底、第 320 镜挂上）。
  *
  * 用法（先 pnpm run build）：
- *   node tests/perf/document-switch-bench.mjs --scenario document-switch|plan-open|document-switch-unvisited [--runs 5] [--label x] [--docs 160] [--shots 320]
+ *   node tests/perf/document-switch-bench.mjs --scenario document-switch|plan-open|document-switch-unvisited [--runs 5] [--label x] [--docs 160] [--shots 320] [--diag-out <目录>]
  * 产物：tests/perf/results/document-switch-<label>.json
  */
 import fs from 'node:fs'
@@ -17,6 +18,8 @@ import path from 'node:path'
 import os from 'node:os'
 import { fileURLToPath } from 'node:url'
 import { launchCoreSmoke } from '../ux/core-smoke/fixture.mjs'
+import { armResponse, takeResponse } from './canvas-scale/responseTimer.mjs'
+import { IPC_PROBE_MODULE, startDiagnostics } from './canvas-scale/diagnostics.mjs'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const args = process.argv.slice(2)
@@ -27,6 +30,8 @@ const label = argValue('--label', 'run')
 const docCount = Number(argValue('--docs', 160))
 const shotCount = Number(argValue('--shots', 320))
 const WARMUP = 1
+// 诊断腿：第一个计数样本打开方案的那一下抓 trace / 两个进程的 profile / IPC（数字不进基线）。
+const diagOut = argValue('--diag-out', '')
 
 const docId = (n) => `doc-${n}`
 const docTitle = (n) => `文稿 ${String(n).padStart(3, '0')}`
@@ -55,7 +60,7 @@ async function launch(suffix) {
       },
     }),
     extras: {
-      mainRequire: [path.join(repoRoot, 'tests', 'ux', '_offscreenWindows.cjs')],
+      mainRequire: [path.join(repoRoot, 'tests', 'ux', '_offscreenWindows.cjs'), ...(diagOut ? [IPC_PROBE_MODULE] : [])],
       // 屏幕外窗口会被 Windows 判成被遮挡而停帧；关掉遮挡判定，量到的才是真的。
       env: { ELECTRON_EXTRA_LAUNCH_ARGS: '--disable-features=CalculateNativeWinOcclusion' },
     },
@@ -69,34 +74,33 @@ async function launch(suffix) {
   return smoke
 }
 
-/** 在页面里：下一次 click（捕获阶段）起表，predicate 成立后再等两帧，返回毫秒与期间的长任务数。 */
-async function armTimer(win, predicateSource, arg) {
-  await win.evaluate(({ predicateSource, arg }) => {
-    const predicate = new Function('arg', `return (${predicateSource})(arg)`)
-    window.__perfDone = new Promise((resolve) => {
-      let longTasks = 0
-      const observer = new PerformanceObserver((list) => { longTasks += list.getEntries().length })
-      try { observer.observe({ type: 'longtask' }) } catch { /* 无长任务支持 */ }
-      document.addEventListener('click', () => {
-        const t0 = performance.now()
-        const tick = () => {
-          let ok
-          try { ok = predicate(arg) } catch { ok = false }
-          if (!ok) { requestAnimationFrame(tick); return }
-          requestAnimationFrame(() => requestAnimationFrame(() => { observer.disconnect(); resolve({ ms: performance.now() - t0, longTasks }) }))
-        }
-        tick()
-      }, { capture: true, once: true })
-    })
-  }, { predicateSource, arg })
-}
-const collect = (win) => win.evaluate(() => window.__perfDone)
+// 计时器只有一个（概念 delivery.perf-response-timer）：点击（捕获阶段）起表，判据成立后再过两帧停表。
+const collect = (win) => takeResponse(win)
 
-async function openPlan(win) {
+async function openPlan(win, diag = null) {
   await win.locator('[data-creation-document-switcher]').first().click()
-  await armTimer(win, `(n) => [...document.querySelectorAll('[data-storyboard-row]')].filter((el) => el.getClientRects().length > 0).length >= n`, shotCount)
+  const stopDiagnostics = diag ? await startDiagnostics({ page: win, app: diag.app, cdp: await diag.app.context().newCDPSession(win), outDir: path.resolve(diagOut), label: `plan-open-${shotCount}` }) : null
+  await armResponse(win, { trigger: 'click', predicate: 'storyboardPlanOpenReady', arg: shotCount, timeoutMs: 120_000 })
   await win.getByRole('menuitem', { name: plan.title }).first().click()
-  return collect(win)
+  const result = await collect(win)
+  if (stopDiagnostics) await stopDiagnostics()
+  await assertLastShotReachable(win)
+  return result
+}
+/** 停表之后（不计时）：滚到底，最后一镜必须挂上——窗口化不许把末镜弄丢。 */
+async function assertLastShotReachable(win) {
+  const reached = await win.evaluate(async (n) => {
+    const scroll = document.querySelector('[data-storyboard-scroll]')
+    if (!scroll) return false
+    for (let i = 0; i < 60; i += 1) {
+      scroll.scrollTop = scroll.scrollHeight
+      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+      if (document.querySelector(`[data-storyboard-row="${n}"] [data-prompt-box]`)) return true
+    }
+    return false
+  }, shotCount)
+  if (!reached) throw new Error(`滚到底也没挂上第 ${shotCount} 镜：窗口化丢了末镜`)
+  await win.evaluate(() => { const scroll = document.querySelector('[data-storyboard-scroll]'); if (scroll) scroll.scrollTop = 0 })
 }
 async function backToCreation(win) {
   await win.locator('.nomi-stepper__step[data-mode="creation"]').first().click()
@@ -106,7 +110,7 @@ async function backToCreation(win) {
 async function switchTo(win, n) {
   await win.locator('[data-creation-document-switcher]').first().click()
   const title = docTitle(n)
-  await armTimer(win, `(t) => { const b = document.querySelector('[data-creation-document-switcher]'); return !!b && b.textContent.includes(t) && !!document.querySelector('.ProseMirror') && document.querySelector('.ProseMirror').textContent.includes('正文标记 ' + t) }`, title)
+  await armResponse(win, { trigger: 'click', predicate: 'documentShown', arg: { title, marker: `正文标记 ${title}` }, timeoutMs: 60_000 })
   await win.getByRole('menuitemradio', { name: title }).first().click()
   const result = await collect(win)
   await win.waitForTimeout(800)
@@ -119,7 +123,7 @@ if (scenario === 'plan-open') {
   for (let i = 0; i < runs + WARMUP; i += 1) {
     const smoke = await launch(`open-${i}`)
     try {
-      const r = await openPlan(smoke.win)
+      const r = await openPlan(smoke.win, diagOut && i === WARMUP ? { app: smoke.app } : null)
       if (i >= WARMUP) result.samples.push({ responseMs: Math.round(r.ms * 10) / 10, longTasks: r.longTasks })
       console.log(`[bench] plan-open #${i}${i < WARMUP ? '（预热）' : ''}: ${Math.round(r.ms)}ms longTasks=${r.longTasks}`)
     } finally { await smoke.close() }

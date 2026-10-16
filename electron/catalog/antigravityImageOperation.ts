@@ -14,10 +14,10 @@ export async function executeAntigravityImageOperation(input: ProcessOperationIn
   const provider = isJsonRecord(input.context.providerMeta) ? input.context.providerMeta : {};
   if (input.process.args[0] === "query_result") {
     const taskId = String(provider.task_id ?? provider.query_id ?? "");
-    const response = antigravityImageJobs.query(taskId, input.projectId, (result) => {
+    const response = await antigravityImageJobs.query(taskId, input.projectId, async (result) => {
       if (result.artifacts?.length !== 1) throw new Error("ANTIGRAVITY_IMAGE_MISSING");
       const artifact = result.artifacts[0];
-      const written = writeAsset(input.projectId, Buffer.from(artifact.bytes), artifact.filename, artifact.mimeType,
+      const written = await writeAsset(input.projectId, Buffer.from(artifact.bytes), artifact.filename, artifact.mimeType,
         { kind: "generated", provider: "antigravity-cli", conversationId: result.conversationId, localTaskId: taskId,
           width: artifact.width, height: artifact.height }, `antigravity:${taskId}`) as { data?: { url?: string } };
       return written.data?.url ? [written.data.url] : [];

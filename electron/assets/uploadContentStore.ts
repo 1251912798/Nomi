@@ -8,7 +8,7 @@ import { broadcastAssetsUpdated } from './assetEvents'
 import { captureAssetWriteContext, type AssetWriteContext } from './assetWriteContext'
 import { copyFileWithProgress, type AssetCopyProgress } from './assetImportProgress'
 import { retryOnSharingViolation } from '../jsonFile'
-import { reapAbandonedUploadStaging, removeScratchAfterUse, UPLOAD_STAGING_PREFIX } from './scratchCleanup'
+import { createUploadStagingDirSync, reapAbandonedUploadStaging, removeScratchAfterUse } from './scratchCleanup'
 
 export function isContentAddressedUpload(meta: unknown): boolean {
   return isJsonRecord(meta) && ['upload', 'imported', 'local'].includes(String(meta.kind || '').toLowerCase())
@@ -142,7 +142,7 @@ export async function persistUploadFile(
   const context = captured ?? await captureAssetWriteContext(projectId)
   context.assertCurrent()
   reapAbandonedUploadStaging(context.root)
-  const staging = fs.mkdtempSync(path.join(context.root, UPLOAD_STAGING_PREFIX))
+  const staging = createUploadStagingDirSync(context.root)
   const snapshot = path.join(staging, 'content')
   try {
     await copyFileWithProgress(source, snapshot, onCopyProgress)

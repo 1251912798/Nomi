@@ -4,7 +4,7 @@ import { openLane } from '../../electron/agentLane/laneHost.mjs';
 import { openLaneHistory } from '../../electron/agentLane/laneHistory.mjs';
 import { openLaneWorkspace, type LaneWorkspaceOptions } from '../../electron/agentLane/laneWorkspace.mjs';
 import type { LaneHandle, LaneProjection, LaneWorkspaceHandle } from '../../electron/shared/agentLane/laneContracts.js';
-import { createLaneFixture } from './laneFixture.mjs';
+import { createLaneFixture, mustConfirm } from './laneFixture.mjs';
 import { createDocumentLaneTools } from '../../electron/agentLane/laneDocumentTools.js';
 
 function deferred() {
@@ -229,7 +229,7 @@ for (const kind of ['assistant-text', 'thinking', 'tool-call'] as const) {
 test('closing publishes one terminal snapshot before dropping subscribers and cancels pending approval', { timeout: 10_000 }, async (t) => {
   const fixture = await createLaneFixture(t, [
     { type: 'tool', calls: [{ id: 'append', name: 'write_script', arguments: { where: 'end', content: 'Must not run.' } }] },
-  ], { hasUserInterface: true, policy: () => ({ mode: 'step', spend: 'confirm' }) });
+  ], mustConfirm());
   const workspace = await openLaneWorkspace(fixture.options);
   t.after(() => workspace.close());
   const before = fixture.document.text();
@@ -252,7 +252,7 @@ for (const action of ['approval', 'abort'] as const) {
     const fixture = await createLaneFixture(t, [
       { type: 'tool', calls: [{ id: 'append', name: 'write_script', arguments: { where: 'end', content: 'The closing line.' } }] },
       { type: 'text', text: 'Done.' },
-    ], { hasUserInterface: true, policy: () => ({ mode: 'step', spend: 'confirm' }) });
+    ], mustConfirm());
     const workspace = await openLaneWorkspace(fixture.options);
     t.after(() => workspace.close());
     const before = fixture.document.text();

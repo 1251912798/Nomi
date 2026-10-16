@@ -13,6 +13,7 @@ import type { ProductionRunRepository } from './productionRunRepository'
 import type { ProductionRun } from './productionRunTypes'
 import { loadPlaybookStageEvidence } from '../skills/skillExecutionEvidence'
 import { logError } from '../logging/logger'
+import { isCanvasPreviewState } from '../shared/canvas/canvasMediaPreview'
 
 /** Job ids intentionally contain a namespace separator (`job:run:node`), but artifact ids are
  * public deep-link identifiers. Keep the mapping stable, collision-resistant, and URL-safe. */
@@ -45,7 +46,7 @@ export type DriverOpsDeps = {
   // 这里取二者的公共上界（string / string | null），避免抽层时凭空收紧契约（P1 不造并行类型）。
   reconcileProviderTask: (job: ProductionRun['jobs'][number]) => Promise<{
     status?: string
-    assets?: Array<{ type?: string; url?: string; thumbnailUrl?: string | null }>
+    assets?: Array<{ type?: string; url?: string; thumbnailUrl?: string | null; previewState?: string }>
     error?: string
   }>
   /** 去重集：driver 单飞（一个 run 同时只跑一条编排）；由 service 持有并传入以跨调用共享。 */
@@ -600,6 +601,8 @@ export function createDriverOps(deps: DriverOpsDeps): DriverOps {
         const asset = result.assets?.[0]
         const relativePath = localAssetPath(projectId, asset?.url)
         const thumbnailRelativePath = localAssetPath(projectId, asset?.thumbnailUrl)
+        const rawPreviewState = asset?.previewState
+        const previewState = isCanvasPreviewState(rawPreviewState) ? rawPreviewState : undefined
         if (!asset?.url || !relativePath) {
           executeInternal(projectId, runId, current, 'job.status', { jobId, status: 'needs_attention', patch: { errorCode: 'reconcile_asset_not_local', errorMessage: '对账找到了任务，但结果尚未落入本地项目' } }, `reconcile-${jobId}-asset-${current.revision}`)
           return
@@ -607,7 +610,7 @@ export function createDriverOps(deps: DriverOpsDeps): DriverOps {
         current = executeInternal(projectId, runId, current, 'job.status', { jobId, status: 'ready' }, `reconcile-${jobId}-ready-${current.revision}`).run
         const kind = asset.type === 'video' ? 'video' : asset.type === 'audio' ? 'audio' : 'image'
         current = executeInternal(projectId, runId, current, 'artifact.add', {
-          artifact: { artifactId: artifactIdentifierForJob(jobId), stageId: job.stageId, jobId, kind, status: 'adopted', projectRelativePath: relativePath, ...(thumbnailRelativePath ? { thumbnailRelativePath } : {}), createdAt: new Date().toISOString(), adoptedAt: new Date().toISOString() },
+          artifact: { artifactId: artifactIdentifierForJob(jobId), stageId: job.stageId, jobId, kind, status: 'adopted', projectRelativePath: relativePath, ...(thumbnailRelativePath && thumbnailRelativePath !== relativePath ? { thumbnailRelativePath } : {}), ...(previewState ? { previewState } : {}), createdAt: new Date().toISOString(), adoptedAt: new Date().toISOString() },
         }, `reconcile-${jobId}-artifact-${current.revision}`).run
         current = executeInternal(projectId, runId, current, 'job.status', { jobId, status: 'adopted' }, `reconcile-${jobId}-adopted-${current.revision}`).run
         if (current.status === 'needs_attention') {

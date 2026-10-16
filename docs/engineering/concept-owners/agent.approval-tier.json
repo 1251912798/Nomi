@@ -1,0 +1,40 @@
+{
+  "name": "Agent 权限挡位（请求批准 / 直接生成）的词表、落盘与旧值迁移",
+  "subject": "agent.approval-tier",
+  "lifecycle": "preference",
+  "authority_kind": "schema",
+  "trust_domain": "main",
+  "fact_kind": "durable",
+  "migration_status": "converged",
+  "owner": {
+    "path": "electron/settings/agentApprovalPolicyContract.ts",
+    "symbol": "normalizeAgentApprovalPolicySettings"
+  },
+  "write_api": [
+    {
+      "path": "electron/settings/agentApprovalPolicyContract.ts",
+      "symbol": "normalizeAgentApprovalPolicySettings"
+    },
+    {
+      "path": "electron/settings/agentApprovalPolicySettings.ts",
+      "symbol": "writeAgentApprovalPolicy"
+    }
+  ],
+  "forbidden_derivations": [
+    {
+      "symbol": "PROJECT_AGENT_SPEND_POLICIES",
+      "kind": "definition",
+      "why": "挡位只有一根轴（mode）。2026-10-12 删掉的 spend 轴没有任何读者，再长出来就是第二份「这一笔问不问」的答案；花钱要不要问只由 directGenerationBrakes.spendDecisionByPolicy 回答。"
+    }
+  ],
+  "parity_test": "electron/settings/agentApprovalPolicyTwoTiers.test.ts",
+  "allowed_consumers": [
+    "electron/agentLane/laneDesktopRuntime.ts",
+    "electron/capabilityCore/appIntegration.ts",
+    "electron/capabilityCore/mcpStdioServer.ts",
+    "electron/capabilityCore/residentGenerationAdapterFactory.ts",
+    "electron/productionRun/productionRunService.ts"
+  ],
+  "since": "2026-10-12",
+  "notes": "词表本身（PROJECT_AGENT_APPROVAL_MODES = request / direct）住在 electron/shared/agentCapabilities/capabilityApprovalPolicy.ts；这里登记的是「盘上那一份怎么读、旧值怎么变成新值」：schemaVersion 2，旧三档 step / safe-auto / project（含旧的全自动）与新词表没有交集，认不出一律落 request（用户 2026-10-12 拍板「全部落在请求批准」），直接生成必须是升级后用户自己重新点出来的；迁移只在 normalizeAgentApprovalPolicySettings 一处发生，不留旧词的运行时别名。渲染层 workbenchStore.projectAgentApprovalPolicy 是投影。"
+}

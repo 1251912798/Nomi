@@ -7,11 +7,11 @@ import os from 'node:os'
 import path from 'node:path'
 import { createHash } from 'node:crypto'
 import { launchNomiApp, repoRoot } from './_launchApp.mjs'
-import { clickOrFail, expect, expectAbsent, proveProbe, screenshotSettled } from './_assert.mjs'
+import { clickOrFail, expect, screenshotSettled } from './_assert.mjs'
 import {
-  APPROVAL_CARD, CANVAS_PANEL, COMPOSER, COMPOSER_PERMISSION, CREATION_PANEL, DOCUMENT, INTERVENTION_CONFIRM, TOOL_RECEIPT,
+  APPROVAL_CARD, CANVAS_PANEL, COMPOSER, CREATION_PANEL, DOCUMENT, INTERVENTION_CONFIRM, TOOL_RECEIPT,
   readProject, finalizeRuntimeWalk, openCanvas, sendCanvas, sendCreation,
-  permissionTier, stopRuntimeApp, waitForV4TurnIdle,
+  stopRuntimeApp, waitForV4TurnIdle,
 } from './agent-runtime-walk-support.mjs'
 import { laneMessages, readLaneTranscripts } from './agent-lane-observer.mjs'
 import { realNomiProfile, removeRealCredentials, seedRealCredentialStore } from './_realProfile.mjs'
@@ -113,24 +113,17 @@ try {
   await expect(win.locator(CREATION_PANEL)).toContainText('NOMI_PI_LIVE_OK', { timeout: 120_000 })
   expect(modelResponses().at(-1).stopReason).toBe('stop')
   expect(modelResponses()[0].usage.totalTokens).toBeGreaterThan(0)
-  await clickOrFail(win.locator(`${CREATION_PANEL} ${COMPOSER_PERMISSION}`), '开启每步确认验收')
-  await clickOrFail(win.locator(permissionTier('step')), '每步问')
+  // 2026-10-12 挡位收成两档：「请求批准」（默认）下能撤销的文稿写入直接做——原来这里切「每步问」让追加先停下等确认，那一档已删。
+  // 真模型这一段验的是「真模型真的调了写工具、改动真的落盘、能撤销」；确认卡的语义由真付费与不可逆路径的走查覆盖。
+  await expect(win.locator(`${CREATION_PANEL} ${COMPOSER}`)).toHaveAttribute('data-approval-mode', 'request')
 
   // 20 动词：文稿写只有 `write_script(where)` 一个动词；`append_to_end` 今天只是**传输层**的方法名
   // （`documentWrite.ts`），模型那边没有这个工具，点名它等于叫它调一个不存在的东西。
   await sendCreation(win, `请只调用一次 write_script（where=end），把这句原样追加到文末：${APPEND}。不要调用其他工具，不要扩写。`)
-  // v4：待批准的操作落在**介入槽**里（composer 正上方那一格），一次一个。
-  const approval = win.locator(`${CREATION_PANEL} ${APPROVAL_CARD}`).filter({ hasText: APPEND })
-  const proof = await proveProbe(approval, 'The real model must propose an actual append for human approval', 120_000)
-  await expect(win.locator(DOCUMENT)).toHaveText(ORIGINAL)
-  expect(JSON.stringify((await readProject(win, projectId)).payload.workbenchDocument)).not.toContain(APPEND)
-  await screenshotSettled(win, { path: path.join(outputDir, '01-live-approval.png') })
-  await clickOrFail(approval.locator(INTERVENTION_CONFIRM), '批准真模型追加')
   await waitForV4TurnIdle(win, { panel: CREATION_PANEL, doneTimeout: 120_000, settledBy: win.locator(DOCUMENT).getByText(APPEND, { exact: false }) })
   expect(modelResponses().at(-1).stopReason).toBe('stop')
   await expect(win.locator(DOCUMENT)).toContainText(APPEND)
   expect((await win.locator(DOCUMENT).innerText()).split(APPEND)).toHaveLength(2)
-  await expectAbsent(approval, { provenBy: proof, message: 'The real approval is consumed exactly once' })
   const messages = readLaneTranscripts(projectRoot).flatMap(laneMessages)
   const assistants = messages.filter((message) => message.role === 'assistant')
   expect(assistants.length).toBeGreaterThanOrEqual(3)
@@ -140,10 +133,10 @@ try {
   expect(messages.filter((message) => message.role === 'toolResult' && message.toolName === 'write_script')).toHaveLength(1)
   await expect.poll(async () => JSON.stringify((await readProject(win, projectId)).payload.workbenchDocument),
     { timeout: 30_000 }).toContain(APPEND)
-  await screenshotSettled(win, { path: path.join(outputDir, '02-live-applied.png') })
+  await screenshotSettled(win, { path: path.join(outputDir, '01-live-applied.png') })
   await clickOrFail(win.locator('[aria-label="文本工具栏"]').getByRole('button', { name: '撤销', exact: true }), '撤销真模型的实际变更')
   await expect(win.locator(DOCUMENT)).toHaveText(ORIGINAL)
-  await screenshotSettled(win, { path: path.join(outputDir, '03-live-undone.png') })
+  await screenshotSettled(win, { path: path.join(outputDir, '02-live-undone.png') })
 
   await openCanvas(win)
   // ── 20 动词之后这一幕为什么长这样（拍板 2026-09-11 / 本分支的根因合同）──

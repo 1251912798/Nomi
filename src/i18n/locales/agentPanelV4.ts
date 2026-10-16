@@ -61,13 +61,17 @@ export const zhAgentPanelV4 = {
   skillAdDesc: '15 秒电商产品片模板',
   skillExplore: '探索更多',
   skillManage: '新建 · 管理',
-  permission: { step: '每步问', 'safe-auto': '自动改', project: '全自动' },
+  permission: { request: '请求批准', direct: '直接生成' },
+  permissionGroup: 'Agent 权限',
   systemPrompt: '编辑系统提示词',
   permissionWhy: {
-    step: '改动、生成、计划都先问。',
-    'safe-auto': '文稿和时间轴改动直接做（收据可撤销），生成前仍会问。',
-    project: '可撤销的改动直接做，生成也按你切档时那次确认直接跑，不再逐笔问。不可逆的操作仍然每次问。',
+    request: '改文案、摆节点这类能撤销的直接做；要生成，或做撤销不了的事，先停下来等你确认。',
+    direct: '要生成就直接开跑，不用一次次确认；同一个镜头连续失败、或要做计划外的生成时会停下来问你，随时可以点停止。',
   },
+  /** 「直接生成」档的刹车触发时，报价卡上多出的那一行（只说为什么停，卡本身和「请求批准」下一样）。 */
+  brakeRetry: { title: '这一镜连续失败了，先停下问你' },
+  brakeOutOfPlan: { title: '这次要生成的镜头不在刚才说好的计划里，先停下问你' },
+  brakeStopped: { title: '你点过停止，这一次先不自动开跑' },
 
   // Context 环
   context: '上下文用量',
@@ -494,13 +498,13 @@ export const zhAgentPanelV4 = {
   /** 宿主在本项目素材里认不出卡上的某一张参考图（spendCardFailure 的 REFERENCE_NOT_IN_PROJECT）：点名是参考图、给真能走的那一步。 */
   spendActionReferenceNotInProject: '有一张参考图不在这个项目的素材里，Nomi 没有开始生成。在卡上拿掉它再按；还要用它，就用 @ 重新选一次（别的项目的图会先复制进来）。',
 
-  // 「全自动」档（2026-09-10 用户拍板 · 增量 2）
-  autoModeConfirmTitle: '切到「全自动」？',
-  autoModeConfirmBody: '之后可撤销的改动 Nomi 直接做，**生成也会直接跑、不再逐笔打断你**——这一次确认就是你对它们的授权。不可逆的操作仍然每次问。',
-  autoModeConfirmOk: '切到全自动',
+  // 「直接生成」档（2026-09-10 增量 2 的「全自动」；2026-10-12 用户拍板收成两档）
+  autoModeConfirmTitle: '切到「直接生成」？',
+  autoModeConfirmBody: '之后要生成时 Nomi 会**直接开跑，不再逐次问你**——这一次确认就是你对它的授权。同一个镜头连续失败、或要做计划外的生成时会停下来问你；撤销不了的操作仍然每次问；随时可以点停止。',
+  autoModeConfirmOk: '切到直接生成',
   autoModeConfirmCancel: '取消',
-  autoModeBannerNote: '生成会直接跑，不可逆仍会问',
-  autoModeBannerRevert: '回到自动改',
+  autoModeBannerNote: '不可逆的仍会问',
+  autoModeBannerRevert: '回到请求批准',
   /** 叉掉这一条（2026-09-10 用户：可以叉掉，一直放占空间）。 */
   autoModeBannerDismiss: '不再显示这条提醒',
 
@@ -585,13 +589,16 @@ export const enAgentPanelV4 = {
   skillAdDesc: '15-second e-commerce product template',
   skillExplore: 'Explore more',
   skillManage: 'New · Manage',
-  permission: { step: 'Ask each step', 'safe-auto': 'Auto-edit', project: 'Full auto' },
+  permission: { request: 'Ask first', direct: 'Auto-run' },
+  permissionGroup: 'Agent permission',
   systemPrompt: 'Edit system prompt',
   permissionWhy: {
-    step: 'Edits, generation and plans are all confirmed first.',
-    'safe-auto': 'Document and timeline edits happen directly (receipts are undoable); generation still asks.',
-    project: 'Undoable edits happen directly, and generation runs on the confirmation you gave when switching in. Irreversible actions are still confirmed every time.',
+    request: 'Undoable edits like rewriting text or placing nodes happen directly. Anything that generates, or cannot be undone, waits for your confirmation first.',
+    direct: 'Generation starts right away, with no confirmation each time. If one shot keeps failing, or a generation falls outside the plan, it stops and asks you. You can press Stop at any time.',
   },
+  brakeRetry: { title: 'This shot has failed repeatedly, so Nomi stopped to ask you' },
+  brakeOutOfPlan: { title: 'This generation is not in the plan agreed earlier, so Nomi stopped to ask you' },
+  brakeStopped: { title: 'You pressed Stop, so this one will not start on its own' },
 
   context: 'Context usage',
   contextInputTotal: 'Total input',
@@ -954,12 +961,12 @@ export const enAgentPanelV4 = {
   spendActionShotGone: 'This one is no longer on the card, so Nomi has not started generating it.',
   spendActionReferenceNotInProject: 'One reference image isn\'t in this project\'s assets, so Nomi hasn\'t started generating. Remove it on the card and press again, or pick it again with @ (images from other projects are copied in first).',
 
-  autoModeConfirmTitle: 'Switch to Full auto?',
-  autoModeConfirmBody: 'Nomi will make undoable edits directly and **generation will run without interrupting you each time** — this confirmation is your authorisation for them. Irreversible actions are still confirmed every time.',
-  autoModeConfirmOk: 'Switch to full auto',
+  autoModeConfirmTitle: 'Switch to Auto-run?',
+  autoModeConfirmBody: 'From now on Nomi will **start generating right away, without asking you each time** — this confirmation is your authorisation for it. If one shot keeps failing, or a generation falls outside the plan, it stops and asks you; irreversible actions are still confirmed every time; you can press Stop at any time.',
+  autoModeConfirmOk: 'Switch to auto-run',
   autoModeConfirmCancel: 'Cancel',
-  autoModeBannerNote: 'Generation runs directly; irreversible still asks',
-  autoModeBannerRevert: 'Back to Auto-edit',
+  autoModeBannerNote: 'Irreversible still asks',
+  autoModeBannerRevert: 'Back to Ask first',
   autoModeBannerDismiss: 'Hide this reminder',
 
   sandboxInactive: 'Commands need confirming one at a time: {{reason}}',

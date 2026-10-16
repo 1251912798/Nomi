@@ -1,0 +1,23 @@
+{
+  "id": "project-open-legacy-first-open",
+  "feature": "旧项目（没有预览图、还要迁移的老格式）第一次打开：冷启动后点项目卡，到画布节点挂载且第一张图解码完；稳定态的打开见 project-open-100-nodes",
+  "script": "tests/ux/project-open-stages.e2e.mjs",
+  "args": [
+    "--scale",
+    "MIMG",
+    "--legacy-first-open"
+  ],
+  "scale": "96 个图片节点、没有预览图的旧项目",
+  "metrics": [
+    "openToInteractive",
+    "longTasks"
+  ],
+  "budget": 3000,
+  "group": "⑥ 打开项目（旧项目第一次）",
+  "budgetStatus": "proposed",
+  "budgetBasis": "一次性的迁移和补预览，每个旧项目只遇到一次：超过 1 秒要有进度反馈、10 秒是注意力上限（Nielsen）；提议 3000ms，约为稳定态打开预算（project-open-100-nodes，1000ms）的 3 倍",
+  "measurement": {
+    "state": "pending",
+    "reason": "夹具要一档「没有预览图的旧项目」（#1209 合入后在 canvas-performance-fixture 上加），project-open-stages 要支持 --legacy-first-open 并让 DRIVERS 读 migration 那一次的样本；这三步做完再量"
+  }
+}
