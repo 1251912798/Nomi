@@ -20,6 +20,7 @@ import { cleanupTestTemp, makeTempDir } from './_test-temp.mjs'
 import { judgeBaselineGrowth, judgeBaseUnavailable } from './lib/walkthroughBaselineGuard.mjs'
 import { findRawShellAnchors, RAW_SHELL_EXEMPT } from './lib/rawShellAnchors.mjs'
 import { findComposerInputReads } from './lib/composerInputReads.mjs'
+import { findUndefinedIdentifiers } from './lib/walkUndefinedIdentifiers.mjs'
 
 const SRC = `
   const a = <button aria-label="打开设置" />
@@ -277,5 +278,27 @@ describe('composer-input-read：Agent 输入框是富文本编辑器，不能当
     assert.deepEqual(findComposerInputReads("await expectComposerText(panel.locator(COMPOSER_INPUT), 'x', 'm')"), [])
     assert.deepEqual(findComposerInputReads("await panel.locator(COMPOSER_INPUT).fill('x')"), [])
     assert.deepEqual(findComposerInputReads("const search = win.locator('#q')\nawait expect(search).toHaveValue('x')"), [])
+  })
+})
+
+describe('undefined-identifier：走查里的未定义标识符（夜跑 I05）', () => {
+  const lines = (...rows) => rows.join('\n') + '\n'
+
+  it('阳性对照：漏 import / 漏声明的标识符被报出来（就是夜跑里那三条的形状）', () => {
+    const missingImport = findUndefinedIdentifiers(lines('await canvasSetZoomPercent(win, 50)'), 'clip.walk.mjs')
+    assert.deepEqual(missingImport.map((hit) => hit.name), ['canvasSetZoomPercent', 'win'])
+    const wrongOwner = findUndefinedIdentifiers(lines('const run = {}', "await expectVisible(run.newProjectEntry(win), 'x')"), 'a.walk.mjs')
+    assert.deepEqual(wrongOwner.map((hit) => hit.name), ['expectVisible', 'win'])
+  })
+
+  it('补了 import / 声明就不报；Node 全局与页内（浏览器）全局都认', () => {
+    assert.deepEqual(findUndefinedIdentifiers(lines("import { canvasSetZoomPercent } from './_shell.mjs'", 'export async function f(win) { await canvasSetZoomPercent(win, 50) }'), 'a.walk.mjs'), [])
+    const mixed = findUndefinedIdentifiers(lines('const dir = process.cwd() + __dirname.length', 'const h = await win.evaluate(() => document.body.scrollHeight + window.innerWidth)'), 'a.walk.mjs')
+    assert.deepEqual(mixed.map((hit) => hit.name), ['win'])
+    assert.deepEqual(findUndefinedIdentifiers(lines("const fs = require('node:fs')", 'module.exports = { fs, ok: typeof document }'), 'a.cjs'), [])
+  })
+
+  it('语法错误也报（解析不了就等于没查）', () => {
+    assert.equal(findUndefinedIdentifiers('const x = (\n', 'a.walk.mjs')[0].name, 'parse-error')
   })
 })
