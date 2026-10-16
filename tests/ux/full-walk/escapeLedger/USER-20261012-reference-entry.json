@@ -1,0 +1,27 @@
+{
+  "id": "USER-20261012-reference-entry",
+  "since": "2026-10-12",
+  "source": "User node and Agent reference-entry review",
+  "category": "reference-integrity",
+  "problem": "参考入口难发现且新增入口先弹搜索造成额外步骤；Agent引用必须在句中显示缩略图，按@引用分别绑定原件，不能只显示附件而发送时丢失身份。 用户最终收窄为原小鼠标和引用交互，声明槽删除重复顶部加号，Agent仅图标。",
+  "existingInvariants": [],
+  "ironLaws": [],
+  "useCases": [],
+  "fullWalkJourneys": [],
+  "status": "fixed",
+  "manualReview": "reviewed",
+  "evidence": [
+    "docs/plan/2026-10-12-reference-entry.md",
+    "docs/evidence/2026-10-12-reference-entry-census.md",
+    "docs/evidence/2026-10-12-reference-entry/acceptance.md",
+    "docs/fixes/2026-10-12-reference-gesture-ownership.root-cause.json",
+    "tests/ux/reference-entry.walk.mjs"
+  ],
+  "completionCommits": [],
+  "rootCauseContract": "docs/fixes/2026-10-12-agent-reference-input.root-cause.json",
+  "classCheck": {
+    "kind": "matrix",
+    "file": "electron/ai/agentUserContent.test.ts"
+  },
+  "fixedInPr": 1183
+}

@@ -192,15 +192,6 @@ function stableStoredAssetId(projectId: string, relativePath: string): string {
   return stableAssetId(projectId, relativePath);
 }
 
-function stableLocalReferenceId(projectId: string, url: string): string {
-  try {
-    const parts = new URL(url).pathname.split("/").filter(Boolean).map((part) => decodeURIComponent(part));
-    if (parts[0] === projectId && parts.length > 1) return stableStoredAssetId(projectId, parts.slice(1).join("/"));
-  } catch {
-    // Fall through to a deterministic reference identity for malformed legacy URLs.
-  }
-  return stableStoredAssetId(projectId, url);
-}
 
 export function writeAsset(
   projectId: string,
@@ -570,24 +561,22 @@ async function importRemoteAssetToStore(payload: unknown, options: RemoteAssetIm
   const context = await captureAssetWriteContext(projectId, raw.projectBinding as ProjectBinding | undefined, options.assertCurrent);
   const sourceEvidence = sanitizeSourceEvidence(raw.sourceEvidence);
   if (url.startsWith("nomi-local://")) {
-    // 已在项目里的文件（自定义调用 / 本地流程产物经 localizeTaskAsset 回到这里）：不复制，
-    // 但同样走一次预览派生，画布对它和远端产物一视同仁。
+    // Reuse the canonical original, not a synthetic URL receipt or preview. The same
+    // identity must be valid for Agent claims, generation references and history.
     const absolutePath = absolutePathFromLocalAssetUrl(url, projectId);
     context.assertCurrent();
-    const relativePath = absolutePath ? path.relative(context.root, absolutePath).replace(/\\/g, "/") : "";
-    return {
-      id: stableLocalReferenceId(projectId, url),
-      name: String(raw.fileName || "local asset"),
-      userId: "local",
-      projectId,
-      createdAt: nowIso(),
-      updatedAt: nowIso(),
-      data: {
-        url,
-        kind: raw.kind || "local",
-        ...(absolutePath && relativePath ? { absolutePath, relativePath, contentType: contentTypeFromStoredFile(absolutePath) } : {}),
-      },
-    };
+    if (!absolutePath || !fs.existsSync(absolutePath) || isStoredAssetPreviewPath(absolutePath)) throw new Error("project_agent_attachment_invalid");
+    const relativePath = path.relative(context.root, absolutePath).replace(/\\/g, "/");
+    const existing = findProjectAssetById(stableAssetId(projectId, relativePath), cursor => listProjectAssets({ projectId, limit: 500, cursor }));
+    if (existing) {
+      const identity = assetIdentityOf(existing);
+      if (!identity) throw new Error("project_agent_attachment_invalid");
+      return { ...existing, data: { ...existing.data, ...identity } };
+    }
+    // Workspace media may live outside assets/. Admit it through the existing
+    // original-byte store before returning an attachable identity.
+    return copyAssetFile(projectId, absolutePath, path.basename(absolutePath),
+      contentTypeFromStoredFile(absolutePath), { kind: raw.kind || "upload" }, context);
   }
   if (url.startsWith("data:")) {
     const parsed = parseDataUrl(url);
@@ -741,12 +730,11 @@ export function resolveProjectAgentAttachmentClaims(
   if (!Array.isArray(rawClaims)) throw new Error("project_agent_attachment_invalid");
   const claims = rawClaims.map(projectAgentAttachmentClaim);
   const claimedIds = new Set<string>();
-  const assets = listProjectAssets({ projectId, limit: 500 }).items;
-  const byId = new Map(assets.map((asset) => [asset.id, asset]));
+
   return Object.freeze(claims.map((claim) => {
     if (claimedIds.has(claim.assetId)) throw new Error("project_agent_attachment_invalid");
     claimedIds.add(claim.assetId);
-    const asset = byId.get(claim.assetId);
+    const asset = findProjectAssetById(claim.assetId, cursor => listProjectAssets({ projectId, limit: 500, cursor }));
     if (!asset || asset.projectId !== projectId) throw new Error("project_agent_attachment_invalid");
     const absolutePath = asset.data.absolutePath;
     const relativePath = asset.data.relativePath;
