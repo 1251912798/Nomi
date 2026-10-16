@@ -187,11 +187,11 @@ try {
   }
 
   // ── ④ 目录层验收：kind + 通道 ────────────────────────────────────────────
-  const catalog = await getWin().evaluate(() => {
+  const catalog = await getWin().evaluate(async () => {
     const mc = window.nomiDesktop?.modelCatalog
     if (!mc) return null
     const m = mc.listModels().find((x) => x.modelKey === 'seedream-4-0')
-    const maps = mc.listMappings({ vendorKey: 'relay' })
+    const maps = await mc.listMappings({ vendorKey: 'relay' })
     return {
       kind: m?.kind ?? null,
       params: (m?.meta?.parameters || []).length,

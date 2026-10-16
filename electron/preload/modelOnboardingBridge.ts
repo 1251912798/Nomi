@@ -16,7 +16,7 @@ export const modelOnboardingBridge = {
     },
     listVendors: () => invokeSync("nomi:model-catalog:vendors:list"),
     listModels: (params?: unknown) => invokeSync("nomi:model-catalog:models:list", params),
-    listMappings: (params?: unknown) => invokeSync("nomi:model-catalog:mappings:list", params),
+    listMappings: (params?: unknown) => ipcRenderer.invoke("nomi:model-catalog:mappings:list", params) as Promise<unknown[]>,
     health: () => invokeSync("nomi:model-catalog:health"),
     upsertVendor: (payload: unknown) => invokeSync("nomi:model-catalog:vendor:upsert", payload),
     deleteVendor: (key: string) => invokeSync("nomi:model-catalog:vendor:delete", key),

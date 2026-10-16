@@ -73,10 +73,15 @@ export function useOnboardingDrawerCatalog(): {
     }
     bridgeRetries.current = 0
     setBridgeMissing(false)
+    let alive = true
+    // 渠道 mapping 走异步 IPC（同步那条已删，见 config/modelCatalogCache 的 loadChannelMappings）。
+    // 读失败与下面同一条规矩：上一份原样留着，只多一条说得出原因的错。
+    bridge.modelCatalog.listMappings()
+      .then((list) => { if (alive) setMappings(list as Mapping[]) })
+      .catch((error: unknown) => { if (alive) setLoadError(error instanceof Error ? error.message : String(error)) })
     try {
       const storedModels = bridge.modelCatalog.listModels() as Array<Record<string, unknown>>
       const storedVendors = bridge.modelCatalog.listVendors() as Array<Record<string, unknown>>
-      const storedMappings = bridge.modelCatalog.listMappings() as Mapping[]
       const metaMap = new Map<string, OnboardingVendorMeta>()
       for (const vendor of storedVendors) {
         metaMap.set(String(vendor.key), {
@@ -96,7 +101,6 @@ export function useOnboardingDrawerCatalog(): {
       setCustomCallScripts(projectedCatalog.fallbackScripts)
       setVendorMeta(metaMap)
       setModels(projectedCatalog.models)
-      setMappings(storedMappings)
       setLoadError(null)
     } catch (error) {
       /**
@@ -119,7 +123,6 @@ export function useOnboardingDrawerCatalog(): {
       setReadOnly(null)
     }
     setLoaded(true)
-    let alive = true
     const dreamina = bridge.dreamina
     if (dreamina) {
       setDreaminaStatus((current) => current ?? DREAMINA_UNCHECKED_STATUS)

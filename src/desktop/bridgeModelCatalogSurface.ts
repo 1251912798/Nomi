@@ -11,7 +11,7 @@ export type DesktopModelCatalogSurface = CustomCallBridge & {
   onChanged?: (cb: () => void) => () => void
   listVendors: () => unknown[]
   listModels: (params?: unknown) => unknown[]
-  listMappings: (params?: unknown) => unknown[]
+  listMappings: (params?: unknown) => Promise<unknown[]>
   health: () => unknown
   upsertVendor: (payload: unknown) => unknown
   deleteVendor: (key: string) => void

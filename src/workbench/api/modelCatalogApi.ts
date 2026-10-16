@@ -155,6 +155,15 @@ export async function listWorkbenchModelCatalogModels(params?: {
   })
 }
 
+/**
+ * 渠道 mapping 全表（异步 IPC）。渲染层**只经** `config/modelCatalogCache` 读它：那里载一次、按目录变更失效，
+ * 组件只读内存（挂载时不许碰 IPC，2026-10-16 卡顿波可疑点 j）。
+ */
+export async function listWorkbenchModelCatalogMappings(): Promise<readonly unknown[] | undefined> {
+  const list = await getDesktopBridge()?.modelCatalog?.listMappings?.()
+  return Array.isArray(list) ? list : undefined
+}
+
 /** 启用/更新一个已存在的目录模型（恢复卡「一键启用被禁用的文本大脑」用）。 */
 export async function upsertWorkbenchModelCatalogModel(payload: {
   vendorKey: string

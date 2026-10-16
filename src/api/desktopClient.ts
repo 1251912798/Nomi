@@ -230,14 +230,6 @@ export async function listModelCatalogModels(params?: {
   return requireDesktopRuntime('model catalog').modelCatalog.listModels(params) as ModelCatalogModelDto[]
 }
 
-export async function listModelCatalogMappings(params?: {
-  vendorKey?: string
-  taskKind?: ProfileKind
-  enabled?: boolean
-}): Promise<ModelCatalogMappingDto[]> {
-  return requireDesktopRuntime('model catalog').modelCatalog.listMappings(params) as ModelCatalogMappingDto[]
-}
-
 export async function upsertModelCatalogVendor(
   payload: Partial<ModelCatalogVendorDto> & Pick<ModelCatalogVendorDto, 'key' | 'name'>,
 ): Promise<ModelCatalogVendorDto> {

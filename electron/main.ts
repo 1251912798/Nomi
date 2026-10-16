@@ -420,7 +420,7 @@ function registerIpc(): void {
   // 让每次读都抛 → 设置页全空零报错（判据住 electron/catalogReadChannelsPureRead.test.ts）。
   registerSyncIpc("nomi:model-catalog:vendors:list", listModelCatalogVendors);
   registerSyncIpc("nomi:model-catalog:models:list", listModelCatalogModels);
-  registerSyncIpc("nomi:model-catalog:mappings:list", listModelCatalogMappings);
+  ipcMain.handle("nomi:model-catalog:mappings:list", (event, params) => { assertTrustedSender(event); return listModelCatalogMappings(params); }); // 异步：渲染层载一次进内存，sendSync 会卡住整个渲染进程
   registerSyncIpc("nomi:model-catalog:health", getModelCatalogHealth);
   registerSyncIpc("nomi:model-catalog:vendor:upsert", upsertRendererCatalogVendor);
   registerSyncIpc("nomi:model-catalog:vendor:delete", deleteModelCatalogVendor);
