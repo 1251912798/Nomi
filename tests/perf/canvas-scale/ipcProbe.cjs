@@ -3,6 +3,8 @@
 // 只包处理函数、不改返回值和异常；不进产品构建（只有量具经 launchNomiApp({ mainRequire }) 挂上）。
 // ipcMain.on 的处理函数记成 on：其中 registerSyncIpc 注册的（electron/main.ts）是 sendSync，渲染线程在这段时间里停着等。
 'use strict'
+/* global require */
+/* eslint-disable @typescript-eslint/no-require-imports -- 量具经 mainRequire 注入、在主进程入口之前以 CommonJS 加载，只能用 require */
 const { ipcMain } = require('electron')
 const { performance } = require('node:perf_hooks')
 
