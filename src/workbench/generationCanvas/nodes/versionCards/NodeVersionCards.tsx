@@ -13,6 +13,7 @@ import { IconCheck, IconDownload, IconLoader2, IconMovie, IconTrash } from '../.
 import { cn } from '../../../../utils/cn'
 // 卡上的画面和节点预览走同一条延后加载队列（DeferredNodeMedia）：铺开 / 平移到一组宫格时，几张整图不在同一帧里一起解码上屏（V-1054 平移最长一帧）。
 import { DeferredNodeImage, DeferredNodeVideo } from '../DeferredNodeMedia'
+import type { CanvasImageSource } from '../canvasImageSource'
 import { historyVideoTimeFromPointer, nudgeHistoryVideoTime } from '../historyVideoScrub'
 import { ToolbarButton, ToolbarDivider, ToolbarIconButton } from '../NodeFloatingToolbar'
 import type { VersionGridLayout } from './versionGridLayout'
@@ -21,8 +22,8 @@ export type VersionCardEntry = Readonly<{
   identity: string
   versionNo: number
   type: 'image' | 'video'
-  /** 画布上挂的预览图（视频是封面；没有封面就是空串）。 */
-  previewUrl: string
+  /** 画布上挂的预览图（视频是封面；没有封面就是空串）。只能由 canvasImageSource 造出来。 */
+  previewUrl: CanvasImageSource | ''
   /** 原始地址（视频卡悬停播放、Alt 拖出复制用）。 */
   url?: string
 }>
