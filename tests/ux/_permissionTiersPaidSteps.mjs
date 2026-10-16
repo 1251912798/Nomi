@@ -20,7 +20,7 @@
 import { clickOrFail, expect } from './_assert.mjs'
 import { stationTimeout } from './_station-budget.mjs'
 import {
-  acceptedByRuns, deltaFacts, readSpendFacts, stepBrakeVerdict, stepDirectBatchVerdict, stepStopVerdict, stepSwitchVerdict,
+  acceptedByRuns, countLaneToolCalls, deltaFacts, readSpendFacts, stepBrakeVerdict, stepDirectBatchVerdict, stepStopVerdict, stepSwitchVerdict,
 } from './_paidFacts.mjs'
 import { SPEND_DIALOG } from './_paidRun.mjs'
 import {
@@ -171,8 +171,27 @@ export async function settleTurn(win, panel, { maxMs = stationTimeout({ turns: 1
   return 'timeout'
 }
 
-/** 步骤 ② + ③：文稿方案前 2 镜（直接生成、不弹卡）+ 补第 3 镜（刹车、弹卡、去掉）。返回 { accepted, dialogShown }。 */
-export async function runPlanAndBrakeStep(ctx, { askText }) {
+/**
+ * 等「受理够了」「报价卡出现」「全局确认框出现」「这一轮落地且什么都没弹」或超时。
+ * 返回 'accepted' | 'card' | 'dialog' | 'idle' | 'timeout'。`wantAccepted` 缺省 = 不看受理数。
+ */
+async function waitForTurnOutcome(ctx, panel, { wantAccepted = null, baseline = 0, timeout, graceMs = 8_000, pollMs = 500 }) {
+  const { win, cap } = ctx
+  const started = Date.now()
+  while (Date.now() - started < timeout) {
+    cap.assertNotBreached()
+    if (wantAccepted !== null && acceptedByRuns(ctx.projectRoot) - baseline >= wantAccepted) return 'accepted'
+    if (await win.locator(spendCardSelector(panel)).count()) return 'card'
+    if (await win.locator(SPEND_DIALOG).count()) return 'dialog'
+    const running = await win.locator(`${panel} ${COMPOSER}[data-mode="running"]`).count()
+    if (!running && Date.now() - started > graceMs) return 'idle'
+    await win.waitForTimeout(pollMs)
+  }
+  return 'timeout'
+}
+
+/** 步骤 ② + ③：文稿方案分两轮——第一轮前 2 镜（直接生成、不弹卡），第二轮补第 3 镜（刹车、弹卡、去掉）。返回 { accepted, dialogShown, abort }。 */
+export async function runPlanAndBrakeStep(ctx, { askText, askMoreText }) {
   const { win, walk, snapshot, record, cap, allowedModel } = ctx
   const panel = CREATION_PANEL
   // 写两句文稿（真键盘输入，编辑器是 tiptap）。
@@ -181,64 +200,94 @@ export async function runPlanAndBrakeStep(ctx, { askText }) {
   await win.waitForTimeout(1_500)
   const watch = await watchSpendUi(win, panel)
   const before = snapshot()
-  cap.setCeiling(2)
-  await ctx.ask('plan', askText)
-  const outcome = await waitForSpendUiOrIdle(win, panel, { timeout: stationTimeout({ turns: 2, operations: 4 }) })
-  cap.assertNotBreached()
-  const atUi = snapshot()
   const brakeTitle = (locale) => uiText(locale, 'agentPanelV4.brakeOutOfPlan.title')
-  let brakeLineShown = false
-  let firstCardIsBrake = false
+  const turnTimeout = stationTimeout({ turns: 2, operations: 4 })
+
+  // ── 第一轮：拆 2 镜、现在就生成。等受理与收据落地。分两轮是因为一句话里说完 3 镜，模型会一次把 3 镜建进同一个方案，刹车 2 无从触发。
+  cap.setCeiling(before.accepted + 2)
+  await ctx.ask('plan', askText)
+  const first = await waitForTurnOutcome(ctx, panel, { wantAccepted: 2, baseline: acceptedByRuns(ctx.projectRoot), timeout: turnTimeout })
+  if (first === 'accepted') await settleTurn(win, panel) // 让这一轮收尾（收据与 Run 落盘）
+  cap.assertNotBreached()
+  const afterFirst = snapshot()
+  const log1 = await watch.read()
   let dialogText = null
-  if (outcome === 'card') {
-    const card = win.locator(spendCardSelector(panel)).first()
-    brakeLineShown = (await card.textContent().catch(() => '')).includes(brakeTitle('zh-CN'))
-    firstCardIsBrake = brakeLineShown
-    await walk.snap('paid-03-zh-brake-card-out-of-plan')
-    // 同一张卡切成 English 再看一次（卡不收：待决状态与语言无关）。
-    await switchAppLocale(win, 'en')
-    await expect(card, '英文界面下刹车那一行也在').toContainText(brakeTitle('en'))
-    await walk.snap('paid-04-en-brake-card-out-of-plan')
-  } else if (outcome === 'dialog') {
+  if (first === 'dialog') {
     dialogText = (await win.locator(SPEND_DIALOG).first().textContent().catch(() => '')).trim().slice(0, 300)
     await walk.snap('paid-03-zh-doc-plan-confirm-dialog')
   }
-  const log = await watch.read()
-  // 步骤 ②：刹车卡之前弹过几次普通卡 / 确认框。第一张卡就是刹车卡时是 0。
-  const cardsBeforeBrake = outcome === 'card' ? (firstCardIsBrake ? 0 : 1) : log.cards
-  const front = deltaFacts(before, atUi)
+  const front = deltaFacts(before, afterFirst)
+  const generateCalls = countLaneToolCalls(ctx.projectRoot, 'generate')
   const directProblems = stepDirectBatchVerdict({
-    expected: 2, cardAppearances: cardsBeforeBrake, dialogAppearances: log.dialogs, delta: front, models: snapshot().models, allowedModel,
+    expected: 2, cardAppearances: log1.cards, dialogAppearances: log1.dialogs, delta: front, models: afterFirst.models, allowedModel,
   })
+  // 第一轮落地之后 generate 一次都没调：大脑没按要求生成，别再往下花 token（D-L19 诊断：V4 Flash 只建草稿不调 generate）。
+  const brainNoGenerate = first !== 'accepted' && first !== 'dialog' && first !== 'card' && generateCalls === 0
+  if (brainNoGenerate) directProblems.push('大脑没调 generate：第一轮落地后 generate 次数为 0，「直接生成」档的代答根本没被触发（不是档位的问题）')
   record('2-direct-first-two-shots', {
-    outcome, cardsBeforeBrake, dialogsShown: log.dialogs, accepted: front.accepted, receipts: front.receipts, decidedBy: front.decidedBy,
-    ...(dialogText ? { dialogText } : {}), problems: directProblems,
+    outcome: first, cardsShown: log1.cards, dialogsShown: log1.dialogs, generateCalls, accepted: front.accepted, receipts: front.receipts,
+    decidedBy: front.decidedBy, ...(dialogText ? { dialogText } : {}), ...(brainNoGenerate ? { brainNoGenerate: true } : {}), problems: directProblems,
   })
-  // 步骤 ③：点「去掉」（或取消确认框），再等一会儿，确认受理数不变。
-  let afterAction = atUi
-  if (outcome === 'card') {
-    await clickOrFail(win.locator(spendCardSelector(panel)).locator(INTERVENTION_ALTERNATE), '报价卡上的「去掉」')
-  } else if (outcome === 'dialog') {
-    await cancelSpendDialog(win)
+  if (brainNoGenerate) {
+    await settleTurn(win, panel)
+    record('3-out-of-plan-brake', { skipped: true, inconclusive: true, note: '第一轮大脑没调 generate，没有继续（没再花 token）', problems: [] })
+    return { accepted: front.accepted, dialogShown: false, abort: 'brain-no-generate' }
   }
-  if (outcome === 'card' || outcome === 'dialog') {
+  if (first === 'dialog' || first === 'card') {
+    // 文稿方案走旧框 / 第一轮就弹了普通卡：关掉（不花钱），第 3 步没有结论。
+    if (first === 'dialog') await cancelSpendDialog(win)
+    else await clickOrFail(win.locator(spendCardSelector(panel)).locator(INTERVENTION_ALTERNATE), '报价卡上的「去掉」')
     await settleTurn(win, panel)
     await win.waitForTimeout(QUIET_WINDOW_MS)
-    afterAction = snapshot()
+    const total = deltaFacts(before, snapshot())
+    record('3-out-of-plan-brake', {
+      outcome: first, cardAppeared: false, brakeLineShown: false, boundary: false, acceptedAfterRemove: total.accepted,
+      note: first === 'dialog' ? '文稿方案走的是旧版全局确认框，不是策略代答：第二轮没有发，刹车没有机会触发（unverified）' : '第一轮就弹了普通报价卡：第二轮没有发（unverified）',
+      inconclusive: true, problems: [],
+    })
+    return { accepted: total.accepted, dialogShown: first === 'dialog' }
   }
+  if (first !== 'accepted') {
+    record('3-out-of-plan-brake', { skipped: true, inconclusive: true, note: `第一轮没有凑够 2 次受理（${first}），没有发第二轮`, problems: [] })
+    return { accepted: front.accepted, dialogShown: false }
+  }
+
+  // ── 第二轮：再补第 3 镜，也现在就生成——计划外的新镜，刹车 2 应当让报价卡立刻弹出来。
+  cap.setCeiling(afterFirst.accepted)
+  await ctx.ask('plan2', askMoreText)
+  const second = await waitForTurnOutcome(ctx, panel, { timeout: turnTimeout })
   cap.assertNotBreached()
-  const total = deltaFacts(before, afterAction)
+  const atUi = snapshot()
+  let brakeLineShown = false
+  if (second === 'card') {
+    const card = win.locator(spendCardSelector(panel)).first()
+    brakeLineShown = (await card.textContent().catch(() => '')).includes(brakeTitle('zh-CN'))
+    await walk.snap('paid-04-zh-brake-card-out-of-plan')
+    // 同一张卡切成 English 再看一次（卡不收：待决状态与语言无关）。
+    await switchAppLocale(win, 'en')
+    await expect(card, '英文界面下刹车那一行也在').toContainText(brakeTitle('en'))
+    await walk.snap('paid-05-en-brake-card-out-of-plan')
+    await clickOrFail(win.locator(spendCardSelector(panel)).locator(INTERVENTION_ALTERNATE), '报价卡上的「去掉」')
+  } else if (second === 'dialog') {
+    await cancelSpendDialog(win)
+  }
+  if (second === 'card' || second === 'dialog') await settleTurn(win, panel)
+  await win.waitForTimeout(QUIET_WINDOW_MS)
+  cap.assertNotBreached()
+  const afterAction = snapshot()
+  const generateCalls2 = countLaneToolCalls(ctx.projectRoot, 'generate') - generateCalls
   const { problems, boundary } = stepBrakeVerdict({
-    cardAppeared: outcome === 'card', brakeLineShown, acceptedTotal: total.accepted, deltaAfterRemove: deltaFacts(atUi, afterAction),
+    cardAppeared: second === 'card', brakeLineShown, acceptedTotal: deltaFacts(before, afterAction).accepted, deltaAfterRemove: deltaFacts(atUi, afterAction),
   })
+  const noGenerate2 = second !== 'card' && second !== 'dialog' && generateCalls2 === 0
+  if (noGenerate2) problems.push('第二轮大脑没调 generate：刹车没有被触发的机会（不是刹车的问题）')
   record('3-out-of-plan-brake', {
-    outcome, cardAppeared: outcome === 'card', brakeLineShown, boundary, acceptedAfterRemove: total.accepted,
-    receiptsAfterRemove: deltaFacts(atUi, afterAction).receipts,
-    note: outcome === 'dialog' ? '文稿方案走的是旧版全局确认框，不是策略代答：刹车没有机会触发，这一步没有结论（unverified）' : undefined,
-    inconclusive: outcome === 'dialog' || undefined,
-    problems: outcome === 'dialog' ? [] : problems,
+    outcome: second, generateCalls: generateCalls2, cardAppeared: second === 'card', brakeLineShown, boundary,
+    acceptedAfterRemove: deltaFacts(before, afterAction).accepted, receiptsAfterRemove: deltaFacts(atUi, afterAction).receipts,
+    ...(second === 'dialog' ? { note: '第二轮弹的是旧版全局确认框（unverified）', inconclusive: true } : {}),
+    problems: second === 'dialog' ? [] : problems,
   })
-  return { accepted: total.accepted, dialogShown: outcome === 'dialog' }
+  return { accepted: deltaFacts(before, afterAction).accepted, dialogShown: second === 'dialog' }
 }
 
 /** 回退步骤（D-L19 原第 2 步）：画布面板，一次要 2 张图——直接生成档下不弹卡、不弹框、受理 2 次、收据 2 条（policy:full_auto）。 */
@@ -277,8 +326,11 @@ export async function runCanvasDirectStep(ctx, { askText }) {
   if (mode !== 'direct') problems.push(`画布面板上的档位应为 direct，实际 ${mode}`)
   if (outcome === 'dialog') await cancelSpendDialog(win).catch(() => {})
   await settleTurn(win, panel)
+  const generateCalls = countLaneToolCalls(ctx.projectRoot, 'generate')
+  const brainNoGenerate = (outcome === 'idle' || outcome === 'timeout') && generateCalls === 0
+  if (brainNoGenerate) problems.push('大脑没调 generate：落地后 generate 次数为 0，「直接生成」档的代答根本没被触发（不是档位的问题）')
   return record('2b-canvas-direct-two-images', {
-    outcome, panelMode: mode, cardsShown: log.cards, dialogsShown: log.dialogs, accepted: delta.accepted, receipts: delta.receipts, decidedBy: delta.decidedBy, problems,
+    brainNoGenerate: brainNoGenerate || undefined, generateCalls, outcome, panelMode: mode, cardsShown: log.cards, dialogsShown: log.dialogs, accepted: delta.accepted, receipts: delta.receipts, decidedBy: delta.decidedBy, problems,
   })
 }
 
@@ -297,6 +349,10 @@ export async function runStopStep(ctx, { askText, graceMs = QUIET_WINDOW_MS, set
   while (acceptedByRuns(ctx.projectRoot) <= beforeRuns) {
     if (Date.now() - started > timeout) throw new Error('第 4 步：等了很久供应商都没受理第一张')
     if (await win.locator(SPEND_DIALOG).count()) throw new Error('第 4 步：直接生成档下弹出了全局确认框，没有开始生成（一分钱没多花）')
+    // 这一轮已经落地（composer 不再运行）、过了起飞宽限，而 generate 一次都没调：大脑没按要求生成，别干等。
+    if (Date.now() - started > 8_000 && !(await win.locator(`${panel} ${COMPOSER}[data-mode="running"]`).count()) && countLaneToolCalls(ctx.projectRoot, 'generate') === 0) {
+      throw new Error('第 4 步：大脑没调 generate（这一轮已落地、generate 次数为 0），没有再往下花 token')
+    }
     cap.assertNotBreached()
     await win.waitForTimeout(100)
   }

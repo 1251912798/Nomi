@@ -24,17 +24,20 @@ import {
 import { CANVAS_PANEL, COMPOSER, CREATION_PANEL, chooseAssistantModel, expandResidentPanel, sendCanvas, sendCreation } from './agent-runtime-walk-support.mjs'
 import { expect } from './_assert.mjs'
 
-// 大脑用接入页默认露出的 DeepSeek V4 Flash（目录里最便宜的在售文本模型）：deepseek-v3.2 是被收进「更多」的旧目录模型，
-// 2026-10-16 真 key 首跑它每轮都回红卡（原因待日志）；这里不拿一个可能已下线的模型当大脑。
-const BRAIN = { vendorKey: 'apimart', modelKey: 'deepseek-v4-flash' }
+// 大脑 = Nomi 给 APIMart 用户的**默认** Agent 模型 deepseek-v4-pro（electron/catalog/apimartTexts.ts 的「默认大脑」；没有偏好时
+// textBrainResolver 按目录顺序取的第一个就是它），真实用户最可能用的就是这个，验收要照真实用户的样子来。
+// 不用 deepseek-v3.2（旧目录模型）；也不用 deepseek-v4-flash：D-L19 诊断它建完草稿不调 generate（回执线修好后再用它复验）。
+const BRAIN = { vendorKey: 'apimart', modelKey: 'deepseek-v4-pro' }
 const IMAGE = { vendorKey: 'apimart', modelKey: 'z-image-turbo' }
 
 // 第 2/3 步（中文，文稿方案）：一条消息，前 2 镜直接出图，再补第 3 镜触发「计划外」刹车。
-const ASK_PLAN = '按文稿把这两句拆成 2 个镜头，用 Z-Image Turbo 各出一张图（16:9 横构图）；出完之后再补第 3 个镜头也出图：渔港夜景。'
+// 分两轮发：一句话里说完 3 镜，模型会一次把 3 镜建进同一个方案，刹车 2 无从触发。两轮都点明「现在就生成」。
+const ASK_PLAN = '按文稿把这两句拆成 2 个镜头，用 Z-Image Turbo 各出一张图（16:9 横构图），现在就生成。'
+const ASK_PLAN_MORE = '再补第 3 个镜头：渔港夜景，也用 Z-Image Turbo 出一张图（16:9），现在就生成。'
 // 回退（文稿方案这条路一张都没花时才走）：画布面板，D-L19 原第 2 步。
-const ASK_CANVAS = '用 Z-Image Turbo 生成 2 张参考图：日出海面，16:9 横构图，两张构图略有不同。'
+const ASK_CANVAS = '用 Z-Image Turbo 生成 2 张参考图：日出海面，16:9 横构图，两张构图略有不同，现在就生成。'
 // 第 4 步（界面此时已切成 English）：再来一次，供应商受理第一张后由走查点停止。
-const ASK_STOP = 'Generate 2 more images with Z-Image Turbo, 16:9: a harbour at night, one calm and one stormy.'
+const ASK_STOP = 'Generate 2 more images with Z-Image Turbo, 16:9: a harbour at night, one calm and one stormy. Generate them now.'
 
 const paid = await openPaidWalk('agent-permission-two-tiers.paid.mjs', 'permission-two-tiers-paid', [BRAIN, IMAGE])
 const { walk } = paid
@@ -53,16 +56,20 @@ try {
   const ctx = createStepContext({
     win, walk, projectRoot, capabilityDir: path.join(walk.report.tempRoot, 'capability'),
     allowedModel: `${IMAGE.vendorKey}/${IMAGE.modelKey}`, cap,
-    ask: async (kind, text) => (kind === 'plan' || kind === 'smoke' ? sendCreation(win, text) : sendCanvas(win, text)),
+    ask: async (kind, text) => (kind === 'plan' || kind === 'plan2' || kind === 'smoke' ? sendCreation(win, text) : sendCanvas(win, text)),
   })
   walk.report.imageCap = { planned: IMAGE_CAP, worst: IMAGE_HARD_CAP }
   // 先问大脑一句话：回不了话就在花图片钱之前停（几个 token）。
   const smoke = await runBrainSmokeStep(ctx, { askText: '你好，请只回复一个字。' })
   if (!smoke.ok) throw new Error(`大脑冒烟没过（${smoke.outcome}）：Agent 用 ${BRAIN.modelKey} 回不了话，图片的钱一分没花；原始报错见证据目录 app-logs/`)
   await runSwitchStep(ctx)
-  const plan = await runPlanAndBrakeStep(ctx, { askText: ASK_PLAN })
+  const plan = await runPlanAndBrakeStep(ctx, { askText: ASK_PLAN, askMoreText: ASK_PLAN_MORE })
+  if (plan.abort) throw new Error('第 2 步：大脑没调 generate，没有再往下花 token（事实见报告 steps）')
   // 文稿方案这条路一张都没花（例如弹出了旧版确认框）：到画布面板补上 D-L19 原第 2 步，证「直接生成不弹卡」。
-  if (plan.accepted < 2) await runCanvasDirectStep(ctx, { askText: ASK_CANVAS })
+  if (plan.accepted < 2) {
+    const canvas = await runCanvasDirectStep(ctx, { askText: ASK_CANVAS })
+    if (canvas.brainNoGenerate) throw new Error('第 2b 步：大脑没调 generate，没有再往下花 token（事实见报告 steps）')
+  }
   // 第 4 步用英文界面：zh / en 各有真截图。
   if ((await win.evaluate(() => localStorage.getItem('nomi:locale:v1'))) !== 'en') await switchAppLocale(win, 'en')
   await runStopStep(ctx, { askText: ASK_STOP })

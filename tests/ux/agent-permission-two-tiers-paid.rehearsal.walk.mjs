@@ -11,10 +11,11 @@ import { expect } from './_assert.mjs'
 import { stationTimeout } from './_station-budget.mjs'
 import {
   IMAGE_CAP, IMAGE_HARD_CAP, collectProblems, createSpendCap, createStepContext, runCanvasDirectStep, runPlanAndBrakeStep, runStopStep, runSwitchStep,
-  switchAppLocale,
+  settleTurn, switchAppLocale,
 } from './_permissionTiersPaidSteps.mjs'
 import { FIXTURE_APIMART_MODEL, FIXTURE_APIMART_VENDOR, flattenRequestText } from './agent-runtime-fixture.mjs'
-import { COMPOSER, CREATION_PANEL, createRuntimeWalk, expandResidentPanel, hasToolResult, sendCanvas, sendCreation } from './agent-runtime-walk-support.mjs'
+import { countLaneToolCalls } from './_paidFacts.mjs'
+import { CANVAS_PANEL, COMPOSER, CREATION_PANEL, createRuntimeWalk, expandResidentPanel, hasToolResult, sendCanvas, sendCreation } from './agent-runtime-walk-support.mjs'
 
 // 夹具目录里的生成模型没有价目：和干净装机一样（见 agent-spend-confirm-executes.walk.mjs）。
 process.env.NOMI_WALK_UNPRICED_MODEL = '1'
@@ -22,7 +23,11 @@ process.env.NOMI_WALK_UNPRICED_MODEL = '1'
 const PLAN_MARK = 'S_PAID_PLAN'
 const CANVAS_MARK = 'S_PAID_CANVAS'
 const STOP_MARK = 'S_PAID_STOP'
-const ASK_PLAN = `${PLAN_MARK}：按文稿把这两句拆成 2 个镜头各出一张图；出完之后再补第 3 个镜头也出图。`
+const PLAN2_MARK = 'S_PAID_PLAN2'
+const NOGEN_MARK = 'S_PAID_NOGEN'
+const ASK_PLAN = `${PLAN_MARK}：按文稿把这两句拆成 2 个镜头各出一张图，现在就生成。`
+const ASK_PLAN_MORE = `${PLAN2_MARK}：再补第 3 个镜头，也现在就生成。`
+const ASK_NOGEN = `${NOGEN_MARK}: draft one more shot.`
 const ASK_CANVAS = `${CANVAS_MARK}：生成 2 张参考图。`
 const ASK_STOP = `${STOP_MARK}: generate 2 more images.`
 const candidate = { providerId: FIXTURE_APIMART_VENDOR, modelId: FIXTURE_APIMART_MODEL }
@@ -39,18 +44,32 @@ const operationIdOf = (body, callId) => {
 
 /** 剧本大脑：按「已经收到哪几个工具结果」走状态机，不依赖请求先后（常驻应答，不计入「没用上」）。 */
 function installBrain(fixture) {
+  // 文稿方案分两轮：第一轮 2 镜，第二轮补第 3 镜（补到同一个方案上）。
   fixture.respond({
-    label: 'rehearsal brain · plan (two shots, then a third)',
-    match: (body) => lastUserText(body).includes(PLAN_MARK),
+    label: 'rehearsal brain · plan round 1 (two shots)',
+    match: (body) => lastUserText(body).includes(PLAN_MARK) && !lastUserText(body).includes(PLAN2_MARK),
     reply: (body) => {
       if (!hasToolResult(body, 'rh-plan-1')) return { type: 'tool', id: 'rh-plan-1', name: 'draft_shots', args: { shots: [shot('渔港清晨', '渔港清晨，薄雾，渔船出港'), shot('日落归航', '日落时分，金色海面，渔船归航')] } }
       if (!hasToolResult(body, 'rh-plan-1-generate')) return { type: 'tool', id: 'rh-plan-1-generate', name: 'generate', args: { operationId: operationIdOf(body, 'rh-plan-1') } }
-      // 第一笔生成没真正开跑（被确认框挂住后取消了）就别再往下补镜：直接收尾。
-      if (!startedResult(body, 'rh-plan-1-generate')) return { type: 'text', text: `${PLAN_MARK}_DONE：没有开跑。` }
-      if (!hasToolResult(body, 'rh-plan-2')) return { type: 'tool', id: 'rh-plan-2', name: 'draft_shots', args: { shots: [shot('渔港夜景', '渔港夜景，灯火')] } }
-      if (!hasToolResult(body, 'rh-plan-2-generate')) return { type: 'tool', id: 'rh-plan-2-generate', name: 'generate', args: { operationId: operationIdOf(body, 'rh-plan-2') } }
       return { type: 'text', text: `${PLAN_MARK}_DONE：好了。` }
     },
+  })
+  fixture.respond({
+    label: 'rehearsal brain · plan round 2 (a third shot)',
+    match: (body) => lastUserText(body).includes(PLAN2_MARK),
+    reply: (body) => {
+      if (!hasToolResult(body, 'rh-plan-2')) return { type: 'tool', id: 'rh-plan-2', name: 'draft_shots', args: { shots: [shot('渔港夜景', '渔港夜景，灯火')] } }
+      if (!hasToolResult(body, 'rh-plan-2-generate')) return { type: 'tool', id: 'rh-plan-2-generate', name: 'generate', args: { operationId: operationIdOf(body, 'rh-plan-2') } }
+      return { type: 'text', text: `${PLAN2_MARK}_DONE：好了。` }
+    },
+  })
+  // 阴性对照：只建草稿、不调 generate（D-L19 诊断的 V4 Flash 的样子）。
+  fixture.respond({
+    label: 'rehearsal brain · drafts but never calls generate',
+    match: (body) => lastUserText(body).includes(NOGEN_MARK),
+    reply: (body) => (hasToolResult(body, 'rh-nogen-1')
+      ? { type: 'text', text: `${NOGEN_MARK}_DONE：草稿建好了。` }
+      : { type: 'tool', id: 'rh-nogen-1', name: 'draft_shots', args: { shots: [shot('只建草稿', '只建草稿，不生成')] } }),
   })
   fixture.respond({
     label: 'rehearsal brain · canvas (two shots, generate)',
@@ -99,12 +118,12 @@ try {
           walk.fixture.holdSubmits(true)
         })()
       }
-      await (kind === 'plan' ? sendCreation(win, text) : sendCanvas(win, text))
+      await (kind === 'plan' || kind === 'plan2' ? sendCreation(win, text) : sendCanvas(win, text))
     },
   })
   walk.report.imageCap = { planned: IMAGE_CAP, worst: IMAGE_HARD_CAP }
   await runSwitchStep(ctx)
-  const plan = await runPlanAndBrakeStep(ctx, { askText: ASK_PLAN })
+  const plan = await runPlanAndBrakeStep(ctx, { askText: ASK_PLAN, askMoreText: ASK_PLAN_MORE })
   if (plan.accepted < 2) await runCanvasDirectStep(ctx, { askText: ASK_CANVAS })
   if ((await win.evaluate(() => localStorage.getItem('nomi:locale:v1'))) !== 'en') await switchAppLocale(win, 'en')
   try {
@@ -113,6 +132,12 @@ try {
     walk.fixture.holdSubmits(false)
   }
   cap.assertNotBreached()
+  // 阴性对照：大脑只建草稿不调 generate——「调过几次 generate」的读数要分得出来（正对照：前面真调过）。
+  const generatesBefore = countLaneToolCalls(projectRoot, 'generate')
+  expect(generatesBefore, '读数的正对照：前面几步 Agent 真调过 generate').toBeGreaterThan(0)
+  await ctx.ask('nogen', ASK_NOGEN)
+  await settleTurn(win, CANVAS_PANEL)
+  expect(countLaneToolCalls(projectRoot, 'generate'), '只建草稿的这一轮没有新增 generate 调用').toBe(generatesBefore)
   const { problems: allProblems, unverified } = collectProblems(walk.report.steps)
   walk.report.unverified = unverified
   walk.report.paidCalls = 0

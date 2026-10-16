@@ -10,6 +10,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 
+import { laneMessages, readLaneTranscripts } from './agent-lane-observer.mjs'
 import { readProductionRuns, spendReceipt } from './_paidRun.mjs'
 
 function readJson(file) {
@@ -75,6 +76,24 @@ export function readSpendFacts({ projectRoot, capabilityDir }) {
  */
 export function acceptedByRuns(projectRoot) {
   return new Set(readProductionRuns(projectRoot).flatMap((run) => (run.jobs ?? []).map((job) => job.providerTaskId).filter(Boolean))).size
+}
+
+/**
+ * Agent 转录里调过几次某个工具（按 toolCall 数，不看结果）。转录读不出来返回 -1（调用方当「不知道」，不当 0）。
+ * 「大脑没调 generate」就靠它判：D-L19 诊断（2026-10-16）V4 Flash 建了 3 次草稿、一次 generate 都没调，
+ * 「直接生成」档的代答根本没被触发——那不是档位的问题，走查要当场说清、别往下花 token。
+ */
+export function countLaneToolCalls(projectRoot, toolName) {
+  try {
+    let count = 0
+    for (const session of readLaneTranscripts(projectRoot)) {
+      for (const message of laneMessages(session)) {
+        if (message.role !== 'assistant' || !Array.isArray(message.content)) continue
+        count += message.content.filter((part) => part.type === 'toolCall' && part.name === toolName).length
+      }
+    }
+    return count
+  } catch { return -1 }
 }
 
 /** 两次快照之差：这一步新增了什么。 */
