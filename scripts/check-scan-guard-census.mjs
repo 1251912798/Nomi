@@ -15,6 +15,12 @@ import { gateImplementation, scanGuardProblems } from './pre-push-scan-guards.mj
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 
+/** 只有 has() 的惰性集合：gateImplFiles 要遍历全部 CI 门岗脚本的 import 闭包（本机约 8 秒），只有出现「间接扫描」的候选时才用得上，全绿时不算。 */
+function lazySet(compute) {
+  let value = null
+  return { has: (file) => (value ??= compute()).has(file) }
+}
+
 /** 把仓库（或夹具根）整理成 scanGuardProblems 要的输入：被跟踪的测试、推送前已登记的测试、gates:contracts 各门的命令与实现闭包。 */
 export function scanGuardCensusInputs(root, trackedFiles, packageJson) {
   const gateNames = parseContractGates(packageJson.scripts['gates:contracts']).gates
@@ -24,7 +30,7 @@ export function scanGuardCensusInputs(root, trackedFiles, packageJson) {
     testFiles: trackedFiles.filter((file) => TEST_FILE.test(file)),
     scanTests: new Set(SCAN_TESTS.flatMap((scan) => gateEntryFiles(scan.name))),
     gateScripts: scriptTexts.join('\n'),
-    gateImplFiles: gateImplementation(scriptTexts, root, (file) => fs.existsSync(path.join(root, file))),
+    gateImplFiles: lazySet(() => gateImplementation(scriptTexts, root, (file) => fs.existsSync(path.join(root, file)))),
     prePushGates: new Set(PRE_PUSH_GATES.map((gate) => gate.name)),
   }
 }
