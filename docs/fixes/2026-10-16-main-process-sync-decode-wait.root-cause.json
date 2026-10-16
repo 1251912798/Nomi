@@ -27,7 +27,8 @@
     "electron/video/extractVideoFrame.ts",
     "electron/video/framesToVideo.ts",
     "electron/video/trimVideo.ts",
-    "scripts/check-heavy-path.mjs"
+    "scripts/check-heavy-path.mjs",
+    "electron/assets/verifiedAssetBytes.ts"
   ],
   "entry_points": [
     "projectAssetStore.validatedGeneratedMeta — the one caller of verifyGeneratedMediaDecodes",
@@ -52,7 +53,9 @@
     "Main-process production code under electron/ never waits synchronously on an external process (spawnSync / execFileSync / execSync count is zero outside one path-listed E2E fixture).",
     "A generated output is verified before it is published; the verdict kinds, timeout ceiling and fail-closed behavior are unchanged.",
     "After verification, choosing the path, writing bytes, writing the sidecar and broadcasting is one synchronous critical section with no await, so concurrent writes of one deterministic asset cannot interleave.",
-    "A local task's import is single-flight: overlapping queries share one import and cancellation waits for it to settle."
+    "A local task's import is single-flight: overlapping queries share one import and cancellation waits for it to settle.",
+    "The bytes that are verified are the bytes that are published: every writer pins one boundary-owned copy (PinnedAssetBytes, produced only by verifiedAssetBytes.ts) before any await, and sniffing, hashing, decode verification and the disk write all consume that copy; the decoder never reads a caller-owned path.",
+    "A write that waited on verification lands in the project it was started for or nowhere: every async writer captures AssetWriteContext before the wait, re-asserts it before publishing and writes under the captured root."
   ],
   "invariant_owner_layer": {
     "layer": "electron/assets/projectAssetStore.ts",
@@ -170,16 +173,21 @@
     },
     {
       "kind": "write",
-      "path": "electron/assets/projectAssetStore.ts",
+      "path": "electron/assets/verifiedAssetBytes.ts",
       "symbol": "verifyGeneratedMediaDecodes"
+    },
+    {
+      "kind": "write",
+      "path": "electron/assets/projectAssetStore.ts",
+      "symbol": "pinAssetBytes"
     }
   ],
   "door_reduction": {
     "before": 22,
-    "after": 22,
-    "why_not": "The doors are the callers of the asset writers (provider results, local providers, screenshots, frame tools, onboarding seed, browser capture). Each is a distinct product entry that legitimately writes assets; the fix does not merge them because they already converge on one verification boundary (validatedGeneratedMeta → verifyGeneratedMediaDecodes), which is the one that became asynchronous. Every door now awaits it; tsc plus the test-type gate reject an un-awaited caller."
+    "after": 23,
+    "why_not": "The doors are the callers of the asset writers (provider results, local providers, screenshots, frame tools, onboarding seed, browser capture). Each is a distinct product entry that legitimately writes assets; the fix does not merge them because they already converge on one verification boundary (validatedGeneratedMeta → verifyGeneratedMediaDecodes), which is the one that became asynchronous. Every door now awaits it; tsc plus the test-type gate reject an un-awaited caller. verifiedAssetBytes.ts is the new home of the one verification door (split out of projectAssetStore for the 800-line limit); pinAssetBytes is a new door by design — the only way bytes enter verification."
   },
-  "generality_proof": "The decode verdict has exactly one caller (door-map: verifyGeneratedMediaDecodes → projectAssetStore.validatedGeneratedMeta) and validatedGeneratedMeta is the only gate all four writers pass through; making the verifier asynchronous makes every one of the 16 writeAsset doors, 3 writeDeterministicAsset doors and 2 moveAssetFile doors asynchronous at once. The class (any synchronous child wait in the main process) is closed by the new check-heavy-path rule, which scans every electron/ production file, not only the reported one.",
+  "generality_proof": "The decode verdict has exactly one caller (door-map: verifyGeneratedMediaDecodes → projectAssetStore.validatedGeneratedMeta) and validatedGeneratedMeta is the only gate all four writers pass through; making the verifier asynchronous makes every one of the 16 writeAsset doors, 3 writeDeterministicAsset doors and 2 moveAssetFile doors asynchronous at once. The class (any synchronous child wait in the main process) is closed by the new check-heavy-path rule, which scans every electron/ production file, not only the reported one. The waiting window is closed for both things that can change during it: bytes (PinnedAssetBytes is the only type validatedGeneratedMeta accepts and the only thing the writers publish) and the target project (all four writers consume the existing identity boundary captureAssetWriteContext, owned by the project-binding concept, before the wait and re-assert it before publishing).",
   "shared_boundaries": [
     {
       "path": "electron/assets/generatedMediaDecode.ts",
@@ -187,7 +195,7 @@
       "responsibility": "The only way the decode check runs ffmpeg: an asynchronous child with timeout kill and output cap, translated into the same facts the verdict always read."
     },
     {
-      "path": "electron/assets/projectAssetStore.ts",
+      "path": "electron/assets/verifiedAssetBytes.ts",
       "symbol": "validatedGeneratedMeta",
       "responsibility": "Awaited by every writer before its synchronous publish section; fails closed before disk."
     },
@@ -195,6 +203,11 @@
       "path": "electron/tasks/localTaskJobs.ts",
       "symbol": "LocalTaskJobs",
       "responsibility": "Single-flight import so the now-asynchronous commit cannot interleave with a second query or a cancellation."
+    },
+    {
+      "path": "electron/assets/verifiedAssetBytes.ts",
+      "symbol": "pinAssetBytes",
+      "responsibility": "The only producers of PinnedAssetBytes (with readPinnedAssetFile): a copy owned by the write boundary that no caller can mutate during the asynchronous wait (V-1208-1)."
     }
   ],
   "same_class_entry_points": [
@@ -254,10 +267,12 @@
   "regression_tests": [
     "electron/assets/generatedMediaDecode.test.ts",
     "electron/assets/projectAssetStore.test.ts",
-    "electron/tasks/localTaskJobs.test.ts"
+    "electron/tasks/localTaskJobs.test.ts",
+    "electron/assets/projectAssetStore.publishIdentity.test.ts"
   ],
   "class_regression_tests": [
-    "electron/assets/projectAssetStore.test.ts"
+    "electron/assets/projectAssetStore.test.ts",
+    "electron/assets/projectAssetStore.publishIdentity.test.ts"
   ],
   "legacy_paths": {
     "status": "removed",
@@ -275,6 +290,7 @@
   "residual_risks": [
     "Other synchronous fs work on large files in the main process (readFileSync of a whole video in writeDeterministicAsset's existing-file hash, sha256 of large buffers) still runs on the main loop; it is CPU / disk work, not a child wait, and needs measurement before a fix (C-perfguide M02).",
     "An asynchronous decode spawned inside a paid dispatch is now visible to the dispatch ledger's child_process channel, which can only make a failed dispatch read as 'unknown' rather than 'never sent' — the conservative direction.",
-    "If the app quits while a decode child is running, the child is bounded by its timeout but is not killed on quit; the scratch file it reads is left for the OS temp cleaner."
+    "If the app quits while a decode child is running, the child is bounded by its timeout but is not killed on quit; the scratch file it reads is left for the OS temp cleaner.",
+    "Pinning copies the caller buffer once (a large video costs one extra transient copy in main-process memory); path-based writers that verify content now read the file into memory instead of renaming it."
   ]
 }
