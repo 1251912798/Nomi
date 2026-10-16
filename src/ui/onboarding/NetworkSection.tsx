@@ -197,7 +197,7 @@ export function NetworkSection(): JSX.Element | null {
                 if (event.key === 'Enter') void apply('custom', draftUrl)
               }}
               placeholder={t('onboardingProviders.drawer.network.placeholder')}
-              className="w-full h-8 rounded-nomi-sm border border-nomi-line bg-nomi-paper px-2.5 text-body-sm text-nomi-ink placeholder:text-nomi-ink-40 outline-none focus:border-nomi-accent"
+              className="w-full h-8 rounded-nomi-sm border border-nomi-line bg-nomi-paper px-2.5 text-body-sm text-nomi-ink placeholder:text-nomi-ink-40 outline-none focus:border-nomi-ink-40"
             />
           ) : null}
 

@@ -10,6 +10,60 @@
     <xhtml:link rel="alternate" hreflang="x-default" href="https://nomiaqm.com/" />
   </url>
   <url>
+    <loc>https://nomiaqm.com/docs</loc>
+    <lastmod>2026-10-12</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://nomiaqm.com/docs" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://nomiaqm.com/en/docs" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://nomiaqm.com/docs" />
+  </url>
+  <url>
+    <loc>https://nomiaqm.com/docs/mcp/before-you-connect</loc>
+    <lastmod>2026-10-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://nomiaqm.com/docs/mcp/before-you-connect" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://nomiaqm.com/en/docs/mcp/before-you-connect" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://nomiaqm.com/docs/mcp/before-you-connect" />
+  </url>
+  <url>
+    <loc>https://nomiaqm.com/docs/mcp/connect-clients</loc>
+    <lastmod>2026-10-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://nomiaqm.com/docs/mcp/connect-clients" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://nomiaqm.com/en/docs/mcp/connect-clients" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://nomiaqm.com/docs/mcp/connect-clients" />
+  </url>
+  <url>
+    <loc>https://nomiaqm.com/docs/mcp/verify-and-troubleshoot</loc>
+    <lastmod>2026-10-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://nomiaqm.com/docs/mcp/verify-and-troubleshoot" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://nomiaqm.com/en/docs/mcp/verify-and-troubleshoot" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://nomiaqm.com/docs/mcp/verify-and-troubleshoot" />
+  </url>
+  <url>
+    <loc>https://nomiaqm.com/docs/start/first-project</loc>
+    <lastmod>2026-10-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://nomiaqm.com/docs/start/first-project" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://nomiaqm.com/en/docs/start/first-project" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://nomiaqm.com/docs/start/first-project" />
+  </url>
+  <url>
+    <loc>https://nomiaqm.com/docs/start/what-is-nomi</loc>
+    <lastmod>2026-10-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://nomiaqm.com/docs/start/what-is-nomi" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://nomiaqm.com/en/docs/start/what-is-nomi" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://nomiaqm.com/docs/start/what-is-nomi" />
+  </url>
+  <url>
     <loc>https://nomiaqm.com/en/</loc>
     <lastmod>2026-10-09</lastmod>
     <changefreq>weekly</changefreq>
@@ -17,6 +71,60 @@
     <xhtml:link rel="alternate" hreflang="zh-CN" href="https://nomiaqm.com/" />
     <xhtml:link rel="alternate" hreflang="en" href="https://nomiaqm.com/en/" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://nomiaqm.com/" />
+  </url>
+  <url>
+    <loc>https://nomiaqm.com/en/docs</loc>
+    <lastmod>2026-10-12</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://nomiaqm.com/docs" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://nomiaqm.com/en/docs" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://nomiaqm.com/docs" />
+  </url>
+  <url>
+    <loc>https://nomiaqm.com/en/docs/mcp/before-you-connect</loc>
+    <lastmod>2026-10-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://nomiaqm.com/docs/mcp/before-you-connect" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://nomiaqm.com/en/docs/mcp/before-you-connect" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://nomiaqm.com/docs/mcp/before-you-connect" />
+  </url>
+  <url>
+    <loc>https://nomiaqm.com/en/docs/mcp/connect-clients</loc>
+    <lastmod>2026-10-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://nomiaqm.com/docs/mcp/connect-clients" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://nomiaqm.com/en/docs/mcp/connect-clients" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://nomiaqm.com/docs/mcp/connect-clients" />
+  </url>
+  <url>
+    <loc>https://nomiaqm.com/en/docs/mcp/verify-and-troubleshoot</loc>
+    <lastmod>2026-10-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://nomiaqm.com/docs/mcp/verify-and-troubleshoot" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://nomiaqm.com/en/docs/mcp/verify-and-troubleshoot" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://nomiaqm.com/docs/mcp/verify-and-troubleshoot" />
+  </url>
+  <url>
+    <loc>https://nomiaqm.com/en/docs/start/first-project</loc>
+    <lastmod>2026-10-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://nomiaqm.com/docs/start/first-project" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://nomiaqm.com/en/docs/start/first-project" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://nomiaqm.com/docs/start/first-project" />
+  </url>
+  <url>
+    <loc>https://nomiaqm.com/en/docs/start/what-is-nomi</loc>
+    <lastmod>2026-10-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://nomiaqm.com/docs/start/what-is-nomi" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://nomiaqm.com/en/docs/start/what-is-nomi" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://nomiaqm.com/docs/start/what-is-nomi" />
   </url>
   <url>
     <loc>https://nomiaqm.com/en/features</loc>

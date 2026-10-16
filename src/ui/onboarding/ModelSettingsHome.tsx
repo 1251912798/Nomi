@@ -128,7 +128,7 @@ function ActionRow({
       data-model-home-highlighted={highlighted ? '' : undefined}
       className={cn(
         'group flex min-h-[52px] w-full items-center gap-3 px-3 py-2 text-left transition-colors hover:bg-nomi-ink-10',
-        highlighted && 'ring-1 ring-inset ring-nomi-accent',
+        highlighted && 'ring-1 ring-inset ring-nomi-ink-40',
       )}
     >
       <span className="grid size-7 shrink-0 place-items-center rounded-nomi-sm bg-nomi-ink-05 text-nomi-ink-60">

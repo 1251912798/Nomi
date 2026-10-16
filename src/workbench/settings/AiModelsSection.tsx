@@ -259,7 +259,7 @@ export function AiModelsSection({
                   onChange={(event) => setRelayEndpoint(event.currentTarget.value)}
                   placeholder={t('settings.ai.upload.customRelay.endpointPlaceholder')}
                   aria-label={t('settings.ai.upload.customRelay.endpoint')}
-                  className="h-8 rounded-nomi-sm border border-nomi-line bg-nomi-paper px-2 text-caption text-nomi-ink outline-none focus:border-nomi-accent"
+                  className="h-8 rounded-nomi-sm border border-nomi-line bg-nomi-paper px-2 text-caption text-nomi-ink outline-none focus:border-nomi-ink-40"
                 />
               </label>
               <label className="grid gap-1">
@@ -271,7 +271,7 @@ export function AiModelsSection({
                   onChange={(event) => setRelayToken(event.currentTarget.value)}
                   placeholder={relayHasToken ? t('settings.ai.upload.customRelay.tokenSaved') : t('settings.ai.upload.customRelay.tokenPlaceholder')}
                   aria-label={t('settings.ai.upload.customRelay.token')}
-                  className="h-8 rounded-nomi-sm border border-nomi-line bg-nomi-paper px-2 text-caption text-nomi-ink outline-none focus:border-nomi-accent"
+                  className="h-8 rounded-nomi-sm border border-nomi-line bg-nomi-paper px-2 text-caption text-nomi-ink outline-none focus:border-nomi-ink-40"
                 />
               </label>
               <div className="flex flex-wrap items-center gap-2">

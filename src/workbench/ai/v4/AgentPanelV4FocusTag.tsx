@@ -20,7 +20,7 @@ export type AgentPanelV4FocusTagProps = Readonly<{
 export function AgentPanelV4FocusTag({ label, detail, hint, clearLabel, onClear }: AgentPanelV4FocusTagProps): JSX.Element {
   return (
     <span
-      className="inline-flex h-[26px] max-w-full shrink-0 items-center gap-1.5 self-start whitespace-nowrap rounded-nomi-sm border border-nomi-accent/30 bg-nomi-accent-soft pl-2 pr-1 text-caption"
+      className="inline-flex h-[26px] max-w-full shrink-0 items-center gap-1.5 self-start whitespace-nowrap rounded-nomi-sm border border-nomi-line bg-nomi-accent-soft pl-2 pr-1 text-caption"
       title={hint}
       data-v4-focus-tag="director-shot"
     >

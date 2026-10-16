@@ -2,7 +2,7 @@ import React from 'react'
 import { useTranslation } from 'react-i18next'
 
 // 原生 range 提供鼠标、触控、方向键/Home/End；领域选区约束由宿主统一处理。
-const HANDLE = 'pointer-events-none absolute left-0 top-0 m-0 h-14 w-full appearance-none bg-transparent outline-none [&::-webkit-slider-runnable-track]:bg-transparent [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:h-14 [&::-webkit-slider-thumb]:w-7 [&::-webkit-slider-thumb]:cursor-ew-resize [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:bg-transparent [&:focus-visible::-webkit-slider-thumb]:ring-2 [&:focus-visible::-webkit-slider-thumb]:ring-nomi-accent disabled:[&::-webkit-slider-thumb]:cursor-default'
+const HANDLE = 'pointer-events-none absolute left-0 top-0 m-0 h-14 w-full appearance-none bg-transparent outline-none [&::-webkit-slider-runnable-track]:bg-transparent [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:h-14 [&::-webkit-slider-thumb]:w-7 [&::-webkit-slider-thumb]:cursor-ew-resize [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:bg-transparent [&:focus-visible::-webkit-slider-thumb]:ring-2 [&:focus-visible::-webkit-slider-thumb]:ring-nomi-ink disabled:[&::-webkit-slider-thumb]:cursor-default'
 export function VideoTrimFilmstrip({ children, duration, range, time, disabled, labels, onChange, onSeek }: {
   children: React.ReactNode; duration: number; range: { start: number; end: number }; time: number; disabled: boolean; labels: { seek: string; start: string; end: string }
   onChange: (edge: 'start' | 'end', value: number) => void; onSeek: (value: number) => void

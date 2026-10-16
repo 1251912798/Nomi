@@ -12,7 +12,7 @@ import { CanvasControlsHelpPopover } from './CanvasControlsHelpPopover'
 
 const ROW_CLASS = cn(
   'flex h-8 w-full items-center gap-2 rounded-nomi-sm border-0 bg-transparent px-2 text-left font-[inherit] text-body-sm text-nomi-ink-80 cursor-pointer',
-  'hover:bg-nomi-ink-05 active:bg-nomi-ink-10 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-nomi-accent',
+  'hover:bg-nomi-ink-05 active:bg-nomi-ink-10 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-nomi-ink',
   'aria-pressed:bg-nomi-ink-05 aria-pressed:text-nomi-ink disabled:cursor-not-allowed disabled:opacity-40',
   '[&>svg]:size-4 [&>svg]:shrink-0 [&>svg]:text-nomi-ink-60',
 )

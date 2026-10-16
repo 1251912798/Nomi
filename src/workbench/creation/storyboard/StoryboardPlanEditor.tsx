@@ -632,7 +632,7 @@ export default function StoryboardPlanEditor({ projectId }: { projectId?: string
               disabled={rows.length === 0}
               aria-label={t('storyboardEditor.playback.aria')}
               data-storyboard-play-all="true"
-              className="h-6 px-2.5 rounded-full border border-nomi-line text-caption text-nomi-ink-60 inline-flex items-center gap-1 hover:border-nomi-accent hover:text-nomi-accent disabled:opacity-40 disabled:cursor-not-allowed"
+              className="h-6 px-2.5 rounded-full border border-nomi-line text-caption text-nomi-ink-60 inline-flex items-center gap-1 hover:border-nomi-ink-30 hover:text-nomi-accent disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <IconPlayerPlay size={12} stroke={1.8} />
               {t('storyboardEditor.playback.start')}

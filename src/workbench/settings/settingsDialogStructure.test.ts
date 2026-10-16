@@ -65,13 +65,17 @@ const APPROVED_NON_MODEL_SECTION_SHA256 = {
   //             就是这么来的。正向断言见下方 keeps the last catalog when a read fails。
   // 2026-09-22（#831）：「已接入 Kie」的判据从 key 字面量改成经 builtinVendorIdentity 解析身份，
   //             这样兄弟连接（`kie--x`）也认得出。两刀都只改判据，布局与文案一个字没动。
-  'AiModelsSection.tsx': '97ebb8ee265bff40cdf8368c98dc056a2b08f6e3ed61ea697c0195d0bd44a54c',
+  // 2026-10-10：用户拍板「蓝色描边都删掉」，设置各区块只把 `border-nomi-accent` 系类名换成灰线 / 透明边
+  //             （输入框聚焦 `focus:border-nomi-ink-40`、当前项 `border-transparent`；布局与文案一个字没动），
+  //             故更新相关文件哈希；协调会话在交付报告里知情。
+  'AiModelsSection.tsx': '1c4009c2489371b0913065c32e0ed5c91033ce8826c82b4ada38cffd97c42f38',
   // 2026-09-03：toggleHost 参数类型从 SettingsHostKey（四值联合）泛化为 string（支持自定义 profile key）；
   // 新增 CustomMcpClientCard UI TODO 注释（底层能力已就绪，UI 面另排样张拍板）。
   // 2026-09-09：声音归通用设置的单一入口，移除这里的旧开关；下方断言保留系统通知策略。
   // 2026-09-14：删「默认制作模式」三段与「支出与风险边界」整栏（#781），并删掉独立的「可信发起方」栏——开关并进 MCP 连接页每张客户端卡（#783）。
   'AutomationPermissionsSection.tsx': '721c88e732d8c03887adf19b69e6795f048db08c73701033fd33dc3972e5d83e',
-  'CanvasGestureSection.tsx': '26dd136e2825d7c3758e10ffca5e690e8f9b94cbd1b25f75e53f5999d36afd4a',
+  // 2026-10-15：当前项文字由强调色改 text-nomi-ink（去蓝色描边，仅类名；协调会话知情）。
+  'CanvasGestureSection.tsx': '2a867bb86fe566667cc0c15d5cee11ef1e2c29bc447de5c8c5e3b53022058759',
   // 2026-09-15：两处非布局改动——① 那行注释原来提到 FeedbackShareDialog，而那份文件本次被删
   // （失败面那条路不再套带标题的 modal 外壳，直接呈现反馈卡）；② `FeedbackShareContent` 的
   // `variant` prop 只剩一个合法值，删掉之后这里的 `variant="embedded"` 也跟着去掉。

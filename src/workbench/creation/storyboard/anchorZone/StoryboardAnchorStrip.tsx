@@ -57,7 +57,7 @@ export default function StoryboardAnchorStrip({ cards, filterAnchorId, onFilterB
             aria-pressed={filterAnchorId === card.anchor.id}
             className={cn(
               'flex h-12 min-w-0 max-w-[220px] items-center gap-2 rounded-nomi border bg-nomi-paper px-2 text-left',
-              filterAnchorId === card.anchor.id ? 'border-nomi-accent' : 'border-nomi-line hover:border-nomi-ink-20',
+              filterAnchorId === card.anchor.id ? 'border-nomi-ink' : 'border-nomi-line hover:border-nomi-ink-20',
             )}
           >
             <span className="relative size-10 shrink-0 overflow-hidden rounded-nomi-sm border border-nomi-line-soft bg-nomi-ink-05">

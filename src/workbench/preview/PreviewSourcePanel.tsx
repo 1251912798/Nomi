@@ -97,7 +97,7 @@ export function ShotGrid(): JSX.Element {
           className={cn(
             'group relative aspect-video overflow-hidden rounded-nomi-sm border border-nomi-line bg-nomi-ink-05',
             'cursor-grab p-0 text-left active:cursor-grabbing',
-            'hover:border-nomi-accent',
+            'hover:border-nomi-ink-30',
           )}
           title={t('previewSource.shots.itemHint', { name: source.label })}
           aria-label={t('previewSource.shots.itemHint', { name: source.label })}
@@ -175,7 +175,7 @@ export default function PreviewSourcePanel(): JSX.Element {
               'flex-1 cursor-pointer border-0 bg-transparent py-2 text-caption',
               'transition-[color,box-shadow] duration-nomi-fast ease-nomi-fast',
               tab === value
-                ? 'font-semibold text-nomi-ink shadow-[inset_0_-1.5px_0_var(--workbench-accent)]'
+                ? 'font-semibold text-nomi-ink shadow-[inset_0_-1.5px_0_var(--nomi-ink)]'
                 : 'text-nomi-ink-60 hover:text-nomi-ink',
             )}
             onClick={() => setTab(value)}

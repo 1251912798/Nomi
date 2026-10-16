@@ -111,18 +111,14 @@ const workbenchBasePlugin = plugin(({ addBase, addUtilities }) => {
       '--nomi-success-ink': 'oklch(0.45 0.09 145)',
       '--nomi-success-soft': 'oklch(0.962 0.033 145)',
       '--nomi-success-edge': 'oklch(0.905 0.07 145)',
-      // info 就是 accent 本身（别名，不是第二个蓝）。2026-09-07 修：曾给 info 单写
-      // oklch(0.55 0.09 250) —— 与 accent 同色相同亮度、只差 ΔC 0.04，小 chip 上「提示」和「主操作」
-      // 分不开，等于一份并行版（P1）。成熟系统本来就用品牌蓝当 info（Primer 的 accent 兼任 info、
-      // Geist 用 blue 表 info/production），故收成别名。暗色块无需重定义：accent 自己在那边翻，
-      // var() 在使用处求值，info 自动跟着翻。
-      '--nomi-info': 'var(--nomi-accent)',
+      // info 只剩 ink / soft 两档（小字与底色）。2026-10-10 用户拍板去掉蓝色描边：info 不再有
+      // 「base」（曾是 accent 别名，无人使用）与「edge」（只用来画蓝边），描边一律走灰线。
       '--nomi-info-ink': 'oklch(0.45 0.13 250)',
       '--nomi-info-soft': 'oklch(0.957 0.021 250)',
-      '--nomi-info-edge': 'oklch(0.9 0.048 250)',
-      // 全局焦点环色（accent 42%）。所有交互控件 :focus-visible 统一用它，覆盖 macOS 系统强调色的
+      // 全局焦点环色（ink 70%，深色环）。所有交互控件 :focus-visible 统一用它，覆盖 macOS 系统强调色的
       // outline:auto（用户设了橙/黄就冒橙环）。全局 :root → portal 到 body 的面板也生效。
-      '--nomi-focus': 'color-mix(in srgb, var(--nomi-accent) 42%, transparent)',
+      // 2026-10-10 用户拍板「蓝色描边不需要」：键盘焦点环保留（无障碍），改深色，不再别名到 accent。
+      '--nomi-focus': 'color-mix(in srgb, var(--nomi-ink) 70%, transparent)',
       '--nomi-track-text': 'var(--nomi-accent)',
       '--nomi-group-neutral': 'oklch(0.68 0.01 80)',
       '--nomi-group-ocean': 'oklch(0.55 0.13 250)',
@@ -381,12 +377,10 @@ const workbenchBasePlugin = plugin(({ addBase, addUtilities }) => {
       '--nomi-success-ink': 'oklch(0.82 0.09 145)',
       '--nomi-success-soft': 'oklch(0.295 0.042 145)',
       '--nomi-success-edge': 'oklch(0.395 0.06 145)',
-      // info 的 base 不在此重定义：它是 var(--nomi-accent) 的别名，accent 在本块已翻暗（0.70），
-      // var() 在使用处求值 → info 自动跟着翻。只有 ink/soft/edge 三档需要暗色值。
       '--nomi-info-ink': 'oklch(0.82 0.13 250)',
       '--nomi-info-soft': 'oklch(0.295 0.045 250)',
-      '--nomi-info-edge': 'oklch(0.395 0.065 250)',
-      '--nomi-focus': 'color-mix(in srgb, var(--nomi-accent) 50%, transparent)',
+      // 暗底上深色（浅 ink）环要比亮色更实一点才看得清。
+      '--nomi-focus': 'color-mix(in srgb, var(--nomi-ink) 85%, transparent)',
       // 时间轴三轨：暗底提亮以保持可辨（fork 未覆盖，本次补）。
       '--nomi-track-text': 'oklch(0.75 0.15 305)',
       '--nomi-group-neutral': 'oklch(0.62 0.006 85)',
@@ -469,7 +463,7 @@ const workbenchBasePlugin = plugin(({ addBase, addUtilities }) => {
     // Preserve border widths/layout and error colors. Borderless inner fields pass
     // the indication to their direct or nearest bordered container, including editors.
     [`:root ${validTextFocus}, :root :not([aria-invalid="true"], [data-error]):has(> ${validTextFocus}), :root .border:has(${validTextFocus}[contenteditable]):not(:has(.border ${validTextFocus}[contenteditable])):not([aria-invalid="true"], [data-error], .border-workbench-danger, .border-nomi-danger)`]: {
-      'border-color': 'var(--nomi-accent)',
+      'border-color': 'var(--nomi-ink-40)',
     },
     'html, body, #root': {
       width: '100%',
@@ -778,10 +772,8 @@ export default {
           'success-ink': tokenColor('--nomi-success-ink'),
           'success-soft': tokenColor('--nomi-success-soft'),
           'success-edge': tokenColor('--nomi-success-edge'),
-          info: tokenColor('--nomi-info'),
           'info-ink': tokenColor('--nomi-info-ink'),
           'info-soft': tokenColor('--nomi-info-soft'),
-          'info-edge': tokenColor('--nomi-info-edge'),
           'group-neutral': tokenColor('--nomi-group-neutral'),
           'group-ocean': tokenColor('--nomi-group-ocean'),
           'group-teal': tokenColor('--nomi-group-teal'),

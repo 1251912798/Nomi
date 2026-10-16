@@ -161,7 +161,7 @@ export function FindReferencePanel({
             className={cn(
               'h-6 rounded-full border px-2.5 text-caption transition-[background,color,border-color] duration-nomi-fast ease-nomi-fast',
               id === platform
-                ? 'border-nomi-accent bg-nomi-accent-soft font-semibold text-nomi-accent'
+                ? 'border-transparent bg-nomi-accent-soft font-semibold text-nomi-accent'
                 : 'border-nomi-line bg-nomi-paper text-nomi-ink-60 hover:text-nomi-ink',
               id === platform && 'cursor-default',
             )}

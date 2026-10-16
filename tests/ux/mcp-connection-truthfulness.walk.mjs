@@ -20,7 +20,7 @@ import { expect } from '@playwright/test'
 import { launchNomiApp } from './_launchApp.mjs'
 import { stationTimeout } from './_station-budget.mjs'
 import { clickOrFail, screenshotSettled } from './_assert.mjs'
-import { newProjectEntry } from './_shell.mjs'
+import { closeSettings, newProjectEntry, settingsDialog } from './_shell.mjs'
 import { repoRoot } from './_mcpJourney.mjs'
 
 const shotsDir = path.resolve(process.argv.find((arg) => arg.startsWith('--shots-out='))?.split('=').slice(1).join('=')
@@ -50,16 +50,12 @@ async function openMcpPanel(win) {
   await win.evaluate(() => window.dispatchEvent(new CustomEvent('nomi-open-settings', {
     detail: { tab: 'automation', section: 'automation' },
   })))
-  const settings = win.locator('[data-settings-overlay="true"]')
+  const settings = settingsDialog(win)
   await expect(settings).toBeVisible()
   await clickOrFail(settings.locator('[data-settings-action="manage-mcp-connections"]'), 'Manage MCP connections')
   const panel = settings.locator('[data-settings-section="mcp-assistant-connections"]')
   await expect(panel).toBeVisible()
   return { settings, panel }
-}
-async function closeSettings(win) {
-  await clickOrFail(win.locator('[data-settings-overlay="true"]').getByRole('button', { name: /关闭|Close/ }).last(), 'Close settings')
-  await expect(win.locator('[data-settings-overlay="true"]')).toBeHidden()
 }
 // 第 4 段起「已连通 X」换成连接状态框：助手没来过时是「已写入配置」框，Nomi 自己实连通的证据是框里那一行。
 const verifiedLine = (panel) => panel.locator('[data-assistant-status="written"] [data-assistant-verified]')
@@ -68,7 +64,7 @@ const trustedHosts = (win) => win.evaluate(async () => (await window.nomiDesktop
 try {
   launched = await launchNomiApp({
     name: 'mcp-connection-truthfulness', tempRoot,
-    env: { HOME: testHome, USERPROFILE: testHome }, settleMs: 0,
+    env: { HOME: testHome, USERPROFILE: testHome, APPDATA: path.join(testHome, 'AppData', 'Roaming') }, settleMs: 0,
     // 屏外运行：窗口挪到任何屏幕之外、不可聚焦，不打扰正在用电脑的人。
     mainRequire: [path.join(repoRoot, 'tests', 'ux', '_offscreenWindows.cjs')],
     initialLocalStorage: {

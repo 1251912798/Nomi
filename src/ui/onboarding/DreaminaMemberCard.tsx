@@ -149,7 +149,7 @@ export function DreaminaMemberCard({ status, onChanged, onOpenDetails, detailMod
           </div>
           <button
             type="button" onClick={() => window.open(flow.verificationUri, '_blank', 'noopener')}
-            className="w-full h-9 rounded-nomi-sm border border-nomi-line text-body-sm text-nomi-ink inline-flex items-center justify-center gap-1.5 hover:border-nomi-accent hover:text-nomi-accent"
+            className="w-full h-9 rounded-nomi-sm border border-nomi-line text-body-sm text-nomi-ink inline-flex items-center justify-center gap-1.5 hover:border-nomi-ink-30 hover:text-nomi-accent"
           >
             {t('onboardingProviders.dreamina.openAuthorizePage')}<IconExternalLink size={14} stroke={1.6} />
           </button>

@@ -11,7 +11,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { expect, expectAbsent, proveProbe, screenshotSettled } from './_assert.mjs'
-import { canvasFitViewButton, newProjectEntry, openModelSettings } from './_shell.mjs'
+import { canvasFitViewButton, newProjectEntry, openModelSettings, switchWorkspace } from './_shell.mjs'
 import { stationTimeout } from './_station-budget.mjs'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
@@ -252,7 +252,7 @@ try {
 
   await newProjectEntry(win).click({ timeout: stationTimeout({ operations: 2 }) })
   await win.waitForTimeout(2200)
-  await win.locator('[aria-label="工作区切换"]').getByText('生成', { exact: true }).click({ timeout: 5000 })
+  await switchWorkspace(win, 'generation', '切到生成区')
   await win.waitForTimeout(1400)
 
   // 模型接入入口现在是应用栏的「打开模型设置」，打开的是统一「设置」弹窗里的模型区

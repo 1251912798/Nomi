@@ -21,7 +21,7 @@ import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/cli
 import { launchNomiApp } from './_launchApp.mjs'
 import { stationTimeout } from './_station-budget.mjs'
 import { clickOrFail, screenshotSettled } from './_assert.mjs'
-import { newProjectEntry } from './_shell.mjs'
+import { newProjectEntry, settingsDialog } from './_shell.mjs'
 import { repoRoot } from './_mcpJourney.mjs'
 import { uiText } from './full-walk/invariants.mjs'
 
@@ -67,7 +67,7 @@ async function snap(win, name) {
 }
 async function openPanel(win) {
   await win.evaluate(() => window.dispatchEvent(new CustomEvent('nomi-open-settings', { detail: { tab: 'automation', section: 'automation' } })))
-  const settings = win.locator('[data-settings-overlay="true"]')
+  const settings = settingsDialog(win)
   await expect(settings).toBeVisible()
   await clickOrFail(settings.locator('[data-settings-action="manage-mcp-connections"]'), 'Manage MCP connections')
   const panel = settings.locator('[data-settings-section="mcp-assistant-connections"]')
@@ -79,7 +79,7 @@ try {
   launched = await launchNomiApp({
     name: 'mcp-connection-status', tempRoot, capabilityDir,
     // Windows 的主目录看 USERPROFILE 不看 HOME：两个都指临时目录，否则配置会解析到真机主目录（然后被隔离保护拒绝写入）。
-    env: { HOME: testHome, USERPROFILE: testHome, NOMI_MCP_HTTP_PORT: '0' }, settleMs: 0,
+    env: { HOME: testHome, USERPROFILE: testHome, APPDATA: path.join(testHome, 'AppData', 'Roaming'), NOMI_MCP_HTTP_PORT: '0' }, settleMs: 0,
     mainRequire: [path.join(repoRoot, 'tests', 'ux', '_offscreenWindows.cjs')],
     initialLocalStorage: {
       'nomi:splash:v1': 'seen', 'nomi:journey-tour:v1': 'seen',

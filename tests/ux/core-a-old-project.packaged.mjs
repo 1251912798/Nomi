@@ -425,7 +425,7 @@ async function main() {
     await walk.stopApp()
     verifyFinalGraph()
     walk.report.oldStoryboardFormats = await runOldStoryboardFormatMatrix({ source, outputDir,
-      prepareOldProjectCopy, openCopiedStoryboardEditor, assertCanvasPreserved, assertNoHydratedCanvasAddition, editedCanvasExpectation, readCardInfoMeasurements, captureExpectedLegacyTable, recordCandidateFailure, fileHashes })
+      prepareOldProjectCopy, openCopiedStoryboardEditor, assertCanvasPreserved, assertNoHydratedCanvasAddition, editedCanvasExpectation, readCardInfoMeasurements, recordCandidateFailure, fileHashes })
   } catch (error) {
     recordCandidateFailure(walk.report, 'journey', error)
     failure = error
