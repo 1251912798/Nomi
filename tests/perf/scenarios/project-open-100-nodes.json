@@ -15,12 +15,11 @@
   ],
   "budget": 1000,
   "baseline": {
-    "median": 2383,
-    "p95": 2806.4,
+    "median": 2300,
+    "p95": 2397,
     "runs": 5,
     "machine": "win32 x64 13th Gen Intel(R) Core(TM) i9-13900H x20 / 64GB",
-    "date": "2026-10-11",
-    "commit": "0929dfc0a",
-    "noisy": true
+    "date": "2026-10-16",
+    "commit": "94724f860"
   }
 }

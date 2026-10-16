@@ -17,5 +17,13 @@
   "budget": 300,
   "group": "⑥ 项目库",
   "budgetStatus": "proposed",
-  "budgetBasis": "换页类操作：RAIL 认为 100ms 内即时、1 秒内不打断思路；回项目库只是把本地列表画出来（封面可以晚到），提议 300ms；现有同类 project-open-100-nodes（打开项目到能操作）预算 1000ms"
+  "budgetBasis": "换页类操作：RAIL 认为 100ms 内即时、1 秒内不打断思路；回项目库只是把本地列表画出来（封面可以晚到），提议 300ms；现有同类 project-open-100-nodes（打开项目到能操作）预算 1000ms",
+  "baseline": {
+    "median": 799.8,
+    "p95": 837.1,
+    "runs": 5,
+    "machine": "win32 x64 13th Gen Intel(R) Core(TM) i9-13900H x20 / 64GB",
+    "date": "2026-10-16",
+    "commit": "94724f860"
+  }
 }

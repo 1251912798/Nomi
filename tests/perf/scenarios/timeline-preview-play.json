@@ -18,5 +18,13 @@
   "budget": 33,
   "group": "⑩ 预览播放",
   "budgetStatus": "proposed",
-  "budgetBasis": "视频播放 30fps 一帧 33ms；p95 超过 33ms 就是肉眼可见的掉帧"
+  "budgetBasis": "视频播放 30fps 一帧 33ms；p95 超过 33ms 就是肉眼可见的掉帧",
+  "baseline": {
+    "median": 13.3,
+    "p95": 16.8,
+    "runs": 5,
+    "machine": "win32 x64 13th Gen Intel(R) Core(TM) i9-13900H x20 / 64GB",
+    "date": "2026-10-16",
+    "commit": "94724f860"
+  }
 }
