@@ -19,6 +19,7 @@ const {
   decodeInvocation,
   decodeTimeoutMs,
   interpretDecodeRun,
+  runDecoder,
   verifyGeneratedMediaDecodes,
 } = await import("./generatedMediaDecode");
 
@@ -45,8 +46,15 @@ beforeAll(() => {
   webp = encode("base.webp");
 });
 
+/** 解码器只校验暂存件（文件）：测试把字节落成一个文件再交给它，形状与 generatedAssetStaging 一致。 */
+let staged = 0;
+function stage(bytes: Buffer): { stagedPath: string; byteLength: number } {
+  const stagedPath = path.join(work, `staged-${staged += 1}.media`);
+  fs.writeFileSync(stagedPath, bytes);
+  return { stagedPath, byteLength: bytes.byteLength };
+}
 const decodes = (kind: "image" | "video" | "audio", bytes: Buffer, contentType: string) =>
-  verifyGeneratedMediaDecodes({ kind, bytes, contentType });
+  verifyGeneratedMediaDecodes({ kind, ...stage(bytes), contentType });
 
 function insertAfterSoi(jpegBytes: Buffer, segment: Buffer): Buffer {
   return Buffer.concat([jpegBytes.subarray(0, 2), segment, jpegBytes.subarray(2)]);
@@ -61,16 +69,16 @@ describe("verdict = a picture came out (not: the decoder had nothing to say)", (
     ["JPEG", () => jpeg, "image/jpeg"],
     ["PNG", () => png, "image/png"],
     ["WebP", () => webp, "image/webp"],
-  ] as const)("a real %s decodes with real dimensions", (_label, bytes, contentType) => {
-    const verdict = decodes("image", bytes(), contentType);
+  ] as const)("a real %s decodes with real dimensions", async (_label, bytes, contentType) => {
+    const verdict = await decodes("image", bytes(), contentType);
     expect(verdict).toMatchObject({ verdict: "decodable", width: 512, height: 512 });
   });
 
   // 类的一头（红：旧判定 `-xerror` 把它判失败）：完整可显示的 PNG，IEND 之后多了字节。
   // 产物被水印 / 元数据 / CDN 补丁追加尾数据是常态，图本身一点没坏。
-  it("a complete PNG with extra bytes after IEND is a picture — the old zero-warning verdict rejected it", () => {
+  it("a complete PNG with extra bytes after IEND is a picture — the old zero-warning verdict rejected it", async () => {
     const withTrailer = Buffer.concat([png, Buffer.alloc(100, 0x41)]);
-    expect(decodes("image", withTrailer, "image/png")).toMatchObject({ verdict: "decodable", width: 512, height: 512 });
+    expect(await decodes("image", withTrailer, "image/png")).toMatchObject({ verdict: "decodable", width: 512, height: 512 });
   });
 
   it.each([
@@ -79,17 +87,17 @@ describe("verdict = a picture came out (not: the decoder had nothing to say)", (
     ["an XMP APP1 packet", () => insertAfterSoi(jpeg, appSegment(0xe1, Buffer.from('http://ns.adobe.com/xap/1.0/\0<x:xmpmeta xmlns:x="adobe:ns:meta/"><rdf:RDF/></x:xmpmeta>')))],
     ["trailing garbage after EOI", () => Buffer.concat([jpeg, Buffer.alloc(200, 0x41)])],
     ["trailing zero padding", () => Buffer.concat([jpeg, Buffer.alloc(4096)])],
-  ] as const)("a JPEG with %s still decodes", (_label, bytes) => {
-    expect(decodes("image", bytes(), "image/jpeg").verdict).toBe("decodable");
+  ] as const)("a JPEG with %s still decodes", async (_label, bytes) => {
+    expect((await decodes("image", bytes(), "image/jpeg")).verdict).toBe("decodable");
   });
 
   it.each([
     ["random bytes wearing a JPEG signature", () => Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.from(Array.from({ length: 5000 }, (_, index) => (index * 131 + 7) & 255))]), "image/jpeg"],
     ["a PNG with a flipped byte inside its pixel data", () => { const copy = Buffer.from(png); copy[copy.indexOf(Buffer.from("IDAT", "ascii")) + 20] ^= 0xff; return copy; }, "image/png"],
     ["a WebP cut in half", () => webp.subarray(0, Math.floor(webp.length * 0.4)), "image/webp"],
-  ] as const)("%s cannot be decoded: the error carries the machine code, not vendor blame", (_label, bytes, contentType) => {
+  ] as const)("%s cannot be decoded: the error carries the machine code, not vendor blame", async (_label, bytes, contentType) => {
     let thrown: unknown;
-    try { decodes("image", bytes(), contentType); } catch (error) { thrown = error; }
+    try { await decodes("image", bytes(), contentType); } catch (error) { thrown = error; }
     expect(thrown).toBeInstanceOf(Error);
     const message = (thrown as Error).message;
     expect(matchNomiErrorCode(message)).toBe("output-unreadable");
@@ -138,15 +146,15 @@ describe("the timeout scales with the file instead of being one fixed wall", () 
     expect(decodeTimeoutMs(Number.NaN)).toBe(DECODE_TIMEOUT_BASE_MS);
   });
 
-  it("the run really receives the scaled timeout, and a timeout is 'not verified', not 'unreadable'", () => {
+  it("the run really receives the scaled timeout, and a timeout is 'not verified', not 'unreadable'", async () => {
     const seen: number[] = [];
     const timedOut = { status: null, signal: "SIGTERM", stdout: "", stderr: "", error: { code: "ETIMEDOUT" } } as const;
     for (const size of [1024, 30 * 1024 * 1024]) {
       let thrown: unknown;
       try {
-        verifyGeneratedMediaDecodes(
-          { kind: "image", bytes: Buffer.alloc(size, 1), contentType: "image/png" },
-          { run: (_command, _args, options) => { seen.push(options.timeout); return timedOut; }, resolveFfmpeg: () => "ffmpeg" },
+        await verifyGeneratedMediaDecodes(
+          { kind: "image", stagedPath: path.join(work, "never-read.png"), byteLength: size, contentType: "image/png" },
+          { run: async (_command, _args, options) => { seen.push(options.timeout); return timedOut; }, resolveFfmpeg: () => "ffmpeg" },
         );
       } catch (error) { thrown = error; }
       expect((thrown as Error).message).toContain("decode_unverified");
@@ -160,18 +168,75 @@ describe("the timeout scales with the file instead of being one fixed wall", () 
     ]);
   });
 
-  it("a missing decoder is 'not verified' too", () => {
-    expect(() => verifyGeneratedMediaDecodes({ kind: "image", bytes: png, contentType: "image/png" }, { resolveFfmpeg: () => "" }))
-      .toThrow(/decode_unverified/);
+  it("a missing decoder is 'not verified' too", async () => {
+    await expect(verifyGeneratedMediaDecodes({ kind: "image", ...stage(png), contentType: "image/png" }, { resolveFfmpeg: () => "" }))
+      .rejects.toThrow(/decode_unverified/);
+  });
+});
+
+// 0.23.1 用户反馈「卡的时候点什么都没反应」：校验以前是 spawnSync，主进程在等 ffmpeg 的整段时间里
+// 一个事件都处理不了（同步 IPC 把渲染层一起卡住、窗口不动）。不变式：校验进行中，主进程事件循环照转。
+describe("the main process keeps answering while the decoder runs", () => {
+  let mp4: Buffer;
+  beforeAll(() => {
+    const output = path.join(work, "loop-real.mp4");
+    const result = spawnSync(resolveFfmpegPath(), [
+      "-hide_banner", "-v", "error", "-y", "-f", "lavfi", "-i", "testsrc2=size=640x360:rate=25", "-t", "1",
+      "-pix_fmt", "yuv420p", output,
+    ], { timeout: 30_000, maxBuffer: 1 << 20 });
+    if (result.status !== 0) throw new Error(`fixture ffmpeg failed: ${result.stderr?.toString() || "unknown"}`);
+    mp4 = fs.readFileSync(output);
+  });
+
+  it("an event queued while a real video is being verified is served before the verdict", async () => {
+    const order: string[] = [];
+    setImmediate(() => order.push("main-loop-turned"));
+    const pending = verifyGeneratedMediaDecodes({ kind: "video", ...stage(mp4), contentType: "video/mp4" });
+    order.push("call-returned");
+    const verdict = await pending;
+    order.push("verdict");
+    expect(verdict.verdict).toBe("decodable");
+    // 同步实现下顺序是 call-returned → verdict（事件循环被 ffmpeg 占住，排着的事件只能等校验结束）。
+    expect(order).toEqual(["call-returned", "main-loop-turned", "verdict"]);
+  });
+
+  it("a rejection also arrives asynchronously: a broken file never parks the loop either", async () => {
+    const order: string[] = [];
+    setImmediate(() => order.push("main-loop-turned"));
+    const garbage = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(4000, 7)]);
+    let thrown: unknown;
+    try {
+      const pending = verifyGeneratedMediaDecodes({ kind: "image", ...stage(garbage), contentType: "image/jpeg" });
+      order.push("call-returned");
+      await pending;
+    } catch (error) { thrown = error; }
+    order.push("verdict");
+    expect(String((thrown as Error)?.message)).toContain("decode_failed");
+    expect(order).toEqual(["call-returned", "main-loop-turned", "verdict"]);
+  });
+});
+
+// 异步子进程的结局 → 事实：判决种类与以前 spawnSync 时一一对应（超时仍是「没验证成」，输出爆上限仍是「一团糟」）。
+// 用真的子进程（node 自己）跑出每一种结局，不模拟 execFile 的错误形状。
+describe("runDecoder turns every way a real child process ends into the same facts as before", () => {
+  const node = (script: string) => [process.execPath, ["-e", script]] as const;
+  it.each([
+    ["killed by our timeout", node("setTimeout(() => {}, 10_000)"), 300, { verdict: "unverified", reason: "timeout" }],
+    ["stderr over the output cap", node("process.stderr.write('x'.repeat(2 * 1024 * 1024))"), 10_000, { verdict: "undecodable", reason: "decoder_exit" }],
+    ["a non-zero exit", node("process.exit(1)"), 10_000, { verdict: "undecodable", reason: "decoder_exit" }],
+    ["a decoder that cannot start", ["nomi-no-such-decoder-binary", []] as const, 10_000, { verdict: "unverified", reason: "decoder_unavailable" }],
+  ] as const)("%s", async (_label, [command, args], timeout, expected) => {
+    const run = await runDecoder(command, [...args], { timeout });
+    expect(interpretDecodeRun("image", run)).toMatchObject(expected);
   });
 });
 
 describe("ffmpeg's own words are recorded, not judged", () => {
-  it("a picture that decoded with complaints is accepted and the raw message lands in the log", () => {
+  it("a picture that decoded with complaints is accepted and the raw message lands in the log", async () => {
     const stdout = "#format: frame checksums\n#dimensions 0: 512x512\n0, 0, 0, 1, 786432, 0a1b2c3d\n";
-    const verdict = verifyGeneratedMediaDecodes(
-      { kind: "image", bytes: png, contentType: "image/png" },
-      { run: () => ({ status: 0, signal: null, stdout, stderr: "[mjpeg @ 0x1] overread 8\n[mjpeg @ 0x1] unable to decode APP fields" }), resolveFfmpeg: () => "ffmpeg" },
+    const verdict = await verifyGeneratedMediaDecodes(
+      { kind: "image", ...stage(png), contentType: "image/png" },
+      { run: async () => ({ status: 0, signal: null, stdout, stderr: "[mjpeg @ 0x1] overread 8\n[mjpeg @ 0x1] unable to decode APP fields" }), resolveFfmpeg: () => "ffmpeg" },
     );
     expect(verdict.verdict).toBe("decodable");
     expect(logged.warn).toEqual([]);
@@ -180,8 +245,8 @@ describe("ffmpeg's own words are recorded, not judged", () => {
     expect(logged.info[0][2]).toMatchObject({ kind: "image", bytes: png.length, decoderMessage: expect.stringContaining("overread 8") });
   });
 
-  it("a clean decode writes nothing", () => {
-    decodes("image", png, "image/png");
+  it("a clean decode writes nothing", async () => {
+    await decodes("image", png, "image/png");
     expect(logged.info).toEqual([]);
     expect(logged.warn).toEqual([]);
   });

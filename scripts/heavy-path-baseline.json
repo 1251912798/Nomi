@@ -4,5 +4,6 @@
   "duplicate-node-size-bounds": 0,
   "node-stream-into-response": 0,
   "ffmpeg-still-input-outside-owner": 0,
-  "unguarded-fsync": 0
+  "unguarded-fsync": 0,
+  "main-sync-child-process": 0
 }

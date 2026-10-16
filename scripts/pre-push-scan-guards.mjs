@@ -6,8 +6,9 @@
 // 补法不是逐个把漏掉的登记上（只修这一处），而是：
 //   · 本表是这类测试的唯一登记处；每条写明「它扫哪些目录」，改到这些目录才跑（SCAN_GUARDS → pre-push-contracts.mjs 的批量门岗 test:scan-guards）；
 //   · 跑不进推送前的写进 SCAN_GUARD_CI_ONLY（附理由）；识别器的误判写进 NOT_SOURCE_SCANS（附理由）；
-//   · 识别（语法树，scripts/lib/scanGuardDetect.mjs）+ 核对（scanGuardProblems）在 scripts/pre-push-structure.node-test.mjs 里：
-//     以后新写的扫全仓测试，既没进本表、也没被别的门岗覆盖，那个结构测试直接红——不靠记性。
+//   · 识别（语法树，scripts/lib/scanGuardDetect.mjs）+ 核对（scanGuardProblems）：以后新写的扫全仓测试，既没进本表、也没被别的门岗覆盖，核对直接红——不靠记性。
+//     核对本身是推送前独立的一道几秒门 check:scan-guard-census（scripts/check-scan-guard-census.mjs），新增 / 改名 / 删除任何测试文件都触发（2026-10-16 之前它只挂在整份结构测试上、
+//     只在改到钩子自己的输入时才跑，一天 6 个 PR 到 CI 才红：登记类核对必须由「新增被登记对象」触发，见 docs/lessons/registry-checks-must-fire-on-the-registered-object-being-added.md）；CI 里结构测试仍整份跑同一个函数。
 //
 // 单跑耗时来自 2026-10-10 在 Windows 本机逐个 `vitest run <文件>` 的实测（含 vitest 起进程的 2–3 秒）；> 20 秒的不进推送前。
 

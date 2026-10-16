@@ -23,8 +23,8 @@ export { assertCanonicalAntigravityOperation };
 export { prepareAntigravityCreateOperation } from "./antigravityCreatePreflight";
 
 /** runtime 注入的写资产原语（写本地字节进项目素材，返回含 data.url 的记录）。 */
-export type WriteAsset = (projectId: string, bytes: Buffer, fileName: string, contentType: string, meta: JsonRecord) => unknown;
-export type WriteDeterministicAsset = (...args: [...Parameters<WriteAsset>, materializationKey: string]) => unknown;
+export type WriteAsset = (projectId: string, bytes: Buffer, fileName: string, contentType: string, meta: JsonRecord) => Promise<unknown>;
+export type WriteDeterministicAsset = (...args: [...Parameters<WriteAsset>, materializationKey: string]) => Promise<unknown>;
 
 export type ProcessOperationInput = {
   process: NonNullable<HttpOperation["process"]>;
@@ -153,7 +153,7 @@ export async function executeProcessOperation(input: ProcessOperationInput): Pro
       for (const p of normalized.localPaths) {
         if (!existsSync(p)) continue;
         try {
-          const written = input.writeAsset(input.projectId, readFileSync(p), path.basename(p), contentTypeFromPath(p), { kind: "generated" }) as { data?: { url?: string } };
+          const written = await input.writeAsset(input.projectId, readFileSync(p), path.basename(p), contentTypeFromPath(p), { kind: "generated" }) as { data?: { url?: string } };
           const url = String(written.data?.url || "");
           if (url && !localUrls.includes(url)) localUrls.push(url);
         } catch {

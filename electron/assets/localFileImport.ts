@@ -4,7 +4,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-import { copyAssetFile, writeAsset } from "../runtime";
+import { copyAssetFile, storeAssetBytes, writeAsset } from "../runtime";
 import { canonicalAssetFileName, extensionFromMime, localAssetUrl } from "./assetPaths";
 import { mediaKindFromContentType, mediaKindFromExtension, resolveContentType } from "./mediaTypes";
 import {
@@ -214,7 +214,7 @@ async function importLocalFileToStore(raw: JsonRecord, projectId: string, source
     ? await ensurePlayableVideoBytes(bytes, canonicalAssetFileName(fileName, contentType), contentType)
     : null;
   context.assertCurrent();
-  return writeAsset(
+  return storeAssetBytes(
     projectId,
     normalized?.bytes ?? bytes,
     normalized?.fileName ?? fileName,

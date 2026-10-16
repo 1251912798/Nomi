@@ -4,7 +4,7 @@ import { createGenerationOutputMaterializer } from "./generationOutputMaterializ
 
 describe("generation output materializer", () => {
   it("stores a provider output with a content hash and deterministic receipt fields", async () => {
-    const writeAsset = vi.fn(() => ({ id: "asset-1", data: { relativePath: "assets/generated/video.mp4" } }));
+    const writeAsset = vi.fn(async () => ({ id: "asset-1", data: { relativePath: "assets/generated/video.mp4" } }));
     const materializer = createGenerationOutputMaterializer({
       fetchOutput: vi.fn(async () => ({ bytes: Buffer.from("video-bytes"), contentType: "video/mp4", status: 200, finalUrl: "https://cdn.example/video.mp4", truncated: false })),
       writeAsset,
@@ -20,7 +20,7 @@ describe("generation output materializer", () => {
 
   it("accepts bounded data URLs without network access and rejects mismatched media types", async () => {
     const fetchOutput = vi.fn();
-    const writeAsset = vi.fn(() => ({ id: "asset-image", data: { relativePath: "assets/generated/image.png" } }));
+    const writeAsset = vi.fn(async () => ({ id: "asset-image", data: { relativePath: "assets/generated/image.png" } }));
     const materializer = createGenerationOutputMaterializer({ fetchOutput, writeAsset });
     await expect(materializer.materialize({ projectId: "project-1", providerTaskId: "task-2", output: { kind: "image", url: "data:image/png;base64,aW1hZ2U=" } })).resolves.toMatchObject({ artifactId: "asset-image", kind: "image" });
     expect(fetchOutput).not.toHaveBeenCalled();
@@ -33,7 +33,7 @@ describe("generation output materializer", () => {
     ["base64 containing a slash", "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg/abc="],
     ["base64 without a slash", "data:image/png;base64,aW1hZ2U="],
   ])("names a data: URL output generation-output.<ext> (%s)", async (_label, url) => {
-    const writeAsset = vi.fn(() => ({ id: "asset-data", data: { relativePath: "assets/generated/generation-output.png" } }));
+    const writeAsset = vi.fn(async () => ({ id: "asset-data", data: { relativePath: "assets/generated/generation-output.png" } }));
     const materializer = createGenerationOutputMaterializer({ fetchOutput: vi.fn(), writeAsset });
     await materializer.materialize({ projectId: "project-1", providerTaskId: "task-data", output: { kind: "image", url } });
     expect(writeAsset).toHaveBeenCalledWith("project-1", expect.any(Buffer), "generation-output.png", "image/png", expect.anything(), expect.any(String));
@@ -42,7 +42,7 @@ describe("generation output materializer", () => {
   it("downloads model3d as GLB and forwards it to the shared validated asset store", async () => {
     const bytes = Buffer.from("glTF-placeholder");
     const fetchOutput = vi.fn(async () => ({ bytes, contentType: "model/gltf-binary", status: 200, finalUrl: "https://cdn.example/model.glb", truncated: false }));
-    const writeAsset = vi.fn(() => ({ id: "asset-3d", data: { relativePath: "assets/generated/model.glb", contentType: "model/gltf-binary" } }));
+    const writeAsset = vi.fn(async () => ({ id: "asset-3d", data: { relativePath: "assets/generated/model.glb", contentType: "model/gltf-binary" } }));
     const materializer = createGenerationOutputMaterializer({ fetchOutput, writeAsset });
 
     await expect(materializer.materialize({

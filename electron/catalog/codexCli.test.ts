@@ -197,7 +197,7 @@ describe("Codex CLI image bridge", () => {
       error: "",
       request: { bin: "codex", args: ["exec"], prompt: "一张图", imageCount: 0 },
     }), "utf8");
-    const writeAsset = () => ({ data: { url: "nomi-local://asset/proj/assets/codex.png" } });
+    const writeAsset = async () => ({ data: { url: "nomi-local://asset/proj/assets/codex.png" } });
 
     const { response } = await queryCodexImageOperation({ taskId: jobId, projectId: "proj", writeAsset });
     expect(response.gen_status).toBe("success");
