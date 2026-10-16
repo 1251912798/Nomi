@@ -10,7 +10,12 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { checkPiLoader, checkSkillDirectory, collectSkillDirectories } from './skills-format-lib.mjs'
+import fs from 'node:fs'
+
+import {
+  PUBLIC_COMPETITIVE_DIR, checkPiLoader, checkPublicCompetitiveDir, checkRadarTextHasNoPublicOutput,
+  checkSkillDirectory, collectSkillDirectories, listFilesRecursive,
+} from './skills-format-lib.mjs'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 /**
@@ -43,6 +48,15 @@ for (const relativeRoot of SKILL_ROOTS) {
   for (const error of piResult.errors) errors.push({ ...error, root: relativeRoot })
   summaries.push(`${relativeRoot} ${directories.length} 个（pi 加载器 ${piResult.loaded}/${piResult.expected}）`)
 }
+
+// F7 / F8：竞品雷达产出只落私有仓。规程与 hook 脚本也算「雷达自己的文字」，和技能一起扫。
+const RADAR_TEXT_FILES = ['docs/engineering/daily-radars.md', 'scripts/daily-radar-session.mjs', 'scripts/claude-hooks/daily-radar.sh']
+for (const rel of RADAR_TEXT_FILES) {
+  const file = path.join(repoRoot, rel)
+  if (!fs.existsSync(file)) { errors.push({ rule: 'F7', root: '.', dirName: rel, message: '雷达规程 / hook 文件不见了——门岗不该在缺文件上通过' }); continue }
+  for (const error of checkRadarTextHasNoPublicOutput(rel, fs.readFileSync(file, 'utf8'))) errors.push({ ...error, root: '.' })
+}
+for (const error of checkPublicCompetitiveDir(listFilesRecursive(path.join(repoRoot, PUBLIC_COMPETITIVE_DIR)))) errors.push({ ...error, root: '.' })
 
 if (errors.length > 0) {
   console.error(`✖ 技能格式门岗：${errors.length} 处不合规\n`)

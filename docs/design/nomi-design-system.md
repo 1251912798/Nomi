@@ -1085,6 +1085,9 @@ showUndoToast({ message, onUndo, isUndoable, watchUndoable })
 
 ### 语义图标登记（同一语义全仓复用同一图标，不漂移）· **有门岗 `check:icon-semantics`**
 
+节点「加入时间轴」复用现有 `IconTimeline`（折线四点）。2026-10-12 用户在交互预览后提供截图明确纠正图形，对应 `src/workbench/generationCanvas/components/CanvasGroupToolbar.tsx` 的既有 `IconTimeline`，与编组「加入时间轴」保持同形；提示文案区分打开时间轴与加入当前媒体，不另造图标。
+
+
 > **2026-09-07 起这条不再靠自觉。** 用户长期反馈「icon 和用户心智不一致」——根因是这一节过去
 > 只管**形制**（唯一库 / size / stroke），语义那一半只有下面三行登记 + 一句「跨场景复用同一个图标」。
 > 自觉记不住，于是同一个动作在不同界面长出不同图标，用户每换一个面就得重新学一遍。
@@ -1113,6 +1116,7 @@ showUndoToast({ message, onUndo, isUndoable, watchUndoable })
 
 | 语义 | 图标 | 用在哪 |
 |---|---|---|
+| 将当前媒体加入时间轴 | `IconTimeline` | 图片 / 视频 / 音频节点共享工具栏末尾 |
 | 付费 / 消耗额度（用户直发或 agent 受理）| `IconCoin` | `SpendConfirmDialog`（§3.5）|
 | 外部 AI 助手 / MCP 驱动（agent 身份）| `IconRobot` | `SpendConfirmDialog` 的 `source: 'agent'` 头部（§3.5）|
 | 主角形象确认（锚定妆照检查点·免费质量门）| `IconUser` | `SpendConfirmDialog` 的 `kind: 'anchorCheckpoint'` 头部（§3.5，与 cast 分类同图标）|

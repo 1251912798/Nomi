@@ -34,6 +34,15 @@ describe('ToolbarDuplicateVariantButton', () => {
 // getServerSnapshot（恒等于初始 state），怎么 setState 都渲不出「已锁」——那种绿是假的。
 // 已锁形态归真机走查（tests/ux/node-composer-placement.walk.mjs 量 [data-node-lock] 在哪）。
 describe('FloatingToolbarShell 的锁', () => {
+  it('isolates toolbar gestures from XYFlow native node drag and canvas pan', () => {
+    const html = inCanvas(React.createElement(FloatingToolbarShell, {
+      ariaLabel: '节点动作', lockNodeId: null, children: React.createElement('button', { draggable: true }, 'drag'),
+    }))
+    const shellClass = html.match(/class="([^"]+)"/)?.[1].split(/\s+/)
+    expect(shellClass).toContain('nodrag')
+    expect(shellClass).toContain('generation-canvas-react-flow__no-pan')
+  })
+
   it('给了 nodeId 就在浮条最左渲出锁，并用分隔线和后面的动作族分开', () => {
     const html = inCanvas(React.createElement(FloatingToolbarShell, {
       ariaLabel: '节点动作',

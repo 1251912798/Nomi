@@ -1,15 +1,22 @@
 ---
 name: nomi-competitive-radar
-description: 为 Nomi 执行 LibTV、TapNow、Higgsfield、MiniMax Design、RunningHub 的周期竞品学习，覆盖真实产品交互、设计、用户引导、社区与视频营销；用于三日雷达、专题对标和研究成果转入设计流程。
+description: 为 Nomi 执行周期性竞品学习，覆盖真实产品交互、设计、用户引导、社区与视频营销；对标名单与全部产出都在私有仓，公开主仓不留。用于三日雷达、专题对标和研究成果转入设计流程。
 ---
 
 # Nomi 竞品学习雷达
 
-目标是理解别人如何降低用户摩擦、如何展示价值、如何获得和留住用户，并为 Nomi 提出有证据的验证任务。核心对标 LibTV、TapNow；其它对象用于扩展学习，不能因海外热度挤掉核心对象。
+目标是理解别人如何降低用户摩擦、如何展示价值、如何获得和留住用户，并为 Nomi 提出有证据的验证任务。核心对象优先，扩展对象用于补充学习，不能因海外热度挤掉核心对象。
+
+## 产出只落私有仓（硬规矩）
+
+- **对标名单、报告、原始抓取（HTML、TikHub JSON、录屏索引、checkpoint、互斥锁）全部在私有仓 Nomi-service 的 `research/competitive/`**，每轮一个 `<日期>/` 目录；名单见该目录的 `ROSTER.md`。
+- **绝不在公开主仓提交、绝不开公开 PR**，公开主仓的提交信息、PR 正文、文档、测试里也不写对标产品名。
+- 本机定位私有仓读环境变量 `NOMI_PRIVATE_REPO`。没设或目录不对：明说「今天没查成」并停下，**不许落回公开仓**。
+- 门岗：`pnpm run check:skills-format` 守两件事，本技能里出现公开仓输出路径就红；公开仓的竞品资料目录（`research/competitive/` 在 docs 下的那个）里除 README.md 外出现任何文件就红。
 
 ## 入口与运行模式
 
-先定位 Nomi 仓库，读 `AGENTS.md`、`docs/ARCHITECTURE-NOW.md`、`docs/roadmap/TODO.md`、`docs/research/competitive/README.md` 与 `sources.md`。查最近报告和开放 PR，避免重复研究和重复待办。
+先定位 Nomi 仓库，读 `AGENTS.md`、`docs/ARCHITECTURE-NOW.md`，再读私有仓的 `roadmap/TODO.md` 与 `research/competitive/` 下的 README、ROSTER、sources。查最近报告和开放 PR，避免重复研究和重复待办。
 
 - **建流程**：只调整规则、来源登记、模板、调度；不自动展开全量研究或开发。本轮用户指定此模式时优先。
 - **三日周期**：读取 [执行规程](references/protocol.md)，检查全部对标对象，再轮换深挖。按该规程判断到期、恢复中断和记录缺口。
@@ -28,8 +35,8 @@ description: 为 Nomi 执行 LibTV、TapNow、Higgsfield、MiniMax Design、Runn
 
 ## 交付物
 
-使用 `docs/research/competitive/TEMPLATE.md`。每轮交付覆盖矩阵、变化摘要、旅程卡、内容卡、Nomi 差距与决策、失败与下一轮重点。没有变化也要附检查时间/来源；没有新研究就不能刷新深挖日期。
+使用私有仓 `research/competitive/TEMPLATE.md`。每轮交付覆盖矩阵、变化摘要、旅程卡、内容卡、Nomi 差距与决策、失败与下一轮重点。没有变化也要附检查时间/来源；没有新研究就不能刷新深挖日期。
 
-原始媒体与私密内容放稳定主仓的 `outputs/competitive-radar/<cycle-id>/`，不放临时 worktree 或 Git；报告写证据相对路径、时间码和校验和。公开仓库只能提交脱敏摘要与最小必要引用。自动运行只研究和形成待办，不发帖、评论、私信，不更改账户/套餐，也不自动开发、合并或发布。
+原始媒体与私密内容同样放私有仓当轮 `<日期>/` 目录，报告写证据相对路径、时间码和校验和。自动运行只研究和形成待办，不发帖、评论、私信，不更改账户/套餐，也不自动开发、合并或发布。
 
 结束前按 [验收清单](references/protocol.md#验收与交接) 检查。用户摘要只说本轮最有价值的发现、适用性和未查成的部分，不把资料量当成果。

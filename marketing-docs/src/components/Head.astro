@@ -1,0 +1,54 @@
+---
+// 官网门岗对 <head> 的要求比 Starlight 默认更细（check:site 里的 locales / descriptions 两项）：
+//   1. 地址无 .html、无结尾斜杠（canonical、hreflang、og:url 都要和现站一致）——file 格式下 Starlight 会带 .html，这里去掉；
+//   2. og:description 与 twitter:description 都要等于 meta description；
+//   3. 没有站点地图自动生成的 sitemap-index 链接（真正的 sitemap 由根包 build-marketing-sitemap.mjs 统一出）。
+// 另补分享图、robots、theme-color，和官网其它页面一致。
+import { shared } from '../../../scripts/marketing/content.mjs'
+import { buildMetadata } from '../../../scripts/marketing/metadata.mjs'
+
+const { head, lang, entry } = Astro.locals.starlightRoute
+const cleanUrl = (value) => (typeof value === 'string' ? value.replace(/\.html$/, '') : value)
+const description = entry.data.description
+const image = `${shared.siteUrl}/assets/social-preview-${lang === 'en' ? 'en' : 'zh'}.jpg`
+
+// 结构化数据：和官网其它页面同一个出处（metadata.mjs 的 buildMetadata），门岗对它的要求一模一样。
+const route = Astro.url.pathname.replace(/\.html$/, '')
+const english = lang === 'en'
+const zhRoute = english ? route.replace(/^\/en(?=\/|$)/, '') || '/' : route
+const enRoute = english ? route : `/en${route}`
+const homeCrumb = { name: 'Nomi', path: english ? '/en/' : '/' }
+const docsHome = english ? '/en/docs' : '/docs'
+const metadata = buildMetadata(english ? 'en' : 'zh-CN', {
+  path: route,
+  htmlLang: english ? 'en' : 'zh-CN',
+  ogLocale: english ? 'en_US' : 'zh_CN',
+  meta: { title: entry.data.title, description, imageAlt: 'Nomi' },
+  alternates: { 'zh-CN': zhRoute, en: enRoute },
+  breadcrumbs: [homeCrumb, ...(route === docsHome ? [] : [{ name: english ? 'Docs' : '教程', path: docsHome }]), { name: entry.data.title, path: route }],
+}, shared)
+const jsonLd = JSON.stringify(metadata.jsonLd).replaceAll("<", String.fromCharCode(92) + "u003c")
+
+const tags = head
+  .filter(({ tag, attrs }) => !(tag === 'link' && attrs?.rel === 'sitemap'))
+  .map((item) => {
+    const attrs = { ...item.attrs }
+    if (item.tag === 'link' && (attrs.rel === 'canonical' || attrs.rel === 'alternate')) attrs.href = cleanUrl(attrs.href)
+    if (item.tag === 'meta' && attrs.property === 'og:url') attrs.content = cleanUrl(attrs.content)
+    if (item.tag === 'meta' && attrs.property === 'og:locale') attrs.content = lang === 'en' ? 'en_US' : 'zh_CN'
+    return { ...item, attrs }
+  })
+
+const extra = [
+  { name: 'robots', content: 'index,follow,max-image-preview:large' },
+  { name: 'theme-color', content: '#faf9f6' },
+  { name: 'twitter:title', content: entry.data.title },
+  { name: 'twitter:description', content: description },
+  { name: 'twitter:image', content: image },
+  { property: 'og:image', content: image },
+]
+---
+
+{tags.map(({ tag: Tag, attrs, content }) => <Tag {...attrs} set:html={content} />)}
+{extra.map((attrs) => <meta {...attrs} />)}
+<script type="application/ld+json" set:html={jsonLd} />
