@@ -103,6 +103,11 @@ describe("附 1 · 「点继续后重新数」读人批的事实", () => {
 });
 
 describe("附 2 · 最近一次没到过供应商的失败不让刹车失明", () => {
+  it("复验 R2：人在刹车卡上点了继续、那次尝试提交前没写出去——这次人批照样切断之前的计数（0），不再拿旧失败拦他", () => {
+    const run = historyRun([{ attempt: 1 }, { attempt: 2 }, { attempt: 3 }, { attempt: 4, errorCode: "provider_not_reached" }], [4]);
+    expect(consecutiveFailedAttempts(run, "s1")).toBe(0);
+    expect(spendDecisionByPolicy(DIRECT, run)).toEqual({ decided: true });
+  });
   it("3 次到过供应商的失败 + 1 次提交前没写出去：计数仍是 3，这一次照停", () => {
     const run = historyRun([{ attempt: 1 }, { attempt: 2 }, { attempt: 3 }, { attempt: 4, errorCode: "provider_not_reached" }]);
     expect(consecutiveFailedAttempts(run, "s1")).toBe(3);

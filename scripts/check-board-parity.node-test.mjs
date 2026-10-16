@@ -275,3 +275,39 @@ describe('V-1203 F2：发现到的每张新日期板都跑完整规则（带候�
     assert.ok(errors.length > 0, '没有哈希也没声明人工普查的候选文件必须红')
   })
 })
+
+describe('V-1203 复验 R1：跨日期同名板——校验按「日期目录 + 板名」逐张读，同名不能互相顶替', () => {
+  const tmpRoot = () => fs.mkdtempSync(path.join(process.env.TMPDIR || process.env.TEMP || '.', 'bp-dup-'))
+  const good = { board: 'ReviewProbe', stage: 'built', elements: [{ id: 'probe', candidates: [], status: 'implemented', assertion: 'board:ReviewProbe/probe-ok', states: ['zh-en'] }], decor: [], functionCensus: [{ function: 'old', after: 'probe' }] }
+  const bad = { board: 'ReviewProbe', stage: 'built', elements: [{ id: 'probe', status: 'implemented', assertion: 'NEVER_EXISTS_V1203_R1', states: [] }], functionCensus: [{ function: 'old', after: 'missing' }] }
+  const setup = (withCandidates) => {
+    const root = tmpRoot()
+    const main = path.join(root, 'main-day'); fs.mkdirSync(main)
+    for (const [day, manifest] of [['2099-01-01', good], ['2099-01-02', bad]]) {
+      const dir = path.join(root, day); fs.mkdirSync(dir)
+      fs.writeFileSync(path.join(dir, 'ReviewProbe.board.json'), JSON.stringify(manifest))
+      if (withCandidates) fs.writeFileSync(path.join(dir, 'ReviewProbe.candidates.json'), JSON.stringify({ extractor: 'manual-review', candidates: [] }))
+    }
+    return { root, main }
+  }
+  for (const withCandidates of [false, true]) {
+    it(`反例（${withCandidates ? '两份都带人工候选' : '两份都只有清单'}）：第二份坏清单照样报它自己的错，且同名本身也红`, async () => {
+      const { root, main } = setup(withCandidates)
+      const errors = (await runBoardParity({ dir: main, root })).filter((e) => e.includes('ReviewProbe'))
+      fs.rmSync(root, { recursive: true, force: true })
+      for (const pattern of [/NEVER_EXISTS_V1203_R1/, /缺 states/, /没有去处/, /同名/]) assert.ok(errors.some((e) => pattern.test(e)), `${pattern}\n${errors.join('\n')}`)
+    })
+  }
+  it('反例：PR 按板名认领一张重名板 → 红（认领有歧义，不能挑第一份当真）', () => {
+    const { root, main } = setup(false)
+    const errors = checkPrBoardClaims('## 拍板图\n- ReviewProbe: probe', loadManifests(main, root))
+    fs.rmSync(root, { recursive: true, force: true })
+    assert.ok(errors.some((e) => /重名|歧义/.test(e)), errors.join('\n'))
+  })
+  it('发现器把日期目录带进身份：两张同名板都被找到', () => {
+    const { root, main } = setup(false)
+    const found = findDatedBoards(root, main).map((entry) => `${path.basename(entry.dir)}/${entry.board}`).sort()
+    fs.rmSync(root, { recursive: true, force: true })
+    assert.deepEqual(found, ['2099-01-01/ReviewProbe', '2099-01-02/ReviewProbe'])
+  })
+})
