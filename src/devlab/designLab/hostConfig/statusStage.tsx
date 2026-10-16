@@ -54,7 +54,7 @@ function usageFor(scenario: StatusScenario, now: number): Record<string, McpClie
 
 export function ConnectionStatusStage({ scenario, locale }: { scenario: StatusScenario; locale: 'zh-CN' | 'en' }): JSX.Element {
   const localeReady = useLabLocale(locale, 'host-config-status')
-  const plan = PLAN[scenario]
+  const plan: Plan = PLAN[scenario]
   const [settled, setSettled] = React.useState(false)
   // 「测试中」那一格：点测试之前的实连照常返回，点之后的一次永远不返回（测试停在进行中）。
   const armed = React.useRef(false)
