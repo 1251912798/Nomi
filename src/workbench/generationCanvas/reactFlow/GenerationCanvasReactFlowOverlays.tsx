@@ -11,6 +11,7 @@ import { SelectionPromptSaveController } from '../components/SelectionPromptSave
 import { CanvasArrivalHint } from '../components/CanvasArrivalHint'
 import type { ArrivalHint } from '../components/canvasArrivalModel'
 import { hasClipboardContent } from '../store/canvasClipboard'
+import { useGenerationCanvasStore } from '../store/generationCanvasStore'
 import type { CanvasContextNodeMenu } from '../components/useCanvasContextNodeMenu'
 import type { CanvasAssetInputPicker, CanvasConnectionCreateMenu } from './useGenerationCanvasReactFlowMenus'
 import { CanvasPickModeLayer } from '../components/CanvasPickModeLayer'
@@ -28,8 +29,6 @@ type GenerationCanvasReactFlowOverlaysProps = {
   activeCategoryId: string
   nodes: GenerationCanvasNode[]
   allNodes: GenerationCanvasNode[]
-  selectedNodeIds: readonly string[]
-  selectedSet: Set<string>
   screenshotOverlay: React.ReactNode
   contextNodeMenu: CanvasContextNodeMenu | null
   connectionCreateMenu: Pick<CanvasConnectionCreateMenu, 'verdicts' | 'clientX' | 'clientY' | 'sourceSide' | 'sourceNodeId' | 'sourceKind'> | null
@@ -73,8 +72,6 @@ export function GenerationCanvasReactFlowOverlays({
   activeCategoryId,
   nodes,
   allNodes,
-  selectedNodeIds,
-  selectedSet,
   screenshotOverlay,
   contextNodeMenu,
   connectionCreateMenu,
@@ -108,6 +105,9 @@ export function GenerationCanvasReactFlowOverlays({
   arrivalHint,
   onGoToArrivals,
 }: GenerationCanvasReactFlowOverlaysProps): JSX.Element {
+  // 选区在浮层这一层自己订阅（右键菜单的「编组 / 复制变体」、小地图的选中高亮），画布壳不因选中重渲。
+  const selectedNodeIds = useGenerationCanvasStore((state) => state.selectedNodeIds)
+  const selectedSet = React.useMemo(() => new Set(selectedNodeIds), [selectedNodeIds])
   // 「从素材库添加…」选择器上传期间保持打开（显示上传中）；完成时它还开着才接线。
   const [uploadingInput, setUploadingInput] = React.useState(false)
   const latestPickerRef = React.useRef(assetInputPicker)

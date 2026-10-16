@@ -25,6 +25,7 @@ import {
   TOOL_RECEIPT, USER_BUBBLE, chooseAssistantModel, createRuntimeWalk,
   hasToolResult, newConversation, openCanvas, openProcess,
   recorded, sendCanvas, sendCreation, toolNames, waitForV4TurnIdle, expectComposerText } from './agent-runtime-walk-support.mjs'
+import { uiText } from './full-walk/invariants.mjs'
 import { laneDiskSnapshot, laneMessages, readLaneTranscripts } from './agent-lane-observer.mjs'
 import { residentToolNames } from './agent-runtime-walk-support.mjs'
 
@@ -134,9 +135,9 @@ try {
   const creation = win.locator(CREATION_PANEL)
   await expect(creation, '创作面常驻 Agent 必须挂载').toBeVisible()
   await expect(creation, '默认审批档位是 safe-auto——后面「不出卡」的断言以它为前提')
-    .toHaveAttribute('data-agent-approval-mode', 'safe-auto')
+    .toHaveAttribute('data-agent-approval-mode', 'request')
   await expect(creation.locator(COMPOSER), 'composer 也必须自报同一档，两处不能各说各的')
-    .toHaveAttribute('data-permission', 'safe-auto')
+    .toHaveAttribute('data-permission', 'request')
 
   const t1Call = walk.fixture.expectText({
     label: 'turn 1 asks the document read tool',
@@ -243,14 +244,15 @@ try {
   await clickOrFail(creation.locator(COMPOSER_PERMISSION), '打开权限弹层')
   const permissionMenu = creation.locator(PERMISSION_POPOVER)
   await expect(permissionMenu, '权限弹层必须打开').toBeVisible()
-  await expect(permissionMenu.locator('[data-tier]'), '授权只有三档，不多不少').toHaveCount(3)
-  for (const label of ['每步问', '自动改', '全自动']) {
+  await expect(permissionMenu.locator('[data-tier]'), '授权只有两档，不多不少').toHaveCount(2)
+  for (const tier of ['request', 'direct']) {
+    const label = uiText('zh-CN', `agentPanelV4.permission.${tier}`)
     await expect(permissionMenu, `权限档缺了「${label}」`).toContainText(label)
   }
   await expect(permissionMenu.locator('[data-tier][data-active="true"]'), '当前档恰有一个').toHaveCount(1)
-  await expect(permissionMenu.locator('[data-tier="safe-auto"][data-active="true"]'), '出厂档就是「自动改」')
+  await expect(permissionMenu.locator('[data-tier="request"][data-active="true"]'), '出厂档就是请求批准')
     .toBeVisible()
-  await walk.snap('03-permission-popover-three-tiers')
+  await walk.snap('03-permission-popover-two-tiers')
   await win.keyboard.press('Escape')
   await expect(permissionMenu, '按 Esc 必须关掉弹层').toBeHidden()
 

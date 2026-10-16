@@ -24,7 +24,7 @@ import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { resolveFfmpegPath } from "../export/ffmpegRunner";
 import { resolveFfprobePath } from "../export/mediaProbe";
 import { ensureExecutable } from "../export/ensureExecutable";
-import { writeAsset } from "../runtime";
+import { writeGeneratedAsset } from "../runtime";
 import { logInfo, logWarn } from "../logging/logger";
 import {
   VIDEO_DEPTH_RECIPE,
@@ -348,7 +348,7 @@ export async function finishVideoDepthJob(payload: { jobId: string }): Promise<V
     session.encoder.stdin.end();
     await session.encoderExit;
     const bytes = fs.readFileSync(session.outMp4);
-    const record = writeAsset(session.projectId, bytes, "depth.mp4", "video/mp4", {
+    const record = await writeGeneratedAsset(session.projectId, bytes, "depth.mp4", "video/mp4", {
       kind: "generated",
       source: "video-depth",
       ownerNodeId: session.nodeId,

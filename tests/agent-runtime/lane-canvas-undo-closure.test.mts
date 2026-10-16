@@ -11,7 +11,7 @@ test('applied canvas receipt reaches the provider and an empty assistant respons
     { type: 'tool', calls: [{ id: 'artifact-call', name: 'make_artifact',
       arguments: { fileType: 'text', title: 'R13_UNDO_CANVAS', content: 'Canvas undo' } }] },
     { type: 'text', text: '' },
-  ], { hasUserInterface: true, policy: () => ({ mode: 'safe-auto', spend: 'confirm' }) });
+  ], { hasUserInterface: true, policy: () => ({ mode: 'request' }) });
   const lane = await fixture.openLane({ ...fixture.options, tools: createCanvasLaneTools({
     read: async () => { throw new Error('No read expected'); },
     write: async () => ({ applied: true, proposalId: 'receipt-a', changeId: 'canvas:v1:receipt-a',

@@ -3,7 +3,7 @@ import test from 'node:test';
 import { AgentHarness, type AgentHarnessOptions } from '@earendil-works/pi-agent-core';
 import type { Context } from '@earendil-works/pi-agent-core/harness/context';
 import { openLane } from '../../electron/agentLane/laneHost.mjs';
-import { createLaneFixture } from './laneFixture.mjs';
+import { createLaneFixture, mustConfirm } from './laneFixture.mjs';
 
 test('onAccepted acknowledges durable input before approval while execute settles the same real operation', async (t) => {
   const starts: string[] = [], ends: string[] = [];
@@ -17,7 +17,7 @@ test('onAccepted acknowledges durable input before approval while execute settle
   const fixture = await createLaneFixture(t, [
     { type: 'tool', calls: [{ id: 'admitted-write', name: 'write_script', arguments: { where: 'end', content: ' Approved fixture.' } }] },
     { type: 'text', text: 'Fixture complete.' },
-  ], { hasUserInterface: true, policy: () => ({ mode: 'step', spend: 'confirm' }) });
+  ], mustConfirm());
   const lane = await openLane(fixture.options);
   let accepted = 0, settled = false;
   let projectionAtAcceptance: ReturnType<typeof lane.projection> | undefined;

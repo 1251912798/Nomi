@@ -5,7 +5,7 @@ import { createLaneFixture } from './laneFixture.mjs'
 
 test('S21 original-input retry retains full text, skill and attachments instead of the new composer', async t => {
   const f = await createLaneFixture(t, [{ type: 'text', text: 'first reply' }, { type: 'text', text: 'retried reply' }])
-  let captured: LaneComposerContext = { approvalPolicy: { mode: 'safe-auto', spend: 'confirm' },
+  let captured: LaneComposerContext = { approvalPolicy: { mode: 'request' },
     skillKey: 'original-skill', systemPrompt: 'ORIGINAL_SKILL_BODY', displayText: 'short display',
     attachments: [{ assetId: 'original-asset', version: 2 }], documentId: 'original-document' }
   const activated: LaneComposerContext[] = []
@@ -16,7 +16,7 @@ test('S21 original-input retry retains full text, skill and attachments instead 
   await lane.execute({ kind: 'prompt', text: 'FULL_ORIGINAL_EXECUTION_TEXT' })
   const original = lane.projection().parts.find(part => part.kind === 'user')!
   assert.ok(original.entryId)
-  captured = { approvalPolicy: { mode: 'step', spend: 'confirm' }, skillKey: 'new-composer-skill',
+  captured = { approvalPolicy: { mode: 'request' }, skillKey: 'new-composer-skill',
     attachments: [{ assetId: 'new-composer-asset', version: 1 }],
     retryFromEntryId: original.entryId } as LaneComposerContext
   await lane.execute({ kind: 'prompt', text: 'Retry' })
@@ -25,7 +25,7 @@ test('S21 original-input retry retains full text, skill and attachments instead 
   assert.equal(current.systemPrompt, 'ORIGINAL_SKILL_BODY')
   assert.deepEqual(current.attachments, [{ assetId: 'original-asset', version: 2 }])
   assert.equal(current.documentId, 'original-document')
-  assert.deepEqual(current.approvalPolicy, { mode: 'step', spend: 'confirm' })
+  assert.deepEqual(current.approvalPolicy, { mode: 'request' })
   const body = JSON.stringify(f.http.requests.at(-1)!.body)
   assert.ok(body.includes('FULL_ORIGINAL_EXECUTION_TEXT'))
   assert.ok(!body.includes('new-composer-skill'))
@@ -35,7 +35,7 @@ test('S21 original-input retry retains full text, skill and attachments instead 
 test('S21 unknown original input is rejected before native admission or provider request', async t => {
   const f = await createLaneFixture(t, [{ type: 'text', text: 'must not request' }])
   const lane = await f.openLane({ ...f.options, input: {
-    capture: () => ({ approvalPolicy: { mode: 'step', spend: 'confirm' }, retryFromEntryId: 'foreign-input' } as LaneComposerContext),
+    capture: () => ({ approvalPolicy: { mode: 'request' }, retryFromEntryId: 'foreign-input' } as LaneComposerContext),
     activate: () => {}, providerContent: async message => message.content, rewritePayload: payload => payload,
   } })
   await assert.rejects(lane.execute({ kind: 'prompt', text: 'Retry' }), /input|reference/i)

@@ -128,7 +128,7 @@ export async function buildContactSheetNode(selectedNodeIds: readonly string[], 
         height: rendered.height,
       })?.meta
       useGenerationCanvasStore.getState().updateNode(created.id, {
-        result: { id: `contact-sheet-${createdAt}`, type: 'image', url: stored.url, createdAt },
+        result: { id: `contact-sheet-${createdAt}`, type: 'image', ...stored.media, createdAt },
         meta: { ...(mediaMeta || {}), localOnly: stored.localOnly, ...(stored.localOnly ? {} : { uploadStatus: 'uploaded' as const }) },
       })
 

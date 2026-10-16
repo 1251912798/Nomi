@@ -16,7 +16,7 @@ test('admitted canvas input survives two compactions and an unrelated unsent dra
     { type: 'text', text: 'finished' },
     { type: 'text', text: 'new turn' },
   ]);
-  let captured: LaneComposerContext = { approvalPolicy: { mode: 'safe-auto', spend: 'confirm' },
+  let captured: LaneComposerContext = { approvalPolicy: { mode: 'request' },
     target: { kind: 'canvas', nodeIds: [] }, systemPrompt: 'ADMITTED_TEMPLATE', skillPrompt: 'ADMITTED_SKILL' };
   const activations: LaneComposerContext[] = [];
   let executions = 0;
@@ -30,7 +30,7 @@ test('admitted canvas input survives two compactions and an unrelated unsent dra
     model: { ...f.options.model, contextWindow: 1000000 },
   });
   await host.execute({ kind: 'prompt', text: 'ORIGINAL_CANVAS_TASK' }, { onAccepted: () => {
-    captured = { approvalPolicy: { mode: 'step', spend: 'confirm' },
+    captured = { approvalPolicy: { mode: 'request' },
       target: { kind: 'document', documentId: 'other', anchor: { kind: 'whole-document' } },
       systemPrompt: 'UNSENT_DRAFT_TEMPLATE', skillPrompt: 'UNSENT_DRAFT_SKILL' };
   } });

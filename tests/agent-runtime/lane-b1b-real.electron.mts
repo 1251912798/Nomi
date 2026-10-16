@@ -101,7 +101,7 @@ async function main() {
   }
   const skillPath = path.resolve('skills/workbench-storyboard-planner/SKILL.md');
   const skillBody = await readFile(skillPath, 'utf8');
-  const context = { approvalPolicy: { mode: 'safe-auto' as const, spend: 'confirm' as const },
+  const context = { approvalPolicy: { mode: 'request' as const },
     availableModels: recorded.models, model: { vendorKey: model.providerId, modelKey: model.modelId } };
   const require = createRequire(import.meta.url);
   const { buildSync } = createRequire(require.resolve('vite/package.json'))('esbuild');

@@ -274,14 +274,26 @@ export function describeCodexFailure(ran: CodexFinishedOutput, threadId: string)
   return "Codex CLI 未产生可导入的生图文件。";
 }
 
-function importCodexImage(record: CodexImageJobRecord, input: CodexImageQueryInput): string[] {
+// 落盘前的解码校验是异步的：两次并发查询同一个任务，第二次在第一次还没 patchJob 时就会再导一份（项目里多出 `-2`）。
+// 同一任务的导入只跑一次，后来的查询等同一个结果。
+const importsInFlight = new Map<string, Promise<string[]>>();
+
+function importCodexImage(record: CodexImageJobRecord, input: CodexImageQueryInput): Promise<string[]> {
+  const inFlight = importsInFlight.get(record.jobId);
+  if (inFlight) return inFlight;
+  const started = importCodexImageOnce(record, input).finally(() => importsInFlight.delete(record.jobId));
+  importsInFlight.set(record.jobId, started);
+  return started;
+}
+
+async function importCodexImageOnce(record: CodexImageJobRecord, input: CodexImageQueryInput): Promise<string[]> {
   if (record.localUrls.length) return record.localUrls;
   if (!record.imagePath || !existsSync(record.imagePath)) return [];
   const localUrls: string[] = [];
   if (input.projectId) {
     const threadPart = (record.threadId || record.jobId).slice(0, 8);
     const fileName = `codex-image-${threadPart}${path.extname(record.imagePath) || ".png"}`;
-    const written = input.writeAsset(
+    const written = await input.writeAsset(
       input.projectId,
       readFileSync(record.imagePath),
       fileName,
@@ -452,7 +464,7 @@ export async function queryCodexImageOperation(input: CodexImageQueryInput): Pro
   }) || record;
   if (imagePath || refreshed.imagePath) {
     const withImage = { ...refreshed, imagePath: imagePath || refreshed.imagePath, status: "succeeded" as const, error: "" };
-    const urls = importCodexImage(withImage, input);
+    const urls = await importCodexImage(withImage, input);
     return { response: toProcessResponse(withImage, "success", urls), request: withImage.request };
   }
 

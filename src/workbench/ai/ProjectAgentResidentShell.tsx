@@ -231,11 +231,11 @@ export default function ProjectAgentResidentShell({ surface }: { surface: Reside
       }
   const autoModeBanner = autoMode.bannerVisible ? (
     <V4AutoModeBanner
-      label={t('agentPanelV4.permission.project')}
+      label={t('agentPanelV4.permission.direct')}
       note={t('agentPanelV4.autoModeBannerNote')}
       revertLabel={t('agentPanelV4.autoModeBannerRevert')}
       dismissLabel={t('agentPanelV4.autoModeBannerDismiss')}
-      onRevert={() => actions.setPermission('safe-auto')}
+      onRevert={() => actions.setPermission('request')}
       onDismiss={autoMode.dismissBanner}
     />
   ) : null

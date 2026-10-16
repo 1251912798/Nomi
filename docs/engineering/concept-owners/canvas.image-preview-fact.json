@@ -1,0 +1,41 @@
+{
+  "name": "画布预览事实（落盘回执 → 画布结果的预览两栏）",
+  "subject": "canvas.image-preview-fact",
+  "lifecycle": "projection",
+  "authority_kind": "decision",
+  "trust_domain": "shared",
+  "fact_kind": "value-object",
+  "migration_status": "converged",
+  "owner": {
+    "path": "electron/shared/canvas/canvasMediaPreview.ts",
+    "symbol": "canvasPreviewFieldsFromReceipt"
+  },
+  "write_api": [
+    {
+      "path": "electron/shared/canvas/canvasMediaPreview.ts",
+      "symbol": "canvasPreviewFieldsFromReceipt"
+    }
+  ],
+  "forbidden_derivations": [
+    {
+      "symbol": "hostedAssetThumbnailUrl",
+      "kind": "definition",
+      "why": "旧形状：各入口自己读回执的 thumbnailUrl、没有小图时回落成源地址（thumbnailUrl = url 冒充预览）。预览两栏只许从 canvasPreviewFieldsFromReceipt 投影。"
+    }
+  ],
+  "allowed_consumers": [
+    "electron/assets/localizeTaskAsset.ts",
+    "electron/productionRun/multiShotCanvasLanding.ts",
+    "electron/productionRun/productionRunDriverOps.ts",
+    "electron/capabilityCore/generationOutputMaterializer.ts",
+    "src/workbench/api/assetUploadApi.ts",
+    "src/workbench/generationCanvas/adapters/persistNodeImage.ts",
+    "src/workbench/generationCanvas/adapters/assetImportAdapter.ts",
+    "src/workbench/generationCanvas/resultMediaBackfillBridge.ts",
+    "src/workbench/generationCanvas/runner/catalogTaskResultParse.ts",
+    "src/workbench/generationCanvas/model/generationCanvasSchema.ts",
+    "src/workbench/generationCanvas/model/generationCanvasTypes.ts"
+  ],
+  "since": "2026-10-16",
+  "notes": "不变式：交给画布的图 / 视频结果要么带独立小图（≠ 源、长边 ≤ 1024，由 assetPreview.attachStoredAssetPreview 派生），要么带 previewState（source = 源已有界；missing = 派生不出来）。没有事实 = 旧数据 / 只交了 URL 的入口，由 resultMediaBackfillBridge 打开后补齐。门岗：src/workbench/generationCanvas/canvasPreviewDoors.test.ts。"
+}

@@ -84,6 +84,7 @@ export function ScreenshotCropOverlay({ capture, project, basePosition, category
       if (cropped) {
         const file = dataUrlToFile(cropped.dataUrl, `screenshot-${createdAt}.png`)
         if (file) {
+          // 只拿门牌号（它的契约测试住在白板目录，归草稿 #1189）：结果没有预览事实，由打开 / 变更后补预览补齐。
           const localUrl = await persistNodeImageFile(file, created.id, project)
           project.assertCurrent()
           const latest = useGenerationCanvasStore.getState()

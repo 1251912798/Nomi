@@ -129,3 +129,18 @@ test('source imports, upstream package dist, comments and quoted examples are no
   assert.equal(builtArtifactImportLines(source, 'tests/ux/support.mjs').size, 0)
   assert.equal(builtArtifactImportLines("import '../dist/index.js'", 'scripts/build.mjs').size, 0)
 })
+
+test('vi.waitFor with a literal timeout is caught only in electron/src tests', async () => {
+  const { viWaitForLiteralTimeoutLines } = await import('./check-test-waits.mjs')
+  const source = [
+    "await vi.waitFor(() => ok(), { timeout: 3000 })",
+    "await vi.waitFor(() => ok())",
+    "await vi.waitFor(() => ok(), { interval: 5 })",
+    "// await vi.waitFor(() => ok(), { timeout: 3000 })",
+    "await vi.waitFor(() => ok(),\n  { timeout: 2 * 1000 })",
+  ].join('\n')
+  assert.deepEqual(viWaitForLiteralTimeoutLines(source, 'electron/x/a.test.ts'), [1, 5])
+  assert.deepEqual(viWaitForLiteralTimeoutLines(source, 'src/a.test.tsx'), [1, 5])
+  assert.deepEqual(viWaitForLiteralTimeoutLines(source, 'tests/a.test.ts'), [])
+  assert.deepEqual(viWaitForLiteralTimeoutLines(source, 'electron/a.ts'), [])
+})

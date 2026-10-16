@@ -7,7 +7,7 @@ import { createTimelineLaneTools } from '../../electron/agentLane/laneTimelineTo
 import { createExtendedLaneTools } from '../../electron/agentLane/laneExtendedTools.js';
 import type { CanvasWriteResult } from '../../electron/shared/agentCapabilities/canvasWrite.js';
 import type { LaneHandle, LaneTaskFacts } from '../../electron/shared/agentLane/laneContracts.js';
-import { createDocumentPort, createLaneFixture } from './laneFixture.mjs';
+import { createDocumentPort, createLaneFixture, mustConfirm } from './laneFixture.mjs';
 import { compareSteps, fixtureReplyOf, stepsOfProjection, stepsOfRecorded,
   type ComparableStep } from './replayShadowEngine.mjs';
 import type { RecordedMessage } from './replayShadowSources.mjs';
@@ -93,8 +93,8 @@ export async function runL1Scenario(t: TestContext, scenario: L1Scenario): Promi
   const options = { ...fixture.options, tools,
     model: { ...fixture.options.model, tokenPricing: { inputPerMTokUsd: 1, outputPerMTokUsd: 2 } },
     ...(scenario.task ? { tasks: (runId: string) => runId === scenario.task!.productionRunId ? taskFacts : undefined } : {}),
-    ...(scenario.refusal ? { approval: { hasUserInterface: true,
-      policy: () => ({ mode: 'step' as const, spend: 'confirm' as const }) } } : {}),
+    // 拒绝场景要一张必然出现的写入确认卡：两档之后没有让可撤销写入停下的档位，用宿主「这一次必须确认」的事实（`mustConfirm`）。
+    ...(scenario.refusal ? { approval: mustConfirm() } : {}),
   };
   let lane: LaneHandle = await openLane(options);
   t.after(() => lane.close());

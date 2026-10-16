@@ -23,7 +23,7 @@ import type { CollapsedGroupCardProjection } from '../model/canvasCardStackModel
 import type { CanvasFrameInteraction } from '../components/GroupFrame'
 import type { CanvasFrameRect } from '../model/canvasFrameBounds'
 import type { ConnectionAnchorSide } from '../store/canvasStoreTypes'
-import type { getSelectedBounds } from '../components/generationCanvasGeometry'
+import { getSelectedBounds } from '../components/generationCanvasGeometry'
 import type { CanvasGroupToolbarModel } from '../components/CanvasGroupToolbar'
 import type { GenerationFlowEdge, GenerationFlowNode } from './generationCanvasReactFlowAdapter'
 import { canvasViewportFromFlow, isFiniteFlowViewport } from './generationCanvasReactFlowAdapter'
@@ -35,10 +35,21 @@ import { syncCanvasNodeProjection } from './canvasNodeProjectionSync'
 import { ProjectOpenFlowProbe } from '../../project/projectOpenFlowProbe'
 import { CanvasPickModeDim } from '../components/CanvasPickModeLayer'
 import { CANVAS_LAYER_CSS_VARS } from './canvasLayerOrder'
+import { useGenerationCanvasStore } from '../store/generationCanvasStore'
+import type { GenerationCanvasNode } from '../model/generationCanvasTypes'
+import { selectSelectedContactSheetCount } from '../components/useCanvasGroupActions'
+import { overlayCanvasDragDraft } from './canvasDragDraft'
+import { useGenerationCanvasReactFlowProjection, type CanvasFlowProjectionInput } from './useGenerationCanvasReactFlowProjection'
 
 type GenerationCanvasReactFlowViewportProps = {
-  flowNodes: GenerationFlowNode[]
-  flowEdges: GenerationFlowEdge[]
+  /** 投影的结构输入（不含选区）：选区在这一层自己订阅，画布壳不因选中重渲。 */
+  projection: CanvasFlowProjectionInput
+  /** 本分类的节点（选区外接框用）。 */
+  categoryNodes: readonly GenerationCanvasNode[]
+  /** 拖动草稿（壳持有）：拖动中投影变了，把草稿位置叠回去，别让卡跳回拖动前。 */
+  dragDraft: { draggingRef: React.MutableRefObject<boolean>; dragDraftNodesRef: React.MutableRefObject<GenerationFlowNode[]> }
+  /** 回写给壳：最近一次投影出来的节点（壳的拖动 / 取消回调在事件里读它，不靠订阅）。 */
+  projectedFlowNodesRef: React.MutableRefObject<GenerationFlowNode[]>
   viewport: Viewport
   stageSize: { width: number; height: number }
   readOnly: boolean
@@ -83,10 +94,7 @@ type GenerationCanvasReactFlowViewportProps = {
   pendingConnectionSide: ConnectionAnchorSide
   onConnectToGroup: (groupId: string) => void
   onSetGroupCollapsed: (groupId: string, collapsed: boolean) => void
-  selectedBounds: ReturnType<typeof getSelectedBounds>
-  selectedNodeIds: readonly string[]
   selectedGroupIds: readonly string[]
-  contactSheetCount: number
   onGroupSelectedNodes: () => void
   onBuildContactSheet: () => void
   onSaveWorkflow: () => void
@@ -111,8 +119,10 @@ function CanvasNodeProjectionSync({
 }
 
 export function GenerationCanvasReactFlowViewport({
-  flowNodes,
-  flowEdges,
+  projection,
+  categoryNodes,
+  dragDraft,
+  projectedFlowNodesRef,
   viewport,
   stageSize,
   readOnly,
@@ -150,10 +160,7 @@ export function GenerationCanvasReactFlowViewport({
   pendingConnectionSide,
   onConnectToGroup,
   onSetGroupCollapsed,
-  selectedBounds,
-  selectedNodeIds,
   selectedGroupIds,
-  contactSheetCount,
   onGroupSelectedNodes,
   onBuildContactSheet,
   onSaveWorkflow,
@@ -161,6 +168,21 @@ export function GenerationCanvasReactFlowViewport({
   isNodeDragging,
   groupToolbar,
 }: GenerationCanvasReactFlowViewportProps): JSX.Element {
+  // 选区只在这一层订阅（React Flow 性能指南：别让画布父层订阅会频繁变的状态）：选中一张卡，重渲的是视口层，不是整个画布壳。
+  const selectedNodeIds = useGenerationCanvasStore((state) => state.selectedNodeIds)
+  const contactSheetCount = useGenerationCanvasStore(selectSelectedContactSheetCount)
+  const { flowNodes: projectedFlowNodes, flowEdges } = useGenerationCanvasReactFlowProjection({ ...projection, selectedNodeIds })
+  React.useLayoutEffect(() => { projectedFlowNodesRef.current = projectedFlowNodes }, [projectedFlowNodes, projectedFlowNodesRef])
+  const { draggingRef, dragDraftNodesRef } = dragDraft
+  const flowNodes = React.useMemo(() => {
+    if (!draggingRef.current || dragDraftNodesRef.current.length === 0) return projectedFlowNodes
+    return overlayCanvasDragDraft(projectedFlowNodes, dragDraftNodesRef.current)
+  }, [dragDraftNodesRef, draggingRef, projectedFlowNodes])
+  // 浮条只在多选时出现，外接框也只在那时算。
+  const selectedBounds = React.useMemo(
+    () => (selectedNodeIds.length > 1 ? getSelectedBounds(categoryNodes, selectedNodeIds) : null),
+    [categoryNodes, selectedNodeIds],
+  )
   // 这次视口手势**属于哪个分类**（在 moveStart 那一刻钉住）。
   //
   // 2026-09-21：这里原来是一个 `viewportCancelledRef`，被中断时置 true，然后让 `onMoveEnd`

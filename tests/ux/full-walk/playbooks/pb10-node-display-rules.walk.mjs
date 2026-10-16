@@ -154,12 +154,12 @@ try {
   }, { surfaces: ['modal', 'canvasGesture'] })
 
   // ── 视频草稿节点：没标题时说「镜头 N」（Agent 起草，全自动，供应商是回环夹具）──────────
-  await monitor.step('展开生成页的 Agent 面板，权限档切到「全自动」', async () => {
+  await monitor.step('展开生成页的 Agent 面板，权限档切到「直接生成」', async () => {
     await expandResidentPanel(win())
     await expect(win().locator(`${CANVAS_PANEL} ${COMPOSER}`)).toBeVisible({ timeout: DEFAULT_TIMEOUT_MS })
     await clickOrFail(win().locator(`${CANVAS_PANEL} ${COMPOSER_PERMISSION}`), 'permission selector')
     await expect(win().locator(`${CANVAS_PANEL} ${PERMISSION_POPOVER}`)).toBeVisible()
-    await clickOrFail(win().locator(`${CANVAS_PANEL} ${permissionTier('project')}`), 'full auto')
+    await clickOrFail(win().locator(`${CANVAS_PANEL} ${permissionTier('direct')}`), 'full auto')
     const switchCard = win().locator(`${CANVAS_PANEL} ${APPROVAL_CARD}[data-kind="approval-reversible"]`)
     await expect(switchCard).toBeVisible({ timeout: DEFAULT_TIMEOUT_MS })
     monitor.consentFullAuto({ label: 'switch to full auto' })

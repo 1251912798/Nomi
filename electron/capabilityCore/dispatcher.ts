@@ -109,7 +109,7 @@ export type DispatchContext = {
   openCredentialsInNomi?: (input: { sessionId: string; vendorName: string }) => { opened: boolean } | void | Promise<{ opened: boolean } | void>
   /**
    * 用户此刻选的审批档位（宿主持有的那一份快照）。**它只被读，不被这一层解释**——
-   * 「该不该弹卡」全仓只有 `spendDecidedByPolicy` 回答（capabilityApprovalPolicy.ts:144）。
+   * 「该不该弹卡」带 Run 的入口只有 `directGenerationBrakes.ts#spendDecisionByPolicy` 回答（档位那一半是 `spendDecidedByPolicy`）。
    * 不传 = 不猜档位 = 照旧弹卡，与 `generationTransportAdapters.decideByPolicyAfterDraft` 同一条纪律。
    */
   approvalPolicy?: () => import('../shared/agentCapabilities/capabilityApprovalPolicy').ProjectAgentApprovalPolicy | undefined

@@ -14,7 +14,7 @@ import { projectLaneSnapshot, type LaneModelFacts } from '../../electron/shared/
 import { normalizeProviderErrorText } from '../../electron/agentLane/laneProviderGuard.mjs';
 import type { LaneProjection, LaneRetry } from '../../electron/shared/agentLane/laneContracts.js';
 import { LANE_READ_TOOL_TIMEOUT_MS } from '../../electron/shared/agentLane/laneToolContract.js';
-import { createLaneFixture, FIXTURE_DESCRIBE } from './laneFixture.mjs';
+import { createLaneFixture, FIXTURE_DESCRIBE, mustConfirm } from './laneFixture.mjs';
 
 /** 一个永不回复、但连上了的供应商。**首字节永不到达**——今天的 lane 会永远转圈。 */
 const NEVER_REPLIES = { type: 'deferred' as const, beforeReply: () => new Promise<never>(() => {}) };
@@ -246,7 +246,7 @@ test('阳性对照 · waiting on an approval does not spend the tool’s budget'
   const fixture = await createLaneFixture(t, [
     { type: 'tool', calls: [{ id: 'call-quick', name: 'returns_at_once', arguments: {} }] },
     { type: 'text', text: 'Approved and done.' },
-  ], { hasUserInterface: true, policy: () => ({ mode: 'step', spend: 'confirm' }) });
+  ], mustConfirm({ toolNames: ['returns_at_once'] }));
   const lane = await fixture.openLane({
     ...fixture.options,
     tools: [stallingTool('returns_at_once', 300, async () => {})],
@@ -278,7 +278,7 @@ test('阳性对照 · waiting in the domain preflight (the priced card) does not
   const fixture = await createLaneFixture(t, [
     { type: 'tool', calls: [{ id: 'call-held', name: 'held_in_preflight', arguments: {} }] },
     { type: 'text', text: 'The user answered and it ran.' },
-  ], { hasUserInterface: true, policy: () => ({ mode: 'safe-auto', spend: 'confirm' }) });
+  ], { hasUserInterface: true, policy: () => ({ mode: 'request' }) });
   let waitedInPreflight = false;
   const lane = await fixture.openLane({
     ...fixture.options,

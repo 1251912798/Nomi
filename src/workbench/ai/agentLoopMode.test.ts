@@ -21,7 +21,7 @@ describe('single-shot requests', () => {
     const response = await runSingleShotAgent(request)
     expect(deps.singleShot).toHaveBeenCalledWith(expect.objectContaining({
       prompt: 'hi', projectId: 'p1', featureKey: 'directions:p1',
-      context: expect.objectContaining({ skillKey: 'direction', approvalPolicy: { mode: 'step', spend: 'confirm' } }),
+      context: expect.objectContaining({ skillKey: 'direction', approvalPolicy: { mode: 'request' } }),
     }))
     expect(response).toMatchObject({ status: 'finished', text: 'result', toolCalls: [] })
   })

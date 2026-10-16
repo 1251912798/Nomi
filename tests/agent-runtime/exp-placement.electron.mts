@@ -203,7 +203,7 @@ async function main() {
       }
       const lane = await openLane({ projectDir: await mkdtemp(path.join(root, 'project-')), tools, model, fetch: guardedFetch,
         native: { settingsRoot: settings, skills: [expSkill] },
-        approval: { hasUserInterface: true, policy: () => ({ mode: 'safe-auto', spend: 'confirm' }) },
+        approval: { hasUserInterface: true, policy: () => ({ mode: 'request' }) },
         limits: { maxModelRequests: 12 },
         systemPrompt: '你是 Nomi 视频创作助手。根据真实工具结果回答。当前宿主只能创建试拍草稿，报价和生成由画布提交提供；不能假称已生成。',
       });

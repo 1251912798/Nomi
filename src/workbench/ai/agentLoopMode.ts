@@ -36,7 +36,7 @@ export async function runSingleShotAgent(request: SingleShotAgentRequest): Promi
     requestId, prompt: request.prompt, featureKey: request.featureKey,
     ...(request.projectId ? { projectId: request.projectId } : {}),
     context: {
-      approvalPolicy: { mode: 'step', spend: 'confirm' },
+      approvalPolicy: { mode: 'request' },
       ...(request.skillKey === undefined ? {} : { skillKey: request.skillKey }),
       ...(pref ? { model: pref } : {}),
       ...(request.systemPrompt ? { systemPrompt: request.systemPrompt } : {}),

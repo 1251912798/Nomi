@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { readFile, readdir, rm, stat } from 'node:fs/promises';
 import { join } from 'node:path';
-import { createLaneFixture } from './laneFixture.mjs';
+import { createLaneFixture, mustConfirm } from './laneFixture.mjs';
 import { openLaneTraceDirectory, laneSessionsRoot } from '../../electron/agentLane/laneSession.mjs';
 import { traceSafeValue, type LaneTraceTurn } from '../../electron/agentLane/laneTrace.mjs';
 
@@ -80,7 +80,7 @@ test('policy denial and failed tool results remain explicit in the derived row',
   const fixture = await createLaneFixture(t, [
     { type: 'tool', calls: [{ id: 'denied-write', name: 'write_script', arguments: { where: 'end', content: 'Do not apply.' } }] },
     { type: 'text', text: 'Approval is required.' },
-  ], { hasUserInterface: false, policy: () => ({ mode: 'step', spend: 'confirm' }) });
+  ], mustConfirm({ hasUserInterface: false }));
   const lane = await fixture.openLane(fixture.options);
   const before = fixture.document.text();
   await lane.execute({ kind: 'prompt', text: 'Append a line.' });

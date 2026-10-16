@@ -301,7 +301,6 @@
   "tests/ux/p4-s5-canvas-landing.e2e.mjs": 1,
   "tests/ux/param-bar-geometry.walk.mjs": 1,
   "tests/ux/param-bar-models.walk.mjs": 1,
-  "tests/ux/perf.e2e.mjs": 1,
   "tests/ux/pr720-apimart-key.walk.mjs": 6,
   "tests/ux/pr720-language-switch-mid-session.walk.mjs": 2,
   "tests/ux/pr720-prompt-language.walk.mjs": 3,

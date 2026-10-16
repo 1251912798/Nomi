@@ -8,6 +8,7 @@ import { useGenerationCanvasStore } from '../store/generationCanvasStore'
 import { CANVAS_DRAGGING_ATTRIBUTE } from '../components/canvasDraggingFlag'
 import type { GenerationCanvasNode } from '../model/generationCanvasTypes'
 import { DeferredNodeImage, DeferredNodeVideo, type DeferredNodeVideoProps } from './DeferredNodeMedia'
+import { canvasVideoPosterOf } from './canvasImageSource'
 import {
   claimNodeVideoPlayback,
   clearNodeVideoUserPlayback,
@@ -97,7 +98,8 @@ export function NodeVideoPlaybackGuard({
     [nodeId],
   )
   const heal = useVideoPlaybackHeal({ rawUrl: node.result?.url ?? '', onHealed: persistHealedUrl })
-  const posterUrl = node.result?.thumbnailUrl?.trim() || ''
+  // 封面只认独立小图（canvasImageSource：thumbnailUrl 等于源的旧形状不算封面）。
+  const posterUrl = canvasVideoPosterOf(node.result) ?? ''
   // 没量过尺寸就先挂一次只读元数据的播放器（尺寸 owner 仍是 useNodeMediaMeasurement）。
   const measured = Boolean(node.meta?.videoWidth && node.meta?.videoHeight)
   const interacting = useSettledIntent(previewRequested || engaged || editing, hostRef)

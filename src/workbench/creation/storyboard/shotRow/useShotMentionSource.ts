@@ -3,7 +3,7 @@
  *
  * 复用 owner：
  * - `AssetMentionSuggestionList`（下拉 UI + 键盘导航）
- * - `useAssetPool`（AssetPicker/AssetLibraryPanel 共用的素材库数据源）
+ * - `useAssetPool`（AssetPicker/AssetLibraryPanel 共用的素材库数据源；整张表取一份，见 `useShotMentionPool`）
  * - 持久化格式 `@[asset:url]`（promptMentions.ts 单源）
  *
  * 候选来源：
@@ -20,7 +20,7 @@
  */
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { useAssetPool } from '../../../assets/useAssetPool'
+import { useAssetPool, type AssetPool } from '../../../assets/useAssetPool'
 import type { MentionSuggestionItem } from '../../../assets/AssetMentionSuggestionList'
 import type { AnchorCardRuntime } from '../exec/storyboardRowStatus'
 import type { PlanAnchor, PlanShot } from '../../../generationCanvas/agent/storyboardPlan'
@@ -48,6 +48,22 @@ export type ShotMentionCallbacks = {
   mentionUpload: ReturnType<typeof useComposerAttachments>
 }
 
+/** @ 候选里「某镜结果」与「素材库」两组的数据源：整张表一份（`useShotMentionPool`），各行只读。 */
+export type ShotMentionPool = Pick<AssetPool, 'canvasAssets' | 'projectAssets'>
+
+/**
+ * 整张分镜表**一份**素材池。复用 AssetPicker/AssetLibraryPanel 的素材池；不在分镜页维护第二份素材列表。
+ *
+ * 为什么不在每行各取一份：素材池挂载即列一次项目文件（`useWorkspaceFiles` → 主进程扫目录，上限 2000 个），
+ * 每行一份 = 打开 N 镜的方案就让主进程扫 N 遍同一个目录（2026-10-16 C-trace：320 镜打开的放大项之一）。
+ * 同一张表所有行看到的是同一个项目、同一份文件，所以只取一次、递给每一行。
+ */
+export function useShotMentionPool(projectId?: string | null): ShotMentionPool {
+  const openProjectId = useOpenProjectId()
+  const { canvasAssets, projectAssets } = useAssetPool(projectId ?? openProjectId)
+  return React.useMemo(() => ({ canvasAssets, projectAssets }), [canvasAssets, projectAssets])
+}
+
 /**
  * 分镜行 @ 引用候选源。
  *
@@ -55,19 +71,17 @@ export type ShotMentionCallbacks = {
  * @param anchors   完整锚列表（plan.anchors）
  * @param anchorCards   锚 runtime 列表（含 resultUrl；deriveAnchorCardRuntimes 产出）
  * @param onBindReference 把选中的素材放进这一行的参考列；放不进（模式没有槽 / 槽满）返回 false
+ * @param pool      整张表共用的素材池（`useShotMentionPool`）
  */
 export function useShotMentionSource(
   shot: PlanShot,
   anchors: readonly PlanAnchor[],
   anchorCards: readonly AnchorCardRuntime[],
   onBindReference: (reference: { url: string; name: string; kind: 'image' | 'video' | 'audio'; anchorId?: string; sourceNodeId?: string }) => boolean,
-  projectId?: string | null,
+  pool: ShotMentionPool,
 ): ShotMentionCallbacks {
-  const openProjectId = useOpenProjectId()
   const { t } = useTranslation()
-  // 复用 AssetPicker/AssetLibraryPanel 的素材池；不在分镜页维护第二份素材列表。
-  const assetProjectId = projectId ?? openProjectId
-  const { canvasAssets, projectAssets } = useAssetPool(assetProjectId)
+  const { canvasAssets, projectAssets } = pool
   const [attachments, setAttachments] = React.useState<ComposerAttachment[]>([])
   const mentionUpload = useComposerAttachments({ attachments, setAttachments })
 

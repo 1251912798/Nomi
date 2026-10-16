@@ -533,7 +533,7 @@ export function createInvariantMonitor(options) {
     return consent
   }
 
-  /** 用户切到「全自动」并在二次确认上点了头：之后 Agent 的提交都在这次授权里（开放式，不限镜数）。 */
+  /** 用户切到「直接生成」并在二次确认上点了头：之后 Agent 的提交都在这次授权里（开放式，不限镜数）。 */
   function consentFullAuto({ label } = {}) {
     const consent = { id: `c${consents.length + 1}`, kind: 'full-auto', at: Date.now(), step: currentStep?.label ?? null, label: label ?? null, openEnded: true, scope: [], submissions: [] }
     consents.push(consent)

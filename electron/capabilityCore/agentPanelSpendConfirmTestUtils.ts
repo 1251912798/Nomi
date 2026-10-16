@@ -380,7 +380,7 @@ function buildActions(base: ReturnType<typeof harness>, vendorOrigin: string, su
       authorizeGeneration: authority.authorizeGeneration,
       approvalReceiptAuthority: receipts,
       leaseFor: () => lease,
-      approvalPolicy: () => ({ mode, spend: "confirm" }),
+      approvalPolicy: () => ({ mode }),
       // 与生产同一条接线（appIntegration）：草稿落地之后回「此刻在画布上吗」，回执据它说话。
       draftLanding: base.canvasLanding.draftLandingOutcome,
     },
