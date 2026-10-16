@@ -8,7 +8,7 @@ import assert from 'node:assert/strict'
 import { expect } from '@playwright/test'
 import { launchNomiApp, repoRoot } from './_launchApp.mjs'
 import { screenshotSettled } from './_assert.mjs'
-import { newProjectEntry } from './_shell.mjs'
+import { newProjectEntry, openRailDrawer } from './_shell.mjs'
 
 const key = process.env.TIKHUB_API_KEY?.trim()
 assert.ok(key, 'TIKHUB_API_KEY is required; this task cannot be validated with fixtures')
@@ -27,9 +27,7 @@ try {
   const status = await win.evaluate((apiKey) => window.nomiDesktop.connector.tikhub.saveKey({ apiKey }), key)
   assert.equal(status.status, 'ok')
   await win.locator('[data-mode="generation"]').click()
-  if (!(await win.locator('section[aria-label="素材库"]').isVisible())) {
-    await win.getByRole('button', { name: '素材库', exact: true }).first().click()
-  }
+  await openRailDrawer(win, 'assets', '打开素材库')
   await expect(win.locator('[data-find-reference-cta]')).toBeVisible()
   await shot('01-empty')
   await win.locator('[data-find-reference-cta]').click()

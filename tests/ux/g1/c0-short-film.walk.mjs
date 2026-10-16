@@ -13,6 +13,7 @@ import { fileURLToPath } from 'node:url'
 import { execFileSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { parseArgs } from 'node:util'
+import { switchWorkspace } from '../_shell.mjs'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..')
 const { values } = parseArgs({ options: {
@@ -259,7 +260,7 @@ try {
     expect(clips.map((c) => c.sourceNodeId)).toEqual(nodeIds)
     for (const [i, clip] of clips.entries()) expect(clip.startFrame).toBe(i ? clips[i - 1].endFrame : 0)
     expect((clips.at(-1)?.endFrame ?? 0) / p.timeline.fps).toBeCloseTo(64, 1)
-    await clickOrFail(win.locator('[aria-label="工作区切换"]').getByText('预览', { exact: true }), '预览成片')
+    await switchWorkspace(win, 'preview', '预览成片')
     const video = win.locator('.workbench-preview-player__video').first()
     await expect(video).toBeVisible()
     await clickOrFail(win.locator('[aria-label="播放"]:visible').first(), '播放时间轴')
@@ -300,7 +301,7 @@ try {
     expect(after.generationCanvas.nodes.map((n) => ({ id: n.id, result: n.result }))).toEqual(before.generationCanvas.nodes.map((n) => ({ id: n.id, result: n.result })))
     expect(videoClips(after)).toEqual(videoClips(before))
     await clickOrFail(win.locator(`[data-project-id="${projectId}"]`), '重开同一个隔离项目')
-    await clickOrFail(win.locator('[aria-label="工作区切换"]').getByText('预览', { exact: true }), '重启后查看已保存成片')
+    await switchWorkspace(win, 'preview', '重启后查看已保存成片')
     await expect(win.locator('.workbench-preview-player__video').first()).toBeVisible()
     expect(videoClips(await payload())).toHaveLength(8)
     await scheduler.finish({ projectRoot })

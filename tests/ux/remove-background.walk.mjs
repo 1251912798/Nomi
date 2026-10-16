@@ -12,7 +12,8 @@ import path from 'node:path'
 import http from 'node:http'
 import { screenshotSettled } from './_assert.mjs'
 import { addCanvasNodeFromRail } from './_canvasRail.mjs'
-import { newProjectEntry } from './_shell.mjs'
+import { newProjectEntry, switchWorkspace } from './_shell.mjs'
+
 const repoRoot = process.cwd()
 const shotsDir = path.join(repoRoot, 'tests/ux/shots/remove-background')
 fs.mkdirSync(shotsDir, { recursive: true })
@@ -126,7 +127,7 @@ try {
   const projectId = (/projectId=([^&]+)/.exec(getWin().url()) || [])[1] || ''
   check('新建并进入项目', Boolean(projectId))
 
-  await getWin().locator('button, [role="button"], [role="tab"]', { hasText: /^生成$/ }).first().click({ timeout: 4000 }).catch(() => {})
+  await switchWorkspace(getWin(), 'generation', '切到生成区')
   await getWin().waitForTimeout(900)
   await dismiss()
   await getWin().waitForTimeout(500)

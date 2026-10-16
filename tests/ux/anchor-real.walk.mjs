@@ -5,7 +5,8 @@ import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { launchNomiApp } from './_launchApp.mjs'
-import { clickOrFail, expectCount, expectVisible, screenshotSettled } from './_assert.mjs'
+import { switchWorkspace, collapseAgentPanel } from './_shell.mjs'
+import { expectCount, expectVisible, screenshotSettled } from './_assert.mjs'
 import { openStoryboardEditor } from './_creationResourceTree.mjs'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
@@ -68,10 +69,10 @@ try {
   const card = win.locator('[data-project-card]', { hasText: '角色参考走查' })
   await expectVisible(card, '项目卡')
   await card.dblclick()
-  await clickOrFail(win.getByRole('button', { name: '创作', exact: true }), '创作页')
+  await switchWorkspace(win, 'creation', '创作页')
   await openStoryboardEditor(win, designId, '方案')
   await expectVisible(win.locator('[data-storyboard-editor="true"]'), '分镜表')
-  await win.getByRole('button', { name: '收起面板', exact: true }).click()
+  await collapseAgentPanel(win, '收起助手面板')
   await win.evaluate(() => { for (const el of document.querySelectorAll('*')) if (el.scrollLeft) el.scrollLeft = 0 })
   await win.getByRole('button', { name: '全部展开', exact: true }).click()
   if (phase !== 'green') await expectVisible(win.locator('[data-anchor-consumption-warning="hero"]'), '旧行为锚未消费')

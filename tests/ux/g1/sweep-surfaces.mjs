@@ -13,6 +13,7 @@ import { providerFailure } from './sweep-response.mjs'
 import { sweepTimeline } from './sweep-timeline.mjs'
 import { openStoryboardEditor } from '../_creationResourceTree.mjs'
 
+import { openRailDrawer } from '../_shell.mjs'
 export async function runSurface({ walk, win, input, fixture, realText, directory, payload, projectId }) {
   const surface = input.surface
   const station = (id, expected, run, repair) => walk.station({ id, surface, expected, repair, requires: () => Boolean(win && !win.isClosed() && projectId) }, run)
@@ -116,7 +117,7 @@ export async function runSurface({ walk, win, input, fixture, realText, director
   if (surface === 'skill-library') {
     await station('skill-canvas', '生成工作区技能库入口可达', () => openCanvas(win))
     await station('skill-open', '技能库导入入口可用', async () => {
-      await clickOrFail(win.getByRole('button', { name: '技能库', exact: true }).first(), '技能库')
+      await openRailDrawer(win, 'skills', '技能库')
       await expect(win.locator('[data-skill-drop-zone]')).toBeVisible()
     })
     await station('skill-import', '标准 SKILL.md 导入后可见', async () => {

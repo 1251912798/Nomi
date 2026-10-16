@@ -6,7 +6,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { expectAbsent, proveProbe, screenshotSettled } from './_assert.mjs'
-import { newProjectEntry } from './_shell.mjs'
+import { newProjectEntry, switchWorkspace, openRailDrawer } from './_shell.mjs'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const outDir = path.join(repoRoot, '.feedback-batch-walk')
@@ -44,7 +44,7 @@ const shot = async (win, name) => {
   await newProjectEntry(win).click()
   await win.waitForTimeout(1700)
   await win.keyboard.press('Escape').catch(() => {})
-  await win.locator('[aria-label="工作区切换"]').getByText('生成', { exact: true }).click()
+  await switchWorkspace(win, 'generation', '切到生成区')
   await win.waitForTimeout(700)
   await win.locator('[aria-label="添加图片节点"]').click()
   await win.waitForTimeout(900)
@@ -92,7 +92,7 @@ fs.writeFileSync(projectFile, `${JSON.stringify(project, null, 2)}\n`)
   const continueButton = win.getByText('继续创作', { exact: true }).first()
   if (await continueButton.isVisible().catch(() => false)) await continueButton.click()
   await win.waitForTimeout(2200)
-  await win.locator('[aria-label="工作区切换"]').getByText('生成', { exact: true }).click()
+  await switchWorkspace(win, 'generation', '切到生成区')
   await win.waitForTimeout(1100)
 
   const edge = win.locator('.generation-canvas-v2__edge[data-edge-id="edge-style"]')
@@ -147,7 +147,7 @@ fs.writeFileSync(projectFile, `${JSON.stringify(project, null, 2)}\n`)
   await win.waitForTimeout(700)
   if (!(await win.getByRole('button', { name: '2 张堆叠图片' }).isVisible())) throw new Error('result-level delete did not preserve the stack')
 
-  await win.getByRole('button', { name: '素材库' }).click()
+  await openRailDrawer(win, 'assets', '打开素材库')
   await win.waitForTimeout(500)
   await win.getByRole('tab', { name: '项目素材' }).click()
   await win.waitForTimeout(500)

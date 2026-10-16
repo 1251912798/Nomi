@@ -18,7 +18,7 @@ import { launchNomiApp } from './_launchApp.mjs'
 import { clickOrFail, expectCount, expectText, expectVisible, screenshotSettled } from './_assert.mjs'
 import { ensureCreationResourceTree } from './_creationResourceTree.mjs'
 import { openStoryboardEditor } from './_creationResourceTree.mjs'
-import { backToLibrary } from './_shell.mjs'
+import { backToLibrary, switchWorkspace } from './_shell.mjs'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
 const tempRoot = makeTempDir('nomi-creation-sidebar-')
@@ -125,7 +125,7 @@ async function openProject(win, name) {
   if (await cont.isVisible().catch(() => false)) await cont.click()
   else await card.dblclick()
   await expectVisible(win.locator('[data-workspace-mode]'), `打开「${name}」后工作台没起来`)
-  await clickOrFail(win.getByRole('button', { name: '创作', exact: true }), `进「${name}」的创作页`)
+  await switchWorkspace(win, 'creation', `进「${name}」的创作页`)
 }
 
 const { app, win } = await launchNomiApp({ name: 'creation-sidebar-multi-doc', tempRoot, settingsDir, projectsDir, settleMs: 1200 })

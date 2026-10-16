@@ -2,6 +2,7 @@
 // 用法: node tests/ux/volcengine-speech-credential.walk.mjs
 // 产出: tests/ux/shots/volc-speech/*.png —— 人眼判断两个标注框 + 各自说明 + 解锁按钮 + 暗色。
 import { launchNomiApp } from './_launchApp.mjs'
+import { openModelSettings } from './_shell.mjs'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -23,10 +24,10 @@ async function snap(win, name) {
 }
 
 async function openPanel(win) {
-  const trigger = win.locator('button', { hasText: '模型接入' }).first()
-  if (await trigger.count()) await trigger.click({ timeout: 4000 }).catch(() => {})
+  // 顶栏齿轮 → 设置「模型」页签（经 _shell.mjs）；开没开认结构标记，不认标题文案。
+  await openModelSettings(win, { label: 'open model settings', timeout: 4000 }).catch((error) => console.log(`  ! ${String(error?.message || error).split(String.fromCharCode(10))[0]}`))
   await win.waitForTimeout(800)
-  return (await win.locator('text=模型设置').count()) > 0
+  return (await win.locator('[data-model-settings-page]').count()) > 0
 }
 
 async function expandAllGroups(win) {

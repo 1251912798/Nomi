@@ -51,6 +51,7 @@ import {
   COMPOSER_MODEL, THREAD_MENU, escapeForRegExp, expandResidentPanel,
 } from './agent-runtime-walk-support.mjs'
 
+import { switchWorkspace, openRailDrawer } from './_shell.mjs'
 const here = path.dirname(fileURLToPath(import.meta.url))
 const repoRoot = path.resolve(here, '../..')
 const { values } = parseArgs({ options: {
@@ -155,9 +156,9 @@ try {
 
   // ② 真实页面输入 · 导入真实素材：素材库的文件选择器，等价真人在 OS 对话框里选文件。
   // 素材库入口只在**生成**工作区（创作区那一屏没有它），所以先切过去。
-  await win.getByRole('button', { name: '生成', exact: true }).first().click({ timeout: stationTimeout({ operations: 2 }) })
+  await switchWorkspace(win, 'generation', '切到生成区')
   await win.waitForTimeout(2000)
-  await win.getByRole('button', { name: '素材库', exact: true }).first().click({ timeout: stationTimeout({ operations: 2 }) })
+  await openRailDrawer(win, 'assets', '打开素材库')
   const uploadInput = win.locator('section[aria-label="素材库"] input[type="file"]').first()
   await uploadInput.waitFor({ state: 'attached', timeout: stationTimeout({ operations: 2 }) })
   await uploadInput.setInputFiles(referenceImage)

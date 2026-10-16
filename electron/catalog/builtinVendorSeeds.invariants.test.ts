@@ -21,6 +21,10 @@ import type { CatalogState } from "./types";
 import { BUILTIN_VENDOR_SEEDS } from "./builtinVendorSeeds";
 import { applyBuiltinSeeds, hasBuiltinCuratedExecution } from "./seedBuiltins";
 
+import { upsertRendererCatalogVendorApiKey } from "./rendererCatalogMutation";
+import { readCatalog, listModelCatalogVendors, listModelCatalogModels, mutateCatalog } from "./catalogStore";
+import { revalidatePendingCredential } from "./validateCandidateCredential";
+
 let mockedUserDataRoot = "";
 const tempRoots: string[] = [];
 const NOW = "2026-09-10T00:00:00.000Z";
@@ -149,8 +153,6 @@ describe("(c) 填 key → 凭据落盘 + 该家发布（逐家参数化，用户
     for (const vendor of seeded.vendors) vendor.enabled = false;
     fs.writeFileSync(path.join(mockedUserDataRoot, "model-catalog.json"), JSON.stringify(seeded), "utf8");
 
-    const { upsertRendererCatalogVendorApiKey } = await import("./rendererCatalogMutation");
-    const { readCatalog } = await import("./catalogStore");
     const modelListProbe = await import("../ai/onboarding/modelListProbe");
     vi.spyOn(modelListProbe, "fetchModelList").mockResolvedValue({ ok: true, models: [], statuses: [200] });
     // 探测型（apimart 的 `GET /v1/balance` / higgsfield 的 estimate）：两家的免费端点各回各的
@@ -181,13 +183,11 @@ describe("每一类各自的正路（用户反馈里被点名的四种情形）"
     const seeded = seededCatalog();
     for (const vendor of seeded.vendors) vendor.enabled = false;
     fs.writeFileSync(path.join(mockedUserDataRoot, "model-catalog.json"), JSON.stringify(seeded), "utf8");
-    const { upsertRendererCatalogVendorApiKey } = await import("./rendererCatalogMutation");
     await upsertRendererCatalogVendorApiKey(vendorKey, { apiKey });
   }
 
   it("kie（上游没有 /v1/models）：不打任何预检就存 key 并发布，模型回到投影里", async () => {
     await saveKey("kie");
-    const { listModelCatalogVendors, listModelCatalogModels, readCatalog } = await import("./catalogStore");
     const dto = listModelCatalogVendors().find((vendor) => vendor.key === "kie");
     // 「能用」= vendor.enabled && hasApiKey（usableVendorModel 的判据），两者都要真。
     expect(dto).toMatchObject({ enabled: true, hasApiKey: true });
@@ -196,9 +196,7 @@ describe("每一类各自的正路（用户反馈里被点名的四种情形）"
     expect(readCatalog().apiKeysByVendor.kie.verificationPending).toBeUndefined();
 
     // 存量装机里遗留的 pending 记录也不得在执行前把调用挡下来（否则等于填了 key 也用不了）。
-    const { mutateCatalog } = await import("./catalogStore");
     mutateCatalog((_tx, current) => { current.apiKeysByVendor.kie.verificationPending = true; });
-    const { revalidatePendingCredential } = await import("./validateCandidateCredential");
     const modelListProbe = await import("../ai/onboarding/modelListProbe");
     const probe = vi.spyOn(modelListProbe, "fetchModelList");
     await expect(revalidatePendingCredential("kie")).resolves.toBeUndefined();
@@ -208,7 +206,6 @@ describe("每一类各自的正路（用户反馈里被点名的四种情形）"
 
   it("火山豆包语音（authType:'none' + 三头鉴权）：App ID:Access Token 存得进并发布", async () => {
     await saveKey("volcengine-speech", "6123456789:AccessTokenValue");
-    const { listModelCatalogVendors, readCatalog } = await import("./catalogStore");
     expect(readCatalog().apiKeysByVendor["volcengine-speech"]).toBeTruthy();
     expect(listModelCatalogVendors().find((vendor) => vendor.key === "volcengine-speech"))
       .toMatchObject({ enabled: true, hasApiKey: true });
@@ -216,7 +213,6 @@ describe("每一类各自的正路（用户反馈里被点名的四种情形）"
 
   it("replicate（多输出的专用路径）：发布后「元素拆解」的前置满足", async () => {
     await saveKey("replicate", "r8_decompose_token");
-    const { readCatalog } = await import("./catalogStore");
     const state = readCatalog();
     // decomposeLayers.ts 的第一道前置逐字就是这句；凭据槽是第二道。
     expect(state.vendors.find((vendor) => vendor.key === "replicate" && vendor.enabled)).toBeTruthy();
@@ -226,7 +222,6 @@ describe("每一类各自的正路（用户反馈里被点名的四种情形）"
   it("apimart（种子带 credentialProbe）：401 仍然判 key 无效，不发布", async () => {
     mockAppFetch.mockResolvedValue(new Response("{}", { status: 401 }));
     await expect(saveKey("apimart", "sk-bad")).rejects.toThrow();
-    const { readCatalog } = await import("./catalogStore");
     expect(readCatalog().vendors.find((vendor) => vendor.key === "apimart")?.enabled).toBe(false);
   });
 
@@ -239,9 +234,7 @@ describe("每一类各自的正路（用户反馈里被点名的四种情形）"
     fs.writeFileSync(path.join(mockedUserDataRoot, "model-catalog.json"), JSON.stringify(seeded), "utf8");
     const modelListProbe = await import("../ai/onboarding/modelListProbe");
     vi.spyOn(modelListProbe, "fetchModelList").mockResolvedValue({ ok: true, models: [], statuses: [200] });
-    const { upsertRendererCatalogVendorApiKey } = await import("./rendererCatalogMutation");
     await upsertRendererCatalogVendorApiKey("my-relay", { apiKey: "sk-relay" });
-    const { readCatalog } = await import("./catalogStore");
     expect(readCatalog().vendors.find((vendor) => vendor.key === "my-relay")?.enabled).toBe(false);
   });
 });
