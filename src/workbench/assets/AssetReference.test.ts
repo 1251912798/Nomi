@@ -23,7 +23,27 @@ describe('reference capacity rendering', () => {
       projectId: null, openSlotKey: '', uploadingSlotKey: '',
       onTogglePicker: vi.fn(), onPick: vi.fn(), onUpload: vi.fn(), onRemove: vi.fn(),
     }))
-    expect(html.includes('assetLibrary.addReference')).toBe(canAdd)
+    expect(html.includes('data-asset-add-tile="true"')).toBe(canAdd)
+  })
+})
+
+describe('existing slot add buttons remain the only library entrances', () => {
+  const single=(key:string):AssetSlot=>({key,label:key,accept:'image',form:'single',persistAsEdge:true,numbered:false})
+  const array:AssetSlot={...single('refs'),form:'array',max:3}
+  it.each([
+    {name:'empty image references',slots:[array],values:{refs:[]},adds:1},
+    {name:'populated image references',slots:[array],values:{refs:['a.jpg']},adds:1},
+    {name:'empty first and last frame',slots:[single('first'),single('last')],values:{},adds:2},
+    {name:'first frame already filled',slots:[single('first'),single('last')],values:{first:'a.jpg'},adds:1},
+    {name:'filled single source',slots:[single('source')],values:{source:'a.jpg'},adds:0},
+  ])('$name has no duplicate header plus',({slots,values,adds})=>{
+    const html=renderToStaticMarkup(React.createElement(AssetReference,{
+      slots,valuesByKey:values as Record<string,string|string[]>,projectId:null,openSlotKey:'',uploadingSlotKey:'',
+      onTogglePicker:vi.fn(),onPick:vi.fn(),onUpload:vi.fn(),onRemove:vi.fn(),onPickOnCanvas:vi.fn(),
+    }))
+    expect(html).toContain('data-reference-entry="true"')
+    expect(html).not.toContain('data-reference-add=')
+    expect(html.match(/data-asset-add-tile="true"/g)?.length??0).toBe(adds)
   })
 })
 

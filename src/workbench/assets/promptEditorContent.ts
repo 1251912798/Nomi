@@ -1,5 +1,5 @@
 import type { JSONContent } from '@tiptap/react'
-import { parsePromptSegments } from './promptMentions'
+import { encodeMention, parsePromptSegments } from './promptMentions'
 import type { PromptReference } from './promptMentions'
 
 export function promptToContent(
@@ -39,4 +39,12 @@ export function promptToContent(
       return inline.length ? { type: 'paragraph', content: inline } : { type: 'paragraph' }
     }),
   }
+}
+
+/** Preserve hard breaks (Shift+Enter) and paragraph breaks in both node and Agent drafts. */
+export function contentToPrompt(content: JSONContent): string {
+  return (content.content ?? []).map(paragraph => (paragraph.content ?? []).map(node =>
+    node.type === 'assetMention' ? encodeMention(String(node.attrs?.url ?? ''))
+      : node.type === 'hardBreak' ? '\n' : node.text ?? '',
+  ).join('')).join('\n')
 }

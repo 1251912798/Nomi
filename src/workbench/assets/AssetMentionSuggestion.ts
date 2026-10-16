@@ -1,3 +1,4 @@
+import { insertAssetMentionWhenReady } from './insertAssetMentionWhenReady'
 import { Extension } from '@tiptap/core'
 import Suggestion from '@tiptap/suggestion'
 import { ReactRenderer } from '@tiptap/react'
@@ -29,7 +30,7 @@ function positionPopup(el: HTMLElement, rect: DOMRect | null): void {
  * 选中一条候选的结果：最终该插的 chip 编号（建边 / 落槽后算出来的）；null = 没插成（如能力校验没过）；
  * 或一份还在路上的结果——别的项目的素材要先复制进本项目，复制品的地址和编号到手后再插（地址就是复制品的地址）。
  */
-export type MentionSelection = number | null | Promise<{ url: string; index: number } | null>
+export type MentionSelection = number | null | Promise<{ url: string; index: number; onSettled?: () => void } | null>
 
 export function createAssetMentionSuggestion(options: {
   getCandidates: (query: string) => MentionSuggestionItem[]
@@ -64,9 +65,7 @@ export function createAssetMentionSuggestion(options: {
             if (typeof selection === 'number') { chain.insertAssetMention(item.url, selection, item.kind).run(); return }
             // 复制进本项目还在路上：先把 @ 触发段删掉，复制品落进槽之后在光标处插它的 chip（地址是复制品的）。
             chain.run()
-            void selection.then((placed) => {
-              if (placed && !editor.isDestroyed) editor.chain().focus().insertAssetMention(placed.url, placed.index, item.kind).run()
-            })
+            insertAssetMentionWhenReady(editor, selection, item.kind)
           },
           render: () => {
             let renderer: ReactRenderer<MentionSuggestionListRef> | null = null
