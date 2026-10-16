@@ -1,7 +1,7 @@
 {
   "schema_version": 3,
   "id": "2026-10-16-canvas-shell-selection-subscription",
-  "change_kind": "structural",
+  "change_kind": "corrective",
   "detected_by": "review",
   "recurrence_check_on": "2026-11-15",
   "problem_type": "High-frequency canvas interactions re-render the whole canvas shell because the shell subscribes to state that only a few leaf layers consume",
@@ -22,7 +22,6 @@
     "src/workbench/generationCanvas/components/useCanvasSelectionDrag.ts",
     "src/workbench/generationCanvas/components/useCanvasShortcuts.ts",
     "src/workbench/generationCanvas/components/useCanvasFrameActions.ts",
-    "src/workbench/generationCanvas/nodes/useNodeDisplayPrompt.ts",
     "scripts/canvas-store-subscriptions.mjs",
     "eslint.config.mjs"
   ],
@@ -55,19 +54,54 @@
   "doors": [
     {
       "kind": "write",
-      "path": "src/workbench/generationCanvas/reactFlow/GenerationCanvasReactFlowViewport.tsx",
-      "symbol": "useGenerationCanvasReactFlowProjection"
+      "path": "src/workbench/generationCanvas/reactFlow/generationCanvasReactFlowAdapter.ts",
+      "symbol": "projectGenerationFlowNodes"
     },
     {
       "kind": "write",
       "path": "src/workbench/generationCanvas/reactFlow/useGenerationCanvasReactFlowProjection.ts",
       "symbol": "projectGenerationFlowNodes"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/reactFlow/GenerationCanvasReactFlowViewport.tsx",
+      "symbol": "useGenerationCanvasReactFlowProjection"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/reactFlow/GenerationCanvasReactFlow.tsx",
+      "symbol": "resolveSelectedGroupId"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/reactFlow/GenerationCanvasReactFlowOverlays.tsx",
+      "symbol": "selectedNodeIds"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/components/useCanvasFrameActions.ts",
+      "symbol": "selectedNodeIds"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/components/useCanvasGroupActions.ts",
+      "symbol": "selectSelectedContactSheetCount"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/components/useCanvasSelectionDrag.ts",
+      "symbol": "selectedNodeIds"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/components/useCanvasShortcuts.ts",
+      "symbol": "selectedNodeCount"
     }
   ],
   "door_reduction": {
-    "before": 2,
-    "after": 2,
-    "why_not": "The viewport is the single caller of the projection hook and the hook is the single caller of the projector; both doors are the one path from structure + selection to React Flow, so there is nothing left to merge."
+    "before": 9,
+    "after": 9,
+    "why_not": "The three write doors are the single chain viewport -> hook -> projector. The six read doors are the places that genuinely consume selection (viewport/overlays render it; frame actions, group actions, selection drag and shortcuts read it inside event handlers or narrow selectors); the fix moved each read to the layer that uses it instead of merging them back into the shell."
   },
   "generality_proof": "Every selection entry (click, marquee, group frame, shortcuts, Agent) ends in the store's selectedNodeIds; the shell no longer subscribes to it (enforced by an eslint rule scoped to the shell file), and the only renderers of selection are the viewport and overlays. Every projected node and edge goes through projectGenerationFlowNodes / projectGenerationFlowEdges, so object reuse holds for every caller. New whole-table subscriptions anywhere in src are rejected by eslint, and the frozen per-file counts cannot grow.",
   "shared_boundaries": [
@@ -101,12 +135,6 @@
       "evidence": "The boolean render subscription that re-rendered the shell on the first select is now a store subscribe that only calls setState when an empty frame is actually selected."
     },
     {
-      "path": "src/workbench/generationCanvas/nodes/useNodeDisplayPrompt.ts",
-      "entry_point": "useNodeDisplayPrompt",
-      "disposition": "enforced",
-      "evidence": "Dead hook with a whole edges subscription and no importers; deleted."
-    },
-    {
       "path": "src/workbench/generationCanvas/nodes/NodeParameterControls.tsx",
       "entry_point": "nodes / edges selectors",
       "disposition": "not-affected",
@@ -125,7 +153,7 @@
   },
   "prevention": {
     "kind": "static-gate",
-    "enforcement_path": "eslint.config.mjs",
+    "enforcement_path": "scripts/canvas-store-subscriptions.mjs",
     "invariant": "No whole-table nodes / edges subscription outside the frozen list; the canvas shell never subscribes to the selection array, its length or a boolean of it.",
     "failure_mode": "lint:ci fails on the new subscription; scripts/canvas-store-subscriptions.test.mjs fails when a listed file's count changes in either direction.",
     "exception_policy": "none",
@@ -161,5 +189,13 @@
     "A write to any node still re-renders the canvas shell and re-runs its projection chain (cards themselves do not re-render); removing that needs cards to read their node by id (direction check section 6), not done here.",
     "Composer mount writes (model default, parameter normalization) still follow a select and re-render the shell; owned by the P-compose line.",
     "23 frozen whole-table subscriptions remain; per-card ones (ClipNode, ShotTableNode, NodeInputReferenceEntry, NodeParameterControls) re-render those cards on every node write."
-  ]
+  ],
+  "invariant_owner_layer": {
+    "layer": "src/workbench/generationCanvas/reactFlow/generationCanvasReactFlowAdapter.ts",
+    "tests": [
+      "src/workbench/generationCanvas/reactFlow/canvasFlowSelectionProjection.test.ts",
+      "src/workbench/generationCanvas/reactFlow/generationCanvasReactFlowAdapter.test.ts",
+      "scripts/canvas-store-subscriptions.test.mjs"
+    ]
+  }
 }
