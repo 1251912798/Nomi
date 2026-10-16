@@ -20,6 +20,7 @@ import { useGenerationCanvasStore } from './store/generationCanvasStore'
 import type { GenerationCanvasNode, GenerationNodeResult } from './model/generationCanvasTypes'
 import { isProjectExecutionContextCurrent, subscribeProjectOpened, type ProjectExecutionContext } from '../project/projectCanvasReadSurface'
 import { visibleCanvasRect, type CanvasRect } from './store/canvasVisibleArea'
+import { deferredNodeMediaQuietForMs } from './nodes/deferredNodeMediaQueue'
 import {
   canvasPreviewFieldsFromReceipt,
   hasCanvasPreviewFact,
@@ -33,6 +34,10 @@ const BACKFILL_UPDATE_OPTIONS = { history: false, emit: false } as const
 
 /** 补预览的并发：每张都要主进程起一次 ffmpeg（约一次缩放），2 路足够跟上滚动又不抢前台。 */
 export const PREVIEW_BACKFILL_CONCURRENCY = 2
+/** 项目打开后先让打开本身跑完（冷开约 2.3s）：这段时间不起任何 ffmpeg。 */
+export const PREVIEW_BACKFILL_START_DELAY_MS = 3_000
+/** 画布媒体安静这么久才做下一张：打开、平移出一批新图时让路。 */
+export const PREVIEW_BACKFILL_QUIET_MS = 1_000
 
 export function shouldRelocalizeResult(result: GenerationNodeResult | null | undefined): boolean {
   if (!result) return false
@@ -121,8 +126,10 @@ export type PreviewBackfillDeps = {
   ensurePreview: (payload: { url: string }) => Promise<PreviewReceipt>
   /** 在内存里把小图解码完（成功 true）。写回前必须先过这一步：换 src 那一帧新图已在解码缓存里，不闪。 */
   decodePreview: (url: string) => Promise<boolean>
-  /** 让出前台：空闲时再做下一张（requestIdleCallback；没有就下一轮宏任务）。 */
+  /** 让出前台：画布媒体安静、主线程空闲时再做下一张。 */
   yieldToForeground: () => Promise<void>
+  /** 项目打开后到开始补之间的等待（让打开本身先跑完）。 */
+  startDelay?: () => Promise<void>
 }
 
 /** 浏览器内建：new Image() + decode()。解码失败（文件坏 / 读不到）→ false。 */
@@ -139,12 +146,22 @@ export async function decodePreviewInMemory(url: string): Promise<boolean> {
   }
 }
 
-function idleYield(): Promise<void> {
+function idleOnce(): Promise<void> {
   return new Promise((resolve) => {
     const idle = (globalThis as { requestIdleCallback?: (cb: () => void, options?: { timeout: number }) => number }).requestIdleCallback
     if (typeof idle === 'function') idle(() => resolve(), { timeout: 2_000 })
     else setTimeout(resolve, 0)
   })
+}
+
+/** 等到画布媒体安静 PREVIEW_BACKFILL_QUIET_MS、主线程空闲（低优先级：有图在载入就一直让路）。 */
+async function yieldUntilCanvasQuiet(): Promise<void> {
+  for (;;) {
+    await idleOnce()
+    const quietFor = deferredNodeMediaQuietForMs()
+    if (quietFor >= PREVIEW_BACKFILL_QUIET_MS) return
+    await new Promise((resolve) => setTimeout(resolve, Math.max(250, PREVIEW_BACKFILL_QUIET_MS - quietFor)))
+  }
 }
 
 async function backfillPreview(nodeId: string, sourceUrl: string, type: GenerationNodeResult['type'], project: ProjectExecutionContext, deps: PreviewBackfillDeps): Promise<void> {
@@ -208,7 +225,12 @@ function sortPreviewCandidates(candidates: PreviewCandidate[]): PreviewCandidate
 function defaultPreviewDeps(): PreviewBackfillDeps | null {
   const ensurePreview = getDesktopBridge()?.assets?.ensurePreview
   if (!ensurePreview) return null
-  return { ensurePreview, decodePreview: decodePreviewInMemory, yieldToForeground: idleYield }
+  return {
+    ensurePreview,
+    decodePreview: decodePreviewInMemory,
+    yieldToForeground: yieldUntilCanvasQuiet,
+    startDelay: () => new Promise((resolve) => setTimeout(resolve, PREVIEW_BACKFILL_START_DELAY_MS)),
+  }
 }
 
 /**
@@ -222,8 +244,10 @@ export function initResultMediaBackfillBridge(deps: PreviewBackfillDeps | null =
     const seenResults = new WeakSet<GenerationNodeResult>()
     let pending: PreviewCandidate[] = []
     let running = 0
+    // 打开本身先跑完，再开始补（只等一次；之后结果变更进来的直接排队，仍受「画布安静」约束）。
+    let started = !deps?.startDelay
     const pump = (): void => {
-      if (!deps) return
+      if (!deps || !started) return
       while (running < PREVIEW_BACKFILL_CONCURRENCY && pending.length > 0) {
         const next = pending.shift()!
         running += 1
@@ -267,6 +291,7 @@ export function initResultMediaBackfillBridge(deps: PreviewBackfillDeps | null =
       pump()
     }
     sweep()
+    if (!started) void deps!.startDelay!().then(() => { started = true; if (isProjectExecutionContextCurrent(project)) pump() })
     unsubscribeStore = useGenerationCanvasStore.subscribe((state, previous) => {
       if (state.nodes !== previous.nodes) sweep()
     })

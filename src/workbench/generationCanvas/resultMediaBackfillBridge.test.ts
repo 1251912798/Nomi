@@ -205,4 +205,20 @@ describe('补预览队列', () => {
     expect(update).toHaveBeenCalledTimes(1)
     dispose()
   })
+
+  it('低优先级：打开本身跑完之前（startDelay 未到）不起任何派生，到了才开始', async () => {
+    canvas.state = { nodes: [imageNode('late', 0)], updateNode: () => {} }
+    let release!: () => void
+    const ensurePreview = vi.fn(async () => ({ previewState: 'source' }))
+    const dispose = initResultMediaBackfillBridge({
+      ensurePreview, decodePreview: async () => true, yieldToForeground: async () => {},
+      startDelay: () => new Promise<void>((resolve) => { release = resolve }),
+    })
+    canvas.openProject?.({ binding: { projectId: 'p1' } })
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    expect(ensurePreview).not.toHaveBeenCalled()
+    release()
+    await vi.waitFor(() => expect(ensurePreview).toHaveBeenCalledTimes(1))
+    dispose()
+  })
 })
