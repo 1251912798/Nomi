@@ -11,9 +11,9 @@
  * 都会收到它。认证时发的是用户的模型名，真用时发的是档案名——两份身份从来没有在同一处验收。
  *
  * 规则（只此一处）：
- *   1. 这条请求所走的 create op 声明了 `wireModel: "archetype-selection"`（只由代码登记的内置目录契约
- *      `seedBuiltins` 统一盖章，见 `certifyArchetypeWireModel`）→ 按所选变体 > 所选模式的 modelEnum >
- *      连接模型名 取值；
+ *   1. 这条请求所走的 create op 声明了 `wireModel: "archetype-selection"`（只在内置目录契约的 op 定义处写，
+ *      kie / apimart / 火山 / 即梦；类测试锁住「内置 op 引用 params.model 就必须声明、非内置一律没有」）→
+ *      按所选变体 > 所选模式的 modelEnum > 连接模型名 取值；
  *   2. 其余一律发**连接自己的模型名**（`modelAlias || modelKey`，与 `{{model.modelKey}}` 同一个表达式）。
  *      自建中转、旧数据里的参数化映射、手写映射、自定义脚本都落在这一档，不猜、不迁移。
  * `extras.model`、`archetypeInput.model`、headless 默认值、Agent 参数里的 `model` 都**不是输入**：
@@ -37,11 +37,6 @@ type OperationLike = { wireModel?: unknown } | null | undefined;
 /** 这条 op 有没有声明「收档案所选的线上名」。渲染层变体栏与主进程发送共用这一个谓词。 */
 export function operationSelectsArchetypeWireModel(operation: OperationLike): boolean {
   return operation?.wireModel === ARCHETYPE_WIRE_MODEL;
-}
-
-/** 内置目录登记表给自己的 create op 盖章（唯一调用点：seedBuiltins 的登记表）。 */
-export function certifyArchetypeWireModel<T extends object>(operation: T): T & { wireModel: WireModelDeclaration } {
-  return { ...operation, wireModel: ARCHETYPE_WIRE_MODEL };
 }
 
 /** 去掉声明（把内置报文借给非内置连接时用：借的是形状，不是对方认的模型名）。 */

@@ -36,6 +36,9 @@ import { applyBuiltinSeeds } from "./seedBuiltins";
 import { createCatalogGenerationProvider } from "../capabilityCore/apimartGenerationProvider";
 import type { CatalogState, HttpOperation, Mapping, Model, Vendor } from "./types";
 import type { TaskRequest } from "../runtime";
+import { wireReferencedParamKeys } from "./paramTranslate";
+import { operationSelectsArchetypeWireModel } from "../shared/wireModelIdentity";
+import { isBuiltinRelayVendorKey } from "./relayImageEditMigration";
 
 const RELAY_KEY = "gw-relay-example-com";
 const PNG_DATA_URL = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
@@ -168,9 +171,9 @@ describe("自定义中转 · Agent 付款卡 / 全自动 Run 入口（引擎 B�
   });
 
   it("视频：宿主封进合同的变体 / 模式不许改写中转的模型名", () => {
-    const state = relayCatalog("seedance-2", "video", "image_to_video", NEWAPI_VIDEO_CREATE_OP);
+    const state = relayCatalog("seedance-2", "video", "text_to_video", NEWAPI_VIDEO_CREATE_OP);
     const provider = createCatalogGenerationProvider({ vendorKey: RELAY_KEY, resolveConnection: () => ({ apiKey: "k" }), catalogReader: () => state, initialState: state });
-    const body = provider.buildRequest(engineBInput("seedance-2", "image_to_video", {
+    const body = provider.buildRequest(engineBInput("seedance-2", "text_to_video", {
       modeId: "t2v", variantId: "fast", transportModelId: "bytedance/seedance-2-fast",
     }) as never) as Record<string, unknown>;
     expect(body.model).toBe("seedance-2");
@@ -193,5 +196,34 @@ describe("正向对照：内置目录契约仍按模式发自己的拆分名", (
     ).request as unknown as TaskRequest;
     const built = buildProfileHttpRequest({ vendor: kieVendor, model: row, apiKey: "k", request, operation: mapping.create });
     expect((built.body as Record<string, unknown>).model).toBe(expected);
+  });
+});
+
+describe("类检查：谁有资格收档案线上名（普查真实内置目录 + 全部中转报文）", () => {
+  const seeded = applyBuiltinSeeds({ version: 11, vendors: [], models: [], mappings: [], apiKeysByVendor: {} } as unknown as CatalogState, "now").state;
+
+  it("内置目录里凡是引用 params.model 的 create op 都声明了收档案线上名（漏了就会发连接名、拆 id 的模式全坏）", () => {
+    const missing = seeded.mappings
+      .filter((mapping) => wireReferencedParamKeys(mapping.create).includes("model") && !operationSelectsArchetypeWireModel(mapping.create))
+      .map((mapping) => `${mapping.vendorKey}/${mapping.id}`);
+    expect(missing).toEqual([]);
+    expect(seeded.mappings.some((mapping) => operationSelectsArchetypeWireModel(mapping.create))).toBe(true);
+  });
+
+  it("声明只出现在内置家的报文上", () => {
+    const outside = seeded.mappings
+      .filter((mapping) => operationSelectsArchetypeWireModel(mapping.create) && !isBuiltinRelayVendorKey(mapping.vendorKey))
+      .map((mapping) => `${mapping.vendorKey}/${mapping.id}`);
+    expect(outside).toEqual([]);
+  });
+
+  it.each([
+    ["文生图", NEWAPI_IMAGE_CREATE_OP],
+    ["chat 改图", NEWAPI_IMAGE_EDIT_OP],
+    ["xAI JSON 改图", XAI_JSON_IMAGE_EDIT_OP],
+    ["multipart 改图", OPENAI_MULTIPART_IMAGE_EDIT_OP],
+    ["视频", NEWAPI_VIDEO_CREATE_OP],
+  ] as const)("通用中转报文（%s）没有声明", (_label, operation) => {
+    expect(operationSelectsArchetypeWireModel(operation)).toBe(false);
   });
 });

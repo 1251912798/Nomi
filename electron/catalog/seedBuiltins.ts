@@ -74,7 +74,7 @@ import { VOLCENGINE_IMAGE_MODELS } from "./volcengineImages";
 import { VOLCENGINE_AUDIO_MODELS } from "./volcengineAudios";
 import { VOLCENGINE_SEEDANCE_QUERY_OP, VOLCENGINE_SEEDANCE_STATUS_MAPPING, VOLCENGINE_VIDEO_MODELS } from "./volcengineVideos";
 import { modelHasPublishedExecution } from "../shared/modelPublication";
-import { certifyArchetypeWireModel, operationSelectsArchetypeWireModel, withoutArchetypeWireModel } from "../shared/wireModelIdentity";
+import { operationSelectsArchetypeWireModel, withoutArchetypeWireModel } from "../shared/wireModelIdentity";
 import { builtinVendorKeyOfKey } from "../shared/builtinVendorIdentity";
 import { GEMINI_OMNI_11_MAPPINGS, GEMINI_OMNI_11_MODEL_SEED } from "./kieGeminiOmni11";
 import { KIE_SUNO_MUSIC_MAPPINGS, KIE_SUNO_MUSIC_MODEL_SEED, KIE_SUNO_SFX_MAPPING, KIE_SUNO_SFX_MODEL_SEED } from "./kieSunoAudio";
@@ -325,7 +325,7 @@ const RUNWAY_CURATED_MAPPINGS = officialCuratedMappings(RUNWAY_OFFICIAL_MODELS);
  * 收成这一张表之后：播种走它，发布判据也走它，加一家只加一行，判据自动跟上（P1）。
  * 表的顺序 = 原播种顺序，装机行为逐字不变。
  */
-const CURATED_VENDOR_CONTRACTS: readonly { vendorKey: string; models: CuratedModel[]; mappings: CuratedMapping[] }[] = ([
+const CURATED_VENDOR_CONTRACTS: readonly { vendorKey: string; models: CuratedModel[]; mappings: CuratedMapping[] }[] = [
   { vendorKey: KIE_VENDOR_SEED.key, models: KIE_CURATED_MODELS, mappings: KIE_CURATED_MAPPINGS },
   { vendorKey: APIMART_VENDOR_SEED.key, models: APIMART_CURATED_MODELS, mappings: APIMART_CURATED_MAPPINGS },
   { vendorKey: AGNES_VENDOR_SEED.key, models: AGNES_CURATED_MODELS, mappings: AGNES_CURATED_MAPPINGS },
@@ -347,13 +347,7 @@ const CURATED_VENDOR_CONTRACTS: readonly { vendorKey: string; models: CuratedMod
   // 本地转写：transcribe taskKind 的第三个 provider（前两个是 APIMart Whisper / ElevenLabs Scribe）。
   { vendorKey: LOCAL_SPEECH_VENDOR_SEED.key, models: LOCAL_SPEECH_CURATED_MODELS, mappings: LOCAL_SPEECH_CURATED_MAPPINGS },
   { vendorKey: HIGGSFIELD_VENDOR_SEED.key, models: HIGGSFIELD_CURATED_MODELS, mappings: HIGGSFIELD_CURATED_MAPPINGS },
-] satisfies { vendorKey: string; models: CuratedModel[]; mappings: CuratedMapping[] }[]).map((contract) => ({
-  ...contract,
-  // **线上模型名的认证就在这一行**（2026-10-16）：只有登记在这张表里的 create op 才收档案所选的
-  // 模式 / 变体线上名（kie 的拆分 id、变体串……），其余任何 op 的 `{{request.params.model}}` 都是连接名。
-  // 档案里的这些名字是照着这些契约写的；自建中转、认证生成、手写的映射从未被它们认证过。
-  mappings: contract.mappings.map((mapping) => ({ ...mapping, create: certifyArchetypeWireModel(mapping.create) })),
-}));
+];
 
 /** 内置家的 curated 报文（去掉声明后）→ 带声明的那一份。兄弟连接迁移用。 */
 function certifiedCuratedCreate(vendorKey: string, create: HttpOperation): HttpOperation | null {
@@ -637,7 +631,7 @@ export function applyBuiltinSeeds(state: CatalogState, now: string): { state: Ca
       mappings[i] = {
         ...mappings[i],
         name: GPT_IMAGE_2_T2I_MAPPING.name,
-        create: certifyArchetypeWireModel(GPT_IMAGE_2_T2I_MAPPING.create),
+        create: GPT_IMAGE_2_T2I_MAPPING.create,
         query: GPT_IMAGE_2_T2I_MAPPING.query,
         statusMapping: GPT_IMAGE_2_T2I_MAPPING.statusMapping,
         updatedAt: now,

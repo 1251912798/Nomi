@@ -21,7 +21,7 @@
     },
     {
       "path": "electron/shared/wireModelIdentity.ts",
-      "symbol": "certifyArchetypeWireModel"
+      "symbol": "ARCHETYPE_WIRE_MODEL"
     }
   ],
   "forbidden_derivations": [
@@ -41,5 +41,5 @@
     "src/workbench/generationCanvas/nodes/controls/useChannelCreateBody.ts"
   ],
   "since": "2026-10-16",
-  "notes": "两位用户（0.23.1）的自建中转出图回「No available channel for model gpt-image-2-…-text-to-image」：档案的模式 / 变体线上名（kie 拆分 id 等）经 archetypeInput.model 盖掉了连接名。规则：create op 声明 wireModel=archetype-selection（只由 seedBuiltins 的内置目录登记表统一盖章）才收 变体 > 模式 modelEnum；其余一律连接名 modelAlias || modelKey。taskTemplateParams 最后写入 params.model，extras.model / archetypeInput.model / headless 默认 / Agent 参数都不是输入。渲染层变体栏活不活问同一个谓词。合同 docs/fixes/2026-10-16-custom-relay-wire-model.root-cause.json。"
+  "notes": "两位用户（0.23.1）的自建中转出图回「No available channel for model gpt-image-2-…-text-to-image」：档案的模式 / 变体线上名（kie 拆分 id 等）经 archetypeInput.model 盖掉了连接名。规则：create op 声明 wireModel=archetype-selection（只在内置目录契约 op 的定义处声明：kie / apimart / 火山 / 即梦；借给中转的原生报文去掉声明）才收 变体 > 模式 modelEnum；其余一律连接名 modelAlias || modelKey。taskTemplateParams 最后写入 params.model，extras.model / archetypeInput.model / headless 默认 / Agent 参数都不是输入。渲染层变体栏活不活问同一个谓词。合同 docs/fixes/2026-10-16-custom-relay-wire-model.root-cause.json。"
 }
