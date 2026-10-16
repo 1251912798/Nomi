@@ -3,7 +3,7 @@
  * 大文稿项目的「切文稿」与「打开分镜方案」响应量具（性能场景 document-switch-after-storyboard / storyboard-plan-open）。
  *
  * 规模：160 份文稿、挂在第一份文稿下的一份 320 镜头方案。隔离资料目录、零花费、窗口在屏幕外。
- * 量法（同一套，不自写剖析器：Playwright + 页面内 performance.now + rAF）：
+ * 量法（同一套，不自写剖析器：tests/perf/canvas-scale/responseTimer.mjs，所有 response 类场景共用）：
  *   点击（捕获阶段）→ 目标界面在 DOM 里到位 → 再过两帧（样式重算 + 布局 + 绘制算进去）= 响应毫秒。
  *   document-switch：先「访问过分镜页」（打开方案再回创作页），之后在文稿下拉里交替切到最后一份 / 第一份。
  *   plan-open：每个样本冷启一次 App，从创作页点开方案，量到 320 行可见。
@@ -17,6 +17,7 @@ import path from 'node:path'
 import os from 'node:os'
 import { fileURLToPath } from 'node:url'
 import { launchCoreSmoke } from '../ux/core-smoke/fixture.mjs'
+import { armResponse, takeResponse } from './canvas-scale/responseTimer.mjs'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const args = process.argv.slice(2)
@@ -69,32 +70,12 @@ async function launch(suffix) {
   return smoke
 }
 
-/** 在页面里：下一次 click（捕获阶段）起表，predicate 成立后再等两帧，返回毫秒与期间的长任务数。 */
-async function armTimer(win, predicateSource, arg) {
-  await win.evaluate(({ predicateSource, arg }) => {
-    const predicate = new Function('arg', `return (${predicateSource})(arg)`)
-    window.__perfDone = new Promise((resolve) => {
-      let longTasks = 0
-      const observer = new PerformanceObserver((list) => { longTasks += list.getEntries().length })
-      try { observer.observe({ type: 'longtask' }) } catch { /* 无长任务支持 */ }
-      document.addEventListener('click', () => {
-        const t0 = performance.now()
-        const tick = () => {
-          let ok
-          try { ok = predicate(arg) } catch { ok = false }
-          if (!ok) { requestAnimationFrame(tick); return }
-          requestAnimationFrame(() => requestAnimationFrame(() => { observer.disconnect(); resolve({ ms: performance.now() - t0, longTasks }) }))
-        }
-        tick()
-      }, { capture: true, once: true })
-    })
-  }, { predicateSource, arg })
-}
-const collect = (win) => win.evaluate(() => window.__perfDone)
+// 计时器只有一个（概念 delivery.perf-response-timer）：点击（捕获阶段）起表，判据成立后再过两帧停表。
+const collect = (win) => takeResponse(win)
 
 async function openPlan(win) {
   await win.locator('[data-creation-document-switcher]').first().click()
-  await armTimer(win, `(n) => [...document.querySelectorAll('[data-storyboard-row]')].filter((el) => el.getClientRects().length > 0).length >= n`, shotCount)
+  await armResponse(win, { trigger: 'click', predicate: 'storyboardRowsAtLeast', arg: shotCount, timeoutMs: 120_000 })
   await win.getByRole('menuitem', { name: plan.title }).first().click()
   return collect(win)
 }
@@ -106,7 +87,7 @@ async function backToCreation(win) {
 async function switchTo(win, n) {
   await win.locator('[data-creation-document-switcher]').first().click()
   const title = docTitle(n)
-  await armTimer(win, `(t) => { const b = document.querySelector('[data-creation-document-switcher]'); return !!b && b.textContent.includes(t) && !!document.querySelector('.ProseMirror') && document.querySelector('.ProseMirror').textContent.includes('正文标记 ' + t) }`, title)
+  await armResponse(win, { trigger: 'click', predicate: 'documentShown', arg: { title, marker: `正文标记 ${title}` }, timeoutMs: 60_000 })
   await win.getByRole('menuitemradio', { name: title }).first().click()
   const result = await collect(win)
   await win.waitForTimeout(800)

@@ -48,6 +48,16 @@ const INSTALL_SOURCE = `(() => {
     libraryReady(count) {
       return [...document.querySelectorAll('[data-project-card]')].filter(visible).length >= count
     },
+    // 分镜方案打开：至少 count 行镜头在屏上（tests/perf/document-switch-bench.mjs）。
+    storyboardRowsAtLeast(count) {
+      return [...document.querySelectorAll('[data-storyboard-row]')].filter((element) => element.getClientRects().length > 0).length >= count
+    },
+    // 切文稿：顶栏文稿切换钮写着目标标题，编辑器里是那份文稿的正文（marker 是正文里的标记句）。
+    documentShown({ title, marker }) {
+      const switcher = document.querySelector('[data-creation-document-switcher]')
+      const editor = document.querySelector('.ProseMirror')
+      return Boolean(switcher) && switcher.textContent.includes(title) && Boolean(editor) && editor.textContent.includes(marker)
+    },
   }
   window.__nomiPerfResponse = {
     arm({ trigger, predicate, arg, early, timeoutMs }) {
