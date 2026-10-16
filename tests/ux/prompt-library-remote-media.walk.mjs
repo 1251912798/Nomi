@@ -11,6 +11,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { launchNomiApp, repoRoot } from './_launchApp.mjs'
+import { openRailDrawer, switchWorkspace } from './_shell.mjs'
 import { stationTimeout } from './_station-budget.mjs'
 
 const locale = process.argv.includes('--locale') ? process.argv[process.argv.indexOf('--locale') + 1] : 'zh-CN'
@@ -59,27 +60,27 @@ try {
   await win.setViewportSize({ width: 1440, height: 900 })
   await win.locator('.nomi-stepper').first().waitFor({ timeout: stationTimeout() })
   const stage = win.locator('.react-flow__pane').first()
-  if (!(await stage.isVisible().catch(() => false))) await win.locator('.nomi-stepper__step[data-mode="generation"]').first().click()
+  if (!(await stage.isVisible().catch(() => false))) await switchWorkspace(win, 'generation')
   await stage.waitFor({ state: 'visible', timeout: stationTimeout() })
 
-  await win.locator(`aside nav button[aria-label="${locale === 'en' ? 'Prompt library' : '提示词库'}"]`).first().click()
+  await openRailDrawer(win, 'prompts', '侧栏「提示词库」')
   await win.waitForTimeout(1500)
   // 逐个点 Sora 两个来源（推特那组 = Sora 2，openai 那组 = Sora 官方），等媒体落定再数。
   const tally = { videos: 0, loadedVideos: 0, expired: 0 }
   for (const [index, source] of [/^Sora 2$/, /^Sora (官方|official)$/i].entries()) {
-    await win.locator('aside button', { hasText: source }).first().click()
+    await win.locator('[data-shell-drawer="prompts"] button', { hasText: source }).first().click()
     await win.waitForTimeout(800)
     // 超过 4 条的来源组默认收起：像用户一样点开组头。
-    const collapsed = win.locator('aside button[data-library-group][aria-expanded="false"]').first()
+    const collapsed = win.locator('[data-shell-drawer="prompts"] button[data-library-group][aria-expanded="false"]').first()
     if (await collapsed.count()) await collapsed.click()
     // 远端示例视频有大有小（Sora 官方 tokyo-walk 48MB、moov 在文件尾），固定等几秒会把「还在加载」当成「黑框」。
     // 逐张等到落定：出了首帧，或者报错被换成「示例已失效」；45 秒还在加载的如实报出来。
     const readCounts = () => win.evaluate(() => {
-      const videos = [...document.querySelectorAll('aside video')]
+      const videos = [...document.querySelectorAll('[data-shell-drawer="prompts"] video')]
       return {
         videos: videos.length,
         loadedVideos: videos.filter((video) => video.readyState >= 1).length,
-        expired: document.querySelectorAll('aside [data-example-media-expired]').length,
+        expired: document.querySelectorAll('[data-shell-drawer="prompts"] [data-example-media-expired]').length,
         stillLoading: videos.filter((video) => video.readyState < 1).map((video) => (video.getAttribute('src') || '').split('/').pop()),
       }
     })
@@ -96,12 +97,12 @@ try {
   check('没有卡在黑框：每张示例要么出了首帧，要么是「示例已失效」', tally.videos === tally.loadedVideos, JSON.stringify(tally))
 
   // 回到推特那组找失效卡点开（Sora 2 里有已被删除的示例）。
-  await win.locator('aside button', { hasText: /^Sora 2$/ }).first().click()
+  await win.locator('[data-shell-drawer="prompts"] button', { hasText: /^Sora 2$/ }).first().click()
   await win.waitForTimeout(800)
-  const collapsedAgain = win.locator('aside button[data-library-group][aria-expanded="false"]').first()
+  const collapsedAgain = win.locator('[data-shell-drawer="prompts"] button[data-library-group][aria-expanded="false"]').first()
   if (await collapsedAgain.count()) await collapsedAgain.click()
   await win.waitForTimeout(1500)
-  const expiredCard = win.locator('aside button:has([data-example-media-expired])').first()
+  const expiredCard = win.locator('[data-shell-drawer="prompts"] button:has([data-example-media-expired])').first()
   if (await expiredCard.count()) {
     await expiredCard.scrollIntoViewIfNeeded()
     await snap(win, '03-expired-card')

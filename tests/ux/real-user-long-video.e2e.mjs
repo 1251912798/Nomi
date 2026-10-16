@@ -21,7 +21,7 @@ import {
   liveCanaryReadiness,
   runRealUserLongVideoJourney,
 } from './real-user-long-video.runner.mjs'
-import { canvasAddBar, ensureAgentPanelOpen, newProjectEntry } from './_shell.mjs'
+import { canvasAddBar, ensureAgentPanelOpen, newProjectEntry, openRailDrawer } from './_shell.mjs'
 
 const FIXTURE_VIDEO = path.join(repoRoot, REAL_USER_LONG_VIDEO_MANIFEST.sample.path)
 const FIXTURE_VENDOR = 'real-user-loopback-vision'
@@ -236,8 +236,7 @@ function buildUiDriver({ appRef, winRef, profile, samplePath, loopback }) {
 
     if (step.action === 'importVideo') {
       videoNodeCountBeforeImport = await win.locator('.generation-canvas-v2-node').count()
-      const library = win.getByRole('button', { name: '素材库', exact: true }).first()
-      await library.click()
+      await openRailDrawer(win, 'assets', '打开素材库')
       const picker = win.locator('input[aria-label="素材文件选择器"]').first()
       await picker.setInputFiles(samplePath)
       await win.waitForFunction((before) => document.querySelectorAll('.generation-canvas-v2-node').length > before, videoNodeCountBeforeImport, { timeout: 30_000 })
