@@ -18,13 +18,15 @@ import path from 'node:path'
 import { stationTimeout } from './_station-budget.mjs'
 import { openPaidWalk } from './_paidRun.mjs'
 import {
-  IMAGE_CAP, IMAGE_HARD_CAP, collectProblems, createSpendCap, createStepContext, runCanvasDirectStep, runPlanAndBrakeStep, runStopStep, runSwitchStep,
+  IMAGE_CAP, IMAGE_HARD_CAP, collectProblems, createSpendCap, createStepContext, runBrainSmokeStep, runCanvasDirectStep, runPlanAndBrakeStep, runStopStep, runSwitchStep,
   switchAppLocale,
 } from './_permissionTiersPaidSteps.mjs'
 import { CANVAS_PANEL, COMPOSER, CREATION_PANEL, chooseAssistantModel, expandResidentPanel, sendCanvas, sendCreation } from './agent-runtime-walk-support.mjs'
 import { expect } from './_assert.mjs'
 
-const BRAIN = { vendorKey: 'apimart', modelKey: 'deepseek-v3.2' }
+// 大脑用接入页默认露出的 DeepSeek V4 Flash（目录里最便宜的在售文本模型）：deepseek-v3.2 是被收进「更多」的旧目录模型，
+// 2026-10-16 真 key 首跑它每轮都回红卡（原因待日志）；这里不拿一个可能已下线的模型当大脑。
+const BRAIN = { vendorKey: 'apimart', modelKey: 'deepseek-v4-flash' }
 const IMAGE = { vendorKey: 'apimart', modelKey: 'z-image-turbo' }
 
 // 第 2/3 步（中文，文稿方案）：一条消息，前 2 镜直接出图，再补第 3 镜触发「计划外」刹车。
@@ -51,9 +53,12 @@ try {
   const ctx = createStepContext({
     win, walk, projectRoot, capabilityDir: path.join(walk.report.tempRoot, 'capability'),
     allowedModel: `${IMAGE.vendorKey}/${IMAGE.modelKey}`, cap,
-    ask: async (kind, text) => (kind === 'plan' ? sendCreation(win, text) : sendCanvas(win, text)),
+    ask: async (kind, text) => (kind === 'plan' || kind === 'smoke' ? sendCreation(win, text) : sendCanvas(win, text)),
   })
   walk.report.imageCap = { planned: IMAGE_CAP, worst: IMAGE_HARD_CAP }
+  // 先问大脑一句话：回不了话就在花图片钱之前停（几个 token）。
+  const smoke = await runBrainSmokeStep(ctx, { askText: '你好，请只回复一个字。' })
+  if (!smoke.ok) throw new Error(`大脑冒烟没过（${smoke.outcome}）：Agent 用 ${BRAIN.modelKey} 回不了话，图片的钱一分没花；原始报错见证据目录 app-logs/`)
   await runSwitchStep(ctx)
   const plan = await runPlanAndBrakeStep(ctx, { askText: ASK_PLAN })
   // 文稿方案这条路一张都没花（例如弹出了旧版确认框）：到画布面板补上 D-L19 原第 2 步，证「直接生成不弹卡」。

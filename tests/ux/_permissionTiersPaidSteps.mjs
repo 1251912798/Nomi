@@ -337,3 +337,30 @@ export function collectProblems(steps) {
     .map(([name]) => name)
   return { problems, unverified }
 }
+
+/**
+ * 大脑冒烟（花图片钱之前先问一句话）：Agent 在这个面板里能不能用被授权的大脑模型回一句话。
+ * 2026-10-16 真 key 首跑：保存 key、收窄模型都对，但每一轮 Agent 回复都是红卡、0 token，直到第 4 步才发现——
+ * 这一步把它提前到第 1 步之前：出红卡就当场停（还没花图片的钱），日志已经随证据目录留下。
+ * 返回 { ok, reason }；不抛，由调用方记进报告并决定停不停。
+ */
+export async function runBrainSmokeStep(ctx, { panel = CREATION_PANEL, askText, timeout = stationTimeout({ turns: 1 }) }) {
+  const { win, walk, record } = ctx
+  await ctx.ask('smoke', askText)
+  const started = Date.now()
+  let outcome = 'timeout'
+  while (Date.now() - started < timeout) {
+    if (await win.locator(`${panel} [data-v4-block="errorbar"]`).count()) { outcome = 'error-card'; break }
+    const replied = await win.locator(`${panel} [data-v4-block="assistant"]`).filter({ hasText: /\S/ }).count()
+    const running = await win.locator(`${panel} ${COMPOSER}[data-mode="running"]`).count()
+    if (replied && !running) { outcome = 'replied'; break }
+    await win.waitForTimeout(500)
+  }
+  await walk.snap(`paid-00-brain-smoke-${outcome}`)
+  const ok = outcome === 'replied'
+  record('0-brain-smoke', {
+    outcome,
+    problems: ok ? [] : [outcome === 'error-card' ? 'Agent 用被授权的大脑模型回话时出了红卡（原始报错在证据目录的 app-logs 里）' : 'Agent 一直没回话'],
+  })
+  return { ok, outcome }
+}

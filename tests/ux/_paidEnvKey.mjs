@@ -214,3 +214,31 @@ export async function readAuthorizedRows(win, models) {
     return { vendorKey: row.vendorKey, modelKey: row.modelKey, kind: row.kind, labelZh: row.labelZh }
   })
 }
+
+/**
+ * 删隔离副本之前，把能解释「为什么没跑通」的日志拷进证据目录（key 打码）：被测 App 主进程日志
+ * （`user-data/logs/*`）与 Agent lane 的会话记录 / 轨迹（项目 `.nomi/agent-sessions/**`）、制作 Run 事件。
+ * 副本一删这些就没了——2026-10-16 真 key 首跑失败时正好因此查不了根因。返回拷了哪些文件（相对名）。
+ */
+export function collectAppLogs({ tempRoot, projectRoot, outDir, secrets, maxBytes = 8 * 1024 * 1024 }) {
+  const sources = [
+    [path.join(tempRoot, 'user-data', 'logs'), 'main-logs'],
+    ...(projectRoot ? [[path.join(projectRoot, '.nomi', 'agent-sessions'), 'lane-sessions'], [path.join(projectRoot, '.nomi', 'runs'), 'runs']] : []),
+  ]
+  const copied = []
+  const walk = (dir, label, rel = '') => {
+    if (!fs.existsSync(dir)) return
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const file = path.join(dir, entry.name)
+      const relName = path.posix.join(rel, entry.name)
+      if (entry.isDirectory()) { walk(file, label, relName); continue }
+      if (!entry.isFile() || !/\.(?:log|jsonl|ndjson|json|txt)$/i.test(entry.name) || fs.statSync(file).size > maxBytes) continue
+      const target = path.join(outDir, 'app-logs', label, relName.split('/').join('__'))
+      fs.mkdirSync(path.dirname(target), { recursive: true })
+      fs.writeFileSync(target, redact(fs.readFileSync(file, 'utf8'), secrets))
+      copied.push(path.posix.join(label, relName))
+    }
+  }
+  for (const [dir, label] of sources) walk(dir, label)
+  return copied
+}

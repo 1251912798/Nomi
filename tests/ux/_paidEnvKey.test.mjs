@@ -130,6 +130,15 @@ function fakeWalkFactory() {
   fs.mkdirSync(path.join(tempRootDir, 'projects', 'p1', '.nomi'), { recursive: true })
   fs.writeFileSync(path.join(tempRootDir, 'settings', 'model-catalog.json'), '{"apiKeysByVendor":{"apimart":{"enc":"safeStorage"}}}')
   fs.mkdirSync(outputDir, { recursive: true })
+  // 日志里带着 key（真 App 的日志不该有，但卫生不靠这个假设）：收尾要把它们抹过再拷进证据目录。
+  fs.mkdirSync(path.join(tempRootDir, 'user-data', 'logs'), { recursive: true })
+  fs.writeFileSync(path.join(tempRootDir, 'user-data', 'logs', 'nomi.log'), `INFO main boot
+WARN agent Authorization: Bearer ${KEY} failed
+`)
+  fs.mkdirSync(path.join(tempRootDir, 'projects', 'p1', '.nomi', 'agent-sessions', 's'), { recursive: true })
+  fs.writeFileSync(path.join(tempRootDir, 'projects', 'p1', '.nomi', 'agent-sessions', 's', 'a.jsonl'), `{"v":4,"kind":"header","id":"s"}
+{"error":"fill(${KEY})"}
+`)
   const seen = { opts: null, stopped: 0 }
   const createWalk = async (name, opts) => {
     seen.opts = opts
@@ -197,6 +206,8 @@ describe('openPaidWalk · env-key 路（假 App、假界面）', () => {
     expect(fs.existsSync(path.dirname(seen.opts.env.NOMI_WALK_NET_LOG)), '网络账本原件连同临时目录已删').toBe(false)
     expect(fs.readFileSync(path.join(outputDir, 'net-log.redacted.jsonl'), 'utf8')).toContain(REDACTED)
     expect(filesContainingSecret(outputDir, [KEY]), '证据目录里没有 key').toEqual([])
+    expect(report.appLogsCopied.sort(), '主进程日志与 lane 记录先拷出来再删副本').toEqual(['lane-sessions/s/a.jsonl', 'main-logs/nomi.log'])
+    expect(fs.readFileSync(path.join(outputDir, 'app-logs', 'main-logs', 'nomi.log'), 'utf8')).toContain('WARN agent')
     expect(fs.existsSync(path.join(root, 'no-such-real-profile')), '真实资料目录没被碰').toBe(false)
   })
 
@@ -234,6 +245,18 @@ describe('openPaidWalk · env-key 路（假 App、假界面）', () => {
     await expect(paid.finish(undefined)).rejects.toThrow(/泄漏/)
     process.exitCode = 0
     expect(fs.existsSync(leaked)).toBe(false)
+  })
+
+  test('Agent 转录读不出来（spendReceipt 抛错）也照样删副本、抹日志：收尾不被它挡住', async () => {
+    const { createWalk, outputDir, tempRootDir, root } = fakeWalkFactory()
+    fs.writeFileSync(path.join(tempRootDir, 'projects', 'p1', '.nomi', 'agent-sessions', 's', 'a.jsonl'), `not a header ${KEY}
+`)
+    const paid = await openPaidWalk('x.paid.mjs', 'x', MODELS, { env: envFor(root), createWalk, connect: async () => ({}) })
+    await paid.finish(undefined)
+    process.exitCode = 0
+    expect(fs.existsSync(tempRootDir), '副本照样删了').toBe(false)
+    expect(JSON.parse(fs.readFileSync(path.join(outputDir, 'report.json'), 'utf8')).spend.readError).toBeTruthy()
+    expect(filesContainingSecret(outputDir, [KEY])).toEqual([])
   })
 
   test('点名别家的模型：在起 App 之前就拒', async () => {

@@ -16,7 +16,8 @@ import path from 'node:path'
 import { expect } from './_assert.mjs'
 import { ENV_KEY_VAR, assertNoSecretOnDisk, filesContainingSecret } from './_paidEnvKey.mjs'
 import { openPaidWalk } from './_paidRun.mjs'
-import { createRuntimeWalk } from './agent-runtime-walk-support.mjs'
+import { stationTimeout } from './_station-budget.mjs'
+import { CREATION_PANEL, chooseAssistantModel, createRuntimeWalk, expandResidentPanel, sendCreation } from './agent-runtime-walk-support.mjs'
 
 // 一眼就是假的：形状够长，值没有任何真实含义。
 const FAKE_KEY = 'rehearsal-fake-key-0123456789abcdef'
@@ -58,7 +59,17 @@ try {
   // ② 夹具只收到那一次免费探测，鉴权头是这把假 key。
   expect(walk.fixture.balanceProbes, 'key 有效性探测只发了一次、只到过本机夹具').toHaveLength(1)
   expect(walk.fixture.balanceProbes[0].authorization, '探测带的就是填进去的那把 key').toBe(`Bearer ${FAKE_KEY}`)
-  walk.report.verified = ['key-through-visible-page', 'probe-only-to-loopback', 'dom-has-no-key']
+  // ⑦ 接入完成后 Agent 真的能用这把 key 说话：选被授权的大脑模型、发一句话，夹具（= 重定向后的 APIMart）收到一次对话请求，
+  //    鉴权头就是这把 key（不是空的环境变量、不是别的凭据），面板上出现夹具回的那句话、没有红卡。
+  //    2026-10-16 真 key 首跑：每轮都是红卡「服务商返回了一个没见过的错误」、0 token——这一步就是为它守的。
+  walk.fixture.respond({ label: 'rehearsal chat', match: () => true, reply: { type: 'text', text: 'REHEARSAL_BRAIN_OK' } })
+  await expandResidentPanel(win)
+  await chooseAssistantModel(win, paid.label('apimart', 'deepseek-v3.2'), CREATION_PANEL)
+  await sendCreation(win, '你好，请回复一个字。')
+  await expect(win.locator(`${CREATION_PANEL} [data-v4-block="assistant"]`).filter({ hasText: 'REHEARSAL_BRAIN_OK' }).first(), 'Agent 用这把 key 说话成功').toBeVisible({ timeout: stationTimeout({ turns: 1 }) })
+  expect(walk.fixture.requests.length, '夹具收到对话请求').toBeGreaterThan(0)
+  expect(walk.fixture.requests[0].authorization, 'Agent 对话请求带的就是接入页填的 key').toBe(`Bearer ${FAKE_KEY}`)
+  walk.report.verified = ['key-through-visible-page', 'probe-only-to-loopback', 'dom-has-no-key', 'agent-chat-uses-saved-key']
   walk.report.tempRootBeforeFinish = walk.report.tempRoot
 } catch (error) {
   failure = error

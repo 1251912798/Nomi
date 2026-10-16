@@ -19,7 +19,7 @@ import { createRuntimeWalk } from './agent-runtime-walk-support.mjs'
 import { blockedError, guardLoadedError, newNetLogFile, paidWalkAllowlist, readNetLog, watchNetLog } from './_paidNetwork.mjs'
 import {
   ENV_KEY_ALLOW_CATALOG, ENV_KEY_VAR, ENV_KEY_VENDOR, assertNoSecretOnDisk, assertUsableEnvKey, connectApimartThroughVisibleUi,
-  APIMART_TEXT_MODEL_KEYS, envKeyOf, filesContainingSecret, paidCredentialSource, readAuthorizedRows, redact, redactNetLogEntry, redactedError,
+  APIMART_TEXT_MODEL_KEYS, collectAppLogs, envKeyOf, filesContainingSecret, paidCredentialSource, readAuthorizedRows, redact, redactNetLogEntry, redactedError,
 } from './_paidEnvKey.mjs'
 import { readRealCatalog, realNomiIsRunning, realNomiProfile, realProfileFingerprint, removeRealCredentials, seedRealModels } from './_realProfile.mjs'
 
@@ -155,6 +155,8 @@ export async function openPaidWalk(script, name, models, deps = {}) {
     fs.writeFileSync(path.join(walk.outputDir, 'net-log.redacted.jsonl'), entries.map((entry) => `${JSON.stringify(entry)}
 `).join(''))
     fs.rmSync(path.dirname(netLog), { recursive: true, force: true })
+    // 副本一删日志就没了：先把主进程日志与 Agent lane 记录（key 打码）拷进证据目录。
+    walk.report.appLogsCopied = collectAppLogs({ tempRoot: walk.report.tempRoot, projectRoot: walk.report.projectRoot, outDir: walk.outputDir, secrets })
     fs.rmSync(walk.report.tempRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 })
     if (fs.existsSync(walk.report.tempRoot)) throw new Error(`隔离副本没删干净：${walk.report.tempRoot}`)
     if (fs.existsSync(path.dirname(netLog))) throw new Error('网络账本原件没删干净')
@@ -175,7 +177,10 @@ export async function openPaidWalk(script, name, models, deps = {}) {
       unscriptedFixture: true,
       collect: async () => {
         // App 已经关了：项目与截图是证据，先把收据取出来；凭据副本（目录里的 key 密文 + 钥匙）当场删掉。
-        const spend = spendReceipt(walk.report.projectRoot)
+        // env-key 路：收据读不出来（转录坏了等）也不许挡住收尾——副本里还躺着凭据密文，必须删。
+        let spend
+        try { spend = spendReceipt(walk.report.projectRoot) }
+        catch (error) { if (!envKey) throw error; spend = { media: [], text: null, readError: redact(String(error?.message ?? error), secrets).slice(0, 300) } }
         if (envKey) {
           envKeyTeardown()
           return { spend, credentialCopyRemoved: true }
