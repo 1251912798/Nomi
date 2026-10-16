@@ -16,7 +16,7 @@ import type { ToolReceipt, V4FlowItem } from './agentPanelV4Types'
 
 // The base :root :focus-visible selector is more specific than a utility class.
 // Only these summaries use the requested full accent; keyboard focus stays native.
-const SUMMARY_FOCUS = 'outline-none focus-visible:outline-2 focus-visible:!outline-[var(--nomi-accent)] focus-visible:outline-offset-2'
+const SUMMARY_FOCUS = 'outline-none focus-visible:outline-2 focus-visible:!outline-nomi-ink focus-visible:outline-offset-2'
 
 const STATUS_TONE: Record<string, string> = {
   'output-available': 'text-nomi-success',
@@ -112,7 +112,7 @@ export function V4ToolReceipt({
 /** 宿主确定性给出的那句提示（ToolReceipt.notice），画在流水行外面、不随过程行收起。 */
 export function V4ReceiptNotice({ text }: { text: string }): JSX.Element {
   return (
-    <p className="m-0 rounded-nomi-sm border border-nomi-accent/30 bg-nomi-accent-soft px-2 py-1 text-caption text-nomi-ink-80" data-v4-notice="director-patch">
+    <p className="m-0 rounded-nomi-sm border border-nomi-line bg-nomi-accent-soft px-2 py-1 text-caption text-nomi-ink-80" data-v4-notice="director-patch">
       {text}
     </p>
   )

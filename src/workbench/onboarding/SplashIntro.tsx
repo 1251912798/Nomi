@@ -312,7 +312,7 @@ function NodeCard({ index, selected }: { index: number; selected: boolean }): JS
       <div
         className={cn(
           'w-full bg-nomi-paper rounded-nomi overflow-hidden',
-          selected ? 'border-2 border-nomi-accent shadow-nomi-md' : 'border border-nomi-line',
+          selected ? 'border border-nomi-ink shadow-nomi-md' : 'border border-nomi-line',
         )}
       >
         <div className="aspect-video bg-nomi-ink-05 grid place-items-center">

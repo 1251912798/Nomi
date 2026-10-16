@@ -38,7 +38,7 @@ export function ControlGroup({
         'workbench-preview-player__control-group',
         'relative inline-flex flex-none items-center gap-1 rounded-nomi-sm px-2 py-1',
         label ? 'border border-[var(--workbench-border-soft)]' : 'border border-transparent',
-        tone === 'clip' && !disabled && 'border-[var(--workbench-accent)] bg-[var(--workbench-accent-soft)]',
+        tone === 'clip' && !disabled && 'border-transparent bg-[var(--workbench-accent-soft)]',
         disabled && 'opacity-45',
       )}
       aria-label={label}

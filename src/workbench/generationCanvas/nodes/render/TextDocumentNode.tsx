@@ -143,7 +143,7 @@ function TextDocumentNodeImpl({ node }: Props): JSX.Element {
               className={cn(
                 'inline-grid h-7 w-7 place-items-center rounded-nomi-sm',
                 'text-nomi-ink-60 hover:bg-nomi-ink-05 hover:text-nomi-ink',
-                'data-[active=true]:bg-nomi-accent-soft data-[active=true]:text-nomi-accent',
+                'data-[active=true]:bg-nomi-accent-soft data-[active=true]:text-nomi-ink',
                 'disabled:cursor-not-allowed disabled:text-nomi-ink-30',
               )}
             >

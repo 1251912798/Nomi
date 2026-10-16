@@ -129,7 +129,7 @@ function PreviewControl({
           placeholder={t('comfyuiWorkflowPage.preview.promptPlaceholder')}
           className={cn(
             'w-full resize-y rounded-nomi-sm border border-nomi-line bg-nomi-bg px-2 py-1.5',
-            'text-caption text-nomi-ink outline-none placeholder:text-nomi-ink-30 focus:border-nomi-accent',
+            'text-caption text-nomi-ink outline-none placeholder:text-nomi-ink-30 focus:border-nomi-ink-40',
           )}
         />
       </div>
@@ -194,7 +194,7 @@ function PreviewControl({
         aria-label={label}
         className={cn(
           'h-7 w-full rounded-nomi-sm border border-nomi-line bg-nomi-bg px-2',
-          'font-nomi-mono text-caption text-nomi-ink outline-none focus:border-nomi-accent',
+          'font-nomi-mono text-caption text-nomi-ink outline-none focus:border-nomi-ink-40',
         )}
       />
     </div>

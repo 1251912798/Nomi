@@ -339,7 +339,7 @@ export default function StoryboardShotTable({ plan, projectId, rows, anchorCards
                     onClick={() => onPlayGroup(groupRows)}
                     disabled={groupRows.length === 0}
                     data-storyboard-play-scene={foldKeyOf(group)}
-                    className="inline-flex shrink-0 items-center gap-1 rounded-full border border-nomi-line px-2 py-0.5 text-micro text-nomi-ink-60 hover:border-nomi-accent hover:text-nomi-accent disabled:cursor-not-allowed disabled:opacity-40"
+                    className="inline-flex shrink-0 items-center gap-1 rounded-full border border-nomi-line px-2 py-0.5 text-micro text-nomi-ink-60 hover:border-nomi-ink-30 hover:text-nomi-accent disabled:cursor-not-allowed disabled:opacity-40"
                     aria-label={t('storyboardEditor.playback.sceneAria', { name: headTitleOf(group, groupIndex) })}
                   >
                     <IconPlayerPlay size={11} stroke={1.8} />
@@ -452,7 +452,7 @@ export default function StoryboardShotTable({ plan, projectId, rows, anchorCards
                             onClick={() => onChange(insertShotAt(plan, pos))}
                             aria-label={t('storyboardEditor.selection.insert')}
                             // 也在 focus-within 时现身：只靠 hover 的话键盘用户永远看不见这个入口。
-                            className="absolute inset-x-2 top-1/2 z-[2] hidden h-5 -translate-y-1/2 items-center justify-center rounded-full border border-nomi-accent bg-nomi-paper text-nomi-accent group-hover/insert:flex group-focus-within/insert:flex focus:flex"
+                            className="absolute inset-x-2 top-1/2 z-[2] hidden h-5 -translate-y-1/2 items-center justify-center rounded-full border border-nomi-ink-30 bg-nomi-paper text-nomi-accent group-hover/insert:flex group-focus-within/insert:flex focus:flex"
                           >
                             <IconPlus size={13} stroke={1.8} />
                           </button>

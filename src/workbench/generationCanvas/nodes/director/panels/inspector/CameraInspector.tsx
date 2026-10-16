@@ -42,7 +42,7 @@ export function CameraInspector({ camera }: { camera: DirectorCamera }): JSX.Ele
                 aria-selected={active}
                 className={cn(
                   'flex flex-col items-center rounded-nomi-sm border px-1 py-1 transition-colors',
-                  active ? 'border-nomi-accent bg-nomi-accent/10 text-nomi-ink' : 'border-nomi-line-soft bg-nomi-ink-05 text-nomi-ink-60 hover:bg-nomi-ink-10 hover:text-nomi-ink',
+                  active ? 'border-transparent bg-nomi-accent/10 text-nomi-ink' : 'border-nomi-line-soft bg-nomi-ink-05 text-nomi-ink-60 hover:bg-nomi-ink-10 hover:text-nomi-ink',
                 )}
                 onClick={() => {
                   store.getState().saveState()

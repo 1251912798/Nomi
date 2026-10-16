@@ -97,7 +97,7 @@ export function EmptyStateLauncher({
       className={cn(
         'flex h-full w-full flex-col items-center justify-center gap-2 text-center rounded-nomi px-4 py-3 bg-transparent border-0 cursor-pointer',
         'transition-[background] duration-nomi-fast ease-nomi-fast hover:bg-nomi-ink-05',
-        'focus-visible:outline-2 focus-visible:outline-nomi-accent focus-visible:outline-offset-2',
+        'focus-visible:outline-2 focus-visible:outline-nomi-ink focus-visible:outline-offset-2',
       )}
       onClick={(event) => {
         if (event.defaultPrevented) return

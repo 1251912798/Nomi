@@ -38,7 +38,7 @@ function PickerItem({ asset, onPick, dimmed, disabled }: { asset: AssetRef; onPi
       onClick={() => { if (!disabled) onPick(asset) }}
       title={dimmed ? t('assetLibrary.picker.typeLimitReached') : undefined}
       className={cn(
-        'relative w-12 h-12 rounded-nomi-sm overflow-hidden border border-nomi-line bg-nomi-ink-05 flex items-center justify-center cursor-pointer hover:outline hover:outline-2 hover:outline-offset-1 hover:outline-nomi-accent',
+        'relative w-12 h-12 rounded-nomi-sm overflow-hidden border border-nomi-line bg-nomi-ink-05 flex items-center justify-center cursor-pointer hover:outline hover:outline-2 hover:outline-offset-1 hover:outline-nomi-ink-30',
         dimmed && 'opacity-40',
         disabled && 'cursor-not-allowed opacity-50',
       )}
@@ -124,7 +124,7 @@ export default function AssetPicker({ projectId, accept, onPick, onUpload, onBro
         </div>
       ) : null}
 
-      <label className={cn('relative flex items-center justify-center gap-[6px] h-[34px] rounded-nomi-sm border border-dashed border-nomi-ink-20 bg-nomi-paper text-nomi-ink-60 text-xs cursor-pointer hover:border-nomi-accent hover:text-nomi-accent')}>
+      <label className={cn('relative flex items-center justify-center gap-[6px] h-[34px] rounded-nomi-sm border border-dashed border-nomi-ink-20 bg-nomi-paper text-nomi-ink-60 text-xs cursor-pointer hover:border-nomi-ink-30 hover:text-nomi-accent')}>
         {/* pending 规范 #1:上传中统一品牌转圈(对齐 AttachmentRail),不再纯文字 */}
         {uploading ? <NomiLoadingMark size={15} label={t('assetLibrary.picker.uploading')} /> : <IconUpload size={15} stroke={2} />}
         {uploading ? t('assetLibrary.picker.uploadingEllipsis') : t('assetLibrary.picker.uploadLocal')}
