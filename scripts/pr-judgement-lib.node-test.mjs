@@ -409,13 +409,17 @@ test('性能场景证据（2026-10-11）：界面 / 画布 / 长跑改动必交 
 
 // G-perfreg（2026-10-15）：合并前扫描的检出是 origin/main，PR 新增的场景文件不在检出里。已知 id = (基线 − 本 PR 删掉的) ∪ 本 PR 新增 / 改动的文件；取不到 PR 头内容 / JSON 坏 → 判红并说人话（fail-closed）。
 // 用公开判据入口 checkRoutingEvidence，输入的 scenarios 形状与 knownScenarios 的返回一致（测试不依赖新导出，修前红的原因是「不在登记表」）。
-test('性能场景：基线没有 X、PR 新增 X → 判过；基线也没有、PR 也没新增的 Y → 红', () => {
+test('性能场景：基线没有 X、PR 新增 X → 判过；基线也没有、PR 也没新增的 Y → 红（走 knownScenarios 的真实组合）', async () => {
+  const { knownScenarios } = await import('./perf-scenarios-lib.mjs')
+  const SC = (id) => JSON.stringify({ id, feature: '样例：拖动节点', script: 'tests/perf/canvas-scale-bench.mjs', args: [], scale: '150 个图片节点', metrics: ['frameGapP95'], budget: 33, baseline: { median: 20, p95: 24, runs: 5, machine: 't', date: '2026-10-15', commit: 'abc1234' } })
   const perfLine = (id) => `## 验收证据
 - perf-scenario：${id} 中位数 20 / p95 24 / 预算 33`
-  const prAdded = { ids: ['base-one', 'new-one'], problems: [] }
-  assert.equal(checkRoutingEvidence(perfLine('new-one'), ['perf'], table, null, prAdded).ok, true, '本 PR 新增的场景要判过')
-  assert.equal(checkRoutingEvidence(perfLine('base-one'), ['perf'], table, null, prAdded).ok, true, '基线登记表里的场景照样过')
-  const ghost = checkRoutingEvidence(perfLine('ghost-y'), ['perf'], table, null, { ids: ['base-one', 'new-one'], problems: [] })
+  const base = [{ file: 'tests/perf/scenarios/base-one.json', data: JSON.parse(SC('base-one')) }]
+  const known = knownScenarios({ baseEntries: base, prFiles: [{ file: 'tests/perf/scenarios/new-one.json', content: SC('new-one') }] })
+  assert.deepEqual(known.problems, [])
+  assert.equal(checkRoutingEvidence(perfLine('new-one'), ['perf'], table, null, known).ok, true, '正文引用本 PR 新增的 new-one，判过')
+  assert.equal(checkRoutingEvidence(perfLine('base-one'), ['perf'], table, null, known).ok, true, '基线登记表里的 base-one 照样过')
+  const ghost = checkRoutingEvidence(perfLine('ghost-y'), ['perf'], table, null, known)
   assert.equal(ghost.ok, false, 'Y 既不在基线、也不是本 PR 新增，必须红')
   assert.match(ghost.lines.join('\n'), /不在登记表/)
 })
