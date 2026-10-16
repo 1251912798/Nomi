@@ -62,7 +62,7 @@
 
 1. **挂载时同步 IPC**（模型目录 `listModels`、参数区 `listMappings` 的 `invokeSync`）归 P-compose（`electron/preload/modelOnboardingBridge.ts` 及主进程侧、`nodes/controls/*` 是它的独占文件）。本刀之后，每次打开的同步 IPC 次数从「随镜头数」降为「随视口行数（约 5）+ 编辑器级 2 次」；降到 0 由 P-compose 的「模型目录映射改异步 + 渲染进程禁 invokeSync 棘轮」交付。任务书目标「打开方案时不走同步 IPC」因此**在本刀只部分达成**，待 P-compose 合入后复验。
 2. **行内编辑器的成本**：窗口化后首屏仍有约 5 个 TipTap 实例。若以后要求「打开到可编辑 ≤ 300ms」，下一步是编辑器懒建（先渲染静态文本、聚焦时才建 TipTap），那是 PromptEditor（P-compose 独占）的结构改动。
-3. **量具判据**：`tests/perf/document-switch-bench.mjs` 的判据本刀已改；D-perf 分支（`perf/canvas-p0-baseline`）把同一文件改接了统一计时器 `responseTimer.mjs` 的 `storyboardRowsAtLeast(320)` 判据——窗口化后这个判据永远不成立。两边合并时需要 D-perf 在 `responseTimer.mjs` 登记一个「行区报出逻辑总数 n + 视口行可编辑」的判据替换它（本刀的判据原文见量具 `openPlan`）。
+3. **量具判据**（已办）：#1216 先合入，量具改接统一计时器 `responseTimer.mjs`；本刀合 main 时把它的 `storyboardRowsAtLeast(320)`（窗口化后永远不成立）换成 `storyboardPlanOpenReady(320)`——行区报出逻辑总数 + 视口行可编辑，停表后量具另验末镜够得着。旧判据同提交删除。
 
 **独立验收 V-1210 首轮（不通过两项）后的修复：**
 

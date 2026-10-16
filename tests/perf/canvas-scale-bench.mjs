@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { makeTempDir } from '../../scripts/_test-temp.mjs'
+import { cleanupTestTemp, makeTempDir } from '../../scripts/_test-temp.mjs'
 /**
  * 画布「东西多了就卡」的规模基准（2026-09-12）。
  *
@@ -13,6 +13,12 @@ import { makeTempDir } from '../../scripts/_test-temp.mjs'
  * 用法：
  *   node tests/perf/canvas-scale-bench.mjs --scales I60,I150,I300 --runs 3
  *   node tests/perf/canvas-scale-bench.mjs --scales I300 --scenarios drag-group-frame-60 --profile
+ *   node tests/perf/canvas-scale-bench.mjs --scales E10,E100,E200 --scenarios select-composer --runs 5
+ *
+ * 2026-10-15 卡顿场景表：「点一下到界面到位」「长文打字」「时间轴」「后台在忙时操作画布」这几类工作台场景
+ * 也住在这里（tests/perf/canvas-scale/workbenchScenarios.mjs），共用夹具、启动器和帧探针；它们多出一个
+ * responseMs（操作 → 界面到位再过两帧）和主进程往返（mainRoundTripMaxMs）。
+ * 窗口默认挂在屏幕外、不抢焦点（--onscreen 才放回屏幕上）；隔离资料目录、零花费。
  *
  * 产物：tests/perf/results/canvas-scale-<label>.json（原始数字）+ stdout 表格。
  */
@@ -25,9 +31,22 @@ import { createCanvasPerformanceFixture, CANVAS_PERF_SCALES } from '../ux/fixtur
 import { findCanvasBlankPoint } from '../ux/_canvasHit.mjs'
 import { AUTO_PAN_SAFE_MARGIN_PX } from '../ux/canvas-perf/gestureGeometry.mjs'
 import { canvasFitViewButton } from '../ux/_shell.mjs'
+import { WORKBENCH_SCENARIOS, prepareWorkbenchLaunch, runWorkbenchScenario } from './canvas-scale/workbenchScenarios.mjs'
+import { IPC_PROBE_MODULE, startDiagnostics } from './canvas-scale/diagnostics.mjs'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const outputDir = path.join(repoRoot, 'tests/perf/results')
+// 屏幕外窗口会被 Windows 判成「被遮挡」而停掉渲染帧：挂屏幕外时同时关掉遮挡判定，量到的帧才是真的。
+const OFFSCREEN_MODULE = path.join(repoRoot, 'tests', 'ux', '_offscreenWindows.cjs')
+const OFFSCREEN_CHROMIUM_ARGS = ['--disable-features=CalculateNativeWinOcclusion']
+const FIRST_RUN_SEEN = Object.freeze({
+  'nomi:locale:v1': 'zh-CN',
+  'nomi:splash:v1': 'seen',
+  'nomi:journey-tour:v1': 'seen',
+  'nomi:canvas-gesture-hint:v1': 'seen',
+  // E2E 画布桥（window.__nomiCanvasStore）：工作台场景数 store 写入次数、清理新建的卡要用。只挂只读桥，不改产品行为。
+  __nomiE2E: '1',
+})
 
 const args = process.argv.slice(2)
 const argValue = (name, fallback) => {
@@ -49,22 +68,39 @@ const SCENARIO_NAMES = [
   'wheel-zoom',
   'pan',
   'zoom-slider-drag',
+  ...WORKBENCH_SCENARIOS,
 ]
+// 工作台场景默认不跑（它们要的规模 / 后台负载各不相同，按场景表点名跑）；不带 --scenarios 时仍是原来那一组手势。
+const GESTURE_SCENARIOS = SCENARIO_NAMES.filter((name) => !WORKBENCH_SCENARIOS.includes(name))
 
 if (hasArg('--help') || hasArg('-h')) {
   console.log(`用法：node tests/perf/canvas-scale-bench.mjs [选项]
   --scales     逗号分隔，默认 I60,I150,I300（可选：${Object.keys(CANVAS_PERF_SCALES).join(' / ')}）
-  --scenarios  逗号分隔，默认全部：${SCENARIO_NAMES.join(' / ')}
+  --scenarios  逗号分隔，默认全部手势：${GESTURE_SCENARIOS.join(' / ')}
+               工作台场景（点名才跑）：${WORKBENCH_SCENARIOS.join(' / ')}
   --runs       每个场景采样次数（默认 3，取中位数）
+  --warmup     每个场景先做几次不计的预热（默认 0）
+  --extra-projects  库里另放 N 个小项目（默认 0）
+  --diag-out   诊断腿：第一个计数样本抓 CDP trace、渲染 / 主进程 profile、IPC 计时、store 写、合成层（见 canvas-scale/diagnostics.mjs）
   --profile    对每个场景另抓一次 CDP CPU profile（JS 自时间前 25 名）
-  --label      产物文件名后缀（默认 run）`)
+  --label      产物文件名后缀（默认 run）
+  --onscreen   窗口放在屏幕上（默认挂屏幕外、不抢焦点）`)
   process.exit(0)
 }
 
 
 const scales = argValue('--scales', 'I60,I150,I300').split(',').map((s) => s.trim()).filter(Boolean)
-const scenarios = argValue('--scenarios', SCENARIO_NAMES.join(',')).split(',').map((s) => s.trim()).filter(Boolean)
+const scenarios = argValue('--scenarios', GESTURE_SCENARIOS.join(',')).split(',').map((s) => s.trim()).filter(Boolean)
+const onscreen = hasArg('--onscreen')
+for (const scale of scales) if (!CANVAS_PERF_SCALES[scale]) throw new Error(`未知规模「${scale}」，可选：${Object.keys(CANVAS_PERF_SCALES).join(' / ')}`)
+for (const scenario of scenarios) if (!SCENARIO_NAMES.includes(scenario)) throw new Error(`未知场景「${scenario}」，可选：${SCENARIO_NAMES.join(' / ')}`)
 const runs = Math.max(1, Number(argValue('--runs', '3')))
+// 预热：同一个 App 里先做几次不计的手势（JIT、图片解码缓存、懒加载块），再采 runs 次。
+const warmup = Math.max(0, Number(argValue('--warmup', '0')))
+// 库里另放几个小项目（每个 4 张图）：有些开销按「全部项目」算，单项目夹具看不出来。
+const extraProjects = Math.max(0, Number(argValue('--extra-projects', '0')))
+// 诊断腿：第一个计数样本的窗口里抓 trace / profile / IPC / store 写 / 合成层，落到这个目录（数字不进基线）。
+const diagOut = argValue('--diag-out', '')
 const withProfile = hasArg('--profile')
 const label = argValue('--label', 'run')
 
@@ -101,7 +137,15 @@ function grabSafeArea(stage) {
 let activeCdp = null
 let windowMetrics = { before: null, after: null }
 
+// 诊断腿（--diag-out）：只在第一个计数样本的被测窗口里起停，抓 trace / 两个进程的 profile / IPC / store 写 / 合成层。
+let diagPending = null
+let diagStop = null
+
 async function startWindow(page) {
+  if (diagPending) {
+    diagStop = await startDiagnostics({ ...diagPending, page, cdp: activeCdp })
+    diagPending = null
+  }
   windowMetrics = { before: activeCdp ? await readCdpMetrics(activeCdp) : null, after: null }
   await page.evaluate(() => window.__nomiScaleProbe.start())
 }
@@ -109,6 +153,12 @@ async function startWindow(page) {
 async function stopWindow(page) {
   const raw = await page.evaluate(() => window.__nomiScaleProbe.stop())
   windowMetrics.after = activeCdp ? await readCdpMetrics(activeCdp) : null
+  if (diagStop) {
+    const stop = diagStop
+    diagStop = null
+    const summary = await stop()
+    console.log(`    [diag] ${summary.label}：IPC ${summary.ipc?.length ?? '-'} 个频道，store 写 ${summary.storeWrites?.length ?? '-'} 次，合成层 ${summary.layersAfter?.layers ?? '-'}`)
+  }
   return raw
 }
 
@@ -254,6 +304,29 @@ async function fitView(page, { expectZoomBelow = 0.9 } = {}) {
     const viewport = await readViewport(page)
     if (viewport.zoom !== null && viewport.zoom < expectZoomBelow) return viewport
   }
+  return readViewport(page)
+}
+
+/** 不在画布上量的工作台场景：每次采样前不做「适应视图」（那颗钮在创作 / 预览页上不存在）。 */
+const OFF_CANVAS_SCENARIOS = new Set(['document-typing', 'timeline-play', 'timeline-scrub'])
+/**
+ * 在「工作缩放」（约 100%）下量的场景：点卡出生成框是在正常干活的缩放下发生的，不是缩到全图。
+ * 适应视图之后在舞台中间滚轮放大到 ≥0.95：10 / 100 / 200 三档的视口里都是同样大小的卡，差别只剩画布上一共有多少个节点。
+ */
+const WORKING_ZOOM_SCENARIOS = new Set(['select-composer'])
+/** 工作台场景带进样本的数（主数 responseMs / mainRoundTripMaxMs，其余只看）。 */
+const WORKBENCH_SAMPLE_KEYS = ['responseMs', 'firstFeedbackMs', 'coldResponseMs', 'storeWrites', 'mainRoundTripMaxMs', 'mainRoundTripP95Ms', 'keyMaxMs', 'toCreation', 'toPreview', 'toGeneration', 'toList', 'toCanvas', 'generating', 'streamedCharsDuringPan', 'keys', 'paragraphs', 'created', 'playheadTravelPx', 'panMovedPx']
+
+async function zoomToWorkingScale(page) {
+  const stage = await stageBox(page)
+  await page.mouse.move(stage.x + stage.width * 0.45, stage.y + stage.height * 0.4)
+  for (let tick = 0; tick < 40; tick += 1) {
+    const { zoom } = await readViewport(page)
+    if (zoom !== null && zoom >= 0.95) break
+    await page.mouse.wheel(0, -120)
+    await sleep(page, 60)
+  }
+  await sleep(page, 500)
   return readViewport(page)
 }
 
@@ -549,7 +622,8 @@ function diffCdpMetrics(before, after) {
   }
 }
 
-async function runScenario(page, scenario, fixture) {
+async function runScenario(page, scenario, fixture, workbench = null) {
+  if (WORKBENCH_SCENARIOS.includes(scenario)) return runWorkbenchScenario(page, scenario, { ...workbench, fixture, startWindow, stopWindow, stageBox })
   const nodeTotal = fixture.summary.nodes
   if (scenario === 'drag-nodes-1') {
     await page.keyboard.press('Escape')
@@ -604,7 +678,7 @@ async function runScenario(page, scenario, fixture) {
     if (grab.blocked) return { skipped: grab.via }
     const viewport = await readViewport(page)
     const raw = await arcDrag(page, grab, {})
-    return { selected, raw, viewport, path: 'useCanvasSelectionDrag (zustand 每帧写)' }
+    return { selected, raw, viewport, path: 'useCanvasSelectionDrag（组框拖动预览）' }
   }
   if (scenario === 'marquee-select-all') {
     await page.keyboard.press('Escape')
@@ -692,8 +766,19 @@ async function main() {
     const fixtureRoot = makeTempDir(`nomi-canvas-scale-${scale}-`)
     const projectsDir = path.join(fixtureRoot, 'projects')
     fs.mkdirSync(projectsDir, { recursive: true })
-    const fixture = createCanvasPerformanceFixture({ projectsDir, scale })
-    console.log(`\n=== 规模 ${scale}：${fixture.summary.nodes} 个节点 / ${fixture.summary.edges} 条边 ===`)
+    // 带项目身份：没有身份的夹具项目启动后会被后台补身份、改写清单，和用户的真项目不是一个状态。
+    // 陪衬项目（--extra-projects N）：用户的库里不止一个项目，有些开销按「全部项目」算（例如生成框的素材候选要扫所有项目的素材）。
+    const extraFixtures = Array.from({ length: extraProjects }, (_, index) => createCanvasPerformanceFixture({
+      projectsDir, scale: 'REALIMG', projectId: `project-extra-${index + 1}`, projectName: `ZZ 陪衬项目 ${index + 1}`, projectDirName: `ZZ-extra-${index + 1}`, withProjectIdentity: true,
+    }))
+    const fixture = createCanvasPerformanceFixture({ projectsDir, scale, withProjectIdentity: true })
+    if (extraFixtures.length) {
+      const now = Date.now()
+      fs.writeFileSync(path.join(projectsDir, 'recent-workspaces.json'), JSON.stringify([fixture, ...extraFixtures].map((project, index) => ({
+        id: project.record.id, name: project.record.name, rootPath: path.resolve(project.projectRoot), lastOpenedAt: now - index * 1000, missing: false,
+      })), null, 2))
+    }
+    console.log(`\n=== 规模 ${scale}：${fixture.summary.nodes} 个节点 / ${fixture.summary.edges} 条边${extraFixtures.length ? ` / 库里另有 ${extraFixtures.length} 个项目` : ''} ===`)
     for (const scenario of scenarios) {
       // 一个（规模 × 场景）起一次 app，里面跑 runs 次采样：每次手势都从「无选中 + 适应视图」
       // 重置，圆弧拖动走满一圈回到原点，所以样本之间的初始条件是同一个。
@@ -704,31 +789,51 @@ async function main() {
       let profileTop = null
       let launchError = null
       let app = null
+      const scenarioRoot = makeTempDir(`nomi-canvas-scale-${scale}-${scenario}-`)
+      const extras = WORKBENCH_SCENARIOS.includes(scenario)
+        ? await prepareWorkbenchLaunch(scenario, { fixture, root: scenarioRoot, repoRoot })
+        : { launch: {}, close: async () => {} }
+      // 同一个 App 实例里跨采样保留的东西（例如生成框懒加载块拉没拉过、后台任务起没起）。
+      const workbenchState = {}
       try {
+        const extra = extras.launch
         const launched = await launchNomiApp({
           name: `canvas-scale-${scale}`,
           projectsDir,
           timeout: 120_000,
           viewportSize: machine.viewport,
           settleMs: 1200,
+          ...(extra.settingsDir ? { settingsDir: extra.settingsDir } : {}),
+          args: ['--no-proxy-server', ...(onscreen ? [] : OFFSCREEN_CHROMIUM_ARGS)],
+          mainRequire: [...(extra.mainRequire ?? []), ...(onscreen ? [] : [OFFSCREEN_MODULE]), ...(diagOut ? [IPC_PROBE_MODULE] : [])],
+          initialLocalStorage: { ...FIRST_RUN_SEEN, ...(extra.initialLocalStorage ?? {}) },
+          env: { NOMI_DISABLE_AUTO_UPDATE: '1', ...(extra.env ?? {}) },
         })
         app = launched.app
         const page = launched.win
         page.on('pageerror', (error) => console.log(`    [pageerror] ${String(error?.message || error).slice(0, 160)}`))
         await openFixtureProject(app, page, fixture)
-        for (let runIndex = 0; runIndex < runs; runIndex += 1) {
+        for (let runIndex = 0; runIndex < warmup + runs; runIndex += 1) {
           await page.keyboard.press('Escape').catch(() => {})
-          const fitted = await fitView(page)
-          console.log(`    · 前置：zoom=${fitted.zoom} mounted=${fitted.mountedNodes} url=${String(page.url()).slice(-60)}`)
-          if (!fitted.zoom || fitted.zoom > 0.9) console.log(`    ⚠️ 适应视图没生效——这一次采样的前置条件不成立`)
+          if (!OFF_CANVAS_SCENARIOS.has(scenario)) {
+            const fitted = await fitView(page)
+            console.log(`    · 前置：zoom=${fitted.zoom} mounted=${fitted.mountedNodes} url=${String(page.url()).slice(-60)}`)
+            if (!fitted.zoom || fitted.zoom > 0.9) console.log(`    ⚠️ 适应视图没生效——这一次采样的前置条件不成立`)
+            if (WORKING_ZOOM_SCENARIOS.has(scenario)) {
+              const working = await zoomToWorkingScale(page)
+              console.log(`    · 工作缩放：zoom=${working.zoom} mounted=${working.mountedNodes}`)
+            }
+          }
           await page.evaluate(PROBE_SOURCE)
-          const wantProfile = withProfile && runIndex === 0
+          const wantProfile = withProfile && runIndex === warmup
           const cdp = await app.context().newCDPSession(page)
           await cdp.send('Performance.enable').catch(() => {})
           activeCdp = cdp
+          const workbench = { app, runIndex, state: workbenchState, extras }
+          if (diagOut && runIndex === warmup) diagPending = { app, outDir: path.resolve(diagOut), label: `${scale}-${scenario}` }
           const outcome = wantProfile
-            ? await collectProfile(cdp, () => runScenario(page, scenario, fixture))
-            : { result: await runScenario(page, scenario, fixture), top: null }
+            ? await collectProfile(cdp, () => runScenario(page, scenario, fixture, workbench))
+            : { result: await runScenario(page, scenario, fixture, workbench), top: null }
           const cdpDelta = diffCdpMetrics(windowMetrics.before, windowMetrics.after)
           activeCdp = null
           await cdp.detach().catch(() => {})
@@ -742,16 +847,20 @@ async function main() {
           // profile 腿自己会抬高 script 时间（采样器开销），所以它的 CDP 差值不进中位数样本。
           Object.assign(summary, { loadAvg1: Math.round(os.loadavg()[0] * 10) / 10 })
           if (!wantProfile) Object.assign(summary, { cdpScriptMs: cdpDelta?.scriptMs ?? null, cdpStyleMs: cdpDelta?.styleMs ?? null, cdpLayoutMs: cdpDelta?.layoutMs ?? null, cdpTaskMs: cdpDelta?.taskMs ?? null, cdpLayoutCount: cdpDelta?.layoutCount ?? null, cdpStyleCount: cdpDelta?.styleCount ?? null, jsHeapMb: cdpDelta?.jsHeapMb ?? null })
-          samples.push(summary)
-          meta = { selected: scenarioResult.selected ?? null, path: scenarioResult.path, viewport: scenarioResult.viewport ?? null }
-          if (outcome.top) profileTop = outcome.top
+          // 工作台场景多出来的数：响应（操作 → 界面到位）与主进程往返；只看的诊断数原样带进样本。
+          for (const key of WORKBENCH_SAMPLE_KEYS) if (scenarioResult[key] !== undefined) summary[key] = scenarioResult[key]
+          const counted = runIndex >= warmup
+          if (counted) samples.push(summary)
+          if (counted) meta = { selected: scenarioResult.selected ?? null, path: scenarioResult.path, viewport: scenarioResult.viewport ?? null }
+          if (counted && outcome.top) profileTop = outcome.top
           console.log(
-            `  [${scenario}] run${runIndex} sel=${scenarioResult.selected ?? '-'} zoom=${scenarioResult.viewport?.zoom ?? '-'} mounted=${scenarioResult.viewport?.mountedNodes ?? '-'} fps=${summary.fps} p50=${summary.frameP50Ms} p95=${summary.frameP95Ms} max=${summary.frameMaxMs} load=${summary.loadAvg1} script/style/layout=${cdpDelta?.scriptMs}/${cdpDelta?.styleMs}/${cdpDelta?.layoutMs}ms layouts=${cdpDelta?.layoutCount} 触碰/刷=${summary.medianTouchedPerFlush}/${summary.maxTouchedPerFlush} 长任务=${summary.longTasks}/${summary.longTaskMaxMs}ms`,
+            `  [${scenario}] run${runIndex}${counted ? "" : "（预热，不计）"} sel=${scenarioResult.selected ?? '-'} zoom=${scenarioResult.viewport?.zoom ?? '-'} mounted=${scenarioResult.viewport?.mountedNodes ?? '-'} fps=${summary.fps} p50=${summary.frameP50Ms} p95=${summary.frameP95Ms} max=${summary.frameMaxMs} load=${summary.loadAvg1} script/style/layout=${cdpDelta?.scriptMs}/${cdpDelta?.styleMs}/${cdpDelta?.layoutMs}ms layouts=${cdpDelta?.layoutCount} 触碰/刷=${summary.medianTouchedPerFlush}/${summary.maxTouchedPerFlush} 长任务=${summary.longTasks}/${summary.longTaskMaxMs}ms${summary.responseMs !== undefined ? ` 响应=${summary.responseMs}ms` : ''}${summary.mainRoundTripMaxMs !== undefined ? ` 主进程往返峰值=${summary.mainRoundTripMaxMs}ms` : ''}`,
           )
           // 组框场景建了组：撤销掉，下一次采样回到同一起点。
           if (scenario === 'drag-group-frame-60') {
-            await page.keyboard.press('Meta+z').catch(() => {})
-            await page.keyboard.press('Meta+z').catch(() => {})
+            const undo = process.platform === 'darwin' ? 'Meta+z' : 'Control+z'
+            await page.keyboard.press(undo).catch(() => {})
+            await page.keyboard.press(undo).catch(() => {})
             await page.waitForTimeout(500)
           }
         }
@@ -760,6 +869,8 @@ async function main() {
         console.log(`  [${scenario}] 整组失败：${launchError}`)
       } finally {
         await closeNomiApp(app).catch(() => {})
+        await extras.close().catch((error) => console.log(`  [${scenario}] 假供应商收尾失败：${error?.message || error}`))
+        try { cleanupTestTemp(scenarioRoot) } catch (error) { console.log(`  [${scenario}] 临时目录没删干净（不影响这一组的数）：${error?.message || error}`) }
       }
       if (samples.length) {
         const pick = (key) => median(samples.map((sample) => sample[key]))
@@ -793,6 +904,7 @@ async function main() {
           loadAvg1: pick('loadAvg1'),
           frameP50MsMin: Math.min(...samples.map((sample) => sample.frameP50Ms)),
           frameP95MsMin: Math.min(...samples.map((sample) => sample.frameP95Ms)),
+          ...Object.fromEntries(WORKBENCH_SAMPLE_KEYS.filter((key) => samples.some((sample) => typeof sample[key] === 'number')).map((key) => [key, pick(key)])),
           samples,
           profileTop,
         })
@@ -804,11 +916,11 @@ async function main() {
   }
   const outPath = path.join(outputDir, `canvas-scale-${label}.json`)
   console.log(`\n结果写入 ${outPath}`)
-  console.log('\n| scale | nodes | scenario | selected | zoom | mounted | fps | p50 | p95 | max | script/style/layout ms | layouts | 长任务(次/最长ms) | 每帧触碰节点(中位/峰值) |')
-  console.log('|---|---|---|---|---|---|---|---|---|---|---|---|---|---|')
+  console.log('\n| scale | nodes | scenario | selected | zoom | mounted | fps | p50 | p95 | max | script/style/layout ms | layouts | 长任务(次/最长ms) | 每帧触碰节点(中位/峰值) | 响应 ms | 主进程往返峰值 ms |')
+  console.log('|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|')
   for (const row of results) {
-    if (row.skipped) { console.log(`| ${row.scale} | ${row.nodes} | ${row.scenario} | - | - | - | 跳过 | | | | | | | |`); continue }
-    console.log(`| ${row.scale} | ${row.nodes} | ${row.scenario} | ${row.selected ?? '-'} | ${row.viewport?.zoom ?? '-'} | ${row.viewport?.mountedNodes ?? '-'} | ${row.fps} | ${row.frameP50Ms} | ${row.frameP95Ms} | ${row.frameMaxMs} | ${row.cdpScriptMs}/${row.cdpStyleMs}/${row.cdpLayoutMs} | ${row.cdpLayoutCount} | ${row.longTasks}/${row.longTaskMaxMs} | ${row.medianTouchedPerFlush}/${row.maxTouchedPerFlush} |`)
+    if (row.skipped) { console.log(`| ${row.scale} | ${row.nodes} | ${row.scenario} | - | - | - | 跳过 | | | | | | | | | |`); continue }
+    console.log(`| ${row.scale} | ${row.nodes} | ${row.scenario} | ${row.selected ?? '-'} | ${row.viewport?.zoom ?? '-'} | ${row.viewport?.mountedNodes ?? '-'} | ${row.fps} | ${row.frameP50Ms} | ${row.frameP95Ms} | ${row.frameMaxMs} | ${row.cdpScriptMs}/${row.cdpStyleMs}/${row.cdpLayoutMs} | ${row.cdpLayoutCount} | ${row.longTasks}/${row.longTaskMaxMs} | ${row.medianTouchedPerFlush}/${row.maxTouchedPerFlush} | ${row.responseMs ?? '-'} | ${row.mainRoundTripMaxMs ?? '-'} |`)
   }
 }
 
