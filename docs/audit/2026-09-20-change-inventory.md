@@ -33,9 +33,9 @@
 | `docs/plan/2026-09-20-node-prompt-presets.md` | 预设 #824 | 新增实施范围/旧行为理由/复用方案/风险与验收；不是额外产品功能或已完成证明。 |
 | `docs/plan/2026-09-20-shot-number-identity.md` | 媒体/编号及审计修复 | 新增实施范围/旧行为理由/复用方案/风险与验收；不是额外产品功能或已完成证明。 |
 | `docs/research/competitive/README.md` | 竞品流程 #823 | 竞品流程/来源/模板/索引，逐文件理由见Agent与流程报告；只有规则落地，首次定时研究未验证。 |
-| `docs/research/competitive/TEMPLATE.md` | 竞品流程 #823 | 竞品流程/来源/模板/索引，逐文件理由见Agent与流程报告；只有规则落地，首次定时研究未验证。 |
-| `docs/research/competitive/VALIDATION.md` | 竞品流程 #823、媒体/编号及审计修复 | 竞品流程/来源/模板/索引，逐文件理由见Agent与流程报告；只有规则落地，首次定时研究未验证。 |
-| `docs/research/competitive/sources.md` | 竞品流程 #823 | 竞品流程/来源/模板/索引，逐文件理由见Agent与流程报告；只有规则落地，首次定时研究未验证。 |
+| 私有仓 research/competitive/TEMPLATE.md（已移出本仓） | 竞品流程 #823 | 竞品流程/来源/模板/索引，逐文件理由见Agent与流程报告；只有规则落地，首次定时研究未验证。 |
+| 私有仓 research/competitive/VALIDATION.md（已移出本仓） | 竞品流程 #823、媒体/编号及审计修复 | 竞品流程/来源/模板/索引，逐文件理由见Agent与流程报告；只有规则落地，首次定时研究未验证。 |
+| 私有仓 research/competitive/sources.md（已移出本仓） | 竞品流程 #823 | 竞品流程/来源/模板/索引，逐文件理由见Agent与流程报告；只有规则落地，首次定时研究未验证。 |
 | `docs/roadmap/TODO.md` | 竞品流程 #823、媒体/编号及审计修复 | 保留旧任务，新增竞品/镜号及修复证据；媒体和镜号合入前仍todo，未提前标done。 |
 | `electron/capabilityCore/canvasGraph.test.ts` | 媒体/编号及审计修复 | 新增headless旧图重号/非法号修复，保留原图操作断言；证明主进程也走共享owner。 |
 | `electron/capabilityCore/canvasGraph.ts` | 媒体/编号及审计修复 | 生产逐hunk见编号报告：旧分配/复制/恢复用途与新共享owner逐项对照；旧日志恢复回归已单列修复，未另造事件系统。 |
