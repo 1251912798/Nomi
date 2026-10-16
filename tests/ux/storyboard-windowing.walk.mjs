@@ -254,8 +254,8 @@ async function passZhLight() {
 
     // ⑥ 拖拽排序：第 3 镜拖到第 5 镜
     await scrollTo(win, 'top')
-    const toolbarClear = win.locator('[data-storyboard-selection-clear], [aria-label="取消选择"]').first()
-    if (await toolbarClear.count()) await toolbarClear.click().catch(() => undefined)
+    // 清掉 ⑤ 的多选（浮条上的「×」，按词典里的无障碍名找），拖拽前回到无选择状态
+    await win.getByRole('button', { name: uiText('zh-CN', 'storyboardEditor.selection.clear'), exact: true }).click()
     const promptOf = (n) => win.locator(promptBox(n)).innerText()
     const thirdBefore = await promptOf(3)
     await dragRow(win, 3, 5)

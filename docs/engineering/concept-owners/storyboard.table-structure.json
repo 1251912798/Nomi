@@ -14,10 +14,14 @@
     {
       "path": "src/workbench/creation/storyboard/shotRow/storyboardRowDensity.ts",
       "symbol": "STORYBOARD_ROW_NARROW_BELOW"
+    },
+    {
+      "path": "src/workbench/creation/storyboard/shotRow/storyboardRowDensity.ts",
+      "symbol": "useStoryboardRowsDensity"
     }
   ],
   "forbidden_derivations": [],
   "allowed_consumers": [],
   "since": "2026-10-05",
-  "notes": "分镜表格的窄行阈值是共享布局契约，供行组件统一使用。"
+  "notes": "分镜表格的窄行阈值是共享布局契约，供行组件统一使用。 2026-10-16：档位由行容器量一次（useStoryboardRowsDensity / StoryboardRowsBox），行只读 context。"
 }

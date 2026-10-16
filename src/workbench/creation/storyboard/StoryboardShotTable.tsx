@@ -1,7 +1,7 @@
 import { resolveStoryboardOverride } from './exec/storyboardOverrideActions'
 import React, { type JSX } from 'react'
 import { flushSync } from 'react-dom'
-import { defaultRangeExtractor, useVirtualizer, type Range } from '@tanstack/react-virtual'
+import { defaultRangeExtractor, measureElement, observeElementRect, useVirtualizer, type Range } from '@tanstack/react-virtual'
 import { useWorkbenchStore } from '../../workbenchStore'
 import { useTranslation } from 'react-i18next'
 import { IconChevronDown, IconChevronRight, IconPlayerPlay, IconPlus } from '@tabler/icons-react'
@@ -76,6 +76,21 @@ const HEAD_ESTIMATE = 30
  * 2026-10-16 实测：9:16 宽档 265 / 窄档 201，16:9 宽档 201。
  */
 const rowEstimate = (box: FrameMediaBox): number => Math.max(isPortraitBox(box) ? box.height : box.height + 42, 100) + 24 + 1 + 6
+
+/**
+ * 分镜页被藏起来时（切到生成页：React.Activity / display:none），滚动区和每一项都会被量成 0。
+ * 照收的话，视口变 0 → 一行都不挂（藏着时行被拆光，撤销 / 焦点 / 编辑器都跟着没了，回来再全部重建）；
+ * 各项高度变 0 → 回来前的那一刻整张表都挤进视口。所以 0 尺寸不算数：视口保持上一次可见时的大小，
+ * 项的高度保持上一次的实测（没有就用估高）。藏着时挂着的行与藏之前一致，和窗口化之前一样（CI：storyboard-delete-undo「hidden」）。
+ */
+const observeVisibleRect: typeof observeElementRect = (instance, callback) =>
+  observeElementRect(instance, (rect) => { if (rect.width > 0 || rect.height > 0) callback(rect) })
+const measureVisibleElement: typeof measureElement = (element, entry, instance) => {
+  const size = measureElement(element, entry, instance)
+  if (size > 0) return size
+  const index = instance.indexFromElement(element)
+  return instance.itemSizeCache.get(instance.options.getItemKey(index)) ?? instance.options.estimateSize(index)
+}
 
 type TableItem =
   | { kind: 'head'; key: string; group: SceneGroup; groupIndex: number }
@@ -262,6 +277,8 @@ export default function StoryboardShotTable({ plan, projectId, rows, anchorCards
     scrollMargin,
     initialRect: FALLBACK_VIEWPORT,
     rangeExtractor,
+    observeElementRect: observeVisibleRect,
+    measureElement: measureVisibleElement,
   })
   // 偏移量：每次表渲染读一次（编辑器状态变了，上面几块的高度可能跟着变），再加一个 ResizeObserver 接住
   // 上面几块自己长高 / 变矮（参考卡出图、执行计划条出现）。都是整张表一次，不随行数增长。
