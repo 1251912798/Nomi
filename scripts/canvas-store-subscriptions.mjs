@@ -40,11 +40,34 @@ export const WHOLE_TABLE_SUBSCRIPTION_BASELINE = Object.freeze({
 
 const WHOLE_TABLE_MESSAGE = '别整表订阅画布 nodes / edges：任何一张卡写一次，这个组件就整个重渲。用按 id 的选择器（canvasNodeGenerationIndex）、位置无关的稳定投影（canvasNodeProjection）、只取一个标量的选择器，或在回调里 useGenerationCanvasStore.getState()。存量名单在 scripts/canvas-store-subscriptions.mjs，只减不增。'
 
+// 按语法树认「选择器的结果就是整张表」，不按字面写法认（V-1211：块体 return、解构参数、方括号取值三种等价写法曾同时绕过）。
+// 选择器 = 传给 useGenerationCanvasStore 的箭头函数 / 函数表达式；它的「结果位置」= 表达式体，或函数体里任一 return 的值；
+// 结果位置上出现下面任一形状就算整表订阅：
+//   - 取 nodes / edges 成员：`s.nodes`、`s['edges']`，外面可以再包 `as` / `!` / `??` / `||` / 三元的两支；
+//   - 解构参数里取了 nodes / edges，结果位置是个裸标识符：`({ nodes }) => nodes`、`({ edges: e }) => { return e }`。
+// 认不出的：把选择器先存成具名函数再传进来（`useGenerationCanvasStore(selectX)`），语法树看不到函数体——这种写法今天只用于
+// 已登记的稳定投影 / 按 id 索引（selectStableCanvasNodes、selectCanvasNodeById 一类），写新的具名整表选择器要过评审，记在方向检查残余风险里。
+const TABLE = '/^(nodes|edges)$/'
+const SELECTOR_FN = "CallExpression[callee.name='useGenerationCanvasStore'] > :matches(ArrowFunctionExpression, FunctionExpression).arguments:first-child"
+const TABLE_MEMBER = `MemberExpression:matches([property.name=${TABLE}], [property.value=${TABLE}])`
+const RESULT_WRAPPERS = [
+  '',
+  'TSAsExpression > ', 'TSNonNullExpression > ', 'TSSatisfiesExpression > ',
+  'LogicalExpression > ',
+  'ConditionalExpression > ',
+]
+const resultSlots = (inner) => [
+  ...RESULT_WRAPPERS.map((wrap) => `${SELECTOR_FN} > ${wrap ? `${wrap.replace(' > ', '.body > ')}` : ''}${inner}${wrap ? '' : '.body'}`),
+  ...RESULT_WRAPPERS.map((wrap) => `${SELECTOR_FN} > BlockStatement.body ReturnStatement > ${wrap ? `${wrap.replace(' > ', '.argument > ')}` : ''}${inner}${wrap ? '' : '.argument'}`),
+]
+// 三元只认两支（test 位置上的 s.nodes 是在判断，不是结果）。
+const notConditionalTest = (selector) => selector.includes('ConditionalExpression') ? `${selector}:not(.test)` : selector
+const DESTRUCTURED_TABLE_FN = `${SELECTOR_FN}:has(ObjectPattern.params > Property[key.name=${TABLE}])`
+
 export const WHOLE_TABLE_SUBSCRIPTION_SELECTORS = [
-  {
-    selector: "CallExpression[callee.name='useGenerationCanvasStore'] > ArrowFunctionExpression.arguments > MemberExpression.body[computed=false][property.name=/^(nodes|edges)$/]",
-    message: WHOLE_TABLE_MESSAGE,
-  },
+  ...resultSlots(TABLE_MEMBER).map(notConditionalTest).map((selector) => ({ selector, message: WHOLE_TABLE_MESSAGE })),
+  { selector: `${DESTRUCTURED_TABLE_FN} > Identifier.body`, message: WHOLE_TABLE_MESSAGE },
+  { selector: `${DESTRUCTURED_TABLE_FN} > BlockStatement.body ReturnStatement > Identifier.argument`, message: WHOLE_TABLE_MESSAGE },
   {
     // React Flow 自己的整表钩子：同一个反模式，今天零处。
     selector: "CallExpression[callee.name=/^use(Nodes|Edges)$/]",
@@ -59,10 +82,3 @@ export const SHELL_SELECTION_SELECTORS = [
   { selector: `${STORE_SELECTOR} > MemberExpression.body[property.name=/^(length|size)$/] > MemberExpression.object[property.name='selectedNodeIds']`, message: SHELL_SELECTION_MESSAGE },
   { selector: `${STORE_SELECTOR} > BinaryExpression.body MemberExpression[property.name='selectedNodeIds']`, message: SHELL_SELECTION_MESSAGE },
 ]
-
-/** 与上面 ESLint 选择器同口径的源码计数（只认 `(x) => x.nodes` / `x.edges` 这一种写法，其余写法由 lint 兜）。 */
-export function countWholeTableSubscriptions(source) {
-  const pattern = /useGenerationCanvasStore\(\s*\(?\s*\w+(?:\s*:\s*[\w.<>[\]]+)?\s*\)?\s*=>\s*\w+\.(?:nodes|edges)\s*[,)]/g
-  const reactFlowHooks = /\buse(?:Nodes|Edges)\(/g
-  return (source.match(pattern)?.length ?? 0) + (source.match(reactFlowHooks)?.length ?? 0)
-}

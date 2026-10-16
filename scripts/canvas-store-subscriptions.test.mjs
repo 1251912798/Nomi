@@ -8,10 +8,12 @@ import { fileURLToPath } from 'node:url'
 import { ESLint } from 'eslint'
 import { describe, expect, it } from 'vitest'
 
+import tseslint from 'typescript-eslint'
+
 import {
   CANVAS_SHELL_FILE,
   WHOLE_TABLE_SUBSCRIPTION_BASELINE,
-  countWholeTableSubscriptions,
+  WHOLE_TABLE_SUBSCRIPTION_SELECTORS,
 } from './canvas-store-subscriptions.mjs'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
@@ -30,23 +32,59 @@ function sourceFiles(dir) {
   return out
 }
 
+// 计数和 lint 用**同一组语法树选择器**（不另写正则）：只开这一条规则、不读仓库 eslint 配置，名单内的文件也照数。
+const counter = new ESLint({
+  cwd: root,
+  overrideConfigFile: true,
+  overrideConfig: {
+    files: ['**/*.{ts,tsx}'],
+    languageOptions: { parser: tseslint.parser, parserOptions: { ecmaFeatures: { jsx: true } } },
+    rules: { 'no-restricted-syntax': ['error', ...WHOLE_TABLE_SUBSCRIPTION_SELECTORS] },
+  },
+})
+async function countWholeTableSubscriptions(source, filePath) {
+  const [result] = await counter.lintText(source, { filePath })
+  return new Set(result.messages.filter((m) => m.ruleId === 'no-restricted-syntax').map((m) => `${m.line}:${m.column}`)).size
+}
+
 describe('画布 nodes / edges 整表订阅：存量冻结，只减不增', () => {
-  it('src 下每个文件的整表订阅处数与名单逐一相等', () => {
+  it('src 下每个文件的整表订阅处数（按语法树数）与名单逐一相等', async () => {
     const actual = {}
     for (const file of sourceFiles(path.join(root, 'src'))) {
-      const count = countWholeTableSubscriptions(fs.readFileSync(file, 'utf8'))
+      const source = fs.readFileSync(file, 'utf8')
+      // 只解析可能有订阅的文件（纯文本预筛，不参与判定）。
+      if (!/useGenerationCanvasStore|use(?:Nodes|Edges)/.test(source)) continue
+      const count = await countWholeTableSubscriptions(source, file)
       if (count > 0) actual[path.relative(root, file).replaceAll(path.sep, '/')] = count
     }
     expect(actual).toEqual({ ...WHOLE_TABLE_SUBSCRIPTION_BASELINE })
-  })
+  }, 120_000)
 
-  it('计数口径认得常见写法，不认按 id / 标量的窄选择器', () => {
-    expect(countWholeTableSubscriptions('const a = useGenerationCanvasStore((state) => state.nodes)')).toBe(1)
-    expect(countWholeTableSubscriptions('const a = useGenerationCanvasStore(s => s.edges)')).toBe(1)
-    expect(countWholeTableSubscriptions('const a = useNodes()')).toBe(1)
-    expect(countWholeTableSubscriptions('const a = useGenerationCanvasStore((state) => state.nodes.length)')).toBe(0)
-    expect(countWholeTableSubscriptions('const a = useGenerationCanvasStore((state) => selectCanvasNodeById(state, id))')).toBe(0)
-  })
+  it('等价写法都认得（V-1211 的三种绕过 + 包一层的写法），按 id / 标量 / 判断位置不认', async () => {
+    const probe = (body) => countWholeTableSubscriptions(`import { useGenerationCanvasStore } from './s'
+export const x = ${body}
+`, path.join(root, 'src/probe.ts'))
+    for (const body of [
+      'useGenerationCanvasStore((state) => state.nodes)',
+      'useGenerationCanvasStore(s => s.edges)',
+      'useGenerationCanvasStore(s => { return s.nodes })',
+      'useGenerationCanvasStore(({ nodes }) => nodes)',
+      "useGenerationCanvasStore(s => s['nodes'])",
+      'useGenerationCanvasStore(({ edges: list }) => { return list })',
+      'useGenerationCanvasStore(function (s) { return s.nodes })',
+      'useGenerationCanvasStore((s) => s.nodes as readonly unknown[])',
+      'useGenerationCanvasStore((s) => s.edges ?? [])',
+      'useGenerationCanvasStore((s) => (s.ready ? s.nodes : []))',
+      'useNodes()',
+    ]) expect(await probe(body), body).toBe(1)
+    for (const body of [
+      'useGenerationCanvasStore((state) => state.nodes.length)',
+      'useGenerationCanvasStore((state) => selectCanvasNodeById(state, id))',
+      'useGenerationCanvasStore((state) => state.nodes.find((node) => node.id === id))',
+      'useGenerationCanvasStore((s) => (s.nodes.length ? 1 : 0))',
+      'useGenerationCanvasStore(({ nodes }) => nodes.length)',
+    ]) expect(await probe(body), body).toBe(0)
+  }, 60_000)
 })
 
 describe('ESLint 规则接在源码上', () => {
@@ -63,11 +101,14 @@ describe('ESLint 规则接在源码上', () => {
       '  const nodes = useGenerationCanvasStore((state) => state.nodes)',
       '  const edges = useGenerationCanvasStore((s) => s.edges)',
       '  const one = useGenerationCanvasStore((state) => state.nodes.find((node) => node.id === id))',
-      '  return [nodes, edges, one]',
+      '  const blockBody = useGenerationCanvasStore((s) => { return s.nodes })',
+      '  const destructured = useGenerationCanvasStore(({ nodes }) => nodes)',
+      "  const bracket = useGenerationCanvasStore((s) => s['edges'])",
+      '  return [nodes, edges, one, blockBody, destructured, bracket]',
       '}',
       '',
     ].join('\n')
-    expect(await restricted(source, 'src/workbench/generationCanvas/nodes/wholeTableProbe.ts')).toEqual([3, 4])
+    expect(await restricted(source, 'src/workbench/generationCanvas/nodes/wholeTableProbe.ts')).toEqual([3, 4, 6, 7, 8])
   }, 60_000)
 
   it('画布壳订阅选区（数组 / 张数 / 有没有）报错，结果只在变时才变的窄选择器不报', async () => {
