@@ -1,0 +1,218 @@
+{
+  "schema_version": 3,
+  "id": "2026-10-12-agent-reference-input",
+  "problem_type": "Selected media references must resolve to original project asset identity at the Agent input boundary",
+  "symptom": "Video/audio accepted by Agent upload are treated as unreadable documents; local asset import receipts cannot form ready attachment claims",
+  "direct_cause": "buildAgentUserContent routes non-images to document extraction; nomi-local import returns a synthetic identity without size/hash; attachment resolution only checks the first 500 assets; ready attachment effects checked lagging draft props and reinserted live atoms; onReady preceded view mounting; permanently mounted @ pool did not refresh after admission. Deletion diff also compared lagging draft props: clearing immediately after upload could leave the canonical claim and recovery reinserted the deleted atoms.",
+  "class_root": "Presentation/reference selectors and provider input lack one complete canonical asset identity contract across media kinds and project size; admission and editor lifecycle require the live editor to own insertion presence, not asynchronously echoed draft props.",
+  "affected_population": [
+    "Agent uploads and newly selected canvas/project references",
+    "Projects with more than 500 assets"
+  ],
+  "scope_paths": [
+    "electron/assets/projectAssetStore.ts",
+    "electron/ai/agentUserContent.ts",
+    "electron/agentLane/laneDesktopInput.ts",
+    "src/workbench/ai/composer/useComposerAttachments.ts",
+    "src/workbench/ai/projectAgentAttachments.ts",
+    "src/workbench/ai/resident/useAgentReferenceMentions.ts",
+    "src/workbench/assets/PromptEditor.tsx"
+  ],
+  "entry_points": [
+    "Agent file upload/paste/drop",
+    "Agent canvas/project reference picker",
+    "Lane history and recovered inputs"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "Inspect installed @tiptap/core Editor.mount/create lifecycle and internal shared attachment/pool owners; no dependency or third-party wire format change.",
+  "invariants": [
+    "Every ready selected reference is a canonical main-owned project asset claim, never a thumbnail or renderer-generated id",
+    "Every image/video/audio attachment enters the request as original bytes where supported or an explicit executable asset reference with honest limitations",
+    "All attachment claims resolve across every project asset page",
+    "Every inline reference remains bound to a visible canonical claim across draft restore, deletion and ACK-time edits",
+    "Inline numbering and send manifests use the same canonical claim identity/order; exact canvas source locators remain read-only context",
+    "Recovery reads the current editor document, not lagging owner echoes; mounted editor readiness and original asset pool refresh precede use.",
+    "Deletion uses the previous ProseMirror transaction document, so canonical claims are released even before the owner echoes an insertion."
+  ],
+  "doors": [
+    {
+      "kind": "write",
+      "path": "electron/agentLane/laneDesktopInput.ts",
+      "symbol": "buildAgentUserContent"
+    },
+    {
+      "kind": "read",
+      "path": "electron/agentLane/laneDesktopAttachments.ts",
+      "symbol": "resolveProjectAgentAttachmentClaims"
+    },
+    {
+      "kind": "read",
+      "path": "electron/agentLane/laneDesktopInput.ts",
+      "symbol": "resolveProjectAgentAttachmentClaims"
+    },
+    {
+      "kind": "read",
+      "path": "electron/agentLane/laneDesktopRuntime.ts",
+      "symbol": "resolveProjectAgentAttachmentClaims"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/creation/storyboard/shotRow/useShotMentionSource.ts",
+      "symbol": "useComposerAttachments"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/ai/ProjectAgentResidentShell.tsx",
+      "symbol": "useComposerAttachments"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/creation/storyboard/shotRow/useShotMentionSource.ts",
+      "symbol": "useComposerAttachments"
+    },
+    {
+      "kind": "write",
+      "path": "electron/assets/projectAssetStore.ts",
+      "symbol": "importRemoteAssetToStore"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/ai/v4/useAgentPanelV4Actions.ts",
+      "symbol": "projectAgentAttachmentClaims"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/ai/ProjectAgentResidentShell.tsx",
+      "symbol": "useAgentPanelV4Actions"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/ai/ProjectAgentResidentShell.tsx",
+      "symbol": "useAgentReferenceMentions"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/ai/v4/AgentPanelV4Composer.tsx",
+      "symbol": "PromptEditor"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/creation/storyboard/shotRow/PromptSkeletonSegments.tsx",
+      "symbol": "PromptEditor"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/NodeGenerationComposer.tsx",
+      "symbol": "PromptEditor"
+    }
+  ],
+  "door_reduction": {
+    "before": 14,
+    "after": 14,
+    "why_not": "Provider input must render content; desktop history must render attachment chips; runtime must restore drafts. All independently call the same canonical identity resolver. Door-map output for buildAgentUserContent and resolveProjectAgentAttachmentClaims captured before implementation. Composer and storyboard mention hosts converge on useComposerAttachments; import converges on importRemoteAssetToStore. No alternate writer added. PromptEditor callers share its mounted lifecycle; only Agent has attachment recovery, shared by upload, canvas and @. Existing source-pool refresh remains the owner."
+  },
+  "generality_proof": "Shared main canonical lookup and shared provider content builder cover upload, picker, history and restored messages independent of source kind or project list size.",
+  "shared_boundaries": [
+    {
+      "path": "electron/assets/projectAssetStore.ts",
+      "symbol": "resolveProjectAgentAttachmentClaims",
+      "responsibility": "Canonical paginated identity and file validation for every input."
+    },
+    {
+      "path": "electron/ai/agentUserContent.ts",
+      "symbol": "buildAgentUserContent",
+      "responsibility": "Preserve executable original asset identities for all media; never treat video/audio as failed documents."
+    },
+    {
+      "path": "src/workbench/ai/resident/useAgentReferenceMentions.ts",
+      "symbol": "useAgentReferenceMentions",
+      "responsibility": "All Agent media admissions recover against the live editor document and refresh the existing source pool after canonical readiness."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/workbench/ai/composer/useComposerAttachments.ts",
+      "entry_point": "uploadOne",
+      "disposition": "enforced",
+      "evidence": "Uploaded original produces a canonical attachment claim; selected existing assets converge on the same state."
+    },
+    {
+      "path": "electron/agentLane/laneDesktopInput.ts",
+      "entry_point": "providerContent",
+      "disposition": "enforced",
+      "evidence": "Current and historical messages resolve the same claims and share buildAgentUserContent."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Any video/audio attachment or old project asset beyond first page repeats the mechanism.",
+    "same_class_scan": [
+      "rg buildAgentUserContent and resolveProjectAgentAttachmentClaims over electron/src",
+      "Inspected useAgentPanelV4Actions, useComposerAttachments, laneDesktopInput, laneDesktopAttachments, laneDesktopRuntime and projectAssetStore"
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "electron/ai/agentUserContent.ts",
+    "invariant": "Accepted original media identities cannot disappear into the document fallback.",
+    "failure_mode": "Missing identity or missing original is rejected by main; unsupported semantic media is explicitly described as reference-only.",
+    "exception_policy": "none",
+    "strategy": "Keep one canonical attachment owner and emit exact asset ids into provider content independently of direct vision support. PromptEditor reports transaction.before to the same reference owner, removing props-lag from both insertion recovery and deletion.",
+    "artifacts": [
+      "electron/ai/agentUserContent.ts",
+      "electron/assets/projectAssetStore.ts",
+      "src/workbench/ai/composer/useComposerAttachments.ts",
+      "src/workbench/ai/resident/useAgentReferenceMentions.ts",
+      "src/workbench/ai/projectAgentAttachments.ts",
+      "src/workbench/ai/v4/useAgentPanelV4Actions.ts",
+      "src/workbench/assets/PromptEditor.tsx"
+    ]
+  },
+  "regression_tests": [
+    "electron/ai/agentUserContent.test.ts",
+    "electron/assets/projectAssetStore.test.ts",
+    "src/workbench/ai/projectAgentAttachments.test.ts",
+    "src/workbench/ai/composer/useComposerAttachments.behavior.test.tsx",
+    "src/workbench/assets/promptEditorContent.test.ts",
+    "src/workbench/ai/v4/useAgentPanelV4Actions.test.ts",
+    "src/workbench/ai/resident/agentReferenceContext.test.ts",
+    "tests/ux/reference-entry.walk.mjs"
+  ],
+  "class_regression_tests": [
+    "electron/ai/agentUserContent.test.ts",
+    "electron/assets/projectAssetStore.test.ts",
+    "src/workbench/ai/composer/useComposerAttachments.behavior.test.tsx",
+    "src/workbench/ai/v4/useAgentPanelV4Actions.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "electron/ai/agentUserContent.ts",
+      "electron/assets/projectAssetStore.ts"
+    ],
+    "rationale": "Remove video/audio document extraction and synthetic local import receipt; no parallel fallback."
+  },
+  "dependency_lifecycle": {
+    "decision": "retain-with-exit",
+    "rationale": "Retain installed TipTap 3 mounted lifecycle API; onReady waits create/isInitialized, shared by all PromptEditor hosts. React owner echoes never override live insertion presence.",
+    "exit_criteria": [
+      "Revalidate real mounted Editor create/readiness and rapid async reference/Shift+Enter walk on each TipTap major or mount-policy change."
+    ],
+    "current": "Installed @tiptap/core 3.23.5 / Electron 43.4.1",
+    "target": "Retain installed version with native create/isInitialized readiness and live Editor document insertion guards"
+  },
+  "migration": "No stored schema change. Existing attachment claims and restored messages use the improved shared resolver.",
+  "residual_risks": [
+    "Video/audio reference identity enables generation reuse, not native audiovisual understanding; actual provider and Windows journeys remain unverified until evidenced.",
+    "A canonical original shared by multiple canvas nodes has one media reference identity: context lists the explicit source nodes, and ambiguous edit instructions require a node name. No per-occurrence node identity is invented."
+  ],
+  "detected_by": "review",
+  "recurrence_check_on": "2026-10-19",
+  "invariant_owner_layer": {
+    "layer": "electron",
+    "tests": [
+      "electron/assets/projectAssetStore.test.ts",
+      "electron/ai/agentUserContent.test.ts"
+    ]
+  }
+}

@@ -11,7 +11,7 @@ import { AGENT_CONTEXT_SNAPSHOT_VERSION, formatAgentContextSnapshot } from '../s
 import { resolveProjectAgentAttachmentClaims } from '../assets/projectAssetStore'
 import { readNomiLocalAsset } from '../assets/localAssetFile'
 import { extractTextFromLocalAsset } from '../files/extractText'
-import { buildAgentUserContent, modelSupportsImageInput, modelSupportsPdfInput } from '../ai/agentUserContent'
+import { buildAgentUserContent, projectAgentPromptForSend, modelSupportsImageInput, modelSupportsPdfInput } from '../ai/agentUserContent'
 import { rewritePdfPayload, type NativePdf } from '../ai/nativePdfPayload'
 import { applyProfileToRequestBody, getModelProfile } from '../ai/modelProfiles'
 
@@ -83,12 +83,12 @@ export function createDesktopLaneInput(input: {
       if (!selected) throw new Error('Model is not configured')
       const refs = resolveProjectAgentAttachmentClaims(input.projectId, message.context.attachments ?? [])
       const attachments = refs.flatMap((ref) => ref.display ? [{
-        url: ref.display.url, contentType: ref.display.contentType,
+        assetId: ref.assetId, url: ref.display.url, contentType: ref.display.contentType,
         fileName: ref.display.fileName, kind: ref.display.kind,
       }] : [])
       const { model } = selected
       const content = await buildAgentUserContent({
-        prompt: [message.content, formatAgentContextSnapshot(message.context.contextSnapshot), formatStoryboardRequestTarget(message.context.storyboardTarget), formatLaneModelDelta(message.context, previous)].filter(Boolean).join('\n\n'),
+        prompt: [projectAgentPromptForSend(message.content, attachments), formatAgentContextSnapshot(message.context.contextSnapshot), formatStoryboardRequestTarget(message.context.storyboardTarget), formatLaneModelDelta(message.context, previous)].filter(Boolean).join('\n\n'),
         attachments,
         supportsImageInput: modelSupportsImageInput(model.modelKey, model.modelAlias, model.meta),
         supportsPdfInput: selected.kind !== 'openai-compatible' && modelSupportsPdfInput(model.modelKey, model.modelAlias, model.meta),

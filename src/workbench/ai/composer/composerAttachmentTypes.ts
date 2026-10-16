@@ -10,6 +10,11 @@ export type ComposerAttachmentStatus = 'uploading' | 'ready' | 'error'
 export type ComposerAttachment = {
   id: string
   /** Stable project-asset identity returned by the main-process storage boundary. */
+  /** Picker source identity for deduplication; id remains unique to this draft instance. */
+  referenceSource?: string
+  /** Original canvas locator; read-only context, never write authority. */
+  referenceNode?: { nodeId:string; resultId:string; originalUrl:string }
+  referenceNodes?: { nodeId:string; resultId:string; originalUrl:string }[]
   assetId?: string
   version?: number
   contentHash?: string
