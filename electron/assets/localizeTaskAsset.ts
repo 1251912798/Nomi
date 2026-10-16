@@ -6,6 +6,7 @@ import { logWarn } from "../logging/logger";
 import { importRemoteAsset } from "./projectAssetStore";
 import { broadcastAssetLocalizationStarted } from "./assetEvents";
 import { localizedTaskAssetFileName, probeLocalizedDurationSeconds } from "./localizedAsset";
+import { canvasPreviewFieldsFromReceipt } from "../shared/canvas/canvasMediaPreview";
 
 type LocalizedTaskAssetType = "image" | "video" | "audio" | "model3d";
 
@@ -48,7 +49,7 @@ export async function localizeTaskAsset(
 ) {
   if (nodeId) await broadcastAssetLocalizationStarted({ projectId, nodeId });
   const startedAt = Date.now();
-  let imported: { id?: string; name?: string; data?: { url?: string; absolutePath?: string; thumbnailUrl?: string; width?: number; height?: number; durationSeconds?: number } };
+  let imported: { id?: string; name?: string; data?: { url?: string; absolutePath?: string; thumbnailUrl?: string; previewState?: string; width?: number; height?: number; durationSeconds?: number } };
   try {
     imported = (await importRemoteAsset({
       projectId,
@@ -74,12 +75,14 @@ export async function localizeTaskAsset(
       type,
     }); // S4-2b:落地技术自检,仅图像/视频（3D 模型不送 VLM）
   const url = String(imported.data?.url || assetUrl);
+  // 画布预览由落盘边界派生（assetPreview）并写在回执上：小图地址 + 预览事实（ready / source / missing）。
+  // 没派生出来就是明确的 'missing'，不再把源地址填进 thumbnailUrl 冒充预览。
+  const preview = canvasPreviewFieldsFromReceipt(type, imported.data, url);
   return {
     type,
     url,
-    // 画布缩略图由落盘边界派生（assetPreview）：图片长边 >1024 出 `.preview.*`，视频出首帧 poster。
-    // 没派生出来（小图 / 探测失败）时图片回落到源（源即预览）；视频没有 poster 就照旧交互前挂 video。
-    thumbnailUrl: imported.data?.thumbnailUrl || (type === "image" ? url : null),
+    thumbnailUrl: preview.thumbnailUrl ?? null,
+    ...(preview.previewState ? { previewState: preview.previewState } : {}),
     assetId: imported.id || null,
     assetName: imported.name || null,
     ...(durationSeconds !== undefined ? { durationSeconds } : {}),

@@ -74,3 +74,22 @@ describe('normalizeCatalogTaskResult intrinsic dimensions', () => {
     expect(normalized).not.toHaveProperty('height')
   })
 })
+
+// 画布预览不变式 · 普通生成落画布这一跳：预览两栏只走落盘回执的投影。
+describe('normalizeCatalogTaskResult canvas preview fields', () => {
+  it('reported case：旧主进程 / 旧缓存把源地址填进 thumbnailUrl（图片 fallback）→ 画布结果不带它，不冒充预览', () => {
+    const url = 'nomi-local://asset/p1/assets/generated/image.png'
+    const normalized = normalizeCatalogTaskResult({ ...succeeded('text_to_image'), assets: [{ type: 'image', url, thumbnailUrl: url }] }, node)
+    expect(normalized).not.toHaveProperty('thumbnailUrl')
+    expect(normalized).not.toHaveProperty('previewState')
+  })
+
+  it('回执带小图 + 事实 → 原样带上；回执说缺失 → 明确 missing', () => {
+    const url = 'nomi-local://asset/p1/assets/generated/image.png'
+    const ready = normalizeCatalogTaskResult({ ...succeeded('text_to_image'), assets: [{ type: 'image', url, thumbnailUrl: 'nomi-local://asset/p1/assets/generated/image.preview.jpg', previewState: 'ready' }] }, node)
+    expect(ready).toMatchObject({ thumbnailUrl: 'nomi-local://asset/p1/assets/generated/image.preview.jpg', previewState: 'ready' })
+    const missing = normalizeCatalogTaskResult({ ...succeeded('text_to_image'), assets: [{ type: 'image', url, thumbnailUrl: null, previewState: 'missing' }] }, node)
+    expect(missing).toMatchObject({ previewState: 'missing' })
+    expect(missing).not.toHaveProperty('thumbnailUrl')
+  })
+})

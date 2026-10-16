@@ -1,15 +1,13 @@
-// 「全自动」档的两件配套（2026-09-10 用户拍板 · 增量 2）：**切进去要二次确认**、**开着时有常驻提醒**。
+// 「直接生成」档的两件配套（2026-10-12 用户拍板，承接 2026-09-10 的「全自动」增量 2）：**切进去要二次确认**、**开着时有常驻提醒**。
 //
-// 为什么切档要多问一句：另外两档每一步都会在介入槽里现身，用户不可能忘了自己开着什么；
-// 「全自动」的特征恰恰是「什么都不问」——它一旦被误点，界面上不会有任何东西提醒他。
-// 那句确认文案里最重要的一半是**付费生成从此不再逐笔问**（2026-09-12 用户拍板：档位本身就是那次授权，
-// 判据 owner 是 `capabilityApprovalPolicy.spendDecidedByPolicy`）——因为用户对全自动最合理的恐惧
-// 就是「它会不会偷偷把钱花了」，而诚实的答案恰恰是「会，按你这一次的授权」。所以它必须摆在
-// 按下去之前，不许含糊。不可逆的操作仍然每次问，那条一个字没动。
+// 为什么切档要多问一句：「请求批准」下花钱的生成每次都会在介入槽里现身，用户不可能忘了自己开着什么；
+// 「直接生成」的特征恰恰是「生成直接开跑、不再逐次问」——它一旦被误点，界面上不会有任何东西提醒他。
+// 确认文案里最重要的一半是**生成会自动开跑并花钱**（档位本身就是那次授权，判据 owner 是
+// `directGenerationBrakes.spendDecisionByPolicy`），因为用户最合理的恐惧就是「它会不会偷偷把钱花了」，
+// 诚实的答案是「会，按你这一次的授权」——所以它必须摆在按下去之前，不许含糊。不可逆的操作仍然每次问，
+// 同一个镜头连续失败、要生成计划外的镜头时也会停下来问。
 //
-// 2026-09-18（T-AG-04）：这里原来写的是「它仍然会问什么（付费、不可逆）」——那是 2026-09-10
-// 的旧规矩（那天刚删掉设置里的硬预算上限，付费只能先全部收成逐笔确认）。i18n 里那两句用户
-// 真正读到的文案 09-12 就跟着改了，只有这段说明留在原地，于是它成了一份和代码相反的「真相」。
+// 要不要问由 `agentPanelV4Logic.tierSwitchNeedsConfirm` 一处回答（只有切进「直接生成」才问）。
 //
 // 为什么确认卡不是新组件：换档本身是**可撤销**的（再点一下就回来了），所以它就是介入槽的
 // `approval-reversible` 档。唯一的差别是标题左边那颗 ✓ 不画（`hideIcon`）——这张卡的标题是一句
@@ -17,13 +15,14 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import type { InterventionData, PermissionTier } from './agentPanelV4Types'
+import { tierSwitchNeedsConfirm } from './agentPanelV4Logic'
 
 export type AgentPanelAutoMode = Readonly<{
   /** 待确认的切档卡。`undefined` = 此刻没有在问。 */
   slot: InterventionData | undefined
-  /** 提醒条要不要渲染（`project` 档 + 本会话没被叉掉）。 */
+  /** 提醒条要不要渲染（`direct` 档 + 本会话没被叉掉）。 */
   bannerVisible: boolean
-  /** 拦在 `setPermission` 前面：切到全自动先问一句，其余档位直接放行。 */
+  /** 拦在 `setPermission` 前面：切到「直接生成」先问一句，其余直接放行。 */
   request: (tier: PermissionTier) => void
   confirm: () => void
   cancel: () => void
@@ -41,7 +40,7 @@ export function useAgentPanelAutoMode(
   const [dismissed, setDismissed] = React.useState(false)
 
   const request = React.useCallback((tier: PermissionTier) => {
-    if (tier === 'project' && permission !== 'project') {
+    if (tierSwitchNeedsConfirm(permission, tier)) {
       setAsking(true)
       return
     }
@@ -61,12 +60,12 @@ export function useAgentPanelAutoMode(
 
   return {
     slot,
-    bannerVisible: permission === 'project' && !dismissed,
+    bannerVisible: permission === 'direct' && !dismissed,
     request,
     confirm: () => {
       setAsking(false)
       setDismissed(false)
-      setPermission('project')
+      setPermission('direct')
     },
     cancel: () => setAsking(false),
     dismissBanner: () => setDismissed(true),

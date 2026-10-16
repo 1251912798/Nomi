@@ -34,27 +34,25 @@ export function projectAgentWorkModeOf(value: ProjectAgentWorkMode | undefined):
 }
 
 /**
- * Host-owned approval choices for a queued turn.  The two axes are kept
- * independent deliberately: `mode` controls how much of the workflow pauses
- * for review, while `spend` controls whether a known in-budget cost may pass
- * without another spend prompt.  This is a snapshot of the user's choice,
- * not an authority grant; the domain/ProductionRun gate remains authoritative.
+ * 用户在 Agent 面板上选的挡位（2026-10-12 用户拍板：只有两档）。快照而非授权——领域 / ProductionRun 的闸仍是权威。
+ *   - `request`（请求批准，默认）：能撤销的本地改动直接做；花钱的生成每次先看确认；撤销不了的每次问。
+ *   - `direct`（直接生成）：同上，但花钱的生成不再逐次问、由挡位代答；撤销不了的仍每次问。
+ *     刹车（同一镜连续失败 / 超出已说好的计划）住在 `directGenerationBrakes.ts`，成立时这一次退回 `request` 的确认路径。
+ *
+ * 旧词表 `step / safe-auto / project` 和 `spend` 轴（`confirm / within-budget`）已删：`spend` 轴没有任何读者，
+ * 「每步问」与「自动改」在花钱 / 不可逆上行为一样，用户的原话是「相当于没有挡位」。盘上旧值的迁移只发生在
+ * `electron/settings/agentApprovalPolicyContract.ts#normalizeAgentApprovalPolicySettings` 一处。
  */
-export const PROJECT_AGENT_APPROVAL_MODES = ["step", "safe-auto", "project"] as const;
+export const PROJECT_AGENT_APPROVAL_MODES = ["request", "direct"] as const;
 export type ProjectAgentApprovalMode = (typeof PROJECT_AGENT_APPROVAL_MODES)[number];
-
-export const PROJECT_AGENT_SPEND_POLICIES = ["confirm", "within-budget"] as const;
-export type ProjectAgentSpendPolicy = (typeof PROJECT_AGENT_SPEND_POLICIES)[number];
 
 export type ProjectAgentApprovalPolicy = Readonly<{
   mode: ProjectAgentApprovalMode;
-  spend: ProjectAgentSpendPolicy;
 }>;
 
-/** Safe, backwards-compatible default for records written before this field existed. */
+/** 缺字段 / 认不出 / 旧记录一律是更常问的那一档。 */
 export const DEFAULT_PROJECT_AGENT_APPROVAL_POLICY: ProjectAgentApprovalPolicy = Object.freeze({
-  mode: "safe-auto",
-  spend: "confirm",
+  mode: "request",
 });
 
 export function projectAgentApprovalPolicyOf(
@@ -102,10 +100,10 @@ export type CapabilityApprovalSubject = Readonly<{
    * `true` 抬进逐次确认，`false` 什么都不做。
    *
    * 为什么它长在这里，而不是由调用方换掉档位（2026-09-12 修）：`laneApprovalGate` 原来写的是
-   * `forceConfirmation ? { mode: 'step', spend: 'confirm' } : policy`——一个调用点**伪造出一份
+   * `forceConfirmation ? 更严的假档位 : policy`——一个调用点**伪造出一份
    * 用户从没选过的档位**，塞给下游所有读档位的判据。于是「用户现在在哪一档」在这条路上有了
    * 第二个答案，而档位恰恰是「全自动下付费不再逐笔问」的唯一依据（`spendDecidedByPolicy`）：
-   * 一份伪造的 `step` 能把那个问题也一起答错。事实归事实、档位归档位，判据仍只有这里一个 owner。
+   * 一份伪造的档位能把那个问题也一起答错。事实归事实、档位归档位，判据仍只有这里一个 owner。
    *
    * 它不进 `capabilityIsHardGated`：硬闸那一族连「本会话别再问这类」的按钮都不给，而逃逸命令
    * 恰恰要留着那个按钮（用户答应过的那条命令模式可以复用，见 `codingCommandPolicy` 的
@@ -127,28 +125,19 @@ export type CapabilityWorkModeDecision = Readonly<{ allowed: boolean; reason?: s
  * 以及 ⑤ 契约声明的逐次计划审阅：这一次的载荷必须当次确认，不能借用别的计划的授权。
  */
 /**
- * 「这一笔付费，宿主自己决定还是先问用户？」——**只有这一个函数回答**（2026-09-12 用户拍板）。
+ * 「这一笔付费，宿主自己决定还是先问用户？」——**挡位这一半**只有这一个函数回答（2026-09-12 起；2026-10-12 用户把三档收成两档）。
  *
- * ── 它和上面 `capabilityIsHardGated` 问的不是同一个问题 ──
+ * 它和下面 `capabilityIsHardGated` 问的不是同一个问题：`capabilityIsHardGated` 管**模型面**——任何档位下模型都不能自己发起
+ * 一次付费调用（付费能力压根不投影进模型的工具表，`paidBoundary.ts`）；这里管**宿主面**——草稿已经建好、闸已经在那里了，
+ * 是弹一张报价卡等用户点，还是由他此前选的「直接生成」代答：
+ *   · `request`（请求批准）—— 逐次弹卡；
+ *   · `direct`（直接生成）—— 不弹卡，闸在同一个边界上由挡位决定，收据照铸照签（`decidedBy: "policy:full_auto"`）。
  *
- * `capabilityIsHardGated` 管的是**模型面**：任何档位下模型都不能自己发起一次付费调用。
- * 那条不变量一个字没动，而且它根本轮不到档位说话——付费能力压根不投影进模型的工具表
- * （`paidBoundary.ts`：「内部面不投影」），模型够不着。
- *
- * 这个函数管的是**宿主面**：草稿已经建好、闸已经在那里了，接下来是弹一张报价卡等用户点，
- * 还是由用户此前选的档位代答。三档里只有「全自动」代答：
- *   · `step`（每步问）/ `safe-auto`（自动改）—— 逐次弹卡，一个字不变；
- *   · `project`（全自动）—— 不弹卡，闸在同一个边界上由策略决定，收据照铸照签，
- *     账本上写着 `decidedBy: "policy:full_auto"`（`approvalReceipt.ts`）。
- *
- * 为什么 2026-09-10 写的是「三档都 confirm」而今天不是：那天删掉了设置里的硬预算上限，
- * 于是 `within-budget` 成了一张没有额度的通行证，只能先全部收成 `confirm`。
- * 2026-09-12 用户拍板的是另一件事——**档位本身**就是那次授权：切进「全自动」要二次确认，
- * 开着时面板顶上常驻一条提醒，用户是知情的。所以判据挂在 `mode` 上，
- * 不挂在 `spend` 上（`spend` 那根轴没有预算撑着，见 `agentPanelV4Types.ts` 的说明）。
+ * 带 Run 的入口不直接用它，而是问 `directGenerationBrakes.ts#spendDecisionByPolicy`——后者先问这一个，再问刹车；
+ * 这个函数只剩没有 Run 可看的调用（模型接入试跑 `tryModel`）和那个函数自己。
  */
 export function spendDecidedByPolicy(policy: ProjectAgentApprovalPolicy | undefined): boolean {
-  return projectAgentApprovalPolicyOf(policy).mode === "project";
+  return projectAgentApprovalPolicyOf(policy).mode === "direct";
 }
 
 export function capabilityIsHardGated(subject: CapabilityApprovalSubject): boolean {
@@ -185,12 +174,12 @@ export function capabilityWorkModeDecision(
 }
 
 /**
- * `safe-auto` / `project` 允许契约标记的本地可撤销动作不弹确认卡。花钱、不可逆、
- * 认不出的动作在**每一档**都保留逐次闸；`step` 连本地写入也每次问。
+ * 两档（`request` / `direct`）都允许契约标记的本地可撤销动作不弹确认卡。花钱、不可逆、
+ * 认不出的动作在**每一档**都保留逐次闸（花钱的宿主面代答另见 `spendDecidedByPolicy`）。
  *
  * 一个例外由能力自己声明、不在这里裁决：带 `requiresPlanReview` 的契约，它的载荷是一份
  * 用户必须先读的计划（一次时间轴编辑是一笔多操作事务，效果从调用本身根本看不出来）。
- * 这一族在 `safe-auto` 下每次执行先问一次，之后的复用只能由用户自己的「本会话 / 不再问」
+ * 这一族在 `request` 下每次执行先问一次，之后的复用只能由用户自己的「本会话 / 不再问」
  * 答案授予——否则计划会在高亮画出来之前就提交，介入槽里那几个逐级升级的选项也就没东西可改了。
  */
 export function capabilityMayReuseSafeApproval(
@@ -199,11 +188,27 @@ export function capabilityMayReuseSafeApproval(
   safeApprovalGranted: boolean,
 ): boolean {
   const normalized = projectAgentApprovalPolicyOf(policy);
-  if (normalized.mode === "step") return false;
   // 宿主说这一次必须当次确认（逃逸档 shell 命令）。用户自己答过「这类以后别问」的那一条
   // 仍然算数——那是他本人给的授权，不是档位替他给的。
   if (subject.hostMustConfirm && !safeApprovalGranted) return false;
   if (capabilityIsHardGated(subject)) return false;
-  if (normalized.mode === "project") return true;
+  if (normalized.mode === "direct") return true;
   return !subject.requiresPlanReview || safeApprovalGranted;
+}
+
+/**
+ * 放行矩阵的单一可读出口：这一次调用在这个挡位下是直接做（`run`）还是先问用户（`ask`）。
+ * 它只是把已有判据排成一个答案，**不另立判据**：
+ *   · 硬闸（花钱 / 不可逆 / 解不出效果类 / destructiveHint / 逐次计划审阅）→ 两档都 `ask`；
+ *   · 花钱的**宿主面**代答由 `spendDecidedByPolicy` 回答（`direct` 档），这里的 `paid` 在 `direct` 下为 `run` 指的就是它；
+ *   · 其余可撤销的本地改动 → 两档都 `run`。
+ */
+export function capabilityApprovalDecision(
+  policy: ProjectAgentApprovalPolicy | undefined,
+  subject: CapabilityApprovalSubject,
+): "run" | "ask" {
+  if (subject.effectClass === "spend" && !subject.destructiveHint && !subject.alwaysAsksUser) {
+    return spendDecidedByPolicy(policy) ? "run" : "ask";
+  }
+  return capabilityMayReuseSafeApproval(policy, subject, false) ? "run" : "ask";
 }

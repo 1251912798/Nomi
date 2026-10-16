@@ -14,7 +14,7 @@ import { createLaneTools } from '../../electron/agentLane/laneTools.mjs';
 import { bindLaneTool } from '../../electron/agentLane/laneRuntimePort.js';
 import { LANE_MODEL_TOOL_CATALOG, LANE_DEFERRED_TOOL_CATALOG } from '../../electron/agentLane/laneToolCatalog.js';
 import { generationPlanInputSchema } from '../../electron/shared/agentCapabilities/generationPlanSchemas.js';
-import { createLaneFixture } from './laneFixture.mjs';
+import { createLaneFixture, mustConfirm } from './laneFixture.mjs';
 
 const sandbox = { active: true, operations: { exec: async () => ({ exitCode: 0 }) }, close: async () => undefined };
 const closing = { type: 'text' as const, text: '完成。' };
@@ -79,7 +79,7 @@ const canvasTools = () => createCanvasLaneTools({ read: async () => ({}), write:
 
 test('C27/C43 · auto-granted canvas write reports direct undoable application without ids in prose', async t => {
   const f = await createLaneFixture(t, [{ type: 'tool', calls: [{ id: 'write', name: 'make_artifact', arguments: canvasArgs }] }, closing],
-    { hasUserInterface: true, policy: () => ({ mode: 'safe-auto', spend: 'confirm' }) });
+    { hasUserInterface: true, policy: () => ({ mode: 'request' }) });
   const lane = await f.openLane({ ...f.options, tools: canvasTools() });
   await lane.execute({ kind: 'prompt', text: '创建开场' });
   const messages = f.http.requests.at(-1)!.body.messages as Array<{ role: string; content: unknown }>;
@@ -89,22 +89,25 @@ test('C27/C43 · auto-granted canvas write reports direct undoable application w
   assert.match(JSON.stringify(messages), /不向用户展示内部 id/);
 });
 
+// 两档（2026-10-12）之后，档位改变提示词投影的地方是「逐次计划审阅」那一族（edit_timeline）：
+// 请求批准下每次执行先问，直接生成下直接做。投影必须跟着用户此刻的档位走，不能停在打开 lane 那一刻。
 test('C27 · prompt approval projection follows current policy changes', async t => {
-  let mode: 'safe-auto' | 'step' = 'safe-auto';
-  const f = await createLaneFixture(t, [closing, closing], { hasUserInterface: true, policy: () => ({ mode, spend: 'confirm' }) });
-  const lane = await f.openLane({ ...f.options, tools: canvasTools() });
+  let mode: 'request' | 'direct' = 'request';
+  const f = await createLaneFixture(t, [closing, closing], { hasUserInterface: true, policy: () => ({ mode }) });
+  const lane = await f.openLane({ ...f.options, tools: createExtendedLaneTools({ execute: async () => ({ ok: true, text: 'fixture' }) }) });
   await lane.execute({ kind: 'prompt', text: '看一下' });
-  mode = 'step';
+  mode = 'direct';
   await lane.execute({ kind: 'prompt', text: '再看一下' });
   const system = (i: number) => JSON.stringify((f.http.requests[i].body.messages as Array<{ role: string }>).filter(m => m.role === 'system'));
-  assert.match(system(0), /直接生效并可撤销/);
-  assert.match(system(1), /会向用户确认/);
+  const timelineLine = (i: number) => system(i).split('\n').find(line => line.includes('edit_timeline')) ?? '';
+  assert.match(timelineLine(0), /会向用户确认/);
+  assert.match(timelineLine(1), /直接生效并可撤销/);
   assert.notEqual(system(0), system(1));
 });
 
 test('C42 · steer immediately releases approval and precedes the next assistant request', async t => {
   const f = await createLaneFixture(t, [{ type: 'tool', calls: [{ id: 'write', name: 'write_script', arguments: { where: 'end', content: 'BAD' } }] }, closing],
-    { hasUserInterface: true, policy: () => ({ mode: 'step', spend: 'confirm' }) });
+    mustConfirm());
   const lane = await f.openLane(f.options);
   let ready!: () => void;
   const pending = new Promise<void>(r => { ready = r; });
@@ -145,12 +148,12 @@ test('C43 class · ids remain in structured receipt for host reconciliation', as
 });
 
 test('C27 class · read confirmation and trusted overrides use the execution decision', async t => {
-  const f = await createLaneFixture(t, [closing], { hasUserInterface: true, policy: () => ({ mode: 'step', spend: 'confirm' }) });
+  const f = await createLaneFixture(t, [closing], mustConfirm({ toolNames: ['read_script'] }));
   const lane = await f.openLane(f.options);
   await lane.execute({ kind: 'prompt', text: '只看一下' });
   assert.match(JSON.stringify(f.http.requests[0].body.messages), /- read_script: 此动作会向用户确认/);
   const g = await createLaneFixture(t, [closing], {
-    hasUserInterface: true, policy: () => ({ mode: 'safe-auto', spend: 'confirm' }),
+    hasUserInterface: true, policy: () => ({ mode: 'request' }),
     resolveSubject: () => ({ forceConfirmation: true, subject: { toolName: 'make_artifact',
       capabilityId: 'canvas.write', effect: 'reversible_write', effectClass: 'reversible_local',
       requiresPlanReview: false, destructiveHint: false } }),

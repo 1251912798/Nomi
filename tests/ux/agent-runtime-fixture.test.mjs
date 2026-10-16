@@ -124,6 +124,20 @@ describe('agent runtime loopback fixture', () => {
     fixture.assertClean()
   })
 
+  test('drips a stream reply chunk by chunk and finishes it like a normal text reply', async () => {
+    const fixture = await startFixture()
+    const text = 'F_STREAM：一字一字往外吐的正文。'
+    fixture.expectText({ label: 'stream', reply: { type: 'stream', text, chunkChars: 4, intervalMs: 5 } })
+    const chunks = await sse(await chat(fixture, [{ role: 'user', content: 'F_STREAM' }]))
+    const bodyChunks = chunks.flatMap((chunk) => chunk.choices).filter((choice) => choice.delta.content)
+    expect(bodyChunks.length).toBe(Math.ceil(text.length / 4))
+    expect(replyText(chunks)).toBe(text)
+    expect(chunks.flatMap((chunk) => chunk.choices).at(-1).finish_reason).toBe('stop')
+    expectUsage(chunks)
+    expect(() => fixture.expectText({ label: 'bad', reply: { type: 'stream', text, chunkChars: 0, intervalMs: 5 } })).toThrow(TypeError)
+    fixture.assertClean()
+  })
+
   test('consumes matching expectations once even when requests arrive out of registration order', async () => {
     const fixture = await startFixture()
     const first = fixture.expectText({

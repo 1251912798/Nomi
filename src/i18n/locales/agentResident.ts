@@ -166,9 +166,6 @@ export const zhAgentResident = {
   referenceRolePreview: '预览',
   referenceRoleTimeline: '时间线',
   referenceRoleBrowser: '来源',
-  spendPolicy: '生成确认',
-  spendPolicyConfirm: '生成前确认',
-  spendPolicyWithinBudget: '继续生成',
   referenceRoleAsset: '素材',
 } as const
 
@@ -336,9 +333,6 @@ export const enAgentResident = {
   referenceRolePreview: 'Preview',
   referenceRoleTimeline: 'Timeline',
   referenceRoleBrowser: 'Source',
-  spendPolicy: 'Generation review',
-  spendPolicyConfirm: 'Confirm before generating',
-  spendPolicyWithinBudget: 'Continue generating',
   referenceRoleAsset: 'Asset',
 } satisfies TranslationShape<typeof zhAgentResident>
 

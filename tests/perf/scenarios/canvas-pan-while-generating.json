@@ -1,0 +1,31 @@
+{
+  "id": "canvas-pan-while-generating",
+  "feature": "6 张视频卡同时在生成（本机假供应商一直回「生成中」，主进程的队列和轮询都在跑）时平移画布一圈，平移期间的帧间隔",
+  "script": "tests/perf/canvas-scale-bench.mjs",
+  "args": [
+    "--scales",
+    "I60",
+    "--scenarios",
+    "pan-while-generating",
+    "--warmup",
+    "1"
+  ],
+  "scale": "60 个图片节点 + 6 张生成中的视频卡（视频走慢道轮询，20 分钟内一直是生成中）",
+  "metrics": [
+    "frameGapP95",
+    "longTasks",
+    "mainRoundTripMax"
+  ],
+  "budget": 33,
+  "group": "⑧ 多个节点同时在生成时操作画布",
+  "budgetStatus": "approved",
+  "budgetBasis": "连续手势要跟手：60Hz 下 p95 帧间隔不超过 2 帧（33ms），仓库默认预算同此；现有同类场景 canvas-drag-20-nodes 基线中位 9.5ms（10-11，有噪声）；生成中的卡带等待动效（2026-09-24 Windows 上着色器编译整窗卡死的那一类）",
+  "baseline": {
+    "median": 7.4,
+    "p95": 8.2,
+    "runs": 5,
+    "machine": "win32 x64 13th Gen Intel(R) Core(TM) i9-13900H x20 / 64GB",
+    "date": "2026-10-16",
+    "commit": "94724f860"
+  }
+}

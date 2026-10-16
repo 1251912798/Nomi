@@ -1,0 +1,30 @@
+{
+  "id": "document-long-typing",
+  "feature": "在约 2 万字（400 段）的文稿末尾连打 40 个字符（每 60ms 一个），每一键「keydown → 编辑器改完后再过两帧」，主数取 p95",
+  "script": "tests/perf/canvas-scale-bench.mjs",
+  "args": [
+    "--scales",
+    "M",
+    "--scenarios",
+    "document-typing",
+    "--warmup",
+    "1"
+  ],
+  "scale": "一份 400 段约 2 万字的文稿（项目里同时有 96 节点的画布）",
+  "metrics": [
+    "response",
+    "longTasks"
+  ],
+  "budget": 50,
+  "group": "⑦ 文稿长文打字",
+  "budgetStatus": "approved",
+  "budgetBasis": "打字要跟手：按键到上屏 ≤50ms 不觉得拖（RAIL 输入处理 50ms）；canvas-follow-hand 量具「打字·按键到画面」预算也是 50ms；#1179 在 Mac 上量过 document-keyboard-edit（另一套框架，未进主线）",
+  "baseline": {
+    "median": 11.7,
+    "p95": 12.6,
+    "runs": 5,
+    "machine": "win32 x64 13th Gen Intel(R) Core(TM) i9-13900H x20 / 64GB",
+    "date": "2026-10-16",
+    "commit": "94724f860"
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "id": "USER-20261015-dense-canvas-display",
+  "since": "2026-10-15",
+  "source": "用户反馈：大画布内容多了就卡，部分卡片显示错乱",
+  "category": "performance-coverage",
+  "problem": "大画布内容一多就卡，部分卡片显示错乱（截断、缺块）。已证实一类独立缺口：制作流程、上传 / 裁剪 / 切图等入口交给画布的是 2048x3072 级原图而不是预览，旧项目图片也不补预览；缺块本身在低合成预算下可复现，与原图负载的因果尚未证实。",
+  "existingInvariants": [],
+  "ironLaws": [],
+  "useCases": [],
+  "fullWalkJourneys": [],
+  "status": "candidate",
+  "manualReview": "pending",
+  "evidence": [
+    "docs/fixes/2026-10-16-canvas-image-preview-contract.root-cause.json",
+    "docs/engineering/direction-checks/2026-10-16-canvas-image-preview.md",
+    "electron/assets/canvasPreviewContract.test.ts",
+    "src/workbench/generationCanvas/canvasPreviewBudget.test.ts"
+  ],
+  "completionCommits": [],
+  "rootCauseContract": "docs/fixes/2026-10-16-canvas-image-preview-contract.root-cause.json",
+  "classCheck": {
+    "kind": "matrix",
+    "file": "electron/assets/canvasPreviewContract.test.ts"
+  },
+  "fixedInPr": 1209
+}

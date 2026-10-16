@@ -1,0 +1,32 @@
+{
+  "name": "画布图片组件的地址（只吃预览）",
+  "subject": "canvas.image-source",
+  "lifecycle": "projection",
+  "authority_kind": "decision",
+  "trust_domain": "renderer",
+  "fact_kind": "value-object",
+  "migration_status": "converged",
+  "owner": {
+    "path": "src/workbench/generationCanvas/nodes/canvasImageSource.ts",
+    "symbol": "resolveCanvasImageSource"
+  },
+  "write_api": [
+    {
+      "path": "src/workbench/generationCanvas/nodes/canvasImageSource.ts",
+      "symbol": "resolveCanvasImageSource"
+    }
+  ],
+  "forbidden_derivations": [],
+  "allowed_consumers": [
+    "src/workbench/generationCanvas/components/canvasNodeLevelOfDetail.ts",
+    "src/workbench/generationCanvas/components/CollapsedGroupCard.tsx",
+    "src/workbench/generationCanvas/nodes/NodeVideoPlaybackGuard.tsx",
+    "src/workbench/generationCanvas/nodes/render/CharacterCardNode.tsx",
+    "src/workbench/generationCanvas/nodes/render/PropCardNode.tsx",
+    "src/workbench/generationCanvas/nodes/render/SceneCardNode.tsx",
+    "src/workbench/generationCanvas/nodes/versionCards/nodeVersionEntries.ts",
+    "src/workbench/generationCanvas/nodes/BaseGenerationNode.tsx"
+  ],
+  "since": "2026-10-16",
+  "notes": "CanvasImageSource 是品牌类型，只有 canvasImageSourceOf / canvasVideoPosterOf 能造；独立小图 → preview，源已有界 → bounded-source，其余只能走「预览缺失」分支并按地址计数（canvasOriginalImageStats，确定性预算的输入）。"
+}

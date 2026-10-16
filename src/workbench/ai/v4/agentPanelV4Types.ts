@@ -369,26 +369,19 @@ export type ContextUsage = Readonly<{
 }>
 
 /**
- * 三档 → 合同两个字段。定稿 §2：「每步问」= 改动/花钱/计划都先问；「自动改」= 可撤销改动直接做、
- * 付费仍逐次问；「全自动」= **可撤销的改动都不问**。介入槽的「不再问 →」= 当场抬到下一档。
+ * 两档 → 合同的 `mode`（2026-10-12 用户拍板：请求批准 / 直接生成；旧「每步问 / 自动改 / 全自动」已删，
+ * 旧值的迁移只在主进程 `normalizeAgentApprovalPolicySettings` 一处）。
  *
- * ⚠️ **`spend` 这根轴三档都是 `confirm`**（2026-09-10 用户拍板：「钱的闸 = 每次提交看报价确认」，
- * 同时删掉了设置里的硬预算上限）。合同里两根轴本来就是**故意分开**的
- * （`capabilityApprovalPolicy.ts`：“kept independent deliberately”），把 `spend` 折进档位就等于
- * 让「全自动」顺手把付费也放行——而全自动的定义恰恰是「没人看着的时候连着做」，
- * 那正是最不该自动花钱的一刻。全自动免掉的只有 `reversible_local` 的逐次确认。
- *
- * 早先 `project` 档写的是 `within-budget`，配套的是一个「项目预算上限」设置；那条设置已删，
- * 于是 `within-budget` 变成了一张没有额度的通行证——留着它就是留一个只在账单上看得见的洞。
+ * 档位只是「词 → 合同」的映射；谁来判「花钱要不要问」不在这里：带 Run 的入口只有
+ * `directGenerationBrakes.spendDecisionByPolicy`（档位 + 两个刹车）。这里没有第二个答案。
  */
 export const PERMISSION_POLICIES: Readonly<Record<PermissionTier, ProjectAgentApprovalPolicy>> = {
-  step: { mode: 'step', spend: 'confirm' },
-  'safe-auto': { mode: 'safe-auto', spend: 'confirm' },
-  project: { mode: 'project', spend: 'confirm' },
+  request: { mode: 'request' },
+  direct: { mode: 'direct' },
 }
 
-/** 档位顺序，用于「不再问 →」抬一档。 */
-export const PERMISSION_TIERS: readonly PermissionTier[] = ['step', 'safe-auto', 'project']
+/** 档位顺序（面板上从左到右）。 */
+export const PERMISSION_TIERS: readonly PermissionTier[] = ['request', 'direct']
 
-/** 默认「自动改」（定稿 §2，与 DEFAULT_PROJECT_AGENT_APPROVAL_POLICY 同值）。 */
-export const DEFAULT_PERMISSION_TIER: PermissionTier = 'safe-auto'
+/** 默认「请求批准」。 */
+export const DEFAULT_PERMISSION_TIER: PermissionTier = 'request'

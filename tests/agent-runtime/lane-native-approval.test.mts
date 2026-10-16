@@ -4,20 +4,20 @@ import { createLaneApprovalGate } from '../../electron/agentLane/laneApprovalGat
 import { createLaneNativeApprovalResolver } from '../../electron/agentLane/laneNativeApproval.js';
 import { LANE_CODING_TOOL_EFFECTS } from '../../electron/agentLane/laneCodingTools.mjs';
 
-function gate(mode: 'safe-auto' | 'project' | 'step', sandboxActive = true, hasUserInterface = true) {
-  return createLaneApprovalGate({ specs: [], policy: () => ({ mode, spend: 'confirm' }), hasUserInterface,
+function gate(mode: 'request' | 'direct', sandboxActive = true, hasUserInterface = true) {
+  return createLaneApprovalGate({ specs: [], policy: () => ({ mode }), hasUserInterface,
     resolveSubject: createLaneNativeApprovalResolver({ projectDir: '/project', sandboxActive, effects: LANE_CODING_TOOL_EFFECTS }) });
 }
 
-test('native read and project writes derive the existing safe-auto approval semantics', async () => {
-  const instance = gate('safe-auto', true, false);
+test('native read and project writes derive the existing request-tier approval semantics', async () => {
+  const instance = gate('request', true, false);
   for (const toolName of ['read', 'write', 'edit']) {
     assert.equal((await instance.preflight({ toolCallId: toolName, toolName, args: {} }, undefined)).decision, 'auto-granted');
   }
 });
 
-test('shell hard deny and mandatory confirmation survive project mode and earlier grants', async () => {
-  const instance = gate('project');
+test('shell hard deny and mandatory confirmation survive the direct tier and earlier grants', async () => {
+  const instance = gate('direct');
   const denied = await instance.preflight({ toolCallId: 'secret', toolName: 'bash', args: { command: 'cat ~/.ssh/id_rsa' } }, undefined);
   assert.equal(denied.decision, 'denied-by-policy');
   const pending = instance.preflight({ toolCallId: 'publish', toolName: 'bash', args: { command: 'git push origin main' } }, undefined);
@@ -32,7 +32,7 @@ test('shell hard deny and mandatory confirmation survive project mode and earlie
 });
 
 test('sandbox unavailable does not auto-allow bash in any approval mode or without a window', async () => {
-  for (const mode of ['safe-auto', 'project', 'step'] as const) {
+  for (const mode of ['request', 'direct'] as const) {
     const instance = gate(mode, false);
     const pending = instance.preflight({ toolCallId: mode, toolName: 'bash', args: { command: 'echo fixture' } }, undefined);
     assert.equal(instance.pending()?.grantable, false);
@@ -43,7 +43,7 @@ test('sandbox unavailable does not auto-allow bash in any approval mode or witho
 });
 
 test('native resolver cannot make write tools available in ask work mode', async () => {
-  const instance = createLaneApprovalGate({ specs: [], policy: () => ({ mode: 'project', spend: 'confirm' }), workMode: () => 'ask', hasUserInterface: true,
+  const instance = createLaneApprovalGate({ specs: [], policy: () => ({ mode: 'direct' }), workMode: () => 'ask', hasUserInterface: true,
     resolveSubject: createLaneNativeApprovalResolver({ projectDir: '/project', sandboxActive: true, effects: LANE_CODING_TOOL_EFFECTS }) });
   assert.equal((await instance.preflight({ toolCallId: 'write', toolName: 'write', args: {} }, undefined)).decision, 'denied-by-policy');
   assert.equal((await instance.preflight({ toolCallId: 'read', toolName: 'read', args: {} }, undefined)).decision, 'auto-granted');
@@ -51,7 +51,7 @@ test('native resolver cannot make write tools available in ask work mode', async
 
 
 test('hard-list publication remains disallowed in edit-selection mode', async () => {
-  const instance = createLaneApprovalGate({ specs: [], policy: () => ({ mode: 'project', spend: 'confirm' }),
+  const instance = createLaneApprovalGate({ specs: [], policy: () => ({ mode: 'direct' }),
     workMode: () => 'editSelection', hasUserInterface: true,
     resolveSubject: createLaneNativeApprovalResolver({ projectDir: '/project', sandboxActive: true, effects: LANE_CODING_TOOL_EFFECTS }) });
   assert.equal((await instance.preflight({ toolCallId: 'publish', toolName: 'bash', args: { command: 'git push origin main' } }, undefined)).decision, 'denied-by-policy');
@@ -60,7 +60,7 @@ test('hard-list publication remains disallowed in edit-selection mode', async ()
 // T-ED-02：工具回执要说真话，就得问得到「这一次到底是怎么过闸的」。
 // 闸是这件事的唯一 owner；此前它根本不对外说，于是回执只能查一张静态表。
 test('the gate remembers how each call actually passed, and forgets it when the host says so', async () => {
-  const instance = gate('safe-auto');
+  const instance = gate('request');
   await instance.preflight({ toolCallId: 'read-1', toolName: 'read', args: {} }, undefined);
   assert.equal(instance.decisionFor('read-1'), 'auto-granted');
 
