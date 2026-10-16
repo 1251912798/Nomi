@@ -48,8 +48,7 @@ import {
   readProject,
   sendCanvas,
   sendCreation,
-  waitForV4TurnIdle,
-} from './agent-runtime-walk-support.mjs'
+  waitForV4TurnIdle, expectComposerText } from './agent-runtime-walk-support.mjs'
 
 // 空态第一条起手（创作面 = 写脚本）。它的字住 i18n（`agentPanelV4.starterWriteScriptPrompt`），
 // 这里抄一份是为了断言「chip 填进去的就是这句」；两边漂了这条走查会当场红。
@@ -102,7 +101,7 @@ try {
 
   // 点第一颗起手 = 把那句话交给 composer 并把光标给用户，**不替他发送**。
   await clickOrFail(empty.locator(EMPTY_STARTER).first(), '空态第一条起手')
-  await expect(panel.locator(COMPOSER_INPUT)).toHaveValue(STARTER_FIRST)
+  await expectComposerText(panel.locator(COMPOSER_INPUT), STARTER_FIRST, '起手句交给了输入框')
   await expect(panel.locator(COMPOSER_SEND)).toBeEnabled()
   // 「没发出去」的正面证据：真发了就会多一条用户气泡、空态也就永远消失了。
   // 这里断言空态**还在**，而不是断言气泡不存在——后者本来就是 0，采样恒真（假绿）。
