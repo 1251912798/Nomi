@@ -9,7 +9,7 @@ vi.mock('../projects/repository', async (importOriginal) => ({
   ...await importOriginal<typeof import('../projects/repository')>(),
   projectDirById: (id: string) => path.join(root, id),
 }))
-const { writeAsset, copyAssetFile, listProjectAssets } = await import('./projectAssetStore')
+const { writeAsset, writeGeneratedAsset, copyAssetFile, listProjectAssets } = await import('./projectAssetStore')
 type Asset = { id: string; data: { absolutePath: string; url: string } }
 const bytes = Buffer.from('same media bytes')
 const write = async (project = 'one', content = bytes, name = 'sample.png', kind = 'upload') => await writeAsset(project, content, name, 'image/png', { kind }) as Asset
@@ -110,11 +110,11 @@ describe('project upload content identity', () => {
     expect(fs.readFileSync(`${first.data.absolutePath}.meta`, 'utf8')).toBe('null')
     expect(fs.readFileSync(second.data.absolutePath)).toEqual(bytes)
   })
-  it('does not deduplicate independent generated outputs or change their synchronous contract', () => {
+  // 生成产物走「异步校验 → 同步原子发布」两步（generatedAssetStaging）；上传去重只管上传类，生成产物各自独立。
+  it('does not deduplicate independent generated outputs', async () => {
     const jpeg = fs.readFileSync(path.join(__dirname, '../providerAdapter/__fixtures__/certification-media/valid.jpg'))
-    const first = writeAsset('one', jpeg, 'result.jpg', 'image/jpeg', { kind: 'generated' }) as Asset
-    const second = writeAsset('one', jpeg, 'result.jpg', 'image/jpeg', { kind: 'generated' }) as Asset
-    expect(first).not.toBeInstanceOf(Promise)
+    const first = await writeGeneratedAsset('one', jpeg, 'result.jpg', 'image/jpeg', { kind: 'generated' }) as Asset
+    const second = await writeGeneratedAsset('one', jpeg, 'result.jpg', 'image/jpeg', { kind: 'generated' }) as Asset
     expect(second.id).not.toBe(first.id)
   })
   it('preserves independent non-upload captures', async () => {

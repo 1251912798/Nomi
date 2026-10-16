@@ -55,6 +55,12 @@ function stripComments(source) {
     .replace(/^[^\S\n]*\/\/.*$/gm, '')
 }
 
+// main-sync-child-process 的豁免：只按精确路径，每条写清「为什么它在生产包里不会执行」。
+const SYNC_CHILD_EXEMPT = new Map([
+  ['electron/productionRun/productionRunE2eFixture.ts',
+    '制作流程 E2E 夹具造片源；只在 isProductionRunE2eFixtureEnabled 放行（NOMI_E2E=1 且 NOMI_E2E_PRODUCTION_FIXTURE=1，打包版还要 NOMI_E2E_PACKAGED_FIXTURE=1）时被调用，用户的应用走不到'],
+])
+
 const RULES = [
   {
     id: 'sync-image-encode',
@@ -185,6 +191,28 @@ const RULES = [
         while (start >= 0 && !/^\}/.test(lines[start])) start -= 1
         if (/function\s+loopedStillInput\b/.test(lines.slice(start + 1, i).join('\n'))) return
         hits.push({ line: i + 1, text: line.trim().slice(0, 120), file })
+      })
+      return hits
+    },
+  },
+  {
+    id: 'main-sync-child-process',
+    label: '主进程同步等外部进程（spawnSync / execFileSync / execSync）——子进程跑多久，整个应用就冻多久',
+    hint: '改用异步子进程（child_process.execFile / spawn + Promise，带 timeout）：等待期间主进程照常处理 IPC 与窗口事件。'
+      + '范例：electron/assets/generatedMediaDecode.ts 的 runDecoder。',
+    scan(code, file) {
+      // 2026-10-16（0.23.1 用户反馈「卡的时候点什么都没反应，点设置也不立即响应」）：生成产物落盘前的解码校验
+      // 用 spawnSync 在主进程里跑 ffmpeg，超时上限 12–120 秒；等待期间同步 IPC 把渲染层一起卡住、窗口不动。
+      // 写的人当场看不出来——小图上 ffmpeg 几十毫秒就回来，大视频 + 忙机器才冻住。
+      //
+      // 判据按闸不按数（同 unguarded-fsync / ffmpeg-still-input-outside-owner）：electron/ 下的生产代码一处都不许有；
+      // 唯一豁免是**按精确路径**列出的、生产包里根本不会执行的那一个夹具（理由写在 SYNC_CHILD_EXEMPT 里）。
+      // 不按文件名模式豁免——起名叫 *Fixture 不能证明它不在主进程里跑。
+      if (!file.startsWith(path.join(repoRoot, 'electron') + path.sep)) return []
+      if (SYNC_CHILD_EXEMPT.has(path.relative(repoRoot, file).split(path.sep).join('/'))) return []
+      const hits = []
+      code.split('\n').forEach((line, i) => {
+        if (/\b(?:spawnSync|execFileSync|execSync)\b/.test(line)) hits.push({ line: i + 1, text: line.trim().slice(0, 120), file })
       })
       return hits
     },

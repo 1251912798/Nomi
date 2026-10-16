@@ -7,7 +7,7 @@ import { logWarn } from "../logging/logger";
 import { OUTPUT_RETRIEVAL_FAILED } from "../productionRun/productionRunTypes";
 import { GeneratedMediaValidationError } from "../assets/generatedMediaDecode";
 import { stripNomiErrorCode } from "../shared/nomiErrorCodes";
-import { writeDeterministicAsset } from "../assets/projectAssetStore";
+import { writeGeneratedDeterministicAsset } from "../assets/projectAssetStore";
 import { exceedsProviderMediaCap, fetchProviderMedia, type ProviderMediaFetchOptions } from "../assets/providerMediaFetch";
 import type { Vendor } from "../catalog/types";
 import { readCatalog } from "../catalog/catalogStore";
@@ -27,7 +27,7 @@ export type GenerationOutputMaterializerDependencies = {
    * 的缺省 20 秒，于是一段 15 秒的成片普通生成落得下来、付费卡这条路永远下载超时，节点一直转圈。
    */
   fetchOutput?: (url: string, options: ProviderMediaFetchOptions) => Promise<HardenedFetchResult>;
-  writeAsset?: typeof writeDeterministicAsset;
+  writeAsset?: typeof writeGeneratedDeterministicAsset;
   /** 仅 E2E 回环夹具：主进程装配点给的精确 origin（`fetchProviderMedia` 的 trustedPrivateOrigin）。 */
   trustedPrivateOrigin?: string;
   /**
@@ -128,7 +128,7 @@ function contentHash(bytes: Buffer): string {
 
 export function createGenerationOutputMaterializer(deps: GenerationOutputMaterializerDependencies = {}) {
   const fetchOutput = deps.fetchOutput ?? fetchProviderMedia;
-  const storeAsset = deps.writeAsset ?? writeDeterministicAsset;
+  const storeAsset = deps.writeAsset ?? writeGeneratedDeterministicAsset;
 
   async function materialize(input: {
     projectId: string;
@@ -171,7 +171,7 @@ export function createGenerationOutputMaterializer(deps: GenerationOutputMateria
     const materializationKey = `${input.providerTaskId}:${input.output.providerOutputId || input.output.url}`;
     let stored: StoredAsset;
     try {
-      stored = storeAsset(input.projectId, bytes, fileNameFor(input.output), normalizedType, {
+      stored = await storeAsset(input.projectId, bytes, fileNameFor(input.output), normalizedType, {
         kind: "generated",
         source: "external-mcp",
         providerTaskId: input.providerTaskId,
@@ -196,7 +196,7 @@ export function createGenerationOutputMaterializer(deps: GenerationOutputMateria
         const poster = await fetchOutput(input.output.thumbnailUrl, { ...(await routeFor(input.output.thumbnailUrl)), allowContentTypes: ["image/", "application/octet-stream"] });
         const posterType = (poster.contentType || "image/png").toLowerCase().split(";")[0]?.trim() || "image/png";
         if (!posterType.startsWith("image/")) throw new Error("Generation poster content type does not match image");
-        const posterStored = storeAsset(input.projectId, poster.bytes, `${path.parse(fileNameFor(input.output)).name}-poster.png`, posterType, {
+        const posterStored = await storeAsset(input.projectId, poster.bytes, `${path.parse(fileNameFor(input.output)).name}-poster.png`, posterType, {
           kind: "generated", source: "external-mcp", providerTaskId: input.providerTaskId,
           providerOutputId: `${input.output.providerOutputId || input.output.url}:poster`,
         }, `${materializationKey}:poster`) as StoredAsset;

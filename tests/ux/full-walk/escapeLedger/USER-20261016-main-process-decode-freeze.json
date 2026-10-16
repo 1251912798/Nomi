@@ -1,0 +1,28 @@
+{
+  "id": "USER-20261016-main-process-decode-freeze",
+  "since": "2026-10-16",
+  "source": "User report on 0.23.1: the app freezes, nothing responds to clicks, settings do not open right away; other versions do not",
+  "category": "performance-coverage",
+  "problem": "生成产物落盘前的解码校验在主进程里用 spawnSync 同步跑 ffmpeg（等待上限 12–120 秒；同步校验在 v0.22.5 就有（当时在 projectAssetStore 里）；v0.23.0（#938）改成 framehash 解码并把按大小的超时上限扩到 120 秒，变得更重，v0.23.1 继承）；等待期间同步 IPC 把渲染层一起卡住、窗口不动。验收没有「校验进行中主进程往返」的计数，也没有禁止主进程同步子进程的门岗，所以只在用户手里被发现。",
+  "existingInvariants": [],
+  "ironLaws": [],
+  "useCases": [],
+  "fullWalkJourneys": [],
+  "status": "fixed",
+  "manualReview": "reviewed",
+  "evidence": [
+    "docs/engineering/direction-checks/2026-10-16-main-process-sync-child-wait.md",
+    "docs/fixes/2026-10-16-main-process-sync-decode-wait.root-cause.json",
+    "electron/assets/projectAssetStore.publishIdentity.test.ts",
+    "electron/browser/media/browserImportCommit.test.ts",
+    "electron/assets/generatedAssetStaging.quit.test.ts",
+    "electron/assets/scratchCleanup.staging.test.ts"
+  ],
+  "completionCommits": [],
+  "rootCauseContract": "docs/fixes/2026-10-16-main-process-sync-decode-wait.root-cause.json",
+  "classCheck": {
+    "kind": "matrix",
+    "file": "electron/assets/projectAssetStore.test.ts"
+  },
+  "fixedInPr": 1208
+}
