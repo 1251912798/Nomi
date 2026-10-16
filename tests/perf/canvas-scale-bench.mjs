@@ -79,6 +79,7 @@ if (hasArg('--help') || hasArg('-h')) {
                工作台场景（点名才跑）：${WORKBENCH_SCENARIOS.join(' / ')}
   --runs       每个场景采样次数（默认 3，取中位数）
   --warmup     每个场景先做几次不计的预热（默认 0）
+  --extra-projects  库里另放 N 个小项目（默认 0）
   --profile    对每个场景另抓一次 CDP CPU profile（JS 自时间前 25 名）
   --label      产物文件名后缀（默认 run）
   --onscreen   窗口放在屏幕上（默认挂屏幕外、不抢焦点）`)
@@ -94,6 +95,8 @@ for (const scenario of scenarios) if (!SCENARIO_NAMES.includes(scenario)) throw 
 const runs = Math.max(1, Number(argValue('--runs', '3')))
 // 预热：同一个 App 里先做几次不计的手势（JIT、图片解码缓存、懒加载块），再采 runs 次。
 const warmup = Math.max(0, Number(argValue('--warmup', '0')))
+// 库里另放几个小项目（每个 4 张图）：有些开销按「全部项目」算，单项目夹具看不出来。
+const extraProjects = Math.max(0, Number(argValue('--extra-projects', '0')))
 const withProfile = hasArg('--profile')
 const label = argValue('--label', 'run')
 
@@ -745,9 +748,19 @@ async function main() {
     const fixtureRoot = makeTempDir(`nomi-canvas-scale-${scale}-`)
     const projectsDir = path.join(fixtureRoot, 'projects')
     fs.mkdirSync(projectsDir, { recursive: true })
-    // 带项目身份：没有身份的夹具项目启动后会被后台补身份、画布从盘上重载一次（会把生成中的卡收成「可找回」），不像用户的真项目。
+    // 带项目身份：没有身份的夹具项目启动后会被后台补身份、改写清单，和用户的真项目不是一个状态。
+    // 陪衬项目（--extra-projects N）：用户的库里不止一个项目，有些开销按「全部项目」算（例如生成框的素材候选要扫所有项目的素材）。
+    const extraFixtures = Array.from({ length: extraProjects }, (_, index) => createCanvasPerformanceFixture({
+      projectsDir, scale: 'REALIMG', projectId: `project-extra-${index + 1}`, projectName: `ZZ 陪衬项目 ${index + 1}`, projectDirName: `ZZ-extra-${index + 1}`, withProjectIdentity: true,
+    }))
     const fixture = createCanvasPerformanceFixture({ projectsDir, scale, withProjectIdentity: true })
-    console.log(`\n=== 规模 ${scale}：${fixture.summary.nodes} 个节点 / ${fixture.summary.edges} 条边 ===`)
+    if (extraFixtures.length) {
+      const now = Date.now()
+      fs.writeFileSync(path.join(projectsDir, 'recent-workspaces.json'), JSON.stringify([fixture, ...extraFixtures].map((project, index) => ({
+        id: project.record.id, name: project.record.name, rootPath: path.resolve(project.projectRoot), lastOpenedAt: now - index * 1000, missing: false,
+      })), null, 2))
+    }
+    console.log(`\n=== 规模 ${scale}：${fixture.summary.nodes} 个节点 / ${fixture.summary.edges} 条边${extraFixtures.length ? ` / 库里另有 ${extraFixtures.length} 个项目` : ''} ===`)
     for (const scenario of scenarios) {
       // 一个（规模 × 场景）起一次 app，里面跑 runs 次采样：每次手势都从「无选中 + 适应视图」
       // 重置，圆弧拖动走满一圈回到原点，所以样本之间的初始条件是同一个。

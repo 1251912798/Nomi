@@ -396,8 +396,7 @@ export function createCanvasPerformanceFixture({ projectsDir, scale = 'M', proje
     lastKnownRootPath: path.resolve(projectRoot),
     payload,
     // 项目身份（主清单 + 备份）：App 建出来的项目生来就有。夹具不带的话，启动后后台补身份会改写清单、和项目库首次核对
-    // 同步基线撞车（卡片报「另一台电脑的项目更新」），之后画布会从盘上重新装载一次——装载收敛把正在生成的卡收成「可找回」，
-    // 「生成中操作画布」这类场景就量不成。量「用户的老项目」的量具传 withProjectIdentity: true。
+    // 同步基线撞车（卡片报「另一台电脑的项目更新」、点了可能不打开；见 project-open-stages）。量「用户的老项目」的量具传 withProjectIdentity: true。
     ...(withProjectIdentity ? { immutableProjectUuid: crypto.randomUUID(), projectGeneration: 1 } : {}),
   }
   fs.writeFileSync(path.join(projectManifestDir, 'project.json'), JSON.stringify(record, null, 1))

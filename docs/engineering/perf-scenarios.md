@@ -95,11 +95,11 @@ Windows 上 `pnpm run perf:scenarios` 外面那层 `python3 scripts/with-gates-l
 
 ## 卡顿场景表（2026-10-15，用户 10-10「卡顿的场景需要多个场景测试」）
 
-十类场景全部登记在 `tests/perf/scenarios/`（`--list` 能看到「（提议）」的预算），基线等安静窗口量。
+十类场景全部登记在 `tests/perf/scenarios/`（共 24 条新场景）（`--list` 能看到「（提议）」的预算），基线等安静窗口量。
 
 | # | 场景 | 场景 id | 主指标 |
 |---|---|---|---|
-| ① | 选中节点 → 生成框出现（空 / 有图 / 视频 × 10 / 100 / 200） | `canvas-select-composer-{empty,image,video}-{10,100,200}` | response |
+| ① | 选中节点 → 生成框出现（空 / 有图 / 视频 × 10 / 100 / 200；库里项目多） | `canvas-select-composer-{empty,image,video}-{10,100,200}`、`canvas-select-composer-image-100-many-projects` | response |
 | ② | 拖单卡 / 拖组框 / 多选拖 | `canvas-drag-single-node`、`canvas-drag-group-frame`、`canvas-drag-20-nodes` | frameGapP95 |
 | ③ | 有大图、有视频的画布上平移 / 缩放 | `canvas-pan-mixed-media`、`canvas-wheel-zoom-mixed-media` | frameGapP95 |
 | ④ | 连续新建节点 | `canvas-create-node-burst` | response |
