@@ -424,7 +424,7 @@
     "剪辑节点 / 时间轴片段的图片仍按 clip.thumbnailUrl || clip.url 直接画 <img>（片段模型属时间轴），不经 CanvasImageSource。",
     "missing 不自动重试：ffmpeg 一时不可用的那批图要等「整理项目」类入口（未做）才会再试。"
   ],
-  "detected_by": "user",
+  "detected_by": "review",
   "recurrence_check_on": "2026-11-16",
   "invariant_owner_layer": {
     "layer": "electron/shared/contracts/canvasMediaPreview.ts",
