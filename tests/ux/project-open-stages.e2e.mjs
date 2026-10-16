@@ -13,7 +13,7 @@ import { cleanupTestTemp, makeTempDir } from '../../scripts/_test-temp.mjs'
 // 从点菜单项（捕获阶段）起表、到 N+1 张卡全部可见再过两帧停表，记成 backToLibraryMs（性能场景表的 response）。
 //
 // 用法（先 pnpm run build）：
-//   node tests/ux/project-open-stages.e2e.mjs <label> [--scale I300] [--runs 5] [--warmup 1] [--exe <打包好的 Nomi.exe>] [--onscreen] [--assert-read-only] [--library-projects 40]
+//   node tests/ux/project-open-stages.e2e.mjs <label> [--scale I300] [--runs 5] [--warmup 1] [--exe <打包好的 Nomi.exe>] [--onscreen] [--assert-read-only] [--library-projects 40] [--diag-out <目录>]
 // 结果：tests/ux/perf-results/project-open-<label>.json，终端打印中位数 / p95 表。
 // 窗口默认挂屏幕外、不抢焦点；只用临时目录，不碰真实 profile；零花费（不发任何生成请求）。
 import fs from 'node:fs'
@@ -25,6 +25,7 @@ import { stationTimeout } from './_station-budget.mjs'
 import { createCanvasPerformanceFixture } from './fixtures/canvas-performance-fixture.mjs'
 import { backToLibrary } from './_shell.mjs'
 import { armResponse, takeResponse } from '../perf/canvas-scale/responseTimer.mjs'
+import { IPC_PROBE_MODULE, startDiagnostics } from '../perf/canvas-scale/diagnostics.mjs'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 const repoRoot = path.resolve(here, '../..')
@@ -42,6 +43,7 @@ const assertNoCliEntry = args.includes('--assert-no-cli-entry')
 // 项目打开之后，在真 App 的主进程里装同一个模块（laneHost.loadLaneNativeDesktop 装的就是它），计时并数新装文件。
 const measureFirstSendLoad = args.includes('--first-send-load')
 const libraryProjects = Math.max(0, Number(argValue('--library-projects') || 0))
+const diagOut = argValue('--diag-out')
 const OPEN_TIMEOUT_MS = 90_000
 const SETTLE_AFTER_MEDIA_MS = 3_000
 
@@ -69,12 +71,19 @@ if (libraryFixtures.length) {
 }
 
 /** 回项目库并计时：菜单项的 click（捕获阶段）起表，到库里 N+1 张卡都可见再过两帧（tests/perf/canvas-scale/responseTimer.mjs）。 */
-async function timedBackToLibrary(page) {
+async function timedBackToLibrary(app, page, { diag = false } = {}) {
   if (!libraryFixtures.length) { await backToLibrary(page); return null }
+  let stopDiagnostics = null
   await backToLibrary(page, {
-    beforeItemClick: () => armResponse(page, { trigger: 'click', predicate: 'libraryReady', arg: libraryFixtures.length + 1, timeoutMs: OPEN_TIMEOUT_MS }),
+    beforeItemClick: async () => {
+      // 诊断腿（--diag-out）：回项目库这一下的 trace / 两个进程的 profile / IPC 计时（tests/perf/canvas-scale/diagnostics.mjs）。
+      if (diag) stopDiagnostics = await startDiagnostics({ page, app, cdp: await app.context().newCDPSession(page), outDir: path.resolve(diagOut), label: `library-${libraryFixtures.length + 1}` })
+      await armResponse(page, { trigger: 'click', predicate: 'libraryReady', arg: libraryFixtures.length + 1, timeoutMs: OPEN_TIMEOUT_MS })
+    },
   })
-  return (await takeResponse(page)).ms
+  const ms = (await takeResponse(page)).ms
+  if (stopDiagnostics) await stopDiagnostics()
+  return ms
 }
 
 async function launch() {
@@ -86,7 +95,7 @@ async function launch() {
     projectsDir,
     // Windows 把屏幕外窗口判成被遮挡、停掉渲染帧；关掉遮挡判定，量到的才是真的。
     args: ['--no-proxy-server', ...(onscreen ? [] : ['--disable-features=CalculateNativeWinOcclusion'])],
-    mainRequire: [path.join(here, 'perf', 'openWriteProbe.cjs'), path.join(here, 'perf', 'openModuleProbe.cjs'), ...(onscreen ? [] : [path.join(here, '_offscreenWindows.cjs')])],
+    mainRequire: [path.join(here, 'perf', 'openWriteProbe.cjs'), path.join(here, 'perf', 'openModuleProbe.cjs'), ...(onscreen ? [] : [path.join(here, '_offscreenWindows.cjs')]), ...(diagOut ? [IPC_PROBE_MODULE] : [])],
     initialLocalStorage: { ...FIRST_RUN_SEEN, 'nomi:perf-marks': '1' },
     env: { NOMI_PERF_MARKS: '1' },
     settleMs: 900,
@@ -201,7 +210,7 @@ try {
     const { app, win } = await launch()
     try {
       const cold = await openOnce(app, win, 'cold')
-      cold.backToLibraryMs = await timedBackToLibrary(win)
+      cold.backToLibraryMs = await timedBackToLibrary(app, win, { diag: Boolean(diagOut) && index === warmup })
       const reopen = await openOnce(app, win, 'reopen')
       if (index >= warmup) results.samples.push(cold, reopen)
       if (measureFirstSendLoad) {

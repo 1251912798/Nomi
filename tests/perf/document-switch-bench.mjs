@@ -9,7 +9,7 @@
  *   plan-open：每个样本冷启一次 App，从创作页点开方案，量到 320 行可见。
  *
  * 用法（先 pnpm run build）：
- *   node tests/perf/document-switch-bench.mjs --scenario document-switch|plan-open|document-switch-unvisited [--runs 5] [--label x] [--docs 160] [--shots 320]
+ *   node tests/perf/document-switch-bench.mjs --scenario document-switch|plan-open|document-switch-unvisited [--runs 5] [--label x] [--docs 160] [--shots 320] [--diag-out <目录>]
  * 产物：tests/perf/results/document-switch-<label>.json
  */
 import fs from 'node:fs'
@@ -18,6 +18,7 @@ import os from 'node:os'
 import { fileURLToPath } from 'node:url'
 import { launchCoreSmoke } from '../ux/core-smoke/fixture.mjs'
 import { armResponse, takeResponse } from './canvas-scale/responseTimer.mjs'
+import { IPC_PROBE_MODULE, startDiagnostics } from './canvas-scale/diagnostics.mjs'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const args = process.argv.slice(2)
@@ -28,6 +29,8 @@ const label = argValue('--label', 'run')
 const docCount = Number(argValue('--docs', 160))
 const shotCount = Number(argValue('--shots', 320))
 const WARMUP = 1
+// 诊断腿：第一个计数样本打开方案的那一下抓 trace / 两个进程的 profile / IPC（数字不进基线）。
+const diagOut = argValue('--diag-out', '')
 
 const docId = (n) => `doc-${n}`
 const docTitle = (n) => `文稿 ${String(n).padStart(3, '0')}`
@@ -56,7 +59,7 @@ async function launch(suffix) {
       },
     }),
     extras: {
-      mainRequire: [path.join(repoRoot, 'tests', 'ux', '_offscreenWindows.cjs')],
+      mainRequire: [path.join(repoRoot, 'tests', 'ux', '_offscreenWindows.cjs'), ...(diagOut ? [IPC_PROBE_MODULE] : [])],
       // 屏幕外窗口会被 Windows 判成被遮挡而停帧；关掉遮挡判定，量到的才是真的。
       env: { ELECTRON_EXTRA_LAUNCH_ARGS: '--disable-features=CalculateNativeWinOcclusion' },
     },
@@ -73,11 +76,14 @@ async function launch(suffix) {
 // 计时器只有一个（概念 delivery.perf-response-timer）：点击（捕获阶段）起表，判据成立后再过两帧停表。
 const collect = (win) => takeResponse(win)
 
-async function openPlan(win) {
+async function openPlan(win, diag = null) {
   await win.locator('[data-creation-document-switcher]').first().click()
+  const stopDiagnostics = diag ? await startDiagnostics({ page: win, app: diag.app, cdp: await diag.app.context().newCDPSession(win), outDir: path.resolve(diagOut), label: `plan-open-${shotCount}` }) : null
   await armResponse(win, { trigger: 'click', predicate: 'storyboardRowsAtLeast', arg: shotCount, timeoutMs: 120_000 })
   await win.getByRole('menuitem', { name: plan.title }).first().click()
-  return collect(win)
+  const result = await collect(win)
+  if (stopDiagnostics) await stopDiagnostics()
+  return result
 }
 async function backToCreation(win) {
   await win.locator('.nomi-stepper__step[data-mode="creation"]').first().click()
@@ -100,7 +106,7 @@ if (scenario === 'plan-open') {
   for (let i = 0; i < runs + WARMUP; i += 1) {
     const smoke = await launch(`open-${i}`)
     try {
-      const r = await openPlan(smoke.win)
+      const r = await openPlan(smoke.win, diagOut && i === WARMUP ? { app: smoke.app } : null)
       if (i >= WARMUP) result.samples.push({ responseMs: Math.round(r.ms * 10) / 10, longTasks: r.longTasks })
       console.log(`[bench] plan-open #${i}${i < WARMUP ? '（预热）' : ''}: ${Math.round(r.ms)}ms longTasks=${r.longTasks}`)
     } finally { await smoke.close() }

@@ -32,6 +32,7 @@ import { findCanvasBlankPoint } from '../ux/_canvasHit.mjs'
 import { AUTO_PAN_SAFE_MARGIN_PX } from '../ux/canvas-perf/gestureGeometry.mjs'
 import { canvasFitViewButton } from '../ux/_shell.mjs'
 import { WORKBENCH_SCENARIOS, prepareWorkbenchLaunch, runWorkbenchScenario } from './canvas-scale/workbenchScenarios.mjs'
+import { IPC_PROBE_MODULE, startDiagnostics } from './canvas-scale/diagnostics.mjs'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const outputDir = path.join(repoRoot, 'tests/perf/results')
@@ -80,6 +81,7 @@ if (hasArg('--help') || hasArg('-h')) {
   --runs       每个场景采样次数（默认 3，取中位数）
   --warmup     每个场景先做几次不计的预热（默认 0）
   --extra-projects  库里另放 N 个小项目（默认 0）
+  --diag-out   诊断腿：第一个计数样本抓 CDP trace、渲染 / 主进程 profile、IPC 计时、store 写、合成层（见 canvas-scale/diagnostics.mjs）
   --profile    对每个场景另抓一次 CDP CPU profile（JS 自时间前 25 名）
   --label      产物文件名后缀（默认 run）
   --onscreen   窗口放在屏幕上（默认挂屏幕外、不抢焦点）`)
@@ -97,6 +99,8 @@ const runs = Math.max(1, Number(argValue('--runs', '3')))
 const warmup = Math.max(0, Number(argValue('--warmup', '0')))
 // 库里另放几个小项目（每个 4 张图）：有些开销按「全部项目」算，单项目夹具看不出来。
 const extraProjects = Math.max(0, Number(argValue('--extra-projects', '0')))
+// 诊断腿：第一个计数样本的窗口里抓 trace / profile / IPC / store 写 / 合成层，落到这个目录（数字不进基线）。
+const diagOut = argValue('--diag-out', '')
 const withProfile = hasArg('--profile')
 const label = argValue('--label', 'run')
 
@@ -133,7 +137,15 @@ function grabSafeArea(stage) {
 let activeCdp = null
 let windowMetrics = { before: null, after: null }
 
+// 诊断腿（--diag-out）：只在第一个计数样本的被测窗口里起停，抓 trace / 两个进程的 profile / IPC / store 写 / 合成层。
+let diagPending = null
+let diagStop = null
+
 async function startWindow(page) {
+  if (diagPending) {
+    diagStop = await startDiagnostics({ ...diagPending, page, cdp: activeCdp })
+    diagPending = null
+  }
   windowMetrics = { before: activeCdp ? await readCdpMetrics(activeCdp) : null, after: null }
   await page.evaluate(() => window.__nomiScaleProbe.start())
 }
@@ -141,6 +153,12 @@ async function startWindow(page) {
 async function stopWindow(page) {
   const raw = await page.evaluate(() => window.__nomiScaleProbe.stop())
   windowMetrics.after = activeCdp ? await readCdpMetrics(activeCdp) : null
+  if (diagStop) {
+    const stop = diagStop
+    diagStop = null
+    const summary = await stop()
+    console.log(`    [diag] ${summary.label}：IPC ${summary.ipc?.length ?? '-'} 个频道，store 写 ${summary.storeWrites?.length ?? '-'} 次，合成层 ${summary.layersAfter?.layers ?? '-'}`)
+  }
   return raw
 }
 
@@ -787,7 +805,7 @@ async function main() {
           settleMs: 1200,
           ...(extra.settingsDir ? { settingsDir: extra.settingsDir } : {}),
           args: ['--no-proxy-server', ...(onscreen ? [] : OFFSCREEN_CHROMIUM_ARGS)],
-          mainRequire: [...(extra.mainRequire ?? []), ...(onscreen ? [] : [OFFSCREEN_MODULE])],
+          mainRequire: [...(extra.mainRequire ?? []), ...(onscreen ? [] : [OFFSCREEN_MODULE]), ...(diagOut ? [IPC_PROBE_MODULE] : [])],
           initialLocalStorage: { ...FIRST_RUN_SEEN, ...(extra.initialLocalStorage ?? {}) },
           env: { NOMI_DISABLE_AUTO_UPDATE: '1', ...(extra.env ?? {}) },
         })
@@ -812,6 +830,7 @@ async function main() {
           await cdp.send('Performance.enable').catch(() => {})
           activeCdp = cdp
           const workbench = { app, runIndex, state: workbenchState, extras }
+          if (diagOut && runIndex === warmup) diagPending = { app, outDir: path.resolve(diagOut), label: `${scale}-${scenario}` }
           const outcome = wantProfile
             ? await collectProfile(cdp, () => runScenario(page, scenario, fixture, workbench))
             : { result: await runScenario(page, scenario, fixture, workbench), top: null }
