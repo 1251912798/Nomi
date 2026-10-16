@@ -19,7 +19,7 @@
   ],
   "completionCommits": [],
   "rootCauseContract": "docs/fixes/2026-10-12-agent-permission-tiers-indistinct.root-cause.json",
-  "fixedInPr": 9999,
+  "fixedInPr": 1203,
   "classCheck": {
     "kind": "matrix",
     "file": "electron/shared/agentCapabilities/capabilityApprovalTwoTiers.test.ts"
