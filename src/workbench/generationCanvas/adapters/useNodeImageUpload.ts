@@ -1,6 +1,6 @@
 import React from 'react'
 import { useGenerationCanvasStore } from '../store/generationCanvasStore'
-import { persistNodeImageFile } from './persistNodeImage'
+import { persistNodeMediaFile } from './persistNodeImage'
 import { isProjectExecutionContextCurrent, isProjectImportCancellation, type ProjectExecutionContext } from '../../project/projectCanvasReadSurface'
 import { logRendererError } from '../../../desktop/rendererLog'
 
@@ -33,13 +33,13 @@ export function useNodeImageUpload(nodeId: string, source: string): (dataUrl: st
         meta: mergeMeta({ source, uploadStatus: 'uploading', localOnly: true }),
       })
       // 2) 落盘 → nomi-local，替换掉 base64。
-      void persistNodeImageFile(file, nodeId, context).then((localUrl) => {
+      void persistNodeMediaFile(file, nodeId, context).then((media) => {
         if (!isProjectExecutionContextCurrent(context)) return
-        if (!localUrl) {
+        if (!media) {
           updateNode(nodeId, { meta: mergeMeta({ uploadStatus: 'local-only', localOnly: true }) })
           return
         }
-        const hosted = { id: `asset-${createdAt}`, type: 'image' as const, url: localUrl, createdAt }
+        const hosted = { id: `asset-${createdAt}`, type: 'image' as const, ...media, createdAt }
         updateNode(nodeId, {
           result: hosted,
           history: [hosted],

@@ -1,7 +1,7 @@
 import i18n from '../../../i18n'
 
 import {
-  hostedAssetThumbnailUrl,
+  hostedAssetCanvasPreview,
   hostedAssetUrl,
   importWorkbenchLocalAssetFile,
   recoverImportedWorkbenchLocalAssetFile,
@@ -271,7 +271,8 @@ async function uploadAndApplyAssetToNode(
     // 图片可在极小阈值内退化成 data-url 落盘；视频体积过大不做兜底（报错 + 留 File 供重试）。
     const canPersistSmallFallback = kind === 'image' && (typeof file.size === 'number' ? file.size : 0) <= DATA_URL_FALLBACK_MAX_BYTES
     const fallbackResult = canPersistSmallFallback
-      ? { id: `local-${nodeId}-${Date.now()}`, type: 'image' as const, url: await readFileDataUrl(file), createdAt: Date.now() }
+      // 没落盘就派生不了预览：明确记「预览缺失」（画布走被计数的缺失分支），不让它看起来像有界小图。
+      ? { id: `local-${nodeId}-${Date.now()}`, type: 'image' as const, url: await readFileDataUrl(file), previewState: 'missing' as const, createdAt: Date.now() }
       : null
     context.assertCurrent()
     if (fallbackResult) pendingRetryImports.delete(nodeId)
@@ -293,14 +294,13 @@ async function uploadAndApplyAssetToNode(
     return Boolean(fallbackResult)
   }
   const videoDuration = kind === 'video' ? await deps.probeVideoDuration(hostedUrl) : null
-  const thumbnailUrl = hostedAssetThumbnailUrl(hosted)
   context.assertCurrent()
   const hostedResult = {
     id: `asset-${nodeId}-${hosted?.id || Date.now()}`,
     type: kind,
     url: hostedUrl,
-    // 落盘边界派生的画布预览：4K 导入图/视频在画布上挂 ≤1024 预览或 poster，源留给编辑/导出。
-    ...(thumbnailUrl ? { thumbnailUrl } : {}),
+    // 落盘回执的预览两栏：4K 导入图/视频在画布上挂 ≤1024 预览或 poster，源留给编辑/导出；派生不出来就是明确的缺失事实。
+    ...hostedAssetCanvasPreview(hosted, kind),
     assetId: hosted?.id,
     raw: { asset: hosted },
     createdAt: Date.now(),

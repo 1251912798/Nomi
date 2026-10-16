@@ -1,6 +1,7 @@
 import React from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it, vi } from 'vitest'
+import type { CanvasImageSource } from '../canvasImageSource'
 
 vi.mock('react-i18next', async (importOriginal) => ({
   ...(await importOriginal<typeof import('react-i18next')>()),
@@ -13,7 +14,7 @@ const { toolbarButtonClass } = await import('../toolbarButtonClass')
 const { __resetVersionGridCoverageForTests, escapeBelongsToVersionGrid, isLabelCoveredByOtherGrids, lastOpenedVersionGrid, publishVersionGridCoverage, registerOpenVersionGrid } = await import('./versionGridCoverage')
 
 const NODE = { width: 240, height: 135 }
-const entries = [4, 3, 2, 1].map((versionNo) => ({ identity: `v${versionNo}`, versionNo, type: 'image' as const, previewUrl: `v${versionNo}.png`, url: `v${versionNo}.png` }))
+const entries = [4, 3, 2, 1].map((versionNo) => ({ identity: `v${versionNo}`, versionNo, type: 'image' as const, previewUrl: `v${versionNo}.png` as CanvasImageSource, url: `v${versionNo}.png` }))
 
 function grid(props: Partial<Parameters<typeof NodeVersionGrid>[0]> = {}): string {
   return renderToStaticMarkup(React.createElement(NodeVersionGrid, {
@@ -109,7 +110,7 @@ describe('versionGridCoverage · 被压住的邻居藏标题', () => {
 describe('卡上能点 / 能拖的部件不触发画布内核拖节点', () => {
   // 画布内核拖节点挂的是节点元素上的原生 mousedown，React 的 stopPropagation 截不住，只认 nodrag 类。
   it('悬停条、视频进度条、数字角标、「+N」都带 nodrag；卡身本身不带（按住拖 = 拖整组）', () => {
-    const video = [2, 1].map((versionNo) => ({ identity: `m${versionNo}`, versionNo, type: 'video' as const, previewUrl: `m${versionNo}.png`, url: `m${versionNo}.mp4` }))
+    const video = [2, 1].map((versionNo) => ({ identity: `m${versionNo}`, versionNo, type: 'video' as const, previewUrl: `m${versionNo}.png` as CanvasImageSource, url: `m${versionNo}.mp4` }))
     const html = renderToStaticMarkup(React.createElement(NodeVersionGrid, {
       nodeId: 'n1', layout: layoutVersionGrid(versionGridItems(video), NODE, 'right'), node: NODE, primaryIdentity: 'm2', hoveredIdentity: 'm1',
     }))
@@ -119,7 +120,7 @@ describe('卡上能点 / 能拖的部件不触发画布内核拖节点', () => {
     const entry = renderToStaticMarkup(React.createElement(NodeVersionCountBadge, { count: 3, expanded: false, onToggle: () => undefined }))
     expect(/<button[^>]*data-version-badge[^>]*>/.exec(entry)?.[0]).toContain('nodrag')
     expect(grid().includes('data-version-card="more"')).toBe(false)
-    const many = Array.from({ length: 12 }, (_, index) => ({ identity: `x${12 - index}`, versionNo: 12 - index, type: 'image' as const, previewUrl: 'x.png' }))
+    const many = Array.from({ length: 12 }, (_, index) => ({ identity: `x${12 - index}`, versionNo: 12 - index, type: 'image' as const, previewUrl: 'x.png' as CanvasImageSource }))
     const more = renderToStaticMarkup(React.createElement(NodeVersionGrid, { nodeId: 'n1', layout: layoutVersionGrid(versionGridItems(many), NODE, 'right'), node: NODE, primaryIdentity: 'x12' }))
     expect(/data-version-card="more"><button[^>]*class="nodrag /.test(more)).toBe(true)
   })

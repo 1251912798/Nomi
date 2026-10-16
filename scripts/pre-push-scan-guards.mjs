@@ -58,6 +58,7 @@ export const SCAN_GUARDS = Object.freeze([
   { file: 'electron/catalog/curatedVideoSharedContracts.test.ts', all: true, exts: '*' }, // git grep 全仓找「已知缺口」豁免记号（docs/ 除外）；记号可以出现在任何文件里
   // ── src/ 全树 ──
   { file: 'src/bundleAssetUrlBoundary.test.ts', roots: SRC },
+  { file: 'src/workbench/generationCanvas/canvasPreviewDoors.test.ts', roots: ['src', 'electron'] }, // 画布预览入口普查：遍历 src 与 electron 生产代码（9 秒）
   { file: 'src/workbench/generationCanvas/components/lightweightFallbackCensus.test.ts', roots: ['src/workbench'] }, // 兜底节点必须带 loading：遍历 workbench 找 fallback=<LightweightGenerationNode>（<1 秒）
   { file: 'src/workbench/generationCanvas/nodes/textNodeIconSource.test.ts', roots: ['src/workbench/generationCanvas'] }, // 文字节点图标唯一来源：遍历 generationCanvas 找直接引用 IconWriting 的文件（<2 秒）
   { file: 'src/customEventWiring.test.ts', roots: SRC },

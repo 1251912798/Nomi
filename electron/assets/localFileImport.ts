@@ -23,7 +23,7 @@ import type { JsonRecord } from "../jsonUtils";
 import { logWarn } from "../logging/logger";
 import { projectDirById } from "../projects/repository";
 import { contentTypeFromStoredFile } from "./projectAssetStore";
-import { attachStoredAssetPreview, createStoredAssetPreview, discardPreparedPreview, type StoredAssetPreview } from "./assetPreview";
+import { attachStoredAssetPreview, createStoredAssetPreview, discardPreparedPreview, type AssetPreviewOptions, type StoredAssetPreview } from "./assetPreview";
 import { createAssetImportProgressReporter, type AssetCopyProgress } from "./assetImportProgress";
 import type { ProjectBinding } from "../shared/projectBinding";
 import { captureAssetWriteContext, type AssetWriteContext } from "./assetWriteContext";
@@ -256,12 +256,13 @@ function readHealedAsset(sourcePath: string): unknown | null {
 }
 
 /**
- * 老节点补封面（画布跟手方案第 1 步）：结果早于「落盘边界派生预览」、或经旧导入路径进来的 nomi-local
- * 图片 / 视频没有 `thumbnailUrl`，画布只能为它挂原片。这里按 URL 找回源文件，交给 attachStoredAssetPreview
- * ——它是预览派生的唯一 owner：sidecar 里有就直接用，没有就抽一帧写回 sidecar。返回 { thumbnailUrl? }；
- * 不是本项目落盘文件 / 派生失败 → null（调用方照旧画原片，下次打开再试）。
+ * 补预览（打开项目后的后台补齐，resultMediaBackfillBridge 唯一调用）：结果早于「落盘回执带预览事实」、
+ * 经旧导入路径进来、或某个入口只交了 URL 的 nomi-local 图片 / 视频，没有已知的预览事实。这里按 URL 找回源文件，
+ * 交给 attachStoredAssetPreview——预览派生的唯一 owner：sidecar 里有就直接用，没有就派生一份写回 sidecar。
+ * 返回 { thumbnailUrl?, previewState }（previewState 恒有：ready / source / missing）；
+ * 不是本项目落盘文件 → null（调用方照旧画原片，不写事实，下次打开再试）。
  */
-export async function ensureLocalAssetPreview(payload: unknown): Promise<JsonRecord | null> {
+export async function ensureLocalAssetPreview(payload: unknown, options: AssetPreviewOptions = {}): Promise<JsonRecord | null> {
   const parsed = parseLocalAssetUrl(String((payload as JsonRecord | undefined)?.url || "").trim());
   if (!parsed) return null;
   const { projectId, filePath } = parsed;
@@ -269,9 +270,10 @@ export async function ensureLocalAssetPreview(payload: unknown): Promise<JsonRec
   if (!projectDir || !fs.existsSync(filePath) || !fs.statSync(filePath).isFile()) return null;
   const relativePath = path.relative(projectDir, filePath).replace(/\\/g, "/");
   const contentType = contentTypeFromStoredFile(filePath);
-  const record = await attachStoredAssetPreview({ projectId, data: { absolutePath: filePath, relativePath, contentType } });
-  const { thumbnailUrl } = record.data;
-  return thumbnailUrl ? { thumbnailUrl } : {};
+  // 取消信号一路传到 ffprobe / ffmpeg：项目关了 / 换了 / 窗口没了就杀进程、删产物、抛 AssetPreviewCancelledError。
+  const record = await attachStoredAssetPreview({ projectId, data: { absolutePath: filePath, relativePath, contentType } }, undefined, options);
+  const { thumbnailUrl, previewState } = record.data;
+  return { ...(thumbnailUrl ? { thumbnailUrl } : {}), ...(previewState ? { previewState } : {}) };
 }
 
 /**

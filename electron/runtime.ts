@@ -117,10 +117,9 @@ export type TaskResult = {
   id: string;
   kind: ProfileKind;
   status: "queued" | "running" | "succeeded" | "failed";
-  assets: Array<{
+  assets: Array<import("./shared/canvas/canvasMediaPreview").TaskAssetPreviewFields & {
     type: "image" | "video" | "audio" | "model3d";
     url: string;
-    thumbnailUrl?: string | null;
     assetId?: string | null;
     assetRefId?: string | null;
     assetName?: string | null;
