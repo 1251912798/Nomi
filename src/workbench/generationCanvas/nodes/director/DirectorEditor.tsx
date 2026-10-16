@@ -4,9 +4,9 @@
  *          ./model/directorStore 的 createDirectorStore、./DirectorEditorContext、
  *          ./scene/ViewportApiContext、
  *          ./scene/viewSettings（偏好读写）、./useDirectorHotkeys、./useMobileCamera、./MobileCameraContext、
- *          ./panels/dialogs/{MobileConnectDialog, SettingsDialog, HelpDialog}、./model/directorTypes、./DirectorViewShell、./DirectorRefineShell、./directorSessionRegistry、../../../../featureFlags/director3dbox
+ *          ./panels/dialogs/{MobileConnectDialog, SettingsDialog, HelpDialog}、./model/directorTypes、./DirectorViewShell、./DirectorRefineShell、./directorSessionRegistry、./directorEditorPersistence（写回规矩的唯一 owner）、../../../../featureFlags/director3dbox
  *          ./model/cameraCoordinateSpace / sceneObjectGraph 的当前世界视角转图层局部位姿、创建模式取消登记
- * [OUTPUT]: 对外提供 DirectorEditor（default）：全屏壳 —— 精修（DirectorRefineShell：顶栏 / 满宽视口 / 选中才出的属性卡 / 时间轴）+ 退出确认 + 自动保存 +
+ * [OUTPUT]: 对外提供 DirectorEditor（default）：全屏壳 —— 精修（DirectorRefineShell：顶栏 / 满宽视口 / 选中才出的属性卡 / 时间轴）+ 退出确认 + 写回接线（规矩住 directorEditorPersistence，不看开关）+
  *           开关开启时提供占画布区的导演视图外壳，镜头条只读且沿用实测模块；编辑器会话登记为外部 AI 写入入口
  *           区域感知快捷键 + 手机虚拟相机桥 + 本机偏好（漫游 / 灵敏度 / 视口主题）与设置 / 帮助对话框
  * [POS]: director 的页面根：创建并注入 store 与视口 API，负责「打开/关闭/写回」生命周期与区域布局（方案 §4.0 O1–O5）。
@@ -48,8 +48,7 @@ import { transformCameraPose } from './model/cameraCoordinateSpace'
 import { invertFrame, sceneFrame } from './model/sceneObjectGraph'
 import { orderedTimelineEntities } from './model/timelineTracks'
 import { registerDirectorSession } from './directorSessionRegistry'
-import { createDirectorNodeSync, type DirectorNodeSync } from './directorNodeSync'
-import { registerEmbeddedEditorFlush } from '../../agent/embeddedEditorFlush'
+import { createDirectorEditorPersistence, type DirectorEditorPersistence } from './directorEditorPersistence'
 import { createEditorShotFocusSession } from './directorShotFocusSession'
 import { isDirector3DBoxEnabled } from '../../../../featureFlags/director3dbox'
 import { DirectorViewShell, type DirectorViewMode } from './DirectorViewShell'
@@ -71,8 +70,6 @@ export type DirectorEditorProps = {
   onClose: () => void
   onProjectChange: (project: DirectorProject) => void
 }
-
-const AUTOSAVE_IDLE_MS = 2000
 
 const TIMELINE_COLLAPSED_KEY = 'nomi:director:timelineCollapsed'
 
@@ -296,18 +293,11 @@ export default function DirectorEditor({ rawProject, nodeTitle, readOnly = false
   const assistantCollapsed = useWorkbenchStore((state) => state.projectAgentDockCollapsed)
   const onProjectChangeRef = React.useRef(onProjectChange)
   onProjectChangeRef.current = onProjectChange
-  // 3D-BOX：store ↔ 节点 meta 的同步账（一个写者、一本历史）；开关关时不建，行为与旧导演台一致
-  const syncRef = React.useRef<DirectorNodeSync | null>(null)
-  if (director3dBox && !syncRef.current) {
-    syncRef.current = createDirectorNodeSync({ store, defaultSceneName: t('director.node.sceneDefaultName'), initialRaw: rawProject, write: (project) => onProjectChangeRef.current(project) })
-  }
-  // 最近一次落盘时 store 里的工程：退出时没变就不写（只是打开看一眼，不把读时迁移的结果写回去——旧人偶工程改了才落盘）
-  const savedProjectRef = React.useRef(store.getState().project)
-  const persistProject = React.useCallback((project: DirectorProject) => {
-    savedProjectRef.current = store.getState().project
-    if (syncRef.current) syncRef.current.persist(project)
-    else onProjectChangeRef.current(project)
-  }, [store])
+  // 写回规矩（一个写者、外部改动重载、空闲自动保存、撤销前落盘）只有 directorEditorPersistence 一个家，不看开关、不看界面模式：
+  // 切回旧导演台只切界面。打开看一眼不写（读时迁移的结果不写回去——旧人偶工程改了才落盘）。
+  const persistenceRef = React.useRef<DirectorEditorPersistence | null>(null)
+  if (!persistenceRef.current) persistenceRef.current = createDirectorEditorPersistence({ store, defaultSceneName: t('director.node.sceneDefaultName'), initialRaw: rawProject, write: (project) => onProjectChangeRef.current(project) })
+  const persistence = persistenceRef.current
   // 读档时把旧人偶迁成了 UAL 且有动作 / 手调骨骼没法原样保留：打开时说一次（不写进工程）
   const migrationToastShownRef = React.useRef(false)
   React.useEffect(() => {
@@ -316,16 +306,12 @@ export default function DirectorEditor({ rawProject, nodeTitle, readOnly = false
     const note = ualMigrationNoteOf(store.getState().project)
     if (note && note.approximatedActions + note.droppedBoneKeys > 0) toast(t('director.editor.ualMigrated', { actions: note.approximatedActions, bones: note.droppedBoneKeys }), 'info')
   }, [store, t])
-  // 节点上的工程被外部换掉（Agent 撤销一笔 stage_shot）→ 编辑器当场重载；自己写出去的那份回来不算
+  // 节点上的工程被外部换掉（Agent 撤销 / 画布 ⌘Z）→ 编辑器当场重载；自己写出去的那份回来不算
   React.useEffect(() => {
-    if (!readOnly) syncRef.current?.adoptNodeProject(rawProject)
-  }, [rawProject, readOnly])
-  // 提议事务 / Agent 撤销开始前先把没落盘的手改落盘（撤销基线里要有它们）
-  React.useEffect(() => {
-    const sync = syncRef.current
-    if (!sync || readOnly) return undefined
-    return registerEmbeddedEditorFlush(sync.saveNow)
-  }, [readOnly])
+    if (!readOnly) persistence.adoptNodeProject(rawProject)
+  }, [persistence, rawProject, readOnly])
+  // 空闲自动保存 + 提议事务 / 撤销前先落盘
+  React.useEffect(() => (readOnly ? undefined : persistence.start()), [persistence, readOnly])
   const scopeRef = React.useRef<DirectorHotkeyScope>('viewport')
   // 偏好（漫游 / 灵敏度 / 视口主题）只存本机：改一次立刻生效并落 localStorage，不入工程不进撤销栈
   const [preferences, setPreferences] = React.useState<DirectorPreferences>(readDirectorPreferences)
@@ -333,28 +319,6 @@ export default function DirectorEditor({ rawProject, nodeTitle, readOnly = false
     setPreferences(next)
     writeDirectorPreferences(next)
   }, [])
-
-  // 自动保存：工程变化后 2s 空闲写回一次（崩溃保护）；退出时还有没落盘的改动才再写一次
-  React.useEffect(() => {
-    if (readOnly) return undefined
-    let timer: number | null = null
-    let lastProject = store.getState().project
-    const unsubscribe = store.subscribe((state) => {
-      if (state.project === lastProject) return
-      lastProject = state.project
-      if (timer !== null) window.clearTimeout(timer)
-      timer = window.setTimeout(() => {
-        timer = null
-        // 3D-BOX：外部重载 / 已落盘的工程不再写一遍（多写一遍会在画布历史里多出一条、挡住撤销）
-        if (syncRef.current && !syncRef.current.isDirty()) return
-        persistProject(store.getState().exportProject())
-      }, AUTOSAVE_IDLE_MS)
-    })
-    return () => {
-      unsubscribe()
-      if (timer !== null) window.clearTimeout(timer)
-    }
-  }, [persistProject, readOnly, store])
 
   // body 滚动锁（与 V1 壳同机制）
   React.useEffect(() => {
@@ -377,9 +341,9 @@ export default function DirectorEditor({ rawProject, nodeTitle, readOnly = false
       confirmLabel: t('director.editor.exitConfirmOk'),
     })
     if (!ok) return
-    if (!readOnly && store.getState().project !== savedProjectRef.current) persistProject(store.getState().exportProject())
+    if (!readOnly) persistence.saveNow()
     onClose()
-  }, [onClose, persistProject, readOnly, store, t])
+  }, [onClose, persistence, readOnly, t])
 
   // Esc 归属（O5）：浮层/模式先吃；再清工具 + 选择；再退 POV；都没有 → 退出确认
   React.useEffect(() => {
@@ -445,7 +409,7 @@ export default function DirectorEditor({ rawProject, nodeTitle, readOnly = false
             onChangePreferences={changePreferences}
             nodeId={nodeId}
             onSendToCanvas={onSendToCanvas}
-            onExternalProjectChange={persistProject}
+            onExternalProjectChange={persistence.persist}
           />
         </div>
       </TooltipProvider>
