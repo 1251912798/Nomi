@@ -14,6 +14,7 @@ import {
   upsertModelCatalogModel,
 } from "./catalogStore";
 import { logInfo, logWarn } from "../logging/logger";
+import { VendorRequestError } from "../vendor/vendorHttp";
 
 // ---------------------------------------------------------------------------
 // 自建中转视频通道的启动体检（单一 owner：「这个中转视频模型走哪套报文」只在这里改）。
@@ -219,4 +220,76 @@ export function scheduleRelayNativeWireUpgrade(): void {
       }
     })
     .catch(() => { /* 体检失败不影响使用，保持现有通道 */ });
+}
+
+// ── 运行中退回（#1213 原则 2）────────────────────────────────────────────────────────────
+// 开机体检只看得到「对假任务号怎么回答」；真任务的查询在原生通道上持续失败，只有轮询看得见。
+// 只数**按合同认出的非瞬时失败**：路由不存在（404 Invalid URL）、任务号无效 / 不存在（400 / 404）、
+// 中转的「无可用渠道」（new-api：「当前分组 X 下对于模型 Y 无可用渠道」/ model_not_found）。
+// 普通 5xx、429、网络抖动、超时不算——那些下一轮可能就好了，退回通道反而是乱改。
+// 同一模型连续 RUNTIME_FALLBACK_THRESHOLD 次 → 单向退回通用通道（applyGenericWire，与开机降级同一出口），
+// logWarn 留痕；本次查询由调用方免费用通用查询再试一次。退回之后不会自己再升回去（那要开机体检拿到合同证据）。
+
+export const RUNTIME_FALLBACK_THRESHOLD = 3;
+const nativeQueryFailureStreak = new Map<string, number>();
+
+const NON_TRANSIENT_UPSTREAM = /无可用渠道|no available channel|model_not_found|invalid url|task_not_exist|task not exist|not found|does not exist|invalid task/i;
+
+/** 这次查询失败是不是「换个时间再查也一样」的那一类（只认合同里写得出的几种）。 */
+export function isContractNonTransientQueryFailure(error: unknown): boolean {
+  if (!(error instanceof VendorRequestError)) return false;
+  const { httpStatus, upstreamMsg, upstreamCode } = error.structured;
+  if (httpStatus === 429 || httpStatus === undefined) return false;
+  const said = `${upstreamCode || ""} ${upstreamMsg || ""}`;
+  if (httpStatus === 404 || httpStatus === 400) return true;
+  return NON_TRANSIENT_UPSTREAM.test(said);
+}
+
+/** 这条 mapping 是不是「中转上的原生报文」（只有它们才有可退回的通用通道）。 */
+function nativeRelayProfileFor(vendorKey: string, model: Pick<Model, "modelKey" | "modelAlias">, mapping: Pick<Mapping, "query"> | undefined): NativeWireProfile | null {
+  if (isBuiltinRelayVendorKey(vendorKey)) return null;
+  const profile = nativeWireProfileForArchetype(archetypeIdForModel(model.modelKey, model.modelAlias));
+  if (!profile?.query || mapping?.query?.path !== profile.query.path) return null;
+  return profile;
+}
+
+/**
+ * 轮询每次查完都报一声（成功传 error=null）。返回非 null = 刚刚退回了通用通道（调用方用新 mapping 再查一次）。
+ */
+export function noteRelayQueryOutcome(input: {
+  vendorKey: string;
+  model: Pick<Model, "modelKey" | "modelAlias" | "vendorKey">;
+  mapping: Pick<Mapping, "query"> | undefined;
+  error: unknown;
+}): { from: string; to: string; count: number } | null {
+  const profile = nativeRelayProfileFor(input.vendorKey, input.model, input.mapping);
+  if (!profile) return null;
+  const key = `${input.vendorKey}\0${input.model.modelKey}`;
+  if (input.error === null || !isContractNonTransientQueryFailure(input.error)) {
+    // 成功清零；瞬时失败既不累计也不清零（抖动夹在中间不该把真问题的连击打断）。
+    if (input.error === null) nativeQueryFailureStreak.delete(key);
+    return null;
+  }
+  const count = (nativeQueryFailureStreak.get(key) || 0) + 1;
+  nativeQueryFailureStreak.set(key, count);
+  if (count < RUNTIME_FALLBACK_THRESHOLD) return null;
+  nativeQueryFailureStreak.delete(key);
+  const model = listModelCatalogModels().find((candidate) => candidate.vendorKey === input.vendorKey && candidate.modelKey === input.model.modelKey);
+  if (!model) return null;
+  applyGenericWire(model);
+  const structured = input.error instanceof VendorRequestError ? input.error.structured : undefined;
+  logWarn("catalog", "relay-native-wire-fell-back-at-runtime", {
+    vendorKey: input.vendorKey,
+    modelKey: input.model.modelKey,
+    archetypeId: profile.archetypeId,
+    consecutiveFailures: count,
+    lastHttpStatus: structured?.httpStatus ?? null,
+    lastUpstreamCode: structured?.upstreamCode ?? null,
+  });
+  return { from: profile.wireName, to: "new-api", count };
+}
+
+/** 测试用：清掉连击计数（进程内状态）。 */
+export function resetRelayQueryFallbackStateForTests(): void {
+  nativeQueryFailureStreak.clear();
 }
