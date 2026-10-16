@@ -14,9 +14,10 @@ const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "nomi-asset-store-"));
 vi.mock("../projects/repository", async (importOriginal) => ({
   ...await importOriginal<typeof import("../projects/repository")>(),
   projectDirById: () => projectRoot,
+  resolveProjectRelativePath: (_projectId: string, relativePath: string) => path.join(projectRoot, relativePath),
 }));
 
-const { resolveProjectAssetReferenceIdentity, copyAssetFile, listProjectAssets, moveAssetFile, writeAsset, writeDeterministicAsset } = await import("./projectAssetStore");
+const { resolveProjectAssetReferenceIdentity, resolveProjectAgentAttachmentClaims, importRemoteAsset, copyAssetFile, listProjectAssets, moveAssetFile, writeAsset, writeDeterministicAsset } = await import("./projectAssetStore");
 const mediaFixture = (name: string) => fs.readFileSync(path.join(__dirname, "../providerAdapter/__fixtures__/certification-media", name));
 
 function validGlb(): Buffer {
@@ -259,3 +260,21 @@ describe("writeAsset canonical media filename", () => {
     })).toThrow("evidence_mismatch");
   });
 });
+
+
+describe('existing project media attachment receipts', () => {
+  it('returns the canonical original identity and full receipt for a local reference', async () => {
+    const stored = await writeAsset('project-1', Buffer.from('original'), 'portrait.png', 'image/png', { kind: 'upload' }) as { id: string; data: { url: string } }
+    const receipt = await importRemoteAsset({ projectId: 'project-1', url: stored.data.url }) as { id: string; data: { size: number; contentHash: string } }
+    expect(receipt.id).toBe(stored.id)
+    expect(receipt.data.size).toBe(8)
+    expect(receipt.data.contentHash).toMatch(/^[a-f0-9]{64}$/)
+    expect(resolveProjectAgentAttachmentClaims('project-1', [{ assetId: receipt.id, version: 1 }])).toHaveLength(1)
+  })
+  it('resolves a claimed original outside the first 500 project assets', () => {
+    const assets = path.join(projectRoot, 'assets', 'upload'); fs.mkdirSync(assets, { recursive: true })
+    for (let index = 0; index < 502; index += 1) fs.writeFileSync(path.join(assets, `take-${index}.txt`), `original ${index}`)
+    const last = listProjectAssets({ projectId: 'project-1', limit: 500, cursor: '500' }).items[0]
+    expect(resolveProjectAgentAttachmentClaims('project-1', [{ assetId: last.id, version: 1 }])[0].assetId).toBe(last.id)
+  })
+})

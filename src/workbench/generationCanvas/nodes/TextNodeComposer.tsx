@@ -11,6 +11,7 @@
  *   · 续写 / 改写 / 重写三种原有写法收进最后那个下拉，功能一个不少；
  *   · 模型默认「跟随 Agent 的模型」（节点上没选文本模型 = 运行时用 Agent 的文本大脑，见 textActions），也可以手动换。
  */
+import NodeInputReferenceEntry from './NodeInputReferenceEntry'
 import React, { type JSX } from 'react'
 import { useTranslation } from 'react-i18next'
 import { IconArrowUp, IconChevronDown } from '@tabler/icons-react'
@@ -232,6 +233,7 @@ export default function TextNodeComposer({ onFeedback, node, visualSize, readOnl
           'flex flex-col rounded-nomi-lg bg-nomi-paper px-3 pb-2.5 pt-2.5 shadow-nomi-md ring-1 ring-inset ring-nomi-line-soft',
         )}
       >
+        <div className="mb-2"><NodeInputReferenceEntry nodeId={nodeId} disabled={locked || running} /></div>
         <div className="-ml-1.5 flex min-w-0 flex-nowrap items-center gap-0.5 overflow-hidden whitespace-nowrap" data-text-process-presets>
           {TEXT_PROCESS_PRESET_IDS.map((id) => {
             const block = blocks[id]

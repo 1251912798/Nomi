@@ -9,15 +9,21 @@ const IMPORTED_DIR = path.join('assets', 'imported')
 const settings = vi.hoisted(() => ({ root: '' }))
 vi.mock('electron', () => ({ app: { getPath: () => settings.root, getAppPath: () => process.cwd() } }))
 vi.mock('./assetEvents', () => ({ broadcastAssetsUpdated: vi.fn(), broadcastAssetLocalizationStarted: vi.fn() }))
+// 重模块在文件顶部静态加载：加载耗时算进收集阶段，不占单条测试的 30s 预算（机器忙时冷加载会超过 30s）。
+// 这些模块都在调用时才读 app.getPath，各条测试先设 settings.root 再调用即可。
+import { createProject, projectDirById } from '../projects/repository'
+import { importLocalFile } from './localFileImport'
+import { ensureWorkspaceProjectIdentity } from '../workspace/workspaceProjectIdentity'
+import { tryAcquireWorkspaceManifestLock, releaseWorkspaceManifestLock } from '../workspace/workspaceManifestLock'
+import { broadcastAssetsUpdated } from './assetEvents'
+import { clearStorageCapacityCache } from './storageCapacity'
+import { listProjectAssets } from './projectAssetStore'
 
 function temp() { const root = fs.mkdtempSync(path.join(os.tmpdir(), 'nomi-artifact-import-')); roots.push(root); return root }
 afterEach(() => { vi.restoreAllMocks(); for (const root of roots.splice(0)) fs.rmSync(root, { recursive: true, force: true }) })
 
 it.each(['generation', 'directory'].flatMap(change => [['bytes', true, change], ['native', true, change], ['bytes', false, change], ['native', false, change]]))('rejects %s publication (explicit binding=%s) on %s replacement during lookup', async (transport, bound, change) => {
   settings.root = temp()
-  const { createProject, projectDirById } = await import('../projects/repository')
-  const { importLocalFile } = await import('./localFileImport')
-  const { ensureWorkspaceProjectIdentity } = await import('../workspace/workspaceProjectIdentity')
   const project = createProject({ rootPath: temp(), name: 'origin', payload: {} })
   const root = projectDirById(project.id)!
   const identity = await ensureWorkspaceProjectIdentity(root)
@@ -52,8 +58,6 @@ it.each(['generation', 'directory'].flatMap(change => [['bytes', true, change], 
 
 it.each(['bytes', 'native'])('revokes %s reuse and metadata updates when an interaction is cancelled during lookup', async (transport) => {
   settings.root = temp()
-  const { createProject } = await import('../projects/repository')
-  const { importLocalFile } = await import('./localFileImport')
   const project = createProject({ rootPath: temp(), name: 'origin', payload: {} })
   const payload = { projectId: project.id, fileName: 'reuse.txt', contentType: 'text/plain', bytes: Buffer.from('reusable') }
   const stored = await importLocalFile(payload) as { data: { absolutePath: string } }
@@ -74,9 +78,6 @@ it.each(['bytes', 'native'])('revokes %s reuse and metadata updates when an inte
 
 it('validates a stable identity without contending with an unrelated manifest writer', async () => {
   settings.root = temp()
-  const { createProject, projectDirById } = await import('../projects/repository')
-  const { importLocalFile } = await import('./localFileImport')
-  const { tryAcquireWorkspaceManifestLock, releaseWorkspaceManifestLock } = await import('../workspace/workspaceManifestLock')
   const project = createProject({ rootPath: temp(), name: 'locked', payload: {} })
   let lease: ReturnType<typeof tryAcquireWorkspaceManifestLock> | undefined
   const readdir = fs.promises.readdir.bind(fs.promises)
@@ -93,8 +94,6 @@ it('validates a stable identity without contending with an unrelated manifest wr
 
 it('treats a legacy hash-cache write failure as optional while preserving the original metadata', async () => {
   settings.root = temp()
-  const { createProject } = await import('../projects/repository')
-  const { importLocalFile } = await import('./localFileImport')
   const project = createProject({ rootPath: temp(), name: 'cache', payload: {} })
   const payload = { projectId: project.id, fileName: 'cached.txt', contentType: 'text/plain', bytes: Buffer.from('cache bytes') }
   const stored = await importLocalFile(payload) as { id: string; data: { absolutePath: string } }
@@ -111,9 +110,6 @@ it('treats a legacy hash-cache write failure as optional while preserving the or
 
 it.each(['bytes', 'native'])('reports committed %s publication even when a notification revokes the interaction', async (transport) => {
   settings.root = temp()
-  const { createProject } = await import('../projects/repository')
-  const { importLocalFile } = await import('./localFileImport')
-  const { broadcastAssetsUpdated } = await import('./assetEvents')
   const project = createProject({ rootPath: temp(), name: 'committed', payload: {} })
   const source = path.join(temp(), 'committed.txt'); fs.writeFileSync(source, 'committed')
   let current = true
@@ -128,8 +124,6 @@ it.each(['bytes', 'native'])('reports committed %s publication even when a notif
 
 it('does not lend a background upload the cancelled interaction authorization', async () => {
   settings.root = temp()
-  const { createProject } = await import('../projects/repository')
-  const { importLocalFile } = await import('./localFileImport')
   const project = createProject({ rootPath: temp(), name: 'concurrent', payload: {} })
   const payload = { projectId: project.id, fileName: 'same.txt', contentType: 'text/plain', bytes: Buffer.from('same bytes') }
   let current = true
@@ -147,9 +141,6 @@ it('does not lend a background upload the cancelled interaction authorization', 
 
 it('stores the five tool artifact formats and rejects unknown formats and insufficient disk', async () => {
   settings.root = temp()
-  const { createProject } = await import('../projects/repository')
-  const { importLocalFile } = await import('./localFileImport')
-  const { clearStorageCapacityCache } = await import('./storageCapacity')
   const project = createProject({ rootPath: temp(), name: 'formats', payload: {} })
   const formats = [
     ['text.txt', 'text/plain', 'text'], ['markdown.md', 'text/markdown', '# markdown'],
@@ -170,10 +161,6 @@ it('stores the five tool artifact formats and rejects unknown formats and insuff
 
 it('stores text and HTML bytes/native files under the exact originating identity', async () => {
   settings.root = temp()
-  const { createProject, projectDirById } = await import('../projects/repository')
-  const { ensureWorkspaceProjectIdentity } = await import('../workspace/workspaceProjectIdentity')
-  const { importLocalFile } = await import('./localFileImport')
-  const { listProjectAssets } = await import('./projectAssetStore')
   const a = createProject({ rootPath: temp(), name: 'A', payload: {} })
   const b = createProject({ rootPath: temp(), name: 'B', payload: {} })
   const identity = await ensureWorkspaceProjectIdentity(projectDirById(a.id)!)

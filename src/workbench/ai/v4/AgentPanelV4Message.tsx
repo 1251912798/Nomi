@@ -1,3 +1,5 @@
+import { hasMentions, parsePromptSegments, mentionUrlsInOrder } from '../../assets/promptMentions'
+import AssetInlineReference from '../../assets/AssetInlineReference'
 import { V4Row, V4Shimmer } from './AgentPanelV4Row'
 // Agent 面板 v4 · 积木 ① 用户气泡 · ② 助手文本（含思考行）
 //
@@ -60,6 +62,10 @@ export function V4UserBubble({
 }): JSX.Element {
   const { t } = useTranslation()
   const lines = text.split(/\r?\n/)
+  const inlineUrls = new Set(mentionUrlsInOrder(text))
+  const visibleChips = chips?.filter(chip=>!chip.reference || !inlineUrls.has(chip.reference.url))
+  const renderContent = (value:string) => hasMentions(value) ? parsePromptSegments(value).map((segment,index)=> segment.type==='text' ? segment.value
+    : <AssetInlineReference key={index} {...chips?.find(chip=>chip.reference?.url===segment.url)?.reference} url={segment.url} />) : value
   return (
     <div
       className={cn(
@@ -69,9 +75,9 @@ export function V4UserBubble({
       )}
       data-v4-block="user"
     >
-      {chips?.length ? (
+      {visibleChips?.length ? (
         <div className="mb-1.5 flex flex-wrap gap-1.5">
-          {chips.map((chip) => (
+          {visibleChips.map((chip) => (
             <BubbleChip key={chip.id ?? chip.label} chip={chip} onDark={!darkMode} />
           ))}
         </div>
@@ -79,13 +85,13 @@ export function V4UserBubble({
       {lines.length > 12 ? (
         <details className="group/user-input">
           <summary className="cursor-pointer list-none">
-            <span className="block whitespace-pre-wrap group-open/user-input:hidden">{lines.slice(0, 12).join('\n')}</span>
+            <span className="block whitespace-pre-wrap group-open/user-input:hidden">{renderContent(lines.slice(0, 12).join('\n'))}</span>
             <span className="text-micro group-open/user-input:hidden">{t('agentPanelV4.expand')}</span>
             <span className="hidden text-micro group-open/user-input:inline">{t('agentPanelV4.collapse')}</span>
           </summary>
-          <p className="m-0 whitespace-pre-wrap">{text}</p>
+          <p className="m-0 whitespace-pre-wrap">{renderContent(text)}</p>
         </details>
-      ) : <p className="m-0 whitespace-pre-wrap">{text}</p>}
+      ) : <p className="m-0 whitespace-pre-wrap">{renderContent(text)}</p>}
     </div>
   )
 }
