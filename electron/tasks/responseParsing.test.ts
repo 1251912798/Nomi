@@ -119,7 +119,7 @@ describe("resolveTaskStatus：未登记动词必须留痕，而不是静默乐�
   });
 
   it("不认得的动词 → 仍返回 queued（不误杀），但带出原始动词（大小写原样）", () => {
-    // "failure"/"rejected" 当年（2026-08-11）就是这样的词；如今已进共享词表（shared/taskStatusVocabulary），
+    // "failure"/"rejected" 当年（2026-08-11）就是这样的词；如今已进共享词表（shared/taskStatus），
     // 这里换成仍没人认得的词来钉「认不出 ≠ 失败、但要留痕」。
     expect(resolveTaskStatus({ status: "cooking" }, null, undefined, [])).toEqual({
       status: "queued",

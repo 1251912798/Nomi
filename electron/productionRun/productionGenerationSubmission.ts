@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import { findGenerationExecutionJob, readGenerationExecution } from "./productionGenerationHistory";
-import { classifyUpstreamTaskStatus } from "../shared/taskStatusVocabulary";
+import { classifyUpstreamTaskStatus } from "../shared/taskStatus";
 import path from "node:path";
 
 import {
@@ -205,7 +205,7 @@ type ProviderPollStatusClass = "pending" | "succeeded" | "failed" | "unknown";
  * successful, or failed.  Treating an unrecognised verb as success is unsafe
  * (it can materialize an incomplete output); treating it as pending is worse
  * (the observer can spin forever).  The vocabulary itself lives in exactly one
- * place (shared/taskStatusVocabulary, #1213) — engine A asks the same table.
+ * place (shared/taskStatus, #1213) — engine A asks the same table.
  */
 function classifyProviderStatus(status: string): ProviderPollStatusClass {
   const cls = classifyUpstreamTaskStatus(status);
