@@ -174,7 +174,7 @@ export async function extractVideoFrameToAsset(
     }
     const bytes = fs.readFileSync(outPath);
     const label = which === "first" ? "first" : which === "last" ? "last" : `at-${which}s`;
-    const record = writeAsset(projectId, bytes, `frame-${label}-${crypto.randomUUID().slice(0, 8)}.png`, "image/png", {
+    const record = await writeAsset(projectId, bytes, `frame-${label}-${crypto.randomUUID().slice(0, 8)}.png`, "image/png", {
       kind: "generated",
       source: "video-frame",
     }, context) as { data?: { url?: string } };
@@ -253,7 +253,7 @@ export async function extractVideoEndpointsToAsset(payload: ExtractEndpointsPayl
       throw new VideoFrameError("ffmpeg 未产出有效的首尾拼图");
     }
     const bytes = fs.readFileSync(outPath);
-    const record = writeAsset(projectId, bytes, `frame-endpoints-${crypto.randomUUID().slice(0, 8)}.png`, "image/png", {
+    const record = await writeAsset(projectId, bytes, `frame-endpoints-${crypto.randomUUID().slice(0, 8)}.png`, "image/png", {
       kind: "generated",
       source: "video-frame",
     }, context) as { data?: { url?: string } };

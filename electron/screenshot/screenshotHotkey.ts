@@ -238,7 +238,7 @@ export async function captureScreenToCanvas(): Promise<void> {
     }
 
     const size = source.thumbnail.getSize();
-    const record = writeAsset(
+    const record = await writeAsset(
       project.write.projectId,
       source.thumbnail.toPNG(),
       `screenshot-${Date.now()}.png`,

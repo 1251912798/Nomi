@@ -348,7 +348,7 @@ export async function finishVideoDepthJob(payload: { jobId: string }): Promise<V
     session.encoder.stdin.end();
     await session.encoderExit;
     const bytes = fs.readFileSync(session.outMp4);
-    const record = writeAsset(session.projectId, bytes, "depth.mp4", "video/mp4", {
+    const record = await writeAsset(session.projectId, bytes, "depth.mp4", "video/mp4", {
       kind: "generated",
       source: "video-depth",
       ownerNodeId: session.nodeId,

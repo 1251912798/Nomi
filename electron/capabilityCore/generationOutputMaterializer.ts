@@ -171,7 +171,7 @@ export function createGenerationOutputMaterializer(deps: GenerationOutputMateria
     const materializationKey = `${input.providerTaskId}:${input.output.providerOutputId || input.output.url}`;
     let stored: StoredAsset;
     try {
-      stored = storeAsset(input.projectId, bytes, fileNameFor(input.output), normalizedType, {
+      stored = await storeAsset(input.projectId, bytes, fileNameFor(input.output), normalizedType, {
         kind: "generated",
         source: "external-mcp",
         providerTaskId: input.providerTaskId,
@@ -196,7 +196,7 @@ export function createGenerationOutputMaterializer(deps: GenerationOutputMateria
         const poster = await fetchOutput(input.output.thumbnailUrl, { ...(await routeFor(input.output.thumbnailUrl)), allowContentTypes: ["image/", "application/octet-stream"] });
         const posterType = (poster.contentType || "image/png").toLowerCase().split(";")[0]?.trim() || "image/png";
         if (!posterType.startsWith("image/")) throw new Error("Generation poster content type does not match image");
-        const posterStored = storeAsset(input.projectId, poster.bytes, `${path.parse(fileNameFor(input.output)).name}-poster.png`, posterType, {
+        const posterStored = await storeAsset(input.projectId, poster.bytes, `${path.parse(fileNameFor(input.output)).name}-poster.png`, posterType, {
           kind: "generated", source: "external-mcp", providerTaskId: input.providerTaskId,
           providerOutputId: `${input.output.providerOutputId || input.output.url}:poster`,
         }, `${materializationKey}:poster`) as StoredAsset;

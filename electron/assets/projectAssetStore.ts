@@ -106,8 +106,11 @@ function generatedMediaKind(contentType: string): "image" | "video" | "audio" | 
   return contentType === "model/gltf-binary" ? "model3d" : null;
 }
 
-/** Generated outputs are executable evidence, not ordinary user imports: fail closed before disk. */
-function validatedGeneratedMeta(meta: JsonRecord, declaredRaw: string, bytes: Uint8Array, sourcePath?: string): JsonRecord {
+/**
+ * Generated outputs are executable evidence, not ordinary user imports: fail closed before disk.
+ * 异步：解码校验在异步子进程里跑，主进程等它的时候照常处理事件。调用方必须先 await 它、通过了才进落盘临界区。
+ */
+async function validatedGeneratedMeta(meta: JsonRecord, declaredRaw: string, bytes: Uint8Array, sourcePath?: string): Promise<JsonRecord> {
   if (String(meta.kind || "").toLowerCase() !== "generated") return meta;
   if (isMarkupMasquerade(bytes)) {
     throw generatedMediaValidationError("markup_masquerade");
@@ -148,7 +151,7 @@ function validatedGeneratedMeta(meta: JsonRecord, declaredRaw: string, bytes: Ui
     return cleanMeta;
   }
   // 「这份字节能不能解码」由 generatedMediaDecode 一处裁决（判据、超时、日志都在那里）；这里只问、不评。
-  verifyGeneratedMediaDecodes({ kind: expectedKind, bytes, ...(sourcePath ? { sourcePath } : {}), contentType: detected });
+  await verifyGeneratedMediaDecodes({ kind: expectedKind, bytes, ...(sourcePath ? { sourcePath } : {}), contentType: detected });
   return cleanMeta;
 }
 
@@ -193,16 +196,20 @@ function stableStoredAssetId(projectId: string, relativePath: string): string {
 }
 
 
-export function writeAsset(
+// 三个落盘函数（writeAsset / writeDeterministicAsset / moveAssetFile）同一个形状：
+//   ① await 校验（生成产物要等解码器，异步，主进程照转）；
+//   ② 校验通过之后「选路径 → 写字节 → 写 sidecar → 广播」是**一段不再 await 的同步临界区**。
+// ② 不许插 await：异步化以后同一资产可能被并发写，临界区一让出，就会有人看见「还不在」而另一个已经写了一半。
+export async function writeAsset(
   projectId: string,
   bytes: Buffer,
   fileName: string,
   contentType: string,
   rawMeta: JsonRecord,
   context?: AssetWriteContext,
-): unknown {
+): Promise<unknown> {
   // 唯一 sidecar 写入者之一：capture 族 originalUrl 恒 null 的不变量在此收口（见 assetPaths）。
-  const meta = validatedGeneratedMeta(sanitizeAssetMetaForKind(rawMeta), contentType, bytes);
+  const meta = await validatedGeneratedMeta(sanitizeAssetMetaForKind(rawMeta), contentType, bytes);
   const actualContentType = effectiveContentType(fileName, contentType, bytes);
   validateStructuredAsset(actualContentType, bytes);
   const storageFileName = canonicalAssetFileName(fileName, actualContentType);
@@ -220,15 +227,15 @@ export function writeAsset(
  * Persist a generated output at a path derived from its materialization key.
  * A retry after a crash returns the same asset instead of creating `-2` copies.
  */
-export function writeDeterministicAsset(
+export async function writeDeterministicAsset(
   projectId: string,
   bytes: Buffer,
   fileName: string,
   contentType: string,
   rawMeta: JsonRecord,
   materializationKey: string,
-): unknown {
-  const meta = validatedGeneratedMeta(sanitizeAssetMetaForKind(rawMeta), contentType, bytes);
+): Promise<unknown> {
+  const meta = await validatedGeneratedMeta(sanitizeAssetMetaForKind(rawMeta), contentType, bytes);
   const actualContentType = effectiveContentType(fileName, contentType, bytes);
   validateStructuredAsset(actualContentType, bytes);
   const { stem, ext } = storedAssetFileParts(fileName, actualContentType);
@@ -303,7 +310,7 @@ export async function copyAssetFile(
     }
   })();
   const actualContentType = effectiveContentType(fileName, contentType, header);
-  if (String(meta.kind || "").toLowerCase() === "generated") meta = validatedGeneratedMeta(meta, contentType, await fs.promises.readFile(sourcePath), sourcePath);
+  if (String(meta.kind || "").toLowerCase() === "generated") meta = await validatedGeneratedMeta(meta, contentType, await fs.promises.readFile(sourcePath), sourcePath);
   if (actualContentType === "model/gltf-binary") validateStructuredAsset(actualContentType, await fs.promises.readFile(sourcePath));
   const storageFileName = canonicalAssetFileName(fileName, actualContentType);
   const stored = isContentAddressedUpload(meta)
@@ -377,13 +384,13 @@ export async function copyProjectAsset(input: {
   )
 }
 
-export function moveAssetFile(
+export async function moveAssetFile(
   projectId: string,
   sourcePath: string,
   fileName: string,
   contentType: string,
   rawMeta: JsonRecord,
-): unknown {
+): Promise<unknown> {
   // 唯一 sidecar 写入者之二：与 writeAsset 同一道 capture 族隐私收口。
   let meta = sanitizeAssetMetaForKind(rawMeta);
   // 同 copyAssetFile：无条件读文件头，否则撒谎的声明永远没人查证。
@@ -398,8 +405,8 @@ export function moveAssetFile(
     }
   })();
   const actualContentType = effectiveContentType(fileName, contentType, header);
-  if (String(meta.kind || "").toLowerCase() === "generated") meta = validatedGeneratedMeta(meta, contentType, fs.readFileSync(sourcePath), sourcePath);
-  if (actualContentType === "model/gltf-binary") validateStructuredAsset(actualContentType, fs.readFileSync(sourcePath));
+  if (String(meta.kind || "").toLowerCase() === "generated") meta = await validatedGeneratedMeta(meta, contentType, await fs.promises.readFile(sourcePath), sourcePath);
+  if (actualContentType === "model/gltf-binary") validateStructuredAsset(actualContentType, await fs.promises.readFile(sourcePath));
   const storageFileName = canonicalAssetFileName(fileName, actualContentType);
   const { absolutePath, relativePath } = uniqueAssetPath(projectId, storageFileName, actualContentType, assetBucketFromMeta(meta));
   try {
