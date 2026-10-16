@@ -14,7 +14,7 @@ try {
   const result = await win.evaluate((id) => window.nomiDesktop.agentLane.send({
     kind: 'single-shot', requestId: 'missing-installed-skill', projectId: id,
     featureKey: 'fixture-negative-control', prompt: 'No provider request is allowed.',
-    context: { approvalPolicy: { mode: 'step', spend: 'confirm' }, skillKey: 'fixture.nonexistent-installed-skill' },
+    context: { approvalPolicy: { mode: 'request' }, skillKey: 'fixture.nonexistent-installed-skill' },
   }), projectId)
   expect(result).toMatchObject({ ok: false, message: 'agent_skill_unavailable' })
   expect(walk.fixture.requests).toHaveLength(0)

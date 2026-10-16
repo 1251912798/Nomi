@@ -1,0 +1,27 @@
+{
+  "id": "REAL-20261012-01",
+  "since": "2026-10-12",
+  "source": "2026-10-12 用户反馈：挡位这个地方有问题啊，相当于没有挡位",
+  "category": "interaction-semantics",
+  "problem": "Agent 权限的三个挡位（每步问 / 自动改 / 全自动）里，「每步问」与「自动改」在花钱和不可逆操作上行为完全一样，用户点了更谨慎的挡位以为更安全，实际一样；「全自动」又没有任何刹车（同一镜头反复失败也照样续跑）。",
+  "existingInvariants": [],
+  "ironLaws": [
+    "⑫"
+  ],
+  "useCases": [],
+  "fullWalkJourneys": [],
+  "status": "fixed",
+  "manualReview": "reviewed",
+  "evidence": [
+    "docs/plan/2026-10-12-agent-permission-two-tiers.md",
+    "docs/engineering/direction-checks/2026-10-12-agent-permission-tiers.md",
+    "electron/shared/agentCapabilities/capabilityApprovalTwoTiers.test.ts"
+  ],
+  "completionCommits": [],
+  "rootCauseContract": "docs/fixes/2026-10-12-agent-permission-tiers-indistinct.root-cause.json",
+  "fixedInPr": 1203,
+  "classCheck": {
+    "kind": "matrix",
+    "file": "electron/shared/agentCapabilities/capabilityApprovalTwoTiers.test.ts"
+  }
+}

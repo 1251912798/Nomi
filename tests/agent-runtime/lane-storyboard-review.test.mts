@@ -14,7 +14,7 @@ test('safe-auto saves draft_shots without a review card or a generation-start cl
   const fixture = await createLaneFixture(t, [
     { type: 'tool', calls: [{ id: 'fixture-draft', name: 'draft_shots', arguments: { shots } }] },
     { type: 'text', text: 'Fixture complete.' },
-  ], { hasUserInterface: true, policy: () => ({ mode: 'safe-auto', spend: 'confirm' }) });
+  ], { hasUserInterface: true, policy: () => ({ mode: 'request' }) });
   let writes = 0, cards = 0;
   const lane = await openLane({ ...fixture.options, tools: createExtendedLaneTools({
     execute: async (call) => { writes += 1; assert.equal(call.toolName, 'draft_shots');
@@ -39,7 +39,7 @@ test('generate with no recorded user decision never claims generation started', 
   const fixture = await createLaneFixture(t, [
     { type: 'tool', calls: [{ id: 'fixture-generate', name: 'generate', arguments: { operationId: 'op-1' } }] },
     { type: 'text', text: 'The card is in front of you.' },
-  ], { hasUserInterface: true, policy: () => ({ mode: 'safe-auto', spend: 'confirm' }) });
+  ], { hasUserInterface: true, policy: () => ({ mode: 'request' }) });
   const lane = await openLane({ ...fixture.options, tools: createExtendedLaneTools({
     execute: async (call) => { assert.equal(call.toolName, 'generate');
       return { ok: true, result: { operation: { operationId: 'op-1', state: 'draft' }, shots: ['shot-1', 'shot-2'], nextAction: 'await_user' } }; },
@@ -65,7 +65,7 @@ test('safe-auto still executes an ordinary local canvas write without a review c
     { type: 'tool', calls: [{ id: 'fixture-local-write', name: 'make_artifact',
       arguments: { fileType: 'text', title: 'Fixture note', content: 'Fixture local edit.' } }] },
     { type: 'text', text: 'Fixture complete.' },
-  ], { hasUserInterface: true, policy: () => ({ mode: 'safe-auto', spend: 'confirm' }) });
+  ], { hasUserInterface: true, policy: () => ({ mode: 'request' }) });
   let writes = 0, cards = 0;
   const lane = await openLane({ ...fixture.options, tools: createCanvasLaneTools({
     read: async () => { throw new Error('Fixture does not read.'); },

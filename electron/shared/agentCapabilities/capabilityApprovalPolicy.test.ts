@@ -35,15 +35,13 @@ describe("硬清单独立于档位", () => {
   it("花钱在每一档都是硬闸——「全自动」也不例外", () => {
     for (const mode of PROJECT_AGENT_APPROVAL_MODES) {
       expect(capabilityIsHardGated(subject())).toBe(true);
-      expect(capabilityMayReuseSafeApproval({ mode, spend: "confirm" }, subject(), true)).toBe(false);
-      // 就算某条旧记录把 spend 轴写成了 within-budget（它已经不该被写出来），钱这条也不放行。
-      expect(capabilityMayReuseSafeApproval({ mode, spend: "within-budget" }, subject(), true)).toBe(false);
+      expect(capabilityMayReuseSafeApproval({ mode }, subject(), true)).toBe(false);
     }
   });
 
   it("不可逆 / 外部 destructiveHint / 解不出效果类：同上", () => {
     for (const mode of PROJECT_AGENT_APPROVAL_MODES) {
-      const policy = { mode, spend: "confirm" } as const;
+      const policy = { mode } as const;
       expect(capabilityMayReuseSafeApproval(policy, subject({ effect: "destructive", effectClass: "irreversible" }), true)).toBe(false);
       expect(capabilityMayReuseSafeApproval(policy, subject({ effect: "reversible_write", effectClass: "reversible_local", destructiveHint: true }), true)).toBe(false);
       expect(capabilityMayReuseSafeApproval(policy, subject({ effect: undefined, effectClass: undefined }), true)).toBe(false);
@@ -51,11 +49,10 @@ describe("硬清单独立于档位", () => {
   });
 
   // 阳性对照：这把尺子量得出「放行」，否则上面每一条都会因为它恒为 false 而无意义。
-  it("可撤销的本地改动在「自动改」「全自动」下才真的免问，`step` 仍然每次问", () => {
+  it("可撤销的本地改动在两档下都免问（`step` 档已删，不再有「连本地写入也每次问」的一档）", () => {
     const reversible = subject({ effect: "reversible_write", effectClass: "reversible_local" });
-    expect(capabilityMayReuseSafeApproval({ mode: "step", spend: "confirm" }, reversible, true)).toBe(false);
-    expect(capabilityMayReuseSafeApproval({ mode: "safe-auto", spend: "confirm" }, reversible, true)).toBe(true);
-    expect(capabilityMayReuseSafeApproval({ mode: "project", spend: "confirm" }, reversible, true)).toBe(true);
+    expect(capabilityMayReuseSafeApproval({ mode: "request" }, reversible, true)).toBe(true);
+    expect(capabilityMayReuseSafeApproval({ mode: "direct" }, reversible, true)).toBe(true);
   });
 
   /**
@@ -67,7 +64,7 @@ describe("硬清单独立于档位", () => {
    */
   it("等待中的付费卡不因切档而被放行（判据与档位正交）", () => {
     const paid = subject();
-    const answers = PROJECT_AGENT_APPROVAL_MODES.map((mode) => capabilityMayReuseSafeApproval({ mode, spend: "confirm" }, paid, true));
+    const answers = PROJECT_AGENT_APPROVAL_MODES.map((mode) => capabilityMayReuseSafeApproval({ mode }, paid, true));
     expect(new Set(answers)).toEqual(new Set([false]));
     expect(capabilityIsHardGated(paid)).toBe(true);
   });
@@ -79,34 +76,26 @@ describe("硬清单独立于档位", () => {
  * 三档逐个核对——只测「全自动能跑」不够：这一改真正的风险是它顺手把另外两档也放行了。
  */
 describe("宿主面：哪一档的付费由策略代答", () => {
-  it("只有「全自动」代答；每步问 / 自动改一个字没变", () => {
-    expect(spendDecidedByPolicy({ mode: "project", spend: "confirm" })).toBe(true);
-    expect(spendDecidedByPolicy({ mode: "safe-auto", spend: "confirm" })).toBe(false);
-    expect(spendDecidedByPolicy({ mode: "step", spend: "confirm" })).toBe(false);
+  it("只有「直接生成」代答；「请求批准」一个字没变", () => {
+    expect(spendDecidedByPolicy({ mode: "direct" })).toBe(true);
+    expect(spendDecidedByPolicy({ mode: "request" })).toBe(false);
   });
 
-  it("读不到档位 → 按默认档（自动改）走，也就是照旧弹卡：不知道就不许替用户花钱", () => {
+  it("读不到档位 → 按默认档（请求批准）走，也就是照旧弹卡：不知道就不许替用户花钱", () => {
     expect(spendDecidedByPolicy(undefined)).toBe(false);
   });
 
-  it("判据挂在 `mode` 上，不挂在 `spend` 上——那根轴没有预算撑着（硬预算上限 2026-09-10 已删）", () => {
-    // 两个方向都量：within-budget 既不能把非全自动档变成代答，也不能把全自动档变回逐笔问。
-    expect(spendDecidedByPolicy({ mode: "safe-auto", spend: "within-budget" })).toBe(false);
-    expect(spendDecidedByPolicy({ mode: "step", spend: "within-budget" })).toBe(false);
-    expect(spendDecidedByPolicy({ mode: "project", spend: "within-budget" })).toBe(true);
-  });
-
   it("模型面不受影响：同一档下，付费能力仍然是任何档位都不自动批的硬闸", () => {
-    expect(spendDecidedByPolicy({ mode: "project", spend: "confirm" })).toBe(true);
+    expect(spendDecidedByPolicy({ mode: "direct" })).toBe(true);
     expect(capabilityIsHardGated(subject())).toBe(true);
-    expect(capabilityMayReuseSafeApproval({ mode: "project", spend: "confirm" }, subject(), true)).toBe(false);
+    expect(capabilityMayReuseSafeApproval({ mode: "direct" }, subject(), true)).toBe(false);
   });
 });
 
 /**
  * `hostMustConfirm`：受信宿主说「这一次必须当次确认」（沙箱逃逸档的 shell 命令）。
  *
- * 它替换掉的是 `laneApprovalGate` 里那条 `forceConfirmation ? { mode: 'step', spend: 'confirm' } : policy`
+ * 它替换掉的是 `laneApprovalGate` 里那条 `forceConfirmation ? 伪造的「每步问」档 : policy`（当时的 `step`，2026-10-12 已删）
  * ——一个调用点伪造一份用户从没选过的档位。这一组量的正是「事实归事实、档位归档位」：
  * 摩擦照抬，而档位本身谁也改不动。
  */
@@ -114,24 +103,24 @@ describe("hostMustConfirm 只抬不降，且不伪造档位", () => {
   const reversible = (overrides: Partial<CapabilityApprovalSubject> = {}): CapabilityApprovalSubject =>
     subject({ effect: "reversible_write", effectClass: "reversible_local", ...overrides });
 
-  it("抬：本来在「自动改」「全自动」下免问的可撤销改动，被它拦成逐次确认", () => {
-    for (const mode of ["safe-auto", "project"] as const) {
-      expect(capabilityMayReuseSafeApproval({ mode, spend: "confirm" }, reversible(), false)).toBe(true);
-      expect(capabilityMayReuseSafeApproval({ mode, spend: "confirm" }, reversible({ hostMustConfirm: true }), false)).toBe(false);
+  it("抬：本来在两档下都免问的可撤销改动，被它拦成逐次确认", () => {
+    for (const mode of ["request", "direct"] as const) {
+      expect(capabilityMayReuseSafeApproval({ mode }, reversible(), false)).toBe(true);
+      expect(capabilityMayReuseSafeApproval({ mode }, reversible({ hostMustConfirm: true }), false)).toBe(false);
     }
   });
 
   it("不降：`false`/缺席什么都不做——一个说自己无害的调用不会因此少问一次", () => {
-    expect(capabilityMayReuseSafeApproval({ mode: "step", spend: "confirm" }, reversible({ hostMustConfirm: false }), true)).toBe(false);
-    expect(capabilityMayReuseSafeApproval({ mode: "step", spend: "confirm" }, subject({ hostMustConfirm: false }), true)).toBe(false);
+    expect(capabilityMayReuseSafeApproval({ mode: "request" }, reversible({ requiresPlanReview: true, hostMustConfirm: false }), false)).toBe(false);
+    expect(capabilityMayReuseSafeApproval({ mode: "request" }, subject({ hostMustConfirm: false }), true)).toBe(false);
     // 付费仍是硬闸：宿主说「不必确认」这种话根本没有表达方式。
-    expect(capabilityMayReuseSafeApproval({ mode: "project", spend: "confirm" }, subject({ hostMustConfirm: false }), true)).toBe(false);
+    expect(capabilityMayReuseSafeApproval({ mode: "direct" }, subject({ hostMustConfirm: false }), true)).toBe(false);
   });
 
   it("用户自己答过的「这类以后别问」仍然算数——它夺走的是「不问就放行」，不是那个按钮", () => {
     const escaped = reversible({ hostMustConfirm: true });
-    expect(capabilityMayReuseSafeApproval({ mode: "safe-auto", spend: "confirm" }, escaped, false)).toBe(false);
-    expect(capabilityMayReuseSafeApproval({ mode: "safe-auto", spend: "confirm" }, escaped, true)).toBe(true);
+    expect(capabilityMayReuseSafeApproval({ mode: "request" }, escaped, false)).toBe(false);
+    expect(capabilityMayReuseSafeApproval({ mode: "request" }, escaped, true)).toBe(true);
   });
 
   it("它不是硬闸的一员：硬闸连「以后别问」的按钮都不给，逃逸命令要留着那个按钮", () => {

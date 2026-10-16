@@ -7,6 +7,13 @@
 //
 // 用法：node tests/ux/design-lab-agent-panel-v4.walk.mjs  （ONLY=v4-composer-idle 只跑一个）
 import { walkDesignLabScreen } from './design-lab/walkScreen.mjs'
+import { uiText } from './full-walk/invariants.mjs'
+
+/** 刹车退回的报价卡：卡上必须多出那一行原因（取词典的值，不抄字面）。 */
+const BRAKE_LINE = {
+  'v4-panel-spend-brake-retry': ['zh-CN', 'brakeRetry'],
+  'v4-panel-spend-brake-out-of-plan-en': ['en', 'brakeOutOfPlan'],
+}
 
 await walkDesignLabScreen({
   screen: 'agent-panel-v4',
@@ -23,6 +30,13 @@ await walkDesignLabScreen({
    * 只对那一格断言：其余格子没有参数浮层，对它们断言「没有下拉」是句在任何情况下都成立的废话。
    */
   async assertState(page, state, record) {
+    if (BRAKE_LINE[state.id]) {
+      // board:AgentPermissionTiers/spend-card.brake-reason
+      const [locale, key] = BRAKE_LINE[state.id]
+      const expected = uiText(locale, `agentPanelV4.${key}.title`)
+      const text = await page.evaluate(() => document.querySelector('[data-v4-block="intervention"]')?.textContent ?? '')
+      if (!text.includes(expected)) record(`${state.id} 报价卡上没有刹车原因那一行（board:AgentPermissionTiers/spend-card.brake-reason）：${expected}`)
+    }
     if (state.id === 'v4-consent-first-ask') {
       const geometry = await page.evaluate(() => {
         const card = document.querySelector('[data-v4-block="consent"]')

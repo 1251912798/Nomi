@@ -19,14 +19,14 @@ import { LANE_APPROVAL_NOTE_TYPE, isLaneApprovalNote, type LaneProjection }
 import { LANE_WRITE_TOOL_TIMEOUT_MS } from '../../electron/shared/agentLane/laneToolContract.js';
 import type { LaneApprovalOptions } from '../../electron/agentLane/laneRuntimePort.js';
 import { createDocumentLaneTools } from '../../electron/agentLane/laneDocumentTools.js';
-import { createDocumentPort, createLaneFixture, FIXTURE_DESCRIBE } from './laneFixture.mjs';
+import { createDocumentPort, createLaneFixture, FIXTURE_DESCRIBE, mustConfirm } from './laneFixture.mjs';
 import { createAskUserLaneTools } from '../../electron/agentLane/laneAskUserTool.js';
 
 const APPEND = { type: 'tool' as const, calls: [{ id: 'call-append', name: 'write_script', arguments: { where: 'end', content: ' and then she left.' } }] };
 const CLOSING = { type: 'text' as const, text: 'Done.' };
 
-/** 「每步问」：让文稿写入必然停下来等人，不靠某个能力恰好是硬闸。 */
-const STEP: LaneApprovalOptions = { hasUserInterface: true, policy: () => ({ mode: 'step', spend: 'confirm' }) };
+/** 让文稿写入必然停下来等人（宿主说这一次必须当场确认；为什么不再用档位见 `mustConfirm`）。 */
+const MUST_CONFIRM: LaneApprovalOptions = mustConfirm();
 
 /** 等到投影里出现一张卡。**不用墙钟**：订阅推送，R18 的那条纪律。 */
 function firstPending(lane: { subscribe(listener: (projection: LaneProjection) => void): () => void; projection(): LaneProjection }) {
@@ -73,7 +73,7 @@ test('G3a · fail-closed：审批模块自己抛异常 = 拒收，工具没跑�
 
 test('G3a · 没有窗口可问的调用（MCP stdio / 走查 / 后台批）被策略拒，且从没弹过卡', async (t: TestContext) => {
   const fixture = await createLaneFixture(t, [APPEND, CLOSING], {
-    ...STEP, hasUserInterface: false,
+    ...MUST_CONFIRM, hasUserInterface: false,
   });
   const lane = await fixture.openLane(fixture.options);
   const seenPending: boolean[] = [];
@@ -91,7 +91,7 @@ test('G3a · 没有窗口可问的调用（MCP stdio / 走查 / 后台批）被�
 });
 
 test('G3b ① · 等待期：零模型请求在飞，工具没进过领域端口，「在等你」由宿主投影出来', async (t: TestContext) => {
-  const fixture = await createLaneFixture(t, [APPEND, CLOSING], STEP);
+  const fixture = await createLaneFixture(t, [APPEND, CLOSING], MUST_CONFIRM);
   const lane = await fixture.openLane(fixture.options);
   const before = fixture.document.text();
   const turn = lane.execute({ kind: 'prompt', text: 'Append a closing line.' });
@@ -102,7 +102,7 @@ test('G3b ① · 等待期：零模型请求在飞，工具没进过领域端口
   assert.equal(pending.pendingCount, 1);
   // 文稿写入是本地可撤销的，所以「本会话允许这类」那个按钮**该有**……
   assert.equal(pending.effectClass, 'reversible_local');
-  // ……但这条 lane 现在是「每步问」，那个档位下谁都没有。门槛不因为效果类可撤销就放宽。
+  // ……但宿主说这一次必须当场确认、且不给会话级放行，所以没有那个按钮。门槛不因为效果类可撤销就放宽。
   assert.equal(pending.grantable, false);
   assert.equal(lane.projection().running, true, 'the lane is still an open operation while it waits');
   assert.equal(fixture.http.requests.length, 1, 'G3b ①：等待期不发第二次模型请求（不花钱）');
@@ -119,12 +119,11 @@ test('G3b ① · 等待期：零模型请求在飞，工具没进过领域端口
 });
 
 test('G3b ① · 「本会话允许这类」按能力记：同一个能力的下一次调用不再弹卡', async (t: TestContext) => {
-  // 这一族**只可能是** `requiresPlanReview` 的能力：`safe-auto` 下别的本地可撤销改动压根不弹卡，
-  // 而 `step` 档下谁都拿不到这个按钮（那是「每步问」这三个字的意思）。所以这里用一个
+  // 这一族**只可能是** `requiresPlanReview` 的能力：`request`（请求批准）下别的本地可撤销改动压根不弹卡。所以这里用一个
   // 声明 `timeline.write` 的工具——它的载荷是一份用户必须先读的计划，首次必弹。
   const plan = (id: string) => ({ type: 'tool' as const, calls: [{ id, name: 'plan_timeline', arguments: {} }] });
   const fixture = await createLaneFixture(t, [plan('call-plan-1'), plan('call-plan-2'), CLOSING], {
-    hasUserInterface: true, policy: () => ({ mode: 'safe-auto', spend: 'confirm' }),
+    hasUserInterface: true, policy: () => ({ mode: 'request' }),
   });
   let applied = 0;
   const lane = await fixture.openLane({
@@ -148,7 +147,7 @@ test('G3b ① · 「本会话允许这类」按能力记：同一个能力的下
     const card = projection.pending;
     if (!card || cards.includes(card.toolCallId)) return;
     cards.push(card.toolCallId);
-    assert.equal(card.grantable, true, 'a plan-review card under safe-auto is the one that carries 「本会话允许这类」');
+    assert.equal(card.grantable, true, 'a plan-review card under request is the one that carries 「本会话允许这类」');
     void lane.execute({ kind: 'approval', toolCallId: card.toolCallId, action: 'allow-session' });
   });
   t.after(stop);
@@ -160,7 +159,7 @@ test('G3b ① · 「本会话允许这类」按能力记：同一个能力的下
 });
 
 test('G3b ② · 按停止：pi 自己合成 cancelled 结果，宿主在 abort 之后补一条取消记录', async (t: TestContext) => {
-  const fixture = await createLaneFixture(t, [APPEND, CLOSING], STEP);
+  const fixture = await createLaneFixture(t, [APPEND, CLOSING], MUST_CONFIRM);
   const lane = await fixture.openLane(fixture.options);
   const before = fixture.document.text();
   const turn = lane.execute({ kind: 'prompt', text: 'Append a closing line.' });
@@ -186,7 +185,7 @@ test('G3b ② · 按停止：pi 自己合成 cancelled 结果，宿主在 abort 
 });
 
 test('G3b ③ · 崩溃重启：不复活确认卡，那次调用被取消，模型读到「再发一次」', async (t: TestContext) => {
-  const fixture = await createLaneFixture(t, [APPEND, CLOSING], STEP);
+  const fixture = await createLaneFixture(t, [APPEND, CLOSING], MUST_CONFIRM);
   // 子进程走**生产路径** `openLane` 打开会话、停在卡上，然后被 SIGKILL。用的就是探针
   // P1③ 那个子进程（`stage3-probe-crash-child.mts`）——两边要的是同一件事，抄第二份出来
   // 的代价不是重复，是两份会慢慢长得不一样。
@@ -260,7 +259,7 @@ test('答上了的 ask_user 以成功形状回给模型，正文就是他的原�
     askReply(ASK_CALLS[1], '要横屏还是竖屏？'),
     askReply(ASK_CALLS[2], '第二镜想怎么改？'),
     CLOSING,
-  ], STEP);
+  ], MUST_CONFIRM);
   const lane = await fixture.openLane({ ...fixture.options, tools: createAskUserLaneTools() });
   const turn = lane.execute({ kind: 'prompt', text: '帮我剪一条片子。' });
   for (const [index, toolCallId] of ASK_CALLS.entries()) {
@@ -288,7 +287,7 @@ test('答上了的 ask_user 以成功形状回给模型，正文就是他的原�
 
 test('阳性对照：真的「不要」仍然是错误形状，而且带的是他那句话', async (t: TestContext) => {
   const denial = '别动我的文稿';
-  const fixture = await createLaneFixture(t, [APPEND, CLOSING], STEP);
+  const fixture = await createLaneFixture(t, [APPEND, CLOSING], MUST_CONFIRM);
   const lane = await fixture.openLane(fixture.options);
   const before = fixture.document.text();
   const turn = lane.execute({ kind: 'prompt', text: 'Append a closing line.' });

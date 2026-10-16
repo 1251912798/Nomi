@@ -112,7 +112,7 @@ const V4_REQUIRED_STATES = [
   'v4-intervention-spend', 'v4-intervention-question', 'v4-intervention-plan',
   'v4-intervention-credential', 'v4-intervention-deviation',
   // ⑧ composer · 权限三档（工作方式三档已于 2026-09-06 拍板 ① 删除，不再有对应格）
-  'v4-composer-permission-step', 'v4-composer-permission-safe-auto', 'v4-composer-permission-project',
+  'v4-composer-permission-request', 'v4-composer-permission-direct',
   // ⑦ 收起坞 · 五档状态（`agentPanelV4DockStatus.ts::V4DockStatus`）
   // 2026-09-06 用户改：收起态从「右侧 32px rail 上的两颗 icon」换回「右上角 Nomi logo + 状态叠加」。
   // 词表加一档就得画一格，正是这条断言的意义。

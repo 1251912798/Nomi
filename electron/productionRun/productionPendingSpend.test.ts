@@ -65,7 +65,7 @@ describe("付费卡的宿主投影", () => {
     expect(pending!.unknownShotCount).toBe(0);
     expect(pending!.presentationId).toBe("op-a:presentation:1");
     expect(pending!.presentationEpoch).toBe(1);
-    expect(pending!.policySnapshot).toEqual({ mode: "safe-auto", spend: "confirm" });
+    expect(pending!.policySnapshot).toEqual({ mode: "request" });
   });
 
   it("旧卡的身份是 durable epoch：策略切换不会把同一张卡改成另一张", () => {
@@ -182,7 +182,7 @@ describe("付费卡的宿主投影", () => {
     const fullAuto = run();
     fullAuto.generationPlan = { ...fullAuto.generationPlan!, presentations: [{
       ...fullAuto.generationPlan!.presentations![0],
-      policySnapshot: { mode: "project", spend: "confirm" },
+      policySnapshot: { mode: "direct" },
       policyDecisionState: "pending",
       policyDecisionDeadlineAt: new Date(Date.now() + PROJECT_AGENT_PREPARING_DEADLINE_MS).toISOString(),
     }] };
@@ -194,17 +194,31 @@ describe("付费卡的宿主投影", () => {
     const failed = run();
     failed.generationPlan = { ...failed.generationPlan!, presentations: [{
       ...failed.generationPlan!.presentations![0],
-      policySnapshot: { mode: "project", spend: "confirm" },
+      policySnapshot: { mode: "direct" },
       policyDecisionState: "failed",
     }] };
     expect(projectPendingSpendConfirm(failed, resolvePricing)).toMatchObject({ manualDecisionRequired: true });
+  });
+
+  it("直接生成档的刹车：退回的这张卡带上 brake 原因（Run 现派生，不落盘）；请求批准档不带", () => {
+    const stopped = run();
+    stopped.status = "paused";
+    stopped.generationPlan = { ...stopped.generationPlan!, presentations: [{
+      ...stopped.generationPlan!.presentations![0],
+      policySnapshot: { mode: "direct" },
+      policyDecisionState: "failed",
+    }] };
+    expect(projectPendingSpendConfirm(stopped, resolvePricing)).toMatchObject({ manualDecisionRequired: true, brake: { reason: "stopped" } });
+    const request = run();
+    request.status = "paused";
+    expect(projectPendingSpendConfirm(request, resolvePricing)?.brake).toBeUndefined();
   });
 
   it("marker failure or revision conflict cannot hide the card after the owner deadline", () => {
     const markerLost = run();
     markerLost.generationPlan = { ...markerLost.generationPlan!, presentations: [{
       ...markerLost.generationPlan!.presentations![0],
-      policySnapshot: { mode: "project", spend: "confirm" },
+      policySnapshot: { mode: "direct" },
       policyDecisionState: "pending",
       policyDecisionDeadlineAt: new Date(Date.now() - 1).toISOString(),
     }] };
@@ -216,7 +230,7 @@ describe("付费卡的宿主投影", () => {
     persisted.generationPlan = { ...persisted.generationPlan!, presentations: [{
       ...persisted.generationPlan!.presentations![0],
       openedAt: "2026-09-11T00:00:00.000Z",
-      policySnapshot: { mode: "project", spend: "confirm" },
+      policySnapshot: { mode: "direct" },
       policyDecisionState: "pending",
       policyDecisionDeadlineAt: undefined,
     }] };
@@ -232,7 +246,7 @@ describe("付费卡的宿主投影", () => {
     stale.generationPlan = { ...stale.generationPlan!, presentations: [{
       ...stale.generationPlan!.presentations![0],
       openedAt: "2026-09-11T00:00:00.000Z",
-      policySnapshot: { mode: "project", spend: "confirm" },
+      policySnapshot: { mode: "direct" },
       policyDecisionState: "pending",
       policyDecisionDeadlineAt: new Date(Date.now() - 1).toISOString(),
     }] };

@@ -78,6 +78,11 @@ export type PendingSpendConfirm = Readonly<{
   /** Read-side deadline or durable failure marker requires an explicit user decision. */
   manualDecisionRequired?: true;
   /**
+   * 「直接生成」档本来会代答、但刹车成立所以退回这张卡的原因（只多一行说明为什么停，卡本身和请求批准档一模一样）。
+   * 由 `directGenerationBrakes.directGenerationBrakeForRun` 按 Run 现派生，不落盘；没有刹车 = 缺席。
+   */
+  brake?: Readonly<{ reason: "stopped" | "retry-limit" | "out-of-plan"; shotId?: string }>;
+  /**
    * 付费门已经开着时它就是那道门的 id；还是草稿（没封印）时缺席。
    *
    * 卡**不看它**——用户在两档下看到的是同一张卡，改参数时价格照样原地刷新。

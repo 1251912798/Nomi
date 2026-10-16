@@ -18,7 +18,7 @@ describe("lane command codec", () => {
     // （#546 V10）。新通路里那些字段连**通过**都通不过——不是被忽略，是根本没有它们的位置。
     const smuggled = parseLaneCommand({
       kind: "prompt", text: "hi",
-      turnId: "renderer-minted", executionToken: "renderer-minted", approvalPolicy: { mode: "project" },
+      turnId: "renderer-minted", executionToken: "renderer-minted", approvalPolicy: { mode: "direct" },
     });
     expect(smuggled).toEqual({ kind: "prompt", text: "hi" });
     expect(Object.keys(smuggled)).toEqual(["kind", "text"]);
