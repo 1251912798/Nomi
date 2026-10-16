@@ -1013,6 +1013,17 @@
     },
     {
       "members": [
+        "empty",
+        "idle",
+        "rendering",
+        "retry",
+        "too_long"
+      ],
+      "reason": "3D-BOX 导演视图主按钮「出成片」显示哪一态：empty 没有可播放的镜头 / rendering 预演渲染中 / retry 预演失败可重试 / too_long 超长失败要改短 / idle 可以点。它是界面投影，由预演生命周期 DIRECTOR_PREVIEW_STATUSES 加「有没有镜头」推出（directorProduceButtonState 唯一推导点），只给按钮用；不能复用预演生命周期本身：按钮要区分「可重试」与「超长」两种失败，还多一个「没有镜头」，并进去会让花钱闸的判据长出与它无关的成员。",
+      "site": "src/workbench/generationCanvas/nodes/director/model/directorPreviewState.ts::type:DirectorProduceButtonState/type-union"
+    },
+    {
+      "members": [
         "backdrop",
         "building",
         "counter",

@@ -78,7 +78,7 @@
       "candidates": [
         "005-topbar.produce"
       ],
-      "status": "missing",
+      "status": "in-progress",
       "states": [
         "disabled",
         "loading",
@@ -87,8 +87,8 @@
         "zh-en",
         "dark"
       ],
-      "note": "现役是占位：按钮 disabled，但禁用样式写在外层 div 上没生效，看着可点、点了没反应（DirectorViewShell.tsx:98-100；DirectorEditor.tsx:252 onProduce 是空函数）。Agent 路径已能挂预演、出报价卡。打开前二选一：藏起来 / 接线（花钱类）。",
-      "owner": "待拍板：藏或接线"
+      "note": "S5 接线（选项 A：只准备不花钱）：状态 = 可点 / 预演渲染中 / 重试预演 / 超长置灰 / 没有镜头置灰，判据住 directorPreviewState；点了挂预演并回画布选中视频镜头。实验室 d3-produce-*。",
+      "owner": "feat/director-3dbox-switch"
     },
     {
       "id": "topbar.produce-menu",
@@ -96,14 +96,14 @@
       "candidates": [
         "006-topbar.produce-menu"
       ],
-      "status": "missing",
+      "status": "in-progress",
       "states": [
         "disabled",
         "zh-en",
         "dark"
       ],
-      "note": "现役 ▾ 同样 disabled。这三件在精修右上「产出」菜单里都能用。",
-      "owner": "待拍板：藏或接线"
+      "note": "▾ = 截图 + 产出浮层正文（录制 MP4 与已有产出，与精修顶栏同一份 OutputsMenuBody）。实验室 d3-produce-menu-*。",
+      "owner": "feat/director-3dbox-switch"
     },
     {
       "id": "viewport.scene",

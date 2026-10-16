@@ -49,6 +49,11 @@ import { invertFrame, sceneFrame } from './model/sceneObjectGraph'
 import { orderedTimelineEntities } from './model/timelineTracks'
 import { registerDirectorSession } from './directorSessionRegistry'
 import { createDirectorEditorPersistence, type DirectorEditorPersistence } from './directorEditorPersistence'
+import { prepareProduceFromPreview } from './agent/directorProduce'
+import { readDirectorPreview } from './model/directorPreviewState'
+import type { ProduceControl } from './panels/topbar/ProduceButton'
+import { useGenerationCanvasStore } from '../../store/generationCanvasStore'
+import { viewNodeInCanvas } from '../../../generation/list/generationListSource'
 import { createEditorShotFocusSession } from './directorShotFocusSession'
 import { isDirector3DBoxEnabled } from '../../../../featureFlags/director3dbox'
 import { DirectorViewShell, type DirectorViewMode } from './DirectorViewShell'
@@ -90,6 +95,7 @@ type EditorBodyProps = {
   nodeId?: string
   onSendToCanvas?: (output: DirectorOutput) => void
   onExternalProjectChange?: (project: DirectorProject) => void
+  produce: ProduceControl
 }
 
 type EditorStageProps = {
@@ -106,7 +112,7 @@ type EditorStageProps = {
   director3dBox: boolean
   viewMode: DirectorViewMode
   onViewModeChange: (mode: DirectorViewMode) => void
-  onProduce: () => void
+  produce: ProduceControl
 }
 
 /**
@@ -114,7 +120,7 @@ type EditorStageProps = {
  * 而那个 Provider 是 EditorBody 渲染的 —— 在 EditorBody 自己的函数体里调，拿到的是 provider 之外的空值，
  * useViewportApi() 当场抛错、整块懒加载壳落到「加载失败」（2026-09-09 真机走查抓到）。
  */
-function EditorStage({ nodeTitle, scopeRef, preferences, cancelCreationRef, timelineCollapsed, onToggleTimeline, onResetView, onExit, onOpenSettings, onOpenHelp, director3dBox, viewMode, onViewModeChange, onProduce }: EditorStageProps): JSX.Element {
+function EditorStage({ nodeTitle, scopeRef, preferences, cancelCreationRef, timelineCollapsed, onToggleTimeline, onResetView, onExit, onOpenSettings, onOpenHelp, director3dBox, viewMode, onViewModeChange, produce }: EditorStageProps): JSX.Element {
   const { t } = useTranslation()
   // 创建模式只调一次 hook，经 CreationModeContext 下发：视口要指针路由与 ghost ref，顶栏「＋添加」要能发起。
   // 两处各调一次 = 两份互不知情的模式状态（P1 的并行版）。
@@ -137,7 +143,7 @@ function EditorStage({ nodeTitle, scopeRef, preferences, cancelCreationRef, time
       viewSettings={preferences.view}
       onExit={onExit}
       onViewModeChange={onViewModeChange}
-      onProduce={onProduce}
+      produce={produce}
     />
   }
   // 精修 = 「选中才出」（2026-10-04 用户拍板方向 A）：3D-BOX 开关开时的「精修」与开关关时的旧导演台是同一个壳
@@ -163,7 +169,7 @@ function EditorStage({ nodeTitle, scopeRef, preferences, cancelCreationRef, time
   )
 }
 
-function EditorBody({ nodeTitle, scopeRef, onExit, preferences, onChangePreferences, nodeId, onSendToCanvas, onExternalProjectChange }: EditorBodyProps): JSX.Element {
+function EditorBody({ nodeTitle, scopeRef, onExit, preferences, onChangePreferences, nodeId, onSendToCanvas, onExternalProjectChange, produce }: EditorBodyProps): JSX.Element {
   const apiRef = React.useRef<ViewportApi | null>(null)
   const cancelCreationRef = React.useRef<(() => void) | null>(null)
   const store = useDirectorStoreApi()
@@ -246,7 +252,7 @@ function EditorBody({ nodeTitle, scopeRef, onExit, preferences, onChangePreferen
         director3dBox={director3dBox}
         viewMode={viewMode}
         onViewModeChange={setViewMode}
-        onProduce={() => undefined}
+        produce={produce}
       />
       <MobileConnectDialog />
       <SettingsDialog
@@ -334,6 +340,32 @@ export default function DirectorEditor({ rawProject, nodeTitle, readOnly = false
     }
   }, [])
 
+  // 「出成片」（设计卡 docs/plan/2026-10-16-director-3dbox-produce-design-card.md，选项 A）：只做准备，不花钱——
+  // 先把没落盘的手改落盘（预演过期判据与重渲都读节点上的工程），预演最新就挂到视频镜头、回画布选中它；
+  // 过期 / 没出过 → 请求重渲并记下「在等」，预演好了自动接着做；用户点节点 ↑ 才花钱。
+  const [producePending, setProducePending] = React.useState(false)
+  const produce = React.useCallback(() => {
+    if (readOnly || !nodeId) return
+    persistence.saveNow()
+    const outcome = prepareProduceFromPreview(nodeId, store.getState().exportProject())
+    if (outcome.kind === 'rendering') {
+      setProducePending(true)
+      return
+    }
+    setProducePending(false)
+    if (outcome.kind === 'blocked') return
+    if (outcome.toast) toast(outcome.toast.message, outcome.toast.level)
+    onClose()
+    viewNodeInCanvas(outcome.videoNodeId)
+  }, [nodeId, onClose, persistence, readOnly, store])
+  const previewStatus = useGenerationCanvasStore((state) => (nodeId ? readDirectorPreview(state.nodes.find((node) => node.id === nodeId))?.status : undefined))
+  React.useEffect(() => {
+    if (!producePending) return
+    if (previewStatus === 'ready') produce()
+    else if (previewStatus === 'failed') setProducePending(false)
+  }, [previewStatus, produce, producePending])
+  const produceControl = React.useMemo<ProduceControl>(() => ({ nodeId, readOnly, pending: producePending, onProduce: produce }), [nodeId, produce, producePending, readOnly])
+
   const handleExit = React.useCallback(async () => {
     const ok = await confirmDialog({
       title: t('director.editor.exitConfirmTitle'),
@@ -410,6 +442,7 @@ export default function DirectorEditor({ rawProject, nodeTitle, readOnly = false
             nodeId={nodeId}
             onSendToCanvas={onSendToCanvas}
             onExternalProjectChange={persistence.persist}
+            produce={produceControl}
           />
         </div>
       </TooltipProvider>

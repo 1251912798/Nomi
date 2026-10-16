@@ -20,7 +20,7 @@ import DirectorEditor from '../../../workbench/generationCanvas/nodes/director/D
 import { compileDirectorPlan } from '../../../workbench/generationCanvas/nodes/director/model/compiler/directorPlanCompiler'
 import { applyDirectorPlanEdits, canonicalDirectorPlan, directorPlanRevision } from '../../../../electron/shared/director/planPatch'
 import { parseDirectorPlan, type DirectorPlan } from '../../../../electron/shared/director/directorPlanSchema'
-import { DIRECTOR_NODE_KIND, DIRECTOR_PLAN_META_KEY, DIRECTOR_PROJECT_META_KEY } from '../../../workbench/generationCanvas/nodes/director/model/directorNodeMeta'
+import { DIRECTOR_NODE_KIND, DIRECTOR_PLAN_META_KEY, DIRECTOR_PREVIEW_META_KEY, DIRECTOR_PROJECT_META_KEY } from '../../../workbench/generationCanvas/nodes/director/model/directorNodeMeta'
 import { useGenerationCanvasStore } from '../../../workbench/generationCanvas/store/generationCanvasStore'
 import type { GenerationCanvasNode } from '../../../workbench/generationCanvas/model/generationCanvasTypes'
 import { createDirectorStore } from '../../../workbench/generationCanvas/nodes/director/model/directorStore'
@@ -69,10 +69,24 @@ function courtyardFixture(kind: 'courtyard' | 'courtyard-after'): CourtyardFixtu
 }
 
 /** 画布上放一个带计划正本的导演台节点（stage_shot 建出来的节点就长这样）：编辑器经它登记会话。 */
-function installCanvasNode(fixture: CourtyardFixture | null): void {
+/** 导演节点上的预演处于哪一态（「出成片」主按钮的几种样子）；none = 没出过预演。 */
+export type LabPreview = 'none' | 'rendering' | 'failed' | 'too_long' | 'ready'
+
+function labPreviewMeta(preview: LabPreview, revision: string): Record<string, unknown> {
+  if (preview === 'none') return {}
+  const status = preview === 'too_long' ? 'failed' : preview
+  return { [DIRECTOR_PREVIEW_META_KEY]: {
+    status, revision, updatedAt: 1,
+    ...(preview === 'too_long' ? { reason: 'too_long' } : preview === 'failed' ? { reason: 'capture_failed' } : {}),
+    ...(preview === 'ready' ? { videoUrl: 'nomi-local://asset/lab/preview.mp4', attach: 'video_ref' } : {}),
+  } }
+}
+
+function installCanvasNode(fixture: CourtyardFixture | null, preview: LabPreview = 'none'): void {
+  const revision = fixture ? directorPlanRevision(fixture.plan) : ''
   const node = fixture ? ({
     id: LAB_DIRECTOR_NODE_ID, kind: DIRECTOR_NODE_KIND, title: '', position: { x: 0, y: 0 },
-    meta: { [DIRECTOR_PROJECT_META_KEY]: fixture.project, [DIRECTOR_PLAN_META_KEY]: { plan: fixture.plan, revision: directorPlanRevision(fixture.plan), issueCount: 0 } },
+    meta: { [DIRECTOR_PROJECT_META_KEY]: fixture.project, [DIRECTOR_PLAN_META_KEY]: { plan: fixture.plan, revision, issueCount: 0 }, ...labPreviewMeta(preview, revision) },
   } as unknown as GenerationCanvasNode) : null
   useGenerationCanvasStore.getState().restoreSnapshot({ nodes: node ? [node] : [], edges: [], groups: [], selectedNodeIds: [] } as never)
 }
@@ -218,6 +232,10 @@ export type Director3dBoxStageProps = {
   agentWidth?: number
   /** 右侧对话：空，或「Agent 改完第 2 镜」那一轮（画布 ⑤）。 */
   conversation?: 'empty' | 'after-patch'
+  /** 导演节点上的预演状态（「出成片」主按钮各态）。 */
+  preview?: LabPreview
+  /** 可编辑：只有「出成片」各态的格子要按钮可点的样子；其余格子只读（不落盘、不登记撤销前落盘）。 */
+  editable?: boolean
   release: () => void
 }
 
@@ -230,7 +248,7 @@ function afterPatchItems(): ReturnType<typeof labHostState> {
   ] })
 }
 
-export function Director3dBoxStage({ locale, fixture, drive = 'none', steps = NO_STEPS, flag = 'on', agentWidth = AGENT_PANEL_WIDTH, conversation = 'empty', release }: Director3dBoxStageProps): JSX.Element {
+export function Director3dBoxStage({ locale, fixture, drive = 'none', steps = NO_STEPS, flag = 'on', agentWidth = AGENT_PANEL_WIDTH, conversation = 'empty', preview = 'none', editable = false, release }: Director3dBoxStageProps): JSX.Element {
   React.useMemo(() => {
     installReadOnlyBridge(flag)
     // 导演台壳的右缘读工作台 store 的 Agent 宽（真机同一个值），实验室把它设成这一格要的宽
@@ -239,7 +257,7 @@ export function Director3dBoxStage({ locale, fixture, drive = 'none', steps = NO
   }, [agentWidth, flag, locale])
   const courtyard = React.useMemo(() => (fixture === 'empty' ? null : courtyardFixture(fixture)), [fixture])
   const project = courtyard?.project ?? null
-  React.useMemo(() => installCanvasNode(courtyard), [courtyard])
+  React.useMemo(() => installCanvasNode(courtyard, preview), [courtyard, preview])
   React.useEffect(() => {
     let alive = true
     driveAndSettle(drive, steps, project)
@@ -257,7 +275,7 @@ export function Director3dBoxStage({ locale, fixture, drive = 'none', steps = NO
   const noop = React.useCallback(() => undefined, [])
   return (
     <>
-      <DirectorEditor rawProject={project ?? undefined} nodeTitle={title} readOnly nodeId={courtyard ? LAB_DIRECTOR_NODE_ID : undefined} onClose={noop} onProjectChange={noop} />
+      <DirectorEditor rawProject={project ?? undefined} nodeTitle={title} readOnly={!editable} nodeId={courtyard ? LAB_DIRECTOR_NODE_ID : undefined} onClose={noop} onProjectChange={noop} />
       <div className="fixed inset-y-0 right-0 bg-nomi-bg p-4" style={{ width: assistantPaneWidth(agentWidth) }}>
         <ShellStage surface="generation" snapshot={conversation === 'after-patch' ? afterPatchItems() : labHostState({ items: [] })} width={agentWidth} height={window.innerHeight - assistantPaneWidth(0)} />
       </div>

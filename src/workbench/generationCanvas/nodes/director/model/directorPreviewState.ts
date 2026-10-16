@@ -1,6 +1,7 @@
 /**
  * [INPUT]: 依赖 ./directorNodeMeta 的 DIRECTOR_NODE_KIND / DIRECTOR_PREVIEW_META_KEY / DIRECTOR_PLAN_META_KEY、../../../model/generationCanvasTypes
  * [OUTPUT]: 对外提供 DirectorPreviewMeta、DirectorPlanMeta、readDirectorPreview、readDirectorPlanMeta、directorPreviewSpendBlock、
+ *           directorPreviewSourceFingerprint / directorProduceState（导演视图「出成片」的状态，与花钱闸同一份判据）、
  *           DIRECTOR_PREVIEW_MAX_SECONDS、DIRECTOR_PREVIEW_FPS、declaredShotDurationSeconds、DIRECTOR_PREVIEW_DURATION_TOLERANCE_SECONDS
  * [POS]: 3D-BOX 预演状态的**唯一判据**（方案 §8 花钱闸）：「这一镜挂着的参考预演还没好（渲染中 / 失败）就不许花钱」。
  *        判据只住这里；消费者是全部付费提交的唯一咽喉 `canRunGenerationNode`（生成钮 / runGenerationNode / 生成索引）
@@ -9,9 +10,13 @@
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
 import type { DirectorPreviewStatus } from '../../../../../../electron/shared/director/directorPreviewStatus'
+import { stableProjectAgentJson } from '../../../../../../electron/shared/legacyAgentJson'
+import { synchronousSha256 } from '../../../../../../electron/shared/synchronousSha256'
 import type { GenerationCanvasNode } from '../../../model/generationCanvasTypes'
 import { productionMetaOf } from '../../../model/productionMeta'
 import { DIRECTOR_NODE_KIND, DIRECTOR_PLAN_META_KEY, DIRECTOR_PREVIEW_META_KEY } from './directorNodeMeta'
+import { normalizeDirectorProject } from './directorProject'
+import type { DirectorProject } from './directorTypes'
 
 /** 预演帧率：Seedance 参考视频要求 ≥ 23.8fps（与运镜小片同一个值）。 */
 export const DIRECTOR_PREVIEW_FPS = 24
@@ -54,6 +59,8 @@ export type DirectorPreviewMeta = Readonly<{
   durationSeconds?: number
   /** 动作库没有的细节动作（编译器报 missing_asset 的那些）：挂接时写进视频节点提示词，交给视频模型演。 */
   notes?: readonly string[]
+  /** 这份预演是对哪份工程渲染的（`directorPreviewSourceFingerprint`）：之后工程被手改过 = 预演过期，出片前要重渲。旧预演没有这一项，按过期处理。 */
+  sourceFingerprint?: string
   updatedAt: number
 }>
 
@@ -178,4 +185,50 @@ export function directorPreviewBlocksForOperation(
     }
   }
   return blocks
+}
+
+/**
+ * 预演是对哪份工程渲染的：只看场景内容，不看产出列表（预演写回会把自己加进产出）。两边都先过 normalizeDirectorProject，
+ * 编辑器 store 里的工程与节点 meta 往返不产生假差异。
+ */
+export function directorPreviewSourceFingerprint(project: unknown): string {
+  const normalized = normalizeDirectorProject(JSON.parse(JSON.stringify(project ?? null)))
+  return synchronousSha256(stableProjectAgentJson(JSON.parse(JSON.stringify({ activeSceneId: normalized.activeSceneId, scenes: normalized.scenes })))).slice(0, 32)
+}
+
+/**
+ * 导演视图「出成片」此刻是什么状态（设计卡 docs/plan/2026-10-16-director-3dbox-produce-design-card.md ★4）。
+ * 与花钱闸同一份判据（`readDirectorPreview`），外壳只渲染、不另判：
+ *   empty        —— 没有可播放的镜头；
+ *   needs_render —— 没出过预演，或预演之后工程被改过（过期）：点了先渲染；
+ *   rendering / failed —— 预演自己的生命周期（超长的失败不给重试）；
+ *   ready        —— 预演是最新的：点了就挂到视频镜头上、回画布选中它。
+ */
+export type DirectorProduceState =
+  | Readonly<{ kind: 'empty' }>
+  | Readonly<{ kind: 'needs_render' }>
+  | Readonly<{ kind: 'rendering' }>
+  | Readonly<{ kind: 'failed'; tooLong: boolean }>
+  | Readonly<{ kind: 'ready' }>
+
+export function directorProduceState(preview: DirectorPreviewMeta | null, project: DirectorProject, playableShots: number): DirectorProduceState {
+  if (playableShots === 0) return { kind: 'empty' }
+  if (!preview) return { kind: 'needs_render' }
+  if (preview.status === 'rendering') return { kind: 'rendering' }
+  if (preview.status === 'failed') return { kind: 'failed', tooLong: preview.reason === 'too_long' }
+  if (!preview.videoUrl || preview.sourceFingerprint !== directorPreviewSourceFingerprint(project)) return { kind: 'needs_render' }
+  return { kind: 'ready' }
+}
+
+/**
+ * 主按钮显示什么（不算工程指纹：拖动时每一帧都在变，按钮不该每帧哈希整份工程）。「过期要先重渲」在点下去那一刻由
+ * `directorProduceState` 判，按钮上与「可出片」同一个样子。
+ */
+export type DirectorProduceButtonState = 'empty' | 'rendering' | 'retry' | 'too_long' | 'idle'
+
+export function directorProduceButtonState(preview: DirectorPreviewMeta | null, playableShots: number): DirectorProduceButtonState {
+  if (playableShots === 0) return 'empty'
+  if (preview?.status === 'rendering') return 'rendering'
+  if (preview?.status === 'failed') return preview.reason === 'too_long' ? 'too_long' : 'retry'
+  return 'idle'
 }
