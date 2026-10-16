@@ -4,6 +4,9 @@
 // 同源同风格：只桩 HTTP 边界与模型解析，归一/缓存/受理全用真的。
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { admitTask, taskCache } from "../runtime";
+import { fetchTaskResult } from "./taskResultQuery";
+
 const executeProfileOperation = vi.fn();
 const findExecutableModel = vi.hoisted(() =>
   vi.fn((_vendorKey: string, _modelKey: string, _kind?: string) => ({
@@ -30,7 +33,6 @@ const VIDEO_MAPPING = {
 };
 
 async function seedPendingTask(taskId: string) {
-  const { admitTask, taskCache } = await import("../runtime");
   taskCache.delete(taskId);
   admitTask(taskId, {
     vendor: "acme",
@@ -55,7 +57,6 @@ describe("轮询中模型不可执行 → 诚实失败", () => {
   });
 
   it("findExecutableModel 抛错 → failed 终态 + 指向根因的文案，不裸抛成可恢复轮询", async () => {
-    const { fetchTaskResult } = await import("./taskResultQuery");
     await seedPendingTask("task-model-gone");
     findExecutableModel.mockImplementation(() => {
       throw new Error("model acme-video is not executable");
