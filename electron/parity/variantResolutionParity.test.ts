@@ -41,7 +41,7 @@ import type { VideoModelCandidate } from "../shared/videoCapabilities";
 import { currentArchetypeVariant } from "../../src/workbench/generationCanvas/nodes/controls/archetypeMeta";
 import { projectSpendNode } from "../../src/workbench/ai/v4/spendCardDraft";
 import { seedParityCatalog } from "./generationParityTestUtils";
-import { operationSelectsArchetypeWireModel, resolveWireModel } from "../shared/wireModelIdentity";
+import { operationSelectsArchetypeWireModel, resolveWireModel } from "../shared/modelArchetypes/wireModelIdentity";
 import { selectTaskMapping, type CatalogState, type ProfileKind } from "../catalog/types";
 
 type VariantRow = { vendorKey: string; modelKey: string; meta: unknown; candidates: VideoModelCandidate[] };

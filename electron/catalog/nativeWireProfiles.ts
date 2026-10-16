@@ -1,7 +1,7 @@
 import { VOLCENGINE_SEEDANCE_QUERY_OP, VOLCENGINE_SEEDANCE_STATUS_MAPPING, VOLCENGINE_VIDEO_MODELS } from "./volcengineVideos";
 import { VOLCENGINE_IMAGE_MODELS } from "./volcengineImages";
 import type { HttpOperation, ProfileKind } from "./types";
-import { withoutArchetypeWireModel } from "../shared/wireModelIdentity";
+import { withoutArchetypeWireModel } from "../shared/modelArchetypes/wireModelIdentity";
 
 // ---------------------------------------------------------------------------
 // 「认得出的模型走它的原生报文」注册表（通用中转接入用）。

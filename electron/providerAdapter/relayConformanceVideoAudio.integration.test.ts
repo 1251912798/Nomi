@@ -455,7 +455,7 @@ describe("自建中转一致性台架 · 视频生成阶段（认证之后的真
 //
 // 2026-09-03 这一组断言的是「切了变体，中转收到变体串」——靶子本身错了：变体串来自档案，只有内置目录契约
 // 认证过它，没有任何证据说用户的中转认。0.23.1 两位用户就撞在这上面（中转回「No available channel for model
-// gpt-image-2-…-text-to-image」）。现在的不变量（electron/shared/wireModelIdentity.resolveWireModel）：
+// gpt-image-2-…-text-to-image」）。现在的不变量（electron/shared/modelArchetypes/wireModelIdentity.resolveWireModel）：
 // 中转 op 没有 archetype-selection 声明，extras 里带来的 model / 变体选择都不是输入，发出去的永远是连接名。
 // 断言纪律不变：**断 wire，不断 UI**。
 describe("自建中转一致性台架 · model 串只认连接名（档案变体 / 携带的 model 都盖不掉）", () => {

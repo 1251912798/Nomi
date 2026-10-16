@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { getArchetypeById, specializeArchetypeForVariant, type ModelArchetype } from '../../../../../electron/shared/modelArchetypes'
 import { archetypeModeModelEnum, type ResolvedReferenceValues } from './archetypeMeta'
-import { ARCHETYPE_WIRE_MODEL, resolveWireModel } from '../../../../../electron/shared/wireModelIdentity'
+import { ARCHETYPE_WIRE_MODEL, resolveWireModel } from '../../../../../electron/shared/modelArchetypes/wireModelIdentity'
 import { archetypeModeChoices } from './channelModeReach'
 import {
   type ArchetypeArraySlot,

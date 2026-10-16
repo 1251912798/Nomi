@@ -19,11 +19,11 @@
  * `extras.model`、`archetypeInput.model`、headless 默认值、Agent 参数里的 `model` 都**不是输入**：
  * 参数层把本函数的结果最后写进 `params.model`，任何参数都盖不掉它。
  *
- * 放在 `electron/shared/`：渲染层判「变体栏活不活」与主进程决定发什么，问的是同一个谓词。
+ * 放在 `electron/shared/modelArchetypes/`（档案领域目录）：渲染层判「变体栏活不活」与主进程决定发什么，问的是同一个谓词。
  */
-import { resolveArchetypeForModel, type ArchetypeMode, type ModelArchetype } from "./modelArchetypes";
-import { resolveArchetypeVariant } from "./modelArchetypes/variantResolution";
-import { modeTransportFor } from "./videoCapabilities/modeTransport";
+import { resolveArchetypeForModel, type ArchetypeMode, type ModelArchetype } from "./index";
+import { resolveArchetypeVariant } from "./variantResolution";
+import { modeTransportFor } from "../videoCapabilities/modeTransport";
 
 /** 线上模型名在参数表里的键（`{{request.params.model}}`）。它是 owner 的输出，不是任何人能传入的参数。 */
 export const WIRE_MODEL_PARAM = "model" as const;

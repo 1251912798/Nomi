@@ -3,7 +3,7 @@ import type { ModuleManifest } from "./moduleManifest";
 import type { GenerationProviderCapabilities } from "./generationRuntimeAdapter";
 import { readCatalog } from "../catalog/catalogStore";
 import { wireReferencedParamKeys, consumedCanonicalKeys } from "../catalog/paramTranslate";
-import { WIRE_MODEL_PARAM } from "../shared/wireModelIdentity";
+import { WIRE_MODEL_PARAM } from "../shared/modelArchetypes/wireModelIdentity";
 import { ARCHETYPE_WIRE_DEFAULTS } from "../catalog/archetypeWireDefaults.generated";
 import type { CatalogState, Mapping, Model, ProfileKind } from "../catalog/types";
 import { createCatalogAvailability } from "../catalog/catalogModelAvailability";

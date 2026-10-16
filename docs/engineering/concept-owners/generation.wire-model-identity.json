@@ -7,20 +7,20 @@
   "fact_kind": "rule",
   "migration_status": "converged",
   "owner": {
-    "path": "electron/shared/wireModelIdentity.ts",
+    "path": "electron/shared/modelArchetypes/wireModelIdentity.ts",
     "symbol": "resolveWireModel"
   },
   "write_api": [
     {
-      "path": "electron/shared/wireModelIdentity.ts",
+      "path": "electron/shared/modelArchetypes/wireModelIdentity.ts",
       "symbol": "resolveWireModel"
     },
     {
-      "path": "electron/shared/wireModelIdentity.ts",
+      "path": "electron/shared/modelArchetypes/wireModelIdentity.ts",
       "symbol": "operationSelectsArchetypeWireModel"
     },
     {
-      "path": "electron/shared/wireModelIdentity.ts",
+      "path": "electron/shared/modelArchetypes/wireModelIdentity.ts",
       "symbol": "ARCHETYPE_WIRE_MODEL"
     },
     {

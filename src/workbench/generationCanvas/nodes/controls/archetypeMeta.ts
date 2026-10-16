@@ -669,7 +669,7 @@ export function orderedSentMediaReferenceUrls(
  * → 别的模式的残留键根本不进结果（M2，§2 坑2）。供应商 mapping body 直接读 request.params.<key>
  * （kie 文档的尾随空格 quirk 在 kie body 单独照抄，§2 坑1）。返回对象放进 extras.archetypeInput，
  * runtime 原样铺进 params（electron/catalog/archetypeInput）。
- * **不带 model**：发哪个 model 串由主进程 electron/shared/wireModelIdentity.resolveWireModel 按连接契约决定
+ * **不带 model**：发哪个 model 串由主进程 electron/shared/modelArchetypes/wireModelIdentity.resolveWireModel 按连接契约决定
  * （2026-10-16：这里塞的 kie 拆分名盖掉了自建中转的模型名）。节点只存选择（meta.archetype 的 modeId / variantId）。
  */
 export function buildArchetypeInputParams(

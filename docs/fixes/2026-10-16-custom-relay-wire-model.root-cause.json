@@ -11,7 +11,7 @@
     "0.23.0 / 0.23.1（2026-09-03 之后的版本），Windows 与 macOS"
   ],
   "scope_paths": [
-    "electron/shared/wireModelIdentity.ts",
+    "electron/shared/modelArchetypes/wireModelIdentity.ts",
     "electron/catalog/taskParams.ts",
     "electron/catalog/profileHttpRequest.ts",
     "electron/catalog/parameterReferenceContract.ts",
@@ -115,7 +115,7 @@
   "generality_proof": "所有出站报文的 params 都出自 taskTemplateParams（door-map 5 扇门），它在最后一步只写 resolveWireModel 的结果，于是任何入口、任何档案、任何连接都无法让一个未声明的 op 收到档案线上名；新增入口只要用 taskTemplateParams 就自动受约束，不用它的入口拿不到 params.model。",
   "shared_boundaries": [
     {
-      "path": "electron/shared/wireModelIdentity.ts",
+      "path": "electron/shared/modelArchetypes/wireModelIdentity.ts",
       "symbol": "resolveWireModel",
       "responsibility": "按 op 声明与连接身份决定唯一的出站 model 串"
     },
@@ -182,13 +182,13 @@
   "recurrence_check_on": "2026-10-30",
   "prevention": {
     "kind": "centralized-boundary",
-    "enforcement_path": "electron/shared/wireModelIdentity.ts",
+    "enforcement_path": "electron/shared/modelArchetypes/wireModelIdentity.ts",
     "invariant": "出站 model = resolveWireModel(op 声明, 连接, 档案选择)，未声明的 op 永远是连接名",
     "failure_mode": "未声明或认不出档案时回到连接名（用户自己配的名字）；不猜、不迁移、不发别家的名字",
     "exception_policy": "none",
     "strategy": "在所有出站参数共用的 taskTemplateParams 最后一步写入 owner 的结果，并删掉其余四处自算；声明只写在内置 op 定义处、普查测试锁住，渲染层变体栏用同一个谓词。",
     "artifacts": [
-      "electron/shared/wireModelIdentity.ts",
+      "electron/shared/modelArchetypes/wireModelIdentity.ts",
       "electron/catalog/taskParams.ts",
       "src/workbench/generationCanvas/nodes/controls/channelModeReach.ts"
     ]

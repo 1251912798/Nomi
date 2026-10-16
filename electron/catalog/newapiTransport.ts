@@ -28,7 +28,7 @@ const JSON_HEADERS = { Authorization: "Bearer {{user_api_key}}", "Content-Type":
 
 /**
  * 中转所有 op 的 model 字段引用。值由线上模型名的唯一 owner 决定
- * （electron/shared/wireModelIdentity.resolveWireModel，经 taskTemplateParams 最后写进 params.model）：
+ * （electron/shared/modelArchetypes/wireModelIdentity.resolveWireModel，经 taskTemplateParams 最后写进 params.model）：
  * 这些 op **没有**声明 `wireModel: "archetype-selection"`，所以永远是连接自己的模型名
  * （modelAlias || modelKey，与 `{{model.modelKey}}` 逐字同源）。
  *

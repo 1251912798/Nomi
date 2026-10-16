@@ -5,7 +5,7 @@ import { buildTemplateContext, buildHttpRequest, type AuthType, type JsonRecord 
 import { extractVendorExtraHeaders } from "./catalogStore";
 import { taskTemplateParams } from "./taskParams";
 import { applyParamMap } from "./paramTranslate";
-import { connectionWireModel } from "../shared/wireModelIdentity";
+import { connectionWireModel } from "../shared/modelArchetypes/wireModelIdentity";
 import { isComfyuiVendor, type HttpOperation, type Model, type Vendor } from "./types";
 import { normalizeComfyuiBaseUrl } from "../comfyui/endpointResolver";
 import { trim } from "../jsonUtils";

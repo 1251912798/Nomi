@@ -14,7 +14,7 @@
 // baseUrl 约定同 kieSeedance.ts：vendor.baseUrl 裸 "https://api.kie.ai"，path 带完整 /api/v1。
 
 import type { HttpOperation, ProfileKind } from "./types";
-import { ARCHETYPE_WIRE_MODEL } from "../shared/wireModelIdentity";
+import { ARCHETYPE_WIRE_MODEL } from "../shared/modelArchetypes/wireModelIdentity";
 
 /** Seedance 2.5 模型种子。 */
 export const SEEDANCE_2_5_MODEL_SEED = {

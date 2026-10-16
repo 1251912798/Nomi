@@ -12,7 +12,7 @@ import { getDesktopBridge } from '../../../../desktop/bridge'
 import { selectTaskMapping, type Mapping } from '../../../../../electron/catalog/types'
 import { wireReferencedParamKeys } from './archetypeMeta'
 import type { ModeChannelBody } from './channelModeReach'
-import { operationSelectsArchetypeWireModel } from '../../../../../electron/shared/wireModelIdentity'
+import { operationSelectsArchetypeWireModel } from '../../../../../electron/shared/modelArchetypes/wireModelIdentity'
 
 /** 目录变更广播（OnboardingDrawer.refresh 发的同一个信号）——接入/停用模型后立刻重算承载力。 */
 const CATALOG_CHANGED_EVENT = 'nomi-model-catalog-changed'

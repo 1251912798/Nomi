@@ -13,7 +13,7 @@
 // 故 body 的 model 取 `{{request.params.model}}` 而非 catalog 行 modelKey。
 
 import type { HttpOperation, ProfileKind } from "./types";
-import { ARCHETYPE_WIRE_MODEL } from "../shared/wireModelIdentity";
+import { ARCHETYPE_WIRE_MODEL } from "../shared/modelArchetypes/wireModelIdentity";
 
 const AUDIO_BASE_MODEL_KEY = "nomi-audio";
 const CREATE_HEADERS = { Authorization: "Bearer {{user_api_key}}", "Content-Type": "application/json" };

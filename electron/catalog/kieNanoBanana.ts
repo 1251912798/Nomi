@@ -6,7 +6,7 @@
 // 精确路由（与 GPT/Seedream 同桶不撞，selectTaskMapping）。结果路径 data.resultJson.resultUrls.0（kie 统一）。
 
 import type { HttpOperation, ProfileKind } from "./types";
-import { ARCHETYPE_WIRE_MODEL } from "../shared/wireModelIdentity";
+import { ARCHETYPE_WIRE_MODEL } from "../shared/modelArchetypes/wireModelIdentity";
 
 const KIE_STATUS_MAPPING: Record<string, string[]> = {
   queued: ["waiting", "queuing", "queued", "pending"],

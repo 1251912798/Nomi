@@ -15,7 +15,7 @@ export type ParameterReferenceContract = {
 /**
  * 这一次请求选中的连接。`modelKey` 是**目录身份**（选哪条 mapping / 比对 comfy 契约用）。
  * `modelAlias` / `modelMeta` / `operation` 只交给线上模型名的唯一 owner
- * （electron/shared/wireModelIdentity.resolveWireModel）：发哪个 model 串由「这条 op 有没有声明收档案名」
+ * （electron/shared/modelArchetypes/wireModelIdentity.resolveWireModel）：发哪个 model 串由「这条 op 有没有声明收档案名」
  * 与连接自己的名字决定，调用方不再自己算一个回落值传进来（2026-10-16）。
  */
 export type ParameterReferenceSelection = {

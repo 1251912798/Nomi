@@ -28,7 +28,7 @@ gpt-image-2-…-text-to-image under group …」。用户原话：「我这个 a
 
 ## 做法
 
-1. **唯一 owner** `electron/shared/wireModelIdentity.ts` · `resolveWireModel`：
+1. **唯一 owner** `electron/shared/modelArchetypes/wireModelIdentity.ts` · `resolveWireModel`：
    - create op 声明了 `wireModel: "archetype-selection"` → 变体 > 模式 modelEnum > 连接名；
    - 否则一律连接名（`modelAlias || modelKey`，与 `{{model.modelKey}}` 同一个表达式）。
    - 声明只写在内置目录契约 op 的定义处（普查测试锁住：内置 op 服务带模式名 / 变体的档案且引用 params.model 就必须声明，非内置一律没有）；借给中转的火山原生报文去掉声明；自建中转、认证生成的映射、手写映射都没有。
@@ -55,7 +55,7 @@ gpt-image-2-…-text-to-image under group …」。用户原话：「我这个 a
 |---|---|---|
 | ★1 用户怎么用 | 当我在自建中转上配好 `gpt-image-2`，在画布 / Agent / MCP 点生成，我想要中转收到的就是 `gpt-image-2`，以便我配的通道真的被用上。步骤：设置里接中转 → 填模型名 → 认证 → 画布选该模型 → 文生图 / 改图 / 视频 → 中转按该名路由。不做：不新增「按模式映射模型名」的配置界面；不改内置家的模式 / 变体线上名。已知坑：自建中转上「变体栏」随之隐藏（09-03 那次接活的是一条没认证过的路）。真实任务：①自建中转 gpt-image-2 文生图；②同一中转改图（chat / multipart 两种协议）；③自建中转 Seedance 视频。主指标：中转收到的 model = 连接名（报文级断言 100%）；护栏：内置 kie / apimart / 火山 / 即梦 的模式与变体线上名逐字不变 | `electron/catalog/customRelayWireModel.test.ts`；逃逸账本 `FB-20261012-custom-relay-wire-model` |
 | ★1b 连带界面 | 画布节点变体栏：自建中转上不再出现（原来出现但切了只会发错名）；失败卡 / Agent 回执文案不变 | `channelModeReach.test.ts` |
-| ★2 谁说了算 | 概念「这一次请求发到线上的 model 串」→ owner `electron/shared/wireModelIdentity.ts#resolveWireModel`，判据谓词 `operationSelectsArchetypeWireModel`；允许消费：`taskParams.taskTemplateParams`（主进程唯一写 `params.model` 处）、渲染层变体栏。同一事实 1 份；不靠「东西不见了」猜意图 | `node scripts/door-map.mjs taskTemplateParams`（5 扇门全部经 owner）；`docs/engineering/concept-owners/generation.wire-model-identity.json` |
+| ★2 谁说了算 | 概念「这一次请求发到线上的 model 串」→ owner `electron/shared/modelArchetypes/wireModelIdentity.ts#resolveWireModel`，判据谓词 `operationSelectsArchetypeWireModel`；允许消费：`taskParams.taskTemplateParams`（主进程唯一写 `params.model` 处）、渲染层变体栏。同一事实 1 份；不靠「东西不见了」猜意图 | `node scripts/door-map.mjs taskTemplateParams`（5 扇门全部经 owner）；`docs/engineering/concept-owners/generation.wire-model-identity.json` |
 | ★3 一致与复用 | 变体判定复用 `resolveArchetypeVariant`，档案解析复用 `resolveArchetypeForModel`，模式桶复用 `modeTransportFor`；不另写第二份 | `git grep resolveWireModel` |
 | ★4 全状态 | 无界面新增。能力不可用（自建中转无按模式映射）：变体栏不出现，模式栏照旧（模式决定 taskKind 桶，仍有效）；失败：上游原话透传（不变） | 不适用：无新文案 |
 | 5 中途表 | 见下表 | 人工 + 单测 |

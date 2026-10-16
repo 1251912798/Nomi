@@ -1,7 +1,7 @@
 // 把档案(electron/shared/modelArchetypes)的参数默认值抽成纯数据，桥接给 electron。
 // 为什么要它：electron/tsconfig rootDir 隔离，runtime 不能直接 import src/config 的档案；
 // 但 headless/MCP 生成不经 UI → request.params 为空 → 缺必填参(duration / 比例…) vendor 拒。
-// model 不在此表：发哪个 model 串只由 electron/shared/wireModelIdentity.resolveWireModel 决定（2026-10-16）。
+// model 不在此表：发哪个 model 串只由 electron/shared/modelArchetypes/wireModelIdentity.resolveWireModel 决定（2026-10-16）。
 // 本脚本(跑在 electron 编译外、可 import src/config)抽 {archetypeId: {taskKind: {param: defaultValue}}}，
 // 写成 electron/catalog/archetypeWireDefaults.generated.ts；runtime 按 (archetypeId, taskKind) 兜底填，既有值优先。
 // 单一真相源仍是档案：改档案默认 → `pnpm gen:archetype-defaults` 重生成；check:archetype-defaults 门防漂移。

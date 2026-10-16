@@ -37,7 +37,7 @@ import { createCatalogGenerationProvider } from "../capabilityCore/apimartGenera
 import type { CatalogState, HttpOperation, Mapping, Model, Vendor } from "./types";
 import type { TaskRequest } from "../runtime";
 import { wireReferencedParamKeys } from "./paramTranslate";
-import { operationSelectsArchetypeWireModel } from "../shared/wireModelIdentity";
+import { operationSelectsArchetypeWireModel } from "../shared/modelArchetypes/wireModelIdentity";
 import { builtinVendorSeed } from "./builtinVendorSeeds";
 import { getArchetypeById } from "../shared/modelArchetypes";
 
@@ -228,11 +228,11 @@ describe("类检查：谁有资格收档案线上名（普查真实内置目录 
   });
 
   it.each([
-    ["文生图", NEWAPI_IMAGE_CREATE_OP],
-    ["chat 改图", NEWAPI_IMAGE_EDIT_OP],
-    ["xAI JSON 改图", XAI_JSON_IMAGE_EDIT_OP],
-    ["multipart 改图", OPENAI_MULTIPART_IMAGE_EDIT_OP],
-    ["视频", NEWAPI_VIDEO_CREATE_OP],
+    ["POST /v1/images/generations", NEWAPI_IMAGE_CREATE_OP],
+    ["POST /v1/chat/completions（image_url）", NEWAPI_IMAGE_EDIT_OP],
+    ["POST /v1/images/edits（JSON）", XAI_JSON_IMAGE_EDIT_OP],
+    ["POST /v1/images/edits（multipart）", OPENAI_MULTIPART_IMAGE_EDIT_OP],
+    ["POST /v1/video/generations", NEWAPI_VIDEO_CREATE_OP],
   ] as const)("通用中转报文（%s）没有声明", (_label, operation) => {
     expect(operationSelectsArchetypeWireModel(operation)).toBe(false);
   });

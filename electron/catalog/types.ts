@@ -3,7 +3,7 @@
 // 渲染层不消费这些（electron 专用；渲染层有自己的 DTO，经 desktopClient 单源）。
 import type { ApiKeyRecord } from "./secrets";
 import type { ParamMap } from "./paramTranslate";
-import type { WireModelDeclaration } from "../shared/wireModelIdentity";
+import type { WireModelDeclaration } from "../shared/modelArchetypes/wireModelIdentity";
 import type { TransportAbandonDisposition, TransportDelivery } from "./transportDelivery";
 import catalogVersion from "./catalogVersion.json";
 import {
@@ -466,7 +466,7 @@ export type HttpOperation = {
   /**
    * 这条 op 的 `{{request.params.model}}` 收**档案所选模式 / 变体的线上名**（"archetype-selection"）。
    * 只由内置目录登记表（seedBuiltins）统一盖章；缺省 = 发连接自己的模型名（modelAlias || modelKey）。
-   * 判定只在 electron/shared/wireModelIdentity.resolveWireModel（2026-10-16 自建中转被套上 kie 线上名）。
+   * 判定只在 electron/shared/modelArchetypes/wireModelIdentity.resolveWireModel（2026-10-16 自建中转被套上 kie 线上名）。
    */
   wireModel?: WireModelDeclaration;
   /**

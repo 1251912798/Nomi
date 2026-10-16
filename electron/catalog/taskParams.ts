@@ -11,7 +11,7 @@ import { bodyReferencedParamKeys } from "./paramTranslate";
 import { hasMentions, numberPromptReferences, projectPromptForSend } from "../shared/storyboard/promptMentions";
 import { bodyReferenceSupport, classifyReferenceKey, classifyReferenceKeyDetailed, type ReferenceFamily } from "./referenceReachability";
 import { readSelectedComfyReferenceContract, type ParameterReferenceSelection } from "./parameterReferenceContract";
-import { resolveWireModel, WIRE_MODEL_PARAM } from "../shared/wireModelIdentity";
+import { resolveWireModel, WIRE_MODEL_PARAM } from "../shared/modelArchetypes/wireModelIdentity";
 
 /** taskTemplateParams 实际用到的 TaskRequest 子集（结构化，避免与 runtime 的 TaskRequest 循环依赖）。 */
 export type TaskParamsInput = {
@@ -164,7 +164,7 @@ export function taskTemplateParams(request: TaskParamsInput, selected?: Paramete
   const speed = numericWireParam(extras.speed);
   const refInput = referenceInputParams(extras, selected);
   const jsonEditInput = jsonImageEditInput(refInput.reference_images);
-  // **要发出去的 model 串**只问唯一 owner（electron/shared/wireModelIdentity.resolveWireModel）：
+  // **要发出去的 model 串**只问唯一 owner（electron/shared/modelArchetypes/wireModelIdentity.resolveWireModel）：
   // 这条 op 声明了收档案所选的线上名（只有内置目录登记表盖章）→ 变体 > 模式 modelEnum > 连接名；
   // 否则一律连接名（modelAlias || modelKey，与 `{{model.modelKey}}` 同一个表达式）。
   // 它在下面**最后**写进 params.model：extras.model、archetypeInput.model、headless 默认、Agent 参数

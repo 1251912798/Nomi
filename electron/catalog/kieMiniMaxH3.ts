@@ -13,7 +13,7 @@
 // 逐字符照抄 H3 文档，quirk 不跨模型传染。
 
 import type { HttpOperation, ProfileKind } from "./types";
-import { ARCHETYPE_WIRE_MODEL } from "../shared/wireModelIdentity";
+import { ARCHETYPE_WIRE_MODEL } from "../shared/modelArchetypes/wireModelIdentity";
 
 /** MiniMax H3 模型种子（modelKey 是 catalog 基 id；真正发请求的 enum 由 per-mode modelEnum 覆盖）。 */
 export const MINIMAX_H3_MODEL_SEED = {

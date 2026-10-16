@@ -70,7 +70,7 @@ export function archetypeModeIsVisible(mode: ArchetypeMode, bodyResult: ModeChan
  *
  * 变体的意义是「换一个真正发出去的 model 串」（档案里 `variant.modelKey` 就是那个串）。它要生效，两条缺一不可：
  * 渠道的 create op **参数化** model 字段（`{{request.params.model}}`），**且**这条 op 声明了收档案所选的线上名
- * （只有内置目录契约盖章，见 electron/shared/wireModelIdentity）。写死字面量的渠道、以及自建中转（没有任何认证说
+ * （只有内置目录契约盖章，见 electron/shared/modelArchetypes/wireModelIdentity）。写死字面量的渠道、以及自建中转（没有任何认证说
  * 中转认档案里的变体串，2026-10-16 两位用户就撞在这上面），切变体要么什么也不会发生、要么发出一个中转不认的名字——
  * 控件在那儿只是骗用户。
  *

@@ -11,7 +11,7 @@
 // 输入图/视频/音频经 fileParams 物化成本地路径（dreamina 收 --image=<本地路径>，见 dreaminaInputFiles.ts）。
 
 import type { HttpOperation } from "./types";
-import { ARCHETYPE_WIRE_MODEL } from "../shared/wireModelIdentity";
+import { ARCHETYPE_WIRE_MODEL } from "../shared/modelArchetypes/wireModelIdentity";
 
 export const DREAMINA_VIDEO_MODEL_KEY = "dreamina-seedance-2.0";
 export const DREAMINA_ARCHETYPE_ID = "dreamina-seedance-2";

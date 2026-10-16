@@ -14,7 +14,7 @@
 
 import type { HttpOperation, ProfileKind } from "./types";
 import { builtinVendorKeyOfKey } from "../shared/builtinVendorIdentity";
-import { ARCHETYPE_WIRE_MODEL } from "../shared/wireModelIdentity";
+import { ARCHETYPE_WIRE_MODEL } from "../shared/modelArchetypes/wireModelIdentity";
 
 /** 文生图模型种子（modelKey 即 kie 的 model enum）。 */
 export const GPT_IMAGE_2_T2I_MODEL_SEED = {

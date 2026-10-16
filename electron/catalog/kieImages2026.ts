@@ -18,7 +18,7 @@
 
 import type { HttpOperation, ProfileKind } from "./types";
 import { KIE_GPT_IMAGE_25_TRANSFORM } from "./kieGptImage25";
-import { ARCHETYPE_WIRE_MODEL } from "../shared/wireModelIdentity";
+import { ARCHETYPE_WIRE_MODEL } from "../shared/modelArchetypes/wireModelIdentity";
 
 /** kie 全家桶统一的状态归一 + 轮询（与 kieSeedream / kieNanoBanana 完全一致的值）。 */
 const KIE_STATUS_MAPPING: Record<string, string[]> = {

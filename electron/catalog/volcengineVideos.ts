@@ -1,5 +1,5 @@
 import type { HttpOperation, ProfileKind } from "./types";
-import { ARCHETYPE_WIRE_MODEL } from "../shared/wireModelIdentity";
+import { ARCHETYPE_WIRE_MODEL } from "../shared/modelArchetypes/wireModelIdentity";
 
 const CREATE_HEADERS = { Authorization: "Bearer {{user_api_key}}", "Content-Type": "application/json" };
 const VARIANT_MODEL_REF = "{{request.params.model}}";

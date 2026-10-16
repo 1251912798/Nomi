@@ -25,7 +25,7 @@
 // 「发之前」——选哪条线缆、显示哪些模式、参考键在不在 body 里。真把请求发出去那一段已由同目录
 // 另外三个文件覆盖，这里不重复造一个 HTTP server（也就不需要 NOMI_ASSET_RELAY_URL 那类外网封堵）。
 import { describe, expect, it } from "vitest";
-import { operationSelectsArchetypeWireModel } from "../shared/wireModelIdentity";
+import { operationSelectsArchetypeWireModel } from "../shared/modelArchetypes/wireModelIdentity";
 
 import { selectTaskMapping, type Mapping } from "../catalog/types";
 import { wireReferencedParamKeys } from "../catalog/paramTranslate";

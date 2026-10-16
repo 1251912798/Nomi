@@ -15,7 +15,7 @@
 // 首尾帧 / 全能参考 / HappyHorse 在后续 chunk 增量加。
 
 import type { HttpOperation, ProfileKind } from "./types";
-import { ARCHETYPE_WIRE_MODEL } from "../shared/wireModelIdentity";
+import { ARCHETYPE_WIRE_MODEL } from "../shared/modelArchetypes/wireModelIdentity";
 
 /** kie.ai 供应商种子（裸 baseUrl + bearer）。 */
 export const KIE_VENDOR_SEED = {

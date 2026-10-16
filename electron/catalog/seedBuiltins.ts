@@ -74,7 +74,7 @@ import { VOLCENGINE_IMAGE_MODELS } from "./volcengineImages";
 import { VOLCENGINE_AUDIO_MODELS } from "./volcengineAudios";
 import { VOLCENGINE_SEEDANCE_QUERY_OP, VOLCENGINE_SEEDANCE_STATUS_MAPPING, VOLCENGINE_VIDEO_MODELS } from "./volcengineVideos";
 import { modelHasPublishedExecution } from "../shared/modelPublication";
-import { operationSelectsArchetypeWireModel, withoutArchetypeWireModel } from "../shared/wireModelIdentity";
+import { operationSelectsArchetypeWireModel, withoutArchetypeWireModel } from "../shared/modelArchetypes/wireModelIdentity";
 import { builtinVendorKeyOfKey } from "../shared/builtinVendorIdentity";
 import { GEMINI_OMNI_11_MAPPINGS, GEMINI_OMNI_11_MODEL_SEED } from "./kieGeminiOmni11";
 import { KIE_SUNO_MUSIC_MAPPINGS, KIE_SUNO_MUSIC_MODEL_SEED, KIE_SUNO_SFX_MAPPING, KIE_SUNO_SFX_MODEL_SEED } from "./kieSunoAudio";

@@ -13,7 +13,7 @@ import { selectTaskMapping, type CatalogState, type Mapping } from '../../electr
 import { wireReferencedParamKeys } from '../../electron/catalog/paramTranslate'
 import { getArchetypeById } from '../../electron/shared/modelArchetypes'
 import { archetypeVariantAxisIsLive } from '../workbench/generationCanvas/nodes/controls/channelModeReach'
-import { operationSelectsArchetypeWireModel, resolveWireModel } from '../../electron/shared/wireModelIdentity'
+import { operationSelectsArchetypeWireModel, resolveWireModel } from '../../electron/shared/modelArchetypes/wireModelIdentity'
 
 /** 与 useChannelCreateBody.readModeChannelBody 同形：变体栏看的那三样。 */
 function channelOf(mapping: Mapping) {
