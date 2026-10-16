@@ -74,7 +74,8 @@ const APPROVED_NON_MODEL_SECTION_SHA256 = {
   // 2026-09-09：声音归通用设置的单一入口，移除这里的旧开关；下方断言保留系统通知策略。
   // 2026-09-14：删「默认制作模式」三段与「支出与风险边界」整栏（#781），并删掉独立的「可信发起方」栏——开关并进 MCP 连接页每张客户端卡（#783）。
   'AutomationPermissionsSection.tsx': '721c88e732d8c03887adf19b69e6795f048db08c73701033fd33dc3972e5d83e',
-  'CanvasGestureSection.tsx': '371aef9326d21c7dd0a5deae7fb99ce1e30d82cff30013580f9464006853164e',
+  // 2026-10-15：当前项文字由强调色改 text-nomi-ink（去蓝色描边，仅类名；协调会话知情）。
+  'CanvasGestureSection.tsx': '2a867bb86fe566667cc0c15d5cee11ef1e2c29bc447de5c8c5e3b53022058759',
   // 2026-09-15：两处非布局改动——① 那行注释原来提到 FeedbackShareDialog，而那份文件本次被删
   // （失败面那条路不再套带标题的 modal 外壳，直接呈现反馈卡）；② `FeedbackShareContent` 的
   // `variant` prop 只剩一个合法值，删掉之后这里的 `variant="embedded"` 也跟着去掉。
