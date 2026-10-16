@@ -225,7 +225,7 @@ export function useNodeImageEditing(
             const result: GenerationNodeResult = {
               id: `image-split-${created.id}-${createdAt}`,
               type: 'image' as const,
-              url: stored.url,
+              ...stored.media,
               createdAt,
             }
             const mediaMeta = computeMediaMetaPatch({
@@ -335,7 +335,7 @@ export function useNodeImageEditing(
           const result: GenerationNodeResult = {
             id: `image-crop-${nodeId}-${createdAt}`,
             type: 'image' as const,
-            url: stored.url,
+            ...stored.media,
             createdAt,
           }
           const latest = latestNodeSnapshot()
@@ -403,7 +403,7 @@ export function useNodeImageEditing(
           const result: GenerationNodeResult = {
             id: `image-${op}-${nodeId}-${createdAt}`,
             type: 'image' as const,
-            url: stored.url,
+            ...stored.media,
             createdAt,
           }
           const latest = latestNodeSnapshot()
@@ -489,7 +489,7 @@ export function useNodeImageEditing(
         const result: GenerationNodeResult = {
           id: `${REMOVE_BACKGROUND_RESULT_ID_PREFIX}${nodeId}-${createdAt}`,
           type: 'image' as const,
-          url: stored.url,
+          ...stored.media,
           createdAt,
         }
         const latest = latestNodeSnapshot()

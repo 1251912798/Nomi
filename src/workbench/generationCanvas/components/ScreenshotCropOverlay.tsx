@@ -14,7 +14,7 @@ import { useTranslation } from 'react-i18next'
 import { IconX } from '@tabler/icons-react'
 import { cn } from '../../../utils/cn'
 import { useGenerationCanvasStore } from '../store/generationCanvasStore'
-import { dataUrlToFile, persistNodeImageFile } from '../adapters/persistNodeImage'
+import { dataUrlToFile, persistNodeMediaFile } from '../adapters/persistNodeImage'
 import { isProjectImportCancellation } from '../adapters/assetImportAdapter'
 import type { ProjectExecutionContext } from '../../project/projectCanvasReadSurface'
 import { cropScreenshotRegion, normalizeSelectionRect, type SelectionRect } from './screenshotCropGeometry'
@@ -84,12 +84,13 @@ export function ScreenshotCropOverlay({ capture, project, basePosition, category
       if (cropped) {
         const file = dataUrlToFile(cropped.dataUrl, `screenshot-${createdAt}.png`)
         if (file) {
-          const localUrl = await persistNodeImageFile(file, created.id, project)
+          const media = await persistNodeMediaFile(file, created.id, project)
           project.assertCurrent()
           const latest = useGenerationCanvasStore.getState()
           const node = latest.nodes.find((candidate) => candidate.id === created.id)
-          if (localUrl && node?.result?.id === resultId) {
-            latest.updateNode(created.id, { result: { ...node.result, url: localUrl } })
+          if (media && node?.result?.id === resultId) {
+            const { thumbnailUrl: _staleThumbnail, previewState: _stalePreviewState, ...rest } = node.result
+            latest.updateNode(created.id, { result: { ...rest, ...media } })
           }
         }
       }
