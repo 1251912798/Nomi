@@ -78,6 +78,10 @@ describe('shared timeline toolbar action', () => {
     expect(html).toContain('opacity-0')
     expect(html).toContain('group-hover/node:opacity-100')
     expect(html).toContain('group-has-[[data-node-floating-toolbar]]/node:hidden')
+    // 把手必须整个在节点外（bottom-full），且隐藏时不接收指针：节点本体不许被它占，否则点选会被它截走（CI 走查「两版卡没选中」）
+    expect(html).toContain('bottom-full')
+    expect(html).toContain('pointer-events-none')
+    expect(html).not.toMatch(/[\s"](top|left|inset)-[\w/\[\]-]+/)
     expect(renderToStaticMarkup(React.createElement(NodeHoverTimelineHandle, { nodeId: 'media', readOnly: true }))).toBe('')
     fixture.nodes = [{ ...media(), status: 'running' }]
     expect(renderToStaticMarkup(React.createElement(NodeHoverTimelineHandle, { nodeId: 'media' }))).toBe('')

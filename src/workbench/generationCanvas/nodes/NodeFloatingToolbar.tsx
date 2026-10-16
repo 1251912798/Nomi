@@ -224,7 +224,8 @@ export function ToolbarTimelineButton({ nodeId, readOnly = false }: { nodeId: st
  * 悬停 / 多选时的拖入把手（用户 2026-10-12 拍板「悬停也能拖」）：浮条只在单选时出现，未选中和多选的节点
  * 靠它直接拖进时间轴；不常驻，悬停或聚焦节点才显出来。复用 ToolbarTimelineButton（同一个拖拽载荷与点击入口，
  * 不另写一套）。单选且浮条在场时由 `group-has` 藏掉，免得同一动作出现两处。
- * 隐藏时 pointer-events-none：不挡节点上方的画布框选；悬停节点后开启，把手落在节点内左上角：不压上边缘的缩放控件，也不挡点中间选中节点，右上角留给版本角标。
+ * 隐藏时 pointer-events-none，悬停节点后才开启。把手整个在节点**外**（上边缘正上方，底边与节点上边缘贴齐，指针从节点滑上去不断悬停）：
+ * 节点本体的每一点都不被它占，点选 / 框选 / 拖动 / 走查找点都碰不到它；放在节点内会在鼠标移到那一点时抢走点击（CI 走查「两版卡没选中」）。
  */
 export function NodeHoverTimelineHandle({ nodeId, readOnly = false }: { nodeId: string; readOnly?: boolean }): JSX.Element | null {
   const node = useGenerationCanvasStore((state) => selectCanvasNodeById(state, nodeId))
@@ -233,7 +234,7 @@ export function NodeHoverTimelineHandle({ nodeId, readOnly = false }: { nodeId: 
     <div
       className={cn(
         'nodrag generation-canvas-react-flow__no-pan',
-        'absolute left-2 top-2 z-[9] inline-flex items-center',
+        'absolute bottom-full right-2 z-[9] inline-flex items-center',
         'rounded-nomi border border-nomi-line bg-nomi-paper shadow-nomi-sm',
         'pointer-events-none opacity-0 transition-opacity duration-nomi-fast ease-nomi-fast',
         'group-hover/node:pointer-events-auto group-hover/node:opacity-100 group-focus-within/node:pointer-events-auto group-focus-within/node:opacity-100',

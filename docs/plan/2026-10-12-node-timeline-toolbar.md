@@ -54,6 +54,6 @@
 
 ## 审查修订（协调 10-12）
 
-- 用户拍板「悬停也能拖」：浮条只在单选时出现，所以未选中 / 多选的节点悬停时在节点内左上角显出同一个时间轴按钮（`NodeHoverTimelineHandle`，复用 `ToolbarTimelineButton` 与同一拖拽载荷，不常驻、单选且浮条在场时隐藏）。
+- 用户拍板「悬停也能拖」：浮条只在单选时出现，所以未选中 / 多选的节点悬停时在节点上边缘正上方（节点外、底边贴齐、靠右）显出同一个时间轴按钮（`NodeHoverTimelineHandle`，复用 `ToolbarTimelineButton` 与同一拖拽载荷，不常驻、单选且浮条在场时隐藏）。
 - 图片快捷工具条恢复原来的 kind 条件（image / asset / 图片类）；旧版 shot / output 节点没有浮条，入口走悬停把手（点击贴尾、拖拽自选落点、键盘 Enter / Space 同前）。
 - 时间轴按钮两处可用性判断补回 `{ readOnly }`。

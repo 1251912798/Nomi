@@ -360,6 +360,10 @@ try {
       const hoverWrap = node(win, 'image').locator('[data-node-timeline-hover-handle]')
       await expect(hoverWrap).toHaveCSS('opacity', '1')
       await expect(node(win, 'image').locator('[data-node-floating-toolbar]')).toHaveCount(0)
+      // 把手不许占节点本体：它的盒子与节点盒子不相交，节点上每一点的点选 / 框选 / 拖动都碰不到它。
+      const [handleBox, nodeBox] = await Promise.all([hoverWrap.boundingBox(), node(win, 'image').locator('.generation-canvas-v2-node__preview').boundingBox()])
+      assert.ok(handleBox && nodeBox, 'hover handle and node preview must both have boxes')
+      assert.ok(handleBox.y + handleBox.height <= nodeBox.y + 1, 'Hover handle must sit entirely above the node body')
       const hoverSource = hoverWrap.locator('[data-toolbar-action="add-to-timeline"]')
       await expect(hoverSource).toHaveCount(1)
       // screenshotSettled 会把鼠标挪开，把手随之收起；这里要拍到悬停态，直接截当前画面。
