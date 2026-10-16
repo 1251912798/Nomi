@@ -22,7 +22,8 @@ vi.mock('./store/generationCanvasStore', () => ({
 }))
 vi.mock('../project/projectCanvasReadSurface', () => ({
   subscribeProjectOpened: (listener: (project: unknown) => void) => { canvas.openProject = listener; return () => { canvas.openProject = null } },
-  isProjectExecutionContextCurrent: () => true,
+  // 真按项目上下文走：签发的 context 带 signal，项目关了 / 换了 = signal 中止 = 不再是当前项目。
+  isProjectExecutionContextCurrent: (project: { signal?: AbortSignal } | undefined) => !project?.signal?.aborted,
 }))
 vi.mock('./store/canvasVisibleArea', () => ({ visibleCanvasRect: () => canvas.view }))
 
@@ -219,6 +220,82 @@ describe('补预览队列', () => {
     expect(ensurePreview).not.toHaveBeenCalled()
     release()
     await vi.waitFor(() => expect(ensurePreview).toHaveBeenCalledTimes(1))
+    dispose()
+  })
+})
+
+// 生命周期（V-1209 首轮不通过的两项）：换项目 / 项目上下文失效 / dispose 必须撤掉排队和在途的补预览；
+// 排队没执行就被撤的，同一项目再打开要能补上。context 用真的 AbortSignal，不恒定 true。
+describe('补预览会话的生命周期', () => {
+  const projectContext = () => {
+    const controller = new AbortController()
+    return { context: { binding: { projectId: 'p1' }, signal: controller.signal }, close: () => controller.abort() }
+  }
+
+  beforeEach(() => {
+    resetResultMediaBackfillAttemptsForTests()
+    canvas.listeners = []
+    canvas.view = { x: 0, y: 0, width: 1000, height: 800 }
+    canvas.state = { nodes: [imageNode('queued', 0)], updateNode: vi.fn() }
+  })
+
+  it('排队还没执行项目就关了：不起派生；同一项目再打开时照样补（不被永久跳过）', async () => {
+    const releases: Array<() => void> = []
+    const ensurePreview = vi.fn(async () => ({ previewState: 'source' }))
+    const dispose = initResultMediaBackfillBridge({
+      ensurePreview, decodePreview: async () => true, yieldToForeground: async () => {},
+      startDelay: () => new Promise<void>((resolve) => { releases.push(resolve) }),
+    })
+    const first = projectContext()
+    canvas.openProject?.(first.context)
+    first.close()
+    releases.shift()!()
+    await new Promise((resolve) => setTimeout(resolve, 10))
+    expect(ensurePreview).toHaveBeenCalledTimes(0)
+    canvas.openProject?.(projectContext().context)
+    releases.shift()!()
+    await vi.waitFor(() => expect(ensurePreview).toHaveBeenCalledTimes(1))
+    dispose()
+  })
+
+  it('dispose 清掉启动等待和队列：项目上下文仍有效，dispose 之后也不再起任何派生', async () => {
+    let release!: () => void
+    const ensurePreview = vi.fn(async () => ({ previewState: 'source' }))
+    const dispose = initResultMediaBackfillBridge({
+      ensurePreview, decodePreview: async () => true, yieldToForeground: async () => {},
+      startDelay: () => new Promise<void>((resolve) => { release = resolve }),
+    })
+    canvas.openProject?.(projectContext().context)
+    dispose()
+    release()
+    await new Promise((resolve) => setTimeout(resolve, 30))
+    expect(ensurePreview).toHaveBeenCalledTimes(0)
+  })
+
+  it('在途派生时项目关了：带请求号撤回主进程那一张，不写回、不记试过；再打开重新补', async () => {
+    type Receipt = { previewState?: string } | null
+    const pendingCalls: Array<{ payload: { url: string; projectBinding?: unknown; requestId?: string }; resolve: (value: Receipt) => void }> = []
+    const ensurePreview = vi.fn((payload: { url: string; projectBinding?: unknown; requestId?: string }) =>
+      new Promise<Receipt>((resolve) => { pendingCalls.push({ payload, resolve }) }))
+    const cancelPreview = vi.fn()
+    const update = vi.fn()
+    canvas.state = { nodes: [imageNode('inflight', 0)], updateNode: update }
+    const dispose = initResultMediaBackfillBridge({ ensurePreview, cancelPreview, decodePreview: async () => true, yieldToForeground: async () => {} })
+    const first = projectContext()
+    canvas.openProject?.(first.context)
+    await vi.waitFor(() => expect(ensurePreview).toHaveBeenCalledTimes(1))
+    const call = pendingCalls[0]!
+    // 请求带着发起项目的绑定与请求号：主进程据此在项目失效时杀进程。
+    expect(call.payload).toMatchObject({ projectBinding: { projectId: 'p1' }, requestId: expect.stringMatching(/^preview-/) })
+    first.close()
+    expect(cancelPreview).toHaveBeenCalledWith({ requestId: call.payload.requestId })
+    call.resolve(null)
+    await new Promise((resolve) => setTimeout(resolve, 10))
+    expect(update).not.toHaveBeenCalled()
+    canvas.openProject?.(projectContext().context)
+    await vi.waitFor(() => expect(ensurePreview).toHaveBeenCalledTimes(2))
+    pendingCalls[1]!.resolve({ previewState: 'source' })
+    await vi.waitFor(() => expect(update).toHaveBeenCalledTimes(1))
     dispose()
   })
 })

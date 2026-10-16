@@ -69,19 +69,43 @@ function previewExtensionFor(kind: "image" | "video", probe: MediaProbeMetadata)
   return kind === "image" && pixelFormatHasAlpha(probe.pixelFormat) ? "png" : "jpg";
 }
 
-async function runFfmpegPreview(args: string[]): Promise<boolean> {
+/**
+ * 预览派生被取消（发起它的项目已经关了 / 换了、窗口没了）。与「派生失败」不同：失败 = 回执记 missing；
+ * 取消 = 这次什么都不算——不写 sidecar、不留产物、不给事实，调用方原样放弃。
+ */
+export class AssetPreviewCancelledError extends Error {
+  constructor() {
+    super("asset preview derivation cancelled");
+    this.name = "AssetPreviewCancelledError";
+  }
+}
+
+export function isAssetPreviewCancelled(error: unknown): error is AssetPreviewCancelledError {
+  return error instanceof AssetPreviewCancelledError;
+}
+
+function throwIfCancelled(signal: AbortSignal | undefined): void {
+  if (signal?.aborted) throw new AssetPreviewCancelledError();
+}
+
+/** 派生的取消信号（可选）：一路传到 ffprobe / ffmpeg 子进程，取消即杀进程（runBoundedProcess）。 */
+export type AssetPreviewOptions = { signal?: AbortSignal };
+
+async function runFfmpegPreview(args: string[], signal?: AbortSignal): Promise<boolean> {
   const ffmpegPath = resolveFfmpegPath();
   if (!ffmpegPath) return false;
   const result = await runBoundedProcess(ffmpegPath, ["-hide_banner", "-loglevel", "error", "-y", ...args], {
     timeoutMs: FFMPEG_PREVIEW_TIMEOUT_MS,
     maxStdoutBytes: 64 * 1024,
     maxStderrBytes: 64 * 1024,
+    ...(signal ? { signal } : {}),
   });
   return result.code === 0;
 }
 
 /**
- * 为一份图片/视频派生画布预览。永不抛：拿不到预览就返回不带 previewPath 的结果。
+ * 为一份图片/视频派生画布预览。拿不到预览就返回不带 previewPath 的结果；唯一会抛的是取消
+ * （options.signal 已中止：杀掉子进程、删掉没写完的产物，抛 AssetPreviewCancelledError）。
  *
  * `previewOwnerPath` 让预览落在「源以外的地方」：本地导入在**拷贝开始前**就要先出一帧，
  * 而那一刻素材还没落盘、内容寻址路径还不知道，预览只能先落在项目内的暂存位置
@@ -90,19 +114,23 @@ async function runFfmpegPreview(args: string[]): Promise<boolean> {
 export async function createStoredAssetPreview(
   absolutePath: string,
   contentType: string,
-  options: { previewOwnerPath?: string } = {},
+  options: { previewOwnerPath?: string } & AssetPreviewOptions = {},
 ): Promise<StoredAssetPreview> {
+  const { signal } = options;
+  throwIfCancelled(signal);
   // 能派生预览的只有图和视频；kind 本身不在这里判（mediaTypes 单源），这里只收窄到这两种。
   const mediaKind = mediaKindFromContentType(contentType);
   const kind = mediaKind === "image" || mediaKind === "video" ? mediaKind : null;
   if (!kind || !absolutePath || !fs.existsSync(absolutePath)) return {};
   let probe: MediaProbeMetadata;
   try {
-    probe = await probeMediaMetadata(absolutePath);
+    probe = await probeMediaMetadata(absolutePath, signal ? { signal } : {});
   } catch {
+    throwIfCancelled(signal);
     // SVG 等 ffprobe 不认的格式：没有预览，源即预览。
     return {};
   }
+  throwIfCancelled(signal);
   const dimensions = probe.width && probe.height ? { width: probe.width, height: probe.height } : {};
   const duration = kind === "video" && probe.durationSeconds ? { durationSeconds: probe.durationSeconds } : {};
   if (kind === "image" && (!probe.width || !probe.height || Math.max(probe.width, probe.height) <= PREVIEW_LONG_EDGE_PX)) {
@@ -117,12 +145,13 @@ export async function createStoredAssetPreview(
       ? ["-i", absolutePath, "-frames:v", "1", "-vf", previewScaleFilter(), previewPath]
       : ["-i", absolutePath, "-frames:v", "1", "-vf", previewScaleFilter(), "-q:v", "4", previewPath];
   try {
-    const ok = await runFfmpegPreview(args);
-    if (ok && fs.existsSync(previewPath) && fs.statSync(previewPath).size > 0) return { previewPath, ...dimensions, ...duration };
+    const ok = await runFfmpegPreview(args, signal);
+    if (!signal?.aborted && ok && fs.existsSync(previewPath) && fs.statSync(previewPath).size > 0) return { previewPath, ...dimensions, ...duration };
   } catch (error) {
-    logWarn("assets", "asset-preview-failed", { absolutePath }, error);
+    if (!signal?.aborted) logWarn("assets", "asset-preview-failed", { absolutePath }, error);
   }
   try { fs.rmSync(previewPath, { force: true }); } catch { /* non-fatal */ }
+  throwIfCancelled(signal);
   return { ...dimensions, ...duration };
 }
 
@@ -150,7 +179,8 @@ export type WithStoredAssetPreview<T> = T extends { data?: infer D } ? Omit<T, "
  * 并把它们写回 sidecar（下次列表、重开项目都能直接读到，不用重新派生）。
  * 记录不是落盘产物（比如 nomi-local 引用桩）时原样返回。
  */
-export async function attachStoredAssetPreview<T>(record: T, prepared?: StoredAssetPreview): Promise<WithStoredAssetPreview<T>> {
+export async function attachStoredAssetPreview<T>(record: T, prepared?: StoredAssetPreview, options: AssetPreviewOptions = {}): Promise<WithStoredAssetPreview<T>> {
+  throwIfCancelled(options.signal);
   const stored = record as StoredRecordLike;
   const absolutePath = typeof stored?.data?.absolutePath === "string" ? stored.data.absolutePath : "";
   const relativePath = typeof stored?.data?.relativePath === "string" ? stored.data.relativePath : "";
@@ -171,7 +201,12 @@ export async function attachStoredAssetPreview<T>(record: T, prepared?: StoredAs
   if (mediaKind === "image" && (isVectorImage(contentType) || isBoundedImage(cachedWidth, cachedHeight))) {
     return withPreviewFields(record, projectId, { width: cachedWidth, height: cachedHeight, previewState: "source" });
   }
-  const preview = adoptPreparedPreview(absolutePath, prepared) ?? await createStoredAssetPreview(absolutePath, contentType);
+  const preview = adoptPreparedPreview(absolutePath, prepared) ?? await createStoredAssetPreview(absolutePath, contentType, options);
+  // 派生完到写 sidecar 之间被取消：不登记，刚派生的产物一并删掉（下次再要时重派生）。
+  if (options.signal?.aborted) {
+    if (preview.previewPath) { try { fs.rmSync(preview.previewPath, { force: true }); } catch { /* non-fatal */ } }
+    throw new AssetPreviewCancelledError();
+  }
   const thumbnailRelativePath = preview.previewPath
     ? relativePath.replace(/[^/]+$/, path.basename(preview.previewPath))
     : "";

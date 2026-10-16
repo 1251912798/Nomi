@@ -23,7 +23,7 @@ import type { JsonRecord } from "../jsonUtils";
 import { logWarn } from "../logging/logger";
 import { projectDirById } from "../projects/repository";
 import { contentTypeFromStoredFile } from "./projectAssetStore";
-import { attachStoredAssetPreview, createStoredAssetPreview, discardPreparedPreview, type StoredAssetPreview } from "./assetPreview";
+import { attachStoredAssetPreview, createStoredAssetPreview, discardPreparedPreview, type AssetPreviewOptions, type StoredAssetPreview } from "./assetPreview";
 import { createAssetImportProgressReporter, type AssetCopyProgress } from "./assetImportProgress";
 import type { ProjectBinding } from "../shared/projectBinding";
 import { captureAssetWriteContext, type AssetWriteContext } from "./assetWriteContext";
@@ -262,7 +262,7 @@ function readHealedAsset(sourcePath: string): unknown | null {
  * 返回 { thumbnailUrl?, previewState }（previewState 恒有：ready / source / missing）；
  * 不是本项目落盘文件 → null（调用方照旧画原片，不写事实，下次打开再试）。
  */
-export async function ensureLocalAssetPreview(payload: unknown): Promise<JsonRecord | null> {
+export async function ensureLocalAssetPreview(payload: unknown, options: AssetPreviewOptions = {}): Promise<JsonRecord | null> {
   const parsed = parseLocalAssetUrl(String((payload as JsonRecord | undefined)?.url || "").trim());
   if (!parsed) return null;
   const { projectId, filePath } = parsed;
@@ -270,7 +270,8 @@ export async function ensureLocalAssetPreview(payload: unknown): Promise<JsonRec
   if (!projectDir || !fs.existsSync(filePath) || !fs.statSync(filePath).isFile()) return null;
   const relativePath = path.relative(projectDir, filePath).replace(/\\/g, "/");
   const contentType = contentTypeFromStoredFile(filePath);
-  const record = await attachStoredAssetPreview({ projectId, data: { absolutePath: filePath, relativePath, contentType } });
+  // 取消信号一路传到 ffprobe / ffmpeg：项目关了 / 换了 / 窗口没了就杀进程、删产物、抛 AssetPreviewCancelledError。
+  const record = await attachStoredAssetPreview({ projectId, data: { absolutePath: filePath, relativePath, contentType } }, undefined, options);
   const { thumbnailUrl, previewState } = record.data;
   return { ...(thumbnailUrl ? { thumbnailUrl } : {}), ...(previewState ? { previewState } : {}) };
 }

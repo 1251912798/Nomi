@@ -28,7 +28,10 @@
     "src/workbench/generationCanvas/resultMediaBackfillBridge.ts",
     "src/workbench/generationCanvas/runner/catalogTaskResultParse.ts",
     "src/workbench/generationCanvas/nodes/canvasImageSource.ts",
-    "src/workbench/generationCanvas/nodes/deferredNodeMediaQueue.ts"
+    "src/workbench/generationCanvas/nodes/deferredNodeMediaQueue.ts",
+    "electron/assets/previewRequests.ts",
+    "electron/assets/assetsIpc.ts",
+    "electron/preload/mediaBridge.ts"
   ],
   "entry_points": [
     "普通生成：runtime / customCallDispatch / taskResultQuery -> localizeTaskAsset -> importRemoteAsset -> attachStoredAssetPreview -> catalogTaskResultParse",
@@ -58,13 +61,19 @@
     "成功交给画布的图 / 视频结果：thumbnailUrl 若存在必须是独立小图（不等于 url，长边 <= 1024，文件存在）；否则 previewState 明确为 source（源已有界）或 missing（派生不出来）",
     "thumbnailUrl 永不等于 url",
     "画布图片组件只接受 CanvasImageSource；原图只能经 resolveCanvasImageSource 的预览缺失分支上画布，并按地址计数",
-    "没有预览事实的本地图 / 视频结果在项目打开后被补成 ready / source / missing 之一，写回项目数据；missing 不重试"
+    "没有预览事实的本地图 / 视频结果在项目打开后被补成 ready / source / missing 之一，写回项目数据；missing 不重试",
+    "补预览是可打断的长活：发起项目关了 / 换了、发起窗口没了、渲染层撤回（换项目、dispose），在途派生的取消信号一路传到 ffprobe / ffmpeg 子进程（杀进程、删产物、不写 sidecar、不给事实）；排队没执行就被撤的不记「试过」，同一项目再打开照样补"
   ],
   "doors": [
     {
       "kind": "read",
       "path": "electron/assets/assetPreview.ts",
       "symbol": "CanvasPreviewState"
+    },
+    {
+      "kind": "read",
+      "path": "electron/assets/previewRequests.ts",
+      "symbol": "isAssetPreviewCancelled"
     },
     {
       "kind": "read",
@@ -188,6 +197,16 @@
     },
     {
       "kind": "write",
+      "path": "electron/assets/assetsIpc.ts",
+      "symbol": "createPreviewRequestRegistry"
+    },
+    {
+      "kind": "write",
+      "path": "electron/assets/assetsIpc.ts",
+      "symbol": "ensureLocalAssetPreview"
+    },
+    {
+      "kind": "write",
       "path": "electron/assets/localFileImport.ts",
       "symbol": "createStoredAssetPreview"
     },
@@ -200,6 +219,11 @@
       "kind": "write",
       "path": "electron/assets/localizeTaskAsset.ts",
       "symbol": "canvasPreviewFieldsFromReceipt"
+    },
+    {
+      "kind": "write",
+      "path": "electron/assets/previewRequests.ts",
+      "symbol": "createPreviewRequestRegistry"
     },
     {
       "kind": "write",
@@ -314,7 +338,7 @@
   ],
   "door_reduction": {
     "before": 34,
-    "after": 50,
+    "after": 54,
     "why_not": "每扇门是一个不同的用户动作（生成、导入、上传、编辑、制作流程落地、补齐）或一处画图位置，必须各自存在；本刀不合并入口，而是让它们全部经过三个共享边界：主进程落盘回执 attachStoredAssetPreview（写 previewState）、两侧共用投影 canvasPreviewFieldsFromReceipt（回执到结果两栏）、渲染层 resolveCanvasImageSource（画布只吃预览）。白板 4 扇门与截图裁剪 1 扇门暂留旧包装 persistNodeImageFile（它们的契约测试在白板目录，归草稿 #1189），其结果由补预览边界兜住。"
   },
   "generality_proof": "新入口无论来自哪个调用者、供应商、版本或旧数据，进画布都要过三道：(1) 落盘回执：attachStoredAssetPreview 对任何图 / 视频记录都写出 previewState；(2) 回执到结果只有 canvasPreviewFieldsFromReceipt 一个投影，它在没有与源不同的小图时只会给 source / missing 或不写，结构上写不出 thumbnailUrl = url；(3) 画图组件经 resolveCanvasImageSource，原图只能走被计数的缺失分支。只交 URL（不带事实）的入口由补预览桥在项目打开或结果变更时补齐；入口普查测试钉住「thumbnailUrl 写成源地址」「DeferredNodeImage 直接挂 .url」「只回 url 的包装」三种写法。",
@@ -333,6 +357,11 @@
       "path": "src/workbench/generationCanvas/nodes/canvasImageSource.ts",
       "symbol": "resolveCanvasImageSource",
       "responsibility": "画布图片组件的地址只来自这里：预览 / 有界源 / 被计数的预览缺失分支。"
+    },
+    {
+      "path": "electron/assets/previewRequests.ts",
+      "symbol": "createPreviewRequestRegistry",
+      "responsibility": "补预览在途请求的取消边界：发起窗口销毁、项目上下文失效、渲染层按请求号撤回，汇成一个 AbortSignal 交给预览 owner。"
     }
   ],
   "same_class_entry_points": [
@@ -402,7 +431,8 @@
       "electron/capabilityCore/generationOutputMaterializer.ts",
       "src/workbench/generationCanvas/adapters/persistNodeImage.ts",
       "src/workbench/generationCanvas/nodes/canvasImageSource.ts",
-      "src/workbench/generationCanvas/resultMediaBackfillBridge.ts"
+      "src/workbench/generationCanvas/resultMediaBackfillBridge.ts",
+      "electron/assets/previewRequests.ts"
     ]
   },
   "regression_tests": [
@@ -411,11 +441,13 @@
     "src/workbench/generationCanvas/resultMediaBackfillBridge.test.ts",
     "src/workbench/generationCanvas/adapters/persistNodeImage.test.ts",
     "src/workbench/generationCanvas/nodes/canvasImageSource.test.ts",
-    "src/workbench/generationCanvas/runner/catalogTaskResultParse.test.ts"
+    "src/workbench/generationCanvas/runner/catalogTaskResultParse.test.ts",
+    "electron/assets/previewRequests.test.ts"
   ],
   "class_regression_tests": [
     "electron/assets/canvasPreviewContract.test.ts",
-    "src/workbench/generationCanvas/canvasPreviewDoors.test.ts"
+    "src/workbench/generationCanvas/canvasPreviewDoors.test.ts",
+    "electron/assets/previewRequests.test.ts"
   ],
   "legacy_paths": {
     "status": "removed",
@@ -438,7 +470,8 @@
     "BaseGenerationNode 的一行 src 与 DeferredNodeImage 的品牌类型收口在单独提交里（该文件归草稿 #1189 / P-compose，需协调放行）；在此之前普查测试对它留名单。",
     "白板、截图热键、抽帧、剪辑导出、引导示例只交 URL，出生时没有预览事实，靠补预览桥在结果出现后补齐（期间原图被计数）。",
     "剪辑节点 / 时间轴片段的图片仍按 clip.thumbnailUrl || clip.url 直接画 <img>（片段模型属时间轴），不经 CanvasImageSource。",
-    "missing 不自动重试：ffmpeg 一时不可用的那批图要等「整理项目」类入口（未做）才会再试。"
+    "missing 不自动重试：ffmpeg 一时不可用的那批图要等「整理项目」类入口（未做）才会再试。",
+    "主进程侧「项目上下文失效」按 200ms 周期复核发起时签发的 assertCurrent，不是事件驱动：失效后最多约 200ms 才杀进程（窗口销毁与渲染层撤回是立即的）。"
   ],
   "detected_by": "review",
   "recurrence_check_on": "2026-11-16",

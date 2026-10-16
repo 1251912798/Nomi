@@ -123,14 +123,35 @@ async function relocalizeNode(nodeId: string, result: GenerationNodeResult, proj
 }
 
 export type PreviewBackfillDeps = {
-  ensurePreview: (payload: { url: string }) => Promise<PreviewReceipt>
+  /** 带发起项目的绑定与请求号：项目关了 / 换了 / 窗口没了，主进程就杀掉在途派生（electron/assets/previewRequests）。 */
+  ensurePreview: (payload: { url: string; projectBinding?: ProjectExecutionContext['binding']; requestId?: string }) => Promise<PreviewReceipt>
+  /** 渲染层撤回一个在途派生（换项目、桥 dispose）：主进程杀子进程、删产物。 */
+  cancelPreview?: (payload: { requestId: string }) => unknown
   /** 在内存里把小图解码完（成功 true）。写回前必须先过这一步：换 src 那一帧新图已在解码缓存里，不闪。 */
   decodePreview: (url: string) => Promise<boolean>
-  /** 让出前台：画布媒体安静、主线程空闲时再做下一张。 */
-  yieldToForeground: () => Promise<void>
-  /** 项目打开后到开始补之间的等待（让打开本身先跑完）。 */
-  startDelay?: () => Promise<void>
+  /** 让出前台：画布媒体安静、主线程空闲时再做下一张；signal 中止就立刻返回。 */
+  yieldToForeground: (signal: AbortSignal) => Promise<void>
+  /** 项目打开后到开始补之间的等待（让打开本身先跑完）；signal 中止就立刻返回、不再开始。 */
+  startDelay?: (signal: AbortSignal) => Promise<void>
 }
+
+/** 一次项目打开的补全会话：换项目、项目上下文失效、桥 dispose 都中止它。 */
+type BackfillSession = { project: ProjectExecutionContext; signal: AbortSignal }
+
+function sessionLive(session: BackfillSession): boolean {
+  return !session.signal.aborted && isProjectExecutionContextCurrent(session.project)
+}
+
+function abortableDelay(ms: number, signal: AbortSignal): Promise<void> {
+  return new Promise((resolve) => {
+    if (signal.aborted) { resolve(); return }
+    const timer = setTimeout(done, ms)
+    function done(): void { clearTimeout(timer); signal.removeEventListener('abort', done); resolve() }
+    signal.addEventListener('abort', done, { once: true })
+  })
+}
+
+let previewRequestSeq = 0
 
 /** 浏览器内建：new Image() + decode()。解码失败（文件坏 / 读不到）→ false。 */
 export async function decodePreviewInMemory(url: string): Promise<boolean> {
@@ -154,32 +175,46 @@ function idleOnce(): Promise<void> {
   })
 }
 
-/** 等到画布媒体安静 PREVIEW_BACKFILL_QUIET_MS、主线程空闲（低优先级：有图在载入就一直让路）。 */
-async function yieldUntilCanvasQuiet(): Promise<void> {
-  for (;;) {
+/** 等到画布媒体安静 PREVIEW_BACKFILL_QUIET_MS、主线程空闲（低优先级：有图在载入就一直让路）；会话中止就返回。 */
+async function yieldUntilCanvasQuiet(signal: AbortSignal): Promise<void> {
+  while (!signal.aborted) {
     await idleOnce()
     const quietFor = deferredNodeMediaQuietForMs()
     if (quietFor >= PREVIEW_BACKFILL_QUIET_MS) return
-    await new Promise((resolve) => setTimeout(resolve, Math.max(250, PREVIEW_BACKFILL_QUIET_MS - quietFor)))
+    await abortableDelay(Math.max(250, PREVIEW_BACKFILL_QUIET_MS - quietFor), signal)
   }
 }
 
-async function backfillPreview(nodeId: string, sourceUrl: string, type: GenerationNodeResult['type'], project: ProjectExecutionContext, deps: PreviewBackfillDeps): Promise<void> {
+/**
+ * 补一张。返回这一张算不算「试过了」：真正拿到主进程回执（不论有没有派生出小图）才算；
+ * 中途被取消（换项目 / dispose / 项目上下文失效）不算——同一项目再打开时照样会补。
+ */
+async function backfillPreview(candidate: PreviewCandidate, session: BackfillSession, deps: PreviewBackfillDeps): Promise<boolean> {
+  const { project, signal } = session
+  previewRequestSeq += 1
+  const requestId = `preview-${Date.now().toString(36)}-${previewRequestSeq}`
+  const cancel = (): void => { void deps.cancelPreview?.({ requestId }) }
+  signal.addEventListener('abort', cancel, { once: true })
   let receipt: PreviewReceipt
   try {
-    receipt = await deps.ensurePreview({ url: sourceUrl })
+    receipt = await deps.ensurePreview({ url: candidate.url, projectBinding: project.binding, requestId })
   } catch {
-    // IPC 本身失败（主进程忙 / 换了项目）：不写事实，本次启动不再试，下次打开再说——不重试风暴。
-    return
+    // IPC 本身失败（主进程忙）：不写事实，本次启动不再试，下次打开再说——不重试风暴。
+    return sessionLive(session)
+  } finally {
+    signal.removeEventListener('abort', cancel)
   }
-  if (!isProjectExecutionContextCurrent(project)) return
-  let fields = canvasPreviewFieldsFromReceipt(type, receipt, sourceUrl)
+  // 会话已中止（换项目 / dispose）：这张不算试过。回执 null = 不是本项目落盘文件，或主进程那边已取消。
+  if (!sessionLive(session)) return false
+  if (receipt === null) return true
+  let fields = canvasPreviewFieldsFromReceipt(candidate.type, receipt, candidate.url)
   if (fields.thumbnailUrl && !(await deps.decodePreview(fields.thumbnailUrl))) {
     // 小图解不出来（坏文件）：如实记缺失，不把一张解不了的图换上去。
     fields = { previewState: 'missing' }
   }
-  if (!fields.previewState && !fields.thumbnailUrl) return
-  writeBack(project, nodeId, sourceUrl, (current) => backfilledPreviewPatch(current, fields))
+  if (!sessionLive(session)) return false
+  if (fields.previewState || fields.thumbnailUrl) writeBack(project, candidate.nodeId, candidate.url, (current) => backfilledPreviewPatch(current, fields))
+  return true
 }
 
 type PreviewCandidate = { nodeId: string; url: string; type: GenerationNodeResult['type']; distance: number; primary: boolean }
@@ -224,46 +259,70 @@ function sortPreviewCandidates(candidates: PreviewCandidate[]): PreviewCandidate
 
 function defaultPreviewDeps(): PreviewBackfillDeps | null {
   const ensurePreview = getDesktopBridge()?.assets?.ensurePreview
+  const cancelPreview = getDesktopBridge()?.assets?.cancelPreview
   if (!ensurePreview) return null
   return {
     ensurePreview,
     decodePreview: decodePreviewInMemory,
     yieldToForeground: yieldUntilCanvasQuiet,
-    startDelay: () => new Promise((resolve) => setTimeout(resolve, PREVIEW_BACKFILL_START_DELAY_MS)),
+    ...(cancelPreview ? { cancelPreview } : {}),
+    startDelay: (signal) => abortableDelay(PREVIEW_BACKFILL_START_DELAY_MS, signal),
   }
 }
 
 /**
  * 每打开一个项目签发一次它的生命周期，对它画布里需要补全的节点后台补一次。
- * 目标项目只来自签发，不读「当前项目」；换项目即停。补预览走有界并发队列，每次扫描按离视口远近重排。返回解除函数。
+ * 目标项目只来自签发，不读「当前项目」；换项目即停。补预览走有界并发队列，每次扫描按离视口远近重排。
+ *
+ * 生命周期（2026-10-16 V-1209）：每次打开一个会话（AbortController）。换项目、项目上下文失效、返回的解除函数被调用，
+ * 都中止会话：清掉启动等待和队列，撤回在途派生（主进程杀子进程），不再写回。「试过了」只在真正拿到回执后才记；
+ * 排着队没执行就被撤的不记，同一项目再打开时照样补。
  */
 export function initResultMediaBackfillBridge(deps: PreviewBackfillDeps | null = defaultPreviewDeps()): () => void {
   let unsubscribeStore: () => void = () => undefined
+  let endSession: () => void = () => undefined
   const unsubscribeOpened = subscribeProjectOpened((project) => {
     unsubscribeStore()
+    endSession()
+    const controller = new AbortController()
+    const session: BackfillSession = { project, signal: controller.signal }
+    const projectSignal = (project as { signal?: AbortSignal }).signal
+    const onProjectAbort = (): void => controller.abort()
+    projectSignal?.addEventListener('abort', onProjectAbort, { once: true })
+    endSession = () => {
+      controller.abort()
+      projectSignal?.removeEventListener('abort', onProjectAbort)
+    }
     const seenResults = new WeakSet<GenerationNodeResult>()
+    const queuedKeys = new Set<string>()
     let pending: PreviewCandidate[] = []
     let running = 0
+    const keyOf = (candidate: PreviewCandidate): string => `${project.binding.projectId}:${candidate.nodeId}:${candidate.url}`
+    controller.signal.addEventListener('abort', () => { pending = []; queuedKeys.clear() }, { once: true })
     // 打开本身先跑完，再开始补（只等一次；之后结果变更进来的直接排队，仍受「画布安静」约束）。
     let started = !deps?.startDelay
     const pump = (): void => {
-      if (!deps || !started) return
+      if (!deps || !started || !sessionLive(session)) return
       while (running < PREVIEW_BACKFILL_CONCURRENCY && pending.length > 0) {
         const next = pending.shift()!
         running += 1
         void (async () => {
           try {
-            await deps.yieldToForeground()
-            if (isProjectExecutionContextCurrent(project)) await backfillPreview(next.nodeId, next.url, next.type, project, deps)
+            await deps.yieldToForeground(controller.signal)
+            if (!sessionLive(session)) return
+            const key = keyOf(next)
+            if (attempted.has(key)) return
+            if (await backfillPreview(next, session, deps)) attempted.add(key)
           } finally {
             running -= 1
-            if (isProjectExecutionContextCurrent(project)) pump()
+            queuedKeys.delete(keyOf(next))
+            pump()
           }
         })()
       }
     }
     const sweep = (): void => {
-      if (!isProjectExecutionContextCurrent(project)) return
+      if (!sessionLive(session)) return
       const nodes = useGenerationCanvasStore.getState().nodes
       const fresh: GenerationCanvasNode[] = []
       for (const node of nodes) {
@@ -281,9 +340,9 @@ export function initResultMediaBackfillBridge(deps: PreviewBackfillDeps | null =
       }
       const queued = collectPreviewCandidates(fresh, (categoryId) => visibleCanvasRect(categoryId))
         .filter((candidate) => {
-          const key = `${project.binding.projectId}:${candidate.nodeId}:${candidate.url}`
-          if (attempted.has(key)) return false
-          attempted.add(key)
+          const key = keyOf(candidate)
+          if (attempted.has(key) || queuedKeys.has(key)) return false
+          queuedKeys.add(key)
           return true
         })
       if (queued.length === 0) return
@@ -291,7 +350,7 @@ export function initResultMediaBackfillBridge(deps: PreviewBackfillDeps | null =
       pump()
     }
     sweep()
-    if (!started) void deps!.startDelay!().then(() => { started = true; if (isProjectExecutionContextCurrent(project)) pump() })
+    if (!started) void deps!.startDelay!(controller.signal).then(() => { started = true; pump() })
     unsubscribeStore = useGenerationCanvasStore.subscribe((state, previous) => {
       if (state.nodes !== previous.nodes) sweep()
     })
@@ -299,6 +358,7 @@ export function initResultMediaBackfillBridge(deps: PreviewBackfillDeps | null =
   return () => {
     unsubscribeOpened()
     unsubscribeStore()
+    endSession()
   }
 }
 
