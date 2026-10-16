@@ -140,6 +140,8 @@
 - [RC 必须在 release 分支上触发，不能只把分支名填进 `ref` 输入](rc-must-be-dispatched-on-the-release-branch.md) — 手动触发 `Desktop Release Candidate` 时；漏了 `--ref`，RC 全绿、验收做完，发布却在最后一步报 `RC commit mismatch`
 
 - [Windows 上删 worktree 会顺着 junction 删掉目标](windows-worktree-remove-follows-junctions.md) — 删 / 归档任何含 mklink /J 的工作树前；先 rmdir 链接本身；测试成片「Cannot find package」时先看包目录是不是空的
+- [登记类核对必须由「新增被登记对象」触发](registry-checks-must-fire-on-the-registered-object-being-added.md) — ✅ 已固化；本机推送前全绿、CI 才红在「X 要在表里登记」的全集核对时读；`check:scan-guard-census` + GATE_INPUTS 的 `match`
+
 ## D. 排查与平台故障
 
 - [程序自己的簿记不许冒充「用户留下的事实」](program-bookkeeping-must-not-pose-as-user-facts.md) — 一个判断「有时生效、有时不生效」、换条路径复现结果就变时读；先数它读的每个事实的全部写口，挡掉同步回声 / 挂载 / 默认值兜底
