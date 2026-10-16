@@ -45,7 +45,7 @@ en 灰字：`Undoable edits like rewriting text or placing nodes happen directly
 **文案偏差，需要你知道**：用户原话和第一轮的灰字里有「要花钱生成」「自动花钱」。`check:i18n` 的「界面不谈钱」门岗（`POSITIVE_SPEND_CLAIMS` 含「花钱」）会拦这个词，该规矩来自用户 09-26 / 10-02 的拍板（现在走中转，界面不谈钱）。两条用户意思冲突，我按「文案只说事实、不出现价格 / 预算 / 额度 / 花钱」取了更窄的一条：把「花钱生成」写成「生成」，切档确认写「直接开跑、不再逐次问你」。如果要保留「花钱」二字，需要在 `NOT_MONEY` 登记并给出理由，这是产品措辞取舍，请协调确认。
 
 刹车（只在「直接生成」档；「请求批准」档每次本来就问，不重复打断）：
-1. **连续失败**：同一镜头最近连续失败满 3 次（失败 1、2 次后各自动重试一次），第 3 次重试之前停。只计「可能已到过供应商」的失败（`jobMayHaveReachedProvider`，既有判据）；提交前断网这类没写出去的不计也不重置；成功清零。
+1. **连续失败**：同一镜头**从上一次人批之后**连续失败满 3 次（失败 1、2 次后各自动重试一次），第 3 次重试之前停。只计「可能已到过供应商」的失败（`jobMayHaveReachedProvider`，既有判据）；提交前断网这类没写出去的不计也不重置；成功清零；最近一次失败没到过供应商时照样要这一次决定、照样判（V-1203）。「人批」读事实：批那次尝试的付费门属于哪次出价、那次出价是不是人在卡上点的。
 2. **计划外**：这个 Run 里已经有镜被批过（= 说好的计划），而这一次要代批的是还没有 job 的新镜 → 停。第一次代批时 Run 里还没有 job，不存在计划外。
 
 两个刹车都**只判这一次出价摆出来的镜**（`currentPresentation().shotIds`，出价的唯一 owner）：一个早就被晾在一边的失败镜，不让之后每一次不相干的出价都停下来问。
@@ -62,8 +62,8 @@ en 灰字：`Undoable edits like rewriting text or placing nodes happen directly
 | 挡位（词表） | `electron/shared/agentCapabilities/capabilityApprovalPolicy.ts` 的 `PROJECT_AGENT_APPROVAL_MODES = [request, direct]` / `ProjectAgentApprovalPolicy` | `spend` 轴、`step / safe-auto / project` 同提交删 |
 | 挡位（落盘与迁移） | `electron/settings/agentApprovalPolicySettings.ts#readAgentApprovalPolicy / writeAgentApprovalPolicy`；形状与**迁移唯一发生处** `agentApprovalPolicyContract.ts#normalizeAgentApprovalPolicySettings`（schemaVersion 2；旧词与新词表无交集，认不出一律落 `request`），登记 `docs/engineering/concept-owners/agent.approval-tier.json` | 渲染层 `projectAgentApprovalPolicy` 是投影 |
 | 花钱放行（带 Run 的入口） | **`electron/shared/agentCapabilities/directGenerationBrakes.ts#spendDecisionByPolicy`**（档位 + 三个刹车事实），登记 `docs/engineering/concept-owners/agent.direct-generation-brakes.json` | 档位那一半仍是 `spendDecidedByPolicy`（只剩它自己和 `tryModel` 这类没有 Run 的调用用） |
-| 「本轮计划」 | Run 上已有 job 的镜（`production.shot-jobs` 的 `jobsForShot`），不另存第二份计划；每次派生 | 点「继续」→ 走正常确认卡 → 这一镜有了 job → 自然进计划（拍板 5），无基线要维护 |
-| 「同一镜头」与连续失败 | `electron/shared/productionShotJobs.ts#jobsForShot`（镜 ↔ job）+ `productionShotPhase.ts#productionJobPhase`（失败判定）+ `jobMayHaveReachedProvider`（计不计）；数法 `directGenerationBrakes.ts#consecutiveFailedAttempts` | 点「继续」之后「从这次确认重新数」用取模表达（3 的倍数才停），不存计数器 / 标记位 |
+| 「本轮计划」 | Run 上**曾经**有过 job 的镜（`production.shot-jobs` 的 `jobsForShot`；去掉 / 移出批次的镜也算，V-1203 F1），不另存第二份计划；每次派生 | 点「继续」→ 走正常确认卡 → 这一镜有了 job → 自然进计划（拍板 5），无基线要维护 |
+| 「同一镜头」与连续失败 | `electron/shared/productionShotJobs.ts#jobsForShot`（镜 ↔ job）+ `productionShotPhase.ts#productionJobPhase`（失败判定）+ `jobMayHaveReachedProvider`（计不计）；数法 `directGenerationBrakes.ts#consecutiveFailedAttempts` | 点「继续」之后「从这次确认重新数」读人批的事实（付费门 → 出价 → 谁决定的，`attemptApprovedByHuman`），不存计数器 / 标记位 |
 | 停止 | 既有 `productionRunControl.ts#applyRunControl` + `isStoppedRunStatus` | 不新增停止通道 |
 | 放行矩阵 | `capabilityApprovalPolicy.ts#capabilityApprovalDecision`（内部调用 `capabilityMayReuseSafeApproval` / `spendDecidedByPolicy`，不复制判据） | 硬闸（花钱 / 不可逆 / 解不出效果类 / destructiveHint / 逐次计划审阅）两档都问，一字不松 |
 | 切档确认 | `agentPanelV4Logic.ts#tierSwitchNeedsConfirm` + `useAgentPanelAutoMode.ts` | |
