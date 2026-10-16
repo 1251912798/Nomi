@@ -90,11 +90,30 @@ try {
   })
 
   // ① 阳性对照：真按着 Shift 点两张 → 两张都选中、出多选浮条（多选本身得在；同时证明下面「不出浮条」的探针看得见浮条）。
+  // 间歇红（CI 上偶发「点两张后没出多选浮条」）取证：记下每次按下真正落在谁身上、点之前命中测试给的点、点完的选中集，
+  // 探针失败时连同截图一起打出来——下一次红就能直接看出第二下是被谁截走、还是选中没叠上。不改判据。
+  await page.evaluate(() => {
+    window.__pointerLog = []
+    window.addEventListener('pointerdown', (e) => {
+      const t = e.target instanceof Element ? e.target : null
+      window.__pointerLog.push({ shift: e.shiftKey, x: Math.round(e.clientX), y: Math.round(e.clientY), tag: t?.tagName, cls: String(t?.className ?? '').slice(0, 90), node: t?.closest('.generation-canvas-v2-node')?.getAttribute('data-node-id') ?? null, action: t?.closest('[data-toolbar-action]')?.getAttribute('data-toolbar-action') ?? null })
+    }, true)
+  })
+  let selectionProof
+  let toolbarProof
+  const hitPoints = []
   await page.keyboard.down('Shift')
-  for (const id of [idA, idB]) { const point = await hit(id); await page.mouse.click(point.x, point.y) }
+  for (const id of [idA, idB]) { const point = await hit(id); hitPoints.push({ id, ...point }); await page.mouse.click(point.x, point.y) }
   await page.keyboard.up('Shift')
-  const selectionProof = await proveProbe(selected, '按着 Shift 点两张后画布上有选中的卡')
-  const toolbarProof = await proveProbe(selectionToolbar, '按着 Shift 点两张后出「已选 N 个」多选浮条')
+  try {
+    selectionProof = await proveProbe(selected, '按着 Shift 点两张后画布上有选中的卡')
+    toolbarProof = await proveProbe(selectionToolbar, '按着 Shift 点两张后出「已选 N 个」多选浮条')
+  } catch (error) {
+    const evidence = { hitPoints, pointerdowns: await page.evaluate(() => window.__pointerLog).catch(() => null), selected: await selectedIds().catch(() => null) }
+    console.log('FLAKE-EVIDENCE', JSON.stringify(evidence))
+    await page.screenshot({ path: path.join(tempRoot, 'baseline-fail.png') }).then(() => console.log(`FLAKE-EVIDENCE screenshot: ${path.join(tempRoot, 'baseline-fail.png')}`)).catch(() => {})
+    throw error
+  }
   await expect.poll(selectedIds).toEqual([idA, idB])
   check(true, '阳性对照：按着 Shift 点两张 = 两张都选中，多选浮条出现')
   const clearSelection = async () => {

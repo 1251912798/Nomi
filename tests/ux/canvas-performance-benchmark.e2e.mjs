@@ -874,6 +874,7 @@ async function runAction(page, scenario, fixture, app) {
       for (let index = 0; index < count; index += 1) {
         const nodeId = await nodes.nth(index).getAttribute('data-node-id')
         const hit = await findNodeHitPoint(page, {
+          waitForReady: false,
           nodeSelector: `.generation-canvas-v2-node[data-node-id=${JSON.stringify(nodeId)}]`,
         })
         if (!hit) throw new Error(`click-select: no selectable point for ${nodeId}`)
