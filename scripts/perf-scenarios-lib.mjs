@@ -46,6 +46,16 @@ export const DRIVERS = Object.freeze({
       return { openToInteractive: cold.map((sample) => sample.clickToMediaMs), longTasks: cold.map((sample) => sample.longTaskCount) }
     },
   },
+  // 大文稿项目切文稿 / 打开分镜方案的响应（tests/perf/document-switch-bench.mjs：点击到目标界面到位再过两帧）
+  'tests/perf/document-switch-bench.mjs': {
+    supports: ['response', 'longTasks'],
+    buildArgs: (script, args, { runs, label }) => [script, ...args, '--runs', String(runs), '--label', label],
+    resultFile: (label) => `tests/perf/results/document-switch-${label}.json`,
+    readRuns(payload) {
+      const samples = payload.samples ?? []
+      return { response: samples.map((sample) => sample.responseMs), longTasks: samples.map((sample) => sample.longTasks) }
+    },
+  },
 })
 
 // ── 登记表读取与校验 ───────────────────────────────────────────────────────────────────────────────────────────
