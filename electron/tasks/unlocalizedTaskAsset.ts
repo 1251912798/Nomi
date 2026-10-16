@@ -1,4 +1,4 @@
-import type { CanvasPreviewState } from "../shared/contracts/canvasMediaPreview";
+import type { CanvasPreviewState } from "../shared/canvas/canvasMediaPreview";
 
 // 任务没有项目身份（无窗口、无头调用、明确的「不属于任何项目」）时生成结果的资产形状。
 // 项目身份只来自提交那一刻随任务固定的 projectId，主进程不再记「当前活动项目」来兜底——

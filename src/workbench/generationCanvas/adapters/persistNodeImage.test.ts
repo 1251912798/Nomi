@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { dataUrlToFile } from './persistNodeImage'
-import { canvasPreviewFieldsFromReceipt } from '../../../../electron/shared/contracts/canvasMediaPreview'
+import { canvasPreviewFieldsFromReceipt } from '../../../../electron/shared/canvas/canvasMediaPreview'
 import { SurfacePortWireError } from '../../../../electron/shared/surfacePortBinding'
 import type { ProjectExecutionContext } from '../../project/projectCanvasReadSurface'
 

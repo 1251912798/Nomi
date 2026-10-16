@@ -12,7 +12,7 @@ import type {
 import { asFiniteNumber, asTrimmedString, selectedModelKey } from './catalogTaskResolve'
 import { formatTaskFailureMessage } from './taskFailureMessage'
 import { readMediaDimensions, type MediaDimensions } from '../nodes/nodeSizing'
-import { canvasPreviewFieldsFromReceipt } from '../../../../electron/shared/contracts/canvasMediaPreview'
+import { canvasPreviewFieldsFromReceipt } from '../../../../electron/shared/canvas/canvasMediaPreview'
 
 // transcribe(Whisper) 也是「无 asset、文本在 raw」——同走文本支（raw.text 由 extractTextFromChatRaw 末尾捕获）。
 const TEXT_TASK_KINDS = new Set<TaskKind>(['chat', 'prompt_refine', 'image_to_prompt', 'transcribe'])

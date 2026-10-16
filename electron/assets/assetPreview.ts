@@ -7,7 +7,7 @@ import type { JsonRecord } from "../jsonUtils";
 import { localAssetUrl } from "./assetPaths";
 import { mediaKindFromContentType } from "./mediaTypes";
 import { mergeAssetSidecarMeta, readAssetSidecarMeta } from "./assetSidecar";
-import { CANVAS_PREVIEW_LONG_EDGE_PX, type CanvasPreviewState } from "../shared/contracts/canvasMediaPreview";
+import { CANVAS_PREVIEW_LONG_EDGE_PX, type CanvasPreviewState } from "../shared/canvas/canvasMediaPreview";
 
 /**
  * 落盘素材的画布预览（source / preview 分离的唯一 owner）。
@@ -133,7 +133,7 @@ type StoredRecordLike = {
 
 /**
  * attach 之后记录 `data` 上多出来的字段。图 / 视频一定带 previewState（落盘回执的预览事实，见
- * shared/contracts/canvasMediaPreview）；其余字段可选：没派生出预览就没有小图地址。
+ * shared/canvas/canvasMediaPreview）；其余字段可选：没派生出预览就没有小图地址。
  */
 export type StoredAssetPreviewFields = {
   thumbnailRelativePath?: string;

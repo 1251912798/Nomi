@@ -1,7 +1,7 @@
 import { hostedAssetCanvasPreview, hostedAssetUrl, importWorkbenchLocalAssetFile } from '../../api/assetUploadApi'
 import type { ProjectExecutionContext } from '../../project/projectCanvasReadSurface'
 import { surfacePortFailure } from '../../../../electron/shared/surfacePortBinding'
-import type { CanvasPreviewFields } from '../../../../electron/shared/contracts/canvasMediaPreview'
+import type { CanvasPreviewFields } from '../../../../electron/shared/canvas/canvasMediaPreview'
 
 /**
  * 节点图片落盘统一入口。

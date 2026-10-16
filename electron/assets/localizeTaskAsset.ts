@@ -6,7 +6,7 @@ import { logWarn } from "../logging/logger";
 import { importRemoteAsset } from "./projectAssetStore";
 import { broadcastAssetLocalizationStarted } from "./assetEvents";
 import { localizedTaskAssetFileName, probeLocalizedDurationSeconds } from "./localizedAsset";
-import { canvasPreviewFieldsFromReceipt } from "../shared/contracts/canvasMediaPreview";
+import { canvasPreviewFieldsFromReceipt } from "../shared/canvas/canvasMediaPreview";
 
 type LocalizedTaskAssetType = "image" | "video" | "audio" | "model3d";
 

@@ -7,12 +7,12 @@
   "fact_kind": "value-object",
   "migration_status": "converged",
   "owner": {
-    "path": "electron/shared/contracts/canvasMediaPreview.ts",
+    "path": "electron/shared/canvas/canvasMediaPreview.ts",
     "symbol": "canvasPreviewFieldsFromReceipt"
   },
   "write_api": [
     {
-      "path": "electron/shared/contracts/canvasMediaPreview.ts",
+      "path": "electron/shared/canvas/canvasMediaPreview.ts",
       "symbol": "canvasPreviewFieldsFromReceipt"
     }
   ],

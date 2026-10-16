@@ -25,7 +25,7 @@ import {
   canvasPreviewFieldsFromReceipt,
   hasCanvasPreviewFact,
   type CanvasPreviewFields,
-} from '../../../electron/shared/contracts/canvasMediaPreview'
+} from '../../../electron/shared/canvas/canvasMediaPreview'
 
 type PreviewReceipt = { thumbnailUrl?: string; previewState?: string } | null | undefined
 

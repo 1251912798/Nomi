@@ -24,7 +24,7 @@ export type TaskAssetDto = {
   type: 'image' | 'video' | 'audio'
   url: string
   thumbnailUrl?: string | null
-  /** 落盘回执的预览事实（electron/shared/contracts/canvasMediaPreview）；写进画布结果只走 canvasPreviewFieldsFromReceipt。 */
+  /** 落盘回执的预览事实（electron/shared/canvas/canvasMediaPreview）；写进画布结果只走 canvasPreviewFieldsFromReceipt。 */
   previewState?: string | null
   assetId?: string | null
   assetRefId?: string | null

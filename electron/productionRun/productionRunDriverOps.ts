@@ -13,7 +13,7 @@ import type { ProductionRunRepository } from './productionRunRepository'
 import type { ProductionRun } from './productionRunTypes'
 import { loadPlaybookStageEvidence } from '../skills/skillExecutionEvidence'
 import { logError } from '../logging/logger'
-import { isCanvasPreviewState } from '../shared/contracts/canvasMediaPreview'
+import { isCanvasPreviewState } from '../shared/canvas/canvasMediaPreview'
 
 /** Job ids intentionally contain a namespace separator (`job:run:node`), but artifact ids are
  * public deep-link identifiers. Keep the mapping stable, collision-resistant, and URL-safe. */

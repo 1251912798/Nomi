@@ -21,6 +21,9 @@ export function isCanvasPreviewState(value: unknown): value is CanvasPreviewStat
 /** 画布结果上与预览有关的两栏。两栏都没有 = 未知（旧数据）。 */
 export type CanvasPreviewFields = { thumbnailUrl?: string; previewState?: CanvasPreviewState }
 
+/** 任务结果（runtime TaskResult.assets[]）上的同两栏：thumbnailUrl 只放独立小图，永不等于 url；事实写在 previewState。 */
+export type TaskAssetPreviewFields = { thumbnailUrl?: string | null; previewState?: CanvasPreviewState }
+
 type ReceiptPreviewLike = { thumbnailUrl?: unknown; previewState?: unknown } | null | undefined
 
 function trimmed(value: unknown): string {

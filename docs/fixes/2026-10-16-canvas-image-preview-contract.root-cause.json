@@ -11,7 +11,7 @@
     "图多、显存紧（集显 / 同机跑其他 GPU 程序）的 Windows / macOS 机器"
   ],
   "scope_paths": [
-    "electron/shared/contracts/canvasMediaPreview.ts",
+    "electron/shared/canvas/canvasMediaPreview.ts",
     "electron/assets/assetPreview.ts",
     "electron/assets/localFileImport.ts",
     "electron/assets/localizeTaskAsset.ts",
@@ -98,12 +98,12 @@
     },
     {
       "kind": "read",
-      "path": "electron/shared/contracts/canvasMediaPreview.ts",
+      "path": "electron/shared/canvas/canvasMediaPreview.ts",
       "symbol": "CanvasPreviewState"
     },
     {
       "kind": "read",
-      "path": "electron/shared/contracts/canvasMediaPreview.ts",
+      "path": "electron/shared/canvas/canvasMediaPreview.ts",
       "symbol": "isCanvasPreviewState"
     },
     {
@@ -325,7 +325,7 @@
       "responsibility": "落盘回执的预览 owner：派生长边 <= 1024 的小图或判定源已有界 / 派生失败，写 previewState。"
     },
     {
-      "path": "electron/shared/contracts/canvasMediaPreview.ts",
+      "path": "electron/shared/canvas/canvasMediaPreview.ts",
       "symbol": "canvasPreviewFieldsFromReceipt",
       "responsibility": "回执到画布结果预览两栏的唯一投影；拒绝 thumbnailUrl = url。"
     },
@@ -391,13 +391,13 @@
   },
   "prevention": {
     "kind": "centralized-boundary",
-    "enforcement_path": "electron/shared/contracts/canvasMediaPreview.ts",
+    "enforcement_path": "electron/shared/canvas/canvasMediaPreview.ts",
     "invariant": "画布结果的预览两栏只能由 canvasPreviewFieldsFromReceipt 从落盘回执投影；画布图片组件的地址只能由 resolveCanvasImageSource 给出。",
     "failure_mode": "派生不出来 -> previewState=missing（画布走被计数的缺失分支，原图照常显示）；回执没有事实 -> 不写，交给补预览边界；thumbnailUrl = url 被投影拒掉。",
     "exception_policy": "none",
     "strategy": "在落盘回执与画布显示两端各立一个共享边界，中间唯一投影；入口普查测试把三种旧写法钉成红线；补预览桥兜住只交 URL 的入口与旧数据。",
     "artifacts": [
-      "electron/shared/contracts/canvasMediaPreview.ts",
+      "electron/shared/canvas/canvasMediaPreview.ts",
       "electron/assets/assetPreview.ts",
       "electron/capabilityCore/generationOutputMaterializer.ts",
       "src/workbench/generationCanvas/adapters/persistNodeImage.ts",
@@ -443,7 +443,7 @@
   "detected_by": "review",
   "recurrence_check_on": "2026-11-16",
   "invariant_owner_layer": {
-    "layer": "electron/shared/contracts/canvasMediaPreview.ts",
+    "layer": "electron/shared/canvas/canvasMediaPreview.ts",
     "tests": [
       "electron/assets/canvasPreviewContract.test.ts",
       "src/workbench/generationCanvas/canvasPreviewDoors.test.ts",

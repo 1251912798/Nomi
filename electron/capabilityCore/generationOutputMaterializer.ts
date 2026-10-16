@@ -14,7 +14,7 @@ import { readCatalog } from "../catalog/catalogStore";
 import { trustedRetrievalOrigin } from "../vendor/vendorOutboundGuard";
 import { parseDataUrl } from "../assets/assetBytes";
 import { attachStoredAssetPreview } from "../assets/assetPreview";
-import { isCanvasPreviewState, type CanvasPreviewState } from "../shared/contracts/canvasMediaPreview";
+import { isCanvasPreviewState, type CanvasPreviewState } from "../shared/canvas/canvasMediaPreview";
 import type { GenerationProviderOutput } from "./generationRuntimeAdapter";
 
 type StoredAsset = {

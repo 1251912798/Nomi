@@ -2,7 +2,7 @@ import { z } from 'zod'
 import { generationNodeStatusSchema } from '../../../../electron/shared/canvas/generationNodeStatus'
 import { CATEGORY_IDS } from './generationCanvasTypes'
 import { GENERATION_NODE_KINDS } from './generationNodeKinds'
-import { CANVAS_PREVIEW_STATES } from '../../../../electron/shared/contracts/canvasMediaPreview'
+import { CANVAS_PREVIEW_STATES } from '../../../../electron/shared/canvas/canvasMediaPreview'
 
 export const generationNodeKindSchema = z.enum(GENERATION_NODE_KINDS)
 

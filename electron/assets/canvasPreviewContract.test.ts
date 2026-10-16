@@ -10,7 +10,7 @@ import { spawnSync } from "node:child_process";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { resolveFfmpegPath } from "../export/ffmpegRunner";
 import { probeMediaMetadata } from "../export/mediaProbe";
-import { CANVAS_PREVIEW_LONG_EDGE_PX, canvasPreviewFieldsFromReceipt } from "../shared/contracts/canvasMediaPreview";
+import { CANVAS_PREVIEW_LONG_EDGE_PX, canvasPreviewFieldsFromReceipt } from "../shared/canvas/canvasMediaPreview";
 import { absolutePathFromLocalAssetUrlAnyProject } from "./localAssetFile";
 
 vi.mock("./assetEvents", () => ({ broadcastAssetsUpdated: vi.fn(), broadcastAssetLocalizationStarted: vi.fn(async () => {}) }));

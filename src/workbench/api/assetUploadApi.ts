@@ -2,7 +2,7 @@ import { getDesktopBridge, type DesktopBridge } from '../../desktop/bridge'
 import type { TaskKind } from './taskApi'
 import type { ProjectBinding } from '../../../electron/shared/projectBinding'
 import { unwrapAssetImportResult } from '../../../electron/shared/contracts/assetImportResult'
-import { canvasPreviewFieldsFromReceipt, type CanvasPreviewFields } from '../../../electron/shared/contracts/canvasMediaPreview'
+import { canvasPreviewFieldsFromReceipt, type CanvasPreviewFields } from '../../../electron/shared/canvas/canvasMediaPreview'
 
 export type WorkbenchAssetDto = {
   id: string
@@ -21,7 +21,7 @@ export function hostedAssetUrl(asset: WorkbenchAssetDto | null | undefined): str
 
 /**
  * 落盘回执 → 画布结果的预览两栏（独立小图 + 预览事实）。渲染层所有「拿到落盘资产就往画布结果里写」的入口
- * 只用这一个，不再各自读 thumbnailUrl、更不许没有小图时把源地址填进去（见 shared/contracts/canvasMediaPreview）。
+ * 只用这一个，不再各自读 thumbnailUrl、更不许没有小图时把源地址填进去（见 shared/canvas/canvasMediaPreview）。
  */
 export function hostedAssetCanvasPreview(
   asset: WorkbenchAssetDto | null | undefined,

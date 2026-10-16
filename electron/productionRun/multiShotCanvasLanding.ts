@@ -10,7 +10,7 @@
 import { generationShotKind, type GenerationShotKind } from "../shared/generationShotKind";
 import { resolveOwnedArtifactFile, safeProjectRelativePath } from "./artifactProjection";
 import { localAssetUrl } from "../assets/assetPaths";
-import { canvasPreviewFieldsFromReceipt, type CanvasPreviewState } from "../shared/contracts/canvasMediaPreview";
+import { canvasPreviewFieldsFromReceipt, type CanvasPreviewState } from "../shared/canvas/canvasMediaPreview";
 import type { ProductionRun, ProductionGenerationShot } from "./productionRunTypes";
 import { logInfo, logWarn } from "../logging/logger";
 import { deriveProductionShotState, productionRunRecordId } from "../shared/productionShotPhase";

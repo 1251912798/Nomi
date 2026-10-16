@@ -117,12 +117,9 @@ export type TaskResult = {
   id: string;
   kind: ProfileKind;
   status: "queued" | "running" | "succeeded" | "failed";
-  assets: Array<{
+  assets: Array<import("./shared/canvas/canvasMediaPreview").TaskAssetPreviewFields & {
     type: "image" | "video" | "audio" | "model3d";
     url: string;
-    thumbnailUrl?: string | null;
-    /** 落盘回执的预览事实（shared/contracts/canvasMediaPreview）；thumbnailUrl 永不等于 url。 */
-    previewState?: import("./shared/contracts/canvasMediaPreview").CanvasPreviewState;
     assetId?: string | null;
     assetRefId?: string | null;
     assetName?: string | null;
