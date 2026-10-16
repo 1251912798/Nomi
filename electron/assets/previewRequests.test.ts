@@ -7,7 +7,13 @@ import path from "node:path";
 import { EventEmitter } from "node:events";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const processControl = vi.hoisted(() => ({ signals: [] as AbortSignal[], started: 0 }));
+const processControl = vi.hoisted(() => ({
+  signals: [] as AbortSignal[],
+  started: 0,
+  /** 第 n 次（从 0 数）起的子进程立刻写完并成功退出；其余一直跑到被取消。 */
+  completeImmediately: new Set<number>(),
+  outputs: [] as string[],
+}));
 
 vi.mock("../export/mediaProbe", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../export/mediaProbe")>();
@@ -16,10 +22,13 @@ vi.mock("../export/mediaProbe", async (importOriginal) => {
     // 探测一律答「2048×3072 的大图」：走到 ffmpeg 那一步。
     probeMediaMetadata: vi.fn(async () => ({ width: 2048, height: 3072, pixelFormat: "yuvj420p" })),
     // 受控的 ffmpeg 子进程：开始写产物，一直跑到被取消（与 runBoundedProcess 的取消契约一致：杀进程后拒绝）。
-    runBoundedProcess: vi.fn((_command: string, args: string[], options: { signal?: AbortSignal }) => new Promise((_resolve, reject) => {
+    runBoundedProcess: vi.fn((_command: string, args: string[], options: { signal?: AbortSignal }) => new Promise((resolve, reject) => {
+      const index = processControl.started;
       processControl.started += 1;
       const output = args[args.length - 1]!;
-      fs.writeFileSync(output, Buffer.from("partial jpeg"));
+      processControl.outputs.push(output);
+      fs.writeFileSync(output, Buffer.from(processControl.completeImmediately.has(index) ? "complete jpeg" : "partial jpeg"));
+      if (processControl.completeImmediately.has(index)) { resolve({ code: 0, stdout: "", stderr: "" }); return; }
       if (!options.signal) return;
       processControl.signals.push(options.signal);
       options.signal.addEventListener("abort", () => reject(new actual.BoundedProcessError("cancelled")), { once: true });
@@ -48,7 +57,12 @@ function storedRecord() {
   return { projectId: "p1", data: { url: "nomi-local://asset/p1/big.jpg", relativePath: "big.jpg", absolutePath, contentType: "image/jpeg" } };
 }
 
-beforeEach(() => { processControl.signals = []; processControl.started = 0; });
+beforeEach(() => {
+  processControl.signals = [];
+  processControl.started = 0;
+  processControl.completeImmediately = new Set();
+  processControl.outputs = [];
+});
 afterEach(() => { for (const dir of roots.splice(0)) fs.rmSync(dir, { recursive: true, force: true }); });
 
 async function untilFfmpegStarted(): Promise<void> {
@@ -62,10 +76,13 @@ describe("补预览在途请求的取消", () => {
     const record = storedRecord();
     const pending = registry.run(sender, "r1", undefined, (signal) => attachStoredAssetPreview(record, undefined, { signal }));
     await untilFfmpegStarted();
-    expect(fs.existsSync(record.data.absolutePath.replace(/\.jpg$/, ".preview.jpg"))).toBe(true);
+    // ffmpeg 写的是这一次自己的临时文件，正式预览名在成功前根本不存在。
+    expect(fs.existsSync(processControl.outputs[0]!)).toBe(true);
+    expect(fs.existsSync(record.data.absolutePath.replace(/\.jpg$/, ".preview.jpg"))).toBe(false);
     sender.destroy();
     await expect(pending).resolves.toBeNull();
     expect(processControl.signals[0]!.aborted).toBe(true);
+    expect(fs.existsSync(processControl.outputs[0]!)).toBe(false);
     expect(fs.existsSync(record.data.absolutePath.replace(/\.jpg$/, ".preview.jpg"))).toBe(false);
     expect(readAssetSidecarMeta(record.data.absolutePath)).not.toHaveProperty("thumbnailRelativePath");
     expect(registry.inflightCount()).toBe(0);
@@ -80,6 +97,7 @@ describe("补预览在途请求的取消", () => {
     await untilFfmpegStarted();
     projectOpen = false;
     await expect(pending).resolves.toBeNull();
+    expect(fs.existsSync(processControl.outputs[0]!)).toBe(false);
     expect(fs.existsSync(record.data.absolutePath.replace(/\.jpg$/, ".preview.jpg"))).toBe(false);
   });
 
@@ -109,3 +127,42 @@ describe("补预览在途请求的取消", () => {
     expect(isAssetPreviewCancelled(error)).toBe(true);
   });
 });
+
+// V-1209 复验的新阻断：同一素材两个并发补预览，取消其中一个不许删掉另一个已经 ready 的预览（sidecar 还指着它）。
+describe("同一素材并发补预览：取消只清自己的产物", () => {
+  it("A 在途、B 先完成并登记 sidecar，再撤 A：B 的预览文件还在，sidecar 指的文件存在", async () => {
+    const registry = createPreviewRequestRegistry();
+    const record = storedRecord();
+    const finalPreview = record.data.absolutePath.replace(/\.jpg$/, ".preview.jpg");
+    processControl.completeImmediately = new Set([1]);
+    const senderA = new FakeSender(10);
+    const pendingA = registry.run(senderA, "a", undefined, (signal) => attachStoredAssetPreview(record, undefined, { signal }));
+    await untilFfmpegStarted();
+    const resultB = await registry.run(new FakeSender(11), "b", undefined, (signal) => attachStoredAssetPreview(record, undefined, { signal }));
+    expect(resultB?.data).toMatchObject({ previewState: "ready", thumbnailRelativePath: "big.preview.jpg" });
+    expect(fs.readFileSync(finalPreview, "utf8")).toBe("complete jpeg");
+    senderA.destroy();
+    await expect(pendingA).resolves.toBeNull();
+    expect(fs.existsSync(finalPreview)).toBe(true);
+    expect(fs.readFileSync(finalPreview, "utf8")).toBe("complete jpeg");
+    expect(readAssetSidecarMeta(record.data.absolutePath)).toMatchObject({ thumbnailRelativePath: "big.preview.jpg" });
+    // 每个请求写自己的临时文件，正式预览名只由成功的那一个原子发布；被撤的那一个只删自己的临时文件。
+    expect(processControl.outputs[0]).not.toBe(processControl.outputs[1]);
+    expect(fs.existsSync(processControl.outputs[0]!)).toBe(false);
+    expect(fs.readdirSync(path.dirname(finalPreview)).filter((name) => name.includes(".preview.")).sort()).toEqual(["big.preview.jpg"]);
+  });
+
+  it("B 先完成，A 后完成：A 不覆盖已发布的预览，丢掉自己的临时文件，回执指向同一份正式预览", async () => {
+    const record = storedRecord();
+    processControl.completeImmediately = new Set([0, 1]);
+    const [first, second] = await Promise.all([
+      attachStoredAssetPreview(record, undefined, {}),
+      attachStoredAssetPreview(record, undefined, {}),
+    ]);
+    expect(first.data.thumbnailRelativePath).toBe("big.preview.jpg");
+    expect(second.data.thumbnailRelativePath).toBe("big.preview.jpg");
+    const dir = path.dirname(record.data.absolutePath);
+    expect(fs.readdirSync(dir).filter((name) => name.includes(".preview.")).sort()).toEqual(["big.preview.jpg"]);
+  });
+});
+

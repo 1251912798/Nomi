@@ -65,6 +65,30 @@ function previewPathFor(absolutePath: string, extension: "png" | "jpg"): string 
   return path.join(parsed.dir, `${parsed.name}${PREVIEW_MARKER}${extension}`);
 }
 
+let pendingPreviewSeq = 0;
+
+/**
+ * 这一次派生自己的临时输出（同目录、带预览标记，素材库列表照样过滤掉）。同一素材可能有好几个请求同时在派生
+ * （补预览、导入、物化……）：每个请求只写、只删自己的临时文件，正式预览名只在成功后原子发布一次。
+ * 这样取消某一个请求，绝不会删掉别人已经发布、sidecar 已经指着的那份正式预览（V-1209 复验）。
+ */
+function pendingPreviewPathFor(previewPath: string): string {
+  pendingPreviewSeq += 1;
+  const parsed = path.parse(previewPath);
+  return path.join(parsed.dir, `${parsed.name}.pending-${process.pid}-${Date.now().toString(36)}-${pendingPreviewSeq}${parsed.ext}`);
+}
+
+/** 把这次的临时输出发布成正式预览：别人已经先发布了就用别人的、丢掉自己的；发布失败也只删自己的。 */
+function publishPendingPreview(pendingPath: string, previewPath: string): boolean {
+  try {
+    if (!fs.existsSync(previewPath)) fs.renameSync(pendingPath, previewPath);
+  } catch (error) {
+    logWarn("assets", "asset-preview-publish-failed", { previewPath }, error);
+  }
+  try { fs.rmSync(pendingPath, { force: true }); } catch { /* non-fatal */ }
+  return fs.existsSync(previewPath);
+}
+
 function previewExtensionFor(kind: "image" | "video", probe: MediaProbeMetadata): "png" | "jpg" {
   return kind === "image" && pixelFormatHasAlpha(probe.pixelFormat) ? "png" : "jpg";
 }
@@ -139,18 +163,23 @@ export async function createStoredAssetPreview(
   if (options.previewOwnerPath) ensureDirFor(options.previewOwnerPath);
   const previewPath = previewPathFor(options.previewOwnerPath || absolutePath, previewExtensionFor(kind, probe));
   if (fs.existsSync(previewPath)) return { previewPath, ...dimensions, ...duration };
+  // ffmpeg 只写这一次自己的临时文件；成功后才发布成正式预览名（见 pendingPreviewPathFor）。
+  const pendingPath = pendingPreviewPathFor(previewPath);
   const args = kind === "video"
-    ? ["-ss", String(VIDEO_POSTER_SEEK_SECONDS), "-i", absolutePath, "-an", "-sn", "-frames:v", "1", "-vf", previewScaleFilter(), "-q:v", "4", previewPath]
-    : previewPath.endsWith(".png")
-      ? ["-i", absolutePath, "-frames:v", "1", "-vf", previewScaleFilter(), previewPath]
-      : ["-i", absolutePath, "-frames:v", "1", "-vf", previewScaleFilter(), "-q:v", "4", previewPath];
+    ? ["-ss", String(VIDEO_POSTER_SEEK_SECONDS), "-i", absolutePath, "-an", "-sn", "-frames:v", "1", "-vf", previewScaleFilter(), "-q:v", "4", pendingPath]
+    : pendingPath.endsWith(".png")
+      ? ["-i", absolutePath, "-frames:v", "1", "-vf", previewScaleFilter(), pendingPath]
+      : ["-i", absolutePath, "-frames:v", "1", "-vf", previewScaleFilter(), "-q:v", "4", pendingPath];
   try {
     const ok = await runFfmpegPreview(args, signal);
-    if (!signal?.aborted && ok && fs.existsSync(previewPath) && fs.statSync(previewPath).size > 0) return { previewPath, ...dimensions, ...duration };
+    if (!signal?.aborted && ok && fs.existsSync(pendingPath) && fs.statSync(pendingPath).size > 0 && publishPendingPreview(pendingPath, previewPath)) {
+      return { previewPath, ...dimensions, ...duration };
+    }
   } catch (error) {
     if (!signal?.aborted) logWarn("assets", "asset-preview-failed", { absolutePath }, error);
   }
-  try { fs.rmSync(previewPath, { force: true }); } catch { /* non-fatal */ }
+  // 失败或被取消：只删这一次自己的临时文件，绝不碰正式预览（它可能是别的请求刚发布的）。
+  try { fs.rmSync(pendingPath, { force: true }); } catch { /* non-fatal */ }
   throwIfCancelled(signal);
   return { ...dimensions, ...duration };
 }
@@ -202,11 +231,9 @@ export async function attachStoredAssetPreview<T>(record: T, prepared?: StoredAs
     return withPreviewFields(record, projectId, { width: cachedWidth, height: cachedHeight, previewState: "source" });
   }
   const preview = adoptPreparedPreview(absolutePath, prepared) ?? await createStoredAssetPreview(absolutePath, contentType, options);
-  // 派生完到写 sidecar 之间被取消：不登记，刚派生的产物一并删掉（下次再要时重派生）。
-  if (options.signal?.aborted) {
-    if (preview.previewPath) { try { fs.rmSync(preview.previewPath, { force: true }); } catch { /* non-fatal */ } }
-    throw new AssetPreviewCancelledError();
-  }
+  // 派生完到写 sidecar 之间被取消：这一次不登记、不给事实。已发布的正式预览是完整的共享产物，
+  // 别的请求可能已经拿它登记了 sidecar——不删（下次要时直接复用）。
+  throwIfCancelled(options.signal);
   const thumbnailRelativePath = preview.previewPath
     ? relativePath.replace(/[^/]+$/, path.basename(preview.previewPath))
     : "";
