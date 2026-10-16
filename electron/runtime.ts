@@ -166,7 +166,7 @@ export function admitTask(id: string, entry: CachedTask): void {
 // 可执行模型解析下沉到 catalog/executableModel（R12 净减）；re-export 保住 textTaskRunner/taskResultQuery 既有 import 面。
 export { findExecutableModel, findExecutableModelForTask } from "./catalog/executableModel";
 import { findExecutableModel } from "./catalog/executableModel";
-import { resolveWireModel } from "./shared/modelArchetypes/wireModelIdentity";
+import { noMappingWireModel } from "./shared/modelArchetypes/wireModelIdentity";
 
 // billingKindForTaskKind 下沉到 catalog/types（R12 净减）；re-export 保住既有消费方 import 面。
 export { billingKindForTaskKind } from "./catalog/types";
@@ -429,21 +429,9 @@ export async function runTask(payload: unknown, admission: TaskAdmission = TOKEN
     ...buildAuthHeaders(vendorAuthSpec(vendor), apiKey),
     ...(fallbackExtraHeaders || {}),
   };
-  const providerResponse = await requestJson(
-    vendor,
-    apiKey,
-    "POST",
-    endpoint(vendor, suffix),
-    fallbackHeaders,
-    {},
+  const providerResponse = await requestJson(vendor, apiKey, "POST", endpoint(vendor, suffix), fallbackHeaders, {},
     { // 键形状由 taskParams.NO_MAPPING_FALLBACK_BODY 声明并被测试钉死（两处必须同构）。
-      // 线上模型名只问 owner：这条兜底没有任何 op 声明，所以永远是连接名（2026-10-16）。
-      model: resolveWireModel({
-        operation: null,
-        connection: { vendorKey: vendor.key, modelKey: model.modelKey, modelAlias: model.modelAlias, modelMeta: model.meta },
-        extras: request.extras,
-        taskKind: kind,
-      }),
+      model: noMappingWireModel(model, request), // 线上模型名只问 owner（wireModelIdentity）
       prompt: request.prompt,
       size: request.width && request.height ? `${request.width}x${request.height}` : undefined,
       seed: request.seed,

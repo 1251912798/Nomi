@@ -98,6 +98,23 @@ function selectedMode(archetype: ModelArchetype, selection: Record<string, unkno
     ?? archetype.modes[0];
 }
 
+/**
+ * 没有任何 mapping 的兜底报文（runtime 的 `/v1/{images,videos}/generations`）发哪个 model 串：这条路没有 op、
+ * 也就没有声明，所以永远是连接名。单独给一个入口，是为了让兜底也问同一个 owner，而不是在巨壳里自己拼
+ * `modelAlias || modelKey`（2026-10-16 独立验收 V-1207 抓到的漏门）。
+ */
+export function noMappingWireModel(
+  model: WireModelConnection & { meta?: unknown },
+  request: { kind?: string; extras?: Record<string, unknown> },
+): string {
+  return resolveWireModel({
+    operation: null,
+    connection: { vendorKey: model.vendorKey, modelKey: model.modelKey, modelAlias: model.modelAlias, modelMeta: model.meta },
+    extras: request.extras,
+    taskKind: request.kind,
+  });
+}
+
 /** 这一次请求发到线上的 model 串（见文件头的两条规则）。 */
 export function resolveWireModel(input: WireModelInput): string {
   const fallback = connectionWireModel(input.connection);

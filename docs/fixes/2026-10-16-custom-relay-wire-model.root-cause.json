@@ -111,7 +111,7 @@
     {
       "kind": "read",
       "path": "electron/runtime.ts",
-      "symbol": "resolveWireModel"
+      "symbol": "noMappingWireModel"
     },
     {
       "kind": "write",
@@ -194,7 +194,7 @@
       "path": "electron/runtime.ts",
       "entry_point": "runTask（无 mapping 的图片 / 视频兜底报文）",
       "disposition": "enforced",
-      "evidence": "兜底 body.model 改问 resolveWireModel（无声明 → 连接名）；runtime.fallback-path.test.ts 断言撞档案身份 + 别名 + extras.model 时报文仍是别名"
+      "evidence": "兜底 body.model 改问 owner 的 noMappingWireModel（内部即 resolveWireModel）（无声明 → 连接名）；runtime.fallback-path.test.ts 断言撞档案身份 + 别名 + extras.model 时报文仍是别名"
     },
     {
       "path": "electron/catalog/customCallRunner.ts",
