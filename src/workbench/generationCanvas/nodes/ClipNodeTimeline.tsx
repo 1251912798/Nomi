@@ -22,7 +22,7 @@ import {
   type ClipNodeResizeTarget,
 } from './clipNodeDragModel'
 import { formatClipNodeDuration } from './clipNodeVisual'
-import { clientXToDesignPx, clipHandleHitWidth, clipHitPadWidth, playheadHitWidth, resolveClipNodeDropFrame } from './clipNodeGestureModel'
+import { clientXToDesignPx, clipHandleHitWidth, clipHitPadWidth, clipLabelInset, playheadHitWidth, resolveClipNodeDropFrame } from './clipNodeGestureModel'
 import { NODE_SCROLL_REGION_CLASS_NAME } from './nodeScrollRegionClassName'
 
 type ClipNodeTimelineProps = {
@@ -395,7 +395,8 @@ function ClipItem({
           {resizeDurationLabel}
         </span>
       ) : null}
-      <span className="absolute inset-x-0 bottom-0 truncate bg-nomi-paper/80 px-1.5 py-1 text-micro font-medium text-nomi-ink">{clip.label || t('generationCommon.clipNode.timeline')}</span>
+      {/* 标签两侧让出的宽度读 clipLabelInset（和手柄同源）：手柄压在片段边缘，标签自己不让就会盖住首字符。 */}
+      <span data-clip-label="true" className="absolute inset-x-0 bottom-0 truncate bg-nomi-paper/80 py-1 text-micro font-medium text-nomi-ink" style={{ paddingInline: clipLabelInset({ clipWidth: width, canvasZoom }) }}>{clip.label || t('generationCommon.clipNode.timeline')}</span>
       <ClipHandle edge="left" canvasZoom={canvasZoom} clipWidth={width} selected={selected} onPointerDown={beginResize} />
       <ClipHandle edge="right" canvasZoom={canvasZoom} clipWidth={width} selected={selected} onPointerDown={beginResize} />
     </div>

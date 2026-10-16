@@ -687,9 +687,15 @@ function stableJson(value: unknown): string {
   return JSON.stringify(sortedObject(value))
 }
 
-/** Stable, local revision suitable for a compare-and-swap edit session. */
+/** Shared content projection for revisions and shallow subscriptions; keep nested framing/scale. */
+export function timelineContentOf(timeline: TimelineState): Omit<TimelineState, 'scale' | 'playheadFrame'> {
+  const { scale: _scale, playheadFrame: _playheadFrame, ...content } = timeline
+  return content
+}
+
+/** Content revision for edit sessions and adoption; zoom and playback are view state. */
 export function timelineRevision(timeline: TimelineState): string {
-  const input = stableJson(normalizeKernelTimeline(timeline))
+  const input = stableJson(timelineContentOf(normalizeKernelTimeline(timeline)))
   let hash = 2166136261
   for (let index = 0; index < input.length; index += 1) {
     hash ^= input.charCodeAt(index)

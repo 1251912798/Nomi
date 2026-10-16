@@ -1,0 +1,25 @@
+{
+  "id": "REAL-20261012-02",
+  "since": "2026-10-12",
+  "source": "2026-10-12 real-app inspection of the clip-node timeline",
+  "category": "overlay-legibility",
+  "problem": "剪辑节点时间轴的片段标签首字符被两侧拖拽手柄盖住：英文暗色下「Image」显示成「mage」，选中片段后手柄 16px 宽、标签内边距固定 6px",
+  "existingInvariants": [],
+  "ironLaws": [],
+  "useCases": [],
+  "fullWalkJourneys": [],
+  "status": "fixed",
+  "manualReview": "reviewed",
+  "evidence": [
+    "docs/engineering/direction-check-2026-10-12-clip-label-handle.md",
+    "tests/ux/clip-label-under-handle.walk.mjs",
+    "docs/evidence/2026-10-15-clip-label-handle/after-en-dark.png"
+  ],
+  "completionCommits": [],
+  "rootCauseContract": "docs/fixes/2026-10-12-clip-label-under-handle.root-cause.json",
+  "classCheck": {
+    "kind": "matrix",
+    "file": "src/workbench/generationCanvas/nodes/clipNodeGestureModel.test.ts"
+  },
+  "fixedInPr": 1199
+}

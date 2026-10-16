@@ -1,9 +1,10 @@
+import { shallow } from 'zustand/shallow'
 import React, { type JSX } from 'react'
 import i18n from '../../../i18n'
 import { showUndoToast } from '../../../utils/showUndoToast'
 import { useWorkbenchStore } from '../../workbenchStore'
 import { timelineAgentUndoMetadata } from '../../timeline/timelineUndoHistory'
-import { timelineRevision } from '../../timeline/kernel/timelineKernel'
+import { timelineContentOf, timelineRevision } from '../../timeline/kernel/timelineKernel'
 
 /**
  * Turns an Agent timeline commit into the same reversible toast the adoption
@@ -48,7 +49,7 @@ export function TimelineAgentReceiptEffect(): JSX.Element | null {
         const top = timelineAgentUndoMetadata(current.timelineUndoStack[current.timelineUndoStack.length - 1])
         return top?.undoToken === token && timelineRevision(current.timeline) === metadata.afterRevision
       },
-      watchUndoable: (recheck) => useWorkbenchStore.subscribe((state) => state.timeline, recheck),
+      watchUndoable: (recheck) => useWorkbenchStore.subscribe((state) => ({ ...timelineContentOf(state.timeline), undoStack: state.timelineUndoStack }), recheck, { equalityFn: shallow }),
     })
   }, [undoStack])
 
