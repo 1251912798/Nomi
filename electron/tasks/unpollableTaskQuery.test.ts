@@ -6,6 +6,9 @@
 // 归一/缓存/受理全用真的。接线错了（比如判定写在渲染层、或缓存没清）纯规则测试发现不了。
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { admitTask, taskCache } from "../runtime";
+import { fetchTaskResult } from "./taskResultQuery";
+
 const executeProfileOperation = vi.fn();
 
 vi.mock("../runtime", async () => {
@@ -45,7 +48,6 @@ async function seedPendingTask(
   mapping?: unknown,
   wantedKind: "image" | "audio" = "image",
 ) {
-  const { admitTask, taskCache } = await import("../runtime");
   taskCache.delete(taskId);
   admitTask(taskId, {
     vendor: "relay",
@@ -67,7 +69,6 @@ describe("无 query op 的任务：轮询立刻拿到诚实终态，不再永远
   });
 
   it("同步模型 create 没出图 → 第一次轮询就 failed，并说清「没有查询接口」", async () => {
-    const { fetchTaskResult } = await import("./taskResultQuery");
     // 中转对 /v1/images/generations 回了 200 但 data 是空的：无产物、无状态动词、无 error 字段
     // → resolveTaskStatus 归成 queued 且 unrecognizedStatus 为空（未登记动词那条修复**够不着**这里）。
     await seedPendingTask("task-sync-empty", { created: 1, data: [] }, SYNC_IMAGE_MAPPING);
@@ -82,7 +83,6 @@ describe("无 query op 的任务：轮询立刻拿到诚实终态，不再永远
   });
 
   it("上游把真因写在 create 响应里（中转常见）→ 原话带到用户眼前，不再被丢掉", async () => {
-    const { fetchTaskResult } = await import("./taskResultQuery");
     await seedPendingTask("task-sync-reason", { message: "no available channel" }, SYNC_IMAGE_MAPPING);
 
     const polled = await fetchTaskResult({ taskId: "task-sync-reason" });
@@ -92,7 +92,6 @@ describe("无 query op 的任务：轮询立刻拿到诚实终态，不再永远
   });
 
   it("无 mapping 的 fallback 受理（runtime.ts:505）同样终态——它注定永远查不出结果", async () => {
-    const { fetchTaskResult } = await import("./taskResultQuery");
     // fallback 正是在 extractAssetUrl 为空时才受理的，故轮询再算一次必然还是空。
     await seedPendingTask("task-fallback", { id: "up-1", state: "??" });
 
@@ -103,7 +102,6 @@ describe("无 query op 的任务：轮询立刻拿到诚实终态，不再永远
   });
 
   it("终态即清缓存：再查一次是「追踪已丢失」，绝不会退回 queued 继续转圈", async () => {
-    const { fetchTaskResult } = await import("./taskResultQuery");
     await seedPendingTask("task-sync-once", { created: 1, data: [] }, SYNC_IMAGE_MAPPING);
 
     expect((await fetchTaskResult({ taskId: "task-sync-once" })).result.status).toBe("failed");
@@ -113,7 +111,6 @@ describe("无 query op 的任务：轮询立刻拿到诚实终态，不再永远
   });
 
   it("非回归：create 已带产物的同步模型照旧成功（这条分支不能被上面的判定误杀）", async () => {
-    const { fetchTaskResult } = await import("./taskResultQuery");
     // 不给 projectId → 走 unlocalizedTaskAsset，不碰磁盘本地化。
     await seedPendingTask(
       "task-sync-asset",
@@ -129,7 +126,6 @@ describe("无 query op 的任务：轮询立刻拿到诚实终态，不再永远
   });
 
   it("create 直接返回 audio_url 时保留音频资产类型", async () => {
-    const { fetchTaskResult } = await import("./taskResultQuery");
     await seedPendingTask(
       "task-sync-audio-asset",
       { audio_url: "https://cdn.example.com/out.mp3" },

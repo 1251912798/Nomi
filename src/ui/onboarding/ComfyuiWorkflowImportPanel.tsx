@@ -261,7 +261,7 @@ export function ComfyuiWorkflowImportPanel({ onImported, onVerificationRequested
         type="button"
         onClick={() => setOpen(true)}
         className={cn('self-start inline-flex items-center gap-1.5 h-8 px-3 rounded-nomi-sm border border-nomi-line',
-          'text-caption text-nomi-ink-60 hover:text-nomi-accent hover:border-nomi-accent')}
+          'text-caption text-nomi-ink-60 hover:text-nomi-accent hover:border-nomi-ink-30')}
       >
         <IconFileImport size={14} stroke={1.7} />{t('onboardingProviders.comfyWorkflow.importCustom')}
       </button>
@@ -400,7 +400,7 @@ export function ComfyuiWorkflowImportPanel({ onImported, onVerificationRequested
         aria-label={t('onboardingProviders.comfyWorkflow.pasteArea')}
         placeholder={t('onboardingProviders.comfyWorkflow.jsonPlaceholder')}
         className={cn('w-full min-h-[110px] max-h-[220px] rounded-nomi-sm border border-nomi-line bg-nomi-paper px-2.5 py-2',
-          'font-mono text-caption text-nomi-ink placeholder:text-nomi-ink-30 focus:border-nomi-accent outline-none resize-y')}
+          'font-mono text-caption text-nomi-ink placeholder:text-nomi-ink-30 focus:border-nomi-ink-40 outline-none resize-y')}
       />
 
       {error ? (
@@ -520,7 +520,7 @@ export function ComfyuiWorkflowImportPanel({ onImported, onVerificationRequested
                 onClick={addParam}
                 disabled={!widgetCandidates.length}
                 className={cn('inline-flex items-center gap-1 h-7 px-2 rounded-nomi-sm border border-nomi-line bg-nomi-paper',
-                  'text-caption text-nomi-ink-80 hover:border-nomi-accent disabled:opacity-45')}
+                  'text-caption text-nomi-ink-80 hover:border-nomi-ink-30 disabled:opacity-45')}
               >
                 <IconPlus size={13} stroke={1.8} />{t('onboardingProviders.comfyWorkflow.addParam')}
               </button>
@@ -536,7 +536,7 @@ export function ComfyuiWorkflowImportPanel({ onImported, onVerificationRequested
                   disabled={!candidate || added}
                   title={candidate ? `#${candidate.nodeId}.${candidate.inputKey}` : undefined}
                   className={cn('inline-flex items-center h-6 px-2 rounded-nomi-sm border border-nomi-line bg-nomi-paper',
-                    'text-micro text-nomi-ink-80 hover:border-nomi-accent disabled:opacity-45 disabled:hover:border-nomi-line')}
+                    'text-micro text-nomi-ink-80 hover:border-nomi-ink-30 disabled:opacity-45 disabled:hover:border-nomi-line')}
                 >
                   {t(preset.labelKey)}
                 </button>
@@ -580,7 +580,7 @@ export function ComfyuiWorkflowImportPanel({ onImported, onVerificationRequested
                         onChange={(e) => updateParam(index, { label: e.target.value })}
                         aria-label={t('onboardingProviders.comfyWorkflow.paramLabelAria')}
                         placeholder={t('onboardingProviders.comfyWorkflow.paramLabelPlaceholder')}
-                        className="h-7 min-w-0 px-2 rounded-nomi-sm border border-nomi-line bg-nomi-paper text-caption text-nomi-ink placeholder:text-nomi-ink-30 focus:border-nomi-accent outline-none"
+                        className="h-7 min-w-0 px-2 rounded-nomi-sm border border-nomi-line bg-nomi-paper text-caption text-nomi-ink placeholder:text-nomi-ink-30 focus:border-nomi-ink-40 outline-none"
                       />
                     </div>
                   </div>
@@ -596,7 +596,7 @@ export function ComfyuiWorkflowImportPanel({ onImported, onVerificationRequested
             <input
               value={labelZh} onChange={(e) => setLabelZh(e.target.value)}
               placeholder={t('onboardingProviders.comfyWorkflow.namePlaceholder')}
-              className="flex-1 h-8 px-2.5 rounded-nomi-sm border border-nomi-line bg-nomi-paper text-caption text-nomi-ink placeholder:text-nomi-ink-30 focus:border-nomi-accent outline-none"
+              className="flex-1 h-8 px-2.5 rounded-nomi-sm border border-nomi-line bg-nomi-paper text-caption text-nomi-ink placeholder:text-nomi-ink-30 focus:border-nomi-ink-40 outline-none"
             />
             <button
               type="button" onClick={doImport} disabled={busy || !binding.outputNodeId || supportedOutputOptions(analysis).length === 0}

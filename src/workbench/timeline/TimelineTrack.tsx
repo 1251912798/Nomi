@@ -260,14 +260,14 @@ function TimelineTrack({ track, transitionFeedback = [], variant = 'primary' }: 
           'bg-[var(--nomi-ink-05)] transition-[background,box-shadow] duration-[140ms] ease-in-out',
           dragPreview &&
             dragPreview.canPlace &&
-            'bg-[var(--workbench-accent-soft)] shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--workbench-accent)_20%,transparent)]',
+            'bg-[var(--workbench-accent-soft)] shadow-[inset_0_0_0_1px_var(--nomi-ink-40)]',
           dragPreview &&
             !dragPreview.canPlace &&
             'bg-[var(--workbench-danger-soft)] shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--workbench-danger)_28%,transparent)]',
           // v0.7.4: drag 中没有 preview 时也给一个 hover 高亮（accent）
           !dragPreview &&
             isDragHovering &&
-            'bg-[var(--workbench-accent-soft)] shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--workbench-accent)_20%,transparent)]',
+            'bg-[var(--workbench-accent-soft)] shadow-[inset_0_0_0_1px_var(--nomi-ink-40)]',
         )}
         style={{
           width: 'var(--workbench-timeline-content-width, 100%)',
@@ -339,7 +339,7 @@ function TimelineTrack({ track, transitionFeedback = [], variant = 'primary' }: 
               'flex items-center justify-center overflow-visible rounded text-micro font-semibold',
               'border border-dashed backdrop-blur-[8px] shadow-[0_8px_20px_rgba(18,24,38,0.12)]',
               dragPreview.canPlace
-                ? 'border-[color-mix(in_srgb,var(--workbench-accent)_58%,transparent)] bg-[color-mix(in_srgb,var(--workbench-accent)_20%,var(--nomi-paper))] text-[var(--workbench-ink)]'
+                ? 'border-nomi-ink-60 bg-[color-mix(in_srgb,var(--workbench-accent)_20%,var(--nomi-paper))] text-[var(--workbench-ink)]'
                 : 'border-[color-mix(in_srgb,var(--workbench-danger)_64%,transparent)] bg-[var(--workbench-danger-soft)] text-[var(--workbench-danger)]',
             )}
             data-valid={dragPreview.canPlace ? 'true' : 'false'}

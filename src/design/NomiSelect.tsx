@@ -225,7 +225,7 @@ export function NomiSelect({
           className={cn(
             'inline-flex min-w-0 items-center gap-1 pl-2.5 pr-2 rounded-pill border border-nomi-line bg-nomi-paper',
             'cursor-pointer disabled:cursor-not-allowed disabled:opacity-50',
-            'focus:outline-none focus-visible:border-nomi-accent hover:border-nomi-ink-20',
+            'focus:outline-none focus-visible:border-nomi-ink-40 hover:border-nomi-ink-20',
             heightClass,
             className,
           )}
@@ -318,7 +318,7 @@ export function NomiSelect({
                           }}
                           className={cn(
                             'max-w-[76px] truncate rounded-pill border px-1.5 py-[1px] text-micro leading-none transition-colors',
-                            chip.active ? 'border-nomi-accent bg-nomi-accent-soft text-nomi-accent' : 'border-nomi-line text-nomi-ink-40 hover:border-nomi-accent hover:text-nomi-accent',
+                            chip.active ? 'border-transparent bg-nomi-accent-soft text-nomi-ink' : 'border-nomi-line text-nomi-ink-40 hover:border-nomi-ink-30 hover:text-nomi-accent',
                             'cursor-pointer',
                           )}
                         >

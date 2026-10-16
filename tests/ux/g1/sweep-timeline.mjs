@@ -6,6 +6,7 @@ import ffprobe from '@ffprobe-installer/ffprobe'
 import ffmpeg from '@ffmpeg-installer/ffmpeg'
 import { expect, clickOrFail } from '../_assert.mjs'
 import { writeJson } from './sweep-evidence.mjs'
+import { switchWorkspace } from '../_shell.mjs'
 
 export function completedExports(root) {
   return fs.readdirSync(root, { recursive: true }).filter(name => name.endsWith('.mp4') && !name.endsWith('.partial.mp4') && name.split(path.sep).includes('exports'))
@@ -28,7 +29,7 @@ export async function sweepTimeline({ station, win, input, directory, payload })
     }
   })
   await station('timeline-preview', `预览包含 ${count} 段图片的时间轴`, async () => {
-    await clickOrFail(win.locator('[aria-label="工作区切换"]').getByText('预览', { exact: true }), '预览')
+    await switchWorkspace(win, 'preview', '预览')
     await expect(win.locator('[data-workspace-mode="preview"]')).toBeVisible()
     const actual = clips(await payload())
     expect(actual).toHaveLength(count)

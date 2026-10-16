@@ -3,6 +3,8 @@ import { makeTempDir } from '../../scripts/_test-temp.mjs'
 // 走查使用 Electron 原生 clipboard 写入 file-url，再走用户实际键盘粘贴路径，
 // 不直接调用 assets.copyFiles，避免只测 IPC 而漏掉面板事件、刷新和用户反馈。
 import { launchNomiApp } from './_launchApp.mjs'
+import { stationTimeout } from './_station-budget.mjs'
+import { openRailDrawer } from './_shell.mjs'
 import crypto from 'node:crypto'
 import fs from 'node:fs'
 import os from 'node:os'
@@ -81,24 +83,15 @@ try {
   await projectCard.waitFor({ timeout: 8000 })
   await projectCard.click()
   const continueButton = win.getByText('继续创作', { exact: false }).first()
-  const libraryButton = win.getByRole('button', { name: '素材库', exact: true }).first()
-  const assetSection = win.locator('section[aria-label="素材库"]')
+  const projectOpened = win.locator('[data-shell-project-menu]').first()
   const nextStep = await Promise.any([
     continueButton.waitFor({ state: 'visible', timeout: 8000 }).then(() => 'continue'),
-    assetSection.waitFor({ state: 'visible', timeout: 8000 }).then(() => 'library'),
+    projectOpened.waitFor({ state: 'visible', timeout: stationTimeout() }).then(() => 'opened'),
   ])
-  if (nextStep === 'continue') {
-    await continueButton.click()
-    const postContinue = await Promise.any([
-      assetSection.waitFor({ state: 'visible', timeout: 8000 }).then(() => 'library'),
-      libraryButton.waitFor({ state: 'visible', timeout: 8000 }).then(() => 'button'),
-    ])
-    if (postContinue === 'button' && !(await assetSection.isVisible())) await libraryButton.click()
-  } else if (!(await assetSection.isVisible())) {
-    await libraryButton.waitFor({ state: 'visible', timeout: 8000 })
-    await libraryButton.click()
-  }
-  const panel = win.locator('section[aria-label="素材库"] > div').first()
+  if (nextStep === 'continue') await continueButton.click()
+  // 素材库住在左栏「素材」抽屉里（不会自己弹出）：经 _shell.mjs 打开，面板就是抽屉里的内容区。
+  const assetSection = await openRailDrawer(win, 'assets', '打开素材库抽屉')
+  const panel = assetSection.locator(':scope > div').first()
   await panel.waitFor({ state: 'visible', timeout: 8000 })
   const initialFiles = importedFiles()
   const existingFile = initialFiles.find(Boolean)
@@ -122,12 +115,12 @@ try {
   let created = []
   while (Date.now() < deadline) {
     created = importedFiles()
-    if (created.length === 1 && (await win.locator('section[aria-label="素材库"] img[alt="Finder 复制的原图.png"]').count()) > 0) break
+    if (created.length === 1 && (await assetSection.locator('img[alt="Finder 复制的原图.png"]').count()) > 0) break
     await win.waitForTimeout(200)
   }
   if (created.length !== 1) throw new Error(`粘贴后未落盘单张图片，发现 ${created.length} 张`)
   const targetPath = created[0]
-  await win.locator('section[aria-label="素材库"] img[alt="Finder 复制的原图.png"]').waitFor({ state: 'visible', timeout: 8000 })
+  await assetSection.locator('img[alt="Finder 复制的原图.png"]').waitFor({ state: 'visible', timeout: stationTimeout() })
   const sourceHash = sha256(sourcePath)
   const targetHash = sha256(targetPath)
   if (sourceHash !== targetHash) throw new Error(`无损校验失败：source=${sourceHash} target=${targetHash}`)
@@ -146,7 +139,7 @@ try {
   let dropped = []
   while (Date.now() < dropDeadline) {
     dropped = importedFiles()
-    if (dropped.length === 2 && (await win.locator('section[aria-label="素材库"] img[alt="拖入的原图.png"]').count()) > 0) break
+    if (dropped.length === 2 && (await assetSection.locator('img[alt="拖入的原图.png"]').count()) > 0) break
     await win.waitForTimeout(200)
   }
   if (dropped.length !== 2) throw new Error(`拖入后未落盘第二张图片，发现 ${dropped.length} 张`)

@@ -12,7 +12,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { launchNomiApp, repoRoot } from './_launchApp.mjs'
 import { clickOrFail, expectVisible, screenshotSettled } from './_assert.mjs'
-import { newProjectEntry } from './_shell.mjs'
+import { newProjectEntry, openRailDrawer } from './_shell.mjs'
 
 const KEY = (process.env.TIKHUB_API_KEY || '').trim()
 if (!KEY) {
@@ -77,9 +77,7 @@ try {
   await win.locator('[data-mode="generation"]').click().catch(() => {})
   await win.waitForTimeout(600)
   let assetSection = win.locator('section[aria-label="素材库"]')
-  if (!(await assetSection.isVisible().catch(() => false))) {
-    await win.getByRole('button', { name: '素材库', exact: true }).first().click().catch(() => {})
-  }
+  await openRailDrawer(win, 'assets', '打开素材库')
   await assetSection.waitFor({ state: 'visible', timeout: stationTimeout() })
   await win.waitForTimeout(600)
   await shot(win, 'asset-library-empty', '素材库空态——卡点①：这里能不能看见「找参考」')

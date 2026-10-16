@@ -208,7 +208,7 @@ function CatChip({ active, label, onClick }: { active: boolean; label: string; o
     <button
       type="button" onClick={onClick}
       className={cn('text-micro px-2 py-0.5 rounded-nomi-sm border',
-        active ? 'bg-nomi-ink text-nomi-paper border-nomi-ink' : 'bg-nomi-paper text-nomi-ink-60 border-nomi-line hover:border-nomi-accent')}
+        active ? 'bg-nomi-ink text-nomi-paper border-nomi-ink' : 'bg-nomi-paper text-nomi-ink-60 border-nomi-line hover:border-nomi-ink-30')}
     >
       {label}
     </button>

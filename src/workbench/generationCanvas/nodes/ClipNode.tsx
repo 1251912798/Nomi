@@ -578,7 +578,7 @@ export default function ClipNode({ node: rawNode, selected, readOnly = false }: 
       ) : null}
 
       <div
-        className={cn('generation-canvas-v2-node__preview flex h-full w-full flex-col overflow-hidden rounded-nomi border bg-nomi-paper shadow-nomi-md', selected ? 'ring-2 ring-nomi-accent' : 'ring-1 ring-inset ring-nomi-line')}
+        className={cn('generation-canvas-v2-node__preview flex h-full w-full flex-col overflow-hidden rounded-nomi border bg-nomi-paper shadow-nomi-md', 'ring-1 ring-inset ring-nomi-line')}
         onPointerDown={(event) => event.stopPropagation()}
         onClick={(event) => {
           if (event.target === event.currentTarget) closeEditing()

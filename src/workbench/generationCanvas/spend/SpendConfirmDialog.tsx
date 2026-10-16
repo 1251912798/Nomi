@@ -257,7 +257,7 @@ export function SpendConfirmDialog() {
                   onClick={() => setChoiceKey(candidate.key)}
                   className={cn(
                     'grid gap-0.5 rounded-nomi-sm border px-2.5 py-2 text-left transition-colors cursor-pointer',
-                    selected ? 'border-nomi-accent bg-nomi-accent-soft' : 'border-nomi-line hover:border-nomi-accent',
+                    selected ? 'border-transparent bg-nomi-accent-soft' : 'border-nomi-line hover:border-nomi-ink-30',
                   )}
                 >
                   <span className={cn('text-caption font-medium text-nomi-ink')}>{candidate.title}</span>

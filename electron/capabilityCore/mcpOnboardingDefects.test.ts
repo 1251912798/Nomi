@@ -10,6 +10,9 @@ import { createProjectLeaseAuthority } from "./projectLease";
 import { IntegrationSessionService } from "../integrationCertification/integrationSession";
 import { INTEGRATION_STAGES, assertIntegrationRevision } from "../shared/integrationContract";
 
+import { MCP_TOOL_RESOLVER } from "./mcpToolCatalog";
+import { modelSetupInputSchema } from "../shared/agentCapabilities/modelOnboarding";
+
 /**
  * 2026-09-10 真实宿主实测（Codex CLI 0.153.4 挂 Nomi MCP 接 DeepSeek）实锤的六条产品缺陷。
  * 每条一个用例，断言的是「模型照着我们广告的契约走能不能走通」，不是内部实现细节。
@@ -172,8 +175,6 @@ describe("缺陷 4 · schema 的 required 说真话", () => {
   // **广播出去的那份 schema 就是运行时 parse 的那一份**（`projectMcpTool` 从同一批声明派生）。
   // 所以这里改成钉住那条结构性质：谁想再写第二张必填表，这条会红。
   it("必填只有一份：广播的 schema 就是运行时校验的那个联合", async () => {
-    const { MCP_TOOL_RESOLVER } = await import("./mcpToolCatalog");
-    const { modelSetupInputSchema } = await import("../shared/agentCapabilities/modelOnboarding");
     const tool = MCP_TOOL_RESOLVER.resolve("nomi_model_setup")!;
     const schema = tool.inputSchema as unknown as { required: string[]; properties: Record<string, unknown> };
 

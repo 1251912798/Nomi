@@ -4,7 +4,7 @@ import { makeTempDir } from '../../scripts/_test-temp.mjs'
 //
 // 用户问的是「我没看到你改的设置那些东西」——他跑的是 /Applications/Nomi.app v0.17.1（7-26 构建）。
 // 这条走查跑的是**当前 main 的 dist**，把改动拍下来给他看，同时用属性断言钉死：
-//   ① 顶栏右簇分了组（有真渲染的分隔线），且语言/外观图标**不再常驻顶栏**
+//   ① 语言/外观图标**不再常驻顶栏**（原判据「右簇分了组 / 有分隔线」已随外壳重设计退役）
 //   ② 设置「通用」页签里有语言分段控件（zh-CN / en 两颗，当前档 aria-pressed=true）
 //   ③ 设置「通用」页签里有外观切换
 //   ④ 设置「关于」页签里有版本号 / 上手手册 / 重看开屏 / 检查更新
@@ -14,7 +14,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { screenshotSettled } from './_assert.mjs'
-import { newProjectEntry } from './_shell.mjs'
+import { newProjectEntry, openSettings } from './_shell.mjs'
 import { stationTimeout } from './_station-budget.mjs'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
@@ -98,7 +98,7 @@ try {
   console.log('  · 顶栏右簇:', JSON.stringify(bar))
   const hasLangInBar = (bar.buttons || []).some((l) => /语言|Language|中文|English/.test(l))
   const hasThemeInBar = (bar.buttons || []).some((l) => /外观|亮色|暗色|主题|Appearance|theme/i.test(l))
-  check('顶栏右簇分了组（有真渲染的分隔线）', (bar.dividers || 0) >= 1, `${bar.dividers} 条分隔线`)
+  // 原判据「右簇分了组（有真渲染的分隔线）」随 10-08 外壳重设计退役：右簇不再分组画线（层次靠间距，见 ShellTopBar），分隔线数恒为 0。
   check('语言不再常驻顶栏（已归位设置）', !hasLangInBar, JSON.stringify(bar.buttons))
   check('外观不再常驻顶栏（已归位设置）', !hasThemeInBar, '')
   await snap('01-appbar.png')
@@ -108,9 +108,7 @@ try {
   // 输入框底部的「模式 通用 ▾」），裸 `button:has-text("通用")` 会点中弹窗背后那个，
   // 于是停在「文件与保存」页却报「没有语言控件」= 假红。断言同理，一律只读弹窗内的文字。
   const dialog = () => getWin().locator('[role="dialog"][aria-modal="true"]').first()
-  await getWin().locator('button[aria-label*="设置"]').first().click({ timeout: 8000 })
-  await dialog().waitFor({ state: 'visible', timeout: 8000 })
-  await dialog().locator('aside button', { hasText: '通用' }).first().click({ timeout: 5000 })
+  await openSettings(getWin(), { tab: 'general', label: '打开设置·通用', timeout: 8000 })
   await getWin().waitForTimeout(800)
   const general = await dialog().evaluate((el) => {
     const locales = [...el.querySelectorAll('[data-settings-locale]')].map((b) => ({
@@ -147,7 +145,7 @@ try {
   await snap('02b-settings-general-scrolled.png')
 
   // ========== ③ 关于页签 ==========
-  await dialog().locator('aside button', { hasText: '关于' }).first().click({ timeout: 5000 })
+  await openSettings(getWin(), { tab: 'about', label: '打开设置·关于', timeout: 5000 })
   await getWin().waitForTimeout(800)
   const about = await dialog().evaluate((el) => {
     const text = el.innerText

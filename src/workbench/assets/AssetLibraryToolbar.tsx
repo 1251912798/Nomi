@@ -130,7 +130,7 @@ export function AssetLibraryToolbar({
         'cursor-pointer text-nomi-ink-60 transition-[background,color,border-color] duration-nomi-fast ease-nomi-fast',
         'hover:border-nomi-ink-20 hover:bg-nomi-ink-05 hover:text-nomi-ink',
         compact ? 'h-[30px] w-[30px]' : 'h-7 w-7',
-        findOpen && 'border-nomi-accent bg-nomi-accent-soft text-nomi-accent',
+        findOpen && 'border-transparent bg-nomi-accent-soft text-nomi-accent',
       )}
       aria-label={t('assetLibrary.findReference.entry')}
       title={t('assetLibrary.findReference.entry')}
