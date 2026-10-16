@@ -135,7 +135,7 @@ describe("nomi_read target=task", () => {
   /** 真 tryModel 提交一单，等不到终态 → 返回任务号。 */
   async function submitPending(): Promise<string> {
     const tried = await tryModel({
-      runTask, fetchTaskResult, pollIntervalMs: 10, pollTimeoutMs: 200,
+      runTask, fetchTaskResult, pollIntervalMs: 10, pollTimeoutMs: 2_000, // 这一格同时是「提交那一步」的预算：200ms 在满载下装不下一次本地提交，会回 submission_unknown 而不是 still_processing
       approvalPolicy: () => ({ mode: "project", spend: "confirm" }),
     }, { vendorKey, modelKey: "readtask-paint", prompt: "apple" }) as { code?: string; taskId?: string; nextAction?: string };
     expect(tried.code).toBe("still_processing");
