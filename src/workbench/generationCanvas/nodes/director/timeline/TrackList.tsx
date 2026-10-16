@@ -248,7 +248,7 @@ export function TrackList({ rows, tracks, onOpenAddClipMenu, onCreateCloseup, on
             className={cn(
               'group flex items-center gap-1 border-b border-nomi-line pl-1 pr-1 text-caption font-semibold text-nomi-ink',
               selectedEntityId === track.entityId ? 'bg-nomi-ink-05' : '',
-              isOver ? 'shadow-[inset_0_2px_0_var(--nomi-accent)]' : '',
+              isOver ? 'shadow-[inset_0_2px_0_var(--nomi-ink)]' : '',
               drag?.from === track.entityId ? 'opacity-60' : '',
             )}
             style={{ height: ROW_HEIGHT }}

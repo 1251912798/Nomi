@@ -229,7 +229,7 @@ export default function StoryboardAnchorRow({
               placeholder={t('storyboardEditor.anchor.namePlaceholder')}
               aria-label={t('storyboardEditor.anchor.nameAria')}
               className={cn(
-                'h-7 min-w-0 flex-1 rounded-nomi-sm border bg-nomi-paper px-2 text-body-sm font-medium text-nomi-ink outline-none focus:border-nomi-accent',
+                'h-7 min-w-0 flex-1 rounded-nomi-sm border bg-nomi-paper px-2 text-body-sm font-medium text-nomi-ink outline-none focus:border-nomi-ink-40',
                 nameInvalid ? 'border-workbench-danger' : 'border-nomi-line',
               )}
             />
@@ -401,7 +401,7 @@ function AnchorFace({
               type="button"
               onClick={onRecover}
               title={t(recoverableHintKey(runtime.node))}
-              className="inline-flex h-6 items-center gap-0.5 rounded-nomi-sm border border-nomi-line bg-nomi-paper px-2 text-micro text-nomi-ink-80 hover:border-nomi-accent hover:text-nomi-accent"
+              className="inline-flex h-6 items-center gap-0.5 rounded-nomi-sm border border-nomi-line bg-nomi-paper px-2 text-micro text-nomi-ink-80 hover:border-nomi-ink-30 hover:text-nomi-accent"
             >
               <IconRefresh size={11} stroke={1.8} />
               {t('generationCommon.production.runAction.retry-retrieval')}

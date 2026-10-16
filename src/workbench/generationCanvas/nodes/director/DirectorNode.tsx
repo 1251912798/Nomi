@@ -172,7 +172,7 @@ function DirectorNode({ node: rawNode, selected, readOnly = false }: Props): JSX
       <div
         className={cn(
           'generation-canvas-v2-node__preview flex h-full w-full flex-col overflow-hidden rounded-nomi border bg-nomi-paper shadow-nomi-md',
-          selected ? 'border-nomi-accent' : 'border-nomi-line',
+          'border-nomi-line',
         )}
       >
         <header className="flex h-8 shrink-0 items-center gap-2 px-3 text-body-sm text-nomi-ink">

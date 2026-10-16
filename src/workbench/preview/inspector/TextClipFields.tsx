@@ -48,7 +48,7 @@ export function TextClipFields({ clip }: { clip: TimelineTextClip }): JSX.Elemen
             className={cn(
               'h-6 w-[42px] text-center text-micro font-bold tabular-nums outline-none',
               'rounded-[var(--nomi-radius-sm)] border border-[var(--workbench-border)] bg-[var(--nomi-paper)]',
-              'text-[var(--workbench-ink)] focus:border-[var(--nomi-accent)]',
+              'text-[var(--workbench-ink)] focus:border-nomi-ink-40',
             )}
             value={draft}
             inputMode="numeric"

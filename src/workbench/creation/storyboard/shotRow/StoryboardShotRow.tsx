@@ -416,7 +416,7 @@ export default function StoryboardShotRow(props: Props): JSX.Element {
             aria-label={t('storyboardEditor.keyframePromptAria', { index: shot.index })}
             placeholder={t('storyboardEditor.keyframePromptPlaceholder')}
             rows={2}
-            className="resize-none rounded-nomi-sm border border-nomi-line bg-nomi-paper px-2 py-2 text-body-sm leading-normal text-nomi-ink-80 focus:border-nomi-accent focus:outline-none"
+            className="resize-none rounded-nomi-sm border border-nomi-line bg-nomi-paper px-2 py-2 text-body-sm leading-normal text-nomi-ink-80 focus:border-nomi-ink-40 focus:outline-none"
           />
           <div className="text-micro text-nomi-ink-40">{t('storyboardEditor.videoPrompt')}</div>
         </>
@@ -483,7 +483,7 @@ export default function StoryboardShotRow(props: Props): JSX.Element {
             <button
               type="button"
               onClick={onRerunFreshRefs}
-              className="h-6 shrink-0 rounded-nomi-sm border border-nomi-line bg-nomi-paper px-2 text-micro text-nomi-ink-80 hover:border-nomi-accent hover:text-nomi-accent"
+              className="h-6 shrink-0 rounded-nomi-sm border border-nomi-line bg-nomi-paper px-2 text-micro text-nomi-ink-80 hover:border-nomi-ink-30 hover:text-nomi-accent"
             >
               {t('storyboardEditor.row.rerunFreshRefs')}
             </button>

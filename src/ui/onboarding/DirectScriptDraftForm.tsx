@@ -133,7 +133,7 @@ export function DirectScriptDraftForm({
           />
         </Field>
       </div>
-      <p className="border-l-2 border-nomi-accent bg-nomi-accent-soft px-3 py-2 text-caption leading-relaxed text-nomi-ink-60">
+      <p className="border-l-2 border-nomi-line bg-nomi-accent-soft px-3 py-2 text-caption leading-relaxed text-nomi-ink-60">
         {t('onboardingProviders.customCall.directDraft.draftNote')}
       </p>
       {error ? <div role="alert" className="text-caption text-workbench-danger">{error}</div> : null}
