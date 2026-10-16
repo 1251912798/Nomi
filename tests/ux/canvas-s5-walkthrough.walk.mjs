@@ -18,7 +18,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { expect, expectVisible, screenshotSettled } from './_assert.mjs'
 import { findCanvasBlankPoint, findNodeHitPoint, waitForCanvasViewportSettled } from './_canvasHit.mjs'
-import { canvasAddBar, canvasFitViewButton, newProjectEntry } from './_shell.mjs'
+import { canvasAddBar, canvasFitViewButton, newProjectEntry, addCanvasNode, switchWorkspace } from './_shell.mjs'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const shotsDir = path.join(repoRoot, 'outputs/canvas-s5-walkthrough')
@@ -107,7 +107,7 @@ async function nodeInfo() {
 }
 
 async function addNode(kind) {
-  await canvasAddBar(getWin()).locator(`[data-node-kind="${kind}"]`).first().click()
+  await addCanvasNode(getWin(), kind)
   await getWin().waitForTimeout(700)
 }
 
@@ -148,9 +148,7 @@ try {
   await dismissFirstRun()
   await resize(1600, 1000)
 
-  const generation = getWin().getByRole('button', { name: '生成', exact: true }).first()
-  await generation.waitFor({ timeout: 8000 })
-  await generation.click()
+  await switchWorkspace(getWin(), 'generation', '切到生成区')
   await canvasAddBar(getWin()).waitFor()
 
   // ── 步骤 01：添加图片节点（节点上屏）───────────────────────────────────

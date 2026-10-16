@@ -6,6 +6,7 @@ import path from 'node:path'
 import { execFileSync } from 'node:child_process'
 import ffmpeg from '@ffmpeg-installer/ffmpeg'
 import { launchNomiApp } from './_launchApp.mjs'
+import { canvasZoomSlider, switchWorkspace, collapseAgentPanel } from './_shell.mjs'
 import { expect } from './_assert.mjs'
 import { stationTimeout } from './_station-budget.mjs'
 import { requireRealMediaAssets } from './fixtures/realMedia.mjs'
@@ -74,9 +75,8 @@ try {
   const win = await run.app.browserWindow(page)
   await win.evaluate(w => w.setBounds({ x: 0, y: 0, width: 1680, height: 1050 }))
   await page.locator('[data-project-card]', { hasText: '图片比例回归' }).first().dblclick()
-  await page.getByRole('button', { name: '生成', exact: true }).first().click()
-  const collapse = page.getByRole('button', { name: '收起面板', exact: true })
-  if ((related || lod) && await collapse.isVisible()) await collapse.click()
+  await switchWorkspace(page, 'generation', '进入生成画布')
+  if (related || lod) await collapseAgentPanel(page, '收起助手面板')
   if (lod) {
     const zoom = await canvasZoomSlider(page)
     await zoom.focus()

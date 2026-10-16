@@ -8,7 +8,7 @@ import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import { officialPlannerPrice, requestQuote, textUsageCost, CNY_PER_USD } from './g1/c0-real-budget.mjs'
 import { openStoryboardEditor } from './_creationResourceTree.mjs'
-import { newProjectEntry } from './_shell.mjs'
+import { newProjectEntry, collapseAgentPanel } from './_shell.mjs'
 
 const MODEL = 'deepseek-v4-pro'
 const VENDOR = 'deepseek-official'
@@ -358,9 +358,8 @@ async function replayOfficialOutput(sourceDir) {
     fs.writeFileSync(path.join(outputDir, 'persisted-plan.json'), JSON.stringify(persisted, null, 2))
     await openStoryboardEditor(win, result.receipt.storyboardDesignId)
     await expect(win.locator('[data-storyboard-editor="true"]')).toBeVisible()
-    const collapsePanel = win.getByRole('button', { name: '收起面板', exact: true })
-    // Panel preference is stored in this same isolated project and may already be collapsed.
-    if (await collapsePanel.isVisible()) await collapsePanel.click()
+    // Panel preference is stored in this same isolated project and may already be a ball; collapseAgentPanel is a no-op then.
+    await collapseAgentPanel(win, 'collapse assistant panel')
     await win.getByRole('button', { name: '全部展开', exact: true }).click()
     await screenshotSettled(win, { path: path.join(outputDir, 'after.png') })
     await expect(win.getByRole('button', { name: '生成未生成的 8 镜', exact: true })).toBeEnabled()

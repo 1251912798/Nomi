@@ -20,6 +20,7 @@ import {
   createBlankProject,
 } from '../../evals/lib/isoApp.mjs'
 import { screenshotSettled } from './_assert.mjs'
+import { setAppLanguage, readAppLanguage } from './_shell.mjs'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const shotsDir = path.join(repoRoot, '.multi-user-walk')
@@ -47,11 +48,9 @@ async function skipOnboarding(win) {
   await dismissSplashIfPresent(win)
 }
 
-// 顶栏语言钮只在工作台（NomiAppBar）出现；zh 下 aria-label='语言'，弹层里点 "English"。
+// 语言只住设置「通用」里（顶栏没有语言钮了）：经 _shell.mjs 切。
 async function switchToEnglish(win) {
-  await win.locator('[aria-label="语言"]').first().click({ timeout: 8000 })
-  await win.waitForTimeout(400)
-  await win.locator('[role="menuitemradio"]', { hasText: 'English' }).first().click({ timeout: 5000 })
+  await setAppLanguage(win, 'en', '切到 English')
   await win.waitForTimeout(1000)
 }
 
@@ -77,19 +76,19 @@ try {
   check('B 项目落在 B 的 projectsDir', fs.existsSync(path.join(projB, '.nomi', 'project.json')), path.basename(projB))
   await screenshotSettled(winA, { path: path.join(shotsDir, 'A-01-zh-workbench.png') })
 
-  // A 是中文用户：工作台语言钮=语言、tab=创作/生成
-  const aLangZh = await winA.locator('[aria-label="语言"]').count()
+  // A 是中文用户：设置里语言=简体中文、tab=创作/生成
+  const aLangZh = await readAppLanguage(winA, 'A 读语言')
   const aCreateZh = await winA.getByRole('button', { name: '创作', exact: true }).count()
-  check('A 工作台是中文（语言钮 aria-label=语言、tab=创作）', aLangZh > 0 && aCreateZh > 0, `lang=${aLangZh} 创作=${aCreateZh}`)
+  check('A 工作台是中文（语言分段=zh-CN、tab=创作）', aLangZh === 'zh-CN' && aCreateZh > 0, `lang=${aLangZh} 创作=${aCreateZh}`)
 
   // ② User B 切英文
   console.log('\n▶ User B 切换到 English…')
   await switchToEnglish(winB)
-  const bLangEn = await winB.locator('[aria-label="Language"]').count()
+  const bLangEn = await readAppLanguage(winB, 'B 读语言')
   const bCreateEn = await winB.getByRole('button', { name: 'Create', exact: true }).count()
   const bGenerateEn = await winB.getByRole('button', { name: 'Generate', exact: true }).count()
   const bZhTabGone = await winB.getByRole('button', { name: '创作', exact: true }).count()
-  check('B 切到英文（语言钮 aria-label→Language）', bLangEn > 0, `count=${bLangEn}`)
+  check('B 切到英文（语言分段=en）', bLangEn === 'en', `lang=${bLangEn}`)
   check('B 工作台 tab 翻成英文（Create/Generate 出现、创作消失）', bCreateEn > 0 && bGenerateEn > 0 && bZhTabGone === 0, `Create=${bCreateEn} Generate=${bGenerateEn} 创作=${bZhTabGone}`)
   await screenshotSettled(winB, { path: path.join(shotsDir, 'B-01-en-workbench.png') })
 
@@ -102,10 +101,10 @@ try {
   check('A/B 项目 ID 无交叉（项目互不串台）', aProjects.every((id) => !bProjects.includes(id)), `A=${JSON.stringify(aProjects)} B=${JSON.stringify(bProjects)}`)
 
   // ④ 语言隔离：B 切英文后，A 仍是中文
-  const aStillZh = await winA.locator('[aria-label="语言"]').count()
-  const bStillEn = await winB.locator('[aria-label="Language"]').count()
-  check('B 切英文没污染 A（A 仍中文）', aStillZh > 0, `A 语言钮=${aStillZh}`)
-  check('B 仍是英文', bStillEn > 0, `B Language 钮=${bStillEn}`)
+  const aStillZh = await readAppLanguage(winA, 'A 再读语言')
+  const bStillEn = await readAppLanguage(winB, 'B 再读语言')
+  check('B 切英文没污染 A（A 仍中文）', aStillZh === 'zh-CN', `A 语言=${aStillZh}`)
+  check('B 仍是英文', bStillEn === 'en', `B 语言=${bStillEn}`)
 
   // ⑤ 并发存活：两窗同时响应
   const [aAlive, bAlive] = await Promise.all([
