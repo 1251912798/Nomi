@@ -239,9 +239,9 @@
     ]
   },
   "prevention": {
-    "kind": "static-gate",
-    "enforcement_path": "scripts/check-heavy-path.mjs",
-    "invariant": "electron/ production code contains no spawnSync / execFileSync / execSync outside the path-listed E2E fixture.",
+    "kind": "centralized-boundary",
+    "enforcement_path": "electron/assets/generatedMediaDecode.ts",
+    "invariant": "The decode check only exists as an asynchronous child (runDecoder); electron/ production code contains no spawnSync / execFileSync / execSync outside the path-listed E2E fixture (check:heavy-path main-sync-child-process, baseline 0).",
     "failure_mode": "check:heavy-path exits 1 and prints file:line with the asynchronous replacement.",
     "exception_policy": "none",
     "strategy": "Gate by presence, not by count (baseline 0), like unguarded-fsync: deleting one allowed call and adding a new one cannot keep the gate green. The verifier itself only exists in asynchronous form, so no writer can call it synchronously.",
