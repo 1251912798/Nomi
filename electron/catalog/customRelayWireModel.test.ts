@@ -38,7 +38,8 @@ import type { CatalogState, HttpOperation, Mapping, Model, Vendor } from "./type
 import type { TaskRequest } from "../runtime";
 import { wireReferencedParamKeys } from "./paramTranslate";
 import { operationSelectsArchetypeWireModel } from "../shared/wireModelIdentity";
-import { isBuiltinRelayVendorKey } from "./relayImageEditMigration";
+import { builtinVendorSeed } from "./builtinVendorSeeds";
+import { getArchetypeById } from "../shared/modelArchetypes";
 
 const RELAY_KEY = "gw-relay-example-com";
 const PNG_DATA_URL = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
@@ -202,9 +203,18 @@ describe("正向对照：内置目录契约仍按模式发自己的拆分名", (
 describe("类检查：谁有资格收档案线上名（普查真实内置目录 + 全部中转报文）", () => {
   const seeded = applyBuiltinSeeds({ version: 11, vendors: [], models: [], mappings: [], apiKeysByVendor: {} } as unknown as CatalogState, "now").state;
 
-  it("内置目录里凡是引用 params.model 的 create op 都声明了收档案线上名（漏了就会发连接名、拆 id 的模式全坏）", () => {
+  /** 这条 mapping 服务的模型里，有没有档案带「模式线上名 / 变体」——只有这种才需要声明。 */
+  const servesNamedArchetype = (mapping: Mapping) => seeded.models
+    .filter((model) => model.vendorKey === mapping.vendorKey && (!mapping.modelKey || model.modelKey === mapping.modelKey))
+    .some((model) => {
+      const archetype = getArchetypeById(String((model.meta as { archetypeId?: unknown } | undefined)?.archetypeId ?? ""));
+      return Boolean(archetype && ((archetype.variants?.length ?? 0) > 0 || archetype.modes.some((mode) => mode.modelEnum)));
+    });
+
+  it("内置目录里引用 params.model、且服务带模式线上名 / 变体档案的 create op 都声明了（漏了就发连接名、拆 id 的模式全坏）", () => {
     const missing = seeded.mappings
       .filter((mapping) => wireReferencedParamKeys(mapping.create).includes("model") && !operationSelectsArchetypeWireModel(mapping.create))
+      .filter(servesNamedArchetype)
       .map((mapping) => `${mapping.vendorKey}/${mapping.id}`);
     expect(missing).toEqual([]);
     expect(seeded.mappings.some((mapping) => operationSelectsArchetypeWireModel(mapping.create))).toBe(true);
@@ -212,7 +222,7 @@ describe("类检查：谁有资格收档案线上名（普查真实内置目录 
 
   it("声明只出现在内置家的报文上", () => {
     const outside = seeded.mappings
-      .filter((mapping) => operationSelectsArchetypeWireModel(mapping.create) && !isBuiltinRelayVendorKey(mapping.vendorKey))
+      .filter((mapping) => operationSelectsArchetypeWireModel(mapping.create) && !builtinVendorSeed(mapping.vendorKey))
       .map((mapping) => `${mapping.vendorKey}/${mapping.id}`);
     expect(outside).toEqual([]);
   });

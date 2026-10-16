@@ -41,7 +41,7 @@ import type { VideoModelCandidate } from "../shared/videoCapabilities";
 import { currentArchetypeVariant } from "../../src/workbench/generationCanvas/nodes/controls/archetypeMeta";
 import { projectSpendNode } from "../../src/workbench/ai/v4/spendCardDraft";
 import { seedParityCatalog } from "./generationParityTestUtils";
-import { resolveWireModel } from "../shared/wireModelIdentity";
+import { operationSelectsArchetypeWireModel, resolveWireModel } from "../shared/wireModelIdentity";
 import { selectTaskMapping, type CatalogState, type ProfileKind } from "../catalog/types";
 
 type VariantRow = { vendorKey: string; modelKey: string; meta: unknown; candidates: VideoModelCandidate[] };
@@ -102,7 +102,8 @@ describe("这一镜跑哪个变体：画布 / 付费卡 === 宿主派发（真�
         extras: { modelKey: row.modelKey, archetype: { modeId: hostNormalized.modeId, variantId: hostNormalized.variantId } },
         taskKind: hostNormalized.mode,
       });
-      expect(wire, `${label}：出站 model`).toBe(variant?.modelKey);
+      // 声明收档案线上名的内置 op 发变体串；写死 model 的（Runway）不声明，参数表里就是连接名。
+      expect(wire, `${label}：出站 model`).toBe(operationSelectsArchetypeWireModel(mapping?.create) ? variant?.modelKey : row.modelKey);
     }
   });
 
