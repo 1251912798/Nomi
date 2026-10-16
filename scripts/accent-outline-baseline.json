@@ -47,26 +47,6 @@
     "count": 1,
     "reason": "保留：定位节点时的 1.35 秒脉冲外圈，一次性动画反馈，不是常驻描边"
   },
-  "src/workbench/generationCanvas/reactFlow/GenerationCanvasReactFlowNodes.tsx": {
-    "count": 2,
-    "reason": "待补：选参考图时「可拾取」目标高亮，等生成框探索线（L5）定挑选状态手感后再改"
-  },
-  "src/workbench/generationCanvas/components/GroupFrame.tsx": {
-    "count": 2,
-    "reason": "待补：分组框选中样式由分组框头线（fix/group-header-board-parity）在改，合入后清零"
-  },
-  "src/workbench/generationCanvas/components/CollapsedGroupCard.tsx": {
-    "count": 1,
-    "reason": "待补：折叠分组卡选中样式属分组框头线，合入后清零"
-  },
-  "src/workbench/generationCanvas/nodes/NodeGenerationComposer.tsx": {
-    "count": 1,
-    "reason": "待补：生成框拖入高亮，文件在分组框头线的改动面内，合入后改灰线"
-  },
-  "src/workbench/creation/DocumentListSidebar.tsx": {
-    "count": 2,
-    "reason": "待补：文稿行重命名输入框，文稿行动作线（fix/script-row-actions）在改这个组件，合入后改 border-nomi-ink-40"
-  },
   "src/workbench/timeline/TimelinePanel.tsx": {
     "count": 1,
     "reason": "保留（协调拍板）：播放头是握把，保留强调色；原硬编码 rgba(0,122,255) 已换成 --workbench-accent-soft token"

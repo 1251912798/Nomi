@@ -338,7 +338,7 @@ export default function DocumentListSidebar(): JSX.Element {
                       if (event.key === 'Escape') cancelRename()
                     }}
                     onBlur={commitRename}
-                    className="min-w-0 flex-1 border-b border-nomi-accent/50 bg-transparent text-caption text-nomi-ink outline-none"
+                    className="min-w-0 flex-1 border-b border-nomi-ink-40 bg-transparent text-caption text-nomi-ink outline-none"
                   />
                 ) : (
                   <button
@@ -418,7 +418,7 @@ export default function DocumentListSidebar(): JSX.Element {
                               if (event.key === 'Escape') cancelRename()
                             }}
                             onBlur={commitRename}
-                            className="min-w-0 flex-1 border-b border-nomi-accent/50 bg-transparent text-caption text-nomi-ink outline-none"
+                            className="min-w-0 flex-1 border-b border-nomi-ink-40 bg-transparent text-caption text-nomi-ink outline-none"
                           />
                         ) : (
                           <button

@@ -366,7 +366,7 @@ export default function ProjectLibraryPage({
                     type="button"
                     onClick={onPlayJourneyTour}
                     title={journeyTourSeen ? t('library.replayGuide') : t('library.watchHow')}
-                    className="inline-flex h-7 items-center gap-1.5 rounded-pill border-0 bg-transparent px-3 text-caption font-medium text-nomi-ink-60 transition-colors hover:bg-nomi-ink-05 hover:text-nomi-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-nomi-accent"
+                    className="inline-flex h-7 items-center gap-1.5 rounded-pill border-0 bg-transparent px-3 text-caption font-medium text-nomi-ink-60 transition-colors hover:bg-nomi-ink-05 hover:text-nomi-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-nomi-ink"
                     data-library-tour
                   >
                     <IconPlayerPlay size={14} stroke={1.5} aria-hidden="true" />
