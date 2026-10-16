@@ -148,7 +148,7 @@ const EVIDENCE_TOKEN = [
 export const PERF_EVIDENCE_ID = 'perf-scenario'
 /** 性能证据行的判据。known = knownScenarios 的结果；problems 非空（取不到 / 坏了 / 结构不合格）时，非「不适用」的性能行一律红（fail-closed）。 */
 const perfVerdictFor = (known) => (line) => {
-  const verdict = parsePerfEvidence(line, known.ids)
+  const verdict = parsePerfEvidence(line, known.ids, known.byId)
   if (known.problems.length && verdict.ok && !verdict.notApplicable) return { ok: false, reason: `场景登记表核对不了：${known.problems.join('；')}` }
   return verdict
 }

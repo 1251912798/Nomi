@@ -7,7 +7,7 @@ import { openLaneSession } from '../../electron/agentLane/laneSession.mjs';
 import { MemorySessionRepo } from '@earendil-works/pi-agent-core/harness/session';
 import { BACKGROUND_CONTEXT as context } from '@earendil-works/pi-agent-core/harness/context';
 import { z } from 'zod';
-const policy = { mode: 'safe-auto' as const, spend: 'confirm' as const };
+const policy = { mode: 'request' as const };
 const usage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } };
 const assistant = (text: string) => ({ role: 'assistant' as const, content: [{ type: 'text' as const, text }], api: 'openai-completions' as const, provider: 'fixture', model: 'fixture', timestamp: 1, stopReason: 'aborted' as const, usage });
 

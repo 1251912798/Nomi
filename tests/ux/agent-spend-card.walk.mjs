@@ -31,7 +31,7 @@ try {
   let { win } = await walk.start({ first: true })
   const { projectId, name } = await walk.newProject()
   await openCanvas(win)
-  await expect(win.locator(`${CANVAS_PANEL} [data-v4-block="composer"]`)).toHaveAttribute('data-spend-policy', 'confirm')
+  await expect(win.locator(`${CANVAS_PANEL} [data-v4-block="composer"]`)).toHaveAttribute('data-approval-mode', 'request')
 
   // ① agent 建草稿。付费能力按设计不在模型工具面里（paidBoundary），所以它能做的只有建草稿——
   // 「这笔钱花不花」必须由面板上那张卡来问，这正是本走查要证明的东西。
@@ -88,10 +88,10 @@ try {
   // Existing pending spend keeps its explicit confirmation boundary when permission changes.
   await clickOrFail(win.locator(`${CANVAS_PANEL} ${COMPOSER_PERMISSION}`), '权限档选择器')
   await expect(win.locator(`${CANVAS_PANEL} ${PERMISSION_POPOVER}`)).toBeVisible()
-  await clickOrFail(win.locator(`${CANVAS_PANEL} ${permissionTier('project')}`), '切到「全自动」')
+  await clickOrFail(win.locator(`${CANVAS_PANEL} ${permissionTier('direct')}`), '切到「直接生成」')
   const switchCard = win.locator(`${CANVAS_PANEL} ${APPROVAL_CARD}[data-kind="approval-reversible"]`)
   await expect(switchCard).toBeVisible()
-  await clickOrFail(switchCard.locator(INTERVENTION_CONFIRM), '确认切到全自动')
+  await clickOrFail(switchCard.locator(INTERVENTION_CONFIRM), '确认切到直接生成')
   await expect(win.locator(`${CANVAS_PANEL} [data-v4-block="auto-mode"]`), '全自动档要有常驻提醒').toBeVisible()
   await expect(card, '付费卡在切档之后仍然等着人答——钱不因档位放行').toBeVisible()
   await expect(card.locator(PRICE_TOTAL), '让位回来之后确认控件上仍不出金额——它没有倒计时，等多久都行').not.toHaveText(/[¥￥$€£]|\d+\.\d{2}/)

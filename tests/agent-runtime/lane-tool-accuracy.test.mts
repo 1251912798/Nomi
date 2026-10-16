@@ -15,7 +15,7 @@ import { test, type TestContext } from 'node:test';
 
 import { createDocumentLaneTools } from '../../electron/agentLane/laneDocumentTools.js';
 import type { LaneToolDescriptor } from '../../electron/agentLane/laneRuntimePort.js';
-import { createDocumentPort, createLaneFixture } from './laneFixture.mjs';
+import { createDocumentPort, createLaneFixture, mustConfirm } from './laneFixture.mjs';
 import type { FixtureReply } from './httpFixture.mjs';
 
 const APPENDED = 'The lights went out.';
@@ -46,7 +46,7 @@ interface Measurement {
 /**
  * 三条臂。
  *
- * `with-approval` 是阶段 3a 加的那一条（R30 的「审批介入臂」）：闸开在「每步问」上，
+ * `with-approval` 是阶段 3a 加的那一条（R30 的「审批介入臂」）：闸让每次文稿读写都当场确认（`mustConfirm`），
  * 用户对**第一次**调用一律答「不要 + 一句话」，之后的照常允许。它问的不是写对率
  * （那一臂 0/8 是构造出来的），而是**审批会不会把回合成功率打下来**——一次被拒必须
  * 让模型读到那句话、自己改、把这一轮做完，而不是把整条 lane 卡在那里。
@@ -70,7 +70,7 @@ async function measure(t: TestContext, arm: MeasurementArm): Promise<Measurement
     const lane = await fixture.openLane({
       ...fixture.options, tools: arm === 'without-tolerance' ? withoutTolerance(tools) : tools,
       ...(arm === 'with-approval'
-        ? { approval: { hasUserInterface: true, policy: () => ({ mode: 'step' as const, spend: 'confirm' as const }) } }
+        ? { approval: mustConfirm({ toolNames: ['write_script', 'read_script'] }) }
         : {}),
     });
     // 介入臂：第一张卡答「不要 + 一句话」，之后的允许。用户那句话会一字不改成为

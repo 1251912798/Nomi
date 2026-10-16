@@ -7,6 +7,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import { TEST_FILE } from './lib/scanGuardDetect.mjs'
 import { touchesTypecheck } from './lib/typecheckCoverage.mjs'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
@@ -15,7 +16,8 @@ const SOURCE_EXTS = ['ts', 'tsx', 'mts', 'cts']
 
 /**
  * roots + exts：目录下该扩展名的任何文件都算输入；files：固定文件（含数据 / 基线）；entries：入口脚本，
- * 它和它的相对 import 闭包（实现依赖）也算输入。
+ * 它和它的相对 import 闭包（实现依赖）也算输入；match（可选）：全仓任何位置命中该正则的路径也算输入——
+ * 给「登记类核对」用：触发条件是「新增 / 改动被登记对象」，不能只是核对自己的输入。
  */
 export const GATE_INPUTS = Object.freeze({
   // check-design-tokens.mjs：src 的 ts/tsx（禁用值扫描），以及 src / electron / tailwind.config.ts 的 ts tsx css mjs（color-mix 色相漂移扫描）
@@ -74,6 +76,9 @@ export const GATE_INPUTS = Object.freeze({
   'check:script-network-retry': { roots: ['scripts'], exts: ['mjs','cjs','js','ts','mts','cts'], files: [], entries: ['scripts/check-script-network-retry.mjs', 'scripts/check-script-network-retry.node-test.mjs', 'scripts/lib/transientRetry.node-test.mjs'] },
   // pre-push-structure.node-test.mjs：钩子自己的契约 / 结构用例。读 package.json 的 gates:contracts、门表、输入声明、入口脚本（entries 的 import 闭包已含后三者），还有钩子分发表
   'test:pre-push-structure': { roots: [], exts: [], files: ['package.json', 'scripts/git-hooks.json', 'scripts/install-git-hooks.cjs'], entries: ['scripts/pre-push-structure.node-test.mjs'] },
+  // check-scan-guard-census.mjs：扫描型守卫登记核对。被登记对象 = 全仓任何位置的测试文件（识别器认的 TEST_FILE：*.test.* / *.node-test.*，新增、改名、删除都算），
+  // 所以用 match 全仓触发；package.json（gates:contracts 的门命令文本是核对的输入）与登记表（entries 闭包里的 pre-push-scan-guards.mjs）也算
+  'check:scan-guard-census': { roots: [], exts: [], files: ['package.json'], entries: ['scripts/check-scan-guard-census.mjs'], match: TEST_FILE },
   // electron/quitLifecycleGuard.test.ts：用仓库的 eslint 配置去 lint 反例，所以 eslint 配置与 electron 下的代码都算输入
   'test:quit-lifecycle-guard': { roots: ['electron'], exts: SOURCE_EXTS, files: ['eslint.config.mjs'], entries: ['electron/quitLifecycleGuard.test.ts'] },
 })
@@ -146,6 +151,7 @@ export function touchesGateInputs(name, changedFiles, root = repoRoot) {
   const fixed = new Set(input.files)
   return changedFiles.map((file) => file.split(path.win32.sep).join('/')).some((file) => {
     if (fixed.has(file) || impl.has(file)) return true
+    if (input.match?.test(file)) return true
     const ext = path.posix.extname(file).slice(1)
     return input.exts.includes(ext) && input.roots.some((dir) => file.startsWith(`${dir}/`))
   })

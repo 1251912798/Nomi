@@ -1,0 +1,156 @@
+{
+  "schema_version": 3,
+  "id": "2026-10-12-agent-permission-tiers-indistinct",
+  "problem_type": "User-visible control whose options are not distinguishable in effect",
+  "symptom": "The Agent permission picker offered three tiers (ask each step / auto-edit / full auto). The first two behaved identically for paid generation and irreversible actions, so choosing the more cautious one changed nothing the user could feel (user: it is as if there are no tiers). The third tier had no brake: a shot that kept failing was retried and re-spent without ever stopping to ask.",
+  "direct_cause": "The tier vocabulary was split into a mode axis and a spend axis and each call site interpreted them on its own: tool approval (capabilityMayReuseSafeApproval) and paid decision (spendDecidedByPolicy) answered separate halves of one question, the spend axis had no reader after the budget cap was removed, and nothing in the paid-decision path looked at the Run (failures, plan, stop).",
+  "class_root": "A user-facing authorization had no single readable answer to whether the system asks now, so the number of tiers followed implementation sub-divisions instead of differences the user can perceive, and the one decision point that spends money for the user had no facts to refuse on.",
+  "migration": "The persisted agent-approval-policy.json moves from schemaVersion 1 (step / safe-auto / project plus a spend axis) to schemaVersion 2 (request / direct). Migration happens in exactly one place, normalizeAgentApprovalPolicySettings: every old value, including the old full-auto, lands on request; direct must be chosen again by the user. Old Run snapshots that recorded mode project simply stop being treated as policy-decided (they show the normal confirmation card).",
+  "affected_population": [
+    "Every user of the Agent panel who had chosen any of the three tiers",
+    "External MCP hosts that read the persisted tier",
+    "Anyone who ran a batch in the old full-auto tier and had a shot fail repeatedly"
+  ],
+  "scope_paths": [
+    "electron/shared/agentCapabilities/",
+    "electron/settings/",
+    "electron/capabilityCore/",
+    "electron/productionRun/productionPendingSpend.ts",
+    "src/workbench/ai/v4/",
+    "src/i18n/locales/agentPanelV4.ts",
+    "electron/productionRun/productionGenerationPresentationEdits.ts",
+    "electron/productionRun/productionRunRepository.ts",
+    "electron/productionRun/productionRunTrustAuthority.ts",
+    "electron/productionRun/stalePresentationSweep.ts"
+  ],
+  "entry_points": [
+    "generationTransportAdapters.ts policyVerdict (lane and resident paid decision after a draft)",
+    "generationDispatcher.ts gate_request legacy challenge path",
+    "modelOnboarding/tryModel.ts (single trial generation, no Run) — now asks spendDecisionByPolicy with no Run"
+  ],
+  "invariants": [
+    "The persisted and in-memory tier vocabulary is exactly request and direct",
+    "Whether a paid generation is decided by the tier is answered in one place for every path that has a Run: spendDecisionByPolicy (tier plus brakes)",
+    "In the direct tier a shot with 3 consecutive provider-reaching failures, a shot outside the already-approved plan, or a stopped Run is never decided by the tier; the normal confirmation card is shown with one line saying why",
+    "Irreversible actions, unknown effect classes and external destructive hints ask in both tiers",
+    "The plan for brake 2 is historical: every shot that ever had a job in the Run, including shots later removed or excluded from the batch; consecutive failures are counted since the last attempt a human approved, read from gate → presentation facts, never from a modulo"
+  ],
+  "doors": [
+    {
+      "kind": "write",
+      "path": "electron/capabilityCore/generationDispatcher.ts",
+      "symbol": "spendDecisionByPolicy"
+    },
+    {
+      "kind": "write",
+      "path": "electron/capabilityCore/generationTransportAdapters.ts",
+      "symbol": "spendDecisionByPolicy"
+    },
+    {
+      "kind": "write",
+      "path": "electron/capabilityCore/modelOnboarding/tryModel.ts",
+      "symbol": "spendDecisionByPolicy"
+    }
+  ],
+  "door_reduction": {
+    "before": 3,
+    "after": 3,
+    "why_not": "Before: 4 call sites in 3 files asked spendDecidedByPolicy directly (the adapter asked it twice). Now the adapter asks once through spendDecisionByPolicy and the legacy gate_request challenge path in generationDispatcher asks the same function with no Run. They are not merged further because they are two different transports of the same decision: the adapter owns the lane and resident draft flow where a durable Run exists to read, while the dispatcher path mints a challenge without any Run, so brake facts do not exist there. tryModel (single trial, no Run) keeps the tier-only spendDecidedByPolicy. 2026-10-16 (independent acceptance V-1203 F3): tryModel no longer asks spendDecidedByPolicy directly; it asks spendDecisionByPolicy with no Run, so every paid decision made for the user goes through one function. The three doors are three transports of that one decision: the adapter (lane and resident drafts with a Run), the legacy gate_request challenge path (no Run), and the single trial (no Run)."
+  },
+  "regression_tests": [
+    "electron/capabilityCore/generationTransportAdapters.test.ts",
+    "electron/productionRun/directGenerationStop.e2e.test.ts",
+    "electron/settings/agentApprovalPolicyTwoTiers.test.ts",
+    "electron/shared/agentCapabilities/capabilityApprovalTwoTiers.test.ts",
+    "electron/shared/agentCapabilities/directGenerationBrakes.boundaries.test.ts",
+    "src/workbench/ai/v4/agentPanelV4TwoTiers.test.ts"
+  ],
+  "residual_risks": [
+    "Brake 2 compares with shots that already have a job in the Run. An agent that adds shots to the draft one call at a time after the first paid decision will be stopped for each new shot; this is by design but may feel strict.",
+    "Brake 2's plan is one Run. Document plans are one per request (D5), so adding shots to that plan mid-turn is stopped, but canvas drafts may create several Runs in one request by design; a fresh canvas draft started later in the same turn has no jobs and is not out-of-plan. Widening the plan to every Run of the request needs a request-scoped owner for canvas drafts first (reported to the coordinator as a product decision).",
+    "The legacy gate_request challenge path in generationDispatcher has no Run to read, so brakes cannot apply there; both production hosts (in-app and MCP stdio) supply requestGenerationGate and do not use it.",
+    "Three real-Electron walkthroughs (agent-v4-short-film, stage4-switch, agent-runtime-provider) used the removed ask-each-step tier to force an approval card for reversible document writes; they now assert the request-tier behaviour (the write applies with no click, proven causally). The short-film legs for collapsing with a pending card and rejecting with a reason lost their trigger: the pending capsule is covered by shell-redesign, and rejection with a reason is covered at the lane level (lane-approval-gate, L1 F3) but not in a real-Electron walk until a creation-surface action that always asks is chosen.",
+    "A user-stopped attempt (needs_attention without an error code, cancelled_remote, too_late) currently counts toward consecutive failures; this errs toward asking more, never less.",
+    "Receipt ledger vocabulary keeps its historical signed literals (policyMode project, decidedBy policy:full_auto); they are audit fields of persisted receipts, not the user-facing tier, and are left for a separate receipt migration."
+  ],
+  "external_sources": [],
+  "internal_only_reason": "In-house authorization semantics and per-shot spend rules; no third-party behaviour is involved.",
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Any new call site that decides a paid generation for the user, or any new tier or axis added to the picker, can again create a second answer to whether the system asks now.",
+    "same_class_scan": [
+      "door-map spendDecisionByPolicy: 3 doors (adapter, legacy challenge path, single trial)",
+      "door-map spendDecidedByPolicy: only spendDecisionByPolicy itself and the non-paying approval matrix",
+      "directGenerationBrakes.boundaries.test.ts scans electron/ so that no other production file calls spendDecidedByPolicy",
+      "git grep for the removed vocabulary (step, safe-auto, project as a mode) is empty in electron and src"
+    ]
+  },
+  "generality_proof": "The tier answer for any path with a Run goes through spendDecisionByPolicy, which takes the Run lazily and derives the brakes from jobs, so a new provider, host or version reaches the same facts. The vocabulary test fails if a third tier or a second axis appears, and the migration reads old bytes, so older data cannot silently become direct.",
+  "shared_boundaries": [
+    {
+      "path": "electron/shared/agentCapabilities/directGenerationBrakes.ts",
+      "symbol": "spendDecisionByPolicy",
+      "responsibility": "Single answer to whether the tier decides a paid generation for the user, including the brakes."
+    },
+    {
+      "path": "electron/settings/agentApprovalPolicyContract.ts",
+      "symbol": "normalizeAgentApprovalPolicySettings",
+      "responsibility": "Single place where persisted tier values are read and old vocabularies are migrated."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "electron/capabilityCore/modelOnboarding/tryModel.ts",
+      "entry_point": "tryModel",
+      "disposition": "enforced",
+      "evidence": "Asks spendDecisionByPolicy with no Run (2026-10-16); with no Run only the tier answers, and an agent-initiated trial is not a user click, so no consent input is invented."
+    },
+    {
+      "path": "electron/capabilityCore/generationDispatcher.ts",
+      "entry_point": "gate_request legacy challenge path",
+      "disposition": "enforced",
+      "evidence": "Asks spendDecisionByPolicy; no Run exists on this path so brakes cannot apply (documented residual risk)."
+    }
+  ],
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "electron/shared/agentCapabilities/directGenerationBrakes.ts",
+    "invariant": "Every paid decision that has a Run is answered by spendDecisionByPolicy; the tier vocabulary is exactly request and direct.",
+    "failure_mode": "A second answer or a third tier fails capabilityApprovalTwoTiers.test.ts (vocabulary, matrix and brake cases) and check:concept-owners.",
+    "exception_policy": "none",
+    "strategy": "Delete the redundant tier and the unread spend axis, put the facts the paid decision needs behind one pure function, migrate old values in one place.",
+    "artifacts": [
+      "electron/shared/agentCapabilities/directGenerationBrakes.ts",
+      "electron/shared/agentCapabilities/capabilityApprovalPolicy.ts",
+      "electron/settings/agentApprovalPolicyContract.ts",
+      "docs/engineering/concept-owners/agent.direct-generation-brakes.json"
+    ]
+  },
+  "class_regression_tests": [
+    "electron/shared/agentCapabilities/capabilityApprovalTwoTiers.test.ts",
+    "electron/shared/agentCapabilities/directGenerationBrakes.boundaries.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "electron/shared/agentCapabilities/capabilityApprovalPolicy.ts",
+      "src/workbench/ai/v4/agentPanelV4Types.ts",
+      "src/workbench/ai/v4/agentPanelV4Logic.ts",
+      "electron/capabilityCore/generationTransportAdapters.ts"
+    ],
+    "rationale": "Removed in the same change: the step tier and the safe-auto/project names plus the spend axis (capabilityApprovalPolicy.ts, agentPanelV4Types.ts), approvalPolicyRank and isNoWiderThan (agentPanelV4Logic.ts), the per-site tier-only decision call (generationTransportAdapters.ts). The persisted old values are migrated once in normalizeAgentApprovalPolicySettings and no runtime alias for the old words remains."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "No third-party dependency is involved.",
+    "exit_criteria": []
+  },
+  "detected_by": "user",
+  "recurrence_check_on": "2026-10-26",
+  "invariant_owner_layer": {
+    "layer": "electron/shared/agentCapabilities/directGenerationBrakes.ts",
+    "tests": [
+      "electron/shared/agentCapabilities/capabilityApprovalTwoTiers.test.ts"
+    ]
+  }
+}

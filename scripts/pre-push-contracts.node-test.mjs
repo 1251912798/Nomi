@@ -258,6 +258,36 @@ test('必红：新增一个没有 declareStoreLifetime 的 zustand store → 推
   assert.match(result.stderr, /useProbeStore/, '红的原因要是这个新 store')
 })
 
+// 登记类核对必须由「新增被登记对象」触发（2026-10-16 #1202 #1203 #1207 #1209 #1210 #1211：只新增一个扫源码的测试文件，触发不了只看自己输入的结构门岗，CI 才红）
+const SCAN_PROBE = [
+  "import fs from 'node:fs'",
+  "import path from 'node:path'",
+  "import { expect, test } from 'vitest'",
+  'const walk = (dir: string): string[] => fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => (entry.isDirectory() ? walk(path.join(dir, entry.name)) : [path.join(dir, entry.name)]))',
+  "test('没有违规', () => { for (const file of walk(path.join(process.cwd(), 'electron'))) expect(fs.readFileSync(file, 'utf8').includes('PREPUSH_PROBE_' + 'BAD')).toBe(false) })",
+  '',
+].join('\n')
+
+test('必红：只新增一个扫 electron 的测试文件、没登记 → 推送前红，点名 check:scan-guard-census 与该文件；登记后同一道门绿', () => {
+  const probe = 'electron/prepushScanProbe.structure.test.ts'
+  commitChange(() => fs.writeFileSync(path.join(work, probe), SCAN_PROBE))
+  const red = prePush()
+  assert.equal(red.status, 1, red.stderr)
+  assert.match(red.stderr, /✖ check:scan-guard-census/)
+  assert.match(red.stderr, /electron\/prepushScanProbe\.structure\.test\.ts：扫描型守卫测试没有去处/)
+  assert.match(red.stderr, /SCAN_GUARDS/, '沿用现有报错文字，点名该登记进哪张表')
+  commitChange(() => {
+    fs.writeFileSync(path.join(work, probe), SCAN_PROBE)
+    const file = path.join(work, 'scripts/pre-push-scan-guards.mjs')
+    const source = fs.readFileSync(file, 'utf8')
+    const anchor = 'export const SCAN_GUARDS = Object.freeze(['
+    assert.ok(source.includes(anchor))
+    fs.writeFileSync(file, source.replace(anchor, `${anchor}\n  { file: '${probe}', roots: ['electron'] },`))
+  })
+  const green = prePush()
+  assert.match(green.stderr, /✅ check:scan-guard-census/, green.stderr)
+})
+
 test('必红：往 GATE_INPUTS 加了一道门、没补 SCANNER_READS → 推送前就红，点名 test:pre-push-structure（#1147 在 CI 才撞到）', () => {
   commitChange(() => {
     const file = path.join(work, 'scripts/pre-push-gate-inputs.mjs')

@@ -199,13 +199,13 @@ export function normalizeLegacyPresentation<T extends Pick<ProductionRun, "gates
     if (plan.presentations.every((presentation) => presentation.presentationId
       && presentation.presentationEpoch !== undefined
       && presentation.policySnapshot
-      && (presentation.policySnapshot.mode !== "project" || presentation.policyDecisionDeadlineAt))) return run;
+      && (presentation.policySnapshot.mode !== "direct" || presentation.policyDecisionDeadlineAt))) return run;
     const presentations = plan.presentations.map((presentation, index) => ({
       ...presentation,
       presentationId: presentation.presentationId ?? `${plan.operationId}:presentation:${index + 1}`,
       presentationEpoch: presentation.presentationEpoch ?? index + 1,
       policySnapshot: presentation.policySnapshot ?? DEFAULT_PROJECT_AGENT_APPROVAL_POLICY,
-      ...(presentation.policySnapshot?.mode === "project" && !presentation.policyDecisionDeadlineAt
+      ...(presentation.policySnapshot?.mode === "direct" && !presentation.policyDecisionDeadlineAt
         ? (() => {
             const deadline = projectPolicyDecisionDeadlineAt(presentation.openedAt);
             return deadline ? { policyDecisionDeadlineAt: deadline } : {};

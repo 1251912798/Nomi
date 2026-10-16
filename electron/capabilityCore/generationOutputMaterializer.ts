@@ -7,7 +7,7 @@ import { logWarn } from "../logging/logger";
 import { OUTPUT_RETRIEVAL_FAILED } from "../productionRun/productionRunTypes";
 import { GeneratedMediaValidationError } from "../assets/generatedMediaDecode";
 import { stripNomiErrorCode } from "../shared/nomiErrorCodes";
-import { writeDeterministicAsset } from "../assets/projectAssetStore";
+import { writeGeneratedDeterministicAsset } from "../assets/projectAssetStore";
 import { exceedsProviderMediaCap, fetchProviderMedia, type ProviderMediaFetchOptions } from "../assets/providerMediaFetch";
 import type { Vendor } from "../catalog/types";
 import { readCatalog } from "../catalog/catalogStore";
@@ -29,11 +29,12 @@ export type GenerationOutputMaterializerDependencies = {
    * 的缺省 20 秒，于是一段 15 秒的成片普通生成落得下来、付费卡这条路永远下载超时，节点一直转圈。
    */
   fetchOutput?: (url: string, options: ProviderMediaFetchOptions) => Promise<HardenedFetchResult>;
-  writeAsset?: typeof writeDeterministicAsset;
+  writeAsset?: typeof writeGeneratedDeterministicAsset;
   /**
    * 落盘回执的预览 owner（缺省就是 assetPreview.attachStoredAssetPreview，与普通生成本地化同一个）。
-   * 字节提交（writeDeterministicAsset）是同步的、不派生预览；交给画布 / 制作流程的回执必须过这一道，
-   * 拿到小图或明确的预览事实（2026-10-15 C-dense：制作流程产物一直没有预览，画布挂 2048×3072 原图）。
+   * 字节发布（writeGeneratedDeterministicAsset：暂存 → 解码校验 → 复验身份 → rename 发布）不派生预览；
+   * 交给画布 / 制作流程的回执必须在发布之后、对发布后的正式文件过这一道，拿到小图或明确的预览事实
+   * （2026-10-15 C-dense：制作流程产物一直没有预览，画布挂 2048×3072 原图）。
    */
   attachPreview?: (record: unknown) => Promise<unknown>;
   /** 仅 E2E 回环夹具：主进程装配点给的精确 origin（`fetchProviderMedia` 的 trustedPrivateOrigin）。 */
@@ -138,7 +139,7 @@ function contentHash(bytes: Buffer): string {
 
 export function createGenerationOutputMaterializer(deps: GenerationOutputMaterializerDependencies = {}) {
   const fetchOutput = deps.fetchOutput ?? fetchProviderMedia;
-  const storeAsset = deps.writeAsset ?? writeDeterministicAsset;
+  const storeAsset = deps.writeAsset ?? writeGeneratedDeterministicAsset;
   const attachPreview = deps.attachPreview ?? attachStoredAssetPreview;
 
   async function materialize(input: {
@@ -182,7 +183,7 @@ export function createGenerationOutputMaterializer(deps: GenerationOutputMateria
     const materializationKey = `${input.providerTaskId}:${input.output.providerOutputId || input.output.url}`;
     let committed: unknown;
     try {
-      committed = storeAsset(input.projectId, bytes, fileNameFor(input.output), normalizedType, {
+      committed = await storeAsset(input.projectId, bytes, fileNameFor(input.output), normalizedType, {
         kind: "generated",
         source: "external-mcp",
         providerTaskId: input.providerTaskId,
@@ -193,7 +194,8 @@ export function createGenerationOutputMaterializer(deps: GenerationOutputMateria
       if (error instanceof GeneratedMediaValidationError) throw retrievalError(error);
       throw error;
     }
-    // 回执 = 字节提交 + 预览事实。预览派生永不抛（失败就是 previewState: 'missing'），不影响这一镜已经落盘。
+    // 回执 = 已发布的正式文件 + 预览事实：只对发布后的正式文件派生（暂存 / 校验阶段的文件不派生）。
+    // 预览派生不因失败而抛（失败就是 previewState: 'missing'），不影响这一镜已经落盘。
     const stored = await attachPreview(committed) as StoredAsset;
     const artifactId = typeof stored.id === "string" ? stored.id.trim() : "";
     const projectRelativePath = typeof stored.data?.relativePath === "string" ? stored.data.relativePath.trim() : "";
@@ -213,7 +215,8 @@ export function createGenerationOutputMaterializer(deps: GenerationOutputMateria
         const poster = await fetchOutput(input.output.thumbnailUrl, { ...(await routeFor(input.output.thumbnailUrl)), allowContentTypes: ["image/", "application/octet-stream"] });
         const posterType = (poster.contentType || "image/png").toLowerCase().split(";")[0]?.trim() || "image/png";
         if (!posterType.startsWith("image/")) throw new Error("Generation poster content type does not match image");
-        const posterStored = await attachPreview(storeAsset(input.projectId, poster.bytes, `${path.parse(fileNameFor(input.output)).name}-poster.png`, posterType, {
+        // 海报同样先发布（暂存 → 校验 → rename），再对发布后的正式文件派生预览。
+        const posterStored = await attachPreview(await storeAsset(input.projectId, poster.bytes, `${path.parse(fileNameFor(input.output)).name}-poster.png`, posterType, {
           kind: "generated", source: "external-mcp", providerTaskId: input.providerTaskId,
           providerOutputId: `${input.output.providerOutputId || input.output.url}:poster`,
         }, `${materializationKey}:poster`)) as StoredAsset;

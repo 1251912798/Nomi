@@ -1,0 +1,30 @@
+{
+  "id": "canvas-select-composer-image-200",
+  "feature": "在画布上点一下有图节点，到它下面的生成框真内容可见（提示词编辑器在、没有任何加载骨架）再过两帧；工作缩放约 100%，每次点不同的卡，App 里第一次选中（拉懒加载块）单独记 coldResponseMs 不进主数",
+  "script": "tests/perf/canvas-scale-bench.mjs",
+  "args": [
+    "--scales",
+    "I200",
+    "--scenarios",
+    "select-composer",
+    "--warmup",
+    "1"
+  ],
+  "scale": "200 个有图节点，边 100 条",
+  "metrics": [
+    "response",
+    "longTasks"
+  ],
+  "budget": 100,
+  "group": "① 选中节点 → 生成框出现",
+  "budgetStatus": "approved",
+  "budgetBasis": "人对「点了有反应」的感知阈值约 100ms（RAIL / Nielsen：100ms 内觉得是即时的，100–300ms 能察觉到慢）；仓库默认预算「操作到可见反馈 ≤100ms」（docs/engineering/perf-scenarios.md）。生成框是单张卡的东西，理想情况下和画布上一共多少个节点无关，所以 10 / 100 / 200 三档同一个预算；三档的差就是「随 N 变慢」的那部分",
+  "baseline": {
+    "median": 37.2,
+    "p95": 38.2,
+    "runs": 5,
+    "machine": "win32 x64 13th Gen Intel(R) Core(TM) i9-13900H x20 / 64GB",
+    "date": "2026-10-16",
+    "commit": "94724f860"
+  }
+}

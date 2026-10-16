@@ -11,7 +11,7 @@ for (const change of ['unchanged', 'changed', 'deleted'] as const) {
   test(`S29 replay validates the installed skill after resolving the original input: ${change}`, async t => {
     const f = await createLaneFixture(t, [{ type: 'text', text: 'original reply' }, { type: 'text', text: 'retry reply' }])
     let installed: SkillRecord | null = skill
-    let captured: LaneComposerContext = { approvalPolicy: { mode: 'step', spend: 'confirm' },
+    let captured: LaneComposerContext = { approvalPolicy: { mode: 'request' },
       skillKey: 'original-skill', systemPrompt: 'ORIGINAL_TEMPLATE' }
     const lane = await f.openLane({ ...f.options, input: {
       capture: () => captured, activate: () => {},
@@ -22,7 +22,7 @@ for (const change of ['unchanged', 'changed', 'deleted'] as const) {
     await lane.execute({ kind: 'prompt', text: 'ORIGINAL_TASK' })
     const original = lane.projection().parts.find(part => part.kind === 'user')!
     const before = lane.projection().parts.length
-    captured = { approvalPolicy: { mode: 'step', spend: 'confirm' }, retryFromEntryId: original.entryId }
+    captured = { approvalPolicy: { mode: 'request' }, retryFromEntryId: original.entryId }
     installed = change === 'deleted' ? null : change === 'changed' ? { ...skill, contentHash: 'hash-changed' } : skill
     if (change === 'unchanged') {
       await lane.execute({ kind: 'prompt', text: 'Retry' })
@@ -41,7 +41,7 @@ for (const change of ['unchanged', 'changed', 'deleted'] as const) {
 
 test('restored draft pins its skill version; old unversioned replay cannot silently adopt a current skill', async () => {
   const skills = { resolve: async () => skill, render: async () => skill.content }
-  const context: LaneComposerContext = { approvalPolicy: { mode: 'step', spend: 'confirm' }, skillKey: 'original-skill' }
+  const context: LaneComposerContext = { approvalPolicy: { mode: 'request' }, skillKey: 'original-skill' }
   await assert.rejects(prepareLaneSkillContext({ ...context, expectedSkillHash: 'old-version' }, skills), /agent_skill_version_changed/)
   await assert.rejects(prepareLaneSkillContext({ ...context, retryFromEntryId: 'old-unversioned' }, skills), /agent_skill_version_changed/)
   assert.equal((await prepareLaneSkillContext(context, skills)).skillSnapshot?.contentHash, skill.contentHash)

@@ -275,7 +275,7 @@ describe("三档 × 付费报价卡（2026-09-12 拍板）", () => {
 
   it("回执说真话：画布来源草稿当场落成节点 → 建草稿的结果点名那个节点（真实路径：传输 → 草稿账本 → 落地宿主 → 读回账本）", async () => {
     const base = harness();
-    const { created, operationId } = await modelTurn(base, "http://127.0.0.1:1", [], "step");
+    const { created, operationId } = await modelTurn(base, "http://127.0.0.1:1", [], "request");
     const landing = (created as { result?: { canvasLanding?: unknown } }).result?.canvasLanding;
     expect(operationId).toBeTruthy();
     expect(base.renderer.nodes.size).toBe(1);
@@ -287,7 +287,7 @@ describe("三档 × 付费报价卡（2026-09-12 拍板）", () => {
     const base = harness();
     const submits: string[] = [];
     try {
-      const { withWindow, operationId, created, receipts } = await modelTurn(base, vendor.origin, submits, "project");
+      const { withWindow, operationId, created, receipts } = await modelTurn(base, vendor.origin, submits, "direct");
       expect(operationId, "建草稿必须成功——后面每一条断言都以它为前提").toBeTruthy();
 
       // ① 没有卡：等用户点头的那一笔不存在了，因为已经决过了。
@@ -350,7 +350,7 @@ describe("三档 × 付费报价卡（2026-09-12 拍板）", () => {
           authorizeGeneration: built.authority.authorizeGeneration,
           approvalReceiptAuthority: built.receipts,
           leaseFor: () => lease,
-          approvalPolicy: () => ({ mode: "project", spend: "confirm" }),
+          approvalPolicy: () => ({ mode: "direct" }),
         },
       );
       await callTool(transport, "nomi_generation_plan", {
@@ -368,7 +368,7 @@ describe("三档 × 付费报价卡（2026-09-12 拍板）", () => {
     }
   });
 
-  for (const mode of ["step", "safe-auto"] as const) {
+  for (const mode of ["request", "request"] as const) {
     it(`${mode}：一个字都没变——报价卡照常出现，供应商一次都没被碰`, async () => {
       const vendor = await startLoopbackVendor();
       const base = harness();
@@ -464,7 +464,7 @@ describe('reliability: scoped presentation and dismissal', () => {
     const base = harness();
     await mixedDraft(base);
     const { transport, withWindow } = buildActions(base, 'http://127.0.0.1:1', []);
-    const result = await callTool(transport('safe-auto'), 'nomi_generation_plan',
+    const result = await callTool(transport('request'), 'nomi_generation_plan',
       { operation: 'present', operationId: OPERATION_ID, shotIds: ['shot-3', 'shot-1', 'shot-2'] });
     expect(result).toMatchObject({ ok: true });
     const pending = withWindow.listPendingSpend(PROJECT_ID)[0];
@@ -680,7 +680,7 @@ it('C12/C15: a real node id is not a task; a draft taskRef reports not_started w
   const nodeId = [...base.renderer.nodes.values()][0];
   expect(nodeId).toBeTruthy(); expect(nodeId).not.toBe(OPERATION_ID);
   const before = base.repository.read(PROJECT_ID, OPERATION_ID)!;
-  const adapter = transport('step');
+  const adapter = transport('request');
   for (const toolName of ['check_job', 'cancel_job']) {
     const wrong = verbToTransportCall({ toolCallId: toolName, toolName, args: {domain:'generation', jobId:nodeId} })!;
     expect(await adapter.tryExecute(wrong.call, new AbortController().signal)).toMatchObject({ok:false,code:'generation_operation_not_found'});

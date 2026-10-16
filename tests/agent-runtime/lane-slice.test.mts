@@ -12,7 +12,7 @@ import { test } from 'node:test';
 import { laneSessionsRoot } from '../../electron/agentLane/laneSession.mjs';
 import type { LanePart } from '../../electron/shared/agentLane/laneContracts.js';
 import { LANE_APPROVAL_NOTE_TYPE } from '../../electron/shared/agentLane/laneContracts.js';
-import { createLaneFixture, readFixtureNativeEntries } from './laneFixture.mjs';
+import { createLaneFixture, mustConfirm, readFixtureNativeEntries } from './laneFixture.mjs';
 
 /** 段的身份 = 「这是哪一种段 + 它是谁」。**刻意不含 sequence**——否则断言就是在自证。 */
 function shape(part: LanePart): string {
@@ -102,7 +102,7 @@ test('a refused tool never runs, and the user\'s own sentence reaches the model 
   const fixture = await createLaneFixture(t, [
     { type: 'tool', calls: [{ id: 'call-blocked', name: 'write_script', arguments: { where: 'end', content: 'unapproved' } }] },
     { type: 'text', text: 'Understood, I will not append that.' },
-  ], { hasUserInterface: true, policy: () => ({ mode: 'step', spend: 'confirm' }) });
+  ], mustConfirm());
   const lane = await fixture.openLane(fixture.options);
   const documentBefore = fixture.document.text();
 

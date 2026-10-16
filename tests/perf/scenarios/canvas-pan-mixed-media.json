@@ -1,0 +1,30 @@
+{
+  "id": "canvas-pan-mixed-media",
+  "feature": "有大图（1920×1080）和视频节点的画布上，空格 + 拖平移一圈（约 2 秒），平移期间的帧间隔和长任务",
+  "script": "tests/perf/canvas-scale-bench.mjs",
+  "args": [
+    "--scales",
+    "L",
+    "--scenarios",
+    "pan",
+    "--warmup",
+    "1"
+  ],
+  "scale": "96 个图片节点 + 96 个视频节点 / 384 条边",
+  "metrics": [
+    "frameGapP95",
+    "longTasks"
+  ],
+  "budget": 33,
+  "group": "③ 平移和缩放",
+  "budgetStatus": "approved",
+  "budgetBasis": "连续手势要跟手：60Hz 下 p95 帧间隔不超过 2 帧（33ms），仓库默认预算同此；现有同类场景 canvas-drag-20-nodes 基线中位 9.5ms（10-11，有噪声）",
+  "baseline": {
+    "median": 10.3,
+    "p95": 10.3,
+    "runs": 5,
+    "machine": "win32 x64 13th Gen Intel(R) Core(TM) i9-13900H x20 / 64GB",
+    "date": "2026-10-16",
+    "commit": "94724f860"
+  }
+}

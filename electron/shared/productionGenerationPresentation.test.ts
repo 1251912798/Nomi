@@ -67,12 +67,12 @@ describe('generation presentation identity', () => {
     const r = run({ presentations: [{
       presentationId: 'run-1:presentation:7', presentationEpoch: 7,
       shotIds: ['s1'], openedAt: NOW, fromGate: 0,
-      policySnapshot: { mode: 'step', spend: 'confirm' },
+      policySnapshot: { mode: 'request' },
     }] })
     expect(r.generationPlan?.presentations?.[0]).toMatchObject({
       presentationId: 'run-1:presentation:7',
       presentationEpoch: 7,
-      policySnapshot: { mode: 'step', spend: 'confirm' },
+      policySnapshot: { mode: 'request' },
     })
   })
 })
@@ -213,7 +213,7 @@ describe('normalizeLegacyPresentation — 旧 Run 的 cardHidden 读盘时折成
   })
 
   it('已经是新形状就原样返回同一个对象', () => {
-    const r = run({ presentations: [open(['s1'], 0, { presentationId: 'run-1:presentation:1', presentationEpoch: 1, policySnapshot: { mode: 'safe-auto', spend: 'confirm' } })] })
+    const r = run({ presentations: [open(['s1'], 0, { presentationId: 'run-1:presentation:1', presentationEpoch: 1, policySnapshot: { mode: 'request' } })] })
     expect(normalizeLegacyPresentation(r)).toBe(r)
   })
 })
