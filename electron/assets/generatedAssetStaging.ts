@@ -10,7 +10,9 @@
 //   ③ 在**暂存文件**上做内容校验和异步解码——暂存只有这里持有，校验的就是之后发布的那一份；
 //   ④ 产出品牌类型 VerifiedStagedAsset。
 // 第二步 publishVerifiedGeneratedAsset（projectAssetStore）同步：复验项目身份 → renameSync 原子发布 → sidecar → 广播。
-// 任何一步失败都只清暂存，正式路径从不出现残片；进程中途退出留下的暂存由 reapAbandonedUploadStaging 回收。
+// 任何一步失败都只清暂存，正式路径从不出现残片。
+// 受控退出（V-1208-6）：在途的准备都登记在 inflight 里，退出收尾 generated-asset-staging 中止它们（击杀解码子进程）、
+// 等它们把暂存收掉，没收掉的当场删。进程被强杀来不及收的，由下次打开项目 / 下次导入按「主人进程已不在」回收（scratchCleanup）。
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
@@ -22,7 +24,8 @@ import { captureAssetWriteContext, type AssetWriteContext } from "./assetWriteCo
 import { generatedMediaValidationError, verifyGeneratedMediaDecodes } from "./generatedMediaDecode";
 import { contentTypeFromMagicBytes, isCertifiableMediaContentType, isMarkupMasquerade } from "./mediaTypes";
 import { validateGlbStructure } from "./model3dValidation";
-import { reapAbandonedUploadStaging, removeScratchAfterUse, UPLOAD_STAGING_PREFIX } from "./scratchCleanup";
+import { registerQuitDrain } from "../quitTeardown";
+import { createUploadStagingDir, reapAbandonedUploadStaging, removeScratchAfterUse, removeScratchAfterUseSync } from "./scratchCleanup";
 
 const HEADER_BYTES = 4096;
 
@@ -78,7 +81,7 @@ async function sha256OfFile(filePath: string): Promise<string> {
  * 判据与以前同步版完全一致（冒充网页 / 认不出字节 / 类型不符 / 格式不支持 / 认证证据不符 / GLB 结构 / 解码），
  * 只是读的是暂存文件：文件头决定类型，哈希按流算，GLB 才整份读入。
  */
-async function verifyStagedGeneratedContent(meta: JsonRecord, declaredRaw: string, stagedPath: string, header: Buffer, size: number, contentHash: string): Promise<JsonRecord> {
+async function verifyStagedGeneratedContent(meta: JsonRecord, declaredRaw: string, stagedPath: string, header: Buffer, size: number, contentHash: string, signal: AbortSignal): Promise<JsonRecord> {
   if (isMarkupMasquerade(header)) throw generatedMediaValidationError("markup_masquerade");
   const detected = header.byteLength >= 12 && header.subarray(0, 4).toString("ascii") === "glTF"
     ? "model/gltf-binary"
@@ -117,35 +120,81 @@ async function verifyStagedGeneratedContent(meta: JsonRecord, declaredRaw: strin
     return cleanMeta;
   }
   // 「这份字节能不能解码」由 generatedMediaDecode 一处裁决（判据、超时、日志都在那里）；这里只问、不评。
-  await verifyGeneratedMediaDecodes({ kind: expectedKind, stagedPath, byteLength: size, contentType: detected });
+  await verifyGeneratedMediaDecodes({ kind: expectedKind, stagedPath, byteLength: size, contentType: detected, signal });
   return cleanMeta;
 }
 
-export async function prepareVerifiedGeneratedAsset(input: {
+type PrepareInput = {
   projectId: string;
   source: GeneratedStagingSource;
   fileName: string;
   contentType: string;
   rawMeta: JsonRecord;
   context?: AssetWriteContext;
-}): Promise<VerifiedStagedAsset> {
+};
+
+/** 在途的准备：退出收尾据此中止、等待、兜底删暂存。 */
+type InflightPrepare = { controller: AbortController; stagingDir?: string; settled: Promise<unknown> };
+const inflight = new Set<InflightPrepare>();
+let quitting = false;
+
+/**
+ * 退出收尾：不再接新的准备；中止在途的（解码子进程被击杀），等它们自己收掉暂存；仍在的当场删。
+ * 登记在模块加载时（早于本地任务的排空），所以本地任务等的那次导入会先被这里放开，不会一直等到超时。
+ */
+export async function drainGeneratedAssetStaging(): Promise<void> {
+  quitting = true;
+  const entries = [...inflight];
+  for (const entry of entries) entry.controller.abort(new Error("generated_staging_quit"));
+  await Promise.allSettled(entries.map((entry) => entry.settled));
+  for (const entry of entries) if (entry.stagingDir) removeScratchAfterUseSync(entry.stagingDir);
+}
+
+export function registerGeneratedAssetStagingQuitDrain(): () => void {
+  return registerQuitDrain("generated-asset-staging", drainGeneratedAssetStaging, { required: false, timeoutMs: 1_500 });
+}
+registerGeneratedAssetStagingQuitDrain();
+
+/** Vitest isolation hook. */
+export function resetGeneratedAssetStagingForTests(): void {
+  quitting = false;
+  inflight.clear();
+}
+
+export function prepareVerifiedGeneratedAsset(input: PrepareInput): Promise<VerifiedStagedAsset> {
   // ① 钉字节必须在任何 await 之前：调用方之后改它自己的 Buffer，碰不到这份（V-1208-1）。
   const pinned = "bytes" in input.source ? Buffer.from(input.source.bytes) : undefined;
+  if (quitting) return Promise.reject(new Error("generated_staging_quit"));
+  const entry: InflightPrepare = { controller: new AbortController(), settled: Promise.resolve() };
+  const settled = prepareOwned(input, pinned, entry).finally(() => { inflight.delete(entry); });
+  entry.settled = settled.catch(() => undefined);
+  inflight.add(entry);
+  return settled;
+}
+
+async function prepareOwned(input: PrepareInput, pinned: Buffer | undefined, entry: InflightPrepare): Promise<VerifiedStagedAsset> {
+  const signal = entry.controller.signal;
   const meta = sanitizeAssetMetaForKind(input.rawMeta);
   if (!isGeneratedAssetMeta(meta)) throw new Error("prepareVerifiedGeneratedAsset only stages generated outputs");
   const context = input.context ?? await captureAssetWriteContext(input.projectId);
   if (context.projectId !== input.projectId) throw Object.assign(new Error("project_binding_stale"), { code: "project_binding_stale" });
   context.assertCurrent();
   reapAbandonedUploadStaging(context.root);
-  const stagingDir = await fs.promises.mkdtemp(path.join(context.root, UPLOAD_STAGING_PREFIX));
+  signal.throwIfAborted();
+  const stagingDir = await createUploadStagingDir(context.root);
+  entry.stagingDir = stagingDir;
   const stagedPath = path.join(stagingDir, "content");
   try {
+    signal.throwIfAborted();
     // ② 大文件写盘都在这里、都是异步的；同步发布只剩 rename。
     if (pinned) await fs.promises.writeFile(stagedPath, pinned, { flag: "wx", mode: 0o600 });
     else if ("path" in input.source) await copyFileWithProgress(input.source.path, stagedPath, input.source.onCopyProgress);
+    signal.throwIfAborted();
     const [header, stat, contentHash] = await Promise.all([readHeader(stagedPath), fs.promises.stat(stagedPath), sha256OfFile(stagedPath)]);
+    signal.throwIfAborted();
     // ③ 在暂存文件上校验。
-    const verifiedMeta = await verifyStagedGeneratedContent(meta, input.contentType, stagedPath, header, stat.size, contentHash);
+    const verifiedMeta = await verifyStagedGeneratedContent(meta, input.contentType, stagedPath, header, stat.size, contentHash, signal);
+    signal.throwIfAborted();
     return Object.freeze({
       context, stagingDir, stagedPath, fileName: input.fileName, declaredContentType: input.contentType,
       header, meta: verifiedMeta, contentHash, size: stat.size,

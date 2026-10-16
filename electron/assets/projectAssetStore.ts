@@ -17,7 +17,7 @@ import { absolutePathFromLocalAssetUrl } from "./localAssetFile";
 import { attachStoredAssetPreview, isStoredAssetPreviewPath, type StoredAssetPreview } from "./assetPreview";
 import { copyFileWithProgress, type AssetCopyProgress } from "./assetImportProgress";
 import { renameSyncWithRetry, retryOnSharingViolation } from "../jsonFile";
-import { reapAbandonedUploadStaging, removeScratchAfterUse, removeScratchAfterUseSync, UPLOAD_STAGING_PREFIX } from "./scratchCleanup";
+import { createUploadStagingDirSync, reapAbandonedUploadStaging, removeScratchAfterUse, removeScratchAfterUseSync } from "./scratchCleanup";
 import { collectFilesRecursively, parseDataUrl } from "./assetBytes";
 import {
   assetBucketFromMeta,
@@ -323,7 +323,7 @@ async function copyNativeFileToBucket(context: AssetWriteContext, sourcePath: st
   context.assertCurrent();
   const { projectId } = context;
   reapAbandonedUploadStaging(context.root);
-  const staging = fs.mkdtempSync(path.join(context.root, UPLOAD_STAGING_PREFIX));
+  const staging = createUploadStagingDirSync(context.root);
   const snapshot = path.join(staging, 'content');
   try {
     await copyFileWithProgress(sourcePath, snapshot, onCopyProgress);

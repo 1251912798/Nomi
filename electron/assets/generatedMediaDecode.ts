@@ -131,11 +131,13 @@ export type GeneratedMediaDecodeInput = {
    */
   stagedPath: string;
   byteLength: number;
+  /** 受控退出 / 取消：中止时击杀解码子进程，抛中止（不是判决，不记「拒收」）。 */
+  signal?: AbortSignal;
   contentType: string;
 };
 
 export type GeneratedMediaDecodeDeps = {
-  run?: (command: string, args: string[], options: { timeout: number }) => Promise<DecodeRun>;
+  run?: (command: string, args: string[], options: { timeout: number; signal?: AbortSignal }) => Promise<DecodeRun>;
   resolveFfmpeg?: () => string;
 };
 
@@ -147,13 +149,14 @@ const DECODE_OUTPUT_MAX_BYTES = 1024 * 1024;
  * 超时（killed）→ ETIMEDOUT；输出超上限 → ENOBUFS。起不来（ENOENT 等字符串码）原样带上；
  * 正常退出码、被外部信号杀掉，按 status / signal 交给 interpretDecodeRun。
  */
-export function runDecoder(command: string, args: string[], options: { timeout: number }): Promise<DecodeRun> {
+export function runDecoder(command: string, args: string[], options: { timeout: number; signal?: AbortSignal }): Promise<DecodeRun> {
   return new Promise((resolve) => {
     execFile(command, args, {
       encoding: "utf8",
       timeout: options.timeout,
       maxBuffer: DECODE_OUTPUT_MAX_BYTES,
       windowsHide: true,
+      ...(options.signal ? { signal: options.signal } : {}),
     }, (error, stdout, stderr) => {
       const out = { stdout: String(stdout ?? ""), stderr: String(stderr ?? "") };
       if (!error) return resolve({ status: 0, signal: null, ...out });
@@ -196,12 +199,14 @@ function recordDecode(input: GeneratedMediaDecodeInput, verdict: DecodeVerdict, 
  * 不说「服务商失败了」、不劝换一家）。能 → 静默返回。
  */
 export async function verifyGeneratedMediaDecodes(input: GeneratedMediaDecodeInput, deps: GeneratedMediaDecodeDeps = {}): Promise<DecodeVerdict> {
+  input.signal?.throwIfAborted();
   const timeoutMs = decodeTimeoutMs(input.byteLength);
   const ffmpeg = (deps.resolveFfmpeg ?? resolveFfmpegPath)();
   const startedAt = Date.now();
   const run = ffmpeg
-    ? await (deps.run ?? runDecoder)(ffmpeg, decodeInvocation(input.kind, input.stagedPath), { timeout: timeoutMs })
+    ? await (deps.run ?? runDecoder)(ffmpeg, decodeInvocation(input.kind, input.stagedPath), { timeout: timeoutMs, ...(input.signal ? { signal: input.signal } : {}) })
     : ({ status: null, signal: null, stdout: "", stderr: "", error: { code: "ENOENT", message: "ffmpeg not found" } } satisfies DecodeRun);
+  input.signal?.throwIfAborted();
   const verdict = interpretDecodeRun(input.kind, run);
   recordDecode(input, verdict, timeoutMs, Date.now() - startedAt);
   if (verdict.verdict !== "decodable") {
