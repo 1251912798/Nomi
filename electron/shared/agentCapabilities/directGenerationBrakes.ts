@@ -100,7 +100,11 @@ export function consecutiveFailedAttempts(run: RunFacts, shotId: string): number
   let count = 0;
   for (let index = jobs.length - 1; index >= 0; index -= 1) {
     const job = jobs[index];
-    if (endedInFailure(job) && !jobMayHaveReachedProvider(job)) continue;
+    // 没写出去的失败不计也不重置——但如果这次尝试是人批的，人批这件事本身就是计数的起点（V-1203 复验 R2）。
+    if (endedInFailure(job) && !jobMayHaveReachedProvider(job)) {
+      if (attemptApprovedByHuman(run, job)) break;
+      continue;
+    }
     if (!failedForBrake(job)) break;
     count += 1;
     if (attemptApprovedByHuman(run, job)) break;
