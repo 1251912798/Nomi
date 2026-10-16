@@ -8,7 +8,8 @@
 //   ③ 确认之后：常驻提醒出现，档位变成「直接生成」；点提醒上的「回到请求批准」能切回来；
 //   ④ 点「取消」时档位不变（zh 套）。
 // 不灌 store、不直调桥：全部是真点击。不发生任何生成、不碰网络（远端是 loopback 夹具，本走查一个字节都不发）。
-import { clickOrFail, expect } from './_assert.mjs'
+import { clickOrFail, expect, expectAbsent, proveProbe } from './_assert.mjs'
+import { stationTimeout } from './_station-budget.mjs'
 import { uiText } from './full-walk/invariants.mjs'
 import {
   APPROVAL_CARD, CANVAS_PANEL, COMPOSER, COMPOSER_PERMISSION, INTERVENTION_CONFIRM, INTERVENTION_REJECT, PERMISSION_POPOVER,
@@ -32,7 +33,7 @@ try {
     }, { locale, scheme })
     await win.reload({ waitUntil: 'domcontentloaded' })
     // 重载后仍停在同一个项目的生成页（路由在地址里）；换成英文后「生成工作区」的中文入口不在了，所以只在第一套点进去。
-    await expect(panel.locator(COMPOSER), `${tag} 重载后面板还在`).toBeVisible({ timeout: 30_000 })
+    await expect(panel.locator(COMPOSER), `${tag} 重载后面板还在`).toBeVisible({ timeout: stationTimeout({ operations: 2 }) })
     const label = (key) => uiText(locale, `agentPanelV4.${key}`)
 
     // ① 弹层：两档 + 各一行灰字
@@ -59,8 +60,7 @@ try {
     if (locale === 'zh-CN') {
       // ④ 取消：档位不变，没有提醒条
       await clickOrFail(card.locator(INTERVENTION_REJECT), `${tag} 取消切档`)
-      await expect(panel.locator(COMPOSER)).toHaveAttribute('data-approval-mode', 'request')
-      await expect(panel.locator(BANNER)).toHaveCount(0)
+      await expect(panel.locator(COMPOSER), `${tag} 取消之后档位不变`).toHaveAttribute('data-approval-mode', 'request')
       await clickOrFail(panel.locator(COMPOSER_PERMISSION), `${tag} 再次打开权限弹层`)
       await clickOrFail(panel.locator(permissionTier('direct')), `${tag} 再点直接生成`)
     }
@@ -68,12 +68,12 @@ try {
     // ③ 确认：提醒条出现、档位变了；再从提醒条切回
     await clickOrFail(panel.locator(`${APPROVAL_CARD}[data-kind="approval-reversible"]`).locator(INTERVENTION_CONFIRM), `${tag} 确认切到直接生成`)
     await expect(panel.locator(COMPOSER)).toHaveAttribute('data-approval-mode', 'direct')
-    await expect(panel.locator(BANNER), `${tag} 直接生成要有常驻提醒`).toBeVisible()
+    const bannerProof = await proveProbe(panel.locator(BANNER), `${tag} 直接生成要有常驻提醒`)
     await expect(panel.locator(BANNER)).toContainText(label('autoModeBannerNote'))
     await walk.snap(`${tag}-03-direct-with-reminder`)
     await clickOrFail(panel.locator(BANNER).getByText(label('autoModeBannerRevert'), { exact: false }), `${tag} 从提醒条回到请求批准`)
     await expect(panel.locator(COMPOSER)).toHaveAttribute('data-approval-mode', 'request')
-    await expect(panel.locator(BANNER)).toHaveCount(0)
+    await expectAbsent(panel.locator(BANNER), { provenBy: bannerProof, message: `${tag} 回到请求批准之后提醒条收掉` })
   }
 
   await runSet({ locale: 'zh-CN', scheme: 'light', tag: 'zh-light' })

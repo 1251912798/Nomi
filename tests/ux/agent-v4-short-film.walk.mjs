@@ -165,7 +165,7 @@ try {
   const tightenRequest = walk.fixture.expectText({
     label: 'agent tightens the ending',
     match: (body) => flattenRequestText(body).includes(TIGHTEN) && !hasToolResult(body, TIGHTEN_TOOL),
-    reply: { type: 'tool', id: TIGHTEN_TOOL, name: 'append_to_end', args: { content: TIGHTEN_APPLIED } },
+    reply: { type: 'tool', id: TIGHTEN_TOOL, name: 'write_script', args: { where: 'end', content: TIGHTEN_APPLIED } },
   })
   const tightenFollowup = walk.fixture.expectText({
     label: 'tighten result returns to the model',
@@ -175,11 +175,12 @@ try {
   await sendCreation(win, TIGHTEN)
   await recorded(tightenRequest.received, 'document edit request')
   await recorded(tightenFollowup.received, 'document tool result without any approval click')
-  await waitForV4TurnIdle(win, { panel: CREATION_PANEL, settledBy: panel.locator(TOOL_RECEIPT).last() })
+  await waitForV4TurnIdle(win, { panel: CREATION_PANEL, settledBy: panel.locator(ASSISTANT_MESSAGE).filter({ hasText: '已收紧结尾' }).last() })
   await expect(doc).toContainText(TIGHTEN_APPLIED)
-  await expect(panel.locator(TOOL_RECEIPT).last()).toBeVisible()
+  // 直接做的那一步也留了收据（这一轮收尾后过程行可能折起来，所以只要求它在流里，不要求展开可见）。
+  await expect(panel.locator(TOOL_RECEIPT).last()).toBeAttached()
   await expect.poll(async () => JSON.stringify(requireCurrentPersistedWorkbenchDocument(await readProject(win, projectId))),
-    { message: '直接做的改动必须真的落进项目，不只是气泡上说做了', timeout: 30_000 }).toContain(TIGHTEN_APPLIED)
+    { message: '直接做的改动必须真的落进项目，不只是气泡上说做了', timeout: stationTimeout({ operations: 2 }) }).toContain(TIGHTEN_APPLIED)
   await walk.snap('05-applied-directly')
 
   // ── 5.5 最小窗 + 收起：藏的是面板，不是「我读到哪儿了」 ────────────────────
@@ -242,8 +243,9 @@ try {
   await sendCanvas(win, REFERENCE)
   await recorded(referenceRequest.received, 'canvas request')
   await recorded(referenceFollowup.received, 'canvas tool result')
-  await waitForV4TurnIdle(win, { panel: CANVAS_PANEL, settledBy: canvas.locator(TOOL_RECEIPT).last() })
-  await expect(canvas.locator(TOOL_RECEIPT).last()).toBeVisible()
+  await waitForV4TurnIdle(win, { panel: CANVAS_PANEL, settledBy: canvas.locator(ASSISTANT_MESSAGE).filter({ hasText: '我先按脚本排 4 镜' }).last() })
+  // 一轮收尾后过程行会折起来：收据要在流里，不要求展开可见。
+  await expect(canvas.locator(TOOL_RECEIPT).last()).toBeAttached()
   await walk.snap('08-canvas-surface')
 
   // ── 7. 停止三态：空闲 → 运行中 → 停下 ───────────────────────────────────

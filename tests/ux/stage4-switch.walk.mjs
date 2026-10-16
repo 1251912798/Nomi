@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { stationTimeout } from './_station-budget.mjs'
 // Real lane UI states (new conversation, direct undoable write, task card, queue). Only the external provider is a loopback fixture.
-import { clickOrFail, expect } from './_assert.mjs'
+import { clickOrFail, expect, expectAbsent, proveProbe } from './_assert.mjs'
 import { FIXTURE_TEXT_MODEL_LABEL, flattenRequestText } from './agent-runtime-fixture.mjs'
 import {
   COMPOSER, COMPOSER_INPUT, COMPOSER_MODEL,
@@ -37,7 +37,7 @@ try {
   await expect(win.locator(`${CREATION_PANEL} ${COMPOSER}`)).toHaveAttribute('data-approval-mode', 'request')
   const write = walk.fixture.expectText({ label: 'real document append applies directly under request',
     match: (body) => flattenRequestText(body).includes(WRITE),
-    reply: { type: 'tool', id: 's4-append', name: 'append_to_end', args: { content: '\n阳光照亮杯沿。' } },
+    reply: { type: 'tool', id: 's4-append', name: 'write_script', args: { where: 'end', content: '\n阳光照亮杯沿。' } },
   })
   const written = walk.fixture.expectText({ label: 'direct append returns its actual receipt',
     match: (body) => hasToolResult(body, 's4-append'), reply: { type: 'text', text: '已追加到文稿，可以在收据上撤销。' } })
@@ -85,8 +85,10 @@ try {
   expect(run.status).toBe('awaiting_direction')
   expect(run.budget.actual).toBe(0)
   expect(run.artifacts.every((artifact) => !['image', 'video'].includes(artifact.kind))).toBe(true)
-  await expect(win.locator(`${CREATION_PANEL} ${TASK_CARD}`).locator('button, img, [data-artifact-id]'),
-    'Brief and direction records are not media candidates').toHaveCount(0)
+  // 基线：同一个选择器在这块面板里确实量得到东西（composer 的按钮），所以下面的「任务卡里没有」不是探针失效。
+  const mediaProbeProof = await proveProbe(win.locator(`${CREATION_PANEL} button`).first(), 'the media-candidate selector matches buttons in this panel')
+  await expectAbsent(win.locator(`${CREATION_PANEL} ${TASK_CARD}`).locator('button, img, [data-artifact-id]'),
+    { provenBy: mediaProbeProof, message: 'Brief and direction records are not media candidates' })
   const taskFactsText = await win.locator(`${CREATION_PANEL} ${TASK_CARD}`).innerText()
   await walk.snap('task-card')
 
