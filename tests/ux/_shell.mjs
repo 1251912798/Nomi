@@ -59,11 +59,17 @@ const NEW_PROJECT_ENTRY = new RegExp(`^(${alternatives(['library.newBlankProject
 /**
  * 从项目里回到项目库——像用户一样点：开顶栏项目名菜单，点「回项目库」。`repeat` > 1 = 在菜单项上连点（保存在等锁时的重复点击）。
  * 点不到就红（clickOrFail），不静默跳过。
+ * `beforeItemClick`：菜单已经打开、还没点「回项目库」的那一刻调用（性能量具在这里起表，不把开菜单算进去）。
  */
-export async function backToLibrary(win, { timeout, repeat = 1, label = 'back to library' } = {}) {
+export async function backToLibrary(win, { timeout, repeat = 1, label = 'back to library', beforeItemClick } = {}) {
   const budget = timeout === undefined ? {} : { timeout }
   await clickOrFail(win.locator(PROJECT_MENU), `${label}（打开顶栏项目菜单）`, budget)
-  await clickOrFail(win.getByRole('menuitem', { name: BACK_TO_LIBRARY_ITEM }), label, { ...budget, ...(repeat > 1 ? { clickCount: repeat } : {}) })
+  const item = win.getByRole('menuitem', { name: BACK_TO_LIBRARY_ITEM })
+  if (beforeItemClick) {
+    await item.first().waitFor(budget.timeout === undefined ? {} : { timeout: budget.timeout })
+    await beforeItemClick()
+  }
+  await clickOrFail(item, label, { ...budget, ...(repeat > 1 ? { clickCount: repeat } : {}) })
 }
 
 /** 「已经在某个项目里就先回项目库」：不在项目里（已经是项目库，顶栏没有项目菜单）就什么也不做，返回有没有点。 */

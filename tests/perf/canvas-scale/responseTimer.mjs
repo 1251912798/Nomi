@@ -1,0 +1,127 @@
+// 「操作 → 界面到位」的页内计时器（性能场景表 tests/perf/scenarios/ 的 response 类指标共用这一个）。
+//
+// 量法：输入事件（捕获阶段）的 event.timeStamp 起表——它带着输入排队的时间，和用户手指按下去那一刻最近；
+// 之后每一帧问一次「到位了没」，到位后再过两帧（样式重算 + 布局 + 绘制都算进去）停表。
+// 不自写剖析器：页面自己的 performance 时钟 + rAF + PerformanceObserver(longtask)。
+//
+// 判据按名字登记在页里（PREDICATES），不在页里 new Function：渲染进程有 CSP，页内动态编译会被拦；
+// 这段源码经 page.evaluate(字符串) 走 CDP Runtime.evaluate 装进去，不受页面 CSP 管。
+// 画布 store 桥（window.__nomiCanvasStore，只在 localStorage __nomiE2E=1 时挂）在的话，顺带数一次操作里 store 写了几次。
+
+const INSTALL_SOURCE = `(() => {
+  if (window.__nomiPerfResponse) return 'exists'
+  const visible = (element) => Boolean(element) && element.getClientRects().length > 0 && getComputedStyle(element).visibility !== 'hidden'
+  const composerOf = (nodeId) => document.querySelector('article[data-node-id="' + CSS.escape(nodeId) + '"] [data-composer-host="canvas"]')
+  const PREDICATES = {
+    // 生成框真内容可见：浮框挂上、提示词编辑器在、里面没有任何「加载中」骨架（懒加载骨架 / 模型清单骨架都带 aria-busy）。
+    composerReady(nodeId) {
+      const composer = composerOf(nodeId)
+      return visible(composer) && Boolean(composer.querySelector('.ProseMirror')) && !composer.querySelector('[aria-busy="true"]')
+    },
+    // 第一眼反馈：浮框或它的懒加载骨架出现在这张卡下面（骨架算「看到东西了」，不算「能用了」）。
+    composerAny(nodeId) {
+      const article = document.querySelector('article[data-node-id="' + CSS.escape(nodeId) + '"]')
+      return Boolean(article) && (visible(composerOf(nodeId)) || Boolean(article.querySelector('[aria-busy="true"]')))
+    },
+    nodeCountAbove(count) {
+      return document.querySelectorAll('.react-flow__node').length > count
+    },
+    stageReady(mode) {
+      if (mode === 'creation') {
+        const root = document.querySelector('.workbench-creation')
+        return visible(root) && visible(root.querySelector('.ProseMirror'))
+      }
+      if (mode === 'preview') {
+        const root = document.querySelector('.workbench-preview')
+        return visible(root) && visible(root.querySelector('.workbench-timeline__tracks'))
+      }
+      if (mode === 'generation') {
+        const surface = document.querySelector('[data-generation-canvas-surface]')
+        return visible(surface) && [...document.querySelectorAll('.react-flow__node')].some(visible)
+      }
+      if (mode === 'list') {
+        const list = document.querySelector('[data-generation-list]')
+        return visible(list) && list.querySelectorAll('*').length > 20
+      }
+      throw new Error('未知阶段 ' + mode)
+    },
+    libraryReady(count) {
+      return [...document.querySelectorAll('[data-project-card]')].filter(visible).length >= count
+    },
+    // 分镜方案打开：至少 count 行镜头在屏上（tests/perf/document-switch-bench.mjs）。
+    storyboardRowsAtLeast(count) {
+      return [...document.querySelectorAll('[data-storyboard-row]')].filter((element) => element.getClientRects().length > 0).length >= count
+    },
+    // 切文稿：顶栏文稿切换钮写着目标标题，编辑器里是那份文稿的正文（marker 是正文里的标记句）。
+    documentShown({ title, marker }) {
+      const switcher = document.querySelector('[data-creation-document-switcher]')
+      const editor = document.querySelector('.ProseMirror')
+      return Boolean(switcher) && switcher.textContent.includes(title) && Boolean(editor) && editor.textContent.includes(marker)
+    },
+  }
+  window.__nomiPerfResponse = {
+    arm({ trigger, predicate, arg, early, timeoutMs }) {
+      const check = PREDICATES[predicate]
+      const earlyCheck = early ? PREDICATES[early] : null
+      if (!check) throw new Error('未知判据 ' + predicate)
+      let longTasks = 0
+      let observer = null
+      try {
+        observer = new PerformanceObserver((list) => { longTasks += list.getEntries().length })
+        observer.observe({ type: 'longtask' })
+      } catch { /* 没有长任务支持时其余数照样有效 */ }
+      const store = window.__nomiCanvasStore
+      let storeWrites = 0
+      const unsubscribe = store && typeof store.subscribe === 'function' ? store.subscribe(() => { storeWrites += 1 }) : null
+      this.pending = new Promise((resolve, reject) => {
+        const finish = (value) => { observer?.disconnect(); unsubscribe?.(); resolve(value) }
+        document.addEventListener(trigger, (event) => {
+          const t0 = event.timeStamp || performance.now()
+          let earlyMs = null
+          const deadline = performance.now() + timeoutMs
+          const tick = () => {
+            let ok = false
+            try {
+              if (earlyCheck && earlyMs === null && earlyCheck(arg)) earlyMs = performance.now() - t0
+              ok = check(arg)
+            } catch (error) { observer?.disconnect(); unsubscribe?.(); reject(error); return }
+            if (ok) {
+              requestAnimationFrame(() => requestAnimationFrame(() => finish({
+                ms: Math.round((performance.now() - t0) * 10) / 10,
+                earlyMs: earlyMs === null ? null : Math.round(earlyMs * 10) / 10,
+                longTasks,
+                storeWrites: unsubscribe ? storeWrites : null,
+              })))
+              return
+            }
+            if (performance.now() > deadline) { observer?.disconnect(); unsubscribe?.(); reject(new Error('等「' + predicate + '」到位超时 ' + timeoutMs + 'ms')); return }
+            requestAnimationFrame(tick)
+          }
+          tick()
+        }, { capture: true, once: true })
+      })
+      return 'armed'
+    },
+    take() { return this.pending },
+  }
+  return 'installed'
+})()`
+
+/** 装计时器（同一页装一次即可，重复调用无害）。 */
+export async function installResponseTimer(page) {
+  await page.evaluate(INSTALL_SOURCE)
+}
+
+/**
+ * 下一次 `trigger` 事件（捕获阶段）起表，`predicate(arg)` 成立后再过两帧停表。
+ * 先 arm、再做动作、再 take：动作本身由调用方用真实鼠标 / 键盘做。
+ */
+export async function armResponse(page, { trigger = 'pointerdown', predicate, arg = null, early = null, timeoutMs = 20_000 }) {
+  await installResponseTimer(page)
+  await page.evaluate((options) => window.__nomiPerfResponse.arm(options), { trigger, predicate, arg, early, timeoutMs })
+}
+
+/** 取上一次 arm 的结果：{ ms, earlyMs, longTasks, storeWrites }。 */
+export async function takeResponse(page) {
+  return page.evaluate(() => window.__nomiPerfResponse.take())
+}
