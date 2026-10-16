@@ -25,11 +25,14 @@ export function LightweightGenerationNode({
   appear,
   selected = false,
   readOnly = false,
+  loading = false,
 }: {
   node: GenerationCanvasNode
   appear: boolean
   selected?: boolean
   readOnly?: boolean
+  /** 这是 Suspense 兜底（该种类的渲染器 chunk 还没到）：不是真正的轻量档，chunk 一到整张卡会被换成另一棵树。 */
+  loading?: boolean
 }): JSX.Element {
   const { t } = useTranslation()
   const shotIdentity = useShotIdentity(node.id)
@@ -57,6 +60,9 @@ export function LightweightGenerationNode({
       // 结论不是「测试写太死」，是这一层的契约漏了一格——补在这里，任何 LOD 判据改动都不再能弄丢它。
       data-status={node.status}
       data-render-mode="lightweight"
+      // 兜底态的卡一会儿就会被换掉（换掉那一刻，按下去还没抬起的点击会丢：浏览器不给被摘掉的元素发 click）。
+      // 走查点卡前按这个标记等「卡已经是正式的」，和人等卡出来再点是同一件事。
+      data-node-loading={loading ? 'true' : undefined}
       data-appear={appear ? 'true' : undefined}
       style={{
         transform: `translate(${node.position.x}px, ${node.position.y}px)`,

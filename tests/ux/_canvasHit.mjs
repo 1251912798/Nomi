@@ -232,6 +232,9 @@ export async function findEdgeHitPoint(
  * @returns {Promise<{ x: number, y: number } | null>} 找不到返回 null（调用方须 fail-closed）
  */
 export async function findNodeHitPoint(page, { nodeSelector, withinSelector = CANVAS_STAGE_SELECTOR, clearOfOtherNodes = 0 }) {
+  // 卡还在 Suspense 兜底（种类渲染器 chunk 没到）时它马上会被整棵换掉，落在它身上的点击会在换掉那一刻丢掉（间歇红的根因）。
+  // 按产品的 data-node-loading 标记等它成为正式的卡——条件等待，不是睡眠；没有这个标记的卡 / 找不到的卡立即通过，行为不变。
+  await page.waitForFunction((selector) => !document.querySelector(selector)?.hasAttribute('data-node-loading'), nodeSelector, { timeout: DEFAULT_TIMEOUT_MS })
   return findElementHitPoint(page, {
     selector: nodeSelector,
     withinSelector,

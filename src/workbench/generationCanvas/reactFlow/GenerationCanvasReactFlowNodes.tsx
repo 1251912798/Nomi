@@ -310,6 +310,7 @@ export function GenerationFlowNodeView({ data, selected }: NodeProps<GenerationF
                   appear={data.appear}
                   selected={selected}
                   readOnly={data.readOnly}
+                  loading
                 />
               }
             >
