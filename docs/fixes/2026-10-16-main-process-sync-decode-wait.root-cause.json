@@ -30,7 +30,10 @@
     "scripts/check-heavy-path.mjs",
     "electron/assets/generatedAssetStaging.ts",
     "electron/runtime.ts",
-    "electron/assets/localFileImport.ts"
+    "electron/assets/localFileImport.ts",
+    "electron/assets/scratchCleanup.ts",
+    "electron/projects/projectsIpc.ts",
+    "electron/assets/uploadContentStore.ts"
   ],
   "entry_points": [
     "generatedAssetStaging.prepareVerifiedGeneratedAsset: the only producer of VerifiedStagedAsset (async: pin, capture identity, stage, verify)",
@@ -59,7 +62,8 @@
     "A generated output is published only as a VerifiedStagedAsset: its bytes were pinned before any await, staged privately under the project root, verified on that staged file, and published by a synchronous same-volume renameSync. The verified file is the published file, and a failure never leaves a partial file at the published path.",
     "The project identity is captured before the wait and re-asserted synchronously right before the rename; a rebound project refuses the write.",
     "The publish step is one synchronous critical section (no await between identity check, path choice, rename and sidecar), so concurrent publishes of one deterministic asset cannot interleave.",
-    "A local task's import is single-flight: overlapping queries share one import and cancellation waits for it to settle."
+    "A local task's import is single-flight: overlapping queries share one import and cancellation waits for it to settle.",
+    "Every in-flight generated staging has an owner for its whole life: a controlled quit aborts it (killing the decoder child) and removes its staging directory before exit; staging left by a process that is gone (crash, kill, quit budget exhausted) is reclaimed when the project is next opened, judged by the owning process id rather than only by age."
   ],
   "invariant_owner_layer": {
     "layer": "electron/assets/projectAssetStore.ts",
@@ -154,12 +158,32 @@
       "kind": "write",
       "path": "electron/catalog/processOperation.ts",
       "symbol": "writeAsset"
+    },
+    {
+      "kind": "write",
+      "path": "electron/assets/generatedAssetStaging.ts",
+      "symbol": "createUploadStagingDir"
+    },
+    {
+      "kind": "write",
+      "path": "electron/assets/projectAssetStore.ts",
+      "symbol": "createUploadStagingDirSync"
+    },
+    {
+      "kind": "write",
+      "path": "electron/assets/uploadContentStore.ts",
+      "symbol": "createUploadStagingDirSync"
+    },
+    {
+      "kind": "write",
+      "path": "electron/projects/projectsIpc.ts",
+      "symbol": "sweepAbandonedUploadStaging"
     }
   ],
   "door_reduction": {
-    "before": 17,
-    "after": 17,
-    "why_not": "Each door is a distinct product entry (provider retrieval, renderer import, MCP materialization, local providers, screenshots, frame / trim / depth / camera-move tools). They are not merged because they already converge on one pair of boundaries: prepareVerifiedGeneratedAsset (only producer of VerifiedStagedAsset) and publishVerifiedGeneratedAsset (only consumer); the synchronous writers refuse kind:generated, so no door can publish a generated output any other way."
+    "before": 21,
+    "after": 21,
+    "why_not": "Each door is a distinct product entry (provider retrieval, renderer import, MCP materialization, local providers, screenshots, frame / trim / depth / camera-move tools). They are not merged because they already converge on one pair of boundaries: prepareVerifiedGeneratedAsset (only producer of VerifiedStagedAsset) and publishVerifiedGeneratedAsset (only consumer); the synchronous writers refuse kind:generated, so no door can publish a generated output any other way. Staging creation (createUploadStagingDir / createUploadStagingDirSync) and the project-open sweep are new doors by design: every .nomi-upload-* directory now has an owning process and a live registration."
   },
   "generality_proof": "The decode verdict has one caller (generatedAssetStaging.verifyStagedGeneratedContent). Every generated output reaches disk only through publishVerifiedGeneratedAsset, whose only accepted input type is produced only by prepareVerifiedGeneratedAsset; writeAsset and moveAssetFile throw on kind:generated, so a new caller cannot skip verification or the staged publish. Non-generated callers see exactly the main-branch synchronous contract, which removes the class of caller-timing regressions (V-1208-3) instead of patching callers one by one. The broader class (any synchronous child wait in the main process) is closed by the check-heavy-path rule.",
   "shared_boundaries": [
@@ -243,7 +267,8 @@
       "electron/assets/projectAssetStore.ts",
       "electron/assets/generatedMediaDecode.ts",
       "electron/tasks/localTaskJobs.ts",
-      "scripts/check-heavy-path.mjs"
+      "scripts/check-heavy-path.mjs",
+      "electron/assets/scratchCleanup.ts"
     ]
   },
   "regression_tests": [
@@ -251,11 +276,15 @@
     "electron/assets/projectAssetStore.test.ts",
     "electron/assets/projectAssetStore.publishIdentity.test.ts",
     "electron/browser/media/browserImportCommit.test.ts",
-    "electron/tasks/localTaskJobs.test.ts"
+    "electron/tasks/localTaskJobs.test.ts",
+    "electron/assets/generatedAssetStaging.quit.test.ts",
+    "electron/assets/scratchCleanup.staging.test.ts"
   ],
   "class_regression_tests": [
     "electron/assets/projectAssetStore.publishIdentity.test.ts",
-    "electron/browser/media/browserImportCommit.test.ts"
+    "electron/browser/media/browserImportCommit.test.ts",
+    "electron/assets/generatedAssetStaging.quit.test.ts",
+    "electron/assets/scratchCleanup.staging.test.ts"
   ],
   "legacy_paths": {
     "status": "removed",
@@ -275,6 +304,6 @@
     "Pre-existing synchronous writes on the main branch remain for non-generated byte imports (writeAsset writes the caller buffer with writeFileSync) and the deterministic existing-file hash (readFileSync); out of scope here, tracked as performance guide M02.",
     "prepareVerifiedGeneratedAsset copies a caller buffer once before staging (one transient extra copy for large byte inputs).",
     "An asynchronous decode spawned inside a paid dispatch is visible to the dispatch ledger child_process channel, which can only make a failed dispatch read as unknown (conservative).",
-    "If the app quits mid-verification the decode child is bounded by its timeout and the staging directory is reclaimed later by reapAbandonedUploadStaging, not immediately."
+    "A staging copy that is still being written when the quit budget runs out (the copy step is not abortable mid-stream) is left on disk; it is reclaimed on the next project open because its owning process is gone."
   ]
 }
