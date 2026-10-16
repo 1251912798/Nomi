@@ -36,19 +36,16 @@ export const TRUST_LEVEL_STRICTNESS: Readonly<Record<TrustLevel, number>> = Obje
  * 2026-09-21 被 `assertCallerDeclaredTrustLevel` 堵死了，堵完之后就再也没有任何办法表达「全自动」。
  *
  * 所以档位只能**派生**，不能各答一次：
- *   · `step`（每步都问）   → `confirm_all`：每镜提交给供应商前都在 Nomi 停下。
- *   · `safe-auto`（自动改） → `key_confirm`：默认档，方向门与样片门都停。
- *   · `project`（全自动）   → `budget_only`：跳过创意门与样片门，只留预算门与不可逆动作。
+ *   · `request`（请求批准） → `key_confirm`：默认档，方向门与样片门都停。
+ *   · `direct`（直接生成）  → `budget_only`：跳过创意门与样片门，只留预算门与不可逆动作。
  *
- * `spend` 那根轴**故意不参与**：它今天没有预算撑着（见 `capabilityApprovalPolicy.spendDecidedByPolicy`
- * 的说明），拿它去放松 Run 的门等于用一张没有额度的通行证开门。钱门在任何档位都不跳
- * （`productionRunService` 的 `autoApproveGate` 对 `isSpendGate` 硬抛）。
+ * 钱门在任何档位都不跳（`productionRunService` 的 `autoApproveGate` 对 `isSpendGate` 硬抛）：`direct` 档代答付费走的是
+ * 收据里的策略证明（`spendDecisionByPolicy`），不是把门跳过去。
  */
 export function trustLevelFromApprovalPolicy(policy: ProjectAgentApprovalPolicy | undefined): TrustLevel {
   switch (projectAgentApprovalPolicyOf(policy).mode) {
-    case 'step': return 'confirm_all'
-    case 'project': return 'budget_only'
-    case 'safe-auto': return 'key_confirm'
+    case 'direct': return 'budget_only'
+    case 'request': return 'key_confirm'
   }
 }
 

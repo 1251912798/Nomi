@@ -1,0 +1,309 @@
+{
+  "schema_version": 3,
+  "id": "2026-10-16-main-process-sync-decode-wait",
+  "change_kind": "corrective",
+  "detected_by": "user",
+  "recurrence_check_on": "2026-11-16",
+  "problem_type": "Main-process event loop parked on a synchronous child-process wait",
+  "symptom": "0.23.1: while results land, the app stops responding — clicks do nothing and Settings does not open right away; the user reports other versions do not feel this way.",
+  "direct_cause": "electron/assets/generatedMediaDecode.ts ran ffmpeg with spawnSync in the main process to verify every generated output before it was written (wait ceiling 12–120 s by size). Every sync IPC from the renderer, every async IPC reply and window event waited behind it. History: a synchronous decode check already existed in v0.22.5 (inside projectAssetStore); v0.23.0 (#938, 8ddb06250) moved it to generatedMediaDecode.ts, switched it to a framehash decode and raised the size-scaled wait ceiling to 120 s, making the wait heavier; v0.23.1 inherits it.",
+  "class_root": "Nothing structurally stops main-process code from waiting synchronously on an external process (spawnSync is as easy to write as spawn and passes every small-fixture test). The first remediation then made the opposite mistake: to move one wait off the main loop it turned the shared synchronous write boundary (19 doors) asynchronous, which silently changed the timing, atomicity and cleanup contract every caller relied on; independent verification found five regressions over three rounds. The invariant is: only the wait is asynchronous; publishing stays a synchronous atomic step whose input can only be a verified staged artifact.",
+  "affected_population": [
+    "Every generated image / video / audio written through writeAsset, writeDeterministicAsset, moveAssetFile or copyAssetFile with meta.kind=generated (provider results, MCP materialization, Codex / Antigravity / Dreamina local results, custom calls, screenshots, frame extraction, trim, depth video, camera-move)",
+    "All platforms; worst on large videos, slow disks and machines with real-time antivirus scanning"
+  ],
+  "scope_paths": [
+    "electron/assets/generatedMediaDecode.ts",
+    "electron/assets/projectAssetStore.ts",
+    "electron/tasks/localTaskJobs.ts",
+    "electron/catalog/antigravityImageOperation.ts",
+    "electron/catalog/codexCli.ts",
+    "electron/catalog/customCallDispatch.ts",
+    "electron/catalog/processOperation.ts",
+    "electron/capabilityCore/generationOutputMaterializer.ts",
+    "electron/onboarding/demoAssetSeed.ts",
+    "electron/screenshot/screenshotHotkey.ts",
+    "electron/video/depthVideoJob.ts",
+    "electron/video/extractVideoFrame.ts",
+    "electron/video/framesToVideo.ts",
+    "electron/video/trimVideo.ts",
+    "scripts/check-heavy-path.mjs",
+    "electron/assets/generatedAssetStaging.ts",
+    "electron/runtime.ts",
+    "electron/assets/localFileImport.ts",
+    "electron/assets/scratchCleanup.ts",
+    "electron/projects/projectsIpc.ts",
+    "electron/assets/uploadContentStore.ts"
+  ],
+  "entry_points": [
+    "generatedAssetStaging.prepareVerifiedGeneratedAsset: the only producer of VerifiedStagedAsset (async: pin, capture identity, stage, verify)",
+    "projectAssetStore.publishVerifiedGeneratedAsset: the only consumer (sync: re-assert identity, renameSync, sidecar, broadcast)",
+    "writeGeneratedAsset / writeGeneratedDeterministicAsset / storeAssetBytes / copyAssetFile(generated): the entries that run both steps",
+    "writeAsset / moveAssetFile: synchronous boundary, restored to main, refuses kind:generated",
+    "LocalTaskJobs.query: single-flight import for the Antigravity local provider"
+  ],
+  "external_sources": [
+    {
+      "kind": "official-doc",
+      "url": "https://raw.githubusercontent.com/electron/electron/v43.4.1/docs/tutorial/performance.md",
+      "checked_at": "2026-10-16",
+      "purpose": "Electron performance guide: the main process must not block on I/O or long work; use asynchronous child processes."
+    },
+    {
+      "kind": "official-doc",
+      "url": "https://nodejs.org/api/child_process.html#child_processexecfilefile-args-options-callback",
+      "checked_at": "2026-10-16",
+      "purpose": "execFile timeout / maxBuffer / killed semantics used to map the asynchronous run back onto the existing verdict facts (also verified empirically with a real child for timeout, maxBuffer, non-zero exit and ENOENT)."
+    }
+  ],
+  "invariants": [
+    "Main-process production code under electron/ never waits synchronously on an external process (spawnSync / execFileSync / execSync count is zero outside one path-listed E2E fixture).",
+    "Only the decode wait is asynchronous: the synchronous write boundary keeps the main-branch contract for every non-generated caller (returns after the file is in place; move by rename; uploads by staging + link).",
+    "A generated output is published only as a VerifiedStagedAsset: its bytes were pinned before any await, staged privately under the project root, verified on that staged file, and published by a synchronous same-volume renameSync. The verified file is the published file, and a failure never leaves a partial file at the published path.",
+    "The project identity is captured before the wait and re-asserted synchronously right before the rename; a rebound project refuses the write.",
+    "The publish step is one synchronous critical section (no await between identity check, path choice, rename and sidecar), so concurrent publishes of one deterministic asset cannot interleave.",
+    "A local task's import is single-flight: overlapping queries share one import and cancellation waits for it to settle.",
+    "Every in-flight generated staging has an owner for its whole life: a controlled quit aborts it (killing the decoder child) and removes its staging directory before exit; staging left by a process that is gone (crash, kill, quit budget exhausted) is reclaimed when the project is next opened, judged by the owning process id rather than only by age."
+  ],
+  "invariant_owner_layer": {
+    "layer": "electron/assets/projectAssetStore.ts",
+    "tests": [
+      "electron/assets/projectAssetStore.test.ts",
+      "electron/assets/generatedMediaDecode.test.ts",
+      "electron/tasks/localTaskJobs.test.ts"
+    ]
+  },
+  "doors": [
+    {
+      "kind": "write",
+      "path": "electron/assets/generatedAssetStaging.ts",
+      "symbol": "verifyGeneratedMediaDecodes"
+    },
+    {
+      "kind": "write",
+      "path": "electron/assets/projectAssetStore.ts",
+      "symbol": "prepareVerifiedGeneratedAsset"
+    },
+    {
+      "kind": "write",
+      "path": "electron/assets/projectAssetStore.ts",
+      "symbol": "publishVerifiedGeneratedAsset"
+    },
+    {
+      "kind": "read",
+      "path": "electron/runtime.ts",
+      "symbol": "writeGeneratedAsset"
+    },
+    {
+      "kind": "write",
+      "path": "electron/assets/projectAssetStore.ts",
+      "symbol": "writeGeneratedAsset"
+    },
+    {
+      "kind": "write",
+      "path": "electron/screenshot/screenshotHotkey.ts",
+      "symbol": "writeGeneratedAsset"
+    },
+    {
+      "kind": "write",
+      "path": "electron/video/depthVideoJob.ts",
+      "symbol": "writeGeneratedAsset"
+    },
+    {
+      "kind": "write",
+      "path": "electron/video/extractVideoFrame.ts",
+      "symbol": "writeGeneratedAsset"
+    },
+    {
+      "kind": "write",
+      "path": "electron/video/framesToVideo.ts",
+      "symbol": "writeGeneratedAsset"
+    },
+    {
+      "kind": "write",
+      "path": "electron/video/trimVideo.ts",
+      "symbol": "writeGeneratedAsset"
+    },
+    {
+      "kind": "read",
+      "path": "electron/capabilityCore/generationOutputMaterializer.ts",
+      "symbol": "writeGeneratedDeterministicAsset"
+    },
+    {
+      "kind": "read",
+      "path": "electron/runtime.ts",
+      "symbol": "writeGeneratedDeterministicAsset"
+    },
+    {
+      "kind": "write",
+      "path": "electron/assets/localFileImport.ts",
+      "symbol": "storeAssetBytes"
+    },
+    {
+      "kind": "write",
+      "path": "electron/assets/projectAssetStore.ts",
+      "symbol": "storeAssetBytes"
+    },
+    {
+      "kind": "write",
+      "path": "electron/catalog/antigravityImageOperation.ts",
+      "symbol": "writeDeterministicAsset"
+    },
+    {
+      "kind": "write",
+      "path": "electron/catalog/codexCli.ts",
+      "symbol": "writeAsset"
+    },
+    {
+      "kind": "write",
+      "path": "electron/catalog/processOperation.ts",
+      "symbol": "writeAsset"
+    },
+    {
+      "kind": "write",
+      "path": "electron/assets/generatedAssetStaging.ts",
+      "symbol": "createUploadStagingDir"
+    },
+    {
+      "kind": "write",
+      "path": "electron/assets/projectAssetStore.ts",
+      "symbol": "createUploadStagingDirSync"
+    },
+    {
+      "kind": "write",
+      "path": "electron/assets/uploadContentStore.ts",
+      "symbol": "createUploadStagingDirSync"
+    },
+    {
+      "kind": "write",
+      "path": "electron/projects/projectsIpc.ts",
+      "symbol": "sweepAbandonedUploadStaging"
+    }
+  ],
+  "door_reduction": {
+    "before": 21,
+    "after": 21,
+    "why_not": "Each door is a distinct product entry (provider retrieval, renderer import, MCP materialization, local providers, screenshots, frame / trim / depth / camera-move tools). They are not merged because they already converge on one pair of boundaries: prepareVerifiedGeneratedAsset (only producer of VerifiedStagedAsset) and publishVerifiedGeneratedAsset (only consumer); the synchronous writers refuse kind:generated, so no door can publish a generated output any other way. Staging creation (createUploadStagingDir / createUploadStagingDirSync) and the project-open sweep are new doors by design: every .nomi-upload-* directory now has an owning process and a live registration."
+  },
+  "generality_proof": "The decode verdict has one caller (generatedAssetStaging.verifyStagedGeneratedContent). Every generated output reaches disk only through publishVerifiedGeneratedAsset, whose only accepted input type is produced only by prepareVerifiedGeneratedAsset; writeAsset and moveAssetFile throw on kind:generated, so a new caller cannot skip verification or the staged publish. Non-generated callers see exactly the main-branch synchronous contract, which removes the class of caller-timing regressions (V-1208-3) instead of patching callers one by one. The broader class (any synchronous child wait in the main process) is closed by the check-heavy-path rule.",
+  "shared_boundaries": [
+    {
+      "path": "electron/assets/generatedMediaDecode.ts",
+      "symbol": "runDecoder",
+      "responsibility": "The only way the decode check runs ffmpeg: an asynchronous child with timeout kill and output cap."
+    },
+    {
+      "path": "electron/assets/generatedAssetStaging.ts",
+      "symbol": "prepareVerifiedGeneratedAsset",
+      "responsibility": "Async half: pin bytes, capture AssetWriteContext, stage privately under the project root, verify the staged file; only producer of VerifiedStagedAsset."
+    },
+    {
+      "path": "electron/assets/projectAssetStore.ts",
+      "symbol": "publishVerifiedGeneratedAsset",
+      "responsibility": "Sync half: re-assert identity, renameSync same-volume atomic publish, sidecar, broadcast; always removes the staging directory."
+    },
+    {
+      "path": "electron/tasks/localTaskJobs.ts",
+      "symbol": "LocalTaskJobs",
+      "responsibility": "Single-flight import so an asynchronous import cannot interleave with a second query or a cancellation."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "electron/assets/projectAssetStore.ts",
+      "entry_point": "writeGeneratedAsset",
+      "disposition": "enforced",
+      "evidence": "prepare + publish; publishIdentity.test.ts V-1208-1/2/4/5 rows."
+    },
+    {
+      "path": "electron/assets/projectAssetStore.ts",
+      "entry_point": "writeGeneratedDeterministicAsset",
+      "disposition": "enforced",
+      "evidence": "prepare + publish with materialization key; concurrent same-key tests in projectAssetStore.test.ts."
+    },
+    {
+      "path": "electron/assets/projectAssetStore.ts",
+      "entry_point": "copyAssetFile",
+      "disposition": "enforced",
+      "evidence": "Generated branch stages from the source path, verifies the staged copy, renames; source-overwrite test."
+    },
+    {
+      "path": "electron/assets/projectAssetStore.ts",
+      "entry_point": "writeAsset",
+      "disposition": "enforced",
+      "evidence": "Main-branch contract restored; refuses kind:generated (projectAssetStore.test.ts)."
+    },
+    {
+      "path": "electron/assets/projectAssetStore.ts",
+      "entry_point": "moveAssetFile",
+      "disposition": "enforced",
+      "evidence": "Main-branch contract restored (rename); refuses kind:generated; browser import closed loop in browserImportCommit.test.ts."
+    },
+    {
+      "path": "electron/productionRun/productionRunE2eFixture.ts",
+      "entry_point": "runFfmpeg",
+      "disposition": "not-affected",
+      "evidence": "E2E fixture renderer; only constructed when isProductionRunE2eFixtureEnabled. Listed by exact path in the gate exemption."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Any future local media step (transcode, probe, extract) can reach for a synchronous child-process call; it passes every test on small fixtures and only freezes on user machines.",
+    "same_class_scan": [
+      "rg -n '\\b(spawnSync|execFileSync|execSync)\\b' electron --type ts: 2 production files (generatedMediaDecode.ts — fixed; productionRunE2eFixture.ts — gated fixture, exempted by path)",
+      "electron/offLedgerEgress.structure.test.ts AST scan of child-process-sync primitives: same two files",
+      "node scripts/door-map.mjs verifyGeneratedMediaDecodes / validatedGeneratedMeta / writeAsset / writeDeterministicAsset / moveAssetFile"
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "electron/assets/generatedAssetStaging.ts",
+    "invariant": "Generated outputs reach disk only as VerifiedStagedAsset through publishVerifiedGeneratedAsset (type-level: only prepareVerifiedGeneratedAsset produces it; runtime: synchronous writers refuse kind:generated). electron/ production code contains no synchronous child-process wait outside the path-listed E2E fixture (check:heavy-path main-sync-child-process, baseline 0).",
+    "failure_mode": "check:heavy-path exits 1 and prints file:line with the asynchronous replacement.",
+    "exception_policy": "none",
+    "strategy": "Keep the shared write boundary synchronous and atomic for everyone; isolate the only asynchronous step (staging + verification) behind a branded artifact that the synchronous publish requires. The decode check only exists in asynchronous form and the gate forbids synchronous child waits.",
+    "artifacts": [
+      "electron/assets/generatedAssetStaging.ts",
+      "electron/assets/projectAssetStore.ts",
+      "electron/assets/generatedMediaDecode.ts",
+      "electron/tasks/localTaskJobs.ts",
+      "scripts/check-heavy-path.mjs",
+      "electron/assets/scratchCleanup.ts"
+    ]
+  },
+  "regression_tests": [
+    "electron/assets/generatedMediaDecode.test.ts",
+    "electron/assets/projectAssetStore.test.ts",
+    "electron/assets/projectAssetStore.publishIdentity.test.ts",
+    "electron/browser/media/browserImportCommit.test.ts",
+    "electron/tasks/localTaskJobs.test.ts",
+    "electron/assets/generatedAssetStaging.quit.test.ts",
+    "electron/assets/scratchCleanup.staging.test.ts"
+  ],
+  "class_regression_tests": [
+    "electron/assets/projectAssetStore.publishIdentity.test.ts",
+    "electron/browser/media/browserImportCommit.test.ts",
+    "electron/assets/generatedAssetStaging.quit.test.ts",
+    "electron/assets/scratchCleanup.staging.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "electron/assets/generatedMediaDecode.ts",
+      "electron/assets/projectAssetStore.ts"
+    ],
+    "rationale": "The spawnSync decoder and the synchronous writeDeterministicAsset are deleted (the first-round asynchronous write boundary never reached main and is gone from this branch); generated outputs have exactly one publish path."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "Node's built-in child_process.execFile replaces spawnSync; no third-party runtime is involved and the bundled ffmpeg and its invocation are unchanged.",
+    "exit_criteria": []
+  },
+  "migration": "No stored data changes. Generated-output callers switched to writeGeneratedAsset / writeGeneratedDeterministicAsset (already async contexts); non-generated callers are back on the main-branch synchronous calls. Abandoned staging directories from an interrupted prepare are reclaimed by reapAbandonedUploadStaging.",
+  "residual_risks": [
+    "Pre-existing synchronous writes on the main branch remain for non-generated byte imports (writeAsset writes the caller buffer with writeFileSync) and the deterministic existing-file hash (readFileSync); out of scope here, tracked as performance guide M02.",
+    "prepareVerifiedGeneratedAsset copies a caller buffer once before staging (one transient extra copy for large byte inputs).",
+    "An asynchronous decode spawned inside a paid dispatch is visible to the dispatch ledger child_process channel, which can only make a failed dispatch read as unknown (conservative).",
+    "A staging copy that is still being written when the quit budget runs out (the copy step is not abortable mid-stream) is left on disk; it is reclaimed on the next project open because its owning process is gone."
+  ]
+}

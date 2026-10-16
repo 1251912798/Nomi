@@ -71,7 +71,7 @@ describe("未知价：Agent 面板 / 全自动 两条路都跑得通，且哪儿
     const submits: string[] = [];
     const built = buildActions(base, vendor.origin, submits, { unpriced: true });
     try {
-      const created = await callTool(built.transport("project"), "nomi_generation_plan", {
+      const created = await callTool(built.transport("direct"), "nomi_generation_plan", {
         operation: "create", taskKind: "text_to_image", candidate: candidate("image-model", { size: "1024x1024" }),
       });
       await base.canvasLanding.settleCanvasLanding(PROJECT_ID);

@@ -49,13 +49,13 @@ describe("task IPC local operation lifecycle", () => {
     const jobs = new LocalTaskJobs<string>();
     const runtime = {
       runTask: () => jobs.start("project", async () => "pixels"),
-      fetchTaskResult: (id: string) => jobs.query(id, "project", () => ["nomi-local://result"]),
+      fetchTaskResult: (id: string) => jobs.query(id, "project", async () => ["nomi-local://result"]),
     };
     registerTaskIpcHandlers(async () => runtime as unknown as Runtime, noCanvasCore);
     const owner = sender(31);
     const id = await call("run", owner, { owner: 99 }) as string;
     await jobs.settled(id);
-    expect(() => withTaskOwner(99, () => jobs.query(id, "project", vi.fn()))).toThrow("OWNER_MISMATCH");
+    await expect(withTaskOwner(99, () => jobs.query(id, "project", vi.fn()))).rejects.toThrow("OWNER_MISMATCH");
     await expect(call("result", sender(32), id)).rejects.toThrow("OWNER_MISMATCH");
     await expect(call("result", owner, id)).resolves.toMatchObject({ status: "succeeded" });
   });

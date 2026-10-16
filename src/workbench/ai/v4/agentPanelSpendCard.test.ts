@@ -48,6 +48,18 @@ describe('付费卡投影', () => {
     expect(data.price?.total).toContain('¥0.30')
   })
 
+  it('直接生成档的刹车退回这张卡时只多一行说明（summary），没有刹车就没有这一行', () => {
+    const plain = projectSpendCard(pending([shot(1, 0.3)]), { page: 0 }, t, { locale: 'zh-CN' })!
+    expect(plain.summary).toBeUndefined()
+    for (const [reason, key] of [['retry-limit', 'brakeRetry'], ['out-of-plan', 'brakeOutOfPlan'], ['stopped', 'brakeStopped']] as const) {
+      const data = projectSpendCard({ ...pending([shot(1, 0.3)]), brake: { reason } }, { page: 0 }, t, { locale: 'zh-CN' })!
+      expect(data.summary).toBe(`agentPanelV4.${key}.title`)
+      // 其余与请求批准下的卡一模一样：标题、按钮都不变。
+      expect(data.title).toBe(plain.title)
+      expect(data.confirmLabel).toBe(plain.confirmLabel)
+    }
+  })
+
   it('标题里不印金额：金额随参数变，两处印同一个数一定有一个先漂', () => {
     const data = projectSpendCard(pending([shot(1, 0.3)]), { page: 0 }, t, { locale: 'zh-CN' })!
     expect(data.title).toBe('agentPanelV4.spendParamsTitleImage(count=1)')

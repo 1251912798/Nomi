@@ -1,0 +1,29 @@
+{
+  "name": "镜头提示词撤销历史跨卸载",
+  "subject": "storyboard.prompt-history-carry",
+  "lifecycle": "session",
+  "authority_kind": "writer",
+  "trust_domain": "renderer",
+  "fact_kind": "value-object",
+  "migration_status": "converged",
+  "owner": {
+    "path": "src/workbench/creation/storyboard/shotRow/promptHistoryCarry.ts",
+    "symbol": "usePromptHistoryCarry"
+  },
+  "write_api": [
+    {
+      "path": "src/workbench/creation/storyboard/shotRow/promptHistoryCarry.ts",
+      "symbol": "usePromptHistoryCarry"
+    },
+    {
+      "path": "src/workbench/creation/storyboard/shotRow/promptHistoryCarry.ts",
+      "symbol": "replayHistory"
+    }
+  ],
+  "forbidden_derivations": [],
+  "allowed_consumers": [
+    "src/workbench/creation/storyboard/shotRow/StoryboardShotRow.tsx"
+  ],
+  "since": "2026-10-16",
+  "notes": "撤销仍由编辑器自带的 ProseMirror history 负责；行卸载时按镜头 id 存快照、重挂时重放并封组边界。表级存储与表同寿。"
+}

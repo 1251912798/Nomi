@@ -42,11 +42,12 @@ import { createProductionShotDispatchGuard } from "./productionShotDispatchGuard
 import { registerBatchSchedulerKicker } from "./batchSchedulerKick";
 import { createProductionRunService } from "./productionRunService";
 import { matchNomiErrorCode } from "../shared/nomiErrorCodes";
-import { writeDeterministicAsset } from "../assets/projectAssetStore";
+import { writeGeneratedDeterministicAsset } from "../assets/projectAssetStore";
 import { deriveProductionShotState } from "../shared/productionShotPhase";
 import { buildMaterializeShotsPayload } from "./multiShotCanvasLanding";
 import type { ProductionGenerationShot } from "./productionRunTypes";
 import { landingThatBinds } from "./landFirstTestUtils";
+import { writeWorkspaceManifest } from "../workspace/workspaceManifest";
 
 const NOW_BASE = Date.parse("2026-10-04T00:00:00.000Z");
 const roots: string[] = [];
@@ -136,7 +137,7 @@ function wire(input: {
     resolveVendor: () => ({ baseUrlHint: input.vendorBase() }),
     fetchOutput: (url, options) => { input.fetchCalls.count += 1; return fetchProviderMedia(url, options); },
     writeAsset: input.realAssetStore
-      ? writeDeterministicAsset
+      ? writeGeneratedDeterministicAsset
       : ((_projectId: string, bytes: Buffer) => ({ id: `asset-${bytes.length}`, data: { relativePath: "assets/generated/out.mp4" } })) as never,
   });
   const submission = createProductionGenerationSubmission({
@@ -194,6 +195,9 @@ describe("#975 A2：确定性的取回失败停下来，不再一轮轮重查重
   it("V-975：产物取回来了但是坏 MP4（落盘校验 unknown_bytes）：同样取一次就停，不再每 15 秒整段重下", async () => {
     assetRoot.dir = fs.mkdtempSync(path.join(os.tmpdir(), "nomi-975-assets-"));
     roots.push(assetRoot.dir);
+    // 真落盘边界进门先钉住项目身份（captureAssetWriteContext），项目目录得是真的工作区项目。
+    writeWorkspaceManifest(assetRoot.dir, { id: "project-1", name: "project", version: 2, createdAt: 1, updatedAt: 1, savedAt: 1, revision: 0,
+      immutableProjectUuid: "11111111-1111-4111-8111-111111111111", projectGeneration: 1, payload: {} });
     const files = await startFileServer(); // 交出去的就是 20 字节的「MP4 头」，不是一段能解码的视频
     const { root, repository } = setup([shot("shot-1")]);
     const counts = { submits: 0, queries: 0 };

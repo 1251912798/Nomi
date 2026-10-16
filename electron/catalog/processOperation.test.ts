@@ -46,7 +46,7 @@ import { antigravityImageJobs } from "./antigravityImageOperation";
 import { withTaskOwner } from "../tasks/localTaskJobs";
 import type { ProcessOperationInput } from "./processOperation";
 
-const writeAsset = vi.fn(() => ({ data: { url: "nomi-local://asset/proj/assets/v.mp4" } }));
+const writeAsset = vi.fn(async () => ({ data: { url: "nomi-local://asset/proj/assets/v.mp4" } }));
 const proc = (args: string[], appendDownloadDir = false) => ({ bin: "dreamina", parser: "dreamina-cli" as const, appendDownloadDir, args });
 const call = (args: string[], opts: { projectId?: string; appendDownloadDir?: boolean } = {}) =>
   executeProcessOperation({ process: proc(args, opts.appendDownloadDir), context: {}, projectId: opts.projectId ?? "", writeAsset });
@@ -66,7 +66,7 @@ describe("Antigravity image process application route", () => {
     identity: { realpath: "/probe/agy", dev: "1", ino: "2", size: "3", mtimeNs: "4", ctimeNs: "5" },
     capability: "image" as const, modelId: "auto",
   };
-  const deterministicWrite = vi.fn(() => ({ data: { url: "nomi-local://asset/project/crane.jpg" } }));
+  const deterministicWrite = vi.fn(async () => ({ data: { url: "nomi-local://asset/project/crane.jpg" } }));
   const input = (mode: string, context: JsonRecord): ProcessOperationInput & { stage: "create" | "query" } => {
     const refs = ((context.request as JsonRecord)?.params as JsonRecord | undefined)?.reference_images;
     const fakePreflight = { ...preflight, prompt: String((context.request as JsonRecord)?.prompt ?? ""), model: "auto",

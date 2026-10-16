@@ -53,9 +53,9 @@ async function fixture(toolName: string, args: Record<string, unknown>, stale = 
     surfacePortRuntime: { createCanvasWritePort: () => ({}) } } as unknown as DesktopCanvasReadRuntime
   const assembly = createDesktopLaneTools({ session, binding, surface,
     receipts: createProjectAgentProposalReceiptService({ projectRoot: root, binding }),
-    context: () => ({ documentId: 'fixture-document', approvalPolicy: { mode: 'safe-auto', spend: 'confirm' } }),
+    context: () => ({ documentId: 'fixture-document', approvalPolicy: { mode: 'request' } }),
     // 档位和工具审批读**同一份**快照（生产里两者都来自 `composer.approvalPolicy`）。
-    approvalPolicy: () => ({ mode: 'safe-auto', spend: 'confirm' }),
+    approvalPolicy: () => ({ mode: 'request' }),
     generationFactory: () => undefined, onTaskCreated: async () => undefined,
     spendCard: { whenCardCloses: () => ({ closed: Promise.resolve(), dispose: () => undefined }) } })
   cleanups.push(async () => assembly.dispose())
@@ -66,7 +66,7 @@ async function fixture(toolName: string, args: Record<string, unknown>, stale = 
   const lane = await openLane({ fetch: globalThis.fetch, projectDir: root, model: { kind: 'openai-compatible', providerId: 'fixture', modelId: 'fixture',
     baseURL: http.baseURL, authType: 'api-key', apiKey: 'fixture' }, tools: assembly.tools, toolLifecycle: assembly.toolLifecycle,
     systemPrompt: 'Use the current verified surface.', approval: { hasUserInterface: true,
-      policy: () => ({ mode: 'safe-auto', spend: 'confirm' }) } })
+      policy: () => ({ mode: 'request' }) } })
   cleanups.push(() => lane.close())
   await lane.execute({ kind: 'prompt', text: 'Read the current surface.' })
   const result = lane.projection().parts.find(part => part.kind === 'tool-result')

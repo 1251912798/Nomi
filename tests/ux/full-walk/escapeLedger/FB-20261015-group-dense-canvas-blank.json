@@ -1,0 +1,25 @@
+{
+  "id": "FB-20261015-group-dense-canvas-blank",
+  "since": "2026-10-15",
+  "source": "群友反馈：图多的画布出现大片不绘制、图片横向截断",
+  "category": "performance-coverage",
+  "problem": "群友的图多画布出现大片空白、图片横向截断、浮层底色缺失；原始截图与版本未提供。合成内存预算压低时 main 与 v0.22.5 都能复现同类缺块；原图上画布是放大条件之一（本刀补预览契约），合成层削减另线做。",
+  "existingInvariants": [],
+  "ironLaws": [],
+  "useCases": [],
+  "fullWalkJourneys": [],
+  "status": "candidate",
+  "manualReview": "pending",
+  "evidence": [
+    "docs/fixes/2026-10-16-canvas-image-preview-contract.root-cause.json",
+    "docs/engineering/direction-checks/2026-10-16-canvas-image-preview.md",
+    "src/workbench/generationCanvas/canvasPreviewDoors.test.ts"
+  ],
+  "completionCommits": [],
+  "rootCauseContract": "docs/fixes/2026-10-16-canvas-image-preview-contract.root-cause.json",
+  "classCheck": {
+    "kind": "matrix",
+    "file": "electron/assets/canvasPreviewContract.test.ts"
+  },
+  "fixedInPr": 1209
+}

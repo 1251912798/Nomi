@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 
 import { createMcpProtocol, type McpTransport } from './mcpProtocol'
 import { createProductionRunRepository } from '../productionRun/productionRunRepository'
@@ -24,11 +24,38 @@ type RpcFrame = {
   }
 }
 
+/**
+ * 等状态：不靠墙钟，靠 service 自己的变化信号。
+ * 流水线（方向 → 剧本 → 待审）是 detached driver 在跑，机器忙时慢几十倍；固定 3 秒的轮询上限会把
+ * 「慢」当成「错」（docs/lessons/fixed-wall-clock-caps-break-when-work-grows.md）。这里每次 repository
+ * 落事件（service.onEvents）/ 每次传输发帧就重查一次条件，条件成立即放行；永远不成立时由 vitest 的
+ * testTimeout 兜底，报错仍是断言本身（不吞）。
+ */
+function makeSignal() {
+  const listeners = new Set<() => void>()
+  return {
+    notify: () => { for (const listener of [...listeners]) listener() },
+    until(check: () => boolean): Promise<void> {
+      return new Promise<void>((resolve) => {
+        const attempt = () => {
+          if (!check()) return
+          listeners.delete(attempt)
+          resolve()
+        }
+        listeners.add(attempt)
+        attempt()
+      })
+    },
+  }
+}
+
 function makeJourney() {
+  const signal = makeSignal()
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'nomi-mcp-journey-'))
   const repository = createProductionRunRepository({ projectDirResolver: () => root })
   const service = createProductionRunService({
     repository,
+    onEvents: () => signal.notify(),
     projectRootResolver: () => root,
     // 方向门先拟候选（B1 · production.plan-directions），批准后 driver 真提分镜案（production.plan-storyboard）。
     requestRenderer: async (op: string) => {
@@ -56,6 +83,7 @@ function makeJourney() {
     send: (message) => {
       const frame = message as RpcFrame
       frames.push(frame)
+      signal.notify()
       if (frame.method === 'elicitation/create' && frame.id != null) {
         queueMicrotask(() => protocolRef.current?.handleIncoming({
           jsonrpc: '2.0', id: frame.id,
@@ -125,10 +153,10 @@ function makeJourney() {
       jsonrpc: '2.0', id, method: 'tools/call',
       params: { name, arguments: args, ...(progressToken ? { _meta: { progressToken } } : {}) },
     })
-    await vi.waitFor(() => { expect(frames.some((frame) => frame.id === id)).toBe(true) }, { timeout: 3000 })
+    await signal.until(() => frames.some((frame) => frame.id === id))
     return frames.find((frame) => frame.id === id)!
   }
-  return { service, frames, protocol, call }
+  return { service, frames, protocol, call, signal }
 }
 
 function text(frame: RpcFrame): string {
@@ -140,7 +168,7 @@ function outcome(frame: RpcFrame): Record<string, unknown> {
 
 describe('MCP conversation journey (A7 · 真 service 全链路)', () => {
   it('接住→进度→控制→状态→事件：文本可转述、字段稳定、进度帧真实', async () => {
-    const { service, frames, protocol, call } = makeJourney()
+    const { service, frames, protocol, call, signal } = makeJourney()
     protocol.handleIncoming({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-11-25', capabilities: { elicitation: {} }, clientInfo: { name: 'claude-code', version: '1' } } })
 
     // ── 壹 · 接住：进度起始帧 + 结构化回执 + 参数回显 ────────────────────────────
@@ -163,10 +191,7 @@ describe('MCP conversation journey (A7 · 真 service 全链路)', () => {
 
     // ── 贰 · 定方向（B1 三选一）：driver 拟候选 → nomi_get_run 转述候选 → 走 nomi_decide_gate ────
     // driver 异步拟好 2-3 个候选并挂到方向门（createDraft 后触发的 proposeDirections）。
-    await vi.waitFor(() => {
-      const gate = service.readFull('project-1', runId)!.gates.find((item) => item.gateId === 'gate-direction-v1')
-      expect(gate?.directionCandidates?.length).toBe(3)
-    }, { timeout: 3000 })
+    await signal.until(() => service.readFull('project-1', runId)!.gates.find((item) => item.gateId === 'gate-direction-v1')?.directionCandidates?.length === 3)
 
     // 候选进转述：模型据此把「三选一 + 都不要」列给真人（elicitation 的原材料）。
     const withOptions = await call(3, 'nomi_read', { target: 'run', projectId: 'project-1', runId })
@@ -184,7 +209,7 @@ describe('MCP conversation journey (A7 · 真 service 全链路)', () => {
     expect(outcome(decided).kind).toBe('gate_decision')
     expect(outcome(decided).choiceKey).toBe('studio')
 
-    await vi.waitFor(() => { expect(service.readFull('project-1', runId)!.status).toBe('awaiting_script_review') }, { timeout: 3000 })
+    await signal.until(() => service.readFull('project-1', runId)!.status === 'awaiting_script_review')
     // choiceKey 留痕进 gate（可审计「用户当时选了哪个方向」）。
     expect(service.readFull('project-1', runId)!.gates.find((item) => item.gateId === 'gate-direction-v1')!.decidedChoiceKey).toBe('studio')
 
@@ -197,7 +222,7 @@ describe('MCP conversation journey (A7 · 真 service 全链路)', () => {
       action: 'approve', projectId: 'project-1', runId, artifactId: scriptCandidate.artifactId, expectedVersion: scriptCandidate.version || 1,
     })
     expect(text(scriptReview)).toContain('产物版本已批准')
-    await vi.waitFor(() => { expect(service.readFull('project-1', runId)!.status).toBe('awaiting_storyboard_review') }, { timeout: 3000 })
+    await signal.until(() => service.readFull('project-1', runId)!.status === 'awaiting_storyboard_review')
 
     // ── 状态可转述：分镜等审阅 → 人话 + 下一步 ──────────────────────────────
     const status = await call(7, 'nomi_read', { target: 'run', projectId: 'project-1', runId })
@@ -230,19 +255,17 @@ describe('MCP conversation journey (A7 · 真 service 全链路)', () => {
   })
 
   it('剧本和分镜都批准后，外部 Agent 可通过 MCP 把同一份分镜物化到 Nomi 项目', async () => {
-    const { service, protocol, call } = makeJourney()
+    const { service, protocol, call, signal } = makeJourney()
     protocol.handleIncoming({ jsonrpc: '2.0', id: 20, method: 'initialize', params: { protocolVersion: '2025-11-25', capabilities: { elicitation: {} }, clientInfo: { name: 'codex', version: '1' } } })
     const started = await call(21, 'nomi_run_start', { projectId: 'project-1', playbook: 'brand.promo', brief: { goal: '雨夜找猫', durationSeconds: 30 } })
     const runId = String(outcome(started).runId)
-    await vi.waitFor(() => {
-      expect(service.readFull('project-1', runId)!.gates.find((gate) => gate.gateId === 'gate-direction-v1')?.directionCandidates?.length).toBe(3)
-    }, { timeout: 3000 })
+    await signal.until(() => service.readFull('project-1', runId)!.gates.find((gate) => gate.gateId === 'gate-direction-v1')?.directionCandidates?.length === 3)
     await call(22, 'nomi_run_gate', { action: 'decide', projectId: 'project-1', runId, gateId: 'gate-direction-v1', decision: 'approved', choiceKey: 'street' })
-    await vi.waitFor(() => { expect(service.readFull('project-1', runId)!.status).toBe('awaiting_script_review') }, { timeout: 3000 })
+    await signal.until(() => service.readFull('project-1', runId)!.status === 'awaiting_script_review')
     const runWithScript = service.readFull('project-1', runId)!
     const script = runWithScript.artifacts.find((item) => item.kind === 'script')!
     await call(23, 'nomi_artifact_review', { action: 'approve', projectId: 'project-1', runId, artifactId: script.artifactId, expectedVersion: script.version || 1 })
-    await vi.waitFor(() => { expect(service.readFull('project-1', runId)!.status).toBe('awaiting_storyboard_review') }, { timeout: 3000 })
+    await signal.until(() => service.readFull('project-1', runId)!.status === 'awaiting_storyboard_review')
     const runWithStoryboard = service.readFull('project-1', runId)!
     const storyboard = runWithStoryboard.artifacts.find((item) => item.kind === 'storyboard')!
     await call(24, 'nomi_artifact_review', { action: 'approve', projectId: 'project-1', runId, artifactId: storyboard.artifactId, expectedVersion: storyboard.version || 1 })

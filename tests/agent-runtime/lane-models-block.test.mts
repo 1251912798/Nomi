@@ -29,7 +29,7 @@ async function catalogProjection() {
   return { listing, entries };
 }
 
-const policy = { mode: 'safe-auto', spend: 'confirm' } as const;
+const policy = { mode: 'request' } as const;
 
 test('C0 real desktop callsite sends catalog-projected model discovery in stable system context and invalidations as user deltas', async (t) => {
   const { entries, listing } = await catalogProjection();

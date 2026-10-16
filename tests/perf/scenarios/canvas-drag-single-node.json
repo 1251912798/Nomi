@@ -1,0 +1,30 @@
+{
+  "id": "canvas-drag-single-node",
+  "feature": "画布上拖一张图片卡走一圈圆弧（2 秒），拖动期间的帧间隔和长任务（单卡对照组）",
+  "script": "tests/perf/canvas-scale-bench.mjs",
+  "args": [
+    "--scales",
+    "I150",
+    "--scenarios",
+    "drag-nodes-1",
+    "--warmup",
+    "1"
+  ],
+  "scale": "150 个图片节点 / 75 条边，拖其中 1 张",
+  "metrics": [
+    "frameGapP95",
+    "longTasks"
+  ],
+  "budget": 33,
+  "group": "② 拖动",
+  "budgetStatus": "approved",
+  "budgetBasis": "连续手势要跟手：60Hz 下 p95 帧间隔不超过 2 帧（33ms），仓库默认预算同此；现有同类场景 canvas-drag-20-nodes 基线中位 9.5ms（10-11，有噪声）",
+  "baseline": {
+    "median": 8.5,
+    "p95": 8.6,
+    "runs": 5,
+    "machine": "win32 x64 13th Gen Intel(R) Core(TM) i9-13900H x20 / 64GB",
+    "date": "2026-10-16",
+    "commit": "94724f860"
+  }
+}

@@ -28,6 +28,7 @@ import { previewBackgroundClass } from './render/previewBackground'
 import PanoramaUploadFallback from './PanoramaUploadFallback'
 import { cn } from '../../../utils/cn'
 import { DeferredNodeImage } from './DeferredNodeMedia'
+import { canvasImageSourceOf } from './canvasImageSource'
 import { NodeVideoSessionProvider } from './NodeVideoSession'
 import { NodeVideoPlaybackGuard } from './NodeVideoPlaybackGuard'
 import { useNodePanoramaHandlers } from './useNodePanoramaHandlers'
@@ -397,8 +398,9 @@ function BaseGenerationNodeImpl({
                 localImageOpPending && 'blur-sm scale-[1.02] transition-[filter,opacity]',
                 localImageOpPending && 'animate-remove-bg-pulse-slow',
               )}
-              // 画布只挂落盘边界派生的预览；源 URL 留给编辑/导出/大图预览，画布不为每个节点解码 4K/8K 原图。
-              src={node.result.thumbnailUrl || node.result.url}
+              // 画布只挂落盘边界派生的预览（canvasImageSource 唯一判定；原图只经被计数的缺失分支）；
+              // 源 URL 留给编辑/导出/大图预览。这一支只在结果有地址且不是视频 / 3D 时进来，按图片取。
+              src={canvasImageSourceOf({ ...node.result, type: 'image' })!}
               priority={mediaPreviewPriority}
               alt=""
               onLoad={mediaMeasurement.onImageLoad}

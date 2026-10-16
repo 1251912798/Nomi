@@ -7,7 +7,6 @@ import {
   COMPOSER_SIX_LINE_CAP,
   approvalPolicyForTier,
   composerHeight,
-  isNoWiderThan,
   maxComposerHeight,
   rowsFromContentHeight,
   shouldSubmitComposer,
@@ -49,51 +48,20 @@ describe('composer 高度随面板高度 derive', () => {
   })
 })
 
-describe('权限三档映射仓库合同', () => {
-  it('三档 = approvalPolicy 的三种组合，不新造词', () => {
-    expect(approvalPolicyForTier('step')).toEqual({ mode: 'step', spend: 'confirm' })
-    expect(approvalPolicyForTier('safe-auto')).toEqual({ mode: 'safe-auto', spend: 'confirm' })
-    expect(approvalPolicyForTier('project')).toEqual({ mode: 'project', spend: 'confirm' })
-  })
-
-  // 2026-09-10 用户拍板：「钱的闸 = 每次提交看报价确认」，设置里的硬预算上限同时删掉。
-  // 这条把「全自动不等于自动花钱」钉死在档位表上：任何一档把 spend 放宽都会先红在这里，
-  // 而不是等到某个用户的账单上。阳性对照在下一条（尺子本身量得出宽窄）。
-  it('三档都不自动花钱：spend 恒为 confirm', () => {
-    for (const tier of PERMISSION_TIERS) expect(approvalPolicyForTier(tier).spend).toBe('confirm')
-    expect(isNoWiderThan({ mode: 'project', spend: 'confirm' }, { mode: 'project', spend: 'within-budget' })).toBe(true)
-    expect(isNoWiderThan({ mode: 'project', spend: 'within-budget' }, { mode: 'project', spend: 'confirm' })).toBe(false)
+describe('权限两档映射仓库合同', () => {
+  it('两档 = approvalPolicy 的两个 mode，不新造词', () => {
+    expect(approvalPolicyForTier('request')).toEqual({ mode: 'request' })
+    expect(approvalPolicyForTier('direct')).toEqual({ mode: 'direct' })
+    expect([...PERMISSION_TIERS]).toEqual(['request', 'direct'])
   })
 
   it('每一档的 mode 就是它自己——档位不是第二份词表', () => {
     for (const tier of PERMISSION_TIERS) expect(approvalPolicyForTier(tier).mode).toBe(tier)
   })
 
-  it('默认档与合同默认值一致（定稿：默认「自动改」）', () => {
-    expect(approvalPolicyForTier(DEFAULT_PERMISSION_TIER)).toEqual({
-      mode: DEFAULT_PROJECT_AGENT_APPROVAL_POLICY.mode,
-      spend: DEFAULT_PROJECT_AGENT_APPROVAL_POLICY.spend,
-    })
-  })
-
-  // 工作方式三档删掉之后，权限是面板上唯一的授权控件，所以合同那句
-  // 「never widens approval」整条落在这三档上。逐档核对，别靠人读表。
-  it('三档没有一档比它该有的更宽', () => {
-    expect(isNoWiderThan(approvalPolicyForTier('step'), { mode: 'step', spend: 'confirm' })).toBe(true)
-    expect(isNoWiderThan(approvalPolicyForTier('safe-auto'), { mode: 'safe-auto', spend: 'confirm' })).toBe(true)
-    expect(isNoWiderThan(approvalPolicyForTier('project'), { mode: 'project', spend: 'confirm' })).toBe(true)
-  })
-
-  it('档位单调：低档永远不比高档宽', () => {
-    expect(isNoWiderThan(approvalPolicyForTier('step'), approvalPolicyForTier('safe-auto'))).toBe(true)
-    expect(isNoWiderThan(approvalPolicyForTier('safe-auto'), approvalPolicyForTier('project'))).toBe(true)
-    // 反向必须为假，否则这把尺子量什么都通过（阳性对照）。
-    expect(isNoWiderThan(approvalPolicyForTier('project'), approvalPolicyForTier('step'))).toBe(false)
-    expect(isNoWiderThan(approvalPolicyForTier('safe-auto'), approvalPolicyForTier('step'))).toBe(false)
-  })
-
-  it('默认档不比合同默认值宽——默认值变严时这条会先红', () => {
-    expect(isNoWiderThan(approvalPolicyForTier(DEFAULT_PERMISSION_TIER), DEFAULT_PROJECT_AGENT_APPROVAL_POLICY)).toBe(true)
+  it('默认档与合同默认值一致（请求批准）', () => {
+    expect(DEFAULT_PERMISSION_TIER).toBe('request')
+    expect(approvalPolicyForTier(DEFAULT_PERMISSION_TIER)).toEqual(DEFAULT_PROJECT_AGENT_APPROVAL_POLICY)
   })
 })
 

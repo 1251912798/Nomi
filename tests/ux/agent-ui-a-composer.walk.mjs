@@ -78,8 +78,8 @@ try {
   await composer.locator(COMPOSER_PERMISSION).click()
   const permissionMenu = page.locator(PERMISSION_POPOVER).last()
   await permissionMenu.waitFor({ state: 'visible', timeout: 3000 })
-  check(await permissionMenu.locator('[data-tier]').count() === 3, '权限弹层给出三档（每步问 / 自动改 / 全自动）')
-  check(await permissionMenu.locator('[data-tier][data-active="true"]').count() === 1, '三档里当前档恰有一个')
+  check(await permissionMenu.locator('[data-tier]').count() === 2, '权限弹层给出两档（请求批准 / 直接生成）')
+  check(await permissionMenu.locator('[data-tier][data-active="true"]').count() === 1, '两档里当前档恰有一个')
   await page.screenshot({ path: path.join(outputDir, '02-permission-popover.png') })
   await page.keyboard.press('Escape')
 

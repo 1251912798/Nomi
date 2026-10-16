@@ -1,26 +1,27 @@
 import type { GenerationNodeResult } from '../model/generationCanvasTypes'
+import { canvasImageSourceOf, canvasVideoPosterOf, type CanvasImageSource } from '../nodes/canvasImageSource'
 
 export const LIGHTWEIGHT_NODE_RENDER_THRESHOLD = 80
 export const LIGHTWEIGHT_NODE_ZOOM_THRESHOLD = 0.55
 
-export type LightweightNodePreview = {
-  kind: 'image' | 'video'
-  src: string
-}
+export type LightweightNodePreview =
+  | { kind: 'image'; src: CanvasImageSource }
+  | { kind: 'video'; src: string }
 
+/** 图片只取画布预览（canvasImageSource 唯一判定，原图只经被计数的缺失分支）；视频有封面挂封面，没有才挂视频。 */
 export function resolveLightweightNodePreview(input: {
-  result?: Pick<GenerationNodeResult, 'type' | 'url' | 'thumbnailUrl'>
+  result?: Pick<GenerationNodeResult, 'type' | 'url' | 'thumbnailUrl' | 'previewState'>
 }): LightweightNodePreview | null {
   const result = input.result
   if (!result) return null
-  const thumbnailUrl = typeof result.thumbnailUrl === 'string' ? result.thumbnailUrl.trim() : ''
-  const url = typeof result.url === 'string' ? result.url.trim() : ''
   if (result.type === 'image') {
-    const src = thumbnailUrl || url
+    const src = canvasImageSourceOf(result)
     return src ? { kind: 'image', src } : null
   }
   if (result.type === 'video') {
-    if (thumbnailUrl) return { kind: 'image', src: thumbnailUrl }
+    const poster = canvasVideoPosterOf(result)
+    if (poster) return { kind: 'image', src: poster }
+    const url = typeof result.url === 'string' ? result.url.trim() : ''
     return url ? { kind: 'video', src: url } : null
   }
   return null

@@ -6,8 +6,8 @@ import { makeTempDir } from '../../scripts/_test-temp.mjs'
 // 天然存在，永远绿；渲染层没有 Buffer，一旦 Vite 把它提到模块初始化期（或解析出别的 node 依赖），
 // 整个画布 chunk 会在**用户点进生成画布的那一刻**炸掉，而 build 门岗照样是绿的。
 // 所以这里只验一件事，但必须在真产物上验：**打包后的那份 renderer**（dist，不是 Vite dev server，
-// 两者的模块解析不是一回事）里，加载画布 + 渲染一个节点（会跑 useNodeDisplayPrompt →
-// resolveReferenceSlots → asUrl）不产生任何渲染层错误。
+// 两者的模块解析不是一回事）里，加载画布 + 渲染一个节点（参考槽解析链 resolveReferenceSlots → asUrl）
+// 不产生任何渲染层错误。
 //
 // 用法：pnpm run build && node tests/ux/reference-url-scheme-boot.walk.mjs
 import { launchNomiApp } from './_launchApp.mjs'
@@ -78,7 +78,7 @@ try {
   await expectVisible(toolbar, '生成画布工具栏渲染出来了（画布 chunk 加载成功）')
   check(true, '生成画布工具栏可见')
 
-  // 建一个图片节点：节点渲染会跑 useNodeDisplayPrompt → resolveReferenceSlots → asUrl，
+  // 建一个图片节点：节点渲染会跑参考槽解析链 resolveReferenceSlots → asUrl，
   // 即本次改动的那条真实调用链。它炸的话节点画不出来 / 抛 pageerror。
   await toolbar.locator('[data-node-kind="image"]').click()
   const node = getWin().locator('[data-kind="image"][data-node-id]').last()

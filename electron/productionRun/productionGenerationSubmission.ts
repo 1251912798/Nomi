@@ -150,7 +150,7 @@ export type ProductionGenerationSubmissionDependencies = {
     contract: ExecutionContractV1;
     providerTaskId: string;
     output: GenerationProviderOutput;
-  }) => Promise<Pick<ProductionArtifact, "artifactId" | "kind" | "contentHash" | "projectRelativePath" | "thumbnailRelativePath" | "width" | "height">>;
+  }) => Promise<Pick<ProductionArtifact, "artifactId" | "kind" | "contentHash" | "projectRelativePath" | "thumbnailRelativePath" | "previewState" | "width" | "height">>;
 };
 
 function stableJson(value: unknown): string {
@@ -721,6 +721,7 @@ export function createProductionGenerationSubmission(deps: ProductionGenerationS
       contentHash,
       projectRelativePath,
       ...(receipt.thumbnailRelativePath ? { thumbnailRelativePath: receipt.thumbnailRelativePath } : {}),
+      ...(receipt.previewState ? { previewState: receipt.previewState } : {}),
       ...(receipt.width && receipt.height ? { width: receipt.width, height: receipt.height } : {}),
       createdAt: now(),
     };

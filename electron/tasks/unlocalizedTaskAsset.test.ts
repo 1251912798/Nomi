@@ -10,9 +10,10 @@ describe("unlocalizedTaskAsset — 无项目上下文时绝不再裸存 CDN url"
     expect(asset.thumbnailUrl).toBeNull();
   });
 
-  it("图片补 thumbnailUrl；非 http 链接 providerUrl 置 null", () => {
+  it("图片不把原图填进 thumbnailUrl，明确记预览缺失；非 http 链接 providerUrl 置 null", () => {
     const asset = unlocalizedTaskAsset("image", "data:image/png;base64,xx");
-    expect(asset.thumbnailUrl).toBe("data:image/png;base64,xx");
+    expect(asset.thumbnailUrl).toBeNull();
+    expect(asset.previewState).toBe("missing");
     expect(asset.providerUrl).toBeNull();
   });
 
