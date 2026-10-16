@@ -104,7 +104,7 @@ describe('canonical canvas.write patch_shots approval boundary', () => {
       projectId: 'project-a',
       operation: 'patch_shots',
       select: { kind: 'indexes', indexes: [2] },
-    }))
+    }), expect.anything())
   })
 
   it('denies before the production entry and leaves the write uninvoked', async () => {

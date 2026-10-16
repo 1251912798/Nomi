@@ -1,8 +1,8 @@
 import React, { type JSX } from 'react'
-import { useTranslation } from 'react-i18next'
 import { ConnectAssistantCard } from '../../../ui/onboarding/ConnectAssistantCard'
 import type { McpInfo, McpMigrationResult } from '../../../desktop/mcpBridgeTypes'
 import { holdDesignLabReady } from '../labReadyHold'
+import { useLabLocale } from './useLabLocale'
 import { BUILTIN_MCP_CLIENTS, MCP_CLIENT_REGISTRY } from '../../../../electron/shared/mcpClientRegistry'
 import { SETTINGS_CELL_WIDTH } from '../settings/settingsLabKit'
 
@@ -32,14 +32,7 @@ function resultsFor(phase: string): McpMigrationResult[] {
 
 /** 生产里的 ConnectAssistantCard，喂它主进程会给的形状；按钮由舞台真点（走真实交互路径），不手摆结果。 */
 export function MigrationStage({ phase, locale }: { phase: string; locale: 'zh-CN' | 'en' }): JSX.Element {
-  const { i18n } = useTranslation()
-  const [localeReady, setLocaleReady] = React.useState(i18n.language === locale)
-  React.useEffect(() => {
-    if (i18n.language === locale) { setLocaleReady(true); return undefined }
-    const release = holdDesignLabReady(`host-config:locale:${locale}`)
-    void i18n.changeLanguage(locale).then(() => { setLocaleReady(true); release() })
-    return release
-  }, [i18n, locale])
+  const localeReady = useLabLocale(locale, 'host-config')
   const info: McpInfo = React.useMemo(() => ({
     tokenReady: true,
     rpcRunning: true,

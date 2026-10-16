@@ -3,7 +3,7 @@
 // 安全：身份头只发往 `http://127.0.0.1:<稳定端口>/mcp`。配置里的地址被改成外部地址 / 别的端口 / 别的路径，
 // 一律不发请求（fail-closed）——否则有效 proof 会被送到任意地址。
 import { isStableLocalMcpUrl, type ConfiguredHttpEntry } from './mcpHostEntries'
-import { MCP_HTTP_CLIENT_HEADER, MCP_HTTP_CLIENT_PROOF_HEADER } from './mcpHttpEndpoint'
+import { MCP_HTTP_CLIENT_HEADER, MCP_HTTP_CLIENT_PROOF_HEADER, MCP_VERIFY_PROBE_NAME } from './mcpHttpEndpoint'
 import { verifyMcpClient, type AuthenticatedMcpClient } from './security'
 import type { McpVerifyReason } from '../shared/mcpConnectionContract'
 
@@ -24,7 +24,7 @@ export async function verifyHttpEntry(client: AuthenticatedMcpClient, entry: Con
   const started = Date.now()
   const { Client, StreamableHTTPClientTransport } = await import('@modelcontextprotocol/client')
   const transport = new StreamableHTTPClientTransport(new URL(entry.url), { requestInit: { headers: entry.headers, redirect: 'error' } })
-  const probe = new Client({ name: 'nomi-verify', version: '1.0' })
+  const probe = new Client({ name: MCP_VERIFY_PROBE_NAME, version: '1.0' })
   try {
     await probe.connect(transport, { timeout: HANDSHAKE_TIMEOUT_MS })
     const tools = await probe.listTools(undefined, { timeout: HANDSHAKE_TIMEOUT_MS })

@@ -16,8 +16,11 @@ import { assertTrustedSender } from '../ipcSenderGuard'
 import { listCustomMcpProfiles, registerCustomMcpProfile, removeCustomMcpProfile } from './mcpConfig'
 import { profilesPath } from './mcpDetectedClients'
 import { migrateMcpHostsToHttp, readMcpMigrationState } from './mcpHostMigration'
+import { registerMcpUsageIpc } from './mcpUsageIpc'
 
 export function registerCustomMcpProfileIpc(): void {
+  // 助手使用情况通道（第 4 段）：同属「AI 助手连接」卡的 IPC，一起注册。
+  registerMcpUsageIpc()
   // 迁移到本机直连（第 3 段）：名单只读；写只在用户点「改过去」后由 mcp-migrate 触发。
   ipcMain.handle('nomi:capability:mcp-migration-state', (event) => {
     assertTrustedSender(event)

@@ -25,6 +25,8 @@ export const MCP_HTTP_URL_ENV = 'NOMI_MCP_HTTP_URL'
  */
 export const MCP_HTTP_CLIENT_HEADER = 'x-nomi-mcp-client'
 export const MCP_HTTP_CLIENT_PROOF_HEADER = 'x-nomi-mcp-client-proof'
+/** Nomi 自己做「测试连接」时握手用的客户端名：它不是助手来过，使用情况的账里不记。 */
+export const MCP_VERIFY_PROBE_NAME = 'nomi-verify'
 const ENDPOINT_FILE = 'mcp-http.json'
 
 export type McpHttpEndpoint = Readonly<{ url: string; port: number; pid: number }>
