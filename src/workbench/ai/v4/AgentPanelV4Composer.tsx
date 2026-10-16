@@ -17,6 +17,10 @@ import { V4Row } from './AgentPanelV4Row'
 // 接线后这个组件是**受控**的：文本、chip、弹层开关、权限档全部由宿主容器持有。
 // 早先它自己 `useState` 一个 value，`submit` 就是 `setValue('')`——长得像能发，
 // 按下去只是把框清空。受控之后「有东西可发」和「真的发出去了」是同一条路。
+import PromptEditor, { type PromptEditorProps } from '../../assets/PromptEditor'
+import type { Editor } from '@tiptap/react'
+import { SuggestionPluginKey } from '@tiptap/suggestion'
+import AssetReferenceButton from '../../assets/AssetReferenceButton'
 import React, { type JSX } from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '../../../utils/cn'
@@ -35,6 +39,7 @@ import { DEFAULT_PERMISSION_TIER, PERMISSION_TIERS } from './agentPanelV4Types'
 
 import { SkillMedia } from '../../skillLibrary/SkillMedia'
 
+const COMPOSER_INPUT_ATTRIBUTES = { 'data-v4-control': 'input', role: 'textbox', 'aria-multiline': 'true' }
 const MODEL_TRIGGER_WIDTH = 164
 
 function compactModelLabel(label: string): string {
@@ -85,11 +90,12 @@ export type AgentPanelV4ComposerProps = {
   focusTag?: React.ReactNode
   /** 受控文本。没有 `onValueChange` 时框是只读的展示件（设计实验室取景用）。 */
   value?: string
-  onValueChange?: (value: string) => void
+  onValueChange?: (value: string, previous?: string) => void
   onSubmit?: (choice?: 'primary' | 'secondary') => void
   onStop?: () => void
   onRemoveChip?: (chip: V4Chip, index: number) => void
   onAddFile?: () => void
+  onAddReference?: () => void
   /** 模型钮上显示的文字。没选模型时由调用方给「去选模型」一类的实话，不写死型号。 */
   modelLabel?: string
   /** 当前打开的弹层；一次只开一个（定稿）。 */
@@ -110,7 +116,11 @@ export type AgentPanelV4ComposerProps = {
    */
   awaitingAnswer?: boolean
   /** 输入框本体。容器要能把光标交给它（空态起手 chip 填完那句话就聚焦）。 */
-  inputRef?: React.Ref<HTMLTextAreaElement>
+  inputRef?: React.Ref<HTMLElement>
+  onEditorReady?: (editor: Editor) => void
+  mentionReferences?: PromptEditorProps['mentionReferences']
+  mentionSearch?: PromptEditorProps['mentionSearch']
+  onMentionSelect?: PromptEditorProps['onMentionSelect']
 }
 
 export function AgentPanelV4Composer({
@@ -126,6 +136,7 @@ export function AgentPanelV4Composer({
   onStop,
   onRemoveChip,
   onAddFile,
+  onAddReference,
   modelLabel,
   openPopover = null,
   onTogglePopover,
@@ -134,38 +145,29 @@ export function AgentPanelV4Composer({
   skillSelected = false,
   focused = false,
   awaitingAnswer = false,
-  inputRef,
+  inputRef, onEditorReady, mentionReferences, mentionSearch, onMentionSelect,
 }: AgentPanelV4ComposerProps): JSX.Element {
   const { t } = useTranslation()
   const hardRows = Math.max(1, value.split('\n').length)
-  // 2026-09-10 走查反馈：硬换行之外，长句软换行（wrap）也要算行——把 textarea 瞬时压扁
-  // 再读 scrollHeight（useLayoutEffect 在绘制前完成，无闪烁），拿到的是纯内容高度。
-  // 行数仍然走同一套 useComposerHeight 规则，不另起高度真相源。
-  //
-  // 2026-09-11 走查根因：光写 `height:0` 量不出来。这个 textarea 是 flex 列容器里的
-  // **拉伸项**（`flex-1` = `flex:1 1 0%`），主轴尺寸由 flex-basis 与剩余空间决定，
-  // 行内 height 根本不生效——`scrollHeight` 回的是「它被撑开后的自身高度」，于是删字
-  // 时算出来的行数只增不减，框成了只涨不落的棘轮（清空后仍卡在 158px）。
-  // 所以量之前必须先让它**脱离父布局的约束**：`flex:0 0 auto` + `height:0`，量完原样还原。
-  const textareaRef = React.useRef<HTMLTextAreaElement | null>(null)
+  const editorRef = React.useRef<Editor | null>(null)
+  const [editorElement, setEditorElement] = React.useState<HTMLElement | null>(null)
   const [measuredRows, setMeasuredRows] = React.useState(hardRows)
+  const handleEditorReady = React.useCallback((editor: Editor) => {
+    editorRef.current = editor
+    const el = editor.view.dom
+    setEditorElement(el)
+    if (typeof inputRef === 'function') inputRef(el)
+    else if (inputRef) (inputRef as React.MutableRefObject<HTMLElement | null>).current = el
+    onEditorReady?.(editor)
+  }, [inputRef, onEditorReady])
   React.useLayoutEffect(() => {
-    const el = textareaRef.current
-    if (!el) return
-    const measure = (): void => {
-      const previousFlex = el.style.flex
-      const previousHeight = el.style.height
-      el.style.flex = '0 0 auto'
-      el.style.height = '0px'
-      setMeasuredRows(rowsFromContentHeight(el.scrollHeight))
-      el.style.flex = previousFlex
-      el.style.height = previousHeight
-    }
+    if (!editorElement) return
+    const measure = (): void => setMeasuredRows(rowsFromContentHeight(editorElement.scrollHeight))
     measure()
     const observer = new ResizeObserver(measure)
-    observer.observe(el)
+    observer.observe(editorElement)
     return () => observer.disconnect()
-  }, [value])
+  }, [value, editorElement])
   const rows = Math.max(hardRows, measuredRows)
   const chipRows = chips?.length || focusTag ? 1 : 0
   const height = useComposerHeight(panelHeight, dock ? 'dock' : mode, rows, chipRows)
@@ -222,36 +224,22 @@ export function AgentPanelV4Composer({
           ))}
         </div>
       ) : null}
-      <textarea
-        ref={(el) => {
-          textareaRef.current = el
-          if (typeof inputRef === 'function') inputRef(el)
-          else if (inputRef) (inputRef as React.MutableRefObject<HTMLTextAreaElement | null>).current = el
-        }}
-        value={value}
-        readOnly={!onValueChange}
-        onChange={(event) => onValueChange?.(event.target.value)}
-        onKeyDown={(event) => {
-          if (
-            shouldSubmitComposer({
-              key: event.key,
-              shiftKey: event.shiftKey,
-              isComposing: event.nativeEvent.isComposing,
-            })
-          ) {
+      <PromptEditor
+        value={value} onChange={onValueChange ?? (() => undefined)} editable={Boolean(onValueChange)}
+        onReady={handleEditorReady}
+        inputAttributes={COMPOSER_INPUT_ATTRIBUTES}
+        mentionReferences={mentionReferences} mentionSearch={mentionSearch} onMentionSelect={onMentionSelect}
+        onKeyDownCapture={event => {
+          if (event.defaultPrevented || (editorRef.current && SuggestionPluginKey.getState(editorRef.current.state)?.active)) return
+          if (shouldSubmitComposer({ key:event.key, shiftKey:event.shiftKey, isComposing:event.nativeEvent.isComposing })) {
             event.preventDefault()
+            event.stopPropagation()
             if (canSend) onSubmit?.(event.altKey ? 'secondary' : 'primary')
           }
         }}
-        placeholder={awaitingAnswer
-          ? t('agentPanelV4.placeholderAwaitingAnswer')
-          : running ? t('agentPanelV4.placeholderRunning') : t('agentPanelV4.placeholder')}
-        aria-label={t('agentPanelV4.message')}
-        rows={1}
-        data-v4-control="input"
-        // 封顶后内部滚动；`overscroll-contain` 让滚轮到边界不外泄到画布 / 时间轴
-        // （2026-08-13 提示词滚轮那条坑同一根因）。
-        className="min-h-0 w-full flex-1 resize-none overflow-y-auto overscroll-contain bg-transparent px-3 pb-1.5 pt-2.5 text-body-sm leading-normal text-nomi-ink outline-none placeholder:text-nomi-ink-40"
+        placeholder={awaitingAnswer ? t('agentPanelV4.placeholderAwaitingAnswer') : running ? t('agentPanelV4.placeholderRunning') : t('agentPanelV4.placeholder')}
+        ariaLabel={t('agentPanelV4.message')}
+        className="min-h-0 w-full flex-1 overflow-y-auto overscroll-contain bg-transparent px-3 pb-1.5 pt-2.5 [&_.ProseMirror]:min-h-[38px]"
       />
       {/* 底栏是 composer 唯一**宽度随内容变**的一行：模型钮印的是真实模型名，
           从「选择模型」到 `moonshot-v1-128k-vision-preview` 差了三倍。原来这一行
@@ -261,15 +249,19 @@ export function AgentPanelV4Composer({
           头部头像左边全被**永久**裁掉。让模型钮成为那个会缩的（`min-w-0` + 名字 truncate），
           这一行就再也宽不过面板。 */}
       <V4Row as="div" className="h-10 min-w-0 shrink-0 px-1 pb-2 pt-1">
+        {onAddReference ? <AssetReferenceButton onClick={onAddReference} iconOnly /> : null}
+
         <button
           type="button"
           aria-label={t('agentPanelV4.addAnyFile')}
           onClick={onAddFile}
           data-v4-control="add-file"
+          data-reference-add="true"
           className="grid size-6 shrink-0 place-items-center rounded-nomi-sm text-nomi-ink-80 hover:bg-nomi-ink-05"
         >
           <IconPlus size={16} />
         </button>
+
         <V4Row as="button"
           type="button"
           onClick={() => onTogglePopover?.('model')}

@@ -13,8 +13,7 @@ import { clickOrFail, expect } from './_assert.mjs'
 import { FIXTURE_TEXT_MODEL_LABEL, flattenRequestText } from './agent-runtime-fixture.mjs'
 import {
   CREATION_PANEL, COMPOSER_INPUT, COMPOSER_SEND, DOCUMENT, chooseAssistantModel,
-  createRuntimeWalk, newConversation, recorded, sendCreation, waitForV4TurnIdle,
-} from './agent-runtime-walk-support.mjs'
+  createRuntimeWalk, newConversation, recorded, sendCreation, waitForV4TurnIdle, expectComposerText } from './agent-runtime-walk-support.mjs'
 
 const ERROR_BANNER = `${CREATION_PANEL} [data-agent-error="true"]`
 const FIRST = 'ERRSURF_FIRST：先读一遍文稿，说一句话就行。'
@@ -90,7 +89,7 @@ try {
   //   · 落在替换当中 → 横幅说「重新发一次」，那就**照它说的做**，并且他不该重打一遍
   //     ——那句话必须还在输入框里。一句让用户白干的提示比没有提示还糟。
   if (!landed) {
-    await expect(input).toHaveValue(RACED)
+    await expectComposerText(input, RACED, '被冲掉的那句话必须还在输入框里')
     await clickOrFail(win.locator(`${CREATION_PANEL} ${COMPOSER_SEND}`), '照横幅说的重新发一次')
     await recorded(raced.received, 'resent message after the localized stale notice')
   }

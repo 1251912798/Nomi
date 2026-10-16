@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { canvasToolbarNodeKinds, type CanvasToolbarNodeKind } from '../workbench/generationCanvas/components/canvasToolbarModel'
 import { getGenerationNodeIcon } from '../workbench/generationCanvas/nodes/renderRegistry'
 import { NodeEmptyState } from '../workbench/generationCanvas/nodes/render/NodeEmptyState'
+import { NodeEmptyStateProvider } from '../workbench/generationCanvas/nodes/render/NodeEmptyStateProvider'
 import { ClipEmptyTry, NodeTryList } from '../workbench/generationCanvas/quickActions/NodeTryList'
 import type { GenerationCanvasNode } from '../workbench/generationCanvas/model/generationCanvasTypes'
 
@@ -51,6 +52,7 @@ function NodeEmptyLabCell({ kind }: { kind: CanvasToolbarNodeKind }): JSX.Elemen
   const literal = 'generationCommon.nodeEmpty.image.title' as const
   return (
     <LabFrame>
+      <NodeEmptyStateProvider engaged>
       <div className="h-64 w-[26rem] rounded-nomi border border-nomi-line bg-nomi-paper">
         {'tryList' in copy ? (
           kind === 'clip'
@@ -67,6 +69,7 @@ function NodeEmptyLabCell({ kind }: { kind: CanvasToolbarNodeKind }): JSX.Elemen
           />
         )}
       </div>
+      </NodeEmptyStateProvider>
     </LabFrame>
   )
 }

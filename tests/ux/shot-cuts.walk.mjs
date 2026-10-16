@@ -10,6 +10,8 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createRequire } from 'node:module'
 import { screenshotSettled } from './_assert.mjs'
+import { canvasFitViewButton } from './_shell.mjs'
+import { GROUP_FRAME_HEADER_SELECTOR } from './_groupFrame.mjs'
 
 const require = createRequire(import.meta.url)
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
@@ -182,19 +184,19 @@ const nodesBefore = await win.evaluate(() => document.querySelectorAll('[data-no
 await win.locator('[data-shot-cut-commit]').first().click({ timeout: 5000 })
 await win.waitForTimeout(9000)
 await snap(win, 'after-commit')
-const after = await win.evaluate(() => ({
+const after = await win.evaluate(([headerSelector]) => ({
   nodes: document.querySelectorAll('[data-node-id]').length,
   groups: document.querySelectorAll('[data-group-id]').length,
-  groupLabel: document.querySelector('.generation-canvas-v2__group-box-label')?.textContent?.trim() ?? null,
+  groupLabel: document.querySelector(headerSelector)?.textContent?.trim() ?? null,
   panelOpen: Boolean(document.querySelector('[role="dialog"][aria-label="按镜头拆"]')),
-}))
+}), [GROUP_FRAME_HEADER_SELECTOR])
 console.log(`  → 落画布后:`, JSON.stringify(after), `(之前 ${nodesBefore} 个节点)`)
 check('落了 3 个新节点', after.nodes - nodesBefore === 3, `实得 ${after.nodes - nodesBefore}`)
 check('自动成一组（拍板：拆出来直接能整组运行）', after.groups === 1, String(after.groups))
 check('组名说清来自哪段视频', /拆自/.test(after.groupLabel || ''), String(after.groupLabel))
 check('落完面板自动关掉', !after.panelOpen)
 
-const fitBtn = win.locator('[aria-label="适应视图"]').first()
+const fitBtn = canvasFitViewButton(win)
 if (await fitBtn.count()) { await fitBtn.click({ timeout: 4000 }).catch(() => {}); await win.waitForTimeout(1200) }
 await snap(win, 'canvas-final')
 {

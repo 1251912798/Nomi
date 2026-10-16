@@ -1,0 +1,162 @@
+{
+  "schema_version": 3,
+  "id": "2026-10-10-stuck-modifier-key",
+  "problem_type": "按键「按着没」靠 keydown / keyup 成对记账，松开那一下送不到时状态永久卡在按着",
+  "detected_by": "user",
+  "recurrence_check_on": "2026-11-10",
+  "symptom": "用户在 Mac 开发版画布上点一张卡、再点第二张，出现「已选 2 个 · 编组 / 存流程」浮条；同时点卡拖不动（2026-10-10 用户截图 04）。",
+  "direct_cause": "画布把 React Flow 的 selectionKeyCode 与 multiSelectionKeyCode 都配成 Shift。React Flow 的 useKeyPress 只靠 document / window 上的 keydown、keyup 成对记「按着没」，只在 window blur / contextmenu 时清零。Shift 的松开没送到（macOS ⌘⇧4 截图把按键交给系统截图层、输入法吞键、或 keyup 发生在 stopPropagation 的编辑区里）时它一直以为 Shift 按着：Pane 在捕获阶段把点卡当成框选起手吃掉（拖不动），零尺寸框按 Partial 语义选中脚下那张、多选键又「按着」不清旧选择（第二张变两张）。Windows 上用 CDP 发可信 Shift 按下、不发松开即 100% 复现（tests/ux/canvas-stuck-modifier.walk.mjs 在 origin/main 上三条全红）。",
+  "class_root": "渲染进程里所有「修饰键按着没」的状态都只从 keydown / keyup 配对推出来，没有一处拿操作系统盖在每个输入事件上的修饰位（shiftKey / metaKey / ctrlKey / altKey）去对账；任何一次松开丢失都会让每个按 keyup 记账的消费者永久偏离真相，直到窗口失焦。",
+  "affected_population": [
+    "macOS 用户：⌘⇧4 / ⌘⇧3 / ⌘⇧5 截图后回到画布（用户本次截图正是这样拍的）",
+    "中文输入法用户：输入法吞掉 Shift 松开的场合",
+    "所有平台：按着 Shift 把焦点移进文本节点正文 / 文本加工框 / 导演台 / 白板 / 创作编辑器（它们 stopPropagation keyup）再松开",
+    "被 React Flow zoomActivationKeyCode（⌘ / Ctrl）卡住的滚轮语义、版本卡的 Alt 状态、导演台飞行键"
+  ],
+  "scope_paths": [
+    "src/ui/input/heldModifierReconciler.ts",
+    "src/main.tsx"
+  ],
+  "entry_points": [
+    "画布：React Flow selectionKeyCode / multiSelectionKeyCode（Shift）与默认 zoomActivationKeyCode（⌘ / Ctrl）",
+    "版本卡：NodeVersionCardsHost 的 useAltHeld（window keydown / keyup 记 Alt）",
+    "导演台：ViewCamera 的飞行键集合（window 捕获阶段 keydown / keyup）",
+    "画布空格平移：useGenerationCanvasReactFlowPointer 的 spaceHeldRef（非修饰键，见 residual_risks）"
+  ],
+  "external_sources": [
+    {
+      "kind": "source-code",
+      "url": "https://github.com/xyflow/xyflow/blob/main/packages/react/src/hooks/useKeyPress.ts",
+      "checked_at": "2026-10-10",
+      "purpose": "确认 useKeyPress 只靠 keydown / keyup 成对记账、只在 window blur 与 contextmenu 时 reset；装的是 12.11.5，最新 12.12.0 的变更记录里也没有对账修饰位的改动，升级不解决。"
+    },
+    {
+      "kind": "official-doc",
+      "url": "https://developer.mozilla.org/en-US/docs/Web/API/MouseEvent/shiftKey",
+      "checked_at": "2026-10-10",
+      "purpose": "鼠标 / 指针 / 滚轮事件的 shiftKey 等修饰位反映事件发生那一刻修饰键的真实状态，可作为对账真相。"
+    }
+  ],
+  "invariants": [
+    "任何修饰键只要被某个监听记成「按着」，下一次带修饰位的输入事件（pointermove / pointerdown / mousedown / wheel / 任意 keydown）说它没按着时，同一次事件继续往下传之前那个监听必须已经收到一次松开。",
+    "真按着的时候（事件修饰位为 true）对账不发任何东西，Shift 多选、Shift 框选、⌘ 滚轮缩放照常。"
+  ],
+  "doors": [
+    {
+      "kind": "write",
+      "path": "src/ui/input/heldModifierReconciler.ts",
+      "symbol": "installHeldModifierReconciler"
+    },
+    {
+      "kind": "write",
+      "path": "src/main.tsx",
+      "symbol": "installHeldModifierReconciler"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/reactFlow/GenerationCanvasReactFlowViewport.tsx",
+      "symbol": "selectionKeyCode"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/reactFlow/GenerationCanvasReactFlowViewport.tsx",
+      "symbol": "multiSelectionKeyCode"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/versionCards/NodeVersionCardsHost.tsx",
+      "symbol": "useAltHeld"
+    }
+  ],
+  "door_reduction": {
+    "before": 5,
+    "after": 5,
+    "why_not": "这几扇门是「谁在读按键状态」，不是「谁在写真相」：React Flow 的两个 keyCode 是内核自己的 useKeyPress（框架里删不掉），useAltHeld 是版本卡自己的悬停语义，各自都要存在。收敛的是写真相的那一侧——全 App 只有 main.tsx 一处装 installHeldModifierReconciler，它在 window 捕获阶段补发丢失的松开，这几扇读门全部吃同一份补发，不需要逐个改。"
+  },
+  "generality_proof": "对账挂在 window 捕获阶段：这是全页最早的监听点，任何 stopPropagation 都拦不到它，所以它看得见每一次可信的按下与带修饰位的输入。补发的 keyup 发到 document 并冒泡到 window，等于把系统 / 输入法 / 编辑区吞掉的那一下还给所有按 keyup 记账的消费者——不论它是 React Flow 内核、我们自己的 hook，还是以后新加的监听，也不论松开是被哪种原因吞掉的。补发包在 flushSync 里，React Flow 的 setState 与多选开关副作用在本次事件继续往下传之前就提交，同一下点击读到的已经是「没按着」。",
+  "shared_boundaries": [
+    {
+      "path": "src/ui/input/heldModifierReconciler.ts",
+      "symbol": "installHeldModifierReconciler",
+      "responsibility": "全 App 唯一：以下一次输入事件自带的修饰位为准，为见过按下、没见过松开完整送达的修饰键补发一次松开。"
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/workbench/generationCanvas/reactFlow/GenerationCanvasReactFlowViewport.tsx",
+      "entry_point": "multiSelectionKeyCode",
+      "disposition": "enforced",
+      "evidence": "React Flow useKeyPress 监听 document keyup；补发的 keyup 发在 document 上。tests/ux/canvas-stuck-modifier.walk.mjs 第二条（点第二张只选中它、不出编组浮条）在 origin/main 红、修复后绿。"
+    },
+    {
+      "path": "src/workbench/generationCanvas/reactFlow/GenerationCanvasReactFlowViewport.tsx",
+      "entry_point": "selectionKeyCode",
+      "disposition": "enforced",
+      "evidence": "React Flow 用 { target: window } 监听；document 上派发的冒泡 keyup 会传到 window。走查第三条（松开丢失后拖卡跟手、不拉出框选）在 origin/main 红（0px）、修复后绿（128px）。"
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/versionCards/NodeVersionCardsHost.tsx",
+      "entry_point": "useAltHeld",
+      "disposition": "enforced",
+      "evidence": "监听 window keyup、读 event.altKey；补发的 Alt keyup 冒泡到 window，altKey 为 false，状态归零。单测「四个修饰键一个规矩：Alt」守规则。"
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/director/scene/ViewCamera.tsx",
+      "entry_point": "onKeyUp",
+      "disposition": "not-affected",
+      "evidence": "飞行键只收 WASD / 方向键等非修饰键，修饰键 keydown 时整表清空，不会因修饰键松开丢失卡住；非修饰键卡住属于 residual_risks 那一类。"
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "吞键来源在产品之外（系统截图快捷键、输入法）且会持续发生；产品里拦 keyup 的编辑区现有 5 处（TextDocumentNode、TextNodeComposer、DirectorEditor、WhiteboardModal、WorkbenchEditor），新的编辑区还会加；按 keyup 记账的消费者也会继续加。",
+    "same_class_scan": [
+      "git grep \"onKeyUp\\|'keyup'\" src：5 处 onKeyUp stopPropagation（拦截方）+ 4 处 keyup 监听（记账方：NodeVersionCardsHost、ViewCamera、useGenerationCanvasReactFlowPointer、SelectionPromptSaveController）",
+      "node_modules/@xyflow/react：useKeyPress 被 selectionKeyCode、multiSelectionKeyCode、zoomActivationKeyCode、panActivationKeyCode、deleteKeyCode 共用；画布 deleteKeyCode=null，panActivationKeyCode 默认 Space（非修饰键）",
+      "node scripts/door-map.mjs multiSelectionKeyCode / selectionKeyCode / useAltHeld / spaceHeldRef / installHeldModifierReconciler"
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "src/ui/input/heldModifierReconciler.ts",
+    "invariant": "任何修饰键被记成按着、而下一次带修饰位的输入事件说没按着时，所有按 keyup 记账的监听在本次事件继续传播前收到一次松开。",
+    "failure_mode": "丢失的松开在用户下一次挪鼠标 / 按下 / 滚轮 / 按别的键时被补发；对不上的状态最多活到那一下之前，而不是活到窗口失焦。",
+    "exception_policy": "none",
+    "strategy": "在 window 捕获阶段对账，补发 document keyup 并 flushSync；入口在 main.tsx render 之前装一次，结构测试守住它不被删掉或挪到 render 之后。",
+    "artifacts": [
+      "src/ui/input/heldModifierReconciler.ts",
+      "src/main.tsx"
+    ]
+  },
+  "regression_tests": [
+    "src/ui/input/heldModifierReconciler.test.ts",
+    "tests/ux/canvas-stuck-modifier.walk.mjs"
+  ],
+  "class_regression_tests": [
+    "src/ui/input/heldModifierReconciler.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "not-applicable",
+    "removed_paths": [],
+    "rationale": "以前没有任何对账路径（只有 React Flow 自带的 blur 清零，那是内核行为，保留）；本次是补上缺失的边界，没有被替代的旧实现。"
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "@xyflow/react 12.11.5 → 12.12.0 的变更记录里没有修饰位对账，升级不改变这一类；不变量由我们自己在 window 捕获阶段守，与 React Flow 版本无关，React Flow 将来自带对账时这一层仍然幂等（真送达的松开不补发）。",
+    "exit_criteria": []
+  },
+  "migration": "纯运行时输入状态，不落盘，没有旧数据。",
+  "residual_risks": [
+    "macOS ⌘⇧4 是否真的吞掉 Shift 松开（而不是让窗口失焦）没有在 Mac 上实机验证——机制在 Windows 上用 CDP 复现并修复，Mac 复现步骤交用户跑。",
+    "非修饰键（空格平移：React Flow panActivationKeyCode 默认 Space、我们自己的 spaceHeldRef）的松开丢失无法用事件修饰位对账，仍只靠 window blur 清零。",
+    "只补「松开」不补「按下」：在别的窗口按住 Shift 再点回来，这一下不会多选（有意为之，见模块头注释）。"
+  ],
+  "invariant_owner_layer": {
+    "layer": "src/ui/input/heldModifierReconciler.ts",
+    "tests": [
+      "src/ui/input/heldModifierReconciler.test.ts",
+      "tests/ux/canvas-stuck-modifier.walk.mjs"
+    ],
+    "why": "对账规则、补发、只补一次、真按着不动都在这一个模块里，单测按捕获 / 冒泡两个阶段模拟系统吞键与编辑区拦截两种丢法；走查在真 Electron 里用可信按键证明画布的两个症状都消失。"
+  }
+}

@@ -4,7 +4,7 @@ import { waitForCanvasViewportSettled } from './_canvasHit.mjs'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { newProjectEntry } from './_shell.mjs'
+import { canvasFitViewButton, newProjectEntry } from './_shell.mjs'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const shotsDir = path.join(repoRoot, 'tests/ux/shots/grouping-optimization')
@@ -24,7 +24,7 @@ try {
   const addImage = win.locator('[aria-label="添加图片节点"]').first()
   await expectVisible(addImage, '生成画布已可添加节点')
   for (let i = 0; i < 4; i += 1) await addImage.click()
-  await win.getByLabel('适应视图', { exact: true }).click()
+  await canvasFitViewButton(win).click()
   await waitForCanvasViewportSettled(win)
   await win.mouse.click(420, 420)
   await win.keyboard.press('Control+a')
@@ -101,6 +101,15 @@ try {
   await win.mouse.move(groupDragStart.x, groupDragStart.y)
   await win.mouse.down()
   await win.mouse.move(groupDragStart.x + 36, groupDragStart.y + 24, { steps: 8 })
+  // 拖动进行中（还没松手）：成员壳必须已经在平移。框动内容不动＝选择器没选中成员壳，
+  // 松手后才会被 settle 一次性写回，只量松手后的几何看不出来（2026-10-11 方案卡 §6）。
+  const liveMemberPreview = await win.evaluate(() =>
+    [...document.querySelectorAll('.generation-canvas-react-flow__node-shell')]
+      .map((shell) => shell.style.translate)
+      .filter((value) => value !== ''),
+  )
+  if (liveMemberPreview.length === 0)
+    throw new Error('拖动进行中成员壳没有任何 translate：框动内容不动（成员壳选择器没命中）')
   await win.mouse.up()
   await win.waitForTimeout(80)
   const afterGroupDrag = await readGroupGeometry()

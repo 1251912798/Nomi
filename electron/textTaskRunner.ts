@@ -32,6 +32,9 @@ export async function executeTextTask(input: {
     : [];
   const maxTokensValue = Number(input.request.extras?.maxTokens ?? input.request.extras?.max_tokens);
   const temperatureValue = Number(input.request.extras?.temperature);
+  // 只有调用方显式给了才传（拆解路径给 0）；没给就是 SDK 默认，其它文本任务行为不变。
+  const maxRetriesRaw = input.request.extras?.maxRetries;
+  const maxRetriesValue = typeof maxRetriesRaw === "number" && Number.isInteger(maxRetriesRaw) && maxRetriesRaw >= 0 && maxRetriesRaw <= 2 ? maxRetriesRaw : undefined;
   const { raw, finishReason } = await streamTextTask(
     {
       vendor: input.vendor,
@@ -41,6 +44,7 @@ export async function executeTextTask(input: {
       ...(imageUrls.length ? { imageUrls } : {}),
       ...(Number.isFinite(temperatureValue) ? { temperature: temperatureValue } : {}),
       ...(Number.isFinite(maxTokensValue) && maxTokensValue > 0 ? { maxTokens: maxTokensValue } : {}),
+      ...(maxRetriesValue !== undefined ? { maxRetries: maxRetriesValue } : {}),
     },
     { ...(input.onDelta ? { onDelta: input.onDelta } : {}), ...(input.abortSignal ? { abortSignal: input.abortSignal } : {}) },
   );

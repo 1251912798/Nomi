@@ -15,7 +15,7 @@ import {
   renderReport,
   resolveJudgementStage,
 } from './pr-body-criteria.mjs'
-import { checkProtectedScope, escapeLedgerFromTree, extractSection, parsePullFileRows } from './merge-preflight.mjs'
+import { checkProtectedScope, escapeLedgerFromTree, extractSection, main as preflightMain, parsePullFileRows } from './merge-preflight.mjs'
 
 const FULL_CARD = [
   '## 设计卡',
@@ -328,4 +328,75 @@ test('判已结账合同：一次 GraphQL 取回的目录按同一套规则组�
   assert.equal(escapeLedgerFromTree(tree.slice(1)), null)
   assert.equal(escapeLedgerFromTree([...tree, { name: 'FB-c.json', object: blob({ id: 'FB-x' }) }]), null)
   assert.equal(escapeLedgerFromTree(undefined), null)
+})
+
+// ── 取数失败 = 没有结论（2026-10-11，#1166：文件表分页偶发失败 → 退回只含前 100 个文件的 view.files →
+//    账本条目排在 100 名之后 → 误判「没转 fixed」；下一轮取数成功又判通过并合入）。
+//    用假 gh 驱动 main()：同一 PR、同一 head，只有「文件表那一次请求」成败不同。
+const LEDGER = 'tests/ux/full-walk/escapeLedger/FB-x.json'
+const CONTRACT = 'docs/fixes/x.root-cause.json'
+const b64 = (value) => Buffer.from(JSON.stringify(value)).toString('base64')
+
+function fakeGh({ failFiles = false, failDiff = false, failContract = false } = {}) {
+  const fileRows = [...Array.from({ length: 120 }, (_, i) => `src/f${i}.ts\tmodified\t1\t0\t`), `${CONTRACT}\tadded\t9\t0\t`, `${LEDGER}\tmodified\t2\t1\t`]
+  const calls = []
+  const exec = (args) => {
+    const line = args.join(' ')
+    calls.push(line)
+    if (line.startsWith('pr view')) {
+      // 真 gh：files 字段最多 100 个。这里故意带上，证明实现不再读它。
+      return JSON.stringify({ body: '## 设计卡\n', headRefOid: 'a'.repeat(40), baseRefName: 'main', headRepository: { name: 'r' }, headRepositoryOwner: { login: 'o' }, createdAt: '2026-10-10T00:00:00Z', files: fileRows.slice(0, 100).map((row) => ({ path: row.split('\t')[0], additions: 1, deletions: 0 })) })
+    }
+    if (line.includes('/pulls/7/files')) {
+      if (failFiles) throw new Error('HTTP 502 retried 3 times')
+      return fileRows.join('\n')
+    }
+    if (line.startsWith('pr diff')) {
+      if (failDiff) throw new Error('diff too large')
+      return ''
+    }
+    if (line.includes('/compare/')) return 'b'.repeat(40)
+    if (line.includes(`contents/${CONTRACT}`)) {
+      if (failContract) throw new Error('HTTP 502 retried 3 times')
+      return b64({ detected_by: 'user' })
+    }
+    if (line.includes(`contents/${LEDGER}`)) return b64({ id: 'FB-x', status: line.includes('ref=bbbb') ? 'candidate' : 'fixed' })
+    if (line.includes('contents/tests/ux/full-walk/escapeLedger?')) return 'FB-x.json'
+    throw new Error(`unexpected gh call: ${line}`)
+  }
+  return { exec, calls }
+}
+
+function runPreflight(options) {
+  const { exec, calls } = fakeGh(options)
+  const lines = []
+  const original = console.log
+  console.log = (...parts) => lines.push(parts.join(' '))
+  try {
+    return { code: preflightMain(['7', '--repo', 'o/r'], exec), out: lines.join('\n'), calls }
+  } finally {
+    console.log = original
+  }
+}
+
+test('取数失败 = 没有结论：文件表那次请求失败时不退回截断的 view.files，输出「结论：✖ 取不到」让合并循环停手', () => {
+  const failed = runPreflight({ failFiles: true })
+  assert.equal(failed.code, 1)
+  assert.match(failed.out, /取不到PR 文件表/)
+  assert.match(failed.out, /结论：✖/)
+  assert.doesNotMatch(failed.out, /没有把对应的逃逸账本条目/, '不许拿只含前 100 个文件的列表去判账本')
+})
+
+test('取数成功时同一个 PR 的结论稳定：账本在 100 名之后也认得出，不报「没转 fixed」', () => {
+  const ok = runPreflight()
+  assert.doesNotMatch(ok.out, /没有把对应的逃逸账本条目/)
+  assert.match(ok.out, /逃逸账本 FB-x → fixed/)
+})
+
+test('diff / 合同内容任何一项取不到都是「结论：✖ 取不到」，不是当空处理', () => {
+  for (const options of [{ failDiff: true }, { failContract: true }]) {
+    const result = runPreflight(options)
+    assert.equal(result.code, 1, JSON.stringify(options))
+    assert.match(result.out, /结论：✖ 有项没过，先别合（取数失败/, JSON.stringify(options))
+  }
 })

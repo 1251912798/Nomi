@@ -1,0 +1,15 @@
+{
+  "detected_by": "user",
+  "symptom": "拆解表的画面 / 景别列全空，用户找不到换读图模型的地方，也看不到失败原因（日志里是限流的 429，重试 3 次）",
+  "direct_cause": "读图腿由代码自动挑目录序第一个能读图的模型（免费限流的那家），payload 里没有读图模型字段；每镜失败原话只写日志、没进表；AI SDK 默认重试 2 次放大了限流",
+  "class_root_cause": "付费腿的模型身份由代码隐式推、结果只写日志：同一份 payload 里转写腿 09-17 补了显式身份，读图腿从没补，没有任何门岗要求「每条付费腿有显式身份 + 失败原话落盘」",
+  "prevention": {
+    "kind": "centralized-boundary",
+    "file": "electron/video/deconstructVisionLeg.test.ts",
+    "description": "读图腿的模型身份只有 resolveVisionLeg 一个出口（显式 > 软偏好 > 自动，显式解不出整次拒绝不换别家）；结构测试断言编排不再直接调 resolveTextBrainKeys；失败原话经 DeconstructShot.failureReason → 表行 failureReason 落盘，编排级测试逐镜断言"
+  },
+  "classCheck": {
+    "file": "electron/video/deconstructVisionLeg.test.ts"
+  },
+  "remaining": "真付费验证未做（最小量见方案卡 §11 ★9，由协调会话做）；免费 / 限流模型降权没有可靠信号（目录里没有这类字段），不做，靠显式选择 + 失败原话可见兜底"
+}

@@ -2,8 +2,7 @@
 // and edit a storyboard cell. No production DOM/CSS injection or paid generation.
 import { expect } from './_assert.mjs'
 import {
-  createRuntimeWalk, openCanvas, CANVAS_PANEL, COMPOSER, COMPOSER_INPUT, COMPOSER_ADD_FILE,
-} from './agent-runtime-walk-support.mjs'
+  createRuntimeWalk, openCanvas, CANVAS_PANEL, COMPOSER, COMPOSER_INPUT, COMPOSER_ADD_FILE, expectComposerText } from './agent-runtime-walk-support.mjs'
 const walk = await createRuntimeWalk('focus-indication')
 let failure
 try {
@@ -68,7 +67,7 @@ try {
   await inspectText('settings-budget', budget)
   await recordSurface('settings', settings)
   await settings.locator('[data-settings-close]').click()
-  await expect(input).toHaveValue('远景，雨后的街道。先保留这条创作草稿。')
+  await expectComposerText(input, '远景，雨后的街道。先保留这条创作草稿。', '创作草稿切走再回来还在')
   await win.getByRole('button', { name:'创作', exact:true }).click()
   await win.getByRole('button', { name:/^分镜方案,/ }).click()
   const storyboard = win.locator('[data-storyboard-editor="true"]')

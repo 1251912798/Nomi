@@ -3,6 +3,36 @@ import type { CropGridSize, CropRect } from './ImageCropGridOverlay'
 /** 纯裁剪：1 行 1 列，没有内线。 */
 export const CROP_ONLY: CropGridSize = { rows: 1, cols: 1 }
 
+/**
+ * 取景框的默认值（唯一出处）：切图 = 整图（默认不动确认＝旧的等分效果，
+ * docs/plan/2026-06-16-adjustable-grid-crop.md:4）；纯裁剪沿用居中八分。
+ * 2026-10-11 用户走查「九宫格不是完整切图、外侧还有空间」：曾内缩 4%，九格拼不回原图。
+ */
+export function defaultCropRect(gridSize: CropGridSize): CropRect {
+  return gridSize.rows === 1 && gridSize.cols === 1
+    ? { x: 0.1, y: 0.1, w: 0.8, h: 0.8 }
+    : { x: 0, y: 0, w: 1, h: 1 }
+}
+
+export type DisplayBox = { left: number; top: number; width: number; height: number }
+
+/**
+ * 图片在 `object-contain` 容器里**真正显示**的矩形（像素，相对容器）。
+ * 取景框必须按它算，否则宽高比和卡片不一致时框会盖到 letterbox 空白上（切图 ≠ 看到的图）。
+ * 自然尺寸未知（还没加载）时退回整个容器。
+ */
+export function containedImageBox(
+  container: { width: number; height: number },
+  natural: { width: number; height: number } | null,
+): DisplayBox {
+  const whole = { left: 0, top: 0, width: container.width, height: container.height }
+  if (!natural || natural.width <= 0 || natural.height <= 0 || container.width <= 0 || container.height <= 0) return whole
+  const scale = Math.min(container.width / natural.width, container.height / natural.height)
+  const width = natural.width * scale
+  const height = natural.height * scale
+  return { left: (container.width - width) / 2, top: (container.height - height) / 2, width, height }
+}
+
 // 可调切图的纯几何：把「外框 rect + 框内分割线」换算成一组 image 归一化 cell。
 // cols/rows 是「框内」切分分数（0~1，升序，长度 = gridSize-1；裁剪时为空）。
 // 输出 cell 的 x/y/w/h 是「整图」归一化坐标，直接喂给 cropImageRegion。

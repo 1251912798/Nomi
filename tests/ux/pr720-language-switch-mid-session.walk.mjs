@@ -36,10 +36,10 @@ import {
 import {
   CANVAS_PANEL, ASSISTANT_MESSAGE, USER_BUBBLE, COMPOSER_INPUT,
   THINKING_LINE, SUGGESTION, TOOL_RECEIPT, TASK_CARD, ERROR_BAR,
-  openCanvas, sendCanvas, chooseAssistantModel, waitForV4TurnIdle,
-} from './agent-runtime-walk-support.mjs'
+  openCanvas, sendCanvas, chooseAssistantModel, waitForV4TurnIdle, composerText } from './agent-runtime-walk-support.mjs'
 
 import { fileURLToPath } from 'node:url'
+import { canvasAddBar } from './_shell.mjs'
 const repoRoot = path.resolve(fileURLToPath(new URL('../..', import.meta.url)))
 const shots = path.join(repoRoot, 'tests/ux/shots/pr720-language-switch-mid-session')
 fs.mkdirSync(shots, { recursive: true })
@@ -71,7 +71,7 @@ async function closeSettings(win) {
 async function snapshotState(win) {
   const assistantLocator = win.locator(`${CANVAS_PANEL} ${ASSISTANT_MESSAGE}`)
   const userLocator = win.locator(`${CANVAS_PANEL} ${USER_BUBBLE}`)
-  const draft = await win.locator(`${CANVAS_PANEL} ${COMPOSER_INPUT}`).inputValue()
+  const draft = await composerText(win.locator(`${CANVAS_PANEL} ${COMPOSER_INPUT}`))
   return {
     assistantCount: await assistantLocator.count(),
     userCount: await userLocator.count(),
@@ -150,7 +150,7 @@ try {
   await screenshotSettled(win, { path: path.join(shots, '00-canvas-zh.png') })
 
   // ── 画布节点：本地免费的文字节点，用它的头部 aria-label 当「节点 UI 语言」的探针 ──
-  const rail = win.locator('.generation-canvas-v2-toolbar').first()
+  const rail = canvasAddBar(win)
   await expectVisible(rail, '左缘生成画布工具条')
   await clickOrFail(rail.locator('button[aria-label="添加文字节点"]'), '左缘「添加文字节点」')
   await expectVisible(win.locator('header[aria-label="拖动文本节点"]').first(), '文字节点头部（中文 aria-label）')
@@ -170,7 +170,7 @@ try {
   const composerInput = win.locator(`${CANVAS_PANEL} ${COMPOSER_INPUT}`)
   await composerInput.click()
   await composerInput.fill(DRAFT_TEXT)
-  const draftFilled = await composerInput.inputValue()
+  const draftFilled = await composerText(composerInput)
   record('DRAFT-BASELINE', '切换前 composer 草稿已填入且未发送', draftFilled === DRAFT_TEXT, `draft=${draftFilled}`)
   await screenshotSettled(win, { path: path.join(shots, '02-history-and-draft-zh.png') })
 

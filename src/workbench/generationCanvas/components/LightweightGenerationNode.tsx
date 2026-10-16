@@ -11,6 +11,10 @@ import { resolveLightweightNodePreview } from './canvasNodeLevelOfDetail'
 import { useNodeMediaMeasurement } from '../nodes/useNodeMediaMeasurement'
 import { readNodeCardInfoHeight } from '../nodes/nodeSizing'
 import { DeferredNodeImage, DeferredNodeVideo } from '../nodes/DeferredNodeMedia'
+import { getGenerationNodeIcon } from '../nodes/renderRegistry'
+import { NodeEmptyState } from '../nodes/render/NodeEmptyState'
+import { NodeEmptyStateProvider } from '../nodes/render/NodeEmptyStateProvider'
+import { EMPTY_STATE_COMPACT_MIN_HEIGHT } from '../nodes/render/nodeEmptyStateLayout'
 
 /**
  * 画布远景/超载时的轻量节点占位（LOD 低档）：保留结果媒体缩略图，
@@ -30,8 +34,10 @@ export function LightweightGenerationNode({
   const { t } = useTranslation()
   const shotIdentity = useShotIdentity(node.id)
   const size = getCanvasNodeVisualSize(node)
+  const bodyHeight = size.height - readNodeCardInfoHeight(node)
   const preview = resolveLightweightNodePreview(node)
   const mediaMeasurement = useNodeMediaMeasurement(node)
+  const Icon = getGenerationNodeIcon(node.kind)
   return (
     <article
       className={cn(
@@ -74,7 +80,7 @@ export function LightweightGenerationNode({
           'grid',
         )}
       >
-        <div className="relative min-w-0 min-h-0 overflow-hidden bg-nomi-ink-05" style={{ height: size.height - readNodeCardInfoHeight(node) }}>
+        <div className="relative min-w-0 min-h-0 overflow-hidden bg-nomi-ink-05" style={{ height: bodyHeight }}>
           {preview?.kind === 'image' ? (
             <DeferredNodeImage
               src={preview.src}
@@ -93,7 +99,11 @@ export function LightweightGenerationNode({
               controls={false}
               onLoadedMetadata={mediaMeasurement.onVideoMetadata}
             />
-          ) : null}
+          ) : (
+            <NodeEmptyStateProvider engaged={false} readOnly>
+              <NodeEmptyState icon={<Icon size={18} stroke={1.5} />} height={bodyHeight} compact={bodyHeight < EMPTY_STATE_COMPACT_MIN_HEIGHT} />
+            </NodeEmptyStateProvider>
+          )}
 
         </div>
       </div>

@@ -79,6 +79,15 @@ export function isEditorReady(editor: Editor | null): editor is Editor {
   return Boolean(editor && !editor.isDestroyed)
 }
 
+/** 受控内容按编辑器 schema 解析后，是否与当前文档结构相同。解析不了（非法内容）按「不同」处理。 */
+function docsAreEqual(editor: Editor, content: JSONContent): boolean {
+  try {
+    return editor.schema.nodeFromJSON(content).eq(editor.state.doc)
+  } catch {
+    return false
+  }
+}
+
 export function readSelectedText(editor: Editor): string {
   const { from, to, empty } = editor.state.selection
   if (empty || from === to) return ''
@@ -170,6 +179,10 @@ export function useNomiRichTextEditor(options: {
   React.useEffect(() => {
     if (!isEditorReady(editor)) return
     if (!sync.receive(JSON.stringify(content))) return
+    // owner 回流的是「同一篇文档的另一种写法」（键序 / 空段落省不省 content 不同，字符串比不等）时，
+    // 这不是外部改写：文档已经是这个样子，再 setContent 只会往撤销栈里压一条看不见的等价记录，
+    // 用户点完加粗得按两次撤销。按文档结构比（ProseMirror 的 Node.eq），相等就什么都不做。
+    if (docsAreEqual(editor, content)) return
     const previousSelection = editor.state.selection
     // Controlled resource switches are hydration, not user edits. Emitting an
     // update here would bump the destination document timestamp and mark its

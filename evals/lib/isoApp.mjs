@@ -108,7 +108,7 @@ export async function openGenerationAiPanel(win) {
   // generation-assistant aria label and launcher class were removed when the
   // resident panel became the shared host, so looking them up makes every
   // agent journey fail before its first message.
-  const input = win.locator('textarea[data-v4-control="input"]');
+  const input = win.locator('[data-v4-control="input"]');
   if (await input.count()) return;
   // 空白项目默认落「创作」标签,生成 AI 面板在「生成」工作区——先切过去
   // (旧版直接点「Nomi 生成」文字在创作标签下找不到 → 整批评测 infra 超时)。
@@ -145,7 +145,7 @@ export async function readAssistantModelLabel(win) {
 }
 
 export async function sendAgentMessage(win, message) {
-  await win.locator('textarea[data-v4-control="input"]').first().fill(message, { timeout: 5000 });
+  await win.locator('[data-v4-control="input"]').first().fill(message, { timeout: 5000 });
   await win.locator('[data-v4-control="send"]').first().click({ timeout: 5000 });
 }
 

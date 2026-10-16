@@ -20,6 +20,7 @@ import { persistNodeImageFile } from '../../adapters/persistNodeImage'
 import { isProjectExecutionContextCurrent, isProjectImportCancellation, withProjectAction } from '../../../project/projectCanvasReadSurface'
 import { UsageDot } from './CardCommon'
 import { NodeEmptyState } from './NodeEmptyState'
+import { useEmptyNodeActivation } from './NodeEmptyStateContext'
 import { getDisplayTitle } from '../../model/titleHeuristics'
 
 type Props = {
@@ -104,6 +105,7 @@ function PlayBar({ progress, onSeek }: { progress: number; onSeek: (fraction: nu
 }
 
 function AudioStripNodeImpl({ node }: Props): JSX.Element {
+  const emptyActivation = useEmptyNodeActivation()
   const [feedback, setFeedback] = React.useState<string | null>(null)
   const reportFeedback = React.useCallback((message: string) => {
     notify({ identity: `AudioStripNodeImpl:${node.id}`, reason: 'interaction', message, level: 'inline', present: setFeedback })
@@ -242,10 +244,10 @@ function AudioStripNodeImpl({ node }: Props): JSX.Element {
   }
 
   if (!hasAudio) {
-    return <label className="block h-full w-full cursor-pointer bg-nomi-paper" title={t('generationCommon.audio.upload')}>
+    return <label onPointerDownCapture={emptyActivation.onPointerDownCapture} onPointerCancelCapture={emptyActivation.onPointerCancelCapture} onClickCapture={emptyActivation.onClickCapture} className="block h-full w-full cursor-pointer bg-nomi-paper" title={t('generationCommon.audio.upload')}>
       {feedback ? <p role="status" className="m-0 px-2 py-1 text-caption text-nomi-ink-60">{feedback}</p> : null}
       <NodeEmptyState compact icon={<IconWaveSine size={20} stroke={1.6} />} title={t('generationCommon.nodeEmpty.audio.title')} description={t('generationCommon.nodeEmpty.audio.description')} />
-      <input className="hidden" type="file" accept="audio/*" onChange={handleUpload} />
+      <input disabled={!emptyActivation.canActivate} className="hidden" type="file" accept="audio/*" onChange={handleUpload} />
     </label>
   }
 

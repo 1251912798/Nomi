@@ -3,19 +3,21 @@ import { notify } from '../../../ui/notificationPolicy'
 import React, { type JSX } from 'react'
 import type { ImageGenerationPreset } from 'img-fx'
 import { useTranslation } from 'react-i18next'
-import { IconCopy, IconDownload, IconMaximize, IconUpload } from '@tabler/icons-react'
+import { IconCopy } from '@tabler/icons-react'
 import ProvenancePanel from './ProvenancePanel'
 import { resolveNodeRenderKind, isCardRenderKind, nodeHasGenerationComposer } from './resolveRenderKind'
 import ShotMountBadges from './render/ShotMountBadges'
 import { getBuiltinCategoryById } from '../../project/projectCategories'
 import { NodeCardBody } from './render/NodeCardBody'
 import ImageCropGridOverlay from './render/ImageCropGridOverlay'
+import ImageCropGridActionBar from './render/ImageCropGridActionBar'
 import { CROP_ONLY } from './render/cropGridGeometry'
 import { ImageQuickActionsToolbarHost } from '../quickActions/ImageQuickActionsToolbarHost'
 import { NodeVersionCardsHost } from './versionCards/NodeVersionCardsHost'
 import { nodeHasVersionCards } from './versionCards/nodeVersionEntries'
 import { useLabelCoveredByVersionGrid } from './versionCards/versionGridCoverage'
-import { EmptyNodeVariantToolbar, FloatingToolbarShell, TOOLBAR_ICON as TBI, ToolbarButton, ToolbarDivider, ToolbarVariantProvenanceActions } from './NodeFloatingToolbar'
+import { EmptyNodeVariantToolbar } from './NodeFloatingToolbar'
+import PanoramaNodeToolbar from './render/PanoramaNodeToolbar'
 import { useNodeImageEditing } from './useNodeImageEditing'
 import { isLocalImageOpPending, isRemoveBackgroundPending, isRemoveBackgroundResult } from './localImageOpPhase'
 import { useNodeDragResize } from './useNodeDragResize'
@@ -27,6 +29,7 @@ import PanoramaUploadFallback from './PanoramaUploadFallback'
 import { TimelineNotchDragHandle } from './NodeTimelineDragHandles'
 import { cn } from '../../../utils/cn'
 import { DeferredNodeImage } from './DeferredNodeMedia'
+import { NodeVideoSessionProvider } from './NodeVideoSession'
 import { NodeVideoPlaybackGuard } from './NodeVideoPlaybackGuard'
 import { useNodePanoramaHandlers } from './useNodePanoramaHandlers'
 import type { GenerationCanvasNode } from '../model/generationCanvasTypes'
@@ -52,12 +55,12 @@ import { TechnicalReviewBadge } from './TechnicalReviewBadge'
 import { DerivedReadyBadge } from '../quickActions/DerivedReadyBadge'
 import { isDerivedPromptReady } from '../quickActions/deriveFromNode'
 import { canDragGenerationNodeToTimeline } from '../model/timelineDragAffordance'
-import { useResultDownload } from './useResultDownload'
 import { useArtifactNodeSlots } from './artifact/artifactNodeSlots'
 import { RESIZE_DIRECTIONS, getNodeSizeBounds, FOCUS_GENERATION_NODE_EVENT, resolveNodeVisualSize } from './nodeSizing'
 import { NodeLabelRow } from './NodeLabelRow'
 import { NodeShotLabel } from '../../generation/list/CanvasListLinks'
 import { NodeInlineImageTitle } from './NodeImagePreviewActions'
+import { hasEmptyCardLabel } from './render/emptyCardLabel'
 import { useNodeMediaMeasurement } from './useNodeMediaMeasurement'
 import { useNodeVideoPreviewIntent } from './useNodeVideoPreviewIntent'
 import { useNodeMediaPreview } from './useNodeMediaPreview'
@@ -116,7 +119,7 @@ function BaseGenerationNodeImpl({
   const panoramaUploadInputRef = React.useRef<HTMLInputElement | null>(null)
   const [provenanceOpen, setProvenanceOpen] = React.useState(false)
   const showVersionCards = React.useMemo(() => nodeHasVersionCards(node), [node])
-  const { openMediaPreview, mediaPreviewControls, mediaPreviewDoubleClick } = useNodeMediaPreview(node, selected && !isMultiSelectActive, () => setProvenanceOpen(true), reportFeedback)
+  const { openMediaPreview, mediaPreviewControls, mediaPreviewDoubleClick } = useNodeMediaPreview(node, selected && !isMultiSelectActive && !readOnly, () => setProvenanceOpen(true), reportFeedback)
   const sizeBounds = getNodeSizeBounds(node.kind)
 
   const handleTimelineDragStart = (event: React.DragEvent<HTMLElement>) => {
@@ -207,7 +210,6 @@ function BaseGenerationNodeImpl({
   // 图片本地编辑（切图 / 裁剪 / 旋转翻转）—— A1.5 抽进 useNodeImageEditing。
   // 图片类与素材类共用；编辑产物进入当前节点历史堆叠，并切换为主图。
   const imageEditing = useNodeImageEditing(node, visualSize, reportFeedback)
-  const { downloading: panoramaDownloading, download: downloadPanorama } = useResultDownload(node, reportFeedback)
   // 面板挂载走可打断的低优先级渲染（按下即选中时同步挂面板，拖动起手实测顿 70–95 ms）：高亮与拖动先出，面板随后到，取消选中立即卸载。
   // 版本宫格铺开时不挂生成浮框（V-1054）：浮框钉在节点正下方、定宽 560，会盖住宫格下面几行；铺开 = 正在挑版本，
   // 和 09-21 结果托盘展开时卸载浮框是同一条约定（不挂才不跑）。收起宫格浮框就回来。
@@ -251,37 +253,14 @@ function BaseGenerationNodeImpl({
 
       <EmptyNodeVariantToolbar nodeId={node.id} visible={selected && !isMultiSelectActive && !readOnly && !hasResult} />
       {node.kind === 'panorama' && selected && !isMultiSelectActive && !readOnly && node.result?.url ? (
-        <FloatingToolbarShell ariaLabel={t('generationCommon.node.panoramaActions')} lockNodeId={node.id}>
-          <ToolbarButton
-            icon={<IconMaximize size={TBI.size} stroke={TBI.stroke} />}
-            label={t('generationCommon.node.panoramaPreview')}
-            title={t('generationCommon.node.panoramaPreview')}
-            onClick={() => panoramaFullscreenRef.current?.()}
-          />
-          <ToolbarDivider />
-          <ToolbarButton
-            icon={<IconUpload size={TBI.size} stroke={TBI.stroke} />}
-            label={t('generationCommon.node.reupload')}
-            title={t('generationCommon.node.reuploadPanorama')}
-            onClick={() => panoramaUploadInputRef.current?.click()}
-          />
-          <ToolbarDivider />
-          <ToolbarButton
-            icon={<IconDownload size={TBI.size} stroke={TBI.stroke} />}
-            label={t('generationCommon.resultDownload.download')}
-            title={t('generationCommon.resultDownload.downloadHint')}
-            disabled={panoramaDownloading}
-            onClick={downloadPanorama}
-          />
-          <ToolbarVariantProvenanceActions nodeId={node.id} onOpenProvenance={() => setProvenanceOpen(true)} />
-          <input
-            ref={panoramaUploadInputRef}
-            className="hidden"
-            type="file"
-            accept="image/*"
-            onChange={handlePanoramaFileChange}
-          />
-        </FloatingToolbarShell>
+        <PanoramaNodeToolbar
+          node={node}
+          reportFeedback={reportFeedback}
+          fullscreenRef={panoramaFullscreenRef}
+          uploadInputRef={panoramaUploadInputRef}
+          onFileChange={handlePanoramaFileChange}
+          onOpenProvenance={() => setProvenanceOpen(true)}
+        />
       ) : null}
       {node.kind !== 'panorama' &&
       (node.kind === 'image' || isAssetKind || isImageLikeGenerationNodeKind(node.kind)) &&
@@ -306,7 +285,7 @@ function BaseGenerationNodeImpl({
       ) : null}
       {mediaPreviewControls}
       <NodeLabelRow>
-        <NodeShotLabel node={node} shotRole={shotIdentity.shotRole}>{!isCardKind && !isTextKind ? <NodeInlineImageTitle nodeId={node.id} value={node.title || ''} readOnly={readOnly} /> : null}</NodeShotLabel>
+        <NodeShotLabel node={node} shotRole={shotIdentity.shotRole}>{(!isCardKind && !isTextKind) || hasEmptyCardLabel({ isCardKind, isTextKind, hasResult, contentJson: node.contentJson }) ? <NodeInlineImageTitle nodeId={node.id} value={node.title || ''} readOnly={readOnly} /> : null}</NodeShotLabel>
         {!isCardKind ? <ShotMountBadges cards={mountedCards} /> : null}
         <TechnicalReviewBadge meta={node.meta} /><DerivedReadyBadge node={node} />
         {/* 拆解收起态（视图 07）：视频节点有拆解结果且面板未占槽时，挂「已拆解 · N 镜」角标 + 可点回浮条。 */}
@@ -420,6 +399,7 @@ function BaseGenerationNodeImpl({
             // 播放守卫：decode 失败自动转码自愈一次（HEVC 存量/供应商 HEVC 产物），修不了给人话原因。
             <NodeVideoPlaybackGuard
               node={node}
+              reportFeedback={reportFeedback}
               previewRequested={videoPreview.requested}
               engaged={selected && !isMultiSelectActive}
               data-node-preview-video="true"
@@ -452,7 +432,6 @@ function BaseGenerationNodeImpl({
           // 卡片 / 文本卡的空态在它们自己的 body 里（上面），这块预览是隐藏的，不再重复挂一份空态。
           <PendingGenerationPlaceholder
             node={node}
-            selected={selected}
             waitingUpstream={hasFrameSourceEdge} derivedReady={isDerivedPromptReady(node)}
           />
         )}
@@ -463,16 +442,14 @@ function BaseGenerationNodeImpl({
           <ImageCropGridOverlay
             imageUrl={node.result.url}
             gridSize={imageEditing.editGrid}
-            onConfirm={(result) => {
-              void imageEditing.handleEditConfirm(result)
-            }}
-            onCancel={() => imageEditing.cancelEdit()}
+            onDraftChange={imageEditing.reportDraft}
           />
         ) : null}
         {localImageOpPending && hasResult ? (
           <LocalImageOpPendingStatus message={node.progress?.message} progress={node.progress?.percent} />
         ) : null}
       </div>
+      <ImageCropGridActionBar editing={imageEditing} />
       {showVersionCards ? (
         <NodeVersionCardsHost onFeedback={reportFeedback} node={node} readOnly={readOnly} nodeSize={visualSize} entryHidden={imageEditing.editGrid !== null} />
       ) : null}
@@ -533,7 +510,9 @@ function BaseGenerationNodeImpl({
 // v0.7.1 perf: memo wrap — node 引用稳定时跳过 rerender。
 // 父级 GenerationCanvas 须保证 node 是 zustand store 里同一引用（zustand immer 默认就是）。
 const BaseGenerationNode = React.memo(
-  BaseGenerationNodeImpl,
+  (props: BaseGenerationNodeProps) => props.node.result?.type === 'video'
+    ? <NodeVideoSessionProvider key={`${props.node.id}:${props.node.result?.url}`} node={props.node} writable={!props.readOnly}><BaseGenerationNodeImpl {...props} /></NodeVideoSessionProvider>
+    : <BaseGenerationNodeImpl {...props} />,
   (prev, next) =>
     prev.node === next.node &&
     prev.selected === next.selected &&

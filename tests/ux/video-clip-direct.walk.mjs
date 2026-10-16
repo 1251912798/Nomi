@@ -1,5 +1,5 @@
 import { makeTempDir } from '../../scripts/_test-temp.mjs'
-// 真实 Electron：视频节点「直接剪辑」（2026-10-10 用户拍板「设计没问题」，设计卡 docs/plan/2026-10-10-video-clip-direct.md）。
+// 真实 Electron：视频节点「直接剪辑」（2026-10-10 用户拍板「设计没问题」，设计卡 docs/plan/2026-10-11-video-trim-production.md）。
 // 走生产构建（先 `pnpm run build`），隔离资料目录，窗口在屏幕外不抢焦点，零花费：全程本机 ffmpeg，不碰任何服务商。
 //
 // 素材是**每一帧都写着自己时间**的 12 秒视频（红通道 = 20·t、绿通道 = 小数秒），所以剪出来的片段「从原视频的第几秒开始」
@@ -15,10 +15,12 @@ import { makeTempDir } from '../../scripts/_test-temp.mjs'
 //   ⑦ 本机失败（源文件被拿走）：新卡变错误卡，只有「重试」没有「换个模型」；放回文件点重试成功；
 //   ⑧ 画布缩到 50%：面板不跟着缩小，照常可拖照常可确认。
 // 用法：node tests/ux/video-clip-direct.walk.mjs [--locale en] [--scheme dark] [--shots no]
-// 截图：docs/evidence/2026-10-10-video-clip-direct/<序号>-<状态>-<zh|en>[-dark].png
+// 截图：docs/evidence/2026-10-11-video-trim-production/<序号>-<状态>-<zh|en>[-dark].png
 import fs from 'node:fs'
 import path from 'node:path'
 import crypto from 'node:crypto'
+import os from 'node:os'
+import { PAGE_PROBE, beginMeasure, endMeasure, pct, perKeyLatency, renderSummary } from './canvas-follow-hand/probe.mjs'
 import { execFileSync, spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import ffmpeg from '@ffmpeg-installer/ffmpeg'
@@ -27,6 +29,7 @@ import { expect, expectAbsent, proveProbe, screenshotSettled, waitForVisualQuies
 import { findNodeHitPoint, readCanvasViewport, waitForCanvasViewportSettled } from './_canvasHit.mjs'
 import { stationTimeout } from './_station-budget.mjs'
 import { uiText } from './full-walk/invariants.mjs'
+import { canvasResetView, canvasSetZoomPercent } from './_shell.mjs'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const argValue = (flag, fallback) => { const index = process.argv.indexOf(flag); return index > 0 ? process.argv[index + 1] : fallback }
@@ -34,7 +37,7 @@ const locale = argValue('--locale', 'zh-CN')
 const scheme = argValue('--scheme', 'light')
 const tag = `${locale === 'en' ? 'en' : 'zh'}${scheme === 'dark' ? '-dark' : ''}`
 const zh = locale !== 'en'
-const evidence = path.join(repoRoot, 'docs/evidence/2026-10-10-video-clip-direct')
+const evidence = path.join(repoRoot, 'docs/evidence/2026-10-11-video-trim-production')
 const failShotDir = path.join(repoRoot, '.tmp/walk-fail')
 const offscreen = path.join(repoRoot, 'tests/ux/full-walk/offscreenWindow.cjs')
 const withShots = argValue('--shots', 'yes') !== 'no'
@@ -78,6 +81,8 @@ const nodes = [
   video('moved-video', 'moved.mp4', T.moved, 200, 560, DURATION, 640, 360),
   video('long-video', 'long.mp4', T.long, 760, 100, LONG_DURATION, 1280, 720),
 ]
+fs.copyFileSync(path.join(repoRoot, 'tests/ux/fixtures/canvas-follow-hand-1080p15.mp4'), path.join(importedDir, 'real.mp4'))
+nodes.push(video('real-video', 'real.mp4', 'Real 1080p camera clip', 1200, 1800, 15, 1920, 1080))
 const payload = { workbenchDocument: null, timeline: null, generationCanvas: { nodes, edges: [], groups: [], selectedNodeIds: [] }, storyboardPlan: null, storyboardPlanCommitted: false }
 const project = { id: projectId, name: 'Video clip direct', version: 2, createdAt: 1, updatedAt: 1, savedAt: 1, revision: 1, lastKnownRootPath: projectRoot, ...payload, payload }
 for (const name of ['project.json', '.nomi/project.json']) fs.writeFileSync(path.join(projectRoot, name), JSON.stringify(project))
@@ -87,11 +92,9 @@ const L = {
   trim: tr('generationCommon.videoTrim.toolbar'),
   tcIn: tr('generationCommon.videoTrim.tcIn'),
   tcOut: tr('generationCommon.videoTrim.tcOut'),
-  keep: tr('generationCommon.videoTrim.keep'),
   play: tr('generationCommon.videoTrim.play'),
   pause: tr('generationCommon.videoTrim.pause'),
   confirm: tr('generationCommon.videoTrim.confirm'),
-  close: tr('generationCommon.videoTrim.close'),
   retry: tr('generationCommon.observability.action.retry.main'),
   switchModel: [tr('generationCommon.observability.action.switchModel.main'), tr('generationCommon.observability.action.switchModel.alt')],
   failedTitle: tr('generationCommon.videoTrim.failed'),
@@ -105,7 +108,10 @@ const run = await launchNomiApp({
   initialLocalStorage: { 'nomi:locale:v1': locale, 'nomi-color-scheme': scheme, 'nomi:splash:v1': 'seen', 'nomi:journey-tour:v1': 'seen', 'nomi:canvas-gesture-hint:v1': 'seen', __nomiE2E: '1' },
 })
 const { app } = run
+await app.context().addInitScript(PAGE_PROBE)
 let win = run.win
+await win.reload()
+await win.waitForLoadState('domcontentloaded')
 win.setDefaultTimeout(stationTimeout({ operations: 2 }))
 
 const nodeSel = (id) => `.react-flow__node[data-id="${id}"]`
@@ -129,7 +135,7 @@ async function task(name, body) {
   console.log(JSON.stringify(results.at(-1)))
 }
 async function resetView() {
-  await win.getByRole('button', { name: uiText(locale, 'generationCommon.navigation.resetView'), exact: true }).first().click()
+  await canvasResetView(win)
   await waitForCanvasViewportSettled(win)
   await waitForVisualQuiescence(win)
 }
@@ -148,14 +154,14 @@ async function undo() {
 }
 const trimButton = () => win.locator('[data-node-floating-toolbar]').getByRole('button', { name: L.trim, exact: true }).first()
 const panel = () => win.locator('[data-video-clip-panel]')
-const clipEl = () => panel().locator('[data-testid="clip-node-clip"]')
-const handle = (edge) => panel().locator(`[data-clip-handle-edge="${edge}"]`)
+const clipEl = () => panel().locator('[data-edit-filmstrip]')
+const handle = (edge) => panel().locator(`[data-trim-handle="${edge === 'left' ? 'start' : 'end'}"]`)
 /** 面板贴着节点下沿、有半个屏幕高：被测的那张卡放在画布左上，别的卡挪到屏外（像人把它拖到顺手的位置）。 */
 async function place(id) {
   await win.evaluate((target) => {
     const store = /** @type {any} */ (window).__nomiCanvasStore
     store.getState().nodes.forEach((node, index) => {
-      if (node.kind !== 'video' || !['src-video', 'moved-video', 'long-video'].includes(node.id)) return
+      if (node.kind !== 'video' || !['src-video', 'moved-video', 'long-video', 'real-video'].includes(node.id)) return
       store.getState().updateNode(node.id, { position: node.id === target ? { x: 200, y: 100 } : { x: 200 + index * 400, y: 1800 } })
     })
   }, id)
@@ -172,20 +178,16 @@ async function openPanel(id) {
 }
 /** 读数（入点 / 出点 / 保留，秒）。 */
 async function readouts() {
-  const text = await panel().innerText()
-  const pick = (label) => {
-    const match = new RegExp(`${label}\\s*(?:(\\d+):(\\d\\d\\.\\d)|(\\d+\\.\\d)s)`).exec(text.replace(/\n/g, ' '))
-    if (!match) return NaN
-    return match[3] ? Number(match[3]) : Number(match[1]) * 60 + Number(match[2])
-  }
-  return { in: pick(L.tcIn), out: pick(L.tcOut), keep: pick(L.keep) }
+  const start = Number(await handle('left').inputValue())
+  const end = Number(await handle('right').inputValue())
+  return { in: start, out: end, keep: Number((await panel().locator('[data-selection-duration]').innerText()).replace('s', '')) }
 }
 async function dragHandle(edge, seconds, { release = true } = {}) {
   const box = await handle(edge).boundingBox()
   const clip = await clipEl().boundingBox()
   const now = await readouts()
-  const pxPerSecond = clip.width / (now.out - now.in)
-  const x0 = box.x + box.width / 2
+  const pxPerSecond = (clip.width - 28) / Number(await handle(edge).getAttribute('max'))
+  const x0 = box.x + 14 + (edge === 'left' ? now.in : now.out) * pxPerSecond
   const y0 = box.y + box.height / 2
   await win.mouse.move(x0, y0)
   await win.mouse.down()
@@ -222,6 +224,7 @@ try {
   await expect(win.locator('.react-flow__node')).toHaveCount(nodes.length)
   await waitForCanvasViewportSettled(win)
   await resetView()
+  expect(await win.evaluate(() => Boolean(window.__cfhProbe?.hookInstalled()))).toBe(true)
 
   await task('01-panel-opens-beside-node-with-full-range', async () => {
     await place('src-video')
@@ -231,7 +234,7 @@ try {
     await trimButton().click()
     await expect(panel()).toBeVisible()
     await expectAbsent(composerOf('src-video'), { provenBy: composerProof, message: '剪辑面板打开时，同一节点的生成面板应当收起' })
-    await panel().getByRole('button', { name: L.close, exact: true }).click()
+    await win.keyboard.press('Escape')
     await expect(panel()).toHaveCount(0)
     await expect(composerOf('src-video')).toBeVisible()
     await trimButton().click()
@@ -255,16 +258,11 @@ try {
     await dragHandle('left', 3, { release: false })
     // 按住不放：读数跟着走；拖动时长小牌存在且不是红色（用户 10-10 拍板改中性色）
     await expect.poll(async () => (await readouts()).in, { message: 'in readout follows the drag' }).toBeGreaterThan(before.in + 1.5)
-    const tagColor = await win.evaluate(() => {
-      const tagEl = Array.from(document.querySelectorAll('[data-video-clip-panel] span')).find((el) => /^[+-]\d+\.\ds · \d+\.\ds$/.test((el.textContent || '').trim()))
-      if (!tagEl) return null
-      const c = getComputedStyle(tagEl).backgroundColor
-      return c
-    })
-    if (tagColor === null) throw new Error('the resize tag is not on screen while dragging')
-    const channels = (tagColor.match(/-?\d*\.?\d+/g) ?? []).map(Number)
-    // 红色（--nomi-snap-tag = oklch(.45 .18 30)）在 rgb 里 R 明显大于 G / B；中性色三通道相近。
-    if (channels.length >= 3 && channels[0] - Math.max(channels[1], channels[2]) > 40) throw new Error(`resize tag is still red: ${tagColor}`)
+    const grips = panel().locator('[data-trim-grip]')
+    await expect(grips).toHaveCount(2)
+    expect((await grips.first().boundingBox()).width).toBeLessThanOrEqual(6.1)
+    await expect(panel().locator('video')).toHaveCount(0)
+    await expect(win.locator(`${nodeSel('src-video')} video`)).toHaveCount(1)
     await shot('04-clip-drag-in')
     await win.mouse.up()
     await dragHandle('right', -3)
@@ -276,7 +274,7 @@ try {
   })
 
   await task('03-preview-plays-only-the-kept-part', async () => {
-    const timeText = () => panel().locator('[data-video-clip-time]').innerText()
+    const timeText = () => win.locator(`${nodeSel('src-video')} [data-node-video-time]`).innerText()
     const parse = (text) => { const m = /(\d+):(\d\d\.\d)/.exec(text); return Number(m[1]) * 60 + Number(m[2]) }
     await win.getByRole('button', { name: L.play, exact: true }).click()
     const seen = []
@@ -317,7 +315,7 @@ try {
   await task('05-one-undo-removes-card-and-edge', async () => {
     await undo()
     const state = await snapshot()
-    expect(state.nodes.map((node) => node.id).sort()).toEqual(['long-video', 'moved-video', 'src-video'])
+    expect(state.nodes.map((node) => node.id).sort()).toEqual(['long-video', 'moved-video', 'real-video', 'src-video'])
     expect(state.edges).toEqual([])
   })
 
@@ -351,7 +349,7 @@ try {
   await task('07-local-failure-card-has-retry-only-and-retry-works', async () => {
     await openPanel('moved-video')
     // 预览播放器把整段读进来之后再拿走源文件（卡上还能预览，本机 ffmpeg 读不到了 = 真实的本机失败）
-    await expect.poll(() => win.evaluate(() => { const v = document.querySelector('[data-video-clip-panel] video'); return v ? (v.buffered.length ? v.buffered.end(v.buffered.length - 1) : 0) : 0 }), { timeout: stationTimeout({ operations: 1 }) }).toBeGreaterThan(DURATION - 0.5)
+    await expect.poll(() => win.evaluate(() => { const v = document.querySelector('[data-node-id="moved-video"] video'); return v ? (v.buffered.length ? v.buffered.end(v.buffered.length - 1) : 0) : 0 }), { timeout: stationTimeout({ operations: 1 }) }).toBeGreaterThan(DURATION - 0.5)
     // Windows 上播放器还握着文件时改名会 EBUSY：等它放手（预览读完之后通常几百毫秒内）
     await expect.poll(() => { try { fs.renameSync(movedFile, hiddenFile); return true } catch (error) { if (error?.code === 'EBUSY' || error?.code === 'EPERM') return false; throw error } }, { timeout: stationTimeout({ operations: 1 }) }).toBe(true)
     await win.getByRole('button', { name: L.confirm, exact: true }).click()
@@ -377,15 +375,7 @@ try {
     await place('src-video')
     await select('src-video')
     // 缩到 50%：画布底栏的缩放滑杆
-    const sliderSelector = `input[type="range"][aria-label="${tr('generationCommon.navigation.zoomRatio')}"]`
-    const slider = win.locator(sliderSelector).first()
-    await slider.waitFor()
-    await win.evaluate((selector) => {
-      const input = /** @type {HTMLInputElement} */ (document.querySelector(selector))
-      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set
-      setter.call(input, '50')
-      input.dispatchEvent(new Event('input', { bubbles: true }))
-    }, sliderSelector)
+    await canvasSetZoomPercent(win, 50)
     await waitForCanvasViewportSettled(win)
     const viewport = await readCanvasViewport(win)
     if (viewport.zoom > 0.6) throw new Error(`canvas zoom is ${viewport.zoom}, not scaled down`)
@@ -399,7 +389,7 @@ try {
     await expect(panel()).toBeVisible()
     await expect.poll(async () => (await readouts()).out).toBeGreaterThan(1)
     const box = await panel().boundingBox()
-    if (Math.abs(box.width - 480) > 6) throw new Error(`panel is ${box.width}px wide at zoom ${viewport.zoom}, expected 480`)
+    if (Math.abs(box.width - 340) > 6) throw new Error(`panel is ${box.width}px wide at zoom ${viewport.zoom}, expected 340`)
     await dragHandle('left', 2)
     expect((await readouts()).in).toBeGreaterThan(0.8)
     await shot('14-zoom50-clip')
@@ -407,6 +397,39 @@ try {
     await expect.poll(async () => newCards(await snapshot()).length, { timeout: stationTimeout({ operations: 4 }) }).toBe(cardsBefore + 1)
     await expect.poll(async () => newCards(await snapshot()).filter((node) => node.status === 'success').length, { timeout: stationTimeout({ operations: 4 }) }).toBe(cardsBefore + 1)
   })
+  await task('09-real-1080p-performance-and-keyboard', async () => {
+    const observations = []
+    for (let round = 0; round < 3; round++) {
+      await openPanel('real-video')
+      await expect(panel().locator('img')).toBeVisible()
+      const t0 = await beginMeasure(win, { watch: '[data-video-clip-panel]', focusNode: 'real-video', renders: true })
+      await dragHandle('left', 2)
+      await dragHandle('right', -2)
+      await handle('left').focus()
+      for (let n = 0; n < 15; n++) await win.keyboard.press('ArrowRight')
+      for (let n = 0; n < 15; n++) await win.keyboard.press('ArrowLeft')
+      const measure = await endMeasure(win, t0)
+      const gaps = measure.frames.slice(1).map((t, i) => t - measure.frames[i]).sort((a,b)=>a-b)
+      const latencies = perKeyLatency(measure).map(x=>x.toPaint).filter(Number.isFinite).sort((a,b)=>a-b)
+      observations.push({ round, frameGapP50: pct(gaps, .5), frameGapP95: pct(gaps,.95), inputToFrameP95: pct(latencies,.95), longtasks: measure.longtasks, video: measure.video, renders: renderSummary(measure.commits) })
+      expect(measure.video.maxPlaying).toBeLessThanOrEqual(1)
+      await expect(panel().locator('video')).toHaveCount(0)
+      // Escape must escape from source player controls as well as trim handles.
+      await win.locator(`${nodeSel('real-video')} [data-node-video-controls] button`).first().focus()
+      await win.keyboard.press('Escape')
+      await expect(panel()).toHaveCount(0)
+    }
+    fs.writeFileSync(path.join(evidence, `performance-${tag}.json`), JSON.stringify({ machine: { platform: process.platform, arch: process.arch, cpus: os.cpus()[0]?.model, memory: os.totalmem() }, fixture: 'real camera-derived 1080p15, four source nodes, three rounds', observations }, null, 2))
+    await openPanel('real-video')
+    await shot('15-real-filmstrip')
+    const selected = await readouts()
+    await win.getByRole('button', { name: L.confirm, exact: true }).click()
+    const before = newCards(await snapshot()).length
+    await expect.poll(async () => newCards(await snapshot()).filter(n=>n.status==='success').length).toBe(before)
+    const out = newCards(await snapshot()).find(n=>n.meta.sourceVideoNodeId==='real-video')
+    expect(Math.abs(durationOf(localPath(out.resultUrl)) - (selected.out-selected.in))).toBeLessThan(.25)
+  })
+
 } finally {
   await app.close().catch(() => {})
 }

@@ -394,6 +394,8 @@ DaVinci Resolve 确实有「选中跟随播放头」，但它是 **opt-in 且默
 
 **规则 2 的补充（2026-10-07）· 纯图标按钮的名字不能只靠鼠标悬停。** 名字必须同时在**键盘聚焦**时出现（tooltip 由聚焦触发，或同时带 `aria-label`），触屏 / 键盘用户才读得到（WCAG 1.4.13、NN/g tooltip）。`WorkbenchIconButton` 已把 `label` 同时写进 `aria-label` 与 `title`；散装图标按钮必须自己补。
 
+**规则 2 的补充（2026-10-10）· 行内 / 工具条的动作 ≤3 个就直接摆图标（带 hover 名字），不藏进「⋯」；超过 3 个才用「⋯」。（用户 2026-10-10）** 起因：文稿方案行同时有红底垃圾桶和「⋯」菜单，两处删除重复、三个小点又「不容易看」。「⋯」是为放不下才收纳的，不是默认容器（§1.5.3 收纳排最后）。悬停 / 选中 / 聚焦时露出，当前项用淡底色、不加描边。纯图标按钮的名字由门岗守：`check:icon-semantics` 规则三——原生 `<button>` 里只有图标且没有 `aria-label` / `title` 即红（存量只减不增）。
+
 **规则 5 · 一个 icon 全 app 一个含义**（沿用 **§6「语义图标登记」**的 Tabler 词典）。
 **新 icon 先证明词典里没有现成的再登记**——登记的动作就是登进 §6 那张表。
 
@@ -420,6 +422,7 @@ DaVinci Resolve 确实有「选中跟随播放头」，但它是 **opt-in 且默
 |---|---|---|
 | 标签 ≤4 字 / 英文 ≤2 词 | ✅ `check:controls`（只量**可见文字**；`aria-label`/`title`/icon 按钮的 `label` 是 hover 名字，按规则 1 本来就允许长） | — |
 | 禁用词「请 / 我的 / 使用 / 一下 / 不要 / 不用 / 算了」 | ✅ `check:controls` | — |
+| 纯图标按钮没有名字（`aria-label` / `title`） | ✅ `check:icon-semantics` 规则三（原生 `<button>` 全是图标且无名字；带 `{...spread}` 的不判） | 「≤3 个动作该不该摆出来」是构图判断，人看 |
 | 同一动作第二种说法 | ✅ `check:controls`（owner = GLOSSARY「动作词」表，只覆盖已登记的**撤销 / 删除 / 关闭 / 取消 / 生成 / 确认**六组；整条文案相等才判，`确认删除` 不判） | 别的动作要管 → 先进 GLOSSARY |
 | icon 不在词典 | ✅ `check:icon-semantics`（新图标必须登记进 §6；**「同一动作两个图标」那一条本来就在这道门岗里，不重做**） | — |
 | **一屏只有一个主动作** | ❌ 构图判断，AST 测不出来 | 样张阶段人眼（§1.5.5 三件产物） |
@@ -885,20 +888,27 @@ mark 是 **28×28 viewBox 的圆角方块**：深色底（`oklch(0.22 0.01 80)` 
 
 ### 4.4 `GroupFrame`（组框）
 
-文件：`src/workbench/generationCanvas/components/GroupFrame.tsx`
+文件：`src/workbench/generationCanvas/components/GroupFrame.tsx`（框头：`GroupFrameHeader.tsx`；折叠卡：`CollapsedGroupCard.tsx`）
 
-视觉：包围一组节点的浅色半透明 frame；组名（标题前一颗小圆点 + Stack 图标 + 名称 + 一句说明）放在框外上方，不压在框里的节点上。
+视觉（2026-10-10 用户拍板，**取代 10-06 的组色方案 B**，并对齐拍板样张 V-1136 Main-1280）：框内一行框头，框内左上「组名 · 计数」，框内右上「生成全部」；框外标签、色点、折叠钮、⋯ 钮全部删掉。框体无边框，底色是一层很淡的 soft 色。
 
 规格：
 
-- 普通态只有一套共享视觉契约：`components/groupVisualContract.ts`；组色在 `model/groupColor.ts`（单一真相）
-- **默认中性灰**：新建的组一律灰（`--nomi-group-neutral`，类名 `border-nomi-group-neutral`）。展开组框底色是半透明 `bg-nomi-paper`，不随组色变
-- **可选色只上两处：边框和标题前的小圆点，不做任何底色填充。** 在组工具条「颜色」里选，6 个语义 token（ocean / teal / amber / coral / violet / rose，光暗各一份，定义在 `nomi-tokens.css` + `tailwind.config.ts`）；折叠卡同样只在边框上用。颜色一律走静态 token 类名（`border-nomi-group-*` / `bg-nomi-group-*` 只用在那颗圆点上），不写行内 style，不用十六进制
-- **老数据不上色**：`NodeGroup.color`（旧版存过 `#3b82f6` 这类自定义色）读盘后原样留在存档里但永不进渲染层；渲染只认新字段 `NodeGroup.colorToken`（存 token 名；灰 = 没有这个字段），非法值读盘回到灰。所以老项目打开，每个组仍是灰；只有用户在新选色器里亲手选过的才有颜色
-- 折叠卡、后层卡片、空态图标与侧栏组标识仍共用同一组暖中性 token；`nomi-accent` 不用来标识编组
-- 强调色只允许出现在共享的瞬时交互反馈（键盘焦点、连接握把、选中态描边），不能成为编组常驻底色或描边
-- 组工具条（`CanvasGroupToolbar`）和节点浮条同壳同高：常用动作在前（颜色、排列、生成整组、进时间轴、下载），破坏性的「解组」放最右并用分隔线隔开；放在框上方，贴画布顶边放不下就翻到框下方，组比视口还大就贴舞台顶边，左右同理拉回舞台内
-- 可拖动整组：框内空白处拖 = 整组，拖节点卡片 = 只拖这一个
+- **框头（框内一行）**：左上「组名 · 计数」，右上「生成全部」（`WorkbenchButton size=sm`，不加胶囊变体）。分镜组（有 `materializationOperationId` 章）显示「分镜 · 」前缀、计数写「N 镜」；普通组只显示组名、计数写「N 个」。前缀只是显示规则，改名改的仍是组名本身。拖动中计数显示成「3 → 2」。
+- **框头内容的唯一来源**：分镜判断只看 `NodeGroup.materializationOperationId`（只有分镜多镜物化通道写它；用户手建组与旧快照没有）。不靠组名、不靠 `categoryId` 猜。
+- **框头与成员留白**：成员卡顶 = 框顶 + 68（`FRAME_CONTENT_PADDING` 24 + `FRAME_HEADER_RESERVE` 44）。框头占框顶下方 10–36，节点名字标签画在卡上方约 24，两者都落在成员之上的留白里（断言见 `groupHeaderClearance.test.ts`）。
+- **底色（D4）**：默认中性灰 soft（`bg-nomi-group-neutral-soft`）。选了颜色，底色换成该颜色的 soft（`bg-nomi-group-<id>-soft`，ocean / teal / amber / coral / violet / rose 六色，光暗各一套，定义在 `tailwind.config.ts` 与 `src/theme/nomi-tokens.css`，同名镜像）。**不用 `color-mix` 行内样式，不写十六进制，不写行内 style 颜色。** 结构测试 `groupColorTokens.test.ts` 钉住这三条。
+- **边框不上色**：框体常驻无边框。空框（刚画完、还没放东西）保留虚线，那是「还没装东西」的状态，不是颜色。
+- **选中不描边（追加拍板）**：选中分组框体不加任何描边、光圈或强调色。选中态靠分组工具条出现来表示。键盘焦点环用深色（`ring-nomi-ink/60`），不用蓝色。
+- **拖动落点反馈（追加拍板）**：拖节点进框，框底色加深一档（`bg-nomi-ink-10`），不用蓝色；拖出框变虚线。
+- **标题前颜色圆点已删**：当前色只在工具条的颜色按钮上显示（那颗圆点仍在工具条）。
+- **老数据不上色**：`NodeGroup.color`（旧版存过 `#3b82f6` 这类自定义色）读盘后原样留在存档里但永不进渲染层；渲染只认 `NodeGroup.colorToken`，非法值回到灰。
+- **折叠态同一规则**：折叠成卡（`CollapsedGroupCard`）的底色同样换成组色 soft，无边框，选中不描边。
+- **组工具条**：常用动作在前（颜色、排列、生成整组、进时间轴、下载），破坏性的「解组」放末尾前用分隔线隔开，最后是「⋯」（打开与框边右键同一份 `FrameContextMenu`：改名 / 说明、生成整组、整组进时间轴、折叠成卡、解散、删除）。工具条放在框上方，贴画布顶边放不下就翻到框下方；框上方不再为框外标签预留高度（`GROUP_LABEL_RISE` 已删）。
+- **菜单入口**：框边右键与工具条「⋯」打开同一份菜单。框头上没有 ⋯ 与折叠钮。
+- **「生成全部」**：框头按钮与工具条「生成整组」走同一执行口（`runFrameAction(groupId, generate)`），付费确认语义不变。
+- 强调色只允许出现在共享的瞬时交互反馈（键盘焦点除外也用深色，连接握把），不能成为编组常驻底色或描边。
+- 可拖动整组：框内空白处拖 = 整组，拖节点卡片 = 只拖这一个。
 
 ### 4.5 通知：原地 → 状态 → toast → 必须决定
 

@@ -641,9 +641,9 @@ describe('⑧ composer 底栏逐件', () => {
     expect(html(el(AgentPanelV4Composer, { panelHeight: 900, value: 'a\nb\nc\nd\ne\nf\ng\nh' }))).toContain('data-height="218"')
   })
 
-  it('没有 onValueChange 时 textarea 只读——受控件不假装自己能编辑', () => {
-    expect(html(el(AgentPanelV4Composer, { value: '只读' }))).toContain('readOnly=""')
-    expect(html(el(AgentPanelV4Composer, { value: '可编辑', onValueChange: () => undefined }))).not.toContain('readOnly')
+  it('没有 onValueChange 时共享提示词编辑器只读——受控件不假装自己能编辑', () => {
+    expect(html(el(AgentPanelV4Composer, { value: '只读' }))).toContain('aria-readonly="true"')
+    expect(html(el(AgentPanelV4Composer, { value: '可编辑', onValueChange: () => undefined }))).toContain('aria-readonly="false"')
   })
 })
 

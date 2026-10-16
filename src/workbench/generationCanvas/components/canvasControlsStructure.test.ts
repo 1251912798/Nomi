@@ -159,7 +159,9 @@ describe('generation canvas control structure', () => {
     const canvasStyles = source('../styles/generationCanvas.css')
 
     expect(generationCanvas).not.toContain('CanvasGestureHint')
-    expect(navigationStack).toContain('<CanvasControlsHelpPopover />')
+    // 外壳重设计后帮助入口收进左下缩放簇的「⋯」里（同一个浮层，触发钮换成带文字的整行）。
+    expect(navigationStack).toContain('<CanvasViewOptionsPopover')
+    expect(source('./CanvasViewOptionsPopover.tsx')).toContain('<CanvasControlsHelpPopover asRow')
     expect(onboardingState).not.toContain('CANVAS_GESTURE_HINT_KEY')
     expect(canvasStyles).not.toContain('generation-canvas-v2__gesture-hint')
   })
@@ -293,23 +295,26 @@ describe('generation canvas control structure', () => {
     expect(flowStyles).toContain('.react-flow__nodesselection-rect')
     expect(flowStyles).toContain('color-mix(in oklab, var(--nomi-ink) 32%, transparent)')
     expect(flowStyles).toContain('--xy-connectionline-stroke: var(--nomi-accent)')
-    expect(groupFrame).toContain('GROUP_VISUAL_CLASS.frame')
-    // 头部胶囊 2026-09-06 抽进 GroupFrameHeader（框工具第一档：它自己带两个字段的编辑态）。
-    // 视觉合同跟着搬，不许在新文件里另配一套皮肤。
-    expect(groupFrameHeader).toContain('GROUP_VISUAL_CLASS.label')
-    expect(groupFrameHeader).toContain('GROUP_VISUAL_CLASS.marker')
-    // 组色方案 B：颜色只走静态 token 类名（边框 + 标题圆点），不写行内 style、不填底色。
+    // 框头（10-10 拍板）：框内一行，不再有框外标签、色点、折叠与 ⋯ 按钮。
+    expect(groupFrameHeader).not.toContain('outside')
+    expect(groupFrameHeader).not.toContain('GROUP_VISUAL_CLASS.label')
+    expect(groupFrameHeader).not.toContain('collapseNamed')
+    expect(groupFrameHeader).not.toContain('data-group-color-dot')
+    expect(groupFrameHeader).toContain('WorkbenchButton')
+    // 组色（10-10 拍板）：底色走静态 soft token 类名，不写行内 style；框体无边框，选中无描边。
     expect(groupFrame).toContain('groupColorClass')
     expect(groupFrame).toContain('box.group.colorToken')
     expect(groupFrame).not.toContain('backgroundColor')
     expect(groupFrame).not.toContain('surfaceColor')
-    expect(groupFrameHeader).toContain('groupColorClass')
-    expect(groupContract).toContain("group's semantic color")
+    expect(groupFrame).not.toContain('border-nomi-accent')
+    expect(groupFrame).not.toContain('border-workbench-accent')
+    expect(groupFrame).not.toContain('colorClass.border')
+    expect(groupContract).toContain('soft token')
     expect(collapsedGroup).toContain('GROUP_VISUAL_CLASS.collapsedCard')
     expect(collapsedGroup).toContain('card.colorToken')
     expect(stackPeeks).toContain('GROUP_VISUAL_CLASS.stackRear')
     expect(stackPeeks).not.toContain('border-nomi-accent/50')
-    expect(groupContract).toContain("group's semantic color")
+    expect(groupContract).toContain('soft token')
   })
 
   it('keeps the edge disconnect control icon-only and accessible, with no mode pill or menu', () => {
@@ -377,12 +382,16 @@ describe('generation canvas control structure', () => {
 
   it('routes every icon-only navigation action through a styled tooltip component', () => {
     const navigationStack = source('./CanvasNavigationStack.tsx')
+    const viewOptions = source('./CanvasViewOptionsPopover.tsx')
     const tooltipButtons = navigationStack.match(/<CanvasNavigationTooltipButton/g) ?? []
 
-    // 5 = 适配 / 重置 / 画框 / 整理 / 小地图开关（2026-09-06 加入「画框」——它和缩放适配同族：
-    // 都在回答「你怎么看、怎么摆这块画布」，而不是「往画布上加什么」）。
-    expect(tooltipButtons).toHaveLength(5)
+    // 4 = 适应视图 / 缩小 / 放大 / ⋯（拍板稿 Main 板「⛶ | − 100% + | ⋯」）。
+    // 重置 / 画框 / 整理 / 小地图开关 / 操作帮助 / 缩放滑块一个不丢，收进 ⋯ 的浮层（CanvasViewOptionsPopover），行上的说明走样式化 Tooltip。
+    expect(tooltipButtons).toHaveLength(4)
+    for (const option of ['reset-view', 'frame-tool', 'tidy', 'minimap', 'controls-help']) expect(viewOptions).toContain(`data-view-option="${option}"`)
+    expect(viewOptions).toContain('type="range"')
     expect(navigationStack).not.toContain('title=')
+    expect(viewOptions).not.toContain('title=')
   })
 
   it('keeps the keyboard icon available through the runtime Tabler allowlist', () => {

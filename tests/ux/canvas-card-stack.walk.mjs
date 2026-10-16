@@ -19,7 +19,8 @@ import {
 import { stationTimeout } from './_station-budget.mjs'
 import { uiText } from './full-walk/invariants.mjs'
 import { expectArrivalsReachable, expectCanvasViewportHeld, expectToolbarInsideStageEverywhere, findCanvasBlankPoint, findEdgeHitPoint, waitForCanvasViewportSettled } from './_canvasHit.mjs'
-import { backToLibrary } from './_shell.mjs'
+import { backToLibrary, canvasFitViewButton } from './_shell.mjs'
+import { clickFrameToolbarAction } from './_groupFrame.mjs'
 
 const root = makeTempDir('nomi-card-stack-walk-')
 const settingsDir = path.join(root, 'settings')
@@ -360,7 +361,7 @@ try {
 
   // 复制本身不挪画布；但若刚才走了边缘提示，视角停在变体那里，视频节点可能已在屏外。
   // 像用户一样点「适应视图」找回全部节点，再去铺开另一个节点的版本卡片。
-  await clickOrFail(win.getByLabel('适应视图', { exact: true }), '找回视频节点后查看历史版本')
+  await clickOrFail(canvasFitViewButton(win), '找回视频节点后查看历史版本')
   await clickOrFail(videoNode.locator('[data-version-badge]'), '点视频节点的角标铺开版本')
   const videoGrid = win.locator('[data-version-grid="video-versions"]')
   await videoGrid.waitFor({ state: 'visible', timeout: stationTimeout() })
@@ -415,9 +416,10 @@ try {
   await clickOrFail(videoNode.locator('[data-version-badge]'), '再点角标收起视频版本')
   await expectHidden(videoGrid, '视频版本卡片应收起')
 
-  const collapse = win.getByRole('button', { name: '收起分组「雨夜参考组」' })
-  await collapse.scrollIntoViewIfNeeded()
-  await clickOrFail(collapse, '把雨夜参考组收成节点卡组')
+  // 折叠入口 = 分组工具条上的「折叠成卡」图标（框头上的折叠钮已删，工具条动作直接摆图标，10-10 拍板）。
+  const referenceFrame = win.locator('.generation-canvas-v2__group-box[data-group-id="reference-group"]').first()
+  await referenceFrame.scrollIntoViewIfNeeded()
+  await clickFrameToolbarAction(win, referenceFrame, 'collapse')
   const collapsed = win.locator('[data-collapsed-group-id="reference-group"]')
   await expectVisible(collapsed, '收起后应显示一张编组卡')
   await expectCount(collapsed, 1, '收起后只保留一张编组卡')
@@ -506,7 +508,7 @@ try {
   await expect.poll(() => win.locator('g[data-edge-id^="group-input-"]').count(), { message: '展开后真实成员输入线应完成投影' }).toBe(3)
   check('展开后恢复三条真实成员输入线', true)
 
-  await clickOrFail(collapse, '再次收起雨夜参考组')
+  await clickFrameToolbarAction(win, referenceFrame, 'collapse')
   await expectVisible(collapsed, '再次收起后应恢复编组卡')
   await applyColorSchemeForShot(win, 'dark')
   await screenshotSettled(win, { path: path.join(outputDir, '05-real-collapsed-group-dark.png') })

@@ -12,7 +12,8 @@
  */
 import React, { type JSX } from 'react'
 import { useTranslation } from 'react-i18next'
-import { IconGripVertical, IconWriting } from '@tabler/icons-react'
+import { IconGripVertical } from '@tabler/icons-react'
+import { getGenerationNodeIcon } from '../renderRegistry'
 import { EditorContent, useEditorState, type JSONContent } from '@tiptap/react'
 import { cn } from '../../../../utils/cn'
 import type { GenerationCanvasNode, TiptapDocJson } from '../../model/generationCanvasTypes'
@@ -21,6 +22,7 @@ import { useNomiRichTextEditor } from '../../../common/useNomiRichTextEditor'
 import { NODE_SCROLL_REGION_CLASS_NAME } from '../nodeScrollRegionClassName'
 import { buildRichTextActions } from '../../../common/richTextActions'
 import { NodeEmptyState } from './NodeEmptyState'
+import { isDocEmpty } from './emptyCardLabel'
 import { toast } from '../../../../ui/toast'
 import { requestTaskCancel } from '../../runner/localTaskControl'
 import { presetBlockHint, runTextPreset, useTextPresetBlocks } from '../textProcessRun'
@@ -39,16 +41,6 @@ const EMPTY_TRY_PRESETS = ['expand', 'describe', 'split'] as const satisfies rea
 const LONG_TEXT_CHARACTERS = 600
 type Props = {
   node: GenerationCanvasNode
-}
-
-/** 文档是否为空（无内容，或只有一个空段落）——用于显示占位提示。 */
-function isDocEmpty(doc?: TiptapDocJson): boolean {
-  const content = doc?.content
-  if (!content || content.length === 0) return true
-  return content.every((entry) => {
-    const block = entry as { type?: string; content?: unknown[] }
-    return block.type === 'paragraph' && (!block.content || block.content.length === 0)
-  })
 }
 
 function TextDocumentNodeImpl({ node }: Props): JSX.Element {
@@ -200,7 +192,7 @@ function TextDocumentNodeImpl({ node }: Props): JSX.Element {
             <div className="pointer-events-none absolute inset-0">
               <NodeEmptyState
                 height={resolveNodeVisualSize(node).height}
-                icon={<IconWriting size={18} stroke={1.5} />}
+                icon={React.createElement(getGenerationNodeIcon('text'), { size: 18, stroke: 1.5 })}
                 title={t('canvas.nodeKinds.text')}
                 description={t('generationCommon.nodeTry.status.text')}
                 action={(

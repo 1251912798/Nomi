@@ -1,0 +1,58 @@
+{
+  "name": "reference-entry",
+  "mode": "development",
+  "tempRoot": "/var/folders/f4/vz86j5nd0_sf56qdhzrmbbvw0000gn/T/nomi-pi-reference-entry-7DBUCd",
+  "outputDir": "/Users/aoqimin/.codex/worktrees/reference-entry/Nomi/.tmp/pi-reference-entry-development-1791744428854",
+  "launches": [
+    {
+      "packaged": false,
+      "appPath": "/Users/aoqimin/.codex/worktrees/reference-entry/Nomi",
+      "userData": "/var/folders/f4/vz86j5nd0_sf56qdhzrmbbvw0000gn/T/nomi-pi-reference-entry-7DBUCd/user-data",
+      "node": "24.18.1",
+      "electron": "43.4.1",
+      "pid": 11559
+    }
+  ],
+  "screenshots": [
+    "/Users/aoqimin/.codex/worktrees/reference-entry/Nomi/.tmp/pi-reference-entry-development-1791744428854/01-agent-inline-references-zh.png",
+    "/Users/aoqimin/.codex/worktrees/reference-entry/Nomi/.tmp/pi-reference-entry-development-1791744428854/02-image-reference-first-open-zh.png",
+    "/Users/aoqimin/.codex/worktrees/reference-entry/Nomi/.tmp/pi-reference-entry-development-1791744428854/03-image-direct-canvas-pick-zh.png",
+    "/Users/aoqimin/.codex/worktrees/reference-entry/Nomi/.tmp/pi-reference-entry-development-1791744428854/04-video-reference-first-open-zh.png",
+    "/Users/aoqimin/.codex/worktrees/reference-entry/Nomi/.tmp/pi-reference-entry-development-1791744428854/05-video-direct-canvas-pick-zh.png",
+    "/Users/aoqimin/.codex/worktrees/reference-entry/Nomi/.tmp/pi-reference-entry-development-1791744428854/06-text-reference-first-open-zh.png",
+    "/Users/aoqimin/.codex/worktrees/reference-entry/Nomi/.tmp/pi-reference-entry-development-1791744428854/07-text-direct-canvas-pick-zh.png",
+    "/Users/aoqimin/.codex/worktrees/reference-entry/Nomi/.tmp/pi-reference-entry-development-1791744428854/08-agent-direct-inline-reference-zh.png",
+    "/Users/aoqimin/.codex/worktrees/reference-entry/Nomi/.tmp/pi-reference-entry-development-1791744428854/09-agent-direct-pick-en-dark-narrow.png",
+    "/Users/aoqimin/.codex/worktrees/reference-entry/Nomi/.tmp/pi-reference-entry-development-1791744428854/10-agent-at-picker-en-dark-narrow.png"
+  ],
+  "paidCalls": 0,
+  "projectId": "project-1791744433842-70ey47",
+  "projectRoot": "/var/folders/f4/vz86j5nd0_sf56qdhzrmbbvw0000gn/T/nomi-pi-reference-entry-7DBUCd/projects/未命名项目 10_12 02_47-mv46dha1-471f09fc",
+  "wire": {
+    "canonicalAssetIds": [
+      "asset-aa1fca990e2c47838ced",
+      "asset-7858b9fd3b79bac53b84"
+    ],
+    "imageBytes": true,
+    "videoOriginalIdentity": true,
+    "semanticAV": false
+  },
+  "textReferenceEdge": true,
+  "targetedEdit": {
+    "nodeIds": [
+      "gen-v2-text-mv46drb9-x5bq"
+    ],
+    "sourceNodeId": "gen-v2-asset-mv46dtbr-cr9s",
+    "canonicalAttachments": [
+      {
+        "assetId": "asset-7858b9fd3b79bac53b84",
+        "version": 1
+      }
+    ]
+  },
+  "boundary": "Actual macOS development Electron, genuine local JPG/MP4 imports and shared selector, production admission/main identity/provider serialization. Loopback supplier only; paid provider and Windows unverified.",
+  "textRequests": 2,
+  "imageRequests": 0,
+  "unexpected": [],
+  "result": "passed"
+}
