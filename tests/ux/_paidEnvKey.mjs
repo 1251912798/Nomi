@@ -14,6 +14,8 @@
 import fs from 'node:fs'
 import path from 'node:path'
 
+import { stationTimeout } from './_station-budget.mjs'
+
 export const ENV_KEY_VAR = 'APIMART_API_KEY'
 export const ENV_KEY_VENDOR = 'apimart'
 export const REDACTED = '[REDACTED]'
@@ -111,48 +113,70 @@ export const ENV_KEY_ALLOW_CATALOG = Object.freeze({
 /** APIMart 内置的文本模型 key（electron/catalog/apimartTexts.ts 的 APIMART_TEXT_MODELS；单测核对两者一致）。 */
 export const APIMART_TEXT_MODEL_KEYS = Object.freeze(['deepseek-v4-pro', 'deepseek-v4-flash', 'deepseek-v3.2', 'deepseek-v3.1-terminus', 'gemini-3.5-flash'])
 
+/** 界面一步的安全网（公共预算 owner：tests/ux/_station-budget.mjs）；只是上限，不是完成条件。 */
+const STEP_MS = stationTimeout({ operations: 1 })
+const SLOW_STEP_MS = stationTimeout({ operations: 2 })
+
 const TERMINAL_STAGES = new Set(['completed', 'partial', 'failed', 'cancelled', 'timed_out', 'stale'])
 
 /**
  * 走可见的接入页把 APIMart key 装进被测 App，并验证一个文本模型（Agent 的大脑）。
  * 写法照 tests/ux/agent-vertical-spine-m0-m5.red.e2e.mjs 的 M3 段：打开模型设置 → 点 APIMart →
  * 只填 key 的页（保存）→ 继续验证 → 获取可用模型 → 选大脑 → 验证 → 等认证走完 → 关设置。
+ * 保存之后被授权的模型要是已经能用（接入页：「预置模型可用」），就跳过验证那一半。
  * 之后图片模型能不能用，由调用方的 lockSpendToModels 问主进程（不能用就在花钱前红）。
  *
- * 返回只含事实、不含 key 的小对象，给报告用。
+ * 前提：已经打开了一个项目（打开模型设置的事件由工作区壳监听，项目库页上没人听）。
+ *
+ * 返回只含事实、不含 key 的小对象，给报告用。`stopAfterSave`：只做到「保存」为止（演练用）。
  */
-export async function connectApimartThroughVisibleUi(win, { apiKey, textModelKey, certificationSeconds = 90 }) {
+export async function connectApimartThroughVisibleUi(win, { apiKey, textModelKey, requiredModels = [], certificationSeconds = 90, stopAfterSave = false }) {
   assertUsableEnvKey(apiKey)
   const secrets = [apiKey]
   try {
     await win.evaluate(() => window.dispatchEvent(new CustomEvent('nomi-open-model-catalog')))
     const home = win.locator('[data-model-settings-page="home"]').first()
-    await home.waitFor({ state: 'visible', timeout: 10_000 })
+    await home.waitFor({ state: 'visible', timeout: STEP_MS })
     const available = home.locator(`[data-model-home-available="${ENV_KEY_VENDOR}"]`).first()
-    await available.waitFor({ state: 'visible', timeout: 10_000 })
+    await available.waitFor({ state: 'visible', timeout: STEP_MS })
     await available.click()
     const keyPage = win.locator(`[data-key-only-vendor="${ENV_KEY_VENDOR}"]`).first()
-    await keyPage.waitFor({ state: 'visible', timeout: 10_000 })
+    await keyPage.waitFor({ state: 'visible', timeout: STEP_MS })
     const keyInput = keyPage.locator(`#key-only-${ENV_KEY_VENDOR}`).first()
     if (!(await keyInput.isDisabled().catch(() => true))) {
       await keyInput.fill(apiKey)
       await keyPage.getByRole('button', { name: /保存|Save/i }).first().click()
     }
-    await keyPage.locator('[data-key-only-success]').waitFor({ state: 'visible', timeout: 15_000 })
+    await keyPage.locator('[data-key-only-success]').waitFor({ state: 'visible', timeout: STEP_MS })
+    // 只演练「填 key → 保存」这一半（loopback 夹具没有认证那一整套）：key 已存住就停，验证那一半只在真 key 上跑。
+    if (stopAfterSave) return { vendorKey: ENV_KEY_VENDOR, keySaved: true, certifiedTextModel: null, viaVisibleOnboarding: true }
+    // 接入页保存之后会说「APIMart 已接入，预置模型可用」（演练截图实测）：要是被授权的模型这一刻都已经能用，
+    // 就不必再跑「继续验证」（它还会花几个 token，而且预置的模型在选择页里是灰的、选不了）。问被测 App 自己，不猜。
+    if (requiredModels.length) {
+      const presetUsable = await win.waitForFunction((want) => {
+        const rows = window.nomiDesktop?.modelCatalog?.listModels?.({}) || []
+        return want.every((item) => rows.find((row) => row.vendorKey === item.vendorKey && row.modelKey === item.modelKey)?.availability?.usable === true)
+      }, requiredModels, { timeout: STEP_MS }).then(() => true, () => false)
+      if (presetUsable) {
+        await win.evaluate(() => window.dispatchEvent(new CustomEvent('nomi-model-catalog-changed')))
+        await win.locator('[data-settings-close]').first().click()
+        return { vendorKey: ENV_KEY_VENDOR, keySaved: true, certifiedTextModel: null, verification: 'skipped：保存后被授权的模型已可用', viaVisibleOnboarding: true }
+      }
+    }
     await keyPage.getByRole('button', { name: /继续验证|Continue verification/i }).first().click()
 
     const addPage = win.locator('[data-model-settings-page="add"]').first()
-    await addPage.waitFor({ state: 'visible', timeout: 10_000 })
+    await addPage.waitFor({ state: 'visible', timeout: STEP_MS })
     await addPage.getByRole('button', { name: /获取可用模型|Get available models/i }).first().click()
     const modelRow = addPage.getByRole('button', { name: textModelKey, exact: true }).first()
-    await modelRow.waitFor({ state: 'visible', timeout: 30_000 })
+    await modelRow.waitFor({ state: 'visible', timeout: SLOW_STEP_MS })
     if (await modelRow.isDisabled().catch(() => true)) throw new Error(`接入页里 ${ENV_KEY_VENDOR}/${textModelKey} 已经配置过、选不了——隔离副本应该是干净的，不该出现这种情况`)
     await modelRow.click()
     const confirm = addPage.getByRole('button', { name: /验证\s*1\s*个模型|Verify\s*1\s*model/i }).first()
-    await confirm.waitFor({ state: 'visible', timeout: 5_000 })
+    await confirm.waitFor({ state: 'visible', timeout: STEP_MS })
     await confirm.click()
     const verification = win.locator('[data-model-settings-page="verification"]').first()
-    await verification.waitFor({ state: 'visible', timeout: 10_000 })
+    await verification.waitFor({ state: 'visible', timeout: STEP_MS })
     const runId = await verification.getAttribute('data-adapter-run-id')
     if (!runId) throw new Error('接入页的验证页没有给出认证运行号')
     let latest = null
@@ -169,12 +193,12 @@ export async function connectApimartThroughVisibleUi(win, { apiKey, textModelKey
     await win.waitForFunction(({ vendorKey, modelKey }) => {
       const model = (window.nomiDesktop?.modelCatalog?.listModels?.() || []).find((row) => row.vendorKey === vendorKey && row.modelKey === modelKey)
       return Boolean(model?.enabled === true && model?.published === true && model?.meta?.adapter?.state === 'verified')
-    }, { vendorKey: ENV_KEY_VENDOR, modelKey: textModelKey }, { timeout: 20_000 })
+    }, { vendorKey: ENV_KEY_VENDOR, modelKey: textModelKey }, { timeout: SLOW_STEP_MS })
     await win.evaluate(() => window.dispatchEvent(new CustomEvent('nomi-model-catalog-changed')))
     const overlay = win.locator('[data-settings-overlay]').first()
-    await overlay.waitFor({ state: 'visible', timeout: 5_000 })
+    await overlay.waitFor({ state: 'visible', timeout: STEP_MS })
     await win.locator('[data-settings-close]').first().click()
-    await overlay.waitFor({ state: 'hidden', timeout: 5_000 })
+    await overlay.waitFor({ state: 'hidden', timeout: STEP_MS })
     return { vendorKey: ENV_KEY_VENDOR, certifiedTextModel: textModelKey, certificationStage: latest.stage, viaVisibleOnboarding: true }
   } catch (error) {
     throw redactedError(error, secrets)

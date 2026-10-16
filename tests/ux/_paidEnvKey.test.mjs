@@ -67,7 +67,8 @@ describe('key 卫生：抹掉', () => {
   })
 
   test('Playwright 的 fill 超时会把 value 写进调用日志——redactedError 的 message 与 stack 都不带 key', () => {
-    const original = new Error(`locator.fill: Timeout 30000ms exceeded.\nCall log:\n  - fill("${KEY}")\n  - waiting for locator('#key-only-apimart')`)
+    // 形状取自真 Playwright（2026-10-16 用 _electron 起一个带 disabled 输入框的页面实测：`- fill("<value>")` 原样出现在 Call log 里）。
+    const original = new Error(`locator.fill: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator('#key-only-apimart')\n  - fill("${KEY}")`)
     const safe = redactedError(original, [KEY])
     expect(safe.message).not.toContain(KEY)
     expect(safe.stack).not.toContain(KEY)
@@ -180,7 +181,7 @@ describe('openPaidWalk · env-key 路（假 App、假界面）', () => {
     fs.appendFileSync(seen.opts.env.NOMI_WALK_NET_LOG, `${JSON.stringify({ kind: 'guard-loaded', layers: ['fetch', 'socket', 'chromium'] })}\n`)
     await paid.lockToAuthorizedModels(win)
     fs.appendFileSync(seen.opts.env.NOMI_WALK_NET_LOG, `${JSON.stringify({ kind: 'request', url: 'https://api.apimart.ai/v1/balance', headers: { authorization: `Bearer ${KEY}` } })}\n`)
-    expect(connectCalls).toEqual([{ apiKey: KEY, textModelKey: 'deepseek-v3.2' }])
+    expect(connectCalls).toEqual([{ apiKey: KEY, textModelKey: 'deepseek-v3.2', requiredModels: MODELS }])
     expect(paid.label('apimart', 'z-image-turbo')).toBe('Z-Image Turbo')
     // 花钱面收窄：被授权的图片模型之外的生成模型都停了，文本模型不动。
     expect(win.rows.filter((row) => row.enabled).map((row) => row.modelKey).sort()).toEqual(['deepseek-v3.2', 'z-image-turbo'])

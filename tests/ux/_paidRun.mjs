@@ -142,7 +142,7 @@ export async function openPaidWalk(script, name, models, deps = {}) {
     if (unguarded) throw unguarded
     if (envKey) {
       // 接入页上的验证会真的打一次大脑模型（几个 token）——这是真人第一次接入时同样会发生的事，记进报告。
-      walk.report.envKeyConnect = await connect(win, { apiKey: envKey, textModelKey: envKeyBrainOf(models) })
+      walk.report.envKeyConnect = await connect(win, { apiKey: envKey, textModelKey: envKeyBrainOf(models), requiredModels: models })
       seeded = await readAuthorizedRows(win, models)
       walk.report.seededModels = seeded.map((row) => `${row.vendorKey}/${row.modelKey}`)
     }

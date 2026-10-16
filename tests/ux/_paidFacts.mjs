@@ -69,6 +69,14 @@ export function readSpendFacts({ projectRoot, capabilityDir }) {
   }
 }
 
+/**
+ * 轻量读法：供应商已受理的次数，只数制作 Run 里拿到任务号的 job（不读项目文档与 Agent 转录）。
+ * 保险丝和「受理第一张就点停止」的 100ms 轮询用它；完整事实用 readSpendFacts。
+ */
+export function acceptedByRuns(projectRoot) {
+  return new Set(readProductionRuns(projectRoot).flatMap((run) => (run.jobs ?? []).map((job) => job.providerTaskId).filter(Boolean))).size
+}
+
 /** 两次快照之差：这一步新增了什么。 */
 export function deltaFacts(before, after) {
   const seenTasks = new Set(before.taskIds)
@@ -96,12 +104,15 @@ export function stepSwitchVerdict({ mode, delta }) {
   return problems
 }
 
-/** 步骤 2：直接生成档下前两镜——不弹报价卡、受理恰好 N 次、收据 N 条且都是策略代答。 */
-export function stepDirectBatchVerdict({ expected, cardAppearances, delta, models, allowedModel }) {
+/** 步骤 2：直接生成档下前两镜——不弹报价卡 / 确认框、受理恰好 N 次、收据（每道门一条）全是策略代答。 */
+export function stepDirectBatchVerdict({ expected, cardAppearances, dialogAppearances = 0, delta, models, allowedModel }) {
   const problems = []
   if (cardAppearances !== 0) problems.push(`直接生成档下报价卡不该弹，实际弹了 ${cardAppearances} 次`)
+  if (dialogAppearances !== 0) problems.push(`直接生成档下弹出了全局确认框（旧版 SpendConfirmDialog）${dialogAppearances} 次——这一笔没有走策略代答`)
   if (delta.accepted !== expected) problems.push(`供应商受理次数应为 ${expected}，实际 ${delta.accepted}`)
-  if (delta.receipts !== expected) problems.push(`收据应为 ${expected} 条，实际 ${delta.receipts}`)
+  // 收据按「付费门」铸：一批 N 镜可以共用一道门（loopback 演练里画布 2 镜 = 1 张收据），所以下限是 1、上限是镜数；
+  // 实际条数照实记进报告，由协调会话对照 D-L19 写的「2 条」看。
+  if (delta.receipts < 1 || delta.receipts > expected) problems.push(`收据应为 1～${expected} 条（每道付费门一条），实际 ${delta.receipts}`)
   const bySource = countBy(delta.decidedBy)
   if (Object.keys(bySource).some((source) => source !== 'policy:full_auto')) problems.push(`decidedBy 应全是 policy:full_auto，实际 ${JSON.stringify(bySource)}`)
   const stray = models.filter((model) => model !== allowedModel)
@@ -128,12 +139,12 @@ export function stepBrakeVerdict({ cardAppeared, brakeLineShown, acceptedTotal, 
   return { problems, boundary }
 }
 
-/** 步骤 4：第一张交出后点停止——停止后新增提交 0；已交出的那张只扣一次；重开面板后没有重复提交。 */
+/** 步骤 4：供应商受理第一张后点停止——停止后新增提交 0；已交出的那张照常完成、只扣一次；重开面板后没有重复提交。 */
 export function stepStopVerdict({ acceptedAtStop, acceptedAfterSettle, acceptedAfterReopen, deliveredTaskIds }) {
   const problems = []
   if (acceptedAfterSettle - acceptedAtStop !== 0) problems.push(`停止之后新增提交应为 0，实际 ${acceptedAfterSettle - acceptedAtStop}`)
   if (acceptedAfterReopen - acceptedAfterSettle !== 0) problems.push(`重开面板后不该有重复提交，实际新增 ${acceptedAfterReopen - acceptedAfterSettle}`)
-  if (deliveredTaskIds.length < 1) problems.push('停止前没有任何一张交出，这一步没有走到「第一张交出后停止」')
+  if (deliveredTaskIds.length < 1) problems.push('已受理的那张最后没有交出成品（job 没到 adopted / ready）——「已交出的照常完成」不成立')
   if (new Set(deliveredTaskIds).size !== deliveredTaskIds.length) problems.push('已交出的图出现重复的供应商任务号（同一张被扣了不止一次）')
   return problems
 }

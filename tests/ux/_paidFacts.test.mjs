@@ -5,9 +5,9 @@ import path from 'node:path'
 import { afterEach, describe, expect, test } from 'vitest'
 
 import {
-  deltaFacts, readDecidedByTable, readSpendFacts, stepBrakeVerdict, stepDirectBatchVerdict, stepStopVerdict, stepSwitchVerdict,
+  acceptedByRuns, deltaFacts, readDecidedByTable, readSpendFacts, stepBrakeVerdict, stepDirectBatchVerdict, stepStopVerdict, stepSwitchVerdict,
 } from './_paidFacts.mjs'
-import { IMAGE_CAP, collectProblems, createSpendCap, waitForCardOrIdle } from './_permissionTiersPaidSteps.mjs'
+import { IMAGE_HARD_CAP, collectProblems, createSpendCap, waitForSpendUiOrIdle } from './_permissionTiersPaidSteps.mjs'
 
 const roots = []
 afterEach(() => { for (const root of roots.splice(0)) fs.rmSync(root, { recursive: true, force: true }) })
@@ -80,6 +80,13 @@ describe('readSpendFacts：从盘上读事实', () => {
 const ok = { accepted: 0, receipts: 0, decidedBy: [] }
 const two = { accepted: 2, receipts: 2, decidedBy: ['policy:full_auto', 'policy:full_auto'] }
 
+describe('acceptedByRuns：轻量受理数', () => {
+  test('只数拿到任务号的 job，重复的任务号只算一次', () => {
+    const { projectRoot } = fixture([{ runId: 'run-x', jobs: [{ jobId: 'a', providerTaskId: 't1' }, { jobId: 'b', providerTaskId: 't1' }, { jobId: 'c' }], approvals: [] }])
+    expect(acceptedByRuns(projectRoot)).toBe(1)
+  })
+})
+
 describe('判据：成立时返回空清单，不成立时说清哪里不对', () => {
   test('步骤 1 切档：档位不对、花了钱、铸了收据都红', () => {
     expect(stepSwitchVerdict({ mode: 'direct', delta: ok })).toEqual([])
@@ -90,8 +97,11 @@ describe('判据：成立时返回空清单，不成立时说清哪里不对', (
     const base = { expected: 2, cardAppearances: 0, delta: two, models: ['apimart/z-image-turbo'], allowedModel: 'apimart/z-image-turbo' }
     expect(stepDirectBatchVerdict(base)).toEqual([])
     expect(stepDirectBatchVerdict({ ...base, cardAppearances: 1 })).toHaveLength(1)
+    expect(stepDirectBatchVerdict({ ...base, dialogAppearances: 1 }).join()).toContain('全局确认框')
     expect(stepDirectBatchVerdict({ ...base, delta: { ...two, accepted: 1 } })).toHaveLength(1)
-    expect(stepDirectBatchVerdict({ ...base, delta: { ...two, receipts: 1 } })).toHaveLength(1)
+    expect(stepDirectBatchVerdict({ ...base, delta: { ...two, receipts: 1, decidedBy: ['policy:full_auto'] } }), '一批 2 镜共用一道门 = 1 张收据，成立').toEqual([])
+    expect(stepDirectBatchVerdict({ ...base, delta: { ...two, receipts: 0, decidedBy: [] } })).toHaveLength(1)
+    expect(stepDirectBatchVerdict({ ...base, delta: { ...two, receipts: 3 } })).toHaveLength(1)
     expect(stepDirectBatchVerdict({ ...base, delta: { ...two, decidedBy: ['policy:full_auto', 'human:gesture'] } })).toHaveLength(1)
     expect(stepDirectBatchVerdict({ ...base, models: ['apimart/gpt-image-2'] })).toHaveLength(1)
   })
@@ -115,10 +125,10 @@ describe('判据：成立时返回空清单，不成立时说清哪里不对', (
 
   test('collectProblems：问题带步骤名；边界与停止钮不在的步骤另列为 unverified', () => {
     const { problems, unverified } = collectProblems({
-      '1': { problems: [] }, '2': { problems: ['x'] }, '3': { boundary: true, problems: [] }, '4': { stopAvailable: false, problems: [] },
+      '1': { problems: [] }, '2': { problems: ['x'] }, '3': { boundary: true, problems: [] }, '4': { stopAvailable: false, problems: [] }, '5': { inconclusive: true, problems: [] }, '6': { lostRace: true, problems: [] },
     })
     expect(problems).toEqual(['2：x'])
-    expect(unverified).toEqual(['3', '4'])
+    expect(unverified).toEqual(['3', '4', '5', '6'])
   })
 })
 
@@ -129,7 +139,7 @@ describe('花钱保险丝', () => {
     const cap = createSpendCap({ projectRoot: 'x', stopApp: () => { stops += 1 }, intervalMs: 10, read: () => accepted })
     cap.setCeiling(99)
     expect(() => cap.assertNotBreached()).not.toThrow()
-    accepted = IMAGE_CAP + 1
+    accepted = IMAGE_HARD_CAP + 1
     await new Promise((resolve) => setTimeout(resolve, 80))
     expect(stops).toBe(1)
     expect(() => cap.assertNotBreached()).toThrow(/保险丝/)
@@ -150,7 +160,7 @@ describe('花钱保险丝', () => {
   })
 })
 
-describe('waitForCardOrIdle', () => {
+describe('waitForSpendUiOrIdle', () => {
   const win = (script) => {
     let tick = 0
     return {
@@ -158,9 +168,12 @@ describe('waitForCardOrIdle', () => {
       waitForTimeout: async () => { tick += 1 },
     }
   }
-  test('卡出现 → card；落地且没卡 → idle（过了起飞宽限）；一直在跑 → timeout', async () => {
-    expect(await waitForCardOrIdle(win((selector, tick) => (selector.includes('spend') && tick >= 2 ? 1 : 0)), { timeout: 1_000, graceMs: 0, pollMs: 1 })).toBe('card')
-    expect(await waitForCardOrIdle(win(() => 0), { timeout: 1_000, graceMs: 0, pollMs: 1 })).toBe('idle')
-    expect(await waitForCardOrIdle(win((selector) => (selector.includes('running') ? 1 : 0)), { timeout: 30, graceMs: 0, pollMs: 1 })).toBe('timeout')
+  const PANEL = '[data-panel]'
+  test('卡出现 → card；全局确认框出现 → dialog；落地且什么都没弹 → idle（过了起飞宽限）；一直在跑 → timeout', async () => {
+    const options = { timeout: 1_000, graceMs: 0, pollMs: 1 }
+    expect(await waitForSpendUiOrIdle(win((selector, tick) => (selector.includes('data-kind="spend"') && tick >= 2 ? 1 : 0)), PANEL, options)).toBe('card')
+    expect(await waitForSpendUiOrIdle(win((selector, tick) => (selector.includes('data-spend-confirm-dialog') && tick >= 2 ? 1 : 0)), PANEL, options)).toBe('dialog')
+    expect(await waitForSpendUiOrIdle(win(() => 0), PANEL, options)).toBe('idle')
+    expect(await waitForSpendUiOrIdle(win((selector) => (selector.includes('running') ? 1 : 0)), PANEL, { timeout: 30, graceMs: 0, pollMs: 1 })).toBe('timeout')
   })
 })
