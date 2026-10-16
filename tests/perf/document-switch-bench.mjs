@@ -1,0 +1,151 @@
+#!/usr/bin/env node
+/**
+ * 大文稿项目的「切文稿」与「打开分镜方案」响应量具（性能场景 document-switch-after-storyboard / storyboard-plan-open）。
+ *
+ * 规模：160 份文稿、挂在第一份文稿下的一份 320 镜头方案。隔离资料目录、零花费、窗口在屏幕外。
+ * 量法（同一套，不自写剖析器：Playwright + 页面内 performance.now + rAF）：
+ *   点击（捕获阶段）→ 目标界面在 DOM 里到位 → 再过两帧（样式重算 + 布局 + 绘制算进去）= 响应毫秒。
+ *   document-switch：先「访问过分镜页」（打开方案再回创作页），之后在文稿下拉里交替切到最后一份 / 第一份。
+ *   plan-open：每个样本冷启一次 App，从创作页点开方案，量到 320 行可见。
+ *
+ * 用法（先 pnpm run build）：
+ *   node tests/perf/document-switch-bench.mjs --scenario document-switch|plan-open|document-switch-unvisited [--runs 5] [--label x] [--docs 160] [--shots 320]
+ * 产物：tests/perf/results/document-switch-<label>.json
+ */
+import fs from 'node:fs'
+import path from 'node:path'
+import os from 'node:os'
+import { fileURLToPath } from 'node:url'
+import { launchCoreSmoke } from '../ux/core-smoke/fixture.mjs'
+
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
+const args = process.argv.slice(2)
+const argValue = (name, fallback) => { const i = args.indexOf(name); return i >= 0 && args[i + 1] ? args[i + 1] : fallback }
+const scenario = argValue('--scenario', 'document-switch')
+const runs = Math.max(1, Number(argValue('--runs', 5)))
+const label = argValue('--label', 'run')
+const docCount = Number(argValue('--docs', 160))
+const shotCount = Number(argValue('--shots', 320))
+const WARMUP = 1
+
+const docId = (n) => `doc-${n}`
+const docTitle = (n) => `文稿 ${String(n).padStart(3, '0')}`
+const DESIGN = 'perf-plan'
+const documents = Array.from({ length: docCount }, (_, i) => ({
+  id: docId(i + 1), version: 1, title: docTitle(i + 1), updatedAt: 10 + i,
+  contentJson: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: `正文标记 ${docTitle(i + 1)}：夜里的街道，雨一直在下。` }] }] },
+}))
+const plan = {
+  title: '大方案',
+  anchors: [],
+  shots: Array.from({ length: shotCount }, (_, i) => ({
+    index: i + 1, shotId: `shot-${i + 1}`, shotKind: 'video', durationSec: 5, anchorIds: [],
+    prompt: `镜头 ${i + 1}：人物穿过雨夜的街道，镜头跟拍。`, modelKey: 'doubao-seedance-2.5', modelVendor: 'apimart',
+  })),
+}
+
+async function launch(suffix) {
+  const smoke = await launchCoreSmoke({
+    name: `docswitch-${suffix}`, needs: [], locale: 'zh-CN',
+    seed: () => ({
+      nodes: [], groups: [], edges: [],
+      payload: {
+        workbenchDocuments: documents, activeDocumentId: docId(1),
+        storyboardDesignsByDocumentId: { [docId(1)]: [{ id: DESIGN, documentId: docId(1), title: plan.title, plan, committed: false, status: 'draft', sourceDocumentUpdatedAt: 10, createdAt: 11, updatedAt: 12 }] },
+      },
+    }),
+    extras: {
+      mainRequire: [path.join(repoRoot, 'tests', 'ux', '_offscreenWindows.cjs')],
+      // 屏幕外窗口会被 Windows 判成被遮挡而停帧；关掉遮挡判定，量到的才是真的。
+      env: { ELECTRON_EXTRA_LAUNCH_ARGS: '--disable-features=CalculateNativeWinOcclusion' },
+    },
+  })
+  await smoke.openProject()
+  const win = smoke.win
+  await win.locator('.nomi-stepper__step[data-mode="creation"]').first().click()
+  await win.locator('[data-creation-document-switcher]').first().waitFor({ timeout: 30000 })
+  const raf = await win.evaluate(() => new Promise((resolve) => { const t = performance.now(); requestAnimationFrame(() => requestAnimationFrame(() => resolve(performance.now() - t))) }))
+  if (raf > 500) throw new Error(`rAF 不走（两帧 ${raf}ms），遮挡判定没关掉，量不准`)
+  return smoke
+}
+
+/** 在页面里：下一次 click（捕获阶段）起表，predicate 成立后再等两帧，返回毫秒与期间的长任务数。 */
+async function armTimer(win, predicateSource, arg) {
+  await win.evaluate(({ predicateSource, arg }) => {
+    const predicate = new Function('arg', `return (${predicateSource})(arg)`)
+    window.__perfDone = new Promise((resolve) => {
+      let longTasks = 0
+      const observer = new PerformanceObserver((list) => { longTasks += list.getEntries().length })
+      try { observer.observe({ type: 'longtask' }) } catch { /* 无长任务支持 */ }
+      document.addEventListener('click', () => {
+        const t0 = performance.now()
+        const tick = () => {
+          let ok
+          try { ok = predicate(arg) } catch { ok = false }
+          if (!ok) { requestAnimationFrame(tick); return }
+          requestAnimationFrame(() => requestAnimationFrame(() => { observer.disconnect(); resolve({ ms: performance.now() - t0, longTasks }) }))
+        }
+        tick()
+      }, { capture: true, once: true })
+    })
+  }, { predicateSource, arg })
+}
+const collect = (win) => win.evaluate(() => window.__perfDone)
+
+async function openPlan(win) {
+  await win.locator('[data-creation-document-switcher]').first().click()
+  await armTimer(win, `(n) => [...document.querySelectorAll('[data-storyboard-row]')].filter((el) => el.getClientRects().length > 0).length >= n`, shotCount)
+  await win.getByRole('menuitem', { name: plan.title }).first().click()
+  return collect(win)
+}
+async function backToCreation(win) {
+  await win.locator('.nomi-stepper__step[data-mode="creation"]').first().click()
+  await win.locator('[data-creation-document-switcher]').first().waitFor()
+  await win.waitForTimeout(600)
+}
+async function switchTo(win, n) {
+  await win.locator('[data-creation-document-switcher]').first().click()
+  const title = docTitle(n)
+  await armTimer(win, `(t) => { const b = document.querySelector('[data-creation-document-switcher]'); return !!b && b.textContent.includes(t) && !!document.querySelector('.ProseMirror') && document.querySelector('.ProseMirror').textContent.includes('正文标记 ' + t) }`, title)
+  await win.getByRole('menuitemradio', { name: title }).first().click()
+  const result = await collect(win)
+  await win.waitForTimeout(800)
+  return result
+}
+const hiddenRows = (win) => win.evaluate(() => [...document.querySelectorAll('[data-storyboard-row]')].filter((el) => el.getClientRects().length === 0).length)
+
+const result = { scenario, label, docs: docCount, shots: shotCount, machine: `${os.platform()} ${os.cpus()[0]?.model?.trim()} x${os.cpus().length}`, samples: [] }
+if (scenario === 'plan-open') {
+  for (let i = 0; i < runs + WARMUP; i += 1) {
+    const smoke = await launch(`open-${i}`)
+    try {
+      const r = await openPlan(smoke.win)
+      if (i >= WARMUP) result.samples.push({ responseMs: Math.round(r.ms * 10) / 10, longTasks: r.longTasks })
+      console.log(`[bench] plan-open #${i}${i < WARMUP ? '（预热）' : ''}: ${Math.round(r.ms)}ms longTasks=${r.longTasks}`)
+    } finally { await smoke.close() }
+  }
+} else {
+  const visited = scenario !== 'document-switch-unvisited'
+  const smoke = await launch('switch')
+  try {
+    const win = smoke.win
+    if (visited) { await openPlan(win); await backToCreation(win) }
+    for (let i = 0; i < runs + WARMUP; i += 1) {
+      const last = await switchTo(win, docCount)
+      const hiddenAfterLast = await hiddenRows(win)
+      const first = await switchTo(win, 1)
+      const hiddenAfterFirst = await hiddenRows(win)
+      if (i >= WARMUP) result.samples.push({ responseMs: Math.round(first.ms * 10) / 10, longTasks: first.longTasks, responseLastMs: Math.round(last.ms * 10) / 10, longTasksLast: last.longTasks, hiddenRowsAfterFirst: hiddenAfterFirst, hiddenRowsAfterLast: hiddenAfterLast })
+      console.log(`[bench] ${scenario} #${i}${i < WARMUP ? '（预热）' : ''}: first ${Math.round(first.ms)}ms / last ${Math.round(last.ms)}ms hiddenRows ${hiddenAfterFirst}/${hiddenAfterLast}`)
+    }
+    // 冻结不能冻坏：切完文稿再打开方案，320 行必须到位（openPlan 超时就会抛）。
+    const reveal = await openPlan(win)
+    result.revealAfterSwitchesMs = Math.round(reveal.ms * 10) / 10
+    console.log('[bench] 切完文稿后再打开方案：' + Math.round(reveal.ms) + 'ms，320 行到位')
+  } finally { await smoke.close() }
+}
+const outDir = path.join(repoRoot, 'tests/perf/results')
+fs.mkdirSync(outDir, { recursive: true })
+fs.writeFileSync(path.join(outDir, `document-switch-${label}.json`), JSON.stringify(result, null, 2))
+console.log(`[bench] 结果：tests/perf/results/document-switch-${label}.json`)
+process.exit(0)
