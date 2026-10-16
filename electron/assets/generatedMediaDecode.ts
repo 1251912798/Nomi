@@ -126,9 +126,11 @@ export function generatedMediaValidationError(reason: string): GeneratedMediaVal
 
 export type GeneratedMediaDecodeInput = {
   kind: GeneratedMediaKind;
+  /**
+   * 要校验的字节。校验永远读这份字节自己的私有副本（0600 临时文件），不收调用方的路径：
+   * 校验是异步的，调用方的文件在等待期间可能被改写，读它就不能保证「校验的就是要发布的」（V-1208-1）。
+   */
   bytes: Uint8Array;
-  /** 调用方已有的、Nomi 自己拥有的文件路径（MP4 的 moov 常在尾部，管道读不了，必须给可 seek 的文件）。 */
-  sourcePath?: string;
   contentType: string;
 };
 
@@ -195,15 +197,11 @@ function recordDecode(input: GeneratedMediaDecodeInput, verdict: DecodeVerdict, 
  */
 export async function verifyGeneratedMediaDecodes(input: GeneratedMediaDecodeInput, deps: GeneratedMediaDecodeDeps = {}): Promise<DecodeVerdict> {
   // MP4/MOV 的索引（moov）常在文件尾：走管道的话 ffmpeg 会报 partial file（管道不能 seek）。
-  // 所以字节要落在一个 0600 的临时文件里再读——除非调用方已经有一个 Nomi 自己拥有的路径。
-  let validationPath = input.sourcePath;
-  let validationDir = "";
-  if (!validationPath || !fs.existsSync(validationPath)) {
-    validationDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "nomi-generated-validation-"));
-    validationPath = path.join(validationDir, "artifact.media");
-    await fs.promises.writeFile(validationPath, input.bytes, { mode: 0o600, flag: "wx" });
-  }
+  // 所以字节要落在一个 0600 的临时文件里再读。
+  const validationDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "nomi-generated-validation-"));
+  const validationPath = path.join(validationDir, "artifact.media");
   try {
+    await fs.promises.writeFile(validationPath, input.bytes, { mode: 0o600, flag: "wx" });
     const timeoutMs = decodeTimeoutMs(input.bytes.byteLength);
     const ffmpeg = (deps.resolveFfmpeg ?? resolveFfmpegPath)();
     const startedAt = Date.now();
@@ -217,6 +215,6 @@ export async function verifyGeneratedMediaDecodes(input: GeneratedMediaDecodeInp
     }
     return verdict;
   } finally {
-    if (validationDir) await removeScratchAfterUse(validationDir);
+    await removeScratchAfterUse(validationDir);
   }
 }

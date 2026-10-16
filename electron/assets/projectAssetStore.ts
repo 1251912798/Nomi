@@ -31,9 +31,9 @@ import {
   sanitizeAssetMetaForKind,
   stableAssetId,
 } from "./assetPaths";
-import { contentTypeFromMagicBytes, isCertifiableMediaContentType, isMarkupMasquerade, resolveContentType } from "./mediaTypes";
+import { contentTypeFromMagicBytes, resolveContentType } from "./mediaTypes";
 import { validateGlbStructure } from "./model3dValidation";
-import { generatedMediaValidationError, verifyGeneratedMediaDecodes } from "./generatedMediaDecode";
+import { pinAssetBytes, readPinnedAssetFile, validatedGeneratedMeta, type PinnedAssetBytes } from "./verifiedAssetBytes";
 import type { CertificationMediaEvidence } from "../providerAdapter/certificationMedia";
 
 import type { UsageStatus, IntendedRole } from "../connectors/connectorDefinition";
@@ -99,61 +99,6 @@ function validateStructuredAsset(contentType: string, bytes: Uint8Array): void {
   if (contentType === "model/gltf-binary") validateGlbStructure(bytes);
 }
 
-function generatedMediaKind(contentType: string): "image" | "video" | "audio" | "model3d" | null {
-  if (contentType.startsWith("image/")) return "image";
-  if (contentType.startsWith("video/")) return "video";
-  if (contentType.startsWith("audio/")) return "audio";
-  return contentType === "model/gltf-binary" ? "model3d" : null;
-}
-
-/**
- * Generated outputs are executable evidence, not ordinary user imports: fail closed before disk.
- * 异步：解码校验在异步子进程里跑，主进程等它的时候照常处理事件。调用方必须先 await 它、通过了才进落盘临界区。
- */
-async function validatedGeneratedMeta(meta: JsonRecord, declaredRaw: string, bytes: Uint8Array, sourcePath?: string): Promise<JsonRecord> {
-  if (String(meta.kind || "").toLowerCase() !== "generated") return meta;
-  if (isMarkupMasquerade(bytes)) {
-    throw generatedMediaValidationError("markup_masquerade");
-  }
-  const detected = bytes.byteLength >= 12 && Buffer.from(bytes.subarray(0, 4)).toString("ascii") === "glTF"
-    ? "model/gltf-binary"
-    : contentTypeFromMagicBytes(bytes);
-  const normalizedDeclared = String(declaredRaw || "").toLowerCase().split(";", 1)[0].trim();
-  const declared = !normalizedDeclared || normalizedDeclared === "application/octet-stream"
-    ? detected || normalizedDeclared
-    : normalizedDeclared;
-  const expectedKind = generatedMediaKind(declared);
-  if (!expectedKind) return meta;
-  if (!detected) throw generatedMediaValidationError("unknown_bytes");
-  const detectedKind = generatedMediaKind(detected);
-  const ambiguousAudioContainer = expectedKind === "audio"
-    && (declared === "audio/mp4" && detected === "video/mp4"
-      || declared === "audio/webm" && detected === "video/webm");
-  if (!detectedKind || (detectedKind !== expectedKind && !ambiguousAudioContainer)) {
-    throw generatedMediaValidationError("kind_mismatch");
-  }
-  if (!isCertifiableMediaContentType(detected) && !ambiguousAudioContainer) {
-    throw generatedMediaValidationError("unsupported_format");
-  }
-  const claimed = meta.certificationEvidence && typeof meta.certificationEvidence === "object"
-    ? meta.certificationEvidence as Partial<CertificationMediaEvidence>
-    : undefined;
-  const cleanMeta = { ...meta };
-  delete cleanMeta.certificationEvidence;
-  if (claimed) {
-    const digest = crypto.createHash("sha256").update(bytes).digest("hex");
-    if (claimed.sha256 !== digest || claimed.byteLength !== bytes.byteLength || claimed.kind !== expectedKind
-      || claimed.contentType !== declared) throw generatedMediaValidationError("evidence_mismatch");
-    return cleanMeta;
-  }
-  if (expectedKind === "model3d") {
-    validateGlbStructure(bytes);
-    return cleanMeta;
-  }
-  // 「这份字节能不能解码」由 generatedMediaDecode 一处裁决（判据、超时、日志都在那里）；这里只问、不评。
-  await verifyGeneratedMediaDecodes({ kind: expectedKind, bytes, ...(sourcePath ? { sourcePath } : {}), contentType: detected });
-  return cleanMeta;
-}
 
 /**
  * 落盘文件名的**唯一**裁法：扩展名取自字节嗅出的内容类型（canonicalAssetFileName），**只截主干**；后缀不是
@@ -196,9 +141,11 @@ function stableStoredAssetId(projectId: string, relativePath: string): string {
 }
 
 
-// 三个落盘函数（writeAsset / writeDeterministicAsset / moveAssetFile）同一个形状：
-//   ① await 校验（生成产物要等解码器，异步，主进程照转）；
-//   ② 校验通过之后「选路径 → 写字节 → 写 sidecar → 广播」是**一段不再 await 的同步临界区**。
+// 落盘函数（writeAsset / writeDeterministicAsset / moveAssetFile / copyAssetFile）同一个形状：
+//   ⓪ 进门（任何 await 之前）钉住两样东西：要发布的字节（PinnedAssetBytes）和要写回的项目（AssetWriteContext）；
+//   ① await 校验（生成产物要等解码器，异步，主进程照转）——校验的是钉住的那份字节；
+//   ② context.assertCurrent() 复验项目没被换掉，然后「选路径 → 写字节 → 写 sidecar → 广播」是**一段不再 await 的同步临界区**，
+//      写进钉住的根目录、写的是钉住的字节。
 // ② 不许插 await：异步化以后同一资产可能被并发写，临界区一让出，就会有人看见「还不在」而另一个已经写了一半。
 export async function writeAsset(
   projectId: string,
@@ -206,20 +153,22 @@ export async function writeAsset(
   fileName: string,
   contentType: string,
   rawMeta: JsonRecord,
-  context?: AssetWriteContext,
+  captured?: AssetWriteContext,
 ): Promise<unknown> {
+  const pinned = pinAssetBytes(bytes);
+  const context = captured ?? await captureAssetWriteContext(projectId);
   // 唯一 sidecar 写入者之一：capture 族 originalUrl 恒 null 的不变量在此收口（见 assetPaths）。
-  const meta = await validatedGeneratedMeta(sanitizeAssetMetaForKind(rawMeta), contentType, bytes);
-  const actualContentType = effectiveContentType(fileName, contentType, bytes);
-  validateStructuredAsset(actualContentType, bytes);
+  const meta = await validatedGeneratedMeta(sanitizeAssetMetaForKind(rawMeta), contentType, pinned);
+  const actualContentType = effectiveContentType(fileName, contentType, pinned);
+  validateStructuredAsset(actualContentType, pinned);
   const storageFileName = canonicalAssetFileName(fileName, actualContentType);
-  if (isContentAddressedUpload(meta)) return persistUploadBytes(projectId, bytes, storageFileName, actualContentType, meta, context);
-  context?.assertCurrent();
+  if (isContentAddressedUpload(meta)) return persistUploadBytes(projectId, pinned, storageFileName, actualContentType, meta, context);
+  context.assertCurrent();
   const { absolutePath } = uniqueAssetPath(projectId, storageFileName, actualContentType, assetBucketFromMeta(meta), context);
-  fs.writeFileSync(absolutePath, bytes);
+  fs.writeFileSync(absolutePath, pinned);
   writeAssetSidecarMeta(absolutePath, meta);
   broadcastAssetsUpdated(projectId);
-  const contentHash = crypto.createHash("sha256").update(bytes).digest("hex");
+  const contentHash = crypto.createHash("sha256").update(pinned).digest("hex");
   return storedAssetRecord(projectId, absolutePath, sanitizeName(fileName, "asset"), actualContentType, meta, contentHash, context);
 }
 
@@ -235,23 +184,25 @@ export async function writeDeterministicAsset(
   rawMeta: JsonRecord,
   materializationKey: string,
 ): Promise<unknown> {
-  const meta = await validatedGeneratedMeta(sanitizeAssetMetaForKind(rawMeta), contentType, bytes);
-  const actualContentType = effectiveContentType(fileName, contentType, bytes);
-  validateStructuredAsset(actualContentType, bytes);
+  const pinned = pinAssetBytes(bytes);
+  const context = await captureAssetWriteContext(projectId);
+  const meta = await validatedGeneratedMeta(sanitizeAssetMetaForKind(rawMeta), contentType, pinned);
+  const actualContentType = effectiveContentType(fileName, contentType, pinned);
+  validateStructuredAsset(actualContentType, pinned);
   const { stem, ext } = storedAssetFileParts(fileName, actualContentType);
   const keyHash = crypto.createHash("sha256").update(materializationKey).digest("hex").slice(0, 24);
-  const projectDir = projectDirById(projectId);
-  if (!projectDir) throw new Error("Project not found");
+  context.assertCurrent();
+  const projectDir = context.root;
   const bucket = assetBucketFromMeta(meta);
   const relativePath = path.posix.join("assets", bucket, "materialized", `${stem}-${keyHash}${ext}`);
   const absolutePath = path.join(projectDir, relativePath);
-  const contentHash = crypto.createHash("sha256").update(bytes).digest("hex");
+  const contentHash = crypto.createHash("sha256").update(pinned).digest("hex");
   ensureDir(path.dirname(absolutePath));
   if (fs.existsSync(absolutePath)) {
     const existingHash = crypto.createHash("sha256").update(fs.readFileSync(absolutePath)).digest("hex");
     if (existingHash !== contentHash) throw new Error("Deterministic materialization key maps to different bytes");
   } else {
-    fs.writeFileSync(absolutePath, bytes);
+    fs.writeFileSync(absolutePath, pinned);
   }
   // A prior attempt may have written pixels before its sidecar failed. Repair it
   // before reporting success; retain any metadata edited on the existing asset.
@@ -272,7 +223,7 @@ export async function writeDeterministicAsset(
       relativePath,
       absolutePath,
       contentType: actualContentType,
-      size: bytes.byteLength,
+      size: pinned.byteLength,
       contentHash,
     },
   };
@@ -310,26 +261,34 @@ export async function copyAssetFile(
     }
   })();
   const actualContentType = effectiveContentType(fileName, contentType, header);
-  if (String(meta.kind || "").toLowerCase() === "generated") meta = await validatedGeneratedMeta(meta, contentType, await fs.promises.readFile(sourcePath), sourcePath);
-  if (actualContentType === "model/gltf-binary") validateStructuredAsset(actualContentType, await fs.promises.readFile(sourcePath));
+  // 要校验内容的（生成产物、GLB）：读出一份钉住的字节，校验它、发布它，不再回头读源文件（V-1208-1）。
+  // 其余的只认文件头，照旧按路径流式拷贝（大文件不进主进程内存）。
+  const validated = String(meta.kind || "").toLowerCase() === "generated" || actualContentType === "model/gltf-binary";
+  const pinned = validated ? await readPinnedAssetFile(sourcePath) : undefined;
+  if (pinned && String(meta.kind || "").toLowerCase() === "generated") meta = await validatedGeneratedMeta(meta, contentType, pinned);
+  if (pinned && actualContentType === "model/gltf-binary") validateStructuredAsset(actualContentType, pinned);
   const storageFileName = canonicalAssetFileName(fileName, actualContentType);
   const stored = isContentAddressedUpload(meta)
-    ? await persistUploadFile(projectId, sourcePath, storageFileName, actualContentType, meta, context, options.onCopyProgress)
-    : await copyNativeFileToBucket(context, sourcePath, fileName, storageFileName, actualContentType, meta, options.onCopyProgress);
+    ? pinned
+      ? await persistUploadBytes(projectId, pinned, storageFileName, actualContentType, meta, context)
+      : await persistUploadFile(projectId, sourcePath, storageFileName, actualContentType, meta, context, options.onCopyProgress)
+    : await copyNativeFileToBucket(context, pinned ?? sourcePath, fileName, storageFileName, actualContentType, meta, options.onCopyProgress);
   // 原生路径拷贝是本地导入 / Finder 粘贴拖入 / MCP import_asset / 跨项目复制的共用门：预览在这里派生一次。
   return attachStoredAssetPreview(stored, await options.preparedPreview);
 }
 
 // 拷贝仍然先落暂存、再 link 进桶（AssetWriteContext 那条「写回世代必须还是发起时那个项目」的规矩不动）；
 // 本次只把**字节回调**接进来：进度是拷贝过程的副产物，不是另一条写盘路（P1：不开第二条）。
-async function copyNativeFileToBucket(context: AssetWriteContext, sourcePath: string, fileName: string, storageFileName: string, contentType: string, meta: JsonRecord, onCopyProgress?: AssetCopyProgress): Promise<unknown> {
+async function copyNativeFileToBucket(context: AssetWriteContext, source: string | PinnedAssetBytes, fileName: string, storageFileName: string, contentType: string, meta: JsonRecord, onCopyProgress?: AssetCopyProgress): Promise<unknown> {
   context.assertCurrent();
   const { projectId } = context;
   reapAbandonedUploadStaging(context.root);
   const staging = fs.mkdtempSync(path.join(context.root, UPLOAD_STAGING_PREFIX));
   const snapshot = path.join(staging, 'content');
   try {
-    await copyFileWithProgress(sourcePath, snapshot, onCopyProgress);
+    // 校验过的钉住字节直接落暂存（发布的就是校验的那份）；没校验内容的按路径拷。
+    if (typeof source === 'string') await copyFileWithProgress(source, snapshot, onCopyProgress);
+    else { await fs.promises.writeFile(snapshot, source, { flag: 'wx' }); onCopyProgress?.(source.byteLength, source.byteLength); }
     const contentHash = await contentHashForFile(snapshot);
     context.assertCurrent();
     const { absolutePath } = uniqueAssetPath(projectId, storageFileName, contentType, assetBucketFromMeta(meta), context);
@@ -393,6 +352,7 @@ export async function moveAssetFile(
 ): Promise<unknown> {
   // 唯一 sidecar 写入者之二：与 writeAsset 同一道 capture 族隐私收口。
   let meta = sanitizeAssetMetaForKind(rawMeta);
+  const context = await captureAssetWriteContext(projectId);
   // 同 copyAssetFile：无条件读文件头，否则撒谎的声明永远没人查证。
   const header = (() => {
     const handle = fs.openSync(sourcePath, "r");
@@ -405,18 +365,28 @@ export async function moveAssetFile(
     }
   })();
   const actualContentType = effectiveContentType(fileName, contentType, header);
-  if (String(meta.kind || "").toLowerCase() === "generated") meta = await validatedGeneratedMeta(meta, contentType, await fs.promises.readFile(sourcePath), sourcePath);
-  if (actualContentType === "model/gltf-binary") validateStructuredAsset(actualContentType, await fs.promises.readFile(sourcePath));
+  // 要校验内容的（生成产物、GLB）：读出一份钉住的字节，校验它、发布它——源文件在等解码器时被改写也影响不到落盘（V-1208-1）。
+  const validated = String(meta.kind || "").toLowerCase() === "generated" || actualContentType === "model/gltf-binary";
+  const pinned = validated ? await readPinnedAssetFile(sourcePath) : undefined;
+  if (pinned && String(meta.kind || "").toLowerCase() === "generated") meta = await validatedGeneratedMeta(meta, contentType, pinned);
+  if (pinned && actualContentType === "model/gltf-binary") validateStructuredAsset(actualContentType, pinned);
   const storageFileName = canonicalAssetFileName(fileName, actualContentType);
-  const { absolutePath, relativePath } = uniqueAssetPath(projectId, storageFileName, actualContentType, assetBucketFromMeta(meta));
-  try {
-    // 刚下载 / 刚生成的文件常被杀毒实时扫描短暂开着：改名先按共享冲突退避重试。
-    renameSyncWithRetry(sourcePath, absolutePath);
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== "EXDEV") throw error;
-    fs.copyFileSync(sourcePath, absolutePath);
-    // 已经拷进项目：删源文件只是收尾，删不掉不能把这次落盘报成失败。
+  context.assertCurrent();
+  const { absolutePath, relativePath } = uniqueAssetPath(projectId, storageFileName, actualContentType, assetBucketFromMeta(meta), context);
+  if (pinned) {
+    fs.writeFileSync(absolutePath, pinned, { flag: "wx" });
+    // 已经写进项目：删源文件只是收尾，删不掉不能把这次落盘报成失败。
     removeScratchAfterUseSync(sourcePath);
+  } else {
+    try {
+      // 刚下载 / 刚生成的文件常被杀毒实时扫描短暂开着：改名先按共享冲突退避重试。
+      renameSyncWithRetry(sourcePath, absolutePath);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "EXDEV") throw error;
+      fs.copyFileSync(sourcePath, absolutePath);
+      // 已经拷进项目：删源文件只是收尾，删不掉不能把这次落盘报成失败。
+      removeScratchAfterUseSync(sourcePath);
+    }
   }
   const stat = fs.statSync(absolutePath);
   writeAssetSidecarMeta(absolutePath, meta);
