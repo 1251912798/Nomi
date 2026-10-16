@@ -26,11 +26,16 @@ const testRoot = vi.hoisted(() => {
 /* eslint-enable @typescript-eslint/no-require-imports */
 
 vi.mock("electron", async () => {
-  const { electronStub } = await import("./parityElectronMock");
   return electronStub(testRoot);
 });
 
 import { seedParityCatalog } from "./generationParityTestUtils";
+
+import { electronStub } from "./parityElectronMock";
+import { writeModelBoxPreferenceSettings, readModelBoxPreferenceSettings, modelBoxPreferenceSettingsPath } from "../settings/modelBoxPreferenceSettings";
+import { deriveModelListing } from "../catalog/modelCatalogListing";
+import { readCatalog } from "../catalog/catalogStore";
+import { catalogPath } from "../catalog/catalogFileAccess";
 
 /** 用户藏掉的两行 + 手排到最前的那一行（都是真实内置目录里的模型）。 */
 const HIDDEN = ["z-image-turbo", "gpt-image-2"];
@@ -41,20 +46,15 @@ let listing: Listing[] = [];
 
 beforeAll(async () => {
   await seedParityCatalog(["apimart"]);
-  const { writeModelBoxPreferenceSettings, readModelBoxPreferenceSettings } = await import("../settings/modelBoxPreferenceSettings");
   writeModelBoxPreferenceSettings({ hiddenModelIds: HIDDEN, modelOrder: [ORDER_FIRST, ...HIDDEN] });
   const saved = readModelBoxPreferenceSettings();
   expect(saved.hiddenModelIds, "偏好没有落盘 = 这场对比是空的").toEqual(HIDDEN);
 
-  const { deriveModelListing } = await import("../catalog/modelCatalogListing");
-  const { readCatalog } = await import("../catalog/catalogStore");
   listing = deriveModelListing(readCatalog()) as unknown as Listing[];
 });
 
 describe("模型清单 · 设置页偏好 vs Agent/MCP 清单", () => {
   it("keeps the catalog and preference fixture under its isolated settings root", async () => {
-    const { modelBoxPreferenceSettingsPath } = await import("../settings/modelBoxPreferenceSettings");
-    const { catalogPath } = await import("../catalog/catalogFileAccess");
     expect(modelBoxPreferenceSettingsPath()).toContain(testRoot);
     expect(catalogPath()).toContain(testRoot);
   });
