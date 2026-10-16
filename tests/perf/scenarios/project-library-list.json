@@ -1,0 +1,21 @@
+{
+  "id": "project-library-list",
+  "feature": "库里 41 个项目（40 个各带 4 张图的小项目 + 1 个 96 图项目），打开大项目后「回项目库」：点菜单项 → 41 张卡全部可见再过两帧",
+  "script": "tests/ux/project-open-stages.e2e.mjs",
+  "args": [
+    "--scale",
+    "MIMG",
+    "--library-projects",
+    "40",
+    "--warmup",
+    "1"
+  ],
+  "scale": "项目库 41 个项目",
+  "metrics": [
+    "response"
+  ],
+  "budget": 300,
+  "group": "⑥ 项目库",
+  "budgetStatus": "proposed",
+  "budgetBasis": "换页类操作：RAIL 认为 100ms 内即时、1 秒内不打断思路；回项目库只是把本地列表画出来（封面可以晚到），提议 300ms；现有同类 project-open-100-nodes（打开项目到能操作）预算 1000ms"
+}

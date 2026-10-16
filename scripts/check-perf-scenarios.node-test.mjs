@@ -76,6 +76,32 @@ test('门岗必红：metrics 量具量不出、args 自带 --runs', () => {
   assert.match(run.stderr, /不要写 --runs/)
 })
 
+test('门岗必红：预算状态不认识、提议的预算没写依据', () => {
+  const run = runGate(fixtureRoot({
+    'sample-drag.json': goodScenario({ budgetStatus: 'maybe' }),
+    'no-basis.json': goodScenario({ id: 'no-basis', budgetStatus: 'proposed' }),
+  }))
+  assert.equal(run.status, 1)
+  assert.match(run.stderr, /budgetStatus 只能是/)
+  assert.match(run.stderr, /budgetBasis 写依据/)
+  const ok = runGate(fixtureRoot({ 'sample-drag.json': goodScenario({ budgetStatus: 'proposed', budgetBasis: '60Hz 下 p95 不超过两帧（33ms）' }) }))
+  assert.equal(ok.status, 0, ok.stderr)
+})
+
+test('画布规模基准的读结果：工作台场景的响应与主进程往返按样本读出，缺的数不凑 0', () => {
+  const payload = { results: [{ samples: [
+    { frameP95Ms: 12, longTasks: 0, responseMs: 80, mainRoundTripMaxMs: 40 },
+    { frameP95Ms: 14, longTasks: 1, responseMs: 95 },
+  ] }] }
+  const runs = DRIVERS['tests/perf/canvas-scale-bench.mjs'].readRuns(payload)
+  assert.deepEqual(runs, { frameGapP95: [12, 14], longTasks: [0, 1], response: [80, 95], mainRoundTripMax: [40] })
+  const open = DRIVERS['tests/ux/project-open-stages.e2e.mjs'].readRuns({ samples: [
+    { kind: 'cold', clickToMediaMs: 900, longTaskCount: 2, backToLibraryMs: 210 },
+    { kind: 'reopen', clickToMediaMs: 500, longTaskCount: 0 },
+  ] })
+  assert.deepEqual(open, { openToInteractive: [900], longTasks: [2], response: [210] })
+})
+
 test('门岗必绿：字段齐全的场景', () => {
   const run = runGate(fixtureRoot({ 'sample-drag.json': goodScenario() }))
   assert.equal(run.status, 0, run.stderr)

@@ -1,0 +1,22 @@
+{
+  "id": "timeline-scrub",
+  "feature": "预览页时间轴标尺上按住来回拖播放头 2 秒，拖动期间的帧间隔和长任务",
+  "script": "tests/perf/canvas-scale-bench.mjs",
+  "args": [
+    "--scales",
+    "M",
+    "--scenarios",
+    "timeline-scrub",
+    "--warmup",
+    "1"
+  ],
+  "scale": "时间轴 24 个视频片段（项目里 96 节点）",
+  "metrics": [
+    "frameGapP95",
+    "longTasks"
+  ],
+  "budget": 33,
+  "group": "⑩ 时间轴拖动",
+  "budgetStatus": "proposed",
+  "budgetBasis": "连续手势要跟手：60Hz 下 p95 帧间隔不超过 2 帧（33ms），仓库默认预算同此；现有同类场景 canvas-drag-20-nodes 基线中位 9.5ms（10-11，有噪声）"
+}

@@ -9,8 +9,10 @@ import path from 'node:path'
 
 export const SCENARIO_DIR = 'tests/perf/scenarios'
 /** 可选的指标。登记表的 budget / baseline 对应 metrics[0]（主指标），其余指标只打印、不判。 */
-export const METRICS = Object.freeze(['response', 'frameGapP95', 'longTasks', 'openToInteractive'])
+export const METRICS = Object.freeze(['response', 'frameGapP95', 'longTasks', 'openToInteractive', 'mainRoundTripMax'])
 export const MIN_RUNS = 5
+/** 预算状态：proposed = 实现线提议、等安静窗口量完基线由协调定；approved = 已定。不写 = 已定（老条目）。 */
+export const BUDGET_STATUSES = Object.freeze(['proposed', 'approved'])
 /** 夜跑 / 对照基线时，中位数比基线差超过这个比例算退化。 */
 export const REGRESSION_RATIO = 1.2
 const ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
@@ -25,25 +27,31 @@ function firstRow(payload) {
 }
 
 export const DRIVERS = Object.freeze({
-  // 帧间隔 + 长任务：画布规模基准（tests/perf/canvas-scale-bench.mjs，自带 CDP 指标与 rAF 探针）
+  // 帧间隔 + 长任务：画布规模基准（tests/perf/canvas-scale-bench.mjs，自带 CDP 指标与 rAF 探针）；
+  // 工作台场景（tests/perf/canvas-scale/workbenchScenarios.mjs）另有 responseMs（操作 → 界面到位）与主进程往返峰值。
   'tests/perf/canvas-scale-bench.mjs': {
-    supports: ['frameGapP95', 'longTasks'],
+    supports: ['frameGapP95', 'longTasks', 'response', 'mainRoundTripMax'],
     buildArgs: (script, args, { runs, label }) => [script, ...args, '--runs', String(runs), '--label', label],
     resultFile: (label) => `tests/perf/results/canvas-scale-${label}.json`,
     readRuns(payload) {
       const row = firstRow(payload)
       if (!row) return {}
-      return { frameGapP95: row.samples.map((sample) => sample.frameP95Ms), longTasks: row.samples.map((sample) => sample.longTasks) }
+      const pick = (key) => row.samples.map((sample) => sample[key]).filter(isNumber)
+      return { frameGapP95: pick('frameP95Ms'), longTasks: pick('longTasks'), response: pick('responseMs'), mainRoundTripMax: pick('mainRoundTripMaxMs') }
     },
   },
-  // 打开项目到能操作（分阶段计时，用户每天早上那一下 = cold）
+  // 打开项目到能操作（分阶段计时，用户每天早上那一下 = cold）；带 --library-projects 时另量「回项目库 → 卡片全到位」（response）。
   'tests/ux/project-open-stages.e2e.mjs': {
-    supports: ['openToInteractive', 'longTasks'],
+    supports: ['openToInteractive', 'longTasks', 'response'],
     buildArgs: (script, args, { runs, label }) => [script, label, ...args, '--runs', String(runs)],
     resultFile: (label) => `tests/ux/perf-results/project-open-${label}.json`,
     readRuns(payload) {
       const cold = (payload.samples ?? []).filter((sample) => sample.kind === 'cold')
-      return { openToInteractive: cold.map((sample) => sample.clickToMediaMs), longTasks: cold.map((sample) => sample.longTaskCount) }
+      return {
+        openToInteractive: cold.map((sample) => sample.clickToMediaMs),
+        longTasks: cold.map((sample) => sample.longTaskCount),
+        response: cold.map((sample) => sample.backToLibraryMs).filter(isNumber),
+      }
     },
   },
 })
@@ -92,6 +100,9 @@ export function validateScenarios(entries, { exists, skipBaseline = false }) {
     if (!Array.isArray(data.metrics) || data.metrics.length === 0 || data.metrics.some((metric) => !METRICS.includes(metric))) fail(`metrics 必须从 ${METRICS.join(' / ')} 里选（至少一项，第一项是主指标）`)
     else if (driver && data.metrics.some((metric) => !driver.supports.includes(metric))) fail(`量具 ${data.script} 只量 ${driver.supports.join(' / ')}，metrics 里有它量不出的`)
     if (!isNumber(data.budget) || data.budget <= 0) fail('budget 必须是正数（主指标的预算，单位 ms 或次数）')
+    // 预算是「提议」还是「已定」：提议的预算必须写依据（感知阈值、同类场景的数字），协调量完基线后改成 approved。
+    if (data.budgetStatus !== undefined && !BUDGET_STATUSES.includes(data.budgetStatus)) fail(`budgetStatus 只能是 ${BUDGET_STATUSES.join(' / ')}`)
+    if (data.budgetStatus === 'proposed' && (typeof data.budgetBasis !== 'string' || data.budgetBasis.trim().length < 10)) fail('提议的预算（budgetStatus: proposed）要在 budgetBasis 写依据：人的感知阈值、现有同类场景的数字')
     const baseline = data.baseline
     if (skipBaseline) { /* 新场景第一次量基线：--smoke / --update-baseline 时不要求已有基线 */ } else if (!baseline || typeof baseline !== 'object') fail('缺 baseline（先跑 pnpm run perf:scenarios --id <id> --update-baseline）')
     else {

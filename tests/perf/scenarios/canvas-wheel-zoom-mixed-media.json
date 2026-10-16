@@ -1,0 +1,22 @@
+{
+  "id": "canvas-wheel-zoom-mixed-media",
+  "feature": "有大图和视频节点的画布上，滚轮连续放大缩小 40 下（约 2 秒），缩放期间的帧间隔和长任务",
+  "script": "tests/perf/canvas-scale-bench.mjs",
+  "args": [
+    "--scales",
+    "L",
+    "--scenarios",
+    "wheel-zoom",
+    "--warmup",
+    "1"
+  ],
+  "scale": "96 个图片节点 + 96 个视频节点 / 384 条边",
+  "metrics": [
+    "frameGapP95",
+    "longTasks"
+  ],
+  "budget": 33,
+  "group": "③ 平移和缩放",
+  "budgetStatus": "proposed",
+  "budgetBasis": "连续手势要跟手：60Hz 下 p95 帧间隔不超过 2 帧（33ms），仓库默认预算同此；现有同类场景 canvas-drag-20-nodes 基线中位 9.5ms（10-11，有噪声）；缩放会让所有节点重算（LOD 切换在 zoom<0.55 且节点>80 时发生），是已知的大头"
+}
