@@ -46,6 +46,15 @@ export function clipHandleHitWidth(input: { clipWidth: number; canvasZoom: numbe
   return Math.min(screenWidth / zoom, clipWidth / 2)
 }
 
+/**
+ * 片段标签两侧要让出的宽度（设计像素）。手柄是压在片段边缘的 absolute 兄弟（z 在标签之上），
+ * 铺满全宽的标签自己不让，首字符就会被盖住（"Image" 显示成 "mage"）。
+ * 取手柄的最宽态（选中）：常态 / 悬停 / 选中三态文字位置一致，不会跳；这个函数和手柄宽度同源，手柄变宽标签自动跟着让。
+ */
+export function clipLabelInset(input: { clipWidth: number; canvasZoom: number }): number {
+  return clipHandleHitWidth({ ...input, selected: true })
+}
+
 /** 播放头抓取带宽度（设计像素）。 */
 export function playheadHitWidth(canvasZoom: number): number {
   return screenPxToDesignPx(CLIP_PLAYHEAD_HIT_PX, canvasZoom)
