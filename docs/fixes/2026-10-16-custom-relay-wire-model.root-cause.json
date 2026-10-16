@@ -47,7 +47,11 @@
     "electron/catalog/apimartVideos.ts",
     "electron/catalog/volcengineVideos.ts",
     "electron/catalog/dreaminaImages.ts",
-    "electron/catalog/dreaminaVideos.ts"
+    "electron/catalog/dreaminaVideos.ts",
+    "electron/catalog/archetypeWireDefaults.audio.generated.ts",
+    "electron/catalog/archetypeWireDefaults.image.generated.ts",
+    "electron/catalog/archetypeWireDefaults.video.generated.ts",
+    "electron/catalog/archetypeWireDefaults.model3d.generated.ts"
   ],
   "entry_points": [
     "画布 UI：buildCatalogTaskRequest → runtime.runTask → buildProfileHttpRequest / runMultipartProfileOperation / executeProcessOperation",
@@ -175,6 +179,7 @@
       "git grep -n \"wireReferencedParamKeys\" electron/capabilityCore/moduleCatalogBootstrap.ts：Agent 参数表把 model 当参数"
     ]
   },
+  "recurrence_check_on": "2026-10-30",
   "prevention": {
     "kind": "centralized-boundary",
     "enforcement_path": "electron/shared/wireModelIdentity.ts",
