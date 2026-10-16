@@ -1,0 +1,26 @@
+{
+  "id": "REAL-20261010-05",
+  "since": "2026-10-10",
+  "source": "2026-10-10 real test",
+  "category": "interaction-semantics",
+  "problem": "文稿方案行的删除图标和「⋯」菜单功能重复、设计奇怪（用户原话）；项目库小播放按钮 hover 没反馈、点了才知道是新手引导",
+  "existingInvariants": [],
+  "ironLaws": [
+    "⑫"
+  ],
+  "useCases": [],
+  "fullWalkJourneys": [],
+  "status": "fixed",
+  "manualReview": "reviewed",
+  "evidence": [
+    "2026-10-10 user screenshots: plan row with red trash and three-dot menu; library small play button",
+    "docs/evidence/2026-10-10-row-actions-direct-icons/plan-row-hover-en-dark.jpg"
+  ],
+  "completionCommits": [],
+  "rootCauseContract": "docs/fixes/2026-10-10-row-actions-direct-icons.root-cause.json",
+  "fixedInPr": 1192,
+  "classCheck": {
+    "kind": "matrix",
+    "file": "scripts/check-icon-semantics.node-test.mjs"
+  }
+}

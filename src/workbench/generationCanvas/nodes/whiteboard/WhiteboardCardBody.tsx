@@ -4,7 +4,7 @@ import { IconBrush } from '@tabler/icons-react'
 import { cn } from '../../../../utils/cn'
 import type { GenerationCanvasNode } from '../../model/generationCanvasTypes'
 import { useGenerationCanvasStore } from '../../store/generationCanvasStore'
-import { NodeBodyHeader, EmptyStateLauncher } from '../render/CardCommon'
+import { EmptyStateLauncher } from '../render/CardCommon'
 import WhiteboardModal from './WhiteboardModal'
 import { readWhiteboardState } from './whiteboardState'
 import { resolveNodeVisualSize } from '../nodeSizing'
@@ -37,12 +37,8 @@ function WhiteboardCardBodyImpl({
 
   return (
     <div className={cn('flex h-full w-full flex-col bg-nomi-paper')}>
-      {/* 标题走左上角，统一 NodeBodyHeader（和占位/镜头节点同款）。 */}
-      <div className={cn('p-2.5 pointer-events-none')}>
-        <NodeBodyHeader title={node.title || t('generationCommon.whiteboard.title')} />
-      </div>
       {/* 中间只留启动器（用户拍板）；圆底图标 + 点击行为统一 EmptyStateLauncher(onActivate)。 */}
-      <div className={cn('flex-1 min-h-0 flex flex-col items-center justify-center pb-3')}>
+      <div className={cn('flex-1 min-h-0 flex flex-col items-center justify-center')}>
         <EmptyStateLauncher
           icon={<IconBrush size={24} stroke={1.55} />}
           label={t('generationCommon.nodeEmpty.whiteboard.action')}

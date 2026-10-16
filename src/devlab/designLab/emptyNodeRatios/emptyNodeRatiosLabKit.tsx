@@ -7,6 +7,7 @@
 import React, { type JSX } from 'react'
 import { cn } from '../../../utils/cn'
 import { EMPTY_SURFACE_CLASS, PendingGenerationPlaceholder } from '../../../workbench/generationCanvas/nodes/render/CardCommon'
+import { NodeEmptyStateProvider } from '../../../workbench/generationCanvas/nodes/render/NodeEmptyStateProvider'
 import { ProductionShotPlaceholder } from '../../../workbench/generationCanvas/nodes/ProductionShotPlaceholder'
 import { useProductionCanvasLandingStore } from '../../../workbench/production/productionCanvasLandingStore'
 import type { GenerationCanvasNode, GenerationNodeKind } from '../../../workbench/generationCanvas/model/generationCanvasTypes'
@@ -73,7 +74,9 @@ function Cell({ caption, kind, size }: { caption: string; kind: 'image' | 'video
         data-lab-node-frame={kind}
       >
         <div className="h-full w-full">
-          <PendingGenerationPlaceholder node={node} selected={false} />
+          <NodeEmptyStateProvider engaged>
+            <PendingGenerationPlaceholder node={node} />
+          </NodeEmptyStateProvider>
         </div>
         <ProductionShotPlaceholder node={node} reportFeedback={() => undefined} />
       </div>

@@ -14,7 +14,7 @@ import {
   IconTrash,
 } from '@tabler/icons-react'
 import { cn } from '../../utils/cn'
-import { ActionCard, DesignEmptyState, NomiSkeleton, WorkbenchIconButton } from '../../design'
+import { ActionCard, DesignEmptyState, NomiSkeleton } from '../../design'
 import { NomiImage } from '../../design/media'
 import { ShellFrame } from '../../ui/app-shell/shell/ShellFrame'
 import { ShellTopBar } from '../../ui/app-shell/shell/ShellTopBar'
@@ -359,14 +359,19 @@ export default function ProjectLibraryPage({
               <span className="flex-1" />
               <div className="flex shrink-0 items-center gap-2">
                 {onPlayJourneyTour ? (
-                  // 「看一遍怎么做」在 Library 板上只画在空库；有项目后它原来是第三张动作卡——功能不丢，收成一颗图标钮
-                  // （控件文案契约 §1.8：次动作 / 工具动作 = 图标 + 悬停名字；设计卡对账：有意不同）。
-                  <WorkbenchIconButton
-                    icon={<IconPlayerPlay size={16} stroke={1.5} aria-hidden="true" />}
-                    label={journeyTourSeen ? t('library.replayGuide') : t('library.watchHow')}
+                  // 「看一遍怎么做」在 Library 板上只画在空库；有项目后它原来是第三张动作卡——功能不丢。
+                  // 2026-10-10 用户：「小播放按钮 hover 没反馈、点了才知道是新手引导」→ 图标旁直接写「新手引导」，
+                  // hover 名字（原来那句）留着说清它会做什么。位置与引导本身不动。
+                  <button
+                    type="button"
                     onClick={onPlayJourneyTour}
+                    title={journeyTourSeen ? t('library.replayGuide') : t('library.watchHow')}
+                    className="inline-flex h-7 items-center gap-1.5 rounded-pill border-0 bg-transparent px-3 text-caption font-medium text-nomi-ink-60 transition-colors hover:bg-nomi-ink-05 hover:text-nomi-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-nomi-accent"
                     data-library-tour
-                  />
+                  >
+                    <IconPlayerPlay size={14} stroke={1.5} aria-hidden="true" />
+                    {t('appShell.library.tour')}
+                  </button>
                 ) : null}
                 {onOpenFolder ? (
                   // Library 板的文字胶囊 + 控件文案契约「带字 ≤4 字」两条同时满足：「选文件夹」/「Open folder」
