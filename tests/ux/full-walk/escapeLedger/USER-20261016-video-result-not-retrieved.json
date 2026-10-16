@@ -10,7 +10,7 @@
   ],
   "useCases": [],
   "fullWalkJourneys": [],
-  "status": "reviewed",
+  "status": "fixed",
   "manualReview": "reviewed",
   "evidence": [
     "electron/catalog/nativeEndpointProbe.test.ts：中转对假任务号回 503「无可用渠道」时，旧判据判「原生端点存在」（修前红）",
@@ -28,5 +28,5 @@
     "kind": "matrix",
     "file": "electron/catalog/videoQueryContractMatrix.test.ts"
   },
-  "fixedInPr": null
+  "fixedInPr": 1222
 }
