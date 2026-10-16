@@ -2,6 +2,7 @@ import { getDesktopBridge, type DesktopBridge } from '../../desktop/bridge'
 import type { TaskKind } from './taskApi'
 import type { ProjectBinding } from '../../../electron/shared/projectBinding'
 import { unwrapAssetImportResult } from '../../../electron/shared/contracts/assetImportResult'
+import { canvasPreviewFieldsFromReceipt, type CanvasPreviewFields } from '../../../electron/shared/contracts/canvasMediaPreview'
 
 export type WorkbenchAssetDto = {
   id: string
@@ -18,9 +19,15 @@ export function hostedAssetUrl(asset: WorkbenchAssetDto | null | undefined): str
   return typeof asset?.data?.url === 'string' ? asset.data.url.trim() : ''
 }
 
-/** 落盘边界派生的画布预览 URL（图片 ≤1024 缩略 / 视频 poster）；没派生出来则空串，调用方回落到源。 */
-export function hostedAssetThumbnailUrl(asset: WorkbenchAssetDto | null | undefined): string {
-  return typeof asset?.data?.thumbnailUrl === 'string' ? asset.data.thumbnailUrl.trim() : ''
+/**
+ * 落盘回执 → 画布结果的预览两栏（独立小图 + 预览事实）。渲染层所有「拿到落盘资产就往画布结果里写」的入口
+ * 只用这一个，不再各自读 thumbnailUrl、更不许没有小图时把源地址填进去（见 shared/contracts/canvasMediaPreview）。
+ */
+export function hostedAssetCanvasPreview(
+  asset: WorkbenchAssetDto | null | undefined,
+  type: string | undefined,
+): CanvasPreviewFields {
+  return canvasPreviewFieldsFromReceipt(type, asset?.data, hostedAssetUrl(asset))
 }
 
 /**
