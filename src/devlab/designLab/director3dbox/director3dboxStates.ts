@@ -4,6 +4,7 @@ import { DIRECTOR_VIEW_STATES } from './states/01-director-view'
 import { SHOT_FOCUS_STATES } from './states/02-shot-focus'
 import { SWITCH_REVIEW_STATES } from './states/03-switch-review'
 import { PRODUCE_STATES } from './states/04-produce'
+import { SWITCHBACK_STATES } from './states/05-switchback'
 import type { LabState } from '../labScreen'
 
-export const DIRECTOR_3DBOX_STATES: readonly LabState[] = [...DIRECTOR_VIEW_STATES, ...SHOT_FOCUS_STATES, ...SWITCH_REVIEW_STATES, ...PRODUCE_STATES]
+export const DIRECTOR_3DBOX_STATES: readonly LabState[] = [...DIRECTOR_VIEW_STATES, ...SHOT_FOCUS_STATES, ...SWITCH_REVIEW_STATES, ...PRODUCE_STATES, ...SWITCHBACK_STATES]

@@ -3,6 +3,7 @@
  *          ../../../../../../vendor/tablerIcons 的 IconHelp / IconRefresh、../../scene/viewSettings（DEFAULT_VIEW_SETTINGS / VIEW_SETTING_RANGES / DirectorPreferences）、
  *          ../../scene/sceneTheme 的 DirectorViewportTheme、../fields/SliderNumberField、../fields/FieldPrimitives 的 SectionHeader
  * [OUTPUT]: 对外提供 SettingsDialog：漫游速度 / 方向键转速 / 左键旋转灵敏度 / 右键平移灵敏度 / 惯性阻尼（各自恢复默认）+ 视口主题两档即时生效 + 帮助入口
+ *           + 「使用旧导演台」开关（样张期：只有传了 layout 才出现；切回只切界面，写回规矩与 Agent 工具面不变，待用户拍板后接线）
  * [POS]: director/panels/dialogs 的偏好设置对话框（清单 §8 H1）：只改本机偏好（scene/viewSettings 持久），不碰工程；
  *        入口是视口右下显示模式开关旁的齿轮（一功能一个家）。
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
@@ -13,7 +14,7 @@ import { DesignModal, NomiSegmented, WorkbenchButton, WorkbenchIconButton } from
 import { IconHelp, IconRefresh } from '../../../../../../vendor/tablerIcons'
 import type { DirectorViewportTheme } from '../../scene/sceneTheme'
 import { DEFAULT_VIEW_SETTINGS, VIEW_SETTING_RANGES, type DirectorPreferences, type ViewSettings } from '../../scene/viewSettings'
-import { SectionHeader } from '../fields/FieldPrimitives'
+import { SectionHeader, ToggleField } from '../fields/FieldPrimitives'
 import { SliderNumberField } from '../fields/SliderNumberField'
 
 const RAD_TO_DEG = 180 / Math.PI
@@ -38,9 +39,11 @@ export type SettingsDialogProps = {
   onChange: (next: DirectorPreferences) => void
   onClose: () => void
   onOpenHelp: () => void
+  /** 导演台样式：用 3D-BOX 导演台（默认）还是切回旧导演台。不传 = 不显示这一节。 */
+  layout?: Readonly<{ legacy: boolean; onChange: (legacy: boolean) => void }>
 }
 
-export function SettingsDialog({ open, preferences, onChange, onClose, onOpenHelp }: SettingsDialogProps): JSX.Element {
+export function SettingsDialog({ open, preferences, onChange, onClose, onOpenHelp, layout }: SettingsDialogProps): JSX.Element {
   const { t } = useTranslation()
   const setView = (key: keyof ViewSettings, value: number) => onChange({ ...preferences, view: { ...preferences.view, [key]: value } })
 
@@ -90,6 +93,13 @@ export function SettingsDialog({ open, preferences, onChange, onClose, onOpenHel
             onChange={(value) => onChange({ ...preferences, theme: value as DirectorViewportTheme })}
           />
         </section>
+        {layout ? (
+          <section data-testid="director-settings-layout">
+            <SectionHeader title={t('director.settings.layoutTitle')} />
+            <ToggleField label={t('director.settings.legacyLayout')} hint={t('director.settings.legacyLayoutHint')} checked={layout.legacy} onChange={layout.onChange} />
+            <p className="text-micro text-nomi-ink-40">{t('director.settings.legacyLayoutHint')}</p>
+          </section>
+        ) : null}
         <div className="flex items-center justify-between gap-2 border-t border-nomi-line-soft pt-2">
           <span className="text-micro text-nomi-ink-40">{t('director.settings.persisted')}</span>
           <WorkbenchButton size="sm" data-testid="director-settings-help" onClick={onOpenHelp}>

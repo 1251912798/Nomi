@@ -175,6 +175,9 @@ export const zhDirector = {
   },
   settings: {
     title: '导演台偏好设置',
+    layoutTitle: '导演台样式',
+    legacyLayout: '使用旧导演台',
+    legacyLayoutHint: '全屏打开、默认进精修、视口底部保留「描述场景…」。只换界面：Agent 照样能搭预演，撤销和保存规则不变。',
     roamTitle: '视口漫游',
     roamSpeed: '漫游速度',
     roamRotateSpeed: '方向键转速',
@@ -1170,6 +1173,9 @@ export const enDirector = {
   },
   settings: {
     title: 'Director preferences',
+    layoutTitle: 'Director layout',
+    legacyLayout: 'Use the classic director',
+    legacyLayoutHint: 'Opens full screen in Refine, with “Describe scene…” under the viewport. Only the layout changes: the Agent can still stage previews, and undo and saving work the same.',
     roamTitle: 'Viewport roam',
     roamSpeed: 'Fly speed',
     roamRotateSpeed: 'Turn rate',
