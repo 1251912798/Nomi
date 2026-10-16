@@ -205,9 +205,11 @@ export const zhDirector = {
     previewFailed: '预演失败',
     previewTooLong: '预演超过 {{seconds}} 秒，先缩短或拆成两段',
     previewRetry: '重试预演',
+    previewRerender: '重渲预演',
     previewPromptOnly: '这个模型不接参考视频，运镜只能靠文字描述，精度会低',
     spendBlockedRendering: '这一镜的 3D-BOX 预演还在渲染，渲染完再生成',
     spendBlockedFailed: '这一镜的 3D-BOX 预演失败了，先重试预演再生成',
+    spendBlockedStale: '预演挂上之后导演台又改过，先重渲预演再生成',
   },
   help: {
     title: '操作说明与快捷键',
@@ -1203,9 +1205,11 @@ export const enDirector = {
     previewFailed: 'Preview failed',
     previewTooLong: 'The preview is longer than {{seconds}}s. Shorten it or split it in two.',
     previewRetry: 'Retry preview',
+    previewRerender: 'Re-render preview',
     previewPromptOnly: 'This model takes no reference video, so camera movement is described in text only and will be less precise.',
     spendBlockedRendering: "This shot's 3D-BOX preview is still rendering. Generate once it is attached.",
     spendBlockedFailed: "This shot's 3D-BOX preview failed. Retry the preview before generating.",
+    spendBlockedStale: "The 3D-BOX scene changed after this preview was attached. Re-render the preview before generating.",
   },
   help: {
     title: 'Controls & shortcuts',

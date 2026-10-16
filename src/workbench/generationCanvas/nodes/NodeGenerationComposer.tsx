@@ -17,7 +17,8 @@ import { useGenerationCanvasStore } from '../store/generationCanvasStore'
 import { NodeWriteAccessProvider, useNodeWriteAccess } from './nodeWriteAccess'
 import { canRunGenerationNode, unmetReferenceDependencyForNode } from '../runner/generationRunController'
 import { startGenerationFromComposer } from './composerRun'
-import { directorPreviewSpendBlock } from './director/model/directorPreviewState'
+import { directorPreviewSpendBlock, directorPreviewSpendBlockMessageKey } from './director/model/directorPreviewState'
+import { requestDirectorPreviewRender } from './director/agent/directorPreviewCapture'
 import type { UnmetReferenceDependency } from './controls/referenceDependency'
 import { collectUngeneratedReferenceAncestors } from '../runner/referenceAncestors'
 import NodeParameterControls from './NodeParameterControls'
@@ -45,7 +46,7 @@ import { COMPOSER_MIN_USABLE_HEIGHT, NODE_COMPOSER_WIDTH } from './nodeSizing'
 import { ComposerAnchor } from './composerAnchor'
 import { ConnectedTextChips } from './ConnectedTextChips'
 import TextNodeComposer from './TextNodeComposer'
-import { IconArrowsDiagonal, IconArrowsDiagonalMinimize2 } from '@tabler/icons-react'
+import { IconArrowsDiagonal, IconArrowsDiagonalMinimize2, IconRefresh } from '@tabler/icons-react'
 import {
   findModelOptionByIdentifier,
   requiredModeForGenerationNode,
@@ -173,8 +174,13 @@ function GenericNodeGenerationComposer({ onFeedback, node, visualSize, host = 'c
   // 与 canGenerate 同一个判定（unmetReferenceDependencyForNode），composer 不再按 node.kind 重猜原因。
   // 订阅**字符串**而非对象：对象选择器每帧新引用会破坏 v0.7.2 的 primitive 订阅防抖；
   // 文案仍留到渲染时用 t() 格式化，保证切语言能实时重渲。
-  // 3D-BOX 预演挡着这一镜的生成（渲染中 / 失败）：与 canRunGenerationNode 同一个判据，这里只取原因（原始值订阅）。
+  // 3D-BOX 预演挡着这一镜的生成（渲染中 / 失败 / 过期）：与 canRunGenerationNode 同一个判据，这里只取原因与可重渲的导演节点（原始值订阅）。
   const directorPreviewBlock = useGenerationCanvasStore((state) => directorPreviewSpendBlock(node.id, state.nodes)?.reason ?? null)
+  // 过期 / 可重试的失败：给一键重渲（与「出成片」、导演节点卡「重试」同一个写口）；超长的失败要改短，不给
+  const rerenderDirectorNodeId = useGenerationCanvasStore((state) => {
+    const block = directorPreviewSpendBlock(node.id, state.nodes)
+    return block && (block.reason === 'stale' || (block.reason === 'failed' && block.failure !== 'too_long')) ? block.directorNodeId : null
+  })
   const unmetDependencyKey = useGenerationCanvasStore((state) =>
     JSON.stringify(unmetReferenceDependencyForNode(node, { nodes: state.nodes, edges: state.edges })),
   )
@@ -492,7 +498,7 @@ function GenericNodeGenerationComposer({ onFeedback, node, visualSize, host = 'c
         ) : null}
         {inPanel ? null : (() => {
           const disabledReason = directorPreviewBlock
-            ? t(directorPreviewBlock === 'rendering' ? 'director.agent.spendBlockedRendering' : 'director.agent.spendBlockedFailed')
+            ? t(directorPreviewSpendBlockMessageKey(directorPreviewBlock))
             : unmetDependency
             ? t('generationCommon.composer.referenceCompanionRequired', {
                 slot: unmetDependency.slotLabel,
@@ -525,6 +531,16 @@ function GenericNodeGenerationComposer({ onFeedback, node, visualSize, host = 'c
                   ? t('generationCommon.composer.regenerate')
                   : t('generationCommon.composer.generate'))
           return (
+            <>
+            {rerenderDirectorNodeId ? (
+              <WorkbenchIconButton
+                size="sm"
+                icon={<IconRefresh size={14} stroke={2} />}
+                label={t('director.agent.previewRerender')}
+                data-testid="node-composer-preview-rerender"
+                onClick={() => requestDirectorPreviewRender(rerenderDirectorNodeId)}
+              />
+            ) : null}
             <span title={title} style={{ display: 'contents' }}>
               {/* 原生 button：避开 WorkbenchButton(Mantine)对 radius/bg 的覆盖,确保样张 v4 的深色圆形主行动钮。
                   ml-auto：把生成钮推到底栏最右 = 卡片右下角（卡宽恒定 → 屏幕位置锁死）。 */}
@@ -539,6 +555,7 @@ function GenericNodeGenerationComposer({ onFeedback, node, visualSize, host = 'c
                 {isGenerating ? '···' : '↑'}
               </button>
             </span>
+            </>
           )
         })()}
       </div>}

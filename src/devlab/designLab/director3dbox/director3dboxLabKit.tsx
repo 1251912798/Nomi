@@ -21,6 +21,8 @@ import { compileDirectorPlan } from '../../../workbench/generationCanvas/nodes/d
 import { applyDirectorPlanEdits, canonicalDirectorPlan, directorPlanRevision } from '../../../../electron/shared/director/planPatch'
 import { parseDirectorPlan, type DirectorPlan } from '../../../../electron/shared/director/directorPlanSchema'
 import { DIRECTOR_NODE_KIND, DIRECTOR_PLAN_META_KEY, DIRECTOR_PREVIEW_META_KEY, DIRECTOR_PROJECT_META_KEY } from '../../../workbench/generationCanvas/nodes/director/model/directorNodeMeta'
+import type { DirectorPreviewFailure } from '../../../workbench/generationCanvas/nodes/director/model/directorPreviewState'
+import type { DirectorPreviewStatus } from '../../../../electron/shared/director/directorPreviewStatus'
 import { useGenerationCanvasStore } from '../../../workbench/generationCanvas/store/generationCanvasStore'
 import type { GenerationCanvasNode } from '../../../workbench/generationCanvas/model/generationCanvasTypes'
 import { createDirectorStore } from '../../../workbench/generationCanvas/nodes/director/model/directorStore'
@@ -70,7 +72,7 @@ function courtyardFixture(kind: 'courtyard' | 'courtyard-after'): CourtyardFixtu
 
 /** 画布上放一个带计划正本的导演台节点（stage_shot 建出来的节点就长这样）：编辑器经它登记会话。 */
 /** 导演节点上的预演处于哪一态（「出成片」主按钮的几种样子）；none = 没出过预演。 */
-export type LabPreview = 'none' | 'rendering' | 'failed' | 'too_long' | 'ready'
+export type LabPreview = DirectorPreviewStatus | Extract<DirectorPreviewFailure, 'too_long'>
 
 function labPreviewMeta(preview: LabPreview, revision: string): Record<string, unknown> {
   if (preview === 'none') return {}

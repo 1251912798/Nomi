@@ -1,20 +1,22 @@
 /**
  * [INPUT]: 依赖 ./directorNodeMeta 的 DIRECTOR_NODE_KIND / DIRECTOR_PREVIEW_META_KEY / DIRECTOR_PLAN_META_KEY、../../../model/generationCanvasTypes
  * [OUTPUT]: 对外提供 DirectorPreviewMeta、DirectorPlanMeta、readDirectorPreview、readDirectorPlanMeta、directorPreviewSpendBlock、
- *           directorPreviewSourceFingerprint / directorProduceState（导演视图「出成片」的状态，与花钱闸同一份判据）、
+ *           directorPreviewSourceFingerprint / directorPreviewIsStale（过期判据，花钱闸与「出成片」共用）/ directorProduceState、
+ *           directorPreviewSpendBlockMessageKey（挡住原因 → 文案的唯一映射，节点生成钮与 runner 共用）、
  *           DIRECTOR_PREVIEW_MAX_SECONDS、DIRECTOR_PREVIEW_FPS、declaredShotDurationSeconds、DIRECTOR_PREVIEW_DURATION_TOLERANCE_SECONDS
- * [POS]: 3D-BOX 预演状态的**唯一判据**（方案 §8 花钱闸）：「这一镜挂着的参考预演还没好（渲染中 / 失败）就不许花钱」。
+ * [POS]: 3D-BOX 预演状态的**唯一判据**（方案 §8 花钱闸）：「这一镜挂着的参考预演还没好（渲染中 / 失败）或已过期（挂上之后导演工程又被改过）就不许花钱」。
+ *        挡住原因的词表住 electron/shared/director/directorPreviewStatus.ts（跨进程合同，主进程准入同一份）。
  *        判据只住这里；消费者是全部付费提交的唯一咽喉 `canRunGenerationNode`（生成钮 / runGenerationNode / 生成索引）
  *        与 `generate` 的出卡前检查（拿原因给 Agent）。纯函数、零 React / three，runner 可直接 import。
  *        状态写在**导演节点**上（targetNodeId 指向它要挂的视频节点），不写到视频节点：撤销导演节点，闸自然解除。
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
-import type { DirectorPreviewStatus } from '../../../../../../electron/shared/director/directorPreviewStatus'
+import type { DirectorPreviewSpendBlockReason, DirectorPreviewStatus } from '../../../../../../electron/shared/director/directorPreviewStatus'
 import { stableProjectAgentJson } from '../../../../../../electron/shared/legacyAgentJson'
 import { synchronousSha256 } from '../../../../../../electron/shared/synchronousSha256'
 import type { GenerationCanvasNode } from '../../../model/generationCanvasTypes'
 import { productionMetaOf } from '../../../model/productionMeta'
-import { DIRECTOR_NODE_KIND, DIRECTOR_PLAN_META_KEY, DIRECTOR_PREVIEW_META_KEY } from './directorNodeMeta'
+import { DIRECTOR_NODE_KIND, DIRECTOR_PLAN_META_KEY, DIRECTOR_PREVIEW_META_KEY, DIRECTOR_PROJECT_META_KEY } from './directorNodeMeta'
 import { normalizeDirectorProject } from './directorProject'
 import type { DirectorProject } from './directorTypes'
 
@@ -59,7 +61,7 @@ export type DirectorPreviewMeta = Readonly<{
   durationSeconds?: number
   /** 动作库没有的细节动作（编译器报 missing_asset 的那些）：挂接时写进视频节点提示词，交给视频模型演。 */
   notes?: readonly string[]
-  /** 这份预演是对哪份工程渲染的（`directorPreviewSourceFingerprint`）：之后工程被手改过 = 预演过期，出片前要重渲。旧预演没有这一项，按过期处理。 */
+  /** 这份预演是对哪份工程渲染的（`directorPreviewSourceFingerprint`）：之后工程被手改过 = 预演过期（`directorPreviewIsStale`）。旧预演没有这一项：没有证据，不判过期。 */
   sourceFingerprint?: string
   updatedAt: number
 }>
@@ -84,17 +86,17 @@ export function readDirectorPlanMeta(node: Pick<GenerationCanvasNode, 'meta'> | 
   return { plan: raw.plan, revision: raw.revision }
 }
 
-export type DirectorPreviewSpendBlock = Readonly<{ reason: 'rendering' | 'failed'; directorNodeId: string; failure?: DirectorPreviewFailure }>
+export type DirectorPreviewSpendBlock = Readonly<{ reason: DirectorPreviewSpendBlockReason; directorNodeId: string; failure?: DirectorPreviewFailure }>
 
 /**
  * 这个视频节点此刻能不能花钱：以**最近一次**指向它的 3D-BOX 预演为准（新预演顶替旧的）。
- * 渲染中 / 失败 → 挡；已挂好 / 没有预演 → 放行。
+ * 渲染中 / 失败 / 过期 → 挡；已挂好且最新 / 没有预演 → 放行。
  */
 function latestDirectorPreviewFor(
   nodeId: string,
   nodes: readonly Pick<GenerationCanvasNode, 'id' | 'kind' | 'meta'>[],
-): { node: Pick<GenerationCanvasNode, 'id'>; preview: DirectorPreviewMeta } | null {
-  let latest: { node: Pick<GenerationCanvasNode, 'id'>; preview: DirectorPreviewMeta } | null = null
+): { node: Pick<GenerationCanvasNode, 'id' | 'meta'>; preview: DirectorPreviewMeta } | null {
+  let latest: { node: Pick<GenerationCanvasNode, 'id' | 'meta'>; preview: DirectorPreviewMeta } | null = null
   for (const node of nodes) {
     if (node.kind !== DIRECTOR_NODE_KIND) continue
     const preview = readDirectorPreview(node)
@@ -109,7 +111,11 @@ export function directorPreviewSpendBlock(
   nodes: readonly Pick<GenerationCanvasNode, 'id' | 'kind' | 'meta'>[],
 ): DirectorPreviewSpendBlock | null {
   const latest = latestDirectorPreviewFor(nodeId, nodes)
-  if (!latest || latest.preview.status === 'ready') return null
+  if (!latest) return null
+  if (latest.preview.status === 'ready') {
+    // 挂着的是最新预演才放行：挂上之后导演工程又被改过（精修里手调）= 过期，花钱就是按旧预演出片
+    return directorPreviewIsStale(latest.preview, latest.node.meta?.[DIRECTOR_PROJECT_META_KEY]) ? { reason: 'stale', directorNodeId: latest.node.id } : null
+  }
   return {
     reason: latest.preview.status,
     directorNodeId: latest.node.id,
@@ -124,7 +130,7 @@ export type DirectorPreviewOperationBlock = Readonly<{
    * rendering / failed：预演没好；not_referenced：预演好了，但这一镜真正要付费提交的候选没带它；
    * duration_mismatch：挂上去的预演和候选要生成的时长不一样长（预演挂好之后镜头时长又被改了）。
    */
-  reason: 'rendering' | 'failed' | 'not_referenced' | 'duration_mismatch'
+  reason: DirectorPreviewSpendBlockReason | 'not_referenced' | 'duration_mismatch'
   failure?: DirectorPreviewFailure
   /** not_referenced 时：要放进候选 references 的那个素材 id。 */
   previewAssetId?: string
@@ -192,15 +198,35 @@ export function directorPreviewBlocksForOperation(
  * 编辑器 store 里的工程与节点 meta 往返不产生假差异。
  */
 export function directorPreviewSourceFingerprint(project: unknown): string {
+  // 工程对象是不可变的（每次写都换新引用）：同一个对象只算一次，花钱闸被订阅时不会每次画布变化都重哈希整份工程
+  const cached = project && typeof project === 'object' ? FINGERPRINTS.get(project) : undefined
+  if (cached) return cached
   const normalized = normalizeDirectorProject(JSON.parse(JSON.stringify(project ?? null)))
-  return synchronousSha256(stableProjectAgentJson(JSON.parse(JSON.stringify({ activeSceneId: normalized.activeSceneId, scenes: normalized.scenes })))).slice(0, 32)
+  const fingerprint = synchronousSha256(stableProjectAgentJson(JSON.parse(JSON.stringify({ activeSceneId: normalized.activeSceneId, scenes: normalized.scenes })))).slice(0, 32)
+  if (project && typeof project === 'object') FINGERPRINTS.set(project, fingerprint)
+  return fingerprint
+}
+const FINGERPRINTS = new WeakMap<object, string>()
+
+/**
+ * 预演过期：预演记了渲染源指纹，且和导演工程此刻的指纹不一样（挂上之后又被改过）。花钱闸与「出成片」共用这一个判据。
+ * 没有证据就不判过期：旧预演没有指纹、节点上没有工程，都不算。
+ */
+export function directorPreviewIsStale(preview: DirectorPreviewMeta, project: unknown): boolean {
+  if (preview.status !== 'ready' || !preview.sourceFingerprint || !project || typeof project !== 'object') return false
+  return directorPreviewSourceFingerprint(project) !== preview.sourceFingerprint
+}
+
+/** 花钱闸挡住原因 → 给用户的一句话（i18n 键）。节点生成钮的悬停说明与 runner 的报错共用，不各写一份三元式。 */
+export function directorPreviewSpendBlockMessageKey(reason: DirectorPreviewSpendBlockReason): 'director.agent.spendBlockedRendering' | 'director.agent.spendBlockedFailed' | 'director.agent.spendBlockedStale' {
+  return reason === 'rendering' ? 'director.agent.spendBlockedRendering' : reason === 'stale' ? 'director.agent.spendBlockedStale' : 'director.agent.spendBlockedFailed'
 }
 
 /**
  * 导演视图「出成片」此刻是什么状态（设计卡 docs/plan/2026-10-16-director-3dbox-produce-design-card.md ★4）。
  * 与花钱闸同一份判据（`readDirectorPreview`），外壳只渲染、不另判：
  *   empty        —— 没有可播放的镜头；
- *   needs_render —— 没出过预演，或预演之后工程被改过（过期）：点了先渲染；
+ *   needs_render —— 没出过预演，或预演过期（`directorPreviewIsStale`，与花钱闸同一个判据）：点了先渲染；
  *   rendering / failed —— 预演自己的生命周期（超长的失败不给重试）；
  *   ready        —— 预演是最新的：点了就挂到视频镜头上、回画布选中它。
  */
@@ -216,7 +242,7 @@ export function directorProduceState(preview: DirectorPreviewMeta | null, projec
   if (!preview) return { kind: 'needs_render' }
   if (preview.status === 'rendering') return { kind: 'rendering' }
   if (preview.status === 'failed') return { kind: 'failed', tooLong: preview.reason === 'too_long' }
-  if (!preview.videoUrl || preview.sourceFingerprint !== directorPreviewSourceFingerprint(project)) return { kind: 'needs_render' }
+  if (!preview.videoUrl || directorPreviewIsStale(preview, project)) return { kind: 'needs_render' }
   return { kind: 'ready' }
 }
 
