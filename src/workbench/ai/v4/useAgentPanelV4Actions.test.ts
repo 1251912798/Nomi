@@ -21,7 +21,7 @@ const fixture = vi.hoisted(() => {
     workbenchDocuments: [{ id: 'doc-1', title: 'Current document', updatedAt: 42,
       contentJson: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: '第一句。' }] }] } }],
     creationActiveSkill: null as { key: string; contentHash?: string } | null, selectedLibraryPrompt: null as { id: string } | null,
-    projectAgentApprovalPolicy: { mode: 'safe-auto', spend: 'confirm' },
+    projectAgentApprovalPolicy: { mode: 'request' },
     setProjectAgentDraft(text: string) { state.projectAgentDraft = text; state.projectAgentDraftRevision++ },
     // 真店里这个 setter 一次清掉同一个引用槽的两半（`workbenchStore.setCreationActiveSkill`）。
     setCreationActiveSkill(skill: { key: string; contentHash?: string } | null) {

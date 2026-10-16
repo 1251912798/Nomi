@@ -102,7 +102,7 @@ describe("resident semantic generation transport", () => {
     const adapter = createPiGenerationTransportAdapter(binding, {
       planning,
       leaseFor: () => lease,
-      approvalPolicy: () => ({ mode: "project", spend: "confirm" }),
+      approvalPolicy: () => ({ mode: "direct" }),
       requestGenerationGate: vi.fn(async () => { throw new Error("gate unavailable"); }),
       authorizeGeneration: vi.fn(),
       approvalReceiptAuthority: authority(),
@@ -119,6 +119,64 @@ describe("resident semantic generation transport", () => {
     }));
   });
 
+  // 2026-10-12：「直接生成」档的刹车只放在策略代批这一个点。成立 = 这一次不代答（不请求门、不铸收据、不开跑），
+  // 把出价标成「要人工决定」，报价卡立刻摆出来；不成立 = 与改动前逐字相同。
+  describe("direct 档刹车：策略代批点退回确认卡", () => {
+    const job = (shotId: string, attempt: number, status: string) => ({ stageId: "generate", attempt, status, createdAt: `2026-10-12T00:00:0${attempt}Z`, metadata: { shotId } });
+    const run = (jobs: unknown[], ids: string[]) => ({ generationPlan: { shots: ids.map((shotId) => ({ shotId })) }, jobs, status: "running" }) as never;
+    const make = (readRun: () => never, mode: "direct" | "request" = "direct") => {
+      const markPolicyDecisionFailed = vi.fn();
+      const requestGenerationGate = vi.fn(async () => { throw new Error("gate must not be requested"); });
+      const adapter = createPiGenerationTransportAdapter(binding, {
+        planning: vi.fn(async () => ({ operation: { operationId: "op-1" } })),
+        leaseFor: () => lease,
+        approvalPolicy: () => ({ mode }),
+        readRun,
+        requestGenerationGate,
+        authorizeGeneration: vi.fn(),
+        approvalReceiptAuthority: authority(),
+        markPolicyDecisionFailed,
+      });
+      return { adapter, markPolicyDecisionFailed, requestGenerationGate };
+    };
+    const create = (adapter: ReturnType<typeof make>["adapter"]) => adapter.tryExecute(call("nomi_generation_plan", { operation: "create", prompt: "a small cat avatar" }), new AbortController().signal);
+
+    it("同一镜连续失败 3 次：不请求门、不铸收据，出价标成要人工决定，草稿照常返回", async () => {
+      const { adapter, markPolicyDecisionFailed, requestGenerationGate } = make(() => run([job("s1", 1, "needs_attention"), job("s1", 2, "needs_attention"), job("s1", 3, "needs_attention")], ["s1"]));
+      await expect(create(adapter)).resolves.toMatchObject({ ok: true });
+      expect(requestGenerationGate).not.toHaveBeenCalled();
+      expect(markPolicyDecisionFailed).toHaveBeenCalledWith(expect.objectContaining({ params: expect.objectContaining({ operationId: "op-1" }) }));
+    });
+    it("计划外的新镜：同样退回确认卡", async () => {
+      const { adapter, markPolicyDecisionFailed, requestGenerationGate } = make(() => run([job("s1", 1, "ready"), job("s2", 1, "ready")], ["s1", "s2", "s3"]));
+      await expect(create(adapter)).resolves.toMatchObject({ ok: true });
+      expect(requestGenerationGate).not.toHaveBeenCalled();
+      expect(markPolicyDecisionFailed).toHaveBeenCalledTimes(1);
+    });
+    it("刹车不成立：照旧由档位代答（走到请求门这一步）", async () => {
+      const { adapter, markPolicyDecisionFailed, requestGenerationGate } = make(() => run([], ["s1", "s2"]));
+      await create(adapter);
+      expect(requestGenerationGate).toHaveBeenCalledTimes(1);
+      // 这里门被桩成抛错 → 走既有的「决门失败」标记，与刹车无关。
+      expect(markPolicyDecisionFailed).toHaveBeenCalledTimes(1);
+    });
+    it("刹车成立但「要人工决定」标记写失败：结论不变（不请求门），草稿结果照常返回，不变成失败", async () => {
+      const { adapter, markPolicyDecisionFailed, requestGenerationGate } = make(() => run([job("s1", 1, "needs_attention"), job("s1", 2, "needs_attention"), job("s1", 3, "needs_attention")], ["s1"]));
+      markPolicyDecisionFailed.mockImplementation(async () => { throw Object.assign(new Error("revision conflict"), { code: "revision_conflict" }); });
+      await expect(create(adapter)).resolves.toMatchObject({ ok: true });
+      expect(requestGenerationGate).not.toHaveBeenCalled();
+      expect(markPolicyDecisionFailed).toHaveBeenCalledTimes(1);
+    });
+    it("请求批准档：连读都不读 Run，不代答，也不重复打断", async () => {
+      const readRun = vi.fn(() => run([], ["s1"]));
+      const { adapter, markPolicyDecisionFailed, requestGenerationGate } = make(readRun as never, "request");
+      await expect(create(adapter)).resolves.toMatchObject({ ok: true });
+      expect(readRun).not.toHaveBeenCalled();
+      expect(requestGenerationGate).not.toHaveBeenCalled();
+      expect(markPolicyDecisionFailed).not.toHaveBeenCalled();
+    });
+  });
+
   it("keeps the generation failure result when the failure marker hits a revision conflict", async () => {
     const planning = vi.fn(async () => ({ operation: { operationId: "op-1" } }));
     const markPolicyDecisionFailed = vi.fn(async () => {
@@ -127,7 +185,7 @@ describe("resident semantic generation transport", () => {
     const adapter = createPiGenerationTransportAdapter(binding, {
       planning,
       leaseFor: () => lease,
-      approvalPolicy: () => ({ mode: "project", spend: "confirm" }),
+      approvalPolicy: () => ({ mode: "direct" }),
       requestGenerationGate: vi.fn(async () => { throw new Error("gate unavailable"); }),
       authorizeGeneration: vi.fn(),
       approvalReceiptAuthority: authority(),

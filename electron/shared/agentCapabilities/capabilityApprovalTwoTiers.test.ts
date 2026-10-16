@@ -5,10 +5,9 @@ import * as brakes from "./directGenerationBrakes";
 import type { CapabilityApprovalSubject } from "./capabilityApprovalPolicy";
 
 // 线 L19 第一轮 · 必红测试（设计卡 docs/plan/2026-10-12-agent-permission-two-tiers.md）。
-// 每条断言对应设计卡「测试对照表」的一行。实现落地前整个文件红（`directGenerationBrakes` 模块还不存在，导入即失败）；
-//   · 新词表 request / direct 还不存在；
-//   · `capabilityApprovalDecision` 与 `directGenerationBrakes.ts` 还没写。
-// 落地后必须逐条转绿，不许改断言。
+// 每条断言对应设计卡「测试对照表」的一行（第一轮写成必红，第二轮实现后转绿）。
+// 第二轮按协调会话拍板调整了两处断言的形状（不是削弱）：①连续失败按 job 状态派生、用取模表达「点继续后从这次确认重新数」；
+// ②计划基线取自 Run 上已有 job 的镜（不再读 approvals）。
 
 const REQUEST = { mode: "request" } as never;
 const DIRECT = { mode: "direct" } as never;
@@ -74,6 +73,11 @@ describe("格 5/★4 · 刹车 1：同一镜连续失败、重试超过 2 次", 
   it("连续失败 3 次后、第 3 次重试之前：停下并说明原因 retry-limit", () => {
     expect(brake({ consecutiveFailures: 3 })).toMatchObject({ allow: false, reason: "retry-limit" });
   });
+  it("用户点「继续」后从这次确认重新数：第 4、5 次失败照旧自动重试，第 6 次再停", () => {
+    expect(brake({ consecutiveFailures: 4 }).allow).toBe(true);
+    expect(brake({ consecutiveFailures: 5 }).allow).toBe(true);
+    expect(brake({ consecutiveFailures: 6 })).toMatchObject({ allow: false, reason: "retry-limit" });
+  });
   it("计数按镜头独立：s1 失败 3 次不拦 s2", () => {
     expect(brake({ shotId: "s2", consecutiveFailures: 0 }).allow).toBe(true);
   });
@@ -82,10 +86,12 @@ describe("格 5/★4 · 刹车 1：同一镜连续失败、重试超过 2 次", 
   });
   it("从 run 的 jobs 数连续失败：中间成功一次清零，只数末尾连续失败的 attempt", () => {
     const count = (brakes as unknown as { consecutiveFailedAttempts: (run: unknown, shotId: string) => number }).consecutiveFailedAttempts;
-    const job = (attempt: number, status: string) => ({ stageId: "generate", attempt, status, createdAt: `2026-10-12T00:00:0${attempt}Z`, metadata: { shotId: "s1" } });
+    const job = (attempt: number, status: string, errorCode?: string) => ({ stageId: "generate", attempt, status, errorCode, createdAt: `2026-10-12T00:00:0${attempt}Z`, metadata: { shotId: "s1" } });
     const run = (jobs: unknown[]) => ({ generationPlan: { shots: [{ shotId: "s1" }] }, jobs });
-    expect(count(run([job(1, "failed"), job(2, "failed"), job(3, "failed")]), "s1")).toBe(3);
-    expect(count(run([job(1, "failed"), job(2, "ready"), job(3, "failed")]), "s1")).toBe(1);
+    expect(count(run([job(1, "needs_attention"), job(2, "needs_attention"), job(3, "needs_attention")]), "s1")).toBe(3);
+    expect(count(run([job(1, "needs_attention"), job(2, "ready"), job(3, "needs_attention")]), "s1")).toBe(1);
+    // 只计可能已到过供应商的失败：提交前没写出去的（provider_not_reached）既不计也不重置。
+    expect(count(run([job(1, "needs_attention"), job(2, "needs_attention", "provider_not_reached"), job(3, "needs_attention")]), "s1")).toBe(2);
   });
 });
 
@@ -101,10 +107,11 @@ describe("格 5/★4 · 刹车 2：超出这一轮开头说好的计划", () => 
   it("计划内镜头的重试不算计划外", () => {
     expect(brake({ shotId: "s3", consecutiveFailures: 1 }).allow).toBe(true);
   });
-  it("计划基线取自本 Run 第一次放行的批准记录（approvals[].jobIds），不另存第二份计划", () => {
-    const baseline = (brakes as unknown as { plannedJobIdsFromApprovals: (run: unknown) => string[] }).plannedJobIdsFromApprovals;
-    const run = { approvals: [{ decidedAt: "2026-10-12T00:00:01Z", jobIds: ["j-s1", "j-s2"], planHash: "h1" }, { decidedAt: "2026-10-12T00:05:00Z", jobIds: ["j-s7"], planHash: "h2" }] };
-    expect(baseline(run).sort()).toEqual(["j-s1", "j-s2"]);
+  it("计划基线 = 这个 Run 里已经有 job 的镜（概念 production.shot-jobs），不另存第二份计划", () => {
+    const baseline = (brakes as unknown as { plannedShotIdsFromJobs: (run: unknown) => string[] }).plannedShotIdsFromJobs;
+    const job = (shotId: string) => ({ stageId: "generate", attempt: 1, status: "authorized", createdAt: "2026-10-12T00:00:01Z", metadata: { shotId } });
+    const run = { generationPlan: { shots: [{ shotId: "s1" }, { shotId: "s2" }, { shotId: "s7" }] }, jobs: [job("s1"), job("s2")] };
+    expect(baseline(run).sort()).toEqual(["s1", "s2"]);
   });
 });
 
@@ -116,5 +123,47 @@ describe("格 5 · 停止键", () => {
   it("请求批准档停止同样生效（停止键与挡位无关）", () => {
     const out = brakeFn()({ tier: "request", plannedShotIds: ["s1"], stopped: true, shotId: "s1", consecutiveFailures: 0 });
     expect(out).toMatchObject({ allow: false, reason: "stopped" });
+  });
+});
+
+describe("格 5/★2 · 唯一入口 spendDecisionByPolicy：档位 + 刹车一起问（三个调用点共用）", () => {
+  const entry = () => (brakes as unknown as { spendDecisionByPolicy: (policy: unknown, run: unknown) => { decided: boolean; brake?: { reason: string; shotId?: string } } }).spendDecisionByPolicy;
+  const job = (shotId: string, attempt: number, status: string) => ({ stageId: "generate", attempt, status, createdAt: `2026-10-12T00:00:0${attempt}Z`, metadata: { shotId } });
+  const planOf = (ids: string[]) => ({ generationPlan: { shots: ids.map((shotId) => ({ shotId })) } });
+  it("请求批准：永不代答，也没有刹车说明", () => {
+    expect(entry()(REQUEST, { ...planOf(["s1"]), jobs: [] })).toEqual({ decided: false });
+  });
+  it("直接生成 + 第一次代批（Run 里还没有 job）：代答", () => {
+    expect(entry()(DIRECT, { ...planOf(["s1", "s2"]), jobs: [] })).toEqual({ decided: true });
+  });
+  it("直接生成 + 没有 Run 可看：只剩档位那一问，代答（与改动前逐字相同）", () => {
+    expect(entry()(DIRECT, undefined)).toEqual({ decided: true });
+  });
+  it("直接生成 + 已批过 s1、s2，计划里又冒出 s3 → 不代答，原因 out-of-plan，指到 s3", () => {
+    const run = { ...planOf(["s1", "s2", "s3"]), jobs: [job("s1", 1, "ready"), job("s2", 1, "ready")] };
+    expect(entry()(DIRECT, run)).toMatchObject({ decided: false, brake: { reason: "out-of-plan", shotId: "s3" } });
+  });
+  it("直接生成 + s1 连续失败 3 次等重试 → 不代答，原因 retry-limit", () => {
+    const run = { ...planOf(["s1"]), jobs: [job("s1", 1, "needs_attention"), job("s1", 2, "needs_attention"), job("s1", 3, "needs_attention")] };
+    expect(entry()(DIRECT, run)).toMatchObject({ decided: false, brake: { reason: "retry-limit", shotId: "s1" } });
+  });
+  it("直接生成 + s1 只失败 2 次 → 照常代答重试", () => {
+    const run = { ...planOf(["s1"]), jobs: [job("s1", 1, "needs_attention"), job("s1", 2, "needs_attention")] };
+    expect(entry()(DIRECT, run)).toEqual({ decided: true });
+  });
+  it("直接生成 + Run 已被用户停止 → 不代答，原因 stopped", () => {
+    expect(entry()(DIRECT, { ...planOf(["s1"]), jobs: [], status: "paused" })).toMatchObject({ decided: false, brake: { reason: "stopped" } });
+  });
+  it("只判这一次出价摆出来的镜：早就失败 3 次、这次没摆出来的 s1 不让 s2 的重试停下", () => {
+    const presented = (shotIds: string[]) => ({ presentations: [{ presentationId: "p", presentationEpoch: 1, shotIds, openedAt: "2026-10-12T00:00:09Z", fromGate: 0 }] });
+    const jobs = [job("s1", 1, "needs_attention"), job("s1", 2, "needs_attention"), job("s1", 3, "needs_attention"), job("s2", 1, "needs_attention")];
+    const plan = planOf(["s1", "s2"]).generationPlan;
+    expect(entry()(DIRECT, { generationPlan: { ...plan, ...presented(["s2"]) }, jobs })).toEqual({ decided: true });
+    // 阳性对照：这次摆的正是 s1 → 照停。
+    expect(entry()(DIRECT, { generationPlan: { ...plan, ...presented(["s1"]) }, jobs })).toMatchObject({ decided: false, brake: { reason: "retry-limit", shotId: "s1" } });
+  });
+  it("已完成 / 在跑的镜不会触发刹车（只有新镜与等重试的镜需要这一次代答）", () => {
+    const run = { ...planOf(["s1", "s2"]), jobs: [job("s1", 1, "ready"), job("s2", 1, "polling")] };
+    expect(entry()(DIRECT, run)).toEqual({ decided: true });
   });
 });

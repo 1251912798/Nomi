@@ -120,7 +120,7 @@ async function fixture(
     resolveDocumentWritePort: async () => documentPort, resolveCanvasWritePort: async () => { capture(); return canvasPort } })
   const surface = { executor, surfaceCapture: {},
     surfacePortRuntime: { createCanvasWritePort: () => { capture(); return canvasPort } } } as unknown as DesktopCanvasReadRuntime
-  const policy = { mode: kind === 'delete' ? 'safe-auto' as const : 'step' as const, spend: 'confirm' as const }
+  const policy = { mode: 'request' as const }
   const assembly = createDesktopLaneTools({ session, binding, surface, receipts,
     context: () => ({ approvalPolicy: policy, documentId: 'document-fixture',
       target: documentTarget, preconditions: documentPreconditions }),
@@ -141,7 +141,10 @@ async function fixture(
   const lane: LaneHandle = await openLane({ fetch: globalThis.fetch, projectDir: root, model: { kind: 'openai-compatible', providerId: 'fixture', modelId: 'fixture',
     baseURL: http.baseURL, authType: 'api-key', apiKey: 'fixture' }, systemPrompt: 'Receipt fixture.',
     tools: assembly.tools, toolLifecycle: assembly.toolLifecycle,
-    approval: { hasUserInterface: true, policy: () => policy } })
+    approval: { hasUserInterface: true, policy: () => policy,
+      // 「每步问」档已删：可撤销的写入在两档下都不弹卡。这些用例要量的是收据 / 批准机器本身，
+      // 所以用宿主「这一次必须当次确认」的事实（`forceConfirmation`，逃逸命令走的同一条）把它拦进批准路径；删除本来就问。
+      ...(kind === 'delete' ? {} : { resolveSubject: (request: { toolName: string }) => ({ forceConfirmation: true as const, subject: { toolName: request.toolName, capabilityId: request.toolName, effect: 'reversible_write' as const, effectClass: 'reversible_local' as const, requiresPlanReview: false, destructiveHint: false } }) }) } })
   cleanups.push(() => lane.close())
   let closed!: () => void
   const closedPromise = new Promise<void>(resolve => { closed = resolve })
@@ -183,7 +186,7 @@ describe('desktop lane verified writes and durable receipts', () => {
     expect(f.receipts.read()).toBeNull()
   })
 
-  it('safe-auto deletion requires a fresh once-only approval, retains reason and count, and commits the actual G5 deletion', async () => {
+  it('deletion requires a fresh once-only approval, retains reason and count, and commits the actual G5 deletion', async () => {
     const f = await fixture('delete')
     const run = f.lane.execute({ kind: 'prompt', text: 'Remove the unused fixture shots.' })
     await f.pending(run)

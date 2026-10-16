@@ -19,8 +19,9 @@ describe("旧三档迁移 → 请求批准", () => {
   it("裸 { mode, spend } 形状的旧值同样迁到 request", () => {
     expect(normalizeAgentApprovalPolicySettings({ mode: "project", spend: "confirm" }).policy.mode).toBe("request");
   });
-  it("新 schema 里用户自己选的 direct 被保留", () => {
+  it("新 schema 里用户自己选的 direct 被保留（含裸 { mode } 形状）", () => {
     expect(normalizeAgentApprovalPolicySettings({ schemaVersion: 2, policy: { mode: "direct" } }).policy.mode).toBe("direct");
+    expect(normalizeAgentApprovalPolicySettings({ mode: "direct" }).policy.mode).toBe("direct");
   });
   it("认不出的值与缺文件默认都是 request，不是 direct", () => {
     expect(normalizeAgentApprovalPolicySettings({ schemaVersion: 2, policy: { mode: "yolo" } }).policy.mode).toBe("request");

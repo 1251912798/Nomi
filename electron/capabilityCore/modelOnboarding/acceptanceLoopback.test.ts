@@ -211,7 +211,7 @@ describe("验收 · 接一家 Higgsfield 形状的供应商要几跳（基线 14
     }, {
       origin: { host: "claude" },
       runTask,
-      approvalPolicy: () => ({ mode: "project", spend: "confirm" }),
+      approvalPolicy: () => ({ mode: "direct" }),
     } as never) as { ok: boolean; state?: { spendDecidedBy: string; assets: unknown[] } };
     expect(tried.ok, JSON.stringify(tried)).toBe(true);
     expect(tried.state!.spendDecidedBy).toBe("policy:full_auto");
@@ -228,7 +228,7 @@ describe("验收 · 接一家 Higgsfield 形状的供应商要几跳（基线 14
     }, {
       origin: { host: "claude" },
       runTask,
-      approvalPolicy: () => ({ mode: "step", spend: "confirm" }),
+      approvalPolicy: () => ({ mode: "request" }),
     } as never) as { ok: boolean; code: string; nextAction: string };
     expect(refused.ok).toBe(false);
     expect(refused.code).toBe("needs_input");

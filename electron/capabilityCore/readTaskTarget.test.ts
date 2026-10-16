@@ -132,7 +132,7 @@ describe("nomi_read target=task", () => {
     const { runTask, fetchTaskResult } = await import("../runtime");
     const tried = await tryModel({
       runTask, fetchTaskResult, pollIntervalMs: 10, pollTimeoutMs: 200,
-      approvalPolicy: () => ({ mode: "project", spend: "confirm" }),
+      approvalPolicy: () => ({ mode: "direct" }),
     }, { vendorKey, modelKey: "readtask-paint", prompt: "apple" }) as { code?: string; taskId?: string; nextAction?: string };
     expect(tried.code).toBe("still_processing");
     expect(tried.nextAction).toContain(`nomi_read target=task taskId=${tried.taskId}`);

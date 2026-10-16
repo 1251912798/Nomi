@@ -96,16 +96,16 @@ async function requestGate(policy: ProjectAgentApprovalPolicy | undefined, withP
 
 describe("三档 × 外部 MCP 的付费门", () => {
   it("全自动：宿主当场按策略决门，模型拿到收据可以直接往下跑（不用把人叫回 Nomi 窗口）", async () => {
-    const { result, minted } = await requestGate({ mode: "project", spend: "confirm" });
+    const { result, minted } = await requestGate({ mode: "direct" });
     expect(minted, "策略决门必须真的铸一张收据——闸一步都不能少").toHaveLength(1);
     expect(result.handoff?.decidedBy).toBe("policy:full_auto");
     expect(result.handoff?.receiptId).toBe("receipt-1");
     expect(result.handoff?.receiptToken).toBe("receipt-token-1");
   });
 
-  for (const mode of ["step", "safe-auto"] as const) {
+  for (const mode of ["request", "request"] as const) {
     it(`${mode}：一个字没变——仍然交回挑战让用户在 Nomi 窗口里点，收据一张都不铸`, async () => {
-      const { result, minted } = await requestGate({ mode, spend: "confirm" });
+      const { result, minted } = await requestGate({ mode });
       expect(minted).toHaveLength(0);
       expect(result.handoff?.receiptId).toBeUndefined();
       expect(result.handoff?.decidedBy).toBeUndefined();

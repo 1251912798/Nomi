@@ -614,12 +614,11 @@ describe('⑧ composer 底栏逐件', () => {
     expect(markup.toLowerCase()).not.toContain('microphone')
   })
 
-  it('权限三档写进 data 属性，直接对应仓库合同两个字段', () => {
-    const attrs = (tier: 'step' | 'safe-auto' | 'project') => html(el(AgentPanelV4Composer, { permission: tier }))
-    expect(attrs('step')).toContain('data-approval-mode="step"')
-    expect(attrs('step')).toContain('data-spend-policy="confirm"')
-    expect(attrs('safe-auto')).toContain('data-approval-mode="safe-auto"')
-    expect(attrs('project')).toContain('data-spend-policy="confirm"')
+  it('权限两档写进 data 属性，直接对应仓库合同的 mode', () => {
+    const attrs = (tier: 'request' | 'direct') => html(el(AgentPanelV4Composer, { permission: tier }))
+    expect(attrs('request')).toContain('data-approval-mode="request"')
+    expect(attrs('direct')).toContain('data-approval-mode="direct"')
+    expect(attrs('direct')).not.toContain('data-spend-policy')
   })
 
   it('运行中变 ■ 停止，占位改「排队发送」', () => {

@@ -151,7 +151,7 @@ describe("nomi_try_model 提交步骤的预算", () => {
     const promise = (tryModel({
       runTask: wrapRunTask ? wrapRunTask(runTask) : runTask,
       fetchTaskResult,
-      approvalPolicy: () => ({ mode: "project", spend: "confirm" }),
+      approvalPolicy: () => ({ mode: "direct" }),
     }, { vendorKey: vendor, modelKey: "budget-paint", prompt }) as Promise<Tried>).then((out) => { box.settled = true; box.out = out; return out; });
     return { box, promise };
   }

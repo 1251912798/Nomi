@@ -118,7 +118,7 @@ describe('lane skill provenance', () => {
       sourceDocumentContentHash: 'h', targetKind: 'storyboard', requestId: 'request-a', plans: [] }
     const lane = laneWith([input(1, 'A', { storyboardTarget })])
     lane.queues = [{ entryId: 'queued-b', kind: 'followUp', message: { role: 'nomi.input', content: 'B', timestamp: 2,
-      context: { approvalPolicy: { mode: 'step', spend: 'confirm' }, storyboardTarget: { ...storyboardTarget, sourceDocumentId: 'b' } } } }] as unknown as LaneSnapshot['queues']
+      context: { approvalPolicy: { mode: 'request' }, storyboardTarget: { ...storyboardTarget, sourceDocumentId: 'b' } } } }] as unknown as LaneSnapshot['queues']
     const projection = projectLaneSnapshot(lane, { pricing: 'unpriced', supportedThinkingLevels: ['off'] })
     expect(projection.parts).toHaveLength(1)
     expect(projection.parts[0]).toMatchObject({ kind: 'user', storyboardTarget })
@@ -127,8 +127,8 @@ describe('lane skill provenance', () => {
 
   it('carries the skill recorded on that very message, and nothing when it had none', () => {
     const projection = projectLaneSnapshot(laneWith([
-      input(1, '拆分镜。', { approvalPolicy: { mode: 'step', spend: 'confirm' }, skillKey: 'workbench.storyboard.planner' }),
-      input(2, '再来一句。', { approvalPolicy: { mode: 'step', spend: 'confirm' } }),
+      input(1, '拆分镜。', { approvalPolicy: { mode: 'request' }, skillKey: 'workbench.storyboard.planner' }),
+      input(2, '再来一句。', { approvalPolicy: { mode: 'request' } }),
     ]), { pricing: 'unpriced', supportedThinkingLevels: ['off'] })
     expect(projection.parts.map((part) => part.kind === 'user' ? part.skillKey : 'not-user'))
       .toEqual(['workbench.storyboard.planner', undefined])
@@ -145,7 +145,7 @@ describe('lane user attachments', () => {
     id: `e${seq}`, parentId: null, seq, timestamp: seq, type: 'message',
     message: { role: 'nomi.input', content, timestamp: seq, context },
   } as unknown as LaneSnapshot['transcript'][number])
-  const policy = { mode: 'step', spend: 'confirm' }
+  const policy = { mode: 'request' }
   const facts = { pricing: 'unpriced' as const, supportedThinkingLevels: ['off' as const] }
   const display = { url: 'nomi-local://a', fileName: '剧本.txt', contentType: 'text/plain', sizeBytes: 12, kind: 'file' as const }
 

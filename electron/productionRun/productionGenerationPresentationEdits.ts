@@ -92,7 +92,7 @@ export function presentGenerationPlan(current: ProductionRun, requested: unknown
       presentationId: `${run.runId}:presentation:${(superseded.presentations?.length ?? 0) + 1}`,
       presentationEpoch: (superseded.presentations?.at(-1)?.presentationEpoch ?? superseded.presentations?.length ?? 0) + 1,
       ...(policySnapshot ? { policySnapshot: structuredClone(policySnapshot) } : {}),
-      ...(policySnapshot?.mode === "project" ? {
+      ...(policySnapshot?.mode === "direct" ? {
         policyDecisionState: "pending" as const,
         ...(projectPolicyDecisionDeadlineFromOwnerClock(now) ? { policyDecisionDeadlineAt: projectPolicyDecisionDeadlineFromOwnerClock(now) } : {}),
       } : {}),
@@ -116,7 +116,7 @@ export function markGenerationPolicyDecisionFailed(current: ProductionRun, now: 
   const plan = current.generationPlan;
   const presentation = currentPresentation(plan);
   if (!plan || plan.state !== "draft" || !presentation || presentation.closed
-    || presentation.policySnapshot?.mode !== "project") return current;
+    || presentation.policySnapshot?.mode !== "direct") return current;
   if (presentation.policyDecisionState === "failed") return current;
   return {
     ...current,

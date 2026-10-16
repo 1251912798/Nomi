@@ -201,7 +201,6 @@ export function AgentPanelV4Composer({
       data-permission={permission}
       data-awaiting-answer={awaitingAnswer ? 'true' : undefined}
       data-approval-mode={policy.mode}
-      data-spend-policy={policy.spend}
     >
       {/* 弹层挂在 composer 上沿：它必须能盖出框外，所以这一层不能 `overflow-hidden`。
           内部滚动由 textarea 自己的 `overflow-y-auto` 管，两者不冲突。 */}
@@ -468,7 +467,7 @@ export function V4SkillPopover({
 }
 
 /**
- * 权限弹层：三档 segmented control（定稿 Composer 板中列下半张）。
+ * 权限弹层：两档竖排，每档标题下各一行灰字说明会发生什么（2026-10-12 用户拍板：「每个挡位下面写个灰字描述」）。
  *
  * 底部一行「系统提示词」（2026-09-14 从设置 → AI 策略搬来，审计 §⑥ 8）：它管的是 Agent 怎么说话，
  * 和「让它做到什么程度」是同一个弹层的两半；设置页那一屏不再有它。
@@ -488,28 +487,30 @@ export function V4PermissionPopover({
       className="w-[300px] overflow-hidden rounded-nomi border border-nomi-line bg-nomi-paper p-2.5 shadow-nomi-md"
       data-v4-popover="permission"
     >
-      <div className="inline-flex gap-0.5 rounded-nomi-sm bg-nomi-ink-05 p-0.5">
+      <div role="radiogroup" className="flex flex-col gap-0.5" aria-label={t('agentPanelV4.permissionGroup')}>
         {PERMISSION_TIERS.map((tier) => (
           <V4Row as="button"
             type="button"
+            role="radio"
+            aria-checked={tier === permission}
             key={tier}
             data-tier={tier}
             data-active={tier === permission ? 'true' : undefined}
             onClick={() => onSelect?.(tier)}
             className={cn(
-              'min-h-6 whitespace-nowrap rounded-nomi-sm px-2.5 text-caption',
-              tier === permission
-                ? 'bg-nomi-paper font-semibold text-nomi-ink shadow-nomi-sm'
-                : 'text-nomi-ink-60',
+              'flex w-full flex-col items-start gap-0.5 rounded-nomi-sm px-2.5 py-2 text-left',
+              tier === permission ? 'bg-nomi-ink-05' : 'hover:bg-nomi-ink-05',
             )}
           >
-            {t(`agentPanelV4.permission.${tier}`)}
+            <span className={cn('text-caption text-nomi-ink', tier === permission ? 'font-semibold' : undefined)}>
+              {t(`agentPanelV4.permission.${tier}`)}
+            </span>
+            <span data-v4-permission-why={tier} className="text-micro leading-relaxed text-nomi-ink-60">
+              {t(`agentPanelV4.permissionWhy.${tier}`)}
+            </span>
           </V4Row>
         ))}
       </div>
-      <p className="mb-0 mt-2 text-micro leading-relaxed text-nomi-ink-60">
-        {t(`agentPanelV4.permissionWhy.${permission}`)}
-      </p>
       {onEditSystemPrompt ? (
         <V4Row as="button"
           type="button"
