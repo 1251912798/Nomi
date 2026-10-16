@@ -73,10 +73,10 @@ describe("格 5/★4 · 刹车 1：同一镜连续失败、重试超过 2 次", 
   it("连续失败 3 次后、第 3 次重试之前：停下并说明原因 retry-limit", () => {
     expect(brake({ consecutiveFailures: 3 })).toMatchObject({ allow: false, reason: "retry-limit" });
   });
-  it("用户点「继续」后从这次确认重新数：第 4、5 次失败照旧自动重试，第 6 次再停", () => {
-    expect(brake({ consecutiveFailures: 4 }).allow).toBe(true);
-    expect(brake({ consecutiveFailures: 5 }).allow).toBe(true);
-    expect(brake({ consecutiveFailures: 6 })).toMatchObject({ allow: false, reason: "retry-limit" });
+  // 计数的定义是「从上一次人批之后连续失败了几次」（consecutiveFailedAttempts 从事实数）：没有人批过，4、5、6 次都照停。
+  // 「点继续之后重新数」由人批的事实决定，不靠取模猜——Run 级用例见 directGenerationBrakes.boundaries.test.ts（V-1203）。
+  it("连续失败满 3 次以上（期间没有人批）：一律停，不因为不是 3 的倍数就放行", () => {
+    for (const consecutiveFailures of [3, 4, 5, 6]) expect(brake({ consecutiveFailures })).toMatchObject({ allow: false, reason: "retry-limit" });
   });
   it("计数按镜头独立：s1 失败 3 次不拦 s2", () => {
     expect(brake({ shotId: "s2", consecutiveFailures: 0 }).allow).toBe(true);

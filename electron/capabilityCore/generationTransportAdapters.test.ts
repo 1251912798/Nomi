@@ -153,6 +153,20 @@ describe("resident semantic generation transport", () => {
       expect(requestGenerationGate).not.toHaveBeenCalled();
       expect(markPolicyDecisionFailed).toHaveBeenCalledTimes(1);
     });
+    it("V-1203 F1：去掉的旧镜仍算说好的计划——同一 Run 补的新镜不开门、出价标成要人工决定", async () => {
+      const removedThenNew = () => ({
+        generationPlan: {
+          shots: [{ shotId: "s1", included: false }, { shotId: "s2" }],
+          presentations: [{ presentationId: "p2", shotIds: ["s2"], fromGate: 1, openedAt: "2026-10-12T00:00:11Z", policySnapshot: { mode: "direct" }, policyDecisionState: "pending" }],
+        },
+        jobs: [job("s1", 1, "needs_attention"), job("s1", 2, "needs_attention"), job("s1", 3, "needs_attention")],
+        status: "running",
+      }) as never;
+      const { adapter, markPolicyDecisionFailed, requestGenerationGate } = make(removedThenNew);
+      await expect(create(adapter)).resolves.toMatchObject({ ok: true });
+      expect(requestGenerationGate).not.toHaveBeenCalled();
+      expect(markPolicyDecisionFailed).toHaveBeenCalledTimes(1);
+    });
     it("刹车不成立：照旧由档位代答（走到请求门这一步）", async () => {
       const { adapter, markPolicyDecisionFailed, requestGenerationGate } = make(() => run([], ["s1", "s2"]));
       await create(adapter);

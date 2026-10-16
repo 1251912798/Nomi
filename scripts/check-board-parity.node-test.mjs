@@ -7,7 +7,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { checkBoardManifest, checkPrBoardClaims, checkSourceHash, parsePrBoardClaims } from './check-board-parity.mjs'
+import { checkBoardManifest, checkPrBoardClaims, checkSourceHash, findDatedBoards, loadManifests, parsePrBoardClaims, runBoardParity } from './check-board-parity.mjs'
 import { hashBoardSourceFiles } from './board-source-hash.mjs'
 
 const CORPUS = "it('board:Main/topbar.title', () => {})"
@@ -221,7 +221,6 @@ describe('其它日期目录的板（2026-10-16：新板对门岗和合并前扫
     decor: [], functionCensus: [{ function: '旧弹层', before: '三档', after: 'tier.popover' }],
   })
   it('正例：只有清单的新板被找到，且 `## 拍板图` 能认领到它', async () => {
-    const { findDatedBoards, loadManifests } = await import('./check-board-parity.mjs')
     const root = tmpRoot()
     const main = path.join(root, 'main-day'); fs.mkdirSync(main)
     writeBoard(root, 'later-day', 'TextOnly', textOnly())
@@ -233,12 +232,46 @@ describe('其它日期目录的板（2026-10-16：新板对门岗和合并前扫
     fs.rmSync(root, { recursive: true, force: true })
   })
   it('反例：只有清单的新板也按 R4 查——断言名不在走查里 → 红', async () => {
-    const { runBoardParity } = await import('./check-board-parity.mjs')
     const root = tmpRoot()
     const main = path.join(root, 'main-day'); fs.mkdirSync(main)
     writeBoard(root, 'later-day', 'TextOnly', textOnly({ assertion: 'board:TextOnly/never-written-anywhere' }))
     const errors = await runBoardParity({ dir: main, root })
     assert.ok(errors.some((e) => /\[TextOnly\].*never-written-anywhere/.test(e)), errors.join('\n'))
     fs.rmSync(root, { recursive: true, force: true })
+  })
+})
+
+describe('V-1203 F2：发现到的每张新日期板都跑完整规则（带候选文件的也不例外）', () => {
+  const tmpRoot = () => fs.mkdtempSync(path.join(process.env.TMPDIR || process.env.TEMP || '.', 'bp-v1203-'))
+  const bad = { board: 'ReviewProbe', stage: 'built', elements: [{ id: 'probe', status: 'implemented', assertion: 'NEVER_EXISTS_V1203', states: [] }], functionCensus: [{ function: 'old', after: 'missing' }] }
+  it('反例：带人工候选文件、内容坏的新板 → 红（断言不在走查、states 空、旧功能没去处、候选未认领）', async () => {
+    const root = tmpRoot()
+    const main = path.join(root, 'main-day'); fs.mkdirSync(main)
+    const day = path.join(root, '2099-01-01'); fs.mkdirSync(day)
+    fs.writeFileSync(path.join(day, 'ReviewProbe.board.json'), JSON.stringify(bad))
+    fs.writeFileSync(path.join(day, 'ReviewProbe.candidates.json'), JSON.stringify({ board: 'ReviewProbe', extractor: 'manual-domain-census@1', candidates: [{ id: 'unclaimed' }] }))
+    const errors = (await runBoardParity({ dir: main, root })).filter((e) => e.includes('ReviewProbe'))
+    fs.rmSync(root, { recursive: true, force: true })
+    for (const pattern of [/NEVER_EXISTS_V1203/, /缺 states/, /没有去处/, /候选未认领.*unclaimed/]) assert.ok(errors.some((e) => pattern.test(e)), `${pattern}\n${errors.join('\n')}`)
+  })
+  it('反例：抽取出来的候选文件（board-extract）板源哈希对不上 → 红', async () => {
+    const root = tmpRoot()
+    const main = path.join(root, 'main-day'); fs.mkdirSync(main)
+    const day = path.join(root, '2099-01-01'); fs.mkdirSync(day)
+    fs.writeFileSync(path.join(day, 'ReviewProbe.board.json'), JSON.stringify({ board: 'ReviewProbe', stage: 'built', elements: [], decor: [], functionCensus: [] }))
+    fs.writeFileSync(path.join(day, 'ReviewProbe.candidates.json'), JSON.stringify({ board: 'ReviewProbe', extractor: 'board-extract@1', sourceSha256: 'not-the-hash', candidates: [] }))
+    const errors = (await runBoardParity({ dir: main, root })).filter((e) => e.includes('ReviewProbe'))
+    fs.rmSync(root, { recursive: true, force: true })
+    assert.ok(errors.some((e) => /板改了|sourceSha256|哈希/.test(e)), errors.join('\n'))
+  })
+  it('反例：候选文件既没有板源哈希、也没声明人工普查 → 红（不许不声不响地免掉哈希核对）', async () => {
+    const root = tmpRoot()
+    const main = path.join(root, 'main-day'); fs.mkdirSync(main)
+    const day = path.join(root, '2099-01-01'); fs.mkdirSync(day)
+    fs.writeFileSync(path.join(day, 'ReviewProbe.board.json'), JSON.stringify({ board: 'ReviewProbe', stage: 'built', elements: [], decor: [], functionCensus: [] }))
+    fs.writeFileSync(path.join(day, 'ReviewProbe.candidates.json'), JSON.stringify({ board: 'ReviewProbe', candidates: [] }))
+    const errors = (await runBoardParity({ dir: main, root })).filter((e) => e.includes('ReviewProbe'))
+    fs.rmSync(root, { recursive: true, force: true })
+    assert.ok(errors.length > 0, '没有哈希也没声明人工普查的候选文件必须红')
   })
 })
