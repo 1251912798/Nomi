@@ -52,6 +52,17 @@ describe('编辑器撤销历史跨卸载', () => {
     expect(steps).toEqual(['第二改', '第一改', '原文'])
   })
 
+  it('重挂后马上接着改（V-1210 复验 R2-2）：新编辑另起一组，第一次撤销只撤新编辑', () => {
+    const edited = edit(stateOf('原文'), '第一改')
+    const { state } = remount('第一改', historySnapshots(edited))
+    // 用户在重挂后立刻打字：不带 closeHistory，时间紧挨着重放——和真人点进去就打字一样
+    const typed = state.apply(state.tr.insertText(' 续写', state.doc.content.size - 1))
+    expect(textOf(typed)).toBe('第一改 续写')
+    const once = undoOnce(typed)
+    expect(textOf(once)).toBe('第一改')
+    expect(textOf(undoOnce(once))).toBe('原文')
+  })
+
   it('卸载期间被别处改过（例如 Agent 写入）：外部那一笔也是一步撤销，再往前才是用户自己的', () => {
     const edited = edit(stateOf('原文'), '用户改的')
     const { state } = remount('Agent 写的', historySnapshots(edited))
@@ -65,6 +76,7 @@ describe('编辑器撤销历史跨卸载', () => {
     const { dispatched } = remount('改后', historySnapshots(edit(stateOf('原文'), '改后')))
     expect(dispatched.length).toBeGreaterThan(0)
     expect(dispatched.every((tr) => tr.getMeta('preventUpdate') === true)).toBe(true)
+    expect(dispatched[dispatched.length - 1].steps).toHaveLength(0)
   })
 
   it('没有可撤销的历史：什么都不重放', () => {

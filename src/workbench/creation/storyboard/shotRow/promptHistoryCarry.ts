@@ -12,7 +12,7 @@ import { contentToPrompt } from '../../../assets/promptEditorContent'
  * 撤销仍然由编辑器自己的 history 负责（main 上 Ctrl+Z 就是 ProseMirror 的 undo，不是全局 store 撤销），
  * 这里只让它**跨挂载**：卸载时把这一行的历史读成一串文档快照（从最早到当前，按 history 自己的分组），
  * 按镜头 id 存在表级的一张表里；同一镜再挂上时，在新编辑器里把这串快照按顺序重放成历史条目
- * （第一份不进历史，其后每份一个独立分组），于是 Ctrl+Z 一步一步退回去，与从未卸载时一样。
+ * （第一份不进历史，其后每份一个独立分组，重放完再封一次口，之后的新编辑另起一组），于是 Ctrl+Z 一步一步退回去，与从未卸载时一样。
  *
  * 只存历史、不钉住行：挂载数仍只随视口。重做（Ctrl+Shift+Z）不跨卸载。
  */
@@ -58,6 +58,9 @@ export function replayHistory(
   }
   dispatch(replace(docs[0]).setMeta('addToHistory', false))
   for (const doc of docs.slice(1)) dispatch(closeHistory(replace(doc)))
+  // 组边界（V-1210 复验 R2-2）：重放完立刻封口。不封的话，用户重挂后马上打的字与最后一份快照时间紧挨、位置相邻，
+  // 会被 history 合进同一组，一次 Ctrl+Z 连旧编辑一起撤掉。
+  dispatch(closeHistory(getState().tr).setMeta('preventUpdate', true))
   return true
 }
 

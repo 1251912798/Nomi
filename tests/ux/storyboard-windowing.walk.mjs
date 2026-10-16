@@ -11,6 +11,7 @@
 //   ⑧ 滚到中间、滚到底，末镜挂得上；
 //   ⑨ 英文 + 暗色 + 最小窗口（1100×690）：行走窄档、同样只挂首屏；
 //   ⑪ 快速滚动：滚过的行先挂轻量占位、滚动中不建编辑器，停下后换成完整行（记长任务数）；
+//   ⑫ 快速滚动后点占位行马上打字，字不丢；⑬ 重挂后接着改再撤销，新编辑另起一组；
 //   ⑩ 生成中的状态刷新：画布节点状态一变，挂着的行立刻跟、视口外的行挂上时就是最新态（只改 store，不发请求）。
 // 截图：zh 亮（顶 / 中 / 底）+ en 暗窄窗（顶 / 中 / 底），落在 STORYBOARD_WINDOWING_OUT（默认 .tmp/storyboard-windowing）。
 import fs from 'node:fs'
@@ -343,6 +344,56 @@ async function passZhLight() {
     await win.screenshot({ path: path.join(outDir, 'zh-light-scrolling.png') })
     await settled(win)
     check((await mounted(win)).rows > 0, '⑪ 停下后占位换成完整行', `停下后又建了 ${afterSettle.editorsCreated - duringScroll.editorsCreated} 个编辑器；滚动全程长任务 ${afterSettle.longTasks} 个`)
+
+    // ⑫ 点占位行马上打字（V-1210 复验 R2-1）：快速滚动后、占位还没换成完整行时，真鼠标点一行的提示词处、紧接着打字——字必须进这一镜的提示词
+    await scrollTo(win, 'top')
+    await win.locator(promptBox(1)).click()
+    const scrollArea = await win.locator('[data-storyboard-scroll]').boundingBox()
+    await win.mouse.move(scrollArea.x + scrollArea.width / 2, scrollArea.y + scrollArea.height / 2)
+    await win.mouse.wheel(0, 6000)
+    await frames(win)
+    const target = await win.evaluate(() => {
+      const scroll = document.querySelector('[data-storyboard-scroll]').getBoundingClientRect()
+      for (const row of document.querySelectorAll('[data-storyboard-row-placeholder]')) {
+        const prompt = row.querySelector('[data-storyboard-content-column]')
+        const rect = prompt?.getBoundingClientRect()
+        if (rect && rect.top > scroll.top + 4 && rect.bottom < scroll.bottom - 4) {
+          return { index: row.getAttribute('data-storyboard-row-placeholder'), x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 }
+        }
+      }
+      return null
+    })
+    check(Boolean(target), '⑫ 快速滚动后视口里有占位行可点（复现前提）', JSON.stringify(target))
+    if (target) {
+      await win.mouse.click(target.x, target.y)
+      await win.keyboard.type(' V1210 immediate input')
+      await settled(win)
+      const typedInto = await win.locator(promptBox(Number(target.index))).innerText()
+      check(typedInto.includes('V1210 immediate input'), '⑫ 点占位行马上打字：字进了这一镜的提示词（不丢）', `第 ${target.index} 镜：${typedInto.slice(-30)}`)
+    }
+
+    // ⑬ 重挂后接着改，再撤销（V-1210 复验 R2-2）：重挂后的新编辑另起一组，第一次 Ctrl+Z 只撤新编辑
+    await scrollTo(win, 'top')
+    const editRow = 4
+    const originalEdit = await win.locator(promptBox(editRow)).innerText()
+    await win.locator(promptBox(editRow)).click()
+    await win.keyboard.press('Control+a')
+    await win.keyboard.type('V1210 first completed edit')
+    await win.locator(promptBox(5)).click()
+    await scrollTo(win, 'bottom')
+    // 回顶部后**一挂上就点进去打字**（不等其余行就绪）：重放历史的那一刻和新编辑紧挨着，正是复验抓到的时序
+    await win.evaluate(() => { document.querySelector('[data-storyboard-scroll]').scrollTop = 0 })
+    await win.locator(promptBox(editRow)).waitFor({ timeout: stationTimeout() })
+    await win.locator(promptBox(editRow)).click()
+    await win.keyboard.press('End')
+    await win.keyboard.type(' SECOND')
+    await win.keyboard.press('Control+z')
+    for (let i = 0; i < 3; i += 1) await frames(win)
+    const firstUndo = await win.locator(promptBox(editRow)).innerText()
+    await win.keyboard.press('Control+z')
+    for (let i = 0; i < 3; i += 1) await frames(win)
+    const secondUndo = await win.locator(promptBox(editRow)).innerText()
+    check(firstUndo.trim() === 'V1210 first completed edit' && secondUndo.trim() === originalEdit.trim(), '⑬ 重挂后接着改：第一次 Ctrl+Z 只撤新编辑，第二次回到原文', `第 ${editRow} 镜：一次后「${firstUndo.slice(0, 30)}」，两次后「${secondUndo.slice(0, 20)}」`)
 
     // ⑧ 滚到底：末镜挂上
     await scrollTo(win, 'bottom')

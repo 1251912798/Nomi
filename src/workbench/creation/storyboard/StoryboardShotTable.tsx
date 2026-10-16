@@ -1,5 +1,6 @@
 import { resolveStoryboardOverride } from './exec/storyboardOverrideActions'
 import React, { type JSX } from 'react'
+import { flushSync } from 'react-dom'
 import { defaultRangeExtractor, useVirtualizer, type Range } from '@tanstack/react-virtual'
 import { useWorkbenchStore } from '../../workbenchStore'
 import { useTranslation } from 'react-i18next'
@@ -282,7 +283,8 @@ export default function StoryboardShotTable({ plan, projectId, rows, anchorCards
 
   // 「聚焦第 N 镜」：先让那一项进视口（它可能还没挂），挂上之后再给焦点。
   // `nativeScroll`：聚焦时让浏览器把它滚进视口（键盘上下移）；否则视口已经由虚拟列表摆好（定位到某一镜，居中）。
-  const [pendingFocus, setPendingFocus] = React.useState<{ shotIndex: number; nativeScroll: boolean } | null>(null)
+  // `prompt`：焦点进这一镜的提示词编辑器（光标放末尾），否则落在行上。
+  const [pendingFocus, setPendingFocus] = React.useState<{ shotIndex: number; nativeScroll: boolean; prompt?: boolean } | null>(null)
   const rowElementOf = (shotIndex: number): HTMLElement | null =>
     tableRef.current?.querySelector<HTMLElement>(`[data-storyboard-row="${CSS.escape(String(shotIndex))}"]`) ?? null
   /** 定位到某一镜（居中）：交给虚拟列表按下标滚（动态行高由它边量边校准），挂上后聚焦。 */
@@ -357,9 +359,26 @@ export default function StoryboardShotTable({ plan, projectId, rows, anchorCards
     if (pendingFocus === null) return
     const row = rowElementOf(pendingFocus.shotIndex)
     if (!row) return
-    row.focus({ preventScroll: !pendingFocus.nativeScroll })
+    const editable = pendingFocus.prompt ? row.querySelector<HTMLElement>('[data-prompt-box] [contenteditable="true"]') : null
+    if (editable) {
+      editable.focus({ preventScroll: true })
+      // 光标放到末尾（ProseMirror 跟随 DOM 选区）。
+      const range = document.createRange()
+      range.selectNodeContents(editable)
+      range.collapse(false)
+      const selection = window.getSelection()
+      selection?.removeAllRanges()
+      selection?.addRange(range)
+    } else row.focus({ preventScroll: !pendingFocus.nativeScroll })
     setPendingFocus(null)
   }, [pendingFocus, mountedSignature])
+  /**
+   * 点在还没换掉的占位行上（V-1210 复验 R2-1）：在按下的这一刻**同步**把它钉成完整行并交出焦点——
+   * flushSync 让升级、挂编辑器、聚焦都在这次 pointerdown 里完成，紧跟着的按键直接进编辑器，一个字都不落空。
+   */
+  const activatePlaceholder = (shot: PlanShot, target: 'prompt' | 'row'): void => {
+    flushSync(() => setPendingFocus({ shotIndex: shot.index, nativeScroll: false, prompt: target === 'prompt' }))
+  }
 
   // 从画布 / 列表「定位到这一镜」：展开折叠的场 → 滚到那一项 → 聚焦并选中。
   React.useLayoutEffect(() => {
@@ -667,7 +686,7 @@ export default function StoryboardShotTable({ plan, projectId, rows, anchorCards
                 {item.kind === 'head'
                   ? renderHead(item.group, item.groupIndex)
                   : placeholder
-                    ? <StoryboardShotRowPlaceholder shot={item.shot} frameBox={tableBox} />
+                    ? <StoryboardShotRowPlaceholder shot={item.shot} frameBox={tableBox} onActivate={(target) => activatePlaceholder(item.shot, target)} />
                     : renderShot(item.shot, item.pos)}
               </div>
             )

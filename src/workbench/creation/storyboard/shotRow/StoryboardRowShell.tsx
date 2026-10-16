@@ -37,7 +37,7 @@ type Props = {
   dataAttributes?: Record<string, string | number | undefined>
 } & Pick<
   React.HTMLAttributes<HTMLDivElement>,
-  'onClick' | 'onKeyDown' | 'onDragOver' | 'onDrop' | 'tabIndex'
+  'onClick' | 'onKeyDown' | 'onDragOver' | 'onDrop' | 'onPointerDown' | 'tabIndex'
 >
 
 const ROW_GRIP_WIDTH = 14
