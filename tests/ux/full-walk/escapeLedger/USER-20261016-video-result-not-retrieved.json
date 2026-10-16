@@ -17,13 +17,16 @@
     "electron/catalog/relayVideoQueryContract.test.ts：官方 new-api 任务信封 / 方舟原始 JSON / Gemini 简化形状 / OpenAI-video / 无可用渠道 / 404 Invalid URL 同一组夹具对原生与通用两条通道跑；修前官方 new-api 信封两条通道都取不到地址（红）",
     "electron/catalog/relayNativeWireReconcile.test.ts：已错切原生且无证据的模型降回通用通道并留日志（修前红）",
     "src/workbench/generationCanvas/store/nodeRunOutcome.test.ts + NodeRecoverableReport.test.tsx：可找回保留并显示最后一次取回失败的原话（修前红）",
-    "根因合同 docs/fixes/2026-10-16-relay-video-result-retrieval.root-cause.json；方向检查 docs/engineering/direction-checks/2026-10-16-recoverable-reason-dropped.md；真中转复验待协调会话派独立验收"
+    "根因合同 docs/fixes/2026-10-16-relay-video-result-retrieval.root-cause.json；方向检查 docs/engineering/direction-checks/2026-10-16-recoverable-reason-dropped.md；真中转复验待协调会话派独立验收",
+    "electron/catalog/videoQueryContractMatrix.test.ts：内置 108 条视频查询映射 + 中转两种按形状登记真实返回夹具，成功 / 进行中 / 认不出状态三断言；普查门岗",
+    "electron/tasks/relayQueryFallback.test.ts：原生通道连续 3 次「无可用渠道」→ 退回通用通道并免费再查一次取回；5xx / 429 / 抖动不退",
+    "设计卡 docs/plan/2026-10-16-async-result-retrieval.md；方向检查 docs/engineering/direction-checks/2026-10-16-async-result-retrieval.md"
   ],
   "completionCommits": [],
   "rootCauseContract": "docs/fixes/2026-10-16-relay-video-result-retrieval.root-cause.json",
   "classCheck": {
     "kind": "matrix",
-    "file": "electron/catalog/relayVideoQueryContract.test.ts"
+    "file": "electron/catalog/videoQueryContractMatrix.test.ts"
   },
   "fixedInPr": null
 }
