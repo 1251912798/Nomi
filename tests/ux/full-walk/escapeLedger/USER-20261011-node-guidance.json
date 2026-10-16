@@ -1,0 +1,28 @@
+{
+  "id": "USER-20261011-node-guidance",
+  "since": "2026-10-11",
+  "source": "2026-10-11 user screenshot and approved contextual icon proposal",
+  "category": "performance-coverage",
+  "problem": "分组里面一堆节点，每个上面重复的引导让设计很奇怪；新建又需要快速知道该做什么。",
+  "existingInvariants": [],
+  "ironLaws": [],
+  "useCases": [],
+  "fullWalkJourneys": [],
+  "status": "fixed",
+  "manualReview": "reviewed",
+  "evidence": [
+    "docs/design/boards/2026-10-11/ContextualEmptyNodes.board.json",
+    "docs/evidence/2026-10-11-node-guidance/independent-census.md",
+    "docs/evidence/2026-10-11-node-guidance/acceptance.md",
+    "docs/evidence/2026-10-11-node-guidance/independent-review.md"
+  ],
+  "completionCommits": [
+    "ed77bae9228987d4eae1877cd17e53fb6b3d338b"
+  ],
+  "rootCauseContract": "docs/fixes/2026-10-11-contextual-node-guidance.root-cause.json",
+  "classCheck": {
+    "kind": "matrix",
+    "file": "src/workbench/generationCanvas/nodes/render/NodeEmptyState.test.tsx"
+  },
+  "fixedInPr": 1181
+}

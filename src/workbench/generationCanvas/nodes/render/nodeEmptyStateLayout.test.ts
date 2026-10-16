@@ -7,6 +7,8 @@ import {
   EMPTY_STATE_FULL_MIN_HEIGHT,
   EMPTY_STATE_TOP_CLEARANCE,
   emptyStateBlockTop,
+  emptyStateIconTop,
+  EMPTY_STATE_ICON_SIZE,
   emptyStateTier,
 } from './nodeEmptyStateLayout'
 
@@ -40,6 +42,18 @@ describe('emptyStateBlockTop 视觉中心 B', () => {
   })
   it('紧凑档用紧凑块高', () => {
     expect(emptyStateBlockTop('compact', 240)).toBe(Math.round(240 * 0.45 - EMPTY_STATE_BLOCK_HEIGHT.compact / 2))
+  })
+})
+
+describe('emptyStateIconTop 浏览态只留图标，同一套 45% / 44px 规则（10-10 拍板 B）', () => {
+  it('矮卡 120：盘顶离顶 44px，不是 36px', () => {
+    expect(emptyStateIconTop(120)).toBe(44)
+  })
+  it('高卡：盘中心落在 45% 处', () => {
+    expect(emptyStateIconTop(462)).toBe(Math.round(462 * 0.45 - EMPTY_STATE_ICON_SIZE / 2))
+  })
+  it('卡高未知：CSS 兜底同一规则', () => {
+    expect(emptyStateIconTop(undefined)).toBe('max(44px, calc(45% - 24px))')
   })
 })
 
