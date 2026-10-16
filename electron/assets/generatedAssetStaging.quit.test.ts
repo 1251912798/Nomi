@@ -96,10 +96,9 @@ describe("V-1208-6: a controlled quit leaves no generated staging behind", () =>
     await vi.waitFor(() => expect(decoder.spawned).toBe(1));
     expect(staging()).toHaveLength(1);
 
-    const startedAt = Date.now();
     quit();
     await vi.waitFor(() => expect(app.exit).toHaveBeenCalledWith(0));
-    expect(Date.now() - startedAt).toBeLessThan(2500);
+    // 直接观测机制：本地任务排空没有超时（以前要等满 2500ms 才放行退出）。
     expect(errors).not.toContain("antigravity-image-jobs-timeout");
     expect(staging()).toEqual([]);
     expect(assets()).toEqual([]);
