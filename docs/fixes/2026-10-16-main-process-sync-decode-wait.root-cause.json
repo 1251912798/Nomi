@@ -5,8 +5,8 @@
   "detected_by": "user",
   "recurrence_check_on": "2026-11-16",
   "problem_type": "Main-process event loop parked on a synchronous child-process wait",
-  "symptom": "0.23.1: while results land, the app stops responding — clicks do nothing and Settings does not open right away; v0.22.5 does not do this.",
-  "direct_cause": "electron/assets/generatedMediaDecode.ts ran ffmpeg with spawnSync in the main process to verify every generated output before it was written (wait ceiling 12–120 s by size). Every sync IPC from the renderer, every async IPC reply and window event waited behind it.",
+  "symptom": "0.23.1: while results land, the app stops responding — clicks do nothing and Settings does not open right away; the user reports other versions do not feel this way.",
+  "direct_cause": "electron/assets/generatedMediaDecode.ts ran ffmpeg with spawnSync in the main process to verify every generated output before it was written (wait ceiling 12–120 s by size). Every sync IPC from the renderer, every async IPC reply and window event waited behind it. History: a synchronous decode check already existed in v0.22.5 (inside projectAssetStore); v0.23.0 (#938, 8ddb06250) moved it to generatedMediaDecode.ts, switched it to a framehash decode and raised the size-scaled wait ceiling to 120 s, making the wait heavier; v0.23.1 inherits it.",
   "class_root": "Nothing structurally stops main-process code from waiting synchronously on an external process: spawnSync / execFileSync / execSync are as easy to write as their async forms, finish in tens of milliseconds on small fixtures, and the only existing registry for child processes (offLedgerEgress) asks whether a process may spend money, not whether it blocks the main loop.",
   "affected_population": [
     "Every generated image / video / audio written through writeAsset, writeDeterministicAsset, moveAssetFile or copyAssetFile with meta.kind=generated (provider results, MCP materialization, Codex / Antigravity / Dreamina local results, custom calls, screenshots, frame extraction, trim, depth video, camera-move)",
