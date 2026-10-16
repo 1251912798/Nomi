@@ -12,7 +12,9 @@
   "manualReview": "reviewed",
   "evidence": [
     "docs/engineering/direction-checks/2026-10-16-main-process-sync-child-wait.md",
-    "docs/fixes/2026-10-16-main-process-sync-decode-wait.root-cause.json"
+    "docs/fixes/2026-10-16-main-process-sync-decode-wait.root-cause.json",
+    "electron/assets/projectAssetStore.publishIdentity.test.ts",
+    "electron/browser/media/browserImportCommit.test.ts"
   ],
   "completionCommits": [],
   "rootCauseContract": "docs/fixes/2026-10-16-main-process-sync-decode-wait.root-cause.json",

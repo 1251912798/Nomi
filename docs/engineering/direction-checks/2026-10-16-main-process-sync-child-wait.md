@@ -139,3 +139,22 @@
 ### 5. 用户要权衡的核心
 
 再花一轮把写入边界改回同步、只把校验做成异步（B，根上收住这一族），还是在现在的异步边界上继续补（A，改得少，但每轮都可能冒新的同类问题）。
+
+### 6. 拍板与落地（2026-10-16）
+
+用户拍板走 B（原话「1208 按推荐走」）。落地形状：
+
+- 新模块 `electron/assets/generatedAssetStaging.ts` 的 `prepareVerifiedGeneratedAsset` 负责异步那一半，产出品牌类型 `VerifiedStagedAsset`：
+  - 进门（任何 await 之前）钉住字节；
+  - 捕获 `AssetWriteContext`；
+  - 把字节或源文件异步写进本项目根下的 `.nomi-upload-*` 暂存；
+  - 在暂存文件上做内容校验和异步解码。
+- `projectAssetStore.publishVerifiedGeneratedAsset` 负责同步那一半，只收 `VerifiedStagedAsset`：
+  - 复验项目身份 → `renameSync` 原子发布 → 写 sidecar → 广播；
+  - 无论成败，都收掉暂存。
+- `writeAsset` / `moveAssetFile` / `copyAssetFile` 的非生成分支恢复 main 的同步契约，遇到 `kind: "generated"` 拒写。
+- 解码器只校验暂存件路径。
+- 回归：V-1208-1/2/4/5 进 `electron/assets/projectAssetStore.publishIdentity.test.ts`；V-1208-3 进 `electron/browser/media/browserImportCommit.test.ts`。
+- 变异校验：
+  - 把发布改回「往正式路径直接写字节」，V-1208-4/5 的 6 条全红；
+  - 把 `moveAssetFile` 改成异步，浏览器导入闭环报 ENOENT 变红。
