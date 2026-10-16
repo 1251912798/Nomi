@@ -9,23 +9,27 @@
     },
     {
       "path": "src/devlab/designLab/director3dbox/director3dboxLabKit.tsx",
-      "sha256": "4dcf78ffc93aacfd118d2f7c55de78311aa9aeeeb732ae45828f7c722cce4298"
+      "sha256": "6fafbe27f70796e15d6e08494b6537337b9fd026426d17f37390e41facbe8d22"
     },
     {
       "path": "src/devlab/designLab/director3dbox/states/01-director-view.tsx",
-      "sha256": "cadc34c5f955bb03cd4dbc429fd8da01b9bf7fabbfae3481ee1a37e75de5823f"
+      "sha256": "158cc9c53e18a2111e92ca91758d4bf90f83a51c86b6a85446f89235638fb4e5"
     },
     {
       "path": "src/devlab/designLab/director3dbox/states/02-shot-focus.tsx",
-      "sha256": "19e4a1910cd46bc2b8a62b0a1c08099f49d05d9935f2d41ab0880c70ebba347c"
+      "sha256": "bf5646736b702682d6d906faff5d3cc65818f27e0dd25ae2c0acc18c7a49f72d"
     },
     {
       "path": "src/devlab/designLab/director3dbox/states/03-switch-review.tsx",
-      "sha256": "9fb1b1d70ee38f6b31106f4feae5c45880775121902e6b08d4535bfe98385bed"
+      "sha256": "46597e149c7ea68c946868a3764f8e46976a08ec852d5ca898057588e2e6458f"
     },
     {
       "path": "src/devlab/designLab/directorRefine/states/01-refine-select-to-show.tsx",
-      "sha256": "b73cf65d4271d59bbf25b90298c8fa960c4bb806a86506b54db74aefbfc04500"
+      "sha256": "1e05ecb9bd98cef444538231dc10ecfa00186610e3bb8bcced059fcaceb1eecc"
+    },
+    {
+      "path": "src/devlab/designLab/director3dbox/states/04-produce.tsx",
+      "sha256": "6f398c6221f52d11c843fad98f6f877da0ad2646d84ddee628712ef7c0aa755f"
     }
   ],
   "preview": "design-lab.html?screen=director-3dbox（01/02/03 状态文件）+ ?screen=director-refine",

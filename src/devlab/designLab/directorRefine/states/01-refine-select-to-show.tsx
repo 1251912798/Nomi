@@ -287,4 +287,13 @@ export const REFINE_SELECT_TO_SHOW_STATES: readonly LabState[] = [
     capture: 'viewport',
     render: () => <Director3dBoxLazyStage locale="zh-CN" fixture="courtyard" drive="shot-2-refine" steps={PICK_GUARD} />,
   },
+  {
+    id: 'd3a-light-guard-en',
+    name: 'Refine opened in light theme (director stays dark, 2026-09-09) · black-clad guard picked · English',
+    source: SOURCE,
+    coverage: 'shell',
+    scheme: 'light',
+    capture: 'viewport',
+    render: () => <Director3dBoxLazyStage locale="en" fixture="courtyard" drive="shot-2-refine" steps={PICK_GUARD} />,
+  },
 ]

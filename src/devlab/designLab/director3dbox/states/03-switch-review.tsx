@@ -24,6 +24,15 @@ export const SWITCH_REVIEW_STATES: readonly LabState[] = [
     render: () => <Director3dBoxLazyStage locale="zh-CN" fixture="courtyard" drive="shot-2" />,
   },
   {
+    id: 'd3-switch-courtyard-light-en',
+    name: 'Switch review · light theme · courtyard · shot 2 picked (English)',
+    source: SOURCE,
+    coverage: 'shell',
+    scheme: 'light',
+    capture: 'viewport',
+    render: () => <Director3dBoxLazyStage locale="en" fixture="courtyard" drive="shot-2" />,
+  },
+  {
     id: 'd3-switch-empty-light-zh',
     name: '切换前对账 · 浅色主题 · 空工程（中文）',
     source: SOURCE,
