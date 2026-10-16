@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { cleanInternalLinks, isDocsHtml, manifestFromHtmlPaths, normalizeBundlerHashes } from './docs-site.mjs'
+import { cleanInternalLinks, isDocsHtml, logicalAssetName, manifestFromHtmlPaths, missingAstroReferences, normalizeBundlerHashes } from './docs-site.mjs'
 
 test('cleanInternalLinks strips .html from internal links only, keeping anchors', () => {
   const html = '<a href="/docs/start/first-project.html#steps">a</a><a href="/en/docs.html">b</a><a href="https://example.com/x.html">c</a><a href="#top">d</a><a href="/index.html">e</a>'
@@ -32,4 +32,16 @@ test('normalizeBundlerHashes erases bundler hashes but keeps page content', () =
   const b = '<link href="/_astro/common.y1p1JTPO.css"><div class="astro-ofbg3qve x">文字</div><script src="/_astro/ui-core.AAAAAAAA.js">'
   assert.equal(normalizeBundlerHashes(a), normalizeBundlerHashes(b))
   assert.notEqual(normalizeBundlerHashes(a), normalizeBundlerHashes(b.replace('文字', '别的字')))
+})
+
+test('logicalAssetName makes a Windows-built and a Linux-built style file the same logical file', () => {
+  assert.equal(logicalAssetName('_astro/common.KRJgqbup.css'), logicalAssetName('_astro/common.y1p1JTPO.css'))
+  assert.notEqual(logicalAssetName('_astro/common.KRJgqbup.css'), logicalAssetName('_astro/print.KRJgqbup.css'))
+  assert.notEqual(logicalAssetName('_astro/common.KRJgqbup.css'), logicalAssetName('_astro/common.KRJgqbup.js'))
+})
+
+test('missingAstroReferences reports a page that points at a style file that is not on disk', () => {
+  const pages = new Map([['docs.html', '<link href="/_astro/common.KRJgqbup.css"><script src="/_astro/ui-core.Clh5jUUO.js">']])
+  assert.deepEqual(missingAstroReferences(pages, ['common.KRJgqbup.css', 'ui-core.Clh5jUUO.js']), [])
+  assert.deepEqual(missingAstroReferences(pages, ['common.y1p1JTPO.css', 'ui-core.Clh5jUUO.js']), ['docs.html → _astro/common.KRJgqbup.css'])
 })

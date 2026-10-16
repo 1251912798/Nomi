@@ -18,7 +18,9 @@ import {
   cleanInternalLinks,
   formatManifest,
   isDocsHtml,
+  logicalAssetName,
   manifestFromHtmlPaths,
+  missingAstroReferences,
   normalizeBundlerHashes,
 } from './marketing/docs-site.mjs'
 
@@ -88,8 +90,15 @@ function writeOutputs(outputs) {
 function checkOutputs(outputs) {
   const stale = []
   const marketing = path.join(root, 'marketing')
+  const astroOnDisk = fs.existsSync(path.join(marketing, '_astro')) ? walk(path.join(marketing, '_astro')) : []
+  const astroLogicalOnDisk = new Set(astroOnDisk.map((file) => logicalAssetName(`_astro/${file}`)))
   for (const [relativePath, contents] of outputs) {
     const target = path.join(marketing, relativePath)
+    if (relativePath.startsWith('_astro/')) {
+      // 打包产物的哈希名随平台变（见 logicalAssetName），只核逻辑文件在不在；页面引用得上由下面的 missingAstroReferences 核。
+      if (!astroLogicalOnDisk.has(logicalAssetName(relativePath))) stale.push(`${relativePath}（磁盘上没有）`)
+      continue
+    }
     if (!fs.existsSync(target)) { stale.push(`${relativePath}（磁盘上没有）`); continue }
     if (isDocsHtml(relativePath)) {
       const onDisk = fs.readFileSync(target, 'utf8').replaceAll('\r\n', '\n')
@@ -97,6 +106,10 @@ function checkOutputs(outputs) {
       if (normalizeBundlerHashes(onDisk) !== normalizeBundlerHashes(contents)) stale.push(relativePath)
     }
   }
+  const expectedLogical = new Set([...outputs.keys()].filter((file) => file.startsWith('_astro/')).map(logicalAssetName))
+  for (const file of astroOnDisk) if (!expectedLogical.has(logicalAssetName(`_astro/${file}`))) stale.push(`_astro/${file}（源码里已经没有这个文件）`)
+  const htmlOnDisk = new Map(docsHtmlOnDisk().map((file) => [file, fs.readFileSync(path.join(marketing, file), 'utf8')]))
+  stale.push(...missingAstroReferences(htmlOnDisk, astroOnDisk))
   const expectedHtml = new Set([...outputs.keys()].filter(isDocsHtml))
   for (const relativePath of docsHtmlOnDisk()) if (!expectedHtml.has(relativePath)) stale.push(`${relativePath}（源码里已经没有这一页）`)
   const manifestTarget = path.join(root, DOCS_MANIFEST)

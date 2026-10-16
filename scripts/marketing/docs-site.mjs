@@ -83,3 +83,23 @@ export function normalizeBundlerHashes(html) {
     .replace(/(\/_astro\/[^"'\s]*?)\.[A-Za-z0-9_-]{8}\.(css|js)/g, '$1.HASH.$2')
     .replace(/astro-[a-z0-9]{8}/g, 'astro-HASH')
 }
+
+/**
+ * `_astro/` 下打包产物的「逻辑名」：抹掉文件名里的 8 位哈希（`common.KRJgqbup.css` → `common.HASH.css`）。
+ * 同一份源码在 Windows 和 Linux 上打出的样式文件内容（于是哈希）可以不同（CI 上 common 样式的哈希与本机不同，
+ * 且 d7f8d4780 挡掉根目录 postcss 之后依旧不同），所以门岗核「这个逻辑文件在不在」，不核哈希名；
+ * 入库页面引用的哈希名在不在磁盘上，由 missingAstroReferences 守。
+ */
+export const logicalAssetName = (relativePath) => relativePath.replace(/\.[A-Za-z0-9_-]{8}\.(css|js)$/, '.HASH.$1')
+
+/** 入库教程页里引用了、但磁盘 `_astro/` 里没有的文件（页面指向的样式 / 脚本丢了会整页裸奔）。 */
+export function missingAstroReferences(htmlByPath, astroFilesOnDisk) {
+  const present = new Set(astroFilesOnDisk)
+  const missing = []
+  for (const [page, html] of htmlByPath) {
+    for (const match of html.matchAll(/\/_astro\/([^"'\s?#]+)/g)) {
+      if (!present.has(match[1])) missing.push(`${page} → _astro/${match[1]}`)
+    }
+  }
+  return missing
+}
