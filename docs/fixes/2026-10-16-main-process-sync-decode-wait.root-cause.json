@@ -193,13 +193,8 @@
     },
     {
       "path": "electron/tasks/localTaskJobs.ts",
-      "symbol": "LocalTaskJobs.query",
+      "symbol": "LocalTaskJobs",
       "responsibility": "Single-flight import so the now-asynchronous commit cannot interleave with a second query or a cancellation."
-    },
-    {
-      "path": "scripts/check-heavy-path.mjs",
-      "symbol": "main-sync-child-process",
-      "responsibility": "Static gate: no synchronous child-process wait anywhere in electron/ production code."
     }
   ],
   "same_class_entry_points": [
