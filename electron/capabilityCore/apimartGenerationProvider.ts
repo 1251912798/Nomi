@@ -782,12 +782,13 @@ export function createCatalogGenerationProvider(options: CatalogGenerationProvid
     async materialize(input) {
       // 地址只有一种读法（tasks/taskResultReading，与引擎 A 共用）：先按这条任务的 query 合同，读不到再走通用规则。
       // 认不出是哪条任务（重启后没有上下文、这家又有多条不同的 query）就只用通用规则——不猜合同。
-      let target: ReturnType<typeof queryTargetFor> | null = null;
-      try {
-        target = queryTargetFor(input.providerTaskId.trim());
-      } catch {
-        target = null;
-      }
+      const target = ((): ReturnType<typeof queryTargetFor> | null => {
+        try {
+          return queryTargetFor(input.providerTaskId.trim());
+        } catch {
+          return null;
+        }
+      })();
       // 期望的媒体类型只信「确实知道是哪条任务」的那份记录：③「这家每条 query 都一样」选出来的
       // 只是随便一条 mapping，它的 taskKind 说明不了这笔任务要图还是要视频。
       const remembered = selectionByTaskId.get(input.providerTaskId.trim());
