@@ -1,6 +1,6 @@
 {
   "id": "storyboard-plan-open",
-  "feature": "在创作页点开一份 320 镜头的分镜方案（冷启后第一次打开，量到 320 行可见）",
+  "feature": "在创作页点开一份 320 镜头的分镜方案（冷启后第一次打开，量到首屏可编辑、逻辑总数 320；停表后另验末镜够得着）",
   "script": "tests/perf/document-switch-bench.mjs",
   "args": [
     "--scenario",

@@ -48,9 +48,12 @@ const INSTALL_SOURCE = `(() => {
     libraryReady(count) {
       return [...document.querySelectorAll('[data-project-card]')].filter(visible).length >= count
     },
-    // 分镜方案打开：至少 count 行镜头在屏上（tests/perf/document-switch-bench.mjs）。
-    storyboardRowsAtLeast(count) {
-      return [...document.querySelectorAll('[data-storyboard-row]')].filter((element) => element.getClientRects().length > 0).length >= count
+    // 分镜方案打开到「首屏可编辑」（tests/perf/document-switch-bench.mjs）：行区报出逻辑总数 count，且视口里有带可编辑提示词框的行。
+    // 分镜表窗口化（2026-10-16）后只挂视口附近的行，「count 个行盒子都在屏上」永远不成立；末镜够得着由量具停表后另验。
+    storyboardPlanOpenReady(count) {
+      const box = document.querySelector('[data-storyboard-rows][data-storyboard-row-count="' + count + '"]')
+      return Boolean(box) && [...box.querySelectorAll('[data-storyboard-row]')]
+        .some((element) => element.getClientRects().length > 0 && Boolean(element.querySelector('[data-prompt-box] [contenteditable="true"]')))
     },
     // 切文稿：顶栏文稿切换钮写着目标标题，编辑器里是那份文稿的正文（marker 是正文里的标记句）。
     documentShown({ title, marker }) {
