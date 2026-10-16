@@ -1,3 +1,5 @@
+import type { CanvasPreviewState } from "../shared/contracts/canvasMediaPreview";
+
 // 任务没有项目身份（无窗口、无头调用、明确的「不属于任何项目」）时生成结果的资产形状。
 // 项目身份只来自提交那一刻随任务固定的 projectId，主进程不再记「当前活动项目」来兜底——
 // 兜底会把切项目之后才完成的结果落进另一个项目。
@@ -11,7 +13,7 @@
 export function unlocalizedTaskAsset(
   type: "image" | "video" | "audio" | "model3d",
   url: string,
-): { type: typeof type; url: string; thumbnailUrl: null; previewState?: "missing"; providerUrl: string | null } {
+): { type: typeof type; url: string; thumbnailUrl: string | null; previewState?: CanvasPreviewState; providerUrl: string | null } {
   return {
     type,
     url,

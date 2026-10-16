@@ -187,7 +187,7 @@ export function collectPreviewCandidates(
 ): PreviewCandidate[] {
   const out: PreviewCandidate[] = []
   for (const node of nodes) {
-    const distance = distanceToVisibleArea(node, viewFor(node.categoryId))
+    const distance = distanceToVisibleArea(node, node.categoryId ? viewFor(node.categoryId) : null)
     const seen = new Set<string>()
     const entries = [node.result, ...(node.history ?? [])]
     entries.forEach((entry, index) => {
