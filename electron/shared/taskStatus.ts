@@ -7,6 +7,8 @@
  * 供应商原始状态（`processing` / `in_progress` / `generating` 等）在 `electron/tasks/responseParsing.ts`
  * 就被收成这四种之一；还没收的（任何不在表里的字符串）一律当「还在路上」：轮询继续、遥测不报。
  */
+import type { GenerationProviderTaskState } from '../capabilityCore/generationRuntimeAdapter'
+
 export type TaskStatus = 'queued' | 'running' | 'succeeded' | 'failed'
 
 export const TASK_STATUS_PHASE = {
@@ -37,7 +39,9 @@ export function isTerminalTaskStatus(status: string | undefined | null): status 
 //   KIE：waiting / queuing / generating / success / fail；APIMart：submitted / in_progress / completed / failed
 // 大小写不敏感。**认不出的词不当失败**（`unknown`）：失败要上游明说，猜错的代价是一次已付费的生成。
 
-export type UpstreamTaskStatusClass = "queued" | "running" | "succeeded" | "failed" | "cancelled" | "unknown";
+// 归类就是引擎 B 早就有的那份任务态（GenerationProviderTaskState，唯一定义在 generationRuntimeAdapter）：
+// 只引类型、运行时零依赖（import type 编译后即擦除），这里不另立第二份。
+export type UpstreamTaskStatusClass = GenerationProviderTaskState;
 
 const VOCABULARY: Readonly<Record<Exclude<UpstreamTaskStatusClass, "unknown">, readonly string[]>> = {
   queued: [
