@@ -94,7 +94,7 @@
     {
       "kind": "read",
       "path": "electron/runtime.ts",
-      "symbol": "CanvasPreviewState"
+      "symbol": "TaskAssetPreviewFields"
     },
     {
       "kind": "read",
