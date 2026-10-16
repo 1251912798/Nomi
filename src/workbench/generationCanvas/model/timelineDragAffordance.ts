@@ -1,5 +1,5 @@
 import type { GenerationCanvasNode } from './generationCanvasTypes'
-
+import { buildClipFromGenerationNode } from './buildClipFromGenerationNode'
 
 export function canDragGenerationNodeToTimeline(
   node: GenerationCanvasNode,
@@ -7,6 +7,7 @@ export function canDragGenerationNodeToTimeline(
 ): boolean {
   if (options.readOnly) return false
   if (node.kind === 'panorama') return false
-  if (node.status === 'error') return false
-  return typeof node.result?.url === 'string' && node.result.url.trim().length > 0
+  const type = node.result?.type
+  if (type !== 'image' && type !== 'video' && type !== 'audio') return false
+  return buildClipFromGenerationNode(node) !== null
 }

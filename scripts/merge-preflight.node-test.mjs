@@ -362,6 +362,8 @@ function fakeGh({ failFiles = false, failDiff = false, failContract = false } = 
     }
     if (line.includes(`contents/${LEDGER}`)) return b64({ id: 'FB-x', status: line.includes('ref=bbbb') ? 'candidate' : 'fixed' })
     if (line.includes('contents/tests/ux/full-walk/escapeLedger?')) return 'FB-x.json'
+    // 性能场景登记表（基线）：G-perfreg 起合并前扫描会列这个目录；这里是空登记表，PR 不带场景文件
+    if (line.includes('contents/tests/perf/scenarios?')) return ''
     throw new Error(`unexpected gh call: ${line}`)
   }
   return { exec, calls }

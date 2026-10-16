@@ -20,6 +20,8 @@ import { gitPaths } from './lib/gitPaths.mjs'
 import { execGhReadSync } from './lib/transientRetry.mjs'
 import { resolvePullRequestBody } from './lib/prBody.mjs'
 import { evaluatePrBody, ledgerChanges, resolveJudgementStage, settledContracts } from './pr-body-criteria.mjs'
+import { knownScenarios, scenarioEntriesFromReader } from './perf-scenarios-lib.mjs'
+import { ROUTING_FILE } from './pr-judgement-lib.mjs'
 import { addedLinesByFile, loadRoutingTable, toolGaps } from './pr-judgement-lib.mjs'
 
 const repoRoot = process.env.PR_JUDGEMENT_REPO_ROOT || path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
@@ -91,7 +93,21 @@ function main() {
   if (contracts.some((contract) => !contract.added && ['user', 'post-release'].includes(contract.detected_by)) && ledger.transitions.length === 0) {
     try { ledger.settledContracts = settledContracts(loadEscapeLedger(repoRoot, { ref: base })) } catch { /* 取不到 = 不当已结账（fail-closed） */ }
   }
-  const result = evaluatePrBody({ body: pr.body, files, addedByFile, packageRemovedLines, contracts, ledger, createdAt: prCreatedAt(), stage: resolveJudgementStage() })
+  // 性能场景 id：基线登记表（base 版本）∪ 本 PR 新增 / 改动的场景文件（HEAD 版本）；与合并前扫描同一个 knownScenarios（G-perfreg）
+  const scenarioRe = /^tests\/perf\/scenarios\/[^/]+\.json$/
+  const baseScenarioNames = gitPaths(['ls-tree', '--name-only', base, 'tests/perf/scenarios/'], { cwd: repoRoot }).filter((file) => scenarioRe.test(file)).map((file) => file.split('/').pop())
+  const scenarios = knownScenarios({
+    baseEntries: scenarioEntriesFromReader(baseScenarioNames, (name) => show(base, `tests/perf/scenarios/${name}`)),
+    prFiles: files.filter((file) => file.status !== 'D' && scenarioRe.test(file.path)).map((file) => ({ file: file.path, content: show('HEAD', file.path) })),
+    removedFiles: files.filter((file) => file.status === 'D' && scenarioRe.test(file.path)).map((file) => file.path),
+  })
+  // 政策表（路由表）取 base 版本：PR 不能放宽自己的路由要求（G-perfreg 分工：政策取 main，可扩充数据取 PR 头）
+  const policyTable = JSON.parse(show(base, ROUTING_FILE) ?? 'null')
+  if (!policyTable) {
+    console.error(`✖ 拿不到 base 上的路由政策表（${ROUTING_FILE}），无法判——不拿 PR 头上的版本顶替`)
+    return 1
+  }
+  const result = evaluatePrBody({ body: pr.body, files, addedByFile, packageRemovedLines, contracts, ledger, createdAt: prCreatedAt(), stage: resolveJudgementStage(), scenarios, table: policyTable })
   const categories = result.judgement.inferred.categories.map((category) => category.label)
   console.log(`PR 正文判据（正文取自 ${pr.source}）：路径推出的类别 = ${categories.length ? categories.join('、') : '（无）'}`)
   for (const line of result.lines) console.log(line)

@@ -104,3 +104,32 @@ test('extractFrontmatter：没有 frontmatter 时返回 null，CRLF 与 BOM 不�
   assert.equal(extractFrontmatter('# 只有正文'), null)
   assert.equal(extractFrontmatter('﻿---\r\nname: a\r\n---\r\n正文'), 'name: a')
 })
+
+// ── F7 / F8：竞品雷达产出只落私有仓 ──
+import { checkPublicCompetitiveDir, checkRadarTextHasNoPublicOutput } from './skills-format-lib.mjs'
+
+test('F7：技能包任何文本里写公开仓输出路径就红（含 references 里的 md）', () => {
+  const files = { ...good(), 'references/protocol.md': '报告写到 docs/research/competitive/<日期>/report.md\n' }
+  assert.deepEqual(rules(checkSkillDirectory('demo-skill', files)), ['F7'])
+})
+
+test('F7：本机原始抓取目录 outputs/competitive-radar 也算公开仓输出位置', () => {
+  const files = { 'SKILL.md': good()['SKILL.md'] + '\n原始媒体放 outputs/competitive-radar/<cycle-id>/\n' }
+  assert.deepEqual(rules(checkSkillDirectory('demo-skill', files)), ['F7'])
+})
+
+test('F7：写私有仓路径就绿——证明红的是公开仓路径不是 competitive 这个词', () => {
+  const files = { 'SKILL.md': good()['SKILL.md'] + '\n报告落私有仓的 research/competitive/<日期>/\n' }
+  assert.deepEqual(checkSkillDirectory('demo-skill', files), [])
+})
+
+test('F7：规程 / hook 文本同判据', () => {
+  assert.deepEqual(checkRadarTextHasNoPublicOutput('daily-radars.md', '入口 docs/research/competitive/README.md').map((e) => e.rule), ['F7'])
+  assert.deepEqual(checkRadarTextHasNoPublicOutput('daily-radars.md', '产出只落私有仓 research/competitive/<日期>/'), [])
+})
+
+test('F8：公开 docs/research/competitive/ 里除 README.md 外出现任何文件就红', () => {
+  assert.deepEqual(checkPublicCompetitiveDir(['README.md']), [])
+  assert.deepEqual(checkPublicCompetitiveDir([]), [])
+  assert.deepEqual(checkPublicCompetitiveDir(['README.md', '2026-10-15/report.md', 'sources.md']).map((e) => e.rule), ['F8', 'F8'])
+})
