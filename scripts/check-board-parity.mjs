@@ -13,6 +13,7 @@
 //  R6 functionCensus 每项的 after 必须是存在的元素 id（旧功能必须有去处）
 //  R7 states 非空，取值只能来自状态词表
 //  R8 PR 正文 `## 拍板图` 认领的元素：在 PR 头上必须是 implemented，或带 userDecision 的 deferred / dropped
+//     （认领可以指向任何日期目录里的板；只有清单、没有画布的板也按 R2–R7 查）
 //
 // 用法：node scripts/check-board-parity.mjs            （重抽候选 + 全部规则）
 import fs from 'node:fs'
@@ -166,11 +167,38 @@ export function loadAssertionCorpus(root = REPO_ROOT) {
   return chunks.join('\n')
 }
 
-export function loadManifests(dir = BOARDS_DIR) {
+/**
+ * 其它日期目录里的板（`docs/design/boards/<日期>/<板名>.board.json`，不在 BOARD_NAMES 那 12 张里）。
+ * 2026-10-16：新板（例如只有文字拍板、没有画布的板）原来对门岗和合并前扫描都不可见——
+ * 门岗不查它，PR 正文 `## 拍板图` 认领它时合并前扫描只会报「不存在」。
+ * 返回 [{ board, dir, manifestOnly }]；manifestOnly = 同目录没有 `<板名>.candidates.json`（没有画布可抽候选）。
+ */
+export function findDatedBoards(root = path.dirname(BOARDS_DIR), skipDir = BOARDS_DIR) {
+  const out = []
+  if (!fs.existsSync(root)) return out
+  for (const day of fs.readdirSync(root, { withFileTypes: true })) {
+    if (!day.isDirectory()) continue
+    const dir = path.join(root, day.name)
+    if (path.resolve(dir) === path.resolve(skipDir)) continue
+    for (const name of fs.readdirSync(dir)) {
+      if (!name.endsWith('.board.json')) continue
+      const board = name.slice(0, -'.board.json'.length)
+      if (BOARD_NAMES.includes(board)) continue
+      out.push({ board, dir, manifestOnly: !fs.existsSync(path.join(dir, `${board}.candidates.json`)) })
+    }
+  }
+  return out
+}
+
+export function loadManifests(dir = BOARDS_DIR, root = path.dirname(dir)) {
   const out = {}
   for (const board of BOARD_NAMES) {
     const file = path.join(dir, `${board}.board.json`)
     out[board] = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : null
+  }
+  // 其它日期目录的板也能被 `## 拍板图` 认领到（同名以 BOARD_NAMES 那份为准）。
+  for (const { board, dir: boardDir } of findDatedBoards(root, dir)) {
+    if (out[board] === undefined) out[board] = JSON.parse(fs.readFileSync(path.join(boardDir, `${board}.board.json`), 'utf8'))
   }
   return out
 }
@@ -193,10 +221,14 @@ export function checkSourceHash({ board, candidatesDoc, currentHash }) {
  * 默认模式：只看哈希与清单，不起浏览器（CI 的 Contracts job 没有 Playwright 浏览器）。
  * reextract = true（显式 --reextract，只在本机或装了浏览器的环境）：再真抽一遍，比对候选文件全文。
  */
-export async function runBoardParity({ dir = BOARDS_DIR, reextract = false } = {}) {
+export async function runBoardParity({ dir = BOARDS_DIR, root = path.dirname(dir), reextract = false } = {}) {
   const errors = []
-  const manifests = loadManifests(dir)
+  const manifests = loadManifests(dir, root)
   const corpus = loadAssertionCorpus()
+  // 只有清单、没有画布的板（文字拍板 + 看图确认）：没有候选可认领，但元素状态、断言、旧功能去处照 R2–R7 查。
+  for (const { board } of findDatedBoards(root, dir).filter((entry) => entry.manifestOnly)) {
+    errors.push(...checkBoardManifest({ board, manifest: manifests[board], candidates: [], assertionCorpus: corpus }))
+  }
   for (const board of BOARD_NAMES) {
     const file = path.join(dir, `${board}.candidates.json`)
     const committed = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : ''
@@ -234,7 +266,8 @@ async function main() {
     for (const e of errors) console.error(`  ✗ ${e}`)
     process.exit(1)
   }
-  console.log(`拍板图对账通过：${BOARD_NAMES.length} 张板，候选全部认领。`)
+  const manifestOnly = findDatedBoards().filter((entry) => entry.manifestOnly).length
+  console.log(`拍板图对账通过：${BOARD_NAMES.length} 张板，候选全部认领；另 ${manifestOnly} 张只有清单的板按 R2–R7 查过。`)
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

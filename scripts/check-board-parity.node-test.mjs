@@ -205,3 +205,40 @@ describe('门岗结构：默认路径不 import 也不调用 playwright', () => 
     assert.equal(r.status, 0, r.stdout + r.stderr)
   })
 })
+
+describe('其它日期目录的板（2026-10-16：新板对门岗和合并前扫描都不可见）', () => {
+  const tmpRoot = () => fs.mkdtempSync(path.join(process.env.TMPDIR || process.env.TEMP || '.', 'bp-dated-'))
+  const writeBoard = (root, day, board, manifest, withCandidates = false) => {
+    const dir = path.join(root, day)
+    fs.mkdirSync(dir, { recursive: true })
+    fs.writeFileSync(path.join(dir, `${board}.board.json`), JSON.stringify(manifest))
+    if (withCandidates) fs.writeFileSync(path.join(dir, `${board}.candidates.json`), JSON.stringify({ candidates: [] }))
+    return dir
+  }
+  const textOnly = (overrides = {}) => ({
+    board: 'TextOnly', stage: 'built',
+    elements: [{ id: 'tier.popover', label: '弹层', candidates: [], status: 'implemented', assertion: 'board:TextOnly/tier.popover', states: ['zh-en'], ...overrides }],
+    decor: [], functionCensus: [{ function: '旧弹层', before: '三档', after: 'tier.popover' }],
+  })
+  it('正例：只有清单的新板被找到，且 `## 拍板图` 能认领到它', async () => {
+    const { findDatedBoards, loadManifests } = await import('./check-board-parity.mjs')
+    const root = tmpRoot()
+    const main = path.join(root, 'main-day'); fs.mkdirSync(main)
+    writeBoard(root, 'later-day', 'TextOnly', textOnly())
+    writeBoard(root, 'later-day', 'Drawn', { board: 'Drawn', stage: 'built', elements: [], decor: [], functionCensus: [] }, true)
+    const found = findDatedBoards(root, main)
+    assert.deepEqual(found.map((entry) => [entry.board, entry.manifestOnly]).sort(), [['Drawn', false], ['TextOnly', true]])
+    const manifests = loadManifests(main, root)
+    assert.deepEqual(checkPrBoardClaims('## 拍板图\n- TextOnly: tier.popover', manifests), [])
+    fs.rmSync(root, { recursive: true, force: true })
+  })
+  it('反例：只有清单的新板也按 R4 查——断言名不在走查里 → 红', async () => {
+    const { runBoardParity } = await import('./check-board-parity.mjs')
+    const root = tmpRoot()
+    const main = path.join(root, 'main-day'); fs.mkdirSync(main)
+    writeBoard(root, 'later-day', 'TextOnly', textOnly({ assertion: 'board:TextOnly/never-written-anywhere' }))
+    const errors = await runBoardParity({ dir: main, root })
+    assert.ok(errors.some((e) => /\[TextOnly\].*never-written-anywhere/.test(e)), errors.join('\n'))
+    fs.rmSync(root, { recursive: true, force: true })
+  })
+})

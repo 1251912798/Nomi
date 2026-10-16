@@ -46,14 +46,17 @@ try {
       await expect(popover.locator(`[data-tier="${tier}"]`), `${tag} ${tier} 标题`).toContainText(label(`permission.${tier}`))
       await expect(popover.locator(`[data-v4-permission-why="${tier}"]`), `${tag} ${tier} 灰字`).toHaveText(label(`permissionWhy.${tier}`))
     }
-    await expect(popover.locator('[data-tier="request"][data-active="true"]'), `${tag} 默认是请求批准`).toBeVisible()
+    await expect(popover.locator('[data-tier="request"][data-active="true"]'), `${tag} 默认是请求批准 · board:AgentPermissionTiers/permission.popover.tiers`).toBeVisible()
+    // 旧弹层底部那一行「编辑系统提示词」仍在同一个弹层里（旧功能普查：去处不变）。
+    await expect(popover, `${tag} 系统提示词入口还在 · board:AgentPermissionTiers/permission.popover.system-prompt`).toContainText(label('systemPrompt'))
     await walk.snap(`${tag}-01-popover-two-tiers`)
 
     // ② 点「直接生成」：先出确认卡，档位还没变
     await clickOrFail(panel.locator(permissionTier('direct')), `${tag} 点直接生成`)
     const card = panel.locator(`${APPROVAL_CARD}[data-kind="approval-reversible"]`)
     await expect(card).toBeVisible()
-    await expect(card, `${tag} 确认卡标题`).toContainText(label('autoModeConfirmTitle'))
+    await expect(card, `${tag} 确认卡标题 · board:AgentPermissionTiers/permission.switch-confirm`).toContainText(label('autoModeConfirmTitle'))
+    await expect(card, `${tag} 确认卡正文说清直接开跑`).toContainText(label('autoModeConfirmBody').replace(/\*\*/g, '').slice(0, 12))
     await expect(panel.locator(COMPOSER), `${tag} 确认之前档位不变`).toHaveAttribute('data-approval-mode', 'request')
     await walk.snap(`${tag}-02-switch-confirm`)
 
@@ -69,11 +72,21 @@ try {
     await clickOrFail(panel.locator(`${APPROVAL_CARD}[data-kind="approval-reversible"]`).locator(INTERVENTION_CONFIRM), `${tag} 确认切到直接生成`)
     await expect(panel.locator(COMPOSER)).toHaveAttribute('data-approval-mode', 'direct')
     const bannerProof = await proveProbe(panel.locator(BANNER), `${tag} 直接生成要有常驻提醒`)
-    await expect(panel.locator(BANNER)).toContainText(label('autoModeBannerNote'))
+    await expect(panel.locator(BANNER), `${tag} 提醒条说清不可逆仍会问 · board:AgentPermissionTiers/permission.reminder-banner`).toContainText(label('autoModeBannerNote'))
     await walk.snap(`${tag}-03-direct-with-reminder`)
-    await clickOrFail(panel.locator(BANNER).getByText(label('autoModeBannerRevert'), { exact: false }), `${tag} 从提醒条回到请求批准`)
-    await expect(panel.locator(COMPOSER)).toHaveAttribute('data-approval-mode', 'request')
-    await expectAbsent(panel.locator(BANNER), { provenBy: bannerProof, message: `${tag} 回到请求批准之后提醒条收掉` })
+    if (locale === 'zh-CN') {
+      await clickOrFail(panel.locator(BANNER).getByText(label('autoModeBannerRevert'), { exact: false }), `${tag} 从提醒条回到请求批准`)
+      await expect(panel.locator(COMPOSER)).toHaveAttribute('data-approval-mode', 'request')
+      await expectAbsent(panel.locator(BANNER), { provenBy: bannerProof, message: `${tag} 回到请求批准之后提醒条收掉` })
+    } else {
+      // ×：只是不再显示提醒，档位不变；之后从弹层切回请求批准（收紧不问）。
+      await clickOrFail(panel.locator(BANNER).getByRole('button', { name: label('autoModeBannerDismiss') }), `${tag} 叉掉提醒条`)
+      await expectAbsent(panel.locator(BANNER), { provenBy: bannerProof, message: `${tag} 叉掉之后提醒条不再显示` })
+      await expect(panel.locator(COMPOSER), `${tag} 叉掉提醒不改档位`).toHaveAttribute('data-approval-mode', 'direct')
+      await clickOrFail(panel.locator(COMPOSER_PERMISSION), `${tag} 打开权限弹层切回`)
+      await clickOrFail(panel.locator(permissionTier('request')), `${tag} 选请求批准`)
+      await expect(panel.locator(COMPOSER), `${tag} 切回请求批准不问`).toHaveAttribute('data-approval-mode', 'request')
+    }
   }
 
   await runSet({ locale: 'zh-CN', scheme: 'light', tag: 'zh-light' })
