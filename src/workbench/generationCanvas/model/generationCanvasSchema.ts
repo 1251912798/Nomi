@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { generationNodeStatusSchema } from '../../../../electron/shared/canvas/generationNodeStatus'
 import { CATEGORY_IDS } from './generationCanvasTypes'
 import { GENERATION_NODE_KINDS } from './generationNodeKinds'
+import { CANVAS_PREVIEW_STATES } from '../../../../electron/shared/contracts/canvasMediaPreview'
 
 export const generationNodeKindSchema = z.enum(GENERATION_NODE_KINDS)
 
@@ -45,6 +46,7 @@ export const generationNodeResultSchema = z.object({
   type: z.enum(['image', 'video', 'text', 'audio', 'model3d']),
   url: z.string().optional(),
   thumbnailUrl: z.string().optional(),
+  previewState: z.enum(CANVAS_PREVIEW_STATES).optional(),
   text: z.string().optional(),
   model: z.string().optional(),
   durationSeconds: z.number().optional(),

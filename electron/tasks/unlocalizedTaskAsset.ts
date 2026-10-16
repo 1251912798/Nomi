@@ -5,15 +5,18 @@
  * 无项目身份时的资产形状：
  * 绝不再「只存 url」——把厂商临时链接同时写进 providerUrl，明确标记「这是易失的 CDN 链接」，
  * 让播放/参考侧的 url→providerUrl 兜底链有链可退、渲染层的补救本地化认得出它。
+ * 没落盘就没有预览：图 / 视频明确标 previewState = 'missing'（画布走被计数的「预览缺失」分支），
+ * 不把远端原图地址填进 thumbnailUrl 冒充预览。补救本地化落盘后会换成回执上的真预览事实。
  */
 export function unlocalizedTaskAsset(
   type: "image" | "video" | "audio" | "model3d",
   url: string,
-): { type: typeof type; url: string; thumbnailUrl: string | null; providerUrl: string | null } {
+): { type: typeof type; url: string; thumbnailUrl: null; previewState?: "missing"; providerUrl: string | null } {
   return {
     type,
     url,
-    thumbnailUrl: type === "image" ? url : null,
+    thumbnailUrl: null,
+    ...(type === "image" || type === "video" ? { previewState: "missing" as const } : {}),
     providerUrl: /^https?:\/\//i.test(url) ? url : null,
   };
 }

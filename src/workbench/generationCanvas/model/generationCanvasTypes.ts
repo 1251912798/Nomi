@@ -4,6 +4,7 @@ import type { NodeRenderKind } from '../../project/projectCategories'
 import type { GenerationNodeStatus as SharedGenerationNodeStatus } from '../../../../electron/shared/canvas/generationNodeStatus'
 import type { CanvasPluginNodeState } from '../plugins/canvasPluginTypes'
 import type { CanvasWorkflowTemplate } from '../plugins/canvasWorkflowTemplates'
+import type { CanvasPreviewState } from '../../../../electron/shared/contracts/canvasMediaPreview'
 
 export type { GenerationNodeKind } from './generationNodeKinds'
 
@@ -77,7 +78,13 @@ export type GenerationNodeResult = {
   versionNo?: number
   type: GenerationResultType
   url?: string
+  /** 画布上挂的独立小图（图片缩略 / 视频 poster）。永不等于 url：没有小图就不带，事实写在 previewState。 */
   thumbnailUrl?: string
+  /**
+   * 预览事实（落盘回执给的，见 electron/shared/contracts/canvasMediaPreview）：ready / source / missing。
+   * 没有这一栏 = 未知（升级前的旧数据或只交了 URL 的入口），打开项目后 resultMediaBackfillBridge 补齐。
+   */
+  previewState?: CanvasPreviewState
   /** 原始 CDN URL（https://...）。url 是本地 nomi-local://，providerUrl 是 vendor 返回的公网地址。 */
   providerUrl?: string
   text?: string
