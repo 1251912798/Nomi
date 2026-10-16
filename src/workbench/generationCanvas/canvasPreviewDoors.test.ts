@@ -48,9 +48,8 @@ describe('画布预览不变式 · 入口普查', () => {
         if (/\.url\b|thumbnailUrl/.test(src)) offenders.push(`${rel(file)}  src={${src}}`)
       }
     }
-    // BaseGenerationNode 归草稿 #1189 / P-compose，这一刀不碰：它的 src 一行在单独的提交里换成 canvasImageSourceOf，
-    // 并把 DeferredNodeImage 的 src 收成品牌类型（届时这一条由类型系统接管，这份名单清空）。
-    expect(offenders.filter((line) => !line.startsWith('src/workbench/generationCanvas/nodes/BaseGenerationNode.tsx'))).toEqual([])
+    // DeferredNodeImage 的 src 已是品牌类型（tsc 拦裸字符串）；这条普查留着拦 `as CanvasImageSource` 之类绕过类型的写法。
+    expect(offenders).toEqual([])
   })
 
   it('只回门牌号的 persistNodeImageFile 只剩白板与截图裁剪（二者的契约测试都在白板目录，归草稿 #1189）在用；其余入口都拿带预览两栏的媒体字段', () => {

@@ -11,6 +11,7 @@ import {
 import { resolveLightweightNodePreview } from '../components/canvasNodeLevelOfDetail'
 import { nodeVersionEntries } from './versionCards/nodeVersionEntries'
 import type { GenerationCanvasNode, GenerationNodeResult } from '../model/generationCanvasTypes'
+import type { DeferredNodeImageProps } from './DeferredNodeMedia'
 
 const SRC = 'nomi-local://asset/p1/assets/a.png'
 const PREVIEW = 'nomi-local://asset/p1/assets/a.preview.jpg'
@@ -61,3 +62,13 @@ describe('画布上画图的地方都经过它（轻量卡 / 版本卡）', () =
     expect(canvasOriginalImageStats()).toEqual({ missing: 0, unknown: 1, total: 1 })
   })
 })
+
+describe('画布图片组件只收品牌类型（类型层，check:test-types 守）', () => {
+  it('裸字符串传不进 DeferredNodeImage；只有 canvasImageSource 造出来的能', () => {
+    // @ts-expect-error 裸字符串不是 CanvasImageSource：原图冒充预览在类型上写不出来
+    const raw: DeferredNodeImageProps = { src: SRC }
+    const branded: DeferredNodeImageProps = { src: canvasImageSourceOf(image({ thumbnailUrl: PREVIEW, previewState: 'ready' }))! }
+    expect([raw.src, branded.src]).toEqual([SRC, PREVIEW])
+  })
+})
+

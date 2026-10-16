@@ -362,7 +362,7 @@ export function NodeVersionGrid({
               <CardShell className={hovered ? 'ring-nomi-ink-20' : undefined}>
                 {entry.type === 'video'
                   ? <VersionVideoMedia entry={entry} active={hovered} />
-                  : <DeferredNodeImage src={entry.previewUrl} alt="" draggable={false} className="h-full w-full object-contain" />}
+                  : entry.previewUrl ? <DeferredNodeImage src={entry.previewUrl} alt="" draggable={false} className="h-full w-full object-contain" /> : null}
                 <span className={cn('absolute rounded-pill bg-nomi-overlay-chip px-1.5 py-0.5 text-micro font-semibold tabular-nums text-nomi-media-ink', entry.type === 'video' ? 'right-1.5 top-1.5' : 'bottom-1.5 left-1.5')} data-version-card-number>
                   {node.width < 200 ? t('generationCommon.versionCards.versionTiny', { n: entry.versionNo }) : t('generationCommon.versionCards.versionShort', { n: entry.versionNo })}
                 </span>
