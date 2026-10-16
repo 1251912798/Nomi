@@ -1,0 +1,115 @@
+{
+  "schema_version": 3,
+  "id": "2026-10-12-clip-label-under-handle",
+  "problem_type": "Two elements in one component each hard-code the geometry of the same edge",
+  "symptom": "On the clip-node timeline the first character of a clip label is covered by the trim handle: English dark theme shows \"Image\" as \"mage\", and a selected clip's 16px handle sits on top of the label.",
+  "direct_cause": "The label is a full-width span with a fixed 6px side padding written in the component; the handles are absolute siblings above it whose width (8-16 screen px, zoom aware) is derived in clipNodeGestureModel.ts. Nothing tied the two numbers together.",
+  "class_root": "Anything laid across the full width of a clip competes with the edge handles for the same pixels, and the handle width had exactly one derivation while the label inset had a second, independent one. Any new full-width element (duration badge, status strip) or any change of the handle width would hide content the same way.",
+  "migration": "No persisted format change. The component's fixed px-1.5 on the label is deleted in the same change and replaced by clipLabelInset, derived in the gesture model from the handle width.",
+  "affected_population": [
+    "Every user who selects or hovers a clip on a clip node timeline, in either language and theme"
+  ],
+  "scope_paths": [
+    "src/workbench/generationCanvas/nodes/clipNodeGestureModel.ts",
+    "src/workbench/generationCanvas/nodes/ClipNodeTimeline.tsx",
+    "src/workbench/generationCanvas/nodes/ClipNode.tsx"
+  ],
+  "entry_points": [
+    "ClipNodeTimeline.tsx ClipItem label span"
+  ],
+  "invariants": [
+    "The label's side inset is clipLabelInset, which is never smaller than the clip's handle width in any state",
+    "No pixel constant for clip edge geometry lives in the component"
+  ],
+  "doors": [
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/clipNodeGestureModel.ts",
+      "symbol": "clipLabelInset"
+    }
+  ],
+  "door_reduction": {
+    "before": 2,
+    "after": 1,
+    "why_not": "One door remains by construction: the label inset is computed in the gesture model from the same function that sizes the handles."
+  },
+  "regression_tests": [
+    "src/workbench/generationCanvas/nodes/clipNodeGestureModel.test.ts",
+    "tests/ux/clip-label-under-handle.walk.mjs"
+  ],
+  "residual_risks": [
+    "Narrow clips (about 40px for 2 seconds on the default axis) show only the first character plus an ellipsis; a hover full name or moving the label out of the handle band needs an approved design.",
+    "Other full-width children added to a clip later must also read the model; no gate enforces that yet."
+  ],
+  "external_sources": [],
+  "internal_only_reason": "Pure in-house layout geometry of the clip node; no third-party behaviour involved and CSS has no mechanism to reserve space for an absolutely positioned sibling.",
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "The handle width has changed several times in the last two weeks and every change silently shifted what the label could show.",
+    "same_class_scan": [
+      "rg 'absolute inset-y-0' in ClipNodeTimeline.tsx: only the handles and the hit pads sit on the clip edge",
+      "rg 'px-' in ClipNodeTimeline.tsx: the label was the only full-width text span with its own side padding"
+    ]
+  },
+  "generality_proof": "The inset is a pure function of clip width and zoom taken from the handle's own derivation (selected state, the widest), so it follows any retuning of CLIP_HANDLE_MAX_HIT_PX and the share rule; the unit matrix checks it against idle and selected handle widths over zoom 0.2-3 and clip width 10-400, and the real-app walk measures glyph rectangles against handle rectangles in zh light and en dark.",
+  "shared_boundaries": [
+    {
+      "path": "src/workbench/generationCanvas/nodes/clipNodeGestureModel.ts",
+      "symbol": "clipLabelInset",
+      "responsibility": "Single place where the space the edge handles occupy becomes a content inset."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/workbench/generationCanvas/nodes/ClipNodeTimeline.tsx",
+      "entry_point": "ClipItem label span",
+      "disposition": "enforced",
+      "evidence": "Fixed px-1.5 deleted; inset now clipLabelInset (clipNodeGestureModel.test.ts matrix, clip-label-under-handle.walk.mjs)."
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/ClipNodeTimeline.tsx",
+      "entry_point": "ClipHandle",
+      "disposition": "not-affected",
+      "evidence": "Already derives its width from clipHandleHitWidth; it is the source the label inset follows."
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/ClipNodeTimeline.tsx",
+      "entry_point": "resizeDurationLabel",
+      "disposition": "not-affected",
+      "evidence": "Shown only while resizing, centred above the clip, not inside the handle band."
+    }
+  ],
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "src/workbench/generationCanvas/nodes/clipNodeGestureModel.ts",
+    "invariant": "The label inset and the handle width come from one derivation in the gesture model.",
+    "failure_mode": "A hard-coded inset or a wider handle that the label does not follow fails the unit matrix and the real-app geometry walk.",
+    "exception_policy": "none",
+    "strategy": "Delete the component's own constant, derive the inset from the handle width, lock the relation with a matrix test and a glyph-rectangle walk.",
+    "artifacts": [
+      "src/workbench/generationCanvas/nodes/clipNodeGestureModel.ts",
+      "tests/ux/clip-label-under-handle.walk.mjs"
+    ]
+  },
+  "class_regression_tests": [
+    "src/workbench/generationCanvas/nodes/clipNodeGestureModel.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "not-applicable",
+    "removed_paths": [],
+    "rationale": "The fixed px-1.5 on the label was replaced in place; no file or parallel version left behind."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "No third-party dependency is involved.",
+    "exit_criteria": []
+  },
+  "detected_by": "walkthrough",
+  "recurrence_check_on": "2026-10-26",
+  "invariant_owner_layer": {
+    "layer": "src/workbench/generationCanvas/nodes/clipNodeGestureModel.ts",
+    "tests": [
+      "src/workbench/generationCanvas/nodes/clipNodeGestureModel.test.ts"
+    ]
+  }
+}
