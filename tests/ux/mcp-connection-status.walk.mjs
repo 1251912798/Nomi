@@ -23,6 +23,7 @@ import { stationTimeout } from './_station-budget.mjs'
 import { clickOrFail, screenshotSettled } from './_assert.mjs'
 import { newProjectEntry } from './_shell.mjs'
 import { repoRoot } from './_mcpJourney.mjs'
+import { uiText } from './full-walk/invariants.mjs'
 
 const shotsDir = path.resolve(process.argv.find((arg) => arg.startsWith('--shots-out='))?.split('=').slice(1).join('=')
   || 'tests/ux/shots/mcp-connection-status')
@@ -88,7 +89,7 @@ try {
   })
   const { win } = launched
   await win.setViewportSize({ width: 1180, height: 820 })
-  await clickOrFail(newProjectEntry(win), 'New blank project')
+  await clickOrFail(newProjectEntry(win), 'Open a blank project')
   await expect(win.getByText(/创作助手|Creative assistant/).first()).toBeVisible({ timeout: stationTimeout({ operations: 1 }) })
   const endpoint = await waitForFile(path.join(capabilityDir, 'mcp-http.json'), 60_000)
 
@@ -100,7 +101,7 @@ try {
   await expect(written).toContainText(/重启 Claude Code 后生效|Restart Claude Code/)
   await expect(panel.locator('[data-assistant-dot="yellow"]').first()).toBeVisible() // board:McpConnectionStatus/status.client-dot
   await expect(written).toContainText(/配置能用：\d+ 个工具可用/) // board:McpConnectionStatus/box.written
-  await expect(panel.getByText('等你完成接入', { exact: true })).toBeVisible() // board:McpConnectionStatus/status.header-badge
+  await expect(panel.getByText(uiText('zh-CN', 'onboardingProviders.assistant.status.pending'), { exact: true })).toBeVisible() // board:McpConnectionStatus/status.header-badge
   await expect(panel.locator('[data-assistant-open-nomi-first]')).toBeVisible() // board:McpConnectionStatus/footer.open-nomi-first
   await snap(win, 'zh-light-01-written')
 
@@ -111,13 +112,13 @@ try {
   const using = panel.locator('[data-assistant-status="using"]')
   await expect(using).toBeVisible({ timeout: stationTimeout({ operations: 2 }) })
   await expect(using).toContainText('刚刚调用了「读取项目与制作状态」') // board:McpConnectionStatus/box.using
-  await expect(panel.getByText('正在使用', { exact: true }).first()).toBeVisible()
+  await expect(panel.getByText(uiText('zh-CN', 'onboardingProviders.assistant.status.using'), { exact: true }).first()).toBeVisible()
   await expect(using).toContainText('这次会话已调用 1 次工具')
   await expect(panel.locator('[data-assistant-dot="green"]').first()).toBeVisible()
   await snap(win, 'zh-light-02-using')
 
   // ③ 测试连接：Nomi 自己握手，不算助手来过。
-  await clickOrFail(panel.locator('[data-assistant-test]'), 'Test connection')
+  await clickOrFail(panel.locator('[data-assistant-test]'), 'Run the connection test')
   await expect(panel.locator('[data-assistant-test-result]')).toBeVisible({ timeout: stationTimeout({ operations: 2 }) }) // board:McpConnectionStatus/test.connection
   await expect(using).toContainText('这次会话已调用 1 次工具')
   await snap(win, 'zh-light-03-test-ok')

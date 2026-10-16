@@ -1954,6 +1954,35 @@
       ],
       "whyNotIntegrated": "领域约束：Nomi 的节点来源 resultId、项目原件 claim 与指令句中引用必须一一对应；删除最后一处引用才释放附件，项目/会话切换及在途准入不得把原件插入另一个草稿。编辑、@ 弹层、光标映射、文件导入和身份校验已全部复用现有 owner；该 hook 只连接这些 Nomi 领域身份与寿命，没有新增通用编辑器、上传器、选择器或参考 store。方案查证：docs/plan/2026-10-12-reference-entry.md。",
       "revisitWhen": "现有项目附件 owner 原生拥有句中引用的准入/删除/会话寿命接口时，把本 hook 的接线收回该 owner 并删除此登记；不得并存第二套引用身份。"
+    },
+    {
+      "id": "mcp-client-usage-status",
+      "capability": "AI 助手连接卡的「谁在用 Nomi」：主进程内存里按助手记工具调用与握手（账本）、把变化推给设置卡、卡上的订阅读取，以及工具展示名（中英）",
+      "status": "justified",
+      "plan": "docs/plan/2026-10-05-mcp-official-sdk.md",
+      "paths": [
+        "electron/capabilityCore/mcpUsageRegistry.ts",
+        "electron/capabilityCore/mcpUsageIpc.ts",
+        "electron/shared/mcpToolDisplayTitles.ts",
+        "src/ui/onboarding/useMcpUsage.ts",
+        "src/devlab/designLab/hostConfig/useLabLocale.ts"
+      ],
+      "alternativesChecked": [
+        {
+          "name": "官方 MCP SDK v2：Server 只给协议层事件（initialize / tools/call 回调），不记「哪个助手、哪个工具、几次、在途」，也没有跨传输的账本；而且三条传输里两条跑在别的进程，主进程内存只能由主进程自己记",
+          "source": "https://ts.sdk.modelcontextprotocol.io/v2/"
+        },
+        {
+          "name": "Electron ipcMain / webContents.send：平台自带的推送，已直接使用（不自写通道，只写节流）",
+          "source": "https://www.electronjs.org/docs/latest/api/web-contents#contentssendchannel-args"
+        },
+        {
+          "name": "相对时间（刚刚 / N 小时前）：平台自带 Intl.RelativeTimeFormat，已直接使用，没有自写格式化",
+          "source": "https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Intl/RelativeTimeFormat"
+        }
+      ],
+      "whyNotIntegrated": "领域约束：「这个助手这次运行里用了哪个 Nomi 工具、几次、还有几个没跑完」是 Nomi 工具面的事实，只有 Nomi 的工具目录与回环 RPC 边界知道；通用的部分（推送、相对时间、协议）都已接现成能力，自写的只剩一本几十行的账与一张展示名表。",
+      "revisitWhen": "MCP SDK 提供跨传输的会话 / 调用观测钩子，或要把使用情况持久化成审计账时（审计走收据，不走这本账）"
     }
   ]
 }

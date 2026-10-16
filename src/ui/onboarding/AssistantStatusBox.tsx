@@ -134,10 +134,11 @@ export function AssistantStatusBox(props: AssistantStatusBoxProps): JSX.Element 
           </button>
         </div>
       ) : null}
-      <div data-assistant-actions className="flex items-center justify-between gap-3 px-3 pb-2">
+      <div data-assistant-actions className="flex items-center gap-3 px-3 pb-2">
         {props.confirmingRevoke ? (
           <>
             <span className="min-w-0 text-caption text-nomi-ink-80">{t('onboardingProviders.assistant.box.revokeAsk', { client })}</span>
+            <span className="flex-1" aria-hidden="true" />
             <span className="flex shrink-0 items-center gap-3">
               <button type="button" data-assistant-revoke-cancel onClick={props.onRevokeCancel} className={cn(TEXT_BUTTON, 'text-nomi-ink-60 hover:text-nomi-ink')}>
                 {t('onboardingProviders.assistant.box.revokeCancel')}
@@ -153,7 +154,9 @@ export function AssistantStatusBox(props: AssistantStatusBoxProps): JSX.Element 
               <button type="button" data-assistant-uninstall onClick={props.onRevoke} disabled={busy} className={cn(TEXT_BUTTON, 'text-nomi-ink-40 hover:text-workbench-danger')}>
                 {t('onboardingProviders.assistant.disconnect')}
               </button>
-            ) : <span />}
+            ) : null}
+            {/* 撤销在左、其余在右：中间的弹性空档把两组推开。 */}
+            <span className="flex-1" aria-hidden="true" />
             <span className="flex shrink-0 items-center gap-3">
               {box === 'none' ? (
                 <button type="button" data-assistant-client-copy onClick={props.onCopy} className={cn(TEXT_BUTTON, 'inline-flex items-center gap-1 text-nomi-ink-60 hover:text-nomi-ink')}>
