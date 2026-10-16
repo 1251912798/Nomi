@@ -260,6 +260,28 @@ describe('raw-shell-anchor：外壳位置只准经 _shell.mjs（#1136 CI 全红�
     assert.deepEqual(findRawShellAnchors(`await openModelSettings(win, { label: '连接模型入口' })`), [])
   })
 
+  it('夜跑分诊（10-15）：旧侧栏 / 按库全名找导轨钮 / 旧收起按钮名 / 旧语言控件 / 工作区容器按文字找，都抓', () => {
+    assert.ok(findRawShellAnchors(`win.locator('aside nav button[aria-label="素材库"]').first()`).length >= 1)
+    assert.equal(findRawShellAnchors(`await win.getByRole('button', { name: '技能库', exact: true }).first().click()`).length, 1)
+    assert.equal(findRawShellAnchors(`page.getByRole('button', { name: 'Prompt library', exact: true })`).length, 1)
+    assert.equal(findRawShellAnchors(`getWin().locator('button[aria-label="Workflow library"]').first()`).length, 1)
+    assert.equal(findRawShellAnchors(`await win.getByRole('button', { name: '收起面板', exact: true }).click()`).length, 1)
+    assert.equal(findRawShellAnchors(`win.getByRole('button', { name: '展开创作助手' })`).length, 1)
+    assert.equal(findRawShellAnchors(`await win.locator('[aria-label="语言"]').first().click()`).length, 1)
+    assert.equal(findRawShellAnchors(`await win.locator('[role="menuitemradio"]', { hasText: 'English' }).first().click()`).length, 1)
+    assert.equal(findRawShellAnchors(`await win.locator('[aria-label="工作区切换"]').getByText('生成', { exact: true }).click()`).length, 1)
+    assert.equal(findRawShellAnchors(`win.getByRole('navigation', { name: '工作区切换' }).getByRole('button', { name: '生成', exact: true })`).length, 1)
+  })
+
+  it('新出口函数 / 抽屉内容区面板名 / 只判容器在不在，都不报', () => {
+    assert.deepEqual(findRawShellAnchors(`await openRailDrawer(win, 'assets', '素材库')`), [])
+    assert.deepEqual(findRawShellAnchors(`await switchWorkspace(win, 'generation')`), [])
+    assert.deepEqual(findRawShellAnchors(`await setAppLanguage(win, 'en')`), [])
+    assert.deepEqual(findRawShellAnchors(`await collapseAgentPanel(win)`), [])
+    assert.deepEqual(findRawShellAnchors(`win.getByRole('region', { name: '流程库' })`), [])
+    assert.deepEqual(findRawShellAnchors(`await win.locator('[aria-label="工作区切换"]').first().waitFor()`), [])
+  })
+
   it('豁免表每一条都写了原因，且出口文件在里面', () => {
     assert.ok(RAW_SHELL_EXEMPT.has('tests/ux/_shell.mjs'))
     for (const [file, reason] of RAW_SHELL_EXEMPT) assert.ok(reason.length >= 6, `${file} 的豁免原因太短`)

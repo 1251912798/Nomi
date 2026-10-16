@@ -22,7 +22,7 @@ import { launchNomiApp } from './_launchApp.mjs'
 import { repoRoot } from './_mcpJourney.mjs'
 import { DEFAULT_TIMEOUT_MS, clickOrFail, expect, proveProbe, expectAbsent } from './_assert.mjs'
 import { findCanvasBlankPoint } from './_canvasHit.mjs'
-import { canvasFitViewButton, newProjectEntry } from './_shell.mjs'
+import { canvasFitViewButton, newProjectEntry, switchWorkspace } from './_shell.mjs'
 
 const shotsDir = path.join(repoRoot, 'tests/ux/shots/p4-s5-canvas-landing')
 fs.rmSync(shotsDir, { recursive: true, force: true })
@@ -105,7 +105,7 @@ try {
   await win.waitForFunction(() => window.location.hash.includes('projectId='), undefined, { timeout: 10_000 })
   await win.waitForFunction(() => typeof window.__nomiCapabilityApply === 'function', undefined, { timeout: 10_000 })
   // 切到「生成」工作区（画布 + landing host 只在生成模式挂载；同 canvas-batch-production 走查）。
-  await clickOrFail(win.locator('[aria-label="工作区切换"]').getByText('生成', { exact: true }), '工作区切换到「生成」')
+  await switchWorkspace(win, 'generation', '工作区切换到「生成」')
   await win.waitForFunction(() => Boolean(window.__nomiCanvasStore), undefined, { timeout: 15_000 })
   await win.waitForFunction(() => Boolean(window.__nomiProductionLandingStore), undefined, { timeout: 15_000 })
   await win.waitForFunction(() => window.__nomiCanvasStore.getState().isReady === true, undefined, { timeout: 15_000 })

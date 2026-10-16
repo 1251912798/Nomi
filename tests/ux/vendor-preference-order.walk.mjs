@@ -12,7 +12,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { launchNomiApp } from './_launchApp.mjs'
 import { expectAbsent, proveProbe, screenshotSettled } from './_assert.mjs'
-import { newProjectEntry } from './_shell.mjs'
+import { newProjectEntry, switchWorkspace } from './_shell.mjs'
 import { stationTimeout } from './_station-budget.mjs'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
@@ -101,7 +101,7 @@ try {
   }, `http://127.0.0.1:${port}`)
   await win.reload(); await win.waitForTimeout(1200)
   await newProjectEntry(win).click({ timeout: stationTimeout({ operations: 2 }) }); await win.waitForTimeout(2200)
-  await win.locator('[aria-label="工作区切换"]').getByText('生成', { exact: true }).click({ timeout: 5000 }); await win.waitForTimeout(1000)
+  await switchWorkspace(win, 'generation', '切到生成区'); await win.waitForTimeout(1000)
   // 优先供应商的家在「AI 策略」tab（设计系统 §1.7.2：接入归「模型」，「默认走哪家」是策略）。
   await win.evaluate(() => window.dispatchEvent(new CustomEvent('nomi-open-settings', { detail: { tab: 'ai' } })))
   await win.locator('[data-settings-page="ai"], [data-settings-section="ai-models"]').first().waitFor({ timeout: 8000 })

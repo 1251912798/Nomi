@@ -23,6 +23,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { zipSync, strToU8 } from 'fflate'
 import { clickOrFail, expect, proveProbe, screenshotSettled } from './_assert.mjs'
+import { openRailDrawer } from './_shell.mjs'
 import { FIXTURE_TEXT_MODEL_LABEL } from './agent-runtime-fixture.mjs'
 import {
   CANVAS_PANEL, COMPOSER_CHIP, COMPOSER_SKILL, SKILL_POPOVER,
@@ -97,7 +98,7 @@ try {
   console.log(`  ✅ 阳性对照：system 长度 ${beforeSystem.length}，<available_skills> 在、${SKILL_NAME} 不在`)
 
   // ── ② 用户在会话开着的时候导入一个技能（走真实入口：技能库面板的导入） ──────────
-  await clickOrFail(win.getByRole('button', { name: '技能库', exact: true }).first(), '侧栏「技能库」')
+  await openRailDrawer(win, 'skills', '侧栏「技能库」')
   const panel = win.locator('[data-skill-drop-zone]')
   await expect(panel, '技能库面板没渲染').toBeVisible()
   // input 必须钉在技能库面板内部：这一屏上画布工具栏与 composer 各自还有一个 file input。
