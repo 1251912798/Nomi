@@ -18,7 +18,6 @@ vi.mock("electron", async () => {
   const nodeFs = await import("node:fs");
   const nodeOs = await import("node:os");
   const nodePath = await import("node:path");
-  const { electronStub } = await import("./parityElectronMock");
   return electronStub(nodeFs.mkdtempSync(nodePath.join(nodeOs.tmpdir(), "nomi-parity-cert-owner-")));
 });
 
@@ -34,6 +33,10 @@ import { driveEntrance } from "./parityDrive";
 import { diffRecords, type OutboundRecord } from "./outboundRecord";
 import { installFetchCapture, seedParityCatalog, type FetchCapture } from "./generationParityTestUtils";
 
+import { electronStub } from "./parityElectronMock";
+import { upsertRendererCatalogModel } from "../catalog/rendererCatalogMutation";
+import { readCatalog } from "../catalog/catalogStore";
+
 const BASELINE_CASE = PARITY_CASES.find((testCase) => testCase.id === "baseline-t2i")!;
 let capture: FetchCapture;
 const records = new Map<string, OutboundRecord>();
@@ -42,7 +45,6 @@ beforeAll(async () => {
   capture = installFetchCapture();
   await seedParityCatalog([BASELINE_CASE.vendorKey]);
   // 报错用户的那一步：手填一个模型 id 去自检（渲染层新建写门 = 设置页「继续验证」加模型的那一扇）。
-  const { upsertRendererCatalogModel } = await import("../catalog/rendererCatalogMutation");
   upsertRendererCatalogModel({ vendorKey: BASELINE_CASE.vendorKey, modelKey: "gpt-image-1", labelZh: "gpt-image-1", kind: "image", enabled: false });
   for (const entrance of GENERATION_ENTRANCES) records.set(entrance.id, await driveEntrance(capture, entrance, BASELINE_CASE));
 }, 120_000);
@@ -51,7 +53,6 @@ afterAll(() => { capture?.restore(); });
 
 describe("(c) 点过自检的目录上，画布与 Agent 给同一个答案", () => {
   it("那一行确实带着认证标记（否则这场对比测的不是报错用户的现场）", async () => {
-    const { readCatalog } = await import("../catalog/catalogStore");
     const row = readCatalog().models.find((model) => model.vendorKey === BASELINE_CASE.vendorKey && model.modelKey === "gpt-image-1");
     expect(row?.meta).toMatchObject({ adapter: { state: "unverified" } });
   });

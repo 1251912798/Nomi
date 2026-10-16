@@ -12,7 +12,7 @@ describe('模型设置颜色职责', () => {
     expect(home).toContain("working: 'bg-nomi-accent'")
     expect(home).toContain("verified: 'bg-workbench-success'")
     expect(read('ModelChipGroups.tsx')).toContain("connected && m.enabled ? 'bg-nomi-accent'")
-    expect(read('ModelChipGroups.tsx')).toContain('border-nomi-accent-soft bg-nomi-accent-soft')
+    expect(read('ModelChipGroups.tsx')).toContain('border-transparent bg-nomi-accent-soft')
     expect(read('CodexLocalImageCard.tsx')).toContain('bg-nomi-accent-soft')
     expect(read('ComfyuiTemplateLibrary.tsx')).toContain('text-micro text-nomi-accent bg-nomi-accent-soft')
     expect(read('ComfyuiPresetSection.tsx')).toContain('text-micro text-nomi-accent bg-nomi-accent-soft')

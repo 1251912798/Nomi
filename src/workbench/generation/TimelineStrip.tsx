@@ -36,7 +36,7 @@ export function TimelineStrip({ onExpand, label, expandLabel, icon, expandIcon }
       className={cn(
         'workbench-generation__timeline-strip',
         'flex h-9 w-full shrink-0 items-center gap-2 border-0 border-t border-nomi-line-soft bg-nomi-paper pl-3.5 pr-2.5 text-left',
-        'transition-colors hover:bg-nomi-ink-05 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-nomi-accent',
+        'transition-colors hover:bg-nomi-ink-05 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-nomi-ink',
       )}
       onClick={onExpand}
       aria-label={expandLabel}

@@ -186,7 +186,7 @@ export function SceneObjectsTab(): JSX.Element {
                 onClick={() => store.getState().setActiveScene(layer.id)}
                 onDoubleClick={() => setRenaming({ kind: 'layer', id: layer.id, draft: layer.name })}
               >
-                <IconLayersSubtract size={14} stroke={1.9} className={active ? 'text-nomi-accent' : 'text-nomi-ink-40'} />
+                <IconLayersSubtract size={14} stroke={1.9} className={active ? 'text-nomi-ink' : 'text-nomi-ink-40'} />
                 {renaming?.kind === 'layer' && renaming.id === layer.id ? (
                   <input autoFocus onFocus={(event) => event.currentTarget.select()} className="w-full rounded-nomi-sm border border-nomi-line bg-nomi-bg px-1 text-caption text-nomi-ink" value={renaming.draft} onChange={(event) => setRenaming({ ...renaming, draft: event.target.value })} onBlur={commitRename} onKeyDown={(event) => { if (event.key === 'Enter') commitRename(); if (event.key === 'Escape') setRenaming(null) }} onClick={(event) => event.stopPropagation()} />
                 ) : (

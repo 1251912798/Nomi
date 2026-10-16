@@ -238,7 +238,7 @@ export function ProductionRunTaskCard({
           data-production-focused-artifact={previewFocused ? focusedArtifactId : undefined}
           className={cn(
             'm-0 overflow-hidden rounded-nomi-sm border border-nomi-line-soft',
-            previewFocused && 'ring-1 ring-nomi-accent',
+            previewFocused && 'ring-1 ring-nomi-ink-40',
           )}
         >
           {videoUrl && videoLive ? (

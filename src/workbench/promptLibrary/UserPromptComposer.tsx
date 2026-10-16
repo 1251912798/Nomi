@@ -47,7 +47,7 @@ export function UserPromptComposer({ initial, onSubmit, onCancel }: Props): JSX.
 
   const inputCls = cn(
     'w-full bg-nomi-paper border border-nomi-line rounded-nomi px-3 py-2 text-body-sm text-nomi-ink',
-    'placeholder:text-nomi-ink-40 focus:outline-none focus:border-nomi-accent',
+    'placeholder:text-nomi-ink-40 focus:outline-none focus:border-nomi-ink-40',
   )
 
   return (

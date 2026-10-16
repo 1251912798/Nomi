@@ -85,7 +85,7 @@ function TimelineTransitionMarker({ feedback, fps, scale, stackRow = 0 }: Timeli
             'inline-flex h-5 min-w-8 items-center justify-center gap-0.5 px-1',
             'rounded-[var(--nomi-radius-sm)] border bg-[var(--nomi-paper)] shadow-[var(--nomi-shadow-sm)]',
             feedback.exportSupported
-              ? 'border-[color-mix(in_oklch,var(--workbench-accent)_42%,transparent)]'
+              ? 'border-nomi-ink-30'
               : 'border-[color-mix(in_oklch,var(--nomi-warning)_58%,transparent)] bg-[color-mix(in_oklch,var(--nomi-warning)_10%,var(--nomi-paper))]',
           )}
         >

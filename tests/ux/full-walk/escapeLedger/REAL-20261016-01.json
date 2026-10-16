@@ -1,0 +1,25 @@
+{
+  "id": "REAL-20261016-01",
+  "since": "2026-10-16",
+  "source": "2026-10-16 main receipt (Canvas Acceptance 2/2)",
+  "category": "interaction-semantics",
+  "problem": "Shift 点两张卡后偶发没出多选浮条：节点从 Suspense 兜底换成正式渲染器时，按下去还没抬起的点击丢了（约 7% 复现）",
+  "existingInvariants": [],
+  "ironLaws": [
+    "⑫"
+  ],
+  "useCases": [],
+  "fullWalkJourneys": [],
+  "status": "fixed",
+  "manualReview": "reviewed",
+  "evidence": [
+    "docs/engineering/direction-checks/2026-10-16-node-render-swap-eats-click.md"
+  ],
+  "completionCommits": [],
+  "rootCauseContract": "docs/fixes/2026-10-16-node-render-swap-eats-click.root-cause.json",
+  "fixedInPr": 1202,
+  "classCheck": {
+    "kind": "matrix",
+    "file": "src/workbench/generationCanvas/components/lightweightFallbackCensus.test.ts"
+  }
+}

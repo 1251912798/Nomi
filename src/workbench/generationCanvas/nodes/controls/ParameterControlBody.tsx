@@ -79,7 +79,7 @@ function ParameterTextInput({
   return (
     <label
       className={cn(
-        'flex items-center gap-2 px-2.5 rounded-nomi border border-nomi-line min-w-0 focus-within:border-nomi-accent',
+        'flex items-center gap-2 px-2.5 rounded-nomi border border-nomi-line min-w-0 focus-within:border-nomi-ink-40',
       )}
       style={{ height: 28 }}
     >

@@ -21,7 +21,6 @@ vi.mock("electron", async () => {
   const nodeFs = await import("node:fs");
   const nodeOs = await import("node:os");
   const nodePath = await import("node:path");
-  const { electronStub } = await import("./parityElectronMock");
   return electronStub(nodeFs.mkdtempSync(nodePath.join(nodeOs.tmpdir(), "nomi-parity-engines-")));
 });
 
@@ -31,6 +30,8 @@ vi.mock("../capabilityCore/rendererBridge", () => ({
 }));
 
 import { driveEngineA, driveEngineB, installFetchCapture, seedParityCatalog, type FetchCapture } from "./generationParityTestUtils";
+
+import { electronStub } from "./parityElectronMock";
 
 const ENGINE_A_MODULES = [
   "electron/runtime.ts",

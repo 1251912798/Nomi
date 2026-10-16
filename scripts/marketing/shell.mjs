@@ -24,7 +24,7 @@ export function localizedPath(locale, pathname) {
 }
 
 /** 顶栏：五个去处 + 社区。`pageKey` 决定哪一项高亮。 */
-const NAV_ITEMS = [
+export const NAV_ITEMS = [
   { key: 'features', path: '/features' },
   { key: 'models', path: '/models' },
   { key: 'prompts', path: '/prompts' },

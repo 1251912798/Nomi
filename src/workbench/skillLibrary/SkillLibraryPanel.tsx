@@ -381,7 +381,7 @@ export function SkillLibraryContent({
                 <button
                   type="button"
                   onClick={handleNewWithAi}
-                  className={cn('flex flex-col items-center justify-center gap-1.5 w-full min-h-[120px] cursor-pointer', 'rounded-nomi border border-dashed border-nomi-line bg-transparent text-nomi-ink-40', 'hover:border-nomi-accent hover:text-nomi-accent transition-colors')}
+                  className={cn('flex flex-col items-center justify-center gap-1.5 w-full min-h-[120px] cursor-pointer', 'rounded-nomi border border-dashed border-nomi-line bg-transparent text-nomi-ink-40', 'hover:border-nomi-ink-30 hover:text-nomi-accent transition-colors')}
                 >
                   <IconWand size={22} stroke={1.6} />
                   <span className={cn('text-caption')}>{t('libraries.skill.createOne')}</span>
@@ -434,7 +434,7 @@ export function SkillLibraryContent({
           <div
             className={cn(
               'pointer-events-none absolute inset-2 z-20 grid place-items-center gap-1 rounded-nomi',
-              'border-2 border-dashed border-nomi-accent bg-nomi-paper/90 text-center',
+              'border-2 border-dashed border-nomi-ink-40 bg-nomi-paper/90 text-center',
             )}
             aria-hidden="true"
           >

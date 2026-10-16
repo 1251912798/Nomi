@@ -31,7 +31,7 @@ export const AgentBallFace = React.forwardRef<HTMLButtonElement, {
       className={cn(
         'relative flex h-11 items-center justify-center rounded-pill border-0 p-0',
         'shadow-nomi-md transition-[background,box-shadow,width] duration-nomi-fast ease-nomi-fast',
-        'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nomi-accent',
+        'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nomi-ink',
         pill
           ? 'gap-2 bg-nomi-warning-soft pl-2.5 pr-3.5 text-body-sm font-medium text-nomi-warning-ink ring-1 ring-nomi-warning-edge hover:brightness-[0.98]'
           : cn('w-11 bg-nomi-paper ring-1 ring-nomi-line-soft hover:bg-nomi-ink-05', status === 'running' && 'ring-2 ring-nomi-accent'),

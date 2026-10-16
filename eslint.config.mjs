@@ -8,6 +8,7 @@ import reactHooks from 'eslint-plugin-react-hooks'
 import reactRefresh from 'eslint-plugin-react-refresh'
 import globals from 'globals'
 import prettier from 'eslint-config-prettier'
+import fs from 'node:fs'
 
 // 用例 / 钩子不许单独设比 vitest 全局更短的超时（全局值见 vitest.config.ts 的 testTimeout / hookTimeout，都是 30_000；
 // 两处同值由 scripts/vitest-timeout-floor.test.mjs 核对）。超时被放弃的用例仍在后台跑完，把任务或半初始化模块留给下一个用例
@@ -20,6 +21,40 @@ const shortenedTimeoutSelectors = [TEST_CALL, HOOK_CALL].flatMap((call) => [
   { selector: `${call}[arguments.length>=2] > Literal.arguments:last-child[value<${VITEST_TIMEOUT_FLOOR_MS}]`, message: SHORTENED_TIMEOUT_MESSAGE },
   { selector: `${call}[arguments.length>=2] > ObjectExpression.arguments:last-child > Property[key.name='timeout'] > Literal.value[value<${VITEST_TIMEOUT_FLOOR_MS}]`, message: SHORTENED_TIMEOUT_MESSAGE },
 ])
+
+// 用例体 / 钩子里不许 `await import(...)`：冷转换一大片生产模块的那几秒记在用例或钩子的 30 秒超时里，
+// 机器一忙（并行推送前钩子 / CI 满载）就超时——单跑都能过、满载必红。静态 import 在收集阶段加载，不占用例超时，
+// vi.mock 会被提升、静态 import 照样吃到。2026-10-15：tryModelSubmitBudget「Hook timed out in 30000ms」、readTaskTarget 单跑 35 秒、
+// runtime.fallback-path 等。确需在用例里重新加载（重启模拟 / 每例换模块状态）的，在该行上方写
+// `// eslint-disable-next-line no-restricted-syntax -- <理由>`；存量见下面的基线文件，只许减不许增（scripts/vitest-timeout-floor.test.mjs 核对）。
+export const COLD_IMPORT_BASELINE_PATH = 'docs/engineering/test-cold-import-baseline.json'
+const COLD_IMPORT_MESSAGE = 'Do not await import() inside a test or hook body: the cold transform counts against the 30s test/hook timeout and times out under load. Use a static import (vi.mock is hoisted), or for a restart simulation add // eslint-disable-next-line no-restricted-syntax -- <reason>.'
+export const coldImportSelectors = [TEST_CALL, HOOK_CALL].map((call) => ({ selector: `${call} ImportExpression`, message: COLD_IMPORT_MESSAGE }))
+const coldImportBaselineFiles = Object.keys(JSON.parse(fs.readFileSync(new URL(COLD_IMPORT_BASELINE_PATH, import.meta.url), 'utf8')).files)
+
+const testFileRestrictedSyntax = [
+  ...shortenedTimeoutSelectors,
+  {
+    selector: "AssignmentExpression[left.type='MemberExpression'][left.object.type='MemberExpression'][left.object.object.name='process'][left.object.property.name='env']",
+    message: 'Use vi.stubEnv(name, value) so Vitest restores process.env after each test.',
+  },
+  {
+    selector: "UnaryExpression[operator='delete'][argument.type='MemberExpression'][argument.object.type='MemberExpression'][argument.object.object.name='process'][argument.object.property.name='env']",
+    message: 'Use vi.stubEnv(name, undefined) so Vitest restores process.env after each test.',
+  },
+  {
+    selector: "CallExpression[callee.name='beforeAll'] CallExpression[callee.object.name='vi'][callee.property.name='stubEnv']",
+    message: 'unstubEnvs: true restores env after each test; put vi.stubEnv in beforeEach.',
+  },
+  {
+    selector: "CallExpression[callee.object.name='vi'][callee.property.name='hoisted'] CallExpression[callee.object.name='vi'][callee.property.name='stubEnv']",
+    message: 'unstubEnvs: true restores env after each test; put vi.stubEnv in beforeEach.',
+  },
+  {
+    selector: "Program > ExpressionStatement > CallExpression[callee.object.name='vi'][callee.property.name='stubEnv']",
+    message: 'unstubEnvs: true restores env after each test; put vi.stubEnv in beforeEach.',
+  },
+]
 
 const windowsPathSelectors = [
   {
@@ -88,6 +123,9 @@ export default tseslint.config(
   {
     ignores: [
       'dist/**',
+      // 教程站（marketing-docs，Astro）的构建产物与生成类型：check:site 先构建、lint:ci 后扫，顺序依赖会误扫到它们。
+      'marketing-docs/.astro/**',
+      'marketing-docs/dist/**',
       'dist-electron/**',
       'release/**',
       // R0 历史兼容探针产物保留；正式 pi 源码在 electron/harness/runtime/pi 参加 lint。
@@ -228,32 +266,13 @@ export default tseslint.config(
   },
   {
     files: ['**/*.test.{ts,tsx}'],
-    rules: {
-      'no-restricted-syntax': [
-        'error',
-        ...shortenedTimeoutSelectors,
-        {
-          selector: "AssignmentExpression[left.type='MemberExpression'][left.object.type='MemberExpression'][left.object.object.name='process'][left.object.property.name='env']",
-          message: 'Use vi.stubEnv(name, value) so Vitest restores process.env after each test.',
-        },
-        {
-          selector: "UnaryExpression[operator='delete'][argument.type='MemberExpression'][argument.object.type='MemberExpression'][argument.object.object.name='process'][argument.object.property.name='env']",
-          message: 'Use vi.stubEnv(name, undefined) so Vitest restores process.env after each test.',
-        },
-        {
-          selector: "CallExpression[callee.name='beforeAll'] CallExpression[callee.object.name='vi'][callee.property.name='stubEnv']",
-          message: 'unstubEnvs: true restores env after each test; put vi.stubEnv in beforeEach.',
-        },
-        {
-          selector: "CallExpression[callee.object.name='vi'][callee.property.name='hoisted'] CallExpression[callee.object.name='vi'][callee.property.name='stubEnv']",
-          message: 'unstubEnvs: true restores env after each test; put vi.stubEnv in beforeEach.',
-        },
-        {
-          selector: "Program > ExpressionStatement > CallExpression[callee.object.name='vi'][callee.property.name='stubEnv']",
-          message: 'unstubEnvs: true restores env after each test; put vi.stubEnv in beforeEach.',
-        },
-      ],
-    },
+    rules: { 'no-restricted-syntax': ['error', ...testFileRestrictedSyntax] },
+  },
+  {
+    // 存量基线之外的测试文件才拦用例体 / 钩子里的 await import；基线里的文件逐个迁完就从 JSON 里删掉。
+    files: ['**/*.test.{ts,tsx}'],
+    ignores: coldImportBaselineFiles,
+    rules: { 'no-restricted-syntax': ['error', ...testFileRestrictedSyntax, ...coldImportSelectors] },
   },
   {
     // 渲染层失败证据只有一个出口：src/desktop/rendererLog.ts（→ 主进程日志 → 诊断包）。

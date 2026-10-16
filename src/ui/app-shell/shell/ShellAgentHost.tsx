@@ -101,7 +101,7 @@ function FormSwitch({ surface, form }: { surface: AgentFormSurface; form: AgentF
             }}
             className={cn(
               'grid h-6 w-7 place-items-center rounded-pill border-0 p-0 transition-[background,color,box-shadow] duration-nomi-fast',
-              'focus-visible:outline focus-visible:outline-2 focus-visible:outline-nomi-accent',
+              'focus-visible:outline focus-visible:outline-2 focus-visible:outline-nomi-ink',
               on ? 'bg-nomi-paper text-nomi-ink shadow-nomi-sm' : 'bg-transparent text-nomi-ink-60 hover:text-nomi-ink',
             )}
           >

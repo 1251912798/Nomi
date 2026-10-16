@@ -9,3 +9,5 @@
 *.glb binary
 *.ico binary
 *.icns binary
+
+marketing/pagefind/** binary
