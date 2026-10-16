@@ -36,6 +36,25 @@ describe('timeline drag affordance', () => {
     expect(canDragGenerationNodeToTimeline(makeNode(), { readOnly: true })).toBe(false)
   })
 
+  it('does not advertise stale results while generation prevents adoption', () => {
+    for (const status of ['queued', 'running', 'error'] as const) {
+      const node = makeNode({ status })
+      expect(buildClipFromGenerationNode(node)).toBeNull()
+      expect(canDragGenerationNodeToTimeline(node)).toBe(false)
+    }
+  })
+
+  it('accepts imported and derived media by result type, including audio, but rejects non-media', () => {
+    for (const kind of ['asset', 'image', 'video'] as const) {
+      for (const type of ['image', 'video', 'audio'] as const) {
+        expect(canDragGenerationNodeToTimeline(makeNode({ kind, result: { id: type, type, url: 'file:///media', createdAt: 1 } }))).toBe(true)
+      }
+    }
+    for (const type of ['text', 'model3d'] as const) {
+      expect(canDragGenerationNodeToTimeline(makeNode({ result: { id: type, type, url: 'file:///not-media', createdAt: 1 } }))).toBe(false)
+    }
+  })
+
   it('can turn generated image and video assets into timeline clips', () => {
     const imageClip = buildClipFromGenerationNode(makeNode(), { fps: 30, startFrame: 12 })
     expect(imageClip).toMatchObject({ type: 'image', startFrame: 12, endFrame: 102, url: 'file:///asset.png' })

@@ -139,7 +139,7 @@ export async function adoptStoryboardBatch(options: AdoptStoryboardBatchOptions)
     }]
   })
   if (requestKeyUnits.length > 0) {
-    const requestLookup = lookupAdoptionProposal(proposalKeyForBatch(requestKeyUnits, timeline))
+    const requestLookup = lookupAdoptionProposal(proposalKeyForBatch(requestKeyUnits, timeline), timeline)
     if (requestLookup.kind === 'replay') {
       return { status: 'applied', proposal: requestLookup.proposal, replayed: true, total }
     }
@@ -231,7 +231,7 @@ export async function adoptStoryboardBatch(options: AdoptStoryboardBatchOptions)
   // ── 阶段 ②：查闸。键在算完之后才取 baseRevision —— 上面的 await 期间轴可能被别处动过。
   options.assertCanApply?.()
   const key = proposalKeyForBatch(keyUnits, ports.readTimeline())
-  const lookup = lookupAdoptionProposal(key)
+  const lookup = lookupAdoptionProposal(key, ports.readTimeline())
   if (lookup.kind === 'replay') return { status: 'applied', proposal: lookup.proposal, replayed: true, total }
   if (lookup.kind === 'stale') return { status: 'stale', proposal: lookup.proposal, total }
   if (lookup.kind === 'needs_attention') {
