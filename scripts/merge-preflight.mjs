@@ -15,6 +15,7 @@ import { checkPrBoardClaims, loadManifests } from './check-board-parity.mjs'
 import { META_FILE } from './lib/entryDirectory.mjs'
 import { execGhReadSync } from './lib/transientRetry.mjs'
 import { RULES_INTRODUCED_BY_PR, evaluatePrBody, ledgerChanges, mergeReport, settledContracts } from './pr-body-criteria.mjs'
+import { SCENARIO_DIR, knownScenarios, scenarioEntriesFromReader } from './perf-scenarios-lib.mjs'
 import {
   PROTECTED_PATHS,
   SCOPE_SECTION,
@@ -175,6 +176,17 @@ function run(argv, exec) {
   const amendsUserContract = contracts.some((contract) => !contract.added && ['user', 'post-release'].includes(contract.detected_by))
   if (amendsUserContract && ledger.transitions.length === 0) ledger.settledContracts = settledContracts(ghEscapeLedger(exec, slug, baseRef))
 
+  // 性能场景 id（G-perfreg，2026-10-15）：已知 = (基线登记表 − 本 PR 删掉的) ∪ 本 PR 新增 / 改动的文件（PR 头内容）。
+  // 只核证据行的 id；场景文件结构以 CI 的 check:perf-scenarios（合并引用上）为准，这里不拿检出的 DRIVERS 校验 PR 文件。
+  const scenarioRe = /^tests\/perf\/scenarios\/[^/]+\.json$/
+  const scenarioRows = apiRows.filter((row) => scenarioRe.test(row.path))
+  const baseScenarioNames = ghApiDirectoryNames(baseSlug, SCENARIO_DIR, baseRef).filter((name) => name.endsWith('.json'))
+  const scenarios = knownScenarios({
+    baseEntries: scenarioEntriesFromReader(baseScenarioNames, (name) => ghApiFile(baseSlug, `${SCENARIO_DIR}/${name}`, baseRef)),
+    prFiles: scenarioRows.filter((row) => row.status !== 'removed').map((row) => ({ file: row.path, content: ghApiFile(slug, row.path, view.headRefOid) })),
+    removedFiles: scenarioRows.filter((row) => row.status === 'removed').map((row) => row.path),
+  })
+
   // 规则与门岗的改动范围：要真实的文件状态（removed / modified）
   const statusFiles = apiRows.map((row) => ({ path: row.path, status: row.status }))
   const packageBlock = diff.split(/^diff --git /m).find((block) => block.startsWith('a/package.json b/package.json')) ?? ''
@@ -191,6 +203,7 @@ function run(argv, exec) {
     // #961 自己是引入规则的 PR，不吃宽限（createdAt 取 null = 不宽限）
     createdAt: Number(prArg) === RULES_INTRODUCED_BY_PR ? null : view.createdAt,
     enforce: argv.includes('--enforce'), // --enforce：假设路由规则已生效，看这个 PR 会不会红（回放用）
+    scenarios,
   }))
   console.log(report.text)
   // 拍板图认领（check-board-parity R8）：PR 正文 `## 拍板图` 认领的元素，在 PR 头上必须有去处。

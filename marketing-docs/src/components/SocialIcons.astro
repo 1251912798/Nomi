@@ -1,0 +1,18 @@
+---
+// 顶栏里的官网导航（功能 / 模型 / 提示词 / 技能 / 上手 / 社区）——文案、顺序、地址都读官网的同一份
+// （scripts/marketing/content.mjs 的 nav、shell.mjs 的 NAV_ITEMS），这里不再抄一遍。
+// Starlight 把这个位置同时放在桌面顶栏和手机菜单底部，所以导航在两处都有。
+import { contentByLocale } from '../../../scripts/marketing/content.mjs'
+import { NAV_ITEMS, localizedPath } from '../../../scripts/marketing/shell.mjs'
+
+const locale = Astro.locals.starlightRoute.lang === 'en' ? 'en' : 'zh-CN'
+const nav = contentByLocale[locale].nav
+const links = NAV_ITEMS.map(({ key, path, hash }) => ({
+  label: nav[key],
+  href: `${localizedPath(locale, path)}${hash ? `#${hash}` : ''}`,
+}))
+---
+
+<nav class="nomi-nav" aria-label={nav.ariaLabel}>
+  {links.map(({ label, href }) => <a href={href}>{label}</a>)}
+</nav>

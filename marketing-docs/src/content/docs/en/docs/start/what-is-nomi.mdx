@@ -1,0 +1,58 @@
+---
+title: "Meet Nomi: what it does and where to begin"
+description: "Nomi takes a story and a few reference images all the way to a video on a timeline. Learn the Create, Generate and Preview steps, and who does what."
+---
+
+You usually start with something already: a story, a script, or a few frames you want to reference. Nomi takes you from there to a video on a timeline that exports as MP4, and everything along the way lives in one folder on your computer.
+
+![The Generate page in Nomi: top steps, left rail, canvas toolbar, Agent ball and timeline](/docs-media/en/canvas-overview.png)
+
+The numbers in the screenshot are the **Generate** page:
+
+1. The three steps in the top bar: **Create**, **Generate**, **Preview**.
+2. The left rail: docs, catalog, assets, flows.
+3. The toolbar at the bottom of the canvas: add an image, video, audio, text or edit node, or import files.
+4. The Agent ball in the bottom right corner. Click it to open the chat panel.
+5. The timeline strip at the bottom. Expanded, it is the same timeline you see on the Preview page.
+
+## What each step is for
+
+| Step | What you do here | What you end up with |
+| --- | --- | --- |
+| Create | Write the story, script or copy, or ask the Agent to write, edit and split it into shots | A document |
+| Generate | Place image and video nodes on the canvas, connect references to the next node with lines, and generate | Nodes on the canvas that have pictures on them |
+| Preview | Put finished shots on the timeline, check the pacing, add captions and music, and export | An MP4 file |
+
+<video src="/docs-media/en/workflow-steps.webm" autoplay loop muted playsinline controls aria-label="Switching between Create, Generate and Preview"></video>
+
+## Who does what
+
+| | You | The Agent | The canvas |
+| --- | --- | --- | --- |
+| Ideas and choices | Decide what to shoot and which version to keep | Helps turn the idea into shots and edits the document | |
+| Doing the work | You can edit any node yourself at any time | Works for you in the panel beside each step: on Create it reads your document, on Generate it looks at the canvas and queues generations, on Preview it reads the timeline | Shows the results where you can see and change them |
+| Generations that spend money | You approve | Same on all three levels: it stops and asks before submitting | |
+
+The selector at the bottom right of the Agent panel has three levels that decide how often it asks you about changes (generations that spend money are asked on all three):
+
+| Level | How it behaves |
+| --- | --- |
+| Ask each step | Edits, generations and plans are all asked first |
+| Auto-edit | Document and timeline edits happen directly (the receipt can be undone), and it still asks before generating |
+| Full auto | Undoable edits happen directly without asking each time; irreversible actions are still asked every time; **it also stops and asks before it spends money** |
+
+If you are new, start with the default, Auto-edit.
+
+## Where your work lives
+
+A project is a folder on your disk. The canvas, storyboard and timeline are in `.nomi/project.json` inside it, generated images and videos are under `assets/`, and exported films are under `exports/`.
+
+## What to prepare first
+
+Nomi does not ship with a model. On first launch the project library shows a banner saying no model is connected to the creative assistant. Click **Connect Model** on it and follow the next page to connect one model provider before you generate.
+
+:::tip[After this page you should know]
+What the three steps are, when the default Agent level stops to ask you, and where in the project folder the finished film goes.
+:::
+
+**Next:** [Make your first piece in ten minutes](/en/docs/start/first-project)

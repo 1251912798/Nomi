@@ -1,0 +1,120 @@
+/* 教程站样式：把官网的设计 token（scripts/marketing/styles.mjs）映射到 Starlight 的 --sl-* 变量。
+   只改变量和少数几处排版，不重写组件。亮 / 暗两套，跟随系统，也可手动切换（Starlight 的主题开关）。 */
+
+:root,
+:root[data-theme='dark'] {
+  --nomi-ground: #151311;
+  --nomi-paper: #1d1b18;
+  --nomi-ink: #eeeae3;
+  --nomi-ink-2: #cdc7bd;
+  --nomi-ink-3: #a29b90;
+  --nomi-ink-4: #8a8378;
+  --nomi-line: #2f2c27;
+  --nomi-line-soft: #26231f;
+  --nomi-accent: #78a6e0;
+  --nomi-accent-soft: #1e2a3a;
+  --nomi-accent-ink: #a8c8ee;
+
+  --sl-color-white: var(--nomi-ink);
+  --sl-color-gray-1: var(--nomi-ink);
+  --sl-color-gray-2: var(--nomi-ink-2);
+  --sl-color-gray-3: var(--nomi-ink-3);
+  --sl-color-gray-4: var(--nomi-ink-4);
+  --sl-color-gray-5: var(--nomi-line);
+  --sl-color-gray-6: var(--nomi-line-soft);
+  --sl-color-gray-7: var(--nomi-paper);
+  --sl-color-black: var(--nomi-ground);
+  --sl-color-accent-low: var(--nomi-accent-soft);
+  --sl-color-accent: var(--nomi-accent);
+  --sl-color-accent-high: var(--nomi-accent-ink);
+  --sl-color-bg-inline-code: var(--nomi-line-soft);
+}
+
+:root[data-theme='light'] {
+  --nomi-ground: #faf9f6;
+  --nomi-paper: #ffffff;
+  --nomi-ink: #1e1b17;
+  --nomi-ink-2: #4a463f;
+  --nomi-ink-3: #6b665e;
+  --nomi-ink-4: #8b857b;
+  --nomi-line: #e6e2db;
+  --nomi-line-soft: #efece6;
+  --nomi-accent: #2e6cb4;
+  --nomi-accent-soft: #e9f0f9;
+  --nomi-accent-ink: #1f4f8a;
+
+  --sl-color-white: var(--nomi-ink);
+  --sl-color-gray-1: var(--nomi-ink);
+  --sl-color-gray-2: var(--nomi-ink-2);
+  --sl-color-gray-3: var(--nomi-ink-3);
+  --sl-color-gray-4: var(--nomi-ink-4);
+  --sl-color-gray-5: var(--nomi-line);
+  --sl-color-gray-6: var(--nomi-line-soft);
+  --sl-color-gray-7: var(--nomi-paper);
+  --sl-color-black: var(--nomi-paper);
+  --sl-color-accent-low: var(--nomi-accent-soft);
+  --sl-color-accent: var(--nomi-accent);
+  --sl-color-accent-high: var(--nomi-accent-ink);
+  --sl-color-bg-inline-code: var(--nomi-line-soft);
+}
+
+:root {
+  --sl-color-bg: var(--nomi-ground);
+  --sl-color-bg-nav: color-mix(in srgb, var(--nomi-ground) 88%, transparent);
+  --sl-color-bg-sidebar: var(--nomi-ground);
+  --sl-color-hairline: var(--nomi-line);
+  --sl-color-hairline-light: var(--nomi-line-soft);
+  --sl-color-hairline-shade: var(--nomi-line);
+  --sl-font: 'Noto Sans SC', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', system-ui, sans-serif;
+  --sl-font-mono: ui-monospace, 'Cascadia Code', 'SF Mono', Menlo, Consolas, monospace;
+  --sl-content-width: 46rem;
+  --sl-text-body: 1rem;
+  --sl-line-height: 1.75;
+}
+:root[lang='en'] {
+  --sl-font: 'Inter', 'Noto Sans SC', system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+/* 标题：英文用 Fraunces，中文用黑体；和官网首页一致 */
+.sl-markdown-content h1,
+.sl-markdown-content h2,
+.sl-markdown-content h3,
+h1#_top {
+  letter-spacing: -0.005em;
+  text-wrap: balance;
+}
+:root[lang='en'] h1#_top,
+:root[lang='en'] .sl-markdown-content h2,
+:root[lang='en'] .sl-markdown-content h3 {
+  font-family: 'Fraunces', Georgia, 'Times New Roman', serif;
+  font-weight: 600;
+}
+h1#_top { font-weight: 800; }
+
+/* 顶栏：品牌位 + 官网导航 */
+.nomi-brand { display: inline-flex; align-items: center; gap: 8px; text-decoration: none; color: var(--nomi-ink); }
+.nomi-brand .wordmark { font-family: 'Fraunces', Georgia, serif; font-weight: 600; font-size: 24px; letter-spacing: -0.01em; line-height: 1; }
+.nomi-brand .wordmark span { color: var(--nomi-accent); }
+.nomi-brand .docs-tag { font-size: 13px; color: var(--nomi-ink-3); border: 1px solid var(--nomi-line); border-radius: 999px; padding: 2px 10px; margin-left: 4px; }
+.nomi-nav { display: flex; flex-wrap: wrap; gap: 4px 22px; font-size: 14px; }
+.nomi-nav a { color: var(--nomi-ink-3); text-decoration: none; white-space: nowrap; }
+.nomi-nav a:hover { color: var(--nomi-ink); }
+.nomi-locale { font-size: 13px; color: var(--nomi-ink-3); border: 1px solid var(--nomi-line); border-radius: 999px; padding: 6px 12px; text-decoration: none; white-space: nowrap; }
+.nomi-locale:hover { color: var(--nomi-ink); border-color: var(--nomi-ink-4); }
+@media (max-width: 49.99rem) {
+  .nomi-nav { flex-direction: column; padding-block: 0.5rem; }
+  .nomi-nav a { font-size: 16px; padding-block: 6px; }
+}
+
+/* 正文里的截图和短动图：一图一动作，框线与官网卡片一致 */
+.sl-markdown-content img,
+.sl-markdown-content video {
+  border: 1px solid var(--nomi-line);
+  border-radius: 12px;
+  box-shadow: 0 1px 2px rgb(30 27 23 / 0.05), 0 12px 32px rgb(30 27 23 / 0.07);
+}
+.sl-markdown-content figure { margin: 1.5rem 0; }
+.sl-markdown-content figcaption { margin-top: 0.5rem; font-size: 0.875rem; color: var(--nomi-ink-3); }
+
+/* 提示框：保留 Starlight 结构，只让颜色走官网 token */
+.starlight-aside { border-radius: 10px; }

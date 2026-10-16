@@ -1,0 +1,36 @@
+---
+title: "Is it connected? Verify and troubleshoot"
+description: "After connecting Nomi, confirm in one sentence that your assistant really works. If it cannot connect, go through symptom, cause and fix one by one."
+---
+
+## Confirm it works
+
+Make sure Nomi is open, then go back to the assistant you just connected and restarted, and send:
+
+> List the projects that are in Nomi.
+
+If the reply contains real project names from your Nomi project library, it is connected.
+
+Then try the sample sentence shown on the card:
+
+> Create a "Coffee Ad" project in Nomi, split it into three shots, add them to the canvas, and generate the first one with my image model.
+
+Back in Nomi, a new project is in the library and the canvas has shots: the assistant is really operating Nomi. If the assistant needs to generate, make sure a model is already connected in Nomi.
+
+## When it cannot connect
+
+| What you see | Most likely because | What to do |
+| --- | --- | --- |
+| The assistant says it cannot connect to Nomi, or has no Nomi tools | Nomi is not open, or the assistant was not restarted after connecting | Open Nomi first, then fully restart the assistant |
+| My assistant is not on Nomi's connection card | Nomi did not detect it on this computer | Install the assistant and come back, or connect it by hand with the generic configuration under **Other clients** at the bottom of the card |
+| **Connect** is refused | The assistant's config file is not valid JSON, is read-only, or its entry named `nomi` was not written by this Nomi | Follow the message on the card: fix that file, turn off read-only, or remove that `nomi` entry in the assistant and connect again |
+| The card says the connection configuration needs an update | The assistant holds an older Nomi launch method that no longer exists | Click **Upgrade** or **Repair** on the card, then restart the assistant |
+| Cursor can only start drafts and cannot produce directly | Cursor is not a trusted starter by default and the switch is off | Select Cursor on the card, turn on "Let Cursor start production on its own", and watch for Cursor's own approval on its first call |
+
+:::note
+After a Nomi update, the top of the card may ask whether to switch an assistant to the faster way to connect. Nomi backs up before it changes anything, and choosing Not now still works until the next version. Once switched, Nomi must be open before you use it.
+:::
+
+## Still stuck
+
+Write down which assistant you use, which step you reached and what the assistant said word for word, then ask in the [GitHub discussions](https://github.com/aqm857886159/Nomi/discussions). Do not paste whole configuration files.
