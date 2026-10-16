@@ -9,6 +9,7 @@ import { launchNomiApp } from './_launchApp.mjs'
 import { expect, screenshotSettled } from './_assert.mjs'
 import { stationTimeout } from './_station-budget.mjs'
 import { makeTempDir } from '../../scripts/_test-temp.mjs'
+import { uiText } from './full-walk/invariants.mjs'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 const repoRoot = path.resolve(here, '../..')
@@ -52,12 +53,18 @@ function writeFixture(projectsDir) {
   fs.writeFileSync(path.join(rootPath, '.nomi', 'project.json'), JSON.stringify({ ...record, lastKnownRootPath: rootPath }, null, 1))
 }
 
+// 界面文案从词典读（不在走查里抄一份）：词典改了，这里跟着变。
+const label = (locale, key) => uiText(locale, key).trim()
 const configs = [
-  { name: 'zh-light', locale: 'zh-CN', scheme: 'light', provider: '服务商原话', technical: '技术详情' },
-  { name: 'zh-dark', locale: 'zh-CN', scheme: 'dark', provider: '服务商原话', technical: '技术详情' },
-  { name: 'en-light', locale: 'en', scheme: 'light', provider: 'Provider', technical: 'Technical details' },
-  { name: 'en-dark', locale: 'en', scheme: 'dark', provider: 'Provider', technical: 'Technical details' },
-]
+  { name: 'zh-light', locale: 'zh-CN', scheme: 'light' },
+  { name: 'zh-dark', locale: 'zh-CN', scheme: 'dark' },
+  { name: 'en-light', locale: 'en', scheme: 'light' },
+  { name: 'en-dark', locale: 'en', scheme: 'dark' },
+].map((config) => ({
+  ...config,
+  provider: label(config.locale, 'generationCommon.error.providerMessage'),
+  technical: label(config.locale, 'generationCommon.error.technicalDetails'),
+}))
 
 const failures = []
 function check(ok, label, detail) {
