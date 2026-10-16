@@ -240,14 +240,14 @@ console.log(`  屏幕含 "docs.<数字>" 畸形域名: ${docsHostLeak}`)
 // 同时，排在它后面的视频模型必须完成验证并落下可执行 mapping。
 const catalog = await win.evaluate(async (baseUrl) => {
   const bridge = window.nomiDesktop.modelCatalog
-  const vendor = (bridge.listVendors() || []).find((item) => item.baseUrlHint === baseUrl)
+  const vendor = ((await bridge.listVendors()) || []).find((item) => item.baseUrlHint === baseUrl)
   if (!vendor) return { vendor: null, models: [], imageModels: [], videoModels: [], mappings: [] }
   const own = (rows) => (rows || []).filter((item) => item.vendorKey === vendor.key)
   return {
     vendor,
-    models: bridge.listModels({ vendorKey: vendor.key }) || [],
-    imageModels: own(bridge.listModels({ kind: 'image', enabled: true })),
-    videoModels: own(bridge.listModels({ kind: 'video', enabled: true })),
+    models: (await bridge.listModels({ vendorKey: vendor.key })) || [],
+    imageModels: own((await bridge.listModels({ kind: 'image', enabled: true }))),
+    videoModels: own((await bridge.listModels({ kind: 'video', enabled: true }))),
     mappings: (await bridge.listMappings({ vendorKey: vendor.key, enabled: true })) || [],
   }
 }, gatewayBase)

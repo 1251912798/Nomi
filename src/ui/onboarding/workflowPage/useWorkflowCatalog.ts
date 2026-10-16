@@ -97,7 +97,8 @@ export function useWorkflowCatalog(vendorKey: string, refreshToken: number): Wor
     let alive = true
     void (async () => {
       try {
-        const allVendors = catalog.listVendors() as Array<Record<string, unknown>>
+        const allVendors = (await catalog.listVendors()) as Array<Record<string, unknown>>
+        if (!alive) return
         setVendors(
           allVendors
             .filter((v) => isComfyuiVendorKey(String(v.key)))
@@ -113,7 +114,8 @@ export function useWorkflowCatalog(vendorKey: string, refreshToken: number): Wor
               enabled: v.enabled !== false,
             })),
         )
-        const allModels = catalog.listModels() as Array<Record<string, unknown>>
+        const allModels = (await catalog.listModels()) as Array<Record<string, unknown>>
+        if (!alive) return
         setModels(
           allModels
             .filter((m) => String(m.vendorKey) === vendorKey)

@@ -12,8 +12,9 @@ describe('渲染进程同步 IPC 棘轮', () => {
     expect(decide(scanSyncIpc(), baseline)).toEqual([])
   })
 
-  it('点卡出生成框那条链路上的渠道 mapping 不再是同步 IPC', () => {
-    expect(scanSyncIpc().some((entry) => entry.channel === 'nomi:model-catalog:mappings:list')).toBe(false)
+  it('目录读（渠道 mapping / 模型 / 供应商 / 健康度）不再是同步 IPC——点卡、开设置、Agent 面板都读它们', () => {
+    const readChannels = ['nomi:model-catalog:mappings:list', 'nomi:model-catalog:models:list', 'nomi:model-catalog:vendors:list', 'nomi:model-catalog:health']
+    expect(scanSyncIpc().filter((entry) => readChannels.includes(entry.channel))).toEqual([])
   })
 
   it('新增一条同步通道 → 红', () => {

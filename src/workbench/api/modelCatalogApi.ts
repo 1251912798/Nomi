@@ -134,11 +134,11 @@ function requireDesktopRuntime(feature: string): DesktopBridge {
 }
 
 export async function listWorkbenchModelCatalogVendors(): Promise<ModelCatalogVendorDto[]> {
-  return requireDesktopRuntime('model catalog').modelCatalog.listVendors() as ModelCatalogVendorDto[]
+  return await requireDesktopRuntime('model catalog').modelCatalog.listVendors() as ModelCatalogVendorDto[]
 }
 
 export async function getWorkbenchModelCatalogHealth(): Promise<ModelCatalogHealthDto> {
-  return requireDesktopRuntime('model catalog').modelCatalog.health() as ModelCatalogHealthDto
+  return await requireDesktopRuntime('model catalog').modelCatalog.health() as ModelCatalogHealthDto
 }
 
 export async function listWorkbenchModelCatalogModels(params?: {
@@ -146,7 +146,7 @@ export async function listWorkbenchModelCatalogModels(params?: {
   kind?: BillingModelKind
   enabled?: boolean
 }): Promise<ModelCatalogModelDto[]> {
-  const rows = requireDesktopRuntime('model catalog').modelCatalog.listModels(params) as ModelCatalogModelDto[]
+  const rows = await requireDesktopRuntime('model catalog').modelCatalog.listModels(params) as ModelCatalogModelDto[]
   // 目录的 `meta` 过 IPC 时还是 `unknown`。在**进入渲染层的第一处**把窗口解出来，
   // 而不是让每个读它的组件各解一遍（那正是「同一语义几份定义」的起点）。
   return rows.map((row) => {

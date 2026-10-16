@@ -53,10 +53,10 @@ try {
   const seed = await win.evaluate(async () => {
     const mc = window.nomiDesktop?.modelCatalog;
     if (!mc) return { ok: false };
-    const seedance = mc.listModels({ kind: "video", enabled: true }).find((m) => m.modelKey === "bytedance/seedance-2");
+    const seedance = (await mc.listModels({ kind: "video", enabled: true })).find((m) => m.modelKey === "bytedance/seedance-2");
     return {
       ok: true,
-      hasKie: mc.listVendors().some((v) => v.key === "kie"),
+      hasKie: (await mc.listVendors()).some((v) => v.key === "kie"),
       archetypeId: seedance?.meta?.archetypeId ?? null,
       hasMapping: (await mc.listMappings()).some((mp) => mp.vendorKey === "kie" && mp.taskKind === "image_to_video"),
     };
