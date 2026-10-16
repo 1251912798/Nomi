@@ -1,0 +1,44 @@
+---
+title: "Before you connect: what it can do and what you need"
+description: "Connect Nomi to Claude Code, Codex, Cursor and other assistants, and one sentence is enough for them to create projects, split shots and generate images."
+---
+
+After a one-time setup, you can say one sentence in the AI assistant you already use and have it work inside Nomi. For example:
+
+> Create a "Coffee Ad" project in Nomi, split it into three shots, add them to the canvas, and generate the first one with my image model.
+
+What the assistant makes lands in your Nomi project, so you can open Nomi, look at it and keep editing.
+
+## What it can do once connected
+
+| Capability | What it saves you | What happens afterwards |
+| --- | --- | --- |
+| Create projects and split shots | No need to build each one by hand in the interface | A new project appears in Nomi, with matching shots on the canvas |
+| Generate with the models you set up | Make images where you already write code or chat | Generated images and videos land in this project and show on the canvas |
+| Help connect a new model | Looking up endpoints, parameters and model IDs is left to the assistant | You paste the key yourself on Nomi's own page, and the assistant cannot see it |
+
+## What you need
+
+1. Nomi installed and **running**. When Nomi is closed, your assistant will say it cannot connect.
+2. An AI assistant that supports MCP. One-click connect in Nomi's Settings supports Claude Code, Claude Desktop, Codex, Cursor and WorkBuddy. For other assistants you can copy a generic configuration and paste it yourself.
+3. To let the assistant generate images or video, at least one model must already be connected in Nomi (see step 2 of [Make your first piece in ten minutes](/en/docs/start/first-project)).
+
+:::note
+You only set this up once. The assistant only sees the tools Nomi opens to it, and that does not include the keys you paste on the Models page.
+:::
+
+## Which assistant, which page
+
+| Your assistant | How to connect | Where |
+| --- | --- | --- |
+| Claude Code | One-click in Settings | [Connect Claude Code, Codex and Cursor](/en/docs/mcp/connect-clients#claude-code) |
+| Codex | One-click in Settings | [Connect Claude Code, Codex and Cursor](/en/docs/mcp/connect-clients#codex) |
+| Cursor | One-click in Settings, then approve it once inside Cursor | [Connect Claude Code, Codex and Cursor](/en/docs/mcp/connect-clients#cursor) |
+| Claude Desktop, WorkBuddy | One-click on the same card, same steps as above | [Connect Claude Code, Codex and Cursor](/en/docs/mcp/connect-clients) |
+| Any other MCP assistant | Copy the generic configuration into its MCP settings | [Other clients](/en/docs/mcp/connect-clients#other-clients) |
+
+## How much it can decide on its own
+
+Each assistant has a switch in Nomi named like "Let Claude Code start production on its own" (with the assistant you picked in the name). When it is off, the assistant can only start drafts, read status and open safe deep links, and generation still asks you every time.
+
+**Next:** [Connect Claude Code, Codex and Cursor](/en/docs/mcp/connect-clients)

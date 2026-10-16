@@ -1,0 +1,29 @@
+{
+  "_comment": "教程站页面清单（由 scripts/build-marketing-docs.mjs 生成，勿手改）。sitePages() 读它，把教程页并进官网页面清单。",
+  "pages": [
+    {
+      "zh": "marketing/docs.html",
+      "en": "marketing/en/docs.html"
+    },
+    {
+      "zh": "marketing/docs/mcp/before-you-connect.html",
+      "en": "marketing/en/docs/mcp/before-you-connect.html"
+    },
+    {
+      "zh": "marketing/docs/mcp/connect-clients.html",
+      "en": "marketing/en/docs/mcp/connect-clients.html"
+    },
+    {
+      "zh": "marketing/docs/mcp/verify-and-troubleshoot.html",
+      "en": "marketing/en/docs/mcp/verify-and-troubleshoot.html"
+    },
+    {
+      "zh": "marketing/docs/start/first-project.html",
+      "en": "marketing/en/docs/start/first-project.html"
+    },
+    {
+      "zh": "marketing/docs/start/what-is-nomi.html",
+      "en": "marketing/en/docs/start/what-is-nomi.html"
+    }
+  ]
+}
