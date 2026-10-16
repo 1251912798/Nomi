@@ -91,10 +91,22 @@ export function readState(file) {
 }
 
 /**
+ * 三日竞品雷达的提醒句。产出只落私有仓（用户 2026-10-15 拍板）：本机位置读 NOMI_PRIVATE_REPO，
+ * 没设 / 目录不对 = 明说「今天没查成」，绝不落回公开仓——公开仓这边没有任何可写的输出位置。
+ */
+export function competitiveRadarLine({ hasSkill, privateRepo, dirExists = fs.existsSync }) {
+  if (!hasSkill) return '【三日竞品雷达】技能 nomi-competitive-radar 在这台机器上没有，今天没查成（不是没有更新）；由协调会话处理。'
+  if (!privateRepo || !dirExists(path.join(privateRepo, 'research', 'competitive'))) {
+    return '【三日竞品雷达】今天没查成：环境变量 NOMI_PRIVATE_REPO 没设，或指向的私有仓里没有 research/competitive/（不是没有更新）。产出只能落私有仓 Nomi-service，不会落回公开仓；设好后由协调会话处理。'
+  }
+  return '【三日竞品雷达】只由协调会话做：首轮检查到期 / 未完成周期（nomi-competitive-radar；对标名单与全部产出在私有仓 Nomi-service 的 research/competitive/，报告落 <日期>/）；绝不在公开主仓提交、绝不开公开 PR；失败不能记「无更新」，研究建议不能自动变成开发或发布授权。'
+}
+
+/**
  * 纯逻辑（可测）：返回 { text, state }。run(root, radar) 注入；两个雷达**并行**。
  * state = 机器级的当天标记 + 摘要：今天已成功的直接给缓存摘要（带跑的时间），失败的重跑。
  */
-export async function runDailyRadar({ root, now = new Date(), run = defaultRun, state = {}, hasSkill = (name) => skillExists(name, { root }) }) {
+export async function runDailyRadar({ root, now = new Date(), run = defaultRun, state = {}, hasSkill = (name) => skillExists(name, { root }), privateRepo = process.env.NOMI_PRIVATE_REPO, dirExists = fs.existsSync }) {
   const today = localDate(now)
   const next = state.date === today ? { ...state } : { date: today }
 
@@ -128,8 +140,7 @@ export async function runDailyRadar({ root, now = new Date(), run = defaultRun, 
     }
   }
 
-  if (hasSkill('nomi-competitive-radar')) lines.push('【三日竞品雷达】只由协调会话做：首轮检查到期 / 未完成周期（nomi-competitive-radar；入口 docs/research/competitive/README.md）；失败不能记「无更新」，研究建议不能自动变成开发或发布授权。')
-  else lines.push('【三日竞品雷达】技能 nomi-competitive-radar 在这台机器上没有，今天没查成（不是没有更新）；由协调会话处理。')
+  lines.push(competitiveRadarLine({ hasSkill: hasSkill('nomi-competitive-radar'), privateRepo, dirExists }))
   return { text: lines.join('\n'), state: next }
 }
 

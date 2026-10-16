@@ -6,9 +6,9 @@
 
 ## 目标与范围
 
-用户 2026-09-19 明确要求先构建长期流程，全面学习页面、流程、用户引导、交互、功能、图标、社区、自媒体与视频营销。核心对标 LibTV 和 TapNow；扩展对标 Higgsfield、MiniMax Design、RunningHub。表情/姿势自定义编辑、插件/CLI/MCP 的产品呈现、Blender 和 Agent 是优先研究题。
+用户 2026-09-19 明确要求先构建长期流程，全面学习页面、流程、用户引导、交互、功能、图标、社区、自媒体与视频营销。对标名单见私有仓 Nomi-service 的 `research/competitive/ROSTER.md`（核心对象优先，扩展对象轮换）。表情/姿势自定义编辑、插件/CLI/MCP 的产品呈现、三维软件集成和 Agent 是优先研究题。
 
-交付：仓内 `agent-skills/nomi-competitive-radar/SKILL.md` 与执行参考；`docs/research/competitive/` 来源登记、周期报告模板及入口；CLAUDE/AGENTS 触发指针；唯一 TODO 的关联项；沿用本机 Codex automation 的每三天配置。既有模型/论文雷达各自保留职责，竞品雷达负责产品与传播学习。
+交付：仓内 `agent-skills/nomi-competitive-radar/SKILL.md` 与执行参考；私有仓 `research/competitive/` 的来源登记、周期报告模板及入口（2026-10-15 起产出只落私有仓，公开仓不留）；CLAUDE/AGENTS 触发指针；唯一 TODO 的关联项；沿用本机 Codex automation 的每三天配置。既有模型/论文雷达各自保留职责，竞品雷达负责产品与传播学习。
 
 ## 先查别人
 
@@ -24,7 +24,7 @@
 - 采用“全对象变化扫描 + 轮换深挖”，避免每三天重复完整拆解五家，也避免只收藏链接。
 - 研究必须走鼠标/键盘与录屏；DOM/API 用于定位和取资料，不替代交互验证。脚本只能辅助，结论由证据支撑。
 - 原始录屏、登录态截图、TikHub 原始结果只存忽略目录；仓库留脱敏结论、来源与证据索引。研究产出不能被误读为对外发布素材许可。
-- 不改 Nomi 功能/UI、不修改用户项目、不发布内容、不合并 PR。本轮不把“有 MCP”当成“已有可用插件/CLI”，也不把竞品 Blender 宣传页当成 Nomi 已实现。
+- 不改 Nomi 功能/UI、不修改用户项目、不发布内容、不合并 PR。本轮不把“有 MCP”当成“已有可用插件/CLI”，也不把竞品宣传页当成 Nomi 已实现。
 - 既有表情/姿势 TODO 未搜到同名行，按本次用户要求登记研究入口；先核对已有能力再形成实施任务。
 
 ## 验收与回滚

@@ -210,13 +210,23 @@ describe('技能在不在：不存在的技能不能叫人去跑；论文雷达�
   })
 
   test('用户反馈雷达、三日竞品雷达：技能在 → 照旧；不在 → 明说「在这台机器上没有」', async () => {
-    const present = await runDailyRadar({ root: '/x', now: NOW, run, hasSkill: allSkills })
+    const present = await runDailyRadar({ root: '/x', now: NOW, run, hasSkill: allSkills, privateRepo: '/private', dirExists: () => true })
     assert.match(present.text, /起 nomi-intake-radar 技能分诊/)
     assert.match(present.text, /【三日竞品雷达】只由协调会话做：/)
     assert.match(present.text, /分诊只由协调会话做/)
+    assert.match(present.text, /私有仓 Nomi-service 的 research\/competitive\/.*绝不在公开主仓提交、绝不开公开 PR/)
     const missing = await runDailyRadar({ root: '/x', now: NOW, run, hasSkill: noSkills })
     assert.match(missing.text, /技能 nomi-intake-radar 在这台机器上没有/)
     assert.match(missing.text, /技能 nomi-competitive-radar 在这台机器上没有，今天没查成/)
+  })
+
+  test('三日竞品雷达：私有仓没设 / 目录不对 -> 明说今天没查成，不给任何输出位置（绝不落回公开仓）', async () => {
+    for (const privateRepo of [undefined, '', '/private']) {
+      const { text } = await runDailyRadar({ root: '/x', now: NOW, run, hasSkill: allSkills, privateRepo, dirExists: () => false })
+      assert.match(text, /【三日竞品雷达】今天没查成：环境变量 NOMI_PRIVATE_REPO 没设/)
+      assert.doesNotMatch(text, /只由协调会话做：首轮检查/)
+      assert.doesNotMatch(text, /docs\/research\/competitive|outputs\/competitive-radar/)
+    }
   })
 
   test('skillExists 认三处：仓库 agent-skills、项目 .claude/skills、用户目录 ~/.claude/skills', () => {
