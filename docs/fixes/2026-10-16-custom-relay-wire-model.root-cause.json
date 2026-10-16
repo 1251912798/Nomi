@@ -31,7 +31,23 @@
     "scripts/gen-archetype-wire-defaults.ts",
     "src/workbench/generationCanvas/nodes/controls/archetypeMeta.ts",
     "src/workbench/generationCanvas/nodes/controls/channelModeReach.ts",
-    "src/workbench/generationCanvas/nodes/controls/useChannelCreateBody.ts"
+    "src/workbench/generationCanvas/nodes/controls/useChannelCreateBody.ts",
+    "electron/catalog/nativeWireProfiles.ts",
+    "electron/catalog/kieGptImage2.ts",
+    "electron/catalog/kieHappyhorse.ts",
+    "electron/catalog/kieMiniMaxH3.ts",
+    "electron/catalog/kieNanoBanana.ts",
+    "electron/catalog/kieSeedance.ts",
+    "electron/catalog/kieSeedance25.ts",
+    "electron/catalog/kieSeedream.ts",
+    "electron/catalog/kieWan30.ts",
+    "electron/catalog/kieImages2026.ts",
+    "electron/catalog/apimartAudios.ts",
+    "electron/catalog/apimartImages.ts",
+    "electron/catalog/apimartVideos.ts",
+    "electron/catalog/volcengineVideos.ts",
+    "electron/catalog/dreaminaImages.ts",
+    "electron/catalog/dreaminaVideos.ts"
   ],
   "entry_points": [
     "画布 UI：buildCatalogTaskRequest → runtime.runTask → buildProfileHttpRequest / runMultipartProfileOperation / executeProcessOperation",
@@ -51,37 +67,103 @@
   ],
   "invariants": [
     "params.model 只由 resolveWireModel 产出，且在 taskTemplateParams 的最后一步写入；extras.model、archetypeInput.model、headless 默认、Agent 参数都不是输入",
-    "只有声明 wireModel=archetype-selection 的 create op 收档案所选的模式 / 变体线上名；声明只由 seedBuiltins 的内置目录登记表盖章",
+    "只有声明 wireModel=archetype-selection 的 create op 收档案所选的模式 / 变体线上名；声明只写在内置目录契约 op 的定义处（kie / apimart / 火山 / 即梦），普查测试锁住",
     "没有声明的 op（自建中转、认证生成、手写映射、自定义脚本）一律发连接名 modelAlias || modelKey，与 {{model.modelKey}} 同一个表达式",
     "渲染层变体栏出现的条件与主进程发送用同一个谓词 operationSelectsArchetypeWireModel"
   ],
   "doors": [
-    { "kind": "write", "path": "electron/audioTaskRunner.ts", "symbol": "taskTemplateParams" },
-    { "kind": "write", "path": "electron/catalog/antigravityCreatePreflight.ts", "symbol": "taskTemplateParams" },
-    { "kind": "write", "path": "electron/catalog/customCallDispatch.ts", "symbol": "taskTemplateParams" },
-    { "kind": "write", "path": "electron/catalog/profileHttpRequest.ts", "symbol": "taskTemplateParams" },
-    { "kind": "write", "path": "electron/catalog/taskParams.ts", "symbol": "taskTemplateParams" },
-    { "kind": "read", "path": "electron/catalog/taskParams.ts", "symbol": "resolveWireModel" }
+    {
+      "kind": "write",
+      "path": "electron/audioTaskRunner.ts",
+      "symbol": "taskTemplateParams"
+    },
+    {
+      "kind": "write",
+      "path": "electron/catalog/antigravityCreatePreflight.ts",
+      "symbol": "taskTemplateParams"
+    },
+    {
+      "kind": "write",
+      "path": "electron/catalog/customCallDispatch.ts",
+      "symbol": "taskTemplateParams"
+    },
+    {
+      "kind": "write",
+      "path": "electron/catalog/profileHttpRequest.ts",
+      "symbol": "taskTemplateParams"
+    },
+    {
+      "kind": "write",
+      "path": "electron/catalog/taskParams.ts",
+      "symbol": "taskTemplateParams"
+    },
+    {
+      "kind": "read",
+      "path": "electron/catalog/taskParams.ts",
+      "symbol": "resolveWireModel"
+    }
   ],
   "door_reduction": {
     "before": 10,
     "after": 6,
     "why_not": "删掉了四处自己决定 model 的写口（archetypeMeta.buildArchetypeInputParams 的 model、headless 默认表的 model、引擎 B 的 transportModelId / 兜底、mcpGenerationVideoResolve.videoTransportModelIdForPlan）。剩下五个 taskTemplateParams 调用点是五种不同的执行形状（JSON / multipart / process 经 profileHttpRequest、配音 / 转写、自定义脚本、antigravity 预检只读参考图、taskParams 内部），各自需要一份参数表；它们都不再自己算 model，只把连接与 op 交给同一个 resolveWireModel。"
   },
-  "generality_proof": "所有出站报文的 params 都出自 taskTemplateParams（door-map 5 扇门），它在最后一步只写 resolveWireModel 的结果，于是任何入口、任何档案、任何连接都无法让一个未被内置目录登记表认证的 op 收到档案线上名；新增入口只要用 taskTemplateParams 就自动受约束，不用它的入口拿不到 params.model。",
+  "generality_proof": "所有出站报文的 params 都出自 taskTemplateParams（door-map 5 扇门），它在最后一步只写 resolveWireModel 的结果，于是任何入口、任何档案、任何连接都无法让一个未声明的 op 收到档案线上名；新增入口只要用 taskTemplateParams 就自动受约束，不用它的入口拿不到 params.model。",
   "shared_boundaries": [
-    { "path": "electron/shared/wireModelIdentity.ts", "symbol": "resolveWireModel", "responsibility": "按 op 声明与连接身份决定唯一的出站 model 串" },
-    { "path": "electron/catalog/taskParams.ts", "symbol": "taskTemplateParams", "responsibility": "最后一步写入 params.model，剥掉任何携带进来的 model" },
-    { "path": "electron/catalog/seedBuiltins.ts", "symbol": "CURATED_VENDOR_CONTRACTS", "responsibility": "唯一给 create op 盖 archetype-selection 声明的地方；兄弟连接里逐字相同的 curated 报文重新派生" }
+    {
+      "path": "electron/shared/wireModelIdentity.ts",
+      "symbol": "resolveWireModel",
+      "responsibility": "按 op 声明与连接身份决定唯一的出站 model 串"
+    },
+    {
+      "path": "electron/catalog/taskParams.ts",
+      "symbol": "taskTemplateParams",
+      "responsibility": "最后一步写入 params.model，剥掉任何携带进来的 model"
+    }
   ],
   "same_class_entry_points": [
-    { "path": "src/workbench/generationCanvas/nodes/controls/archetypeMeta.ts", "entry_point": "buildArchetypeInputParams", "disposition": "enforced", "evidence": "删掉 out.model 的写入；customRelayWireModel.test.ts 画布 UI 组从这里起步" },
-    { "path": "electron/capabilityCore/apimartGenerationProvider.ts", "entry_point": "projectionRequest", "disposition": "enforced", "evidence": "不再自己补 model，改把封存的 modeId / variantId 交给参数层；customRelayWireModel.test.ts 引擎 B 两条" },
-    { "path": "electron/catalog/taskParams.ts", "entry_point": "applyHeadlessParamDefaults", "disposition": "enforced", "evidence": "headless 默认表不再生成 model（scripts/gen-archetype-wire-defaults.ts）；即便 defaultParams 带 model，taskTemplateParams 也会剥掉；headless 组断言" },
-    { "path": "electron/catalog/customCallDispatch.ts", "entry_point": "runCustomCallTask", "disposition": "enforced", "evidence": "脚本 params 经 taskTemplateParams + 本模型 mapping 的 op；自定义脚本组断言" },
-    { "path": "electron/capabilityCore/moduleCatalogBootstrap.ts", "entry_point": "modelParameterSchema", "disposition": "enforced", "evidence": "Agent / MCP 参数表不再把 model 当可填参数暴露" },
-    { "path": "electron/catalog/relayNativeWireUpgrade.ts", "entry_point": "upgradeRelayModelsToNativeWire", "disposition": "not-affected", "evidence": "借用的是火山原始 op 常量（nativeWireProfiles），不经登记表盖章，没有声明 → 中转照发连接名" },
-    { "path": "electron/catalog/apimartModelIds.ts", "entry_point": "normalizeApimartCanonicalModelId", "disposition": "not-affected", "evidence": "APIMart 自家目录键 → 公开 id 的请求变换，只挂在 APIMart curated op 上，作用于 owner 产出之后" }
+    {
+      "path": "src/workbench/generationCanvas/nodes/controls/archetypeMeta.ts",
+      "entry_point": "buildArchetypeInputParams",
+      "disposition": "enforced",
+      "evidence": "删掉 out.model 的写入；customRelayWireModel.test.ts 画布 UI 组从这里起步"
+    },
+    {
+      "path": "electron/capabilityCore/apimartGenerationProvider.ts",
+      "entry_point": "projectionRequest",
+      "disposition": "enforced",
+      "evidence": "不再自己补 model，改把封存的 modeId / variantId 交给参数层；customRelayWireModel.test.ts 引擎 B 两条"
+    },
+    {
+      "path": "electron/catalog/taskParams.ts",
+      "entry_point": "applyHeadlessParamDefaults",
+      "disposition": "enforced",
+      "evidence": "headless 默认表不再生成 model（scripts/gen-archetype-wire-defaults.ts）；即便 defaultParams 带 model，taskTemplateParams 也会剥掉；headless 组断言"
+    },
+    {
+      "path": "electron/catalog/customCallDispatch.ts",
+      "entry_point": "runCustomCallTask",
+      "disposition": "enforced",
+      "evidence": "脚本 params 经 taskTemplateParams + 本模型 mapping 的 op；自定义脚本组断言"
+    },
+    {
+      "path": "electron/capabilityCore/moduleCatalogBootstrap.ts",
+      "entry_point": "modelParameterSchema",
+      "disposition": "enforced",
+      "evidence": "Agent / MCP 参数表不再把 model 当可填参数暴露"
+    },
+    {
+      "path": "electron/catalog/relayNativeWireUpgrade.ts",
+      "entry_point": "upgradeRelayModelsToNativeWire",
+      "disposition": "enforced",
+      "evidence": "借火山原生报文时 nativeWireProfiles.hostRootCreateOps 用 withoutArchetypeWireModel 去掉声明 → 中转照发连接名"
+    },
+    {
+      "path": "electron/catalog/apimartModelIds.ts",
+      "entry_point": "normalizeApimartCanonicalModelId",
+      "disposition": "not-affected",
+      "evidence": "APIMart 自家目录键 → 公开 id 的请求变换，只挂在 APIMart curated op 上，作用于 owner 产出之后"
+    }
   ],
   "recurrence": {
     "classification": "recurring",
@@ -96,14 +178,13 @@
   "prevention": {
     "kind": "centralized-boundary",
     "enforcement_path": "electron/shared/wireModelIdentity.ts",
-    "invariant": "出站 model = resolveWireModel(op 声明, 连接, 档案选择)，未经内置目录登记表声明的 op 永远是连接名",
+    "invariant": "出站 model = resolveWireModel(op 声明, 连接, 档案选择)，未声明的 op 永远是连接名",
     "failure_mode": "未声明或认不出档案时回到连接名（用户自己配的名字）；不猜、不迁移、不发别家的名字",
     "exception_policy": "none",
-    "strategy": "在所有出站参数共用的 taskTemplateParams 最后一步写入 owner 的结果，并删掉其余四处自算；声明只在登记表一处盖章，渲染层变体栏用同一个谓词。",
+    "strategy": "在所有出站参数共用的 taskTemplateParams 最后一步写入 owner 的结果，并删掉其余四处自算；声明只写在内置 op 定义处、普查测试锁住，渲染层变体栏用同一个谓词。",
     "artifacts": [
       "electron/shared/wireModelIdentity.ts",
       "electron/catalog/taskParams.ts",
-      "electron/catalog/seedBuiltins.ts",
       "src/workbench/generationCanvas/nodes/controls/channelModeReach.ts"
     ]
   },
@@ -136,5 +217,6 @@
     "Agent 可选模型清单（agentModelEntriesFromCatalog / availableModels）对自建中转仍投出档案变体列表，选了也只会发连接名——属于「自建中转要不要变体」的产品取舍，已报协调",
     "自建中转需要按模式换模型名（文生图 / 改图在中转上是两个名字）时，今天没有用户可配的显式映射，只能分成两个模型接入",
     "paramMap 规则理论上可以写 wire=model 键；目前全仓没有，未加门岗"
-  ]
+  ],
+  "detected_by": "user"
 }

@@ -31,7 +31,7 @@ gpt-image-2-…-text-to-image under group …」。用户原话：「我这个 a
 1. **唯一 owner** `electron/shared/wireModelIdentity.ts` · `resolveWireModel`：
    - create op 声明了 `wireModel: "archetype-selection"` → 变体 > 模式 modelEnum > 连接名；
    - 否则一律连接名（`modelAlias || modelKey`，与 `{{model.modelKey}}` 同一个表达式）。
-   - 声明只由内置目录登记表（`seedBuiltins` 的 `CURATED_VENDOR_CONTRACTS`）统一盖章；自建中转、认证生成的映射、手写映射都没有。
+   - 声明只写在内置目录契约 op 的定义处（普查测试锁住：内置 op 服务带模式名 / 变体的档案且引用 params.model 就必须声明，非内置一律没有）；借给中转的火山原生报文去掉声明；自建中转、认证生成的映射、手写映射都没有。
 2. `taskTemplateParams` 把 owner 的结果**最后**写进 `params.model`：`extras.model`、`archetypeInput.model`、headless 默认、Agent 参数都盖不掉（结构上做不出来）。
 3. 删旧：渲染层不再往 `archetypeInput` 写 model；headless 默认表不再带 model；引擎 B 不再自己补 model、执行合同删掉 `transportModelId`；
    Agent 参数表不再把 `model` 当参数暴露。

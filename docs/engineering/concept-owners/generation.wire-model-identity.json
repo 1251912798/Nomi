@@ -22,6 +22,10 @@
     {
       "path": "electron/shared/wireModelIdentity.ts",
       "symbol": "ARCHETYPE_WIRE_MODEL"
+    },
+    {
+      "path": "electron/catalog/taskParams.ts",
+      "symbol": "taskTemplateParams"
     }
   ],
   "forbidden_derivations": [
