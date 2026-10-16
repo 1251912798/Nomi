@@ -7,8 +7,8 @@ import { escapeIdOfPath, fixedTransitions } from './escape-ledger-lib.mjs'
 import { evaluatePrJudgement, extractSection, inferRoutes } from './pr-judgement-lib.mjs'
 
 /** 四类（花钱 / 长跑 / 可打断 / 新界面）——路由表里 pathRules.legacy 的那部分；files: [{ path, status }]，status 'A' = 新增。 */
-export function classifyChange(files, addedLines = '') {
-  const { fourClass, classes, hits } = inferRoutes(files, addedLines)
+export function classifyChange(files, addedLines = '', table = undefined) {
+  const { fourClass, classes, hits } = inferRoutes(files, addedLines, table)
   return { fourClass, classes, hits }
 }
 
@@ -243,10 +243,10 @@ export const renderReport = ({ pr, ...rest }) => mergeReport(pr, renderBodyLines
  *   contracts / ledger（transitions、ids、removed、settledContracts）见 checkEscapeContract / ledgerChanges；
  *   createdAt: PR 创建时间（拿不到 = 不宽限，fail-closed）；enforce: 假设规则已生效（回放用）。
  */
-export function evaluatePrBody({ body, files, addedLines = '', addedByFile = null, packageRemovedLines = [], contracts = [], ledger = {}, createdAt = null, enforce = false, stage = 'merge' }) {
+export function evaluatePrBody({ body, files, addedLines = '', addedByFile = null, packageRemovedLines = [], contracts = [], ledger = {}, createdAt = null, enforce = false, stage = 'merge', scenarios = null, table = undefined }) {
   const normalized = files.map((file) => ({ ...file, status: file.status === 'added' ? 'A' : file.status }))
   const withAdded = addedByFile ? normalized.map((file) => ({ ...file, added: addedByFile.get(file.path) ?? '' })) : normalized
-  const classification = classifyChange(withAdded, addedLines)
+  const classification = classifyChange(withAdded, addedLines, table)
   const judgement = evaluatePrJudgement({
     body,
     files: normalized,
@@ -255,6 +255,8 @@ export function evaluatePrBody({ body, files, addedLines = '', addedByFile = nul
     packageRemovedLines,
     ledgerRemovedIds: ledger.removed ?? [],
     createdAt: enforce ? null : createdAt,
+    scenarios,
+    table,
   })
   const result = renderBodyLines({
     classification,
