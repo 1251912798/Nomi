@@ -8,11 +8,12 @@
 //
 // ── 为什么它是纯函数、而且不存任何状态 ──
 //
-//   · 「说好的计划」不另存第二份：它就是 Run 上已经有 job 的那些镜（`jobsForShot`，概念 production.shot-jobs）。
-//     用户点「继续」放行计划外那一镜 → 走正常确认卡 → 这一镜有了 job → 自然进了计划（拍板 5），没有要维护的基线。
+//   · 「说好的计划」不另存第二份：它就是 Run 上**曾经**有过 job 的那些镜（`jobsForShot`，概念 production.shot-jobs）——
+//     历史事实，去掉的镜（included=false）也算（独立验收 V-1203 F1）。用户点「继续」放行计划外那一镜 → 走正常确认卡 →
+//     这一镜有了 job → 自然进了计划（拍板 5），没有要维护的基线。
 //   · 「连续失败数」每次从 job 派生：只数可能已到过供应商的失败（`jobMayHaveReachedProvider`，既有判据；提交前断网这类
-//     没写出去的不计、也不重置），遇到成功就清零。用户点「继续」之后的重新计数用取模表达：失败数是 3 的倍数才停，
-//     所以确认后的第 4、5 次失败照旧自动重试，第 6 次失败再停——等价于「从这次确认重新数」，不需要任何标记位。
+//     没写出去的不计、也不重置），遇到成功就清零，数到一次**人批**的尝试就停（含它）。「人批」也是事实：批这次尝试的
+//     付费门属于哪一次出价、那次出价是不是由人在卡上点的（`attemptApprovedByHuman`）。不靠失败数取模去猜人点过没有。
 //
 // ── 刹车放在哪 ──
 //
@@ -24,6 +25,7 @@ import { jobMayHaveReachedProvider, jobsForShot } from "../productionShotJobs";
 import { productionJobPhase } from "../productionShotPhase";
 import { isStoppedRunStatus } from "../productionRunStop";
 import { currentPresentation } from "../productionGenerationPresentation";
+import { spendAuthorizationGates } from "../productionSpendAuthority";
 import { spendDecidedByPolicy, type ProjectAgentApprovalMode, type ProjectAgentApprovalPolicy } from "./capabilityApprovalPolicy";
 
 /** 同一镜连续失败这么多次，第 N 次重试之前停（用户拍板：重试超过 2 次 = 第 3 次失败后停）。 */
@@ -37,6 +39,7 @@ export type DirectGenerationBrakeInput = Readonly<{
   plannedShotIds: readonly string[];
   stopped: boolean;
   shotId: string;
+  /** 这一镜从上一次**人批**之后连续失败了几次（`consecutiveFailedAttempts`，从事实数，不取模）。 */
   consecutiveFailures: number;
 }>;
 
@@ -52,19 +55,44 @@ export function directGenerationBrake(input: DirectGenerationBrakeInput): Direct
   if (input.plannedShotIds.length > 0 && !input.plannedShotIds.includes(input.shotId)) {
     return { allow: false, reason: "out-of-plan" };
   }
-  if (input.consecutiveFailures > 0 && input.consecutiveFailures % DIRECT_GENERATION_RETRY_LIMIT === 0) {
+  if (input.consecutiveFailures >= DIRECT_GENERATION_RETRY_LIMIT) {
     return { allow: false, reason: "retry-limit" };
   }
   return { allow: true };
 }
 
-type RunFacts = Pick<ProductionRun, "generationPlan" | "jobs"> & Partial<Pick<ProductionRun, "status">>;
+type RunFacts = Pick<ProductionRun, "generationPlan" | "jobs"> & Partial<Pick<ProductionRun, "status" | "gates">>;
 
-function failedForBrake(job: ProductionJob): boolean {
-  return (productionJobPhase(job.status) === "failed" || job.status === "submission_unknown") && jobMayHaveReachedProvider(job);
+/** 这次尝试结束在失败上（含提交结果未知）——不管有没有到过供应商。 */
+function endedInFailure(job: ProductionJob): boolean {
+  return productionJobPhase(job.status) === "failed" || job.status === "submission_unknown";
 }
 
-/** 这一镜末尾连续失败了几次（成功清零；没写出去的失败既不计也不重置）。 */
+function failedForBrake(job: ProductionJob): boolean {
+  return endedInFailure(job) && jobMayHaveReachedProvider(job);
+}
+
+/**
+ * 这次尝试是不是**真人在卡上批的**（事实，不是猜）。job → 批它的那道付费门（`authorizationDigest`）→ 那道门属于哪一次出价
+ * （出价的 `fromGate`：在它之后、下一次出价之前建的门）→ 那一次出价是谁决定的：
+ *   · 出价时档位不是「直接生成」→ 每次都是人点的；
+ *   · 「直接生成」下代答失败或刹车退回（`policyDecisionState: "failed"`）→ 卡摆出来，是人点的；
+ *   · 其余（档位代答）→ 不是人批的。
+ * 认不出（旧数据没有门 / 没有出价记录）一律按「不是人批的」——只会让刹车多停一次，不会少停。
+ */
+function attemptApprovedByHuman(run: RunFacts, job: ProductionJob): boolean {
+  if (!job.authorizationDigest) return false;
+  const gateIndex = spendAuthorizationGates({ gates: run.gates ?? [] }).findIndex((gate) => gate.authorizationDigest === job.authorizationDigest);
+  if (gateIndex < 0) return false;
+  const presentation = (run.generationPlan?.presentations ?? []).filter((entry) => entry.fromGate <= gateIndex).at(-1);
+  if (!presentation?.policySnapshot) return false;
+  return presentation.policySnapshot.mode !== "direct" || presentation.policyDecisionState === "failed";
+}
+
+/**
+ * 这一镜从上一次**人批**之后连续失败了几次。成功清零；没写出去的失败既不计也不重置；数到一次人批的尝试就停在它
+ * （含它本身）——那就是用户拍板的「点继续之后从这次确认重新数」，读的是事实，不靠失败数取模去猜人点过没有。
+ */
 export function consecutiveFailedAttempts(run: RunFacts, shotId: string): number {
   const jobs = jobsForShot(run as ProductionRun, shotId)
     .slice()
@@ -72,24 +100,37 @@ export function consecutiveFailedAttempts(run: RunFacts, shotId: string): number
   let count = 0;
   for (let index = jobs.length - 1; index >= 0; index -= 1) {
     const job = jobs[index];
-    if (!jobMayHaveReachedProvider(job) && productionJobPhase(job.status) === "failed") continue;
+    if (endedInFailure(job) && !jobMayHaveReachedProvider(job)) continue;
     if (!failedForBrake(job)) break;
     count += 1;
+    if (attemptApprovedByHuman(run, job)) break;
   }
   return count;
 }
 
-/** 这个 Run 里要生成的单元（多镜 = 纳入的镜；单镜旧形状 = 候选 id）。 */
-function unitsOf(run: RunFacts): string[] {
+/** 这个 Run 里此刻纳入批次的单元（多镜 = 纳入的镜；单镜旧形状 = 候选 id）。只用来圈「这一次要决定哪几镜」。 */
+function includedUnitsOf(run: RunFacts): string[] {
   const shots = run.generationPlan?.shots;
   if (shots?.length) return shots.filter((shot) => shot.included !== false).map((shot) => shot.shotId);
   const single = run.generationPlan?.candidate?.candidateId;
   return single ? [single] : [];
 }
 
-/** 「说好的计划」：这个 Run 里已经有 job（= 被批过）的那些镜。 */
+/** 计划里出现过的每一镜，不管此刻纳不纳入批次（去掉的镜也在）。 */
+function everyUnitOf(run: RunFacts): string[] {
+  const shots = run.generationPlan?.shots;
+  if (shots?.length) return shots.map((shot) => shot.shotId);
+  const single = run.generationPlan?.candidate?.candidateId;
+  return single ? [single] : [];
+}
+
+/**
+ * 「说好的计划」：这个 Run 里**曾经**有过 job（= 被批过）的那些镜——历史事实，不看此刻纳不纳入批次。
+ * 用户在卡上去掉一镜、或候选补丁把它移出这一批（`included: false`），它批过的事实不会消失；
+ * 否则「去掉旧镜 → 计划变空 → 同一 Run 里补的新镜被当成第一次代批放行」（独立验收 V-1203 F1）。
+ */
 export function plannedShotIdsFromJobs(run: RunFacts): string[] {
-  return unitsOf(run).filter((shotId) => jobsForShot(run as ProductionRun, shotId).length > 0);
+  return everyUnitOf(run).filter((shotId) => jobsForShot(run as ProductionRun, shotId).length > 0);
 }
 
 /**
@@ -99,8 +140,8 @@ export function plannedShotIdsFromJobs(run: RunFacts): string[] {
  */
 function unitsInDecision(run: RunFacts): string[] {
   const scope = currentPresentation(run.generationPlan)?.shotIds;
-  if (!scope?.length) return unitsOf(run);
-  const units = new Set(unitsOf(run));
+  if (!scope?.length) return includedUnitsOf(run);
+  const units = new Set(includedUnitsOf(run));
   return scope.filter((shotId) => units.has(shotId));
 }
 
@@ -118,8 +159,9 @@ export function directGenerationBrakeForRun(
   for (const shotId of unitsInDecision(run)) {
     const jobs = jobsForShot(run as ProductionRun, shotId);
     // 只有「还没被批过的新镜」和「最近一次尝试失败了、等着重试的镜」需要这一次代答；在跑 / 已完成 / 已批待派的不需要。
+    // 最近一次失败没到过供应商也算等着重试（V-1203：原来按「到过供应商的失败」判，这种镜被跳过，刹车失明）。
     const latest = jobs.slice().sort((a, b) => (b.attempt - a.attempt) || (Date.parse(b.createdAt) - Date.parse(a.createdAt)))[0];
-    if (latest && !failedForBrake(latest)) continue;
+    if (latest && !endedInFailure(latest)) continue;
     const verdict = directGenerationBrake({
       tier, plannedShotIds: planned, stopped, shotId, consecutiveFailures: consecutiveFailedAttempts(run, shotId),
     });
