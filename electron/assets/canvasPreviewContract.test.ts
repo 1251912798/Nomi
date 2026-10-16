@@ -12,6 +12,13 @@ import { resolveFfmpegPath } from "../export/ffmpegRunner";
 import { probeMediaMetadata } from "../export/mediaProbe";
 import { CANVAS_PREVIEW_LONG_EDGE_PX, canvasPreviewFieldsFromReceipt } from "../shared/canvas/canvasMediaPreview";
 import { absolutePathFromLocalAssetUrlAnyProject } from "./localAssetFile";
+import { createProject, projectDirById } from "../projects/repository";
+import { localizeTaskAsset } from "./localizeTaskAsset";
+import { ensureLocalAssetPreview, importLocalFile } from "./localFileImport";
+import { createGenerationOutputMaterializer } from "../capabilityCore/generationOutputMaterializer";
+import { localAssetUrl } from "./assetPaths";
+import { attachStoredAssetPreview } from "./assetPreview";
+import { unlocalizedTaskAsset } from "../tasks/unlocalizedTaskAsset";
 
 vi.mock("./assetEvents", () => ({ broadcastAssetsUpdated: vi.fn(), broadcastAssetLocalizationStarted: vi.fn(async () => {}) }));
 vi.mock("../review/reviewTrace", () => ({ scheduleTechnicalReview: vi.fn() }));
@@ -72,7 +79,6 @@ function canvasResultFromReceipt(type: "image" | "video", data: { url?: unknown;
 }
 
 async function makeProject(): Promise<string> {
-  const { createProject } = await import("../projects/repository");
   return createProject({ rootPath: makeTempDir("nomi-preview-contract-project-"), name: "Preview contract", payload: {} }).id;
 }
 
@@ -90,7 +96,6 @@ afterEach(() => {
 describe("画布预览不变式 · 主进程入口矩阵", () => {
   it("普通生成 / 远程本地化（localizeTaskAsset → importRemoteAsset）：大图带小图，小图记 source，绝不 thumbnailUrl = url", async () => {
     const projectId = await makeProject();
-    const { localizeTaskAsset } = await import("./localizeTaskAsset");
     const big = await localizeTaskAsset(projectId, dataUrl(TALL_JPEG, "image/jpeg"), "image");
     expect(big.previewState).toBe("ready");
     await expectCanvasPreviewInvariant(big);
@@ -103,7 +108,6 @@ describe("画布预览不变式 · 主进程入口矩阵", () => {
 
   it("拖拽 / 文件导入（importLocalFile 字节与原生路径两条）：回执带小图 + 事实", async () => {
     const projectId = await makeProject();
-    const { importLocalFile } = await import("./localFileImport");
     const bytes = (await importLocalFile({ projectId, bytes: TALL_JPEG, fileName: "tall.jpg", contentType: "image/jpeg" })) as { data: { url: string; thumbnailUrl?: string; previewState?: string } };
     await expectCanvasPreviewInvariant(canvasResultFromReceipt("image", bytes.data));
     const sourcePath = path.join(makeTempDir("nomi-preview-contract-native-"), "native.jpg");
@@ -115,8 +119,6 @@ describe("画布预览不变式 · 主进程入口矩阵", () => {
 
   it("制作流程 / Agent / MCP 落图（generationOutputMaterializer → writeDeterministicAsset）：回执带小图（以前没有）", async () => {
     const projectId = await makeProject();
-    const { createGenerationOutputMaterializer } = await import("../capabilityCore/generationOutputMaterializer");
-    const { localAssetUrl } = await import("./assetPaths");
     const receipt = await createGenerationOutputMaterializer().materialize({
       projectId,
       providerTaskId: "task-preview-contract",
@@ -134,7 +136,6 @@ describe("画布预览不变式 · 主进程入口矩阵", () => {
   });
 
   it("派生不出来（ffprobe 认不出的字节）：明确 missing，不带 thumbnailUrl", async () => {
-    const { attachStoredAssetPreview } = await import("./assetPreview");
     const dir = makeTempDir("nomi-preview-contract-broken-");
     const absolutePath = path.join(dir, "broken.png");
     fs.writeFileSync(absolutePath, Buffer.from("not really a png"));
@@ -144,7 +145,6 @@ describe("画布预览不变式 · 主进程入口矩阵", () => {
   });
 
   it("没落盘的远端结果（unlocalizedTaskAsset）：明确 missing，不把远端原图填进 thumbnailUrl", async () => {
-    const { unlocalizedTaskAsset } = await import("../tasks/unlocalizedTaskAsset");
     const asset = unlocalizedTaskAsset("image", "https://cdn.provider.test/a.png");
     expect(asset.thumbnailUrl).toBeNull();
     expect(asset.previewState).toBe("missing");
@@ -152,9 +152,6 @@ describe("画布预览不变式 · 主进程入口矩阵", () => {
 
   it("旧数据补预览（ensureLocalAssetPreview，后台补齐的唯一主进程入口）：没有 sidecar 的旧大图派生小图，旧小图记 source", async () => {
     const projectId = await makeProject();
-    const { projectDirById } = await import("../projects/repository");
-    const { ensureLocalAssetPreview } = await import("./localFileImport");
-    const { localAssetUrl } = await import("./assetPaths");
     const root = projectDirById(projectId)!;
     fs.mkdirSync(path.join(root, "assets", "generated", "legacy"), { recursive: true });
     fs.writeFileSync(path.join(root, "assets", "generated", "legacy", "old-big.jpg"), TALL_JPEG);
