@@ -8,6 +8,10 @@ import { shareFlowItems } from './useAgentPanelV4Data'
 import { createReactTestRenderer } from './testReactRenderer'
 import type { LanePart, LaneProjection, LaneUsage } from '../../../../electron/shared/agentLane/laneContracts'
 
+// This render-count host has no DOM/ProseMirror view. Keep the panel and composer
+// real, but leave the DOM editor adapter unmounted; Electron walks cover its input.
+vi.mock('../../common/useNomiRichTextEditor', () => ({ useNomiTiptapEditor: () => null }))
+
 const runtime = vi.hoisted(() => {
   const i18n = { language: 'zh-CN', resolvedLanguage: 'zh-CN' }
   return {

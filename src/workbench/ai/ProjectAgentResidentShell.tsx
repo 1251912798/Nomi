@@ -8,6 +8,12 @@ import { libraryGroup } from '../library/libraryGroups'
 // 之前这里是 760 行：投影、嗅探、弹层、队列行、审批按钮全在一个组件里，
 // 「宿主真相怎么变成一行收据」这件事只能靠截图证明。拆开之后那部分是纯函数、有单测；
 // 这里剩下的都是**只有真实运行时才有的东西**（DOM 尺寸、事件桥、文件选择器）。
+import { useOpenProjectId } from '../project/useOpenProjectId'
+import { canvasNodeToAssetRefs } from '../assets/assetTypes'
+import { listNodeMediaResults } from '../generationCanvas/model/nodeResultLifecycle'
+import { useAgentFormStore } from '../../ui/app-shell/shell/agentFormStore'
+import { enterCanvasPickMode } from '../generationCanvas/store/canvasPickMode'
+import { useGenerationCanvasStore } from '../generationCanvas/store/generationCanvasStore'
 import React, { type JSX } from 'react'
 import { openFeedbackFor } from '../../ui/community/FeedbackButton'
 import { withProjectAction } from '../project/projectCanvasReadSurface'
@@ -17,6 +23,7 @@ import { DesignModal } from '../../design'
 import { SystemPromptSection } from './systemPrompt/SystemPromptSection'
 import { STORYBOARD_PLANNER_SKILL } from '../generationCanvas/agent/storyboardLauncher'
 import { useWorkbenchStore } from '../workbenchStore'
+import { useAgentReferenceMentions } from './resident/useAgentReferenceMentions'
 import { useComposerAttachments, COMPOSER_ATTACHMENT_ACCEPT } from './composer/useComposerAttachments'
 import { useResidentActivityStore } from './residentActivity'
 import { TimelineAgentReceiptEffect } from './resident/TimelineAgentReceiptEffect'
@@ -93,6 +100,7 @@ function usePanelSize(): Readonly<{ width: number; height: number; measure: (nod
 
 export default function ProjectAgentResidentShell({ surface }: { surface: ResidentSurface }): JSX.Element {
   const { t, i18n } = useTranslation()
+  const openProjectId = useOpenProjectId()
   const labels = useV4Labels()
   const trace = useAgentTraceDirectory()
   const size = usePanelSize()
@@ -253,6 +261,9 @@ export default function ProjectAgentResidentShell({ surface }: { surface: Reside
   const historyConversation = laneConversationOf(data.snapshot)
   const historyIdentity = data.snapshot.workspaceId && historyConversation
     ? JSON.stringify([data.snapshot.workspaceId, historyConversation.laneName, historyConversation.sessionId, surface]) : undefined
+  const cancelReferencePick = React.useRef<(() => void) | undefined>(undefined)
+  const [pendingReferencePick, setPendingReferencePick] = React.useState<{ projectId:string | null; threadId:string | null } | null>(null)
+  const [referenceError, setReferenceError] = React.useState('')
   const [popover, setPopover] = React.useState<ComposerPopover | null>(null)
   // 3D-BOX：导演台里选中了计划镜头 → 输入框上「正在改：镜头 N」（画布面才有导演台；开关关时恒为 null）
   const shotFocusTag = useShotFocusTag()
@@ -279,7 +290,38 @@ export default function ProjectAgentResidentShell({ surface }: { surface: Reside
   }, [popover])
   const [threadsOpen, setThreadsOpen] = React.useState(false)
   const [commandQuery, setCommandQuery] = React.useState('')
-  const attachmentApi = useComposerAttachments({ attachments, setAttachments, settleAttachment: settleProjectAgentAttachment, onError: () => undefined })
+  const attachmentApi = useComposerAttachments({ attachments, setAttachments, settleAttachment: settleProjectAgentAttachment, onError: setReferenceError })
+  const mentions = useAgentReferenceMentions({ projectId: openProjectId,
+    conversationKey: `${openProjectId}:${data.activeThreadId}`, attachments, api:attachmentApi, draft, setDraft, onError:setReferenceError })
+  const addInlineReference = mentions.addReference
+  const pickReferenceOnCanvas = () => {
+    setPopover(null)
+    setPendingReferencePick({ projectId:openProjectId, threadId:data.activeThreadId })
+    const forms = useAgentFormStore.getState()
+    if (forms.bySurface.generation.form === 'ball') forms.setForm('generation', 'float')
+    useWorkbenchStore.getState().setWorkspaceMode('generation')
+  }
+  React.useEffect(() => {
+    setReferenceError('')
+    return () => { cancelReferencePick.current?.(); cancelReferencePick.current = undefined }
+  }, [openProjectId, data.activeThreadId, surface, collapsed])
+  React.useEffect(() => {
+    if (!pendingReferencePick) return
+    if (pendingReferencePick.projectId !== openProjectId || pendingReferencePick.threadId !== data.activeThreadId) {
+      setPendingReferencePick(null)
+      return
+    }
+    if (surface !== 'generation') return
+    setPendingReferencePick(null)
+    const candidate = (nodeId: string) => {
+      const node = useGenerationCanvasStore.getState().nodes.find(item => item.id === nodeId)
+      return node && canvasNodeToAssetRefs(node).slice(0, 1).find(asset => asset.kind !== 'model3d' && listNodeMediaResults(node).some(result=>result.url===asset.renderUrl))
+    }
+    cancelReferencePick.current = enterCanvasPickMode({ eligible: nodeId => Boolean(candidate(nodeId)), onPick: nodeId => {
+      const asset = candidate(nodeId)
+      if (asset) addInlineReference(asset)
+    } })
+  }, [pendingReferencePick, surface, openProjectId, data.activeThreadId, addInlineReference])
   const promptLibrary = usePromptLibrary(popover === 'skill')
   const userPromptLibrary = useUserPrompts(popover === 'skill')
   const timelinePlanPreviewPortal = useTimelinePlanPreview(
@@ -390,15 +432,15 @@ export default function ProjectAgentResidentShell({ surface }: { surface: Reside
    * 光标会落在字符串开头，用户接着打字就插在句首。effect 跑在同一次提交的 DOM 之后，
    * 新句子已经在框里，才好把插入点放到末尾。
    */
-  const composerInputRef = React.useRef<HTMLTextAreaElement>(null)
+  const composerInputRef = React.useRef<HTMLElement>(null)
   const [starterFocusToken, setStarterFocusToken] = React.useState(0)
   React.useEffect(() => {
     if (!starterFocusToken) return
     const node = composerInputRef.current
     if (!node) return
     node.focus()
-    node.setSelectionRange(node.value.length, node.value.length)
-  }, [starterFocusToken])
+    mentions.editorRef.current?.commands.focus('end')
+  }, [starterFocusToken, mentions.editorRef])
   const startFromStarter = React.useCallback((prompt: string) => {
     setDraft(prompt)
     setStarterFocusToken((token) => token + 1)
@@ -523,6 +565,7 @@ export default function ProjectAgentResidentShell({ surface }: { surface: Reside
       <TimelineAgentReceiptEffect />
       {timelinePlanPreviewPortal}
       {attachmentInput}
+      {referenceError ? <div role="alert" className="px-3 py-1 text-caption text-workbench-danger">{referenceError}</div> : null}
       {panelError ? (
         <div className="shrink-0 px-3 pt-1 text-micro text-workbench-danger" role="alert" data-agent-error="true">
           <span>{panelError}</span>
@@ -597,13 +640,18 @@ export default function ProjectAgentResidentShell({ surface }: { surface: Reside
           admitting,
           mode: data.running ? 'running' : data.liveChips.length ? 'reference' : 'idle',
           permission: actions.permission,
-          chips: data.liveChips,
+          chips: data.liveChips.filter(chip => !chip.id || !mentions.hiddenAttachmentIds.has(chip.id)),
           focusTag,
           value: draft,
-          onValueChange: setDraft,
+          onValueChange: mentions.onChange,
+          onEditorReady: mentions.onReady,
+          mentionReferences: mentions.references,
+          mentionSearch: mentions.mentionSearch,
+          onMentionSelect: mentions.onMentionSelect,
           onSubmit: submit,
           onStop: actions.stop,
           onAddFile: () => attachmentApi.inputRef.current?.click(),
+          onAddReference: pickReferenceOnCanvas,
           inputRef: composerInputRef,
           onRemoveChip: removeComposerChip,
           modelLabel: data.modelLabel,

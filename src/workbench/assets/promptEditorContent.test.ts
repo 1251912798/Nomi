@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { promptToContent } from './promptEditorContent'
+import { promptToContent, contentToPrompt } from './promptEditorContent'
 import { encodeMention } from './promptMentions'
 
 const A = 'nomi-local://asset/a.png'
@@ -31,4 +31,14 @@ describe('promptToContent mention numbering', () => {
       { type: 'assetMention', attrs: { url: V, index: 1, kind: 'video' } },
     ])
   })
+})
+
+it('keeps Shift+Enter and inline references when serializing the shared editor', () => {
+  const doc = { type:'doc', content:[{ type:'paragraph', content:[
+    { type:'text', text:'Change ' }, { type:'assetMention', attrs:{url:A} },
+    { type:'hardBreak' }, { type:'text', text:'then animate ' }, { type:'assetMention', attrs:{url:V} },
+  ] }, { type:'paragraph', content:[{type:'text', text:'Keep the duration.'}] }] }
+  const prompt = `Change ${encodeMention(A)}\nthen animate ${encodeMention(V)}\nKeep the duration.`
+  expect(contentToPrompt(doc)).toBe(prompt)
+  expect(contentToPrompt(promptToContent(prompt))).toBe(prompt)
 })

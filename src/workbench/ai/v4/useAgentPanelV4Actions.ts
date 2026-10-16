@@ -1,3 +1,4 @@
+import { mentionUrlsInOrder } from '../../assets/promptMentions'
 import { storyboardShotIdsForTarget, isStoryboardReference } from '../resident/residentReferences'
 import { listAvailableModelsForAgent } from "../../generationCanvas/agent/availableModels"
 // Composer intent and input remain local; the lane owns execution and approvals.
@@ -9,6 +10,7 @@ import { useWorkbenchStore } from '../../workbenchStore'
 import { useGenerationCanvasStore } from '../../generationCanvas/store/generationCanvasStore'
 import { timelineRevision } from '../../timeline/kernel/timelineKernel'
 import { getDocumentSessionPort } from '../../project/documentSessionPort'
+import { agentReferenceContext } from '../resident/agentReferenceContext'
 import { projectAgentAttachmentClaims } from '../projectAgentAttachments'
 import { restoreProjectAgentInputs } from '../projectAgentDraftRecovery'
 import { buildResidentContextSnapshot, mergeResidentContextHandles, type AgentContextSnapshot } from '../resident/residentContextSnapshot'
@@ -44,7 +46,7 @@ type ResidentSendContext = Readonly<{
  * composer 绝不能发一个「用户打字期间已经变了的」渲染期选中：这份快照由纯构造器冻结，
  * 随请求一起走。
  */
-function captureSendContext(surface: ResidentSurface): ResidentSendContext {
+function captureSendContext(surface: ResidentSurface, prompt:string, attachments:readonly import('../composer/composerAttachmentTypes').ComposerAttachment[]): ResidentSendContext {
   const workbench = useWorkbenchStore.getState()
   const canvas = useGenerationCanvasStore.getState()
   const activeDocumentId = workbench.activeDocumentId
@@ -79,7 +81,7 @@ function captureSendContext(surface: ResidentSurface): ResidentSendContext {
   const directorShots = surface === 'generation' && isDirector3DBoxEnabled()
     ? directorShotContextHandles(readDirectorShotFocus(), (index) => i18n.t('director.agent.focusShot', { index }), i18n.t('director.agent.boxPreview'))
     : []
-  const snapshot = mergeResidentContextHandles(selection, directorShots)
+  const snapshot = mergeResidentContextHandles(selection, [...directorShots, ...agentReferenceContext(attachments,prompt,canvas.nodes,canvas.persistRevision)])
   return Object.freeze({ snapshot, activeDocumentId, selectedNodeIds, selectedClipIds, documentState })
 }
 
@@ -170,7 +172,7 @@ export function useAgentPanelV4Actions(surface: ResidentSurface, data: AgentPane
     useWorkbenchStore.setState({ projectAgentAdmissionId: admissionId })
     pendingAdmission.current = { id: admissionId, address: laneClient.conversation(), dispatched: false }
     try {
-      const captured = captureSendContext(surface)
+      const captured = captureSendContext(surface,text,capturedAttachments)
       const projectId = laneClient.context()?.binding.projectId
       // 这份文稿现有方案的清单随请求一起走：模型**指名**要改哪一份（决策 2），
       // 宿主不替它按「当前打开的是哪份」猜——猜错就是悄悄覆盖用户另一份方案。
@@ -236,15 +238,19 @@ export function useAgentPanelV4Actions(surface: ResidentSurface, data: AgentPane
       const sentAttachments = new Set(capturedAttachments)
       // Commit one cleanup after the ACK. Its own attachment changes must not
       // advance the revision before checking whether the user edited the buffer.
-      useWorkbenchStore.setState(current => ({
-        projectAgentReferences: current.projectAgentReferences.filter(reference => !sentReferences.has(reference)),
-        projectAgentAttachments: current.projectAgentAttachments.filter(attachment => !sentAttachments.has(attachment)),
-        ...(current.creationActiveSkill === capturedSkill && current.selectedLibraryPrompt === capturedPrompt
-          ? { creationActiveSkill: null, selectedLibraryPrompt: null } : {}),
-        ...(current.projectAgentDraftRevision === capturedDraftRevision && current.projectAgentDraft.trim() === text
-          ? { projectAgentDraft: '', projectAgentDraftDisplayText: null, projectAgentDraftIntent: null } : {}),
-        projectAgentDraftRevision: current.projectAgentDraftRevision + 1,
-      }))
+      useWorkbenchStore.setState(current => {
+        const clearDraft = current.projectAgentDraftRevision === capturedDraftRevision && current.projectAgentDraft.trim() === text
+        const retainedUrls = new Set(clearDraft ? [] : mentionUrlsInOrder(current.projectAgentDraft))
+        return {
+          projectAgentReferences: current.projectAgentReferences.filter(reference => !sentReferences.has(reference)),
+          projectAgentAttachments: current.projectAgentAttachments.filter(attachment =>
+            !sentAttachments.has(attachment) || (attachment.url && retainedUrls.has(attachment.url))),
+          ...(current.creationActiveSkill === capturedSkill && current.selectedLibraryPrompt === capturedPrompt
+            ? { creationActiveSkill: null, selectedLibraryPrompt: null } : {}),
+          ...(clearDraft ? { projectAgentDraft: '', projectAgentDraftDisplayText: null, projectAgentDraftIntent: null } : {}),
+          projectAgentDraftRevision: current.projectAgentDraftRevision + 1,
+        }
+      })
       return true
     } catch (caught) {
       if (!(caught instanceof LaneCommandFailure && caught.laneCode === 'agent_lane_input_cancelled')) setError(friendlyError(caught, t))

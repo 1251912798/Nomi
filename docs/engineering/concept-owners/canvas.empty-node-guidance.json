@@ -1,0 +1,23 @@
+{
+  "name": "画布空节点的上下文引导与激活准入",
+  "subject": "canvas.empty-node-guidance",
+  "lifecycle": "live-interaction",
+  "authority_kind": "writer",
+  "trust_domain": "renderer",
+  "fact_kind": "projection",
+  "migration_status": "converged",
+  "owner": {
+    "path": "src/workbench/generationCanvas/nodes/render/NodeEmptyState.tsx",
+    "symbol": "NodeEmptyState"
+  },
+  "write_api": [
+    { "path": "src/workbench/generationCanvas/nodes/render/NodeEmptyState.tsx", "symbol": "NodeEmptyState" },
+    { "path": "src/workbench/generationCanvas/reactFlow/GenerationCanvasReactFlowNodes.tsx", "symbol": "GenerationFlowNodeView" },
+    { "path": "src/workbench/generationCanvas/nodes/render/NodeEmptyStateProvider.tsx", "symbol": "NodeEmptyStateProvider" },
+    { "path": "src/workbench/generationCanvas/nodes/render/NodeEmptyStateContext.ts", "symbol": "useEmptyNodeActivation" }
+  ],
+  "forbidden_derivations": [],
+  "allowed_consumers": [],
+  "since": "2026-10-11",
+  "notes": "React Flow 宿主提供 primarySelection/readOnly；共享空态将 guidance 投影为图标或原引导，status 始终保留。上传与 launcher 在 pointerdown 捕获准入，同一手势的 label/input click 共用结论；未包宿主默认不可激活。合同：docs/fixes/2026-10-11-contextual-node-guidance.root-cause.json。"
+}

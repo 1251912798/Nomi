@@ -10,6 +10,8 @@ export function createReactTestRenderer<T extends TestHostNode = TestHostNode>(o
   createInstance?: (type: string, props: Record<string, unknown>) => T
   commitUpdate?: (instance: T, props: Record<string, unknown>) => void
 } = {}) {
+  const errors: unknown[] = []
+  const assertNoHostErrors = () => { if (errors.length) throw errors.shift() }
   const renderer = Reconciler({
     now: Date.now,
     supportsMutation: true,
@@ -25,6 +27,8 @@ export function createReactTestRenderer<T extends TestHostNode = TestHostNode>(o
     appendInitialChild: () => undefined,
     appendChild: () => undefined,
     appendChildToContainer: () => undefined,
+    insertBefore: () => undefined,
+    insertInContainerBefore: () => undefined,
     removeChild: () => undefined,
     removeChildFromContainer: () => undefined,
     clearContainer: () => undefined,
@@ -50,22 +54,25 @@ export function createReactTestRenderer<T extends TestHostNode = TestHostNode>(o
     shouldAttemptEagerTransition: () => false,
     supportsMicrotasks: false,
   })
-  const root = renderer.createContainer({}, 0, null, false, null, '', () => undefined, null)
+  const root = renderer.createContainer({}, 0, null, false, null, '', (error: unknown) => errors.push(error), null)
   return {
     render(node: React.ReactElement | null) {
       renderer.flushSyncFromReconciler(() => renderer.updateContainerSync(node, root, null, () => undefined))
       renderer.flushSyncWork()
+      assertNoHostErrors()
     },
     flushPassiveEffects() {
       renderer.flushPassiveEffects()
       renderer.flushSyncWork()
       renderer.flushPassiveEffects()
       renderer.flushSyncWork()
+      assertNoHostErrors()
     },
     close() {
       renderer.flushSyncFromReconciler(() => renderer.updateContainerSync(null, root, null, () => undefined))
       renderer.flushSyncWork()
       renderer.flushPassiveEffects()
+      assertNoHostErrors()
     },
   }
 }

@@ -15,7 +15,7 @@ const RUN_LIST_OBSERVATION_MS = 5_000
 import { createAgentRuntimeFixture, FIXTURE_VENDOR, FIXTURE_TEXT_MODEL, FIXTURE_IMAGE_MODEL } from './agent-runtime-fixture.mjs'
 import { waitForV4TurnIdle, recorded, sendCreation, readProject, AGENT_PANEL } from './agent-runtime-walk-support.mjs'
 import { launchNomiApp, repoRoot } from './_launchApp.mjs'
-import { openStoryboardEditor } from './_creationResourceTree.mjs'
+import { ensureCreationResourceTree, openStoryboardEditor } from './_creationResourceTree.mjs'
 const { createWorkspaceProject } = tsxRequire('../../electron/workspace/workspaceRepository.ts', import.meta.url)
 const tempRoot = makeTempDir('nomi-core-a-creation-')
 const settingsDir = path.join(tempRoot, 'settings')
@@ -85,6 +85,7 @@ try {
     const expand=win.locator('[data-shell-rail-item="docs"][aria-pressed="false"]')
     if(await expand.isVisible())await expand.click()
     await win.locator(`[data-document-row="${documentId}"] button[data-document-id="${documentId}"]`).click()
+    await ensureCreationResourceTree(win, '选中文稿后（抽屉选中即收）')
     await expect(win.locator(`[data-storyboard-id][data-document-id="${documentId}"]`)).toHaveCount(2)
   }
   check(true,'Both documents list two agent-made plans as ordinary sidebar plans')
@@ -139,6 +140,7 @@ try {
   await win.screenshot({path:path.join(shotsDir,'zh-before-placement.png')})
   // PR #808 owns the width budget: collapse the existing resource tree, leaving
   // the original Agent open. Manual navigation above deliberately reopened it.
+  await ensureCreationResourceTree(win, '打开方案后（抽屉选中即收，先开回来再数行）')
   const treeRowsBeforeCollapse = await win.locator('[data-storyboard-id]').count()
   await win.locator('[data-shell-rail-item="docs"][aria-pressed="true"]').click()
   await expect(win.locator('[data-shell-rail-item="docs"][aria-pressed="false"]')).toBeVisible()
@@ -221,7 +223,9 @@ try {
   await expect(win.locator('[data-storyboard-editor="true"] [data-storyboard-frame]').first()).toHaveAttribute('data-storyboard-frame','done')
   assert.equal((await canvasNodes())[0].result.id,generated[0].result.id,'Cold restart preserves the same generated result')
   await win.screenshot({ path: path.join(shotsDir, 'en-restored.png') })
-  await win.locator('[data-shell-rail-item="docs"][aria-pressed="true"]').click()
+  // 选中即收：冷启动后打开方案时抽屉已让开；万一开着就收掉，再拍「抽屉收起」的现场。
+  const openDocsRail = win.locator('[data-shell-rail-item="docs"][aria-pressed="true"]')
+  if (await openDocsRail.isVisible().catch(() => false)) await openDocsRail.click()
   await win.screenshot({path:path.join(shotsDir,'en-original-storyboard-restored.png')})
   fixture.assertClean()
   assert.equal(fixture.images.length,submissionsBeforeReopen,'Reopening the project must not submit media')
