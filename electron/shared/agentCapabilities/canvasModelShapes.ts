@@ -293,17 +293,3 @@ export const cameraMoveParamsObjectSchema = z.object({
   props: grayModelPropsSchema,
 });
 
-export const STAGING_MODEL_GUIDELINES = Object.freeze([
-  "shotClientId: this turn's create_canvas_nodes clientId or existing shot/keyframe/video id. Render connects as composition_ref; omit id for standalone reference.",
-  "Stage 1–6 characters using precise 3D vocabulary, or supply customBlocking. Default pose standing; squat=deep squat, crouch=upright half-crouch, single-knee=proposal kneel, cheer=arms up; hands-on-hips, point and wave are literal poses.",
-  "layout: side-by-side=shoulder-to-shoulder row; line=front-to-back queue; facing=two facing each other; behind=one ahead of another; circle=around a center.",
-  "sceneTemplate supplies a gray backdrop: street has roads/lane lines/sidewalk/buildings/trees/lamps/cars; room has three walls/bed/table/sofa/ceiling light. Use it for environment and scale; street needs environment=day for a lit sky. Props are individual objects; prefer sceneTemplate for whole backdrops. Positions are [x,z] ground meters relative to characters at origin; omitted props auto-spread to their right.",
-  "For out-of-vocabulary multi-tier/over-the-shoulder/prop-relative/reference-image compositions, use customBlocking film terms, never a wrong layout/pose. It injects a KEYFRAME IMAGE prompt directive, not a 3D render, and is less precise. With customBlocking, characters/layout/camera may be omitted; never omit both characters and customBlocking."
-]);
-
-export const CAMERA_MOVE_MODEL_GUIDELINES = Object.freeze([
-  "shotClientId: this turn's clientId or existing VIDEO id. Render attaches as video reference; model copies camera path, not gray content.",
-  "Use one dominant move: orbit_left/right circles ~300°; push_in/pull_out dollies toward/away; crane_up/down booms; track_left/right tracks laterally; arc_left/right arcs ~90°; zoom_in/out changes FOV with camera static; dolly_zoom pulls back while zooming in, keeping subject size constant as background stretches (Hitchcock/vertigo).",
-  "Use enum move only when it matches the intent. For whip-pan, handheld follow, compound/sequenced moves (push then whip to window) or reference-video matching, omit move and describe customMove with film terms. This injects a video-prompt cinematography directive, not a 3D render, and is less precise. Set move OR customMove for the same intent.",
-  "Subject pose defaults standing (also sit/walk). street/room sceneTemplate: gray backdrop; camera moves around subject at origin. props: individual objects. Prop [x,z] is ground meters; omission auto-spreads right of subject."
-]);

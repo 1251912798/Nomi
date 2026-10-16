@@ -10,9 +10,6 @@ import { z } from "zod";
 import { TIMELINE_WRITE_ALIASES, timelineWriteResultSchema } from "../timelineWrite";
 import { exportWriteResultSchema } from "../exportCapabilities";
 
-import {
-  cameraMoveParamsObjectSchema, CAMERA_MOVE_MODEL_GUIDELINES, STAGING_MODEL_GUIDELINES, stagingReferenceParamsSchema,
-} from "../canvasModelShapes";
 import { canvasDeletePiInputSchema } from "../canvasDelete";
 import { CANVAS_NODE_PROMPT_GUIDELINES, plannedEdgeSchema } from "../canvasWrite";
 import { modelArgumentTolerance } from "../modelArgumentTolerance";
