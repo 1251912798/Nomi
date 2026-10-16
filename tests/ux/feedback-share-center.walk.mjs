@@ -23,7 +23,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { clickOrFail, expectVisible, proveProbe, expectAbsent, screenshotSettled } from './_assert.mjs'
-import { newProjectEntry } from './_shell.mjs'
+import { newProjectEntry, switchWorkspace } from './_shell.mjs'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const outDir = path.join(repoRoot, '.feedback-share-center-walk')
@@ -290,7 +290,7 @@ fs.writeFileSync(projectFile, `${JSON.stringify(project, null, 2)}\n`)
   await installOpenRecorder(win)
 
   // 切到「生成」工作区，让画布挂载。
-  await clickOrFail(win.locator('[aria-label="工作区切换"]').getByText('生成', { exact: true }), '工作区切换→生成')
+  await switchWorkspace(win, 'generation', '工作区切换→生成')
   await win.waitForTimeout(1200)
 
   // 失败节点应渲染出错误卡与「反馈问题」。先证探针在这一屏是活的（基线），再截图。

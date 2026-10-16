@@ -155,7 +155,7 @@ try {
   await win.keyboard.press('Meta+Backslash')
   await win.waitForTimeout(800)
   const reopenEntries = await win.evaluate(() => [...document.querySelectorAll('button[aria-label]')]
-    .filter((button) => /^(展开 Nomi|Open Nomi|Expand Nomi)/.test(button.getAttribute('aria-label') || '') && button.getBoundingClientRect().width > 0)
+    .filter((button) => /^(展开 Nomi|打开 Nomi|Open Nomi|Expand Nomi)/.test(button.getAttribute('aria-label') || '') && button.getBoundingClientRect().width > 0)
     .map((button) => button.getAttribute('aria-label')))
   await snap(win, '05-editing-nomi-collapsed')
   check('③ 剪辑页收起 Nomi 后，叫回入口只有顶栏那一个', reopenEntries.length === 1, JSON.stringify(reopenEntries))

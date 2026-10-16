@@ -10,12 +10,14 @@ import { makeTempDir } from '../../scripts/_test-temp.mjs'
 //    真 key 路径见文件末尾说明与 tikhub-connector.e2e（TIKHUB_E2E=1）。
 import { expectVisible, expectAbsent, proveProbe, clickOrFail, scopedText } from './_assert.mjs'
 import { launchNomiApp } from './_launchApp.mjs'
+import { stationTimeout } from './_station-budget.mjs'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import crypto from 'node:crypto'
 import { fileURLToPath } from 'node:url'
 
+import { openRailDrawer } from './_shell.mjs'
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
 const shotsDir = path.join(repoRoot, 'tests/ux/shots/tikhub-connector')
 fs.mkdirSync(shotsDir, { recursive: true })
@@ -148,20 +150,17 @@ try {
   await projectCard.click()
   await win.waitForTimeout(800)
   const assetSection = win.locator('section[aria-label="素材库"]')
-  const libraryButton = win.getByRole('button', { name: '素材库', exact: true }).first()
   const continueButton = win.getByText('继续创作', { exact: false }).first()
   const step = await Promise.any([
     continueButton.waitFor({ state: 'visible', timeout: 8000 }).then(() => 'continue'),
-    assetSection.waitFor({ state: 'visible', timeout: 8000 }).then(() => 'library'),
-    libraryButton.waitFor({ state: 'visible', timeout: 8000 }).then(() => 'button'),
+    win.locator('[data-shell-project-menu]').first().waitFor({ state: 'visible', timeout: stationTimeout() }).then(() => 'opened'),
   ]).catch(() => 'none')
   if (step === 'continue') {
     await continueButton.click()
     await win.waitForTimeout(600)
   }
-  if (!(await assetSection.isVisible().catch(() => false))) {
-    await libraryButton.click({ timeout: 8000 }).catch(() => {})
-  }
+  // 素材库住在左栏「素材」抽屉里（不会自己弹出）：经 _shell.mjs 打开。
+  await openRailDrawer(win, 'assets', '打开素材库')
   await assetSection.waitFor({ state: 'visible', timeout: 8000 })
   await win.waitForTimeout(500)
 

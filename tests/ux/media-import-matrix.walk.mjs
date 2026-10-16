@@ -27,6 +27,7 @@ import { pathToFileURL } from 'node:url'
 import { launchNomiApp } from './_launchApp.mjs'
 import { DEFAULT_TIMEOUT_MS, clickOrFail, expectVisible } from './_assert.mjs'
 
+import { openRailDrawer } from './_shell.mjs'
 const FIXTURE_DIR = process.env.NOMI_MEDIA_FIXTURE_DIR || '/Users/aoqimin/Desktop/nomi-media-fixtures'
 const HUGE_VIDEO = process.env.NOMI_HUGE_VIDEO || '/Users/aoqimin/Desktop/视频/9月12日(1)/9月12日(1).mov'
 // 默认落仓库根 scratchpad/（已 .gitignore，只住 worktree）。要留档的那一轮用
@@ -294,20 +295,14 @@ async function openLibrary(win) {
   const card = win.getByText(PROJECT_NAME, { exact: false }).first()
   await clickOrFail(card, `项目卡「${PROJECT_NAME}」`)
   const cont = win.getByText('继续创作', { exact: false }).first()
-  const libBtn = win.getByRole('button', { name: '素材库', exact: true }).first()
   const section = win.locator('section[aria-label="素材库"]')
   const step = await Promise.any([
     cont.waitFor({ state: 'visible', timeout: DEFAULT_TIMEOUT_MS }).then(() => 'continue'),
-    section.waitFor({ state: 'visible', timeout: DEFAULT_TIMEOUT_MS }).then(() => 'library'),
+    win.locator('[data-shell-project-menu]').first().waitFor({ state: 'visible', timeout: DEFAULT_TIMEOUT_MS }).then(() => 'opened'),
   ])
-  if (step === 'continue') {
-    await clickOrFail(cont, '继续创作')
-    await Promise.any([
-      section.waitFor({ state: 'visible', timeout: DEFAULT_TIMEOUT_MS }).then(() => 'library'),
-      libBtn.waitFor({ state: 'visible', timeout: DEFAULT_TIMEOUT_MS }).then(() => 'button'),
-    ])
-  }
-  if (!(await section.isVisible())) await clickOrFail(libBtn, '素材库')
+  if (step === 'continue') await clickOrFail(cont, '继续创作')
+  // 素材库住在左栏「素材」抽屉里（不会自己弹出）：经 _shell.mjs 打开。
+  await openRailDrawer(win, 'assets', '素材库')
   // F1：面板没打开，后面每一格都是假数据，必须当场红。
   await expectVisible(section, '素材库面板应该打开——它是本矩阵前三行的被测面')
   return section

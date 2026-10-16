@@ -20,6 +20,7 @@ import { fileURLToPath } from 'node:url'
 import { launchNomiApp } from './_launchApp.mjs'
 import { openModelSettings } from './_shell.mjs'
 import { clickOrFail, expectVisible, expectText, screenshotSettled } from './_assert.mjs'
+import { stationTimeout } from './_station-budget.mjs'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const shotsDir = path.join(repoRoot, 'tests/ux/shots/local-model-connect')
@@ -77,7 +78,15 @@ async function openLocalModelCard(win) {
   // 顶栏齿轮 → 设置「模型」页签（内含 OnboardingDrawer）：经 _shell.mjs。
   await openModelSettings(win, { label: '连接助手模型入口', timeout: 8000 })
   // 「本地模型」卡在「可接入」桶（种子默认 enabled:false）。稳定 data 锚点，不靠文案。
-  await clickOrFail(win.locator('[data-model-home-available="local-text"]'), '本地模型 可接入卡', { timeout: 8000 })
+  // 有已接入项时它收在「其他接入方式」折叠里（没有已接入项时直接摆在首页）：没看见就先展开。
+  const localCard = win.locator('[data-model-home-available="local-text"]')
+  const otherWays = win.locator('[data-model-home-action="other-ways"]').first()
+  // 页面是异步渲染的：先等「卡」或「其他接入方式」二者之一出现（等元素，不是等时长），再决定要不要展开。
+  await expectVisible(localCard.first().or(otherWays), '模型设置首页没渲染出「本地模型」卡，也没有「其他接入方式」')
+  if (!(await localCard.first().isVisible().catch(() => false))) {
+    await clickOrFail(otherWays, '展开「其他接入方式」', { timeout: stationTimeout() })
+  }
+  await clickOrFail(localCard, '本地模型 可接入卡', { timeout: stationTimeout() })
 }
 
 // ── 场景一：探到 stub → 连 → 能力预检「支持 Agent」──────────────────────────────
