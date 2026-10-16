@@ -21,10 +21,10 @@ import { projectLaneSnapshot, type LaneModelFacts } from '../../electron/shared/
 import type { LaneToolDescriptor, LaneApprovalOptions } from '../../electron/agentLane/laneRuntimePort.js';
 import { LANE_APPROVAL_NOTE_TYPE, type LaneProjection } from '../../electron/shared/agentLane/laneContracts.js';
 import { LANE_READ_TOOL_TIMEOUT_MS } from '../../electron/shared/agentLane/laneToolContract.js';
-import { createLaneFixture, FIXTURE_DESCRIBE } from './laneFixture.mjs';
+import { createLaneFixture, FIXTURE_DESCRIBE, mustConfirm } from './laneFixture.mjs';
 
-/** 「每步问」：让写入必然停下来等人。abort 那条要一个稳定的等待点。 */
-const STEP: LaneApprovalOptions = { hasUserInterface: true, policy: () => ({ mode: 'step', spend: 'confirm' }) };
+/** 让写入必然停下来等人（`mustConfirm`）。abort 那条要一个稳定的等待点。 */
+const MUST_CONFIRM: LaneApprovalOptions = mustConfirm();
 
 /**
  * 一个**被测试握住**的工具：模型一调它就停在那儿，直到测试放行。
@@ -155,7 +155,7 @@ test('G3b② 非空侧 · 按停止：没送出去的那句话回到输入框，
   const fixture = await createLaneFixture(t, [
     { type: 'tool', calls: [{ id: 'call-append', name: 'write_script', arguments: { where: 'end', content: ' and then she left.' } }] },
     CLOSING,
-  ], STEP);
+  ], MUST_CONFIRM);
   const lane = await fixture.openLane(fixture.options);
 
   const run = lane.execute({ kind: 'prompt', text: 'Append a closing line.' });

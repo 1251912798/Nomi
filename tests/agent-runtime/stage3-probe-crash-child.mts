@@ -8,7 +8,7 @@
 // 名单拦下；绕过它就等于测了一条生产走不到的路。真崩溃 = 进程没了、盘上有一个 open 的操作。
 import { openLane } from '../../electron/agentLane/laneHost.mjs';
 import { createDocumentLaneTools } from '../../electron/agentLane/laneDocumentTools.js';
-import { createDocumentPort, LANE_SYSTEM_PROMPT } from './laneFixture.mjs';
+import { createDocumentPort, LANE_SYSTEM_PROMPT, mustConfirm } from './laneFixture.mjs';
 
 const [projectDir, baseURL] = process.argv.slice(2);
 if (!projectDir || !baseURL) throw new Error('usage: stage3-probe-crash-child <projectDir> <baseURL>');
@@ -18,8 +18,8 @@ const lane = await openLane({ fetch: globalThis.fetch,
   systemPrompt: LANE_SYSTEM_PROMPT,
   model: { kind: 'openai-compatible', providerId: 'nomi-lane', modelId: 'chosen-model', baseURL, authType: 'api-key', apiKey: 'fixture-key' },
   tools: createDocumentLaneTools(createDocumentPort()),
-  // 「每步问」+ 有窗口 = 这次写入必然停下来等人，而这个进程永远不回答。
-  approval: { hasUserInterface: true, policy: () => ({ mode: 'step', spend: 'confirm' }) },
+  // 宿主说这一次必须当场确认 + 有窗口 = 这次写入必然停下来等人，而这个进程永远不回答。
+  approval: mustConfirm(),
 });
 lane.subscribe((projection) => {
   if (projection.pending) process.stdout.write(`PARKED session=${lane.sessionId}\n`);

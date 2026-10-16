@@ -58,7 +58,7 @@ try {
   })
   await expandResidentPanel(win)
   await expect(win.locator(`${CANVAS_PANEL} [data-v4-block="composer"]`),
-    '默认档位就是「每次问我」：钱这一步不许被档位放行').toHaveAttribute('data-spend-policy', 'confirm')
+    '默认档位就是「每次问我」：钱这一步不许被档位放行').toHaveAttribute('data-approval-mode', 'request')
 
   const nodesBefore = (await readProject(win, projectId)).payload.generationCanvas.nodes.map((entry) => entry.id).sort()
 

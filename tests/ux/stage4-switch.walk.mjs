@@ -1,17 +1,17 @@
 #!/usr/bin/env node
 import { stationTimeout } from './_station-budget.mjs'
-// Four real lane UI states. Only the external provider is a loopback fixture.
-import { clickOrFail, expect, expectAbsent, proveProbe } from './_assert.mjs'
+// Real lane UI states (new conversation, direct undoable write, task card, queue). Only the external provider is a loopback fixture.
+import { clickOrFail, expect } from './_assert.mjs'
 import { FIXTURE_TEXT_MODEL_LABEL, flattenRequestText } from './agent-runtime-fixture.mjs'
 import {
-  APPROVAL_CARD, COMPOSER, COMPOSER_INPUT, COMPOSER_MODEL, COMPOSER_PERMISSION,
-  CREATION_PANEL, DOCUMENT, INTERVENTION_CONFIRM, QUEUE, TASK_CARD,
+  COMPOSER, COMPOSER_INPUT, COMPOSER_MODEL,
+  CREATION_PANEL, DOCUMENT, QUEUE, TASK_CARD,
   chooseAssistantModel, createRuntimeWalk, hasToolResult, newConversation,
-  permissionTier, readProject, recorded, selectConversation, sendCreation, waitForV4TurnIdle,
+  readProject, recorded, selectConversation, sendCreation, waitForV4TurnIdle,
 } from './agent-runtime-walk-support.mjs'
 import { laneDiskSnapshot, laneMessages, laneMessageText, readLaneTranscripts } from './agent-lane-observer.mjs'
 
-const WRITE = 'S4_WRITE：在文稿末尾追加一句话，先让我确认。'
+const WRITE = 'S4_WRITE：在文稿末尾追加一句话。'
 const TASK = 'S4_TASK：为这段创作安排一个可审阅的制作任务。'
 const QUEUED = 'S4_QUEUE：接下来记住杯子保持红色。'
 const STEER = 'S4_STEER：请把这一句也带到下一次思考。'
@@ -32,30 +32,24 @@ try {
   expect(laneMessages(created)).toEqual([])
   await walk.snap('new-conversation')
 
-  await clickOrFail(win.locator(`${CREATION_PANEL} ${COMPOSER_PERMISSION}`), '打开权限档位')
-  await clickOrFail(win.locator(permissionTier('step')), '每步问')
-  const write = walk.fixture.expectText({ label: 'real document append requires confirmation',
+  // 「请求批准」（默认档）下文稿追加直接做：2026-10-12 挡位收成两档，原来让这一步停下来等确认的「每步问」已删。
+  // 证据是因果的：工具结果回到模型之前没有任何人点过任何东西——有一张卡在等的话，这次请求永远不会来。
+  await expect(win.locator(`${CREATION_PANEL} ${COMPOSER}`)).toHaveAttribute('data-approval-mode', 'request')
+  const write = walk.fixture.expectText({ label: 'real document append applies directly under request',
     match: (body) => flattenRequestText(body).includes(WRITE),
     reply: { type: 'tool', id: 's4-append', name: 'append_to_end', args: { content: '\n阳光照亮杯沿。' } },
   })
-  const written = walk.fixture.expectText({ label: 'approved append returns its actual receipt',
-    match: (body) => hasToolResult(body, 's4-append'), reply: { type: 'text', text: '已按你的确认追加到文稿。' } })
+  const written = walk.fixture.expectText({ label: 'direct append returns its actual receipt',
+    match: (body) => hasToolResult(body, 's4-append'), reply: { type: 'text', text: '已追加到文稿，可以在收据上撤销。' } })
   await sendCreation(win, WRITE)
   await recorded(write.received, 'document append request')
-  const card = win.locator(`${CREATION_PANEL} ${APPROVAL_CARD}`)
-  const proof = await proveProbe(card, 'real lane approval is visible before the document changes')
-  await expect(win.locator(DOCUMENT)).not.toContainText('阳光照亮杯沿')
-  await walk.snap('approval-card')
-  await clickOrFail(card.locator(INTERVENTION_CONFIRM), '确认文稿修改')
-  await recorded(written.received, 'approved document receipt')
-  await expectAbsent(card, { provenBy: proof, message: 'The confirmed lane approval is consumed' })
+  await recorded(written.received, 'direct document receipt without any approval click')
   await waitForV4TurnIdle(win, { panel: CREATION_PANEL,
-    settledBy: win.locator(CREATION_PANEL).getByText('已按你的确认追加到文稿。', { exact: true }) })
+    settledBy: win.locator(CREATION_PANEL).getByText('已追加到文稿，可以在收据上撤销。', { exact: true }) })
   await expect(win.locator(DOCUMENT)).toContainText('阳光照亮杯沿')
   await expect.poll(async () => JSON.stringify((await readProject(win, projectId)).payload.workbenchDocuments)).toContain('阳光照亮杯沿')
+  await walk.snap('applied-directly')
 
-  await clickOrFail(win.locator(`${CREATION_PANEL} ${COMPOSER_PERMISSION}`), '切回自动改')
-  await clickOrFail(win.locator(permissionTier('safe-auto')), '自动改')
   const groups = walk.fixture.expectText({ label: 'ask the real native assembly for production tools',
     match: (body) => flattenRequestText(body).includes(TASK),
     reply: { type: 'tool', id: 's4-tools', name: 'nomi_request_tools', args: { group: 'production' } } })

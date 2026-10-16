@@ -122,7 +122,7 @@ try {
   // ═══ ② 「全自动」档：同一件事，一张卡都不出，图照样出来 ═══
   await clickOrFail(win.locator(`${CANVAS_PANEL} ${COMPOSER_PERMISSION}`), 'permission tier picker')
   await expect(win.locator(`${CANVAS_PANEL} ${PERMISSION_POPOVER}`)).toBeVisible()
-  await clickOrFail(win.locator(`${CANVAS_PANEL} ${permissionTier('project')}`), 'switch to full-auto')
+  await clickOrFail(win.locator(`${CANVAS_PANEL} ${permissionTier('direct')}`), 'switch to full-auto')
   const switchCard = win.locator(`${CANVAS_PANEL} ${APPROVAL_CARD}[data-kind="approval-reversible"]`)
   await expect(switchCard, 'switching tiers still asks once — that click is the authorisation').toBeVisible()
   await clickOrFail(switchCard.locator(INTERVENTION_CONFIRM), 'confirm full-auto')
