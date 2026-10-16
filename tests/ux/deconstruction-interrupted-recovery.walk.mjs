@@ -28,7 +28,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { launchNomiApp } from './_launchApp.mjs'
 import { DEFAULT_TIMEOUT_MS, clickOrFail, expect, expectAbsent, expectVisible, proveProbe, screenshotSettled } from './_assert.mjs'
-import { canvasFitViewButton, canvasResetView, canvasZoomPercent, canvasZoomSlider, closeCanvasViewOptions, newProjectEntry } from './_shell.mjs'
+import { canvasFitViewButton, canvasResetView, canvasZoomPercent, canvasZoomSlider, closeCanvasViewOptions, newProjectEntry, switchWorkspace, collapseAgentPanel } from './_shell.mjs'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const root = path.join(repoRoot, '.tmp', 'deconstruction-interrupted-recovery')
@@ -59,7 +59,7 @@ async function openBlankProjectCanvas(win) {
   for (let i = 0; i < 4; i += 1) { await win.keyboard.press('Escape').catch(() => {}); await win.waitForTimeout(160) }
   await clickOrFail(newProjectEntry(win), '新建空白项目', { noWaitAfter: true })
   await win.waitForFunction(() => /projectId=/.test(location.href), undefined, { timeout: DEFAULT_TIMEOUT_MS })
-  await clickOrFail(win.locator('[data-mode="generation"]'), '生成 tab')
+  await switchWorkspace(win, 'generation', '生成 tab')
   await win.waitForFunction(() => Boolean(window.__nomiCanvasStore), undefined, { timeout: DEFAULT_TIMEOUT_MS })
 }
 
@@ -69,7 +69,7 @@ async function reopenProjectCanvas(win) {
   // 隔离 profile 里只有刚才那一个项目；按语义按钮「继续创作」打开它（不按坐标、不按第 N 张卡）。
   await clickOrFail(win.getByRole('button', { name: '继续创作', exact: true }).first(), '继续创作（打开上次那个项目）', { noWaitAfter: true })
   await win.waitForFunction(() => /projectId=/.test(location.href), undefined, { timeout: DEFAULT_TIMEOUT_MS })
-  await clickOrFail(win.locator('[data-mode="generation"]'), '生成 tab')
+  await switchWorkspace(win, 'generation', '生成 tab')
   await win.waitForFunction(() => Boolean(window.__nomiCanvasStore), undefined, { timeout: DEFAULT_TIMEOUT_MS })
 }
 
@@ -134,7 +134,7 @@ try {
 
   // 收起助手面板 + 适应视图：否则表节点被右侧面板压掉半张，截图看不出那句话完没完整
   // （节点被压这件事本身是 T-DS-14，不在本刀范围，但截图必须是能用人眼判的）。
-  await clickOrFail(win.getByRole('button', { name: '收起面板', exact: true }), '收起助手面板')
+  await collapseAgentPanel(win, '收起助手面板')
   await clickOrFail(canvasFitViewButton(win), '适应全部节点')
   // 适应视图会缩到看不清字；截图要的是人眼能读的那一档，所以回到 100%。
   await canvasResetView(win, '重置为 100%')

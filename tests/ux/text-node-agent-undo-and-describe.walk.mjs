@@ -20,7 +20,7 @@ import {
   CANVAS_PANEL, TOOL_RECEIPT, chooseAssistantModel, createRuntimeWalk, expandResidentPanel, hasToolResult, openCanvas, readProject, recorded,
   sendCanvas, waitForV4TurnIdle,
 } from './agent-runtime-walk-support.mjs'
-import { canvasAddBar } from './_shell.mjs'
+import { addCanvasNode } from './_shell.mjs'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 const IMAGE = path.join(here, 'fixtures', 'test-upload.png')
@@ -43,14 +43,13 @@ try {
   await openCanvas(win)
   await expandResidentPanel(win)
 
-  const rail = canvasAddBar(win)
   const nodeIds = () => win.evaluate(() => (window.__nomiCanvasStore?.getState().nodes || []).map((node) => node.id))
   const editorOf = (id) => win.locator(`[data-node-id="${id}"] .ProseMirror`).first()
 
   // ── 一 · Agent 写正文 → 点回执「撤销」（两种起手：打完字还在编辑器里 / 点开空白处失焦）────────────
   async function agentWriteThenUndo({ tag, keepFocus, selectAll = false, fill = false }) {
     const before = new Set(await nodeIds())
-    await clickOrFail(rail.locator('button[aria-label="添加文字节点"]'), '左缘「添加文字节点」')
+    await addCanvasNode(win, 'text')
     await expect.poll(async () => (await nodeIds()).filter((id) => !before.has(id)).length).toBe(1)
     const id = (await nodeIds()).find((candidate) => !before.has(candidate))
     await expect.poll(() => win.locator(`[data-node-id="${id}"]`).count()).toBe(1)

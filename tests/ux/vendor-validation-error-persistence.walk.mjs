@@ -5,7 +5,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { launchNomiApp } from './_launchApp.mjs'
 import { expectAbsent, expectHidden, expectVisible, proveProbe, screenshotSettled } from './_assert.mjs'
-import { modelSettingsEntry, newProjectEntry } from './_shell.mjs'
+import { modelSettingsEntry, openModelSettings } from './_shell.mjs'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const root = path.join(repoRoot, '.tmp', 'vendor-validation-error-persist')
@@ -36,46 +36,18 @@ async function snap(win, name) {
   await screenshotSettled(win, { path: path.join(shotsDir, `${String(shot).padStart(2, '0')}-${name}.png`) })
 }
 async function openModels(win) {
-  const directTrigger = modelSettingsEntry(win, { where: 'project' }).or(win.locator('button:has-text("模型接入"), button:has-text("Connect model")')).first()
-  if (await directTrigger.count()) {
-    await expectVisible(directTrigger, '工作区应提供模型设置入口')
-    await directTrigger.click({ timeout: 5000 })
-    await expectVisible(win.getByRole('heading', { name: '模型', exact: true }).first(), '模型设置页面应已打开')
-    return
-  }
+  // 首屏可能还压着开屏介绍：先关掉，再经 _shell.mjs 走「顶栏齿轮 → 设置 → 模型页签」。
   const splash = win.getByRole('dialog', { name: /开屏介绍/ }).first()
-  let project = newProjectEntry(win)
+  const settingsEntry = modelSettingsEntry(win)
   const firstScreen = await Promise.race([
-    expectVisible(directTrigger, '工作区应提供模型设置入口').then(() => 'direct'),
+    expectVisible(settingsEntry, '顶栏应提供设置入口').then(() => 'ready'),
     expectVisible(splash, '开屏介绍应可关闭').then(() => 'splash'),
-    expectVisible(project, '项目库应提供新建空白项目入口').then(() => 'project'),
   ])
-  if (firstScreen === 'direct') {
-    await directTrigger.click({ timeout: 5000 })
-    await expectVisible(win.getByRole('heading', { name: '模型', exact: true }).first(), '模型设置页面应已打开')
-    return
-  }
   if (firstScreen === 'splash') {
     await splash.locator('button').last().click({ timeout: 5000, force: true })
     await expectHidden(splash, '开屏介绍应已关闭')
-    project = newProjectEntry(win)
   }
-  let trigger = modelSettingsEntry(win, { where: 'project' }).or(win.locator('button:has-text("模型接入"), button:has-text("Connect model")')).first()
-  if (!(await trigger.count())) {
-    const settings = win.getByRole('button', { name: '设置', exact: true }).first()
-    await expectVisible(settings, '项目库应提供设置入口')
-    await settings.click({ timeout: 5000 })
-    const modelTab = win.getByRole('button', { name: '模型', exact: true }).first()
-    await expectVisible(modelTab, '设置中应提供模型页签')
-    await modelTab.click({ timeout: 5000 })
-    await expectVisible(win.getByRole('heading', { name: '模型', exact: true }).first(), '模型设置页面应已打开')
-    return
-  }
-  await expectVisible(trigger, '创作工作区应提供模型接入入口')
-  await trigger.click({ timeout: 5000 })
-  if (!(await win.getByRole('heading', { name: '模型', exact: true }).count())) {
-    await win.evaluate(() => window.dispatchEvent(new CustomEvent('nomi-open-model-catalog')))
-  }
+  await openModelSettings(win, { label: 'open model settings', timeout: 5000 })
   await expectVisible(win.getByRole('heading', { name: '模型', exact: true }).first(), '模型设置页面应已打开')
 }
 async function invalidate(win, action) {

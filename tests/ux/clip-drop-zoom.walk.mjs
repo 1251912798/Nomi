@@ -12,6 +12,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { findCanvasBlankPoint, panCanvasUntilInside, waitForCanvasViewportSettled } from './_canvasHit.mjs'
 import { stationTimeout } from './_station-budget.mjs'
+import { canvasSetZoomPercent } from './_shell.mjs'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
 const ZOOMS = (process.env.CLIP_DROP_ZOOMS ?? '50,100,150').split(',').map(Number)
