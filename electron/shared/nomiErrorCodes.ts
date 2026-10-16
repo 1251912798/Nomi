@@ -92,9 +92,11 @@ export function stripNomiErrorCode(message: string): string {
   return (text.slice(0, m.index) + text.slice(m.index + m[0].length)).replace(/\s+/g, ' ').trim()
 }
 
-/** 「结果取回」族：带这些码的失败一律落可找回（任务已受理，免费重新取回），不进红色失败、不重新提交。 */
-export const RETRIEVAL_STAGE_CODES = ['retrieval-query', 'retrieval-parse', 'retrieval-download', 'retrieval-timeout', 'outbound-blocked'] as const satisfies readonly NomiErrorCode[]
-
-export function isRetrievalStageCode(code: NomiErrorCode | null): code is (typeof RETRIEVAL_STAGE_CODES)[number] {
-  return code !== null && (RETRIEVAL_STAGE_CODES as readonly string[]).includes(code)
+/**
+ * 「结果取回」族：带这些码的失败一律落可找回（任务已受理，免费重新取回），不进红色失败、不重新提交。
+ * 不另立一张码表：族 = 上面 NomiErrorCode 里 `retrieval-` 开头的那几个，加出站被拦（取回侧那一条）——
+ * 码的唯一定义仍是 NomiErrorCode，新增一个 retrieval-* 阶段码自动归族。
+ */
+export function isRetrievalStageCode(code: NomiErrorCode | null): code is Extract<NomiErrorCode, `retrieval-${string}` | 'outbound-blocked'> {
+  return code !== null && (code.startsWith('retrieval-') || code === 'outbound-blocked')
 }
