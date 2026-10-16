@@ -1,5 +1,5 @@
 import type { ProductionExecutionBinding } from "../productionRun/productionExecutionBinding";
-import { classifyUpstreamTaskStatus } from "../shared/taskStatusVocabulary";
+import { classifyUpstreamTaskStatus } from "../shared/taskStatus";
 import {
   assertProductionGenerationPayloadHash,
   productionGenerationPayloadHash,
@@ -166,7 +166,7 @@ export class GenerationProviderObservationError extends Error {
   }
 }
 
-/** 上游状态词 → 任务态：问全仓唯一那张词表（shared/taskStatusVocabulary，#1213 收口），不在这里另存一份。 */
+/** 上游状态词 → 任务态：问全仓唯一那张词表（shared/taskStatus，#1213 收口），不在这里另存一份。 */
 export function normalizeGenerationProviderTaskState(providerStatus: string): GenerationProviderTaskState {
   return classifyUpstreamTaskStatus(providerStatus);
 }

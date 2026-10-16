@@ -7,7 +7,7 @@ import { firstString, isJsonRecord, readNestedRecord, trim, type JsonRecord } fr
 
 export type { TaskStatus } from "../shared/taskStatus";
 import type { TaskStatus } from "../shared/taskStatus";
-import { classifyUpstreamTaskStatus } from "../shared/taskStatusVocabulary";
+import { classifyUpstreamTaskStatus } from "../shared/taskStatus";
 
 export function maybeParseJsonString(value: unknown): unknown {
   if (typeof value !== "string") return value;
@@ -114,7 +114,7 @@ export function resolveTaskStatus(response: unknown, responseMapping: JsonRecord
     const values = Array.isArray(sm[status]) ? sm[status] : [];
     if (values.map((item) => String(item).toLowerCase()).includes(fallbackStatus)) return recognized(status);
   }
-  // 通用状态词表（供应商无关）：全仓唯一一份 shared/taskStatusVocabulary，引擎 B 与这里问的是同一张表
+  // 通用状态词表（供应商无关）：全仓唯一一份 shared/taskStatus，引擎 B 与这里问的是同一张表
   // （#1213：四张表各漏不同的词，同一个上游动词在画布与制作 Run 里被判成两样）。
   const vocabulary = classifyUpstreamTaskStatus(fallbackStatus);
   if (vocabulary === "queued" || vocabulary === "running" || vocabulary === "succeeded") return recognized(vocabulary);

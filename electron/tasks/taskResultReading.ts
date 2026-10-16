@@ -10,12 +10,13 @@
 //      含 content.* / data.* / output.* / results[*] / videos[*] 等嵌套，以及被当字符串二次嵌套的 JSON），
 //      只收 http(s) / data: / nomi-local: 地址，**按期望的媒体类型核扩展名**，**排除本次请求回显的参考地址**，
 //      并排除缩略图 / 封面 / 尾帧 / 参考这类字段。只取排名最高的那一处（同一张列表里的兄弟一起），并说出用的是哪条规则。
-//   3. 状态由共享词表判（resolveTaskStatus → shared/taskStatusVocabulary），产物作硬证据参与判定。
+//   3. 状态由共享词表判（resolveTaskStatus → shared/taskStatus），产物作硬证据参与判定。
 // 下载那一步还会按 content-type / 字节再核一次（assets/generatedMediaDecode），这里只做便宜的第一道。
 import type { JsonRecord } from "../jsonUtils";
 import { isJsonRecord } from "../jsonUtils";
 import { collectAssetUrls, maybeParseJsonString, resolveTaskStatus, valuesFromMapping, type TaskStatus } from "./responseParsing";
 import { extractAssetUrl } from "./assetUrlExtract";
+import { logInfo } from "../logging/logger";
 
 export type ExpectedMediaKind = "image" | "video" | "audio" | "model3d";
 
@@ -163,6 +164,8 @@ export function readTaskResponse(input: {
   statusMapping: Record<string, string[]> | undefined;
   wantedKind: ExpectedMediaKind | null;
   echoUrls?: ReadonlySet<string>;
+  /** 有就在走了通用规则时记一条日志（哪家、哪个模型、哪条路径），排查与补合同用。 */
+  trace?: { vendor?: string; model?: string };
 }): TaskResponseReading {
   const contractUrls = Array.from(new Set(
     CONTRACT_ASSET_KEYS.flatMap((key) => valuesFromMapping(input.response, input.responseMapping, key)).flatMap(collectAssetUrls),
@@ -176,6 +179,9 @@ export function readTaskResponse(input: {
   const resolved = resolveTaskStatus(input.response, input.responseMapping, input.statusMapping, assetUrls);
   // 通用规则找到的地址只在上游说成功（或动词认不出、靠这份产物作证据）时才算数：
   // 「进行中」的响应里出现的地址多半是占位 / 预览，不能拿去落盘。
-  if (generic && resolved.status === "succeeded") return { ...resolved, assetUrls, rule: `generic:${generic.path}` };
+  if (generic && resolved.status === "succeeded") {
+    if (input.trace) logInfo("tasks", "result-read-generic-rule", { vendor: input.trace.vendor || "?", model: input.trace.model || "?", rule: `generic:${generic.path}` });
+    return { ...resolved, assetUrls, rule: `generic:${generic.path}` };
+  }
   return { ...resolved, assetUrls: [], rule: "none" };
 }

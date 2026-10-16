@@ -2,7 +2,7 @@
 // 说出用的是哪条规则；状态问共享词表，认不出不当失败。
 import { describe, expect, it } from "vitest";
 import { findResultUrlByGenericRule, readTaskResponse, requestEchoUrls } from "./taskResultReading";
-import { classifyUpstreamTaskStatus } from "../shared/taskStatusVocabulary";
+import { classifyUpstreamTaskStatus } from "../shared/taskStatus";
 
 const MP4 = "https://cdn.example.test/out.mp4";
 

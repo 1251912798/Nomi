@@ -8,7 +8,7 @@
  * 那是一次应该自己被审的机械改名，不该混在这刀行为变更里。
  */
 import type { GenerationProvider, GenerationProviderRequestInputV1 } from "./generationRuntimeAdapter";
-import { classifyUpstreamTaskStatus } from "../shared/taskStatusVocabulary";
+import { classifyUpstreamTaskStatus } from "../shared/taskStatus";
 import { appFetch } from "../appFetch";
 import { requestJson, VendorRequestError } from "../vendor/vendorHttp";
 import { materializationOutputs } from "./apimartGenerationOutputs";
@@ -764,7 +764,7 @@ export function createCatalogGenerationProvider(options: CatalogGenerationProvid
       // reconciliation (indeterminate): callers must not materialize outputs or
       // resubmit from an ambiguous provider receipt. A recognised status proves
       // the task exists → found.
-      // 认不认得这个状态：问全仓唯一那张词表（shared/taskStatusVocabulary，#1213），不再自带一份。
+      // 认不认得这个状态：问全仓唯一那张词表（shared/taskStatus，#1213），不再自带一份。
       return classifyUpstreamTaskStatus(result.status) !== "unknown"
         ? { disposition: "found", providerTaskId: input.providerTaskId, raw: result.raw }
         : { disposition: "indeterminate", providerTaskId: input.providerTaskId, raw: result.raw };
