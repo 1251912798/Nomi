@@ -38,3 +38,14 @@ describe('两档共用同一份身份契约', () => {
     expect(render({ status: 'running' })).toContain('data-status="running"')
   })
 })
+
+// Suspense 兜底（种类渲染器 chunk 没到）和真正的轻量档长得一样，但它马上会被整棵换掉；
+// 只有兜底带 data-node-loading，走查按它等「卡已经是正式的」再点，免得点击落在即将被摘掉的元素上而丢掉。
+describe('Suspense 兜底带 loading 标记', () => {
+  it('只有兜底态带 data-node-loading', () => {
+    expect(render({})).not.toContain('data-node-loading')
+    const loading = renderToStaticMarkup(React.createElement(LightweightGenerationNode, { node, appear: false, loading: true }))
+    expect(loading).toContain('data-node-loading="true"')
+    expect(loading).toContain('data-render-mode="lightweight"')
+  })
+})
