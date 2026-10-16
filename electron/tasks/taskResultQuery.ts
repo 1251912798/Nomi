@@ -26,6 +26,9 @@ import {
   localizeTaskAsset,
 } from "../runtime";
 import { logWarn } from "../logging/logger";
+import { matchNomiErrorCode, tagNomiError } from "../shared/nomiErrorCodes";
+import { VendorRequestError } from "../vendor/vendorHttp";
+import { noteRelayQueryOutcome } from "../catalog/relayNativeWireUpgrade";
 
 // ── 未登记状态动词的有界容忍（根因修复，见 docs/plan/2026-08-11-unrecognized-task-status-root-fix.md）──
 //
@@ -83,15 +86,39 @@ export function unrecognizedStatusExhausted(streak: CachedTask["unrecognizedStat
   return streak.polls >= UNRECOGNIZED_STATUS_MIN_POLLS && now - streak.firstSeenAt >= UNRECOGNIZED_STATUS_GRACE_MS;
 }
 
+/** 上游原话的摘录：读不出结果时，用户和我们都要看到上游到底回了什么（只截一段，不整包落盘）。 */
+function upstreamExcerpt(response: unknown): string {
+  try {
+    const text = typeof response === "string" ? response : JSON.stringify(response);
+    return text.length > 300 ? `${text.slice(0, 300)}…` : text;
+  } catch {
+    return "";
+  }
+}
+
 /**
- * A queue can report COMPLETED while its result endpoint contains no media.
- * Treat that as a terminal failure for async media instead of persisting a
- * misleading succeeded task with an empty asset list. Text tasks and the
- * synchronous audio runner do not pass through this boundary.
+ * 取回失败的统一出口：带上阶段码（shared/nomiErrorCodes 的 retrieval-*）与阶段说明。已经带码的错误
+ * （出站被拦 / 产物读不出……）原样放行——那是更具体的事实。VendorRequestError 保留结构化字段（IPC 那头
+ * 靠它说出「服务商原话」）。渲染层见码即落「可找回」：任务已受理，免费重新取回，绝不重新提交。
  */
-export function ensureAsyncMediaOutput(result: TaskResult, wantedKind: string): TaskResult {
-  if (result.status !== "succeeded" || !["image", "video", "audio", "model3d"].includes(wantedKind) || result.assets.length > 0) return result;
-  return { ...result, status: "failed", error: desktopT("tasks.completedWithoutOutput") };
+export function retrievalStageError(code: "retrieval-query" | "retrieval-parse" | "retrieval-download", error: unknown, note = ""): Error {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  if (matchNomiErrorCode(message)) return error instanceof Error ? error : new Error(message);
+  const stageKey = code === "retrieval-query" ? "tasks.retrievalStage.query" : code === "retrieval-parse" ? "tasks.retrievalStage.parse" : "tasks.retrievalStage.download";
+  const human = `${note ? `${note} ` : ""}${desktopT(stageKey)}${message}`;
+  const tagged = tagNomiError(code, human);
+  return error instanceof VendorRequestError ? new VendorRequestError(tagged, error.structured, error.providerAnswer, { cause: error }) : new Error(tagged);
+}
+
+/**
+ * 上游说成了、却没取到产物：**不判失败**（#1213 原则 1：上游说成了，Nomi 就不能判失败）。
+ * 返回一个 retrieval-parse 错误（带上游原话摘录），调用方抛出——任务留在缓存里、节点落「可找回」，
+ * 之后的查询或「重新取回」可能拿到地址（有的中转先报成功、后补地址）。文本任务与同步音频不走这里。
+ */
+export function missingAsyncMediaOutput(result: TaskResult, wantedKind: string, upstream: unknown): Error | null {
+  if (result.status !== "succeeded" || !["image", "video", "audio", "model3d"].includes(wantedKind) || result.assets.length > 0) return null;
+  const excerpt = upstreamExcerpt(upstream);
+  return retrievalStageError("retrieval-parse", desktopT("tasks.completedWithoutOutput") + (excerpt ? desktopT("tasks.upstreamSaid", { detail: excerpt }) : ""));
 }
 
 /**
@@ -173,86 +200,119 @@ async function executeTaskQuery(taskId: string, cached: CachedTask): Promise<{ v
     } catch {
       return { vendor: cached.vendor, result: { id: taskId, kind: cached.request.kind, status: "failed", assets: [], raw: {}, error: desktopT("tasks.modelUnresolvable") } };
     }
-    let executed = await executeProfileOperation({
+    const queryProviderMeta = {
+      ...(cached.providerMeta || {}),
+      query_id: cached.providerMeta?.query_id || taskId,
+      task_id: cached.providerMeta?.task_id || taskId,
+    };
+    const runQuery = (operation: NonNullable<typeof queryOperation>) => executeProfileOperation({
       vendor,
       model,
       apiKey,
       request: cached.request,
-      operation: queryOperation,
+      operation,
       stage: "query",
-      providerMeta: {
-        ...(cached.providerMeta || {}),
-        query_id: cached.providerMeta?.query_id || taskId,
-        task_id: cached.providerMeta?.task_id || taskId,
-      },
+      providerMeta: queryProviderMeta,
     });
-    let normalized = await buildProfileTaskResult({
-      response: executed.response,
-      mapping: cached.mapping,
-      operation: queryOperation,
-      request: cached.request,
-      taskIdFallback: taskId,
-      wantedKind: cached.wantedKind || model.kind,
-      projectId: cached.projectId,
-      nodeId: cached.nodeId,
-      vendor,
-      model,
-    });
-    if (normalized.result.status === "succeeded" && cached.mapping.result) {
+    // 「查」这一步只有一种构造（首次轮询与「重新取回」都走这里，缓存命中与无状态重建只差上下文来源）。
+    // 中转上的原生通道连续按合同认出的非瞬时失败（无可用渠道 / 路由不存在 / 任务号无效）→ 体检 owner
+    // 单向退回通用通道、记日志；这一单免费用通用查询再试一次，不重新提交（#1213 原则 2）。
+    let mapping = cached.mapping;
+    let activeQuery = queryOperation;
+    let fellBackNote = "";
+    let executed: Awaited<ReturnType<typeof executeProfileOperation>>;
+    try {
+      executed = await runQuery(activeQuery);
+      noteRelayQueryOutcome({ vendorKey: cached.vendor, model, mapping, error: null });
+    } catch (error) {
+      const fallback = noteRelayQueryOutcome({ vendorKey: cached.vendor, model, mapping, error });
+      const archetype = cached.request.extras?.archetype;
+      const modeId = archetype && typeof archetype === "object" ? trim((archetype as JsonRecord).modeId) : "";
+      const replacement = fallback ? findTaskMapping(cached.vendor, cached.request.kind, model.modelKey, modeId || undefined) : null;
+      if (!fallback || !replacement?.query) throw retrievalStageError("retrieval-query", error);
+      fellBackNote = desktopT("tasks.wireFellBack", { from: fallback.from, to: fallback.to, count: fallback.count });
+      mapping = replacement;
+      activeQuery = replacement.query;
+      try {
+        executed = await runQuery(activeQuery);
+      } catch (retryError) {
+        throw retrievalStageError("retrieval-query", retryError, fellBackNote);
+      }
+    }
+    const readResult = async (response: unknown, operation: NonNullable<typeof queryOperation>) => {
+      try {
+        return await buildProfileTaskResult({
+          response,
+          mapping,
+          operation,
+          request: cached.request,
+          taskIdFallback: taskId,
+          wantedKind: cached.wantedKind || model.kind,
+          projectId: cached.projectId,
+          nodeId: cached.nodeId,
+          vendor,
+          model,
+        });
+      } catch (error) {
+        // 读到地址后落盘没成（下载 / 落盘）：带 download 阶段；出站被拦等更具体的码原样放行。
+        throw retrievalStageError("retrieval-download", error, fellBackNote);
+      }
+    };
+    let normalized = await readResult(executed.response, activeQuery);
+    if (normalized.result.status === "succeeded" && mapping.result) {
       const resultProviderMeta = {
         ...(cached.providerMeta || {}),
         ...normalized.providerMeta,
         query_id: normalized.providerMeta.query_id || cached.providerMeta?.query_id || taskId,
         task_id: normalized.providerMeta.task_id || cached.providerMeta?.task_id || taskId,
       };
-      executed = await executeProfileOperation({
-        vendor,
-        model,
-        apiKey,
-        request: cached.request,
-        operation: cached.mapping.result,
-        stage: "result",
-        providerMeta: resultProviderMeta,
-      });
-      const resultNormalized = await buildProfileTaskResult({
-        response: executed.response,
-        mapping: cached.mapping,
-        operation: cached.mapping.result,
-        request: cached.request,
-        taskIdFallback: taskId,
-        wantedKind: cached.wantedKind || model.kind,
-        projectId: cached.projectId,
-        nodeId: cached.nodeId,
-        vendor,
-        model,
-      });
-      normalized = {
-        ...resultNormalized,
-        result: ensureAsyncMediaOutput(resultNormalized.result, cached.wantedKind || model.kind),
-        providerMeta: { ...resultProviderMeta, ...resultNormalized.providerMeta },
-      };
+      try {
+        executed = await executeProfileOperation({
+          vendor,
+          model,
+          apiKey,
+          request: cached.request,
+          operation: mapping.result,
+          stage: "result",
+          providerMeta: resultProviderMeta,
+        });
+      } catch (error) {
+        throw retrievalStageError("retrieval-query", error, fellBackNote);
+      }
+      const resultNormalized = await readResult(executed.response, mapping.result);
+      normalized = { ...resultNormalized, providerMeta: { ...resultProviderMeta, ...resultNormalized.providerMeta } };
     }
-    // 未知动词的有界容忍：连击够久 → 把「假装排队」翻成诚实的失败，并如实带上原始动词。
+    // 认不出的动词：连击够久也**不判失败**（原则 1），而是交「可找回」并如实报出原始动词。
     const now = Date.now();
     const streak = advanceUnrecognizedStatusStreak(cached.unrecognizedStatusStreak, normalized.unrecognizedStatus, now);
     if (normalized.unrecognizedStatus) reportUnrecognizedStatus(cached, taskId, normalized.unrecognizedStatus);
-    // 「COMPLETED 但零产物判失败」守卫对 query 返回统一生效——不能只挂在 result-op 二跳分支：
-    // kie/apimart 一族 mapping 只有 query op（result 资产就在 query 响应里），query 回 completed
-    // 且取不到资产时同样必须落失败，否则持久化 succeeded+0 assets 的静默空成功。
-    const result = ensureAsyncMediaOutput(
-      unrecognizedStatusExhausted(streak, now)
-        ? {
-            ...normalized.result,
-            status: "failed" as const,
-            error: desktopT("tasks.unrecognizedStatus", {
-              status: streak?.verb || "",
-              polls: streak?.polls || 0,
-              seconds: Math.round((now - (streak?.firstSeenAt || now)) / 1000),
-            }),
-          }
-        : normalized.result,
-      cached.wantedKind || model.kind,
-    );
+    const lastResponse = executed.response;
+    const keepWaiting = () => admitTask(taskId, {
+      ...cached,
+      mapping,
+      raw: lastResponse,
+      providerMeta: {
+        ...(cached.providerMeta || {}),
+        ...normalized.providerMeta,
+      },
+      // 必须显式回写：认得的动词会让 streak 变 undefined，靠 ...cached 会把旧连击带回来。
+      unrecognizedStatusStreak: streak,
+    });
+    if (unrecognizedStatusExhausted(streak, now)) {
+      keepWaiting();
+      throw retrievalStageError("retrieval-parse", desktopT("tasks.unrecognizedStatus", {
+        status: streak?.verb || "",
+        polls: streak?.polls || 0,
+        seconds: Math.round((now - (streak?.firstSeenAt || now)) / 1000),
+      }), fellBackNote);
+    }
+    // 「说成了却没产物」对 query 与 result 两跳统一生效：不判失败，留在缓存里等下一次查 / 重新取回。
+    const missingOutput = missingAsyncMediaOutput(normalized.result, cached.wantedKind || model.kind, lastResponse);
+    if (missingOutput) {
+      keepWaiting();
+      throw missingOutput;
+    }
+    const result = normalized.result;
 
     if (result.status === "succeeded" || result.status === "failed") {
       // 终态才入日志(轮询 tick 不记);cache.delete 保证单次触发
@@ -266,16 +326,7 @@ async function executeTaskQuery(taskId: string, cached: CachedTask): Promise<{ v
       rememberTaskResult(cached.projectId || "", cached.fingerprint, result);
       taskCache.delete(taskId);
     } else {
-      admitTask(taskId, {
-        ...cached,
-        raw: executed.response,
-        providerMeta: {
-          ...(cached.providerMeta || {}),
-          ...normalized.providerMeta,
-        },
-        // 必须显式回写：认得的动词会让 streak 变 undefined，靠 ...cached 会把旧连击带回来。
-        unrecognizedStatusStreak: streak,
-      });
+      keepWaiting();
     }
     return { vendor: cached.vendor, result };
   }

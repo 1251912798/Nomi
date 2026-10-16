@@ -44,6 +44,17 @@ export type NomiErrorCode =
   // 付费提交发出后没拿到回复（连接被重置 / 响应超时 / 提交途中进程退出）：供应商**可能已经收下**，
   // Nomi 没法自动核对。不能说「没发到」，也不能自动重发；下一步是先去服务商后台核对。
   | 'submission-unknown'
+  // 异步任务「结果取回」的阶段码（#1213）。任务**已经被受理、钱多半已经花了**，丢的只是把结果拿回来这一步——
+  // 统一落「可找回」（免费重新取回，绝不重新提交），并说清卡在哪一步：
+  //   retrieval-query    查任务这一步报错（无可用渠道 / 路由不存在 / 任务号无效 / 网络……）
+  //   retrieval-parse    上游有回答，但读不出结果（说成了却没地址 / 状态词认不出）
+  //   retrieval-download 有地址，下载到本机没成（出站被拦另有 outbound-blocked）
+  //   retrieval-timeout  等到上限还没终态
+  // 提交阶段（还没拿到任务号）的失败不在这一族：那时没有可找回的任务，见 submission-* / outbound-blocked-submit。
+  | 'retrieval-query'
+  | 'retrieval-parse'
+  | 'retrieval-download'
+  | 'retrieval-timeout'
 
 const MARKER_PREFIX = 'NOMI_ERR::'
 const MARKER_SUFFIX = '::'
@@ -72,4 +83,11 @@ export function stripNomiErrorCode(message: string): string {
   const m = MARKER_RE.exec(text)
   if (!m) return text
   return (text.slice(0, m.index) + text.slice(m.index + m[0].length)).replace(/\s+/g, ' ').trim()
+}
+
+/** 「结果取回」族：带这些码的失败一律落可找回（任务已受理，免费重新取回），不进红色失败、不重新提交。 */
+export const RETRIEVAL_STAGE_CODES = ['retrieval-query', 'retrieval-parse', 'retrieval-download', 'retrieval-timeout', 'outbound-blocked'] as const satisfies readonly NomiErrorCode[]
+
+export function isRetrievalStageCode(code: NomiErrorCode | null): code is (typeof RETRIEVAL_STAGE_CODES)[number] {
+  return code !== null && (RETRIEVAL_STAGE_CODES as readonly string[]).includes(code)
 }

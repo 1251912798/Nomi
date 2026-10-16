@@ -5,7 +5,7 @@
 // new-api 的任务信封一律「完成但没有产物」（钱扣了、片在上游），查询报错又被找回面板吞掉。
 //
 // 这里把各中转**真实**会回的形状做成一组夹具（每个注明来源），**两条通道跑同一组**：
-// 生产函数真跑（executeProfileOperation → buildProfileTaskResult → ensureAsyncMediaOutput），只有 HTTP
+// 生产函数真跑（executeProfileOperation → buildProfileTaskResult → missingAsyncMediaOutput），只有 HTTP
 // 是本机回环，零花费。期望表就是合同：任何形状对不上，这里先红。
 import http from "node:http";
 import type { AddressInfo } from "node:net";
@@ -18,7 +18,7 @@ vi.mock("electron", () => ({
 }));
 
 import { buildProfileTaskResult, executeProfileOperation } from "../runtime";
-import { ensureAsyncMediaOutput } from "../tasks/taskResultQuery";
+import { missingAsyncMediaOutput } from "../tasks/taskResultQuery";
 import { nativeWireProfileForArchetype } from "./nativeWireProfiles";
 import { newapiTransportFor } from "./newapiTransport";
 import type { Mapping, Model, Vendor } from "./types";
@@ -89,12 +89,13 @@ const FIXTURES: Fixture[] = [
     expect: { status: "succeeded", url: VIDEO_URL },
   },
   {
-    // OpenAI-video 对象本身不带地址（片子在 /v1/videos/{id}/content，要鉴权）——如实失败，不假装成功。
+    // OpenAI-video 对象本身不带地址（片子在 /v1/videos/{id}/content，要鉴权）——上游说成了就不判失败：
+    // 带 retrieval-parse 落「可找回」，原话进技术详情（#1213 原则 1）。
     name: "OpenAI-video 对象（completed、无地址）",
     source: "new-api dto/openai_video.go OpenAIVideo",
     http: 200,
     body: { id: RELAY_TASK_ID, object: "video", model: "doubao-seedance-2-0-fast-260128", status: "completed", progress: 100 },
-    expect: { status: "failed", error: /没有返回可用产物|no usable output/i },
+    expect: { throws: /NOMI_ERR::retrieval-parse::[\s\S]*completed/ },
   },
   {
     name: "无可用渠道 503",
@@ -157,7 +158,9 @@ async function queryOnce(mapping: Mapping) {
   const providerMeta = { ...accepted.providerMeta, task_id: accepted.result.id, query_id: accepted.result.id };
   const polled = await executeProfileOperation({ vendor, model, apiKey: "k", request, operation: mapping.query!, providerMeta });
   const normalized = await buildProfileTaskResult({ response: polled.response, mapping, operation: mapping.query!, request, taskIdFallback: accepted.result.id, wantedKind: "video", vendor, model });
-  return ensureAsyncMediaOutput(normalized.result, "video");
+  const missing = missingAsyncMediaOutput(normalized.result, "video", polled.response);
+  if (missing) throw missing;
+  return normalized.result;
 }
 
 describe.each(WIRES)("$wire：真实中转形状合同", ({ mapping }) => {

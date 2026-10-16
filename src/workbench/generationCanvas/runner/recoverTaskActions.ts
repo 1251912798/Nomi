@@ -11,6 +11,7 @@ import { asTrimmedString, resolveTaskKind, selectedModelKey, selectedVendor } fr
 import { normalizeCatalogTaskResult } from './catalogTaskResultParse'
 import i18n from '../../../i18n'
 import { describeOpaqueFailure } from '../../observability/opaqueFailure'
+import { isRetrievalStageCode, matchNomiErrorCode } from '../../../../electron/shared/nomiErrorCodes'
 import type { MediaDimensions } from '../nodes/nodeSizing'
 import { awaitMediaTransfer, describePhaseSilence } from './generationPhaseDeadline'
 import { isTerminalTaskStatus } from '../../../../electron/shared/taskStatus'
@@ -145,7 +146,10 @@ export async function recoverNodeResult(nodeId: string, project: ProjectExecutio
     if (landedInOpenProject) await persistActiveWorkbenchProjectNow().catch(() => {})
   } catch (error) {
     // 终态是 failed（normalizeCatalogTaskResult 对 failed 抛错）→ 这才是真失败，落 error 桶。
-    await deliverRunOutcome(target, id, { kind: 'status', status: 'error', error: describeOpaqueFailure(error) })
+    // 「结果取回」族（上游说成了却没地址等，带 retrieval-* 码）不是失败：留在可找回（#1213 原则 1）。
+    const message = describeOpaqueFailure(error)
+    const status = isRetrievalStageCode(matchNomiErrorCode(message)) ? 'recoverable' : 'error'
+    await deliverRunOutcome(target, id, { kind: 'status', status, error: message })
   }
 }
 
