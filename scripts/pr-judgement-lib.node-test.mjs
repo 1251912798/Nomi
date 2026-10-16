@@ -197,6 +197,8 @@ test('端到端：临时 git 仓库里跑 CI 脚本——没勾分类 / 缺证�
     fs.writeFileSync(path.join(root, rel), content)
   }
   git(root, 'init', '-q'); git(root, 'config', 'user.email', 't@t'); git(root, 'config', 'user.name', 't'); git(root, 'config', 'commit.gpgsign', 'false')
+  // 政策表取 base 版本（G-perfreg）：fixture 的 base 带上真实路由表
+  fs.mkdirSync(path.join(root, 'docs/engineering'), { recursive: true }); fs.copyFileSync(path.join(here, '..', 'docs/engineering/test-routing.json'), path.join(root, 'docs/engineering/test-routing.json'))
   write('electron/spendLedger.ts', 'export const v = 0\n')
   write('scripts/check-x.mjs', 'export const x = 0\n')
   git(root, 'add', '-A'); git(root, 'commit', '-q', '-m', 'base')
@@ -238,6 +240,8 @@ test('端到端：逃逸账本一条一个文件——条目文件被删（base 
   fs.mkdirSync(dir, { recursive: true })
   const put = (name, value) => fs.writeFileSync(path.join(dir, name), `${JSON.stringify(value, null, 2)}\n`)
   git(root, 'init', '-q'); git(root, 'config', 'user.email', 't@t'); git(root, 'config', 'user.name', 't'); git(root, 'config', 'commit.gpgsign', 'false')
+  // 政策表取 base 版本（G-perfreg）：fixture 的 base 带上真实路由表
+  fs.mkdirSync(path.join(root, 'docs/engineering'), { recursive: true }); fs.copyFileSync(path.join(here, '..', 'docs/engineering/test-routing.json'), path.join(root, 'docs/engineering/test-routing.json'))
   put('_meta.json', { $schemaVersion: 1 })
   put('LAW12-a.json', { id: 'LAW12-a', status: 'candidate' })
   put('LAW12-b.json', { id: 'LAW12-b', status: 'candidate' })
@@ -401,4 +405,34 @@ test('性能场景证据（2026-10-11）：界面 / 画布 / 长跑改动必交 
   assert.equal(requiredEvidence(['perf'], table, '2026-10-12T00:00:00Z').length, 1)
   assert.equal(requiredEvidence(['perf'], table, null).length, 1)
   assert.equal(evaluatePrJudgement({ body: '## 设计卡\n### 功能分类\n- [x] 新增功能 / 性能', files: [M('src/workbench/generationCanvas/canvasStore.ts')], createdAt: '2026-10-12T00:00:00Z', table }).routing.ok, false)
+})
+
+// G-perfreg（2026-10-15）：合并前扫描的检出是 origin/main，PR 新增的场景文件不在检出里。已知 id = (基线 − 本 PR 删掉的) ∪ 本 PR 新增 / 改动的文件；取不到 PR 头内容 / JSON 坏 → 判红并说人话（fail-closed）。
+// 用公开判据入口 checkRoutingEvidence，输入的 scenarios 形状与 knownScenarios 的返回一致（测试不依赖新导出，修前红的原因是「不在登记表」）。
+test('性能场景：基线没有 X、PR 新增 X → 判过；基线也没有、PR 也没新增的 Y → 红', () => {
+  const perfLine = (id) => `## 验收证据
+- perf-scenario：${id} 中位数 20 / p95 24 / 预算 33`
+  const prAdded = { ids: ['base-one', 'new-one'], problems: [] }
+  assert.equal(checkRoutingEvidence(perfLine('new-one'), ['perf'], table, null, prAdded).ok, true, '本 PR 新增的场景要判过')
+  assert.equal(checkRoutingEvidence(perfLine('base-one'), ['perf'], table, null, prAdded).ok, true, '基线登记表里的场景照样过')
+  const ghost = checkRoutingEvidence(perfLine('ghost-y'), ['perf'], table, null, { ids: ['base-one', 'new-one'], problems: [] })
+  assert.equal(ghost.ok, false, 'Y 既不在基线、也不是本 PR 新增，必须红')
+  assert.match(ghost.lines.join('\n'), /不在登记表/)
+})
+
+test('性能场景：PR 头文件取不到 / JSON 解析不了 → 判红并说人话（fail-closed）', async () => {
+  const { knownScenarios } = await import('./perf-scenarios-lib.mjs')
+  const SC = (id) => JSON.stringify({ id, feature: '样例：拖动节点', script: 'tests/perf/canvas-scale-bench.mjs', args: [], scale: '150 个图片节点', metrics: ['frameGapP95'], budget: 33, baseline: { median: 20, p95: 24, runs: 5, machine: 't', date: '2026-10-15', commit: 'abc1234' } })
+  const perfLine = (id) => `## 验收证据
+- perf-scenario：${id} 中位数 20 / p95 24 / 预算 33`
+  const base = [{ file: 'tests/perf/scenarios/base-one.json', data: JSON.parse(SC('base-one')) }]
+  const lost = knownScenarios({ baseEntries: base, prFiles: [{ file: 'tests/perf/scenarios/new-one.json', content: null }] })
+  const unreadable = checkRoutingEvidence(perfLine('base-one'), ['perf'], table, null, lost)
+  assert.equal(unreadable.ok, false, 'PR 头内容取不到必须红（fail-closed）')
+  assert.match(unreadable.lines.join('\n'), /PR 头内容取不到/, '要说人话写出原因')
+  const broken = knownScenarios({ baseEntries: base, prFiles: [{ file: 'tests/perf/scenarios/new-one.json', content: '{ not json' }] })
+  assert.equal(checkRoutingEvidence(perfLine('base-one'), ['perf'], table, null, broken).ok, false, 'JSON 解析不了必须红')
+  assert.match(checkRoutingEvidence(perfLine('base-one'), ['perf'], table, null, broken).lines.join('\n'), /JSON 读不了/)
+  const removed = knownScenarios({ baseEntries: base, prFiles: [], removedFiles: ['tests/perf/scenarios/base-one.json'] })
+  assert.equal(checkRoutingEvidence(perfLine('base-one'), ['perf'], table, null, removed).ok, false, '本 PR 删掉的基线场景不再认得')
 })
