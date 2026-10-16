@@ -134,7 +134,7 @@ export function BrowserAssetPopoverView(props: BrowserAssetPopoverViewProps): JS
                 </span>
               </div>
               {onBrowserCaptureToggle ? (
-                <button type="button" className={cn(TOOL_BUTTON_CLASS, browserCaptureEnabled && 'bg-nomi-accent-soft text-nomi-accent hover:text-nomi-accent')} aria-label={browserCaptureEnabled ? t('browserAssets.disableCapture') : t('browserAssets.enableCapture')} aria-pressed={browserCaptureEnabled} title={browserCaptureEnabled ? t('browserAssets.disableCapture') : t('browserAssets.captureHint')} disabled={browserCaptureDisabled} onClick={onBrowserCaptureToggle}>
+                <button type="button" className={cn(TOOL_BUTTON_CLASS, browserCaptureEnabled && 'bg-nomi-accent-soft text-nomi-ink hover:text-nomi-accent')} aria-label={browserCaptureEnabled ? t('browserAssets.disableCapture') : t('browserAssets.enableCapture')} aria-pressed={browserCaptureEnabled} title={browserCaptureEnabled ? t('browserAssets.disableCapture') : t('browserAssets.captureHint')} disabled={browserCaptureDisabled} onClick={onBrowserCaptureToggle}>
                   <IconZoomScan size={17} strokeWidth={1.8} aria-hidden="true" />
                 </button>
               ) : null}

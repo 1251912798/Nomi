@@ -118,7 +118,7 @@ export default function CategoryItem({
       className={cn(
         'w-full flex items-center gap-2 px-2 py-1.5 text-left rounded-nomi-sm transition-colors',
         'text-caption leading-tight border border-transparent',
-        active ? 'bg-nomi-ink-10 text-nomi-accent' : 'text-nomi-ink-80 hover:bg-nomi-ink-05 hover:text-nomi-ink',
+        active ? 'bg-nomi-ink-10 text-nomi-ink' : 'text-nomi-ink-80 hover:bg-nomi-ink-05 hover:text-nomi-ink',
         dragOver && 'border-nomi-ink-40',
         collapsed && 'justify-center px-0',
       )}

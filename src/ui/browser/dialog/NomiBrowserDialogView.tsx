@@ -254,7 +254,7 @@ export function NomiBrowserDialogView({
                 className={cn(
                   'grid size-6 shrink-0 place-items-center rounded-pill border-0 bg-transparent',
                   'cursor-pointer text-nomi-ink-40 transition-colors duration-nomi-fast ease-nomi-fast hover:bg-nomi-ink-05 hover:text-nomi-ink',
-                  activeBookmarked && 'text-nomi-accent hover:text-nomi-accent',
+                  activeBookmarked && 'text-nomi-ink hover:text-nomi-accent',
                   (!activeTab?.url || activeBookmarked) && 'cursor-default',
                 )}
                 aria-label={t('browserAssets.saveBookmark')}

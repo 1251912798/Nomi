@@ -102,7 +102,7 @@ export const BrowserAssetTile = React.memo(function BrowserAssetTile({
         <span
           className={cn(
             'relative grid size-8 place-items-center overflow-hidden rounded-nomi-sm border bg-nomi-ink-05 text-nomi-ink-40',
-            selected ? 'border-transparent bg-nomi-paper text-nomi-accent' : 'border-nomi-line-soft',
+            selected ? 'border-transparent bg-nomi-paper text-nomi-ink' : 'border-nomi-line-soft',
           )}
           aria-hidden="true"
         >
@@ -288,7 +288,7 @@ export const BrowserAssetFilterPopover = React.memo(function BrowserAssetFilterP
                   disabled
                     ? 'cursor-default text-nomi-ink-30'
                     : 'cursor-pointer text-nomi-ink-60 hover:bg-nomi-ink-05 hover:text-nomi-ink',
-                  active && 'bg-nomi-accent-soft font-semibold text-nomi-accent',
+                  active && 'bg-nomi-accent-soft font-semibold text-nomi-ink',
                 )}
                 onClick={() => onSelectTab(tab.key)}
                 >

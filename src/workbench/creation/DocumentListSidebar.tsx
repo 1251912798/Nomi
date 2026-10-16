@@ -313,7 +313,7 @@ export default function DocumentListSidebar(): JSX.Element {
               <div
                 className={cn(
                   'group relative flex min-h-10 w-full items-center gap-1 rounded-nomi-sm border border-transparent px-1 py-1.5',
-                  documentActive ? 'bg-nomi-accent-soft text-nomi-accent' : 'text-nomi-ink-80 hover:bg-nomi-ink-05 focus-within:bg-nomi-ink-05',
+                  documentActive ? 'bg-nomi-accent-soft text-nomi-ink' : 'text-nomi-ink-80 hover:bg-nomi-ink-05 focus-within:bg-nomi-ink-05',
                 )}
                 data-document-row={doc.id}
               >
@@ -352,7 +352,7 @@ export default function DocumentListSidebar(): JSX.Element {
                     className={cn(
                       'flex min-w-0 flex-1 items-center gap-2 border-0 bg-transparent p-0 text-left text-caption leading-tight',
                       'cursor-pointer',
-                      documentActive ? 'text-nomi-accent' : 'text-nomi-ink-80',
+                      documentActive ? 'text-nomi-ink' : 'text-nomi-ink-80',
                       // 行内图标露出时给它们让位（2 个图标 = 48px），标题不被盖住。
                       documentActive ? 'pr-[52px]' : 'group-hover:pr-[52px] group-focus-within:pr-[52px]',
                     )}
@@ -394,7 +394,7 @@ export default function DocumentListSidebar(): JSX.Element {
                       <div
                         className={cn(
                           'group/design relative flex min-h-10 w-full items-center gap-1 rounded-nomi-sm border border-transparent px-2 py-1.5',
-                          designActive ? 'bg-nomi-accent-soft text-nomi-accent' : 'text-nomi-ink-80 hover:bg-nomi-ink-05 focus-within:bg-nomi-ink-05',
+                          designActive ? 'bg-nomi-accent-soft text-nomi-ink' : 'text-nomi-ink-80 hover:bg-nomi-ink-05 focus-within:bg-nomi-ink-05',
                         )}
                         data-storyboard-row={design.id}
                         data-storyboard-status={stale ? 'stale' : committedNow ? 'committed' : 'draft'}
@@ -431,7 +431,7 @@ export default function DocumentListSidebar(): JSX.Element {
                             }}
                             className={cn(
                               'flex min-w-0 flex-1 items-center gap-2 border-0 bg-transparent p-0 text-left text-caption leading-tight',
-                              designActive ? 'text-nomi-accent' : 'text-nomi-ink-80',
+                              designActive ? 'text-nomi-ink' : 'text-nomi-ink-80',
                               // 3 个图标 = 72px，露出时给它们让位。
                               designActive ? 'pr-[76px]' : 'group-hover/design:pr-[76px] group-focus-within/design:pr-[76px]',
                             )}

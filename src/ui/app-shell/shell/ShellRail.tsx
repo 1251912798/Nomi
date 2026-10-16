@@ -70,7 +70,7 @@ function RailButton({ id, icon: Icon, active, onClick }: { id: ShellDrawerItem; 
             'flex size-12 shrink-0 flex-col items-center justify-center gap-[3px] rounded-panel border-0 p-0',
             'cursor-pointer transition-[background,color] duration-nomi-fast ease-nomi-fast',
             'focus-visible:outline focus-visible:outline-2 focus-visible:outline-nomi-ink',
-            active ? 'bg-nomi-accent-soft text-nomi-accent' : 'bg-transparent text-nomi-ink-60 hover:bg-nomi-ink-10 hover:text-nomi-ink',
+            active ? 'bg-nomi-accent-soft text-nomi-ink' : 'bg-transparent text-nomi-ink-60 hover:bg-nomi-ink-10 hover:text-nomi-ink',
           )}
           aria-label={label}
           aria-pressed={active}

@@ -46,7 +46,7 @@ function RowChips({ chips, muted = false }: { chips: ModelBoxRow['chips']; muted
           data-model-box-chip={chip.vendorKey}
           data-model-box-chip-active={chip.active && !muted ? 'true' : undefined}
           className={chip.active && !muted
-            ? 'max-w-[76px] truncate rounded-pill border border-transparent bg-nomi-accent-soft px-1.5 py-[1px] text-micro leading-none text-nomi-accent'
+            ? 'max-w-[76px] truncate rounded-pill border border-transparent bg-nomi-accent-soft px-1.5 py-[1px] text-micro leading-none text-nomi-ink'
             : 'max-w-[76px] truncate rounded-pill border border-nomi-line px-1.5 py-[1px] text-micro leading-none text-nomi-ink-40'}
         >
           {chip.label}

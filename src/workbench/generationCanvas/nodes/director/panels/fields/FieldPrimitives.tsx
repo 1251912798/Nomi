@@ -119,7 +119,7 @@ export function ToggleField({ label, checked, onChange, hint }: { label: string;
         aria-label={label}
         className={cn(
           'h-6 shrink-0 rounded-nomi-sm px-2.5 text-caption transition-colors',
-          checked ? 'bg-nomi-accent-soft font-semibold text-nomi-accent' : 'border border-nomi-line bg-nomi-ink-05 text-nomi-ink-60 hover:text-nomi-ink',
+          checked ? 'bg-nomi-accent-soft font-semibold text-nomi-ink' : 'border border-nomi-line bg-nomi-ink-05 text-nomi-ink-60 hover:text-nomi-ink',
         )}
         onClick={() => onChange(!checked)}
       >

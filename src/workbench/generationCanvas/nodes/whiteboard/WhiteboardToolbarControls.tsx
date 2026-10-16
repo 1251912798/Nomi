@@ -135,7 +135,7 @@ export function ToolIconButton({
         'grid size-9 shrink-0 place-items-center rounded-nomi-sm border border-transparent bg-transparent text-nomi-ink-60',
         'transition-colors hover:bg-nomi-paper hover:text-nomi-ink',
         'disabled:cursor-not-allowed disabled:opacity-40',
-        active && 'border-nomi-line bg-nomi-paper text-nomi-accent shadow-nomi-sm',
+        active && 'border-nomi-line bg-nomi-paper text-nomi-ink shadow-nomi-sm',
         className,
       )}
     />

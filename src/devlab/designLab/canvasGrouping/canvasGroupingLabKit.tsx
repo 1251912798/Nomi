@@ -98,7 +98,7 @@ function DemoSelectionToolbar({ onGroup, onClear }: { onGroup: () => void; onCle
         <span className="tabular-nums text-nomi-ink-60">· 3</span>
       </span>
       <ToolbarDivider />
-      <ToolbarButton icon={<IconFolderPlus {...iconProps} />} label="编组" title="创建编组" ariaLabel="创建编组" accent onClick={onGroup} />
+      <ToolbarButton icon={<IconFolderPlus {...iconProps} />} label="编组" title="创建编组" ariaLabel="创建编组" onClick={onGroup} />
       <ToolbarButton icon={<IconCards {...iconProps} />} label="总览图" title="生成总览图（3 张）" ariaLabel="生成总览图（3 张）" onClick={NOOP} />
       <ToolbarButton icon={<IconRoute {...iconProps} />} label="存流程" title="保存为流程" ariaLabel="保存为流程" onClick={NOOP} />
       <ToolbarIconButton icon={<IconX {...iconProps} />} title="清除选择" ariaLabel="清除选择" onClick={onClear} />

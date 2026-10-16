@@ -63,7 +63,7 @@ function FilterOptionRow({ row }: { row: FilterRow }): JSX.Element {
         'bg-transparent text-left text-caption transition-colors duration-nomi-fast ease-nomi-fast',
         'cursor-pointer text-nomi-ink-60 hover:bg-nomi-ink-05 hover:text-nomi-ink',
         muted && 'text-nomi-ink-40',
-        row.selected && 'bg-nomi-accent-soft font-semibold text-nomi-accent',
+        row.selected && 'bg-nomi-accent-soft font-semibold text-nomi-ink',
       )}
       style={{ gridTemplateColumns: '20px minmax(42px, 1fr) auto' }}
       onClick={row.onClick}
