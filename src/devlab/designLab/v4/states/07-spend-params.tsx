@@ -365,6 +365,20 @@ function SpendComposerCard({
           context={{ ...fx.context, used: 36000 }}
           height={860}
           {...(panelWidth ? { width: panelWidth } : {})}
+          {...(brake ? {
+            // 刹车只在「直接生成」档出现：composer 停在这一档、上沿那条常驻提醒也在，和真面板同一个样子。
+            composer: { permission: 'direct' as const },
+            composerBanner: (
+              <V4AutoModeBanner
+                label={fx.t('agentPanelV4.permission.direct')}
+                note={fx.t('agentPanelV4.autoModeBannerNote')}
+                revertLabel={fx.t('agentPanelV4.autoModeBannerRevert')}
+                dismissLabel={fx.t('agentPanelV4.autoModeBannerDismiss')}
+                onRevert={() => undefined}
+                onDismiss={() => undefined}
+              />
+            ),
+          } : {})}
         />
       </div>
     )
