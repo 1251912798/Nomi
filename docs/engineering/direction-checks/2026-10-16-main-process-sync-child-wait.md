@@ -59,3 +59,83 @@
 - `electron/assets/projectAssetStore.test.ts`：三个落盘入口校验期间事件循环照转（修前红）、同一确定性资产并发写不出半成品。
 - `electron/tasks/localTaskJobs.test.ts`：导入单飞、取消与导入不交错。
 - `scripts/check-heavy-path.mjs`：`main-sync-child-process`（修前红：命中 `generatedMediaDecode.ts` 两行）。
+
+---
+
+## 第二次复盘（2026-10-16，P1 熔断：同线第 3 轮修补前停下）
+
+触发：这条线首轮实现后，独立验收 V-1208 首轮报两项（V-1208-1 校验字节≠发布字节、V-1208-2 等待期间项目被换绑），修了一轮；复验确认这两项过了，但又冒出 3 个同类回归（V-1208-3 浏览器导入提前删源文件、V-1208-4 路径型写入失去整文件原子发布、V-1208-5 新增整文件同步写盘占住主循环）。按 P1 停止派修补，先复盘、交用户拍板。本节不改代码。
+
+### 0. 一句话根因
+
+为了把**一个等待**（解码校验）挪出主进程，我把**共享的同步写入边界**（`writeAsset` / `writeDeterministicAsset` / `moveAssetFile`）整体改成了异步；这个边界有 16 + 3 + 2 扇门，每个调用方原来都靠「调用返回时文件已经落好」这件事安排时序、原子性和清理，契约一变，所有调用方的这些假设同时失效，只能一个个碰到一个个补，补不完。
+
+更上一层：任务书推荐的是「异步的只有校验，同步写入只吃已校验的产物」，首轮我以「改动面大」为由没做，只讲了它的代价，没讲它防的是什么——它防的正是这一族。
+
+### 1. 归类表
+
+| 编号 | 直接原因 | 类 |
+|---|---|---|
+| V-1208-1 | 等待期间调用方改写自己的 Buffer，await 回来后发布的是改写后的字节 | 写入边界变异步 → 「输入在调用时刻就是定稿」的假设失效 |
+| V-1208-2 | 等待期间项目被换绑，await 回来后按新绑定解析根目录 | 写入边界变异步 → 「调用时刻的项目就是写入的项目」的假设失效 |
+| V-1208-3 | `importBrowserMedia` 在 try 里 `return moveAssetFile(...)`（没 await），finally 先删了临时目录 | 写入边界变异步 → 调用方「返回时源文件已被移走、可以清理」的假设失效 |
+| V-1208-4 | 为修 V-1208-1，move / GLB upload 改成往正式路径直接写 Buffer，失去 rename / 暂存 + link 的整文件原子发布 | 在异步边界上补一致性时，把原有的原子发布换掉了 |
+| V-1208-5 | 同上的整文件 `writeFileSync`（200MiB ≈ 145–190ms）重新占住主循环 | 同上：补丁把重活又放回了同步临界区 |
+
+五条同一个类：**写入边界的时序契约从同步改成了异步**。1–3 是契约变化直接打穿调用方的假设；4–5 是在异步边界上打补丁时，为了让「等待后再发布」成立而换掉了原来原子、廉价的发布方式。
+
+### 2. 为什么这一类会一直冒
+
+- 门数多、形状杂：19 扇门里有字节入口、路径入口、内容寻址上传、确定性物化、本地任务同步提交，每类对「返回即落盘」的依赖方式不同（finally 清理、sync 单飞、rename 原子性、AssetWriteContext 复验）。
+- 类型系统只能看见「返回了 Promise」，看不见「调用方以为返回时已经落盘」：tsc 和测试类型门岗都绿，V-1208-3 照样漏（ESLint 没开类型感知的 `return-await` / `no-floating-promises`）。
+- 每补一处都在异步边界里加东西（钉字节、捕获身份、改发布方式），每加一样又改了一条原有不变量（原子发布、同步写量），于是越补面越大。
+
+### 3. 两个方向对比
+
+**A：保持异步写入边界，继续逐个补**
+
+- 要做：
+  - V-1208-3：browserViewMedia 两处改 `return await`，并普查所有 `return writer()` 落在 try/finally 里的调用方。
+  - V-1208-4：move / copy 的已校验分支改成「异步写私有暂存 → 同步 rename / link 发布」；`uploadContentStore.publish` 的 catch 补删残缺媒体。
+  - V-1208-5：V-1208-4 修完自然消失。
+  - 还要开类型感知 lint（`@typescript-eslint/return-await: in-try-catch`、`no-floating-promises`）拦同类：这要给全仓 lint 挂 type-aware parser，CI 成本明显上升，存量告警未知。
+- 改动面：在现分支上再加约 150–250 行；调用方保持全部 async（已改的 14 个文件不回退）。
+- 风险：高。19 扇门全部带着新时序契约；验收已经三轮出新回归，下一类假设（例如别的调用方依赖返回即落盘做后续 sync 读、退出流程里没等写完）只能靠下一轮验收碰。lint 规则只能拦「没 await」，拦不住「await 了但中间状态被别人看见」。
+- 动多少调用方：现有 14 个文件维持 async，再普查 try/finally 型调用方（至少 browserViewMedia 2 处）。
+
+**B：写入边界恢复同步原子写（与 main 相同），异步的只有「暂存 + 校验」那一步**
+
+- 形状：
+  1. 新增异步准备函数 `prepareVerifiedGeneratedAsset`（名字待定）。它在调用方已经是异步的那一层先跑：
+     - 进门捕获 `AssetWriteContext`；
+     - 把字节或源文件**异步**写 / 拷进本项目根下的私有暂存（与正式路径同卷）；
+     - 在**暂存文件上**跑异步解码校验。暂存只有边界自己持有，所以「校验的就是要发布的那份」。
+     - 产出品牌类型「已校验暂存件」，里面带 context、meta、contentType、哈希。
+  2. 同步发布函数只吃这个品牌类型，依次 `assertCurrent` 复验 → 选路径 → `renameSync` 原子发布 → 写 sidecar → 广播。整段同步，O(1) 发布。
+  3. `writeAsset` / `writeDeterministicAsset` / `moveAssetFile` / `copyAssetFile` 回到 main 的同步签名和行为（move 走 rename，GLB upload 走 persistUploadFile 暂存 + link）。遇到 `kind: "generated"` 且没有已校验暂存件时**拒写**，fail closed：生成产物只能经「准备 → 发布」两步。拒写防线是运行时断言加测试；如需门岗，再加一条「生成产物不得绕过发布函数」的静态扫描。
+  4. 写生成产物的调用方改成 `await prepare… → publish…`，或用一个 async 便利函数包起来。它们本来就在异步上下文里，共 10 个文件 13 处：importRemoteAssetToStore 两处、materializer 两处、antigravity、codexCli、processOperation、screenshotHotkey、depthVideoJob、extractVideoFrame 两处、framesToVideo、trimVideo。
+  5. 写非生成产物的调用方回到 main 的同步调用：localFileImport、demoAssetSeed、browserViewMedia、customCallDispatch（它写的是 `kind: wantedKind`，本来就不过解码校验）。
+  6. copyAssetFile 的生成产物分支：`copyNativeFileToBucket` 本来就是「拷进暂存 → link 发布」，只需在 link 前校验暂存快照，路径型入口天然满足「校验的就是发布的那份」。
+- 保留：异步 `runDecoder` / `verifyGeneratedMediaDecodes`（改为只校验边界自己的暂存文件路径），门岗 `main-sync-child-process`，LocalTaskJobs 与 Codex 的单飞导入（V-1208 已验过）。暂存清理复用现有 `.nomi-upload-*` 前缀与 `reapAbandonedUploadStaging`。
+- 改动面：projectAssetStore / verifiedAssetBytes 重写约 150 行；非生成调用方回退到 main 写法（多数是删 await）；生成调用方 13 处改调用名。相对 main 的净改动会比现在小。
+- 风险：中低。对 19 扇门里的非生成调用方，契约回到 main，不再有新时序；生成调用方本来就在异步上下文里，只多一步显式的「准备」。剩余风险集中在新的「准备 → 发布」两步之间：暂存件要跟着取消、退出被清理，这部分复用现有暂存清理，要补测试。
+- 动多少调用方：13 处改调用（生成）+ 约 6 处回退（非生成）+ 测试回退或调整。
+
+**推荐：B。**
+
+理由：B 把「异步」限制在唯一真正需要等的一步上，写入边界对所有调用方保持 main 的同步原子契约。这样同类问题不是逐个补掉，而是没有发生的余地。A 的每一处补丁都在扩大异步边界，三轮验收已经证明这条路收敛不了。B 也正是任务书原本推荐的形状。
+
+代价：再改一轮（约等于首轮的工作量），已经通过的部分（V-1208-1、V-1208-2 的对抗用例、单飞导入、门岗）都要在 B 上重跑。
+
+### 4. 用 B 的话，V-1208-3 / 4 / 5 是否自然消失
+
+| 编号 | B 下 | 为什么 |
+|---|---|---|
+| V-1208-3 | 消失 | browserViewMedia 只写 capture / reference，走回到同步的 `moveAssetFile`：返回时文件已经移走，finally 清理安全（与 main 相同）。对抗用例保留为回归。 |
+| V-1208-4 | 消失 | 非生成路径回到 main（move = rename，GLB upload = 暂存 + link）。生成路径是「异步写暂存 → 同卷 `renameSync`」，整文件原子发布；校验或写暂存失败只清暂存，正式路径从不出现残片。V-1208 的磁盘满注入用例保留为回归。 |
+| V-1208-5 | 本次新增的那部分消失；main 原有的不变 | 大文件写入都在异步准备阶段（`fs.promises` 写或拷暂存），同步临界区只剩 rename + 小 sidecar。main 上原本就有的同步写盘（`writeAsset` 往正式路径 `writeFileSync` 调用方的 Buffer）B 不会加重，也不处理，仍归性能报告 M02。若顺手让生成产物的字节入口也走暂存，这部分对生成产物也一并消失。 |
+| V-1208-1 / 2 | 继续成立 | 暂存件只有边界持有，校验和发布是同一个文件；context 在准备阶段捕获、发布前复验。 |
+
+### 5. 用户要权衡的核心
+
+再花一轮把写入边界改回同步、只把校验做成异步（B，根上收住这一族），还是在现在的异步边界上继续补（A，改得少，但每轮都可能冒新的同类问题）。
