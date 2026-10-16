@@ -10,6 +10,7 @@ import { expect } from './_assert.mjs'
 import { requireRealMediaAssets } from './fixtures/realMedia.mjs'
 import { spawnMcpStdioClient, parseToolResult } from './_mcpJourney.mjs'
 
+import { collapseAgentPanel } from './_shell.mjs'
 const root = makeTempDir('nomi-shot-identity-')
 const projectsDir = path.join(root, 'projects')
 const projectId = 'shot-identity'
@@ -48,8 +49,7 @@ async function assertLabel(id, label) {
 }
 try {
   await openProject()
-  const collapse = page.getByRole('button', { name: '收起面板', exact: true })
-  if (await collapse.isVisible()) await collapse.click()
+  await collapseAgentPanel(page, '收起助手面板')
   await assertLabel('original-frame', '镜头 1 · 首帧图')
   await assertLabel('original-video', '镜头 1 · 视频')
   await assertLabel('independent-legacy-conflict', '镜头 2')

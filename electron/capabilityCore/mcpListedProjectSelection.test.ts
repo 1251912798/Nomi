@@ -19,6 +19,8 @@ import { createProjectLeaseAuthority } from './projectLease'
 import { createProjectLeaseStore } from './projectLeaseStore'
 import { createProjectSessionAuthority } from './projectSessionAuthority'
 
+import { dispatch } from "./dispatcher";
+
 const workspace: Array<{ id: string; name: string; updatedAt: number }> = []
 
 vi.mock('./core', async (importOriginal) => {
@@ -34,7 +36,6 @@ vi.mock('./core', async (importOriginal) => {
   }
 })
 
-const { dispatch } = await import('./dispatcher')
 
 const tempDirs: string[] = []
 const connection: McpConnectionContext = Object.freeze({

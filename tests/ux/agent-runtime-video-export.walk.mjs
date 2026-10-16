@@ -8,7 +8,7 @@ import path from 'node:path'
 import { execFileSync } from 'node:child_process'
 import { launchNomiApp } from './_launchApp.mjs'
 import { expect, screenshotSettled } from './_assert.mjs'
-import { newProjectEntry } from './_shell.mjs'
+import { newProjectEntry, switchWorkspace } from './_shell.mjs'
 import { stationTimeout } from './_station-budget.mjs'
 
 const repoRoot = process.cwd()
@@ -125,7 +125,7 @@ try {
   await win.waitForTimeout(2200)
   const projectId = decodeURIComponent((/projectId=([^&]+)/.exec(win.url()) || [])[1] || '')
   check(Boolean(projectId), '通过项目库创建真实项目')
-  await win.locator('[aria-label="工作区切换"]').getByText('生成', { exact: true }).click({ timeout: 5000 })
+  await switchWorkspace(win, 'generation', '切到生成区')
   await win.waitForTimeout(1200)
 
   // Add one video node through the visible canvas toolbar and fill its prompt.
@@ -208,7 +208,7 @@ try {
   check(persistedSplitClips.length === 2, '剪辑后的两段视频已持久化到项目 payload', `count=${persistedSplitClips.length}`)
   await snap(win, 'video-clips-split')
 
-  await win.locator('[aria-label="工作区切换"]').getByText('预览', { exact: true }).click({ timeout: 5000 })
+  await switchWorkspace(win, 'preview', '切到预览区')
   await win.waitForTimeout(1200)
   const previewVideo = win.locator('.workbench-preview-player__video').first()
   await previewVideo.waitFor({ state: 'visible', timeout: 10_000 })
