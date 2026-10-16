@@ -17,6 +17,7 @@ import { spawnSync } from 'node:child_process'
 import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import { launchNomiApp } from './_launchApp.mjs'
+import { openRailDrawer, setAppLanguage } from './_shell.mjs'
 import {
   expectVisible,
   clickOrFail,
@@ -84,18 +85,18 @@ try {
   // 基线：rail 上「流程」这颗按钮存在（aria-label 已本地化为「流程库」——修复前它是 raw key）。
   const workflowRail = getWin().locator('[data-shell-rail-item="flows"]')
   await proveProbe(workflowRail, 'rail 上有「流程库」按钮（aria-label 已本地化）')
-  // 断言：整个侧栏 aside 里不存在任何 raw i18n key 文本（`sidebar.workflows` / `sidebar.workflowLibrary`）。
-  const rawKeyNode = getWin().locator('aside :text("sidebar.workflow")')
+  // 断言：整个左栏 + 抽屉里不存在任何 raw i18n key 文本（`sidebar.workflows` / `sidebar.workflowLibrary`）。
+  const rawKeyNode = getWin().locator('[data-shell-rail] :text("sidebar.workflow"), [data-shell-drawer] :text("sidebar.workflow")')
   const railProbe = await proveProbe(getWin().locator('[data-shell-rail-item="assets"]'), 'rail 至少有「素材库」按钮（探针活性）')
   await expectAbsent(rawKeyNode, { provenBy: railProbe, message: 'rail/面板不该出现未翻译的 raw key sidebar.workflow*' })
-  await clickOrFail(workflowRail.first(), '流程库 rail 按钮')
+  await openRailDrawer(getWin(), 'flows', '流程库 rail 按钮')
   await getWin().waitForTimeout(1000)
-  // 面板标题也应是「流程库」而非 raw key。
-  await expectVisible(getWin().getByRole('heading', { name: '流程库' }).first(), '流程库面板标题应本地化为「流程库」')
+  // 抽屉内容区沿用「流程库」当面板名（抽屉头部写的是左栏名「流程」；外壳只搬容器，内容的身份不变），应是本地化的「流程库」而非 raw key。
+  await expectVisible(getWin().getByRole('region', { name: '流程库' }).first(), '流程库面板名应本地化为「流程库」')
   await screenshotSettled(getWin(), { path: path.join(shotsDir, '01-workflow-library-i18n.png') })
 
   // ── 问题 4①：提示词库精选按来源分类导航 ──
-  await clickOrFail(getWin().locator('[data-shell-rail-item="prompts"]').first(), '提示词库 rail 按钮')
+  await openRailDrawer(getWin(), 'prompts', '提示词库 rail 按钮')
   await getWin().waitForTimeout(1000)
   await clickOrFail(getWin().getByRole('tab', { name: 'Nomi 精选' }).first(), 'Nomi 精选来源标签')
   // 精选是网络拉取——等来源分类 chip 行出现（「全部来源」这颗一定在，只要来源数 > 1）。
@@ -126,7 +127,7 @@ try {
   await screenshotSettled(getWin(), { path: path.join(shotsDir, '03-prompt-card-light.png') })
 
   // ── 问题 3：素材库图片预览关闭钮暗色下与背景有对比 ──
-  await clickOrFail(getWin().locator('button[aria-label="素材库"]').first(), '素材库 rail 按钮')
+  await openRailDrawer(getWin(), 'assets', '素材库 rail 按钮')
   await getWin().waitForTimeout(900)
   const allAssetsTab = getWin().getByRole('tab', { name: /全部素材/ }).first()
   if (await allAssetsTab.isVisible().catch(() => false)) await clickOrFail(allAssetsTab, '全部素材标签')
@@ -180,14 +181,9 @@ try {
 
   // ── EN-DOM：切英文后这几屏无 CJK 漏译 ──
   // 走生产路径切语言：设置 → 通用 tab → 点 English（data-settings-locale=en → setAppLocale）。
-  await getWin().evaluate(() => window.dispatchEvent(new CustomEvent('nomi-open-settings', { detail: { tab: 'general' } })))
-  await getWin().waitForTimeout(1000)
-  await clickOrFail(getWin().locator('[data-settings-locale="en"]').first(), '设置里的 English 语言按钮')
-  await getWin().waitForTimeout(600)
-  await getWin().keyboard.press('Escape').catch(() => {})
-  await getWin().waitForTimeout(500)
+  await setAppLanguage(getWin(), 'en', '设置里的 English 语言按钮')
   // 回到流程库这一屏（现应为英文），断言无 CJK 漏译（用户内容豁免）。
-  await clickOrFail(getWin().locator('button[aria-label="Workflow library"]').first(), 'Workflow library rail (en)')
+  await openRailDrawer(getWin(), 'flows', 'Workflow library rail (en)')
   await getWin().waitForTimeout(900)
   await expectNoCjkInEnglishDom(getWin(), { message: '流程库这一屏在 en 下不应残留中文', allowSelectors: ['[data-user-content]'] })
   await screenshotSettled(getWin(), { path: path.join(shotsDir, '06-workflow-en.png') })

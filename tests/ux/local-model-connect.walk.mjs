@@ -18,6 +18,7 @@ import path from 'node:path'
 import http from 'node:http'
 import { fileURLToPath } from 'node:url'
 import { launchNomiApp } from './_launchApp.mjs'
+import { openModelSettings } from './_shell.mjs'
 import { clickOrFail, expectVisible, expectText, screenshotSettled } from './_assert.mjs'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
@@ -73,13 +74,8 @@ async function dismissChrome(win) {
 }
 
 async function openLocalModelCard(win) {
-  // 项目库「模型状态」区的「连接助手模型」按钮 → 打开设置页「模型」tab（内含 OnboardingDrawer）。
-  // 实测项目库落地页上可见的模型入口就是它（靠 ariaSnapshot 核实：顶栏没有独立「模型」按钮）。
-  await clickOrFail(
-    win.locator('button', { hasText: /^连接助手模型$|^Connect assistant model$/ }).first(),
-    '连接助手模型入口',
-    { timeout: 8000 },
-  )
+  // 顶栏齿轮 → 设置「模型」页签（内含 OnboardingDrawer）：经 _shell.mjs。
+  await openModelSettings(win, { label: '连接助手模型入口', timeout: 8000 })
   // 「本地模型」卡在「可接入」桶（种子默认 enabled:false）。稳定 data 锚点，不靠文案。
   await clickOrFail(win.locator('[data-model-home-available="local-text"]'), '本地模型 可接入卡', { timeout: 8000 })
 }

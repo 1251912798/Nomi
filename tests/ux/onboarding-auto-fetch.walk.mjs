@@ -10,6 +10,8 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { screenshotSettled } from './_assert.mjs'
+import { openCustomApiWizard, openModelSettings } from './_shell.mjs'
+
 const shotsDir = path.join(repoRoot, 'tests/ux/shots/onboarding-auto-fetch')
 fs.mkdirSync(shotsDir, { recursive: true })
 
@@ -45,17 +47,11 @@ try {
     await win.waitForTimeout(300)
   }
 
-  // 打开模型接入面板 → 「添加模型 / 中转站」打开弹窗。
-  const panelTrigger = win.locator('button', { hasText: '模型接入' }).first()
-  if (await panelTrigger.count()) await panelTrigger.click({ timeout: 4000 }).catch(() => {})
-  await win.waitForTimeout(900)
+  // 设置 → 模型 →「自定义 API / 中转站」打开弹窗（经 _shell.mjs）。
+  await openModelSettings(win, { label: 'open model settings' })
   await snap(win, 'panel-open')
-  // 「接入生成模型」组可能因有已接入项而默认收起 → 先展开露出添加按钮。
-  const genHeader = win.locator('button', { hasText: '接入生成模型' }).first()
-  if (await genHeader.count()) { await genHeader.click({ timeout: 2500 }).catch(() => {}); await win.waitForTimeout(500) }
-  const addBtn = win.locator('button', { hasText: '添加模型 / 中转站' }).first()
-  if (!(await addBtn.count())) { check('找到「添加模型/中转站」入口', false); throw new Error('入口未找到') }
-  await addBtn.click({ timeout: 3000 })
+  await openCustomApiWizard(win, { label: '开接入向导' })
+  check('找到「自定义 API / 中转站」入口', true)
   await win.waitForTimeout(700)
   check('弹窗打开', (await win.locator('text=添加一个 AI 模型').count()) > 0)
 

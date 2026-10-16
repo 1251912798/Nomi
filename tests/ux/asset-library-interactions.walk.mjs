@@ -20,12 +20,14 @@ import { launchNomiApp, repoRoot } from './_launchApp.mjs'
 import { stationTimeout } from './_station-budget.mjs'
 import { expectAbsent, proveProbe } from './_assert.mjs'
 import { requireRealMediaAssets } from './fixtures/realMedia.mjs'
-import { canvasFitViewButton } from './_shell.mjs'
+import { canvasFitViewButton, openRailDrawer, switchWorkspace } from './_shell.mjs'
 
 const require = createRequire(import.meta.url)
 const FFMPEG = require('@ffmpeg-installer/ffmpeg').path
 
 const locale = process.argv.includes('--locale') ? process.argv[process.argv.indexOf('--locale') + 1] : 'zh-CN'
+// 「项目素材」页签的名字（zh / en）：只在这一处写，走查里两处都点它。
+const PROJECT_TAB = locale === 'en' ? 'Project assets' : '项目素材'
 const shotsDir = path.join(repoRoot, `tests/ux/shots/asset-library-interactions-${locale}`)
 fs.rmSync(shotsDir, { recursive: true, force: true })
 fs.mkdirSync(shotsDir, { recursive: true })
@@ -136,12 +138,11 @@ try {
   await win.setViewportSize({ width: 1440, height: 900 })
   await win.locator('.nomi-stepper').first().waitFor({ timeout: stationTimeout() })
   const stage = win.locator('.react-flow__pane').first()
-  if (!(await stage.isVisible().catch(() => false))) await win.locator('.nomi-stepper__step[data-mode="generation"]').first().click()
+  if (!(await stage.isVisible().catch(() => false))) await switchWorkspace(win, 'generation')
   await stage.waitFor({ state: 'visible', timeout: stationTimeout() })
 
   // 侧栏「素材库」
-  const assetRail = win.locator(`aside nav button[aria-label="${locale === 'en' ? 'Asset library' : '素材库'}"]`).first()
-  await assetRail.click()
+  await openRailDrawer(win, 'assets', '侧栏「素材库」')
   await win.waitForTimeout(1200)
   await snap(win, '01-all-assets')
 
@@ -172,7 +173,7 @@ try {
   await snap(win, '03-all-tab-drag-other-project')
 
   // ③ 项目素材：点对勾多选 + 再点取消
-  await win.locator('[role="tab"]', { hasText: locale === 'en' ? 'Project assets' : '项目素材' }).first().click()
+  await win.locator('[role="tab"]', { hasText: PROJECT_TAB }).first().click()
   await win.waitForTimeout(1000)
   await snap(win, '04-project-tab')
   // 对勾在卡片右上角：像用户一样点那个位置（改前它只是装饰，改后它是开关）。
@@ -216,6 +217,10 @@ try {
 
   // ⑤ 多选删除：选两张 → 删两张
   await win.keyboard.press('Escape').catch(() => {})
+  // Esc 同时是外壳抽屉的收起键：抽屉被收起了就重开（抽屉是浮层，读完要重开，别假设它常驻）。
+  await openRailDrawer(win, 'assets', '重开素材库抽屉')
+  // 重开后抽屉回到默认的「全部素材」页签：切回「项目素材」继续选。
+  await win.locator('[role="tab"]', { hasText: PROJECT_TAB }).first().click()
   // 删两张只在项目里、没上过画布的素材（上过画布的那张删除＝删卡上的结果，文件另算，是既有语义）。
   for (const name of ['a-spare.png', VIDEO]) {
     await tile(name).hover()
