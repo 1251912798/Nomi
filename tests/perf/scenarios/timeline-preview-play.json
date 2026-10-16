@@ -17,7 +17,7 @@
   ],
   "budget": 33,
   "group": "⑩ 预览播放",
-  "budgetStatus": "proposed",
+  "budgetStatus": "approved",
   "budgetBasis": "视频播放 30fps 一帧 33ms；p95 超过 33ms 就是肉眼可见的掉帧",
   "baseline": {
     "median": 13.3,

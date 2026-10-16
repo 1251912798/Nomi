@@ -678,7 +678,7 @@ async function runScenario(page, scenario, fixture, workbench = null) {
     if (grab.blocked) return { skipped: grab.via }
     const viewport = await readViewport(page)
     const raw = await arcDrag(page, grab, {})
-    return { selected, raw, viewport, path: 'useCanvasSelectionDrag (zustand 每帧写)' }
+    return { selected, raw, viewport, path: 'useCanvasSelectionDrag（组框拖动预览）' }
   }
   if (scenario === 'marquee-select-all') {
     await page.keyboard.press('Escape')

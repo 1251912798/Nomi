@@ -38,7 +38,7 @@ if (wanted && picked.length === 0) {
   process.exit(1)
 }
 if (has('--list')) {
-  for (const scenario of scenarios) console.log(`${scenario.id}\t${scenario.metrics[0]} 预算 ${scenario.budget}${scenario.budgetStatus === 'proposed' ? '（提议）' : ''}\t基线 ${scenario.baseline ? `${scenario.baseline.median}/${scenario.baseline.p95}` : '（还没量）'}${scenario.baseline?.noisy ? '（有噪声）' : ''}\t${scenario.feature}`)
+  for (const scenario of scenarios) console.log(`${scenario.id}\t${scenario.metrics[0]} 预算 ${scenario.budget}${scenario.budgetStatus === 'proposed' ? '（提议）' : ''}${scenario.budgetDebt ? `（欠账：${scenario.budgetDebt.owner}）` : ''}${scenario.measurement?.state === 'pending' ? '（待测）' : ''}\t基线 ${scenario.baseline ? `${scenario.baseline.median}/${scenario.baseline.p95}` : '（还没量）'}${scenario.baseline?.noisy ? '（有噪声）' : ''}\t${scenario.feature}`)
   process.exit(0)
 }
 
@@ -54,6 +54,12 @@ const machine = `${os.platform()} ${os.arch()} ${os.cpus()[0]?.model?.trim() ?? 
 const report = { machine, commit: git('rev-parse', '--short', 'HEAD'), date: new Date().toISOString().slice(0, 10), runs, results: [] }
 
 for (const scenario of picked) {
+  // 待测场景（measurement.state = pending）：整表跑时跳过、说清还差什么；点名 --id 时照跑（量完写基线就转成已测）。
+  if (scenario.measurement?.state === 'pending' && !wanted) {
+    console.log(`\n⏸ ${scenario.id}：待测，跳过（${scenario.measurement.reason}）`)
+    report.results.push({ id: scenario.id, metrics: { [scenario.metrics[0]]: summarizeRuns([]) }, budget: scenario.budget, verdict: { status: 'pending', note: scenario.measurement.reason } })
+    continue
+  }
   const driver = DRIVERS[scenario.script]
   const label = `perf-scenarios-${scenario.id}`
   const resultPath = path.join(repoRoot, driver.resultFile(label))
@@ -87,6 +93,7 @@ if (updateBaseline) {
     if (!primary.runs || primary.runs < MIN_RUNS) { console.error(`✖ ${result.id} 采样不足 ${MIN_RUNS} 次，不写基线`); process.exitCode = 1; continue }
     const file = path.join(repoRoot, SCENARIO_DIR, `${result.id}.json`)
     const data = JSON.parse(fs.readFileSync(file, 'utf8'))
+    delete data.measurement
     data.baseline = { median: primary.median, p95: primary.p95, runs: primary.runs, machine, date: report.date, commit: report.commit, ...(has('--noisy') ? { noisy: true } : {}) }
     fs.writeFileSync(file, `${JSON.stringify(data, null, 2)}\n`)
     console.log(`已写基线：${path.relative(repoRoot, file)}${has('--noisy') ? '（标了 noisy）' : ''}`)

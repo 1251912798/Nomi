@@ -7,7 +7,7 @@ import test from 'node:test'
 import { fileURLToPath } from 'node:url'
 
 import { makeTempDir } from './_test-temp.mjs'
-import { DRIVERS, judge, loadScenarios, parsePerfEvidence, quantile, scenarioIds, summarizeRuns, validateScenarios } from './perf-scenarios-lib.mjs'
+import { DRIVERS, judge, knownScenarios, loadScenarios, parsePerfEvidence, quantile, scenarioIds, summarizeRuns, validateScenarios } from './perf-scenarios-lib.mjs'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 const repoRoot = path.resolve(here, '..')
@@ -142,4 +142,64 @@ test('PR 证据行：格式、未验证不算通过、不适用要有理由、id
   assert.equal(parsePerfEvidence('- perf-scenario：不适用：只改了一行文案', known).ok, true)
   assert.equal(parsePerfEvidence('- perf-scenario：不适用：无', known).ok, false)
   assert.deepEqual(scenarioIds([{ data: { id: 'a' } }, { data: null }]), ['a'])
+})
+
+// ── 欠账（已知超预算）与待测 ───────────────────────────────────────────────────────────────────────────────────
+const debt = { owner: 'P-sample', state: 'assigned', note: '每帧全局查询，修复线在改', since: '2026-10-16' }
+const overBudget = (overrides = {}) => goodScenario({ baseline: { median: 40, p95: 44, runs: 5, machine: 'test', date: '2026-10-16', commit: 'abc1234' }, ...overrides })
+
+test('门岗：超预算的基线必须登记欠账，达标了必须删掉欠账', () => {
+  const missing = runGate(fixtureRoot({ 'sample-drag.json': overBudget() }))
+  assert.equal(missing.status, 1)
+  assert.match(missing.stderr, /超预算 33：不许偷偷放着/)
+  const cleared = runGate(fixtureRoot({ 'sample-drag.json': goodScenario({ budgetDebt: debt }) }))
+  assert.equal(cleared.status, 1)
+  assert.match(cleared.stderr, /欠账还清了，删掉 budgetDebt/)
+  const bad = runGate(fixtureRoot({ 'sample-drag.json': overBudget({ budgetDebt: { owner: '', state: 'later', note: '慢', since: '昨天' } }) }))
+  assert.equal(bad.status, 1)
+  for (const pattern of [/budgetDebt.owner/, /budgetDebt.state 只能是/, /budgetDebt.note/, /budgetDebt.since/]) assert.match(bad.stderr, pattern)
+  const ok = runGate(fixtureRoot({ 'sample-drag.json': overBudget({ budgetDebt: debt }) }))
+  assert.equal(ok.status, 0, ok.stderr)
+})
+
+test('门岗：待测场景只许 proposed、不许有基线和欠账；量过的不许再挂待测', () => {
+  const { baseline, ...noBaseline } = goodScenario()
+  const pending = { ...noBaseline, budgetStatus: 'proposed', budgetBasis: '一次性迁移，Nielsen 1s/10s', measurement: { state: 'pending', reason: '夹具还差一档旧项目' } }
+  const ok = runGate(fixtureRoot({ 'sample-drag.json': pending }))
+  assert.equal(ok.status, 0, ok.stderr)
+  const run = runGate(fixtureRoot({
+    'sample-drag.json': { ...pending, budgetStatus: 'approved' },
+    'measured.json': { ...goodScenario({ id: 'measured', budgetStatus: 'proposed', budgetBasis: '一次性迁移，Nielsen 1s/10s' }), measurement: { state: 'pending', reason: '夹具还差一档旧项目' } },
+  }))
+  assert.equal(run.status, 1)
+  assert.match(run.stderr, /待测场景的预算只能是 proposed/)
+  assert.match(run.stderr, /已经有基线了：去掉 measurement/)
+})
+
+test('判定：欠账场景超预算是 known-debt（不算失败），比欠账基线又差 >20% 是 regression（棘轮）', () => {
+  const scenario = overBudget({ budgetDebt: debt })
+  assert.equal(judge(scenario, { median: 45, p95: 50 }).status, 'known-debt')
+  assert.equal(judge(scenario, { median: 49, p95: 55 }).status, 'regression') // 比欠账基线 40 差 22.5%
+  assert.equal(judge(scenario, { median: 30, p95: 32 }).status, 'ok') // 修到预算内
+  assert.equal(judge(overBudget(), { median: 45, p95: 50 }).status, 'over-budget') // 没登记欠账照旧红
+})
+
+test('PR 证据行核数字：预算以登记表为准；超预算红，欠账场景不比欠账基线更差就放行', () => {
+  const byId = new Map([['sample-drag', goodScenario()], ['debt-drag', overBudget({ id: 'debt-drag', budgetDebt: debt })]])
+  const known = [...byId.keys()]
+  assert.deepEqual(parsePerfEvidence('- perf-scenario：sample-drag 中位数 20 / p95 24 / 预算 33', known, byId), { ok: true, id: 'sample-drag' })
+  assert.match(parsePerfEvidence('- perf-scenario：sample-drag 中位数 20 / p95 24 / 预算 50', known, byId).reason, /登记的预算是 33/)
+  assert.match(parsePerfEvidence('- perf-scenario：sample-drag 中位数 40 / p95 44 / 预算 33', known, byId).reason, /> 预算 33/)
+  assert.deepEqual(parsePerfEvidence('- perf-scenario：debt-drag 中位数 44 / p95 46 / 预算 33', known, byId), { ok: true, id: 'debt-drag' })
+  assert.match(parsePerfEvidence('- perf-scenario：debt-drag 中位数 50 / p95 52 / 预算 33', known, byId).reason, /欠账场景又变差/)
+  // 预算内的场景只看预算：比基线慢一点（机器噪声）不拦人。
+  assert.deepEqual(parsePerfEvidence('- perf-scenario：sample-drag 中位数 30 / p95 31 / 预算 33', known, byId), { ok: true, id: 'sample-drag' })
+})
+
+test('knownScenarios 带出场景本身（PR 头的覆盖基线的），证据行拿它核数字', () => {
+  const baseEntries = [{ file: 'tests/perf/scenarios/sample-drag.json', data: goodScenario() }]
+  const prFiles = [{ file: 'tests/perf/scenarios/sample-drag.json', content: JSON.stringify(goodScenario({ budget: 40 })) }]
+  const known = knownScenarios({ baseEntries, prFiles })
+  assert.deepEqual(known.ids, ['sample-drag'])
+  assert.equal(known.byId.get('sample-drag').budget, 40)
 })

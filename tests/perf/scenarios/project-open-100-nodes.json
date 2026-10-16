@@ -21,5 +21,11 @@
     "machine": "win32 x64 13th Gen Intel(R) Core(TM) i9-13900H x20 / 64GB",
     "date": "2026-10-16",
     "commit": "94724f860"
+  },
+  "budgetDebt": {
+    "owner": "P-open",
+    "state": "unassigned",
+    "note": "冷打开串行等旧对话迁移的模块依赖图装载，首开新装约 940 个模块，不是 96 张图本身（C-trace 报告（协调状态目录 reports/C-trace.md））",
+    "since": "2026-10-16"
   }
 }

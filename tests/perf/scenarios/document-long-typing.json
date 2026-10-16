@@ -17,7 +17,7 @@
   ],
   "budget": 50,
   "group": "⑦ 文稿长文打字",
-  "budgetStatus": "proposed",
+  "budgetStatus": "approved",
   "budgetBasis": "打字要跟手：按键到上屏 ≤50ms 不觉得拖（RAIL 输入处理 50ms）；canvas-follow-hand 量具「打字·按键到画面」预算也是 50ms；#1179 在 Mac 上量过 document-keyboard-edit（另一套框架，未进主线）",
   "baseline": {
     "median": 11.7,

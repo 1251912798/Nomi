@@ -17,7 +17,7 @@
   ],
   "budget": 33,
   "group": "⑩ 时间轴拖动",
-  "budgetStatus": "proposed",
+  "budgetStatus": "approved",
   "budgetBasis": "连续手势要跟手：60Hz 下 p95 帧间隔不超过 2 帧（33ms），仓库默认预算同此；现有同类场景 canvas-drag-20-nodes 基线中位 9.5ms（10-11，有噪声）",
   "baseline": {
     "median": 18.3,

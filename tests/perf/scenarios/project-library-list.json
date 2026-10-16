@@ -16,7 +16,7 @@
   ],
   "budget": 300,
   "group": "⑥ 项目库",
-  "budgetStatus": "proposed",
+  "budgetStatus": "approved",
   "budgetBasis": "换页类操作：RAIL 认为 100ms 内即时、1 秒内不打断思路；回项目库只是把本地列表画出来（封面可以晚到），提议 300ms；现有同类 project-open-100-nodes（打开项目到能操作）预算 1000ms",
   "baseline": {
     "median": 799.8,
@@ -25,5 +25,11 @@
     "machine": "win32 x64 13th Gen Intel(R) Core(TM) i9-13900H x20 / 64GB",
     "date": "2026-10-16",
     "commit": "94724f860"
+  },
+  "budgetDebt": {
+    "owner": "P-library",
+    "state": "unassigned",
+    "note": "回项目库同步刷新全库，卡片出来后又触发全库同步状态检查；renderer 大段时间在 sendSync 上等主进程（C-trace 报告（协调状态目录 reports/C-trace.md））",
+    "since": "2026-10-16"
   }
 }

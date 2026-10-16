@@ -53,6 +53,20 @@
 
 `budgetStatus`：`proposed` = 实现线提议的预算（必须在 `budgetBasis` 写依据：人的感知阈值、现有同类场景的数字），安静窗口量完基线后由协调改成 `approved`；不写 = 已定。
 
+**已知超预算（欠账）**：基线量出来就比预算慢、修复线还没修完的，登记 `budgetDebt`：
+
+```json
+"budgetDebt": { "owner": "P-plan", "state": "assigned", "note": "为什么慢、修什么（一句话）", "since": "2026-10-16" }
+```
+
+`state`：`assigned`（已派）/ `unassigned`（待派）/ `needs-measurement`（根因还要量）。规矩是一把棘轮：
+
+- 门岗不因为它超预算而拦无关的 PR（统一跑法判 `known-debt`，不算失败）；
+- 但它不许再变差：中位数比欠账基线差超过 20% 照样红（统一跑法 `regression`、PR 证据行红）；
+- 超预算的基线不登记欠账，结构门岗红；修好了（基线回到预算内）还挂着欠账，也红——修复线量完新基线顺手删掉欠账。
+
+**待测场景**：登记了、还差一步才能量（量具或夹具没备好）的，写 `"measurement": { "state": "pending", "reason": "还差哪一步" }`。只许 `proposed` 预算、不许有基线和欠账；整表跑时跳过，点名 `--id` 量完写基线时自动去掉 `measurement`。
+
 3. `pnpm run perf:scenarios -- --smoke --id <id>`（1 次冒烟，确认脚本跑得通），再 `pnpm run perf:scenarios -- --id <id> --update-baseline` 写基线（≥5 次；跑的时候别的线在忙就加 `--noisy`，基线标 `noisy: true`，退化只提示）。写基线只许协调会话或验收线做，实现线把冒烟和 5 次的数字贴进 PR 即可。
 4. `pnpm run check:perf-scenarios` 通过（登记表结构门岗）。
 
@@ -69,14 +83,16 @@ pnpm run perf:scenarios -- --measure-only --out perf-<机器>.json   # 只量不
 
 Windows 上 `pnpm run perf:scenarios` 外面那层 `python3 scripts/with-gates-lock.py` 可能撞上应用商店的 `python3` 别名（退出 49、一行输出都没有，见 `docs/lessons/windows-agent-toolchain-traps.md` 第 4 条）；直接用 `node scripts/perf-scenarios.mjs <同样的参数>`。
 
-窗口在屏幕外、只用临时目录、不连真实资料（量具自己保证）。判定：中位数 > 预算 = `over-budget`；中位数比基线差 >20% = `regression`（基线标了 `noisy` 只提示）；没采到数据 = `no-data`。以上任一项都让命令退出码为 1。
+窗口在屏幕外、只用临时目录、不连真实资料（量具自己保证）。判定：中位数 > 预算 = `over-budget`（登记了欠账、且没比欠账基线差 >20% 的判 `known-debt`，不算失败）；中位数比基线差 >20% = `regression`（基线标了 `noisy` 只提示）；没采到数据 = `no-data`；待测场景 = `pending`（跳过）。`over-budget` / `regression` / `no-data` 让命令退出码为 1。
+
+诊断腿（定根因用，数字不进基线）：`--diag-out <目录>`（canvas-scale-bench、project-open-stages、document-switch-bench 都认）在第一个计数样本的窗口里抓 CDP trace、渲染 / 主进程 CPU profile、IPC 计时、store 写、合成层（`tests/perf/canvas-scale/diagnostics.mjs`）；读法 `node tests/perf/canvas-scale/profileReport.mjs <x.cpuprofile|x.trace.json>`（渲染层先 `npx vite build --mode production --sourcemap` 才能还原到源文件）。trace 一次几十 MB，目录放在空间够的盘上。
 
 ## 门岗
 
 | 门岗 | 管什么 |
 |---|---|
-| `check:perf-scenarios`（结构，进 `gates:contracts` 和推送前总跑集） | 登记表每条：id 唯一且同文件名、script 存在且是 `DRIVERS` 里有适配的现有量具、metrics 合法且量具量得出、budget 是正数、`budgetStatus` 只能是 proposed / approved 且提议的预算要写 `budgetBasis`、baseline 的 median / p95 / runs(≥5) 是数字、machine / date / commit 不空 |
-| `check:pr-judgement` | 路径推出「新增功能 / 性能」类的 PR，`## 验收证据` 必须有 `perf-scenario` 行：格式对、id 在登记表里、「未验证」红、「不适用」要有具体理由；2026-10-11 之前开的 PR 不要求 |
+| `check:perf-scenarios`（结构，进 `gates:contracts` 和推送前总跑集） | 登记表每条：id 唯一且同文件名、script 存在且是 `DRIVERS` 里有适配的现有量具、metrics 合法且量具量得出、budget 是正数、`budgetStatus` 只能是 proposed / approved 且提议的预算要写 `budgetBasis`、baseline 的 median / p95 / runs(≥5) 是数字、machine / date / commit 不空；超预算的基线必须登记 `budgetDebt`、达标了必须删掉；待测场景（`measurement`）只许 proposed、不许有基线 |
+| `check:pr-judgement` | 路径推出「新增功能 / 性能」类的 PR，`## 验收证据` 必须有 `perf-scenario` 行：格式对、id 在登记表里、写的预算等于登记的预算、中位数不超预算（欠账场景：不比欠账基线差 >20%）、「未验证」红、「不适用」要有具体理由；2026-10-11 之前开的 PR 不要求 |
 
 已知缺口：`feat` 前缀本身不是路径，纯后端新增（路径没命中上面几类）的新功能靠设计卡 ★7 自己勾「新增功能 / 性能」，门岗拦不到；合并前扫描 / 独立验收线核设计卡时看这一项。
 
@@ -95,7 +111,7 @@ Windows 上 `pnpm run perf:scenarios` 外面那层 `python3 scripts/with-gates-l
 
 ## 卡顿场景表（2026-10-15，用户 10-10「卡顿的场景需要多个场景测试」）
 
-十类场景全部登记在 `tests/perf/scenarios/`（共 24 条新场景）（`--list` 能看到「（提议）」的预算），基线等安静窗口量。
+十类场景全部登记在 `tests/perf/scenarios/`（共 24 条新场景，连同原有的共 28 条已测、1 条待测）。基线 2026-10-16 在安静窗口量（每条 1 次预热 + 5 次），预算由协调定为 approved；超预算的 7 条登记了欠账（`--list` 里标「欠账：负责线」）。
 
 | # | 场景 | 场景 id | 主指标 |
 |---|---|---|---|
@@ -104,7 +120,7 @@ Windows 上 `pnpm run perf:scenarios` 外面那层 `python3 scripts/with-gates-l
 | ③ | 有大图、有视频的画布上平移 / 缩放 | `canvas-pan-mixed-media`、`canvas-wheel-zoom-mixed-media` | frameGapP95 |
 | ④ | 连续新建节点 | `canvas-create-node-burst` | response |
 | ⑤ | 切创作 / 生成 / 预览；画布 ⇄ 列表 | `workbench-switch-stages`、`workbench-switch-canvas-list` | response |
-| ⑥ | 打开项目到能操作；项目库列表 | `project-open-100-nodes`、`project-library-list` | openToInteractive / response |
+| ⑥ | 打开项目到能操作；项目库列表；旧项目第一次打开（待测） | `project-open-100-nodes`、`project-library-list`、`project-open-legacy-first-open` | openToInteractive / response |
 | ⑦ | 文稿里长文打字 | `document-long-typing` | response（按键到上屏 p95） |
 | ⑧ | 多个节点同时在生成时操作画布 | `canvas-pan-while-generating`、`main-process-while-generating` | frameGapP95 / mainRoundTripMax |
 | ⑨ | Agent 流式输出时操作画布 | `canvas-pan-while-agent-streaming` | frameGapP95 |

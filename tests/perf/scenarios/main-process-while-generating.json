@@ -18,7 +18,7 @@
   ],
   "budget": 100,
   "group": "⑧ 多个节点同时在生成时操作画布（主进程）",
-  "budgetStatus": "proposed",
+  "budgetStatus": "approved",
   "budgetBasis": "主进程被占住时界面上的保存、打开、生成回执都会排队；一次往返超过 100ms 就是用户可感知的「点了没反应」（RAIL 100ms）；windows-freeze-sweep 判卡死用的是 1000ms，这里量的是「卡顿」不是「卡死」",
   "baseline": {
     "median": 89,
