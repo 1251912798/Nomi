@@ -21,6 +21,18 @@ const shortenedTimeoutSelectors = [TEST_CALL, HOOK_CALL].flatMap((call) => [
   { selector: `${call}[arguments.length>=2] > ObjectExpression.arguments:last-child > Property[key.name='timeout'] > Literal.value[value<${VITEST_TIMEOUT_FLOOR_MS}]`, message: SHORTENED_TIMEOUT_MESSAGE },
 ])
 
+/**
+ * Store 选择器里禁止 JSON.stringify（2026-10-16 卡顿波）：选择器每次 store 写都会跑，序列化防抖等于
+ * 「每一次别的卡的生成进度都把整份派生值重算 + 序列化一遍」。要稳定引用，用依赖面签名
+ * （src/workbench/generationCanvas/nodes/composerGraphSnapshot.ts）或在组件里 useContentStable 逐字段比。
+ */
+const storeSelectorSerializeSelectors = [
+  {
+    selector: "CallExpression[callee.name=/^use[A-Z][A-Za-z0-9]*Store$/] > :function CallExpression[callee.object.name='JSON'][callee.property.name='stringify']",
+    message: '不要在 store 选择器里 JSON.stringify：它在每次 store 写都会跑。用 composerGraphSnapshot 的依赖面快照，或在组件里 useContentStable 逐字段比。',
+  },
+]
+
 const windowsPathSelectors = [
   {
     selector: 'MemberExpression[property.name="pathname"][object.type="NewExpression"][object.callee.name="URL"]:has(MetaProperty)',
@@ -226,7 +238,7 @@ export default tseslint.config(
       'no-irregular-whitespace': 'warn',
       'preserve-caught-error': 'warn',
       'prefer-const': 'warn',
-      'no-restricted-syntax': ['error', ...windowsPathSelectors],
+      'no-restricted-syntax': ['error', ...windowsPathSelectors, ...storeSelectorSerializeSelectors],
     },
   },
   {
