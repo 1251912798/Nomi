@@ -61,7 +61,7 @@ function WorkflowNodeCard({ node, bindable, selected, onSelect }: WorkflowNodeCa
     'absolute z-[1] flex flex-col justify-center gap-0.5 overflow-hidden rounded-nomi px-2 py-1.5 text-left',
     'bg-nomi-paper shadow-nomi-sm',
     tone ? cn('border', tone.border, tone.soft) : 'border border-nomi-line',
-    selected && 'ring-2 ring-nomi-accent',
+    selected && 'ring-1 ring-nomi-ink',
   )
 
   if (!bindable) {
@@ -81,7 +81,7 @@ function WorkflowNodeCard({ node, bindable, selected, onSelect }: WorkflowNodeCa
   return (
     <button
       type="button"
-      className={cn(shared, 'cursor-pointer hover:border-nomi-accent')}
+      className={cn(shared, 'cursor-pointer hover:border-nomi-ink-30')}
       style={style}
       data-node-id={node.nodeId}
       aria-label={ariaLabel}

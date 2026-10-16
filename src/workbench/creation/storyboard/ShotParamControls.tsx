@@ -111,7 +111,7 @@ export function ShotParamsDrawer({
                 value={valueOf(c)}
                 onChange={(event) => setParam(c, event.target.value)}
                 rows={2}
-                className="basis-full w-full resize-y px-2 py-1.5 rounded-nomi-sm border border-nomi-line bg-nomi-paper text-body-sm text-nomi-ink-80 focus:border-nomi-accent"
+                className="basis-full w-full resize-y px-2 py-1.5 rounded-nomi-sm border border-nomi-line bg-nomi-paper text-body-sm text-nomi-ink-80 focus:border-nomi-ink-40"
               />
             )
           })}

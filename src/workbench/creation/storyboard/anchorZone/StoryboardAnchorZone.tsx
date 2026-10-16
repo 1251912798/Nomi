@@ -73,7 +73,7 @@ export default function StoryboardAnchorZone(props: Props): JSX.Element {
           onClick={() => setExpanded(!expanded)}
           aria-expanded={expanded}
           data-storyboard-anchors-toggle="true"
-          className={`${visual.length > 0 ? '' : 'ml-auto '}inline-flex h-6 shrink-0 items-center gap-1 rounded-full border border-nomi-line px-2 text-micro text-nomi-ink-60 hover:border-nomi-accent hover:text-nomi-accent`}
+          className={`${visual.length > 0 ? '' : 'ml-auto '}inline-flex h-6 shrink-0 items-center gap-1 rounded-full border border-nomi-line px-2 text-micro text-nomi-ink-60 hover:border-nomi-ink-30 hover:text-nomi-accent`}
         >
           {expanded ? <IconChevronUp size={12} stroke={1.8} /> : <IconChevronDown size={12} stroke={1.8} />}
           {expanded ? t('storyboardEditor.anchor.collapseAll') : t('storyboardEditor.anchor.expandAll')}

@@ -97,7 +97,7 @@ function GridSplitPanel({ onPick }: { onPick: (spec: GridSplitSpec) => void }): 
                 data-grid-cell={`${row}x${col}`}
                 className={cn(
                   'size-5 rounded-nomi-sm border transition-colors duration-nomi-fast',
-                  lit ? 'border-nomi-accent bg-nomi-accent-soft' : 'border-nomi-line bg-nomi-ink-05',
+                  lit ? 'border-transparent bg-nomi-accent-soft' : 'border-nomi-line bg-nomi-ink-05',
                 )}
                 onMouseEnter={() => setHover(spec)}
                 onFocus={() => setHover(spec)}

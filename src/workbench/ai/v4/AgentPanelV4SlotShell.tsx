@@ -127,7 +127,7 @@ export function V4SlotShell({
       className={cn(
         'relative overflow-hidden rounded-nomi border bg-nomi-paper',
         waiting
-          ? 'border-nomi-accent shadow-[0_0_0_1px_var(--nomi-accent-soft)]'
+          ? 'border-nomi-ink-40'
           : 'border-nomi-line',
         rest.className,
       )}
@@ -183,7 +183,7 @@ export function V4Pager({
 }): JSX.Element {
   const { t } = useTranslation()
   const step = (delta: number): void => onPage?.((pager.index + delta + pager.total) % pager.total)
-  const arrow = 'flex size-5 shrink-0 items-center justify-center rounded-nomi-sm text-nomi-accent hover:bg-nomi-info-edge disabled:opacity-40'
+  const arrow = 'flex size-5 shrink-0 items-center justify-center rounded-nomi-sm text-nomi-accent hover:bg-nomi-accent-soft disabled:opacity-40'
   return (
     <V4Row as="div" className="shrink-0 gap-0.5 font-normal" data-v4-block="pager">
       <button type="button" className={arrow} aria-label={t('agentPanelV4.pagerPrev')} disabled={pager.total < 2} onClick={() => step(-1)} data-v4-control="pager-prev">

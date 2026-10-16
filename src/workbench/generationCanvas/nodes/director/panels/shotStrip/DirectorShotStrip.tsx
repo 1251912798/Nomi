@@ -66,7 +66,7 @@ export function DirectorShotStrip({ shots, activeIndex, selectedCameraIds }: { s
               style={{ flexGrow: Math.max(0.01, shot.end - shot.start), flexBasis: 0 }}
               className={cn(
                 'relative min-w-0 rounded-nomi-sm border px-2 py-1.5 text-left transition-colors',
-                selected ? 'border-nomi-accent bg-nomi-accent-soft' : 'border-nomi-line bg-nomi-ink-05 hover:border-nomi-ink-30',
+                selected ? 'border-transparent bg-nomi-accent-soft' : 'border-nomi-line bg-nomi-ink-05 hover:border-nomi-ink-30',
               )}
               aria-pressed={selected}
               data-playhead={active ? 'true' : undefined}

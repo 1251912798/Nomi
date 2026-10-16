@@ -99,7 +99,7 @@ export default function StoryboardVariantsDrawer({
                     disabled={adopted}
                     onClick={() => onAdopt(variant)}
                     data-storyboard-variant-adopt={variant.id}
-                    className="h-6 shrink-0 rounded-nomi-sm border border-nomi-line px-2 text-micro text-nomi-ink-80 hover:border-nomi-accent hover:text-nomi-accent disabled:opacity-40"
+                    className="h-6 shrink-0 rounded-nomi-sm border border-nomi-line px-2 text-micro text-nomi-ink-80 hover:border-nomi-ink-30 hover:text-nomi-accent disabled:opacity-40"
                   >
                     {adopted ? t('storyboardEditor.variants.adopted') : t('storyboardEditor.variants.adopt')}
                   </button>

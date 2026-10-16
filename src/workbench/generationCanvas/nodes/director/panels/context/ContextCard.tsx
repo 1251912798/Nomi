@@ -49,7 +49,7 @@ function PathDrawButtons({ onCancelCreation }: { onCancelCreation: () => void })
         icon={icon}
         label={`${t(`director.topbar.${key}`)} (${formatHotkey(DIRECTOR_HOTKEYS[key])})`}
         aria-pressed={on}
-        className={on ? 'bg-nomi-accent-soft text-nomi-accent' : ''}
+        className={on ? 'bg-nomi-accent-soft text-nomi-ink' : ''}
         data-testid={`director-card-${key}`}
         onClick={() => changeTool(on ? 'select' : key)}
       />

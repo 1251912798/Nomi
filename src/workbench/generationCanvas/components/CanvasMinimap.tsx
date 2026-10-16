@@ -152,7 +152,7 @@ export const CanvasMinimap = React.memo(function CanvasMinimap({
           )
         })}
         <div
-          className="absolute border border-nomi-accent rounded-nomi-sm bg-nomi-accent-soft/30 pointer-events-none"
+          className="absolute border border-nomi-ink rounded-nomi-sm bg-nomi-accent-soft/30 pointer-events-none"
           style={{ left: viewTL.left, top: viewTL.top, width: Math.max(4, viewW), height: Math.max(4, viewH) }}
         />
       </div>

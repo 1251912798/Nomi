@@ -183,7 +183,6 @@ export default function ImageQuickActionsToolbar(props: ImageQuickActionsToolbar
           <ToolbarButton
             icon={<IconLayoutGrid size={I.size} stroke={I.stroke} />}
             label={t('generationCommon.quickActions.splitInto', { count: derivedGrid.rows * derivedGrid.cols })}
-            accent
             title={t('generationCommon.quickActions.splitIntoHint', derivedGrid)}
             disabled={busy || !imageUrl}
             onClick={() => onGridSplit(derivedGrid)}

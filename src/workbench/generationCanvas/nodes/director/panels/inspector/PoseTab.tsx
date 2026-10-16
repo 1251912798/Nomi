@@ -35,7 +35,7 @@ function ListButton({ label, active, onClick }: { label: string; active: boolean
       aria-selected={active}
       className={cn(
         'flex h-7 items-center justify-between rounded-nomi-sm border px-2 text-left text-caption transition-colors',
-        active ? 'border-nomi-accent bg-nomi-accent/10 text-nomi-ink' : 'border-nomi-line-soft bg-nomi-ink-05 text-nomi-ink-60 hover:bg-nomi-ink-10 hover:text-nomi-ink',
+        active ? 'border-transparent bg-nomi-accent/10 text-nomi-ink' : 'border-nomi-line-soft bg-nomi-ink-05 text-nomi-ink-60 hover:bg-nomi-ink-10 hover:text-nomi-ink',
       )}
       onClick={onClick}
     >

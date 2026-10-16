@@ -1,4 +1,5 @@
 # docs/plan 索引地图
+- [去掉强调色描边：普查 + 样张 + 落地结果（蓝色只留主按钮 / 链接 / 进度 / 连线握把）](2026-10-10-no-accent-outline.md) — 241 处普查分 8 类、样张八格、落地记录；门岗 `check:tokens` 第 7 类棘轮。
 - [模型契约跨字段约束](2026-09-08-model-contract-cross-field-limits.md) — Hailuo 1080p/时长与 H3 混合参考总量。
 - [阶段 5b：目录活性 reconcile](2026-09-08-catalog-liveness-reconcile.md) — 自动禁用、保留配置、周探针与明暗样张。
 - [全仓架构治理定稿：单一事实、单向投影、入口收敛](2026-09-26-architecture-single-owner-governance.md) — 生命周期 owner、durable commit、迁移/回滚矩阵、vertical pilot 与真实验收门。
