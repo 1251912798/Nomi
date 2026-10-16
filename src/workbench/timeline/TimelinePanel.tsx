@@ -547,7 +547,7 @@ export default function TimelinePanel({ density = 'compact', regionLabel, action
           className={cn(
             'workbench-timeline__playhead',
             'absolute top-0 bottom-0 left-[var(--workbench-timeline-label-width)] z-[6]',
-            'w-px bg-[var(--workbench-accent)] shadow-[0_0_0_1px_rgba(0,122,255,0.08)]',
+            'w-px bg-[var(--workbench-accent)] shadow-[0_0_0_1px_var(--workbench-accent-soft)]',
             'pointer-events-none',
           )}
           style={{ transform: `translateX(${frameToPixel(timeline.playheadFrame, timeline.scale)}px)` }}

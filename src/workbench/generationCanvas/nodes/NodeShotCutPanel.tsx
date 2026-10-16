@@ -279,7 +279,7 @@ export default function NodeShotCutPanel({ onFeedback, node, onClose }: Props): 
                     className={cn(
                       'overflow-hidden rounded-nomi-sm border p-0 text-left cursor-pointer',
                       'transition-colors duration-nomi-fast ease-nomi-fast',
-                      isOn ? 'border-nomi-accent bg-nomi-accent-soft' : 'border-nomi-line bg-nomi-paper opacity-60',
+                      isOn ? 'border-transparent bg-nomi-accent-soft' : 'border-nomi-line bg-nomi-paper opacity-60',
                     )}
                     aria-pressed={isOn}
                     disabled={Boolean(committing)}

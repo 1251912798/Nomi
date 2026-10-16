@@ -41,7 +41,7 @@ export function CatalogNoticeBanner({
     <div
       className={cn(
         'mt-4 border-l-2 bg-nomi-ink-05 px-3 py-3',
-        tone === 'warning' ? 'border-nomi-warning' : 'border-nomi-accent',
+        tone === 'warning' ? 'border-nomi-warning' : 'border-nomi-line',
       )}
       data-catalog-notice={marker}
       role="status"
@@ -208,7 +208,7 @@ export function CatalogPackageActions({ onImported }: { onImported: () => void }
         aria-label={t('onboardingProviders.drawer.exportConfig')}
         title={t('onboardingProviders.drawer.exportConfig')}
         data-catalog-package-action="export"
-        className="grid size-7 shrink-0 place-items-center rounded-nomi-sm border border-nomi-line text-nomi-ink-60 hover:border-nomi-accent hover:text-nomi-accent disabled:opacity-40"
+        className="grid size-7 shrink-0 place-items-center rounded-nomi-sm border border-nomi-line text-nomi-ink-60 hover:border-nomi-ink-30 hover:text-nomi-accent disabled:opacity-40"
       >
         <IconUpload size={15} stroke={1.7} aria-hidden="true" />
       </button>
@@ -219,7 +219,7 @@ export function CatalogPackageActions({ onImported }: { onImported: () => void }
         aria-label={t('onboardingProviders.drawer.importConfig')}
         title={t('onboardingProviders.drawer.importConfig')}
         data-catalog-package-action="import"
-        className="grid size-7 shrink-0 place-items-center rounded-nomi-sm border border-nomi-line text-nomi-ink-60 hover:border-nomi-accent hover:text-nomi-accent disabled:opacity-40"
+        className="grid size-7 shrink-0 place-items-center rounded-nomi-sm border border-nomi-line text-nomi-ink-60 hover:border-nomi-ink-30 hover:text-nomi-accent disabled:opacity-40"
       >
         <IconDownload size={15} stroke={1.7} aria-hidden="true" />
       </button>

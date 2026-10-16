@@ -286,7 +286,7 @@ function TimelineClip({ clip, transitionLaneRows = 0 }: TimelineClipProps): JSX.
     'rounded text-[var(--workbench-ink)] text-micro font-medium',
     'shadow-[inset_0_1px_0_var(--workbench-bevel)] cursor-grab select-none active:cursor-grabbing',
     clip.type === 'image' &&
-      'border border-[color-mix(in_srgb,var(--workbench-accent)_22%,transparent)] bg-[var(--workbench-accent-soft)]',
+      'border border-nomi-line bg-[var(--workbench-accent-soft)]',
     clip.type === 'video' &&
       'border border-[color-mix(in_srgb,var(--workbench-video)_24%,transparent)] bg-[var(--workbench-video-soft)]',
     // audio clip 视觉（紫色调 --workbench-audio，与图=蓝/视频=青区分）
@@ -301,7 +301,7 @@ function TimelineClip({ clip, transitionLaneRows = 0 }: TimelineClipProps): JSX.
         clip.type === 'audio' &&
           'border-[color-mix(in_srgb,var(--workbench-audio)_56%,transparent)] bg-[color-mix(in_srgb,var(--workbench-audio)_16%,var(--workbench-surface))] shadow-[0_0_0_1.5px_color-mix(in_srgb,var(--workbench-audio)_13%,transparent),0_8px_18px_var(--workbench-audio-soft)]',
         clip.type === 'image' &&
-          'border-[color-mix(in_srgb,var(--workbench-accent)_62%,transparent)] bg-[color-mix(in_srgb,var(--workbench-accent)_16%,var(--workbench-surface))] shadow-[0_0_0_1.5px_color-mix(in_srgb,var(--workbench-accent)_13%,transparent),0_8px_18px_var(--workbench-accent-soft)]',
+          'border-nomi-ink-60 bg-[color-mix(in_srgb,var(--workbench-accent)_16%,var(--workbench-surface))] shadow-nomi-md',
       )
     : ''
 

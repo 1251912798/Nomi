@@ -72,7 +72,7 @@ export default function CategoryItem({
   if (editing && !collapsed) {
     const Icon = getCategoryIcon(category.iconName)
     return (
-      <div className="w-full flex items-center gap-2 px-2 py-1.5 rounded-nomi-sm border border-nomi-accent/30 bg-nomi-accent/10 text-caption">
+      <div className="w-full flex items-center gap-2 px-2 py-1.5 rounded-nomi-sm border border-transparent bg-nomi-accent/10 text-caption">
         <span className="w-3 shrink-0 text-micro text-nomi-ink-40" aria-hidden>
           {expanded ? '▾' : '▸'}
         </span>
@@ -98,7 +98,7 @@ export default function CategoryItem({
               onCommitName?.(event.currentTarget.value)
             }
           }}
-          className="min-w-0 flex-1 bg-transparent border-b border-nomi-accent/50 text-caption text-nomi-ink outline-none"
+          className="min-w-0 flex-1 bg-transparent border-b border-nomi-ink-40 text-caption text-nomi-ink outline-none"
         />
       </div>
     )
@@ -118,8 +118,8 @@ export default function CategoryItem({
       className={cn(
         'w-full flex items-center gap-2 px-2 py-1.5 text-left rounded-nomi-sm transition-colors',
         'text-caption leading-tight border border-transparent',
-        active ? 'bg-nomi-ink-10 text-nomi-accent' : 'text-nomi-ink-80 hover:bg-nomi-ink-05 hover:text-nomi-ink',
-        dragOver && 'ring-2 ring-nomi-accent border-nomi-accent',
+        active ? 'bg-nomi-ink-10 text-nomi-ink' : 'text-nomi-ink-80 hover:bg-nomi-ink-05 hover:text-nomi-ink',
+        dragOver && 'border-nomi-ink-40',
         collapsed && 'justify-center px-0',
       )}
     >

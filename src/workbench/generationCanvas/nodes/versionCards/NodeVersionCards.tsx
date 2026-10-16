@@ -53,7 +53,7 @@ export function NodeVersionCountBadge({
     'absolute right-2 top-2 z-[4] inline-flex h-5 min-w-5 items-center justify-center rounded-pill border px-1.5',
     'text-micro font-semibold leading-none tabular-nums shadow-nomi-sm',
     // 压在画面上的东西用不随明暗翻转的媒体色（白底深字），暗色主题里也是同一枚浅色角标——和卡上「第 N 版」小字同一条规矩。
-    expanded ? 'border-nomi-accent bg-nomi-accent text-nomi-media-ink' : 'border-nomi-overlay-chip/25 bg-nomi-media-ink/[0.88] text-nomi-overlay-chip-strong',
+    expanded ? 'border-transparent bg-nomi-accent text-nomi-media-ink' : 'border-nomi-overlay-chip/25 bg-nomi-media-ink/[0.88] text-nomi-overlay-chip-strong',
   )
   if (readOnly && !expanded) {
     return <span className={look} data-version-badge aria-label={label}>{count}</span>
@@ -62,7 +62,7 @@ export function NodeVersionCountBadge({
     <button
       type="button"
       // nodrag / no-pan：画布内核拖节点是节点元素上的原生 mousedown，只认这两个类；点角标不该拖动节点。
-      className={cn(look, 'nodrag generation-canvas-react-flow__no-pan pointer-events-auto cursor-pointer transition-colors duration-nomi-fast ease-nomi-fast', !expanded && 'hover:bg-nomi-media-ink', 'focus-visible:outline-2 focus-visible:outline-nomi-accent focus-visible:outline-offset-1')}
+      className={cn(look, 'nodrag generation-canvas-react-flow__no-pan pointer-events-auto cursor-pointer transition-colors duration-nomi-fast ease-nomi-fast', !expanded && 'hover:bg-nomi-media-ink', 'focus-visible:outline-2 focus-visible:outline-nomi-ink focus-visible:outline-offset-1')}
       aria-label={label}
       aria-pressed={expanded}
       title={label}
@@ -186,7 +186,7 @@ function VersionVideoMedia({ entry, active }: { entry: VersionCardEntry; active:
           // 不标这两个类，拖进度条会同时拖动整个节点，画布停在「拖动中」、之后的点击都被吞（10-06 真画布实测）。
           'nodrag generation-canvas-react-flow__no-pan absolute bottom-0 left-0 right-0 z-[3] h-4 cursor-ew-resize px-1.5 pb-1 pt-2 transition-opacity duration-150',
           active ? 'opacity-100' : 'pointer-events-none opacity-0',
-          'focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-nomi-accent focus-visible:outline-offset-1',
+          'focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-nomi-ink focus-visible:outline-offset-1',
         )}
         role="slider"
         tabIndex={0}

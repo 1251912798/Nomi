@@ -25,6 +25,7 @@ import {
   collectTokenDefinitions,
 } from "./lib/colorMixHue.mjs";
 import { scanScopedTokenDefinitions } from "./lib/scopedTokenScan.mjs";
+import { countAccentOutlineInText, findAccentAliasedTokens } from "./lib/accentOutlineScan.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -171,6 +172,50 @@ if (scopedDefs.length > 0) {
   );
 }
 
+// ---- 第 7 类：强调色描边（棘轮，逐文件，只减不增）+ 焦点 / info token 不许别名到强调色（零容忍）----
+//
+// 2026-10-10 用户拍板「蓝色描边不需要，都删掉」：蓝色只留主按钮 / 链接 / 进度 / 连线握把。
+// 强调色（含 info 族）用在 border / outline / ring / divide / box-shadow 上的存量，逐文件记在
+// scripts/accent-outline-baseline.json（{ 文件: { count, reason } }，每条必须带理由）；新增或超出 → 红牌。
+// 规则细则与扫描器：scripts/lib/accentOutlineScan.mjs；自证：scripts/accentOutlineScan.test.mjs。
+const accentBaseline = JSON.parse(fs.readFileSync(path.join(ROOT, "scripts/accent-outline-baseline.json"), "utf8"));
+const accentFiles = gitPaths(["ls-files", "--cached", "--others", "--exclude-standard", "src"], { cwd: ROOT })
+  .filter((f) => /\.(tsx?|css)$/.test(f))
+  .filter((f) => !/\.test\.tsx?$/.test(f))
+  .filter((f) => !f.startsWith("src/devlab/"))
+  .concat(["tailwind.config.ts"]) // 全局 addBase 里也有 border-color 写法（输入框聚焦线）
+  .filter((f) => fs.existsSync(path.join(ROOT, f)));
+let accentTotal = 0;
+const accentSeen = new Set();
+for (const rel of accentFiles) {
+  const n = countAccentOutlineInText(fs.readFileSync(path.join(ROOT, rel), "utf8"));
+  if (n === 0) continue;
+  accentTotal += n;
+  accentSeen.add(rel);
+  const entry = accentBaseline[rel];
+  const limit = entry?.count ?? 0;
+  if (n > limit) {
+    errors.push(
+      `✗ 强调色描边：${rel} ${n} 处 > 白名单 ${limit}（蓝色只留主按钮/链接/进度/连线握把；` +
+        `单选不加框、当前项淡底色、焦点环用 outline-nomi-ink、悬停/装饰用灰线 border-nomi-ink-20/30、输入框聚焦 border-nomi-ink-40）`,
+    );
+  } else if (n < limit) {
+    warnings.push(`↓ 强调色描边：${rel} ${n} 处 < 白名单 ${limit}（已清理，请把 scripts/accent-outline-baseline.json 下调到 ${n} 或删条目）`);
+  }
+}
+for (const [rel, entry] of Object.entries(accentBaseline)) {
+  if (!entry || typeof entry.reason !== "string" || entry.reason.trim() === "") {
+    errors.push(`✗ 强调色描边白名单 ${rel} 缺 reason（每条保留都要写理由）`);
+  }
+  if (!accentSeen.has(rel)) warnings.push(`↓ 强调色描边白名单 ${rel} 已无命中（请删掉这条）`);
+}
+const aliasFiles = ["tailwind.config.ts", "src/theme/nomi-tokens.css"].filter((f) => fs.existsSync(path.join(ROOT, f)));
+for (const rel of aliasFiles) {
+  for (const f of findAccentAliasedTokens(fs.readFileSync(path.join(ROOT, rel), "utf8"), rel)) {
+    errors.push(`✗ ${f.file}:${f.line} ${f.token} 别名到强调色（${f.value}）：焦点环用深色（ink）、info 族不许等于 accent`);
+  }
+}
+
 for (const w of warnings) console.warn(w);
 
 if (errors.length > 0) {
@@ -182,5 +227,7 @@ console.log(
   `✓ 设计 token 门岗通过：${RULES.length} 类棘轮（只减不增，目标清零）。当前 ${counts.join("/")}（${RULES.map((r) => r.baseline).join("/")}）。` +
     `\n✓ color-mix 色相漂移零容忍：扫 ${mixFiles.length} 文件 / ${tokenDefs.size} 个 token 定义，无 in oklch 跨色相混合。` +
     `\n✓ color-mix(in oklch, …, transparent) 零容忍：无一处（混 transparent 一律 in oklab）。` +
+    `
+✓ 强调色描边棘轮：${accentTotal} 处（白名单 ${Object.keys(accentBaseline).length} 个文件，只减不增）；--nomi-focus / --nomi-info 不别名到强调色。` +
     `\n✓ 语义 token 作用域零容忍：--nomi-*/--workbench-* 定义全部在 :root 层（portal/浮层任意挂载点都解析得到）。`,
 );

@@ -55,7 +55,7 @@ export default function TimelineResizeHandle(): JSX.Element {
       className={cn(
         'absolute inset-x-0 -top-1 z-20 h-2 cursor-row-resize touch-none',
         'flex items-center justify-center outline-none',
-        'focus-visible:ring-2 focus-visible:ring-nomi-accent',
+        'focus-visible:ring-2 focus-visible:ring-nomi-ink',
       )}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}

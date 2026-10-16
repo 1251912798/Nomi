@@ -43,7 +43,7 @@ export default function TimelineSeamHandle({
   return (
     <button
       type="button"
-      className={cn('absolute z-[5] -translate-x-1/2 -translate-y-1/2 rounded-full border border-dashed p-0.5', 'top-1/2 h-5 w-5 bg-[var(--nomi-paper)] text-[var(--workbench-accent)] transition-opacity', disabled ? 'cursor-not-allowed opacity-35' : 'opacity-0 hover:opacity-100 focus-visible:opacity-100 hover:border-[var(--workbench-accent)]')}
+      className={cn('absolute z-[5] -translate-x-1/2 -translate-y-1/2 rounded-full border border-dashed p-0.5', 'top-1/2 h-5 w-5 bg-[var(--nomi-paper)] text-[var(--workbench-accent)] transition-opacity', disabled ? 'cursor-not-allowed opacity-35' : 'opacity-0 hover:opacity-100 focus-visible:opacity-100 hover:border-nomi-ink-30')}
       style={{ left: frameToPixel(from.endFrame, scale) }}
       aria-label={disabled ? reason : t('timelineEditor.transition.addDefault')}
       title={disabled ? reason : t('timelineEditor.transition.addDefault')}

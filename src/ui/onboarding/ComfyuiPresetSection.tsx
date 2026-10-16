@@ -207,7 +207,7 @@ export function ComfyuiPresetSection({ vendorKey, modelLabels, onImported, onVer
                     type="button"
                     onClick={() => check(preset)}
                     disabled={checking}
-                    className="inline-flex shrink-0 items-center gap-1 h-8 px-2.5 whitespace-nowrap text-caption text-nomi-ink-60 rounded-nomi-sm border border-nomi-line hover:border-nomi-accent hover:text-nomi-accent disabled:opacity-50"
+                    className="inline-flex shrink-0 items-center gap-1 h-8 px-2.5 whitespace-nowrap text-caption text-nomi-ink-60 rounded-nomi-sm border border-nomi-line hover:border-nomi-ink-30 hover:text-nomi-accent disabled:opacity-50"
                   >
                     <IconRefresh size={13} stroke={1.7} className={checking ? 'animate-spin' : undefined} />{t('onboardingProviders.comfyPreset.recheck')}
                   </button>

@@ -175,7 +175,7 @@ export function NomiStepper({ value, onChange, meta }: NomiStepperProps): JSX.El
             'nomi-stepper__step',
             'inline-flex h-6 items-center gap-1.5 px-3 border-0 rounded-full bg-transparent text-nomi-ink-60 font-inherit text-body-sm cursor-pointer',
             'transition-[background,color,box-shadow] ease-nomi-fast',
-            'hover:text-nomi-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-nomi-accent',
+            'hover:text-nomi-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-nomi-ink',
             'data-[state=active]:bg-nomi-paper data-[state=active]:font-medium data-[state=active]:text-nomi-ink data-[state=active]:shadow-nomi-sm',
           )}
           type="button"

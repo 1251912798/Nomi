@@ -47,7 +47,7 @@ export function V4ConsentCard({
   return (
     <div
       data-v4-block="consent"
-      className="mt-3 rounded-nomi border border-nomi-accent bg-nomi-paper p-3.5 text-left"
+      className="mt-3 rounded-nomi border border-nomi-line bg-nomi-paper p-3.5 text-left"
     >
       <p className="text-body-sm font-medium text-nomi-ink">{t('agentPanelV4.consent.title')}</p>
       <p className="mt-1.5 text-caption leading-relaxed text-nomi-ink-60">{t('agentPanelV4.consent.collects')}</p>

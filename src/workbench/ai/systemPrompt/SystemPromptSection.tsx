@@ -255,7 +255,7 @@ export function SystemPromptSection(): JSX.Element {
             onChange={(event) => onEditName(event.currentTarget.value)}
             className={cn(
               'w-full rounded-nomi-sm border border-nomi-line bg-nomi-paper px-2.5 py-1.5',
-              'text-caption text-nomi-ink outline-none focus:border-nomi-accent',
+              'text-caption text-nomi-ink outline-none focus:border-nomi-ink-40',
             )}
           />
         </div>
@@ -274,7 +274,7 @@ export function SystemPromptSection(): JSX.Element {
         aria-label={isCustom ? t('settings.ai.systemPrompt.customEditorLabel') : t('settings.ai.systemPrompt.editorLabel')}
         className={cn(
           'h-44 w-full resize-y overflow-y-auto rounded-nomi-sm border border-nomi-line bg-nomi-paper p-3',
-          'text-caption leading-relaxed text-nomi-ink outline-none focus:border-nomi-accent',
+          'text-caption leading-relaxed text-nomi-ink outline-none focus:border-nomi-ink-40',
         )}
       />
 

@@ -104,7 +104,7 @@ export default function OverlaySelectionBox({
       className={cn(
         'workbench-overlay-selection',
         'absolute pointer-events-auto cursor-move touch-none',
-        'outline outline-2 outline-[var(--nomi-accent)]',
+        'outline outline-2 outline-[var(--nomi-ink)]',
       )}
       style={{
         left: `${centerNorm.x * stageWidth}px`,
@@ -122,7 +122,7 @@ export default function OverlaySelectionBox({
           className={cn(
             'workbench-overlay-selection__handle',
             'absolute w-[10px] h-[10px] rounded-nomi-sm touch-none',
-            'border-[1.5px] border-[var(--nomi-accent)] bg-[var(--nomi-paper)]',
+            'border-[1.5px] border-[var(--nomi-ink)] bg-[var(--nomi-paper)]',
             'shadow-nomi-sm',
             HANDLE_POS[key],
           )}
