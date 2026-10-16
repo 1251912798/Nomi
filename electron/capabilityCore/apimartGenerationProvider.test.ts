@@ -7,6 +7,7 @@ import { APIMART_VIDEO_MODELS } from "../catalog/apimartVideos";
 import { APIMART_IMAGE_QUERY_OP, APIMART_STATUS_MAPPING, APIMART_VENDOR_SEED, APIMART_VIDEO_QUERY_OP } from "../catalog/apimartVendor";
 import { registerRequestTransform } from "../tasks/requestTransforms";
 import { spendReferenceKey } from "../shared/contracts/pendingSpendConfirm";
+import { certifyArchetypeWireModel } from "../shared/wireModelIdentity";
 
 /** 授权时封存的那份 URL 快照，键就是付费卡上那一条参考的身份。 */
 function approvedUrls(entries: ReadonlyArray<readonly [Record<string, unknown>, string]>): Record<string, string> {
@@ -41,6 +42,8 @@ function catalogFixture(overrides: Partial<CatalogState> = {}): CatalogState {
   const mappings = [
     ...APIMART_IMAGE_MODELS.flatMap((model) => model.mappings.map((mapping) => ({
       ...mapping,
+      // 与真实目录同形：内置登记表给 curated op 盖了「收档案线上名」的声明（seedBuiltins）。
+      create: certifyArchetypeWireModel(mapping.create),
       vendorKey: "apimart" as const,
       modelKey: model.modelKey,
       enabled: true,
@@ -51,6 +54,7 @@ function catalogFixture(overrides: Partial<CatalogState> = {}): CatalogState {
     }))),
     ...APIMART_VIDEO_MODELS.flatMap((model) => model.mappings.map((mapping) => ({
       ...mapping,
+      create: certifyArchetypeWireModel(mapping.create),
       vendorKey: "apimart" as const,
       modelKey: model.modelKey,
       enabled: true,
@@ -313,11 +317,11 @@ describe("APIMart observe-only generation provider", () => {
     await expect(provider.query?.("task-1")).rejects.toThrow("without the model it was submitted with");
   });
 
-  it("projects a selected variant into mappings that explicitly consume request.params.model", () => {
+  it("projects the sealed variant into curated mappings that declare archetype wire models", () => {
     const provider = createApimartGenerationProvider({ resolveConnection: () => ({ apiKey: "test-key" }), fetchImpl: vi.fn() });
     expect(provider.buildRequest(input({
       modelId: "doubao-seedance-2.0",
-      transportModelId: "doubao-seedance-2.0-fast",
+      variantId: "fast",
       mode: "text_to_video",
       parameters: { duration: 5, size: "16:9", resolution: "720p" },
     }))).toMatchObject({ model: "seedance-2.0-fast", duration: 5 });

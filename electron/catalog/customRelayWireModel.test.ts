@@ -126,11 +126,12 @@ describe("自定义中转 · headless / MCP 入口（引擎 A 缺参兜底之后
 describe("自定义中转 · 自定义调用脚本入口", () => {
   it("脚本拿到的 params.model 是连接的模型名", () => {
     const request = uiRequest("gpt-image-2.5-sunburst", "image", { id: "gpt-image-2.5-sunburst", modeId: "t2i" });
+    // 自定义脚本那条路拿到的是这个模型在该桶上的 mapping op（中转 op 没有收档案名的声明）。
     const params = taskTemplateParams(request, {
       vendorKey: RELAY_KEY,
       modelKey: "gpt-image-2.5-sunburst",
-      wireModelKey: "gpt-image-2.5-sunburst",
-    } as never);
+      operation: NEWAPI_IMAGE_CREATE_OP,
+    });
     expect(params.model).toBe("gpt-image-2.5-sunburst");
   });
 });
