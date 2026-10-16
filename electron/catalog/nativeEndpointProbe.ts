@@ -121,8 +121,9 @@ export async function probeNativeEndpoint(
     return {
       exists: false,
       verdict: "no-contract",
-      detail: `这家的 ${probePath} 对假任务号回 HTTP ${target.status}，不是原生合同的「任务不存在」回答——真查任务也会这样失败，按不支持处理`,
+      // detail 只进日志（用户看不到），英文即可，不占界面文案的 i18n 名额。
+      detail: `${probePath} answered a bogus task id with HTTP ${target.status}, which is not the native contract's own task-not-found answer; real task queries would fail the same way`,
     };
   }
-  return { exists: true, verdict: "contract", detail: `这家按原生合同回答 ${probePath}（假任务号 → HTTP ${target.status} 原生错误包络）` };
+  return { exists: true, verdict: "contract", detail: `${probePath} answers in the native contract (bogus task id -> HTTP ${target.status} native error envelope)` };
 }
