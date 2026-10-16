@@ -1840,6 +1840,31 @@
       "revisitWhen": "Vitest 提供按用例的「自定义在途资源」钩子，或导出任务表改成按项目实例化、不再是模块级单例时"
     },
     {
+      "id": "docs-site-glue",
+      "capability": "教程站接入胶水：把 Astro Starlight 的产物搬进官网目录、去掉站内链接的 .html、写页面清单并入 sitePages",
+      "status": "justified",
+      "paths": [
+        "scripts/build-marketing-docs.mjs",
+        "scripts/marketing/docs-site.mjs"
+      ],
+      "alternativesChecked": [
+        {
+          "name": "Astro Starlight（接入：侧边栏、页内目录、Pagefind 搜索、提示框、步骤、代码复制、hreflang 都用它自带的，不自写）",
+          "source": "https://starlight.astro.build/"
+        },
+        {
+          "name": "沿用自写的官网页面生成器再写一套文档页（侧边栏、搜索、提示框都要自写，等于第二个生成器）",
+          "source": "docs/plan/2026-10-10-docs-site.md"
+        },
+        {
+          "name": "Starlight 的 build.format: directory（站内链接天然无 .html，但产物是 docs/x/index.html，Cloudflare 的 auto-trailing-slash 会把 /docs/x 301 到 /docs/x/，和官网无结尾斜杠的规范地址冲突）",
+          "source": "https://docs.astro.build/en/reference/configuration-reference/#buildformat"
+        }
+      ],
+      "whyNotIntegrated": "Domain constraint: 只有胶水，没有通用能力在自写——框架本身全部接入；这两个文件只做官网独有的三件事：产物落进官网既有的目录与干净地址规范、页面清单并进 sitePages 这个唯一 owner（sitemap / hreflang / 门岗一视同仁）、孤儿清理不误删。没有现成工具认识官网的 sitePages。",
+      "revisitWhen": "Starlight 提供无 .html 的 file 格式链接，或官网整体迁到 Astro 时，胶水可以删"
+    },
+    {
       "id": "canvas-source-video-session-hooks",
       "capability": "原视频卡共享会话的React消费接口和播放器时钟投影",
       "status": "justified",

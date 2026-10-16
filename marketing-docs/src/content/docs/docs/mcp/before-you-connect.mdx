@@ -1,0 +1,44 @@
+---
+title: "接入前先看：能做什么，要准备什么"
+description: "把 Nomi 接进 Claude Code、Codex、Cursor 等 AI 助手后，你一句话它就能在 Nomi 里建项目、拆镜头、出图。先看能做什么、要准备什么、该走哪一页。"
+---
+
+一次设置之后，你可以在自己常用的 AI 助手里说一句话，让它直接在 Nomi 里干活。比如：
+
+> 在 Nomi 新建项目「咖啡广告」，拆 3 个镜头加到画布，用我的图模型把第一个生成出来。
+
+助手做出来的东西落在 Nomi 的项目里，打开 Nomi 就能看到、接着改。
+
+## 连上之后它能做什么
+
+| 能力 | 解决什么问题 | 之后会发生什么 |
+| --- | --- | --- |
+| 建项目、拆镜头 | 不用自己在界面里一个个建 | Nomi 里出现新项目，画布上有对应的镜头 |
+| 用你配好的模型生成 | 在写代码或聊天的地方就能出图 | 生成的图和视频落进这个项目，画布上能看到 |
+| 帮你接新模型 | 查地址、参数、模型 ID 这类活交给助手 | 你在 Nomi 自己的页面里贴 Key，助手看不到 |
+
+## 你要准备什么
+
+1. 已经装好 Nomi，并且**在运行**。Nomi 关着时，助手那边会直接提示连不上。
+2. 一个支持 MCP 的 AI 助手。Nomi 的设置里一键接入支持 Claude Code、Claude Desktop、Codex、Cursor 和 WorkBuddy；其他助手可以复制一份通用配置自己粘贴。
+3. 要让助手出图或视频，Nomi 里要先接好至少一个模型（见[十分钟做出第一个作品](/docs/start/first-project)的第 2 步）。
+
+:::note
+接入只需要做一次。助手只会看到 Nomi 开放给它的工具，它能看到的 Key 不包含你在模型页里贴的那些。
+:::
+
+## 你用哪个助手，去哪一页
+
+| 你用的助手 | 怎么接 | 去哪一页 |
+| --- | --- | --- |
+| Claude Code | 设置里一键接入 | [接入 Claude Code、Codex、Cursor](/docs/mcp/connect-clients#claude-code) |
+| Codex | 设置里一键接入 | [接入 Claude Code、Codex、Cursor](/docs/mcp/connect-clients#codex) |
+| Cursor | 设置里一键接入，Cursor 里还要放行一次 | [接入 Claude Code、Codex、Cursor](/docs/mcp/connect-clients#cursor) |
+| Claude Desktop、WorkBuddy | 同一张卡里一键接入，步骤和上面相同 | [接入 Claude Code、Codex、Cursor](/docs/mcp/connect-clients) |
+| 其他支持 MCP 的助手 | 复制通用配置，粘进它的 MCP 设置 | [其他客户端](/docs/mcp/connect-clients) |
+
+## 它能自己做主到什么程度
+
+每个助手在 Nomi 里有一个开关，叫「允许 Claude Code 自动发起制作」（名字里是你选的那个助手）。关着的时候，它只能发起草稿、查看状态和打开安全深链；发起生成之前，仍然每次都要你确认。
+
+**下一步：**[接入 Claude Code、Codex、Cursor](/docs/mcp/connect-clients)
