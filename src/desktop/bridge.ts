@@ -5,7 +5,7 @@ import type { WorkspaceSyncInspection } from '../../electron/shared/workspaceSyn
 import type { ProviderKind } from './providerKind'
 import type { DesktopMediaBridge, DesktopVideoDepthBridge } from './bridgeMedia'
 import type { DesktopConnectorBridge } from './bridgeConnector'
-import type { McpClientProfile, McpInfo, McpInstallResult, McpMigrationResult, McpMigrationState, McpUninstallResult, McpVerifyResult } from './mcpBridgeTypes'
+import type { McpClientProfile, McpClientUsage, McpInfo, McpInstallResult, McpMigrationResult, McpMigrationState, McpUninstallResult, McpVerifyResult } from './mcpBridgeTypes'
 import type { DesktopSettingsBridge } from './settingsBridge'
 import type { DesktopOnboardingBridge } from './onboardingBridgeTypes'
 import type { DesktopProductionRunBridge } from './productionRunBridgeTypes'
@@ -384,6 +384,9 @@ export type DesktopBridge = DesktopMediaBridge &
     registerCustomMcpProfile?: (profile: unknown) => Promise<McpClientProfile | null>
     removeCustomMcpProfile?: (key: string) => Promise<boolean>
     onMcpProfilesChanged?: (cb: () => void) => () => void
+    /** 助手使用情况（主进程内存里的账）：初次读取 + 变化订阅；老 preload 无此口。 */
+    mcpUsage?: () => Promise<Record<string, McpClientUsage>>
+    onMcpUsage?: (cb: (usage: Record<string, McpClientUsage>) => void) => () => void
     /** 实连验证：真起一次配置里那条命令握手（老 preload 无此口）。「配置里有这行字」≠「还连得上」。 */
     verifyMcp?: (client?: string) => Promise<McpVerifyResult>
     /** A 模式实时桥：注册处理器，接主进程转发来的外部 MCP 画布读/写/付费确认。返回反注册函数。 */

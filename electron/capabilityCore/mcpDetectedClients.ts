@@ -7,6 +7,7 @@
 // 持久化到 capabilityCoreDir()（~/.nomi/capability-core，可被 NOMI_CAPABILITY_DIR 覆盖）——这是 security.ts
 // 注释里写明的「app 侧与 CLI 端算同一处」的目录，GUI 与 bare-Node 都够得着。手动注册的 profile 也迁到同一文件，
 // 单一真相源。
+import { MCP_VERIFY_PROBE_NAME } from './mcpHttpEndpoint'
 import fs from 'node:fs'
 import path from 'node:path'
 import os from 'node:os'
@@ -39,7 +40,7 @@ export function recordDetectedMcpClient(name: string): void {
   const label = name.trim()
   if (!label) return
   let key = deriveClientKeyFromName(label)
-  if (key === 'nomi-verify') return
+  if (key === MCP_VERIFY_PROBE_NAME) return
   // 避开保留 key：内置客户端（BUILTIN_MCP_CLIENTS）各自有内置配置路径；nomi 是本机工作台的 trusted host
   //（默认信任、不可取消）。外部工具常自报 server 名 'nomi'，直接当 key 会撞上 trustedHosts 的 'nomi'，
   // 导致信任开关「默认信任且改不了」。内置名单在 security.ts，这里跟着它走，别再抄第二份。

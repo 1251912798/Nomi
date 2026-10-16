@@ -18,8 +18,8 @@ export type McpClientProfile = {
   sourceName?: string
 }
 // 状态/诊断词表的唯一 owner 是中立契约层 electron/shared/mcpConnectionContract.ts（主进程与渲染层同源）。
-import type { McpConfigState, McpVerifyReason } from '../../electron/shared/mcpConnectionContract'
-export type { McpConfigState, McpVerifyReason }
+import type { McpClientUsage, McpConfigState, McpVerifyReason } from '../../electron/shared/mcpConnectionContract'
+export type { McpClientUsage, McpConfigState, McpVerifyReason }
 
 export type McpClientInfo = {
   installed: boolean
@@ -57,31 +57,12 @@ export type McpMigrationResult =
   | { client: string; ok: true; kind: 'http' | 'forwarder'; backupPath: string | null }
   | { client: string; ok: false; reason: McpMigrationFailure }
 
-/**
- * 一个助手这一次 Nomi 运行里的使用情况（第 4 段，docs/plan/2026-10-05-mcp-official-sdk.md）。
- * 只存在主进程内存里，Nomi 重启即清零；自报名只作展示，身份以签名口令认出的 key 为准。
- */
-export type McpClientUsage = {
-  /** 助手自报的名字（initialize 里的 clientInfo.name），只作展示。 */
-  reportedName: string | null
-  /** 最近一次收到它任何请求的时间（握手、列工具也算）。 */
-  lastSeenAt: number | null
-  /** 最近一次调用的工具；标题按两种语言各带一份，界面按当前语言取。 */
-  lastCall: { tool: string; title: { 'zh-CN': string; en: string }; at: number } | null
-  /** 这次 Nomi 运行里它调用工具的次数。 */
-  callCount: number
-  /** 此刻还没跑完的调用数。 */
-  inFlight: number
-}
-
 export type McpInfo = {
   tokenReady: boolean
   rpcRunning: boolean
   server: { command: string; args: string[]; env?: Record<string, string> }
   trustedHosts: string[]
   clients: Record<McpClientKey, McpClientInfo>
-  /** 按客户端 key 记的使用情况；没来过的客户端没有这一项。 */
-  usage?: Record<McpClientKey, McpClientUsage>
 }
 
 export type McpVerifyResult = {

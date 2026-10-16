@@ -9,6 +9,7 @@
 // （configuredMcpEntry），不认「我们现在会写什么」。
 //
 // 纯 stdio + JSON-RPC，不引 MCP SDK（server 侧本就是手写协议，见 mcpProtocol.ts）。
+import { MCP_VERIFY_PROBE_NAME } from './mcpHttpEndpoint'
 import { spawn } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
@@ -212,7 +213,7 @@ export async function verifyMcp(client?: string): Promise<McpVerifyResult> {
       jsonrpc: '2.0',
       id: 1,
       method: 'initialize',
-      params: { protocolVersion: PROBE_PROTOCOL_VERSION, capabilities: {}, clientInfo: { name: 'nomi-verify', version: '1.0' } },
+      params: { protocolVersion: PROBE_PROTOCOL_VERSION, capabilities: {}, clientInfo: { name: MCP_VERIFY_PROBE_NAME, version: '1.0' } },
     })
   })
 }

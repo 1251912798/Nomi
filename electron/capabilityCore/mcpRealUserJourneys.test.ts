@@ -142,7 +142,7 @@ describe('MCP production entrypoint user journeys', () => {
     expect(invoke).toHaveBeenCalledWith('production.artifact.revise', expect.objectContaining({
       expectedVersion: 1,
       instruction: '😀'.repeat(4_000),
-    }))
+    }), expect.anything())
     protocol.dispose()
   })
 

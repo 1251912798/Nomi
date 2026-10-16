@@ -1,7 +1,7 @@
 {
   "board": "McpConnectionStatus",
   "approvedOn": "2026-10-05",
-  "stage": "explored",
+  "stage": "built",
   "source": "来源：docs/plan/2026-10-05-mcp-official-sdk.md「第 3、4 段界面」一节的文字记录（当时照 Claude Design 画布 v5 逐项记下）。画布 v5 不是本账号的，协调与本线都读不到，没有原图可抽候选，所以 candidates 为空；对账以那一节文字为准。",
   "approval": "用户 2026-10-05 在画布 v5 上拍板第 3、4 段界面；2026-10-15 拍板 MCP 整包进 0.24。",
   "labScreen": "host-config（src/devlab/designLab/hostConfig/states/03-connection-status.tsx，生产 ConnectAssistantCard + 夹具）",
@@ -11,8 +11,7 @@
       "id": "status.client-dot",
       "label": "客户端标签小圆点：连着绿、差一步黄、未接入不显示",
       "candidates": [],
-      "status": "in-progress",
-      "owner": "M4-mcp-status",
+      "status": "implemented",
       "states": [
         "empty",
         "selected",
@@ -20,14 +19,14 @@
         "dark",
         "narrow"
       ],
-      "note": "plan：「客户端标签加小圆点」。「差一步」本线取：已写入没连过来 / 等宿主批准 / 指向另一份 / 配置失效（见差异表第 3 条）。圆点自带读屏文字（连着 / 差一步）。"
+      "note": "plan：「客户端标签加小圆点」。「差一步」本线取：已写入没连过来 / 等宿主批准 / 指向另一份 / 配置失效（见差异表第 3 条）。圆点自带读屏文字（连着 / 差一步）。",
+      "assertion": "board:McpConnectionStatus/status.client-dot"
     },
     {
       "id": "status.header-badge",
       "label": "卡头总徽章五种：正在使用 / 已接入 / 等你完成接入 / 配置已失效 / 未接入",
       "candidates": [],
-      "status": "in-progress",
-      "owner": "M4-mcp-status",
+      "status": "implemented",
       "states": [
         "loading",
         "error",
@@ -35,28 +34,29 @@
         "dark",
         "narrow"
       ],
-      "note": "另有一个过渡态「检测中…」（实连还没回来时；旧卡就有，plan 没提，保留）。「未检测到」（本机没装任何助手）与「未就绪」（凭证还没生成）是旧卡的整卡级状态，也保留。"
+      "note": "另有一个过渡态「检测中…」（实连还没回来时；旧卡就有，plan 没提，保留）。「未检测到」（本机没装任何助手）与「未就绪」（凭证还没生成）是旧卡的整卡级状态，也保留。",
+      "assertion": "board:McpConnectionStatus/status.header-badge"
     },
     {
       "id": "box.using",
       "label": "状态框 · 正在使用：刚刚调用了 X · 这次会话已调用 N 次工具",
       "candidates": [],
-      "status": "in-progress",
-      "owner": "M4-mcp-status",
+      "status": "implemented",
       "states": [
         "loading",
         "zh-en",
         "dark",
         "long-text"
       ],
-      "note": "一分钟内调用过或还有调用没跑完算「正在使用」。有调用没跑完时句子改成「正在调用 X…」（本线补，plan 没写）。"
+      "note": "一分钟内调用过或还有调用没跑完算「正在使用」。有调用没跑完时句子改成「正在调用 X…」（本线补，plan 没写）。",
+      "assertion": "board:McpConnectionStatus/box.using"
     },
     {
       "id": "box.recent",
       "label": "状态框 · 最近连过：最近一次使用：3 小时前",
       "candidates": [],
       "status": "in-progress",
-      "owner": "M4-mcp-status",
+      "owner": "真 Electron 走查拿不到「一分钟之后」的状态（不加等待），由 AssistantStatusBox.test.tsx / assistantConnectionState.test.ts / 设计实验室 host-config-03-status-recent 覆盖",
       "states": [
         "zh-en",
         "dark"
@@ -67,75 +67,74 @@
       "id": "box.written",
       "label": "状态框 · 已写入但还没连过来（提示重启）",
       "candidates": [],
-      "status": "in-progress",
-      "owner": "M4-mcp-status",
+      "status": "implemented",
       "states": [
         "loading",
         "zh-en",
         "dark"
       ],
-      "note": "徽章「等你完成接入」。Nomi 自己实连成功的那句（N 个工具可用）作为第二行保留，避免丢掉旧卡的「已实测」证据。"
+      "note": "徽章「等你完成接入」。Nomi 自己实连成功的那句（N 个工具可用）作为第二行保留，避免丢掉旧卡的「已实测」证据。",
+      "assertion": "board:McpConnectionStatus/box.written"
     },
     {
       "id": "box.host-approval",
       "label": "状态框 · Cursor 等用户在 Cursor 里打开（宿主自己还要批准一次）",
       "candidates": [],
-      "status": "in-progress",
-      "owner": "M4-mcp-status",
+      "status": "implemented",
       "states": [
         "zh-en",
         "dark",
         "long-text"
       ],
-      "note": "由注册表 requiresHostApproval 决定，渲染层不写死 cursor。助手真的来调用过一次就证明已批准，此时改显示「正在使用 / 已接入」。"
+      "note": "由注册表 requiresHostApproval 决定，渲染层不写死 cursor。助手真的来调用过一次就证明已批准，此时改显示「正在使用 / 已接入」。",
+      "assertion": "board:McpConnectionStatus/box.host-approval"
     },
     {
       "id": "box.broken",
       "label": "状态框 · 配置失效：通栏「升级接入」（实连失败时是「修复接入」）",
       "candidates": [],
-      "status": "in-progress",
-      "owner": "M4-mcp-status",
+      "status": "implemented",
       "states": [
         "error",
         "zh-en",
         "dark",
         "long-text"
       ],
-      "note": "失效原因的人话文案沿用旧卡（staleConfig / reason）。撤销接入仍在框底靠左。"
+      "note": "失效原因的人话文案沿用旧卡（staleConfig / reason）。撤销接入仍在框底靠左。",
+      "assertion": "board:McpConnectionStatus/box.broken"
     },
     {
       "id": "box.none",
       "label": "状态框 · 未接入：通栏「一键接入」",
       "candidates": [],
-      "status": "in-progress",
-      "owner": "M4-mcp-status",
+      "status": "implemented",
       "states": [
         "empty",
         "disabled",
         "zh-en",
         "dark"
       ],
-      "note": "旧卡的「复制 X 配置」收进框底右侧的轻量文字按钮。"
+      "note": "旧卡的「复制 X 配置」收进框底右侧的轻量文字按钮。",
+      "assertion": "board:McpConnectionStatus/box.none"
     },
     {
       "id": "box.elsewhere",
       "label": "状态框 · 指向另一份 Nomi（旧卡已有，plan 六种之外）：通栏「切到这一份」",
       "candidates": [],
-      "status": "in-progress",
-      "owner": "M4-mcp-status",
+      "status": "implemented",
       "states": [
         "zh-en",
         "dark",
         "long-text"
       ],
-      "note": "不在 plan 的六种里；它是已有功能（另一份有效 Nomi 的归属提示），不能丢。徽章归「等你完成接入」。待用户点头。"
+      "note": "不在 plan 的六种里；它是已有功能（另一份有效 Nomi 的归属提示），不能丢。徽章归「等你完成接入」。待用户点头。",
+      "assertion": "board:McpConnectionStatus/box.elsewhere"
     },
     {
       "id": "actions.light-row",
       "label": "框底一行轻量文字按钮：撤销接入靠左压淡；重新写入、测试连接靠右，测试连接最右；不单占一行、不带边框",
       "candidates": [],
-      "status": "in-progress",
-      "owner": "M4-mcp-status",
+      "status": "implemented",
       "states": [
         "disabled",
         "hover",
@@ -143,48 +142,49 @@
         "dark",
         "narrow"
       ],
-      "note": "用户特意指出：不要单独占一行带边框的按钮。通栏主按钮（升级接入 / 修复接入 / 一键接入 / 切到这一份）是框内另一件东西，只在失效 / 未接入 / 指向另一份出现。"
+      "note": "用户特意指出：不要单独占一行带边框的按钮。通栏主按钮（升级接入 / 修复接入 / 一键接入 / 切到这一份）是框内另一件东西，只在失效 / 未接入 / 指向另一份出现。",
+      "assertion": "board:McpConnectionStatus/actions.light-row"
     },
     {
       "id": "test.connection",
       "label": "测试连接三态：测试中… / 成功「刚刚测试过：连得上，N 个工具可用」/ 失败（框翻成配置失效并说原因）",
       "candidates": [],
-      "status": "in-progress",
-      "owner": "M4-mcp-status",
+      "status": "implemented",
       "states": [
         "loading",
         "error",
         "zh-en",
         "dark"
       ],
-      "note": "复用现有 verify（只握手 + tools/list，不花钱）。失败不另造一行红字：直接进「配置失效」框，原因文案沿用旧卡。"
+      "note": "复用现有 verify（只握手 + tools/list，不花钱）。失败不另造一行红字：直接进「配置失效」框，原因文案沿用旧卡。",
+      "assertion": "board:McpConnectionStatus/test.connection"
     },
     {
       "id": "revoke.confirm",
       "label": "撤销确认：框底一行就地换成「确定撤销 X 的接入？取消 / 撤销」",
       "candidates": [],
-      "status": "in-progress",
-      "owner": "M4-mcp-status",
+      "status": "implemented",
       "states": [
         "selected",
         "disabled",
         "zh-en",
         "dark"
       ],
-      "note": "plan 要求清单含撤销确认但没画样子；本线取就地确认（不弹窗、不占新行）。旧卡点撤销是直接撤，没有确认。待用户点头。"
+      "note": "plan 要求清单含撤销确认但没画样子；本线取就地确认（不弹窗、不占新行）。旧卡点撤销是直接撤，没有确认。待用户点头。",
+      "assertion": "board:McpConnectionStatus/revoke.confirm"
     },
     {
       "id": "footer.open-nomi-first",
       "label": "卡底常驻一行浅色小字：用之前先打开 Nomi。Nomi 关着时，助手那边会直接提示连不上。",
       "candidates": [],
-      "status": "in-progress",
-      "owner": "M4-mcp-status",
+      "status": "implemented",
       "states": [
         "zh-en",
         "dark",
         "narrow"
       ],
-      "note": "「Nomi 关着」不是卡上的一个状态：卡本身在 Nomi 里，Nomi 关着时卡不存在，只能靠这行小字提前告诉用户。旧卡已有这行，不加底框。"
+      "note": "「Nomi 关着」不是卡上的一个状态：卡本身在 Nomi 里，Nomi 关着时卡不存在，只能靠这行小字提前告诉用户。旧卡已有这行，不加底框。",
+      "assertion": "board:McpConnectionStatus/footer.open-nomi-first"
     },
     {
       "id": "migration.prompt",

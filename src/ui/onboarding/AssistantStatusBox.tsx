@@ -8,6 +8,7 @@ import React, { type JSX } from 'react'
 import { useTranslation } from 'react-i18next'
 import { IconAlertTriangle, IconCircleCheck, IconCopy, IconCheck, IconPlugConnected, IconRefresh } from '@tabler/icons-react'
 import { cn } from '../../utils/cn'
+import { mcpToolDisplayTitle } from '../../../electron/shared/mcpToolDisplayTitles'
 import type { McpClientUsage } from '../../desktop/mcpBridgeTypes'
 import { formatUsageAgo, type AssistantBox } from './assistantActivationState'
 
@@ -46,34 +47,33 @@ const TEXT_BUTTON = 'text-caption disabled:opacity-50 disabled:cursor-not-allowe
 export function AssistantStatusBox(props: AssistantStatusBoxProps): JSX.Element {
   const { t, i18n } = useTranslation()
   const { box, client, usage, now, busy } = props
-  const ns = 'onboardingProviders.assistant'
   const locale = i18n.language === 'en' ? 'en' : 'zh-CN'
-  const tool = usage?.lastCall ? usage.lastCall.title[locale] || usage.lastCall.tool : ''
+  const tool = usage?.lastCall ? mcpToolDisplayTitle(usage.lastCall.tool, locale) : ''
   const count = usage?.callCount ?? 0
 
   const good = box === 'using' || box === 'recent'
   const Icon = box === 'broken' || box === 'elsewhere' ? IconAlertTriangle : good ? IconCircleCheck : IconPlugConnected
 
   const title = {
-    using: t(`${ns}.box.usingTitle`, { client }),
-    recent: t(`${ns}.box.recentTitle`, { client }),
-    written: t(`${ns}.box.writtenTitle`, { client }),
-    'host-approval': t(`${ns}.box.hostApprovalTitle`, { client }),
-    broken: t(`${ns}.brokenTitle`),
-    elsewhere: t(`${ns}.elsewhereTitle`),
-    none: t(`${ns}.box.noneTitle`, { client }),
+    using: t('onboardingProviders.assistant.box.usingTitle', { client }),
+    recent: t('onboardingProviders.assistant.box.recentTitle', { client }),
+    written: t('onboardingProviders.assistant.box.writtenTitle', { client }),
+    'host-approval': t('onboardingProviders.assistant.box.hostApprovalTitle', { client }),
+    broken: t('onboardingProviders.assistant.brokenTitle'),
+    elsewhere: t('onboardingProviders.assistant.elsewhereTitle'),
+    none: t('onboardingProviders.assistant.box.noneTitle', { client }),
   }[box]
 
   const body = ((): React.ReactNode => {
     if (box === 'using' && usage?.lastCall) {
-      return t(`${ns}.box.${usage.inFlight > 0 ? 'usingRunning' : 'usingJust'}`, { tool, count })
+      return usage.inFlight > 0 ? t('onboardingProviders.assistant.box.usingRunning', { tool, count }) : t('onboardingProviders.assistant.box.usingJust', { tool, count })
     }
     if (box === 'recent') {
       const at = Math.max(usage?.lastSeenAt ?? 0, usage?.lastCall?.at ?? 0)
-      return t(`${ns}.box.recentBody`, { when: formatUsageAgo(at, now, locale, t(`${ns}.box.justNow`)) })
+      return t('onboardingProviders.assistant.box.recentBody', { when: formatUsageAgo(at, now, locale, t('onboardingProviders.assistant.box.justNow')) })
     }
-    if (box === 'written' || box === 'host-approval') return t(`${ns}.restartClient`, { client })
-    if (box === 'none') return t(`${ns}.description`, { client })
+    if (box === 'written') return t('onboardingProviders.assistant.restartClient', { client })
+    if (box === 'none') return t('onboardingProviders.assistant.description', { client })
     return props.detail
   })()
 
@@ -106,12 +106,12 @@ export function AssistantStatusBox(props: AssistantStatusBoxProps): JSX.Element 
           ) : null}
           {(box === 'written' || box === 'host-approval') && typeof props.verifiedToolCount === 'number' && !testOk ? (
             <div data-assistant-verified className="mt-1 text-caption text-nomi-ink-60">
-              {t(`${ns}.box.verifiedBody`, { count: props.verifiedToolCount })}
+              {t('onboardingProviders.assistant.box.verifiedBody', { count: props.verifiedToolCount })}
             </div>
           ) : null}
           {testOk ? (
             <div data-assistant-test-result className="mt-1 text-caption text-workbench-success-ink">
-              {typeof testOk.toolCount === 'number' ? t(`${ns}.box.testOk`, { count: testOk.toolCount }) : t(`${ns}.box.testOkNoCount`)}
+              {typeof testOk.toolCount === 'number' ? t('onboardingProviders.assistant.box.testOk', { count: testOk.toolCount }) : t('onboardingProviders.assistant.box.testOkNoCount')}
             </div>
           ) : null}
         </div>
@@ -137,13 +137,13 @@ export function AssistantStatusBox(props: AssistantStatusBoxProps): JSX.Element 
       <div data-assistant-actions className="flex items-center justify-between gap-3 px-3 pb-2">
         {props.confirmingRevoke ? (
           <>
-            <span className="min-w-0 text-caption text-nomi-ink-80">{t(`${ns}.box.revokeAsk`, { client })}</span>
+            <span className="min-w-0 text-caption text-nomi-ink-80">{t('onboardingProviders.assistant.box.revokeAsk', { client })}</span>
             <span className="flex shrink-0 items-center gap-3">
               <button type="button" data-assistant-revoke-cancel onClick={props.onRevokeCancel} className={cn(TEXT_BUTTON, 'text-nomi-ink-60 hover:text-nomi-ink')}>
-                {t(`${ns}.box.revokeCancel`)}
+                {t('onboardingProviders.assistant.box.revokeCancel')}
               </button>
               <button type="button" data-assistant-revoke-confirm onClick={props.onRevokeConfirm} disabled={busy} className={cn(TEXT_BUTTON, 'font-semibold text-workbench-danger')}>
-                {t(`${ns}.box.revokeConfirm`)}
+                {t('onboardingProviders.assistant.box.revokeConfirm')}
               </button>
             </span>
           </>
@@ -151,23 +151,23 @@ export function AssistantStatusBox(props: AssistantStatusBoxProps): JSX.Element 
           <>
             {showRevoke ? (
               <button type="button" data-assistant-uninstall onClick={props.onRevoke} disabled={busy} className={cn(TEXT_BUTTON, 'text-nomi-ink-40 hover:text-workbench-danger')}>
-                {t(`${ns}.disconnect`)}
+                {t('onboardingProviders.assistant.disconnect')}
               </button>
             ) : <span />}
             <span className="flex shrink-0 items-center gap-3">
               {box === 'none' ? (
                 <button type="button" data-assistant-client-copy onClick={props.onCopy} className={cn(TEXT_BUTTON, 'inline-flex items-center gap-1 text-nomi-ink-60 hover:text-nomi-ink')}>
                   {props.copied ? <IconCheck size={13} stroke={1.8} /> : <IconCopy size={13} stroke={1.6} />}
-                  {props.copied ? t(`${ns}.copied`) : t(`${ns}.copyConfig`, { client })}
+                  {props.copied ? t('onboardingProviders.assistant.copied') : t('onboardingProviders.assistant.copyConfig', { client })}
                 </button>
               ) : null}
               {showTest ? (
                 <>
                   <button type="button" data-assistant-rewrite onClick={props.onRewrite} disabled={busy} className={cn(TEXT_BUTTON, 'text-nomi-ink-60 hover:text-nomi-ink')}>
-                    {t(`${ns}.box.rewrite`)}
+                    {t('onboardingProviders.assistant.box.rewrite')}
                   </button>
                   <button type="button" data-assistant-test onClick={props.onTest} disabled={busy || testing} className={cn(TEXT_BUTTON, 'font-semibold text-nomi-ink-80 hover:text-nomi-accent')}>
-                    {testing ? t(`${ns}.box.testing`) : t(`${ns}.box.test`)}
+                    {testing ? t('onboardingProviders.assistant.box.testing') : t('onboardingProviders.assistant.box.test')}
                   </button>
                 </>
               ) : null}

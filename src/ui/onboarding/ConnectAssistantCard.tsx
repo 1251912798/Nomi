@@ -32,6 +32,7 @@ import {
   type AssistantVerifyPhase,
 } from './assistantActivationState'
 import { AssistantStatusBox, type AssistantTestState } from './AssistantStatusBox'
+import { useMcpUsage } from './useMcpUsage'
 import { genericMcpSnippet } from './mcpGenericSnippet'
 import { McpMigrationPrompt } from './McpMigrationPrompt'
 import { mergeRetryResults, retryTargets } from './mcpMigrationFailureKeys'
@@ -132,6 +133,7 @@ export function ConnectAssistantCard({
   // 每个助手最近一次验证的结果：小圆点要给所有标签上色，不只是当前选中的那个。
   const [phaseByClient, setPhaseByClient] = React.useState<Partial<Record<ClientKey, AssistantVerifyPhase>>>({})
   const [now, setNow] = React.useState(() => Date.now())
+  const usageByClient = useMcpUsage()
   const [migration, setMigration] = React.useState<McpMigrationState | null>(null)
   const [migrationResults, setMigrationResults] = React.useState<McpMigrationResult[] | null>(null)
   const migrationLabels = React.useRef<Record<string, string>>({})
@@ -312,18 +314,26 @@ export function ConnectAssistantCard({
       elsewhere: entry?.configState === 'launcher-elsewhere',
       verifyPhase: key === target ? verify?.phase ?? null : phaseByClient[key] ?? null,
       trustedHosts: info.trustedHosts ?? [],
-      usage: info.usage?.[key] ?? null,
+      usage: usageByClient[key] ?? null,
       now,
     })
   }
   const activation = connectionOf(target)
   const { trusted } = activation
-  const usage = info.usage?.[target] ?? null
+  const usage = usageByClient[target] ?? null
+  const badgeLabel = (badge: typeof activation.badge): string => ({
+    using: t('onboardingProviders.assistant.status.using'),
+    connected: t('onboardingProviders.assistant.status.connected'),
+    pending: t('onboardingProviders.assistant.status.pending'),
+    broken: t('onboardingProviders.assistant.status.broken'),
+    none: t('onboardingProviders.assistant.status.none'),
+    checking: t('onboardingProviders.assistant.status.checking'),
+  })[badge]
   const statusLabel = !hasTarget
     ? t('onboardingProviders.assistant.status.notDetected')
     : activation.box === 'none' && !info.tokenReady
       ? t('onboardingProviders.assistant.status.notReady')
-      : t(`onboardingProviders.assistant.status.${activation.badge}`)
+      : badgeLabel(activation.badge)
 
   const clientDot = (key: ClientKey): JSX.Element | null => {
     const dot: AssistantDot = connectionOf(key).dot
@@ -332,7 +342,7 @@ export function ConnectAssistantCard({
       <span
         data-assistant-dot={dot}
         role="img"
-        aria-label={t(`onboardingProviders.assistant.box.${dot === 'green' ? 'dotConnected' : 'dotPending'}`)}
+        aria-label={dot === 'green' ? t('onboardingProviders.assistant.box.dotConnected') : t('onboardingProviders.assistant.box.dotPending')}
         className={cn('h-1.5 w-1.5 shrink-0 rounded-full', dot === 'green' ? 'bg-workbench-success' : 'bg-nomi-warning')}
       />
     )
@@ -356,7 +366,7 @@ export function ConnectAssistantCard({
 
   const brokenDetail = client.installed && (activation.box === 'broken' || activation.box === 'elsewhere') ? (
     <>
-      {activation.box === 'elsewhere' ? client.configuredCommand : staleShape
+      {activation.box === 'elsewhere' ? <div>{client.configuredCommand}</div> : staleShape
         ? t(`onboardingProviders.assistant.staleConfig.${staleShape}`, { client: label })
         : t(`onboardingProviders.assistant.reason.${REASON_I18N[verify?.reason ?? 'ok'] || 'handshakeFailed'}`, { client: label })}
       {activation.box === 'elsewhere' && client.configuredSettingsDir ? <div className="mt-0.5">{client.configuredSettingsDir}</div> : null}

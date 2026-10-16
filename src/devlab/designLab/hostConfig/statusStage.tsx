@@ -9,13 +9,9 @@ import { useLabLocale } from './useLabLocale'
  * 「AI 助手连接」卡的连接状态格（MCP 第 4 段，画布 v5）。生产 ConnectAssistantCard + 主进程会给的 McpInfo 形状：
  * 使用情况（info.usage）用夹具喂，「测试连接 / 撤销接入」由舞台真点（走真实交互路径），不手摆结果。
  */
-export type StatusScenario =
-  | 'using' | 'using-running' | 'recent' | 'written' | 'host-approval' | 'broken' | 'none'
-  | 'checking' | 'test-running' | 'test-ok' | 'revoke-confirm'
-
 type Plan = { target: 'claude' | 'codex' | 'cursor'; click?: 'test' | 'revoke'; verify: 'ok' | 'never' | 'ok-then-never'; ready: string; noVerify?: true }
 
-const PLAN: Record<StatusScenario, Plan> = {
+const PLAN = {
   using: { target: 'claude', verify: 'ok', ready: '[data-assistant-status="using"]' },
   'using-running': { target: 'claude', verify: 'ok', ready: '[data-assistant-status="using"]' },
   recent: { target: 'claude', verify: 'ok', ready: '[data-assistant-status="recent"]' },
@@ -28,9 +24,11 @@ const PLAN: Record<StatusScenario, Plan> = {
   'test-running': { target: 'claude', click: 'test', verify: 'ok-then-never', ready: '[data-assistant-test][disabled]' },
   'test-ok': { target: 'codex', click: 'test', verify: 'ok', ready: '[data-assistant-test-result]' },
   'revoke-confirm': { target: 'claude', click: 'revoke', verify: 'ok', ready: '[data-assistant-revoke-confirm]' },
-}
+} satisfies Record<string, Plan>
 
-const TOOL_READ = { tool: 'nomi_read', title: { 'zh-CN': '读取项目与制作状态', en: 'Read project and production status' } }
+export type StatusScenario = keyof typeof PLAN
+
+const TOOL_READ = { tool: 'nomi_read' }
 
 function clientInfo(configPath: string, over: Partial<McpClientInfo> = {}): McpClientInfo {
   return {
@@ -61,7 +59,6 @@ export function ConnectionStatusStage({ scenario, locale }: { scenario: StatusSc
   // 「测试中」那一格：点测试之前的实连照常返回，点之后的一次永远不返回（测试停在进行中）。
   const armed = React.useRef(false)
   const info: McpInfo = React.useMemo(() => {
-    const now = Date.now()
     return {
       tokenReady: true,
       rpcRunning: true,
@@ -75,7 +72,6 @@ export function ConnectionStatusStage({ scenario, locale }: { scenario: StatusSc
         codex: scenario === 'none' ? clientInfo('~/.codex/config.toml', { installed: false }) : clientInfo('~/.codex/config.toml'),
         cursor: clientInfo('~/.cursor/mcp.json'),
       },
-      usage: usageFor(scenario, now),
     }
   }, [scenario])
   React.useMemo(() => {
@@ -85,9 +81,9 @@ export function ConnectionStatusStage({ scenario, locale }: { scenario: StatusSc
       return Promise.resolve(result).then((value) => { Promise.resolve().then(() => setSettled(true)); return value })
     }
     ;(window as unknown as { nomiDesktop: unknown }).nomiDesktop = {
-      capability: { mcpInfo: () => info, verifyMcp, installMcp: () => ({ ok: true }), uninstallMcp: () => ({ ok: true }) },
+      capability: { mcpInfo: () => info, mcpUsage: () => Promise.resolve(usageFor(scenario, Date.now())), verifyMcp, installMcp: () => ({ ok: true }), uninstallMcp: () => ({ ok: true }) },
     }
-  }, [info, plan.verify])
+  }, [info, plan.verify, scenario])
 
   const stageRef = React.useRef<HTMLDivElement>(null)
   // 选中该格要看的助手 → （第一次验证落定后）真点一下按钮 → 等目标状态出现才放行就绪旗。
