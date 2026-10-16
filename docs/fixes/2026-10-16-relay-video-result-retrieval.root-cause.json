@@ -21,7 +21,7 @@
     "src/workbench/generationCanvas/nodes/NodeRecoverableReport.tsx",
     "src/workbench/generationCanvas/nodes/NodeErrorReport.tsx",
     "src/workbench/generationCanvas/nodes/NodeFailureDetails.tsx",
-    "electron/shared/taskStatusVocabulary.ts",
+    "electron/shared/taskStatus.ts",
     "electron/tasks/taskResultReading.ts",
     "electron/tasks/taskResultQuery.ts",
     "electron/tasks/responseParsing.ts",
@@ -82,7 +82,7 @@
     "探不到（网络失败 / 超时）不改任何通道",
     "通用 new-api 查询与中转上的方舟原生查询读同一张结果地址位置表 RELAY_VIDEO_RESULT_URL_PATHS，按官方源码形状定",
     "落「可找回」时传进来的原因保留在节点与运行记录上，面板以失败卡同一套三件套显示",
-    "上游状态词只有一张表（shared/taskStatusVocabulary），两台引擎与 reconcile 都问它；认不出 = unknown，绝不当失败",
+    "上游状态词只有一张表（shared/taskStatus），两台引擎与 reconcile 都问它；认不出 = unknown，绝不当失败",
     "结果地址只有一种读法（tasks/taskResultReading.readTaskResponse）：先合同、再通用规则（核媒体类型、排除回显参考地址、排除缩略图 / 尾帧），并记下规则",
     "上游说成了却没取到产物 / 状态认不出等够宽限 → retrieval-parse，任务留缓存、节点可找回；不判 failed",
     "每次取回失败带阶段码 retrieval-query / parse / download / timeout（或 outbound-blocked），渲染层见码一律落可找回",
@@ -248,7 +248,7 @@
       "responsibility": "结局附带的原因：可找回保留传进来的那句，纯超时不编"
     },
     {
-      "path": "electron/shared/taskStatusVocabulary.ts",
+      "path": "electron/shared/taskStatus.ts",
       "symbol": "classifyUpstreamTaskStatus",
       "responsibility": "全仓唯一上游状态词表；认不出 = unknown"
     },
@@ -350,7 +350,7 @@
       "electron/catalog/newapiTransport.ts",
       "src/workbench/generationCanvas/store/nodeRunOutcome.ts",
       "src/workbench/generationCanvas/nodes/NodeFailureDetails.tsx",
-      "electron/shared/taskStatusVocabulary.ts",
+      "electron/shared/taskStatus.ts",
       "electron/tasks/taskResultReading.ts",
       "electron/tasks/taskResultQuery.ts",
       "electron/shared/nomiErrorCodes.ts"
