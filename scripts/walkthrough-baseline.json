@@ -1,13 +1,14 @@
 {
   "absence-without-baseline": 61,
   "whole-page-text": 29,
-  "sleep-as-done-signal": 66,
+  "sleep-as-done-signal": 65,
   "dead-selector": 0,
-  "dead-aria-label": 9,
-  "dead-data-attr": 43,
+  "dead-aria-label": 7,
+  "dead-data-attr": 41,
   "source-scan-without-strip": 9,
   "positional-project-open": 0,
   "raw-shell-anchor": 0,
+  "composer-input-read": 0,
   "assertion-density-thin": {
     "tests/ux/accent-soft-hue.walk.mjs": 0,
     "tests/ux/adapter-failed-unlock.walk.mjs": 0,

@@ -1,4 +1,5 @@
 import { clickOrFail, expectVisible } from './_assert.mjs'
+import { openRailDrawer, railItem } from './_shell.mjs'
 
 /**
  * 文稿树（原「创作内容」列）10-08 外壳重设计后住在左栏「文稿」抽屉里：平时收着，点左栏「文稿」一步就回来。
@@ -7,16 +8,14 @@ import { clickOrFail, expectVisible } from './_assert.mjs'
  */
 
 export async function ensureCreationResourceTree(win, where = '') {
+  const label = where || '当前面'
   const tree = win.locator('[data-creation-resource-tree="true"]')
-  if (await tree.isVisible().catch(() => false)) return false
-  // 按下态 = 抽屉开着；没按下的那颗才是「打开」。
-  const expand = win.locator('[data-shell-rail-item="docs"][aria-pressed="false"]').first()
-  if (!(await expand.isVisible().catch(() => false))) {
-    throw new Error(`${where || '当前面'}：文稿抽屉没开，可左栏上没有「文稿」钮——这就是回不去了`)
-  }
-  await clickOrFail(expand, `${where || '当前面'}：点左栏「文稿」`)
-  await expectVisible(tree, `${where || '当前面'}：点了左栏「文稿」，文稿树还是没出来`)
-  return true
+  // 判「抽屉开着没」看左栏钮的按下态，不看树此刻可不可见：#1197 起选中文稿 / 方案会把抽屉收起，收起有 160ms 的滑出动画，
+  // 这期间树还「可见」——按可见判会误以为还开着、不重开，下一步点行就落空（夜跑 S08 的一个成因）。按下态是同步的。
+  const wasOpen = (await railItem(win, 'docs').getAttribute('aria-pressed').catch(() => null)) === 'true'
+  await openRailDrawer(win, 'docs', `${label}：点左栏「文稿」`)
+  await expectVisible(tree, `${label}：点了左栏「文稿」，文稿树还是没出来`)
+  return !wasOpen
 }
 
 /**

@@ -12,6 +12,7 @@ import path from 'node:path'
 import { launchNomiApp, repoRoot } from './_launchApp.mjs'
 import { stationTimeout } from './_station-budget.mjs'
 import { expectAbsent, proveProbe } from './_assert.mjs'
+import { openRailDrawer, railDrawer, switchWorkspace } from './_shell.mjs'
 
 const locale = process.argv.includes('--locale') ? process.argv[process.argv.indexOf('--locale') + 1] : 'zh-CN'
 const en = locale === 'en'
@@ -105,17 +106,17 @@ try {
 
   // —— ② 生成页侧栏拉到最窄 ——
   const stage = win.locator('.react-flow__pane').first()
-  if (!(await stage.isVisible().catch(() => false))) await win.locator('.nomi-stepper__step[data-mode="generation"]').first().click()
+  if (!(await stage.isVisible().catch(() => false))) await switchWorkspace(win, 'generation')
   await stage.waitFor({ state: 'visible', timeout: stationTimeout() })
-  await win.locator(`aside nav button[aria-label="${en ? 'Asset library' : '素材库'}"]`).first().click()
+  await openRailDrawer(win, 'assets', '侧栏「素材库」')
   await win.waitForTimeout(800)
-  await dragHandle(win, win.locator(`aside [aria-label="${en ? 'Resize sidebar' : '调整侧栏宽度'}"], aside [role="separator"]`).first(), -400)
-  const sidebar = await measureSourceTabs(win, 'aside')
+  await dragHandle(win, railDrawer(win, 'assets').locator('[data-shell-drawer-resize]').first(), -400)
+  const sidebar = await measureSourceTabs(win, '[data-shell-drawer="assets"]')
   await snap(win, '01-generation-sidebar-narrow')
   check('② 生成页侧栏最窄：素材来源标签的字不越出按钮、不压旁边的钮', sidebar.found && sidebar.rows.every((row) => !row.spills && !row.coversNext), JSON.stringify(sidebar))
 
   // —— ① 剪辑页左栏「素材」拉到最窄 ——
-  await win.locator('.nomi-stepper__step[data-mode="preview"]').first().click()
+  await switchWorkspace(win, 'preview')
   await win.waitForTimeout(1500)
   await win.locator('[role="tab"]', { hasText: en ? /^Assets$/ : /^素材$/ }).first().click()
   await win.waitForTimeout(800)
@@ -154,7 +155,7 @@ try {
   await win.keyboard.press('Meta+Backslash')
   await win.waitForTimeout(800)
   const reopenEntries = await win.evaluate(() => [...document.querySelectorAll('button[aria-label]')]
-    .filter((button) => /^(展开 Nomi|Open Nomi|Expand Nomi)/.test(button.getAttribute('aria-label') || '') && button.getBoundingClientRect().width > 0)
+    .filter((button) => /^(展开 Nomi|打开 Nomi|Open Nomi|Expand Nomi)/.test(button.getAttribute('aria-label') || '') && button.getBoundingClientRect().width > 0)
     .map((button) => button.getAttribute('aria-label')))
   await snap(win, '05-editing-nomi-collapsed')
   check('③ 剪辑页收起 Nomi 后，叫回入口只有顶栏那一个', reopenEntries.length === 1, JSON.stringify(reopenEntries))
