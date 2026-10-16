@@ -13,6 +13,7 @@ import { fileURLToPath } from 'node:url'
 import { collectAriaLabelLiterals, extractInterpolatedValues, isAriaLabelAlive } from './lib/ariaLabelLiterals.mjs'
 import { findRawShellAnchors, RAW_SHELL_EXEMPT } from './lib/rawShellAnchors.mjs'
 import { findComposerInputReads } from './lib/composerInputReads.mjs'
+import { findUndefinedIdentifiers } from './lib/walkUndefinedIdentifiers.mjs'
 import { findPositionalProjectOpens } from './lib/positionalProjectOpen.mjs'
 import { collectRenderText, countDeadDataAttributesAtRevision, findDeadDataAttributes } from './lib/deadDataAttributes.mjs'
 import { judgeBaselineGrowth, judgeBaseUnavailable, readJsonAtRevision, resolveMergeBase } from './lib/walkthroughBaselineGuard.mjs'
@@ -332,6 +333,25 @@ for (const file of files) {
   }
 }
 
+// ── 未定义标识符（no-undef，硬零，不走棘轮）──────────────────────────────────────────
+// 走查目录被 ESLint 全局 ignore，漏 import / 漏声明的标识符只能等跑到那一行才炸（2026-10-15 夜跑 I05：3 条整条 0/3 红）。
+// 范围 = tests/ux 全部子目录 + evals 的旅程 / 夹具（collect() 只扫顶层，这里要递归：full-walk/、journeys/ 等子目录里同样是走查代码）。
+// 判定逻辑住 scripts/lib/walkUndefinedIdentifiers.mjs（可单测）。基线恒为 0：存量已清，新出现的一律红，不留棘轮余地。
+const undefinedIdentifierHits = []
+{
+  const walkAll = (dir) => {
+    if (!fs.existsSync(dir)) return []
+    return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+      const full = path.join(dir, entry.name)
+      if (entry.isDirectory()) return entry.name === 'node_modules' ? [] : walkAll(full)
+      return /\.(mjs|cjs)$/.test(entry.name) ? [full] : []
+    })
+  }
+  for (const file of [...walkAll(path.join(repoRoot, 'tests/ux')), ...walkAll(path.join(repoRoot, 'evals/journeys')), ...walkAll(path.join(repoRoot, 'evals/lib'))]) {
+    for (const hit of findUndefinedIdentifiers(fs.readFileSync(file, 'utf8'), file)) undefinedIdentifierHits.push({ ...hit, file })
+  }
+}
+
 const counts = Object.fromEntries(RULES.map((r) => [r.id, found[r.id].length]))
 /** 基线只记「薄的那些」：达标的走查不进基线，将来变薄自然会被抓（见下方比较逻辑）。 */
 const thinNow = Object.fromEntries(Object.entries(density).filter(([, n]) => n < MIN_FAILURE_PATHS))
@@ -376,6 +396,12 @@ let failed = false
     }
     for (const [id, count] of Object.entries(measured)) console.log(`  （新规则 ${id}：merge-base ${base.slice(0, 9)} 上实测 ${count}）`)
   }
+}
+if (undefinedIdentifierHits.length > 0) {
+  failed = true
+  console.error(`\n✖ 走查引用了没定义的标识符（漏 import / 漏声明；走查目录不在 ESLint 范围，只有这道门岗看得见）：${undefinedIdentifierHits.length} 处`)
+  for (const hit of undefinedIdentifierHits.slice(0, 20)) console.error(`    ${repoRelative(hit.file)}:${hit.line}  ${hit.text}`)
+  console.error('  → 补 import（外壳 / 画布操作从 tests/ux/_shell.mjs 导入）或声明它；不要靠 // eslint-disable 或 globalThis 绕。')
 }
 const improved = []
 for (const rule of RULES) {
@@ -443,7 +469,7 @@ if (failed) {
   console.error('\n走查质量门岗未通过。这些写法会让测试报绿但什么都没验证到。')
   process.exit(1)
 }
-console.log(`✅ 走查质量门岗通过：${RULES.map((r) => `${r.id}=${counts[r.id]}`).join(' · ')}`)
+console.log(`✅ 走查质量门岗通过：${RULES.map((r) => `${r.id}=${counts[r.id]}`).join(' · ')} · undefined-identifier=0`)
 console.log(
   `   检出力：${Object.keys(density).length} 份走查，其中薄的 ${Object.keys(thinNow).length} 份在基线内`
     + `（阈值 ≥ ${MIN_FAILURE_PATHS} 条失败路径）`,
