@@ -1,6 +1,7 @@
 import { makeTempDir } from '../../scripts/_test-temp.mjs'
-// 收起创作助手后，入口 pill 必须在编辑器右侧独立占位，不能覆盖撤销/重做。
+// 收起创作助手后，入口（Agent 小球）必须在编辑器右侧独立占位，不能覆盖撤销/重做。
 import { launchNomiApp } from './_launchApp.mjs'
+import { switchWorkspace, collapseAgentPanel, AGENT_BALL } from './_shell.mjs'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -86,8 +87,7 @@ async function openCreationWorkspace() {
   else await card.dblclick()
   await win.waitForTimeout(1600)
 
-  const creationButton = win.getByRole('button', { name: '创作', exact: true })
-  if (await creationButton.isVisible().catch(() => false)) await creationButton.click()
+  await switchWorkspace(win, 'creation', '创作页')
   await win.getByLabel('创作区', { exact: true }).waitFor({ state: 'visible', timeout: 5000 })
 }
 
@@ -99,7 +99,7 @@ async function verifyViewport(width, height) {
   await win.setViewportSize({ width, height })
   await win.waitForTimeout(350)
 
-  const pill = win.getByRole('button', { name: '展开创作助手' })
+  const pill = win.locator(AGENT_BALL).first()
   const undo = win.getByRole('button', { name: '撤销', exact: true })
   const redo = win.getByRole('button', { name: '重做', exact: true })
   const [pillBox, undoBox, redoBox] = await Promise.all([pill.boundingBox(), undo.boundingBox(), redo.boundingBox()])
@@ -116,7 +116,10 @@ async function verifyViewport(width, height) {
   }
   await screenshotSettled(win, { path: path.join(shotsDir, `creation-pill-${width}x${height}.png`) })
   console.log(JSON.stringify(result))
-  if (result.pillVsUndo || result.pillVsRedo || !result.editorControlsEndBeforePill) {
+  // 旧判据 editorControlsEndBeforePill（「撤销/重做在 x 方向整体排在 pill 左边」）随外壳重设计退役：入口现在是内容区右下的 Agent 小球，
+  // 撤销/重做在编辑器工具栏（顶部），两者上下分居、不在同一行，水平先后没有意义；这条走查要守的「入口不得覆盖撤销/重做」由前两项重叠判定直接守。
+  // editorControlsEndBeforePill 仍留在上面的证据输出里，只是不再当判据。
+  if (result.pillVsUndo || result.pillVsRedo) {
     throw new Error(`创作助手 pill 与编辑器工具栏发生重叠：${width}x${height}`)
   }
 }
@@ -124,9 +127,7 @@ async function verifyViewport(width, height) {
 try {
   await dismissOnboarding()
   await openCreationWorkspace()
-  const collapse = win.getByRole('button', { name: '收起创作助手' })
-  await collapse.click()
-  await win.getByRole('button', { name: '展开创作助手' }).waitFor({ state: 'visible', timeout: 3000 })
+  await collapseAgentPanel(win, '收起创作助手')
 
   await verifyViewport(1440, 900)
   await verifyViewport(680, 760)

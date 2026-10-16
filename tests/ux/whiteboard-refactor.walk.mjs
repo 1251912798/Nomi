@@ -10,7 +10,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { screenshotSettled } from './_assert.mjs'
 import { addCanvasNodeFromRail } from './_canvasRail.mjs'
-import { newProjectEntry } from './_shell.mjs'
+import { newProjectEntry, switchWorkspace } from './_shell.mjs'
 
 const repoRoot = process.cwd()
 const shotsDir = path.join(repoRoot, 'tests/ux/shots/whiteboard-refactor')
@@ -62,7 +62,7 @@ try {
   check('新建并进入项目', Boolean(projectId))
 
   // 切到「生成」画布 tab（白板节点在生成画布，不在创作文本页）
-  await getWin().locator('button, [role="button"], [role="tab"]', { hasText: /^生成$/ }).first().click({ timeout: 4000 }).catch(() => {})
+  await switchWorkspace(getWin(), 'generation', '切到生成区')
   await getWin().waitForTimeout(1000)
   await dismiss() // 关上手清单浮层
   await getWin().waitForTimeout(600)

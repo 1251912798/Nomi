@@ -28,6 +28,7 @@ import {
   expectNoCjkInEnglishDom,
   clickOrFail,
 } from './_assert.mjs'
+import { openRailDrawer, switchWorkspace as goWorkspace } from './_shell.mjs'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const shotsRoot = path.join(repoRoot, 'tests/ux/shots/i18n-sweep')
@@ -102,11 +103,10 @@ async function closeSettings(win) {
   await win.waitForTimeout(300)
 }
 
-// 点侧栏某个库的导轨按钮（aria-label = 该库全名）。这几个按钮的 railLabel 正是今天修的
+// 点左栏某个库的导轨按钮（经 _shell.mjs：按 data-shell-rail-item 找，中英都认）。这几个按钮的 railLabel 正是今天修的
 // sidebar.workflows / .workflowLibrary——点它们直接验修复。
-async function openSidebarLibrary(win, ariaLabelZh, ariaLabelEn, locale) {
-  const label = locale === 'en' ? ariaLabelEn : ariaLabelZh
-  await clickOrFail(win.getByRole('button', { name: label }).first(), `侧栏「${label}」导轨`)
+async function openSidebarLibrary(win, item, label) {
+  await openRailDrawer(win, item, `侧栏「${label}」导轨`)
   await win.waitForTimeout(400)
   await waitForVisualQuiescence(win).catch(() => {})
 }
@@ -165,7 +165,7 @@ async function sweepLocale(locale) {
 
     // 工作区切换器是带 data-mode 的 button（src/design/identity.tsx），不是 role=tab——按属性点最稳。
     const switchWorkspace = async (mode, labelZh) => {
-      await clickOrFail(win.locator(`button[data-mode="${mode}"]`).first(), `工作区「${labelZh}」(data-mode=${mode})`)
+      await goWorkspace(win, mode, `工作区「${labelZh}」(data-mode=${mode})`)
       await win.waitForTimeout(900)
       await waitForVisualQuiescence(win).catch(() => {})
     }
@@ -183,14 +183,14 @@ async function sweepLocale(locale) {
     // ── 面 4-7：侧栏四库（素材/提示词/技能/流程）——流程库导轨正是今天修的 key ──
     // 这些库按钮在生成/创作视图的项目侧栏里。逐个点开、截图、验。
     const LIBS = [
-      { zh: '素材库', en: 'Asset library', name: '04-asset-library' },
-      { zh: '提示词库', en: 'Prompt library', name: '05-prompt-library' },
-      { zh: '技能库', en: 'Skill library', name: '06-skill-library' },
-      { zh: '流程库', en: 'Workflow library', name: '07-workflow-library' },
+      { item: 'assets', zh: '素材库', en: 'Asset library', name: '04-asset-library' },
+      { item: 'prompts', zh: '提示词库', en: 'Prompt library', name: '05-prompt-library' },
+      { item: 'skills', zh: '技能库', en: 'Skill library', name: '06-skill-library' },
+      { item: 'flows', zh: '流程库', en: 'Workflow library', name: '07-workflow-library' },
     ]
     for (const lib of LIBS) {
       try {
-        await openSidebarLibrary(win, lib.zh, lib.en, locale)
+        await openSidebarLibrary(win, lib.item, locale === 'en' ? lib.en : lib.zh)
         await shot(win, locale, lib.name)
         await assertSurfaceClean(win, locale, `侧栏·${locale === 'en' ? lib.en : lib.zh}`)
       } catch (error) {

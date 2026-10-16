@@ -5,7 +5,7 @@ import { launchNomiApp } from './_launchApp.mjs'
 import { expect, proveProbe, expectAbsent } from './_assert.mjs'
 import { stationTimeout } from './_station-budget.mjs'
 import { COMPOSER_SKILL, SKILL_POPOVER } from './agent-runtime-walk-support.mjs'
-import { newProjectEntry } from './_shell.mjs'
+import { newProjectEntry, openRailDrawer } from './_shell.mjs'
 const out = path.resolve('docs/design/verification/2026-09-09-skill-ui-b')
 fs.mkdirSync(out, { recursive: true })
 const base = process.env.NOMI_SKILL_UI_DEV_URL
@@ -67,7 +67,7 @@ try {
   await expect(menu).toBeVisible()
   await page.screenshot({ path: path.join(out, '07-node-groups.png') })
   await page.keyboard.press('Escape')
-  await page.getByRole('button', { name: '提示词库', exact: true }).click()
+  await openRailDrawer(page, 'prompts', '提示词库')
   const promptGroup = page.locator('button[data-library-group="group:source:builtin-expressions"]')
   await expect(promptGroup).toHaveAttribute('aria-expanded', 'false')
   await page.screenshot({ path: path.join(out, '05-prompt-collapsed.png') })

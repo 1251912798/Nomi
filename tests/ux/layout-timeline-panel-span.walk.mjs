@@ -18,7 +18,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { collapseAgentPanel } from './_shell.mjs'
+import { collapseAgentPanel, ensureAgentPanelOpen, switchWorkspace } from './_shell.mjs'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const shotsDir = path.join(repoRoot, 'tests/ux/shots/layout-timeline-panel-span')
@@ -272,7 +272,9 @@ try {
   await win.waitForLoadState('domcontentloaded')
   await resize(WINDOW.width, WINDOW.height)
 
-  await clickOrFail(win.locator('nav.nomi-stepper [data-mode="generation"]').first(), '进入生成画布')
+  await switchWorkspace(win, 'generation', '进入生成画布')
+  // 生成页的 Agent 默认是小球：这条走查量的是「停靠」那一态，先叫出来并停靠（形态三选一见 _shell.mjs）。
+  await ensureAgentPanelOpen(win, '叫出 Agent 并停靠', { form: 'dock' })
 
   const panel = win.locator('.workbench-generation__timeline .workbench-timeline').first()
   const capsule = win.locator('[data-timeline-strip]')

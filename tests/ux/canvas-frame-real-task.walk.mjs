@@ -44,7 +44,7 @@ import {
   proveProbe,
   screenshotSettled,
 } from './_assert.mjs'
-import { canvasAddBar, canvasFitViewButton, canvasFrameToolButton, canvasFrameToolPressed, canvasZoomSlider, closeCanvasViewOptions, newProjectEntry } from './_shell.mjs'
+import { canvasAddBar, canvasFitViewButton, canvasFrameToolButton, canvasFrameToolPressed, canvasZoomSlider, closeCanvasViewOptions, newProjectEntry, switchWorkspace } from './_shell.mjs'
 import { GROUP_FRAME_COUNT_SELECTOR, GROUP_FRAME_HEADER_SELECTOR, GROUP_FRAME_TITLE_SELECTOR, groupFrameHeader, groupFrameTitle } from './_groupFrame.mjs'
 import { GROUP_TOOLBAR } from './_groupGenerate.mjs'
 import { stationTimeout } from './_station-budget.mjs'
@@ -327,7 +327,7 @@ try {
   }
   await newProjectEntry(win).click({ timeout: stationTimeout({ operations: 2 }) })
   await win.locator('[aria-label="工作区切换"]').first().waitFor({ timeout: 30_000 })
-  await win.locator('[aria-label="工作区切换"]').getByText('生成', { exact: true }).click({ timeout: 8000 })
+  await switchWorkspace(win, 'generation', '切到生成区')
   await canvasAddBar(win).waitFor()
   await win.waitForTimeout(600)
 

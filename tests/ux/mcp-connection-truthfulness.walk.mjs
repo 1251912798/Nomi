@@ -20,7 +20,7 @@ import { expect } from '@playwright/test'
 import { launchNomiApp } from './_launchApp.mjs'
 import { stationTimeout } from './_station-budget.mjs'
 import { clickOrFail, screenshotSettled } from './_assert.mjs'
-import { newProjectEntry } from './_shell.mjs'
+import { closeSettings, newProjectEntry, settingsDialog } from './_shell.mjs'
 
 const shotsDir = path.resolve(process.argv.find((arg) => arg.startsWith('--shots-out='))?.split('=').slice(1).join('=')
   || 'tests/ux/shots/mcp-connection-truthfulness')
@@ -49,16 +49,12 @@ async function openMcpPanel(win) {
   await win.evaluate(() => window.dispatchEvent(new CustomEvent('nomi-open-settings', {
     detail: { tab: 'automation', section: 'automation' },
   })))
-  const settings = win.locator('[data-settings-overlay="true"]')
+  const settings = settingsDialog(win)
   await expect(settings).toBeVisible()
   await clickOrFail(settings.locator('[data-settings-action="manage-mcp-connections"]'), 'Manage MCP connections')
   const panel = settings.locator('[data-settings-section="mcp-assistant-connections"]')
   await expect(panel).toBeVisible()
   return { settings, panel }
-}
-async function closeSettings(win) {
-  await clickOrFail(win.locator('[data-settings-overlay="true"]').getByRole('button', { name: /关闭|Close/ }).last(), 'Close settings')
-  await expect(win.locator('[data-settings-overlay="true"]')).toBeHidden()
 }
 const trustedHosts = (win) => win.evaluate(async () => (await window.nomiDesktop.settings.automationPolicy.get()).trustedHosts)
 

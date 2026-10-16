@@ -8,7 +8,7 @@ const base = process.env.NOMI_SKILL_UI_DEV_URL || 'http://127.0.0.1:5297'
 const output = path.resolve('docs/design/verification/2026-09-09-skill-library')
 const run = await launchNomiApp({ name: 'skill-library-specimen', settleMs: 0, env: { NOMI_RENDERER_URL: base, VITE_DEV_SERVER_URL: base } })
 try {
-  await expectVisible(run.newProjectEntry(win), '真实 Electron 宿主已就绪')
+  await expectVisible(newProjectEntry(run.win), '真实 Electron 宿主已就绪')
   await run.win.goto(`${base}/docs/design/verification/2026-09-09-skill-library/specimen.html`)
   const window = await run.app.browserWindow(run.win)
   await window.evaluate(w => w.setBounds({ x: 0, y: 0, width: 1440, height: 900 }))

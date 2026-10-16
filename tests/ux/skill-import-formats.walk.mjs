@@ -12,6 +12,7 @@ import { makeTempDir } from '../../scripts/_test-temp.mjs'
 // nomi:skill:import handler 注册修复——三个 write handler 此前从 registerSkillIpc 消失，
 // 导致选文件后静默失败。走查经过 IPC 层完整路径，handler 缺失立刻使 toast 不出现/报错。
 import { launchNomiApp } from './_launchApp.mjs'
+import { openRailDrawer } from './_shell.mjs'
 import { clickOrFail, expectVisible } from './_assert.mjs'
 import { zipSync, strToU8 } from 'fflate'
 import fs from 'node:fs'
@@ -122,7 +123,7 @@ try {
   }
 
   // 打开技能库（侧栏 rail 按钮 aria-label = 技能库）
-  await clickOrFail(win.getByRole('button', { name: '技能库', exact: true }).first(), '侧栏「技能库」')
+  await openRailDrawer(win, 'skills', '侧栏「技能库」')
 
   // 隐藏的 file input 就是导入入口（用户点「导入文件」触发它）。
   // 必须钉在技能库面板内部：这一屏上画布工具栏和 Agent composer 各有一个

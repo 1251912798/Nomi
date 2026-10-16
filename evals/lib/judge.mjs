@@ -178,13 +178,13 @@ export async function judgeOne(cfg, { userMessage, createdNodes, fewshots = [] }
   // 解析失败自动重试一次(畸形 JSON 偶发);仍失败冒泡 error,不静默当 fail(promptfoo 纪律)。
   const parsed = await postChatJson(cfg, body);
   if (!parsed.scores || typeof parsed.scores !== "object") {
-    throw new Error(`judge 输出缺 scores 字段: ${text.slice(0, 120)}`);
+    throw new Error(`judge 输出缺 scores 字段: ${JSON.stringify(parsed).slice(0, 120)}`);
   }
   const scores = {};
   const normalized = {};
   for (const d of QUALITY_DIMENSIONS) {
     const raw = Number(parsed.scores[d.key]);
-    if (!Number.isFinite(raw)) throw new Error(`judge 输出缺维度 ${d.key}: ${text.slice(0, 120)}`);
+    if (!Number.isFinite(raw)) throw new Error(`judge 输出缺维度 ${d.key}: ${JSON.stringify(parsed.scores).slice(0, 120)}`);
     scores[d.key] = Math.max(1, Math.min(5, raw));
     normalized[d.key] = normalizeDimensionScore(scores[d.key]);
   }

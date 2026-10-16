@@ -20,7 +20,7 @@ import { launchNomiApp } from './_launchApp.mjs'
 import { addCanvasNodeFromRail } from './_canvasRail.mjs'
 import { findCanvasBlankPoint, findCanvasBlankRect, findNodeHitPoint } from './_canvasHit.mjs'
 import { expectAbsent, expectCount, expectVisible, proveProbe, screenshotSettled } from './_assert.mjs'
-import { canvasAddBar, canvasFitViewButton, canvasFrameToolButton, canvasFrameToolPressed, closeCanvasViewOptions, newProjectEntry } from './_shell.mjs'
+import { canvasAddBar, canvasFitViewButton, canvasFrameToolButton, canvasFrameToolPressed, closeCanvasViewOptions, newProjectEntry, switchWorkspace } from './_shell.mjs'
 import { stationTimeout } from './_station-budget.mjs'
 import { clickFrameToolbarAction, frameBlankPosition, selectFrameByBlankClick } from './_groupFrame.mjs'
 import { GROUP_TOOLBAR } from './_groupGenerate.mjs'
@@ -260,7 +260,7 @@ try {
   // 等真信号（工作区切换出现 = 项目开好了），不是「睡 2.4 秒应该够了」：
   // 项目初始化耗时随机器负载变，睡不够就在一个还没开的项目上继续点，然后一路「通过」。
   await win.locator('[aria-label="工作区切换"]').first().waitFor({ timeout: 30_000 })
-  await win.locator('[aria-label="工作区切换"]').getByText('生成', { exact: true }).click({ timeout: 8000 })
+  await switchWorkspace(win, 'generation', '切到生成区')
   await canvasAddBar(win).waitFor()
   await win.waitForTimeout(600)
 
