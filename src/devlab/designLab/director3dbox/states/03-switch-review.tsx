@@ -4,7 +4,7 @@
 // （docs/engineering/design-pipeline.md）之前，01 / 02 屏只有暗色 + 默认宽度的格子；这里补齐清单
 // docs/design/boards/2026-10-16/Director3dbox.board.json 要的状态：浅色主题（导演台按 09-09 拍板锁暗，
 // 看的是浅色主题下用户实际看到的整屏）、窄窗（真机最小窗 1100 × 默认 Agent 时壳宽 728）、空工程的浅色与窄窗。
-// 每一格都是现役 DirectorEditor（开关开）+ 现役 Agent 面板，数据同 01 屏（庭院对峙 4 镜 12 秒）。
+// 每一格都是现役 DirectorEditor+ 现役 Agent 面板，数据同 01 屏（庭院对峙 4 镜 12 秒）。
 import React from 'react'
 import type { LabState } from '../../labScreen'
 import { Director3dBoxLazyStage } from '../director3dboxLazyStage'

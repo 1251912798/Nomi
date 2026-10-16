@@ -13,9 +13,7 @@
     "edit_timeline#/operations/items/audio/fadeOutFrames",
     "edit_timeline#/operations/items/audio/gainDb",
     "edit_timeline#/operations/items/audio/muted",
-    "edit_timeline#/summary",
-    "stage_shot#/staging/camera",
-    "stage_shot#/staging/environment"
+    "edit_timeline#/summary"
   ],
   "mcp-transport-catalog": [
     "nomi_artifact_review",

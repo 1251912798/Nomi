@@ -84,7 +84,6 @@ export const PRE_PUSH_GATES = Object.freeze([
   { name: 'check:cla-workflow', when: null },
   { name: 'check:workflow-script-refs', when: null },
   { name: 'check:workflow-protected-writes', when: null },
-  { name: 'check:packaged-flags', when: null },
   { name: 'check:icons', when: null },
   { name: 'check:platform-archetypes', when: null },
   { name: 'check:model-certification-coverage', when: null },

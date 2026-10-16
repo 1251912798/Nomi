@@ -1782,17 +1782,6 @@
     {
       "members": [
         "cancelled",
-        "done",
-        "error",
-        "idle",
-        "running"
-      ],
-      "reason": "AiScenePhase 是导演台 V2「AI 搭场景」浮条的一次搭建流程状态：idle 未开始、running 正在向文本大脑请求并物化、done 已落成、error 失败、cancelled 用户取消。它是浮条状态行的展示态，与 WorkbenchAiMessage.status（对话消息 pending/streaming 的传输态）语义不同：没有流式消息生命周期，只有「这一次搭建做完没有 / 为什么没做完」。",
-      "site": "src/workbench/generationCanvas/nodes/director/useAiSceneBuilder.ts::type:AiScenePhase/type-union"
-    },
-    {
-      "members": [
-        "cancelled",
         "error",
         "queued",
         "running",

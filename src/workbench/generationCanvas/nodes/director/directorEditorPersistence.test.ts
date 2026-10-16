@@ -1,8 +1,7 @@
 /**
- * 导演编辑器「谁把工程写回节点」的规矩不分开关、不分界面（S2，方向检查 docs/plan/2026-10-16-director-editor-persistence-direction-check.md）。
+ * 导演编辑器「谁把工程写回节点」的规矩不分界面（S2，方向检查 docs/plan/2026-10-16-director-editor-persistence-direction-check.md）。
  *
- * 用户 10-16 拍板 3D-BOX 默认打开、留「切回旧导演台」入口，协调定入口只切界面。所以旧导演台开着时，写回规矩必须和
- * 导演视图完全一样：Agent 的写入、撤销进来以后，2 秒一次的自动保存和退出保存都不许把旧工程写回去。
+ * 用户 10-16 拍板 3D-BOX 是唯一的导演台（导演 / 精修两面）。哪一面开着，写回规矩都一样：Agent 的写入、撤销进来以后，2 秒一次的自动保存和退出保存都不许把旧工程写回去。
  * 走真实边界：真编辑器 store（createDirectorStore）、真外部写口（writeExternalDirectorProject）、真撤销前落盘登记
  * （flushEmbeddedEditors），只有计时器是假的。
  */

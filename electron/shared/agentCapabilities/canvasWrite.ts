@@ -3,7 +3,6 @@ import { z } from "zod";
 import type { CapabilityContract } from "./capabilityContract";
 import { jsonTolerantArray } from "./jsonArgTolerance";
 import { cameraMoveParamsObjectSchema, stagingReferenceParamsSchema, storyboardPlanParamsSchema } from "./canvasModelShapes";
-import { director3dBoxFaceEnabled } from "../featureFlags/director3dboxFace";
 
 const canonicalIdSchema = z.string().trim().min(1);
 const changeIdSchema = z.string().trim().min(1).max(200).describe("Versioned reversible change id returned by this write.");
@@ -631,8 +630,8 @@ export const CANVAS_WRITE_CAPABILITY = {
     ui: "nomi_canvas_plan",
   },
   additionalAliases: {
-    // 3D-BOX 开关开时 `stage_shot` 归 `director.write`（同名换芯，任一构建只装配一份）。
-    pi: Object.freeze(director3dBoxFaceEnabled() ? ["make_artifact", "write_node_text"] : ["make_artifact", "write_node_text", "stage_shot"]),
+    // `stage_shot` 归 `director.write`（3D-BOX，2026-10-16 起唯一）；摆位参考 / 运镜参考两个操作只留给对外 MCP。
+    pi: Object.freeze(["make_artifact", "write_node_text"]),
   },
   inputSchema: canvasWriteSemanticInputSchema,
   outputSchema: canvasWriteResultSchema,

@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 react、react-i18next、./DirectorEditorContext、./model/directorShotSummaries、./panels/viewport/DirectorViewport、
  *          ./panels/topbar/shellChrome（Cluster / ExitButton / ViewModeSwitch / HistoryButtons，与精修共用一份）、./panels/topbar/ProduceButton、./panels/shotStrip/{DirectorShotStrip, shotLabels}
- * [OUTPUT]: 对外提供 DirectorViewShell 与 DirectorViewMode：3D-BOX 开关开时的默认面「导演视图」
+ * [OUTPUT]: 对外提供 DirectorViewShell 与 DirectorViewMode：导演台的默认面「导演视图」
  * [POS]: 导演视图 = 顶栏三区（左：返回 + 「工程名 · 镜头 N」｜中：导演 / 精修｜右：撤销 / 重做 + 出成片 ▾）+ 视口（小窗左下）+ 镜头条。
  *        小窗标题与镜头条里的播放指针跟播放头（directorShotSummaries）；顶栏「镜头 N」与镜头卡高亮跟选中（编辑器 selection，
  *        与 Agent 输入框上的「正在改：镜头 N」同源，画布「3D-BOX · 正在改：镜头 N」10-06 拍板）。
@@ -106,7 +106,6 @@ export function DirectorViewShell({ nodeTitle, scopeRef, placement, boxDraw, can
         placement={placement}
         boxDraw={boxDraw}
         cancelCreationRef={cancelCreationRef}
-        showAiSceneBar={false}
         presentation={{ kind: 'director', nowPlaying: activeShot ? labels.pip(activeShot, activeIndex) : null }}
       />
     </div>

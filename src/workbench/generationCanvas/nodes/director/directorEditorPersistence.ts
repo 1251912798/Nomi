@@ -8,7 +8,7 @@
  *           不留旧画面，自动保存与退出保存都不会把旧工程写回去盖掉撤销；
  *        ③ 改动后空闲 2 秒落盘一次（崩溃保护），没有未落盘改动就什么都不写（多写一遍会在画布历史里多一条、挡住撤销）；
  *        ④ 提议事务 / Agent 撤销开始前先把没落盘的改动落盘（`start` 里登记 embeddedEditorFlush），撤销基线里有它们。
- *        **不看 3D-BOX 开关、不看界面模式**：切回旧导演台只切界面，写回规矩一条都不变
+ *        **不看界面模式**：导演 / 精修切换只切界面，写回规矩一条都不变
  *        （方向检查 docs/plan/2026-10-16-director-editor-persistence-direction-check.md）。纯逻辑、零 React，DirectorEditor 只做接线。
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */

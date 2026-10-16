@@ -154,8 +154,7 @@ async function exportLibrary(media: MediaEntry[]) {
   const errors = diagnostics.filter((diagnostic) => diagnostic.type === "error");
   if (errors.length) throw new Error(`技能目录有错误：\n${errors.map((error) => `- ${error.path}: ${error.message}`).join("\n")}`);
   return records
-    // 绑在构建开关上的技能开关关时用户用不了，官网不能先宣传（开关随 2026-11-15 删除时一起放开）。
-    .filter((record) => record.curation && !record.manifestError && !record.manifest?.requiresFlag)
+    .filter((record) => record.curation && !record.manifestError)
     .sort((left, right) => left.directoryName.localeCompare(right.directoryName))
     .map((record) => {
       const curation = record.curation!;

@@ -15,7 +15,6 @@ export type Director3dBoxLazyStageProps = {
   fixture: Director3dBoxFixture
   drive?: LabDrive
   steps?: readonly LabStep[]
-  flag?: 'on' | 'off'
   agentWidth?: number
   conversation?: 'empty' | 'after-patch'
   preview?: LabPreview

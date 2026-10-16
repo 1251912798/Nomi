@@ -2,7 +2,7 @@
   "board": "Director3dbox",
   "approvedOn": "2026-10-04",
   "stage": "built",
-  "scope": "3D-BOX 默认打开（用户 10-16「我觉得可以打开给大家用吧」；开关代码保留、可切回旧导演台）前的样张对账：元素清单 + 旧导演台功能普查。状态按 2026-10-16 origin/main（开关开时的现役）。in-progress = 现役在开关后面、切换 PR 打开并补 board: 走查断言；missing = 现役没有，去处待拍板或排到打开后。",
+  "scope": "3D-BOX 成为唯一的导演台（用户 10-16「我觉得可以打开给大家用吧」；同日「为什么要切回旧导演台？」→ 开关与旧导演台同一个 PR 删除，不留切回入口）的样张对账：元素清单 + 旧导演台功能普查。普查 22 项由 src/workbench/generationCanvas/nodes/director/directorFunctionCensus.test.ts 逐项钉住。in-progress = 现役已在、待独立验收线 V-3dbox 真机走查补 board: 断言；missing = 现役没有，排到打开后。",
   "userDecision": {
     "quote": "我觉得可以打开给大家用吧 因为本身这部分也是提升用户价值的",
     "date": "2026-10-16"
@@ -21,7 +21,7 @@
         "zh-en",
         "dark"
       ],
-      "note": "开关开时已是这样（DirectorEditor.tsx:426 让出 Agent 面板宽）；仍是挂在 body 上的 fixed 覆盖层。窄窗 728 见 d3-switch-narrow-*。",
+      "note": "唯一的导演台就是这样（DirectorEditor 外壳右缘让出 Agent 面板宽）；仍是挂在 body 上的 fixed 覆盖层。窄窗 728 见 d3-switch-narrow-*。",
       "owner": "feat/director-3dbox-switch"
     },
     {
@@ -321,7 +321,7 @@
         "zh-en",
         "dark"
       ],
-      "note": "开关开时的精修与开关关时的旧导演台是同一个壳，唯一差别是底部「描述场景…」AI 胶囊不挂（DirectorRefineShell.tsx:84）。实验室 director-refine 屏 d3a-* 全套。",
+      "note": "精修面：整套专业工具原样（#991「选中才出」）；旧导演台底部「描述场景…」AI 胶囊随旧导演台删除。实验室 director-refine 屏 d3a-* 全套。",
       "owner": "feat/director-3dbox-switch"
     },
     {
@@ -330,14 +330,17 @@
       "candidates": [
         "021-switch.legacy"
       ],
-      "status": "missing",
+      "status": "dropped",
       "states": [
         "selected",
         "zh-en",
         "dark"
       ],
-      "note": "用户 10-16 拍板默认打开、开关代码保留、要留切回去的入口。推荐只切编辑器界面（偏好开关，放「视图 ▾ → 偏好」），Agent 工具面不跟着切（工具注册表在导入期装配，运行时切会出两张面）。",
-      "owner": "打开默认值切片（待协调定入口位置）"
+      "note": "用户 10-16 否决切回入口（协调转达）。样张提交 fe164fc0b、fc38574cb 已用 06324c56b 撤回；开关与旧导演台在切换 PR 里删除。",
+      "userDecision": {
+        "quote": "为什么要切回旧导演台？功能完全一致、还优化了交互，它为什么要去切换呢？",
+        "date": "2026-10-16"
+      }
     },
     {
       "id": "external.mcp-face",
@@ -349,7 +352,7 @@
       "states": [
         "zh-en"
       ],
-      "note": "开关开时对外 MCP 面逐字节不变（electron/capabilityCore/director3dboxToolFace.test.ts:37）；director.write 仅内部。开关代码保留 → 这两个操作不删。",
+      "note": "对外 MCP 的工具与参数 schema 不变（electron/capabilityCore/director3dboxToolFace.test.ts）；这两个操作建出的导演节点在唯一的 3D-BOX 导演台里打开（directorFunctionCensus.test.ts 真跑建节点）。director.write 仅内部。",
       "owner": "feat/director-3dbox-switch"
     }
   ],
@@ -378,14 +381,14 @@
       "after": "topbar.back-title"
     },
     {
-      "function": "打开导演台默认进入全套编辑器",
+      "function": "打开导演台默认进入全套编辑器 → 默认进导演视图，「精修」一键进全套编辑器",
       "before": "旧导演台",
       "after": "topbar.mode"
     },
     {
-      "function": "导演台盖住整个窗口（全屏覆盖层）",
+      "function": "导演台盖住整个窗口（全屏覆盖层）→ 改为占画布区、右侧 Agent 面板可见（布局 A）",
       "before": "旧导演台",
-      "after": "switch.legacy"
+      "after": "layout.docked"
     },
     {
       "function": "场景 ▾：图层切换 / 新建图层 / 对象大纲（隐藏、锁定、删除）/ 场景设置",
@@ -448,7 +451,7 @@
       "after": "shotstrip.head"
     },
     {
-      "function": "其余快捷键（共 24 个，model/hotkeys.ts；挂在编辑器层 DirectorEditor.tsx:201，两个视图都在）",
+      "function": "其余快捷键（键位表共 32 个动作，model/hotkeys.ts；挂在编辑器层 EditorBody，两个视图都在）",
       "before": "全局",
       "after": "mode.refine"
     },
@@ -463,12 +466,12 @@
       "after": "mode.refine"
     },
     {
-      "function": "视口底部「描述场景…」AI 搭场景胶囊（AiSceneBar；3D-BOX 里去处 = 右侧 Agent 面板，样张删除表已写；切回旧导演台仍在）",
+      "function": "视口底部「描述场景…」AI 搭场景胶囊（AiSceneBar）——随旧导演台删除，去处 = 右侧 Agent 面板（stage_shot / director.write 一句话搭场景，10-03 样张删除表）",
       "before": "旧导演台视口底部（开关关才有）",
-      "after": "switch.legacy"
+      "after": "agent.composer"
     },
     {
-      "function": "Agent 旧 stage_shot：给镜头挂一张灰模摆位参考图 / 一段运镜参考小片",
+      "function": "Agent 旧 stage_shot：给镜头挂一张灰模摆位参考图 / 一段运镜参考小片 → 内部 stage_shot 换成 director.write（计划 / 补丁 + 预演）",
       "before": "右侧 Agent（canvas.write 的两个操作）",
       "after": "agent.composer"
     },

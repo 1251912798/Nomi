@@ -22,7 +22,6 @@ import type { VerbDeclaration } from "../verbDeclaration";
 import { DOCUMENT_ID_TRANSPORT_FIELD, READ_GUIDELINES } from "./readVerbs";
 import { canvasWriteInputOf, documentWriteInputOf } from "./verbSemanticInput";
 import { directorStageShotModelSchema, directorWriteInputOf, prepareDirectorStageShotArguments } from "./directorStageShotFace";
-import { director3dBoxFaceEnabled } from "../../featureFlags/director3dboxFace";
 import { DIRECTOR_PLAN_MODEL_GUIDELINES } from "../../director/directorPlanGuidelines";
 import {
   cancelJobModelSchema, editTimelineModelSchema, exportVideoModelSchema, generateModelSchema,
@@ -375,50 +374,8 @@ export function writeVerbs(): VerbDeclaration[] {
     semanticInputOf: (args) => canvasWriteInputOf("write_node_text", args),
   };
 
-  const stageShot: VerbDeclaration = {
-    name: "stage_shot", profiles: ["internal"], profileReason: "mcpHandwrittenTransport", contractId: "canvas.write", effect: "reversible_local", nextAction: "none",
-    effectGroups: ["canvas-node-creation"],
-    describe: {
-      does: "Attach a staging (blocking) or camera-move reference to one shot; Nomi renders a gray 3D reference for it.",
-      useWhen: `The user asks for a push-in, a two-shot, a specific blocking, or "show me the camera move".`,
-      notWhen: "It does not generate the shot itself and it is not a prompt edit (draft_shots). Not for links (arrange_canvas) or hand-made artifacts (make_artifact).",
-      params: "shotId from look_at_canvas or draft_shots; exactly one of staging (characters, layout, camera, environment, customBlocking) or cameraMove (move, customMove, speed, subjectPose).",
-    },
-    promptGuidelines: [...STAGING_MODEL_GUIDELINES, ...CAMERA_MOVE_MODEL_GUIDELINES],
-    schema: z.object({
-      shotId: shotId.describe("The shot to attach the reference to."),
-      staging: z.object({
-        characters: stagingReferenceParamsSchema.shape.characters,
-        layout: stagingReferenceParamsSchema.shape.layout,
-        camera: stagingReferenceParamsSchema.shape.camera,
-        environment: stagingReferenceParamsSchema.shape.environment,
-        crowd: stagingReferenceParamsSchema.shape.crowd,
-        sceneTemplate: stagingReferenceParamsSchema.shape.sceneTemplate,
-        props: stagingReferenceParamsSchema.shape.props,
-        customBlocking: stagingReferenceParamsSchema.shape.customBlocking,
-      }).strict().optional().describe("Blocking reference: characters or customBlocking is required."),
-      cameraMove: z.object({
-        move: cameraMoveParamsObjectSchema.shape.move,
-        customMove: cameraMoveParamsObjectSchema.shape.customMove,
-        speed: cameraMoveParamsObjectSchema.shape.speed,
-        shot: cameraMoveParamsObjectSchema.shape.shot,
-        subjectPose: cameraMoveParamsObjectSchema.shape.subjectPose,
-        sceneTemplate: stagingReferenceParamsSchema.shape.sceneTemplate,
-        props: stagingReferenceParamsSchema.shape.props,
-      }).strict().optional().describe("Camera-motion reference: move or customMove is required."),
-    }).strict().superRefine((value, context) => {
-      if ((value.staging === undefined) === (value.cameraMove === undefined)) {
-        context.addIssue({ code: z.ZodIssueCode.custom, path: ["staging"], message: "give exactly one of staging or cameraMove" });
-      }
-    }),
-    examples: [{ when: "Push in on a shot:", arguments: { shotId: "shot-4", cameraMove: { move: "push_in" } } }],
-    prepareArguments: rejectGeneratingNodes("stage_shot", modelArgumentTolerance({ objectFields: ["staging", "cameraMove"] })),
-    semanticInputOf: (args) => canvasWriteInputOf("stage_shot", args),
-  };
-
-  // 3D-BOX（开关开）：同名换芯。契约 `director.write`（仅内部，不投影到对外 MCP），新建交整份导演计划，
-  // 修改交按名字寻址的补丁；任一构建只装配 stageShot / directorStageShot 其中一份（见文件末尾的 return）。
-  // 到期 2026-11-15：切换 PR 同 commit 删掉旧的 stageShot 与这条分叉。
+  // 3D-BOX（2026-10-16 起唯一的导演台）：契约 `director.write`（仅内部，不投影到对外 MCP），新建交整份导演计划，
+  // 修改交按名字寻址的补丁。旧的 canvas.write 版 stage_shot 已随开关删除；对外 MCP 的摆位参考 / 运镜参考仍在 canvas.write 上。
   const directorStageShot: VerbDeclaration = {
     name: "stage_shot", profiles: ["internal"], profileReason: "mcpHandwrittenTransport", contractId: "director.write", effect: "reversible_local", nextAction: "none",
     effectGroups: ["canvas-node-creation"],
@@ -569,5 +526,5 @@ export function writeVerbs(): VerbDeclaration[] {
     prepareArguments: modelArgumentTolerance({}),
   };
 
-  return [writeScript, draftShots, generate, arrangeCanvas, makeArtifact, writeNodeText, director3dBoxFaceEnabled() ? directorStageShot : stageShot, editTimeline, undo, deleteFromCanvas, exportVideo, cancelJob, saveSkill, startModelSetup];
+  return [writeScript, draftShots, generate, arrangeCanvas, makeArtifact, writeNodeText, directorStageShot, editTimeline, undo, deleteFromCanvas, exportVideo, cancelJob, saveSkill, startModelSetup];
 }

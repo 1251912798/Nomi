@@ -4,10 +4,10 @@
  *          ./model/directorStore 的 createDirectorStore、./DirectorEditorContext、
  *          ./scene/ViewportApiContext、
  *          ./scene/viewSettings（偏好读写）、./useDirectorHotkeys、./useMobileCamera、./MobileCameraContext、
- *          ./panels/dialogs/{MobileConnectDialog, SettingsDialog, HelpDialog}、./model/directorTypes、./DirectorViewShell、./DirectorRefineShell、./directorSessionRegistry、./directorEditorPersistence（写回规矩的唯一 owner）、../../../../featureFlags/director3dbox
+ *          ./panels/dialogs/{MobileConnectDialog, SettingsDialog, HelpDialog}、./model/directorTypes、./DirectorViewShell、./DirectorRefineShell、./directorSessionRegistry、./directorEditorPersistence（写回规矩的唯一 owner）
  *          ./model/cameraCoordinateSpace / sceneObjectGraph 的当前世界视角转图层局部位姿、创建模式取消登记
- * [OUTPUT]: 对外提供 DirectorEditor（default）：全屏壳 —— 精修（DirectorRefineShell：顶栏 / 满宽视口 / 选中才出的属性卡 / 时间轴）+ 退出确认 + 写回接线（规矩住 directorEditorPersistence，不看开关）+
- *           开关开启时提供占画布区的导演视图外壳，镜头条只读且沿用实测模块；编辑器会话登记为外部 AI 写入入口
+ * [OUTPUT]: 对外提供 DirectorEditor（default）：全屏壳 —— 精修（DirectorRefineShell：顶栏 / 满宽视口 / 选中才出的属性卡 / 时间轴）+ 退出确认 + 写回接线（规矩住 directorEditorPersistence）+
+ *           占画布区的导演视图外壳（默认；2026-10-16 起唯一的导演台，开关与旧导演台已删），镜头条只读且沿用实测模块；编辑器会话登记为外部 AI 写入入口
  *           区域感知快捷键 + 手机虚拟相机桥 + 本机偏好（漫游 / 灵敏度 / 视口主题）与设置 / 帮助对话框
  * [POS]: director 的页面根：创建并注入 store 与视口 API，负责「打开/关闭/写回」生命周期与区域布局（方案 §4.0 O1–O5）。
  *        壳从 Windows 自绘窗口栏之下起画（不是 inset-0 铺满）：那条 32px 是系统拖拽带，盖住它顶部工具条
@@ -55,7 +55,6 @@ import type { ProduceControl } from './panels/topbar/ProduceButton'
 import { useGenerationCanvasStore } from '../../store/generationCanvasStore'
 import { viewNodeInCanvas } from '../../../generation/list/generationListSource'
 import { createEditorShotFocusSession } from './directorShotFocusSession'
-import { isDirector3DBoxEnabled } from '../../../../featureFlags/director3dbox'
 import { DirectorViewShell, type DirectorViewMode } from './DirectorViewShell'
 import { DirectorRefineShell } from './DirectorRefineShell'
 import { useWorkbenchStore } from '../../../workbenchStore'
@@ -109,7 +108,6 @@ type EditorStageProps = {
   onExit: () => void
   onOpenSettings: () => void
   onOpenHelp: () => void
-  director3dBox: boolean
   viewMode: DirectorViewMode
   onViewModeChange: (mode: DirectorViewMode) => void
   produce: ProduceControl
@@ -120,7 +118,7 @@ type EditorStageProps = {
  * 而那个 Provider 是 EditorBody 渲染的 —— 在 EditorBody 自己的函数体里调，拿到的是 provider 之外的空值，
  * useViewportApi() 当场抛错、整块懒加载壳落到「加载失败」（2026-09-09 真机走查抓到）。
  */
-function EditorStage({ nodeTitle, scopeRef, preferences, cancelCreationRef, timelineCollapsed, onToggleTimeline, onResetView, onExit, onOpenSettings, onOpenHelp, director3dBox, viewMode, onViewModeChange, produce }: EditorStageProps): JSX.Element {
+function EditorStage({ nodeTitle, scopeRef, preferences, cancelCreationRef, timelineCollapsed, onToggleTimeline, onResetView, onExit, onOpenSettings, onOpenHelp, viewMode, onViewModeChange, produce }: EditorStageProps): JSX.Element {
   const { t } = useTranslation()
   // 创建模式只调一次 hook，经 CreationModeContext 下发：视口要指针路由与 ghost ref，顶栏「＋添加」要能发起。
   // 两处各调一次 = 两份互不知情的模式状态（P1 的并行版）。
@@ -132,7 +130,7 @@ function EditorStage({ nodeTitle, scopeRef, preferences, cancelCreationRef, time
   const creationMode = React.useMemo(() => ({ placement, boxDraw }), [placement, boxDraw])
   // 时间轴上一个实体都没有时把它钉成一条：比例记忆不动，加了轨道立刻回到用户自己的分栏
   const timelineEmpty = useDirectorStore((state) => orderedTimelineEntities(state.activeScene()).length === 0)
-  if (director3dBox && viewMode === 'director') {
+  if (viewMode === 'director') {
     return <DirectorViewShell
       nodeTitle={nodeTitle}
       scopeRef={scopeRef}
@@ -146,7 +144,7 @@ function EditorStage({ nodeTitle, scopeRef, preferences, cancelCreationRef, time
       produce={produce}
     />
   }
-  // 精修 = 「选中才出」（2026-10-04 用户拍板方向 A）：3D-BOX 开关开时的「精修」与开关关时的旧导演台是同一个壳
+  // 精修 = 「选中才出」（2026-10-04 用户拍板方向 A）
   return (
     <CreationModeContext.Provider value={creationMode}>
       <DirectorRefineShell
@@ -163,7 +161,7 @@ function EditorStage({ nodeTitle, scopeRef, preferences, cancelCreationRef, time
         onExit={onExit}
         onOpenSettings={onOpenSettings}
         onOpenHelp={onOpenHelp}
-        viewMode={director3dBox ? { value: viewMode, onChange: onViewModeChange } : undefined}
+        viewMode={{ value: viewMode, onChange: onViewModeChange }}
       />
     </CreationModeContext.Provider>
   )
@@ -179,7 +177,6 @@ function EditorBody({ nodeTitle, scopeRef, onExit, preferences, onChangePreferen
   const outputs = useDirectorOutputs({ apiRef, ownerNodeId: nodeId, onSendToCanvas })
   const [settingsOpen, setSettingsOpen] = React.useState(false)
   const [helpOpen, setHelpOpen] = React.useState(false)
-  const director3dBox = isDirector3DBoxEnabled()
   const [viewMode, setViewMode] = React.useState<DirectorViewMode>('director')
   const [timelineCollapsed, setTimelineCollapsed] = React.useState(readTimelineCollapsed)
   const toggleTimeline = React.useCallback(() => {
@@ -198,8 +195,8 @@ function EditorBody({ nodeTitle, scopeRef, onExit, preferences, onChangePreferen
     defaultSceneName: t('director.node.sceneDefaultName'),
     onExternalProjectChange,
     // 3D-BOX：「正在改：镜头 N」的读口（Agent 发送时带上；输入框上的标签订阅它）
-    ...(director3dBox && nodeId ? createEditorShotFocusSession(nodeId, store) : {}),
-  }), [director3dBox, nodeId, onExternalProjectChange, store, t])
+    ...(nodeId ? createEditorShotFocusSession(nodeId, store) : {}),
+  }), [nodeId, onExternalProjectChange, store, t])
 
   useDirectorHotkeys({
     scopeRef,
@@ -249,7 +246,6 @@ function EditorBody({ nodeTitle, scopeRef, onExit, preferences, onChangePreferen
         onExit={onExit}
         onOpenSettings={() => setSettingsOpen(true)}
         onOpenHelp={() => setHelpOpen(true)}
-        director3dBox={director3dBox}
         viewMode={viewMode}
         onViewModeChange={setViewMode}
         produce={produce}
@@ -294,13 +290,12 @@ export default function DirectorEditor({ rawProject, nodeTitle, readOnly = false
     storeRef.current = createDirectorStore({ rawProject, defaultSceneName: t('director.node.sceneDefaultName') })
   }
   const store = storeRef.current
-  const director3dBox = isDirector3DBoxEnabled()
   const assistantWidth = useWorkbenchStore((state) => state.editingPanelLayout.assistantWidth)
   const assistantCollapsed = useWorkbenchStore((state) => state.projectAgentDockCollapsed)
   const onProjectChangeRef = React.useRef(onProjectChange)
   onProjectChangeRef.current = onProjectChange
-  // 写回规矩（一个写者、外部改动重载、空闲自动保存、撤销前落盘）只有 directorEditorPersistence 一个家，不看开关、不看界面模式：
-  // 切回旧导演台只切界面。打开看一眼不写（读时迁移的结果不写回去——旧人偶工程改了才落盘）。
+  // 写回规矩（一个写者、外部改动重载、空闲自动保存、撤销前落盘）只有 directorEditorPersistence 一个家，不看界面模式（导演 / 精修）。
+  // 打开看一眼不写（读时迁移的结果不写回去——旧人偶工程改了才落盘）。
   const persistenceRef = React.useRef<DirectorEditorPersistence | null>(null)
   if (!persistenceRef.current) persistenceRef.current = createDirectorEditorPersistence({ store, defaultSceneName: t('director.node.sceneDefaultName'), initialRaw: rawProject, write: (project) => onProjectChangeRef.current(project) })
   const persistence = persistenceRef.current
@@ -419,15 +414,12 @@ export default function DirectorEditor({ rawProject, nodeTitle, readOnly = false
       <TooltipProvider>
         <div
           className="fixed inset-x-0 bottom-0 isolate flex flex-col overflow-hidden bg-nomi-bg text-nomi-ink font-nomi-sans"
-          style={director3dBox
-            ? { top: currentFullscreenOverlayTopOffset(), right: assistantCollapsed ? 0 : assistantPaneWidth(assistantWidth), zIndex: FULLSCREEN_Z_INDEX }
-            : { top: currentFullscreenOverlayTopOffset(), zIndex: FULLSCREEN_Z_INDEX }}
+          style={{ top: currentFullscreenOverlayTopOffset(), right: assistantCollapsed ? 0 : assistantPaneWidth(assistantWidth), zIndex: FULLSCREEN_Z_INDEX }}
           role="dialog"
           aria-modal="true"
           aria-label={nodeTitle ? `${t('director.editor.aria')} · ${nodeTitle}` : t('director.editor.aria')}
           tabIndex={0}
           data-testid="director-editor"
-          data-director-3dbox={director3dBox ? 'on' : undefined}
           onKeyDown={(event) => event.stopPropagation()}
           onKeyUp={(event) => event.stopPropagation()}
           onPointerDown={(event) => event.stopPropagation()}

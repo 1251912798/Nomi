@@ -62,7 +62,7 @@ export interface LaneExtendedDesktopPortsInput {
   onTaskCreated?(call: RuntimeToolCall, result: unknown): Promise<void>
   context?(): LaneComposerContext
   /**
-   * 3D-BOX 花钱闸（开关开的构建才接上）：这次要生成的镜头里，哪些挂着还没好的参考预演。
+   * 3D-BOX 花钱闸：这次要生成的镜头里，哪些挂着还没好的参考预演。
    * 出卡**之前**问——问到了就不出卡、不花钱，原因交给模型；问不到（渲染层不在）也不出卡（fail-closed）。
    */
   directorPreviewBlocks?(operationId: string, shotIds: readonly string[] | undefined, candidate: ShotCandidateFacts): Promise<readonly DirectorPreviewBlock[]>
