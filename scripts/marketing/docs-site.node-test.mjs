@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { cleanInternalLinks, isDocsHtml, logicalAssetName, manifestFromHtmlPaths, missingAstroReferences, normalizeBundlerHashes } from './docs-site.mjs'
+import { cleanInternalLinks, isDocsHtml, logicalAssetName, manifestFromHtmlPaths, missingAstroReferences, missingPagefindReferences, normalizeBundlerHashes } from './docs-site.mjs'
 
 test('cleanInternalLinks strips .html from internal links only, keeping anchors', () => {
   const html = '<a href="/docs/start/first-project.html#steps">a</a><a href="/en/docs.html">b</a><a href="https://example.com/x.html">c</a><a href="#top">d</a><a href="/index.html">e</a>'
@@ -44,4 +44,17 @@ test('missingAstroReferences reports a page that points at a style file that is 
   const pages = new Map([['docs.html', '<link href="/_astro/common.KRJgqbup.css"><script src="/_astro/ui-core.Clh5jUUO.js">']])
   assert.deepEqual(missingAstroReferences(pages, ['common.KRJgqbup.css', 'ui-core.Clh5jUUO.js']), [])
   assert.deepEqual(missingAstroReferences(pages, ['common.y1p1JTPO.css', 'ui-core.Clh5jUUO.js']), ['docs.html → _astro/common.KRJgqbup.css'])
+})
+
+test('logicalAssetName also unifies Pagefind index/meta names but keeps content-hashed fragments exact', () => {
+  assert.equal(logicalAssetName('pagefind/index/en_cdcf5a8.pf_index'), logicalAssetName('pagefind/index/en_235b578.pf_index'))
+  assert.notEqual(logicalAssetName('pagefind/index/en_cdcf5a8.pf_index'), logicalAssetName('pagefind/index/zh-cn_cdcf5a8.pf_index'))
+  assert.equal(logicalAssetName('pagefind/pagefind.en_b0fff2f2d8.pf_meta'), logicalAssetName('pagefind/pagefind.en_ea867f7b82.pf_meta'))
+  assert.equal(logicalAssetName('pagefind/fragment/en_10afc29.pf_fragment'), 'pagefind/fragment/en_10afc29.pf_fragment')
+})
+
+test('missingPagefindReferences reports a search entry whose language metadata file is gone', () => {
+  const entry = JSON.stringify({ languages: { en: { hash: 'en_b0fff2f2d8' }, 'zh-cn': { hash: 'zh-cn_a919914f4f27f' } } })
+  assert.deepEqual(missingPagefindReferences(entry, ['pagefind.en_b0fff2f2d8.pf_meta', 'pagefind.zh-cn_a919914f4f27f.pf_meta']), [])
+  assert.deepEqual(missingPagefindReferences(entry, ['pagefind.en_b0fff2f2d8.pf_meta']), ['pagefind-entry.json → pagefind/pagefind.zh-cn_a919914f4f27f.pf_meta'])
 })

@@ -90,7 +90,12 @@ export function normalizeBundlerHashes(html) {
  * 且 d7f8d4780 挡掉根目录 postcss 之后依旧不同），所以门岗核「这个逻辑文件在不在」，不核哈希名；
  * 入库页面引用的哈希名在不在磁盘上，由 missingAstroReferences 守。
  */
-export const logicalAssetName = (relativePath) => relativePath.replace(/\.[A-Za-z0-9_-]{8}\.(css|js)$/, '.HASH.$1')
+export const logicalAssetName = (relativePath) => relativePath
+  .replace(/\.[A-Za-z0-9_-]{8}\.(css|js)$/, '.HASH.$1')
+  // Pagefind 的索引与元数据：文件名里的哈希同样随平台变（CI 报过 index/en_235b578 与本机 en_cdcf5a8 不同）。
+  // 片段 fragment/ 的名字是内容哈希，两边一致，仍逐字核。
+  .replace(/^(pagefind\/index\/[a-z-]+)_[0-9a-f]+(\.pf_index)$/, '$1_HASH$2')
+  .replace(/^(pagefind\/pagefind\.[a-z-]+)_[0-9a-f]+(\.pf_meta)$/, '$1_HASH$2')
 
 /** 入库教程页里引用了、但磁盘 `_astro/` 里没有的文件（页面指向的样式 / 脚本丢了会整页裸奔）。 */
 export function missingAstroReferences(htmlByPath, astroFilesOnDisk) {
@@ -102,4 +107,11 @@ export function missingAstroReferences(htmlByPath, astroFilesOnDisk) {
     }
   }
   return missing
+}
+
+/** pagefind-entry.json 点名的每种语言的元数据文件必须在磁盘上（搜索入口指向的索引丢了，搜索框整个失效）。 */
+export function missingPagefindReferences(entryJsonText, pagefindFilesOnDisk) {
+  const present = new Set(pagefindFilesOnDisk)
+  const languages = Object.values(JSON.parse(entryJsonText).languages ?? {})
+  return languages.map((language) => `pagefind.${language.hash}.pf_meta`).filter((name) => !present.has(name)).map((name) => `pagefind-entry.json → pagefind/${name}`)
 }
