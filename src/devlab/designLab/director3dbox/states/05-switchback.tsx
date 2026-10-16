@@ -14,20 +14,22 @@ import { Director3dBoxLazyStage } from '../director3dboxLazyStage'
 const SOURCE = '切回旧导演台入口样张（协调 10-16：只切界面；入口 = 视图 ▾ → 偏好设置 → 导演台样式）'
 
 /**
- * 现役偏好设置对话框（开关样张态）。对话框由实验室直接打开（产品里从「视图 ▾ → 偏好设置」进），开关点了在格子里来回切，不写任何偏好。
+ * 现役偏好设置对话框（开关样张态）。对话框由实验室直接打开（产品里从「视图 ▾ → 偏好设置」进），开关与滑杆在格子里真能改（只改这一格的状态，不写本机偏好）。
  * 背后不挂导演台：与导演台同挂时实验室就绪检测 20 秒超时（实测，原因未查），这一格只看对话框本身。
  */
 function SwitchbackSettings({ locale, legacy }: { locale: AppLocale; legacy: boolean }): JSX.Element {
   const [on, setOn] = React.useState(legacy)
+  const [open, setOpen] = React.useState(true)
+  const [preferences, setPreferences] = React.useState(readDirectorPreferences)
   React.useMemo(() => void i18n.changeLanguage(locale), [locale])
   return (
     <div className="fixed inset-0 bg-nomi-bg">
       <SettingsDialog
-        open
-        preferences={readDirectorPreferences()}
-        onChange={() => undefined}
-        onClose={() => undefined}
-        onOpenHelp={() => undefined}
+        open={open}
+        preferences={preferences}
+        onChange={setPreferences}
+        onClose={() => setOpen(false)}
+        onOpenHelp={() => setOpen(false)}
         layout={{ legacy: on, onChange: setOn }}
       />
     </div>

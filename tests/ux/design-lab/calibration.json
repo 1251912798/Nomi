@@ -1,6 +1,7 @@
 {
   "version": 2,
   "pendingApprovalScreens": {
+    "director-3dbox": "2026-10-16 D-3dbox：3D-BOX 默认打开前补了 20 格（d3-switch-* 4 格对账、d3-produce-* 9 格「出成片 ▾」各态、d3-switchback-* 7 格切回入口样张）。出成片各态是现役组件只改文案与状态；切回入口待用户拍板。拍板后在 darwin 上跑 pnpm run design-lab:update -- --screen director-3dbox 录全屏基线并**删掉这条登记**；截图证据 docs/design/boards/2026-10-16/preview/。",
     "no-accent-outline": "2026-10-10 立屏（样张线 D-outline）· 去掉强调色描边的普查 + 八格「现在 / 改后」样张，「改后」是 `.nao-after` 范围内的覆盖样式（生产组件不动），只是样张不是落地实现。用户 10-10 拍板「按样张改」，已落地（L6 线）：「现在」格即落地后的生产组件，「改后」格仍是样张近似。落地后仍须在 darwin 上跑 pnpm run design-lab:update -- --screen no-accent-outline 录基线并删掉本条登记。截图证据在 docs/evidence/2026-10-10-no-accent-outline/。",
     "canvas-group-header": "2026-10-10 立屏（I-groupheader 第二段）· 分组框头对齐拍板样张：框内左上「组名 · 镜数」、框内右上「生成全部」、框外标签删除。格子是生产组件搭的（GroupFrame 几何 + WorkbenchButton + CanvasGroupToolbar），但框头本体是新搭的，生产未接。十格覆盖默认 / 悬停 / 选中露出工具条 / 拖动计数 / 改名 / 长名 / 空组 / 普通组 / 英文 / 暗色。差异清单见 docs/plan/2026-10-10-group-header-board-parity.md。等用户对差异清单拍板并实现后，在 darwin 上跑 pnpm run design-lab:update -- --screen canvas-group-header 录基线并删掉本条登记。",
     "generation-list": "2026-10-09 · 生成页列表视图按拍板稿板 List / ListDetail 重做（格子是现役 GenerationListView 本体）。基线按 calibratedPlatform（darwin）录，Windows 实现线录不了：拍板后在 mac 上跑 pnpm run design-lab:update -- --screen generation-list 并**删掉本条登记**。截图证据在 docs/evidence/2026-10-08-generation-list-view/。",
