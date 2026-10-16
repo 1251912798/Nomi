@@ -1,3 +1,4 @@
+import crypto from 'node:crypto'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -30,6 +31,18 @@ export const CANVAS_PERF_SCALES = Object.freeze({
   I60: { imageCount: 60, videoCount: 0, edgeCount: 30, clipCount: 0 },
   I150: { imageCount: 150, videoCount: 0, edgeCount: 75, clipCount: 0 },
   I300: { imageCount: 300, videoCount: 0, edgeCount: 150, clipCount: 0 },
+  // 2026-10-15 卡顿场景表（tests/perf/scenarios/）：「选中节点 → 生成框出现」要分三种节点、三档规模量——
+  // 空节点（还没生成过，没有结果图）/ 有图 / 视频，各 10 / 100 / 200 个，单一种类，边按 N/2。
+  // 空节点是 image 种类、status idle、没有 result：用户刚建出来还没生成的卡就是这样。
+  E10: { imageCount: 0, videoCount: 0, emptyCount: 10, edgeCount: 5, clipCount: 0 },
+  E100: { imageCount: 0, videoCount: 0, emptyCount: 100, edgeCount: 50, clipCount: 0 },
+  E200: { imageCount: 0, videoCount: 0, emptyCount: 200, edgeCount: 100, clipCount: 0 },
+  I10: { imageCount: 10, videoCount: 0, edgeCount: 5, clipCount: 0 },
+  I100: { imageCount: 100, videoCount: 0, edgeCount: 50, clipCount: 0 },
+  I200: { imageCount: 200, videoCount: 0, edgeCount: 100, clipCount: 0 },
+  V10: { imageCount: 0, videoCount: 10, edgeCount: 5, clipCount: 0 },
+  V100: { imageCount: 0, videoCount: 100, edgeCount: 50, clipCount: 0 },
+  V200: { imageCount: 0, videoCount: 200, edgeCount: 100, clipCount: 0 },
 })
 
 const IMAGE_ASSETS = [
@@ -219,6 +232,29 @@ function buildNode(template, { id, kind, title, index, projectId, relativePath, 
   }
 }
 
+/** 还没生成过的卡：image 种类、status idle、没有结果，也没有结果尺寸（用户刚建出来的那张）。 */
+function buildEmptyNode(template, { id, title, index }) {
+  const { result: _result, ...node } = clone(template || {})
+  const meta = { ...(node.meta || {}) }
+  for (const key of ['imageWidth', 'imageHeight', 'imageAspectRatio', 'videoWidth', 'videoHeight', 'videoAspectRatio']) delete meta[key]
+  return {
+    ...node,
+    id,
+    kind: 'image',
+    categoryId: 'shots',
+    title,
+    prompt: '',
+    references: [],
+    history: [],
+    runs: [],
+    status: 'idle',
+    position: gridPosition(index),
+    exactPosition: true,
+    size: { width: 320, height: 180 },
+    meta: { ...meta, previewHeight: 180, userResized: false },
+  }
+}
+
 function buildEdges(nodes, requestedCount) {
   const edges = []
   const seen = new Set()
@@ -276,14 +312,15 @@ function buildTimeline(baseTimeline, nodes, clipCount) {
   }
 }
 
-export function createCanvasPerformanceFixture({ projectsDir, scale = 'M', projectId, projectName } = {}) {
+export function createCanvasPerformanceFixture({ projectsDir, scale = 'M', projectId, projectName, projectDirName, withProjectIdentity = false } = {}) {
   const config = CANVAS_PERF_SCALES[scale]
   if (!config) throw new Error(`未知画布性能规模「${scale}」，可选：${Object.keys(CANVAS_PERF_SCALES).join(', ')}`)
   if (!projectsDir) throw new Error('projectsDir is required')
   const rootProjectsDir = path.resolve(projectsDir)
   const id = projectId || `project-canvas-perf-${scale.toLowerCase()}`
   const name = projectName || `ZZ Canvas 性能 ${scale}`
-  const projectRoot = path.join(rootProjectsDir, `ZZ-canvas-performance-${scale.toLowerCase()}`)
+  // 同一个 projectsDir 里放多个同规模项目（项目库列表场景）时，各自给一个目录名，否则会写进同一个目录互相覆盖。
+  const projectRoot = path.join(rootProjectsDir, projectDirName || `ZZ-canvas-performance-${scale.toLowerCase()}`)
   const projectManifestDir = path.join(projectRoot, '.nomi')
   fs.mkdirSync(projectManifestDir, { recursive: true })
   fs.mkdirSync(path.join(projectRoot, 'assets', 'imported'), { recursive: true })
@@ -321,6 +358,9 @@ export function createCanvasPerformanceFixture({ projectsDir, scale = 'M', proje
       }))
     }
   }
+  for (let index = 0; index < (config.emptyCount || 0); index += 1) {
+    nodes.push(buildEmptyNode(imageTemplate, { id: `canvas-perf-empty-${index}`, title: `性能空节点 ${index + 1}`, index: nodes.length }))
+  }
   // 版本卡片铺开（NOMI_CANVAS_PERF_VERSION_STACKS=N）：前 N 张图片节点各攒 4 版、宫格铺开着（2×2 盖在邻居上）。
   // 用来量「铺开着几组版本卡时拖 300 节点画布还顺不顺」（版本卡片 V2）；不设就和以前一模一样。
   const versionStacks = Math.max(0, Number(process.env.NOMI_CANVAS_PERF_VERSION_STACKS || 0))
@@ -355,8 +395,13 @@ export function createCanvasPerformanceFixture({ projectsDir, scale = 'M', proje
     revision: 1,
     lastKnownRootPath: path.resolve(projectRoot),
     payload,
+    // 项目身份（主清单 + 备份）：App 建出来的项目生来就有。夹具不带的话，启动后后台补身份会改写清单、和项目库首次核对
+    // 同步基线撞车（卡片报「另一台电脑的项目更新」），之后画布会从盘上重新装载一次——装载收敛把正在生成的卡收成「可找回」，
+    // 「生成中操作画布」这类场景就量不成。量「用户的老项目」的量具传 withProjectIdentity: true。
+    ...(withProjectIdentity ? { immutableProjectUuid: crypto.randomUUID(), projectGeneration: 1 } : {}),
   }
   fs.writeFileSync(path.join(projectManifestDir, 'project.json'), JSON.stringify(record, null, 1))
+  if (withProjectIdentity) fs.writeFileSync(path.join(projectManifestDir, 'project.backup.json'), JSON.stringify(record, null, 1))
   fs.mkdirSync(rootProjectsDir, { recursive: true })
   fs.writeFileSync(
     path.join(rootProjectsDir, 'recent-workspaces.json'),
@@ -370,6 +415,7 @@ export function createCanvasPerformanceFixture({ projectsDir, scale = 'M', proje
       scale,
       imageNodes: config.imageCount,
       videoNodes: config.videoCount,
+      emptyNodes: config.emptyCount || 0,
       nodes: nodes.length,
       edges: record.payload.generationCanvas.edges.length,
       clips: config.clipCount,
