@@ -99,7 +99,7 @@ export function MemoryFold({ refreshKey }: { refreshKey: number }): JSX.Element 
                 <input
                   className={cn(
                     'flex-1 min-w-0 h-6 px-1 rounded-nomi-sm border border-nomi-line bg-nomi-paper',
-                    'text-micro text-nomi-ink outline-none focus:border-nomi-accent',
+                    'text-micro text-nomi-ink outline-none focus:border-nomi-ink-40',
                   )}
                   value={draft}
                   autoFocus

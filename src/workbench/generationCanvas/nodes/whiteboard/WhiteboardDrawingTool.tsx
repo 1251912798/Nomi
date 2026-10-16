@@ -518,7 +518,7 @@ const WhiteboardDrawingTool = React.forwardRef<WhiteboardDrawingToolHandle, Whit
               className={cn(
                 'relative grid min-h-0 place-items-center overflow-hidden bg-nomi-ink-05 [container-type:size] p-4',
                 assetDragOver &&
-                  'after:pointer-events-none after:absolute after:inset-3 after:rounded-nomi after:border after:border-dashed after:border-nomi-accent after:bg-nomi-accent-soft/40',
+                  'after:pointer-events-none after:absolute after:inset-3 after:rounded-nomi after:border after:border-dashed after:border-nomi-ink-40 after:bg-nomi-accent-soft/40',
               )}
               onDragOver={handleCanvasAssetDragOver}
               onDragLeave={(event) => {
@@ -593,7 +593,7 @@ const WhiteboardDrawingTool = React.forwardRef<WhiteboardDrawingToolHandle, Whit
                   <label
                     className={cn(
                       'relative grid size-9 shrink-0 cursor-pointer place-items-center overflow-hidden rounded-nomi-sm border border-nomi-line bg-nomi-paper shadow-nomi-sm',
-                      'transition-colors hover:border-nomi-ink-20 hover:bg-nomi-paper focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-nomi-accent',
+                      'transition-colors hover:border-nomi-ink-20 hover:bg-nomi-paper focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-nomi-ink',
                     )}
                     title={t('generationCommon.whiteboard.customBrushColor')}
                     aria-label={t('generationCommon.whiteboard.customBrushColor')}
@@ -636,8 +636,8 @@ const WhiteboardDrawingTool = React.forwardRef<WhiteboardDrawingToolHandle, Whit
                         type="button"
                         className={cn(
                           'relative grid size-8 shrink-0 place-items-center rounded-full border bg-nomi-paper p-[3px] shadow-nomi-sm transition-transform',
-                          'hover:scale-105 hover:border-nomi-ink-20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nomi-accent',
-                          active ? 'border-nomi-accent' : 'border-nomi-line-soft',
+                          'hover:scale-105 hover:border-nomi-ink-20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nomi-ink',
+                          active ? 'border-nomi-ink' : 'border-nomi-line-soft',
                         )}
                         data-active={active ? 'true' : 'false'}
                         title={color}

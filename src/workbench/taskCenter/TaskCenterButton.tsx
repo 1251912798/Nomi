@@ -130,7 +130,7 @@ export function TaskCenterButton({ projectId, onRevealNode }: Props): JSX.Elemen
                 'inline-flex h-7 items-center gap-1 px-1.5',
                 'rounded-nomi-sm border-0 bg-transparent font-inherit text-body-sm',
                 'transition-[background,color] duration-nomi-fast ease-nomi-fast',
-                'hover:bg-nomi-ink-05 focus-visible:outline focus-visible:outline-2 focus-visible:outline-nomi-accent',
+                'hover:bg-nomi-ink-05 focus-visible:outline focus-visible:outline-2 focus-visible:outline-nomi-ink',
                 opened && 'bg-nomi-ink-10',
                 tone === 'failed' ? 'text-nomi-danger' : 'text-nomi-ink-60 hover:text-nomi-ink',
               )}

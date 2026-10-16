@@ -375,7 +375,7 @@ export function TrackLanes({ rows, viewport, totalDuration, onContextMenu, onRej
           </div>
         )
       })}
-      {drag?.kind === 'range' && drag.moved ? <div className="pointer-events-none absolute border border-nomi-accent bg-nomi-accent/10" style={{ top: drag.top, height: ROW_HEIGHT, left: timeToPx(Math.min(drag.origTime, drag.previewTime)), width: Math.abs(drag.previewTime - drag.origTime) * pxPerSecond }} /> : null}
+      {drag?.kind === 'range' && drag.moved ? <div className="pointer-events-none absolute border border-nomi-ink bg-nomi-ink-10" style={{ top: drag.top, height: ROW_HEIGHT, left: timeToPx(Math.min(drag.origTime, drag.previewTime)), width: Math.abs(drag.previewTime - drag.origTime) * pxPerSecond }} /> : null}
       {drag?.snapped ? <div className="pointer-events-none absolute inset-y-0 z-10 w-px bg-nomi-warning" style={{ left: timeToPx(drag.snapped.time) }} /> : null}
     </div>
   )

@@ -146,7 +146,7 @@ export function ScreenshotCropOverlay({ capture, project, basePosition, category
           <>
             <div className="pointer-events-none absolute inset-0 bg-black/45" />
             <div
-              className="pointer-events-none absolute border-2 border-nomi-accent"
+              className="pointer-events-none absolute border-2 border-nomi-ink"
               style={{
                 left: `${selection.x * 100}%`,
                 top: `${selection.y * 100}%`,
