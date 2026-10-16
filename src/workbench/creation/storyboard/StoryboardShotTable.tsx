@@ -23,13 +23,16 @@ import type { PlanShot } from '../../generationCanvas/agent/storyboardPlan'
 import type { AnchorCardRuntime, StoryboardRowRuntime } from './exec/storyboardRowStatus'
 import { useShotMentionPool, useShotMentionSource, type ShotMentionPool } from './shotRow/useShotMentionSource'
 import { StoryboardRowNarrowContext, useStoryboardRowsDensity } from './shotRow/storyboardRowDensity'
+import { StoryboardPromptHistoryContext } from './shotRow/promptHistoryCarry'
+import StoryboardShotRowPlaceholder from './shotRow/StoryboardShotRowPlaceholder'
+import { planItemMounts } from './storyboardMountPlan'
 import { appendBinding } from './shotRow/shotReferenceSlots'
 import { resolveShotArchetypeMode } from './shotRow/shotRowModel'
 import { referenceSlotAccept } from '../../generationCanvas/nodes/controls/archetypeMeta'
 import { findModelOptionByIdentifier } from '../../../config/modelOptionResolvers'
 import { useVendorPreferenceOrder } from '../../common/useVendorPreference'
 import StoryboardShotRow from './shotRow/StoryboardShotRow'
-import { frameMediaBox } from './shotRow/shotFrameGeometry'
+import { densityBox, frameMediaBox, isPortraitBox, type FrameMediaBox } from './shotRow/shotFrameGeometry'
 import {
   effectiveShotAspect,
   planDefaultAspect,
@@ -65,8 +68,13 @@ const FALLBACK_VIEWPORT = { width: 1200, height: 1080 }
 const OVERSCAN = 3
 /** 估高只决定首帧的总高与滚动条，挂上后按实测改（`measureElement`）。 */
 const HEAD_ESTIMATE = 30
-/** 镜头行估高 = 视觉列（框 + 动作条 + 参考条 ≈ 框高 + 72）+ 行内边距 24 + 行间插入线 6。 */
-const rowEstimate = (frameHeight: number): number => Math.max(frameHeight + 72, 150) + 24 + 6
+/**
+ * 镜头行估高（没量过的行用它；快速滚动时的占位也按它的高度摆，所以要贴近实测，免得停下换成完整行时列表跳）：
+ * 视觉列 = 预览框（窄档按 176/240 缩）+ 横版 / 方图时框下那条参考缩略图（约 42）；竖版参考在框右边、不加高；
+ * 内容列（提示词 + 底栏）至少约 100；再加行内边距 24 + 分隔线 1 + 行间插入线 6。
+ * 2026-10-16 实测：9:16 宽档 265 / 窄档 201，16:9 宽档 201。
+ */
+const rowEstimate = (box: FrameMediaBox): number => Math.max(isPortraitBox(box) ? box.height : box.height + 42, 100) + 24 + 1 + 6
 
 type TableItem =
   | { kind: 'head'; key: string; group: SceneGroup; groupIndex: number }
@@ -240,7 +248,7 @@ export default function StoryboardShotTable({ plan, projectId, rows, anchorCards
   // 盒子 = **整片默认画幅**的框（`planDefaultAspect`，与落画布同一个 resolver）；覆盖了画幅的镜在这只框里
   // contain + 角标。2026-10-06 起不再用「镜数最多的画幅」近似——覆盖过半时那样算会让整张表跟着少数派变形。
   const tableBox = React.useMemo(() => frameMediaBox(planDefaultAspect(plan)), [plan])
-  const shotEstimate = rowEstimate(tableBox.height)
+  const shotEstimate = rowEstimate(densityBox(tableBox, narrow))
 
   // 表上面还有执行计划条、参考卡区、标题行：列表的起点 = 行区在滚动区里的偏移（TanStack `scrollMargin`）。
   const [scrollMargin, setScrollMargin] = React.useState(0)
@@ -294,6 +302,11 @@ export default function StoryboardShotTable({ plan, projectId, rows, anchorCards
   const focusAdjacentShot = (shot: PlanShot): void => {
     const row = rowElementOf(shot.index)
     if (row) { row.focus(); return }
+    // 挂着的是轻量占位（刚滚进来）：不用滚，钉住它（下一帧就是完整行）再聚焦。
+    if (tableRef.current?.querySelector(`[data-storyboard-row-placeholder="${CSS.escape(String(shot.index))}"]`)) {
+      setPendingFocus({ shotIndex: shot.index, nativeScroll: true })
+      return
+    }
     const itemIndex = itemIndexOfKey(shotKeyOf(shot))
     const offset = itemIndex >= 0 ? virtualizer.getOffsetForIndex(itemIndex, 'auto')?.[0] : undefined
     const scrollElement = scrollRef?.current
@@ -301,8 +314,44 @@ export default function StoryboardShotTable({ plan, projectId, rows, anchorCards
     scrollElement.scrollTop = offset
     setPendingFocus({ shotIndex: shot.index, nativeScroll: true })
   }
-  // 挂着哪几项一变（滚到了、那一行挂上了）就再找一次。
   const virtualItems = virtualizer.getVirtualItems()
+  // 滚动中新进来的镜头行先挂轻量占位，停下后每帧升级一行（storyboardMountPlan）：滚动中不建编辑器。
+  const mountedFullRef = React.useRef<ReadonlySet<string>>(new Set())
+  const mountedLightRef = React.useRef<ReadonlySet<string>>(new Set())
+  const viewportRange = virtualizer.range
+  const mountPlan = planItemMounts({
+    items: virtualItems.flatMap((virtualItem) => {
+      const item = items[virtualItem.index]
+      if (!item) return []
+      const inViewport = viewportRange ? virtualItem.index >= viewportRange.startIndex && virtualItem.index <= viewportRange.endIndex : true
+      return [{ key: item.key, kind: item.kind, inViewport }]
+    }),
+    isScrolling: virtualizer.isScrolling,
+    previousFull: mountedFullRef.current,
+    previousLight: mountedLightRef.current,
+    // 钉住：焦点所在、正在拖、等着被聚焦的那一镜（它一挂上就得是完整行，焦点才有地方落）。
+    pinned: new Set([
+      ...pinnedIndexes.map((index) => items[index]?.key),
+      pendingFocus ? items.find((item) => item.kind === 'shot' && item.shot.index === pendingFocus.shotIndex)?.key : undefined,
+    ].filter((key): key is string => Boolean(key))),
+  })
+  // 停下以后每帧升级一个占位：在每次提交后（布局 effect，每次提交必跑）排下一帧，直到没有占位。
+  const upgradePending = !virtualizer.isScrolling && mountPlan.light.size > 0
+  const [, setUpgradeFrame] = React.useState(0)
+  const upgradeFrameRef = React.useRef<number | null>(null)
+  React.useLayoutEffect(() => {
+    mountedFullRef.current = mountPlan.full
+    mountedLightRef.current = mountPlan.light
+    if (upgradeFrameRef.current !== null) cancelAnimationFrame(upgradeFrameRef.current)
+    upgradeFrameRef.current = upgradePending
+      ? requestAnimationFrame(() => { upgradeFrameRef.current = null; setUpgradeFrame((value) => value + 1) })
+      : null
+  })
+  React.useEffect(() => () => { if (upgradeFrameRef.current !== null) cancelAnimationFrame(upgradeFrameRef.current) }, [])
+  // 编辑器撤销历史跨卸载：按镜头 id 存在这张表里（promptHistoryCarry），与表同寿。
+  const promptHistoryRef = React.useRef<Map<string, import('@tiptap/react').JSONContent[]>>(new Map())
+
+  // 挂着哪几项一变（滚到了、那一行挂上了）就再找一次。
   const mountedSignature = virtualItems.map((virtualItem) => virtualItem.key).join('|')
   React.useLayoutEffect(() => {
     if (pendingFocus === null) return
@@ -597,26 +646,34 @@ export default function StoryboardShotTable({ plan, projectId, rows, anchorCards
       }}
     >
       <StoryboardRowNarrowContext.Provider value={narrow}>
+      <StoryboardPromptHistoryContext.Provider value={promptHistoryRef.current}>
         <div className="relative w-full" style={{ height: virtualizer.getTotalSize() }}>
           {virtualItems.map((virtualItem) => {
             const item = items[virtualItem.index]
             if (!item) return null
+            const placeholder = item.kind === 'shot' && mountPlan.light.has(item.key)
             return (
               <div
                 key={virtualItem.key}
-                ref={virtualizer.measureElement}
+                // 占位不量：它的高度就是这一项已知的尺寸（量过的实测或估高），换成完整行时再量，不让列表来回跳。
+                ref={placeholder ? undefined : virtualizer.measureElement}
                 data-index={virtualItem.index}
                 data-storyboard-item={item.key}
                 // 行间 1px 分隔线：每一项自己画上沿（绝对定位的项不再是一串相邻兄弟，`divide-y` 管不到）；
                 // 项里「插入线 + 行」之间那条仍由 divide-y 画——与窗口化之前逐像素同一组线。
-                className={cn('absolute left-0 top-0 w-full divide-y divide-nomi-line-soft', virtualItem.index > 0 && 'border-t border-nomi-line-soft')}
-                style={{ transform: `translateY(${virtualItem.start - scrollMargin}px)` }}
+                className={cn('absolute left-0 top-0 w-full divide-y divide-nomi-line-soft', virtualItem.index > 0 && 'border-t border-nomi-line-soft', placeholder && 'overflow-hidden')}
+                style={{ transform: `translateY(${virtualItem.start - scrollMargin}px)`, ...(placeholder ? { height: virtualItem.size } : {}) }}
               >
-                {item.kind === 'head' ? renderHead(item.group, item.groupIndex) : renderShot(item.shot, item.pos)}
+                {item.kind === 'head'
+                  ? renderHead(item.group, item.groupIndex)
+                  : placeholder
+                    ? <StoryboardShotRowPlaceholder shot={item.shot} frameBox={tableBox} />
+                    : renderShot(item.shot, item.pos)}
               </div>
             )
           })}
         </div>
+      </StoryboardPromptHistoryContext.Provider>
       </StoryboardRowNarrowContext.Provider>
     </div>
     {selectedRows.length > 0 ? (

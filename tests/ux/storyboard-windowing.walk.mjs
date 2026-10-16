@@ -10,6 +10,7 @@
 //   ⑦ 加一镜后总数 +1、滚到底够得着它；删掉它再 Ctrl+Z 回来；
 //   ⑧ 滚到中间、滚到底，末镜挂得上；
 //   ⑨ 英文 + 暗色 + 最小窗口（1100×690）：行走窄档、同样只挂首屏；
+//   ⑪ 快速滚动：滚过的行先挂轻量占位、滚动中不建编辑器，停下后换成完整行（记长任务数）；
 //   ⑩ 生成中的状态刷新：画布节点状态一变，挂着的行立刻跟、视口外的行挂上时就是最新态（只改 store，不发请求）。
 // 截图：zh 亮（顶 / 中 / 底）+ en 暗窄窗（顶 / 中 / 底），落在 STORYBOARD_WINDOWING_OUT（默认 .tmp/storyboard-windowing）。
 import fs from 'node:fs'
@@ -18,6 +19,7 @@ import { fileURLToPath } from 'node:url'
 import { launchCoreSmoke } from './core-smoke/fixture.mjs'
 import { stationTimeout } from './_station-budget.mjs'
 import { uiText } from './full-walk/invariants.mjs'
+import { expectAbsent, proveProbe } from './_assert.mjs'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
 const outDir = process.env.STORYBOARD_WINDOWING_OUT || path.join(repoRoot, '.tmp', 'storyboard-windowing')
@@ -70,14 +72,25 @@ async function scrollTo(win, where) {
     scroll.scrollTop = target === 'bottom' ? scroll.scrollHeight : target === 'top' ? 0 : Math.round(scroll.scrollHeight / 2)
   }, where)
   for (let i = 0; i < 6; i += 1) await frames(win)
+  await settled(win)
 }
+/** 往下滚到第 n 镜出现（滚动中它先是轻量占位），然后停下等它换成完整行。 */
 async function scrollUntilRow(win, n) {
+  const seen = () => win.locator(`${rowSel(n)}, [data-storyboard-editor="true"] [data-storyboard-row-placeholder="${n}"]`).count()
   for (let i = 0; i < 400; i += 1) {
-    if (await win.locator(rowSel(n)).count()) return true
+    if (await seen()) {
+      await win.locator(rowSel(n)).waitFor({ timeout: stationTimeout() })
+      return true
+    }
     await win.evaluate(() => { const scroll = document.querySelector('[data-storyboard-scroll]'); scroll.scrollTop += Math.round(scroll.clientHeight * 0.8) })
     await frames(win)
   }
   return false
+}
+/** 停下以后，视口附近的占位全部换成完整行。 */
+async function settled(win) {
+  await win.waitForFunction(() => !document.querySelector('[data-storyboard-row-placeholder]'), null, { timeout: stationTimeout() })
+  for (let i = 0; i < 2; i += 1) await frames(win)
 }
 /** 挂着的各项（组头 / 镜头行）按下标排好，相邻两项首尾相接（容 1px 舍入）。 */
 async function itemsContiguous(win) {
@@ -179,6 +192,26 @@ async function passZhLight() {
     const undone = await win.locator(promptBox(1)).innerText()
     check(typed.includes('追加第 4 行') && !undone.includes('追加第'), '③ 滚走再回来，编辑器 Ctrl+Z 撤销仍可用', `撤销后：${undone.slice(0, 30)}`)
 
+    // ③b 焦点换走 → 这一行卸载 → 回来撤销（V-1210 首轮的阻断项）：撤销历史不许跟着编辑器实例一起没了
+    const original3 = await win.locator(promptBox(3)).innerText()
+    await win.locator(promptBox(3)).click()
+    await win.keyboard.press('Control+a')
+    await win.keyboard.type('V1210 undo boundary')
+    for (let i = 0; i < 3; i += 1) await frames(win)
+    await win.locator(promptBox(4)).click()
+    const row3Probe = await proveProbe(win.locator(rowSel(3)), '刚改完的第 3 镜挂着')
+    await scrollTo(win, 'bottom')
+    await expectAbsent(win.locator(rowSel(3)), { provenBy: row3Probe, message: '焦点换走后滚远，第 3 镜卸载了（不靠钉住）' })
+    check(true, '③b 焦点换走后滚远：第 3 镜确实卸载了（不靠钉住）')
+    await scrollTo(win, 'top')
+    await win.locator(promptBox(3)).waitFor({ timeout: stationTimeout() })
+    const remounted3 = await win.locator(promptBox(3)).innerText()
+    await win.locator(promptBox(3)).click()
+    await win.keyboard.press('Control+z')
+    for (let i = 0; i < 3; i += 1) await frames(win)
+    const undone3 = await win.locator(promptBox(3)).innerText()
+    check(remounted3.includes('V1210 undo boundary') && undone3.trim() === original3.trim(), '③b 卸载再挂上后 Ctrl+Z：恢复原文', `回来时：${remounted3.slice(0, 24)}；撤销后：${undone3.slice(0, 24)}`)
+
     // ④ 键盘上下移到视口外
     await win.locator(rowSel(2)).evaluate((el) => el.focus())
     for (let i = 0; i < 12; i += 1) { await win.keyboard.press('ArrowDown'); await frames(win) }
@@ -223,9 +256,10 @@ async function passZhLight() {
     const toolbarClear = win.locator('[data-storyboard-selection-clear], [aria-label="取消选择"]').first()
     if (await toolbarClear.count()) await toolbarClear.click().catch(() => undefined)
     const promptOf = (n) => win.locator(promptBox(n)).innerText()
+    const thirdBefore = await promptOf(3)
     await dragRow(win, 3, 5)
     const fifthAfter = await promptOf(5).catch(() => '')
-    check(fifthAfter.includes('镜头 3：'), '⑥ 拖拽排序：第 3 镜的内容到了第 5 位', fifthAfter.slice(0, 20))
+    check(fifthAfter.trim() === thirdBefore.trim(), '⑥ 拖拽排序：第 3 镜的内容到了第 5 位', fifthAfter.slice(0, 20))
 
     // ⑦ 加一镜 → 总数 +1、够得着；删掉再 Ctrl+Z
     await scrollTo(win, 'bottom')
@@ -269,6 +303,46 @@ async function passZhLight() {
     check(await generateState(200) === 'idle', '⑩ 第 200 镜节点失败：行退出生成中')
     await scrollTo(win, 'top')
     check(await generateState(2) === 'idle', '⑩ 滚回顶部：第 2 镜同样是最新状态（不是挂载时的快照）')
+
+    // ⑪ 快速滚动（V-1210 首轮第 2 项）：100 次真滚轮、每次 800px、两帧一次。滚动中新进来的行先挂占位，
+    //    不建编辑器；停下后占位换成完整行。记长任务与滚动中新建的编辑器数。
+    await scrollTo(win, 'top')
+    await win.evaluate(() => {
+      const rows = document.querySelector('[data-storyboard-rows]')
+      window.__walkScroll = { editorsCreated: 0, placeholders: 0, longTasks: 0 }
+      window.__walkFrames = []
+      let last = performance.now()
+      const tick = (now) => { window.__walkFrames.push(now - last); last = now; if (window.__walkFrames.length < 20000 && !window.__walkFramesStop) requestAnimationFrame(tick) }
+      requestAnimationFrame(tick)
+      window.__walkScrollObserver = new MutationObserver((records) => {
+        for (const record of records) for (const node of record.addedNodes) {
+          if (!(node instanceof Element)) continue
+          window.__walkScroll.editorsCreated += (node.matches('[data-prompt-box]') ? 1 : 0) + node.querySelectorAll('[data-prompt-box]').length
+          window.__walkScroll.placeholders += (node.matches('[data-storyboard-row-placeholder]') ? 1 : 0) + node.querySelectorAll('[data-storyboard-row-placeholder]').length
+        }
+      })
+      window.__walkScrollObserver.observe(rows, { childList: true, subtree: true })
+      window.__walkLongTasks = new PerformanceObserver((list) => { window.__walkScroll.longTasks += list.getEntries().length })
+      try { window.__walkLongTasks.observe({ type: 'longtask' }) } catch { /* 无长任务支持 */ }
+    })
+    const scrollBox = await win.locator('[data-storyboard-scroll]').boundingBox()
+    await win.mouse.move(scrollBox.x + scrollBox.width / 2, scrollBox.y + scrollBox.height / 2)
+    for (let i = 0; i < 100; i += 1) { await win.mouse.wheel(0, 800); await frames(win) }
+    const duringScroll = await win.evaluate(() => {
+      window.__walkFramesStop = true
+      const frames = [...window.__walkFrames].sort((a, b) => a - b)
+      const at = (q) => Math.round(frames[Math.min(frames.length - 1, Math.floor(frames.length * q))] * 10) / 10
+      return { ...window.__walkScroll, scrollTop: document.querySelector('[data-storyboard-scroll]').scrollTop, frameP50: at(0.5), frameP95: at(0.95), frameMax: at(1) }
+    })
+    await settled(win)
+    const afterSettle = await win.evaluate(() => { window.__walkScrollObserver.disconnect(); window.__walkLongTasks.disconnect(); return { ...window.__walkScroll } })
+    check(duringScroll.scrollTop > 40000 && duringScroll.placeholders > 50 && duringScroll.editorsCreated <= 30, '⑪ 快速滚动：滚过的行先挂占位、滚动中几乎不建编辑器', JSON.stringify(duringScroll))
+    // 占位长什么样（不计入上面的数字）：往回快滚几下，滚动中截一张
+    await win.mouse.wheel(0, -2400)
+    await frames(win)
+    await win.screenshot({ path: path.join(outDir, 'zh-light-scrolling.png') })
+    await settled(win)
+    check((await mounted(win)).rows > 0, '⑪ 停下后占位换成完整行', `停下后又建了 ${afterSettle.editorsCreated - duringScroll.editorsCreated} 个编辑器；滚动全程长任务 ${afterSettle.longTasks} 个`)
 
     // ⑧ 滚到底：末镜挂上
     await scrollTo(win, 'bottom')

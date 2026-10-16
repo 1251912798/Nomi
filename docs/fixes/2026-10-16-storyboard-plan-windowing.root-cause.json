@@ -18,7 +18,11 @@
     "src/workbench/creation/storyboard/shotRow/StoryboardRowShell.tsx",
     "src/workbench/creation/storyboard/shotRow/storyboardRowDensity.ts",
     "src/workbench/creation/storyboard/shotRow/useShotMentionSource.ts",
-    "src/workbench/creation/storyboard/anchorZone/StoryboardAnchorZone.tsx"
+    "src/workbench/creation/storyboard/anchorZone/StoryboardAnchorZone.tsx",
+    "src/workbench/creation/storyboard/shotRow/StoryboardShotRow.tsx",
+    "src/workbench/creation/storyboard/shotRow/promptHistoryCarry.ts",
+    "src/workbench/creation/storyboard/storyboardMountPlan.ts",
+    "src/workbench/creation/storyboard/shotRow/StoryboardShotRowPlaceholder.tsx"
   ],
   "entry_points": [
     "src/workbench/creation/storyboard/StoryboardShotTable.tsx StoryboardShotTable（分镜页 StoryboardPlanEditor 与设计实验室 03-zone 两个消费者）",
@@ -37,13 +41,21 @@
       "url": "https://github.com/TanStack/virtual/blob/main/packages/virtual-core/src/index.ts",
       "checked_at": "2026-10-16",
       "purpose": "核对锁定的 virtual-core 3.17.0 里 scrollToIndex 的滚动校准（reconcileScroll，最长 5 秒）与原生滚动的交互，决定键盘上下移不走 scrollToIndex"
+    },
+    {
+      "kind": "source-code",
+      "url": "https://github.com/ProseMirror/prosemirror-history/blob/master/src/history.ts",
+      "checked_at": "2026-10-16",
+      "purpose": "undo / closeHistory / addToHistory 元数据的语义：卸载时按 history 分组展开快照，重挂时每份一个分组重放（锁定 prosemirror-history 1.5.0，经 @tiptap/pm/history）"
     }
   ],
   "invariants": [
     "打开任意规模的方案，挂载的行数与编辑器数只取决于视口（≤ 首屏 + 缓冲），与镜头总数无关",
     "行宽档位由行容器量一次经 context 递给每一行；任何行级组件都不调用 useElementWidth",
     "@ 候选的素材池整张表一份；行级 hook 不直接调用 useAssetPool",
-    "表不靠全局 DOM 查询找某一镜：定位与键盘移动按项目下标滚动，焦点行与拖拽行钉住不卸"
+    "表不靠全局 DOM 查询找某一镜：定位与键盘移动按项目下标滚动，焦点行与拖拽行钉住不卸",
+    "行卸载不丢编辑器撤销历史：焦点换走、行卸载再重挂，Ctrl+Z 按原分组退回（按镜头 id 存表、重挂接回，不钉住行）",
+    "快速滚动中不新建编辑器：滚动中新进来的镜头行一律是轻量占位，完整行不降级，停下后每帧升级一行"
   ],
   "doors": [
     {
@@ -85,12 +97,37 @@
       "kind": "read",
       "path": "src/workbench/creation/storyboard/anchorZone/StoryboardAnchorZone.tsx",
       "symbol": "StoryboardRowsBox"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/creation/storyboard/shotRow/StoryboardShotRow.tsx",
+      "symbol": "usePromptHistoryCarry"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/creation/storyboard/StoryboardShotTable.tsx",
+      "symbol": "planItemMounts"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/creation/storyboard/shotRow/promptHistoryCarry.ts",
+      "symbol": "replayHistory"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/creation/storyboard/storyboardMountPlan.ts",
+      "symbol": "planItemMounts"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/creation/storyboard/shotRow/StoryboardShotRowPlaceholder.tsx",
+      "symbol": "StoryboardRowShell"
     }
   ],
   "door_reduction": {
     "before": 5,
-    "after": 8,
-    "why_not": "门的个数没减反增 3 扇读门：行宽档位从「每行自己量」改成「行容器量一次、行读 context」，于是多出表 / 参考卡区读 useStoryboardRowsDensity / StoryboardRowsBox、行外壳读 useStoryboardRowNarrow 三扇读门——这正是把测量从 N 次收成 1 次的结构。写门（真正量宽度、取素材池的地方）在分镜里各只剩一扇：useElementWidth 只在 storyboardRowDensity.ts、useAssetPool 只在 useShotMentionSource.ts 的 useShotMentionPool；RefineTopBar 是导演台顶栏量自己、与分镜无关；StoryboardShotTable 的两个消费者（分镜页、设计实验室取景）都要存在"
+    "after": 13,
+    "why_not": "门的个数没减反增 3 扇读门：行宽档位从「每行自己量」改成「行容器量一次、行读 context」，于是多出表 / 参考卡区读 useStoryboardRowsDensity / StoryboardRowsBox、行外壳读 useStoryboardRowNarrow 三扇读门——这正是把测量从 N 次收成 1 次的结构。写门（真正量宽度、取素材池的地方）在分镜里各只剩一扇：useElementWidth 只在 storyboardRowDensity.ts、useAssetPool 只在 useShotMentionSource.ts 的 useShotMentionPool；RefineTopBar 是导演台顶栏量自己、与分镜无关；StoryboardShotTable 的两个消费者（分镜页、设计实验室取景）都要存在；V-1210 首轮后加的两扇读门：行读 usePromptHistoryCarry（历史跨卸载）、表读 planItemMounts（滚动中占位），都是本刀新结构的唯一消费者；另三扇是这两样结构自身的定义处与占位行（复用同一个行外壳 StoryboardRowShell）"
   },
   "generality_proof": "成本随总数增长的入口只有一个：表把镜头展开成行的那一处。窗口化接在这一处（项目列表 → useVirtualizer → 只渲染 getVirtualItems），行里今后再加任何东西，挂载次数都只随视口；整表一次的事（量宽、素材池）上移到表 / 行容器，并由结构测试禁止行级组件再调用 useElementWidth / useAssetPool，同类成本不能从另一个行级组件回来",
   "shared_boundaries": [
@@ -108,6 +145,16 @@
       "path": "src/workbench/creation/storyboard/shotRow/useShotMentionSource.ts",
       "symbol": "useShotMentionPool",
       "responsibility": "整张分镜表一份 @ 候选素材池（挂载即列一次项目文件）"
+    },
+    {
+      "path": "src/workbench/creation/storyboard/shotRow/promptHistoryCarry.ts",
+      "symbol": "usePromptHistoryCarry",
+      "responsibility": "行卸载时把编辑器历史展开成快照按镜头 id 存表，重挂时重放成新编辑器的历史条目（V-1210 首轮阻断 1）"
+    },
+    {
+      "path": "src/workbench/creation/storyboard/storyboardMountPlan.ts",
+      "symbol": "planItemMounts",
+      "responsibility": "每一帧哪些项挂完整行、哪些挂占位：滚动中不建编辑器（V-1210 首轮阻断 2）"
     }
   ],
   "same_class_entry_points": [
@@ -157,15 +204,21 @@
       "src/workbench/creation/storyboard/StoryboardShotTable.tsx",
       "src/workbench/creation/storyboard/shotRow/storyboardRowDensity.ts",
       "src/workbench/creation/storyboard/shotRow/StoryboardRowShell.tsx",
-      "src/workbench/creation/storyboard/shotRow/useShotMentionSource.ts"
+      "src/workbench/creation/storyboard/shotRow/useShotMentionSource.ts",
+      "src/workbench/creation/storyboard/shotRow/promptHistoryCarry.ts",
+      "src/workbench/creation/storyboard/storyboardMountPlan.ts"
     ]
   },
   "regression_tests": [
     "src/workbench/creation/storyboard/StoryboardShotTable.windowing.test.ts",
-    "tests/ux/storyboard-windowing.walk.mjs"
+    "tests/ux/storyboard-windowing.walk.mjs",
+    "src/workbench/creation/storyboard/shotRow/promptHistoryCarry.test.ts",
+    "src/workbench/creation/storyboard/storyboardMountPlan.test.ts"
   ],
   "class_regression_tests": [
-    "src/workbench/creation/storyboard/StoryboardShotTable.windowing.test.ts"
+    "src/workbench/creation/storyboard/StoryboardShotTable.windowing.test.ts",
+    "src/workbench/creation/storyboard/shotRow/promptHistoryCarry.test.ts",
+    "src/workbench/creation/storyboard/storyboardMountPlan.test.ts"
   ],
   "legacy_paths": {
     "status": "removed",
@@ -183,9 +236,11 @@
   },
   "residual_risks": [
     "挂载时同步 IPC（模型目录 listModels、参数区 listMappings 的 invokeSync）仍在，次数从随镜头数降为随视口行数；降到 0 归 P-compose（模型目录映射改异步 + 渲染进程禁 invokeSync 棘轮），合入后需复验",
-    "浏览器原生 Ctrl+F 只搜得到挂着的行（应用内没有全文查找入口）",
     "从画布 / 列表定位到某一镜的入口（openStoryboardPlanRow）当前没有生产调用方；消费端已改为按下标滚动，walk 只验了同一机制的键盘路径",
-    "D-perf 分支把量具改接统一计时器的 storyboardRowsAtLeast(320) 判据，窗口化后永远不成立，合并时需替换为本刀的判据"
+    "D-perf 分支把量具改接统一计时器的 storyboardRowsAtLeast(320) 判据，窗口化后永远不成立，合并时需替换为本刀的判据",
+    "长方案按文本 / 镜号找某一镜只能滚动辨认（应用内本来没有搜索入口；窗口化后 DOM 文本只覆盖视口附近），建议另开定位入口",
+    "重做（Ctrl+Shift+Z）不跨卸载：卸载时只带走可撤销的那一侧",
+    "原生鼠标拖拽到滚动区边缘的自动滚动未验证：Playwright dragTo 在 main 上也触发不了原生拖放"
   ],
   "invariant_owner_layer": {
     "layer": "src/workbench/creation/storyboard/StoryboardShotTable.tsx",
