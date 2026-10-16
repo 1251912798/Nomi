@@ -6,12 +6,13 @@ import { makeTempDir } from '../../scripts/_test-temp.mjs'
 //   C 内容列宽约束：正文 max-width 680px 居中（不再铺满主区）
 //   D 标题分隔线：h1/h2 有 border-bottom
 import { launchNomiApp } from './_launchApp.mjs'
-import { expectVisible, expectCount, screenshotSettled } from './_assert.mjs'
+import { expectAbsent, expectVisible, expectCount, proveProbe, screenshotSettled } from './_assert.mjs'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { leaveProjectIfOpen } from './_shell.mjs'
+import { leaveProjectIfOpen, switchWorkspace } from './_shell.mjs'
+import { ensureCreationResourceTree, openStoryboardEditor } from './_creationResourceTree.mjs'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const tempRoot = makeTempDir('nomi-rich-editor-')
@@ -166,15 +167,13 @@ async function openProject(name) {
   const continueButton = card.getByText('继续创作', { exact: false }).first()
   if (await continueButton.isVisible().catch(() => false)) await continueButton.click()
   else await card.dblclick()
-  const creationButton = win.getByRole('button', { name: '创作', exact: true })
-  await expectVisible(creationButton, `打开项目「${name}」后没等到顶部「创作」导航`)
+  await expectVisible(win.locator('[data-shell-stage-center]'), `打开项目「${name}」后没等到顶部工作区分段`)
 }
 
 try {
   await openProject('富文本编辑器 P1 走查')
   // 进入创作页
-  const creationButton = win.getByRole('button', { name: '创作', exact: true })
-  await creationButton.click()
+  await switchWorkspace(win, 'creation', '进创作页')
   await expectVisible(win.locator('.workbench-editor'), '创作页编辑器未渲染')
 
   // A：工具栏新按钮（标题/列表/插入 三簇都验证）
@@ -207,10 +206,11 @@ try {
 
   await shot('01-creation-editor')
 
-  // P2 多文档：左侧原稿列表
-  const docList = win.locator('[aria-label="原稿列表"], [aria-label="Drafts"]').first()
+  // P2 多文档：原稿列表（10-08 外壳重设计后住在左栏「文稿」抽屉里，点一下左栏「文稿」才出来）
+  await ensureCreationResourceTree(win, '原稿列表')
+  const docList = win.locator('[data-creation-resource-tree="true"]').first()
   record('原稿列表渲染', (await docList.count()) > 0, `count=${await docList.count()}`)
-  const docItems = win.locator('[data-document-id]')
+  const docItems = win.locator('[data-creation-resource-tree="true"] [data-document-id]')
   record('原稿列表 2 篇', (await docItems.count()) === 2, `count=${await docItems.count()}`)
 
   // 切换文档：点第二篇，编辑器内容应切换
@@ -219,22 +219,19 @@ try {
   await new Promise((r) => setTimeout(r, 400))
   await shot('02-switch-document')
 
-  // P3 分镜独立页：顶栏应有第 4 个「分镜」tab
-  const storyboardTab = win.getByRole('button', { name: '分镜', exact: true })
-  record('分镜 tab 存在', (await storyboardTab.count()) > 0, `count=${await storyboardTab.count()}`)
-  // 无方案项目点分镜 tab → 空态
-  await storyboardTab.click().catch(() => {})
-  await new Promise((r) => setTimeout(r, 400))
-  const emptyState = win.getByText('还没有分镜方案').first()
-  record('分镜空态', (await emptyState.count()) > 0, `count=${await emptyState.count()}`)
+  // P3 分镜：独立「分镜」tab 已并进「创作」（顶栏工作区分段只有 创作 / 生成 / 预览 三颗），方案改从左栏「文稿」抽屉里的方案行进入。
+  const stageSteps = win.locator('[data-shell-stage-center] [data-mode]')
+  record('工作区分段只有 创作/生成/预览 三颗（无独立分镜 tab）', (await stageSteps.count()) === 3, `count=${await stageSteps.count()}`)
+  // 无方案项目：文稿抽屉里没有方案行（没有方案就没有可进的分镜编辑器）
+  await ensureCreationResourceTree(win, '无方案项目的文稿抽屉')
+  const treeProof = await proveProbe(win.locator('[data-creation-resource-tree="true"] [data-document-row]').first(), '文稿抽屉里有原稿行（探针活性）')
+  const noPlanRows = await expectAbsent(win.locator('[data-storyboard-row]'), { provenBy: treeProof, message: '无方案项目的文稿抽屉里不该有方案行' }).then(() => true).catch(() => false)
+  record('无方案项目：文稿抽屉里没有方案行', noPlanRows)
   await shot('03-storyboard-empty')
 
-  // 有方案的项目 → 分镜页渲染方案编辑器（不是空态）
+  // 有方案的项目 → 从文稿抽屉的方案行进分镜页，渲染方案编辑器（不是空态）
   await openProject('分镜独立页走查')
-  const sbTab2 = win.getByRole('button', { name: '分镜', exact: true })
-  await sbTab2.click().catch(() => {})
-  await new Promise((r) => setTimeout(r, 500))
-  const editor = win.locator('.workbench-storyboard [class*="Storyboard"]').first()
+  await openStoryboardEditor(win, { pick: 'first' }, '有方案项目：打开分镜方案')
   const shotCount = await win.getByText('分镜 · 2 镜').count()
   record('分镜方案渲染', shotCount > 0 || (await win.getByText(/分镜方案/).count()) > 0, `分镜·2镜=${shotCount}`)
   await shot('04-storyboard-with-plan')

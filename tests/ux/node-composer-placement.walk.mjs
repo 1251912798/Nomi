@@ -25,7 +25,7 @@ import { launchNomiApp } from './_launchApp.mjs'
 import fs from 'node:fs'
 import path from 'node:path'
 import { expect, screenshotSettled } from './_assert.mjs'
-import { canvasAddBar, canvasAddMoreMenu, newProjectEntry } from './_shell.mjs'
+import { canvasAddBar, canvasAddMoreMenu, ensureAgentPanelOpen, newProjectEntry, switchWorkspace } from './_shell.mjs'
 
 const repoRoot = process.cwd()
 const shotsDir = path.join(repoRoot, 'tests/ux/shots/node-composer-placement')
@@ -277,9 +277,7 @@ try {
   check('新建并进入项目', /projectId=/.test(getWin().url()), getWin().url())
 
   // 进「生成」工作区并等真实 React Flow 画布挂载（不是等超时）。
-  const generationTab = getWin().getByRole('button', { name: '生成', exact: true }).first()
-  await generationTab.waitFor()
-  await generationTab.click()
+  await switchWorkspace(getWin(), 'generation', '进入生成画布')
   const toolbar = canvasAddBar(getWin())
   await toolbar.waitFor()
   await getWin().locator('.react-flow').first().waitFor()
@@ -499,6 +497,8 @@ try {
   // 分隔条，键盘 End 直接跳到当前视口下的最大宽度），画布宽度因此被真实地挤掉一块，
   // 不用碰原生窗口。2026-09-25 起这里断的是反面：画布变窄了，浮框**照旧** 560 宽、照旧钉在节点下，
   // 伸出画布的那截就被挡住（用户拍板「遮挡就遮挡了」）——不收窄、不推回视口。
+  // 生成页的 Agent 默认是小球：拉宽要先叫出来并停靠（分隔条只有停靠形态才有）。
+  await ensureAgentPanelOpen(getWin(), '叫出 Agent 并停靠', { form: 'dock' })
   const assistantResizer = getWin().getByRole('separator', { name: '拖动调整助手宽度' }).first()
   await assistantResizer.waitFor({ state: 'visible' })
   await assistantResizer.focus()

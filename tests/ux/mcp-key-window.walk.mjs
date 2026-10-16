@@ -6,6 +6,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { launchNomiApp } from './_launchApp.mjs'
 import { screenshotSettled, expectVisible, clickOrFail } from './_assert.mjs'
+import { settingsDialog } from './_shell.mjs'
 
 import { fileURLToPath } from 'node:url'
 const repoRoot = path.resolve(fileURLToPath(new URL('.', import.meta.url)), '../..')
@@ -96,7 +97,7 @@ async function main() {
       expectedRevision: begun.revision,
     })
 
-    const settings = win.locator('[data-settings-overlay="true"]')
+    const settings = settingsDialog(win)
     await expectVisible(settings, 'MCP open_credentials should bring Settings to the front')
     await expectVisible(settings.locator('[data-settings-tab-id="models"]'), '模型 tab should be selected')
     const wizard = settings
