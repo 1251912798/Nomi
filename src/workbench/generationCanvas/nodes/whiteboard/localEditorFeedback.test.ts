@@ -6,7 +6,7 @@ const read = (path: string) => readFileSync(resolve(path), 'utf8')
 
 // 就地反馈的登记表按文件路径钉：文件被改名/删掉时这条断言先红，避免守卫悄悄指向一个不存在的文件（2026-09-10 导演台 V2 把 scene3d 整个换掉时踩过）
 const OWNERS = [
-  'WhiteboardModal.tsx',
+  'InlineWhiteboard.tsx',
   'WhiteboardDrawingTool.tsx',
   '../director/panels/usePanoramaImport.tsx',
 ]
@@ -18,7 +18,8 @@ describe('local editing feedback ownership', () => {
       const source = read(file)
       expect(source).not.toMatch(/import .*\btoast\b.*from/)
       expect(source).toContain("level: 'inline'")
-      expect(source).toContain('role="status"')
+      const surface = file.startsWith('../director') ? source : read('WhiteboardEditingToolbar.tsx')
+      expect(surface).toContain('role="status"')
       expect(source).toContain('setFeedback(null)')
     })
   }

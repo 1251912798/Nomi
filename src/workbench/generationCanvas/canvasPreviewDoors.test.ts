@@ -59,8 +59,8 @@ describe('画布预览不变式 · 入口普查', () => {
       .sort()
     expect(callers).toEqual([
       'src/workbench/generationCanvas/components/ScreenshotCropOverlay.tsx',
+      'src/workbench/generationCanvas/nodes/whiteboard/InlineWhiteboard.tsx',
       'src/workbench/generationCanvas/nodes/whiteboard/WhiteboardDrawingTool.tsx',
-      'src/workbench/generationCanvas/nodes/whiteboard/WhiteboardModal.tsx',
     ])
   })
 

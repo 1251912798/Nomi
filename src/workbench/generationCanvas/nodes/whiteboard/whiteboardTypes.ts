@@ -1,13 +1,19 @@
+import type { SceneTransforms } from './whiteboardCanvasTypes'
 import type { CanvasStroke } from './WhiteboardLeaferCanvas'
-import type { AspectRatioKey, CanvasAsset, LayerItem } from './lib/canvas'
+import type { AspectRatioKey, CanvasAsset, CanvasText, CanvasDimensions, LayerItem } from './lib/canvas'
 
 export type WhiteboardState = {
+  texts?: CanvasText[]
+  sceneTransforms?: SceneTransforms
+  canvasDimensions?: CanvasDimensions
   strokes: CanvasStroke[]
   canvasAssets: CanvasAsset[]
   layers: LayerItem[]
   activeLayerId: string
   activeRatio: AspectRatioKey
 }
+
+export type WhiteboardInitialImageStatus = 'loading' | 'failed' | 'ready'
 
 export type WhiteboardInitialImage = {
   url: string
