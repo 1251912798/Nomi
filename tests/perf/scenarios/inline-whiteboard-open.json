@@ -1,0 +1,27 @@
+{
+  "id": "inline-whiteboard-open",
+  "feature": "Inline whiteboard: click Whiteboard on an image until the editor is usable (canvas up, source image imported)",
+  "script": "tests/ux/whiteboard-perf.probe.mjs",
+  "args": [
+    "--scene",
+    "open-type",
+    "--repo-media"
+  ],
+  "scale": "2 nodes, 1 image opened in place; the repository real AI shot (640x360), not the 4K library clip; time from the pointer down on the toolbar button",
+  "metrics": [
+    "openToInteractive",
+    "longTasks"
+  ],
+  "budget": 1000,
+  "budgetStatus": "proposed",
+  "budgetBasis": "Default open-to-interactive budget (<=1 s, Nielsen 1 s limit for keeping the flow of thought) from docs/engineering/perf-scenarios.md.",
+  "baseline": {
+    "median": 421.4,
+    "p95": 426.5,
+    "runs": 5,
+    "machine": "win32 x64 13th Gen Intel(R) Core(TM) i9-13900H x20 / 64GB",
+    "date": "2026-10-17",
+    "commit": "a7cdc4664",
+    "noisy": true
+  }
+}

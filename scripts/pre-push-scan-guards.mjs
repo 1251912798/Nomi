@@ -65,6 +65,7 @@ export const SCAN_GUARDS = Object.freeze([
   { file: 'src/design/mediaOverlayInk.test.ts', roots: SRC },
   { file: 'src/design/menu.structure.test.ts', roots: SRC },
   { file: 'src/design/portalLayer.structure.test.ts', roots: SRC },
+  { file: 'src/design/popoverTracking.structure.test.ts', roots: SRC }, // 浮层跟踪不许逐帧轮询：遍历 src 找 autoUpdate 与 animationFrame（<2 秒）
   { file: 'src/ui/browser/assetSurfaceInvariants.test.ts', roots: SRC }, // 7 秒
   { file: 'src/workbench/common/modelSelectStructure.test.ts', roots: SRC }, // 7 秒
   { file: 'src/workbench/generation/dockCollapsePrefs.test.ts', roots: SRC }, // 4 秒

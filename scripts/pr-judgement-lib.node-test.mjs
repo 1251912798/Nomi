@@ -326,6 +326,55 @@ test('端到端：逃逸账本一条一个文件——条目文件被删（base 
   assert.match(dropped.stdout, /逃逸账本里有条目被删掉：LAW12-b（/)
 })
 
+test('端到端：真实 committed reviewed 逃逸只准首次 push 警告；CI/merge、缺证据与错绑合同仍红', (t) => {
+  const root = makeTempDir('pr-judgement-reviewed-')
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }))
+  const write = (rel, value) => {
+    fs.mkdirSync(path.dirname(path.join(root, rel)), { recursive: true })
+    fs.writeFileSync(path.join(root, rel), typeof value === 'string' ? value : JSON.stringify(value))
+  }
+  git(root, 'init', '-q'); git(root, 'config', 'user.email', 't@t'); git(root, 'config', 'user.name', 't'); git(root, 'config', 'commit.gpgsign', 'false')
+  write('README.md', 'base')
+  // 政策表取 base 版本（G-perfreg）：fixture 的 base 带上真实路由表
+  write('docs/engineering/test-routing.json', fs.readFileSync(path.join(here, '..', 'docs/engineering/test-routing.json'), 'utf8'))
+  git(root, 'add', '-A'); git(root, 'commit', '-q', '-m', 'base')
+  const base = git(root, 'rev-parse', 'HEAD').trim()
+  const contractFile = 'docs/fixes/2026-10-12-fixture.root-cause.json'
+  const checkFile = 'tests/ux/fixture.walk.mjs'
+  const ledgerFile = 'tests/ux/full-walk/escapeLedger/FB-fixture.json'
+  const contract = { detected_by: 'user', prevention: { kind: 'centralized-boundary' }, class_regression_tests: [checkFile] }
+  const entry = { id: 'FB-fixture', status: 'reviewed', manualReview: 'reviewed', rootCauseContract: contractFile,
+    classCheck: { kind: 'matrix', file: checkFile }, evidence: ['real task receipt'], completionCommits: [base] }
+  write(contractFile, contract)
+  write(checkFile, 'const matrix = []; for (const row of matrix) verify(row)')
+  const body = ['## 设计卡', ...CARD_LINES].join('\n')
+  const run = (env = {}) => spawnSync(process.execPath, [path.join(here, 'check-pr-judgement.mjs')], {
+    encoding: 'utf8', env: { ...process.env, PR_JUDGEMENT_REPO_ROOT: root, PR_JUDGEMENT_BASE_REF: base,
+      PR_JUDGEMENT_CREATED_AT: '2026-10-12T00:00:00Z', NOMI_PR_BODY: body, NOMI_PR_JUDGEMENT_STAGE: 'push',
+      GITHUB_EVENT_NAME: '', CI: '', ...env },
+  })
+  const commitEntry = (value) => { write(ledgerFile, value); git(root, 'add', '-A'); git(root, 'commit', '-q', '-m', 'review evidence') }
+  commitEntry(entry)
+  const push = run()
+  assert.equal(push.status, 0, push.stdout + push.stderr)
+  assert.match(push.stdout, /⚠.*reviewed/)
+  assert.equal(JSON.parse(git(root, 'show', `HEAD:${ledgerFile}`)).status, 'reviewed', 'admission never fabricates fixed')
+  for (const env of [{ NOMI_PR_JUDGEMENT_STAGE: 'merge' }, { CI: 'true' }]) {
+    assert.equal(run(env).status, 1, 'merge/CI must retain settlement requirement')
+  }
+  const unrelatedCommit = git(root, 'commit-tree', 'HEAD^{tree}', '-m', 'unrelated root commit').trim()
+  for (const invalid of [
+    { ...entry, id: 'FB-other' }, { ...entry, status: 'candidate' }, { ...entry, manualReview: 'pending' }, { ...entry, evidence: [] },
+    { ...entry, completionCommits: [] }, { ...entry, completionCommits: ['f'.repeat(40)] },
+    { ...entry, completionCommits: [unrelatedCommit] },
+    { ...entry, classCheck: { kind: 'matrix', file: 'tests/ux/missing.walk.mjs' } },
+    { ...entry, rootCauseContract: 'docs/fixes/2026-10-12-other.root-cause.json' },
+  ]) { commitEntry(invalid); assert.equal(run().status, 1, `invalid preparation admitted: ${JSON.stringify(invalid)}`) }
+  commitEntry(entry)
+  write(checkFile, 'verifyOneExample()'); git(root, 'commit', '-qam', 'not a class check')
+  assert.equal(run().status, 1, 'existence alone is insufficient: check must be class-level')
+})
+
 test('exclude：设计实验室（src/devlab）的 tsx 不算「改交互」；真界面照算', () => {
   assert.deepEqual(inferRoutes([M('src/devlab/designLab/Kit.tsx')], '', table).categories, [])
   assert.deepEqual(inferRoutes([M('src/workbench/Panel.tsx')], '', table).categories.map((c) => c.id), ['ui', 'perf'])

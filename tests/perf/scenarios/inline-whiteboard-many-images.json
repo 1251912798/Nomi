@@ -1,0 +1,27 @@
+{
+  "id": "inline-whiteboard-many-images",
+  "feature": "Inline whiteboard: drag the image inside an open editor while many images are visible on the canvas",
+  "script": "tests/ux/whiteboard-perf.probe.mjs",
+  "args": [
+    "--scene",
+    "many-images",
+    "--repo-media"
+  ],
+  "scale": "26 nodes, 25 image nodes visible at fit-to-view, 6 distinct real frames, 1 active editor; the repository real AI shot (640x360), not the 4K library clip; 6 drags x 60 steps",
+  "metrics": [
+    "frameGapP95",
+    "longTasks"
+  ],
+  "budget": 33,
+  "budgetStatus": "proposed",
+  "budgetBasis": "Default drag budget: frame gap p95 within 2 frames at 60 Hz (33 ms), zero >50 ms long tasks.",
+  "baseline": {
+    "median": 6.2,
+    "p95": 6.2,
+    "runs": 5,
+    "machine": "win32 x64 13th Gen Intel(R) Core(TM) i9-13900H x20 / 64GB",
+    "date": "2026-10-17",
+    "commit": "a7cdc4664",
+    "noisy": true
+  }
+}
