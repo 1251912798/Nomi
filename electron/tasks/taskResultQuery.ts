@@ -20,7 +20,6 @@ import {
   billingKindForTaskKind,
   buildProfileTaskResult,
   executeProfileOperation,
-  extractAssetUrl,
   findExecutableModel,
   findTaskMapping,
   localizeTaskAsset,
@@ -29,6 +28,7 @@ import { logWarn } from "../logging/logger";
 import { matchNomiErrorCode, tagNomiError } from "../shared/nomiErrorCodes";
 import { VendorRequestError } from "../vendor/vendorHttp";
 import { noteRelayQueryOutcome } from "../catalog/relayNativeWireUpgrade";
+import { expectedMediaKind, readTaskResponse } from "./taskResultReading";
 
 // ── 未登记状态动词的有界容忍（根因修复，见 docs/plan/2026-08-11-unrecognized-task-status-root-fix.md）──
 //
@@ -331,7 +331,8 @@ async function executeTaskQuery(taskId: string, cached: CachedTask): Promise<{ v
     return { vendor: cached.vendor, result };
   }
 
-  const assetUrl = extractAssetUrl(cached.raw);
+  // 没有 query 的任务：create 那一刻的响应也只经唯一读法读（tasks/taskResultReading），不另走一份兜底路径表。
+  const assetUrl = readTaskResponse({ response: cached.raw, responseMapping: null, statusMapping: undefined, wantedKind: expectedMediaKind(cached.wantedKind) }).assetUrls[0] ?? "";
   if (assetUrl) {
     const type: "image" | "video" | "audio" | "model3d" = cached.wantedKind === "video" ? "video" : cached.wantedKind === "audio" ? "audio" : cached.wantedKind === "model3d" ? "model3d" : "image";
     // vendor 提示必须带上：本地 ComfyUI 的产物 URL 是私网 /view，缺它 hardenedFetch 会按 SSRF 拒下载。
@@ -352,8 +353,8 @@ async function executeTaskQuery(taskId: string, cached: CachedTask): Promise<{ v
   //      `cached.mapping` 是受理那刻的快照，不会自己长出 query op。
   //   ② create 响应里也没有产物。而 `cached.raw` **只在**上面那段 query 分支里被改写——对没有
   //      query op 的任务那段永不执行，raw 于是永远冻结在 create 那一刻。
-  // 同样的输入喂给同一个 extractAssetUrl ⇒ 答案永远相同。fallback 那条路更绝：它正是在
-  // extractAssetUrl 为空时才受理的（runtime.ts:502-506），这里注定再算一次同一个空值。
+  // 同样的输入喂给同一个读法 ⇒ 答案永远相同。fallback 那条路更绝：它正是在
+  // 读法取不到地址时才受理的（runtime.ts:502-506），这里注定再算一次同一个空值。
   // 此处过去返回 queued —— 而 queued 是**「再查一次」的指令**：渲染层于是一路空转到硬超时
   // （快道 2min / 视频 20min），最后报一句含糊的「可能仍在上游运行」，真因一次都没到过用户眼前。
   // 事实既然终态且**可知**，就如实报失败，并带上上游自己给的原因（中转的「no available channel」/

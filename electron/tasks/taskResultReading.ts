@@ -9,7 +9,7 @@
 //   2. 合同读不到 → **通用规则**：在响应里按「结果字段名」找地址（result_url / video_url / url / output / fileUrl …，
 //      含 content.* / data.* / output.* / results[*] / videos[*] 等嵌套，以及被当字符串二次嵌套的 JSON），
 //      只收 http(s) / data: / nomi-local: 地址，**按期望的媒体类型核扩展名**，**排除本次请求回显的参考地址**，
-//      并排除缩略图 / 封面 / 尾帧 / 参考这类字段。只取排名最高的那一处（同一张列表里的兄弟一起），并说出用的是哪条规则。
+//      并排除缩略图 / 封面 / 尾帧 / 参考这类字段；类型证据先于字段名排名，只取排名最高的那一处（同一张列表里的兄弟一起），并说出用的是哪条规则。合同读到的地址同样排除回显的参考地址。
 //   3. 状态由共享词表判（resolveTaskStatus → shared/taskStatus），产物作硬证据参与判定。
 // 下载那一步还会按 content-type / 字节再核一次（assets/generatedMediaDecode），这里只做便宜的第一道。
 import type { JsonRecord } from "../jsonUtils";
@@ -105,40 +105,54 @@ function scanCandidates(value: unknown, path: string, key: string, depth: number
   }
 }
 
+/** 一个地址能不能当本次产物：不是回显的参考地址、媒体类型不和期望冲突。合同与通用规则共用这一道筛。 */
+function admissible(url: string, wantedKind: ExpectedMediaKind | null, echoUrls: ReadonlySet<string>): boolean {
+  if (echoUrls.has(url.trim())) return false;
+  const kind = mediaKindOf(url);
+  return !(kind && wantedKind && kind !== wantedKind);
+}
+
 /**
- * 通用规则：合同读不到时，在响应里找**一个**最像本次产物的地址。
- * 期望类型对不上的（扩展名是图却要视频）不要；回显的参考地址不要；排除字段下的不要。
+ * 类型证据分：期望类型对上的（扩展名 / data: mime 就是要的那种）最高；没期望时，看得出是媒体的高于看不出的。
+ * 这一分**先于**字段名排名——「明确是视频的结果」压过「顶层一个看不出是什么的辅助地址」（V-1213 反例：
+ * 顶层 poster / 无扩展名 url 抢走了 data.result.videos 里的真 mp4，花钱生成视频拿到一张图）。
+ */
+function typeScore(url: string, wantedKind: ExpectedMediaKind | null): number {
+  const kind = mediaKindOf(url);
+  if (wantedKind) return kind === wantedKind ? 2 : 1;
+  return kind ? 2 : 1;
+}
+
+/**
+ * 通用规则：合同读不到时，在响应里找最像本次产物的地址。
+ * 期望类型对不上的不要；回显的参考地址不要；排除字段下的不要。排序：类型证据 → 字段名可信度 → 出现顺序。
  */
 export function findResultUrlByGenericRule(
   response: unknown,
   wantedKind: ExpectedMediaKind | null,
   echoUrls: ReadonlySet<string> = new Set(),
 ): { urls: string[]; path: string } | null {
-  // 已知形状先认：同步接口的 b64_json（转 data: 地址）、chat/completions 里内联的图（markdown / 多模态数组）
-  // 这些不是「字段里的地址」，深扫看不见；extractAssetUrl 是它们的唯一解码处。
-  const known = extractAssetUrl(response);
-  if (known && !echoUrls.has(known.trim())) {
-    const kind = mediaKindOf(known);
-    if (!(kind && wantedKind && kind !== wantedKind)) return { urls: [known.trim()], path: "known-shape" };
-  }
   const found: Candidate[] = [];
   scanCandidates(response, "", "", 0, found, false);
   const usable = found
-    .filter((candidate) => !echoUrls.has(candidate.url))
-    .map((candidate) => {
-      const kind = mediaKindOf(candidate.url);
-      return { ...candidate, typed: Boolean(kind && wantedKind && kind === wantedKind), mismatch: Boolean(kind && wantedKind && kind !== wantedKind) };
-    })
-    .filter((candidate) => !candidate.mismatch && candidate.rank < RESULT_KEY_RANK.length);
-  if (!usable.length) return null;
-  // 先看字段名可信度，再看扩展名是否对上期望类型（对上的优先），最后保持出现顺序。
-  usable.sort((a, b) => a.rank - b.rank || Number(b.typed) - Number(a.typed));
-  // 同一张列表里的兄弟（videos.0.url / videos.1.url）是同一批产物，一起取；别处的地址不搭车。
-  const listPattern = (path: string) => path.replace(/\.\d+(?=\.|$)/g, ".*");
-  const best = usable[0];
-  const pattern = listPattern(best.path);
-  const urls = Array.from(new Set(usable.filter((candidate) => candidate.rank === best.rank && listPattern(candidate.path) === pattern).map((candidate) => candidate.url)));
-  return { urls, path: pattern };
+    .filter((candidate) => candidate.rank < RESULT_KEY_RANK.length && admissible(candidate.url, wantedKind, echoUrls))
+    .map((candidate, order) => ({ ...candidate, score: typeScore(candidate.url, wantedKind), order }));
+  if (usable.length) {
+    usable.sort((a, b) => b.score - a.score || a.rank - b.rank || a.order - b.order);
+    // 同一张列表里的兄弟（videos.0.url / videos.1.url）是同一批产物，一起取；别处的地址不搭车。
+    const listPattern = (path: string) => path.replace(/\.\d+(?=\.|$)/g, ".*");
+    const best = usable[0];
+    const pattern = listPattern(best.path);
+    const urls = Array.from(new Set(usable
+      .filter((candidate) => candidate.score === best.score && candidate.rank === best.rank && listPattern(candidate.path) === pattern)
+      .map((candidate) => candidate.url)));
+    return { urls, path: pattern };
+  }
+  // 深扫看不见的已知形状（只做**解码**）：同步接口的 b64_json（转 data: 地址）、chat/completions 里内联的图
+  // （markdown / 多模态数组）。它排在深扫之后、过同一道筛，不能再绕过排序抢先返回。
+  const known = extractAssetUrl(response).trim();
+  if (known && admissible(known, wantedKind, echoUrls)) return { urls: [known], path: "known-shape" };
+  return null;
 }
 
 /** 本次请求里出现过的地址（参考图 / 首帧 / 参考视频……）：上游常把它们原样回显，绝不能当产物。 */
@@ -167,14 +181,18 @@ export function readTaskResponse(input: {
   /** 有就在走了通用规则时记一条日志（哪家、哪个模型、哪条路径），排查与补合同用。 */
   trace?: { vendor?: string; model?: string };
 }): TaskResponseReading {
+  const echoUrls = input.echoUrls ?? new Set<string>();
+  // 合同也不例外地排除回显的参考地址（V-1213）：通道声明的位置上回的是本次的参考图，那不是产物。
+  // 类型这道筛只用在通用规则上：合同是这家自己声明的结果位置，扩展名和期望对不上时（音频装在 .mp4 容器里等）
+  // 以合同为准；真错了由下载那一步按字节核（generatedMediaDecode），不在这里猜。
   const contractUrls = Array.from(new Set(
     CONTRACT_ASSET_KEYS.flatMap((key) => valuesFromMapping(input.response, input.responseMapping, key)).flatMap(collectAssetUrls),
-  ));
+  )).filter((url) => !echoUrls.has(url.trim()));
   if (contractUrls.length > 0) {
     const resolved = resolveTaskStatus(input.response, input.responseMapping, input.statusMapping, contractUrls);
     return { ...resolved, assetUrls: contractUrls, rule: "contract" };
   }
-  const generic = findResultUrlByGenericRule(input.response, input.wantedKind, input.echoUrls);
+  const generic = findResultUrlByGenericRule(input.response, input.wantedKind, echoUrls);
   const assetUrls = generic ? generic.urls : [];
   const resolved = resolveTaskStatus(input.response, input.responseMapping, input.statusMapping, assetUrls);
   // 通用规则找到的地址只在上游说成功（或动词认不出、靠这份产物作证据）时才算数：

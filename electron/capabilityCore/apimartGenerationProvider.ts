@@ -39,7 +39,7 @@ import { resolveCustomCallExecution } from "../catalog/customCallMode";
 import { extractVendorExtraHeaders } from "../catalog/catalogStore";
 import { bodyReferencedParamKeys } from "../catalog/paramTranslate";
 import { isJsonRecord, firstString } from "../jsonUtils";
-import { firstMappedString, providerMetaFromResponse, resolveTaskStatus, taskFailureMessageFromResponse } from "../tasks/responseParsing";
+import { firstMappedString, providerMetaFromResponse, taskFailureMessageFromResponse } from "../tasks/responseParsing";
 import { extractTaskId as extractTaskIdShared } from "../ai/requestPipeline";
 import type { TaskRequest } from "../runtime";
 import "../catalog/apimartMinimaxH3";
@@ -613,14 +613,15 @@ export function createCatalogGenerationProvider(options: CatalogGenerationProvid
     const built = renderOperation(target, queryOperation, request, providerMeta, requireApiKey());
     const payload = await send(built, undefined, "task query");
     const responseMapping = isJsonRecord(queryOperation.response_mapping) ? queryOperation.response_mapping : null;
-    // 状态词表是共享的（`tasks/responseParsing.resolveTaskStatus`），与引擎 A 同一份：
+    // 状态词表全仓一份（shared/taskStatus），状态与地址只经唯一读法 readTaskResponse（与引擎 A 同一份）：
     // 上游原样的状态串优先（Run 的账本记的是真话），认不出来时才落到归一后的判词。
     const rawStatus = firstString(
       firstMappedString(payload, responseMapping, "status"),
       isJsonRecord(payload.data) ? (payload.data as JsonRecord).status : "",
       payload.status,
     );
-    const resolved = resolveTaskStatus(payload, responseMapping, target.mapping.statusMapping, []);
+    // 状态与地址只经唯一读法（tasks/taskResultReading，与引擎 A 同一份）；这里只取它的状态结论。
+    const resolved = readTaskResponse({ response: payload, responseMapping, statusMapping: target.mapping.statusMapping, wantedKind: null });
     // 原话在共享词表里认得、或谁都认不得 → 记原话（Run 的账本记真话）；只有通道自己的 statusMapping
     // 认得的方言词（共享词表里没有）才交归一后的判词——否则下游那张唯一词表会把它当「认不出」。
     const keepRaw = Boolean(rawStatus) && (classifyUpstreamTaskStatus(rawStatus) !== "unknown" || Boolean(resolved.unrecognizedStatus));

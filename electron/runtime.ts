@@ -22,7 +22,6 @@ import { executeTextTask } from "./textTaskRunner";
 import { runAudioTask } from "./audioTaskRunner";
 import { firstString, isJsonRecord, trim, type JsonRecord } from "./jsonUtils";
 import { firstMappedString, providerMetaFromResponse, taskFailureMessageFromResponse } from "./tasks/responseParsing"; import { expectedMediaKind, readTaskResponse, requestEchoUrls } from "./tasks/taskResultReading";
-import { extractAssetUrl } from "./tasks/assetUrlExtract";
 import { applyResponseTransform } from "./tasks/responseTransforms";
 import { applyRequestTransform } from "./tasks/requestTransforms";
 import { taskCache } from "./tasks/taskCache";
@@ -170,7 +169,6 @@ import { findExecutableModel } from "./catalog/executableModel";
 
 // billingKindForTaskKind 下沉到 catalog/types（R12 净减）；re-export 保住既有消费方 import 面。
 export { billingKindForTaskKind } from "./catalog/types";
-export { extractAssetUrl } from "./tasks/assetUrlExtract";
 
 export function findTaskMapping(vendorKey: string, taskKind: ProfileKind, modelKey?: string, modeId?: string): Mapping | null {
   // 按 (vendor, taskKind, modelKey) 选——同 vendor 下两模型共用一个 taskKind 但请求形状不同时（如 HappyHorse 与 Kling 都 text_to_video），靠 modelKey 精确路由，不再「第一个赢、另一个套错模板」。
@@ -446,7 +444,7 @@ export async function runTask(payload: unknown): Promise<TaskResult> {
       extras: request.extras,
     },
   );
-  const assetUrl = extractAssetUrl(providerResponse);
+  const assetUrl = readTaskResponse({ response: providerResponse, responseMapping: null, statusMapping: undefined, wantedKind: expectedMediaKind(wantedKind) }).assetUrls[0] ?? ""; // 无 mapping 兜底提交也走唯一读法
   const upstreamTaskId = extractTaskIdShared(providerResponse) || taskId;
   traceVendorRequested(projectId, { runId: upstreamTaskId, nodeId, recipe: fallbackRecipe });
   if (!assetUrl) {
