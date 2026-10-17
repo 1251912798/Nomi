@@ -66,3 +66,22 @@
 
 1. 已落：`fix(relay)` A+B；`docs(fixes)` 合同 / 方向检查 / 账本；`fix(canvas)` C；`test(ux)` 走查截图。
 2. 本轮：`fix(tasks)` 共享词表 + 结果唯一读法（两台引擎）；`fix(tasks)` 上游说成了不判失败 + 取回阶段码 + 运行中退回；`test(catalog)` 视频通道矩阵 + 普查门岗；`docs` 卡 / 方向检查 / 合同 / 账本。每个修复提交单独可回补，门岗与文档提交分开；碰热点的修复提交带 `Direction-Check: docs/engineering/direction-checks/2026-10-16-async-result-retrieval.md`。
+
+## 回补 0.23.x（V-1213 第 8 节，临时分支试摘结论）
+
+从 v0.23.1（66d6eafed）按下列顺序 cherry-pick，冲突全部只在「0.23.1 没有、main 后来才有」的邻接内容上，按下表解；解完 electron / app 两份 tsc 干净、`check-file-sizes` 过、相关 581 个测试文件 6309 条全绿（试摘分支 `tmp/backport-0231-1213`，本地、未推送）：
+
+| 顺序 | 提交 | 冲突 | 解法 |
+|---|---|---|---|
+| 1 | 409eaaf96 | 无 | — |
+| 2 | d9f38d9a2 | `NodeRecoverableReport.tsx`：0.23.1 没有 `recoverableCopy`（c4c4e0215）与统一按钮键（911873697） | 取修复版组件，标题 / 说明 / 按钮改回 0.23.1 的 `generationCommon.recoverable.*` 键；`BaseGenerationNode` 补传 `node`。**不连带回补** c4c4e0215 / 911873697（前者还带 MCP 改动，后者删旧键，都与本修复无关） |
+| 3 | 465f1b9e4 | 两个文件的 import 区（0.23.1 的 import 邻居不同） | 保留 0.23.1 其余 import，读取层 / 产物 / 词表那几行取修复版 |
+| 4 | b74062b18 | 无 | — |
+| 5 | a1c712be9 | `nomiErrorCodes.ts`（0.23.1 没有 output-retrieval-failed / local-processing）；`desktopStrings.ts`（邻接的出站文案在 0.23.1 是旧措辞） | 只加 retrieval-* 四个码；文案只替换 completedWithoutOutput、加 retrievalStage / wireFellBack 键，其余保持 0.23.1 原文 |
+| 6 | ee47be844 | `productionGenerationSubmission.ts` import 区 | 去掉旧词表 import，取修复版那一行 |
+| 7–11 | 4a7117c10、31e72c476、c67730125、ad46b995d、5ce949038 | 无（5ce949038 正是为回补把 VendorRequestError 改成两参构造） | — |
+| 12 | c140540a0 | 目录执行器 import 区 | 同 3（这一刀让该文件在 0.23.1 上回到 795 行，低于 800 行上限） |
+| 13–14 | 309a9b26e、913216322 | 无 | — |
+| 15 | 1c83d754f | `scripts/check-file-sizes.mjs`（runtime 基线按 main 的数） | 只取矩阵测试，基线留 0.23.x 自己的数 |
+
+文档 / 登记提交（a4ce72ee7、9f895af14、1b6131693、854cd0db6 等）与走查截图提交不必回补到发版分支。
