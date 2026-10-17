@@ -5,6 +5,7 @@ metadata:
   nomi:
     selectable-in-workbench: true
     requires-flag: director3dbox
+    available-since: 0.24.0
     audience: internal
     version: 1.1.0
     tools:
