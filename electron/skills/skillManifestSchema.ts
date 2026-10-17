@@ -110,6 +110,8 @@ export type SkillManifest = {
   author?: string;
   audience?: SkillAudience;
   selectableInWorkbench?: boolean;
+  /** 从哪个正式版本起有这个技能（x.y.z）。只管官网技能库展示：没到最新已发布版本就不上官网；App 内行为不受影响。 */
+  availableSince?: string;
   requestedCapabilities?: string[];
   tools: string[];
   requiredProviders: SkillProviderKind[];
@@ -128,6 +130,8 @@ export const skillManifestSchema = z
     audience: skillAudienceSchema.optional(),
     /** Explicitly allow a built-in Skill to appear in the Workbench picker. */
     "selectable-in-workbench": z.boolean().optional(),
+    /** 从哪个正式版本起有（x.y.z）；官网导出时与最新已发布版本比，没到的不展示。没写 = 照旧展示。 */
+    "available-since": z.string().regex(/^\d+\.\d+\.\d+$/, "must be x.y.z").optional(),
     /** Canonical requests can only shrink the Host-owned capability ceiling. */
     "requested-capabilities": z.array(skillRequestedCapabilitySchema).max(64)
       .refine((items) => new Set(items).size === items.length, "must not contain duplicate capability ids")
@@ -145,6 +149,7 @@ export const skillManifestSchema = z
     author: manifest.author,
     audience: manifest.audience,
     selectableInWorkbench: manifest["selectable-in-workbench"],
+    ...(manifest["available-since"] ? { availableSince: manifest["available-since"] } : {}),
     requestedCapabilities: manifest["requested-capabilities"],
     tools: manifest.tools,
     requiredProviders: manifest["required-providers"],

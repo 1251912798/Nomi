@@ -4,6 +4,7 @@ description: 3D-BOX 导演预演工作流——一句话搭出白盒场景、走
 metadata:
   nomi:
     selectable-in-workbench: true
+    available-since: 0.24.0
     audience: internal
     version: 1.1.0
     tools:
