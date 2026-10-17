@@ -6,6 +6,7 @@ import { createCanvasLaneTools } from '../../electron/agentLane/laneCanvasTools.
 import { createTimelineLaneTools } from '../../electron/agentLane/laneTimelineTools.js';
 import { createExtendedLaneTools } from '../../electron/agentLane/laneExtendedTools.js';
 import type { CanvasWriteResult } from '../../electron/shared/agentCapabilities/canvasWrite.js';
+import type { DirectorWriteResult } from '../../electron/shared/agentCapabilities/directorWrite.js';
 import type { LaneHandle, LaneTaskFacts } from '../../electron/shared/agentLane/laneContracts.js';
 import { createDocumentPort, createLaneFixture, mustConfirm } from './laneFixture.mjs';
 import { compareSteps, fixtureReplyOf, stepsOfProjection, stepsOfRecorded,
@@ -81,6 +82,7 @@ export async function runL1Scenario(t: TestContext, scenario: L1Scenario): Promi
     ...createCanvasLaneTools({
       async read(context) { return domainCall(context.toolCallId, {}).domainResult; },
       async write(input, context) { return domainCall(context.toolCallId, input).domainResult as CanvasWriteResult; },
+      async writeDirector(input, context) { return domainCall(context.toolCallId, input).domainResult as DirectorWriteResult; },
     }),
     ...createTimelineLaneTools({
       async read(input, context) { return domainCall(context.toolCallId, input).domainResult; },

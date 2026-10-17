@@ -254,7 +254,7 @@ export async function applyCanvasToolCall(
     return gesture ? withCanvasGestureContext(gesture, fn) : fn()
   }
 
-  // 3D-BOX（director.write，仅开关开时有调用方）：领域执行体住导演台目录，这里只认路。
+  // 3D-BOX（director.write）：领域执行体住导演台目录，这里只认路。
   if (isDirectorWriteOperation(operation)) {
     const parsed = directorWriteSemanticInputSchema.safeParse(record)
     if (!parsed.success) throw Object.assign(new Error('stage_shot 参数无效。'), { code: 'capability_input_invalid' })

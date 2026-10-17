@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import type { DirectorPreviewSpendBlockReason } from "../shared/director/directorPreviewStatus";
 import os from "node:os";
 import path from "node:path";
 
@@ -28,7 +29,7 @@ export function canvasTestRequest(nodeId: string, prompt = "a red cube", extras:
 }
 
 export function setupCanvasShots(options: {
-  previewBlock?: "rendering" | "failed" | null;
+  previewBlock?: DirectorPreviewSpendBlockReason | "unrecognized" | null;
   root?: string;
   repository?: ReturnType<typeof createProductionRunRepository>;
   now?: () => string;

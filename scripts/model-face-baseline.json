@@ -1229,8 +1229,8 @@
     {
       "aliasBoundInput": null,
       "alsoCovers": null,
-      "contractId": "canvas.write",
-      "description": "Attach a staging (blocking) or camera-move reference to one shot; Nomi renders a gray 3D reference for it. The user asks for a push-in, a two-shot, a specific blocking, or \"show me the camera move\". It does not generate the shot itself and it is not a prompt edit (draft_shots). Not for links (arrange_canvas) or hand-made artifacts (make_artifact). shotId from look_at_canvas or draft_shots; exactly one of staging (characters, layout, camera, environment, customBlocking) or cameraMove (move, customMove, speed, subjectPose). The change lands in the project as a reversible local edit (in step-by-step approval mode the user confirms it first; otherwise it applies right away). This local edit grants no new spending permission; use the tool result for any generation status.",
+      "contractId": "director.write",
+      "description": "Build or change a 3D-BOX director plan; Nomi compiles a gray 3D preview with blocking and cameras and attaches it to the shot as reference video. The user describes a scene, blocking or camera coverage, or asks to change part of an existing preview. Not for producing the final shot: once the user approves the preview, that is generate. Not for prompt edits or new shots (draft_shots), links or layout (arrange_canvas), or hand-made artifacts (make_artifact). Create: plan (+ target.shotId). Change: target.directorNodeId, baseRevision and edits from look_at_canvas or the last stage_shot result. The change lands in the project as a reversible local edit (in step-by-step approval mode the user confirms it first; otherwise it applies right away). This local edit grants no new spending permission; use the tool result for any generation status.",
       "effect": "reversible_local",
       "effectGroups": [
         "canvas-node-creation"
@@ -1238,12 +1238,93 @@
       "examples": [
         {
           "arguments": {
-            "cameraMove": {
-              "move": "push_in"
+            "plan": {
+              "actors": [
+                {
+                  "desc": "管理员",
+                  "id": "librarian",
+                  "kind": "person",
+                  "placement": {
+                    "ref": "s1-room-floor",
+                    "relation": "at"
+                  }
+                },
+                {
+                  "desc": "学生",
+                  "id": "student",
+                  "kind": "person",
+                  "placement": {
+                    "ref": "librarian",
+                    "relation": "in_front_of"
+                  }
+                }
+              ],
+              "scene": {
+                "environment": "day",
+                "tags": [
+                  "图书馆"
+                ],
+                "template": "room"
+              },
+              "shots": [
+                {
+                  "angle": {
+                    "over_shoulder": "librarian"
+                  },
+                  "height": "eye",
+                  "id": "over_librarian",
+                  "move": {
+                    "kind": "static"
+                  },
+                  "size": "中景",
+                  "subject": "student",
+                  "transitionIn": "cut",
+                  "window": [
+                    0,
+                    3
+                  ]
+                },
+                {
+                  "angle": {
+                    "over_shoulder": "student"
+                  },
+                  "height": "eye",
+                  "id": "over_student",
+                  "move": {
+                    "kind": "push_in",
+                    "speed": "slow"
+                  },
+                  "size": "中景",
+                  "subject": "librarian",
+                  "transitionIn": "cut",
+                  "window": [
+                    3,
+                    6
+                  ]
+                }
+              ]
             },
-            "shotId": "shot-4"
+            "target": {
+              "shotId": "shot-3"
+            }
           },
-          "when": "Push in on a shot:"
+          "when": "Preview a two-person dialogue for a shot:"
+        },
+        {
+          "arguments": {
+            "baseRevision": "dplan-0123456789abcdef",
+            "edits": [
+              {
+                "op": "replace",
+                "path": "/shots/over_student/size",
+                "value": "特写"
+              }
+            ],
+            "target": {
+              "directorNodeId": "node-director-1"
+            }
+          },
+          "when": "Make the second shot a close-up:"
         }
       ],
       "execution": {
@@ -1258,351 +1339,1019 @@
         "internal"
       ],
       "promptGuidelines": [
-        "shotClientId: this turn's create_canvas_nodes clientId or existing shot/keyframe/video id. Render connects as composition_ref; omit id for standalone reference.",
-        "Stage 1–6 characters using precise 3D vocabulary, or supply customBlocking. Default pose standing; squat=deep squat, crouch=upright half-crouch, single-knee=proposal kneel, cheer=arms up; hands-on-hips, point and wave are literal poses.",
-        "layout: side-by-side=shoulder-to-shoulder row; line=front-to-back queue; facing=two facing each other; behind=one ahead of another; circle=around a center.",
-        "sceneTemplate supplies a gray backdrop: street has roads/lane lines/sidewalk/buildings/trees/lamps/cars; room has three walls/bed/table/sofa/ceiling light. Use it for environment and scale; street needs environment=day for a lit sky. Props are individual objects; prefer sceneTemplate for whole backdrops. Positions are [x,z] ground meters relative to characters at origin; omitted props auto-spread to their right.",
-        "For out-of-vocabulary multi-tier/over-the-shoulder/prop-relative/reference-image compositions, use customBlocking film terms, never a wrong layout/pose. It injects a KEYFRAME IMAGE prompt directive, not a 3D render, and is less precise. With customBlocking, characters/layout/camera may be omitted; never omit both characters and customBlocking.",
-        "shotClientId: this turn's clientId or existing VIDEO id. Render attaches as video reference; model copies camera path, not gray content.",
-        "Use one dominant move: orbit_left/right circles ~300°; push_in/pull_out dollies toward/away; crane_up/down booms; track_left/right tracks laterally; arc_left/right arcs ~90°; zoom_in/out changes FOV with camera static; dolly_zoom pulls back while zooming in, keeping subject size constant as background stretches (Hitchcock/vertigo).",
-        "Use enum move only when it matches the intent. For whip-pan, handheld follow, compound/sequenced moves (push then whip to window) or reference-video matching, omit move and describe customMove with film terms. This injects a video-prompt cinematography directive, not a 3D render, and is less precise. Set move OR customMove for the same intent.",
-        "Subject pose defaults standing (also sit/walk). street/room sceneTemplate: gray backdrop; camera moves around subject at origin. props: individual objects. Prop [x,z] is ground meters; omission auto-spreads right of subject."
+        "A director plan states intent only: who is where relative to what, what they do over time, and how each shot frames and moves. Never write coordinates, distances or camera positions; Nomi's compiler solves all geometry and measures the result.",
+        "Copy every person, vehicle, product and named place from the user's words verbatim into actors[].desc, scene.tags or setPieces[].kind, give each a readable ASCII id derived from that noun (\"waiter\" for a waiter, not \"actor1\"), and reuse exactly those ids in blocking, shots[].subject and placement refs.",
+        "Place actors and set pieces against the fixed template anchors: street = s1-street-ground, s1-street-road-left, s1-street-road-right, s1-street-building-left, s1-street-building-right; room = s1-room-floor, s1-room-back, s1-room-left; courtyard = s1-courtyard-ground, s1-courtyard-wall-north, s1-courtyard-wall-east, s1-courtyard-gate, s1-courtyard-tree; product_stage = s1-product-ground, s1-product-backdrop, s1-product-pedestal. Pick the closest template by spatial layout; keep the real place name in scene.tags.",
+        "Shots cover the brief in time order with second-based windows and no gaps. Use transitionIn continuous only when the camera should carry on from where the previous shot ended. Shot/reverse-shot coverage of two people keeps one side of the axis for the whole scene.",
+        "To change an existing plan, send only the edits the user asked for, addressed by name (/shots/<name>/size, /actors/<name>/placement); everything else stays as it is. If the result says unchanged, tell the user it already is that way instead of rewriting.",
+        "Read the returned issues and measured cuts. Fix real problems in at most two or three more calls, then tell the user what the preview now shows and what still differs.",
+        "The user may hand-adjust the preview in the editor; a patch keeps those adjustments. When a result lists reorderedOverrides, tell the user each one: it was his own adjustment that this instruction directly overrode, it has been recomputed for the new instruction, and undo brings it back. When it lists changedEntities, say in one sentence what moved along with the change; his adjustments on those are kept."
       ],
-      "promptSnippet": "Attach a staging (blocking) or camera-move reference to one shot; Nomi renders a gray 3D reference for it.",
+      "promptSnippet": "Build or change a 3D-BOX director plan; Nomi compiles a gray 3D preview with blocking and cameras and attaches it to the shot as reference video.",
       "publishedJsonSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "additionalProperties": false,
         "properties": {
-          "cameraMove": {
-            "additionalProperties": false,
-            "description": "Camera-motion reference: move or customMove is required.",
-            "properties": {
-              "customMove": {
-                "description": "Out-of-vocabulary cinematography, injected into video prompt; excludes move.",
-                "minLength": 1,
-                "type": "string"
-              },
-              "move": {
-                "description": "One dominant vocabulary camera move; otherwise use customMove.",
-                "enum": [
-                  "orbit_left",
-                  "orbit_right",
-                  "push_in",
-                  "pull_out",
-                  "crane_up",
-                  "crane_down",
-                  "track_left",
-                  "track_right",
-                  "arc_left",
-                  "arc_right",
-                  "zoom_in",
-                  "zoom_out",
-                  "dolly_zoom"
-                ],
-                "type": "string"
-              },
-              "props": {
-                "description": "Placed gray-model props; use sceneTemplate for a full backdrop.",
-                "items": {
-                  "additionalProperties": true,
-                  "properties": {
-                    "kind": {
-                      "description": "Gray-model prop kind.",
-                      "enum": [
-                        "car",
-                        "building",
-                        "tree",
-                        "streetlamp",
-                        "wall",
-                        "suv",
-                        "bus",
-                        "bicycle",
-                        "scooter",
-                        "sofa",
-                        "diningTable",
-                        "fridge",
-                        "washingMachine",
-                        "trashBins",
-                        "atm",
-                        "backpack"
-                      ],
-                      "type": "string"
-                    },
-                    "position": {
-                      "description": "Ground [x,z] meters, relative to the subject at origin.",
-                      "items": {
-                        "type": "number"
-                      },
-                      "maxItems": 2,
-                      "minItems": 2,
-                      "type": "array"
-                    },
-                    "rotationY": {
-                      "description": "Yaw in degrees.",
-                      "type": "number"
-                    },
-                    "scale": {
-                      "description": "Uniform scale (0.1–10, default 1).",
-                      "type": "number"
-                    }
-                  },
-                  "required": [
-                    "kind"
-                  ],
-                  "type": "object"
-                },
-                "maxItems": 12,
-                "type": "array"
-              },
-              "sceneTemplate": {
-                "description": "Gray backdrop: street or room; environment=day lights the street.",
-                "enum": [
-                  "street",
-                  "room"
-                ],
-                "type": "string"
-              },
-              "shot": {
-                "description": "Framing of the move (wide / medium / close). Default medium.",
-                "enum": [
-                  "wide",
-                  "medium",
-                  "close"
-                ],
-                "type": "string"
-              },
-              "speed": {
-                "description": "Move speed → clip duration (slow≈8s, medium≈5s, fast≈3s). Default medium.",
-                "enum": [
-                  "slow",
-                  "medium",
-                  "fast"
-                ],
-                "type": "string"
-              },
-              "subjectPose": {
-                "description": "Subject body-pose preset; default standing.",
-                "enum": [
-                  "standing",
-                  "t-pose",
-                  "walk",
-                  "run",
-                  "sit",
-                  "squat",
-                  "crouch",
-                  "single-knee",
-                  "double-knee",
-                  "hands-on-hips",
-                  "point",
-                  "wave",
-                  "cheer"
-                ],
-                "type": "string"
-              }
-            },
-            "type": "object"
-          },
-          "shotId": {
-            "description": "The shot to attach the reference to.",
-            "maxLength": 160,
+          "baseRevision": {
+            "description": "Current revision of that node; required with edits.",
+            "maxLength": 64,
             "minLength": 1,
             "type": "string"
           },
-          "staging": {
-            "additionalProperties": false,
-            "description": "Blocking reference: characters or customBlocking is required.",
-            "properties": {
-              "camera": {
-                "additionalProperties": true,
-                "properties": {
-                  "angle": {
-                    "description": "Reference camera angle.",
-                    "enum": [
-                      "front",
-                      "three-quarter",
-                      "side",
-                      "back"
-                    ],
-                    "type": "string"
-                  },
-                  "height": {
-                    "description": "low = low-angle look up; high = high-angle look down; overhead = top-down.",
-                    "enum": [
-                      "eye",
-                      "low",
-                      "high",
-                      "overhead"
-                    ],
-                    "type": "string"
-                  },
-                  "shot": {
-                    "description": "Reference framing.",
-                    "enum": [
-                      "wide",
-                      "medium",
-                      "close"
-                    ],
-                    "type": "string"
-                  }
+          "edits": {
+            "description": "Only the changes the user asked for, in order.",
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "op": {
+                  "description": "add a new named item or field, remove one, or replace one.",
+                  "enum": [
+                    "add",
+                    "remove",
+                    "replace"
+                  ],
+                  "type": "string"
                 },
-                "type": "object"
-              },
-              "characters": {
-                "description": "1–6 staged characters, or use customBlocking.",
-                "items": {
-                  "additionalProperties": true,
-                  "properties": {
-                    "facing": {
-                      "description": "Facing direction. toward = face the partner / circle center.",
-                      "enum": [
-                        "toward",
-                        "away",
-                        "camera",
-                        "left",
-                        "right"
-                      ],
+                "path": {
+                  "description": "By name: /shots/<name>[/field], /actors/<name>[/field], /scene/setPieces/<name>[/field], /scene/<field>, /blocking/<actor>.",
+                  "maxLength": 240,
+                  "minLength": 2,
+                  "type": "string"
+                },
+                "value": {
+                  "anyOf": [
+                    {
                       "type": "string"
                     },
-                    "name": {
-                      "description": "Character label in the user's language (e.g. '林夏' / '角色A').",
-                      "type": "string"
+                    {
+                      "type": "number"
                     },
-                    "pose": {
-                      "description": "Body-pose preset; default standing.",
-                      "enum": [
-                        "standing",
-                        "t-pose",
-                        "walk",
-                        "run",
-                        "sit",
-                        "squat",
-                        "crouch",
-                        "single-knee",
-                        "double-knee",
-                        "hands-on-hips",
-                        "point",
-                        "wave",
-                        "cheer"
-                      ],
-                      "type": "string"
-                    }
-                  },
-                  "type": "object"
-                },
-                "maxItems": 6,
-                "type": "array"
-              },
-              "crowd": {
-                "additionalProperties": true,
-                "description": "Optional background crowd grid behind the main characters.",
-                "properties": {
-                  "columns": {
-                    "description": "Crowd column count.",
-                    "type": "integer"
-                  },
-                  "rows": {
-                    "description": "Crowd row count.",
-                    "type": "integer"
-                  }
-                },
-                "required": [
-                  "rows",
-                  "columns"
-                ],
-                "type": "object"
-              },
-              "customBlocking": {
-                "description": "Composition outside the vocabulary, injected into the keyframe prompt.",
-                "type": "string"
-              },
-              "environment": {
-                "enum": [
-                  "studio",
-                  "day",
-                  "night"
-                ],
-                "type": "string"
-              },
-              "layout": {
-                "description": "Layout: side-by-side is a row; line is a front-to-back queue.",
-                "enum": [
-                  "solo",
-                  "facing",
-                  "side-by-side",
-                  "line",
-                  "behind",
-                  "circle"
-                ],
-                "type": "string"
-              },
-              "props": {
-                "description": "Placed gray-model props; use sceneTemplate for a full backdrop.",
-                "items": {
-                  "additionalProperties": true,
-                  "properties": {
-                    "kind": {
-                      "description": "Gray-model prop kind.",
-                      "enum": [
-                        "car",
-                        "building",
-                        "tree",
-                        "streetlamp",
-                        "wall",
-                        "suv",
-                        "bus",
-                        "bicycle",
-                        "scooter",
-                        "sofa",
-                        "diningTable",
-                        "fridge",
-                        "washingMachine",
-                        "trashBins",
-                        "atm",
-                        "backpack"
-                      ],
-                      "type": "string"
+                    {
+                      "type": "boolean"
                     },
-                    "position": {
-                      "description": "Ground [x,z] meters, relative to the subject at origin.",
+                    {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    {
                       "items": {
                         "type": "number"
                       },
-                      "maxItems": 2,
-                      "minItems": 2,
                       "type": "array"
                     },
-                    "rotationY": {
-                      "description": "Yaw in degrees.",
-                      "type": "number"
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "angle": {
+                          "anyOf": [
+                            {
+                              "enum": [
+                                "front",
+                                "three_quarter",
+                                "side",
+                                "side_rear",
+                                "back"
+                              ],
+                              "type": "string"
+                            },
+                            {
+                              "additionalProperties": false,
+                              "properties": {
+                                "over_shoulder": {
+                                  "description": "Actor whose shoulder is foreground.",
+                                  "minLength": 1,
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "over_shoulder"
+                              ],
+                              "type": "object"
+                            },
+                            {
+                              "additionalProperties": false,
+                              "properties": {
+                                "pov": {
+                                  "description": "Actor whose viewpoint is used.",
+                                  "minLength": 1,
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "pov"
+                              ],
+                              "type": "object"
+                            }
+                          ],
+                          "description": "Camera angle or actor-relative point of view."
+                        },
+                        "height": {
+                          "description": "Camera height relative to the subject.",
+                          "enum": [
+                            "eye",
+                            "low",
+                            "high",
+                            "overhead"
+                          ],
+                          "type": "string"
+                        },
+                        "id": {
+                          "description": "Stable shot name.",
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "move": {
+                          "additionalProperties": false,
+                          "description": "Camera movement intent.",
+                          "properties": {
+                            "amount": {
+                              "description": "Orbit/arc/pan degrees, translation meters, zoom degrees of FOV.",
+                              "exclusiveMinimum": 0,
+                              "type": "number"
+                            },
+                            "direction": {
+                              "description": "Move direction.",
+                              "enum": [
+                                "left",
+                                "right",
+                                "up",
+                                "down",
+                                "forward",
+                                "backward"
+                              ],
+                              "type": "string"
+                            },
+                            "easing": {
+                              "default": "linear",
+                              "description": "Easing.",
+                              "enum": [
+                                "linear",
+                                "ease_in",
+                                "ease_out",
+                                "ease_in_out"
+                              ],
+                              "type": "string"
+                            },
+                            "kind": {
+                              "description": "Camera movement.",
+                              "enum": [
+                                "orbit_left",
+                                "orbit_right",
+                                "push_in",
+                                "pull_out",
+                                "crane_up",
+                                "crane_down",
+                                "track_left",
+                                "track_right",
+                                "arc_left",
+                                "arc_right",
+                                "zoom_in",
+                                "zoom_out",
+                                "dolly_zoom",
+                                "pan",
+                                "tilt",
+                                "whip",
+                                "rack_focus",
+                                "follow",
+                                "static"
+                              ],
+                              "type": "string"
+                            },
+                            "speed": {
+                              "default": "medium",
+                              "description": "Speed.",
+                              "enum": [
+                                "slow",
+                                "medium",
+                                "fast"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "kind"
+                          ],
+                          "type": "object"
+                        },
+                        "size": {
+                          "description": "Widest \"远景\" to tightest \"大特写\".",
+                          "enum": [
+                            "远景",
+                            "全景",
+                            "中景",
+                            "中近景",
+                            "近景",
+                            "特写",
+                            "大特写"
+                          ],
+                          "type": "string"
+                        },
+                        "subject": {
+                          "description": "Primary actor id or actor.part reference.",
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "subjects": {
+                          "description": "Other actors in frame.",
+                          "items": {
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "type": "array"
+                        },
+                        "transitionIn": {
+                          "description": "Transition from the previous shot.",
+                          "enum": [
+                            "cut",
+                            "continuous"
+                          ],
+                          "type": "string"
+                        },
+                        "window": {
+                          "description": "[start,end] seconds, end after start.",
+                          "items": [
+                            {
+                              "minimum": 0,
+                              "type": "number"
+                            },
+                            {
+                              "minimum": 0,
+                              "type": "number"
+                            }
+                          ],
+                          "maxItems": 2,
+                          "minItems": 2,
+                          "type": "array"
+                        }
+                      },
+                      "required": [
+                        "window",
+                        "transitionIn",
+                        "subject",
+                        "size",
+                        "angle",
+                        "height",
+                        "move"
+                      ],
+                      "type": "object"
                     },
-                    "scale": {
-                      "description": "Uniform scale (0.1–10, default 1).",
-                      "type": "number"
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "anchors": {
+                          "additionalProperties": {
+                            "additionalProperties": false,
+                            "description": "Named part offset relative to its actor.",
+                            "properties": {
+                              "x": {
+                                "description": "Local horizontal offset in meters.",
+                                "type": "number"
+                              },
+                              "y": {
+                                "description": "Local vertical offset in meters.",
+                                "type": "number"
+                              },
+                              "z": {
+                                "description": "Local depth offset in meters.",
+                                "type": "number"
+                              }
+                            },
+                            "required": [
+                              "x",
+                              "y",
+                              "z"
+                            ],
+                            "type": "object"
+                          },
+                          "description": "Named parts with local offsets; reference as actor.part.",
+                          "propertyNames": {
+                            "pattern": "^[a-z][a-z0-9_]*$"
+                          },
+                          "type": "object"
+                        },
+                        "desc": {
+                          "description": "Actor noun copied verbatim from the user wording.",
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "id": {
+                          "description": "Stable ASCII id from the user noun.",
+                          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]*$",
+                          "type": "string"
+                        },
+                        "kind": {
+                          "description": "Human=person, transport=vehicle, presented item=product, inert item=prop.",
+                          "enum": [
+                            "person",
+                            "vehicle",
+                            "product",
+                            "prop"
+                          ],
+                          "type": "string"
+                        },
+                        "placement": {
+                          "additionalProperties": false,
+                          "description": "Initial actor placement.",
+                          "properties": {
+                            "ref": {
+                              "description": "Template anchor, set-piece id, or actor id.",
+                              "minLength": 1,
+                              "type": "string"
+                            },
+                            "relation": {
+                              "description": "Relation to ref.",
+                              "enum": [
+                                "near",
+                                "in_front_of",
+                                "behind",
+                                "left_of",
+                                "right_of",
+                                "on",
+                                "between",
+                                "along",
+                                "at"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "relation",
+                            "ref"
+                          ],
+                          "type": "object"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "desc",
+                        "placement"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "id": {
+                          "description": "Stable piece id.",
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "kind": {
+                          "description": "Scene-piece noun copied from the user wording.",
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "relation": {
+                          "additionalProperties": false,
+                          "description": "Relation to a scene anchor.",
+                          "properties": {
+                            "ref": {
+                              "description": "Template anchor or earlier set-piece id.",
+                              "minLength": 1,
+                              "type": "string"
+                            },
+                            "type": {
+                              "description": "Relation to ref.",
+                              "enum": [
+                                "near",
+                                "in_front_of",
+                                "behind",
+                                "left_of",
+                                "right_of",
+                                "on",
+                                "between",
+                                "along",
+                                "at"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "type",
+                            "ref"
+                          ],
+                          "type": "object"
+                        }
+                      },
+                      "required": [
+                        "kind"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "action": {
+                            "description": "Optional action-library id; unavailable actions remain explicit gaps.",
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "actor": {
+                            "description": "Acting actor.",
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "target": {
+                            "description": "Destination or focus actor/set-piece id.",
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "verb": {
+                            "description": "Movement or pose intent.",
+                            "enum": [
+                              "walk_to",
+                              "run_to",
+                              "stop",
+                              "sidestep",
+                              "turn_to",
+                              "hold_pose",
+                              "drive_along",
+                              "chase",
+                              "static"
+                            ],
+                            "type": "string"
+                          },
+                          "window": {
+                            "description": "[start,end] seconds, end after start.",
+                            "items": [
+                              {
+                                "minimum": 0,
+                                "type": "number"
+                              },
+                              {
+                                "minimum": 0,
+                                "type": "number"
+                              }
+                            ],
+                            "maxItems": 2,
+                            "minItems": 2,
+                            "type": "array"
+                          }
+                        },
+                        "required": [
+                          "verb",
+                          "window"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    {
+                      "anyOf": [
+                        {
+                          "enum": [
+                            "front",
+                            "three_quarter",
+                            "side",
+                            "side_rear",
+                            "back"
+                          ],
+                          "type": "string"
+                        },
+                        {
+                          "additionalProperties": false,
+                          "properties": {
+                            "over_shoulder": {
+                              "description": "Actor whose shoulder is foreground.",
+                              "minLength": 1,
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "over_shoulder"
+                          ],
+                          "type": "object"
+                        },
+                        {
+                          "additionalProperties": false,
+                          "properties": {
+                            "pov": {
+                              "description": "Actor whose viewpoint is used.",
+                              "minLength": 1,
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "pov"
+                          ],
+                          "type": "object"
+                        }
+                      ],
+                      "description": "Camera angle or actor-relative point of view."
+                    }
+                  ],
+                  "description": "New value for add and replace; omit for remove."
+                }
+              },
+              "required": [
+                "op",
+                "path"
+              ],
+              "type": "object"
+            },
+            "maxItems": 64,
+            "minItems": 1,
+            "type": "array"
+          },
+          "plan": {
+            "additionalProperties": false,
+            "description": "The whole director plan. Only when creating a new preview.",
+            "properties": {
+              "actors": {
+                "description": "All subjects named in the brief.",
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "anchors": {
+                      "additionalProperties": {
+                        "additionalProperties": false,
+                        "description": "Named part offset relative to its actor.",
+                        "properties": {
+                          "x": {
+                            "description": "Local horizontal offset in meters.",
+                            "type": "number"
+                          },
+                          "y": {
+                            "description": "Local vertical offset in meters.",
+                            "type": "number"
+                          },
+                          "z": {
+                            "description": "Local depth offset in meters.",
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "x",
+                          "y",
+                          "z"
+                        ],
+                        "type": "object"
+                      },
+                      "description": "Named parts with local offsets; reference as actor.part.",
+                      "propertyNames": {
+                        "pattern": "^[a-z][a-z0-9_]*$"
+                      },
+                      "type": "object"
+                    },
+                    "desc": {
+                      "description": "Actor noun copied verbatim from the user wording.",
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "id": {
+                      "description": "Stable ASCII id from the user noun.",
+                      "pattern": "^[a-zA-Z][a-zA-Z0-9_-]*$",
+                      "type": "string"
+                    },
+                    "kind": {
+                      "description": "Human=person, transport=vehicle, presented item=product, inert item=prop.",
+                      "enum": [
+                        "person",
+                        "vehicle",
+                        "product",
+                        "prop"
+                      ],
+                      "type": "string"
+                    },
+                    "placement": {
+                      "additionalProperties": false,
+                      "description": "Initial actor placement.",
+                      "properties": {
+                        "ref": {
+                          "description": "Template anchor, set-piece id, or actor id.",
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "relation": {
+                          "description": "Relation to ref.",
+                          "enum": [
+                            "near",
+                            "in_front_of",
+                            "behind",
+                            "left_of",
+                            "right_of",
+                            "on",
+                            "between",
+                            "along",
+                            "at"
+                          ],
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "relation",
+                        "ref"
+                      ],
+                      "type": "object"
                     }
                   },
                   "required": [
-                    "kind"
+                    "id",
+                    "kind",
+                    "desc",
+                    "placement"
                   ],
                   "type": "object"
                 },
-                "maxItems": 12,
+                "minItems": 1,
                 "type": "array"
               },
-              "sceneTemplate": {
-                "description": "Gray backdrop: street or room; environment=day lights the street.",
-                "enum": [
-                  "street",
-                  "room"
+              "blocking": {
+                "default": [],
+                "description": "Time-coded actor movement and pose.",
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "action": {
+                      "description": "Optional action-library id; unavailable actions remain explicit gaps.",
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "actor": {
+                      "description": "Acting actor.",
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "target": {
+                      "description": "Destination or focus actor/set-piece id.",
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "verb": {
+                      "description": "Movement or pose intent.",
+                      "enum": [
+                        "walk_to",
+                        "run_to",
+                        "stop",
+                        "sidestep",
+                        "turn_to",
+                        "hold_pose",
+                        "drive_along",
+                        "chase",
+                        "static"
+                      ],
+                      "type": "string"
+                    },
+                    "window": {
+                      "description": "[start,end] seconds, end after start.",
+                      "items": [
+                        {
+                          "minimum": 0,
+                          "type": "number"
+                        },
+                        {
+                          "minimum": 0,
+                          "type": "number"
+                        }
+                      ],
+                      "maxItems": 2,
+                      "minItems": 2,
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "actor",
+                    "verb",
+                    "window"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "scene": {
+                "additionalProperties": false,
+                "description": "Setting, lighting, and scene objects.",
+                "properties": {
+                  "environment": {
+                    "description": "Lighting context.",
+                    "enum": [
+                      "day",
+                      "night",
+                      "studio"
+                    ],
+                    "type": "string"
+                  },
+                  "setPieces": {
+                    "default": [],
+                    "description": "Named scene objects required by the brief.",
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "id": {
+                          "description": "Stable piece id.",
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "kind": {
+                          "description": "Scene-piece noun copied from the user wording.",
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "relation": {
+                          "additionalProperties": false,
+                          "description": "Relation to a scene anchor.",
+                          "properties": {
+                            "ref": {
+                              "description": "Template anchor or earlier set-piece id.",
+                              "minLength": 1,
+                              "type": "string"
+                            },
+                            "type": {
+                              "description": "Relation to ref.",
+                              "enum": [
+                                "near",
+                                "in_front_of",
+                                "behind",
+                                "left_of",
+                                "right_of",
+                                "on",
+                                "between",
+                                "along",
+                                "at"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "type",
+                            "ref"
+                          ],
+                          "type": "object"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "kind"
+                      ],
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  "tags": {
+                    "default": [],
+                    "description": "Scene nouns and constraints copied from the user wording.",
+                    "items": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "template": {
+                    "description": "Closest supported scene template.",
+                    "enum": [
+                      "street",
+                      "room",
+                      "courtyard",
+                      "product_stage"
+                    ],
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "environment"
                 ],
+                "type": "object"
+              },
+              "shots": {
+                "description": "Ordered shots covering the whole brief.",
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "angle": {
+                      "anyOf": [
+                        {
+                          "enum": [
+                            "front",
+                            "three_quarter",
+                            "side",
+                            "side_rear",
+                            "back"
+                          ],
+                          "type": "string"
+                        },
+                        {
+                          "additionalProperties": false,
+                          "properties": {
+                            "over_shoulder": {
+                              "description": "Actor whose shoulder is foreground.",
+                              "minLength": 1,
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "over_shoulder"
+                          ],
+                          "type": "object"
+                        },
+                        {
+                          "additionalProperties": false,
+                          "properties": {
+                            "pov": {
+                              "description": "Actor whose viewpoint is used.",
+                              "minLength": 1,
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "pov"
+                          ],
+                          "type": "object"
+                        }
+                      ],
+                      "description": "Camera angle or actor-relative point of view."
+                    },
+                    "height": {
+                      "description": "Camera height relative to the subject.",
+                      "enum": [
+                        "eye",
+                        "low",
+                        "high",
+                        "overhead"
+                      ],
+                      "type": "string"
+                    },
+                    "id": {
+                      "description": "Stable shot name.",
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "move": {
+                      "additionalProperties": false,
+                      "description": "Camera movement intent.",
+                      "properties": {
+                        "amount": {
+                          "description": "Orbit/arc/pan degrees, translation meters, zoom degrees of FOV.",
+                          "exclusiveMinimum": 0,
+                          "type": "number"
+                        },
+                        "direction": {
+                          "description": "Move direction.",
+                          "enum": [
+                            "left",
+                            "right",
+                            "up",
+                            "down",
+                            "forward",
+                            "backward"
+                          ],
+                          "type": "string"
+                        },
+                        "easing": {
+                          "default": "linear",
+                          "description": "Easing.",
+                          "enum": [
+                            "linear",
+                            "ease_in",
+                            "ease_out",
+                            "ease_in_out"
+                          ],
+                          "type": "string"
+                        },
+                        "kind": {
+                          "description": "Camera movement.",
+                          "enum": [
+                            "orbit_left",
+                            "orbit_right",
+                            "push_in",
+                            "pull_out",
+                            "crane_up",
+                            "crane_down",
+                            "track_left",
+                            "track_right",
+                            "arc_left",
+                            "arc_right",
+                            "zoom_in",
+                            "zoom_out",
+                            "dolly_zoom",
+                            "pan",
+                            "tilt",
+                            "whip",
+                            "rack_focus",
+                            "follow",
+                            "static"
+                          ],
+                          "type": "string"
+                        },
+                        "speed": {
+                          "default": "medium",
+                          "description": "Speed.",
+                          "enum": [
+                            "slow",
+                            "medium",
+                            "fast"
+                          ],
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "kind"
+                      ],
+                      "type": "object"
+                    },
+                    "size": {
+                      "description": "Widest \"远景\" to tightest \"大特写\".",
+                      "enum": [
+                        "远景",
+                        "全景",
+                        "中景",
+                        "中近景",
+                        "近景",
+                        "特写",
+                        "大特写"
+                      ],
+                      "type": "string"
+                    },
+                    "subject": {
+                      "description": "Primary actor id or actor.part reference.",
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "subjects": {
+                      "description": "Other actors in frame.",
+                      "items": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "transitionIn": {
+                      "description": "Transition from the previous shot.",
+                      "enum": [
+                        "cut",
+                        "continuous"
+                      ],
+                      "type": "string"
+                    },
+                    "window": {
+                      "description": "[start,end] seconds, end after start.",
+                      "items": [
+                        {
+                          "minimum": 0,
+                          "type": "number"
+                        },
+                        {
+                          "minimum": 0,
+                          "type": "number"
+                        }
+                      ],
+                      "maxItems": 2,
+                      "minItems": 2,
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "window",
+                    "transitionIn",
+                    "subject",
+                    "size",
+                    "angle",
+                    "height",
+                    "move"
+                  ],
+                  "type": "object"
+                },
+                "minItems": 1,
+                "type": "array"
+              },
+              "version": {
+                "default": 2,
+                "description": "Director plan version; always 2.",
+                "maximum": 2,
+                "minimum": 2,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "scene",
+              "actors",
+              "shots"
+            ],
+            "type": "object"
+          },
+          "target": {
+            "additionalProperties": false,
+            "description": "Omit for a standalone preview; shotId to build one for a shot; directorNodeId to edit one.",
+            "properties": {
+              "directorNodeId": {
+                "description": "Existing 3D-BOX node id; required with edits.",
+                "maxLength": 160,
+                "minLength": 1,
+                "type": "string"
+              },
+              "shotId": {
+                "description": "Video shot id from look_at_canvas or draft_shots; the preview becomes its reference video.",
+                "maxLength": 160,
+                "minLength": 1,
                 "type": "string"
               }
             },
             "type": "object"
           }
         },
-        "required": [
-          "shotId"
-        ],
         "type": "object"
       }
     },

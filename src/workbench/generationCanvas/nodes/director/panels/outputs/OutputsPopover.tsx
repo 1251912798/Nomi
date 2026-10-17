@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 react、react-i18next、../../../../../../design 的 WorkbenchButton / WorkbenchIconButton、../../../../../../vendor/tablerIcons、
  *          ../../DirectorEditorContext、../../OutputsContext 的 useOutputs / DirectorOutput、../../model/hotkeys、../Popover
- * [OUTPUT]: 对外提供 OutputsPopover（顶栏文件夹图标 + 角标计数，aria 名「产出 N」+ 浮层：首行「录制 MP4」，下面截图 / 视频两组缩略图，每项 发送到画布 / 删除；
+ * [OUTPUT]: 对外提供 OutputsMenuBody（浮层正文，导演视图「出成片 ▾」共用）与 OutputsPopover（顶栏文件夹图标 + 角标计数，aria 名「产出 N」+ 浮层：首行「录制 MP4」，下面截图 / 视频两组缩略图，每项 发送到画布 / 删除；
  *           录制中图标换成「■ k/N」，点它取消录制）
  * [POS]: director/panels/outputs 的产物弹层（清单 §4.7 P3）。2026-10-04 起「录制 MP4」从时间轴头搬进这里，交付只有这一个家；只展示工程 outputs 里的句柄，缩略图直接用资产 url；发送到画布由 OutputsContext 提供，
  *        没接画布（开发入口）时按钮禁用并说明。
@@ -41,6 +41,58 @@ function OutputRow({ output }: { output: DirectorOutput }): JSX.Element {
   )
 }
 
+/**
+ * 产出浮层的正文（首行「录制 MP4」+ 截图 / 视频两组）：精修顶栏的文件夹浮层与导演视图「出成片 ▾」用同一份，产出只有一个家。
+ * onPicked：点了一项要收起外层浮层。
+ */
+export function OutputsMenuBody({ onPicked }: { onPicked: () => void }): JSX.Element {
+  const { t } = useTranslation()
+  const outputs = useOutputs()
+  const screenshots = useDirectorStore((state) => state.project.outputs.screenshots)
+  const videos = useDirectorStore((state) => state.project.outputs.videos)
+  const count = screenshots.length + videos.length
+  return (
+    <>
+      <div className="-mx-1 mb-1 border-b border-nomi-line-soft pb-1">
+        <PopoverItem
+          title={t('director.timeline.recordVideoHint')}
+          onClick={() => {
+            onPicked()
+            void outputs.recordVideo()
+          }}
+        >
+          <IconMovie size={16} stroke={1.9} />
+          <span className="flex-1 text-left" data-testid="director-record-video">{t('director.timeline.recordVideo')}</span>
+        </PopoverItem>
+      </div>
+      {count === 0 ? (
+        <div className="px-1 py-2 text-caption text-nomi-ink-40">{t('director.timeline.outputsEmpty', { hotkey: formatHotkey(DIRECTOR_HOTKEYS.screenshot) })}</div>
+      ) : (
+        <div className="flex max-h-[360px] flex-col gap-1 overflow-auto">
+          {screenshots.length ? (
+            <div className="flex items-center gap-1 px-1 text-micro font-semibold text-nomi-ink-40">
+              <IconPhoto size={12} stroke={2} />
+              {t('director.timeline.outputsScreenshots')}
+            </div>
+          ) : null}
+          {screenshots.map((item) => (
+            <OutputRow key={item.id} output={{ kind: 'image', ...item }} />
+          ))}
+          {videos.length ? (
+            <div className="mt-1 flex items-center gap-1 px-1 text-micro font-semibold text-nomi-ink-40">
+              <IconVideo size={12} stroke={2} />
+              {t('director.timeline.outputsVideos')}
+            </div>
+          ) : null}
+          {videos.map((item) => (
+            <OutputRow key={item.id} output={{ kind: 'video', ...item }} />
+          ))}
+        </div>
+      )}
+    </>
+  )
+}
+
 export function OutputsPopover(): JSX.Element {
   const { t } = useTranslation()
   const outputs = useOutputs()
@@ -77,42 +129,7 @@ export function OutputsPopover(): JSX.Element {
         </span>
       }
     >
-      <div className="-mx-1 mb-1 border-b border-nomi-line-soft pb-1">
-        <PopoverItem
-          title={t('director.timeline.recordVideoHint')}
-          onClick={() => {
-            setOpen(false)
-            void outputs.recordVideo()
-          }}
-        >
-          <IconMovie size={16} stroke={1.9} />
-          <span className="flex-1 text-left" data-testid="director-record-video">{t('director.timeline.recordVideo')}</span>
-        </PopoverItem>
-      </div>
-      {count === 0 ? (
-        <div className="px-1 py-2 text-caption text-nomi-ink-40">{t('director.timeline.outputsEmpty', { hotkey: formatHotkey(DIRECTOR_HOTKEYS.screenshot) })}</div>
-      ) : (
-        <div className="flex max-h-[360px] flex-col gap-1 overflow-auto">
-          {screenshots.length ? (
-            <div className="flex items-center gap-1 px-1 text-micro font-semibold text-nomi-ink-40">
-              <IconPhoto size={12} stroke={2} />
-              {t('director.timeline.outputsScreenshots')}
-            </div>
-          ) : null}
-          {screenshots.map((item) => (
-            <OutputRow key={item.id} output={{ kind: 'image', ...item }} />
-          ))}
-          {videos.length ? (
-            <div className="mt-1 flex items-center gap-1 px-1 text-micro font-semibold text-nomi-ink-40">
-              <IconVideo size={12} stroke={2} />
-              {t('director.timeline.outputsVideos')}
-            </div>
-          ) : null}
-          {videos.map((item) => (
-            <OutputRow key={item.id} output={{ kind: 'video', ...item }} />
-          ))}
-        </div>
-      )}
+      <OutputsMenuBody onPicked={() => setOpen(false)} />
     </Popover>
   )
 }

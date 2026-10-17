@@ -174,7 +174,6 @@ async function exportLibrary(media: MediaEntry[], releasedVersion: string | null
   const errors = diagnostics.filter((diagnostic) => diagnostic.type === "error");
   if (errors.length) throw new Error(`技能目录有错误：\n${errors.map((error) => `- ${error.path}: ${error.message}`).join("\n")}`);
   return records
-    // 以前靠 requires-flag 把开关技能藏起来；现在统一按版本：声明了 available-since 而版本没到的不导出。
     .filter((record) => record.curation && !record.manifestError)
     // 官网只展示最新已发布版本里就有的技能：声明了 available-since 而版本没到的不导出；没声明的照旧。
     .filter((record) => isReleasedForSite(record.manifest?.availableSince, releasedVersion))

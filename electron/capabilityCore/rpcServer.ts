@@ -14,6 +14,7 @@ import type { AddressInfo } from 'node:net'
 
 import type { FetchTaskResultFn, RunTaskFn } from './core'
 import { RpcError } from './dispatcher'
+import { isCanvasWriteLiveRendererOperation } from '../shared/agentCapabilities/canvasWrite'
 import { createDiskGateway, createHybridGateway, createRendererGateway, type ProjectGateway } from './gateway'
 import { isRendererAvailable, requestRenderer } from './rendererBridge'
 import { resolveMcpOrigin, verifyMcpClient, verifyToken } from './security'
@@ -183,10 +184,11 @@ export function startRpcServer(options: RpcServerOptions): Promise<RpcServerHand
         const method = String(parsed.method || '')
         const isCanvasRead = isCanvasReadTransportMethod(method)
         const params = (parsed.params && typeof parsed.params === 'object' ? parsed.params : {}) as Record<string, unknown>
-        // The storyboard plan adapter resolves to canvas.write, but patch_shots
-        // is renderer-owned: it must use the same live store/admission/receipt
-        // path as the open Electron project rather than generic planning.
-        const isCanonicalCanvasPlanPatch = method === 'canvas.write' && params.operation === 'patch_shots'
+        // Renderer-owned canvas.write operations (storyboard patch_shots, the staging / camera-move
+        // references that land director nodes): they must use the same live store/admission/receipt
+        // path as the open Electron project rather than the headless dispatcher, which cannot own them.
+        // One list for router, renderer executor and the headless hint: CANVAS_WRITE_LIVE_RENDERER_OPERATIONS.
+        const isLiveRendererCanvasWrite = method === 'canvas.write' && isCanvasWriteLiveRendererOperation(params.operation)
         const isEditing = isMcpEditingMethod(method)
         const client = firstHeader(req.headers['x-nomi-mcp-client'])
         const clientProof = firstHeader(req.headers['x-nomi-mcp-client-proof'])
@@ -212,7 +214,7 @@ export function startRpcServer(options: RpcServerOptions): Promise<RpcServerHand
             throw error
           }
         }
-        if (!projectSessionConnection && !isCanvasRead && !isEditing && !isCanonicalCanvasPlanPatch) assertLocalBearerProjectSessionRoute(method)
+        if (!projectSessionConnection && !isCanvasRead && !isEditing && !isLiveRendererCanvasWrite) assertLocalBearerProjectSessionRoute(method)
         if (method === 'nomi_confirm_generation_gate') {
           if (origin === 'external' || origin === 'nomi') throw new RpcError('Registered MCP client proof is required', 403, { code: 'mcp_connection_unauthenticated' })
           const challengeToken = typeof params.challengeToken === 'string' ? params.challengeToken.trim() : ''
@@ -272,7 +274,7 @@ export function startRpcServer(options: RpcServerOptions): Promise<RpcServerHand
             throw error instanceof RpcError ? error : canvasReadRpcError(error)
           }
         }
-        if (isEditing || isCanonicalCanvasPlanPatch) {
+        if (isEditing || isLiveRendererCanvasWrite) {
           if (!hasMcpTransportClaims || !projectSessionConnection || !options.projectSessionAuthority) {
             throw new RpcError('A verified project-session transport is required for editing tools', 403, { code: 'mcp_connection_unauthenticated' })
           }
@@ -280,7 +282,7 @@ export function startRpcServer(options: RpcServerOptions): Promise<RpcServerHand
           if (!leaseHandle) throw new RpcError('A project-session lease is required', 403)
           const projectHint = typeof params.projectId === 'string' ? params.projectId.trim() || undefined : undefined
           const operation = typeof params.operation === 'string' ? params.operation : ''
-          const scope = isCanonicalCanvasPlanPatch
+          const scope = isLiveRendererCanvasWrite
             ? 'canvas:write'
               : method === 'timeline.write' && (operation === 'apply' || operation === 'undo')
                 ? 'timeline:write'
@@ -304,7 +306,7 @@ export function startRpcServer(options: RpcServerOptions): Promise<RpcServerHand
           if (method === 'timeline.write' && (operation === 'apply' || operation === 'undo') && parsed.planConfirmed !== true) {
             throw new RpcError('Host approval is required before applying a timeline edit', 403)
           }
-          const rendererOp = isCanonicalCanvasPlanPatch
+          const rendererOp = isLiveRendererCanvasWrite
             ? 'canvas.write'
             : method === 'timeline.read'
               ? 'timeline.read'
@@ -315,14 +317,15 @@ export function startRpcServer(options: RpcServerOptions): Promise<RpcServerHand
                   : method === 'layout.read' ? 'layout.read'
                   : method === 'layout.write' ? 'layout.write'
                   : method === 'asset.read' ? 'asset.read' : 'export.read'
-          const rendererPayload = isCanonicalCanvasPlanPatch
+          const rendererPayload = isLiveRendererCanvasWrite
             ? (() => {
                 const { leaseHandle: _leaseHandle, projectId: _projectHint, ...input } = params
                 return {
                   projectId: lease.projectId,
                   input,
-                  receiptProposalId: `mcp-canvas-plan:${crypto.randomUUID()}`,
-                  approvalId: `mcp-canvas-plan-approval:${crypto.randomUUID()}`,
+                  // patch_shots keeps its historical receipt prefix; the director-reference operations name theirs.
+                  receiptProposalId: params.operation === 'patch_shots' ? `mcp-canvas-plan:${crypto.randomUUID()}` : `mcp-canvas:${String(params.operation)}:${crypto.randomUUID()}`,
+                  approvalId: params.operation === 'patch_shots' ? `mcp-canvas-plan-approval:${crypto.randomUUID()}` : `mcp-canvas-approval:${String(params.operation)}:${crypto.randomUUID()}`,
                   // This direct MCP request is approved by the MCP elicitation
                   // seam, not by a Project Agent Host turn. Do not forge Host
                   // correlation without a claimed Host approval; the renderer

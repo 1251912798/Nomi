@@ -1,18 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { AI_SCENE_FIXTURE, buildAiScenePrompt, normalizeAiScene, parseAiSceneText, primitiveTypeFromName, rotationLooksLikeRadians } from './aiScene'
-
-describe('parseAiSceneText', () => {
-  it('剥 Markdown 围栏与前后废话，抓第一段 JSON', () => {
-    const text = '好的，这是场景：\n```json\n' + JSON.stringify(AI_SCENE_FIXTURE) + '\n```\n希望有帮助。'
-    const parsed = parseAiSceneText(text)
-    expect(parsed?.sceneName).toBe('街角咖啡馆')
-    expect(parsed?.groups).toHaveLength(3)
-  })
-  it('不合 schema（没有 groups）返回 null', () => {
-    expect(parseAiSceneText('{"sceneName":"x"}')).toBeNull()
-    expect(parseAiSceneText('not json')).toBeNull()
-  })
-})
+import { AI_SCENE_FIXTURE, normalizeAiScene, primitiveTypeFromName, rotationLooksLikeRadians } from './aiScene'
 
 describe('normalizeAiScene', () => {
   it('类型名映射到 V2 八种几何体', () => {
@@ -36,15 +23,5 @@ describe('normalizeAiScene', () => {
     expect(normalized.groundOpacity).toBe(1)
     expect(normalized.groups[0].name).toBe('默认场景 1')
     expect(normalized.groups[0].elements[0]).toMatchObject({ type: 'sphere', color: '#e2e8f0', name: 'sphere 1' })
-  })
-})
-
-describe('buildAiScenePrompt', () => {
-  it('提示词带 schema、坐标约定与描述，附图数进提示', () => {
-    const prompt = buildAiScenePrompt('雨夜街角', 2)
-    expect(prompt).toContain('"groups"')
-    expect(prompt).toContain('y up')
-    expect(prompt).toContain('2 reference image(s)')
-    expect(prompt.trim().endsWith('雨夜街角')).toBe(true)
   })
 })
