@@ -13,6 +13,7 @@ import { useTranslation } from 'react-i18next'
 import type { AspectRatioKey, CanvasAsset, CanvasText, CanvasDimensions, LayerItem, ToolKey } from './lib/canvas'
 import { getCanvasPointFromClient } from './lib/pointer'
 import type { PointerPoint } from './lib/stroke'
+import { measureWhiteboardText, type TextMeasure } from './whiteboardTextMetrics'
 import { useWhiteboardCanvasDocument, useWhiteboardCanvasViewport } from './useWhiteboardCanvasDocument'
 import type {
   SceneTransforms,
@@ -87,6 +88,8 @@ export type LeaferCanvasHandle = {
   captureViewport: (filename?: string) => Promise<void>
   captureViewportFile: (filename?: string) => Promise<File>
   clientPointToCanvasPoint: (clientX: number, clientY: number) => { x: number; y: number } | null
+  /** Layout size Leafer gives a text object; null until the canvas engine has loaded. */
+  measureText: TextMeasure
 }
 
 type CanvasContextMenuState = {
@@ -182,8 +185,12 @@ export const LeaferCanvas = forwardRef<LeaferCanvasHandle, LeaferCanvasProps>(fu
   const [selectionBox, setSelectionBox] = useState<CanvasSelectionBox | null>(null)
   const [selectedObjectTargets, setSelectedObjectTargets] = useState<CanvasObjectTarget[]>([])
 
+  const measureText = useCallback<TextMeasure>((content, fontSize) => {
+    const context = renderContextRef.current
+    return context ? measureWhiteboardText(context.Text, content, fontSize) : null
+  }, [])
   const { objectOffsetsRef, assetTransformsRef, objectFlipStatesRef, actionHandlesRef, commitSceneTransforms } =
-    useWhiteboardCanvasDocument(ref, appRef, stageRef, dimensionsRef, sceneTransforms, onSceneTransformsChange, t)
+    useWhiteboardCanvasDocument(ref, appRef, stageRef, dimensionsRef, sceneTransforms, onSceneTransformsChange, t, measureText)
 
   const inlineScale = useWhiteboardCanvasViewport(appRef, hostRef, layerGroupsRef, dimensions, fitMode, renderReadyVersion)
 

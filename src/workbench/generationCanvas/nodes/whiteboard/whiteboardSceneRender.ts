@@ -81,7 +81,7 @@ export function renderWhiteboardScene(params: RenderWhiteboardSceneParams): void
         hitChildren: false, editConfig: { resizeable: false, flipable: false, rotateable: false, skewable: false },
         canvasObjectKind: 'text', canvasObjectId: text.id })
       const content = new Group(getFlippedContentGroupProps(bounds, getObjectFlipState(objectFlipStates, { kind: 'text', id: text.id })))
-      content.add(new Text({ text: text.text, width: text.width, height: text.height, fontSize: text.fontSize, fill: text.color, hittable: false }))
+      content.add(new Text({ text: text.text, fontSize: text.fontSize, fill: text.color, hittable: false }))
       box.add(content)
       parent.add(box)
       if (editable) {

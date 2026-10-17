@@ -22,6 +22,7 @@ import {
   loadImageSize,
   serializeWhiteboardState,
 } from './whiteboardState'
+import { applyTextChanges, type TextMeasure } from './whiteboardTextMetrics'
 import { WhiteboardEditingToolbar } from './WhiteboardEditingToolbar'
 import { WhiteboardLibraryPanel, type WhiteboardLibraryTabKey } from './WhiteboardLibraryPanel'
 import { blobToDataUrl, removeBackgroundBlob } from '../../../../lib/removeBackground'
@@ -510,16 +511,19 @@ const WhiteboardDrawingTool = React.forwardRef<WhiteboardDrawingToolHandle, Whit
     )
 
     const selectedText = activeCanvasObject?.kind === 'text' ? state.texts?.find((item) => item.id === activeCanvasObject.id) : undefined
-    const editText = (changes: Partial<NonNullable<WhiteboardState['texts']>[number]>) => {
+    const measureText: TextMeasure = (content, fontSize) => leaferCanvasRef.current?.measureText(content, fontSize) ?? null
+    const editText = (changes: Parameters<typeof applyTextChanges>[1]) => {
       if (!selectedText) return
-      setState((current) => ({ ...current, texts: current.texts?.map((item) => item.id === selectedText.id ? { ...item, ...changes } : item) }))
+      setState((current) => ({ ...current, texts: current.texts?.map((item) => item.id === selectedText.id ? applyTextChanges(item, changes, measureText) : item) }))
     }
     const placeText = (point: { x: number; y: number }) => {
       const id = createWhiteboardId('text')
       const layerId = createWhiteboardId('text-layer')
       const text: string = t('generationCommon.whiteboard.textPlaceholder')
+      const size = measureText(text, textSize)
+      if (!size) return
       setState((current) => ({ ...current, activeLayerId: layerId,
-        texts: [...(current.texts ?? []), { id, layerId, text, x: point.x, y: point.y, width: Math.max(120, text.length * textSize), height: textSize * 1.5, fontSize: textSize, color: selectedColor }],
+        texts: [...(current.texts ?? []), { id, layerId, text, x: point.x, y: point.y, width: size.width, height: size.height, fontSize: textSize, color: selectedColor }],
         layers: [...current.layers, { id: layerId, name: text, visible: true, locked: false, opacity: 1, kind: 'text', thumbnail: 'checker' }],
       }))
       setActiveCanvasObject({ kind: 'text', id })
@@ -629,7 +633,7 @@ const WhiteboardDrawingTool = React.forwardRef<WhiteboardDrawingToolHandle, Whit
         </div> : null}
         <WhiteboardEditingToolbar activeTool={activeTool} onToolChange={setActiveTool} color={selectedText?.color ?? selectedColor}
           onColorChange={(color) => { handleColorSelect(color); if (selectedText) editText({ color }) }} brushSize={brushSize} onBrushSizeChange={(size) => setBrushSize(clampBrushSize(size))}
-          textValue={selectedText?.text} onTextValueChange={(text) => editText({ text })} textSize={selectedText?.fontSize ?? (activeTool === 'text' ? textSize : undefined)} onTextSizeChange={(size) => { setTextSize(size); if (selectedText) editText({ fontSize: size, height: size * 1.5 }) }}
+          textValue={selectedText?.text} onTextValueChange={(text) => editText({ text })} textSize={selectedText?.fontSize ?? (activeTool === 'text' ? textSize : undefined)} onTextSizeChange={(size) => { setTextSize(size); if (selectedText) editText({ fontSize: size }) }}
           canUndo={canUndo} canRedo={canRedo} onUndo={() => moveHistory('back')} onRedo={() => moveHistory('forward')}
           onUpload={() => fileInputRef.current?.click()} uploading={uploading || initialImageStatus !== 'ready'} panel={panel} onPanelChange={setPanel} panelContent={panelContent}
           selectedTargets={selectedTargets} onFlip={(axis) => leaferCanvasRef.current?.flipSelection(axis)} onGroup={() => leaferCanvasRef.current?.groupSelection()}

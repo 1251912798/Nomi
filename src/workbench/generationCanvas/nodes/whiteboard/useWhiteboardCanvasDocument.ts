@@ -4,6 +4,7 @@ import { getCanvasPointFromClient } from './lib/pointer'
 import { captureSceneTransforms, restoreSceneTransforms, type LeaferApp, type LeaferGroup, type SceneTransforms } from './whiteboardCanvasTypes'
 import { createViewportScreenshotFilename, exportViewportFileWithoutEditorOverlays, exportViewportWithoutEditorOverlays, getWhiteboardPreviewPixelRatio } from './whiteboardCanvasExport'
 import type { LeaferCanvasHandle } from './WhiteboardLeaferCanvas'
+import type { TextMeasure } from './whiteboardTextMetrics'
 
 export type CanvasActionHandles = Pick<LeaferCanvasHandle, 'handleKeyDown' | 'flipSelection' | 'groupSelection' | 'deleteSelection'>
 
@@ -16,6 +17,7 @@ export function useWhiteboardCanvasDocument(
   sceneTransforms: SceneTransforms | undefined,
   onSceneTransformsChange: ((value: SceneTransforms) => void) | undefined,
   t: (key: string) => string,
+  measureText: TextMeasure,
 ) {
   const initial = useRef(restoreSceneTransforms(sceneTransforms))
   const objectOffsetsRef = useRef(initial.current.offsets)
@@ -69,6 +71,7 @@ export function useWhiteboardCanvasDocument(
 
         return exportViewportFileWithoutEditorOverlays(app, filename)
       },
+      measureText,
       clientPointToCanvasPoint(clientX: number, clientY: number) {
         const stage = stageRef.current
         if (!stage) return null
@@ -76,7 +79,7 @@ export function useWhiteboardCanvasDocument(
         return { x: point[0], y: point[1] }
       }
     }),
-    [t, appRef, stageRef, dimensionsRef, getSceneTransforms]
+    [t, appRef, stageRef, dimensionsRef, getSceneTransforms, measureText]
   )
 
   return { objectOffsetsRef, assetTransformsRef, objectFlipStatesRef, actionHandlesRef, commitSceneTransforms }

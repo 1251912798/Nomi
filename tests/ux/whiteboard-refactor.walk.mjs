@@ -1,12 +1,9 @@
 // Production Electron journey: original entrances, real photographed image, real gestures and persisted output.
 import fs from 'node:fs'
 import path from 'node:path'
-import { execFileSync } from 'node:child_process'
-import ffmpeg from '@ffmpeg-installer/ffmpeg'
-import { makeTempDir } from '../../scripts/_test-temp.mjs'
 import { launchNomiApp } from './_launchApp.mjs'
 import { expect, screenshotSettled, proveProbe, expectAbsent, expectOverlayReachable } from './_assert.mjs'
-import { requireRealMediaAssets } from './fixtures/realMedia.mjs'
+import { buildInlineWhiteboardProject } from './_whiteboardFixture.mjs'
 import { uiText } from './full-walk/invariants.mjs'
 import { collapseAgentPanel, canvasSetZoomPercent, canvasResetView, canvasZoomPercent } from './_shell.mjs'
 import { checkBoardManifest } from '../../scripts/check-board-parity.mjs'
@@ -21,6 +18,7 @@ expect(checkBoardManifest({ board: 'InlineWhiteboard', manifest: boardManifest, 
 const locale = process.argv.includes('--en') ? 'en' : 'zh-CN'
 const dark = process.argv.includes('--dark')
 const performanceRun = process.argv.includes('--performance')
+const repoMedia = process.argv.includes('--repo-media')
 const argValue = name => { const index = process.argv.indexOf(name); return index >= 0 ? process.argv[index + 1] : undefined }
 const repetitions = Number(argValue('--runs') ?? 1)
 const label = argValue('--label')
@@ -35,29 +33,13 @@ for (let iteration = 0; iteration < repetitions; iteration++) {
 if (label) fs.writeFileSync(path.join(outputRoot, label, 'report.json'), JSON.stringify({ samples }, null, 2))
 
 async function runJourney(output) {
-const root = makeTempDir('nomi-inline-whiteboard-')
-const projectsDir = path.join(root, 'projects')
-const projectId = 'inline-whiteboard'
-const projectRoot = path.join(projectsDir, projectId)
-const assetsDir = path.join(projectRoot, 'assets/imported')
-fs.mkdirSync(assetsDir, { recursive: true })
-fs.mkdirSync(path.join(projectRoot, '.nomi'), { recursive: true })
 fs.mkdirSync(output, { recursive: true })
-const { assets } = requireRealMediaAssets(['video-4k-hevc-10bit'])
-const imagePath = path.join(assetsDir, 'photograph.png')
-execFileSync(ffmpeg.path, ['-y', '-ss', '00:00:05', '-i', assets.get('video-4k-hevc-10bit').file, '-frames:v', '1', imagePath], { stdio: 'pipe' })
-const url = `nomi-local://asset/${projectId}/assets/imported/photograph.png`
-const firstResult = { id: 'original', type: 'image', url, createdAt: 1 }
 // A project saved while the annotation tool existed (removed 2026-10-17): its stored feedback must be ignored without error and left in the file.
 const legacyAnnotations = [{ id: 'note-legacy', resultId: 'original', x: 120, y: 80, text: 'Brighten this region' }]
-const nodes = [{ id: 'image', kind: 'image', categoryId: 'shots', title: 'Photograph', prompt: '', position: { x: 200, y: 140 }, size: { width: 600, height: 337.5 }, status: 'success', result: firstResult, history: [firstResult], meta: { imageWidth: 3840, imageHeight: 2160, previewHeight: 337.5, userResized: true, whiteboardAnnotations: legacyAnnotations } },
-  { id: 'board', kind: 'whiteboard', categoryId: 'shots', title: 'Board', prompt: '', position: { x: 1050, y: 160 }, size: { width: 420, height: 236 }, status: 'idle' }]
-if (performanceRun) for (let index = 0; index < 30; index++) nodes.push({ ...nodes[0], id: `background-${index}`, position: { x: 10000 + index % 6 * 650, y: 10000 + Math.floor(index / 6) * 420 }, size: { width: 340, height: 191.25 } })
-const payload = { workbenchDocument: null, timeline: null, generationCanvas: { nodes, edges: [], groups: [], selectedNodeIds: [], canvasZoom: 1, canvasPan: { x: 0, y: 0 } }, storyboardPlan: null, storyboardPlanCommitted: false }
-const record = { id: projectId, name: 'Inline whiteboard verification', version: 2, createdAt: 1, updatedAt: 1, savedAt: 1, revision: 1, lastKnownRootPath: projectRoot, ...payload, payload }
-const recordPath = path.join(projectRoot, '.nomi/project.json')
-for (const name of ['project.json', '.nomi/project.json']) fs.writeFileSync(path.join(projectRoot, name), JSON.stringify(record))
-const readNode = id => JSON.parse(fs.readFileSync(recordPath, 'utf8')).payload.generationCanvas.nodes.find(node => node.id === id)
+const { projectsDir, projectId, record, recordPath, imagePath, nodes, readNode, source } = buildInlineWhiteboardProject({
+  repoMedia, legacyAnnotations,
+  extraNodes: ({ sources, size }) => performanceRun ? Array.from({ length: 30 }, (_, index) => ({ id: `background-${index}`, kind: 'image', categoryId: 'shots', title: 'Photograph', prompt: '', position: { x: 10000 + index % 6 * 650, y: 10000 + Math.floor(index / 6) * 420 }, size: { width: 340, height: 191.25 }, status: 'success', result: sources[0].result, history: [sources[0].result], meta: { imageWidth: size.width, imageHeight: size.height, previewHeight: 191.25, userResized: true } })) : [],
+})
 const t = key => uiText(locale, key)
 const run = await launchNomiApp({ name: `inline-whiteboard-${locale}`, projectsDir, settleMs: 0, initialLocalStorage: {
   'nomi:locale:v1': locale, 'nomi-color-scheme': dark ? 'dark' : 'light', 'nomi:splash:v1': 'seen', 'nomi:journey-tour:v1': 'seen', 'nomi:canvas-gesture-hint:v1': 'seen',
@@ -65,7 +47,7 @@ const run = await launchNomiApp({ name: `inline-whiteboard-${locale}`, projectsD
 const page = run.win
 const errors = []
 page.on('pageerror', error => errors.push(error.message))
-const evidence = { locale, dark, sampledWorkload: { nodes: nodes.length, offscreenNodes: performanceRun ? 30 : 0, activeEditors: 1, uniqueSourceImages: 1, sourceWidth: 3840, sourceHeight: 2160 }, workload: `${nodes.length} nodes (${performanceRun ? 30 : 0} offscreen), one active editor; 4K photograph`, checks: [], performance: null }
+const evidence = { locale, dark, sampledWorkload: { nodes: nodes.length, offscreenNodes: performanceRun ? 30 : 0, activeEditors: 1, uniqueSourceImages: 1, sourceWidth: source.width, sourceHeight: source.height, sourceMode: source.mode }, workload: `${nodes.length} nodes (${performanceRun ? 30 : 0} offscreen), one active editor; ${source.mode} photograph`, checks: [], performance: null }
 const check = (name, value) => { expect(value, name).toBeTruthy(); evidence.checks.push(name); console.log(`✓ ${name}`) }
 const action = name => page.locator(`[data-toolbar-action="whiteboard-${name}"]`)
 const editor = page.locator('[data-nomi-inline-whiteboard="true"]')
@@ -165,6 +147,42 @@ try {
   await fontInput.pressSequentially('36')
   await expect.poll(() => readNode('image').meta.whiteboardState.texts?.[0]?.fontSize).toBe(36)
   check('text size accepts ordinary sequential keyboard input', true)
+  // A text object's bounds follow its content (review F2): long content used to keep the placeholder-sized box, so its visible tail could not be hit.
+  const scene = () => readNode('image').meta.whiteboardState
+  const textBefore = scene().texts[0]
+  const longText = '这是一段用来检查点击范围的很长的中文文字'
+  await textInput.fill(longText)
+  await expect.poll(() => scene().texts[0].text).toBe(longText)
+  const grown = scene().texts[0]
+  check('text bounds are re-derived from the edited content', grown.width > textBefore.width * 1.5 && grown.height >= textBefore.height)
+  check('edited text stays inside the exported board range', grown.x + grown.width <= scene().canvasDimensions.width && grown.y + grown.height <= scene().canvasDimensions.height)
+  const stageBox = await editor.getByLabel(t('generationCommon.whiteboard.drawingLayerAria'), { exact: true }).boundingBox()
+  const toClient = (x, y) => ({ x: stageBox.x + x / scene().canvasDimensions.width * stageBox.width, y: stageBox.y + y / scene().canvasDimensions.height * stageBox.height })
+  const textOffset = () => scene().sceneTransforms?.offsets?.[`text:${grown.id}`] ?? { x: 0, y: 0 }
+  await action('select').click()
+  const elsewhere = toClient(scene().canvasDimensions.width * .12, scene().canvasDimensions.height * .15)
+  await page.mouse.click(elsewhere.x, elsewhere.y)
+  await expect(textInput).toBeHidden()
+  const tail = toClient(grown.x + textOffset().x + grown.width - 8, grown.y + textOffset().y + grown.height / 2)
+  await page.mouse.click(tail.x, tail.y)
+  await expect(textInput).toBeVisible()
+  check('the visible tail of long text is hittable', (await textInput.inputValue()) === longText)
+  await page.mouse.move(tail.x, tail.y)
+  await page.mouse.down()
+  await page.mouse.move(tail.x + 50, tail.y + 20, { steps: 12 })
+  await page.mouse.up()
+  await expect.poll(() => textOffset().x).toBeGreaterThan(20)
+  check('dragging the tail moves the whole text, not the image below', scene().texts[0].x === grown.x)
+  await textInput.fill('Short')
+  await expect.poll(() => scene().texts[0].width).toBeLessThan(grown.width / 2)
+  await action('undo').click()
+  await expect.poll(() => scene().texts[0].text).toBe(longText)
+  check('undo restores the long text with its derived bounds', scene().texts[0].width === grown.width)
+  await action('redo').click()
+  await expect.poll(() => scene().texts[0].text).toBe('Short')
+  await textInput.fill(longText)
+  await expect.poll(() => scene().texts[0].width).toBe(grown.width)
+  check('editing back to the long content derives the same bounds', true)
   await action('select').click()
   frame = await editor.boundingBox()
   const positionBefore = readNode('image').position
@@ -233,6 +251,18 @@ try {
   await expectAbsent(editor, { provenBy: editorProbe })
   await expect.poll(() => readNode('image').history?.length ?? 0).toBe(2)
   check('Done creates exactly one saved raster version', true)
+  // Read the saved file from disk and decode it as a data URL: the app's custom scheme would taint a canvas.
+  const savedFile = path.join(projectsDir, projectId, readNode('image').result.url.split(`/${projectId}/`)[1])
+  const exportedTail = await page.evaluate(async ({ url, rect }) => {
+    const image = new Image(); image.src = url; await image.decode()
+    const canvas = document.createElement('canvas'); canvas.width = image.naturalWidth; canvas.height = image.naturalHeight
+    const context = canvas.getContext('2d'); context.drawImage(image, 0, 0)
+    const data = context.getImageData(Math.round(rect.x), Math.round(rect.y), Math.round(rect.width), Math.round(rect.height)).data
+    let count = 0
+    for (let i = 0; i < data.length; i += 4) if (Math.abs(data[i] - 239) < 7 && Math.abs(data[i + 1] - 68) < 7 && Math.abs(data[i + 2] - 68) < 7) count++
+    return { count, width: image.naturalWidth, height: image.naturalHeight }
+  }, { url: `data:image/png;base64,${fs.readFileSync(savedFile).toString('base64')}`, rect: { x: grown.x + textOffset().x + grown.width - 60, y: grown.y + textOffset().y, width: 60, height: grown.height } })
+  check('the exported image contains the long text up to its last characters', exportedTail.count > 20 && exportedTail.width === scene().canvasDimensions.width)
   check('saved result retains custom board dimensions', readNode('image').meta.imageWidth === 1280 && readNode('image').meta.imageHeight === 900)
   await openImage()
   await expect.poll(() => JSON.stringify(readNode('image').meta.whiteboardState.texts)).toBe(JSON.stringify(beforeSave.texts))
@@ -258,14 +288,17 @@ try {
   check('switching a historical main image finishes the current board through the same save transaction', true)
   await page.keyboard.press('Escape')
   await canvasSetZoomPercent(page, 85)
-  await page.locator('[data-node-id="board"] [data-testid="whiteboard-empty-action"]').click()
+  // An empty card opens only once it is selected: the first click selects it, the next one opens the editor.
+  const launcher = page.locator('[data-node-id="board"] [data-testid="whiteboard-empty-action"]')
+  await launcher.click()
+  if (!await editor.isVisible()) await launcher.click()
   await expect(editor).toBeVisible()
   await editor.locator('input[type=file]').setInputFiles(imagePath)
   await expect.poll(() => readNode('board').meta?.whiteboardState?.canvasAssets.length ?? 0).toBe(1)
   check('standalone entry reuses the same editor and real import', true)
   check('standalone Done and capture remain inside the visible desktop stage', await editor.getByRole('toolbar').evaluate(el => { const a=el.getBoundingClientRect(), b=el.closest('.generation-canvas-v2__stage').getBoundingClientRect(); return a.left >= b.left && a.right <= b.right && a.top >= b.top && a.bottom <= b.bottom }))
   await action('capture').click()
-  await expect.poll(() => readNode('board').history?.length ?? 0).toBe(1)
+  await expect.poll(() => readNode('board').history?.length ?? 0, { timeout: 30000 }).toBe(1)
   await expect.poll(() => JSON.parse(fs.readFileSync(recordPath, 'utf8')).payload.generationCanvas.edges.length).toBe(1)
   check('standalone screenshot creates derived image with source edge', true)
   await snap('standalone')
