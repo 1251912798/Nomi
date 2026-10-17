@@ -69,7 +69,7 @@ export type GenerationProviderMaterializationResult = {
  * 「不知道这笔任务是用哪个模型交的」、被吞成「还在跑」。视频在供应商那边早就出好了，Run 永远停在 polling。
  * 供应商实现早就留了「调用方明说」这条路（apimartGenerationProvider.queryTargetFor ①），只是这一层从来没把它递下去。
  */
-export type GenerationProviderTaskContext = Partial<Pick<GenerationProviderRequestInputV1, "modelId" | "mode">>;
+export type GenerationProviderTaskContext = Partial<Pick<GenerationProviderRequestInputV1, "modelId" | "mode" | "parameters">>;
 
 export type GenerationProvider = {
   providerId: string;

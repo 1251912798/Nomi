@@ -95,7 +95,7 @@ describe.skipIf(!fs.existsSync(tsxCli))('五种取回异常：真落盘、新进
     // 重启：内存全清，盘上那份由新进程读回，再经加载入口装回。
     useGenerationCanvasStore.getState().restoreSnapshot({ nodes: [], edges: [], selectedNodeIds: [], groups: [] })
     useGenerationQueueStore.setState({ entries: [], batches: {} })
-    restoreWorkbenchProjectPayload(readPayloadInNewProcess(root), PROJECT_ID)
+    restoreWorkbenchProjectPayload(readPayloadInNewProcess(root))
 
     const reloaded = useGenerationCanvasStore.getState().nodes.find((n) => n.id === id)
     expect(reloaded?.status).toBe('recoverable')
