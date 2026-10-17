@@ -106,7 +106,7 @@ const zhCN = {
       { path: '└─ exports/海边小镇.mp4', note: '成片' },
     ],
     points: [
-      '不用注册账号，不上报数据。',
+      '不用注册账号。默认不上报任何数据；想帮忙改进的话，可以在设置里自愿开启匿名统计，随时能关。',
       '调用外部模型时，只把完成这一次生成必需的内容发给你配置的那家。',
       '代码全部开源（AGPL-3.0），想改成什么样都行，也可以让你的 AI 编程助手来改。',
     ],
@@ -286,7 +286,7 @@ const english = {
       { path: '└─ exports/seaside-town.mp4', note: 'the film' },
     ],
     points: [
-      'No account. No telemetry.',
+      'No account. Nothing is sent by default; anonymous usage statistics are opt-in and can be turned off any time.',
       'When you call an external model, only what that generation needs goes to the provider you configured.',
       'Fully open source (AGPL-3.0). Change anything — or have your AI coding assistant do it.',
     ],

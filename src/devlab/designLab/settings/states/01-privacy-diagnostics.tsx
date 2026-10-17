@@ -12,6 +12,7 @@ import { TelemetrySection } from '../../../../workbench/settings/TelemetrySectio
 import { DiagnosticsBundleSection } from '../../../../workbench/settings/DiagnosticsBundleSection'
 import { SettingsStage } from '../settingsLabKit'
 import type { LabState } from '../../labScreen'
+import { LabLocaleGate } from '../../labLocaleGate'
 
 function PrivacyBlock(): JSX.Element {
   return (
@@ -68,6 +69,20 @@ export const PRIVACY_DIAGNOSTICS_STATES: readonly LabState[] = [
       <SettingsStage behavior={{ ok: false, reason: 'failed' }} autoExport>
         <PrivacyBlock />
       </SettingsStage>
+    ),
+  },
+  {
+    id: 'privacy-05-scope-reask-en-dark',
+    name: '隐私与诊断 · 告知范围升级后（开着、同意的还是旧范围）· 英文 · 暗色：新说明文字 + 「确认新范围」',
+    source: '现役 TelemetrySection.tsx · 2026-10-16 告知范围升到 v2',
+    coverage: 'shell',
+    scheme: 'dark',
+    render: () => (
+      <LabLocaleGate locale="en">
+        <SettingsStage behavior={{ ok: false, reason: 'canceled' }} telemetry="old-scope">
+          <PrivacyBlock />
+        </SettingsStage>
+      </LabLocaleGate>
     ),
   },
 ]

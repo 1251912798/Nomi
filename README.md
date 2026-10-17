@@ -75,7 +75,7 @@ When a new model ships, click **Let AI connect it for me** and let Claude Code o
 
 ### Yours
 
-A project is a plain folder on your disk: canvas, storyboard, timeline, every generated file, and the exported film. No account, no telemetry. The code is AGPL-3.0.
+A project is a plain folder on your disk: canvas, storyboard, timeline, every generated file, and the exported film. No account. Nothing is sent by default; anonymous usage statistics are opt-in (Settings → Privacy & diagnostics) and can be turned off any time. The code is AGPL-3.0.
 
 **Next up: AI editing.** Nomi is heading toward one studio for everything you make with AI — come build it with us.
 

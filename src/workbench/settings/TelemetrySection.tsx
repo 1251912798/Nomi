@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { IconEye, IconTrash } from '@tabler/icons-react'
 import { DecisionBar, DesignButton } from '../../design'
 import { getDesktopBridge } from '../../desktop/bridge'
+import { markAgentConsentScopeAsked } from '../onboarding/onboardingState'
 import type { TelemetrySettingsView, TelemetrySummary } from '../../../electron/shared/contracts/telemetry'
 
 export function TelemetrySection(): JSX.Element {
@@ -36,6 +37,12 @@ export function TelemetrySection(): JSX.Element {
     } finally { setBusy(false) }
   }
 
+  // 告知范围升级后的再确认：和 Agent 面板里的再确认卡是同一个写入（enabled:true → 主进程把范围版本升到当前版）。
+  const confirmScope = async (): Promise<void> => {
+    markAgentConsentScopeAsked()
+    await toggle(true)
+  }
+
   const removeAll = async (): Promise<void> => {
     if (!api) return
     setBusy(true)
@@ -65,6 +72,14 @@ export function TelemetrySection(): JSX.Element {
           className="size-4 accent-nomi-accent"
         />
       </label>
+      {settings?.enabled && settings.scopeVersion < 2 ? (
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-nomi-sm border border-nomi-line px-3 py-2" data-telemetry-scope-notice>
+          <p className="m-0 min-w-0 flex-1 text-caption leading-relaxed text-nomi-ink-60">{t('settings.general.telemetry.scopeNotice')}</p>
+          <DesignButton type="button" variant="default" disabled={busy} onClick={() => { void confirmScope() }}>
+            {t('settings.general.telemetry.scopeConfirm')}
+          </DesignButton>
+        </div>
+      ) : null}
       <div className="mt-3 flex flex-wrap gap-2">
         <DesignButton type="button" variant="default" disabled={busy || !settings} leftSection={<IconEye size={14} aria-hidden="true" />} onClick={() => { setViewingSummary(true); void refresh() }}>
           {t('settings.general.telemetry.viewSummary')}

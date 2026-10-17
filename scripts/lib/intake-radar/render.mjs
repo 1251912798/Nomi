@@ -11,7 +11,7 @@ function feedbackItemMarkdown(item) {
   return (
     `- **${item.date} · ${item.id}** [${item.system}/${item.version} · ${item.surface}]` +
     ` 错误码:${item.errorCode ?? '（无）'} 供应商/模型:${providerModel}\n` +
-    `  摘要：${item.summary || '（无）'}${note}`
+    `  摘要：${item.summary || '（无）'}${note}${item.perf ? `\n  卡顿档位：点击响应 p75 ${item.perf.interactionP75} / p95 ${item.perf.interactionP95}，长帧 ${item.perf.longFramesPerMin}/分钟，节点 ${item.perf.nodes}，所在页 ${item.perf.page}` : ''}`
   )
 }
 
@@ -63,6 +63,21 @@ function errorCodeMarkdown(ranking) {
   return ranking.map((r, i) => `${i + 1}. \`${r.errorCode}\` × ${r.count}`).join('\n')
 }
 
+const PERF_DIM_LABELS = { osFamily: '系统', appVersion: '版本', cpuCores: 'CPU 核数', memoryGb: '内存', nodes: '画布节点数', imageNodes: '图片节点数', generating: '是否在生成', page: '所在页' }
+
+function perfMarkdown(perf) {
+  const fb = perf.feedbackWithPerf.count ? `带卡顿档位的反馈 ${perf.feedbackWithPerf.count} 条，其中偏慢 ${perf.feedbackWithPerf.slow} 条。` : ''
+  if (perf.total === 0) return `（本轮缓存里没有 perf.session.summary 事件）${fb ? '\n' + fb : ''}`
+  const dist = Object.entries(perf.distributions)
+    .map(([field, rows]) => `- ${field}：${rows.map((r) => `${r.value}×${r.count}`).join(' · ')}`)
+    .join('\n')
+  const table = (rows) => rows.map((r) => `| ${r.value}${r.lowSample ? '（样本少）' : ''} | ${r.total} | ${r.slow} | ${pct(r.slowShare)} |`).join('\n')
+  const dims = Object.entries(perf.byDimension)
+    .map(([dim, rows]) => `**${PERF_DIM_LABELS[dim] ?? dim}**\n\n| 取值 | 会话数 | 偏慢 | 偏慢占比 |\n|---|---|---|---|\n${table(rows)}`)
+    .join('\n\n')
+  return `共 ${perf.total} 份会话汇总，偏慢 ${perf.slow}（${pct(perf.slowShare)}）。偏慢 = ${perf.slowDefinition}。\n${fb}\n\n各档分布：\n${dist}\n\n${dims}`
+}
+
 function dataQualityMarkdown(dq) {
   if (dq.corruptFileCount === 0) return '本地缓存文件全部可解析。'
   const lines = dq.corruptFiles.map((f) => `- ${f.key}：${f.error}`).join('\n')
@@ -105,6 +120,10 @@ ${launchesMarkdown(report.launches)}
 更新动作：
 ${updateActionsMarkdown(report.updateActions)}
 
+## 卡不卡（界面流畅度分档）
+
+${perfMarkdown(report.perf)}
+
 ## 数据质量
 
 ${dataQualityMarkdown(report.dataQuality)}
@@ -130,6 +149,7 @@ export function renderTerminalSummary(report, { mdPath, jsonPath } = {}) {
   } else if (report.window.latestDate && report.window.previousDate) {
     lines.push('  无明显突增')
   }
+  if (report.perf.total) lines.push(`  卡不卡：${report.perf.total} 份会话汇总，偏慢 ${report.perf.slow}（${pct(report.perf.slowShare)}）`)
   if (report.dataQuality.corruptFileCount) lines.push(`  ⚠️ ${report.dataQuality.corruptFileCount} 个本地缓存文件解析失败`)
   if (mdPath) lines.push(`  报告 → ${mdPath}`)
   if (jsonPath) lines.push(`  报告 → ${jsonPath}`)

@@ -16,6 +16,7 @@
 // 「每项写清是什么、没带的写清为什么」这件事已经有 owner，不另造一份。
 import { redactLogValue } from '../logging/redact'
 import { redactModelCatalog } from '../diagnostics/catalogRedaction'
+import { isPerfSummaryProps } from '../shared/contracts/perfTelemetry'
 import { projectLaneTrajectory } from '../telemetry/trajectoryProjection'
 import type { TrajectoryTurnInput } from '../shared/agentLane/laneTrajectory'
 import type { DiagnosticsBundleEntry, DiagnosticsBundleExclusion, DiagnosticsBundleManifest } from '../shared/contracts/diagnostics'
@@ -87,6 +88,7 @@ export function isFeedbackReportRequest(value: unknown): value is FeedbackReport
   if (request.errorCode !== undefined && typeof request.errorCode !== 'string') return false
   if (request.laneName !== undefined && typeof request.laneName !== 'string') return false
   if (request.includeContent !== undefined && typeof request.includeContent !== 'boolean') return false
+  if (request.perf !== undefined && !isPerfSummaryProps(request.perf)) return false
   return true
 }
 
@@ -152,6 +154,13 @@ export async function buildFeedbackReport(
           : '最近 3 个回合：工具名、参数**结构**（只有键名）、耗时、token。提示词、文稿、工具结果都不在里面',
       )
     }
+  }
+
+  // ④ 界面流畅度分档数字。用户点「发送」就是同意；形状由 isPerfSummaryProps 收（只有分档标签）。
+  if (request.perf && isPerfSummaryProps(request.perf)) {
+    add('perf/summary.json', request.perf, '界面流畅度分档数字：点击响应与掉帧的档位、画布规模档位、设备档位（没有原始毫秒、没有内容）')
+  } else {
+    excluded.push({ what: 'perf/summary.json', why: 'perf-unavailable' })
   }
 
   // 永远排除的三类，逐条写清原因（D4：包里没有什么，比包里有什么更容易引起误解）。

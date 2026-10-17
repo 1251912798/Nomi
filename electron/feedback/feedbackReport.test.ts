@@ -139,4 +139,15 @@ describe('一键反馈组包', () => {
     expect(excluded.length).toBeGreaterThan(0)
     expect(report.manifest.totalBytes).toBeLessThanOrEqual(1_200_000)
   })
+  it('卡顿数字：请求带了就进包并写进清单；没带就在排除里写明原因；形状不对的整请求不收', async () => {
+    const perf = { interactionP75: '100-200', interactionP95: '200-500', longFramesPerMin: '1-3', longestFrame: '100-250', observedMinutes: '5-30', page: 'generation', nodes: '21-100', imageNodes: '1-20', generating: true, cpuCores: '9-16', memoryGb: '8plus' } as const
+    const withPerf = await buildFeedbackReport({ ...request, perf }, deps())
+    expect(withPerf.attachments['perf/summary.json']).toEqual(perf)
+    expect(withPerf.manifest.entries.map((entry) => entry.path)).toContain('perf/summary.json')
+    const without = await buildFeedbackReport(request, deps())
+    expect(without.attachments['perf/summary.json']).toBeUndefined()
+    expect(without.manifest.excluded).toContainEqual({ what: 'perf/summary.json', why: 'perf-unavailable' })
+    expect(isFeedbackReportRequest({ ...request, perf })).toBe(true)
+    expect(isFeedbackReportRequest({ ...request, perf: { ...perf, gpu: 'RTX' } })).toBe(false)
+  })
 })
