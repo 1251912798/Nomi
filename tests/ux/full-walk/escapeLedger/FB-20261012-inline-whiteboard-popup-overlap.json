@@ -10,23 +10,24 @@
   ],
   "useCases": [],
   "fullWalkJourneys": [],
-  "status": "reviewed",
+  "status": "fixed",
   "manualReview": "reviewed",
   "evidence": [
     "协调会话按用户截图复核：AnchoredPopover 只监听自身 resize 和 scroll，没有覆盖 anchor 位置变化。",
-    "9291455b57：共享 watcher 改用 @floating-ui/dom autoUpdate，删除原手写 watcher；trackTransforms 仅 panel 挂载时启用。共享 popup placement + workspaceBottomDocks 管高画板和靠边浮层避让。",
-    "2026-10-12 两轨真实 Electron：tests/ux/shots/whiteboard-refactor/{zh-CN-light,en-dark}/report.json 各 46 checks，包含 width/height/wheel 七组动态 anchor 的居中、不盖 bar、不交 dock、elementFromPoint 可达断言；独立线亲眼读取两轨 size-panel-after-resize.png 与 standalone.png。",
-    "src/design/anchoredPopoverPlacement.test.ts：14/14 独立执行通过，含 offset stage、tall dock 及 near-left wide panel 使用真实 clamped span 后交共享 dock owner 的反例。",
-    "最终同 fixture 性能旅程 report.json 48 checks 通过，独立亲眼读取四张实际 PNG；首轮极右工具条裁切失败保留，R21 在共享 clamp 修复 minimum-width 与强制居中冲突，75 组合回归通过。普通轨 feel 14 / 性能轨 17 findings 均未冒充零 finding。",
-    "统一 perf:scenarios 的 inline-whiteboard-drag 在696bf56ae5真实5轮各50 checks；每轮全旅程含动态anchor和极右动作可达，独立读取5份JSON及run5尺寸/独立板PNG。帧p95五轮皆9.6ms、longTasks皆0，噪声基线与未覆盖规模如独立报告所列。",
-    "本地遮挡回归已有真实证据；status 仍 reviewed，因为 escape-ledger-lib.mjs fixed 强制真实 fixedInPr，当前 PR 尚未创建，commit 不能替代 PR 字段。"
+    "9291455b57：共享 watcher 改用 @floating-ui/dom autoUpdate，删除原手写 watcher；共享 popup placement + workspaceBottomDocks 管高画板和靠边浮层避让。",
+    "2026-10-17 a7cdc4664：删掉 autoUpdate 的 animationFrame 逐帧轮询与 trackTransforms 属性。实测面板开着不动：每秒读矩形 165 次 → 0，主线程忙碌 2.2–2.6% → 0.2%；画布滚轮缩放时面板偏离锚点的帧数两种实现都是 12/~230（tests/ux/whiteboard-perf.probe.mjs moving-panel，登记为 inline-whiteboard-moving-panel）。",
+    "2026-10-17 四轨真实 Electron（zh/en × 亮/暗，tests/ux/whiteboard-refactor.walk.mjs）各 51 checks 全过，含 width / height / 滚轮 七组动态锚点的居中、不盖 bar、不交 dock、elementFromPoint 可达断言，另有轮询版与无轮询版各一轮对照；截图本线逐张读过。",
+    "src/design/anchoredPopoverPlacement.test.ts：共享放置纯函数反例（offset stage、tall dock、near-left wide panel）。",
+    "结构性预防：src/design/popoverTracking.structure.test.ts（已登记 pre-push-scan-guards）——animationFrame 选项、第二个 autoUpdate 入口、trackTransforms 开关任一回来就红。"
   ],
   "completionCommits": [
-    "9291455b57"
+    "9291455b57",
+    "a7cdc4664"
   ],
   "rootCauseContract": "docs/fixes/2026-10-12-inline-whiteboard.root-cause.json",
   "classCheck": {
     "kind": "matrix",
     "file": "tests/ux/whiteboard-refactor.walk.mjs"
-  }
+  },
+  "fixedInPr": 1189
 }

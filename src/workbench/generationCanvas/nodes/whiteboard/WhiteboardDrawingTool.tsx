@@ -22,7 +22,7 @@ import {
   loadImageSize,
   serializeWhiteboardState,
 } from './whiteboardState'
-import { applyTextChanges, type TextMeasure } from './whiteboardTextMetrics'
+import { applyTextChanges, createWhiteboardText, type TextMeasure } from './whiteboardTextMetrics'
 import { WhiteboardEditingToolbar } from './WhiteboardEditingToolbar'
 import { WhiteboardLibraryPanel, type WhiteboardLibraryTabKey } from './WhiteboardLibraryPanel'
 import { blobToDataUrl, removeBackgroundBlob } from '../../../../lib/removeBackground'
@@ -520,10 +520,10 @@ const WhiteboardDrawingTool = React.forwardRef<WhiteboardDrawingToolHandle, Whit
       const id = createWhiteboardId('text')
       const layerId = createWhiteboardId('text-layer')
       const text: string = t('generationCommon.whiteboard.textPlaceholder')
-      const size = measureText(text, textSize)
-      if (!size) return
+      const created = createWhiteboardText({ id, layerId, text, x: point.x, y: point.y, fontSize: textSize, color: selectedColor }, measureText)
+      if (!created) return
       setState((current) => ({ ...current, activeLayerId: layerId,
-        texts: [...(current.texts ?? []), { id, layerId, text, x: point.x, y: point.y, width: size.width, height: size.height, fontSize: textSize, color: selectedColor }],
+        texts: [...(current.texts ?? []), created],
         layers: [...current.layers, { id: layerId, name: text, visible: true, locked: false, opacity: 1, kind: 'text', thumbnail: 'checker' }],
       }))
       setActiveCanvasObject({ kind: 'text', id })

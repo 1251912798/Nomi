@@ -54,7 +54,10 @@
     "src/workbench/generationCanvas/quickActions/ImageQuickActionsToolbar.tsx",
     "src/workbench/generationCanvas/reactFlow/GenerationCanvasReactFlowNodes.tsx",
     "src/workbench/generationCanvas/reactFlow/useCanvasBottomDockRects.ts",
-    "vite.config.ts"
+    "vite.config.ts",
+    "src/design/popoverTracking.structure.test.ts",
+    "src/workbench/generationCanvas/nodes/whiteboard/whiteboardTextMetrics.ts",
+    "tests/ux/whiteboard-perf.probe.mjs"
   ],
   "entry_points": [
     "ImageQuickActionsToolbar → node-owned inline session",
@@ -71,7 +74,7 @@
       "kind": "official-doc",
       "url": "https://floating-ui.com/docs/autoupdate",
       "checked_at": "2026-10-12",
-      "purpose": "Coordinator checked official autoUpdate documentation via Context7: ancestor/element/layout observation, optional animationFrame transform tracking and cleanup. Reuse watcher only; preserve existing placement owner."
+      "purpose": "Coordinator checked official autoUpdate documentation via Context7: ancestor/element/layout observation, its IntersectionObserver layout-shift source (follows anchors moved by transforms) and cleanup. The optional animationFrame loop was measured and removed: 165 rect reads/s and 2.2-2.6% main thread while idle, no better tracking in the dynamic-anchor walk. Reuse watcher only; preserve existing placement owner."
     }
   ],
   "invariants": [
@@ -898,11 +901,36 @@
       "kind": "write",
       "path": "src/workbench/generationCanvas/store/canvasNodeActions.ts",
       "symbol": "resultIdentity"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/WhiteboardDrawingTool.tsx",
+      "symbol": "applyTextChanges"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/WhiteboardDrawingTool.tsx",
+      "symbol": "applyTextChanges"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/WhiteboardDrawingTool.tsx",
+      "symbol": "createWhiteboardText"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/WhiteboardLeaferCanvas.tsx",
+      "symbol": "measureWhiteboardText"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/whiteboardTextMetrics.ts",
+      "symbol": "withMeasuredSize"
     }
   ],
   "door_reduction": {
     "before": 114,
-    "after": 161,
+    "after": 166,
     "why_not": "The identical symbol set includes existing shared node dimensions, canvas shortcut admission and floating-toolbar placement readers, in addition to document/engine/session consumers. The feature makes previously implicit transform state explicit and adds result-bound annotation/text readers. Both launchers converge on one node-owned editor; version mutations finish that same session. Legitimate read projections remain separate because their node/media responsibilities differ; the old modal and obsolete controls are deleted instead of retaining a parallel editor. src/dev/optimizeDepsEntry.ts is a changed side-effect-only import entry for @floating-ui/dom: no identifier occurrence exists for door-map; it remains scoped with vite.config.ts/package manifests as dependency lifecycle evidence, not fabricated as a symbol door."
   },
   "generality_proof": "captureSceneTransforms/restoreSceneTransforms detach all three geometry populations; serializeWhiteboardState carries them for any node and legacy data gains empty transforms. LeaferCanvas exposes local selection actions to the shared editor host instead of installing a competing window listener. Both launchers request the same session; node-level mounting survives deselection. Two real Electron tracks verify the exercised closed loops; the independent report explicitly preserves every unverified original interaction. Registered inline-whiteboard-drag uses the existing unified DRIVERS/runner with five successful fresh-project repetitions of the same complete real-media walk; failed/incomplete journeys are rejected rather than accepting their frame samples.",
@@ -1015,9 +1043,9 @@
     },
     {
       "path": "src/design/AnchoredPopover.tsx",
-      "entry_point": "autoUpdate / trackTransforms",
+      "entry_point": "autoUpdate",
       "disposition": "enforced",
-      "evidence": "Existing shared component replaces manual watcher; all callers receive ancestor/element/layout tracking; canvas transform tracking is opt-in while mounted."
+      "evidence": "Existing shared component replaces the manual watcher; every caller gets ancestor / element / layout-shift tracking, which also follows transform-moved anchors through an IntersectionObserver. There is no per-frame loop and no opt-in prop for one; src/design/popoverTracking.structure.test.ts keeps animationFrame and a second autoUpdate door out of src."
     },
     {
       "path": "src/workbench/assets/assetResultDeletion.ts",
@@ -1045,7 +1073,7 @@
     "invariant": "All editable scene transforms flow through the serializable document owner and all local selection actions are explicitly invoked by the active editor host.",
     "failure_mode": "A failed save leaves the active session open; unavailable editor actions do not fall through to outer node deletion or movement; stale project actions cannot publish results.",
     "exception_policy": "none",
-    "strategy": "Remove full-screen parallel host and global whiteboard key listener; bind both launchers to the node session and commit engine maps at pointer/selection action boundaries. Replace manual popup watcher with existing Floating UI autoUpdate and preserve source asset references at the shared file-liveness predicate. Tall/near-edge placement reuses canonical workspace dock census and usable-bottom admission through the existing toolbar shell and generic popup boundary. Horizontal placement is computed by the same shared popup helper before dock admission; no second clamp or dock list. Minimum-width admission is decided in nextFloatingToolbarPlacement before forcing centered zero-shift; inadequate symmetric room reuses floatingToolbarShift, preserving one placement owner.",
+    "strategy": "Remove full-screen parallel host and global whiteboard key listener; bind both launchers to the node session and commit engine maps at pointer/selection action boundaries. Replace manual popup watcher with existing Floating UI autoUpdate and preserve source asset references at the shared file-liveness predicate. Tall/near-edge placement reuses canonical workspace dock census and usable-bottom admission through the existing toolbar shell and generic popup boundary. Horizontal placement is computed by the same shared popup helper before dock admission; no second clamp or dock list. Minimum-width admission is decided in nextFloatingToolbarPlacement before forcing centered zero-shift; inadequate symmetric room reuses floatingToolbarShift, preserving one placement owner. The shared watcher never polls per frame: the animationFrame option and the trackTransforms prop are deleted (2026-10-17, review F7) and a structure test fails if either comes back or a second autoUpdate door appears.",
     "artifacts": [
       "src/workbench/generationCanvas/nodes/whiteboard/WhiteboardLeaferCanvas.tsx",
       "src/workbench/generationCanvas/nodes/whiteboard/whiteboardCanvasTypes.ts",
@@ -1060,7 +1088,8 @@
       "src/workbench/assets/assetResultDeletion.ts",
       "src/design/anchoredPopoverPlacement.ts",
       "src/workbench/generation/workspaceBottomDocks.ts",
-      "src/workbench/generationCanvas/reactFlow/useCanvasBottomDockRects.ts"
+      "src/workbench/generationCanvas/reactFlow/useCanvasBottomDockRects.ts",
+      "src/design/popoverTracking.structure.test.ts"
     ]
   },
   "regression_tests": [
@@ -1075,7 +1104,10 @@
     "src/workbench/generationCanvas/nodes/whiteboard/localEditorFeedback.test.ts",
     "tests/ux/whiteboard-refactor.walk.mjs",
     "src/design/anchoredPopoverPlacement.test.ts",
-    "src/ui/app-shell/windowChrome.test.ts"
+    "src/ui/app-shell/windowChrome.test.ts",
+    "src/design/popoverTracking.structure.test.ts",
+    "src/workbench/generationCanvas/nodes/whiteboard/whiteboardTextMetrics.test.ts",
+    "tests/ux/whiteboard-perf.probe.mjs"
   ],
   "class_regression_tests": [
     "src/workbench/generationCanvas/nodes/whiteboard/whiteboardDocument.test.ts",
@@ -1089,7 +1121,10 @@
     "src/workbench/generationCanvas/nodes/whiteboard/localEditorFeedback.test.ts",
     "tests/ux/whiteboard-refactor.walk.mjs",
     "src/design/anchoredPopoverPlacement.test.ts",
-    "src/ui/app-shell/windowChrome.test.ts"
+    "src/ui/app-shell/windowChrome.test.ts",
+    "src/design/popoverTracking.structure.test.ts",
+    "src/workbench/generationCanvas/nodes/whiteboard/whiteboardTextMetrics.test.ts",
+    "tests/ux/whiteboard-perf.probe.mjs"
   ],
   "legacy_paths": {
     "status": "removed",
@@ -1112,7 +1147,7 @@
   "migration": "Additive optional texts, canvasDimensions and sceneTransforms read missing legacy fields as empty/default values. Legacy results without an editable snapshot must not claim fully editable old layers. Region annotations (meta.whiteboardAnnotations) were removed on 2026-10-17 (user: \"1189 的标注工具先拿掉\"); projects that already stored them keep the data in the file, nothing reads or rewrites it, and no migration is attempted — the global annotation layer planned for 0.24 will define its own storage.",
   "residual_risks": [
     "Partial real-app retention census remains explicit; source reuse and focused green tests do not prove every original subfunction.",
-    "Escape ledger popup overlap has two inspected 46-check real Electron core reports and the earlier complete 48-check performance journey plus five registered 50-check journeys, but remains reviewed until real PR settlement satisfies the unchanged fixedInPr rule.",
+    "Escape ledger popup overlap: settled against #1189 on 2026-10-17 after the walk matrix (width / height / wheel dynamic anchors, 51 checks) passed in four real Electron tracks (zh/en x light/dark) both with the old per-frame loop and without it, plus the per-frame drift probe (12 of ~230 frames off in both).",
     "DesignNumberInput font36/height900 and shared ToolbarActionPanel are exercised in both real core tracks. First performance journey failed on extreme-edge clipping; the shared clamp repair passes 75 geometry combinations and the complete same-fixture rerun. Final committed-HEAD build/delivery is still pending.",
     "Unified inline-whiteboard-drag baseline: five complete 50-check runs at 696bf56ae5, 371/372/372/373/373 frames, per-run frame p95 all9.6ms; across-run median/p95=9.6/9.6ms vs33ms and zero >50ms long tasks. Registry records M5/24GB and noisy=true. The sample remains 32 nodes, 30 offscreen, one active editor, one shared 4K image; no dense all-visible or platform-wide performance claim.",
     "Toolbar exact centering yields to reachability only when the minimum screen width cannot fit symmetrically; extreme-edge screenshot wraps four rows. Automated feel records retain 14 core/17 performance findings and are not a zero-finding pass.",

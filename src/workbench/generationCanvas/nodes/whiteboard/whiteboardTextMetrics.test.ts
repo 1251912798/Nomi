@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { CanvasText } from './lib/canvas'
 import { getCanvasObjectRenderBounds, getLayerBaseBounds } from './whiteboardCanvasGeometry'
-import { applyTextChanges, type TextMeasure } from './whiteboardTextMetrics'
+import { applyTextChanges, createWhiteboardText, type TextMeasure } from './whiteboardTextMetrics'
 
 // Stand-in for the Leafer layout answer: one em per character, 1.5 em line height, no wrapping.
 const measure: TextMeasure = (content, fontSize) => ({ width: Math.max(fontSize, content.length * fontSize), height: fontSize * 1.5 })
@@ -14,6 +14,12 @@ describe('text object size follows its content', () => {
     expect(next.width).toBe(long.length * 32)
     expect(next.height).toBe(48)
     expect(next.text).toBe(long)
+  })
+
+  it('creates a text object with the measured size, and none while the engine is not ready', () => {
+    const { width, height, ...input } = text()
+    expect(createWhiteboardText(input, measure)).toMatchObject({ width: 9 * 32, height: 48, text: 'Type text' })
+    expect(createWhiteboardText(input, () => null)).toBeNull()
   })
 
   it('re-derives the size when only the font size changes', () => {

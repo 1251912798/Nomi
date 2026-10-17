@@ -18,10 +18,19 @@ export function measureWhiteboardText(Text: LeaferUiModule['Text'], content: str
   return { width: Math.max(1, Math.ceil(width), Math.ceil(fontSize)), height: Math.max(1, Math.ceil(height)) }
 }
 
+const withMeasuredSize = (item: Omit<CanvasText, 'width' | 'height'>, measure: TextMeasure): CanvasText | null => {
+  const size = measure(item.text, item.fontSize)
+  return size ? { ...item, ...size } : null
+}
+
+/** The only way a text object comes into existence: its size is the measured one. Null while the canvas engine is not ready. */
+export function createWhiteboardText(input: Omit<CanvasText, 'width' | 'height'>, measure: TextMeasure): CanvasText | null {
+  return withMeasuredSize(input, measure)
+}
+
 /** Applies an edit to a text object and re-derives its size from the new content and font size. */
 export function applyTextChanges(item: CanvasText, changes: Partial<Pick<CanvasText, 'text' | 'fontSize' | 'color'>>, measure: TextMeasure): CanvasText {
   const next = { ...item, ...changes }
   if (next.text === item.text && next.fontSize === item.fontSize) return next
-  const size = measure(next.text, next.fontSize)
-  return size ? { ...next, ...size } : item
+  return withMeasuredSize(next, measure) ?? item
 }
