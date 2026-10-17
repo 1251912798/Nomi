@@ -87,9 +87,15 @@
     "上游说成了却没取到产物 / 状态认不出等够宽限 → retrieval-parse，任务留缓存、节点可找回；不判 failed",
     "每次取回失败带阶段码 retrieval-query / parse / download / timeout（或 outbound-blocked），渲染层见码一律落可找回",
     "中转原生通道查询连续 3 次按合同认出的非瞬时失败 → 单向退回通用通道并记日志，这一单只免费再查一次",
-    "结果误选防线（V-1213）：通用规则先比类型证据再比字段名，已知形状只做解码且排在深扫之后；合同读到的地址与通用规则过同一道筛（回显 + 类型，要音频时收视频容器是唯一例外），引擎 B 取产物带冻结合同的上下文（适配器 materialize 的 context 必填，回显 = 提交时封存的 body ∪ 合同参数）；状态与地址的生产读点只剩 readTaskResponse（runtime、taskResultQuery、引擎 B queryTask / materialize 都经它）"
+    "结果误选防线（V-1213）：通用规则先比类型证据再比字段名，已知形状只做解码且排在深扫之后；合同读到的地址与通用规则过同一道筛（回显 + 类型，要音频时收视频容器是唯一例外），引擎 B 取产物带冻结合同的上下文（适配器 materialize 的 context 必填，回显 = 提交时封存的 body ∪ 合同参数）；状态与地址的生产读点只剩 readTaskResponse（runtime、taskResultQuery、引擎 B queryTask / materialize 都经它）",
+    "生成产物进项目只有一道落盘关口（main：generatedAssetStaging；0.23.x：projectAssetStore.validatedGenerated），关口按调用方说好的期望类型核字节：字节不是那一类就不发布、不登记，抛 retrieval-download（可找回）；音频收视频容器是唯一例外；声明 / 扩展名乱标但字节对的照收、按字节记类型。期望类型在每扇写入口、importRemoteAsset 载荷、provider.materialize 的上下文上都由类型必填——读取层认不出的回显（无扩展名、重建后没有请求地址）在这里被字节挡住（V-1213 第 2 次复验）"
   ],
   "doors": [
+    {
+      "kind": "write",
+      "path": "electron/assets/projectAssetStore.ts",
+      "symbol": "prepareVerifiedGeneratedAsset"
+    },
     {
       "kind": "write",
       "path": "electron/catalog/relayNativeWireUpgrade.ts",
@@ -217,8 +223,8 @@
     }
   ],
   "door_reduction": {
-    "before": 28,
-    "after": 25,
+    "before": 29,
+    "after": 26,
     "why_not": "门数不变但判据收口：探测只有启动体检一扇（已改判据）；modelRetype 按 meta.archetypeId 取原生报文，这个标记现在只由拿到合同证据的升级写、降级时撤掉，所以它跟着体检的结论走；两条中转查询读同一张位置表；relayVideoI2vMigration 是 v7→v8 历史迁移，引用常量即拿到新合同；nodeRunOutcomePatch 的 6 个写入口都经同一个 statusPatch/outcomeError，原因保留只改那一处；ProviderMessageNote 的两个读者就是失败卡与可找回面板，共用一份实现；状态词表从四份收成一份（引擎 B 的 PROVIDER_TASK_STATE_BY_STATUS / PROVIDER_STATUS_CLASSES / reconcile knownStatuses 删除，三扇读门变成同一张表的调用方）；结果读法 readTaskResponse 两个读者就是两台引擎；isRetrievalStageCode 两个读者是首跑与重新取回两条路，同一个判据"
   },
   "generality_proof": "「这个中转视频模型走哪套报文」只有启动体检一处会改（探测全仓唯一调用点），判据由原生档案声明（probeEvidence），任何新档案进 nativeWireProfiles 都自带证据要求；「结果地址在哪」两条中转查询共用 RELAY_VIDEO_RESULT_URL_PATHS，同一组真实形状夹具对两条通道都跑；「可找回的原因」在结局投递唯一的 statusPatch 保留，节点、运行记录、分镜行、面板都读这一份",
@@ -375,6 +381,8 @@
     "electron/capabilityCore/apimartGenerationProvider.test.ts",
     "src/workbench/generationCanvas/runner/outboundBlockedRecoverable.test.ts",
     "src/workbench/generationCanvas/runner/retrievalRestartOnDisk.test.ts",
+    "electron/assets/generatedOutputKindGate.test.ts",
+    "electron/tasks/retrievalKindGate.test.ts",
     "electron/catalog/runwayLoopback.integration.test.ts",
     "electron/tasks/responseParsing.test.ts",
     "electron/tasks/videoRetrievalLandsInProject.test.ts"
@@ -414,7 +422,7 @@
     "OpenAI-video /v1/videos/{id}/content 要带用户 key 下载：牵涉凭据出站绑定与出站策略门岗，另开一刀；本 PR 只做到诚实可找回",
     "运行中退回的「非瞬时」判据按 new-api 的已知措辞与 404/400；其他网关的同义错误可能不被数进连击（只会少退回，不会误退回）",
     "真实 OS 进程退出再启动后「重新取回」零新增提交：引擎 A 有「清内存缓存、凭磁盘任务身份重建」的零 POST 证据（videoRetrievalLandsInProject.test.ts、V-1213 回环），引擎 B 有 productionGenerationSubmission.test.ts「survives restart」与 batchOutputRetrievalFailure.e2e.test.ts「重新取回零新提交」；两台引擎跨真实进程的统一网络账本没有建，交真付费验收（生成 → 退出 App → 再开 → 重新取回 → 对服务商账单只有一笔）",
-    "引擎 A 重启后无状态重建拿不到请求里的参考地址：回显只能靠类型那道筛挡，一个没有扩展名的回显参考图仍可能被当产物；下载落盘那一步（generatedAssetStaging）只核字节和它自称的类型一致，不知道任务要什么。把任务期望类型带进落盘校验要碰素材写入概念，另开一刀",
+    "读取层（taskResultReading）在两种情况下仍会把回显的参考地址交出去：地址没有扩展名且请求里没记这个地址（引擎 A 重启后无状态重建、引擎 B 参考地址只在授权快照里）；或 provider 被不带上下文直调（生产不可达：materialize 的 context 是接口必填）。这两种都在落盘关口按字节拒收，不会进项目——读取层不再追着回显集合补",
     "五种取回异常的重启证据到「真落盘 → 新进程用主进程读入口读回 → 加载入口装回 → 只查不交」为止（retrievalRestartOnDisk.test.ts）；渲染进程冷启动本身与快照之后事件日志尾巴的重放没进测试，交真 App 验收"
   ],
   "invariant_owner_layer": {

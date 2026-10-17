@@ -60,6 +60,7 @@
 - `src/workbench/generationCanvas/runner/outboundBlockedRecoverable.test.ts`（结果取回族）
 - `src/workbench/generationCanvas/runner/retrievalRestartOnDisk.test.ts`（五种取回异常：真落盘 → 新进程读回 → 加载归一 → 只查不交）
 - `electron/capabilityCore/apimartGenerationProvider.test.ts`「引擎 B 取产物：合同字段回显的参考图不当产物」（V-1213 复验复现）
+- `electron/assets/generatedOutputKindGate.test.ts`（落盘关口按期望类型核字节）、`electron/tasks/retrievalKindGate.test.ts`（两台引擎落盘闭环）
 - 既有：`apimartGenerationProvider.test.ts`、`falLoopback.integration.test.ts`、`falFaultMatrix.test.ts`、`runwayLoopback.integration.test.ts` 按新语义更新
 
 ## 8. V-1213 复验那一刀（同一程序内，不另开复盘）
@@ -69,3 +70,15 @@
 - **类根因**：「合同」被当成了豁免——同一个读取函数里，两条路走的不是同一套准入。上一轮写「回显连合同字段也排除」时只在引擎 A 的入参上成立，引擎 B 根本没有那个入参。
 - **补法（结构）**：合同与通用规则共用一个 `admissible`（回显 + 类型，唯一例外是要音频时收视频容器）；适配器 `materialize` 的 `context` 必填，生产调用方不带上下文就过不了类型检查。
 - **没拦住的地方**：下载落盘那一步只核「字节是不是它自称的那种媒体」，不知道任务要什么。引擎 A 重启后无状态重建拿不到请求里的参考地址，一个**没有扩展名**的回显参考图在那里仍可能被当产物。把任务期望类型带进 `generatedAssetStaging` 要碰素材写入概念，另开一刀（已报协调）。
+
+## 9. V-1213 第 2 次复验那一刀：期望类型进唯一的落盘关口（协调 10-17 裁定并入本 PR）
+
+- **症状**：授权快照里没有扩展名的参考地址，provider 重建后读取层认不出是回显，参考 PNG 被落盘，回执却标 video。
+- **类根因**：「这份产物该是哪一类」只活在读取层（扩展名 + 回显集合），而回显集合有很多来源（内存、合同参数、授权快照、重建后的请求……），每多一个来源就多一处补。真正知道答案的是**字节**和**任务**，两样东西在落盘那一刻都在——关口却只问字节自称是什么，不问任务要什么。
+- **补法（结构上做不出来）**：
+  - 唯一的落盘关口（main：`generatedAssetStaging`；0.23.x：`projectAssetStore.validatedGenerated`）多一个必填的期望类型，字节不是那一类就不发布、不登记，抛 `retrieval-download`（可找回）；音频收视频容器是唯一例外；字节对但声明乱标的照收、按字节记。
+  - 三扇写入口、`storeAssetBytes`、`importRemoteAsset` 载荷、`provider.materialize` 的上下文，期望类型全部由类型必填；生成产物给 `null` 当场拒，不按声明猜。
+  - 读取层不再追回显集合：认不出的回显交给关口按字节挡。
+- **门岗**：`generatedOutputKindGate.test.ts`（关口矩阵）、`retrievalKindGate.test.ts`（两台引擎照验收线复现走真下载、真暂存）。变异「去掉类型核对」让 9 条红。
+- **顺手查出来的**：拒收原话的占位符写成了 `{got}`（`desktopT` 只认 `{{name}}`）——全量重跑验收线复现时发现，已修并由测试钉住「原话不许漏出占位符」。
+- **回补**：0.23.1 没有 `generatedAssetStaging`，不能干净摘；同一规则单独移植到 0.23.x 的同步关口（试摘分支上的两个移植提交），见设计卡回补表第 18–20 步。

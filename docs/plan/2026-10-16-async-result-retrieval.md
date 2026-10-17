@@ -25,7 +25,7 @@
 ## 解析顺序（`readTaskResponse` 的合同）
 
 1. **状态**：通道声明的 statusMapping → 共享词表（大小写不敏感：queued / pending / submitted / not_start / running / processing / in_progress / generating / succeeded / success / completed / complete / done / finished / failed / failure / error / rejected / cancelled / expired …，按官方源码与文档补全）→ 认不出：`unknown`（继续等，不当失败；到硬上限落可找回，带上游原动词）。
-2. **结果地址**：先按通道合同（response_mapping）；取不到且状态是成功 → **通用规则**：在响应里按优先级找 `result_url / video_url / url / content.* / data.* / output.* / results[*] / videos[*]`，只收 http(s)/data: 地址；**按期望媒体类型核对**（扩展名 / 已知结果域，下载时再按 content-type 核一次）；**排除回显的参考图地址**（引擎 A：本次请求 extras 里的参考 URL；引擎 B：提交时封存的 body ∪ 冻结合同的参数）；**合同读到的地址过同一道筛**（回显 + 类型，要音频时收视频容器是唯一例外——V-1213 复验）；记下用了哪条规则（`contract` / `generic:<path>`）进日志与结果 provenance。
+2. **结果地址**：先按通道合同（response_mapping）；取不到且状态是成功 → **通用规则**：在响应里按优先级找 `result_url / video_url / url / content.* / data.* / output.* / results[*] / videos[*]`，只收 http(s)/data: 地址；**按期望媒体类型核对**（扩展名 / 已知结果域，下载时再按 content-type 核一次）；**排除回显的参考图地址**（引擎 A：本次请求 extras 里的参考 URL；引擎 B：提交时封存的 body ∪ 冻结合同的参数）；**合同读到的地址过同一道筛**（回显 + 类型，要音频时收视频容器是唯一例外——V-1213 复验）；读取层认不出的（无扩展名、重建后没有请求地址）交给**落盘关口按期望类型核字节**（V-1213 第 2 次复验）；记下用了哪条规则（`contract` / `generic:<path>`）进日志与结果 provenance。
 3. **失败原话**：response_mapping.error_message → 现有 `taskFailureMessageFromResponse`（不改，已是唯一读点）。
 
 ## 9 格
@@ -85,6 +85,7 @@
 | 15 | 1c83d754f | `scripts/check-file-sizes.mjs`（runtime 基线按 main 的数） | 只取矩阵测试，基线留 0.23.x 自己的数 |
 | 16 | e24f32d62 | `modelOnboarding/declaredProviderProduction.test.ts`（0.23.1 没有这个文件）；0.23.1 的 `GenerationProviderTaskContext` 只有 modelId / mode | 删掉那个测试文件；上下文类型补 `"parameters"` 一个词。目录执行器在 0.23.1 上 798 行（上限 800） |
 | 17 | 666c586e1 | 0.23.1 的 `restoreWorkbenchProjectPayload` 只收一个参数 | 测试里去掉第二个参数 |
+| 18–20 | 42736b307、df728c339、78787c0c4 | **摘不干净**：0.23.1 没有 `generatedAssetStaging`（#1208 之后才有），关口是 `projectAssetStore.validatedGenerated`（同步）；写入口名字不同（`writeAsset` / `writeDeterministicAsset` / `moveAssetFile`） | 不摘，改为两个 0.23.x 移植提交：同一规则落在 `validatedGenerated`，写入口与调用方同样类型必填；provider 上下文必填同 main。测试同 main 一组（0.23.x 写入口同步，包一层 Promise；引擎 A 回环用实验夹具 origin 放行） |
 
 16–17 摘上去后（试摘分支上另记一个 `chore(backport)` 提交放这两处邻接差异）：electron / app 两份 tsc 与测试类型门干净、`check-file-sizes` 过；相关 290 个测试文件 3710 条，满载并行时一条 MP4 导出用例超时，单跑与按目录重跑（587 条）全绿。
 
