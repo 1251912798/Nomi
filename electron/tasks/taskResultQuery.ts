@@ -107,7 +107,9 @@ export function retrievalStageError(code: "retrieval-query" | "retrieval-parse" 
   const stageKey = code === "retrieval-query" ? "tasks.retrievalStage.query" : code === "retrieval-parse" ? "tasks.retrievalStage.parse" : "tasks.retrievalStage.download";
   const human = `${note ? `${note} ` : ""}${desktopT(stageKey)}${message}`;
   const tagged = tagNomiError(code, human);
-  return error instanceof VendorRequestError ? new VendorRequestError(tagged, error.structured, error.providerAnswer, { cause: error }) : new Error(tagged);
+  // 只带 message + structured（IPC 那头读 structured 说出服务商原话）：providerAnswer 只服务「提交有没有被受理」的判定，
+  // 查询 / 下载阶段用不上；两参构造也让这段能原样回补到 0.23.x（那里的 VendorRequestError 只有两参）。
+  return error instanceof VendorRequestError ? new VendorRequestError(tagged, error.structured) : new Error(tagged);
 }
 
 /**
