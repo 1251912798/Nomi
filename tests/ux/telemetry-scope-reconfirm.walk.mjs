@@ -7,6 +7,7 @@
 // 用法：先 pnpm run build；NOMI_WALK_OFFSCREEN=1 node tests/ux/telemetry-scope-reconfirm.walk.mjs
 //       EVIDENCE_DIR=<目录> 指定截图落点
 import { launchNomiApp } from './_launchApp.mjs'
+import { uiText } from './full-walk/invariants.mjs'
 import { expect, expectAbsent, proveProbe, clickOrFail, DEFAULT_TIMEOUT_MS, screenshotSettled } from './_assert.mjs'
 import fs from 'node:fs'
 import path from 'node:path'
@@ -19,8 +20,8 @@ fs.rmSync(tempRoot, { recursive: true, force: true })
 
 const PERF_PROPS = { interactionP75: '100-200', interactionP95: '200-500', longFramesPerMin: '1-3', longestFrame: '100-250', observedMinutes: '5-30', page: 'generation', nodes: '21-100', imageNodes: '1-20', generating: false, cpuCores: '5-8', memoryGb: '8plus' }
 const LOCALES = [
-  { locale: 'zh-CN', newProject: /新建空白项目/, accept: '同意新增' },
-  { locale: 'en', newProject: /New blank project/, accept: 'Add it' },
+  { locale: 'zh-CN', newProject: /新建空白项目/ },
+  { locale: 'en', newProject: /New blank project/ },
 ]
 
 let failed = null
@@ -40,7 +41,7 @@ for (const spec of LOCALES) {
       for (const k of ['nomi:splash:v1', 'nomi:journey-tour:v1', 'nomi:canvas-gesture-hint:v1']) localStorage.setItem(k, 'seen')
     }, spec.locale)
     await win.reload()
-    await win.waitForTimeout(1500)
+    await win.waitForFunction(() => Boolean(window.nomiDesktop?.settings?.telemetry))
 
     const before = await win.evaluate(() => window.nomiDesktop.settings.telemetry.get())
     expect(before.enabled, '预埋的旧设置应当是开着的').toBe(true)
@@ -57,8 +58,9 @@ for (const spec of LOCALES) {
     const queuedBefore = await win.evaluate((props) => window.nomiDesktop.telemetry.track({ eventName: 'perf.session.summary', props }), PERF_PROPS)
     expect(queuedBefore.queued, '确认之前新范围的事件不许入队').toBe(false)
 
-    await card.getByRole('button', { name: spec.accept, exact: true }).click()
-    await win.waitForTimeout(800)
+    // 按钮按词典里的名字认，不抄文案。
+    await card.getByRole('button', { name: uiText(spec.locale, 'agentPanelV4.consent.scopeAccept'), exact: true }).click()
+    await win.waitForFunction(async () => (await window.nomiDesktop.settings.telemetry.get()).scopeVersion === 2)
     const after = await win.evaluate(() => window.nomiDesktop.settings.telemetry.get())
     expect(after.scopeVersion, '点同意后范围版本应升到 2').toBe(2)
     const queuedAfter = await win.evaluate((props) => window.nomiDesktop.telemetry.track({ eventName: 'perf.session.summary', props }), PERF_PROPS)
@@ -68,7 +70,8 @@ for (const spec of LOCALES) {
     expect(names, '本机待发 / 已发摘要里应当有 perf.session.summary').toContain('perf.session.summary')
 
     await win.reload()
-    await win.waitForTimeout(2000)
+    // 等 Agent 面板的空态出现（卡就住在它里面），再证明卡不在——不拿 sleep 当信号。
+    await win.waitForSelector('[data-v4-block="empty"]', { timeout: DEFAULT_TIMEOUT_MS })
     await expectAbsent(win.locator('[data-v4-block="consent"]'), { provenBy: proof, message: '确认过的用户重载后又被弹了卡' })
     await screenshotSettled(win, { path: path.join(evidenceDir, `${spec.locale}-after-confirm.png`) })
     console.log(`✅ ${spec.locale}: 再确认卡出现 → 确认前不入队 → 确认后升到范围 2 并入队 → 重载不再弹`)

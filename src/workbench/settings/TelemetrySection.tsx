@@ -73,7 +73,7 @@ export function TelemetrySection(): JSX.Element {
         />
       </label>
       {settings?.enabled && settings.scopeVersion < 2 ? (
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-nomi-sm border border-nomi-line px-3 py-2" data-telemetry-scope-notice>
+        <div className="mt-3 flex flex-wrap items-center gap-2 rounded-nomi-sm border border-nomi-line px-3 py-2" data-telemetry-scope-notice>
           <p className="m-0 min-w-0 flex-1 text-caption leading-relaxed text-nomi-ink-60">{t('settings.general.telemetry.scopeNotice')}</p>
           <DesignButton type="button" variant="default" disabled={busy} onClick={() => { void confirmScope() }}>
             {t('settings.general.telemetry.scopeConfirm')}

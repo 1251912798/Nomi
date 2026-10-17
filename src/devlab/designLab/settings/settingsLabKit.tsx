@@ -21,10 +21,7 @@ export const SETTINGS_CELL_HEIGHT = 600
 /** 导出行为：结算成什么、还是一直转圈（「正在打包」那一格）。 */
 export type LabExportBehavior = DiagnosticsExportResult | 'never-settles'
 
-/** 遥测那一块的状态：默认关；`old-scope` = 开着、但同意的还是旧告知范围（要再确认）。 */
-export type LabTelemetryState = 'off' | 'old-scope'
-
-function installLabBridge(behavior: LabExportBehavior, telemetry: LabTelemetryState): void {
+function installLabBridge(behavior: LabExportBehavior, legacyConsent: boolean): void {
   const exportBundle = (): Promise<DiagnosticsExportResult> =>
     behavior === 'never-settles' ? new Promise<DiagnosticsExportResult>(() => {}) : Promise.resolve(behavior)
   ;(window as unknown as { nomiDesktop?: unknown }).nomiDesktop = {
@@ -33,13 +30,13 @@ function installLabBridge(behavior: LabExportBehavior, telemetry: LabTelemetrySt
         get: () =>
           Promise.resolve({
             schemaVersion: 1,
-            enabled: telemetry === 'old-scope',
+            enabled: legacyConsent,
             endpointMode: 'nomi',
-            consentedAt: telemetry === 'old-scope' ? '2026-09-20T00:00:00.000Z' : null,
+            consentedAt: legacyConsent ? '2026-09-20T00:00:00.000Z' : null,
             installSessionId: null,
-            scopeVersion: telemetry === 'old-scope' ? 1 : 2,
-            endpointConfigured: telemetry === 'old-scope',
-            status: telemetry === 'old-scope' ? 'configured' : 'disabled',
+            scopeVersion: legacyConsent ? 1 : 2,
+            endpointConfigured: legacyConsent,
+            status: legacyConsent ? 'configured' : 'disabled',
           }),
         set: () => new Promise(() => {}),
         summary: () =>
@@ -58,16 +55,17 @@ function installLabBridge(behavior: LabExportBehavior, telemetry: LabTelemetrySt
 export function SettingsStage({
   behavior,
   autoExport = false,
-  telemetry = 'off',
+  legacyConsent = false,
   children,
 }: {
   behavior: LabExportBehavior
-  telemetry?: LabTelemetryState
+  /** 遥测开着、但同意的还是旧告知范围（要再确认）。默认关。 */
+  legacyConsent?: boolean
   /** 结果行/进行态那几格：挂载后自动点一次导出，把组件推到那个状态。 */
   autoExport?: boolean
   children: React.ReactNode
 }): JSX.Element {
-  React.useMemo(() => installLabBridge(behavior, telemetry), [behavior, telemetry])
+  React.useMemo(() => installLabBridge(behavior, legacyConsent), [behavior, legacyConsent])
   const ref = React.useRef<HTMLDivElement>(null)
   React.useEffect(() => {
     if (!autoExport) return

@@ -55,3 +55,12 @@
 ## 补、换、删
 
 补。理由：遥测传输、同意合同、白名单、本地摘要、删除都已存在，缺的只是一类新数据和它的告知；新增一个事件名、一个范围版本号、一个采集模块，没有可以替换或删除的旧实现（旧的 `forceVisible` 同提交换成 `force`）。
+
+## 按钮普查（本 PR 新增 / 改动的可点目标）
+
+| 目标 | 设计来源 / 组件 | 状态 | 可访问名（词典键） | 用户动作 | 界面状态与副作用 | 测试 / 证据 |
+|---|---|---|---|---|---|---|
+| 再确认卡「同意新增」（主） | 首次询问卡同一组件 `V4ConsentCard`，`scope` 形态，`DecisionBar` 最右 | 仅在遥测开着、范围版本 < 2、这台机器没问过时出现 | `agentPanelV4.consent.scopeAccept` | 点击 | 写 `enabled:true` → 主进程范围版本升到 2；卡收起；新事件开始入队 | `telemetry-scope-reconfirm.walk.mjs`；设计实验室 `v4-consent-scope-reask`（zh 亮 / en 暗） |
+| 再确认卡「保持原样」（拒绝） | 同上，与主动作同尺寸 | 同上 | `agentPanelV4.consent.scopeDecline` | 点击 | 只记「问过了」；范围保持 1，新事件不入队，原统计照旧 | `perfCollector` 不受影响；`telemetryOutbox.test.ts` 旧范围用例 |
+| 设置「同意新增」 | `TelemetrySection` 内一块，`DesignButton` | 遥测开着且范围版本 < 2 时出现；确认后消失 | `settings.general.telemetry.scopeConfirm` | 点击 | 同上，并记「问过了」让 Agent 面板的卡不再弹 | 设计实验室 `privacy-05-scope-reask-en-dark` |
+| 反馈卡「附带」行 | 现有 `FeedbackReportCard`，只改文字 | 常驻 | `feedbackReport.attaches` | 无（「查看」沿用现有） | 清单里多一项 `perf/summary.json` 或写明 `perf-unavailable` | `feedbackReport.test.ts` |

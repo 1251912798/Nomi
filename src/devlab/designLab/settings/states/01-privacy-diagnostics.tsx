@@ -79,7 +79,7 @@ export const PRIVACY_DIAGNOSTICS_STATES: readonly LabState[] = [
     scheme: 'dark',
     render: () => (
       <LabLocaleGate locale="en">
-        <SettingsStage behavior={{ ok: false, reason: 'canceled' }} telemetry="old-scope">
+        <SettingsStage behavior={{ ok: false, reason: 'canceled' }} legacyConsent>
           <PrivacyBlock />
         </SettingsStage>
       </LabLocaleGate>
