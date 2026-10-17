@@ -11,8 +11,8 @@ import type { GenerationProvider, GenerationProviderRequestInputV1 } from "./gen
 import { classifyUpstreamTaskStatus } from "../shared/taskStatus";
 import { appFetch } from "../appFetch";
 import { requestJson, VendorRequestError } from "../vendor/vendorHttp";
-import { materializationOutputs } from "./apimartGenerationOutputs";
-import { expectedMediaKind, readTaskResponse } from "../tasks/taskResultReading";
+import { readMaterializationOutputs } from "./apimartGenerationOutputs";
+import { expectedMediaKind, readProviderStatusWord } from "../tasks/taskResultReading";
 import { productionGenerationPayloadHash } from "../productionRun/productionGenerationAuthorization";
 import { readCatalog } from "../catalog/catalogStore";
 import { builtinVendorScopeMatches, isBuiltinDirectKeyVendor } from "../catalog/builtinVendorSeeds";
@@ -566,19 +566,8 @@ export function createCatalogGenerationProvider(options: CatalogGenerationProvid
     const built = renderOperation(target, queryOperation, request, providerMeta, apiKey);
     const payload = await send(target.vendor, apiKey, built, undefined, "task query");
     const responseMapping = isJsonRecord(queryOperation.response_mapping) ? queryOperation.response_mapping : null;
-    // 状态词表全仓一份（shared/taskStatus），状态与地址只经唯一读法 readTaskResponse（与引擎 A 同一份）：
-    // 上游原样的状态串优先（Run 的账本记的是真话），认不出来时才落到归一后的判词。
-    const rawStatus = firstString(
-      firstMappedString(payload, responseMapping, "status"),
-      isJsonRecord(payload.data) ? (payload.data as JsonRecord).status : "",
-      payload.status,
-    );
-    // 状态与地址只经唯一读法（tasks/taskResultReading，与引擎 A 同一份）；这里只取它的状态结论。
-    const resolved = readTaskResponse({ response: payload, responseMapping, statusMapping: target.mapping.statusMapping, wantedKind: null });
-    // 原话在共享词表里认得、或谁都认不得 → 记原话（Run 的账本记真话）；只有通道自己的 statusMapping
-    // 认得的方言词（共享词表里没有）才交归一后的判词——否则下游那张唯一词表会把它当「认不出」。
-    const keepRaw = Boolean(rawStatus) && (classifyUpstreamTaskStatus(rawStatus) !== "unknown" || Boolean(resolved.unrecognizedStatus));
-    return { status: keepRaw ? rawStatus : resolved.status, raw: payload };
+    // 状态只经唯一读法（tasks/taskResultReading，与引擎 A 同一份）；Run 的账本记上游原话，方言词交归一判词。
+    return { status: readProviderStatusWord(payload, responseMapping, target.mapping.statusMapping), raw: payload };
   };
 
   const submitForSelection = async (
@@ -737,26 +726,12 @@ export function createCatalogGenerationProvider(options: CatalogGenerationProvid
     },
     query: queryTask,
     async materialize(input) {
-      // 地址只有一种读法（tasks/taskResultReading，与引擎 A 共用）：先按这条任务的 query 合同，读不到再走通用规则。
-      // 认不出是哪条任务（重启后没有上下文、这家又有多条不同的 query）就只用通用规则——不猜合同。
-      const target = ((): ReturnType<typeof queryTargetFor> | null => {
-        try {
-          return queryTargetFor(input.providerTaskId.trim());
-        } catch {
-          return null;
-        }
-      })();
-      // 期望的媒体类型只信「确实知道是哪条任务」的那份记录：③「这家每条 query 都一样」选出来的
-      // 只是随便一条 mapping，它的 taskKind 说明不了这笔任务要图还是要视频。
-      const remembered = selectionByTaskId.get(input.providerTaskId.trim());
-      const wantedKind = remembered ? expectedMediaKind(billingKindForTaskKind(remembered.taskKind)) : null;
-      const reading = readTaskResponse({
-        response: input.raw,
-        responseMapping: target && isJsonRecord(target.operation.response_mapping) ? target.operation.response_mapping : null,
-        statusMapping: target?.mapping.statusMapping,
-        wantedKind,
-      });
-      return { outputs: materializationOutputs(input.raw, reading.assetUrls, wantedKind), raw: input.raw };
+      // 地址只经唯一读法（readMaterializationOutputs → readTaskResponse）；认不出是哪条任务就只用通用规则、不猜合同。
+      // 期望类型只信「确实知道是哪条任务」的记录：③「每条 query 都一样」选出的 mapping 说明不了要图还是要视频。
+      const id = input.providerTaskId.trim(), remembered = selectionByTaskId.get(id);
+      const target = (() => { try { return queryTargetFor(id); } catch { return null; } })();
+      const query = target ? { responseMapping: isJsonRecord(target.operation.response_mapping) ? target.operation.response_mapping : null, statusMapping: target.mapping.statusMapping } : null;
+      return { outputs: readMaterializationOutputs(input.raw, query, remembered ? expectedMediaKind(billingKindForTaskKind(remembered.taskKind)) : null), raw: input.raw };
     },
     async reconcile(input) {
       if (!input.providerTaskId?.trim()) return { disposition: "indeterminate" };
