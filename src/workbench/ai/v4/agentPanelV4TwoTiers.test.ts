@@ -53,6 +53,11 @@ describe('文案：每档一行灰字，说清会发生什么；不出现价格 
     expect(zh.permissionWhy.direct).toMatch(/停止/)
     expect(zh.permissionWhy.request).not.toBe(zh.permissionWhy.direct)
   })
+  // 已知限制如实说（2026-10-16 协调裁定 A）：按文稿里的分镜方案出图走的是另一条确认路，两档下都仍会每批问一次。
+  it('直接生成的灰字与切档确认都说清「按文稿方案出图仍会每批问一次」（zh + en）', () => {
+    for (const text of [zh.permissionWhy.direct, zh.autoModeConfirmBody]) expect(text).toMatch(/文稿.*分镜方案.*每批问一次/)
+    for (const text of [en.permissionWhy.direct, en.autoModeConfirmBody]) expect(text).toMatch(/storyboard plan.*still asks once per batch/)
+  })
   it('en 同样只有两档', () => {
     expect(Object.keys(en.permission)).toEqual(['request', 'direct'])
     expect(Object.keys(en.permissionWhy)).toEqual(['request', 'direct'])

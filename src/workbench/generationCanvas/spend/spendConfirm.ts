@@ -239,6 +239,33 @@ export async function confirmGenerationSpend(
   })
 }
 
+/**
+ * 分镜方案整批生成的确认卡（文稿方案的「生成未生成的 N 镜」，用户自己点的与 Agent 的 `generate` 同一张）。
+ *
+ * 为什么它住在这里、不让调用方自己弹框：「这一笔问不问用户」只有这个模块回答（概念 `spend.confirmation-requirement`）。
+ * 2026-10-16 真付费验收发现分镜批量那一处直接调 `requestConfirm`，绕过了 owner——于是「直接生成」档对它
+ * 完全不起作用，而且没有任何东西会红。现在的行为原样保留：这张卡**每一批都问**，因为它同时是勾选清单
+ * （用户在卡上挑这一批跑哪几镜），不只是一道花钱闸；两档下都照旧问一次（已知限制，结构解见
+ * docs/plan/2026-10-16-manuscript-plan-own-run.md）。返回 false = 用户取消。
+ */
+export async function confirmStoryboardPlanBatch(opts: {
+  title: string
+  confirmLabel: string
+  cancelLabel: string
+  planRows: readonly PlanRow[]
+  onPlanToggle: (row: PlanRow, checked: boolean) => void
+}): Promise<boolean> {
+  return useSpendConfirmStore.getState().requestConfirm({
+    title: opts.title,
+    message: '',
+    kind: 'generation',
+    confirmLabel: opts.confirmLabel,
+    cancelLabel: opts.cancelLabel,
+    planRows: opts.planRows,
+    onPlanToggle: opts.onPlanToggle,
+  })
+}
+
 export type GenerationCostKind = 'text' | 'image' | 'video' | 'audio' | 'model3d' | 'mixed'
 
 export type GenerationCostContext = {
