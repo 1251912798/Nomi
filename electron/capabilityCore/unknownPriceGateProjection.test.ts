@@ -4,12 +4,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const decisions: Array<Record<string, unknown>> = []
+let rendererAnswer: { confirmed?: boolean; trialFirst?: boolean } | null = { confirmed: false }
 let previewForChallenge: { currency: string; maximum: number; unknownJobCount?: number } = { currency: 'CNY', maximum: 0, unknownJobCount: 1 }
 
 vi.mock('./rendererBridge', () => ({
   requestRendererDecision: vi.fn(async (_channel: string, payload: Record<string, unknown>) => {
     decisions.push(payload)
-    return { confirmed: false }
+    return rendererAnswer
   }),
   rendererTargetIdentity: () => ({ webContentsId: 1 }),
 }))
@@ -32,6 +33,19 @@ import { reservationMaximumForDisplay } from './approvalReceipt'
 
 beforeEach(() => {
   decisions.length = 0
+  rendererAnswer = { confirmed: false }
+})
+
+// C-4：确认卡上点了「忽略」要带出 declined；卡没弹出来（渲染端不在）不是用户拒绝。
+describe('确认卡的回答：拒绝与没人答分得开', () => {
+  it('用户点忽略 → declined:true；渲染端无应答 → 没有 declined；试拍首镜不算拒绝', async () => {
+    previewForChallenge = { currency: 'CNY', maximum: 5 }
+    expect(await createDefaultAuthorities().confirmGenerationInNomi({ challengeToken: 't' })).toMatchObject({ confirmed: false, declined: true })
+    rendererAnswer = null
+    expect(await createDefaultAuthorities().confirmGenerationInNomi({ challengeToken: 't' })).not.toHaveProperty('declined')
+    rendererAnswer = { confirmed: false, trialFirst: true }
+    expect(await createDefaultAuthorities().confirmGenerationInNomi({ challengeToken: 't' })).not.toHaveProperty('declined')
+  })
 })
 
 describe('未知价不许在 Nomi 确认卡变成 0', () => {

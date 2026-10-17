@@ -42,10 +42,15 @@ export type GenerationGateConfirmation = {
   nextAction: 'in_client' | 'in_nomi' | 'wait_for_reconciliation'
   receiptId?: string
   receiptToken?: string
+  /**
+   * 用户明确答了「不」（declined）或确认超时没人答（timeout）。缺省 = 还没有人答 / 没有确认面。
+   * Agent 据此分清「被拒绝了，停下」与「还没确认」，不再反复催问（C-4）。
+   */
+  denial?: 'declined' | 'timeout'
   trialFirst?: boolean // P4 S4 「先试拍第 1 镜」(§6 T3): {confirmed:false,trialFirst:true} → backend narrows plan to shot 1 + re-gates. Never approval.
 }
 
-export type GenerationGateVerificationResult = Pick<GenerationGateConfirmation, 'confirmed' | 'receiptId' | 'receiptToken' | 'trialFirst'>
+export type GenerationGateVerificationResult = Pick<GenerationGateConfirmation, 'confirmed' | 'receiptId' | 'receiptToken' | 'trialFirst'> & { declined?: boolean }
 
 export type GenerationGateConfirmationDependencies = {
   /** McpTransport 的结构子集——只取本流用到的四项，不 import 回 mcpProtocol（免类型环）。 */
@@ -154,6 +159,7 @@ export function createGenerationGateConfirmation({ transport, clientSupportsElic
           confirmed: false,
           surface: 'client',
           nextAction: 'wait_for_reconciliation',
+          denial: elicited.action === 'timeout' ? 'timeout' : 'declined',
         }
       }
       // 客户端明确点了「是」。**但光有「是」不够——花钱必须有主进程铸的收据**，这不是本文件的规矩，
@@ -199,6 +205,7 @@ export function createGenerationGateConfirmation({ transport, clientSupportsElic
         confirmed,
         surface: 'nomi',
         nextAction: confirmed ? 'in_nomi' : 'wait_for_reconciliation',
+        ...(!confirmed && typeof fallback === 'object' && fallback.declined === true ? { denial: 'declined' as const } : {}),
         ...(typeof fallback === 'object' ? {
           ...(fallback.receiptId ? { receiptId: fallback.receiptId } : {}),
           ...(fallback.receiptToken ? { receiptToken: fallback.receiptToken } : {}),
@@ -222,4 +229,23 @@ export function createGenerationGateConfirmation({ transport, clientSupportsElic
   }
 
   return { requestGenerationConfirmation }
+}
+
+/**
+ * 「被拒绝 / 超时」翻成给 Agent 的终态说明（生成门与降档共用这一份，免得两个入口各说各的）。
+ * 结构化的 nextAction：`stop` = 用户说不，结束这次、等新指令、别再发确认；`ask_user` = 没人答，先问用户本人。
+ */
+export function generationDenialOutcome(denial: NonNullable<GenerationGateConfirmation['denial']>, locale: 'zh-CN' | 'en'): { text: string; structuredContent: Record<string, unknown> } {
+  const declined = denial === 'declined'
+  const text = locale === 'en'
+    ? declined
+      ? 'Not started: the user declined this request. Nothing was spent. Stop this generation and wait for new instructions from the user; do not ask for confirmation again.'
+      : 'Not started: nobody answered the confirmation in time. Nothing was spent. Ask the user whether they still want this before requesting confirmation again.'
+    : declined
+      ? '未开始：用户拒绝了这次请求，没有花费。请结束这次生成，等用户的新指令；不要再次发起确认。'
+      : '未开始：确认超时没有人答复，没有花费。请先问用户是否还要做，再决定要不要重新发起确认。'
+  return {
+    text,
+    structuredContent: { nomiOutcome: { denied: true, applied: false, reason: denial, nextAction: declined ? 'stop' : 'ask_user' } },
+  }
 }

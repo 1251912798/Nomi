@@ -60,6 +60,8 @@ export function createDefaultAuthorities(hooks: {
         confirmed: false,
         challengeId: challenge.challengeId,
         ...(result?.trialFirst === true ? { trialFirst: true } : {}),
+        // 卡真的弹出来、用户点了「忽略」才是拒绝；渲染端没应答（null）不是——Agent 要靠它分清「拒绝」与「没人答」（C-4）。
+        ...(result !== null && typeof result === 'object' && result.trialFirst !== true ? { declined: true } : {}),
       }
     }
     const attestation = receiptAuthority.createMainProcessGestureAttestation(challengeToken, {
