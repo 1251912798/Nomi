@@ -87,7 +87,7 @@
     "上游说成了却没取到产物 / 状态认不出等够宽限 → retrieval-parse，任务留缓存、节点可找回；不判 failed",
     "每次取回失败带阶段码 retrieval-query / parse / download / timeout（或 outbound-blocked），渲染层见码一律落可找回",
     "中转原生通道查询连续 3 次按合同认出的非瞬时失败 → 单向退回通用通道并记日志，这一单只免费再查一次",
-    "结果误选防线（V-1213）：通用规则先比类型证据再比字段名，已知形状只做解码且排在深扫之后；回显的参考地址连合同字段也排除；状态与地址的生产读点只剩 readTaskResponse（runtime、taskResultQuery、引擎 B queryTask / materialize 都经它）"
+    "结果误选防线（V-1213）：通用规则先比类型证据再比字段名，已知形状只做解码且排在深扫之后；合同读到的地址与通用规则过同一道筛（回显 + 类型，要音频时收视频容器是唯一例外），引擎 B 取产物带冻结合同的上下文（适配器 materialize 的 context 必填，回显 = 提交时封存的 body ∪ 合同参数）；状态与地址的生产读点只剩 readTaskResponse（runtime、taskResultQuery、引擎 B queryTask / materialize 都经它）"
   ],
   "doors": [
     {
@@ -374,6 +374,8 @@
     "electron/catalog/falLoopback.integration.test.ts",
     "electron/capabilityCore/apimartGenerationProvider.test.ts",
     "src/workbench/generationCanvas/runner/outboundBlockedRecoverable.test.ts",
+    "src/workbench/generationCanvas/runner/retrievalRestartOnDisk.test.ts",
+    "electron/catalog/runwayLoopback.integration.test.ts",
     "electron/tasks/responseParsing.test.ts",
     "electron/tasks/videoRetrievalLandsInProject.test.ts"
   ],
@@ -412,7 +414,8 @@
     "OpenAI-video /v1/videos/{id}/content 要带用户 key 下载：牵涉凭据出站绑定与出站策略门岗，另开一刀；本 PR 只做到诚实可找回",
     "运行中退回的「非瞬时」判据按 new-api 的已知措辞与 404/400；其他网关的同义错误可能不被数进连击（只会少退回，不会误退回）",
     "真实 OS 进程退出再启动后「重新取回」零新增提交：引擎 A 有「清内存缓存、凭磁盘任务身份重建」的零 POST 证据（videoRetrievalLandsInProject.test.ts、V-1213 回环），引擎 B 有 productionGenerationSubmission.test.ts「survives restart」与 batchOutputRetrievalFailure.e2e.test.ts「重新取回零新提交」；两台引擎跨真实进程的统一网络账本没有建，交真付费验收（生成 → 退出 App → 再开 → 重新取回 → 对服务商账单只有一笔）",
-    "合同字段不按扩展名筛类型（只排除回显）：合同是这家声明的结果位置，音频装在 .mp4 容器等情况以合同为准；真错了由下载那一步按字节核（generatedMediaDecode）"
+    "引擎 A 重启后无状态重建拿不到请求里的参考地址：回显只能靠类型那道筛挡，一个没有扩展名的回显参考图仍可能被当产物；下载落盘那一步（generatedAssetStaging）只核字节和它自称的类型一致，不知道任务要什么。把任务期望类型带进落盘校验要碰素材写入概念，另开一刀",
+    "五种取回异常的重启证据到「真落盘 → 新进程用主进程读入口读回 → 加载入口装回 → 只查不交」为止（retrievalRestartOnDisk.test.ts）；渲染进程冷启动本身与快照之后事件日志尾巴的重放没进测试，交真 App 验收"
   ],
   "invariant_owner_layer": {
     "layer": "electron/catalog/relayNativeWireUpgrade.ts",

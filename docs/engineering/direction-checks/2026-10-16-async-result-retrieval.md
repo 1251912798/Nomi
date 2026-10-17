@@ -58,4 +58,14 @@
 - `electron/catalog/videoQueryContractMatrix.test.ts`（108 条内置视频映射 + 中转两种 × 成功 / 进行中 / 认不出状态）
 - `electron/tasks/taskResultReading.test.ts`、`electron/tasks/relayQueryFallback.test.ts`、`electron/tasks/queryOpEmptySuccess.test.ts`、`electron/tasks/unrecognizedTaskStatusQuery.test.ts`
 - `src/workbench/generationCanvas/runner/outboundBlockedRecoverable.test.ts`（结果取回族）
-- 既有：`apimartGenerationProvider.test.ts`、`falLoopback.integration.test.ts`、`falFaultMatrix.test.ts` 按新语义更新
+- `src/workbench/generationCanvas/runner/retrievalRestartOnDisk.test.ts`（五种取回异常：真落盘 → 新进程读回 → 加载归一 → 只查不交）
+- `electron/capabilityCore/apimartGenerationProvider.test.ts`「引擎 B 取产物：合同字段回显的参考图不当产物」（V-1213 复验复现）
+- 既有：`apimartGenerationProvider.test.ts`、`falLoopback.integration.test.ts`、`falFaultMatrix.test.ts`、`runwayLoopback.integration.test.ts` 按新语义更新
+
+## 8. V-1213 复验那一刀（同一程序内，不另开复盘）
+
+- **症状**：引擎 B 把合同字段（query 的 `video_url`）回显的参考图当产物，落盘成一张 PNG。
+- **直接原因**：读取层有两道筛（回显、类型），合同路只用了回显那道；引擎 B 又从来不提供回显集合（提交记忆只存模型 / 任务种类，取产物入参没有上下文）；产物种类按扩展名定。
+- **类根因**：「合同」被当成了豁免——同一个读取函数里，两条路走的不是同一套准入。上一轮写「回显连合同字段也排除」时只在引擎 A 的入参上成立，引擎 B 根本没有那个入参。
+- **补法（结构）**：合同与通用规则共用一个 `admissible`（回显 + 类型，唯一例外是要音频时收视频容器）；适配器 `materialize` 的 `context` 必填，生产调用方不带上下文就过不了类型检查。
+- **没拦住的地方**：下载落盘那一步只核「字节是不是它自称的那种媒体」，不知道任务要什么。引擎 A 重启后无状态重建拿不到请求里的参考地址，一个**没有扩展名**的回显参考图在那里仍可能被当产物。把任务期望类型带进 `generatedAssetStaging` 要碰素材写入概念，另开一刀（已报协调）。
