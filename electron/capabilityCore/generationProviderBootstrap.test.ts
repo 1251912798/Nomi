@@ -245,7 +245,7 @@ describe("generation provider bootstrap", () => {
     expect(connectionResolver).not.toHaveBeenCalled();
     const request = generationInput();
     const providerRequest = provider?.buildRequest(request);
-    await provider?.materialize?.({ providerTaskId: "task-lazy", raw: { data: { result: { images: [] } } } });
+    await provider?.materialize?.({ context: {}, providerTaskId: "task-lazy", raw: { data: { result: { images: [] } } } });
     expect(connectionResolver).not.toHaveBeenCalled();
 
     await expect(provider?.submit(providerRequest, request.idempotencyKey))

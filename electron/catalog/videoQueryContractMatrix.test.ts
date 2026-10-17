@@ -256,7 +256,7 @@ describe("结果误选反例（V-1213）：两台引擎同一组", () => {
       resolveConnection: () => ({ apiKey: "synthetic" }),
       catalogReader: () => ({ vendors: [], models: [], mappings: [], apiKeysByVendor: {} }) as unknown as CatalogState,
     });
-    const result = await provider.materialize!({ providerTaskId: "synthetic-task", raw: cases[0].response });
+    const result = await provider.materialize!({ context: {}, providerTaskId: "synthetic-task", raw: cases[0].response });
     expect(result.outputs.map((output) => ({ url: output.url, kind: output.kind }))).toEqual([{ url: VIDEO, kind: "video" }]);
   });
 });

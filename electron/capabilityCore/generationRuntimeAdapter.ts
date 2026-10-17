@@ -79,7 +79,7 @@ export type GenerationProvider = {
   query?: (providerTaskId: string, context?: GenerationProviderTaskContext) => Promise<{ status: string; raw?: unknown }>;
   reconcile?: (input: { idempotencyKey: string; providerTaskId?: string }) => Promise<{ disposition: GenerationProviderReconcileDisposition; providerTaskId?: string; raw?: unknown }>;
   /** context = 这笔任务冻结合同里的模型 / 模式 / 参数：取产物要知道「要什么类型」「请求里发过哪些参考地址」（V-1213）。 */
-  materialize?: (input: { providerTaskId: string; raw?: unknown; context?: GenerationProviderTaskContext }) => Promise<GenerationProviderMaterializationResult>;
+  materialize?: (input: { providerTaskId: string; raw?: unknown; context: GenerationProviderTaskContext }) => Promise<GenerationProviderMaterializationResult>;
   cancel?: (providerTaskId: string) => Promise<{ disposition: Exclude<GenerationProviderCancelDisposition, "unsupported">; raw?: unknown }>;
 };
 
