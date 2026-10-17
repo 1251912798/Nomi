@@ -1,0 +1,193 @@
+{
+  "schema_version": 3,
+  "id": "2026-10-12-timeline-content-revision",
+  "problem_type": "View state invalidates content revisions and reversible adoption receipts",
+  "symptom": "Real Electron toolbar adoption appends the image at frame 60, but auto-fit changes scale and immediately removes the success/Undo receipt.",
+  "direct_cause": "timelineRevision hashes normalized scale and playheadFrame; proposalIsLanded compares the applied content revision after TimelinePanel auto-fit changes scale.",
+  "class_root": "The shared timeline content revision does not distinguish editing facts from view state.",
+  "affected_population": [
+    "Single-node and batch adoption receipts after zoom or playback",
+    "Agent timeline plans and export compare-and-swap checks during view-only changes"
+  ],
+  "scope_paths": [
+    "src/workbench/timeline/kernel/timelineKernel.ts",
+    "src/workbench/adoption/adoptionReceipt.ts",
+    "src/workbench/ai/resident/TimelineAgentReceiptEffect.tsx"
+  ],
+  "entry_points": [
+    "ToolbarTimelineButton -> adoptGenerationNode -> reportAdoptionOutcome",
+    "adoptStoryboardBatch and Agent timeline edits/export share the kernel revision"
+  ],
+  "external_sources": [],
+  "internal_only_reason": "The invariant is Nomi timeline domain state ownership; installed source and the real Electron failure determine the behavior.",
+  "invariants": [
+    "Scale and playhead changes cannot alter timeline content revision.",
+    "Tracks, source windows, audio, captions, transitions, fps and export content continue to invalidate revisions.",
+    "Undo remains invalid after an intervening content edit, preventing unrelated edits from being undone.",
+    "View-only store ticks must not rehash all timeline contents in live Undo receipt subscriptions."
+  ],
+  "doors": [
+    {
+      "kind": "write",
+      "path": "src/workbench/adoption/adoptGenerationNode.ts",
+      "symbol": "timelineRevisionOf"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/adoption/adoptionProposalKey.ts",
+      "symbol": "timelineRevision"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/adoption/adoptionProposalKey.ts",
+      "symbol": "timelineRevisionOf"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/adoption/adoptionProposalRegistry.ts",
+      "symbol": "timelineRevisionOf"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/adoption/adoptionReceipt.ts",
+      "symbol": "timelineContentOf"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/adoption/adoptStoryboardBatch.ts",
+      "symbol": "timelineRevisionOf"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/ai/resident/TimelineAgentReceiptEffect.tsx",
+      "symbol": "timelineRevision"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/ai/resident/TimelineAgentReceiptEffect.tsx",
+      "symbol": "timelineContentOf"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/ai/resident/timelineAgentSurface.tsx",
+      "symbol": "timelineRevision"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/ai/v4/useAgentPanelV4Actions.ts",
+      "symbol": "timelineRevision"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/timeline/agent/exportToolCall.ts",
+      "symbol": "timelineRevision"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/timeline/agent/timelineCapabilityTarget.ts",
+      "symbol": "timelineRevision"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/timeline/kernel/timelineKernel.ts",
+      "symbol": "timelineContentOf"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/timeline/kernel/timelineKernel.ts",
+      "symbol": "timelineRevision"
+    }
+  ],
+  "door_reduction": {
+    "before": 11,
+    "after": 14,
+    "why_not": "Each adoption, receipt, Agent plan and export reader must still compare content at its own transaction boundary. adoptionProposalKey delegates to the kernel; changing the kernel projection enforces one shared revision for every caller without removing legitimate operations. The content projection adds explicit subscription doors for adoption and Agent receipts; these must observe their own Undo validity and share the kernel projection instead of rehashing on playback."
+  },
+  "generality_proof": "Every enumerated consumer calls timelineRevision directly or through timelineRevisionOf. One projection in the kernel excludes only scale/playheadFrame, while hashing all remaining normalized content. Thus auto-fit, manual zoom and playback cannot invalidate receipts or Agent edits; actual content still does.",
+  "shared_boundaries": [
+    {
+      "path": "src/workbench/timeline/kernel/timelineKernel.ts",
+      "symbol": "timelineRevision",
+      "responsibility": "Canonical content revision shared by adoption, Agent edits and export."
+    },
+    {
+      "path": "src/workbench/timeline/kernel/timelineKernel.ts",
+      "symbol": "timelineContentOf",
+      "responsibility": "Same view-free projection drives hash and shallow receipt subscriptions, preserving nested text/framing scale."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/workbench/adoption/adoptionProposalRegistry.ts",
+      "entry_point": "proposalIsLanded",
+      "disposition": "enforced",
+      "evidence": "Applied revision guards live receipt validity and safe Undo."
+    },
+    {
+      "path": "src/workbench/timeline/agent/timelineCapabilityTarget.ts",
+      "entry_point": "applyTimelineCapabilityOperation",
+      "disposition": "enforced",
+      "evidence": "Read/apply/commit compare the same shared timelineRevision."
+    },
+    {
+      "path": "src/workbench/timeline/agent/exportToolCall.ts",
+      "entry_point": "applyExportToolCall",
+      "disposition": "enforced",
+      "evidence": "Expected content revision must survive view-only changes, while rendered-content edits remain stale."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Any adopted media that changes duration can auto-fit; manual zoom/playback reaches the same revision guard across single/batch adoption and Agent operations.",
+    "same_class_scan": [
+      "door-map timelineRevision timelineRevisionOf: 11 doors",
+      "rg timelineRevision src/workbench/adoption src/workbench/timeline src/workbench/ai",
+      "Inspected adoptionProposalRegistry, adoptionReceipt, timelineCapabilityTarget, exportToolCall and TimelinePanel auto-fit path."
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "src/workbench/timeline/kernel/timelineKernel.ts",
+    "invariant": "Content revision excludes view state at its sole canonical producer.",
+    "failure_mode": "Actual content changes continue to fail expected-revision and receipt validity guards.",
+    "exception_policy": "none",
+    "strategy": "Project normalized view properties out before hashing; retain the shared protocol, never special-case auto-fit or callers. Receipt subscriptions shallow-compare that same content projection before invoking the full validity guard; playback does not repeatedly hash the timeline.",
+    "artifacts": [
+      "src/workbench/timeline/kernel/timelineKernel.ts",
+      "src/workbench/adoption/adoptionReceipt.ts",
+      "src/workbench/ai/resident/TimelineAgentReceiptEffect.tsx"
+    ]
+  },
+  "regression_tests": [
+    "src/workbench/timeline/kernel/timelineKernel.test.ts",
+    "src/workbench/adoption/adoptionReceipt.test.ts"
+  ],
+  "class_regression_tests": [
+    "src/workbench/timeline/kernel/timelineKernel.test.ts",
+    "src/workbench/adoption/adoptionReceipt.test.ts"
+  ],
+  "legacy_paths": {
+    "status": "not-applicable",
+    "removed_paths": [],
+    "rationale": "Replace the existing revision projection in place; no second protocol or fallback."
+  },
+  "dependency_lifecycle": {
+    "decision": "not-applicable",
+    "rationale": "Internal domain-state projection, no third-party behavior change.",
+    "exit_criteria": []
+  },
+  "migration": "Revisions/proposals are local ephemeral comparisons; restarted sessions generate the new canonical content revision. Persisted timeline view state remains intact.",
+  "residual_risks": [
+    "Packaged app and Windows remain unverified.",
+    "Live provider or paid-generation workflows are outside this toolbar migration."
+  ],
+  "detected_by": "walkthrough",
+  "recurrence_check_on": "2026-11-12",
+  "invariant_owner_layer": {
+    "layer": "src/workbench/timeline/kernel/timelineKernel.ts",
+    "tests": [
+      "src/workbench/timeline/kernel/timelineKernel.test.ts",
+      "src/workbench/adoption/adoptionReceipt.test.ts"
+    ]
+  }
+}

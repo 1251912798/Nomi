@@ -1,0 +1,30 @@
+{
+  "id": "timeline-preview-play",
+  "feature": "预览页点播放，播 4 秒，播放期间的帧间隔和长任务",
+  "script": "tests/perf/canvas-scale-bench.mjs",
+  "args": [
+    "--scales",
+    "M",
+    "--scenarios",
+    "timeline-play",
+    "--warmup",
+    "1"
+  ],
+  "scale": "时间轴 24 个视频片段（项目里 96 节点）",
+  "metrics": [
+    "frameGapP95",
+    "longTasks"
+  ],
+  "budget": 33,
+  "group": "⑩ 预览播放",
+  "budgetStatus": "approved",
+  "budgetBasis": "视频播放 30fps 一帧 33ms；p95 超过 33ms 就是肉眼可见的掉帧",
+  "baseline": {
+    "median": 13.3,
+    "p95": 16.8,
+    "runs": 5,
+    "machine": "win32 x64 13th Gen Intel(R) Core(TM) i9-13900H x20 / 64GB",
+    "date": "2026-10-16",
+    "commit": "94724f860"
+  }
+}

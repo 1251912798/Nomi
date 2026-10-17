@@ -19,6 +19,7 @@ import {
   prepareLocalStorageSeed,
   launchNomiApp,
   mainRequireArgs,
+  withWalkOffscreen,
   repoRoot,
   registerTempRoot,
   requireBeforePackagedMain,
@@ -94,6 +95,17 @@ describe('mainRequire（主进程入口前的 -r 模块）', () => {
     } finally {
       fs.rmSync(root, { recursive: true, force: true })
     }
+  })
+
+  test('NOMI_WALK_OFFSCREEN=1 才补屏外模块；已经带了不重复；没设就原样', () => {
+    const guard = path.join(repoRoot, 'scripts', 'walkthrough-network-guard.cjs')
+    expect(withWalkOffscreen(undefined, {})).toEqual([])
+    expect(withWalkOffscreen([guard], {})).toEqual([guard])
+    const withOffscreen = withWalkOffscreen([guard], { NOMI_WALK_OFFSCREEN: '1' })
+    expect(withOffscreen).toHaveLength(2)
+    expect(withOffscreen[1]).toMatch(/_offscreenWindows.cjs$/)
+    expect(withWalkOffscreen(withOffscreen, { NOMI_WALK_OFFSCREEN: '1' })).toEqual(withOffscreen)
+    expect(mainRequireArgs(withOffscreen)).toHaveLength(4)
   })
 
   test('相对路径与不存在的文件当场拒（相对路径会被 Node 当包名去找，闸就静默没装上）', () => {

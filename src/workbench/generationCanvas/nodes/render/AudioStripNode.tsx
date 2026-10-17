@@ -16,10 +16,11 @@ import type { GenerationCanvasNode } from '../../model/generationCanvasTypes'
 import { readAudioMeta } from '../../model/nodeMetaFields'
 import { useNodeUsageCount } from '../../hooks/useNodeRelationships'
 import { useGenerationCanvasStore } from '../../store/generationCanvasStore'
-import { persistNodeImageFile } from '../../adapters/persistNodeImage'
+import { persistNodeMediaFile } from '../../adapters/persistNodeImage'
 import { isProjectExecutionContextCurrent, isProjectImportCancellation, withProjectAction } from '../../../project/projectCanvasReadSurface'
 import { UsageDot } from './CardCommon'
 import { NodeEmptyState } from './NodeEmptyState'
+import { useEmptyNodeActivation } from './NodeEmptyStateContext'
 import { getDisplayTitle } from '../../model/titleHeuristics'
 
 type Props = {
@@ -104,6 +105,7 @@ function PlayBar({ progress, onSeek }: { progress: number; onSeek: (fraction: nu
 }
 
 function AudioStripNodeImpl({ node }: Props): JSX.Element {
+  const emptyActivation = useEmptyNodeActivation()
   const [feedback, setFeedback] = React.useState<string | null>(null)
   const reportFeedback = React.useCallback((message: string) => {
     notify({ identity: `AudioStripNodeImpl:${node.id}`, reason: 'interaction', message, level: 'inline', present: setFeedback })
@@ -135,14 +137,14 @@ function AudioStripNodeImpl({ node }: Props): JSX.Element {
         const createdAt = Date.now()
         // 先落盘再写 store：音频动辄几十 MB，base64 进 store 会被每次写入整段 JSON 深拷贝、
         // 随每次保存全量序列化（同「九宫格切图卡死」的病根，见 docs/plan/2026-08-20-grid-split-freeze.md）。
-        void persistNodeImageFile(file, node.id, context).then((localUrl) => {
+        void persistNodeMediaFile(file, node.id, context).then((media) => {
           if (!isProjectExecutionContextCurrent(context)) return
-          if (!localUrl) {
+          if (!media) {
             reportFeedback(t('generationCommon.audio.uploadFailed'))
             return
           }
           updateNode(node.id, {
-            result: { id: `upload-audio-${createdAt}`, type: 'audio', url: localUrl, createdAt },
+            result: { id: `upload-audio-${createdAt}`, type: 'audio', ...media, createdAt },
             meta: { ...(node.meta || {}), audioFilename: file.name, audioMime: file.type },
           })
         }).catch((error) => {
@@ -242,10 +244,10 @@ function AudioStripNodeImpl({ node }: Props): JSX.Element {
   }
 
   if (!hasAudio) {
-    return <label className="block h-full w-full cursor-pointer bg-nomi-paper" title={t('generationCommon.audio.upload')}>
+    return <label onPointerDownCapture={emptyActivation.onPointerDownCapture} onPointerCancelCapture={emptyActivation.onPointerCancelCapture} onClickCapture={emptyActivation.onClickCapture} className="block h-full w-full cursor-pointer bg-nomi-paper" title={t('generationCommon.audio.upload')}>
       {feedback ? <p role="status" className="m-0 px-2 py-1 text-caption text-nomi-ink-60">{feedback}</p> : null}
       <NodeEmptyState compact icon={<IconWaveSine size={20} stroke={1.6} />} title={t('generationCommon.nodeEmpty.audio.title')} description={t('generationCommon.nodeEmpty.audio.description')} />
-      <input className="hidden" type="file" accept="audio/*" onChange={handleUpload} />
+      <input disabled={!emptyActivation.canActivate} className="hidden" type="file" accept="audio/*" onChange={handleUpload} />
     </label>
   }
 

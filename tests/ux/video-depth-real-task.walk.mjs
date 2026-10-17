@@ -39,7 +39,8 @@ import { launchNomiApp, repoRoot } from './_launchApp.mjs'
 import { addCanvasNodeFromRail } from './_canvasRail.mjs'
 import { findConnectionStartPoint } from './_canvasHit.mjs'
 import { clickOrFail, expect, expectAbsent, expectVisible, proveProbe, screenshotSettled } from './_assert.mjs'
-import { canvasAddBar, canvasFitViewButton } from './_shell.mjs'
+import { canvasAddBar, canvasFitViewButton, switchWorkspace } from './_shell.mjs'
+import { stationTimeout } from './_station-budget.mjs'
 
 const require = createRequire(import.meta.url)
 const ffmpegPath = require('@ffmpeg-installer/ffmpeg').path
@@ -202,8 +203,8 @@ try {
   await expectVisible(projectCard, '项目卡没出现', 60_000)
   await projectCard.hover()
   await clickOrFail(projectCard.getByRole('button', { name: /继续创作/ }).first(), `打开${projectName}`)
-  await win.locator('[aria-label="工作区切换"]').first().waitFor({ timeout: 60_000 })
-  await win.locator('[aria-label="工作区切换"]').getByText('生成', { exact: true }).click({ timeout: 10_000 })
+  await win.locator('[data-shell-stage-center]').first().waitFor({ timeout: stationTimeout({ operations: 4 }) })
+  await switchWorkspace(win, 'generation', '切到生成区')
   await canvasAddBar(win).waitFor()
   await win.waitForTimeout(800)
 

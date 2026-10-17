@@ -100,7 +100,7 @@ export function ModelEnableEditor({ models, onToggle, onDelete, onCustomCall, on
           onChange={(e) => setQuery(e.currentTarget.value)}
           className={cn(
             'w-full h-8 rounded-nomi-sm border border-nomi-line bg-nomi-paper pl-8 pr-2.5',
-            'text-body-sm text-nomi-ink placeholder:text-nomi-ink-40 outline-none focus:border-nomi-accent',
+            'text-body-sm text-nomi-ink placeholder:text-nomi-ink-40 outline-none focus:border-nomi-ink-40',
           )}
         />
       </div>

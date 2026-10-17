@@ -1,0 +1,124 @@
+{
+  "observed_date": "2026-10-12",
+  "evidence_type": "static inspection of locally installed vendor frontend; not open source or public SDK",
+  "app_bundle": "/Applications/ChatGPT.app",
+  "bundle_identifier": "com.openai.codex",
+  "installed_version": "26.1002.52244",
+  "installed_build": "13536",
+  "archive": "Contents/Resources/app.asar",
+  "runtime_verification": "not performed; Computer Use application access denied; no generation or upload sent",
+  "unknowns": [
+    "feature flag availability in current UI",
+    "private service implementation",
+    "actual model routing and edit fidelity",
+    "MP4 editing or frame accurate video support"
+  ],
+  "reuse_boundary": "mechanism reference only; no proprietary source copied into repository and no internal endpoint used",
+  "modules": [
+    {
+      "path_in_asar": "webview/assets/image-side-panel-8a1bba99f23f.js",
+      "bytes": 102180,
+      "sha256": "7df8b196cca10a8ce2efabb3150efaec0816a9daf9558e84da55e38badfee41f",
+      "locators": [
+        {
+          "purpose": "point_coordinates",
+          "function_or_search_term": "function hi(",
+          "unicode_codepoint_offset_zero_based": 12814
+        },
+        {
+          "purpose": "gif_frame_comments",
+          "function_or_search_term": "function Ji(",
+          "unicode_codepoint_offset_zero_based": 22718
+        },
+        {
+          "purpose": "image_submit",
+          "function_or_search_term": "Si=async e=>",
+          "unicode_codepoint_offset_zero_based": 78478
+        },
+        {
+          "purpose": "remove_selection",
+          "function_or_search_term": "Ei=async e=>",
+          "unicode_codepoint_offset_zero_based": 80433
+        }
+      ]
+    },
+    {
+      "path_in_asar": "webview/assets/app-primary-15d1279f1ff0.js",
+      "bytes": 2367009,
+      "sha256": "c1cb64bd008587f624d209ef0b9dcf5723e55dbaefd9a6f7898d6141b995f6ed",
+      "locators": [
+        {
+          "purpose": "comment_serialization",
+          "function_or_search_term": "function pct(",
+          "unicode_codepoint_offset_zero_based": 1256367
+        },
+        {
+          "purpose": "comment_coordinates",
+          "function_or_search_term": "function mct(",
+          "unicode_codepoint_offset_zero_based": 1257034
+        },
+        {
+          "purpose": "composer_attachment_submit",
+          "function_or_search_term": "function gct(",
+          "unicode_codepoint_offset_zero_based": 1257511
+        },
+        {
+          "purpose": "markup_submission_guard",
+          "function_or_search_term": "imageMarkupSubmission:e==null?null:",
+          "unicode_codepoint_offset_zero_based": 1291480
+        }
+      ]
+    },
+    {
+      "path_in_asar": "webview/assets/export-1bfb48574ab8.js",
+      "bytes": 1548,
+      "sha256": "288578771eb3202e0d7e9b14f7be9bf1db3c11b2faec3199b82ed9b3de50b9d6",
+      "locators": [
+        {
+          "purpose": "markup_export",
+          "function_or_search_term": "async function l(",
+          "unicode_codepoint_offset_zero_based": 316
+        },
+        {
+          "purpose": "local_composite",
+          "function_or_search_term": "async function d(",
+          "unicode_codepoint_offset_zero_based": 1048
+        }
+      ]
+    },
+    {
+      "path_in_asar": "webview/assets/app-initial-61c077dcc1af.js",
+      "bytes": 11147907,
+      "sha256": "27fb37ab4a03d6361383ac0afddb636c8d679b29ef2a504c394b99a432236c29",
+      "locators": [
+        {
+          "purpose": "cloud_markup_preview",
+          "function_or_search_term": "async function atl(",
+          "unicode_codepoint_offset_zero_based": 10928867
+        },
+        {
+          "purpose": "queued_draft_guard",
+          "function_or_search_term": "function Jfr(",
+          "unicode_codepoint_offset_zero_based": 3071699
+        }
+      ]
+    },
+    {
+      "path_in_asar": "webview/assets/image-editor-133eeee45105.js",
+      "bytes": 8277,
+      "sha256": "b1d67680e3beab4fb5108f349669567a64650bdb86d447c1556586dc2fbfeaa8",
+      "locators": [
+        {
+          "purpose": "library_editor",
+          "function_or_search_term": "function E(",
+          "unicode_codepoint_offset_zero_based": 480
+        },
+        {
+          "purpose": "library_red_selection",
+          "function_or_search_term": "async function k(",
+          "unicode_codepoint_offset_zero_based": 7232
+        }
+      ]
+    }
+  ]
+}

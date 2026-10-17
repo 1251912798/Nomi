@@ -18,7 +18,7 @@ import { launchNomiApp } from './_launchApp.mjs'
 import { clickOrFail, expectCount, expectText, expectVisible, screenshotSettled } from './_assert.mjs'
 import { ensureCreationResourceTree } from './_creationResourceTree.mjs'
 import { openStoryboardEditor } from './_creationResourceTree.mjs'
-import { backToLibrary } from './_shell.mjs'
+import { backToLibrary, switchWorkspace } from './_shell.mjs'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
 const tempRoot = makeTempDir('nomi-creation-sidebar-')
@@ -125,7 +125,7 @@ async function openProject(win, name) {
   if (await cont.isVisible().catch(() => false)) await cont.click()
   else await card.dblclick()
   await expectVisible(win.locator('[data-workspace-mode]'), `打开「${name}」后工作台没起来`)
-  await clickOrFail(win.getByRole('button', { name: '创作', exact: true }), `进「${name}」的创作页`)
+  await switchWorkspace(win, 'creation', `进「${name}」的创作页`)
 }
 
 const { app, win } = await launchNomiApp({ name: 'creation-sidebar-multi-doc', tempRoot, settingsDir, projectsDir, settleMs: 1200 })
@@ -148,6 +148,8 @@ try {
 
   // 点第二篇原稿 → 编辑器换稿，树不变
   await clickOrFail(win.locator('[data-document-row="doc-b"] [data-document-id]'), '点第二篇原稿')
+  // 点完文稿抽屉会让开（选中即收）：要核对行状态就再开一次，走统一的开抽屉出口。
+  await ensureCreationResourceTree(win, '点第二篇原稿之后')
   await expectText(win.locator('[data-document-row="doc-b"] [data-document-id]'), /夜风计划/, '第二篇原稿行标题不对')
   await expectVisible(win.locator('[data-document-row="doc-b"] [data-document-id][data-active="true"]'), '点了第二篇原稿但它没被标成 active')
   await snap('02-doc-b-selected.png')
@@ -163,12 +165,14 @@ try {
 
   // 在分镜页直接换到另一篇原稿的另一个方案（用户要的「点到我的其他那些剧本、分镜」）
   await openStoryboardEditor(win, 'd-a2', '在分镜页切到另一篇原稿的方案二')
+  await ensureCreationResourceTree(win, '切到方案二之后')
   await expectVisible(win.locator('[data-storyboard-id="d-a2"][data-active="true"]'), '切过去的方案没有被标成 active')
   await expectText(win.locator('[data-storyboard-editor="true"]'), /影子 · 方案二/, '分镜表没换成「影子 · 方案二」')
   await snap('04-switch-plan-across-docs.png')
 
   // 再点回原稿行 → 回到剧本编辑器（用户的「我看不到原来那个剧本了」）
   await clickOrFail(win.locator('[data-document-row="doc-a"] [data-document-id]'), '从分镜页点回原稿')
+  await ensureCreationResourceTree(win, '从分镜页点回原稿之后')
   await expectVisible(win.locator('[data-creation-surface="source"]'), '点回原稿后剧本编辑器没回来')
   await expectVisible(win.locator('[data-document-row="doc-a"] [data-document-id][data-active="true"]'), '点回原稿后它没被标成 active')
   await snap('05-back-to-script.png')
@@ -192,6 +196,7 @@ try {
   })
   await snap('07-legacy-storyboard-open.png')
   await clickOrFail(win.locator('[data-document-row="legacy-doc"] [data-document-id]'), '老项目从分镜点回原稿')
+  await expectVisible(win.locator('[data-creation-surface="source"]'), '老项目点回原稿后剧本编辑器没回来')
   await expectVisible(win.locator('[data-creation-surface="source"]'), '老项目点回原稿后剧本编辑器没回来')
   await expectText(win.locator('[data-creation-surface="source"]'), /截止前的片场接管/, '老项目回原稿后正文丢了')
   await snap('08-legacy-back-to-script.png')

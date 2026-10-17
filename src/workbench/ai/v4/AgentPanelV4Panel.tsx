@@ -462,7 +462,7 @@ function V4HeaderShellActions({ slot, compact, onHistory, historyLabel, moreLabe
   moreLabel: string
 }): JSX.Element {
   const [menu, setMenu] = React.useState<{ left: number; top: number; width: number; height: number } | null>(null)
-  const iconButton = 'grid size-7 shrink-0 place-items-center rounded-nomi-sm text-nomi-ink-60 hover:bg-nomi-ink-05 hover:text-nomi-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-nomi-accent'
+  const iconButton = 'grid size-7 shrink-0 place-items-center rounded-nomi-sm text-nomi-ink-60 hover:bg-nomi-ink-05 hover:text-nomi-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-nomi-ink'
   if (compact) {
     const items: WorkbenchMenuNode[] = [
       { id: 'history', label: historyLabel, icon: IconHistory, onSelect: () => onHistory?.() },

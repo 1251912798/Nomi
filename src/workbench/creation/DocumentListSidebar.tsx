@@ -6,13 +6,14 @@ import {
   IconChevronDown,
   IconChevronRight,
   IconCircleCheck,
-  IconDotsVertical,
+  IconCopy,
   IconFileText,
   IconMovie,
+  IconPencil,
   IconPlus,
+  IconTrash,
 } from '@tabler/icons-react'
 import { confirmDialog, WorkbenchIconButton } from '../../design'
-import { SwipeToDeleteRow } from '../../design/SwipeToDeleteRow'
 import { showUndoToast } from '../../utils/showUndoToast'
 import { cn } from '../../utils/cn'
 import { useWorkbenchStore } from '../workbenchStore'
@@ -26,6 +27,67 @@ type ResourceMenu = {
   x: number
   y: number
 } | null
+
+/**
+ * 行内动作：≤3 个就直接摆图标（带 hover 名字），不藏进「⋯」（设计系统 §1.8 规则 2 补充，用户 2026-10-10）。
+ * 悬停 / 聚焦 / 当前项时露出；右键菜单仍留着给习惯右键的人，两处走同一组处理函数。
+ */
+function RowActions({ kind, id, active, deleteDisabledReason, onRename, onDuplicate, onDelete, hoverGroup }: {
+  kind: 'document' | 'storyboard'
+  id: string
+  active: boolean
+  deleteDisabledReason?: string
+  onRename: () => void
+  onDuplicate?: () => void
+  onDelete: () => void
+  hoverGroup: string
+}): JSX.Element {
+  const { t } = useTranslation()
+  const stop = (event: React.SyntheticEvent) => event.stopPropagation()
+  return (
+    <div
+      className={cn(
+        'absolute right-1 top-1/2 z-[1] flex -translate-y-1/2 items-center rounded-nomi-sm bg-[inherit] opacity-0',
+        hoverGroup,
+        active && 'opacity-100',
+      )}
+      data-resource-actions={kind}
+      onPointerDown={stop}
+    >
+      <WorkbenchIconButton
+        size="sm"
+        className="size-6"
+        icon={<IconPencil size={15} stroke={1.5} />}
+        label={t('creationAi.documentList.rename')}
+        data-resource-action="rename"
+        data-resource-target={id}
+        onClick={(event) => { event.stopPropagation(); onRename() }}
+      />
+      {onDuplicate ? (
+        <WorkbenchIconButton
+          size="sm"
+          className="size-6"
+          icon={<IconCopy size={15} stroke={1.5} />}
+          label={t('creationAi.documentList.duplicateStoryboard')}
+          data-resource-action="duplicate"
+          data-resource-target={id}
+          onClick={(event) => { event.stopPropagation(); onDuplicate() }}
+        />
+      ) : null}
+      <WorkbenchIconButton
+        size="sm"
+        icon={<IconTrash size={15} stroke={1.5} />}
+        label={kind === 'document' ? t('creationAi.documentList.delete') : t('creationAi.documentList.deleteStoryboard')}
+        title={deleteDisabledReason}
+        disabled={Boolean(deleteDisabledReason)}
+        data-resource-action="delete"
+        data-resource-target={id}
+        className="size-6 hover:text-workbench-danger"
+        onClick={(event) => { event.stopPropagation(); onDelete() }}
+      />
+    </div>
+  )
+}
 
 /**
  * 创作内容树（原稿 + 各自的分镜方案）。10-08 外壳重设计起住在左栏「文稿」抽屉里——
@@ -162,16 +224,6 @@ export default function DocumentListSidebar(): JSX.Element {
     })
   }, [])
 
-  const openMenuFromButton = React.useCallback((
-    event: React.MouseEvent<HTMLButtonElement>,
-    target: NonNullable<EditingTarget>,
-    documentId: string,
-  ) => {
-    event.stopPropagation()
-    const rect = event.currentTarget.getBoundingClientRect()
-    openMenu(target, documentId, { x: rect.right - 176, y: rect.bottom + 4 })
-  }, [openMenu])
-
   const renderMenu = () => {
     if (!menu) return null
     const menuTarget = menu.target
@@ -261,7 +313,7 @@ export default function DocumentListSidebar(): JSX.Element {
               <div
                 className={cn(
                   'group relative flex min-h-10 w-full items-center gap-1 rounded-nomi-sm border border-transparent px-1 py-1.5',
-                  documentActive ? 'bg-nomi-accent-soft text-nomi-accent' : 'text-nomi-ink-80 hover:bg-nomi-ink-05',
+                  documentActive ? 'bg-nomi-accent-soft text-nomi-ink' : 'text-nomi-ink-80 hover:bg-nomi-ink-05 focus-within:bg-nomi-ink-05',
                 )}
                 data-document-row={doc.id}
               >
@@ -286,7 +338,7 @@ export default function DocumentListSidebar(): JSX.Element {
                       if (event.key === 'Escape') cancelRename()
                     }}
                     onBlur={commitRename}
-                    className="min-w-0 flex-1 border-b border-nomi-accent/50 bg-transparent text-caption text-nomi-ink outline-none"
+                    className="min-w-0 flex-1 border-b border-nomi-ink-40 bg-transparent text-caption text-nomi-ink outline-none"
                   />
                 ) : (
                   <button
@@ -300,7 +352,9 @@ export default function DocumentListSidebar(): JSX.Element {
                     className={cn(
                       'flex min-w-0 flex-1 items-center gap-2 border-0 bg-transparent p-0 text-left text-caption leading-tight',
                       'cursor-pointer',
-                      documentActive ? 'text-nomi-accent' : 'text-nomi-ink-80',
+                      documentActive ? 'text-nomi-ink' : 'text-nomi-ink-80',
+                      // 行内图标露出时给它们让位（2 个图标 = 48px），标题不被盖住。
+                      documentActive ? 'pr-[52px]' : 'group-hover:pr-[52px] group-focus-within:pr-[52px]',
                     )}
                     data-document-id={doc.id}
                     data-active={documentActive ? 'true' : 'false'}
@@ -314,12 +368,14 @@ export default function DocumentListSidebar(): JSX.Element {
                     </span>
                   </button>
                 )}
-                <WorkbenchIconButton
-                  icon={<IconDotsVertical size={15} stroke={1.5} />}
-                  label={t('creationAi.documentList.moreActions')}
-                  className="absolute right-1 size-7 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100"
-                  data-resource-menu-trigger="document"
-                  onClick={(event) => openMenuFromButton(event, { kind: 'document', id: doc.id }, doc.id)}
+                <RowActions
+                  kind="document"
+                  id={doc.id}
+                  active={documentActive}
+                  hoverGroup="group-hover:opacity-100 group-focus-within:opacity-100"
+                  deleteDisabledReason={documents.length <= 1 ? t('creationAi.documentList.keepOneDocument') : undefined}
+                  onRename={() => beginRename({ kind: 'document', id: doc.id }, doc.title)}
+                  onDelete={() => void onDeleteDocument(doc.id, doc.title || t('runtime.project.untitled'))}
                 />
               </div>
 
@@ -334,32 +390,22 @@ export default function DocumentListSidebar(): JSX.Element {
                     const statusLabel = stale ? t('storyboardEditor.planCard.stale') : committedNow ? t('storyboardEditor.planCard.committed') : t('storyboardEditor.planCard.draft')
                     const title = design.title || t('storyboardEditor.planCard.defaultTitle')
                     return (
-                      // 行外面包一层手势壳：hover/聚焦时轻推探头露出删除区，点它即删；
-                      // 行聚焦时 Delete/Backspace 也删。删除区的宽度按 240px 侧栏给，
-                      // 不用组件的默认值（那是给一屏宽的列表行定的，会吃掉半行标题）。
-                      <SwipeToDeleteRow
-                        key={design.id}
-                        label={title}
-                        deleteLabel={t('creationAi.documentList.deleteStoryboard')}
-                        deletedAnnouncement={t('creationAi.documentList.storyboardDeleted', { title })}
-                        // 这两个数是量出来的，不是抄的：方案行住在 240px 侧栏里、还要再缩进
-                        // 一层，可用宽只有 ~190px。行往左推多少，左端就有多少被裁掉——
-                        // 推 36px 时那颗片型图标整个没了（真机截图上看得很清楚），
-                        // 行看起来像坏了，而不是像让开了。推 28px 时图标还在，
-                        // 而删除区仍给到 56px：图标永远居中在**已经露出来的那一段**里
-                        //（`exposed`），所以探头只露一半也照样看得见、点得到。
-                        actionWidth={56}
-                        hoverPeek={28}
-                        onDelete={() => onDeleteStoryboard(design.id, doc.id)}
-                        className="mb-0.5"
-                      >
+                      <React.Fragment key={design.id}>
                       <div
                         className={cn(
                           'group/design relative flex min-h-10 w-full items-center gap-1 rounded-nomi-sm border border-transparent px-2 py-1.5',
-                          designActive ? 'bg-nomi-accent-soft text-nomi-accent' : 'text-nomi-ink-80 hover:bg-nomi-ink-05',
+                          designActive ? 'bg-nomi-accent-soft text-nomi-ink' : 'text-nomi-ink-80 hover:bg-nomi-ink-05 focus-within:bg-nomi-ink-05',
                         )}
                         data-storyboard-row={design.id}
                         data-storyboard-status={stale ? 'stale' : committedNow ? 'committed' : 'draft'}
+                        // 行聚焦时 Delete / Backspace 也删（原来 SwipeToDeleteRow 带的键盘入口，换成图标后不丢）；
+                        // 正在改名的输入框里按退格是删字，不是删方案。
+                        onKeyDown={(event) => {
+                          if (event.key !== 'Delete' && event.key !== 'Backspace') return
+                          if ((event.target as HTMLElement).closest('input, textarea')) return
+                          event.preventDefault()
+                          onDeleteStoryboard(design.id, doc.id)
+                        }}
                       >
                         {designEditing ? (
                           <input
@@ -372,7 +418,7 @@ export default function DocumentListSidebar(): JSX.Element {
                               if (event.key === 'Escape') cancelRename()
                             }}
                             onBlur={commitRename}
-                            className="min-w-0 flex-1 border-b border-nomi-accent/50 bg-transparent text-caption text-nomi-ink outline-none"
+                            className="min-w-0 flex-1 border-b border-nomi-ink-40 bg-transparent text-caption text-nomi-ink outline-none"
                           />
                         ) : (
                           <button
@@ -385,7 +431,9 @@ export default function DocumentListSidebar(): JSX.Element {
                             }}
                             className={cn(
                               'flex min-w-0 flex-1 items-center gap-2 border-0 bg-transparent p-0 text-left text-caption leading-tight',
-                              designActive ? 'text-nomi-accent' : 'text-nomi-ink-80',
+                              designActive ? 'text-nomi-ink' : 'text-nomi-ink-80',
+                              // 3 个图标 = 72px，露出时给它们让位。
+                              designActive ? 'pr-[76px]' : 'group-hover/design:pr-[76px] group-focus-within/design:pr-[76px]',
                             )}
                             data-storyboard-id={design.id}
                             data-document-id={doc.id}
@@ -398,7 +446,9 @@ export default function DocumentListSidebar(): JSX.Element {
                             <span className="min-w-0 flex-1 break-words leading-snug line-clamp-2" data-storyboard-title="true">{title}</span>
                             <span
                               className={cn(
-                                'grid size-4 shrink-0 place-items-center transition-opacity group-hover/design:opacity-0 group-focus-within/design:opacity-0',
+                                // 行内图标露出（悬停 / 聚焦 / 当前项）时状态点让出位置：抽屉只有 ~190px，三个图标 + 状态点 + 标题挤不下。
+                                'grid size-4 shrink-0 place-items-center group-hover/design:hidden group-focus-within/design:hidden',
+                                designActive && 'hidden',
                                 stale ? 'text-nomi-warning' : design.committed ? 'text-workbench-success' : 'text-nomi-ink-40',
                               )}
                               title={statusLabel}
@@ -411,15 +461,20 @@ export default function DocumentListSidebar(): JSX.Element {
                             </span>
                           </button>
                         )}
-                        <WorkbenchIconButton
-                          icon={<IconDotsVertical size={15} stroke={1.5} />}
-                          label={t('creationAi.documentList.moreActions')}
-                          className="absolute right-1 size-7 opacity-0 group-hover/design:opacity-100 group-focus-within/design:opacity-100 focus-visible:opacity-100"
-                          data-resource-menu-trigger="storyboard"
-                          onClick={(event) => openMenuFromButton(event, { kind: 'storyboard', id: design.id }, doc.id)}
+                        <RowActions
+                          kind="storyboard"
+                          id={design.id}
+                          active={designActive}
+                          hoverGroup="group-hover/design:opacity-100 group-focus-within/design:opacity-100"
+                          onRename={() => beginRename({ kind: 'storyboard', id: design.id }, design.title)}
+                          onDuplicate={() => {
+                            const copy = duplicateStoryboardDesign(design.id, doc.id)
+                            if (copy) selectStoryboard(copy.id, doc.id)
+                          }}
+                          onDelete={() => onDeleteStoryboard(design.id, doc.id)}
                         />
                       </div>
-                      </SwipeToDeleteRow>
+                      </React.Fragment>
                     )
                   })}
                   <button

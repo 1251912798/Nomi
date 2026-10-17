@@ -459,7 +459,7 @@
     },
     {
       "path": "src/workbench/ai/v4/AgentPanelV4AutoMode*",
-      "reason": "Agent 审批档位（自动改 / 逐步确认）的界面"
+      "reason": "Agent 审批档位（请求批准 / 直接生成）的界面"
     },
     {
       "path": "src/workbench/ai/v4/agentPanelV4ModelRows*",
@@ -1840,6 +1840,31 @@
       "revisitWhen": "Vitest 提供按用例的「自定义在途资源」钩子，或导出任务表改成按项目实例化、不再是模块级单例时"
     },
     {
+      "id": "docs-site-glue",
+      "capability": "教程站接入胶水：把 Astro Starlight 的产物搬进官网目录、去掉站内链接的 .html、写页面清单并入 sitePages",
+      "status": "justified",
+      "paths": [
+        "scripts/build-marketing-docs.mjs",
+        "scripts/marketing/docs-site.mjs"
+      ],
+      "alternativesChecked": [
+        {
+          "name": "Astro Starlight（接入：侧边栏、页内目录、Pagefind 搜索、提示框、步骤、代码复制、hreflang 都用它自带的，不自写）",
+          "source": "https://starlight.astro.build/"
+        },
+        {
+          "name": "沿用自写的官网页面生成器再写一套文档页（侧边栏、搜索、提示框都要自写，等于第二个生成器）",
+          "source": "docs/plan/2026-10-10-docs-site.md"
+        },
+        {
+          "name": "Starlight 的 build.format: directory（站内链接天然无 .html，但产物是 docs/x/index.html，Cloudflare 的 auto-trailing-slash 会把 /docs/x 301 到 /docs/x/，和官网无结尾斜杠的规范地址冲突）",
+          "source": "https://docs.astro.build/en/reference/configuration-reference/#buildformat"
+        }
+      ],
+      "whyNotIntegrated": "Domain constraint: 只有胶水，没有通用能力在自写——框架本身全部接入；这两个文件只做官网独有的三件事：产物落进官网既有的目录与干净地址规范、页面清单并进 sitePages 这个唯一 owner（sitemap / hreflang / 门岗一视同仁）、孤儿清理不误删。没有现成工具认识官网的 sitePages。",
+      "revisitWhen": "Starlight 提供无 .html 的 file 格式链接，或官网整体迁到 Astro 时，胶水可以删"
+    },
+    {
       "id": "canvas-source-video-session-hooks",
       "capability": "原视频卡共享会话的React消费接口和播放器时钟投影",
       "status": "justified",
@@ -1954,6 +1979,59 @@
       ],
       "whyNotIntegrated": "领域约束：Nomi 项目文件、历史版本快照和素材引用只存 WhiteboardState，而 Leafer 运行时交互修改三种引擎映射。现成绘图库不知道 Nomi 版本身份、历史文档与节点 frame 的独立几何，必须有这一份薄适配把动作完成后的领域状态交给既有文档 writer；不替代 Leafer、Mantine 或 React Flow。只豁免这一精确文件，不扩大 hooks/领域目录范围。",
       "revisitWhen": "Leafer 场景可直接无损导入/导出 Nomi WhiteboardState 且保持资产引用、分组/文本变换、版本恢复和节点 frame 独立时，删除这份映射适配；通用生命周期仍优先用框架。"
+    },
+    {
+      "id": "agent-inline-reference-admission",
+      "capability": "常驻 Agent 的句中媒体引用：把共享 PromptEditor 的原件缩略图与现有项目附件准入、会话寿命和 canonical claim 对齐",
+      "status": "justified",
+      "paths": [
+        "src/workbench/ai/resident/useAgentReferenceMentions.ts"
+      ],
+      "alternativesChecked": [
+        {
+          "name": "现有 PromptEditor / AssetMentionSuggestion：已接入 TipTap 与共享 mention 原子，继续作为唯一编辑器与 @ 候选交互",
+          "source": "src/workbench/assets/PromptEditor.tsx"
+        },
+        {
+          "name": "现有 mapped bookmark 插入 owner：已接入 ProseMirror 映射，异步原件准入期间仍保留指令内插入位置，没有自写光标映射",
+          "source": "src/workbench/assets/insertAssetMentionWhenReady.ts"
+        },
+        {
+          "name": "现有 useComposerAttachments / projectAgentAttachments：已接入项目动作绑定、原件导入、去重与 canonical claim，继续作为唯一附件 owner",
+          "source": "src/workbench/ai/composer/useComposerAttachments.ts"
+        }
+      ],
+      "whyNotIntegrated": "领域约束：Nomi 的节点来源 resultId、项目原件 claim 与指令句中引用必须一一对应；删除最后一处引用才释放附件，项目/会话切换及在途准入不得把原件插入另一个草稿。编辑、@ 弹层、光标映射、文件导入和身份校验已全部复用现有 owner；该 hook 只连接这些 Nomi 领域身份与寿命，没有新增通用编辑器、上传器、选择器或参考 store。方案查证：docs/plan/2026-10-12-reference-entry.md。",
+      "revisitWhen": "现有项目附件 owner 原生拥有句中引用的准入/删除/会话寿命接口时，把本 hook 的接线收回该 owner 并删除此登记；不得并存第二套引用身份。"
+    },
+    {
+      "id": "mcp-client-usage-status",
+      "capability": "AI 助手连接卡的「谁在用 Nomi」：主进程内存里按助手记工具调用与握手（账本）、把变化推给设置卡、卡上的订阅读取，以及工具展示名（中英）",
+      "status": "justified",
+      "plan": "docs/plan/2026-10-05-mcp-official-sdk.md",
+      "paths": [
+        "electron/capabilityCore/mcpUsageRegistry.ts",
+        "electron/capabilityCore/mcpUsageIpc.ts",
+        "electron/shared/mcpToolDisplayTitles.ts",
+        "src/ui/onboarding/useMcpUsage.ts",
+        "src/devlab/designLab/hostConfig/useLabLocale.ts"
+      ],
+      "alternativesChecked": [
+        {
+          "name": "官方 MCP SDK v2：Server 只给协议层事件（initialize / tools/call 回调），不记「哪个助手、哪个工具、几次、在途」，也没有跨传输的账本；而且三条传输里两条跑在别的进程，主进程内存只能由主进程自己记",
+          "source": "https://ts.sdk.modelcontextprotocol.io/v2/"
+        },
+        {
+          "name": "Electron ipcMain / webContents.send：平台自带的推送，已直接使用（不自写通道，只写节流）",
+          "source": "https://www.electronjs.org/docs/latest/api/web-contents#contentssendchannel-args"
+        },
+        {
+          "name": "相对时间（刚刚 / N 小时前）：平台自带 Intl.RelativeTimeFormat，已直接使用，没有自写格式化",
+          "source": "https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Intl/RelativeTimeFormat"
+        }
+      ],
+      "whyNotIntegrated": "领域约束：「这个助手这次运行里用了哪个 Nomi 工具、几次、还有几个没跑完」是 Nomi 工具面的事实，只有 Nomi 的工具目录与回环 RPC 边界知道；通用的部分（推送、相对时间、协议）都已接现成能力，自写的只剩一本几十行的账与一张展示名表。",
+      "revisitWhen": "MCP SDK 提供跨传输的会话 / 调用观测钩子，或要把使用情况持久化成审计账时（审计走收据，不走这本账）"
     }
   ]
 }

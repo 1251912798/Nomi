@@ -1,0 +1,26 @@
+{
+  "name": "本地任务结果导入项目（单飞：并发查询共用一次导入，取消先等导入落定）",
+  "subject": "task.local-import-commit",
+  "lifecycle": "materialized-artifact",
+  "authority_kind": "writer",
+  "trust_domain": "main",
+  "fact_kind": "rule",
+  "migration_status": "converged",
+  "owner": {
+    "path": "electron/tasks/localTaskJobs.ts",
+    "symbol": "LocalTaskJobs"
+  },
+  "write_api": [
+    {
+      "path": "electron/tasks/localTaskJobs.ts",
+      "symbol": "LocalTaskJobs"
+    }
+  ],
+  "forbidden_derivations": [],
+  "parity_test": "electron/tasks/localTaskJobs.test.ts",
+  "allowed_consumers": [
+    "electron/catalog/antigravityImageOperation.ts"
+  ],
+  "since": "2026-10-16",
+  "notes": "本机进程里跑的付费任务（Antigravity 本机通道）的结果只导入一次、只进绑定的项目和窗口。导入要先异步等生成产物的解码校验（docs/fixes/2026-10-16-main-process-sync-decode-wait.root-cause.json），所以导入不再是一段同步代码：LocalTaskJobs.query 让同一任务同一时刻只有一次导入，并发的第二次查询等同一次结果；cancel 先等导入落定，导成了就不可取消，导失败了照常取消、之后的查询不再导入。"
+}

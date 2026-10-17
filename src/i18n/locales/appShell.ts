@@ -53,6 +53,7 @@ export const zhAppShell = {
     tabPrompts: '提示词',
     startSubtitle: '从一段文字、一个文件夹，或者先看一遍怎么做',
     openFolder: '选文件夹',
+    tour: '新手引导',
     newProject: '新建项目',
   },
   docSwitcher: {
@@ -117,6 +118,7 @@ export const enAppShell: typeof zhAppShell = {
     tabPrompts: 'Prompts',
     startSubtitle: 'Start from a few lines of text, a folder, or watch how it works first',
     openFolder: 'Open folder',
+    tour: 'Tour',
     newProject: 'New project',
   },
   docSwitcher: {

@@ -5,6 +5,14 @@ import { parseSkillManifest, skillManifestSchema } from "./skillManifestSchema";
 // 这些对象就是 SKILL.md frontmatter 里 `metadata.nomi` 那一块的解析结果。
 // 线上是 kebab-case（与 frontmatter 既有习惯一致），schema 转成 camelCase 给下游。
 describe("skillManifestSchema (metadata.nomi)", () => {
+  it("accepts available-since as x.y.z and rejects anything else", () => {
+    const base = { version: "1.0.0", tools: [], "required-providers": [] };
+    const ok = parseSkillManifest({ ...base, "available-since": "0.24.0" });
+    expect(ok.ok && ok.manifest.availableSince).toBe("0.24.0");
+    expect(parseSkillManifest({ ...base, "available-since": "0.24" }).ok).toBe(false);
+    expect(parseSkillManifest({ ...base }).ok && "availableSince" in (parseSkillManifest(base) as { manifest: object }).manifest).toBe(false);
+  });
+
   it("accepts a minimal valid extension block", () => {
     const result = parseSkillManifest({
       version: "1.0.0",

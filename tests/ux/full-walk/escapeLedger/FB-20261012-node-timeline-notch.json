@@ -1,0 +1,24 @@
+{
+  "id": "FB-20261012-node-timeline-notch",
+  "since": "2026-10-12",
+  "source": "2026-10-12 用户反馈并确认工具栏迁移交互",
+  "category": "interaction-semantics",
+  "problem": "图片／视频节点 hover 中间刘海疑似异常；用户要求不再修该入口，改为工具栏中的加入时间轴icon并检查遗漏。",
+  "existingInvariants": [],
+  "ironLaws": [],
+  "useCases": [],
+  "fullWalkJourneys": [],
+  "status": "reviewed",
+  "manualReview": "reviewed",
+  "evidence": [
+    "原hover异常未确定复现，不宣称修复其直接原因。用户批准删除旧入口并迁移到共享工具栏。",
+    "用户查看node-timeline-interaction.html后确认「看到了 没啥问题」。",
+    "根因合同及独立入口普查见 docs/fixes/2026-10-12-node-timeline-toolbar.root-cause.json、docs/evidence/2026-10-12-node-timeline-toolbar-independent.md。"
+  ],
+  "completionCommits": [],
+  "rootCauseContract": "docs/fixes/2026-10-12-node-timeline-toolbar.root-cause.json",
+  "classCheck": {
+    "kind": "matrix",
+    "file": "src/workbench/generationCanvas/model/timelineDragAffordance.test.ts"
+  }
+}

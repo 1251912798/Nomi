@@ -144,14 +144,14 @@ function BackendItem({
 
   if (editing) {
     return (
-      <div className="flex flex-wrap items-center gap-1.5 rounded-nomi-sm border border-nomi-accent bg-nomi-paper p-1.5">
+      <div className="flex flex-wrap items-center gap-1.5 rounded-nomi-sm border border-nomi-ink-40 bg-nomi-paper p-1.5">
         <input
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
           spellCheck={false}
           autoFocus
           aria-label={t('comfyuiWorkflowPage.backends.addressAria', { name: backend.name })}
-          className="h-7 min-w-0 basis-full rounded-nomi-sm border border-nomi-line bg-nomi-bg px-1.5 font-nomi-mono text-micro text-nomi-ink outline-none focus:border-nomi-accent"
+          className="h-7 min-w-0 basis-full rounded-nomi-sm border border-nomi-line bg-nomi-bg px-1.5 font-nomi-mono text-micro text-nomi-ink outline-none focus:border-nomi-ink-40"
         />
         <DecisionBar
           inline
@@ -168,7 +168,7 @@ function BackendItem({
     <div
       className={cn(
         'group flex items-center gap-1.5 rounded-nomi-sm border p-1.5',
-        selected ? 'border-nomi-accent bg-nomi-accent-soft' : 'border-nomi-line-soft bg-nomi-paper',
+        selected ? 'border-transparent bg-nomi-accent-soft' : 'border-nomi-line-soft bg-nomi-paper',
       )}
       data-backend-key={backend.vendorKey}
     >
@@ -233,7 +233,7 @@ function WorkflowItem({
       aria-current={selected}
       className={cn(
         'flex w-full items-start gap-1.5 rounded-nomi-sm border p-1.5 text-left',
-        selected ? 'border-nomi-accent bg-nomi-accent-soft' : 'border-nomi-line-soft bg-nomi-paper hover:border-nomi-accent',
+        selected ? 'border-transparent bg-nomi-accent-soft' : 'border-nomi-line-soft bg-nomi-paper hover:border-nomi-ink-30',
       )}
     >
       <Icon size={14} stroke={1.7} className="mt-0.5 shrink-0 text-nomi-ink-40" aria-hidden="true" />

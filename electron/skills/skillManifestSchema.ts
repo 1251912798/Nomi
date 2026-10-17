@@ -112,6 +112,8 @@ export type SkillManifest = {
   selectableInWorkbench?: boolean;
   /** 只在这个构建开关开时可选（今天只认 3D-BOX 一个开关；到期 2026-11-15 随开关一起删）。 */
   requiresFlag?: "director3dbox";
+  /** 从哪个正式版本起有这个技能（x.y.z）。只管官网技能库展示：没到最新已发布版本就不上官网；App 内行为不受影响。 */
+  availableSince?: string;
   requestedCapabilities?: string[];
   tools: string[];
   requiredProviders: SkillProviderKind[];
@@ -132,6 +134,8 @@ export const skillManifestSchema = z
     "selectable-in-workbench": z.boolean().optional(),
     /** Only selectable when this build flag is on. The only accepted flag is the 3D-BOX one. */
     "requires-flag": z.enum(["director3dbox"]).optional(),
+    /** 从哪个正式版本起有（x.y.z）；官网导出时与最新已发布版本比，没到的不展示。没写 = 照旧展示。 */
+    "available-since": z.string().regex(/^\d+\.\d+\.\d+$/, "must be x.y.z").optional(),
     /** Canonical requests can only shrink the Host-owned capability ceiling. */
     "requested-capabilities": z.array(skillRequestedCapabilitySchema).max(64)
       .refine((items) => new Set(items).size === items.length, "must not contain duplicate capability ids")
@@ -150,6 +154,7 @@ export const skillManifestSchema = z
     audience: manifest.audience,
     selectableInWorkbench: manifest["selectable-in-workbench"],
     ...(manifest["requires-flag"] ? { requiresFlag: manifest["requires-flag"] } : {}),
+    ...(manifest["available-since"] ? { availableSince: manifest["available-since"] } : {}),
     requestedCapabilities: manifest["requested-capabilities"],
     tools: manifest.tools,
     requiredProviders: manifest["required-providers"],

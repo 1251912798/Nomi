@@ -14,7 +14,7 @@ import {
   IconTrash,
 } from '@tabler/icons-react'
 import { cn } from '../../utils/cn'
-import { ActionCard, DesignEmptyState, NomiSkeleton, WorkbenchIconButton } from '../../design'
+import { ActionCard, DesignEmptyState, NomiSkeleton } from '../../design'
 import { NomiImage } from '../../design/media'
 import { ShellFrame } from '../../ui/app-shell/shell/ShellFrame'
 import { ShellTopBar } from '../../ui/app-shell/shell/ShellTopBar'
@@ -277,7 +277,7 @@ export default function ProjectLibraryPage({
   // ── 缺文本模型 → 提示条（模型接入在项目库的唯一入口形态；生成失败卡仍可直达设置 › 模型接入） ──
   const modelBanner = textModelMissing && onOpenModelCatalog ? (
     <section
-      className="flex min-h-11 items-center gap-2.5 rounded-panel bg-nomi-info-soft py-1.5 pl-3.5 pr-2 text-body-sm text-nomi-info-ink ring-1 ring-inset ring-nomi-info-edge"
+      className="flex min-h-11 items-center gap-2.5 rounded-panel bg-nomi-info-soft py-1.5 pl-3.5 pr-2 text-body-sm text-nomi-info-ink ring-1 ring-inset ring-nomi-line"
       aria-label={t('library.modelStatus')}
       data-model-banner="true"
     >
@@ -290,7 +290,7 @@ export default function ProjectLibraryPage({
         type="button"
         onClick={onOpenModelCatalog}
         data-testid="open-model-settings"
-        className="h-7 shrink-0 rounded-pill border-0 bg-nomi-paper px-3 text-caption font-medium text-nomi-info-ink ring-1 ring-nomi-info-edge transition-colors hover:bg-nomi-info-soft focus-visible:outline focus-visible:outline-2 focus-visible:outline-nomi-accent"
+        className="h-7 shrink-0 rounded-pill border-0 bg-nomi-paper px-3 text-caption font-medium text-nomi-info-ink ring-1 ring-nomi-line transition-colors hover:bg-nomi-info-soft focus-visible:outline focus-visible:outline-2 focus-visible:outline-nomi-ink"
       >
         {t('library.connectTextModel')}
       </button>
@@ -316,7 +316,7 @@ export default function ProjectLibraryPage({
                 onClick={() => setTab(item.id)}
                 className={cn(
                   'h-8 border-0 bg-transparent p-0 text-title font-semibold transition-colors',
-                  'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nomi-accent',
+                  'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nomi-ink',
                   tab === item.id ? 'text-nomi-ink' : 'text-nomi-ink-40 hover:text-nomi-ink-80',
                 )}
               >
@@ -359,14 +359,19 @@ export default function ProjectLibraryPage({
               <span className="flex-1" />
               <div className="flex shrink-0 items-center gap-2">
                 {onPlayJourneyTour ? (
-                  // 「看一遍怎么做」在 Library 板上只画在空库；有项目后它原来是第三张动作卡——功能不丢，收成一颗图标钮
-                  // （控件文案契约 §1.8：次动作 / 工具动作 = 图标 + 悬停名字；设计卡对账：有意不同）。
-                  <WorkbenchIconButton
-                    icon={<IconPlayerPlay size={16} stroke={1.5} aria-hidden="true" />}
-                    label={journeyTourSeen ? t('library.replayGuide') : t('library.watchHow')}
+                  // 「看一遍怎么做」在 Library 板上只画在空库；有项目后它原来是第三张动作卡——功能不丢。
+                  // 2026-10-10 用户：「小播放按钮 hover 没反馈、点了才知道是新手引导」→ 图标旁直接写「新手引导」，
+                  // hover 名字（原来那句）留着说清它会做什么。位置与引导本身不动。
+                  <button
+                    type="button"
                     onClick={onPlayJourneyTour}
+                    title={journeyTourSeen ? t('library.replayGuide') : t('library.watchHow')}
+                    className="inline-flex h-7 items-center gap-1.5 rounded-pill border-0 bg-transparent px-3 text-caption font-medium text-nomi-ink-60 transition-colors hover:bg-nomi-ink-05 hover:text-nomi-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-nomi-ink"
                     data-library-tour
-                  />
+                  >
+                    <IconPlayerPlay size={14} stroke={1.5} aria-hidden="true" />
+                    {t('appShell.library.tour')}
+                  </button>
                 ) : null}
                 {onOpenFolder ? (
                   // Library 板的文字胶囊 + 控件文案契约「带字 ≤4 字」两条同时满足：「选文件夹」/「Open folder」
@@ -374,7 +379,7 @@ export default function ProjectLibraryPage({
                   <button
                     type="button"
                     onClick={onOpenFolder}
-                    className="inline-flex h-7 items-center gap-1.5 rounded-pill border-0 bg-nomi-paper px-3 text-caption font-medium text-nomi-ink-80 ring-1 ring-nomi-line transition-colors hover:bg-nomi-ink-05 focus-visible:outline focus-visible:outline-2 focus-visible:outline-nomi-accent"
+                    className="inline-flex h-7 items-center gap-1.5 rounded-pill border-0 bg-nomi-paper px-3 text-caption font-medium text-nomi-ink-80 ring-1 ring-nomi-line transition-colors hover:bg-nomi-ink-05 focus-visible:outline focus-visible:outline-2 focus-visible:outline-nomi-ink"
                     data-library-open-folder
                   >
                     <IconFolderOpen size={14} stroke={1.5} className="text-nomi-ink-60" aria-hidden="true" />
@@ -384,7 +389,7 @@ export default function ProjectLibraryPage({
                 <button
                   type="button"
                   onClick={() => onNewProject()}
-                  className="inline-flex h-7 items-center gap-1 rounded-pill border-0 bg-nomi-ink pl-2.5 pr-3.5 text-caption font-medium text-nomi-paper transition-colors hover:bg-nomi-ink-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nomi-accent"
+                  className="inline-flex h-7 items-center gap-1 rounded-pill border-0 bg-nomi-ink pl-2.5 pr-3.5 text-caption font-medium text-nomi-paper transition-colors hover:bg-nomi-ink-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nomi-ink"
                   data-library-new-project
                 >
                   <IconPlus size={14} stroke={1.8} aria-hidden="true" />
@@ -503,7 +508,7 @@ export default function ProjectLibraryPage({
                   data-project-id={project.id}
                   className={cn(
                     'group relative overflow-visible rounded-panel text-left',
-                    'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-nomi-accent',
+                    'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-nomi-ink',
                     project.missing ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer',
                   )}
                   role={project.missing ? undefined : 'button'}
@@ -574,7 +579,7 @@ export default function ProjectLibraryPage({
                           type="text"
                           className={cn(
                             'w-full text-body-sm font-medium text-nomi-ink mb-0.5 outline-none',
-                            'bg-nomi-paper border border-nomi-accent rounded-nomi-sm px-1.5 py-0.5',
+                            'bg-nomi-paper border border-nomi-ink-40 rounded-nomi-sm px-1.5 py-0.5',
                           )}
                           value={editValue}
                           autoFocus

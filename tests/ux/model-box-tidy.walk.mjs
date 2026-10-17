@@ -18,7 +18,7 @@ import { fileURLToPath } from 'node:url'
 import { launchNomiApp } from './_launchApp.mjs'
 import { DEFAULT_TIMEOUT_MS, expectAbsent, proveProbe, screenshotSettled } from './_assert.mjs'
 import { stationTimeout } from './_station-budget.mjs'
-import { newProjectEntry } from './_shell.mjs'
+import { newProjectEntry, switchWorkspace } from './_shell.mjs'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const shotsDir = path.join(repoRoot, 'docs/plan/2026-09-11-model-box-tidy-evidence')
@@ -162,7 +162,7 @@ try {
   // 那条路要求供应商能真的被预检验证（authType:'none' 的 loopback 家过不去，见
   // validateCandidateCredential），而这条旅程要考的不是接入流程，是接入之后模型框怎么排。
   await newProjectEntry(win).click({ timeout: DEFAULT_TIMEOUT_MS }); await win.waitForTimeout(2200)
-  await win.locator('[aria-label="工作区切换"]').getByText('生成', { exact: true }).click({ timeout: DEFAULT_TIMEOUT_MS }); await win.waitForTimeout(1000)
+  await switchWorkspace(win, 'generation', '切到生成区'); await win.waitForTimeout(1000)
 
   // ── ① 设置里排序 + 隐藏 ──
   let section = await openSettings(win)

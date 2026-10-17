@@ -6,12 +6,12 @@ import { z } from 'zod'
 import type { Model } from '../catalog/types'
 import type { LaneComposerContext } from '../shared/agentLane/laneDesktopContracts'
 import type { OpenLaneOptions } from './laneRuntimePort'
-import { PROJECT_AGENT_APPROVAL_MODES, PROJECT_AGENT_SPEND_POLICIES } from '../shared/agentCapabilities/capabilityApprovalPolicy';
+import { PROJECT_AGENT_APPROVAL_MODES } from '../shared/agentCapabilities/capabilityApprovalPolicy';
 import { AGENT_CONTEXT_SNAPSHOT_VERSION, formatAgentContextSnapshot } from '../shared/agentContextSnapshot'
 import { resolveProjectAgentAttachmentClaims } from '../assets/projectAssetStore'
 import { readNomiLocalAsset } from '../assets/localAssetFile'
 import { extractTextFromLocalAsset } from '../files/extractText'
-import { buildAgentUserContent, modelSupportsImageInput, modelSupportsPdfInput } from '../ai/agentUserContent'
+import { buildAgentUserContent, projectAgentPromptForSend, modelSupportsImageInput, modelSupportsPdfInput } from '../ai/agentUserContent'
 import { rewritePdfPayload, type NativePdf } from '../ai/nativePdfPayload'
 import { applyProfileToRequestBody, getModelProfile } from '../ai/modelProfiles'
 
@@ -39,7 +39,7 @@ const intentSchema = z.object({
 }).strict()
 const composerSchema = intentSchema.extend({
   model: z.object({ vendorKey: z.string().min(1).max(256), modelKey: z.string().min(1).max(256) }).strict().optional(),
-  approvalPolicy: z.object({ mode: z.enum(PROJECT_AGENT_APPROVAL_MODES), spend: z.enum(PROJECT_AGENT_SPEND_POLICIES) }).strict(),
+  approvalPolicy: z.object({ mode: z.enum(PROJECT_AGENT_APPROVAL_MODES) }).strict(),
   availableModels: z.array(agentModelEntrySchema).max(2048).optional(),
   attachments: z.array(z.object({ assetId: z.string().min(1).max(256), version: z.number().int().positive() }).strict()).max(64).optional(),
   displayText: text.optional(),
@@ -83,12 +83,12 @@ export function createDesktopLaneInput(input: {
       if (!selected) throw new Error('Model is not configured')
       const refs = resolveProjectAgentAttachmentClaims(input.projectId, message.context.attachments ?? [])
       const attachments = refs.flatMap((ref) => ref.display ? [{
-        url: ref.display.url, contentType: ref.display.contentType,
+        assetId: ref.assetId, url: ref.display.url, contentType: ref.display.contentType,
         fileName: ref.display.fileName, kind: ref.display.kind,
       }] : [])
       const { model } = selected
       const content = await buildAgentUserContent({
-        prompt: [message.content, formatAgentContextSnapshot(message.context.contextSnapshot), formatStoryboardRequestTarget(message.context.storyboardTarget), formatLaneModelDelta(message.context, previous)].filter(Boolean).join('\n\n'),
+        prompt: [projectAgentPromptForSend(message.content, attachments), formatAgentContextSnapshot(message.context.contextSnapshot), formatStoryboardRequestTarget(message.context.storyboardTarget), formatLaneModelDelta(message.context, previous)].filter(Boolean).join('\n\n'),
         attachments,
         supportsImageInput: modelSupportsImageInput(model.modelKey, model.modelAlias, model.meta),
         supportsPdfInput: selected.kind !== 'openai-compatible' && modelSupportsPdfInput(model.modelKey, model.modelAlias, model.meta),

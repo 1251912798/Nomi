@@ -129,7 +129,7 @@ const AssetMentionSuggestionList = React.forwardRef<MentionSuggestionListRef, Pr
           <button
             type="button"
             onClick={upload.openFilePicker}
-            className={cn('w-full rounded-nomi-sm border border-dashed border-nomi-ink-20 px-[6px] py-[5px] text-left text-micro text-nomi-ink-60 hover:border-nomi-accent hover:text-nomi-accent')}
+            className={cn('w-full rounded-nomi-sm border border-dashed border-nomi-ink-20 px-[6px] py-[5px] text-left text-micro text-nomi-ink-60 hover:border-nomi-ink-30 hover:text-nomi-accent')}
           >
             {upload.isDragging ? t('assetLibrary.mentionDropUpload') : t('assetLibrary.mentionUpload')}
           </button>

@@ -11,7 +11,7 @@ test('independent: stop invalidates an input still preparing before native accep
   let accepted = 0;
   let prepared = 0;
   const host = await f.openLane({ ...f.options, input: {
-    capture: () => ({ approvalPolicy: { mode: 'step', spend: 'confirm' } }),
+    capture: () => ({ approvalPolicy: { mode: 'request' } }),
     prepare: async context => { if (++prepared === 1) { enter(); await waiting; } return context; },
     activate: () => {}, providerContent: async message => message.content, rewritePayload: payload => payload,
   } });
@@ -40,7 +40,7 @@ for (const kind of ['steer', 'follow-up'] as const) test(`independent: stop also
   let captures = 0;
   let queuedAccepted = 0;
   const host = await f.openLane({ ...f.options, input: {
-    capture: () => ({ approvalPolicy: { mode: 'step', spend: 'confirm' }, systemPrompt: `input-${++captures}` }),
+    capture: () => ({ approvalPolicy: { mode: 'request' }, systemPrompt: `input-${++captures}` }),
     prepare: async context => { if (captures === 2) { inputEntered(); await inputWaiting; } return context; },
     activate: () => {}, providerContent: async message => message.content, rewritePayload: payload => payload,
   } });

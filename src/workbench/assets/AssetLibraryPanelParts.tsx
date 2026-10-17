@@ -63,7 +63,7 @@ function FilterOptionRow({ row }: { row: FilterRow }): JSX.Element {
         'bg-transparent text-left text-caption transition-colors duration-nomi-fast ease-nomi-fast',
         'cursor-pointer text-nomi-ink-60 hover:bg-nomi-ink-05 hover:text-nomi-ink',
         muted && 'text-nomi-ink-40',
-        row.selected && 'bg-nomi-accent-soft font-semibold text-nomi-accent',
+        row.selected && 'bg-nomi-accent-soft font-semibold text-nomi-ink',
       )}
       style={{ gridTemplateColumns: '20px minmax(42px, 1fr) auto' }}
       onClick={row.onClick}
@@ -192,7 +192,7 @@ export function FolderGridCell({
         'group relative flex flex-col items-center justify-center gap-1 overflow-hidden rounded-nomi-sm border bg-nomi-paper',
         'cursor-pointer transition-[border-color,background,box-shadow] duration-nomi-fast ease-nomi-fast',
         compact ? 'mb-2.5 h-[92px] w-full' : 'aspect-square',
-        dragOver ? 'border-nomi-accent bg-nomi-accent-soft shadow-nomi-md' : 'border-nomi-line hover:border-nomi-ink-20 hover:bg-nomi-ink-05',
+        dragOver ? 'border-nomi-ink-40 bg-nomi-accent-soft shadow-nomi-md' : 'border-nomi-line hover:border-nomi-ink-20 hover:bg-nomi-ink-05',
       )}
       style={compact ? { breakInside: 'avoid' } : undefined}
       onClick={() => onOpen(id)}
@@ -255,7 +255,7 @@ export function NewFolderInput({
       placeholder={t('assetLibrary.newFolderPlaceholder')}
       aria-label={t('assetLibrary.newFolderNameAria')}
       className={cn(
-        'h-8 w-36 rounded-nomi-sm border border-nomi-accent bg-nomi-paper px-2 text-caption text-nomi-ink outline-none',
+        'h-8 w-36 rounded-nomi-sm border border-nomi-ink-40 bg-nomi-paper px-2 text-caption text-nomi-ink outline-none',
       )}
       onKeyDown={(event) => {
         if (event.key === 'Enter') {
@@ -331,13 +331,13 @@ export const AssetGridCell = React.memo(function AssetGridCell({
   const checkClassName = cn(
     'absolute right-1.5 top-1.5 grid size-5 place-items-center rounded-pill border shadow-nomi-sm',
     selected
-      ? 'border-nomi-accent bg-nomi-accent text-nomi-paper'
+      ? 'border-nomi-ink bg-nomi-ink text-nomi-paper'
       : 'border-nomi-line bg-nomi-paper/85 text-transparent group-hover:text-nomi-ink-40',
   )
   const check = !selectable ? null : onToggleSelect ? (
     <button
       type="button"
-      className={cn(checkClassName, 'z-[2] cursor-pointer hover:border-nomi-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nomi-accent/40')}
+      className={cn(checkClassName, 'z-[2] cursor-pointer hover:border-nomi-ink-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nomi-ink')}
       data-asset-select-toggle={asset.name}
       aria-pressed={selected}
       aria-label={t('assetLibrary.toggleSelectNamed', { name: asset.name })}
@@ -391,7 +391,7 @@ export const AssetGridCell = React.memo(function AssetGridCell({
               'shadow-nomi-sm transition-[border-color,box-shadow,transform] duration-nomi-fast ease-nomi-fast',
               'hover:border-nomi-ink-20 hover:shadow-nomi-md',
               canDrag ? 'cursor-grab active:cursor-grabbing' : onPreview || selectable ? 'cursor-pointer' : 'cursor-default',
-              selected && 'border-nomi-accent shadow-nomi-md ring-2 ring-nomi-accent ring-offset-1 ring-offset-nomi-paper',
+              selected && 'shadow-nomi-md',
             )}
             style={{ breakInside: 'avoid' }}
             role={onSelect ? 'button' : undefined}
@@ -440,7 +440,6 @@ export const AssetGridCell = React.memo(function AssetGridCell({
             className={cn(
               'group relative flex aspect-square items-center justify-center overflow-hidden rounded-nomi-sm border border-nomi-line bg-nomi-ink-05',
               canDrag ? 'cursor-grab active:cursor-grabbing' : onPreview || selectable ? 'cursor-pointer' : 'cursor-default',
-              selected && 'border-nomi-accent ring-2 ring-nomi-accent ring-offset-1 ring-offset-nomi-paper',
             )}
             role={onSelect ? 'button' : undefined}
             tabIndex={onSelect ? 0 : undefined}

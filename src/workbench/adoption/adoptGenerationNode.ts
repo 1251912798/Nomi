@@ -80,7 +80,7 @@ export async function adoptGenerationNode(
     if (landedReplay) return { status: 'applied', proposal: landedReplay, replayed: true }
   }
 
-  const lookup = lookupAdoptionProposal(key)
+  const lookup = lookupAdoptionProposal(key, ports.readTimeline())
   if (lookup.kind === 'replay') return { status: 'applied', proposal: lookup.proposal, replayed: true }
   if (lookup.kind === 'stale') {
     // 自己上一次 apply 造成的 revision 变化仍是幂等重放；外部编辑则诚实报 stale。

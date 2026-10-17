@@ -100,7 +100,7 @@ export function AiAssistedOnboardingCard({
       data-model-home-assisted-onboarding={host}
       className={cn(
         'flex flex-col gap-3 rounded-nomi-sm border bg-nomi-ink-05 px-3 py-3',
-        firstSeen ? 'border-nomi-accent' : 'border-nomi-line-soft',
+        firstSeen ? 'border-nomi-line' : 'border-nomi-line-soft',
       )}
     >
       <div className="flex items-start gap-3">

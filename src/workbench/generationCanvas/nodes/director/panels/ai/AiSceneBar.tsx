@@ -88,7 +88,7 @@ export function AiSceneBar({ open, onOpen, onClose }: { open: boolean; onOpen: (
         <WorkbenchIconButton size="sm" icon={<IconX size={14} stroke={2} />} label={t('director.ai.close')} onClick={onClose} />
       </div>
       <textarea
-        className="mb-2 w-full resize-none rounded-nomi-sm border border-nomi-line bg-nomi-bg px-2 py-1.5 text-caption text-nomi-ink outline-none focus:border-nomi-accent"
+        className="mb-2 w-full resize-none rounded-nomi-sm border border-nomi-line bg-nomi-bg px-2 py-1.5 text-caption text-nomi-ink outline-none focus:border-nomi-ink-40"
         rows={2}
         placeholder={t('director.ai.placeholder')}
         value={description}

@@ -1,4 +1,4 @@
-import type { TimelineClip, TimelineState, TimelineTrack, TimelineTrackType } from './timelineTypes'
+import type { TimelineClip, TimelineState, TimelineTrack, TimelineTrackType, TimelineTransition } from './timelineTypes'
 import { getTrackTypeForClipType } from './timelineTypes'
 import { resolveClipFraming, type ClipFraming } from './clipFraming'
 import { nearestLegalStart } from './timelinePlacement'
@@ -162,30 +162,95 @@ export function removeClipsByIds(timeline: TimelineState, clipIds: readonly stri
   return { ...timeline, tracks, ...(transitions ? { transitions } : {}) }
 }
 
+/** 画布节点被删时从时间轴摘下的那一批：连同所在轨与被牵连的转场，供撤销原样放回。 */
+export type DetachedClips = {
+  clips: Array<{ trackId: string; clip: TimelineClip }>
+  transitions: TimelineTransition[]
+}
+
 /**
- * 删画布节点 → 时间轴对账：移除所有 sourceNodeId 命中的 clip（跨轨、含同节点的多个产物）。
+ * 删画布节点 → 时间轴对账：摘掉所有 sourceNodeId 命中的 clip（跨轨、含同节点的多个产物）。
  * 根因（P2，数据一致性）：clip 创建时把节点 result 的 url/thumbnailUrl 快照冻结，无 node→clip 同步；
  * 画布删了节点后时间轴仍引用「已不存在/过期素材」，导出会渲染悬空帧。此处按 sourceNodeId 单向对账，
  * 让「画布删了的节点，时间轴不再放它的旧产物」。无命中返回原引用 → store 据此跳过 persistRevision 自增。
+ * 摘下的 clip 与转场一并交回（detached）：撤销删除时由 reattachClips 放回，删除的连带数据不丢。
  */
-export function removeClipsBySourceNodeIds(timeline: TimelineState, nodeIds: readonly string[]): TimelineState {
+export function detachClipsBySourceNodeIds(
+  timeline: TimelineState,
+  nodeIds: readonly string[],
+): { timeline: TimelineState; detached: DetachedClips | null } {
   const idSet = new Set(nodeIds.map((id) => String(id || '').trim()).filter(Boolean))
-  if (idSet.size === 0) return timeline
-  let removed = false
-  const removedClipIds = new Set<string>()
+  if (idSet.size === 0) return { timeline, detached: null }
+  const clips: DetachedClips['clips'] = []
   const tracks = timeline.tracks.map((track) => {
     const nextClips = track.clips.filter((clip) => {
       if (!idSet.has(clip.sourceNodeId)) return true
-      removedClipIds.add(clip.id)
+      clips.push({ trackId: track.id, clip })
       return false
     })
-    if (nextClips.length === track.clips.length) return track
-    removed = true
-    return { ...track, clips: nextClips }
+    return nextClips.length === track.clips.length ? track : { ...track, clips: nextClips }
   })
-  if (!removed) return timeline
+  if (clips.length === 0) return { timeline, detached: null }
+  const removedClipIds = new Set(clips.map(({ clip }) => clip.id))
   const transitions = dropTransitionsForClipIds(timeline.transitions, removedClipIds)
-  return { ...timeline, tracks, ...(transitions ? { transitions } : {}) }
+  const droppedTransitions = (timeline.transitions ?? []).filter(
+    (transition) => removedClipIds.has(transition.fromClipId) || removedClipIds.has(transition.toClipId),
+  )
+  return {
+    timeline: { ...timeline, tracks, ...(transitions ? { transitions } : {}) },
+    detached: { clips, transitions: droppedTransitions },
+  }
+}
+
+// 摘下待放回的 clip 按节点封顶（够一次大批量删除 + 撤销；超出丢最早的）。
+const DETACHED_CLIPS_LIMIT = 500
+
+/** 把刚摘下的一批按 sourceNodeId 记进暂存（撤销放回节点时按节点取回）。 */
+export function stashDetachedClips(stash: Record<string, DetachedClips>, detached: DetachedClips): Record<string, DetachedClips> {
+  const next = { ...stash }
+  for (const piece of detached.clips) {
+    const id = piece.clip.sourceNodeId
+    next[id] = { clips: [...(next[id]?.clips ?? []), piece], transitions: detached.transitions }
+  }
+  return Object.fromEntries(Object.entries(next).slice(-DETACHED_CLIPS_LIMIT))
+}
+
+/** 取出这些节点名下暂存的一批（合并成一份）并从暂存里移除；没有就返回 null。 */
+export function takeDetachedClips(
+  stash: Record<string, DetachedClips>,
+  nodeIds: readonly string[],
+): { detached: DetachedClips; remaining: Record<string, DetachedClips> } | null {
+  const taken = nodeIds.filter((id) => stash[id])
+  if (taken.length === 0) return null
+  return {
+    detached: { clips: taken.flatMap((id) => stash[id].clips), transitions: taken.flatMap((id) => stash[id].transitions) },
+    remaining: Object.fromEntries(Object.entries(stash).filter(([id]) => !taken.includes(id))),
+  }
+}
+
+/**
+ * 撤销删除：把 detachClipsBySourceNodeIds 摘下的 clip 放回原轨。
+ * 位置被删除之后的新编辑占了就沿用 addClipAtFrame 的同款规则滑入最近空位（不静默丢）；
+ * id 已存在（已被放回过）的跳过；转场只在两端 clip 都在轨上时恢复。无变化返回原引用。
+ */
+export function reattachClips(timeline: TimelineState, detached: DetachedClips): TimelineState {
+  const present = new Set(timeline.tracks.flatMap((track) => track.clips.map((clip) => clip.id)))
+  let next = timeline
+  for (const { trackId, clip } of detached.clips) {
+    if (present.has(clip.id)) continue
+    const track = next.tracks.find((candidate) => candidate.id === trackId)
+    if (!track) continue
+    next = addClipAtFrame(next, clip, track.type, clip.startFrame)
+    present.add(clip.id)
+  }
+  const live = new Set(next.tracks.flatMap((track) => track.clips.map((clip) => clip.id)))
+  const have = next.transitions ?? []
+  const restored = detached.transitions.filter(
+    (transition) => live.has(transition.fromClipId) && live.has(transition.toClipId)
+      && !have.some((existing) => existing.fromClipId === transition.fromClipId && existing.toClipId === transition.toClipId),
+  )
+  if (restored.length === 0) return next
+  return { ...next, transitions: [...have, ...restored] }
 }
 
 /**

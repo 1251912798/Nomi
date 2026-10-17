@@ -1,0 +1,10 @@
+---
+// 官网同款品牌位：logo + 字标，点回官网首页（中英各回各的）。
+const english = Astro.locals.starlightRoute.lang === 'en'
+---
+
+<a class="nomi-brand" href={english ? '/en/' : '/'} aria-label="Nomi">
+  <img src="/assets/nomi-logo.svg" width="26" height="26" alt="" />
+  <span class="wordmark">No<span>mi</span></span>
+  <span class="docs-tag">{english ? 'Docs' : '教程'}</span>
+</a>

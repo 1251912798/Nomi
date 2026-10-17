@@ -10,7 +10,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { loadScenarios, parsePerfEvidence, scenarioIds } from './perf-scenarios-lib.mjs'
+import { knownScenarios, loadScenarios, parsePerfEvidence } from './perf-scenarios-lib.mjs'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 
@@ -146,7 +146,12 @@ const EVIDENCE_TOKEN = [
 
 /** 性能场景证据的 id（2026-10-11）：不走通用的「有链接就算」，要有数字、id 在登记表里，「未验证」不算通过（docs/engineering/perf-scenarios.md）。 */
 export const PERF_EVIDENCE_ID = 'perf-scenario'
-const perfVerdict = (line) => parsePerfEvidence(line, scenarioIds(loadScenarios(repoRoot)))
+/** 性能证据行的判据。known = knownScenarios 的结果；problems 非空（取不到 / 坏了 / 结构不合格）时，非「不适用」的性能行一律红（fail-closed）。 */
+const perfVerdictFor = (known) => (line) => {
+  const verdict = parsePerfEvidence(line, known.ids, known.byId)
+  if (known.problems.length && verdict.ok && !verdict.notApplicable) return { ok: false, reason: `场景登记表核对不了：${known.problems.join('；')}` }
+  return verdict
+}
 
 /** 一行证据条目算不算数：有报告链接 / 路径 / 截图 / 运行号 / PR 号，或明写「未验证：原因」。 */
 export function evidenceLineVerdict(line) {
@@ -154,6 +159,39 @@ export function evidenceLineVerdict(line) {
   if (unverified && unverified[1].trim().length >= 2) return { ok: true, unverified: true, reason: unverified[1].trim() }
   if (EVIDENCE_TOKEN.some((pattern) => pattern.test(line))) return { ok: true, unverified: false }
   return { ok: false }
+}
+
+/**
+ * 真付费抽检证据的严格判据（2026-10-16，合并前扫描专用）。
+ *
+ * 为什么单拎：通用的 `evidenceLineVerdict` 对每个证据项都接受「未验证：原因」，也接受任何一个 PR 号 / 路径 / 链接。
+ * 对别的证据那是合理的（工具没建、本次不适用），对「花钱类 PR 合并前要有真付费抽检」却等于没有门：
+ * #1203（Agent 权限两档 + 两刹车，花钱类）写了一行「未验证」，合并前扫描绿、CI 绿、被合并循环合入，真付费验收被跳过。
+ * 花钱类的真付费门槛只写在文字里（docs/engineering/delivery-and-review.md），没有门岗。
+ *
+ * 严格口径：这一行必须以 `spend-paid-sample：` 开头（别名不算），后面是
+ *   · 运行号 / 报告链接 / 报告路径（真付费抽检跑过的凭据）；或
+ *   · `协调豁免：<理由>`（协调会话明示豁免，理由至少 3 个字；扫描会把它醒目地打在报告里）。
+ * 「未验证」不接受；裸 PR 号（`#1203`）不接受——PR 号证明不了谁跑过真付费。
+ */
+export const PAID_SAMPLE_EVIDENCE_ID = 'spend-paid-sample'
+const PAID_SAMPLE_LINE = /^\s*(?:[-*]\s*)?(?:\*\*)?spend-paid-sample(?:\*\*)?\s*[:：]\s*(.*)$/i
+const PAID_SAMPLE_WAIVER = /协调豁免\s*[:：]\s*(\S.{2,})/
+const PAID_SAMPLE_PROOF = [
+  /https?:\/\/\S+/,
+  /(?:docs|reports?|artifacts|evals)[\\/][\w@./\\+-]+\.(?:md|json|txt)\b/i,
+  /(?:run|运行号?|actions\/runs)\D{0,3}\d{5,}/i,
+]
+export const isPaidSampleLine = (line) => PAID_SAMPLE_LINE.test(String(line))
+export function paidSampleVerdict(line) {
+  const head = PAID_SAMPLE_LINE.exec(String(line))
+  if (!head) return { ok: false, reason: `要以「${PAID_SAMPLE_EVIDENCE_ID}：」开头一行（别名不算）` }
+  const rest = head[1]
+  const waiver = PAID_SAMPLE_WAIVER.exec(rest)
+  if (waiver) return { ok: true, waived: true, reason: waiver[1].trim() }
+  if (/未验证/.test(rest)) return { ok: false, reason: '花钱类 PR 不接受「未验证」：要真付费抽检的运行号 / 报告链接，或「协调豁免：<理由>」' }
+  if (PAID_SAMPLE_PROOF.some((pattern) => pattern.test(rest))) return { ok: true }
+  return { ok: false, reason: '没有运行号 / 报告链接 / 报告路径（裸 PR 号不算），也不是「协调豁免：<理由>」' }
 }
 
 /**
@@ -181,7 +219,9 @@ function collectEvidence(categoryIds, table) {
 }
 
 /** `## 验收证据`：逐项对账。返回 { ok, lines, gaps }；gaps = 被「未验证」带过、且工具还没建的缺口。 */
-export function checkRoutingEvidence(body, categoryIds, table = loadRoutingTable(), createdAt = null) {
+export function checkRoutingEvidence(body, categoryIds, table = loadRoutingTable(), createdAt = null, scenarios = null, { paidStrict = false } = {}) {
+  // scenarios：调用方（CI / 合并前扫描）用 knownScenarios 算好的已知场景；不传 = 按当前检出（只给单测直接调用用）
+  const known = scenarios ?? knownScenarios({ baseEntries: loadScenarios(repoRoot) })
   const required = requiredEvidence(categoryIds, table, createdAt)
   const manualFull = manualFullEvidence(categoryIds, table)
   const manualNote = manualFull.length ? [`· 手动全量跑覆盖（PR 正文不要求）：${manualFull.map((item) => item.id).join('、')}`] : []
@@ -192,19 +232,30 @@ export function checkRoutingEvidence(body, categoryIds, table = loadRoutingTable
   const bad = []
   const gaps = []
   const perfReasons = []
+  const paidReasons = []
+  const paidNotes = []
   let provided = 0
   let unverifiedCount = 0
   for (const item of required) {
     const tokens = [item.id, ...(item.aliases ?? [])]
-    const mine = sectionLines.filter((line) => tokens.some((token) => line.toLowerCase().includes(token.toLowerCase())))
-    if (!mine.length) { missing.push(item); continue }
-    const verdicts = mine.map(item.id === PERF_EVIDENCE_ID ? perfVerdict : evidenceLineVerdict)
+    const strictPaid = paidStrict && item.id === PAID_SAMPLE_EVIDENCE_ID
+    const mine = strictPaid
+      ? sectionLines.filter(isPaidSampleLine)
+      : sectionLines.filter((line) => tokens.some((token) => line.toLowerCase().includes(token.toLowerCase())))
+    if (!mine.length) {
+      missing.push(item)
+      if (strictPaid) paidReasons.push('合并前扫描要求花钱类 PR 有一行 `spend-paid-sample：<运行号 / 报告链接>` 或 `spend-paid-sample：协调豁免：<理由>`（别名不算，未验证不算）')
+      continue
+    }
+    const verdicts = mine.map(strictPaid ? paidSampleVerdict : item.id === PERF_EVIDENCE_ID ? perfVerdictFor(known) : evidenceLineVerdict)
     const good = verdicts.find((verdict) => verdict.ok)
     if (!good) {
       bad.push(item)
       if (item.id === PERF_EVIDENCE_ID) perfReasons.push(...verdicts.map((verdict) => verdict.reason).filter(Boolean))
+      if (strictPaid) paidReasons.push(...verdicts.map((verdict) => verdict.reason).filter(Boolean))
       continue
     }
+    if (strictPaid && good.waived) paidNotes.push(`⚠ ${PAID_SAMPLE_EVIDENCE_ID}：协调豁免——${good.reason}（没有真付费抽检；豁免理由请协调会话合并前再看一眼）`)
     provided += 1
     if (good.unverified) {
       unverifiedCount += 1
@@ -213,24 +264,31 @@ export function checkRoutingEvidence(body, categoryIds, table = loadRoutingTable
   }
   const lines = []
   let ok = true
+  // 取不到 / 坏了的场景登记表：有性能证据要求时，直接红并说清原因（不等到逐行判）
+  if (known.problems.length && required.some((item) => item.id === PERF_EVIDENCE_ID)) {
+    ok = false
+    lines.push(...known.problems.map((problem) => `✖ 场景登记表：${problem}`))
+  }
   if (missing.length || bad.length) {
     ok = false
     if (missing.length) lines.push(`✖ \`## ${EVIDENCE_SECTION}\` 缺这些证据条目：${missing.map((item) => `${item.id}（${item.label}）`).join('；')}`)
     if (bad.length) lines.push(`✖ 这些证据条目没有报告链接 / 运行号 / 截图路径，也没写「未验证：原因」：${bad.map((item) => item.id).join('、')}`)
     for (const reason of new Set(perfReasons)) lines.push(`  → ${PERF_EVIDENCE_ID}：${reason}`)
+    for (const reason of new Set(paidReasons)) lines.push(`  → ${PAID_SAMPLE_EVIDENCE_ID}：${reason}`)
     lines.push(`  → 每项一行：\`- <证据 id>：<链接 / 运行号 / 截图路径>\` 或 \`- <证据 id>：未验证：原因\`；工具还没建的证据写「未验证：工具未建」`)
   } else {
     lines.push(`✅ 验收证据：${required.length} 项都有条目（实证 ${provided - unverifiedCount}，未验证 ${unverifiedCount}）`)
   }
   for (const gap of gaps) lines.push(`⚠ 缺工具：${gap.id}（${gap.label}）——${gap.toolRef}`)
+  lines.push(...paidNotes)
   lines.push(...manualNote)
   return { ok, lines, gaps }
 }
 
 /** 整个路由判据：card + evidence。 */
-export function checkRouting(body, inferred, table = loadRoutingTable(), createdAt = null) {
+export function checkRouting(body, inferred, table = loadRoutingTable(), createdAt = null, scenarios = null, options = {}) {
   const card = checkRoutingCard(body, inferred, table)
-  const evidence = checkRoutingEvidence(body, card.union, table, createdAt)
+  const evidence = checkRoutingEvidence(body, card.union, table, createdAt, scenarios, options)
   return { ok: card.ok && evidence.ok, lines: [...card.lines, ...evidence.lines], gaps: evidence.gaps, categories: card.union }
 }
 
@@ -303,10 +361,12 @@ export function checkProtectedScope(body, files, { packageRemovedLines = [], led
  * CI 与合并前扫描共用的整体判据（路由 + 规则与门岗范围）。
  * 路由部分受 effectiveFrom 宽限（旧 PR 只警告）；规则与门岗范围不吃宽限——#1032 这种回退正是旧分支带出来的。
  */
-export function evaluatePrJudgement({ body, files: rawFiles, addedLines = '', addedByFile = null, packageRemovedLines = [], ledgerRemovedIds = [], createdAt = null, table = loadRoutingTable() }) {
+export function evaluatePrJudgement({ body, files: rawFiles, addedLines = '', addedByFile = null, packageRemovedLines = [], ledgerRemovedIds = [], createdAt = null, table = undefined, scenarios = null, paidStrict = false }) {
+  // table 缺省 = 检出里的政策表（合并前扫描的检出即 main）；CI 必须显式传 base 上的表，PR 不能放宽自己的路由要求
+  table = table ?? loadRoutingTable()
   const files = addedByFile ? rawFiles.map((file) => ({ ...file, added: addedByFile.get(file.path) ?? '' })) : rawFiles
   const inferred = inferRoutes(files, addedLines, table)
-  const routing = checkRouting(body, inferred, table, createdAt)
+  const routing = checkRouting(body, inferred, table, createdAt, scenarios, { paidStrict })
   const enforced = routingEnforced(createdAt, table)
   const softened = enforced ? routing.lines : routing.lines.map((line) => line.replace(/^✖/, '⚠'))
   if (!enforced) softened.push(`· 这个 PR 在路由规则生效（${table.effectiveFrom}）之前开的：缺项只给警告，不判红`)

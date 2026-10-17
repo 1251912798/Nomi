@@ -11,7 +11,11 @@ import {
   nudgeClipById,
   removeClipById,
   removeClipsByIds,
-  removeClipsBySourceNodeIds,
+  detachClipsBySourceNodeIds,
+  reattachClips,
+  stashDetachedClips,
+  takeDetachedClips,
+  type DetachedClips,
   resizeClipEdge,
   setTimelinePlayheadFrame,
   setTimelineScale,
@@ -56,6 +60,7 @@ import { createTimelineClipWritesSlice, type TimelineClipWritesSlice } from './t
 import { readDockCollapsed, writeDockCollapsed } from './generation/dockCollapsePrefs'
 import { TIMELINE_PANEL_DEFAULT, clampTimelinePanelHeight } from './timeline/timelinePanelBounds'
 import type { ExportQuality } from './export/exportTypes'
+import { registerTimelineReconciler } from './generationCanvas/store/canvasTimelineBridge'
 
 /** 拖动中临时吸附辅助线（非持久化）。 */
 export type TimelineSnapGuide = { frame: number; label: string }
@@ -145,6 +150,8 @@ type WorkbenchState = WorkbenchDocumentSlice & EditingPanelLayoutSlice & Timelin
   timelineUndoStack: TimelineUndoEntry[]
   /** 时间轴重做栈。撤销时压入；任一新编辑清空（新编辑使 redo 失效，标准语义）。 */
   timelineRedoStack: TimelineState[]
+  /** 删节点时摘下的 clip / 转场（按 sourceNodeId），撤销放回节点时凭它放回；会话内存，切项目即清。 */
+  detachedTimelineClips: Record<string, DetachedClips>
   setTimelineSplitMode: (on: boolean) => void
   /** 把当前 timeline 压入撤销栈（变更生效前 / 拖拽手势首次移动时调）。 */
   captureTimelineUndo: () => void
@@ -201,6 +208,8 @@ type WorkbenchState = WorkbenchDocumentSlice & EditingPanelLayoutSlice & Timelin
    * 由 canvasNodeActions 的 deleteNode/deleteSelectedNodes 删完节点后调用（跨 store 最小耦合）。
    */
   reconcileTimelineForDeletedNodes: (nodeIds: readonly string[]) => void
+  /** 节点被放回画布（撤销 / 重做 / 补偿）后的对账，与删除对称：把当初摘下的 clip 与转场放回原轨。 */
+  reconcileTimelineForRestoredNodes: (nodeIds: readonly string[]) => void
   /**
    * 节点产物更新后的时间轴回填闸（C0，与删除对账对称）：把引用该 nodeId 的所有 clip
    * 换成新产物——位置不变（startFrame 不动）、URL 走 providerUrl 优先、trim 越界夹取。
@@ -324,7 +333,7 @@ export const useWorkbenchStore = create<WorkbenchState>()(subscribeWithSelector(
     projectAgentDraftRevision: state.projectAgentDraftRevision + 1,
     projectAgentReferences: typeof references === 'function' ? references(state.projectAgentReferences) : references,
   })),
-  setProjectAgentApprovalPolicy: (projectAgentApprovalPolicy) => set({ projectAgentApprovalPolicy: Object.freeze({ mode: projectAgentApprovalPolicy.mode, spend: projectAgentApprovalPolicy.spend }) }),
+  setProjectAgentApprovalPolicy: (projectAgentApprovalPolicy) => set({ projectAgentApprovalPolicy: Object.freeze({ mode: projectAgentApprovalPolicy.mode }) }),
   timeline: createDefaultTimeline(),
   timelinePlaying: false,
   previewAspectRatio: '16:9',
@@ -347,6 +356,7 @@ export const useWorkbenchStore = create<WorkbenchState>()(subscribeWithSelector(
   setExportQuality: (exportQuality) => set({ exportQuality }),
   timelineUndoStack: [],
   timelineRedoStack: [],
+  detachedTimelineClips: {},
   setWorkspaceMode: (mode) => {
     if (!isWorkspaceMode(mode)) return
     set({ workspaceMode: mode })
@@ -579,17 +589,24 @@ export const useWorkbenchStore = create<WorkbenchState>()(subscribeWithSelector(
   },
   reconcileTimelineForDeletedNodes: (nodeIds) => {
     set((state) => {
-      const nextTimeline = removeClipsBySourceNodeIds(state.timeline, nodeIds)
-      if (nextTimeline === state.timeline) return state // 无悬空 clip → 不动、不触发自动保存
+      const { timeline: nextTimeline, detached } = detachClipsBySourceNodeIds(state.timeline, nodeIds)
+      if (!detached) return state // 无悬空 clip → 不动、不触发自动保存
       // 被移除的 clip 可能正被选中/正在播 → 一并收口，避免选区指向已删 clip
-      const liveClipIds = new Set(
-        nextTimeline.tracks.flatMap((track) => track.clips.map((clip) => clip.id)),
-      )
+      const liveClipIds = new Set(nextTimeline.tracks.flatMap((track) => track.clips.map((clip) => clip.id)))
       return {
         timeline: nextTimeline,
+        detachedTimelineClips: stashDetachedClips(state.detachedTimelineClips, detached),
         selectedTimelineClipIds: state.selectedTimelineClipIds.filter((id) => liveClipIds.has(id)),
         persistRevision: state.persistRevision + 1,
       }
+    })
+  },
+  reconcileTimelineForRestoredNodes: (nodeIds) => {
+    set((state) => {
+      const taken = takeDetachedClips(state.detachedTimelineClips, nodeIds)
+      if (!taken) return state
+      const timeline = reattachClips(state.timeline, taken.detached)
+      return { timeline, detachedTimelineClips: taken.remaining, persistRevision: state.persistRevision + (timeline === state.timeline ? 0 : 1) }
     })
   },
   reconcileTimelineForUpdatedNodes: (nodeId, result) => {
@@ -778,3 +795,5 @@ export const useWorkbenchStore = create<WorkbenchState>()(subscribeWithSelector(
     })
   },
 })))
+
+registerTimelineReconciler(useWorkbenchStore)

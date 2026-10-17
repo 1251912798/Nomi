@@ -6,7 +6,7 @@
 //   · Agent 里点了暂停，上面的消息还一直在转；
 //   · 点了之后弹「操作没成功，稍后再试」。
 // 真实创作者会做的事：
-//   A. 在创作页写着稿子，切到「全自动」，让 Agent 把三镜做成视频（Agent 起草落进创作页左栏，这一步看分镜表 / 左栏会不会自己变）；
+//   A. 在创作页写着稿子，切到「直接生成」，让 Agent 把三镜做成视频（Agent 起草落进创作页左栏，这一步看分镜表 / 左栏会不会自己变）；
 //   B. 回到生成页再说一次；开跑之后觉得不对，去任务卡上按「暂停」，过一会儿在剩下那一镜上点「继续剩余」。
 // 乱用：在第 1 镜还在提交的时候按暂停（慢网关，真实会有）；A 里 Agent 失败后用户直接换个页面再说一次。
 //
@@ -60,14 +60,14 @@ try {
     await expect(win().locator(`${CREATION_PANEL} ${COMPOSER}`)).toBeVisible({ timeout: DEFAULT_TIMEOUT_MS })
   }, { surfaces: ['workspaceMode', 'agentPanel', 'rightPanel', 'canvasViewport', 'creationSelection'] })
 
-  await monitor.step('把权限档切到「全自动」（二次确认上点头）', async () => {
+  await monitor.step('把权限档切到「直接生成」（二次确认上点头）', async () => {
     await clickOrFail(win().locator(`${CREATION_PANEL} ${COMPOSER_PERMISSION}`), '权限档选择器')
     await expect(win().locator(`${CREATION_PANEL} ${PERMISSION_POPOVER}`)).toBeVisible()
-    await clickOrFail(win().locator(`${CREATION_PANEL} ${permissionTier('project')}`), '「全自动」')
+    await clickOrFail(win().locator(`${CREATION_PANEL} ${permissionTier('direct')}`), '「全自动」')
     const switchCard = win().locator(`${CREATION_PANEL} ${APPROVAL_CARD}[data-kind="approval-reversible"]`)
     await expect(switchCard, '切档要问一次').toBeVisible({ timeout: DEFAULT_TIMEOUT_MS })
     monitor.consentFullAuto({ label: '切到全自动（之后 Agent 的生成不再逐次问）' })
-    await clickOrFail(switchCard.locator(INTERVENTION_CONFIRM), '确认切到全自动')
+    await clickOrFail(switchCard.locator(INTERVENTION_CONFIRM), '确认切到直接生成')
     await expect(win().locator(`${CREATION_PANEL} [data-v4-block="auto-mode"]`), '全自动档的常驻提醒').toBeVisible({ timeout: DEFAULT_TIMEOUT_MS })
   }, { surfaces: [] })
 

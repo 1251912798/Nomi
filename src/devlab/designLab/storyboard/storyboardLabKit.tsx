@@ -1,5 +1,6 @@
 import React, { type JSX } from 'react'
 import StoryboardShotRow from '../../../workbench/creation/storyboard/shotRow/StoryboardShotRow'
+import { StoryboardRowsBox } from '../../../workbench/creation/storyboard/shotRow/storyboardRowDensity'
 import { AssetPreviewDialog, type AssetPreviewSequenceItem } from '../../../workbench/assets/AssetPreviewDialog'
 import type { AssetRef } from '../../../workbench/assets/assetTypes'
 import type { PlanShot, StoryboardPlan } from '../../../workbench/generationCanvas/agent/storyboardPlan'
@@ -38,13 +39,13 @@ export function TableStage({
   children: React.ReactNode
 }): JSX.Element {
   return (
-    <div
+    <StoryboardRowsBox
       className={`rounded-nomi border border-nomi-line bg-nomi-paper${clip ? ' overflow-hidden' : ''}`}
       style={{ width: width ?? STAGE_WIDTH, ...(height ? { height } : {}) }}
       data-design-lab-stage="storyboard"
     >
       {children}
-    </div>
+    </StoryboardRowsBox>
   )
 }
 

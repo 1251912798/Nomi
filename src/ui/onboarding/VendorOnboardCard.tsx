@@ -224,7 +224,7 @@ export function VendorOnboardCard({
                     className={cn(
                       'h-8 rounded-nomi-sm border border-nomi-line bg-nomi-paper px-2.5',
                       'text-body-sm text-nomi-ink placeholder:text-nomi-ink-40',
-                      'outline-none focus:border-nomi-accent',
+                      'outline-none focus:border-nomi-ink-40',
                     )}
                   />
                   {field.hint ? <div className="text-micro text-nomi-ink-40">{field.hint}</div> : null}
@@ -258,7 +258,7 @@ export function VendorOnboardCard({
                   className={cn(
                     'min-w-[10rem] flex-[1_1_10rem] h-8 rounded-nomi-sm border border-nomi-line bg-nomi-paper px-2.5',
                     'text-body-sm text-nomi-ink placeholder:text-nomi-ink-40',
-                    'outline-none focus:border-nomi-accent',
+                    'outline-none focus:border-nomi-ink-40',
                   )}
                 />
                 <DecisionBar

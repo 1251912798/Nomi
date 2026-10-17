@@ -13,7 +13,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { screenshotSettled, proveProbe, expectVisible, expectHidden, clickOrFail } from './_assert.mjs'
-import { modelSettingsEntry } from './_shell.mjs'
+import { modelSettingsEntry, openCustomApiWizard, openModelSettings } from './_shell.mjs'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const shotsDir = path.join(repoRoot, 'tests/ux/shots/provider-proxy')
@@ -56,17 +56,16 @@ try {
   }
 
   // 打开模型设置首页。
-  const openSettings = modelSettingsEntry(win)
-  if (!(await openSettings.count())) { failures.push('找不到模型设置入口'); throw new Error('no settings entry') }
-  await openSettings.click({ timeout: 4000 }).catch(() => {})
+  // 顶栏齿轮 → 设置「模型」页签（经 _shell.mjs）。
+  if (!(await modelSettingsEntry(win).count())) { failures.push('找不到模型设置入口'); throw new Error('no settings entry') }
+  await openModelSettings(win, { label: 'open model settings', timeout: 4000 }).catch(() => {})
   await win.waitForTimeout(800)
   if (!(await win.locator('[data-model-settings-page]').count())) { failures.push('模型设置面板没打开'); throw new Error('panel closed') }
 
   // 下钻「自定义 API / 接入你的中转站」——只有 custom 预设才显示 Advanced（含代理字段）。
   console.log('— 进入自定义 API 表单 —')
-  const customApi = win.locator('[data-model-home-action="custom-api"]').first()
-  if (!(await customApi.count())) { failures.push('首页没有「自定义 API」入口'); throw new Error('no custom-api row') }
-  await customApi.click({ timeout: 3000 }).catch(() => {})
+  // 有已接入项时「自定义 API」收在「其他接入方式」里：经 _shell.mjs 的出口先展开再点。
+  await openCustomApiWizard(win, { label: 'custom API form', timeout: 4000 }).catch((error) => { failures.push('首页没有「自定义 API」入口'); throw error })
   await win.waitForTimeout(700)
   const page = await win.evaluate(() => document.querySelector('[data-model-settings-page]')?.getAttribute('data-model-settings-page') || '')
   console.log(`  · 当前页 = ${page}`)

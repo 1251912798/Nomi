@@ -19,4 +19,4 @@
 
 ## 三日竞品学习雷达
 
-**核心对标 LibTV / TapNow，扩展对标 Higgsfield / MiniMax Design / RunningHub。** 产品、设计、引导、功能交互、Agent、生态、社区与自媒体营销统一走 [`nomi-competitive-radar`](agent-skills/nomi-competitive-radar/SKILL.md)，入口与资料在 [`docs/research/competitive/`](docs/research/competitive/README.md)。每个 Nomi session 首轮检查到期/未完成周期；每 3 天扫描全部对象并轮换深挖，和本机定时器共用规程中的去重/锁/检查点。用户明确只建流程时不展开调研。实际交互要鼠标操作与录屏回看，自媒体用 TikHub + 原站观看；失败不能记“无更新”，研究建议不能自动变成开发或发布授权。
+**对标名单见私有仓 Nomi-service 的 `research/competitive/ROSTER.md`，公开主仓不写竞品名。** 产品、设计、引导、功能交互、Agent、生态、社区与自媒体营销统一走 [`nomi-competitive-radar`](../../agent-skills/nomi-competitive-radar/SKILL.md)。**报告与原始抓取只落私有仓的 `research/competitive/<日期>/`，绝不在公开主仓提交、绝不开公开 PR**；本机定位私有仓读环境变量 `NOMI_PRIVATE_REPO`，没设就明说「今天没查成」，不许落回公开仓。公开仓 docs 下的 [竞品资料目录](../research/competitive/README.md) 只留一个指路 README，`check:skills-format` 守这一条。每个 Nomi session 首轮检查到期/未完成周期；每 3 天扫描全部对象并轮换深挖，和本机定时器共用规程中的去重/锁/检查点。用户明确只建流程时不展开调研。实际交互要鼠标操作与录屏回看，自媒体用 TikHub + 原站观看；失败不能记“无更新”，研究建议不能自动变成开发或发布授权。

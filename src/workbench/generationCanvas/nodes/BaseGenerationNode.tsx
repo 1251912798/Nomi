@@ -18,7 +18,7 @@ import { ImageQuickActionsToolbarHost } from '../quickActions/ImageQuickActionsT
 import { NodeVersionCardsHost } from './versionCards/NodeVersionCardsHost'
 import { nodeHasVersionCards } from './versionCards/nodeVersionEntries'
 import { useLabelCoveredByVersionGrid } from './versionCards/versionGridCoverage'
-import { EmptyNodeVariantToolbar } from './NodeFloatingToolbar'
+import { EmptyNodeVariantToolbar, NodeHoverTimelineHandle } from './NodeFloatingToolbar'
 import PanoramaNodeToolbar from './render/PanoramaNodeToolbar'
 import { useNodeImageEditing } from './useNodeImageEditing'
 import { isLocalImageOpPending, isRemoveBackgroundPending, isRemoveBackgroundResult } from './localImageOpPhase'
@@ -28,9 +28,9 @@ import { lazyWithChunkBoundary } from '../../../ui/chunkBoundary'
 import { PendingGenerationPlaceholder, LocalImageOpPendingStatus, RemoveBackgroundPendingPlaceholder } from './render/CardCommon'
 import { previewBackgroundClass } from './render/previewBackground'
 import PanoramaUploadFallback from './PanoramaUploadFallback'
-import { TimelineNotchDragHandle } from './NodeTimelineDragHandles'
 import { cn } from '../../../utils/cn'
 import { DeferredNodeImage } from './DeferredNodeMedia'
+import { canvasImageSourceOf } from './canvasImageSource'
 import { NodeVideoSessionProvider } from './NodeVideoSession'
 import { NodeVideoPlaybackGuard } from './NodeVideoPlaybackGuard'
 import { useNodePanoramaHandlers } from './useNodePanoramaHandlers'
@@ -40,8 +40,6 @@ import { NodeGeneratingOverlay } from './NodeGeneratingOverlay'
 import { NodeGenerationStatus } from './NodeGenerationStatus'
 import { ProductionShotOverlays } from './ProductionShotOverlays'
 import { useProductionNodeRetry } from './useProductionNodeRetry'
-import { encodeTimelineGenerationNodeDragPayload, TIMELINE_GENERATION_NODE_DRAG_MIME } from '../../timeline/timelineDragPayload'
-import { addGenerationNodeToTimelineEnd } from '../../timeline/addNodeToTimelineEnd'
 import { confirmAndRunNode } from '../runner/generationRunController'
 import { selectCanvasNodeById, selectCanvasNodeExists } from '../store/canvasNodeGenerationIndex'
 import { localStepRedoOf } from './localStepRedo'
@@ -56,12 +54,12 @@ import { anchorFreezeToolbarProps } from '../fixation/freezeAnchor'
 import { TechnicalReviewBadge } from './TechnicalReviewBadge'
 import { DerivedReadyBadge } from '../quickActions/DerivedReadyBadge'
 import { isDerivedPromptReady } from '../quickActions/deriveFromNode'
-import { canDragGenerationNodeToTimeline } from '../model/timelineDragAffordance'
 import { useArtifactNodeSlots } from './artifact/artifactNodeSlots'
 import { RESIZE_DIRECTIONS, getNodeResizeBounds, FOCUS_GENERATION_NODE_EVENT, resolveNodeVisualSize } from './nodeSizing'
 import { NodeLabelRow } from './NodeLabelRow'
 import { NodeShotLabel } from '../../generation/list/CanvasListLinks'
 import { NodeInlineImageTitle } from './NodeImagePreviewActions'
+import { hasEmptyCardLabel } from './render/emptyCardLabel'
 import { useNodeMediaMeasurement } from './useNodeMediaMeasurement'
 import { useNodeVideoPreviewIntent } from './useNodeVideoPreviewIntent'
 import { useNodeMediaPreview } from './useNodeMediaPreview'
@@ -120,18 +118,6 @@ function BaseGenerationNodeImpl({
   const showVersionCards = React.useMemo(() => nodeHasVersionCards(node), [node])
   const { openMediaPreview, mediaPreviewControls, mediaPreviewDoubleClick } = useNodeMediaPreview(node, selected && !isMultiSelectActive && !readOnly, () => setProvenanceOpen(true), reportFeedback)
   const sizeBounds = getNodeResizeBounds(node)
-  const handleTimelineDragStart = (event: React.DragEvent<HTMLElement>) => {
-    event.stopPropagation()
-    event.dataTransfer.effectAllowed = 'copy'
-    event.dataTransfer.setData(TIMELINE_GENERATION_NODE_DRAG_MIME, encodeTimelineGenerationNodeDragPayload(node))
-  }
-
-  const handleAddToTimelineAtPlayhead = (event: React.MouseEvent<HTMLElement> | React.KeyboardEvent<HTMLElement>) => {
-    event.preventDefault()
-    event.stopPropagation()
-    const liveNode = useGenerationCanvasStore.getState().nodes.find((candidate) => candidate.id === node.id) || node
-    void addGenerationNodeToTimelineEnd(liveNode)
-  }
 
   const mediaMeasurement = useNodeMediaMeasurement(node)
 
@@ -182,11 +168,6 @@ function BaseGenerationNodeImpl({
     commitPersistedChange,
   })
   const isGenerating = status === 'queued' || status === 'running'
-  const canSendToTimeline = canDragGenerationNodeToTimeline(node, { readOnly })
-  // 「拖进时间轴」只有顶部这一个把手。卡片左右两侧归连线「+」圈（generationCanvasReactFlowVisualContract.ts）；
-  // 2026-09-24 用户反馈「多结果卡片拉环不见了」：旧的侧边拖柄就住在右侧「+」圈的位置上、层级还更高，把圈整个盖住，
-  // 于是删掉那一个。版本卡片铺开是持久的（10-06），铺着也要能拖进时间轴、能接着生成，所以这里不再看铺没铺开。
-  const showTimelineNotch = canSendToTimeline
   // 2026-09-05：这几条的 zh+en 词条一直都在，只是渲染处写死了中文（英文界面恒显中文），现接回词条。
   const sourceNodeLabel = sourceNodeTitle || (node.derivedFrom && !sourceNodeExists ? t('generationCommon.node.sourceMissing') : node.derivedFrom || '')
   const sourceCategoryName = sourceNodeCategoryId ? getBuiltinCategoryById(sourceNodeCategoryId)?.name : null
@@ -286,7 +267,7 @@ function BaseGenerationNodeImpl({
       {whiteboardOpen ? <NodeInlineWhiteboardHost node={node} /> : null}
       {mediaPreviewControls}
       <NodeLabelRow>
-        <NodeShotLabel node={node} shotRole={shotIdentity.shotRole}>{!isCardKind && !isTextKind ? <NodeInlineImageTitle nodeId={node.id} value={node.title || ''} readOnly={readOnly} /> : null}</NodeShotLabel>
+        <NodeShotLabel node={node} shotRole={shotIdentity.shotRole}>{(!isCardKind && !isTextKind) || hasEmptyCardLabel({ isCardKind, isTextKind, hasResult, contentJson: node.contentJson }) ? <NodeInlineImageTitle nodeId={node.id} value={node.title || ''} readOnly={readOnly} /> : null}</NodeShotLabel>
         {!isCardKind ? <ShotMountBadges cards={mountedCards} /> : null}
         <TechnicalReviewBadge meta={node.meta} /><DerivedReadyBadge node={node} />
         {/* 拆解收起态（视图 07）：视频节点有拆解结果且面板未占槽时，挂「已拆解 · N 镜」角标 + 可点回浮条。 */}
@@ -420,8 +401,9 @@ function BaseGenerationNodeImpl({
                 localImageOpPending && 'blur-sm scale-[1.02] transition-[filter,opacity]',
                 localImageOpPending && 'animate-remove-bg-pulse-slow',
               )}
-              // 画布只挂落盘边界派生的预览；源 URL 留给编辑/导出/大图预览，画布不为每个节点解码 4K/8K 原图。
-              src={node.result.thumbnailUrl || node.result.url}
+              // 画布只挂落盘边界派生的预览（canvasImageSource 唯一判定；原图只经被计数的缺失分支）；
+              // 源 URL 留给编辑/导出/大图预览。这一支只在结果有地址且不是视频 / 3D 时进来，按图片取。
+              src={canvasImageSourceOf({ ...node.result, type: 'image' })!}
               priority={mediaPreviewPriority}
               alt=""
               onLoad={mediaMeasurement.onImageLoad}
@@ -433,7 +415,6 @@ function BaseGenerationNodeImpl({
           // 卡片 / 文本卡的空态在它们自己的 body 里（上面），这块预览是隐藏的，不再重复挂一份空态。
           <PendingGenerationPlaceholder
             node={node}
-            selected={selected}
             waitingUpstream={hasFrameSourceEdge} derivedReady={isDerivedPromptReady(node)}
           />
         )}
@@ -458,12 +439,7 @@ function BaseGenerationNodeImpl({
 
       {artifactSlots.toolbar}
 
-      {showTimelineNotch ? (
-        <TimelineNotchDragHandle
-          onAddAtPlayhead={handleAddToTimelineAtPlayhead}
-          onDragStart={handleTimelineDragStart}
-        />
-      ) : null}
+      {!readOnly ? <NodeHoverTimelineHandle nodeId={node.id} readOnly={readOnly} /> : null}
 
       {!localImageOpPending && !isTextKind ? <NodeGeneratingOverlay reportFeedback={reportFeedback} node={node} motion={waitingMotion} preset={waitingPreset} /> : null}
 
@@ -484,7 +460,7 @@ function BaseGenerationNodeImpl({
                 'generation-canvas-v2-node__resize-zone',
                 `generation-canvas-v2-node__resize-zone--${direction}`,
                 'absolute z-[6] p-0 border-0 bg-transparent',
-                'focus-visible:outline-2 focus-visible:outline-nomi-accent focus-visible:outline-offset-2',
+                'focus-visible:outline-2 focus-visible:outline-nomi-ink focus-visible:outline-offset-2',
                 (direction === 'n' || direction === 's') && 'left-[10px] w-[calc(100%-20px)] h-[10px] cursor-ns-resize',
                 direction === 'n' && 'top-[-5px]',
                 direction === 's' && 'bottom-[-5px]',

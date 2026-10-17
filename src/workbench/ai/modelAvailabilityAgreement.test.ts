@@ -21,6 +21,8 @@ import { keepUsableModelRows } from "../../config/modelCatalogCache";
 import { summarizeModelHomeConnection } from "../../ui/onboarding/modelSettingsHomeState";
 import { projectModelSettingsCatalog } from "../../ui/onboarding/modelSettingsCatalogProjection";
 
+import { readCatalog } from "../../../electron/catalog/catalogStore";
+
 // 两条链（主进程首页横幅 / 渲染层投影）都走**真**的 `apiKeyDecryptStatus`，
 // 所以钥匙那一档也是同一个判据在答——测试里不注入第二份钥匙状态，否则就验不到它们一致。
 const safeStorageMocks = vi.hoisted(() => ({
@@ -105,7 +107,6 @@ describe("同一份目录 · 三个界面一个答案（P0-10 类级回归）", 
       model({ modelKey: "deepseek-flash", meta: { adapter: { modes: [], publicationModes: [] } } }),
       model({ modelKey: "deepseek-v4-pro", meta: { adapter: { modes: [], publicationModes: [] } } }),
     ];
-    const { readCatalog } = await import("../../../electron/catalog/catalogStore");
     const state = catalog(uncertified);
     vi.mocked(readCatalog).mockReturnValue(state);
 
@@ -121,7 +122,6 @@ describe("同一份目录 · 三个界面一个答案（P0-10 类级回归）", 
   });
 
   it("走完认证的文本模型：三处一致说「能用」", async () => {
-    const { readCatalog } = await import("../../../electron/catalog/catalogStore");
     const state = catalog([model({ modelKey: "deepseek-flash" }), model({ modelKey: "deepseek-v4-pro" })]);
     vi.mocked(readCatalog).mockReturnValue(state);
 
@@ -132,7 +132,6 @@ describe("同一份目录 · 三个界面一个答案（P0-10 类级回归）", 
   const credentialCases: ReadonlyArray<ApiKeyDecryptStatus> = ["missing", "locked", "needs_resave"];
   for (const credentialStatus of credentialCases) {
     it(`钥匙 ${credentialStatus}：三处一致说「不能用」（设置页不再只看 enabled）`, async () => {
-      const { readCatalog } = await import("../../../electron/catalog/catalogStore");
       const state = catalog([model()], credentialStatus);
       vi.mocked(readCatalog).mockReturnValue(state);
       const answers = askEverySurface(state);
@@ -144,7 +143,6 @@ describe("同一份目录 · 三个界面一个答案（P0-10 类级回归）", 
   }
 
   it("供应商被停用：三处一致说「不能用」", async () => {
-    const { readCatalog } = await import("../../../electron/catalog/catalogStore");
     const state = catalog([model()], "ok", [chatMapping], [vendor({ enabled: false })]);
     vi.mocked(readCatalog).mockReturnValue(state);
     expect(askEverySurface(state))
@@ -152,7 +150,6 @@ describe("同一份目录 · 三个界面一个答案（P0-10 类级回归）", 
   });
 
   it("模型行被用户关掉：三处一致说「不能用」，且设置页把它读成「你自己关的」而不是「还差点什么」", async () => {
-    const { readCatalog } = await import("../../../electron/catalog/catalogStore");
     const state = catalog([model({ enabled: false })], "ok");
     vi.mocked(readCatalog).mockReturnValue(state);
     const rows = projectRows(state);
@@ -163,7 +160,6 @@ describe("同一份目录 · 三个界面一个答案（P0-10 类级回归）", 
   });
 
   it("角色过滤器压在可用性之上：可用的图片模型不会跑进助手的文本下拉", async () => {
-    const { readCatalog } = await import("../../../electron/catalog/catalogStore");
     const imageMapping = { vendorKey: "deepseek", taskKind: "text_to_image", enabled: true } as unknown as Mapping;
     const state = catalog([model({ modelKey: "some-image", kind: "image" })], "ok", [imageMapping]);
     vi.mocked(readCatalog).mockReturnValue(state);

@@ -1,0 +1,128 @@
+{
+  "board": "NodeTimelineToolbar",
+  "approvedOn": "2026-10-12",
+  "stage": "built",
+  "userDecision": {
+    "quote": "看到了 没啥问题",
+    "date": "2026-10-12"
+  },
+  "source": "source/NodeTimelineToolbar.json",
+  "elements": [
+    {
+      "id": "timeline.action",
+      "label": "工具栏末尾时间轴纯图标",
+      "candidates": [
+        "001-timeline.action"
+      ],
+      "status": "implemented",
+      "owner": "T-node-timeline",
+      "states": [
+        "empty",
+        "loading",
+        "error",
+        "selected",
+        "disabled",
+        "hover",
+        "narrow",
+        "long-text",
+        "zh-en",
+        "dark"
+      ],
+      "assertion": "one accessible draggable toolbar icon, no notch"
+    },
+    {
+      "id": "timeline.commit",
+      "label": "点击贴尾、撤销与主结果",
+      "candidates": [
+        "002-timeline.commit"
+      ],
+      "status": "implemented",
+      "owner": "T-node-timeline",
+      "states": [
+        "empty",
+        "loading",
+        "error",
+        "selected",
+        "disabled",
+        "hover",
+        "narrow",
+        "long-text",
+        "zh-en",
+        "dark"
+      ],
+      "assertion": "appends on correct track, truthful receipt, one UI Undo restores baseline"
+    },
+    {
+      "id": "timeline.drag",
+      "label": "拖拽到全局时间轴与剪辑卡",
+      "candidates": [
+        "003-timeline.drag"
+      ],
+      "status": "implemented",
+      "owner": "T-node-timeline",
+      "states": [
+        "empty",
+        "loading",
+        "error",
+        "selected",
+        "disabled",
+        "hover",
+        "narrow",
+        "long-text",
+        "zh-en",
+        "dark"
+      ],
+      "assertion": "Latest main result: Alt native icon drag reaches frame 75, source stays still, one UI Undo restores baseline"
+    },
+    {
+      "id": "toolbar.retained",
+      "label": "原有图片／视频／音频功能与版本入口",
+      "candidates": [
+        "004-toolbar.retained"
+      ],
+      "status": "implemented",
+      "owner": "T-node-timeline",
+      "states": [
+        "empty",
+        "loading",
+        "error",
+        "selected",
+        "disabled",
+        "hover",
+        "narrow",
+        "long-text",
+        "zh-en",
+        "dark"
+      ],
+      "assertion": "board:NodeTimelineToolbar/toolbar.retained"
+    }
+  ],
+  "decor": [],
+  "functionCensus": [
+    {
+      "function": "加入时间轴",
+      "before": "节点hover刘海点击／键盘／拖拽",
+      "after": "timeline.action"
+    },
+    {
+      "function": "采纳回执与Undo",
+      "before": "原采纳桥自动展开与撤销",
+      "after": "timeline.commit"
+    },
+    {
+      "function": "全局与卡内落点",
+      "before": "原拖拽MIME双接收端",
+      "after": "timeline.drag"
+    },
+    {
+      "function": "图编辑、派生、下载、全屏、生成记录、锁、变体、抽帧、剪辑、拆解、深度、音频",
+      "before": "沿用生产各工具栏子项",
+      "after": "toolbar.retained"
+    },
+    {
+      "function": "版本设主图／下载／删除／Alt拖出",
+      "before": "版本宫格自己的既有操作",
+      "after": "toolbar.retained"
+    }
+  ]
+}

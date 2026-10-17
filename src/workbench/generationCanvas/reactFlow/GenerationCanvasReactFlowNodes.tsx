@@ -18,6 +18,7 @@ import { WorkbenchIconButton } from '../../../design'
 import { cn } from '../../../utils/cn'
 import { useGenerationCanvasStore } from '../store/generationCanvasStore'
 import { getGenerationNodeComponentForNode } from '../nodes/renderRegistry'
+import { NodeEmptyStateProvider } from '../nodes/render/NodeEmptyStateProvider'
 import { canvasPluginRegistry } from '../plugins/defaultCanvasPluginRegistry'
 import { CARD_FIXED_WIDTH, getNodeResizeBounds, readNodeMediaAspectRatio, resolveNodeVisualSize } from '../nodes/nodeSizing'
 import { emitCanvasGesture } from '../events/canvasEventEmitter'
@@ -233,7 +234,7 @@ export function GenerationFlowNodeView({ data, selected }: NodeProps<GenerationF
     <div
       className={cn(
         'generation-canvas-react-flow__node-shell',
-        pickable === true && 'cursor-pointer rounded-nomi ring-2 ring-nomi-accent/60 ring-offset-2 ring-offset-workbench-bg hover:ring-[3px] hover:ring-nomi-accent',
+        pickable === true && 'cursor-pointer rounded-nomi ring-1 ring-nomi-ink-40 ring-offset-2 ring-offset-workbench-bg hover:ring-nomi-ink',
         pickable === false && 'opacity-40 grayscale',
       )}
       data-pick={pickable === null ? undefined : pickable ? 'eligible' : 'ineligible'}
@@ -297,6 +298,7 @@ export function GenerationFlowNodeView({ data, selected }: NodeProps<GenerationF
       ) : null}
       {!groupPort ? (
         <GenerationFlowNodeScope>
+          <NodeEmptyStateProvider engaged={primarySelection} readOnly={data.readOnly}>
           {shouldRenderFullNodeContent({ lightweightMode, selected: primarySelection, focusFlash: data.focusFlash }) ? (
             // 节点渲染器按种类懒加载（renderRegistry 的 React.lazy）。第一次建某种节点时 chunk 还没到，
             // 若没有就近的 Suspense 边界，React 会把最近那层（NomiStudioApp 包住整个画布的那个）
@@ -310,6 +312,7 @@ export function GenerationFlowNodeView({ data, selected }: NodeProps<GenerationF
                   appear={data.appear}
                   selected={selected}
                   readOnly={data.readOnly}
+                  loading
                 />
               }
             >
@@ -330,6 +333,7 @@ export function GenerationFlowNodeView({ data, selected }: NodeProps<GenerationF
               readOnly={data.readOnly}
             />
           )}
+          </NodeEmptyStateProvider>
         </GenerationFlowNodeScope>
       ) : null}
       {!data.readOnly ? (

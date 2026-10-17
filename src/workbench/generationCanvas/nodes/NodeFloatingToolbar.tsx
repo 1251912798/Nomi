@@ -1,15 +1,19 @@
 import React, { type JSX } from 'react'
 import { useTranslation } from 'react-i18next'
-import { IconInfoCircle, IconCopy } from '@tabler/icons-react'
+import { IconInfoCircle, IconCopy, IconTimeline } from '@tabler/icons-react'
 import { cn } from '../../../utils/cn'
 import { toolbarButtonClass } from './toolbarButtonClass'
 import { useGenerationCanvasStore } from '../store/generationCanvasStore'
+import { selectCanvasNodeById } from '../store/canvasNodeGenerationIndex'
 import { NodeLockBadge } from './NodeLockBadge'
 import { nextFloatingToolbarPlacement, type FloatingToolbarPlacement } from './floatingToolbarClamp'
 import { useViewport } from '@xyflow/react'
 import { useCanvasBottomDockRects } from '../reactFlow/useCanvasBottomDockRects'
 import { resolveUsableBottomAboveDocks } from '../../generation/workspaceBottomDocks'
 import { logRendererCrash } from '../../../desktop/rendererLog'
+import { canDragGenerationNodeToTimeline } from '../model/timelineDragAffordance'
+import { addGenerationNodeToTimelineEnd } from '../../timeline/addNodeToTimelineEnd'
+import { encodeTimelineGenerationNodeDragPayload, TIMELINE_GENERATION_NODE_DRAG_MIME } from '../../timeline/timelineDragPayload'
 
 // 节点浮动工具栏的**单一共享实现**（P1 收口）：图片编辑 / 视频抽帧 / 全景 / 下载三+条以前是三份
 // 几乎一字不差的拷贝、且各自带一堆 token 违规（rgba 硬编码 / gap-[7px] / 图标 16/1.8…）。这里一次性
@@ -116,6 +120,7 @@ function FloatingToolbarFrame({ ariaLabel, lockNodeId, children, side = 'above',
     <div
       ref={(element) => { shellRef.current = element; stageRef.current = element?.closest<HTMLElement>('.generation-canvas-v2__stage') ?? null; if (toolbarRef) toolbarRef.current = element }}
       className={cn(
+        'nodrag generation-canvas-react-flow__no-pan',
         'absolute left-1/2 z-[12]',
         side === 'below' ? 'top-[calc(100%+8px)]' : 'bottom-[calc(100%+40px)] group-has-[[data-node-inline-status]_[data-generation-status]]/node:bottom-[calc(100%+72px)]',
         'inline-flex w-max flex-wrap items-center justify-center gap-1 min-h-9 px-1.5 py-1',
@@ -139,6 +144,7 @@ function FloatingToolbarFrame({ ariaLabel, lockNodeId, children, side = 'above',
         </>
       ) : null}
       {children}
+      {lockNodeId ? <ToolbarTimelineButton nodeId={lockNodeId} /> : null}
     </div>
   )
 }
@@ -155,6 +161,8 @@ type ToolbarButtonProps = {
   /** 走查 / 单测按它找这颗钮（`data-toolbar-action`），不靠文案。 */
   actionId?: string
   onClick?: (event: React.MouseEvent) => void
+  draggable?: boolean
+  onDragStart?: (event: React.DragEvent<HTMLButtonElement>) => void
 }
 
 /** 带文字的工具栏按钮（定妆 / 裁剪 / 下载 / 抽首帧…）。 */
@@ -177,7 +185,7 @@ export function ToolbarButton({ icon, label, accent, disabled, ariaBusy, title, 
 }
 
 /** 仅图标的工具栏按钮（方形）。 */
-export function ToolbarIconButton({ icon, disabled, title, ariaLabel, actionId, onClick }: Omit<ToolbarButtonProps, 'label' | 'accent'>): JSX.Element {
+export function ToolbarIconButton({ icon, disabled, title, ariaLabel, actionId, onClick, draggable, onDragStart }: Omit<ToolbarButtonProps, 'label' | 'accent'>): JSX.Element {
   return (
     <button
       type="button"
@@ -187,9 +195,71 @@ export function ToolbarIconButton({ icon, disabled, title, ariaLabel, actionId, 
       aria-label={ariaLabel}
       disabled={disabled}
       onClick={onClick}
+      draggable={draggable}
+      onDragStart={onDragStart}
     >
       {icon}
     </button>
+  )
+}
+
+/** 媒体工具栏共用一个入口；动作触发时重读主结果，不沿用渲染时的旧版本。 */
+export function ToolbarTimelineButton({ nodeId, readOnly = false }: { nodeId: string; readOnly?: boolean }): JSX.Element | null {
+  const { t } = useTranslation()
+  const node = useGenerationCanvasStore((state) => selectCanvasNodeById(state, nodeId))
+  if (!node || !canDragGenerationNodeToTimeline(node, { readOnly })) return null
+  const liveNode = () => {
+    const current = selectCanvasNodeById(useGenerationCanvasStore.getState(), nodeId)
+    return current && canDragGenerationNodeToTimeline(current, { readOnly }) ? current : null
+  }
+  const label = t('timelineEditor.dragToTimeline')
+  return <ToolbarIconButton
+    icon={<IconTimeline size={ICON.size} stroke={ICON.stroke} />}
+    actionId="add-to-timeline"
+    ariaLabel={label}
+    title={label}
+    draggable
+    onClick={(event) => {
+      event.preventDefault()
+      event.stopPropagation()
+      const current = liveNode()
+      if (current) void addGenerationNodeToTimelineEnd(current)
+    }}
+    onDragStart={(event) => {
+      event.stopPropagation()
+      const current = liveNode()
+      if (!current) { event.preventDefault(); return }
+      event.dataTransfer.effectAllowed = 'copy'
+      event.dataTransfer.setData(TIMELINE_GENERATION_NODE_DRAG_MIME, encodeTimelineGenerationNodeDragPayload(current))
+    }}
+  />
+}
+
+/**
+ * 悬停 / 多选时的拖入把手（用户 2026-10-12 拍板「悬停也能拖」）：浮条只在单选时出现，未选中和多选的节点
+ * 靠它直接拖进时间轴；不常驻，悬停或聚焦节点才显出来。复用 ToolbarTimelineButton（同一个拖拽载荷与点击入口，
+ * 不另写一套）。单选且浮条在场时由 `group-has` 藏掉，免得同一动作出现两处。
+ * 隐藏时 pointer-events-none，悬停节点后才开启。把手整个在节点**外**（上边缘正上方，底边与节点上边缘贴齐，指针从节点滑上去不断悬停）：
+ * 节点本体的每一点都不被它占，点选 / 框选 / 拖动 / 走查找点都碰不到它；放在节点内会在鼠标移到那一点时抢走点击（CI 走查「两版卡没选中」）。
+ */
+export function NodeHoverTimelineHandle({ nodeId, readOnly = false }: { nodeId: string; readOnly?: boolean }): JSX.Element | null {
+  const node = useGenerationCanvasStore((state) => selectCanvasNodeById(state, nodeId))
+  if (!node || !canDragGenerationNodeToTimeline(node, { readOnly })) return null
+  return (
+    <div
+      className={cn(
+        'nodrag generation-canvas-react-flow__no-pan',
+        'absolute bottom-full right-2 z-[9] inline-flex items-center',
+        'rounded-nomi border border-nomi-line bg-nomi-paper shadow-nomi-sm',
+        'pointer-events-none opacity-0 transition-opacity duration-nomi-fast ease-nomi-fast',
+        'group-hover/node:pointer-events-auto group-hover/node:opacity-100 group-focus-within/node:pointer-events-auto group-focus-within/node:opacity-100',
+        'group-has-[[data-node-floating-toolbar]]/node:hidden group-data-[dragging=true]/canvas:invisible',
+      )}
+      data-node-timeline-hover-handle="true"
+      onPointerDown={(event) => event.stopPropagation()}
+    >
+      <ToolbarTimelineButton nodeId={nodeId} readOnly={readOnly} />
+    </div>
   )
 }
 

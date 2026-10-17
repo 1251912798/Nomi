@@ -21,6 +21,8 @@ export const SITE_STEPS = [
     args: ['exec', 'tsx', 'scripts/site/export-site-data.mts', '--check'],
     shell: process.platform === 'win32',
   },
+  node('docs-site (tests)', '--test', './scripts/marketing/docs-site.node-test.mjs'),
+  node('marketing docs', 'scripts/build-marketing-docs.mjs', '--check'),
   node('marketing site', 'scripts/build-marketing-site.mjs', '--check'),
   node('sitemap', 'scripts/build-marketing-sitemap.mjs', '--check'),
   ...pair('check-site-editorial', ['./scripts/marketing/library/models-pages.node-test.mjs']),

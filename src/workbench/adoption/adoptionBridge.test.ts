@@ -89,9 +89,12 @@ describe('P5 E1 adoption bridge', () => {
 
   it('returns the original proposal for an exact retry, stale for an external revision, and attention for a new asset version', () => {
     const original = registerAdoptionProposal(key(), 'applied', { clipIds: ['clip-a'], placedCount: 1 })
-    expect(lookupAdoptionProposal(key())).toEqual({ kind: 'replay', proposal: original })
-    expect(lookupAdoptionProposal(key({ baseRevision: 'base-2' }))).toMatchObject({ kind: 'stale', proposal: original })
-    expect(lookupAdoptionProposal(key({ artifactVersion: '2' }))).toMatchObject({ kind: 'needs_attention', proposal: original })
+    const base = createDefaultTimeline()
+    const landed = { ...base, tracks: base.tracks.map((track) => track.type === 'video' ? { ...track, clips: [clip('clip-a', 0)] } : track) }
+    expect(lookupAdoptionProposal(key(), landed)).toEqual({ kind: 'replay', proposal: original })
+    expect(lookupAdoptionProposal(key(), base)).toEqual({ kind: 'fresh' })
+    expect(lookupAdoptionProposal(key({ baseRevision: 'base-2' }), landed)).toMatchObject({ kind: 'stale', proposal: original })
+    expect(lookupAdoptionProposal(key({ artifactVersion: '2' }), landed)).toMatchObject({ kind: 'needs_attention', proposal: original })
   })
 
   it('uses the same full-content revision as Agent timeline plans', () => {
@@ -134,6 +137,31 @@ describe('P5 E1 adoption bridge', () => {
     const replay = await adoptGenerationNode(node, { placement: { kind: 'append' }, ports })
     expect(first.status).toBe('applied')
     expect(replay).toMatchObject({ status: 'applied', replayed: true })
+  })
+
+  // 回归：采纳 → 撤销 → 再采纳同一个落点。撤销把轴还原成采纳前的原样（baseRevision 与第一次完全相同），
+  // 全等键仍在登记处里是 applied；若只看键就当重放，用户会看到「已在时间轴上」而轴上什么都没有。
+  it('adopts again after the first adoption was undone instead of replaying a vanished clip', async () => {
+    const before = createDefaultTimeline()
+    let live = before
+    const node = {
+      id: 'node-single', kind: 'image', title: '单产物', status: 'success',
+      position: { x: 0, y: 0 }, result: { id: 'artifact-single', type: 'image', url: 'data:image/svg+xml,ok', createdAt: 1 },
+    } as never
+    const ports = {
+      readTimeline: () => live,
+      commitTimeline: (next: TimelineState) => { live = next },
+      restoreTimeline: (old: TimelineState) => { live = old; return true },
+    }
+    for (const placement of [{ kind: 'frame', startFrame: 75 }, { kind: 'append' }] as const) {
+      live = before
+      const first = await adoptGenerationNode(node, { placement, ports })
+      expect(first).toMatchObject({ status: 'applied', replayed: false })
+      live = before // undo
+      const again = await adoptGenerationNode(node, { placement, ports })
+      expect(again).toMatchObject({ status: 'applied', replayed: false })
+      expect(live.tracks.flatMap((track) => track.clips)).toHaveLength(1)
+    }
   })
 
   // 回归：贴尾采纳过一次、轴又被外部编辑之后，用户**再点一次**是一次全新的合法意图

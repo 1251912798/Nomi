@@ -42,6 +42,7 @@
     "src/workbench/generationCanvas/nodes/NodeImportingOverlay.tsx",
     "src/workbench/generationCanvas/nodes/NodeLabelRow.tsx",
     "src/workbench/generationCanvas/nodes/NodeGenerationComposer.tsx",
+    "src/workbench/generationCanvas/nodes/composerAnchor.tsx",
     "src/workbench/generationCanvas/components/useAutoFitOnLoad.ts",
     "src/workbench/generationCanvas/reactFlow/GenerationCanvasReactFlow.tsx",
     "src/workbench/generationCanvas/reactFlow/GenerationCanvasReactFlowViewport.tsx",

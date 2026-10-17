@@ -44,6 +44,17 @@ const mediaLimits: Record<DeferredNodeMediaKind, number> = { ...DEFAULT_MEDIA_LI
 const activeMediaCounts: Record<DeferredNodeMediaKind, number> = { image: 0, video: 0 }
 const mediaQueues: Record<DeferredNodeMediaKind, DeferredMediaQueueEntry[]> = { image: [], video: [] }
 const activeMediaEntries = new Set<DeferredMediaQueueEntry>()
+/** 画布媒体最后一次有动静（新请求 / 释放槽位）的时刻；后台低优先级的活（补预览）据它让路。 */
+let lastMediaActivityAt = 0
+
+/**
+ * 画布媒体已经安静了多久（毫秒）：还有图在排队 / 在载入 → 0。后台补预览只在画布安静时做，
+ * 打开项目、平移出一批新图时自动让路（2026-10-16：补预览抢了打开阶段的 CPU，首图慢了约 0.27s）。
+ */
+export function deferredNodeMediaQuietForMs(now = Date.now()): number {
+  const busy = activeMediaCounts.image + activeMediaCounts.video + mediaQueues.image.length + mediaQueues.video.length > 0
+  return busy ? 0 : Math.max(0, now - lastMediaActivityAt)
+}
 
 function removeQueuedEntry(entry: DeferredMediaQueueEntry): void {
   const queue = mediaQueues[entry.kind]
@@ -77,6 +88,7 @@ function drainDeferredMediaQueue(kind: DeferredNodeMediaKind): void {
       }
       activeMediaEntries.delete(entry)
       activeMediaCounts[kind] = Math.max(0, activeMediaCounts[kind] - 1)
+      lastMediaActivityAt = Date.now()
       entry.release = null
       drainDeferredMediaQueue(kind)
     }
@@ -111,6 +123,7 @@ export function requestDeferredNodeMediaSlot(
     autoReleaseTimer: null,
   }
   nextMediaQueueId += 1
+  lastMediaActivityAt = Date.now()
   mediaQueues[kind].push(entry)
   sortDeferredMediaQueue(kind)
   drainDeferredMediaQueue(kind)
@@ -393,6 +406,7 @@ export function __resetDeferredNodeMediaQueueForTests(): void {
     mediaLimits[kind] = DEFAULT_MEDIA_LIMITS[kind]
   }
   nextMediaQueueId = 1
+  lastMediaActivityAt = 0
 }
 
 export function __setDeferredNodeMediaLimitForTests(kind: DeferredNodeMediaKind, limit: number): void {

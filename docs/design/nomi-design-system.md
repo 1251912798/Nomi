@@ -394,6 +394,8 @@ DaVinci Resolve 确实有「选中跟随播放头」，但它是 **opt-in 且默
 
 **规则 2 的补充（2026-10-07）· 纯图标按钮的名字不能只靠鼠标悬停。** 名字必须同时在**键盘聚焦**时出现（tooltip 由聚焦触发，或同时带 `aria-label`），触屏 / 键盘用户才读得到（WCAG 1.4.13、NN/g tooltip）。`WorkbenchIconButton` 已把 `label` 同时写进 `aria-label` 与 `title`；散装图标按钮必须自己补。
 
+**规则 2 的补充（2026-10-10）· 行内 / 工具条的动作 ≤3 个就直接摆图标（带 hover 名字），不藏进「⋯」；超过 3 个才用「⋯」。（用户 2026-10-10）** 起因：文稿方案行同时有红底垃圾桶和「⋯」菜单，两处删除重复、三个小点又「不容易看」。「⋯」是为放不下才收纳的，不是默认容器（§1.5.3 收纳排最后）。悬停 / 选中 / 聚焦时露出，当前项用淡底色、不加描边。纯图标按钮的名字由门岗守：`check:icon-semantics` 规则三——原生 `<button>` 里只有图标且没有 `aria-label` / `title` 即红（存量只减不增）。
+
 **规则 5 · 一个 icon 全 app 一个含义**（沿用 **§6「语义图标登记」**的 Tabler 词典）。
 **新 icon 先证明词典里没有现成的再登记**——登记的动作就是登进 §6 那张表。
 
@@ -420,6 +422,7 @@ DaVinci Resolve 确实有「选中跟随播放头」，但它是 **opt-in 且默
 |---|---|---|
 | 标签 ≤4 字 / 英文 ≤2 词 | ✅ `check:controls`（只量**可见文字**；`aria-label`/`title`/icon 按钮的 `label` 是 hover 名字，按规则 1 本来就允许长） | — |
 | 禁用词「请 / 我的 / 使用 / 一下 / 不要 / 不用 / 算了」 | ✅ `check:controls` | — |
+| 纯图标按钮没有名字（`aria-label` / `title`） | ✅ `check:icon-semantics` 规则三（原生 `<button>` 全是图标且无名字；带 `{...spread}` 的不判） | 「≤3 个动作该不该摆出来」是构图判断，人看 |
 | 同一动作第二种说法 | ✅ `check:controls`（owner = GLOSSARY「动作词」表，只覆盖已登记的**撤销 / 删除 / 关闭 / 取消 / 生成 / 确认**六组；整条文案相等才判，`确认删除` 不判） | 别的动作要管 → 先进 GLOSSARY |
 | icon 不在词典 | ✅ `check:icon-semantics`（新图标必须登记进 §6；**「同一动作两个图标」那一条本来就在这道门岗里，不重做**） | — |
 | **一屏只有一个主动作** | ❌ 构图判断，AST 测不出来 | 样张阶段人眼（§1.5.5 三件产物） |
@@ -522,10 +525,8 @@ CSS 变量（`--nomi-z-dialog` …）与 Tailwind 刻度都由那份 TS 常量�
 | `--nomi-success-ink` | `oklch(0.45 0.09 145)` | `oklch(0.82 0.09 145)` | success 小字 |
 | `--nomi-success-soft` | `oklch(0.962 0.033 145)` | `oklch(0.295 0.042 145)` | success 底 |
 | `--nomi-success-edge` | `oklch(0.905 0.07 145)` | `oklch(0.395 0.06 145)` | success 描边 |
-| `--nomi-info` | `var(--nomi-accent)` | 同左（accent 自己翻） | 中性提示、排队中 |
 | `--nomi-info-ink` | `oklch(0.45 0.13 250)` | `oklch(0.82 0.13 250)` | info 小字 |
 | `--nomi-info-soft` | `oklch(0.957 0.021 250)` | `oklch(0.295 0.045 250)` | info 底 |
-| `--nomi-info-edge` | `oklch(0.9 0.048 250)` | `oklch(0.395 0.065 250)` | info 描边 |
 
 > ⚠️ **`-ink` 不是可选装饰**。base 压在自己的 soft 底上对比只有 **4.25–4.51**（真机 Chromium canvas 采样，非推算），够不到 WCAG AA 小字的 4.5。用 `-ink` 后实测 **6.48–6.90**（浅）/ **7.19–8.09**（暗），四语义 × 明暗八格全部 ≥4.5。写 chip 小字一律 `text-nomi-<语义>-ink`，不要直接用 base。
 >
@@ -1082,6 +1083,9 @@ showUndoToast({ message, onUndo, isUndoable, watchUndoable })
 
 ### 语义图标登记（同一语义全仓复用同一图标，不漂移）· **有门岗 `check:icon-semantics`**
 
+节点「加入时间轴」复用现有 `IconTimeline`（折线四点）。2026-10-12 用户在交互预览后提供截图明确纠正图形，对应 `src/workbench/generationCanvas/components/CanvasGroupToolbar.tsx` 的既有 `IconTimeline`，与编组「加入时间轴」保持同形；提示文案区分打开时间轴与加入当前媒体，不另造图标。
+
+
 > **2026-09-07 起这条不再靠自觉。** 用户长期反馈「icon 和用户心智不一致」——根因是这一节过去
 > 只管**形制**（唯一库 / size / stroke），语义那一半只有下面三行登记 + 一句「跨场景复用同一个图标」。
 > 自觉记不住，于是同一个动作在不同界面长出不同图标，用户每换一个面就得重新学一遍。
@@ -1110,6 +1114,7 @@ showUndoToast({ message, onUndo, isUndoable, watchUndoable })
 
 | 语义 | 图标 | 用在哪 |
 |---|---|---|
+| 将当前媒体加入时间轴 | `IconTimeline` | 图片 / 视频 / 音频节点共享工具栏末尾 |
 | 付费 / 消耗额度（用户直发或 agent 受理）| `IconCoin` | `SpendConfirmDialog`（§3.5）|
 | 外部 AI 助手 / MCP 驱动（agent 身份）| `IconRobot` | `SpendConfirmDialog` 的 `source: 'agent'` 头部（§3.5）|
 | 主角形象确认（锚定妆照检查点·免费质量门）| `IconUser` | `SpendConfirmDialog` 的 `kind: 'anchorCheckpoint'` 头部（§3.5，与 cast 分类同图标）|
@@ -1190,10 +1195,19 @@ showUndoToast({ message, onUndo, isUndoable, watchUndoable })
 
 焦点指示由 **`tailwind.config.ts` 的 `addBase` 单一基础边界**统一供给：
 - `:root :focus { outline: none }` 接管浏览器默认 outline；不能把 `:focus-visible` 误解成“只有 Tab”——Chromium 鼠标点击文本编辑控件也会匹配它。
-- **文本编辑类**：文本/数字 input、textarea、contenteditable（空值/true/plaintext-only）鼠标与键盘聚焦一致，不出外圈 outline。已有边框改为 `var(--nomi-accent)`，不加宽、不改布局；组合输入的直接容器、以及富文本编辑器最近的 `.border` 容器通过 `:has(文本控件:focus)` 同步高亮已有边框（嵌套编辑器只高亮最近一层），保留整体形状。无边框编辑器保留插入光标，不强行添加卡片外框。错误态（aria-invalid/data-error）保留错误边框；只读字段仍可聚焦复制。
-- **非文本类**：button/link/select/summary、非文本 input 及自定义可聚焦元素的 `:focus-visible` 用 `2px solid var(--nomi-focus)` + `outline-offset:2px`；鼠标点击不画环。`--nomi-focus` 为 accent 派生 token（浅色 42%、深色 50%）。
+- **文本编辑类**：文本/数字 input、textarea、contenteditable（空值/true/plaintext-only）鼠标与键盘聚焦一致，不出外圈 outline。已有边框改为 `var(--nomi-ink-40)`（深一档灰线，非强调色），不加宽、不改布局；组合输入的直接容器、以及富文本编辑器最近的 `.border` 容器通过 `:has(文本控件:focus)` 同步高亮已有边框（嵌套编辑器只高亮最近一层），保留整体形状。无边框编辑器保留插入光标，不强行添加卡片外框。错误态（aria-invalid/data-error）保留错误边框；只读字段仍可聚焦复制。
+- **非文本类**：button/link/select/summary、非文本 input 及自定义可聚焦元素的 `:focus-visible` 用 `2px solid var(--nomi-focus)` + `outline-offset:2px`；鼠标点击不画环。`--nomi-focus` 为深色（ink）派生 token（浅色 70%、深色 85%；2026-10-10 用户拍板去蓝色描边，焦点环不再用强调色）。
 
 **纪律**：不要在组件单独加 `focus:outline-none` 或另一份焦点环/外扩阴影；新增控件由基础边界接管。组合输入复用现有边框，不给内部 textarea 再造矩形。回归运行 `node tests/ux/focus-indication.e2e.mjs`；真实 Electron 另查鼠标/Tab 与四个主要页面截图。
+
+### 描边颜色（用户 2026-10-10 拍板：蓝色描边不需要，都删掉）
+
+蓝色（强调色 / info 族）**只留主按钮、链接、进度、连线握把**，不再用来画 border / outline / ring / box-shadow。分类规则：
+- **单选不加框**：节点、分组、片段选中靠工具条 / 生成框 / 拉环说明，不画外框。
+- **多选**：深色细线（`border-nomi-ink`）。**素材选中**：图不框，右上角深色小勾。**当前项**：淡底色，边线透明。
+- **键盘焦点环保留**，用深色（`outline-nomi-ink` / `--nomi-focus`）；鼠标操作看不到。
+- **装饰 / 悬停 / 输入框**：灰线（`border-nomi-line`、悬停 `border-nomi-ink-30`、输入框聚焦 `border-nomi-ink-40`）。
+- 门岗：`check:tokens` 第 7 类棘轮（`scripts/lib/accentOutlineScan.mjs`），存量白名单在 `scripts/accent-outline-baseline.json`，每条带理由，只减不增；`--nomi-focus` / `--nomi-info` 不许别名到强调色。
 
 ---
 

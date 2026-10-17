@@ -3,19 +3,31 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it, vi } from 'vitest'
 import type { GenerationCanvasNode } from '../../model/generationCanvasTypes'
 import { PendingGenerationPlaceholder } from './CardCommon'
+import { NodeEmptyStateProvider } from './NodeEmptyStateProvider'
 vi.mock('react-i18next', () => ({ initReactI18next: { type: '3rdParty', init: () => {} }, useTranslation: () => ({ t: (key: string) => key }) }))
 
 const node = (kind: GenerationCanvasNode['kind']): GenerationCanvasNode => ({ id: kind, kind, title: kind, position: { x: 0, y: 0 }, categoryId: 'shots', prompt: 'PRIVATE FULL PROMPT', meta: {} })
-const html = (props: Record<string, unknown>) => renderToStaticMarkup(React.createElement(PendingGenerationPlaceholder, props as never))
+const html = ({ selected, ...props }: Record<string, unknown>) => renderToStaticMarkup(
+  React.createElement(NodeEmptyStateProvider, { engaged: Boolean(selected), children: React.createElement(PendingGenerationPlaceholder, props as never) }),
+)
 
 describe('pending media action', () => {
+  // 依据：2026-10-12 用户拍板「浏览态只留图标」，取代 10-08 拍板 ③「浏览态也显示试试」；下面被翻转的断言（selected: false → 无「试试」）是有意的。
+  it.each(['image', 'video', 'model3d', 'keyframe', 'shot', 'output'] as const)('browsing an empty %s keeps only its type icon', (kind) => {
+    const out = html({ node: node(kind), selected: false })
+    expect(out).toContain('data-empty-tier="icon"')
+    expect(out).not.toContain('data-node-try')
+    expect(out).not.toContain('nodeEmpty.')
+    expect(out).not.toContain('nodeTry.status')
+  })
+
   it.each(['image', 'video', 'model3d'] as const)('%s does not duplicate author content', (kind) => {
     expect(html({ node: node(kind), selected: true })).not.toContain('PRIVATE FULL PROMPT')
   })
 
   // 2026-10-08 拍板 ③：「试试」替换那一句操作说明（不叠加）——旧说明键不再出现。
   it.each(['image', 'video'] as const)('an empty %s card shows 「试试」 instead of the instruction sentence', (kind) => {
-    const out = html({ node: node(kind), selected: false })
+    const out = html({ node: node(kind), selected: true })
     expect(out).toContain(`data-node-try="${kind}"`)
     expect(out).toContain(`nodeTry.${kind}.`)
     expect(out).not.toContain(`nodeEmpty.${kind}.description`)
@@ -23,11 +35,11 @@ describe('pending media action', () => {
   })
 
   it('3D model cards have no recipes yet and keep their sentence', () => {
-    expect(html({ node: node('model3d'), selected: false })).toContain('nodeEmpty.model3d.description')
+    expect(html({ node: node('model3d'), selected: true })).toContain('nodeEmpty.model3d.description')
   })
 
-  it('a card waiting for its upstream still says so (state, not instructions)', () => {
-    expect(html({ node: node('video'), selected: true, waitingUpstream: true })).toContain('nodeEmpty.waiting')
+  it.each([false, true])('a card waiting for its upstream still says so (selected=%s)', (selected) => {
+    expect(html({ node: node('video'), selected, waitingUpstream: true })).toContain('nodeEmpty.waiting')
   })
 
   it('派生出来、提示词已填好的节点：中间写「提示词已填好」；没这个标记的空节点显示「试试」', () => {
@@ -36,7 +48,7 @@ describe('pending media action', () => {
     expect(ready).toContain('nodeEmpty.derivedReady.description')
     expect(ready).not.toContain('data-node-try')
     const plain = html({ node: node('image'), selected: false })
-    expect(plain).toContain('data-node-try="image"')
+    expect(plain).not.toContain('data-node-try')
     expect(plain).not.toContain('derivedReady')
   })
 })
@@ -45,7 +57,7 @@ describe('pending media action', () => {
 // 去斜线底纹；图标深色放 36px 浅灰圆底；类型名加粗、状态小字；「试试」是纯文字按钮用「·」隔开、不套胶囊框；内容从同一高度往下排。
 describe('empty node layout (Claude Design EmptyStates)', () => {
   it.each(['image', 'video'] as const)('%s: icon disc, bold kind name, status line, plain-text actions joined by dots', (kind) => {
-    const out = html({ node: node(kind), selected: false })
+    const out = html({ node: node(kind), selected: true })
     expect(out).not.toContain('bg-nomi-ink text-nomi-paper')
     expect(out).toContain('size-9')
     expect(out).toContain('bg-nomi-ink-05')
@@ -76,6 +88,6 @@ describe('empty node layout (Claude Design EmptyStates)', () => {
 describe('empty state tier uses the rendered (clamped) height', () => {
   it('240×103 空图片节点：按有效高度 120 判紧凑', () => {
     const small = { ...node('image'), size: { width: 240, height: 103 } } as GenerationCanvasNode
-    expect(html({ node: small, selected: false })).toContain('data-empty-tier="compact"')
+    expect(html({ node: small, selected: true })).toContain('data-empty-tier="compact"')
   })
 })

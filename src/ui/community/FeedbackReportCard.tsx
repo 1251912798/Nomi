@@ -129,7 +129,7 @@ export function FeedbackReportCard({
   }
 
   return (
-    <div data-feedback-card data-feedback-phase={phase} className="space-y-3 rounded-nomi border border-nomi-accent bg-nomi-paper p-3.5">
+    <div data-feedback-card data-feedback-phase={phase} className="space-y-3 rounded-nomi border border-nomi-line bg-nomi-paper p-3.5">
       {showHeading ? <h2 className="text-body-sm font-medium text-nomi-ink">{t('feedbackReport.title')}</h2> : null}
 
       {/* 一行自动摘要：机器已经知道的东西机器自己填。 */}

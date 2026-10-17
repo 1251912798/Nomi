@@ -2092,6 +2092,15 @@
       ],
       "reason": "Video edit design-lab simulation phases cover review and recoverable outputs in the approved prototypes; production trimming continues to use the existing real processing lifecycle.",
       "site": "src/devlab/designLab/videoNodeNext/VideoEditStage.tsx::type:Phase/type-union"
+    },
+    {
+      "members": [
+        "missing",
+        "ready",
+        "source"
+      ],
+      "reason": "Canvas media preview facts on an asset receipt and a canvas result: ready = a separate bounded preview file exists, source = the source itself is within the preview bound, missing = no preview could be derived. A media-derivation fact, not a lifecycle; poseClipStatus is the 3D director pose-clip loading lifecycle and shares only two words.",
+      "site": "electron/shared/canvas/canvasMediaPreview.ts::variable:CANVAS_PREVIEW_STATES/as-const"
     }
   ],
   "debt": [

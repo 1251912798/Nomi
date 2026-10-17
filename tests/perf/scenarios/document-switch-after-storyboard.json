@@ -1,0 +1,23 @@
+{
+  "id": "document-switch-after-storyboard",
+  "feature": "访问过分镜页之后，在创作页切文稿（切到挂着 320 镜头方案的第一份文稿）",
+  "script": "tests/perf/document-switch-bench.mjs",
+  "args": [
+    "--scenario",
+    "document-switch"
+  ],
+  "scale": "160 份文稿、320 个分镜镜头",
+  "metrics": [
+    "response",
+    "longTasks"
+  ],
+  "budget": 100,
+  "baseline": {
+    "median": 37.8,
+    "p95": 39.5,
+    "runs": 5,
+    "machine": "win32 x64 13th Gen Intel(R) Core(TM) i9-13900H x20 / 64GB",
+    "date": "2026-10-16",
+    "commit": "94724f860"
+  }
+}

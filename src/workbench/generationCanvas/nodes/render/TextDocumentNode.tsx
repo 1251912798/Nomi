@@ -22,6 +22,7 @@ import { useNomiRichTextEditor } from '../../../common/useNomiRichTextEditor'
 import { NODE_SCROLL_REGION_CLASS_NAME } from '../nodeScrollRegionClassName'
 import { buildRichTextActions } from '../../../common/richTextActions'
 import { NodeEmptyState } from './NodeEmptyState'
+import { isDocEmpty } from './emptyCardLabel'
 import { toast } from '../../../../ui/toast'
 import { requestTaskCancel } from '../../runner/localTaskControl'
 import { presetBlockHint, runTextPreset, useTextPresetBlocks } from '../textProcessRun'
@@ -40,16 +41,6 @@ const EMPTY_TRY_PRESETS = ['expand', 'describe', 'split'] as const satisfies rea
 const LONG_TEXT_CHARACTERS = 600
 type Props = {
   node: GenerationCanvasNode
-}
-
-/** 文档是否为空（无内容，或只有一个空段落）——用于显示占位提示。 */
-function isDocEmpty(doc?: TiptapDocJson): boolean {
-  const content = doc?.content
-  if (!content || content.length === 0) return true
-  return content.every((entry) => {
-    const block = entry as { type?: string; content?: unknown[] }
-    return block.type === 'paragraph' && (!block.content || block.content.length === 0)
-  })
 }
 
 function TextDocumentNodeImpl({ node }: Props): JSX.Element {
@@ -152,7 +143,7 @@ function TextDocumentNodeImpl({ node }: Props): JSX.Element {
               className={cn(
                 'inline-grid h-7 w-7 place-items-center rounded-nomi-sm',
                 'text-nomi-ink-60 hover:bg-nomi-ink-05 hover:text-nomi-ink',
-                'data-[active=true]:bg-nomi-accent-soft data-[active=true]:text-nomi-accent',
+                'data-[active=true]:bg-nomi-accent-soft data-[active=true]:text-nomi-ink',
                 'disabled:cursor-not-allowed disabled:text-nomi-ink-30',
               )}
             >

@@ -11,6 +11,10 @@ import { resolveLightweightNodePreview } from './canvasNodeLevelOfDetail'
 import { useNodeMediaMeasurement } from '../nodes/useNodeMediaMeasurement'
 import { readNodeCardInfoHeight } from '../nodes/nodeSizing'
 import { DeferredNodeImage, DeferredNodeVideo } from '../nodes/DeferredNodeMedia'
+import { getGenerationNodeIcon } from '../nodes/renderRegistry'
+import { NodeEmptyState } from '../nodes/render/NodeEmptyState'
+import { NodeEmptyStateProvider } from '../nodes/render/NodeEmptyStateProvider'
+import { EMPTY_STATE_COMPACT_MIN_HEIGHT } from '../nodes/render/nodeEmptyStateLayout'
 
 /**
  * 画布远景/超载时的轻量节点占位（LOD 低档）：保留结果媒体缩略图，
@@ -21,17 +25,22 @@ export function LightweightGenerationNode({
   appear,
   selected = false,
   readOnly = false,
+  loading = false,
 }: {
   node: GenerationCanvasNode
   appear: boolean
   selected?: boolean
   readOnly?: boolean
+  /** 这是 Suspense 兜底（该种类的渲染器 chunk 还没到）：不是真正的轻量档，chunk 一到整张卡会被换成另一棵树。 */
+  loading?: boolean
 }): JSX.Element {
   const { t } = useTranslation()
   const shotIdentity = useShotIdentity(node.id)
   const size = getCanvasNodeVisualSize(node)
+  const bodyHeight = size.height - readNodeCardInfoHeight(node)
   const preview = resolveLightweightNodePreview(node)
   const mediaMeasurement = useNodeMediaMeasurement(node)
+  const Icon = getGenerationNodeIcon(node.kind)
   return (
     <article
       className={cn(
@@ -51,6 +60,9 @@ export function LightweightGenerationNode({
       // 结论不是「测试写太死」，是这一层的契约漏了一格——补在这里，任何 LOD 判据改动都不再能弄丢它。
       data-status={node.status}
       data-render-mode="lightweight"
+      // 兜底态的卡一会儿就会被换掉（换掉那一刻，按下去还没抬起的点击会丢：浏览器不给被摘掉的元素发 click）。
+      // 走查点卡前按这个标记等「卡已经是正式的」，和人等卡出来再点是同一件事。
+      data-node-loading={loading ? 'true' : undefined}
       data-appear={appear ? 'true' : undefined}
       style={{
         transform: `translate(${node.position.x}px, ${node.position.y}px)`,
@@ -69,12 +81,12 @@ export function LightweightGenerationNode({
       <div
         className={cn(
           'w-full h-full overflow-hidden rounded-nomi ring-1 ring-inset',
-          selected ? 'ring-2 ring-nomi-accent' : 'ring-nomi-line',
+          'ring-nomi-line',
           'bg-nomi-paper/90 shadow-nomi-sm',
           'grid',
         )}
       >
-        <div className="relative min-w-0 min-h-0 overflow-hidden bg-nomi-ink-05" style={{ height: size.height - readNodeCardInfoHeight(node) }}>
+        <div className="relative min-w-0 min-h-0 overflow-hidden bg-nomi-ink-05" style={{ height: bodyHeight }}>
           {preview?.kind === 'image' ? (
             <DeferredNodeImage
               src={preview.src}
@@ -93,7 +105,11 @@ export function LightweightGenerationNode({
               controls={false}
               onLoadedMetadata={mediaMeasurement.onVideoMetadata}
             />
-          ) : null}
+          ) : (
+            <NodeEmptyStateProvider engaged={false} readOnly>
+              <NodeEmptyState icon={<Icon size={18} stroke={1.5} />} height={bodyHeight} compact={bodyHeight < EMPTY_STATE_COMPACT_MIN_HEIGHT} />
+            </NodeEmptyStateProvider>
+          )}
 
         </div>
       </div>

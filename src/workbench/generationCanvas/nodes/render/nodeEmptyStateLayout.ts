@@ -36,3 +36,17 @@ export function emptyStateBlockTop(tier: EmptyStateTier, height: number): number
   const blockH = EMPTY_STATE_BLOCK_HEIGHT[tier]
   return Math.max(EMPTY_STATE_TOP_CLEARANCE, Math.round(height * EMPTY_STATE_CENTER_RATIO - blockH / 2))
 }
+
+/** 浏览态只留图标时的底盘直径。 */
+export const EMPTY_STATE_ICON_SIZE = 48
+
+/**
+ * 浏览态「只留图标」的盘顶到卡顶的距离：和 emptyStateBlockTop 同一套规则（中心 45%、离顶至少 44px），块高换成盘径。
+ * 卡高未知时返回同规则的 CSS 兜底。
+ */
+export function emptyStateIconTop(height: number | undefined): number | string {
+  if (height === undefined || !Number.isFinite(height)) {
+    return `max(${EMPTY_STATE_TOP_CLEARANCE}px, calc(${EMPTY_STATE_CENTER_RATIO * 100}% - ${EMPTY_STATE_ICON_SIZE / 2}px))`
+  }
+  return Math.max(EMPTY_STATE_TOP_CLEARANCE, Math.round(height * EMPTY_STATE_CENTER_RATIO - EMPTY_STATE_ICON_SIZE / 2))
+}

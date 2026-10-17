@@ -4,7 +4,7 @@ import path from 'node:path'
 import { launchNomiApp } from './_launchApp.mjs'
 import { expect, expectOverlayReachable, expectAbsent, proveProbe } from './_assert.mjs'
 import { stationTimeout } from './_station-budget.mjs'
-import { canvasAddBar, canvasAddMoreMenu, newProjectEntry } from './_shell.mjs'
+import { canvasAddBar, canvasAddMoreMenu, newProjectEntry, openRailDrawer } from './_shell.mjs'
 
 const before = process.argv.includes('--before')
 const output = path.resolve('tests/ux/shots/node-prompt-presets')
@@ -67,8 +67,7 @@ async function verifySupplemental() {
 
 }
 async function createPersonalPrompt(kind, title, prompt) {
-  await page.getByRole('button', { name: '提示词库', exact: true }).click()
-  const panel = page.getByRole('region', { name: '提示词库', exact: true })
+  const panel = await openRailDrawer(page, 'prompts', '侧栏「提示词库」')
   await panel.getByRole('tab', { name: '我的库', exact: true }).click()
   await panel.getByRole('button', { name: '新建', exact: true }).click()
   await panel.getByPlaceholder('标题（选填，如「黄昏剪影」）').fill(title)
