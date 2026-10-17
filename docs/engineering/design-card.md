@@ -47,7 +47,7 @@
 - 「新增功能 / 性能」由路径推出：改 `src/**/*.tsx`（设计实验室除外）、画布 / 时间轴目录、任务 / 队列 / 取消类文件，或新增 `AbortController`，都会推出这一类，所以界面、画布、长跑的 PR 必交 `perf-scenario` 证据；新增功能但路径没命中的（`feat` 前缀的 PR）自己勾上。
 - 路由表只有一份：`docs/engineering/test-routing.json`（每类必交的证据、路径推类别的规则、哪些工具还没建都在里面；可读视图见 `experience-system.md`）。
 - 扫描器按 PR 改动路径推出一组类别，这组是**下限**：卡上勾的只能比它多、不能比它少；必交证据取并集。
-- PR 正文再写一节 `## 验收证据`，每项一行：`- <证据 id>：<报告链接 / 运行号 / 截图路径>`，或 `- <证据 id>：未验证：原因`；工具还没建的证据（路由表里 `tool: missing`）写「未验证：工具未建」。
+- PR 正文再写一节 `## 验收证据`，每项一行：`- <证据 id>：<报告链接 / 运行号 / 截图路径>`，或 `- <证据 id>：未验证：原因`；工具还没建的证据（路由表里 `tool: missing`）写「未验证：工具未建」。**例外：`spend-paid-sample`（花钱类的真付费抽检）合并前扫描不接受「未验证」**，要 `spend-paid-sample：<运行号 / 报告链接>` 或 `spend-paid-sample：协调豁免：<理由>`（`docs/engineering/delivery-and-review.md`「花钱路径的真实验收」）。
 - 纯文档 / 测试 / 配置改动推不出类别，不要求这两节。合并前扫描（`merge-preflight.mjs`）和 CI（`pnpm run check:pr-judgement`）调同一份判据。
 
 ## 独立验收（暂停点②）
