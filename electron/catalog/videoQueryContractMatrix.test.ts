@@ -21,6 +21,7 @@ import { nativeWireProfileForArchetype } from "./nativeWireProfiles";
 import { newapiTransportFor } from "./newapiTransport";
 import { readTaskResponse } from "../tasks/taskResultReading";
 import { resolveTaskStatus } from "../tasks/responseParsing";
+import { createCatalogGenerationProvider } from "../capabilityCore/apimartGenerationProvider";
 import { isJsonRecord, type JsonRecord } from "../jsonUtils";
 import higgsfieldDopTerminal from "./fixtures/higgsfield/dop-terminal.json";
 import type { CatalogState, Mapping } from "./types";
@@ -198,3 +199,50 @@ describe.each(all.map((mapping) => [`${mapping.vendorKey} · ${mapping.modelKey 
     });
   },
 );
+
+// V-1213 验收反例（合并阻断：花钱生成视频却拿到一张图）。三条都在 merge-base 上取对、在修复前的 HEAD 上取错——
+// 期望媒体类型优先，明确的视频结果字段压过顶层辅助地址；回显的参考图一律排除，合同字段也不例外。
+describe("结果误选反例（V-1213）：两台引擎同一组", () => {
+  const REF = "https://fixture.invalid/reference.png";
+  const VIDEO = "https://fixture.invalid/paid-result.mp4";
+  const cases: Array<{ name: string; response: unknown; mapping: JsonRecord | null; expected: string[] }> = [
+    {
+      name: "顶层 poster（无扩展名）+ data.result.videos 里的真 mp4 → 取 mp4",
+      response: { status: "completed", url: "https://fixture.invalid/poster", data: { result: { videos: [{ url: [VIDEO] }] } } },
+      mapping: null,
+      expected: [VIDEO],
+    },
+    {
+      name: "合同 video_url 指向回显的参考图 → 不当产物",
+      response: { status: "success", output: REF },
+      mapping: { video_url: "output" },
+      expected: [],
+    },
+    {
+      name: "顶层无扩展名辅助 url + 明确的 video_url → 取 video_url",
+      response: { status: "success", url: "https://fixture.invalid/poster", video_url: VIDEO },
+      mapping: null,
+      expected: [VIDEO],
+    },
+    {
+      name: "类型证据先于字段名：result_url 是看不出类型的辅助地址、output.url 是明确的 mp4 → 取 mp4",
+      response: { status: "success", result_url: "https://fixture.invalid/landing", output: { url: VIDEO } },
+      mapping: null,
+      expected: [VIDEO],
+    },
+  ];
+
+  it.each(cases)("引擎 A（readTaskResponse）：$name", ({ response, mapping, expected }) => {
+    expect(readTaskResponse({ response, responseMapping: mapping, statusMapping: undefined, wantedKind: "video", echoUrls: new Set([REF]) }).assetUrls).toEqual(expected);
+  });
+
+  it("引擎 B（制作 Run 的 provider.materialize，没有上下文、不知道期望类型）：顶层 poster 不抢真 mp4，产物种类是 video", async () => {
+    const provider = createCatalogGenerationProvider({
+      vendorKey: "v1213",
+      resolveConnection: () => ({ apiKey: "synthetic" }),
+      catalogReader: () => ({ vendors: [], models: [], mappings: [], apiKeysByVendor: {} }) as unknown as CatalogState,
+    });
+    const result = await provider.materialize!({ providerTaskId: "synthetic-task", raw: cases[0].response });
+    expect(result.outputs.map((output) => ({ url: output.url, kind: output.kind }))).toEqual([{ url: VIDEO, kind: "video" }]);
+  });
+});
