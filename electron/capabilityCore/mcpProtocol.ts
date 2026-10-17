@@ -17,6 +17,7 @@ import {
 import { SKILL_URI_PREFIX, skillResourceUri, parseSkillResourceUri, skillFileMimeType, type SkillSummaryFrame, type SkillContentFrame } from './mcpSkillResources'
 import { buildSkillPrompts, buildSkillResources } from './mcpPassiveDiscovery'
 import { McpConnectionAuthenticationError } from './mcpConnectionContext'
+import { randomUUID } from 'node:crypto'
 import { NOMI_LIVE_DRAFT_UI_URI, MCP_APP_MIME_TYPE, NOMI_LIVE_DRAFT_WIDGET_HTML, buildNomiRunFromProjection } from './mcpAppWidget'
 import { buildToolErrorOutcome, buildProgressStartMessage, sanitizeArtifactResource, type ResultLocale } from './mcpToolResults'
 import { buildCanonicalMcpToolResult } from './mcpCanonicalToolResult'
@@ -46,6 +47,11 @@ export type McpInvokeOptions = {
   planConfirmed?: boolean
   documentConfirmed?: boolean
   signal?: AbortSignal
+  /**
+   * 这一跳属于哪一次工具调用（工具名 + 本次调用号）。随回环请求头带到主进程，
+   * 「AI 助手连接」卡的使用情况（mcpUsageRegistry）靠它记账；三条传输都原样转发，不各自再记一份。
+   */
+  call?: { tool: string; id: string }
 }
 /** 请求的取消信号挂在 params 上递给领域（不进 JSON：不可枚举的 symbol 键）。 */
 export const MCP_REQUEST_SIGNAL = Symbol('nomi.mcp.request-signal')
@@ -400,12 +406,11 @@ export function createNomiMcpServer(host: McpHost) {
       if (!replied) throw new Error('MCP confirmation flow finished without a result')
       return replied
     }
+    const callRef = { tool: tool.name, id: randomUUID() }
     const invokeForRequest = (methodName: string, paramsValue: Record<string, unknown>, options?: McpInvokeOptions) => {
       const forwardedParams = withRequestSignal(paramsValue, requestSignal)
       const { signal: _signal, ...forwardedOptions } = options ?? {}
-      return Object.keys(forwardedOptions).length
-        ? host.invoke(methodName, forwardedParams, forwardedOptions)
-        : host.invoke(methodName, forwardedParams)
+      return host.invoke(methodName, forwardedParams, { ...forwardedOptions, call: callRef })
     }
     // 领域确认流的 reply(id, result) 签名沿用旧协议层；请求 id 由 SDK 关联，这里不需要，传空。
     const id = undefined

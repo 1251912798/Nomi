@@ -46,3 +46,69 @@ export function resolveAssistantActivationState(input: {
     headerStatus: verified && !hostApproval ? 'ok' : 'todo',
   }
 }
+
+// ── 连接状态（MCP 第 4 段，画布 v5）：卡头徽章五种 + 状态框六种 + 客户端小圆点 ─────────────────────────
+// 上面 resolveAssistantActivationState 管「配置坏没坏 / 宿主要不要自己批准 / 可信发起方」；
+// 下面在它之上再加一层「助手有没有真的来过」——数据来自主进程按连接记的使用情况（McpClientUsage）。
+// 徽章 / 状态框 / 圆点三者从同一次推导里出，不各自再判一遍。
+
+export type AssistantBadge = 'using' | 'connected' | 'pending' | 'broken' | 'none' | 'checking'
+export type AssistantBox = 'using' | 'recent' | 'written' | 'host-approval' | 'broken' | 'elsewhere' | 'none'
+export type AssistantDot = 'green' | 'yellow' | null
+
+/** 「刚刚」与「正在使用」共用的窗口：一分钟内调用过、或还有调用没跑完，都算正在用。 */
+export const ASSISTANT_ACTIVE_WINDOW_MS = 60_000
+
+export type AssistantUsageSnapshot = {
+  lastSeenAt: number | null
+  lastCall: { at: number } | null
+  inFlight: number
+}
+
+export function resolveAssistantConnection(input: {
+  target: AssistantClientKey
+  installed: boolean
+  /** 读回配置就能判死的过时形状。 */
+  staleShape: boolean
+  /** 配置有效但指向另一份 Nomi。 */
+  elsewhere: boolean
+  verifyPhase: AssistantVerifyPhase
+  trustedHosts: readonly string[]
+  usage: AssistantUsageSnapshot | null
+  now: number
+}): ReturnType<typeof resolveAssistantActivationState> & { badge: AssistantBadge; box: AssistantBox; dot: AssistantDot } {
+  const base = resolveAssistantActivationState({
+    target: input.target,
+    installed: input.installed,
+    verifyPhase: input.staleShape ? 'broken' : input.verifyPhase,
+    trustedHosts: input.trustedHosts,
+  })
+  const done = (box: AssistantBox, badge: AssistantBadge, dot: AssistantDot) => ({
+    ...base,
+    headerStatus: badge === 'using' || badge === 'connected' ? ('ok' as const) : ('todo' as const),
+    badge,
+    box,
+    dot,
+  })
+  if (!input.installed) return done('none', 'none', null)
+  if (input.elsewhere) return done('elsewhere', 'pending', 'yellow')
+  if (base.broken) return done('broken', 'broken', 'yellow')
+  const usage = input.usage
+  if (usage && (usage.inFlight > 0 || (usage.lastCall && input.now - usage.lastCall.at < ASSISTANT_ACTIVE_WINDOW_MS))) {
+    return done('using', 'using', 'green')
+  }
+  // 来过 = 证明宿主已经放行、配置真的被它读到了；比 Nomi 自己握手一次更接近「接上了」。
+  if (usage && usage.lastSeenAt !== null) return done('recent', 'connected', 'green')
+  const box: AssistantBox = base.hostApprovalPending ? 'host-approval' : 'written'
+  return done(box, input.verifyPhase === 'checking' ? 'checking' : 'pending', 'yellow')
+}
+
+/** 「刚刚 / 3 分钟前 / 3 小时前 / 2 天前」——按界面语言，不自己拼单位。 */
+export function formatUsageAgo(at: number, now: number, locale: string, justNow: string): string {
+  const seconds = Math.max(0, Math.round((now - at) / 1000))
+  if (seconds < 60) return justNow
+  const rtf = new Intl.RelativeTimeFormat(locale, { numeric: 'always' })
+  if (seconds < 3600) return rtf.format(-Math.round(seconds / 60), 'minute')
+  if (seconds < 86_400) return rtf.format(-Math.round(seconds / 3600), 'hour')
+  return rtf.format(-Math.round(seconds / 86_400), 'day')
+}

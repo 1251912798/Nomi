@@ -9,6 +9,7 @@
 // pendingApprovalScreens 里有一条显式登记，拍板录完基线就删掉它）。
 import { HOST_CONFIG_STATES as OWNERSHIP_STATES } from './states/01-client-ownership'
 import { HOST_CONFIG_MIGRATION_STATES } from './states/02-migration'
+import { HOST_CONFIG_STATUS_STATES } from './states/03-connection-status'
 import type { LabState } from '../labScreen'
 
-export const HOST_CONFIG_STATES: readonly LabState[] = [...OWNERSHIP_STATES, ...HOST_CONFIG_MIGRATION_STATES]
+export const HOST_CONFIG_STATES: readonly LabState[] = [...OWNERSHIP_STATES, ...HOST_CONFIG_MIGRATION_STATES, ...HOST_CONFIG_STATUS_STATES]

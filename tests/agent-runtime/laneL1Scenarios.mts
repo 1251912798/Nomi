@@ -40,10 +40,10 @@ const canvas = (id: string, name: string, args: Record<string, unknown>, semanti
   domainResult: { applied: true, proposalId: `receipt-${id}`, operation: semantic.operation, result: {}, reconciliation: { ok: true, deviationCount: 0 } },
   resultText: `Applied directly (undoable).\nUser sees: ${userSees}`,
 });
-const DRAFT_USER_SEES = 'Draft changes are saved in the project. Nothing was generated and nothing was spent. This host did not report whether the draft is on the canvas, so do not state what the canvas shows.';
+const draftUserSees = (operationId: string) => 'Draft changes are saved in the project. Nothing was generated and nothing was spent. This host did not report whether the draft is on the canvas, so do not state what the canvas shows. Next step depends on what the user asked this turn: if they asked to generate or produce the images or video, a draft alone gives them nothing, so your next tool call is generate with operationId=' + operationId + '; do not end your turn on the draft. If they only asked for a draft or plan, stop here and do not call generate.';
 /** `draft_shots` 建草稿（卡藏着）：返回 durable operation；模型手里拿到的 id，末行按它下一步要填的名字印成 `operationId=`。 */
 const draft = (id: string, args: Record<string, unknown>, operationId: string): L1Call =>
-  domain(id, 'draft_shots', args, { operation: { operationId, state: 'draft', cardHidden: true } }, args, `${DRAFT_USER_SEES} (operationId=${operationId})`);
+  domain(id, 'draft_shots', args, { operation: { operationId, state: 'draft', cardHidden: true } }, args, `${draftUserSees(operationId)} (operationId=${operationId})`);
 const turn = (prompt: string, ...frames: L1Frame[]): L1Turn => ({ prompt, frames });
 const scenario = (id: string, family: L1Scenario['family'], title: string, turns: L1Turn[],
   extra: Partial<L1Scenario> = {}): L1Scenario => ({ id, family, title, turns, finalDocument: INITIAL_DOCUMENT, ...extra });

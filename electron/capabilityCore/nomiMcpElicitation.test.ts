@@ -157,10 +157,10 @@ describe('nomi-mcp · 创意门由服务端强制 elicitation', () => {
     const response = await harness.next()
     expect(response.id).toBe(2)
     expect(response.result).not.toMatchObject({ isError: true })
-    expect(harness.invoke).toHaveBeenNthCalledWith(1, 'production.get', { projectId: 'project-1', runId: 'run-1' })
+    expect(harness.invoke).toHaveBeenNthCalledWith(1, 'production.get', { projectId: 'project-1', runId: 'run-1' }, expect.anything())
     expect(harness.invoke).toHaveBeenNthCalledWith(2, 'production.decide-gate', {
       projectId: 'project-1', runId: 'run-1', gateId: 'gate-direction-v1', decision: 'approved', choiceKey: 'studio',
-    })
+    }, expect.anything())
   })
 
   // P4 §3.2：锚定妆照检查点与创意门同权——elicitation 用「视觉确认」文案问过真人后才应用决定。
@@ -196,7 +196,7 @@ describe('nomi-mcp · 创意门由服务端强制 elicitation', () => {
     expect(response.result).not.toMatchObject({ isError: true })
     expect(harness.invoke).toHaveBeenNthCalledWith(2, 'production.decide-gate', {
       projectId: 'project-1', runId: 'run-1', gateId: 'gate-anchor-checkpoint-run-1', decision: 'approved',
-    })
+    }, expect.anything())
   })
 
   it('预算门在协议层直接拒绝，不向客户端伪装成可批准创意门', async () => {
