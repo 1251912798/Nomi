@@ -11,7 +11,7 @@ import { asTrimmedString, resolveTaskKind, selectedModelKey, selectedVendor } fr
 import { normalizeCatalogTaskResult } from './catalogTaskResultParse'
 import i18n from '../../../i18n'
 import { describeOpaqueFailure } from '../../observability/opaqueFailure'
-import { isRetrievalStageCode, matchNomiErrorCode } from '../../../../electron/shared/nomiErrorCodes'
+import { isRetrievalStageCode, matchNomiErrorCode, tagNomiError } from '../../../../electron/shared/nomiErrorCodes'
 import type { MediaDimensions } from '../nodes/nodeSizing'
 import { awaitMediaTransfer, describePhaseSilence } from './generationPhaseDeadline'
 import { isTerminalTaskStatus } from '../../../../electron/shared/taskStatus'
@@ -131,7 +131,7 @@ export async function recoverNodeResult(nodeId: string, project: ProjectExecutio
       if (isTerminalTaskStatus(current.status)) break
       if (Date.now() - startedAt > RECOVER_POLL_TIMEOUT_MS) {
         // 仍没出来 → 退回可找回态，按钮重现，稍后可再拉。
-        await deliverRunOutcome(target, id, { kind: 'status', status: 'recoverable', error: i18n.t('generationCommon.recoverable.stillUpstream') })
+        await deliverRunOutcome(target, id, { kind: 'status', status: 'recoverable', error: tagNomiError('retrieval-timeout', i18n.t('generationCommon.recoverable.stillUpstream')) })
         return
       }
       // 进度只给前台看：原项目不在画布上时不写（那是别的项目的 store），也不为一句进度去写盘。
