@@ -64,3 +64,16 @@
 | 再确认卡「保持原样」（拒绝） | 同上，与主动作同尺寸 | 同上 | `agentPanelV4.consent.scopeDecline` | 点击 | 只记「问过了」；范围保持 1，新事件不入队，原统计照旧 | `perfCollector` 不受影响；`telemetryOutbox.test.ts` 旧范围用例 |
 | 设置「同意新增」 | `TelemetrySection` 内一块，`DesignButton` | 遥测开着且范围版本 < 2 时出现；确认后消失 | `settings.general.telemetry.scopeConfirm` | 点击 | 同上，并记「问过了」让 Agent 面板的卡不再弹 | 设计实验室 `privacy-05-scope-reask-en-dark` |
 | 反馈卡「附带」行 | 现有 `FeedbackReportCard`，只改文字 | 常驻 | `feedbackReport.attaches` | 无（「查看」沿用现有） | 清单里多一项 `perf/summary.json` 或写明 `perf-unavailable` | `feedbackReport.test.ts` |
+
+## 先查别人
+
+问题：线上的「界面流畅度」怎么采、怎么汇总。我们自己写的只有分档表和告知范围版本（领域约束：用户同意了什么）；采集和分位不自写剖析器。
+
+1. 依赖里已有？没有 INP / 长帧采集库。`package.json` 里没有 `web-vitals`。
+2. 仓库里已有？量具侧已经只用浏览器标准：`tests/perf/canvas-scale-bench.mjs:226`（`PerformanceObserver` 记长任务）、`tests/perf/canvas-scale/responseTimer.mjs:5`（「不自写剖析器」）。线上侧没有。传输、同意合同、白名单、发件箱沿用 `electron/telemetry/intakeClient.ts:1` 起的整条管线，一行没重写。
+3. 生态里已有？
+   - Google `web-vitals`（Context7 `/googlechrome/web-vitals`，<https://github.com/googlechrome/web-vitals/blob/main/README.md>）：`onINP` 每个页面只回**一个** INP 值，并带事件目标等归因；不给分位分布，也不数长帧。我们要的是会话内 p75 / p95 的分档和每分钟长帧次数。它和我们用的是同一个底层标准接口，多一层依赖换不来我们要的统计，还会带出交互目标选择器这类我们明确不收的内容。不接的理由是它的统计口径不是我们要的那一个，不是「不想接」。
+   - MDN Event Timing：<https://developer.mozilla.org/en-US/docs/Web/API/PerformanceEventTiming>（`interactionId`、`durationThreshold` 最小 16ms，与 INP 同口径）；web.dev INP：<https://web.dev/articles/inp>（良好 ≤200ms、较差 >500ms，分档边界取自这里）。
+   - Long Animation Frames：<https://developer.chrome.com/docs/web-platform/long-animation-frames>（>50ms 的长帧，Chromium 123 起；Electron 43 内置 Chromium 远高于此，且代码里先问 `supportedEntryTypes`，缺一个就不出汇总）。
+4. TikHub 自媒体里怎么说？不适用：这是浏览器性能接口的用法，不是创作者生态里的问题。
+5. 结论：用已有标准接口 + 自研分档；`web-vitals` 不接（口径不对，见上）。登记：`docs/engineering/self-written.json` 的 `telemetry-pipeline` 条已补 `perfTelemetry.ts` 和上述标准。

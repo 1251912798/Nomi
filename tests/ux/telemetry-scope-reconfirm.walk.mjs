@@ -60,7 +60,7 @@ for (const spec of LOCALES) {
 
     // 按钮按词典里的名字认，不抄文案。
     await card.getByRole('button', { name: uiText(spec.locale, 'agentPanelV4.consent.scopeAccept'), exact: true }).click()
-    await win.waitForFunction(async () => (await window.nomiDesktop.settings.telemetry.get()).scopeVersion === 2)
+    await expect.poll(async () => (await win.evaluate(() => window.nomiDesktop.settings.telemetry.get())).scopeVersion, { timeout: DEFAULT_TIMEOUT_MS }).toBe(2)
     const after = await win.evaluate(() => window.nomiDesktop.settings.telemetry.get())
     expect(after.scopeVersion, '点同意后范围版本应升到 2').toBe(2)
     const queuedAfter = await win.evaluate((props) => window.nomiDesktop.telemetry.track({ eventName: 'perf.session.summary', props }), PERF_PROPS)
