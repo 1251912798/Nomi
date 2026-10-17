@@ -17,27 +17,38 @@ import path from 'node:path'
 import { laneMessages, readLaneTranscripts } from './agent-lane-observer.mjs'
 import { createRuntimeWalk } from './agent-runtime-walk-support.mjs'
 import { blockedError, guardLoadedError, newNetLogFile, paidWalkAllowlist, readNetLog, watchNetLog } from './_paidNetwork.mjs'
-import { readRealCatalog, realNomiIsRunning, realProfileFingerprint, removeRealCredentials, seedRealModels } from './_realProfile.mjs'
+import {
+  ENV_KEY_ALLOW_CATALOG, ENV_KEY_VAR, ENV_KEY_VENDOR, assertNoSecretOnDisk, assertUsableEnvKey, connectApimartThroughVisibleUi,
+  APIMART_TEXT_MODEL_KEYS, collectAppLogs, envKeyOf, filesContainingSecret, paidCredentialSource, readAuthorizedRows, redact, redactNetLogEntry, redactedError,
+} from './_paidEnvKey.mjs'
+import { readRealCatalog, realNomiIsRunning, realNomiProfile, realProfileFingerprint, removeRealCredentials, seedRealModels } from './_realProfile.mjs'
 
 export const SPEND_OPT_IN_ENV = 'NOMI_SPEND_OK'
 
-/** 纯判据（单测钉它）：返回拒跑理由，null = 放行。 */
+/**
+ * 纯判据（单测钉它）：返回拒跑理由，null = 放行。
+ * env-key 路（设了 APIMART_API_KEY）不碰真实资料目录，所以「用户的 Nomi 开着」不构成拒跑理由；
+ * CI 拒跑与显式 NOMI_SPEND_OK 两道闸两条路一样。
+ */
 export function paidRunRefusal(script, { env = process.env, nomiRunning = false } = {}) {
   if (env.CI) return `${script} 会真的调用供应商并扣费，不在 CI 里跑`
   if (env[SPEND_OPT_IN_ENV] !== '1') return `${script} 会花真钱：显式设 ${SPEND_OPT_IN_ENV}=1 才跑`
-  if (nomiRunning) return `${script} 要拷用户的真实资料目录，而 Nomi 正开着——关掉 App 再跑（开着拷到的是半新半旧的一份）`
+  if (nomiRunning && paidCredentialSource(env) === 'real-profile') return `${script} 要拷用户的真实资料目录，而 Nomi 正开着——关掉 App 再跑（开着拷到的是半新半旧的一份）`
   return null
 }
 
-export function assertPaidRunAllowed(script, env = process.env) {
-  const refusal = paidRunRefusal(script, { env, nomiRunning: !env.CI && env[SPEND_OPT_IN_ENV] === '1' && realNomiIsRunning() })
+export function assertPaidRunAllowed(script, env = process.env, isNomiRunning = realNomiIsRunning, profile = realNomiProfile({ env })) {
+  const envKeyRoute = paidCredentialSource(env) === 'env-key'
+  const refusal = paidRunRefusal(script, { env, nomiRunning: !envKeyRoute && !env.CI && env[SPEND_OPT_IN_ENV] === '1' && isNomiRunning() })
   if (refusal) throw new Error(refusal)
-  const before = realProfileFingerprint()
+  // env-key 路从头到尾不读真实资料目录：没有指纹可记，也就没有「跑后比对」。
+  if (envKeyRoute) return { realProfileBefore: null, assertRealProfileUntouched: () => null }
+  const before = realProfileFingerprint(profile)
   return {
     realProfileBefore: before,
     /** 跑后调用：原库的目录与钥匙必须一字不差；返回跑后指纹给报告用。 */
     assertRealProfileUntouched() {
-      const after = realProfileFingerprint()
+      const after = realProfileFingerprint(profile)
       const changed = Object.keys({ ...before, ...after }).filter((name) => before[name] !== after[name])
       if (changed.length) throw new Error(`付费走查跑完，用户真实资料目录里的 ${changed.join('、')} 变了——走查写穿了原库，或期间有人开了 Nomi`)
       return after
@@ -81,51 +92,124 @@ export async function lockSpendToModels(win, seeded) {
 /**
  * 付费走查的起点：先过闸，再建隔离实例（createRuntimeWalk），再把**点名的真实模型**连同凭据装进去。
  * 返回的 `finish(error)` 在 App 关掉之后删凭据副本、写收据、比对原库指纹。
+ *
+ * 凭据有两个来源（`paidCredentialSource`，唯一判据）：
+ *   · real-profile（缺省）：从用户真实资料目录拷密文进隔离副本，跑完删凭据副本、比对原库指纹；
+ *   · env-key（设了 APIMART_API_KEY）：不碰真实资料。`lockToAuthorizedModels(win)` 里走可见的接入页把 key 装进去，
+ *     再收窄花钱面；跑完整个隔离副本删除并断言已删，key 不进日志 / 报告 / 账本落盘 / 异常信息。
+ * `deps` 只给单测换掉重的那几个零件（真起 App、真走界面）；脚本里不传。
  */
-export async function openPaidWalk(script, name, models) {
-  const guard = assertPaidRunAllowed(script)
+export async function openPaidWalk(script, name, models, deps = {}) {
+  const { env = process.env, createWalk = createRuntimeWalk, connect = connectApimartThroughVisibleUi, isNomiRunning = realNomiIsRunning } = deps
+  // 真实资料目录的位置跟着传进来的 env 走（缺省就是 process.env，和以前一样）；env-key 路根本不会用到它。
+  const profile = realNomiProfile({ env })
+  const guard = assertPaidRunAllowed(script, env, isNomiRunning, profile)
+  const envKey = paidCredentialSource(env) === 'env-key' ? assertUsableEnvKey(envKeyOf(env)) : ''
+  const secrets = envKey ? [envKey] : []
+  if (envKey) assertEnvKeyModels(models)
   // 出网名单按本场授权的供应商自动算（见 _paidNetwork.mjs），连同账本路径一起交给被测 App 的闸；调用方什么都不用配。
-  const allow = paidWalkAllowlist(readRealCatalog(), models.map((model) => model.vendorKey))
+  const allow = envKey
+    ? paidWalkAllowlist(ENV_KEY_ALLOW_CATALOG, [ENV_KEY_VENDOR])
+    : paidWalkAllowlist(readRealCatalog(profile), models.map((model) => model.vendorKey))
   const netLog = newNetLogFile()
-  const walk = await createRuntimeWalk(name, { env: { NOMI_WALK_ALLOW_ORIGINS: allow.join(','), NOMI_WALK_NET_LOG: netLog } })
+  // env-key 路：被测 App 的环境里把 key 这一项清成空串——key 只留在本进程的闭包里，子进程（含它的崩溃转储、诊断包）拿不到。
+  const walk = await createWalk(name, { env: { NOMI_WALK_ALLOW_ORIGINS: allow.join(','), NOMI_WALK_NET_LOG: netLog, ...(envKey ? { [ENV_KEY_VAR]: '' } : {}) } })
   walk.report.networkAllowlist = allow
+  walk.report.credentialSource = envKey ? `env-key（${ENV_KEY_VAR}，只记变量名）` : 'real-profile'
   let blocked = null
   // 被挡就地失败：别等 UI 超时（以前一次连接被挡要干等 600 多秒）。关掉 App，让走查脚本里正在等的那一步立刻报错，
   // finish 再把真正的原因（被挡的 host 与层）换到报告里。
   const netWatch = watchNetLog(netLog, (entries) => {
     blocked = blockedError(entries, allow)
-    console.error(`[paid] ${blocked.message}`)
+    console.error(`[paid] ${redact(blocked.message, secrets)}`)
     walk.stopApp().catch(() => {})
   })
-  const removeCredentialCopy = () => removeRealCredentials({ settingsDir: walk.settingsDir, userDataDir: walk.userDataDir })
-  let seeded
-  try { seeded = seedRealModels({ settingsDir: walk.settingsDir, userDataDir: walk.userDataDir, models }) }
-  catch (error) { netWatch.stop(); removeCredentialCopy(); await walk.fixture.close(); throw error }
-  walk.report.seededModels = seeded.map((row) => `${row.vendorKey}/${row.modelKey}`)
-  walk.report.realProfileBefore = guard.realProfileBefore
-  console.log(`[paid] 隔离副本装了：${walk.report.seededModels.join(' · ')}`)
+  const removeCredentialCopy = () => removeRealCredentials({ settingsDir: walk.settingsDir, userDataDir: walk.userDataDir, profile })
+  let seeded = []
+  if (!envKey) {
+    try { seeded = seedRealModels({ settingsDir: walk.settingsDir, userDataDir: walk.userDataDir, models, profile }) }
+    catch (error) { netWatch.stop(); removeCredentialCopy(); await walk.fixture.close(); throw error }
+    walk.report.seededModels = seeded.map((row) => `${row.vendorKey}/${row.modelKey}`)
+    walk.report.realProfileBefore = guard.realProfileBefore
+    console.log(`[paid] 隔离副本装了：${walk.report.seededModels.join(' · ')}`)
+  } else {
+    console.log(`[paid] 凭据来源：环境变量 ${ENV_KEY_VAR}（走可见接入页，不读真实资料）；授权模型：${models.map((model) => `${model.vendorKey}/${model.modelKey}`).join(' · ')}`)
+  }
   const label = (vendorKey, modelKey) => seeded.find((row) => row.vendorKey === vendorKey && row.modelKey === modelKey)?.labelZh
   async function lockToAuthorizedModels(win) {
     // 花第一分钱之前先确认闸装上了、账本写得进（否则被挡也没人知道）。
     const unguarded = guardLoadedError(readNetLog(netLog))
     if (unguarded) throw unguarded
-    walk.report.disabledUnauthorizedModels = await lockSpendToModels(win, seeded)
+    if (envKey) {
+      // 接入页上的验证会真的打一次大脑模型（几个 token）——这是真人第一次接入时同样会发生的事，记进报告。
+      walk.report.envKeyConnect = await connect(win, { apiKey: envKey, textModelKey: envKeyBrainOf(models), requiredModels: models })
+      seeded = await readAuthorizedRows(win, models)
+      walk.report.seededModels = seeded.map((row) => `${row.vendorKey}/${row.modelKey}`)
+    }
+    try { walk.report.disabledUnauthorizedModels = await lockSpendToModels(win, seeded) }
+    catch (error) { throw envKey ? redactedError(error, secrets) : error }
+  }
+  /** env-key 路收尾：网络账本打码留一份、原件连同临时目录删掉；整个隔离副本删除并断言。 */
+  function envKeyTeardown() {
+    const entries = readNetLog(netLog).map((entry) => redactNetLogEntry(entry, secrets))
+    fs.writeFileSync(path.join(walk.outputDir, 'net-log.redacted.jsonl'), entries.map((entry) => `${JSON.stringify(entry)}
+`).join(''))
+    fs.rmSync(path.dirname(netLog), { recursive: true, force: true })
+    // 副本一删日志就没了：先把主进程日志与 Agent lane 记录（key 打码）拷进证据目录。
+    walk.report.appLogsCopied = collectAppLogs({ tempRoot: walk.report.tempRoot, projectRoot: walk.report.projectRoot, outDir: walk.outputDir, secrets })
+    fs.rmSync(walk.report.tempRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 })
+    if (fs.existsSync(walk.report.tempRoot)) throw new Error(`隔离副本没删干净：${walk.report.tempRoot}`)
+    if (fs.existsSync(path.dirname(netLog))) throw new Error('网络账本原件没删干净')
+    walk.report.isolatedCopyRemoved = true
+    // 报告落盘与打印之前最后一道：内存里的报告不含 key。含了就原地抹掉再红，落盘的是抹过的那份。
+    if (JSON.stringify(walk.report).includes(envKey)) {
+      const scrubbed = JSON.parse(redact(JSON.stringify(walk.report), secrets))
+      for (const name of Object.keys(walk.report)) walk.report[name] = scrubbed[name]
+      throw new Error('key 出现在报告内容里（已从落盘的报告里抹掉）——请更换这把 key')
+    }
   }
   async function finish(error) {
     const finalEntries = netWatch.stop()
     blocked ??= blockedError(finalEntries, allow)
     walk.report.networkBlocked = finalEntries.filter((entry) => entry.kind === 'blocked').map(({ via, host, url }) => ({ via, host, url }))
-    await walk.finish(blocked ?? error, {
+    const failure = blocked ?? error
+    await walk.finish(envKey && failure ? redactedError(failure, secrets) : failure, {
       unscriptedFixture: true,
       collect: async () => {
-        // App 已经关了：凭据副本（目录里的 key 密文 + 钥匙）当场删掉，项目与截图留作证据。
+        // App 已经关了：项目与截图是证据，先把收据取出来；凭据副本（目录里的 key 密文 + 钥匙）当场删掉。
+        // env-key 路：收据读不出来（转录坏了等）也不许挡住收尾——副本里还躺着凭据密文，必须删。
+        let spend
+        try { spend = spendReceipt(walk.report.projectRoot) }
+        catch (error) { if (!envKey) throw error; spend = { media: [], text: null, readError: redact(String(error?.message ?? error), secrets).slice(0, 300) } }
+        if (envKey) {
+          envKeyTeardown()
+          return { spend, credentialCopyRemoved: true }
+        }
         const credentialCopyRemoved = removeCredentialCopy()
         const after = guard.assertRealProfileUntouched()
-        return { spend: spendReceipt(walk.report.projectRoot), realProfileAfter: after, credentialCopyRemoved }
+        return { spend, realProfileAfter: after, credentialCopyRemoved }
       },
     })
+    // 报告 / 日志 / 截图都落盘之后再核一遍证据目录：发现 key 就删掉那些文件并红。
+    if (envKey) {
+      const hits = filesContainingSecret(walk.outputDir, secrets)
+      for (const hit of hits) fs.rmSync(path.join(walk.outputDir, hit), { force: true })
+      assertNoSecretOnDisk(walk.outputDir, secrets)
+      if (hits.length) throw new Error(`key 泄漏进了证据目录（${hits.join('、')}）——文件已删，请立即更换这把 key`)
+    }
   }
   return { walk, label, lockToAuthorizedModels, finish }
+}
+
+/** env-key 路只认 APIMart：别家的 key 这条路不管；点名了别家模型就在花钱前拒。 */
+export function assertEnvKeyModels(models) {
+  const foreign = models.filter((model) => model.vendorKey !== ENV_KEY_VENDOR)
+  if (foreign.length) throw new Error(`${ENV_KEY_VAR} 只能授权 ${ENV_KEY_VENDOR} 的模型，这一场还点名了：${foreign.map((model) => `${model.vendorKey}/${model.modelKey}`).join('、')}（一分钱没花）`)
+}
+
+/** 接入页里要验证的文本模型：授权名单里点名的那个 APIMart 文本模型；没点名就用缺省的 deepseek-v3.2。 */
+export function envKeyBrainOf(models) {
+  return models.find((model) => APIMART_TEXT_MODEL_KEYS.includes(model.modelKey))?.modelKey ?? 'deepseek-v3.2'
 }
 
 function readJson(file) {

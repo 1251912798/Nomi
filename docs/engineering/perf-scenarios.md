@@ -24,6 +24,7 @@
 | 拖动 / 平移 / 缩放的帧间隔（frameGapP95） | p95 ≤2 帧（33ms） |
 | 交互期间 >50ms 的长任务（longTasks） | 0 个 |
 | 打开到能操作（openToInteractive） | ≤1s @100 节点 |
+| 面板 / 浮层开着不动时的主线程忙碌占比（idleBusyPct） | ≤1%（同一编辑器不开面板的对照约 0.4–0.6%）；每秒读矩形次数（idleRectReadsPerSec）、布局 + 样式重算次数（idleLayoutsPerSec）只打印，空闲应接近 0 |
 
 登记表里的 `budget` 对应 `metrics[0]`（主指标）；其余指标只在表里打印。
 
@@ -104,6 +105,20 @@ Windows 上 `pnpm run perf:scenarios` 外面那层 `python3 scripts/with-gates-l
 - 退化（中位数比基线差 >20%）或超预算：输出报告并开一条待办，不自动改任何东西；
 - 基线只在安静窗口里更新（`--update-baseline`，不加 `--noisy`），由协调会话或验收线做；
 - 2026-10-06 用户定过「不设定时触发、全量由用户手动触发」（`experience-system.md`）：夜跑要不要上，需要用户点头；在那之前，同一条命令就是 `Full Experience Run` 全量跑里的 `perf-real-scale` 层。
+
+## 内联画板场景（2026-10-17，#1189 审查 F7）
+
+量具 `tests/ux/whiteboard-perf.probe.mjs`（`--scene` 选场景；CDP `Performance.getMetrics` + 页内 rAF / PerformanceObserver + 共用 response 计时器），素材固定用仓库自带的真实镜头抽帧（`--repo-media`，640×360），不冒充 4K 结论；默认模式要用素材库里的 4K 片，库缺了就红。
+
+| 场景 id | 量什么 | 主指标 |
+|---|---|---|
+| `inline-whiteboard-idle-panel` | 面板开着、什么都不动：主线程忙碌占比、每秒读矩形、布局 + 样式重算 | idleBusyPct（另两项只看） |
+| `inline-whiteboard-open` | 点「画板」到能操作（画布起来、原图导入完） | openToInteractive |
+| `inline-whiteboard-type` | 在文字对象里逐键输入 12 个字，每键到画面重排的 p95 | response |
+| `inline-whiteboard-many-images` | 画布上 25 张可见图片（6 张不同真实帧）时在画板里拖图 | frameGapP95（长任务只看） |
+| `inline-whiteboard-moving-panel` | 面板开着、画布滚轮缩放，面板偏离锚点的帧数 | panelFramesOff |
+
+`inline-whiteboard-drag`（整条走查里的拖动）是更早登记的，量的是另一件事，不并入。
 
 ## 种子场景
 

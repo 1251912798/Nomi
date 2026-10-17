@@ -28,12 +28,12 @@ export type LeaferPathCommandData = ReturnType<LeaferUiModule['PathConvert']['pa
 export type LeaferPathTools = Pick<LeaferUiModule, 'PathCommandMap' | 'PathConvert' | 'PathNumberCommandLengthMap'>
 export type LeaferRenderContext = Pick<
   LeaferUiModule,
-  'Box' | 'Group' | 'Image' | 'Path' | 'PathCommandMap' | 'PathConvert' | 'PathNumberCommandLengthMap' | 'Rect'
+  'Box' | 'Group' | 'Image' | 'Path' | 'PathCommandMap' | 'PathConvert' | 'PathNumberCommandLengthMap' | 'Rect' | 'Text'
 > & {
   app: LeaferApp
   rootGroup: LeaferGroup
 }
-export type CanvasObjectKind = 'asset' | 'stroke' | 'group'
+export type CanvasObjectKind = 'asset' | 'stroke' | 'group' | 'text'
 export type CanvasObjectOffset = {
   x: number
   y: number
@@ -76,3 +76,32 @@ export type SnapGuide = {
 export const SNAP_DISTANCE = 18
 export const MIN_ASSET_SIZE = 24
 export const EDITOR_RESIZE_HANDLE_HIT_RADIUS_PX = 16
+
+/** Serializable document transforms; imperative Leafer maps never own persisted state. */
+export type SceneTransforms = {
+  offsets: Record<string, CanvasObjectOffset>
+  assetTransforms: Record<string, CanvasAssetTransform>
+  flips: Record<string, CanvasObjectFlipState>
+}
+
+export function captureSceneTransforms(
+  offsets: Map<string, CanvasObjectOffset>,
+  assetTransforms: Map<string, CanvasAssetTransform>,
+  flips: Map<string, CanvasObjectFlipState>,
+): SceneTransforms {
+  return {
+    offsets: Object.fromEntries([...offsets].map(([key, value]) => [key, { ...value }])),
+    assetTransforms: Object.fromEntries([...assetTransforms].map(([key, value]) => [key, { ...value }])),
+    flips: Object.fromEntries([...flips].map(([key, value]) => [key, { ...value }])),
+  }
+}
+
+export function restoreSceneTransforms(value?: SceneTransforms): {
+  offsets: Map<string, CanvasObjectOffset>
+  assetTransforms: Map<string, CanvasAssetTransform>
+  flips: Map<string, CanvasObjectFlipState>
+} {
+  const clone = <T extends object>(record?: Record<string, T>) =>
+    new Map(Object.entries(record ?? {}).map(([key, entry]) => [key, { ...entry }]))
+  return { offsets: clone(value?.offsets), assetTransforms: clone(value?.assetTransforms), flips: clone(value?.flips) }
+}

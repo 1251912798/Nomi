@@ -1,0 +1,28 @@
+{
+  "name": "画布节点可视外框与缩放限界",
+  "subject": "canvas.node-visual-size",
+  "lifecycle": "live-interaction",
+  "authority_kind": "decision",
+  "trust_domain": "renderer",
+  "fact_kind": "rule",
+  "migration_status": "converged",
+  "owner": {
+    "path": "src/workbench/generationCanvas/nodes/nodeSizing.ts",
+    "symbol": "resolveNodeVisualSize"
+  },
+  "write_api": [
+    {
+      "path": "src/workbench/generationCanvas/nodes/nodeSizing.ts",
+      "symbol": "resolveNodeVisualSize"
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/nodeSizing.ts",
+      "symbol": "getNodeResizeBounds"
+    }
+  ],
+  "forbidden_derivations": [],
+  "parity_test": "src/workbench/generationCanvas/nodes/nodeSizing.visualSize.test.ts",
+  "allowed_consumers": [],
+  "since": "2026-10-12",
+  "notes": "显示外框与 NodeResizer 限界统一读取 nodeSizing；固有媒体尺寸写入另属 canvas.media-intrinsic-size。whiteboardFrameScale 将逻辑文档边界换算为节点显示范围，图片版要求 whiteboardResultIdentity 与当前结果一致，旧主图 frame 不得污染替换结果。框架拖动仍归 React Flow，本文只登记共享尺寸判据，不另建 resize owner。 2026-10-12：挂载历史/legacy result 按 initialDimensions 初始化显示 size 再绑定身份，不能激活上一版残留 height。"
+}

@@ -28,5 +28,5 @@
     "src/workbench/project/projectPersistenceService.ts"
   ],
   "since": "2026-10-06",
-  "notes": "删一版给撤销，所以文件延后删：撤销日志退不回那一步 / 换项目 / 下次打开项目时到点；到点前用 isProjectFileReferenced（画布 + 时间轴）再判一次。待删清单随项目存盘（payload.pendingAssetDeletions）。"
+  "notes": "删一版给撤销，所以文件延后删：撤销日志退不回那一步 / 换项目 / 下次打开项目时到点；到点前用 isProjectFileReferenced（画布 + 时间轴）再判一次。待删清单随项目存盘（payload.pendingAssetDeletions）。 2026-10-12：共享存活判据同时保护当前 whiteboardState 和每个 retained result.raw.whiteboardState 的 canvasAssets，删除原图版本不许删仍供新版编辑的图层文件。"
 }

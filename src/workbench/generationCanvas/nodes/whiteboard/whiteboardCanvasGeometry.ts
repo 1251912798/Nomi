@@ -1,4 +1,4 @@
-import type { CanvasAsset, CanvasDimensions, LayerItem } from './lib/canvas'
+import type { CanvasAsset, CanvasText, CanvasDimensions, LayerItem } from './lib/canvas'
 import type {
   CanvasAssetTransform,
   CanvasObjectBounds,
@@ -74,11 +74,14 @@ export function isCanvasContextMenuEvent(event?: PointerEvent): boolean {
 export function getLayerIdForCanvasObject(
   target: CanvasObjectTarget,
   assets: CanvasAsset[],
-  strokes: CanvasStroke[]
+  strokes: CanvasStroke[],
+  texts: CanvasText[] = []
 ): string | null {
   if (target.kind === 'asset') {
     return assets.find((asset) => asset.id === target.id)?.layerId ?? null
   }
+
+  if (target.kind === 'text') return texts.find((text) => text.id === target.id)?.layerId ?? null
 
   if (target.kind === 'group') {
     return target.id
@@ -127,7 +130,8 @@ export function getSnappedCanvasMove({
   strokes,
   offsets,
   assetTransforms,
-  onSnapGuides
+  onSnapGuides,
+  texts = [],
 }: {
   target?: unknown
   x: number
@@ -138,22 +142,23 @@ export function getSnappedCanvasMove({
   strokes: CanvasStroke[]
   offsets: Map<string, CanvasObjectOffset>
   assetTransforms: Map<string, CanvasAssetTransform>
+  texts?: CanvasText[]
   onSnapGuides?: (guides: SnapGuide[]) => void
 }): CanvasPoint | true {
   const objectTarget = getCanvasObjectTarget(target)
 
-  if (!objectTarget || (objectTarget.kind !== 'asset' && objectTarget.kind !== 'group') || !Number.isFinite(x) || !Number.isFinite(y)) {
+  if (!objectTarget || (objectTarget.kind !== 'asset' && objectTarget.kind !== 'group' && objectTarget.kind !== 'text') || !Number.isFinite(x) || !Number.isFinite(y)) {
     onSnapGuides?.([])
     return true
   }
 
-  const bounds = getCanvasObjectRenderBounds(objectTarget, layers, assets, strokes, offsets, assetTransforms)
+  const bounds = getCanvasObjectRenderBounds(objectTarget, layers, assets, strokes, offsets, assetTransforms, texts)
   if (!bounds) {
     onSnapGuides?.([])
     return true
   }
 
-  const guides = getSnapGuides(objectTarget, dimensions, layers, assets, strokes, offsets, assetTransforms)
+  const guides = getSnapGuides(objectTarget, dimensions, layers, assets, strokes, offsets, assetTransforms, texts)
   const snapX = getNearestSnapDelta(getBoundsVerticalLines({ ...bounds, x: bounds.x + x }), guides.vertical)
   const snapY = getNearestSnapDelta(getBoundsHorizontalLines({ ...bounds, y: bounds.y + y }), guides.horizontal)
   const activeGuides: SnapGuide[] = []
@@ -214,11 +219,19 @@ export function getCanvasObjectRenderBounds(
   assets: CanvasAsset[],
   strokes: CanvasStroke[],
   offsets: Map<string, CanvasObjectOffset>,
-  assetTransforms: Map<string, CanvasAssetTransform>
+  assetTransforms: Map<string, CanvasAssetTransform>,
+  texts: CanvasText[] = []
 ): CanvasObjectBounds | null {
   if (target.kind === 'asset') {
     const asset = assets.find((item) => item.id === target.id)
     return asset ? getAssetRenderBounds(asset, offsets, assetTransforms) : null
+  }
+
+  if (target.kind === 'text') {
+    const text = texts.find((item) => item.id === target.id)
+    if (!text) return null
+    const offset = getObjectOffset(offsets, 'text', text.id)
+    return { x: text.x + offset.x, y: text.y + offset.y, width: text.width, height: text.height }
   }
 
   if (target.kind === 'stroke') {
@@ -243,7 +256,7 @@ export function getCanvasObjectRenderBounds(
 
   const assetsByLayer = groupItemsByLayer(assets)
   const strokesByLayer = groupItemsByLayer(strokes)
-  const baseBounds = getLayerBaseBounds(target.id, assetsByLayer, strokesByLayer, offsets, assetTransforms)
+  const baseBounds = getLayerBaseBounds(target.id, assetsByLayer, strokesByLayer, offsets, assetTransforms, texts)
   if (!baseBounds) {
     return null
   }
@@ -261,7 +274,8 @@ export function getLayerBaseBounds(
   assetsByLayer: Map<string, CanvasAsset[]>,
   strokesByLayer: Map<string, CanvasStroke[]>,
   offsets: Map<string, CanvasObjectOffset>,
-  assetTransforms: Map<string, CanvasAssetTransform>
+  assetTransforms: Map<string, CanvasAssetTransform>,
+  texts: CanvasText[] = []
 ): CanvasObjectBounds | null {
   const childBounds: CanvasObjectBounds[] = []
 
@@ -287,6 +301,11 @@ export function getLayerBaseBounds(
     })
   }
 
+  for (const text of texts.filter((item) => item.layerId === layerId)) {
+    const offset = getObjectOffset(offsets, 'text', text.id)
+    childBounds.push({ x: text.x + offset.x, y: text.y + offset.y, width: text.width, height: text.height })
+  }
+
   return getUnionBounds(childBounds)
 }
 
@@ -296,11 +315,12 @@ export function getCanvasTargetsUnionBounds(
   assets: CanvasAsset[],
   strokes: CanvasStroke[],
   offsets: Map<string, CanvasObjectOffset>,
-  assetTransforms: Map<string, CanvasAssetTransform>
+  assetTransforms: Map<string, CanvasAssetTransform>,
+  texts: CanvasText[] = []
 ): CanvasObjectBounds | null {
   return getUnionBounds(
     targets
-      .map((target) => getCanvasObjectRenderBounds(target, layers, assets, strokes, offsets, assetTransforms))
+      .map((target) => getCanvasObjectRenderBounds(target, layers, assets, strokes, offsets, assetTransforms, texts))
       .filter((bounds): bounds is CanvasObjectBounds => Boolean(bounds))
   )
 }
@@ -372,7 +392,8 @@ export function getSelectableCanvasObjectsInBounds(
   assets: CanvasAsset[],
   strokes: CanvasStroke[],
   offsets: Map<string, CanvasObjectOffset>,
-  assetTransforms: Map<string, CanvasAssetTransform>
+  assetTransforms: Map<string, CanvasAssetTransform>,
+  texts: CanvasText[] = []
 ): CanvasObjectTarget[] {
   const assetsByLayer = groupItemsByLayer(assets)
   const strokesByLayer = groupItemsByLayer(strokes)
@@ -388,7 +409,7 @@ export function getSelectableCanvasObjectsInBounds(
 
     if (isCanvasGroupLayer(layer)) {
       const target = { kind: 'group', id: layer.id } as CanvasObjectTarget
-      const groupBounds = getCanvasObjectRenderBounds(target, layers, assets, strokes, offsets, assetTransforms)
+      const groupBounds = getCanvasObjectRenderBounds(target, layers, assets, strokes, offsets, assetTransforms, texts)
       if (groupBounds && doBoundsIntersect(bounds, groupBounds)) {
         selectedTargets.push(target)
       }
@@ -397,10 +418,16 @@ export function getSelectableCanvasObjectsInBounds(
 
     for (const asset of layerAssets) {
       const target = { kind: 'asset', id: asset.id } as CanvasObjectTarget
-      const targetBounds = getCanvasObjectRenderBounds(target, layers, assets, strokes, offsets, assetTransforms)
+      const targetBounds = getCanvasObjectRenderBounds(target, layers, assets, strokes, offsets, assetTransforms, texts)
       if (targetBounds && doBoundsIntersect(bounds, targetBounds)) {
         selectedTargets.push(target)
       }
+    }
+
+    for (const text of texts.filter((item) => item.layerId === layer.id)) {
+      const target: CanvasObjectTarget = { kind: 'text', id: text.id }
+      const targetBounds = getCanvasObjectRenderBounds(target, layers, assets, strokes, offsets, assetTransforms, texts)
+      if (targetBounds && doBoundsIntersect(bounds, targetBounds)) selectedTargets.push(target)
     }
 
     for (const stroke of layerStrokes) {
@@ -409,7 +436,7 @@ export function getSelectableCanvasObjectsInBounds(
       }
 
       const target = { kind: 'stroke', id: stroke.id } as CanvasObjectTarget
-      const targetBounds = getCanvasObjectRenderBounds(target, layers, assets, strokes, offsets, assetTransforms)
+      const targetBounds = getCanvasObjectRenderBounds(target, layers, assets, strokes, offsets, assetTransforms, texts)
       if (targetBounds && doBoundsIntersect(bounds, targetBounds)) {
         selectedTargets.push(target)
       }
@@ -426,7 +453,8 @@ export function getSnapGuides(
   assets: CanvasAsset[],
   strokes: CanvasStroke[],
   offsets: Map<string, CanvasObjectOffset>,
-  assetTransforms: Map<string, CanvasAssetTransform>
+  assetTransforms: Map<string, CanvasAssetTransform>,
+  texts: CanvasText[] = []
 ): { vertical: number[]; horizontal: number[] } {
   const vertical = [0, dimensions.width / 2, dimensions.width]
   const horizontal = [0, dimensions.height / 2, dimensions.height]
@@ -475,6 +503,11 @@ export function getSnapGuides(
     horizontal.push(...getBoundsHorizontalLines(transformedBounds))
   }
 
+  for (const text of texts) {
+    if (!visibleLayerIds.has(text.layerId) || (target.kind === 'text' && target.id === text.id) || (target.kind === 'group' && target.id === text.layerId)) continue
+    const bounds = getCanvasObjectRenderBounds({ kind: 'text', id: text.id }, layers, assets, strokes, offsets, assetTransforms, texts)
+    if (bounds) { vertical.push(...getBoundsVerticalLines(bounds)); horizontal.push(...getBoundsHorizontalLines(bounds)) }
+  }
   return { vertical, horizontal }
 }
 
@@ -484,7 +517,8 @@ export function getTopmostEditableCanvasObjectAtPoint(
   assets: CanvasAsset[],
   strokes: CanvasStroke[],
   offsets: Map<string, CanvasObjectOffset>,
-  assetTransforms: Map<string, CanvasAssetTransform>
+  assetTransforms: Map<string, CanvasAssetTransform>,
+  texts: CanvasText[] = []
 ): { target: CanvasObjectTarget; layerId: string } | null {
   const assetsByLayer = groupItemsByLayer(assets)
   const strokesByLayer = groupItemsByLayer(strokes)
@@ -499,13 +533,19 @@ export function getTopmostEditableCanvasObjectAtPoint(
 
     if (isCanvasGroupLayer(layer)) {
       const target: CanvasObjectTarget = { kind: 'group', id: layer.id }
-      const bounds = getCanvasObjectRenderBounds(target, layers, assets, strokes, offsets, assetTransforms)
+      const bounds = getCanvasObjectRenderBounds(target, layers, assets, strokes, offsets, assetTransforms, texts)
 
       if (bounds && isPointInsideBounds(point, bounds)) {
         return { target, layerId: layer.id }
       }
 
       continue
+    }
+
+    for (const text of [...texts].reverse().filter((item) => item.layerId === layer.id)) {
+      const target: CanvasObjectTarget = { kind: 'text', id: text.id }
+      const bounds = getCanvasObjectRenderBounds(target, layers, assets, strokes, offsets, assetTransforms, texts)
+      if (bounds && isPointInsideBounds(point, bounds)) return { target, layerId: layer.id }
     }
 
     for (const stroke of [...layerStrokes].reverse()) {

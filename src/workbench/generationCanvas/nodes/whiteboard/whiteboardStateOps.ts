@@ -1,3 +1,5 @@
+import { captureSceneTransforms, restoreSceneTransforms } from './whiteboardCanvasTypes'
+import { getCanvasObjectRenderBounds } from './whiteboardCanvasGeometry'
 import type { CanvasAsset, LayerItem } from './lib/canvas'
 import type { CanvasObjectTarget } from './WhiteboardLeaferCanvas'
 import type { WhiteboardState } from './whiteboardTypes'
@@ -24,10 +26,11 @@ export type LibraryDragPayload =
 export function groupTargetsIntoLayer(state: WhiteboardState, targets: CanvasObjectTarget[]): WhiteboardState {
   const groupLayerIds = new Set(targets.filter((target) => target.kind === 'group').map((target) => target.id))
   const uniqueTargets = Array.from(new Map([
-    ...targets.filter((target) => target.kind === 'asset' || target.kind === 'stroke'),
+    ...targets.filter((target) => target.kind === 'asset' || target.kind === 'stroke' || target.kind === 'text'),
     ...state.canvasAssets
       .filter((asset) => groupLayerIds.has(asset.layerId))
       .map((asset): CanvasObjectTarget => ({ kind: 'asset', id: asset.id })),
+    ...(state.texts ?? []).filter((text) => groupLayerIds.has(text.layerId)).map((text): CanvasObjectTarget => ({ kind: 'text', id: text.id })),
     ...state.strokes
       .filter((stroke) => groupLayerIds.has(stroke.layerId) && stroke.tool !== 'eraser')
       .map((stroke): CanvasObjectTarget => ({ kind: 'stroke', id: stroke.id })),
@@ -36,12 +39,42 @@ export function groupTargetsIntoLayer(state: WhiteboardState, targets: CanvasObj
 
   const assetIds = new Set(uniqueTargets.filter((target) => target.kind === 'asset').map((target) => target.id))
   const strokeIds = new Set(uniqueTargets.filter((target) => target.kind === 'stroke').map((target) => target.id))
+  const textIds = new Set(uniqueTargets.filter((target) => target.kind === 'text').map((target) => target.id))
   const sourceLayerIds = new Set<string>()
+  for (const text of state.texts ?? []) if (textIds.has(text.id)) sourceLayerIds.add(text.layerId)
   for (const asset of state.canvasAssets) if (assetIds.has(asset.id)) sourceLayerIds.add(asset.layerId)
   for (const stroke of state.strokes) if (strokeIds.has(stroke.id)) sourceLayerIds.add(stroke.layerId)
   for (const groupLayerId of groupLayerIds) sourceLayerIds.add(groupLayerId)
   if (sourceLayerIds.size === 0) return state
 
+  // Flatten existing group placement before assigning children to the new group.
+  // A group offset/flip belongs to its container; keeping it under a removed id loses edits on reopen.
+  const maps = restoreSceneTransforms(state.sceneTransforms)
+  for (const groupId of groupLayerIds) {
+    const groupBounds = getCanvasObjectRenderBounds({ kind: 'group', id: groupId }, state.layers, state.canvasAssets, state.strokes, maps.offsets, maps.assetTransforms, state.texts)
+    if (!groupBounds) continue
+    const groupOffset = maps.offsets.get(`group:${groupId}`) ?? { x: 0, y: 0 }
+    const groupFlip = maps.flips.get(`group:${groupId}`) ?? { x: false, y: false }
+    for (const target of uniqueTargets) {
+      const item = target.kind === 'asset' ? state.canvasAssets.find((entry) => entry.id === target.id)
+        : target.kind === 'text' ? state.texts?.find((entry) => entry.id === target.id)
+        : state.strokes.find((entry) => entry.id === target.id)
+      if (item?.layerId !== groupId) continue
+      const bounds = getCanvasObjectRenderBounds(target, state.layers, state.canvasAssets, state.strokes, maps.offsets, maps.assetTransforms, state.texts)
+      if (!bounds) continue
+      const origin = { x: groupBounds.x - groupOffset.x, y: groupBounds.y - groupOffset.y }
+      const nextX = groupBounds.x + (groupFlip.x ? groupBounds.width - (bounds.x - origin.x) - bounds.width : bounds.x - origin.x)
+      const nextY = groupBounds.y + (groupFlip.y ? groupBounds.height - (bounds.y - origin.y) - bounds.height : bounds.y - origin.y)
+      const key = `${target.kind}:${target.id}`
+      const offset = maps.offsets.get(key) ?? { x: 0, y: 0 }
+      maps.offsets.set(key, { x: offset.x + nextX - bounds.x, y: offset.y + nextY - bounds.y })
+      if (target.kind === 'asset') maps.assetTransforms.set(target.id, { ...bounds, x: nextX, y: nextY })
+      const flip = maps.flips.get(key) ?? { x: false, y: false }
+      maps.flips.set(key, { x: flip.x !== groupFlip.x, y: flip.y !== groupFlip.y })
+    }
+    maps.offsets.delete(`group:${groupId}`)
+    maps.flips.delete(`group:${groupId}`)
+  }
   const groupLayerId = createWhiteboardId('group-layer')
   const nextAssets = state.canvasAssets.map((asset) => (
     assetIds.has(asset.id) ? { ...asset, layerId: groupLayerId } : asset
@@ -51,7 +84,9 @@ export function groupTargetsIntoLayer(state: WhiteboardState, targets: CanvasObj
       ? { ...stroke, layerId: groupLayerId }
       : stroke
   ))
+  const nextTexts = (state.texts ?? []).map((text) => textIds.has(text.id) ? { ...text, layerId: groupLayerId } : text)
   const layerHasElement = (layerId: string) =>
+    nextTexts.some((text) => text.layerId === layerId) ||
     nextAssets.some((asset) => asset.layerId === layerId) ||
     nextStrokes.some((stroke) => stroke.layerId === layerId && stroke.tool !== 'eraser')
   const nextLayers: LayerItem[] = [
@@ -73,6 +108,8 @@ export function groupTargetsIntoLayer(state: WhiteboardState, targets: CanvasObj
 
   return {
     ...state,
+    texts: nextTexts,
+    sceneTransforms: captureSceneTransforms(maps.offsets, maps.assetTransforms, maps.flips),
     canvasAssets: nextAssets,
     strokes: nextStrokes,
     layers: nextLayers,
@@ -89,7 +126,7 @@ export function assessDeleteTarget(state: WhiteboardState, target: CanvasObjectT
       ? target.id
       : target.kind === 'asset'
         ? state.canvasAssets.find((asset) => asset.id === target.id)?.layerId
-        : state.strokes.find((stroke) => stroke.id === target.id)?.layerId
+        : target.kind === 'text' ? state.texts?.find((text) => text.id === target.id)?.layerId : state.strokes.find((stroke) => stroke.id === target.id)?.layerId
   if (!targetLayerId) return 'missing'
   const layer = state.layers.find((item) => item.id === targetLayerId)
   if (!layer) return 'missing'
@@ -105,7 +142,7 @@ export function deleteTargetFromState(state: WhiteboardState, target: CanvasObje
       ? target.id
       : target.kind === 'asset'
         ? state.canvasAssets.find((asset) => asset.id === target.id)?.layerId
-        : state.strokes.find((stroke) => stroke.id === target.id)?.layerId
+        : target.kind === 'text' ? state.texts?.find((text) => text.id === target.id)?.layerId : state.strokes.find((stroke) => stroke.id === target.id)?.layerId
   if (!targetLayerId) return state
 
   const nextAssets = state.canvasAssets.filter((asset) =>
@@ -116,12 +153,15 @@ export function deleteTargetFromState(state: WhiteboardState, target: CanvasObje
     !(target.kind === 'stroke' && stroke.id === target.id) &&
     !(target.kind === 'group' && stroke.layerId === target.id),
   )
+  const nextTexts = (state.texts ?? []).filter((text) => !(target.kind === 'text' && text.id === target.id) && !(target.kind === 'group' && text.layerId === target.id))
   const layerStillHasElement =
+    nextTexts.some((text) => text.layerId === targetLayerId) ||
     nextAssets.some((asset) => asset.layerId === targetLayerId) ||
     nextStrokes.some((stroke) => stroke.layerId === targetLayerId && stroke.tool !== 'eraser')
   const removeLayer = targetLayerId !== 'drawing-layer-1' && !layerStillHasElement
   return {
     ...state,
+    texts: nextTexts,
     canvasAssets: nextAssets,
     strokes: removeLayer ? nextStrokes.filter((stroke) => stroke.layerId !== targetLayerId) : nextStrokes,
     layers: removeLayer ? state.layers.filter((item) => item.id !== targetLayerId) : state.layers,

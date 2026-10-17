@@ -266,7 +266,7 @@ export function getCanvasObjectTarget(target: unknown): CanvasObjectTarget | nul
     | string
     | undefined
 
-  if ((kind === 'asset' || kind === 'stroke' || kind === 'group') && id) {
+  if ((kind === 'asset' || kind === 'stroke' || kind === 'group' || kind === 'text') && id) {
     return { kind, id }
   }
 

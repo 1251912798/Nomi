@@ -382,7 +382,7 @@ function sendReply(state, reply) {
  * `videoResultPath`：apimart 档出片地址的路径段（缺省 `/fixture/video.mp4`）。真供应商的产物地址常带一个很长的
  * basename（签名段 / 哈希段），落盘时怎么起名要靠它复现（2026-09-26 长文件名被截成 `.bin`）。
  */
-export async function createAgentRuntimeFixture({ rootDir, settingsDir, generationProvider = 'loopback', userDataDir, appName, videoResultPath = '/fixture/video.mp4', usage = 'fixed', extraImageVendor = false, contextLimitTokens = null }) {
+export async function createAgentRuntimeFixture({ rootDir, settingsDir, generationProvider = 'loopback', userDataDir, appName, videoResultPath = '/fixture/video.mp4', usage = 'fixed', extraImageVendor = false, contextLimitTokens = null, seedApimartKey = true }) {
   if (!/^\/fixture\/[^/?#]+$/.test(videoResultPath)) throw new TypeError('videoResultPath must be /fixture/<name>')
   if (!['fixed', 'measured'].includes(usage)) throw new TypeError("usage must be 'fixed' or 'measured'")
   if (!path.isAbsolute(rootDir) || !path.isAbsolute(settingsDir)) {
@@ -431,6 +431,8 @@ export async function createAgentRuntimeFixture({ rootDir, settingsDir, generati
   const unexpected = []
   /** 启动对账发来的只读模型清单请求（见 handleRequest）；走查想核时可读。 */
   const modelListProbes = []
+  /** 接入页保存 key 时那一次免费的 key 有效性探测（GET /v1/balance）。 */
+  const balanceProbes = []
   const expectations = []
   /**
    * 常驻应答（全功能走查用）：App 自己在后台发起、次数不定的文本调用（出图后的镜级审片等）。
@@ -540,6 +542,12 @@ export async function createAgentRuntimeFixture({ rootDir, settingsDir, generati
       const listed = JSON.parse(await readFile(path.join(settingsDir, 'model-catalog.json'), 'utf8')).models ?? []
       modelListProbes.push(record)
       jsonResponse(response, 200, { object: 'list', data: [...new Set(listed.map((model) => model.modelKey))].map((id) => ({ id, object: 'model' })) })
+      return
+    }
+    // 接入页「保存」会对 APIMart 发一次只读的 key 有效性探测（electron/catalog/apimartVendor.ts 的 credentialProbe，免费）；夹具认它。
+    if (apimartMode && request.method === 'GET' && record.path === '/v1/balance') {
+      balanceProbes.push(record)
+      jsonResponse(response, 200, { remain_balance: -1 })
       return
     }
     if (request.method !== 'POST') {
@@ -676,11 +684,12 @@ export async function createAgentRuntimeFixture({ rootDir, settingsDir, generati
     await mkdir(settingsDir, { recursive: true })
     const catalog = await modelCatalog(baseURL, {
       generationProvider, extraImageVendor,
-      ...(builtinMode ? { apimartKey: encryptApimartKey({ rootDir, userDataDir, appName }) } : {}),
+      // seedApimartKey: false = 目录里不预置那把钥匙，由走查自己走可见的接入页把 key 填进去（付费走查 env-key 路的演练）。
+      ...(builtinMode && seedApimartKey ? { apimartKey: encryptApimartKey({ rootDir, userDataDir, appName }) } : {}),
     })
     await writeFile(path.join(settingsDir, 'model-catalog.json'), `${JSON.stringify(catalog, null, 2)}\n`, { flag: 'wx' })
     return {
-      baseURL, requests, images, videos, unexpected, modelListProbes, close, generationProvider,
+      baseURL, requests, images, videos, unexpected, modelListProbes, balanceProbes, close, generationProvider,
       /** 已受理的 apimart 图片任务先停在 `processing`（true），放开后下一次轮询照常出图（false）。 */
       holdTasks(on) { holdTasks = Boolean(on) },
       /** apimart 图片 / 视频 create 先压着不回（true），放开后压着的那几笔照常受理（false）。 */

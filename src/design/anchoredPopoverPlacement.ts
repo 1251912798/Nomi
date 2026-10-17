@@ -32,30 +32,34 @@ export function resolveAnchoredPopoverPlacement(
   size: { width: number; height: number },
   align: AnchoredPopoverAlign,
   gap: number,
-  viewport: { width: number; height: number },
+  viewport: { width: number; height: number; left?: number; top?: number },
   side: AnchoredPopoverSide = 'bottom',
 ): Placement {
+  const viewportLeft = viewport.left ?? 0
+  const viewportTop = viewport.top ?? 0
+  const viewportRight = viewportLeft + viewport.width
+  const viewportBottom = viewportTop + viewport.height
   const below = anchor.bottom + gap
   const above = anchor.top - gap - size.height
-  const roomBelow = viewport.height - MARGIN - below
-  const roomAbove = anchor.top - gap - MARGIN
+  const roomBelow = viewportBottom - MARGIN - below
+  const roomAbove = anchor.top - gap - viewportTop - MARGIN
   const fitsBelow = size.height <= roomBelow
   const fitsAbove = size.height <= roomAbove
   let vertical: Pick<Placement, 'top' | 'maxHeight'>
   if (side === 'top' ? fitsAbove : (fitsAbove && !fitsBelow)) vertical = { top: above }
   else if (fitsBelow) vertical = { top: below }
-  else if (roomAbove > roomBelow) vertical = { top: MARGIN, maxHeight: Math.max(0, roomAbove) }
+  else if (roomAbove > roomBelow) vertical = { top: viewportTop + MARGIN, maxHeight: Math.max(0, roomAbove) }
   else vertical = { top: below, maxHeight: Math.max(0, roomBelow) }
   // 锚点自己已经滚出窗口（翻过的边也在窗口外）时没有「不压锚点」可言——把整块夹回窗口里，至少看得见（同旧版）。
   const shown = Math.min(size.height, vertical.maxHeight ?? size.height)
-  vertical.top = Math.min(Math.max(MARGIN, vertical.top), Math.max(MARGIN, viewport.height - MARGIN - shown))
+  vertical.top = Math.min(Math.max(viewportTop + MARGIN, vertical.top), Math.max(viewportTop + MARGIN, viewportBottom - MARGIN - shown))
 
   let left = align === 'center'
     ? anchor.left + anchor.width / 2 - size.width / 2
     : align === 'end'
       ? anchor.right - size.width
       : anchor.left
-  if (left + size.width > viewport.width - MARGIN) left = viewport.width - MARGIN - size.width
-  left = Math.max(MARGIN, left)
+  if (left + size.width > viewportRight - MARGIN) left = viewportRight - MARGIN - size.width
+  left = Math.max(viewportLeft + MARGIN, left)
   return { ...vertical, left }
 }
