@@ -46,3 +46,25 @@ describe('renderer generation gate confirmation', () => {
       .resolves.toEqual({ confirmed: false, challengeId: 'challenge-1' })
   })
 })
+
+describe('renderer generation gate: unknown price (C-3)', () => {
+  it.each(['zh-CN', 'en'] as const)('maximumCost null prints 费用未知, never a zero amount (%s)', async (lng) => {
+    const { default: i18n } = await import('../../i18n')
+    await i18n.changeLanguage(lng)
+    requestConfirm.mockReset().mockResolvedValue(false)
+    await handleCapabilityApply('generation.gate.confirm', {
+      challengeId: 'challenge-u',
+      projectName: 'P',
+      shotSummary: 's',
+      model: 'model-x',
+      maximumCost: null,
+      unknownShotCount: 1,
+      currency: 'CNY',
+    })
+    const call = requestConfirm.mock.calls[0]![0] as { message: string; details: Array<{ value: string }> }
+    const shown = `${call.message} ${call.details.map((d) => d.value).join(' ')}`
+    expect(shown).not.toMatch(/CNY\s*0|¥\s*0/)
+    expect(shown).toContain(i18n.t('runtime.capability.generationGateCostUnknown'))
+    await i18n.changeLanguage('zh-CN')
+  })
+})

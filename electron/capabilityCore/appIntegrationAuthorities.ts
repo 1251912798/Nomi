@@ -1,4 +1,5 @@
 import type { RpcServerOptions } from './rpcServer'
+import { reservationMaximumForDisplay } from './approvalReceipt'
 import { currentProjectRevision, getApprovalReceiptAuthority } from './approvalReceiptRuntime'
 import type { DispatchContext } from './dispatcher'
 import { requestRendererDecision, rendererTargetIdentity } from './rendererBridge'
@@ -41,7 +42,7 @@ export function createDefaultAuthorities(hooks: {
       shotSummary: challenge.display.shotSummary,
       model: challenge.display.model,
       referenceCount: challenge.display.referenceCount,
-      maximumCost: challenge.reservationPreview.maximum,
+      maximumCost: reservationMaximumForDisplay(challenge.reservationPreview),
       ...(challenge.reservationPreview.unknownJobCount ? { unknownShotCount: challenge.reservationPreview.unknownJobCount } : {}),
       currency: challenge.reservationPreview.currency,
       expiresAt: challenge.expiresAt,
