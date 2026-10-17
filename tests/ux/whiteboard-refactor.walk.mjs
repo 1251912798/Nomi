@@ -298,7 +298,7 @@ try {
   check('standalone entry reuses the same editor and real import', true)
   check('standalone Done and capture remain inside the visible desktop stage', await editor.getByRole('toolbar').evaluate(el => { const a=el.getBoundingClientRect(), b=el.closest('.generation-canvas-v2__stage').getBoundingClientRect(); return a.left >= b.left && a.right <= b.right && a.top >= b.top && a.bottom <= b.bottom }))
   await action('capture').click()
-  await expect.poll(() => readNode('board').history?.length ?? 0, { timeout: 30000 }).toBe(1)
+  await expect.poll(() => readNode('board').history?.length ?? 0).toBe(1)
   await expect.poll(() => JSON.parse(fs.readFileSync(recordPath, 'utf8')).payload.generationCanvas.edges.length).toBe(1)
   check('standalone screenshot creates derived image with source edge', true)
   await snap('standalone')

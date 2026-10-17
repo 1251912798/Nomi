@@ -335,6 +335,8 @@ test('端到端：真实 committed reviewed 逃逸只准首次 push 警告；CI/
   }
   git(root, 'init', '-q'); git(root, 'config', 'user.email', 't@t'); git(root, 'config', 'user.name', 't'); git(root, 'config', 'commit.gpgsign', 'false')
   write('README.md', 'base')
+  // 政策表取 base 版本（G-perfreg）：fixture 的 base 带上真实路由表
+  write('docs/engineering/test-routing.json', fs.readFileSync(path.join(here, '..', 'docs/engineering/test-routing.json'), 'utf8'))
   git(root, 'add', '-A'); git(root, 'commit', '-q', '-m', 'base')
   const base = git(root, 'rev-parse', 'HEAD').trim()
   const contractFile = 'docs/fixes/2026-10-12-fixture.root-cause.json'

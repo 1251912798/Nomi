@@ -17,7 +17,7 @@ describe('text object size follows its content', () => {
   })
 
   it('creates a text object with the measured size, and none while the engine is not ready', () => {
-    const { width, height, ...input } = text()
+    const { width: _width, height: _height, ...input } = text()
     expect(createWhiteboardText(input, measure)).toMatchObject({ width: 9 * 32, height: 48, text: 'Type text' })
     expect(createWhiteboardText(input, () => null)).toBeNull()
   })

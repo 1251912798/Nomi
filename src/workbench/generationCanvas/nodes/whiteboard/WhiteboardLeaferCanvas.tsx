@@ -185,10 +185,7 @@ export const LeaferCanvas = forwardRef<LeaferCanvasHandle, LeaferCanvasProps>(fu
   const [selectionBox, setSelectionBox] = useState<CanvasSelectionBox | null>(null)
   const [selectedObjectTargets, setSelectedObjectTargets] = useState<CanvasObjectTarget[]>([])
 
-  const measureText = useCallback<TextMeasure>((content, fontSize) => {
-    const context = renderContextRef.current
-    return context ? measureWhiteboardText(context.Text, content, fontSize) : null
-  }, [])
+  const measureText = useCallback<TextMeasure>((content, size) => renderContextRef.current ? measureWhiteboardText(renderContextRef.current.Text, content, size) : null, [])
   const { objectOffsetsRef, assetTransformsRef, objectFlipStatesRef, actionHandlesRef, commitSceneTransforms } =
     useWhiteboardCanvasDocument(ref, appRef, stageRef, dimensionsRef, sceneTransforms, onSceneTransformsChange, t, measureText)
 

@@ -2,7 +2,7 @@
   "board": "InlineWhiteboard",
   "extractor": "board-extract@1",
   "source": "preview/InlineWhiteboard.html",
-  "sourceSha256": "025fece2fa6f1ebbb62405213d976f801a7eb4536fecdd2d96794359638e932d",
+  "sourceSha256": "19c8ea8b67af04c1e3aa081b58a4c1ec6f5a3e05022751c8b7f6063773fe944f",
   "viewport": {
     "width": 1280,
     "height": 800
