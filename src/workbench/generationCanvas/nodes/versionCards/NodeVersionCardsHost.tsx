@@ -25,6 +25,7 @@ import { useToastStore } from '../../../../ui/toast'
 import { NodeVersionCountBadge, NodeVersionGrid, type VersionCardEntry } from './NodeVersionCards'
 import { chooseVersionGridPlacement, layoutVersionGrid, versionGridItems, type VersionGridPlacement } from './versionGridLayout'
 import { escapeBelongsToVersionGrid, lastOpenedVersionGrid, publishVersionGridCoverage, registerOpenVersionGrid } from './versionGridCoverage'
+import { finishWhiteboard } from '../whiteboard/whiteboardSession'
 import { nodeVersionEntries } from './nodeVersionEntries'
 
 function useAltHeld(enabled: boolean): boolean {
@@ -156,13 +157,14 @@ export function NodeVersionCardsHost({ node, readOnly, nodeSize, onFeedback, ent
 
   const setPrimary = React.useCallback(async (entry: VersionCardEntry) => {
     if (readOnly) return
+    const project = withProjectAction((loaded) => loaded)
+    if (!project || !await finishWhiteboard(node.id) || !isProjectExecutionContextCurrent(project)) return
     const live = useGenerationCanvasStore.getState().nodes.find((candidate) => candidate.id === node.id)
     const target = live ? listNodeResultVersions(live).find((candidate) => resultIdentity(candidate) === entry.identity) : undefined
     if (!live || !target) return
     // 换主图时节点按这一版的真实比例重算尺寸元数据（读素材侧车里量过的像素；读不到照样能换）。
     let meta: Record<string, unknown> | undefined
-    const project = withProjectAction((loaded) => loaded)
-    if (project) {
+    {
       try {
         const assets = [] as Array<{ id?: string; data?: Record<string, unknown> }>
         let cursor: string | null = null
@@ -182,6 +184,7 @@ export function NodeVersionCardsHost({ node, readOnly, nodeSize, onFeedback, ent
         logRendererError('version-card-dimensions-unreadable', error)
       }
     }
+    if (!isProjectExecutionContextCurrent(project)) return
     useGenerationCanvasStore.getState().setNodeMainResult(node.id, entry.identity, meta)
     const downstream = new Set(useGenerationCanvasStore.getState().edges.filter((edge) => edge.source === node.id).map((edge) => edge.target)).size
     notifyUndoable(`version-card:${node.id}`, t('generationCommon.versionCards.primarySet', { n: entry.versionNo, count: downstream }), t('generationCommon.versionCards.undo'))
@@ -190,7 +193,7 @@ export function NodeVersionCardsHost({ node, readOnly, nodeSize, onFeedback, ent
   const remove = React.useCallback(async (entry: VersionCardEntry) => {
     if (readOnly) return
     const loaded = withProjectAction((project) => project)
-    if (!loaded) return
+    if (!loaded || !await finishWhiteboard(node.id) || !isProjectExecutionContextCurrent(loaded)) return
     const latest = useGenerationCanvasStore.getState().nodes.find((candidate) => candidate.id === node.id)
     const asset = latest ? canvasNodeToAssetRefs(latest).find((candidate) => candidate.ownerResultId === entry.identity) : undefined
     if (!asset) {
@@ -200,6 +203,7 @@ export function NodeVersionCardsHost({ node, readOnly, nodeSize, onFeedback, ent
     const wasPrimary = latest?.result ? resultIdentity(latest.result) === entry.identity : false
     try {
       const outcome = await deleteAssetResult(asset, loaded)
+      if (!isProjectExecutionContextCurrent(loaded)) return
       if (outcome.failedFileCount > 0) onFeedback(t('generationCommon.versionCards.deleteFileFailed'))
       if (outcome.removedResultCount === 0) return
       const after = useGenerationCanvasStore.getState().nodes.find((candidate) => candidate.id === node.id)

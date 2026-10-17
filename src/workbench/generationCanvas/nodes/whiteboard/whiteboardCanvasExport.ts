@@ -26,7 +26,7 @@ export async function exportViewportWithoutEditorOverlays(app: LeaferApp, filena
   try {
     return await app.export(filename, {
       screenshot: true,
-      pixelRatio: getViewportScreenshotPixelRatio()
+      pixelRatio: getViewportScreenshotPixelRatio(app.width, app.height)
     })
   } finally {
     restoreEditorOverlays(editor, overlayState)
@@ -41,7 +41,7 @@ export async function exportViewportFileWithoutEditorOverlays(app: LeaferApp, fi
     const result = await app.export('png', {
       blob: true,
       screenshot: true,
-      pixelRatio: getViewportScreenshotPixelRatio()
+      pixelRatio: getViewportScreenshotPixelRatio(app.width, app.height)
     })
 
     if (result.error) {
@@ -84,8 +84,21 @@ export function restoreEditorOverlays(editor: LeaferEditorOverlay | undefined, s
   editor.visible = state.visible
 }
 
-export function getViewportScreenshotPixelRatio(): number {
-  return Math.max(1, Math.min(2, window.devicePixelRatio || 1))
+export const WHITEBOARD_PREVIEW_PIXEL_BUDGET = 4_000_000
+export const WHITEBOARD_EXPORT_PIXEL_BUDGET = 16_000_000
+
+function budgetedPixelRatio(width: number, height: number, budget: number, dpr: number): number {
+  const safeDpr = Number.isFinite(dpr) && dpr > 0 ? dpr : 1
+  const pixels = Number.isFinite(width) && Number.isFinite(height) && width > 0 && height > 0 ? width * height : 1
+  return Math.min(2, safeDpr, Math.sqrt(budget / pixels))
+}
+
+export function getWhiteboardPreviewPixelRatio(width: number, height: number, dpr = window.devicePixelRatio || 1): number {
+  return budgetedPixelRatio(width, height, WHITEBOARD_PREVIEW_PIXEL_BUDGET, dpr)
+}
+
+export function getViewportScreenshotPixelRatio(width = 1280, height = 720, dpr = window.devicePixelRatio || 1): number {
+  return budgetedPixelRatio(width, height, WHITEBOARD_EXPORT_PIXEL_BUDGET, dpr)
 }
 
 export function ensurePngFilename(filename: string): string {

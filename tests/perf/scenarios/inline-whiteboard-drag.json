@@ -1,0 +1,21 @@
+{
+  "id": "inline-whiteboard-drag",
+  "feature": "Inline whiteboard independent image dragging, followed by the complete edit/save/reopen/capture journey",
+  "script": "tests/ux/whiteboard-refactor.walk.mjs",
+  "args": [],
+  "scale": "32 nodes, 30 offscreen; 1 shared 3840x2160 real image; 1 active editor. Not 32 visible independent images.",
+  "metrics": [
+    "frameGapP95",
+    "longTasks"
+  ],
+  "budget": 33,
+  "baseline": {
+    "median": 9.6,
+    "p95": 9.6,
+    "runs": 5,
+    "machine": "darwin arm64 Apple M5 x10 / 24GB",
+    "date": "2026-10-11",
+    "commit": "696bf56ae5",
+    "noisy": true
+  }
+}

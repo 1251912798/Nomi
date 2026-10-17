@@ -8,6 +8,8 @@ import { selectCanvasNodeById } from '../store/canvasNodeGenerationIndex'
 import { NodeLockBadge } from './NodeLockBadge'
 import { nextFloatingToolbarPlacement, type FloatingToolbarPlacement } from './floatingToolbarClamp'
 import { useViewport } from '@xyflow/react'
+import { useCanvasBottomDockRects } from '../reactFlow/useCanvasBottomDockRects'
+import { resolveUsableBottomAboveDocks } from '../../generation/workspaceBottomDocks'
 import { logRendererCrash } from '../../../desktop/rendererLog'
 import { canDragGenerationNodeToTimeline } from '../model/timelineDragAffordance'
 import { addGenerationNodeToTimelineEnd } from '../../timeline/addNodeToTimelineEnd'
@@ -29,7 +31,9 @@ const ICON = { size: 16, stroke: 1.6 } as const
  * 写成可选，下一条浮条忘了传就是静默少一把锁——让编译器拦（R28），别留给走查。
  * `null` 是合法的一档：手艺产物浮条挂的不是生成节点，它没有锁。
  */
-export function FloatingToolbarShell(props: { ariaLabel: string; lockNodeId: string | null; children: React.ReactNode }): JSX.Element {
+type FloatingToolbarShellProps = { ariaLabel: string; lockNodeId: string | null; children: React.ReactNode; side?: 'above' | 'below'; centerOnNode?: boolean; avoidBottomDocks?: boolean; toolbarRef?: React.RefObject<HTMLDivElement | null> }
+
+export function FloatingToolbarShell(props: FloatingToolbarShellProps): JSX.Element {
   return (
     <FloatingToolbarBoundary label={props.ariaLabel}>
       <FloatingToolbarFrame {...props} />
@@ -63,7 +67,7 @@ class FloatingToolbarBoundary extends React.Component<{ label: string; children:
   }
 }
 
-function FloatingToolbarFrame({ ariaLabel, lockNodeId, children }: { ariaLabel: string; lockNodeId: string | null; children: React.ReactNode }): JSX.Element {
+function FloatingToolbarFrame({ ariaLabel, lockNodeId, children, side = 'above', centerOnNode, avoidBottomDocks = false, toolbarRef }: FloatingToolbarShellProps): JSX.Element {
   // 反向缩放用的必须是**此刻贴在 DOM 上的那个缩放**——React Flow 的 transform（唯一真相，见 canvasViewportScale）。
   // 不许读 workbenchStore 里「记住的视角」：那份只在手势 / 动画结束时才写，打开项目摆全貌那一刻还停在 1，
   // 和屏幕上的 2.1 倍差出一倍多，下面的测量环就是被它带进无限更新的（React #185，整块画布崩）。
@@ -72,6 +76,8 @@ function FloatingToolbarFrame({ ariaLabel, lockNodeId, children }: { ariaLabel: 
   // 旧代码靠订 categoryViewports 整个对象、平移结束换新对象才顺带重渲，是碰巧的）。浮条只在单选时挂一条，每帧多量一次可以接受。
   const { zoom: canvasZoom } = useViewport()
   const shellRef = React.useRef<HTMLDivElement>(null)
+  const stageRef = React.useRef<HTMLElement | null>(null)
+  const docks = useCanvasBottomDockRects(stageRef, avoidBottomDocks)
   // 浮条整条留在可见画布里（上下左右夹住，让开右侧面板 / 顶栏）；舞台太窄就限宽折行。
   // 位移与宽度只由测量环决定，规则与收敛性归 nextFloatingToolbarPlacement（一次测量就是不动点）。
   const [placement, setPlacement] = React.useState<FloatingToolbarPlacement>({ shiftX: 0, shiftY: 0, maxWidth: undefined })
@@ -92,22 +98,31 @@ function FloatingToolbarFrame({ ariaLabel, lockNodeId, children }: { ariaLabel: 
     const shell = shellRef.current
     const stage = shell?.closest<HTMLElement>('.generation-canvas-v2__stage')
     if (!shell || !stage) return
+    const rect = shell.getBoundingClientRect()
+    const stageRect = stage.getBoundingClientRect()
+    const usableBottom = avoidBottomDocks ? stageRect.top + resolveUsableBottomAboveDocks({
+      viewport: { top: 0, bottom: stageRect.height },
+      span: { left: rect.left - stageRect.left, right: rect.right - stageRect.left },
+      docks,
+    }) : stageRect.bottom
     const next = nextFloatingToolbarPlacement({
-      rect: shell.getBoundingClientRect(),
+      rect,
       // 带小数的布局宽（border-box，不含 transform）：offsetWidth 取整，净缩放会带噪声。
       layoutWidth: Number.parseFloat(getComputedStyle(shell).width),
-      stage: stage.getBoundingClientRect(),
+      stage: { left: stageRect.left, right: stageRect.right, top: stageRect.top, width: stageRect.width, bottom: usableBottom },
       applied: placement,
+      centerOnNode,
     })
     if (next) setPlacement(next)
   })
   const zoom = canvasZoom || 1
   return (
     <div
-      ref={shellRef}
+      ref={(element) => { shellRef.current = element; stageRef.current = element?.closest<HTMLElement>('.generation-canvas-v2__stage') ?? null; if (toolbarRef) toolbarRef.current = element }}
       className={cn(
         'nodrag generation-canvas-react-flow__no-pan',
-        'absolute left-1/2 bottom-[calc(100%+40px)] group-has-[[data-node-inline-status]_[data-generation-status]]/node:bottom-[calc(100%+72px)] z-[12]',
+        'absolute left-1/2 z-[12]',
+        side === 'below' ? 'top-[calc(100%+8px)]' : 'bottom-[calc(100%+40px)] group-has-[[data-node-inline-status]_[data-generation-status]]/node:bottom-[calc(100%+72px)]',
         'inline-flex w-max flex-wrap items-center justify-center gap-1 min-h-9 px-1.5 py-1',
         'border border-nomi-line rounded-nomi',
         'bg-nomi-paper shadow-nomi-md',
@@ -117,7 +132,7 @@ function FloatingToolbarFrame({ ariaLabel, lockNodeId, children }: { ariaLabel: 
         'group-data-[dragging=true]/canvas:invisible',
       )}
       data-node-floating-toolbar="true"
-      style={{ maxWidth: placement.maxWidth, transform: `translate(${placement.shiftX / zoom}px, ${placement.shiftY / zoom}px) translateX(-50%) scale(${1 / zoom})`, transformOrigin: 'bottom center' }}
+      style={{ maxWidth: placement.maxWidth, transform: `translate(${placement.shiftX / zoom}px, ${placement.shiftY / zoom}px) translateX(-50%) scale(${1 / zoom})`, transformOrigin: side === 'below' ? 'top center' : 'bottom center' }}
       role="toolbar"
       aria-label={ariaLabel}
       onPointerDown={(event) => event.stopPropagation()}

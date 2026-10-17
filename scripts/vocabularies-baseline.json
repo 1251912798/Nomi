@@ -46,6 +46,15 @@
   "registered": [
     {
       "members": [
+        "failed",
+        "loading",
+        "ready"
+      ],
+      "reason": "画板初始原图导入事务的唯一状态 owner：loading 阻止空稿持久化，failed 允许重试或取消，ready 才发布可编辑文档；它描述画板导入事务，不耦合浏览器素材加载状态。",
+      "site": "src/workbench/generationCanvas/nodes/whiteboard/whiteboardTypes.ts::type:WhiteboardInitialImageStatus/type-union"
+    },
+    {
+      "members": [
         "anchors",
         "done",
         "idle",
