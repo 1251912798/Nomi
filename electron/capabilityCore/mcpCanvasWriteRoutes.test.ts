@@ -3,14 +3,12 @@
 //
 // 2026-10-16 V-3dbox 用官方 SDK 实调：摆位参考 / 运镜参考写在工具说明里，线上却回 capability_unsupported——
 // 新操作上了工具面、没人接传输，快照和直调渲染端的单测都看不出来。这道门让「上了面、没接路」当场红。
-// 下面那份清单是今天就已经这样的旧账（只许减不许加）：要么接上路由并补官方 SDK 实调测试，要么从对外面拿掉。
+// 2026-10-17：旧账里的 4 个（tidy_canvas / propose_storyboard_plan / arrange_storyboard_to_timeline / set_node_text）
+// 已接上路由，清单清零——从此「上了面、没接路」没有任何豁免。
 import { describe, expect, it } from 'vitest'
 
 import { CANVAS_WRITE_HEADLESS_OPERATIONS, CANVAS_WRITE_LIVE_RENDERER_OPERATIONS, CANVAS_WRITE_OPERATIONS } from '../shared/agentCapabilities/canvasWrite'
 import { MCP_TOOL_RESOLVER } from './mcpToolCatalog'
-
-/** 已在对外面上、但对外传输还送不到的操作（2026-10-16 盘点）。只许减。 */
-const ADVERTISED_WITHOUT_ROUTE_DEBT = ['tidy_canvas', 'propose_storyboard_plan', 'arrange_storyboard_to_timeline', 'set_node_text']
 
 function advertisedCanvasEditOperations(): string[] {
   const tool = (MCP_TOOL_RESOLVER.list() as unknown as Array<Record<string, unknown>>).find((candidate) => candidate.name === 'nomi_canvas_edit')
@@ -19,10 +17,23 @@ function advertisedCanvasEditOperations(): string[] {
 }
 
 describe('every canvas operation advertised on nomi_canvas_edit has a transport route', () => {
-  it('advertised operations are served headless or by the live renderer (except the frozen debt list)', () => {
+  it('advertised operations are all served headless or by the live renderer (no exemptions)', () => {
     const routed = new Set<string>([...CANVAS_WRITE_HEADLESS_OPERATIONS, ...CANVAS_WRITE_LIVE_RENDERER_OPERATIONS])
-    const unrouted = advertisedCanvasEditOperations().filter((operation) => !routed.has(operation))
-    expect(unrouted.sort()).toEqual([...ADVERTISED_WITHOUT_ROUTE_DEBT].sort())
+    expect(advertisedCanvasEditOperations().filter((operation) => !routed.has(operation))).toEqual([])
+  })
+
+  it('every canvas.write operation (advertised or not) has exactly one route', () => {
+    const headless = new Set<string>(CANVAS_WRITE_HEADLESS_OPERATIONS)
+    const live = new Set<string>(CANVAS_WRITE_LIVE_RENDERER_OPERATIONS)
+    for (const operation of CANVAS_WRITE_OPERATIONS) {
+      expect([headless.has(operation), live.has(operation)].filter(Boolean), `${operation} must be routed exactly once`).toHaveLength(1)
+    }
+  })
+
+  it('the four operations that used to answer capability_unsupported are routed to the live renderer', () => {
+    expect(CANVAS_WRITE_LIVE_RENDERER_OPERATIONS).toEqual(expect.arrayContaining([
+      'tidy_canvas', 'propose_storyboard_plan', 'arrange_storyboard_to_timeline', 'set_node_text',
+    ]))
   })
 
   it('the director reference operations are routed (they land director nodes in the 3D-BOX director)', () => {

@@ -35,6 +35,11 @@ vi.mock('./rendererBridge', () => ({
     rendererCalls.push({ op, payload })
     if (op !== 'canvas.write') throw new Error(`这条用例不该走到渲染端的 ${op}`)
     const input = payload.input as { operation: string }
+    // 这四个的结果形状照 canvasWriteResultSchema（渲染端真实返回的就是这些形状，见 mcpDirectorReferenceOps.test.ts）。
+    const receipt = { applied: true, operation: input.operation, proposalId: `p-${input.operation}`, changeId: `canvas:v1:p-${input.operation}`, reconciliation: { ok: true, deviationCount: 0 } }
+    if (input.operation === 'tidy_canvas') return { ...receipt, affectedNodeIds: [], categoryId: 'shots', nodeCount: 2 }
+    if (input.operation === 'set_node_text') return { ...receipt, affectedNodeIds: ['text-1'] }
+    if (input.operation === 'propose_storyboard_plan' || input.operation === 'arrange_storyboard_to_timeline') return { ...receipt, result: { ok: true } }
     return input.operation === 'create_camera_move'
       ? { applied: true, operation: input.operation, proposalId: 'p-camera', changeId: 'canvas:v1:p-camera', result: { cameraMoveNodeId: 'director-camera', targetNodeId: 'node-v1' }, reconciliation: { ok: true, deviationCount: 0 } }
       : { applied: true, operation: input.operation, proposalId: 'p-staging', changeId: 'canvas:v1:p-staging', result: { stagingNodeId: 'director-staging', targetNodeId: 'node-k1' }, reconciliation: { ok: true, deviationCount: 0 } }
@@ -120,5 +125,26 @@ describe('external MCP staging / camera-move references (official SDK, Streamabl
     const payload = rendererCalls[0]?.payload ?? {}
     expect(payload.receiptProposalId).toEqual(expect.stringMatching(/^mcp-canvas:create_camera_move:/))
     expect(payload.approvalId).toEqual(expect.stringMatching(/^mcp-canvas-approval:create_camera_move:/))
+  })
+})
+
+// 2026-10-17：说明书里写着能做、线上却回 capability_unsupported 的另外 4 个画布操作（V-3dbox 第五轮）。
+// 同一条真链路（官方 SDK → HTTP 端点 → 协议层 → 主进程 RPC + 租约 → 渲染端），只认线上真回包。
+describe('external MCP canvas operations that used to answer capability_unsupported (official SDK)', () => {
+  const cases: Array<[string, Record<string, unknown>]> = [
+    ['tidy_canvas', { operation: 'tidy_canvas', categoryId: 'shots' }],
+    ['set_node_text', { operation: 'set_node_text', nodeId: 'text-1', text: 'hello', mode: 'replace' }],
+    ['propose_storyboard_plan', { operation: 'propose_storyboard_plan', title: 'T', anchors: [], shots: [{ index: 1, shotKind: 'image', durationSec: 0, anchorIds: [], prompt: 'p' }] }],
+    ['arrange_storyboard_to_timeline', { operation: 'arrange_storyboard_to_timeline', nodeIds: ['node-v1'] }],
+  ]
+
+  it.each(cases)('%s reaches the live renderer write and comes back applied', async (operation, args) => {
+    const result = await canvasEdit(args)
+    expect(result.structuredContent?.nomiOutcome?.errorCode).not.toBe('capability_unsupported')
+    expect(result.isError).not.toBe(true)
+    expect(rendererCalls).toEqual([expect.objectContaining({
+      op: 'canvas.write',
+      payload: expect.objectContaining({ projectId: PROJECT_ID, input: expect.objectContaining({ operation }) }),
+    })])
   })
 })
