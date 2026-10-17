@@ -405,7 +405,7 @@ describe("APIMart observe-only generation provider", () => {
     await expect(fresh.query?.("video-task-1")).rejects.toThrow("without the model it was submitted with");
     const polled = await fresh.query?.("video-task-1", { modelId: "kling-v3", mode: "text_to_video" });
     expect(polled).toMatchObject({ status: "completed" });
-    await expect(fresh.materialize?.({ providerTaskId: "video-task-1", raw: polled?.raw })).resolves.toMatchObject({ outputs: [{ kind: "video", url: "https://cdn.example/v.mp4" }] });
+    await expect(fresh.materialize?.({ context: {}, providerTaskId: "video-task-1", raw: polled?.raw })).resolves.toMatchObject({ outputs: [{ kind: "video", url: "https://cdn.example/v.mp4" }] });
   });
 
   it("reconcile returns not-found without a task id and never invents one", async () => {
@@ -430,13 +430,13 @@ describe("APIMart observe-only generation provider", () => {
     const fetchImpl = vi.fn();
     const provider = createApimartGenerationProvider({ resolveConnection: () => ({ apiKey: "test-key" }), fetchImpl });
     // 一笔任务一种产物（#1213 起地址只有一种读法：先合同、再通用规则，不再把响应里出现的每种地址都捞走）。
-    await expect(provider.materialize?.({
+    await expect(provider.materialize?.({ context: {},
       providerTaskId: "task-1",
       raw: { code: 200, data: { status: "completed", result: { images: [{ url: "https://cdn.example/image.png" }] } } },
     })).resolves.toMatchObject({ outputs: [
       { kind: "image", url: "https://cdn.example/image.png", providerOutputId: "image-1" },
     ] });
-    await expect(provider.materialize?.({
+    await expect(provider.materialize?.({ context: {},
       providerTaskId: "task-2",
       raw: { code: 200, data: { status: "completed", result: { videos: [{ url: "https://cdn.example/video.mp4" }] } } },
     })).resolves.toMatchObject({ outputs: [
@@ -451,7 +451,7 @@ describe("APIMart observe-only generation provider", () => {
     // outputs → adapter.materialize threw "no materializable output" on EVERY observe round, so a real
     // completed video never landed. Docs-shaped plain strings must keep working (previous test).
     const provider = createApimartGenerationProvider({ resolveConnection: () => ({ apiKey: "test-key" }), fetchImpl: vi.fn() });
-    await expect(provider.materialize?.({
+    await expect(provider.materialize?.({ context: {},
       providerTaskId: "task-1",
       raw: {
         code: 200,
@@ -467,7 +467,7 @@ describe("APIMart observe-only generation provider", () => {
 
   it("keeps a safe provider filename for data-url loopback materialization and drops path-shaped names", async () => {
     const provider = createApimartGenerationProvider({ resolveConnection: () => ({ apiKey: "test-key" }), fetchImpl: vi.fn() });
-    const result = await provider.materialize?.({
+    const result = await provider.materialize?.({ context: {},
       providerTaskId: "task-1",
       raw: {
         code: 200,
@@ -487,7 +487,7 @@ describe("APIMart observe-only generation provider", () => {
 
   it("recognizes a direct video_url array returned by a loopback provider", async () => {
     const provider = createApimartGenerationProvider({ resolveConnection: () => ({ apiKey: "test-key" }), fetchImpl: vi.fn() });
-    const result = await provider.materialize?.({
+    const result = await provider.materialize?.({ context: {},
       providerTaskId: "task-direct",
       raw: { data: { result: { video_url: ["data:video/mp4;base64,AAAA"], fileName: "direct.mp4" } } },
     });
@@ -960,7 +960,7 @@ describe("引擎 B 取产物：合同字段回显的参考图不当产物（V-12
       submitWithContext: (request: unknown, idempotencyKey: string, semanticInput: ReturnType<typeof input>) => Promise<unknown>;
     }).submitWithContext;
     await contextual(provider.buildRequest(request), "synthetic-key", request);
-    const result = await provider.materialize!({ providerTaskId: "echo-task", raw: { status: "success", output: ref } });
+    const result = await provider.materialize!({ context: {}, providerTaskId: "echo-task", raw: { status: "success", output: ref } });
     expect(result.outputs).toEqual([]);
   });
 
