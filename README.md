@@ -123,6 +123,17 @@ The installer has no Authenticode signature. In the SmartScreen prompt, choose *
 
 More: [quick start](https://nomiaqm.com/en/quickstart) · [model connection](docs/guide/model-connection-en.md) · [user guide](docs/user-guide.md) · [providers](docs/provider-integration.md) · [CLI + MCP](docs/guide/capability-core-cli-mcp.md)
 
+## Sponsors
+
+Sponsors help keep Nomi free and open source. A sponsor never becomes a default or a built-in route: you connect only what you choose, with your own key, and pay them directly at their price. [Want to appear here?](#community)
+
+<table>
+<tr>
+<td width="128" align="center"><a href="https://gway.dev/sign-up?aff=8j8f"><img src="docs/media/sponsors/gway-logo.png" alt="Gway" width="96" /></a></td>
+<td><b><a href="https://gway.dev/sign-up?aff=8j8f">Gway</a></b> — an API platform focused on AI video and multi-image reference generation: Seedance 2.0 / 2.5, Wan 3, MiniMax and other mainstream models, OpenAI-compatible, pay-as-you-go. Nomi has no built-in preset for it yet; click <b>Let AI connect it for me</b> and Claude Code or Codex wires it in with your key. Thanks to Gway for sponsoring Nomi! <i>(The Gway links carry a referral code.)</i></td>
+</tr>
+</table>
+
 ## Use Nomi from your own agent
 
 Nomi ships an MCP server with 24 MCP tools, so Claude Code, Codex, or Cursor can drive it — generate, arrange, and edit — while reusing the credits that come with your agent subscription. See [Let your AI connect Nomi](docs/integrate-with-your-agent-en.md).

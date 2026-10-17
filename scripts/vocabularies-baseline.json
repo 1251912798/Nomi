@@ -1022,6 +1022,17 @@
     },
     {
       "members": [
+        "empty",
+        "idle",
+        "rendering",
+        "retry",
+        "too_long"
+      ],
+      "reason": "3D-BOX 导演视图主按钮「出成片」显示哪一态：empty 没有可播放的镜头 / rendering 预演渲染中 / retry 预演失败可重试 / too_long 超长失败要改短 / idle 可以点。它是界面投影，由预演生命周期 DIRECTOR_PREVIEW_STATUSES 加「有没有镜头」推出（directorProduceButtonState 唯一推导点），只给按钮用；不能复用预演生命周期本身：按钮要区分「可重试」与「超长」两种失败，还多一个「没有镜头」，并进去会让花钱闸的判据长出与它无关的成员。",
+      "site": "src/workbench/generationCanvas/nodes/director/model/directorPreviewState.ts::type:DirectorProduceButtonState/type-union"
+    },
+    {
+      "members": [
         "backdrop",
         "building",
         "counter",
@@ -1776,17 +1787,6 @@
       ],
       "reason": "CameraVisualState 是导演台 V2 场内机位模型的四态着色（idle/selected/active/preview 四色），由选中态、激活机位、预览机位三个 store 事实推导出的纯视觉枚举，只在 CameraEntity 内消费，与画布节点选中态或任务状态词表语义不同。",
       "site": "src/workbench/generationCanvas/nodes/director/scene/entities/CameraEntity.tsx::type:CameraVisualState/type-union"
-    },
-    {
-      "members": [
-        "cancelled",
-        "done",
-        "error",
-        "idle",
-        "running"
-      ],
-      "reason": "AiScenePhase 是导演台 V2「AI 搭场景」浮条的一次搭建流程状态：idle 未开始、running 正在向文本大脑请求并物化、done 已落成、error 失败、cancelled 用户取消。它是浮条状态行的展示态，与 WorkbenchAiMessage.status（对话消息 pending/streaming 的传输态）语义不同：没有流式消息生命周期，只有「这一次搭建做完没有 / 为什么没做完」。",
-      "site": "src/workbench/generationCanvas/nodes/director/useAiSceneBuilder.ts::type:AiScenePhase/type-union"
     },
     {
       "members": [
