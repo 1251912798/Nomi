@@ -244,6 +244,7 @@ export async function captureScreenToCanvas(): Promise<void> {
       `screenshot-${Date.now()}.png`,
       "image/png",
       { kind: "generated", source: "screen-capture" },
+      "image",
       project.write,
     ) as { data?: { url?: string } };
     const url = record?.data?.url;

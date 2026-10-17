@@ -36,7 +36,7 @@ export async function persistDirectorScreenshot(dataUrl: string, ownerNodeId: st
   if (!desktop || !project) return { url: dataUrl, localOnly: true }
   const fileName = `${fileSafePart(title, 'director')}-${fileSafePart(ownerNodeId, 'node')}-${Date.now()}.png`
   const asset = await importWorkbenchRemoteAssetUrl(dataUrl, fileName, {
-    projectBinding: project.binding, assertCurrent: project.assertCurrent, kind: 'generated', ownerNodeId,
+    projectBinding: project.binding, assertCurrent: project.assertCurrent, kind: 'generated', expectedKind: 'image', ownerNodeId,
   })
   const url = typeof asset.data?.url === 'string' ? asset.data.url.trim() : ''
   if (!url || /^(data|blob):/i.test(url)) throw new Error('Director screenshot persistence returned no durable asset URL')

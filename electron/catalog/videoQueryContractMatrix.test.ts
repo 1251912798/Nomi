@@ -238,6 +238,21 @@ describe("结果误选反例（V-1213）：两台引擎同一组", () => {
     expect(readTaskResponse({ response, responseMapping: mapping, statusMapping: undefined, wantedKind: "video", echoUrls: new Set([REF]) }).assetUrls).toEqual(expected);
   });
 
+  // 会回来的同类形状（协调 10-17 要求一次想全）：读取层能判的在这里判，判不了的（无扩展名、乱标）交落盘关口按字节核，
+  // 见 assets/generatedOutputKindGate.test.ts 与 tasks/retrievalKindGate.test.ts。
+  const MULTI = { status: "success", data: { images: [{ url: "https://fixture.invalid/poster.jpg" }], audio_url: "https://fixture.invalid/track.mp3", video_url: VIDEO } };
+  it.each([
+    ["同一响应里多段媒体：视频任务取视频", MULTI, null, "video", [VIDEO]],
+    ["同一响应里多段媒体：音频任务取音频", MULTI, null, "audio", ["https://fixture.invalid/track.mp3"]],
+    ["同一响应里多段媒体：图片任务取图片", MULTI, null, "image", ["https://fixture.invalid/poster.jpg"]],
+    ["视频任务的合同位置给音频地址 → 不收", { status: "success", output: "https://fixture.invalid/track.mp3" }, { video_url: "output" }, "video", []],
+    ["视频任务的通用规则只找到音频 → 不收", { status: "success", result_url: "https://fixture.invalid/track.wav" }, null, "video", []],
+    ["地址带签名查询串：按路径扩展名认出视频", { status: "success", result_url: "https://fixture.invalid/out.mp4?X-Amz-Signature=abc&Expires=1" }, null, "video", ["https://fixture.invalid/out.mp4?X-Amz-Signature=abc&Expires=1"]],
+    ["查询串里写着 .png、路径没有扩展名：读取层判不了，交落盘关口", { status: "success", result_url: "https://fixture.invalid/download?file=ref.png&sig=1" }, null, "video", ["https://fixture.invalid/download?file=ref.png&sig=1"]],
+  ] as const)("引擎 A 同类形状：%s", (_name, response, mapping, wantedKind, expected) => {
+    expect(readTaskResponse({ response, responseMapping: mapping, statusMapping: undefined, wantedKind, echoUrls: new Set() }).assetUrls).toEqual(expected);
+  });
+
   // 引擎 A 的回显来源照 runtime.buildProfileTaskResult 的组法：requestEchoUrls(request.extras)。
   const ECHO_RESPONSE = { status: "success", output: REF };
   const ECHO_CONTRACT = { status: "status", video_url: "output" };

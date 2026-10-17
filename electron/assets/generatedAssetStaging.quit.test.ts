@@ -70,7 +70,7 @@ afterAll(() => fs.rmSync(path.dirname(root), { recursive: true, force: true }));
 describe("V-1208-6: a controlled quit leaves no generated staging behind", () => {
   it("a direct generated write that is waiting on the decoder: quit aborts it and removes its staging before exit", async () => {
     const { app, quit, errors } = startQuitOwner();
-    const pending = writeGeneratedAsset("project-1", video, "result.mp4", "video/mp4", { kind: "generated" });
+    const pending = writeGeneratedAsset("project-1", video, "result.mp4", "video/mp4", { kind: "generated" }, "video");
     const outcome = pending.then(() => "published", (error: Error) => error.message);
     await vi.waitFor(() => expect(decoder.spawned).toBe(1));
     expect(staging()).toHaveLength(1);
@@ -90,7 +90,7 @@ describe("V-1208-6: a controlled quit leaves no generated staging behind", () =>
     const id = jobs.start("project-1", async () => video);
     await jobs.settled(id);
     const query = jobs.query(id, "project-1", async (bytes) => {
-      const written = await writeGeneratedAsset("project-1", bytes, "result.mp4", "video/mp4", { kind: "generated" }) as { data?: { url?: string } };
+      const written = await writeGeneratedAsset("project-1", bytes, "result.mp4", "video/mp4", { kind: "generated" }, "video") as { data?: { url?: string } };
       return written.data?.url ? [written.data.url] : [];
     }).catch((error: Error) => error.message);
     await vi.waitFor(() => expect(decoder.spawned).toBe(1));
@@ -109,7 +109,7 @@ describe("V-1208-6: a controlled quit leaves no generated staging behind", () =>
     const { app, quit } = startQuitOwner();
     quit();
     await vi.waitFor(() => expect(app.exit).toHaveBeenCalledWith(0));
-    await expect(writeGeneratedAsset("project-1", video, "late.mp4", "video/mp4", { kind: "generated" })).rejects.toThrow("generated_staging_quit");
+    await expect(writeGeneratedAsset("project-1", video, "late.mp4", "video/mp4", { kind: "generated" }, "video")).rejects.toThrow("generated_staging_quit");
     expect(staging()).toEqual([]);
   });
 });
