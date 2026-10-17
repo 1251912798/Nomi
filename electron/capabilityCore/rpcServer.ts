@@ -16,7 +16,9 @@ import type { FetchTaskResultFn, RunTaskFn } from './core'
 import { RpcError } from './dispatcher'
 import { createDiskGateway, createHybridGateway, createRendererGateway, type ProjectGateway } from './gateway'
 import { isRendererAvailable, requestRenderer } from './rendererBridge'
-import { resolveMcpOrigin, verifyToken } from './security'
+import { resolveMcpOrigin, verifyMcpClient, verifyToken } from './security'
+import { MCP_CALL_ID_HEADER, MCP_CALL_TOOL_HEADER } from './mcpLoopbackRpcRequest'
+import { mcpUsageRegistry } from './mcpUsageRegistry'
 import { getProductionRunService } from '../productionRun/productionRunRuntime'
 import { handleArtifactPreviewHttpRequest, withAssetPreview } from '../productionRun/artifactPreviewHttpServer'
 import { setArtifactPreviewHttpOrigin } from '../productionRun/artifactProjection'
@@ -84,6 +86,15 @@ export type RpcServerOptions = {
   proposalReceiptFor?: (binding: ProjectBinding) => ProjectAgentProposalReceiptService | undefined | Promise<ProjectAgentProposalReceiptService | undefined>
   /** After a durable credential handoff is queued, focus/show the GUI and open model settings. */
   openCredentialsInNomi?: import('./dispatcher').DispatchContext['openCredentialsInNomi']
+}
+
+const CALL_LABEL = /^[A-Za-z0-9_.:-]{1,80}$/
+
+/** 带记账头的已验证工具调用：开始时记一笔，这一跳的响应关闭（跑完 / 取消 / 断连）时记结束。 */
+function recordMcpToolCall(res: http.ServerResponse, client: string | null, tool: string, callId: string): void {
+  if (!client || !CALL_LABEL.test(tool) || !CALL_LABEL.test(callId)) return
+  const end = mcpUsageRegistry().callStarted(client, { tool, id: callId })
+  res.once('close', end)
 }
 
 function readBody(req: http.IncomingMessage): Promise<string> {
@@ -185,6 +196,9 @@ export function startRpcServer(options: RpcServerOptions): Promise<RpcServerHand
         if (hasMcpTransportClaims && origin === 'external') {
           throw new RpcError('A verified MCP client connection is required', 403, { code: 'mcp_connection_unauthenticated' })
         }
+        // 「AI 助手连接」卡的使用情况：三条传输（HTTP / Electron stdio / 裸 Node 启动器）汇合后的第一个主进程边界。
+        // 只记身份已验证的客户端；工具名与调用号是传输随请求头带来的记账标签，不参与授权。
+        recordMcpToolCall(res, verifyMcpClient(client, clientProof), firstHeader(req.headers[MCP_CALL_TOOL_HEADER]), firstHeader(req.headers[MCP_CALL_ID_HEADER]))
         let projectSessionConnection
         if (connectionAttestation) {
           try {

@@ -104,6 +104,13 @@ export const runtimeBridge = {
       ipcRenderer.on("nomi:mcp:profiles-changed", listener)
       return () => ipcRenderer.removeListener("nomi:mcp:profiles-changed", listener)
     },
+    // 助手使用情况（第 4 段）：初次读 + 变化时主进程推整份快照（每秒最多一次）。
+    mcpUsage: () => ipcRenderer.invoke("nomi:capability:mcp-usage"),
+    onMcpUsage: (cb: (usage: unknown) => void) => {
+      const listener = (_event: unknown, usage: unknown) => cb(usage)
+      ipcRenderer.on("nomi:mcp:usage-changed", listener)
+      return () => ipcRenderer.removeListener("nomi:mcp:usage-changed", listener)
+    },
     // 实连验证（异步）：真起一次配置里那条命令握手，用来分辨「配置里有这行字」和「还真连得上」。
     verifyMcp: (client?: string) => ipcRenderer.invoke("nomi:capability:mcp-verify", client),
     // A 模式实时桥：主进程把外部 MCP 的画布读/写/付费确认转发到这里，渲染层处理后回结果（按 id 配对）。

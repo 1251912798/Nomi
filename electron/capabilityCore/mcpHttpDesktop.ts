@@ -9,6 +9,7 @@ import { logInfo, logWarn } from '../logging/logger'
 import { recordDetectedMcpClient } from './mcpDetectedClients'
 import { clearMcpHttpEndpoint, resolveMcpHttpPort, writeMcpHttpEndpoint } from './mcpHttpEndpoint'
 import type { McpHttpServerHandle } from './mcpHttpServer'
+import { mcpUsageRegistry } from './mcpUsageRegistry'
 import { readToken } from './security'
 
 let handle: McpHttpServerHandle | null = null
@@ -28,6 +29,7 @@ export async function startDesktopMcpHttp(deps: Readonly<{ rpcPort: () => number
     handle = await startMcpHttpServer({
       port,
       onActivity: deps.onActivity,
+      onClientConnected: (client, name) => mcpUsageRegistry().connected(client, name),
       sessionFor: (identity) => createLoopbackMcpHttpSession({
         identity,
         rpc,
