@@ -73,7 +73,7 @@ describe('external MCP production artifact reads', () => {
 
     expect(invoke).toHaveBeenCalledWith('production.artifact.read', {
       projectId: 'project-1', runId: 'run-1', artifactId: 'artifact-script-v2',
-    })
+    }, expect.anything())
     const result = nextFrame(frames, 3).result as { content: Array<{ type: string; text: string }>; structuredContent?: { nomiOutcome?: Record<string, unknown> } }
     expect(result.content[0].text).toContain('hash-script-v2')
     expect(result.content[0].text).toContain('雨夜找猫')

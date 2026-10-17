@@ -18,8 +18,8 @@ export type McpClientProfile = {
   sourceName?: string
 }
 // 状态/诊断词表的唯一 owner 是中立契约层 electron/shared/mcpConnectionContract.ts（主进程与渲染层同源）。
-import type { McpConfigState, McpVerifyReason } from '../../electron/shared/mcpConnectionContract'
-export type { McpConfigState, McpVerifyReason }
+import type { McpClientUsage, McpConfigState, McpVerifyReason } from '../../electron/shared/mcpConnectionContract'
+export type { McpClientUsage, McpConfigState, McpVerifyReason }
 
 export type McpClientInfo = {
   installed: boolean

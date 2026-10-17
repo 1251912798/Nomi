@@ -74,7 +74,7 @@ describe("M2 semantic editing surface", () => {
     await vi.waitFor(() => expect(invoke).toHaveBeenCalledWith(
       "document.write",
       expect.objectContaining({ operation: "append", content: "approved document content" }),
-      { documentConfirmed: true },
+      expect.objectContaining({ documentConfirmed: true }),
     ));
   });
 
@@ -95,7 +95,7 @@ describe("M2 semantic editing surface", () => {
     protocol.handleIncoming({ jsonrpc: "2.0", id: request.id, result: { action: "accept", content: { confirm: true } } });
     await vi.waitFor(() => expect(frames).toContainEqual(expect.objectContaining({ id: 2, result: expect.objectContaining({ isError: true }) })));
     expect(frames.find((frame) => (frame as { id?: number }).id === 2)).not.toHaveProperty("error");
-    expect(invoke).toHaveBeenCalledWith("document.write", expect.anything(), { documentConfirmed: true });
+    expect(invoke).toHaveBeenCalledWith("document.write", expect.anything(), expect.objectContaining({ documentConfirmed: true }));
     protocol.dispose();
   });
 
@@ -137,7 +137,7 @@ describe("M2 semantic editing surface", () => {
       params: { name: "nomi_read", arguments: { target: "projects" } },
     });
     await vi.waitFor(() => expect(frames).toContainEqual(expect.objectContaining({ id: 2, result: expect.anything() })));
-    expect(invoke).toHaveBeenCalledWith("project.list", {});
+    expect(invoke).toHaveBeenCalledWith("project.list", {}, expect.objectContaining({ call: expect.objectContaining({ tool: 'nomi_read' }) }));
     protocol.dispose();
   });
 

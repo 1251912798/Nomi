@@ -347,7 +347,7 @@ describe("canvas.read MCP wire requires a verified project session lease", () =>
       name: "nomi_read",
       arguments: { target: "canvas", leaseHandle: "lease-a", projectId: "project-a" },
     });
-    expect(harness.invoke).toHaveBeenCalledWith("canvas.read", { leaseHandle: "lease-a", projectId: "project-a" });
+    expect(harness.invoke).toHaveBeenCalledWith("canvas.read", { leaseHandle: "lease-a", projectId: "project-a" }, expect.objectContaining({ call: expect.objectContaining({ tool: 'nomi_read' }) }));
     const payload = called.result as {
       content: Array<{ type: string; text: string }>;
       structuredContent: unknown;

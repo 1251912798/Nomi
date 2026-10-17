@@ -17,7 +17,7 @@ import { NodeStreamableHTTPServerTransport, localhostHostValidation, localhostOr
 import { DEFAULT_MAX_REQUEST_BODY_SIZE, isInitializeRequest, type JSONRPCMessage } from '@modelcontextprotocol/server'
 
 import { createMcpConnectionContext, McpConnectionAuthenticationError, type McpConnectionContext } from './mcpConnectionContext'
-import { MCP_HTTP_CLIENT_HEADER, MCP_HTTP_CLIENT_PROOF_HEADER, MCP_HTTP_PATH } from './mcpHttpEndpoint'
+import { MCP_HTTP_CLIENT_HEADER, MCP_HTTP_CLIENT_PROOF_HEADER, MCP_HTTP_PATH, MCP_VERIFY_PROBE_NAME } from './mcpHttpEndpoint'
 import { createLoopbackGenerationConfirmation, callMcpLoopbackRpc } from './mcpLoopbackRpcCall'
 import { createNomiMcpServer, MCP_REQUEST_SIGNAL, mcpUnauthenticatedResponse, SUPPORTED_PROTOCOL_VERSIONS, type McpInvokeOptions, type NomiMcpServer } from './mcpProtocol'
 import { verifyMcpClient } from './security'
@@ -33,6 +33,8 @@ export type McpHttpServerOptions = Readonly<{
   sessionFor: (identity: McpHttpIdentity) => NomiMcpServer
   /** 有效请求到达（与回环 RPC 同一个「后台活动」信号，用来推迟空闲自退）。 */
   onActivity?: () => void
+  /** 一个已验证的助手完成了握手（自报名只作展示）。Nomi 自己的连接测试（nomi-verify）不算。 */
+  onClientConnected?: (client: string, reportedName: string | undefined) => void
   /** 同时保留的会话上限；超出时关掉最久没动静的那条（宿主不总会发 DELETE）。 */
   maxSessions?: number
 }>
@@ -116,6 +118,8 @@ export function startMcpHttpServer(options: McpHttpServerOptions): Promise<McpHt
     // 会话关了（宿主发 DELETE、被挤掉、整个服务停）：SDK 中止这条会话上全部在途调用，这里只把账本里那条摘掉。
     nomi.onClose(() => { if (sessionId) sessions.delete(sessionId) })
     await nomi.connect(transport)
+    const reportedName = (body as { params?: { clientInfo?: { name?: unknown } } } | null)?.params?.clientInfo?.name
+    if (reportedName !== MCP_VERIFY_PROBE_NAME) options.onClientConnected?.(client, typeof reportedName === 'string' ? reportedName : undefined)
     await transport.handleRequest(req, res, body)
   }
 

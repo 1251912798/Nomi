@@ -233,7 +233,8 @@ describe('工具回执从真实审批结论派生', () => {
       'auto-granted', { operationId: 'op-7', shots: [{ prompt: 'updated' }] })
     expect(outcome.nextAction).toMatchObject({ kind: 'none', operationId: 'op-7' })
     expect(outcome.nextAction?.userSees).toMatch(/saved in the project/)
-    expect(outcome.nextAction?.userSees).not.toMatch(/call generate|no card|generation has started/)
+    expect(outcome.nextAction?.userSees).not.toMatch(/no card|generation has started/)
+    expect(outcome.nextAction?.userSees).toMatch(/next tool call is generate with operationId=op-7/)
   })
 
   it('historical submitted state without a current spendDecision does not claim this edit started generation', async () => {
