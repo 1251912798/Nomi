@@ -90,26 +90,43 @@ describe('C-1 连接检查不许累积服务端会话、挤掉真实工作会话
   })
 })
 
+/** 事件驱动的收件箱：帧一到就唤醒等它的人；不设墙钟上限（永不成立由 vitest 的 testTimeout 兜底）。 */
+class Inbox<T> {
+  readonly items: T[] = []
+  private waiters: Array<() => void> = []
+  push(item: T): void {
+    this.items.push(item)
+    const waiting = this.waiters
+    this.waiters = []
+    for (const wake of waiting) wake()
+  }
+  async until<R>(find: () => R | undefined): Promise<R> {
+    for (;;) {
+      const found = find()
+      if (found !== undefined) return found
+      await new Promise<void>((resolve) => this.waiters.push(resolve))
+    }
+  }
+}
+
 function bridgeHarness(url: string) {
   const stdin = new PassThrough()
   const stdout = new PassThrough()
-  const frames: Array<{ id?: number | string; result?: unknown; error?: { message?: string } }> = []
+  type Frame = { id?: number | string; result?: unknown; error?: { message?: string } }
+  const inbox = new Inbox<Frame>()
+  const frames = inbox.items
   let buffer = ''
   stdout.setEncoding('utf8')
   stdout.on('data', (chunk: string) => {
     buffer += chunk
     const lines = buffer.split('\n')
     buffer = lines.pop() ?? ''
-    for (const line of lines.filter(Boolean)) frames.push(JSON.parse(line))
+    for (const line of lines.filter(Boolean)) inbox.push(JSON.parse(line))
   })
   const upstream = new StreamableHTTPClientTransport(new URL(url), { requestInit: { headers: identity('claude-desktop') } })
   const bridged = bridgeStdioToHttp(new StdioServerTransport(stdin, stdout), upstream)
   const send = (message: unknown) => stdin.write(`${JSON.stringify(message)}\n`)
-  const reply = (id: number) => vi.waitFor(() => {
-    const frame = frames.find((item) => item.id === id)
-    if (!frame) throw new Error(`no reply for ${id} yet`)
-    return frame
-  }, { timeout: 8000 })
+  const reply = (id: number) => inbox.until(() => frames.find((item) => item.id === id))
   const handshake = async () => {
     send({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-11-25', capabilities: {}, clientInfo: { name: 'claude-desktop', version: '1' } } })
     await reply(1)
@@ -187,8 +204,10 @@ describe('C-2 转发口：会话失效后自己重握手；错误文案如实区
 // 连接状态不明（没拿到状态码）时的底线：写入 / 生成类请求绝不重发；只重发天然可重复的读请求。
 describe('C-2 转发口：连接状态不明时不重放可能已生效的调用', () => {
   function fakeBridge(sendUpstream: (message: Record<string, unknown>) => Promise<void>) {
-    const sentUpstream: Array<Record<string, unknown>> = []
-    const toHost: Array<Record<string, unknown>> = []
+    const sentInbox = new Inbox<Record<string, unknown>>()
+    const hostInbox = new Inbox<Record<string, unknown>>()
+    const sentUpstream = sentInbox.items
+    const toHost = hostInbox.items
     const upstream = {
       onmessage: undefined as ((m: unknown) => void) | undefined,
       onclose: undefined, onerror: undefined,
@@ -197,7 +216,7 @@ describe('C-2 转发口：连接状态不明时不重放可能已生效的调用
       terminateSession: async () => {},
       setProtocolVersion: () => {},
       send: async (message: Record<string, unknown>) => {
-        sentUpstream.push(message)
+        sentInbox.push(message)
         await sendUpstream(message)
         if (message.method === 'initialize' || message.method === 'ping') upstream.onmessage?.({ jsonrpc: '2.0', id: message.id, result: {} })
       },
@@ -207,10 +226,10 @@ describe('C-2 转发口：连接状态不明时不重放可能已生效的调用
       onclose: undefined, onerror: undefined,
       start: async () => {},
       close: async () => {},
-      send: async (message: Record<string, unknown>) => { toHost.push(message) },
+      send: async (message: Record<string, unknown>) => { hostInbox.push(message) },
     }
     void bridgeStdioToHttp(downstream as never, upstream as never)
-    return { sentUpstream, toHost, host: (message: unknown) => downstream.onmessage?.(message) }
+    return { sentUpstream, toHost, sentInbox, hostInbox, host: (message: unknown) => downstream.onmessage?.(message) }
   }
   const httpError = (status: number) => Object.assign(new Error(`HTTP ${status}`), { status })
 
@@ -222,10 +241,10 @@ describe('C-2 转发口：连接状态不明时不重放可能已生效的调用
       if (message.method === 'ping' && !alive) throw httpError(404)
     })
     fake.host({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-11-25' } })
-    await vi.waitFor(() => expect(fake.sentUpstream.some((m) => m.method === 'initialize')).toBe(true))
+    await fake.sentInbox.until(() => fake.sentUpstream.find((m) => m.method === 'initialize'))
     alive = false
     fake.host({ jsonrpc: '2.0', id: 2, method: 'tools/call', params: { name: 'nomi_generation_plan' } })
-    await vi.waitFor(() => expect(fake.toHost.find((m) => m.id === 2)).toBeTruthy())
+    await fake.hostInbox.until(() => fake.toHost.find((m) => m.id === 2))
     expect((fake.toHost.find((m) => m.id === 2) as { error: { message: string } }).error.message).toBe(NOMI_INTERRUPTED_MESSAGE)
     expect(fake.sentUpstream.filter((m) => m.method === 'tools/call')).toHaveLength(1)
   })
@@ -238,10 +257,10 @@ describe('C-2 转发口：连接状态不明时不重放可能已生效的调用
       if (message.method === 'ping' && !alive) throw httpError(404)
     })
     fake.host({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-11-25' } })
-    await vi.waitFor(() => expect(fake.sentUpstream.some((m) => m.method === 'initialize')).toBe(true))
+    await fake.sentInbox.until(() => fake.sentUpstream.find((m) => m.method === 'initialize'))
     alive = false
     fake.host({ jsonrpc: '2.0', id: 2, method: 'tools/list' })
-    await vi.waitFor(() => expect(fake.sentUpstream.filter((m) => m.method === 'tools/list')).toHaveLength(2))
+    await fake.sentInbox.until(() => (fake.sentUpstream.filter((m) => m.method === 'tools/list').length >= 2 ? true : undefined))
     expect(fake.toHost.find((m) => m.id === 2 && m.error)).toBeUndefined()
   })
 })
