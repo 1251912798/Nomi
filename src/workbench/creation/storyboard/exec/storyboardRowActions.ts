@@ -32,7 +32,7 @@ import { ANCHOR_META_KEYS, isAnchorFrozen, type AnchorFrozenMark } from '../../.
 import { findAnchorNode, findShotKeyframeNode, findShotNode } from './storyboardNodeBinding'
 import { deriveAnchorCardRuntimes, type StoryboardRowRuntime } from './storyboardRowStatus'
 import { storyboardComposerMeta } from '../shotRow/storyboardComposerModel'
-import { useSpendConfirmStore } from '../../../generationCanvas/spend/spendConfirm'
+import { confirmStoryboardPlanBatch } from '../../../generationCanvas/spend/spendConfirm'
 import type { PlanRow } from '../../../shared/PlanRows'
 
 /**
@@ -434,10 +434,8 @@ async function confirmStoryboardBatch(ctx: RowActionContext, rows: readonly Stor
   const { planRows, selection } = storyboardBatchRows(ctx, rows)
   if (planRows.length === 0) return null
   const checked = new Set(planRows.filter((row) => row.checked).map((row) => row.id))
-  const ok = await useSpendConfirmStore.getState().requestConfirm({
+  const ok = await confirmStoryboardPlanBatch({
     title: i18n.t('storyboardEditor.batch.title', { count: planRows.length }),
-    message: '',
-    kind: 'generation',
     confirmLabel: i18n.t('storyboardEditor.batch.confirm', { count: planRows.length }),
     cancelLabel: i18n.t('storyboardEditor.batch.cancel'),
     planRows,
