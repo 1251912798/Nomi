@@ -691,7 +691,7 @@ export function createProductionGenerationSubmission(deps: ProductionGenerationS
     }, new GenerationMaterializationUnsupportedError());
     let extracted: { outputs: readonly GenerationProviderOutput[] };
     try {
-      extracted = await adapter.materialize({ providerId: job.provider, providerTaskId: job.providerTaskId, raw: polled.raw });
+      extracted = await adapter.materialize({ providerId: job.provider, providerTaskId: job.providerTaskId, raw: polled.raw, context: { modelId: contract.modelId, mode: contract.mode, parameters: contract.parameters } });
     } catch (error) {
       if (error instanceof GenerationProviderObservationError) return parkUnsupported();
       throw error;

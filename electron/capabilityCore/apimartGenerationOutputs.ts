@@ -103,7 +103,8 @@ export function materializationOutputs(raw: unknown, assetUrls: readonly string[
   const metadata = materializationMetadata(raw);
   return assetUrls.map((url, index) => {
     const known = metadata.find((item) => item.url === url);
-    const kind = mediaKindOf(url) ?? wantedKind ?? known?.kind ?? "image";
+    // 种类跟着任务走（知道要什么时）：地址扩展名只在不知道期望时作证据（V-1213：扩展名曾把视频任务改判成 image）。
+    const kind = wantedKind ?? mediaKindOf(url) ?? known?.kind ?? "image";
     return {
       ...(known ?? {}),
       kind,
@@ -113,12 +114,16 @@ export function materializationOutputs(raw: unknown, assetUrls: readonly string[
   });
 }
 
-/** 引擎 B 的取产物：按这条任务的 query 合同（没有就 null = 只用通用规则）经唯一读法取地址，再配附带信息。 */
+/**
+ * 引擎 B 的取产物：按这条任务的 query 合同（没有就 null = 只用通用规则）经唯一读法取地址，再配附带信息。
+ * echoUrls = 这笔任务请求里出现过的地址（提交时发出去的封存 body + 账本里冻结合同的参数），回显的一律不当产物。
+ */
 export function readMaterializationOutputs(
   raw: unknown,
   query: { responseMapping: JsonRecord | null; statusMapping?: Record<string, string[]> } | null,
   wantedKind: ExpectedMediaKind | null,
+  echoUrls: ReadonlySet<string>,
 ): GenerationProviderOutput[] {
-  const reading = readTaskResponse({ response: raw, responseMapping: query?.responseMapping ?? null, statusMapping: query?.statusMapping, wantedKind });
+  const reading = readTaskResponse({ response: raw, responseMapping: query?.responseMapping ?? null, statusMapping: query?.statusMapping, wantedKind, echoUrls });
   return materializationOutputs(raw, reading.assetUrls, wantedKind);
 }

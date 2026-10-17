@@ -107,11 +107,23 @@ function scanCandidates(value: unknown, path: string, key: string, depth: number
   }
 }
 
-/** 一个地址能不能当本次产物：不是回显的参考地址、媒体类型不和期望冲突。合同与通用规则共用这一道筛。 */
+/**
+ * 地址自身的媒体类型和这笔任务要的类型合不合得上。看不出类型 / 不知道要什么 → 合得上（交给下载那一步按字节核）。
+ * 唯一的容器特例：要音频时接受视频容器扩展名（.mp4 / .webm 装音频）——这是「合同不按扩展名筛」想保住的那一类，
+ * 其余对不上一律不要：要视频却给 .png，就是 V-1213 复现的「花钱生成视频、落盘一张图」。
+ */
+function kindCompatible(kind: ExpectedMediaKind | null, wantedKind: ExpectedMediaKind | null): boolean {
+  if (!kind || !wantedKind || kind === wantedKind) return true;
+  return wantedKind === "audio" && kind === "video";
+}
+
+/**
+ * 一个地址能不能当本次产物：不是本次请求回显的参考地址、媒体类型和期望合得上。
+ * **合同与通用规则共用这一道筛**（两台引擎都经它）：合同只决定「去哪儿找」，不豁免这两条。
+ */
 function admissible(url: string, wantedKind: ExpectedMediaKind | null, echoUrls: ReadonlySet<string>): boolean {
   if (echoUrls.has(url.trim())) return false;
-  const kind = mediaKindOf(url);
-  return !(kind && wantedKind && kind !== wantedKind);
+  return kindCompatible(mediaKindOf(url), wantedKind);
 }
 
 /**
@@ -184,12 +196,11 @@ export function readTaskResponse(input: {
   trace?: { vendor?: string; model?: string };
 }): TaskResponseReading {
   const echoUrls = input.echoUrls ?? new Set<string>();
-  // 合同也不例外地排除回显的参考地址（V-1213）：通道声明的位置上回的是本次的参考图，那不是产物。
-  // 类型这道筛只用在通用规则上：合同是这家自己声明的结果位置，扩展名和期望对不上时（音频装在 .mp4 容器里等）
-  // 以合同为准；真错了由下载那一步按字节核（generatedMediaDecode），不在这里猜。
+  // 合同读到的地址过同一道筛（V-1213 复验）：回显的参考地址不要、和期望类型对不上的不要（音频装视频容器除外）。
+  // 下载那一步只核「字节是不是它自称的那种媒体」，不知道这笔任务要什么——类型在这里就得核。
   const contractUrls = Array.from(new Set(
     CONTRACT_ASSET_KEYS.flatMap((key) => valuesFromMapping(input.response, input.responseMapping, key)).flatMap(collectAssetUrls),
-  )).filter((url) => !echoUrls.has(url.trim()));
+  )).filter((url) => admissible(url, input.wantedKind, echoUrls));
   if (contractUrls.length > 0) {
     const resolved = resolveTaskStatus(input.response, input.responseMapping, input.statusMapping, contractUrls);
     return { ...resolved, assetUrls: contractUrls, rule: "contract" };
