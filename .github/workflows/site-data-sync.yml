@@ -36,6 +36,10 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --ignore-scripts
 
+      # 官网技能库只展示「最新已发布版本」里就有的技能：版本取自正式版 git 标签，所以先把标签拉全。
+      - name: Fetch release tags
+        run: git fetch --tags --force origin
+
       # 先导出再生成：site-data.json（含派生图片）→ 全部页面 → sitemap 与 page-dates.json → 再核对一遍页面。
       - name: Re-export site data and rebuild pages
         run: pnpm run build:site
