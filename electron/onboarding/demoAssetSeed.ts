@@ -61,7 +61,7 @@ export function seedOnboardingDemoAssets(payload: unknown): Record<string, strin
         writeAsset(projectId, bytes, fileName, "image/jpeg", {
           kind: DEMO_ASSET_KIND,
           originalName: fileName,
-        }),
+        }, null),
       );
       if (!url) continue;
       urls[clientId] = url;

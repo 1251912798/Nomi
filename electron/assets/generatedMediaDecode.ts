@@ -29,6 +29,7 @@ import { resolveFfmpegPath } from "../export/ffmpegRunner";
 import { MEDIA_DECODER_PROTOCOL_WHITELIST } from "../export/mediaProbe";
 import { logInfo, logWarn } from "../logging/logger";
 import { tagNomiError } from "../shared/nomiErrorCodes";
+import { desktopT } from "../desktopStrings";
 import { removeScratchAfterUseSync } from "./scratchCleanup";
 
 export type GeneratedMediaKind = "image" | "video" | "audio";
@@ -99,6 +100,20 @@ export function interpretDecodeRun(kind: GeneratedMediaKind, run: DecodeRun): De
 /** 生成产物校验失败的**唯一**抛法：带机器码，渲染层按码归类，不靠这句英文。 */
 export function generatedMediaValidationError(reason: string): Error {
   return new Error(tagNomiError("output-unreadable", `Generated media validation failed (${reason})`));
+}
+
+const OUTPUT_KIND_LABEL = {
+  image: "tasks.outputKind.image", video: "tasks.outputKind.video", audio: "tasks.outputKind.audio", model3d: "tasks.outputKind.model3d",
+} as const;
+const outputKindLabel = (kind: string): string => kind in OUTPUT_KIND_LABEL ? desktopT(OUTPUT_KIND_LABEL[kind as keyof typeof OUTPUT_KIND_LABEL]) : kind;
+
+/**
+ * 字节是能解码的媒体，但不是这笔任务要的那一类（V-1213：视频任务取回一张参考图）。码是 retrieval-download：
+ * 钱已经付了、任务还在，节点落「可找回」，不是付费重试。
+ */
+export function generatedMediaKindMismatchError(expected: string, got: string): Error {
+  return new Error(tagNomiError("retrieval-download",
+    desktopT("tasks.retrievalStage.download") + desktopT("tasks.outputKindMismatch", { expected: outputKindLabel(expected), got: outputKindLabel(got) })));
 }
 
 export type GeneratedMediaDecodeInput = {

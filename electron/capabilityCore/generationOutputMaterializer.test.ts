@@ -15,7 +15,7 @@ describe("generation output materializer", () => {
       providerTaskId: "task-1",
       output: { kind: "video", url: "https://cdn.example/video.mp4" },
     })).resolves.toMatchObject({ artifactId: "asset-1", kind: "video", projectRelativePath: "assets/generated/video.mp4", contentHash: expect.stringMatching(/^[a-f0-9]{64}$/) });
-    expect(writeAsset).toHaveBeenCalledWith("project-1", Buffer.from("video-bytes"), "video.mp4", "video/mp4", expect.objectContaining({ kind: "generated", providerTaskId: "task-1" }), "task-1:https://cdn.example/video.mp4");
+    expect(writeAsset).toHaveBeenCalledWith("project-1", Buffer.from("video-bytes"), "video.mp4", "video/mp4", expect.objectContaining({ kind: "generated", providerTaskId: "task-1" }), "video", "task-1:https://cdn.example/video.mp4");
   });
 
   it("accepts bounded data URLs without network access and rejects mismatched media types", async () => {
@@ -36,7 +36,7 @@ describe("generation output materializer", () => {
     const writeAsset = vi.fn(() => ({ id: "asset-data", data: { relativePath: "assets/generated/generation-output.png" } }));
     const materializer = createGenerationOutputMaterializer({ fetchOutput: vi.fn(), writeAsset });
     await materializer.materialize({ projectId: "project-1", providerTaskId: "task-data", output: { kind: "image", url } });
-    expect(writeAsset).toHaveBeenCalledWith("project-1", expect.any(Buffer), "generation-output.png", "image/png", expect.anything(), expect.any(String));
+    expect(writeAsset).toHaveBeenCalledWith("project-1", expect.any(Buffer), "generation-output.png", "image/png", expect.anything(), "image", expect.any(String));
   });
 
   it("downloads model3d as GLB and forwards it to the shared validated asset store", async () => {
@@ -59,6 +59,7 @@ describe("generation output materializer", () => {
       "model.glb",
       "model/gltf-binary",
       expect.objectContaining({ kind: "generated", providerTaskId: "task-3d" }),
+      "model3d",
       expect.any(String),
     );
   });

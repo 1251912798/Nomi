@@ -28,6 +28,7 @@ import { createAssetImportProgressReporter, type AssetCopyProgress } from "./ass
 import type { ProjectBinding } from "../shared/projectBinding";
 import { captureAssetWriteContext, type AssetWriteContext } from "./assetWriteContext";
 import { removeScratchAfterUse } from "./scratchCleanup";
+import { localizedAssetTypeOf } from "./localizedAsset";
 
 function bytesFromPayload(value: unknown): Buffer {
   if (value instanceof ArrayBuffer) return Buffer.from(value);
@@ -153,8 +154,10 @@ async function importNativeSourcePath(
   // 粘贴进来 <2s 原样落盘，走文件选择器却要转十几秒）。
   const storedName = canonicalAssetFileName(fileName, effectiveContentType);
   const baseMeta = { kind: raw.kind || "upload", originalName: raw.fileName || null };
+  // 只有声明成生成产物的导入才用得上：它该是哪一类由调用方说，落盘关口按字节核（见 projectAssetStore.validatedGenerated）。
+  const expectedKind = localizedAssetTypeOf(raw.expectedKind);
   if (!effectiveContentType.startsWith("video/")) {
-    return copyAssetFile(projectId, sourcePath, storedName, effectiveContentType, baseMeta, context, feedback);
+    return copyAssetFile(projectId, sourcePath, storedName, effectiveContentType, baseMeta, expectedKind, context, feedback);
   }
 
   const tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "nomi-video-native-import-"));
@@ -166,13 +169,13 @@ async function importNativeSourcePath(
         return await copyAssetFile(projectId, transcoded.outputPath, playableMp4FileName(storedName), "video/mp4", {
           ...baseMeta,
           playbackNormalizedFrom: transcoded.reason,
-        }, context, feedback);
+        }, expectedKind, context, feedback);
       }
     } catch (error) {
       logWarn("assets", "video-normalize-failed-import-original-file", undefined, error);
     }
     context.assertCurrent();
-    return await copyAssetFile(projectId, sourcePath, storedName, effectiveContentType, baseMeta, context, feedback);
+    return await copyAssetFile(projectId, sourcePath, storedName, effectiveContentType, baseMeta, expectedKind, context, feedback);
   } finally {
     await removeScratchAfterUse(tempDir);
   }
@@ -224,6 +227,7 @@ async function importLocalFileToStore(raw: JsonRecord, projectId: string, source
       originalName: raw.fileName || null,
       ...(normalized?.playbackNormalizedFrom ? { playbackNormalizedFrom: normalized.playbackNormalizedFrom } : {}),
     },
+    localizedAssetTypeOf(raw.expectedKind),
     context,
   );
 }
@@ -297,7 +301,7 @@ export async function ensurePlayableAsset(payload: unknown): Promise<unknown> {
       kind: "upload",
       originalName: sourceName,
       playbackNormalizedFrom: transcoded.reason,
-    });
+    }, null);
     // 标记写失败不影响本次自愈（大不了下次重转一遍），所以吞掉异常。
     try {
       fs.writeFileSync(healedMarkerPath(filePath), JSON.stringify(asset));

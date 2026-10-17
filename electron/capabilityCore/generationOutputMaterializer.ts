@@ -114,7 +114,8 @@ export function createGenerationOutputMaterializer(deps: GenerationOutputMateria
       source: "external-mcp",
       providerTaskId: input.providerTaskId,
       ...(input.output.providerOutputId ? { providerOutputId: input.output.providerOutputId } : {}),
-    }, materializationKey) as StoredAsset;
+      // 期望类型 = 这条产物的种类（取产物时已跟着任务定）：落盘关口按字节核它，图片冒充视频在这里被拒（V-1213）。
+    }, input.output.kind, materializationKey) as StoredAsset;
     const artifactId = typeof stored.id === "string" ? stored.id.trim() : "";
     const projectRelativePath = typeof stored.data?.relativePath === "string" ? stored.data.relativePath.trim() : "";
     const thumbnailRelativePath = typeof stored.data?.thumbnailRelativePath === "string" ? stored.data.thumbnailRelativePath.trim() : "";
@@ -129,7 +130,7 @@ export function createGenerationOutputMaterializer(deps: GenerationOutputMateria
       const posterStored = storeAsset(input.projectId, poster.bytes, `${path.parse(fileNameFor(input.output)).name}-poster.png`, posterType, {
         kind: "generated", source: "external-mcp", providerTaskId: input.providerTaskId,
         providerOutputId: `${input.output.providerOutputId || input.output.url}:poster`,
-      }, `${materializationKey}:poster`) as StoredAsset;
+      }, "image", `${materializationKey}:poster`) as StoredAsset;
       posterPath = typeof posterStored.data?.relativePath === "string" ? posterStored.data.relativePath.trim() : "";
     }
     return {

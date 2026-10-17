@@ -99,7 +99,7 @@ export async function framesToVideoAsset(payload: FramesToVideoPayload, options:
       kind: "generated",
       source: "camera-move",
       ownerNodeId: payload.ownerNodeId || null,
-    }, context) as { id?: string; data?: { url?: string } };
+    }, "video", context) as { id?: string; data?: { url?: string } };
     const url = record?.data?.url;
     if (!url) throw new FramesToVideoError("拼好的 mp4 写盘失败");
     return { url, assetId: record.id };

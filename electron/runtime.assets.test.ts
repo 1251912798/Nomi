@@ -224,6 +224,7 @@ describe("runtime workspace asset storage", () => {
       url: `data:image/png;base64,${PNG_BYTES.toString("base64")}`,
       fileName: "render.png",
       kind: "generated",
+      expectedKind: "image",
     })) as AssetRecord;
 
     expect(asset.data.relativePath).toBe("assets/generated/2026-05-31/render.png");
@@ -299,6 +300,7 @@ describe("runtime workspace asset storage", () => {
       url: "data:image/png;base64,aGVsbG8=",
       fileName: "capture.png",
       kind: "browser-capture",
+      expectedKind: null,
     });
     await importLocalFile({
       projectId: workspace.id,
@@ -321,8 +323,8 @@ describe("runtime workspace asset storage", () => {
     const workspace = createWorkspace();
 
     const pngUrl = `data:image/png;base64,${PNG_BYTES.toString("base64")}`;
-    await importRemoteAsset({ projectId: workspace.id, url: pngUrl, fileName: "render.png" });
-    const second = (await importRemoteAsset({ projectId: workspace.id, url: pngUrl, fileName: "render.png" })) as AssetRecord;
+    await importRemoteAsset({ projectId: workspace.id, url: pngUrl, fileName: "render.png", expectedKind: "image" });
+    const second = (await importRemoteAsset({ projectId: workspace.id, url: pngUrl, fileName: "render.png", expectedKind: "image" })) as AssetRecord;
 
     expect(second.data.relativePath).toBe("assets/generated/2026-05-31/render-2.png");
     expect(fs.readFileSync(second.data.absolutePath)).toEqual(PNG_BYTES);

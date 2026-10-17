@@ -23,9 +23,10 @@ it.each(['upload', 'generated'])('rejects %s publication after identity changes 
       const record = JSON.parse(fs.readFileSync(target, 'utf8'))
       fs.writeFileSync(target, JSON.stringify({ ...record, projectGeneration: record.projectGeneration + 1 }))
     }
-    return { bytes: Buffer.from('remote content'), contentType: 'application/octet-stream' }
+    // 0.23.x 的生成产物关口是同步的、先于身份复验：给真 PNG，让这条只测「身份变了不发布」。
+    return { bytes: fs.readFileSync(path.join(__dirname, '../providerAdapter/__fixtures__/certification-media/valid.png')), contentType: 'application/octet-stream' }
   })
-  await expect(importRemoteAsset({ projectId: project.id, url: 'https://example.com/file.bin', kind }))
+  await expect(importRemoteAsset({ projectId: project.id, url: 'https://example.com/file.bin', kind, expectedKind: kind === 'generated' ? 'image' : null }))
     .rejects.toMatchObject({ code: 'project_binding_stale' })
   expect(listProjectAssets({ projectId: project.id }).items).toEqual([])
 })
@@ -36,11 +37,13 @@ it('revokes interactive downloads without cancelling explicit background imports
   const { importRemoteAsset, listProjectAssets } = await import('./projectAssetStore')
   const project = createProject({ rootPath: temp(), name: 'remote', payload: {} })
   let current = true
+  // 生成产物要过落盘关口（字节就是说好的那一类）：用一张真 PNG，不是认不出的字节。
+  const png = fs.readFileSync(path.join(__dirname, '../providerAdapter/__fixtures__/certification-media/valid.png'))
   mock.fetch.mockImplementation(async () => {
     current = false
-    return { bytes: Buffer.from('remote content'), contentType: 'application/octet-stream' }
+    return { bytes: png, contentType: 'application/octet-stream' }
   })
-  const payload = { projectId: project.id, url: 'https://example.com/file.bin', kind: 'generated' }
+  const payload = { projectId: project.id, url: 'https://example.com/file.bin', kind: 'generated', expectedKind: 'image' as const }
   await expect(importRemoteAsset(payload, { assertCurrent() {
     if (!current) throw Object.assign(new Error('project_binding_stale'), { code: 'project_binding_stale' })
   } })).rejects.toMatchObject({ code: 'project_binding_stale' })

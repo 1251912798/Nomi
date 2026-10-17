@@ -110,6 +110,7 @@ export async function importTikhubShareUrl(payload: unknown): Promise<TikhubImpo
     projectId,
     url: resolved.playUrl,
     kind: "reference",
+    expectedKind: null,
     fileName: resolved.videoId ? `${resolved.platform}-${resolved.videoId}.mp4` : `${resolved.platform}-video.mp4`,
     sourceEvidence: evidence,
   }, (() => {
@@ -199,6 +200,7 @@ export async function importTikhubReference(payload: unknown): Promise<Reference
     projectId,
     url: mediaUrl,
     kind: "reference",
+    expectedKind: null,
     fileName: `${platform}-ref-${itemId}.mp4`,
     sourceEvidence: evidence,
   }, (() => {

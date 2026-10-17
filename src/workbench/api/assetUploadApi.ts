@@ -2,6 +2,7 @@ import { getDesktopBridge, type DesktopBridge } from '../../desktop/bridge'
 import type { TaskKind } from './taskApi'
 import type { ProjectBinding } from '../../../electron/shared/projectBinding'
 import { unwrapAssetImportResult } from '../../../electron/shared/contracts/assetImportResult'
+import type { AssetKind } from '../assets/assetTypes'
 
 export type WorkbenchAssetDto = {
   id: string
@@ -35,9 +36,12 @@ export type UploadWorkbenchAssetMeta = {
   modelKey?: string | null
   taskKind?: TaskKind | string | null
   ownerNodeId?: string | null
-  /** 资产分桶：用户上传='upload'（默认）；生成结果补救本地化='generated'（与主进程 localizeTaskAsset 同桶）。 */
-  kind?: 'upload' | 'generated'
-}
+} & (
+  /** 资产分桶：用户上传='upload'（默认）。 */
+  | { kind?: 'upload'; expectedKind?: never }
+  /** 生成结果补救本地化='generated'：必须说清它该是哪一类，主进程落盘关口按字节核（V-1213）。 */
+  | { kind: 'generated'; expectedKind: AssetKind }
+)
 
 function requireDesktopRuntime(feature: string): DesktopBridge {
   const desktop = getDesktopBridge()
@@ -106,6 +110,7 @@ export async function importWorkbenchRemoteAssetUrl(
     projectBinding: meta.projectBinding,
     url,
     kind: meta.kind || 'upload',
+    expectedKind: meta.kind === 'generated' ? meta.expectedKind : null,
     fileName: name,
     ownerNodeId: meta.ownerNodeId || null,
   })

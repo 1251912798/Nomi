@@ -520,7 +520,7 @@ export async function importBrowserMedia(record: BrowserViewRecord, payload: Bro
         ...(animatedImage ? { animated: true } : {}),
         // P0-1 来源取证（带 usageStatus: reference_only，后续导出署名清单可读取）。
         ...(browserSourceEvidence ? { sourceEvidence: browserSourceEvidence } : {}),
-      },
+      }, null
     );
   } finally {
     fs.rmSync(download.cleanupDir, { recursive: true, force: true });
@@ -567,7 +567,7 @@ async function movePromptReferenceFile(input: {
     title: input.title || null,
     mediaType: "image",
     ...(promptRefEvidence ? { sourceEvidence: promptRefEvidence } : {}),
-  });
+  }, null);
 }
 
 export async function captureBrowserPromptImage(

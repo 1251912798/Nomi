@@ -41,7 +41,7 @@ describe('asset import under Windows sharing violations', () => {
       return realRm(target, options)
     }) as typeof fs.promises.rm)
 
-    const asset = await copyAssetFile('one', source, 'photo.png', 'image/png', { kind: 'upload' }) as Asset
+    const asset = await copyAssetFile('one', source, 'photo.png', 'image/png', { kind: 'upload' }, null) as Asset
     expect(fs.readFileSync(asset.data.absolutePath)).toEqual(bytes)
     expect(listProjectAssets({ projectId: 'one' }).items).toHaveLength(1)
   })
@@ -55,7 +55,7 @@ describe('asset import under Windows sharing violations', () => {
       return realLink(existing, target)
     }) as typeof fs.linkSync)
 
-    const asset = await copyAssetFile('one', source, 'photo.png', 'image/png', { kind: 'upload' }) as Asset
+    const asset = await copyAssetFile('one', source, 'photo.png', 'image/png', { kind: 'upload' }, null) as Asset
     expect(failures).toBe(0)
     expect(fs.readFileSync(asset.data.absolutePath)).toEqual(bytes)
   })
@@ -69,7 +69,7 @@ describe('asset import under Windows sharing violations', () => {
       return realRename(from, to)
     }) as typeof fs.renameSync)
 
-    const asset = moveAssetFile('one', source, 'download.png', 'image/png', { kind: 'upload' }) as Asset
+    const asset = moveAssetFile('one', source, 'download.png', 'image/png', { kind: 'upload' }, null) as Asset
     expect(failures).toBe(0)
     expect(fs.readFileSync(asset.data.absolutePath)).toEqual(bytes)
     expect(fs.existsSync(source)).toBe(false)
