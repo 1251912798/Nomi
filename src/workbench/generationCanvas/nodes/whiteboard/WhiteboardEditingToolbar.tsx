@@ -117,7 +117,7 @@ export function WhiteboardEditingToolbar(p: WhiteboardEditingToolbarProps): Reac
       {p.onScreenshot && <ToolbarIconButton actionId="whiteboard-capture" icon={<IconCamera {...icon} />} title={p.screenshotLabel} ariaLabel={p.screenshotLabel} onClick={p.onScreenshot} disabled={p.screenshotBusy} />}
       <ToolbarButton actionId="whiteboard-done" icon={null} label={label('done')} accent disabled={p.screenshotBusy || p.uploading || p.removeBgBusy} onClick={p.onDone} />
     </FloatingToolbarShell>
-    {p.panel && <ToolbarActionPanel trackTransforms anchorRef={anchorRef} boundaryRect={boundaryRect} align="center" side="bottom" gap={8} onClose={close}>
+    {p.panel && <ToolbarActionPanel anchorRef={anchorRef} boundaryRect={boundaryRect} align="center" side="bottom" gap={8} onClose={close}>
       <div data-whiteboard-panel={p.panel} className="nodrag nopan nokey nowheel w-max max-w-[560px] overflow-hidden rounded-nomi border border-nomi-line bg-nomi-paper text-nomi-ink shadow-nomi-md" onPointerDown={event => event.stopPropagation()} onKeyDown={event => event.stopPropagation()}>
         {p.panel === 'colors' ? <div className="flex items-center gap-2 p-2">
           {COMMON_COLORS.map(color => <button type="button" key={color} aria-label={t('generationCommon.whiteboard.colorAria', { color })} aria-pressed={color === p.color} className="size-6 rounded-full border border-nomi-line focus-visible:outline-nomi-ink" style={{ backgroundColor: color }} onClick={() => p.onColorChange(color)} />)}

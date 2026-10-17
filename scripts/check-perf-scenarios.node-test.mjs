@@ -218,3 +218,21 @@ test('knownScenarios 带出场景本身（PR 头的覆盖基线的），证据�
   assert.deepEqual(known.ids, ['sample-drag'])
   assert.equal(known.byId.get('sample-drag').budget, 40)
 })
+
+test('内联画板量具的读结果：失败 / 带渲染异常的样本整份丢掉，各场景只读自己量的那几项', () => {
+  const driver = DRIVERS['tests/ux/whiteboard-perf.probe.mjs']
+  const good = { rendererErrors: [], openToInteractiveMs: 420, openLongTasks: 1, idleBusyPct: 0.2, idleRectReadsPerSec: 0, idleLayoutsPerSec: 0 }
+  const values = driver.readRuns({ samples: [
+    good,
+    { ...good, error: 'Error: timed out' },
+    { ...good, rendererErrors: ['renderer exception'] },
+    { ...good, rendererErrors: undefined },
+    { rendererErrors: [], typeResponseP95Ms: 18, frameP95Ms: 6.2, longTasks: 0, panelFramesOff: 12 },
+  ] })
+  assert.deepEqual(values.openToInteractive, [420])
+  assert.deepEqual(values.idleBusyPct, [0.2])
+  assert.deepEqual(values.response, [18])
+  assert.deepEqual(values.longTasks, [1, 0]) // 打开阶段的长任务；拖动场景自己的长任务优先
+  assert.deepEqual(values.panelFramesOff, [12])
+  assert.deepEqual(driver.readRuns({}), { openToInteractive: [], response: [], frameGapP95: [], longTasks: [], idleRectReadsPerSec: [], idleBusyPct: [], idleLayoutsPerSec: [], panelFramesOff: [] })
+})

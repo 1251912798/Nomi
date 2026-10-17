@@ -88,8 +88,6 @@ export type AnchoredPopoverProps = {
   onClose?: () => void
   /** 纯展示浮层（悬停预览）：不接鼠标事件，指针穿过它去碰下面的东西。 */
   passThrough?: boolean
-  /** Canvas transform gestures move anchors without DOM layout changes; observe only while this panel is open. */
-  trackTransforms?: boolean
   children: React.ReactNode
 }
 
@@ -116,7 +114,6 @@ export function AnchoredPopover({
   zIndex,
   onClose,
   passThrough = false,
-  trackTransforms = false,
   children,
 }: AnchoredPopoverProps): JSX.Element {
   const fallbackAnchorRef = React.useRef<HTMLSpanElement>(null)
@@ -154,14 +151,17 @@ export function AnchoredPopover({
   // 两段式：先按估计尺寸放一次，渲染后按实测尺寸修正（修正前 visibility:hidden，不闪）。
   React.useLayoutEffect(reposition, [reposition])
 
-  // One framework watcher owns scroll, ancestor/element resize and anchor layout shifts.
-  // Canvas callers also observe transform motion; autoUpdate tears everything down on close.
+  // One framework watcher owns scroll, ancestor/element resize and anchor layout shifts. The last one is an
+  // IntersectionObserver on the anchor, so it also sees an anchor moved by a transform (canvas zoom / pan / node
+  // move) that changed no layout. Do not add `animationFrame`: it reads the anchor rect on every frame for as long
+  // as the popover is open, moving or not (measured 165 rect reads/s and ~2% of the main thread while idle; the
+  // dynamic-anchor walk follows equally well without it). autoUpdate tears everything down on close.
   React.useEffect(() => {
     const anchor = anchorRef?.current ?? fallbackAnchorRef.current
     const pop = popRef.current
     if (!anchor || !pop) return undefined
-    return autoUpdate(anchor, pop, reposition, { animationFrame: trackTransforms })
-  }, [anchorRef, reposition, trackTransforms])
+    return autoUpdate(anchor, pop, reposition)
+  }, [anchorRef, reposition])
 
   const dismissOnEscape = React.useCallback((event: KeyboardEvent) => {
     if (!onClose || event.key !== 'Escape') return false

@@ -9,7 +9,7 @@ import path from 'node:path'
 
 export const SCENARIO_DIR = 'tests/perf/scenarios'
 /** 可选的指标。登记表的 budget / baseline 对应 metrics[0]（主指标），其余指标只打印、不判。 */
-export const METRICS = Object.freeze(['response', 'frameGapP95', 'longTasks', 'openToInteractive', 'mainRoundTripMax'])
+export const METRICS = Object.freeze(['response', 'frameGapP95', 'longTasks', 'openToInteractive', 'mainRoundTripMax', 'idleRectReadsPerSec', 'idleBusyPct', 'idleLayoutsPerSec', 'panelFramesOff'])
 export const MIN_RUNS = 5
 /** 预算状态：proposed = 实现线提议、等安静窗口量完基线由协调定；approved = 已定。不写 = 已定（老条目）。 */
 export const BUDGET_STATUSES = Object.freeze(['proposed', 'approved'])
@@ -58,6 +58,28 @@ export const DRIVERS = Object.freeze({
     readRuns(payload) {
       const complete = (payload.samples ?? []).filter((sample) => !sample.error && Array.isArray(sample.rendererErrors) && sample.rendererErrors.length === 0 && sample.performance?.frames >= 30 && sample.checks?.includes('no renderer exceptions') && Number.isFinite(sample.performance.frameP95Ms) && Array.isArray(sample.performance.longTasks))
       return { frameGapP95: complete.map((sample) => sample.performance.frameP95Ms), longTasks: complete.map((sample) => sample.performance.longTasks.length) }
+    },
+  },
+  // 内联画板的四个场景（tests/ux/whiteboard-perf.probe.mjs，--scene 选；CDP Performance.getMetrics + 页内 rAF / PerformanceObserver + 共用 response 计时器）：
+  //   idle-panel：面板开着不动时每秒读矩形次数 / 布局+样式重算次数 / 主线程忙碌占比；open-type：点「画板」到能操作 + 打字响应；
+  //   many-images：画布上 24 张可见图片时在画板里拖图的帧间隔与长任务；moving-panel：画布滚轮缩放时面板偏离锚点的帧数。
+  'tests/ux/whiteboard-perf.probe.mjs': {
+    supports: ['openToInteractive', 'response', 'frameGapP95', 'longTasks', 'idleRectReadsPerSec', 'idleBusyPct', 'idleLayoutsPerSec', 'panelFramesOff'],
+    buildArgs: (script, args, { runs, label }) => [script, ...args, '--runs', String(runs), '--label', label],
+    resultFile: (label) => `tests/ux/shots/whiteboard-perf/${label}/report.json`,
+    readRuns(payload) {
+      const complete = (payload.samples ?? []).filter((sample) => !sample.error && Array.isArray(sample.rendererErrors) && sample.rendererErrors.length === 0)
+      const pick = (key) => complete.map((sample) => sample[key]).filter(isNumber)
+      return {
+        openToInteractive: pick('openToInteractiveMs'),
+        response: pick('typeResponseP95Ms'),
+        frameGapP95: pick('frameP95Ms'),
+        longTasks: complete.map((sample) => sample.longTasks ?? sample.openLongTasks).filter(isNumber),
+        idleRectReadsPerSec: pick('idleRectReadsPerSec'),
+        idleBusyPct: pick('idleBusyPct'),
+        idleLayoutsPerSec: pick('idleLayoutsPerSec'),
+        panelFramesOff: pick('panelFramesOff'),
+      }
     },
   },
   // 打开项目到能操作（分阶段计时，用户每天早上那一下 = cold）；带 --library-projects 时另量「回项目库 → 卡片全到位」（response）。
