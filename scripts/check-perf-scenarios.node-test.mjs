@@ -144,6 +144,21 @@ test('PR 证据行：格式、未验证不算通过、不适用要有理由、id
   assert.deepEqual(scenarioIds([{ data: { id: 'a' } }, { data: null }]), ['a'])
 })
 
+
+test('whiteboard driver rejects failed and incomplete journeys even when frame samples exist', () => {
+  const driver = DRIVERS['tests/ux/whiteboard-refactor.walk.mjs']
+  const complete = { rendererErrors: [], checks: ['no renderer exceptions'], performance: { frames: 368, frameP95Ms: 10, longTasks: [] } }
+  assert.deepEqual(driver.readRuns({ samples: [
+    complete,
+    { ...complete, error: 'capture toolbar clipped' },
+    { ...complete, rendererErrors: ['renderer exception'] },
+    { ...complete, checks: [] },
+    { ...complete, performance: { ...complete.performance, frames: 2 } },
+    { ...complete, performance: { ...complete.performance, frameP95Ms: null } },
+  ] }), { frameGapP95: [10], longTasks: [0] })
+  assert.deepEqual(driver.readRuns({}), { frameGapP95: [], longTasks: [] })
+})
+
 // ── 欠账（已知超预算）与待测 ───────────────────────────────────────────────────────────────────────────────────
 const debt = { owner: 'P-sample', state: 'assigned', note: '每帧全局查询，修复线在改', since: '2026-10-16' }
 const overBudget = (overrides = {}) => goodScenario({ baseline: { median: 40, p95: 44, runs: 5, machine: 'test', date: '2026-10-16', commit: 'abc1234' }, ...overrides })
@@ -202,4 +217,22 @@ test('knownScenarios 带出场景本身（PR 头的覆盖基线的），证据�
   const known = knownScenarios({ baseEntries, prFiles })
   assert.deepEqual(known.ids, ['sample-drag'])
   assert.equal(known.byId.get('sample-drag').budget, 40)
+})
+
+test('内联画板量具的读结果：失败 / 带渲染异常的样本整份丢掉，各场景只读自己量的那几项', () => {
+  const driver = DRIVERS['tests/ux/whiteboard-perf.probe.mjs']
+  const good = { rendererErrors: [], openToInteractiveMs: 420, openLongTasks: 1, idleBusyPct: 0.2, idleRectReadsPerSec: 0, idleLayoutsPerSec: 0 }
+  const values = driver.readRuns({ samples: [
+    good,
+    { ...good, error: 'Error: timed out' },
+    { ...good, rendererErrors: ['renderer exception'] },
+    { ...good, rendererErrors: undefined },
+    { rendererErrors: [], typeResponseP95Ms: 18, frameP95Ms: 6.2, longTasks: 0, panelFramesOff: 12 },
+  ] })
+  assert.deepEqual(values.openToInteractive, [420])
+  assert.deepEqual(values.idleBusyPct, [0.2])
+  assert.deepEqual(values.response, [18])
+  assert.deepEqual(values.longTasks, [1, 0]) // 打开阶段的长任务；拖动场景自己的长任务优先
+  assert.deepEqual(values.panelFramesOff, [12])
+  assert.deepEqual(driver.readRuns({}), { openToInteractive: [], response: [], frameGapP95: [], longTasks: [], idleRectReadsPerSec: [], idleBusyPct: [], idleLayoutsPerSec: [], panelFramesOff: [] })
 })

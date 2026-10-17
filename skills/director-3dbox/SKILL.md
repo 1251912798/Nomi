@@ -1,10 +1,9 @@
 ---
 name: director-3dbox
-description: 3D-BOX 导演预演工作流——一句话搭出白盒场景、走位和多镜机位，按实测景别 / 运镜对照用户的话，聊着按名字改，用户满意后把整段预演当参考视频交给生成环节。仅在开启 3D-BOX 的构建里可选。
+description: 3D-BOX 导演预演工作流——一句话搭出白盒场景、走位和多镜机位，按实测景别 / 运镜对照用户的话，聊着按名字改，用户满意后把整段预演当参考视频交给生成环节。
 metadata:
   nomi:
     selectable-in-workbench: true
-    requires-flag: director3dbox
     available-since: 0.24.0
     audience: internal
     version: 1.1.0

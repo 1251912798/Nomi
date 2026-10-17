@@ -1,7 +1,7 @@
 /* eslint-disable react-hooks/exhaustive-deps -- Migrated Leafer canvas keeps imperative renderer state in refs (stable identities), intentionally omitted from dep arrays. */
 import { useCallback, useEffect } from 'react'
 import { getCanvasPointFromClient } from './lib/pointer'
-import type { CanvasAsset, CanvasDimensions, LayerItem, ToolKey } from './lib/canvas'
+import type { CanvasAsset, CanvasText, CanvasDimensions, LayerItem, ToolKey } from './lib/canvas'
 import type {
   CanvasAssetTransform,
   CanvasObjectFlipState,
@@ -27,6 +27,7 @@ type ContextMenuState = { x: number; y: number; targets: CanvasObjectTarget[] }
 
 export type WhiteboardSelectionActionsRefs = {
   activeObjectTargetRef: RefLike<CanvasObjectTarget | null | undefined>
+  textsRef: RefLike<CanvasText[]>
   assetsRef: RefLike<CanvasAsset[]>
   strokesRef: RefLike<import('./whiteboardCanvasTypes').CanvasStroke[]>
   layersRef: RefLike<LayerItem[]>
@@ -47,6 +48,7 @@ export type WhiteboardSelectionActionsRefs = {
 }
 
 export type WhiteboardSelectionActionsProps = {
+  commitSceneTransforms: () => void
   activeTool: ToolKey
   dimensions: CanvasDimensions
   contextMenu: ContextMenuState | null
@@ -62,6 +64,7 @@ export function useWhiteboardSelectionActions(
   const {
     activeObjectTargetRef,
     assetsRef,
+    textsRef,
     strokesRef,
     layersRef,
     objectFlipStatesRef,
@@ -79,7 +82,7 @@ export function useWhiteboardSelectionActions(
     onLayerSelectRef,
     onObjectSelectRef,
   } = refs
-  const { activeTool, dimensions, contextMenu, updateSelectedObjectTargets, setContextMenu, setRenderReadyVersion } =
+  const { commitSceneTransforms, activeTool, dimensions, contextMenu, updateSelectedObjectTargets, setContextMenu, setRenderReadyVersion } =
     props
 
   const getEditableSelectedTarget = useCallback(() => {
@@ -88,7 +91,7 @@ export function useWhiteboardSelectionActions(
       return null
     }
 
-    const layerId = getLayerIdForCanvasObject(target, assetsRef.current, strokesRef.current)
+    const layerId = getLayerIdForCanvasObject(target, assetsRef.current, strokesRef.current, textsRef.current)
     const layer = layerId ? layersRef.current.find((item) => item.id === layerId) : null
 
     if (!layer || layer.locked || !layer.visible || layer.kind === 'background') {
@@ -123,6 +126,7 @@ export function useWhiteboardSelectionActions(
         }
       }
 
+      commitSceneTransforms()
       setRenderReadyVersion((version) => version + 1)
       return true
     },
@@ -161,6 +165,7 @@ export function useWhiteboardSelectionActions(
         | undefined
       node?.flip?.(axis)
       setContextMenu(null)
+      commitSceneTransforms()
       setRenderReadyVersion((version) => version + 1)
     },
     [contextMenu?.targets, getEditableSelectedTarget]
@@ -176,7 +181,7 @@ export function useWhiteboardSelectionActions(
     const multiTargets = getActiveMultiSelectionTargets(selectedTargets, multiSelectedObjectTargetsRef.current)
     const targets = menuTargets.length > 1 ? menuTargets : multiTargets
     const groupableTargets = targets.filter(
-      (target) => target.kind === 'asset' || target.kind === 'stroke' || target.kind === 'group'
+      (target) => target.kind === 'asset' || target.kind === 'stroke' || target.kind === 'group' || target.kind === 'text'
     )
 
     if (groupableTargets.length < 2) {
@@ -260,7 +265,8 @@ export function useWhiteboardSelectionActions(
               assetsRef.current,
               strokesRef.current,
               objectOffsetsRef.current,
-              assetTransformsRef.current
+              assetTransformsRef.current,
+              textsRef.current
             )
           : null
 
@@ -283,7 +289,8 @@ export function useWhiteboardSelectionActions(
         assetsRef.current,
         strokesRef.current,
         objectOffsetsRef.current,
-        assetTransformsRef.current
+        assetTransformsRef.current,
+              textsRef.current
       )
 
       if (!hit) {
@@ -317,35 +324,11 @@ export function useWhiteboardSelectionActions(
     [activeTool, dimensions, updateSelectedObjectTargets]
   )
 
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.defaultPrevented || isEditableKeyboardTarget(event.target)) {
-        return
-      }
-
-      if (event.key === 'Delete' || event.key === 'Backspace') {
-        if (deleteSelectedTarget()) {
-          event.preventDefault()
-        }
-        return
-      }
-
-      const step = event.shiftKey ? 10 : 1
-      const moveDelta = getKeyboardMoveDelta(event.key, step)
-      if (!moveDelta) {
-        return
-      }
-
-      if (moveSelectedTarget(moveDelta.x, moveDelta.y)) {
-        event.preventDefault()
-      }
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown)
-    }
+  const handleKeyDown = useCallback((event: KeyboardEvent): boolean => {
+    if (event.defaultPrevented || isEditableKeyboardTarget(event.target)) return false
+    if (event.key === 'Delete' || event.key === 'Backspace') return deleteSelectedTarget()
+    const delta = getKeyboardMoveDelta(event.key, event.shiftKey ? 10 : 1)
+    return delta ? moveSelectedTarget(delta.x, delta.y) : false
   }, [deleteSelectedTarget, moveSelectedTarget])
 
   useEffect(() => {
@@ -379,6 +362,8 @@ export function useWhiteboardSelectionActions(
   }, [contextMenu])
 
   return {
+    handleKeyDown,
+    deleteSelectedTarget,
     flipSelectedTarget,
     groupSelectedTargets,
     handleGroupMenuPointerDown,

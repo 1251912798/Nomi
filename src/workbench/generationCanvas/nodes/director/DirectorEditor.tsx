@@ -4,10 +4,10 @@
  *          ./model/directorStore 的 createDirectorStore、./DirectorEditorContext、
  *          ./scene/ViewportApiContext、
  *          ./scene/viewSettings（偏好读写）、./useDirectorHotkeys、./useMobileCamera、./MobileCameraContext、
- *          ./panels/dialogs/{MobileConnectDialog, SettingsDialog, HelpDialog}、./model/directorTypes、./DirectorViewShell、./DirectorRefineShell、./directorSessionRegistry、../../../../featureFlags/director3dbox
+ *          ./panels/dialogs/{MobileConnectDialog, SettingsDialog, HelpDialog}、./model/directorTypes、./DirectorViewShell、./DirectorRefineShell、./directorSessionRegistry、./directorEditorPersistence（写回规矩的唯一 owner）
  *          ./model/cameraCoordinateSpace / sceneObjectGraph 的当前世界视角转图层局部位姿、创建模式取消登记
- * [OUTPUT]: 对外提供 DirectorEditor（default）：全屏壳 —— 精修（DirectorRefineShell：顶栏 / 满宽视口 / 选中才出的属性卡 / 时间轴）+ 退出确认 + 自动保存 +
- *           开关开启时提供占画布区的导演视图外壳，镜头条只读且沿用实测模块；编辑器会话登记为外部 AI 写入入口
+ * [OUTPUT]: 对外提供 DirectorEditor（default）：全屏壳 —— 精修（DirectorRefineShell：顶栏 / 满宽视口 / 选中才出的属性卡 / 时间轴）+ 退出确认 + 写回接线（规矩住 directorEditorPersistence）+
+ *           占画布区的导演视图外壳（默认；2026-10-16 起唯一的导演台，开关与旧导演台已删），镜头条只读且沿用实测模块；编辑器会话登记为外部 AI 写入入口
  *           区域感知快捷键 + 手机虚拟相机桥 + 本机偏好（漫游 / 灵敏度 / 视口主题）与设置 / 帮助对话框
  * [POS]: director 的页面根：创建并注入 store 与视口 API，负责「打开/关闭/写回」生命周期与区域布局（方案 §4.0 O1–O5）。
  *        壳从 Windows 自绘窗口栏之下起画（不是 inset-0 铺满）：那条 32px 是系统拖拽带，盖住它顶部工具条
@@ -48,10 +48,13 @@ import { transformCameraPose } from './model/cameraCoordinateSpace'
 import { invertFrame, sceneFrame } from './model/sceneObjectGraph'
 import { orderedTimelineEntities } from './model/timelineTracks'
 import { registerDirectorSession } from './directorSessionRegistry'
-import { createDirectorNodeSync, type DirectorNodeSync } from './directorNodeSync'
-import { registerEmbeddedEditorFlush } from '../../agent/embeddedEditorFlush'
+import { createDirectorEditorPersistence, type DirectorEditorPersistence } from './directorEditorPersistence'
+import { prepareProduceFromPreview } from './agent/directorProduce'
+import { readDirectorPreview } from './model/directorPreviewState'
+import type { ProduceControl } from './panels/topbar/ProduceButton'
+import { useGenerationCanvasStore } from '../../store/generationCanvasStore'
+import { viewNodeInCanvas } from '../../../generation/list/generationListSource'
 import { createEditorShotFocusSession } from './directorShotFocusSession'
-import { isDirector3DBoxEnabled } from '../../../../featureFlags/director3dbox'
 import { DirectorViewShell, type DirectorViewMode } from './DirectorViewShell'
 import { DirectorRefineShell } from './DirectorRefineShell'
 import { useWorkbenchStore } from '../../../workbenchStore'
@@ -72,8 +75,6 @@ export type DirectorEditorProps = {
   onProjectChange: (project: DirectorProject) => void
 }
 
-const AUTOSAVE_IDLE_MS = 2000
-
 const TIMELINE_COLLAPSED_KEY = 'nomi:director:timelineCollapsed'
 
 function readTimelineCollapsed(): boolean {
@@ -93,6 +94,7 @@ type EditorBodyProps = {
   nodeId?: string
   onSendToCanvas?: (output: DirectorOutput) => void
   onExternalProjectChange?: (project: DirectorProject) => void
+  produce: ProduceControl
 }
 
 type EditorStageProps = {
@@ -106,10 +108,9 @@ type EditorStageProps = {
   onExit: () => void
   onOpenSettings: () => void
   onOpenHelp: () => void
-  director3dBox: boolean
   viewMode: DirectorViewMode
   onViewModeChange: (mode: DirectorViewMode) => void
-  onProduce: () => void
+  produce: ProduceControl
 }
 
 /**
@@ -117,7 +118,7 @@ type EditorStageProps = {
  * 而那个 Provider 是 EditorBody 渲染的 —— 在 EditorBody 自己的函数体里调，拿到的是 provider 之外的空值，
  * useViewportApi() 当场抛错、整块懒加载壳落到「加载失败」（2026-09-09 真机走查抓到）。
  */
-function EditorStage({ nodeTitle, scopeRef, preferences, cancelCreationRef, timelineCollapsed, onToggleTimeline, onResetView, onExit, onOpenSettings, onOpenHelp, director3dBox, viewMode, onViewModeChange, onProduce }: EditorStageProps): JSX.Element {
+function EditorStage({ nodeTitle, scopeRef, preferences, cancelCreationRef, timelineCollapsed, onToggleTimeline, onResetView, onExit, onOpenSettings, onOpenHelp, viewMode, onViewModeChange, produce }: EditorStageProps): JSX.Element {
   const { t } = useTranslation()
   // 创建模式只调一次 hook，经 CreationModeContext 下发：视口要指针路由与 ghost ref，顶栏「＋添加」要能发起。
   // 两处各调一次 = 两份互不知情的模式状态（P1 的并行版）。
@@ -129,7 +130,7 @@ function EditorStage({ nodeTitle, scopeRef, preferences, cancelCreationRef, time
   const creationMode = React.useMemo(() => ({ placement, boxDraw }), [placement, boxDraw])
   // 时间轴上一个实体都没有时把它钉成一条：比例记忆不动，加了轨道立刻回到用户自己的分栏
   const timelineEmpty = useDirectorStore((state) => orderedTimelineEntities(state.activeScene()).length === 0)
-  if (director3dBox && viewMode === 'director') {
+  if (viewMode === 'director') {
     return <DirectorViewShell
       nodeTitle={nodeTitle}
       scopeRef={scopeRef}
@@ -140,10 +141,10 @@ function EditorStage({ nodeTitle, scopeRef, preferences, cancelCreationRef, time
       viewSettings={preferences.view}
       onExit={onExit}
       onViewModeChange={onViewModeChange}
-      onProduce={onProduce}
+      produce={produce}
     />
   }
-  // 精修 = 「选中才出」（2026-10-04 用户拍板方向 A）：3D-BOX 开关开时的「精修」与开关关时的旧导演台是同一个壳
+  // 精修 = 「选中才出」（2026-10-04 用户拍板方向 A）
   return (
     <CreationModeContext.Provider value={creationMode}>
       <DirectorRefineShell
@@ -160,13 +161,13 @@ function EditorStage({ nodeTitle, scopeRef, preferences, cancelCreationRef, time
         onExit={onExit}
         onOpenSettings={onOpenSettings}
         onOpenHelp={onOpenHelp}
-        viewMode={director3dBox ? { value: viewMode, onChange: onViewModeChange } : undefined}
+        viewMode={{ value: viewMode, onChange: onViewModeChange }}
       />
     </CreationModeContext.Provider>
   )
 }
 
-function EditorBody({ nodeTitle, scopeRef, onExit, preferences, onChangePreferences, nodeId, onSendToCanvas, onExternalProjectChange }: EditorBodyProps): JSX.Element {
+function EditorBody({ nodeTitle, scopeRef, onExit, preferences, onChangePreferences, nodeId, onSendToCanvas, onExternalProjectChange, produce }: EditorBodyProps): JSX.Element {
   const apiRef = React.useRef<ViewportApi | null>(null)
   const cancelCreationRef = React.useRef<(() => void) | null>(null)
   const store = useDirectorStoreApi()
@@ -176,7 +177,6 @@ function EditorBody({ nodeTitle, scopeRef, onExit, preferences, onChangePreferen
   const outputs = useDirectorOutputs({ apiRef, ownerNodeId: nodeId, onSendToCanvas })
   const [settingsOpen, setSettingsOpen] = React.useState(false)
   const [helpOpen, setHelpOpen] = React.useState(false)
-  const director3dBox = isDirector3DBoxEnabled()
   const [viewMode, setViewMode] = React.useState<DirectorViewMode>('director')
   const [timelineCollapsed, setTimelineCollapsed] = React.useState(readTimelineCollapsed)
   const toggleTimeline = React.useCallback(() => {
@@ -195,8 +195,8 @@ function EditorBody({ nodeTitle, scopeRef, onExit, preferences, onChangePreferen
     defaultSceneName: t('director.node.sceneDefaultName'),
     onExternalProjectChange,
     // 3D-BOX：「正在改：镜头 N」的读口（Agent 发送时带上；输入框上的标签订阅它）
-    ...(director3dBox && nodeId ? createEditorShotFocusSession(nodeId, store) : {}),
-  }), [director3dBox, nodeId, onExternalProjectChange, store, t])
+    ...(nodeId ? createEditorShotFocusSession(nodeId, store) : {}),
+  }), [nodeId, onExternalProjectChange, store, t])
 
   useDirectorHotkeys({
     scopeRef,
@@ -246,10 +246,9 @@ function EditorBody({ nodeTitle, scopeRef, onExit, preferences, onChangePreferen
         onExit={onExit}
         onOpenSettings={() => setSettingsOpen(true)}
         onOpenHelp={() => setHelpOpen(true)}
-        director3dBox={director3dBox}
         viewMode={viewMode}
         onViewModeChange={setViewMode}
-        onProduce={() => undefined}
+        produce={produce}
       />
       <MobileConnectDialog />
       <SettingsDialog
@@ -291,23 +290,15 @@ export default function DirectorEditor({ rawProject, nodeTitle, readOnly = false
     storeRef.current = createDirectorStore({ rawProject, defaultSceneName: t('director.node.sceneDefaultName') })
   }
   const store = storeRef.current
-  const director3dBox = isDirector3DBoxEnabled()
   const assistantWidth = useWorkbenchStore((state) => state.editingPanelLayout.assistantWidth)
   const assistantCollapsed = useWorkbenchStore((state) => state.projectAgentDockCollapsed)
   const onProjectChangeRef = React.useRef(onProjectChange)
   onProjectChangeRef.current = onProjectChange
-  // 3D-BOX：store ↔ 节点 meta 的同步账（一个写者、一本历史）；开关关时不建，行为与旧导演台一致
-  const syncRef = React.useRef<DirectorNodeSync | null>(null)
-  if (director3dBox && !syncRef.current) {
-    syncRef.current = createDirectorNodeSync({ store, defaultSceneName: t('director.node.sceneDefaultName'), initialRaw: rawProject, write: (project) => onProjectChangeRef.current(project) })
-  }
-  // 最近一次落盘时 store 里的工程：退出时没变就不写（只是打开看一眼，不把读时迁移的结果写回去——旧人偶工程改了才落盘）
-  const savedProjectRef = React.useRef(store.getState().project)
-  const persistProject = React.useCallback((project: DirectorProject) => {
-    savedProjectRef.current = store.getState().project
-    if (syncRef.current) syncRef.current.persist(project)
-    else onProjectChangeRef.current(project)
-  }, [store])
+  // 写回规矩（一个写者、外部改动重载、空闲自动保存、撤销前落盘）只有 directorEditorPersistence 一个家，不看界面模式（导演 / 精修）。
+  // 打开看一眼不写（读时迁移的结果不写回去——旧人偶工程改了才落盘）。
+  const persistenceRef = React.useRef<DirectorEditorPersistence | null>(null)
+  if (!persistenceRef.current) persistenceRef.current = createDirectorEditorPersistence({ store, defaultSceneName: t('director.node.sceneDefaultName'), initialRaw: rawProject, write: (project) => onProjectChangeRef.current(project) })
+  const persistence = persistenceRef.current
   // 读档时把旧人偶迁成了 UAL 且有动作 / 手调骨骼没法原样保留：打开时说一次（不写进工程）
   const migrationToastShownRef = React.useRef(false)
   React.useEffect(() => {
@@ -316,16 +307,12 @@ export default function DirectorEditor({ rawProject, nodeTitle, readOnly = false
     const note = ualMigrationNoteOf(store.getState().project)
     if (note && note.approximatedActions + note.droppedBoneKeys > 0) toast(t('director.editor.ualMigrated', { actions: note.approximatedActions, bones: note.droppedBoneKeys }), 'info')
   }, [store, t])
-  // 节点上的工程被外部换掉（Agent 撤销一笔 stage_shot）→ 编辑器当场重载；自己写出去的那份回来不算
+  // 节点上的工程被外部换掉（Agent 撤销 / 画布 ⌘Z）→ 编辑器当场重载；自己写出去的那份回来不算
   React.useEffect(() => {
-    if (!readOnly) syncRef.current?.adoptNodeProject(rawProject)
-  }, [rawProject, readOnly])
-  // 提议事务 / Agent 撤销开始前先把没落盘的手改落盘（撤销基线里要有它们）
-  React.useEffect(() => {
-    const sync = syncRef.current
-    if (!sync || readOnly) return undefined
-    return registerEmbeddedEditorFlush(sync.saveNow)
-  }, [readOnly])
+    if (!readOnly) persistence.adoptNodeProject(rawProject)
+  }, [persistence, rawProject, readOnly])
+  // 空闲自动保存 + 提议事务 / 撤销前先落盘
+  React.useEffect(() => (readOnly ? undefined : persistence.start()), [persistence, readOnly])
   const scopeRef = React.useRef<DirectorHotkeyScope>('viewport')
   // 偏好（漫游 / 灵敏度 / 视口主题）只存本机：改一次立刻生效并落 localStorage，不入工程不进撤销栈
   const [preferences, setPreferences] = React.useState<DirectorPreferences>(readDirectorPreferences)
@@ -333,28 +320,6 @@ export default function DirectorEditor({ rawProject, nodeTitle, readOnly = false
     setPreferences(next)
     writeDirectorPreferences(next)
   }, [])
-
-  // 自动保存：工程变化后 2s 空闲写回一次（崩溃保护）；退出时还有没落盘的改动才再写一次
-  React.useEffect(() => {
-    if (readOnly) return undefined
-    let timer: number | null = null
-    let lastProject = store.getState().project
-    const unsubscribe = store.subscribe((state) => {
-      if (state.project === lastProject) return
-      lastProject = state.project
-      if (timer !== null) window.clearTimeout(timer)
-      timer = window.setTimeout(() => {
-        timer = null
-        // 3D-BOX：外部重载 / 已落盘的工程不再写一遍（多写一遍会在画布历史里多出一条、挡住撤销）
-        if (syncRef.current && !syncRef.current.isDirty()) return
-        persistProject(store.getState().exportProject())
-      }, AUTOSAVE_IDLE_MS)
-    })
-    return () => {
-      unsubscribe()
-      if (timer !== null) window.clearTimeout(timer)
-    }
-  }, [persistProject, readOnly, store])
 
   // body 滚动锁（与 V1 壳同机制）
   React.useEffect(() => {
@@ -370,6 +335,32 @@ export default function DirectorEditor({ rawProject, nodeTitle, readOnly = false
     }
   }, [])
 
+  // 「出成片」（设计卡 docs/plan/2026-10-16-director-3dbox-produce-design-card.md，选项 A）：只做准备，不花钱——
+  // 先把没落盘的手改落盘（预演过期判据与重渲都读节点上的工程），预演最新就挂到视频镜头、回画布选中它；
+  // 过期 / 没出过 → 请求重渲并记下「在等」，预演好了自动接着做；用户点节点 ↑ 才花钱。
+  const [producePending, setProducePending] = React.useState(false)
+  const produce = React.useCallback(() => {
+    if (readOnly || !nodeId) return
+    persistence.saveNow()
+    const outcome = prepareProduceFromPreview(nodeId, store.getState().exportProject())
+    if (outcome.kind === 'rendering') {
+      setProducePending(true)
+      return
+    }
+    setProducePending(false)
+    if (outcome.kind === 'blocked') return
+    if (outcome.toast) toast(outcome.toast.message, outcome.toast.level)
+    onClose()
+    viewNodeInCanvas(outcome.videoNodeId)
+  }, [nodeId, onClose, persistence, readOnly, store])
+  const previewStatus = useGenerationCanvasStore((state) => (nodeId ? readDirectorPreview(state.nodes.find((node) => node.id === nodeId))?.status : undefined))
+  React.useEffect(() => {
+    if (!producePending) return
+    if (previewStatus === 'ready') produce()
+    else if (previewStatus === 'failed') setProducePending(false)
+  }, [previewStatus, produce, producePending])
+  const produceControl = React.useMemo<ProduceControl>(() => ({ nodeId, readOnly, pending: producePending, onProduce: produce }), [nodeId, produce, producePending, readOnly])
+
   const handleExit = React.useCallback(async () => {
     const ok = await confirmDialog({
       title: t('director.editor.exitConfirmTitle'),
@@ -377,9 +368,9 @@ export default function DirectorEditor({ rawProject, nodeTitle, readOnly = false
       confirmLabel: t('director.editor.exitConfirmOk'),
     })
     if (!ok) return
-    if (!readOnly && store.getState().project !== savedProjectRef.current) persistProject(store.getState().exportProject())
+    if (!readOnly) persistence.saveNow()
     onClose()
-  }, [onClose, persistProject, readOnly, store, t])
+  }, [onClose, persistence, readOnly, t])
 
   // Esc 归属（O5）：浮层/模式先吃；再清工具 + 选择；再退 POV；都没有 → 退出确认
   React.useEffect(() => {
@@ -423,15 +414,12 @@ export default function DirectorEditor({ rawProject, nodeTitle, readOnly = false
       <TooltipProvider>
         <div
           className="fixed inset-x-0 bottom-0 isolate flex flex-col overflow-hidden bg-nomi-bg text-nomi-ink font-nomi-sans"
-          style={director3dBox
-            ? { top: currentFullscreenOverlayTopOffset(), right: assistantCollapsed ? 0 : assistantPaneWidth(assistantWidth), zIndex: FULLSCREEN_Z_INDEX }
-            : { top: currentFullscreenOverlayTopOffset(), zIndex: FULLSCREEN_Z_INDEX }}
+          style={{ top: currentFullscreenOverlayTopOffset(), right: assistantCollapsed ? 0 : assistantPaneWidth(assistantWidth), zIndex: FULLSCREEN_Z_INDEX }}
           role="dialog"
           aria-modal="true"
           aria-label={nodeTitle ? `${t('director.editor.aria')} · ${nodeTitle}` : t('director.editor.aria')}
           tabIndex={0}
           data-testid="director-editor"
-          data-director-3dbox={director3dBox ? 'on' : undefined}
           onKeyDown={(event) => event.stopPropagation()}
           onKeyUp={(event) => event.stopPropagation()}
           onPointerDown={(event) => event.stopPropagation()}
@@ -445,7 +433,8 @@ export default function DirectorEditor({ rawProject, nodeTitle, readOnly = false
             onChangePreferences={changePreferences}
             nodeId={nodeId}
             onSendToCanvas={onSendToCanvas}
-            onExternalProjectChange={persistProject}
+            onExternalProjectChange={persistence.persist}
+            produce={produceControl}
           />
         </div>
       </TooltipProvider>

@@ -1,6 +1,6 @@
 // 设计实验室 · 导演视图（3D-BOX）· 「正在改：镜头 N」七态（Claude Design 画布「3D-BOX · 正在改：镜头 N」，用户 10-06 拍板）。
 //
-// 每一格都是现役 DirectorEditor（开关开）+ 现役 Agent 面板，点的是界面上的真镜头卡（Ctrl 加选也是真点击事件）。
+// 每一格都是现役 DirectorEditor+ 现役 Agent 面板，点的是界面上的真镜头卡（Ctrl 加选也是真点击事件）。
 // 七态与画布一一对应：① 没选中 ② 选中一镜（= 01 屏的 d3-courtyard-director-zh，这里不重复）③ Ctrl 加选两镜 ④ 超过 3 镜
 // ⑤ Agent 改完（计划经现役补丁应用器改第 2 镜为特写）⑥ 英文（= d3-courtyard-director-en）⑦ 亮色（产品里导演台锁暗，见取景台注释）。
 import React from 'react'

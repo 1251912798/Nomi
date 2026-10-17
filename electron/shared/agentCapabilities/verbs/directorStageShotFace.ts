@@ -1,4 +1,4 @@
-// 升级版 `stage_shot`（3D-BOX 开关开时装配，契约 `director.write`）的**模型面**与参数翻译。
+// 升级版 `stage_shot`（3D-BOX，契约 `director.write`）的**模型面**与参数翻译。
 // 声明本身仍住 `writeVerbs.ts`（唯一声明处）；这里只放它要用的 schema、容忍与「动词参数 → 契约语义输入」。
 //
 // 模型面 = 宿主计划 schema 的投影（`directorPlanModelSchema`：strict、每个字段有描述、无根级 union / const），
@@ -14,7 +14,7 @@ import { modelArgumentTolerance } from "../modelArgumentTolerance";
 
 /**
  * 工具面上的计划 = 宿主投影去掉 `scene.dressing`：那一支是按米写坐标的灰模几何，与「计划只写意图、几何归编译器」
- * 相悖，也是整份 schema 里最大的一块（约 2k 字符，开关开的工具面预算 10k token 卡在它身上）。宿主照收
+ * 相悖，也是整份 schema 里最大的一块（约 2k 字符，工具面预算 10k token 卡在它身上）。宿主照收
  * （旧数据 / 评测仍可带），只是不再请模型写。
  */
 const planModel = directorPlanModelSchema.extend({

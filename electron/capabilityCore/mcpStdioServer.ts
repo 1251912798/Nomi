@@ -1,9 +1,6 @@
-// 开关引导模块必须是第一个导入：它在本进程装好共享层的开关视图，之后导入的工具注册表才按同一个值装配。
-import { director3dBoxProof } from '../shared/featureFlags/director3dbox'
 import { resolveIndexedReferencePreview } from './pendingSpendReferences'
 import { spendReferenceKey } from "../shared/contracts/pendingSpendConfirm";
 
-const DIRECTOR_3DBOX_BOOTSTRAP_PROOF = director3dBoxProof()
 // 能力核 · MCP stdio server（app 自身二进制以 NOMI_MCP_STDIO 模式跑；见 docs/plan/2026-06-24-packaged-mcp-stdio-server.md）。
 //
 // Claude Code / Codex / Cursor 用 `<Nomi 二进制> + env NOMI_MCP_STDIO=1` 把 Nomi 拉起当 MCP server。
@@ -226,7 +223,6 @@ async function invoke(
 
 /** 启动 stdio JSON-RPC server。main.ts 在 NOMI_MCP_STDIO 模式的 app.whenReady 后调；不开窗、不抢单实例锁。 */
 export async function startMcpStdioServer(authorities: McpStdioServerOptions = {}): Promise<void> {
-  process.stderr.write(`[nomi:feature-flags] director3dbox=${DIRECTOR_3DBOX_BOOTSTRAP_PROOF.enabled} fingerprint=${DIRECTOR_3DBOX_BOOTSTRAP_PROOF.fingerprint}\n`)
   if (process.env.NOMI_E2E_SYNTHETIC_CREDENTIAL_STORAGE === '1' && process.platform === 'linux') {
     safeStorage.setUsePlainTextEncryption(true)
   }

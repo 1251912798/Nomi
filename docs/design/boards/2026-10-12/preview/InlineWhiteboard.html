@@ -1,0 +1,201 @@
+<!doctype html><html lang="zh-CN"><meta charset="UTF-8"><title>Approved exploration reference</title><body><div id="nomi-inline-board" class="is-editing" aria-label="Nomi 原地画板紧凑交互探索">
+<style>
+
+#nomi-inline-board{--n-bg:light-dark(oklch(.985 .003 90),oklch(.18 .006 80));--n-paper:light-dark(oklch(1 0 0),oklch(.235 .007 80));--n-ink:light-dark(oklch(.22 .01 80),oklch(.93 .006 85));--n-muted:light-dark(oklch(.5 .01 80),oklch(.70 .006 85));--n-faint:light-dark(oklch(.68 .01 80),oklch(.62 .006 85));--n-line:light-dark(oklch(.91 .004 80),oklch(.36 .007 80));--n-soft:light-dark(oklch(.97 .003 80),oklch(.30 .006 85));--n-accent:light-dark(oklch(.55 .13 250),oklch(.70 .13 250));--n-tint:color-mix(in srgb,var(--n-accent) 12%,var(--n-paper));--n-danger:light-dark(oklch(.55 .13 25),oklch(.72 .13 25));--n-shadow:0 8px 24px light-dark(oklch(0 0 0/.06),oklch(0 0 0/.22));font:13px/1.5 "Inter Variable",-apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif;color:var(--n-ink);background:var(--n-bg);position:relative;isolation:isolate;overflow:hidden;border-radius:10px;min-height:650px;color-scheme:light dark}
+#nomi-inline-board *{box-sizing:border-box}#nomi-inline-board [hidden]{display:none!important}#nomi-inline-board button,#nomi-inline-board input,#nomi-inline-board textarea,#nomi-inline-board select{font:inherit;color:inherit}#nomi-inline-board button{border:0;background:none;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:7px 9px;border-radius:6px;min-height:32px;white-space:nowrap}#nomi-inline-board button:hover{background:var(--n-soft)}#nomi-inline-board button:focus-visible{outline:2px solid var(--n-accent);outline-offset:2px}#nomi-inline-board button:disabled{opacity:.4;cursor:not-allowed}#nomi-inline-board button[aria-pressed=true]{background:var(--n-tint);color:var(--n-accent)}#nomi-inline-board button.primary{background:var(--n-ink);color:var(--n-paper)}#nomi-inline-board button.primary:hover{opacity:.86}#nomi-inline-board button.danger{color:var(--n-danger)}#nomi-inline-board svg.lucide{width:16px;height:16px;stroke-width:1.6;flex-shrink:0}#nomi-inline-board .muted{color:var(--n-muted)}#nomi-inline-board .small{font-size:11px}#nomi-inline-board .top{height:58px;display:flex;align-items:center;gap:18px;padding:0 24px;border-bottom:1px solid var(--n-line);background:var(--n-paper)}#nomi-inline-board .brand{display:flex;align-items:center;gap:7px;font-size:18px;letter-spacing:-.5px;font-weight:500}#nomi-inline-board .mark{display:grid;place-items:center;width:26px;height:26px;background:var(--n-ink);color:var(--n-paper);border-radius:7px;font-size:19px;font-weight:500}#nomi-inline-board .crumb{font-size:12px;color:var(--n-muted);display:flex;gap:10px;align-items:center}#nomi-inline-board .topnav{display:flex;gap:2px;margin-left:auto;margin-right:96px;padding:3px;background:var(--n-soft);border-radius:24px}#nomi-inline-board .topnav span{padding:4px 14px;border-radius:24px;color:var(--n-muted)}#nomi-inline-board .topnav .active{background:var(--n-paper);color:var(--n-ink);box-shadow:0 1px 3px light-dark(oklch(0 0 0/.07),oklch(0 0 0/.2))}#nomi-inline-board .stage{position:relative;display:grid;grid-template-columns:54px minmax(0,1fr);min-height:592px;background-image:radial-gradient(var(--n-line) .8px,transparent .8px);background-size:20px 20px}#nomi-inline-board .rail{display:flex;flex-direction:column;align-items:center;gap:23px;padding-top:26px;border-right:1px solid var(--n-line);background:var(--n-bg);color:var(--n-muted)}#nomi-inline-board .rail>div{display:flex;align-items:center;flex-direction:column;gap:4px;font-size:10px}#nomi-inline-board .rail svg{width:19px;height:19px}#nomi-inline-board .workspace{position:relative;padding:48px 42px 80px 190px;min-width:0}#nomi-inline-board .neighbor{position:absolute;left:24px;top:88px;width:128px;color:var(--n-muted);font-size:11px;opacity:.85}#nomi-inline-board .neighbor img{width:100%;height:128px;object-fit:cover;border-radius:8px;display:block;margin:7px 0}#nomi-inline-board .neighbor p{margin:8px 0}#nomi-inline-board .neighbor .ref{padding:10px;background:var(--n-paper);border:1px solid var(--n-line);border-radius:8px;margin-top:26px;line-height:1.7}#nomi-inline-board .connection{position:absolute;width:37px;height:1px;background:var(--n-line);left:153px;top:191px}#nomi-inline-board .board-wrap{position:relative;width:100%;max-width:610px;transition:max-width 140ms cubic-bezier(.2,.7,.3,1);margin:0 auto}#nomi-inline-board .node-label{display:flex;align-items:center;gap:8px;padding:0 2px 9px;color:var(--n-muted);font-size:12px}#nomi-inline-board .node-label .node-name{color:var(--n-ink);font-weight:500}#nomi-inline-board .node-label .spacer{flex:1}#nomi-inline-board .node-label button{min-height:26px;padding:3px 5px;font-size:11px}#nomi-inline-board .quickbar{display:flex;align-items:center;gap:3px;width:max-content;max-width:100%;flex-wrap:wrap;margin:0 auto 10px;padding:4px 6px;background:var(--n-paper);border:1px solid var(--n-line);box-shadow:var(--n-shadow);border-radius:10px}#nomi-inline-board .quickbar button{font-size:12px;padding:5px 7px;min-height:29px}#nomi-inline-board .divider{height:18px;width:1px;background:var(--n-line);margin:0 3px}#nomi-inline-board .image-frame{position:relative;border-radius:10px;overflow:hidden;background:var(--n-paper);outline:1px solid var(--n-line);aspect-ratio:16/9;touch-action:none}#nomi-inline-board.is-editing .image-frame{outline:2px solid var(--n-accent)}#nomi-inline-board .image-bg{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none}#nomi-inline-board .leafer-host{position:absolute;inset:0}#nomi-inline-board .leafer-host canvas{display:block}#nomi-inline-board .version-badge{position:absolute;right:10px;top:10px;z-index:4;min-height:23px;min-width:25px;padding:1px 6px;border:1px solid color-mix(in srgb,var(--n-line) 60%,transparent);background:light-dark(oklch(1 0 0/.9),oklch(.24 .007 80/.94));font-size:11px;border-radius:16px;box-shadow:0 1px 4px oklch(0 0 0/.1)}#nomi-inline-board .version-badge:hover{background:var(--n-paper)}#nomi-inline-board .pin{position:absolute;z-index:5;width:26px;height:26px;min-height:26px;padding:0;border-radius:50%;background:var(--n-accent);color:var(--n-paper);box-shadow:0 0 0 3px color-mix(in srgb,var(--n-paper) 70%,transparent);transform:translate(-50%,-50%);font-size:11px}#nomi-inline-board .pin:hover{background:var(--n-accent);filter:brightness(1.08)}#nomi-inline-board .selection-region{position:absolute;border:1.5px dashed var(--n-accent);background:color-mix(in srgb,var(--n-accent) 10%,transparent);pointer-events:none;z-index:4}#nomi-inline-board .caption-layer{position:absolute;inset:0;pointer-events:none}#nomi-inline-board .editor{background:var(--n-paper);border-radius:0 0 10px 10px;margin-top:8px;border:1px solid var(--n-line);box-shadow:var(--n-shadow);animation:n-board-enter 140ms cubic-bezier(.2,.7,.3,1)}#nomi-inline-board .tools{display:flex;align-items:center;gap:3px;flex-wrap:wrap;padding:6px 8px;border-bottom:1px solid var(--n-line)}#nomi-inline-board .tools .spacer{flex:1}#nomi-inline-board .tools button{font-size:12px}#nomi-inline-board .tools .icon-button{padding:7px;min-width:32px}#nomi-inline-board .properties{display:flex;align-items:center;flex-wrap:wrap;gap:10px;padding:10px 12px;border-bottom:1px solid var(--n-line);font-size:12px;min-height:45px}#nomi-inline-board .properties:empty{display:none}#nomi-inline-board .properties input[type=text]{flex:1;min-width:100px;width:100%;padding:5px 8px;border:1px solid var(--n-line);background:var(--n-bg);border-radius:5px;outline-offset:2px}#nomi-inline-board input[type=range]{width:85px;accent-color:var(--n-accent)}#nomi-inline-board input[type=color]{width:24px;height:25px;padding:0;border:0;background:none}#nomi-inline-board select{background:var(--n-bg);border:1px solid var(--n-line);border-radius:5px;padding:4px;max-width:120px}#nomi-inline-board .properties label{display:inline-flex;align-items:center;gap:6px;color:var(--n-muted)}#nomi-inline-board .foot{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:9px 12px;font-size:11px;color:var(--n-muted)}#nomi-inline-board .foot .spacer{flex:1}#nomi-inline-board .foot button{font-size:12px;min-height:29px}#nomi-inline-board .foot .state{display:flex;align-items:center;gap:5px}#nomi-inline-board .foot .state svg{width:13px;height:13px}#nomi-inline-board .notes{padding:0 12px}#nomi-inline-board .note-row{display:flex;gap:8px;align-items:flex-start;padding:8px 0;border-top:1px solid var(--n-line);font-size:12px}#nomi-inline-board .note-row>button:first-child{min-height:22px;width:22px;padding:0;background:var(--n-tint);color:var(--n-accent);border-radius:50%;font-size:11px}#nomi-inline-board .note-row .note-body{flex:1;min-width:0;white-space:pre-wrap;overflow-wrap:anywhere}#nomi-inline-board .note-row .note-x{padding:1px 3px;min-height:24px;color:var(--n-muted)}#nomi-inline-board .note-row .note-x svg{width:13px;height:13px}#nomi-inline-board .note-pop{background:var(--n-paper);border:1px solid var(--n-line);border-radius:9px;box-shadow:var(--n-shadow);margin-top:8px;padding:12px;animation:n-board-enter 140ms cubic-bezier(.2,.7,.3,1)}#nomi-inline-board .pop-head{font-size:12px;display:flex;align-items:center;justify-content:space-between;margin-bottom:7px}#nomi-inline-board .pop-head button{min-height:24px;padding:2px}#nomi-inline-board textarea{display:block;width:100%;resize:vertical;min-height:58px;max-height:150px;background:var(--n-bg);border:1px solid var(--n-line);padding:8px;border-radius:6px;outline-offset:2px;font-size:13px}#nomi-inline-board .pop-actions{display:flex;align-items:center;gap:8px;justify-content:flex-end;margin-top:8px}#nomi-inline-board .pop-actions .muted{margin-right:auto;font-size:11px}#nomi-inline-board .history{margin-top:12px;animation:n-board-enter 140ms cubic-bezier(.2,.7,.3,1)}#nomi-inline-board .history-head{display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:12px}#nomi-inline-board .history-head .spacer{flex:1}#nomi-inline-board .history-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}#nomi-inline-board .history-card{position:relative;min-width:0}#nomi-inline-board .history-preview{position:relative;width:100%;aspect-ratio:16/9;border-radius:8px;overflow:hidden;padding:0;display:block;outline:1px solid var(--n-line)}#nomi-inline-board .history-preview[aria-pressed=true]{outline:2px solid var(--n-accent)}#nomi-inline-board .history-preview img{width:100%;height:100%;object-fit:cover;display:block}#nomi-inline-board .history-preview .thumb-label{position:absolute;left:8px;bottom:7px;right:8px;text-align:left;font-size:12px;color:oklch(1 0 0);font-weight:500;text-shadow:0 1px 3px oklch(0 0 0/.5);white-space:normal}#nomi-inline-board .history-card .version-meta{display:flex;align-items:center;gap:5px;padding:6px 0;font-size:11px;color:var(--n-muted);flex-wrap:wrap}#nomi-inline-board .history-card .version-meta button{padding:2px;min-height:22px;font-size:11px;color:var(--n-muted)}#nomi-inline-board .history-card .version-meta .spacer{flex:1}#nomi-inline-board .history-card .version-meta .active-mark{color:var(--n-accent)}#nomi-inline-board .preview-info{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:9px 12px;background:var(--n-paper);border:1px solid var(--n-line);border-radius:8px;margin-top:8px;font-size:12px}#nomi-inline-board .preview-info span{flex:1;color:var(--n-muted)}#nomi-inline-board .composer{background:var(--n-paper);border:1px solid var(--n-line);border-radius:10px;margin-top:10px;padding:12px}#nomi-inline-board .composer textarea{min-height:76px}#nomi-inline-board .canvas-bottom{position:absolute;left:78px;bottom:18px;display:flex;align-items:center;gap:6px;padding:4px 7px;background:var(--n-paper);border:1px solid var(--n-line);box-shadow:var(--n-shadow);border-radius:9px;font-size:11px;color:var(--n-muted)}#nomi-inline-board .exploration{position:absolute;right:22px;bottom:24px;color:var(--n-faint);font-size:11px}#nomi-inline-board .layer-list{display:flex;flex-direction:column;width:100%;gap:5px}#nomi-inline-board .layer-row{display:flex;align-items:center;gap:7px;padding:5px 0}#nomi-inline-board .layer-row span{flex:1}#nomi-inline-board .layer-row button{padding:3px;min-height:24px}#nomi-inline-board .toast{margin-top:9px;font-size:12px;color:var(--n-muted);min-height:18px}#nomi-inline-board .is-collapsed{max-width:440px}#nomi-inline-board.is-enlarged .workspace{padding-left:32px;padding-right:32px}#nomi-inline-board.is-enlarged .board-wrap{max-width:860px}#nomi-inline-board.is-enlarged .neighbor,#nomi-inline-board.is-enlarged .connection{display:none}#nomi-inline-board .new-node{display:flex;align-items:center;gap:10px;background:var(--n-paper);border:1px solid var(--n-line);padding:8px;border-radius:8px;margin-top:10px;font-size:12px}#nomi-inline-board .new-node img{width:90px;border-radius:5px}#nomi-inline-board .new-node span{color:var(--n-muted)}
+@keyframes n-board-enter{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:none}}@media(prefers-reduced-motion:reduce){#nomi-inline-board *{animation:none!important;transition:none!important}}@media(max-width:850px){#nomi-inline-board .workspace{padding:42px 24px 80px 28px}#nomi-inline-board .neighbor,#nomi-inline-board .connection{display:none}#nomi-inline-board .top{padding:0 16px;gap:12px}#nomi-inline-board .topnav{margin-right:90px}#nomi-inline-board .crumb{display:none}}@media(max-width:500px){#nomi-inline-board{min-height:560px}#nomi-inline-board .stage{grid-template-columns:1fr;min-height:502px}#nomi-inline-board .rail{display:none}#nomi-inline-board .workspace,#nomi-inline-board.is-enlarged .workspace{padding:32px 12px 70px}#nomi-inline-board .top{height:52px;padding:0 12px;gap:10px}#nomi-inline-board .brand{font-size:16px}#nomi-inline-board .topnav{margin-right:0;gap:0;margin-left:auto}#nomi-inline-board .topnav span{padding:3px 9px;font-size:12px}#nomi-inline-board .canvas-bottom{left:12px;bottom:16px}#nomi-inline-board .exploration{right:12px;bottom:24px}#nomi-inline-board .tools{gap:1px;padding:5px}#nomi-inline-board .tools button{padding:7px;font-size:12px}#nomi-inline-board .tools .spacer{display:none}#nomi-inline-board .history-grid{grid-template-columns:repeat(2,minmax(0,1fr))}#nomi-inline-board .foot{padding:9px;font-size:11px}#nomi-inline-board .quickbar{gap:0}#nomi-inline-board .quickbar button{padding:4px 6px;font-size:11px}#nomi-inline-board .node-label{flex-wrap:wrap}}@media(pointer:coarse){#nomi-inline-board button{min-height:44px}#nomi-inline-board .tools button{min-height:44px}#nomi-inline-board .pin{min-height:34px;width:34px;height:34px}#nomi-inline-board textarea,#nomi-inline-board input[type=text]{font-size:16px}}
+
+:root {
+  --nomi-media-ink: oklch(1 0 0);
+  --nomi-bg: oklch(0.985 0.003 90);
+  --nomi-paper: oklch(1 0 0);
+  --nomi-ink: oklch(0.22 0.01 80);
+  --nomi-ink-80: oklch(0.32 0.01 80);
+  --nomi-ink-60: oklch(0.50 0.01 80);
+  --nomi-ink-40: oklch(0.68 0.01 80);
+  --nomi-ink-30: oklch(0.78 0.01 80);
+  --nomi-ink-20: oklch(0.88 0.005 80);
+  --nomi-ink-10: oklch(0.94 0.003 80);
+  --nomi-ink-05: oklch(0.97 0.003 80);
+  --nomi-chrome: oklch(0.97 0.003 80);
+  --nomi-line: oklch(0.91 0.004 80);
+  --nomi-line-soft: oklch(0.95 0.003 80);
+  --nomi-accent: oklch(0.55 0.13 250);
+  /* ⚠️ 必须 in srgb，别改回 in oklch —— oklch 会对色相走最短弧插值，把 accent(h250) 拽向 paper 被钉死的
+     色相（浅 h=0 → 粉 h≈347 / 暗 h=80 → 橄榄绿 h≈124）。完整原委见 tailwind.config.ts 同名 token（运行时真源）。 */
+  --nomi-accent-soft: color-mix(in srgb, var(--nomi-accent) 12%, var(--nomi-paper));
+  /* 根层语义状态色（① 层，四语义 × 四档）。2026-09-07 用户拍板候选 C（danger 提到 0.13），
+     同日修掉一处错规格：soft/edge 不是 base 的 alpha，而是色阶上独立的一档
+     （alpha 摊薄 L0.55 的 base 只到 L≈0.92，浅底会发灰发土）。浅色 soft 贴 sRGB 天花板取
+     L 0.955–0.968，edge 深一档 L 0.895–0.905。info 收成 accent 的别名（原独立值与 accent
+     同色相同亮度、只差 ΔC 0.04，是并行版）。完整推导与对比度实测见 tailwind.config.ts 同名 token（运行时真源）。 */
+  --nomi-danger: oklch(0.55 0.13 25);
+  --nomi-danger-ink: oklch(0.45 0.13 25);
+  --nomi-danger-soft: oklch(0.955 0.021 25);
+  --nomi-danger-edge: oklch(0.895 0.052 25);
+  --nomi-warning: oklch(0.55 0.085 72);
+  --nomi-warning-ink: oklch(0.45 0.085 72);
+  --nomi-warning-soft: oklch(0.968 0.024 72);
+  --nomi-warning-edge: oklch(0.905 0.07 72);
+  --nomi-success: oklch(0.55 0.09 145);
+  --nomi-success-ink: oklch(0.45 0.09 145);
+  --nomi-success-soft: oklch(0.962 0.033 145);
+  --nomi-success-edge: oklch(0.905 0.07 145);
+  --nomi-info: var(--nomi-accent);
+  --nomi-info-ink: oklch(0.45 0.13 250);
+  --nomi-info-soft: oklch(0.957 0.021 250);
+  --nomi-info-edge: oklch(0.9 0.048 250);
+  --nomi-track-text: var(--nomi-accent);
+  --nomi-group-neutral: oklch(0.68 0.01 80);
+  --nomi-group-ocean: oklch(0.55 0.13 250);
+  --nomi-group-teal: oklch(0.58 0.12 174);
+  --nomi-group-amber: oklch(0.68 0.14 75);
+  --nomi-group-coral: oklch(0.59 0.14 25);
+  --nomi-group-violet: oklch(0.57 0.13 300);
+  --nomi-group-rose: oklch(0.60 0.13 350);
+  --nomi-group-neutral-soft: oklch(0.955 0.004 85);
+  --nomi-group-ocean-soft: oklch(0.955 0.022 250);
+  --nomi-group-teal-soft: oklch(0.955 0.024 174);
+  --nomi-group-amber-soft: oklch(0.958 0.04 75);
+  --nomi-group-coral-soft: oklch(0.955 0.04 28);
+  --nomi-group-violet-soft: oklch(0.955 0.03 300);
+  --nomi-group-rose-soft: oklch(0.955 0.03 330);
+  --nomi-track-image: oklch(0.7 0.13 200);
+  --nomi-track-video: oklch(0.65 0.13 150);
+  /* 3D 轴向语义色(X/Y/Z) —— 无对应 UI token,沉淀成 token */
+  --nomi-axis-x: #ef4444;
+  --nomi-axis-y: #16a34a;
+  --nomi-axis-z: #3b82f6;
+  /* 时间轴吸附反馈（暖橙，与 accent 蓝互补、对比最大；仅拖动中临时出现） */
+  --nomi-snap: oklch(0.72 0.18 30);
+  --nomi-snap-tag: oklch(0.45 0.18 30);
+  /* 品牌 mark 底色（§3.9 深底+白笔画）。暗色提亮见下方 dark 块。 */
+  --nomi-logo-ground: oklch(0.22 0.01 80);
+  /* 媒体浮层（图片之上的 scrim / 徽章 / 渐变遮罩）——深色取 ink 同色相，集中此处，组件只引 token，
+     不在 JSX 直写 oklch（§2.1）。scrim=模态背景压暗；overlay-chip=图上小标；media-veil=底部标题渐变。 */
+  --nomi-scrim: oklch(0.2 0.01 80 / 0.42);
+  /* 图上徽章/标题遮罩承载白字，压在任意亮度的媒体上（暗色卡底常是白衬衫等亮区）——
+     opacity 提高到能稳定托住白字为止，光暗都验（2026-09-01 用户反馈「徽标黑底黑字/标题融背景」）。 */
+  --nomi-overlay-chip: oklch(0.18 0.01 80 / 0.64);
+  --nomi-overlay-chip-strong: oklch(0.16 0.01 80 / 0.82);
+  --nomi-media-veil: oklch(0.12 0.01 80 / 0.74);
+  --nomi-shadow-sm: 0 1px 2px oklch(0 0 0 / 0.04), 0 1px 1px oklch(0 0 0 / 0.03);
+  --nomi-shadow-md: 0 2px 4px oklch(0 0 0 / 0.04), 0 8px 24px oklch(0 0 0 / 0.06);
+  --nomi-shadow-lg: 0 4px 8px oklch(0 0 0 / 0.05), 0 20px 50px oklch(0 0 0 / 0.08);
+  --nomi-radius-sm: 6px;
+  --nomi-radius: 10px;
+  --nomi-radius-lg: 16px;
+  --nomi-duration-fast: 140ms;
+  --nomi-ease-fast: cubic-bezier(.2, .7, .3, 1);
+  --nomi-font-sans: "Inter Variable", Inter, -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", system-ui, sans-serif;
+  --nomi-font-display: "Fraunces Variable", Fraunces, "Inter Variable", Inter, serif;
+  --nomi-font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+/* 深色主题（暖灰 oklch）。⚠️ 运行时真源是 tailwind.config.ts 的 addBase（编译进 tailwind.generated.css）；
+   本文件未被任何 import = 参考镜像 + 喂 check-dangling-tokens。改值两处都要同步（§0.5）。
+   3D 轴色(--nomi-axis-*)主题无关，明暗同色，故此处不重定义。 */
+:root[data-mantine-color-scheme="dark"] {
+  color-scheme: dark;
+  --nomi-bg: oklch(0.18 0.006 80);
+  --nomi-paper: oklch(0.235 0.007 80);
+  --nomi-ink: oklch(0.93 0.006 85);
+  --nomi-ink-80: oklch(0.84 0.006 85);
+  --nomi-ink-60: oklch(0.70 0.006 85);
+  --nomi-ink-40: oklch(0.62 0.006 85);
+  --nomi-ink-30: oklch(0.50 0.006 85);
+  --nomi-ink-20: oklch(0.42 0.006 85);
+  --nomi-ink-10: oklch(0.34 0.006 85);
+  --nomi-ink-05: oklch(0.30 0.006 85);
+  --nomi-chrome: oklch(0.155 0.006 80);
+  --nomi-line: oklch(0.36 0.007 80);
+  --nomi-line-soft: oklch(0.31 0.007 80);
+  --nomi-accent: oklch(0.70 0.13 250);
+  /* in srgb 同上：暗色 paper h=80，走 oklch 会把选中态混成橄榄绿。 */
+  --nomi-accent-soft: color-mix(in srgb, var(--nomi-accent) 26%, var(--nomi-paper));
+  /* 状态色暗色档：base 亮度平台对齐 accent 的 0.70，-ink 字色提到 0.82。
+     soft/edge 必须另写一档（浅色那档是 L≈0.96 的近白底，拿到暗色上是刺眼白块）：
+     soft L≈0.295–0.30 / C≤0.048，edge L≈0.395–0.40。
+     info 的 base 不在此重定义——它是 var(--nomi-accent) 的别名，accent 在本块已翻暗。 */
+  --nomi-danger: oklch(0.72 0.13 25);
+  --nomi-danger-ink: oklch(0.82 0.13 25);
+  --nomi-danger-soft: oklch(0.3 0.048 25);
+  --nomi-danger-edge: oklch(0.4 0.07 25);
+  --nomi-warning: oklch(0.72 0.085 72);
+  --nomi-warning-ink: oklch(0.82 0.085 72);
+  --nomi-warning-soft: oklch(0.295 0.04 72);
+  --nomi-warning-edge: oklch(0.395 0.058 72);
+  --nomi-success: oklch(0.72 0.09 145);
+  --nomi-success-ink: oklch(0.82 0.09 145);
+  --nomi-success-soft: oklch(0.295 0.042 145);
+  --nomi-success-edge: oklch(0.395 0.06 145);
+  --nomi-info-ink: oklch(0.82 0.13 250);
+  --nomi-info-soft: oklch(0.295 0.045 250);
+  --nomi-info-edge: oklch(0.395 0.065 250);
+  --nomi-track-text: oklch(0.75 0.15 305);
+  --nomi-group-neutral: oklch(0.62 0.006 85);
+  --nomi-group-ocean: oklch(0.70 0.13 250);
+  --nomi-group-teal: oklch(0.72 0.12 174);
+  --nomi-group-amber: oklch(0.78 0.14 75);
+  --nomi-group-coral: oklch(0.72 0.14 25);
+  --nomi-group-violet: oklch(0.70 0.13 300);
+  --nomi-group-rose: oklch(0.73 0.13 350);
+  --nomi-group-neutral-soft: oklch(0.30 0.005 85);
+  --nomi-group-ocean-soft: oklch(0.30 0.04 250);
+  --nomi-group-teal-soft: oklch(0.30 0.035 174);
+  --nomi-group-amber-soft: oklch(0.32 0.05 75);
+  --nomi-group-coral-soft: oklch(0.31 0.055 28);
+  --nomi-group-violet-soft: oklch(0.30 0.04 300);
+  --nomi-group-rose-soft: oklch(0.31 0.045 330);
+  --nomi-track-image: oklch(0.72 0.13 200);
+  --nomi-track-video: oklch(0.70 0.13 150);
+  --nomi-snap: oklch(0.78 0.18 30);
+  --nomi-snap-tag: oklch(0.62 0.18 30);
+  --nomi-logo-ground: oklch(0.30 0.01 80);
+  --nomi-scrim: oklch(0.08 0.004 80 / 0.58);
+  /* 媒体浮层在暗色主题下同样承载白字，且卡底媒体可能是亮区——opacity 提到托得住白字。 */
+  --nomi-overlay-chip: oklch(0.06 0.004 80 / 0.78);
+  --nomi-overlay-chip-strong: oklch(0.05 0.004 80 / 0.88);
+  --nomi-media-veil: oklch(0.05 0.004 80 / 0.86);
+  --nomi-shadow-sm: 0 1px 2px oklch(0 0 0 / 0.32), 0 1px 1px oklch(0 0 0 / 0.22);
+  --nomi-shadow-md: 0 2px 5px oklch(0 0 0 / 0.30), 0 14px 34px oklch(0 0 0 / 0.32);
+  --nomi-shadow-lg: 0 4px 10px oklch(0 0 0 / 0.30), 0 24px 64px oklch(0 0 0 / 0.40);
+}
+
+html,
+body,
+#root {
+  background: var(--nomi-bg);
+}
+
+#nomi-inline-board .board-flow-host{position:relative;width:100%;pointer-events:none}#nomi-inline-board .board-flow-host .react-flow{overflow:visible;pointer-events:none}#nomi-inline-board .board-flow-host .react-flow__pane{pointer-events:none}#nomi-inline-board .board-flow-host .react-flow__renderer{overflow:visible}#nomi-inline-board .board-flow-host .react-flow__node{pointer-events:auto;background:none;border:0}#nomi-inline-board .board-node-body{position:relative;top:-28px;width:100%}#nomi-inline-board .board-drag-handle{cursor:grab;touch-action:none}#nomi-inline-board .board-drag-handle:active{cursor:grabbing}#nomi-inline-board .nomi-resize-handle{width:8px;height:8px;border:1px solid var(--n-accent);background:var(--n-paper);border-radius:2px}#nomi-inline-board .nomi-resize-line{border-color:transparent}#nomi-inline-board .version-meta .spacer{flex:1}#nomi-inline-board .version-meta a{color:var(--n-muted);display:inline-flex;padding:2px}#nomi-inline-board .workspace{padding:16px 24px 16px!important}#nomi-inline-board .neighbor,#nomi-inline-board .connection{display:none}#nomi-inline-board .properties .size-fields{display:flex;align-items:center;gap:8px}#nomi-inline-board .properties .size-fields input[type=number]{width:72px;padding:4px 8px;border:1px solid var(--n-line);border-radius:6px;background:var(--n-bg)}
+#nomi-inline-board{--n-bg:var(--nomi-bg);--n-paper:var(--nomi-paper);--n-ink:var(--nomi-ink);--n-muted:var(--nomi-ink-60);--n-line:var(--nomi-line);--n-soft:var(--nomi-ink-05);--n-accent:var(--nomi-accent);--n-tint:var(--nomi-accent-soft);--n-danger:var(--nomi-danger);font-family:var(--nomi-font-sans);min-height:0;overflow:visible}
+#nomi-inline-board .top{height:44px;padding:0 16px;gap:16px;border-radius:10px 10px 0 0}#nomi-inline-board .brand{font-size:16px}#nomi-inline-board .mark{width:24px;height:24px;font-size:16px;border-radius:6px}#nomi-inline-board .topnav{background:none;padding:0;gap:16px}#nomi-inline-board .topnav span{padding:0;border-radius:0}#nomi-inline-board .topnav .active{background:none;box-shadow:none}#nomi-inline-board .stage{grid-template-columns:44px minmax(0,1fr);min-height:0;background-size:16px 16px}#nomi-inline-board .rail{gap:20px;padding:20px 0}#nomi-inline-board .rail>div{font-size:11px}#nomi-inline-board .rail svg{width:16px;height:16px}#nomi-inline-board .workspace{padding:16px 24px 40px 156px}#nomi-inline-board .neighbor{left:16px;top:60px;width:112px}#nomi-inline-board .neighbor img{height:112px;margin:8px 0 4px}#nomi-inline-board .neighbor p{margin:4px 0}#nomi-inline-board .connection{left:128px;top:136px;width:28px}#nomi-inline-board .board-wrap{max-width:640px}#nomi-inline-board .node-label{padding:0;min-height:28px;gap:8px}#nomi-inline-board .save-state{font-size:11px;color:var(--n-muted)}#nomi-inline-board .quickbar{margin:0 auto 8px;padding:4px;box-shadow:var(--nomi-shadow-sm)}#nomi-inline-board.is-editing .quickbar{display:none}#nomi-inline-board .version-badge{position:static;border:1px solid var(--n-line);border-radius:6px;background:none;box-shadow:none;min-height:24px;padding:2px 6px}#nomi-inline-board.is-editing .image-frame{outline:1px solid var(--n-accent)}#nomi-inline-board[data-ready=true] .image-bg{opacity:0}#nomi-inline-board .pin-layer{position:absolute;inset:0;pointer-events:none}#nomi-inline-board .pin{pointer-events:auto;width:24px;height:24px;min-height:24px;color:var(--nomi-media-ink)}#nomi-inline-board svg.lucide{stroke-width:1.5}
+#nomi-inline-board .editor{position:relative;left:50%;transform:translateX(-50%);width:max-content;max-width:none;animation:none;border-radius:10px;box-shadow:var(--nomi-shadow-sm);margin:8px 0 0}#nomi-inline-board .tools{padding:4px;gap:0;border:0}#nomi-inline-board .tools button{width:32px;height:32px;min-width:0;min-height:32px;padding:8px}#nomi-inline-board .tools .divider{margin:0 4px;height:16px}#nomi-inline-board .tools .primary{width:auto;padding:4px 12px;margin-left:4px}#nomi-inline-board .tool-mark{display:flex;align-items:center}#nomi-inline-board .tool-mark .note-count{width:auto;padding:4px;font-size:11px}#nomi-inline-board .ratio-button{width:auto!important;font-size:11px!important;padding:4px 8px!important}
+#nomi-inline-board .pop{position:absolute;top:calc(100% + 8px);left:0;z-index:20;width:max-content;max-width:100%;background:var(--n-paper);border:1px solid var(--n-line);border-radius:10px;padding:8px;box-shadow:var(--nomi-shadow-md)}#nomi-inline-board .properties{gap:8px;min-height:0;font-size:12px;max-width:min(360px,100%)}#nomi-inline-board .properties input[type=text]{width:160px;min-width:80px;flex:0 1 auto}#nomi-inline-board input[type=range]{width:104px}#nomi-inline-board .swatches{display:flex;gap:4px}#nomi-inline-board .swatches button{width:24px;height:24px;min-height:24px;padding:4px;border:1px solid var(--n-line);border-radius:50%}#nomi-inline-board .swatches span{width:14px;height:14px;border-radius:50%}#nomi-inline-board .library{width:300px;max-width:100%;font-size:12px}#nomi-inline-board .library-head{display:flex;gap:4px;align-items:center;padding-bottom:8px}#nomi-inline-board .library-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}#nomi-inline-board .asset{min-width:0}#nomi-inline-board .asset>button{display:block;width:100%;padding:0;text-align:left}#nomi-inline-board .asset img{width:100%;aspect-ratio:4/3;object-fit:cover;display:block;border-radius:6px;background:var(--n-soft)}#nomi-inline-board .asset-name{font-size:11px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-top:4px}#nomi-inline-board .asset-meta{display:flex;align-items:center;gap:4px;color:var(--n-muted);font-size:11px}#nomi-inline-board .asset-meta button{padding:2px;min-height:24px}#nomi-inline-board .asset-meta svg{width:12px;height:12px}#nomi-inline-board .layer-list{width:260px;max-width:100%}#nomi-inline-board .layer-row{display:flex;gap:4px;align-items:center;min-height:32px}#nomi-inline-board .layer-row>span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}#nomi-inline-board .layer-row button{padding:4px}#nomi-inline-board .note-pop{width:288px;max-width:100%;margin:0;font-size:12px}#nomi-inline-board .note-head{display:flex;align-items:center;gap:8px;margin-bottom:4px}#nomi-inline-board .note-pop textarea{min-height:64px}#nomi-inline-board .note-footer{display:flex;gap:4px;align-items:center;margin-top:4px;font-size:11px;color:var(--n-muted)}#nomi-inline-board .notes-pop{width:300px;font-size:12px}#nomi-inline-board .notes{padding:0}#nomi-inline-board .note-row{padding:4px 0;border:0}#nomi-inline-board .notes-action{display:flex;justify-content:flex-end;margin-top:4px}
+#nomi-inline-board .history{padding-top:12px;margin-top:0}#nomi-inline-board .history-head{font-size:11px;margin-bottom:4px}#nomi-inline-board .history-grid{display:flex;flex-wrap:wrap;gap:8px}#nomi-inline-board .history-card{width:136px;min-width:0}#nomi-inline-board .history-preview{padding:0}#nomi-inline-board .version-meta{gap:4px;padding-top:4px;flex-wrap:wrap}#nomi-inline-board .version-meta button{min-height:24px;padding:2px}#nomi-inline-board .version-meta svg{width:12px;height:12px}#nomi-inline-board .toast{margin-top:4px;min-height:0}#nomi-inline-board .toast:empty{display:none}#nomi-inline-board .bottom{position:static;display:flex;gap:12px;align-items:center;padding:8px 16px;border-top:1px solid var(--n-line);font-size:11px;color:var(--n-muted)}#nomi-inline-board .bottom .spacer{flex:1}#nomi-inline-board .preview-info{padding:8px 0;margin:0}#nomi-inline-board .object-pop button{display:flex;justify-content:flex-start;width:100%;font-size:12px}#nomi-inline-board .object-pop .reason{font-size:11px;color:var(--n-muted);padding:4px 8px}#nomi-inline-board.is-enlarged .workspace{padding:16px 24px 40px}#nomi-inline-board.is-enlarged .board-wrap{max-width:100%}
+#nomi-inline-board .inline-properties{display:flex;position:static;align-items:center;gap:8px;width:auto;max-width:none;min-height:32px;margin:0 8px 0 4px;padding:0;border:0;background:none;box-shadow:none}#nomi-inline-board .inline-properties input[type=range]{width:72px;margin:0}#nomi-inline-board .inline-properties .size-readout{font-size:11px;min-width:16px;color:var(--n-muted);font-variant-numeric:tabular-nums}#nomi-inline-board .inline-properties .color-chip{width:20px;height:20px;min-height:20px;padding:0;border:1px solid var(--n-line);border-radius:50%;background:var(--tool-color)}#nomi-inline-board .inline-properties input[type=text]{width:112px;min-width:0;height:28px;border:0;background:var(--n-soft);border-radius:4px;padding:4px 8px}#nomi-inline-board .inline-properties select{height:28px;min-width:44px;border:0;background:var(--n-soft);border-radius:4px;padding:4px}#nomi-inline-board[data-parameter-mode=brush] .ratio-button,#nomi-inline-board[data-parameter-mode=eraser] .ratio-button,#nomi-inline-board[data-parameter-mode=text] .ratio-button{display:none}#nomi-inline-board .swatches input[type=color]{width:24px;height:24px;padding:0;border:0;background:none}#nomi-inline-board .save-state:empty{display:none}#nomi-inline-board .board-flow-host{min-height:0}#nomi-inline-board .layer-row>.layer-select{width:auto;flex:1;justify-content:flex-start;text-align:left;padding:4px 0}#nomi-inline-board .library-head .library-import{margin-left:auto}
+#nomi-inline-board input[type=range]{accent-color:var(--n-accent)}#nomi-inline-board[data-parameter-mode]:not([data-parameter-mode=""]) .ratio-button{display:none}#nomi-inline-board .color-palette{padding:8px}
+#nomi-inline-board .object-actions{display:flex;align-items:center}#nomi-inline-board .object-actions[hidden]{display:none!important}
+#nomi-inline-board .pop{left:50%;transform:translateX(-50%)}#nomi-inline-board .inline-properties{transform:none}#nomi-inline-board .history-grid{justify-content:center}#nomi-inline-board .preview-info{justify-content:center}
+</style>
+<header class="top"><span class="brand"><span class="mark">N</span>Nomi</span><span class="crumb">项目库 › 小小的勇气</span><nav class="topnav"><span>创作</span><span class="active">生成</span><span>预览</span></nav></header>
+<div class="stage"><aside class="rail" aria-label="工作区导航"><div><i data-lucide="folder" aria-hidden="true"></i>素材库</div><div><i data-lucide="tags" aria-hidden="true"></i>分组</div><div><i data-lucide="lightbulb" aria-hidden="true"></i>提示词</div><div><i data-lucide="library" aria-hidden="true"></i>技能</div></aside><div class="workspace">
+
+<section class="board-wrap" aria-label="镜头 03 图片节点">
+<div class="quickbar" role="toolbar" aria-label="图片节点工具"><button data-action="toggle-edit" aria-label="画板" data-tooltip="画板"><i data-lucide="pencil-ruler" aria-hidden="true"></i></button></div>
+<div class="node-label"><span class="node-name">镜头 03 · 走进光里</span><span class="save-state"></span><span class="spacer"></span><button class="version-badge" data-action="history" aria-label="展开历史版本" aria-expanded="false" data-tooltip="历史版本">2</button></div>
+<div class="image-frame" aria-label="图片编辑区域"><img class="image-bg" src="" alt="纸人站在霓虹通道中"><div class="leafer-host"></div><div class="pin-layer"></div></div>
+<div class="preview-info" hidden><span class="preview-name"></span><button data-action="return-draft">返回草稿</button><button data-action="edit-version">继续编辑</button></div>
+<section class="editor" aria-label="画板编辑工具"><div class="tools" role="toolbar" aria-label="画板工具">
+<button data-tool="select" aria-label="选择" data-tooltip="选择 · 框选 / Shift 多选"><i data-lucide="mouse-pointer-2" aria-hidden="true"></i></button><button data-tool="brush" aria-label="画笔" data-tooltip="画笔"><i data-lucide="pencil" aria-hidden="true"></i></button><button data-tool="eraser" aria-label="橡皮" data-tooltip="橡皮"><i data-lucide="eraser" aria-hidden="true"></i></button><button data-tool="text" aria-label="文字" data-tooltip="文字"><i data-lucide="type" aria-hidden="true"></i></button><span class="tool-mark"><button data-tool="note" aria-label="标注" data-tooltip="标注修改意见"><i data-lucide="message-square-plus" aria-hidden="true"></i></button><button class="note-count" data-action="notes-list" aria-label="查看全部标注" hidden>0</button></span><span class="divider"></span><button data-action="undo" aria-label="撤销" data-tooltip="撤销 · ⌘Z" disabled><i data-lucide="undo-2" aria-hidden="true"></i></button><button data-action="redo" aria-label="重做" data-tooltip="重做 · ⇧⌘Z" disabled><i data-lucide="redo-2" aria-hidden="true"></i></button><span class="divider"></span><button data-action="import" aria-label="导入图片" data-tooltip="导入图片"><i data-lucide="image-plus" aria-hidden="true"></i></button><button data-action="materials" aria-label="素材库" data-tooltip="素材库 · 画板 / 结果"><i data-lucide="images" aria-hidden="true"></i></button><button data-action="layers" aria-label="图层" data-tooltip="图层"><i data-lucide="layers" aria-hidden="true"></i></button><span class="object-actions" hidden><button data-action="flip-x" aria-label="水平翻转" data-tooltip="水平翻转"><i data-lucide="flip-horizontal-2" aria-hidden="true"></i></button><button data-action="flip-y" aria-label="垂直翻转" data-tooltip="垂直翻转"><i data-lucide="flip-vertical-2" aria-hidden="true"></i></button><button data-action="delete-object" aria-label="删除选中对象" data-tooltip="删除选中对象"><i data-lucide="trash-2" aria-hidden="true"></i></button></span><button class="ratio-button" data-action="ratio" aria-label="画板比例" data-tooltip="画板比例">16:9<i data-lucide="chevron-down" aria-hidden="true"></i></button><button class="primary" data-action="save">完成</button>
+</div><div class="properties pop" hidden></div>
+<div class="note-pop pop" aria-label="修改意见" hidden><div class="note-head"><span class="note-title">添加标注</span><span class="spacer"></span><button data-action="cancel-note" aria-label="取消标注"><i data-lucide="x" aria-hidden="true"></i></button></div><textarea class="note-input" aria-label="修改意见" placeholder="写下这里怎么改…"></textarea><div class="note-footer"><span>仅修改意见，不进入成品</span><span class="spacer"></span><button class="primary" data-action="commit-note">添加</button></div></div>
+<div class="color-palette pop" hidden></div><div class="notes-pop pop" hidden><div class="note-head">修改意见<span class="spacer"></span><button data-action="close-notes" aria-label="收起标注"><i data-lucide="x" aria-hidden="true"></i></button></div><div class="notes"></div><div class="notes-action"><button data-action="prepare" class="primary" hidden>准备改图</button></div></div>
+</section>
+<section class="history" aria-label="历史版本" hidden><div class="history-head">历史版本<span class="spacer"></span><button data-action="history" aria-label="收起历史"><i data-lucide="x" aria-hidden="true"></i></button></div><div class="history-grid"></div></section>
+<section class="composer" aria-label="节点改图生成框" hidden><div class="composer-head">改图<span class="spacer"></span><button data-action="close-composer" aria-label="收起生成框"><i data-lucide="x" aria-hidden="true"></i></button></div><textarea class="composer-input" aria-label="改图说明"></textarea><div class="composer-foot">探索预览 · 未连接模型<span class="spacer"></span><button disabled>生成</button></div></section><div class="toast" role="status" aria-live="polite"></div>
+</section></div></div></div>
+
+
+</body></html>

@@ -1,3 +1,4 @@
+import { readWhiteboardAssetUrls } from '../generationCanvas/nodes/whiteboard/whiteboardState'
 import { parseNomiLocalAssetUrl } from '../../media/nomiLocalAssetUrl'
 import {
   listNodeMediaResults,
@@ -44,7 +45,8 @@ function urlReferencesFile(url: unknown, target: ProjectFileTarget): boolean {
 }
 
 function resultReferencesFile(result: GenerationNodeResult, target: ProjectFileTarget): boolean {
-  return [result.url, result.thumbnailUrl].some((url) => urlReferencesFile(url, target))
+  const raw = result.raw && typeof result.raw === 'object' ? result.raw as Record<string, unknown> : undefined
+  return [result.url, result.thumbnailUrl, ...readWhiteboardAssetUrls(raw?.whiteboardState)].some((url) => urlReferencesFile(url, target))
 }
 
 /**
@@ -52,7 +54,8 @@ function resultReferencesFile(result: GenerationNodeResult, target: ProjectFileT
  * 都走这一个函数（2026-10-06 之前延后删那条路自己拿子串包含判，和这里是两套）。
  */
 export function isProjectFileReferenced(target: ProjectFileTarget, scope: ProjectFileReferenceScope): boolean {
-  if (scope.nodes.some((node) => listNodeMediaResults(node).some((result) => resultReferencesFile(result, target)))) return true
+  if (scope.nodes.some((node) => readWhiteboardAssetUrls(node.meta?.whiteboardState).some(url => urlReferencesFile(url, target))
+    || listNodeMediaResults(node).some((result) => resultReferencesFile(result, target)))) return true
   return (scope.timeline?.tracks ?? []).some((track) => track.clips.some((clip) => (
     urlReferencesFile(clip.url, target) || urlReferencesFile(clip.thumbnailUrl, target)
   )))

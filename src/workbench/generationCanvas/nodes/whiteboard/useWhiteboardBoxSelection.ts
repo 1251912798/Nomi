@@ -1,7 +1,7 @@
 /* eslint-disable react-hooks/exhaustive-deps -- Migrated Leafer canvas keeps imperative renderer state in refs (stable identities), intentionally omitted from dep arrays. */
 import { useCallback, useEffect } from 'react'
 import { getCanvasPointFromClient } from './lib/pointer'
-import type { CanvasAsset, CanvasDimensions, LayerItem, ToolKey } from './lib/canvas'
+import type { CanvasAsset, CanvasText, CanvasDimensions, LayerItem, ToolKey } from './lib/canvas'
 import type {
   CanvasAssetTransform,
   CanvasObjectOffset,
@@ -51,6 +51,7 @@ export type WhiteboardBoxSelectionRefs = {
   objectOffsetsRef: RefLike<Map<string, CanvasObjectOffset>>
   assetTransformsRef: RefLike<Map<string, CanvasAssetTransform>>
   canvasObjectNodesRef: RefLike<Map<string, LeaferBox>>
+  textsRef: RefLike<CanvasText[]>
   assetsRef: RefLike<CanvasAsset[]>
   strokesRef: RefLike<CanvasStroke[]>
   layersRef: RefLike<LayerItem[]>
@@ -85,6 +86,7 @@ export function useWhiteboardBoxSelection(refs: WhiteboardBoxSelectionRefs, prop
     assetTransformsRef,
     canvasObjectNodesRef,
     assetsRef,
+    textsRef,
     strokesRef,
     layersRef,
     renderContextRef,
@@ -294,7 +296,8 @@ export function useWhiteboardBoxSelection(refs: WhiteboardBoxSelectionRefs, prop
         assetsRef.current,
         strokesRef.current,
         objectOffsetsRef.current,
-        assetTransformsRef.current
+        assetTransformsRef.current,
+              textsRef.current
       )
 
       if (selectedTargets.length < 2) {
@@ -304,7 +307,7 @@ export function useWhiteboardBoxSelection(refs: WhiteboardBoxSelectionRefs, prop
       renderContextRef.current?.app.editor.cancel?.()
 
       if (selectedTargets.length === 1) {
-        const layerId = getLayerIdForCanvasObject(selectedTargets[0], assetsRef.current, strokesRef.current)
+        const layerId = getLayerIdForCanvasObject(selectedTargets[0], assetsRef.current, strokesRef.current, textsRef.current)
         if (layerId) {
           activeObjectTargetRef.current = selectedTargets[0]
           onLayerSelectRef.current?.(layerId)
@@ -392,7 +395,8 @@ export function useWhiteboardBoxSelection(refs: WhiteboardBoxSelectionRefs, prop
               assetsRef.current,
               strokesRef.current,
               objectOffsetsRef.current,
-              assetTransformsRef.current
+              assetTransformsRef.current,
+              textsRef.current
             )
           : null
       const hit = getTopmostEditableCanvasObjectAtPoint(
@@ -401,7 +405,8 @@ export function useWhiteboardBoxSelection(refs: WhiteboardBoxSelectionRefs, prop
         assetsRef.current,
         strokesRef.current,
         objectOffsetsRef.current,
-        assetTransformsRef.current
+        assetTransformsRef.current,
+              textsRef.current
       )
 
       const hitIsSelected = hit

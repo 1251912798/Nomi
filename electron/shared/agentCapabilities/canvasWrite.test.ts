@@ -32,7 +32,8 @@ describe("canvas.write canonical contract", () => {
       // `pi` surface 上只放模型可见的三个动词；operation 值是 schema 枚举，不是别名。
       aliases: { pi: "arrange_canvas", mcp: "nomi_canvas_edit", ui: "nomi_canvas_plan" },
       additionalAliases: {
-        pi: ["make_artifact", "write_node_text", "stage_shot"],
+        // `stage_shot` 归 director.write（3D-BOX 唯一导演台），不再是 canvas.write 的附加别名。
+        pi: ["make_artifact", "write_node_text"],
       },
       inputSchema: canvasWriteSemanticInputSchema,
       outputSchema: canvasWriteResultSchema,

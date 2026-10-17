@@ -8,7 +8,6 @@ import React from 'react'
 import { readDirectorShotFocus, subscribeDirectorShotFocus } from './directorSessionRegistry'
 import type { DirectorShotFocus } from './model/directorShotFocus'
 
-export function useDirectorShotFocus(enabled: boolean): DirectorShotFocus | null {
-  const focus = React.useSyncExternalStore(subscribeDirectorShotFocus, readDirectorShotFocus, () => null)
-  return enabled ? focus : null
+export function useDirectorShotFocus(): DirectorShotFocus | null {
+  return React.useSyncExternalStore(subscribeDirectorShotFocus, readDirectorShotFocus, () => null)
 }

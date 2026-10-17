@@ -1,0 +1,1177 @@
+{
+  "schema_version": 3,
+  "id": "2026-10-12-inline-whiteboard",
+  "problem_type": "Inline nested-editor ownership: serialized document, exclusive input, asset survival and live anchored geometry",
+  "symptom": "The reviewed exploration moved board and image together; the existing production editor stores moved/scaled/flipped geometry only in engine maps so save/reopen cannot restore it. Inline hosting additionally exposes outer canvas Delete/arrow/undo consumers formerly isolated by the full-screen shell. User screenshot also shows the size popup covering the toolbar after board resize moves the anchor.",
+  "direct_cause": "Leafer interaction hooks mutate objectOffsetsRef, assetTransformsRef and objectFlipStatesRef, while WhiteboardDrawingTool.getState serialized only base assets, strokes and layers. Selection actions registered global keydown listeners, and the original host lived under a selection-only toolbar. Shared popup watcher observed its own resize and scroll but not moving anchor geometry; shared asset deletion reference checks ignored current draft and historical editable canvas asset URLs. Forced zero toolbar shift also conflicts with its 240px minimum screen width when a node center leaves less symmetric room at an extreme stage edge.",
+  "class_root": "The application lacked one serializable whiteboard document boundary and an explicit nested-editor input owner shared by pointer, keyboard, toolbar, history restoration and both node entrances. Inline geometry and retained editable snapshots also need shared lifecycle owners: popup coordinates must follow the live anchor, and source-layer files must survive while any document references them.",
+  "affected_population": [
+    "Image-node and standalone-whiteboard documents",
+    "Assets, brush strokes, grouped objects and new text objects",
+    "Arrow/Delete/Backspace/undo input, Chinese IME, toolbar inputs and project replacement",
+    "Every shared AnchoredPopover consumer whose anchor moves independently of window scroll; inline transforms opt in to frame tracking.",
+    "Current whiteboard drafts and retained result.raw.whiteboardState source-layer assets during immediate/deferred/restart cleanup.",
+    "Tall/custom frames, near-edge wide popovers and workspace bottom-dock/stage boundaries."
+  ],
+  "scope_paths": [
+    "package.json",
+    "pnpm-lock.yaml",
+    "src/design/AnchoredPopover.tsx",
+    "src/design/anchoredPopoverPlacement.ts",
+    "src/dev/optimizeDepsEntry.ts",
+    "src/i18n/locales/generationCommon.ts",
+    "src/workbench/assets/assetResultDeletion.ts",
+    "src/workbench/generation/workspaceBottomDocks.ts",
+    "src/workbench/generationCanvas/components/useCanvasShortcuts.ts",
+    "src/workbench/generationCanvas/nodes/BaseGenerationNode.tsx",
+    "src/workbench/generationCanvas/nodes/NodeFloatingToolbar.tsx",
+    "src/workbench/generationCanvas/nodes/ToolbarActionMenu.tsx",
+    "src/workbench/generationCanvas/nodes/floatingToolbarClamp.ts",
+    "src/workbench/generationCanvas/nodes/nodeSizing.ts",
+    "src/workbench/generationCanvas/nodes/versionCards/NodeVersionCardsHost.tsx",
+    "src/workbench/generationCanvas/nodes/whiteboard/InlineWhiteboard.tsx",
+    "src/workbench/generationCanvas/nodes/whiteboard/NodeInlineWhiteboardHost.tsx",
+    "src/workbench/generationCanvas/nodes/whiteboard/WhiteboardCardBody.tsx",
+    "src/workbench/generationCanvas/nodes/whiteboard/WhiteboardDrawingTool.tsx",
+    "src/workbench/generationCanvas/nodes/whiteboard/WhiteboardEditingToolbar.tsx",
+    "src/workbench/generationCanvas/nodes/whiteboard/WhiteboardLeaferCanvas.tsx",
+    "src/workbench/generationCanvas/nodes/whiteboard/WhiteboardLibraryPanel.tsx",
+    "src/workbench/generationCanvas/nodes/whiteboard/lib/canvas.ts",
+    "src/workbench/generationCanvas/nodes/whiteboard/useWhiteboardBoxSelection.ts",
+    "src/workbench/generationCanvas/nodes/whiteboard/useWhiteboardCanvasDocument.ts",
+    "src/workbench/generationCanvas/nodes/whiteboard/useWhiteboardSceneSync.ts",
+    "src/workbench/generationCanvas/nodes/whiteboard/useWhiteboardSelectionActions.ts",
+    "src/workbench/generationCanvas/nodes/whiteboard/whiteboardCanvasExport.ts",
+    "src/workbench/generationCanvas/nodes/whiteboard/whiteboardCanvasGeometry.ts",
+    "src/workbench/generationCanvas/nodes/whiteboard/whiteboardCanvasNodeOps.ts",
+    "src/workbench/generationCanvas/nodes/whiteboard/whiteboardCanvasTypes.ts",
+    "src/workbench/generationCanvas/nodes/whiteboard/whiteboardRasterState.ts",
+    "src/workbench/generationCanvas/nodes/whiteboard/whiteboardSceneRender.ts",
+    "src/workbench/generationCanvas/nodes/whiteboard/whiteboardSession.ts",
+    "src/workbench/generationCanvas/nodes/whiteboard/whiteboardState.ts",
+    "src/workbench/generationCanvas/nodes/whiteboard/whiteboardStateOps.ts",
+    "src/workbench/generationCanvas/nodes/whiteboard/whiteboardTypes.ts",
+    "src/workbench/generationCanvas/quickActions/ImageQuickActionsToolbar.tsx",
+    "src/workbench/generationCanvas/reactFlow/GenerationCanvasReactFlowNodes.tsx",
+    "src/workbench/generationCanvas/reactFlow/useCanvasBottomDockRects.ts",
+    "vite.config.ts",
+    "src/design/popoverTracking.structure.test.ts",
+    "src/workbench/generationCanvas/nodes/whiteboard/whiteboardTextMetrics.ts",
+    "tests/ux/whiteboard-perf.probe.mjs"
+  ],
+  "entry_points": [
+    "ImageQuickActionsToolbar → node-owned inline session",
+    "WhiteboardCardBody → same inline session",
+    "Leafer pointer move/scale, multi-selection and grouping",
+    "Selection toolbar and local keyboard actions",
+    "Done/screenshot/persist/reopen and history document restoration",
+    "Board size edit moves the anchored toolbar while the size popup remains open.",
+    "Original result version deletion and deferred file cleanup with retained editable snapshot references.",
+    "Tall and near-edge toolbar/popup placement over registered workspace bottom docks."
+  ],
+  "external_sources": [
+    {
+      "kind": "official-doc",
+      "url": "https://floating-ui.com/docs/autoupdate",
+      "checked_at": "2026-10-12",
+      "purpose": "Coordinator checked official autoUpdate documentation via Context7: ancestor/element/layout observation, its IntersectionObserver layout-shift source (follows anchors moved by transforms) and cleanup. The optional animationFrame loop was measured and removed: 165 rect reads/s and 2.2-2.6% main thread while idle, no better tracking in the dynamic-anchor walk. Reuse watcher only; preserve existing placement owner."
+    }
+  ],
+  "invariants": [
+    "Exactly one node-owned whiteboard editor session exists; changing selection does not replace its document.",
+    "Every committed move/scale/flip/group has detached serializable scene transforms and restoration uses that same representation.",
+    "Frame bounds and node position are owned by existing node/NodeResizer persistence; resizing the frame does not scale object geometry.",
+    "Handled whiteboard keyboard input cannot also mutate outer canvas selection; native text input and IME retain control.",
+    "Save, screenshot, upload and background-removal retain originating project-lifetime assertions.",
+    "Original image baseline is established only after successful decode; loading/failed original import never persists an empty draft or admits Done.",
+    "Save publishes against fresh store facts after capture/storage, never resurrecting concurrently deleted history.",
+    "Version main/delete actions finish the active editor transaction first; project release invalidates a pending editor switch.",
+    "All rich control panels share the local panel owner and Escape closes a panel before editor completion.",
+    "An open popup follows its current anchor after document frame resize/layout/transform changes, never covering its toolbar action row.",
+    "Deleting a raster version cannot delete any source-layer file still referenced by a current draft or retained editable snapshot.",
+    "Toolbar and rich-content popup bounds reuse canonical workspace bottom-dock geometry; dock admission uses the actual horizontally clamped popup span and offset desktop-stage bounds.",
+    "Project release clears active session and opening lease; old completion cannot block or unlock the new project lease.",
+    "Opening historical or legacy results initializes frame size from initialDimensions before binding the selected result identity.",
+    "Version mutation captures project context before awaiting editor finish, checks it afterward, and never issues against the newly current project.",
+    "Numeric board/font inputs retain partial typed text through DesignNumberInput; commit only valid bounds, clamp on blur.",
+    "A centered toolbar uses the symmetric width budget only while its minimum screen width fits; otherwise the same shared shift preserves visible action reachability, converges across scales/prior shifts, and returns to exact center when room is restored."
+  ],
+  "doors": [
+    {
+      "kind": "read",
+      "path": "electron/shared/modelArchetypes/gptImage2.ts",
+      "symbol": "ASPECT_RATIOS"
+    },
+    {
+      "kind": "read",
+      "path": "electron/shared/modelArchetypes/imagen4Kie.ts",
+      "symbol": "ASPECT_RATIOS"
+    },
+    {
+      "kind": "read",
+      "path": "src/design/AnchoredPopover.tsx",
+      "symbol": "AnchoredPopoverAlign"
+    },
+    {
+      "kind": "read",
+      "path": "src/design/AnchoredPopover.tsx",
+      "symbol": "AnchoredPopoverSide"
+    },
+    {
+      "kind": "read",
+      "path": "src/design/AnchoredPopover.tsx",
+      "symbol": "AnchoredPopoverProps"
+    },
+    {
+      "kind": "read",
+      "path": "src/design/AnchoredPopover.tsx",
+      "symbol": "resolveAnchoredPopoverPlacement"
+    },
+    {
+      "kind": "read",
+      "path": "src/design/anchoredPopoverPlacement.ts",
+      "symbol": "AnchoredPopoverAlign"
+    },
+    {
+      "kind": "read",
+      "path": "src/design/anchoredPopoverPlacement.ts",
+      "symbol": "AnchoredPopoverSide"
+    },
+    {
+      "kind": "read",
+      "path": "src/devlab/designLab/emptyNodeRatios/labRatios.ts",
+      "symbol": "resolveNodeVisualSize"
+    },
+    {
+      "kind": "read",
+      "path": "src/devlab/designLab/primitivesSurfaces/states/02-overlays.tsx",
+      "symbol": "AnchoredPopover"
+    },
+    {
+      "kind": "read",
+      "path": "src/devlab/designLab/videoNodeNext/videoNodeNextToolbarKit.tsx",
+      "symbol": "FloatingToolbarShell"
+    },
+    {
+      "kind": "read",
+      "path": "src/i18n/locales/generationCommon.ts",
+      "symbol": "zhGenerationCommon"
+    },
+    {
+      "kind": "read",
+      "path": "src/i18n/resources.ts",
+      "symbol": "zhGenerationCommon"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/assets/AssetPickerPopover.tsx",
+      "symbol": "AnchoredPopover"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/assets/assetResultDeletion.ts",
+      "symbol": "readWhiteboardAssetUrls"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/creation/storyboard/shotRow/PromptSkeletonSegments.tsx",
+      "symbol": "AnchoredPopover"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/creation/storyboard/shotRow/ShotReferenceStrip.tsx",
+      "symbol": "AnchoredPopover"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/creation/storyboard/shotRow/StoryboardShotRow.tsx",
+      "symbol": "AnchoredPopover"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/creation/storyboard/StoryboardHoverPreview.tsx",
+      "symbol": "AnchoredPopover"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generation/workspaceBottomDocks.ts",
+      "symbol": "resolveBottomDockScope"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generation/workspaceBottomDocks.ts",
+      "symbol": "collectBottomDockElements"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/agent/applyCanvasToolCall.ts",
+      "symbol": "resolveNodeVisualSize"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/agent/sendFrameToTimeline.ts",
+      "symbol": "resolveNodeVisualSize"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/components/canvasArrivalModel.ts",
+      "symbol": "resolveNodeVisualSize"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/components/CanvasControlsHelpPopover.tsx",
+      "symbol": "AnchoredPopover"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/components/canvasResultDrag.ts",
+      "symbol": "resultIdentity"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/components/canvasResultDrag.ts",
+      "symbol": "resolveNodeVisualSize"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/components/CanvasViewOptionsPopover.tsx",
+      "symbol": "AnchoredPopover"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/components/generationCanvasGeometry.ts",
+      "symbol": "resolveNodeVisualSize"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/model/groupArrange.ts",
+      "symbol": "resolveNodeVisualSize"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/artifact/artifactNodeSlots.tsx",
+      "symbol": "resolveNodeVisualSize"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/artifact/ArtifactNodeToolbar.tsx",
+      "symbol": "FloatingToolbarShell"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/BaseGenerationNode.tsx",
+      "symbol": "getNodeResizeBounds"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/BaseGenerationNode.tsx",
+      "symbol": "resolveNodeVisualSize"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/ClipNode.tsx",
+      "symbol": "resolveNodeVisualSize"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/ConnectedTextChips.tsx",
+      "symbol": "AnchoredPopover"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/director/DirectorNode.tsx",
+      "symbol": "resolveNodeVisualSize"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/extractShotCutsToNodes.ts",
+      "symbol": "resolveNodeVisualSize"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/extractVideoFrameToNode.ts",
+      "symbol": "resolveNodeVisualSize"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/NodeEffectChips.tsx",
+      "symbol": "AnchoredPopover"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/NodeFloatingToolbar.tsx",
+      "symbol": "resolveUsableBottomAboveDocks"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/NodeFloatingToolbar.tsx",
+      "symbol": "FloatingToolbarShell"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/NodeResultDownloadButton.tsx",
+      "symbol": "FloatingToolbarShell"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/nodeSizing.ts",
+      "symbol": "readNodeMediaAspectRatio"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/nodeSizing.ts",
+      "symbol": "getNodeResizeBounds"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/nodeSizing.ts",
+      "symbol": "resolveNodeVisualSize"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/NodeVideoFrameToolbar.tsx",
+      "symbol": "FloatingToolbarShell"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/render/CardCommon.tsx",
+      "symbol": "resolveNodeVisualSize"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/render/CharacterCardNode.tsx",
+      "symbol": "resolveNodeVisualSize"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/render/PanoramaNodeToolbar.tsx",
+      "symbol": "FloatingToolbarShell"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/render/PropCardNode.tsx",
+      "symbol": "resolveNodeVisualSize"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/render/SceneCardNode.tsx",
+      "symbol": "resolveNodeVisualSize"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/render/TextDocumentNode.tsx",
+      "symbol": "resolveNodeVisualSize"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/shotTable/factBridge.ts",
+      "symbol": "resolveNodeVisualSize"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/ToolbarActionMenu.tsx",
+      "symbol": "AnchoredPopoverProps"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/ToolbarActionMenu.tsx",
+      "symbol": "AnchoredPopover"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/ToolbarActionMenu.tsx",
+      "symbol": "ToolbarActionPanel"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/trimVideoToNode.ts",
+      "symbol": "resolveNodeVisualSize"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/useNodeImageEditing.ts",
+      "symbol": "resolveNodeVisualSize"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/InlineWhiteboard.tsx",
+      "symbol": "WhiteboardState"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/InlineWhiteboard.tsx",
+      "symbol": "readWhiteboardState"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/InlineWhiteboard.tsx",
+      "symbol": "resolveNodeVisualSize"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/lib/canvas.ts",
+      "symbol": "ASPECT_RATIOS"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/NodeInlineWhiteboardHost.tsx",
+      "symbol": "readWhiteboardEditingState"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/useWhiteboardBoxSelection.ts",
+      "symbol": "CanvasObjectTarget"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/useWhiteboardBoxSelection.ts",
+      "symbol": "CanvasText"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/useWhiteboardCanvasDocument.ts",
+      "symbol": "LeaferApp"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/useWhiteboardCanvasDocument.ts",
+      "symbol": "SceneTransforms"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/useWhiteboardSceneSync.ts",
+      "symbol": "CanvasObjectTarget"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/useWhiteboardSceneSync.ts",
+      "symbol": "CanvasText"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/useWhiteboardSceneSync.ts",
+      "symbol": "SceneTransforms"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/useWhiteboardSelectionActions.ts",
+      "symbol": "CanvasObjectTarget"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/useWhiteboardSelectionActions.ts",
+      "symbol": "CanvasText"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/whiteboardCanvasExport.ts",
+      "symbol": "LeaferApp"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/whiteboardCanvasGeometry.ts",
+      "symbol": "CanvasObjectTarget"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/whiteboardCanvasGeometry.ts",
+      "symbol": "CanvasText"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/whiteboardCanvasNodeOps.ts",
+      "symbol": "CanvasObjectTarget"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/whiteboardCanvasTypes.ts",
+      "symbol": "LeaferApp"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/whiteboardCanvasTypes.ts",
+      "symbol": "SceneTransforms"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/WhiteboardCardBody.tsx",
+      "symbol": "resolveNodeVisualSize"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/WhiteboardDrawingTool.tsx",
+      "symbol": "WhiteboardState"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/WhiteboardDrawingTool.tsx",
+      "symbol": "CanvasObjectTarget"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/WhiteboardEditingToolbar.tsx",
+      "symbol": "CanvasObjectTarget"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/WhiteboardEditingToolbar.tsx",
+      "symbol": "resolveAnchoredPopoverPlacement"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/WhiteboardEditingToolbar.tsx",
+      "symbol": "resolveUsableBottomAboveDocks"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/WhiteboardEditingToolbar.tsx",
+      "symbol": "collectBottomDockRects"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/WhiteboardEditingToolbar.tsx",
+      "symbol": "FloatingToolbarShell"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/WhiteboardEditingToolbar.tsx",
+      "symbol": "ToolbarActionPanel"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/WhiteboardEditingToolbar.tsx",
+      "symbol": "ASPECT_RATIOS"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/WhiteboardLeaferCanvas.tsx",
+      "symbol": "CanvasText"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/WhiteboardLeaferCanvas.tsx",
+      "symbol": "SceneTransforms"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/WhiteboardLeaferCanvas.tsx",
+      "symbol": "CanvasObjectTarget"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/WhiteboardLeaferCanvas.tsx",
+      "symbol": "LeaferApp"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/WhiteboardLibraryPanel.tsx",
+      "symbol": "CanvasObjectTarget"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/whiteboardRasterState.ts",
+      "symbol": "WhiteboardState"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/whiteboardSceneRender.ts",
+      "symbol": "CanvasText"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/whiteboardSceneRender.ts",
+      "symbol": "CanvasObjectTarget"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/whiteboardSession.ts",
+      "symbol": "useWhiteboardSession"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/whiteboardState.ts",
+      "symbol": "WhiteboardState"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/whiteboardState.ts",
+      "symbol": "ASPECT_RATIOS"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/whiteboardState.ts",
+      "symbol": "readWhiteboardState"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/whiteboardStateOps.ts",
+      "symbol": "CanvasObjectTarget"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/whiteboardStateOps.ts",
+      "symbol": "WhiteboardState"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/whiteboardTypes.ts",
+      "symbol": "CanvasText"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/whiteboardTypes.ts",
+      "symbol": "SceneTransforms"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/quickActions/connectionMenuModel.ts",
+      "symbol": "resolveNodeVisualSize"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/quickActions/deriveFromNode.ts",
+      "symbol": "resolveNodeVisualSize"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/quickActions/ImageQuickActionsToolbar.tsx",
+      "symbol": "FloatingToolbarShell"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/reactFlow/generationCanvasReactFlowAdapter.ts",
+      "symbol": "resolveNodeVisualSize"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/reactFlow/GenerationCanvasReactFlowNodes.tsx",
+      "symbol": "resolveNodeVisualSize"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/reactFlow/GenerationCanvasReactFlowNodes.tsx",
+      "symbol": "getNodeResizeBounds"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/reactFlow/GenerationCanvasReactFlowNodes.tsx",
+      "symbol": "readNodeMediaAspectRatio"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/reactFlow/selectionToolbarPlacement.ts",
+      "symbol": "resolveUsableBottomAboveDocks"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/reactFlow/useCanvasBottomDockRects.ts",
+      "symbol": "resolveBottomDockScope"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/reactFlow/useCanvasBottomDockRects.ts",
+      "symbol": "collectBottomDockRects"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/reactFlow/useGenerationCanvasReactFlowEffects.ts",
+      "symbol": "resolveNodeVisualSize"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/store/canvasGraphActions.ts",
+      "symbol": "resolveNodeVisualSize"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/store/canvasNodeActions.ts",
+      "symbol": "resolveNodeVisualSize"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/store/canvasSnapshotNormalizer.ts",
+      "symbol": "resolveNodeVisualSize"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/store/generationCanvasStore.ts",
+      "symbol": "resolveNodeVisualSize"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/store/nodeRunOutcome.ts",
+      "symbol": "resolveNodeVisualSize"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/videoDepth/startVideoDepthDerivation.ts",
+      "symbol": "resolveNodeVisualSize"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/library/ProjectSyncBadge.tsx",
+      "symbol": "AnchoredPopover"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/timeline/agent/exportToolCall.ts",
+      "symbol": "ASPECT_RATIOS"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/timeline/TimelineTransitionPicker.tsx",
+      "symbol": "AnchoredPopover"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/assets/assetResultDeletion.ts",
+      "symbol": "resultIdentity"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/assets/assetResultDeletion.ts",
+      "symbol": "isProjectFileReferenced"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/assets/assetTypes.ts",
+      "symbol": "resultIdentity"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/assets/pendingAssetDeletions.ts",
+      "symbol": "isProjectFileReferenced"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generation/list/GenerationListDetail.tsx",
+      "symbol": "resultIdentity"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/components/canvasResultDrag.ts",
+      "symbol": "resultIdentity"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/components/useCanvasShortcuts.ts",
+      "symbol": "shouldIgnoreCanvasShortcut"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/components/useCanvasShortcuts.ts",
+      "symbol": "createCanvasKeydownHandler"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/model/nodeResultLifecycle.ts",
+      "symbol": "resultIdentity"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/BaseGenerationNode.tsx",
+      "symbol": "useWhiteboardSession"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/floatingToolbarClamp.ts",
+      "symbol": "floatingToolbarShift"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/NodeFloatingToolbar.tsx",
+      "symbol": "useCanvasBottomDockRects"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/nodeSizing.ts",
+      "symbol": "resultIdentity"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/versionCards/NodeVersionCardsHost.tsx",
+      "symbol": "resultIdentity"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/versionCards/NodeVersionCardsHost.tsx",
+      "symbol": "finishWhiteboard"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/versionCards/nodeVersionEntries.ts",
+      "symbol": "resultIdentity"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/InlineWhiteboard.tsx",
+      "symbol": "serializeWhiteboardState"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/InlineWhiteboard.tsx",
+      "symbol": "whiteboardDraftIdentity"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/InlineWhiteboard.tsx",
+      "symbol": "registerWhiteboardFinish"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/InlineWhiteboard.tsx",
+      "symbol": "closeWhiteboard"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/NodeInlineWhiteboardHost.tsx",
+      "symbol": "closeWhiteboard"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/useWhiteboardCanvasDocument.ts",
+      "symbol": "restoreSceneTransforms"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/useWhiteboardCanvasDocument.ts",
+      "symbol": "captureSceneTransforms"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/WhiteboardCardBody.tsx",
+      "symbol": "openWhiteboard"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/WhiteboardDrawingTool.tsx",
+      "symbol": "serializeWhiteboardState"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/WhiteboardLeaferCanvas.tsx",
+      "symbol": "useWhiteboardCanvasDocument"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/WhiteboardLeaferCanvas.tsx",
+      "symbol": "useWhiteboardCanvasViewport"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/whiteboardState.ts",
+      "symbol": "resultIdentity"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/whiteboardState.ts",
+      "symbol": "restoreSceneTransforms"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/whiteboardState.ts",
+      "symbol": "captureSceneTransforms"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/whiteboardStateOps.ts",
+      "symbol": "restoreSceneTransforms"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/whiteboardStateOps.ts",
+      "symbol": "captureSceneTransforms"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/quickActions/ImageQuickActionsToolbar.tsx",
+      "symbol": "openWhiteboard"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/reactFlow/GenerationCanvasReactFlowNodes.tsx",
+      "symbol": "useWhiteboardSession"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/reactFlow/GenerationCanvasReactFlowViewport.tsx",
+      "symbol": "useCanvasBottomDockRects"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/store/canvasNodeActions.ts",
+      "symbol": "resultIdentity"
+    },
+    {
+      "kind": "read",
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/WhiteboardDrawingTool.tsx",
+      "symbol": "applyTextChanges"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/WhiteboardDrawingTool.tsx",
+      "symbol": "applyTextChanges"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/WhiteboardDrawingTool.tsx",
+      "symbol": "createWhiteboardText"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/WhiteboardLeaferCanvas.tsx",
+      "symbol": "measureWhiteboardText"
+    },
+    {
+      "kind": "write",
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/whiteboardTextMetrics.ts",
+      "symbol": "withMeasuredSize"
+    }
+  ],
+  "door_reduction": {
+    "before": 114,
+    "after": 166,
+    "why_not": "The identical symbol set includes existing shared node dimensions, canvas shortcut admission and floating-toolbar placement readers, in addition to document/engine/session consumers. The feature makes previously implicit transform state explicit and adds result-bound annotation/text readers. Both launchers converge on one node-owned editor; version mutations finish that same session. Legitimate read projections remain separate because their node/media responsibilities differ; the old modal and obsolete controls are deleted instead of retaining a parallel editor. src/dev/optimizeDepsEntry.ts is a changed side-effect-only import entry for @floating-ui/dom: no identifier occurrence exists for door-map; it remains scoped with vite.config.ts/package manifests as dependency lifecycle evidence, not fabricated as a symbol door."
+  },
+  "generality_proof": "captureSceneTransforms/restoreSceneTransforms detach all three geometry populations; serializeWhiteboardState carries them for any node and legacy data gains empty transforms. LeaferCanvas exposes local selection actions to the shared editor host instead of installing a competing window listener. Both launchers request the same session; node-level mounting survives deselection. Two real Electron tracks verify the exercised closed loops; the independent report explicitly preserves every unverified original interaction. Registered inline-whiteboard-drag uses the existing unified DRIVERS/runner with five successful fresh-project repetitions of the same complete real-media walk; failed/incomplete journeys are rejected rather than accepting their frame samples.",
+  "shared_boundaries": [
+    {
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/whiteboardCanvasTypes.ts",
+      "symbol": "captureSceneTransforms",
+      "responsibility": "Detach engine transform maps into one serializable scene representation; reverse with restoreSceneTransforms."
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/whiteboardState.ts",
+      "symbol": "serializeWhiteboardState",
+      "responsibility": "Serialize the complete editable document, including text, board dimensions and scene transforms."
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/WhiteboardLeaferCanvas.tsx",
+      "symbol": "LeaferCanvas",
+      "responsibility": "Commit pointer/toolbar/keyboard transforms and expose scoped keyboard actions without global mutation ownership."
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/whiteboardSession.ts",
+      "symbol": "openWhiteboard",
+      "responsibility": "Serialize switching of active node sessions and retain failed saves in the current editor."
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/useWhiteboardCanvasDocument.ts",
+      "symbol": "useWhiteboardCanvasDocument",
+      "responsibility": "Hold mutable engine maps, restore document revisions, and commit detached transforms after pointer/selection actions."
+    },
+    {
+      "path": "src/workbench/generationCanvas/components/useCanvasShortcuts.ts",
+      "symbol": "shouldIgnoreCanvasShortcut",
+      "responsibility": "Exclude events originating in the nested whiteboard and its portalled controls at outer canvas shortcut admission."
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/nodeSizing.ts",
+      "symbol": "resolveNodeVisualSize",
+      "responsibility": "Resolve persisted version-bound whiteboard frame dimensions independently from media intrinsic aspect."
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/floatingToolbarClamp.ts",
+      "symbol": "nextFloatingToolbarPlacement",
+      "responsibility": "Shared measured toolbar placement; symmetric width budget preserves exact centering where minimum screen width fits, otherwise the existing shift preserves action reachability and convergence."
+    },
+    {
+      "path": "src/design/AnchoredPopover.tsx",
+      "symbol": "AnchoredPopover",
+      "responsibility": "One existing placement owner; framework autoUpdate observes live anchor/popover geometry and releases watchers on unmount."
+    },
+    {
+      "path": "src/workbench/assets/assetResultDeletion.ts",
+      "symbol": "isProjectFileReferenced",
+      "responsibility": "Protect current draft and all retained editable snapshot source assets at the same immediate/deferred/restart deletion admission boundary."
+    },
+    {
+      "path": "src/design/anchoredPopoverPlacement.ts",
+      "symbol": "resolveAnchoredPopoverPlacement",
+      "responsibility": "Sole rich-popup placement decision, accepting generic offset workspace bounds."
+    },
+    {
+      "path": "src/workbench/generation/workspaceBottomDocks.ts",
+      "symbol": "resolveUsableBottomAboveDocks",
+      "responsibility": "Existing canonical workspace dock-collision decision shared by toolbar and rich popups."
+    },
+    {
+      "path": "src/workbench/generation/workspaceBottomDocks.ts",
+      "symbol": "collectBottomDockRects",
+      "responsibility": "Existing registered workspace dock census in caller coordinates; no copied selectors."
+    },
+    {
+      "path": "src/workbench/generationCanvas/reactFlow/useCanvasBottomDockRects.ts",
+      "symbol": "useCanvasBottomDockRects",
+      "responsibility": "Existing active-only dock observation lifecycle for toolbar placement."
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/ToolbarActionMenu.tsx",
+      "symbol": "ToolbarActionPanel",
+      "responsibility": "Shared controlled rich-panel surface reused by original toolbar menus and whiteboard; preserves one popover/placement owner."
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/whiteboardState.ts",
+      "symbol": "readWhiteboardEditingState",
+      "responsibility": "Select current draft or historical editable snapshot by result identity; legacy raster has no invented document."
+    }
+  ],
+  "same_class_entry_points": [
+    {
+      "path": "src/workbench/generationCanvas/quickActions/ImageQuickActionsToolbar.tsx",
+      "entry_point": "openWhiteboard",
+      "disposition": "enforced",
+      "evidence": "Image launcher requests shared node session; BaseGenerationNode owns the editor, not the transient toolbar."
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/WhiteboardCardBody.tsx",
+      "entry_point": "openWhiteboard",
+      "disposition": "enforced",
+      "evidence": "Standalone launcher requests the same session and editor implementation."
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/useWhiteboardSelectionActions.ts",
+      "entry_point": "moveSelectedTarget / flipSelectedTarget / handleKeyDown",
+      "disposition": "enforced",
+      "evidence": "Selection operations commit through scene boundary; keyboard handler is returned to the local host rather than independently subscribing to window."
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/useWhiteboardBoxSelection.ts",
+      "entry_point": "multiSelectionDragRef",
+      "disposition": "enforced",
+      "evidence": "Multi-object drag uses the same transform maps and canvas pointer completion capture."
+    },
+    {
+      "path": "src/design/AnchoredPopover.tsx",
+      "entry_point": "autoUpdate",
+      "disposition": "enforced",
+      "evidence": "Existing shared component replaces the manual watcher; every caller gets ancestor / element / layout-shift tracking, which also follows transform-moved anchors through an IntersectionObserver. There is no per-frame loop and no opt-in prop for one; src/design/popoverTracking.structure.test.ts keeps animationFrame and a second autoUpdate door out of src."
+    },
+    {
+      "path": "src/workbench/assets/assetResultDeletion.ts",
+      "entry_point": "isProjectFileReferenced",
+      "disposition": "enforced",
+      "evidence": "Current drafts and historical raw documents use readWhiteboardAssetUrls in the shared reference predicate; all cleanup callers reuse it."
+    }
+  ],
+  "recurrence": {
+    "classification": "recurring",
+    "reason": "Every editable object and both launchers can reach the same nonserialized engine-state mechanism; all nested keyboard actions can compete with outer canvas consumers.",
+    "same_class_scan": [
+      "node scripts/door-map.mjs ASPECT_RATIOS AnchoredPopoverProps resolveNodeVisualSize AnchoredPopover FloatingToolbarShell zhGenerationCommon readWhiteboardAssetUrls resultIdentity getNodeResizeBounds readNodeMediaAspectRatio WhiteboardState readWhiteboardState CanvasObjectTarget CanvasText LeaferApp SceneTransforms useWhiteboardSession isProjectFileReferenced shouldIgnoreCanvasShortcut createCanvasKeydownHandler floatingToolbarShift finishWhiteboard serializeWhiteboardState whiteboardDraftIdentity registerWhiteboardFinish closeWhiteboard restoreSceneTransforms captureSceneTransforms openWhiteboard useWhiteboardCanvasDocument useWhiteboardCanvasViewport resolveAnchoredPopoverPlacement collectBottomDockRects collectBottomDockElements resolveBottomDockScope resolveUsableBottomAboveDocks useCanvasBottomDockRects AnchoredPopoverAlign AnchoredPopoverSide readWhiteboardEditingState ToolbarActionPanel --roots=src,electron",
+      "rg -n \"objectOffsetsRef|assetTransformsRef|objectFlipStatesRef\" src/workbench/generationCanvas/nodes/whiteboard",
+      "rg -n \"WhiteboardModal|openWhiteboard|useWhiteboardSession\" src/workbench/generationCanvas",
+      "rg -n \"keydown|isComposing|Delete|ArrowRight\" src/workbench/generationCanvas/components/useCanvasShortcuts.ts src/workbench/generationCanvas/nodes/whiteboard",
+      "Baseline generated from integrated HEAD fdb0b154388b2a4ab839ffa95365aa61ccfa29cb using mapDoors over git grep candidate inventory and git show HEAD:<path>, identical current symbol set. Before 114, after 165.",
+      "Existing structural guard verification (unchanged tests): pnpm exec vitest run scripts/viteOptimizeDeps.test.mjs src/workbench/generationCanvas/nodes/ToolbarActionMenu.structure.test.ts src/workbench/generationCanvas/nodes/nodeInnerScrollNoWheel.test.ts src/workbench/project/projectActionIssuance.contract.test.ts",
+      "pnpm run perf:scenarios -- --id inline-whiteboard-drag --runs 5 --out .tmp/whiteboard-scenario-repeat.json (existing unified DRIVERS runner; baseline is five successful complete journeys, not partial failed samples)"
+    ]
+  },
+  "prevention": {
+    "kind": "centralized-boundary",
+    "enforcement_path": "src/workbench/generationCanvas/nodes/whiteboard/WhiteboardLeaferCanvas.tsx",
+    "invariant": "All editable scene transforms flow through the serializable document owner and all local selection actions are explicitly invoked by the active editor host.",
+    "failure_mode": "A failed save leaves the active session open; unavailable editor actions do not fall through to outer node deletion or movement; stale project actions cannot publish results.",
+    "exception_policy": "none",
+    "strategy": "Remove full-screen parallel host and global whiteboard key listener; bind both launchers to the node session and commit engine maps at pointer/selection action boundaries. Replace manual popup watcher with existing Floating UI autoUpdate and preserve source asset references at the shared file-liveness predicate. Tall/near-edge placement reuses canonical workspace dock census and usable-bottom admission through the existing toolbar shell and generic popup boundary. Horizontal placement is computed by the same shared popup helper before dock admission; no second clamp or dock list. Minimum-width admission is decided in nextFloatingToolbarPlacement before forcing centered zero-shift; inadequate symmetric room reuses floatingToolbarShift, preserving one placement owner. The shared watcher never polls per frame: the animationFrame option and the trackTransforms prop are deleted (2026-10-17, review F7) and a structure test fails if either comes back or a second autoUpdate door appears.",
+    "artifacts": [
+      "src/workbench/generationCanvas/nodes/whiteboard/WhiteboardLeaferCanvas.tsx",
+      "src/workbench/generationCanvas/nodes/whiteboard/whiteboardCanvasTypes.ts",
+      "src/workbench/generationCanvas/nodes/whiteboard/whiteboardState.ts",
+      "src/workbench/generationCanvas/nodes/whiteboard/whiteboardSession.ts",
+      "src/workbench/generationCanvas/nodes/whiteboard/useWhiteboardSelectionActions.ts",
+      "src/workbench/generationCanvas/nodes/whiteboard/useWhiteboardCanvasDocument.ts",
+      "src/workbench/generationCanvas/components/useCanvasShortcuts.ts",
+      "src/workbench/generationCanvas/nodes/nodeSizing.ts",
+      "src/workbench/generationCanvas/nodes/versionCards/NodeVersionCardsHost.tsx",
+      "src/design/AnchoredPopover.tsx",
+      "src/workbench/assets/assetResultDeletion.ts",
+      "src/design/anchoredPopoverPlacement.ts",
+      "src/workbench/generation/workspaceBottomDocks.ts",
+      "src/workbench/generationCanvas/reactFlow/useCanvasBottomDockRects.ts",
+      "src/design/popoverTracking.structure.test.ts"
+    ]
+  },
+  "regression_tests": [
+    "src/workbench/generationCanvas/nodes/whiteboard/whiteboardDocument.test.ts",
+    "src/workbench/generationCanvas/nodes/whiteboard/whiteboardInlineState.test.ts",
+    "src/workbench/generationCanvas/nodes/whiteboard/whiteboardProjectContext.test.ts",
+    "src/workbench/generationCanvas/nodes/nodeSizing.visualSize.test.ts",
+    "src/workbench/generationCanvas/components/useCanvasShortcuts.test.ts",
+    "src/workbench/generationCanvas/nodes/floatingToolbarClamp.test.ts",
+    "src/workbench/assets/assetResultDeletion.test.ts",
+    "src/workbench/generationCanvas/model/derivedOutput.test.ts",
+    "src/workbench/generationCanvas/nodes/whiteboard/localEditorFeedback.test.ts",
+    "tests/ux/whiteboard-refactor.walk.mjs",
+    "src/design/anchoredPopoverPlacement.test.ts",
+    "src/ui/app-shell/windowChrome.test.ts",
+    "src/design/popoverTracking.structure.test.ts",
+    "src/workbench/generationCanvas/nodes/whiteboard/whiteboardTextMetrics.test.ts",
+    "tests/ux/whiteboard-perf.probe.mjs"
+  ],
+  "class_regression_tests": [
+    "src/workbench/generationCanvas/nodes/whiteboard/whiteboardDocument.test.ts",
+    "src/workbench/generationCanvas/nodes/whiteboard/whiteboardInlineState.test.ts",
+    "src/workbench/generationCanvas/nodes/whiteboard/whiteboardProjectContext.test.ts",
+    "src/workbench/generationCanvas/nodes/nodeSizing.visualSize.test.ts",
+    "src/workbench/generationCanvas/components/useCanvasShortcuts.test.ts",
+    "src/workbench/generationCanvas/nodes/floatingToolbarClamp.test.ts",
+    "src/workbench/assets/assetResultDeletion.test.ts",
+    "src/workbench/generationCanvas/model/derivedOutput.test.ts",
+    "src/workbench/generationCanvas/nodes/whiteboard/localEditorFeedback.test.ts",
+    "tests/ux/whiteboard-refactor.walk.mjs",
+    "src/design/anchoredPopoverPlacement.test.ts",
+    "src/ui/app-shell/windowChrome.test.ts",
+    "src/design/popoverTracking.structure.test.ts",
+    "src/workbench/generationCanvas/nodes/whiteboard/whiteboardTextMetrics.test.ts",
+    "tests/ux/whiteboard-perf.probe.mjs"
+  ],
+  "legacy_paths": {
+    "status": "removed",
+    "removed_paths": [
+      "src/workbench/generationCanvas/nodes/whiteboard/WhiteboardModal.tsx",
+      "src/workbench/generationCanvas/nodes/whiteboard/WhiteboardToolbarControls.tsx"
+    ],
+    "rationale": "Both legacy modal launchers are replaced by one node-owned inline editor. Old documents remain supported by the shared reader; no second editor or fallback host is retained."
+  },
+  "dependency_lifecycle": {
+    "decision": "upgrade-now",
+    "current": "Existing Leafer UI/editor/export 2.1.7, React Flow NodeResizer and Zustand retained; AnchoredPopover previously used manual scroll/ResizeObserver tracking. Floating UI 1.8.0 already existed transitively.",
+    "target": "Pin already-installed @floating-ui/dom 1.8.0 in devDependencies (renderer is Vite-bundled), prebundle through existing Vite dependency entry, and reuse autoUpdate watcher only.",
+    "rationale": "Anchor motion is a general watcher lifecycle problem, so replace the manual watcher with the installed framework capability. No second placement algorithm or renderer is introduced.",
+    "exit_criteria": [
+      "Leafer retention remains conditional on persistent asset/group/text transforms and true local erase in real Electron.",
+      "Floating UI upgrades must retain cleanup-on-unmount, no idle panel watchers, transform-following and popup/action-row reachability in the real moving-anchor matrix."
+    ]
+  },
+  "migration": "Additive optional texts, canvasDimensions and sceneTransforms read missing legacy fields as empty/default values. Legacy results without an editable snapshot must not claim fully editable old layers. Region annotations (meta.whiteboardAnnotations) were removed on 2026-10-17 (user: \"1189 的标注工具先拿掉\"); projects that already stored them keep the data in the file, nothing reads or rewrites it, and no migration is attempted — the global annotation layer planned for 0.24 will define its own storage.",
+  "residual_risks": [
+    "Partial real-app retention census remains explicit; source reuse and focused green tests do not prove every original subfunction.",
+    "Escape ledger popup overlap: settled against #1189 on 2026-10-17 after the walk matrix (width / height / wheel dynamic anchors, 51 checks) passed in four real Electron tracks (zh/en x light/dark) both with the old per-frame loop and without it, plus the per-frame drift probe (12 of ~230 frames off in both).",
+    "DesignNumberInput font36/height900 and shared ToolbarActionPanel are exercised in both real core tracks. First performance journey failed on extreme-edge clipping; the shared clamp repair passes 75 geometry combinations and the complete same-fixture rerun. Final committed-HEAD build/delivery is still pending.",
+    "Unified inline-whiteboard-drag baseline: five complete 50-check runs at 696bf56ae5, 371/372/372/373/373 frames, per-run frame p95 all9.6ms; across-run median/p95=9.6/9.6ms vs33ms and zero >50ms long tasks. Registry records M5/24GB and noisy=true. The sample remains 32 nodes, 30 offscreen, one active editor, one shared 4K image; no dense all-visible or platform-wide performance claim.",
+    "Toolbar exact centering yields to reachability only when the minimum screen width cannot fit symmetrically; extreme-edge screenshot wraps four rows. Automated feel records retain 14 core/17 performance findings and are not a zero-finding pass.",
+    "Full gates/test are not green: one older settings baseline specimen and generatedMediaDecode encoder failure independently reproduce on fdb0b15438; all remaining failures require their own attribution, never blanket baseline classification.",
+    "Windows, clean packaged install, restart recovery, image-pixel eraser hit and actual background-removal model download remain unverified.",
+    "P5★7 drag timing has a reusable registered baseline, but opening/input/popup/save individual response latencies, openToInteractive, worst visible asset scale and the user full project remain unverified; openToPersistedInitialImage is not openToInteractive."
+  ],
+  "detected_by": "user",
+  "recurrence_check_on": "2026-10-19",
+  "invariant_owner_layer": {
+    "layer": "src/workbench/generationCanvas/nodes/whiteboard",
+    "tests": [
+      "src/workbench/generationCanvas/nodes/whiteboard/whiteboardDocument.test.ts",
+      "src/workbench/generationCanvas/nodes/whiteboard/whiteboardInlineState.test.ts",
+      "src/workbench/generationCanvas/nodes/whiteboard/whiteboardProjectContext.test.ts",
+      "src/workbench/generationCanvas/nodes/nodeSizing.visualSize.test.ts",
+      "src/workbench/generationCanvas/components/useCanvasShortcuts.test.ts",
+      "src/workbench/generationCanvas/nodes/floatingToolbarClamp.test.ts",
+      "src/workbench/assets/assetResultDeletion.test.ts",
+      "src/workbench/generationCanvas/model/derivedOutput.test.ts",
+      "src/workbench/generationCanvas/nodes/whiteboard/localEditorFeedback.test.ts",
+      "tests/ux/whiteboard-refactor.walk.mjs",
+      "src/design/anchoredPopoverPlacement.test.ts",
+      "src/ui/app-shell/windowChrome.test.ts"
+    ]
+  }
+}

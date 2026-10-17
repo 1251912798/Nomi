@@ -245,7 +245,7 @@ export default function NomiStudioApp(): JSX.Element {
                 canvasDeleteSemanticInputSchema.parse(input),
               )
             }
-            // 3D-BOX（director.write）：preload 只在开关开时放行这两个操作进来。
+            // 3D-BOX（director.write）：preload 白名单里有这两个操作。
             if (isDirectorWriteOperation(operation)) {
               return captureDirectorWriteRawEvidence(readGenerationCanvasSnapshot(), directorWriteSemanticInputSchema.parse(input))
             }

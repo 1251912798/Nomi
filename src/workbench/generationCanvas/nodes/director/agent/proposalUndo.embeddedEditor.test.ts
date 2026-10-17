@@ -7,12 +7,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { DirectorWriteInput } from '../../../../../../electron/shared/agentCapabilities/directorWrite'
 import { laneClient } from '../../../../ai/lane/laneClient'
-import { registerEmbeddedEditorFlush } from '../../../agent/embeddedEditorFlush'
 import { applyProposalBatch } from '../../../agent/proposalTxn'
 import { hydrateCommittedProposalReceipt, runProposalUndo, type CommittedProposalRecord } from '../../../agent/proposalUndo'
 import { __resetCanvasUndoJournalForTests } from '../../../events/canvasUndoJournal'
 import { useGenerationCanvasStore } from '../../../store/generationCanvasStore'
-import { createDirectorNodeSync } from '../directorNodeSync'
+import { createDirectorEditorPersistence } from '../directorEditorPersistence'
 import { registerDirectorSession } from '../directorSessionRegistry'
 import { DIRECTOR_PROJECT_META_KEY } from '../model/directorNodeMeta'
 import { normalizeDirectorProject } from '../model/directorProject'
@@ -75,12 +74,12 @@ afterEach(() => laneClient.connect(undefined))
 function openEditor(nodeId: string) {
   const raw = nodeById(nodeId)?.meta?.[DIRECTOR_PROJECT_META_KEY]
   const store = createDirectorStore({ rawProject: raw, defaultSceneName: 'S' })
-  const sync = createDirectorNodeSync({
+  const sync = createDirectorEditorPersistence({
     store, defaultSceneName: 'S', initialRaw: raw,
     write: (project) => useGenerationCanvasStore.getState().updateNode(nodeId, { meta: { ...nodeById(nodeId)?.meta, [DIRECTOR_PROJECT_META_KEY]: project } }),
   })
   const offSession = registerDirectorSession(nodeId, { store, defaultSceneName: 'S', onExternalProjectChange: sync.persist })
-  const offFlush = registerEmbeddedEditorFlush(sync.saveNow)
+  const offFlush = sync.start()
   return { store, sync, close: () => { offFlush(); offSession() } }
 }
 

@@ -1,6 +1,6 @@
 // 设计实验室 · 导演视图（3D-BOX）· 两态 × 中英两轨。
 //
-// 每一格都是现役 DirectorEditor（开关开）+ 现役 Agent 面板，夹具只给数据与只读桥（见 director3dboxLabKit.tsx，经轻量外壳动态加载）。
+// 每一格都是现役 DirectorEditor+ 现役 Agent 面板，夹具只给数据与只读桥（见 director3dboxLabKit.tsx，经轻量外壳动态加载）。
 // 三态对应样张 `director-3dbox-mockup`（布局 A + v2 镜头条）里要拍板的三个画面：
 //   · 空工程的导演视图（还没有镜头）；
 //   · 庭院对峙工程的导演视图，用户点了第 2 张镜头卡（播放头停在第 2 镜开头）；

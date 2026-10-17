@@ -4,7 +4,7 @@
 // 数据只读两处既有的事实，不另存：
 //   · 转录里的收据授权 host-note（toolCallId ↔ 提议 id，与面板「撤销」钮同一份，见 laneReceiptUndo）；
 //   · 导演节点计划 meta 上 applyDirectorWrite 记的 patchNotes（提议 id → 被覆盖的手调）。
-// 撤销那一笔 = 计划 meta 整份放回 → 记录消失 → 这句不再出现。开关关时没有 stage_shot 补丁，恒为原样。
+// 撤销那一笔 = 计划 meta 整份放回 → 记录消失 → 这句不再出现。没有 stage_shot 补丁时恒为原样。
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import type { LanePart } from '../../../../electron/shared/agentLane/laneContracts'

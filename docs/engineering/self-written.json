@@ -1478,32 +1478,6 @@
       "revisitWhen": "导演台 Esc 归属改由统一的分层快捷键作用域承担时，删掉 useDismissOnEscape"
     },
     {
-      "id": "director3dbox-build-flag",
-      "capability": "3D-BOX 构建期功能开关：进程引导模块 + 共享层只读视图（工具注册表在导入期按它装配）",
-      "status": "justified",
-      "paths": [
-        "electron/shared/featureFlags/director3dbox.ts",
-        "electron/shared/featureFlags/director3dboxFace.ts"
-      ],
-      "alternativesChecked": [
-        {
-          "name": "OpenFeature JS SDK（运行时求值 + provider）",
-          "source": "https://openfeature.dev/docs/reference/technologies/client/web/"
-        },
-        {
-          "name": "Vite define 把构建变量烤进渲染端 bundle（已在用，只覆盖渲染端）",
-          "source": "vite.config.ts:197"
-        },
-        {
-          "name": "Electron app.isPackaged 区分打包与开发",
-          "source": "https://www.electronjs.org/docs/latest/api/app#appispackaged-readonly"
-        }
-      ],
-      "whyNotIntegrated": "领域约束：同一张 Agent 工具面在主进程、preload、pi 岛、MCP 进程、门岗与 vitest 六处于导入期装配成常量，开关必须在每个进程首个导入时就定死且彼此一致（打包只认烤进去的值）；运行时求值的 SDK 回答不了「导入那一刻是哪张面」，渲染端 define 也到不了主进程。两个文件合计不到 120 行，且随开关 2026-11-15 到期整体删除。",
-      "revisitWhen": "切换 PR（门槛达标后）同 commit 删开关与这两个文件；或出现第二个需要跨进程一致的构建开关时改接现成方案",
-      "revisitBy": "2026-11-15"
-    },
-    {
       "id": "director-shot-focus-and-patch-notices",
       "capability": "3D-BOX 3c 在 Agent 面板上的两样领域呈现：「正在改：镜头 N」标签（导演台选中的计划镜头随消息一起走），和「这次改动覆盖了你在镜头 N 的手调，可撤销」（哪一笔补丁丢了哪些手调）。三颗薄 hook 只把导演台选择 / 计划 meta 接到面板，一个标签组件按获批画布落地",
       "status": "justified",
@@ -1955,6 +1929,30 @@
       ],
       "whyNotIntegrated": "领域约束：分组框头、框体、节点层与生成框的先后顺序是 Nomi 画布的约定（框头不压节点的生成框，选中节点在节点层内抬起），框架只给出层叠上下文，不知道谁压谁。表本身只是几十个数字，不含通用逻辑。",
       "revisitWhen": "React Flow 提供跨 ViewportPortal 的统一 z 管理接口时复查"
+    },
+    {
+      "id": "whiteboard-canvas-document-adapter",
+      "capability": "单一 Leafer 场景与 Nomi 可编辑白板文档的领域适配：提交/恢复 offsets、assetTransforms、flips，并把截图和局部键盘动作接回同一 editor lease。",
+      "status": "justified",
+      "paths": [
+        "src/workbench/generationCanvas/nodes/whiteboard/useWhiteboardCanvasDocument.ts"
+      ],
+      "alternativesChecked": [
+        {
+          "name": "已有 Leafer UI/editor/export 2.1.7 继续拥有绘制、对象操作与导出；适配层调用现有 App/export API，不新造渲染器。",
+          "source": "src/workbench/generationCanvas/nodes/whiteboard/WhiteboardLeaferCanvas.tsx"
+        },
+        {
+          "name": "已有 Mantine useStateHistory 继续拥有撤销/重做；适配层只在动作完成时提交 Nomi SceneTransforms。",
+          "source": "src/workbench/generationCanvas/nodes/whiteboard/WhiteboardDrawingTool.tsx"
+        },
+        {
+          "name": "现有 captureSceneTransforms / restoreSceneTransforms 是唯一领域映射；React useRef/useImperativeHandle 管会话句柄，不新造 store、事件系统或通用序列化库。",
+          "source": "src/workbench/generationCanvas/nodes/whiteboard/whiteboardCanvasTypes.ts"
+        }
+      ],
+      "whyNotIntegrated": "领域约束：Nomi 项目文件、历史版本快照和素材引用只存 WhiteboardState，而 Leafer 运行时交互修改三种引擎映射。现成绘图库不知道 Nomi 版本身份、历史文档与节点 frame 的独立几何，必须有这一份薄适配把动作完成后的领域状态交给既有文档 writer；不替代 Leafer、Mantine 或 React Flow。只豁免这一精确文件，不扩大 hooks/领域目录范围。",
+      "revisitWhen": "Leafer 场景可直接无损导入/导出 Nomi WhiteboardState 且保持资产引用、分组/文本变换、版本恢复和节点 frame 独立时，删除这份映射适配；通用生命周期仍优先用框架。"
     },
     {
       "id": "agent-inline-reference-admission",
