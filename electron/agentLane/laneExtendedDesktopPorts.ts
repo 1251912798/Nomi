@@ -1,4 +1,5 @@
 import { argumentFailure } from '../shared/agentLane/laneArgumentFailure';
+import type { DirectorPreviewSpendBlockReason } from '../shared/director/directorPreviewStatus'
 import { ZodError } from "zod";
 import type { CanvasWriteApprovalAuthority } from '../shared/agentCapabilities/transportContracts'
 import { randomUUID } from 'node:crypto'
@@ -61,7 +62,7 @@ export interface LaneExtendedDesktopPortsInput {
   onTaskCreated?(call: RuntimeToolCall, result: unknown): Promise<void>
   context?(): LaneComposerContext
   /**
-   * 3D-BOX 花钱闸（开关开的构建才接上）：这次要生成的镜头里，哪些挂着还没好的参考预演。
+   * 3D-BOX 花钱闸：这次要生成的镜头里，哪些挂着还没好的参考预演。
    * 出卡**之前**问——问到了就不出卡、不花钱，原因交给模型；问不到（渲染层不在）也不出卡（fail-closed）。
    */
   directorPreviewBlocks?(operationId: string, shotIds: readonly string[] | undefined, candidate: ShotCandidateFacts): Promise<readonly DirectorPreviewBlock[]>
@@ -70,7 +71,7 @@ export interface LaneExtendedDesktopPortsInput {
 export type DirectorPreviewBlock = Readonly<{
   nodeId: string
   shotId?: string
-  reason: 'rendering' | 'failed' | 'not_referenced' | 'duration_mismatch'
+  reason: DirectorPreviewSpendBlockReason | 'unrecognized' | 'not_referenced' | 'duration_mismatch'
   failure?: string
   previewAssetId?: string
   /** duration_mismatch：挂上去的预演有多长、这一镜的候选要生成多长（秒）。 */
@@ -81,10 +82,17 @@ export type DirectorPreviewBlock = Readonly<{
 /** 预演挡着的那几镜 → 一句模型读得懂、能照做的话（不出卡、没花钱、下一步是什么）。 */
 export function directorPreviewBlockedDecision(blocks: readonly DirectorPreviewBlock[]): Extract<RuntimeToolDecision, { ok: false }> {
   const rendering = blocks.filter((block) => block.reason === 'rendering')
-  const failed = blocks.filter((block) => block.reason === 'failed')
+  // 认不得的挡住原因按失败说（fail-closed：照样不出卡，让用户在节点上重渲）
+  const failed = blocks.filter((block) => block.reason === 'failed' || block.reason === 'unrecognized')
+  const stale = blocks.filter((block) => block.reason === 'stale')
   const unreferenced = blocks.filter((block) => block.reason === 'not_referenced')
   const mismatched = blocks.filter((block) => block.reason === 'duration_mismatch')
   const name = (block: DirectorPreviewBlock) => block.shotId ?? block.nodeId
+  if (!rendering.length && !failed.length && stale.length) {
+    return { ok: false, code: 'director_preview_pending',
+      message: `No spend card was shown and nothing was spent: the 3D-BOX preview attached to ${stale.map(name).join(', ')} is out of date — the user changed the 3D-BOX scene after it was rendered, so generating now would follow the old preview. `
+        + 'Tell the user to press Re-render preview on that video shot (or Produce in the 3D-BOX director view); call generate again once look_at_canvas shows preview=ready.' }
+  }
   if (!rendering.length && !failed.length && mismatched.length) {
     const seconds = (value: number | undefined) => `${Number((value ?? 0).toFixed(2))}s`
     return { ok: false, code: 'director_preview_pending',

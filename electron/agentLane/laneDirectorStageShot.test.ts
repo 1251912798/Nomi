@@ -1,8 +1,8 @@
-// 3D-BOX 开关开时 `stage_shot` 的 lane 绑定：参数 → director.write 语义输入；领域拒绝 → 模型读得懂的失败；
+// `stage_shot`（3D-BOX，唯一导演台）的 lane 绑定：参数 → director.write 语义输入；领域拒绝 → 模型读得懂的失败；
 // 成功收据带修订号、实测 cut、预演状态与下一次补丁的基准计划。工具轨迹在这里用假 port 钉住；真实模型的
 // 端到端回合是门槛 ①，不在单测里冒充。
-import { afterEach, describe, expect, it, vi } from 'vitest'
-import { installDirector3DBoxFace, resetDirector3DBoxFaceForTests } from '../shared/featureFlags/director3dboxFace'
+import { describe, expect, it } from 'vitest'
+import { createCanvasLaneTools } from './laneCanvasTools'
 import type { DirectorWriteInput, DirectorWriteResult } from '../shared/agentCapabilities/directorWrite'
 
 const PLAN = {
@@ -15,14 +15,10 @@ const PLAN = {
 }
 
 async function stageShotTool(write: (input: DirectorWriteInput) => DirectorWriteResult) {
-  vi.resetModules()
-  resetDirector3DBoxFaceForTests()
-  installDirector3DBoxFace(true)
-  const { createCanvasLaneTools } = await import('./laneCanvasTools')
   const seen: DirectorWriteInput[] = []
   const tools = createCanvasLaneTools({
     read: async () => ({ nodes: [], edges: [], groups: [], selectedNodeIds: [] }),
-    write: async () => { throw new Error('canvas.write must not be used for stage_shot when 3D-BOX is on') },
+    write: async () => { throw new Error('canvas.write must not be used for stage_shot') },
     writeDirector: async (input) => { seen.push(input); return write(input) },
   })
   const tool = tools.find((candidate) => candidate.name === 'stage_shot')
@@ -39,11 +35,6 @@ function applied(overrides: Partial<Extract<DirectorWriteResult, { applied: true
     touched: ['shot:wide'], reorderedOverrides: [], changedEntities: [], preview: { status: 'rendering', targetNodeId: 'node-v1' }, ...overrides,
   }
 }
-
-afterEach(() => {
-  resetDirector3DBoxFaceForTests()
-  vi.resetModules()
-})
 
 describe('stage_shot (3D-BOX) lane binding', () => {
   it('turns a create call into create_director_plan for the shot and reports revision, cuts and preview', async () => {

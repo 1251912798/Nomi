@@ -53,6 +53,7 @@ import {
   MODEL_POPOVER, COMPOSER_MODEL, THREAD_MENU, escapeForRegExp, expandResidentPanel,
 } from './agent-runtime-walk-support.mjs'
 
+import { switchWorkspace, openRailDrawer } from './_shell.mjs'
 const here = path.dirname(fileURLToPath(import.meta.url))
 const repoRoot = path.resolve(here, '../..')
 const { values } = parseArgs({ options: {
@@ -159,9 +160,9 @@ try {
   if (await consent.count()) { await consent.click({ timeout: stationTimeout({ operations: 2 }) }); await win.waitForTimeout(600) }
 
   // ② 真实页面输入 · 导入真实素材（A11 那句话要求库里真有一张图）
-  await win.getByRole('button', { name: '生成', exact: true }).first().click({ timeout: stationTimeout({ operations: 2 }) })
+  await switchWorkspace(win, 'generation', '切到生成区')
   await win.waitForTimeout(2000)
-  await win.getByRole('button', { name: '素材库', exact: true }).first().click({ timeout: stationTimeout({ operations: 2 }) })
+  await openRailDrawer(win, 'assets', '打开素材库')
   const uploadInput = win.locator('section[aria-label="素材库"] input[type="file"]').first()
   await uploadInput.waitFor({ state: 'attached', timeout: stationTimeout({ operations: 2 }) })
   await uploadInput.setInputFiles(referenceImage)

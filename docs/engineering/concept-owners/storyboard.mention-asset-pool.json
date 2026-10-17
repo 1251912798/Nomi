@@ -1,0 +1,25 @@
+{
+  "name": "分镜表 @ 候选素材池（整表一份）",
+  "subject": "storyboard.mention-asset-pool",
+  "lifecycle": "projection",
+  "authority_kind": "projection",
+  "trust_domain": "renderer",
+  "fact_kind": "projection",
+  "migration_status": "converged",
+  "owner": {
+    "path": "src/workbench/creation/storyboard/shotRow/useShotMentionSource.ts",
+    "symbol": "useShotMentionPool"
+  },
+  "write_api": [
+    {
+      "path": "src/workbench/creation/storyboard/shotRow/useShotMentionSource.ts",
+      "symbol": "useShotMentionPool"
+    }
+  ],
+  "forbidden_derivations": [],
+  "allowed_consumers": [
+    "src/workbench/creation/storyboard/StoryboardShotTable.tsx"
+  ],
+  "since": "2026-10-16",
+  "notes": "素材池挂载即列一次项目文件；整张分镜表取一份递给每一行，行级 hook 不再各取一份。"
+}

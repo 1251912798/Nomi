@@ -3,7 +3,7 @@
  *          ../../OutputsContext、../outputs/OutputsPopover、../viewport/ViewportToolbar、./AddObjectMenu、./SceneMenu、./ViewMenu、./shellChrome
  * [OUTPUT]: 对外提供 RefineTopBar：精修「选中才出」布局的顶栏 ——
  *           左：[← 退出 | ▤ 图层名 ▾（大纲 + 场景设置）] [选择 移动 旋转 缩放 | ＋（含资产库）]
- *           中：[导演 | 精修]（3D-BOX 开关开时；与导演视图同一枚、同居中）
+ *           中：[导演 | 精修]（与导演视图同一枚、同居中）
  *           右：[视图 ▾（首项重置视角）| 撤销 重做 | 截图 产出（含录制 MP4）]；顶栏窄于 760 时图层名收成只剩 ▤
  *        画线 / 逐点不在顶栏：它们住选中角色 / 机位的属性卡头（ContextCard），顶栏宽度不随选中变
  * [POS]: director/panels/topbar 的精修顶栏（2026-10-04 用户拍板方向 A，设计卡 docs/plan/2026-10-04-director-refine-select-to-show.md）。
@@ -41,8 +41,8 @@ export type RefineTopBarProps = {
   onOpenHelp: () => void
   onOpenSceneSettings: () => void
   onOpenAssets: () => void
-  /** 3D-BOX 开关开时给：中列出现「导演 | 精修」；开关关（旧导演台）没有导演视图，中列空着 */
-  viewMode?: { value: ViewModeValue; onChange: (mode: ViewModeValue) => void }
+  /** 中列的「导演 | 精修」切换 */
+  viewMode: { value: ViewModeValue; onChange: (mode: ViewModeValue) => void }
 }
 
 export function RefineTopBar({ onExit, onResetView, onCancelCreation, onOpenSettings, onOpenHelp, onOpenSceneSettings, onOpenAssets, viewMode }: RefineTopBarProps): JSX.Element {
@@ -71,7 +71,7 @@ export function RefineTopBar({ onExit, onResetView, onCancelCreation, onOpenSett
         </Cluster>
       </div>
 
-      {viewMode ? <ViewModeSwitch mode={viewMode.value} onChange={viewMode.onChange} testId="director-view-mode" /> : <span aria-hidden />}
+      <ViewModeSwitch mode={viewMode.value} onChange={viewMode.onChange} testId="director-view-mode" />
 
       <div className="flex items-start gap-3 justify-self-end">
         <Cluster label={t('director.topbar.viewHistoryAria')} testId="director-view-cluster">

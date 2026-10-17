@@ -22,7 +22,7 @@
 //
 // ── 这里为什么不判档位 ──
 //
-// 判据只有一个 owner：`capabilityApprovalPolicy.ts` 的 `spendDecidedByPolicy`。这一层收到的
+// 判据只有一个 owner：带 Run 的入口是 `directGenerationBrakes.ts` 的 `spendDecisionByPolicy`（档位 + 刹车），档位那一半是 `capabilityApprovalPolicy.ts` 的 `spendDecidedByPolicy`。这一层收到的
 // 已经是**决定**，不是策略。把「要不要问」和「怎么放行」搅在一起，就会出现第二个地方
 // 也能回答「这一档要不要问」——那正是 2026-09-10 审计里「同一语义有几份定义」的形状。
 import type { ApprovalReceiptAuthority } from "./approvalReceipt";

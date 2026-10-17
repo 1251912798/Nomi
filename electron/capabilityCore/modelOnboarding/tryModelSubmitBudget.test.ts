@@ -15,6 +15,10 @@ import os from "node:os";
 import path from "node:path";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { dispatch } from "../dispatcher";
+import { tryModel } from "./tryModel";
+import { runTask, fetchTaskResult, taskCache } from "../../runtime";
+
 vi.mock("electron", async (importOriginal) => {
   const actual = await importOriginal<Record<string, unknown>>();
   return {
@@ -56,7 +60,6 @@ describe("nomi_try_model 提交步骤的预算", () => {
   const held: http.ServerResponse[] = [];
 
   async function declare(name: string, baseUrl: string): Promise<string> {
-    const { dispatch } = await import("../dispatcher");
     const docs = "https://docs.example-budget.com/api";
     const ctx = { origin: { host: "claude" } } as never;
     const submitted = await dispatch("model.onboarding.setup", {
@@ -144,21 +147,18 @@ describe("nomi_try_model 提交步骤的预算", () => {
   });
 
   async function start(vendor: string, prompt: string, wrapRunTask?: (real: RunTaskFn) => RunTaskFn) {
-    const { tryModel } = await import("./tryModel");
-    const { runTask, fetchTaskResult } = await import("../../runtime");
     submits = 0;
     const box: { settled: boolean; out?: Tried } = { settled: false };
     const promise = (tryModel({
       runTask: wrapRunTask ? wrapRunTask(runTask) : runTask,
       fetchTaskResult,
-      approvalPolicy: () => ({ mode: "project", spend: "confirm" }),
+      approvalPolicy: () => ({ mode: "direct" }),
     }, { vendorKey: vendor, modelKey: "budget-paint", prompt }) as Promise<Tried>).then((out) => { box.settled = true; box.out = out; return out; });
     return { box, promise };
   }
 
   it("提交卡住：到 40 秒就回话「结果未知、不要重试」；后台那次提交照跑，供应商只收到 1 次，任务号进缓存", async () => {
     vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "Date"] });
-    const { taskCache } = await import("../../runtime");
     const { box } = await start(vendorKey, "hold apple");
     await until(() => submits === 1, "provider received the submit");
     await advance(39_000);

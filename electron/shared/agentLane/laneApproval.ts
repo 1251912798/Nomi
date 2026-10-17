@@ -25,7 +25,6 @@ import {
   type CapabilityApprovalSubject,
 } from "../agentCapabilities/capabilityApprovalPolicy";
 import type { ProjectAgentApprovalPolicy, ProjectAgentWorkMode } from '../agentCapabilities/capabilityApprovalPolicy';
-import { projectAgentApprovalPolicyOf } from '../agentCapabilities/capabilityApprovalPolicy';
 
 /** 一次 lane 上的调用，在审批眼里的全部事实。前两个是身份，后四个来自能力契约。 */
 export type LaneApprovalSubject = CapabilityApprovalSubject & Readonly<{
@@ -80,15 +79,10 @@ const NO_UI_REASON =
  * 「本会话允许这类」该不该有按钮。
  *
  * 门槛与现役介入槽逐字一致，**不加宽**：只有本地可撤销的改动有它；花钱的、不可逆的、
- * 以及 `step` 档下的一律逐次问——`step` 的字面意思就是每一步都问，给它一个会话级放行
- * 等于把用户刚选的档位偷偷改掉。
+ * 一律逐次问。
  */
-export function laneApprovalGrantable(
-  subject: LaneApprovalSubject,
-  policy: ProjectAgentApprovalPolicy | undefined,
-): boolean {
-  if (capabilityIsHardGated(subject)) return false;
-  return projectAgentApprovalPolicyOf(policy).mode !== "step";
+export function laneApprovalGrantable(subject: LaneApprovalSubject): boolean {
+  return !capabilityIsHardGated(subject);
 }
 
 /** 预检一次调用：它落在状态机的哪一条分叉上。 */
@@ -120,6 +114,6 @@ export function preflightLaneApproval(
 
   return Object.freeze({
     state: "awaiting-user" as const,
-    grantable: laneApprovalGrantable(subject, context.policy),
+    grantable: laneApprovalGrantable(subject),
   });
 }

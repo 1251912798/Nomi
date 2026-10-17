@@ -12,6 +12,7 @@ import type {
 import { asFiniteNumber, asTrimmedString, selectedModelKey } from './catalogTaskResolve'
 import { formatTaskFailureMessage } from './taskFailureMessage'
 import { readMediaDimensions, type MediaDimensions } from '../nodes/nodeSizing'
+import { canvasPreviewFieldsFromReceipt } from '../../../../electron/shared/canvas/canvasMediaPreview'
 
 // transcribe(Whisper) 也是「无 asset、文本在 raw」——同走文本支（raw.text 由 extractTextFromChatRaw 末尾捕获）。
 const TEXT_TASK_KINDS = new Set<TaskKind>(['chat', 'prompt_refine', 'image_to_prompt', 'transcribe'])
@@ -135,7 +136,8 @@ export function normalizeCatalogTaskResult(
     id: `${node.id}-${result.id || Date.now()}`,
     type,
     url: asset.url,
-    thumbnailUrl: asset.thumbnailUrl || undefined,
+    // 预览两栏只走落盘回执的那一个投影（小图 + 事实）；旧缓存结果里 thumbnailUrl = url 的形状在这里就被拒掉。
+    ...canvasPreviewFieldsFromReceipt(type, asset, asset.url),
     ...(asset.providerUrl ? { providerUrl: asset.providerUrl } : {}),
     model: selectedModelKey(node) || undefined,
     durationSeconds: type === 'video' ? readDurationSeconds(asset) : undefined,

@@ -11,6 +11,7 @@ import http from 'node:http'
 import fs from 'node:fs'
 import path from 'node:path'
 import { launchNomiApp, repoRoot } from './_launchApp.mjs'
+import { openModelSettings, openCustomApiWizard } from './_shell.mjs'
 import { screenshotSettled } from './_assert.mjs'
 
 const shotsDir = path.join(repoRoot, 'tests/ux/shots/local-gateway')
@@ -162,17 +163,12 @@ async function dumpClickables(label) {
 }
 
 // 1. 进入模型接入
-await clickFirst([/接入模型/, /模型接入/], '接入模型入口')
+await openModelSettings(win, { label: '接入模型入口' })
 await snap(win, 'model-access-panel')
 await dumpClickables('面板打开')
 
-// 2. 展开「接入生成模型」分组
-await clickFirst([/接入生成模型/], '展开接入生成模型')
-await snap(win, 'expanded-generation-models')
-await dumpClickables('展开后')
-
-// 3. 选「自定义 / 其他」走自建网关
-await clickFirst([/添加模型 ?\/ ?中转站/, /添加模型/, /中转站/, /自定义/], '添加模型 / 中转站')
+// 2. 选「自定义 API / 中转站」走自建网关（有已接入项时它收在「其他接入方式」里，出口里会先展开）
+await openCustomApiWizard(win, { label: 'custom API wizard' })
 await snap(win, 'add-model-dialog')
 await dumpClickables('对话框')
 

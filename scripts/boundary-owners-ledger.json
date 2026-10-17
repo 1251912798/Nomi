@@ -410,6 +410,16 @@
         "symbol": "atomicWrite"
       },
       "reason": "2026-10-09 MCP 第 3 段评审后：宿主配置的唯一写盘门（atomicWrite + 隔离实例守卫 assertHostConfigWritable）整块搬进 hostConfigWrite.ts，同时加上每文件一把租约锁、唯一临时名、排他备份、换名前版本比对；mcpConfig 只转出它。复审第 2 轮（2026-10-09 夜）：签名改为 atomicWrite(target, edit)——锁里只读一次、edit 从同一份字节算新内容、备份从内存写、提交前核锁（续租 + nonce 所有权）、提交协议挂链接事后核对并放回宿主插写；「这一条归谁」由 mcpHostEntries.nomiEntryTransport 判定，写入门据此只保持可确认的原传输。「所有写盘经同一扇门、隔离实例在这扇门上被拒」的不变量由它承担，installMcp / uninstallMcp / 启动修复 / 迁移 / 恢复全部经它。"
+    },
+    {
+      "contract": "docs/fixes/2026-09-21-approval-policy-never-reached-mcp.root-cause.json",
+      "path": "electron/capabilityCore/generationDispatcher.ts",
+      "symbol": "spendDecidedByPolicy",
+      "anchor": {
+        "path": "electron/capabilityCore/generationDispatcher.ts",
+        "symbol": "spendDecisionByPolicy"
+      },
+      "reason": "2026-10-12 挡位收成两档：付费门这扇门不再直接问档位，改问带刹车的单一代答入口 spendDecisionByPolicy（directGenerationBrakes.ts，档位那一半仍是 spendDecidedByPolicy）；不变量「宿主递持久化档位、判据只有一份」不变，门还在同一个文件。"
     }
   ],
   "retirements": [
@@ -832,6 +842,18 @@
       "path": "src/workbench/generation/timelineHandlePlacement.ts",
       "symbol": "resolveTimelineHandleLeft",
       "reason": "2026-10-08 外壳重设计（用户拍板稿 Main）：生成页收起的时间轴不再是浮在画布上、要避让别的浮层的把手，而是工作面底边的一行窄条（TimelineStrip，画布之下的独立一格），结构上不会和画布浮层 / Agent 小球重叠，「把手横向落在哪」这件事不再存在。"
+    },
+    {
+      "contract": "docs/fixes/2026-09-07-director-ai-request-ownership.root-cause.json",
+      "path": "src/workbench/generationCanvas/nodes/director/useAiSceneBuilder.ts",
+      "symbol": "ownsRequest / saveToLibrary",
+      "reason": "用户 2026-10-16 拍板 3D-BOX 成为唯一导演台（「我觉得可以打开给大家用吧」「为什么要切回旧导演台？」），切换 PR 同一提交删掉旧导演台和构建开关（方向检查 docs/plan/2026-10-16-director-3dbox-sole-director-direction-check.md）。旧导演台视口底部「描述场景…」AI 输入条（AiSceneBar）连同它的请求 hook useAiSceneBuilder 一起删除，去处是右侧 Agent 面板的 stage_shot（director.write，走提议事务与撤销）。编辑器里不再有自己发起、可取消的 AI 搭场景请求，「取消 / 重置 / 卸载后的迟到请求不许落盘」这条不变量随入口一起不再存在；物化那一半 materializeAiScene 仍在 storeAiSceneActions.ts，锚点在位照常核。"
+    },
+    {
+      "contract": "docs/fixes/2026-10-04-director-bootstrap-ipc-startup.root-cause.json",
+      "path": "electron/preload.ts",
+      "symbol": "director3dBox",
+      "reason": "用户 2026-10-16 拍板 3D-BOX 成为唯一导演台（「我觉得可以打开给大家用吧」「为什么要切回旧导演台？」），切换 PR 同一提交删掉旧导演台和构建开关（方向检查 docs/plan/2026-10-16-director-3dbox-sole-director-direction-check.md）。3D-BOX 构建开关整套删除：preload 不再解码、核对主进程经 additionalArguments 传来的开关证明，导航前已经没有任何「功能协商」，「导航前协商只能走 additionalArguments、不许调 IPC」这条不变量失去对象。主进程那一半（mainWindowWebPreferences 的开关证明参数）同一提交删除。"
     }
   ],
   "unverified": [

@@ -8,8 +8,7 @@ import { applyProposalBatch } from '../../../agent/proposalTxn'
 import { applyCompensationOps } from '../../../agent/proposalUndo'
 import { generationCanvasTools } from '../../../agent/generationCanvasTools'
 import { useGenerationCanvasStore } from '../../../store/generationCanvasStore'
-import { registerEmbeddedEditorFlush } from '../../../agent/embeddedEditorFlush'
-import { createDirectorNodeSync } from '../directorNodeSync'
+import { createDirectorEditorPersistence } from '../directorEditorPersistence'
 import { registerDirectorSession } from '../directorSessionRegistry'
 import { DIRECTOR_PLAN_META_KEY, DIRECTOR_PROJECT_META_KEY } from '../model/directorNodeMeta'
 import { findDirectorPatchNote } from '../model/directorPatchNotes'
@@ -146,12 +145,12 @@ describe('3c 按指令最小改动 + 手改覆盖层', () => {
     const raw = nodeById(director.directorNodeId)?.meta?.[DIRECTOR_PROJECT_META_KEY]
     const store = createDirectorStore({ rawProject: raw, defaultSceneName: 'S' })
     // 和 DirectorEditor 同一套接线：同步账 + 外部写口回写 + 事务前落盘
-    const sync = createDirectorNodeSync({
+    const sync = createDirectorEditorPersistence({
       store, defaultSceneName: 'S', initialRaw: raw,
       write: (project) => useGenerationCanvasStore.getState().updateNode(director.directorNodeId, { meta: { ...nodeById(director.directorNodeId)?.meta, [DIRECTOR_PROJECT_META_KEY]: project } }),
     })
     const unregister = registerDirectorSession(director.directorNodeId, { store, defaultSceneName: 'S', onExternalProjectChange: sync.persist })
-    const unflush = registerEmbeddedEditorFlush(sync.saveNow)
+    const unflush = sync.start()
     const adopt = () => sync.adoptNodeProject(nodeById(director.directorNodeId)?.meta?.[DIRECTOR_PROJECT_META_KEY])
     try {
       const wide = store.getState().findCamera('shot:wide/camera')!

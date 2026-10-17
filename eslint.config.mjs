@@ -8,6 +8,13 @@ import reactHooks from 'eslint-plugin-react-hooks'
 import reactRefresh from 'eslint-plugin-react-refresh'
 import globals from 'globals'
 import prettier from 'eslint-config-prettier'
+import fs from 'node:fs'
+import {
+  CANVAS_SHELL_FILE,
+  SHELL_SELECTION_SELECTORS,
+  WHOLE_TABLE_SUBSCRIPTION_BASELINE,
+  WHOLE_TABLE_SUBSCRIPTION_SELECTORS,
+} from './scripts/canvas-store-subscriptions.mjs'
 
 // 用例 / 钩子不许单独设比 vitest 全局更短的超时（全局值见 vitest.config.ts 的 testTimeout / hookTimeout，都是 30_000；
 // 两处同值由 scripts/vitest-timeout-floor.test.mjs 核对）。超时被放弃的用例仍在后台跑完，把任务或半初始化模块留给下一个用例
@@ -30,6 +37,40 @@ const storeSelectorSerializeSelectors = [
   {
     selector: "CallExpression[callee.name=/^use[A-Z][A-Za-z0-9]*Store$/] > :function CallExpression[callee.object.name='JSON'][callee.property.name='stringify']",
     message: '不要在 store 选择器里 JSON.stringify：它在每次 store 写都会跑。用 composerGraphSnapshot 的依赖面快照，或在组件里 useContentStable 逐字段比。',
+  },
+]
+
+// 用例体 / 钩子里不许 `await import(...)`：冷转换一大片生产模块的那几秒记在用例或钩子的 30 秒超时里，
+// 机器一忙（并行推送前钩子 / CI 满载）就超时——单跑都能过、满载必红。静态 import 在收集阶段加载，不占用例超时，
+// vi.mock 会被提升、静态 import 照样吃到。2026-10-15：tryModelSubmitBudget「Hook timed out in 30000ms」、readTaskTarget 单跑 35 秒、
+// runtime.fallback-path 等。确需在用例里重新加载（重启模拟 / 每例换模块状态）的，在该行上方写
+// `// eslint-disable-next-line no-restricted-syntax -- <理由>`；存量见下面的基线文件，只许减不许增（scripts/vitest-timeout-floor.test.mjs 核对）。
+export const COLD_IMPORT_BASELINE_PATH = 'docs/engineering/test-cold-import-baseline.json'
+const COLD_IMPORT_MESSAGE = 'Do not await import() inside a test or hook body: the cold transform counts against the 30s test/hook timeout and times out under load. Use a static import (vi.mock is hoisted), or for a restart simulation add // eslint-disable-next-line no-restricted-syntax -- <reason>.'
+export const coldImportSelectors = [TEST_CALL, HOOK_CALL].map((call) => ({ selector: `${call} ImportExpression`, message: COLD_IMPORT_MESSAGE }))
+const coldImportBaselineFiles = Object.keys(JSON.parse(fs.readFileSync(new URL(COLD_IMPORT_BASELINE_PATH, import.meta.url), 'utf8')).files)
+
+const testFileRestrictedSyntax = [
+  ...shortenedTimeoutSelectors,
+  {
+    selector: "AssignmentExpression[left.type='MemberExpression'][left.object.type='MemberExpression'][left.object.object.name='process'][left.object.property.name='env']",
+    message: 'Use vi.stubEnv(name, value) so Vitest restores process.env after each test.',
+  },
+  {
+    selector: "UnaryExpression[operator='delete'][argument.type='MemberExpression'][argument.object.type='MemberExpression'][argument.object.object.name='process'][argument.object.property.name='env']",
+    message: 'Use vi.stubEnv(name, undefined) so Vitest restores process.env after each test.',
+  },
+  {
+    selector: "CallExpression[callee.name='beforeAll'] CallExpression[callee.object.name='vi'][callee.property.name='stubEnv']",
+    message: 'unstubEnvs: true restores env after each test; put vi.stubEnv in beforeEach.',
+  },
+  {
+    selector: "CallExpression[callee.object.name='vi'][callee.property.name='hoisted'] CallExpression[callee.object.name='vi'][callee.property.name='stubEnv']",
+    message: 'unstubEnvs: true restores env after each test; put vi.stubEnv in beforeEach.',
+  },
+  {
+    selector: "Program > ExpressionStatement > CallExpression[callee.object.name='vi'][callee.property.name='stubEnv']",
+    message: 'unstubEnvs: true restores env after each test; put vi.stubEnv in beforeEach.',
   },
 ]
 
@@ -243,32 +284,24 @@ export default tseslint.config(
   },
   {
     files: ['**/*.test.{ts,tsx}'],
-    rules: {
-      'no-restricted-syntax': [
-        'error',
-        ...shortenedTimeoutSelectors,
-        {
-          selector: "AssignmentExpression[left.type='MemberExpression'][left.object.type='MemberExpression'][left.object.object.name='process'][left.object.property.name='env']",
-          message: 'Use vi.stubEnv(name, value) so Vitest restores process.env after each test.',
-        },
-        {
-          selector: "UnaryExpression[operator='delete'][argument.type='MemberExpression'][argument.object.type='MemberExpression'][argument.object.object.name='process'][argument.object.property.name='env']",
-          message: 'Use vi.stubEnv(name, undefined) so Vitest restores process.env after each test.',
-        },
-        {
-          selector: "CallExpression[callee.name='beforeAll'] CallExpression[callee.object.name='vi'][callee.property.name='stubEnv']",
-          message: 'unstubEnvs: true restores env after each test; put vi.stubEnv in beforeEach.',
-        },
-        {
-          selector: "CallExpression[callee.object.name='vi'][callee.property.name='hoisted'] CallExpression[callee.object.name='vi'][callee.property.name='stubEnv']",
-          message: 'unstubEnvs: true restores env after each test; put vi.stubEnv in beforeEach.',
-        },
-        {
-          selector: "Program > ExpressionStatement > CallExpression[callee.object.name='vi'][callee.property.name='stubEnv']",
-          message: 'unstubEnvs: true restores env after each test; put vi.stubEnv in beforeEach.',
-        },
-      ],
-    },
+    rules: { 'no-restricted-syntax': ['error', ...testFileRestrictedSyntax] },
+  },
+  {
+    // 存量基线之外的测试文件才拦用例体 / 钩子里的 await import；基线里的文件逐个迁完就从 JSON 里删掉。
+    files: ['**/*.test.{ts,tsx}'],
+    ignores: coldImportBaselineFiles,
+    rules: { 'no-restricted-syntax': ['error', ...testFileRestrictedSyntax, ...coldImportSelectors] },
+  },
+  {
+    // 画布 nodes / edges 整表订阅：名单外的文件一处都不许有；名单内的处数由 scripts/canvas-store-subscriptions.test.mjs 卡死（只减不增）。
+    files: ['src/**/*.{ts,tsx}'],
+    ignores: ['src/**/*.test.{ts,tsx}', 'src/**/__tests__/**', ...Object.keys(WHOLE_TABLE_SUBSCRIPTION_BASELINE)],
+    rules: { 'no-restricted-syntax': ['error', ...windowsPathSelectors, ...storeSelectorSerializeSelectors, ...WHOLE_TABLE_SUBSCRIPTION_SELECTORS] },
+  },
+  {
+    // 画布壳不订阅选区：选中一张卡，壳 0 次重渲（方向检查 2026-10-16-canvas-shell-subscriptions）。
+    files: [CANVAS_SHELL_FILE],
+    rules: { 'no-restricted-syntax': ['error', ...windowsPathSelectors, ...storeSelectorSerializeSelectors, ...SHELL_SELECTION_SELECTORS] },
   },
   {
     // 渲染层失败证据只有一个出口：src/desktop/rendererLog.ts（→ 主进程日志 → 诊断包）。
@@ -291,6 +324,31 @@ export default tseslint.config(
   {
     files: ['electron/quitTeardown.ts'],
     rules: { 'no-restricted-syntax': ['error', ...windowsPathSelectors] },
+  },
+  {
+    // 付费确认框（`useSpendConfirmStore.requestConfirm`）只有一扇门：「这一笔问不问用户」的 owner
+    // `src/workbench/generationCanvas/spend/spendConfirm.ts`（概念 spend.confirmation-requirement）。
+    // 2026-10-16 真付费验收：分镜方案整批生成直接调了 requestConfirm，绕过 owner，「直接生成」档对它完全不起作用，
+    // 而且没有任何东西会红。下面这几处是允许的调用者——它们只**展示主进程已经做出的决定**，自己不判问不问：
+    //   capabilityApplyHandler.ts（MCP 生成闸 / 计划门）、credentialProbeSpendCard.ts（接入页凭据试跑）、
+    //   useProductionStatus.ts（制作流程门）；SpendConfirmDialog.tsx / NomiStudioApp.tsx 是 E2E 驱动桥。
+    // 新增调用者 = 又一处自己决定弹不弹付费框 → 红；要么经 owner，要么先让主进程做决定、再登记进这张表。
+    files: ['src/**/*.{ts,tsx}'],
+    ignores: [
+      'src/**/*.test.{ts,tsx}', 'src/**/__tests__/**',
+      'src/workbench/generationCanvas/spend/spendConfirm.ts',
+      'src/workbench/generationCanvas/spend/SpendConfirmDialog.tsx',
+      'src/workbench/NomiStudioApp.tsx',
+      'src/workbench/capability/capabilityApplyHandler.ts',
+      'src/workbench/capability/credentialProbeSpendCard.ts',
+      'src/workbench/production/useProductionStatus.ts',
+    ],
+    rules: {
+      'no-restricted-properties': ['error', {
+        property: 'requestConfirm',
+        message: '付费确认框只经 owner 弹：用 src/workbench/generationCanvas/spend/spendConfirm.ts 的 confirmGenerationSpend / confirmStoryboardPlanBatch；只展示主进程决定的调用者才登记进 eslint.config.mjs 的允许表。',
+      }],
+    },
   },
   {
     // TipTap 编辑器只有一扇门：useNomiTiptapEditor（固定 React 19 下的生命周期选项）。

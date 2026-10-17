@@ -577,7 +577,7 @@ export class CapabilityExecutorRegistry {
     const isCanvasWrite =
       invocation.capability.id === CANVAS_WRITE_CAPABILITY.id &&
       invocation.capability.version === CANVAS_WRITE_CAPABILITY.version;
-    // 3D-BOX：仅内部的 director.write（开关开才注册）走画布写同一个渲染端写口。
+    // 3D-BOX：仅内部的 director.write 走画布写同一个渲染端写口。
     const isDirectorWrite =
       invocation.capability.id === DIRECTOR_WRITE_CAPABILITY.id &&
       invocation.capability.version === DIRECTOR_WRITE_CAPABILITY.version;

@@ -84,7 +84,6 @@ export const PRE_PUSH_GATES = Object.freeze([
   { name: 'check:cla-workflow', when: null },
   { name: 'check:workflow-script-refs', when: null },
   { name: 'check:workflow-protected-writes', when: null },
-  { name: 'check:packaged-flags', when: null },
   { name: 'check:icons', when: null },
   { name: 'check:platform-archetypes', when: null },
   { name: 'check:model-certification-coverage', when: null },
@@ -174,6 +173,8 @@ export const SCAN_TESTS = Object.freeze([
   { name: 'test:control-contract', argv: [VITEST_ENTRY, 'run', 'scripts/check-control-contract.test.mjs'], rerun: 'node node_modules/vitest/vitest.mjs run scripts/check-control-contract.test.mjs', when: (files) => touchesGateInputs('test:control-contract', files) },
   // 本文件与门表 / 输入声明 / package.json 的契约 + 结构用例（几秒；整份 pre-push-contracts.node-test.mjs > 90 秒只在 CI，快的部分拆到这里，#1147 / #1141 在 CI 才红）
   { name: 'test:pre-push-structure', argv: ['--test', 'scripts/pre-push-structure.node-test.mjs'], rerun: 'node --test scripts/pre-push-structure.node-test.mjs', when: (files) => touchesGateInputs('test:pre-push-structure', files) },
+  // 扫描型守卫登记核对（几秒）：新增 / 改名 / 删除任何测试文件都触发（GATE_INPUTS 的 match），不再只在改到钩子自己的输入时才跑——#1202 #1203 #1207 #1209 #1210 #1211 在 CI 才红
+  { name: 'check:scan-guard-census', argv: ['scripts/check-scan-guard-census.mjs'], rerun: 'node scripts/check-scan-guard-census.mjs', when: (files) => touchesGateInputs('check:scan-guard-census', files) },
   { name: 'test:quit-lifecycle-guard', argv: [VITEST_ENTRY, 'run', 'electron/quitLifecycleGuard.test.ts'], rerun: 'node node_modules/vitest/vitest.mjs run electron/quitLifecycleGuard.test.ts', when: (files) => touchesGateInputs('test:quit-lifecycle-guard', files) },
   // 扫全仓 / 扫目录的守卫测试（单跑 2–13 秒，批量一个进程）：入口文件 = 全部登记的守卫（给「实现闭包被改 → 选中」和相关单测排除用），实际要跑的由 argvFor 按改动挑
   {

@@ -15,8 +15,8 @@
 import React, { type JSX } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  IconTerminal2, IconPlugConnected, IconCopy, IconCheck, IconCircleCheck, IconExternalLink,
-  IconAlertTriangle, IconRefresh, IconLock,
+  IconTerminal2, IconCopy, IconCheck, IconExternalLink,
+  IconAlertTriangle, IconLock,
 } from '@tabler/icons-react'
 import { cn } from '../../utils/cn'
 import { getDesktopBridge } from '../../desktop/bridge'
@@ -26,9 +26,13 @@ import type { McpConfigState, McpInfo, McpMigrationResult, McpMigrationState, Mc
 import {
   ASSISTANT_CLIENT_LABEL,
   ASSISTANT_CLIENT_ORDER,
-  resolveAssistantActivationState,
+  resolveAssistantConnection,
   type AssistantClientKey,
+  type AssistantDot,
+  type AssistantVerifyPhase,
 } from './assistantActivationState'
+import { AssistantStatusBox, type AssistantTestState } from './AssistantStatusBox'
+import { useMcpUsage } from './useMcpUsage'
 import { genericMcpSnippet } from './mcpGenericSnippet'
 import { McpMigrationPrompt } from './McpMigrationPrompt'
 import { mergeRetryResults, retryTargets } from './mcpMigrationFailureKeys'
@@ -122,12 +126,26 @@ export function ConnectAssistantCard({
   const [error, setError] = React.useState('')
   const [verify, setVerify] = React.useState<VerifyState | null>(null)
   const [checkNonce, setCheckNonce] = React.useState(0)
+  // 「测试连接」是用户主动点的那一次验证：自动验证（打开面板、接入后复验）不在框里报「刚刚测试过」。
+  const manualTest = React.useRef(false)
+  const [testState, setTestState] = React.useState<AssistantTestState>('idle')
+  const [confirmingRevoke, setConfirmingRevoke] = React.useState(false)
+  // 每个助手最近一次验证的结果：小圆点要给所有标签上色，不只是当前选中的那个。
+  const [phaseByClient, setPhaseByClient] = React.useState<Partial<Record<ClientKey, AssistantVerifyPhase>>>({})
+  const [now, setNow] = React.useState(() => Date.now())
+  const usageByClient = useMcpUsage()
   const [migration, setMigration] = React.useState<McpMigrationState | null>(null)
   const [migrationResults, setMigrationResults] = React.useState<McpMigrationResult[] | null>(null)
   const migrationLabels = React.useRef<Record<string, string>>({})
   const [deferred, setDeferred] = React.useState<string | null>(() => migrationDeferredFor())
 
   const capability = getDesktopBridge()?.capability
+
+  // 「3 小时前」「刚刚」会随时间变：每 15 秒重算一次相对时间（不碰数据，只刷新显示）。
+  React.useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 15_000)
+    return () => window.clearInterval(timer)
+  }, [])
 
   React.useEffect(() => {
     window.addEventListener('nomi-automation-policy-changed', onChanged)
@@ -174,10 +192,18 @@ export function ConnectAssistantCard({
       .then((res) => {
         if (!alive) return
         setVerify({ phase: res.ok ? 'ok' : 'broken', toolCount: res.toolCount, reason: res.reason })
+        setPhaseByClient((prev) => ({ ...prev, [target]: res.ok ? 'ok' : 'broken' }))
+        if (manualTest.current) {
+          manualTest.current = false
+          setTestState(res.ok ? { toolCount: res.toolCount } : 'idle')
+        }
       })
       .catch(() => {
         // 老 preload / 桥异常：退回「只读配置」的老口径，不误报失效。
-        if (alive) setVerify(null)
+        if (!alive) return
+        setVerify(null)
+        manualTest.current = false
+        setTestState('idle')
       })
     return () => {
       alive = false
@@ -277,30 +303,106 @@ export function ConnectAssistantCard({
     void navigator.clipboard.writeText(genericMcpSnippet(info.server)).then(() => flash('generic'))
   }
 
-  // 状态以**实连结果**为准（已知过时的配置形状不必实连，读回来就是 broken）；
-  // 没验证能力（老 preload）才退回「配置里有这行字」的老口径。
-  const activation = resolveAssistantActivationState({
-    target,
-    installed: client?.installed === true,
-    verifyPhase: staleShape ? 'broken' : verify?.phase ?? null,
-    trustedHosts: info.trustedHosts ?? [],
-  })
-  const { broken, hostApprovalPending, trusted } = activation
+  // 状态以**实连结果**为准（已知过时的配置形状不必实连，读回来就是 broken）；助手有没有真的来过看主进程记的使用情况。
+  // 没验证能力（老 preload）才退回「配置里有这行字」的老口径。徽章 / 状态框 / 小圆点同出自这一次推导。
+  const connectionOf = (key: ClientKey) => {
+    const entry = info.clients[key]
+    return resolveAssistantConnection({
+      target: key,
+      installed: entry?.installed === true,
+      staleShape: Boolean(entry && STALE_CONFIG_I18N[entry.configState]),
+      elsewhere: entry?.configState === 'launcher-elsewhere',
+      verifyPhase: key === target ? verify?.phase ?? null : phaseByClient[key] ?? null,
+      trustedHosts: info.trustedHosts ?? [],
+      usage: usageByClient[key] ?? null,
+      now,
+    })
+  }
+  const activation = connectionOf(target)
+  const { trusted } = activation
+  const usage = usageByClient[target] ?? null
+  const badgeLabel = (badge: typeof activation.badge): string => ({
+    using: t('onboardingProviders.assistant.status.using'),
+    connected: t('onboardingProviders.assistant.status.connected'),
+    pending: t('onboardingProviders.assistant.status.pending'),
+    broken: t('onboardingProviders.assistant.status.broken'),
+    none: t('onboardingProviders.assistant.status.none'),
+    checking: t('onboardingProviders.assistant.status.checking'),
+  })[badge]
   const statusLabel = !hasTarget
     ? t('onboardingProviders.assistant.status.notDetected')
-    : elsewhere
-      ? t('onboardingProviders.assistant.elsewhereStatus')
-      : !client.installed
-      ? info.tokenReady
-        ? t('onboardingProviders.assistant.status.ready')
-        : t('onboardingProviders.assistant.status.notReady')
-      : verify?.phase === 'checking'
-        ? t('onboardingProviders.assistant.status.checking')
-        : broken
-          ? t('onboardingProviders.assistant.status.broken')
-          : verify?.phase === 'ok' && !hostApprovalPending
-            ? t('onboardingProviders.assistant.status.connected')
-            : t('onboardingProviders.assistant.status.configured')
+    : activation.box === 'none' && !info.tokenReady
+      ? t('onboardingProviders.assistant.status.notReady')
+      : badgeLabel(activation.badge)
+
+  const clientDot = (key: ClientKey): JSX.Element | null => {
+    const dot: AssistantDot = connectionOf(key).dot
+    if (!dot) return null
+    return (
+      <span
+        data-assistant-dot={dot}
+        role="img"
+        aria-label={dot === 'green' ? t('onboardingProviders.assistant.box.dotConnected') : t('onboardingProviders.assistant.box.dotPending')}
+        className={cn('h-1.5 w-1.5 shrink-0 rounded-full', dot === 'green' ? 'bg-workbench-success' : 'bg-nomi-warning')}
+      />
+    )
+  }
+
+  const selectTarget = (value: ClientKey) => {
+    setTarget(value)
+    setTestState('idle')
+    setConfirmingRevoke(false)
+    manualTest.current = false
+  }
+  const handleTest = () => {
+    manualTest.current = true
+    setTestState('running')
+    setCheckNonce((n) => n + 1)
+  }
+  const handleRevokeConfirm = () => {
+    setConfirmingRevoke(false)
+    handleUninstall()
+  }
+
+  const brokenDetail = client.installed && (activation.box === 'broken' || activation.box === 'elsewhere') ? (
+    <>
+      {activation.box === 'elsewhere' ? <div>{client.configuredCommand}</div> : staleShape
+        ? t(`onboardingProviders.assistant.staleConfig.${staleShape}`, { client: label })
+        : t(`onboardingProviders.assistant.reason.${REASON_I18N[verify?.reason ?? 'ok'] || 'handshakeFailed'}`, { client: label })}
+      {activation.box === 'elsewhere' && client.configuredSettingsDir ? <div className="mt-0.5">{client.configuredSettingsDir}</div> : null}
+    </>
+  ) : null
+  const primaryLabel = activation.box === 'none'
+    ? t('onboardingProviders.assistant.connect', { client: label })
+    : activation.box === 'elsewhere'
+      ? t('onboardingProviders.assistant.switchHere', { client: label })
+      : activation.box === 'broken'
+        ? t(staleShape ? 'onboardingProviders.assistant.upgrade' : 'onboardingProviders.assistant.repair', { client: label })
+        : undefined
+  const statusBox = (
+    <AssistantStatusBox
+      box={activation.box}
+      client={label}
+      usage={usage}
+      now={now}
+      detail={brokenDetail}
+      brokenCode={staleShape ? client.configState : verify?.reason ?? 'broken'}
+      primaryLabel={primaryLabel}
+      verifiedToolCount={verify?.phase === 'ok' ? verify.toolCount : null}
+      approvalHint={t('onboardingProviders.assistant.hostApprovalHint', { client: label })}
+      test={testState}
+      busy={busy}
+      confirmingRevoke={confirmingRevoke}
+      copied={copied === 'client'}
+      onPrimary={handleInstall}
+      onTest={handleTest}
+      onRewrite={handleInstall}
+      onRevoke={() => setConfirmingRevoke(true)}
+      onRevokeConfirm={handleRevokeConfirm}
+      onRevokeCancel={() => setConfirmingRevoke(false)}
+      onCopy={handleCopyClient}
+    />
+  )
 
   const migrationBlock = migrationResults ? (
     <McpMigrationPrompt phase="done" labels={migrationLabels.current} results={migrationResults} busy={busy} onRetry={handleRetryMigration} />
@@ -375,83 +477,22 @@ export function ConnectAssistantCard({
             size="xs"
             fullWidth
             value={target}
-            onChange={(value) => setTarget(value as ClientKey)}
-            data={detected.map((key) => ({ label: CLIENT_LABEL[key], value: key }))}
+            onChange={(value) => selectTarget(value as ClientKey)}
+            data={detected.map((key) => ({
+              label: (
+                <span className="inline-flex items-center gap-1.5">
+                  {clientDot(key)}
+                  {CLIENT_LABEL[key]}
+                </span>
+              ),
+              value: key,
+            }))}
           />
 
-          {client.installed && (broken || elsewhere) ? (
+          {statusBox}
+
+          {client.installed && activation.box !== 'broken' && activation.box !== 'elsewhere' ? (
             <>
-              {/* 过时形状 / 实连失败：不再显示绿色「已写入配置」，如实说坏在哪 + 给唯一出路（重写成当前启动方式）。 */}
-              <div
-                data-assistant-broken={elsewhere ? undefined : staleShape ? client.configState : verify?.reason ?? 'broken'}
-                data-assistant-elsewhere={elsewhere || undefined}
-                className={cn(
-                  'flex items-start gap-2 rounded-nomi-sm px-3 py-2.5',
-                  staleShape || elsewhere ? 'bg-nomi-ink-05' : 'bg-[var(--workbench-danger-soft)]',
-                )}
-              >
-                <IconAlertTriangle size={17} className={cn('shrink-0 mt-0.5', elsewhere ? 'text-nomi-ink-60' : staleShape ? 'text-nomi-warning' : 'text-workbench-danger')} />
-                <div className="min-w-0">
-                  <div className="text-body-sm font-semibold text-nomi-ink">{t(elsewhere ? 'onboardingProviders.assistant.elsewhereTitle' : 'onboardingProviders.assistant.brokenTitle')}</div>
-                  <div className="text-caption text-nomi-ink-60 mt-0.5 leading-relaxed break-all">
-                    {elsewhere ? client.configuredCommand : staleShape
-                      ? t(`onboardingProviders.assistant.staleConfig.${staleShape}`, { client: label })
-                      : t(`onboardingProviders.assistant.reason.${REASON_I18N[verify?.reason ?? 'ok'] || 'handshakeFailed'}`, { client: label })}
-                  </div>
-                  {elsewhere && client.configuredSettingsDir ? (
-                    <div className="text-caption text-nomi-ink-60 mt-0.5 leading-relaxed break-all">{client.configuredSettingsDir}</div>
-                  ) : null}
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={handleInstall}
-                disabled={busy}
-                className={cn(
-                  'w-full h-9 rounded-nomi-sm bg-nomi-ink text-nomi-paper',
-                  'text-body-sm font-semibold inline-flex items-center justify-center gap-1.5',
-                  'hover:bg-nomi-accent disabled:opacity-50 disabled:cursor-not-allowed',
-                )}
-              >
-                <IconRefresh size={15} stroke={1.8} />
-                {t(elsewhere ? 'onboardingProviders.assistant.switchHere' : staleShape ? 'onboardingProviders.assistant.upgrade' : 'onboardingProviders.assistant.repair', { client: label })}
-              </button>
-              <button
-                type="button"
-                onClick={handleUninstall}
-                disabled={busy}
-                className="self-start text-caption text-nomi-ink-40 hover:text-workbench-danger disabled:opacity-50"
-              >
-                {t('onboardingProviders.assistant.disconnect')}
-              </button>
-            </>
-          ) : client.installed ? (
-            <>
-              <div className="flex items-start gap-2 rounded-nomi-sm bg-nomi-ink-05 px-3 py-2.5">
-                {verify?.phase === 'ok' && !hostApprovalPending ? (
-                  <IconCircleCheck size={17} className="shrink-0 mt-0.5 text-workbench-success-ink" />
-                ) : (
-                  <IconPlugConnected size={17} className="shrink-0 mt-0.5 text-nomi-ink-60" />
-                )}
-                <div className="min-w-0">
-                  <div className="text-body-sm font-semibold text-nomi-ink">
-                    {verify?.phase === 'ok' && !hostApprovalPending
-                      ? t('onboardingProviders.assistant.verified', { client: label })
-                      : t('onboardingProviders.assistant.configWritten', { client: label })}
-                  </div>
-                  <div className="mt-0.5 text-caption text-nomi-ink-60">
-                    {verify?.phase === 'ok' && typeof verify.toolCount === 'number'
-                      ? t('onboardingProviders.assistant.verifiedBody', { count: verify.toolCount })
-                      : t('onboardingProviders.assistant.restartClient', { client: label })}
-                  </div>
-                  {/* 宿主自己那道审批门（如 Cursor）：Nomi 握手成功只证明命令可用，不能替宿主批准自己。 */}
-                  {hostApprovalPending ? (
-                    <div className="mt-1 text-caption text-nomi-ink-40">
-                      {t('onboardingProviders.assistant.hostApprovalHint', { client: label })}
-                    </div>
-                  ) : null}
-                </div>
-              </div>
               {/* 第二个开关：「连上」管能不能到 Nomi，「可信发起方」管连上后能不能自动发起制作。同一张卡说清两件事。 */}
               <div
                 data-assistant-trust-row={target}
@@ -492,47 +533,9 @@ export function ConnectAssistantCard({
               >
                 {t('onboardingProviders.assistant.addModelPointer')}
               </button>
-              <button
-                type="button"
-                onClick={handleUninstall}
-                disabled={busy}
-                className="self-start text-caption text-nomi-ink-40 hover:text-workbench-danger disabled:opacity-50"
-              >
-                {t('onboardingProviders.assistant.disconnect')}
-              </button>
             </>
-          ) : (
-            <>
-              <div className="text-caption text-nomi-ink-60 leading-relaxed">
-                {t('onboardingProviders.assistant.description', { client: label })}
-              </div>
-              <button
-                type="button"
-                onClick={handleInstall}
-                disabled={busy}
-                className={cn(
-                  'w-full h-9 rounded-nomi-sm bg-nomi-ink text-nomi-paper',
-                  'text-body-sm font-semibold inline-flex items-center justify-center gap-1.5',
-                  'hover:bg-nomi-accent disabled:opacity-50 disabled:cursor-not-allowed',
-                )}
-              >
-                <IconPlugConnected size={15} stroke={1.8} />{t('onboardingProviders.assistant.connect', { client: label })}
-              </button>
-              {/* 手动贴的人拿的是**这个客户端**的签名片段（身份 = 它自己），不是别家的。 */}
-              <button
-                type="button"
-                data-assistant-client-copy={target}
-                onClick={handleCopyClient}
-                className={cn(
-                  'h-8 rounded-nomi-sm border border-nomi-line text-nomi-ink-60',
-                  'text-caption inline-flex items-center justify-center gap-1.5 hover:border-nomi-ink-20',
-                )}
-              >
-                {copied === 'client' ? <IconCheck size={14} stroke={1.8} /> : <IconCopy size={14} stroke={1.6} />}
-                {copied === 'client' ? t('onboardingProviders.assistant.copied') : t('onboardingProviders.assistant.copyConfig', { client: label })}
-              </button>
-            </>
-          )}
+          ) : null}
+
           {genericSection}
         </>
       )}

@@ -9,20 +9,33 @@ import { reportCanvasFeedback } from './canvasFeedback'
 import { useGenerationCanvasStore } from '../store/generationCanvasStore'
 import { buildContactSheetNode, contactSheetSources } from '../nodes/buildContactSheetNode'
 import { withProjectAction } from '../../project/projectCanvasReadSurface'
+import { selectCanvasNodeById } from '../store/canvasNodeGenerationIndex'
+import type { GenerationCanvasNode } from '../model/generationCanvasTypes'
+import type { GenerationCanvasState } from '../store/canvasStoreTypes'
+
+/**
+ * 选中里已出图的张数（<2 就没有总览图可生成，多选浮条上那个钮不出现）。按 id 查选中的那几张，
+ * 不整表订阅 nodes：别的卡写进度时结果不变，订阅它的组件就不重渲。
+ */
+export function selectSelectedContactSheetCount(state: Pick<GenerationCanvasState, 'nodes' | 'edges' | 'selectedNodeIds'>): number {
+  if (state.selectedNodeIds.length < 2) return 0
+  const selected = state.selectedNodeIds.flatMap((id): GenerationCanvasNode[] => {
+    const node = selectCanvasNodeById(state, id)
+    return node ? [node] : []
+  })
+  return contactSheetSources(state.selectedNodeIds, selected).length
+}
 
 export function useCanvasGroupActions(params: {
   activeCategoryId: string
   selectedGroupIds: string[]
-  selectedNodeIds: string[]
 }): {
   handleGroupSelectedNodes: () => void
   handleUngroupSelectedNodes: () => void
   handleConnectToGroup: (groupId: string) => void
-  /** 选中里已出图的张数（<2 就没有总览图可生成，浮条上那个钮不出现）。 */
-  contactSheetCount: number
   handleBuildContactSheet: () => void
 } {
-  const { activeCategoryId, selectedGroupIds, selectedNodeIds } = params
+  const { activeCategoryId, selectedGroupIds } = params
   const { t } = useTranslation()
   const groupSelectedNodes = useGenerationCanvasStore((state) => state.groupSelectedNodes)
   const ungroupGroups = useGenerationCanvasStore((state) => state.ungroupGroups)
@@ -59,21 +72,17 @@ export function useCanvasGroupActions(params: {
   }, [t])
 
   // 总览图：把选中的成图排成一张，给客户/团队看整场戏。产物是普通图片节点（不新增节点 kind）。
-  const nodes = useGenerationCanvasStore((state) => state.nodes)
-  const contactSheetCount = React.useMemo(
-    () => contactSheetSources(selectedNodeIds, nodes).length,
-    [selectedNodeIds, nodes],
-  )
+  // 选区在点下去那一刻读（不订阅）：画布壳不因选中重渲；可生成张数由浮条那一层用 selectSelectedContactSheetCount 订阅。
   const handleBuildContactSheet = React.useCallback(() => {
+    const selectedNodeIds = [...useGenerationCanvasStore.getState().selectedNodeIds]
     const projectId = withProjectAction((project) => project.binding.projectId) ?? ''
     void buildContactSheetNode(selectedNodeIds, (message) => reportCanvasFeedback(message, 'error', { projectId, identity: `contact-sheet:${selectedNodeIds.slice().sort().join(':')}`, reason: 'build', nodeIds: selectedNodeIds }))
-  }, [selectedNodeIds])
+  }, [])
 
   return {
     handleGroupSelectedNodes,
     handleUngroupSelectedNodes,
     handleConnectToGroup,
-    contactSheetCount,
     handleBuildContactSheet,
   }
 }

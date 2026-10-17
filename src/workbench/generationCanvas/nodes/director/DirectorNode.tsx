@@ -25,6 +25,7 @@ import { getGenerationNodeIcon } from '../renderRegistry'
 import { assetKindOfFileName } from './model/assetKinds'
 import { DIRECTOR_PREVIEW_META_KEY, DIRECTOR_PROJECT_META_KEY } from './model/directorNodeMeta'
 import { DIRECTOR_PREVIEW_MAX_SECONDS, readDirectorPreview } from './model/directorPreviewState'
+import { requestDirectorPreviewRender } from './agent/directorPreviewCapture'
 import { normalizeDirectorProject, projectStats } from './model/directorProject'
 import type { DirectorLinkedAsset, DirectorProject } from './model/directorTypes'
 import type { DirectorOutput } from './OutputsContext'
@@ -131,16 +132,13 @@ function DirectorNode({ node: rawNode, selected, readOnly = false }: Props): JSX
     [node.id, t],
   )
 
-  // 3D-BOX 预演状态（只有 stage_shot 建的节点才有）：渲染中 / 失败要让人看见，失败给重试——
-  // 重试就是把同一修订重新标成「渲染中」，常驻 Host 扫到即重渲；超长的不给重试（改短才行）。
+  // 3D-BOX 预演状态：渲染中 / 失败要让人看见，失败给重试——重试走预演的唯一写口 requestDirectorPreviewRender
+  // （与导演视图「出成片」同一个），常驻 Host 扫到即重渲；超长的不给重试（改短才行）。
   const preview = readDirectorPreview(node)
   const handleRetryPreview = React.useCallback(() => {
-    const current = useGenerationCanvasStore.getState().nodes.find((candidate) => candidate.id === node.id)
-    const latest = readDirectorPreview(current)
-    if (!current || !latest || latest.status !== 'failed' || latest.reason === 'too_long') return
-    const { reason: _reason, ...rest } = latest
-    updateNode(node.id, { meta: { ...(current.meta || {}), [DIRECTOR_PREVIEW_META_KEY]: { ...rest, status: 'rendering', updatedAt: Date.now() } } })
-  }, [node.id, updateNode])
+    if (readDirectorPreview(useGenerationCanvasStore.getState().nodes.find((candidate) => candidate.id === node.id))?.status !== 'failed') return
+    requestDirectorPreviewRender(node.id)
+  }, [node.id])
 
   const handleClose = React.useCallback(() => {
     setOpen(false)

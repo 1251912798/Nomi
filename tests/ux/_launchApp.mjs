@@ -142,6 +142,18 @@ app.once('session-created', (session) => {
  * 其实没装。`-r` 必须排在 App 入口（`.`）之前才对主进程生效，所以由启动器来拼。
  * 只收**绝对路径且文件存在**：相对路径会被 Node 当成包名去 node_modules 里找（MODULE_NOT_FOUND）。
  */
+/**
+ * 走查窗口屏外开关：环境变量 NOMI_WALK_OFFSCREEN=1 时，给 mainRequire 补上 _offscreenWindows.cjs（窗口建出来就在屏幕外、不抢焦点）。
+ * 为什么放在启动器：几百份走查各自决定要不要屏外，没人能保证「在用户正用的电脑上跑」时都带了；跑走查的人 / 夜跑脚本
+ * 设一个变量就整批屏外，不用逐份改。已经自己带了就不重复加。
+ */
+const OFFSCREEN_WINDOWS_MODULE = path.join(path.dirname(fileURLToPath(import.meta.url)), '_offscreenWindows.cjs')
+export function withWalkOffscreen(modules, env = process.env) {
+  const list = Array.isArray(modules) ? modules : []
+  if (env.NOMI_WALK_OFFSCREEN !== '1' || list.includes(OFFSCREEN_WINDOWS_MODULE)) return list
+  return [...list, OFFSCREEN_WINDOWS_MODULE]
+}
+
 export function mainRequireArgs(modules) {
   if (!Array.isArray(modules) || modules.length === 0) return []
   return modules.flatMap((file) => {
@@ -366,7 +378,8 @@ export async function launchNomiApp(options = {}) {
   if (options.syntheticCredentialStorage && !isolate) {
     throw new Error('syntheticCredentialStorage requires an isolated Nomi profile')
   }
-  if (options.mainRequire?.length && !isolate) {
+  const mainRequire = isolate ? withWalkOffscreen(options.mainRequire) : options.mainRequire
+  if (mainRequire?.length && !isolate) {
     throw new Error('mainRequire requires an isolated Nomi profile')
   }
 
@@ -408,7 +421,7 @@ export async function launchNomiApp(options = {}) {
   // 主入口之前要加载的模块：开发版拼成 `-r` 对；打包版不认 `-r`，改走调试口（见 requireBeforePackagedMain）。
   const preMainArgs = [
     ...(options.initialLocalStorage ? prepareLocalStorageSeed(tempRoot, options.initialLocalStorage) : []),
-    ...mainRequireArgs(options.mainRequire),
+    ...mainRequireArgs(mainRequire),
   ]
   const packagedPreMain = !isDevElectron && preMainArgs.length
     ? { port: await freeLoopbackPort(), modules: preMainArgs.filter((_, index) => index % 2 === 1) }

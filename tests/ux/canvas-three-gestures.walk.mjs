@@ -7,7 +7,7 @@ import { launchNomiApp } from './_launchApp.mjs'
 import { addCanvasNodeFromRail } from './_canvasRail.mjs'
 import { expectNodeInsideCanvas, findCanvasBlankPoint, findNodeHitPoint } from './_canvasHit.mjs'
 import { expect, expectAbsent, proveProbe, screenshotSettled } from './_assert.mjs'
-import { canvasAddBar, canvasFitViewButton, newProjectEntry } from './_shell.mjs'
+import { canvasAddBar, canvasFitViewButton, newProjectEntry, switchWorkspace } from './_shell.mjs'
 import { stationTimeout } from './_station-budget.mjs'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
@@ -52,7 +52,7 @@ try {
   win = app.windows().find((page) => /projectId=/.test(page.url())) ?? win
   const browserWindow = await app.browserWindow(win)
   await browserWindow.evaluate((window) => window.setBounds({ x: 0, y: 0, width: 1600, height: 1000 }))
-  await win.locator('[aria-label="工作区切换"]').getByText('生成', { exact: true }).click({ timeout: 30000 })
+  await switchWorkspace(win, 'generation', '切到生成区')
   await expect(canvasAddBar(win)).toBeVisible()
 
   // Customize in the existing menu, then verify the real IPC and rail see the same preference.

@@ -11,6 +11,13 @@ import os from "node:os";
 import path from "node:path";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { dispatch } from "./dispatcher";
+import { tryModel } from "./modelOnboarding/tryModel";
+import { runTask, fetchTaskResult } from "../runtime";
+import { MCP_TOOL_CATALOG, READ_TARGETS } from "./mcpToolCatalog";
+import { taskCache } from "../tasks/taskCache";
+import { readTask } from "./readTask";
+
 vi.mock("electron", async (importOriginal) => {
   const actual = await importOriginal<Record<string, unknown>>();
   return {
@@ -83,7 +90,6 @@ describe("nomi_read target=task", () => {
 
   beforeEach(async () => {
     vi.stubEnv("NOMI_SETTINGS_DIR", root);
-    const { dispatch } = await import("./dispatcher");
     const docs = "https://docs.example-readtask.com/api";
     const submitted = await dispatch("model.onboarding.setup", {
       action: "submit_declaration",
@@ -128,11 +134,9 @@ describe("nomi_read target=task", () => {
 
   /** 真 tryModel 提交一单，等不到终态 → 返回任务号。 */
   async function submitPending(): Promise<string> {
-    const { tryModel } = await import("./modelOnboarding/tryModel");
-    const { runTask, fetchTaskResult } = await import("../runtime");
     const tried = await tryModel({
-      runTask, fetchTaskResult, pollIntervalMs: 10, pollTimeoutMs: 200,
-      approvalPolicy: () => ({ mode: "project", spend: "confirm" }),
+      runTask, fetchTaskResult, pollIntervalMs: 10, pollTimeoutMs: 2_000, // 这一格同时是「提交那一步」的预算：200ms 在满载下装不下一次本地提交，会回 submission_unknown 而不是 still_processing
+      approvalPolicy: () => ({ mode: "direct" }),
     }, { vendorKey, modelKey: "readtask-paint", prompt: "apple" }) as { code?: string; taskId?: string; nextAction?: string };
     expect(tried.code).toBe("still_processing");
     expect(tried.nextAction).toContain(`nomi_read target=task taskId=${tried.taskId}`);
@@ -141,13 +145,10 @@ describe("nomi_read target=task", () => {
   }
 
   async function readTaskId(taskId: string): Promise<Read> {
-    const { dispatch } = await import("./dispatcher");
-    const { fetchTaskResult } = await import("../runtime");
     return dispatch("task.read", { taskId }, { origin: { host: "claude" }, fetchTaskResult } as never) as Promise<Read>;
   }
 
   it("nomi_read 的 task 目标在目录里：target=task 解析到 task.read，taskId 原样递下去", async () => {
-    const { MCP_TOOL_CATALOG, READ_TARGETS } = await import("./mcpToolCatalog");
     expect(READ_TARGETS).toContain("task");
     const read = MCP_TOOL_CATALOG.find((tool) => tool.name === "nomi_read")! as unknown as {
       resolveMethod: (a: unknown) => string; build: (a: unknown) => unknown; annotations: { readOnlyHint: boolean };
@@ -158,7 +159,6 @@ describe("nomi_read target=task", () => {
   });
 
   it("没传 taskId：明确要求任务号（400），不去查", async () => {
-    const { dispatch } = await import("./dispatcher");
     await expect(dispatch("task.read", {}, ctx)).rejects.toMatchObject({ httpStatus: 400 });
   });
 
@@ -212,7 +212,6 @@ describe("nomi_read target=task", () => {
   it("同一进程里追踪被清掉（过期 / 被别处取走）：说 Nomi 已不在跟踪，建议去供应商后台，不建议重提交", async () => {
     const id = await submitPending();
     submits = 0;
-    const { taskCache } = await import("../tasks/taskCache");
     // 与 TTL 过期 / LRU 驱逐同一个结果：工作缓存里没有它了，但账本记得它被受理过。
     taskCache.delete(id);
     const out = await readTaskId(id);
@@ -227,7 +226,11 @@ describe("nomi_read target=task", () => {
     const id = await submitPending();
     submits = 0;
     vi.resetModules();
-    const out = await readTaskId(id);
+    // eslint-disable-next-line no-restricted-syntax -- 重启模拟：丢掉模块缓存后必须重新加载 dispatcher / runtime，静态绑定拿到的还是重启前的任务缓存
+    const { dispatch: dispatchAfterRestart } = await import("./dispatcher");
+    // eslint-disable-next-line no-restricted-syntax -- 同上
+    const { fetchTaskResult: fetchAfterRestart } = await import("../runtime");
+    const out = await dispatchAfterRestart("task.read", { taskId: id }, { origin: { host: "claude" }, fetchTaskResult: fetchAfterRestart } as never) as Read;
     expect(out.state).toBe("unknown_task");
     expect(out.message).toMatch(/restarted/i);
     expect(out.message).toMatch(/no longer tracking/i);
@@ -237,7 +240,6 @@ describe("nomi_read target=task", () => {
   });
 
   it("供应商查询卡死：在预算内返回 query_failed，说明任务不受影响、别重提交", async () => {
-    const { readTask } = await import("./readTask");
     const out = await readTask({ fetchTaskResult: () => new Promise<never>(() => undefined), queryBudgetMs: 50 }, { taskId: "job-hang" });
     expect(out.state).toBe("query_failed");
     expect(out.nextAction).toMatch(/do not submit/i);

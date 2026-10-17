@@ -145,7 +145,10 @@ test('the paid smoke also exercises the reported canvas task without approving m
   // 付费那条路不在白名单里：真模型碰 `draft_shots` / `generate` 这一幕就红。
   expect(source).toContain("const allowedTools = ['read_script', 'write_script', 'look_at_canvas', 'make_artifact', 'arrange_canvas']")
   expect(source).toContain("receipt.getByRole('button', { name: '撤销', exact: true })")
-  expect(source).toContain("proveProbe(approval, 'The real model must propose an actual append for human approval', 120_000)")
+  // 2026-10-12 两档：「请求批准」下能撤销的文稿写入直接做（原来靠已删的「每步问」弹卡再批准）。
+  // 钉住这一段仍在真模型上验「默认档、真写入、真落盘」，而不是悄悄删掉。
+  expect(source).toContain("expect(win.locator(`${CREATION_PANEL} ${COMPOSER}`)).toHaveAttribute('data-approval-mode', 'request')")
+  expect(source).toContain('settledBy: win.locator(DOCUMENT).getByText(APPEND, { exact: false })')
   expect(source).toContain('expect(win.locator(DOCUMENT)).toBeVisible({ timeout: 120_000 })')
   expect(source).toContain("expect(win.locator(CREATION_PANEL)).toContainText('NOMI_PI_LIVE_OK', { timeout: 120_000 })")
   expect(source).toContain('expect(plan).toBeVisible({ timeout: 120_000 })')

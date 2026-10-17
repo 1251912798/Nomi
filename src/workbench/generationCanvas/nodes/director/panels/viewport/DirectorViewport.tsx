@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 react、react-i18next、../../scene/DirectorCanvas、../../scene/ViewCamera 的 DEFAULT_VIEW_SETTINGS / ViewSettings、
  *          ../../scene/sceneTheme、../../scene/creation/usePathDraw、../../scene/LabelProjector 类型、./ViewportOverlays、
- *          ../ai/AiSceneBar、../../DirectorEditorContext、../../model/directorTypes、../../scene/ViewportApiContext
+ *          ../../DirectorEditorContext、../../model/directorTypes、../../scene/ViewportApiContext
  *          ../../useDirectorHotkeys 的共享输入归属；统一创建模式 Esc、工具切换取消与 Orbit 生命周期
  *          角色放置 / 画框两个 API 由壳（DirectorEditor）持有并经 props 传入，顶栏「＋添加」是另一个发起方
  * [OUTPUT]: 对外提供 DirectorViewport：视口容器 —— 画布 + 标签层 + 模式提示 + 放置/画框 HUD + POV 卡 + 画中画 + AI 搭场景；
@@ -26,7 +26,6 @@ import { DirectorCanvas } from '../../scene/DirectorCanvas'
 import type { ProjectedLabel } from '../../scene/LabelProjector'
 import type { DirectorViewportTheme } from '../../scene/sceneTheme'
 import { DEFAULT_VIEW_SETTINGS, type ViewSettings } from '../../scene/viewSettings'
-import { AiSceneBar } from '../ai/AiSceneBar'
 import { useCameraRecorder } from '../../CameraRecorderContext'
 import { exportAspectRatio } from '../../model/cameraLens'
 import type { PipRect } from '../../scene/pipCamera'
@@ -43,14 +42,13 @@ export type DirectorViewportProps = {
   placement: CharacterPlacementApi
   boxDraw: BoxDrawApi
   cancelCreationRef?: React.MutableRefObject<(() => void) | null>
-  showAiSceneBar?: boolean
-  /** 导演视图（3D-BOX）的看法：编辑辅助物不画、不可点选、小窗跟播放头的节目机位并说「正在播哪一镜」。缺省 = 精修 / 旧导演台。 */
+  /** 导演视图（3D-BOX）的看法：编辑辅助物不画、不可点选、小窗跟播放头的节目机位并说「正在播哪一镜」。缺省 = 精修。 */
   presentation?: DirectorViewportPresentation
 }
 
 export type DirectorViewportPresentation = { kind: 'director'; nowPlaying: string | null }
 
-export function DirectorViewport({ theme, viewSettings = DEFAULT_VIEW_SETTINGS, scopeRef, placement, boxDraw, cancelCreationRef, showAiSceneBar = true, presentation }: DirectorViewportProps): JSX.Element {
+export function DirectorViewport({ theme, viewSettings = DEFAULT_VIEW_SETTINGS, scopeRef, placement, boxDraw, cancelCreationRef, presentation }: DirectorViewportProps): JSX.Element {
   const { t } = useTranslation()
   const hoveredRef = React.useRef(false)
   const apiRef = useViewportApi()
@@ -60,7 +58,6 @@ export function DirectorViewport({ theme, viewSettings = DEFAULT_VIEW_SETTINGS, 
   const pipRectRef = React.useRef<PipRect>(null)
   const recorder = useCameraRecorder()
   const [labels, setLabels] = React.useState<ProjectedLabel[]>([])
-  const [aiOpen, setAiOpen] = React.useState(false)
   const exportRatio = useDirectorStore((state) => state.project.exportRatio)
   const reject = React.useCallback((key: string) => toast(t(key as 'director.reason.closeupLocked'), 'warning'), [t])
   const pathDraw = usePathDraw({ notify: (key, params) => toast(t(key as 'director.trajectory.created', params), 'info') })
@@ -165,10 +162,6 @@ export function DirectorViewport({ theme, viewSettings = DEFAULT_VIEW_SETTINGS, 
       <PlacementHud placement={placement} boxDraw={boxDraw} />
       <PathDrawHud pathDraw={pathDraw} />
       <PipViewport rectRef={pipRectRef} canvasHostRef={hostRef} presentation={presentation} />
-      {/* AI 搭场景是视口底部中央唯一的常驻入口（原底栏那条 8 簇的胶囊 2026-09-09 已并入顶栏五簇） */}
-      {showAiSceneBar ? <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center">
-        <AiSceneBar open={aiOpen} onClose={() => setAiOpen(false)} onOpen={() => setAiOpen(true)} />
-      </div> : null}
     </div>
   )
 }

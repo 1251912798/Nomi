@@ -33,6 +33,13 @@ describe('directorSpatialAudit 六条物理判据', () => {
     expect(criteria(project(objects), { shots: [], carried: [['actor:b', 'actor:a']] })).not.toContain('interpenetrating')
   })
 
+  it('互穿要量到运动途中：两次粗采样之间穿过别人也算（以前全片只采 9 个时刻，16 秒片每 2 秒一次，穿身而过量不到）', () => {
+    const pass = { motionTrajectory: [{ id: 'p0', ...v(-8, 0, 0), yaw: 0, pitch: 0, roll: 0, time: 0, frameIndex: 0, clipId: 'k' }, { id: 'p1', ...v(8, 0, 0), yaw: 0, pitch: 0, roll: 0, time: 16, frameIndex: 480, clipId: 'k' }], trajectoryClips: [{ id: 'k', startTime: 0, endTime: 16, startFrame: 0, endFrame: 480 }] }
+    // 走过的人在 t=9s 经过 x=1，正好穿过站在 x=1 的人；整秒偶数时刻（0、2、4…16）都恰好擦边不重叠
+    const walker = cube('actor:walker', v(-8, 0, 0), v(1, 1, 1), pass)
+    expect(criteria(project([floor, walker, cube('actor:stander', v(1, 0, 0))]))).toContain('interpenetrating')
+  })
+
   it('地面只有一个高度：陷进地面板 → offFloor', () => {
     expect(criteria(project([floor, cube('actor:a', v(0, -0.2, 0))]))).toContain('offFloor')
   })

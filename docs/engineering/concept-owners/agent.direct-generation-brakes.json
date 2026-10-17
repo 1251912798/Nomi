@@ -1,0 +1,39 @@
+{
+  "name": "「直接生成」档这一笔付费由档位代答还是退回确认卡（档位 + 同一镜连续失败 + 计划外的镜 + 已停止）",
+  "subject": "agent.direct-generation-brakes",
+  "lifecycle": "spend-authority",
+  "authority_kind": "decision",
+  "trust_domain": "shared",
+  "fact_kind": "rule",
+  "migration_status": "converged",
+  "owner": {
+    "path": "electron/shared/agentCapabilities/directGenerationBrakes.ts",
+    "symbol": "spendDecisionByPolicy"
+  },
+  "write_api": [
+    {
+      "path": "electron/shared/agentCapabilities/directGenerationBrakes.ts",
+      "symbol": "spendDecisionByPolicy"
+    },
+    {
+      "path": "electron/shared/agentCapabilities/directGenerationBrakes.ts",
+      "symbol": "directGenerationBrake"
+    }
+  ],
+  "forbidden_derivations": [
+    {
+      "symbol": "plannedShotIds",
+      "kind": "definition",
+      "why": "「说好的计划」不另存：它就是 Run 上已经有 job 的镜（production.shot-jobs 的 jobsForShot）；连续失败数也每次从 job 派生，不存计数器。"
+    }
+  ],
+  "parity_test": "electron/shared/agentCapabilities/capabilityApprovalTwoTiers.test.ts",
+  "allowed_consumers": [
+    "electron/capabilityCore/generationDispatcher.ts",
+    "electron/capabilityCore/generationTransportAdapters.ts",
+    "electron/capabilityCore/modelOnboarding/tryModel.ts",
+    "electron/productionRun/productionPendingSpend.ts"
+  ],
+  "since": "2026-10-12",
+  "notes": "2026-10-12 用户拍板：Agent 权限只有两档（请求批准 / 直接生成），「直接生成」档花钱的生成不再逐次问，只在两种情况下停下问：同一镜连续失败满 3 次（第 3 次重试之前），或要代批的镜不在已经说好的计划里；停止后也不替用户续跑。刹车只放在「策略代批」这一个点：成立 = 这一次决定退回「请求批准」的正常确认卡（报价卡多一行说明，PendingSpendConfirm.brake 由 Run 现派生，不落盘），不在派发闸上加第二道兜底。档位那一半由 capabilityApprovalPolicy.spendDecidedByPolicy 回答，只有本入口与不付费的放行矩阵读它；接入试跑 tryModel 也经本入口（2026-10-16 协调拍板，无 Run 时只剩档位那一问）。用户点「继续」= 走正常确认卡，这一镜于是有了 job、自然进了计划；「说好的计划」取历史事实（曾有 job 的镜，去掉的也算），连续失败从上一次人批之后数，人批读付费门 → 出价 → 谁决定的事实，不取模、不存标记位（2026-10-16 独立验收 V-1203）。旧三档（step / safe-auto / project）与 spend 轴已删，盘上旧值由 normalizeAgentApprovalPolicySettings 一处迁到 request。"
+}

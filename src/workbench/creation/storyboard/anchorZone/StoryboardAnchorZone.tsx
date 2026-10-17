@@ -7,6 +7,7 @@ import type { AnchorCardRuntime } from '../exec/storyboardRowStatus'
 import type { PlanAnchorPatch } from '../../../generationCanvas/agent/storyboardPlanEdits'
 import StoryboardAnchorStrip from './StoryboardAnchorStrip'
 import StoryboardAnchorRow from './StoryboardAnchorRow'
+import { StoryboardRowsBox } from '../shotRow/storyboardRowDensity'
 
 /**
  * 锚区（`跨镜头要一致的`）的**两态**（合同 v6 §2.2，用户原话：「只有顶部的锚需要展开/收起两态」）。
@@ -83,7 +84,7 @@ export default function StoryboardAnchorZone(props: Props): JSX.Element {
       {cards.length === 0 ? (
         <div className="py-2 text-caption text-nomi-ink-40">{t('storyboardEditor.noAnchors')}</div>
       ) : expanded ? (
-        <div className="overflow-hidden rounded-nomi border border-nomi-line">
+        <StoryboardRowsBox className="overflow-hidden rounded-nomi border border-nomi-line">
           {cards.map((runtime) => (
             <StoryboardAnchorRow
               key={runtime.anchor.id}
@@ -102,7 +103,7 @@ export default function StoryboardAnchorZone(props: Props): JSX.Element {
               onFilterByAnchor={props.onFilterByAnchor ? () => props.onFilterByAnchor?.(runtime.anchor.id) : undefined}
             />
           ))}
-        </div>
+        </StoryboardRowsBox>
       ) : (
         <StoryboardAnchorStrip
           cards={cards}

@@ -19,6 +19,18 @@ export const RAW_SHELL_PATTERNS = [
   [/aria-label=\\?"(?:适应视图|重置视图|缩放比例|画框)\\?"/, 'canvasFitViewButton / canvasResetView / canvasZoomSlider（_shell.mjs）'],
   [/generationCommon\.navigation\.(?:resetView|zoomRatio|fitView|zoomIn|zoomOut|viewOptions)|generationCommon\.canvas\.controlsHelp\.aria/, '_shell.mjs 的 canvasResetView / canvasZoomSlider / canvasFitViewButton / canvasControlsHelpDialog…'],
   [/data-testid="open-model-settings"|aria-label="打开模型设置"|name:\s*(?:\/|')打开模型设置/, 'openModelSettings() / modelSettingsEntry()'],
+  // 10-15 夜跑分诊（42 条走查在找旧外壳入口）：外壳重设计后下面这些**旧字面量已经没有对应的渲染物**（或已被唯一出口取代），
+  // 手抄它们 = 下一次外壳变动时又成片悬空。每条指向 _shell.mjs 里的出口。
+  // 左栏抽屉：旧侧栏 `aside nav button`；按「库全名」找导轨钮（现在导轨钮叫 素材 / Skill / 提示词 / 流程，库全名只是抽屉内容区的面板名）。
+  [/aside nav button\[aria-label/, 'openRailDrawer(win, "assets" | "skills" | "prompts" | "flows" | "docs" | "catalog")'],
+  [/getByRole\(\s*['"]button['"]\s*,\s*\{\s*name:\s*['"](?:素材库|技能库|提示词库|流程库|Asset library|Skill library|Prompt library|Workflow library)['"]/, 'openRailDrawer()'],
+  [/button\[aria-label="(?:素材库|技能库|提示词库|流程库|Asset library|Skill library|Prompt library|Workflow library)"\]/, 'openRailDrawer()'],
+  // Agent 三态：旧的「收起面板 / 收起创作助手 / 展开创作助手」按钮名（现在收起 = 形态三选一里的「小球」，叫回 = 点小球）。
+  [/getByRole\(\s*['"]button['"]\s*,\s*\{\s*name:\s*['"](?:收起面板|收起创作助手|展开创作助手|收起助手面板)['"]/, 'collapseAgentPanel() / ensureAgentPanelOpen()'],
+  // 语言：顶栏已经没有语言控件，语言只住设置「通用」里。
+  [/aria-label=\\?"(?:语言|Language)\\?"|menuitemradio(?:["']|"\]['"\`])\s*,\s*\{\s*(?:name|hasText):\s*['"]English/, 'setAppLanguage() / readAppLanguage()'],
+  // 工作区：在「工作区切换」容器里按文字找「生成 / 预览 / 创作」（名字会随进度附加信息变，上次已经因此落空过一回）。
+  [/工作区切换['"]\]['"`]\)\.getBy(?:Text|Role)|getByRole\(\s*['"]navigation['"]\s*,\s*\{\s*name:\s*['"]工作区切换['"]\s*\}\)\.getBy/, 'switchWorkspace(win, "creation" | "generation" | "preview")'],
 ]
 
 /**

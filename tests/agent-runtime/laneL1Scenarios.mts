@@ -34,19 +34,48 @@ const write = (id: string, operation: 'append' | 'insert' | 'replace', content: 
 const domain = (id: string, name: string, args: Record<string, unknown>, result: unknown, domainArgs = args, userSees?: string): L1Call => ({
   id, name, args, domainArgs, domainResult: result, resultText: userSees ? `${JSON.stringify(result)}\nUser sees: ${userSees}` : JSON.stringify(result),
 });
-/** 画布写动词（stage_shot）：领域端口收到的是契约语义输入；收据是「直接生效、可撤」。 */
+/** 画布写动词（现只剩 make_artifact 等；stage_shot 走下面的 director）：领域端口收到的是契约语义输入；收据是「直接生效、可撤」。 */
 const canvas = (id: string, name: string, args: Record<string, unknown>, semantic: { operation: string; [key: string]: unknown }, userSees: string): L1Call => ({
   id, name, args, domainArgs: semantic,
   domainResult: { applied: true, proposalId: `receipt-${id}`, operation: semantic.operation, result: {}, reconciliation: { ok: true, deviationCount: 0 } },
   resultText: `Applied directly (undoable).\nUser sees: ${userSees}`,
 });
-const DRAFT_USER_SEES = 'Draft changes are saved in the project. Nothing was generated and nothing was spent. This host did not report whether the draft is on the canvas, so do not state what the canvas shows.';
+/** stage_shot（3D-BOX 导演台，契约 director.write）：领域端口收到 create_director_plan 语义输入；回执逐行是夹具事实（修订号、实测 cut、预演状态、下一次补丁的基准计划），不从实现抄。 */
+const director = (id: string, args: Record<string, unknown>, semantic: { operation: string; [key: string]: unknown }): L1Call => {
+  const planBody = SLOW_PUSH_IN_NORMALIZED;
+  const result = { applied: true, proposalId: `receipt-${id}`, changeId: `canvas:v1:receipt-${id}`, operation: semantic.operation, directorNodeId: 'node-d1',
+    revision: 'dplan-0123456789abcdef', unchanged: false, plan: planBody, issues: [], cuts: [{ shot: 'push', start: 0, end: 3, shotSize: '中景', move: 'push_in' }],
+    touched: ['shot:push'], reorderedOverrides: [], changedEntities: [], preview: { status: 'rendering', targetNodeId: 'node-v1' } };
+  return { id, name: 'stage_shot', args, domainArgs: semantic, domainResult: result, resultText: [
+    `Applied (undoable: undo with changeId ${result.changeId}). 3D-BOX node node-d1, revision ${result.revision}.`,
+    'Changed: shot:push.',
+    'Measured cuts — what the 3D preview ACTUALLY frames. When you report framing to the user, report these measured values, never the plan\'s requested size:',
+    '- shot 1 (push) 0.0-3.0s: measured 中景, move push_in; plan asked 中景, matches',
+    'Issues: none.',
+    'Preview: rendering for node-v1; generation of that shot waits until it is attached.',
+    `Plan at ${result.revision} (base for the next edits; its "size" fields are REQUESTS, not measurements): ${JSON.stringify(planBody)}`,
+    `User sees: The 3D-BOX preview on the canvas is updating; the user can undo it with Cmd+Z. Nothing was generated and nothing was spent. (changeId=${result.changeId})`,
+  ].join('\n') };
+};
+const draftUserSees = (operationId: string) => 'Draft changes are saved in the project. Nothing was generated and nothing was spent. This host did not report whether the draft is on the canvas, so do not state what the canvas shows. Next step depends on what the user asked this turn: if they asked to generate or produce the images or video, a draft alone gives them nothing, so your next tool call is generate with operationId=' + operationId + '; do not end your turn on the draft. If they only asked for a draft or plan, stop here and do not call generate.';
 /** `draft_shots` 建草稿（卡藏着）：返回 durable operation；模型手里拿到的 id，末行按它下一步要填的名字印成 `operationId=`。 */
 const draft = (id: string, args: Record<string, unknown>, operationId: string): L1Call =>
-  domain(id, 'draft_shots', args, { operation: { operationId, state: 'draft', cardHidden: true } }, args, `${DRAFT_USER_SEES} (operationId=${operationId})`);
+  domain(id, 'draft_shots', args, { operation: { operationId, state: 'draft', cardHidden: true } }, args, `${draftUserSees(operationId)} (operationId=${operationId})`);
 const turn = (prompt: string, ...frames: L1Frame[]): L1Turn => ({ prompt, frames });
 const scenario = (id: string, family: L1Scenario['family'], title: string, turns: L1Turn[],
   extra: Partial<L1Scenario> = {}): L1Scenario => ({ id, family, title, turns, finalDocument: INITIAL_DOCUMENT, ...extra });
+// 3D-BOX 唯一导演台之后，运镜不再是独立参数，而是导演计划里某个镜头的 move；「慢推」就是一份只含该镜头的最小计划。
+const SLOW_PUSH_IN_PLAN = {
+  scene: { environment: 'day', template: 'room', tags: ['书房'] },
+  actors: [{ id: 'reader', kind: 'person', desc: '读者', placement: { relation: 'at', ref: 's1-room-floor' } }],
+  shots: [{ id: 'push', window: [0, 3], transitionIn: 'cut', subject: 'reader', size: '中景', angle: 'front', height: 'eye', move: { kind: 'push_in', speed: 'slow' } }],
+};
+// 同一份计划经宿主规范化（补 version、默认空列表、运镜缓动）后的样子——端口收到的、回执里印的都是它；夹具手写，不调实现生成。
+const SLOW_PUSH_IN_NORMALIZED = {
+  version: 2, scene: { tags: ['书房'], environment: 'day', template: 'room', setPieces: [] },
+  actors: [{ id: 'reader', kind: 'person', desc: '读者', placement: { relation: 'at', ref: 's1-room-floor' } }], blocking: [],
+  shots: [{ id: 'push', window: [0, 3], transitionIn: 'cut', subject: 'reader', size: '中景', angle: 'front', height: 'eye', move: { kind: 'push_in', speed: 'slow', easing: 'linear' } }],
+};
 const emptyCanvas = { nodes: [], edges: [], groups: [], selectedNodeIds: [] };
 const timeline = { operation: 'read_timeline', revision: 'r1', fps: 30, scale: 1,
   playheadFrame: 0, durationFrames: 0, valid: true, tracks: [], textClips: [], transitions: [] };
@@ -76,10 +105,9 @@ export const L1_SCENARIOS: readonly L1Scenario[] = [
     calls(draft('write-c1', { shots: [{ title: 'Opening', prompt: 'Sunrise', taskKind: 'text_to_image' }] }, 'gen-c1')), say('The opening frame is drafted, nothing generated yet.'))]),
   scenario('C2', 'canvas', 'Draft an ordered two-shot storyboard', [turn('Make two shots from the scene.',
     calls(draft('write-c2', { shots: [{ title: 'Sunrise', prompt: 'Sunrise', taskKind: 'text_to_image' }, { title: 'Open door', prompt: 'Open door', taskKind: 'text_to_image' }] }, 'gen-c2')), say('The two shots stay in story order.'))]),
-  scenario('C3', 'canvas', 'Attach a vocabulary camera reference', [turn('Use a slow push in for shot one.',
-    calls(canvas('write-c3', 'stage_shot', { shotId: 's1', cameraMove: { move: 'push_in', speed: 'slow' } },
-      { operation: 'create_camera_move', shotClientId: 's1', move: 'push_in', speed: 'slow' },
-      'The canvas shows the new director reference node next to the shot; the user can undo it with Cmd+Z. Nothing was generated and nothing was spent.')), say('The camera reference is attached.'))]),
+  scenario('C3', 'canvas', 'Slow push-in via a director plan for shot one', [turn('Use a slow push in for shot one.',
+    calls(director('write-c3', { target: { shotId: 's1' }, plan: SLOW_PUSH_IN_PLAN },
+      { operation: 'create_director_plan', shotNodeId: 's1', plan: SLOW_PUSH_IN_NORMALIZED })), say('The camera reference is attached.'))]),
   scenario('T1', 'timeline', 'Read current timeline revision and duration', [turn('Inspect the edit before changing it.',
     calls(domain('read-t1', 'read_timeline', {}, timeline, { operation: 'read_timeline' })), say('The timeline is empty at revision r1.'))]),
   scenario('T2', 'timeline', 'Inspect a bounded frame interval', [turn('Inspect frames thirty through sixty.',

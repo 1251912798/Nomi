@@ -20,7 +20,8 @@ import { expect } from '@playwright/test'
 import { launchNomiApp } from './_launchApp.mjs'
 import { stationTimeout } from './_station-budget.mjs'
 import { clickOrFail, screenshotSettled } from './_assert.mjs'
-import { newProjectEntry } from './_shell.mjs'
+import { closeSettings, newProjectEntry, settingsDialog } from './_shell.mjs'
+import { repoRoot } from './_mcpJourney.mjs'
 
 const shotsDir = path.resolve(process.argv.find((arg) => arg.startsWith('--shots-out='))?.split('=').slice(1).join('=')
   || 'tests/ux/shots/mcp-connection-truthfulness')
@@ -49,23 +50,23 @@ async function openMcpPanel(win) {
   await win.evaluate(() => window.dispatchEvent(new CustomEvent('nomi-open-settings', {
     detail: { tab: 'automation', section: 'automation' },
   })))
-  const settings = win.locator('[data-settings-overlay="true"]')
+  const settings = settingsDialog(win)
   await expect(settings).toBeVisible()
   await clickOrFail(settings.locator('[data-settings-action="manage-mcp-connections"]'), 'Manage MCP connections')
   const panel = settings.locator('[data-settings-section="mcp-assistant-connections"]')
   await expect(panel).toBeVisible()
   return { settings, panel }
 }
-async function closeSettings(win) {
-  await clickOrFail(win.locator('[data-settings-overlay="true"]').getByRole('button', { name: /关闭|Close/ }).last(), 'Close settings')
-  await expect(win.locator('[data-settings-overlay="true"]')).toBeHidden()
-}
+// 第 4 段起「已连通 X」换成连接状态框：助手没来过时是「已写入配置」框，Nomi 自己实连通的证据是框里那一行。
+const verifiedLine = (panel) => panel.locator('[data-assistant-status="written"] [data-assistant-verified]')
 const trustedHosts = (win) => win.evaluate(async () => (await window.nomiDesktop.settings.automationPolicy.get()).trustedHosts)
 
 try {
   launched = await launchNomiApp({
     name: 'mcp-connection-truthfulness', tempRoot,
-    env: { HOME: testHome }, settleMs: 0,
+    env: { HOME: testHome, USERPROFILE: testHome, APPDATA: path.join(testHome, 'AppData', 'Roaming') }, settleMs: 0,
+    // 屏外运行：窗口挪到任何屏幕之外、不可聚焦，不打扰正在用电脑的人。
+    mainRequire: [path.join(repoRoot, 'tests', 'ux', '_offscreenWindows.cjs')],
     initialLocalStorage: {
       'nomi:splash:v1': 'seen', 'nomi:journey-tour:v1': 'seen',
       'nomi:canvas-gesture-hint:v1': 'seen', 'nomi.onboarding.scene3dCoach.v1': 'seen',
@@ -101,7 +102,7 @@ try {
 
   // 接入 Claude Code（HOME 是临时目录，写的是临时文件）：别人的字段原样保留；⑤ 开关就在卡里。
   await clickOrFail(panel.getByRole('button', { name: /一键接入 Claude Code|Connect to Claude Code/ }), 'Connect Claude Code')
-  await expect(panel.getByText(/已连通 Claude Code|Connected to Claude Code/)).toBeVisible({ timeout: stationTimeout({ operations: 2 }) })
+  await expect(verifiedLine(panel)).toBeVisible({ timeout: stationTimeout({ operations: 2 }) })
   const afterConnect = JSON.parse(fs.readFileSync(claudeJson, 'utf8'))
   assert.deepEqual(afterConnect.oauthAccount, { keep: 'me' })
   assert.deepEqual(afterConnect.mcpServers.other, { command: '/fixture/other' })
@@ -126,11 +127,12 @@ try {
   written.mcpServers.nomi.env.NOMI_SETTINGS_DIR = path.join(tempRoot, 'deleted-profile-20260913')
   fs.writeFileSync(claudeJson, JSON.stringify(written, null, 2))
   ;({ panel } = await openMcpPanel(win))
-  await expect(panel.locator('[data-assistant-broken="launcher-broken"]')).toBeVisible()
-  await expect(panel.getByText(/已连通 Claude Code|Connected to Claude Code/)).toHaveCount(0)
+  await expect(panel.locator('[data-assistant-broken="launcher-broken"]')).toBeVisible() // board:McpConnectionStatus/box.broken
+  await expect(panel.locator('[data-assistant-primary]')).toBeVisible() // 通栏主按钮 · board:McpConnectionStatus/actions.light-row
+  await expect(verifiedLine(panel)).toHaveCount(0)
   await snap(win, 'zh-light-05-stale-profile')
   await clickOrFail(panel.getByRole('button', { name: /升级接入 Claude Code|Upgrade Claude Code connection/ }), 'Upgrade connection')
-  await expect(panel.getByText(/已连通 Claude Code|Connected to Claude Code/)).toBeVisible({ timeout: stationTimeout({ operations: 2 }) })
+  await expect(verifiedLine(panel)).toBeVisible({ timeout: stationTimeout({ operations: 2 }) })
   assert.equal(JSON.parse(fs.readFileSync(claudeJson, 'utf8')).mcpServers.nomi.env.NOMI_SETTINGS_DIR, currentProfile)
   await snap(win, 'zh-light-06-repaired')
 
@@ -143,7 +145,7 @@ try {
   const elsewhereBytes = JSON.stringify(elsewhere, null, 2)
   fs.writeFileSync(claudeJson, elsewhereBytes)
   ;({ panel } = await openMcpPanel(win))
-  await expect(panel.locator('[data-assistant-elsewhere]')).toBeVisible()
+  await expect(panel.locator('[data-assistant-elsewhere]')).toBeVisible() // board:McpConnectionStatus/box.elsewhere
   await expect(panel.getByText(elsewhere.mcpServers.nomi.command, { exact: true })).toBeVisible()
   await expect(panel.getByText(otherProfile, { exact: true })).toBeVisible()
   await expect(panel.getByRole('button', { name: '切到这一份', exact: true })).toBeVisible()
@@ -152,13 +154,14 @@ try {
   await closeSettings(win)
   await win.evaluate(() => window.localStorage.setItem('nomi:locale:v1', 'en'))
   await win.reload()
+  await expect(win.getByRole('navigation', { name: /Switch workspace|切换工作区/ })).toBeVisible({ timeout: stationTimeout({ operations: 2 }) })
   ;({ panel } = await openMcpPanel(win))
   await expect(panel.locator('[data-assistant-elsewhere]')).toBeVisible()
   await expect(panel.getByRole('button', { name: 'Switch to this Nomi', exact: true })).toBeVisible()
   await snap(win, 'en-light-08-elsewhere')
   assert.equal(fs.readFileSync(claudeJson, 'utf8'), elsewhereBytes)
   await clickOrFail(panel.getByRole('button', { name: 'Switch to this Nomi', exact: true }), 'Switch to this Nomi')
-  await expect(panel.getByText('Connected to Claude Code', { exact: true })).toBeVisible({ timeout: stationTimeout({ operations: 2 }) })
+  await expect(verifiedLine(panel)).toBeVisible({ timeout: stationTimeout({ operations: 2 }) })
   assert.equal(JSON.parse(fs.readFileSync(claudeJson, 'utf8')).mcpServers.nomi.env.NOMI_SETTINGS_DIR, currentProfile)
   assert.equal(fs.readFileSync(`${claudeJson}.nomi-backup`, 'utf8'), elsewhereBytes)
   assert.equal(digest(codexToml), before.codex)
@@ -166,7 +169,12 @@ try {
 
   // 撤销：别人的字段回到原样。
   await clickOrFail(panel.getByRole('button', { name: /撤销接入|Remove connection/ }), 'Disconnect Claude Code')
-  await expect(panel.getByRole('button', { name: /一键接入 Claude Code|Connect to Claude Code/ })).toBeVisible()
+  // 撤销多了一步就地确认：点「撤销」才真撤；先取消一次，配置不许动。
+  await clickOrFail(panel.locator('[data-assistant-revoke-cancel]'), 'Cancel disconnect')
+  assert.equal(JSON.parse(fs.readFileSync(claudeJson, 'utf8')).mcpServers.nomi.env.NOMI_MCP_CLIENT, 'claude', 'cancelling the revoke must not touch the config')
+  await clickOrFail(panel.getByRole('button', { name: /撤销接入|Remove connection/ }), 'Disconnect Claude Code again')
+  await clickOrFail(panel.locator('[data-assistant-revoke-confirm]'), 'Confirm disconnect') // board:McpConnectionStatus/revoke.confirm
+  await expect(panel.getByRole('button', { name: /一键接入 Claude Code|Connect to Claude Code/ })).toBeVisible() // board:McpConnectionStatus/box.none
   const afterDisconnect = JSON.parse(fs.readFileSync(claudeJson, 'utf8'))
   assert.deepEqual(afterDisconnect, { oauthAccount: { keep: 'me' }, mcpServers: { other: { command: '/fixture/other' } } })
   assert.equal(fs.existsSync(workbuddyDir), false)

@@ -2,7 +2,7 @@
  * [INPUT]: 依赖 react、./DirectorEditorContext、./model/hotkeys 类型、./panels/EditorSplit、./panels/viewport/DirectorViewport、
  *          ./panels/context/ContextCard、./panels/side/AssetsDrawer、./panels/topbar/RefineTopBar、./timeline/DirectorTimeline、
  *          ./scene/creation 的两个创建模式 API 类型、./scene/sceneTheme、./scene/viewSettings
- * [OUTPUT]: 对外提供 DirectorRefineShell：精修「选中才出」布局（3D-BOX 开关开时的「精修」，开关关时的旧导演台，同一个组件）
+ * [OUTPUT]: 对外提供 DirectorRefineShell：精修「选中才出」布局（导演台的「精修」面）
  * [POS]: 2026-10-04 用户拍板精修走方向 A（设计卡 docs/plan/2026-10-04-director-refine-select-to-show.md）：
  *        3D 视口满宽，右边默认什么都没有；**点谁，谁的属性卡才出来**（ContextCard，显隐由 store.selection derive）；
  *        大纲 / 场景设置 / 资产库各一次点击可达（顶栏「▤ 图层名 ▾」、它底部的「场景设置」、「＋ ▾」底部的「资产库」）。
@@ -41,8 +41,8 @@ export type DirectorRefineShellProps = {
   onExit: () => void
   onOpenSettings: () => void
   onOpenHelp: () => void
-  /** 旧导演台（3D-BOX 开关关）没有导演视图：不给就不画「导演 | 精修」，底部照旧给 AI 搭场景入口 */
-  viewMode?: { value: ViewModeValue; onChange: (mode: ViewModeValue) => void }
+  /** 顶栏居中的「导演 | 精修」切换 */
+  viewMode: { value: ViewModeValue; onChange: (mode: ViewModeValue) => void }
 }
 
 export function DirectorRefineShell({ scopeRef, placement, boxDraw, cancelCreationRef, theme, viewSettings, timelineCollapsed, timelineEmpty, onToggleTimeline, onResetView, onExit, onOpenSettings, onOpenHelp, viewMode }: DirectorRefineShellProps): JSX.Element {
@@ -81,7 +81,6 @@ export function DirectorRefineShell({ scopeRef, placement, boxDraw, cancelCreati
             placement={placement}
             boxDraw={boxDraw}
             cancelCreationRef={cancelCreationRef}
-            showAiSceneBar={!viewMode}
           />
           {sceneEmpty ? (
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center" data-testid="director-refine-empty">

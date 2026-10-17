@@ -4,7 +4,7 @@ import { makeTempDir } from '../../scripts/_test-temp.mjs'
 // 覆盖用户实测反馈的五条：
 //   A 分镜方案「全部镜头」批量条 —— 一次把 12 个图片镜改成视频镜（原来要逐镜改十几次）
 //   B 素材库「智能分组」tab 已删干净
-//   C 分镜方案卡锚在产出它的那条消息上，不再跟着对话跑到最底下
+//   C（已退役）分镜方案卡锚在对话消息上——方案卡与「直达分镜」入口已从对话里移除（805096d41），方案改从左栏「文稿」抽屉进入，没有现役对应物
 //   D 选了「素材规划」专职模式 → 不再被拆分镜劫持（浮现卡也不冒出来）
 //   E Agent 面板 → 档位弹层 → 系统提示词：全文可见、可改、可恢复默认（不再是 64px 小框）
 import { launchNomiApp } from './_launchApp.mjs'
@@ -14,7 +14,8 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { leaveProjectIfOpen } from './_shell.mjs'
+import { leaveProjectIfOpen, switchWorkspace } from './_shell.mjs'
+import { openStoryboardEditor } from './_creationResourceTree.mjs'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const tempRoot = makeTempDir('nomi-creation-flow-')
@@ -87,29 +88,6 @@ for (const target of [path.join(projectRoot, 'project.json'), path.join(projectR
   fs.writeFileSync(target, JSON.stringify(project, null, 2))
 }
 
-// C 要验「卡片锚在产出它的那条消息上」：得有一条带 storyboardPlan 标的助手消息，
-// 后面还跟着更晚的对话——卡片必须留在中间那条下面，而不是被顶到列表最底下。
-const conversations = {
-  v: 2,
-  creation: {
-    activeId: 'thread-1',
-    threads: [{
-      id: 'thread-1',
-      title: '雨夜追逐',
-      createdAt: 1,
-      updatedAt: 5,
-      messages: [
-        { id: 'u1', role: 'user', content: '把这个故事拆成镜头' },
-        { id: 'a1', role: 'assistant', content: '已经拆成 12 个镜头。', storyboardPlan: true },
-        { id: 'u2', role: 'user', content: '这条是拆完之后我又说的话' },
-        { id: 'a2', role: 'assistant', content: '收到，这条在方案卡后面。' },
-      ],
-    }],
-  },
-  generation: { activeId: null, threads: [] },
-}
-fs.writeFileSync(path.join(projectRoot, '.nomi', 'conversations.json'), JSON.stringify(conversations, null, 2))
-
 // D 要验的是「还没拆过、故事够长」时的浮现卡：这个状态下卡片本该出现（通用模式），
 // 而选了专职模式就该消失。项目 1 已经有方案了（storyboardPlan≠null → 卡片天然不显示），
 // 在那里测等于什么都没测——所以另起一个干净项目。
@@ -176,38 +154,14 @@ async function openProject(name) {
   if (await continueButton.isVisible().catch(() => false)) await continueButton.click()
   else await card.dblclick()
   // 「项目开好了」的真信号 = 顶部导航出现，不是等够 1.8 秒。
-  const creationButton = win.getByRole('button', { name: '创作', exact: true })
-  await expectVisible(creationButton, `打开项目「${name}」后没等到顶部「创作」导航`)
-  await creationButton.click()
+  await switchWorkspace(win, 'creation', `进「${name}」的创作页`)
   await expectVisible(win.getByLabel('创作区', { exact: true }), '点了「创作」但创作区没出现')
-}
-
-// ───────────────────────── C 分镜卡锚定 ─────────────────────────
-async function verifyPlanCardAnchored() {
-  const card = win.locator('[data-storyboard-card]').first()
-  await expectVisible(card, '对话里没渲染出分镜方案卡')
-  const laterMessage = win.getByText('这条是拆完之后我又说的话').first()
-  // 两个都得先在场才量得准，否则量到的是 null 边界框（第一版靠 sleep 赌它们都在）。
-  await expectVisible(laterMessage, '找不到方案卡之后那条后续消息')
-  const [cardBox, laterBox] = await Promise.all([card.boundingBox(), laterMessage.boundingBox()])
-  await shot('C-plan-card-anchored')
-  if (!cardBox || !laterBox) {
-    record('C 分镜卡锚定', false, '拿不到方案卡或后续消息的边界框')
-    return
-  }
-  // 锚定成立 = 卡片在「拆完那条」之后、但在「我又说的话」**之前**。
-  const anchored = cardBox.y + cardBox.height <= laterBox.y + 4
-  record('C 分镜卡锚定', anchored,
-    anchored ? `卡片(y=${Math.round(cardBox.y)}) 留在后续消息(y=${Math.round(laterBox.y)}) 之前，没跟着对话跑`
-      : `卡片(y=${Math.round(cardBox.y)}) 跑到了后续消息(y=${Math.round(laterBox.y)}) 下面 —— 仍在跟随对话`)
 }
 
 // ───────────────────────── A 批量条 ─────────────────────────
 async function verifyBulkBar() {
-  await win.locator('[data-storyboard-card]').first().getByRole('button', { name: /打开编辑器|编辑|继续编辑|再改改/ }).first()
-    .click({ timeout: 5000 }).catch(async () => {
-      await win.getByText('打开编辑器', { exact: false }).first().click({ timeout: 5000 })
-    })
+  // 方案从左栏「文稿」抽屉里的方案行进入（对话里的方案卡已退役）。
+  await openStoryboardEditor(win, { pick: 'first' }, '打开分镜方案')
 
   const scope = win.getByText('全部镜头', { exact: true }).first()
   try {
@@ -417,7 +371,6 @@ try {
   await openProject(project.name)
   await shot('00-creation-workspace')
 
-  await verifyPlanCardAnchored()
   await verifyBulkBar()
   await verifySmartGroupGone()
   await verifySystemPromptSettings()

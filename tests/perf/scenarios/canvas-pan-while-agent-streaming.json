@@ -1,0 +1,31 @@
+{
+  "id": "canvas-pan-while-agent-streaming",
+  "feature": "生成页 Agent 面板里发一句话，本机假模型约 8 秒一字一字吐长正文；正文开始出现后平移画布一圈，平移期间的帧间隔（主进程往返只看）",
+  "script": "tests/perf/canvas-scale-bench.mjs",
+  "args": [
+    "--scales",
+    "M",
+    "--scenarios",
+    "pan-while-agent-streaming",
+    "--warmup",
+    "1"
+  ],
+  "scale": "48 图 + 48 视频节点 / Agent 正文约 2400 字、12 字一帧、40ms 一帧",
+  "metrics": [
+    "frameGapP95",
+    "longTasks",
+    "mainRoundTripMax"
+  ],
+  "budget": 33,
+  "group": "⑨ Agent 流式输出时操作画布",
+  "budgetStatus": "approved",
+  "budgetBasis": "连续手势要跟手：60Hz 下 p95 帧间隔不超过 2 帧（33ms），仓库默认预算同此；现有同类场景 canvas-drag-20-nodes 基线中位 9.5ms（10-11，有噪声）；流式时每一帧文字都会让面板重排，画布不该跟着掉帧",
+  "baseline": {
+    "median": 7.9,
+    "p95": 8.4,
+    "runs": 5,
+    "machine": "win32 x64 13th Gen Intel(R) Core(TM) i9-13900H x20 / 64GB",
+    "date": "2026-10-16",
+    "commit": "94724f860"
+  }
+}

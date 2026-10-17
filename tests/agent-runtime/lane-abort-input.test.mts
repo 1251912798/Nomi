@@ -3,7 +3,7 @@ import test from 'node:test';
 import { openLane } from '../../electron/agentLane/laneHost.mjs';
 import type { LaneComposerContext } from '../../electron/shared/agentLane/laneDesktopContracts.js';
 import type { LaneHandle } from '../../electron/shared/agentLane/laneContracts.js';
-import { createLaneFixture } from './laneFixture.mjs';
+import { createLaneFixture, mustConfirm } from './laneFixture.mjs';
 
 function pendingApproval(lane: LaneHandle): Promise<void> {
   if (lane.projection().pending) return Promise.resolve();
@@ -16,10 +16,10 @@ const replies = [
   { type: 'tool' as const, calls: [{ id: 'append-fixture', name: 'write_script', arguments: { where: 'end', content: ' fixture ending.' } }] },
   { type: 'text' as const, text: 'Fixture complete.' },
 ];
-const policy = { mode: 'step' as const, spend: 'confirm' as const };
+const policy = { mode: 'request' as const };
 
 test('stop restores real pi steer and followUp messages with their captured attachment claims', async (t) => {
-  const fixture = await createLaneFixture(t, replies, { hasUserInterface: true, policy: () => policy });
+  const fixture = await createLaneFixture(t, replies, mustConfirm());
   let draft: LaneComposerContext = { approvalPolicy: policy };
   const lane = await openLane({ ...fixture.options, input: {
     capture: () => draft, activate: () => undefined, rewritePayload: (payload) => payload,
@@ -52,7 +52,7 @@ test('stop restores real pi steer and followUp messages with their captured atta
 });
 
 test('plain user messages in both pi abort queues return draft text without fabricated attachments', async (t) => {
-  const fixture = await createLaneFixture(t, replies, { hasUserInterface: true, policy: () => policy });
+  const fixture = await createLaneFixture(t, replies, mustConfirm());
   const lane = await openLane(fixture.options);
   t.after(() => lane.close());
   const running = lane.execute({ kind: 'prompt', text: 'Append the fixture ending.' });
@@ -66,7 +66,7 @@ test('plain user messages in both pi abort queues return draft text without fabr
 });
 
 test('successful cancellation restores exactly that captured queued draft and missing entries restore nothing', async (t) => {
-  const fixture = await createLaneFixture(t, replies, { hasUserInterface: true, policy: () => policy });
+  const fixture = await createLaneFixture(t, replies, mustConfirm());
   let draft: LaneComposerContext = { approvalPolicy: policy };
   const lane = await openLane({ ...fixture.options, input: {
     capture: () => draft, activate: () => undefined, rewritePayload: (payload) => payload,

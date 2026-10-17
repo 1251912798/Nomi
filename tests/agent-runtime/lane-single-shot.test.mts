@@ -40,7 +40,7 @@ for (const kind of ['openai-compatible', 'openai-responses', 'anthropic'] as con
 test('multimodal input uses the shared main-side input resolver', async (t) => {
   const fixture = await createLaneFixture(t, [{ type: 'text', text: 'image seen' }]);
   let activated = false;
-  const captured = { approvalPolicy: { mode: 'step', spend: 'confirm' }, attachments: [{ assetId: 'frame', version: 1 }] } as const;
+  const captured = { approvalPolicy: { mode: 'request' }, attachments: [{ assetId: 'frame', version: 1 }] } as const;
   await runLaneSingleShot({ fetch: globalThis.fetch, model: fixture.options.model, prompt: 'inspect frame', input: {
     capture: () => captured,
     activate: (value) => { assert.equal(value, captured); activated = true; },

@@ -329,6 +329,28 @@ export function stationWaitHits(source, file) {
   return hits
 }
 
+// vi.waitFor 带字面量 timeout = 用墙钟上限等异步状态（2026-10-16 mcpConversationJourney：3 秒，机器一忙就红，
+// 拦住所有碰 MCP 的推送）。只看 electron/ 与 src/ 下的测试；存量按文件登记条数（scripts/vi-waitfor-timeout-baseline.json），
+// 只减不增：新增一处当场红，迁走一处必须同步删条目。
+export const VI_WAITFOR_FIX_HINT = '改成等 service 自己的状态信号，别设墙钟上限：见 docs/lessons/fixed-wall-clock-caps-break-when-work-grows.md，写法范例 electron/capabilityCore/mcpConversationJourney.test.ts 的 makeSignal().until(check)（onEvents / 发帧时重查条件，永不成立由 testTimeout 兜底）'
+export function viWaitForLiteralTimeoutLines(source, file = 'test.ts') {
+  if (!/^(?:electron|src)\//.test(file) || !/\.(?:test|spec)\.[cm]?[jt]sx?$/.test(file)) return []
+  const parsed = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true)
+  const lines = []
+  const visit = node => {
+    if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) && node.expression.name.text === 'waitFor'
+      && ts.isIdentifier(node.expression.expression) && node.expression.expression.text === 'vi') {
+      const literal = node.arguments.some(argument => ts.isObjectLiteralExpression(argument) && argument.properties.some(prop =>
+        ts.isPropertyAssignment(prop) && (ts.isIdentifier(prop.name) || ts.isStringLiteral(prop.name)) && prop.name.text === 'timeout'
+        && (ts.isNumericLiteral(prop.initializer) || (ts.isBinaryExpression(prop.initializer) && ts.isNumericLiteral(prop.initializer.left) && ts.isNumericLiteral(prop.initializer.right)))))
+      if (literal) lines.push(parsed.getLineAndCharacterOfPosition(node.getStart(parsed)).line + 1)
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(parsed)
+  return lines
+}
+
 // Keep debt identity stable without copying whole callbacks into the baseline.
 const stationKey = (file, text) => JSON.stringify([file, createHash('sha256').update(text).digest('hex')])
 const flattenStationBaseline = baseline => Object.fromEntries(Object.entries(baseline).flatMap(([file, entries]) =>
@@ -364,6 +386,31 @@ export function main() {
     actual.set(key, (actual.get(key) ?? 0) + 1)
   }
   const stationErrors = []
+  const viBaselinePath = 'scripts/vi-waitfor-timeout-baseline.json'
+  const viBaseline = JSON.parse(fs.readFileSync(path.join(repoRoot, viBaselinePath), 'utf8'))
+  const viActual = {}
+  for (const file of collectTestFiles()) {
+    const relative = path.relative(repoRoot, file).replaceAll(path.sep, '/')
+    const lines = viWaitForLiteralTimeoutLines(fs.readFileSync(file, 'utf8'), relative)
+    if (lines.length > 0) viActual[relative] = lines
+  }
+  const viErrors = []
+  for (const [relative, lines] of Object.entries(viActual)) {
+    if (lines.length > (viBaseline[relative] ?? 0)) viErrors.push(`${relative}: ${lines.length} 处 vi.waitFor 字面量 timeout > 基线 ${viBaseline[relative] ?? 0}（行 ${lines.join(', ')}）`)
+  }
+  for (const [relative, count] of Object.entries(viBaseline)) {
+    const actualCount = viActual[relative]?.length ?? 0
+    if (actualCount < count) viErrors.push(`${relative}: 基线陈旧：登记 ${count} 处、实际 ${actualCount} 处 → 好事，把基线降到实际值（只减不增）`)
+  }
+  try {
+    const viBase = execFileSync('git', ['merge-base', 'HEAD', 'origin/main'], { cwd: repoRoot, encoding: 'utf8' }).trim()
+    let previous = null
+    try { previous = JSON.parse(execFileSync('git', ['show', `${viBase}:${viBaselinePath}`], { cwd: repoRoot, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })) } catch { /* merge-base 上还没有这份基线：首次引入 */ }
+    if (previous) for (const [relative, count] of Object.entries(viBaseline)) if (count > (previous[relative] ?? 0)) viErrors.push(`vi.waitFor 基线不许增长：${relative}`)
+  } catch { /* 无 origin/main 时只核当前基线 */ }
+  for (const error of viErrors) console.log(`[vi-waitfor-literal-timeout] ${error}`)
+  if (viErrors.length > 0) console.log(`  → ${VI_WAITFOR_FIX_HINT}`)
+  console.log(`vi.waitFor literal-timeout baseline: ${Object.values(viBaseline).reduce((a, b) => a + b, 0)} occurrences; new/stale: ${viErrors.length}`)
   // A future PR cannot add or enlarge debt entries, even while deleting other debt.
   const base = execFileSync('git', ['merge-base', 'HEAD', 'origin/main'], { cwd: repoRoot, encoding: 'utf8' }).trim()
   const baseFiles = execFileSync('git', ['ls-tree', '-z', '--name-only', base, 'scripts/station-waits-baseline.json'], { cwd: repoRoot, encoding: 'utf8' }).trim()
@@ -394,7 +441,7 @@ export function main() {
     ([relative, allowed]) => (budgetByFile.get(relative)?.length ?? 0) < allowed,
   )
 
-  if (stationErrors.length > 0 || hardHits.length > 0 || budgetViolations.length > 0 || staleBaseline.length > 0) {
+  if (viErrors.length > 0 || stationErrors.length > 0 || hardHits.length > 0 || budgetViolations.length > 0 || staleBaseline.length > 0) {
     console.log('✖ 测试等待门岗未通过：测试不许空等待、私有墙钟等待、墙钟判分或无 owner 的 lane 清理')
     for (const hit of hardHits.slice(0, 20)) {
       console.log(`    ${path.relative(repoRoot, hit.file).replaceAll(path.sep, '/')}:${hit.line}  [${hit.rule.id}]  ${hit.text}`)

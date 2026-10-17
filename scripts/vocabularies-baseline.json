@@ -1013,6 +1013,17 @@
     },
     {
       "members": [
+        "empty",
+        "idle",
+        "rendering",
+        "retry",
+        "too_long"
+      ],
+      "reason": "3D-BOX 导演视图主按钮「出成片」显示哪一态：empty 没有可播放的镜头 / rendering 预演渲染中 / retry 预演失败可重试 / too_long 超长失败要改短 / idle 可以点。它是界面投影，由预演生命周期 DIRECTOR_PREVIEW_STATUSES 加「有没有镜头」推出（directorProduceButtonState 唯一推导点），只给按钮用；不能复用预演生命周期本身：按钮要区分「可重试」与「超长」两种失败，还多一个「没有镜头」，并进去会让花钱闸的判据长出与它无关的成员。",
+      "site": "src/workbench/generationCanvas/nodes/director/model/directorPreviewState.ts::type:DirectorProduceButtonState/type-union"
+    },
+    {
+      "members": [
         "backdrop",
         "building",
         "counter",
@@ -1771,17 +1782,6 @@
     {
       "members": [
         "cancelled",
-        "done",
-        "error",
-        "idle",
-        "running"
-      ],
-      "reason": "AiScenePhase 是导演台 V2「AI 搭场景」浮条的一次搭建流程状态：idle 未开始、running 正在向文本大脑请求并物化、done 已落成、error 失败、cancelled 用户取消。它是浮条状态行的展示态，与 WorkbenchAiMessage.status（对话消息 pending/streaming 的传输态）语义不同：没有流式消息生命周期，只有「这一次搭建做完没有 / 为什么没做完」。",
-      "site": "src/workbench/generationCanvas/nodes/director/useAiSceneBuilder.ts::type:AiScenePhase/type-union"
-    },
-    {
-      "members": [
-        "cancelled",
         "error",
         "queued",
         "running",
@@ -2083,6 +2083,15 @@
       ],
       "reason": "Video edit design-lab simulation phases cover review and recoverable outputs in the approved prototypes; production trimming continues to use the existing real processing lifecycle.",
       "site": "src/devlab/designLab/videoNodeNext/VideoEditStage.tsx::type:Phase/type-union"
+    },
+    {
+      "members": [
+        "missing",
+        "ready",
+        "source"
+      ],
+      "reason": "Canvas media preview facts on an asset receipt and a canvas result: ready = a separate bounded preview file exists, source = the source itself is within the preview bound, missing = no preview could be derived. A media-derivation fact, not a lifecycle; poseClipStatus is the 3D director pose-clip loading lifecycle and shares only two words.",
+      "site": "electron/shared/canvas/canvasMediaPreview.ts::variable:CANVAS_PREVIEW_STATES/as-const"
     }
   ],
   "debt": [

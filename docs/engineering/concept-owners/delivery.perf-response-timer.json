@@ -1,0 +1,28 @@
+{
+  "name": "性能量具的「操作 → 界面到位」计时（response 类指标的唯一量法）",
+  "subject": "delivery.perf-response-timer",
+  "lifecycle": "delivery",
+  "authority_kind": "decision",
+  "trust_domain": "test",
+  "fact_kind": "rule",
+  "migration_status": "converged",
+  "owner": {
+    "path": "tests/perf/canvas-scale/responseTimer.mjs",
+    "symbol": "armResponse"
+  },
+  "write_api": [
+    {
+      "path": "tests/perf/canvas-scale/responseTimer.mjs",
+      "symbol": "armResponse"
+    }
+  ],
+  "parity_test": "scripts/check-perf-scenarios.node-test.mjs",
+  "forbidden_derivations": [],
+  "allowed_consumers": [
+    "tests/perf/canvas-scale/workbenchScenarios.mjs",
+    "tests/ux/project-open-stages.e2e.mjs",
+    "tests/perf/document-switch-bench.mjs"
+  ],
+  "since": "2026-10-15",
+  "notes": "性能场景表里所有 response 类数字（选中出生成框、新建节点、切阶段、画布 ⇄ 列表、回项目库）都经这一个计时器：输入事件（捕获阶段）的 event.timeStamp 起表，判据成立后再过两帧停表，判据按名字登记在页里。别的量具要量「点了多久到位」就接它，不另写一套计时（各写各的口径不同，数字不能比）。"
+}

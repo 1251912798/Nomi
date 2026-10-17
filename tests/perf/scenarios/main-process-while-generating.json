@@ -1,0 +1,31 @@
+{
+  "id": "main-process-while-generating",
+  "feature": "同上（6 张视频卡在生成时平移画布），主数换成主进程往返：手势期间每 100ms 往主进程发一次空调用，取这段里最慢的一次",
+  "script": "tests/perf/canvas-scale-bench.mjs",
+  "args": [
+    "--scales",
+    "I60",
+    "--scenarios",
+    "pan-while-generating",
+    "--warmup",
+    "1"
+  ],
+  "scale": "60 个图片节点 + 6 张生成中的视频卡（视频走慢道轮询，20 分钟内一直是生成中）",
+  "metrics": [
+    "mainRoundTripMax",
+    "frameGapP95",
+    "longTasks"
+  ],
+  "budget": 100,
+  "group": "⑧ 多个节点同时在生成时操作画布（主进程）",
+  "budgetStatus": "approved",
+  "budgetBasis": "主进程被占住时界面上的保存、打开、生成回执都会排队；一次往返超过 100ms 就是用户可感知的「点了没反应」（RAIL 100ms）；windows-freeze-sweep 判卡死用的是 1000ms，这里量的是「卡顿」不是「卡死」",
+  "baseline": {
+    "median": 89,
+    "p95": 123.4,
+    "runs": 5,
+    "machine": "win32 x64 13th Gen Intel(R) Core(TM) i9-13900H x20 / 64GB",
+    "date": "2026-10-16",
+    "commit": "94724f860"
+  }
+}

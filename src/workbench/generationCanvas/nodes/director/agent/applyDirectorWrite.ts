@@ -26,7 +26,7 @@ import { compileDirectorPlan, type DirectorCompileIssue } from '../model/compile
 import { measureContinuity, sampleDirectorProject } from '../model/directorEvalMeasurement'
 import { DIRECTOR_NODE_KIND, DIRECTOR_PLAN_META_KEY, DIRECTOR_PREVIEW_META_KEY, DIRECTOR_PROJECT_META_KEY } from '../model/directorNodeMeta'
 import {
-  DIRECTOR_PREVIEW_DURATION_TOLERANCE_SECONDS, DIRECTOR_PREVIEW_MAX_SECONDS, declaredShotDurationSeconds, readDirectorPlanMeta, readDirectorPreview, type DirectorPreviewMeta,
+  DIRECTOR_PREVIEW_DURATION_TOLERANCE_SECONDS, DIRECTOR_PREVIEW_MAX_SECONDS, declaredShotDurationSeconds, exceedsDirectorPreviewSeconds, readDirectorPlanMeta, readDirectorPreview, type DirectorPreviewMeta,
 } from '../model/directorPreviewState'
 import { normalizeDirectorProject } from '../model/directorProject'
 import { summarizeDirectorShots } from '../model/directorShotSummaries'
@@ -97,7 +97,7 @@ function missingActionNotes(plan: DirectorPlan, issues: readonly DirectorCompile
 
 function previewMetaFor(targetNodeId: string | undefined, revision: string, duration: number, proposalId: string | undefined, notes: readonly string[]): DirectorPreviewMeta | undefined {
   if (!targetNodeId) return undefined
-  const tooLong = duration > DIRECTOR_PREVIEW_MAX_SECONDS + 1e-6
+  const tooLong = exceedsDirectorPreviewSeconds(duration)
   return {
     status: tooLong ? 'failed' : 'rendering',
     targetNodeId,

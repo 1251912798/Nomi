@@ -26,7 +26,7 @@
 //
 // 五条（全部是真人视角看得见的事）：
 //   ① 阳性对照——默认档「自动改」下问一次：报价卡出现，且**没有**任何失败条
-//   ② 切到「全自动」：它自己那张确认卡要说清「付费生成会直接跑」，不能还写着「付费仍然每次问」
+//   ② 切到「直接生成」：它自己那张确认卡要说清「付费生成会直接跑」，不能还写着「付费仍然每次问」
 //   ③ 再问一次：宿主真的去决了那道门——面板上出现一条看得见的失败（不是沉默）
 //   ④ 决不成就不假装成功：那张报价卡仍然在原处等人答（「没决成，所以它仍然待决」）
 //   ⑤ 整场零额度
@@ -111,18 +111,18 @@ try {
   await closeSpendCard(card, '关掉「自动改」档下的那张卡')
   await recorded(first.finished.received, 'the safe-auto generate returns once its card was closed')
 
-  // ② 切到「全自动」。那张二次确认卡上的话必须和今天的行为一致——
+  // ② 切到「直接生成」。那张二次确认卡上的话必须和今天的行为一致——
   // 它 2026-09-12 之前写的是「付费和不可逆的操作仍然每次问」，而那句话现在是假的。
   await clickOrFail(win.locator(`${CANVAS_PANEL} ${COMPOSER_PERMISSION}`), '权限档选择器')
   await expect(win.locator(`${CANVAS_PANEL} ${PERMISSION_POPOVER}`)).toBeVisible()
-  await clickOrFail(win.locator(`${CANVAS_PANEL} ${permissionTier('project')}`), '切到「全自动」')
+  await clickOrFail(win.locator(`${CANVAS_PANEL} ${permissionTier('direct')}`), '切到「直接生成」')
   const switchCard = win.locator(`${CANVAS_PANEL} ${APPROVAL_CARD}[data-kind="approval-reversible"]`)
   await expect(switchCard, '切档本身仍然要问一次——这一次点头就是他对之后每一笔付费的授权').toBeVisible()
   // 按键取值（uiText），不抄字面：#1099 把这句改成「生成也会直接跑」时，手抄的旧句在这里撞过红。
   await expect(switchCard, '切档确认必须说清「生成会直接跑」，不能还写着「仍然每次问」')
     .toContainText(uiText('zh-CN', 'agentPanelV4.autoModeConfirmBody').replace(/\*\*/g, ''))
   await walk.snap('full-auto-02-switch-says-paid-runs-directly')
-  await clickOrFail(switchCard.locator(INTERVENTION_CONFIRM), '确认切到全自动')
+  await clickOrFail(switchCard.locator(INTERVENTION_CONFIRM), '确认切到直接生成')
 
   const banner = win.locator(`${CANVAS_PANEL} [data-v4-block="auto-mode"]`)
   await expect(banner, '全自动档要有常驻提醒——用户得一直知道自己在这一档').toBeVisible()
