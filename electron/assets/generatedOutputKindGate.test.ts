@@ -65,6 +65,8 @@ describe("落盘关口：字节不是任务要的那一类就不收（retrieval-
     const error = await writeGeneratedAsset("project-1", bytes, fileName, contentType, { kind: "generated" }, wanted).then(() => null, (caught: Error) => caught);
     expect(error, "must not publish").toBeInstanceOf(Error);
     expect(matchNomiErrorCode(error!.message)).toBe("retrieval-download");
+    // 用户读到的是填好的人话：没有原样漏出的占位符（{{got}} 曾写成 {got}，界面会露花括号）。
+    expect(error!.message).not.toMatch(/\{\{?\w+\}?\}/);
     expect(published()).toEqual([]);
     expect(stagingLeftovers()).toEqual([]);
   });
