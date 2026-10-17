@@ -2,7 +2,7 @@ import { makeTempDir } from '../../scripts/_test-temp.mjs'
 // 真付费验收的「事实读数」与「判据」：用合成的项目目录 / 收据库钉住，不起 App、不花钱。
 import fs from 'node:fs'
 import path from 'node:path'
-import { afterEach, describe, expect, test } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 
 import {
   acceptedByRuns, deltaFacts, readDecidedByTable, readSpendFacts, stepBrakeVerdict, stepDirectBatchVerdict, stepStopVerdict, stepSwitchVerdict,
@@ -160,20 +160,30 @@ describe('花钱保险丝', () => {
   })
 })
 
-describe('waitForSpendUiOrIdle', () => {
+describe('waitForSpendUiOrIdle（假时钟：不靠墙钟，机器再忙也一样）', () => {
+  // 假时钟：waitForTimeout 把假的「现在」往前推 ms，tick 记第几次轮询；Date.now() 由 vi.useFakeTimers 接管，真实耗时对结果没有影响。
+  const POLL = 500
+  beforeEach(() => { vi.useFakeTimers() })
+  afterEach(() => { vi.useRealTimers() })
   const win = (script) => {
     let tick = 0
     return {
       locator: (selector) => ({ count: async () => script(selector, tick) }),
-      waitForTimeout: async () => { tick += 1 },
+      waitForTimeout: async (ms) => { tick += 1; vi.setSystemTime(Date.now() + ms) },
     }
   }
   const PANEL = '[data-panel]'
-  test('卡出现 → card；全局确认框出现 → dialog；落地且什么都没弹 → idle（过了起飞宽限）；一直在跑 → timeout', async () => {
-    const options = { timeout: 1_000, graceMs: 0, pollMs: 1 }
+  const options = { timeout: 10_000, graceMs: 5_000, pollMs: POLL }
+  test('卡在第 2 次轮询出现（早于起飞宽限）→ card；确认框同理 → dialog', async () => {
     expect(await waitForSpendUiOrIdle(win((selector, tick) => (selector.includes('data-kind="spend"') && tick >= 2 ? 1 : 0)), PANEL, options)).toBe('card')
     expect(await waitForSpendUiOrIdle(win((selector, tick) => (selector.includes('data-spend-confirm-dialog') && tick >= 2 ? 1 : 0)), PANEL, options)).toBe('dialog')
+  })
+  test('什么都没弹且没在跑：宽限之内不判 idle，过了宽限才判 idle', async () => {
+    // 宽限 5 秒 = 第 11 次轮询之后（假时钟精确），而卡在第 12 次轮询才出现——宽限之内不能抢先判 idle。
+    expect(await waitForSpendUiOrIdle(win((selector, tick) => (selector.includes('data-kind="spend"') && tick >= 10 ? 1 : 0)), PANEL, options)).toBe('card')
     expect(await waitForSpendUiOrIdle(win(() => 0), PANEL, options)).toBe('idle')
-    expect(await waitForSpendUiOrIdle(win((selector) => (selector.includes('running') ? 1 : 0)), PANEL, { timeout: 30, graceMs: 0, pollMs: 1 })).toBe('timeout')
+  })
+  test('一直在跑、什么都没弹 → timeout（假时钟推过 timeout）', async () => {
+    expect(await waitForSpendUiOrIdle(win((selector) => (selector.includes('running') ? 1 : 0)), PANEL, { timeout: 3_000, graceMs: 0, pollMs: POLL })).toBe('timeout')
   })
 })
