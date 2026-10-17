@@ -66,7 +66,7 @@ export const zhAgentPanelV4 = {
   systemPrompt: '编辑系统提示词',
   permissionWhy: {
     request: '改文案、摆节点这类能撤销的直接做；要生成，或做撤销不了的事，先停下来等你确认。',
-    direct: '要生成就直接开跑，不用一次次确认；同一个镜头连续失败、或要做计划外的生成时会停下来问你，随时可以点停止。',
+    direct: '要生成就直接开跑，不用一次次确认；同一个镜头连续失败、或要做计划外的生成时会停下来问你，随时可以点停止。按文稿里的分镜方案出图，仍会每批问一次。',
   },
   /** 「直接生成」档的刹车触发时，报价卡上多出的那一行（只说为什么停，卡本身和「请求批准」下一样）。 */
   brakeRetry: { title: '这一镜连续失败了，先停下问你' },
@@ -500,7 +500,7 @@ export const zhAgentPanelV4 = {
 
   // 「直接生成」档（2026-09-10 增量 2 的「全自动」；2026-10-12 用户拍板收成两档）
   autoModeConfirmTitle: '切到「直接生成」？',
-  autoModeConfirmBody: '之后要生成时 Nomi 会**直接开跑，不再逐次问你**——这一次确认就是你对它的授权。同一个镜头连续失败、或要做计划外的生成时会停下来问你；撤销不了的操作仍然每次问；随时可以点停止。',
+  autoModeConfirmBody: '之后要生成时 Nomi 会**直接开跑，不再逐次问你**——这一次确认就是你对它的授权。同一个镜头连续失败、或要做计划外的生成时会停下来问你；撤销不了的操作仍然每次问；随时可以点停止。按文稿里的分镜方案出图，仍会每批问一次。',
   autoModeConfirmOk: '切到直接生成',
   autoModeConfirmCancel: '取消',
   autoModeBannerNote: '不可逆的仍会问',
@@ -594,7 +594,7 @@ export const enAgentPanelV4 = {
   systemPrompt: 'Edit system prompt',
   permissionWhy: {
     request: 'Undoable edits like rewriting text or placing nodes happen directly. Anything that generates, or cannot be undone, waits for your confirmation first.',
-    direct: 'Generation starts right away, with no confirmation each time. If one shot keeps failing, or a generation falls outside the plan, it stops and asks you. You can press Stop at any time.',
+    direct: 'Generation starts right away, with no confirmation each time. If one shot keeps failing, or a generation falls outside the plan, it stops and asks you. You can press Stop at any time. Generating from a storyboard plan in your document still asks once per batch.',
   },
   brakeRetry: { title: 'This shot has failed repeatedly, so Nomi stopped to ask you' },
   brakeOutOfPlan: { title: 'This generation is not in the plan agreed earlier, so Nomi stopped to ask you' },
@@ -962,7 +962,7 @@ export const enAgentPanelV4 = {
   spendActionReferenceNotInProject: 'One reference image isn\'t in this project\'s assets, so Nomi hasn\'t started generating. Remove it on the card and press again, or pick it again with @ (images from other projects are copied in first).',
 
   autoModeConfirmTitle: 'Switch to Auto-run?',
-  autoModeConfirmBody: 'From now on Nomi will **start generating right away, without asking you each time** — this confirmation is your authorisation for it. If one shot keeps failing, or a generation falls outside the plan, it stops and asks you; irreversible actions are still confirmed every time; you can press Stop at any time.',
+  autoModeConfirmBody: 'From now on Nomi will **start generating right away, without asking you each time** — this confirmation is your authorisation for it. If one shot keeps failing, or a generation falls outside the plan, it stops and asks you; irreversible actions are still confirmed every time; you can press Stop at any time. Generating from a storyboard plan in your document still asks once per batch.',
   autoModeConfirmOk: 'Switch to auto-run',
   autoModeConfirmCancel: 'Cancel',
   autoModeBannerNote: 'Irreversible still asks',

@@ -314,6 +314,31 @@ export default tseslint.config(
     rules: { 'no-restricted-syntax': ['error', ...windowsPathSelectors] },
   },
   {
+    // 付费确认框（`useSpendConfirmStore.requestConfirm`）只有一扇门：「这一笔问不问用户」的 owner
+    // `src/workbench/generationCanvas/spend/spendConfirm.ts`（概念 spend.confirmation-requirement）。
+    // 2026-10-16 真付费验收：分镜方案整批生成直接调了 requestConfirm，绕过 owner，「直接生成」档对它完全不起作用，
+    // 而且没有任何东西会红。下面这几处是允许的调用者——它们只**展示主进程已经做出的决定**，自己不判问不问：
+    //   capabilityApplyHandler.ts（MCP 生成闸 / 计划门）、credentialProbeSpendCard.ts（接入页凭据试跑）、
+    //   useProductionStatus.ts（制作流程门）；SpendConfirmDialog.tsx / NomiStudioApp.tsx 是 E2E 驱动桥。
+    // 新增调用者 = 又一处自己决定弹不弹付费框 → 红；要么经 owner，要么先让主进程做决定、再登记进这张表。
+    files: ['src/**/*.{ts,tsx}'],
+    ignores: [
+      'src/**/*.test.{ts,tsx}', 'src/**/__tests__/**',
+      'src/workbench/generationCanvas/spend/spendConfirm.ts',
+      'src/workbench/generationCanvas/spend/SpendConfirmDialog.tsx',
+      'src/workbench/NomiStudioApp.tsx',
+      'src/workbench/capability/capabilityApplyHandler.ts',
+      'src/workbench/capability/credentialProbeSpendCard.ts',
+      'src/workbench/production/useProductionStatus.ts',
+    ],
+    rules: {
+      'no-restricted-properties': ['error', {
+        property: 'requestConfirm',
+        message: '付费确认框只经 owner 弹：用 src/workbench/generationCanvas/spend/spendConfirm.ts 的 confirmGenerationSpend / confirmStoryboardPlanBatch；只展示主进程决定的调用者才登记进 eslint.config.mjs 的允许表。',
+      }],
+    },
+  },
+  {
     // TipTap 编辑器只有一扇门：useNomiTiptapEditor（固定 React 19 下的生命周期选项）。
     // 直接用 useEditor 会绕开它——2026-09-28 画布提示词编辑器选区不同步就是两套默认值各自为政。
     files: ['src/**/*.{ts,tsx}'],
