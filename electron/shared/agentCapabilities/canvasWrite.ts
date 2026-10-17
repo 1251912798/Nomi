@@ -3,7 +3,6 @@ import { z } from "zod";
 import type { CapabilityContract } from "./capabilityContract";
 import { jsonTolerantArray } from "./jsonArgTolerance";
 import { cameraMoveParamsObjectSchema, stagingReferenceParamsSchema, storyboardPlanParamsSchema } from "./canvasModelShapes";
-import { director3dBoxFaceEnabled } from "../featureFlags/director3dboxFace";
 
 const canonicalIdSchema = z.string().trim().min(1);
 const changeIdSchema = z.string().trim().min(1).max(200).describe("Versioned reversible change id returned by this write.");
@@ -450,6 +449,29 @@ export const CANVAS_WRITE_OPERATIONS: readonly CanvasWriteOperation[] = Object.f
   canvasWriteSemanticInputUnion.options.map((option) => option.shape.operation.value as CanvasWriteOperation),
 );
 
+/** 主进程无头那条路（dispatcher.ts）自己就能落账的画布写操作。 */
+export const CANVAS_WRITE_HEADLESS_OPERATIONS = Object.freeze([
+  "set_node_prompt",
+  "create_canvas_nodes",
+  "connect_canvas_edges",
+] as const satisfies readonly CanvasWriteOperation[]);
+
+/**
+ * 对外 MCP（项目会话租约 + 连接证明）送到**开着的渲染端**执行的画布写操作：它们的耐久 owner 在渲染端
+ * （分镜表 / 导演节点 + 采帧宿主），主进程无头那条路做不了。主进程路由（rpcServer.ts）、渲染端执行口
+ * （canonicalCanvasPlanPatch.ts）和无头分支的「需要创作区」提示（dispatcher.ts）都读这一份，不各写一份。
+ * 摆位参考 / 运镜参考建出来的是导演节点（3D-BOX 是唯一的导演台，2026-10-16）。
+ */
+export const CANVAS_WRITE_LIVE_RENDERER_OPERATIONS = Object.freeze([
+  "patch_shots",
+  "create_staging_reference",
+  "create_camera_move",
+] as const satisfies readonly CanvasWriteOperation[]);
+
+export function isCanvasWriteLiveRendererOperation(operation: unknown): operation is (typeof CANVAS_WRITE_LIVE_RENDERER_OPERATIONS)[number] {
+  return (CANVAS_WRITE_LIVE_RENDERER_OPERATIONS as readonly unknown[]).includes(operation);
+}
+
 export function canvasWritePiInputSchemaForAlias(alias: string): z.ZodTypeAny | undefined {
   switch (alias) {
     case "set_node_prompt":
@@ -631,8 +653,8 @@ export const CANVAS_WRITE_CAPABILITY = {
     ui: "nomi_canvas_plan",
   },
   additionalAliases: {
-    // 3D-BOX 开关开时 `stage_shot` 归 `director.write`（同名换芯，任一构建只装配一份）。
-    pi: Object.freeze(director3dBoxFaceEnabled() ? ["make_artifact", "write_node_text"] : ["make_artifact", "write_node_text", "stage_shot"]),
+    // `stage_shot` 归 `director.write`（3D-BOX，2026-10-16 起唯一）；摆位参考 / 运镜参考两个操作只留给对外 MCP。
+    pi: Object.freeze(["make_artifact", "write_node_text"]),
   },
   inputSchema: canvasWriteSemanticInputSchema,
   outputSchema: canvasWriteResultSchema,

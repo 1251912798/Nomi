@@ -18,6 +18,7 @@
  *
  * 设计卡：docs/plan/2026-10-05-engine-convergence-cut1-step12-design-card.md、docs/plan/2026-10-05-engine-convergence-cut1-step34-design-card.md。
  */
+import type { DirectorPreviewSpendBlockReason } from "../shared/director/directorPreviewStatus";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
@@ -72,7 +73,7 @@ export type CanvasShotDeps = {
   providers: () => readonly GenerationProvider[];
   buildSubmission: (input: { projectRoot: string; immutableProjectUuid: string; projectGeneration: number; providers: readonly GenerationProvider[] }) => ProductionGenerationSubmission;
   /** 3D-BOX 预演闸（判据住渲染层 directorPreviewState，这里是唯一问它的地方）。 */
-  previewBlock: (projectId: string, nodeId: string) => Promise<"rendering" | "failed" | null>;
+  previewBlock: (projectId: string, nodeId: string) => Promise<DirectorPreviewSpendBlockReason | "unrecognized" | null>;
   quote: (input: { vendorKey: string; modelKey: string; parameters: Record<string, unknown> }) => ShotPrice;
   /** 交给主进程观察者（渲染层不在时）。 */
   observe: (submission: ProductionGenerationSubmission, projectId: string, runId: string) => void;

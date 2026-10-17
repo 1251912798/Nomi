@@ -20,8 +20,8 @@ export interface CanvasLanePort {
   read(context: LaneToolExecutionContext): Promise<unknown>;
   write(input: CanvasWriteInput, context: LaneToolExecutionContext): Promise<CanvasWriteResult>;
   /**
-   * 3D-BOX（开关开时才有这个动词）：同一个渲染端写口，契约 `director.write`。可选：开关关的构建与只测画布读写的
-   * 夹具不必提供；开关开却没接上时，`stage_shot` 如实报「这个宿主不支持」。
+   * 3D-BOX：同一个渲染端写口，契约 `director.write`。可选：只测画布读写的夹具不必提供；
+   * 没接上时，`stage_shot` 如实报「这个宿主不支持」。
    */
   writeDirector?(input: DirectorWriteInput, context: LaneToolExecutionContext): Promise<DirectorWriteResult>;
 }

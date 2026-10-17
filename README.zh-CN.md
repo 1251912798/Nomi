@@ -127,6 +127,17 @@ xattr -dr com.apple.quarantine "/Applications/Nomi.app"
 
 更多：[快速上手](https://nomiaqm.com/quickstart) · [B 站视频教程](https://www.bilibili.com/video/BV1Lf8b6nEjf/) · [对话式接入模型](docs/guide/conversational-model-integration.md) · [用户指南](docs/user-guide.md) · [供应商](docs/provider-integration.md) · [CLI + MCP](docs/guide/capability-core-cli-mcp.md)
 
+## 赞助商
+
+赞助商帮 Nomi 保持免费和开源。赞助不会变成默认项或内置线路：接哪家由你自己选，用你自己的 Key，钱按它的原价直接付给它。[想出现在这里？](#社区)
+
+<table>
+<tr>
+<td width="128" align="center"><a href="https://gway.dev/sign-up?aff=8j8f"><img src="docs/media/sponsors/gway-logo.png" alt="极途 Gway" width="96" /></a></td>
+<td><b><a href="https://gway.dev/sign-up?aff=8j8f">极途 Gway</a></b> —— 专注 AI 视频与多图参考生成的 API 平台：Seedance 2.0 / 2.5、Wan 3、MiniMax 等主流模型，OpenAI 兼容，按量计费。Nomi 里暂时还没有它的内置预设，点<b>用 AI 帮我接入</b>，Claude Code 或 Codex 会用你的 Key 把它接好。感谢极途 Gway 赞助 Nomi！<i>（极途 Gway 的链接带推荐码。）</i></td>
+</tr>
+</table>
+
 ## 让你自己的 Agent 来用 Nomi
 
 Nomi 自带 MCP 服务（24 个 MCP 工具）：Claude Code、Codex、Cursor 都能直接驱动它生成、编排、剪辑，顺便用上你会员套餐里送的额度。见《[让你的 AI 帮你接入 Nomi](docs/integrate-with-your-agent.md)》。

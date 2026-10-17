@@ -3,7 +3,8 @@
 // 它取代原来的交工前评审收据：不再问「有没有跑过评审」，而是问两个暂停点有没有真的发生——
 //   ① 暂停点①设计卡：PR 正文 `## 设计卡` 是否填全（四类 9 格，其余只查 ★ 格 1、2、3、4、9）；
 //   ② 暂停点②独立验收：四类的 PR 正文 `## 独立验收` 是否带报告链接，且验收线编号不同于实现线；
-//   ③ 本 PR 把逃逸账本条目转成 fixed 时，有没有带 detected_by 的根因合同（判据看账本状态转换，不看正文用词）。
+//   ③ 本 PR 把逃逸账本条目转成 fixed 时，有没有带 detected_by 的根因合同（判据看账本状态转换，不看正文用词）；
+//   ④ 路径推出「花钱」类的 PR，`## 验收证据` 里有没有 `spend-paid-sample：<运行号 / 报告链接>` 或 `spend-paid-sample：协调豁免：<理由>`（不接受「未验证」）。
 // 判四类的字符串规则与设计卡模板末尾那段一致（docs/engineering/design-card.md），宁可多报；误报由协调会话人工划掉。
 //
 // 用法：node scripts/merge-preflight.mjs <PR 号> [--repo owner/name] [--enforce]
@@ -204,6 +205,8 @@ function run(argv, exec) {
     createdAt: Number(prArg) === RULES_INTRODUCED_BY_PR ? null : view.createdAt,
     enforce: argv.includes('--enforce'), // --enforce：假设路由规则已生效，看这个 PR 会不会红（回放用）
     scenarios,
+    // 花钱类的真付费抽检只在这一道严格判：「未验证」与裸 PR 号都不放行（#1203 就是这样被合进来的）
+    paidStrict: true,
   }))
   console.log(report.text)
   // 拍板图认领（check-board-parity R8）：PR 正文 `## 拍板图` 认领的元素，在 PR 头上必须有去处。

@@ -1,11 +1,11 @@
 /**
  * `director.write`：3D-BOX 导演计划写入的**仅内部**契约（方案 §5「契约层换芯，不动对外面」）。
  *
- * - 只在 3D-BOX 开关开时注册（`registry.ts`），`exposure: internal_only`、没有 `aliases.mcp`——对外 MCP 面
- *   一个字节都不会因为它而变；开关开时 `stage_shot` 这个名字从 `canvas.write` 的附加别名挪到这里，任一构建
- *   只装配一份。
+ * - `exposure: internal_only`、没有 `aliases.mcp`——对外 MCP 面一个字节都不会因为它而变；内部 `stage_shot`
+ *   只有这一份（2026-10-16 起 3D-BOX 是唯一的导演台，`canvas.write` 上的旧附加别名已删）。对外 MCP 的摆位参考 /
+ *   运镜参考仍是 `canvas.write` 的两个操作，建出来的导演节点同样在 3D-BOX 导演台里打开。
  * - 传输复用画布写的 surface port（capture / execute 两条现成 IPC）、审批、收据、changeId 与撤销日志：
- *   导演工程就住在画布节点 meta 里，它的修订就是画布历史里的一条。preload 的操作白名单只在开关开时追加
+ *   导演工程就住在画布节点 meta 里，它的修订就是画布历史里的一条。preload 的操作白名单在画布写那份之后追加
  *   这两个操作（`surfacePortPreloadBridge.ts`）。
  * - 永不花钱：`reversible_local`。出片只走 `generate`。
  */

@@ -103,7 +103,7 @@ function documentWriteRequest(value: unknown): DocumentWriteSurfaceRequestWire |
   return request as unknown as DocumentWriteSurfaceRequestWire;
 }
 
-/** 画布写取证的操作白名单（手写，preload 是信任边界）。开关关时就是这 11 个，一个不多。 */
+/** 画布写取证的操作白名单（手写，preload 是信任边界）。画布写就是这 11 个，一个不多；导演写的两个在下面追加。 */
 export const CANVAS_WRITE_CAPTURE_OPERATIONS = Object.freeze([
   "set_node_prompt",
   "set_node_text",
@@ -118,10 +118,8 @@ export const CANVAS_WRITE_CAPTURE_OPERATIONS = Object.freeze([
   "delete_canvas_nodes",
 ] as const);
 
-/** 3D-BOX 开关开时**追加**的两个（`director.write`，仅内部）；值来自 preload 核对过指纹的那份开关证明。 */
-export function canvasWriteCaptureOperations(director3dbox: boolean): readonly string[] {
-  return director3dbox ? [...CANVAS_WRITE_CAPTURE_OPERATIONS, ...DIRECTOR_WRITE_OPERATIONS] : CANVAS_WRITE_CAPTURE_OPERATIONS;
-}
+/** 画布写取证白名单 + 3D-BOX `director.write` 的两个操作（仅内部）。 */
+export const CANVAS_AND_DIRECTOR_WRITE_CAPTURE_OPERATIONS: readonly string[] = Object.freeze([...CANVAS_WRITE_CAPTURE_OPERATIONS, ...DIRECTOR_WRITE_OPERATIONS]);
 
 /** 取证只带 nodeId（不带 input）的两个单节点 operation。preload 是信任边界，名单手写在这里。 */
 const NODE_TARGETED_CAPTURE_OPERATIONS: ReadonlySet<string> = new Set(["set_node_prompt", "set_node_text"]);
@@ -222,9 +220,8 @@ const sameSurfaceAuthority = sameSurfacePortBindingWire;
 export function createCanvasReadSurfacePreloadBridge(
   invoke: Invoke,
   events?: SurfaceReadEvents,
-  options: Readonly<{ director3dbox?: boolean }> = {},
 ): CanvasReadSurfaceBridge {
-  const captureOperations = canvasWriteCaptureOperations(options.director3dbox === true);
+  const captureOperations = CANVAS_AND_DIRECTOR_WRITE_CAPTURE_OPERATIONS;
   const runCancellable = (
     request: Readonly<{ requestId: string; binding: SurfacePortBindingWire }>,
     run: (signal: AbortSignal) => unknown | Promise<unknown>,

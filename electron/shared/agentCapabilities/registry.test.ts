@@ -5,6 +5,7 @@ import { ASSET_READ_CAPABILITY } from "./assetRead";
 import { CANVAS_DELETE_CAPABILITY } from "./canvasDelete";
 import { CANVAS_READ_CAPABILITY } from "./canvasRead";
 import { CANVAS_WRITE_CAPABILITY } from "./canvasWrite";
+import { DIRECTOR_WRITE_CAPABILITY } from "./directorWrite";
 import { DOCUMENT_READ_CAPABILITY, DOCUMENT_READ_ALIASES } from "./documentRead";
 import { DOCUMENT_WRITE_CAPABILITY, DOCUMENT_WRITE_ALIASES } from "./documentWrite";
 import { EXPORT_READ_CAPABILITY, EXPORT_WRITE_CAPABILITY } from "./exportCapabilities";
@@ -97,6 +98,8 @@ describe("capability contract registry", () => {
       MODEL_ONBOARDING_SETUP_CAPABILITY,
       MODEL_ONBOARDING_TRY_CAPABILITY,
       MODEL_ONBOARDING_REMOVE_CAPABILITY,
+      // 3D-BOX 是唯一的导演台（2026-10-16）：仅内部的 director.write 恒注册。
+      DIRECTOR_WRITE_CAPABILITY,
     ]);
 
     const ids = CAPABILITY_CONTRACTS.map((contract) => contract.id);
@@ -140,6 +143,7 @@ describe("capability contract registry", () => {
       "model.onboarding.setup",
       "model.onboarding.try",
       "model.onboarding.remove",
+      "director.write",
     ]);
     // 主别名按 surface 摆平：`pi` 只放模型可见动词名（与 `verbDeclarations.ts` 对账，门岗
     // `no-orphan-alias`），`method` 放宿主/dispatcher 方法名，`mcp` 放对外名，`ui` 放渲染层入口名。
@@ -165,6 +169,7 @@ describe("capability contract registry", () => {
       // 试跑是付费能力，所以它有自己的契约与自己的名字（付费边界的判据全挂在 effect 上）。
       "try_model", "nomi_try_model",
       "remove_model_provider", "nomi_remove_provider",
+      "stage_shot",
     ]);
     expect(CAPABILITY_CONTRACTS.find((contract) => contract.id === "canvas.read")?.exposure).toBe("mcp_safe");
     expect(CAPABILITY_CONTRACTS.every((contract) => CAPABILITY_EFFECT_CLASSES.includes(contract.effectClass))).toBe(true);
@@ -172,8 +177,8 @@ describe("capability contract registry", () => {
     expect(capabilityOperationAliasesFor(CANVAS_WRITE_CAPABILITY.id, "pi")).toEqual([
       "make_artifact",
       "write_node_text",
-      "stage_shot",
     ]);
+    expect(resolveCapabilityAlias("stage_shot")?.contract).toBe(DIRECTOR_WRITE_CAPABILITY);
     expect(resolveCapabilityAlias("nomi_set_node_prompt")).toBeUndefined();
     expect(resolveCapabilityAlias(DOCUMENT_READ_ALIASES.selection)?.contract).toBe(DOCUMENT_READ_CAPABILITY);
     expect(resolveCapabilityAlias(DOCUMENT_WRITE_ALIASES.replace)?.contract).toBe(DOCUMENT_WRITE_CAPABILITY);

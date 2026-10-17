@@ -1,4 +1,4 @@
-import { canvasWriteSemanticInputSchema } from '../../../electron/shared/agentCapabilities/canvasWrite'
+import { canvasWriteSemanticInputSchema, isCanvasWriteLiveRendererOperation } from '../../../electron/shared/agentCapabilities/canvasWrite'
 import { buildCanvasWriteAdmissionForOperation } from '../../../electron/shared/agentCapabilities/canvasWriteEvidence'
 import { SurfacePortWireError } from '../../../electron/shared/surfacePortBinding'
 import { captureCanvasWriteRawEvidence, executeCanvasWriteTarget } from '../generationCanvas/agent/canvasWriteTarget'
@@ -20,7 +20,9 @@ export type CanonicalCanvasPlanPatchRequest = Readonly<{
 }>
 
 /**
- * Renderer owner for the public nomi_canvas_plan patch_shots operation.
+ * Renderer owner for the canvas.write operations the main process routes to the live renderer
+ * (CANVAS_WRITE_LIVE_RENDERER_OPERATIONS): nomi_canvas_plan patch_shots and nomi_canvas_edit
+ * create_staging_reference / create_camera_move (they land director nodes).
  *
  * The main process has already verified the project lease and host transport;
  * this function binds that request to the current renderer snapshot, then
@@ -45,7 +47,8 @@ export async function executeCanonicalCanvasPlanPatch(
   } catch {
     throw new SurfacePortWireError('capability_input_invalid')
   }
-  if (input.operation !== 'patch_shots') {
+  // 只收主进程路由到渲染端的那几个操作（同一份名单），别的画布写不从这扇门进。
+  if (!isCanvasWriteLiveRendererOperation(input.operation)) {
     throw new SurfacePortWireError('capability_input_invalid')
   }
 

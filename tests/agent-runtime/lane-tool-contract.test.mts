@@ -160,13 +160,15 @@ test('lane 真正发布的三个画布工具带着跨字段约束，而不只是
     assert.ok(!parsed.success, `${name} 应当拒绝 ${JSON.stringify(value)}`);
     assert.ok(parsed.error.issues.some((issue) => why.test(issue.message)), JSON.stringify(parsed.error.issues));
   };
-  // 20 动词：画布写是三个动词；跨字段约束挂在各自 schema 上（stage_shot 的 staging/cameraMove 二选一）。
-  rejects('stage_shot', { shotId: 's1' }, /exactly one of staging or cameraMove/);
-  rejects('stage_shot', { shotId: 's1', cameraMove: { move: 'push_in' }, staging: { characters: [] } }, /exactly one of staging or cameraMove/);
+  // 20 动词：画布写是三个动词；stage_shot 已是 3D-BOX 的 director.write（plan 与 edits 二选一，跨字段约束挂在它自己的 schema 上）。
+  rejects('stage_shot', { target: { shotId: 's1' } }, /exactly one of plan/);
+  rejects('stage_shot', { target: { shotId: 's1' }, plan: (byName.get('stage_shot')!.examples[0].arguments as { plan: unknown }).plan, edits: [{ op: 'remove', path: '/shots/a' }], baseRevision: 'r1' }, /exactly one of plan/);
+  rejects('stage_shot', { target: { shotId: 's1', directorNodeId: 'n1' }, edits: [{ op: 'remove', path: '/shots/a' }], baseRevision: 'r1' }, /either shotId or directorNodeId/);
+  rejects('stage_shot', { target: { directorNodeId: 'n1' }, edits: [{ op: 'remove', path: '/shots/a' }] }, /edits need target.directorNodeId and baseRevision/);
   // 别的动词的字段，形状合法（否则 ajv 那层就拒了，测不到组合那一层）。
   rejects('make_artifact', { fileType: 'table', title: 't', content: 'c', nodes: [{ clientId: 'c', kind: 'keyframe', title: 't', prompt: 'p' }] }, /Unrecognized key/);
   // 阳性对照：每个示例仍然通过（上面那条「每个示例都能通过」已经钉住），这里再钉一个最小合法值。
-  assert.ok(byName.get('stage_shot')!.schema.safeParse({ shotId: 's1', cameraMove: { move: 'push_in' } }).success);
+  assert.ok(byName.get('stage_shot')!.schema.safeParse({ target: { directorNodeId: 'n1' }, baseRevision: 'r1', edits: [{ op: 'replace', path: '/shots/a/move/kind', value: 'push_in' }] }).success);
 });
 
 test('每个字段的说明都标明它属于哪几个 operation', () => {

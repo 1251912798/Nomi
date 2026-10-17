@@ -31,7 +31,7 @@ fs.mkdirSync(shotsDir, { recursive: true })
 const dirs = { userDataDir: path.join(root, 'user-data'), settingsDir: path.join(root, 'settings'), projectsDir: path.join(root, 'projects'), capabilityDir: path.join(root, 'capability') }
 for (const dir of Object.values(dirs)) fs.mkdirSync(dir, { recursive: true })
 const redact = (text) => String(text).split(API_KEY).join('[REDACTED]')
-const env = { VITE_DEV_SERVER_URL: rendererUrl, NOMI_DIRECTOR_3DBOX: 'true', NOMI_DISABLE_AUTO_UPDATE: '1' }
+const env = { VITE_DEV_SERVER_URL: rendererUrl, NOMI_DISABLE_AUTO_UPDATE: '1' }
 const initialLocalStorage = {
   'nomi:locale:v1': 'zh-CN', 'nomi-color-scheme': 'dark',
   'nomi:splash:v1': 'seen', 'nomi:journey-tour:v1': 'seen', 'nomi:canvas-gesture-hint:v1': 'seen', __nomiE2E: '1',
