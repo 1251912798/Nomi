@@ -54,8 +54,8 @@ try {
   expect(lockRefusal, '花钱面收窄通过（被授权的模型可用，其余生成模型已停）').toBeNull()
   await walk.snap('env-key-01-zh-after-connect')
   // ④ DOM 里没有这把 key。
-  const domHasKey = await win.evaluate((needle) => document.documentElement.outerHTML.includes(needle) || document.body.innerText.includes(needle), FAKE_KEY)
-  expect(domHasKey, '页面 DOM / 文字里没有这把 key').toBe(false)
+  const domHasKey = await win.evaluate((needle) => document.documentElement.outerHTML.includes(needle), FAKE_KEY)
+  expect(domHasKey, '页面 DOM（含文字节点）里没有这把 key').toBe(false)
   // ② 夹具只收到那一次免费探测，鉴权头是这把假 key。
   expect(walk.fixture.balanceProbes, 'key 有效性探测只发了一次、只到过本机夹具').toHaveLength(1)
   expect(walk.fixture.balanceProbes[0].authorization, '探测带的就是填进去的那把 key').toBe(`Bearer ${FAKE_KEY}`)

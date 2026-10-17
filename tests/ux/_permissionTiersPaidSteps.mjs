@@ -195,7 +195,7 @@ export async function runPlanAndBrakeStep(ctx, { askText, askMoreText }) {
   const { win, walk, snapshot, record, cap, allowedModel } = ctx
   const panel = CREATION_PANEL
   // 写两句文稿（真键盘输入，编辑器是 tiptap）。
-  await clickOrFail(win.locator(DOCUMENT), '创作文档编辑区')
+  await clickOrFail(win.locator(DOCUMENT), uiText('zh-CN', 'creationAi.editor.documentAria'))
   await win.keyboard.type(DOCUMENT_TEXT)
   await win.waitForTimeout(1_500)
   const watch = await watchSpendUi(win, panel)
