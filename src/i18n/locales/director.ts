@@ -38,7 +38,7 @@ export const zhDirector = {
     produceRenderingHint: '预演渲染好后会自动挂到视频镜头上',
     produceRetry: '重试预演',
     produceEmptyHint: '先让 Agent 搭一段预演',
-    produceTooLong: '预演超过 {{seconds}} 秒，请先改短',
+    produceTooLong: '当前 {{current}} 秒，预演最长 {{seconds}} 秒，请先改短再出片',
     produceVideoTitle: '{{title}} · 成片',
     empty: '还没有可播放的镜头，先让 Agent 搭一段预演',
     unknown: '未测量',
@@ -207,6 +207,7 @@ export const zhDirector = {
     spendBlockedRendering: '这一镜的 3D-BOX 预演还在渲染，渲染完再生成',
     spendBlockedFailed: '这一镜的 3D-BOX 预演失败了，先重试预演再生成',
     spendBlockedStale: '预演挂上之后导演台又改过，先重渲预演再生成',
+    spendBlockedTooLong: '这一镜的 3D-BOX 预演超过时长上限，先在导演台改短再生成',
   },
   help: {
     title: '操作说明与快捷键',
@@ -1004,7 +1005,7 @@ export const enDirector = {
     produceRenderingHint: 'The preview is attached to the video shot as soon as it finishes rendering',
     produceRetry: 'Retry preview',
     produceEmptyHint: 'Ask the Agent to stage a preview first',
-    produceTooLong: 'The preview is longer than {{seconds}} seconds; shorten it first',
+    produceTooLong: 'This scene runs {{current}}s; previews are at most {{seconds}}s. Shorten it before producing.',
     produceVideoTitle: '{{title}} · Final',
     empty: 'No playable shots yet. Ask Agent to stage a preview first.',
     unknown: 'Not measured',
@@ -1171,6 +1172,7 @@ export const enDirector = {
     spendBlockedRendering: "This shot's 3D-BOX preview is still rendering. Generate once it is attached.",
     spendBlockedFailed: "This shot's 3D-BOX preview failed. Retry the preview before generating.",
     spendBlockedStale: "The 3D-BOX scene changed after this preview was attached. Re-render the preview before generating.",
+    spendBlockedTooLong: "This shot's 3D-BOX scene is longer than the preview limit. Shorten it in the director before generating.",
   },
   help: {
     title: 'Controls & shortcuts',

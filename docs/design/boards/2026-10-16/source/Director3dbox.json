@@ -9,7 +9,7 @@
     },
     {
       "path": "src/devlab/designLab/director3dbox/director3dboxLabKit.tsx",
-      "sha256": "6fafbe27f70796e15d6e08494b6537337b9fd026426d17f37390e41facbe8d22"
+      "sha256": "bebc9364567c178f05540853de35be21ba0f1ece9a77be794b609c10eec0597b"
     },
     {
       "path": "src/devlab/designLab/director3dbox/states/01-director-view.tsx",
@@ -29,7 +29,7 @@
     },
     {
       "path": "src/devlab/designLab/director3dbox/states/04-produce.tsx",
-      "sha256": "6f398c6221f52d11c843fad98f6f877da0ad2646d84ddee628712ef7c0aa755f"
+      "sha256": "329092e7a54395cc8bc19f97305d19444a132a6b57227a0ff38488ab639ad30a"
     }
   ],
   "preview": "design-lab.html?screen=director-3dbox（01/02/03 状态文件）+ ?screen=director-refine",

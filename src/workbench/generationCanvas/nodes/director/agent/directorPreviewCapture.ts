@@ -15,7 +15,7 @@ import type { GenerationCanvasNode } from '../../../model/generationCanvasTypes'
 import { withCanvasGestureContext } from '../../../events/canvasGestureContext'
 import { useGenerationCanvasStore } from '../../../store/generationCanvasStore'
 import { DIRECTOR_PREVIEW_META_KEY, DIRECTOR_PROJECT_META_KEY } from '../model/directorNodeMeta'
-import { DIRECTOR_PREVIEW_FPS, DIRECTOR_PREVIEW_MAX_SECONDS, directorPreviewSourceFingerprint, readDirectorPlanMeta, readDirectorPreview, type DirectorPreviewMeta } from '../model/directorPreviewState'
+import { DIRECTOR_PREVIEW_FPS, DIRECTOR_PREVIEW_MAX_SECONDS, directorPreviewSourceFingerprint, directorProjectTooLong, readDirectorPlanMeta, readDirectorPreview, type DirectorPreviewMeta } from '../model/directorPreviewState'
 import { normalizeDirectorProject } from '../model/directorProject'
 import { summarizeDirectorShots } from '../model/directorShotSummaries'
 import type { DirectorProject } from '../model/directorTypes'
@@ -121,7 +121,7 @@ export function markPreviewFailed(nodeId: string, revision: string): void {
 
 /**
  * 请求（重新）渲染这个导演节点的预演：把它标成「渲染中」，常驻 Host 扫到即按节点上此刻的工程重渲。
- * 节点卡的「重试」与导演视图「出成片」（预演过期 / 没出过）共用这一个写口。超长失败的不给重渲（要改短）；已在渲染中 = 什么都不写。
+ * 节点卡的「重试」与导演视图「出成片」（预演过期 / 没出过）共用这一个写口。当前工程超长：不渲（要改短）；已在渲染中 = 什么都不写。
  * 没有 3D-BOX 计划的工程（手搭的）也能出预演：修订号用工程指纹，迟到结果照样按它丢弃。返回是否已在渲染中。
  */
 export function requestDirectorPreviewRender(nodeId: string): boolean {
@@ -129,7 +129,9 @@ export function requestDirectorPreviewRender(nodeId: string): boolean {
   if (!node) return false
   const preview = readDirectorPreview(node)
   if (preview?.status === 'rendering') return true
-  if (preview?.status === 'failed' && preview.reason === 'too_long') return false
+  // 超长按当前工程判（改短了就能重渲；拉长了就不渲——离屏录制只有 10 秒，硬渲会把整段压进 10 秒）。
+  // 不改写节点上的预演：已挂好的那份照旧留着，花钱闸与「出成片」按当前工程判超长挡住。
+  if (directorProjectTooLong(node.meta?.[DIRECTOR_PROJECT_META_KEY])) return false
   const revision = preview?.revision ?? readDirectorPlanMeta(node)?.revision ?? `manual:${directorPreviewSourceFingerprint(node.meta?.[DIRECTOR_PROJECT_META_KEY])}`
   const next: DirectorPreviewMeta = {
     status: 'rendering',

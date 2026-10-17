@@ -175,7 +175,10 @@ function GenericNodeGenerationComposer({ onFeedback, node, visualSize, host = 'c
   // 订阅**字符串**而非对象：对象选择器每帧新引用会破坏 v0.7.2 的 primitive 订阅防抖；
   // 文案仍留到渲染时用 t() 格式化，保证切语言能实时重渲。
   // 3D-BOX 预演挡着这一镜的生成（渲染中 / 失败 / 过期）：与 canRunGenerationNode 同一个判据，这里只取原因与可重渲的导演节点（原始值订阅）。
-  const directorPreviewBlock = useGenerationCanvasStore((state) => directorPreviewSpendBlock(node.id, state.nodes)?.reason ?? null)
+  const directorPreviewBlock = useGenerationCanvasStore((state) => {
+    const block = directorPreviewSpendBlock(node.id, state.nodes)
+    return block ? directorPreviewSpendBlockMessageKey(block) : null
+  })
   // 过期 / 可重试的失败：给一键重渲（与「出成片」、导演节点卡「重试」同一个写口）；超长的失败要改短，不给
   const rerenderDirectorNodeId = useGenerationCanvasStore((state) => {
     const block = directorPreviewSpendBlock(node.id, state.nodes)
@@ -498,7 +501,7 @@ function GenericNodeGenerationComposer({ onFeedback, node, visualSize, host = 'c
         ) : null}
         {inPanel ? null : (() => {
           const disabledReason = directorPreviewBlock
-            ? t(directorPreviewSpendBlockMessageKey(directorPreviewBlock))
+            ? t(directorPreviewBlock)
             : unmetDependency
             ? t('generationCommon.composer.referenceCompanionRequired', {
                 slot: unmetDependency.slotLabel,

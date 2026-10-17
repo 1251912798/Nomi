@@ -38,23 +38,28 @@ import type { Director3dBoxFixture, LabDrive, LabStep } from './director3dboxCel
 /** 右侧 Agent 面板宽：与 v4 实验室同一取值，导演视图占的画布宽因此与真机 1280 窗口一致（≈858）。 */
 const AGENT_PANEL_WIDTH = 390
 
-const PLAN_ID = 'courtyard-standoff'
-// 节点标题是画布节点的数据（用户起的名字），不是界面文案：三镜格用样张里那个工程名，空工程用新建导演台节点的默认名
-const COURTYARD_TITLE: Record<AppLocale, string> = { 'zh-CN': '古装庭院对峙', en: 'Courtyard standoff' }
+type ProjectFixture = Exclude<Director3dBoxFixture, 'empty'>
+const PLAN_ID: Record<ProjectFixture, string> = { courtyard: 'courtyard-standoff', 'courtyard-after': 'courtyard-standoff', chase: 'police-chase' }
+// 节点标题是画布节点的数据（用户起的名字），不是界面文案：多镜格用样张里那个工程名，空工程用新建导演台节点的默认名
+const FIXTURE_TITLE: Record<ProjectFixture, Record<AppLocale, string>> = {
+  courtyard: { 'zh-CN': '古装庭院对峙', en: 'Courtyard standoff' },
+  'courtyard-after': { 'zh-CN': '古装庭院对峙', en: 'Courtyard standoff' },
+  chase: { 'zh-CN': '夜街追车', en: 'Night street chase' },
+}
 
 /** 导演台节点在画布上的 id：编辑器经它登记会话，「正在改：镜头 N」读这个节点上的计划修订号与镜头名。 */
 const LAB_DIRECTOR_NODE_ID = 'lab-director-3dbox'
 type CourtyardFixture = { plan: DirectorPlan; project: DirectorProject }
-const courtyardCache = new Map<'courtyard' | 'courtyard-after', CourtyardFixture>()
+const courtyardCache = new Map<ProjectFixture, CourtyardFixture>()
 /**
  * 现役编译器把 oracle 计划编成工程；编不出来就当场抛（夹具坏了要红，不许悄悄换成空工程）。
  * courtyard-after：同一份计划经现役补丁应用器把第 2 镜改成特写，再编——与 Agent 交补丁走同一个应用器。
  */
-function courtyardFixture(kind: 'courtyard' | 'courtyard-after'): CourtyardFixture {
+function courtyardFixture(kind: ProjectFixture): CourtyardFixture {
   const cached = courtyardCache.get(kind)
   if (cached) return cached
-  const parsed = parseDirectorPlan(S1_ORACLE_PLANS[PLAN_ID])
-  if (!parsed.success) throw new Error(`director3dbox lab: ${PLAN_ID} 计划不合法`)
+  const parsed = parseDirectorPlan(S1_ORACLE_PLANS[PLAN_ID[kind]])
+  if (!parsed.success) throw new Error(`director3dbox lab: ${PLAN_ID[kind]} 计划不合法`)
   let plan = canonicalDirectorPlan(parsed.data)
   if (kind === 'courtyard-after') {
     const second = plan.shots[1]?.id
@@ -63,7 +68,7 @@ function courtyardFixture(kind: 'courtyard' | 'courtyard-after'): CourtyardFixtu
     plan = patched.plan
   }
   const compiled = compileDirectorPlan(plan)
-  if (!compiled.ok) throw new Error(`director3dbox lab: ${PLAN_ID} 编译失败：${compiled.errors.join('; ')}`)
+  if (!compiled.ok) throw new Error(`director3dbox lab: ${PLAN_ID[kind]} 编译失败：${compiled.errors.join('; ')}`)
   const fixture = { plan, project: compiled.project }
   courtyardCache.set(kind, fixture)
   return fixture
@@ -265,7 +270,7 @@ export function Director3dBoxStage({ locale, fixture, drive = 'none', steps = NO
       release()
     }
   }, [drive, project, release, steps])
-  const title = project ? COURTYARD_TITLE[locale] : i18n.t('director.node.title')
+  const title = fixture !== 'empty' ? FIXTURE_TITLE[fixture][locale] : i18n.t('director.node.title')
   const noop = React.useCallback(() => undefined, [])
   return (
     <>

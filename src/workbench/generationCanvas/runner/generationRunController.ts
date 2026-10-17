@@ -238,7 +238,7 @@ export async function runGenerationNode(
   // 3D-BOX 预演闸（方案 §8）：要花钱的单镜 Run 路由主进程准入问它（appIntegrationCanvasShot）；不花钱的本地 / 文本路在这里问。
   const previewBlock = options.ledger === 'run' ? null : directorPreviewSpendBlock(id, initialState.nodes)
   if (previewBlock) {
-    throw new Error(i18n.t(directorPreviewSpendBlockMessageKey(previewBlock.reason)))
+    throw new Error(i18n.t(directorPreviewSpendBlockMessageKey(previewBlock)))
   }
   if (!canRunGenerationNode(initialNode, { nodes: initialState.nodes, edges: initialState.edges })) {
     throw new Error(

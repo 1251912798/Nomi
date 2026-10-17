@@ -3,7 +3,8 @@
  * [OUTPUT]: 对外提供 DirectorPreviewMeta、DirectorPlanMeta、readDirectorPreview、readDirectorPlanMeta、directorPreviewSpendBlock、
  *           directorPreviewSourceFingerprint / directorPreviewIsStale（过期判据，花钱闸与「出成片」共用）/ directorProduceState、
  *           directorPreviewSpendBlockMessageKey（挡住原因 → 文案的唯一映射，节点生成钮与 runner 共用）、
- *           DIRECTOR_PREVIEW_MAX_SECONDS、DIRECTOR_PREVIEW_FPS、declaredShotDurationSeconds、DIRECTOR_PREVIEW_DURATION_TOLERANCE_SECONDS
+ *           DIRECTOR_PREVIEW_MAX_SECONDS / exceedsDirectorPreviewSeconds / directorProjectSeconds / directorProjectTooLong（超长判据，按当前工程，Agent 写计划、重渲写口、出成片、花钱闸共用）、
+ *           DIRECTOR_PREVIEW_FPS、declaredShotDurationSeconds、DIRECTOR_PREVIEW_DURATION_TOLERANCE_SECONDS
  * [POS]: 3D-BOX 预演状态的**唯一判据**（方案 §8 花钱闸）：「这一镜挂着的参考预演还没好（渲染中 / 失败）或已过期（挂上之后导演工程又被改过）就不许花钱」。
  *        挡住原因的词表住 electron/shared/director/directorPreviewStatus.ts（跨进程合同，主进程准入同一份）。
  *        判据只住这里；消费者是全部付费提交的唯一咽喉 `canRunGenerationNode`（生成钮 / runGenerationNode / 生成索引）
@@ -18,12 +19,37 @@ import type { GenerationCanvasNode } from '../../../model/generationCanvasTypes'
 import { productionMetaOf } from '../../../model/productionMeta'
 import { DIRECTOR_NODE_KIND, DIRECTOR_PLAN_META_KEY, DIRECTOR_PREVIEW_META_KEY, DIRECTOR_PROJECT_META_KEY } from './directorNodeMeta'
 import { normalizeDirectorProject } from './directorProject'
+import { sceneContentEndSeconds } from './timeGrid'
 import type { DirectorProject } from './directorTypes'
 
 /** 预演帧率：Seedance 参考视频要求 ≥ 23.8fps（与运镜小片同一个值）。 */
 export const DIRECTOR_PREVIEW_FPS = 24
 /** 预演时长上限 = 离屏录制 240 帧 / 24fps。超过直接判失败并说明，不分段（分段与提上限待真机测内存）。 */
 export const DIRECTOR_PREVIEW_MAX_SECONDS = 10
+
+/** 这么长的内容能不能做成一段预演：超了不渲染、不出片、不花钱。Agent 写计划、重渲写口、「出成片」、花钱闸都问这一句。 */
+export function exceedsDirectorPreviewSeconds(seconds: number): boolean {
+  return seconds > DIRECTOR_PREVIEW_MAX_SECONDS + 1e-6
+}
+
+/**
+ * 导演工程此刻有多长（当前场景内容末尾）。按**当前工程**算，不看预演上记过的结论：精修里手动拉长 / 缩短都立刻算数。
+ * 工程对象不可变（每次写都换新引用）：同一个对象只算一次。
+ */
+export function directorProjectSeconds(project: unknown): number {
+  const cached = project && typeof project === 'object' ? PROJECT_SECONDS.get(project) : undefined
+  if (cached !== undefined) return cached
+  const normalized = normalizeDirectorProject(JSON.parse(JSON.stringify(project ?? null)))
+  const scene = normalized.scenes.find((item) => item.id === normalized.activeSceneId) ?? normalized.scenes[0]
+  const seconds = scene ? sceneContentEndSeconds(scene) : 0
+  if (project && typeof project === 'object') PROJECT_SECONDS.set(project, seconds)
+  return seconds
+}
+const PROJECT_SECONDS = new WeakMap<object, number>()
+
+export function directorProjectTooLong(project: unknown): boolean {
+  return exceedsDirectorPreviewSeconds(directorProjectSeconds(project))
+}
 
 /** 预演时长与镜头声明时长允许差多少（秒）：小于 24fps 的一帧多一点，吸收计划窗口的小数尾巴。 */
 export const DIRECTOR_PREVIEW_DURATION_TOLERANCE_SECONDS = 0.05
@@ -113,8 +139,11 @@ export function directorPreviewSpendBlock(
   const latest = latestDirectorPreviewFor(nodeId, nodes)
   if (!latest) return null
   if (latest.preview.status === 'ready') {
+    const project = latest.node.meta?.[DIRECTOR_PROJECT_META_KEY]
+    // 工程超长：这份预演是被压进 10 秒里的（旧版本会这样出），花钱就是按一段走样的预演出片
+    if (project && typeof project === 'object' && directorProjectTooLong(project)) return { reason: 'failed', directorNodeId: latest.node.id, failure: 'too_long' }
     // 挂着的是最新预演才放行：挂上之后导演工程又被改过（精修里手调）= 过期，花钱就是按旧预演出片
-    return directorPreviewIsStale(latest.preview, latest.node.meta?.[DIRECTOR_PROJECT_META_KEY]) ? { reason: 'stale', directorNodeId: latest.node.id } : null
+    return directorPreviewIsStale(latest.preview, project) ? { reason: 'stale', directorNodeId: latest.node.id } : null
   }
   return {
     reason: latest.preview.status,
@@ -218,8 +247,12 @@ export function directorPreviewIsStale(preview: DirectorPreviewMeta, project: un
 }
 
 /** 花钱闸挡住原因 → 给用户的一句话（i18n 键）。节点生成钮的悬停说明与 runner 的报错共用，不各写一份三元式。 */
-export function directorPreviewSpendBlockMessageKey(reason: DirectorPreviewSpendBlockReason): 'director.agent.spendBlockedRendering' | 'director.agent.spendBlockedFailed' | 'director.agent.spendBlockedStale' {
-  return reason === 'rendering' ? 'director.agent.spendBlockedRendering' : reason === 'stale' ? 'director.agent.spendBlockedStale' : 'director.agent.spendBlockedFailed'
+export type DirectorPreviewSpendBlockMessageKey = 'director.agent.spendBlockedRendering' | 'director.agent.spendBlockedFailed' | 'director.agent.spendBlockedStale' | 'director.agent.spendBlockedTooLong'
+
+export function directorPreviewSpendBlockMessageKey(block: Pick<DirectorPreviewSpendBlock, 'reason' | 'failure'>): DirectorPreviewSpendBlockMessageKey {
+  if (block.reason === 'rendering') return 'director.agent.spendBlockedRendering'
+  if (block.reason === 'stale') return 'director.agent.spendBlockedStale'
+  return block.failure === 'too_long' ? 'director.agent.spendBlockedTooLong' : 'director.agent.spendBlockedFailed'
 }
 
 /**
@@ -239,22 +272,26 @@ export type DirectorProduceState =
 
 export function directorProduceState(preview: DirectorPreviewMeta | null, project: DirectorProject, playableShots: number): DirectorProduceState {
   if (playableShots === 0) return { kind: 'empty' }
+  // 超长按**当前工程**判：精修里拉长了，哪怕节点上还挂着一份好的预演，也不出片（预演会被压进 10 秒）
+  if (directorProjectTooLong(project)) return { kind: 'failed', tooLong: true }
   if (!preview) return { kind: 'needs_render' }
   if (preview.status === 'rendering') return { kind: 'rendering' }
-  if (preview.status === 'failed') return { kind: 'failed', tooLong: preview.reason === 'too_long' }
+  // 记过「超长」但已经改短了：重新渲染就行
+  if (preview.status === 'failed') return preview.reason === 'too_long' ? { kind: 'needs_render' } : { kind: 'failed', tooLong: false }
   if (!preview.videoUrl || directorPreviewIsStale(preview, project)) return { kind: 'needs_render' }
   return { kind: 'ready' }
 }
 
 /**
- * 主按钮显示什么（不算工程指纹：拖动时每一帧都在变，按钮不该每帧哈希整份工程）。「过期要先重渲」在点下去那一刻由
+ * 主按钮显示什么（不算工程指纹：拖动时每一帧都在变，按钮不该每帧哈希整份工程）。超长按当前工程判（与 `directorProduceState` 同一句）。「过期要先重渲」在点下去那一刻由
  * `directorProduceState` 判，按钮上与「可出片」同一个样子。
  */
 export type DirectorProduceButtonState = 'empty' | 'rendering' | 'retry' | 'too_long' | 'idle'
 
-export function directorProduceButtonState(preview: DirectorPreviewMeta | null, playableShots: number): DirectorProduceButtonState {
+export function directorProduceButtonState(preview: DirectorPreviewMeta | null, project: DirectorProject, playableShots: number): DirectorProduceButtonState {
   if (playableShots === 0) return 'empty'
+  if (directorProjectTooLong(project)) return 'too_long'
   if (preview?.status === 'rendering') return 'rendering'
-  if (preview?.status === 'failed') return preview.reason === 'too_long' ? 'too_long' : 'retry'
+  if (preview?.status === 'failed' && preview.reason !== 'too_long') return 'retry'
   return 'idle'
 }
