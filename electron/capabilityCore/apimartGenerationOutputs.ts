@@ -1,7 +1,7 @@
 import path from "node:path";
 
 import type { GenerationProviderOutput } from "./generationRuntimeAdapter";
-import { mediaKindOf, type ExpectedMediaKind } from "../tasks/taskResultReading";
+import { mediaKindOf, readTaskResponse, type ExpectedMediaKind } from "../tasks/taskResultReading";
 
 type JsonRecord = Record<string, unknown>;
 
@@ -111,4 +111,14 @@ export function materializationOutputs(raw: unknown, assetUrls: readonly string[
       providerOutputId: known?.providerOutputId ?? `${kind}-${index + 1}`,
     };
   });
+}
+
+/** 引擎 B 的取产物：按这条任务的 query 合同（没有就 null = 只用通用规则）经唯一读法取地址，再配附带信息。 */
+export function readMaterializationOutputs(
+  raw: unknown,
+  query: { responseMapping: JsonRecord | null; statusMapping?: Record<string, string[]> } | null,
+  wantedKind: ExpectedMediaKind | null,
+): GenerationProviderOutput[] {
+  const reading = readTaskResponse({ response: raw, responseMapping: query?.responseMapping ?? null, statusMapping: query?.statusMapping, wantedKind });
+  return materializationOutputs(raw, reading.assetUrls, wantedKind);
 }

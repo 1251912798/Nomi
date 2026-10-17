@@ -14,7 +14,9 @@
 // 下载那一步还会按 content-type / 字节再核一次（assets/generatedMediaDecode），这里只做便宜的第一道。
 import type { JsonRecord } from "../jsonUtils";
 import { isJsonRecord } from "../jsonUtils";
-import { collectAssetUrls, maybeParseJsonString, resolveTaskStatus, valuesFromMapping, type TaskStatus } from "./responseParsing";
+import { collectAssetUrls, firstMappedString, maybeParseJsonString, resolveTaskStatus, valuesFromMapping, type TaskStatus } from "./responseParsing";
+import { classifyUpstreamTaskStatus } from "../shared/taskStatus";
+import { firstString } from "../jsonUtils";
 import { extractAssetUrl } from "./assetUrlExtract";
 import { logInfo } from "../logging/logger";
 
@@ -202,4 +204,16 @@ export function readTaskResponse(input: {
     return { ...resolved, assetUrls, rule: `generic:${generic.path}` };
   }
   return { ...resolved, assetUrls: [], rule: "none" };
+}
+
+/**
+ * 引擎 B（制作 Run）账本要记的状态词：上游原话在共享词表里认得、或谁都认不得 → 记原话（账本记真话）；
+ * 只有通道自己的 statusMapping 认得的方言词（共享词表里没有）才交归一后的判词——否则下游那张唯一词表会把它当「认不出」。
+ */
+export function readProviderStatusWord(response: unknown, responseMapping: JsonRecord | null, statusMapping: Record<string, string[]> | undefined): string {
+  const record = isJsonRecord(response) ? response : {};
+  const raw = firstString(firstMappedString(response, responseMapping, "status"), isJsonRecord(record.data) ? record.data.status : "", record.status);
+  const resolved = readTaskResponse({ response, responseMapping, statusMapping, wantedKind: null });
+  const keepRaw = Boolean(raw) && (classifyUpstreamTaskStatus(raw) !== "unknown" || Boolean(resolved.unrecognizedStatus));
+  return keepRaw ? raw : resolved.status;
 }
