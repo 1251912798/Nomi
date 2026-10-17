@@ -38,6 +38,11 @@ export function readWhiteboardState(node: Pick<GenerationCanvasNode, 'meta'>): W
   }
 }
 
+/** The result version a saved draft belongs to; a board that has no result yet is keyed by its node. */
+export function whiteboardDraftIdentity(node: GenerationCanvasNode): string {
+  return node.result ? resultIdentity(node.result) : `board:${node.id}`
+}
+
 export function readWhiteboardEditingState(node: GenerationCanvasNode) {
   if (node.kind === 'whiteboard') return readWhiteboardState(node)
   const identity = node.result ? resultIdentity(node.result) : null

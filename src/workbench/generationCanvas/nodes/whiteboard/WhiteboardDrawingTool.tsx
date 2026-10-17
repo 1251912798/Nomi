@@ -1,6 +1,6 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { IconEye, IconEyeOff, IconTrash, IconX } from '@tabler/icons-react'
+import { IconEye, IconEyeOff, IconTrash } from '@tabler/icons-react'
 import { useStateHistory } from '@mantine/hooks'
 import { cn } from '../../../../utils/cn'
 import { notify } from '../../../../ui/notificationPolicy'
@@ -23,7 +23,6 @@ import {
   serializeWhiteboardState,
 } from './whiteboardState'
 import { WhiteboardEditingToolbar } from './WhiteboardEditingToolbar'
-import { annotationsForResult, type WhiteboardAnnotation } from './whiteboardAnnotations'
 import { WhiteboardLibraryPanel, type WhiteboardLibraryTabKey } from './WhiteboardLibraryPanel'
 import { blobToDataUrl, removeBackgroundBlob } from '../../../../lib/removeBackground'
 import { removeBackgroundFailureMessage, removeBackgroundProgressMessage } from '../localImageOpPhase'
@@ -46,18 +45,14 @@ export type WhiteboardDrawingToolHandle = {
   initialImageStatus: () => WhiteboardInitialImageStatus
   isBusy: () => boolean
   getState: () => WhiteboardState
-  getAnnotations: () => WhiteboardAnnotation[]
 }
 
 type WhiteboardDrawingToolProps = {
-  initialAnnotations?: WhiteboardAnnotation[]
-  annotationResultId?: string
   onDone?: () => void
   onAbort?: () => void
   feedback?: string | null
   onRasterBaseline?: (state: WhiteboardState) => void
   onDraftChange?: () => void
-  onPrepare?: (prompt: string) => void
   onBoardDimensionsChange?: (dimensions: CanvasDimensions) => void
   ownerNodeId: string
   initialState?: WhiteboardState
@@ -98,14 +93,11 @@ const WhiteboardDrawingTool = React.forwardRef<WhiteboardDrawingToolHandle, Whit
   function WhiteboardDrawingTool(
     {
       ownerNodeId,
-      initialAnnotations = [],
-      annotationResultId = `board:${ownerNodeId}`,
       onDone,
       onAbort,
       feedback: externalFeedback,
       onDraftChange,
       onRasterBaseline,
-      onPrepare,
       onBoardDimensionsChange,
       initialState,
       initialImage,
@@ -127,7 +119,7 @@ const WhiteboardDrawingTool = React.forwardRef<WhiteboardDrawingToolHandle, Whit
     const [activeTool, setActiveTool] = React.useState<ToolKey>('select')
     const [selectedColor, setSelectedColor] = React.useState('#2563eb')
     const [brushSize, setBrushSize] = React.useState(10)
-    const [initialDocument] = React.useState(() => ({ state: getInitialState(initialState, initialImage), annotations: initialAnnotations.map((note) => ({ ...note })) }))
+    const [initialDocument] = React.useState(() => ({ state: getInitialState(initialState, initialImage) }))
     const initialDocumentRef = React.useRef(initialDocument)
     const snapshotsRef = React.useRef(new Map([[0, initialDocumentRef.current]]))
     const revisionRef = React.useRef(0)
@@ -157,10 +149,6 @@ const WhiteboardDrawingTool = React.forwardRef<WhiteboardDrawingToolHandle, Whit
     const [panel, setPanel] = React.useState<import('./WhiteboardEditingToolbar').WhiteboardPanel>(null)
     const [selectedTargets, setSelectedTargets] = React.useState<CanvasObjectTarget[]>([])
     const [textSize, setTextSize] = React.useState(32)
-    const [noteDraft, setNoteDraft] = React.useState<WhiteboardAnnotation | null>(null)
-    const noteDragRef = React.useRef<{ start: { x: number; y: number }; current: { x: number; y: number } } | null>(null)
-    const [noteDrag, setNoteDrag] = React.useState<typeof noteDragRef.current>(null)
-    const notePreviewRef = React.useRef<HTMLDivElement | null>(null)
     const frameRef = React.useRef<HTMLDivElement | null>(null)
     const viewScaleRef = React.useRef<number | null>(null)
     const [activeCanvasObject, setActiveCanvasObject] = React.useState<CanvasObjectTarget | null>(null)
@@ -201,7 +189,6 @@ const WhiteboardDrawingTool = React.forwardRef<WhiteboardDrawingToolHandle, Whit
         initialImageStatus: () => initialImageStatus,
         isBusy: () => initialImageStatus !== 'ready' || uploading || removeBgBusy,
         getState: () => serializeWhiteboardState({ ...documentRef.current.state, canvasDimensions, activeLayerId, sceneTransforms: leaferCanvasRef.current?.getSceneTransforms() ?? documentRef.current.state.sceneTransforms }),
-        getAnnotations: () => documentRef.current.annotations.map((note) => ({ ...note })),
       }),
       [canvasDimensions, activeLayerId, initialImageStatus, uploading, removeBgBusy, t],
     )
@@ -523,16 +510,9 @@ const WhiteboardDrawingTool = React.forwardRef<WhiteboardDrawingToolHandle, Whit
     )
 
     const selectedText = activeCanvasObject?.kind === 'text' ? state.texts?.find((item) => item.id === activeCanvasObject.id) : undefined
-    const currentNotes = annotationsForResult(document.annotations, annotationResultId)
     const editText = (changes: Partial<NonNullable<WhiteboardState['texts']>[number]>) => {
       if (!selectedText) return
       setState((current) => ({ ...current, texts: current.texts?.map((item) => item.id === selectedText.id ? { ...item, ...changes } : item) }))
-    }
-    const updateAnnotations = (updater: (notes: WhiteboardAnnotation[]) => WhiteboardAnnotation[]) => {
-      const previous = documentRef.current
-      const next = { ...previous, annotations: updater(previous.annotations).map((note) => ({ ...note })) }
-      documentRef.current = next
-      storeDocument(next)
     }
     const placeText = (point: { x: number; y: number }) => {
       const id = createWhiteboardId('text')
@@ -544,11 +524,6 @@ const WhiteboardDrawingTool = React.forwardRef<WhiteboardDrawingToolHandle, Whit
       }))
       setActiveCanvasObject({ kind: 'text', id })
       setActiveTool('select')
-    }
-    const commitNote = () => {
-      if (!noteDraft?.text.trim()) return
-      updateAnnotations((notes) => [...notes.filter((note) => note.id !== noteDraft.id), { ...noteDraft, text: noteDraft.text.trim() }])
-      setNoteDraft(null)
     }
     const handleDimensionsChange = (dimensions: CanvasDimensions) => {
       const safe = { width: Math.round(Math.max(64, Math.min(4096, dimensions.width))), height: Math.round(Math.max(64, Math.min(4096, dimensions.height))) }
@@ -618,18 +593,6 @@ const WhiteboardDrawingTool = React.forwardRef<WhiteboardDrawingToolHandle, Whit
           </div>
         })}
       </div>
-    ) : panel === 'note' ? (
-      <div className="grid w-[320px] gap-2 p-2">
-        {noteDraft ? <>
-          <textarea autoFocus className="nowheel min-h-16 w-full resize-none rounded-nomi-sm border border-nomi-line bg-nomi-paper p-2 text-body-sm" value={noteDraft.text} placeholder={t('generationCommon.whiteboard.notePlaceholder')} aria-label={t('generationCommon.whiteboard.notePlaceholder')} onChange={(event) => setNoteDraft({ ...noteDraft, text: event.currentTarget.value })} />
-          <div className="flex justify-end gap-1"><button type="button" className="grid size-7 place-items-center text-nomi-ink-60" aria-label={t('common.cancel')} onClick={() => setNoteDraft(null)}><IconX size={15} /></button><button type="button" className="rounded-nomi-sm bg-nomi-accent px-3 py-1 text-caption text-nomi-paper disabled:opacity-40" disabled={!noteDraft.text.trim()} onClick={commitNote}>{t('generationCommon.whiteboard.addNote')}</button></div>
-        </> : null}
-        {currentNotes.map((note, index) => <div key={note.id} className="flex items-start gap-2 rounded-nomi-sm bg-nomi-ink-05 p-2 text-caption">
-          <span className="text-nomi-accent">{index + 1}</span><button type="button" className="min-w-0 flex-1 whitespace-pre-wrap text-left" onClick={() => setNoteDraft({ ...note })}>{note.text}</button><button type="button" className="text-nomi-ink-40 hover:text-workbench-danger" aria-label={t('generationCommon.whiteboard.deleteNote')} onClick={() => updateAnnotations((notes) => notes.filter((item) => item.id !== note.id))}><IconTrash size={14} /></button>
-        </div>)}
-        {!currentNotes.length && !noteDraft ? <p className="m-0 p-2 text-caption text-nomi-ink-40">{t('generationCommon.whiteboard.notesEmpty')}</p> : null}
-        {onPrepare && currentNotes.length ? <button type="button" className="rounded-nomi-sm border border-nomi-line px-3 py-1.5 text-body-sm" onClick={() => onPrepare([t('generationCommon.whiteboard.notesPromptHeader'), ...currentNotes.map((note, index) => `${index + 1}. (${Math.round(note.x / canvasDimensions.width * 100)}%, ${Math.round(note.y / canvasDimensions.height * 100)}%${note.width ? `; ${Math.round(note.width / canvasDimensions.width * 100)}% × ${Math.round((note.height ?? 0) / canvasDimensions.height * 100)}%` : ''}): ${note.text}`)].join('\n'))}>{t('generationCommon.whiteboard.prepareNotes')}</button> : null}
-      </div>
     ) : null
 
     return (
@@ -645,26 +608,7 @@ const WhiteboardDrawingTool = React.forwardRef<WhiteboardDrawingToolHandle, Whit
           if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); if (panel) setPanel(null); else if (initialImageStatus === 'failed') onAbort?.(); else if (initialImageStatus === 'ready' && !uploading && !removeBgBusy) onDone?.(); return }
           if (leaferCanvasRef.current?.handleKeyDown(event.nativeEvent)) { event.preventDefault(); event.stopPropagation() }
         }}
-        onPointerDownCapture={(event) => { if ((event.target as HTMLElement).closest('[data-whiteboard-stage]')) event.currentTarget.focus({ preventScroll: true }); if (activeTool === 'note' && (event.target as HTMLElement).closest('[data-whiteboard-stage]')) event.currentTarget.setPointerCapture(event.pointerId) }}
-        onPointerCancelCapture={() => { noteDragRef.current = null; setNoteDrag(null) }}
-        onPointerMoveCapture={(event) => {
-          if (!noteDragRef.current) return
-          const point = leaferCanvasRef.current?.clientPointToCanvasPoint(event.clientX, event.clientY)
-          if (point) {
-            noteDragRef.current.current = point
-            const preview = notePreviewRef.current
-            const start = noteDragRef.current.start
-            if (preview) { preview.style.left = `${Math.min(start.x, point.x) / canvasDimensions.width * 100}%`; preview.style.top = `${Math.min(start.y, point.y) / canvasDimensions.height * 100}%`; preview.style.width = `${Math.abs(point.x - start.x) / canvasDimensions.width * 100}%`; preview.style.height = `${Math.abs(point.y - start.y) / canvasDimensions.height * 100}%` }
-          }
-        }}
-        onPointerUpCapture={(event) => {
-          if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId)
-          const drag = noteDragRef.current
-          if (!drag) return
-          const width = Math.abs(drag.current.x - drag.start.x), height = Math.abs(drag.current.y - drag.start.y)
-          setNoteDraft({ id: createWhiteboardId('note'), resultId: annotationResultId, x: Math.min(drag.start.x, drag.current.x), y: Math.min(drag.start.y, drag.current.y), ...(width > 12 && height > 12 ? { width, height } : {}), text: '' })
-          noteDragRef.current = null; setNoteDrag(null); setPanel('note')
-        }}>
+        onPointerDownCapture={(event) => { if ((event.target as HTMLElement).closest('[data-whiteboard-stage]')) event.currentTarget.focus({ preventScroll: true }) }}>
         <div data-whiteboard-stage="true" className={cn('absolute inset-0 overflow-hidden rounded-nomi bg-nomi-paper', assetDragOver && 'ring-2 ring-inset ring-nomi-accent', initialImageStatus !== 'ready' && 'pointer-events-none')}
           onDragOver={handleCanvasAssetDragOver} onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setAssetDragOver(false) }} onDrop={handleCanvasAssetDrop}>
           <LeaferCanvas ref={leaferCanvasRef} ratio={state.activeRatio} dimensions={canvasDimensions} fitMode="inline"
@@ -674,14 +618,7 @@ const WhiteboardDrawingTool = React.forwardRef<WhiteboardDrawingToolHandle, Whit
             removingBackgroundTargetId={removeBgTargetId} removingBackgroundProgress={removeBgProgress} onStrokeCommit={commitStroke}
             onLayerSelect={setActiveLayerId} onObjectSelect={(target, layerId) => { setActiveLayerId(layerId); setActiveCanvasObject(target) }}
             onObjectsGroup={groupCanvasObjects} onObjectDelete={deleteCanvasObject} onRemoveBackground={handleRemoveBackground}
-            onTextPlace={placeText} onNotePlace={(point) => { noteDragRef.current = { start: point, current: point }; setNoteDrag({ start: point, current: point }) }} />
-          <div className="pointer-events-none absolute inset-0">
-            {currentNotes.map((note, index) => <React.Fragment key={note.id}>
-              {note.width ? <div className="absolute rounded-nomi-sm border border-dashed border-nomi-accent bg-nomi-accent-soft/20" style={{ left: `${note.x / canvasDimensions.width * 100}%`, top: `${note.y / canvasDimensions.height * 100}%`, width: `${note.width / canvasDimensions.width * 100}%`, height: `${(note.height ?? 0) / canvasDimensions.height * 100}%` }} /> : null}
-              <button type="button" className="pointer-events-auto absolute grid size-5 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-nomi-paper bg-nomi-accent text-micro text-nomi-paper shadow-nomi-sm" style={{ left: `${note.x / canvasDimensions.width * 100}%`, top: `${note.y / canvasDimensions.height * 100}%` }} aria-label={t('generationCommon.whiteboard.annotationAria', { index: index + 1 })} onPointerDown={(event) => event.stopPropagation()} onClick={() => { setNoteDraft({ ...note }); setPanel('note') }}>{index + 1}</button>
-            </React.Fragment>)}
-            {noteDrag ? <div ref={notePreviewRef} className="absolute border border-dashed border-nomi-accent bg-nomi-accent-soft/20" style={{ left: `${Math.min(noteDrag.start.x, noteDrag.current.x) / canvasDimensions.width * 100}%`, top: `${Math.min(noteDrag.start.y, noteDrag.current.y) / canvasDimensions.height * 100}%`, width: `${Math.abs(noteDrag.current.x - noteDrag.start.x) / canvasDimensions.width * 100}%`, height: `${Math.abs(noteDrag.current.y - noteDrag.start.y) / canvasDimensions.height * 100}%` }} /> : null}
-          </div>
+            onTextPlace={placeText} />
         </div>
         {initialImageStatus === 'failed' ? <div role="alert" className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 rounded-nomi bg-nomi-paper px-4 text-body-sm">
           <p className="m-0 text-nomi-ink-60">{t('generationCommon.whiteboard.importFailed')}</p>

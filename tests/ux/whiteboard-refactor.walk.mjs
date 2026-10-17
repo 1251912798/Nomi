@@ -48,7 +48,9 @@ const imagePath = path.join(assetsDir, 'photograph.png')
 execFileSync(ffmpeg.path, ['-y', '-ss', '00:00:05', '-i', assets.get('video-4k-hevc-10bit').file, '-frames:v', '1', imagePath], { stdio: 'pipe' })
 const url = `nomi-local://asset/${projectId}/assets/imported/photograph.png`
 const firstResult = { id: 'original', type: 'image', url, createdAt: 1 }
-const nodes = [{ id: 'image', kind: 'image', categoryId: 'shots', title: 'Photograph', prompt: '', position: { x: 200, y: 140 }, size: { width: 600, height: 337.5 }, status: 'success', result: firstResult, history: [firstResult], meta: { imageWidth: 3840, imageHeight: 2160, previewHeight: 337.5, userResized: true } },
+// A project saved while the annotation tool existed (removed 2026-10-17): its stored feedback must be ignored without error and left in the file.
+const legacyAnnotations = [{ id: 'note-legacy', resultId: 'original', x: 120, y: 80, text: 'Brighten this region' }]
+const nodes = [{ id: 'image', kind: 'image', categoryId: 'shots', title: 'Photograph', prompt: '', position: { x: 200, y: 140 }, size: { width: 600, height: 337.5 }, status: 'success', result: firstResult, history: [firstResult], meta: { imageWidth: 3840, imageHeight: 2160, previewHeight: 337.5, userResized: true, whiteboardAnnotations: legacyAnnotations } },
   { id: 'board', kind: 'whiteboard', categoryId: 'shots', title: 'Board', prompt: '', position: { x: 1050, y: 160 }, size: { width: 420, height: 236 }, status: 'idle' }]
 if (performanceRun) for (let index = 0; index < 30; index++) nodes.push({ ...nodes[0], id: `background-${index}`, position: { x: 10000 + index % 6 * 650, y: 10000 + Math.floor(index / 6) * 420 }, size: { width: 340, height: 191.25 } })
 const payload = { workbenchDocument: null, timeline: null, generationCanvas: { nodes, edges: [], groups: [], selectedNodeIds: [], canvasZoom: 1, canvasPan: { x: 0, y: 0 } }, storyboardPlan: null, storyboardPlanCommitted: false }
@@ -108,7 +110,7 @@ try {
   const toolbar = editor.getByRole('toolbar')
   const centered = await toolbar.evaluate(el => { const node = el.closest('[data-nomi-inline-whiteboard]'); const a = el.getBoundingClientRect(), b = node.getBoundingClientRect(); return Math.abs(a.x + a.width / 2 - b.x - b.width / 2) < 2 })
   check('toolbar is centered against the whole frame', centered)
-  check('complete direct editing toolbar remains available', await Promise.all(['select','brush','eraser','text','note','undo','redo','importImage','materials','layers','ratio','done'].map(name => action(name).count())).then(counts => counts.every(count => count === 1)))
+  check('complete direct editing toolbar remains available', await Promise.all(['select','brush','eraser','text','undo','redo','importImage','materials','layers','ratio','done'].map(name => action(name).count())).then(counts => counts.every(count => count === 1)))
   await action('materials').click()
   const panelProbe = await proveProbe(page.locator('[data-whiteboard-panel]'), 'materials panel actually opens')
   await expect(page.locator('[data-whiteboard-panel="materials"]')).toBeVisible()
@@ -163,17 +165,6 @@ try {
   await fontInput.pressSequentially('36')
   await expect.poll(() => readNode('image').meta.whiteboardState.texts?.[0]?.fontSize).toBe(36)
   check('text size accepts ordinary sequential keyboard input', true)
-  await action('note').click()
-  await page.mouse.move(frame.x + frame.width * .6, frame.y + frame.height * .2)
-  await page.mouse.down()
-  await page.mouse.move(frame.x + frame.width * .82, frame.y + frame.height * .4, { steps: 10 })
-  await page.mouse.up()
-  const notePanel = page.locator('[data-whiteboard-panel="note"]')
-  await notePanel.getByRole('textbox').fill('Brighten this region')
-  await notePanel.getByRole('button', { name: t('generationCommon.whiteboard.addNote'), exact: true }).click()
-  await expect.poll(() => readNode('image').meta.whiteboardAnnotations?.length ?? 0).toBe(1)
-  check('region feedback is bound to original result and outside raster state', readNode('image').meta.whiteboardAnnotations[0].resultId === 'original' && !('annotations' in readNode('image').meta.whiteboardState))
-  await page.keyboard.press('Escape')
   await action('select').click()
   frame = await editor.boundingBox()
   const positionBefore = readNode('image').position
@@ -246,7 +237,7 @@ try {
   await openImage()
   await expect.poll(() => JSON.stringify(readNode('image').meta.whiteboardState.texts)).toBe(JSON.stringify(beforeSave.texts))
   check('reopen restores text and transforms', JSON.stringify(readNode('image').meta.whiteboardState.sceneTransforms) === JSON.stringify(beforeSave.sceneTransforms))
-  check('notes do not migrate to the newly saved result', await editor.getByLabel(t('generationCommon.whiteboard.annotationAria').replace('{{index}}','1'), { exact: true }).count() === 0)
+  check('legacy annotation data is ignored and kept in the saved file', JSON.stringify(readNode('image').meta.whiteboardAnnotations) === JSON.stringify(legacyAnnotations) && await editor.getByLabel('Brighten this region').count() === 0)
   await action('done').click()
   await expectAbsent(editor, { provenBy: editorProbe })
   await expect.poll(() => readNode('image').history.length).toBe(2)
@@ -265,14 +256,6 @@ try {
   await expect.poll(() => readNode('image').result.id).toBe('original')
   await expect.poll(() => readNode('image').history.length).toBe(3)
   check('switching a historical main image finishes the current board through the same save transaction', true)
-  await page.keyboard.press('Escape')
-  await openImage()
-  await editor.getByLabel(t('generationCommon.whiteboard.annotationAria').replace('{{index}}','1'),{exact:true}).click()
-  await page.locator('[data-whiteboard-panel="note"]').getByRole('button',{name:t('generationCommon.whiteboard.prepareNotes'),exact:true}).click()
-  await expectAbsent(editor,{provenBy:editorProbe})
-  await expect.poll(() => readNode('image').prompt).toContain('Brighten this region')
-  await expect(node.locator('[data-node-composer-prompt]')).toBeVisible()
-  check('preparing regional modifications restores and fills the existing composer without generation',true)
   await page.keyboard.press('Escape')
   await canvasSetZoomPercent(page, 85)
   await page.locator('[data-node-id="board"] [data-testid="whiteboard-empty-action"]').click()

@@ -1,6 +1,6 @@
 import { afterEach, expect, it, vi } from 'vitest'
-import { annotationsForResult, readWhiteboardAnnotations } from './whiteboardAnnotations'
-import { createDefaultWhiteboardState } from './whiteboardState'
+import type { GenerationCanvasNode } from '../../model/generationCanvasTypes'
+import { createDefaultWhiteboardState, readWhiteboardEditingState, whiteboardDraftIdentity } from './whiteboardState'
 import { whiteboardRasterStateKey } from './whiteboardRasterState'
 import { closeWhiteboard, finishWhiteboard, openWhiteboard, registerWhiteboardFinish, useWhiteboardSession, whiteboardSessionLifetime } from './whiteboardSession'
 
@@ -12,14 +12,14 @@ it('selection and labels do not create another raster version; bounds and transf
   expect(whiteboardRasterStateKey({ ...original, canvasDimensions: { width: 1600, height: 900 } })).not.toBe(key)
   expect(whiteboardRasterStateKey({ ...original, sceneTransforms: { offsets: { 'asset:a': { x: 20, y: 0 } }, assetTransforms: {}, flips: {} } })).not.toBe(key)
 })
-it('keeps feedback on the exact result and rejects malformed stored annotations', () => {
-  const a = { id: 'note-a', resultId: 'version-a', x: 2, y: 4, text: 'Move the lamp' }
-  const b = { ...a, id: 'note-b', resultId: 'version-b' }
-  const notes = readWhiteboardAnnotations({ meta: { whiteboardAnnotations: [a, b, { ...a, x: NaN }, { ...a, width: -4 }] } })
-  expect(notes).toHaveLength(2)
-  expect(annotationsForResult(notes, 'version-b')).toEqual([b])
-  notes[0].text = 'changed'
-  expect(a.text).toBe('Move the lamp')
+it('projects saved while the annotation tool existed open cleanly and keep the stored feedback untouched', () => {
+  const state = createDefaultWhiteboardState()
+  const legacy = [{ id: 'note-a', resultId: 'version-a', x: 2, y: 4, text: 'Move the lamp' }]
+  const node = { id: 'n', kind: 'image', result: { id: 'version-a', type: 'image', url: 'x' }, meta: { whiteboardState: state, whiteboardResultIdentity: 'version-a', whiteboardAnnotations: legacy } } as unknown as GenerationCanvasNode
+  expect(readWhiteboardEditingState(node)).toEqual(state)
+  expect(whiteboardDraftIdentity(node)).toBe('version-a')
+  expect(whiteboardDraftIdentity({ id: 'board', kind: 'whiteboard' } as GenerationCanvasNode)).toBe('board:board')
+  expect(node.meta?.whiteboardAnnotations).toBe(legacy)
 })
 it('retains the current editor after save failure and serializes switching', async () => {
   await openWhiteboard('first')

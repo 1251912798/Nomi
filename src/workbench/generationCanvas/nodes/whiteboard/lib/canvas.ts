@@ -5,7 +5,7 @@ export type CanvasDimensions = {
   height: number
 }
 
-export type ToolKey = 'brush' | 'select' | 'eraser' | 'shape' | 'text' | 'note'
+export type ToolKey = 'brush' | 'select' | 'eraser' | 'shape' | 'text'
 
 export type LayerItem = {
   id: string

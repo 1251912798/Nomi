@@ -41,7 +41,6 @@
     "src/workbench/generationCanvas/nodes/whiteboard/useWhiteboardCanvasDocument.ts",
     "src/workbench/generationCanvas/nodes/whiteboard/useWhiteboardSceneSync.ts",
     "src/workbench/generationCanvas/nodes/whiteboard/useWhiteboardSelectionActions.ts",
-    "src/workbench/generationCanvas/nodes/whiteboard/whiteboardAnnotations.ts",
     "src/workbench/generationCanvas/nodes/whiteboard/whiteboardCanvasExport.ts",
     "src/workbench/generationCanvas/nodes/whiteboard/whiteboardCanvasGeometry.ts",
     "src/workbench/generationCanvas/nodes/whiteboard/whiteboardCanvasNodeOps.ts",
@@ -81,7 +80,6 @@
     "Frame bounds and node position are owned by existing node/NodeResizer persistence; resizing the frame does not scale object geometry.",
     "Handled whiteboard keyboard input cannot also mutate outer canvas selection; native text input and IME retain control.",
     "Save, screenshot, upload and background-removal retain originating project-lifetime assertions.",
-    "Annotations are bound to a result identity and excluded from exported pixels.",
     "Original image baseline is established only after successful decode; loading/failed original import never persists an empty draft or admits Done.",
     "Save publishes against fresh store facts after capture/storage, never resurrecting concurrently deleted history.",
     "Version main/delete actions finish the active editor transaction first; project release invalidates a pending editor switch.",
@@ -408,11 +406,6 @@
     },
     {
       "kind": "read",
-      "path": "src/workbench/generationCanvas/nodes/whiteboard/InlineWhiteboard.tsx",
-      "symbol": "readWhiteboardAnnotations"
-    },
-    {
-      "kind": "read",
       "path": "src/workbench/generationCanvas/nodes/whiteboard/lib/canvas.ts",
       "symbol": "ASPECT_RATIOS"
     },
@@ -468,11 +461,6 @@
     },
     {
       "kind": "read",
-      "path": "src/workbench/generationCanvas/nodes/whiteboard/whiteboardAnnotations.ts",
-      "symbol": "WhiteboardAnnotation"
-    },
-    {
-      "kind": "read",
       "path": "src/workbench/generationCanvas/nodes/whiteboard/whiteboardCanvasExport.ts",
       "symbol": "LeaferApp"
     },
@@ -510,11 +498,6 @@
       "kind": "read",
       "path": "src/workbench/generationCanvas/nodes/whiteboard/WhiteboardDrawingTool.tsx",
       "symbol": "WhiteboardState"
-    },
-    {
-      "kind": "read",
-      "path": "src/workbench/generationCanvas/nodes/whiteboard/WhiteboardDrawingTool.tsx",
-      "symbol": "WhiteboardAnnotation"
     },
     {
       "kind": "read",
@@ -824,7 +807,7 @@
     {
       "kind": "write",
       "path": "src/workbench/generationCanvas/nodes/whiteboard/InlineWhiteboard.tsx",
-      "symbol": "whiteboardAnnotationResultId"
+      "symbol": "whiteboardDraftIdentity"
     },
     {
       "kind": "write",
@@ -850,11 +833,6 @@
       "kind": "write",
       "path": "src/workbench/generationCanvas/nodes/whiteboard/useWhiteboardCanvasDocument.ts",
       "symbol": "captureSceneTransforms"
-    },
-    {
-      "kind": "write",
-      "path": "src/workbench/generationCanvas/nodes/whiteboard/whiteboardAnnotations.ts",
-      "symbol": "resultIdentity"
     },
     {
       "kind": "write",
@@ -924,7 +902,7 @@
   ],
   "door_reduction": {
     "before": 114,
-    "after": 165,
+    "after": 161,
     "why_not": "The identical symbol set includes existing shared node dimensions, canvas shortcut admission and floating-toolbar placement readers, in addition to document/engine/session consumers. The feature makes previously implicit transform state explicit and adds result-bound annotation/text readers. Both launchers converge on one node-owned editor; version mutations finish that same session. Legitimate read projections remain separate because their node/media responsibilities differ; the old modal and obsolete controls are deleted instead of retaining a parallel editor. src/dev/optimizeDepsEntry.ts is a changed side-effect-only import entry for @floating-ui/dom: no identifier occurrence exists for door-map; it remains scoped with vite.config.ts/package manifests as dependency lifecycle evidence, not fabricated as a symbol door."
   },
   "generality_proof": "captureSceneTransforms/restoreSceneTransforms detach all three geometry populations; serializeWhiteboardState carries them for any node and legacy data gains empty transforms. LeaferCanvas exposes local selection actions to the shared editor host instead of installing a competing window listener. Both launchers request the same session; node-level mounting survives deselection. Two real Electron tracks verify the exercised closed loops; the independent report explicitly preserves every unverified original interaction. Registered inline-whiteboard-drag uses the existing unified DRIVERS/runner with five successful fresh-project repetitions of the same complete real-media walk; failed/incomplete journeys are rejected rather than accepting their frame samples.",
@@ -1052,7 +1030,7 @@
     "classification": "recurring",
     "reason": "Every editable object and both launchers can reach the same nonserialized engine-state mechanism; all nested keyboard actions can compete with outer canvas consumers.",
     "same_class_scan": [
-      "node scripts/door-map.mjs ASPECT_RATIOS AnchoredPopoverProps resolveNodeVisualSize AnchoredPopover FloatingToolbarShell zhGenerationCommon readWhiteboardAssetUrls resultIdentity getNodeResizeBounds readNodeMediaAspectRatio WhiteboardState readWhiteboardState readWhiteboardAnnotations CanvasObjectTarget CanvasText LeaferApp SceneTransforms WhiteboardAnnotation useWhiteboardSession isProjectFileReferenced shouldIgnoreCanvasShortcut createCanvasKeydownHandler floatingToolbarShift finishWhiteboard serializeWhiteboardState whiteboardAnnotationResultId registerWhiteboardFinish closeWhiteboard restoreSceneTransforms captureSceneTransforms openWhiteboard useWhiteboardCanvasDocument useWhiteboardCanvasViewport resolveAnchoredPopoverPlacement collectBottomDockRects collectBottomDockElements resolveBottomDockScope resolveUsableBottomAboveDocks useCanvasBottomDockRects AnchoredPopoverAlign AnchoredPopoverSide readWhiteboardEditingState ToolbarActionPanel --roots=src,electron",
+      "node scripts/door-map.mjs ASPECT_RATIOS AnchoredPopoverProps resolveNodeVisualSize AnchoredPopover FloatingToolbarShell zhGenerationCommon readWhiteboardAssetUrls resultIdentity getNodeResizeBounds readNodeMediaAspectRatio WhiteboardState readWhiteboardState CanvasObjectTarget CanvasText LeaferApp SceneTransforms useWhiteboardSession isProjectFileReferenced shouldIgnoreCanvasShortcut createCanvasKeydownHandler floatingToolbarShift finishWhiteboard serializeWhiteboardState whiteboardDraftIdentity registerWhiteboardFinish closeWhiteboard restoreSceneTransforms captureSceneTransforms openWhiteboard useWhiteboardCanvasDocument useWhiteboardCanvasViewport resolveAnchoredPopoverPlacement collectBottomDockRects collectBottomDockElements resolveBottomDockScope resolveUsableBottomAboveDocks useCanvasBottomDockRects AnchoredPopoverAlign AnchoredPopoverSide readWhiteboardEditingState ToolbarActionPanel --roots=src,electron",
       "rg -n \"objectOffsetsRef|assetTransformsRef|objectFlipStatesRef\" src/workbench/generationCanvas/nodes/whiteboard",
       "rg -n \"WhiteboardModal|openWhiteboard|useWhiteboardSession\" src/workbench/generationCanvas",
       "rg -n \"keydown|isComposing|Delete|ArrowRight\" src/workbench/generationCanvas/components/useCanvasShortcuts.ts src/workbench/generationCanvas/nodes/whiteboard",
@@ -1131,7 +1109,7 @@
       "Floating UI upgrades must retain cleanup-on-unmount, no idle panel watchers, transform-following and popup/action-row reachability in the real moving-anchor matrix."
     ]
   },
-  "migration": "Additive optional texts, canvasDimensions and sceneTransforms read missing legacy fields as empty/default values. Legacy results without an editable snapshot must not claim fully editable old layers. Annotation result identities remain explicit; do not migrate one version’s annotations to another by guessing.",
+  "migration": "Additive optional texts, canvasDimensions and sceneTransforms read missing legacy fields as empty/default values. Legacy results without an editable snapshot must not claim fully editable old layers. Region annotations (meta.whiteboardAnnotations) were removed on 2026-10-17 (user: \"1189 的标注工具先拿掉\"); projects that already stored them keep the data in the file, nothing reads or rewrites it, and no migration is attempted — the global annotation layer planned for 0.24 will define its own storage.",
   "residual_risks": [
     "Partial real-app retention census remains explicit; source reuse and focused green tests do not prove every original subfunction.",
     "Escape ledger popup overlap has two inspected 46-check real Electron core reports and the earlier complete 48-check performance journey plus five registered 50-check journeys, but remains reviewed until real PR settlement satisfies the unchanged fixedInPr rule.",

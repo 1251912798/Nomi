@@ -73,8 +73,8 @@ This is the complete pre-change source census, preserved row by row. `verified` 
 | N02 | Header drag moves board; asset drag moves only asset; frame resize does not scale content | Pointer gestures at zoom 100% and non-100%; document geometry and node position before/after | partial — 图片拖动不动 node、typed frame 不缩对象；header/角点真实手势未测 |
 | N03 | Adjustable exact board bounds and aspect controls persist | Resize corners, width/height, ratio lock, save/reopen/restart | partial — 宽高保存/reopen、七组动态 resize/wheel、真实逐键输入 900；重启待测 |
 | N04 | Editable text appears in export and remains editable after reopen | Chinese/English content, color/size/edit/move/group/delete/undo/export | partial — 英文编辑/导出可见/reopen、逐键字体 36；中文及完整对象动作未测 |
-| N05 | Point and regional change annotations belong to explicit result identity, excluded from image export | Add/edit/delete, switch main result, save/reopen, export pixel check | partial — 区域标注绑定原版、导出 state 排除、新版不迁移；point/edit/delete 未测 |
-| N06 | Prepare image change fills the existing composer without starting generation | Annotation → existing prompt/reference, no provider run started | partial — 图片 Prepare 还原并填写既有 composer，脚本未发起生成；独立板 Prepare 未测 |
+| N05 | ~~Point and regional change annotations~~ removed 2026-10-17 (user: "1189 的标注工具先拿掉") | n/a | removed — see plan card section "region annotation tool removed"; legacy stored data is inert |
+| N06 | ~~Prepare image change from annotations~~ removed 2026-10-17 with N05 | n/a | removed |
 | N07 | One document undo/redo owner including drawing and transforms | Move/scale/flip/text/erase/import/group/delete; one session undo owner and persisted document after close | partial — 画笔 undo/redo、橡皮 undo；全部变换/import/group/delete undo 未测 |
 | N08 | Old version resumes editable snapshot when present; absent snapshot is honestly handled | One edited version and one legacy generated version | partial — 旧原始 raster 无快照诚实恢复、新快照 reopen；旧编辑版完整恢复未测 |
 | N09 | Parameters remain in the tool row; no extra brush-width row; usable actions direct without More | Brush/eraser/text/selected asset/multi-select screenshots | partial — 紧凑直接操作/同排宽度值/靠右两行实图；全部选择状态未测 |

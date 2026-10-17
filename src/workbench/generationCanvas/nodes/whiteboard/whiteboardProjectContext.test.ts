@@ -25,7 +25,7 @@ vi.mock('react', async original => {
       return [fixture.setters.length === 1 && fixture.selection ? fixture.selection
         : typeof initial === 'function' ? initial() : initial === 'loading' && fixture.initialImageStatus ? fixture.initialImageStatus : initial, setter]
     },
-    useRef: (current: unknown) => ({ current: current ?? { captureViewportFile: fixture.capture, getState: () => null, isBusy: () => false, getSceneTransforms: () => ({ offsets: {}, assetTransforms: {}, flips: {} }), getAnnotations: () => [] } }),
+    useRef: (current: unknown) => ({ current: current ?? { captureViewportFile: fixture.capture, getState: () => null, isBusy: () => false, getSceneTransforms: () => ({ offsets: {}, assetTransforms: {}, flips: {} }) } }),
     useMemo: (compute: () => unknown) => compute(), useEffect: (callback: () => void) => { if (fixture.captureEffects) fixture.effects.push(callback) }, useLayoutEffect: () => {}, useImperativeHandle: (_ref: unknown, create: () => typeof fixture.drawingHandle) => { if (fixture.captureEffects) fixture.drawingHandle = create() },
     forwardRef: (component: unknown) => component,
   } }

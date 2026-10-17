@@ -14,12 +14,11 @@ import { withProjectAction, type ProjectExecutionContext } from '../../../projec
 import WhiteboardDrawingTool, { type WhiteboardDrawingToolHandle } from './WhiteboardDrawingTool'
 import type { WhiteboardResultLibraryItem } from './whiteboardTypes'
 import type { WhiteboardInitialImage, WhiteboardState } from './whiteboardTypes'
-import { readWhiteboardState, serializeWhiteboardState } from './whiteboardState'
+import { readWhiteboardState, serializeWhiteboardState, whiteboardDraftIdentity } from './whiteboardState'
 import { whiteboardRasterStateKey } from './whiteboardRasterState'
 import { getCanvasDimensions } from './lib/canvas'
 import { useNodeAttachedPanel } from '../nodeAttachedPanel'
 import { closeWhiteboard, registerWhiteboardFinish } from './whiteboardSession'
-import { readWhiteboardAnnotations, whiteboardAnnotationResultId } from './whiteboardAnnotations'
 import { computeMediaMetaPatch, mediaNodeSize, resolveNodeVisualSize } from '../nodeSizing'
 import i18n from '../../../../i18n'
 
@@ -73,7 +72,7 @@ export default function InlineWhiteboard({
   const [savedStateRef] = React.useState(() => ({ current: sourceNode?.meta?.whiteboardHasUnsavedChanges === true
     ? readWhiteboardState({ meta: { whiteboardState: (sourceNode.result?.raw && typeof sourceNode.result.raw === 'object' ? (sourceNode.result.raw as Record<string, unknown>).whiteboardState : undefined) } }) ?? null
     : initialState ? serializeWhiteboardState(initialState) : null }))
-  const draftIdentityRef = React.useRef(sourceNode ? whiteboardAnnotationResultId(sourceNode) : `board:${nodeId}`)
+  const draftIdentityRef = React.useRef(sourceNode ? whiteboardDraftIdentity(sourceNode) : `board:${nodeId}`)
   const lastDraftRef = React.useRef('')
   const draftTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
   const [initialDimensions] = React.useState(() => initialState?.canvasDimensions ?? getCanvasDimensions(initialState?.activeRatio ?? initialImage?.aspectRatio ?? '16:9', 1280))
@@ -87,15 +86,12 @@ export default function InlineWhiteboard({
   }, [initialDimensions, nodeId, updateNode])
 
   useNodeAttachedPanel(nodeId)
-  const annotationResultId = React.useRef(sourceNode ? whiteboardAnnotationResultId(sourceNode) : `board:${nodeId}`).current
-  const initialAnnotations = React.useRef(sourceNode ? readWhiteboardAnnotations(sourceNode) : []).current
   const persistWhiteboardState = React.useCallback(
     (stateOverride?: WhiteboardState | null) => {
       if (projectLifetime?.signal.aborted) return null
       const serializedState = stateOverride ? serializeWhiteboardState(stateOverride) : drawingRef.current?.getState()
       if (!serializedState) return null
-      const annotations = drawingRef.current?.getAnnotations() ?? initialAnnotations
-      const signature = JSON.stringify([serializedState, annotations, draftIdentityRef.current])
+      const signature = JSON.stringify([serializedState, draftIdentityRef.current])
       if (lastDraftRef.current === signature) return serializedState
       lastDraftRef.current = signature
       const latest = useGenerationCanvasStore.getState().nodes.find((node) => node.id === nodeId)
@@ -105,12 +101,11 @@ export default function InlineWhiteboard({
           whiteboardState: serializedState,
           whiteboardHasUnsavedChanges: !isSameWhiteboardState(savedStateRef.current ?? undefined, serializedState),
           whiteboardResultIdentity: draftIdentityRef.current,
-          whiteboardAnnotations: annotations,
         },
       }, { history: false })
       return serializedState
     },
-    [initialAnnotations, nodeId, projectLifetime, savedStateRef, updateNode],
+    [nodeId, projectLifetime, savedStateRef, updateNode],
   )
 
   const scheduleDraft = React.useCallback(() => {
@@ -185,7 +180,6 @@ export default function InlineWhiteboard({
           ...(serializedState ? { whiteboardState: serializedState } : {}),
           whiteboardResultIdentity: snapshotResult.id,
           whiteboardHasUnsavedChanges: false,
-          whiteboardAnnotations: drawingRef.current?.getAnnotations() ?? initialAnnotations,
           ...(mediaMeta || {}),
           ...(dimensions ? { previewHeight: snapshotSize?.previewHeight ?? latestSource.meta?.previewHeight } : {}),
         },
@@ -194,7 +188,7 @@ export default function InlineWhiteboard({
       draftIdentityRef.current = snapshotResult.id
       return true
     },
-    [captureFile, initialAnnotations, nodeId, persistWhiteboardState, savedStateRef, t, updateNode],
+    [captureFile, nodeId, persistWhiteboardState, savedStateRef, t, updateNode],
   )
 
   const handleClose = React.useCallback(async (): Promise<boolean> => {
@@ -337,7 +331,6 @@ export default function InlineWhiteboard({
       onPointerDown={(event) => event.stopPropagation()} onDoubleClick={(event) => event.stopPropagation()} onWheel={(event) => event.stopPropagation()}>
       <WhiteboardDrawingTool
         ref={drawingRef} ownerNodeId={nodeId} initialState={initialState} initialImage={initialImage}
-        initialAnnotations={initialAnnotations} annotationResultId={annotationResultId}
         canvasImageItems={canvasImageItems} resultItems={resultItems} screenshotBusy={screenshotBusy}
         screenshotLabel={sourceKind === 'image' ? t('generationCommon.whiteboard.savePrimary') : t('generationCommon.whiteboard.screenshotAndCreateNode')}
         focusResultsOnScreenshot={sourceKind !== 'image'} onScreenshot={() => void handleCreateScreenshotNode()}
@@ -345,13 +338,6 @@ export default function InlineWhiteboard({
         onRasterBaseline={setRasterBaseline}
         onDraftChange={scheduleDraft}
         onBoardDimensionsChange={resizeBoard}
-        onPrepare={async (prompt) => {
-          const targetId = sourceKind === 'whiteboard' ? await handleCreateScreenshotNode() : nodeId
-          if (projectLifetime?.signal.aborted || !targetId || !await handleClose() || projectLifetime?.signal.aborted) return
-          const store = useGenerationCanvasStore.getState()
-          const latest = store.nodes.find((item) => item.id === targetId)
-          if (latest) { store.updateNodePrompt(targetId, [latest.prompt, prompt].filter(Boolean).join('\n\n')); store.selectNode(targetId) }
-        }}
       />
     </div>
   )

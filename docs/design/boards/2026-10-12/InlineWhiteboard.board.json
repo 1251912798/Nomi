@@ -67,7 +67,6 @@
         "021-button-画笔",
         "022-button-橡皮",
         "023-button-文字",
-        "024-button-标注",
         "025-button-撤销",
         "026-button-重做",
         "027-button-导入图片",
@@ -143,10 +142,11 @@
     },
     {
       "id": "annotations",
-      "label": "版本绑定的修改标注",
-      "candidates": [],
-      "status": "implemented",
-      "assertion": "region feedback is bound to original result and outside raster state",
+      "label": "版本绑定的修改标注（标注工具 + 「用这些意见修改」入口）——已拿掉",
+      "candidates": [
+        "024-button-标注"
+      ],
+      "status": "dropped",
       "states": [
         "empty",
         "loading",
@@ -160,8 +160,12 @@
         "dark"
       ],
       "componentDecision": {
-        "kind": "reuse-with-adaptation",
-        "owner": "DrawingTool annotation overlay + existing node composer"
+        "kind": "drop",
+        "owner": "none — superseded by the global annotation layer planned for 0.24; legacy meta.whiteboardAnnotations is ignored on read and left in the file"
+      },
+      "userDecision": {
+        "quote": "1189 的标注工具先拿掉",
+        "date": "2026-10-17"
       }
     },
     {

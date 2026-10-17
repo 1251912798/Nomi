@@ -1,6 +1,6 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { IconArrowBackUp, IconArrowForwardUp, IconBrush, IconCamera, IconCheck, IconEraser, IconFlipHorizontal, IconFlipVertical, IconLayersSubtract, IconMessage, IconPhoto, IconPhotoPlus, IconPointer, IconStack2, IconTrash, IconTypography, IconWand } from '@tabler/icons-react'
+import { IconArrowBackUp, IconArrowForwardUp, IconBrush, IconCamera, IconEraser, IconFlipHorizontal, IconFlipVertical, IconLayersSubtract, IconPhoto, IconPhotoPlus, IconPointer, IconStack2, IconTrash, IconTypography, IconWand } from '@tabler/icons-react'
 import { resolveAnchoredPopoverPlacement } from '../../../../design/anchoredPopoverPlacement'
 import { DesignNumberInput } from '../../../../design/forms'
 import { ToolbarActionPanel } from '../ToolbarActionMenu'
@@ -9,7 +9,7 @@ import { collectBottomDockRects, resolveUsableBottomAboveDocks } from '../../../
 import { ASPECT_RATIOS, COMMON_COLORS, type AspectRatioKey, type ToolKey } from './lib/canvas'
 import type { CanvasObjectTarget } from './whiteboardCanvasTypes'
 
-export type WhiteboardPanel = 'materials' | 'layers' | 'note' | 'colors' | 'ratio' | null
+export type WhiteboardPanel = 'materials' | 'layers' | 'colors' | 'ratio' | null
 export type WhiteboardEditingToolbarProps = {
   activeTool: ToolKey; onToolChange: (tool: ToolKey) => void
   color: string; onColorChange: (color: string) => void
@@ -60,7 +60,6 @@ export function WhiteboardEditingToolbar(p: WhiteboardEditingToolbarProps): Reac
     brush: t('generationCommon.whiteboard.brush'),
     eraser: t('generationCommon.whiteboard.eraser'),
     text: t('generationCommon.whiteboard.text'),
-    note: t('generationCommon.whiteboard.note'),
     undo: t('generationCommon.whiteboard.undo'),
     redo: t('generationCommon.whiteboard.redo'),
     importImage: t('generationCommon.whiteboard.importImage'),
@@ -91,7 +90,7 @@ export function WhiteboardEditingToolbar(p: WhiteboardEditingToolbarProps): Reac
     <FloatingToolbarShell ariaLabel={label('title')} lockNodeId={null} side="below" centerOnNode avoidBottomDocks toolbarRef={anchorRef}>
       {([
         ['select', <IconPointer {...icon} />], ['brush', <IconBrush {...icon} />], ['eraser', <IconEraser {...icon} />],
-        ['text', <IconTypography {...icon} />], ['note', <IconMessage {...icon} />],
+        ['text', <IconTypography {...icon} />],
       ] as const).map(([tool, glyph]) => <ToolbarButton key={tool} actionId={`whiteboard-${tool}`} icon={glyph} accent={p.activeTool === tool} title={label(tool)} ariaLabel={label(tool)} className="w-8 px-0" onClick={() => { close(); p.onToolChange(tool) }} />)}
       {(p.activeTool === 'brush' || p.textValue !== undefined) && <button type="button" data-toolbar-action="whiteboard-colors" className="grid size-8 place-items-center rounded-nomi-sm hover:bg-nomi-ink-05" aria-label={label('customBrushColor')} onClick={() => openLocal('colors')}><span className="size-4 rounded-full border border-nomi-line" style={{ backgroundColor: p.color }} /></button>}
       {(p.activeTool === 'brush' || p.activeTool === 'eraser') && <><input className="w-16 accent-nomi-accent" type="range" min={4} max={96} value={p.brushSize} aria-label={label('brushSize')} onChange={event => p.onBrushSizeChange(Number(event.target.value))} /><output className="w-5 text-center text-caption tabular-nums text-nomi-ink-60">{p.brushSize}</output></>}
@@ -116,12 +115,12 @@ export function WhiteboardEditingToolbar(p: WhiteboardEditingToolbarProps): Reac
       <ToolbarDivider />
       <button type="button" data-toolbar-action="whiteboard-ratio" className="h-8 rounded-nomi-sm px-2 text-caption tabular-nums text-nomi-ink-60 hover:bg-nomi-ink-05" aria-label={label('canvasSize')} onClick={() => openLocal('ratio')}>{p.dimensions.width} × {p.dimensions.height}</button>
       {p.onScreenshot && <ToolbarIconButton actionId="whiteboard-capture" icon={<IconCamera {...icon} />} title={p.screenshotLabel} ariaLabel={p.screenshotLabel} onClick={p.onScreenshot} disabled={p.screenshotBusy} />}
-      <ToolbarButton actionId="whiteboard-done" icon={<IconCheck {...icon} />} label={label('done')} accent disabled={p.screenshotBusy || p.uploading || p.removeBgBusy} onClick={p.onDone} />
+      <ToolbarButton actionId="whiteboard-done" icon={null} label={label('done')} accent disabled={p.screenshotBusy || p.uploading || p.removeBgBusy} onClick={p.onDone} />
     </FloatingToolbarShell>
     {p.panel && <ToolbarActionPanel trackTransforms anchorRef={anchorRef} boundaryRect={boundaryRect} align="center" side="bottom" gap={8} onClose={close}>
       <div data-whiteboard-panel={p.panel} className="nodrag nopan nokey nowheel w-max max-w-[560px] overflow-hidden rounded-nomi border border-nomi-line bg-nomi-paper text-nomi-ink shadow-nomi-md" onPointerDown={event => event.stopPropagation()} onKeyDown={event => event.stopPropagation()}>
         {p.panel === 'colors' ? <div className="flex items-center gap-2 p-2">
-          {COMMON_COLORS.map(color => <button type="button" key={color} aria-label={t('generationCommon.whiteboard.colorAria', { color })} aria-pressed={color === p.color} className="size-6 rounded-full border border-nomi-line focus-visible:outline-nomi-accent" style={{ backgroundColor: color }} onClick={() => p.onColorChange(color)} />)}
+          {COMMON_COLORS.map(color => <button type="button" key={color} aria-label={t('generationCommon.whiteboard.colorAria', { color })} aria-pressed={color === p.color} className="size-6 rounded-full border border-nomi-line focus-visible:outline-nomi-ink" style={{ backgroundColor: color }} onClick={() => p.onColorChange(color)} />)}
           <input type="color" value={p.color} aria-label={label('customBrushColor')} onChange={event => p.onColorChange(event.target.value)} className="size-7 cursor-pointer border-0 bg-transparent p-0" />
         </div> : p.panel === 'ratio' ? <div className="grid gap-2 p-3">
           <div className="flex items-center justify-center gap-1">{ASPECT_RATIOS.map(ratio => <button type="button" key={ratio.label} aria-pressed={ratio.label === p.ratio} className="h-7 rounded-nomi-sm px-2 text-caption hover:bg-nomi-ink-05" onClick={() => p.onRatioChange(ratio.label)}>{ratio.label}</button>)}</div>

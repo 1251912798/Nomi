@@ -63,7 +63,6 @@ type LeaferCanvasProps = {
   onSceneTransformsChange?: (value: SceneTransforms) => void
   onSelectionChange?: (targets: CanvasObjectTarget[]) => void
   onTextPlace?: (point: CanvasPoint) => void
-  onNotePlace?: (point: CanvasPoint) => void
   assets: CanvasAsset[]
   color: string
   brushSize: number
@@ -113,7 +112,6 @@ export const LeaferCanvas = forwardRef<LeaferCanvasHandle, LeaferCanvasProps>(fu
   onSceneTransformsChange,
   onSelectionChange,
   onTextPlace,
-  onNotePlace,
   color,
   brushSize,
   strokes,
@@ -729,14 +727,13 @@ export const LeaferCanvas = forwardRef<LeaferCanvasHandle, LeaferCanvasProps>(fu
           role="application"
           aria-label={t('generationCommon.whiteboard.drawingLayerAria')}
           onPointerDown={(event) => {
-            if (activeTool === 'text' || activeTool === 'note') {
+            if (activeTool === 'text') {
               event.preventDefault()
               event.stopPropagation()
               const stage = stageRef.current
               if (!stage) return
               const point = getCanvasPointFromClient(event.clientX, event.clientY, stage.getBoundingClientRect(), dimensionsRef.current)
-              const place = activeTool === 'text' ? onTextPlace : onNotePlace
-              place?.({ x: point[0], y: point[1] })
+              onTextPlace?.({ x: point[0], y: point[1] })
               return
             }
             handlePointerDown(event)
