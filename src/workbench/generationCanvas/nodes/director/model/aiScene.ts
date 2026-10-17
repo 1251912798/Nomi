@@ -1,16 +1,15 @@
 /**
- * [INPUT]: 依赖 zod、./directorSpace 的 originYForCenter（中心 → 原点唯一换算）、./directorTypes（DirectorPrimitiveType / DIRECTOR_PRIMITIVE_TYPES / Vec3）、./vec3 的 RAD_TO_DEG
- * [OUTPUT]: 对外提供 AiSceneSpec / AiSceneElement / AiSceneGroup、aiSceneSchema、parseAiSceneText、normalizeAiScene（position 由「几何中心」换成对象原点，AiSceneBar 与规划器 dressing 共用）、buildAiScenePrompt、
+ * [INPUT]: 依赖 ./directorSpace 的 originYForCenter（中心 → 原点唯一换算）、./directorTypes（DirectorPrimitiveType / DIRECTOR_PRIMITIVE_TYPES / Vec3）、./vec3 的 RAD_TO_DEG
+ * [OUTPUT]: 对外提供 AiSceneSpec / AiSceneElement / AiSceneGroup、normalizeAiScene（position 由「几何中心」换成对象原点，规划器 dressing 与资产导入共用）、
  *           primitiveTypeFromName、rotationLooksLikeRadians、AI_SCENE_FIXTURE
- * [POS]: director/model 的「AI 搭场景」纯层：LLM 直出 block-out 几何的 JSON 契约、容错解析（剥 Markdown 围栏 / 抓第一段 JSON）、
- *        类型名映射到 V2 八种几何体（多出的映射到最近似）、旋转弧度 / 角度启发式（全部 |r| ≤ 2π 视为弧度）、提示词模板；物化进 store 在 storeAiSceneActions。
+ * [POS]: director/model 的 block-out 场景纯层：场景 JSON 契约、类型名映射到 V2 八种几何体（多出的映射到最近似）、
+ *        旋转弧度 / 角度启发式（全部 |r| ≤ 2π 视为弧度）；物化进 store 在 storeAiSceneActions。视口底部的「AI 搭场景」胶囊 2026-10-16 随旧导演台删除（去处 = 右侧 Agent 面板）。
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
 import { originYForCenter } from './directorSpace'
 import { DIRECTOR_PRIMITIVE_TYPES, type DirectorPrimitiveType, type Vec3 } from './directorTypes'
 import { RAD_TO_DEG } from './vec3'
 
-import { aiSceneSchema } from '../../../../../../electron/shared/director/aiSceneSchema'
 import type { AiSceneSpec, AiSceneGroup } from '../../../../../../electron/shared/director/aiSceneSchema'
 
 export const AI_SCENE_MAX_ELEMENTS = 60
@@ -137,37 +136,6 @@ export function normalizeAiScene(spec: AiSceneSpec, fallbackSceneName: string): 
   }
 }
 
-// 模型回复容错：剥 ```json 围栏、抓第一个 { 到最后一个 }；解析失败或不合 schema 返回 null
-export function parseAiSceneText(text: string): AiSceneSpec | null {
-  const stripped = text.replace(/```(?:json)?/gi, '').trim()
-  const start = stripped.indexOf('{')
-  const end = stripped.lastIndexOf('}')
-  if (start < 0 || end <= start) return null
-  let raw: unknown
-  try {
-    raw = JSON.parse(stripped.slice(start, end + 1))
-  } catch {
-    return null
-  }
-  const parsed = aiSceneSchema.safeParse(raw)
-  return parsed.success ? parsed.data : null
-}
-
-// 提示词：只回 JSON；米制 y 向上、地面 y=0、position 是中心、scale 是尺寸、rotation 用度；组 2–6、元素 ≤ 40
-export function buildAiScenePrompt(description: string, referenceImageCount: number): string {
-  const types = DIRECTOR_PRIMITIVE_TYPES.join('|')
-  return [
-    'You are a 3D block-out planner for a film director console. Build the described scene from primitive shapes only.',
-    'Reply with a single JSON object and nothing else: no prose, no Markdown fences.',
-    'Coordinate system: metric meters, y up, z toward the audience, ground plane at y = 0. `position` is the element center, `scale` is the size on each axis in meters, `rotation` is in degrees.',
-    `Schema: {"sceneName": string, "sceneConfig": {"skyColor": "#rrggbb", "groundOpacity": 0..1}, "groups": [{"name": string, "elements": [{"type": "${types}", "name": string, "position": [x,y,z], "rotation": [x,y,z], "scale": [x,y,z], "color": "#rrggbb", "roughness": 0..1, "metalness": 0..1, "opacity": 0..1}]}]}`,
-    'Rules: 2 to 6 groups, at most 40 elements in total; objects rest on the ground (y = height / 2); realistic proportions; keep the main subject within 6 meters of the origin; use a coordinated low-saturation palette; name groups and elements in the same language as the description.',
-    referenceImageCount > 0 ? `${referenceImageCount} reference image(s) are attached: follow their layout and palette.` : '',
-    `Scene description: ${description.trim()}`,
-  ]
-    .filter(Boolean)
-    .join('\n')
-}
 
 // 固定夹具：单测与开发入口（无文本模型时）复现同一布局——「街角咖啡馆」三组 12 件
 export const AI_SCENE_FIXTURE: AiSceneSpec = {

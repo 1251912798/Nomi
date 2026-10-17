@@ -1,13 +1,12 @@
 // 设计实验室 · 屏「导演视图（3D-BOX）」的取景台与夹具。
 //
 // 2026-10-04 用户拍板：导演视图的样张不再手写 HTML——**样张就是生产组件本身**。这一屏每一格渲染的是
-// 现役 `DirectorEditor`（开关开时它的默认面就是 `DirectorViewShell`，精修是同一个编辑器里的另一分支），
+// 现役 `DirectorEditor`（默认面就是 `DirectorViewShell`，精修是同一个编辑器里的另一面），
 // 右侧是现役 Agent 面板（v4 实验室的 `ShellStage`：真投影 store + 真 shell）。这里**一行界面 JSX 都不写**，
 // 只给三样东西：
 //   · 数据：courtyard-standoff 那份 S1 oracle 计划（`evals/director/s1OraclePlans.ts`）交给现役编译器编出来的工程，
 //     与评测、真机注入的是同一份——画面上的「青衣女子 / 黑衣侍卫」、镜头窗、实测景别全是 derive 出来的；
-//   · 桥：只读的 3D-BOX 开关证明（真机由主进程经 preload 给；实验室没有 Electron，给一份同形状的只读值），
-//     以及导演台既有的 E2E 取证桥开关（只用来读「角色挂上没有」，不写任何东西）；
+//   · 桥：导演台既有的 E2E 取证桥开关（只用来读「角色挂上没有」，不写任何东西）；
 //   · 用户动作：点第 2 张镜头卡 / 点「精修」，走的是界面上那两颗真按钮，不往 store 里塞状态。
 // 等待：3D 场景是异步落定的（角色 GLB、动作片段），格子在轻量外壳里登记一个就绪持有（labReadyHold），场景真落定才释放。
 // 这个模块只经 director3dboxLazyStage 动态加载：导演台模块图里有模块级的人偶 GLB 预取（CharacterEntity 的
@@ -20,7 +19,9 @@ import DirectorEditor from '../../../workbench/generationCanvas/nodes/director/D
 import { compileDirectorPlan } from '../../../workbench/generationCanvas/nodes/director/model/compiler/directorPlanCompiler'
 import { applyDirectorPlanEdits, canonicalDirectorPlan, directorPlanRevision } from '../../../../electron/shared/director/planPatch'
 import { parseDirectorPlan, type DirectorPlan } from '../../../../electron/shared/director/directorPlanSchema'
-import { DIRECTOR_NODE_KIND, DIRECTOR_PLAN_META_KEY, DIRECTOR_PROJECT_META_KEY } from '../../../workbench/generationCanvas/nodes/director/model/directorNodeMeta'
+import { DIRECTOR_NODE_KIND, DIRECTOR_PLAN_META_KEY, DIRECTOR_PREVIEW_META_KEY, DIRECTOR_PROJECT_META_KEY } from '../../../workbench/generationCanvas/nodes/director/model/directorNodeMeta'
+import type { DirectorPreviewFailure } from '../../../workbench/generationCanvas/nodes/director/model/directorPreviewState'
+import type { DirectorPreviewStatus } from '../../../../electron/shared/director/directorPreviewStatus'
 import { useGenerationCanvasStore } from '../../../workbench/generationCanvas/store/generationCanvasStore'
 import type { GenerationCanvasNode } from '../../../workbench/generationCanvas/model/generationCanvasTypes'
 import { createDirectorStore } from '../../../workbench/generationCanvas/nodes/director/model/directorStore'
@@ -37,23 +38,28 @@ import type { Director3dBoxFixture, LabDrive, LabStep } from './director3dboxCel
 /** 右侧 Agent 面板宽：与 v4 实验室同一取值，导演视图占的画布宽因此与真机 1280 窗口一致（≈858）。 */
 const AGENT_PANEL_WIDTH = 390
 
-const PLAN_ID = 'courtyard-standoff'
-// 节点标题是画布节点的数据（用户起的名字），不是界面文案：三镜格用样张里那个工程名，空工程用新建导演台节点的默认名
-const COURTYARD_TITLE: Record<AppLocale, string> = { 'zh-CN': '古装庭院对峙', en: 'Courtyard standoff' }
+type ProjectFixture = Exclude<Director3dBoxFixture, 'empty'>
+const PLAN_ID: Record<ProjectFixture, string> = { courtyard: 'courtyard-standoff', 'courtyard-after': 'courtyard-standoff', chase: 'police-chase' }
+// 节点标题是画布节点的数据（用户起的名字），不是界面文案：多镜格用样张里那个工程名，空工程用新建导演台节点的默认名
+const FIXTURE_TITLE: Record<ProjectFixture, Record<AppLocale, string>> = {
+  courtyard: { 'zh-CN': '古装庭院对峙', en: 'Courtyard standoff' },
+  'courtyard-after': { 'zh-CN': '古装庭院对峙', en: 'Courtyard standoff' },
+  chase: { 'zh-CN': '夜街追车', en: 'Night street chase' },
+}
 
 /** 导演台节点在画布上的 id：编辑器经它登记会话，「正在改：镜头 N」读这个节点上的计划修订号与镜头名。 */
 const LAB_DIRECTOR_NODE_ID = 'lab-director-3dbox'
 type CourtyardFixture = { plan: DirectorPlan; project: DirectorProject }
-const courtyardCache = new Map<'courtyard' | 'courtyard-after', CourtyardFixture>()
+const courtyardCache = new Map<ProjectFixture, CourtyardFixture>()
 /**
  * 现役编译器把 oracle 计划编成工程；编不出来就当场抛（夹具坏了要红，不许悄悄换成空工程）。
  * courtyard-after：同一份计划经现役补丁应用器把第 2 镜改成特写，再编——与 Agent 交补丁走同一个应用器。
  */
-function courtyardFixture(kind: 'courtyard' | 'courtyard-after'): CourtyardFixture {
+function courtyardFixture(kind: ProjectFixture): CourtyardFixture {
   const cached = courtyardCache.get(kind)
   if (cached) return cached
-  const parsed = parseDirectorPlan(S1_ORACLE_PLANS[PLAN_ID])
-  if (!parsed.success) throw new Error(`director3dbox lab: ${PLAN_ID} 计划不合法`)
+  const parsed = parseDirectorPlan(S1_ORACLE_PLANS[PLAN_ID[kind]])
+  if (!parsed.success) throw new Error(`director3dbox lab: ${PLAN_ID[kind]} 计划不合法`)
   let plan = canonicalDirectorPlan(parsed.data)
   if (kind === 'courtyard-after') {
     const second = plan.shots[1]?.id
@@ -62,29 +68,37 @@ function courtyardFixture(kind: 'courtyard' | 'courtyard-after'): CourtyardFixtu
     plan = patched.plan
   }
   const compiled = compileDirectorPlan(plan)
-  if (!compiled.ok) throw new Error(`director3dbox lab: ${PLAN_ID} 编译失败：${compiled.errors.join('; ')}`)
+  if (!compiled.ok) throw new Error(`director3dbox lab: ${PLAN_ID[kind]} 编译失败：${compiled.errors.join('; ')}`)
   const fixture = { plan, project: compiled.project }
   courtyardCache.set(kind, fixture)
   return fixture
 }
 
 /** 画布上放一个带计划正本的导演台节点（stage_shot 建出来的节点就长这样）：编辑器经它登记会话。 */
-function installCanvasNode(fixture: CourtyardFixture | null): void {
+/** 导演节点上的预演处于哪一态（「出成片」主按钮的几种样子）；none = 没出过预演。 */
+export type LabPreview = DirectorPreviewStatus | Extract<DirectorPreviewFailure, 'too_long'>
+
+function labPreviewMeta(preview: LabPreview, revision: string): Record<string, unknown> {
+  if (preview === 'none') return {}
+  const status = preview === 'too_long' ? 'failed' : preview
+  return { [DIRECTOR_PREVIEW_META_KEY]: {
+    status, revision, updatedAt: 1,
+    ...(preview === 'too_long' ? { reason: 'too_long' } : preview === 'failed' ? { reason: 'capture_failed' } : {}),
+    ...(preview === 'ready' ? { videoUrl: 'nomi-local://asset/lab/preview.mp4', attach: 'video_ref' } : {}),
+  } }
+}
+
+function installCanvasNode(fixture: CourtyardFixture | null, preview: LabPreview = 'none'): void {
+  const revision = fixture ? directorPlanRevision(fixture.plan) : ''
   const node = fixture ? ({
     id: LAB_DIRECTOR_NODE_ID, kind: DIRECTOR_NODE_KIND, title: '', position: { x: 0, y: 0 },
-    meta: { [DIRECTOR_PROJECT_META_KEY]: fixture.project, [DIRECTOR_PLAN_META_KEY]: { plan: fixture.plan, revision: directorPlanRevision(fixture.plan), issueCount: 0 } },
+    meta: { [DIRECTOR_PROJECT_META_KEY]: fixture.project, [DIRECTOR_PLAN_META_KEY]: { plan: fixture.plan, revision, issueCount: 0 }, ...labPreviewMeta(preview, revision) },
   } as unknown as GenerationCanvasNode) : null
   useGenerationCanvasStore.getState().restoreSnapshot({ nodes: node ? [node] : [], edges: [], groups: [], selectedNodeIds: [] } as never)
 }
 
-// 只读开关证明：形状与 preload 给渲染端的那份一致（src/desktop/bridge.ts 的 featureFlags.director3dbox）。
-// 开关关 = 旧导演台（没有导演视图，壳铺满窗口）——精修新布局要证明「旧导演台一起变，不分两套」。
-function installReadOnlyBridge(flag: 'on' | 'off'): void {
-  const host = window as unknown as { nomiDesktop?: Record<string, unknown> }
-  host.nomiDesktop = {
-    ...(host.nomiDesktop ?? {}),
-    featureFlags: { director3dbox: { enabled: flag === 'on', source: 'env', fingerprint: `director3dbox:${flag}:2026-11-15`, expiresOn: '2026-11-15' } },
-  }
+// 打开导演台的测试取证桥（__nomiDirectorE2E），下面的就绪等待靠它判断 3D 场景落定。
+function enableDirectorE2EBridge(): void {
   try {
     window.localStorage.setItem('__nomiE2E', '1')
   } catch {
@@ -213,11 +227,14 @@ export type Director3dBoxStageProps = {
   drive?: LabDrive
   /** 精修「选中才出」格在 drive 之后要点的真按钮 */
   steps?: readonly LabStep[]
-  flag?: 'on' | 'off'
   /** Agent 面板宽：缺省 390（壳 858）；窄格给 520，把壳压到 728（真机最小窗 1100 × 默认 Agent 时的壳宽） */
   agentWidth?: number
   /** 右侧对话：空，或「Agent 改完第 2 镜」那一轮（画布 ⑤）。 */
   conversation?: 'empty' | 'after-patch'
+  /** 导演节点上的预演状态（「出成片」主按钮各态）。 */
+  preview?: LabPreview
+  /** 可编辑：只有「出成片」各态的格子要按钮可点的样子；其余格子只读（不落盘、不登记撤销前落盘）。 */
+  editable?: boolean
   release: () => void
 }
 
@@ -230,16 +247,16 @@ function afterPatchItems(): ReturnType<typeof labHostState> {
   ] })
 }
 
-export function Director3dBoxStage({ locale, fixture, drive = 'none', steps = NO_STEPS, flag = 'on', agentWidth = AGENT_PANEL_WIDTH, conversation = 'empty', release }: Director3dBoxStageProps): JSX.Element {
+export function Director3dBoxStage({ locale, fixture, drive = 'none', steps = NO_STEPS, agentWidth = AGENT_PANEL_WIDTH, conversation = 'empty', preview = 'none', editable = false, release }: Director3dBoxStageProps): JSX.Element {
   React.useMemo(() => {
-    installReadOnlyBridge(flag)
+    enableDirectorE2EBridge()
     // 导演台壳的右缘读工作台 store 的 Agent 宽（真机同一个值），实验室把它设成这一格要的宽
     useWorkbenchStore.getState().setAssistantWidth(agentWidth)
     void i18n.changeLanguage(locale)
-  }, [agentWidth, flag, locale])
+  }, [agentWidth, locale])
   const courtyard = React.useMemo(() => (fixture === 'empty' ? null : courtyardFixture(fixture)), [fixture])
   const project = courtyard?.project ?? null
-  React.useMemo(() => installCanvasNode(courtyard), [courtyard])
+  React.useMemo(() => installCanvasNode(courtyard, preview), [courtyard, preview])
   React.useEffect(() => {
     let alive = true
     driveAndSettle(drive, steps, project)
@@ -253,11 +270,11 @@ export function Director3dBoxStage({ locale, fixture, drive = 'none', steps = NO
       release()
     }
   }, [drive, project, release, steps])
-  const title = project ? COURTYARD_TITLE[locale] : i18n.t('director.node.title')
+  const title = fixture !== 'empty' ? FIXTURE_TITLE[fixture][locale] : i18n.t('director.node.title')
   const noop = React.useCallback(() => undefined, [])
   return (
     <>
-      <DirectorEditor rawProject={project ?? undefined} nodeTitle={title} readOnly nodeId={courtyard ? LAB_DIRECTOR_NODE_ID : undefined} onClose={noop} onProjectChange={noop} />
+      <DirectorEditor rawProject={project ?? undefined} nodeTitle={title} readOnly={!editable} nodeId={courtyard ? LAB_DIRECTOR_NODE_ID : undefined} onClose={noop} onProjectChange={noop} />
       <div className="fixed inset-y-0 right-0 bg-nomi-bg p-4" style={{ width: assistantPaneWidth(agentWidth) }}>
         <ShellStage surface="generation" snapshot={conversation === 'after-patch' ? afterPatchItems() : labHostState({ items: [] })} width={agentWidth} height={window.innerHeight - assistantPaneWidth(0)} />
       </div>
@@ -272,7 +289,7 @@ export function Director3dBoxStage({ locale, fixture, drive = 'none', steps = NO
  */
 export function Director3dBoxFocusTagOnlyStage({ locale, release }: { locale: AppLocale; release: () => void }): JSX.Element {
   React.useMemo(() => {
-    installReadOnlyBridge('on')
+    enableDirectorE2EBridge()
     void i18n.changeLanguage(locale)
   }, [locale])
   React.useEffect(() => {

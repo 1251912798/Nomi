@@ -32,14 +32,11 @@ describe("curated Skill and effect intake", () => {
     }
   })
 
-  it("explicitly exposes all 49 curated Skills through the existing Workbench opt-in policy (flag-bound ones only with their flag)", async () => {
+  it("explicitly exposes all 49 curated Skills through the existing Workbench opt-in policy", async () => {
     const records = await builtin()
     const library = records.filter(record => record.curation?.kind === 'skill')
     expect(library).toHaveLength(49)
-    // 3D-BOX 工作流技能绑在构建开关上：开关关（单测默认）不可选，其余 48 个照旧全部可选。
-    const flagBound = library.filter(record => record.manifest?.requiresFlag === 'director3dbox').map(record => record.name)
-    expect(flagBound).toEqual(['director-3dbox'])
-    expect(library.filter(isSkillSelectableInWorkbench).map(record => record.name).sort()).toEqual(library.map(record => record.name).filter(name => !flagBound.includes(name)).sort())
+    expect(library.filter(isSkillSelectableInWorkbench).map(record => record.name).sort()).toEqual(library.map(record => record.name).sort())
   })
 
   it("accepts the repository's declared AGPL license without relabeling first-party cover metadata", () => {

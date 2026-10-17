@@ -15,7 +15,6 @@ import { projectAgentAttachmentClaims } from '../projectAgentAttachments'
 import { restoreProjectAgentInputs } from '../projectAgentDraftRecovery'
 import { buildResidentContextSnapshot, mergeResidentContextHandles, type AgentContextSnapshot } from '../resident/residentContextSnapshot'
 import i18n from '../../../i18n'
-import { isDirector3DBoxEnabled } from '../../../featureFlags/director3dbox'
 import { readDirectorShotFocus } from '../../generationCanvas/nodes/director/directorSessionRegistry'
 import { directorShotContextHandles } from '../../generationCanvas/nodes/director/model/directorShotFocus'
 import { composeResidentSystemPrompt } from '../resident/residentPromptSelection'
@@ -78,7 +77,7 @@ function captureSendContext(surface: ResidentSurface, prompt:string, attachments
       : null,
   })
   // 3D-BOX：导演台里选中的计划镜头随这一句一起走（「正在改：镜头 N」的数据；模型按镜头名补丁）
-  const directorShots = surface === 'generation' && isDirector3DBoxEnabled()
+  const directorShots = surface === 'generation'
     ? directorShotContextHandles(readDirectorShotFocus(), (index) => i18n.t('director.agent.focusShot', { index }), i18n.t('director.agent.boxPreview'))
     : []
   const snapshot = mergeResidentContextHandles(selection, [...directorShots, ...agentReferenceContext(attachments,prompt,canvas.nodes,canvas.persistRevision)])

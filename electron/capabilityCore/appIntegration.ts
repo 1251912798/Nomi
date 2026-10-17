@@ -1,4 +1,5 @@
 import { readAgentApprovalPolicy } from '../settings/agentApprovalPolicySettings'
+import { parseDirectorPreviewBlockReply } from "../shared/director/directorPreviewStatus";
 import { spendReferenceKey } from "../shared/contracts/pendingSpendConfirm";
 // 能力核 · app 集成（见 docs/plan/2026-06-20-capability-core-headless-exposure.md §S4）。
 //
@@ -321,11 +322,8 @@ export async function startCapabilityCore(
       receipts: defaults.approvalReceiptAuthority!,
       providers: submissionProviders,
       buildSubmission,
-      previewBlock: async (projectId, nodeId) => {
-        const reply = await requestRenderer('director.preview-blocks', { projectId, nodeIds: [nodeId] }, 10_000) as { blocks?: Array<{ reason?: unknown }> } | null
-        const reason = reply?.blocks?.[0]?.reason
-        return reason === 'rendering' || reason === 'failed' ? reason : null
-      },
+      // 回包只经唯一解析认：认不得的挡住原因按挡处理（fail-closed），不再白名单过滤成「放行」
+      previewBlock: async (projectId, nodeId) => parseDirectorPreviewBlockReply(await requestRenderer('director.preview-blocks', { projectId, nodeIds: [nodeId] }, 10_000)),
       quote: (input) => { const amount = quoteSpendLine(input).amount; return amount === null ? { known: false } : { known: true, amount } },
       observe: observeSingleShotRun,
     })

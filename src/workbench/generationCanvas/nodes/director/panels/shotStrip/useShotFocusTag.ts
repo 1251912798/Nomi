@@ -6,7 +6,6 @@
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
 import { useTranslation } from 'react-i18next'
-import { isDirector3DBoxEnabled } from '../../../../../../featureFlags/director3dbox'
 import { clearDirectorShotFocus } from '../../directorSessionRegistry'
 import { useDirectorShotFocus } from '../../useDirectorShotFocus'
 import { useShotLabels } from './shotLabels'
@@ -40,7 +39,7 @@ export function shotFocusTagText(focus: DirectorShotFocus | null, t: Translate, 
 export function useShotFocusTag(): ShotFocusTag | null {
   const { t } = useTranslation()
   const labels = useShotLabels()
-  const focus = useDirectorShotFocus(isDirector3DBoxEnabled())
+  const focus = useDirectorShotFocus()
   const text = shotFocusTagText(focus, t as unknown as Translate, labels.headline as never)
   return text ? { ...text, onClear: clearDirectorShotFocus } : null
 }
