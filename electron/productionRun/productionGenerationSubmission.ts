@@ -591,7 +591,7 @@ export function createProductionGenerationSubmission(deps: ProductionGenerationS
     if (!isSuccessfulProviderStatus(polled.status)) throw new GenerationMaterializationError("The provider returned an unknown status; reconcile before materialization");
     let extracted: { outputs: readonly GenerationProviderOutput[] };
     try {
-      extracted = await adapter.materialize({ providerId: job.provider, providerTaskId: job.providerTaskId, raw: polled.raw });
+      extracted = await adapter.materialize({ providerId: job.provider, providerTaskId: job.providerTaskId, raw: polled.raw, context: { modelId: contract.modelId, mode: contract.mode, parameters: contract.parameters } });
     } catch (error) {
       if (error instanceof GenerationProviderObservationError) throw new GenerationMaterializationUnsupportedError();
       throw error;

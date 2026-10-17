@@ -15,7 +15,7 @@ import { vendorHttpTimeoutMs } from "../vendor/vendorHttp";
 import type { Dispatcher } from "undici";
 import { describeOutboundFailure } from "../outboundDispatchEvidence";
 import { readMaterializationOutputs } from "./apimartGenerationOutputs";
-import { expectedMediaKind, readProviderStatusWord } from "../tasks/taskResultReading";
+import { expectedMediaKind, readProviderStatusWord, requestEchoUrls } from "../tasks/taskResultReading";
 import { productionGenerationPayloadHash } from "../productionRun/productionGenerationAuthorization";
 import { readCatalog } from "../catalog/catalogStore";
 import { builtinVendorScopeMatches, isBuiltinDirectKeyVendor } from "../catalog/builtinVendorSeeds";
@@ -463,7 +463,7 @@ export function createCatalogGenerationProvider(options: CatalogGenerationProvid
   const projectionCache = new Map<string, { inputHash: string; body: JsonRecord; prepared: PreparedRequest; request: TaskRequest }>();
   const requestByPreparedKey = new Map<string, TaskRequest>();
   /** providerTaskId → 它是用哪个模型 / 哪一档模式提交的。轮询要靠它找回那条 mapping 的 query op。 */
-  const selectionByTaskId = new Map<string, { modelKey: string; taskKind: ProfileKind }>();
+  const selectionByTaskId = new Map<string, { modelKey: string; taskKind: ProfileKind; echoUrls: ReadonlySet<string> }>();
   const preparedKey = (prepared: PreparedRequest): string => `${prepared.modelKey}|${prepared.mappingId}|${prepared.taskKind}|${prepared.fingerprint}`;
 
   const select = (modelKey: string, taskKind: ProfileKind): CatalogSelection =>
@@ -659,7 +659,7 @@ export function createCatalogGenerationProvider(options: CatalogGenerationProvid
         `${vendorKey} submission did not return a task id${failure ? `: ${failure}` : ""}`,
       );
     }
-    selectionByTaskId.set(taskId.trim(), { modelKey: prepared.modelKey, taskKind: prepared.taskKind });
+    selectionByTaskId.set(taskId.trim(), { modelKey: prepared.modelKey, taskKind: prepared.taskKind, echoUrls: requestEchoUrls(body) });
     while (selectionByTaskId.size > 512) {
       const oldest = selectionByTaskId.keys().next().value;
       if (typeof oldest !== "string") break;
@@ -771,11 +771,14 @@ export function createCatalogGenerationProvider(options: CatalogGenerationProvid
     query: queryTask,
     async materialize(input) {
       // 地址只经唯一读法（readMaterializationOutputs → readTaskResponse）；认不出是哪条任务就只用通用规则、不猜合同。
-      // 期望类型只信「确实知道是哪条任务」的记录：③「每条 query 都一样」选出的 mapping 说明不了要图还是要视频。
-      const id = input.providerTaskId.trim(), remembered = selectionByTaskId.get(id);
-      const target = (() => { try { return queryTargetFor(id); } catch { return null; } })();
+      // 期望类型只信「确实知道是哪条任务」的记录（内存里的提交 / 账本冻结合同的 mode）：③「每条 query 都一样」选出的
+      // mapping 说明不了要图还是要视频。生产入口（适配器）必带 context，不带上下文的取产物只剩直调 provider 的测试。
+      const id = input.providerTaskId.trim(), remembered = selectionByTaskId.get(id), context = input.context;
+      const target = (() => { try { return queryTargetFor(id, context); } catch { return null; } })();
       const query = target ? { responseMapping: isJsonRecord(target.operation.response_mapping) ? target.operation.response_mapping : null, statusMapping: target.mapping.statusMapping } : null;
-      return { outputs: readMaterializationOutputs(input.raw, query, remembered ? expectedMediaKind(billingKindForTaskKind(remembered.taskKind)) : null), raw: input.raw };
+      const taskKind = remembered?.taskKind ?? ((normalizedMode(context?.mode) || undefined) as ProfileKind | undefined);
+      const echoUrls = new Set([...(remembered?.echoUrls ?? []), ...requestEchoUrls(context?.parameters)]);
+      return { outputs: readMaterializationOutputs(input.raw, query, taskKind ? expectedMediaKind(billingKindForTaskKind(taskKind)) : null, echoUrls), raw: input.raw };
     },
     async reconcile(input) {
       if (!input.providerTaskId?.trim()) return { disposition: "indeterminate" };

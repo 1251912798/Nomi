@@ -19,7 +19,7 @@ vi.mock("electron", () => ({
 import { applyBuiltinSeeds } from "./seedBuiltins";
 import { nativeWireProfileForArchetype } from "./nativeWireProfiles";
 import { newapiTransportFor } from "./newapiTransport";
-import { readTaskResponse } from "../tasks/taskResultReading";
+import { readTaskResponse, requestEchoUrls } from "../tasks/taskResultReading";
 import { resolveTaskStatus } from "../tasks/responseParsing";
 import { createCatalogGenerationProvider } from "../capabilityCore/apimartGenerationProvider";
 import { isJsonRecord, type JsonRecord } from "../jsonUtils";
@@ -202,6 +202,8 @@ describe.each(all.map((mapping) => [`${mapping.vendorKey} · ${mapping.modelKey 
 
 // V-1213 验收反例（合并阻断：花钱生成视频却拿到一张图）。三条都在 merge-base 上取对、在修复前的 HEAD 上取错——
 // 期望媒体类型优先，明确的视频结果字段压过顶层辅助地址；回显的参考图一律排除，合同字段也不例外。
+// 合同读到的地址与通用规则过同一道筛（回显 + 类型），两台引擎经同一个 readTaskResponse；引擎 B 的同一用例见
+// capabilityCore/apimartGenerationProvider.test.ts「引擎 B 取产物：合同字段回显的参考图不当产物」。
 describe("结果误选反例（V-1213）：两台引擎同一组", () => {
   const REF = "https://fixture.invalid/reference.png";
   const VIDEO = "https://fixture.invalid/paid-result.mp4";
@@ -234,6 +236,18 @@ describe("结果误选反例（V-1213）：两台引擎同一组", () => {
 
   it.each(cases)("引擎 A（readTaskResponse）：$name", ({ response, mapping, expected }) => {
     expect(readTaskResponse({ response, responseMapping: mapping, statusMapping: undefined, wantedKind: "video", echoUrls: new Set([REF]) }).assetUrls).toEqual(expected);
+  });
+
+  // 引擎 A 的回显来源照 runtime.buildProfileTaskResult 的组法：requestEchoUrls(request.extras)。
+  const ECHO_RESPONSE = { status: "success", output: REF };
+  const ECHO_CONTRACT = { status: "status", video_url: "output" };
+  it("引擎 A 同一用例（进程内，请求 extras 里带着参考图）：合同位置回显 → 不当产物", () => {
+    const extras = { modelKey: "kling-v3", imageUrls: [REF] };
+    expect(readTaskResponse({ response: ECHO_RESPONSE, responseMapping: ECHO_CONTRACT, statusMapping: undefined, wantedKind: "video", echoUrls: requestEchoUrls(extras) }).assetUrls).toEqual([]);
+  });
+  it("引擎 A 同一用例（重启后无状态重建，extras 里没有参考图）：视频任务的合同位置给 .png → 按类型不收", () => {
+    const rebuiltExtras = { modelKey: "kling-v3", archetype: { modeId: "i2v" } };
+    expect(readTaskResponse({ response: ECHO_RESPONSE, responseMapping: ECHO_CONTRACT, statusMapping: undefined, wantedKind: "video", echoUrls: requestEchoUrls(rebuiltExtras) }).assetUrls).toEqual([]);
   });
 
   it("引擎 B（制作 Run 的 provider.materialize，没有上下文、不知道期望类型）：顶层 poster 不抢真 mp4，产物种类是 video", async () => {
