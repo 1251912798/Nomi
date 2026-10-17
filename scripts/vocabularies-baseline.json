@@ -1106,6 +1106,7 @@
         "client-auth-missing",
         "command-missing",
         "handshake-failed",
+        "http-not-listening",
         "not-installed",
         "ok",
         "spawn-failed",
