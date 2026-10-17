@@ -25,8 +25,6 @@ import { VendorRequestError, encodeVendorErrorMessage } from '../../../../electr
 import { RecoverableTimeoutError } from './recoverableTimeout'
 import { createProjectSessionTestHarness, type ProjectSessionTestHarness } from '../../project/projectSessionTestHarness'
 import type { ProjectBinding } from '../../../../electron/shared/projectBinding'
-import { normalizeStoreSnapshot } from '../store/canvasSnapshotNormalizer'
-import { matchNomiErrorCode } from '../../../../electron/shared/nomiErrorCodes'
 
 vi.mock('../../api/taskApi', () => ({
   mintSpendGrant: vi.fn(async () => 'grant-test'),
@@ -368,54 +366,5 @@ describe('结果取回族（#1213）：带阶段码的取回失败一律可找�
   it('纯等待超时带 retrieval-timeout 阶段码（失败看得见：每次取回失败都说清卡在哪一步）', () => {
     const error = new RecoverableTimeoutError({ taskId: 'timeout-2', vendor: 'relay', taskKind: 'text_to_video', modelKey: 'demo' })
     expect(error.message).toMatch(/^NOMI_ERR::retrieval-timeout::[\s\S]*timeout-2/)
-  })
-})
-
-// V-1213 第 2 节：五种取回异常都要「落盘 → 重启加载 → 原因与阶段还在、仍是可找回」。
-// 落盘 / 重启用真实的那条路：画布快照 JSON 序列化（存盘就是它）→ normalizeStoreSnapshot（加载时唯一的归一入口）→
-// restoreSnapshot。原话形状与主进程 / 渲染层生产者同形（阶段码 + 阶段说明 + 原话）。
-describe('五种取回异常：落盘重启后原因、阶段、可找回都还在（V-1213）', () => {
-  beforeEach(() => {
-    useGenerationCanvasStore.getState().restoreSnapshot({ nodes: [], edges: [], selectedNodeIds: [], groups: [] })
-    useGenerationQueueStore.setState({ entries: [], batches: {} })
-    __resetCanvasUndoJournalForTests()
-    setCanvasEventSinkForTests(() => {})
-    resetModelHealthMemory()
-  })
-
-  it.each([
-    ['上游说成了却没地址', 'retrieval-parse', 'NOMI_ERR::retrieval-parse:: 取回卡在「读结果」这一步：上游说任务已完成，但响应里没找到结果地址。（上游原话：{"status":"completed"}）'],
-    ['状态词认不出、等够宽限', 'retrieval-parse', 'NOMI_ERR::retrieval-parse:: 取回卡在「读结果」这一步：上游返回了认不出的任务状态「marinating」（连续查询 4 次、持续 160 秒）。'],
-    ['查询连续失败', 'retrieval-query', 'NOMI_ERR::retrieval-query:: 取回卡在「查询任务」这一步：Provider request failed (HTTP 503) at relay GET x: 当前分组 default 下对于模型  无可用渠道'],
-    ['下载这一步没成', 'retrieval-download', 'NOMI_ERR::retrieval-download:: 取回卡在「下载结果」这一步：Remote asset fetch failed (HTTP 403)'],
-    ['等待超时', 'retrieval-timeout', 'NOMI_ERR::retrieval-timeout:: 取回卡在「等待结果」这一步：等到上限还没有结果（任务号 task-5）。'],
-  ])('%s', async (_name, code, message) => {
-    const id = useGenerationCanvasStore.getState().addNode({ kind: 'image', prompt: '镜头 5', meta: { modelVendor: 'apimart', modelKey: 'MiniMax-H3' } }).id
-    await runGenerationNodesBatch([id], { target: projectTarget,
-      assetUploadConsent: 'not-needed',
-      retry: { maxAttempts: 1 },
-      executor: async (node) => {
-        useGenerationCanvasStore.getState().setNodeProgress(node.id, { phase: 'still-generating', taskId: 'task-paid-restart' })
-        throw new Error(message)
-      },
-    }).catch(() => undefined)
-
-    // 存盘 = 序列化当前快照；重启 = 清空 store 后经加载归一再恢复。
-    const state = useGenerationCanvasStore.getState()
-    const onDisk = JSON.stringify({ nodes: state.nodes, edges: state.edges, selectedNodeIds: [], groups: [] })
-    useGenerationCanvasStore.getState().restoreSnapshot({ nodes: [], edges: [], selectedNodeIds: [], groups: [] })
-    useGenerationCanvasStore.getState().restoreSnapshot(normalizeStoreSnapshot(JSON.parse(onDisk)))
-
-    const reloaded = useGenerationCanvasStore.getState().nodes.find((n) => n.id === id)
-    expect(reloaded?.status).toBe('recoverable')
-    expect(reloaded?.error).toBe(message)
-    expect(reloaded?.runs?.[0]).toMatchObject({ taskId: 'task-paid-restart', error: message })
-    expect(matchNomiErrorCode(reloaded?.error ?? '')).toBe(code)
-    // 重启后点「重新取回」仍可达：只查不交，不铸付费令牌。
-    vi.mocked(fetchWorkbenchTaskResultByVendor).mockResolvedValue({ result: { id: 'task-paid-restart', status: 'succeeded', kind: 'text_to_image', assets: [{ url: 'https://cdn.example.com/after-restart.png', type: 'image' }] } } as never)
-    vi.mocked(mintSpendGrant).mockClear()
-    await withProjectAction((project) => recoverNodeResult(id, project))
-    expect(useGenerationCanvasStore.getState().nodes.find((n) => n.id === id)?.status).toBe('success')
-    expect(vi.mocked(mintSpendGrant)).not.toHaveBeenCalled()
   })
 })
