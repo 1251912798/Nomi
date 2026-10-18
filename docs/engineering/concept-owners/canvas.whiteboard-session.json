@@ -1,0 +1,44 @@
+{
+  "name": "画布节点内唯一活动画板会话",
+  "subject": "canvas.whiteboard-session",
+  "lifecycle": "live-interaction",
+  "authority_kind": "writer",
+  "trust_domain": "renderer",
+  "fact_kind": "state-machine",
+  "migration_status": "converged",
+  "owner": {
+    "path": "src/workbench/generationCanvas/nodes/whiteboard/whiteboardSession.ts",
+    "symbol": "openWhiteboard"
+  },
+  "write_api": [
+    {
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/whiteboardSession.ts",
+      "symbol": "openWhiteboard"
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/whiteboardSession.ts",
+      "symbol": "closeWhiteboard"
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/whiteboardSession.ts",
+      "symbol": "registerWhiteboardFinish"
+    },
+    {
+      "path": "src/workbench/generationCanvas/nodes/whiteboard/whiteboardSession.ts",
+      "symbol": "finishWhiteboard"
+    }
+  ],
+  "forbidden_derivations": [],
+  "parity_test": "src/workbench/generationCanvas/nodes/whiteboard/whiteboardInlineState.test.ts",
+  "allowed_consumers": [
+    "src/workbench/generationCanvas/nodes/whiteboard/WhiteboardCardBody.tsx",
+    "src/workbench/generationCanvas/nodes/whiteboard/InlineWhiteboard.tsx",
+    "src/workbench/generationCanvas/nodes/whiteboard/NodeInlineWhiteboardHost.tsx",
+    "src/workbench/generationCanvas/nodes/BaseGenerationNode.tsx",
+    "src/workbench/generationCanvas/quickActions/ImageQuickActionsToolbar.tsx",
+    "src/workbench/generationCanvas/reactFlow/GenerationCanvasReactFlowNodes.tsx",
+    "src/workbench/generationCanvas/nodes/versionCards/NodeVersionCardsHost.tsx"
+  ],
+  "since": "2026-10-12",
+  "notes": "图片工具栏与独立画板卡片只请求 openWhiteboard。会话以 nodeId 唯一化，节点持有同一 InlineWhiteboard，切换前 await 已登记 finish，保存失败/忙态不换板；声明 project lifetime，项目释放清空回调与活动节点。useWhiteboardSession 是唯一 Zustand 实例，读者只投影活动状态，不另写活动 nodeId。 版本设主图/删除复用 finishWhiteboard 保存事务；异步切换记录项目代次，释放后不得重新打开旧项目节点。 2026-10-12：Opening 使用 generation lease，release 清当前 lease，旧 finally 只释放自己；finishWhiteboard 跨项目代次拒绝。"
+}

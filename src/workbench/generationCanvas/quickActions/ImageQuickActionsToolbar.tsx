@@ -33,8 +33,7 @@ import { GridSplitPicker, type GridSplitSpec } from '../nodes/GridSplitPicker'
 import type { ImageTransformOp } from '../nodes/useNodeImageEditing'
 import type { CropGridSize } from '../nodes/render/ImageCropGridOverlay'
 import { useResultDownload } from '../nodes/useResultDownload'
-import WhiteboardModal from '../nodes/whiteboard/WhiteboardModal'
-import { inferWhiteboardAspectRatio, readWhiteboardState } from '../nodes/whiteboard/whiteboardState'
+import { openWhiteboard } from '../nodes/whiteboard/whiteboardSession'
 import { readQuickActionMeta } from './deriveFromNode'
 import { quickActionsInGroup, type QuickActionDefinition, type QuickActionId } from './quickActionCatalog'
 import type { QuickActionGuide } from './capabilityGuide'
@@ -128,7 +127,6 @@ export default function ImageQuickActionsToolbar(props: ImageQuickActionsToolbar
   } = props
   const { t } = useTranslation()
   const { downloading, download } = useResultDownload(node, reportFeedback)
-  const [whiteboardOpen, setWhiteboardOpen] = React.useState(false)
   const imageUrl = node.result?.type === 'image' ? node.result.url || '' : ''
   const busy = editGrid !== null || imageOpBusy || removeBackgroundBusy
   const derivedGrid = readQuickActionMeta(node)?.grid
@@ -226,10 +224,11 @@ export default function ImageQuickActionsToolbar(props: ImageQuickActionsToolbar
         <ToolbarDivider />
         <ToolbarIconButton
           icon={<IconBrush size={I.size} stroke={I.stroke} />}
+          actionId="whiteboard-open"
           title={t('generationCommon.imageToolbar.whiteboardHint')}
           ariaLabel={t('generationCommon.imageToolbar.whiteboard')}
           disabled={busy || !imageUrl}
-          onClick={() => setWhiteboardOpen(true)}
+          onClick={() => void openWhiteboard(node.id)}
         />
         <ToolbarDivider />
         <ToolbarIconButton
@@ -248,16 +247,7 @@ export default function ImageQuickActionsToolbar(props: ImageQuickActionsToolbar
         />
         <ToolbarProvenanceButton onOpen={onOpenProvenance} />
       </FloatingToolbarShell>
-      {whiteboardOpen && imageUrl ? (
-        <WhiteboardModal
-          nodeId={node.id}
-          sourceKind="image"
-          nodeTitle={`${node.title || t('generationCommon.imageToolbar.image')} · ${t('generationCommon.imageToolbar.whiteboard')}`}
-          initialState={readWhiteboardState(node)}
-          initialImage={{ url: imageUrl, aspectRatio: inferWhiteboardAspectRatio(node.meta?.imageWidth, node.meta?.imageHeight) }}
-          onClose={() => setWhiteboardOpen(false)}
-        />
-      ) : null}
+
     </>
   )
 }
