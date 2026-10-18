@@ -1253,9 +1253,10 @@
         "incomplete",
         "kind_empty",
         "loading",
-        "ready"
+        "ready",
+        "stale_kept"
       ],
-      "reason": "模型目录/供应商调用域的结果词表（api_unreachable / catalog_empty / incomplete / kind_empty / loading / ready），成员由该供应商或调用协议定义。",
+      "reason": "模型目录/供应商调用域的结果词表（api_unreachable / catalog_empty / incomplete / kind_empty / loading / ready / stale_kept），成员由该供应商或调用协议定义。stale_kept（2026-10-18 审查后新增）：这一次读目录失败，但上一份读成功的清单被保留并仍在屏上，状态带失败原因；与 ready（读成功、清单新鲜）和 api_unreachable（读失败且没有任何清单可留，空态加原因）语义不同。",
       "site": "src/config/modelCatalogStatus.ts::type:ModelCatalogStatus/type-union"
     },
     {
