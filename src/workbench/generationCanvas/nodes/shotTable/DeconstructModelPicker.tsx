@@ -4,6 +4,7 @@ import { NomiSelect, type NomiSelectOption } from '../../../../design'
 import { useModelOptionsState } from '../../../../config/useModelOptions'
 import type { DeconstructionShotTableDocument } from '../../../../../electron/shared/canvas/shotTable'
 import { editShotTableFacts } from './shotTableActions'
+import { CONNECT_VENDOR_OPTION_VALUE, openModelCatalog } from '../../../common/useDedupedModelSelect'
 
 /**
  * 拆解栏里的两颗模型 chip：读图腿、转写腿（2026-10-11 走查 §1 → 2026-10-18 拆解前选模型 移到拆解栏，并补上转写）。
@@ -14,40 +15,60 @@ import { editShotTableFacts } from './shotTableActions'
  *   （`modelSupportsImageInput`），这里不抄第二份。
  * - 转写 = 音频模型清单里的转写模式（`useModelOptionsState('audio', 'transcribe')`），本机 Whisper 与云端转写在同一份清单里。
  * 身份是 (vendor, modelKey) 双段——同名模型可能出现在两家中转站。
+ * 失效（选的模型不在清单里）不悄悄换：标红说原因，拆解栏的主按钮不可点；一个能读图的模型都没有时下拉里给「去接入」（复用模型框同一条）。
  */
 const identityOf = (option: { vendor?: string; modelKey?: string }): string => `${option.vendor ?? ''}::${option.modelKey ?? ''}`
 
-type Leg = 'vision' | 'transcribe'
+export type DeconstructLeg = 'vision' | 'transcribe'
 
-export function DeconstructModelPicker({ leg, nodeId, table, disabled }: { leg: Leg; nodeId: string; table: DeconstructionShotTableDocument; disabled: boolean }): JSX.Element {
+export type DeconstructLegChoice = {
+  options: NomiSelectOption[]
+  /** 表上选的模型已不在清单里（停用 / 删了 / 供应商断开）：不悄悄换，标红、拆解按钮不可点，等用户换一个。 */
+  stale: boolean
+  /** 读图腿一个能读图的模型都没有：下拉里只剩「去接入」。 */
+  noModel: boolean
+}
+
+/** 一条腿的选项与状态；拆解栏的主按钮也读它（选的模型失效时不让拆）。 */
+export function useDeconstructLegChoice(leg: DeconstructLeg, table: DeconstructionShotTableDocument): DeconstructLegChoice {
   const { t } = useTranslation()
   const { options: textOptions } = useModelOptionsState('text')
   const { options: transcribeOptions } = useModelOptionsState('audio', 'transcribe')
   const chosen = leg === 'vision' ? table.source.visionModel : table.source.transcribeModel
-  const options = React.useMemo<NomiSelectOption[]>(() => {
+  return React.useMemo<DeconstructLegChoice>(() => {
     const source = leg === 'vision'
       ? textOptions.filter((option) => (option.meta as { supportsImageInput?: unknown } | null | undefined)?.supportsImageInput !== false)
       : transcribeOptions
-    const rows = source
+    const rows: NomiSelectOption[] = source
       .filter((option) => option.vendor && option.modelKey)
       .map((option) => ({ value: identityOf(option), label: option.vendorName ? `${option.label} · ${option.vendorName}` : option.label }))
+    const noModel = leg === 'vision' && rows.length === 0
     // 选中的那个模型被停用 / 删了：仍然列出来，别让下拉静默回到「自动」——那等于悄悄换了钱的去向。
-    if (chosen && !rows.some((row) => row.value === identityOf({ vendor: chosen.vendorKey, modelKey: chosen.modelKey }))) {
-      rows.push({ value: identityOf({ vendor: chosen.vendorKey, modelKey: chosen.modelKey }), label: chosen.modelKey })
-    }
-    return [{ value: '', label: t(leg === 'vision' ? 'shotTable.visionAuto' : 'shotTable.node.transcribeAuto') }, ...rows]
+    const stale = Boolean(chosen) && !rows.some((row) => row.value === identityOf({ vendor: chosen!.vendorKey, modelKey: chosen!.modelKey }))
+    if (chosen && stale) rows.push({ value: identityOf({ vendor: chosen.vendorKey, modelKey: chosen.modelKey }), label: chosen.modelKey, trailing: t('shotTable.node.modelUnavailable'), trailingTone: 'danger' })
+    if (noModel) rows.push({ value: CONNECT_VENDOR_OPTION_VALUE, label: t('shotTable.node.noVisionModel'), trailing: t('generationCommon.parameters.connectVendorAction'), trailingTone: 'accent' })
+    const auto = { value: '', label: t(leg === 'vision' ? 'shotTable.visionAuto' : 'shotTable.node.transcribeAuto') }
+    return { options: noModel && !chosen ? rows : [auto, ...rows], stale, noModel }
   }, [chosen, leg, t, textOptions, transcribeOptions])
+}
+
+export function DeconstructModelPicker({ leg, nodeId, table, disabled }: { leg: DeconstructLeg; nodeId: string; table: DeconstructionShotTableDocument; disabled: boolean }): JSX.Element {
+  const { t } = useTranslation()
+  const chosen = leg === 'vision' ? table.source.visionModel : table.source.transcribeModel
+  const { options, stale, noModel } = useDeconstructLegChoice(leg, table)
   return (
     <NomiSelect
       size="xs"
       ariaLabel={t(leg === 'vision' ? 'shotTable.visionModel' : 'shotTable.node.transcribe')}
       leadingLabel={t(leg === 'vision' ? 'shotTable.node.vision' : 'shotTable.node.transcribe')}
-      title={t(leg === 'vision' ? 'shotTable.visionHint' : 'shotTable.node.transcribeHint')}
+      title={stale ? t('shotTable.node.modelUnavailableHint') : t(leg === 'vision' ? 'shotTable.visionHint' : 'shotTable.node.transcribeHint')}
       disabled={disabled}
       triggerMaxWidth={220}
-      value={chosen ? identityOf({ vendor: chosen.vendorKey, modelKey: chosen.modelKey }) : ''}
+      triggerBadge={stale ? { text: t('shotTable.node.modelUnavailable'), tone: 'danger' } : undefined}
+      value={chosen ? identityOf({ vendor: chosen.vendorKey, modelKey: chosen.modelKey }) : noModel ? CONNECT_VENDOR_OPTION_VALUE : ''}
       options={options}
       onChange={(value) => {
+        if (value === CONNECT_VENDOR_OPTION_VALUE) { openModelCatalog(); return }
         const [vendorKey, modelKey] = value.split('::')
         const next = vendorKey && modelKey ? { vendorKey, modelKey } : undefined
         editShotTableFacts(nodeId, (current) => ({

@@ -6,7 +6,7 @@ import type { DeconstructionShotTableDocument } from '../../../../../electron/sh
 import { withProjectAction } from '../../../project/projectCanvasReadSurface'
 import { CANVAS_LAYER } from '../../reactFlow/canvasLayerOrder'
 import { ComposerAnchor } from '../composerAnchor'
-import { DeconstructModelPicker } from './DeconstructModelPicker'
+import { DeconstructModelPicker, useDeconstructLegChoice } from './DeconstructModelPicker'
 import { cancelDeconstruction, deconstructToShotTable } from './factBridge'
 import { canRestartDeconstruction } from './deconstructionLifecycle'
 import { editShotTableFacts } from './shotTableActions'
@@ -37,6 +37,10 @@ export function ShotTableComposer({ nodeId, table, visualSize, sourceAvailable, 
   const { t } = useTranslation()
   const anchorRef = React.useRef<HTMLDivElement>(null)
   const running = table.source.status === 'running'
+  // 选的模型用不了：不悄悄换、也不让拆（拆了等于花钱去撞一个已知用不了的模型）；「改用云端」只盖过转写腿，读图腿失效照样拦。
+  const visionStale = useDeconstructLegChoice('vision', table).stale
+  const transcribeStale = useDeconstructLegChoice('transcribe', table).stale
+  const blockedReason = visionStale || transcribeStale ? t('shotTable.node.staleBlocked') : undefined
   const run = (transcribe?: 'cloud') => {
     withProjectAction((project) => {
       void deconstructToShotTable(table.source.sourceNodeId, project, transcribe).catch((cause: unknown) => onError(cause instanceof Error ? cause.message : String(cause)))
@@ -85,13 +89,14 @@ export function ShotTableComposer({ nodeId, table, visualSize, sourceAvailable, 
               <span className="ml-auto flex items-center gap-2">
                 {/* 本地离线转写挂了时的出口：用户点的一下才走云端，代码不许失败时自己切（那样会在不知情时花钱）。 */}
                 {table.source.failureKind === 'local-speech' && !running
-                  && <WorkbenchButton size="sm" variant="default" data-testid="shot-table-retry-cloud" disabled={!sourceAvailable} onClick={() => run('cloud')}>{t('shotTable.retryWithCloud')}</WorkbenchButton>}
+                  && <WorkbenchButton size="sm" variant="default" data-testid="shot-table-retry-cloud" disabled={!sourceAvailable || visionStale} title={visionStale ? blockedReason : undefined} onClick={() => run('cloud')}>{t('shotTable.retryWithCloud')}</WorkbenchButton>}
                 {running
                   ? <WorkbenchButton size="sm" variant="default" data-testid="shot-table-cancel-deconstruction" onClick={() => { cancelDeconstruction(nodeId) }}>{t('shotTable.cancel')}</WorkbenchButton>
                   : canRestartDeconstruction(table.source.status)
-                    && <WorkbenchButton size="sm" variant="primary" data-testid="shot-table-restart-deconstruction" disabled={!sourceAvailable} title={!sourceAvailable ? t('shotTable.sourceVideoMissing') : undefined} onClick={() => run()}>{hasRows ? t('shotTable.retry') : t('shotTable.node.deconstruct')}</WorkbenchButton>}
+                    && <WorkbenchButton size="sm" variant="primary" data-testid="shot-table-restart-deconstruction" disabled={!sourceAvailable || Boolean(blockedReason)} title={!sourceAvailable ? t('shotTable.sourceVideoMissing') : blockedReason} onClick={() => run()}>{hasRows ? t('shotTable.retry') : t('shotTable.node.deconstruct')}</WorkbenchButton>}
               </span>
             </div>
+            {blockedReason && !running && <p role="status" data-testid="shot-table-model-stale" className="m-0 text-micro text-nomi-danger">{blockedReason}</p>}
           </>
         )}
       </div>
