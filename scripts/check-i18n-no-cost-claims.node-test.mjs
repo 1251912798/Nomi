@@ -81,3 +81,15 @@ test('未知价那一行只放行精确的「费用 / Cost」，换成别的值�
   const other = scanDictionaries(dict({ runtime: { capability: { somethingElse: '费用' } } }), { notMoney: [] })
   assert.deepEqual(other.hits.map((h) => h.key), ['runtime.capability.somethingElse'])
 })
+
+test('未知价那一行：精确的「费用 / Cost」绿，带数字或货币符号的值一律红（整值精确判，不按包含）', () => {
+  const at = (zh, en) => scanDictionaries(
+    dict({ runtime: { capability: { generationGateCost: zh } } }, { runtime: { capability: { generationGateCost: en } } }), { notMoney: [] },
+  ).hits.map((h) => `${h.locale}:${h.text}`)
+  assert.deepEqual(at('费用', 'Cost'), [])
+  for (const zh of ['费用 0', '费用：12', '费用 ¥1.25']) assert.deepEqual(at(zh, 'Cost'), [`zh-CN:${zh}`], zh)
+  for (const en of ['Cost 0', 'Cost 12', 'Cost 1.25', 'Cost: $3']) assert.deepEqual(at('费用', en), [`en:${en}`], en)
+  // 任何别的 key 里出现带数字的写法同样红（不只是白名单那个 key）
+  const elsewhere = scanDictionaries(dict({ a: '费用 12' }, { a: 'Cost 12' }), { notMoney: [] }).hits.map((h) => h.locale)
+  assert.deepEqual(elsewhere, ['zh-CN', 'en'])
+})
