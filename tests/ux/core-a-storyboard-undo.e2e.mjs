@@ -16,6 +16,7 @@ import { waitForVisualQuiescence, proveProbe, expectAbsent } from './_assert.mjs
 import { createAgentRuntimeFixture, FIXTURE_VENDOR, FIXTURE_IMAGE_MODEL } from './agent-runtime-fixture.mjs'
 import { openStoryboardEditor } from './_creationResourceTree.mjs'
 import { canvasFitViewButton } from './_shell.mjs'
+import { assertCurrentFormatCanvasSeed } from './_canvasSeed.mjs'
 const { createWorkspaceProject } = tsxRequire('../../electron/workspace/workspaceRepository.ts', import.meta.url)
 const { createProductionRunRepository } = tsxRequire('../../electron/productionRun/productionRunRepository.ts', import.meta.url)
 const tempRoot = makeTempDir('nomi-ir02-electron-')
@@ -35,10 +36,12 @@ const imageUrl = `nomi-local://asset/${projectId}/${imagePath}`
 const nodes = ['legacy-1', 'unrelated'].map((id, index) => ({ id: `node-${id}`, kind: 'image', title: id, categoryId: 'shots',
   position: { x: 100 + index * 300, y: 180 }, size: { width: 240, height: 240 }, prompt: id === 'unrelated' ? 'Unrelated preserved result' : `${id.split('-')[0]} prompt 1`,
   status: id === 'unrelated' ? 'success' : 'idle',
-  ...(id === 'unrelated' ? { result: { id: 'preserved-result', type: 'image', url: imageUrl, createdAt: 1 }, history: [{ id: 'preserved-result', type: 'image', url: imageUrl, createdAt: 1 }] } : {}),
+  // previewState：现行格式带预览事实，否则打开后后台补写它，下面「无关结果原样保留」的前后比较会随机红（见 _canvasSeed.mjs）。
+  ...(id === 'unrelated' ? { result: { id: 'preserved-result', type: 'image', url: imageUrl, createdAt: 1, previewState: 'source' }, history: [{ id: 'preserved-result', type: 'image', url: imageUrl, createdAt: 1, previewState: 'source' }] } : {}),
   meta: { modelVendor: FIXTURE_VENDOR, modelKey: FIXTURE_IMAGE_MODEL, modeId: 't2i',
     ...(id === 'unrelated' ? {} : { storyboardDesignId: legacyId, shotId: id }) },
 }))
+assertCurrentFormatCanvasSeed(nodes, 'IR02 种子')
 createWorkspaceProject({ rootPath: projectRoot, record: { id: projectId, name: 'IR02 original storyboard Undo', payload: {
   workbenchDocuments: [{ id: documentId, version: 1, title: 'IR02 document', updatedAt: 1, contentJson: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Keep original document' }] }] } }],
   activeDocumentId: documentId, activeStoryboardId: legacyId, timeline: null,

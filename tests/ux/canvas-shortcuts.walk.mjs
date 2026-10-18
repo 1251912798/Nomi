@@ -30,6 +30,7 @@ import { fileURLToPath } from 'node:url'
 import { screenshotSettled, expect, proveProbe, expectAbsent } from './_assert.mjs'
 import { findCanvasBlankPoint, findNodeHitPoint } from './_canvasHit.mjs'
 import { backToLibrary, canvasAddBar, newProjectEntry, openRailDrawer } from './_shell.mjs'
+import { assertCurrentFormatCanvasSeed } from './_canvasSeed.mjs'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const shotsDir = path.join(repoRoot, 'tests/ux/shots/canvas-shortcuts')
@@ -63,7 +64,10 @@ if (!(c19Media?.width > 0 && c19Media?.height > 0)) throw new Error('C19 require
 // 种的是**现行格式**的项目：每一版带「第 N 版」号、节点记着出过的最大号。旧格式（没号）的项目打开时会补号并写盘
 // （版本卡片 V1，nodeResultLifecycle.backfillNodeResultVersionNumbers），那正是下面「打开项目本身不写盘」要排除的东西——
 // 补号写盘由 nodeResultLifecycle.test.ts 与版本卡片真 App 核对守，这条走查守的是编组撤销与焦点。
-const c19Result = { id: 'c19-existing-result', type: 'image', url: c19Image, createdAt: 1, versionNo: 1 }
+// 现行格式还包括预览事实（2026-10-16 起后台会给缺 previewState 的本地图补写，补在打开之后、画布安静时）：
+// 种子不带它，C19 的前后快照就会被后台随机改一笔（PR #1234 上 Prompt Delete 那条就这么红过）。
+// 'source' = 后台对这张 jpg 补出来的同一个值。是不是现行格式由 assertCurrentFormatCanvasSeed 用生产谓词判。
+const c19Result = { id: 'c19-existing-result', type: 'image', url: c19Image, createdAt: 1, versionNo: 1, previewState: 'source' }
 const c19Nodes = ['source', 'one', 'two'].map((id, index) => ({
   id: `c19-${id}`, kind: 'image', categoryId: 'shots', title: `C19 ${id}`, prompt: `C19 prompt ${id}`,
   renderKind: 'shot-frame', shotIndex: index + 1,
@@ -77,6 +81,7 @@ const c19Nodes = ['source', 'one', 'two'].map((id, index) => ({
   ...(index ? { groupId: c19GroupId } : {}),
 }))
 for (const node of c19Nodes) generationCanvasNodeSchema.parse(node)
+assertCurrentFormatCanvasSeed(c19Nodes, 'C19 种子')
 createWorkspaceProject({ rootPath: c19Root, record: { id: c19ProjectId, name: 'C19 group Undo and focus', payload: {
   workbenchDocuments: [{ id: 'c19-document', version: 1, title: 'C19 document', updatedAt: 1,
     contentJson: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'C19 document text' }] }] } }],
